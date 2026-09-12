@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GOAT OUT — prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d0a0c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Alegreya+SC:wght@700&display=swap">
+<style>
+  :root { color-scheme: dark; --ink: #0d0a0c; --bone: #efe6d0; --dim: #8c8078; --blood: #c0392b; }
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: var(--ink); color: var(--bone);
+    font-family: 'Alegreya', Georgia, 'Times New Roman', serif; overflow: hidden; overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: var(--ink);
+    touch-action: none; cursor: crosshair; }
+  #game:focus-visible { outline: none; }
+  #help { position: fixed; left: 0; right: 0; bottom: max(6px, env(safe-area-inset-bottom)); text-align: center;
+    font-size: 12px; color: var(--dim); letter-spacing: 0.03em; pointer-events: none; text-wrap: balance; padding: 0 10px; }
+  #help b { color: var(--bone); font-family: 'Alegreya SC', Georgia, serif; letter-spacing: 0.07em; }
+  @media (pointer: coarse) { #help { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Goat Out, a top-down escape game"></canvas>
+<div id="help"><b>WASD</b> move · <b>mouse</b> aim · <b>LMB</b> headbutt · <b>RMB hold</b> grab, release to throw · <b>E</b> roll · <b>SPACE</b> scream · <b>BACKSPACE</b> new level · <b>M</b> mute</div>
+<script src="js/tuning.js"></script>
+<script src="js/rng.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/gen.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/world.js"></script>
+<script src="js/input.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/enemies.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

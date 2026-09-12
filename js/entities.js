@@ -1,0 +1,454 @@
+// Goat (player), props (brazier, pot, bell, door, table, lamp) and bullets.
+class Goat {
+  constructor(x, y) {
+    const g = TUNING.goat;
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.r = g.radius;
+    this.hp = g.hp; this.maxHp = g.hp; this.dead = false;   // overwritten by applyBoons on spawn
+    this.aim = { x: 1, y: 0 }; this.facing = 0;
+    this.state = 'idle'; this.timer = 0; this.lungeId = 0;
+    this.holding = null; this.holdTimer = 0;
+    this.screamCd = 0; this.screaming = 0; this.invuln = 0; this.fireTick = 0; this.onFire = false;
+    this.hoofTimer = 0; this.kind = 'goat';
+    this.rollCd = 0; this.rollSpin = 0; this.rollDir = { x: 1, y: 0 };
+    this.trail = [];       // ghost positions for the speed smear
+    this.trailTimer = 0;
+  }
+
+  update(dt, game) {
+    const g = TUNING.goat, inp = game.input, world = game.world;
+    this.aim = inp.aim;
+    this.screamCd = Math.max(0, this.screamCd - dt); this.screaming = Math.max(0, this.screaming - dt);
+    this.invuln = Math.max(0, this.invuln - dt);
+
+    // ---- clumsy sideways roll ----
+    const R = TUNING.goat.roll;
+    this.rollCd = Math.max(0, this.rollCd - dt);
+    if (inp.rollPressed && this.rollCd <= 0 && this.state !== 'lunge' && this.state !== 'roll' && this.state !== 'rollrecover' && !this.dead) {
+      let dx = inp.mx, dy = inp.my;
+      if (!dx && !dy) { dx = this.aim.x; dy = this.aim.y; }
+      const l = Math.hypot(dx, dy) || 1;
+      this.rollDir = { x: dx / l, y: dy / l }; this.rollSpin = 0;
+      this.state = 'roll'; this.timer = R.duration; this.rollCd = R.cooldown * game.mods.rollCooldown;
+      this.vx = this.rollDir.x * R.speed * game.mods.rollDistance;
+      this.vy = this.rollDir.y * R.speed * game.mods.rollDistance;
+      this.invuln = Math.max(this.invuln, R.invuln);
+      if (this.holding) { const h = this.holding; this.holding = null; h.held = false; if (h.kind !== 'pot') { h.state = 'floored'; h.timer = 0.5; } }
+      game.audio.sfxRoll(); world.emitNoise(this.x, this.y, TUNING.noise.swing);
+    }
+    if (this.state === 'roll') {
+      this.timer -= dt; this.rollSpin += dt * 16;
+      if (this.timer <= 0) { this.state = 'rollrecover'; this.timer = R.recover; this.vx *= 0.22; this.vy *= 0.22; }
+    } else if (this.state === 'rollrecover') {
+      this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
+    }
+
+    // ---- movement (momentum) ----
+    let mul = this.holding ? g.grab.speedMul : 1;
+    if (this.state === 'recover') mul *= 0.55;
+    else if (this.state === 'windup') mul *= 0.3;
+    else if (this.state === 'rollrecover') mul *= 0.35;
+    const base = g.speed * game.mods.speed;
+    const top = base * mul;
+    if (this.state !== 'lunge' && this.state !== 'roll') {
+      const moving = inp.mx !== 0 || inp.my !== 0;
+      const tx = inp.mx * top, ty = inp.my * top;
+      const rate = moving ? base / g.accel : base / g.decel;
+      const dx = tx - this.vx, dy = ty - this.vy, d = Math.hypot(dx, dy);
+      const step = rate * dt;
+      if (d <= step) { this.vx = tx; this.vy = ty; } else { this.vx += dx / d * step; this.vy += dy / d * step; }
+      if (moving) this.facing = Math.atan2(this.vy, this.vx);
+    }
+    if (Math.hypot(this.vx, this.vy) > 40) this.facing = Math.atan2(this.vy, this.vx);
+    if (this.state === 'lunge' || this.state === 'windup') this.facing = Math.atan2(this.aim.y, this.aim.x);
+    if (this.state === 'roll') this.facing = Math.atan2(this.rollDir.y, this.rollDir.x);
+
+    // ---- headbutt state machine ----
+    if (inp.lmbPressed && this.state === 'idle' && !this.holding) { this.state = 'windup'; this.timer = g.headbutt.windup; }
+    if (this.state === 'windup') {
+      this.timer -= dt;
+      if (this.timer <= 0) {
+        this.state = 'lunge'; this.timer = g.headbutt.active; this.lungeId++;
+        this.vx = this.aim.x * g.headbutt.lunge; this.vy = this.aim.y * g.headbutt.lunge;
+        game.audio.sfxHeadbutt(); world.emitNoise(this.x, this.y, TUNING.noise.headbutt);
+      }
+    } else if (this.state === 'lunge') {
+      this.timer -= dt;
+      this.headbuttHits(game);
+      if (this.timer <= 0) { this.state = 'recover'; this.timer = g.headbutt.recovery * game.mods.headbuttRecovery; this.vx *= 0.35; this.vy *= 0.35; }
+    } else if (this.state === 'recover') {
+      this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
+    }
+
+    // ---- grab / hold / throw ----
+    if (inp.rmbDown && !this.holding && this.state === 'idle') this.tryGrab(game);
+    if (this.holding) {
+      const h = this.holding;
+      if (h.dead || h.broken) { this.holding = null; }
+      else {
+        h.x = this.x + this.aim.x * (g.grab.holdDist + h.r * 0.4); h.y = this.y + this.aim.y * (g.grab.holdDist + h.r * 0.4);
+        h.vx = 0; h.vy = 0; h.facing = Math.atan2(this.aim.y, this.aim.x);
+        this.holdTimer += dt;
+        if (!inp.rmbDown) {
+          h.held = false; this.holding = null;
+          h.fling(this.aim.x * g.grab.throwImpulse, this.aim.y * g.grab.throwImpulse, true);
+          game.audio.sfxSwing();
+        } else if (game.mods.devour && h.kind !== 'pot' && this.holdTimer >= TUNING.goat.devour.time) {
+          // Keep holding and the goat opens him up. Sometimes that is a meal.
+          this.holding = null; h.held = false;
+          const fed = Math.random() < TUNING.goat.devour.healChance && this.hp < this.maxHp;
+          if (fed) { this.hp += 1; game.floatText(this.x, this.y - 34, 'FED', PALETTE.blood); }
+          game.world.splat(h.x, h.y, this.aim.x, this.aim.y, 20);
+          game.particles(h.x, h.y, 22, PALETTE.blood, 200);
+          h.die(game, 'devour', this.aim.x, this.aim.y);
+          game.hitstop(0.06); game.shake(7); game.vibe(30);
+        } else if (h.kind !== 'pot' && this.holdTimer >= game.mods.holdTime) {
+          h.held = false; this.holding = null; h.state = 'floored'; h.timer = 0.6;
+          h.x += this.aim.x * 10; h.y += this.aim.y * 10;
+        }
+      }
+    }
+
+    // ---- scream ----
+    if (inp.spacePressed && this.screamCd <= 0 && !this.dead) {
+      if (game.mods.breath) this.breathe(game);
+      else {
+        this.screamCd = game.mods.screamCooldown; this.screaming = g.scream.duration;
+        world.emitNoise(this.x, this.y, game.mods.screamRadius, 'lure'); game.audio.sfxScream();
+        game.floatText(this.x, this.y - 26, 'BAAAAH', PALETTE.bone);
+        game.ring(this.x, this.y, game.mods.screamRadius * TILE, PALETTE.bone);
+      }
+    }
+
+    // ---- integrate + walls ----
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    const impact = world.collideCircle(this);
+    if (this.state === 'lunge' && impact > 0) { this.state = 'recover'; this.timer = g.headbutt.recovery * game.mods.headbuttRecovery * 0.6; game.shake(3); game.audio.sfxThud(); }
+
+    // ---- fire ----
+    this.onFire = !game.mods.fireImmune && (world.isBurningPx(this.x, this.y) || game.touchingBrazier(this));
+    if (this.onFire) {
+      this.fireTick += dt;
+      if (this.fireTick >= g.fireDamageInterval) { this.fireTick = 0; this.damage(1, game, -this.aim.x * 60, -this.aim.y * 60, true); }
+    } else this.fireTick = Math.min(this.fireTick, g.fireDamageInterval * 0.6);
+
+    // ---- motion smear + bloody hoof prints ----
+    const spd = Math.hypot(this.vx, this.vy);
+    this.trailTimer -= dt;
+    if (spd > g.speed * 0.55 && this.trailTimer <= 0) {
+      this.trailTimer = 0.028;
+      this.trail.push({ x: this.x, y: this.y, a: this.facing, life: 0.18 });
+      if (this.trail.length > 7) this.trail.shift();
+    }
+    for (const t of this.trail) t.life -= dt;
+    this.trail = this.trail.filter((t) => t.life > 0);
+    if (this.hp < this.maxHp && spd > 60) {
+      this.hoofTimer -= dt;
+      if (this.hoofTimer <= 0) { this.hoofTimer = 0.09; world.dot(this.x + (Math.random() - 0.5) * 8, this.y + (Math.random() - 0.5) * 8, 2.2, PALETTE.bloodDark); }
+    }
+    if (spd > 100 && Math.random() < dt * 4) world.emitNoise(this.x, this.y, TUNING.noise.footstep);
+  }
+
+  // A cone of fire where the scream used to be.
+  breathe(game) {
+    const B = TUNING.goat.breath, ax = this.aim.x, ay = this.aim.y;
+    this.screamCd = game.mods.screamCooldown; this.screaming = 0.4;
+    game.world.igniteCone(this.x, this.y, ax, ay, B.range, B.halfAngle, B.fireTime);
+    for (const e of game.enemies) {
+      if (e.dead || e.held) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
+      if (d > B.range + e.r || (dx * ax + dy * ay) / (d || 1) < Math.cos(B.halfAngle)) continue;
+      if (!game.world.los(this.x, this.y, e.x, e.y)) continue;
+      e.ignite(game);
+    }
+    for (let i = 0; i < 26; i++) {
+      const a = Math.atan2(ay, ax) + (Math.random() - 0.5) * B.halfAngle * 2;
+      const sp = 260 + Math.random() * 420;
+      game.parts.push({ x: this.x + ax * 14, y: this.y + ay * 14, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 0.28 + Math.random() * 0.3, color: Math.random() < 0.5 ? PALETTE.fire : PALETTE.fireHi, size: 3 + Math.random() * 4 });
+    }
+    game.breathFx = { x: this.x, y: this.y, ax, ay, life: 0.34, max: 0.34 };
+    game.world.emitNoise(this.x, this.y, TUNING.noise.breath, 'lure');
+    game.audio.sfxBreath(); game.shake(6); game.vibe(25);
+  }
+
+  headbuttHits(game) {
+    const g = TUNING.goat.headbutt;
+    const extra = (game.mods.headbuttReach - 1) * TILE, impulse = g.impulse * game.mods.headbuttImpulse;
+    const ax = this.aim.x, ay = this.aim.y;
+    for (const e of game.enemies) {
+      if (e.dead || e.held || e.lastLunge === this.lungeId) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
+      if (d > this.r + e.r + 10 + extra || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
+      e.lastLunge = this.lungeId;
+      if (e.kind === 'butcher') {
+        e.hp -= 1; e.flash = 0.18;
+        // Planted while attacking: the hit counts but does not interrupt him. Bait the swing, then hit.
+        if (e.state === 'windup' || e.state === 'swing') { this.vx = -ax * 5 * TILE; this.vy = -ay * 5 * TILE; }
+        else { e.state = 'stagger'; e.timer = TUNING.butcher.stagger; e.vx = ax * 6 * TILE; e.vy = ay * 6 * TILE; }
+        game.hitstop(0.05); game.shake(5); game.audio.sfxThud();
+        game.world.splat(e.x, e.y, ax, ay, 8);
+        if (e.hp <= 0) e.die(game, 'headbutt', ax, ay);
+      } else {
+        e.fling(ax * impulse, ay * impulse, false);
+        game.shake(2); game.audio.sfxThud();
+        if (game.mods.bomb) { e.bombFuse = TUNING.goat.bomb.fuse; e.aware = true; }
+      }
+    }
+    for (const p of game.props) {
+      if (p.broken || p.lastLunge === this.lungeId) continue;
+      const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy);
+      if (d > this.r + p.r + 8 + extra || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
+      p.lastLunge = this.lungeId;
+      p.headbutt(game, ax, ay);
+    }
+  }
+
+  tryGrab(game) {
+    const g = TUNING.goat.grab;
+    let best = null, bestD = Infinity;
+    const consider = (o) => {
+      const dx = o.x - this.x, dy = o.y - this.y, d = Math.hypot(dx, dy);
+      if (d > this.r + o.r + g.reach * 0.6) return;
+      if ((dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) return;
+      if (d < bestD) { bestD = d; best = o; }
+    };
+    for (const e of game.enemies) if (!e.dead && e.kind !== 'butcher' && e.state !== 'flung' && !e.held) consider(e);
+    for (const p of game.props) if (p.kind === 'pot' && !p.broken && !p.held && !p.flung) consider(p);
+    if (!best) return;
+    best.held = true; best.flung = false; best.thrown = false; this.holding = best; this.holdTimer = 0;
+    if (best.kind !== 'pot') { best.state = 'held'; best.aware = true; }
+  }
+
+  damage(n, game, kx, ky, fromFire) {
+    if (this.dead || (this.invuln > 0 && !fromFire)) return;
+    if (game.dev.god) { game.particles(this.x, this.y, 4, PALETTE.fireHi, 90); return; }
+    this.hp -= n; this.invuln = TUNING.goat.invuln;
+    this.vx += kx || 0; this.vy += ky || 0;
+    game.shake(TUNING.juice.shakeHit); game.audio.sfxHit();
+    game.hurtFlash(Math.atan2(-(ky || 0), -(kx || 0)));
+    game.world.splat(this.x, this.y, (kx || 0) / 100, (ky || 0) / 100, 9);
+    if (this.state === 'windup') this.state = 'idle';
+    if (this.hp <= 0) this.die(game);
+  }
+  die(game) {
+    if (this.dead) return;
+    this.dead = true; this.hp = 0;
+    if (this.holding) { this.holding.held = false; if (this.holding.kind !== 'pot') { this.holding.state = 'idle'; } this.holding = null; }
+    game.world.splat(this.x, this.y, 0, 0, 22);
+    game.world.body(this.x, this.y, this.r, this.facing, PALETTE.bone);
+    game.onGoatDied();
+  }
+}
+
+class Prop {
+  constructor(x, y, kind, opts) {
+    const P = TUNING.prop;
+    this.x = x; this.y = y; this.kind = kind; this.vx = 0; this.vy = 0;
+    this.r = kind === 'pot' ? 9 : kind === 'bell' ? 14 : kind === 'door' ? P.door.r
+      : kind === 'table' ? P.table.r : kind === 'lamp' ? P.lamp.r
+      : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r : 13;
+    this.angle = (opts && opts.phase) || 0;
+    this.solid = kind !== 'pot';
+    this.held = false; this.flung = false; this.thrown = false; this.broken = false; this.dead = false;
+    this.rung = 0; this.lastLunge = -1; this.phase = Math.random() * 10;
+    this.vertical = opts && opts.vertical; this.open = 0; this.pressure = 0; this.wobble = 0;
+  }
+  get blocking() {
+    if (this.broken) return false;
+    if (this.kind === 'pot' || this.kind === 'heal') return false;
+    if (this.kind === 'door') return this.open < 0.5;
+    return true;
+  }
+  get stopsBullets() { return !this.broken && (this.kind === 'table' || this.kind === 'brazier' || this.kind === 'bell' || (this.kind === 'door' && this.open < 0.5)); }
+
+  fling(vx, vy, thrown) { this.vx = vx; this.vy = vy; this.flung = true; this.thrown = thrown; this.held = false; }
+
+  headbutt(game, ax, ay) {
+    switch (this.kind) {
+      case 'pot': if (!this.held) this.fling(ax * TUNING.goat.headbutt.impulse * 0.9, ay * TUNING.goat.headbutt.impulse * 0.9, true); break;
+      case 'bell': this.ring(game); break;
+      case 'door': this.smash(game, ax, ay); break;
+      case 'table': this.shove(game, ax, ay); break;
+      case 'lamp': this.topple(game, ax, ay); break;
+      default: this.wobble = 0.3; game.audio.sfxThud(); break;
+    }
+  }
+
+  ring(game) {
+    this.rung = 1.5; game.world.emitNoise(this.x, this.y, TUNING.noise.bell); game.audio.sfxBell();
+    game.floatText(this.x, this.y - 30, 'BONNNG', PALETTE.fireHi); game.shake(4);
+    game.ring(this.x, this.y, TUNING.noise.bell * TILE, PALETTE.fireHi);
+  }
+
+  // Doors: the goat goes through them. Anyone loitering on the far side goes down with it.
+  smash(game, ax, ay) {
+    if (this.broken) return;
+    this.broken = true; this.dead = true;
+    game.world.emitNoise(this.x, this.y, TUNING.noise.door); game.audio.sfxSplat(); game.shake(5); game.hitstop(0.03);
+    game.particles(this.x, this.y, 16, PALETTE.wood, 260);
+    for (let i = 0; i < 10; i++) game.world.dot(this.x + (Math.random() - 0.5) * 54, this.y + (Math.random() - 0.5) * 54, 2 + Math.random() * 2.5, PALETTE.wood);
+    for (const e of game.enemies) {
+      if (e.dead || e.held) continue;
+      const dx = e.x - this.x, dy = e.y - this.y;
+      if (Math.hypot(dx, dy) > 2.1 * TILE) continue;
+      if ((dx * ax + dy * ay) < -4) continue;
+      if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.35; }
+      else e.fling(ax * 17 * TILE, ay * 17 * TILE, false);
+    }
+  }
+
+  // Tables slide, and men they catch ride the impulse into whatever is behind them.
+  shove(game, ax, ay) {
+    this.flung = true; this.vx = ax * 21 * TILE; this.vy = ay * 21 * TILE;
+    game.world.emitNoise(this.x, this.y, TUNING.noise.table); game.audio.sfxThud(); game.shake(3);
+  }
+
+  topple(game, ax, ay) {
+    if (this.broken) return;
+    this.broken = true; this.dead = true;
+    const px = this.x + ax * TILE * 0.8, py = this.y + ay * TILE * 0.8;
+    game.world.ignitePool(px, py, TUNING.prop.lamp.poolRadius);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.pot); game.audio.sfxPot(); game.audio.sfxFire();
+    game.particles(px, py, 14, PALETTE.fire, 150); game.shake(3);
+  }
+
+  update(dt, game) {
+    if (this.rung > 0) this.rung -= dt;
+    if (this.wobble > 0) this.wobble -= dt;
+    if (this.kind === 'mill') { this.updateMill(dt, game); return; }
+    if (this.kind === 'heal') return;
+    if (this.kind === 'door') { this.updateDoor(dt, game); return; }
+    if (this.kind === 'table') { this.updateTable(dt, game); return; }
+    if (this.kind !== 'pot' || this.broken || this.held || !this.flung) return;
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    const impact = game.world.collideCircle(this);
+    if (impact > 2 * TILE || Math.hypot(this.vx, this.vy) < 40) { this.shatter(game); return; }
+    for (const e of game.enemies) {
+      if (e.dead || e.held) continue;
+      if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) {
+        if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.3; }
+        else { e.state = 'floored'; e.timer = TUNING.bearer.flooredTime; e.vx = this.vx * 0.3; e.vy = this.vy * 0.3; e.aware = true; }
+        this.shatter(game); return;
+      }
+    }
+  }
+
+  updateDoor(dt, game) {
+    if (this.broken) return;
+    if (this.open > 0 && this.open < 1) this.open = Math.min(1, this.open + dt * 3);
+    if (this.open >= 0.5) return;
+    // Cultists who cannot get through eventually shoulder it open.
+    let pressed = false;
+    for (const e of game.enemies) {
+      if (e.dead || e.held || !e.aware) continue;
+      if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r + 6) { pressed = true; break; }
+    }
+    this.pressure = pressed ? this.pressure + dt : Math.max(0, this.pressure - dt * 2);
+    if (this.pressure >= TUNING.prop.door.openPressure) {
+      this.open = 0.01; this.pressure = 0;
+      game.world.emitNoise(this.x, this.y, TUNING.noise.swing); game.audio.sfxSwing();
+    }
+  }
+
+  updateTable(dt, game) {
+    if (!this.flung) { game.world.collideCircle(this); return; }
+    const cfg = TUNING.prop.table;
+    const drag = Math.exp(-cfg.drag * dt);
+    this.vx *= drag; this.vy *= drag;
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    const spd = Math.hypot(this.vx, this.vy);
+    const impact = game.world.collideCircle(this);
+    if (impact > 3 * TILE) { game.shake(3); game.audio.sfxThud(); game.particles(this.x, this.y, 6, PALETTE.wood, 120); }
+    if (spd > cfg.killSpeed) {
+      const nx = this.vx / spd, ny = this.vy / spd;
+      for (const e of game.enemies) {
+        if (e.dead || e.held || e.state === 'flung') continue;
+        if (Math.hypot(e.x - this.x, e.y - this.y) > e.r + this.r + 2) continue;
+        if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.3; this.vx *= -0.2; this.vy *= -0.2; }
+        else { e.fling(nx * spd * 1.25, ny * spd * 1.25, false); this.vx *= 0.75; this.vy *= 0.75; }
+      }
+      if (game.world.isBurningPx(this.x, this.y)) game.world.ignitePx(this.x, this.y, true);
+    }
+    if (spd < 30) { this.flung = false; this.vx = 0; this.vy = 0; }
+  }
+
+  // Two heavy arms sweeping a circle. Everything caught goes flying, cultists included.
+  updateMill(dt, game) {
+    const M = TUNING.mill;
+    this.angle += M.speed * dt;
+    const targets = [game.goat].concat(game.enemies);
+    for (const e of targets) if (e && e.millCd > 0) e.millCd -= dt;
+    const arms = [this.angle, this.angle + Math.PI];
+    for (const e of targets) {
+      if (!e || e.dead || e.held || e.millCd > 0) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
+      if (d > M.armLen + e.r || d < M.innerR - e.r) continue;
+      const ang = Math.atan2(dy, dx);
+      const slack = M.armHalfWidth + e.r / Math.max(d, 12);
+      let hit = false;
+      for (const a of arms) if (Math.abs(angleDiff(a, ang)) < slack) { hit = true; break; }
+      if (!hit) continue;
+      e.millCd = M.hitCooldown;
+      const tx = -Math.sin(ang), ty = Math.cos(ang);
+      const ix = tx * M.impulse + (dx / (d || 1)) * M.impulse * 0.4;
+      const iy = ty * M.impulse + (dy / (d || 1)) * M.impulse * 0.4;
+      if (e.kind === 'goat') e.damage(M.damage, game, ix * 0.45, iy * 0.45);
+      else { e.fling(ix, iy, true); e.aware = true; game.floatText(e.x, e.y - 26, 'GROUND', PALETTE.blood); }
+      game.shake(6); game.audio.sfxThud(); game.world.emitNoise(this.x, this.y, TUNING.noise.table);
+    }
+  }
+
+  shatter(game) {
+    this.broken = true; this.dead = true;
+    game.world.emitNoise(this.x, this.y, TUNING.noise.pot); game.audio.sfxPot(); game.shake(2);
+    for (let i = 0; i < 8; i++) game.world.dot(this.x + (Math.random() - 0.5) * 30, this.y + (Math.random() - 0.5) * 30, 2 + Math.random() * 2, PALETTE.ochre);
+    game.particles(this.x, this.y, 10, PALETTE.ochre, 140);
+  }
+}
+
+class Bullet {
+  constructor(x, y, vx, vy) { this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.life = 1.6; this.dead = false; }
+  update(dt, game) {
+    this.life -= dt; if (this.life <= 0) { this.dead = true; return; }
+    const steps = 3;
+    for (let s = 0; s < steps && !this.dead; s++) {
+      this.x += this.vx * dt / steps; this.y += this.vy * dt / steps;
+      if (game.world.isSolid(Math.floor(this.x / TILE), Math.floor(this.y / TILE))) {
+        this.dead = true; game.world.dot(this.x, this.y, 2, '#2a2020'); game.particles(this.x, this.y, 3, PALETTE.ochre, 80); return;
+      }
+      const goat = game.goat;
+      // The held man shields the goat: check him first.
+      if (goat.holding && goat.holding.kind !== 'pot' && Math.hypot(goat.holding.x - this.x, goat.holding.y - this.y) < goat.holding.r + 3) {
+        const h = goat.holding; h.shieldHits = (h.shieldHits || 0) + 1; this.dead = true;
+        game.world.splat(h.x, h.y, this.vx / 900, this.vy / 900, 7); game.floatText(h.x, h.y - 26, 'SHIELD', PALETTE.bone);
+        if (h.shieldHits >= game.mods.shieldBullets) h.die(game, 'shot', this.vx / 900, this.vy / 900);
+        return;
+      }
+      if (!goat.dead && Math.hypot(goat.x - this.x, goat.y - this.y) < goat.r + 2) {
+        this.dead = true; goat.damage(TUNING.hunter.damage, game, this.vx * 0.15, this.vy * 0.15); return;
+      }
+      for (const e of game.enemies) {
+        if (e.dead || e.held) continue;
+        if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + 2) {
+          this.dead = true;
+          if (e.kind === 'butcher') { e.hp -= 1; e.flash = 0.18; game.world.splat(e.x, e.y, this.vx / 900, this.vy / 900, 6); if (e.hp <= 0) e.die(game, 'shot', this.vx / 900, this.vy / 900); }
+          else { e.die(game, 'shot', this.vx / 900, this.vy / 900); game.floatText(e.x, e.y - 26, 'FRIENDLY FIRE', PALETTE.blood); }
+          return;
+        }
+      }
+      for (const p of game.props) {
+        if (p.broken) continue;
+        if (p.kind === 'pot' && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) { this.dead = true; p.shatter(game); return; }
+        if (p.kind === 'lamp' && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) {
+          this.dead = true; const l = Math.hypot(this.vx, this.vy) || 1; p.topple(game, this.vx / l, this.vy / l); return;
+        }
+        if (p.stopsBullets && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) {
+          this.dead = true; game.particles(this.x, this.y, 4, p.kind === 'table' ? PALETTE.wood : PALETTE.ochre, 100);
+          game.world.dot(this.x, this.y, 2, '#2a2020');
+          if (p.kind === 'bell') p.ring(game);
+          return;
+        }
+      }
+    }
+  }
+}
