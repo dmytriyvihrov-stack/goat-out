@@ -35,13 +35,17 @@ function tryGenerate(levelDef, seed) {
     if (i === 0) tpl = START_TEMPLATE;
     else if (arena) tpl = ARENA_TEMPLATE;
     else if (i === levelDef.millAt) tpl = MILL_TEMPLATE;
+    else if (i === levelDef.hallAt) tpl = GREAT_HALL_TEMPLATE;
+    else if (i === levelDef.galleryAt) tpl = GALLERY_TEMPLATE;
     else tpl = pool[poolIdx++ % pool.length];
     tpl = flipTemplate(tpl, rng);
     const w = tpl.rows[0].length, h = tpl.rows.length;
     y = clamp(y, 1, H - h - 2);
     if (x + w >= W - 6) return null;
 
-    const room = { x, y, w, h, tpl, index: i, markers: [], arena, isMill: i === levelDef.millAt };
+    const room = { x, y, w, h, tpl, index: i, markers: [], arena,
+      isMill: i === levelDef.millAt, isHall: i === levelDef.hallAt, isGallery: i === levelDef.galleryAt,
+      calm: !!levelDef.showControls && (i === 1 || i === 2) };
     for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
         const c = tpl.rows[ty][tx];
@@ -50,7 +54,7 @@ function tryGenerate(levelDef, seed) {
         if (c === '#' || c === 'P') t = T.WALL;
         else if (c === 'h') t = T.HAY;
         tiles[wy * W + wx] = t;
-        if ('eormXBbtLM'.includes(c)) room.markers.push({ tx: wx, ty: wy, c });
+        if ('eoRrmXBbtLM'.includes(c)) room.markers.push({ tx: wx, ty: wy, c });
       }
     }
     rooms.push(room);
@@ -88,29 +92,59 @@ function tryGenerate(levelDef, seed) {
       }
       else enemyMarkers.push(m);
     });
-    if (room.index === 0) return;
-    const budget = levelDef.budget(room.index);
+    // The pen room, and the two rooms with the controls painted on the floor, stay empty.
+    if (room.index === 0 || room.calm) return;
+    const budget = room.isHall ? (levelDef.hallBudget || 12)
+      : room.isGallery ? enemyMarkers.length
+      : levelDef.budget(room.index);
     rng.shuffle(enemyMarkers);
-    // Add a few extra random floor positions so rooms can exceed their marker count.
+    // Add extra random floor positions so a room can exceed the men its template marks.
+    const want = Math.max(0, budget - enemyMarkers.length);
     const extra = [];
-    for (let k = 0; k < 12 && extra.length < 6; k++) {
+    for (let k = 0; k < want * 8 && extra.length < want; k++) {
       const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
       if (tiles[ty * W + tx] === T.FLOOR) extra.push({ tx, ty, c: rng.chance(0.35) ? 'r' : 'e' });
     }
     const all = enemyMarkers.concat(extra).slice(0, budget);
     const ranged = levelDef.ranged || 'none';
+    // One mage to a room at most, and none at all until the level is a few rooms old. Two of them
+    // painting the same floor is not a fight, it is a coin toss.
+    const seerOk = room.index >= (levelDef.seerFrom === undefined ? 0 : levelDef.seerFrom);
+    let seersHere = 0;
     all.forEach((m) => {
       let kind = 'bearer';
-      if ((m.c === 'r' || m.c === 'm') && ranged !== 'none') {
-        if (ranged === 'seer') kind = 'seer';
-        else kind = (m.c === 'm' || rng.chance(levelDef.seerShare || 0)) ? 'seer' : 'hunter';
+      if ((m.c === 'r' || m.c === 'm' || m.c === 'R') && ranged !== 'none') {
+        const plainB = ranged === 'seer' ? 'bearer' : 'hunter';   // what he is when he cannot be a mage
+        if (m.c === 'R') kind = plainB;                           // a post that is always a rifle
+        else if ((m.c === 'm' || rng.chance(levelDef.seerShare || 0)) && seerOk && seersHere < (levelDef.seerPerRoom || 1)) {
+          kind = 'seer'; seersHere++;
+        } else kind = plainB;
       }
       spawns.push({ x: (m.tx + 0.5) * TILE, y: (m.ty + 0.5) * TILE, kind, roomIndex: room.index });
     });
   });
 
+  // Lone rifle posts. A rifle on its own is a different problem from a rifle inside a crowd:
+  // you have to cross its line rather than out-run the pile it is standing in.
+  if (levelDef.lonePosts && (levelDef.ranged === 'both' || levelDef.ranged === 'hunter')) {
+    const eligible = rng.shuffle(rooms.filter((r) => r.index > 1 && !r.arena && !r.isMill && !r.calm && !r.isGallery));
+    let placed = 0;
+    for (const room of eligible) {
+      if (placed >= levelDef.lonePosts) break;
+      for (let k = 0; k < 40; k++) {
+        const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
+        if (tiles[ty * W + tx] !== T.FLOOR) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (spawns.some((s) => len(s.x - px, s.y - py) < 5 * TILE)) continue;
+        spawns.push({ x: px, y: py, kind: 'hunter', roomIndex: room.index, lone: true });
+        placed++;
+        break;
+      }
+    }
+  }
+
   // Two bowls of milk per level, dropped in ordinary rooms between the set pieces.
-  const healRooms = rng.shuffle(rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill)).slice(0, levelDef.heals || 0);
+  const healRooms = rng.shuffle(rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.calm && !r.isGallery)).slice(0, levelDef.heals || 0);
   healRooms.forEach((room) => {
     for (let k = 0; k < 30; k++) {
       const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
@@ -121,17 +155,44 @@ function tryGenerate(levelDef, seed) {
   });
 
   const start = { x: (rooms[0].x + rooms[0].w / 2) * TILE, y: (rooms[0].y + rooms[0].h / 2) * TILE };
+  // You do not wake on the altar. You wake in the pen beside it, and the pen is only bars.
+  if (levelDef.startCage) props.push(...buildCage(start.x, start.y));
   if (!reachable(tiles, W, H, Math.floor(start.x / TILE), Math.floor(start.y / TILE), last.x + last.w - 1, doorY)) return null;
 
   // Safety: nothing spawns within 5 tiles of the start, and the start room keeps no props underfoot.
   const filtered = spawns.filter((s) => len(s.x - start.x, s.y - start.y) > 5 * TILE);
-  const cleanProps = props.filter((p) => p.kind === 'door' || len(p.x - start.x, p.y - start.y) > 3 * TILE);
-  const hints = levelDef.hint ? [{ x: start.x, y: start.y + 2.4 * TILE, text: levelDef.hint }] : [];
-  // Ape Out puts the controls on the floor of the room after the first. So do we.
-  const controls = (levelDef.showControls && rooms[1])
-    ? { x: (rooms[1].x + rooms[1].w / 2) * TILE, y: (rooms[1].y + rooms[1].h / 2) * TILE }
-    : null;
-  return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, seed, def: levelDef, hints, controls };
+  const cleanProps = props.filter((p) => p.kind === 'door' || p.kind === 'cage' || len(p.x - start.x, p.y - start.y) > 3 * TILE);
+  // The level's own hint goes above the pen; the pen's own prompt goes below it.
+  const hints = levelDef.hint ? [{ x: start.x, y: start.y - 2.9 * TILE, text: levelDef.hint }] : [];
+  const cagePrompt = levelDef.startCage ? { x: start.x, y: start.y + 2.9 * TILE } : null;
+  // Ape Out paints the controls on the floor. We split them over the two rooms after the pen,
+  // and both of those rooms are left empty so they can be read without being clubbed.
+  const controls = [];
+  if (levelDef.showControls) {
+    for (let k = 0; k < 2; k++) {
+      const r = rooms[k + 1];
+      if (r) controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: k });
+    }
+  }
+  return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, seed, def: levelDef, hints, controls, cagePrompt };
+}
+
+// A ring of iron bars around the start. One headbutt anywhere on it brings the whole thing down.
+function buildCage(cx, cy) {
+  const C = TUNING.prop.cage, out = [];
+  const hw = C.halfW * TILE, hh = C.halfH * TILE;
+  const nx = Math.max(2, Math.round(hw * 2 / C.spacing)), ny = Math.max(2, Math.round(hh * 2 / C.spacing));
+  for (let i = 0; i <= nx; i++) {
+    const x = cx - hw + (i / nx) * hw * 2;
+    out.push({ x, y: cy - hh, kind: 'cage', axis: 'h' });
+    out.push({ x, y: cy + hh, kind: 'cage', axis: 'h' });
+  }
+  for (let j = 1; j < ny; j++) {
+    const y = cy - hh + (j / ny) * hh * 2;
+    out.push({ x: cx - hw, y, kind: 'cage', axis: 'v' });
+    out.push({ x: cx + hw, y, kind: 'cage', axis: 'v' });
+  }
+  return out;
 }
 
 function pickDoorY(room, side, rng) {

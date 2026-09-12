@@ -7,7 +7,7 @@ class Goat {
     this.aim = { x: 1, y: 0 }; this.facing = 0;
     this.state = 'idle'; this.timer = 0; this.lungeId = 0;
     this.holding = null; this.holdTimer = 0;
-    this.screamCd = 0; this.screaming = 0; this.invuln = 0; this.fireTick = 0; this.onFire = false;
+    this.screamCd = 0; this.screaming = 0; this.invuln = 0; this.fireTick = 0; this.onFire = false; this.witchFire = false;
     this.hoofTimer = 0; this.kind = 'goat';
     this.rollCd = 0; this.rollSpin = 0; this.rollDir = { x: 1, y: 0 };
     this.trail = [];       // ghost positions for the speed smear
@@ -34,6 +34,7 @@ class Goat {
       this.invuln = Math.max(this.invuln, R.invuln);
       if (this.holding) { const h = this.holding; this.holding = null; h.held = false; if (h.kind !== 'pot') { h.state = 'floored'; h.timer = 0.5; } }
       game.audio.sfxRoll(); world.emitNoise(this.x, this.y, TUNING.noise.swing);
+      game.particles(this.x, this.y, 9, PALETTE.ash, 150);
     }
     if (this.state === 'roll') {
       this.timer -= dt; this.rollSpin += dt * 16;
@@ -112,10 +113,20 @@ class Goat {
     if (inp.spacePressed && this.screamCd <= 0 && !this.dead) {
       if (game.mods.breath) this.breathe(game);
       else {
+        // It is not a lure any more. Everyone in earshot loses a moment, and that moment is the point.
         this.screamCd = game.mods.screamCooldown; this.screaming = g.scream.duration;
-        world.emitNoise(this.x, this.y, game.mods.screamRadius, 'lure'); game.audio.sfxScream();
+        game.audio.sfxScream();
         game.floatText(this.x, this.y - 26, 'BAAAAH', PALETTE.bone);
         game.ring(this.x, this.y, game.mods.screamRadius * TILE, PALETTE.bone);
+        game.shake(4); game.flash(PALETTE.bone, 0.1);
+        const R = game.mods.screamRadius * TILE;
+        let n = 0;
+        for (const e of game.enemies) {
+          if (e.dead || e.held) continue;
+          if (Math.hypot(e.x - this.x, e.y - this.y) > R) continue;
+          e.daze(game, g.scream.stun); n++;
+        }
+        if (n) game.floatText(this.x, this.y - 44, n + (n === 1 ? ' REELS' : ' REEL'), PALETTE.fireHi);
       }
     }
 
@@ -125,10 +136,16 @@ class Goat {
     if (this.state === 'lunge' && impact > 0) { this.state = 'recover'; this.timer = g.headbutt.recovery * game.mods.headbuttRecovery * 0.6; game.shake(3); game.audio.sfxThud(); }
 
     // ---- fire ----
-    this.onFire = !game.mods.fireImmune && (world.isBurningPx(this.x, this.y) || game.touchingBrazier(this));
+    // Witchfire goes straight through the coat: nothing the tomes offer turns the Seer's fire away.
+    const witch = world.isWitchPx(this.x, this.y);
+    this.witchFire = witch;
+    this.onFire = witch || (!game.mods.fireImmune && (world.isBurningPx(this.x, this.y) || game.touchingBrazier(this)));
     if (this.onFire) {
       this.fireTick += dt;
-      if (this.fireTick >= g.fireDamageInterval) { this.fireTick = 0; this.damage(1, game, -this.aim.x * 60, -this.aim.y * 60, true); }
+      if (this.fireTick >= g.fireDamageInterval) {
+        this.fireTick = 0; this.damage(1, game, -this.aim.x * 60, -this.aim.y * 60, true);
+        if (witch && game.mods.fireImmune) game.floatText(this.x, this.y - 32, 'WITCHFIRE', PALETTE.cult);
+      }
     } else this.fireTick = Math.min(this.fireTick, g.fireDamageInterval * 0.6);
 
     // ---- motion smear + bloody hoof prints ----
@@ -186,11 +203,15 @@ class Goat {
         if (e.state === 'windup' || e.state === 'swing') { this.vx = -ax * 5 * TILE; this.vy = -ay * 5 * TILE; }
         else { e.state = 'stagger'; e.timer = TUNING.butcher.stagger; e.vx = ax * 6 * TILE; e.vy = ay * 6 * TILE; }
         game.hitstop(0.05); game.shake(5); game.audio.sfxThud();
+        game.particles(this.x + ax * this.r, this.y + ay * this.r, 9, PALETTE.bone, 300);
+        game.kick(-ax, -ay, TUNING.juice.kick); game.zoomPunch(0.8);
         game.world.splat(e.x, e.y, ax, ay, 8);
         if (e.hp <= 0) e.die(game, 'headbutt', ax, ay);
       } else {
         e.fling(ax * impulse, ay * impulse, false);
         game.shake(2); game.audio.sfxThud();
+        game.particles(this.x + ax * this.r, this.y + ay * this.r, 6, PALETTE.bone, 260);
+        game.kick(ax, ay, TUNING.juice.kick * 0.55);
         if (game.mods.bomb) { e.bombFuse = TUNING.goat.bomb.fuse; e.aware = true; }
       }
     }
@@ -246,7 +267,9 @@ class Prop {
     this.x = x; this.y = y; this.kind = kind; this.vx = 0; this.vy = 0;
     this.r = kind === 'pot' ? 9 : kind === 'bell' ? 14 : kind === 'door' ? P.door.r
       : kind === 'table' ? P.table.r : kind === 'lamp' ? P.lamp.r
-      : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r : 13;
+      : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r
+      : kind === 'cage' ? P.cage.r : 13;
+    this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
     this.angle = (opts && opts.phase) || 0;
     this.solid = kind !== 'pot';
     this.held = false; this.flung = false; this.thrown = false; this.broken = false; this.dead = false;
@@ -270,8 +293,41 @@ class Prop {
       case 'door': this.smash(game, ax, ay); break;
       case 'table': this.shove(game, ax, ay); break;
       case 'lamp': this.topple(game, ax, ay); break;
+      case 'cage': this.breakCage(game); break;
       default: this.wobble = 0.3; game.audio.sfxThud(); break;
     }
+  }
+
+  // The pen does not come apart on the first go. Each headbutt bends it further; the last one takes
+  // it down, and every man in the building hears that.
+  breakCage(game) {
+    const need = TUNING.prop.cage.hits;
+    const bars = game.props.filter((p) => p.kind === 'cage' && !p.broken);
+    if (!bars.length) return;
+    const hits = (bars[0].hits || 0) + 1;
+    for (const p of bars) { p.hits = hits; p.wobble = 0.3; }
+    if (hits < need) {
+      game.world.emitNoise(this.x, this.y, TUNING.noise.cage * 0.5);
+      game.audio.sfxCageHit(); game.shake(7); game.hitstop(0.04); game.vibe(25);
+      game.particles(this.x, this.y, 7, PALETTE.bone, 230);
+      game.kick(0, -1, TUNING.juice.kick * 0.6);
+      game.floatText(this.x, this.y - 30, need - hits === 1 ? 'IT BENDS' : 'IT HOLDS', PALETTE.bone);
+      return;
+    }
+    let n = 0;
+    for (const p of game.props) {
+      if (p.kind !== 'cage' || p.broken) continue;
+      p.broken = true; p.dead = true; n++;
+      game.particles(p.x, p.y, 5, PALETTE.ash, 210);
+      game.world.dot(p.x + (Math.random() - 0.5) * 12, p.y + 5, 2.4, '#2e2a26');
+    }
+    if (!n) return;
+    game.cageOpen = true;
+    game.world.emitNoise(this.x, this.y, TUNING.noise.cage);
+    game.audio.sfxCage(); game.shake(12); game.hitstop(0.06); game.vibe(50);
+    game.flash(PALETTE.bone, 0.3); game.zoomPunch(1.5);
+    game.slowTimer = Math.max(game.slowTimer, 0.4);
+    game.floatText(this.x, this.y - 30, 'OUT', PALETTE.fireHi);
   }
 
   ring(game) {
@@ -316,7 +372,7 @@ class Prop {
     if (this.rung > 0) this.rung -= dt;
     if (this.wobble > 0) this.wobble -= dt;
     if (this.kind === 'mill') { this.updateMill(dt, game); return; }
-    if (this.kind === 'heal') return;
+    if (this.kind === 'heal' || this.kind === 'cage') return;
     if (this.kind === 'door') { this.updateDoor(dt, game); return; }
     if (this.kind === 'table') { this.updateTable(dt, game); return; }
     if (this.kind !== 'pot' || this.broken || this.held || !this.flung) return;
@@ -392,7 +448,7 @@ class Prop {
       const tx = -Math.sin(ang), ty = Math.cos(ang);
       const ix = tx * M.impulse + (dx / (d || 1)) * M.impulse * 0.4;
       const iy = ty * M.impulse + (dy / (d || 1)) * M.impulse * 0.4;
-      if (e.kind === 'goat') e.damage(M.damage, game, ix * 0.45, iy * 0.45);
+      if (e.kind === 'goat') e.damage(M.damage, game, ix * M.goatKnock, iy * M.goatKnock);
       else { e.fling(ix, iy, true); e.aware = true; game.floatText(e.x, e.y - 26, 'GROUND', PALETTE.blood); }
       game.shake(6); game.audio.sfxThud(); game.world.emitNoise(this.x, this.y, TUNING.noise.table);
     }

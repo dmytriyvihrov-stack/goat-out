@@ -1,64 +1,105 @@
-# GOAT OUT (prototype, stage 2)
+# GOAT OUT
 
-You are the sacrificial goat. The truck fell off the bridge. The cult wants its sacrifice back. Reach the exit.
+You are the sacrificial goat. They were driving you to the altar, the truck fell off the bridge, and now
+the whole cult wants you back. Four levels, one life, procedurally generated every run.
 
-Concept and design targets: [GOAT_OUT_brief.md](GOAT_OUT_brief.md).
+**Play it:** https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
-## Run it
+Works on desktop with keyboard and mouse, and on phones with on-screen controls.
 
-- Double-click `index.html` (no build, no dependencies), or
-- `node tools/serve.js 8766` and open http://127.0.0.1:8766 (the dev server also accepts saved canvas frames from the test harness).
+---
 
-Click once to start. Audio starts on the first click or key press (browser rule).
+## Run it locally
+
+Open `index.html` in a browser. No build, no dependencies.
+
+Or run the dev server, which also accepts saved canvas frames from the test harness:
+
+```bash
+node tools/serve.js 8766
+```
+
+Then open http://127.0.0.1:8766. Click or tap once to start; audio unlocks on that first input.
+
+---
 
 ## Controls
 
-Phones and tablets get on-screen controls automatically. In portrait the play view is letterboxed and the thumbs get their own deck below it; in landscape the controls overlay the bottom corners.
+Phones and tablets get on-screen controls automatically. In portrait the play view is letterboxed and
+the thumbs get their own deck below it. In landscape the controls overlay the bottom corners.
 
 | Touch | Desktop | Action |
 |---|---|---|
-| left thumb, anywhere on the left | WASD / arrows | move (momentum, cannot turn on a dime at speed) |
-| aim follows where you run, and snaps onto a nearby man | mouse | aim |
-| BUTT | left mouse | headbutt: short committed lunge. Into a wall, pillar, brazier or another man = kill. Into open floor = knocked down |
-| hold GRAB | right mouse, hold | grab the nearest man (or pot) and hold him in front as a shield. He absorbs 2 bullets, then dies. He breaks free after 3 s |
-| release GRAB | right mouse, release | throw. A thrown man kills what he hits and dies on the wall |
-| BAAH | space | scream. Everyone within 12 tiles comes to you. 4 s cooldown |
-| ROLL | E | clumsy sideways roll |
-| tap after death | R | restart the level (new seed) |
+| left thumb, anywhere on the left | WASD / arrows | run — momentum, no turning on a dime |
+| aim follows your run and snaps to nearby men | mouse | aim |
+| BUTT on the bars | left click on the bars | break out of the pen you start level 1 in |
+| BUTT | left click | headbutt — into a wall, pillar, brazier or another man it kills; on open floor it only knocks down |
+| hold GRAB | hold right click | carry a man in front as a shield — he stops two bullets and any swing |
+| release GRAB | release right click | throw — he kills what he hits and dies on the wall |
+| ROLL | E | clumsy sideways tumble with brief mercy frames |
+| BAAH | space | scream — everyone in earshot is dazed for a second, whatever he was doing. It calls nobody. |
+| tap after death | Backspace | new level |
 | — | M | mute |
-| — | N | debug: skip to the next level |
 
 Dragging on the right half of the screen overrides auto-aim with a manual direction.
 
-Three hits and the goat dies. Death regenerates the level with a new seed in under a second. The seed is in the top right corner.
+Four hearts, no regeneration. Death regenerates the level from a new seed in under a second. The seed is
+printed in the top right.
+
+---
 
 ## What is in
 
-- Two levels: The Altar (Bearers only) and The Yard (Bearers, Hunters with travelling bullets and friendly fire, and Seers). Each has a Butcher arena.
-- Seer: the cult mage. Never closes in. Paints a rune under your feet that erupts into fire after about a second, and blinks away when you get within three tiles.
-- A clumsy sideways roll on E (ROLL on touch): brief mercy frames, then a stagger you have to eat.
-- Tomes from the Butcher: three active skills or three passive blessings per drop. Dragon Breath replaces the scream with a cone of fire, Bomb Charge detonates anyone you headbutt, Devour tears a held man open for a chance to heal.
-- Dev drawer in the bottom-right corner: god mode, spawn any enemy, drop a tome, heal, clear the room, skip the level.
-- Butcher: three headbutts. He cannot be interrupted while swinging, answers a stagger with a quick swing, and charges in a straight line after a visible windup. Charging into a wall stuns him for a free hit.
-- Room-chain procedural generation from hand-authored templates (`js/rooms.js`), corridors as kill zones, exit always up-right, flood-fill validation.
-- Environment: braziers ignite men, hay spreads fire, pots break on use, a bell that calls the whole level, doors the goat smashes through (and cultists shoulder open), tables that slide and crush men against walls, oil lamps that spill a pool of fire.
-- Noise and hearing system: gunshots, splats, pots, bell and scream pull enemies toward the sound.
-- Synthesised ritual percussion that escalates with how many enemies are aware of you (`js/audio.js`). No audio assets.
-- Persistent blood as paint, hitstop, screen shake, slow motion on death and on the Butcher's last hit, firelight pools, drifting dust, a damage-direction flash, title cards, exit compass.
-- Responsive: the canvas fits any screen, the zoom adapts so sprites stay readable, and haptics fire on hits and kills where the device supports them.
+**Four levels.** THE ALTAR is Bearers only. THE YARD adds Seers, late and one to a room. THE ROAD adds
+Hunters, posted on their own as well as in crowds. THE BRIDGE mixes all four. Each is a chain of
+hand-authored rooms stitched together differently every run, and each one hands your hearts back.
 
-## Not in yet (from the brief)
+**A pen, not an altar.** Level 1 starts you caged beside the slab they meant to use, with the goat that
+went before you opened up on the floor and their tools laid out beside it. Three headbutts take the bars
+apart and tell the building where you are. The two rooms after it carry the controls painted on the floor
+and hold nobody.
 
-Mirrors, gamepad, pixel art, the Priest, later acts. Enemies are placeholder shapes in the final palette.
+**The Great Hall.** Late on THE ROAD and again on THE BRIDGE: one room 38 by 22 tiles with two Mills,
+pillar rows, hay, tables, braziers, lamps, a bell and fifteen men between you and the far door. The
+**Gallery** on those levels is the opposite problem — pillar cover and rifles posted well apart.
 
-## Tuning
+**Four enemy types.** Club-swinging Bearers, blinking Seers whose runes erupt into violet witchfire that
+no boon protects you from, Hunters whose bullets travel and hit their own, and the Butcher who takes two
+hits and cannot be interrupted mid-swing. They shout short lines when they see you, hear you, swing at
+you or watch one of their own come apart — and they walk around fire rather than through it.
 
-Every number lives in `js/tuning.js` (`TUNING`, `LEVELS`, `PALETTE`). Room templates in `js/rooms.js`. Generation in `js/gen.js`. Touch layout and auto-aim in `js/input.js`.
+**Two bosses per level**, each dropping a tome. A tome offers three actives or three passives. Dragon
+Breath turns the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Devour lets you
+tear a held man open for a chance to heal. Boons last the run and die with you.
 
-## Test harness
+**A room that fights back.** Braziers, spreading hay fire, breakable pots, a bell that calls the level,
+doors you smash through, tables that slide and crush, oil lamps that spill fire, and the Mill — a
+ritual grinding wheel whose arms fling cultists to their deaths and take a heart off you.
 
-`tools/harness.js` drives the game from the browser console (teleport, aim, headbutt, freeze enemies, save frames to `tools/shots/`). Load it with:
+**Two milk bowls per level** restore a heart.
 
-```js
-const s = document.createElement('script'); s.src = '/tools/harness.js'; document.body.appendChild(s);
-```
+**Presentation.** A slightly tilted camera that punches on every kill, blocky cult pictograms stamped into
+the floors, blood and gore that persist as paint for the whole level, a kill counter for bodies that land
+on top of each other, and a synthesised score — pad, bass and a phrygian motif under ritual percussion
+that escalates with how many enemies are aware of you. No audio or image assets at all.
+
+---
+
+## Dev drawer
+
+Bottom-right corner, works with mouse or finger. God mode, spawn any enemy, drop a tome, heal, clear the
+room, new level, skip level.
+
+---
+
+## Project files
+
+| | |
+|---|---|
+| `CONCEPT.md` | What the game is and why. The current design truth. |
+| `CLAUDE.md` | How to work on it: architecture, conventions, testing traps, publishing. |
+| `CHANGELOG.md` | Version history and the reasoning behind each change. |
+| `GOAT_OUT_brief.md` | The original stage-one brief. History, not spec. |
+| `js/tuning.js` | Every tunable number and the three level definitions. Start here to change feel. |
+| `js/rooms.js` | Room templates as character grids. |
+| `tools/harness.js` | Console test harness. |

@@ -3,6 +3,19 @@
 const FONT = "'Alegreya', Georgia, 'Times New Roman', serif";
 const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 
+// The controls, painted on the floor over the two rooms after the pen. Nothing about the mouse:
+// a crosshair on a top-down game explains itself, and the floor has room for what it does not.
+const CONTROL_LINES = {
+  key: [
+    ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL'],
+    ['HOLD RIGHT CLICK — CARRY', 'LET GO — THROW', 'SPACE — THEY COME LOOKING'],
+  ],
+  touch: [
+    ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — TUMBLE'],
+    ['HOLD GRAB — CARRY', 'LET GO — THROW', 'BAAH — THEY COME LOOKING'],
+  ],
+};
+
 class Renderer {
   constructor(canvas) {
     this.c = canvas; this.ctx = canvas.getContext('2d');
@@ -58,8 +71,9 @@ class Renderer {
       const cam = game.cam;
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, this.vw, this.vh); ctx.clip();
-      ctx.translate(this.vcx + game.shakeX * this.s, this.vcy + game.shakeY * this.s);
-      ctx.scale(cam.zoom, cam.zoom * TILT);
+      const zk = 1 + (game.zoomKick || 0);
+      ctx.translate(this.vcx + (game.shakeX + game.kickX) * this.s, this.vcy + (game.shakeY + game.kickY) * this.s);
+      ctx.scale(cam.zoom * zk, cam.zoom * zk * TILT);
       ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
       this.drawTiles(game, cam);
       this.drawDecals(game, cam);
@@ -69,13 +83,14 @@ class Renderer {
       this.drawDust(game, cam, dt);
       this.drawRunes(game);
       this.drawTomes(game);
-      for (const p of game.props) if (!p.broken && p.kind !== 'lamp') this.drawProp(p);
+      for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && !(p.kind === 'cage' && p.y > game.goat.y)) this.drawProp(p);
       for (const e of game.enemies) if (!e.dead && (e.state === 'floored' || e.state === 'stunned')) this.drawEnemy(e, game);
       for (const p of game.props) if (!p.broken && p.kind === 'lamp') this.drawProp(p);
       for (const e of game.enemies) if (!e.dead && e.state !== 'floored' && e.state !== 'stunned' && e !== game.goat.holding) this.drawEnemy(e, game);
       for (const b of game.bullets) this.drawBullet(b);
       if (!game.goat.dead) this.drawGoat(game.goat, game);
       if (game.goat.holding) { const hld = game.goat.holding; if (hld.kind === 'pot') this.drawProp(hld); else this.drawEnemy(hld, game); }
+      for (const p of game.props) if (!p.broken && p.kind === 'cage' && p.y > game.goat.y) this.drawProp(p);
       this.drawBreath(game);
       this.drawRings(game);
       this.drawParticles(game);
@@ -84,6 +99,7 @@ class Renderer {
     }
     this.drawVignette(game);
     this.drawHurt(game);
+    this.drawFlash(game);
     this.drawUI(game);
     if (game.touch.active && game.state === 'play') this.drawTouchUI(game);
     this.drawBoonChoice(game);
@@ -160,19 +176,45 @@ class Renderer {
         ctx.fillText(hn.text, hn.x, hn.y * TILT);
       }
     }
-    if (lv.controls && Math.abs(lv.controls.x - game.cam.x) < 1400) {
-      const touch = game.touch.active;
-      const lines = touch
-        ? ['LEFT THUMB — RUN', 'BUTT — HEADBUTT THEM INTO WALLS', 'HOLD GRAB — CARRY · LET GO — THROW', 'ROLL — TUMBLE CLEAR', 'BAAH — SCREAM, THEY COME LOOKING']
-        : ['WASD — RUN', 'MOUSE — AIM', 'LEFT CLICK — HEADBUTT THEM INTO WALLS', 'HOLD RIGHT CLICK — CARRY · LET GO — THROW', 'E — ROLL', 'SPACE — SCREAM, THEY COME LOOKING'];
-      const lh = 40, top = lv.controls.y - (lines.length - 1) * lh / 2;
-      ctx.font = `700 30px ${FONT_SC}`;
-      lines.forEach((l, i) => {
-        ctx.fillStyle = 'rgba(239,230,208,0.19)';
-        ctx.fillText(l, lv.controls.x, (top + i * lh) * TILT);
-      });
+    if (lv.controls) {
+      const sets = game.touch.active ? CONTROL_LINES.touch : CONTROL_LINES.key;
+      ctx.fillStyle = 'rgba(239,230,208,0.19)';
+      for (const c of lv.controls) {
+        if (Math.abs(c.x - game.cam.x) > 1400) continue;
+        const lines = sets[c.part] || [];
+        const size = this.fitFloorText(lines, (c.w || 14 * TILE) - 2.6 * TILE, 26);
+        const lh = size * 1.4, top = c.y - (lines.length - 1) * lh / 2;
+        lines.forEach((l, i) => ctx.fillText(l, c.x, (top + i * lh) * TILT));
+      }
+    }
+    // The pen. After five seconds of standing in it, the floor says which button opens it.
+    if (lv.cagePrompt && !game.cageOpen) {
+      const C = TUNING.cagePrompt, a = clamp((game.timer - C.delay) / C.fade, 0, 1);
+      if (a > 0) {
+        const p = lv.cagePrompt, pulse = 0.3 + 0.12 * Math.sin(this.t * 3.2);
+        const label = game.touch.active ? 'BUTT — HEADBUTT' : 'LEFT CLICK — HEADBUTT';
+        this.fitFloorText([label], 15 * TILE, 27);
+        ctx.fillStyle = `rgba(255,224,138,${a * pulse})`;
+        ctx.fillText(label, p.x, p.y * TILT);
+        ctx.font = `700 19px ${FONT_SC}`;
+        ctx.fillStyle = `rgba(239,230,208,${a * (pulse - 0.08)})`;
+        ctx.fillText('BREAK OUT', p.x, (p.y + 30) * TILT);
+      }
     }
     ctx.textAlign = 'left'; ctx.restore();
+  }
+
+  // Sets the font so the widest line fits the space it is painted on, and returns the size used.
+  fitFloorText(lines, maxW, size) {
+    const ctx = this.ctx;
+    ctx.font = `700 ${size}px ${FONT_SC}`;
+    let longest = 0;
+    for (const l of lines) longest = Math.max(longest, ctx.measureText(l).width);
+    if (longest > maxW && longest > 0) {
+      size = Math.max(14, size * maxW / longest);
+      ctx.font = `700 ${size}px ${FONT_SC}`;
+    }
+    return size;
   }
 
   drawFire(game, cam) {
@@ -180,9 +222,9 @@ class Renderer {
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
     for (let ty = Math.max(0, y0); ty <= Math.min(wd.H - 1, y1); ty++) {
       for (let tx = Math.max(0, x0); tx <= Math.min(wd.W - 1, x1); tx++) {
-        const f = wd.fire[ty * wd.W + tx]; if (f <= 0) continue;
+        const i = ty * wd.W + tx, f = wd.fire[i]; if (f <= 0) continue;
         ctx.save(); ctx.scale(1, 1 / TILT);
-        this.flame(tx * TILE + TILE / 2, (ty * TILE + TILE / 2) * TILT, 14 + 4 * Math.sin(this.t * 13 + tx * 7 + ty * 3), tx * 3 + ty);
+        this.flame(tx * TILE + TILE / 2, (ty * TILE + TILE / 2) * TILT, 14 + 4 * Math.sin(this.t * 13 + tx * 7 + ty * 3), tx * 3 + ty, wd.fireKind[i] === 1);
         ctx.restore();
       }
     }
@@ -196,15 +238,17 @@ class Renderer {
     for (const p of game.props) if (!p.broken && (p.kind === 'brazier' || p.kind === 'lamp')) spots.push([p.x, p.y, 96]);
     for (let ty = Math.max(0, y0); ty <= Math.min(wd.H - 1, y1) && spots.length < 60; ty++) {
       for (let tx = Math.max(0, x0); tx <= Math.min(wd.W - 1, x1) && spots.length < 60; tx++) {
-        if (wd.fire[ty * wd.W + tx] > 0) spots.push([tx * TILE + 16, ty * TILE + 16, 80]);
+        if (wd.fire[ty * wd.W + tx] > 0) spots.push([tx * TILE + 16, ty * TILE + 16, 80, wd.fireKind[ty * wd.W + tx] === 1]);
       }
     }
     if (!spots.length) return;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    for (const [x, y, r] of spots) {
+    for (const [x, y, r, witch] of spots) {
       const rr = r * (0.9 + 0.1 * Math.sin(this.t * 9 + x * 0.05));
       const g = ctx.createRadialGradient(x, y, 0, x, y, rr);
-      g.addColorStop(0, 'rgba(242,162,51,0.34)'); g.addColorStop(0.5, 'rgba(192,57,43,0.11)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      if (witch) { g.addColorStop(0, 'rgba(125,92,255,0.34)'); g.addColorStop(0.5, 'rgba(91,74,138,0.13)'); }
+      else { g.addColorStop(0, 'rgba(242,162,51,0.34)'); g.addColorStop(0.5, 'rgba(192,57,43,0.11)'); }
+      g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
@@ -225,10 +269,13 @@ class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  flame(x, y, size, seed) {
+  // `witch` draws the Seer's fire: the same shape, cold, and nothing turns it away.
+  flame(x, y, size, seed, witch) {
     const ctx = this.ctx, t = this.t * 10 + seed;
-    ctx.fillStyle = PALETTE.fire; ctx.beginPath(); ctx.ellipse(x, y - size * 0.2, size * 0.7, size, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = PALETTE.fireHi; ctx.beginPath(); ctx.ellipse(x + Math.sin(t) * 3, y - size * 0.1, size * 0.35, size * 0.55 + Math.sin(t * 1.7) * 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = witch ? PALETTE.witch : PALETTE.fire;
+    ctx.beginPath(); ctx.ellipse(x, y - size * 0.2, size * 0.7, size, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = witch ? PALETTE.witchHi : PALETTE.fireHi;
+    ctx.beginPath(); ctx.ellipse(x + Math.sin(t) * 3, y - size * 0.1, size * 0.35, size * 0.55 + Math.sin(t * 1.7) * 3, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   shadow(x, y, rx, ry) {
@@ -314,6 +361,22 @@ class Renderer {
       ctx.strokeStyle = '#44342a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(p.x, p.y + 3); ctx.lineTo(p.x, p.y - 14); ctx.stroke();
       ctx.fillStyle = PALETTE.ochre; ctx.beginPath(); ctx.ellipse(p.x, p.y - 17, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
       this.flame(p.x, p.y - 20, 8 + 2 * Math.sin(this.t * 12 + p.phase), p.phase);
+    } else if (p.kind === 'cage') {
+      const h = TUNING.prop.cage.height;
+      // Every headbutt the pen survives leaves the bars further out of true.
+      const sgn = ((Math.round(p.x / 7) % 2) ? 1 : -1);
+      const lean = (p.hits || 0) * 0.085 * sgn + (p.wobble > 0 ? Math.sin(this.t * 62) * 0.06 : 0);
+      this.shadow(p.x, p.y, 5, 3);
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(lean);
+      // Bars on the far and near sides carry a rail, so a row of them reads as one fence.
+      if (p.axis === 'h') {
+        ctx.fillStyle = '#3c3730'; ctx.fillRect(-15, -h + 3, 30, 4);
+        ctx.fillStyle = '#6a635b'; ctx.fillRect(-15, -h + 3, 30, 1.5);
+      }
+      ctx.fillStyle = '#4d4741'; ctx.fillRect(-2.6, -h, 5.2, h);
+      ctx.fillStyle = '#7d756a'; ctx.fillRect(-2.6, -h, 1.7, h);
+      ctx.restore();
+      ctx.fillStyle = '#2e2a26'; ctx.fillRect(p.x - 3.6, p.y - 3.5, 7.2, 4.5);
     } else if (p.kind === 'heal') {
       const bob = Math.sin(this.t * 2.4 + p.phase) * 2;
       const g = ctx.createRadialGradient(p.x, p.y + bob, 0, p.x, p.y + bob, 34);
@@ -343,6 +406,7 @@ class Renderer {
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.translate(0, lying ? 0 : -4);
     if (e.state === 'flung') ctx.rotate(this.t * 14); else ctx.rotate(e.facing);
     if (e.state === 'stagger') ctx.translate(Math.sin(this.t * 60) * 2, 0);
+    if (e.dazed > 0) ctx.rotate(Math.sin(this.t * 24) * 0.12);
     if (e.state === 'chargewind') ctx.translate(-4 + Math.sin(this.t * 50) * 3, Math.cos(this.t * 47) * 2);
     const r = e.r;
     if (e.elite) ctx.scale(1.28, 1.28);
@@ -421,7 +485,15 @@ class Renderer {
       }
     }
     if (e.flash > 0) { ctx.globalAlpha = Math.min(0.8, e.flash * 4); ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.arc(0, 0, r + 1, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
-    if (e.burning > 0) this.flame(0, -4, 12, e.x);
+    // Stars: he heard the scream and is still hearing it.
+    if (e.dazed > 0) {
+      ctx.fillStyle = PALETTE.fireHi;
+      for (let k = 0; k < 3; k++) {
+        const a = this.t * 7 + k * 2.1;
+        ctx.beginPath(); ctx.arc(Math.cos(a) * r * 0.95, Math.sin(a) * r * 0.5 - r - 5, 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    if (e.burning > 0) this.flame(0, -4, 12, e.x, e.witchBurn);
     ctx.restore();
 
     // A man who is searching rather than hunting shows a mark, so a scream reads as a lure.
@@ -434,6 +506,23 @@ class Renderer {
       ctx.fillStyle = e.lured > 0 ? PALETTE.fireHi : 'rgba(239,230,208,0.7)';
       ctx.fillText('?', e.x, qy);
       ctx.textAlign = 'left'; ctx.restore();
+    }
+
+    // A bark: stamped caps on a dark plate, over his head, gone in under two seconds.
+    if (e.say && !e.dead) {
+      const a = Math.max(0, Math.min(1, e.say.life / 0.4, (e.say.max - e.say.life) / 0.08));
+      ctx.save(); ctx.scale(1, 1 / TILT);
+      const by = (e.y - e.r - 21) * TILT;
+      ctx.font = `700 ${e.kind === 'butcher' ? 15 : 13}px ${FONT_SC}`;
+      ctx.textAlign = 'center';
+      const tw = ctx.measureText(e.say.text).width;
+      ctx.globalAlpha = a * 0.78; ctx.fillStyle = PALETTE.ink;
+      ctx.fillRect(e.x - tw / 2 - 6, by - 12, tw + 12, 16);
+      ctx.beginPath(); ctx.moveTo(e.x - 4, by + 4); ctx.lineTo(e.x + 4, by + 4); ctx.lineTo(e.x, by + 9); ctx.fill();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = e.kind === 'seer' ? PALETTE.witchHi : e.kind === 'butcher' ? PALETTE.blood : PALETTE.bone;
+      ctx.fillText(e.say.text, e.x, by);
+      ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.restore();
     }
 
     if (e.bombFuse > 0) {
@@ -579,7 +668,7 @@ class Renderer {
     for (const t of g.trail) {
       ctx.globalAlpha = (t.life / 0.18) * 0.16;
       ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.a);
-      ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(-2, 0, 15, 9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(-3, 0.5, 14.5, 8.4, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
     ctx.globalAlpha = 1;
@@ -595,58 +684,74 @@ class Renderer {
     ctx.scale(sx, sy);
     if (g.invuln > 0 && Math.floor(this.t * 30) % 2 === 0) ctx.globalAlpha = 0.5;
     const dmg = g.maxHp - g.hp;
-    // legs first, so they sit under the body
-    ctx.strokeStyle = '#d9cfb6'; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    // He is drawn a quarter turn toward the camera. The horns sweep back and OUT past the body, the
+    // head sits clear of it, the beard hangs off the chin: all three break the outline, which is the
+    // only way a white shape 30 px long reads as a goat at speed.
     const step = Math.sin(this.t * 22) * (Math.hypot(g.vx, g.vy) > 40 ? 3.5 : 0);
+    // far side first: legs, ear, and the horn that passes behind him
+    ctx.strokeStyle = '#b3a78e'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(5, -7); ctx.lineTo(6 + step, -12.5); ctx.moveTo(5, 7); ctx.lineTo(6 - step, 12.5);
-    ctx.moveTo(-9, -7); ctx.lineTo(-10 - step, -12.5); ctx.moveTo(-9, 7); ctx.lineTo(-10 + step, 12.5);
+    ctx.moveTo(4, -4); ctx.lineTo(5.5 + step, -11); ctx.moveTo(-9, -4); ctx.lineTo(-10.5 - step, -11);
     ctx.stroke();
-    // ears, behind the head
-    ctx.fillStyle = '#cfc4aa';
-    ctx.beginPath(); ctx.ellipse(9.5, -7, 3.8, 2.2, -0.65, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(9.5, 7, 3.8, 2.2, 0.65, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b3a78e';
+    ctx.beginPath(); ctx.ellipse(8.5, -5.5, 4.2, 2.2, -0.55, 0, Math.PI * 2); ctx.fill();      // far ear
+    ctx.strokeStyle = '#9a6f2e'; ctx.lineWidth = 3.2;
+    ctx.beginPath(); ctx.moveTo(12, 0); ctx.quadraticCurveTo(4, -10, -5, -12.5); ctx.stroke();  // far horn
+    // near legs, long enough that the hooves clear the body
+    ctx.strokeStyle = '#d9cfb6'; ctx.lineWidth = 3.4;
+    ctx.beginPath();
+    ctx.moveTo(4, 4); ctx.lineTo(6.5 - step, 16); ctx.moveTo(-9, 4); ctx.lineTo(-11.5 + step, 16);
+    ctx.stroke();
     // body
-    ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(-2, 0, 15, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(-3, 0.5, 14.5, 8.6, 0, 0, Math.PI * 2); ctx.fill();
     // everything painted on the coat is clipped to it, so nothing spills past the silhouette
-    ctx.save(); ctx.beginPath(); ctx.ellipse(-2, 0, 15, 10, 0, 0, Math.PI * 2); ctx.clip();
-    ctx.fillStyle = 'rgba(150,138,116,0.3)'; ctx.beginPath(); ctx.ellipse(-3, 5.5, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
-    if (dmg < 3) { ctx.fillStyle = PALETTE.ochre; ctx.fillRect(6, -11, 2.6, 22); }   // marigold collar
+    ctx.save(); ctx.beginPath(); ctx.ellipse(-3, 0.5, 14.5, 8.6, 0, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = 'rgba(150,138,116,0.32)'; ctx.beginPath(); ctx.ellipse(-4, 6, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+    if (dmg < 3) { ctx.fillStyle = PALETTE.ochre; ctx.fillRect(4.5, -10, 2.6, 22); }   // marigold collar
     ctx.fillStyle = PALETTE.blood;
-    for (let k = 0; k < dmg * 2; k++) { ctx.beginPath(); ctx.ellipse(-8 + k * 4.5, (k % 2 ? 4 : -4), 4.4, 3.2, 0.5 * k, 0, Math.PI * 2); ctx.fill(); }
+    for (let k = 0; k < dmg * 2; k++) { ctx.beginPath(); ctx.ellipse(-9 + k * 4.5, (k % 2 ? 4 : -3.5), 4.2, 3, 0.5 * k, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
-    // head, seen from three-quarters so the snout and beard read
-    ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(13, 0, 7.8, 6.1, 0, 0, Math.PI * 2); ctx.fill();
-    // muzzle
-    ctx.fillStyle = '#e4dac2'; ctx.beginPath(); ctx.ellipse(19.2, 0.6, 4.8, 4.2, 0.05, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#a9977c'; ctx.beginPath(); ctx.ellipse(22.6, 0.6, 1.9, 1.7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = PALETTE.ink; ctx.fillRect(22.3, -0.6, 1.3, 1); ctx.fillRect(22.3, 1.2, 1.3, 1);
-    // the beard: the single most goat thing about him
-    ctx.fillStyle = '#dcd1b5';
-    ctx.beginPath(); ctx.moveTo(18.6, 3.8); ctx.quadraticCurveTo(18.2, 10.4, 16.2, 12.2);
-    ctx.quadraticCurveTo(18.6, 8.6, 16.8, 4.2); ctx.closePath(); ctx.fill();
-    // horns sweeping back over the skull, ridged
-    ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3.1; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(15, -3.4); ctx.quadraticCurveTo(9, -11.5, 0.5, -10); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(15, 3.4); ctx.quadraticCurveTo(9, 11.5, 0.5, 10); ctx.stroke();
-    ctx.strokeStyle = 'rgba(120,84,32,0.55)'; ctx.lineWidth = 1;
+    // the shoulder the neck comes out of, so the head does not look glued on
+    ctx.fillStyle = 'rgba(120,108,90,0.28)';
+    ctx.beginPath(); ctx.ellipse(7, 4.5, 5.5, 5, 0.3, 0, Math.PI * 2); ctx.fill();
+    // neck and head: one wedge, lifted clear of the body toward the near side
+    ctx.fillStyle = '#f6eeda';
+    ctx.beginPath();
+    ctx.moveTo(3, -2.5); ctx.quadraticCurveTo(12, -1, 17.5, 3);
+    ctx.quadraticCurveTo(22.5, 6.2, 19, 9.6); ctx.quadraticCurveTo(13, 14.6, 6, 10.5);
+    ctx.quadraticCurveTo(2.5, 8, 3, -2.5); ctx.closePath(); ctx.fill();
+    // muzzle and nostril
+    ctx.fillStyle = '#e6dcc5'; ctx.beginPath(); ctx.ellipse(18.4, 6.6, 4, 3.4, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#a9977c'; ctx.beginPath(); ctx.ellipse(20.6, 6.6, 1.6, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+    // near ear, out to the side of the skull
+    ctx.fillStyle = '#cfc4aa';
+    ctx.beginPath(); ctx.ellipse(8.5, 12, 4.6, 2.5, 0.85, 0, Math.PI * 2); ctx.fill();
+    // the beard, hanging off the chin: the single most goat thing about him
+    ctx.fillStyle = '#e4dac2';
+    ctx.beginPath(); ctx.moveTo(18, 9.6); ctx.quadraticCurveTo(17.5, 17.5, 13, 20);
+    ctx.quadraticCurveTo(16.5, 15, 14, 10.2); ctx.closePath(); ctx.fill();
+    // the near horn: back over the skull and out past the far side of the body
+    ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 4.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(13, 2.5); ctx.quadraticCurveTo(3, -6, -7, -3); ctx.stroke();
+    ctx.strokeStyle = '#c79a47'; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(-4.5, -3.8); ctx.quadraticCurveTo(-8, -3.6, -10, -1); ctx.stroke();   // the tip
+    ctx.strokeStyle = 'rgba(120,84,32,0.6)'; ctx.lineWidth = 1.1;
     for (let k = 1; k <= 3; k++) {
       const tt = k / 4;
-      const hx = 15 + (9 - 15) * 2 * tt * (1 - tt) + (0.5 - 15) * tt * tt;
-      const hy1 = -3.4 + (-11.5 + 3.4) * 2 * tt * (1 - tt) + (-10 + 3.4) * tt * tt;
-      ctx.beginPath(); ctx.moveTo(hx - 1.4, hy1 - 1.4); ctx.lineTo(hx + 1.4, hy1 + 1.4); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(hx - 1.4, -hy1 - 1.4); ctx.lineTo(hx + 1.4, -hy1 + 1.4); ctx.stroke();
+      const hx = 13 + (3 - 13) * 2 * tt * (1 - tt) + (-7 - 13) * tt * tt;
+      const hy = 2.5 + (-6 - 2.5) * 2 * tt * (1 - tt) + (-3 - 2.5) * tt * tt;
+      ctx.beginPath(); ctx.moveTo(hx - 1.3, hy - 2); ctx.lineTo(hx + 1.3, hy + 2); ctx.stroke();
     }
-    // rectangular pupils, of course
-    ctx.fillStyle = PALETTE.ink;
-    ctx.fillRect(13.5, -5.2, 3.4, 2.1); ctx.fillRect(13.5, 3.1, 3.4, 2.1);
+    // the eye: a rectangular pupil, of course
+    ctx.fillStyle = '#fbf5e6'; ctx.beginPath(); ctx.ellipse(13.4, 5.4, 3.2, 2.6, 0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(12.2, 4.6, 3.8, 2.1);
     if (g.screaming > 0) {
-      ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(21.4, 1.4, 3.2, 4.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(19.2, 9, 3, 3.8, 0.45, 0, Math.PI * 2); ctx.fill();
     }
     // tail
     ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(-20, -3 + Math.sin(this.t * 9) * 2); ctx.stroke();
-    if (g.onFire) this.flame(0, -6, 12, 1);
+    ctx.beginPath(); ctx.moveTo(-16, 0.5); ctx.lineTo(-21.5, -3 + Math.sin(this.t * 9) * 2); ctx.stroke();
+    if (g.onFire) this.flame(0, -6, 12, 1, g.witchFire);
     ctx.globalAlpha = 1;
     ctx.restore();
     // aim pip: where the headbutt will go
@@ -748,6 +853,16 @@ class Renderer {
     ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.restore();
   }
 
+  // An additive punch of colour over the play view: kills, witchfire, the pen coming apart.
+  drawFlash(game) {
+    if (!game.flashAmt || game.flashAmt <= 0) return;
+    const ctx = this.ctx;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(0.4, game.flashAmt); ctx.fillStyle = game.flashColor;
+    ctx.fillRect(0, 0, this.vw, this.vh);
+    ctx.restore();
+  }
+
   drawVignette(game) {
     const ctx = this.ctx, key = `${this.vw}x${this.vh}`;
     if (!this.vignette || this.vigKey !== key) {
@@ -821,6 +936,13 @@ class Renderer {
     ctx.fillText(`${game.kills} SACRIFICED`, right, top + 32 * s);
     ctx.font = `${13 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
     ctx.fillText(`${game.timer.toFixed(1)}s${game.audio.muted ? '  ·  muted' : ''}`, right, top + 50 * s);
+    // Kills that landed on top of each other, while the window is still open.
+    if (game.combo >= 2 && game.comboTimer > 0) {
+      const a = Math.min(1, game.comboTimer / 0.6);
+      ctx.font = `700 ${(15 + Math.min(11, game.combo * 2)) * s}px ${FONT_SC}`;
+      ctx.fillStyle = `rgba(192,57,43,${a})`;
+      ctx.fillText(`x${game.combo} IN A ROW`, right, top + 74 * s);
+    }
     ctx.textAlign = 'left';
 
     // exit compass, pinned just inside the bottom of the play view

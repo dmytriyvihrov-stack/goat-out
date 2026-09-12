@@ -13,6 +13,8 @@ const PALETTE = {
   blood: '#c0392b',
   bloodDark: '#7a1f18',
   cult: '#5b4a8a',
+  witch: '#7d5cff',
+  witchHi: '#bfe6ff',
   fire: '#f2a233',
   fireHi: '#ffe08a',
   ash: '#5a5250',
@@ -32,7 +34,8 @@ const TUNING = {
     hp: 4,
     headbutt: { windup: 0.12, active: 0.15, recovery: 0.35, lunge: 26 * TILE, impulse: 30 * TILE, reach: 1.7 * TILE },
     grab: { reach: 1.6 * TILE, speedMul: 0.7, holdTime: 3.0, throwImpulse: 34 * TILE, holdDist: 22 },
-    scream: { duration: 0.3, cooldown: 4.0, radius: 12 },
+    // BAAH no longer calls them in. It takes the sense out of everyone who hears it, briefly.
+    scream: { duration: 0.3, cooldown: 4.0, radius: 12, stun: 0.9 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat.
     roll: { speed: 16.5 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.0 },
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
@@ -52,9 +55,10 @@ const TUNING = {
     bulletSpeed: 25 * TILE, damage: 1,
   },
   // The Seer never closes. He paints a rune where you are standing and blinks away when you get near.
+  // Two hits, like the Butcher — but unlike him he can still be grabbed, carried and thrown.
   seer: {
     radius: 11, speed: 0.55 * 8.2 * TILE, sight: 11, cone: Math.PI * 0.62,
-    keepMin: 5, keepMax: 9, damage: 1,
+    keepMin: 5, keepMax: 9, damage: 1, hp: 2,
     castWind: 1.15, castCooldown: 2.5, runeRadius: 1.4, runeFire: 2.0,
     blinkRange: 3.2, blinkDist: 5.5, blinkCooldown: 3.0,
   },
@@ -72,23 +76,40 @@ const TUNING = {
   },
   fire: {
     spread: 0.4, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE,
+    witch: 3.6,        // the Seer's fire: colder to look at, and no coat turns it away
+    avoidLook: 18,     // px past his own radius a man checks before walking into flame
   },
   prop: {
     door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE },
     lamp: { r: 9, poolRadius: 1.2 },
     heal: { r: 12, pickupR: 22 },
+    // The pen. Bars sit close enough together that a goat cannot slip between two of them.
+    cage: { r: 10, halfW: 2.1, halfH: 1.6, spacing: 26, height: 30, hits: 3 },
   },
   // The Mill: a ritual grinding wheel with two sweeping arms. It does not care whose side you are on.
+  // The Mill: a ritual grinding wheel with two sweeping arms. It does not care whose side you are on.
+  // Slow enough to read and to time, and its room leaves a lane past it at the top and the bottom.
   mill: {
     hubR: 26, armLen: 4.1 * TILE, armHalfWidth: 0.2, innerR: 20,
-    speed: 1.05, impulse: 30 * TILE, damage: 1, hitCooldown: 0.6,
+    speed: 0.82, impulse: 30 * TILE, damage: 1, hitCooldown: 1.15, goatKnock: 0.3,
   },
   elite: { hp: 3 },
   noise: {
-    footstep: 2, headbutt: 5, splat: 8, pot: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11,
+    footstep: 2, headbutt: 5, splat: 8, pot: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13,
   },
-  juice: { hitstop: 0.07, shakeKill: 9, shakeHit: 6, shakeDecay: 12, deathSlow: 1.6, killSlow: 0.22 },
+  juice: {
+    hitstop: 0.07, shakeKill: 9, shakeHit: 6, shakeDecay: 12, deathSlow: 1.6, killSlow: 0.22,
+    kick: 7, kickDecay: 11, kickMax: 15, // directional camera punch, thrown away from the impact
+    zoomKick: 0.05, zoomDecay: 7,       // the lens shoves in on a kill and settles back
+    flashDecay: 6,                      // additive screen flash
+    comboWindow: 2.4, comboSlow: 0.26,  // kills inside the window stack, and stretch time
+  },
+  // How long the goat stands in the pen before the floor tells it which button opens it.
+  cagePrompt: { delay: 5, fade: 1.1 },
+  // Barks: one man at a time, and never the same man twice in a hurry.
+  bark: { life: 1.9, gap: 0.42, perEnemy: 4.5, nearDist: 7.5, nearChance: 0.22 },
+  audio: { master: 0.92, drums: 1.0, sfx: 1.05, music: 0.85 },
   camera: { lead: 2.4 * TILE, lerp: 7, zoomRest: 1.0, zoomFast: 0.88, zoomLerp: 2.2 },
   held: { bulletsAbsorbed: 2 },
   tome: { r: 13, pickupR: 22 },
@@ -123,13 +144,34 @@ const BOONS = [
   { id: 'throat', name: 'RAW THROAT', desc: 'Scream twice as often, and twice as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 20; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
   { id: 'joints', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
-  { id: 'ember', name: 'EMBER COAT', desc: 'Fire no longer burns you. It still burns them.', apply: (m) => { m.fireImmune = true; } },
+  { id: 'ember', name: 'EMBER COAT', desc: 'Ordinary fire stops burning you. Witchfire does not care.', apply: (m) => { m.fireImmune = true; } },
 ];
+
+// Short things the cult shouts. A few words each: they have to read at a glance while you run.
+const BARKS = {
+  // first sight of the goat
+  spot: {
+    bearer: ['THE GOAT!', 'IT IS AWAKE', 'THERE! THERE!', 'GET THE ROPE', 'IT IS LOOSE', 'BLESSED MEAT'],
+    hunter: ['CLEAR SHOT', 'HOLD STILL', 'I SEE IT', 'IN THE OPEN'],
+    seer: ['THE LAMB RUNS', 'I MARK YOU', 'THE GROUND WILL EAT IT', 'STAND THERE'],
+    butcher: ['MINE', 'COME TO THE BLOCK', 'LITTLE GOAT', 'NO FURTHER'],
+  },
+  // something was heard, or a scream pulled him
+  search: ['WHO OPENED THE PEN', 'SOMETHING MOVED', 'HOOVES', 'DID YOU HEAR IT', 'OVER THERE', 'SPREAD OUT', 'THAT WAY'],
+  // the goat is close and he has not seen it yet
+  near: ['SOMETHING BREATHES', 'SMELL THAT?', 'CLOSE NOW', 'QUIET'],
+  // a man goes down in front of him
+  panic: ['IT KILLED HIM', 'NOT ME', 'THE PRIEST LIED', 'RUN', 'MERCY'],
+  // committing to a swing
+  attack: ['HOLD IT DOWN', 'FOR THE ALTAR', 'BLEED', 'STAY STILL'],
+  // walking into flame is for the goat, not for him
+  fire: ['FIRE!', 'GO ROUND', 'IT BURNS', 'THE HAY!'],
+};
 
 const LEVELS = [
   {
-    name: 'THE ALTAR', sub: 'Level 1', rooms: 9, showControls: true,
-    arenas: [{ at: 3, boss: 'seer' }, { at: 7, boss: 'seer' }],
+    name: 'THE ALTAR', sub: 'Level 1', rooms: 9, showControls: true, startCage: true,
+    arenas: [{ at: 3, boss: 'bearer' }, { at: 7, boss: 'seer' }],
     millAt: 5, heals: 2, ranged: 'none', seerShare: 0,
     floor: '#2b1a26', floorAlt: '#31202c', wall: '#7c5a36', wallTop: '#9c7446',
     fog: '#0d0a0c', doorChance: 0.5,
@@ -139,7 +181,7 @@ const LEVELS = [
   {
     name: 'THE YARD', sub: 'Level 2', rooms: 12,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
-    millAt: 7, heals: 2, ranged: 'seer', seerShare: 0.55,
+    millAt: 7, heals: 2, ranged: 'seer', seerShare: 0.55, seerFrom: 5, seerPerRoom: 1,
     floor: '#8a7554', floorAlt: '#907b5a', wall: '#3b2233', wallTop: '#55344a',
     fog: '#120d12', doorChance: 0.42,
     hint: 'THE SEER BURNS THE GROUND YOU STAND ON',
@@ -148,10 +190,22 @@ const LEVELS = [
   {
     name: 'THE ROAD', sub: 'Level 3', rooms: 14,
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    millAt: 8, heals: 2, ranged: 'both', seerShare: 0.4,
+    millAt: 8, heals: 2, ranged: 'both', seerShare: 0.3, seerFrom: 3, seerPerRoom: 1,
+    hallAt: 9, hallBudget: 15, galleryAt: 6, lonePosts: 3,
     floor: '#4a3a2e', floorAlt: '#524032', wall: '#2a2430', wallTop: '#3e3346',
     fog: '#0b0a0d', doorChance: 0.35,
     hint: 'HOLD A MAN. HE STOPS BULLETS.',
     budget: (i) => (i === 0 ? 0 : Math.min(6, 2 + Math.floor(i * 0.36))),
+  },
+  {
+    // Everything the compound has left, all at once, on the bridge they were driving you over.
+    name: 'THE BRIDGE', sub: 'Level 4', rooms: 16,
+    arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
+    millAt: 7, heals: 3, ranged: 'both', seerShare: 0.5, seerFrom: 2, seerPerRoom: 1,
+    hallAt: 12, hallBudget: 18, galleryAt: 2, lonePosts: 4,
+    floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
+    fog: '#06070a', doorChance: 0.3,
+    hint: 'EVERYTHING THEY HAVE LEFT IS HERE',
+    budget: (i) => (i === 0 ? 0 : Math.min(7, 2 + Math.floor(i * 0.4))),
   },
 ];

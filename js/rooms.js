@@ -1,6 +1,7 @@
 // Hand-authored room templates. Legend:
 // '#' wall  '.' floor  'P' pillar  'h' hay  'B' brazier  'o' pot  'b' bell  't' table  'L' lamp post
 // 'e' bearer spawn  'r' hunter spawn (bearer if level has no hunters)  'X' butcher spawn
+// 'R' always a rifle where the level has them  'm' seer spawn  'M' the Mill's hub
 // Rooms are randomly flipped on both axes at generation time.
 const ROOM_TEMPLATES = [
   { name: 'hall', rows: [
@@ -130,31 +131,80 @@ const ARENA_TEMPLATE = { name: 'arena', rows: [
 ]};
 
 // The Mill: a big open room built around a ritual grinding wheel. 'M' is the hub.
+// The room is deliberately taller than the arms are long: there is a lane along the top and the
+// bottom that the sweep never reaches, so the room can be crossed by reading it rather than by luck.
 const MILL_TEMPLATE = { name: 'mill', rows: [
   '##################',
   '#................#',
   '#..o..........o..#',
   '#................#',
   '#.e............e.#',
+  '#................#',
+  '#................#',
   '#.......M........#',
   '#................#',
+  '#................#',
   '#.e............e.#',
+  '#................#',
   '#..hh........hh..#',
   '#..B..........B..#',
   '#................#',
   '##################',
 ]};
 
-// The room you woke up in: the altar, the straps, and what is left of the goat before you.
+// The Gallery: long sightlines, hard cover, and rifles standing on their own rather than in a pile.
+const GALLERY_TEMPLATE = { name: 'gallery', rows: [
+  '####################',
+  '#..................#',
+  '#...PP...PP...PP...#',
+  '#...PP...PP...PP...#',
+  '#..R....o....o..R..#',
+  '#..................#',
+  '#...PP...PP...PP...#',
+  '#...PP...PP...PP...#',
+  '#........R.........#',
+  '####################',
+]};
+
+// The room you woke up in. The altar stands off to one side, made ready, with the straps and the
+// knife and what is left of the goat that went before you. You are in the pen beside it.
 const START_TEMPLATE = { name: 'start', rows: [
-  '##############',
-  '#............#',
-  '#.B........B.#',
-  '#............#',
-  '#............#',
-  '#............#',
-  '#............#',
-  '#.B........B.#',
-  '#............#',
-  '##############',
+  '################',
+  '#..............#',
+  '#.B..........B.#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#..............#',
+  '#.B..........B.#',
+  '#..............#',
+  '################',
+]};
+
+// The Great Hall: one enormous room with two mills, pillar rows, hay, tables and a crowd.
+// Running straight through it is a bad idea. Running through it anyway is the point.
+const GREAT_HALL_TEMPLATE = { name: 'greathall', rows: [
+  '######################################',
+  '#....................................#',
+  '#..................B...hhhh.......B..#',
+  '#...................e..hhhh....e.....#',
+  '#....................PP.....PP.......#',
+  '#....................PP.....PP.....L.#',
+  '#.........M........o.....e......tt...#',
+  '#....................e..........tt...#',
+  '#.................b..........r.......#',
+  '#....e...........o................e..#',
+  '#............L.........m.............#',
+  '#...hh........e......................#',
+  '#...hh...........B.............e.....#',
+  '#.....tt............r................#',
+  '#.....tt...............e.............#',
+  '#..........PP..............M.........#',
+  '#....e.....PP......L.................#',
+  '#..B...........hh....e...............#',
+  '#........o.....hh.................B..#',
+  '#.......e..........r..........e......#',
+  '#....................................#',
+  '######################################',
 ]};

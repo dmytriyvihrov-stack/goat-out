@@ -1,4 +1,12 @@
-// WebAudio: synthesised ritual percussion driven by threat, plus one-shot sound effects. No assets.
+// WebAudio: a synthesised ritual score driven by threat, plus one-shot sound effects. No assets.
+
+// What the compound hums to itself: a four-bar sag in the bass with a phrygian motif over it.
+// Scale degrees index into `scale`; -1 is a rest. Sixteen steps to the bar.
+const MUSIC = {
+  roots: [55, 55, 48.99, 41.20],                        // A1 A1 G1 E1
+  scale: [0, 1, 3, 5, 7, 8, 10],                        // phrygian: the mode the cult sings in
+  motif: [0, -1, -1, -1, 3, -1, -1, 2, -1, -1, 1, -1, 0, -1, -1, 4],
+};
 class GameAudio {
   constructor() {
     this.ctx = null; this.muted = false;
@@ -10,9 +18,11 @@ class GameAudio {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     this.ctx = new AC();
-    this.master = this.ctx.createGain(); this.master.gain.value = 0.5; this.master.connect(this.ctx.destination);
-    this.drumBus = this.ctx.createGain(); this.drumBus.gain.value = 0.9; this.drumBus.connect(this.master);
-    this.sfxBus = this.ctx.createGain(); this.sfxBus.gain.value = 0.8; this.sfxBus.connect(this.master);
+    const A = TUNING.audio;
+    this.master = this.ctx.createGain(); this.master.gain.value = A.master; this.master.connect(this.ctx.destination);
+    this.drumBus = this.ctx.createGain(); this.drumBus.gain.value = A.drums; this.drumBus.connect(this.master);
+    this.sfxBus = this.ctx.createGain(); this.sfxBus.gain.value = A.sfx; this.sfxBus.connect(this.master);
+    this.musicBus = this.ctx.createGain(); this.musicBus.gain.value = A.music; this.musicBus.connect(this.master);
     const len = this.ctx.sampleRate * 1.5;
     this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this.noiseBuf.getChannelData(0);
@@ -21,7 +31,7 @@ class GameAudio {
     setInterval(() => this.schedule(), 25);
   }
   resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
-  toggleMute() { this.muted = !this.muted; if (this.master) this.master.gain.value = this.muted ? 0 : 0.5; return this.muted; }
+  toggleMute() { this.muted = !this.muted; if (this.master) this.master.gain.value = this.muted ? 0 : TUNING.audio.master; return this.muted; }
 
   // ---- synth primitives ----
   tone(freq, t, dur, { type = 'sine', gain = 0.5, sweep = 0, bus = null, attack = 0.002 } = {}) {
@@ -54,6 +64,39 @@ class GameAudio {
     [92, 138, 207, 311].forEach((f, i) => this.tone(f, t, 2.2 - i * 0.3, { gain: g / (i + 1.5), bus: this.drumBus }));
     this.noise(t, 0.4, { gain: 0.15, hp: 1500, bus: this.drumBus });
   }
+  // ---- the bed: pad, bass and a bone flute ----
+  pad(t, f, dur, gain) {
+    this.tone(f, t, dur, { type: 'triangle', gain, bus: this.musicBus, attack: 0.35 });
+    this.tone(f * 1.5, t, dur * 0.9, { type: 'triangle', gain: gain * 0.5, bus: this.musicBus, attack: 0.5 });
+  }
+  bass(t, f, dur, gain) {
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain(), lp = this.ctx.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t);
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(430, t); lp.frequency.exponentialRampToValueAtTime(150, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp); lp.connect(g); g.connect(this.musicBus); o.start(t); o.stop(t + dur + 0.02);
+  }
+  lead(t, f, dur, gain) {
+    this.tone(f, t, dur, { type: 'triangle', gain, bus: this.musicBus, attack: 0.012 });
+    this.tone(f * 2, t, dur * 0.5, { type: 'sine', gain: gain * 0.28, bus: this.musicBus, attack: 0.012 });
+  }
+  // Pad and bass play whatever happens; the motif only comes in once somebody knows you are there.
+  playBed(s, t, stepLen, lvl) {
+    const bar = s % 16, root = MUSIC.roots[(s >> 4) & 3];
+    if (bar === 0) this.pad(t, root, stepLen * 16.4, 0.055 + lvl * 0.012);
+    if (bar === 0 || bar === 10) this.bass(t, root, stepLen * 3.4, 0.26);
+    if (bar === 6) this.bass(t, root * 1.5, stepLen * 2.2, 0.19);
+    if (lvl >= 2 && bar === 14) this.bass(t, root * 2, stepLen * 1.6, 0.15);
+    if (lvl >= 1) {
+      const n = MUSIC.motif[bar];
+      if (n >= 0) {
+        const f = root * 4 * Math.pow(2, MUSIC.scale[n] / 12);
+        this.lead(t, f, stepLen * 2.6, 0.085);
+        if (lvl >= 3) this.lead(t + stepLen * 0.5, f * 1.5, stepLen * 1.8, 0.04);
+      }
+    }
+  }
   chant(t, dur) {
     const f = 65 + (this.step % 32 < 16 ? 0 : 8);
     this.tone(f, t, dur, { type: 'sawtooth', gain: 0.06, bus: this.drumBus, attack: 0.05 });
@@ -73,6 +116,7 @@ class GameAudio {
     if (this.muted) return;
     const lvl = this.intensity;
     const bar = s % 16;
+    this.playBed(s, t, stepLen, lvl);
     if (lvl <= 0) {
       if (s % 32 === 0) this.kick(t, 0.5);
       if (s % 32 === 3) this.kick(t, 0.35);
@@ -148,6 +192,30 @@ class GameAudio {
     if (!this.ctx || this.muted) return; const t = this.now();
     this.tone(660, t, 0.22, { type: 'triangle', gain: 0.22, sweep: 0.25 });
     this.noise(t, 0.14, { gain: 0.18, hp: 3000 });
+  }
+  // A headbutt that the pen holds: one bar rings and the frame shifts.
+  sfxCageHit() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.tone(620, t, 0.28, { type: 'square', gain: 0.2, sweep: 0.6 });
+    this.tone(930, t + 0.01, 0.2, { type: 'triangle', gain: 0.12, sweep: 0.7 });
+    this.noise(t, 0.12, { gain: 0.25, hp: 2200 });
+    this.tone(80, t, 0.2, { gain: 0.5, sweep: 0.4 });
+  }
+
+  // The pen coming apart: iron, and a lot of it.
+  sfxCage() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.noise(t, 0.5, { gain: 0.5, hp: 1700 });
+    [740, 1100, 1480].forEach((f, i) => this.tone(f, t + i * 0.012, 0.5 - i * 0.1, { type: 'square', gain: 0.16, sweep: 0.75 }));
+    this.tone(70, t, 0.45, { gain: 0.85, sweep: 0.35 });
+    this.crash(t, 0.3);
+  }
+  // Stacked kills: the same stab, a little higher every time.
+  sfxKill(n) {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    const f = 300 * Math.pow(1.14, Math.min(8, n));
+    this.tone(f, t, 0.18, { type: 'square', gain: 0.22, sweep: 1.6 });
+    this.tone(f * 1.5, t + 0.03, 0.14, { type: 'triangle', gain: 0.14, sweep: 1.5 });
   }
   sfxCard() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(60, t, 0.9, { gain: 0.8, sweep: 0.5 }); this.noise(t, 0.3, { gain: 0.2, lp: 600 }); }
 }

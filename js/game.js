@@ -13,6 +13,9 @@ class Game {
     this.levelIndex = 0; this.world = null; this.level = null; this.goat = null;
     this.enemies = []; this.props = []; this.bullets = []; this.parts = []; this.floats = []; this.rings = [];
     this.cam = { x: 0, y: 0, zoom: 1 }; this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0;
+    // juice: a directional camera punch, a lens shove, a screen flash and a kill counter
+    this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0; this.flashColor = PALETTE.bone;
+    this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false;
     this.hitstopTimer = 0; this.timeScale = 1; this.slowTimer = 0; this.hurt = null;
     this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0;
     this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.tomes = []; this.boonChoice = null; this.boonRects = [];
@@ -34,7 +37,24 @@ class Game {
     for (const b of this.boons) b.apply(this.mods);
     if (this.goat) { this.goat.maxHp = this.mods.maxHp; this.goat.hp = Math.min(this.goat.hp, this.goat.maxHp); }
   }
-  dropTome(x, y) { this.tomes.push({ x, y, r: TUNING.tome.r, phase: Math.random() * 6, life: 0 }); }
+  dropTome(x, y) {
+    // A boss can fall against a wall, and a tome inside one is a tome nobody can reach.
+    const w = this.world;
+    let px = x, py = y;
+    const ok = (ax, ay) => w.tileAtPx(ax, ay) !== T.WALL && w.flowDist(ax, ay) >= 0;
+    if (w && !ok(px, py)) {
+      let found = false;
+      for (let ring = 1; ring <= 7 && !found; ring++) {
+        for (let a = 0; a < 16 && !found; a++) {
+          const ang = a / 16 * Math.PI * 2;
+          const nx = x + Math.cos(ang) * ring * TILE * 0.7, ny = y + Math.sin(ang) * ring * TILE * 0.7;
+          if (ok(nx, ny)) { px = nx; py = ny; found = true; }
+        }
+      }
+      if (!found) { px = this.goat.x; py = this.goat.y; }
+    }
+    this.tomes.push({ x: px, y: py, r: TUNING.tome.r, phase: Math.random() * 6, life: 0 });
+  }
   // A tome offers three of one kind: actives change what a button does, passives sharpen everything.
   // The first tome always offers actives, so every run picks a skill before it picks numbers.
   openBoonChoice() {
@@ -224,10 +244,15 @@ class Game {
     this.tomes = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
     this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0;
+    this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
+    this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false;
     this.audio.intensity = 0; this.audio.hunterAware = false;
     this.world.computeFlow(this.goat.x, this.goat.y);
     this.state = 'card';
-    this.card = { lines: [def.sub.toUpperCase(), def.name], dim: 0.6, size: 40 }; this.stateTimer = 1.3;
+    // A new level puts every heart back. The card is where the goat finds that out.
+    const lines = [def.sub.toUpperCase(), def.name];
+    if (index > 0 || keepBoons) lines.push('', this.goat.maxHp + ' hearts again');
+    this.card = { lines, dim: 0.6, size: 40, small: 2 }; this.stateTimer = 1.3;
     this.audio.sfxCard();
   }
   restartLevel() {
@@ -238,7 +263,7 @@ class Game {
     this.state = 'prologue';
     const how = this.coarse
       ? 'Left thumb to run · BUTT to headbutt · hold GRAB, release to throw · ROLL to tumble · BAAH to scream'
-      : 'WASD to run · mouse to aim · left click headbutt · hold right click to grab, release to throw · E to roll · space to scream';
+      : 'WASD to run · left click headbutt · hold right click to grab, release to throw · E to roll · space to scream';
     this.card = { lines: ['They were driving the goat to the altar.', 'The truck fell off the bridge.', 'Four men died.', 'The goat survived.', '', how, `${this.tapWord} TO ESCAPE`], dim: 1, size: 26, small: 5 };
   }
   onGoatDied() {
@@ -252,8 +277,8 @@ class Game {
     this.state = 'clear'; this.totalKills += this.kills;
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxCard();
     this.cardQueue = [
-      { lines: ['Will there be sacrifices?'], dim: 0.75, size: 34, time: 1.4 },
-      { lines: ['There will be sacrifices.'], dim: 0.85, size: 40, time: 1.6, color: PALETTE.blood },
+      { lines: ['Do you want sacrifices?'], dim: 0.75, size: 34, time: 1.4 },
+      { lines: ['You will get sacrifices!'], dim: 0.85, size: 40, time: 1.6, color: PALETTE.blood },
       { lines: [`${this.kills} sacrificed in ${this.timer.toFixed(1)}s`], dim: 0.9, size: 26, time: 1.4 },
     ];
     this.nextCard();
@@ -355,9 +380,21 @@ class Game {
   }
 
   updateEffects(dt) {
-    this.shakeAmt = Math.max(0, this.shakeAmt - TUNING.juice.shakeDecay * dt * Math.max(1, this.shakeAmt * 0.3));
+    const J = TUNING.juice;
+    this.shakeAmt = Math.max(0, this.shakeAmt - J.shakeDecay * dt * Math.max(1, this.shakeAmt * 0.3));
     this.shakeX = (Math.random() - 0.5) * 2 * this.shakeAmt; this.shakeY = (Math.random() - 0.5) * 2 * this.shakeAmt;
-    for (const p of this.parts) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.92; p.vy *= 0.92; }
+    const kd = Math.exp(-J.kickDecay * dt);
+    this.kickX *= kd; this.kickY *= kd;
+    this.zoomKick *= Math.exp(-J.zoomDecay * dt);
+    this.flashAmt = Math.max(0, this.flashAmt - J.flashDecay * dt * Math.max(1, this.flashAmt * 4));
+    this.barkCd = Math.max(0, this.barkCd - dt);
+    this.comboTimer = Math.max(0, this.comboTimer - dt);
+    if (this.comboTimer <= 0) this.combo = 0;
+    for (const p of this.parts) {
+      p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.92; p.vy *= 0.92;
+      // A chunk that comes to rest marks the floor for the rest of the level.
+      if (p.chunk && p.life <= 0 && this.world) this.world.dot(p.x, p.y, 1.6 + Math.random() * 2.4, PALETTE.bloodDark);
+    }
     this.parts = this.parts.filter((p) => p.life > 0);
     for (const f of this.floats) f.life -= dt;
     this.floats = this.floats.filter((f) => f.life > 0);
@@ -459,16 +496,66 @@ class Game {
   }
   onKill(e, cause) {
     this.kills++;
-    this.hitstop(TUNING.juice.hitstop); this.shake(e.kind === 'butcher' ? 14 : TUNING.juice.shakeKill);
-    if (e.kind === 'butcher') { this.audio.sfxBell(); this.floatText(e.x, e.y - 44, 'THE BUTCHER IS DOWN', PALETTE.fireHi); this.slowTimer = TUNING.juice.killSlow; this.vibe(40); }
+    const J = TUNING.juice, big = e.kind === 'butcher';
+    // Kills inside the window stack: each one hits harder and holds the frame longer.
+    this.combo = this.comboTimer > 0 ? this.combo + 1 : 1;
+    this.comboTimer = J.comboWindow;
+    const dx = e.x - this.goat.x, dy = e.y - this.goat.y;
+    this.hitstop(J.hitstop + Math.min(0.05, this.combo * 0.008));
+    this.shake(big ? 14 : J.shakeKill);
+    this.kick(dx, dy, J.kick * (big ? 1.7 : 1));
+    this.zoomPunch(big ? 2 : 1);
+    this.flash(PALETTE.blood, big ? 0.24 : 0.11);
+    this.gore(e.x, e.y, big ? 16 : 9, dx, dy);
+    if (big) { this.audio.sfxBell(); this.floatText(e.x, e.y - 44, 'THE BUTCHER IS DOWN', PALETTE.fireHi); this.slowTimer = J.killSlow; this.vibe(40); }
     else { this.audio.sfxSplat(); this.vibe(12); }
+    if (this.combo >= 2) {
+      this.floatText(e.x, e.y - 40, 'x' + this.combo, PALETTE.fireHi);
+      this.audio.sfxKill(this.combo);
+      if (this.combo >= 3) { this.slowTimer = Math.max(this.slowTimer, J.comboSlow); this.flash(PALETTE.fireHi, 0.15); }
+    }
+    // Whoever was watching him says something about it.
+    for (const o of this.enemies) {
+      if (o === e || o.dead || o.held || !o.aware) continue;
+      if (Math.hypot(o.x - e.x, o.y - e.y) > 7 * TILE) continue;
+      if (!this.world.los(o.x, o.y, e.x, e.y)) continue;
+      this.bark(o, 'panic', 0.5); break;
+    }
     this.world.emitNoise(e.x, e.y, TUNING.noise.splat);
-    this.particles(e.x, e.y, e.kind === 'butcher' ? 26 : 14, PALETTE.blood, 220);
+    this.particles(e.x, e.y, big ? 26 : 14, PALETTE.blood, 220);
   }
   hitstop(t) { this.hitstopTimer = Math.max(this.hitstopTimer, t); }
   shake(a) { this.shakeAmt = Math.max(this.shakeAmt, a); }
+  // A shove of the whole picture away from the impact, on top of the random shake.
+  kick(dx, dy, amt) {
+    const d = Math.hypot(dx, dy) || 1;
+    this.kickX += dx / d * amt; this.kickY += dy / d * amt;
+    const m = Math.hypot(this.kickX, this.kickY), max = TUNING.juice.kickMax;
+    if (m > max) { this.kickX *= max / m; this.kickY *= max / m; }
+  }
+  zoomPunch(mul) { this.zoomKick = Math.max(this.zoomKick, TUNING.juice.zoomKick * (mul === undefined ? 1 : mul)); }
+  flash(color, amt) { if (amt > this.flashAmt) { this.flashAmt = amt; this.flashColor = color; } }
+  // Wet chunks that fly off a kill and stain the floor where they land.
+  gore(x, y, n, dirx, diry) {
+    const d = Math.hypot(dirx, diry) || 1;
+    for (let i = 0; i < n; i++) {
+      const a = Math.atan2(diry / d, dirx / d) + (Math.random() - 0.5) * 2.4, sp = 120 + Math.random() * 380;
+      this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.25 + Math.random() * 0.45,
+        color: Math.random() < 0.3 ? PALETTE.bloodDark : PALETTE.blood, size: 2.5 + Math.random() * 4, chunk: true });
+    }
+  }
+  // One man speaks at a time: a crowd all shouting at once reads as noise, not as a cult.
+  bark(e, kind, chance) {
+    if (!e || e.dead || e.held || this.state !== 'play') return;
+    if (chance !== undefined && Math.random() > chance) return;
+    if (this.barkCd > 0 || e.barkCd > 0) return;
+    const pool = BARKS[kind]; if (!pool) return;
+    const list = Array.isArray(pool) ? pool : (pool[e.kind] || pool.bearer);
+    e.say = { text: list[(Math.random() * list.length) | 0], life: TUNING.bark.life, max: TUNING.bark.life };
+    this.barkCd = TUNING.bark.gap; e.barkCd = TUNING.bark.perEnemy;
+  }
   vibe(ms) { if (this.coarse && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { /* ignore */ } } }
-  hurtFlash(angle) { this.hurt = { angle, life: 0.6 }; this.vibe(35); }
+  hurtFlash(angle) { this.hurt = { angle, life: 0.6 }; this.vibe(35); this.flash(PALETTE.blood, 0.16); }
   ring(x, y, r, color) { this.rings.push({ x, y, r, color, life: 0.6, max: 0.6 }); }
   particles(x, y, n, color, speed) {
     for (let i = 0; i < n; i++) {

@@ -16,6 +16,7 @@ class World {
     this.level = level; this.W = level.W; this.H = level.H; this.tiles = level.tiles;
     const n = this.W * this.H;
     this.fire = new Float32Array(n);      // seconds of burning left
+    this.fireKind = new Uint8Array(n);    // 0 ordinary flame, 1 the Seer's witchfire
     this.spread = new Float32Array(n);    // spread accumulator
     this.flow = new Int16Array(n).fill(-1);
     this.flowTimer = 0;
@@ -55,68 +56,123 @@ class World {
 
   // Grid pictogram: every cell is a hard square, no curves. Quasimorph reads this way.
   pixelGlyph(cx, cy, size, rows, alpha, color) {
-    const c = this.dctx, n = rows.length, cell = size / n;
+    const c = this.dctx, n = rows.length;
+    // Snap every cell to whole decal pixels, or the upscale turns hard squares into mush.
+    const px = 1 / DECAL_SCALE;
+    const cell = Math.max(px, Math.round(size / n * DECAL_SCALE) * px);
+    const x0 = Math.round((cx - cell * n / 2) * DECAL_SCALE) * px;
+    const y0 = Math.round((cy - cell * n / 2) * DECAL_SCALE) * px;
     c.save(); c.globalAlpha = alpha; c.fillStyle = color;
     for (let r = 0; r < n; r++) {
       for (let q = 0; q < rows[r].length; q++) {
         if (rows[r][q] !== '#') continue;
-        c.fillRect(Math.round(cx - size / 2 + q * cell), Math.round(cy - size / 2 + r * cell), Math.ceil(cell), Math.ceil(cell));
+        c.fillRect(x0 + q * cell, y0 + r * cell, cell, cell);
       }
     }
     c.restore(); c.globalAlpha = 1;
   }
 
-  // The room you wake in: the slab, the cut straps, the goat that went before you, and the knife.
+  // The room you wake in. The altar stands ready off to one side, with the straps, the knife and
+  // what is left of the goat that went before you. You are in the pen in the middle of it.
   paintStartRoom(level, rng) {
     const c = this.dctx, sx = level.start.x, sy = level.start.y;
+    const ax = sx - 4 * TILE, ay = sy - 0.2 * TILE;      // the altar, beside you, still waiting
     this.pixelGlyph(sx, sy, 8.5 * TILE, CULT_GLYPHS[0], 0.2, PALETTE.ochre);
-    this.pixelGlyph(sx, sy, 5.2 * TILE, CULT_GLYPHS[2], 0.13, PALETTE.blood);
+    this.pixelGlyph(ax, ay, 4.6 * TILE, CULT_GLYPHS[2], 0.13, PALETTE.blood);
+
+    // the floor of the pen: trodden dirt and old straw
+    if (level.def && level.def.startCage) {
+      const C = TUNING.prop.cage, hw = C.halfW * TILE, hh = C.halfH * TILE;
+      c.save();
+      c.globalAlpha = 0.22; c.fillStyle = PALETTE.ash;
+      c.fillRect(sx - hw, sy - hh, hw * 2, hh * 2);
+      c.globalAlpha = 0.3; c.strokeStyle = PALETTE.hayDark; c.lineWidth = 2.4; c.lineCap = 'round';
+      for (let k = 0; k < 46; k++) {
+        const px = sx + rng.float(-hw + 5, hw - 5), py = sy + rng.float(-hh + 5, hh - 5), a = rng.float(0, Math.PI);
+        c.beginPath(); c.moveTo(px, py); c.lineTo(px + Math.cos(a) * 11, py + Math.sin(a) * 11); c.stroke();
+      }
+      c.globalAlpha = 1; c.restore();
+    }
 
     // the slab
     c.save();
-    c.fillStyle = 'rgba(150,140,128,0.5)'; c.fillRect(sx - 52, sy - 30, 104, 60);
-    c.fillStyle = 'rgba(190,180,166,0.45)'; c.fillRect(sx - 52, sy - 30, 104, 7);
-    c.strokeStyle = 'rgba(26,16,22,0.45)'; c.lineWidth = 3; c.strokeRect(sx - 52, sy - 30, 104, 60);
-    // cut straps, hanging loose off both sides
+    c.fillStyle = 'rgba(150,140,128,0.5)'; c.fillRect(ax - 52, ay - 30, 104, 60);
+    c.fillStyle = 'rgba(190,180,166,0.45)'; c.fillRect(ax - 52, ay - 30, 104, 7);
+    c.strokeStyle = 'rgba(26,16,22,0.45)'; c.lineWidth = 3; c.strokeRect(ax - 52, ay - 30, 104, 60);
+    // straps, open and waiting for whatever they drag up next
     c.strokeStyle = '#5a4230'; c.lineWidth = 7; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(sx - 34, sy - 30); c.lineTo(sx - 34, sy - 4); c.lineTo(sx - 46, sy + 8); c.stroke();
-    c.beginPath(); c.moveTo(sx + 30, sy - 30); c.lineTo(sx + 30, sy - 2); c.lineTo(sx + 44, sy + 10); c.stroke();
-    c.beginPath(); c.moveTo(sx - 30, sy + 30); c.lineTo(sx - 24, sy + 12); c.stroke();
-    c.beginPath(); c.moveTo(sx + 26, sy + 30); c.lineTo(sx + 18, sy + 14); c.stroke();
+    c.beginPath(); c.moveTo(ax - 34, ay - 30); c.lineTo(ax - 34, ay - 4); c.lineTo(ax - 46, ay + 8); c.stroke();
+    c.beginPath(); c.moveTo(ax + 30, ay - 30); c.lineTo(ax + 30, ay - 2); c.lineTo(ax + 44, ay + 10); c.stroke();
+    c.beginPath(); c.moveTo(ax - 30, ay + 30); c.lineTo(ax - 24, ay + 12); c.stroke();
+    c.beginPath(); c.moveTo(ax + 26, ay + 30); c.lineTo(ax + 18, ay + 14); c.stroke();
     c.restore();
 
-    // what is left of the goat that came before: skull, ribs, a dried pool
-    const bx = sx - 3.1 * TILE, by = sy + 2.5 * TILE;
-    c.save();
+    // What is left of the goat that came before, laid out bigger than you are: they have done this
+    // before, and to something larger.
+    const bx = sx - 4.9 * TILE, by = sy + 1.7 * TILE;
+    c.save(); c.translate(bx, by); c.rotate(-0.12);
     c.fillStyle = 'rgba(122,31,24,0.5)';
-    for (let k = 0; k < 9; k++) c.beginPath(), c.arc(bx + rng.float(-30, 34), by + rng.float(-22, 22), rng.float(6, 15), 0, Math.PI * 2), c.fill();
-    c.fillStyle = '#d8cdb4';
-    c.beginPath(); c.ellipse(bx - 12, by - 6, 11, 8, -0.3, 0, Math.PI * 2); c.fill();          // skull
-    c.beginPath(); c.ellipse(bx - 1, by - 4, 6, 4.5, -0.2, 0, Math.PI * 2); c.fill();          // snout
-    c.strokeStyle = '#c8bda2'; c.lineWidth = 3.4; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(bx - 17, by - 12); c.quadraticCurveTo(bx - 26, by - 22); c.stroke();
-    c.beginPath(); c.moveTo(bx - 17, by - 12); c.quadraticCurveTo(bx - 27, by - 20, bx - 20, by - 26); c.stroke();
-    c.beginPath(); c.moveTo(bx - 8, by - 15); c.quadraticCurveTo(bx - 16, by - 26, bx - 8, by - 30); c.stroke();
-    c.fillStyle = '#1a1016'; c.fillRect(bx - 14, by - 8, 3, 2.4);
-    c.strokeStyle = '#cfc3a8'; c.lineWidth = 3;                                                  // ribs
-    for (let k = 0; k < 5; k++) {
-      const rx = bx + 8 + k * 8;
-      c.beginPath(); c.moveTo(rx, by - 10); c.quadraticCurveTo(rx + 5, by, rx, by + 10); c.stroke();
+    for (let k = 0; k < 14; k++) c.beginPath(), c.arc(rng.float(-46, 52), rng.float(-30, 30), rng.float(8, 20), 0, Math.PI * 2), c.fill();
+    c.strokeStyle = '#bdb298'; c.lineWidth = 6;                                                   // spine, nose to tail
+    c.beginPath(); c.moveTo(-14, -2); c.lineTo(58, 3); c.stroke();
+    c.strokeStyle = '#cfc3a8'; c.lineWidth = 4.5;                                                 // ribs, opened out
+    for (let k = 0; k < 7; k++) {
+      const rx = -4 + k * 9.5;
+      c.beginPath(); c.moveTo(rx, -3); c.quadraticCurveTo(rx + 9, -12, rx + 5, -21); c.stroke();
+      c.beginPath(); c.moveTo(rx, 2); c.quadraticCurveTo(rx + 9, 12, rx + 5, 22); c.stroke();
     }
-    c.strokeStyle = '#bdb298'; c.lineWidth = 4;
-    c.beginPath(); c.moveTo(bx + 6, by); c.lineTo(bx + 44, by + 2); c.stroke();                  // spine
+    c.strokeStyle = '#c8bda2'; c.lineWidth = 4;                                                   // hind legs, splayed
+    c.beginPath(); c.moveTo(52, 2); c.lineTo(64, -16); c.lineTo(58, -26); c.stroke();
+    c.beginPath(); c.moveTo(52, 4); c.lineTo(66, 18); c.lineTo(61, 29); c.stroke();
+    c.fillStyle = '#d8cdb4';                                                                      // skull and long jaw
+    c.beginPath(); c.ellipse(-22, -4, 16, 11, -0.25, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(-38, 0, 9.5, 6.5, -0.15, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#1a1016'; c.fillRect(-27, -8, 5, 3.6);                                         // eye socket
+    c.strokeStyle = '#c8bda2'; c.lineWidth = 5; c.lineCap = 'round';                              // horns, sweeping back
+    c.beginPath(); c.moveTo(-16, -13); c.quadraticCurveTo(2, -34, 20, -27); c.stroke();
+    c.beginPath(); c.moveTo(-14, 8); c.quadraticCurveTo(6, 28, 24, 21); c.stroke();
     c.restore();
 
-    // the knife, dropped where they left it
-    const kx = sx + 2.2 * TILE, ky = sy + 1.9 * TILE;
-    c.save(); c.translate(kx, ky); c.rotate(0.55);
-    c.fillStyle = 'rgba(122,31,24,0.55)';
-    c.beginPath(); c.ellipse(6, 6, 20, 11, 0.4, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#c9c2b5'; c.beginPath();
-    c.moveTo(-22, -4); c.lineTo(12, -5); c.lineTo(26, 0); c.lineTo(12, 4); c.lineTo(-22, 3); c.closePath(); c.fill();
-    c.fillStyle = '#7a1f18'; c.fillRect(-2, -4, 20, 8);
-    c.fillStyle = '#4a3420'; c.fillRect(-34, -6, 14, 12);
-    c.fillStyle = PALETTE.ochre; c.fillRect(-22, -6, 4, 12);
+    // The tools they work with, laid out on the floor beside the altar where anyone can read them.
+    const tx0 = sx - 3.6 * TILE, ty0 = sy - 2.3 * TILE;
+    c.save(); c.translate(tx0, ty0);
+    c.fillStyle = 'rgba(122,31,24,0.45)';
+    c.beginPath(); c.ellipse(2, 10, 38, 13, 0.06, 0, Math.PI * 2); c.fill();
+
+    // a cleaver: a heavy rectangle with a bite out of the back and a short handle
+    c.save(); c.translate(-34, 0); c.rotate(0.18);
+    c.fillStyle = '#c9c2b5'; c.fillRect(-14, -11, 26, 20);
+    c.fillStyle = '#0f0b0e'; c.beginPath(); c.arc(8, -11, 4.5, 0, Math.PI * 2); c.fill();          // rivet hole
+    c.fillStyle = '#7a1f18'; c.fillRect(-14, 5, 26, 4);                                            // the edge, wet
+    c.fillStyle = '#4a3420'; c.fillRect(12, -5, 18, 9);
+    c.fillStyle = PALETTE.ochre; c.fillRect(12, -5, 3.5, 9);
+    c.restore();
+
+    // a boning knife
+    c.save(); c.translate(6, -6); c.rotate(-0.12);
+    c.fillStyle = '#c9c2b5';
+    c.beginPath(); c.moveTo(-16, -3.5); c.lineTo(12, -4.5); c.lineTo(26, 0); c.lineTo(12, 3.5); c.lineTo(-16, 2.5); c.closePath(); c.fill();
+    c.fillStyle = '#7a1f18'; c.fillRect(0, -4, 18, 7);
+    c.fillStyle = '#4a3420'; c.fillRect(-30, -5.5, 15, 11);
+    c.restore();
+
+    // a bone saw: a straight blade with teeth you can count
+    c.save(); c.translate(4, 20); c.rotate(0.05);
+    c.fillStyle = '#b9b2a4'; c.fillRect(-30, -4, 52, 6);
+    c.fillStyle = '#b9b2a4';
+    for (let k = 0; k < 13; k++) {
+      c.beginPath(); c.moveTo(-30 + k * 4, 2); c.lineTo(-27.8 + k * 4, 6.5); c.lineTo(-25.6 + k * 4, 2); c.closePath(); c.fill();
+    }
+    c.fillStyle = '#4a3420'; c.fillRect(22, -7, 16, 12);
+    c.fillStyle = '#2e2a26'; c.fillRect(22, -7, 16, 3);
+    c.restore();
+
+    // a meat hook, hanging point down
+    c.save(); c.translate(40, -10);
+    c.strokeStyle = '#9a948a'; c.lineWidth = 4.5; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, -14); c.lineTo(0, 4); c.quadraticCurveTo(0, 16, -11, 14); c.stroke();
+    c.fillStyle = '#7a1f18'; c.beginPath(); c.arc(-12, 15, 3.2, 0, Math.PI * 2); c.fill();
+    c.restore();
     c.restore();
   }
 
@@ -131,6 +187,13 @@ class World {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
     if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return false;
     return this.fire[this.idx(tx, ty)] > 0;
+  }
+  // Witchfire burns through a coat that ordinary fire cannot touch.
+  isWitchPx(x, y) {
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return false;
+    const i = this.idx(tx, ty);
+    return this.fire[i] > 0 && this.fireKind[i] === 1;
   }
 
   // Push a circle out of solid tiles. Returns the strongest impact speed into a wall (0 if none).
@@ -218,13 +281,13 @@ class World {
   // ---- fire ----
   // Hay catches on its own and spreads. `force` lights any walkable tile (a spilled oil pool)
   // which burns out without spreading and leaves a scorch mark.
-  ignite(tx, ty, force, dur) {
+  ignite(tx, ty, force, dur, witch) {
     if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return false;
     const i = this.idx(tx, ty);
     if (this.fire[i] > 0) return false;
     const t = this.tiles[i];
-    if (t === T.HAY) { this.fire[i] = TUNING.fire.burn; this.spread[i] = 0; return true; }
-    if (force && t !== T.WALL) { this.fire[i] = dur || TUNING.fire.pool; this.spread[i] = 0; return true; }
+    if (t === T.HAY) { this.fire[i] = TUNING.fire.burn; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
+    if (force && t !== T.WALL) { this.fire[i] = dur || TUNING.fire.pool; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
     return false;
   }
   // A breathed cone of flame: short-lived on bare floor, but it sets hay going properly.
@@ -242,10 +305,11 @@ class World {
   }
   ignitePx(x, y, force) { return this.ignite(Math.floor(x / TILE), Math.floor(y / TILE), force); }
   // A round pool of flame, used by a smashed oil lamp.
-  ignitePool(x, y, radiusTiles) {
+  ignitePool(x, y, radiusTiles, witch) {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), r = Math.ceil(radiusTiles);
+    const dur = witch ? TUNING.fire.witch : undefined;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-      if (Math.hypot(dx, dy) <= radiusTiles) this.ignite(cx + dx, cy + dy, true);
+      if (Math.hypot(dx, dy) <= radiusTiles) this.ignite(cx + dx, cy + dy, true, dur, witch);
     }
   }
   updateFire(dt) {
@@ -258,14 +322,17 @@ class World {
         this.spread[i] += dt;
         if (this.spread[i] >= TUNING.fire.spread) {
           this.spread[i] = 0;
-          const tx = i % W, ty = (i / W) | 0;
-          this.ignite(tx + 1, ty); this.ignite(tx - 1, ty); this.ignite(tx, ty + 1); this.ignite(tx, ty - 1);
+          const tx = i % W, ty = (i / W) | 0, wk = this.fireKind[i] === 1;
+          // Hay lit by witchfire burns as witchfire: the whole patch goes cold blue.
+          this.ignite(tx + 1, ty, false, 0, wk); this.ignite(tx - 1, ty, false, 0, wk);
+          this.ignite(tx, ty + 1, false, 0, wk); this.ignite(tx, ty - 1, false, 0, wk);
         }
       }
       if (this.fire[i] <= 0) {
-        this.fire[i] = 0;
+        const witch = this.fireKind[i] === 1;
+        this.fire[i] = 0; this.fireKind[i] = 0;
         if (wasHay) this.tiles[i] = T.ASH;
-        else this.scorch((i % W + 0.5) * TILE, (((i / W) | 0) + 0.5) * TILE, TILE * 0.55);
+        else this.scorch((i % W + 0.5) * TILE, (((i / W) | 0) + 0.5) * TILE, TILE * 0.55, witch);
       }
     }
   }
@@ -289,8 +356,8 @@ class World {
     c.restore();
   }
   dot(x, y, r, color) { const c = this.dctx; c.fillStyle = color; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
-  scorch(x, y, r) {
-    const c = this.dctx; c.fillStyle = 'rgba(20,14,12,0.7)';
+  scorch(x, y, r, witch) {
+    const c = this.dctx; c.fillStyle = witch ? 'rgba(38,26,64,0.72)' : 'rgba(20,14,12,0.7)';
     c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
   }
 }

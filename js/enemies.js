@@ -12,6 +12,8 @@ class Enemy {
     this.bombFuse = 0; this.flail = 0; this.heldSwing = 0;
     this.castCd = Math.random() * 1.2; this.blinkCd = 0; this.rune = null; this.blinkFx = 0;
     this.elite = false; this.boss = false; this.millCd = 0;
+    this.say = null; this.barkCd = 0; this.witchBurn = false;   // what he is shouting, and what lit him
+    this.dazed = 0;                                             // seconds of hearing nothing but the scream
     this.gotUpFrom = null;
   }
 
@@ -20,19 +22,37 @@ class Enemy {
     this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true;
   }
 
-  ignite(game) {
+  // BAAH does not call him in any more. It empties his head for a moment, wherever he was going.
+  daze(game, t) {
+    if (this.dead || this.held) return;
+    // The Butcher rides out a swing he has already committed to, and shakes it off quicker.
+    if (this.kind === 'butcher') { if (this.state === 'swing') return; t *= 0.6; }
+    if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return;
+    this.dazed = Math.max(this.dazed, t);
+    this.vx = 0; this.vy = 0;
+    // Whatever he was winding up, aiming or painting is gone.
+    if (this.state === 'windup' || this.state === 'aim' || this.state === 'cast' || this.state === 'chargewind') {
+      this.state = 'chase'; this.rune = null;
+    }
+    game.particles(this.x, this.y - 6, 4, PALETTE.bone, 90);
+  }
+
+  ignite(game, witch) {
     if (this.dead || this.burning > 0) return;
     this.burning = this.kind === 'butcher' ? 3.0 : TUNING.fire.burnRunTime;
+    this.witchBurn = !!witch;
     this.burnDir = Math.random() * Math.PI * 2; this.burnTick = 0;
     if (this.kind !== 'butcher') { this.state = 'burning'; this.held = false; }
-    game.audio.sfxFire(); game.floatText(this.x, this.y - 26, 'AAAAH', PALETTE.fire);
+    game.audio.sfxFire(); game.floatText(this.x, this.y - 26, 'AAAAH', witch ? PALETTE.witch : PALETTE.fire);
     this.aware = true;
   }
 
   die(game, cause, dx, dy) {
     if (this.dead) return;
-    // An arena elite eats the first hits: he goes down, gets back up, and a Seer blinks clear.
-    if (this.elite && this.hp > 1 && cause !== 'burn' && cause !== 'devour') {
+    // Anyone carrying more than one hit — an arena elite, or any Seer — eats it, goes down and gets
+    // back up; a Seer blinks clear as he does. Fire counts, so a mage has to be lit twice. Being torn
+    // open or going off like a bomb does not: there is nothing left to get up.
+    if (this.hp > 1 && cause !== 'devour' && cause !== 'boom') {
       this.hp -= 1; this.flash = 0.3; this.aware = true;
       this.state = 'floored'; this.timer = 0.75; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false;
       game.world.splat(this.x, this.y, dx || 0, dy || 0, 13);
@@ -87,7 +107,28 @@ class Enemy {
     return game.world.los(this.x, this.y, g.x, g.y);
   }
 
-  moveToward(dirx, diry, speed, dt) {
+  // Nobody walks into a fire he can see. Steer around it; with no way round, stop at the edge.
+  avoidFire(dirx, diry, game) {
+    const w = game.world, look = this.r + TUNING.fire.avoidLook;
+    const l = Math.hypot(dirx, diry) || 1; dirx /= l; diry /= l;
+    const burns = (ax, ay) => w.isBurningPx(this.x + ax * look, this.y + ay * look);
+    if (!burns(dirx, diry)) return { x: dirx, y: diry };
+    // A way round has to be a way he can actually walk, or he just slides along the wall into it.
+    const walkable = (ax, ay) => !w.isSolid(Math.floor((this.x + ax * look) / TILE), Math.floor((this.y + ay * look) / TILE));
+    const base = Math.atan2(diry, dirx);
+    for (const off of [0.8, -0.8, 1.5, -1.5, 2.3, -2.3]) {
+      const a = base + off, cx = Math.cos(a), cy = Math.sin(a);
+      if (!burns(cx, cy) && walkable(cx, cy)) { if (this.aware) game.bark(this, 'fire', 0.14); return { x: cx, y: cy }; }
+    }
+    return null;
+  }
+  moveToward(dirx, diry, speed, dt, game) {
+    // A man already alight has nothing left to dodge, and he ought to spread it.
+    if (game && this.burning <= 0) {
+      const safe = this.avoidFire(dirx, diry, game);
+      if (!safe) { this.vx = 0; this.vy = 0; this.facing = Math.atan2(diry, dirx); return; }
+      dirx = safe.x; diry = safe.y;
+    }
     const l = Math.hypot(dirx, diry) || 1;
     this.vx = dirx / l * speed; this.vy = diry / l * speed;
     if (speed > 0) this.facing = Math.atan2(this.vy, this.vx);
@@ -96,9 +137,9 @@ class Enemy {
   chaseGoat(game, speed, dt) {
     const g = game.goat, w = game.world;
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
-    if (d < 3.5 * TILE && w.los(this.x, this.y, g.x, g.y)) { this.moveToward(dx, dy, speed, dt); return d; }
+    if (d < 3.5 * TILE && w.los(this.x, this.y, g.x, g.y)) { this.moveToward(dx, dy, speed, dt, game); return d; }
     const f = w.flowDir(this.x, this.y);
-    if (f) this.moveToward(f.x, f.y, speed, dt); else this.moveToward(dx, dy, speed * 0.5, dt);
+    if (f) this.moveToward(f.x, f.y, speed, dt, game); else this.moveToward(dx, dy, speed * 0.5, dt, game);
     return d;
   }
 
@@ -106,6 +147,9 @@ class Enemy {
     if (this.dead) return;
     const w = game.world, g = game.goat, cfg = this.cfg;
     this.chargeCd = Math.max(0, this.chargeCd - dt); this.reload = Math.max(0, this.reload - dt);
+    this.barkCd = Math.max(0, this.barkCd - dt);
+    this.dazed = Math.max(0, this.dazed - dt);
+    if (this.say) { this.say.life -= dt; if (this.say.life <= 0) this.say = null; }
     this.flash = Math.max(0, this.flash - dt); this.lured = Math.max(0, (this.lured || 0) - dt);
     this.flail = Math.max(0, this.flail - dt);
     if (this.bombFuse > 0) { this.bombFuse -= dt; if (this.bombFuse <= 0) { this.explode(game); return; } }
@@ -157,7 +201,7 @@ class Enemy {
         this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1)); return;
       }
       if (impact > 0 && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }
-      if (w.isBurningPx(this.x, this.y)) { this.ignite(game); return; }
+      if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
       if (game.touchingBrazier(this)) { this.ignite(game); return; }
       if (Math.hypot(this.vx, this.vy) < TUNING.physics.flungFloorSpeed) { this.state = 'floored'; this.timer = TUNING.bearer.flooredTime; this.flung = false; this.thrown = false; }
       return;
@@ -165,7 +209,7 @@ class Enemy {
     if (this.state === 'floored' || this.state === 'stagger' || this.state === 'stunned') {
       this.timer -= dt; this.vx *= 0.85; this.vy *= 0.85;
       this.x += this.vx * dt; this.y += this.vy * dt; w.collideCircle(this);
-      if (w.isBurningPx(this.x, this.y)) { this.ignite(game); return; }
+      if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
       if (this.timer <= 0) {
         this.aware = true; this.state = 'chase';
         // The Butcher answers a stagger with a quick retaliation swing if you stayed close.
@@ -176,7 +220,10 @@ class Enemy {
 
     // ---- perception ----
     const sees = this.canSeeGoat(game);
-    if (sees) { this.aware = true; this.lastSeen = { x: g.x, y: g.y }; this.lostTimer = 0; }
+    if (sees) {
+      if (!this.aware) game.bark(this, 'spot', 0.85);
+      this.aware = true; this.lastSeen = { x: g.x, y: g.y }; this.lostTimer = 0;
+    }
     else if (this.aware) {
       this.lostTimer += dt;
       // Lose the trail: no sight for a while and far away by path, go check the last place you were seen.
@@ -184,6 +231,9 @@ class Enemy {
         this.aware = false; this.lostTimer = 0; this.target = this.lastSeen; this.state = 'investigate';
       }
     }
+    // Close, and he has not seen you yet: what he mutters is the only warning you get.
+    if (!sees && !this.aware && this.state !== 'investigate' && Math.random() < dt * TUNING.bark.nearChance
+        && Math.hypot(g.x - this.x, g.y - this.y) < TUNING.bark.nearDist * TILE) game.bark(this, 'near');
     for (const n of w.noises) {
       if (Math.hypot(n.x - this.x, n.y - this.y) > n.r) continue;
       if (n.kind === 'lure') {
@@ -191,13 +241,18 @@ class Enemy {
         // Stand still and they find you; move and they search where you were.
         this.target = { x: n.x, y: n.y }; this.state = 'investigate'; this.aware = false; this.lostTimer = 0;
         this.facing = Math.atan2(n.y - this.y, n.x - this.x); this.lured = 1.2;
+        game.bark(this, 'search', 0.45);
       } else if (!this.aware) {
-        this.target = { x: n.x, y: n.y }; if (this.state === 'idle') this.state = 'investigate';
+        this.target = { x: n.x, y: n.y };
+        if (this.state === 'idle') { this.state = 'investigate'; game.bark(this, 'search', 0.3); }
         this.facing = Math.atan2(n.y - this.y, n.x - this.x);
       }
     }
     if (this.aware && (this.state === 'idle' || this.state === 'investigate')) this.state = 'chase';
-    if (w.isBurningPx(this.x, this.y)) { this.ignite(game); return; }
+    if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+
+    // The scream took the sense out of him: he is still standing, and can do nothing with it.
+    if (this.dazed > 0) { this.vx = 0; this.vy = 0; return; }
 
     if (this.kind === 'bearer') this.updateBearer(dt, game, sees);
     else if (this.kind === 'hunter') this.updateHunter(dt, game, sees);
@@ -222,7 +277,7 @@ class Enemy {
     if (!this.target) { this.state = 'idle'; return; }
     const dx = this.target.x - this.x, dy = this.target.y - this.y, d = Math.hypot(dx, dy);
     if (d < TILE || (this.wallHit && Math.random() < dt * 2)) { this.target = null; this.state = 'idle'; this.vx = 0; this.vy = 0; return; }
-    this.moveToward(dx, dy, this.speed * 0.6, dt);
+    this.moveToward(dx, dy, this.speed * 0.6, dt, game);
   }
 
   updateBearer(dt, game, sees) {
@@ -231,7 +286,7 @@ class Enemy {
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
     if (this.state === 'chase') {
       const d = this.chaseGoat(game, this.speed, dt);
-      if (d < cfg.reach + g.r && !g.dead) { this.state = 'windup'; this.timer = cfg.windup; this.vx = 0; this.vy = 0; }
+      if (d < cfg.reach + g.r && !g.dead) { this.state = 'windup'; this.timer = cfg.windup; this.vx = 0; this.vy = 0; game.bark(this, 'attack', 0.25); }
       return;
     }
     if (this.state === 'windup') {
@@ -265,7 +320,7 @@ class Enemy {
     }
     // chase: keep distance, shoot when possible
     if (sees && this.reload <= 0 && d < cfg.sight * TILE) { this.state = 'aim'; this.timer = cfg.aimTime; this.vx = 0; this.vy = 0; return; }
-    if (d < cfg.backoffDist * TILE && sees) { this.moveToward(-dx, -dy, this.speed * 0.7, dt); this.facing = Math.atan2(dy, dx); return; }
+    if (d < cfg.backoffDist * TILE && sees) { this.moveToward(-dx, -dy, this.speed * 0.7, dt, game); this.facing = Math.atan2(dy, dx); return; }
     if (d > cfg.keepMax * TILE || !sees) { this.chaseGoat(game, this.speed, dt); return; }
     this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx);
   }
@@ -284,13 +339,14 @@ class Enemy {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
       if (this.timer <= 0) {
         if (this.rune) {
-          w.ignitePool(this.rune.x, this.rune.y, cfg.runeRadius);
-          for (let k = 0; k < 18; k++) {
-            const a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * 240;
+          w.ignitePool(this.rune.x, this.rune.y, cfg.runeRadius, true);
+          for (let k = 0; k < 24; k++) {
+            const a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * 260;
             game.parts.push({ x: this.rune.x, y: this.rune.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-              life: 0.3 + Math.random() * 0.4, color: Math.random() < 0.4 ? PALETTE.cult : PALETTE.fire, size: 3 + Math.random() * 3 });
+              life: 0.3 + Math.random() * 0.45, color: Math.random() < 0.5 ? PALETTE.witch : PALETTE.witchHi, size: 3 + Math.random() * 3 });
           }
-          game.ring(this.rune.x, this.rune.y, cfg.runeRadius * TILE * 1.6, PALETTE.cult);
+          game.ring(this.rune.x, this.rune.y, cfg.runeRadius * TILE * 1.6, PALETTE.witchHi);
+          game.flash(PALETTE.witch, 0.14);
           w.emitNoise(this.rune.x, this.rune.y, TUNING.noise.rune);
           game.audio.sfxRune(); game.shake(5);
         }
@@ -307,7 +363,7 @@ class Enemy {
       game.audio.sfxCast(); w.emitNoise(this.x, this.y, TUNING.noise.cast);
       return;
     }
-    if (d < cfg.keepMin * TILE && sees) { this.moveToward(-dx, -dy, this.speed, dt); this.facing = Math.atan2(dy, dx); return; }
+    if (d < cfg.keepMin * TILE && sees) { this.moveToward(-dx, -dy, this.speed, dt, game); this.facing = Math.atan2(dy, dx); return; }
     if (d > cfg.keepMax * TILE || !sees) { this.chaseGoat(game, this.speed, dt); return; }
     this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx);
   }
