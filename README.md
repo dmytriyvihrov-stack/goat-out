@@ -35,8 +35,8 @@ the thumbs get their own deck below it. In landscape the controls overlay the bo
 | BUTT on the bars | left click on the bars | break out of the pen you start level 1 in |
 | BUTT | left click | headbutt — into a wall, pillar, brazier or another man it kills; on open floor it only knocks down |
 | hold GRAB | hold right click | carry a man in front as a shield — he stops two bullets and any swing |
-| release GRAB | release right click | throw — he kills what he hits and dies on the wall |
-| ROLL | E | clumsy sideways tumble with brief mercy frames |
+| release GRAB | release right click | throw — he kills what he hits and dies on the wall. Then a beat before you can grab again |
+| ROLL | E | clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
 | BAAH | space | scream — everyone in earshot is dazed for a second, whatever he was doing. It calls nobody. |
 | tap after death | Backspace | new level |
 | — | M | mute |
@@ -50,9 +50,10 @@ printed in the top right.
 
 ## What is in
 
-**Four levels.** THE ALTAR is Bearers only. THE YARD adds Seers, late and one to a room. THE ROAD adds
-Hunters, posted on their own as well as in crowds. THE BRIDGE mixes all four. Each is a chain of
-hand-authored rooms stitched together differently every run, and each one hands your hearts back.
+**Four levels.** THE ALTAR is Bearers, with one hound near the end of it. THE YARD adds Seers, late and
+one to a room. THE ROAD adds Hunters, posted on their own as well as in crowds. THE BRIDGE mixes all five.
+Every level carries more hounds than the one before. Each is a chain of hand-authored rooms stitched
+together differently every run, and each one hands your hearts back.
 
 **A pen, not an altar.** Level 1 starts you caged beside the slab they meant to use, with the goat that
 went before you opened up on the floor and their tools laid out beside it. Three headbutts take the bars
@@ -63,10 +64,16 @@ and hold nobody.
 pillar rows, hay, tables, braziers, lamps, a bell and fifteen men between you and the far door. The
 **Gallery** on those levels is the opposite problem — pillar cover and rifles posted well apart.
 
-**Four enemy types.** Club-swinging Bearers, blinking Seers whose runes erupt into violet witchfire that
-no boon protects you from, Hunters whose bullets travel and hit their own, and the Butcher who takes two
-hits and cannot be interrupted mid-swing. They shout short lines when they see you, hear you, swing at
-you or watch one of their own come apart — and they walk around fire rather than through it.
+**Five enemy types.** Club-swinging Bearers, blinking Seers whose runes erupt into violet witchfire that
+no boon protects you from, Hunters whose bullets travel and hit their own, the Butcher who takes three
+hits and cannot be interrupted mid-swing, and the hounds. They shout short lines when they see you, hear
+you, swing at you or watch one of their own come apart — and they read the room: fire, lit braziers, a
+rune about to go off and the sweeping arms of the Mill. Not all of them read it correctly.
+
+**The hounds.** As quick as you are, and the only thing in the compound you cannot get hold of. A hound
+circles out past your horns, picks a moment, runs in for one bite and gets out again — and it is not
+there for a good share of the headbutts you aim at it. One hit kills it. The answer to a pack is the
+scream: a hound loses far longer to BAAH than a man does, and a dazed hound cannot dodge at all.
 
 **Two bosses per level**, each dropping a tome. A tome offers three actives or three passives. Dragon
 Breath turns the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Devour lets you
@@ -77,6 +84,10 @@ doors you smash through, tables that slide and crush, oil lamps that spill fire,
 ritual grinding wheel whose arms fling cultists to their deaths and take a heart off you.
 
 **Two milk bowls per level** restore a heart.
+
+**The skill rail**, top right: your four verbs as icons, whether each is ready, the cooldown on throw,
+roll and scream, and what your tomes have done to each of them. Long Horns lengthens the horns on the
+icon and on the goat; Dragon Breath turns the scream into a cone of fire.
 
 **Presentation.** A slightly tilted camera that punches on every kill, blocky cult pictograms stamped into
 the floors, blood and gore that persist as paint for the whole level, a kill counter for bodies that land

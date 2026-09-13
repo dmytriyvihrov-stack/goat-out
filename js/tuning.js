@@ -33,11 +33,12 @@ const TUNING = {
     decel: 0.25,            // s to stop
     hp: 4,
     headbutt: { windup: 0.12, active: 0.15, recovery: 0.35, lunge: 26 * TILE, impulse: 30 * TILE, reach: 1.7 * TILE },
-    grab: { reach: 1.6 * TILE, speedMul: 0.7, holdTime: 3.0, throwImpulse: 34 * TILE, holdDist: 22 },
+    // A throw is a commitment now: you let him go, and your mouth is empty for a beat.
+    grab: { reach: 1.6 * TILE, speedMul: 0.7, holdTime: 3.0, throwImpulse: 34 * TILE, holdDist: 22, cooldown: 1.35 },
     // BAAH no longer calls them in. It takes the sense out of everyone who hears it, briefly.
     scream: { duration: 0.3, cooldown: 4.0, radius: 12, stun: 0.9 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat.
-    roll: { speed: 16.5 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.0 },
+    roll: { speed: 16.5 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7 },
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
     devour: { time: 1.15, healChance: 0.45 },
     bomb: { fuse: 0.34, radius: 2.6 * TILE, impulse: 24 * TILE },
@@ -54,6 +55,19 @@ const TUNING = {
     keepMin: 5, keepMax: 8, backoffDist: 4, aimTime: 0.8, reload: 1.35,
     bulletSpeed: 25 * TILE, damage: 1,
   },
+  // The hound. As quick as the goat, impossible to get hold of, and it will not stand still to be
+  // hit: a share of every headbutt it is simply not there for any more. One thing it cannot do is
+  // think its way through a BAAH — a screamed pack is a dead pack, and that is the point of it.
+  dog: {
+    radius: 9, speed: 0.98 * 8.2 * TILE, sight: 12, cone: Math.PI * 0.9,
+    reach: 0.95 * TILE, windup: 0.3, swing: 0.12, recover: 0.3, damage: 1, knock: 0.8 * TILE,
+    flooredTime: 0.7,
+    dodge: 0.38, dodgeCd: 1.2, dodgeSpeed: 15 * TILE, dodgeTime: 0.2,
+    circle: 2.6, circleFlip: 0.9, lungeCd: 1.5, dartTime: 0.9, retreat: 0.45,
+    dazeMul: 2.6,       // the scream is the answer to a pack, and it has to read as the answer
+    flingMul: 1.3,      // light enough that a headbutt really throws it
+    trapSense: 0.95,    // a hound reads the room better than the men do
+  },
   // The Seer never closes. He paints a rune where you are standing and blinks away when you get near.
   // Two hits, like the Butcher — but unlike him he can still be grabbed, carried and thrown.
   seer: {
@@ -64,10 +78,13 @@ const TUNING = {
   },
   butcher: {
     radius: 20, speed: 0.6 * 8.2 * TILE, sight: 9, cone: Math.PI * 0.7,
-    hp: 2, reach: 1.9 * TILE, windup: 0.88, swing: 0.2, recover: 0.62, arc: Math.PI * 2 / 3, damage: 1,
+    hp: 3, reach: 1.9 * TILE, windup: 0.88, swing: 0.2, recover: 0.62, arc: Math.PI * 2 / 3, damage: 1,
     chargeMin: 4, chargeWind: 0.6, chargeSpeed: 14 * TILE, chargeTime: 1.1, chargeCooldown: 2.5, stun: 1.5, stagger: 0.4,
-    burnTick: 1.0,
+    burnTick: 1.0, burnHearts: 1,   // he comes out of a fire scorched and one heart down, not dead
   },
+  // What a man makes of the room he is running through. Trap sense is rolled per man, so one of them
+  // in a crowd reads the Mill wrong and rides it into a wall while the rest step round.
+  ai: { senseMin: 0.5, senseMax: 0.95, blindFor: 0.9, rollGap: 0.7, millLead: 0.6 },
   physics: {
     splatSpeed: 11 * TILE,
     flungDrag: 3.5,
@@ -117,10 +134,11 @@ const TUNING = {
 
 // Boons bend numbers and verbs the goat already has. Actives change what a button does;
 // passives change how well everything works. The Butcher drops a tome: three of one kind.
+// `skill` is the button a boon hangs off in the HUD rail; the three without one are body work.
 const BOON_BASE = {
   maxHp: 4, speed: 1, butcherDamage: 1, fireImmune: false,
   headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
-  shieldBullets: 2, holdTime: 3.0, livingShield: false,
+  shieldBullets: 2, holdTime: 3.0, livingShield: false, grabCooldown: 1,
   screamCooldown: 4.0, screamRadius: 12,
   rollDistance: 1, rollCooldown: 1,
   breath: false, bomb: false, devour: false,
@@ -128,22 +146,22 @@ const BOON_BASE = {
 
 const BOONS = [
   // ---- actives: they change what a button does ----
-  { id: 'breath', active: true, name: 'DRAGON BREATH', desc: 'The scream becomes a cone of fire. Slower to recharge.',
+  { id: 'breath', skill: 'scream', active: true, name: 'DRAGON BREATH', desc: 'The scream becomes a cone of fire. Slower to recharge.',
     apply: (m) => { m.breath = true; m.screamCooldown = TUNING.goat.breath.cooldown; } },
-  { id: 'bomb', active: true, name: 'BOMB CHARGE', desc: 'Anyone you headbutt detonates a moment later.',
+  { id: 'bomb', skill: 'butt', active: true, name: 'BOMB CHARGE', desc: 'Anyone you headbutt detonates a moment later.',
     apply: (m) => { m.bomb = true; } },
-  { id: 'devour', active: true, name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
+  { id: 'devour', skill: 'grab', active: true, name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
     apply: (m) => { m.devour = true; } },
 
   // ---- passives ----
   { id: 'hide', name: 'THICK HIDE', desc: 'One more heart, and it fills now.', apply: (m) => { m.maxHp += 1; }, heal: 1 },
-  { id: 'horns', name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.', apply: (m) => { m.headbuttReach *= 1.45; m.headbuttImpulse *= 1.25; } },
-  { id: 'skull', name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.', apply: (m) => { m.headbuttRecovery *= 0.55; } },
-  { id: 'jaw', name: 'STRONG JAW', desc: 'A held man stops four bullets and struggles longer.', apply: (m) => { m.shieldBullets = 4; m.holdTime = 5.5; } },
-  { id: 'shield', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing. At his own.', apply: (m) => { m.livingShield = true; } },
-  { id: 'throat', name: 'RAW THROAT', desc: 'Scream twice as often, and twice as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 20; } },
+  { id: 'horns', skill: 'butt', name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.', apply: (m) => { m.headbuttReach *= 1.45; m.headbuttImpulse *= 1.25; } },
+  { id: 'skull', skill: 'butt', name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.', apply: (m) => { m.headbuttRecovery *= 0.55; } },
+  { id: 'jaw', skill: 'grab', name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.', apply: (m) => { m.shieldBullets = 4; m.holdTime = 5.5; m.grabCooldown *= 0.6; } },
+  { id: 'shield', skill: 'grab', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing. At his own.', apply: (m) => { m.livingShield = true; } },
+  { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and twice as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 20; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
-  { id: 'joints', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
+  { id: 'joints', skill: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
   { id: 'ember', name: 'EMBER COAT', desc: 'Ordinary fire stops burning you. Witchfire does not care.', apply: (m) => { m.fireImmune = true; } },
 ];
 
@@ -166,13 +184,17 @@ const BARKS = {
   attack: ['HOLD IT DOWN', 'FOR THE ALTAR', 'BLEED', 'STAY STILL'],
   // walking into flame is for the goat, not for him
   fire: ['FIRE!', 'GO ROUND', 'IT BURNS', 'THE HAY!'],
+  // the Mill, a lit brazier, a rune about to go off: everything else in the room that kills
+  trap: ['THE WHEEL!', 'MIND THE ARMS', 'NOT THAT WAY', 'GO ROUND IT', 'STEP BACK'],
+  // a hound has the goat and the men know what that is worth
+  hound: ['THE HOUNDS HAVE IT', 'LET THEM WORK', 'GOOD DOG', 'HOLD IT, DOG'],
 };
 
 const LEVELS = [
   {
     name: 'THE ALTAR', sub: 'Level 1', rooms: 9, showControls: true, startCage: true,
     arenas: [{ at: 3, boss: 'bearer' }, { at: 7, boss: 'seer' }],
-    millAt: 5, heals: 2, ranged: 'none', seerShare: 0,
+    millAt: 5, heals: 2, ranged: 'none', seerShare: 0, dogs: 1, dogFrom: 6,
     floor: '#2b1a26', floorAlt: '#31202c', wall: '#7c5a36', wallTop: '#9c7446',
     fog: '#0d0a0c', doorChance: 0.5,
     hint: null,
@@ -181,7 +203,7 @@ const LEVELS = [
   {
     name: 'THE YARD', sub: 'Level 2', rooms: 12,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
-    millAt: 7, heals: 2, ranged: 'seer', seerShare: 0.55, seerFrom: 5, seerPerRoom: 1,
+    millAt: 7, heals: 2, ranged: 'seer', seerShare: 0.55, seerFrom: 5, seerPerRoom: 1, dogs: 3, dogFrom: 3,
     floor: '#8a7554', floorAlt: '#907b5a', wall: '#3b2233', wallTop: '#55344a',
     fog: '#120d12', doorChance: 0.42,
     hint: 'THE SEER BURNS THE GROUND YOU STAND ON',
@@ -190,7 +212,7 @@ const LEVELS = [
   {
     name: 'THE ROAD', sub: 'Level 3', rooms: 14,
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    millAt: 8, heals: 2, ranged: 'both', seerShare: 0.3, seerFrom: 3, seerPerRoom: 1,
+    millAt: 8, heals: 2, ranged: 'both', seerShare: 0.3, seerFrom: 3, seerPerRoom: 1, dogs: 5, dogFrom: 2,
     hallAt: 9, hallBudget: 15, galleryAt: 6, lonePosts: 3,
     floor: '#4a3a2e', floorAlt: '#524032', wall: '#2a2430', wallTop: '#3e3346',
     fog: '#0b0a0d', doorChance: 0.35,
@@ -201,7 +223,7 @@ const LEVELS = [
     // Everything the compound has left, all at once, on the bridge they were driving you over.
     name: 'THE BRIDGE', sub: 'Level 4', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
-    millAt: 7, heals: 3, ranged: 'both', seerShare: 0.5, seerFrom: 2, seerPerRoom: 1,
+    millAt: 7, heals: 3, ranged: 'both', seerShare: 0.5, seerFrom: 2, seerPerRoom: 1, dogs: 7, dogFrom: 2,
     hallAt: 12, hallBudget: 18, galleryAt: 2, lonePosts: 4,
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
     fog: '#06070a', doorChance: 0.3,

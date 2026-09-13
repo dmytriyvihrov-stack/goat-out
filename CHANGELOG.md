@@ -5,6 +5,40 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.9 — the hounds, a room the cult can read, and the skills in the corner
+
+- **The hound.** A fourth kind of enemy, and the first one that is not a man. It runs as fast as you do,
+  circles just outside its own reach and darts in for a single bite, then gets out again. You cannot get
+  hold of one — reach for it and it is already elsewhere — and a share of every headbutt you throw it is
+  simply not there for. It is meant to be unpredictable, not unkillable: one hit kills it, and it is
+  light enough that the hit really throws it.
+- **BAAH is the answer to a pack.** A hound loses well over twice as long to the scream as a man does,
+  and a dazed hound cannot dodge at all — so a screamed pack is a pack you can take apart one at a time.
+  It is the first enemy the game builds specifically around a button you already had.
+- **The cult reads the room now.** Men steer around fire, lit braziers, a rune about to go off and the
+  arms of the Mill — they check where the arms *will be* by the time they get there, not where they are.
+  Every man rolls his own trap sense, so one in a crowd reads the wheel wrong and rides it into a wall,
+  and that man is the reason the Mill is still a trap and not a fence. Hounds read a room better than
+  any of them.
+- **Throw and roll are on short cooldowns.** Letting a man go empties your mouth for a beat (1.35s) and
+  a tumble costs you the same before the next one, so neither is a button you can hold down. On a phone
+  the rings on GRAB and ROLL count it down; on a desktop the skill rail does.
+- **The roll is a panic button and now behaves like one.** With no direction asked for it throws you away
+  from whatever is about to hit you — weighted toward whoever is mid-swing — and never into a wall or a
+  fire. With a direction asked for, that direction wins unless it runs into a man, in which case it
+  slides to the nearest angle that does not.
+- **The skill rail, top right.** The four verbs as icons: what each button does now, whether it is
+  available, how long until it is, and what your tomes have done to it. Long Horns lengthens the horns
+  on the icon *and* on the goat; Dragon Breath turns the scream into a cone of fire; Bomb Charge puts a
+  charge on the headbutt; Loose Joints adds a second turn to the roll. Boon names moved to that corner
+  with them; the hearts and the combo stayed on the left.
+- **The Butcher takes one more hit, and fire no longer melts him.** Three hearts, and a burn costs him
+  exactly one of them however long he stands in it. Anyone carrying more than one hit — Butcher, Seer,
+  arena elite — now shows what is left of him over his head.
+- **A better head on the goat.** Body, a short dark neck and a round skull that sits on top of it, each
+  with a thin dark edge, so from straight above you can see where the goat ends and the head begins.
+  Two eyes with rectangular pupils, ears to each side, and a beard that is a tuft rather than a tusk.
+
 ## 0.8 — four levels, the scream that stuns, and a goat you can recognise
 
 - **A fourth level: THE BRIDGE.** Sixteen rooms of cold stone, three arena bosses, a Mill, a Great Hall

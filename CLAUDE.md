@@ -77,10 +77,23 @@ twice. Only `devour` and `boom` skip it.
 winding up is cancelled, and stars orbit his head. It is a timer, not a state, so the flung / floored /
 burning machinery underneath is untouched.
 
-**Enemies.** One `Enemy` class. `kind` is `bearer`, `hunter`, `seer` or `butcher`; `update()` dispatches
-to `updateBearer` / `updateHunter` / `updateSeer` / `updateButcher`. Shared machinery (perception, being
-flung, burning, being held, the bomb fuse) sits above the dispatch. Arena bosses carry `elite` and `boss`
-flags: elites absorb hits before dying, bosses drop a tome.
+**Enemies.** One `Enemy` class. `kind` is `bearer`, `hunter`, `dog`, `seer` or `butcher`; `update()`
+dispatches to `updateBearer` / `updateHunter` / `updateDog` / `updateSeer` / `updateButcher`. Shared
+machinery (perception, being flung, burning, being held, the bomb fuse) sits above the dispatch. Arena
+bosses carry `elite` and `boss` flags: elites absorb hits before dying, bosses drop a tome.
+
+**The hound.** `kind === 'dog'` is the one enemy that is not a man: no barks (only `sfxGrowl`), no grab
+(`tryGrab` skips it and says TOO QUICK), and `tryDodge` lets it slip `TUNING.dog.dodge` of the headbutts
+aimed at it. Its loop is orbit → `dart` → `windup` → bite → `retreat`; the dart is the window you get.
+The counter is the scream: `daze()` multiplies by `cfg.dazeMul` for a dog, and a dazed dog cannot dodge.
+`game.houndSeen()` growls and teaches that once per run.
+
+**Trap sense.** `hazardAt()` answers what will kill a man standing at a point — flame, a lit brazier, a
+rune mid-cast, or the arm of the Mill about to come round (`Prop.millThreat` predicts `TUNING.ai.millLead`
+seconds ahead). `avoidHazard()` steers round it, and every enemy rolls a `trapSense` on spawn: fail the
+roll and he is blind to it for `TUNING.ai.blindFor`, which is why one man in a crowd still rides the
+wheel into a wall. `game.hazards` (fixed for the level) and `game.runes` (rebuilt each step) keep it
+off the per-frame prop loop.
 
 **Props.** One `Prop` class for brazier, pot, bell, door, table, lamp, mill and heal. `blocking` and
 `stopsBullets` are getters, not fields. `headbutt()` dispatches per kind.
@@ -88,6 +101,17 @@ flags: elites absorb hits before dying, bosses drop a tome.
 **Boons.** `game.mods` is recomputed from `game.boons` by `applyBoons()`. Every use site reads
 `game.mods.X` rather than `TUNING` directly, so nothing mutates `TUNING` (which would leak across runs).
 Adding a boon means: add it to `BOONS`, add its default to `BOON_BASE`, and read the mod at the use site.
+Give it a `skill` (`butt` / `grab` / `roll` / `scream`) and it hangs off that button in the HUD rail; leave
+`skill` off and it is body work, listed but attached to nothing.
+
+**The skill rail.** `drawSkills` (top right) is the only place the four verbs are reported: availability,
+cooldown, and what the tomes did to each. `skillIcon` draws each verb from `game.mods`, so an icon has to
+change when a boon lands — Long Horns lengthens the horns on the icon and on the goat, Dragon Breath turns
+the mouth into a cone, Loose Joints adds a second turn to the roll. Add a boon, draw its effect here.
+
+**Cooldowns.** Headbutt has none (its recovery is the cost). Throw does: `goat.grabCd`, set on every way a
+man leaves your mouth, so grab is not a button you hold. Roll has its own. Both show on the rail and as
+rings on the touch buttons; both read `game.mods`, never `TUNING`, at the use site.
 
 **Fire has two kinds.** `world.fire` holds seconds left, `world.fireKind` holds 0 for ordinary flame and
 1 for the Seer's witchfire. Witchfire spreads as witchfire, draws violet, scorches violet and ignores
@@ -105,6 +129,10 @@ decal canvas when they expire. The renderer applies kick and zoom in `draw`, and
 **The pen.** Cage bars are ordinary `Prop`s of kind `cage`, built by `buildCage` in `gen.js` and exempt
 from the three-tile prop clearance around the start. A headbutt on any of them breaks all of them and
 sets `game.cageOpen`, which is what hides the floor prompt. Only levels with `startCage` get one.
+
+**The roll.** `Goat.rollDirection` scores 24 candidate angles against nearby men (weighted up if one is
+mid-swing), walls and fire, and honours the stick when there is one. With no direction asked for it is a
+pure escape, which is the whole reason the button exists on a phone.
 
 **The loop.** Fixed 1/60 step, max 5 substeps, in `game.frame`. `timeScale` drives slow motion.
 A `setInterval` fallback drives the loop when `requestAnimationFrame` stalls, which it does when the
@@ -138,6 +166,9 @@ const s = document.createElement('script'); s.src = '/tools/harness.js'; documen
 
 **Traps that have bitten before, in this exact order:**
 
+- Testing a hound's dodge or bite without waiting out the goat's headbutt recovery (0.35s) between
+  swings: the input is dropped, nothing happens, and it reads as the dodge being broken. Wait, or check
+  `goat.lungeId` actually moved.
 - Teleporting the goat next to a wall and then testing a mechanic that needs line of sight. `los()`
   from inside a wall fails immediately and everything downstream looks broken.
 - `H.freeze()` freezing the very enemy under test. Use `H.freeze(target)` to spare one.

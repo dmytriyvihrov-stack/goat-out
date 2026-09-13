@@ -143,6 +143,27 @@ function tryGenerate(levelDef, seed) {
     }
   }
 
+  // The hounds. In pairs where a room has space for a pair: one hound is a problem you solve, two
+  // are a problem that solves you while you are busy with the first. Never in the Mill room — that
+  // room is already about one thing.
+  if (levelDef.dogs) {
+    const from = levelDef.dogFrom === undefined ? 2 : levelDef.dogFrom;
+    const eligible = rng.shuffle(rooms.filter((r) => r.index >= from && r.index > 0 && !r.calm && !r.isMill));
+    let placed = 0;
+    for (const room of eligible) {
+      if (placed >= levelDef.dogs) break;
+      const pack = Math.min(levelDef.dogs - placed, rng.chance(0.55) ? 2 : 1);
+      for (let i = 0; i < pack; i++) {
+        for (let k = 0; k < 40; k++) {
+          const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
+          if (tiles[ty * W + tx] !== T.FLOOR) continue;
+          spawns.push({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE, kind: 'dog', roomIndex: room.index });
+          placed++; break;
+        }
+      }
+    }
+  }
+
   // Two bowls of milk per level, dropped in ordinary rooms between the set pieces.
   const healRooms = rng.shuffle(rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.calm && !r.isGallery)).slice(0, levelDef.heals || 0);
   healRooms.forEach((room) => {

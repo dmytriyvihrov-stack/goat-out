@@ -51,12 +51,21 @@ no real nationality. The original meme survives only as the prologue card.
 | Mouse / auto-aim | Aim. On touch the aim follows your run and snaps onto men within about five tiles. |
 | Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.35 s recovery, no cancel. |
 | Hold right click / GRAB | Carry a man in front as a shield. He stops two bullets and any swing. Breaks free after 3 s. |
-| Release | Throw. A thrown man kills what he hits and dies on the wall. |
-| E / ROLL | Clumsy sideways tumble. Brief mercy frames, then a stagger you must eat. |
+| Release | Throw. A thrown man kills what he hits and dies on the wall. Your mouth is then empty for about 1.3 s. |
+| E / ROLL | Clumsy sideways tumble. Brief mercy frames, then a stagger you must eat, then about 1.3 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. |
 | Space / BAAH | Scream. Everyone in earshot is dazed for about a second, whatever he was doing. It calls nobody. |
 
 Four hearts, no regeneration, one life per level. A new level puts every heart back. Blood smears the
 coat as you take hits, so health reads on the character as well as in the corner.
+
+**Cooldowns exist to stop a verb becoming a held button.** Headbutt pays with its recovery; throw and roll
+pay with a beat of about a second and a third. Nothing is on a global cooldown and nothing is queued: if a
+button is lit it fires, and the corner rail is where you read which ones are lit.
+
+**The skill rail** in the top-right corner is the goat's sheet: four icons for four verbs, each showing
+whether it is ready, how long until it is, and what the tomes have done to it. A boon has to change its
+icon — Long Horns lengthens the horns there and on the goat, Dragon Breath turns the mouth into a cone of
+fire — so a build reads as a shape rather than as a list of names.
 
 He is drawn a quarter turn toward the camera: the head clear of the body, horns sweeping back and out
 past the outline, a beard off the chin and a rectangular pupil in a visible eye.
@@ -70,7 +79,8 @@ past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 | **Bearer** | Melee. 0.58 s windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
 | **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the Butcher he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for 0.8 s with a visible line, bullets travel. Friendly fire is on and he does not care. |
-| **Butcher** | Heavy. Two hits. Cannot be interrupted mid-swing, answers a stagger with a quick retaliation, and charges in a straight line after a visible windup. A charge into a wall stuns him for a free hit. Deals one heart. |
+| **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run, bites once and gets out. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
+| **Butcher** | Heavy. Three hits, and fire only ever costs him one of them however long he burns. Cannot be interrupted mid-swing, answers a stagger with a quick retaliation, and charges in a straight line after a visible windup. A charge into a wall stuns him for a free hit. Deals one heart. |
 
 **Arena bosses** carry an elite flag: they absorb three hits, going down and getting back up, and a Seer
 blinks clear each time. Every boss drops a tome.
@@ -80,8 +90,19 @@ seen you yet, when a scream pulls them somewhere, when they commit to a swing, w
 front of them, and when they run into fire. One man speaks at a time so a crowd reads as a cult rather
 than as noise.
 
-**They are not stupid about fire.** A burning tile ahead makes a man steer round it; hemmed in, he stops
-at the edge and waits for it to burn out. A man already alight has nothing to dodge and spreads it.
+**They read the room.** Flame, a lit brazier, a rune about to erupt and the arms of the Mill all make a
+man steer round rather than through — and for the Mill he checks where the arms will be by the time he
+arrives, not where they are now. Hemmed in, he stops at the edge or gives ground. A man already alight has
+nothing to dodge and spreads it.
+
+**And they get it wrong.** Every man rolls his own trap sense when he spawns. Fail the roll and he is
+blind to what he is walking into for about a second, which is why one man in a crowd still rides the wheel
+into a wall while the rest step round it. Avoidance that never fails turns a trap into a fence; the point
+is that the room is dangerous to both sides, and the cult is only mostly careful. Hounds read a room
+better than any of them.
+
+**Anything that takes more than one hit shows it.** Butcher, Seer and arena elites carry health notches
+over their heads, so what is left of a man reads off the man.
 
 ---
 
@@ -92,10 +113,10 @@ a heart. The later two add a Gallery of posted rifles and a Great Hall.
 
 | | Rooms | Regular enemies | Bosses |
 |---|---|---|---|
-| **THE ALTAR** | 9 | Bearers | Two elite Seers |
-| **THE YARD** | 12 | Bearers, Seers | Butcher, elite Seer |
-| **THE ROAD** | 14 | Bearers, Seers, Hunters | Two Butchers |
-| **THE BRIDGE** | 16 | All four, mixed | Butcher, elite Seer, Butcher |
+| **THE ALTAR** | 9 | Bearers, one hound | Two elite Seers |
+| **THE YARD** | 12 | Bearers, Seers, hounds | Butcher, elite Seer |
+| **THE ROAD** | 14 | Bearers, Seers, Hunters, hounds | Two Butchers |
+| **THE BRIDGE** | 16 | All five, mixed | Butcher, elite Seer, Butcher |
 
 **The Great Hall**, late on THE ROAD and again on THE BRIDGE: a single room 38 by 22 tiles holding two
 Mills, rows of pillars, hay fields, tables, braziers, lamps, a bell and fifteen men or more. The exit is
@@ -167,8 +188,10 @@ straight down, while creatures stand upright inside it. Roughly 14 tiles across 
 
 **Art.** Hard silhouettes in a seven-colour palette. Every enemy type reads differently at a glance:
 Bearer is a circle with a club, Seer a tall pointed hood with a lit staff, Hunter a low hood with a long
-rifle, Butcher a big shape in a bone apron with horns on his mask. The goat reads as a goat from its
-snout, beard, swept horns and rectangular pupils.
+rifle, Butcher a big shape in a bone apron with horns on his mask, the hound a long low four-legged thing
+with a lit spine and two yellow eyes. The goat reads as a goat from its snout, beard, swept horns and
+rectangular pupils — body, a short dark neck and a round head, each edged in dark so the pieces never
+merge into one blob from straight above.
 
 **Pictograms.** Cult signs are blocky pixel grids stamped into the floor, snapped to whole decal pixels.
 The health hearts use the same language.
