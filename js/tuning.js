@@ -64,6 +64,7 @@ const TUNING = {
     flooredTime: 0.7,
     dodge: 0.38, dodgeCd: 1.2, dodgeSpeed: 15 * TILE, dodgeTime: 0.2,
     circle: 2.6, circleFlip: 0.9, lungeCd: 1.5, dartTime: 0.9, retreat: 0.45,
+    packGap: 7, packWait: 0.55,   // one hound runs in at a time; the rest hold the ring
     dazeMul: 2.6,       // the scream is the answer to a pack, and it has to read as the answer
     flingMul: 1.3,      // light enough that a headbutt really throws it
     trapSense: 0.95,    // a hound reads the room better than the men do
@@ -84,7 +85,10 @@ const TUNING = {
   },
   // What a man makes of the room he is running through. Trap sense is rolled per man, so one of them
   // in a crowd reads the Mill wrong and rides it into a wall while the rest step round.
-  ai: { senseMin: 0.5, senseMax: 0.95, blindFor: 0.9, rollGap: 0.7, millLead: 0.6 },
+  ai: { senseMin: 0.5, senseMax: 0.95, blindFor: 0.9, rollGap: 0.7,
+    millLead: 0.6,     // s of arm sweep he looks ahead before deciding a spot is taken
+    millClear: 15,     // px of berth he wants round the arms: stepping to the very edge is not enough
+    trapLook: 30 },    // px past his own radius he checks for a wheel or a brazier (flame he reads later)
   physics: {
     splatSpeed: 11 * TILE,
     flungDrag: 3.5,

@@ -84,16 +84,25 @@ bosses carry `elite` and `boss` flags: elites absorb hits before dying, bosses d
 
 **The hound.** `kind === 'dog'` is the one enemy that is not a man: no barks (only `sfxGrowl`), no grab
 (`tryGrab` skips it and says TOO QUICK), and `tryDodge` lets it slip `TUNING.dog.dodge` of the headbutts
-aimed at it. Its loop is orbit → `dart` → `windup` → bite → `retreat`; the dart is the window you get.
-The counter is the scream: `daze()` multiplies by `cfg.dazeMul` for a dog, and a dazed dog cannot dodge.
-`game.houndSeen()` growls and teaches that once per run.
+aimed at it. Its loop is orbit → `dart` → `windup` → bite → `retreat`; the dart is the window you get,
+and `drawHound` gives it the only tell it has (flattened body, streaks, lit eyes) — keep that tell if you
+touch the sprite. `packBusy()` lets one hound of a pack commit at a time, which is what keeps three of
+them readable. The counter is the scream: `daze()` multiplies by `cfg.dazeMul` for a dog, cancels a dart,
+and a dazed dog cannot dodge. `game.houndSeen()` growls and teaches that once per run.
 
-**Trap sense.** `hazardAt()` answers what will kill a man standing at a point — flame, a lit brazier, a
-rune mid-cast, or the arm of the Mill about to come round (`Prop.millThreat` predicts `TUNING.ai.millLead`
-seconds ahead). `avoidHazard()` steers round it, and every enemy rolls a `trapSense` on spawn: fail the
-roll and he is blind to it for `TUNING.ai.blindFor`, which is why one man in a crowd still rides the
-wheel into a wall. `game.hazards` (fixed for the level) and `game.runes` (rebuilt each step) keep it
-off the per-frame prop loop.
+**Trap sense.** `hazardAt()` answers what will kill whoever is at a point — flame, a lit brazier, a rune
+mid-cast, or the arm of the Mill about to come round (`Prop.millThreat` predicts `TUNING.ai.millLead`
+seconds ahead, with `millClear` px of berth). `avoidHazard()` checks both **where he is walking and where
+he is standing**: an arm sweeps onto a man who is holding still just as happily, and before that check
+existed half a crowd died waiting at the edge. Standing in it, he leaves radially; walking into it, he
+steps round; with no way round he gives ground.
+
+Every enemy rolls a `trapSense` on spawn and then rolls against it **once per encounter** — `hazardSeen`
+freezes the `hazardRoll` timer while anything is still in view, so the timer only runs down once he is
+clear. Re-rolling every `rollGap` instead meant sustained exposure guaranteed a blunder and the wheel ate
+everybody. Fail the roll and he is blind for `TUNING.ai.blindFor`, which is the one man in a crowd who
+still rides the wheel into a wall. `game.hazards` (fixed for the level) and `game.runes` (rebuilt each
+step) keep all of it off the per-frame prop loop.
 
 **Props.** One `Prop` class for brazier, pot, bell, door, table, lamp, mill and heal. `blocking` and
 `stopsBullets` are getters, not fields. `headbutt()` dispatches per kind.

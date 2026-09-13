@@ -13,19 +13,26 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   simply not there for. It is meant to be unpredictable, not unkillable: one hit kills it, and it is
   light enough that the hit really throws it.
 - **BAAH is the answer to a pack.** A hound loses well over twice as long to the scream as a man does,
-  and a dazed hound cannot dodge at all — so a screamed pack is a pack you can take apart one at a time.
-  It is the first enemy the game builds specifically around a button you already had.
+  a scream cancels a run-in outright, and a dazed hound cannot dodge at all — so a screamed pack is a
+  pack you can take apart one at a time. It is the first enemy the game builds specifically around a
+  button you already had.
+- **A pack sends one hound in at a time.** Three of them committing together is a coin toss you cannot
+  read; three taking turns is a pack. Someone is running at you roughly three quarters of the time, but
+  never two at once. And the run-in has the only tell a hound gives you: he flattens out, trails streaks
+  and his eyes come up, which is the moment to put your horns through him.
 - **The cult reads the room now.** Men steer around fire, lit braziers, a rune about to go off and the
   arms of the Mill — they check where the arms *will be* by the time they get there, not where they are.
-  Every man rolls his own trap sense, so one in a crowd reads the wheel wrong and rides it into a wall,
-  and that man is the reason the Mill is still a trap and not a fence. Hounds read a room better than
-  any of them.
+  Every man rolls his own trap sense — once per encounter, not continuously, because a man who re-checks
+  the same wheel forever eventually walks into it however careful he is. About one man in seven crossing
+  the Mill still rides it into a wall, and that man is the reason it is a trap and not a fence. They also
+  read the ground they are *standing* on, not only the step in front of them: before that, half a crowd
+  would hold still at the edge of the arms and get swept anyway. Hounds read a room better than any man.
 - **Throw and roll are on short cooldowns.** Letting a man go empties your mouth for a beat (1.35s) and
   a tumble costs you the same before the next one, so neither is a button you can hold down. On a phone
   the rings on GRAB and ROLL count it down; on a desktop the skill rail does.
 - **The roll is a panic button and now behaves like one.** With no direction asked for it throws you away
-  from whatever is about to hit you — weighted toward whoever is mid-swing — and never into a wall or a
-  fire. With a direction asked for, that direction wins unless it runs into a man, in which case it
+  from whatever is about to hit you — weighted toward whoever is mid-swing — and never into a wall, a
+  fire, a brazier or the wheel. With a direction asked for, that direction wins unless it runs into a man, in which case it
   slides to the nearest angle that does not.
 - **The skill rail, top right.** The four verbs as icons: what each button does now, whether it is
   available, how long until it is, and what your tomes have done to it. Long Horns lengthens the horns

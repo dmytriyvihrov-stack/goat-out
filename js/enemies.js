@@ -21,7 +21,7 @@ class Enemy {
     // rolls badly walks straight into what he is looking at. A hound reads the room better than any.
     this.trapSense = cfg.trapSense !== undefined ? cfg.trapSense
       : TUNING.ai.senseMin + Math.random() * (TUNING.ai.senseMax - TUNING.ai.senseMin);
-    this.hazardBlind = 0; this.hazardRoll = 0;
+    this.hazardBlind = 0; this.hazardRoll = 0; this.hazardSeen = false;
     // hound: how long until he can slip another headbutt, and which way he is circling
     this.dodgeCd = 0; this.dodgeFx = 0; this.lungeCd = Math.random() * 0.8;
     this.circleSign = Math.random() < 0.5 ? -1 : 1; this.circleTimer = 0;
@@ -44,7 +44,7 @@ class Enemy {
     this.vx = 0; this.vy = 0;
     // Whatever he was winding up, aiming or painting is gone.
     if (this.state === 'windup' || this.state === 'aim' || this.state === 'cast' || this.state === 'chargewind'
-        || this.state === 'dodge' || this.state === 'retreat') {
+        || this.state === 'dodge' || this.state === 'retreat' || this.state === 'dart') {
       this.state = 'chase'; this.rune = null;
     }
     game.particles(this.x, this.y - 6, 4, PALETTE.bone, 90);
@@ -125,40 +125,63 @@ class Enemy {
   // Everything in the building that kills whoever walks into it: flame, a lit brazier, a rune about
   // to go off, and the arm of the Mill that is coming round. Returns which kind, so he shouts the
   // right thing about it.
-  hazardAt(game, x, y) {
-    if (game.world.isBurningPx(x, y)) return 'fire';
-    for (const p of game.hazards) {
+  hazardAt(game, x, y, near) {
+    if (game.world.isBurningPx(x, y)) return { kind: 'fire' };
+    for (const p of (near || game.hazards)) {
       if (p.broken) continue;
-      if (p.kind === 'mill') { if (p.millThreat(x, y, this.r)) return 'trap'; }
-      else if (len(p.x - x, p.y - y) < p.r + this.r + 4) return 'fire';
+      if (p.kind === 'mill') { if (p.millThreat(x, y, this.r + TUNING.ai.millClear)) return { kind: 'trap', p }; }
+      else if (len(p.x - x, p.y - y) < p.r + this.r + 4) return { kind: 'fire', p };
     }
-    for (const rn of game.runes) if (len(rn.x - x, rn.y - y) < TUNING.seer.runeRadius * TILE + this.r) return 'trap';
+    for (const rn of game.runes) if (len(rn.x - x, rn.y - y) < TUNING.seer.runeRadius * TILE + this.r) return { kind: 'trap' };
     return null;
   }
 
-  // Steer around it; with no way round, back off or stop at the edge. A man who fails his trap check
-  // walks in anyway for a moment — which is what keeps the Mill a trap rather than a wall.
+  // Steer around it; standing under the arms, get out from under them; with no way round at all, stop
+  // at the edge. A man who fails his trap check walks in anyway for a moment — which is what keeps the
+  // Mill a trap rather than a fence.
   avoidHazard(dirx, diry, game) {
-    const w = game.world, look = this.r + TUNING.fire.avoidLook;
+    const w = game.world;
+    // Flame he can walk up to and read late. A wheel has to be read from further out, or the step
+    // aside happens inside the arc he is stepping out of.
+    const millNear = game.hazards.some((p) => p.kind === 'mill' && Math.abs(p.x - this.x) < 9 * TILE && Math.abs(p.y - this.y) < 9 * TILE);
+    const look = this.r + (millNear ? TUNING.ai.trapLook : TUNING.fire.avoidLook);
     const l = Math.hypot(dirx, diry) || 1; dirx /= l; diry /= l;
-    const bad = (ax, ay) => this.hazardAt(game, this.x + ax * look, this.y + ay * look);
-    const kind = bad(dirx, diry);
-    if (!kind) return { x: dirx, y: diry };
-    // One roll per hazard rather than one per frame: either he reads this thing or he does not.
+    // Only what is within a step of him can matter, and gathering that once keeps the probes cheap.
+    const near = [];
+    for (const p of game.hazards) {
+      const reach = (p.kind === 'mill' ? TUNING.mill.armLen : p.r) + this.r + look + TUNING.ai.millClear + 6;
+      if (Math.abs(p.x - this.x) < reach && Math.abs(p.y - this.y) < reach) near.push(p);
+    }
+    const bad = (ax, ay) => this.hazardAt(game, this.x + ax * look, this.y + ay * look, near);
+    const ahead = bad(dirx, diry);
+    // Where he is standing counts as much as where he is going: an arm sweeps onto him either way,
+    // and a man who only watches his next step is a man the wheel takes while he waits.
+    const here = near.length ? this.hazardAt(game, this.x, this.y, near) : null;
+    if (!ahead && !here) return { x: dirx, y: diry };
+    // One roll per encounter, not one every second he stands near it: a man who keeps re-rolling
+    // against the same wheel eventually walks into it, however careful he is. The roll only comes
+    // back after he has been clear of everything for `rollGap` (see the timer in update).
+    this.hazardSeen = true;
     if (this.hazardRoll <= 0) {
       this.hazardRoll = TUNING.ai.rollGap;
       if (Math.random() > this.trapSense) this.hazardBlind = TUNING.ai.blindFor;
     }
     if (this.hazardBlind > 0) return { x: dirx, y: diry };
-    // A way round has to be a way he can actually walk, or he just slides along the wall into it.
+    // A way out has to be a way he can actually walk, or he just slides along the wall into it.
     const walkable = (ax, ay) => !w.isSolid(Math.floor((this.x + ax * look) / TILE), Math.floor((this.y + ay * look) / TILE));
+    if (here && here.p) {
+      // Already inside it: straight out from the hub, which is the shortest way to not being there.
+      const ox = this.x - here.p.x, oy = this.y - here.p.y, ol = Math.hypot(ox, oy) || 1;
+      if (walkable(ox / ol, oy / ol)) { if (this.aware) game.bark(this, here.kind, 0.12); return { x: ox / ol, y: oy / ol }; }
+    }
+    if (!ahead) return { x: dirx, y: diry };     // only where he stood was wrong, and he cannot leave it
     const base = Math.atan2(diry, dirx);
     for (const off of [0.8, -0.8, 1.5, -1.5, 2.3, -2.3]) {
       const a = base + off, cx = Math.cos(a), cy = Math.sin(a);
-      if (!bad(cx, cy) && walkable(cx, cy)) { if (this.aware) game.bark(this, kind, 0.14); return { x: cx, y: cy }; }
+      if (!bad(cx, cy) && walkable(cx, cy)) { if (this.aware) game.bark(this, ahead.kind, 0.14); return { x: cx, y: cy }; }
     }
     // Nowhere round the arms: give ground rather than stand where they are about to be.
-    if (kind === 'trap' && walkable(-dirx, -diry)) { if (this.aware) game.bark(this, 'trap', 0.1); return { x: -dirx, y: -diry }; }
+    if (ahead.kind === 'trap' && walkable(-dirx, -diry)) { if (this.aware) game.bark(this, 'trap', 0.1); return { x: -dirx, y: -diry }; }
     return null;
   }
   moveToward(dirx, diry, speed, dt, game) {
@@ -188,7 +211,9 @@ class Enemy {
     this.chargeCd = Math.max(0, this.chargeCd - dt); this.reload = Math.max(0, this.reload - dt);
     this.barkCd = Math.max(0, this.barkCd - dt);
     this.dazed = Math.max(0, this.dazed - dt);
-    this.hazardBlind = Math.max(0, this.hazardBlind - dt); this.hazardRoll = Math.max(0, this.hazardRoll - dt);
+    this.hazardBlind = Math.max(0, this.hazardBlind - dt);
+    if (!this.hazardSeen) this.hazardRoll = Math.max(0, this.hazardRoll - dt);
+    this.hazardSeen = false;
     this.dodgeCd = Math.max(0, this.dodgeCd - dt); this.dodgeFx = Math.max(0, this.dodgeFx - dt);
     if (this.say) { this.say.life -= dt; if (this.say.life <= 0) this.say = null; }
     this.flash = Math.max(0, this.flash - dt); this.lured = Math.max(0, (this.lured || 0) - dt);
@@ -420,7 +445,11 @@ class Enemy {
     }
     // chase: close the gap while he cannot see you, then orbit until the moment comes
     if (!sees && d > cfg.circle * TILE) { this.chaseGoat(game, this.speed, dt); return; }
-    if (this.lungeCd <= 0 && !g.dead && (sees || d < cfg.circle * TILE)) {
+    let commit = this.lungeCd <= 0 && !g.dead && (sees || d < cfg.circle * TILE);
+    // One hound goes in at a time. Three of them committing together is a coin toss you cannot read;
+    // three of them taking turns is a pack, and it is the difference between hard and unfair.
+    if (commit && this.packBusy(game, cfg)) { this.lungeCd = cfg.packWait * (0.7 + Math.random() * 0.6); commit = false; }
+    if (commit) {
       this.state = 'dart'; this.timer = cfg.dartTime;
       this.lungeCd = cfg.lungeCd * (0.7 + Math.random() * 0.6);
       // The men know what a hound on the goat is worth, and one of them says so.
@@ -438,6 +467,16 @@ class Enemy {
     const closing = d > ring ? 1 : d < ring * 0.7 ? -0.55 : 0.15;
     this.moveToward(nx * closing + tx, ny * closing + ty, this.speed * (this.lungeCd > 0 ? 0.92 : 1), dt, game);
     this.facing = Math.atan2(dy, dx);
+  }
+
+  // Is another hound near enough, and far enough into a run of its own, that this one should wait?
+  packBusy(game, cfg) {
+    for (const o of game.enemies) {
+      if (o === this || o.dead || o.kind !== 'dog') continue;
+      if (o.state !== 'dart' && o.state !== 'windup' && o.state !== 'swing') continue;
+      if (len(o.x - this.x, o.y - this.y) < cfg.packGap * TILE) return true;
+    }
+    return false;
   }
 
   // The headbutt that does not land. A share of them he is simply not there for — and that share is

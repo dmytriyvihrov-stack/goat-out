@@ -79,7 +79,7 @@ past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 | **Bearer** | Melee. 0.58 s windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
 | **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the Butcher he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for 0.8 s with a visible line, bullets travel. Friendly fire is on and he does not care. |
-| **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run, bites once and gets out. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
+| **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
 | **Butcher** | Heavy. Three hits, and fire only ever costs him one of them however long he burns. Cannot be interrupted mid-swing, answers a stagger with a quick retaliation, and charges in a straight line after a visible windup. A charge into a wall stuns him for a free hit. Deals one heart. |
 
 **Arena bosses** carry an elite flag: they absorb three hits, going down and getting back up, and a Seer
@@ -95,9 +95,10 @@ man steer round rather than through — and for the Mill he checks where the arm
 arrives, not where they are now. Hemmed in, he stops at the edge or gives ground. A man already alight has
 nothing to dodge and spreads it.
 
-**And they get it wrong.** Every man rolls his own trap sense when he spawns. Fail the roll and he is
-blind to what he is walking into for about a second, which is why one man in a crowd still rides the wheel
-into a wall while the rest step round it. Avoidance that never fails turns a trap into a fence; the point
+**And they get it wrong.** Every man rolls his own trap sense when he spawns, and rolls against it once
+per encounter rather than continuously — a man who re-checks the same wheel forever eventually walks into
+it however careful he is. Fail the roll and he is blind to what he is walking into for about a second,
+which is why roughly one man in seven crossing the Mill still rides it into a wall while the rest go round. Avoidance that never fails turns a trap into a fence; the point
 is that the room is dangerous to both sides, and the cult is only mostly careful. Hounds read a room
 better than any of them.
 

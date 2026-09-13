@@ -481,6 +481,17 @@ class Renderer {
     const ctx = this.ctx, r = e.r;
     const run = Math.hypot(e.vx, e.vy) > 40 ? Math.sin(this.t * 26) * (r * 0.42) : 0;
     const thrust = e.state === 'windup' ? -0.18 : e.state === 'swing' ? 0.22 : 0;
+    // The run in is the one thing about a hound you have to read across a room, and until now it
+    // looked exactly like the circling did: he flattens out, streaks, and his eyes come up.
+    const charging = e.state === 'dart';
+    if (charging) {
+      ctx.scale(1.1, 0.9);
+      ctx.strokeStyle = 'rgba(239,230,208,0.22)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-r * 1.7, -r * 0.5); ctx.lineTo(-r * 3, -r * 0.5);
+      ctx.moveTo(-r * 1.7, r * 0.5); ctx.lineTo(-r * 3, r * 0.5);
+      ctx.stroke();
+    }
     // a smear of where he was standing when he slipped the headbutt
     if (e.dodgeFx > 0) {
       ctx.globalAlpha = Math.min(0.5, e.dodgeFx * 1.8); ctx.fillStyle = PALETTE.bone;
@@ -522,7 +533,14 @@ class Renderer {
     ctx.lineTo(r * 1.3, r * 0.17); ctx.lineTo(r * 0.28, r * 0.32); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#17111a'; ctx.beginPath(); ctx.arc(r * 1.28, 0, 1.9, 0, Math.PI * 2); ctx.fill();   // nose
     ctx.fillStyle = PALETTE.fireHi;                             // eyes: the only light in him
-    ctx.fillRect(r * 0.3, -r * 0.4, 2.2, 2.2); ctx.fillRect(r * 0.3, r * 0.2, 2.2, 2.2);
+    if (charging) {
+      ctx.globalAlpha = 0.32;
+      ctx.beginPath(); ctx.arc(r * 0.4, -r * 0.3, 4.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r * 0.4, r * 0.3, 4.2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    const eye = charging ? 2.9 : 2.2;
+    ctx.fillRect(r * 0.3, -r * 0.4, eye, eye); ctx.fillRect(r * 0.3, r * 0.2, eye, eye);
     if (e.state === 'windup' || e.state === 'swing') {          // and the teeth, once he means it
       ctx.fillStyle = PALETTE.bone;
       for (let k = 0; k < 3; k++) { ctx.fillRect(r * (0.72 + k * 0.2), -r * 0.36, 1.8, 2.5); ctx.fillRect(r * (0.72 + k * 0.2), r * 0.1, 1.8, 2.5); }
@@ -1031,9 +1049,10 @@ class Renderer {
     }
   }
 
-  // The skill rail, top right under the count: the four verbs, whether each one is available, how
+  // The skill rail, top right, above the count: the four verbs, whether each one is available, how
   // long until it is, and what the tomes have done to it. Boons show as pips on the button they bend
-  // and as names underneath, so a run's build lives in one corner instead of a list of words.
+  // and as names under the score, so a run's build lives in one corner instead of a list of words.
+  // Returns the y it finished at, because everything else in that column hangs off the bottom of it.
   drawSkills(game, top) {
     const ctx = this.ctx, s = this.ts, g = game.goat, fire = !!game.mods.breath;
     const R = TUNING.goat.roll;

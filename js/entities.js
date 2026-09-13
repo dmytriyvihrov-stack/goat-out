@@ -201,6 +201,12 @@ class Goat {
         const px = this.x + cx * dist * f, py = this.y + cy * dist * f;
         if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE))) { clear = f - 0.3; break; }
         if (w.isBurningPx(px, py)) { clear = f - 0.5; break; }
+        // Ending a tumble in a brazier or under the wheel is the same mistake as ending it in a wall.
+        let hazard = false;
+        for (const p of game.hazards) {
+          if (p.kind === 'mill' ? p.millThreat(px, py, this.r) : Math.hypot(p.x - px, p.y - py) < p.r + this.r + 6) { hazard = true; break; }
+        }
+        if (hazard) { clear = f - 0.5; break; }
       }
       score += clear * 2.6;
       if (want !== null) score += Math.cos(a - want) * 1.7;   // the stick still gets the last word
