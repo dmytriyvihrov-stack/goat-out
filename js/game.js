@@ -12,6 +12,9 @@ class Game {
     this.touchAim = { x: 1, y: 0 };
     this.levelIndex = 0; this.world = null; this.level = null; this.goat = null;
     this.enemies = []; this.props = []; this.bullets = []; this.parts = []; this.floats = []; this.rings = [];
+    // What the men have to read in the room: standing fire and the Mill (fixed for the level), and
+    // whatever rune is being painted right now (rebuilt each step).
+    this.hazards = []; this.runes = []; this.houndTold = false;
     this.cam = { x: 0, y: 0, zoom: 1 }; this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0;
     // juice: a directional camera punch, a lens shove, a screen flash and a kill counter
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0; this.flashColor = PALETTE.bone;
@@ -235,11 +238,15 @@ class Game {
     this.goat = new Goat(this.level.start.x, this.level.start.y);
     this.enemies = this.level.spawns.map((s) => {
       const e = new Enemy(s.x, s.y, s.kind);
-      if (s.elite) { e.elite = true; e.hp = TUNING.elite.hp; }
+      if (s.elite) { e.elite = true; e.hp = TUNING.elite.hp; e.maxHp = e.hp; }
+      // A champion is a clubman with a second heart: bigger, and the notches over his head say so.
+      if (s.champion) { e.elite = true; e.hp = TUNING.champion.hp; e.maxHp = e.hp; }
       if (s.boss) e.boss = true;
       return e;
     });
     this.props = this.level.props.map((p) => new Prop(p.x, p.y, p.kind, p));
+    this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill');
+    this.runes = []; this.houndTold = false;
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null;
     this.tomes = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
@@ -326,6 +333,8 @@ class Game {
     w.flowTimer -= dt;
     if (w.flowTimer <= 0) { w.flowTimer = 0.15; w.computeFlow(this.goat.x, this.goat.y); }
 
+    this.runes.length = 0;
+    for (const e of this.enemies) if (e.rune) this.runes.push(e.rune);
     this.goat.update(dt, this);
     for (const e of this.enemies) e.update(dt, this);
     for (const b of this.bullets) b.update(dt, this);
@@ -486,6 +495,9 @@ class Game {
       if (g.holding && g.holding.kind !== 'pot' && inArc(g.holding)) { const h = g.holding; this.floatText(h.x, h.y - 26, 'SHIELD', PALETTE.bone); h.die(this, 'club', dirx, diry); }
       else if (inArc(g)) g.damage(damage, this, dirx * knock * 4, diry * knock * 4);
     }
+    // A hound bites what it was sent for. It does not floor its own handlers on the way past — a pack
+    // of them doing that filled half the screen with OOPS.
+    if (att.kind === 'dog') return;
     for (const e of this.enemies) {
       if (e === att || e.dead || e.held || e.state === 'flung') continue;
       if (!inArc(e)) continue;
@@ -544,9 +556,16 @@ class Game {
         color: Math.random() < 0.3 ? PALETTE.bloodDark : PALETTE.blood, size: 2.5 + Math.random() * 4, chunk: true });
     }
   }
+  // A hound has nothing to say. It growls, and the first one of a run says what answers it.
+  houndSeen(dog) {
+    this.audio.sfxGrowl();
+    if (this.houndTold) return;
+    this.houndTold = true;
+    this.floatText(dog.x, dog.y - 34, this.mods.breath ? 'BURN THE HOUNDS' : 'BAAH BREAKS A HOUND', PALETTE.fireHi);
+  }
   // One man speaks at a time: a crowd all shouting at once reads as noise, not as a cult.
   bark(e, kind, chance) {
-    if (!e || e.dead || e.held || this.state !== 'play') return;
+    if (!e || e.dead || e.held || e.kind === 'dog' || this.state !== 'play') return;
     if (chance !== undefined && Math.random() > chance) return;
     if (this.barkCd > 0 || e.barkCd > 0) return;
     const pool = BARKS[kind]; if (!pool) return;
