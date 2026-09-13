@@ -459,6 +459,14 @@ class Renderer {
         ctx.fillStyle = 'rgba(239,230,208,0.35)'; ctx.beginPath(); ctx.arc(-1.4, -1.4, 1.8, 0, Math.PI * 2); ctx.fill();
       }
       ctx.restore();
+      // What is left in a shield you are carrying: three studs, one per man or bullet it has in it.
+      if (p.weapon === 'shield' && p.held && p.uses > 0) {
+        const n = TUNING.prop.weapon.uses.shield;
+        for (let k = 0; k < n; k++) {
+          ctx.fillStyle = k < p.uses ? PALETTE.bone : 'rgba(239,230,208,0.22)';
+          ctx.fillRect(p.x - (n * 5 - 2) / 2 + k * 5, p.y - 23, 3.2, 3.2);
+        }
+      }
     } else if (p.kind === 'heal') {
       const bob = Math.sin(this.t * 2.4 + p.phase) * 2;
       const g = ctx.createRadialGradient(p.x, p.y + bob, 0, p.x, p.y + bob, 34);
@@ -480,6 +488,20 @@ class Renderer {
     }
   }
 
+  // A rank of iron spikes stood up along an arc of a body: the brute's back, and nobody else's.
+  spikeRing(r, from, to, n, len, color) {
+    const ctx = this.ctx; ctx.fillStyle = color;
+    for (let k = 0; k < n; k++) {
+      const a = from + (to - from) * (n === 1 ? 0.5 : k / (n - 1));
+      const c = Math.cos(a), s = Math.sin(a), w = len * 0.36;
+      ctx.beginPath();
+      ctx.moveTo(c * r - s * w, s * r + c * w);
+      ctx.lineTo(c * (r + len), s * (r + len));
+      ctx.lineTo(c * r + s * w, s * r - c * w);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
   // Everything a man is made of: hood or head, sash, bone mask, and whatever he is holding.
   drawCultist(e, r) {
     const ctx = this.ctx;
@@ -496,8 +518,15 @@ class Renderer {
       ctx.lineTo(r * 0.35, r * 0.72); ctx.quadraticCurveTo(-r * 0.6, r * 1.1, -r * 1.75, 0); ctx.closePath(); ctx.fill();
       ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(0, 0, r * 0.86, 0, Math.PI * 2); ctx.fill();
     } else {
-      ctx.fillStyle = e.kind === 'butcher' ? PALETTE.plum : PALETTE.ink;
+      // The brute wears what he is: iron spikes stood up along his back and shoulders, so the man
+      // who takes three blows never has the same outline as the man who takes one.
+      if (e.champion) this.spikeRing(r * 0.94, Math.PI * 0.42, Math.PI * 1.58, TUNING.champion.spikes, r * 0.46, '#8d8a85');
+      ctx.fillStyle = e.kind === 'butcher' ? PALETTE.plum : e.champion ? '#3a2f38' : PALETTE.ink;
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      if (e.champion) {
+        ctx.strokeStyle = '#6d6a66'; ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2); ctx.stroke();
+      }
     }
     if (e.kind === 'butcher') {
       ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(-r * 0.15, 0, r * 0.78, 0, Math.PI * 2); ctx.fill();
@@ -528,8 +557,18 @@ class Renderer {
       ctx.fillStyle = PALETTE.bloodDark; ctx.fillRect(12, -0.5, 11, 2.2);
       ctx.restore();
     } else if (e.kind === 'bearer') {
-      ctx.save(); ctx.rotate(swing); ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 4; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(r * 0.3, r * 0.6); ctx.lineTo(r + 13, r * 0.6); ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.rotate(swing); ctx.lineCap = 'round';
+      if (e.champion) {
+        // The brute's club is a post with iron through it, and it is thicker than his arm.
+        ctx.strokeStyle = '#6b4a2c'; ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(r * 0.3, r * 0.6); ctx.lineTo(r + 17, r * 0.6); ctx.stroke();
+        ctx.fillStyle = '#9d968c';
+        for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(r + 4 + k * 6, r * 0.6, 2.4, 0, Math.PI * 2); ctx.fill(); }
+      } else {
+        ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(r * 0.3, r * 0.6); ctx.lineTo(r + 13, r * 0.6); ctx.stroke();
+      }
+      ctx.restore();
     } else if (e.kind === 'seer') {
       const lit = e.state === 'cast' ? 1 : 0.45;
       ctx.strokeStyle = '#4a3a2c'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
@@ -720,7 +759,7 @@ class Renderer {
     if (e.dazed > 0) ctx.rotate(Math.sin(this.t * 24) * 0.12);
     if (e.state === 'chargewind') ctx.translate(-4 + Math.sin(this.t * 50) * 3, Math.cos(this.t * 47) * 2);
     const r = e.r;
-    if (e.elite) ctx.scale(1.28, 1.28);
+    if (e.elite) ctx.scale(e.champion ? TUNING.champion.scale : 1.28, e.champion ? TUNING.champion.scale : 1.28);
     if (lying) ctx.scale(1.35, 0.7);
 
     if (e.kind === 'dog') this.drawHound(e);

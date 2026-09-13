@@ -36,7 +36,9 @@ const TUNING = {
     // A throw is a commitment now: you let him go, and your mouth is empty for a beat.
     grab: { reach: 1.6 * TILE, speedMul: 0.7, holdTime: 3.0, throwImpulse: 34 * TILE, holdDist: 22, cooldown: 1.35 },
     // BAAH no longer calls them in. It takes the sense out of everyone who hears it, briefly.
-    scream: { duration: 0.3, cooldown: 4.0, radius: 12, stun: 0.9 },
+    // The radius is deliberately short of what the screen shows: BAAH is for the men on top of you,
+    // not for the room. Anything you want stunned you have to be standing in the middle of.
+    scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat.
     roll: { speed: 16.5 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7 },
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
@@ -54,6 +56,9 @@ const TUNING = {
   hunter: {
     radius: 11, speed: 0.8 * 8.2 * TILE, sight: 10, cone: Math.PI / 2,
     keepMin: 5, keepMax: 8, backoffDist: 4, aimTime: 0.8, reload: 1.35,
+    // A rifle posted to watch a door sees this much further than one wandering a room, and he does
+    // not leave the post: he tracks you across the floor and fires the moment he has the shot.
+    watchSight: 8,
     bulletSpeed: 25 * TILE, damage: 1,
   },
   // The hound. As quick as the goat, impossible to get hold of, and it will not stand still to be
@@ -135,7 +140,10 @@ const TUNING = {
       stickImpact: 6 * TILE,  // a scrape along a wall does not end a throw; a proper hit does
       swordStun: 1.6,        // what a sword does to a Butcher, who does not go down to one
       shieldStun: 2.8,       // how long a man the shield bowls over stays down
-      shieldHits: 3,         // bullets one shield turns before it is scrap
+      // What one is worth before it is scrap, so neither can be dragged through a level. A blade is
+      // one throw: it goes into whatever it finds and snaps there. A shield is three, and every man
+      // it flattens and every bullet it turns spends one of them.
+      uses: { sword: 1, shield: 3 },
     },
     // The pen. Bars sit close enough together that a goat cannot slip between two of them.
     // Seven blows, and the third and the sixth take his feet out from under him. It is meant to
@@ -154,9 +162,11 @@ const TUNING = {
     speed: 0.82, impulse: 30 * TILE, damage: 1, hitCooldown: 1.15, goatKnock: 0.3,
   },
   elite: { hp: 3 },
-  // A champion is an ordinary clubman who has been given a second heart and a bigger frame. He is
-  // how the game says "some of them take more than one" without spending a boss on it.
-  champion: { hp: 2 },
+  // The brute: a clubman built twice over. Three separate killing blows before he stops getting up,
+  // four when he is the one in the arena. He is how the game says "some of them take more than one"
+  // without spending a boss on it, so he has to be unmistakable at a glance — bigger frame, spiked
+  // shoulders, a spiked mask, a studded club — and the notches over his head count it down.
+  champion: { hp: 3, bossHp: 4, scale: 1.34, spikes: 5 },
   noise: {
     footstep: 2, headbutt: 5, splat: 8, pot: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13, steel: 9,
   },
@@ -200,7 +210,7 @@ const TUNING = {
 // `node tools/balance.js` prints what these numbers actually produce and fails if a rule is broken.
 
 // What one of each is worth. A rifle is not a clubman however you count heads.
-const THREAT = { bearer: 1, dog: 1.7, champion: 2.2, hunter: 2.4, wraith: 2.6, seer: 2.8, butcher: 5 };
+const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.8, champion: 3.2, butcher: 5 };
 
 const ENCOUNTER = {
   // How often a kind is drawn once it is available. Clubmen stay the backbone of every crowd.
@@ -215,6 +225,12 @@ const ENCOUNTER = {
   escortThreat: 2.5,
   // The room after an introduction eases off: you get one quiet beat to use what you just learned.
   afterIntro: 0.65,
+  // The Mill is a kind too. Its room is a set piece you have to read, so it is never the room that
+  // introduces a man, and it carries about half a room's worth of crowd — none at all on the level
+  // that shows you the wheel for the first time.
+  millEase: 0.45,
+  // The killbox: two rifles on the far side of an empty room, watching the door you come in by.
+  killbox: { men: ['hunter', 'hunter'], near: ['bearer', 'bearer'] },
 };
 
 // Boons bend numbers and verbs the goat already has. Actives change what a button does;
@@ -224,7 +240,7 @@ const BOON_BASE = {
   maxHp: 4, speed: 1, butcherDamage: 1, fireImmune: false,
   headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
   shieldBullets: 2, holdTime: 3.0, livingShield: false, grabCooldown: 1,
-  screamCooldown: 4.0, screamRadius: 12,
+  screamCooldown: 4.0, screamRadius: 8.5,
   rollDistance: 1, rollCooldown: 1,
   breath: false, bomb: false, devour: false,
 };
@@ -244,7 +260,7 @@ const BOONS = [
   { id: 'skull', skill: 'butt', name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.', apply: (m) => { m.headbuttRecovery *= 0.55; } },
   { id: 'jaw', skill: 'grab', name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.', apply: (m) => { m.shieldBullets = 4; m.holdTime = 5.5; m.grabCooldown *= 0.6; } },
   { id: 'shield', skill: 'grab', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing. At his own.', apply: (m) => { m.livingShield = true; } },
-  { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and twice as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 20; } },
+  { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 13; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
   { id: 'joints', skill: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
   { id: 'ember', name: 'EMBER COAT', desc: 'Ordinary fire stops burning you. Witchfire does not care.', apply: (m) => { m.fireImmune = true; } },
@@ -286,9 +302,13 @@ const LEVELS = [
     // appeared alone.
     // `ritual` paints the altar, the remains and the tools into the first room, and is what makes the
     // opening scene possible; every later level arrives up a flight of stairs into a bare room instead.
-    name: 'THE ALTAR', sub: 'Level 1', rooms: 9, showControls: true, startCage: true, ritual: true,
-    arenas: [{ at: 5, boss: 'champion' }, { at: 8, boss: 'butcher' }],
-    millAt: 4, heals: 3, racks: 0.5,
+    // Ten rooms rather than nine: the wheel takes a room to itself now, and the order only reads if
+    // the brute is met in the open before he is met in the ring.
+    name: 'THE ALTAR', sub: 'Level 1', rooms: 10, showControls: true, startCage: true, ritual: true,
+    arenas: [{ at: 6, boss: 'champion' }, { at: 9, boss: 'butcher' }],
+    // The wheel is met with nobody standing in the room, and arms are not a thing you find until
+    // halfway in: the first half of the run is the goat and his head and nothing else.
+    millAt: 4, millSolo: true, heals: 3, racks: 0.2, racksFrom: 0.5,
     encounters: {
       kinds: ['bearer', 'champion', 'dog'],
       introduce: [['bearer', 0], ['champion', 0.34], ['dog', 0.7]],
@@ -302,7 +322,7 @@ const LEVELS = [
     // The mage arrives, on his own, a third of the way in.
     name: 'THE YARD', sub: 'Level 2', rooms: 12,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
-    millAt: 7, heals: 2, racks: 0.35,
+    millAt: 7, heals: 2, racks: 0.16,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],
       introduce: [['seer', 0.35]],
@@ -316,7 +336,7 @@ const LEVELS = [
     // The rifle arrives early, alone, and then never stops being the reason you keep moving.
     name: 'THE ROAD', sub: 'Level 3', rooms: 14,
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    millAt: 8, heals: 2, hallAt: 9, hallThreat: 26, galleryAt: 6, lonePosts: 3, racks: 0.3,
+    millAt: 8, heals: 2, hallAt: 9, hallThreat: 26, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [['hunter', 0.2]],
@@ -334,7 +354,7 @@ const LEVELS = [
     // Nothing new walks in: the room itself is the new thing.
     name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, pool: 'open', corridorW: 5,
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
-    millAt: 6, heals: 3, lonePosts: 4, racks: 0.4,
+    millAt: 6, heals: 3, killboxAt: 10, lonePosts: 4, racks: 0.18,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -348,7 +368,7 @@ const LEVELS = [
     // Everything the compound has left, all at once, on the bridge they were driving you over.
     name: 'THE BRIDGE', sub: 'Level 5', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
-    millAt: 7, heals: 3, hallAt: 12, hallThreat: 32, galleryAt: 2, lonePosts: 4, racks: 0.35,
+    millAt: 7, heals: 3, hallAt: 12, hallThreat: 32, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -367,7 +387,7 @@ const LEVELS = [
     // your back — the only cover on this ground is which way you are looking.
     name: 'THE OSSUARY', sub: 'Level 6', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
-    millAt: 6, heals: 4, lonePosts: 2, racks: 0.45,
+    millAt: 6, heals: 4, killboxAt: 11, lonePosts: 2, racks: 0.2,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
       // The first room of the level is the wraith on its own, because nothing else in the game

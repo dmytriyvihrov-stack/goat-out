@@ -2,10 +2,12 @@
 // EXIT is the flight of stairs up out of the last room; ENTRY the flight you came up into the first.
 const T = { FLOOR: 0, WALL: 1, HAY: 2, ASH: 3, EXIT: 4, ENTRY: 5 };
 
+// A room whose sides mean something — the killbox's rifles are its far wall — sets `noFlipX` and
+// keeps its left and right the way they were written. Up and down never matter to anyone.
 function flipTemplate(tpl, rng) {
   let rows = tpl.rows.slice();
   if (rng.chance(0.5)) rows = rows.slice().reverse();
-  if (rng.chance(0.5)) rows = rows.map((r) => r.split('').reverse().join(''));
+  if (!tpl.noFlipX && rng.chance(0.5)) rows = rows.map((r) => r.split('').reverse().join(''));
   return { name: tpl.name, rows };
 }
 
@@ -52,7 +54,11 @@ function planEncounters(levelDef, rooms, rng) {
   const weight = E.weight ? Object.assign({}, ENCOUNTER.weight, E.weight) : null;
   const out = { rooms: new Map(), introRooms: new Set(), hunterFrom: -1, caps };
   const fight = rooms.filter((r) => r.index > 0 && !r.calm);
-  const ordinary = fight.filter((r) => !r.arena && !r.isHall && !r.isGallery);
+  // The curve is bought in ordinary rooms only. Every set piece — the wheel, the hall, the gallery,
+  // the killbox — is a thing to be read rather than a number of men, and none of them may be the
+  // room that introduces a kind: meeting the Mill and your first two-hearted man at the same moment
+  // means meeting neither of them.
+  const ordinary = fight.filter((r) => !r.arena && !r.isHall && !r.isGallery && !r.isMill && !r.isKillbox);
   if (!ordinary.length) return out;
 
   // Hand each new kind a room of its own: start where the level asks for it and walk forward to the
@@ -60,7 +66,15 @@ function planEncounters(levelDef, rooms, rng) {
   const intro = new Map();
   for (const [kind, at] of (E.introduce || [])) {
     const want = Math.round(clamp(at, 0, 1) * (ordinary.length - 1));
-    const room = ordinary.slice(want).find((r) => !intro.has(r.index))
+    // If an arena on this level is built round that kind, he has to be met in the open first: the
+    // first brute you ever see should not be the one with the extra heart standing in the ring.
+    const ring = fight.find((r) => r.arena && r.arena.boss === kind);
+    const early = ring ? ordinary.filter((r) => r.index < ring.index) : ordinary;
+    const list = early.length ? early : ordinary;
+    const w = Math.min(want, list.length - 1);
+    const room = list.slice(w).find((r) => !intro.has(r.index))
+      || list.slice(0, w).reverse().find((r) => !intro.has(r.index))
+      || ordinary.slice(want).find((r) => !intro.has(r.index))
       || ordinary.slice(0, want).reverse().find((r) => !intro.has(r.index));
     if (room) { intro.set(room.index, kind); out.introRooms.add(room.index); }
   }
@@ -92,6 +106,21 @@ function planEncounters(levelDef, rooms, rng) {
       mixable.push(kind); pending.delete(kind); seen.add(kind);
       if (kind === 'hunter') out.hunterFrom = room.index;
       easeOff = true; step++;
+      continue;
+    }
+    // The Mill's room is a set piece. Half a crowd, and nobody at all on the level that shows you
+    // the wheel for the first time: it is a thing to learn, on its own, like a new kind of man.
+    if (room.isMill) {
+      out.rooms.set(room.index, { men: levelDef.millSolo ? []
+        : fillRoom(curve * ENCOUNTER.millEase, mixable, rng, caps, 0, weight), mill: true });
+      continue;
+    }
+    // The killbox: two rifles on the far side watching the door, two men on your side of the room,
+    // and nothing else in it. Before rifles are a thing you have met it is an ordinary room.
+    if (room.isKillbox) {
+      const K = ENCOUNTER.killbox;
+      if (mixable.includes('hunter')) { out.rooms.set(room.index, { men: K.men.concat(K.near), killbox: true, alert: K.men.length }); continue; }
+      out.rooms.set(room.index, { men: fillRoom(curve, mixable, rng, caps, 0, weight) });
       continue;
     }
     // The Great Hall is the exception to every cap: it is supposed to be a wall of bodies.
@@ -144,6 +173,7 @@ function tryGenerate(levelDef, seed) {
     else if (i === levelDef.millAt) tpl = MILL_TEMPLATE;
     else if (i === levelDef.hallAt) tpl = GREAT_HALL_TEMPLATE;
     else if (i === levelDef.galleryAt) tpl = GALLERY_TEMPLATE;
+    else if (i === levelDef.killboxAt) tpl = KILLBOX_TEMPLATE;
     else tpl = pool[poolIdx++ % pool.length];
     tpl = flipTemplate(tpl, rng);
     const w = tpl.rows[0].length, h = tpl.rows.length;
@@ -152,6 +182,7 @@ function tryGenerate(levelDef, seed) {
 
     const room = { x, y, w, h, tpl, index: i, markers: [], arena,
       isMill: i === levelDef.millAt, isHall: i === levelDef.hallAt, isGallery: i === levelDef.galleryAt,
+      isKillbox: i === levelDef.killboxAt,
       calm: !!levelDef.showControls && (i === 1 || i === 2) };
     for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
@@ -197,6 +228,10 @@ function tryGenerate(levelDef, seed) {
 
   // Props from the template markers, and the men the plan asked for placed on whatever the room has.
   const plan = planEncounters(levelDef, rooms, rng);
+  // Arms are rare, and a level can hold them back: nothing to pick up until it is this far in.
+  // Level one shows the first stand at the halfway mark, so the first half of the run is the goat,
+  // his head, and whatever the room was already built out of.
+  const racksFrom = Math.round((levelDef.racksFrom || 0) * (n - 1));
   rooms.forEach((room) => {
     const spots = [];
     let wIdx = rng.int(0, 1);
@@ -210,23 +245,21 @@ function tryGenerate(levelDef, seed) {
       else if (m.c === 'M') props.push({ x: px, y: py, kind: 'mill', phase: rng.float(0, Math.PI * 2) });
       else if (m.c === 'X') room.bossSpot = { x: px, y: py };
       // A pair of stands alternates, so an arena always offers one of each rather than two swords.
-      else if (m.c === 'w') props.push({ x: px, y: py, kind: 'weapon', weapon: (wIdx++ % 2) ? 'shield' : 'sword' });
+      // The killbox's own stand is always the shield: the room is a rifle problem, and the shield is
+      // the answer to a rifle that does not involve holding a man.
+      else if (m.c === 'w') { if (room.index >= racksFrom) props.push({ x: px, y: py, kind: 'weapon', weapon: room.isKillbox ? 'shield' : (wIdx++ % 2) ? 'shield' : 'sword' }); }
       else spots.push(m);
     });
-    // Sometimes a stand or two of arms, anywhere a man might have left one. Arenas have their own
-    // pair from the template; the second room with the controls painted on it always gets a sword,
-    // so the stand is met somewhere safe rather than in the middle of a fight.
-    const teachRack = room.calm && room.index === 2;
-    if (room.index > 0 && !room.arena && (teachRack || rng.chance(levelDef.racks || 0))) {
-      for (let k = 0, n = !teachRack && rng.chance(0.25) ? 2 : 1; k < n; k++) {
-        for (let a = 0; a < 30; a++) {
-          const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
-          if (tiles[ty * W + tx] !== T.FLOOR) continue;
-          const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
-          if (props.some((p) => len(p.x - px, p.y - py) < 1.8 * TILE)) continue;
-          props.push({ x: px, y: py, kind: 'weapon', weapon: teachRack || rng.chance(0.5) ? 'sword' : 'shield' });
-          break;
-        }
+    // Now and then a single stand of arms, anywhere a man might have left one. Never two, never
+    // before the level says arms exist, and never in an arena — an arena carries its own pair.
+    if (room.index >= Math.max(1, racksFrom) && !room.arena && rng.chance(levelDef.racks || 0)) {
+      for (let a = 0; a < 30; a++) {
+        const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
+        if (tiles[ty * W + tx] !== T.FLOOR) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (props.some((p) => len(p.x - px, p.y - py) < 1.8 * TILE)) continue;
+        props.push({ x: px, y: py, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
+        break;
       }
     }
     const cell = plan.rooms.get(room.index);
@@ -247,13 +280,16 @@ function tryGenerate(levelDef, seed) {
     if (cell.boss) {
       const at = room.bossSpot || take(cell.boss);
       if (at) spawns.push({ x: at.x, y: at.y, kind: cell.boss === 'champion' ? 'bearer' : cell.boss,
-        elite: cell.boss !== 'butcher', boss: true, roomIndex: room.index });
+        elite: cell.boss !== 'butcher', champion: cell.boss === 'champion', boss: true, roomIndex: room.index });
     }
+    let slot = 0;
     for (const kind of cell.men) {
-      const at = take(kind);
+      const at = take(kind); const i = slot++;
       if (!at) continue;
       spawns.push({ x: at.x, y: at.y, kind: kind === 'champion' ? 'bearer' : kind,
-        champion: kind === 'champion', roomIndex: room.index, intro: cell.intro === kind });
+        champion: kind === 'champion', roomIndex: room.index, intro: cell.intro === kind,
+        // The first few men of a killbox are its rifles, and they are already watching the door.
+        alert: cell.alert !== undefined && i < cell.alert });
     }
   });
 
@@ -261,7 +297,7 @@ function tryGenerate(levelDef, seed) {
   // problem from a rifle inside a crowd: you have to cross its line rather than out-run the pile.
   if (levelDef.lonePosts && plan.hunterFrom >= 0) {
     const eligible = rng.shuffle(rooms.filter((r) => r.index > plan.hunterFrom && !r.arena && !r.isMill && !r.calm
-      && !r.isGallery && !r.isHall && !plan.introRooms.has(r.index)));
+      && !r.isGallery && !r.isHall && !r.isKillbox && !plan.introRooms.has(r.index)));
     let placed = 0;
     for (const room of eligible) {
       if (placed >= levelDef.lonePosts) break;
@@ -280,7 +316,7 @@ function tryGenerate(levelDef, seed) {
   }
 
   // Two bowls of milk per level, dropped in ordinary rooms between the set pieces.
-  const healRooms = rng.shuffle(rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.calm && !r.isGallery)).slice(0, levelDef.heals || 0);
+  const healRooms = rng.shuffle(rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.calm && !r.isGallery && !r.isKillbox)).slice(0, levelDef.heals || 0);
   healRooms.forEach((room) => {
     for (let k = 0; k < 30; k++) {
       const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);

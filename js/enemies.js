@@ -17,6 +17,8 @@ class Enemy {
     this.dazed = 0;                                             // seconds of hearing nothing but the scream
     this.gotUpFrom = null;
     this.scripted = false; this.knife = false;                  // the two in the opening scene: moved by hand, one with a knife
+    this.champion = false;                                      // the brute: three hearts and a frame that says so
+    this.watchful = false;                                      // posted to watch a door: no blind side, and he sees further
     this.maxHp = this.hp; this.burnHearts = 0;
     // Trap sense, rolled per man: most of them step round the Mill and the braziers, and the one who
     // rolls badly walks straight into what he is looking at. A hound reads the room better than any.
@@ -149,11 +151,12 @@ class Enemy {
   canSeeGoat(game) {
     const g = game.goat; if (g.dead) return false;
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
-    if (d > this.cfg.sight * TILE) return false;
+    // A man posted to watch a door is not idling: he covers the whole room and he sees further.
+    if (d > (this.cfg.sight + (this.watchful ? (this.cfg.watchSight || 4) : 0)) * TILE) return false;
     // The dead do not need a line of sight and they do not have a front. They simply know.
     if (this.kind === 'wraith') return true;
     const ang = Math.atan2(dy, dx);
-    if (Math.abs(angleDiff(this.facing, ang)) > this.cfg.cone / 2 && d > 2.5 * TILE) return false;
+    if (!this.watchful && Math.abs(angleDiff(this.facing, ang)) > this.cfg.cone / 2 && d > 2.5 * TILE) return false;
     return game.world.los(this.x, this.y, g.x, g.y);
   }
 
@@ -428,7 +431,11 @@ class Enemy {
       return;
     }
     // chase: keep distance, shoot when possible
-    if (sees && this.reload <= 0 && d < cfg.sight * TILE) { this.state = 'aim'; this.timer = cfg.aimTime; this.vx = 0; this.vy = 0; return; }
+    const reach = (cfg.sight + (this.watchful ? cfg.watchSight : 0)) * TILE;
+    if (sees && this.reload <= 0 && d < reach) { this.state = 'aim'; this.timer = cfg.aimTime; this.vx = 0; this.vy = 0; return; }
+    // A man posted to watch a door does not leave it to come and find you. He holds it, turns on the
+    // spot and waits out his reload: the room in front of him is the trap, not the man himself.
+    if (this.watchful && d > cfg.backoffDist * TILE) { this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); return; }
     if (d < cfg.backoffDist * TILE && sees) { this.moveToward(-dx, -dy, this.speed * 0.7, dt, game); this.facing = Math.atan2(dy, dx); return; }
     if (d > cfg.keepMax * TILE || !sees) { this.chaseGoat(game, this.speed, dt); return; }
     this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx);

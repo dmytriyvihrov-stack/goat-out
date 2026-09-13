@@ -226,6 +226,22 @@ What is in it is painted on the decal canvas by `paintStartRoom`.
 mid-swing), walls and fire, and honours the stick when there is one. With no direction asked for it is a
 pure escape, which is the whole reason the button exists on a phone.
 
+**Arms are consumable.** `prop.uses` counts what a weapon has left, off `TUNING.prop.weapon.uses` —
+a sword 1, a shield 3. `Prop.snap()` is the single place one is destroyed: it is called by the sword
+when it kills or hits a wall, by the shield when a flattened man or a turned bullet takes the last
+charge, and it clears `goat.holding` itself. Nothing broken is ever picked up again, so a level's
+arms budget is the count of stands in it. `levelDef.racks` is the per-room chance and
+`levelDef.racksFrom` a fraction of the level before which no stand is placed at all, including the
+`w` markers in a template.
+
+**The killbox.** `levelDef.killboxAt` picks `KILLBOX_TEMPLATE`, which sets `noFlipX` because its two
+rifles ARE its far wall. `planEncounters` hands that room a fixed cell from `ENCOUNTER.killbox` —
+rifles first, then the men on your side — and the first `cell.alert` spawns come out with
+`alert: true`, which `startLevel` turns into `enemy.watchful`. A watchful man sees
+`cfg.sight + cfg.watchSight` tiles with no cone at all, and `updateHunter` keeps him on his post
+instead of closing. The room is only itself once rifles are a kind the run has met; before that it
+fills like any other room.
+
 **The loop.** Fixed 1/60 step, max 5 substeps, in `game.frame`. `timeScale` drives slow motion.
 A `setInterval` fallback drives the loop when `requestAnimationFrame` stalls, which it does when the
 Browser pane is hidden. Do not remove it.

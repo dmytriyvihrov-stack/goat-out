@@ -244,8 +244,11 @@ class Game {
     this.enemies = this.level.spawns.map((s) => {
       const e = new Enemy(s.x, s.y, s.kind);
       if (s.elite) { e.elite = true; e.hp = TUNING.elite.hp; e.maxHp = e.hp; }
-      // A champion is a clubman with a second heart: bigger, and the notches over his head say so.
-      if (s.champion) { e.elite = true; e.hp = TUNING.champion.hp; e.maxHp = e.hp; }
+      // The brute: three killing blows, four if he is the one standing in the arena. Bigger frame,
+      // spiked shoulders, a spiked mask and a studded club, so you never mistake him for a clubman.
+      if (s.champion) { e.elite = true; e.champion = true; e.hp = s.boss ? TUNING.champion.bossHp : TUNING.champion.hp; e.maxHp = e.hp; }
+      // A rifle posted to watch a door has no blind side worth walking round.
+      if (s.alert) e.watchful = true;
       if (s.boss) e.boss = true;
       return e;
     });

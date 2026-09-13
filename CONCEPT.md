@@ -54,7 +54,7 @@ no real nationality. The original meme survives only as the prologue card.
 | Hold right click / GRAB | Carry a man in front as a shield. He stops two bullets and any swing. Breaks free after 3 s. |
 | Release | Throw. A thrown man kills what he hits and dies on the wall. Your mouth is then empty for about 1.3 s. |
 | E / ROLL | Clumsy sideways tumble. Brief mercy frames, then a stagger you must eat, then about 1.3 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. |
-| Space / BAAH | Scream. Everyone in earshot is dazed for about a second, whatever he was doing. It calls nobody. |
+| Space / BAAH | Scream. Everyone within about eight tiles is dazed for a second, whatever he was doing. It calls nobody, and it is deliberately shorter than the screen is wide: it answers the men on top of you, not the room. |
 
 Four hearts, no regeneration, one life per level. A new level puts every heart back. Blood smears the
 coat as you take hits, so health reads on the character as well as in the corner.
@@ -84,7 +84,7 @@ past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 | | Behaviour |
 |---|---|
 | **Bearer** | Melee. 0.58 s windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
-| **Champion** | A Bearer with a second heart and a bigger frame, and health notches over his head. He is how level 1 says "some of them take more than one" without spending a boss on it. |
+| **Brute** | A clubman built twice over: three killing blows, four when he is the one in the arena. A frame a third larger, iron spikes stood up along his back, a studded club, and notches over his head counting down. He is how level 1 says "some of them take more than one" without spending a boss on it, and he is unmistakable across a room — which is the point of him. |
 | **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the Butcher he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for 0.8 s with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
@@ -118,8 +118,11 @@ over their heads, so what is left of a man reads off the man.
 ## Levels
 
 **Difficulty is a curve, and the curve is data.** Two rules run it. First, every kind is met on its own:
-the room that first shows you a clubman, a champion, a hound, a mage or a rifle holds that one enemy and
-nothing else, and a boss you have never seen stands in his arena alone. Second, rooms are bought with
+the room that first shows you a clubman, a brute, a hound, a mage or a rifle holds that one enemy and
+nothing else, and a boss you have never seen stands in his arena alone. A set piece counts as a kind:
+the Mill's room never introduces a man and holds nobody at all on the level that first shows you the
+wheel, and a kind with an arena waiting for it is met in the open before it is met in the ring. Second,
+rooms are bought with
 threat rather than with bodies — a rifle costs more than a clubman, a mage more than a rifle — off a
 curve that runs from the level's first fighting room to its last. So a later room is both fuller and
 nastier, and a later level is harder than the one before it. Caps keep any single room readable: one
@@ -127,8 +130,15 @@ mage, one champion, two rifles, seven men. `node tools/balance.js` prints what t
 fails when a rule breaks.
 
 Six levels. Every level holds arena bosses, one Mill room near the middle, and milk bowls that restore
-a heart. The later ones add a Gallery of posted rifles, a Great Hall, and one level built the other way
-round: almost no walls, and furniture instead.
+a heart. The later ones add a Gallery of posted rifles, a Great Hall, a killbox, and one level built the
+other way round: almost no walls, and furniture instead.
+
+**The killbox**, late on the four levels that have rifles. A wide room with almost nothing in it and two
+rifles posted on the far side of it, watching the door you have to come in by. A posted man sees a good
+deal further than one wandering a room and he does not leave his post: he turns on the spot and fires
+whenever he has the shot. There is a shield on a stand beside the door, two of their own on your side of
+the room to pick up and carry in front of you, two bits of cover halfway across, and the corridor behind
+you. The room asks which of those you trust.
 
 | | Rooms | Regular enemies | Bosses |
 |---|---|---|---|
@@ -211,10 +221,16 @@ top-down game explains itself.
   pile up eventually shoulder them open.
 - **Tables** slide when headbutted and carry men into the wall behind.
 - **Oil lamps** topple into a pool of fire.
+- **Stands of arms** hold a sword or a shield, and they are rare: one to an arena, about one ordinary
+  room in six, and nothing at all on level 1 until halfway in. Nothing you take off one survives being
+  used. A thrown blade goes into whatever it finds and snaps there, and a blade thrown at a wall is a
+  blade thrown away. A shield is worth three — men flattened, bullets turned, or any mix — and
+  splinters on the third. Neither is picked up twice, so a stand is a moment the room offers you
+  rather than a tool you carry through the level.
 - **The Mill** is a ritual grinding wheel with two sweeping arms. It flings cultists to their deaths and
   takes a heart off you. It does not care whose side anyone is on. Its room is deliberately taller than
   the arms are long: there is a lane along the top and the bottom, so the room is crossed by reading it.
-- **The pen** in the first room takes three headbutts. The bars bend further with each one.
+- **The pen** in the first room takes seven blows, and two of them put the goat on the floor.
 
 ---
 

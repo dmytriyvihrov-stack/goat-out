@@ -384,7 +384,9 @@ class Prop {
     // A stand of arms: which one it holds, whether it is still in the stand, how it turns in the
     // air, and who it has already been through on this throw.
     this.weapon = (opts && opts.weapon) || 'sword';
-    this.inStand = kind === 'weapon'; this.spin = 0; this.passed = []; this.shieldHits = 0;
+    this.inStand = kind === 'weapon'; this.spin = 0; this.passed = [];
+    // What this one has left in it. A blade is one throw; a shield is three men or three bullets.
+    this.uses = kind === 'weapon' ? (P.weapon.uses[this.weapon] || 1) : 0;
     this.vertical = opts && opts.vertical; this.open = 0; this.pressure = 0; this.wobble = 0;
   }
   // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing.
@@ -527,8 +529,20 @@ class Prop {
     }
   }
 
-  // A thrown blade or shield. It travels, it bites, and it comes to rest where it stops, so the
-  // room keeps it: a stand is worth crossing the floor for twice.
+  // A blade that has done its work, or a shield that has taken its last. Neither is picked up again:
+  // what a stand of arms hands you is a moment, not a tool you carry through the level.
+  snap(game) {
+    if (this.broken) return;
+    this.broken = true; this.dead = true; this.flung = false; this.thrown = false;
+    if (game.goat.holding === this) game.goat.holding = null;
+    game.audio.sfxSteel(); game.shake(3);
+    game.particles(this.x, this.y, 13, this.weapon === 'sword' ? PALETTE.bone : PALETTE.ash, 220);
+    for (let i = 0; i < 3; i++) game.world.dot(this.x + (Math.random() - 0.5) * 22, this.y + (Math.random() - 0.5) * 14, 2.4, '#3a3630');
+    game.floatText(this.x, this.y - 30, this.weapon === 'sword' ? 'SNAPPED' : 'SPLINTERED', PALETTE.ash);
+  }
+
+  // A thrown blade or shield. It travels, it bites, and then it is finished: nothing here survives
+  // being used, so crossing a room for a stand is a decision rather than a habit.
   updateWeapon(dt, game) {
     if (this.broken || this.held || !this.flung) return;
     const W = TUNING.prop.weapon;
@@ -538,10 +552,10 @@ class Prop {
     this.x += this.vx * dt; this.y += this.vy * dt;
     const impact = game.world.collideCircle(this);
     if (impact > W.stickImpact) {
-      // Into a wall: a sword buries itself where it landed, a shield rings off it.
+      // Into a wall: a blade thrown at stone is a blade thrown away. A shield only rings off it.
       game.audio.sfxSteel(); game.particles(this.x, this.y, 5, PALETTE.bone, 170);
-      if (this.weapon === 'sword') { this.vx = 0; this.vy = 0; }
-      else { this.vx *= -0.3; this.vy *= -0.3; }
+      if (this.weapon === 'sword') { this.vx = 0; this.vy = 0; this.snap(game); return; }
+      this.vx *= -0.3; this.vy *= -0.3;
     }
     const spd = Math.hypot(this.vx, this.vy);
     if (spd <= W.restSpeed) { this.flung = false; this.thrown = false; this.vx = 0; this.vy = 0; return; }
@@ -549,7 +563,7 @@ class Prop {
       if (e.dead || e.held || e.ghosted || this.passed.indexOf(e) >= 0) continue;
       if (Math.hypot(e.x - this.x, e.y - this.y) > e.r + this.r) continue;
       this.hitMan(game, e, spd);
-      if (!this.flung) return;
+      if (!this.flung || this.broken) return;
     }
   }
 
@@ -565,6 +579,7 @@ class Prop {
       game.shake(6); game.hitstop(0.05); game.kick(nx, ny, TUNING.juice.kick);
       this.flung = false; this.thrown = false; this.vx = 0; this.vy = 0;   // it is in him now
       this.x = e.x; this.y = e.y;
+      if (--this.uses <= 0) this.snap(game);                               // and it stays in him
       return;
     }
     if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.5; e.aware = true; this.vx *= -0.25; this.vy *= -0.25; }
@@ -576,6 +591,8 @@ class Prop {
     }
     game.audio.sfxSteel(); game.shake(5); game.hitstop(0.03);
     game.particles(e.x, e.y, 7, PALETTE.bone, 210);
+    // Three men is all a shield is good for, and it comes apart on the third.
+    if (--this.uses <= 0) this.snap(game);
   }
 
   updateDoor(dt, game) {
@@ -683,14 +700,11 @@ class Bullet {
       // a rifle without you having to be holding a man.
       const hold = goat.holding;
       if (hold && hold.kind === 'weapon' && hold.weapon === 'shield' && Math.hypot(hold.x - this.x, hold.y - this.y) < hold.r + 4) {
-        this.dead = true; hold.shieldHits++;
+        this.dead = true;
         game.particles(this.x, this.y, 6, PALETTE.fireHi, 170); game.audio.sfxSteel();
         game.floatText(hold.x, hold.y - 28, 'CLANG', PALETTE.bone); game.shake(2);
-        if (hold.shieldHits >= TUNING.prop.weapon.shieldHits) {
-          hold.broken = true; hold.dead = true; goat.holding = null;
-          game.particles(hold.x, hold.y, 14, PALETTE.ash, 220);
-          game.floatText(hold.x, hold.y - 28, 'SPLINTERED', PALETTE.ash);
-        }
+        // A turned bullet spends the same charge a flattened man does.
+        if (--hold.uses <= 0) hold.snap(game);
         return;
       }
       // The held man shields the goat: check him first.

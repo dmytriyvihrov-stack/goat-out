@@ -86,13 +86,14 @@ level after the first begins at the top of one.
 pillar rows, hay, tables, braziers, lamps, a bell and fifteen men between you and the far door. The
 **Gallery** on those levels is the opposite problem — pillar cover and rifles posted well apart.
 
-**You meet everything alone first.** The room that introduces a clubman, a champion, a hound, a mage or
+**You meet everything alone first.** The room that introduces a clubman, a brute, a hound, a mage or
 a rifle holds that one enemy and nothing else, and a boss you have never seen stands in his arena without
-company. After that they arrive mixed, and the mix gets worse as the level goes on and worse again on the
+company. The Mill's room counts too: it never introduces a man, and on level 1 it holds nobody at all.
+After that they arrive mixed, and the mix gets worse as the level goes on and worse again on the
 level after.
 
-**Seven enemy types.** Club-swinging Bearers; Champions, who take a second hit and carry notches over
-their heads to say so; blinking Seers whose runes erupt into violet witchfire that no boon protects you
+**Seven enemy types.** Club-swinging Bearers; Brutes, a third larger with spikes along the back, who
+take three killing blows and carry notches over their heads to say so; blinking Seers whose runes erupt into violet witchfire that no boon protects you
 from; Hunters whose bullets travel and hit their own; the Butcher, who takes three hits and cannot be
 interrupted mid-swing; the hounds; and the wraiths. They shout short lines when they see you, hear
 you, swing at you or watch one of their own come apart — and they read the room: fire, lit braziers, a
@@ -121,6 +122,13 @@ rifle, the Mill, a new boss — turns up on its own, in a room with nothing else
 the game assumes you have seen them and stacks whatever it likes.
 
 **Two milk bowls per level** restore a heart.
+
+**Stands of arms**, rare and single-use. A thrown blade snaps in whatever it hits; a shield is worth
+three men or three bullets and then splinters. Level 1 has none until halfway in.
+
+**The killbox**, late on the levels with rifles: an empty room, two posted rifles on the far side
+watching the door, a shield by that door, two of their own to carry in front of you, and the corridor
+behind you if you would rather not.
 
 **The skill rail**, top right: your four verbs as icons, whether each is ready, the cooldown on throw,
 roll and scream, and what your tomes have done to each of them. Long Horns lengthens the horns on the

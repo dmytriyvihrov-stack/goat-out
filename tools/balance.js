@@ -116,7 +116,8 @@ for (let li = 0; li < LEVELS.length; li++) {
       index: i,
       threat: +(cells.reduce((a, c) => a + c.threat, 0) / cells.length).toFixed(1),
       men: +(cells.reduce((a, c) => a + c.men.length, 0) / cells.length).toFixed(1),
-      tag: cells[0].arena ? 'ARENA' : cells[0].hall ? 'HALL' : cells[0].gallery ? 'GALLERY' : '',
+      tag: cells[0].arena ? 'ARENA' : cells[0].hall ? 'HALL' : cells[0].gallery ? 'GALLERY'
+        : cells[0].killbox ? 'KILLBOX' : cells[0].mill ? 'MILL' : '',
       sample: runs[0][i] ? runs[0][i].men.join(' ') : '',
     });
   }

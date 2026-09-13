@@ -117,6 +117,64 @@ const ROOM_TEMPLATES = [
     '##########',
   ]},
 
+  // A yard with almost nothing in it. Two braziers, one pillar block, and a great deal of floor:
+  // out here a rifle or a mage owns the room and you have to cross it anyway.
+  { name: 'yard', rows: [
+    '####################',
+    '#..................#',
+    '#....B........B....#',
+    '#..................#',
+    '#........PP........#',
+    '#..e.....PP.....r..#',
+    '#..................#',
+    '#....o........o....#',
+    '#..................#',
+    '#..e............e..#',
+    '####################',
+  ]},
+  // Livestock pens: three ranks of stub walls with lanes between them. Everything here is a corner,
+  // and a man driven into one stops being a man.
+  { name: 'pens', rows: [
+    '##################',
+    '#................#',
+    '#.PPPP...PPPP....#',
+    '#....e......r....#',
+    '#.PPPP...PPPP....#',
+    '#................#',
+    '#..o.........o...#',
+    '#.PPPP...PPPP....#',
+    '#....e......e....#',
+    '#.PPPP...PPPP....#',
+    '#................#',
+    '##################',
+  ]},
+  // A long nave under two colonnades, with the bell at the end of it. Sightlines the whole length.
+  { name: 'nave', rows: [
+    '######################',
+    '#....................#',
+    '#..P..P..P..P..P..P..#',
+    '#........e...........#',
+    '#....b.........t.....#',
+    '#...........m........#',
+    '#..P..P..P..P..P..P..#',
+    '#....e...........e...#',
+    '######################',
+  ]},
+  // Where they cook for the compound. Tight, hot, and full of things that burn.
+  { name: 'ovens', rows: [
+    '##############',
+    '#............#',
+    '#.B..tt..B...#',
+    '#....tt......#',
+    '#..e.....o...#',
+    '#..PP..PP....#',
+    '#..PP..PP.e..#',
+    '#...o........#',
+    '#.B.......B..#',
+    '#....r.......#',
+    '##############',
+  ]},
+
   // ---- THE THRESHING FLOOR: open ground, tagged 'open' so only that level draws from them. ----
   // Out here the walls are nearly gone and the structure is furniture: posts, tables, braziers and
   // hay. A headbutt on bare floor still only knocks a man down, so the level is about herding him
@@ -213,10 +271,12 @@ const ROOM_TEMPLATES = [
   ]},
 ];
 
+// One stand of arms in the ring, not two: what the room hands you is one throw, and after that it
+// is you and the geometry again.
 const ARENA_TEMPLATE = { name: 'arena', rows: [
   '##############',
   '#............#',
-  '#..w......w..#',
+  '#..w.........#',
   '#....P..P....#',
   '#.L........L.#',
   '#......X.....#',
@@ -262,6 +322,27 @@ const GALLERY_TEMPLATE = { name: 'gallery', rows: [
   '#...PP...PP...PP...#',
   '#........R.........#',
   '####################',
+]};
+
+// The killbox. Two rifles posted on the far side of a room with almost nothing in it, watching the
+// door you have to come in by, and they see you the moment you are through it. There is no route
+// that is not in their line: the answers are a shield off the stand by the door, one of the two men
+// on your own side carried in front of you, the two pillars if you time them, or going back out.
+// It never flips on X — the rifles are the far wall, and the door is the near one.
+const KILLBOX_TEMPLATE = { name: 'killbox', noFlipX: true, rows: [
+  '######################',
+  '#....................#',
+  '#....PP..............#',
+  '#................R...#',
+  '#....................#',
+  '#..w.................#',
+  '#..e.................#',
+  '#..e.................#',
+  '#................R...#',
+  '#....PP..............#',
+  '#......o.............#',
+  '#....................#',
+  '######################',
 ]};
 
 // The room you woke up in. The altar stands off to one side, made ready, with the straps and the

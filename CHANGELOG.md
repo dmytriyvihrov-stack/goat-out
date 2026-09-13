@@ -5,6 +5,36 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.2 — arms that break, the brute, and a room with two rifles in it
+
+- **Nothing you pick up survives being used.** A thrown blade goes into whatever it finds and snaps
+  there; thrown at a wall it is thrown away. A shield is worth three — three men flattened, three
+  bullets turned, or any mix of them — and splinters on the third, with three studs above it while
+  you carry it so you know what is left. Neither can be picked up again. What a stand of arms hands
+  you is a moment, not a tool you drag through a level.
+- **And there are far fewer of them.** An arena holds one stand rather than two, an ordinary room
+  about one in six, and level 1 has none at all until the halfway mark: the first half of the run is
+  the goat, his head, and whatever the room was already built out of.
+- **The brute.** What used to be a slightly bigger clubman with a second heart is now a different man:
+  three killing blows, four in the arena, a spiked back, a studded club and a frame a third larger.
+  You can tell one across a room, which is the whole point of him.
+- **The wheel is met with nobody in the room.** The Mill's room is a set piece, so it is no longer
+  allowed to be the room that introduces a kind, and it carries about half a crowd — none at all on
+  level 1. Meeting the Mill and your first three-hearted man in the same doorway meant meeting
+  neither.
+- **A kind is met in the open before it is met in the ring.** Level 1 used to hand you the arena brute
+  before any ordinary one. Level 1 is ten rooms now and its order reads: one clubman, the wheel, one
+  brute, the brute in the ring, one hound, a mixed room, the Butcher.
+- **The killbox**, late on THE ROAD, THE THRESHING FLOOR, THE BRIDGE and THE OSSUARY. A wide room
+  with almost nothing in it and two rifles posted on the far side, watching the door you have to come
+  in by. They see further than a man wandering a room and they do not leave the post. There is a
+  shield on a stand by the door, two of their own on your side of the room to carry in front of you,
+  two bits of cover halfway across, and the corridor behind you. Pick one.
+- **BAAH is a good deal shorter.** Twelve tiles to eight and a half: it is for the men on top of you,
+  not for the room. RAW THROAT now takes it to thirteen rather than twenty.
+- **Four new rooms in the rotation** — a bare yard, livestock pens, a pillared nave and the ovens —
+  so a level repeats itself less, and so some rooms are open enough that a rifle or a mage owns them.
+
 ## 1.1 — THE OSSUARY, and a thing you cannot hit
 
 - **A sixth level, and its enemy is not there.** THE OSSUARY is under the bridge, where everything the
