@@ -1,7 +1,7 @@
 # GOAT OUT
 
 You are the sacrificial goat. They were driving you to the altar, the truck fell off the bridge, and now
-the whole cult wants you back. Four levels, one life, procedurally generated every run.
+the whole cult wants you back. Five levels, one life, procedurally generated every run.
 
 **Play it:** https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
@@ -50,10 +50,17 @@ printed in the top right.
 
 ## What is in
 
-**Four levels.** THE ALTAR is Bearers, with one hound near the end of it. THE YARD adds Seers, late and
-one to a room. THE ROAD adds Hunters, posted on their own as well as in crowds. THE BRIDGE mixes all five.
-Every level carries more hounds than the one before. Each is a chain of hand-authored rooms stitched
-together differently every run, and each one hands your hearts back.
+**Five levels.** THE ALTAR is Bearers, with one hound near the end of it. THE YARD adds Seers, late and
+one to a room. THE ROAD adds Hunters, posted on their own as well as in crowds. THE THRESHING FLOOR takes
+the walls away. THE BRIDGE mixes everything. Every level carries more hounds than the one before. Each is
+a chain of hand-authored rooms stitched together differently every run, and each one hands your hearts
+back.
+
+**THE THRESHING FLOOR**, the open level: rooms half again as wide, five-tile gaps instead of doorways,
+and hardly a wall to throw anybody at. Instead there is furniture — a field of stone posts, table rows
+you can shove about to open or close a lane, an island of posts with clear ground all round it, braziers
+down both flanks, and a ring of hay that turns into a wall the moment you light it. Nothing out there
+kills for you; you have to walk them into something.
 
 **A pen, not an altar.** Level 1 starts you caged beside the slab they meant to use, with the goat that
 went before you opened up on the floor and their tools laid out beside it. Three headbutts take the bars
@@ -111,6 +118,6 @@ room, new level, skip level.
 | `CLAUDE.md` | How to work on it: architecture, conventions, testing traps, publishing. |
 | `CHANGELOG.md` | Version history and the reasoning behind each change. |
 | `GOAT_OUT_brief.md` | The original stage-one brief. History, not spec. |
-| `js/tuning.js` | Every tunable number and the three level definitions. Start here to change feel. |
+| `js/tuning.js` | Every tunable number and the five level definitions. Start here to change feel. |
 | `js/rooms.js` | Room templates as character grids. |
 | `tools/harness.js` | Console test harness. |

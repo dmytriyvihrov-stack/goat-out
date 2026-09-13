@@ -109,15 +109,25 @@ over their heads, so what is left of a man reads off the man.
 
 ## Levels
 
-Four levels. Every level holds arena bosses, one Mill room near the middle, and milk bowls that restore
-a heart. The later two add a Gallery of posted rifles and a Great Hall.
+Five levels. Every level holds arena bosses, one Mill room near the middle, and milk bowls that restore
+a heart. The later ones add a Gallery of posted rifles, a Great Hall, and one level built the other way
+round: almost no walls, and furniture instead.
 
 | | Rooms | Regular enemies | Bosses |
 |---|---|---|---|
 | **THE ALTAR** | 9 | Bearers, one hound | Two elite Seers |
 | **THE YARD** | 12 | Bearers, Seers, hounds | Butcher, elite Seer |
 | **THE ROAD** | 14 | Bearers, Seers, Hunters, hounds | Two Butchers |
+| **THE THRESHING FLOOR** | 12 | All five, mixed | Elite Seer, Butcher |
 | **THE BRIDGE** | 16 | All five, mixed | Butcher, elite Seer, Butcher |
+
+**THE THRESHING FLOOR** is the level that asks the opposite question. Its rooms are half again as wide,
+the ways between them are five tiles across, and there are almost no doors — it is one open yard, and a
+headbutt on open ground still only knocks a man down. What kills out there is what is standing in it: a
+field of stone posts, table rows you can shove into lanes, an island of posts ringed by open floor,
+braziers down the flanks, and a ring of hay that becomes a wall the moment you light it and never
+becomes floor again. Rifles hold the long lines and hounds own the middle, so the level is one long
+argument about which half of a room is yours.
 
 **The Great Hall**, late on THE ROAD and again on THE BRIDGE: a single room 38 by 22 tiles holding two
 Mills, rows of pillars, hay fields, tables, braziers, lamps, a bell and fifteen men or more. The exit is

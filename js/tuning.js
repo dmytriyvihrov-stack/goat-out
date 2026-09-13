@@ -224,8 +224,22 @@ const LEVELS = [
     budget: (i) => (i === 0 ? 0 : Math.min(6, 2 + Math.floor(i * 0.36))),
   },
   {
+    // The threshing floor: the widest ground in the compound and the least wall in it. A headbutt on
+    // bare floor still only knocks a man down, so out here you have to herd him into the furniture —
+    // posts, tables, braziers, a ring of hay you light yourself — and decide which half of a room is
+    // yours before the rifles decide it for you. Corridors are wide enough that it reads as one yard.
+    name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 12, pool: 'open', corridorW: 5,
+    arenas: [{ at: 3, boss: 'seer' }, { at: 9, boss: 'butcher' }],
+    millAt: 6, heals: 3, ranged: 'both', seerShare: 0.35, seerFrom: 2, seerPerRoom: 1,
+    dogs: 6, dogFrom: 2, lonePosts: 4,
+    floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
+    fog: '#0b0b0a', doorChance: 0.12,
+    hint: 'NOTHING OUT HERE KILLS FOR YOU. USE WHAT IS STANDING.',
+    budget: (i) => (i === 0 ? 0 : Math.min(7, 2 + Math.floor(i * 0.42))),
+  },
+  {
     // Everything the compound has left, all at once, on the bridge they were driving you over.
-    name: 'THE BRIDGE', sub: 'Level 4', rooms: 16,
+    name: 'THE BRIDGE', sub: 'Level 5', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
     millAt: 7, heals: 3, ranged: 'both', seerShare: 0.5, seerFrom: 2, seerPerRoom: 1, dogs: 7, dogFrom: 2,
     hallAt: 12, hallBudget: 18, galleryAt: 2, lonePosts: 4,

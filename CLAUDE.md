@@ -37,9 +37,9 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 
 | File | Holds |
 |---|---|
-| `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `LEVELS`. Every tunable number, every line the cult shouts, and the three level definitions. |
+| `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `LEVELS`. Every tunable number, every line the cult shouts, and the five level definitions. |
 | `js/rng.js` | Seeded RNG (mulberry32) plus `clamp` / `lerp` / `len` / `angleDiff`. |
-| `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top. Also the start room, the arena, the Mill room, the Great Hall and the Gallery. |
+| `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top. Also the start room, the arena, the Mill room, the Great Hall and the Gallery. Templates carrying a `tag` belong to one level's pool. |
 | `js/gen.js` | Level generation: chains rooms, carves corridors, places props, spawns, heals, validates reachability. Defines the tile enum `T`. |
 | `js/audio.js` | WebAudio. Buses, the drum machine, the music bed (`MUSIC`) and every one-shot effect. |
 | `js/world.js` | Tile grid, collision, line of sight, flow field, fire (ordinary and witchfire), noise events, the persistent decal canvas, cult pictograms, the ritual start room. |
@@ -134,6 +134,12 @@ is drawn in `drawEnemy`.
 drives the lens, `flash(color, amt)` paints an additive overlay, and `gore` throws chunks that stain the
 decal canvas when they expire. The renderer applies kick and zoom in `draw`, and everything decays in
 `updateEffects`.
+
+**Room pools.** `ROOM_TEMPLATES` entries with a `tag` are drawn only by a level whose `pool` matches;
+untagged ones are the default set everything else uses. THE THRESHING FLOOR is `pool: 'open'`, and its
+`corridorW: 5` widens the S-corridor so the rooms read as one yard. A wide corridor deliberately eats
+the room borders it passes through — that is the mechanism behind "fewer walls", and it is why the level
+needs furniture (posts, tables, braziers, hay) to keep kills coming from geometry.
 
 **The pen.** Cage bars are ordinary `Prop`s of kind `cage`, built by `buildCage` in `gen.js` and exempt
 from the three-tile prop clearance around the start. A headbutt on any of them breaks all of them and

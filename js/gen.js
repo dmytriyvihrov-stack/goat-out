@@ -26,7 +26,10 @@ function tryGenerate(levelDef, seed) {
   let x = 2;
   let y = Math.floor(H * 0.62);
   const n = levelDef.rooms;
-  const pool = rng.shuffle(ROOM_TEMPLATES.slice());
+  // A level can draw from its own set of rooms: `pool` matches a template's `tag`, and a level
+  // without one gets the untagged default set.
+  const want = levelDef.pool || null;
+  const pool = rng.shuffle(ROOM_TEMPLATES.filter((t) => (t.tag || null) === want));
   let poolIdx = 0;
 
   for (let i = 0; i < n; i++) {
@@ -59,7 +62,7 @@ function tryGenerate(levelDef, seed) {
     }
     rooms.push(room);
     if (i > 0) {
-      const door = carveCorridor(tiles, W, rooms[i - 1], room, rng);
+      const door = carveCorridor(tiles, W, rooms[i - 1], room, rng, levelDef.corridorW);
       if (door && rng.chance(levelDef.doorChance)) props.push({ x: door.x, y: door.y, kind: 'door', vertical: door.vertical });
     }
     x += w + rng.int(3, 7);
@@ -227,18 +230,23 @@ function pickDoorY(room, side, rng) {
   return rng.pick(candidates);
 }
 
-// Carves an S-shaped 2-wide corridor and returns a sensible spot for a door.
-function carveCorridor(tiles, W, a, b, rng) {
+// Carves an S-shaped corridor — two tiles wide by default, wider where a level asks for it — and
+// returns a sensible spot for a door. A wide corridor eats the borders it passes through, which is
+// how the open level ends up reading as one yard rather than a row of boxes.
+function carveCorridor(tiles, W, a, b, rng, width) {
+  const wide = Math.max(2, width || 2);
+  const H = tiles.length / W;
   const yA = pickDoorY(a, 'right', rng);
   const yB = pickDoorY(b, 'left', rng);
   if (yA < 0 || yB < 0) return null;
   const xA = a.x + a.w - 1, xB = b.x;
   const midX = Math.floor((xA + xB) / 2);
-  const carve = (tx, ty) => { if (tx >= 0 && tx < W) tiles[ty * W + tx] = T.FLOOR; };
-  for (let tx = xA; tx <= midX + 1; tx++) { carve(tx, yA); carve(tx, yA + 1); }
-  const y0 = Math.min(yA, yB), y1 = Math.max(yA, yB) + 1;
-  for (let ty = y0; ty <= y1; ty++) { carve(midX, ty); carve(midX + 1, ty); }
-  for (let tx = midX; tx <= xB; tx++) { carve(tx, yB); carve(tx, yB + 1); }
+  const carve = (tx, ty) => { if (tx >= 0 && tx < W && ty >= 1 && ty < H - 1) tiles[ty * W + tx] = T.FLOOR; };
+  const band = (tx, ty) => { for (let k = 0; k < wide; k++) carve(tx, ty + k); };
+  for (let tx = xA; tx <= midX + wide - 1; tx++) band(tx, yA);
+  const y0 = Math.min(yA, yB), y1 = Math.max(yA, yB) + wide - 1;
+  for (let ty = y0; ty <= y1; ty++) for (let k = 0; k < wide; k++) carve(midX + k, ty);
+  for (let tx = midX; tx <= xB; tx++) band(tx, yB);
   if (y1 - y0 >= 4) return { x: (midX + 1) * TILE, y: (Math.floor((y0 + y1) / 2) + 0.5) * TILE, vertical: false };
   if (midX - xA >= 3) return { x: (Math.floor((xA + midX) / 2) + 0.5) * TILE, y: (yA + 1) * TILE, vertical: true };
   return null;

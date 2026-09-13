@@ -5,6 +5,23 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.10 — THE THRESHING FLOOR: a level about the space, not the corridor
+
+- **A fifth level, and it is the open one.** THE THRESHING FLOOR sits between THE ROAD and THE BRIDGE:
+  the widest ground in the compound and the least wall in it. Rooms are half again as big, the ways
+  between them are five tiles across instead of two, and there are almost no doors — it reads as one
+  yard rather than a chain of boxes.
+- **The furniture is the level.** A headbutt on bare floor still only knocks a man down, and out here
+  there is a lot of bare floor. So the rooms give you something to herd him into instead: a field of
+  stone posts spread wide, table rows you can shoulder around to make or close a lane, an island of
+  posts and tables with open ground on every side, braziers down both flanks — and a ring of hay that
+  is not a wall at all until you light it, and cannot be taken back once you have. Nearly twice the
+  furniture of any other level, on the most open ground of any level.
+- **Rifles and hounds punish the middle.** Crossing the open centre is fast, and stupid: the posts are
+  cover, the flanks are where anything useful stands, and a hound catches you in the open. Which half
+  of a room is yours is the whole question the level asks.
+- **THE BRIDGE is now Level 5** and still the finale.
+
 ## 0.9 — the hounds, a room the cult can read, and the skills in the corner
 
 - **The hound.** A fourth kind of enemy, and the first one that is not a man. It runs as fast as you do,
