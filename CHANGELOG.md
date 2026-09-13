@@ -5,6 +5,30 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.11 — a difficulty curve you can read, and a hound you can see
+
+- **You meet every kind on its own.** The room that first shows you a clubman, a champion, a hound, a
+  mage or a rifle holds that one enemy and nothing else — and a boss you have never seen stands in his
+  arena without escorts. Level 1 now opens with a single clubman in an empty room, and only then a
+  Mill, a champion, a hound, and the two of them together.
+- **The champion.** A clubman with a second heart and a bigger frame, with the notches over his head to
+  say so. He exists to teach "some of them take more than one" on level 1 without spending a boss on it.
+- **Rooms are bought with threat, not with bodies.** Every level has a curve — `from` and `to` — and
+  each room spends that budget on whatever you have already been introduced to. A rifle costs more than
+  a clubman, a mage more than a rifle. So "harder" means both more of them and worse of them, and one
+  pair of numbers per level sets the whole shape. Per-room caps keep a room readable: one mage, one
+  champion, two rifles, seven men — the Bridge is the one ground allowed to break that.
+- **Every level is harder than the one before, and it is checked.** `node tools/balance.js` prints what
+  the numbers actually produce, room by room, and fails if a kind arrives in a crowd before it has
+  arrived alone, if a cap is broken, if threat stops rising inside a level, or if a level is not harder
+  than its predecessor. The rules are the tool; the tool is the test.
+- **THE THRESHING FLOOR grew to 14 rooms** and a third arena, because the tool said it was easier than
+  THE ROAD and the tool was right.
+- **The hound was almost invisible.** It was drawn near-black on floors that run from near-black plum to
+  pale sand. It is now a mid-tone grey-violet with a dark edge, a lit spine, a pale blaze down the
+  snout and a bone collar — the one combination that reads on every floor in the game — and slightly
+  larger, so what you are looking at and what you can hit are the same size.
+
 ## 0.10 — THE THRESHING FLOOR: a level about the space, not the corridor
 
 - **A fifth level, and it is the open one.** THE THRESHING FLOOR sits between THE ROAD and THE BRIDGE:

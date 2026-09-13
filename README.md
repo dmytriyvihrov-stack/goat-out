@@ -71,9 +71,15 @@ and hold nobody.
 pillar rows, hay, tables, braziers, lamps, a bell and fifteen men between you and the far door. The
 **Gallery** on those levels is the opposite problem — pillar cover and rifles posted well apart.
 
-**Five enemy types.** Club-swinging Bearers, blinking Seers whose runes erupt into violet witchfire that
-no boon protects you from, Hunters whose bullets travel and hit their own, the Butcher who takes three
-hits and cannot be interrupted mid-swing, and the hounds. They shout short lines when they see you, hear
+**You meet everything alone first.** The room that introduces a clubman, a champion, a hound, a mage or
+a rifle holds that one enemy and nothing else, and a boss you have never seen stands in his arena without
+company. After that they arrive mixed, and the mix gets worse as the level goes on and worse again on the
+level after.
+
+**Six enemy types.** Club-swinging Bearers; Champions, who take a second hit and carry notches over
+their heads to say so; blinking Seers whose runes erupt into violet witchfire that no boon protects you
+from; Hunters whose bullets travel and hit their own; the Butcher, who takes three hits and cannot be
+interrupted mid-swing; and the hounds. They shout short lines when they see you, hear
 you, swing at you or watch one of their own come apart — and they read the room: fire, lit braziers, a
 rune about to go off and the sweeping arms of the Mill. Not all of them read it correctly.
 

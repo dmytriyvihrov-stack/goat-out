@@ -52,6 +52,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `artifact.html` | Published build. Same scripts, artifact-shaped head. **Keep the two script lists in sync.** |
 | `tools/serve.js` | Dev server. Also accepts `POST /shot?name=x` with a data URL and writes a PNG to `tools/shots/`. |
 | `tools/harness.js` | Console test harness. See *Testing*. |
+| `tools/balance.js` | Prints the difficulty curve of every level and fails on a broken balance rule. |
 
 ---
 
@@ -135,6 +136,22 @@ drives the lens, `flash(color, amt)` paints an additive overlay, and `gore` thro
 decal canvas when they expire. The renderer applies kick and zoom in `draw`, and everything decays in
 `updateEffects`.
 
+**Difficulty.** `THREAT`, `ENCOUNTER` and each level's `encounters` block in `tuning.js` are the whole
+model; `planEncounters()` in `gen.js` turns them into a per-room plan before anything is placed, and the
+generator only finds floor for what the plan says. Two rules it enforces:
+
+1. *Met alone.* A kind's first appearance in a run is a room holding one of it and nothing else — a
+   first-of-its-kind boss gets no escorts either. `levelDef.met` (computed once under `LEVELS`) carries
+   what earlier levels already showed, so a kind is introduced once a run rather than once a level.
+2. *Threat, not bodies.* A room's budget comes off the level's curve (`from` → `to`, bent by `ease`) and
+   is spent on whatever has been introduced, capped per kind and per room. A level is harder than the
+   last because its two numbers are bigger.
+
+Change any of it and run **`node tools/balance.js`**: it prints the curve room by room and exits non-zero
+if a kind arrives in a crowd first, a cap breaks, threat stops rising inside a level, or a level is not
+harder than the one before. Adding an enemy kind means: a `THREAT` value, an `ENCOUNTER.weight`, usually
+a `cap`, and an `introduce` entry on the level that first shows it.
+
 **Room pools.** `ROOM_TEMPLATES` entries with a `tag` are drawn only by a level whose `pool` matches;
 untagged ones are the default set everything else uses. THE THRESHING FLOOR is `pool: 'open'`, and its
 `corridorW: 5` widens the S-corridor so the rooms read as one yard. A wide corridor deliberately eats
@@ -195,6 +212,9 @@ A fourth trap: `H.startPlay()` leaves the goat in the pen on level 1. Break out 
 drops men **aware and adjacent**, so a handful of them will kill the goat during a test unless
 `game.dev.god` is on — a dead goat freezes every enemy, which reads as the feature under test being broken.
 
+**Always run `node tools/balance.js` after touching anything about who spawns where.** It is the only
+place the balance rules are written down in a form that can fail.
+
 **Always run the generator sweep after touching `gen.js`, `rooms.js` or `LEVELS`.** It catches broken
 templates and impossible layouts in seconds:
 
@@ -212,6 +232,12 @@ for f in js/*.js tools/*.js; do node --check "$f" || echo "FAIL $f"; done
 ---
 
 ## Publishing
+
+**"Deploy" means three things, in this order, every time: merge the work into `main`, push it, and
+publish the artifact.** The user says "deploy" to mean "put it live", and a branch that only sits on
+the remote is not live. Never stop at the feature branch and never leave `main` behind — if a session
+was developing on `claude/<something>`, merge that branch into `main` and push `main` as part of the
+deploy, then publish. Opening a pull request instead is only right when the user asks for one.
 
 The artifact is published from `artifact.html` with all eleven scripts passed as supporting files, and
 always to the existing URL. Republishing without the `url` creates a second artifact.

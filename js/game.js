@@ -239,6 +239,8 @@ class Game {
     this.enemies = this.level.spawns.map((s) => {
       const e = new Enemy(s.x, s.y, s.kind);
       if (s.elite) { e.elite = true; e.hp = TUNING.elite.hp; e.maxHp = e.hp; }
+      // A champion is a clubman with a second heart: bigger, and the notches over his head say so.
+      if (s.champion) { e.elite = true; e.hp = TUNING.champion.hp; e.maxHp = e.hp; }
       if (s.boss) e.boss = true;
       return e;
     });

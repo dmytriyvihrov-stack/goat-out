@@ -77,6 +77,7 @@ past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 | | Behaviour |
 |---|---|
 | **Bearer** | Melee. 0.58 s windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
+| **Champion** | A Bearer with a second heart and a bigger frame, and health notches over his head. He is how level 1 says "some of them take more than one" without spending a boss on it. |
 | **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the Butcher he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for 0.8 s with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
@@ -108,6 +109,15 @@ over their heads, so what is left of a man reads off the man.
 ---
 
 ## Levels
+
+**Difficulty is a curve, and the curve is data.** Two rules run it. First, every kind is met on its own:
+the room that first shows you a clubman, a champion, a hound, a mage or a rifle holds that one enemy and
+nothing else, and a boss you have never seen stands in his arena alone. Second, rooms are bought with
+threat rather than with bodies — a rifle costs more than a clubman, a mage more than a rifle — off a
+curve that runs from the level's first fighting room to its last. So a later room is both fuller and
+nastier, and a later level is harder than the one before it. Caps keep any single room readable: one
+mage, one champion, two rifles, seven men. `node tools/balance.js` prints what the numbers produce and
+fails when a rule breaks.
 
 Five levels. Every level holds arena bosses, one Mill room near the middle, and milk bowls that restore
 a heart. The later ones add a Gallery of posted rifles, a Great Hall, and one level built the other way

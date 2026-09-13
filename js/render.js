@@ -498,8 +498,18 @@ class Renderer {
       ctx.beginPath(); ctx.ellipse(-e.vx * 0.03, -e.vy * 0.03, r * 1.5, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
     }
-    // legs: fore and hind out of phase, so the gait reads even at this size
-    ctx.strokeStyle = '#241c22'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    // Legs, fore and hind out of phase so the gait reads even at this size. They are mid-tone, not
+    // black: the floors run from near-black plum to pale sand, and a black dog disappears into half
+    // of them. Everything on him is a mid value with a dark edge and a pale mark or two, which is the
+    // only combination that reads on both.
+    ctx.strokeStyle = '#2a2130'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(r * 0.5, -r * 0.45); ctx.lineTo(r * 0.72 + run, -r * 1.2);
+    ctx.moveTo(r * 0.5, r * 0.45); ctx.lineTo(r * 0.72 - run, r * 1.2);
+    ctx.moveTo(-r * 0.7, -r * 0.45); ctx.lineTo(-r * 0.95 - run, -r * 1.15);
+    ctx.moveTo(-r * 0.7, r * 0.45); ctx.lineTo(-r * 0.95 + run, r * 1.15);
+    ctx.stroke();
+    ctx.strokeStyle = '#6b5f79'; ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(r * 0.5, -r * 0.45); ctx.lineTo(r * 0.72 + run, -r * 1.2);
     ctx.moveTo(r * 0.5, r * 0.45); ctx.lineTo(r * 0.72 - run, r * 1.2);
@@ -507,31 +517,33 @@ class Renderer {
     ctx.moveTo(-r * 0.7, r * 0.45); ctx.lineTo(-r * 0.95 + run, r * 1.15);
     ctx.stroke();
     // tail, low and stiff
-    ctx.strokeStyle = '#2e2430'; ctx.lineWidth = 2.6;
+    ctx.strokeStyle = '#4a4157'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(-r * 1.2, 0);
     ctx.quadraticCurveTo(-r * 2, -r * 0.3, -r * 2.1, -r * 0.95 + Math.sin(this.t * 12) * r * 0.25); ctx.stroke();
-    // body: a long barrel rather than a ball
-    ctx.fillStyle = '#342a33';
-    ctx.beginPath(); ctx.ellipse(-r * 0.15, 0, r * 1.4, r * 0.76, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(26,16,22,0.5)';
-    ctx.beginPath(); ctx.ellipse(-r * 0.5, r * 0.22, r * 1, r * 0.48, 0, 0, Math.PI * 2); ctx.fill();
-    // a lit spine, or he disappears entirely into a dark floor
-    ctx.fillStyle = 'rgba(150,134,158,0.3)';
-    ctx.beginPath(); ctx.ellipse(-r * 0.2, -r * 0.3, r * 1.05, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
-    // the cult's collar: the one bright thing on him
-    ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = 2.6;
+    // body: a long barrel rather than a ball, edged in dark so it never melts into the floor
+    ctx.fillStyle = '#544a63'; ctx.strokeStyle = 'rgba(13,10,12,0.7)'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.ellipse(-r * 0.15, 0, r * 1.4, r * 0.76, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(20,14,24,0.45)';
+    ctx.beginPath(); ctx.ellipse(-r * 0.5, r * 0.24, r * 1, r * 0.46, 0, 0, Math.PI * 2); ctx.fill();
+    // a lit spine, the brightest thing on him after the collar
+    ctx.fillStyle = 'rgba(186,172,198,0.5)';
+    ctx.beginPath(); ctx.ellipse(-r * 0.2, -r * 0.32, r * 1.05, r * 0.24, 0, 0, Math.PI * 2); ctx.fill();
+    // the cult's collar
+    ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(r * 0.42, 0, r * 0.6, Math.PI * 0.55, Math.PI * 1.45); ctx.stroke();
-    ctx.fillStyle = PALETTE.blood; ctx.beginPath(); ctx.arc(r * 0.5, r * 0.6, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.blood; ctx.beginPath(); ctx.arc(r * 0.5, r * 0.6, 2, 0, Math.PI * 2); ctx.fill();
     // head and snout, thrown forward on the bite and drawn back under the windup
     ctx.save(); ctx.translate(r * (0.95 + thrust), 0);
-    ctx.fillStyle = '#241c22';                                  // ears, pricked back
-    ctx.beginPath(); ctx.moveTo(-r * 0.1, -r * 0.4); ctx.lineTo(-r * 0.8, -r * 1); ctx.lineTo(-r * 0.12, -r * 0.05); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-r * 0.1, r * 0.4); ctx.lineTo(-r * 0.8, r * 1); ctx.lineTo(-r * 0.12, r * 0.05); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#3d3140';
-    ctx.beginPath(); ctx.ellipse(0, 0, r * 0.64, r * 0.56, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#33293c'; ctx.strokeStyle = 'rgba(13,10,12,0.7)'; ctx.lineWidth = 1.4;   // ears, pricked back
+    ctx.beginPath(); ctx.moveTo(-r * 0.1, -r * 0.4); ctx.lineTo(-r * 0.85, -r * 1.05); ctx.lineTo(-r * 0.12, -r * 0.05); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r * 0.1, r * 0.4); ctx.lineTo(-r * 0.85, r * 1.05); ctx.lineTo(-r * 0.12, r * 0.05); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#5d5270';
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 0.66, r * 0.58, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(r * 0.28, -r * 0.32); ctx.lineTo(r * 1.3, -r * 0.17);
-    ctx.lineTo(r * 1.3, r * 0.17); ctx.lineTo(r * 0.28, r * 0.32); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#17111a'; ctx.beginPath(); ctx.arc(r * 1.28, 0, 1.9, 0, Math.PI * 2); ctx.fill();   // nose
+    ctx.lineTo(r * 1.3, r * 0.17); ctx.lineTo(r * 0.28, r * 0.32); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(226,216,232,0.55)';                   // a pale blaze down the snout
+    ctx.fillRect(r * 0.35, -r * 0.09, r * 0.9, r * 0.18);
+    ctx.fillStyle = '#17111a'; ctx.beginPath(); ctx.arc(r * 1.28, 0, 2.1, 0, Math.PI * 2); ctx.fill();   // nose
     ctx.fillStyle = PALETTE.fireHi;                             // eyes: the only light in him
     if (charging) {
       ctx.globalAlpha = 0.32;

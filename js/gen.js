@@ -8,6 +8,106 @@ function flipTemplate(tpl, rng) {
   return { name: tpl.name, rows };
 }
 
+// ---------------------------------------------------------------------------------------------
+// THE ENCOUNTER PLAN. Difficulty is decided here, once, before a single man is placed; the generator
+// below only finds floor for what this returns. Two rules, and both are testable:
+//
+//   1. Every kind is met on its own. The room that introduces a kind holds that one enemy and
+//      nothing else — no escorts on a first-appearance boss either.
+//   2. Rooms are bought with threat rather than with bodies, off a curve that runs from the level's
+//      `from` to its `to`. Later rooms are both fuller and nastier, and a level is harder than the
+//      one before it because its two numbers are bigger.
+//
+// `node tools/balance.js` prints what this produces per level and fails on a broken rule.
+function weightedPick(kinds, rng) {
+  let total = 0;
+  for (const k of kinds) total += ENCOUNTER.weight[k] || 1;
+  let r = rng.float(0, total);
+  for (const k of kinds) { r -= ENCOUNTER.weight[k] || 1; if (r <= 0) return k; }
+  return kinds[kinds.length - 1];
+}
+
+// Spend a threat budget on whoever has been introduced, respecting the per-room caps.
+function fillRoom(budget, available, rng, caps, maxMen) {
+  const men = [], used = {};
+  const cap = maxMen || caps.men;
+  let left = budget;
+  for (let guard = 0; guard < 80 && men.length < cap; guard++) {
+    const choices = available.filter((k) => (used[k] || 0) < (caps[k] || 99) && THREAT[k] <= left + 0.5);
+    if (!choices.length) break;
+    const kind = weightedPick(choices, rng);
+    men.push(kind); used[kind] = (used[kind] || 0) + 1; left -= THREAT[kind];
+  }
+  if (!men.length && available.length) men.push(available.includes('bearer') ? 'bearer' : available[0]);
+  return men;
+}
+
+function planEncounters(levelDef, rooms, rng) {
+  const E = levelDef.encounters;
+  // A level may loosen a cap: the finale is allowed rooms the earlier ones are not.
+  const caps = Object.assign({}, ENCOUNTER.cap, E.cap || {});
+  const out = { rooms: new Map(), introRooms: new Set(), hunterFrom: -1, caps };
+  const fight = rooms.filter((r) => r.index > 0 && !r.calm);
+  const ordinary = fight.filter((r) => !r.arena && !r.isHall && !r.isGallery);
+  if (!ordinary.length) return out;
+
+  // Hand each new kind a room of its own: start where the level asks for it and walk forward to the
+  // first ordinary room nobody has claimed, then backward if the level ran out of room forward.
+  const intro = new Map();
+  for (const [kind, at] of (E.introduce || [])) {
+    const want = Math.round(clamp(at, 0, 1) * (ordinary.length - 1));
+    const room = ordinary.slice(want).find((r) => !intro.has(r.index))
+      || ordinary.slice(0, want).reverse().find((r) => !intro.has(r.index));
+    if (room) { intro.set(room.index, kind); out.introRooms.add(room.index); }
+  }
+
+  const pending = new Set(intro.values());
+  const mixable = E.kinds.filter((k) => !pending.has(k));   // met on an earlier level, or from room one
+  // Everything the run has shown him already, so the second Butcher does not get a solo introduction.
+  const seen = new Set([...mixable, ...(levelDef.met || [])]);
+  if (mixable.includes('hunter')) out.hunterFrom = 0;
+  let step = 0, easeOff = false;
+  for (const room of fight) {
+    // An arena is its boss. He stands alone the first time you ever see his kind, and with a little
+    // company every time after that.
+    if (room.arena) {
+      const boss = room.arena.boss;
+      const known = seen.has(boss);
+      const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss), rng, caps) : [];
+      out.rooms.set(room.index, { men: escorts, boss, intro: known ? null : boss, arena: true });
+      if (!known) out.introRooms.add(room.index);
+      seen.add(boss);
+      continue;
+    }
+    const t = ordinary.length > 1 ? step / (ordinary.length - 1) : 1;
+    const curve = lerp(E.from, E.to, Math.pow(clamp(t, 0, 1), E.ease));
+    const kind = intro.get(room.index);
+    if (kind) {
+      // The introduction itself: one of him, nothing else in the room.
+      out.rooms.set(room.index, { men: [kind], intro: kind });
+      mixable.push(kind); pending.delete(kind); seen.add(kind);
+      if (kind === 'hunter') out.hunterFrom = room.index;
+      easeOff = true; step++;
+      continue;
+    }
+    // The Great Hall is the exception to every cap: it is supposed to be a wall of bodies.
+    if (room.isHall) {
+      out.rooms.set(room.index, { men: fillRoom(levelDef.hallThreat || curve * 2.5, mixable, rng, caps, ENCOUNTER.hallCap), hall: true });
+      continue;
+    }
+    // The Gallery is rifles posted apart, but only once rifles are a thing you have met.
+    if (room.isGallery) {
+      const posts = mixable.includes('hunter') ? ['hunter', 'hunter', 'hunter'] : [];
+      out.rooms.set(room.index, { men: posts.concat(fillRoom(curve * 0.6, mixable, rng, caps)), gallery: true });
+      continue;
+    }
+    const budget = curve * (easeOff ? ENCOUNTER.afterIntro : 1);
+    out.rooms.set(room.index, { men: fillRoom(budget, mixable, rng, caps), threat: budget });
+    easeOff = false; step++;
+  }
+  return out;
+}
+
 function generateLevel(levelDef, seed) {
   for (let attempt = 0; attempt < 20; attempt++) {
     const lvl = tryGenerate(levelDef, seed + attempt * 7919);
@@ -78,9 +178,10 @@ function tryGenerate(levelDef, seed) {
   }
   const exit = { x: (last.x + last.w) * TILE, y: (doorY + 1) * TILE };
 
-  // Props and enemy spawns from markers, with a per-room budget.
+  // Props from the template markers, and the men the plan asked for placed on whatever the room has.
+  const plan = planEncounters(levelDef, rooms, rng);
   rooms.forEach((room) => {
-    const enemyMarkers = [];
+    const spots = [];
     room.markers.forEach((m) => {
       const px = (m.tx + 0.5) * TILE, py = (m.ty + 0.5) * TILE;
       if (m.c === 'B') props.push({ x: px, y: py, kind: 'brazier' });
@@ -89,51 +190,47 @@ function tryGenerate(levelDef, seed) {
       else if (m.c === 'L') props.push({ x: px, y: py, kind: 'lamp' });
       else if (m.c === 't') { if (m.tx % 2 === 0 && m.ty % 2 === 0) props.push({ x: px + TILE / 2, y: py + TILE / 2, kind: 'table' }); }
       else if (m.c === 'M') props.push({ x: px, y: py, kind: 'mill', phase: rng.float(0, Math.PI * 2) });
-      else if (m.c === 'X') {
-        const boss = (room.arena && room.arena.boss) || 'butcher';
-        spawns.push({ x: px, y: py, kind: boss, elite: boss !== 'butcher', boss: true });
-      }
-      else enemyMarkers.push(m);
+      else if (m.c === 'X') room.bossSpot = { x: px, y: py };
+      else spots.push(m);
     });
-    // The pen room, and the two rooms with the controls painted on the floor, stay empty.
-    if (room.index === 0 || room.calm) return;
-    const budget = room.isHall ? (levelDef.hallBudget || 12)
-      : room.isGallery ? enemyMarkers.length
-      : levelDef.budget(room.index);
-    rng.shuffle(enemyMarkers);
-    // Add extra random floor positions so a room can exceed the men its template marks.
-    const want = Math.max(0, budget - enemyMarkers.length);
-    const extra = [];
-    for (let k = 0; k < want * 8 && extra.length < want; k++) {
-      const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
-      if (tiles[ty * W + tx] === T.FLOOR) extra.push({ tx, ty, c: rng.chance(0.35) ? 'r' : 'e' });
+    const cell = plan.rooms.get(room.index);
+    if (!cell) return;                                  // the pen and the two control rooms stay empty
+    rng.shuffle(spots);
+    // A rifle likes a post and a mage likes his own mark; everyone else takes what is left.
+    const take = (kind) => {
+      const wants = kind === 'hunter' ? 'rR' : kind === 'seer' ? 'mr' : 'e';
+      let i = spots.findIndex((m) => wants.includes(m.c));
+      if (i < 0) i = spots.length ? 0 : -1;
+      if (i >= 0) { const m = spots.splice(i, 1)[0]; return { x: (m.tx + 0.5) * TILE, y: (m.ty + 0.5) * TILE }; }
+      for (let k = 0; k < 40; k++) {
+        const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
+        if (tiles[ty * W + tx] === T.FLOOR) return { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
+      }
+      return null;
+    };
+    if (cell.boss) {
+      const at = room.bossSpot || take(cell.boss);
+      if (at) spawns.push({ x: at.x, y: at.y, kind: cell.boss === 'champion' ? 'bearer' : cell.boss,
+        elite: cell.boss !== 'butcher', boss: true, roomIndex: room.index });
     }
-    const all = enemyMarkers.concat(extra).slice(0, budget);
-    const ranged = levelDef.ranged || 'none';
-    // One mage to a room at most, and none at all until the level is a few rooms old. Two of them
-    // painting the same floor is not a fight, it is a coin toss.
-    const seerOk = room.index >= (levelDef.seerFrom === undefined ? 0 : levelDef.seerFrom);
-    let seersHere = 0;
-    all.forEach((m) => {
-      let kind = 'bearer';
-      if ((m.c === 'r' || m.c === 'm' || m.c === 'R') && ranged !== 'none') {
-        const plainB = ranged === 'seer' ? 'bearer' : 'hunter';   // what he is when he cannot be a mage
-        if (m.c === 'R') kind = plainB;                           // a post that is always a rifle
-        else if ((m.c === 'm' || rng.chance(levelDef.seerShare || 0)) && seerOk && seersHere < (levelDef.seerPerRoom || 1)) {
-          kind = 'seer'; seersHere++;
-        } else kind = plainB;
-      }
-      spawns.push({ x: (m.tx + 0.5) * TILE, y: (m.ty + 0.5) * TILE, kind, roomIndex: room.index });
-    });
+    for (const kind of cell.men) {
+      const at = take(kind);
+      if (!at) continue;
+      spawns.push({ x: at.x, y: at.y, kind: kind === 'champion' ? 'bearer' : kind,
+        champion: kind === 'champion', roomIndex: room.index, intro: cell.intro === kind });
+    }
   });
 
-  // Lone rifle posts. A rifle on its own is a different problem from a rifle inside a crowd:
-  // you have to cross its line rather than out-run the pile it is standing in.
-  if (levelDef.lonePosts && (levelDef.ranged === 'both' || levelDef.ranged === 'hunter')) {
-    const eligible = rng.shuffle(rooms.filter((r) => r.index > 1 && !r.arena && !r.isMill && !r.calm && !r.isGallery));
+  // Lone rifle posts, once rifles are something you have met. A rifle on its own is a different
+  // problem from a rifle inside a crowd: you have to cross its line rather than out-run the pile.
+  if (levelDef.lonePosts && plan.hunterFrom >= 0) {
+    const eligible = rng.shuffle(rooms.filter((r) => r.index > plan.hunterFrom && !r.arena && !r.isMill && !r.calm
+      && !r.isGallery && !r.isHall && !plan.introRooms.has(r.index)));
     let placed = 0;
     for (const room of eligible) {
       if (placed >= levelDef.lonePosts) break;
+      // The room's own plan already counts: a post on top of two rifles is a wall, not a line to cross.
+      if (spawns.filter((s) => s.roomIndex === room.index && s.kind === 'hunter').length >= plan.caps.hunter) continue;
       for (let k = 0; k < 40; k++) {
         const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
         if (tiles[ty * W + tx] !== T.FLOOR) continue;
@@ -142,27 +239,6 @@ function tryGenerate(levelDef, seed) {
         spawns.push({ x: px, y: py, kind: 'hunter', roomIndex: room.index, lone: true });
         placed++;
         break;
-      }
-    }
-  }
-
-  // The hounds. In pairs where a room has space for a pair: one hound is a problem you solve, two
-  // are a problem that solves you while you are busy with the first. Never in the Mill room — that
-  // room is already about one thing.
-  if (levelDef.dogs) {
-    const from = levelDef.dogFrom === undefined ? 2 : levelDef.dogFrom;
-    const eligible = rng.shuffle(rooms.filter((r) => r.index >= from && r.index > 0 && !r.calm && !r.isMill));
-    let placed = 0;
-    for (const room of eligible) {
-      if (placed >= levelDef.dogs) break;
-      const pack = Math.min(levelDef.dogs - placed, rng.chance(0.55) ? 2 : 1);
-      for (let i = 0; i < pack; i++) {
-        for (let k = 0; k < 40; k++) {
-          const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
-          if (tiles[ty * W + tx] !== T.FLOOR) continue;
-          spawns.push({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE, kind: 'dog', roomIndex: room.index });
-          placed++; break;
-        }
       }
     }
   }

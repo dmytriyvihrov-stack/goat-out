@@ -59,7 +59,7 @@ const TUNING = {
   // hit: a share of every headbutt it is simply not there for any more. One thing it cannot do is
   // think its way through a BAAH — a screamed pack is a dead pack, and that is the point of it.
   dog: {
-    radius: 9, speed: 0.98 * 8.2 * TILE, sight: 12, cone: Math.PI * 0.9,
+    radius: 10, speed: 0.98 * 8.2 * TILE, sight: 12, cone: Math.PI * 0.9,
     reach: 0.95 * TILE, windup: 0.3, swing: 0.12, recover: 0.3, damage: 1, knock: 0.8 * TILE,
     flooredTime: 0.7,
     dodge: 0.38, dodgeCd: 1.2, dodgeSpeed: 15 * TILE, dodgeTime: 0.2,
@@ -116,6 +116,9 @@ const TUNING = {
     speed: 0.82, impulse: 30 * TILE, damage: 1, hitCooldown: 1.15, goatKnock: 0.3,
   },
   elite: { hp: 3 },
+  // A champion is an ordinary clubman who has been given a second heart and a bigger frame. He is
+  // how the game says "some of them take more than one" without spending a boss on it.
+  champion: { hp: 2 },
   noise: {
     footstep: 2, headbutt: 5, splat: 8, pot: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13,
   },
@@ -134,6 +137,36 @@ const TUNING = {
   camera: { lead: 2.4 * TILE, lerp: 7, zoomRest: 1.0, zoomFast: 0.88, zoomLerp: 2.2 },
   held: { bulletsAbsorbed: 2 },
   tome: { r: 13, pickupR: 22 },
+};
+
+// ---------------------------------------------------------------------------------------------
+// DIFFICULTY. Everything about who you meet, when, and how many of them, lives here — the generator
+// only places what this says. Two rules drive it:
+//
+//   1. You meet every kind on its own first. The room where a kind is introduced holds that one
+//      enemy and nothing else, so you get to read it before it turns up inside a crowd.
+//   2. A room is bought with threat, not with bodies. Each room gets a threat budget from the level's
+//      curve and is filled from whatever has been introduced, so "harder" means both more of them and
+//      worse of them, and one number per level decides the whole shape.
+//
+// `node tools/balance.js` prints what these numbers actually produce and fails if a rule is broken.
+
+// What one of each is worth. A rifle is not a clubman however you count heads.
+const THREAT = { bearer: 1, dog: 1.7, champion: 2.2, hunter: 2.4, seer: 2.8, butcher: 5 };
+
+const ENCOUNTER = {
+  // How often a kind is drawn once it is available. Clubmen stay the backbone of every crowd.
+  weight: { bearer: 6, dog: 3, champion: 2, hunter: 3, seer: 2 },
+  // What no single room may exceed, whatever threat it was handed. Two mages in one room is a coin
+  // toss, not a fight; eight of anything is a wall of bodies rather than a room you can read.
+  cap: { seer: 1, champion: 1, hunter: 2, dog: 2, men: 7 },
+  // The set-piece rooms play by their own cap: the Great Hall is supposed to be a wall of bodies.
+  hallCap: 18,
+  // A boss stands with this much company — unless he is the first of his kind you have seen, and
+  // then he stands alone like everybody else on their first appearance.
+  escortThreat: 2.5,
+  // The room after an introduction eases off: you get one quiet beat to use what you just learned.
+  afterIntro: 0.65,
 };
 
 // Boons bend numbers and verbs the goat already has. Actives change what a button does;
@@ -196,56 +229,95 @@ const BARKS = {
 
 const LEVELS = [
   {
+    // Level one teaches, in this order: one clubman on his own, the Mill, a man who takes two, a
+    // hound, and then the two of them together. Nothing here appears in a crowd before it has
+    // appeared alone.
     name: 'THE ALTAR', sub: 'Level 1', rooms: 9, showControls: true, startCage: true,
-    arenas: [{ at: 3, boss: 'bearer' }, { at: 7, boss: 'seer' }],
-    millAt: 5, heals: 2, ranged: 'none', seerShare: 0, dogs: 1, dogFrom: 6,
+    arenas: [{ at: 5, boss: 'champion' }, { at: 8, boss: 'butcher' }],
+    millAt: 4, heals: 2,
+    encounters: {
+      kinds: ['bearer', 'champion', 'dog'],
+      introduce: [['bearer', 0], ['champion', 0.34], ['dog', 0.7]],
+      from: 1, to: 4.5, ease: 1.5,
+    },
     floor: '#2b1a26', floorAlt: '#31202c', wall: '#7c5a36', wallTop: '#9c7446',
     fog: '#0d0a0c', doorChance: 0.5,
     hint: null,
-    budget: (i) => (i === 0 ? 0 : Math.min(4, 1 + Math.floor(i * 0.32))),
   },
   {
+    // The mage arrives, on his own, a third of the way in.
     name: 'THE YARD', sub: 'Level 2', rooms: 12,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
-    millAt: 7, heals: 2, ranged: 'seer', seerShare: 0.55, seerFrom: 5, seerPerRoom: 1, dogs: 3, dogFrom: 3,
+    millAt: 7, heals: 2,
+    encounters: {
+      kinds: ['bearer', 'champion', 'dog', 'seer'],
+      introduce: [['seer', 0.35]],
+      from: 2, to: 7.5, ease: 1.3,
+    },
     floor: '#8a7554', floorAlt: '#907b5a', wall: '#3b2233', wallTop: '#55344a',
     fog: '#120d12', doorChance: 0.42,
     hint: 'THE SEER BURNS THE GROUND YOU STAND ON',
-    budget: (i) => (i === 0 ? 0 : Math.min(5, 1 + Math.floor(i * 0.38))),
   },
   {
+    // The rifle arrives early, alone, and then never stops being the reason you keep moving.
     name: 'THE ROAD', sub: 'Level 3', rooms: 14,
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    millAt: 8, heals: 2, ranged: 'both', seerShare: 0.3, seerFrom: 3, seerPerRoom: 1, dogs: 5, dogFrom: 2,
-    hallAt: 9, hallBudget: 15, galleryAt: 6, lonePosts: 3,
+    millAt: 8, heals: 2, hallAt: 9, hallThreat: 26, galleryAt: 6, lonePosts: 3,
+    encounters: {
+      kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
+      introduce: [['hunter', 0.2]],
+      from: 3, to: 10, ease: 1.25,
+    },
     floor: '#4a3a2e', floorAlt: '#524032', wall: '#2a2430', wallTop: '#3e3346',
     fog: '#0b0a0d', doorChance: 0.35,
     hint: 'HOLD A MAN. HE STOPS BULLETS.',
-    budget: (i) => (i === 0 ? 0 : Math.min(6, 2 + Math.floor(i * 0.36))),
   },
   {
     // The threshing floor: the widest ground in the compound and the least wall in it. A headbutt on
     // bare floor still only knocks a man down, so out here you have to herd him into the furniture —
     // posts, tables, braziers, a ring of hay you light yourself — and decide which half of a room is
     // yours before the rifles decide it for you. Corridors are wide enough that it reads as one yard.
-    name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 12, pool: 'open', corridorW: 5,
-    arenas: [{ at: 3, boss: 'seer' }, { at: 9, boss: 'butcher' }],
-    millAt: 6, heals: 3, ranged: 'both', seerShare: 0.35, seerFrom: 2, seerPerRoom: 1,
-    dogs: 6, dogFrom: 2, lonePosts: 4,
+    // Nothing new walks in: the room itself is the new thing.
+    name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, pool: 'open', corridorW: 5,
+    arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
+    millAt: 6, heals: 3, lonePosts: 4,
+    encounters: {
+      kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
+      introduce: [],
+      from: 5, to: 14, ease: 1.2,
+    },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
     fog: '#0b0b0a', doorChance: 0.12,
     hint: 'NOTHING OUT HERE KILLS FOR YOU. USE WHAT IS STANDING.',
-    budget: (i) => (i === 0 ? 0 : Math.min(7, 2 + Math.floor(i * 0.42))),
   },
   {
     // Everything the compound has left, all at once, on the bridge they were driving you over.
     name: 'THE BRIDGE', sub: 'Level 5', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
-    millAt: 7, heals: 3, ranged: 'both', seerShare: 0.5, seerFrom: 2, seerPerRoom: 1, dogs: 7, dogFrom: 2,
-    hallAt: 12, hallBudget: 18, galleryAt: 2, lonePosts: 4,
+    millAt: 7, heals: 3, hallAt: 12, hallThreat: 32, galleryAt: 2, lonePosts: 4,
+    encounters: {
+      kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
+      introduce: [],
+      from: 5, to: 17, ease: 1.15,
+      // The bridge is the only ground allowed a room this crowded, and a third rifle on it.
+      cap: { men: 9, hunter: 3, dog: 3 },
+    },
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
     fog: '#06070a', doorChance: 0.3,
     hint: 'EVERYTHING THEY HAVE LEFT IS HERE',
-    budget: (i) => (i === 0 ? 0 : Math.min(7, 2 + Math.floor(i * 0.4))),
   },
 ];
+
+// What the player has already been shown by the time each level starts: every kind an earlier level
+// put in front of him, bosses included. A kind is introduced on its own once a run, not once a level,
+// so the second Butcher of a run arrives with company like anybody else.
+(() => {
+  const met = new Set();
+  for (const def of LEVELS) {
+    def.met = new Set(met);
+    for (const k of def.encounters.kinds) met.add(k);
+    for (const [k] of (def.encounters.introduce || [])) met.add(k);
+    for (const a of (def.arenas || [])) met.add(a.boss);
+  }
+})();
+
