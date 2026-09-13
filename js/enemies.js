@@ -15,6 +15,7 @@ class Enemy {
     this.say = null; this.barkCd = 0; this.witchBurn = false;   // what he is shouting, and what lit him
     this.dazed = 0;                                             // seconds of hearing nothing but the scream
     this.gotUpFrom = null;
+    this.scripted = false; this.knife = false;                  // the two in the opening scene: moved by hand, one with a knife
   }
 
   fling(vx, vy, thrown) {
@@ -144,7 +145,7 @@ class Enemy {
   }
 
   update(dt, game) {
-    if (this.dead) return;
+    if (this.dead || this.scripted) return;
     const w = game.world, g = game.goat, cfg = this.cfg;
     this.chargeCd = Math.max(0, this.chargeCd - dt); this.reload = Math.max(0, this.reload - dt);
     this.barkCd = Math.max(0, this.barkCd - dt);

@@ -39,7 +39,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 |---|---|
 | `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `LEVELS`. Every tunable number, every line the cult shouts, and the three level definitions. |
 | `js/rng.js` | Seeded RNG (mulberry32) plus `clamp` / `lerp` / `len` / `angleDiff`. |
-| `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top. Also the start room, the arena, the Mill room, the Great Hall and the Gallery. |
+| `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top (`'w'` is a stand of arms). Also the start room, the arena, the Mill room, the Great Hall and the Gallery. |
 | `js/gen.js` | Level generation: chains rooms, carves corridors, places props, spawns, heals, validates reachability. Defines the tile enum `T`. |
 | `js/audio.js` | WebAudio. Buses, the drum machine, the music bed (`MUSIC`) and every one-shot effect. |
 | `js/world.js` | Tile grid, collision, line of sight, flow field, fire (ordinary and witchfire), noise events, the persistent decal canvas, cult pictograms, the ritual start room. |
@@ -82,8 +82,25 @@ to `updateBearer` / `updateHunter` / `updateSeer` / `updateButcher`. Shared mach
 flung, burning, being held, the bomb fuse) sits above the dispatch. Arena bosses carry `elite` and `boss`
 flags: elites absorb hits before dying, bosses drop a tome.
 
-**Props.** One `Prop` class for brazier, pot, bell, door, table, lamp, mill and heal. `blocking` and
-`stopsBullets` are getters, not fields. `headbutt()` dispatches per kind.
+**Props.** One `Prop` class for brazier, pot, bell, door, table, lamp, mill, heal and weapon. `blocking`,
+`stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item` is what the
+goat can pick up and throw — a pot or a weapon — and it is the test everywhere the code used to ask
+`kind !== 'pot'`.
+
+**Stands of arms.** A `weapon` prop is both the rack and the thing in it: `inStand` is true until it is
+first taken, and the rack is only drawn while it is. `weapon` is `sword` or `shield`. It is grabbed like
+a pot, thrown by releasing grab, and flies in `updateWeapon`; `hitMan` is where a sword kills and sticks
+and a shield flattens and carries on, `passed` stopping it hitting the same man twice on one throw. A
+carried shield turns `prop.weapon.shieldHits` bullets in `Bullet.update` before it splinters. Nothing is
+consumed: both lie where they land and are grabbable again. `'w'` in a room template places one; `racks`
+on a level definition is the chance an ordinary room gets one or two more.
+
+**One new thing to a room.** `game.taught` is a list of what the run has already been shown — enemy
+kinds, `'mill'`, `'<kind> boss'`. It is passed into `generateLevel` and comes back on the level as
+`taught`. Any kind not in it gets a room to itself the first time it appears (the room's other men are
+dropped); a new boss gets his arena alone, and the first Mill room keeps one man. `metRoom` inside the
+generator also keeps the lone rifle posts from landing earlier in the level than the room that
+introduces a rifle. A run that keeps its tomes keeps what it has learned; a fresh run forgets.
 
 **Boons.** `game.mods` is recomputed from `game.boons` by `applyBoons()`. Every use site reads
 `game.mods.X` rather than `TUNING` directly, so nothing mutates `TUNING` (which would leak across runs).
@@ -103,8 +120,38 @@ decal canvas when they expire. The renderer applies kick and zoom in `draw`, and
 `updateEffects`.
 
 **The pen.** Cage bars are ordinary `Prop`s of kind `cage`, built by `buildCage` in `gen.js` and exempt
-from the three-tile prop clearance around the start. A headbutt on any of them breaks all of them and
+from the three-tile prop clearance around the start. It takes `prop.cage.hits` blows — seven — and one
+headbutt can reach two or three bars at once, so `breakCage` counts blows and not bars by gating on
+`game.cageLunge === goat.lungeId`. Each blow bleats a line from `prop.cage.strain`; on the blows in
+`prop.cage.stunAt` the goat is put on the floor by `game.stunGoat`. The last blow breaks every bar and
 sets `game.cageOpen`, which is what hides the floor prompt. Only levels with `startCage` get one.
+
+**Goat stun.** `goat.state === 'stunned'` is a real state, not a render pose: `Goat.update` returns early
+while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` draws the stars over it.
+`game.stunGoat(seconds)` is the only way in, and the pen is the only thing that uses it.
+
+**The opening scene.** `game.beginIntro()` runs in the real level 1 with the real pen, in state `intro`,
+driven by `updateIntro` and one method per beat (`introHuddle`, `introApproach`, `introGate`,
+`introGrab`, `introClub`, `introFade`, `introBlack`, `introWake`). Everything it owns lives in
+`game.intro`: the sheep, the heart, the two men, the gate bars. The men are ordinary `Enemy` objects
+with `scripted` set (their `update` returns at once, so anything that ages on them, such as a bark, is
+aged by `updateIntro`) and `knife` on the one who carries the knife; they are moved with `followPath`
+and speak with `say`, which bypasses the crowd rules of `bark`. The gate is the three `v`-axis bars on
+the right of the pen; `prop.gate` (0..1) lays a bar flat in `drawPropBody`. The goat is moved by hand
+too; `goat.state = 'ko'` is a render pose only, `goat.dazed` draws the stars, `goat.jitter` the tremble.
+`skipIntro()` jumps to the dark, `skipIntro(true)` straight to play, and `endIntro` resets the goat and
+removes the men. Only `startLevel(..., withIntro)` from the title or the win screen plays it; the
+`ritual` flag on a level definition is what makes the first room the ritual room at all.
+
+**Stairs.** `T.EXIT` and `T.ENTRY` are both drawn by `drawStairs`; `level.exitTile` and `level.entry`
+say where each flight starts. Stepping onto the exit enters state `climb` (`beginClimb`, `updateClimb`)
+for `stairs.climb` seconds before `levelCleared`. `game.stairFx = { t, dir }` is what `drawGoat` reads
+to lift, shrink and fade him: `dir` 1 going up and out, -1 arriving, which `startLevel` sets on any level
+with an `entry`. Levels without `ritual` start at the top of the entry flight rather than the room centre.
+
+**The other cage.** Built by `buildCage(..., deco)` from `TUNING.prop.deadCage`; its bars carry `deco`,
+which keeps them out of `breakCage`, out of the gate, and out of the in-front-of-the-goat draw pass.
+What is in it is painted on the decal canvas by `paintStartRoom`.
 
 **The loop.** Fixed 1/60 step, max 5 substeps, in `game.frame`. `timeScale` drives slow motion.
 A `setInterval` fallback drives the loop when `requestAnimationFrame` stalls, which it does when the
@@ -134,7 +181,9 @@ const s = document.createElement('script'); s.src = '/tools/harness.js'; documen
 
 `H` then gives you `startPlay()`, `tp(x, y)`, `aimAt`, `walkTo`, `headbutt()`, `freeze(except)`,
 `unfreeze()`, `nearest(kind)`, `waitFor(fn, ms)`, `status()` and `shot(name)` which writes to
-`tools/shots/`.
+`tools/shots/`. `startPlay()` clicks through the title and drops the opening scene with
+`game.skipIntro(true)`; to watch the scene itself, set `game.input.lmbPressed = true` on the title and
+wait for `game.state === 'intro'`. `game.startLevel(0, seed, false, true)` replays it from anywhere.
 
 **Traps that have bitten before, in this exact order:**
 
@@ -198,6 +247,8 @@ publish `files` map. Forgetting the map means the live page breaks while the loc
 - Mirrors as an environmental puzzle. The original voice note said "lizards and mirrors"; the mirror
   half was interpreted as a puzzle object and parked. The other half is still unresolved.
 - Whether one life means one life per level (current behaviour) or one per whole run.
+- Where his wife is. The opening scene carries her off deeper into the compound and nothing after it
+  refers to her: no room, no ending, no line from the cult.
 - Pixel art proper. Everything is still drawn with canvas primitives in the final palette.
 - Gamepad support, a Priest boss, and the later acts sketched in `GOAT_OUT_brief.md`.
 

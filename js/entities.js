@@ -1,4 +1,4 @@
-// Goat (player), props (brazier, pot, bell, door, table, lamp) and bullets.
+// Goat (player), props (brazier, pot, bell, door, table, lamp, stands of arms) and bullets.
 class Goat {
   constructor(x, y) {
     const g = TUNING.goat;
@@ -12,13 +12,24 @@ class Goat {
     this.rollCd = 0; this.rollSpin = 0; this.rollDir = { x: 1, y: 0 };
     this.trail = [];       // ghost positions for the speed smear
     this.trailTimer = 0;
+    this.dazed = 0;        // stars over its head: the club in the opening scene, nothing else yet
+    this.jitter = null;    // a tremble the opening scene puts on it; drawn, never simulated
   }
 
   update(dt, game) {
     const g = TUNING.goat, inp = game.input, world = game.world;
     this.aim = inp.aim;
     this.screamCd = Math.max(0, this.screamCd - dt); this.screaming = Math.max(0, this.screaming - dt);
-    this.invuln = Math.max(0, this.invuln - dt);
+    this.invuln = Math.max(0, this.invuln - dt); this.dazed = Math.max(0, this.dazed - dt);
+
+    // Off his feet. Nothing but the floor until it passes: no verbs, no aim, no momentum.
+    // The pen is the only thing that does this to him, twice on the way out of it.
+    if (this.state === 'stunned') {
+      this.timer -= dt; this.vx *= 0.86; this.vy *= 0.86;
+      this.x += this.vx * dt; this.y += this.vy * dt; world.collideCircle(this);
+      if (this.timer <= 0) this.state = 'idle';
+      return;
+    }
 
     // ---- clumsy sideways roll ----
     const R = TUNING.goat.roll;
@@ -32,7 +43,7 @@ class Goat {
       this.vx = this.rollDir.x * R.speed * game.mods.rollDistance;
       this.vy = this.rollDir.y * R.speed * game.mods.rollDistance;
       this.invuln = Math.max(this.invuln, R.invuln);
-      if (this.holding) { const h = this.holding; this.holding = null; h.held = false; if (h.kind !== 'pot') { h.state = 'floored'; h.timer = 0.5; } }
+      if (this.holding) { const h = this.holding; this.holding = null; h.held = false; if (!h.item) { h.state = 'floored'; h.timer = 0.5; } }
       game.audio.sfxRoll(); world.emitNoise(this.x, this.y, TUNING.noise.swing);
       game.particles(this.x, this.y, 9, PALETTE.ash, 150);
     }
@@ -91,9 +102,11 @@ class Goat {
         this.holdTimer += dt;
         if (!inp.rmbDown) {
           h.held = false; this.holding = null;
-          h.fling(this.aim.x * g.grab.throwImpulse, this.aim.y * g.grab.throwImpulse, true);
-          game.audio.sfxSwing();
-        } else if (game.mods.devour && h.kind !== 'pot' && this.holdTimer >= TUNING.goat.devour.time) {
+          const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul : 1;
+          h.fling(this.aim.x * g.grab.throwImpulse * mul, this.aim.y * g.grab.throwImpulse * mul, true);
+          if (h.kind === 'weapon') { game.audio.sfxSteel(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
+          else game.audio.sfxSwing();
+        } else if (game.mods.devour && !h.item && this.holdTimer >= TUNING.goat.devour.time) {
           // Keep holding and the goat opens him up. Sometimes that is a meal.
           this.holding = null; h.held = false;
           const fed = Math.random() < TUNING.goat.devour.healChance && this.hp < this.maxHp;
@@ -102,7 +115,7 @@ class Goat {
           game.particles(h.x, h.y, 22, PALETTE.blood, 200);
           h.die(game, 'devour', this.aim.x, this.aim.y);
           game.hitstop(0.06); game.shake(7); game.vibe(30);
-        } else if (h.kind !== 'pot' && this.holdTimer >= game.mods.holdTime) {
+        } else if (!h.item && this.holdTimer >= game.mods.holdTime) {
           h.held = false; this.holding = null; h.state = 'floored'; h.timer = 0.6;
           h.x += this.aim.x * 10; h.y += this.aim.y * 10;
         }
@@ -234,10 +247,17 @@ class Goat {
       if (d < bestD) { bestD = d; best = o; }
     };
     for (const e of game.enemies) if (!e.dead && e.kind !== 'butcher' && e.state !== 'flung' && !e.held) consider(e);
-    for (const p of game.props) if (p.kind === 'pot' && !p.broken && !p.held && !p.flung) consider(p);
+    for (const p of game.props) if (p.item && !p.broken && !p.held && !p.flung) consider(p);
     if (!best) return;
+    // Taking it out of the stand tips the stand over. What is left is the thing in your mouth.
+    if (best.kind === 'weapon' && best.inStand) {
+      best.inStand = false;
+      game.world.dot(best.x - 4, best.y + 7, 4.5, '#3a2c20'); game.world.dot(best.x + 5, best.y + 9, 3.5, '#3a2c20');
+      game.audio.sfxSteel();
+      game.floatText(best.x, best.y - 32, best.weapon === 'sword' ? 'SWORD' : 'SHIELD', PALETTE.bone);
+    }
     best.held = true; best.flung = false; best.thrown = false; this.holding = best; this.holdTimer = 0;
-    if (best.kind !== 'pot') { best.state = 'held'; best.aware = true; }
+    if (!best.item) { best.state = 'held'; best.aware = true; }
   }
 
   damage(n, game, kx, ky, fromFire) {
@@ -254,7 +274,7 @@ class Goat {
   die(game) {
     if (this.dead) return;
     this.dead = true; this.hp = 0;
-    if (this.holding) { this.holding.held = false; if (this.holding.kind !== 'pot') { this.holding.state = 'idle'; } this.holding = null; }
+    if (this.holding) { this.holding.held = false; if (!this.holding.item) { this.holding.state = 'idle'; } this.holding = null; }
     game.world.splat(this.x, this.y, 0, 0, 22);
     game.world.body(this.x, this.y, this.r, this.facing, PALETTE.bone);
     game.onGoatDied();
@@ -265,58 +285,82 @@ class Prop {
   constructor(x, y, kind, opts) {
     const P = TUNING.prop;
     this.x = x; this.y = y; this.kind = kind; this.vx = 0; this.vy = 0;
-    this.r = kind === 'pot' ? 9 : kind === 'bell' ? 14 : kind === 'door' ? P.door.r
+    this.r = kind === 'pot' ? P.pot.r : kind === 'bell' ? 14 : kind === 'door' ? P.door.r
       : kind === 'table' ? P.table.r : kind === 'lamp' ? P.lamp.r
       : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r
+      : kind === 'weapon' ? P.weapon.r
       : kind === 'cage' ? P.cage.r : 13;
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
+    this.deco = !!(opts && opts.deco);        // a cage that is scenery: it never opens
+    this.gate = 0;                            // 1 while the opening scene has this bar laid flat
     this.angle = (opts && opts.phase) || 0;
     this.solid = kind !== 'pot';
     this.held = false; this.flung = false; this.thrown = false; this.broken = false; this.dead = false;
     this.rung = 0; this.lastLunge = -1; this.phase = Math.random() * 10;
+    // A stand of arms: which one it holds, whether it is still in the stand, how it turns in the
+    // air, and who it has already been through on this throw.
+    this.weapon = (opts && opts.weapon) || 'sword';
+    this.inStand = kind === 'weapon'; this.spin = 0; this.passed = []; this.shieldHits = 0;
     this.vertical = opts && opts.vertical; this.open = 0; this.pressure = 0; this.wobble = 0;
   }
+  // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing.
+  get item() { return this.kind === 'pot' || this.kind === 'weapon'; }
   get blocking() {
     if (this.broken) return false;
-    if (this.kind === 'pot' || this.kind === 'heal') return false;
+    if (this.item || this.kind === 'heal') return false;
     if (this.kind === 'door') return this.open < 0.5;
     return true;
   }
   get stopsBullets() { return !this.broken && (this.kind === 'table' || this.kind === 'brazier' || this.kind === 'bell' || (this.kind === 'door' && this.open < 0.5)); }
 
-  fling(vx, vy, thrown) { this.vx = vx; this.vy = vy; this.flung = true; this.thrown = thrown; this.held = false; }
+  fling(vx, vy, thrown) { this.vx = vx; this.vy = vy; this.flung = true; this.thrown = thrown; this.held = false; this.passed.length = 0; }
 
   headbutt(game, ax, ay) {
     switch (this.kind) {
       case 'pot': if (!this.held) this.fling(ax * TUNING.goat.headbutt.impulse * 0.9, ay * TUNING.goat.headbutt.impulse * 0.9, true); break;
+      // You do not have to carry it. A horn under the stand sends the blade across the room too.
+      case 'weapon': if (!this.held) {
+        this.inStand = false;
+        this.fling(ax * TUNING.goat.headbutt.impulse * 0.85, ay * TUNING.goat.headbutt.impulse * 0.85, true);
+        game.audio.sfxSteel();
+      } break;
       case 'bell': this.ring(game); break;
       case 'door': this.smash(game, ax, ay); break;
       case 'table': this.shove(game, ax, ay); break;
       case 'lamp': this.topple(game, ax, ay); break;
-      case 'cage': this.breakCage(game); break;
+      case 'cage': if (this.deco) { this.wobble = 0.3; game.audio.sfxCageHit(); game.shake(3); } else this.breakCage(game); break;
       default: this.wobble = 0.3; game.audio.sfxThud(); break;
     }
   }
 
-  // The pen does not come apart on the first go. Each headbutt bends it further; the last one takes
-  // it down, and every man in the building hears that.
+  // Seven blows. A headbutt can reach two or three bars at once, so the pen counts blows and not
+  // bars. He shouts through every one of them, and the third and the sixth put him on the floor:
+  // getting out of the pen is the hardest thing he does all run, and it should look like it.
   breakCage(game) {
-    const need = TUNING.prop.cage.hits;
-    const bars = game.props.filter((p) => p.kind === 'cage' && !p.broken);
+    const C = TUNING.prop.cage, need = C.hits;
+    const bars = game.props.filter((p) => p.kind === 'cage' && !p.broken && !p.deco);
     if (!bars.length) return;
+    if (game.cageLunge === game.goat.lungeId) return;
+    game.cageLunge = game.goat.lungeId;
     const hits = (bars[0].hits || 0) + 1;
     for (const p of bars) { p.hits = hits; p.wobble = 0.3; }
     if (hits < need) {
-      game.world.emitNoise(this.x, this.y, TUNING.noise.cage * 0.5);
-      game.audio.sfxCageHit(); game.shake(7); game.hitstop(0.04); game.vibe(25);
-      game.particles(this.x, this.y, 7, PALETTE.bone, 230);
+      game.world.emitNoise(this.x, this.y, TUNING.noise.cage * 0.35);
+      game.audio.sfxCageHit(); game.shake(5 + hits); game.hitstop(0.04); game.vibe(25);
+      game.particles(this.x, this.y, 6 + hits, PALETTE.bone, 230);
       game.kick(0, -1, TUNING.juice.kick * 0.6);
-      game.floatText(this.x, this.y - 30, need - hits === 1 ? 'IT BENDS' : 'IT HOLDS', PALETTE.bone);
+      // The voice climbs with the effort. By the sixth he is not bleating, he is roaring.
+      game.audio.sfxBleat(210 + hits * 28, 0.09 + hits * 0.016, 0.26 + hits * 0.03);
+      game.floatText(this.x, this.y - 30, C.strain[hits - 1] || 'IT HOLDS', PALETTE.bone);
+      if (C.stunAt.indexOf(hits) >= 0) {
+        game.stunGoat(C.stun);
+        game.floatText(game.goat.x, game.goat.y - 48, 'HIS HEAD RINGS', PALETTE.blood);
+      }
       return;
     }
     let n = 0;
     for (const p of game.props) {
-      if (p.kind !== 'cage' || p.broken) continue;
+      if (p.kind !== 'cage' || p.broken || p.deco) continue;
       p.broken = true; p.dead = true; n++;
       game.particles(p.x, p.y, 5, PALETTE.ash, 210);
       game.world.dot(p.x + (Math.random() - 0.5) * 12, p.y + 5, 2.4, '#2e2a26');
@@ -327,7 +371,8 @@ class Prop {
     game.audio.sfxCage(); game.shake(12); game.hitstop(0.06); game.vibe(50);
     game.flash(PALETTE.bone, 0.3); game.zoomPunch(1.5);
     game.slowTimer = Math.max(game.slowTimer, 0.4);
-    game.floatText(this.x, this.y - 30, 'OUT', PALETTE.fireHi);
+    game.audio.sfxBleat(430, 0.22, 0.55);
+    game.floatText(this.x, this.y - 30, C.strain[need - 1] || 'OUT', PALETTE.fireHi);
   }
 
   ring(game) {
@@ -373,6 +418,7 @@ class Prop {
     if (this.wobble > 0) this.wobble -= dt;
     if (this.kind === 'mill') { this.updateMill(dt, game); return; }
     if (this.kind === 'heal' || this.kind === 'cage') return;
+    if (this.kind === 'weapon') { this.updateWeapon(dt, game); return; }
     if (this.kind === 'door') { this.updateDoor(dt, game); return; }
     if (this.kind === 'table') { this.updateTable(dt, game); return; }
     if (this.kind !== 'pot' || this.broken || this.held || !this.flung) return;
@@ -382,11 +428,68 @@ class Prop {
     for (const e of game.enemies) {
       if (e.dead || e.held) continue;
       if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) {
-        if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.3; }
-        else { e.state = 'floored'; e.timer = TUNING.bearer.flooredTime; e.vx = this.vx * 0.3; e.vy = this.vy * 0.3; e.aware = true; }
+        // A pot in the face is not a trip. He goes down properly, and he stays down seeing stars.
+        if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.45; }
+        else {
+          e.state = 'floored'; e.timer = TUNING.prop.pot.stun; e.dazed = Math.max(e.dazed, TUNING.prop.pot.stun);
+          e.vx = this.vx * 0.3; e.vy = this.vy * 0.3; e.aware = true;
+          game.floatText(e.x, e.y - 28, 'STUNNED', PALETTE.fireHi);
+        }
+        game.hitstop(0.04); game.shake(4); game.kick(this.vx / 300, this.vy / 300, TUNING.juice.kick * 0.5);
         this.shatter(game); return;
       }
     }
+  }
+
+  // A thrown blade or shield. It travels, it bites, and it comes to rest where it stops, so the
+  // room keeps it: a stand is worth crossing the floor for twice.
+  updateWeapon(dt, game) {
+    if (this.broken || this.held || !this.flung) return;
+    const W = TUNING.prop.weapon;
+    this.spin += dt * (this.weapon === 'sword' ? 24 : 14);
+    const drag = Math.exp(-W.drag * dt);
+    this.vx *= drag; this.vy *= drag;
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    const impact = game.world.collideCircle(this);
+    if (impact > W.stickImpact) {
+      // Into a wall: a sword buries itself where it landed, a shield rings off it.
+      game.audio.sfxSteel(); game.particles(this.x, this.y, 5, PALETTE.bone, 170);
+      if (this.weapon === 'sword') { this.vx = 0; this.vy = 0; }
+      else { this.vx *= -0.3; this.vy *= -0.3; }
+    }
+    const spd = Math.hypot(this.vx, this.vy);
+    if (spd <= W.restSpeed) { this.flung = false; this.thrown = false; this.vx = 0; this.vy = 0; return; }
+    for (const e of game.enemies) {
+      if (e.dead || e.held || this.passed.indexOf(e) >= 0) continue;
+      if (Math.hypot(e.x - this.x, e.y - this.y) > e.r + this.r) continue;
+      this.hitMan(game, e, spd);
+      if (!this.flung) return;
+    }
+  }
+
+  // The sword goes into the first man it finds and stays there. The shield does not cut: it flattens
+  // whoever it catches and carries on through the rest of them.
+  hitMan(game, e, spd) {
+    const W = TUNING.prop.weapon, nx = this.vx / (spd || 1), ny = this.vy / (spd || 1);
+    this.passed.push(e);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.steel);
+    if (this.weapon === 'sword') {
+      e.die(game, 'splat', nx, ny);
+      game.gore(this.x, this.y, 6, nx, ny); game.audio.sfxSplat();
+      game.shake(6); game.hitstop(0.05); game.kick(nx, ny, TUNING.juice.kick);
+      this.flung = false; this.thrown = false; this.vx = 0; this.vy = 0;   // it is in him now
+      this.x = e.x; this.y = e.y;
+      return;
+    }
+    if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.5; e.aware = true; this.vx *= -0.25; this.vy *= -0.25; }
+    else {
+      e.state = 'floored'; e.timer = W.shieldStun; e.dazed = Math.max(e.dazed, W.shieldStun); e.aware = true;
+      e.vx = nx * 4 * TILE; e.vy = ny * 4 * TILE;
+      game.floatText(e.x, e.y - 28, 'FLATTENED', PALETTE.fireHi);
+      this.vx *= 0.7; this.vy *= 0.7;
+    }
+    game.audio.sfxSteel(); game.shake(5); game.hitstop(0.03);
+    game.particles(e.x, e.y, 7, PALETTE.bone, 210);
   }
 
   updateDoor(dt, game) {
@@ -473,8 +576,22 @@ class Bullet {
         this.dead = true; game.world.dot(this.x, this.y, 2, '#2a2020'); game.particles(this.x, this.y, 3, PALETTE.ochre, 80); return;
       }
       const goat = game.goat;
+      // A carried shield turns bullets until it is scrap: the one thing in the game that answers
+      // a rifle without you having to be holding a man.
+      const hold = goat.holding;
+      if (hold && hold.kind === 'weapon' && hold.weapon === 'shield' && Math.hypot(hold.x - this.x, hold.y - this.y) < hold.r + 4) {
+        this.dead = true; hold.shieldHits++;
+        game.particles(this.x, this.y, 6, PALETTE.fireHi, 170); game.audio.sfxSteel();
+        game.floatText(hold.x, hold.y - 28, 'CLANG', PALETTE.bone); game.shake(2);
+        if (hold.shieldHits >= TUNING.prop.weapon.shieldHits) {
+          hold.broken = true; hold.dead = true; goat.holding = null;
+          game.particles(hold.x, hold.y, 14, PALETTE.ash, 220);
+          game.floatText(hold.x, hold.y - 28, 'SPLINTERED', PALETTE.ash);
+        }
+        return;
+      }
       // The held man shields the goat: check him first.
-      if (goat.holding && goat.holding.kind !== 'pot' && Math.hypot(goat.holding.x - this.x, goat.holding.y - this.y) < goat.holding.r + 3) {
+      if (goat.holding && !goat.holding.item && Math.hypot(goat.holding.x - this.x, goat.holding.y - this.y) < goat.holding.r + 3) {
         const h = goat.holding; h.shieldHits = (h.shieldHits || 0) + 1; this.dead = true;
         game.world.splat(h.x, h.y, this.vx / 900, this.vy / 900, 7); game.floatText(h.x, h.y - 26, 'SHIELD', PALETTE.bone);
         if (h.shieldHits >= game.mods.shieldBullets) h.die(game, 'shot', this.vx / 900, this.vy / 900);
@@ -495,6 +612,10 @@ class Bullet {
       for (const p of game.props) {
         if (p.broken) continue;
         if (p.kind === 'pot' && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) { this.dead = true; p.shatter(game); return; }
+        // A shield standing in its rack is cover; a sword in one is not.
+        if (p.kind === 'weapon' && p.weapon === 'shield' && p.inStand && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) {
+          this.dead = true; game.particles(this.x, this.y, 4, PALETTE.bone, 120); game.audio.sfxSteel(); return;
+        }
         if (p.kind === 'lamp' && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) {
           this.dead = true; const l = Math.hypot(this.vx, this.vy) || 1; p.topple(game, this.vx / l, this.vy / l); return;
         }

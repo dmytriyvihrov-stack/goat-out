@@ -1,5 +1,6 @@
 // Hand-authored room templates. Legend:
 // '#' wall  '.' floor  'P' pillar  'h' hay  'B' brazier  'o' pot  'b' bell  't' table  'L' lamp post
+// 'w' a stand of arms: a sword or a shield to grab and throw
 // 'e' bearer spawn  'r' hunter spawn (bearer if level has no hunters)  'X' butcher spawn
 // 'R' always a rifle where the level has them  'm' seer spawn  'M' the Mill's hub
 // Rooms are randomly flipped on both axes at generation time.
@@ -31,12 +32,12 @@ const ROOM_TEMPLATES = [
   { name: 'kitchen', rows: [
     '############',
     '#..........#',
-    '#.oo...B...#',
+    '#.o....B...#',
     '#.tt.......#',
     '#..e.PPP...#',
     '#....PPP.r.#',
     '#.tt.......#',
-    '#.B....e.o.#',
+    '#.B....e...#',
     '#..........#',
     '############',
   ]},
@@ -80,8 +81,8 @@ const ROOM_TEMPLATES = [
   { name: 'store', rows: [
     '############',
     '#..........#',
-    '#.o.o..tt..#',
     '#.o....tt..#',
+    '#......tt..#',
     '#...e..PP..#',
     '#..r...PP..#',
     '#....L.....#',
@@ -118,7 +119,7 @@ const ROOM_TEMPLATES = [
 const ARENA_TEMPLATE = { name: 'arena', rows: [
   '##############',
   '#............#',
-  '#..o......o..#',
+  '#..w......w..#',
   '#....P..P....#',
   '#.L........L.#',
   '#......X.....#',
@@ -136,7 +137,7 @@ const ARENA_TEMPLATE = { name: 'arena', rows: [
 const MILL_TEMPLATE = { name: 'mill', rows: [
   '##################',
   '#................#',
-  '#..o..........o..#',
+  '#..o.............#',
   '#................#',
   '#.e............e.#',
   '#................#',
@@ -158,7 +159,7 @@ const GALLERY_TEMPLATE = { name: 'gallery', rows: [
   '#..................#',
   '#...PP...PP...PP...#',
   '#...PP...PP...PP...#',
-  '#..R....o....o..R..#',
+  '#..R....o.......R..#',
   '#..................#',
   '#...PP...PP...PP...#',
   '#...PP...PP...PP...#',
@@ -168,18 +169,19 @@ const GALLERY_TEMPLATE = { name: 'gallery', rows: [
 
 // The room you woke up in. The altar stands off to one side, made ready, with the straps and the
 // knife and what is left of the goat that went before you. You are in the pen beside it.
+// Two tiles wider than it was, so the second cage fits on the right without crowding the way out.
 const START_TEMPLATE = { name: 'start', rows: [
-  '################',
-  '#..............#',
-  '#.B..........B.#',
-  '#..............#',
-  '#..............#',
-  '#..............#',
-  '#..............#',
-  '#..............#',
-  '#.B..........B.#',
-  '#..............#',
-  '################',
+  '##################',
+  '#................#',
+  '#.B............B.#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#.B............B.#',
+  '#................#',
+  '##################',
 ]};
 
 // The Great Hall: one enormous room with two mills, pillar rows, hay, tables and a crowd.
@@ -194,7 +196,7 @@ const GREAT_HALL_TEMPLATE = { name: 'greathall', rows: [
   '#.........M........o.....e......tt...#',
   '#....................e..........tt...#',
   '#.................b..........r.......#',
-  '#....e...........o................e..#',
+  '#....e............................e..#',
   '#............L.........m.............#',
   '#...hh........e......................#',
   '#...hh...........B.............e.....#',

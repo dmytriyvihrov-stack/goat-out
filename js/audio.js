@@ -31,7 +31,14 @@ class GameAudio {
     setInterval(() => this.schedule(), 25);
   }
   resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
-  toggleMute() { this.muted = !this.muted; if (this.master) this.master.gain.value = this.muted ? 0 : TUNING.audio.master; return this.muted; }
+  toggleMute() { this.muted = !this.muted; if (this.master) { this.master.gain.cancelScheduledValues(0); this.master.gain.value = this.muted ? 0 : TUNING.audio.master; } return this.muted; }
+  // Everything sinks to `level` of full volume over `secs`: the world going away as the goat does.
+  duck(level, secs) {
+    if (!this.ctx || this.muted) return;
+    const g = this.master.gain, t = this.ctx.currentTime;
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(TUNING.audio.master * level, t + secs);
+  }
 
   // ---- synth primitives ----
   tone(freq, t, dur, { type = 'sine', gain = 0.5, sweep = 0, bus = null, attack = 0.002 } = {}) {
@@ -160,6 +167,27 @@ class GameAudio {
     const lfo = this.ctx.createOscillator(); const lg = this.ctx.createGain();
     lfo.frequency.value = 22; lg.gain.value = 40; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + 0.6);
   }
+  // A small frightened bleat: the scream's shape, quieter, shorter, and shaking.
+  sfxBleat(f, gain, dur) {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    const o = this.tone(f, t, dur || 0.28, { type: 'sawtooth', gain: gain || 0.1, sweep: 0.82, attack: 0.02 });
+    const lfo = this.ctx.createOscillator(); const lg = this.ctx.createGain();
+    lfo.frequency.value = 17; lg.gain.value = f * 0.06; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + (dur || 0.28) + 0.05);
+    this.tone(f * 2, t, (dur || 0.28) * 0.7, { type: 'triangle', gain: (gain || 0.1) * 0.35, sweep: 0.85, attack: 0.02 });
+  }
+  // A club coming down on a skull, heard from inside the skull.
+  sfxClub() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.noise(t, 0.16, { gain: 0.6, lp: 900 });
+    this.tone(120, t, 0.32, { gain: 0.9, sweep: 0.3 });
+    this.tone(48, t + 0.02, 0.9, { type: 'triangle', gain: 0.5, sweep: 0.6, attack: 0.01 });
+  }
+  // Something small giving way.
+  sfxCrack() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.tone(880, t, 0.22, { type: 'triangle', gain: 0.12, sweep: 0.3 });
+    this.noise(t, 0.06, { gain: 0.12, hp: 2500 });
+  }
   sfxBell() { if (!this.ctx || this.muted) return; const t = this.now(); this.gong(t, 0.8); this.droneUntil = t + 8; }
   sfxToll() { if (!this.ctx || this.muted) return; const t = this.now() + 0.15; this.gong(t, 0.6); }
   sfxHit() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(180, t, 0.2, { gain: 0.5, sweep: 0.4, type: 'square' }); this.noise(t, 0.1, { gain: 0.2 }); }
@@ -193,6 +221,14 @@ class GameAudio {
     this.tone(660, t, 0.22, { type: 'triangle', gain: 0.22, sweep: 0.25 });
     this.noise(t, 0.14, { gain: 0.18, hp: 3000 });
   }
+  // Steel: a blade leaving a stand, going into a man, or a shield taking a bullet.
+  sfxSteel() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.tone(1180, t, 0.22, { type: 'triangle', gain: 0.16, sweep: 0.5 });
+    this.tone(1760, t + 0.008, 0.16, { type: 'sine', gain: 0.1, sweep: 0.6 });
+    this.noise(t, 0.09, { gain: 0.18, hp: 3200 });
+  }
+
   // A headbutt that the pen holds: one bar rings and the frame shifts.
   sfxCageHit() {
     if (!this.ctx || this.muted) return; const t = this.now();

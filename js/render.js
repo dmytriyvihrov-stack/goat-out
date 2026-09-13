@@ -8,13 +8,18 @@ const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 const CONTROL_LINES = {
   key: [
     ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL'],
-    ['HOLD RIGHT CLICK — CARRY', 'LET GO — THROW', 'SPACE — THEY COME LOOKING'],
+    ['HOLD RIGHT CLICK — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
+      'SPACE — BAAH', 'IT STUNS EVERY EAR'],
   ],
   touch: [
     ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — TUMBLE'],
-    ['HOLD GRAB — CARRY', 'LET GO — THROW', 'BAAH — THEY COME LOOKING'],
+    ['HOLD GRAB — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
+      'BAAH — IT STUNS EVERY EAR'],
   ],
 };
+
+// The pixel heart: the HUD hearts, and the one that hangs between the two of them in the pen.
+const HEART_GLYPH = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
 
 class Renderer {
   constructor(canvas) {
@@ -71,10 +76,7 @@ class Renderer {
       const cam = game.cam;
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, this.vw, this.vh); ctx.clip();
-      const zk = 1 + (game.zoomKick || 0);
-      ctx.translate(this.vcx + (game.shakeX + game.kickX) * this.s, this.vcy + (game.shakeY + game.kickY) * this.s);
-      ctx.scale(cam.zoom * zk, cam.zoom * zk * TILT);
-      ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
+      this.worldTransform(game);
       this.drawTiles(game, cam);
       this.drawDecals(game, cam);
       this.drawHints(game);
@@ -83,14 +85,15 @@ class Renderer {
       this.drawDust(game, cam, dt);
       this.drawRunes(game);
       this.drawTomes(game);
-      for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && !(p.kind === 'cage' && p.y > game.goat.y)) this.drawProp(p);
+      for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && !(p.kind === 'cage' && !p.deco && p.y > game.goat.y)) this.drawProp(p);
       for (const e of game.enemies) if (!e.dead && (e.state === 'floored' || e.state === 'stunned')) this.drawEnemy(e, game);
       for (const p of game.props) if (!p.broken && p.kind === 'lamp') this.drawProp(p);
       for (const e of game.enemies) if (!e.dead && e.state !== 'floored' && e.state !== 'stunned' && e !== game.goat.holding) this.drawEnemy(e, game);
       for (const b of game.bullets) this.drawBullet(b);
       if (!game.goat.dead) this.drawGoat(game.goat, game);
-      if (game.goat.holding) { const hld = game.goat.holding; if (hld.kind === 'pot') this.drawProp(hld); else this.drawEnemy(hld, game); }
-      for (const p of game.props) if (!p.broken && p.kind === 'cage' && p.y > game.goat.y) this.drawProp(p);
+      if (game.goat.holding) { const hld = game.goat.holding; if (hld.item) this.drawProp(hld); else this.drawEnemy(hld, game); }
+      if (game.intro) this.drawIntroWorld(game);
+      for (const p of game.props) if (!p.broken && p.kind === 'cage' && !p.deco && p.y > game.goat.y) this.drawProp(p);
       this.drawBreath(game);
       this.drawRings(game);
       this.drawParticles(game);
@@ -100,11 +103,26 @@ class Renderer {
     this.drawVignette(game);
     this.drawHurt(game);
     this.drawFlash(game);
+    if (game.state === 'climb' && game.stairFx) {
+      // the light at the top of the stairs takes the picture
+      const p = clamp(game.stairFx.t, 0, 1);
+      ctx.fillStyle = `rgba(239,230,208,${0.6 * p * p})`; ctx.fillRect(0, 0, this.vw, this.vh);
+    }
+    if (game.intro) this.drawIntroOverlay(game);
     this.drawUI(game);
     if (game.touch.active && game.state === 'play') this.drawTouchUI(game);
     this.drawBoonChoice(game);
     this.drawCard(game);
     this.drawDev(game);
+  }
+
+  // Screen to world: the camera, the tilt, and whatever kick and zoom punch the frame is carrying.
+  worldTransform(game) {
+    const ctx = this.ctx, cam = game.cam, zk = 1 + (game.zoomKick || 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.translate(this.vcx + (game.shakeX + game.kickX) * this.s, this.vcy + (game.shakeY + game.kickY) * this.s);
+    ctx.scale(cam.zoom * zk, cam.zoom * zk * TILT);
+    ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
   }
 
   visibleTiles(cam) {
@@ -147,11 +165,34 @@ class Renderer {
           ctx.fillStyle = PALETTE.ash; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
           ctx.fillStyle = '#3a3230'; ctx.fillRect(px + 8, py + 10, 6, 4); ctx.fillRect(px + 18, py + 20, 7, 4);
         } else if (t === T.EXIT) {
-          const pulse = 0.55 + 0.25 * Math.sin(this.t * 3.4);
-          ctx.fillStyle = PALETTE.bone; ctx.fillRect(px, py, TILE, TILE);
-          ctx.fillStyle = `rgba(255,224,138,${pulse * 0.5})`; ctx.fillRect(px - 10, py - 10, TILE + 20, TILE + 20);
+          this.drawStairs(px, py, tx - game.level.exitTile.x0, true, def);
+        } else if (t === T.ENTRY) {
+          this.drawStairs(px, py, tx - game.level.entry.x0, false, def);
         }
       }
+    }
+  }
+
+  // One tile of a flight of stairs, three tiles long. `k` is the tile's place in the flight, left to
+  // right. The way out climbs to the right into light; the way in comes up from the dark on the left.
+  drawStairs(px, py, k, up, def) {
+    const ctx = this.ctx, steps = 4, sw = TILE / steps;
+    ctx.fillStyle = def.wall; ctx.fillRect(px, py, TILE, TILE);
+    for (let i = 0; i < steps; i++) {
+      const n = k * steps + i, f = n / (3 * steps - 1), x = px + i * sw;
+      if (up) {
+        ctx.fillStyle = def.wallTop; ctx.fillRect(x, py, sw, TILE);
+        ctx.fillStyle = `rgba(239,230,208,${0.1 + 0.68 * f * f})`; ctx.fillRect(x, py, sw, TILE);
+      } else {
+        ctx.fillStyle = `rgba(239,230,208,${0.04 + 0.34 * f})`; ctx.fillRect(x, py, sw, TILE);
+        ctx.fillStyle = `rgba(6,4,6,${0.85 * (1 - f) * (1 - f)})`; ctx.fillRect(x, py, sw, TILE);
+      }
+      // the riser: each step throws a shadow down onto the one below it
+      ctx.fillStyle = up ? 'rgba(0,0,0,0.42)' : 'rgba(0,0,0,0.5)'; ctx.fillRect(x, py, 2, TILE);
+    }
+    if (up && k === 2) {
+      const pulse = 0.55 + 0.25 * Math.sin(this.t * 3.4);
+      ctx.fillStyle = `rgba(255,224,138,${pulse * 0.45})`; ctx.fillRect(px + TILE * 0.5, py - 8, TILE * 0.7, TILE + 16);
     }
   }
 
@@ -198,7 +239,7 @@ class Renderer {
         ctx.fillText(label, p.x, p.y * TILT);
         ctx.font = `700 19px ${FONT_SC}`;
         ctx.fillStyle = `rgba(239,230,208,${a * (pulse - 0.08)})`;
-        ctx.fillText('BREAK OUT', p.x, (p.y + 30) * TILT);
+        ctx.fillText('AGAIN. AND AGAIN.', p.x, (p.y + 30) * TILT);
       }
     }
     ctx.textAlign = 'left'; ctx.restore();
@@ -211,7 +252,7 @@ class Renderer {
     let longest = 0;
     for (const l of lines) longest = Math.max(longest, ctx.measureText(l).width);
     if (longest > maxW && longest > 0) {
-      size = Math.max(14, size * maxW / longest);
+      size = Math.max(11, size * maxW / longest);
       ctx.font = `700 ${size}px ${FONT_SC}`;
     }
     return size;
@@ -365,7 +406,9 @@ class Renderer {
       const h = TUNING.prop.cage.height;
       // Every headbutt the pen survives leaves the bars further out of true.
       const sgn = ((Math.round(p.x / 7) % 2) ? 1 : -1);
-      const lean = (p.hits || 0) * 0.085 * sgn + (p.wobble > 0 ? Math.sin(this.t * 62) * 0.06 : 0);
+      // A bar the opening scene has laid flat lies over to the right, out of the way of the door.
+      // Seven blows bend it a long way without laying it flat, so the last one still has somewhere to go.
+      const lean = (p.hits || 0) * 0.05 * sgn + (p.wobble > 0 ? Math.sin(this.t * 62) * 0.06 : 0) + (p.gate || 0) * 1.5;
       this.shadow(p.x, p.y, 5, 3);
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(lean);
       // Bars on the far and near sides carry a rail, so a row of them reads as one fence.
@@ -377,6 +420,45 @@ class Renderer {
       ctx.fillStyle = '#7d756a'; ctx.fillRect(-2.6, -h, 1.7, h);
       ctx.restore();
       ctx.fillStyle = '#2e2a26'; ctx.fillRect(p.x - 3.6, p.y - 3.5, 7.2, 4.5);
+    } else if (p.kind === 'weapon') {
+      const up = p.inStand;
+      if (up) {
+        // The stand: two crossed legs and a rail. A faint glow, because a room full of bodies and
+        // braziers will otherwise swallow a sword-sized object entirely.
+        const gl = ctx.createRadialGradient(p.x, p.y - 12, 0, p.x, p.y - 12, 40);
+        const a = 0.14 + 0.05 * Math.sin(this.t * 2.6 + p.phase);
+        gl.addColorStop(0, `rgba(239,230,208,${a})`); gl.addColorStop(1, 'rgba(239,230,208,0)');
+        ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, p.y - 12, 40, 0, Math.PI * 2); ctx.fill();
+        this.shadow(p.x, p.y, 14, 6);
+        ctx.strokeStyle = PALETTE.wood; ctx.lineWidth = 4; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x - 11, p.y + 3); ctx.lineTo(p.x + 7, p.y - 20);
+        ctx.moveTo(p.x + 11, p.y + 3); ctx.lineTo(p.x - 7, p.y - 20);
+        ctx.stroke();
+        ctx.strokeStyle = PALETTE.woodHi; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(p.x - 12, p.y - 11); ctx.lineTo(p.x + 12, p.y - 11); ctx.stroke();
+      } else this.shadow(p.x, p.y, 10, 5);
+      ctx.save();
+      ctx.translate(p.x, p.y - (up ? 24 : 0));
+      ctx.rotate(up ? (p.weapon === 'sword' ? -Math.PI / 2 : 0) : p.flung ? p.spin : (p.facing || 0));
+      if (p.weapon === 'sword') {
+        ctx.fillStyle = '#2a2622'; ctx.fillRect(-13, -1.8, 37, 4.4);       // the blade's own shadow
+        ctx.fillStyle = '#b9b2a4'; ctx.fillRect(-4, -2.4, 26, 4.8);
+        ctx.fillStyle = '#e8e2d2'; ctx.fillRect(-4, -2.4, 26, 1.8);
+        ctx.beginPath(); ctx.moveTo(22, -2.4); ctx.lineTo(27, 0); ctx.lineTo(22, 2.4); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = PALETTE.wood; ctx.fillRect(-12, -2.8, 8, 5.6);     // grip
+        ctx.fillStyle = PALETTE.ochre; ctx.fillRect(-5.5, -7, 3.2, 14);    // crossguard
+        ctx.beginPath(); ctx.arc(-13, 0, 2.8, 0, Math.PI * 2); ctx.fill(); // pommel
+      } else {
+        ctx.fillStyle = '#2a2622'; ctx.beginPath(); ctx.ellipse(1, 1.5, 12, 13.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = PALETTE.wood; ctx.beginPath(); ctx.ellipse(0, 0, 12, 13.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#8d8a85'; ctx.lineWidth = 2.6;
+        ctx.beginPath(); ctx.ellipse(0, 0, 10, 11.5, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = PALETTE.cult; ctx.fillRect(-1.8, -11, 3.6, 22);
+        ctx.fillStyle = '#9d968c'; ctx.beginPath(); ctx.arc(0, 0, 4.4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(239,230,208,0.35)'; ctx.beginPath(); ctx.arc(-1.4, -1.4, 1.8, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
     } else if (p.kind === 'heal') {
       const bob = Math.sin(this.t * 2.4 + p.phase) * 2;
       const g = ctx.createRadialGradient(p.x, p.y + bob, 0, p.x, p.y + bob, 34);
@@ -448,7 +530,15 @@ class Renderer {
     let swing = 0;
     if (e.state === 'windup') swing = -1.3; else if (e.state === 'swing') swing = 1.1 - e.timer * 6; else if (e.state === 'recover') swing = 0.6;
     if (e.flail > 0) swing = Math.sin(this.t * 26) * 1.5;
-    if (e.kind === 'bearer') {
+    if (e.kind === 'bearer' && e.knife) {
+      // The one who comes for her carries the boning knife from beside the altar, not a club.
+      ctx.save(); ctx.translate(r * 0.35, r * 0.62); ctx.rotate(swing * 0.5);
+      ctx.fillStyle = '#4a3420'; ctx.fillRect(-3, -2.6, 9, 5.2);
+      ctx.fillStyle = '#c9c2b5';
+      ctx.beginPath(); ctx.moveTo(6, -2.6); ctx.lineTo(19, -3); ctx.lineTo(25, 0); ctx.lineTo(19, 2.4); ctx.lineTo(6, 2.2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = PALETTE.bloodDark; ctx.fillRect(12, -0.5, 11, 2.2);
+      ctx.restore();
+    } else if (e.kind === 'bearer') {
       ctx.save(); ctx.rotate(swing); ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 4; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(r * 0.3, r * 0.6); ctx.lineTo(r + 13, r * 0.6); ctx.stroke(); ctx.restore();
     } else if (e.kind === 'seer') {
@@ -672,15 +762,25 @@ class Renderer {
       ctx.restore();
     }
     ctx.globalAlpha = 1;
-    this.shadow(g.x, g.y, 16, 8);
+    // On the stairs he rises, shrinks and thins out: leaving up the flight, or arriving up one.
+    const fx = game.stairFx, climb = fx ? clamp(fx.dir > 0 ? fx.t : 1 - fx.t, 0, 1) : 0;
+    this.shadow(g.x, g.y, 16 * (1 - climb * 0.35), 8 * (1 - climb * 0.35));
     ctx.save(); ctx.translate(g.x, g.y); ctx.scale(1, 1 / TILT); ctx.translate(0, -5);
+    if (g.jitter) ctx.translate(g.jitter.x, g.jitter.y);
+    if (climb > 0) { ctx.translate(0, -TUNING.stairs.rise * climb); ctx.scale(1 - 0.22 * climb, 1 - 0.22 * climb); ctx.globalAlpha = 1 - climb * 0.55; }
     if (g.state === 'roll') ctx.rotate(g.facing + g.rollSpin);
     else ctx.rotate(g.facing);
+    // The sprite is built for a goat facing right with its near side down. Facing left it is mirrored
+    // rather than turned over, so the head stays a head and the horns stay on top.
+    if (Math.cos(g.facing) < 0) ctx.scale(1, -1);
+    if (g.dazed > 0 && g.state !== 'ko') ctx.rotate(Math.sin(this.t * 24) * 0.1);
     let sx = 1, sy = 1;
     if (g.state === 'windup') { sx = 0.82; sy = 1.15; }
     else if (g.state === 'lunge') { sx = 1.3; sy = 0.8; }
     else if (g.state === 'roll') { sx = 0.86; sy = 0.86; }
     else if (g.state === 'rollrecover') { sx = 1.08; sy = 0.9; }
+    else if (g.state === 'stunned') { ctx.rotate(0.34); sx = 1.14; sy = 0.76; }   // knocked off his feet
+    else if (g.state === 'ko') { ctx.rotate(0.5); sx = 1.15; sy = 0.72; }   // out cold, on his side
     ctx.scale(sx, sy);
     if (g.invuln > 0 && Math.floor(this.t * 30) % 2 === 0) ctx.globalAlpha = 0.5;
     const dmg = g.maxHp - g.hp;
@@ -695,8 +795,8 @@ class Renderer {
     ctx.stroke();
     ctx.fillStyle = '#b3a78e';
     ctx.beginPath(); ctx.ellipse(8.5, -5.5, 4.2, 2.2, -0.55, 0, Math.PI * 2); ctx.fill();      // far ear
-    ctx.strokeStyle = '#9a6f2e'; ctx.lineWidth = 3.2;
-    ctx.beginPath(); ctx.moveTo(12, 0); ctx.quadraticCurveTo(4, -10, -5, -12.5); ctx.stroke();  // far horn
+    // the far horn: it comes off the far side of the crown and shows over the back
+    this.horn(7.5, -2.5, 1.5, -11.5, -8.5, -12.5, 2.8, '#9a6f2e', 'rgba(90,60,20,0.55)');
     // near legs, long enough that the hooves clear the body
     ctx.strokeStyle = '#d9cfb6'; ctx.lineWidth = 3.4;
     ctx.beginPath();
@@ -730,21 +830,17 @@ class Renderer {
     ctx.fillStyle = '#e4dac2';
     ctx.beginPath(); ctx.moveTo(18, 9.6); ctx.quadraticCurveTo(17.5, 17.5, 13, 20);
     ctx.quadraticCurveTo(16.5, 15, 14, 10.2); ctx.closePath(); ctx.fill();
-    // the near horn: back over the skull and out past the far side of the body
-    ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 4.2; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(13, 2.5); ctx.quadraticCurveTo(3, -6, -7, -3); ctx.stroke();
-    ctx.strokeStyle = '#c79a47'; ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.moveTo(-4.5, -3.8); ctx.quadraticCurveTo(-8, -3.6, -10, -1); ctx.stroke();   // the tip
-    ctx.strokeStyle = 'rgba(120,84,32,0.6)'; ctx.lineWidth = 1.1;
-    for (let k = 1; k <= 3; k++) {
-      const tt = k / 4;
-      const hx = 13 + (3 - 13) * 2 * tt * (1 - tt) + (-7 - 13) * tt * tt;
-      const hy = 2.5 + (-6 - 2.5) * 2 * tt * (1 - tt) + (-3 - 2.5) * tt * tt;
-      ctx.beginPath(); ctx.moveTo(hx - 1.3, hy - 2); ctx.lineTo(hx + 1.3, hy + 2); ctx.stroke();
+    // the near horn: up off the crown and back over the neck, its tip clear of the body's outline.
+    // A horn lying flat along the back reads as a stripe; one that leaves the silhouette reads as a horn.
+    this.horn(10.5, -0.5, 5, -10.5, -4, -14, 3.3, PALETTE.ochre, 'rgba(120,84,32,0.6)');
+    // the eye: a rectangular pupil, of course. Shut when he has been clubbed.
+    if (g.state === 'ko') {
+      ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(11.4, 5.8); ctx.lineTo(15.4, 5.2); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#fbf5e6'; ctx.beginPath(); ctx.ellipse(13.4, 5.4, 3.2, 2.6, 0.25, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.ink; ctx.fillRect(12.2, 4.6, 3.8, 2.1);
     }
-    // the eye: a rectangular pupil, of course
-    ctx.fillStyle = '#fbf5e6'; ctx.beginPath(); ctx.ellipse(13.4, 5.4, 3.2, 2.6, 0.25, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = PALETTE.ink; ctx.fillRect(12.2, 4.6, 3.8, 2.1);
     if (g.screaming > 0) {
       ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(19.2, 9, 3, 3.8, 0.45, 0, Math.PI * 2); ctx.fill();
     }
@@ -754,11 +850,129 @@ class Renderer {
     if (g.onFire) this.flame(0, -6, 12, 1, g.witchFire);
     ctx.globalAlpha = 1;
     ctx.restore();
+    // Stars: the club is still ringing in his skull.
+    if (g.dazed > 0 && !(game.intro && game.intro.fade > 0)) this.drawStars(g.x, g.y, 30, Math.min(1, g.dazed * 1.5));
     // aim pip: where the headbutt will go
     if (game.touch.active && game.state === 'play') {
       const a = game.input.aim;
       ctx.fillStyle = 'rgba(239,230,208,0.5)';
       ctx.beginPath(); ctx.arc(g.x + a.x * 34, g.y + a.y * 34, 3.4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // A tapered horn: thick at the base, curving through a control point to a point, with a few growth
+  // ridges across it. Shared by the goat's two horns.
+  horn(bx, by, cx, cy, tx, ty, w, color, ridge) {
+    const ctx = this.ctx, dx = tx - bx, dy = ty - by, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+    ctx.fillStyle = color; ctx.beginPath();
+    ctx.moveTo(bx + nx * w, by + ny * w);
+    ctx.quadraticCurveTo(cx + nx * w * 0.55, cy + ny * w * 0.55, tx, ty);
+    ctx.quadraticCurveTo(cx - nx * w * 0.55, cy - ny * w * 0.55, bx - nx * w, by - ny * w);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = ridge; ctx.lineWidth = 1; ctx.lineCap = 'butt';
+    for (let k = 1; k <= 3; k++) {
+      const s = k / 4.6, u = 1 - s, hx = u * u * bx + 2 * u * s * cx + s * s * tx, hy = u * u * by + 2 * u * s * cy + s * s * ty, ww = w * u * 0.9;
+      ctx.beginPath(); ctx.moveTo(hx + nx * ww, hy + ny * ww); ctx.lineTo(hx - nx * ww, hy - ny * ww); ctx.stroke();
+    }
+  }
+
+  // Stars over a head, orbiting upright in the counter-tilted frame.
+  drawStars(x, y, above, alpha) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT); ctx.globalAlpha = clamp(alpha, 0, 1);
+    ctx.fillStyle = PALETTE.fireHi;
+    for (let k = 0; k < 3; k++) {
+      const a = this.t * 6.5 + k * 2.1;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * 15, Math.sin(a) * 6 - above, 3.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // His wife. Wool where he has a coat, a dark face where his is pale, no horns and no beard, and
+  // the same marigold collar: the two of them read as a pair, and as two different animals.
+  drawSheep(s) {
+    const ctx = this.ctx;
+    this.shadow(s.x, s.y, 15, 7.5);
+    ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, 1 / TILT); ctx.translate(0, -5);
+    if (s.jitter) ctx.translate(s.jitter.x, s.jitter.y);
+    ctx.rotate(s.facing);
+    if (Math.cos(s.facing) < 0) ctx.scale(1, -1);
+    ctx.scale(0.94, 0.94);
+    const step = s.kick !== undefined && s.kick !== 0 ? s.kick : (Math.hypot(s.vx || 0, s.vy || 0) > 40 ? Math.sin(this.t * 22) * 3.5 : 0);
+    // far legs and the far ear
+    ctx.strokeStyle = '#3a322f'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(3, -4); ctx.lineTo(4.5 + step, -11); ctx.moveTo(-8, -4); ctx.lineTo(-9.5 - step, -11); ctx.stroke();
+    ctx.fillStyle = '#4a3f3a'; ctx.beginPath(); ctx.ellipse(9, -6.5, 4.6, 2.3, -0.5, 0, Math.PI * 2); ctx.fill();
+    // near legs
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(3, 4); ctx.lineTo(5 - step, 15); ctx.moveTo(-8, 4); ctx.lineTo(-10 + step, 15); ctx.stroke();
+    // the fleece: a ring of bumps over the body
+    ctx.fillStyle = PALETTE.bone;
+    for (let i = 0; i < 11; i++) { const a = i / 11 * Math.PI * 2; ctx.beginPath(); ctx.arc(-3 + Math.cos(a) * 12, 0.5 + Math.sin(a) * 6.6, 5, 0, Math.PI * 2); ctx.fill(); }
+    ctx.beginPath(); ctx.ellipse(-3, 0.5, 13.5, 7.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(150,138,116,0.3)'; ctx.beginPath(); ctx.ellipse(-4, 6, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.ochre; ctx.fillRect(4.6, -8.5, 2.4, 17);
+    ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.arc(-17, 1, 3.6, 0, Math.PI * 2); ctx.fill();   // tail
+    // the head: dark, small and low, with wool on the crown
+    ctx.fillStyle = '#4a3f3a';
+    ctx.beginPath(); ctx.moveTo(5, -1); ctx.quadraticCurveTo(13, 0, 17, 4.5); ctx.quadraticCurveTo(20, 7.5, 16.5, 10.5);
+    ctx.quadraticCurveTo(11, 14, 6, 10); ctx.quadraticCurveTo(3.5, 7.5, 5, -1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PALETTE.bone;
+    ctx.beginPath(); ctx.arc(7.5, 0.5, 4.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(11.2, 1.6, 3.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4a3f3a'; ctx.beginPath(); ctx.ellipse(8.5, 11.5, 4.6, 2.3, 0.8, 0, Math.PI * 2); ctx.fill();   // near ear
+    // the eye, with the same rectangular pupil he has
+    ctx.fillStyle = '#fbf5e6'; ctx.beginPath(); ctx.ellipse(12.5, 5.6, 2.9, 2.3, 0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(11.4, 5, 3.4, 1.8);
+    if (s.bleating > 0) { ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(17.2, 8.8, 2.2, 2.8, 0.45, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+
+  // The heart between the two of them, and the two halves of it after.
+  drawHeart(h) {
+    const ctx = this.ctx, cell = 2.3, G = HEART_GLYPH;
+    ctx.save(); ctx.translate(h.x, h.y); ctx.scale(1, 1 / TILT);
+    const half = (c0, c1, ox, oy, rot, alpha) => {
+      ctx.save(); ctx.translate(ox, oy); ctx.rotate(rot); ctx.globalAlpha = clamp(alpha, 0, 1);
+      ctx.fillStyle = PALETTE.blood;
+      for (let r = 0; r < G.length; r++) for (let q = c0; q <= c1; q++) {
+        if (G[r][q] === '#') ctx.fillRect((q - 3.5) * cell, (r - 3) * cell, cell + 0.15, cell + 0.15);
+      }
+      if (c0 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect((1 - 3.5) * cell, (1 - 3) * cell, cell, cell); }
+      ctx.restore();
+    };
+    if (!h.broken) { const p = h.pulse || 1; ctx.scale(p, p); half(0, 6, 0, 0, 0, h.alpha === undefined ? 1 : h.alpha); }
+    else {
+      const t = h.broken, fall = t * t * 26;
+      half(0, 3, -4 - t * 9, fall, -0.5 * t, 1 - t);
+      half(3, 6, 4 + t * 9, fall + 3, 0.5 * t, 1 - t);
+    }
+    ctx.restore();
+  }
+
+  // The opening scene's own actors: his wife, and the heart. The two men are ordinary enemies.
+  drawIntroWorld(game) {
+    const it = game.intro;
+    if (it.sheep && !it.sheep.gone) this.drawSheep(it.sheep);
+    if (it.heart && (!it.heart.broken || it.heart.broken < 1)) this.drawHeart(it.heart);
+  }
+
+  // Over the picture: the fade to black, the stars that stay lit in the dark, a bleat from a long way
+  // off, and a line about skipping it.
+  drawIntroOverlay(game) {
+    const it = game.intro, ctx = this.ctx, s = this.ts;
+    if (it.fade > 0) { ctx.fillStyle = `rgba(13,10,12,${clamp(it.fade, 0, 1)})`; ctx.fillRect(0, 0, this.w, this.h); }
+    if (it.starsA > 0 && it.fade > 0) {
+      ctx.save(); this.worldTransform(game); this.drawStars(game.goat.x, game.goat.y, 30, it.starsA); ctx.restore();
+    }
+    if (it.echo > 0) {
+      ctx.save(); ctx.globalAlpha = Math.min(1, it.echo, (1.6 - it.echo) * 3) * 0.55;
+      ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'right';
+      ctx.fillText('beeh...', this.w * 0.9, this.vh * 0.47); ctx.restore();
+    }
+    if (it.t > TUNING.intro.skipAfter + 0.7 && it.phase !== 'black' && it.phase !== 'wake') {
+      ctx.save(); ctx.globalAlpha = 0.4 * (1 - it.fade); ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'left';
+      ctx.fillText(`${game.tapWord} TO SKIP`, 14 * s, this.vh - 14 * s); ctx.restore();
     }
   }
 
@@ -891,12 +1105,12 @@ class Renderer {
   }
 
   drawUI(game) {
-    const ctx = this.ctx; if (!game.world) return;
+    const ctx = this.ctx; if (!game.world || game.state === 'intro') return;
     const g = game.goat, s = this.ts, top = 8 * s + (this.portrait ? 12 * s : 0);
     ctx.textAlign = 'left';
     ctx.font = `700 ${15 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
     ctx.fillText(`${game.level.def.sub.toUpperCase()}: ${game.level.def.name}`, 14 * s, top + 14 * s);
-    const HEART = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
+    const HEART = HEART_GLYPH;
     const px = 2.6 * s;
     for (let i = 0; i < g.maxHp; i++) {
       const ox = 14 * s + i * 22 * s, oy = top + 28 * s;
@@ -914,7 +1128,7 @@ class Renderer {
     ctx.fillStyle = cd >= 1 ? (fire ? PALETTE.fire : PALETTE.bone) : (fire ? PALETTE.blood : PALETTE.ochre);
     ctx.fillRect(14 * s, top + 50 * s, 58 * s * cd, 5 * s);
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = fire ? PALETTE.fire : 'rgba(239,230,208,0.55)';
-    ctx.fillText(fire ? 'BREATH' : 'SCREAM', 78 * s, top + 56 * s);
+    ctx.fillText(fire ? 'BREATH' : 'BAAH · STUNS', 78 * s, top + 56 * s);
     const rcd = 1 - g.rollCd / (TUNING.goat.roll.cooldown * game.mods.rollCooldown);
     ctx.fillStyle = 'rgba(239,230,208,0.2)'; ctx.fillRect(14 * s, top + 61 * s, 58 * s, 3 * s);
     ctx.fillStyle = rcd >= 1 ? 'rgba(239,230,208,0.8)' : PALETTE.ochre; ctx.fillRect(14 * s, top + 61 * s, 58 * s * rcd, 3 * s);
@@ -1040,12 +1254,13 @@ class Renderer {
     const lh = (i) => (rows[i].small ? small * 1.6 : size * 1.32);
     let total = 0; for (let i = 0; i < rows.length; i++) total += lh(i);
     let y = this.h / 2 - total / 2;
+    if (card.alpha !== undefined) ctx.globalAlpha = clamp(card.alpha, 0, 1);
     rows.forEach((r, i) => {
       ctx.font = r.small ? `${small}px ${FONT}` : `700 ${size}px ${FONT}`;
       ctx.fillStyle = r.small ? (r.last ? (card.color || PALETTE.bone) : 'rgba(239,230,208,0.62)') : (card.color || PALETTE.bone);
       y += lh(i);
       ctx.fillText(r.text, this.w / 2, y - lh(i) * 0.28);
     });
-    ctx.textAlign = 'left';
+    ctx.globalAlpha = 1; ctx.textAlign = 'left';
   }
 }

@@ -1,5 +1,6 @@
 // Level generation: a chain of template rooms joined by 2-wide corridors, trending up-right.
-const T = { FLOOR: 0, WALL: 1, HAY: 2, ASH: 3, EXIT: 4 };
+// EXIT is the flight of stairs up out of the last room; ENTRY the flight you came up into the first.
+const T = { FLOOR: 0, WALL: 1, HAY: 2, ASH: 3, EXIT: 4, ENTRY: 5 };
 
 function flipTemplate(tpl, rng) {
   let rows = tpl.rows.slice();
@@ -8,16 +9,20 @@ function flipTemplate(tpl, rng) {
   return { name: tpl.name, rows };
 }
 
-function generateLevel(levelDef, seed) {
+// `taught` is what this run has already been shown — kinds of men, bosses, the Mill. Anything not
+// in it gets a room of its own on its first appearance; see the spawn pass below.
+function generateLevel(levelDef, seed, taught) {
   for (let attempt = 0; attempt < 20; attempt++) {
-    const lvl = tryGenerate(levelDef, seed + attempt * 7919);
+    const lvl = tryGenerate(levelDef, seed + attempt * 7919, taught);
     if (lvl) return lvl;
   }
   throw new Error('level generation failed');
 }
 
-function tryGenerate(levelDef, seed) {
+function tryGenerate(levelDef, seed, taught) {
   const rng = new RNG(seed);
+  // A copy: a generation attempt that fails must not leave the run thinking it has taught something.
+  const met = new Set(taught || []);
   const W = 420, H = 78;
   const tiles = new Uint8Array(W * H).fill(T.WALL);
   const rooms = [];
@@ -54,7 +59,7 @@ function tryGenerate(levelDef, seed) {
         if (c === '#' || c === 'P') t = T.WALL;
         else if (c === 'h') t = T.HAY;
         tiles[wy * W + wx] = t;
-        if ('eoRrmXBbtLM'.includes(c)) room.markers.push({ tx: wx, ty: wy, c });
+        if ('eoRrmXBbtLMw'.includes(c)) room.markers.push({ tx: wx, ty: wy, c });
       }
     }
     rooms.push(room);
@@ -66,7 +71,7 @@ function tryGenerate(levelDef, seed) {
     y += rng.int(-6, 3);
   }
 
-  // Exit: 2-tall gap in the right wall of the last room, marked EXIT.
+  // Exit: a 2-tall flight of stairs cut into the right wall of the last room, marked EXIT.
   const last = rooms[rooms.length - 1];
   const doorY = pickDoorY(last, 'right', rng);
   if (doorY < 0) return null;
@@ -74,10 +79,25 @@ function tryGenerate(levelDef, seed) {
     for (let dx = 0; dx < 3; dx++) tiles[(doorY + dy) * W + (last.x + last.w - 1 + dx)] = T.EXIT;
   }
   const exit = { x: (last.x + last.w) * TILE, y: (doorY + 1) * TILE };
+  const exitTile = { x0: last.x + last.w - 1, y0: doorY };
+
+  // Every level after the first is entered the same way: up a flight cut into the left wall of the
+  // first room. The goat starts at the top of it, a step inside.
+  let entry = null;
+  if (!levelDef.ritual) {
+    const first = rooms[0], ey = pickDoorY(first, 'left', rng);
+    if (ey < 0) return null;
+    for (let dy = 0; dy < 2; dy++) {
+      for (let dx = 0; dx < 3; dx++) tiles[(ey + dy) * W + (first.x - dx)] = T.ENTRY;
+    }
+    entry = { x0: first.x - 2, y0: ey, x: (first.x + 1.9) * TILE, y: (ey + 1) * TILE };
+  }
 
   // Props and enemy spawns from markers, with a per-room budget.
+  const metRoom = {};   // where in the level a kind was first shown, so nothing sneaks in ahead of it
   rooms.forEach((room) => {
     const enemyMarkers = [];
+    let bossKind = null, wIdx = rng.int(0, 1);
     room.markers.forEach((m) => {
       const px = (m.tx + 0.5) * TILE, py = (m.ty + 0.5) * TILE;
       if (m.c === 'B') props.push({ x: px, y: py, kind: 'brazier' });
@@ -86,17 +106,42 @@ function tryGenerate(levelDef, seed) {
       else if (m.c === 'L') props.push({ x: px, y: py, kind: 'lamp' });
       else if (m.c === 't') { if (m.tx % 2 === 0 && m.ty % 2 === 0) props.push({ x: px + TILE / 2, y: py + TILE / 2, kind: 'table' }); }
       else if (m.c === 'M') props.push({ x: px, y: py, kind: 'mill', phase: rng.float(0, Math.PI * 2) });
+      // A pair of stands alternates, so an arena always offers one of each rather than two swords.
+      else if (m.c === 'w') props.push({ x: px, y: py, kind: 'weapon', weapon: (wIdx++ % 2) ? 'shield' : 'sword' });
       else if (m.c === 'X') {
         const boss = (room.arena && room.arena.boss) || 'butcher';
-        spawns.push({ x: px, y: py, kind: boss, elite: boss !== 'butcher', boss: true });
+        const elite = room.arena && room.arena.elite === false ? false : boss !== 'butcher';
+        spawns.push({ x: px, y: py, kind: boss, elite, boss: true });
+        bossKind = boss;
       }
       else enemyMarkers.push(m);
     });
+    // Sometimes a stand or two of arms, anywhere a man might have left one. Arenas have their own
+    // pair from the template; the rooms with the controls on the floor get one to practise on.
+    // The second room with the controls on it always gets a sword, so the stand is met somewhere
+    // safe rather than in the middle of a fight.
+    const teachRack = room.calm && room.index === 2;
+    if (room.index > 0 && !room.arena && (teachRack || rng.chance(levelDef.racks || 0))) {
+      for (let k = 0, n = !teachRack && rng.chance(0.25) ? 2 : 1; k < n; k++) {
+        for (let a = 0; a < 30; a++) {
+          const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
+          if (tiles[ty * W + tx] !== T.FLOOR) continue;
+          const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+          if (props.some((p) => len(p.x - px, p.y - py) < 1.8 * TILE)) continue;
+          props.push({ x: px, y: py, kind: 'weapon', weapon: teachRack || rng.chance(0.5) ? 'sword' : 'shield' });
+          break;
+        }
+      }
+    }
     // The pen room, and the two rooms with the controls painted on the floor, stay empty.
     if (room.index === 0 || room.calm) return;
-    const budget = room.isHall ? (levelDef.hallBudget || 12)
+    let budget = room.isHall ? (levelDef.hallBudget || 12)
       : room.isGallery ? enemyMarkers.length
       : levelDef.budget(room.index);
+    // A set piece the run has not met yet is shown on its own: the Mill with one man in the room,
+    // a new boss with nobody at his back.
+    if (room.isMill && !met.has('mill')) { met.add('mill'); budget = Math.min(budget, 1); }
+    if (bossKind && !met.has(bossKind + ' boss')) { met.add(bossKind + ' boss'); budget = 0; }
     rng.shuffle(enemyMarkers);
     // Add extra random floor positions so a room can exceed the men its template marks.
     const want = Math.max(0, budget - enemyMarkers.length);
@@ -111,6 +156,7 @@ function tryGenerate(levelDef, seed) {
     // painting the same floor is not a fight, it is a coin toss.
     const seerOk = room.index >= (levelDef.seerFrom === undefined ? 0 : levelDef.seerFrom);
     let seersHere = 0;
+    const chosen = [];
     all.forEach((m) => {
       let kind = 'bearer';
       if ((m.c === 'r' || m.c === 'm' || m.c === 'R') && ranged !== 'none') {
@@ -120,14 +166,22 @@ function tryGenerate(levelDef, seed) {
           kind = 'seer'; seersHere++;
         } else kind = plainB;
       }
-      spawns.push({ x: (m.tx + 0.5) * TILE, y: (m.ty + 0.5) * TILE, kind, roomIndex: room.index });
+      chosen.push({ m, kind });
     });
+    // The first of anything this run has never seen gets the room to itself: one Seer, one rifle,
+    // nobody else in with him. You cannot learn what a thing does while four men are clubbing you.
+    const fresh = chosen.find((c) => !met.has(c.kind));
+    if (fresh) { met.add(fresh.kind); metRoom[fresh.kind] = room.index; chosen.length = 0; chosen.push(fresh); }
+    chosen.forEach((c) => spawns.push({ x: (c.m.tx + 0.5) * TILE, y: (c.m.ty + 0.5) * TILE, kind: c.kind, roomIndex: room.index }));
   });
 
   // Lone rifle posts. A rifle on its own is a different problem from a rifle inside a crowd:
   // you have to cross its line rather than out-run the pile it is standing in.
   if (levelDef.lonePosts && (levelDef.ranged === 'both' || levelDef.ranged === 'hunter')) {
-    const eligible = rng.shuffle(rooms.filter((r) => r.index > 1 && !r.arena && !r.isMill && !r.calm && !r.isGallery));
+    // Never before the room that introduced the rifle: a lone post is a fine first rifle, but not
+    // one standing three rooms earlier than the one the level meant to teach it in.
+    const after = metRoom.hunter === undefined ? 1 : Math.max(1, metRoom.hunter);
+    const eligible = rng.shuffle(rooms.filter((r) => r.index > after && !r.arena && !r.isMill && !r.calm && !r.isGallery));
     let placed = 0;
     for (const room of eligible) {
       if (placed >= levelDef.lonePosts) break;
@@ -154,16 +208,22 @@ function tryGenerate(levelDef, seed) {
     }
   });
 
-  const start = { x: (rooms[0].x + rooms[0].w / 2) * TILE, y: (rooms[0].y + rooms[0].h / 2) * TILE };
+  const centre = { x: (rooms[0].x + rooms[0].w / 2) * TILE, y: (rooms[0].y + rooms[0].h / 2) * TILE };
+  const start = entry ? { x: entry.x, y: entry.y } : centre;
   // You do not wake on the altar. You wake in the pen beside it, and the pen is only bars.
   if (levelDef.startCage) props.push(...buildCage(start.x, start.y));
+  // The other cage in the ritual room is shut for good, and what is in it is not getting up.
+  if (levelDef.ritual) {
+    const D = TUNING.prop.deadCage;
+    props.push(...buildCage(start.x + D.dx * TILE, start.y + D.dy * TILE, D.halfW, D.halfH, true));
+  }
   if (!reachable(tiles, W, H, Math.floor(start.x / TILE), Math.floor(start.y / TILE), last.x + last.w - 1, doorY)) return null;
 
   // Safety: nothing spawns within 5 tiles of the start, and the start room keeps no props underfoot.
   const filtered = spawns.filter((s) => len(s.x - start.x, s.y - start.y) > 5 * TILE);
   const cleanProps = props.filter((p) => p.kind === 'door' || p.kind === 'cage' || len(p.x - start.x, p.y - start.y) > 3 * TILE);
-  // The level's own hint goes above the pen; the pen's own prompt goes below it.
-  const hints = levelDef.hint ? [{ x: start.x, y: start.y - 2.9 * TILE, text: levelDef.hint }] : [];
+  // The level's own hint goes across the middle of the first room; the pen's own prompt goes below the pen.
+  const hints = levelDef.hint ? [{ x: centre.x, y: centre.y - 2.0 * TILE, text: levelDef.hint }] : [];
   const cagePrompt = levelDef.startCage ? { x: start.x, y: start.y + 2.9 * TILE } : null;
   // Ape Out paints the controls on the floor. We split them over the two rooms after the pen,
   // and both of those rooms are left empty so they can be read without being clubbed.
@@ -174,23 +234,24 @@ function tryGenerate(levelDef, seed) {
       if (r) controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: k });
     }
   }
-  return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, seed, def: levelDef, hints, controls, cagePrompt };
+  return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
+    hints, controls, cagePrompt, taught: Array.from(met) };
 }
 
-// A ring of iron bars around the start. One headbutt anywhere on it brings the whole thing down.
-function buildCage(cx, cy) {
+// A ring of iron bars around a point. The pen around the start comes apart under a headbutt;
+// a `deco` cage is scenery: it blocks, it rings when hit, and it never opens.
+function buildCage(cx, cy, halfW, halfH, deco) {
   const C = TUNING.prop.cage, out = [];
-  const hw = C.halfW * TILE, hh = C.halfH * TILE;
+  const hw = (halfW || C.halfW) * TILE, hh = (halfH || C.halfH) * TILE;
   const nx = Math.max(2, Math.round(hw * 2 / C.spacing)), ny = Math.max(2, Math.round(hh * 2 / C.spacing));
+  const bar = (x, y, axis) => { const b = { x, y, kind: 'cage', axis }; if (deco) b.deco = true; out.push(b); };
   for (let i = 0; i <= nx; i++) {
     const x = cx - hw + (i / nx) * hw * 2;
-    out.push({ x, y: cy - hh, kind: 'cage', axis: 'h' });
-    out.push({ x, y: cy + hh, kind: 'cage', axis: 'h' });
+    bar(x, cy - hh, 'h'); bar(x, cy + hh, 'h');
   }
   for (let j = 1; j < ny; j++) {
     const y = cy - hh + (j / ny) * hh * 2;
-    out.push({ x: cx - hw, y, kind: 'cage', axis: 'v' });
-    out.push({ x: cx + hw, y, kind: 'cage', axis: 'v' });
+    bar(cx - hw, y, 'v'); bar(cx + hw, y, 'v');
   }
   return out;
 }

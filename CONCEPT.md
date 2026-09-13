@@ -8,7 +8,8 @@ the brief is the original stage-one document and several of its calls have since
 ## The pitch
 
 They were driving the goat to the altar. The truck fell off the bridge. Four men died. The goat
-survived. Now the whole cult wants its sacrifice back.
+survived. So did his wife. They were caught, penned together, and she was taken first. Now the whole
+cult wants its other sacrifice back, and the goat is loose in the building.
 
 A top-down, one-life, procedurally generated escape. You do not fight. You run. People happen to be in
 the way.
@@ -58,8 +59,12 @@ no real nationality. The original meme survives only as the prologue card.
 Four hearts, no regeneration, one life per level. A new level puts every heart back. Blood smears the
 coat as you take hits, so health reads on the character as well as in the corner.
 
-He is drawn a quarter turn toward the camera: the head clear of the body, horns sweeping back and out
-past the outline, a beard off the chin and a rectangular pupil in a visible eye.
+He is drawn a quarter turn toward the camera: the head clear of the body, two tapered horns rising off
+the crown and sweeping back clear of the outline, a beard off the chin and a rectangular pupil in a
+visible eye. Facing left he is mirrored rather than turned over, so the horns stay on top.
+
+**His wife** appears only in the opening scene: wool where he has a coat, a dark face, no horns, no
+beard, and the same marigold collar. She bleats in a higher voice than he does.
 
 ---
 
@@ -110,11 +115,27 @@ up and right, validated by flood fill. Templates are randomly flipped on both ax
 toward the exit. Nothing spawns within five tiles of the start. Death means a new seed; the seed is
 printed in the corner.
 
+**Stairs.** The exit is a flight of steps cut into the right wall of the last room, climbing into
+light. The goat takes them for a moment, rising and thinning out, before the cards. Every level after
+the first is entered up another flight cut into the left wall of its first room, and the goat comes up
+it under the level card. Those later first rooms are bare: the altar, the tools and the remains belong
+to level 1 alone.
+
 **The first room** is the one you woke up in. The altar stands off to one side — strapped open, waiting,
-with the knife and the remains of the goat that went before you — and you are in the pen beside it, on a
-cult pictogram burned into the floor. One headbutt anywhere on the bars takes the whole pen apart and is
-heard across the level. Stand in it for five seconds without working that out and the floor tells you
-which button opens it. Only level 1 starts caged; later levels start you loose in the same room.
+with the knife and the remains of the one that went before you, about your own size — and you are in
+the pen beside it, on a cult pictogram burned into the floor. Across the room stands a second, smaller
+cage, shut for good, with a sheep in it that stopped waiting a while ago. Three headbutts anywhere on
+your bars take the whole pen apart and are heard across the level. Stand in it for five seconds without
+working that out and the floor tells you which button opens it.
+
+**The opening scene** plays in that room, once, when a run starts from the title. The goat and his wife
+are in the pen, pressed together and trembling, a heart beating between them. Two men come round the
+other cage: one with the boning knife from beside the altar, one with a club. The knife man puts a boot
+to the gate, walks round the goat, and takes her; the goat goes for him and meets the club instead. The
+picture goes dark with the stars still turning, she bleats once from a long way off, the level card
+comes up in the dark, and the light comes back on the pen with the goat lying where he fell and the gate
+up again. Nothing in it touches the simulation: the level underneath is exactly the one you would have
+got. Any button after the first moment skips to the dark. A death does not replay it.
 
 **The two rooms after it** carry the controls painted on the floor, the way Ape Out does it, split over
 both and with no men in either so they can be read. There is no line about the mouse: a crosshair on a
@@ -190,3 +211,5 @@ enters once somebody knows you are there. No audio assets at all.
 
 Mirrors as an environmental puzzle, pixel art proper, gamepad support, a Priest boss, and the later acts
 sketched in the original brief. Enemies are still drawn with canvas primitives rather than sprites.
+The opening scene takes his wife deeper into the compound and nothing after it mentions her: whether
+she is somewhere in the building to be found, and what the ending does about it, is undecided.

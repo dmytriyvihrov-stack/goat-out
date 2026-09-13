@@ -72,10 +72,28 @@ class World {
     c.restore(); c.globalAlpha = 1;
   }
 
+  // A tapered horn on the decal canvas: base, a control point for the sweep, and the tip.
+  hornDecal(bx, by, cx, cy, tx, ty, w, color) {
+    const c = this.dctx, dx = tx - bx, dy = ty - by, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+    c.fillStyle = color; c.beginPath();
+    c.moveTo(bx + nx * w, by + ny * w);
+    c.quadraticCurveTo(cx + nx * w * 0.55, cy + ny * w * 0.55, tx, ty);
+    c.quadraticCurveTo(cx - nx * w * 0.55, cy - ny * w * 0.55, bx - nx * w, by - ny * w);
+    c.closePath(); c.fill();
+  }
+
   // The room you wake in. The altar stands ready off to one side, with the straps, the knife and
   // what is left of the goat that went before you. You are in the pen in the middle of it.
+  // Every later level arrives up a flight of stairs into a bare room, and gets none of this.
   paintStartRoom(level, rng) {
     const c = this.dctx, sx = level.start.x, sy = level.start.y;
+    if (!level.def || !level.def.ritual) {
+      // the top of the stairs: stone worn smooth by whoever came up before
+      c.save(); c.globalAlpha = 0.16; c.fillStyle = PALETTE.ash;
+      c.beginPath(); c.ellipse(sx + 8, sy, 42, 27, 0, 0, Math.PI * 2); c.fill();
+      c.globalAlpha = 1; c.restore();
+      return;
+    }
     const ax = sx - 4 * TILE, ay = sy - 0.2 * TILE;      // the altar, beside you, still waiting
     this.pixelGlyph(sx, sy, 8.5 * TILE, CULT_GLYPHS[0], 0.2, PALETTE.ochre);
     this.pixelGlyph(ax, ay, 4.6 * TILE, CULT_GLYPHS[2], 0.13, PALETTE.blood);
@@ -107,10 +125,10 @@ class World {
     c.beginPath(); c.moveTo(ax + 26, ay + 30); c.lineTo(ax + 18, ay + 14); c.stroke();
     c.restore();
 
-    // What is left of the goat that came before, laid out bigger than you are: they have done this
-    // before, and to something larger.
+    // What is left of the one that came before, about your own size: they have done this before,
+    // and to something like you.
     const bx = sx - 4.9 * TILE, by = sy + 1.7 * TILE;
-    c.save(); c.translate(bx, by); c.rotate(-0.12);
+    c.save(); c.translate(bx, by); c.rotate(-0.12); c.scale(0.7, 0.7);
     c.fillStyle = 'rgba(122,31,24,0.5)';
     for (let k = 0; k < 14; k++) c.beginPath(), c.arc(rng.float(-46, 52), rng.float(-30, 30), rng.float(8, 20), 0, Math.PI * 2), c.fill();
     c.strokeStyle = '#bdb298'; c.lineWidth = 6;                                                   // spine, nose to tail
@@ -128,9 +146,10 @@ class World {
     c.beginPath(); c.ellipse(-22, -4, 16, 11, -0.25, 0, Math.PI * 2); c.fill();
     c.beginPath(); c.ellipse(-38, 0, 9.5, 6.5, -0.15, 0, Math.PI * 2); c.fill();
     c.fillStyle = '#1a1016'; c.fillRect(-27, -8, 5, 3.6);                                         // eye socket
-    c.strokeStyle = '#c8bda2'; c.lineWidth = 5; c.lineCap = 'round';                              // horns, sweeping back
-    c.beginPath(); c.moveTo(-16, -13); c.quadraticCurveTo(2, -34, 20, -27); c.stroke();
-    c.beginPath(); c.moveTo(-14, 8); c.quadraticCurveTo(6, 28, 24, 21); c.stroke();
+    // the horns: short, thick at the root, curving back off the crown and stopping well short of the
+    // ribs. Lying on its side, one shows above the skull and the other below it.
+    this.hornDecal(-21, -11, -16, -25, -4, -23, 4.4, '#b3a78e');
+    this.hornDecal(-19, 4, -14, 18, -3, 16, 4.4, '#a89b80');
     c.restore();
 
     // The tools they work with, laid out on the floor beside the altar where anyone can read them.
@@ -173,6 +192,37 @@ class World {
     c.beginPath(); c.moveTo(0, -14); c.lineTo(0, 4); c.quadraticCurveTo(0, 16, -11, 14); c.stroke();
     c.fillStyle = '#7a1f18'; c.beginPath(); c.arc(-12, 15, 3.2, 0, Math.PI * 2); c.fill();
     c.restore();
+    c.restore();
+
+    // The other cage. Whatever they put in it stopped waiting a while ago.
+    const D = TUNING.prop.deadCage, dw = D.halfW * TILE, dh = D.halfH * TILE;
+    c.save(); c.translate(sx + D.dx * TILE, sy + D.dy * TILE);
+    c.globalAlpha = 0.22; c.fillStyle = PALETTE.ash; c.fillRect(-dw, -dh, dw * 2, dh * 2);
+    c.globalAlpha = 0.3; c.strokeStyle = PALETTE.hayDark; c.lineWidth = 2.4; c.lineCap = 'round';
+    for (let k = 0; k < 18; k++) {
+      const px = rng.float(-dw + 5, dw - 5), py = rng.float(-dh + 5, dh - 5), a = rng.float(0, Math.PI);
+      c.beginPath(); c.moveTo(px, py); c.lineTo(px + Math.cos(a) * 10, py + Math.sin(a) * 10); c.stroke();
+    }
+    c.globalAlpha = 1;
+    // the pool, dried at the edges
+    c.fillStyle = 'rgba(122,31,24,0.3)'; c.beginPath(); c.ellipse(3, 7, 27, 13, 0.1, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(122,31,24,0.55)'; c.beginPath(); c.ellipse(1, 6, 19, 9, 0.1, 0, Math.PI * 2); c.fill();
+    // a sheep on its side, legs out straight, head thrown back
+    c.rotate(0.22);
+    c.strokeStyle = '#3a322f'; c.lineWidth = 2.6; c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(7, 4); c.lineTo(12, 18); c.moveTo(2, 5); c.lineTo(6, 19);
+    c.moveTo(-8, 5); c.lineTo(-5, 19); c.moveTo(-12, 4); c.lineTo(-10, 18);
+    c.stroke();
+    c.fillStyle = '#a49b8a';
+    for (let k = 0; k < 7; k++) { c.beginPath(); c.arc(-13 + k * 4.6, -6.5 + (k % 2) * 1.5, 4.2, 0, Math.PI * 2); c.fill(); }
+    c.beginPath(); c.ellipse(-1, 0, 15.5, 8.2, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(0,0,0,0.16)'; c.beginPath(); c.ellipse(-1, 4, 14, 4.2, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#4a3f3a';                                                                      // the face, dark
+    c.beginPath(); c.ellipse(18, -6, 7.5, 5, -0.55, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(12, -10, 4, 2.2, 0.5, 0, Math.PI * 2); c.fill();                      // an ear
+    c.strokeStyle = '#d8cdb4'; c.lineWidth = 1.6;                                                  // the eye, crossed out
+    c.beginPath(); c.moveTo(17, -9); c.lineTo(21, -5); c.moveTo(21, -9); c.lineTo(17, -5); c.stroke();
     c.restore();
   }
 

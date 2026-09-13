@@ -5,6 +5,59 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.0 — one new thing at a time, stands of arms, and a pen that fights back
+
+- **The pen takes seven blows.** Getting out of it was two headbutts and a shrug; now it is the hardest
+  thing the goat does all run. Each blow bends the bars further and he roars through it — NNGH, IT HOLDS,
+  MMMAAAH, IT BENDS, NNNGH, BAAAAH, OUT — and the third and the sixth knock him off his own feet: a
+  second on the floor with stars turning, no verbs, before he can go again. A headbutt used to count
+  once per bar it happened to reach, so three bars meant three hits; the pen counts blows now.
+- **One new thing to a room.** The first time a run meets anything — a Bearer, a Seer, a rifle, the Mill,
+  a kind of boss — it meets exactly one of it, in a room with nothing else in it. A new boss stands in
+  his arena alone. By the third level the run has seen the cast and the generator stacks whatever it
+  likes. The rifle posts that stand on their own no longer turn up in a room earlier than the one the
+  level meant to introduce a rifle in.
+- **Stands of arms.** A wooden rack with a sword or a shield in it. Grab what is in it and throw it, or
+  headbutt the stand and send it across the room. A thrown sword goes through the first man it finds and
+  stays in him; a thrown shield flattens everyone in its path and keeps going. Carried, a shield turns
+  three bullets before it splinters — the first answer to a rifle that does not involve holding a man.
+  Both lie where they land and can be picked up again. Sometimes one or two to a room, always two in a
+  boss room, and one in the room where the controls are painted on the floor.
+- **Much easier, and level one most of all.** Level 1 is ten rooms with one or two men in each, a plain
+  room before each set piece, two bosses who are no longer champions, and three bowls of milk. Every
+  level's crowd budget came down, the Great Hall lost a third of its men, and there is more milk on the
+  floor everywhere.
+- **A thrown pot is a real stun.** It used to trip a man for eight tenths of a second. It now puts him
+  down for nearly two and a half, seeing stars, with the frame held and the camera kicked. There are
+  about a third fewer pots on the floor to make up for it.
+- **BAAH is explained as what it is.** The floor, the prologue and the meter all said the scream calls
+  them in, which it has not done since 0.8. They now say it stuns.
+
+## 0.9 — the opening scene, the stairs out, and the cage next door
+
+- **The run opens on the two of them.** The goat and his wife in the pen, pressed together and
+  trembling, a heart beating between them. Two men come in: one carrying the boning knife from beside
+  the altar, one with a club. The gate goes over, the knife man walks round the goat and takes her; the
+  goat goes for him and meets the club instead. The picture goes dark with the stars still turning, she
+  bleats once from a long way off, the level card comes up in the dark, and the light comes back on the
+  pen. He is lying where he fell, the gate is up again, and the level is exactly the one you would have
+  got. Any button after the first moment skips to the dark. Only a run started from the title gets the
+  scene; a death drops you straight back into the pen.
+- **The title card has one more line.** "The goat survived. So did his wife."
+- **The way out is a flight of stairs.** The exit is cut into the wall as steps climbing into light, and
+  the goat takes them for a moment, rising and thinning out, before the cards. Every later level is
+  entered up another flight cut into the left wall of its first room; the goat comes up it under the
+  level card.
+- **Only level 1 has the ritual room.** The altar, the tools and the remains belong to THE ALTAR. Levels
+  2 to 4 start in a bare room at the top of the stairs, with the level's hint across its middle.
+- **A second cage in the first room**, shut for good, with a sheep in it that stopped waiting a while
+  ago. It rings when headbutted and never opens. The room is two tiles wider to make room for it.
+- **The remains are your own size now**, and their horns are horns: short, thick at the root, curving
+  back off the crown, instead of two long arcs over the ribs.
+- **The goat's horns rise off the crown and clear the outline**, as tapered crescents with growth ridges
+  rather than strokes lying along the back. Facing left, the sprite is mirrored rather than turned over,
+  so the head stays a head and the horns stay on top.
+
 ## 0.8 — four levels, the scream that stuns, and a goat you can recognise
 
 - **A fourth level: THE BRIDGE.** Sixteen rooms of cold stone, three arena bosses, a Mill, a Great Hall

@@ -15,11 +15,16 @@ class Game {
     this.cam = { x: 0, y: 0, zoom: 1 }; this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0;
     // juice: a directional camera punch, a lens shove, a screen flash and a kill counter
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0; this.flashColor = PALETTE.bone;
-    this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false;
+    this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
+    // What this run has already been shown. The generator gives anything not in here a room of its
+    // own the first time it appears; by level three it can stack whatever it likes.
+    this.taught = [];
     this.hitstopTimer = 0; this.timeScale = 1; this.slowTimer = 0; this.hurt = null;
     this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0;
     this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.tomes = []; this.boonChoice = null; this.boonRects = [];
     this.dev = { open: false, god: false, rects: [], toast: null };
+    this.intro = null;      // the opening scene while it plays; see beginIntro
+    this.stairFx = null;    // the goat on a flight of stairs: { t, dir } with dir 1 going up and out, -1 arriving
     this.state = 'prologue'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
     this.layoutTouch();
     this.bindInput();
@@ -139,7 +144,8 @@ class Game {
 
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
-      this.keys.add(e.code); this.input.anyPressed = true; this.touch.active = false;
+      // anyPressed skips the opening scene; muting should not
+      this.keys.add(e.code); if (e.code !== 'KeyM') this.input.anyPressed = true; this.touch.active = false;
       if (e.code === 'Space') { this.input.spacePressed = true; e.preventDefault(); }
       if (e.code === 'Backspace') { e.preventDefault(); this.restartLevel(); }
       if (e.code === 'KeyM') this.audio.toggleMute();
@@ -226,11 +232,16 @@ class Game {
   clearEdges() { this.input.lmbPressed = false; this.input.spacePressed = false; this.input.rollPressed = false; this.input.anyPressed = false; }
 
   // ---------- levels ----------
-  startLevel(index, seed, keepBoons) {
+  // `withIntro` plays the opening scene in the pen instead of the level card. Only a run started
+  // from the title gets it; a death drops you straight back in.
+  startLevel(index, seed, keepBoons, withIntro) {
     if (!keepBoons) { this.boons = []; }
+    // A fresh run has seen nothing; carrying the tomes on means carrying what you have learned on.
+    if (!keepBoons) this.taught = [];
     this.levelIndex = index;
     const def = LEVELS[index];
-    this.level = generateLevel(def, seed >>> 0);
+    this.level = generateLevel(def, seed >>> 0, this.taught);
+    this.taught = this.level.taught;
     this.world = new World(this.level);
     this.goat = new Goat(this.level.start.x, this.level.start.y);
     this.enemies = this.level.spawns.map((s) => {
@@ -245,9 +256,13 @@ class Game {
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
     this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0;
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
-    this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false;
+    this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
     this.audio.intensity = 0; this.audio.hunterAware = false;
     this.world.computeFlow(this.goat.x, this.goat.y);
+    // Arriving up the stairs: the goat rises into the room under the card.
+    if (this.intro) this.audio.duck(1, 0.3);   // Backspace out of the scene must not leave the sound down
+    this.intro = null; this.stairFx = this.level.entry ? { t: -0.45, dir: -1 } : null;
+    if (withIntro && def.ritual && def.startCage) { this.beginIntro(); return; }
     this.state = 'card';
     // A new level puts every heart back. The card is where the goat finds that out.
     const lines = [def.sub.toUpperCase(), def.name];
@@ -262,9 +277,13 @@ class Game {
   showPrologue() {
     this.state = 'prologue';
     const how = this.coarse
-      ? 'Left thumb to run · BUTT to headbutt · hold GRAB, release to throw · ROLL to tumble · BAAH to scream'
-      : 'WASD to run · left click headbutt · hold right click to grab, release to throw · E to roll · space to scream';
-    this.card = { lines: ['They were driving the goat to the altar.', 'The truck fell off the bridge.', 'Four men died.', 'The goat survived.', '', how, `${this.tapWord} TO ESCAPE`], dim: 1, size: 26, small: 5 };
+      ? 'Left thumb to run · BUTT to headbutt · hold GRAB to carry a man, a pot or a blade, release to throw · ROLL to tumble'
+      : 'WASD to run · left click headbutt · hold right click to carry a man, a pot or a blade, release to throw · E to roll';
+    // The scream gets its own line: it is the one verb nobody guesses right.
+    const baah = this.coarse
+      ? 'BAAH does not call them in. Everyone who hears it stands there stunned. Take the moment.'
+      : 'SPACE — BAAH does not call them in. Everyone who hears it stands there stunned. Take the moment.';
+    this.card = { lines: ['They were driving the goat to the altar.', 'The truck fell off the bridge.', 'Four men died.', 'The goat survived. So did his wife.', '', how, baah, `${this.tapWord} TO ESCAPE`], dim: 1, size: 26, small: 6 };
   }
   onGoatDied() {
     this.deaths++; this.state = 'dead'; this.stateTimer = 0.9; this.slowTimer = 1.4;
@@ -293,6 +312,59 @@ class Game {
     }
   }
 
+  // ---------- the opening scene ----------
+  // The goat and his wife in the pen, the two who come for her, and the club. It runs in the real
+  // first room with the real pen; the two men are ordinary Bearers moved by hand, she and the heart
+  // belong to `this.intro` alone. Nothing here touches the simulation: when the light comes back the
+  // goat is lying where he fell, the gate is up, and the level is exactly the one you would have got.
+  beginIntro() {
+    const I = TUNING.intro, lv = this.level, S = lv.start, room = lv.rooms[0];
+    const hw = TUNING.prop.cage.halfW * TILE;
+    // the corridor leaves through the right wall: the first open tile in it is where they come from
+    const col = room.x + room.w - 1; let doorTy = room.y + (room.h >> 1);
+    for (let ty = room.y + 1; ty < room.y + room.h - 1; ty++) if (lv.tiles[ty * lv.W + col] !== T.WALL) { doorTy = ty; break; }
+    const door = { x: (col + 1.5) * TILE, y: (doorTy + 1) * TILE };
+    const man = (x, y, knife) => {
+      const e = new Enemy(x, y, 'bearer'); e.scripted = true; e.knife = knife; e.aware = true; e.state = 'chase'; e.facing = Math.PI;
+      this.enemies.push(e); return e;
+    };
+    const g = this.goat;
+    g.x = S.x - 24; g.y = S.y + 4; g.facing = 0; g.vx = 0; g.vy = 0; g.state = 'idle';
+    this.intro = {
+      t: 0, phase: 'huddle', timer: 0, fade: 0, starsA: 0, echo: 0, cardA: 0, bleat: 0.7, turn: 0, S, hw, door,
+      sheep: { x: S.x + 24, y: S.y + 4, facing: Math.PI, held: null, kick: 0, gone: false, bleating: 0, jitter: null, vx: 0, vy: 0 },
+      heart: { x: S.x, y: S.y - 26, pulse: 1, broken: 0 },
+      knife: man(door.x + TILE, door.y, true), club: man(door.x + 2.4 * TILE, door.y + 10, false),
+      gate: this.props.filter((p) => p.kind === 'cage' && !p.deco && p.axis === 'v' && p.x > S.x),
+      // where they stand at the gate, the corner they round to keep clear of the other cage, the way
+      // round the goat to her, and where they take hold of her
+      stand: { x: S.x + hw + 26, y: S.y + 6 }, stand2: { x: S.x + hw + 58, y: S.y + 26 }, bend: { x: S.x + hw + 90, y: S.y + 24 },
+      way: [{ x: S.x + 30, y: S.y - 30 }, { x: S.x - 8, y: S.y - 36 }], grabAt: { x: S.x - 26, y: S.y - 16 },
+      hit: false,
+    };
+    this.cam.x = S.x + 12; this.cam.y = S.y; this.cam.zoom = this.renderer.zoomFit * I.zoom;
+    this.state = 'intro'; this.card = null;
+  }
+
+  // Moves anything with a `path` of points along it at `speed`; true once the path is used up.
+  followPath(e, speed, dt) {
+    if (!e.path || !e.path.length) { e.vx = 0; e.vy = 0; return true; }
+    const t = e.path[0], dx = t.x - e.x, dy = t.y - e.y, d = Math.hypot(dx, dy), step = speed * dt;
+    if (d <= step) { e.x = t.x; e.y = t.y; e.path.shift(); if (!e.path.length) { e.vx = 0; e.vy = 0; return true; } return false; }
+    e.x += dx / d * step; e.y += dy / d * step; e.facing = Math.atan2(dy, dx); e.vx = dx / d * speed; e.vy = dy / d * speed;
+    return false;
+  }
+  // A scripted line, outside the crowd rules that `bark` enforces.
+  say(e, text) { e.say = { text, life: 2.2, max: 2.2 }; }
+
+  introPhase(name) {
+    const it = this.intro, I = TUNING.intro; it.phase = name; it.timer = 0;
+    if (name === 'approach') { it.knife.path = [it.bend, it.stand]; it.club.path = [{ x: it.bend.x, y: it.bend.y + 8 }, it.stand2]; }
+    else if (name === 'grab') it.knife.path = [it.way[0], it.way[1], it.grabAt];
+    else if (name === 'fade') this.audio.duck(I.duck, I.fade);
+    else if (name === 'wake') this.audio.duck(1, I.wake * 0.8);
+  }
+
   // ---------- loop ----------
   frame(t) {
     const dtReal = Math.min(0.1, (t - this.last) / 1000); this.last = t;
@@ -312,12 +384,14 @@ class Game {
 
   update(dt) {
     this.readMoveInput();
-    if (this.state === 'prologue') { if (this.input.lmbPressed) this.startLevel(0, (Math.random() * 1e9) | 0); this.clearEdges(); return; }
-    if (this.state === 'card') { this.stateTimer -= dt; if (this.stateTimer <= 0) { this.card = null; this.state = 'play'; } }
+    if (this.state === 'prologue') { if (this.input.lmbPressed) this.startLevel(0, (Math.random() * 1e9) | 0, false, true); this.clearEdges(); return; }
+    if (this.state === 'intro') { this.updateIntro(dt); this.clearEdges(); return; }
+    if (this.state === 'climb') { this.updateClimb(dt); this.clearEdges(); return; }
+    if (this.state === 'card') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) { this.card = null; this.state = 'play'; } }
     if (this.state === 'dead') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) this.restartLevel(); this.clearEdges(); return; }
     if (this.state === 'clear') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) this.nextCard(); this.clearEdges(); return; }
     if (this.state === 'boon') { this.updateEffects(dt); this.clearEdges(); return; }
-    if (this.state === 'win') { if (this.input.lmbPressed) { this.totalKills = 0; this.deaths = 0; this.startLevel(0, (Math.random() * 1e9) | 0); } this.clearEdges(); return; }
+    if (this.state === 'win') { if (this.input.lmbPressed) { this.totalKills = 0; this.deaths = 0; this.startLevel(0, (Math.random() * 1e9) | 0, false, true); } this.clearEdges(); return; }
     if (this.state !== 'play') { this.clearEdges(); return; }
 
     if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; this.clearEdges(); return; }
@@ -353,19 +427,9 @@ class Game {
       this.particles(p.x, p.y, 18, PALETTE.bone, 170); this.ring(p.x, p.y, 2 * TILE, PALETTE.bone);
       this.floatText(p.x, p.y - 24, '+1 HEART', PALETTE.bone); this.audio.sfxBell(); this.vibe(20);
     }
-    if (!this.goat.dead && w.tileAtPx(this.goat.x, this.goat.y) === T.EXIT) { this.levelCleared(); this.clearEdges(); return; }
+    if (!this.goat.dead && w.tileAtPx(this.goat.x, this.goat.y) === T.EXIT) { this.beginClimb(); this.clearEdges(); return; }
 
-    // camera: follow, lead toward the aim, pull back a little at speed
-    const spd = Math.hypot(this.goat.vx, this.goat.vy) / TUNING.goat.speed;
-    const lead = TUNING.camera.lead * (this.touch.active ? 0.7 : 1);
-    const cx = this.goat.x + this.input.aim.x * lead, cy = this.goat.y + this.input.aim.y * lead;
-    const k = 1 - Math.exp(-TUNING.camera.lerp * dt);
-    this.cam.x += (cx - this.cam.x) * k; this.cam.y += (cy - this.cam.y) * k;
-    const targetZoom = this.renderer.zoomFit * lerp(TUNING.camera.zoomRest, TUNING.camera.zoomFast, clamp(spd, 0, 1));
-    this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-TUNING.camera.zoomLerp * dt));
-    const v = this.renderer.view(this.cam);
-    this.cam.x = clamp(this.cam.x, v.w / 2, w.W * TILE - v.w / 2);
-    this.cam.y = clamp(this.cam.y, v.h / 2, w.H * TILE - v.h / 2);
+    this.updateCamera(dt);
 
     // music intensity from threat
     let aware = 0, hunter = false;
@@ -379,8 +443,263 @@ class Game {
     this.clearEdges();
   }
 
+  // ---------- the opening scene, beat by beat ----------
+  updateIntro(dt) {
+    const I = TUNING.intro, it = this.intro, g = this.goat, s = it.sheep, S = it.S, ph = it.phase;
+    if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; return; }
+    it.t += dt; it.timer += dt;
+    if (this.input.anyPressed && it.t > I.skipAfter && ph !== 'black' && ph !== 'wake') { this.skipIntro(); return; }
+
+    // the camera creeps in the whole time they are in the room
+    const push = clamp(it.t / 9, 0, 1);
+    this.cam.zoom = this.renderer.zoomFit * lerp(I.zoom, I.zoomPush, push * push);
+    this.cam.x = S.x + 12; this.cam.y = S.y;
+
+    // fear: a tremble on both of them that grows as the men come, and the bleats that go with it
+    const fear = ph === 'huddle' ? I.shiver : (ph === 'approach' || ph === 'gate' || ph === 'grab') ? I.fear : 0;
+    const tremble = (seed) => fear ? { x: (Math.sin(it.t * 37 + seed) * 0.6 + Math.sin(it.t * 53 + seed * 2) * 0.4) * fear, y: Math.cos(it.t * 41 + seed) * fear * 0.35 } : null;
+    g.jitter = g.state === 'ko' ? null : tremble(0);
+    s.jitter = s.held ? null : tremble(3);
+    s.bleating = Math.max(0, s.bleating - dt);
+    if (fear && !s.held) {
+      it.bleat -= dt;
+      if (it.bleat <= 0) {
+        it.bleat = I.bleatEvery * (fear > 1 ? 0.55 : 1) * (0.7 + Math.random() * 0.6);
+        it.turn ^= 1;
+        if (it.turn) { this.floatText(g.x, g.y - 30, fear > 1 ? 'BAAH!' : 'b-baah', PALETTE.bone); this.audio.sfxBleat(300, fear > 1 ? 0.16 : 0.09, 0.3); }
+        else { this.floatText(s.x, s.y - 30, fear > 1 ? 'BEEH!' : 'b-beeh', PALETTE.bone); this.audio.sfxBleat(470, fear > 1 ? 0.14 : 0.08, 0.26); s.bleating = 0.3; }
+      }
+    }
+    // the heart beats between them for as long as they are together
+    const h = it.heart;
+    if (!h.broken) {
+      const b = (it.t * 1.15) % 1, beat = (o) => Math.pow(Math.max(0, Math.sin(b * Math.PI * 2 - o)), 3);
+      h.pulse = 1 + 0.16 * beat(0) + 0.1 * beat(1.3);
+      h.x = (g.x + s.x) / 2; h.y = Math.min(g.y, s.y) - 30 + Math.sin(it.t * 2) * 1.5;
+    } else h.broken = Math.min(1, h.broken + dt * 1.1);
+    // carried: under his arm, sideways, legs going
+    if (s.held) {
+      const k = s.held, fx = Math.cos(k.facing), fy = Math.sin(k.facing);
+      s.x = k.x + fx * 13 - fy * 9; s.y = k.y + fy * 13 + fx * 9;
+      s.facing = k.facing + 1.25; s.kick = Math.sin(it.t * 32) * 4.5;
+      s.bleatT = (s.bleatT || 0) - dt;
+      if (s.bleatT <= 0) {
+        s.bleatT = 0.55 + Math.random() * 0.3; s.bleating = 0.25;
+        this.floatText(s.x, s.y - 28, it.fade > 0.4 ? 'beeh!' : 'BEEH!', PALETTE.bone); this.audio.sfxBleat(540, 0.12 * (1 - it.fade), 0.25);
+      }
+    }
+
+    if (ph === 'huddle') this.introHuddle(dt);
+    else if (ph === 'approach') this.introApproach(dt);
+    else if (ph === 'gate') this.introGate(dt);
+    else if (ph === 'grab') this.introGrab(dt);
+    else if (ph === 'fade') this.introFade(dt);
+    else if (ph === 'black') this.introBlack(dt);
+    else if (ph === 'wake') this.introWake(dt);
+    if (!this.intro) return;
+    // the two men never run their own update, so their lines have to age here
+    for (const e of this.enemies) if (e.scripted && e.say) { e.say.life -= dt; if (e.say.life <= 0) e.say = null; }
+    this.updateEffects(dt);
+    for (const p of this.props) p.update(dt, this);
+  }
+
+  // Pressed together in the pen, leaning into each other and back.
+  introHuddle(dt) {
+    const it = this.intro, g = this.goat, s = it.sheep, S = it.S, k = Math.sin(it.t * 1.7);
+    g.x = S.x - 24 + k * 3; g.facing = -0.1 + k * 0.08;
+    s.x = S.x + 24 - k * 3; s.facing = Math.PI + 0.1 - k * 0.08;
+    if (it.timer >= TUNING.intro.huddle) this.introPhase('approach');
+  }
+
+  // Two men come round the other cage and up to the gate. He gets between her and them.
+  introApproach(dt) {
+    const it = this.intro, I = TUNING.intro, g = this.goat, s = it.sheep, S = it.S, k = it.knife;
+    const there = this.followPath(k, I.walk, dt); this.followPath(it.club, I.walk, dt);
+    if (Math.hypot(k.x - S.x, k.y - S.y) < 7 * TILE) {
+      if (!g.path && !it.retreated) { it.retreated = true; g.path = [{ x: S.x - 16, y: S.y + 6 }]; s.path = [{ x: S.x - 46, y: S.y - 2 }]; }
+      this.followPath(g, 90, dt); this.followPath(s, 120, dt);
+      if (!g.path.length) g.facing = Math.atan2(k.y - g.y, k.x - g.x);
+      if (!s.path.length) s.facing = Math.atan2(k.y - s.y, k.x - s.x);
+    }
+    if (there) {
+      k.facing = Math.atan2(S.y - k.y, S.x - k.x); it.club.facing = k.facing;
+      if (!it.arrived) { it.arrived = it.timer; this.say(k, BARKS.intro.ewe); }
+      else if (it.timer - it.arrived > 0.7) this.introPhase('gate');
+    }
+  }
+
+  // He puts a boot to the bars and they go over.
+  introGate(dt) {
+    const it = this.intro, I = TUNING.intro, p = clamp(it.timer / I.gate, 0, 1);
+    for (const b of it.gate) b.gate = p;
+    it.knife.x = it.stand.x - Math.sin(p * Math.PI) * 9;
+    if (!it.clank && p > 0.5) { it.clank = true; this.audio.sfxCageHit(); this.shake(3); for (const b of it.gate) this.particles(b.x, b.y, 3, PALETTE.ash, 90); }
+    if (it.timer >= I.gate + 0.25) this.introPhase('grab');
+  }
+
+  // camera: follow, lead toward the aim, pull back a little at speed
+  updateCamera(dt) {
+    const w = this.world;
+    const spd = Math.hypot(this.goat.vx, this.goat.vy) / TUNING.goat.speed;
+    const lead = TUNING.camera.lead * (this.touch.active ? 0.7 : 1);
+    const cx = this.goat.x + this.input.aim.x * lead, cy = this.goat.y + this.input.aim.y * lead;
+    const k = 1 - Math.exp(-TUNING.camera.lerp * dt);
+    this.cam.x += (cx - this.cam.x) * k; this.cam.y += (cy - this.cam.y) * k;
+    const targetZoom = this.renderer.zoomFit * lerp(TUNING.camera.zoomRest, TUNING.camera.zoomFast, clamp(spd, 0, 1));
+    this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-TUNING.camera.zoomLerp * dt));
+    const v = this.renderer.view(this.cam);
+    this.cam.x = clamp(this.cam.x, v.w / 2, w.W * TILE - v.w / 2);
+    this.cam.y = clamp(this.cam.y, v.h / 2, w.H * TILE - v.h / 2);
+  }
+
+  // He walks round the goat to her, takes her, and heads for the gate. The goat goes for him and
+  // meets the other man's club instead.
+  introGrab(dt) {
+    const it = this.intro, I = TUNING.intro, g = this.goat, s = it.sheep, k = it.knife, c = it.club, S = it.S;
+    if (g.state !== 'windup' && g.state !== 'lunge') g.facing = Math.atan2(k.y - g.y, k.x - g.x);
+    if (!s.held) {
+      s.facing = Math.atan2(k.y - s.y, k.x - s.x);
+      if (this.followPath(k, I.walk, dt)) {
+        s.held = k; s.path = null; s.jitter = null; it.heart.broken = 0.001;
+        this.audio.sfxCrack(); this.audio.sfxBleat(560, 0.2, 0.4); this.floatText(s.x, s.y - 34, 'BEEEH!', PALETTE.fireHi); s.bleating = 0.5;
+        this.particles(it.heart.x, it.heart.y, 8, PALETTE.blood, 70);
+        this.say(k, BARKS.intro.take);
+        k.path = [it.way[1], { x: S.x + 44, y: S.y - 30 }, { x: S.x + it.hw + 4, y: S.y - 8 }, it.stand, it.bend, it.door];
+        c.path = [{ x: S.x + it.hw - 22, y: S.y + 16 }];   // the other one steps in through the gate
+      }
+      return;
+    }
+    this.followPath(k, I.walk, dt); this.followPath(c, I.run, dt);
+    if (!it.exitAt && k.x > S.x + 20) it.exitAt = it.timer;
+    const since = it.exitAt ? it.timer - it.exitAt : -1;
+    // the club comes up before the goat moves, so the arc is on the floor in front of him first
+    if (since >= 0 && !it.clubWind) { it.clubWind = true; c.state = 'windup'; c.timer = TUNING.bearer.windup; c.path = []; }
+    if (c.state === 'windup') { c.timer = Math.max(0.01, c.timer - dt); c.facing = Math.atan2(g.y - c.y, g.x - c.x); }
+    if (since > 0.3 && !it.lunged) {
+      it.lunged = true; g.state = 'windup'; g.timer = TUNING.goat.headbutt.windup; g.path = null;
+      this.floatText(g.x, g.y - 30, 'BAAAH!', PALETTE.bone); this.audio.sfxBleat(280, 0.22, 0.4);
+    }
+    if (g.state === 'windup') {
+      g.timer -= dt; g.facing = Math.atan2(k.y - g.y, k.x - g.x);
+      if (g.timer <= 0) {
+        g.state = 'lunge'; g.timer = TUNING.goat.headbutt.active;
+        const dx = k.x - g.x, dy = k.y - g.y, d = Math.hypot(dx, dy) || 1;
+        g.vx = dx / d * TUNING.goat.headbutt.lunge; g.vy = dy / d * TUNING.goat.headbutt.lunge;
+        // and the club man is standing in the way
+        c.x = g.x + dx / d * 52; c.y = g.y + dy / d * 52; c.facing = Math.atan2(-dy, -dx);
+        this.audio.sfxHeadbutt();
+      }
+    } else if (g.state === 'lunge') {
+      g.timer -= dt; g.x += g.vx * dt; g.y += g.vy * dt;
+      if (Math.hypot(c.x - g.x, c.y - g.y) < g.r + c.r + 6 || g.timer <= 0) this.introClub();
+    }
+  }
+
+  introClub() {
+    const it = this.intro, I = TUNING.intro, g = this.goat, c = it.club;
+    it.hit = true; c.state = 'swing'; c.timer = TUNING.bearer.swing; this.audio.sfxSwing();
+    const d = Math.hypot(g.vx, g.vy) || 1, nx = g.vx / d, ny = g.vy / d;
+    g.state = 'ko'; g.vx = -nx * I.club.knock; g.vy = -ny * I.club.knock; g.dazed = 99; g.jitter = null;
+    this.hitstop(I.club.hitstop); this.shake(16); this.kick(-nx, -ny, TUNING.juice.kickMax); this.zoomPunch(2.2);
+    this.flash(PALETTE.blood, 0.4); this.hurtFlash(Math.atan2(ny, nx)); this.slowTimer = I.club.slow;
+    this.audio.sfxClub(); this.vibe(80);
+    this.particles(g.x + nx * 10, g.y + ny * 10, 12, PALETTE.bone, 260);
+    this.world.splat(g.x, g.y, -nx, -ny, 7);
+    // the bleat he was in the middle of stops where the club lands
+    this.floats = this.floats.filter((f) => f.text !== 'BAAAH!');
+    this.floatText(g.x, g.y - 30, 'BAA-', PALETTE.bone);
+    this.introPhase('fade');
+  }
+
+  // The picture goes. He is dragged to a stop; she is carried off still calling; the other man has a
+  // word for him, puts the gate back up and follows.
+  introFade(dt) {
+    const it = this.intro, I = TUNING.intro, g = this.goat, k = it.knife, c = it.club, S = it.S;
+    const p = clamp(it.timer / I.fade, 0, 1); it.fade = p * p; it.starsA = 1;
+    g.x += g.vx * dt; g.y += g.vy * dt; const drag = Math.exp(-6 * dt); g.vx *= drag; g.vy *= drag;
+    this.world.collideCircle(g);
+    this.followPath(k, I.walk, dt);
+    if (c.state === 'swing') { c.timer -= dt; if (c.timer <= 0) { c.state = 'recover'; c.timer = TUNING.bearer.recover; } }
+    else if (c.state === 'recover') {
+      c.timer -= dt; c.facing = Math.atan2(g.y - c.y, g.x - c.x);
+      if (c.timer <= 0) { c.state = 'chase'; this.say(c, BARKS.intro.turn); c.path = [{ x: S.x + it.hw + 24, y: S.y + 6 }]; it.closeAt = it.timer + 0.8; }
+    } else {
+      const done = this.followPath(c, I.walk, dt);
+      if (it.closeAt && it.timer > it.closeAt) {
+        const q = clamp((it.timer - it.closeAt) / I.gate, 0, 1);
+        for (const b of it.gate) b.gate = 1 - q;
+        if (!it.clank2 && q > 0.5) { it.clank2 = true; this.audio.sfxCageHit(); }
+        if (q >= 1 && done && !c.leaving) { c.leaving = true; c.path = [it.stand2, it.bend, it.door]; }
+      } else if (done) c.facing = Math.atan2(g.y - c.y, g.x - c.x);
+    }
+    if (it.timer >= I.fade) this.introPhase('black');
+  }
+
+  // Dark. The stars go out, something bleats a long way off, and the level card comes up.
+  introBlack(dt) {
+    const it = this.intro, I = TUNING.intro;
+    it.fade = 1;
+    if (!it.cleared) {
+      it.cleared = true; this.enemies = this.enemies.filter((e) => !e.scripted);
+      it.sheep.gone = true; it.sheep.held = null; it.heart.broken = 1;
+      for (const b of it.gate) b.gate = 0;
+    }
+    it.starsA = Math.max(0, 1 - it.timer / 0.7);
+    if (!it.echoed && it.timer > 0.55) { it.echoed = true; it.echo = 1.6; this.audio.sfxBleat(600, 0.05, 0.35); }
+    it.echo = Math.max(0, it.echo - dt);
+    it.cardA = clamp((it.timer - 0.8) / 0.5, 0, 1);
+    this.card = { lines: [this.level.def.sub.toUpperCase(), this.level.def.name], dim: 0, size: 40, alpha: it.cardA };
+    if (it.timer >= I.black) this.introPhase('wake');
+  }
+
+  // The light comes back on the pen. He gets up with the stars still going round.
+  introWake(dt) {
+    const it = this.intro, I = TUNING.intro, g = this.goat, p = clamp(it.timer / I.wake, 0, 1);
+    it.fade = 1 - p; it.starsA = 0;
+    it.cardA = clamp(1 - it.timer / 0.5, 0, 1);
+    if (this.card) this.card.alpha = it.cardA;
+    if (it.cardA <= 0) this.card = null;
+    if (p > 0.4 && g.state === 'ko') { g.state = 'idle'; g.dazed = I.stars; this.particles(g.x, g.y + 6, 8, PALETTE.ash, 120); }
+    if (p >= 1) this.endIntro();
+  }
+
+  // Any button after the first moment: straight to the dark. `toPlay` drops the dark as well (tests).
+  skipIntro(toPlay) {
+    const it = this.intro; if (!it) return;
+    if (toPlay) { this.endIntro(); return; }
+    if (it.phase === 'black' || it.phase === 'wake') return;
+    const g = this.goat; g.state = 'ko'; g.vx = 0; g.vy = 0; g.dazed = 99; g.jitter = null; g.path = null;
+    this.slowTimer = 0; this.hitstopTimer = 0; this.audio.duck(TUNING.intro.duck, 0.2);
+    this.introPhase('black'); it.timer = 0.5;
+  }
+  endIntro() {
+    const g = this.goat;
+    this.enemies = this.enemies.filter((e) => !e.scripted);
+    for (const p of this.props) if (p.kind === 'cage') p.gate = 0;
+    g.state = 'idle'; g.timer = 0; g.vx = 0; g.vy = 0; g.jitter = null; g.path = null; g.hp = g.maxHp;
+    if (g.dazed > 50) g.dazed = TUNING.intro.stars;
+    this.intro = null; this.card = null; this.timer = 0; this.slowTimer = 0; this.state = 'play';
+    this.audio.duck(1, 0.5); this.world.computeFlow(g.x, g.y);
+  }
+
+  // ---------- the stairs out ----------
+  // The exit is a flight up. The goat takes it for a moment, into the light, before the cards.
+  beginClimb() {
+    this.state = 'climb'; this.stateTimer = TUNING.stairs.climb; this.stairFx = { t: 0, dir: 1 };
+    const g = this.goat; g.state = 'idle'; g.facing = 0;
+    if (g.holding) { const h = g.holding; h.held = false; g.holding = null; if (h.kind !== 'pot') { h.state = 'floored'; h.timer = 0.6; } }
+  }
+  updateClimb(dt) {
+    const C = TUNING.stairs, g = this.goat; this.stateTimer -= dt;
+    g.vx = C.climbSpeed; g.vy = 0; g.x += C.climbSpeed * dt; g.facing = 0;
+    this.stairFx.t = clamp(1 - this.stateTimer / C.climb, 0, 1);
+    this.updateEffects(dt); this.updateCamera(dt);
+    if (this.stateTimer <= 0) { this.stairFx = null; this.flash(PALETTE.bone, 0.4); this.levelCleared(); }
+  }
+
   updateEffects(dt) {
     const J = TUNING.juice;
+    if (this.stairFx && this.stairFx.dir < 0) { this.stairFx.t += dt / TUNING.stairs.arrive; if (this.stairFx.t >= 1) this.stairFx = null; }
     this.shakeAmt = Math.max(0, this.shakeAmt - J.shakeDecay * dt * Math.max(1, this.shakeAmt * 0.3));
     this.shakeX = (Math.random() - 0.5) * 2 * this.shakeAmt; this.shakeY = (Math.random() - 0.5) * 2 * this.shakeAmt;
     const kd = Math.exp(-J.kickDecay * dt);
@@ -431,8 +750,8 @@ class Game {
     }
     for (const p of this.props) {
       if (p.broken) continue;
-      if (p.kind === 'pot') {
-        if (p.flung) for (const e of en) { if (!e.dead && !e.held && e.state === 'flung' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
+      if (p.item) {
+        if (p.kind === 'pot' && p.flung) for (const e of en) { if (!e.dead && !e.held && e.state === 'flung' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
         continue;
       }
       if (!p.blocking) continue;
@@ -483,7 +802,7 @@ class Game {
     const inArc = (o) => { const dx = o.x - att.x, dy = o.y - att.y, d = Math.hypot(dx, dy); return d < reach + o.r && Math.abs(angleDiff(att.facing, Math.atan2(dy, dx))) < arc / 2; };
     const dirx = Math.cos(att.facing), diry = Math.sin(att.facing);
     if (!g.dead && !skipGoat) {
-      if (g.holding && g.holding.kind !== 'pot' && inArc(g.holding)) { const h = g.holding; this.floatText(h.x, h.y - 26, 'SHIELD', PALETTE.bone); h.die(this, 'club', dirx, diry); }
+      if (g.holding && !g.holding.item && inArc(g.holding)) { const h = g.holding; this.floatText(h.x, h.y - 26, 'SHIELD', PALETTE.bone); h.die(this, 'club', dirx, diry); }
       else if (inArc(g)) g.damage(damage, this, dirx * knock * 4, diry * knock * 4);
     }
     for (const e of this.enemies) {
@@ -523,6 +842,16 @@ class Game {
     }
     this.world.emitNoise(e.x, e.y, TUNING.noise.splat);
     this.particles(e.x, e.y, big ? 26 : 14, PALETTE.blood, 220);
+  }
+  // Off his feet: no verbs until it passes. The pen is the only thing that does it to him.
+  stunGoat(t) {
+    const g = this.goat;
+    if (g.dead) return;
+    if (g.holding) { const h = g.holding; g.holding = null; h.held = false; if (!h.item) { h.state = 'floored'; h.timer = 0.5; } }
+    g.state = 'stunned'; g.timer = t; g.dazed = Math.max(g.dazed, t + 0.6);
+    this.shake(10); this.kick(0, 1, TUNING.juice.kick); this.hitstop(0.06);
+    this.slowTimer = Math.max(this.slowTimer, 0.3); this.vibe(60);
+    this.audio.sfxClub();
   }
   hitstop(t) { this.hitstopTimer = Math.max(this.hitstopTimer, t); }
   shake(a) { this.shakeAmt = Math.max(this.shakeAmt, a); }

@@ -84,8 +84,26 @@ const TUNING = {
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE },
     lamp: { r: 9, poolRadius: 1.2 },
     heal: { r: 12, pickupR: 22 },
+    // A thrown pot no longer just trips a man over. It takes his legs and his head with them,
+    // and he lies there seeing stars long enough that you can do something about him.
+    pot: { r: 9, stun: 2.4 },
+    // A stand of arms. Grab what is in it, carry it, let go to throw it. The sword goes through
+    // the first man it finds; the shield knocks a row of them flat and turns bullets while carried.
+    weapon: {
+      r: 11, standR: 13, throwMul: 1.35, drag: 1.4, restSpeed: 3 * TILE,
+      stickImpact: 6 * TILE,  // a scrape along a wall does not end a throw; a proper hit does
+      swordStun: 1.6,        // what a sword does to a Butcher, who does not go down to one
+      shieldStun: 2.8,       // how long a man the shield bowls over stays down
+      shieldHits: 3,         // bullets one shield turns before it is scrap
+    },
     // The pen. Bars sit close enough together that a goat cannot slip between two of them.
-    cage: { r: 10, halfW: 2.1, halfH: 1.6, spacing: 26, height: 30, hits: 3 },
+    // Seven blows, and the third and the sixth take his feet out from under him. It is meant to
+    // read as work: the first thing the goat does in the run is the hardest thing a goat can do.
+    cage: { r: 10, halfW: 2.1, halfH: 1.6, spacing: 26, height: 30,
+      hits: 7, stunAt: [3, 6], stun: 1.0,
+      strain: ['NNGH', 'IT HOLDS', 'MMMAAAH', 'IT BENDS', 'NNNGH', 'BAAAAH', 'OUT'] },
+    // The other cage in the first room: smaller, shut, and nobody in it is getting out.
+    deadCage: { halfW: 1.15, halfH: 0.9, dx: 3.7, dy: -2.5 },
   },
   // The Mill: a ritual grinding wheel with two sweeping arms. It does not care whose side you are on.
   // The Mill: a ritual grinding wheel with two sweeping arms. It does not care whose side you are on.
@@ -96,7 +114,7 @@ const TUNING = {
   },
   elite: { hp: 3 },
   noise: {
-    footstep: 2, headbutt: 5, splat: 8, pot: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13,
+    footstep: 2, headbutt: 5, splat: 8, pot: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13, steel: 9,
   },
   juice: {
     hitstop: 0.07, shakeKill: 9, shakeHit: 6, shakeDecay: 12, deathSlow: 1.6, killSlow: 0.22,
@@ -107,6 +125,16 @@ const TUNING = {
   },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
+  // The scene that opens a run. Seconds per beat; the camera comes in for it and a little further
+  // as they take her. `stars` is how long the goat sees them after it wakes.
+  intro: {
+    zoom: 1.4, zoomPush: 1.58, huddle: 3.4, gate: 0.5, fade: 2.3, black: 2.0, wake: 1.7,
+    walk: 150, run: 210, shiver: 0.7, fear: 1.5, bleatEvery: 1.25, stars: 3.2, skipAfter: 0.8, duck: 0.12,
+    club: { knock: 7 * TILE, slow: 0.8, hitstop: 0.12 },
+  },
+  // The way out is a flight of stairs. The goat climbs them for a moment before the cards, and on
+  // the next level it comes up another flight into the first room.
+  stairs: { climb: 0.85, climbSpeed: 2.2 * TILE, rise: 16, arrive: 1.1 },
   // Barks: one man at a time, and never the same man twice in a hurry.
   bark: { life: 1.9, gap: 0.42, perEnemy: 4.5, nearDist: 7.5, nearChance: 0.22 },
   audio: { master: 0.92, drums: 1.0, sfx: 1.05, music: 0.85 },
@@ -166,46 +194,52 @@ const BARKS = {
   attack: ['HOLD IT DOWN', 'FOR THE ALTAR', 'BLEED', 'STAY STILL'],
   // walking into flame is for the goat, not for him
   fire: ['FIRE!', 'GO ROUND', 'IT BURNS', 'THE HAY!'],
+  // the two who come for her in the opening scene
+  intro: { ewe: 'THE EWE FIRST', take: 'COME, LITTLE ONE', turn: 'YOUR TURN COMES' },
 };
 
 const LEVELS = [
   {
-    name: 'THE ALTAR', sub: 'Level 1', rooms: 9, showControls: true, startCage: true,
-    arenas: [{ at: 3, boss: 'bearer' }, { at: 7, boss: 'seer' }],
-    millAt: 5, heals: 2, ranged: 'none', seerShare: 0,
+    // `ritual` paints the altar, the remains and the tools into the first room; every later level
+    // arrives up a flight of stairs into a bare one instead.
+    name: 'THE ALTAR', sub: 'Level 1', rooms: 10, showControls: true, startCage: true, ritual: true,
+    // A plain room before each set piece, and neither boss is an elite: level one is where the
+    // verbs are learned, not where they are tested.
+    arenas: [{ at: 4, boss: 'bearer', elite: false }, { at: 8, boss: 'seer', elite: false }],
+    millAt: 6, heals: 3, ranged: 'none', seerShare: 0, racks: 0.5,
     floor: '#2b1a26', floorAlt: '#31202c', wall: '#7c5a36', wallTop: '#9c7446',
     fog: '#0d0a0c', doorChance: 0.5,
     hint: null,
-    budget: (i) => (i === 0 ? 0 : Math.min(4, 1 + Math.floor(i * 0.32))),
+    budget: (i) => (i === 0 ? 0 : Math.min(2, 1 + Math.floor(i * 0.16))),
   },
   {
     name: 'THE YARD', sub: 'Level 2', rooms: 12,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
-    millAt: 7, heals: 2, ranged: 'seer', seerShare: 0.55, seerFrom: 5, seerPerRoom: 1,
+    millAt: 7, heals: 3, ranged: 'seer', seerShare: 0.5, seerFrom: 5, seerPerRoom: 1, racks: 0.35,
     floor: '#8a7554', floorAlt: '#907b5a', wall: '#3b2233', wallTop: '#55344a',
     fog: '#120d12', doorChance: 0.42,
     hint: 'THE SEER BURNS THE GROUND YOU STAND ON',
-    budget: (i) => (i === 0 ? 0 : Math.min(5, 1 + Math.floor(i * 0.38))),
+    budget: (i) => (i === 0 ? 0 : Math.min(4, 1 + Math.floor(i * 0.28))),
   },
   {
     name: 'THE ROAD', sub: 'Level 3', rooms: 14,
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    millAt: 8, heals: 2, ranged: 'both', seerShare: 0.3, seerFrom: 3, seerPerRoom: 1,
-    hallAt: 9, hallBudget: 15, galleryAt: 6, lonePosts: 3,
+    millAt: 8, heals: 3, ranged: 'both', seerShare: 0.3, seerFrom: 3, seerPerRoom: 1, racks: 0.3,
+    hallAt: 9, hallBudget: 12, galleryAt: 6, lonePosts: 2,
     floor: '#4a3a2e', floorAlt: '#524032', wall: '#2a2430', wallTop: '#3e3346',
     fog: '#0b0a0d', doorChance: 0.35,
     hint: 'HOLD A MAN. HE STOPS BULLETS.',
-    budget: (i) => (i === 0 ? 0 : Math.min(6, 2 + Math.floor(i * 0.36))),
+    budget: (i) => (i === 0 ? 0 : Math.min(5, 1 + Math.floor(i * 0.32))),
   },
   {
     // Everything the compound has left, all at once, on the bridge they were driving you over.
     name: 'THE BRIDGE', sub: 'Level 4', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
-    millAt: 7, heals: 3, ranged: 'both', seerShare: 0.5, seerFrom: 2, seerPerRoom: 1,
-    hallAt: 12, hallBudget: 18, galleryAt: 2, lonePosts: 4,
+    millAt: 7, heals: 4, ranged: 'both', seerShare: 0.45, seerFrom: 2, seerPerRoom: 1, racks: 0.35,
+    hallAt: 12, hallBudget: 14, galleryAt: 2, lonePosts: 3,
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
     fog: '#06070a', doorChance: 0.3,
     hint: 'EVERYTHING THEY HAVE LEFT IS HERE',
-    budget: (i) => (i === 0 ? 0 : Math.min(7, 2 + Math.floor(i * 0.4))),
+    budget: (i) => (i === 0 ? 0 : Math.min(6, 2 + Math.floor(i * 0.32))),
   },
 ];
