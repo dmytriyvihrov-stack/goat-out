@@ -19,7 +19,12 @@ Or run the dev server, which also accepts saved canvas frames from the test harn
 node tools/serve.js 8766
 ```
 
-Then open http://127.0.0.1:8766. Click or tap once to start; audio unlocks on that first input.
+Then open http://127.0.0.1:8766. The first screen is two buttons — NEW GAME, and CONTINUE, which stays
+dark until there is a run to come back to. Audio unlocks on that first input.
+
+A run is written to the browser at the head of every level and whenever a tome is taken, so CONTINUE
+puts you back at the start of the furthest level you reached with the tomes you had there. Starting a
+new game throws it away, and so does escaping.
 
 ---
 

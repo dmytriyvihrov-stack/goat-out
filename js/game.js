@@ -1,4 +1,6 @@
 // Game: state machine, fixed-step loop, pointer/keyboard/touch input, entity collisions, effects, cards.
+// Where a run is left for CONTINUE. Bump the version and old saves are simply ignored.
+const SAVE_KEY = 'goatout.run.v1';
 class Game {
   constructor(canvas) {
     this.canvas = canvas; this.renderer = new Renderer(canvas); this.audio = new GameAudio();
@@ -25,10 +27,12 @@ class Game {
     this.dev = { open: false, god: false, rects: [], toast: null };
     this.intro = null;      // the opening scene while it plays; see beginIntro
     this.stairFx = null;    // the goat on a flight of stairs: { t, dir } with dir 1 going up and out, -1 arriving
-    this.state = 'prologue'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
+    this.state = 'title'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
+    // The first screen: two ways in, and whatever run the browser still remembers behind the second.
+    this.menu = { index: 0, rects: [], t: 0, shake: 0 }; this.save = null;
     this.layoutTouch();
     this.bindInput();
-    this.showPrologue();
+    this.showTitle();
     this.last = performance.now(); this.acc = 0; this.lastRaf = this.last;
     const raf = (t) => { this.lastRaf = t; this.frame(t); requestAnimationFrame(raf); };
     requestAnimationFrame(raf);
@@ -81,7 +85,7 @@ class Game {
   takeBoon(i) {
     const b = this.boonChoice && this.boonChoice[i];
     if (!b) return;
-    this.boons.push(b); this.applyBoons();
+    this.boons.push(b); this.applyBoons(); this.saveRun();
     if (b.heal) this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + b.heal);
     this.boonChoice = null; this.state = 'play';
     this.audio.sfxBell(); this.floatText(this.goat.x, this.goat.y - 34, b.name, PALETTE.fireHi);
@@ -152,6 +156,7 @@ class Game {
       if (e.code === 'KeyN' && this.state === 'play') this.levelCleared();
       if (e.code === 'KeyE') this.input.rollPressed = true;
       if (this.state === 'boon') { if (e.code === 'Digit1') this.takeBoon(0); if (e.code === 'Digit2') this.takeBoon(1); if (e.code === 'Digit3') this.takeBoon(2); }
+      if (this.state === 'title') this.menuKey(e.code);
       wake();
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
@@ -161,6 +166,11 @@ class Game {
       try { c.setPointerCapture(e.pointerId); } catch (err) { /* not fatal */ }
       const p = this.canvasPos(e);
       if (this.hitDev(p)) return;
+      if (this.state === 'title') {
+        this.touch.active = e.pointerType !== 'mouse'; this.input.mouse = p;
+        const i = this.menuAt(p); if (i >= 0) this.menuPick(i);
+        return;
+      }
       if (this.state === 'boon') {
         if (e.pointerType !== 'mouse') this.touch.active = true;
         for (let i = 0; i < this.boonRects.length; i++) {
@@ -263,6 +273,8 @@ class Game {
     // Arriving up the stairs: the goat rises into the room under the card.
     if (this.intro) this.audio.duck(1, 0.3);   // Backspace out of the scene must not leave the sound down
     this.intro = null; this.stairFx = this.level.entry ? { t: -0.45, dir: -1 } : null;
+    // Every level starts by writing the run down: that head is what CONTINUE comes back to.
+    this.saveRun(); this.showHelp(true);
     if (withIntro && def.ritual && def.startCage) { this.beginIntro(); return; }
     this.state = 'card';
     // A new level puts every heart back. The card is where the goat finds that out.
@@ -272,19 +284,74 @@ class Game {
     this.audio.sfxCard();
   }
   restartLevel() {
-    if (this.state === 'prologue') return;
+    if (this.state === 'title') return;
     this.startLevel(this.levelIndex, (Math.random() * 1e9) | 0);
   }
-  showPrologue() {
-    this.state = 'prologue';
-    const how = this.coarse
-      ? 'Left thumb to run · BUTT to headbutt · hold GRAB to carry a man, a pot or a blade, release to throw · ROLL to tumble'
-      : 'WASD to run · left click headbutt · hold right click to carry a man, a pot or a blade, release to throw · E to roll';
-    // The scream gets its own line: it is the one verb nobody guesses right.
-    const baah = this.coarse
-      ? 'BAAH does not call them in. Everyone who hears it stands there stunned. Take the moment.'
-      : 'SPACE — BAAH does not call them in. Everyone who hears it stands there stunned. Take the moment.';
-    this.card = { lines: ['They were driving the goat to the altar.', 'The truck fell off the bridge.', 'Four men died.', 'The goat survived. So did his wife.', '', how, baah, `${this.tapWord} TO ESCAPE`], dim: 1, size: 26, small: 6 };
+
+  // ---------- the first screen ----------
+  // Two buttons and the name of the game. Nothing is explained here: the opening scene carries the
+  // story and the floor of level 1 carries the controls, so the menu only has to be a way in.
+  showTitle() {
+    this.state = 'title'; this.card = null; this.level = null; this.world = null; this.goat = null;
+    this.enemies = []; this.props = []; this.bullets = []; this.tomes = [];
+    this.save = this.loadRun();
+    // A run waiting to be picked up is the likelier intent, so the keyboard starts on it.
+    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0 };
+    this.showHelp(false);
+  }
+  updateTitle(dt) {
+    this.menu.t += dt; this.menu.shake = Math.max(0, this.menu.shake - dt);
+    // The mouse chooses what it is over; the keyboard chooses what it was left on.
+    if (!this.touch.active) { const i = this.menuAt(this.input.mouse); if (i >= 0) this.menu.index = i; }
+  }
+  menuAt(p) {
+    const r = this.menu.rects;
+    for (let i = 0; i < r.length; i++) if (p.x >= r[i].x && p.x <= r[i].x + r[i].w && p.y >= r[i].y && p.y <= r[i].y + r[i].h) return i;
+    return -1;
+  }
+  // The menu answers the keys the game already uses: run up and down it, headbutt to choose.
+  menuKey(code) {
+    if (code === 'KeyW' || code === 'ArrowUp' || code === 'KeyS' || code === 'ArrowDown') {
+      this.menu.index = this.menu.index ? 0 : 1; this.audio.sfxSwing();
+    } else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.menuPick(this.menu.index);
+  }
+  menuPick(i) {
+    this.menu.index = i;
+    // Nothing to come back to: the button shakes its head and stays where it is.
+    if (i === 1 && !this.save) { this.menu.shake = 0.35; this.audio.sfxThud(); return; }
+    this.audio.sfxCard();
+    if (i === 1) { this.resumeRun(); return; }
+    this.clearRun(); this.boons = []; this.totalKills = 0; this.deaths = 0;
+    this.startLevel(0, (Math.random() * 1e9) | 0, false, true);
+  }
+  // CONTINUE is the head of the furthest level the run reached, with the tomes it was carrying there.
+  resumeRun() {
+    const s = this.save; if (!s) return;
+    this.boons = (s.boons || []).map((id) => BOONS.find((b) => b.id === id)).filter(Boolean);
+    this.totalKills = s.totalKills || 0; this.deaths = s.deaths || 0;
+    this.startLevel(clamp(s.level | 0, 0, LEVELS.length - 1), (Math.random() * 1e9) | 0, true);
+  }
+  // The run in localStorage, best-effort: a browser that refuses storage simply never offers CONTINUE.
+  loadRun() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (!s || s.v !== 1 || !(s.level >= 0) || s.level >= LEVELS.length) return null;
+      return s;
+    } catch (err) { return null; }
+  }
+  saveRun() {
+    this.save = { v: 1, level: this.levelIndex, boons: this.boons.map((b) => b.id), totalKills: this.totalKills, deaths: this.deaths, at: Date.now() };
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (err) { /* private mode: the run dies with the tab */ }
+  }
+  clearRun() {
+    this.save = null;
+    try { localStorage.removeItem(SAVE_KEY); } catch (err) { /* nothing to be done about it */ }
+  }
+  // The page's control line belongs to the game, not to the menu.
+  showHelp(on) {
+    const el = typeof document !== 'undefined' && document.getElementById('help');
+    if (el) el.style.display = on ? '' : 'none';
   }
   onGoatDied() {
     this.deaths++; this.state = 'dead'; this.stateTimer = 0.9; this.slowTimer = 1.4;
@@ -308,7 +375,7 @@ class Game {
     if (c) { this.card = c; this.stateTimer = c.time; if (c.color) this.audio.sfxCard(); return; }
     if (this.levelIndex + 1 < LEVELS.length) this.startLevel(this.levelIndex + 1, (Math.random() * 1e9) | 0, true);
     else {
-      this.state = 'win';
+      this.state = 'win'; this.clearRun();
       this.card = { lines: ['THE GOAT ESCAPED.', '', `${this.totalKills} sacrificed · ${this.deaths} death${this.deaths === 1 ? '' : 's'}`, `${this.tapWord.toLowerCase()} to run again`], dim: 1, size: 40, small: 2 };
     }
   }
@@ -385,7 +452,7 @@ class Game {
 
   update(dt) {
     this.readMoveInput();
-    if (this.state === 'prologue') { if (this.input.lmbPressed) this.startLevel(0, (Math.random() * 1e9) | 0, false, true); this.clearEdges(); return; }
+    if (this.state === 'title') { this.updateTitle(dt); this.clearEdges(); return; }
     if (this.state === 'intro') { this.updateIntro(dt); this.clearEdges(); return; }
     if (this.state === 'climb') { this.updateClimb(dt); this.clearEdges(); return; }
     if (this.state === 'card') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) { this.card = null; this.state = 'play'; } }

@@ -20,7 +20,7 @@ window.H = {
   async waitFor(fn, timeout = 4000) { const t0 = performance.now(); while (!fn()) { if (performance.now() - t0 > timeout) return false; await H.sleep(16); } return true; },
   // Clicks through the title and drops the opening scene, so the goat is in the pen and playable.
   async startPlay() {
-    if (game.state === 'prologue') { game.input.lmbPressed = true; game.input.anyPressed = true; }
+    if (game.state === 'title') game.menuPick(0);
     await H.waitFor(() => game.state === 'intro' || game.state === 'play', 6000);
     if (game.state === 'intro') game.skipIntro(true);
     await H.waitFor(() => game.state === 'play', 6000);

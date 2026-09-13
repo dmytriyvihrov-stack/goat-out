@@ -5,6 +5,24 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.2 — a first screen that is a way in, not a page of notes
+
+- **The menu replaced the wall of text.** The first screen used to be the story of the truck, the four
+  men and the wife, and under it every control the game has, and under that CLICK TO ESCAPE. All of it
+  is gone. What is there now is the name with a pair of horns round it, a fire somewhere below the
+  frame throwing embers up through it, the cult's sign stamped nearly out behind it, and two buttons.
+  Nothing is explained: the opening scene is the story — it is played, not written down — and the floor
+  of level 1 is where the buttons are taught. The page's control line is hidden until a run starts.
+- **NEW GAME, and CONTINUE under it.** The first needs no caption. The second carries one, in brackets:
+  where the run got to and what it was carrying — *(level 3 · the road · 1 tome)*. With nothing to come
+  back to it is dark, and pressing it shakes its head rather than doing nothing at all.
+- **The run survives the tab.** It is written down at the head of every level and again whenever a tome
+  is taken, so CONTINUE puts you at the start of the furthest level you reached with the tomes you had
+  there — a fresh layout, the way a death gives you one. Starting a new game throws it away, and so
+  does escaping.
+- **The menu takes the keys the game already takes.** W/S or the arrows run up and down it, SPACE or
+  ENTER chooses, a mouse chooses whatever it is over, a thumb taps. No new verb, no new button.
+
 ## 1.1 — THE OSSUARY, and a thing you cannot hit
 
 - **A sixth level, and its enemy is not there.** THE OSSUARY is under the bridge, where everything the

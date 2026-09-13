@@ -40,7 +40,8 @@ Cult of the Lamb's cute-over-blood contrast, Goat Simulator's goat-as-physics-ob
 poster-flat violence, Quasimorph's blocky pictograms.
 
 The setting is a fictional masked cult in an unnamed place. Masks, invented glyphs, no real script and
-no real nationality. The original meme survives only as the prologue card.
+no real nationality. The original meme is not written down anywhere any more — the opening scene plays
+it out instead, and the first screen is a menu.
 
 ---
 
