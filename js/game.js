@@ -493,6 +493,9 @@ class Game {
       if (g.holding && g.holding.kind !== 'pot' && inArc(g.holding)) { const h = g.holding; this.floatText(h.x, h.y - 26, 'SHIELD', PALETTE.bone); h.die(this, 'club', dirx, diry); }
       else if (inArc(g)) g.damage(damage, this, dirx * knock * 4, diry * knock * 4);
     }
+    // A hound bites what it was sent for. It does not floor its own handlers on the way past — a pack
+    // of them doing that filled half the screen with OOPS.
+    if (att.kind === 'dog') return;
     for (const e of this.enemies) {
       if (e === att || e.dead || e.held || e.state === 'flung') continue;
       if (!inArc(e)) continue;

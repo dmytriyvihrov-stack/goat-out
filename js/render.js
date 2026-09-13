@@ -782,9 +782,15 @@ class Renderer {
     ctx.fillStyle = '#c9bd9d'; ctx.strokeStyle = edge; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(5, -3.5); ctx.quadraticCurveTo(10, -3.5, 12, 1);
     ctx.lineTo(10, 7.5); ctx.quadraticCurveTo(6, 6.5, 4.5, 2); ctx.closePath(); ctx.fill(); ctx.stroke();
-    // the far horn passes behind the skull, so it goes down before the head does
-    ctx.strokeStyle = '#966b2c'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(14, -3); ctx.quadraticCurveTo(6, -11 * horn, -4 * horn, -12 * horn); ctx.stroke();
+    // Horns: a matched pair off the top of the skull, both sweeping back over the body. Long Horns
+    // scales the whole curve out from its base, so a horn gets longer instead of bending into
+    // something else. The far one goes down before the head does, because it passes behind it.
+    const hornPts = (bx, by, cx, cy, ex, ey) => [bx, by,
+      bx + (cx - bx) * horn, by + (cy - by) * horn, bx + (ex - bx) * horn, by + (ey - by) * horn];
+    const farHorn = hornPts(12.5, -4, 3, -10, -9.5, -9.5);
+    ctx.strokeStyle = '#8f6529'; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(farHorn[0], farHorn[1]);
+    ctx.quadraticCurveTo(farHorn[2], farHorn[3], farHorn[4], farHorn[5]); ctx.stroke();
     // ears, one to each side of the skull and tucked behind it
     ctx.fillStyle = '#cdc2a7'; ctx.strokeStyle = edge; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.ellipse(13.5, -6.6, 4.6, 2.5, -0.55, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -804,17 +810,22 @@ class Renderer {
     ctx.beginPath(); ctx.moveTo(20, 8.4); ctx.quadraticCurveTo(22.6, 11, 20.8, 15.2);
     ctx.quadraticCurveTo(19.4, 17.4, 17.8, 14.6); ctx.quadraticCurveTo(16.9, 11.4, 17.2, 8.6);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    // the near horn: up off the skull, back over the body, ridged, and longer once he has Long Horns
+    // the near horn: the same curve, lower and thicker, with ridges along its length
+    const nearHorn = hornPts(14.5, 2, 4, -3, -9, -1);
+    const hornAt = (t) => { const u = 1 - t; return [
+      u * u * nearHorn[0] + 2 * u * t * nearHorn[2] + t * t * nearHorn[4],
+      u * u * nearHorn[1] + 2 * u * t * nearHorn[3] + t * t * nearHorn[5]]; };
     ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 4.2; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(15, 0.5); ctx.quadraticCurveTo(4, -7 * horn, -7 * horn, -4 * horn); ctx.stroke();
-    ctx.strokeStyle = '#c79a47'; ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.moveTo(-4.5 * horn, -4.6 * horn); ctx.quadraticCurveTo(-8 * horn, -4.2 * horn, -10 * horn, -1.5 * horn); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(nearHorn[0], nearHorn[1]);
+    ctx.quadraticCurveTo(nearHorn[2], nearHorn[3], nearHorn[4], nearHorn[5]); ctx.stroke();
+    const tip = hornAt(0.72);
+    ctx.strokeStyle = '#c79a47'; ctx.lineWidth = 2.4;                       // the last third lightens off
+    ctx.beginPath(); ctx.moveTo(tip[0], tip[1]);
+    ctx.quadraticCurveTo(nearHorn[2] * 0.15 + nearHorn[4] * 0.85, nearHorn[3] * 0.15 + nearHorn[5] * 0.85, nearHorn[4], nearHorn[5]); ctx.stroke();
     ctx.strokeStyle = 'rgba(120,84,32,0.6)'; ctx.lineWidth = 1.1;
     for (let k = 1; k <= 3; k++) {
-      const tt = k / 4;
-      const hx = 15 + (4 - 15) * 2 * tt * (1 - tt) + (-7 * horn - 15) * tt * tt;
-      const hy = 0.5 + (-7 * horn - 0.5) * 2 * tt * (1 - tt) + (-4 * horn - 0.5) * tt * tt;
-      ctx.beginPath(); ctx.moveTo(hx - 1.3, hy - 2); ctx.lineTo(hx + 1.3, hy + 2); ctx.stroke();
+      const [rx, ry] = hornAt(k / 4.4);
+      ctx.beginPath(); ctx.moveTo(rx - 1.3, ry - 2); ctx.lineTo(rx + 1.3, ry + 2); ctx.stroke();
     }
     // two eyes, with the rectangular pupils a goat actually has
     ctx.fillStyle = '#fbf5e6'; ctx.strokeStyle = edge; ctx.lineWidth = 1;
@@ -994,15 +1005,18 @@ class Renderer {
       ctx.fillText(`x${game.combo} IN A ROW`, 14 * s, top + 72 * s);
     }
 
+    // The right column reads top down: what your buttons do, then what they have got you.
     ctx.textAlign = 'right';
     const right = this.w - 20 * s;
-    ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-    ctx.fillText(`seed ${game.level.seed}`, right, top + 12 * s);
+    const below = this.drawSkills(game, top + 14 * s);   // the rail centres its own text, so re-anchor
+    ctx.textAlign = 'right';
     ctx.font = `700 ${15 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-    ctx.fillText(`${game.kills} SACRIFICED`, right, top + 32 * s);
+    ctx.fillText(`${game.kills} SACRIFICED`, right, below + 16 * s);
     ctx.font = `${13 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
-    ctx.fillText(`${game.timer.toFixed(1)}s${game.audio.muted ? '  ·  muted' : ''}`, right, top + 50 * s);
-    this.drawSkills(game, top + 68 * s);
+    ctx.fillText(`${game.timer.toFixed(1)}s${game.audio.muted ? '  ·  muted' : ''}`, right, below + 33 * s);
+    ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
+    ctx.fillText(`seed ${game.level.seed}`, right, below + 47 * s);
+    this.drawBoonList(game, below + 66 * s);
     ctx.textAlign = 'left';
 
     // exit compass, pinned just inside the bottom of the play view
@@ -1065,19 +1079,26 @@ class Renderer {
       ctx.fillStyle = hot ? PALETTE.fireHi : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.6)';
       ctx.fillText(row.name, x + box / 2, y + box + 18 * s);
     });
-    // The names, under the rail: what each button now does, and the three that are body rather than button.
-    ctx.textAlign = 'right';
-    ctx.font = `700 ${10 * s}px ${FONT_SC}`;
-    // Actives first, and never more than six lines of it: on a phone the seventh would be over the level.
+    ctx.textAlign = 'left';
+    return top + box + 22 * s;
+  }
+
+  // The tome names, under the score. The pips on the chips already say which button each one bends;
+  // this is the list you read when you are deciding what the run has turned into.
+  drawBoonList(game, top) {
+    if (!game.boons.length) return;
+    const ctx = this.ctx, s = this.ts, right = this.w - 20 * s;
+    ctx.textAlign = 'right'; ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+    // Actives first, and never more than six lines: on a phone the seventh would sit over the level.
     const ordered = game.boons.slice().sort((a, b) => (a.active ? 0 : 1) - (b.active ? 0 : 1));
     const shown = ordered.slice(0, 6);
     shown.forEach((b, i) => {
       ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre;
-      ctx.fillText((b.active ? '◆ ' : '❖ ') + b.name, right, top + box + 34 * s + i * 13 * s);
+      ctx.fillText((b.active ? '◆ ' : '❖ ') + b.name, right, top + i * 13 * s);
     });
     if (ordered.length > shown.length) {
       ctx.fillStyle = 'rgba(239,230,208,0.45)';
-      ctx.fillText(`+${ordered.length - shown.length} MORE`, right, top + box + 34 * s + shown.length * 13 * s);
+      ctx.fillText(`+${ordered.length - shown.length} MORE`, right, top + shown.length * 13 * s);
     }
     ctx.textAlign = 'left';
   }
