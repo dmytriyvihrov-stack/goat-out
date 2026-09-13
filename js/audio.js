@@ -194,6 +194,20 @@ class GameAudio {
   sfxFire() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.35, { gain: 0.25, hp: 900, lp: 5000 }); }
   sfxSwing() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.1, { gain: 0.15, hp: 800, lp: 4000 }); }
   sfxRoll() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.22, { gain: 0.3, hp: 260, lp: 2200 }); this.tone(160, t, 0.18, { gain: 0.25, sweep: 0.45, type: 'triangle' }); }
+  // The hound: a jaw snapping shut, dry and close.
+  sfxSnap() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.noise(t, 0.05, { gain: 0.35, hp: 1800, lp: 9000 });
+    this.tone(320, t, 0.07, { gain: 0.3, sweep: 0.3, type: 'square' });
+  }
+  // A growl instead of a bark: the hounds are the only thing in the compound that does not shout.
+  sfxGrowl() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    const o = this.tone(96, t, 0.45, { type: 'sawtooth', gain: 0.22, sweep: 0.8 });
+    const lfo = this.ctx.createOscillator(); const lg = this.ctx.createGain();
+    lfo.frequency.value = 34; lg.gain.value = 26; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + 0.5);
+    this.noise(t, 0.4, { gain: 0.12, hp: 120, lp: 900 });
+  }
   sfxBreath() {
     if (!this.ctx || this.muted) return; const t = this.now();
     this.noise(t, 0.55, { gain: 0.55, hp: 220, lp: 3600 });

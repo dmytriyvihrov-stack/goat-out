@@ -4,6 +4,8 @@
 // 'e' bearer spawn  'r' hunter spawn (bearer if level has no hunters)  'X' butcher spawn
 // 'R' always a rifle where the level has them  'm' seer spawn  'M' the Mill's hub
 // Rooms are randomly flipped on both axes at generation time.
+// A template with a `tag` is only drawn by a level whose `pool` matches it; untagged ones are the
+// default pool every other level uses.
 const ROOM_TEMPLATES = [
   { name: 'hall', rows: [
     '################',
@@ -113,6 +115,101 @@ const ROOM_TEMPLATES = [
     '#..h.....#',
     '#........#',
     '##########',
+  ]},
+
+  // ---- THE THRESHING FLOOR: open ground, tagged 'open' so only that level draws from them. ----
+  // Out here the walls are nearly gone and the structure is furniture: posts, tables, braziers and
+  // hay. A headbutt on bare floor still only knocks a man down, so the level is about herding him
+  // into something that finishes the job — and about deciding which half of the room is yours.
+  // Props in the middle and open ground all round it: the fight happens on your side of the island.
+  { name: 'island', tag: 'open', rows: [
+    '############################',
+    '#..........................#',
+    '#..e....................e..#',
+    '#..........................#',
+    '#.....B..............B.....#',
+    '#........tt......tt........#',
+    '#........tt..PP..tt........#',
+    '#.....o....P.PP.P....o.....#',
+    '#........tt..PP..tt........#',
+    '#........tt......tt........#',
+    '#.....B......r.......B.....#',
+    '#..........................#',
+    '#..e....................e..#',
+    '#..........................#',
+    '############################',
+  ]},
+  // Everything useful is along the two edges. Crossing the middle is fast, open and stupid.
+  { name: 'flanks', tag: 'open', rows: [
+    '##############################',
+    '#............................#',
+    '#.PP...B...hh........hh...B..#',
+    '#.PP.......hh........hh...PP.#',
+    '#...r....................R...#',
+    '#............................#',
+    '#..........e......e..........#',
+    '#.....o..................o...#',
+    '#..........e......e..........#',
+    '#............................#',
+    '#....m...................e...#',
+    '#.PP.......hh........hh...PP.#',
+    '#.PP...B...hh........hh...B..#',
+    '#............................#',
+    '##############################',
+  ]},
+  // A ring of hay: a wall you do not have until you light it, and cannot take back once you have.
+  { name: 'hayring', tag: 'open', rows: [
+    '############################',
+    '#..........................#',
+    '#..B....................B..#',
+    '#..........................#',
+    '#.....hhhhhhhhhhhhhhhh.....#',
+    '#.....h..............h.....#',
+    '#..e..h....o....o....h..e..#',
+    '#.....h...PP....PP...h.....#',
+    '#..r..h....o....o....h.....#',
+    '#.....h..............h.....#',
+    '#.....hhhhhhhhhhhhhhhh.....#',
+    '#..........................#',
+    '#..B.........e..........B..#',
+    '#..........................#',
+    '############################',
+  ]},
+  // Table rows you can shoulder about. The lanes are only where you leave them.
+  { name: 'lanes', tag: 'open', rows: [
+    '##############################',
+    '#............................#',
+    '#..tt..tt..tt..tt..tt..tt....#',
+    '#..tt..tt..tt..tt..tt..tt....#',
+    '#............................#',
+    '#......e........r........e...#',
+    '#............................#',
+    '#..L......................L..#',
+    '#............................#',
+    '#......e........m........e...#',
+    '#............................#',
+    '#..tt..tt..tt..tt..tt..tt....#',
+    '#..tt..tt..tt..tt..tt..tt....#',
+    '#............................#',
+    '##############################',
+  ]},
+  // A field of posts, spread wide. The only hard geometry out here, and the only thing that kills for you.
+  { name: 'posts', tag: 'open', rows: [
+    '############################',
+    '#..........................#',
+    '#..P...P...P...P...P...P...#',
+    '#..........................#',
+    '#..e....................e..#',
+    '#..........o....o..........#',
+    '#..P...P...........P...P...#',
+    '#.....r............m.......#',
+    '#..P...P...........P...P...#',
+    '#..........o....o..........#',
+    '#..e....................e..#',
+    '#..........................#',
+    '#..P...P...P...P...P...P...#',
+    '#..........................#',
+    '############################',
   ]},
 ];
 

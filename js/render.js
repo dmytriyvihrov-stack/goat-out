@@ -480,20 +480,9 @@ class Renderer {
     }
   }
 
-  drawEnemy(e, game) {
+  // Everything a man is made of: hood or head, sash, bone mask, and whatever he is holding.
+  drawCultist(e, r) {
     const ctx = this.ctx;
-    const lying = e.state === 'floored' || e.state === 'stunned';
-    this.drawTelegraph(e);
-    this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
-    ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.translate(0, lying ? 0 : -4);
-    if (e.state === 'flung') ctx.rotate(this.t * 14); else ctx.rotate(e.facing);
-    if (e.state === 'stagger') ctx.translate(Math.sin(this.t * 60) * 2, 0);
-    if (e.dazed > 0) ctx.rotate(Math.sin(this.t * 24) * 0.12);
-    if (e.state === 'chargewind') ctx.translate(-4 + Math.sin(this.t * 50) * 3, Math.cos(this.t * 47) * 2);
-    const r = e.r;
-    if (e.elite) ctx.scale(1.28, 1.28);
-    if (lying) ctx.scale(1.35, 0.7);
-
     if (e.kind === 'seer') {
       // Tall pointed hood and a long staff: nothing else on the level looks like him.
       ctx.fillStyle = PALETTE.cult;
@@ -574,6 +563,108 @@ class Renderer {
         for (let k = 0; k < 3; k++) { const a = this.t * 6 + k * 2.1; ctx.beginPath(); ctx.arc(Math.cos(a) * r, Math.sin(a) * r * 0.5 - r, 3.2, 0, Math.PI * 2); ctx.fill(); }
       }
     }
+  }
+
+  // The hound: low, long and all snout, and the only thing on the level with four legs —
+  // which is the whole reason it reads as something else at a glance.
+  drawHound(e) {
+    const ctx = this.ctx, r = e.r;
+    const run = Math.hypot(e.vx, e.vy) > 40 ? Math.sin(this.t * 26) * (r * 0.42) : 0;
+    const thrust = e.state === 'windup' ? -0.18 : e.state === 'swing' ? 0.22 : 0;
+    // The run in is the one thing about a hound you have to read across a room, and until now it
+    // looked exactly like the circling did: he flattens out, streaks, and his eyes come up.
+    const charging = e.state === 'dart';
+    if (charging) {
+      ctx.scale(1.1, 0.9);
+      ctx.strokeStyle = 'rgba(239,230,208,0.22)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-r * 1.7, -r * 0.5); ctx.lineTo(-r * 3, -r * 0.5);
+      ctx.moveTo(-r * 1.7, r * 0.5); ctx.lineTo(-r * 3, r * 0.5);
+      ctx.stroke();
+    }
+    // a smear of where he was standing when he slipped the headbutt
+    if (e.dodgeFx > 0) {
+      ctx.globalAlpha = Math.min(0.5, e.dodgeFx * 1.8); ctx.fillStyle = PALETTE.bone;
+      ctx.beginPath(); ctx.ellipse(-e.vx * 0.03, -e.vy * 0.03, r * 1.5, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    // Legs, fore and hind out of phase so the gait reads even at this size. They are mid-tone, not
+    // black: the floors run from near-black plum to pale sand, and a black dog disappears into half
+    // of them. Everything on him is a mid value with a dark edge and a pale mark or two, which is the
+    // only combination that reads on both.
+    ctx.strokeStyle = '#2a2130'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(r * 0.5, -r * 0.45); ctx.lineTo(r * 0.72 + run, -r * 1.2);
+    ctx.moveTo(r * 0.5, r * 0.45); ctx.lineTo(r * 0.72 - run, r * 1.2);
+    ctx.moveTo(-r * 0.7, -r * 0.45); ctx.lineTo(-r * 0.95 - run, -r * 1.15);
+    ctx.moveTo(-r * 0.7, r * 0.45); ctx.lineTo(-r * 0.95 + run, r * 1.15);
+    ctx.stroke();
+    ctx.strokeStyle = '#6b5f79'; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(r * 0.5, -r * 0.45); ctx.lineTo(r * 0.72 + run, -r * 1.2);
+    ctx.moveTo(r * 0.5, r * 0.45); ctx.lineTo(r * 0.72 - run, r * 1.2);
+    ctx.moveTo(-r * 0.7, -r * 0.45); ctx.lineTo(-r * 0.95 - run, -r * 1.15);
+    ctx.moveTo(-r * 0.7, r * 0.45); ctx.lineTo(-r * 0.95 + run, r * 1.15);
+    ctx.stroke();
+    // tail, low and stiff
+    ctx.strokeStyle = '#4a4157'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-r * 1.2, 0);
+    ctx.quadraticCurveTo(-r * 2, -r * 0.3, -r * 2.1, -r * 0.95 + Math.sin(this.t * 12) * r * 0.25); ctx.stroke();
+    // body: a long barrel rather than a ball, edged in dark so it never melts into the floor
+    ctx.fillStyle = '#544a63'; ctx.strokeStyle = 'rgba(13,10,12,0.7)'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.ellipse(-r * 0.15, 0, r * 1.4, r * 0.76, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(20,14,24,0.45)';
+    ctx.beginPath(); ctx.ellipse(-r * 0.5, r * 0.24, r * 1, r * 0.46, 0, 0, Math.PI * 2); ctx.fill();
+    // a lit spine, the brightest thing on him after the collar
+    ctx.fillStyle = 'rgba(186,172,198,0.5)';
+    ctx.beginPath(); ctx.ellipse(-r * 0.2, -r * 0.32, r * 1.05, r * 0.24, 0, 0, Math.PI * 2); ctx.fill();
+    // the cult's collar
+    ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(r * 0.42, 0, r * 0.6, Math.PI * 0.55, Math.PI * 1.45); ctx.stroke();
+    ctx.fillStyle = PALETTE.blood; ctx.beginPath(); ctx.arc(r * 0.5, r * 0.6, 2, 0, Math.PI * 2); ctx.fill();
+    // head and snout, thrown forward on the bite and drawn back under the windup
+    ctx.save(); ctx.translate(r * (0.95 + thrust), 0);
+    ctx.fillStyle = '#33293c'; ctx.strokeStyle = 'rgba(13,10,12,0.7)'; ctx.lineWidth = 1.4;   // ears, pricked back
+    ctx.beginPath(); ctx.moveTo(-r * 0.1, -r * 0.4); ctx.lineTo(-r * 0.85, -r * 1.05); ctx.lineTo(-r * 0.12, -r * 0.05); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r * 0.1, r * 0.4); ctx.lineTo(-r * 0.85, r * 1.05); ctx.lineTo(-r * 0.12, r * 0.05); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#5d5270';
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 0.66, r * 0.58, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r * 0.28, -r * 0.32); ctx.lineTo(r * 1.3, -r * 0.17);
+    ctx.lineTo(r * 1.3, r * 0.17); ctx.lineTo(r * 0.28, r * 0.32); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(226,216,232,0.55)';                   // a pale blaze down the snout
+    ctx.fillRect(r * 0.35, -r * 0.09, r * 0.9, r * 0.18);
+    ctx.fillStyle = '#17111a'; ctx.beginPath(); ctx.arc(r * 1.28, 0, 2.1, 0, Math.PI * 2); ctx.fill();   // nose
+    ctx.fillStyle = PALETTE.fireHi;                             // eyes: the only light in him
+    if (charging) {
+      ctx.globalAlpha = 0.32;
+      ctx.beginPath(); ctx.arc(r * 0.4, -r * 0.3, 4.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r * 0.4, r * 0.3, 4.2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    const eye = charging ? 2.9 : 2.2;
+    ctx.fillRect(r * 0.3, -r * 0.4, eye, eye); ctx.fillRect(r * 0.3, r * 0.2, eye, eye);
+    if (e.state === 'windup' || e.state === 'swing') {          // and the teeth, once he means it
+      ctx.fillStyle = PALETTE.bone;
+      for (let k = 0; k < 3; k++) { ctx.fillRect(r * (0.72 + k * 0.2), -r * 0.36, 1.8, 2.5); ctx.fillRect(r * (0.72 + k * 0.2), r * 0.1, 1.8, 2.5); }
+    }
+    ctx.restore();
+  }
+
+  drawEnemy(e, game) {
+    const ctx = this.ctx;
+    const lying = e.state === 'floored' || e.state === 'stunned';
+    this.drawTelegraph(e);
+    this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
+    ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.translate(0, lying ? 0 : -4);
+    if (e.state === 'flung') ctx.rotate(this.t * 14); else ctx.rotate(e.facing);
+    if (e.state === 'stagger') ctx.translate(Math.sin(this.t * 60) * 2, 0);
+    if (e.dazed > 0) ctx.rotate(Math.sin(this.t * 24) * 0.12);
+    if (e.state === 'chargewind') ctx.translate(-4 + Math.sin(this.t * 50) * 3, Math.cos(this.t * 47) * 2);
+    const r = e.r;
+    if (e.elite) ctx.scale(1.28, 1.28);
+    if (lying) ctx.scale(1.35, 0.7);
+
+    if (e.kind === 'dog') this.drawHound(e); else this.drawCultist(e, r);
     if (e.flash > 0) { ctx.globalAlpha = Math.min(0.8, e.flash * 4); ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.arc(0, 0, r + 1, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
     // Stars: he heard the scream and is still hearing it.
     if (e.dazed > 0) {
@@ -620,12 +711,16 @@ class Renderer {
       ctx.strokeStyle = `rgba(242,162,51,${0.5 + 0.5 * Math.sin(this.t * 40)})`; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 5 + p * 8, 0, Math.PI * 2); ctx.stroke();
     }
-    // Butcher health notches, so his hits are readable without a text popup.
-    if (e.kind === 'butcher') {
-      const max = TUNING.butcher.hp, wdt = 9, gap = 4, total = max * wdt + (max - 1) * gap;
+    // Health notches over anyone who takes more than one blow — the Butcher, a Seer, an arena elite —
+    // so what is left of him reads off his own head instead of off a text popup.
+    if (e.maxHp > 1) {
+      const max = e.maxHp, wdt = clamp(e.r * 0.5, 6, 9), gap = 3.5, total = max * wdt + (max - 1) * gap;
+      const top = e.y - e.r - (e.kind === 'butcher' ? 14 : 11);
       for (let i = 0; i < max; i++) {
+        const x = e.x - total / 2 + i * (wdt + gap);
+        ctx.fillStyle = 'rgba(13,10,12,0.55)'; ctx.fillRect(x - 1, top - 1, wdt + 2, 6.5);
         ctx.fillStyle = i < e.hp ? PALETTE.blood : 'rgba(239,230,208,0.22)';
-        ctx.fillRect(e.x - total / 2 + i * (wdt + gap), e.y - e.r - 14, wdt, 4.5);
+        ctx.fillRect(x, top, wdt, 4.5);
       }
     }
   }
@@ -701,7 +796,7 @@ class Renderer {
     if (d.open) {
       const rows = [
         ['god', d.god ? 'GOD  ON' : 'GOD  OFF'],
-        ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['seer', '+ SEER'], ['butcher', '+ BUTCHER'],
+        ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'], ['butcher', '+ BUTCHER'],
         ['tome', '+ TOME'], ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
         ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'],
       ];
@@ -758,7 +853,7 @@ class Renderer {
     for (const t of g.trail) {
       ctx.globalAlpha = (t.life / 0.18) * 0.16;
       ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.a);
-      ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(-3, 0.5, 14.5, 8.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(-5, 0.5, 13.5, 8.4, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
     ctx.globalAlpha = 1;
@@ -784,69 +879,103 @@ class Renderer {
     ctx.scale(sx, sy);
     if (g.invuln > 0 && Math.floor(this.t * 30) % 2 === 0) ctx.globalAlpha = 0.5;
     const dmg = g.maxHp - g.hp;
-    // He is drawn a quarter turn toward the camera. The horns sweep back and OUT past the body, the
-    // head sits clear of it, the beard hangs off the chin: all three break the outline, which is the
-    // only way a white shape 30 px long reads as a goat at speed.
+    // He is drawn a quarter turn toward the camera, and built in three pieces that never merge into
+    // one blob: body, then a short dark neck out of the shoulder, then a round head sitting on top of
+    // it. The seam down the shoulder and the shadow under the jaw are what make the head legible from
+    // straight above — without them a white shape 30 px long is just a shape.
     const step = Math.sin(this.t * 22) * (Math.hypot(g.vx, g.vy) > 40 ? 3.5 : 0);
-    // far side first: legs, ear, and the horn that passes behind him
+    const horn = clamp(game.mods ? game.mods.headbuttReach : 1, 1, 1.5);   // Long Horns shows on him
+    // far side first: the legs and the ear away from the camera
     ctx.strokeStyle = '#b3a78e'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(4, -4); ctx.lineTo(5.5 + step, -11); ctx.moveTo(-9, -4); ctx.lineTo(-10.5 - step, -11);
+    ctx.moveTo(3, -4); ctx.lineTo(4.5 + step, -11); ctx.moveTo(-10, -4); ctx.lineTo(-11.5 - step, -11);
     ctx.stroke();
-    ctx.fillStyle = '#b3a78e';
-    ctx.beginPath(); ctx.ellipse(8.5, -5.5, 4.2, 2.2, -0.55, 0, Math.PI * 2); ctx.fill();      // far ear
-    // the far horn: it comes off the far side of the crown and shows over the back
-    this.horn(7.5, -2.5, 1.5, -11.5, -8.5, -12.5, 2.8, '#9a6f2e', 'rgba(90,60,20,0.55)');
     // near legs, long enough that the hooves clear the body
     ctx.strokeStyle = '#d9cfb6'; ctx.lineWidth = 3.4;
     ctx.beginPath();
-    ctx.moveTo(4, 4); ctx.lineTo(6.5 - step, 16); ctx.moveTo(-9, 4); ctx.lineTo(-11.5 + step, 16);
+    ctx.moveTo(3, 4); ctx.lineTo(5.5 - step, 16); ctx.moveTo(-10, 4); ctx.lineTo(-12.5 + step, 16);
     ctx.stroke();
-    // body
-    ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(-3, 0.5, 14.5, 8.6, 0, 0, Math.PI * 2); ctx.fill();
+    // body, with a thin dark edge on it. Every piece of him carries that edge: it is the only thing
+    // that keeps head, neck and body from reading as one white blob from straight above.
+    const edge = 'rgba(26,16,22,0.45)';
+    ctx.fillStyle = PALETTE.bone; ctx.strokeStyle = edge; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(-5, 0.5, 13.5, 8.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     // everything painted on the coat is clipped to it, so nothing spills past the silhouette
-    ctx.save(); ctx.beginPath(); ctx.ellipse(-3, 0.5, 14.5, 8.6, 0, 0, Math.PI * 2); ctx.clip();
-    ctx.fillStyle = 'rgba(150,138,116,0.32)'; ctx.beginPath(); ctx.ellipse(-4, 6, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
-    if (dmg < 3) { ctx.fillStyle = PALETTE.ochre; ctx.fillRect(4.5, -10, 2.6, 22); }   // marigold collar
+    ctx.save(); ctx.beginPath(); ctx.ellipse(-5, 0.5, 13.5, 8.4, 0, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = 'rgba(150,138,116,0.32)'; ctx.beginPath(); ctx.ellipse(-6, 6, 13, 5, 0, 0, Math.PI * 2); ctx.fill();
+    if (dmg < 3) { ctx.fillStyle = PALETTE.ochre; ctx.fillRect(2, -10, 2.6, 22); }   // marigold collar
     ctx.fillStyle = PALETTE.blood;
-    for (let k = 0; k < dmg * 2; k++) { ctx.beginPath(); ctx.ellipse(-9 + k * 4.5, (k % 2 ? 4 : -3.5), 4.2, 3, 0.5 * k, 0, Math.PI * 2); ctx.fill(); }
+    for (let k = 0; k < dmg * 2; k++) { ctx.beginPath(); ctx.ellipse(-11 + k * 4.5, (k % 2 ? 4 : -3.5), 4.2, 3, 0.5 * k, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
-    // the shoulder the neck comes out of, so the head does not look glued on
-    ctx.fillStyle = 'rgba(120,108,90,0.28)';
-    ctx.beginPath(); ctx.ellipse(7, 4.5, 5.5, 5, 0.3, 0, Math.PI * 2); ctx.fill();
-    // neck and head: one wedge, lifted clear of the body toward the near side
-    ctx.fillStyle = '#f6eeda';
-    ctx.beginPath();
-    ctx.moveTo(3, -2.5); ctx.quadraticCurveTo(12, -1, 17.5, 3);
-    ctx.quadraticCurveTo(22.5, 6.2, 19, 9.6); ctx.quadraticCurveTo(13, 14.6, 6, 10.5);
-    ctx.quadraticCurveTo(2.5, 8, 3, -2.5); ctx.closePath(); ctx.fill();
-    // muzzle and nostril
-    ctx.fillStyle = '#e6dcc5'; ctx.beginPath(); ctx.ellipse(18.4, 6.6, 4, 3.4, 0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#a9977c'; ctx.beginPath(); ctx.ellipse(20.6, 6.6, 1.6, 1.4, 0, 0, Math.PI * 2); ctx.fill();
-    // near ear, out to the side of the skull
-    ctx.fillStyle = '#cfc4aa';
-    ctx.beginPath(); ctx.ellipse(8.5, 12, 4.6, 2.5, 0.85, 0, Math.PI * 2); ctx.fill();
-    // the beard, hanging off the chin: the single most goat thing about him
-    ctx.fillStyle = '#e4dac2';
-    ctx.beginPath(); ctx.moveTo(18, 9.6); ctx.quadraticCurveTo(17.5, 17.5, 13, 20);
-    ctx.quadraticCurveTo(16.5, 15, 14, 10.2); ctx.closePath(); ctx.fill();
-    // the near horn: up off the crown and back over the neck, its tip clear of the body's outline.
-    // A horn lying flat along the back reads as a stripe; one that leaves the silhouette reads as a horn.
-    this.horn(10.5, -0.5, 5, -10.5, -4, -14, 3.3, PALETTE.ochre, 'rgba(120,84,32,0.6)');
-    // the eye: a rectangular pupil, of course. Shut when he has been clubbed.
+    // neck: a narrow darker band out of the shoulder. It is short on purpose — the gap it leaves
+    // between the two big masses is what tells you which end is the head.
+    ctx.fillStyle = '#c9bd9d'; ctx.strokeStyle = edge; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(5, -3.5); ctx.quadraticCurveTo(10, -3.5, 12, 1);
+    ctx.lineTo(10, 7.5); ctx.quadraticCurveTo(6, 6.5, 4.5, 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Horns: a matched pair off the top of the skull, both sweeping back over the body. Long Horns
+    // scales the whole curve out from its base, so a horn gets longer instead of bending into
+    // something else. The far one goes down before the head does, because it passes behind it.
+    const hornPts = (bx, by, cx, cy, ex, ey) => [bx, by,
+      bx + (cx - bx) * horn, by + (cy - by) * horn, bx + (ex - bx) * horn, by + (ey - by) * horn];
+    const farHorn = hornPts(12.5, -4, 3, -10, -9.5, -9.5);
+    ctx.strokeStyle = '#8f6529'; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(farHorn[0], farHorn[1]);
+    ctx.quadraticCurveTo(farHorn[2], farHorn[3], farHorn[4], farHorn[5]); ctx.stroke();
+    // ears, one to each side of the skull and tucked behind it
+    ctx.fillStyle = '#cdc2a7'; ctx.strokeStyle = edge; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.ellipse(13.5, -6.6, 4.6, 2.5, -0.55, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(12.8, 9.8, 4.4, 2.4, 0.62, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(166,120,116,0.5)';
+    ctx.beginPath(); ctx.ellipse(13.4, 9.6, 2.5, 1.2, 0.62, 0, Math.PI * 2); ctx.fill();
+    // the head: one round skull with a short muzzle, lighter than the coat and outlined like the rest
+    ctx.fillStyle = '#fdf7e7'; ctx.strokeStyle = edge; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(17.5, 3.2, 7.4, 6.4, 0.12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(23.2, 5.2, 4.4, 3.7, 0.24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e7dcc2';                                                     // the muzzle, a shade duller
+    ctx.beginPath(); ctx.ellipse(24, 5.6, 3.1, 2.6, 0.24, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8d7c63'; ctx.beginPath(); ctx.ellipse(26.2, 5.2, 1.4, 1.1, 0, 0, Math.PI * 2); ctx.fill();
+    // the beard: a soft tuft hanging straight off the chin. Pointed, it reads as a tusk — and a goat
+    // with a tusk is a boar, which is not the animal we are selling.
+    ctx.fillStyle = '#e2d7bb'; ctx.strokeStyle = edge; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(20, 8.4); ctx.quadraticCurveTo(22.6, 11, 20.8, 15.2);
+    ctx.quadraticCurveTo(19.4, 17.4, 17.8, 14.6); ctx.quadraticCurveTo(16.9, 11.4, 17.2, 8.6);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // the near horn: the same curve, lower and thicker, with ridges along its length
+    const nearHorn = hornPts(14.5, 2, 4, -3, -9, -1);
+    const hornAt = (t) => { const u = 1 - t; return [
+      u * u * nearHorn[0] + 2 * u * t * nearHorn[2] + t * t * nearHorn[4],
+      u * u * nearHorn[1] + 2 * u * t * nearHorn[3] + t * t * nearHorn[5]]; };
+    ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 4.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(nearHorn[0], nearHorn[1]);
+    ctx.quadraticCurveTo(nearHorn[2], nearHorn[3], nearHorn[4], nearHorn[5]); ctx.stroke();
+    const tip = hornAt(0.72);
+    ctx.strokeStyle = '#c79a47'; ctx.lineWidth = 2.4;                       // the last third lightens off
+    ctx.beginPath(); ctx.moveTo(tip[0], tip[1]);
+    ctx.quadraticCurveTo(nearHorn[2] * 0.15 + nearHorn[4] * 0.85, nearHorn[3] * 0.15 + nearHorn[5] * 0.85, nearHorn[4], nearHorn[5]); ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,84,32,0.6)'; ctx.lineWidth = 1.1;
+    for (let k = 1; k <= 3; k++) {
+      const [rx, ry] = hornAt(k / 4.4);
+      ctx.beginPath(); ctx.moveTo(rx - 1.3, ry - 2); ctx.lineTo(rx + 1.3, ry + 2); ctx.stroke();
+    }
+    // two eyes, with the rectangular pupils a goat actually has — shut when he has been clubbed
     if (g.state === 'ko') {
       ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(11.4, 5.8); ctx.lineTo(15.4, 5.2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(17.2, 7.4); ctx.lineTo(20.8, 7.8);
+      ctx.moveTo(16.8, -1.6); ctx.lineTo(19.6, -1.2); ctx.stroke();
     } else {
-      ctx.fillStyle = '#fbf5e6'; ctx.beginPath(); ctx.ellipse(13.4, 5.4, 3.2, 2.6, 0.25, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = PALETTE.ink; ctx.fillRect(12.2, 4.6, 3.8, 2.1);
+      ctx.fillStyle = '#fbf5e6'; ctx.strokeStyle = edge; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(19, 7.6, 3.1, 2.6, 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(18.2, -1.4, 2.7, 2.2, -0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = PALETTE.ink;
+      ctx.fillRect(17.9, 6.9, 3.6, 2); ctx.fillRect(17.3, -2.1, 3, 1.8);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(20.4, 6.4, 1.2, 1.2);   // one spark of a highlight
     }
     if (g.screaming > 0) {
-      ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(19.2, 9, 3, 3.8, 0.45, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(25, 7, 2.8, 3.4, 0.45, 0, Math.PI * 2); ctx.fill();
     }
     // tail
     ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(-16, 0.5); ctx.lineTo(-21.5, -3 + Math.sin(this.t * 9) * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-17.5, 0.5); ctx.lineTo(-23, -3 + Math.sin(this.t * 9) * 2); ctx.stroke();
     if (g.onFire) this.flame(0, -6, 12, 1, g.witchFire);
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -1122,41 +1251,26 @@ class Renderer {
       }
       if (on) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(Math.round(ox + px), Math.round(oy + px), Math.ceil(px), Math.ceil(px)); }
     }
-    const fire = !!game.mods.breath;
-    const cd = 1 - g.screamCd / game.mods.screamCooldown;
-    ctx.fillStyle = 'rgba(239,230,208,0.2)'; ctx.fillRect(14 * s, top + 50 * s, 58 * s, 5 * s);
-    ctx.fillStyle = cd >= 1 ? (fire ? PALETTE.fire : PALETTE.bone) : (fire ? PALETTE.blood : PALETTE.ochre);
-    ctx.fillRect(14 * s, top + 50 * s, 58 * s * cd, 5 * s);
-    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = fire ? PALETTE.fire : 'rgba(239,230,208,0.55)';
-    ctx.fillText(fire ? 'BREATH' : 'BAAH · STUNS', 78 * s, top + 56 * s);
-    const rcd = 1 - g.rollCd / (TUNING.goat.roll.cooldown * game.mods.rollCooldown);
-    ctx.fillStyle = 'rgba(239,230,208,0.2)'; ctx.fillRect(14 * s, top + 61 * s, 58 * s, 3 * s);
-    ctx.fillStyle = rcd >= 1 ? 'rgba(239,230,208,0.8)' : PALETTE.ochre; ctx.fillRect(14 * s, top + 61 * s, 58 * s * rcd, 3 * s);
-    ctx.font = `${10 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.4)';
-    ctx.fillText('ROLL', 78 * s, top + 66 * s);
-
-    if (game.boons.length) {
-      ctx.font = `700 ${10.5 * s}px ${FONT_SC}`;
-      game.boons.forEach((b, i) => {
-        ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre;
-        ctx.fillText((b.active ? '◆ ' : '❖ ') + b.name, 14 * s, top + 84 * s + i * 14 * s);
-      });
-    }
-    ctx.textAlign = 'right';
-    const right = this.w - 20 * s;
-    ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-    ctx.fillText(`seed ${game.level.seed}`, right, top + 12 * s);
-    ctx.font = `700 ${15 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-    ctx.fillText(`${game.kills} SACRIFICED`, right, top + 32 * s);
-    ctx.font = `${13 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
-    ctx.fillText(`${game.timer.toFixed(1)}s${game.audio.muted ? '  ·  muted' : ''}`, right, top + 50 * s);
     // Kills that landed on top of each other, while the window is still open.
     if (game.combo >= 2 && game.comboTimer > 0) {
       const a = Math.min(1, game.comboTimer / 0.6);
       ctx.font = `700 ${(15 + Math.min(11, game.combo * 2)) * s}px ${FONT_SC}`;
       ctx.fillStyle = `rgba(192,57,43,${a})`;
-      ctx.fillText(`x${game.combo} IN A ROW`, right, top + 74 * s);
+      ctx.fillText(`x${game.combo} IN A ROW`, 14 * s, top + 72 * s);
     }
+
+    // The right column reads top down: what your buttons do, then what they have got you.
+    ctx.textAlign = 'right';
+    const right = this.w - 20 * s;
+    const below = this.drawSkills(game, top + 14 * s);   // the rail centres its own text, so re-anchor
+    ctx.textAlign = 'right';
+    ctx.font = `700 ${15 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+    ctx.fillText(`${game.kills} SACRIFICED`, right, below + 16 * s);
+    ctx.font = `${13 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
+    ctx.fillText(`${game.timer.toFixed(1)}s${game.audio.muted ? '  ·  muted' : ''}`, right, below + 33 * s);
+    ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
+    ctx.fillText(`seed ${game.level.seed}`, right, below + 47 * s);
+    this.drawBoonList(game, below + 66 * s);
     ctx.textAlign = 'left';
 
     // exit compass, pinned just inside the bottom of the play view
@@ -1168,6 +1282,152 @@ class Renderer {
         ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.fillStyle = 'rgba(255,224,138,0.45)';
         ctx.beginPath(); ctx.moveTo(15 * s, 0); ctx.lineTo(-9 * s, -7.5 * s); ctx.lineTo(-9 * s, 7.5 * s); ctx.closePath(); ctx.fill(); ctx.restore();
       }
+    }
+  }
+
+  // The skill rail, top right, above the count: the four verbs, whether each one is available, how
+  // long until it is, and what the tomes have done to it. Boons show as pips on the button they bend
+  // and as names under the score, so a run's build lives in one corner instead of a list of words.
+  // Returns the y it finished at, because everything else in that column hangs off the bottom of it.
+  drawSkills(game, top) {
+    const ctx = this.ctx, s = this.ts, g = game.goat, fire = !!game.mods.breath;
+    const R = TUNING.goat.roll;
+    const rows = [
+      { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding },
+      { id: 'grab', name: g.holding ? 'THROW' : 'GRAB', cap: 'RMB', cd: g.grabCd,
+        max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0 },
+      { id: 'roll', name: 'ROLL', cap: 'E', cd: g.rollCd, max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0 },
+      { id: 'scream', name: fire ? 'FIRE' : 'BAAH', cap: 'SPC', cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0 },
+    ];
+    const box = 32 * s, gap = 7 * s, right = this.w - 14 * s;
+    const x0 = right - rows.length * box - (rows.length - 1) * gap;
+    rows.forEach((row, i) => {
+      const x = x0 + i * (box + gap), y = top;
+      const boons = game.boons.filter((b) => b.skill === row.id);
+      const hot = boons.some((b) => b.active);
+      ctx.fillStyle = 'rgba(13,10,12,0.5)'; ctx.fillRect(x, y, box, box);
+      // The cooldown drains the chip from the top down: one glance says whether the button is there.
+      if (row.cd > 0 && row.max > 0) {
+        const p = clamp(row.cd / row.max, 0, 1);
+        ctx.fillStyle = 'rgba(192,57,43,0.32)'; ctx.fillRect(x, y + box * (1 - p), box, box * p);
+      }
+      ctx.strokeStyle = row.cd > 0 ? 'rgba(192,57,43,0.8)' : hot ? 'rgba(242,162,51,0.85)'
+        : row.ready ? 'rgba(239,230,208,0.42)' : 'rgba(239,230,208,0.16)';
+      ctx.lineWidth = 1.6 * s; ctx.strokeRect(x, y, box, box);
+      ctx.save(); ctx.translate(x + box / 2, y + box / 2);
+      ctx.globalAlpha = row.cd > 0 ? 0.4 : row.ready ? 1 : 0.55;
+      this.skillIcon(row.id, box * 0.33, game, fire);
+      ctx.globalAlpha = 1; ctx.restore();
+      // one pip per tome hanging off this button
+      boons.forEach((b, k) => {
+        ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre;
+        const px = x + 5 * s + k * 7 * s, py = y + box + 4 * s;
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 2.4 * s, py + 2.8 * s);
+        ctx.lineTo(px, py + 5.6 * s); ctx.lineTo(px - 2.4 * s, py + 2.8 * s); ctx.closePath(); ctx.fill();
+      });
+      ctx.textAlign = 'center';
+      if (!game.touch.active) {
+        ctx.font = `700 ${8 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.4)';
+        ctx.fillText(row.cap, x + box / 2, y - 4 * s);
+      }
+      ctx.font = `700 ${9 * s}px ${FONT_SC}`;
+      ctx.fillStyle = hot ? PALETTE.fireHi : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.6)';
+      ctx.fillText(row.name, x + box / 2, y + box + 18 * s);
+    });
+    ctx.textAlign = 'left';
+    return top + box + 22 * s;
+  }
+
+  // The tome names, under the score. The pips on the chips already say which button each one bends;
+  // this is the list you read when you are deciding what the run has turned into.
+  drawBoonList(game, top) {
+    if (!game.boons.length) return;
+    const ctx = this.ctx, s = this.ts, right = this.w - 20 * s;
+    ctx.textAlign = 'right'; ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+    // Actives first, and never more than six lines: on a phone the seventh would sit over the level.
+    const ordered = game.boons.slice().sort((a, b) => (a.active ? 0 : 1) - (b.active ? 0 : 1));
+    const shown = ordered.slice(0, 6);
+    shown.forEach((b, i) => {
+      ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre;
+      ctx.fillText((b.active ? '◆ ' : '❖ ') + b.name, right, top + i * 13 * s);
+    });
+    if (ordered.length > shown.length) {
+      ctx.fillStyle = 'rgba(239,230,208,0.45)';
+      ctx.fillText(`+${ordered.length - shown.length} MORE`, right, top + shown.length * 13 * s);
+    }
+    ctx.textAlign = 'left';
+  }
+
+  // The four verbs as icons, drawn around the origin with a half-size of h. Each one carries what the
+  // tomes have added to it, so the rail changes shape over a run instead of only gaining words.
+  skillIcon(id, h, game, fire) {
+    const ctx = this.ctx, m = game.mods;
+    if (id === 'butt') {
+      const grow = clamp(m.headbuttReach, 1, 1.5);
+      ctx.fillStyle = PALETTE.bone;                                    // the head, seen head on
+      ctx.beginPath(); ctx.ellipse(0, h * 0.45, h * 0.42, h * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = h * 0.3; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-h * 0.34, h * 0.1); ctx.quadraticCurveTo(-h * 1.05 * grow, -h * 0.2, -h * 0.7 * grow, -h * 0.95 * grow);
+      ctx.moveTo(h * 0.34, h * 0.1); ctx.quadraticCurveTo(h * 1.05 * grow, -h * 0.2, h * 0.7 * grow, -h * 0.95 * grow);
+      ctx.stroke();
+      if (m.headbuttRecovery < 1) {                                    // Iron Skull: a plate over the brow
+        ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = h * 0.17;
+        ctx.beginPath(); ctx.moveTo(-h * 0.4, h * 0.05); ctx.lineTo(h * 0.4, h * 0.05); ctx.stroke();
+      }
+      if (m.bomb) { ctx.fillStyle = PALETTE.blood; ctx.beginPath(); ctx.arc(h * 0.85, h * 0.75, h * 0.26, 0, Math.PI * 2); ctx.fill(); }
+      return;
+    }
+    if (id === 'grab') {
+      ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = h * 0.22; ctx.lineCap = 'round';
+      ctx.beginPath();                                                 // a jaw closed round a man
+      ctx.arc(0, 0, h * 0.95, Math.PI * 0.68, Math.PI * 1.32);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, h * 0.95, -Math.PI * 0.32, Math.PI * 0.32); ctx.stroke();
+      ctx.fillStyle = m.devour ? PALETTE.blood : PALETTE.ochre;
+      ctx.beginPath(); ctx.arc(0, 0, h * 0.3, 0, Math.PI * 2); ctx.fill();
+      if (m.shieldBullets > 2) {                                       // Strong Jaw: teeth
+        ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = h * 0.12;
+        ctx.beginPath();
+        ctx.moveTo(-h * 0.62, -h * 0.5); ctx.lineTo(-h * 0.38, -h * 0.2);
+        ctx.moveTo(h * 0.62, -h * 0.5); ctx.lineTo(h * 0.38, -h * 0.2);
+        ctx.moveTo(-h * 0.62, h * 0.5); ctx.lineTo(-h * 0.38, h * 0.2);
+        ctx.moveTo(h * 0.62, h * 0.5); ctx.lineTo(h * 0.38, h * 0.2);
+        ctx.stroke();
+      }
+      if (m.livingShield) {
+        ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = h * 0.14;
+        ctx.beginPath(); ctx.arc(0, 0, h * 0.62, 0, Math.PI * 2); ctx.stroke();
+      }
+      return;
+    }
+    if (id === 'roll') {
+      ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = h * 0.22; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(0, 0, h * 0.75, Math.PI * 0.25, Math.PI * 1.85); ctx.stroke();
+      const a = Math.PI * 1.85, ax = Math.cos(a) * h * 0.75, ay = Math.sin(a) * h * 0.75;
+      ctx.fillStyle = PALETTE.bone;                                    // the arrowhead that makes it a tumble
+      ctx.beginPath(); ctx.moveTo(ax + h * 0.3, ay); ctx.lineTo(ax - h * 0.1, ay - h * 0.3); ctx.lineTo(ax - h * 0.1, ay + h * 0.3); ctx.closePath(); ctx.fill();
+      if (m.rollCooldown < 1) {                                        // Loose Joints: a second turn
+        ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = h * 0.14;
+        ctx.beginPath(); ctx.arc(0, 0, h * 0.36, Math.PI * 0.3, Math.PI * 1.7); ctx.stroke();
+      }
+      return;
+    }
+    // scream: an open mouth throwing either sound or fire
+    ctx.fillStyle = PALETTE.bone;
+    ctx.beginPath(); ctx.ellipse(-h * 0.55, 0, h * 0.3, h * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+    if (fire) {
+      const gl = ctx.createLinearGradient(-h * 0.3, 0, h * 1.1, 0);
+      gl.addColorStop(0, PALETTE.fireHi); gl.addColorStop(1, 'rgba(242,162,51,0.15)');
+      ctx.fillStyle = gl;
+      ctx.beginPath(); ctx.moveTo(-h * 0.3, -h * 0.18); ctx.lineTo(h * 1.05, -h * 0.8);
+      ctx.lineTo(h * 1.05, h * 0.8); ctx.lineTo(-h * 0.3, h * 0.18); ctx.closePath(); ctx.fill();
+      return;
+    }
+    ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = h * 0.16;
+    const arcs = m.screamRadius > TUNING.goat.scream.radius ? 3 : 2;   // Raw Throat: one ring further
+    for (let k = 1; k <= arcs; k++) {
+      ctx.beginPath(); ctx.arc(-h * 0.55, 0, h * (0.35 + k * 0.34), -Math.PI * 0.33, Math.PI * 0.33); ctx.stroke();
     }
   }
 
@@ -1192,7 +1452,8 @@ class Renderer {
     const held = !!game.goat.holding;
     const fire = !!game.mods.breath;
     const labels = { butt: 'BUTT', grab: held ? 'THROW' : 'GRAB', scream: fire ? 'FIRE' : 'BAAH', roll: 'ROLL' };
-    const ready = { butt: game.goat.state === 'idle' && !held, grab: true, scream: game.goat.screamCd <= 0, roll: game.goat.rollCd <= 0 };
+    const ready = { butt: game.goat.state === 'idle' && !held, grab: held || game.goat.grabCd <= 0,
+      scream: game.goat.screamCd <= 0, roll: game.goat.rollCd <= 0 };
     for (const k of ['butt', 'grab', 'scream', 'roll']) {
       const b = t.buttons[k], down = t.pressed[k] !== undefined;
       const hot = k === 'scream' && fire;
@@ -1218,6 +1479,12 @@ class Renderer {
     }
     if (game.goat.rollCd > 0) {
       const b = t.buttons.roll, p = 1 - game.goat.rollCd / (TUNING.goat.roll.cooldown * game.mods.rollCooldown);
+      ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3 * this.s;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
+    }
+    // A throw empties your mouth for a beat, and the ring round GRAB is where you read that beat.
+    if (game.goat.grabCd > 0 && !held) {
+      const b = t.buttons.grab, p = 1 - game.goat.grabCd / (TUNING.goat.grab.cooldown * game.mods.grabCooldown);
       ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3 * this.s;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
     }

@@ -5,35 +5,33 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
-## 1.0 — one new thing at a time, stands of arms, and a pen that fights back
+## 1.0 — the opening scene, the way out, stands of arms, and a pen that fights back
+
+Two lines of work on this game ran side by side for a while: one added the hounds, the threat curve and
+THE THRESHING FLOOR (0.9 to 0.11 below), the other the opening scene, the stairs and the stands of arms.
+This is both of them in one build. Where they did the same thing twice — both grew a rule that a new
+kind of enemy is met on its own — the threat curve's version won, because it is checked by a tool.
 
 - **The pen takes seven blows.** Getting out of it was two headbutts and a shrug; now it is the hardest
   thing the goat does all run. Each blow bends the bars further and he roars through it — NNGH, IT HOLDS,
   MMMAAAH, IT BENDS, NNNGH, BAAAAH, OUT — and the third and the sixth knock him off his own feet: a
   second on the floor with stars turning, no verbs, before he can go again. A headbutt used to count
   once per bar it happened to reach, so three bars meant three hits; the pen counts blows now.
-- **One new thing to a room.** The first time a run meets anything — a Bearer, a Seer, a rifle, the Mill,
-  a kind of boss — it meets exactly one of it, in a room with nothing else in it. A new boss stands in
-  his arena alone. By the third level the run has seen the cast and the generator stacks whatever it
-  likes. The rifle posts that stand on their own no longer turn up in a room earlier than the one the
-  level meant to introduce a rifle in.
 - **Stands of arms.** A wooden rack with a sword or a shield in it. Grab what is in it and throw it, or
   headbutt the stand and send it across the room. A thrown sword goes through the first man it finds and
   stays in him; a thrown shield flattens everyone in its path and keeps going. Carried, a shield turns
   three bullets before it splinters — the first answer to a rifle that does not involve holding a man.
   Both lie where they land and can be picked up again. Sometimes one or two to a room, always two in a
   boss room, and one in the room where the controls are painted on the floor.
-- **Much easier, and level one most of all.** Level 1 is ten rooms with one or two men in each, a plain
-  room before each set piece, two bosses who are no longer champions, and three bowls of milk. Every
-  level's crowd budget came down, the Great Hall lost a third of its men, and there is more milk on the
-  floor everywhere.
+- **More milk.** Level 1 carries three bowls and THE BRIDGE four. The crowd itself is the threat
+  curve's business, and `node tools/balance.js` says what it produces.
 - **A thrown pot is a real stun.** It used to trip a man for eight tenths of a second. It now puts him
   down for nearly two and a half, seeing stars, with the frame held and the camera kicked. There are
   about a third fewer pots on the floor to make up for it.
 - **BAAH is explained as what it is.** The floor, the prologue and the meter all said the scream calls
   them in, which it has not done since 0.8. They now say it stuns.
 
-## 0.9 — the opening scene, the stairs out, and the cage next door
+### also in 1.0, from the other line of work
 
 - **The run opens on the two of them.** The goat and his wife in the pen, pressed together and
   trembling, a heart beating between them. Two men come in: one carrying the boning knife from beside
@@ -48,15 +46,97 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   the goat takes them for a moment, rising and thinning out, before the cards. Every later level is
   entered up another flight cut into the left wall of its first room; the goat comes up it under the
   level card.
-- **Only level 1 has the ritual room.** The altar, the tools and the remains belong to THE ALTAR. Levels
-  2 to 4 start in a bare room at the top of the stairs, with the level's hint across its middle.
+- **Only level 1 has the ritual room.** The altar, the tools and the remains belong to THE ALTAR. Every
+  later level starts in a bare room at the top of the stairs, with the level's hint across its middle.
 - **A second cage in the first room**, shut for good, with a sheep in it that stopped waiting a while
   ago. It rings when headbutted and never opens. The room is two tiles wider to make room for it.
 - **The remains are your own size now**, and their horns are horns: short, thick at the root, curving
   back off the crown, instead of two long arcs over the ribs.
 - **The goat's horns rise off the crown and clear the outline**, as tapered crescents with growth ridges
   rather than strokes lying along the back. Facing left, the sprite is mirrored rather than turned over,
-  so the head stays a head and the horns stay on top.
+  so the head stays a head and the horns stay on top. (0.9 below rebuilt the head again on top of this.)
+
+## 0.11 — a difficulty curve you can read, and a hound you can see
+
+- **You meet every kind on its own.** The room that first shows you a clubman, a champion, a hound, a
+  mage or a rifle holds that one enemy and nothing else — and a boss you have never seen stands in his
+  arena without escorts. Level 1 now opens with a single clubman in an empty room, and only then a
+  Mill, a champion, a hound, and the two of them together.
+- **The champion.** A clubman with a second heart and a bigger frame, with the notches over his head to
+  say so. He exists to teach "some of them take more than one" on level 1 without spending a boss on it.
+- **Rooms are bought with threat, not with bodies.** Every level has a curve — `from` and `to` — and
+  each room spends that budget on whatever you have already been introduced to. A rifle costs more than
+  a clubman, a mage more than a rifle. So "harder" means both more of them and worse of them, and one
+  pair of numbers per level sets the whole shape. Per-room caps keep a room readable: one mage, one
+  champion, two rifles, seven men — the Bridge is the one ground allowed to break that.
+- **Every level is harder than the one before, and it is checked.** `node tools/balance.js` prints what
+  the numbers actually produce, room by room, and fails if a kind arrives in a crowd before it has
+  arrived alone, if a cap is broken, if threat stops rising inside a level, or if a level is not harder
+  than its predecessor. The rules are the tool; the tool is the test.
+- **THE THRESHING FLOOR grew to 14 rooms** and a third arena, because the tool said it was easier than
+  THE ROAD and the tool was right.
+- **The hound was almost invisible.** It was drawn near-black on floors that run from near-black plum to
+  pale sand. It is now a mid-tone grey-violet with a dark edge, a lit spine, a pale blaze down the
+  snout and a bone collar — the one combination that reads on every floor in the game — and slightly
+  larger, so what you are looking at and what you can hit are the same size.
+
+## 0.10 — THE THRESHING FLOOR: a level about the space, not the corridor
+
+- **A fifth level, and it is the open one.** THE THRESHING FLOOR sits between THE ROAD and THE BRIDGE:
+  the widest ground in the compound and the least wall in it. Rooms are half again as big, the ways
+  between them are five tiles across instead of two, and there are almost no doors — it reads as one
+  yard rather than a chain of boxes.
+- **The furniture is the level.** A headbutt on bare floor still only knocks a man down, and out here
+  there is a lot of bare floor. So the rooms give you something to herd him into instead: a field of
+  stone posts spread wide, table rows you can shoulder around to make or close a lane, an island of
+  posts and tables with open ground on every side, braziers down both flanks — and a ring of hay that
+  is not a wall at all until you light it, and cannot be taken back once you have. Nearly twice the
+  furniture of any other level, on the most open ground of any level.
+- **Rifles and hounds punish the middle.** Crossing the open centre is fast, and stupid: the posts are
+  cover, the flanks are where anything useful stands, and a hound catches you in the open. Which half
+  of a room is yours is the whole question the level asks.
+- **THE BRIDGE is now Level 5** and still the finale.
+
+## 0.9 — the hounds, a room the cult can read, and the skills in the corner
+
+- **The hound.** A fourth kind of enemy, and the first one that is not a man. It runs as fast as you do,
+  circles just outside its own reach and darts in for a single bite, then gets out again. You cannot get
+  hold of one — reach for it and it is already elsewhere — and a share of every headbutt you throw it is
+  simply not there for. It is meant to be unpredictable, not unkillable: one hit kills it, and it is
+  light enough that the hit really throws it.
+- **BAAH is the answer to a pack.** A hound loses well over twice as long to the scream as a man does,
+  a scream cancels a run-in outright, and a dazed hound cannot dodge at all — so a screamed pack is a
+  pack you can take apart one at a time. It is the first enemy the game builds specifically around a
+  button you already had.
+- **A pack sends one hound in at a time.** Three of them committing together is a coin toss you cannot
+  read; three taking turns is a pack. Someone is running at you roughly three quarters of the time, but
+  never two at once. And the run-in has the only tell a hound gives you: he flattens out, trails streaks
+  and his eyes come up, which is the moment to put your horns through him.
+- **The cult reads the room now.** Men steer around fire, lit braziers, a rune about to go off and the
+  arms of the Mill — they check where the arms *will be* by the time they get there, not where they are.
+  Every man rolls his own trap sense — once per encounter, not continuously, because a man who re-checks
+  the same wheel forever eventually walks into it however careful he is. About one man in seven crossing
+  the Mill still rides it into a wall, and that man is the reason it is a trap and not a fence. They also
+  read the ground they are *standing* on, not only the step in front of them: before that, half a crowd
+  would hold still at the edge of the arms and get swept anyway. Hounds read a room better than any man.
+- **Throw and roll are on short cooldowns.** Letting a man go empties your mouth for a beat (1.35s) and
+  a tumble costs you the same before the next one, so neither is a button you can hold down. On a phone
+  the rings on GRAB and ROLL count it down; on a desktop the skill rail does.
+- **The roll is a panic button and now behaves like one.** With no direction asked for it throws you away
+  from whatever is about to hit you — weighted toward whoever is mid-swing — and never into a wall, a
+  fire, a brazier or the wheel. With a direction asked for, that direction wins unless it runs into a man, in which case it
+  slides to the nearest angle that does not.
+- **The skill rail, top right.** The four verbs as icons: what each button does now, whether it is
+  available, how long until it is, and what your tomes have done to it. Long Horns lengthens the horns
+  on the icon *and* on the goat; Dragon Breath turns the scream into a cone of fire; Bomb Charge puts a
+  charge on the headbutt; Loose Joints adds a second turn to the roll. Boon names moved to that corner
+  with them; the hearts and the combo stayed on the left.
+- **The Butcher takes one more hit, and fire no longer melts him.** Three hearts, and a burn costs him
+  exactly one of them however long he stands in it. Anyone carrying more than one hit — Butcher, Seer,
+  arena elite — now shows what is left of him over his head.
+- **A better head on the goat.** Body, a short dark neck and a round skull that sits on top of it, each
+  with a thin dark edge, so from straight above you can see where the goat ends and the head begins.
+  Two eyes with rectangular pupils, ears to each side, and a beard that is a tuft rather than a tusk.
 
 ## 0.8 — four levels, the scream that stuns, and a goat you can recognise
 

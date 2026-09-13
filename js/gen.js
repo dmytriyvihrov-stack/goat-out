@@ -9,20 +9,116 @@ function flipTemplate(tpl, rng) {
   return { name: tpl.name, rows };
 }
 
-// `taught` is what this run has already been shown — kinds of men, bosses, the Mill. Anything not
-// in it gets a room of its own on its first appearance; see the spawn pass below.
-function generateLevel(levelDef, seed, taught) {
+// ---------------------------------------------------------------------------------------------
+// THE ENCOUNTER PLAN. Difficulty is decided here, once, before a single man is placed; the generator
+// below only finds floor for what this returns. Two rules, and both are testable:
+//
+//   1. Every kind is met on its own. The room that introduces a kind holds that one enemy and
+//      nothing else — no escorts on a first-appearance boss either.
+//   2. Rooms are bought with threat rather than with bodies, off a curve that runs from the level's
+//      `from` to its `to`. Later rooms are both fuller and nastier, and a level is harder than the
+//      one before it because its two numbers are bigger.
+//
+// `node tools/balance.js` prints what this produces per level and fails on a broken rule.
+function weightedPick(kinds, rng) {
+  let total = 0;
+  for (const k of kinds) total += ENCOUNTER.weight[k] || 1;
+  let r = rng.float(0, total);
+  for (const k of kinds) { r -= ENCOUNTER.weight[k] || 1; if (r <= 0) return k; }
+  return kinds[kinds.length - 1];
+}
+
+// Spend a threat budget on whoever has been introduced, respecting the per-room caps.
+function fillRoom(budget, available, rng, caps, maxMen) {
+  const men = [], used = {};
+  const cap = maxMen || caps.men;
+  let left = budget;
+  for (let guard = 0; guard < 80 && men.length < cap; guard++) {
+    const choices = available.filter((k) => (used[k] || 0) < (caps[k] || 99) && THREAT[k] <= left + 0.5);
+    if (!choices.length) break;
+    const kind = weightedPick(choices, rng);
+    men.push(kind); used[kind] = (used[kind] || 0) + 1; left -= THREAT[kind];
+  }
+  if (!men.length && available.length) men.push(available.includes('bearer') ? 'bearer' : available[0]);
+  return men;
+}
+
+function planEncounters(levelDef, rooms, rng) {
+  const E = levelDef.encounters;
+  // A level may loosen a cap: the finale is allowed rooms the earlier ones are not.
+  const caps = Object.assign({}, ENCOUNTER.cap, E.cap || {});
+  const out = { rooms: new Map(), introRooms: new Set(), hunterFrom: -1, caps };
+  const fight = rooms.filter((r) => r.index > 0 && !r.calm);
+  const ordinary = fight.filter((r) => !r.arena && !r.isHall && !r.isGallery);
+  if (!ordinary.length) return out;
+
+  // Hand each new kind a room of its own: start where the level asks for it and walk forward to the
+  // first ordinary room nobody has claimed, then backward if the level ran out of room forward.
+  const intro = new Map();
+  for (const [kind, at] of (E.introduce || [])) {
+    const want = Math.round(clamp(at, 0, 1) * (ordinary.length - 1));
+    const room = ordinary.slice(want).find((r) => !intro.has(r.index))
+      || ordinary.slice(0, want).reverse().find((r) => !intro.has(r.index));
+    if (room) { intro.set(room.index, kind); out.introRooms.add(room.index); }
+  }
+
+  const pending = new Set(intro.values());
+  const mixable = E.kinds.filter((k) => !pending.has(k));   // met on an earlier level, or from room one
+  // Everything the run has shown him already, so the second Butcher does not get a solo introduction.
+  const seen = new Set([...mixable, ...(levelDef.met || [])]);
+  if (mixable.includes('hunter')) out.hunterFrom = 0;
+  let step = 0, easeOff = false;
+  for (const room of fight) {
+    // An arena is its boss. He stands alone the first time you ever see his kind, and with a little
+    // company every time after that.
+    if (room.arena) {
+      const boss = room.arena.boss;
+      const known = seen.has(boss);
+      const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss), rng, caps) : [];
+      out.rooms.set(room.index, { men: escorts, boss, intro: known ? null : boss, arena: true });
+      if (!known) out.introRooms.add(room.index);
+      seen.add(boss);
+      continue;
+    }
+    const t = ordinary.length > 1 ? step / (ordinary.length - 1) : 1;
+    const curve = lerp(E.from, E.to, Math.pow(clamp(t, 0, 1), E.ease));
+    const kind = intro.get(room.index);
+    if (kind) {
+      // The introduction itself: one of him, nothing else in the room.
+      out.rooms.set(room.index, { men: [kind], intro: kind });
+      mixable.push(kind); pending.delete(kind); seen.add(kind);
+      if (kind === 'hunter') out.hunterFrom = room.index;
+      easeOff = true; step++;
+      continue;
+    }
+    // The Great Hall is the exception to every cap: it is supposed to be a wall of bodies.
+    if (room.isHall) {
+      out.rooms.set(room.index, { men: fillRoom(levelDef.hallThreat || curve * 2.5, mixable, rng, caps, ENCOUNTER.hallCap), hall: true });
+      continue;
+    }
+    // The Gallery is rifles posted apart, but only once rifles are a thing you have met.
+    if (room.isGallery) {
+      const posts = mixable.includes('hunter') ? ['hunter', 'hunter', 'hunter'] : [];
+      out.rooms.set(room.index, { men: posts.concat(fillRoom(curve * 0.6, mixable, rng, caps)), gallery: true });
+      continue;
+    }
+    const budget = curve * (easeOff ? ENCOUNTER.afterIntro : 1);
+    out.rooms.set(room.index, { men: fillRoom(budget, mixable, rng, caps), threat: budget });
+    easeOff = false; step++;
+  }
+  return out;
+}
+
+function generateLevel(levelDef, seed) {
   for (let attempt = 0; attempt < 20; attempt++) {
-    const lvl = tryGenerate(levelDef, seed + attempt * 7919, taught);
+    const lvl = tryGenerate(levelDef, seed + attempt * 7919);
     if (lvl) return lvl;
   }
   throw new Error('level generation failed');
 }
 
-function tryGenerate(levelDef, seed, taught) {
+function tryGenerate(levelDef, seed) {
   const rng = new RNG(seed);
-  // A copy: a generation attempt that fails must not leave the run thinking it has taught something.
-  const met = new Set(taught || []);
   const W = 420, H = 78;
   const tiles = new Uint8Array(W * H).fill(T.WALL);
   const rooms = [];
@@ -31,7 +127,10 @@ function tryGenerate(levelDef, seed, taught) {
   let x = 2;
   let y = Math.floor(H * 0.62);
   const n = levelDef.rooms;
-  const pool = rng.shuffle(ROOM_TEMPLATES.slice());
+  // A level can draw from its own set of rooms: `pool` matches a template's `tag`, and a level
+  // without one gets the untagged default set.
+  const want = levelDef.pool || null;
+  const pool = rng.shuffle(ROOM_TEMPLATES.filter((t) => (t.tag || null) === want));
   let poolIdx = 0;
 
   for (let i = 0; i < n; i++) {
@@ -64,7 +163,7 @@ function tryGenerate(levelDef, seed, taught) {
     }
     rooms.push(room);
     if (i > 0) {
-      const door = carveCorridor(tiles, W, rooms[i - 1], room, rng);
+      const door = carveCorridor(tiles, W, rooms[i - 1], room, rng, levelDef.corridorW);
       if (door && rng.chance(levelDef.doorChance)) props.push({ x: door.x, y: door.y, kind: 'door', vertical: door.vertical });
     }
     x += w + rng.int(3, 7);
@@ -93,11 +192,11 @@ function tryGenerate(levelDef, seed, taught) {
     entry = { x0: first.x - 2, y0: ey, x: (first.x + 1.9) * TILE, y: (ey + 1) * TILE };
   }
 
-  // Props and enemy spawns from markers, with a per-room budget.
-  const metRoom = {};   // where in the level a kind was first shown, so nothing sneaks in ahead of it
+  // Props from the template markers, and the men the plan asked for placed on whatever the room has.
+  const plan = planEncounters(levelDef, rooms, rng);
   rooms.forEach((room) => {
-    const enemyMarkers = [];
-    let bossKind = null, wIdx = rng.int(0, 1);
+    const spots = [];
+    let wIdx = rng.int(0, 1);
     room.markers.forEach((m) => {
       const px = (m.tx + 0.5) * TILE, py = (m.ty + 0.5) * TILE;
       if (m.c === 'B') props.push({ x: px, y: py, kind: 'brazier' });
@@ -106,20 +205,14 @@ function tryGenerate(levelDef, seed, taught) {
       else if (m.c === 'L') props.push({ x: px, y: py, kind: 'lamp' });
       else if (m.c === 't') { if (m.tx % 2 === 0 && m.ty % 2 === 0) props.push({ x: px + TILE / 2, y: py + TILE / 2, kind: 'table' }); }
       else if (m.c === 'M') props.push({ x: px, y: py, kind: 'mill', phase: rng.float(0, Math.PI * 2) });
+      else if (m.c === 'X') room.bossSpot = { x: px, y: py };
       // A pair of stands alternates, so an arena always offers one of each rather than two swords.
       else if (m.c === 'w') props.push({ x: px, y: py, kind: 'weapon', weapon: (wIdx++ % 2) ? 'shield' : 'sword' });
-      else if (m.c === 'X') {
-        const boss = (room.arena && room.arena.boss) || 'butcher';
-        const elite = room.arena && room.arena.elite === false ? false : boss !== 'butcher';
-        spawns.push({ x: px, y: py, kind: boss, elite, boss: true });
-        bossKind = boss;
-      }
-      else enemyMarkers.push(m);
+      else spots.push(m);
     });
     // Sometimes a stand or two of arms, anywhere a man might have left one. Arenas have their own
-    // pair from the template; the rooms with the controls on the floor get one to practise on.
-    // The second room with the controls on it always gets a sword, so the stand is met somewhere
-    // safe rather than in the middle of a fight.
+    // pair from the template; the second room with the controls painted on it always gets a sword,
+    // so the stand is met somewhere safe rather than in the middle of a fight.
     const teachRack = room.calm && room.index === 2;
     if (room.index > 0 && !room.arena && (teachRack || rng.chance(levelDef.racks || 0))) {
       for (let k = 0, n = !teachRack && rng.chance(0.25) ? 2 : 1; k < n; k++) {
@@ -133,58 +226,44 @@ function tryGenerate(levelDef, seed, taught) {
         }
       }
     }
-    // The pen room, and the two rooms with the controls painted on the floor, stay empty.
-    if (room.index === 0 || room.calm) return;
-    let budget = room.isHall ? (levelDef.hallBudget || 12)
-      : room.isGallery ? enemyMarkers.length
-      : levelDef.budget(room.index);
-    // A set piece the run has not met yet is shown on its own: the Mill with one man in the room,
-    // a new boss with nobody at his back.
-    if (room.isMill && !met.has('mill')) { met.add('mill'); budget = Math.min(budget, 1); }
-    if (bossKind && !met.has(bossKind + ' boss')) { met.add(bossKind + ' boss'); budget = 0; }
-    rng.shuffle(enemyMarkers);
-    // Add extra random floor positions so a room can exceed the men its template marks.
-    const want = Math.max(0, budget - enemyMarkers.length);
-    const extra = [];
-    for (let k = 0; k < want * 8 && extra.length < want; k++) {
-      const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
-      if (tiles[ty * W + tx] === T.FLOOR) extra.push({ tx, ty, c: rng.chance(0.35) ? 'r' : 'e' });
-    }
-    const all = enemyMarkers.concat(extra).slice(0, budget);
-    const ranged = levelDef.ranged || 'none';
-    // One mage to a room at most, and none at all until the level is a few rooms old. Two of them
-    // painting the same floor is not a fight, it is a coin toss.
-    const seerOk = room.index >= (levelDef.seerFrom === undefined ? 0 : levelDef.seerFrom);
-    let seersHere = 0;
-    const chosen = [];
-    all.forEach((m) => {
-      let kind = 'bearer';
-      if ((m.c === 'r' || m.c === 'm' || m.c === 'R') && ranged !== 'none') {
-        const plainB = ranged === 'seer' ? 'bearer' : 'hunter';   // what he is when he cannot be a mage
-        if (m.c === 'R') kind = plainB;                           // a post that is always a rifle
-        else if ((m.c === 'm' || rng.chance(levelDef.seerShare || 0)) && seerOk && seersHere < (levelDef.seerPerRoom || 1)) {
-          kind = 'seer'; seersHere++;
-        } else kind = plainB;
+    const cell = plan.rooms.get(room.index);
+    if (!cell) return;                                  // the pen and the two control rooms stay empty
+    rng.shuffle(spots);
+    // A rifle likes a post and a mage likes his own mark; everyone else takes what is left.
+    const take = (kind) => {
+      const wants = kind === 'hunter' ? 'rR' : kind === 'seer' ? 'mr' : 'e';
+      let i = spots.findIndex((m) => wants.includes(m.c));
+      if (i < 0) i = spots.length ? 0 : -1;
+      if (i >= 0) { const m = spots.splice(i, 1)[0]; return { x: (m.tx + 0.5) * TILE, y: (m.ty + 0.5) * TILE }; }
+      for (let k = 0; k < 40; k++) {
+        const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
+        if (tiles[ty * W + tx] === T.FLOOR) return { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
       }
-      chosen.push({ m, kind });
-    });
-    // The first of anything this run has never seen gets the room to itself: one Seer, one rifle,
-    // nobody else in with him. You cannot learn what a thing does while four men are clubbing you.
-    const fresh = chosen.find((c) => !met.has(c.kind));
-    if (fresh) { met.add(fresh.kind); metRoom[fresh.kind] = room.index; chosen.length = 0; chosen.push(fresh); }
-    chosen.forEach((c) => spawns.push({ x: (c.m.tx + 0.5) * TILE, y: (c.m.ty + 0.5) * TILE, kind: c.kind, roomIndex: room.index }));
+      return null;
+    };
+    if (cell.boss) {
+      const at = room.bossSpot || take(cell.boss);
+      if (at) spawns.push({ x: at.x, y: at.y, kind: cell.boss === 'champion' ? 'bearer' : cell.boss,
+        elite: cell.boss !== 'butcher', boss: true, roomIndex: room.index });
+    }
+    for (const kind of cell.men) {
+      const at = take(kind);
+      if (!at) continue;
+      spawns.push({ x: at.x, y: at.y, kind: kind === 'champion' ? 'bearer' : kind,
+        champion: kind === 'champion', roomIndex: room.index, intro: cell.intro === kind });
+    }
   });
 
-  // Lone rifle posts. A rifle on its own is a different problem from a rifle inside a crowd:
-  // you have to cross its line rather than out-run the pile it is standing in.
-  if (levelDef.lonePosts && (levelDef.ranged === 'both' || levelDef.ranged === 'hunter')) {
-    // Never before the room that introduced the rifle: a lone post is a fine first rifle, but not
-    // one standing three rooms earlier than the one the level meant to teach it in.
-    const after = metRoom.hunter === undefined ? 1 : Math.max(1, metRoom.hunter);
-    const eligible = rng.shuffle(rooms.filter((r) => r.index > after && !r.arena && !r.isMill && !r.calm && !r.isGallery));
+  // Lone rifle posts, once rifles are something you have met. A rifle on its own is a different
+  // problem from a rifle inside a crowd: you have to cross its line rather than out-run the pile.
+  if (levelDef.lonePosts && plan.hunterFrom >= 0) {
+    const eligible = rng.shuffle(rooms.filter((r) => r.index > plan.hunterFrom && !r.arena && !r.isMill && !r.calm
+      && !r.isGallery && !r.isHall && !plan.introRooms.has(r.index)));
     let placed = 0;
     for (const room of eligible) {
       if (placed >= levelDef.lonePosts) break;
+      // The room's own plan already counts: a post on top of two rifles is a wall, not a line to cross.
+      if (spawns.filter((s) => s.roomIndex === room.index && s.kind === 'hunter').length >= plan.caps.hunter) continue;
       for (let k = 0; k < 40; k++) {
         const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
         if (tiles[ty * W + tx] !== T.FLOOR) continue;
@@ -235,7 +314,7 @@ function tryGenerate(levelDef, seed, taught) {
     }
   }
   return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt, taught: Array.from(met) };
+    hints, controls, cagePrompt };
 }
 
 // A ring of iron bars around a point. The pen around the start comes apart under a headbutt;
@@ -267,18 +346,23 @@ function pickDoorY(room, side, rng) {
   return rng.pick(candidates);
 }
 
-// Carves an S-shaped 2-wide corridor and returns a sensible spot for a door.
-function carveCorridor(tiles, W, a, b, rng) {
+// Carves an S-shaped corridor — two tiles wide by default, wider where a level asks for it — and
+// returns a sensible spot for a door. A wide corridor eats the borders it passes through, which is
+// how the open level ends up reading as one yard rather than a row of boxes.
+function carveCorridor(tiles, W, a, b, rng, width) {
+  const wide = Math.max(2, width || 2);
+  const H = tiles.length / W;
   const yA = pickDoorY(a, 'right', rng);
   const yB = pickDoorY(b, 'left', rng);
   if (yA < 0 || yB < 0) return null;
   const xA = a.x + a.w - 1, xB = b.x;
   const midX = Math.floor((xA + xB) / 2);
-  const carve = (tx, ty) => { if (tx >= 0 && tx < W) tiles[ty * W + tx] = T.FLOOR; };
-  for (let tx = xA; tx <= midX + 1; tx++) { carve(tx, yA); carve(tx, yA + 1); }
-  const y0 = Math.min(yA, yB), y1 = Math.max(yA, yB) + 1;
-  for (let ty = y0; ty <= y1; ty++) { carve(midX, ty); carve(midX + 1, ty); }
-  for (let tx = midX; tx <= xB; tx++) { carve(tx, yB); carve(tx, yB + 1); }
+  const carve = (tx, ty) => { if (tx >= 0 && tx < W && ty >= 1 && ty < H - 1) tiles[ty * W + tx] = T.FLOOR; };
+  const band = (tx, ty) => { for (let k = 0; k < wide; k++) carve(tx, ty + k); };
+  for (let tx = xA; tx <= midX + wide - 1; tx++) band(tx, yA);
+  const y0 = Math.min(yA, yB), y1 = Math.max(yA, yB) + wide - 1;
+  for (let ty = y0; ty <= y1; ty++) for (let k = 0; k < wide; k++) carve(midX + k, ty);
+  for (let tx = midX; tx <= xB; tx++) band(tx, yB);
   if (y1 - y0 >= 4) return { x: (midX + 1) * TILE, y: (Math.floor((y0 + y1) / 2) + 0.5) * TILE, vertical: false };
   if (midX - xA >= 3) return { x: (Math.floor((xA + midX) / 2) + 0.5) * TILE, y: (yA + 1) * TILE, vertical: true };
   return null;

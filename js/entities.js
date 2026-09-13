@@ -9,7 +9,7 @@ class Goat {
     this.holding = null; this.holdTimer = 0;
     this.screamCd = 0; this.screaming = 0; this.invuln = 0; this.fireTick = 0; this.onFire = false; this.witchFire = false;
     this.hoofTimer = 0; this.kind = 'goat';
-    this.rollCd = 0; this.rollSpin = 0; this.rollDir = { x: 1, y: 0 };
+    this.rollCd = 0; this.rollSpin = 0; this.rollDir = { x: 1, y: 0 }; this.grabCd = 0;
     this.trail = [];       // ghost positions for the speed smear
     this.trailTimer = 0;
     this.dazed = 0;        // stars over its head: the club in the opening scene, nothing else yet
@@ -20,6 +20,7 @@ class Goat {
     const g = TUNING.goat, inp = game.input, world = game.world;
     this.aim = inp.aim;
     this.screamCd = Math.max(0, this.screamCd - dt); this.screaming = Math.max(0, this.screaming - dt);
+    this.grabCd = Math.max(0, this.grabCd - dt);
     this.invuln = Math.max(0, this.invuln - dt); this.dazed = Math.max(0, this.dazed - dt);
 
     // Off his feet. Nothing but the floor until it passes: no verbs, no aim, no momentum.
@@ -35,16 +36,17 @@ class Goat {
     const R = TUNING.goat.roll;
     this.rollCd = Math.max(0, this.rollCd - dt);
     if (inp.rollPressed && this.rollCd <= 0 && this.state !== 'lunge' && this.state !== 'roll' && this.state !== 'rollrecover' && !this.dead) {
-      let dx = inp.mx, dy = inp.my;
-      if (!dx && !dy) { dx = this.aim.x; dy = this.aim.y; }
-      const l = Math.hypot(dx, dy) || 1;
-      this.rollDir = { x: dx / l, y: dy / l }; this.rollSpin = 0;
+      this.rollDir = this.rollDirection(game, inp.mx, inp.my); this.rollSpin = 0;
       this.state = 'roll'; this.timer = R.duration; this.rollCd = R.cooldown * game.mods.rollCooldown;
       this.vx = this.rollDir.x * R.speed * game.mods.rollDistance;
       this.vy = this.rollDir.y * R.speed * game.mods.rollDistance;
       this.invuln = Math.max(this.invuln, R.invuln);
-      if (this.holding) { const h = this.holding; this.holding = null; h.held = false; if (!h.item) { h.state = 'floored'; h.timer = 0.5; } }
-      game.audio.sfxRoll(); world.emitNoise(this.x, this.y, TUNING.noise.swing);
+      if (this.holding) {
+        const h = this.holding; this.holding = null; h.held = false;
+        if (!h.item) { h.state = 'floored'; h.timer = 0.5; }
+        this.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown;
+      }
+      game.audio.sfxRoll(); world.emitNoise(this.x, this.y, TUNING.noise.swing); game.vibe(12);
       game.particles(this.x, this.y, 9, PALETTE.ash, 150);
     }
     if (this.state === 'roll') {
@@ -92,7 +94,7 @@ class Goat {
     }
 
     // ---- grab / hold / throw ----
-    if (inp.rmbDown && !this.holding && this.state === 'idle') this.tryGrab(game);
+    if (inp.rmbDown && !this.holding && this.state === 'idle' && this.grabCd <= 0) this.tryGrab(game);
     if (this.holding) {
       const h = this.holding;
       if (h.dead || h.broken) { this.holding = null; }
@@ -104,8 +106,10 @@ class Goat {
           h.held = false; this.holding = null;
           const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul : 1;
           h.fling(this.aim.x * g.grab.throwImpulse * mul, this.aim.y * g.grab.throwImpulse * mul, true);
+          this.grabCd = g.grab.cooldown * game.mods.grabCooldown;
           if (h.kind === 'weapon') { game.audio.sfxSteel(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
           else game.audio.sfxSwing();
+          game.vibe(18);
         } else if (game.mods.devour && !h.item && this.holdTimer >= TUNING.goat.devour.time) {
           // Keep holding and the goat opens him up. Sometimes that is a meal.
           this.holding = null; h.held = false;
@@ -114,10 +118,13 @@ class Goat {
           game.world.splat(h.x, h.y, this.aim.x, this.aim.y, 20);
           game.particles(h.x, h.y, 22, PALETTE.blood, 200);
           h.die(game, 'devour', this.aim.x, this.aim.y);
+          this.grabCd = g.grab.cooldown * game.mods.grabCooldown;
           game.hitstop(0.06); game.shake(7); game.vibe(30);
         } else if (!h.item && this.holdTimer >= game.mods.holdTime) {
+          // He works his way loose. Losing him costs less than throwing him, but it still costs.
           h.held = false; this.holding = null; h.state = 'floored'; h.timer = 0.6;
           h.x += this.aim.x * 10; h.y += this.aim.y * 10;
+          this.grabCd = g.grab.cooldown * game.mods.grabCooldown * 0.7;
         }
       }
     }
@@ -178,6 +185,50 @@ class Goat {
     if (spd > 100 && Math.random() < dt * 4) world.emitNoise(this.x, this.y, TUNING.noise.footstep);
   }
 
+  // The roll is a panic button, and it has to behave like one. With no direction asked for it throws
+  // the goat away from whatever is about to hit it; with one asked for, that direction wins unless it
+  // runs into a man, a wall or a fire, in which case it slides to the nearest angle that does not.
+  rollDirection(game, inx, iny) {
+    const R = TUNING.goat.roll, w = game.world;
+    const dist = R.speed * game.mods.rollDistance * R.duration * 0.8;
+    const range = R.threatRange * TILE;
+    const threats = [];
+    for (const e of game.enemies) {
+      if (e.dead || e.held || e === this.holding) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
+      if (d > range || d < 1) continue;
+      // Anyone winding up a swing is more of a reason to be elsewhere than anyone who is not.
+      const urgency = (e.state === 'windup' || e.state === 'charge' || e.state === 'chargewind' || e.state === 'swing') ? 1.6 : 1;
+      threats.push({ x: dx / d, y: dy / d, w: (1 - d / range) * urgency });
+    }
+    const want = Math.hypot(inx, iny) > 0.1 ? Math.atan2(iny, inx) : null;
+    let best = null, bestScore = -Infinity;
+    for (let i = 0; i < 24; i++) {
+      // With a stick direction, walk outward from it; without one, sweep the whole circle.
+      const a = want === null ? (i / 24) * Math.PI * 2 : want + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.26;
+      const cx = Math.cos(a), cy = Math.sin(a);
+      let score = 0;
+      for (const t of threats) score -= (t.x * cx + t.y * cy) * t.w * 2.4;
+      // How far along this line he actually gets before a wall or a fire stops being worth it.
+      let clear = 1;
+      for (const f of [0.4, 0.7, 1]) {
+        const px = this.x + cx * dist * f, py = this.y + cy * dist * f;
+        if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE))) { clear = f - 0.3; break; }
+        if (w.isBurningPx(px, py)) { clear = f - 0.5; break; }
+        // Ending a tumble in a brazier or under the wheel is the same mistake as ending it in a wall.
+        let hazard = false;
+        for (const p of game.hazards) {
+          if (p.kind === 'mill' ? p.millThreat(px, py, this.r) : Math.hypot(p.x - px, p.y - py) < p.r + this.r + 6) { hazard = true; break; }
+        }
+        if (hazard) { clear = f - 0.5; break; }
+      }
+      score += clear * 2.6;
+      if (want !== null) score += Math.cos(a - want) * 1.7;   // the stick still gets the last word
+      if (score > bestScore) { bestScore = score; best = { x: cx, y: cy }; }
+    }
+    return best || { x: -this.aim.x, y: -this.aim.y };
+  }
+
   // A cone of fire where the scream used to be.
   breathe(game) {
     const B = TUNING.goat.breath, ax = this.aim.x, ay = this.aim.y;
@@ -221,8 +272,11 @@ class Goat {
         game.world.splat(e.x, e.y, ax, ay, 8);
         if (e.hp <= 0) e.die(game, 'headbutt', ax, ay);
       } else {
-        e.fling(ax * impulse, ay * impulse, false);
-        game.shake(2); game.audio.sfxThud();
+        // A hound is not always there for it: that is what makes him a hound and not a man.
+        if (e.tryDodge && e.tryDodge(game, ax, ay)) continue;
+        const imp = impulse * (e.cfg && e.cfg.flingMul ? e.cfg.flingMul : 1);
+        e.fling(ax * imp, ay * imp, false);
+        game.shake(2); game.audio.sfxThud(); game.vibe(10);
         game.particles(this.x + ax * this.r, this.y + ay * this.r, 6, PALETTE.bone, 260);
         game.kick(ax, ay, TUNING.juice.kick * 0.55);
         if (game.mods.bomb) { e.bombFuse = TUNING.goat.bomb.fuse; e.aware = true; }
@@ -246,9 +300,17 @@ class Goat {
       if ((dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) return;
       if (d < bestD) { bestD = d; best = o; }
     };
-    for (const e of game.enemies) if (!e.dead && e.kind !== 'butcher' && e.state !== 'flung' && !e.held) consider(e);
+    for (const e of game.enemies) if (!e.dead && e.kind !== 'butcher' && e.kind !== 'dog' && e.state !== 'flung' && !e.held) consider(e);
     for (const p of game.props) if (p.item && !p.broken && !p.held && !p.flung) consider(p);
-    if (!best) return;
+    if (!best) {
+      // Reaching for a hound and closing on nothing is a rule worth stating once, where it happened.
+      for (const e of game.enemies) {
+        if (e.dead || e.kind !== 'dog') continue;
+        if (Math.hypot(e.x - this.x, e.y - this.y) > this.r + e.r + g.reach) continue;
+        game.floatText(e.x, e.y - 24, 'TOO QUICK', PALETTE.ash); break;
+      }
+      return;
+    }
     // Taking it out of the stand tips the stand over. What is left is the thing in your mouth.
     if (best.kind === 'weapon' && best.inStand) {
       best.inStand = false;
@@ -258,6 +320,7 @@ class Goat {
     }
     best.held = true; best.flung = false; best.thrown = false; this.holding = best; this.holdTimer = 0;
     if (!best.item) { best.state = 'held'; best.aware = true; }
+    game.vibe(10);
   }
 
   damage(n, game, kx, ky, fromFire) {
@@ -529,6 +592,23 @@ class Prop {
       if (game.world.isBurningPx(this.x, this.y)) game.world.ignitePx(this.x, this.y, true);
     }
     if (spd < 30) { this.flung = false; this.vx = 0; this.vy = 0; }
+  }
+
+  // Is this spot under an arm now, or about to be as the wheel comes round? This is what lets a man
+  // read the Mill: he checks where the arms will be by the time he gets there, not where they are.
+  millThreat(x, y, r, lead) {
+    const M = TUNING.mill;
+    const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy);
+    if (d > M.armLen + r || d < M.innerR - r) return false;
+    const ang = Math.atan2(dy, dx);
+    const slack = M.armHalfWidth + r / Math.max(d, 12);
+    const sweep = M.speed * (lead === undefined ? TUNING.ai.millLead : lead);
+    // angleDiff(arm, point) is how much further the arm has to turn to reach the spot.
+    for (const a of [this.angle, this.angle + Math.PI]) {
+      const diff = angleDiff(a, ang);
+      if (diff >= -slack && diff <= slack + sweep) return true;
+    }
+    return false;
   }
 
   // Two heavy arms sweeping a circle. Everything caught goes flying, cultists included.
