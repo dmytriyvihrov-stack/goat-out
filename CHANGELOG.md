@@ -5,6 +5,29 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.1 — THE OSSUARY, and a thing you cannot hit
+
+- **A sixth level, and its enemy is not there.** THE OSSUARY is under the bridge, where everything the
+  compound ever killed was thrown. The wraith is mist most of the time: nothing in the game can touch
+  it, it can touch nothing back, and a wall is not a wall to it. It works its way round to your flank or
+  your back, and only there does it become a body — and from that instant it is committed. It swings, and
+  it stays a body for most of a second after the blow. That window is the only time a horn, a blade, a
+  pot, a bullet, the Mill or a scream means anything to it, and the only time it means anything to you.
+- **So the fight is about where you are looking.** Face one and it can do nothing at all. It cannot form
+  inside stone, either, so a wall at your back is one arc it cannot arrive from — the only thing the
+  ground does for you on that level. With three of them in a room you cannot watch every side, which is
+  the point: let one commit, then turn and unmake it.
+- **BAAH matters again, differently.** A scream passes straight through mist and does not even count it
+  in the tally. A scream on one that has committed freezes it solid where it stands without cancelling
+  the swing — so it lengthens the window rather than ending the threat.
+- **The boss of the dead.** An elite wraith takes three separate catches: each one tears it apart and it
+  puts itself back together somewhere else, so you cannot stand over it and finish it off.
+- **They leave nothing.** No blood, no body on the floor, no scorch, no wet noise — a cold ring, a pale
+  burst, and it is gone. The men standing near one have things to say about their own dead getting up.
+- **The first room of the level is one wraith and nothing else,** and the first few horns that close on
+  nothing say so where it happened. The threat curve made the rest of the level: it is the hardest
+  ground in the game, and `node tools/balance.js` says by how much.
+
 ## 1.0 — the opening scene, the way out, stands of arms, and a pen that fights back
 
 Two lines of work on this game ran side by side for a while: one added the hounds, the threat curve and

@@ -20,23 +20,25 @@ function flipTemplate(tpl, rng) {
 //      one before it because its two numbers are bigger.
 //
 // `node tools/balance.js` prints what this produces per level and fails on a broken rule.
-function weightedPick(kinds, rng) {
+// A level may re-weigh the draw: the Ossuary is mostly its dead, whatever else is standing there.
+function weightedPick(kinds, rng, weight) {
+  const w = weight || ENCOUNTER.weight;
   let total = 0;
-  for (const k of kinds) total += ENCOUNTER.weight[k] || 1;
+  for (const k of kinds) total += w[k] || 1;
   let r = rng.float(0, total);
-  for (const k of kinds) { r -= ENCOUNTER.weight[k] || 1; if (r <= 0) return k; }
+  for (const k of kinds) { r -= w[k] || 1; if (r <= 0) return k; }
   return kinds[kinds.length - 1];
 }
 
 // Spend a threat budget on whoever has been introduced, respecting the per-room caps.
-function fillRoom(budget, available, rng, caps, maxMen) {
+function fillRoom(budget, available, rng, caps, maxMen, weight) {
   const men = [], used = {};
   const cap = maxMen || caps.men;
   let left = budget;
   for (let guard = 0; guard < 80 && men.length < cap; guard++) {
     const choices = available.filter((k) => (used[k] || 0) < (caps[k] || 99) && THREAT[k] <= left + 0.5);
     if (!choices.length) break;
-    const kind = weightedPick(choices, rng);
+    const kind = weightedPick(choices, rng, weight);
     men.push(kind); used[kind] = (used[kind] || 0) + 1; left -= THREAT[kind];
   }
   if (!men.length && available.length) men.push(available.includes('bearer') ? 'bearer' : available[0]);
@@ -47,6 +49,7 @@ function planEncounters(levelDef, rooms, rng) {
   const E = levelDef.encounters;
   // A level may loosen a cap: the finale is allowed rooms the earlier ones are not.
   const caps = Object.assign({}, ENCOUNTER.cap, E.cap || {});
+  const weight = E.weight ? Object.assign({}, ENCOUNTER.weight, E.weight) : null;
   const out = { rooms: new Map(), introRooms: new Set(), hunterFrom: -1, caps };
   const fight = rooms.filter((r) => r.index > 0 && !r.calm);
   const ordinary = fight.filter((r) => !r.arena && !r.isHall && !r.isGallery);
@@ -74,7 +77,7 @@ function planEncounters(levelDef, rooms, rng) {
     if (room.arena) {
       const boss = room.arena.boss;
       const known = seen.has(boss);
-      const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss), rng, caps) : [];
+      const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss), rng, caps, 0, weight) : [];
       out.rooms.set(room.index, { men: escorts, boss, intro: known ? null : boss, arena: true });
       if (!known) out.introRooms.add(room.index);
       seen.add(boss);
@@ -93,17 +96,17 @@ function planEncounters(levelDef, rooms, rng) {
     }
     // The Great Hall is the exception to every cap: it is supposed to be a wall of bodies.
     if (room.isHall) {
-      out.rooms.set(room.index, { men: fillRoom(levelDef.hallThreat || curve * 2.5, mixable, rng, caps, ENCOUNTER.hallCap), hall: true });
+      out.rooms.set(room.index, { men: fillRoom(levelDef.hallThreat || curve * 2.5, mixable, rng, caps, ENCOUNTER.hallCap, weight), hall: true });
       continue;
     }
     // The Gallery is rifles posted apart, but only once rifles are a thing you have met.
     if (room.isGallery) {
       const posts = mixable.includes('hunter') ? ['hunter', 'hunter', 'hunter'] : [];
-      out.rooms.set(room.index, { men: posts.concat(fillRoom(curve * 0.6, mixable, rng, caps)), gallery: true });
+      out.rooms.set(room.index, { men: posts.concat(fillRoom(curve * 0.6, mixable, rng, caps, 0, weight)), gallery: true });
       continue;
     }
     const budget = curve * (easeOff ? ENCOUNTER.afterIntro : 1);
-    out.rooms.set(room.index, { men: fillRoom(budget, mixable, rng, caps), threat: budget });
+    out.rooms.set(room.index, { men: fillRoom(budget, mixable, rng, caps, 0, weight), threat: budget });
     easeOff = false; step++;
   }
   return out;

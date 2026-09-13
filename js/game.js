@@ -437,7 +437,7 @@ class Game {
     // music intensity from threat
     let aware = 0, hunter = false;
     for (const e of this.enemies) {
-      if (e.dead || !e.aware || e.state === 'idle') continue;
+      if (e.dead || !e.aware || e.state === 'idle' || e.ghosted) continue;
       if (Math.hypot(e.x - this.goat.x, e.y - this.goat.y) > 16 * TILE) continue;
       aware++; if (e.kind === 'hunter') hunter = true;
     }
@@ -730,9 +730,9 @@ class Game {
   collideEntities(dt) {
     const g = this.goat, en = this.enemies, ph = TUNING.physics;
     for (let i = 0; i < en.length; i++) {
-      const a = en[i]; if (a.dead || a.held) continue;
+      const a = en[i]; if (a.dead || a.held || a.ghosted) continue;
       for (let j = i + 1; j < en.length; j++) {
-        const b = en[j]; if (b.dead || b.held) continue;
+        const b = en[j]; if (b.dead || b.held || b.ghosted) continue;
         const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
         if (d >= min || d === 0) continue;
         const nx = dx / d, ny = dy / d;
@@ -744,7 +744,7 @@ class Game {
       }
     }
     for (const e of en) {
-      if (e.dead || e.held || g.dead) continue;
+      if (e.dead || e.held || e.ghosted || g.dead) continue;
       const dx = e.x - g.x, dy = e.y - g.y, d = Math.hypot(dx, dy), min = e.r + g.r;
       if (d >= min || d === 0) continue;
       const nx = dx / d, ny = dy / d, push = (min - d);
@@ -760,7 +760,7 @@ class Game {
       if (!p.blocking) continue;
       const all = [g].concat(en);
       for (const e of all) {
-        if (e.dead || e.held) continue;
+        if (e.dead || e.held || e.ghosted) continue;
         const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy), min = e.r + p.r;
         if (d >= min || d === 0) continue;
         const nx = dx / d, ny = dy / d;
@@ -812,7 +812,7 @@ class Game {
     // of them doing that filled half the screen with OOPS.
     if (att.kind === 'dog') return;
     for (const e of this.enemies) {
-      if (e === att || e.dead || e.held || e.state === 'flung') continue;
+      if (e === att || e.dead || e.held || e.ghosted || e.state === 'flung') continue;
       if (!inArc(e)) continue;
       if (e === g.holding) continue;
       if (att.kind === 'butcher') { e.fling(dirx * 14 * TILE, diry * 14 * TILE, false); this.floatText(e.x, e.y - 26, 'OOPS', PALETTE.bone); }
@@ -830,9 +830,11 @@ class Game {
     this.shake(big ? 14 : J.shakeKill);
     this.kick(dx, dy, J.kick * (big ? 1.7 : 1));
     this.zoomPunch(big ? 2 : 1);
-    this.flash(PALETTE.blood, big ? 0.24 : 0.11);
-    this.gore(e.x, e.y, big ? 16 : 9, dx, dy);
+    const cold = e.kind === 'wraith';
+    this.flash(cold ? PALETTE.witchHi : PALETTE.blood, big ? 0.24 : cold ? 0.16 : 0.11);
+    if (!cold) this.gore(e.x, e.y, big ? 16 : 9, dx, dy);
     if (big) { this.audio.sfxBell(); this.floatText(e.x, e.y - 44, 'THE BUTCHER IS DOWN', PALETTE.fireHi); this.slowTimer = J.killSlow; this.vibe(40); }
+    else if (cold) { this.vibe(12); }
     else { this.audio.sfxSplat(); this.vibe(12); }
     if (this.combo >= 2) {
       this.floatText(e.x, e.y - 40, 'x' + this.combo, PALETTE.fireHi);
@@ -846,8 +848,10 @@ class Game {
       if (!this.world.los(o.x, o.y, e.x, e.y)) continue;
       this.bark(o, 'panic', 0.5); break;
     }
-    this.world.emitNoise(e.x, e.y, TUNING.noise.splat);
-    this.particles(e.x, e.y, big ? 26 : 14, PALETTE.blood, 220);
+    if (!cold) {
+      this.world.emitNoise(e.x, e.y, TUNING.noise.splat);
+      this.particles(e.x, e.y, big ? 26 : 14, PALETTE.blood, 220);
+    }
   }
   // Off his feet: no verbs until it passes. The pen is the only thing that does it to him.
   stunGoat(t) {
@@ -879,6 +883,16 @@ class Game {
         color: Math.random() < 0.3 ? PALETTE.bloodDark : PALETTE.blood, size: 2.5 + Math.random() * 4, chunk: true });
     }
   }
+  // Horns closing on nothing. It is said where it happened, a few times, and then the run is
+  // expected to have understood: you cannot hit what has not arrived yet.
+  mistTold(e) {
+    if (this.mistSaid === undefined) this.mistSaid = 0;
+    if (this.mistSaid >= 3) return;
+    this.mistSaid++;
+    this.floatText(e.x, e.y - 26, this.mistSaid === 1 ? 'NOT HERE YET' : 'NOTHING TO HIT', PALETTE.witchHi);
+    this.audio.sfxSwing();
+  }
+
   // A hound has nothing to say. It growls, and the first one of a run says what answers it.
   houndSeen(dog) {
     this.audio.sfxGrowl();

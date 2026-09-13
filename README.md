@@ -1,7 +1,7 @@
 # GOAT OUT
 
 You are the sacrificial goat. They were driving you to the altar, the truck fell off the bridge, and now
-the whole cult wants you back. Five levels, one life, procedurally generated every run.
+the whole cult wants you back. Six levels, one life, procedurally generated every run.
 
 **Play it:** https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
@@ -54,11 +54,19 @@ printed in the top right.
 
 ## What is in
 
-**Five levels.** THE ALTAR is Bearers, with one hound near the end of it. THE YARD adds Seers, late and
+**Six levels.** THE ALTAR is Bearers, with one hound near the end of it. THE YARD adds Seers, late and
 one to a room. THE ROAD adds Hunters, posted on their own as well as in crowds. THE THRESHING FLOOR takes
-the walls away. THE BRIDGE mixes everything. Every level carries more hounds than the one before. Each is
+the walls away. THE BRIDGE mixes everything. THE OSSUARY, under the bridge, belongs to the dead. Every
+level carries more hounds than the one before. Each is
 a chain of hand-authored rooms stitched together differently every run, and each one hands your hearts
 back.
+
+**The wraith**, and the level that is made of them. It is not there most of the time: no body, nothing to
+hit, and a wall is not a wall to it. It works its way round to your flank or your back, and only then
+becomes real — and from that instant it cannot stop, and stays real well past the blow. That window is
+the only time anything of yours can touch it, and the only time a scream can freeze it. Face one and it
+can do nothing at all. It cannot become solid inside a wall, so a wall at your back is one arc it cannot
+come from. THE OSSUARY, under the bridge, is where everything the compound ever killed was thrown.
 
 **THE THRESHING FLOOR**, the open level: rooms half again as wide, five-tile gaps instead of doorways,
 and hardly a wall to throw anybody at. Instead there is furniture — a field of stone posts, table rows
@@ -83,10 +91,10 @@ a rifle holds that one enemy and nothing else, and a boss you have never seen st
 company. After that they arrive mixed, and the mix gets worse as the level goes on and worse again on the
 level after.
 
-**Six enemy types.** Club-swinging Bearers; Champions, who take a second hit and carry notches over
+**Seven enemy types.** Club-swinging Bearers; Champions, who take a second hit and carry notches over
 their heads to say so; blinking Seers whose runes erupt into violet witchfire that no boon protects you
 from; Hunters whose bullets travel and hit their own; the Butcher, who takes three hits and cannot be
-interrupted mid-swing; and the hounds. They shout short lines when they see you, hear
+interrupted mid-swing; the hounds; and the wraiths. They shout short lines when they see you, hear
 you, swing at you or watch one of their own come apart — and they read the room: fire, lit braziers, a
 rune about to go off and the sweeping arms of the Mill. Not all of them read it correctly.
 

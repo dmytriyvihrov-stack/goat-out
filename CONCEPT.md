@@ -126,7 +126,7 @@ nastier, and a later level is harder than the one before it. Caps keep any singl
 mage, one champion, two rifles, seven men. `node tools/balance.js` prints what the numbers produce and
 fails when a rule breaks.
 
-Five levels. Every level holds arena bosses, one Mill room near the middle, and milk bowls that restore
+Six levels. Every level holds arena bosses, one Mill room near the middle, and milk bowls that restore
 a heart. The later ones add a Gallery of posted rifles, a Great Hall, and one level built the other way
 round: almost no walls, and furniture instead.
 
@@ -137,6 +137,17 @@ round: almost no walls, and furniture instead.
 | **THE ROAD** | 14 | Bearers, Seers, Hunters, hounds | Two Butchers |
 | **THE THRESHING FLOOR** | 12 | All five, mixed | Elite Seer, Butcher |
 | **THE BRIDGE** | 16 | All five, mixed | Butcher, elite Seer, Butcher |
+| **THE OSSUARY** | 16 | Wraiths, and a garrison | Butcher, elite wraith, elite Seer |
+
+**THE OSSUARY** is the last ground and the only one whose enemy cannot be fought on the terms the rest
+of the game taught. A wraith is mist: nothing reaches it, it reaches nothing, and it goes through the
+walls. It circles to the side of you that you are not looking at, and only there does it become a body —
+at which point it is committed, it swings, and it stays a body for most of a second afterwards. That
+window is the whole fight. Everything works in it and nothing works outside it, so the level is not
+about reach or cover but about where you are looking and who you have let get behind you. The one thing
+the ground still does for you is that a body cannot form inside a stone: put your back to a wall and you
+have taken an arc away from them. The hint on the floor of its first room is the whole lesson — it
+cannot stop once it starts, so let it start.
 
 **THE THRESHING FLOOR** is the level that asks the opposite question. Its rooms are half again as wide,
 the ways between them are five tiles across, and there are almost no doors — it is one open yard, and a

@@ -73,6 +73,13 @@ class Goat {
       if (moving) this.facing = Math.atan2(this.vy, this.vx);
     }
     if (Math.hypot(this.vx, this.vy) > 40) this.facing = Math.atan2(this.vy, this.vx);
+    // Standing still he turns his head to where you are pointing. The sprite is the only thing on
+    // screen that says which way he is looking, and on the Ossuary which way he is looking is the
+    // whole fight — so standing still had to be a way of turning, not a way of freezing.
+    else if (this.state === 'idle' || this.state === 'recover') {
+      const want = Math.atan2(this.aim.y, this.aim.x), d = angleDiff(this.facing, want);
+      this.facing += clamp(d, -g.turn * dt, g.turn * dt);
+    }
     if (this.state === 'lunge' || this.state === 'windup') this.facing = Math.atan2(this.aim.y, this.aim.x);
     if (this.state === 'roll') this.facing = Math.atan2(this.rollDir.y, this.rollDir.x);
 
@@ -142,7 +149,8 @@ class Goat {
         const R = game.mods.screamRadius * TILE;
         let n = 0;
         for (const e of game.enemies) {
-          if (e.dead || e.held) continue;
+          // Nothing to shout at while it is mist, and nothing that counts toward the tally either.
+          if (e.dead || e.held || e.ghosted) continue;
           if (Math.hypot(e.x - this.x, e.y - this.y) > R) continue;
           e.daze(game, g.scream.stun); n++;
         }
@@ -194,7 +202,7 @@ class Goat {
     const range = R.threatRange * TILE;
     const threats = [];
     for (const e of game.enemies) {
-      if (e.dead || e.held || e === this.holding) continue;
+      if (e.dead || e.held || e.ghosted || e === this.holding) continue;
       const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
       if (d > range || d < 1) continue;
       // Anyone winding up a swing is more of a reason to be elsewhere than anyone who is not.
@@ -235,7 +243,7 @@ class Goat {
     this.screamCd = game.mods.screamCooldown; this.screaming = 0.4;
     game.world.igniteCone(this.x, this.y, ax, ay, B.range, B.halfAngle, B.fireTime);
     for (const e of game.enemies) {
-      if (e.dead || e.held) continue;
+      if (e.dead || e.held || e.ghosted) continue;
       const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
       if (d > B.range + e.r || (dx * ax + dy * ay) / (d || 1) < Math.cos(B.halfAngle)) continue;
       if (!game.world.los(this.x, this.y, e.x, e.y)) continue;
@@ -258,9 +266,22 @@ class Goat {
     const ax = this.aim.x, ay = this.aim.y;
     for (const e of game.enemies) {
       if (e.dead || e.held || e.lastLunge === this.lungeId) continue;
+      // Horns through mist. Saying so where it happened is the only tutorial this enemy gets.
+      if (e.ghosted) {
+        if (Math.hypot(e.x - this.x, e.y - this.y) < this.r + e.r + 12 + extra) game.mistTold(e);
+        continue;
+      }
       const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
       if (d > this.r + e.r + 10 + extra || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
       e.lastLunge = this.lungeId;
+      // Caught while it is a body. Horn through a thing that has just made itself real undoes it —
+      // no wall needed, because the window was the hard part.
+      if (e.kind === 'wraith') {
+        game.floatText(e.x, e.y - 34, 'UNMADE', PALETTE.witchHi);
+        game.hitstop(0.06); game.shake(7); game.kick(ax, ay, TUNING.juice.kick); game.zoomPunch(1.2);
+        e.die(game, 'unmade', ax, ay);
+        continue;
+      }
       if (e.kind === 'butcher') {
         e.hp -= 1; e.flash = 0.18;
         // Planted while attacking: the hit counts but does not interrupt him. Bait the swing, then hit.
@@ -300,7 +321,7 @@ class Goat {
       if ((dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) return;
       if (d < bestD) { bestD = d; best = o; }
     };
-    for (const e of game.enemies) if (!e.dead && e.kind !== 'butcher' && e.kind !== 'dog' && e.state !== 'flung' && !e.held) consider(e);
+    for (const e of game.enemies) if (!e.dead && e.kind !== 'butcher' && e.kind !== 'dog' && e.kind !== 'wraith' && e.state !== 'flung' && !e.held) consider(e);
     for (const p of game.props) if (p.item && !p.broken && !p.held && !p.flung) consider(p);
     if (!best) {
       // Reaching for a hound and closing on nothing is a rule worth stating once, where it happened.
@@ -452,7 +473,7 @@ class Prop {
     game.particles(this.x, this.y, 16, PALETTE.wood, 260);
     for (let i = 0; i < 10; i++) game.world.dot(this.x + (Math.random() - 0.5) * 54, this.y + (Math.random() - 0.5) * 54, 2 + Math.random() * 2.5, PALETTE.wood);
     for (const e of game.enemies) {
-      if (e.dead || e.held) continue;
+      if (e.dead || e.held || e.ghosted) continue;
       const dx = e.x - this.x, dy = e.y - this.y;
       if (Math.hypot(dx, dy) > 2.1 * TILE) continue;
       if ((dx * ax + dy * ay) < -4) continue;
@@ -489,8 +510,10 @@ class Prop {
     const impact = game.world.collideCircle(this);
     if (impact > 2 * TILE || Math.hypot(this.vx, this.vy) < 40) { this.shatter(game); return; }
     for (const e of game.enemies) {
-      if (e.dead || e.held) continue;
+      if (e.dead || e.held || e.ghosted) continue;
       if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) {
+        // A pot that catches a wraith in its window is as good as a horn.
+        if (e.kind === 'wraith') { e.die(game, 'unmade', this.vx / 300, this.vy / 300); this.shatter(game); return; }
         // A pot in the face is not a trip. He goes down properly, and he stays down seeing stars.
         if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.45; }
         else {
@@ -523,7 +546,7 @@ class Prop {
     const spd = Math.hypot(this.vx, this.vy);
     if (spd <= W.restSpeed) { this.flung = false; this.thrown = false; this.vx = 0; this.vy = 0; return; }
     for (const e of game.enemies) {
-      if (e.dead || e.held || this.passed.indexOf(e) >= 0) continue;
+      if (e.dead || e.held || e.ghosted || this.passed.indexOf(e) >= 0) continue;
       if (Math.hypot(e.x - this.x, e.y - this.y) > e.r + this.r) continue;
       this.hitMan(game, e, spd);
       if (!this.flung) return;
@@ -562,7 +585,7 @@ class Prop {
     // Cultists who cannot get through eventually shoulder it open.
     let pressed = false;
     for (const e of game.enemies) {
-      if (e.dead || e.held || !e.aware) continue;
+      if (e.dead || e.held || e.ghosted || !e.aware) continue;
       if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r + 6) { pressed = true; break; }
     }
     this.pressure = pressed ? this.pressure + dt : Math.max(0, this.pressure - dt * 2);
@@ -584,7 +607,7 @@ class Prop {
     if (spd > cfg.killSpeed) {
       const nx = this.vx / spd, ny = this.vy / spd;
       for (const e of game.enemies) {
-        if (e.dead || e.held || e.state === 'flung') continue;
+        if (e.dead || e.held || e.ghosted || e.state === 'flung') continue;
         if (Math.hypot(e.x - this.x, e.y - this.y) > e.r + this.r + 2) continue;
         if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.3; this.vx *= -0.2; this.vy *= -0.2; }
         else { e.fling(nx * spd * 1.25, ny * spd * 1.25, false); this.vx *= 0.75; this.vy *= 0.75; }
@@ -619,7 +642,7 @@ class Prop {
     for (const e of targets) if (e && e.millCd > 0) e.millCd -= dt;
     const arms = [this.angle, this.angle + Math.PI];
     for (const e of targets) {
-      if (!e || e.dead || e.held || e.millCd > 0) continue;
+      if (!e || e.dead || e.held || e.ghosted || e.millCd > 0) continue;
       const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
       if (d > M.armLen + e.r || d < M.innerR - e.r) continue;
       const ang = Math.atan2(dy, dx);
@@ -681,7 +704,7 @@ class Bullet {
         this.dead = true; goat.damage(TUNING.hunter.damage, game, this.vx * 0.15, this.vy * 0.15); return;
       }
       for (const e of game.enemies) {
-        if (e.dead || e.held) continue;
+        if (e.dead || e.held || e.ghosted) continue;
         if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + 2) {
           this.dead = true;
           if (e.kind === 'butcher') { e.hp -= 1; e.flash = 0.18; game.world.splat(e.x, e.y, this.vx / 900, this.vy / 900, 6); if (e.hp <= 0) e.die(game, 'shot', this.vx / 900, this.vy / 900); }

@@ -26,16 +26,30 @@ class Enemy {
     // hound: how long until he can slip another headbutt, and which way he is circling
     this.dodgeCd = 0; this.dodgeFx = 0; this.lungeCd = Math.random() * 0.8;
     this.circleSign = Math.random() < 0.5 ? -1 : 1; this.circleTimer = 0;
+    // wraith: whether it is a body at this instant, when it may next try, and where it is drifting
+    this.solid = false; this.fadeCd = Math.random() * 1.2; this.driftPhase = Math.random() * 6.28;
+    this.lurkT = 0;
   }
 
+  // Mist. There is no body here to hit, hold, burn, push or knock over, and a wall is not a wall
+  // to it either. Everything in the game that reaches for an enemy asks this first.
+  get ghosted() { return this.kind === 'wraith' && !this.solid; }
+
   fling(vx, vy, thrown) {
-    if (this.dead) return;
+    if (this.dead || this.ghosted) return;
     this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true;
   }
 
   // BAAH does not call him in any more. It empties his head for a moment, wherever he was going.
   daze(game, t) {
-    if (this.dead || this.held) return;
+    if (this.dead || this.held || this.ghosted) return;
+    // A wraith that has started cannot be called off — but it can be held still where it stands,
+    // solid, for as long as the scream lasts. That is the whole reason you want it frozen.
+    if (this.kind === 'wraith') {
+      this.dazed = Math.max(this.dazed, t); this.vx = 0; this.vy = 0;
+      game.particles(this.x, this.y - 6, 5, PALETTE.witchHi, 90);
+      return;
+    }
     // The Butcher rides out a swing he has already committed to, and shakes it off quicker.
     if (this.kind === 'butcher') { if (this.state === 'swing') return; t *= 0.6; }
     // A hound runs on reflex, and the scream is what reflex cannot survive: BAAH is the answer to a pack.
@@ -52,7 +66,7 @@ class Enemy {
   }
 
   ignite(game, witch) {
-    if (this.dead || this.burning > 0) return;
+    if (this.dead || this.burning > 0 || this.ghosted) return;
     this.burning = this.kind === 'butcher' ? 3.0 : TUNING.fire.burnRunTime;
     // Fire was never what took the big man down. He walks out of it scorched and one heart lighter.
     if (this.kind === 'butcher') this.burnHearts = this.cfg.burnHearts;
@@ -64,12 +78,20 @@ class Enemy {
   }
 
   die(game, cause, dx, dy) {
-    if (this.dead) return;
+    if (this.dead || this.ghosted) return;
     // Anyone carrying more than one hit — an arena elite, or any Seer — eats it, goes down and gets
     // back up; a Seer blinks clear as he does. Fire counts, so a mage has to be lit twice. Being torn
     // open or going off like a bomb does not: there is nothing left to get up.
     if (this.hp > 1 && cause !== 'devour' && cause !== 'boom') {
       this.hp -= 1; this.flash = 0.3; this.aware = true;
+      if (this.kind === 'wraith') {
+        // It comes apart and puts itself back together somewhere else. Catching it once is not enough.
+        this.unmanifest(game, this.cfg.bossFade);
+        game.particles(this.x, this.y, 18, PALETTE.witchHi, 190); game.ring(this.x, this.y, 2.2 * TILE, PALETTE.witch);
+        game.hitstop(0.05); game.shake(6); game.audio.sfxUnmade();
+        game.floatText(this.x, this.y - 34, this.hp + ' LEFT', PALETTE.witchHi);
+        return;
+      }
       this.state = 'floored'; this.timer = 0.75; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false;
       game.world.splat(this.x, this.y, dx || 0, dy || 0, 13);
       game.hitstop(0.05); game.shake(7); game.audio.sfxThud();
@@ -79,6 +101,16 @@ class Enemy {
     }
     this.dead = true; this.state = 'dead';
     const w = game.world;
+    if (this.kind === 'wraith') {
+      game.particles(this.x, this.y, 26, PALETTE.witchHi, 240);
+      game.particles(this.x, this.y, 12, PALETTE.witch, 150);
+      game.ring(this.x, this.y, 2.6 * TILE, PALETTE.witchHi);
+      game.audio.sfxUnmade();
+      if (game.goat.holding === this) game.goat.holding = null;
+      if (this.boss) game.dropTome(this.x, this.y);
+      game.onKill(this, 'unmade');
+      return;
+    }
     if (cause === 'burn') { w.scorch(this.x, this.y, this.r * 1.6); w.body(this.x, this.y, this.r, this.facing, '#241a16'); }
     else {
       w.splat(this.x, this.y, dx || 0, dy || 0, this.kind === 'butcher' ? 26 : 16);
@@ -102,7 +134,7 @@ class Enemy {
     game.shake(13); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
     w.emitNoise(this.x, this.y, TUNING.noise.boom);
     for (const o of game.enemies) {
-      if (o === this || o.dead || o.held) continue;
+      if (o === this || o.dead || o.held || o.ghosted) continue;
       const dx = o.x - this.x, dy = o.y - this.y, d = Math.hypot(dx, dy);
       if (d > B.radius) continue;
       const nx = dx / (d || 1), ny = dy / (d || 1);
@@ -118,6 +150,8 @@ class Enemy {
     const g = game.goat; if (g.dead) return false;
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
     if (d > this.cfg.sight * TILE) return false;
+    // The dead do not need a line of sight and they do not have a front. They simply know.
+    if (this.kind === 'wraith') return true;
     const ang = Math.atan2(dy, dx);
     if (Math.abs(angleDiff(this.facing, ang)) > this.cfg.cone / 2 && d > 2.5 * TILE) return false;
     return game.world.los(this.x, this.y, g.x, g.y);
@@ -320,7 +354,7 @@ class Enemy {
       }
     }
     if (this.aware && (this.state === 'idle' || this.state === 'investigate')) this.state = 'chase';
-    if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+    if (!this.ghosted && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
 
     // The scream took the sense out of him: he is still standing, and can do nothing with it.
     if (this.dazed > 0) { this.vx = 0; this.vy = 0; return; }
@@ -329,10 +363,13 @@ class Enemy {
     else if (this.kind === 'hunter') this.updateHunter(dt, game, sees);
     else if (this.kind === 'dog') this.updateDog(dt, game, sees);
     else if (this.kind === 'seer') this.updateSeer(dt, game, sees);
+    else if (this.kind === 'wraith') this.updateWraith(dt, game, sees);
     else this.updateButcher(dt, game, sees);
 
     this.x += this.vx * dt; this.y += this.vy * dt;
-    const impact = w.collideCircle(this);
+    // Mist goes through the wall. That is the point of it, and it is why there is no safe corner
+    // on the Ossuary: the only cover on that ground is which way you are facing.
+    const impact = this.ghosted ? 0 : w.collideCircle(this);
     if (this.state === 'charge' && impact > 3 * TILE) {
       this.state = 'stunned'; this.timer = cfg.stun; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown;
       game.shake(6); game.audio.sfxSplat(); game.hitstop(0.04); game.floatText(this.x, this.y - 34, 'STUNNED', PALETTE.fireHi);
@@ -498,6 +535,76 @@ class Enemy {
   }
 
   // The Seer paints a rune under your feet and blinks away when you close. Frail as anyone else.
+  // Mist most of the time: it slides toward your blind side, through whatever is in the way, and
+  // does nothing at all until it is there. Then it becomes a body — and from that instant it is
+  // committed, and stays a body well past the blow, which is the window you get to unmake it in.
+  updateWraith(dt, game) {
+    const cfg = this.cfg, g = game.goat;
+    this.fadeCd = Math.max(0, this.fadeCd - dt);
+    this.driftPhase += dt;
+    // Committed: manifest, swing, and the long beat afterwards where it can still be hit.
+    if (this.solid) {
+      this.timer -= dt; this.vx = 0; this.vy = 0;
+      if (this.state === 'manifest') {
+        if (this.timer <= 0) { this.state = 'windup'; this.timer = cfg.windup; }
+      } else if (this.state === 'windup') {
+        this.facing = Math.atan2(g.y - this.y, g.x - this.x);
+        if (this.timer <= 0) {
+          this.state = 'swing'; this.timer = cfg.swing;
+          game.meleeHit(this, cfg.reach, Math.PI * 0.9, cfg.damage, cfg.knock);
+          game.audio.sfxWraithHit(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing);
+          game.shake(4);
+        }
+      } else if (this.state === 'swing') {
+        if (this.timer <= 0) { this.state = 'solid'; this.timer = cfg.solidAfter; }
+      } else if (this.timer <= 0) this.unmanifest(game);
+      return;
+    }
+    if (!this.aware) { this.vx = 0; this.vy = 0; return; }
+    // Which way the goat is looking is where he is *pointing*, not where his body has caught up to:
+    // the head turns fast but not instantly, and a thing this close can out-run a head turn. Reading
+    // the aim instead means pointing at one is an absolute answer to it, which is the deal the level
+    // is offering. The sprite turns toward the same angle, so what you see is still what it reads.
+    const look = Math.atan2(g.aim.y, g.aim.x);
+    const back = look + Math.PI;
+    const wobble = Math.sin(this.driftPhase * 0.9) * cfg.driftWobble;
+    const tx = g.x + Math.cos(back + wobble) * cfg.standoff * TILE;
+    const ty = g.y + Math.sin(back + wobble) * cfg.standoff * TILE;
+    const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy);
+    this.vx = d > 1 ? dx / d * cfg.speed : 0;
+    this.vy = d > 1 ? dy / d * cfg.speed : 0;
+    this.facing = Math.atan2(g.y - this.y, g.x - this.x);
+    // It only becomes real on your blind side, close enough to reach you, and not straight away —
+    // and never inside a wall. Mist goes through stone; a body cannot be in it. That is the one thing
+    // the ground still does for you here: a wall at your back is an arc it cannot arrive from.
+    const behind = Math.abs(angleDiff(look, Math.atan2(this.y - g.y, this.x - g.x)));
+    const reach = Math.hypot(g.x - this.x, g.y - this.y) < cfg.reach + g.r + this.r * 0.5;
+    const room = !game.world.isSolid(Math.floor(this.x / TILE), Math.floor(this.y / TILE));
+    // It has to hold the blind side, not merely cross it: a head turned in time takes the moment away
+    // even when the thing is faster round you than you are round yourself.
+    this.lurkT = (reach && room && behind > cfg.behind) ? this.lurkT + dt : 0;
+    if (this.fadeCd <= 0 && this.lurkT >= cfg.lurk && !g.dead) { this.lurkT = 0; this.manifest(game); }
+  }
+
+  manifest(game) {
+    this.solid = true; this.state = 'manifest'; this.timer = this.cfg.manifest;
+    this.vx = 0; this.vy = 0;
+    game.particles(this.x, this.y, 12, PALETTE.witchHi, 130);
+    game.ring(this.x, this.y, 1.6 * TILE, PALETTE.witch);
+    game.audio.sfxWraith(); game.vibe(15);
+    // Whoever is standing near it has an opinion about their own dead getting up.
+    for (const o of game.enemies) {
+      if (o === this || o.dead || o.kind === 'wraith' || o.kind === 'dog') continue;
+      if (Math.hypot(o.x - this.x, o.y - this.y) > 6 * TILE) continue;
+      game.bark(o, 'wraith', 0.3); break;
+    }
+  }
+  unmanifest(game, cd) {
+    this.solid = false; this.state = 'chase'; this.dazed = 0; this.burning = 0;
+    this.fadeCd = cd === undefined ? this.cfg.fadeCd : cd;
+    game.particles(this.x, this.y, 8, PALETTE.witch, 90);
+  }
+
   updateSeer(dt, game, sees) {
     const g = game.goat, cfg = this.cfg, w = game.world;
     this.castCd = Math.max(0, this.castCd - dt);

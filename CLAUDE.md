@@ -39,7 +39,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 |---|---|
 | `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `LEVELS`. Every tunable number, every line the cult shouts, and the five level definitions. |
 | `js/rng.js` | Seeded RNG (mulberry32) plus `clamp` / `lerp` / `len` / `angleDiff`. |
-| `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top (`'w'` is a stand of arms). Also the start room, the arena, the Mill room, the Great Hall and the Gallery. |
+| `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top (`'w'` is a stand of arms). Also the start room, the arena, the Mill room, the Great Hall and the Gallery. Templates carrying a `tag` belong to one level's pool. |
 | `js/gen.js` | Level generation: chains rooms, carves corridors, places props, spawns, heals, validates reachability. Defines the tile enum `T`. |
 | `js/audio.js` | WebAudio. Buses, the drum machine, the music bed (`MUSIC`) and every one-shot effect. |
 | `js/world.js` | Tile grid, collision, line of sight, flow field, fire (ordinary and witchfire), noise events, the persistent decal canvas, cult pictograms, the ritual start room. |
@@ -181,6 +181,20 @@ headbutt can reach two or three bars at once, so `breakCage` counts blows and no
 `game.cageLunge === goat.lungeId`. Each blow bleats a line from `prop.cage.strain`; on the blows in
 `prop.cage.stunAt` the goat is put on the floor by `game.stunGoat`. The last blow breaks every bar and
 sets `game.cageOpen`, which is what hides the floor prompt. Only levels with `startCage` get one.
+
+**The wraith, and what "not there" means.** `Enemy.ghosted` is `kind === 'wraith' && !solid`, and it is
+the question every single thing that reaches for an enemy has to ask: headbutt, breath, grab, thrown pot,
+thrown blade, bullet, Mill arm, door, table, bomb, scream, fire, entity collision, friendly fire, the
+roll's threat sense, the music's threat count and the health notches. Mist also skips `collideCircle`,
+which is how it crosses walls. `updateWraith` drifts it to a point `wraith.standoff` tiles behind the
+goat's *facing* and calls `manifest` only when it is past `wraith.behind` radians off that facing, within
+reach, off cooldown, and **not standing in a wall** — a body cannot form inside stone, which is the one
+thing the ground still does for you there. From `manifest` it runs `manifest → windup → swing → solid`
+on timers and cannot be interrupted: `daze` on a wraith freezes it where it stands instead of cancelling
+it (the shared dazed check stops the timers, so a scream lengthens the window rather than ending it).
+`unmanifest` puts it back to mist with `fadeCd`. It dies to anything that lands in that window, its
+`die` leaves no blood, body or scorch, and a boss with hearts left goes straight back to mist instead of
+lying floored. `game.mistTold` is the only tutorial it gets.
 
 **Goat stun.** `goat.state === 'stunned'` is a real state, not a render pose: `Goat.update` returns early
 while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` draws the stars over it.

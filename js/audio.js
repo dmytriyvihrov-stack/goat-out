@@ -243,6 +243,27 @@ class GameAudio {
     this.noise(t, 0.09, { gain: 0.18, hp: 3200 });
   }
 
+  // Something with no throat making a sound anyway: a cold swell as it becomes real.
+  sfxWraith() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.tone(150, t, 0.5, { type: 'sine', gain: 0.3, sweep: 0.45, attack: 0.12 });
+    this.tone(226, t + 0.03, 0.45, { type: 'sine', gain: 0.18, sweep: 0.5, attack: 0.14 });
+    this.noise(t, 0.5, { gain: 0.16, hp: 1600, lp: 5200 });
+  }
+  // The blow: no weight behind it, all cold.
+  sfxWraithHit() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.noise(t, 0.22, { gain: 0.35, hp: 2400 });
+    this.tone(320, t, 0.24, { type: 'sine', gain: 0.22, sweep: 2.2 });
+  }
+  // Caught in the flesh and undone: it goes out rather than down.
+  sfxUnmade() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.tone(880, t, 0.55, { type: 'sine', gain: 0.28, sweep: 0.16 });
+    this.tone(1320, t + 0.02, 0.4, { type: 'triangle', gain: 0.14, sweep: 0.2 });
+    this.noise(t, 0.45, { gain: 0.3, hp: 2000 });
+  }
+
   // A headbutt that the pen holds: one bar rings and the frame shifts.
   sfxCageHit() {
     if (!this.ctx || this.muted) return; const t = this.now();

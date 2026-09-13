@@ -42,6 +42,7 @@ const TUNING = {
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
     devour: { time: 1.15, healChance: 0.45 },
     bomb: { fuse: 0.34, radius: 2.6 * TILE, impulse: 24 * TILE },
+    turn: 9,                // rad/s he swings his head round to where you are pointing, standing still
     fireDamageInterval: 0.7,
     invuln: 0.5,            // s of invulnerability after a hit
   },
@@ -76,6 +77,25 @@ const TUNING = {
     keepMin: 5, keepMax: 9, damage: 1, hp: 2,
     castWind: 1.15, castCooldown: 2.5, runeRadius: 1.4, runeFire: 2.0,
     blinkRange: 3.2, blinkDist: 5.5, blinkCooldown: 3.0,
+  },
+  // The wraith. It is not there most of the time: no body, no collision, nothing to hit, and walls
+  // are not walls to it. It becomes real only once it has worked its way onto your flank or your back
+  // and started to swing — and from that moment it cannot stop, so the window it opens to hurt you is
+  // the same window you get to unmake it in. Face it and it can do nothing. Turn away and it arrives.
+  wraith: {
+    radius: 12, speed: 0.62 * 8.2 * TILE, sight: 17, cone: Math.PI * 2,
+    reach: 1.35 * TILE, windup: 0.52, swing: 0.14, damage: 1, knock: 1.2 * TILE,
+    hp: 1, flooredTime: 0.6,
+    standoff: 1.15,     // tiles behind you it wants to be before it commits
+    behind: 1.15,       // radians off your facing: inside this cone in front of you it cannot manifest
+    lurk: 0.24,         // it has to hold your blind side this long before it commits, so sweeping
+                        // past the back of your head is not the same thing as getting behind you
+    manifest: 0.26,     // becoming real: the one beat of warning you get
+    solidAfter: 0.8,    // how long it stays real once the blow has landed — the punish window
+    fadeCd: 1.5,        // and how long before it can line another one up
+    bossFade: 2.2,      // a boss that loses a heart goes straight back to mist for this long
+    driftWobble: 0.7,   // how much it wanders while it closes, so a drift does not read as a missile
+    trapSense: 1,       // nothing in the room can touch it while it is mist, so nothing in it matters
   },
   butcher: {
     radius: 20, speed: 0.6 * 8.2 * TILE, sight: 9, cone: Math.PI * 0.7,
@@ -180,14 +200,14 @@ const TUNING = {
 // `node tools/balance.js` prints what these numbers actually produce and fails if a rule is broken.
 
 // What one of each is worth. A rifle is not a clubman however you count heads.
-const THREAT = { bearer: 1, dog: 1.7, champion: 2.2, hunter: 2.4, seer: 2.8, butcher: 5 };
+const THREAT = { bearer: 1, dog: 1.7, champion: 2.2, hunter: 2.4, wraith: 2.6, seer: 2.8, butcher: 5 };
 
 const ENCOUNTER = {
   // How often a kind is drawn once it is available. Clubmen stay the backbone of every crowd.
-  weight: { bearer: 6, dog: 3, champion: 2, hunter: 3, seer: 2 },
+  weight: { bearer: 6, dog: 3, champion: 2, hunter: 3, seer: 2, wraith: 3 },
   // What no single room may exceed, whatever threat it was handed. Two mages in one room is a coin
   // toss, not a fight; eight of anything is a wall of bodies rather than a room you can read.
-  cap: { seer: 1, champion: 1, hunter: 2, dog: 2, men: 7 },
+  cap: { seer: 1, champion: 1, hunter: 2, dog: 2, wraith: 3, men: 7 },
   // The set-piece rooms play by their own cap: the Great Hall is supposed to be a wall of bodies.
   hallCap: 18,
   // A boss stands with this much company — unless he is the first of his kind you have seen, and
@@ -255,6 +275,8 @@ const BARKS = {
   trap: ['THE WHEEL!', 'MIND THE ARMS', 'NOT THAT WAY', 'GO ROUND IT', 'STEP BACK'],
   // a hound has the goat and the men know what that is worth
   hound: ['THE HOUNDS HAVE IT', 'LET THEM WORK', 'GOOD DOG', 'HOLD IT, DOG'],
+  // something they buried has just become solid an arm's length away
+  wraith: ['IT IS UP', 'DO NOT LOOK AT IT', 'THE DEAD WALK', 'COLD! COLD!', 'WE BURIED THAT'],
 };
 
 const LEVELS = [
@@ -337,6 +359,28 @@ const LEVELS = [
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
     fog: '#06070a', doorChance: 0.3,
     hint: 'EVERYTHING THEY HAVE LEFT IS HERE',
+  },
+  {
+    // Under the bridge is where everything the compound ever killed went, and none of it stayed put.
+    // The living are a garrison here rather than the point: what the level is about is the thing that
+    // is not in the room until it is behind you. Walls do not hold them, so there is nowhere to put
+    // your back — the only cover on this ground is which way you are looking.
+    name: 'THE OSSUARY', sub: 'Level 6', rooms: 16,
+    arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
+    millAt: 6, heals: 4, lonePosts: 2, racks: 0.45,
+    encounters: {
+      kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
+      // The first room of the level is the wraith on its own, because nothing else in the game
+      // teaches you that you cannot hit it.
+      introduce: [['wraith', 0]],
+      from: 8, to: 23, ease: 1.12,
+      // The dead outnumber the garrison here, and a room may hold three of them.
+      weight: { wraith: 9, bearer: 4, dog: 2, champion: 1, hunter: 2, seer: 1 },
+      cap: { wraith: 3, men: 8 },
+    },
+    floor: '#22242b', floorAlt: '#282a33', wall: '#3a3730', wallTop: '#565044',
+    fog: '#05060a', doorChance: 0.22,
+    hint: 'IT CANNOT STOP ONCE IT STARTS. LET IT START.',
   },
 ];
 

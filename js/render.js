@@ -567,6 +567,65 @@ class Renderer {
 
   // The hound: low, long and all snout, and the only thing on the level with four legs —
   // which is the whole reason it reads as something else at a glance.
+  // The wraith. As mist it is a pale hooded shape with a streaming tail, a soft rim and no shadow
+  // under it; the instant it commits it gathers in, hardens — dark edge, dark hood, a shadow — and
+  // that hardening is the only warning the goat gets. It has to be legible as mist or the level is
+  // unfair: you cannot choose which way to face if you cannot see what is circling you.
+  drawWraith(e, r) {
+    const ctx = this.ctx;
+    const born = e.state === 'manifest' ? 1 - Math.max(0, e.timer) / TUNING.wraith.manifest : (e.ghosted ? 0 : 1);
+    const wave = Math.sin(this.t * 2.2 + e.driftPhase);
+    const a = 0.55 + born * 0.42;
+    const puff = 1.16 - born * 0.16;   // it billows while it drifts and draws itself in to strike
+    ctx.save();
+    ctx.globalAlpha = a;
+    if (born < 1) {
+      const gl = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 2.6);
+      gl.addColorStop(0, 'rgba(125,92,255,0.3)'); gl.addColorStop(1, 'rgba(125,92,255,0)');
+      ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, r * 2.6, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.scale(puff, puff);
+    // the shroud: a hood at the front, and the rest of it trailing away behind and wavering
+    const tail = -r * (2.3 + wave * 0.22);
+    const grad = ctx.createLinearGradient(tail, 0, r, 0);
+    grad.addColorStop(0, 'rgba(107,80,190,0.04)');
+    grad.addColorStop(0.45, born > 0.5 ? '#5b44b4' : 'rgba(143,116,240,0.62)');
+    grad.addColorStop(1, born > 0.5 ? '#b9a6ff' : '#d8ecff');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(tail, wave * 3);
+    ctx.quadraticCurveTo(-r * 0.7, -r * (1.25 + wave * 0.12), r * 0.42, -r * 0.86);
+    ctx.quadraticCurveTo(r * 0.98, 0, r * 0.42, r * 0.86);
+    ctx.quadraticCurveTo(-r * 0.7, r * (1.25 - wave * 0.12), tail, wave * 3);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = born > 0.15 ? 'rgba(28,20,56,0.85)' : 'rgba(216,236,255,0.45)';
+    ctx.lineWidth = born > 0.15 ? 1.7 : 1.1; ctx.stroke();
+    // the dark under the hood, and the two cold points that are not eyes
+    ctx.fillStyle = born > 0.15 ? '#191230' : 'rgba(44,32,88,0.5)';
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.74, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = born > 0.6 ? PALETTE.witchHi : 'rgba(191,230,255,0.7)';
+    ctx.beginPath(); ctx.ellipse(r * 0.32, -r * 0.3, 2.5, 2, -0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(r * 0.32, r * 0.3, 2.5, 2, 0.25, 0, Math.PI * 2); ctx.fill();
+    // the arm it is bringing down, and the one it has just brought down
+    if (e.state === 'windup' || e.state === 'swing') {
+      const sw = e.state === 'swing' ? 0.9 : -0.5 - 0.5 * (1 - e.timer / TUNING.wraith.windup);
+      ctx.save(); ctx.rotate(sw);
+      ctx.strokeStyle = PALETTE.witchHi; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(r * 0.3, 0); ctx.lineTo(r * 1.8, 0); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    // A ring thrown on the ground the moment it becomes real. The tell has to carry across the room
+    // the goat is not looking at.
+    if (e.state === 'manifest') {
+      ctx.save(); ctx.globalAlpha = 0.85 * (1 - born);
+      ctx.strokeStyle = PALETTE.witchHi; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, r + 34 * born, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   drawHound(e) {
     const ctx = this.ctx, r = e.r;
     const run = Math.hypot(e.vx, e.vy) > 40 ? Math.sin(this.t * 26) * (r * 0.42) : 0;
@@ -654,7 +713,7 @@ class Renderer {
     const ctx = this.ctx;
     const lying = e.state === 'floored' || e.state === 'stunned';
     this.drawTelegraph(e);
-    this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
+    if (!e.ghosted) this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.translate(0, lying ? 0 : -4);
     if (e.state === 'flung') ctx.rotate(this.t * 14); else ctx.rotate(e.facing);
     if (e.state === 'stagger') ctx.translate(Math.sin(this.t * 60) * 2, 0);
@@ -664,7 +723,9 @@ class Renderer {
     if (e.elite) ctx.scale(1.28, 1.28);
     if (lying) ctx.scale(1.35, 0.7);
 
-    if (e.kind === 'dog') this.drawHound(e); else this.drawCultist(e, r);
+    if (e.kind === 'dog') this.drawHound(e);
+    else if (e.kind === 'wraith') this.drawWraith(e, r);
+    else this.drawCultist(e, r);
     if (e.flash > 0) { ctx.globalAlpha = Math.min(0.8, e.flash * 4); ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.arc(0, 0, r + 1, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
     // Stars: he heard the scream and is still hearing it.
     if (e.dazed > 0) {
@@ -713,7 +774,7 @@ class Renderer {
     }
     // Health notches over anyone who takes more than one blow — the Butcher, a Seer, an arena elite —
     // so what is left of him reads off his own head instead of off a text popup.
-    if (e.maxHp > 1) {
+    if (e.maxHp > 1 && !e.ghosted) {
       const max = e.maxHp, wdt = clamp(e.r * 0.5, 6, 9), gap = 3.5, total = max * wdt + (max - 1) * gap;
       const top = e.y - e.r - (e.kind === 'butcher' ? 14 : 11);
       for (let i = 0; i < max; i++) {
@@ -796,7 +857,8 @@ class Renderer {
     if (d.open) {
       const rows = [
         ['god', d.god ? 'GOD  ON' : 'GOD  OFF'],
-        ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'], ['butcher', '+ BUTCHER'],
+        ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'],
+        ['wraith', '+ WRAITH'], ['butcher', '+ BUTCHER'],
         ['tome', '+ TOME'], ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
         ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'],
       ];
