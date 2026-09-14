@@ -1,4 +1,4 @@
-// Goat (player), props (brazier, pot, bell, door, table, lamp, stands of arms) and bullets.
+// Goat (player), props (brazier, crate, bell, door, table, lamp, stands of arms) and bullets.
 class Goat {
   constructor(x, y) {
     const g = TUNING.goat;
@@ -17,6 +17,7 @@ class Goat {
     this.dazed = 0;        // stars over its head: the club in the opening scene, nothing else yet
     this.jitter = null;    // a tremble the opening scene puts on it; drawn, never simulated
     this.safeX = x; this.safeY = y;   // the last floor he stood on, which is where a fall returns him
+    this.runT = 0; this.runUp = 1;    // seconds of running without a break, and what they are worth
   }
 
   update(dt, game) {
@@ -36,7 +37,7 @@ class Goat {
     // Off his feet. Nothing but the floor until it passes: no verbs, no aim, no momentum.
     // The pen is the only thing that does this to him, twice on the way out of it.
     if (this.state === 'stunned') {
-      this.timer -= dt; this.vx *= 0.86; this.vy *= 0.86;
+      this.timer -= dt; this.vx *= 0.86; this.vy *= 0.86; this.runT = 0; this.runUp = 1;
       this.x += this.vx * dt; this.y += this.vy * dt; world.collideCircle(this);
       if (this.timer <= 0) this.state = 'idle';
       return;
@@ -45,7 +46,7 @@ class Goat {
     // ---- clumsy sideways roll ----
     const R = TUNING.goat.roll;
     this.rollCd = Math.max(0, this.rollCd - dt * cdRate);
-    if (inp.rollPressed && this.rollCd <= 0 && this.state !== 'lunge' && this.state !== 'roll' && this.state !== 'rollrecover' && !this.dead) {
+    if (inp.rollPressed && game.mods.roll && this.rollCd <= 0 && this.state !== 'lunge' && this.state !== 'roll' && this.state !== 'rollrecover' && !this.dead) {
       this.rollDir = this.rollDirection(game, inp.mx, inp.my); this.rollSpin = 0;
       this.state = 'roll'; this.timer = R.duration; this.rollCd = R.cooldown * game.mods.rollCooldown;
       this.vx = this.rollDir.x * R.speed * game.mods.rollDistance;
@@ -79,12 +80,20 @@ class Goat {
       this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
     }
 
+    // ---- the run-up ----
+    // Seconds of asking for most of a stride, turned into top speed. It builds while he runs and
+    // drains several times faster than it built the moment he stops, so a room you cross without
+    // touching anything hands you the far side of it faster than a room you fight your way through.
+    const M = g.momentum, asking = Math.hypot(inp.mx, inp.my) >= M.atLeast;
+    this.runT = clamp(asking ? this.runT + dt : this.runT - dt * M.lose, 0, M.time);
+    this.runUp = 1 + M.max * (this.runT / M.time);
+
     // ---- movement (momentum) ----
     let mul = this.holding ? g.grab.speedMul : 1;
     if (this.state === 'recover') mul *= 0.55;
     else if (this.state === 'windup') mul *= 0.3;
     else if (this.state === 'rollrecover') mul *= 0.35;
-    const base = g.speed * game.mods.speed * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1);
+    const base = g.speed * game.mods.speed * this.runUp * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1);
     const top = base * mul;
     if (this.state !== 'lunge' && this.state !== 'roll') {
       const moving = inp.mx !== 0 || inp.my !== 0;
@@ -209,7 +218,9 @@ class Goat {
     const spd = Math.hypot(this.vx, this.vy);
     // The tome that makes him faster lengthens the smear. It is the only place SURE HOOVES is
     // visible at all, and a boon nothing on screen answers is a boon that reads as nothing.
-    const TR = g.trail, quick = clamp((game.mods.speed - 1) / (TR.fastAt - 1), 0, 1);
+    // SURE HOOVES and the run-up both come out here: the ghosts lengthen as he winds up, which is
+    // the only thing on screen that says he is faster now than he was two rooms ago.
+    const TR = g.trail, quick = clamp((game.mods.speed * this.runUp - 1) / (TR.fastAt - 1), 0, 1);
     const trailLife = lerp(TR.life, TR.fastLife, quick);
     this.trailTimer -= dt;
     if (spd > g.speed * TR.at && this.trailTimer <= 0) {
@@ -403,6 +414,8 @@ class Goat {
     if (game.dev.god) { game.particles(this.x, this.y, 4, PALETTE.fireHi, 90); return; }
     this.hp -= n; this.invuln = TUNING.goat.invuln;
     this.vx += kx || 0; this.vy += ky || 0;
+    this.runT = 0; this.runUp = 1;             // whatever he had built up, the club took it
+
     game.shake(TUNING.juice.shakeHit); game.audio.sfxHit();
     game.hurtFlash(Math.atan2(-(ky || 0), -(kx || 0)));
     game.world.splat(this.x, this.y, (kx || 0) / 100, (ky || 0) / 100, 9);
@@ -423,7 +436,7 @@ class Prop {
   constructor(x, y, kind, opts) {
     const P = TUNING.prop;
     this.x = x; this.y = y; this.kind = kind; this.vx = 0; this.vy = 0;
-    this.r = kind === 'pot' ? P.pot.r : kind === 'crate' ? P.crate.r : kind === 'bell' ? P.bell.r : kind === 'door' ? P.door.r
+    this.r = kind === 'crate' ? P.crate.r : kind === 'bell' ? P.bell.r : kind === 'door' ? P.door.r
       : kind === 'table' ? P.table.r : kind === 'lamp' ? P.lamp.r
       : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r
       : kind === 'weapon' ? P.weapon.r
@@ -433,7 +446,6 @@ class Prop {
     this.deco = !!(opts && opts.deco);        // a cage that is scenery: it never opens
     this.gate = 0;                            // 1 while the opening scene has this bar laid flat
     this.angle = (opts && opts.phase) || 0;
-    this.solid = kind !== 'pot';
     this.held = false; this.flung = false; this.thrown = false; this.broken = false; this.dead = false;
     this.rung = 0; this.lastLunge = -1; this.phase = Math.random() * 10;
     // A stand of arms: which one it holds, whether it is still in the stand, how it turns in the
@@ -443,14 +455,16 @@ class Prop {
     // What this one has left in it. A blade is one throw; a shield is three men or three bullets.
     this.uses = kind === 'weapon' ? (P.weapon.uses[this.weapon] || 1) : 0;
     this.vertical = opts && opts.vertical; this.open = 0; this.pressure = 0; this.wobble = 0;
-    // An iron door is the vault's. Nothing in a corridor is ever one.
-    this.iron = !!(opts && opts.iron);
+    // Iron: barred from the far side, three blows, and a level puts a couple of them in its
+    // corridors. `vault` is the soul door on top of that — the one with a tome behind it, worth a
+    // fourth blow and drawn so that nobody mistakes it for the iron door they passed two rooms ago.
+    this.iron = !!(opts && opts.iron); this.vault = !!(opts && opts.vault);
     // A spike plate sits in the floor doing nothing until the goat crosses it: 'idle' waiting,
     // 'armed' counting down under his hooves, 'up' with the teeth out, then 'down' and a rest.
     this.spikeState = 'idle'; this.spikeT = 0; this.hits = 0;
   }
   // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing.
-  get item() { return this.kind === 'pot' || this.kind === 'crate' || this.kind === 'weapon'; }
+  get item() { return this.kind === 'crate' || this.kind === 'weapon'; }
   get blocking() {
     if (this.broken) return false;
     // Nothing stands on a plate's shoulders: it is floor until it is teeth.
@@ -474,7 +488,6 @@ class Prop {
 
   headbutt(game, ax, ay) {
     switch (this.kind) {
-      case 'pot': if (!this.held) this.fling(ax * TUNING.goat.headbutt.impulse * 0.9, ay * TUNING.goat.headbutt.impulse * 0.9, true); break;
       case 'crate': if (!this.held) this.fling(ax * TUNING.goat.headbutt.impulse * 0.75, ay * TUNING.goat.headbutt.impulse * 0.75, true); break;
       // You do not have to carry it. A horn under the stand sends the blade across the room too.
       case 'weapon': if (!this.held) {
@@ -515,7 +528,7 @@ class Prop {
     game.floatText(this.x, this.y - 30, 'COALS', PALETTE.fire);
   }
 
-  // Down a hole. A pot, a blade, a shield or a table that goes over an edge is gone the way a man
+  // Down a hole. A crate, a blade, a shield or a table that goes over an edge is gone the way a man
   // is: no shards, no splinters, nothing on the floor to say it was there.
   fall(game) {
     if (this.broken) return;
@@ -526,7 +539,7 @@ class Prop {
 
   // What a thing in flight does to the furniture it lands on. A lamp goes over and pours its oil
   // the way it was hit, a gong rings, and everything else is as solid as a wall: the room is real
-  // to a pot and a thrown blade, not only to a man. Returns the prop hit, or null.
+  // to a thrown crate and a thrown blade, not only to a man. Returns the prop hit, or null.
   hitProp(game, nx, ny) {
     for (const p of game.props) {
       if (p === this || !p.blocking) continue;
@@ -677,16 +690,14 @@ class Prop {
     game.ring(g.x, g.y, 3 * TILE, PALETTE.fireHi); game.flash(PALETTE.fireHi, 0.12); game.vibe(25);
   }
 
-  // Doors: the goat goes through them, on the third blow. A door is the one thing in a corridor
-  // that can hold you still, and two extra beats of being held still in a corridor — with whatever
-  // heard the first blow already coming — is worth more than the shortcut ever was.
-  // `by` is whoever came through it at speed — the Butcher on a charge — and is spared the fling.
-  // Planks go on the first blow. Iron does not, and the whole of its value is that it does not:
-  // an iron door is never in the way to the stairs, so the four blows and the noise of them are a
-  // price you choose to pay for whatever is behind it.
+  // Doors. `by` is whoever came through it at speed — the Butcher on a charge — and is spared the
+  // fling. Planks go on the first blow: a door in a corridor is a thing you run through. Iron does
+  // not, and the whole of its value is that it does not — nobody shoulders it open, so a corridor
+  // with one in it is three blows of standing still with whatever heard the first already coming.
+  // The soul door is four, and it is the one door in a level that is not on the way anywhere.
   smash(game, ax, ay, by) {
     if (this.broken) return;
-    const D = TUNING.prop.door, need = this.iron ? D.ironHits : D.hits;
+    const D = TUNING.prop.door, need = this.vault ? D.vaultHits : this.iron ? D.ironHits : D.hits;
     this.hits = (this.hits || 0) + 1;
     if (this.hits < need) {
       this.wobble = 0.3; this.open = Math.max(this.open, 0);
@@ -694,7 +705,7 @@ class Prop {
       game.audio.sfxThud(); if (this.iron) game.audio.sfxSteel();
       game.shake(4); game.hitstop(0.02); game.vibe(14);
       game.particles(this.x, this.y, 8, this.iron ? PALETTE.ash : PALETTE.wood, 210);
-      // What is left in it, so four blows on iron is a count you can see rather than a wall you hit.
+      // What is left in it, so blows on iron are a count you can see rather than a wall you hit.
       game.floatText(this.x, this.y - 28, (need - this.hits) + ' MORE', this.iron ? PALETTE.bone : PALETTE.wood);
       return;
     }
@@ -725,7 +736,7 @@ class Prop {
     this.broken = true; this.dead = true;
     const px = this.x + ax * TILE * 0.8, py = this.y + ay * TILE * 0.8;
     game.world.ignitePool(px, py, TUNING.prop.lamp.poolRadius);
-    game.world.emitNoise(this.x, this.y, TUNING.noise.pot); game.audio.sfxPot(); game.audio.sfxFire();
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash); game.audio.sfxPot(); game.audio.sfxFire();
     game.particles(px, py, 14, PALETTE.fire, 150); game.shake(3);
   }
 
@@ -745,27 +756,26 @@ class Prop {
     if (this.kind === 'weapon') { this.updateWeapon(dt, game); return; }
     if (this.kind === 'door') { this.updateDoor(dt, game); return; }
     if (this.kind === 'table') { this.updateTable(dt, game); return; }
-    // A pot and a crate fly the same way and break on the same things; what differs is what is left
-    // on the floor after, and how long the man it caught stays on his back.
-    if ((this.kind !== 'pot' && this.kind !== 'crate') || this.broken || this.held || !this.flung) return;
+    // A thrown crate. It is the one thing you lift off the floor and put through somebody.
+    if (this.kind !== 'crate' || this.broken || this.held || !this.flung) return;
     this.x += this.vx * dt; this.y += this.vy * dt;
     const impact = game.world.collideCircle(this);
     const spd = Math.hypot(this.vx, this.vy);
     // Coming down over a hole: it goes down it, and nothing breaks.
     if (spd < 40 && game.world.isPitPx(this.x, this.y)) { this.fall(game); return; }
     if (impact > 2 * TILE || spd < 40) { this.shatter(game); return; }
-    // A shut door, a table or a gong is not something a pot flies through. It breaks on it — and
+    // A shut door, a table or a gong is not something a crate flies through. It breaks on it — and
     // on a lamp it breaks the lamp, which is how you start a fire across a room.
     if (this.hitProp(game, this.vx / (spd || 1), this.vy / (spd || 1))) { this.shatter(game); return; }
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
       if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) {
-        // A pot that catches a wraith in its window is as good as a horn.
+        // A crate that catches a wraith in its window is as good as a horn.
         if (e.kind === 'wraith') { e.die(game, 'unmade', this.vx / 300, this.vy / 300); this.shatter(game); return; }
-        // A pot in the face is not a trip. He goes down properly, and he stays down seeing stars.
+        // A crate in the face is not a trip. He goes down properly, and he stays down seeing stars.
         if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.45; }
         else {
-          const stun = this.kind === 'crate' ? TUNING.prop.crate.stun : TUNING.prop.pot.stun;
+          const stun = TUNING.prop.crate.stun;
           e.state = 'floored'; e.timer = stun; e.dazed = Math.max(e.dazed, stun);
           e.vx = this.vx * 0.3; e.vy = this.vy * 0.3; e.aware = true;
           game.floatText(e.x, e.y - 28, 'STUNNED', PALETTE.fireHi);
@@ -953,15 +963,14 @@ class Prop {
     }
   }
 
+  // A crate coming apart: boards on the floor and the noise of it, which is loud enough to turn
+  // a room. Nothing is left behind that can be picked up again.
   shatter(game) {
     this.broken = true; this.dead = true;
-    const box = this.kind === 'crate';
-    game.world.emitNoise(this.x, this.y, TUNING.noise.pot);
-    if (box) { game.audio.sfxCrack(); game.audio.sfxThud(); } else game.audio.sfxPot();
-    game.shake(box ? 3 : 2);
-    const col = box ? PALETTE.wood : PALETTE.ochre, spread = box ? 40 : 30;
-    for (let i = 0; i < (box ? 11 : 8); i++) game.world.dot(this.x + (Math.random() - 0.5) * spread, this.y + (Math.random() - 0.5) * spread, 2 + Math.random() * 2.4, col);
-    game.particles(this.x, this.y, box ? 13 : 10, col, box ? 170 : 140);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
+    game.audio.sfxCrack(); game.audio.sfxThud(); game.shake(3);
+    for (let i = 0; i < 9; i++) game.world.dot(this.x + (Math.random() - 0.5) * 34, this.y + (Math.random() - 0.5) * 34, 2 + Math.random() * 2.2, PALETTE.wood);
+    game.particles(this.x, this.y, 11, PALETTE.wood, 165);
   }
 }
 
@@ -1008,7 +1017,7 @@ class Bullet {
       }
       for (const p of game.props) {
         if (p.broken) continue;
-        if (p.kind === 'pot' && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) { this.dead = true; p.shatter(game); return; }
+        if (p.kind === 'crate' && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) { this.dead = true; p.shatter(game); return; }
         // A shield standing in its rack is cover; a sword in one is not.
         if (p.kind === 'weapon' && p.weapon === 'shield' && p.inStand && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) {
           this.dead = true; game.particles(this.x, this.y, 4, PALETTE.bone, 120); game.audio.sfxSteel(); return;

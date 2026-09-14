@@ -226,6 +226,15 @@ class GameAudio {
   sfxHit() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(180, t, 0.2, { gain: 0.5, sweep: 0.4, type: 'square' }); this.noise(t, 0.1, { gain: 0.2 }); }
   sfxFire() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.35, { gain: 0.25, hp: 900, lp: 5000 }); }
   sfxSwing() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.1, { gain: 0.15, hp: 800, lp: 4000 }); }
+  // Somebody going over an edge: a shout that runs away downward, and the air after it. The pitch
+  // falls the whole way rather than stopping, because what sells a hole is that the sound keeps going.
+  sfxFall() {
+    if (!this.ctx || this.muted) return;
+    const t = this.now();
+    this.tone(430, t, 0.8, { gain: 0.3, sweep: 0.13, type: 'sawtooth' });
+    this.tone(214, t, 0.8, { gain: 0.16, sweep: 0.13, type: 'square' });
+    this.noise(t + 0.06, 0.62, { gain: 0.15, hp: 180, lp: 2400 });
+  }
   sfxRoll() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.22, { gain: 0.3, hp: 260, lp: 2200 }); this.tone(160, t, 0.18, { gain: 0.25, sweep: 0.45, type: 'triangle' }); }
   // The hound: a jaw snapping shut, dry and close.
   sfxSnap() {

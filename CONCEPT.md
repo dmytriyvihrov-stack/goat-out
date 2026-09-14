@@ -147,6 +147,17 @@ a heart. The later ones add a Gallery of posted rifles, a Great Hall, a killbox,
 built the other way round — almost no walls, and furniture instead — and one whose floor is not all
 there.
 
+**Every level is about one thing.** Each has a canon — one idea — and at least half of its ordinary
+rooms are built round it: STONE on THE ALTAR (pillars and corners; the wall is the weapon), FIRE on
+THE YARD (coals and straw in every room, before the mage brings his own), THE LINE on THE ROAD (long
+sightlines and hard cover, and the strip a rifle cannot see), OPEN GROUND on THE THRESHING FLOOR, THE
+FUNNEL on THE BRIDGE (every room narrows somewhere, and seven men are one man in a doorway), THE DROP
+on THE RAFTERS, and THE NICHE on THE OSSUARY (a body cannot form inside stone, so the rooms are stone to
+put your back to with open floor between). The other half of a level's rooms is the mix: the plain
+rooms and the canons of every level before it, never an idea the run has not reached. So the first
+floor you fight on in any level is its idea, and the back half of the game is everything it has taught
+you, shuffled. The dev drawer's RULES page shows the split for any level, room by room.
+
 **The killbox**, late on the four levels that have rifles. A wide room with almost nothing in it and two
 rifles posted on the far side of it, watching the door you have to come in by. A posted man sees a good
 deal further than one wandering a room and he does not leave his post: he turns on the spot and fires
@@ -154,15 +165,15 @@ whenever he has the shot. There is a shield on a stand beside the door, two of t
 the room to pick up and carry in front of you, two bits of cover halfway across, and the corridor behind
 you. The room asks which of those you trust.
 
-| | Rooms | Regular enemies | Bosses |
-|---|---|---|---|
-| **THE ALTAR** | 9 | Bearers, one hound | Two elite Seers |
-| **THE YARD** | 12 | Bearers, Seers, hounds | Butcher, elite Seer |
-| **THE ROAD** | 14 | Bearers, Seers, Hunters, hounds | Two Butchers |
-| **THE THRESHING FLOOR** | 12 | All five, mixed | Elite Seer, Butcher |
-| **THE BRIDGE** | 16 | All five, mixed | Butcher, elite Seer, Butcher |
-| **THE RAFTERS** | 16 | All five, mixed | Elite Seer, Butcher, champion |
-| **THE OSSUARY** | 16 | Wraiths, and a garrison | Butcher, elite wraith, elite Seer |
+| | Rooms | Canon | Regular enemies | Bosses |
+|---|---|---|---|---|
+| **THE ALTAR** | 12 | Stone | Bearers, brutes | Brute, Butcher |
+| **THE YARD** | 12 | Fire | Bearers, brutes, hounds, Seers | Butcher, elite Seer |
+| **THE ROAD** | 14 | The line | All five | Two Butchers |
+| **THE THRESHING FLOOR** | 14 | Open ground | All five, mixed | Elite Seer, Butcher, brute |
+| **THE BRIDGE** | 16 | The funnel | All five, mixed | Butcher, elite Seer, Butcher |
+| **THE RAFTERS** | 16 | The drop | All five, mixed | Elite Seer, Butcher, brute |
+| **THE OSSUARY** | 16 | The niche | Wraiths, and a garrison | Butcher, elite wraith, elite Seer |
 
 **THE OSSUARY** is the last ground and the only one whose enemy cannot be fought on the terms the rest
 of the game taught. A wraith is mist: nothing reaches it, it reaches nothing, and it goes through the

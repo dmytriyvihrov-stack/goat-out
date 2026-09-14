@@ -9,14 +9,14 @@ const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 // rooms of words about a headbutt turned out not to add up to "the men can be hit" on their own.
 const CONTROL_LINES = {
   key: [
-    ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL'],
-    ['HOLD RIGHT CLICK — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
+    ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL, WHEN YOU FIND IT'],
+    ['HOLD RIGHT CLICK — CARRY', 'A MAN, A BOX, A BLADE', 'LET GO — THROW',
       'SPACE — SCREAM', 'BAAH STUNS EVERY EAR'],
     ['BUTT HIM', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS'],
   ],
   touch: [
-    ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — TUMBLE'],
-    ['HOLD GRAB — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
+    ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — WHEN YOU FIND IT'],
+    ['HOLD GRAB — CARRY', 'A MAN, A BOX, A BLADE', 'LET GO — THROW',
       'BAAH — SCREAM, IT STUNS EVERY EAR'],
     ['BUTT HIM', 'BUTT — HEADBUTT', 'INTO A WALL KILLS'],
   ],
@@ -31,6 +31,20 @@ const HINT_KEYS = {
   roll: ['E — ROLL', 'ROLL'],
   scream: ['SPACE — BAAH', 'BAAH'],
 };
+
+// How far under the boards what you see through a hole is, as a share of the camera's own movement.
+// 1 would be the floor you are standing on and 0 would be infinitely far away, so the smaller the
+// number the deeper it reads. It is the whole trick: from directly above, a hole and a pillar are
+// both a dark square, and the only thing that separates them is that the ground under a hole is a
+// long way down and therefore slides against the lip of the hole as you run past it.
+const DEPTH = { below: 0.42, night: 0.1 };
+
+// A stable value in 0..1 for one cell of the far layer. The landscape has to be the same landscape
+// every frame — generated from the cell rather than from `Math.random` — or it boils.
+function farHash(i, j) {
+  const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
 
 // The pixel heart: the HUD hearts, and the one that hangs between the two of them in the pen.
 const HEART_GLYPH = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
@@ -99,6 +113,7 @@ class Renderer {
       this.drawTiles(game, cam);
       this.drawDecals(game, cam);
       this.drawPits(game, cam);
+      this.drawFallers(game);
       this.drawHints(game);
       this.drawFire(game, cam);
       this.drawLight(game, cam);
@@ -234,29 +249,132 @@ class Renderer {
   drawPits(game, cam) {
     const ctx = this.ctx, wd = game.world, def = game.level.def;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
+    // A window is a slot the generator cut through a wall and wrote down: what is behind it is
+    // outside. Everything else is a hole in the floor, and what is under it is the compound. It used
+    // to be guessed from the tiles around it, which never once answered yes because the generator
+    // was not making any windows at all.
+    const marked = game.level.windows, holes = [], windows = [];
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         if (wd.tileAt(tx, ty) !== T.PIT) continue;
-        const px = tx * TILE, py = ty * TILE;
-        const n = wd.tileAt(tx, ty - 1) !== T.PIT, s2 = wd.tileAt(tx, ty + 1) !== T.PIT;
-        const wl = wd.tileAt(tx - 1, ty) !== T.PIT, e = wd.tileAt(tx + 1, ty) !== T.PIT;
-        // A window is a drop with stone either side of it: it gets the night behind it instead of
-        // the dark of the floor below, which is the only thing that tells the two apart at a glance.
-        const window = wd.isSolid(tx, ty - 1) && wd.isSolid(tx, ty + 1);
-        ctx.fillStyle = window ? '#0e1626' : '#08070a';
-        ctx.fillRect(px, py, TILE, TILE);
-        if (window) {
-          ctx.fillStyle = 'rgba(120,150,200,0.10)'; ctx.fillRect(px, py + 4, TILE, TILE - 10);
-          ctx.fillStyle = 'rgba(239,230,208,0.16)'; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+        (marked && marked.has(ty * wd.W + tx) ? windows : holes).push([tx, ty]);
+      }
+    }
+    if (!holes.length && !windows.length) return;
+    // The ground first, through every hole of a kind at once: one clip and one pass rather than one
+    // of each per tile. A flat black square was the whole of this, and a flat black square is what a
+    // pillar looks like from above — which is exactly the two things people were mixing up.
+    this.throughHoles(holes, cam, false);
+    this.throughHoles(windows, cam, true);
+    for (const [tx, ty] of holes) {
+      const px = tx * TILE, py = ty * TILE;
+      // the boards break off over the edge, and the near lip catches the light off the floor
+      if (wd.tileAt(tx, ty - 1) !== T.PIT) {
+        ctx.fillStyle = def.wallTop; ctx.fillRect(px, py, TILE, 5);
+        this.rimShade(px, py + 5, TILE, 13, 'v', 1);
+      }
+      if (wd.tileAt(tx, ty + 1) !== T.PIT) {
+        ctx.fillStyle = 'rgba(239,230,208,0.11)'; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+        this.rimShade(px, py + TILE - 13, TILE, 9, 'v', -1);
+      }
+      if (wd.tileAt(tx - 1, ty) !== T.PIT) this.rimShade(px, py, 11, TILE, 'h', 1);
+      if (wd.tileAt(tx + 1, ty) !== T.PIT) this.rimShade(px + TILE - 11, py, 11, TILE, 'h', -1);
+    }
+    for (const [tx, ty] of windows) {
+      const px = tx * TILE, py = ty * TILE;
+      // the stone reveal above and the sill below: a window is a thing cut through something thick
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(px, py, TILE, 5);
+      ctx.fillStyle = 'rgba(239,230,208,0.18)'; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+    }
+  }
+
+  // What is behind a set of holes, painted once through all of them. `k` in `DEPTH` is how much of
+  // the camera's movement the far layer takes: everything here is laid out in a space that is then
+  // shifted by the part of the camera the far layer does NOT follow, so it lags behind the lip.
+  throughHoles(cells, cam, night) {
+    if (!cells.length) return;
+    const ctx = this.ctx;
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    ctx.save(); ctx.beginPath();
+    for (const [tx, ty] of cells) {
+      const px = tx * TILE, py = ty * TILE;
+      ctx.rect(px, py, TILE, TILE);
+      if (px < bx0) bx0 = px; if (py < by0) by0 = py;
+      if (px + TILE > bx1) bx1 = px + TILE; if (py + TILE > by1) by1 = py + TILE;
+    }
+    ctx.clip();
+    ctx.fillStyle = night ? '#0b1224' : '#0a0910';
+    ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+    const k = night ? DEPTH.night : DEPTH.below;
+    const ox = cam.x * (1 - k), oy = cam.y * (1 - k), cell = night ? 32 : 72;
+    const i0 = Math.floor((bx0 - ox) / cell) - 1, i1 = Math.ceil((bx1 - ox) / cell);
+    const j0 = Math.floor((by0 - oy) / cell) - 1, j1 = Math.ceil((by1 - oy) / cell);
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const h = farHash(i, j), h2 = farHash(i + 91, j - 17), h3 = farHash(i - 43, j + 7);
+        const x = ox + i * cell + h * cell * 0.6, y = oy + j * cell + h2 * cell * 0.6;
+        if (night) {
+          // stars, and now and then something burning a very long way off
+          if (h3 > 0.4) { ctx.fillStyle = `rgba(206,222,255,${0.16 + h * 0.42})`; ctx.fillRect(x, y, 1.6, 1.6); }
+          if (h3 < 0.035) {
+            const gl = ctx.createRadialGradient(x, y, 0, x, y, 26);
+            gl.addColorStop(0, 'rgba(242,162,51,0.30)'); gl.addColorStop(1, 'rgba(242,162,51,0)');
+            ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(x, y, 26, 0, Math.PI * 2); ctx.fill();
+          }
         } else {
-          // the boards break off over the edge, and the dark gets darker as it goes down
-          if (n) { ctx.fillStyle = def.wallTop; ctx.fillRect(px, py, TILE, 5); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(px, py + 5, TILE, 9); }
-          if (s2) { ctx.fillStyle = 'rgba(239,230,208,0.09)'; ctx.fillRect(px, py + TILE - 4, TILE, 4); }
-          if (wl) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px, py, 5, TILE); }
-          if (e) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px + TILE - 5, py, 5, TILE); }
+          // The hall a long way down: roof ridges, the slabs between them, and the odd torch still
+          // burning on one. Long and thin with a lit upper edge, because a roof seen from directly
+          // above is a bar of light with a bar of shadow under it and almost nothing else.
+          if (h > 0.34) {
+            const rw = cell * (0.45 + h2 * 0.55), rh = cell * (0.16 + h3 * 0.2);
+            ctx.fillStyle = `rgba(96,84,74,${0.3 + h2 * 0.3})`; ctx.fillRect(x, y, rw, rh);
+            ctx.fillStyle = `rgba(168,150,128,${0.16 + h3 * 0.2})`; ctx.fillRect(x, y, rw, 2.4);
+            ctx.fillStyle = 'rgba(4,3,6,0.5)'; ctx.fillRect(x, y + rh, rw, 3);
+          }
+          // rubble on the ground between them, so it is not two shapes and a void
+          if (h2 > 0.5) { ctx.fillStyle = `rgba(70,62,56,${0.2 + h * 0.2})`; ctx.fillRect(x + cell * 0.1, y + cell * 0.62, 3 + h * 5, 2.4); }
+          if (h3 > 0.8) {
+            const gl = ctx.createRadialGradient(x, y, 0, x, y, 40);
+            gl.addColorStop(0, 'rgba(242,162,51,0.42)'); gl.addColorStop(1, 'rgba(242,162,51,0)');
+            ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,224,138,0.65)'; ctx.fillRect(x - 1.2, y - 1.2, 2.8, 2.8);
+          }
         }
       }
     }
+    // The air between here and there. Without it the far layer reads as a picture stuck to the floor
+    // rather than as something a long way under it.
+    ctx.fillStyle = night ? 'rgba(14,22,38,0.3)' : 'rgba(10,8,12,0.26)';
+    ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+    ctx.restore();
+  }
+
+  // The shadow the lip of a hole throws down its own inside wall. `dir` is which way it fades: 1
+  // away from the near edge, -1 toward it. A hard band read as a border drawn round a black square,
+  // which is the thing that made a hole look like a tile rather than an absence of one.
+  rimShade(x, y, w, h, axis, dir) {
+    const ctx = this.ctx;
+    const g = axis === 'v' ? ctx.createLinearGradient(0, dir > 0 ? y : y + h, 0, dir > 0 ? y + h : y)
+      : ctx.createLinearGradient(dir > 0 ? x : x + w, 0, dir > 0 ? x + w : x, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0.72)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  }
+
+  // Somebody going down. He turns over as he goes, gets smaller, and the dark takes him. It is the
+  // one death in the game with nothing left on the floor afterwards, so the fall has to be the whole
+  // of it — before this he simply stopped existing, which reads as a bug and not as a drop.
+  drawFallers(game) {
+    const ctx = this.ctx;
+    for (const f of game.fallers) {
+      const k = clamp(f.t / f.life, 0, 1), sc = 1 - 0.8 * k;
+      ctx.save();
+      ctx.globalAlpha = 1 - k * k;
+      ctx.translate(f.x + f.dx * k, f.y + f.dy * k + k * 14);
+      ctx.scale(1, 1 / TILT); ctx.rotate(f.spin * k); ctx.scale(sc, sc);
+      if (f.e.kind === 'dog') this.drawHound(f.e); else this.drawCultist(f.e, f.e.r);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
   }
 
   // Words painted on the floor instead of a tutorial box, the way Ape Out does it.
@@ -271,7 +389,9 @@ class Renderer {
         // and the longest of them was unreadable at both ends.
         const lines = this.wrapFloor(hn.text), wide = (hn.w || 14 * TILE) - 3.2 * TILE;
         const size = this.fitFloorText(lines, wide, 26), lh = size * 1.34;
-        const key = hn.key ? HINT_KEYS[hn.key][game.touch.active ? 1 : 0] : null;
+        // A hint never names a button the goat has not been given yet.
+        const has = hn.key !== 'roll' || game.mods.roll;
+        const key = hn.key && has ? HINT_KEYS[hn.key][game.touch.active ? 1 : 0] : null;
         const block = (lines.length - 1) * lh + (key ? lh * 0.95 : 0);
         let y = hn.y - block / 2;
         ctx.fillStyle = 'rgba(239,230,208,0.15)';
@@ -460,6 +580,14 @@ class Renderer {
     } else if (p.kind === 'door') {
       const tall = p.vertical;
       const wdt = tall ? 13 : 58, hgt = tall ? 58 : 13;
+      // The soul door carries the tome's own halo. An iron door in a corridor and the one with a
+      // tome behind it used to be the same grey slab, which is why nobody went to the second one.
+      if (p.vault) {
+        const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 56);
+        halo.addColorStop(0, `rgba(255,224,138,${0.14 + 0.08 * Math.sin(this.t * 2.4)})`);
+        halo.addColorStop(1, 'rgba(255,224,138,0)');
+        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(p.x, p.y, 56, 0, Math.PI * 2); ctx.fill();
+      }
       ctx.save(); ctx.translate(p.x, p.y);
       if (p.open > 0) ctx.rotate((tall ? -1 : 1) * p.open * 1.25);
       this.shadow(0, 0, wdt * 0.6, hgt * 0.4);
@@ -485,10 +613,25 @@ class Renderer {
           ctx.stroke();
         }
       }
-      ctx.fillStyle = p.iron ? '#c9ccd4' : PALETTE.ochre;
-      ctx.beginPath(); ctx.arc(0, 0, p.iron ? 4 : 3.2, 0, Math.PI * 2); ctx.fill();
+      if (p.vault) {
+        // The book itself, painted small on the face: the door says what is behind it in the
+        // language of the thing behind it, which is the only wording nobody has to be taught.
+        ctx.fillStyle = PALETTE.plum; ctx.fillRect(-4.5, -4.5, 9, 9);
+        ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 1.4; ctx.strokeRect(-3.4, -3.4, 6.8, 6.8);
+        ctx.beginPath(); ctx.moveTo(-1.6, -0.4); ctx.lineTo(1.6, -0.4); ctx.moveTo(0, -2); ctx.lineTo(0, 1.6); ctx.stroke();
+      } else {
+        ctx.fillStyle = p.iron ? '#c9ccd4' : PALETTE.ochre;
+        ctx.beginPath(); ctx.arc(0, 0, p.iron ? 4 : 3.2, 0, Math.PI * 2); ctx.fill();
+      }
       if (p.pressure > 0.15) { ctx.strokeStyle = `rgba(192,57,43,${Math.min(0.8, p.pressure)})`; ctx.lineWidth = 2; ctx.strokeRect(-wdt / 2 - 2, -hgt / 2 - 2, wdt + 4, hgt + 4); }
       ctx.restore();
+      // ...and the same word the tome on the floor carries, over the top of it.
+      if (p.vault) {
+        ctx.save(); ctx.scale(1, 1 / TILT);
+        ctx.font = `700 ${11}px ${FONT_SC}`; ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(255,224,138,${0.45 + 0.3 * Math.sin(this.t * 2.4)})`;
+        ctx.fillText('TOME', p.x, (p.y - 24) * TILT); ctx.textAlign = 'left'; ctx.restore();
+      }
     } else if (p.kind === 'table') {
       const a = p.flung ? Math.atan2(p.vy, p.vx) : 0;
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(a);
@@ -542,26 +685,18 @@ class Renderer {
       }
       ctx.restore();
     } else if (p.kind === 'crate') {
-      // A box of the compound's own stores, one to a tile: planks, two iron bands and a stud. The
-      // plainest object in the game, and it is plain on purpose — everything you can do with it you
-      // can already do with a pot, so the only thing it has to say is *pick me up*.
+      // A small wooden box, and that is the whole drawing: an outline, a face, a lit top edge and one
+      // band across it. It was bigger and had planks, bands and a stud on it, which is detail spent
+      // saying nothing — a box has to read as *liftable* from across a room and nothing else, and
+      // four shapes do that better than nine. It is the only thing on this floor you can pick up.
       const r = p.r;
       const lift = p.held ? 4 : 0, spin = p.flung ? Math.atan2(p.vy, p.vx) * 0.4 : 0;
       ctx.save(); ctx.translate(p.x, p.y - lift); ctx.rotate(spin);
-      this.shadow(0, r * 0.45 + lift, r * 0.95, r * 0.5);
-      ctx.fillStyle = '#3f2b18'; ctx.fillRect(-r, -r * 0.82, r * 2, r * 1.64);
-      ctx.fillStyle = PALETTE.wood; ctx.fillRect(-r + 1.5, -r * 0.82 + 1.5, r * 2 - 3, r * 1.64 - 3);
-      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(-r + 1.5, -r * 0.82 + 1.5, r * 2 - 3, 2.6);
-      // the boards, and the bands across them
-      ctx.strokeStyle = 'rgba(26,16,22,0.45)'; ctx.lineWidth = 1.3;
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.33, -r * 0.82); ctx.lineTo(-r * 0.33, r * 0.82);
-      ctx.moveTo(r * 0.33, -r * 0.82); ctx.lineTo(r * 0.33, r * 0.82);
-      ctx.stroke();
-      ctx.fillStyle = '#4a443c';
-      ctx.fillRect(-r + 1.5, -r * 0.34, r * 2 - 3, 2.4); ctx.fillRect(-r + 1.5, r * 0.18, r * 2 - 3, 2.4);
-      ctx.fillStyle = '#8a8177';
-      ctx.beginPath(); ctx.arc(0, -r * 0.08, 2, 0, Math.PI * 2); ctx.fill();
+      this.shadow(0, r * 0.5 + lift, r * 0.9, r * 0.5);
+      ctx.fillStyle = '#3f2b18'; ctx.fillRect(-r, -r * 0.85, r * 2, r * 1.7);
+      ctx.fillStyle = PALETTE.wood; ctx.fillRect(-r + 1.5, -r * 0.85 + 1.5, r * 2 - 3, r * 1.7 - 3);
+      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(-r + 1.5, -r * 0.85 + 1.5, r * 2 - 3, 2.4);
+      ctx.fillStyle = '#4a443c'; ctx.fillRect(-r + 1.5, -1.2, r * 2 - 3, 2.4);
       ctx.restore();
     } else if (p.kind === 'cage') {
       const h = TUNING.prop.cage.height;
@@ -641,12 +776,9 @@ class Renderer {
       ctx.font = `700 ${11}px ${FONT_SC}`; ctx.textAlign = 'center';
       ctx.fillStyle = `rgba(239,230,208,${0.45 + 0.25 * Math.sin(this.t * 3)})`;
       ctx.fillText('MILK', p.x, (p.y - 22 + bob) * TILT); ctx.textAlign = 'left'; ctx.restore();
-    } else {
-      this.shadow(p.x, p.y, p.r, p.r * 0.5);
-      ctx.fillStyle = PALETTE.ochre; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = PALETTE.plum; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.r - 3, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(239,230,208,0.25)'; ctx.beginPath(); ctx.arc(p.x - 3, p.y - 3, p.r * 0.35, 0, Math.PI * 2); ctx.fill();
     }
+    // There is no fallback branch any more. The one that was here drew an ochre disc for the pot,
+    // and a disc on a floor of boards reads as a plate rather than as a thing you lift.
   }
 
   // A rank of iron spikes stood up along an arc of a body: the brute's back, and nobody else's.
@@ -1052,12 +1184,13 @@ class Renderer {
   drawDev(game) {
     const ctx = this.ctx, s = this.ts, d = game.dev;
     d.rects = [];
+    if (d.rules) { this.drawRules(game); return; }
     const pad = 8 * s, cw = 62 * s, chH = 22 * s;
     const cx = this.w - pad - cw, cy = this.h - pad - chH;
     let toastY = cy - 10 * s;
     if (d.open) {
       const rows = [
-        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'],
+        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['rules', 'RULES'],
         ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'],
         ['wraith', '+ WRAITH'], ['butcher', '+ BUTCHER'],
         ['tome', '+ TOME'], ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
@@ -1102,6 +1235,148 @@ class Renderer {
       ctx.fillText(d.toast.text, this.w - 12 * s, toastY);
       ctx.textAlign = 'left'; ctx.globalAlpha = 1;
     }
+  }
+
+  // A button in the drawer's own style, and its rect.
+  devButton(d, x, y, w, h, label, id, on) {
+    const ctx = this.ctx, s = this.ts;
+    ctx.fillStyle = on ? 'rgba(185,135,58,0.55)' : 'rgba(59,34,51,0.75)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = on ? PALETTE.ochre : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 1 * s;
+    ctx.strokeRect(x, y, w, h);
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = on ? PALETTE.fireHi : PALETTE.bone;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + w / 2, y + h / 2);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    d.rects.push({ x, y, w, h, id });
+  }
+
+  // Break a line on its spaces to fit a width, in whatever font is set.
+  wrap(text, maxW) {
+    const ctx = this.ctx, out = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+      const t = line ? line + ' ' + word : word;
+      if (line && ctx.measureText(t).width > maxW) { out.push(line); line = word; } else line = t;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+
+  // Cut a line to a width with an ellipsis, in whatever font is set.
+  clip(text, maxW) {
+    const ctx = this.ctx;
+    if (ctx.measureText(text).width <= maxW) return text;
+    let t = text;
+    while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+    return t + '…';
+  }
+
+  // The RULES page of the dev drawer: what the generator promises, held against a level. The left
+  // column is every rule in GEN_RULES with its answer painted beside it — fire for a rule that holds,
+  // blood for one that does not, ash for one with nothing to say about this level — and the right
+  // column is the level: its canon, its definition read out, and the rooms it actually built, with
+  // the canon rooms lit. The level in play is checked as it stands; any other level is a sample the
+  // drawer generates for the page and can reroll, so every level's rules can be read without
+  // playing up to it. Nothing here is a number: everything it shows comes off LEVELS, the templates
+  // and the level itself, so the page cannot disagree with the game.
+  drawRules(game) {
+    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
+    const page = game.rulesPage(), def = page.def, L = page.level;
+    ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
+    const pad = 14 * s;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('LEVEL GENERATION RULES', pad, pad + 12 * s);
+    this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'CLOSE', 'rules', false);
+    // one tab per level; the one in play carries a mark
+    let tx = pad;
+    const ty = pad + 22 * s, th = 18 * s;
+    LEVELS.forEach((lv, i) => {
+      const label = `${i + 1} ${lv.name}${game.level && game.levelIndex === i ? ' •' : ''}`;
+      ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+      const w = ctx.measureText(label).width + 14 * s;
+      this.devButton(d, tx, ty, w, th, label, 'rules-L' + i, page.index === i);
+      tx += w + 4 * s;
+    });
+    const y0 = ty + th + 16 * s;
+    const colW = W * 0.42 - pad, x1 = W * 0.45, col2 = W - x1 - pad;
+    const results = checkRules(L);
+    const tint = (ok) => (ok === true ? PALETTE.fireHi : ok === false ? PALETTE.blood : PALETTE.ash);
+
+    // ---- every level: the rules, each lit by its answer ----
+    let y = y0;
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('EVERY LEVEL', pad, y);
+    ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText(page.live ? 'checked against the level in play' : `checked against a sample of ${def.name}, seed ${page.seed}`, pad, y + 12 * s);
+    y += 26 * s;
+    // Wrap everything first so the column can be shrunk to fit the screen it is on.
+    const blocks = results.map((r) => {
+      ctx.font = `400 ${9.5 * s}px ${FONT}`;
+      const lines = this.wrap(r.rule.text, colW - 14 * s);
+      const why = r.ok === false && r.why ? this.wrap('— ' + r.why, colW - 14 * s) : [];
+      return { r, lines, why };
+    });
+    const count = blocks.reduce((a, b) => a + b.lines.length + b.why.length, 0);
+    const fit = (H - y - pad) / (count * 11.5 * s + blocks.length * 4 * s);
+    const k = Math.min(1, fit), lh = 11.5 * s * k, fs = Math.max(6.5, 9.5 * k) * s;
+    for (const b of blocks) {
+      ctx.fillStyle = tint(b.r.ok);
+      ctx.fillRect(pad, y - 6 * s * k, 6 * s * k, 6 * s * k);
+      ctx.font = `400 ${fs}px ${FONT}`; ctx.fillStyle = b.r.ok === false ? PALETTE.bone : 'rgba(239,230,208,0.85)';
+      for (const ln of b.lines) { ctx.fillText(ln, pad + 12 * s, y); y += lh; }
+      ctx.fillStyle = PALETTE.blood;
+      for (const ln of b.why) { ctx.fillText(ln, pad + 12 * s, y); y += lh; }
+      y += 4 * s * k;
+    }
+
+    // ---- this level: its canon, its numbers, and the rooms it built ----
+    y = y0;
+    ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText(`${def.sub.toUpperCase()} — ${def.name}`, x1, y); y += 15 * s;
+    if (def.canon) {
+      ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi;
+      ctx.fillText(`CANON: ${def.canon.name}`, x1, y); y += 12 * s;
+      ctx.font = `400 ${9.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.bone;
+      for (const ln of this.wrap(def.canon.idea, col2)) { ctx.fillText(ln, x1, y); y += 11 * s; }
+    }
+    y += 4 * s;
+    ctx.font = `400 ${8.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
+    for (const f of levelFacts(def)) for (const ln of this.wrap(f, col2)) { ctx.fillText(ln, x1, y); y += 10.5 * s; }
+    y += 10 * s;
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText(page.live ? 'ROOMS — THE LEVEL IN PLAY' : `ROOMS — A SAMPLE, SEED ${page.seed}`, x1, y);
+    if (!page.live) this.devButton(d, W - pad - 64 * s, y - 13 * s, 64 * s, 17 * s, 'REROLL', 'rules-roll', false);
+    y += 4 * s;
+    const rooms = roomsOf(L);
+    const rh = Math.max(7 * s, Math.min(11.5 * s, (H - y - pad - 18 * s) / (rooms.length + 1)));
+    const roleTint = { canon: PALETTE.ochre, mix: 'rgba(239,230,208,0.55)', trap: PALETTE.blood, pen: PALETTE.ash, calm: PALETTE.ash };
+    const peak = Math.max(1, ...rooms.map((r) => r.threat));
+    const bx = x1 + 128 * s, bw = 56 * s;
+    for (const r of rooms) {
+      y += rh;
+      // The canon rooms are the point of the page: they get a bar of light behind the whole row.
+      if (r.role === 'canon') { ctx.fillStyle = 'rgba(185,135,58,0.16)'; ctx.fillRect(x1 - 4 * s, y - rh + 3 * s, col2 + 8 * s, rh); }
+      else if (r.role === 'trap') { ctx.fillStyle = 'rgba(192,57,43,0.10)'; ctx.fillRect(x1 - 4 * s, y - rh + 3 * s, col2 + 8 * s, rh); }
+      ctx.font = `700 ${8.5 * s}px ${FONT_SC}`;
+      ctx.fillStyle = PALETTE.ash; ctx.fillText(String(r.index).padStart(2, ' '), x1, y);
+      ctx.fillStyle = roleTint[r.role] || PALETTE.witch; ctx.fillText(r.role.toUpperCase(), x1 + 16 * s, y);
+      ctx.fillStyle = PALETTE.bone; ctx.fillText(r.name, x1 + 62 * s, y);
+      ctx.fillStyle = 'rgba(239,230,208,0.12)'; ctx.fillRect(bx, y - 6 * s, bw, 5 * s);
+      if (r.threat) { ctx.fillStyle = PALETTE.blood; ctx.fillRect(bx, y - 6 * s, bw * r.threat / peak, 5 * s); }
+      ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.8)';
+      const men = r.men.join(' ') + (r.cell && r.cell.intro ? `  ← meets ${r.cell.intro}` : '');
+      ctx.fillText(this.clip(men, col2 - (bx + bw + 8 * s - x1)), bx + bw + 8 * s, y);
+    }
+    // The share, in one line, lit by whether it holds.
+    const canonRule = results.find((r) => r.rule.id === 'canon');
+    const ord = rooms.filter((r) => ORDINARY.has(r.role)), cn = ord.filter((r) => r.role === 'canon').length;
+    y += rh + 6 * s;
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = tint(canonRule ? canonRule.ok : null);
+    ctx.fillText(def.canon
+      ? `CANON ${cn} OF ${ord.length} ORDINARY ROOMS — ${Math.round(100 * cn / Math.max(1, ord.length))}%, NEEDS ${Math.round(CANON.share * 100)}%`
+      : 'NO CANON ON THIS LEVEL', x1, y);
   }
 
   drawBullet(b) {
@@ -1570,7 +1845,9 @@ class Renderer {
       { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding },
       { id: 'grab', name: g.holding ? 'THROW' : 'GRAB', cap: 'RMB', cd: g.grabCd,
         max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0 },
-      { id: 'roll', name: 'ROLL', cap: 'E', cd: g.rollCd, max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0 },
+      // The roll is the one verb you are not born with. Locked, the chip stays on the rail and says so.
+      { id: 'roll', name: game.mods.roll ? 'ROLL' : 'LOCKED', cap: 'E', cd: game.mods.roll ? g.rollCd : 0,
+        max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0 && !!game.mods.roll, locked: !game.mods.roll },
       { id: 'scream', name: fire ? 'FIRE' : 'BAAH', cap: 'SPC', cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0 },
     ];
     const box = 32 * s, gap = 7 * s, right = this.w - 14 * s;
@@ -1589,7 +1866,7 @@ class Renderer {
         : row.ready ? 'rgba(239,230,208,0.42)' : 'rgba(239,230,208,0.16)';
       ctx.lineWidth = 1.6 * s; ctx.strokeRect(x, y, box, box);
       ctx.save(); ctx.translate(x + box / 2, y + box / 2);
-      ctx.globalAlpha = row.cd > 0 ? 0.4 : row.ready ? 1 : 0.55;
+      ctx.globalAlpha = row.locked ? 0.2 : row.cd > 0 ? 0.4 : row.ready ? 1 : 0.55;
       this.skillIcon(row.id, box * 0.33, game, fire);
       ctx.globalAlpha = 1; ctx.restore();
       // one pip per tome hanging off this button
@@ -1605,7 +1882,8 @@ class Renderer {
         ctx.fillText(row.cap, x + box / 2, y - 4 * s);
       }
       ctx.font = `700 ${9 * s}px ${FONT_SC}`;
-      ctx.fillStyle = hot ? PALETTE.fireHi : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.6)';
+      ctx.fillStyle = row.locked ? 'rgba(239,230,208,0.28)' : hot ? PALETTE.fireHi
+        : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.6)';
       ctx.fillText(row.name, x + box / 2, y + box + 18 * s);
     });
     // The gong, while it is still in him: a strip under the rail that drains with it, so four
@@ -1744,9 +2022,10 @@ class Renderer {
     // buttons
     const held = !!game.goat.holding;
     const fire = !!game.mods.breath;
-    const labels = { butt: 'BUTT', grab: held ? 'THROW' : 'GRAB', scream: fire ? 'FIRE' : 'BAAH', roll: 'ROLL' };
+    const canRoll = !!game.mods.roll;
+    const labels = { butt: 'BUTT', grab: held ? 'THROW' : 'GRAB', scream: fire ? 'FIRE' : 'BAAH', roll: canRoll ? 'ROLL' : 'LOCKED' };
     const ready = { butt: game.goat.state === 'idle' && !held, grab: held || game.goat.grabCd <= 0,
-      scream: game.goat.screamCd <= 0, roll: game.goat.rollCd <= 0 };
+      scream: game.goat.screamCd <= 0, roll: canRoll && game.goat.rollCd <= 0 };
     for (const k of ['butt', 'grab', 'scream', 'roll']) {
       const b = t.buttons[k], down = t.pressed[k] !== undefined;
       const hot = k === 'scream' && fire;

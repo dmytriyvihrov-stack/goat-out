@@ -10,6 +10,76 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ---
 
+## 14 September 2026, evening — the fifth sitting
+
+Asked for in one message and built in the same sitting; kept here so the file stays a record of what
+was asked. The reasoning is in `CHANGELOG.md` under 1.10.
+
+- ~~**A tab in the dev tool — the level generation rules — with the rules per room and the enemies
+  per level lit up; the general rules apart from each level's own.**~~ Shipped as RULES in the dev
+  drawer, with `js/rules.js` as the one list the drawer and `tools/balance.js` both read.
+- ~~**Every level gets a sub-idea of its own, a canon, with many rooms written for it: at least half
+  of the fighting rooms on the canon, the rest a mix of what you already know.**~~ Shipped as
+  `levelDef.canon`, five rooms per canon, and the canon/mix split in `gen.js`.
+
+---
+
+## 14 September 2026 — the fourth sitting, with 1.8
+
+**Where this batch went: everything but the last line shipped in 1.9.** The rule under this batch is
+*let the run get stronger*: he was dying, losing what he had just earned, and meeting a wall at level
+three, so nothing about the game read as progress.
+
+- ~~**Nothing is taken away on a restart.**~~ Shipped. A death used to take the newest tome.
+- ~~**A ticket of tomes per level: one, one, then two.**~~ Shipped as `levelDef.tomes` — one on level
+  one, two after, thirteen across a run, the vault holding one of each level's two and the level's last
+  boss the other. Every other boss drops milk. Asked for as "меж левелами зберігаються".
+- ~~**Difficulty should rise evenly.**~~ Shipped. It went 27 → 50 → **115** → 123 → 167 → 181 → 199 and
+  now goes 27 → 53 → 97 → 118 → 157 → 179 → 199.
+- ~~**The roll behind a skill.**~~ Shipped as TUCK AND ROLL. The chip on the rail reads LOCKED until it
+  is picked up, and the run's first tome always offers it.
+- ~~**No more plates. Boxes instead, smaller and simpler.**~~ Shipped: the pot kind is gone, every one
+  of them is a crate, and the crate is four shapes at `r` 10 instead of nine at 14.
+- ~~**Iron doors between rooms sometimes, three hits, so it is harder to just run through.**~~ Shipped
+  as `levelDef.ironDoors`, about two a level from level two.
+- ~~**The soul door should be clearer.**~~ Shipped: the tome's halo, the book painted on the face, and
+  the word TOME over it.
+
+- ~~**Pits and windows should read as holes, not as pillars. Put a distant landscape under them.**~~
+  Shipped, and it turned up a real bug on the way: windows had never generated once. The renderer had
+  drawn them since the drop landed and the test for one could not be satisfied by anything the
+  generator made.
+- ~~**A different fall animation for a man who goes over.**~~ Shipped as `game.fallers`.
+- ~~**Running without stopping builds up to +50% speed.**~~ Shipped as `goat.momentum`: four seconds
+  to the whole of it, three times as fast to lose it, and all of it gone on a hit.
+
+### system — a souls resource, one soul per man
+
+**Asked as a question, not built.** "А что если мы добавим ресурс душ? Но тут 1 душа = 1 человек. И его
+потом можно будет тратить." The counting half is free — `game.kills` is already exactly this number and
+`levelCleared` already carries it across levels as `totalKills`. The whole question is what a soul
+*buys*, and there is one rule it must not break: `scoreFor` deliberately makes pace the axis and kills
+only a multiplier, so *run, don't fight* survives. A soul price that rewards clearing a room turns the
+game into a brawler, which is the one thing pillar 3 in `CLAUDE.md` exists to prevent.
+
+Three shapes that do not break it, cheapest first:
+
+1. **The soul door opens for souls.** The vault's door already reads as a soul door and already costs
+   four blows. Give it a price in souls as well — say eight — shown on the face the way the blows are.
+   You pay it with men you were going to have to kill anyway on the way there, and skipping every fight
+   in the level means the tome behind it stays shut. Nothing else in the game changes, and the resource
+   has exactly one sink, which is the version worth trying first.
+2. **A soul price on the tome cards.** A third card that costs souls and offers a boon out of the pool
+   the other two did not. Same sink shape, but it touches `openBoonChoice`, which is the part of the
+   game with the fewest moving parts and the most weight.
+3. **Souls bank across a run and buy a head start.** The version he may actually mean by "потом" — a
+   meta-currency spent on the title screen, which is a new screen, a new save key and a decision about
+   whether a run is still one life. Biggest of the three by a distance, and it should not be first.
+
+Ask him which sink before building any of it. The counter is an afternoon; the sink is the design.
+
+---
+
 ## 14 September 2026 — the third sitting, with 1.7
 
 **Where this batch went: all of it shipped in 1.8.** Seven notes again, and the rule under this batch

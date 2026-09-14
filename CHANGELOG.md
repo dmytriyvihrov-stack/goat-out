@@ -5,6 +5,124 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.10 — every level is about one thing, and a page that says so
+
+**One sitting, about the shape of a level.** Asked for as a tab in the dev tool — the level
+generation rules, per room and per level, lit up — and, under it, the rule the tab is there to keep:
+every level has its own idea, most of its rooms are that idea, and the rest is a mix of what the run
+already knows.
+
+- **Every level has a canon.** `levelDef.canon` names it and `ROOM_TEMPLATES` entries carry it:
+  STONE on THE ALTAR (pillars, corners, stub walls — the wall is the weapon), FIRE on THE YARD (coals
+  and straw in every room before the mage brings his own), THE LINE on THE ROAD (colonnades, trenches
+  of cover, the strip a rifle cannot see), OPEN GROUND on THE THRESHING FLOOR, THE FUNNEL on THE BRIDGE
+  (a gate, a throat, an hourglass, weirs, a chute: seven men are one man in a doorway), THE DROP on
+  THE RAFTERS, and THE NICHE on THE OSSUARY (a crypt, cells, alcoves, a catacomb, a charnel comb —
+  stone to put your back to, because a body cannot form inside it). THE THRESHING FLOOR and THE
+  RAFTERS already had pools of their own; the other five got them, three existing rooms each plus new
+  ones, so every canon is five rooms.
+- **At least half of a level's ordinary rooms are its canon**, on an even spread that always starts
+  with the first one, so a level says what it is about on the first floor you fight on. The rest are
+  the mix: the plain rooms and the canons of every earlier level, never an idea the run has not
+  reached — level one's mix is four plain rooms, level seven's is thirty-four. THE THRESHING FLOOR and
+  THE RAFTERS used to be their pool and nothing else; now they are half it, which is what was asked
+  for, and the back half of a run is everything it has taught you, shuffled.
+- **A width budget in the generator.** The mix holds the yard's thirty-tile rooms from level five
+  on, and a sixteen-room level could draw enough of them to seal itself short of its last door. A
+  room now takes no more than its fair share of the width that is left, the set pieces still ahead
+  subtracted, and a template that does not fit is passed over for the next one that does.
+- **A level that asks for a vault gets one.** About one seed in two hundred put the vault's room
+  against the top or the bottom of the world with no rock to cut into, and the level went out a tome
+  short and said nothing about it. It is regenerated now. The RULES page found it.
+- **RULES, in the dev drawer.** A page over the whole screen with the simulation held: every rule the
+  generator keeps down the left, lit by whether this level keeps it — fire for holds, blood for does
+  not with the reason under it, ash for does not apply — and down the right the level: its canon and
+  idea, its definition read out of `LEVELS` so nothing can drift, its canon, mix and trap pools by
+  name, and the rooms it actually built with role, template, men and threat, the canon rows lit. One
+  tab per level; the level in play is checked as it stands and any other tab is a sample the page
+  generates and can reroll, so all seven can be read without playing up to them.
+- **The rules are written once.** `js/rules.js` holds the list — every kind met alone, the run
+  opening on one man, threat rising, every level harder, the caps, the canon share, the mix never
+  ahead of the run, a canon at least four rooms, set pieces teaching nothing, the Mill's room, rifles
+  posted only after they are met, milk on a rhythm, nothing beside the pen, arms held back, trap rooms
+  placed right, the vault — and `tools/balance.js` runs the same list over many seeds instead of its
+  own copy, so a rule cannot hold in the report and fail on the page.
+
+---
+
+## 1.9 — a run that gets stronger, a fourth button to find, and no more plates
+
+**One sitting, about progression.** The complaint was that the first levels were already hard and the
+difficulty did not climb evenly, and that nothing carried forward — you learned something, died, and
+were handed the same goat back. Every change here is that: what the run keeps, what it is given, and
+how steeply the ground rises under it.
+
+- **A death no longer takes a tome.** It took the newest one, which meant that dying on a level you
+  had just been rewarded on cost you the reward, and a bad run only ever got worse. You now come back
+  with **everything you walked into the level carrying**. What a death still takes is the tome you
+  found *inside* the level that killed you — the room is generated again and it is back where it was,
+  guarded by whoever was guarding it — so dying is not a way to farm one. The death card says
+  `N TOMES KEPT` instead of naming a loss.
+- **A level gives up an authored number of tomes.** It used to be however many bosses the level
+  happened to hold, plus the vault: two on level one, four on level six, twenty-four across a run that
+  never died — far more than there are tomes in the game. `tomes` is now a number on each level
+  definition. **One on level one, two on every level after**, which is thirteen across a run and
+  exactly the number of tomes that exist. The vault takes the first of a level's two (breaking an iron
+  door for a pail of milk is a swindle) and the LAST boss of the level takes the other, so the fight
+  you finish on always pays. **Every other boss now drops milk** — nothing you had to break through is
+  worth nothing. The level card says what is in the level: *2 tomes in here*.
+- **The roll is a tome, not a birthright.** The fourth chip on the rail starts dark and says LOCKED,
+  and the E key does nothing until **TUCK AND ROLL** is picked up. It is the game's clearest promise:
+  there is a verb you have not been given yet. The run's first tome always has it on the table — you
+  still spend the tome on it rather than on fire breath, but a fourth button withheld by a shuffle is
+  not a decision. LOOSE JOINTS and DEAD WEIGHT are held out of the deck until there is a roll to
+  sharpen, which is what the new `needs` field on a boon is for.
+- **The difficulty climbs evenly now.** It went 27 → 50 → **115** → 123 → 167 → 181 → 199: a wall at
+  level three and a plateau after it. Per room, which is what a player actually feels, that is
+  +1.9, **+4.0**, +0.6, +1.7, +0.8, +1.1. It now runs 27 → 53 → 97 → 118 → 157 → 179 → 199, or per
+  room +2.1, +2.5, +1.5, +1.4, +1.4, +1.2 — the same finale, the same first two levels, and no wall
+  in the middle. Level three's Great Hall was the single worst offender at 26 threat in one room when
+  the level's own rooms averaged 8; the first Hall you ever walk into is a smaller one now (11), and
+  the bridge's is still the wall of bodies it was meant to be.
+- **Iron doors between rooms.** Every door in a corridor was planks and went on the first blow, so a
+  corridor was never a decision. About **two a level** from level two on are iron: nobody shoulders one
+  open, it takes **three blows**, and the noise of the first one is already bringing whatever is in the
+  next room. Level one has none — it is still teaching that a door goes at all. `levelDef.ironDoors`
+  is the chance, rolled on top of `doorChance`.
+- **The soul door says what is behind it.** With iron in the corridors, the vault's door — the only
+  door in a level that is not on the way anywhere — was suddenly indistinguishable from a speed bump.
+  It now carries the tome's own halo, the book painted small on its face, and the same floating `TOME`
+  the tome on the floor carries. It is still four blows, one more than the iron you passed two rooms
+  back, and that difference is now something you can see before you spend them.
+- **There is a landscape under the holes.** A drop was a flat black square, and from directly above a
+  flat black square is also what a pillar looks like — which is exactly what people were mixing up.
+  You can see the hall a long way down through them now: roof ridges with lit upper edges, rubble, the
+  odd torch still burning. It is painted at a fraction of the camera's own movement, so it **slides
+  against the lip of the hole as you run past** — parallax is the only thing that says *down* on a flat
+  top-down picture, and the scenery is only there to give it something to move. The rim is a gradient
+  instead of a hard band, which was reading as a border drawn round a black tile.
+- **Windows exist now.** THE RAFTERS' own design note has promised "windows out into the night" since
+  the level was written and the generator had never made a single one: the renderer had known how to
+  draw a window the whole time and the test for one — stone above and below — never once answered yes.
+  They are cut properly now, three to five tiles through the wall along the top of a room, with the
+  night and the stars behind them, and the generator writes down which tiles they are instead of the
+  renderer guessing. A window is a drop like any other: shove a man out of one.
+- **You watch a man go down.** He used to stop existing in the frame he crossed the lip, which reads
+  as a bug and not as a drop. He turns over, shrinks into the dark and fades, and the sound of him
+  keeps falling after he is gone. Nothing about it is simulated — he is dead the moment he is over the
+  hole, exactly as before — it is only that the fall is now something you see happen.
+- **Running builds speed.** Four seconds of running without a break is worth **+50% top speed**, and it
+  drains three times as fast as it built the moment you stop. A club takes the whole of it at once. It
+  is the only speed in the game you earn instead of pick up, and everything that stops you costs it —
+  a fight, a door, a man in your way — so it pays for the thing the game is named after. The smear
+  behind him is where it shows: the ghosts lengthen as he winds up, the same way SURE HOOVES does it.
+- **No more plates.** The pot was drawn as an ochre disc, and a disc on a floor of boards reads as a
+  plate or a puddle rather than as a thing you lift. Every one of them is a **crate** now, and the
+  crate is smaller and plainer than it was: an outline, a face, a lit top edge, one band. Four shapes
+  instead of nine. A box has to say *pick me up* from across a room and nothing else.
+
+---
+
 ## 1.8 — the man in the doorway, and what is behind the iron
 
 **The same sitting, carried on.** Where 1.7 was about the game not saying what a thing *is*, this one

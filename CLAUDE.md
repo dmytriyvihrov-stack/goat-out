@@ -52,12 +52,13 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/entities.js` | `Goat`, `Prop` (every world object), `Bullet`. |
 | `js/enemies.js` | `Enemy` — one class, behaviour branches on `kind`. |
 | `js/render.js` | Everything drawn. Roughly half the codebase. |
+| `js/rules.js` | `GEN_RULES`, the generator's promises with a `check(level)` each; `checkRules`, `roomsOf`, `levelFacts`. Read by the dev drawer's RULES page and by `tools/balance.js`, so a rule is written once. |
 | `js/game.js` | State machine, fixed-step loop, input plumbing, entity-vs-entity collision, boons, dev drawer. |
 | `index.html` | Local build. |
 | `artifact.html` | Published build. Same scripts, artifact-shaped head. **Keep the two script lists in sync.** |
 | `tools/serve.js` | Dev server. Also accepts `POST /shot?name=x` with a data URL and writes a PNG to `tools/shots/`. |
 | `tools/harness.js` | Console test harness. See *Testing*. |
-| `tools/balance.js` | Prints the difficulty curve of every level and fails on a broken balance rule. |
+| `tools/balance.js` | Prints the difficulty curve and the canon/mix split of every level, runs every rule in `js/rules.js` over many seeds, and fails on a broken one. |
 | `tools/check-sync.js` | Checks the working tree, `origin/main` and the published artifact are one build. See *Publishing*. |
 | `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
 
@@ -153,14 +154,17 @@ over `burnTick`, and when `burning` runs out he lands in `stagger` instead of dy
 his line at you through a fire reads as the fire not counting, which is why nothing does it any more.
 `ignite` also takes whatever it lit out of the goat's mouth.
 
-**Props.** One `Prop` class for brazier, pot, bell, door, table, lamp, mill, heal, spike and weapon. `blocking`,
-`stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item` is what the
-goat can pick up and throw — a pot or a weapon — and it is the test everywhere the code used to ask
-`kind !== 'pot'`.
+**Props.** One `Prop` class for brazier, crate, bell, door, table, lamp, mill, heal, spike and weapon.
+`blocking`, `stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item`
+is what the goat can pick up and throw — a crate or a weapon — and it is the test everywhere the code
+asks whether a thing is a thing you lift. There used to be a `pot` as well, drawn by the fallback branch
+of `drawPropBody` as an ochre disc; a disc on a floor of boards reads as a plate rather than as
+something to pick up, so every one of them is a crate and the kind is gone. There is no fallback
+branch any more: a prop kind with no branch of its own does not draw.
 
 **Stands of arms.** A `weapon` prop is both the rack and the thing in it: `inStand` is true until it is
 first taken, and the rack is only drawn while it is. `weapon` is `sword` or `shield`. It is grabbed like
-a pot, thrown by releasing grab, and flies in `updateWeapon`; `hitMan` is where a sword kills and sticks
+a crate, thrown by releasing grab, and flies in `updateWeapon`; `hitMan` is where a sword kills and sticks
 and a shield flattens and carries on, `passed` stopping it hitting the same man twice on one throw. A
 carried shield turns `prop.weapon.shieldHits` bullets in `Bullet.update` before it splinters. Nothing is
 consumed: both lie where they land and are grabbable again. `'w'` in a room template places one; `racks`
@@ -173,16 +177,32 @@ dropped); a new boss gets his arena alone, and the first Mill room keeps one man
 generator also keeps the lone rifle posts from landing earlier in the level than the room that
 introduces a rifle. A run that keeps its tomes keeps what it has learned; a fresh run forgets.
 
+**Tomes are a budget, not a by-product.** `levelDef.tomes` is how many a level gives up, all in, and it
+is authored: **one on level one, two on every level after**, thirteen across a run, which is exactly the
+number of boons in `BOONS` minus the one you will not have room for. It used to be however many bosses
+the level happened to hold plus the vault — two, three or four, twenty-four across a clean run — which
+is not a decision about how strong the goat should be by level five, it is an accident of where the
+arenas are. `startLevel` spends the budget before a blow is struck: the vault takes the first (an iron
+door that costs four blows must not pay milk), and the rest go to the **last** bosses of the level, so
+the fight you finish on always pays. `Enemy.die` calls `game.bossPrize`, which drops a tome if the boss
+was given one and **milk** if he was not — nothing you had to break through is ever worth nothing. The
+level card reports the count, because a progression nobody can see is not one. A level definition with
+no `tomes` at all falls back to the old behaviour.
+
 **Boons.** `game.mods` is recomputed from `game.boons` by `applyBoons()`. Every use site reads
 `game.mods.X` rather than `TUNING` directly, so nothing mutates `TUNING` (which would leak across runs).
 Adding a boon means: add it to `BOONS`, add its default to `BOON_BASE`, and read the mod at the use site.
 Give it a `skill` (`butt` / `grab` / `roll` / `scream`) and it hangs off that button in the HUD rail; leave
-`skill` off and it is body work, listed but attached to nothing.
+`skill` off and it is body work, listed but attached to nothing. `needs` names a mod that has to already
+be on before the card is dealt at all — `LOOSE JOINTS` on a goat who cannot roll yet is a card that does
+nothing, and with thirteen tomes in a run against fourteen boons there is no room for a dead draw.
 
 **The skill rail.** `drawSkills` (top right) is the only place the four verbs are reported: availability,
 cooldown, and what the tomes did to each. `skillIcon` draws each verb from `game.mods`, so an icon has to
 change when a boon lands — Long Horns lengthens the horns on the icon and on the goat, Dragon Breath turns
 the mouth into a cone, Loose Joints adds a second turn to the roll. Add a boon, draw its effect here.
+A chip can also be dark: `row.locked` is the roll before its tome, drawn at a fifth alpha with LOCKED
+under it instead of the verb's name.
 The whole top band — the level name, the hearts, the rail, the count, the clock, the tome list — is sized
 by `renderer.hs`, which is `ts` times `TUNING.hud.scale`. That is the one number to turn if the corner of
 the screen is not being read; the cards, the menu and the floor text are on `ts` and stay where they are.
@@ -192,9 +212,9 @@ man leaves your mouth, so grab is not a button you hold. Roll has its own. Both 
 rings on the touch buttons; both read `game.mods`, never `TUNING`, at the use site.
 
 **The room is real to what flies through it.** `Prop.hitProp(game, nx, ny)` is the one place a moving
-prop — a thrown pot, a thrown blade or shield, a sliding table — meets the furniture: a lamp topples in
+prop — a thrown crate, a thrown blade or shield, a sliding table — meets the furniture: a lamp topples in
 the direction it was hit, a gong rings, and anything else pushes the mover out and is as solid as stone
-(a pot shatters, a sword snaps, a shield bounces, a table stops, or takes a door off if it is at
+(a crate shatters, a sword snaps, a shield bounces, a table stops, or takes a door off if it is at
 `table.killSpeed`). Bodies get the same treatment in `collideEntities`: a flung man arriving above
 `lamp.knock` topples the lamp instead of dying on it, and a Butcher in state `'charge'` smashes a door
 (`smash(..., by)` spares him the fling), shoves a table (`shove(..., by)` stops it turning on him),
@@ -278,13 +298,39 @@ if a kind arrives in a crowd first, a cap breaks, threat stops rising inside a l
 harder than the one before. Adding an enemy kind means: a `THREAT` value, an `ENCOUNTER.weight`, usually
 a `cap`, and an `introduce` entry on the level that first shows it.
 
-**Room pools.** `ROOM_TEMPLATES` entries with a `tag` are drawn only by a level whose `pool` matches;
-untagged ones are the default set everything else uses. THE RAFTERS is `pool: 'high'` — five rooms built
-round drops, deliberately narrow, because seventeen wide rooms do not fit across a 420-tile world and
-because an edge you can walk a long way round is not an edge. THE THRESHING FLOOR is `pool: 'open'`, and its
-`corridorW: 5` widens the S-corridor so the rooms read as one yard. A wide corridor deliberately eats
-the room borders it passes through — that is the mechanism behind "fewer walls", and it is why the level
-needs furniture (posts, tables, braziers, hay) to keep kills coming from geometry.
+**Canons.** Every level is about one thing, and `levelDef.canon` — `{ id, name, idea }` — is what: STONE
+on THE ALTAR, FIRE on THE YARD, THE LINE on THE ROAD, OPEN GROUND on THE THRESHING FLOOR, THE FUNNEL on
+THE BRIDGE, THE DROP on THE RAFTERS, THE NICHE on THE OSSUARY. A `ROOM_TEMPLATES` entry carrying
+`canon: '<id>'` belongs to that level's pool, and `pickCanonRooms` hands at least `CANON.share` of the
+level's ordinary rooms (`ordinaryRooms`: not the pen, the control rooms or a set piece) to it, on an even
+spread that always starts with the first ordinary room — a level says what it is about on the first
+floor you fight on. The rest are the mix: the untagged templates plus the canons in `levelDef.known`,
+which the block under `LEVELS` fills with the canons of every earlier level, so a room never shows an
+idea the run has not reached. `room.role` is the one word that records the decision — `pen`, `calm`,
+`canon`, `mix`, `trap`, `arena`, `mill`, `hall`, `gallery`, `killbox` — and it is what the RULES page
+and `tools/balance.js` read. `draw` in `tryGenerate` is the width budget: the mix holds the yard's
+thirty-tile rooms from level five on, and a template wider than its fair share of what is left (the
+set pieces still ahead subtracted) is passed over for the next one that fits, which is what keeps a
+sixteen-room level inside a 420-tile world. THE RAFTERS' five rooms are still deliberately narrow — an
+edge you can walk a long way round is not an edge — and THE THRESHING FLOOR's `corridorW: 5` still
+widens the S-corridor so its rooms read as one yard; a wide corridor deliberately eats the room borders
+it passes through, which is why that level needs furniture to keep kills coming from geometry. A canon
+needs `CANON.minRooms` templates written for it or the level is the same floor twice. Adding a canon
+means: `canon` on the level, `canon: id` on four or more templates, and nothing else — `known` and the
+mix follow.
+
+**The RULES page.** `RULES` in the dev drawer opens a page over the whole screen — `dev.rules` holds
+the simulation (`update` returns at once) and `hitDev` swallows every click under it. `js/rules.js`
+is the page's whole content and it is written once for two readers: `GEN_RULES` is every promise the
+generator makes, each with a `check(level)` that answers true, a string (why not) or null (nothing to
+say about this level); `checkRules` runs the list; `roomsOf` reduces a level to rooms with roles, men
+and threat; `levelFacts` reads a `LEVELS` entry out as lines, so the page cannot drift from the
+numbers. `tools/balance.js` runs the same `checkRules` over many seeds, which is why a rule lives
+there and nowhere else. The page shows the level in play as it stands; any other tab is a sample the
+page generates from `dev.sampleSeed` (`game.rulesPage`) and REROLL reseeds it, so every level can be
+inspected without playing up to it. `drawRules` in `render.js` paints it: fire for a rule that holds,
+blood for one that does not with its reason under it, ash for one that does not apply, and a bar of
+light behind every canon row of the room list.
 
 **Trap rooms.** `tag: 'trap'` is a pool of its own, drawn *into* a level's ordinary rooms rather than
 instead of them: `levelDef.traps` is a count, `pickTrapRooms` chooses the indices (never the pen, the
@@ -310,7 +356,7 @@ can never wander into the cone it is not allowed to manifest from. Three of them
 the same place behind you — they surround you.
 
 **The wraith, and what "not there" means.** `Enemy.ghosted` is `kind === 'wraith' && !solid`, and it is
-the question every single thing that reaches for an enemy has to ask: headbutt, breath, grab, thrown pot,
+the question every single thing that reaches for an enemy has to ask: headbutt, breath, grab, thrown crate,
 thrown blade, bullet, Mill arm, door, table, bomb, scream, fire, entity collision, friendly fire, the
 roll's threat sense, the music's threat count and the health notches. Mist also skips `collideCircle`,
 which is how it crosses walls. `updateWraith` drifts it to a point `wraith.standoff` tiles behind the
@@ -366,10 +412,14 @@ and a pointer that goes **down and up on the same card** (`boonDown` holds the i
 beat after they appear, so the click that killed the boss cannot spend what he dropped. Nothing
 selects on hover, and nothing selects on a press alone.
 
-**What a death costs.** `startLevel` snapshots `game.levelBoons` from `game.boons`, and `restartLevel`
-comes back with that list minus its last entry — so a death takes the newest tome and nothing else, and
-a tome picked up inside the level that killed you goes with it. `onGoatDied` names what went off the
-same list. Nothing else may reset `boons` on a death: `restartLevel` passes `keepBoons`.
+**What a death costs.** The level, not the learning. `startLevel` snapshots `game.levelBoons` from
+`game.boons` and `restartLevel` comes back with **exactly** that list, so everything the goat walked in
+carrying stays. It used to come back one short, which meant dying on the level that had just rewarded
+you cost you the reward and a bad run only got worse. What a death still takes is a tome found *inside*
+the level: the layout is generated again and it is back where it was, guarded by whoever was guarding
+it — which is also why a death is not a way to farm one. `onGoatDied` names what was kept rather than
+what was lost, because a card is the only place the player finds out that he keeps it. Nothing else may
+reset `boons` on a death: `restartLevel` passes `keepBoons`.
 
 **The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, score, at }` to
 `localStorage` under `SAVE_KEY` at the head of every level and again whenever a tome is taken; `loadRun`
@@ -408,7 +458,34 @@ man; cause `'fall'` skips the two-hit absorb and leaves no body, no blood and no
 `goatFalls` / `updateFall` and the `'falling'` state (a real state: `Goat.update` returns early in it),
 comes back at `goat.safeX/safeY` — the last non-pit point he stood on, recorded every frame — and pays
 `TUNING.fall.damage`. Nothing burns over a hole and the renderer draws pits in `drawPits` **after** the
-decals, so blood never lies across one; a pit with stone above and below it draws as a window instead.
+decals, so blood never lies across one.
+
+**What is under a hole.** A hole used to be a flat black square, and from directly above a flat black
+square is also what a pillar looks like — people were reading one as the other. There is a landscape
+under them now: `throughHoles` clips every visible hole of a kind into one path and paints the ground
+a long way down through all of them at once, laid out in a space shifted by the part of the camera the
+far layer does **not** follow (`DEPTH.below` / `DEPTH.night`), so it slides against the lip as you run
+past. Parallax is the only cue that says *down* on a flat top-down picture and it is doing all the work
+here; the roofs, the rubble and the torches are only there to have something for it to move. `farHash`
+keeps the landscape the same landscape every frame. The rim is a gradient (`rimShade`) rather than a
+hard band, because a hard band reads as a border drawn round a black tile.
+
+**Windows.** `levelDef.windows` is the chance a room gets one, and only THE RAFTERS has it: a hole in a
+wall is a drop, and the drop is that level's one new thing. `carveWindow` cuts a run of three to five
+tiles through the wall band along the top of a room — wall above it, the room's own floor below it, so
+it can be seen and walked into from inside — turns them to `T.PIT` and records them in `level.windows`,
+which is the **only** way `drawPits` tells a window from a hole. It used to guess from the tiles around
+it, and that guess never once answered yes: the renderer had known how to draw a window since the drop
+landed and the generator had never made one, so the level's own note promising "windows out into the
+night" was describing something that did not exist. A window is a drop like any other — walk into it,
+or be shoved into it, and you go out of it.
+
+**Going down.** An enemy over a hole dies at the top of `Enemy.update`, in one frame, and always did.
+What is new is that you get to watch it: `game.spawnFaller` keeps a picture of him in `game.fallers`
+for `fall.showFor`, turning over, shrinking and fading, drawn by `drawFallers` straight after the pits
+so he is inside the hole and under everything else. Nothing in it is simulated and nothing in it can
+be interacted with — he is already dead — but a body that simply stops existing reads as a bug rather
+than as a drop. `sfxFall` is the sound, and it keeps falling after he is gone.
 
 **The grating.** `kind === 'spike'`, driven by `updateSpike`, cycling `idle → armed → up → down →
 rest`. **Only the goat trips one** (`spike.trigger` tiles), which is what makes it a tool rather than
@@ -425,14 +502,27 @@ and a stretch across the middle of a room is ground you have to decide about.
 
 **Crates.** `kind === 'crate'` is the plainest object in the game: one tile of floor, planks and two
 iron bands, and everything it does it does through `item` — grab it, carry it, throw it. It flies down
-the same path as a pot (the thrown-item branch of `Prop.update`), breaks on the same things, and floors
-a man for `crate.stun` rather than the pot's, which is the only number that separates them. Boxes are
+the thrown-item branch of `Prop.update`, breaks on doors, tables, gongs and men, and floors whoever it
+catches for `crate.stun`. It is deliberately small — `r` is 10, a third under the tile it sits on — and
+deliberately plain: four shapes, an outline, a face, a lit top edge and one band. It had planks, two
+bands and a stud, which is detail spent saying nothing. Boxes are
 what a compound is full of; the point of it is that nothing has to be explained.
 
-**Two kinds of door.** `prop.door.hits` is one — a plank door in a corridor is a thing you run through,
-not a wall you stand at — and `ironHits` is four. `prop.iron` is the flag, it is set only by the vault,
-and an iron door also refuses `openPressure`: nobody shoulders it open, it is broken or it is shut. Every
-blow on one floats what is left in it, so four is a count and not a wall.
+**Three kinds of door.** `prop.door.hits` is one — a plank door in a corridor is a thing you run
+through, not a wall you stand at. `ironHits` is three and `vaultHits` four. `prop.iron` is the flag and
+`levelDef.ironDoors` is the chance an ordinary corridor door gets it, rolled in `gen.js` on top of
+`doorChance`: about two a level from level two on, none at all on level one, which is still teaching
+that a door goes. An iron door refuses `openPressure` — nobody shoulders it open, it is broken or it is
+shut — so a corridor with one in it is three blows of standing still with whatever heard the first
+already coming, which is the entire point of putting them there. Every blow floats what is left in it,
+so the count is a count and not a wall.
+
+**The soul door.** `prop.vault` is the vault's door and it is the fourth-blow one. It used to be an
+iron slab like any other, which since level two now has iron slabs in its corridors would make the one
+thing in a level worth going out of your way for indistinguishable from a speed bump. It carries the
+tome's own halo, the book painted small on its face in `PALETTE.plum` and `fireHi`, and the same
+floating `TOME` the tome on the floor carries — the door says what is behind it in the language of the
+thing behind it, which is the only wording nobody has to be taught.
 
 **The vault.** `levelDef.vaultAt` names one ordinary room in the middle of a level. `carveVault` cuts a
 five-by-five chamber into the rock above or below it, opens **two** tiles of stone — the rock and the
@@ -463,9 +553,15 @@ with an `entry`. Levels without `ritual` start at the top of the entry flight ra
 **The other cage.** Built by `buildCage(..., deco)` from `TUNING.prop.deadCage`; its bars carry `deco`,
 which keeps them out of `breakCage`, out of the gate, and out of the in-front-of-the-goat draw pass.
 What is in it is painted on the decal canvas by `paintStartRoom`.
-**The roll.** `Goat.rollDirection` scores 24 candidate angles against nearby men (weighted up if one is
-mid-swing), walls and fire, and honours the stick when there is one. With no direction asked for it is a
-pure escape, which is the whole reason the button exists on a phone.
+**The roll.** The one verb the goat is not born with. `mods.roll` is false out of the pen and the button
+does nothing until **TUCK AND ROLL** is taken: the chip stays on the rail reading LOCKED, the thumb
+button reads LOCKED, and a floor hint never names a key the goat has not been given (`drawHints` checks).
+A locked fourth chip is the clearest promise the game makes, which is the whole point of locking it.
+`openBoonChoice` puts it on the table for the run's **first** tome whatever the shuffle says — you still
+spend the tome on it rather than on fire breath, but a button withheld by a bad draw is not a decision.
+`Goat.rollDirection` scores 24 candidate angles against nearby men (weighted up if one is mid-swing),
+walls and fire, and honours the stick when there is one. With no direction asked for it is a pure escape,
+which is the whole reason the button exists on a phone.
 
 **Arms are consumable.** `prop.uses` counts what a weapon has left, off `TUNING.prop.weapon.uses` —
 a sword 1, a shield 3. `Prop.snap()` is the single place one is destroyed: it is called by the sword
@@ -489,9 +585,17 @@ standstill). Reading the aim straight meant that crossing the pointer over the g
 picture to the other side of him in a frame, which is what made turning around feel like being shaken.
 Reset it anywhere you hard-set `cam.x/y` (`startLevel`, `updateFall`).
 
+**The run-up.** `goat.runT` is seconds of asking for at least `momentum.atLeast` of a stride without a
+break, and `goat.runUp` is what they are worth: 1 at a standstill, `1 + momentum.max` after
+`momentum.time` of running. It multiplies into `base` alongside `mods.speed`, drains at `momentum.lose`
+times real time the moment he stops, and a hit or a stun takes the whole of it at once. That last part
+is the design: the reward for running is a thing everything else in the game can take off you, so it
+argues for *run, don't fight* rather than against it. It has no chip on the rail — the smear is where
+it is visible.
+
 **The smear.** `TUNING.goat.trail` holds both ends of it and `Goat.update` mixes them by
-`game.mods.speed` against `trail.fastAt`, so SURE HOOVES lengthens the ghosts rather than only the
-number. Each ghost carries its own `max` life and `drawGoat` fades it against that, so a long smear
+`game.mods.speed * goat.runUp` against `trail.fastAt`, so SURE HOOVES and the run-up both lengthen the
+ghosts rather than only the number. Each ghost carries its own `max` life and `drawGoat` fades it against that, so a long smear
 fades over its whole length. This is the only place that boon is visible: it hangs off no button, so
 the rail cannot report it.
 
@@ -549,8 +653,10 @@ A fourth trap: `H.startPlay()` leaves the goat in the pen on level 1. Break out 
 drops men **aware and adjacent**, so a handful of them will kill the goat during a test unless
 `game.dev.god` is on — a dead goat freezes every enemy, which reads as the feature under test being broken.
 
-**Always run `node tools/balance.js` after touching anything about who spawns where.** It is the only
-place the balance rules are written down in a form that can fail.
+**Always run `node tools/balance.js` after touching anything about who spawns where or which rooms go
+where.** It runs every rule in `js/rules.js` over many seeds of every level, plus the two averaged
+rules a single level cannot know about itself, and it is the only place they can fail. The same list is
+on the RULES page of the dev drawer, per level and live, which is the quicker way to look at one seed.
 
 **Always run the generator sweep after touching `gen.js`, `rooms.js` or `LEVELS`.** It catches broken
 templates and impossible layouts in seconds:
@@ -576,7 +682,7 @@ the remote is not live. Never stop at the feature branch and never leave `main` 
 was developing on `claude/<something>`, merge that branch into `main` and push `main` as part of the
 deploy, then publish. Opening a pull request instead is only right when the user asks for one.
 
-The artifact is published from `artifact.html` with all eleven scripts passed as supporting files, and
+The artifact is published from `artifact.html` with all twelve scripts passed as supporting files, and
 always to the existing URL. Republishing without the `url` creates a second artifact.
 
 - `file_path`: `artifact.html`
@@ -616,6 +722,12 @@ pass it as `--artifact <file>`; without it the script prints the local byte coun
 - Where his wife is. The opening scene carries her off deeper into the compound and nothing after it
   refers to her: no room, no ending, no line from the cult.
 - Pixel art proper. Everything is still drawn with canvas primitives in the final palette.
+- **A souls resource.** Asked for on 14 Sep 2026 and not yet built: one soul per man killed, banked and
+  spent on something. The shape it wants is already half in the game — `game.kills` counts men and
+  `scoreFor` already refuses to let kills beat pace — so the open question is not how to count them but
+  what they buy, and whether buying anything with bodies argues with *run, don't fight*. The obvious
+  home is the soul door: a vault that opens for souls instead of, or as well as, four blows. See
+  `BACKLOG.md`.
 - Gamepad support, a Priest boss, and the later acts sketched in `GOAT_OUT_brief.md`.
 - The endless roll against a wall, reported in the 14 Sep 2026 playtest and **not reproduced** — see
   `BACKLOG.md` for what was measured and what to ask him. The soul barrier from the same batch was

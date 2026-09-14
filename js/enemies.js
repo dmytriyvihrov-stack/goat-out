@@ -131,13 +131,15 @@ class Enemy {
       game.ring(this.x, this.y, 2.6 * TILE, PALETTE.witchHi);
       game.audio.sfxUnmade();
       if (game.goat.holding === this) game.goat.holding = null;
-      if (this.boss) game.dropTome(this.x, this.y);
+      if (this.boss) game.bossPrize(this);
       game.onKill(this, 'unmade');
       return;
     }
     // Over an edge there is no body and no blood: he is simply not in the room any more, and the
     // hole he went down is the only mark of it.
-    if (cause === 'fall') { game.particles(this.x, this.y, 10, PALETTE.ink, 120); game.audio.sfxSwing(); }
+    // Over an edge he is dead the frame he crossed the lip, but `spawnFaller` keeps the picture of
+    // him for a beat: he turns over, shrinks into the dark and the sound of him goes down with him.
+    if (cause === 'fall') { game.particles(this.x, this.y, 10, PALETTE.ink, 120); game.spawnFaller(this); game.audio.sfxFall(); }
     else if (cause === 'burn') { w.scorch(this.x, this.y, this.r * 1.6); w.body(this.x, this.y, this.r, this.facing, '#241a16'); }
     else {
       w.splat(this.x, this.y, dx || 0, dy || 0, this.kind === 'butcher' ? 26 : 16);
@@ -145,7 +147,7 @@ class Enemy {
       if (this.kind === 'hunter') w.dot(this.x + 8, this.y + 6, 3, '#3a3236');
     }
     if (game.goat.holding === this) game.goat.holding = null;
-    if (this.boss) game.dropTome(this.x, this.y);
+    if (this.boss) game.bossPrize(this);
     game.onKill(this, cause);
   }
 
