@@ -201,6 +201,22 @@ lying floored. `game.mistTold` is the only tutorial it gets.
 while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` draws the stars over it.
 `game.stunGoat(seconds)` is the only way in, and the pen is the only thing that uses it.
 
+**The first screen.** State `title`, drawn entirely by `drawTitle` and holding two buttons and nothing
+else: the opening scene tells the story and the floor of level 1 teaches the buttons, so the menu
+explains neither. `game.menu` is `{ index, rects, t, shake }`; `drawTitle` refills `rects` every frame
+and `menuAt` / `menuPick` are the only ways in, from a pointer (hit-tested in `pointerdown` like the
+tome cards) or from the keys the game already uses (`menuKey`: W/S or the arrows to move, SPACE or
+ENTER to choose). NEW GAME wipes the save and plays the opening scene; CONTINUE is dark and shakes
+its head until there is a run to come back to. `drawTitle` paints the whole canvas, vignette and empty
+thumb deck included, so nothing from the play view shows through.
+
+**The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, at }` to
+`localStorage` under `SAVE_KEY` at the head of every level and again whenever a tome is taken; `loadRun`
+refuses anything of another version or off the end of `LEVELS`, and every call is wrapped, so a browser
+that refuses storage simply never offers CONTINUE. Winning clears it. CONTINUE re-enters the head of
+that level with those tomes and a fresh seed — the layout is generated again, as it is after a death.
+Boons are stored by `id`, so renaming one in `BOONS` silently drops it from old saves.
+
 **The opening scene.** `game.beginIntro()` runs in the real level 1 with the real pen, in state `intro`,
 driven by `updateIntro` and one method per beat (`introHuddle`, `introApproach`, `introGate`,
 `introGrab`, `introClub`, `introFade`, `introBlack`, `introWake`). Everything it owns lives in
@@ -272,8 +288,9 @@ const s = document.createElement('script'); s.src = '/tools/harness.js'; documen
 `H` then gives you `startPlay()`, `tp(x, y)`, `aimAt`, `walkTo`, `headbutt()`, `freeze(except)`,
 `unfreeze()`, `nearest(kind)`, `waitFor(fn, ms)`, `status()` and `shot(name)` which writes to
 `tools/shots/`. `startPlay()` clicks through the title and drops the opening scene with
-`game.skipIntro(true)`; to watch the scene itself, set `game.input.lmbPressed = true` on the title and
-wait for `game.state === 'intro'`. `game.startLevel(0, seed, false, true)` replays it from anywhere.
+`game.skipIntro(true)`; to watch the scene itself, call `game.menuPick(0)` on the title and wait for
+`game.state === 'intro'`. `game.startLevel(0, seed, false, true)` replays it from anywhere. A run left
+in `localStorage` by an earlier test is what CONTINUE offers — `game.clearRun()` forgets it.
 
 **Traps that have bitten before, in this exact order:**
 

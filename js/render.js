@@ -110,6 +110,7 @@ class Renderer {
     }
     if (game.intro) this.drawIntroOverlay(game);
     this.drawUI(game);
+    this.drawTitle(game, dt);
     if (game.touch.active && game.state === 'play') this.drawTouchUI(game);
     this.drawBoonChoice(game);
     this.drawCard(game);
@@ -1601,6 +1602,133 @@ class Renderer {
     }
     if (line) out.push(line);
     return out;
+  }
+
+  // ---------- the first screen ----------
+  // The name, a pair of horns round it, and the two ways in. Nothing is explained here: the opening
+  // scene carries the story and the floor of level 1 carries the controls.
+  drawTitle(game, dt) {
+    if (game.state !== 'title') { if (game.menu) game.menu.rects.length = 0; return; }
+    const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
+    const step = Math.min(dt || 0, 0.05);
+    // The menu owns the whole canvas: it paints over the vignette and the empty thumb deck under it.
+    ctx.fillStyle = '#0d0a0c'; ctx.fillRect(0, 0, w, h);
+    const key = `${w}x${h}`;
+    if (this.titleKey !== key) {
+      // a fire somewhere below the frame, and the dark closing in at the edges
+      const glow = ctx.createRadialGradient(cx, h * 1.02, 0, cx, h * 1.02, h * 0.95);
+      glow.addColorStop(0, 'rgba(192,57,43,0.34)'); glow.addColorStop(0.45, 'rgba(122,31,24,0.13)'); glow.addColorStop(1, 'rgba(13,10,12,0)');
+      const vig = ctx.createRadialGradient(cx, h * 0.44, Math.min(w, h) * 0.18, cx, h * 0.44, Math.max(w, h) * 0.7);
+      vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.62)');
+      this.titleGlow = glow; this.titleVig = vig; this.titleKey = key;
+    }
+    // the fire breathes a little
+    ctx.globalAlpha = 0.86 + 0.14 * Math.sin(this.t * 1.7) * Math.sin(this.t * 0.9 + 1.3);
+    ctx.fillStyle = this.titleGlow; ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
+    this.glyphStamp(cx, h * 0.46, Math.min(w, h) * 0.56, CULT_GLYPHS[2], 0.04, PALETTE.ochre);
+    this.titleEmbers(step);
+    ctx.fillStyle = this.titleVig; ctx.fillRect(0, 0, w, h);
+
+    ctx.textAlign = 'center';
+    const spaced = 'letterSpacing' in ctx;
+    // The name and its horns are one shape: measure it, then shrink until it fits the screen it got.
+    let size = clamp(Math.min(w * 0.155, h * 0.18), 26 * s, 88 * s);
+    const measure = () => {
+      if (spaced) ctx.letterSpacing = `${(size * 0.09).toFixed(1)}px`;
+      ctx.font = `700 ${size}px ${FONT_SC}`;
+      return ctx.measureText('GOAT OUT').width;
+    };
+    let tw = measure();
+    if (tw + size * 2.2 > w * 0.92) { size *= (w * 0.92) / (tw + size * 2.2); tw = measure(); }
+    const bw = clamp(Math.min(w * 0.8, 380 * s), 170 * s, 460 * s);
+    const bh = 56 * s, gap = 14 * s;
+    const above = size * 1.2, below = size * 0.3;
+    const block = above + below + 50 * s + bh * 2 + gap;
+    const top = h * 0.47 - block / 2, titleY = top + above, btnTop = top + above + below + 50 * s;
+
+    ctx.fillStyle = 'rgba(122,31,24,0.85)'; ctx.fillText('GOAT OUT', cx + size * 0.04, titleY + size * 0.05);
+    ctx.fillStyle = PALETTE.bone; ctx.fillText('GOAT OUT', cx, titleY);
+    if (spaced) ctx.letterSpacing = '0px';
+    this.titleHorns(cx, titleY, tw / 2 + size * 0.16, size);
+
+    game.menu.rects.length = 0;
+    const run = game.save, def = run ? LEVELS[run.level] : null;
+    const tomes = run && run.boons ? run.boons.length : 0;
+    const items = [
+      { label: 'NEW GAME' },
+      { label: 'CONTINUE', locked: !run,
+        note: def ? `(${def.sub.toLowerCase()} · ${def.name.toLowerCase()}${tomes ? ` · ${tomes} tome${tomes === 1 ? '' : 's'}` : ''})` : '(nothing to come back to)' },
+    ];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i], sel = game.menu.index === i;
+      // a locked CONTINUE shakes its head when it is pressed
+      const shake = sel && it.locked && game.menu.shake > 0 ? Math.sin(game.menu.shake * 70) * game.menu.shake * 26 * s : 0;
+      const x = cx - bw / 2 + shake, y = btnTop + i * (bh + gap);
+      game.menu.rects.push({ x: cx - bw / 2, y, w: bw, h: bh });
+      ctx.globalAlpha = it.locked ? 0.42 : 1;
+      ctx.fillStyle = sel ? '#4a2428' : '#190f16';
+      ctx.fillRect(x, y, bw, bh);
+      ctx.fillStyle = sel && !it.locked ? PALETTE.blood : PALETTE.ochre;
+      ctx.fillRect(x, y, bw, 3 * s);
+      ctx.strokeStyle = sel ? (it.locked ? 'rgba(239,230,208,0.3)' : PALETTE.blood) : 'rgba(239,230,208,0.2)';
+      ctx.lineWidth = 2 * s; ctx.strokeRect(x, y, bw, bh);
+      // the mark of what is chosen: a horn tip pointing into it, breathing
+      if (sel) {
+        const pulse = 0.55 + 0.45 * Math.sin(this.t * 3.4);
+        ctx.globalAlpha *= pulse; ctx.fillStyle = it.locked ? PALETTE.bone : PALETTE.blood;
+        ctx.beginPath(); ctx.moveTo(x + 13 * s, y + bh / 2 - 7 * s); ctx.lineTo(x + 22 * s, y + bh / 2); ctx.lineTo(x + 13 * s, y + bh / 2 + 7 * s);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = it.locked ? 0.42 : 1;
+      }
+      ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${19 * s}px ${FONT_SC}`;
+      if (spaced) ctx.letterSpacing = `${(2 * s).toFixed(1)}px`;
+      ctx.fillText(it.label, cx, y + (it.note ? bh * 0.46 : bh * 0.62));
+      if (spaced) ctx.letterSpacing = '0px';
+      if (it.note) {
+        ctx.font = `${12.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
+        ctx.fillText(it.note, cx, y + bh * 0.75);
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.textAlign = 'left';
+  }
+
+  // A pair of horns rising out of the name, drawn with the same tapered curve the goat wears.
+  titleHorns(cx, y, out, size) {
+    const bone = 'rgba(239,230,208,0.72)', ridge = 'rgba(26,16,22,0.4)';
+    for (const d of [-1, 1]) {
+      const bx = cx + d * out;
+      this.horn(bx, y + size * 0.02, bx + d * size * 0.2, y - size * 0.74, bx + d * size * 0.78, y - size * 0.94, size * 0.19, bone, ridge);
+    }
+  }
+
+  // The cult's sign, stamped huge and nearly out behind the name. Whole pixels, like the floor ones.
+  glyphStamp(cx, cy, size, glyph, alpha, color) {
+    const ctx = this.ctx, n = glyph.length, cell = size / n;
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color;
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < glyph[r].length; c++) {
+        if (glyph[r][c] !== '#') continue;
+        ctx.fillRect(Math.round(cx - size / 2 + c * cell), Math.round(cy - size / 2 + r * cell), Math.ceil(cell), Math.ceil(cell));
+      }
+    }
+    ctx.restore();
+  }
+
+  // Embers off that fire, drifting up through the name.
+  titleEmbers(dt) {
+    const ctx = this.ctx, s = this.ts, w = this.w, h = this.h;
+    if (!this.embers) this.embers = [];
+    while (this.embers.length < 36) this.embers.push({ x: Math.random() * w, y: h * Math.random(), v: (12 + Math.random() * 30) * s, r: (1 + Math.random() * 1.8) * s, p: Math.random() * 6.28, a: 0.12 + Math.random() * 0.42 });
+    for (const e of this.embers) {
+      e.y -= e.v * dt; e.p += dt * 1.7;
+      if (e.y < -8 * s) { e.y = h + 8 * s; e.x = Math.random() * w; }
+      ctx.globalAlpha = e.a * (0.45 + 0.55 * Math.sin(e.p));
+      ctx.fillStyle = e.a > 0.4 ? PALETTE.fireHi : PALETTE.fire;
+      ctx.fillRect(e.x + Math.sin(e.p) * 7 * s, e.y, e.r, e.r);
+    }
+    ctx.globalAlpha = 1;
   }
 
   drawCard(game) {
