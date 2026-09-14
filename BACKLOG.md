@@ -31,6 +31,8 @@ weak."* All of it shipped in 1.11; the reasoning is in `CHANGELOG.md`.
 - ~~**Base BAAH is only a noise that lures; upgrades make it a stun or fire.**~~ Shipped as
   THE FULL THROAT and DRAGON BREATH.
 - ~~**You only see a room when you open its door.**~~ Shipped as `room.seen`.
+- ~~**Put the rules tool and the balance tool together, with tabs to switch between them.**~~
+  Shipped: one page, two tabs, and `#rules` / `#balance` as addresses for it.
 
 ---
 

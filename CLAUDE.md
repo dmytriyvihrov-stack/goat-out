@@ -356,8 +356,25 @@ needs `CANON.minRooms` templates written for it or the level is the same floor t
 means: `canon` on the level, `canon: id` on four or more templates, and nothing else — `known` and the
 mix follow.
 
-**The RULES page.** `RULES` in the dev drawer opens a page over the whole screen — `dev.rules` holds
-the simulation (`update` returns at once) and `hitDev` swallows every click under it. `js/rules.js`
+**The level tool.** `LEVEL TOOL` in the dev drawer opens a page over the whole screen — `dev.rules`
+holds the simulation (`update` returns at once) and `hitDev` swallows every click and key under it.
+It has two tabs (`dev.tab`, drawn by `drawTool`) and they used to be a page in the game and a script
+in a terminal, which meant reading one of them with the other's numbers in your head:
+
+- **RULES** — the generation rules held against one level, described below.
+- **BALANCE** — what `node tools/balance.js` prints, computed in the page by `game.balanceReport`:
+  every level walked over `dev.balanceSeeds` seeds (the SEEDS button cycles 4 / 8 / 16 / 30 and
+  clears the cache), reduced to a row of bars, one bar a room, height its threat, colour its role.
+  Beside each row the two numbers that decide whether a level is in the right place in the run — its
+  total and its worst *ordinary* room — and under all seven, the rule failures or the line saying
+  there are none. It runs `checkRules` on every seed on the way past, so it fails the way the report
+  fails; the two averaged rules (threat rising, each level harder than the last) are checked here
+  and in the report and nowhere else.
+
+The page has its own address: **`#rules` and `#balance`** open the game straight onto that tab, so
+the tool can be linked to — `http://localhost:8766/#balance` against `node tools/serve.js 8766`.
+
+`js/rules.js`
 is the page's whole content and it is written once for two readers: `GEN_RULES` is every promise the
 generator makes, each with a `check(level)` that answers true, a string (why not) or null (nothing to
 say about this level); `checkRules` runs the list; `roomsOf` reduces a level to rooms with roles, men

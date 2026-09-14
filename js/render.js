@@ -1224,13 +1224,13 @@ class Renderer {
   drawDev(game) {
     const ctx = this.ctx, s = this.ts, d = game.dev;
     d.rects = [];
-    if (d.rules) { this.drawRules(game); return; }
+    if (d.rules) { this.drawTool(game); return; }
     const pad = 8 * s, cw = 62 * s, chH = 22 * s;
     const cx = this.w - pad - cw, cy = this.h - pad - chH;
     let toastY = cy - 10 * s;
     if (d.open) {
       const rows = [
-        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['rules', 'RULES'],
+        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['rules', 'LEVEL TOOL'],
         ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'],
         ['wraith', '+ WRAITH'], ['butcher', '+ BUTCHER'],
         ['soul', '+ SOUL'], ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
@@ -1320,18 +1320,86 @@ class Renderer {
   // drawer generates for the page and can reroll, so every level's rules can be read without
   // playing up to it. Nothing here is a number: everything it shows comes off LEVELS, the templates
   // and the level itself, so the page cannot disagree with the game.
-  drawRules(game) {
+  // The tool. Two halves behind one pair of tabs: the generation rules held against one level, and
+  // the difficulty curve of all seven. They were a page in the game and a script in a terminal, and
+  // keeping them apart meant reading one of them with the other one's numbers in your head.
+  drawTool(game) {
+    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
+    const pad = 14 * s;
+    ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    this.devButton(d, pad, pad, 76 * s, 20 * s, 'RULES', 'tab-rules', d.tab === 'rules');
+    this.devButton(d, pad + 80 * s, pad, 76 * s, 20 * s, 'BALANCE', 'tab-balance', d.tab === 'balance');
+    this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'CLOSE', 'rules', false);
+    if (d.tab === 'balance') this.drawBalance(game, pad, pad + 30 * s);
+    else this.drawRules(game, pad, pad + 30 * s);
+  }
+
+  // The curve, level by level and room by room, averaged over `dev.balanceSeeds` seeds: the same
+  // thing `node tools/balance.js` prints. A level is a row of bars — one bar a room, its height its
+  // threat, its colour its role — so the shape of a level and the shape of the whole game are one
+  // picture. Under them, whatever rule is broken, or the line saying none is.
+  drawBalance(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
+    const rep = game.balanceReport();
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('DIFFICULTY', pad, top);
+    this.devButton(d, pad + 74 * s, top - 12 * s, 66 * s, 17 * s, 'SEEDS ' + rep.seeds, 'bal-seeds', false);
+    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText(this.clip('one bar a room, height is threat · ochre canon · pale mix · blood trap · violet set piece',
+      W - pad * 2 - 150 * s), pad + 150 * s, top);
+    let y = top + 16 * s;
+    const failH = 14 * s * (rep.fails.length + 1) + 18 * s;
+    const rowH = Math.max(34 * s, (H - y - pad - failH) / rep.levels.length);
+    const barTop = 13 * s;
+    const nameW = 150 * s, statW = 128 * s;
+    const plotX = pad + nameW + statW, plotW = W - pad - plotX;
+    const roleTint = { canon: PALETTE.ochre, mix: 'rgba(239,230,208,0.5)', trap: PALETTE.blood,
+      pen: PALETTE.ash, calm: PALETTE.ash };
+    const peak = Math.max(...rep.levels.map((l) => l.peak)) || 1;
+    for (const lv of rep.levels) {
+      const h = rowH - 4 * s;
+      ctx.font = `700 ${10.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(`${lv.li + 1} ${lv.def.name}`, pad, y + barTop);
+      ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+      ctx.fillText(lv.def.canon ? lv.def.canon.name.toLowerCase() : '—', pad, y + barTop + 11 * s);
+      // the two numbers that decide whether a level is in the right place in the run
+      ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
+      ctx.fillText(`total ${lv.total.toFixed(0)}`, pad + nameW, y + barTop);
+      ctx.fillText(`worst room ${lv.plainPeak.toFixed(1)}`, pad + nameW, y + barTop + 11 * s);
+      // the level's own bar of total, against the hardest level, so the run's shape is one glance
+      ctx.fillStyle = 'rgba(239,230,208,0.1)'; ctx.fillRect(pad + nameW, y + barTop + 16 * s, statW - 14 * s, 3 * s);
+      ctx.fillStyle = PALETTE.fire;
+      ctx.fillRect(pad + nameW, y + barTop + 16 * s, (statW - 14 * s) * lv.total / rep.max, 3 * s);
+      // and the rooms
+      // The bars fill the plot: a level's rooms are the x axis, so every level's row is the same
+      // width and the seven rows read as one curve rather than as seven charts of different sizes.
+      const step = plotW / Math.max(1, lv.rooms.length);
+      const bw = Math.max(2 * s, Math.min(step - 3 * s, 34 * s));
+      lv.rooms.forEach((r, i) => {
+        const bx = plotX + i * step + (step - bw) / 2;
+        const bh = Math.max(1 * s, (r.threat / peak) * (h - 12 * s));
+        ctx.fillStyle = roleTint[r.role] || PALETTE.witch;
+        ctx.fillRect(bx, y + h - bh, bw, bh);
+        ctx.font = `400 ${6.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
+        ctx.fillText(String(r.index), bx + 1 * s, y + h + 7 * s);
+      });
+      y += rowH;
+    }
+    y = H - pad - failH + 10 * s;
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+    if (!rep.fails.length) { ctx.fillStyle = PALETTE.fireHi; ctx.fillText('ALL BALANCE RULES HOLD', pad, y); return; }
+    ctx.fillStyle = PALETTE.blood; ctx.fillText(`${rep.fails.length} RULE FAILURES`, pad, y);
+    ctx.font = `400 ${9 * s}px ${FONT}`;
+    rep.fails.slice(0, 12).forEach((f, i) => { ctx.fillText(this.clip(f, W - pad * 2), pad, y + 14 * s * (i + 1)); });
+  }
+
+  drawRules(game, pad, headTop) {
     const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
     const page = game.rulesPage(), def = page.def, L = page.level;
-    ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
-    const pad = 14 * s;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-    ctx.fillText('LEVEL GENERATION RULES', pad, pad + 12 * s);
-    this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'CLOSE', 'rules', false);
     // one tab per level; the one in play carries a mark
     let tx = pad;
-    const ty = pad + 22 * s, th = 18 * s;
+    const ty = headTop - 8 * s, th = 18 * s;
     LEVELS.forEach((lv, i) => {
       const label = `${i + 1} ${lv.name}${game.level && game.levelIndex === i ? ' •' : ''}`;
       ctx.font = `700 ${10 * s}px ${FONT_SC}`;

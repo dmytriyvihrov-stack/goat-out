@@ -40,7 +40,11 @@ class Game {
     this.boonDown = -1; this.boonArm = 0;
     // `rules` is the drawer's RULES page: the whole screen, the simulation held, `page` the level it
     // is looking at and `sample` a level generated for a page that is not the one in play.
-    this.dev = { open: false, god: false, rects: [], toast: null, rules: false, page: 0, sample: null, sampleSeed: 1 };
+    // `rules` is the drawer's tool page: the whole screen, the simulation held. `tab` is which half
+    // of it you are looking at — the generation rules held against one level, or the difficulty
+    // curve of all seven — and `page` the level the first half is looking at.
+    this.dev = { open: false, god: false, rects: [], toast: null, rules: false, tab: 'rules',
+      page: 0, sample: null, sampleSeed: 1, balance: null, balanceSeeds: 8 };
     this.intro = null;      // the opening scene while it plays; see beginIntro
     this.stairFx = null;    // the goat on a flight of stairs: { t, dir } with dir 1 going up and out, -1 arriving
     this.state = 'title'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
@@ -50,6 +54,12 @@ class Game {
     try { this.introSeen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { /* storage refused */ }
     this.settings = this.loadSettings();
     if (!this.settings.sound) this.audio.toggleMute();
+    // The tool has its own address: `#rules` and `#balance` open it on that tab at load, so the
+    // page can be linked to and bookmarked rather than found through the drawer every time.
+    try {
+      const h = (location.hash || '').replace('#', '');
+      if (h === 'rules' || h === 'balance') { this.dev.open = true; this.dev.rules = true; this.dev.tab = h; }
+    } catch (e) { /* no location worth reading */ }
     this.layoutTouch();
     this.bindInput();
     this.showTitle();
@@ -240,6 +250,13 @@ class Game {
     if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) this.dev.page = this.level ? this.levelIndex : 0; return; }
     if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); return; }
     if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; return; }
+    if (id === 'tab-rules') { this.dev.tab = 'rules'; return; }
+    if (id === 'tab-balance') { this.dev.tab = 'balance'; return; }
+    if (id === 'bal-seeds') {
+      const steps = [4, 8, 16, 30];
+      this.dev.balanceSeeds = steps[(steps.indexOf(this.dev.balanceSeeds) + 1) % steps.length];
+      this.dev.balance = null; return;
+    }
     if (this.state !== 'play' || !this.world) return;
     if (id === 'heal') { this.goat.hp = this.goat.maxHp; this.devToast('HEALED'); return; }
     if (id === 'soul') { this.dropSoul(this.goat.x + 28, this.goat.y); this.devToast('SOUL DROPPED'); return; }
@@ -283,6 +300,53 @@ class Game {
       d.sample = { index: i, seed: d.sampleSeed, level: generateLevel(def, d.sampleSeed >>> 0) };
     }
     return { index: i, def, level: d.sample.level, live: false, seed: d.sampleSeed };
+  }
+
+  // The balance half of the tool: what `node tools/balance.js` prints, computed in the page so the
+  // curve can be looked at without leaving the game. Every level is walked over `dev.balanceSeeds`
+  // seeds and reduced to the same three numbers the report uses — the threat of each room averaged,
+  // the level's total, and the worst ORDINARY room, which is the one that says how hard a level
+  // really is (a Great Hall is a set piece, not a baseline). Every rule in `js/rules.js` is run on
+  // every seed on the way past, so the page fails the same way the report does.
+  // It is cached on `dev.balance` because it is a few dozen level generations and the page is still.
+  balanceReport() {
+    const seeds = this.dev.balanceSeeds;
+    if (this.dev.balance && this.dev.balance.seeds === seeds) return this.dev.balance;
+    const ordinary = new Set(['canon', 'mix', 'trap']);
+    const fails = [], seen = new Set();
+    const levels = LEVELS.map((def, li) => {
+      const runs = [];
+      for (let s = 1; s <= seeds; s++) {
+        const L = generateLevel(def, s * 7717);
+        runs.push(roomsOf(L));
+        for (const r of checkRules(L)) {
+          if (r.ok !== false || r.rule.id === 'rises') continue;
+          const msg = `${def.name}: ${r.rule.id} — ${r.why}`;
+          if (!seen.has(msg)) { seen.add(msg); fails.push(msg); }
+        }
+      }
+      const width = Math.max(...runs.map((r) => r.length));
+      const rooms = [];
+      for (let i = 0; i < width; i++) {
+        const cells = runs.map((r) => r[i]).filter(Boolean);
+        rooms.push({ index: i, role: cells[0].role,
+          threat: cells.reduce((a, c) => a + c.threat, 0) / cells.length,
+          men: cells.reduce((a, c) => a + c.men.length, 0) / cells.length });
+      }
+      const plain = rooms.filter((c) => ordinary.has(c.role));
+      return { def, li, rooms,
+        total: rooms.reduce((a, c) => a + c.threat, 0),
+        peak: Math.max(0, ...rooms.map((c) => c.threat)),
+        plainPeak: Math.max(0, ...plain.map((c) => c.threat)) };
+    });
+    // The two rules a single level cannot be held to on its own, which is why the report exists.
+    for (let i = 1; i < levels.length; i++) {
+      const a = levels[i - 1], b = levels[i];
+      if (b.total <= a.total) fails.push(`${b.def.name} (${b.total.toFixed(0)}) is not harder than ${a.def.name} (${a.total.toFixed(0)})`);
+      if (b.plainPeak < a.plainPeak) fails.push(`${b.def.name}'s worst ordinary room is easier than ${a.def.name}'s`);
+    }
+    this.dev.balance = { seeds, levels, fails, max: Math.max(...levels.map((l) => l.total)) };
+    return this.dev.balance;
   }
 
   layoutTouch() { this.touch.layout(this.renderer.w, this.renderer.h, this.renderer.s, this.renderer.vh); }

@@ -41,6 +41,12 @@ in it is worth the trouble.
   value`, and the room list is gone — in its place is every room as a **floor plan** drawn off the
   generated level, with the men on it as dots and `×N` over each. Three new rules: the stair door, the
   soul gate, and that a level has somewhere to put every soul it was authored to give.
+- **The balance report moved into the page.** RULES and BALANCE are two tabs of one tool now: the
+  second is what `node tools/balance.js` prints — every level over 4 to 30 seeds as a row of bars,
+  one bar a room, its height the room's threat and its colour its role, with the level's total and
+  its worst ordinary room beside it, and the rule failures under all seven. Reading the curve and
+  reading the rules used to mean a page in the game and a script in a terminal. The tool has an
+  address of its own: `#rules` and `#balance` open the game straight onto that tab.
 
 ---
 
