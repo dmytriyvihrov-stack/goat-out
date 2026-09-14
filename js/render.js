@@ -2257,24 +2257,26 @@ class Renderer {
     // blow or a fire. What is written under a chip is the key that throws it — the word for the verb
     // and what it does are on the note the pointer brings up, because a caption you have read a
     // hundred times is a caption that has stopped saying anything, and the key never stops.
+    // One line each, and the line says what the button does — not what it means. It is read while a
+    // room is walking toward you, so it is a caption and not a paragraph.
     const rows = [
       { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
-        note: game.mods.bomb ? 'Put your head into him. He goes down, the wall kills him, and a moment later he goes off.'
-          : 'Put your head into him. On its own it only knocks him down: the wall, the fire or the next man is what kills.' },
+        note: game.mods.bomb ? 'Ram him. Whoever you hit blows up a moment later.'
+          : 'Ram him. It only knocks him down — walls, fire and other men do the killing.' },
       { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: 'RMB', cd: g.grabCd,
         max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
-        note: game.mods.grabMen ? 'Hold to take a box, a blade, a shield — or a man — in your teeth. Let go to throw it.'
-          : 'Hold to carry a box, a blade or a shield. Let go to throw it. A grown man is too big, until a soul says otherwise.' },
+        note: game.mods.grabMen ? 'Hold to carry a box or a man, let go to throw. A blade or a shield you pick up by running over it — press to throw that.'
+          : 'Hold to carry a box, let go to throw. A blade or a shield you pick up by running over it — press to throw that. Men are too heavy for now.' },
       { id: 'roll', name: 'ROLL', cap: 'E', cd: g.rollCd,
         max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
-        note: game.mods.rollStun > 0 ? 'A tumble through it all. Nothing lands on you down there, and everything you pass through loses its head.'
-          : 'A tumble out of the way. Nothing lands on you while you are down there, and then you have to get up.' },
+        note: game.mods.rollStun > 0 ? 'Dodge. Nothing can hit you, and anyone you roll through is stunned.'
+          : 'Dodge. Nothing can hit you mid-roll, but you have to get up after it.' },
       { id: 'scream', name: fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: 'SPC',
         cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0,
         half: !fire && !game.mods.screamStun,
-        note: fire ? 'The scream comes out as a cone of fire. Slower to come back.'
-          : game.mods.screamStun ? 'Everyone who hears it loses a moment, and that moment is yours.'
-            : 'A noise, and they walk toward the spot you made it from. It is a tool and a way to get killed, and not yet a weapon.' },
+        note: fire ? 'Breathe fire the way you are running. Long wait after it.'
+          : game.mods.screamStun ? 'A shout. Everyone who hears it is stunned.'
+            : 'A shout. Everyone who hears it walks to where you shouted.' },
     ];
     this.skillHover = null;
     const box = 32 * s, gap = 7 * s, right = this.w - 14 * s;
@@ -2584,11 +2586,19 @@ class Renderer {
     };
     let tw = measure();
     if (tw + size * 2.2 > w * 0.92) { size *= (w * 0.92) / (tw + size * 2.2); tw = measure(); }
-    const bw = clamp(Math.min(w * 0.8, 380 * s), 170 * s, 460 * s);
-    const bh = 56 * s, gap = 14 * s;
-    const above = size * 1.2, below = size * 0.3;
-    const block = above + below + 50 * s + bh * 2 + gap;
-    const top = h * 0.47 - block / 2, titleY = top + above, btnTop = top + above + below + 50 * s;
+    const bw = clamp(Math.min(w * 0.76, 330 * s), 170 * s, 400 * s);
+    // The rows are sized to the screen they were given. The block used to be measured as two rows
+    // however many there were, so five of them ran off the bottom of the window and took SETTINGS
+    // with them — and a row you cannot see is a row that does not work. They are smaller as well:
+    // a menu of five is a list to read down, not five slabs stacked up the height of the screen.
+    const n = MENU.length, lead = 40 * s, above = size * 1.2, below = size * 0.3;
+    let bh = 46 * s, gap = 10 * s;
+    const rowsH = () => n * bh + (n - 1) * gap;
+    const room = h - (above + below + lead) - 20 * s;
+    if (rowsH() > room) { const k = Math.max(0.45, room / rowsH()); bh *= k; gap *= k; }
+    const block = above + below + lead + rowsH();
+    const top = clamp(h * 0.47 - block / 2, 10 * s, Math.max(10 * s, h - block - 10 * s));
+    const titleY = top + above, btnTop = top + above + below + lead;
 
     ctx.fillStyle = 'rgba(122,31,24,0.85)'; ctx.fillText('GOAT OUT', cx + size * 0.04, titleY + size * 0.05);
     ctx.fillStyle = PALETTE.bone; ctx.fillText('GOAT OUT', cx, titleY);
@@ -2631,13 +2641,15 @@ class Renderer {
         ctx.closePath(); ctx.fill();
         ctx.globalAlpha = it.locked ? 0.42 : 1;
       }
-      ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${19 * s}px ${FONT_SC}`;
+      // The text follows the row rather than the other way round, so a short window shrinks the
+      // whole menu instead of overflowing every row in it.
+      ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${Math.min(19 * s, bh * 0.4)}px ${FONT_SC}`;
       if (spaced) ctx.letterSpacing = `${(2 * s).toFixed(1)}px`;
       ctx.fillText(it.label, cx, y + (it.note ? bh * 0.46 : bh * 0.62));
       if (spaced) ctx.letterSpacing = '0px';
       if (it.note) {
-        ctx.font = `${12.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
-        ctx.fillText(it.note, cx, y + bh * 0.75);
+        ctx.font = `${Math.min(12.5 * s, bh * 0.26)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
+        ctx.fillText(this.clip(it.note, bw - 20 * s), cx, y + bh * 0.78);
       }
       ctx.globalAlpha = 1;
     }

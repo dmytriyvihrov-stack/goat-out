@@ -143,10 +143,16 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'milk', text: 'Milk is on a rhythm: never more than heal.every rooms dry, never in a set piece.',
+  { id: 'milk', text: 'Milk is on a rhythm: never more than heal.every rooms dry, never in a set piece, never in a fire.',
     check: (L) => {
       const n = L.def.rooms, limit = Math.ceil(TUNING.prop.heal.every);
-      const rooms = L.props.filter((p) => p.kind === 'heal').map((p) => roomAt(L, p.x, p.y)).filter(Boolean);
+      const bowls = L.props.filter((p) => p.kind === 'heal');
+      const rooms = bowls.map((p) => roomAt(L, p.x, p.y)).filter(Boolean);
+      // A heart you have to pay a heart for is not a heart: no bowl stands in a brazier or under a lamp.
+      for (const b of bowls) for (const p of L.props) {
+        if (p.kind !== 'brazier' && p.kind !== 'lamp') continue;
+        if (Math.hypot(p.x - b.x, p.y - b.y) < 2 * TILE) return `a bowl in a ${p.kind}`;
+      }
       for (const r of rooms) if (SET_PIECE.has(r.role) && r.role !== 'hall') return `a bowl in the ${r.role}`;
       const idx = rooms.map((r) => r.index).sort((a, b) => a - b);
       let prev = 0, worst = 0;

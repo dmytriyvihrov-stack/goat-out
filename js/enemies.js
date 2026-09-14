@@ -103,6 +103,10 @@ class Enemy {
 
   die(game, cause, dx, dy) {
     if (this.dead || this.ghosted) return;
+    // A fused man does not simply die. Whatever killed him — a wall, a body, a blade, a fire — is
+    // what sets him off, because that is what the soul promised: you put your head into him and the
+    // room goes up wherever he lands. A hole is the one exception: there is nothing down there to take.
+    if (this.bombFuse > 0 && !this.exploded && cause !== 'fall') { this.explode(game); return; }
     // Anyone carrying more than one hit — an arena elite, or any Seer — eats it, goes down and gets
     // back up; a Seer blinks clear as he does. Fire counts, so a mage has to be lit twice. Being torn
     // open or going off like a bomb does not: there is nothing left to get up.
@@ -383,8 +387,11 @@ class Enemy {
       this.x += this.vx * dt; this.y += this.vy * dt;
       const preSpeed = Math.hypot(this.vx, this.vy);
       const impact = w.collideCircle(this);
+      // A fused man goes off on the first thing he touches, however gently. The fuse is the longstop,
+      // not the trigger: he used to pop in mid-air over an empty floor, which is a firework rather
+      // than a man you threw at something.
+      if (impact > 0 && this.bombFuse > 0) { this.explode(game); return; }
       if (impact > TUNING.physics.splatSpeed) {
-        if (this.bombFuse > 0) { this.explode(game); return; }
         this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1)); return;
       }
       if (impact > 0 && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }

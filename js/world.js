@@ -38,6 +38,12 @@ class World {
     // `computeVis`, and the box it last filled so the clear costs the same as the cast.
     this.vis = new Uint8Array(n);
     this.visBox = null;
+    // Things that are not stone but are as good as it to an eye: a shut door, the gong, the hub of
+    // the wheel. The cone the cult sees down already stops at them (`game.sees`), and now so does
+    // the goat's own — standing at a shut door and seeing the room behind it was the one place the
+    // two disagreed. The list is a handful long, so it is cleared by what was last in it.
+    this.visBlock = new Uint8Array(n);
+    this.visBlockList = [];
     this.paintGlyphs(level);
   }
 
@@ -329,7 +335,7 @@ class World {
         if (end > lSlope) break;
         const inside = tx >= 0 && ty >= 0 && tx < W && ty < H;
         if (dx * dx + dy * dy <= r2 && inside) v[ty * W + tx] = 1;
-        const solid = !inside || this.isSolid(tx, ty);
+        const solid = !inside || this.isSolid(tx, ty) || this.visBlock[ty * W + tx] === 1;
         if (blocked) {
           if (solid) { newStart = rSlope; continue; }
           blocked = false; start = newStart;
@@ -342,6 +348,27 @@ class World {
       if (blocked) break;
     }
   }
+  // The tiles that are as good as stone to look at this step. Given as tile indices, cleared by the
+  // list it replaces rather than by wiping the world.
+  setVisBlocks(list) {
+    for (const i of this.visBlockList) this.visBlock[i] = 0;
+    this.visBlockList = list;
+    for (const i of list) this.visBlock[i] = 1;
+  }
+
+  // Is any floor of this box in his line of sight? The fog asks it of every room he has not opened:
+  // seeing the outside of a room's wall is not seeing the room, so the wall tiles do not count.
+  anyFloorSeen(box) {
+    const b = this.visBox; if (!b) return false;
+    const x0 = Math.max(box.x, b.x0), x1 = Math.min(box.x + box.w - 1, b.x1);
+    const y0 = Math.max(box.y, b.y0), y1 = Math.min(box.y + box.h - 1, b.y1);
+    for (let y = y0; y <= y1; y++) {
+      const row = y * this.W;
+      for (let x = x0; x <= x1; x++) if (this.vis[row + x] === 1 && !this.isSolid(x, y)) return true;
+    }
+    return false;
+  }
+
   seesTile(tx, ty) {
     if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return false;
     return this.vis[ty * this.W + tx] === 1;

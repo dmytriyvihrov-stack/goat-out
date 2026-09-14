@@ -346,7 +346,11 @@ generator only finds floor for what the plan says. Two rules it enforces:
 `max(levelDef.heals, ceil((rooms - 1) / TUNING.prop.heal.every))`, cuts the level into that many bands
 measured **in rooms rather than in eligible rooms**, and gives each band the ordinary room nearest its
 middle. A run of arenas and set pieces can no longer stretch the dry spell: the worst gap on any level
-is five rooms. Only the tile inside the room is random.
+is five rooms. Only the tile inside the room is random — and it is scored rather than rolled for: clear
+of the furniture, and a wide berth from a brazier or a lamp. It was the one scatter in the generator that
+checked the tile and nothing else, so a bowl could be laid down on top of a brazier. A narrow room gives
+up the clearance before it gives up the berth, and the last resort is the tile furthest from the nearest
+flame, because the band is promised a bowl. `GEN_RULES.milk` fails a level that puts one in a fire.
 
 Change any of it and run **`node tools/balance.js`**: it prints the curve room by room and exits non-zero
 if a kind arrives in a crowd first, a cap breaks, threat stops rising inside a level, or a level is not
@@ -506,7 +510,9 @@ a line at the use site; nothing else reads them.
 
 **The fog, and its two halves.** The first half never moves: `room.seen` starts false on every room but
 the first, `game.revealRooms` sets it when the goat's own tile is inside the room's box widened by one —
-so a room opens as you come through its wall, not after it — and it is never re-hidden. `drawUnseen`
+so a room opens as you come through its wall, not after it — **or** when he can see into it, which is
+`World.anyFloorSeen(room)`: any *floor* tile of it lit by this step's shadowcast, the wall tiles not
+counting, because seeing the outside of a room's wall is not seeing the room. It is never re-hidden. `drawUnseen`
 paints the unopened rooms out in `def.fog` after the floor, the blood, the holes and the firelight and
 before anything that stands on them, and the draw order filters props, men and bullets through
 `game.hidden`. Corridors are never hidden: they are two tiles wide and what you can see down one is a
@@ -522,7 +528,18 @@ everything in world space**. So a pillar, a stub wall or the corner of a room hi
 until he steps round to where it can be seen from, and a man standing back there is not culled, he is
 simply not lit. Nothing else in the game reads `vis`: the cult's eyes, ears and flow field are
 untouched, and a man in the dark still hears you and still comes. It costs about 0.01 ms a step.
-`startLevel` primes it next to `computeFlow`, and it is skipped during the opening scene.
+`startLevel` primes it next to `computeFlow`, and it is skipped during the opening scene. What the cast
+stops at is stone **plus** `world.visBlock`, a tile mask `revealRooms` rebuilds each step from the opaque
+half of `game.sightBlockers` — every tile the thing actually covers, not the one its centre is in, because
+a door hangs across both lanes of a two-tile corridor and blocking half of it leaves a clear line down the
+other half. A shut door was a wall to the cult's eye (`game.sees`) and see-through to the goat's; it is a
+wall to both now.
+
+**Nothing that is not on the screen lands a blow.** `game.meleeHit` and `game.fireBullet` both return
+early on `game.hidden(attacker)`. A man inside a room nobody has opened is not drawn at all — the fog
+paints his whole room out — and he could still reach out of the black and club you, or shoot you out of
+it. He may walk, he may shout, he may come and find you. He may not hit you from a place the game is
+refusing to draw. Reveal-on-sight makes it rare; the gate is what makes it impossible.
 
 **Score, and the board.** `scoreFor(kills, time, levelIndex)` is the only place a score is computed:
 pace against par (`rooms * score.perRoom`, capped at `fastCap`) times a kill multiplier (`killMul`,
@@ -692,7 +709,21 @@ true, and what the roll's soul buys now is the teeth in it: **DEAD WEIGHT** is a
 the tumble goes through loses its head (`mods.rollStun`, read by the `rollHit` list in `Goat.update`).
 `Goat.rollDirection` scores 24 candidate angles against nearby men (weighted up if one is mid-swing),
 walls and fire, and honours the stick when there is one. With no direction asked for it is a pure escape,
-which is the whole reason the button exists on a phone.
+which is the whole reason the button exists on a phone. Its distance is `roll.speed` times `roll.duration`
+and the ground is the half to turn: cutting the speed leaves the mercy frames where they are, which is
+the difference between a dodge and a second way of running.
+
+**An arm is picked up by running over it.** `Goat.takeArm` is the one way one enters the mouth and both
+callers go through it: `tryGrab` for a deliberate reach, and the sweep at the top of `Goat.update` for a
+blade or shield inside `grab.sweep` of him with an empty mouth and no cooldown. It is not a new button,
+it is one fewer — at a run there was never a beat in which to press for it. `goat.autoHeld` is which way
+it got there and it decides how it leaves: something reached for goes when grab comes **up**, something
+that came in on its own goes on the next **press** of grab (the edge is `rmbWas`, carried on the goat so
+the input object needs nothing new). A headbutt is allowed with an arm in the mouth and `dropHeld` puts
+it down at his feet first — at his feet, and with `lastLunge` set one ahead, so the blow that dropped it
+cannot also punt it across the room. `prop.dropped` is what stops it jumping straight back in: it stays
+down until he has walked off it. Carrying an arm costs `grab.itemSpeedMul` and carrying a man still costs
+`grab.speedMul`, because auto-pickup would otherwise be a way of being slowed down by the scenery.
 
 **Arms are consumable.** `prop.uses` counts what a weapon has left, off `TUNING.prop.weapon.uses` —
 a sword 1, a shield 3. `Prop.snap()` is the single place one is destroyed: it is called by the sword
@@ -722,7 +753,9 @@ break, and `goat.runUp` is what they are worth: 1 at a standstill, `1 + momentum
 times real time the moment he stops, and a hit or a stun takes the whole of it at once. That last part
 is the design: the reward for running is a thing everything else in the game can take off you, so it
 argues for *run, don't fight* rather than against it. It has no chip on the rail — the smear is where
-it is visible.
+it is visible. `momentum.max` is exactly the fifth that came off `goat.speed`: a goat at the end of a
+run-up is doing what he used to do standing still. Keep the two in step — if `speed` is turned again,
+`max` is what says whether the old top speed is still reachable at all.
 
 **The smear.** `TUNING.goat.trail` holds both ends of it and `Goat.update` mixes them by
 `game.mods.speed * goat.runUp` against `trail.fastAt`, so SURE HOOVES and the run-up both lengthen the

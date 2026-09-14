@@ -25,10 +25,20 @@ const PALETTE = {
   woodHi: '#8a6238',
 };
 
+// The two paces every creature in the game is written against. `PACE` is the yardstick — it is what
+// the goat's top speed used to be, and every man's speed is still quoted as a fraction of it. They
+// are two numbers now because the two were turned by different amounts: the goat lost a fifth of his
+// stride (and earns it back over a run-up, see `momentum`), and the cult lost a tenth of theirs.
+const PACE = 8.2 * TILE;
+const CULT_PACE = 0.9 * PACE;
+
 const TUNING = {
   goat: {
     radius: 12,
-    speed: 8.2 * TILE,      // top speed px/s (~1.3x cultist)
+    // A fifth off the stride he walks about with. The run-up is what gives it back: four seconds of
+    // running flat out and he is at the old top speed again, so the speed he used to have for free
+    // is now the speed he has for not stopping.
+    speed: 0.8 * PACE,
     accel: 0.15,            // s to top speed
     decel: 0.25,            // s to stop
     hp: 4,
@@ -45,7 +55,14 @@ const TUNING = {
     // A throw is a commitment now: you let him go, and your mouth is empty for a beat.
     // He is in your mouth a long time, and he works himself loose somewhere in `holdVary` either
     // side of it, so you never learn the exact beat he goes: carrying one is a gamble, not a timer.
-    grab: { reach: 1.6 * TILE, speedMul: 0.7, holdTime: 8.0, holdVary: 0.125, throwImpulse: 34 * TILE, holdDist: 22, cooldown: 1.35 },
+    // `manThrow` is what a goat can actually do with a grown man: the same throw as a crate takes
+    // off two thirds of the way across a room, which is a gorilla. A man goes a short way and lands.
+    // Two weights and two prices for carrying. A man in your mouth is `speedMul` — most of your
+    // stride, because he is most of your size. A blade or a shield is `itemSpeedMul` and barely
+    // anything, which is what makes an arm worth taking in passing rather than a thing you commit to.
+    // `sweep` is how far past the two bodies an arm on the floor jumps into his mouth by itself.
+    grab: { reach: 1.6 * TILE, speedMul: 0.7, itemSpeedMul: 0.94, holdTime: 8.0, holdVary: 0.125,
+      throwImpulse: 34 * TILE, manThrow: 0.7, sweep: 0.5 * TILE, holdDist: 22, cooldown: 1.35 },
     // BAAH out of the pen is what a goat's voice actually is: a noise. It calls every man who hears
     // it to the spot you shouted from, which is a tool — you throw your voice at one end of a room
     // and leave by the other — and a way to get killed. What it is NOT is a weapon: taking the sense
@@ -53,10 +70,12 @@ const TUNING = {
     // picks one of the two. `call` is how far the noise carries; `radius` is what the two tomes
     // reach, deliberately short of what the screen shows, so a stun is for the men on top of you.
     scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9, call: 13, callCooldown: 3.0 },
-    // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat.
+    // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat. It is a
+    // fifth shorter than it was — the same beat of mercy, a fifth less ground — because a dodge that
+    // clears the whole room is a second way of running rather than a way of not being hit.
     // `stun` and `stunR` are DEAD WEIGHT's, and nothing else reads them: the roll on its own
     // goes through a man without touching him.
-    roll: { speed: 9.9 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7,
+    roll: { speed: 7.92 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7,
       stun: 0.7, stunR: 1.6 * TILE },
     // The smear behind him is the only thing on screen that says he is faster than he was, so the
     // tome that makes him faster lengthens it: at `fastAt` times his own speed it is `fast*` all
@@ -64,24 +83,27 @@ const TUNING = {
     trail: { at: 0.55, gap: 0.028, keep: 7, life: 0.18, fastGap: 0.014, fastKeep: 16, fastLife: 0.34, fastAt: 1.18 },
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
     devour: { time: 1.15, healChance: 0.45 },
-    bomb: { fuse: 0.34, radius: 2.6 * TILE, impulse: 24 * TILE },
+    bomb: { fuse: 0.9, radius: 2.6 * TILE, impulse: 24 * TILE },
     // The run-up. A goat that has been running flat out for a while is going faster than one that
     // just set off: `time` seconds of asking for at least `atLeast` of a stride buys the whole of
     // `max`, and it drains at `lose` times real time the moment he stops — or all at once when he is
     // hit. It is the only speed in the game you earn rather than pick up, and it is worth having
     // because everything that stops you costs it: a fight costs it, a door costs it, a club costs it.
-    momentum: { max: 0.5, time: 4.0, lose: 3.0, atLeast: 0.6 },
+    // `max` is exactly the fifth that came off `speed`: a goat at the end of a run-up is doing what
+    // he used to do standing still, so the old top speed is still in the game — it is just the
+    // reward for not stopping now, and a single club takes it off you again.
+    momentum: { max: 0.25, time: 4.0, lose: 3.0, atLeast: 0.6 },
     turn: 9,                // rad/s he swings his head round to where you are pointing, standing still
     fireDamageInterval: 0.7,
     invuln: 0.5,            // s of invulnerability after a hit
   },
   bearer: {
-    radius: 11, speed: 0.85 * 8.2 * TILE, sight: 8, cone: Math.PI / 2,
+    radius: 11, speed: 0.85 * CULT_PACE, sight: 8, cone: Math.PI / 2,
     reach: 1.2 * TILE, windup: 0.58, swing: 0.15, recover: 0.55, damage: 1, knock: 1 * TILE,
     flooredTime: 0.8,
   },
   hunter: {
-    radius: 11, speed: 0.8 * 8.2 * TILE, sight: 10, cone: Math.PI / 2,
+    radius: 11, speed: 0.8 * CULT_PACE, sight: 10, cone: Math.PI / 2,
     keepMin: 5, keepMax: 8, backoffDist: 4, aimTime: 0.88, reload: 1.35,
     // What he has left once you have him by the collar. He empties it into the room and then he is
     // only a man being carried: a rifle is worth holding, but not for the whole level.
@@ -95,7 +117,7 @@ const TUNING = {
   // hit: a share of every headbutt it is simply not there for any more. One thing it cannot do is
   // think its way through a BAAH — a screamed pack is a dead pack, and that is the point of it.
   dog: {
-    radius: 10, speed: 0.98 * 8.2 * TILE, sight: 12, cone: Math.PI * 0.9,
+    radius: 10, speed: 0.98 * CULT_PACE, sight: 12, cone: Math.PI * 0.9,
     // The windup is the beat after the dart, not part of it: at 0.3 s the bite landed before the eye
     // had the tell, and the dart was doing work it could not be read doing.
     reach: 0.95 * TILE, windup: 0.44, swing: 0.12, recover: 0.3, damage: 1, knock: 0.8 * TILE,
@@ -110,7 +132,7 @@ const TUNING = {
   // The Seer never closes. He paints a rune where you are standing and blinks away when you get near.
   // Two hits, like the Butcher — but unlike him he can still be grabbed, carried and thrown.
   seer: {
-    radius: 11, speed: 0.55 * 8.2 * TILE, sight: 11, cone: Math.PI * 0.62,
+    radius: 11, speed: 0.55 * CULT_PACE, sight: 11, cone: Math.PI * 0.62,
     keepMin: 5, keepMax: 9, damage: 1, hp: 2,
     castWind: 0.8, castCooldown: 2.5, runeRadius: 1.4, runeFire: 2.0,
     blinkRange: 3.2, blinkDist: 5.5, blinkCooldown: 3.0,
@@ -124,7 +146,7 @@ const TUNING = {
   // and started to swing — and from that moment it cannot stop, so the window it opens to hurt you is
   // the same window you get to unmake it in. Face it and it can do nothing. Turn away and it arrives.
   wraith: {
-    radius: 12, speed: 0.62 * 8.2 * TILE, sight: 17, cone: Math.PI * 2,
+    radius: 12, speed: 0.62 * CULT_PACE, sight: 17, cone: Math.PI * 2,
     reach: 1.35 * TILE, windup: 0.52, swing: 0.14, damage: 1, knock: 1.2 * TILE,
     hp: 1, flooredTime: 0.6,
     standoff: 1.15,     // tiles behind you it wants to be before it commits
@@ -146,7 +168,7 @@ const TUNING = {
   // plainly is not. Two tiles and ninety-nine degrees now — half the ground, to the square foot —
   // and he still out-reaches a clubman, which was the only thing that number was ever for.
   butcher: {
-    radius: 20, speed: 0.6 * 8.2 * TILE, sight: 9, cone: Math.PI * 0.7,
+    radius: 20, speed: 0.6 * CULT_PACE, sight: 9, cone: Math.PI * 0.7,
     hp: 3, reach: 1.35 * TILE, windup: 0.88, swing: 0.2, recover: 0.62, arc: Math.PI * 0.55, damage: 1,
     chargeMin: 4, chargeWind: 0.6, chargeSpeed: 14 * TILE, chargeTime: 1.1, chargeCooldown: 2.5, stun: 1.5, stagger: 0.4,
     burnTick: 1.0, burnHearts: 1,   // he comes out of a fire scorched and one heart down, not dead

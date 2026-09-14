@@ -484,13 +484,33 @@ function tryGenerate(levelDef, seed) {
     if (!room) break;
     usedHeal.add(room.index); healRooms.push(room);
   }
+  // Where in the room it goes. This was the one scatter in the generator that asked whether the tile
+  // was floor and nothing else, so a bowl could be laid down on top of a brazier — the last heart of
+  // a level standing in a fire, drawn over the coals with the flame coming up behind it. It keeps a
+  // clearance from the furniture now and a wide berth from anything alight, and the second pass gives
+  // up the clearance but never the berth: a bowl may be awkwardly placed, it may not be in a fire.
   healRooms.forEach((room) => {
-    for (let k = 0; k < 30; k++) {
-      const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
-      if (tiles[ty * W + tx] !== T.FLOOR) continue;
-      props.push({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE, kind: 'heal' });
-      return;
+    const alight = (p) => p.kind === 'brazier' || p.kind === 'lamp';
+    const spots = [];
+    for (let ty = room.y + 2; ty <= room.y + room.h - 3; ty++) {
+      for (let tx = room.x + 2; tx <= room.x + room.w - 3; tx++) {
+        if (tiles[ty * W + tx] !== T.FLOOR) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        let fire = Infinity, near = Infinity;
+        for (const p of props) { const d = len(p.x - px, p.y - py); if (alight(p)) fire = Math.min(fire, d); else near = Math.min(near, d); }
+        spots.push({ x: px, y: py, fire, near });
+      }
     }
+    if (!spots.length) return;
+    // Clear of the furniture and a long way from anything alight. A narrow room may hold nothing that
+    // good, and then the clearance goes before the berth does: the bowl may stand awkwardly, it may
+    // not stand in a fire. The last resort is the three tiles furthest from the nearest flame, because
+    // the level is promised a bowl in this band and not getting one is the worse of the two faults.
+    let pool = spots.filter((p) => p.fire >= 2.6 * TILE && p.near >= 1.7 * TILE);
+    if (!pool.length) pool = spots.filter((p) => p.fire >= 2.6 * TILE);
+    if (!pool.length) pool = spots.slice().sort((a, b) => b.fire - a.fire).slice(0, 3);
+    const pick = pool[rng.int(0, pool.length - 1)];
+    props.push({ x: pick.x, y: pick.y, kind: 'heal' });
   });
 
   const centre = { x: (rooms[0].x + rooms[0].w / 2) * TILE, y: (rooms[0].y + rooms[0].h / 2) * TILE };

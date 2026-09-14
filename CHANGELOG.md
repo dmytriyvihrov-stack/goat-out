@@ -5,6 +5,49 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.13 — a slower goat who earns it back, and arms you pick up without asking
+
+**Thirteen lines off one playtest, and most of them are about pace.** The goat walks a fifth slower
+than he did and gets the whole of it back for not stopping; the cult walks a tenth slower than it did;
+the roll clears less ground; and a man thrown out of his mouth lands like a man rather than clearing
+the room. What is left is the screen and four things that were simply wrong.
+
+- **A fifth off the stride, and a run-up that is exactly that fifth.** `speed` is 0.8 of what it was
+  and `momentum.max` is 0.25, so four seconds of running flat out puts him back at the old top speed
+  and a single club takes it off him again. The speed he used to have for free is the speed he now
+  has for not stopping.
+- **A tenth off every man in the compound.** `CULT_PACE` is the second yardstick; every enemy speed is
+  still written as a fraction of the old one, which is the only way the numbers stay readable.
+- **The roll is a fifth shorter.** Same beat of mercy, a fifth less ground: a dodge that clears the
+  whole room is a second way of running rather than a way of not being hit.
+- **A goat is not a gorilla.** A man out of his mouth goes `manThrow` — seven tenths — of what a crate
+  does. Still every wall in the room and every man standing by one; no longer the far side of it.
+- **Blades and shields are picked up by running over them.** No button: `sweep` past the two bodies
+  and it is in his mouth. A butt puts it down at his feet and lands anyway, a press of grab throws it,
+  and something he put down himself stays down until he has walked off it. Carrying an arm costs
+  almost nothing (`itemSpeedMul`); carrying a man still costs a third of his stride.
+- **Fire goes the way he is going.** DRAGON BREATH comes out along his line of travel, not along the
+  pointer. A goat running one way and breathing fire the other is a gun turret.
+- **BOMB CHARGE goes off on what it hits.** Any contact — a wall at any speed, a body, a table, a door
+  — detonates a fused man, and the fuse (0.34 → 0.9) is the longstop rather than the trigger. He used
+  to pop in mid-air over an empty floor, which is a firework and not a man you threw at something.
+- **A room opens when you can see into it.** The reveal reads the shadowcast now instead of waiting for
+  him to walk in — and a shut door stops that cast, across both lanes of the corridor, exactly as it
+  already stopped the cult's. What he cannot see from where he stands is still painted down, so a look
+  through a doorway hands him the sliver the doorway shows.
+- **Nothing that is not on the screen lands a blow.** A man inside a room nobody has opened could reach
+  out of the black and club you, and a rifle in one could shoot you out of it. He may walk, shout and
+  come and find you; he may not hit you from a place the game is refusing to draw.
+- **Milk is never in a fire.** The bowl was the one scatter in the generator that checked the tile and
+  nothing else, so it could be laid down on top of a brazier — the last heart of a level standing in
+  the coals. It keeps a berth from anything alight now, and `rules.js` fails a level that does not.
+- **The title screen fits on the title screen.** The button block was measured as two rows however many
+  there were, so five of them ran off the bottom of the window and took SETTINGS with it. The rows are
+  smaller and sized to the screen they got.
+- **The skill notes are one line each.** They are read while a room walks toward you.
+
+---
+
 ## 1.12 — a corner you cannot see round, and a goat who can already dodge
 
 **One sitting, twelve lines off a screenshot.** Half of it is the screen: everything the HUD was saying

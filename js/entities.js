@@ -18,11 +18,17 @@ class Goat {
     this.jitter = null;    // a tremble the opening scene puts on it; drawn, never simulated
     this.safeX = x; this.safeY = y;   // the last floor he stood on, which is where a fall returns him
     this.runT = 0; this.runUp = 1;    // seconds of running without a break, and what they are worth
+    this.autoHeld = false; // the thing in his mouth walked into it: a butt drops it, a press throws it
+    this.rmbWas = false;   // grab last frame, so the press can be told from the holding
   }
 
   update(dt, game) {
     const g = TUNING.goat, inp = game.input, world = game.world;
     this.aim = inp.aim;
+    // The one press of grab, rather than the holding of it. An arm that came into his mouth on its
+    // own was never picked up by a button, so there is no button to let go of: a press throws it.
+    const rmbEdge = inp.rmbDown && !this.rmbWas;
+    this.rmbWas = inp.rmbDown;
     // The gong is still ringing in his head: everything he has to wait for comes back half again
     // as fast, and so does he. It runs down whatever he is doing, stunned included.
     this.gong = Math.max(0, this.gong - dt);
@@ -53,7 +59,7 @@ class Goat {
       this.vy = this.rollDir.y * R.speed * game.mods.rollDistance;
       this.invuln = Math.max(this.invuln, R.invuln);
       if (this.holding) {
-        const h = this.holding; this.holding = null; h.held = false;
+        const h = this.holding; this.holding = null; h.held = false; this.autoHeld = false;
         if (!h.item) { h.state = 'floored'; h.timer = 0.5; }
         this.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown;
       }
@@ -89,7 +95,9 @@ class Goat {
     this.runUp = 1 + M.max * (this.runT / M.time);
 
     // ---- movement (momentum) ----
-    let mul = this.holding ? g.grab.speedMul : 1;
+    // A man on your back is most of your stride. A blade in your teeth is barely any of it, which
+    // is what lets an arm be something you take in passing instead of something you commit to.
+    let mul = this.holding ? (this.holding.item ? g.grab.itemSpeedMul : g.grab.speedMul) : 1;
     if (this.state === 'recover') mul *= 0.55;
     else if (this.state === 'windup') mul *= 0.3;
     else if (this.state === 'rollrecover') mul *= 0.35;
@@ -116,7 +124,12 @@ class Goat {
     if (this.state === 'roll') this.facing = Math.atan2(this.rollDir.y, this.rollDir.x);
 
     // ---- headbutt state machine ----
-    if (inp.lmbPressed && this.state === 'idle' && !this.holding) { this.state = 'windup'; this.timer = g.headbutt.windup; }
+    // An arm he picked up in passing is no reason he cannot use his head: the blow puts it down at
+    // his feet and lands anyway. Anything he reached for on purpose still has to leave the mouth first.
+    if (inp.lmbPressed && this.state === 'idle' && (!this.holding || this.autoHeld)) {
+      if (this.holding) this.dropHeld(game);
+      this.state = 'windup'; this.timer = g.headbutt.windup;
+    }
     if (this.state === 'windup') {
       this.timer -= dt;
       if (this.timer <= 0) {
@@ -132,11 +145,29 @@ class Goat {
       this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
     }
 
+    // ---- arms, taken in passing ----
+    // A blade or a shield on the floor goes into his mouth by itself as he runs over it. It is not
+    // a new button, it is one fewer: at a run there was never a beat in which to press for it, and
+    // a stand of arms standing in a doorway is only worth putting there if taking one costs nothing.
+    // It leaves the same two ways everything else does — a butt drops it, grab throws it.
+    if (!this.holding && this.grabCd <= 0 && !this.dead
+        && (this.state === 'idle' || this.state === 'recover')) {
+      for (const p of game.props) {
+        if (p.kind !== 'weapon' || p.broken || p.held || p.flung) continue;
+        const d = Math.hypot(p.x - this.x, p.y - this.y);
+        // Something he put down himself stays down until he has walked off it. Without that, the
+        // blow that drops a blade hands it back a beat later and every second headbutt is a juggle.
+        if (p.dropped) { if (d > this.r + p.r + g.grab.sweep + TILE) p.dropped = false; continue; }
+        if (d > this.r + p.r + g.grab.sweep) continue;
+        this.takeArm(game, p); break;
+      }
+    }
+
     // ---- grab / hold / throw ----
     if (inp.rmbDown && !this.holding && this.state === 'idle' && this.grabCd <= 0) this.tryGrab(game);
     if (this.holding) {
       const h = this.holding;
-      if (h.dead || h.broken) { this.holding = null; }
+      if (h.dead || h.broken) { this.holding = null; this.autoHeld = false; }
       else {
         // He is carried in front of the face, but never inside stone: from a face full of wall the
         // hold point is walked back toward the goat until it is on floor again. Before that, a throw
@@ -147,9 +178,13 @@ class Goat {
         h.x = this.x + this.aim.x * reach; h.y = this.y + this.aim.y * reach;
         h.vx = 0; h.vy = 0; h.facing = Math.atan2(this.aim.y, this.aim.x);
         this.holdTimer += dt;
-        if (!inp.rmbDown) {
-          h.held = false; this.holding = null;
-          const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul : 1;
+        // What throws it. Something he reached for goes when the button he reached with comes up;
+        // something that came into his mouth on its own goes on the next press of that button.
+        if (this.autoHeld ? rmbEdge : !inp.rmbDown) {
+          h.held = false; this.holding = null; this.autoHeld = false;
+          // A goat is not a gorilla. A crate or a blade goes the length of the room; a grown man
+          // goes a short way and lands, which is still every wall in it and every man standing by one.
+          const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul : h.item ? 1 : g.grab.manThrow;
           h.fling(this.aim.x * g.grab.throwImpulse * mul, this.aim.y * g.grab.throwImpulse * mul, true);
           this.grabCd = g.grab.cooldown * game.mods.grabCooldown;
           if (h.kind === 'weapon') { game.audio.sfxSteel(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
@@ -309,7 +344,12 @@ class Goat {
 
   // A cone of fire where the scream used to be.
   breathe(game) {
-    const B = TUNING.goat.breath, ax = this.aim.x, ay = this.aim.y;
+    const B = TUNING.goat.breath;
+    // It comes out along the way he is going, not along the way the pointer is. A goat running one
+    // way and breathing fire the other is a gun turret; the cone is a thing you commit your whole
+    // body to, and committing is what makes it worth a soul. Standing still it goes where he looks.
+    const dir = Math.hypot(this.vx, this.vy) > 40 ? Math.atan2(this.vy, this.vx) : this.facing;
+    const ax = Math.cos(dir), ay = Math.sin(dir);
     this.screamCd = game.mods.screamCooldown; this.screaming = 0.4;
     game.world.igniteCone(this.x, this.y, ax, ay, B.range, B.halfAngle, B.fireTime);
     for (const e of game.enemies) {
@@ -382,6 +422,33 @@ class Goat {
     }
   }
 
+  // An arm into the mouth. Out of the stand if it is still standing in one, and then simply carried.
+  // The hand that reached for it and the hoof that ran over it come through here alike, so a blade
+  // taken in passing tips its stand exactly the way a blade taken on purpose does.
+  takeArm(game, p) {
+    if (p.inStand) {
+      p.inStand = false;
+      game.world.dot(p.x - 4, p.y + 7, 4.5, '#3a2c20'); game.world.dot(p.x + 5, p.y + 9, 3.5, '#3a2c20');
+      game.floatText(p.x, p.y - 32, p.weapon === 'sword' ? 'SWORD' : 'SHIELD', PALETTE.bone);
+    }
+    p.held = true; p.flung = false; p.thrown = false; p.dropped = false;
+    this.holding = p; this.holdTimer = 0; this.autoHeld = true;
+    game.audio.sfxSteel(); game.vibe(8);
+  }
+
+  // Put down what he is carrying instead of throwing it. Only an arm that came in on its own is
+  // ever put down, and the half cooldown is what stops it jumping straight back off the same floor.
+  dropHeld(game) {
+    const h = this.holding; if (!h) return;
+    // It goes down at his feet, where the blow that dropped it cannot also punt it across the room:
+    // `headbuttHits` wants a thing in front of him, and `lastLunge` is the belt to that brace.
+    h.held = false; h.vx = 0; h.vy = 0; h.flung = false; h.thrown = false; h.dropped = true;
+    h.x = this.x; h.y = this.y; h.lastLunge = this.lungeId + 1;
+    this.holding = null; this.autoHeld = false;
+    this.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown * 0.5;
+    game.audio.sfxSteel();
+  }
+
   tryGrab(game) {
     const g = TUNING.goat.grab;
     let best = null, bestD = Infinity;
@@ -408,14 +475,11 @@ class Goat {
       if (!game.mods.grabMen) game.reachedForAMan(this);
       return;
     }
-    // Taking it out of the stand tips the stand over. What is left is the thing in your mouth.
-    if (best.kind === 'weapon' && best.inStand) {
-      best.inStand = false;
-      game.world.dot(best.x - 4, best.y + 7, 4.5, '#3a2c20'); game.world.dot(best.x + 5, best.y + 9, 3.5, '#3a2c20');
-      game.audio.sfxSteel();
-      game.floatText(best.x, best.y - 32, best.weapon === 'sword' ? 'SWORD' : 'SHIELD', PALETTE.bone);
-    }
+    // An arm is an arm however it got there: the same hoof-over-it path takes it, tips its stand
+    // and says what it is. What is different is that this one was asked for, so it leaves on release.
+    if (best.kind === 'weapon') { this.takeArm(game, best); this.autoHeld = false; return; }
     best.held = true; best.flung = false; best.thrown = false; this.holding = best; this.holdTimer = 0;
+    this.autoHeld = false;   // reached for on purpose: it leaves when the button does
     // He is yours for a while, and you do not get to know exactly how long: the roll is made here.
     const v = TUNING.goat.grab.holdVary;
     this.holdLimit = game.mods.holdTime * (1 - v + Math.random() * v * 2);
@@ -476,6 +540,7 @@ class Prop {
     // air, and who it has already been through on this throw.
     this.weapon = (opts && opts.weapon) || 'sword';
     this.inStand = kind === 'weapon'; this.spin = 0; this.passed = [];
+    this.dropped = false;   // he put it down himself: it does not jump back until he walks off it
     // What this one has left in it. A blade is one throw; a shield is three men or three bullets.
     this.uses = kind === 'weapon' ? (P.weapon.uses[this.weapon] || 1) : 0;
     this.vertical = opts && opts.vertical; this.open = 0; this.pressure = 0; this.wobble = 0;

@@ -158,13 +158,33 @@ class Game {
   // half — the renderer paints down everything outside it, and nothing else reads it: a man behind
   // a pillar is still in the room, still hears you, and still comes.
   revealRooms() {
-    const g = this.goat, tx = g.x / TILE, ty = g.y / TILE;
+    const g = this.goat, w = this.world, tx = g.x / TILE, ty = g.y / TILE;
     for (const r of this.level.rooms) {
       if (r.seen) continue;
       if (tx < r.x - 1 || tx > r.x + r.w || ty < r.y - 1 || ty > r.y + r.h) continue;
       r.seen = true;
     }
-    this.world.computeVis(g.x, g.y, TUNING.fog.radius);
+    // A shut door is a wall with hinges to his own eye as well as to theirs. It was already a wall
+    // to `sees`, which is what the cult looks down; the goat's own line went straight through one.
+    // Every tile the thing actually covers, not the one its centre is in: a door hangs across both
+    // lanes of a two-tile corridor, and blocking half of it left a clear line down the other half.
+    const blocks = [];
+    for (const p of this.sightBlockers) {
+      if (!p.opaque) continue;
+      const rr = p.r * 0.8;
+      const x0 = Math.floor((p.x - rr) / TILE), x1 = Math.floor((p.x + rr) / TILE);
+      const y0 = Math.floor((p.y - rr) / TILE), y1 = Math.floor((p.y + rr) / TILE);
+      for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+        if (tx < 0 || ty < 0 || tx >= w.W || ty >= w.H) continue;
+        if (Math.hypot((tx + 0.5) * TILE - p.x, (ty + 0.5) * TILE - p.y) < rr) blocks.push(ty * w.W + tx);
+      }
+    }
+    w.setVisBlocks(blocks);
+    w.computeVis(g.x, g.y, TUNING.fog.radius);
+    // And a room opens when he can see into it, not only once he is standing in it. It is still the
+    // width of the door: what he cannot see from where he stands is painted down by the shade, so a
+    // look through a doorway hands him the sliver of the room the doorway shows and nothing more.
+    for (const r of this.level.rooms) if (!r.seen && w.anyFloorSeen(r)) r.seen = true;
   }
   // Is this point inside a room nobody has walked into? Everything the world draws and everything
   // that would give a room away — a man, a crate, a body on its way down a hole — asks this.
@@ -1334,6 +1354,8 @@ class Game {
         // A lamp post is not a pillar. A body arriving at speed takes it over, and the oil goes
         // down where the body is about to land.
         if (e.state === 'flung' && -vn > TUNING.prop.lamp.knock && p.kind === 'lamp') { p.topple(this, -nx, -ny); e.vx *= 0.6; e.vy *= 0.6; continue; }
+        // And a fused man put through the furniture goes off against the furniture.
+        if (e.state === 'flung' && e.bombFuse > 0 && -vn > 2 * TILE) { e.explode(this); continue; }
         if (e.state === 'flung' && -vn > ph.splatSpeed && e !== g) { e.die(this, 'splat', -nx, -ny); continue; }
         if (e === g && p.kind === 'table' && !p.flung) {
           // the goat can shoulder a table along slowly
@@ -1362,6 +1384,8 @@ class Game {
   // is as dead as the one he was thrown at.
   flungHits(f, other, nx, ny) {
     const ph = TUNING.physics, spd = Math.hypot(f.vx, f.vy);
+    // A fused man who arrives on somebody goes off on him. He is the bomb, not the delivery.
+    if (f.bombFuse > 0) { f.explode(this); return; }
     if (other.kind === 'butcher') { other.state = 'stagger'; other.timer = 0.3; f.vx *= -0.3; f.vy *= -0.3; return; }
     if (f.thrown || spd > ph.bodyKillSpeed) {
       other.die(this, 'splat', nx, ny);
@@ -1385,6 +1409,9 @@ class Game {
   // nothing checked: fire diagonally past a corner and the bullet simply appeared on the far side of
   // the stone. Walk it out instead, and stop at whatever it meets.
   fireBullet(shooter, dx, dy) {
+    // Same rule as a club: a rifle inside a room nobody has opened is a shot out of the black, and
+    // the bullet is painted out along with the man who fired it. He holds his shot until he is seen.
+    if (this.hidden(shooter.x, shooter.y)) return;
     const s = TUNING.hunter.bulletSpeed, w = this.world, out = shooter.r + 16;
     let mx = shooter.x, my = shooter.y, blocked = false;
     for (let t = 4; t <= out; t += 4) {
@@ -1421,6 +1448,11 @@ class Game {
   sees(ax, ay, bx, by) { return this.clearLine(ax, ay, bx, by, this.sightBlockers, 'opaque'); }
   meleeHit(att, reach, arc, damage, knock, skipGoat) {
     const g = this.goat;
+    // Nothing that is not on the screen lands a blow. A man inside a room the goat has not opened
+    // is not drawn at all — the fog paints his whole room out — and he could still reach out of the
+    // black and club you. He may walk, he may shout, he may come and find you. He may not hit you
+    // from a place the game is refusing to show you.
+    if (this.hidden(att.x, att.y)) return;
     const inArc = (o) => { const dx = o.x - att.x, dy = o.y - att.y, d = Math.hypot(dx, dy);
       return d < reach + o.r && Math.abs(angleDiff(att.facing, Math.atan2(dy, dx))) < arc / 2
         && this.reaches(att.x, att.y, o.x, o.y); };
