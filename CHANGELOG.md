@@ -5,6 +5,40 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.8 — the man in the doorway, and what is behind the iron
+
+**The same sitting, carried on.** Where 1.7 was about the game not saying what a thing *is*, this one
+is about the game not making you do anything with it: a first man you could walk round, a trap nobody
+noticed underfoot, a door that took three blows whatever it was made of.
+
+- **The first man of the run stands in the only way out.** He used to hold a post a few tiles inside
+  the room, which everybody walked round. The generator now takes the corridor leaving his room down to
+  a single tile, deletes whatever door was in it, and stands him in the gap — and he cannot be
+  shouldered along it either, the way the Butcher cannot. The room opens when he goes down. Nothing
+  else is in there: no milk, no crate, no grating. One man and one verb.
+- **The hound is not a level-one animal.** Level one is a small clubman, a big one, and the block at
+  the end of it. An animal that darts and dodges is a different lesson from a man who winds up and
+  swings, and meeting both inside ten minutes is why neither was landing. The hound is now the first
+  new thing level two has, before the mage.
+- **The teeth are a stretch of floor.** The trap was a plate flush with the boards, then briefly a
+  crate, and neither said what it was — one was invisible and the other looked like something you
+  could pick up. It is iron grating now, sunk into the boards with dark slots you can see the empty
+  sockets through, and it goes down **nine to fifteen tiles at a time** as a band that bends across a
+  room. One grate is stepped over without being noticed; a stretch of them is a piece of ground you
+  have to decide about. Everything about how it works is unchanged: only the goat trips it.
+- **Crates are for throwing.** One tile, planks and two iron bands, and nothing to explain: pick it
+  up, throw it, it comes apart on a man and leaves him on his back for longer than a pot does. They
+  are scattered through every level from the first.
+- **A plank door goes in one blow.** All doors took three, which is two too many for a thing standing
+  between you and a corridor. Wood is one now.
+- **Iron doors take four, and are never in the way.** The only iron door in a level is the vault's: a
+  sealed five-by-five chamber cut into the rock off one room in the middle of the level, with a tome in
+  it and nothing else. You can see it through the doorway from the floor of the room. Four blows and
+  the noise of four blows is the whole price, and none of it is on the way to the stairs — it is the
+  one thing in a level you go out of your way for, and the reason to is that you come out stronger.
+
+---
+
 ## 1.7 — his own voice, and a box on the floor
 
 **A second sitting, on the same day.** Seven notes, all of them about the game not saying what it is:

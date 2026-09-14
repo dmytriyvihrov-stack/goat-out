@@ -463,13 +463,30 @@ class Renderer {
       ctx.save(); ctx.translate(p.x, p.y);
       if (p.open > 0) ctx.rotate((tall ? -1 : 1) * p.open * 1.25);
       this.shadow(0, 0, wdt * 0.6, hgt * 0.4);
-      ctx.fillStyle = PALETTE.wood; ctx.fillRect(-wdt / 2, -hgt / 2, wdt, hgt);
-      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(-wdt / 2, -hgt / 2, tall ? 4 : wdt, tall ? hgt : 4);
-      ctx.strokeStyle = 'rgba(26,16,22,0.55)'; ctx.lineWidth = 2;
+      // Planks, unless it is the vault's: iron is darker, banded across, studded, and carries a
+      // notch for every blow it has already taken, so four hits is a count and not a wall.
+      ctx.fillStyle = p.iron ? '#3a3a40' : PALETTE.wood; ctx.fillRect(-wdt / 2, -hgt / 2, wdt, hgt);
+      ctx.fillStyle = p.iron ? '#5d5f68' : PALETTE.woodHi; ctx.fillRect(-wdt / 2, -hgt / 2, tall ? 4 : wdt, tall ? hgt : 4);
+      ctx.strokeStyle = p.iron ? 'rgba(10,10,14,0.7)' : 'rgba(26,16,22,0.55)'; ctx.lineWidth = p.iron ? 3 : 2;
       ctx.beginPath();
       for (let k = -1; k <= 1; k++) { if (tall) { ctx.moveTo(-wdt / 2, k * 16); ctx.lineTo(wdt / 2, k * 16); } else { ctx.moveTo(k * 16, -hgt / 2); ctx.lineTo(k * 16, hgt / 2); } }
       ctx.stroke();
-      ctx.fillStyle = PALETTE.ochre; ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, Math.PI * 2); ctx.fill();
+      if (p.iron) {
+        ctx.fillStyle = '#8a8d96';
+        for (let k = -1; k <= 1; k += 2) for (let j = -1; j <= 1; j += 2) {
+          ctx.beginPath(); ctx.arc(k * (tall ? 3.5 : 22), j * (tall ? 22 : 3.5), 1.9, 0, Math.PI * 2); ctx.fill();
+        }
+        // what it has left in it, scored across the face
+        ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 2;
+        for (let k = 0; k < (p.hits || 0); k++) {
+          const o = (k - 1) * 9;
+          ctx.beginPath();
+          if (tall) { ctx.moveTo(-wdt / 2, o); ctx.lineTo(wdt / 2, o + 4); } else { ctx.moveTo(o, -hgt / 2); ctx.lineTo(o + 4, hgt / 2); }
+          ctx.stroke();
+        }
+      }
+      ctx.fillStyle = p.iron ? '#c9ccd4' : PALETTE.ochre;
+      ctx.beginPath(); ctx.arc(0, 0, p.iron ? 4 : 3.2, 0, Math.PI * 2); ctx.fill();
       if (p.pressure > 0.15) { ctx.strokeStyle = `rgba(192,57,43,${Math.min(0.8, p.pressure)})`; ctx.lineWidth = 2; ctx.strokeRect(-wdt / 2 - 2, -hgt / 2 - 2, wdt + 4, hgt + 4); }
       ctx.restore();
     } else if (p.kind === 'table') {
@@ -489,55 +506,62 @@ class Renderer {
       ctx.fillStyle = PALETTE.ochre; ctx.beginPath(); ctx.ellipse(p.x, p.y - 17, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
       this.flame(p.x, p.y - 20, 8 + 2 * Math.sin(this.t * 12 + p.phase), p.phase);
     } else if (p.kind === 'spike') {
-      // A small crate, left standing about the way everything else in this compound is crated, which
-      // is the whole reason nobody moves it. The goat's own weight trips the catch: the lid goes over
-      // backwards and what was packed in it stands up. It used to be a plate lying flush in the
-      // boards, and a seam in a floor is not a thing anybody can read at a run.
+      // Not a thing standing in the room: a tile of the floor that is not floor. Iron grating laid
+      // into the boards, with dark slots in it that the teeth come up through — so a stretch of them
+      // reads as a piece of ground with an opinion rather than as furniture somebody left out.
       const S = TUNING.prop.spike, r = p.r;
       const state = p.spikeState, arming = state === 'armed';
       const out = state === 'up' ? clamp((S.up - p.spikeT) * 9, 0, 1)
         : state === 'down' ? clamp(p.spikeT / S.down, 0, 1) : 0;
-      const shud = arming ? Math.sin(this.t * 70) * 1.6 * clamp(1 - p.spikeT / S.arm, 0, 1) : 0;
-      // Half the lid across and back, and the side of the box below it. Low enough to run over.
-      const w = r * 0.92, d = r * 0.58, h = 8;
-      const jump = arming ? 2 + Math.sin(this.t * 70) : 0;          // the lid knocking against the catch
-      const lidY = -d - h - out * 13 - jump, lidH = d * 2 * (1 - out * 0.8);
+      const shud = arming ? Math.sin(this.t * 70) * 1.1 * clamp(1 - p.spikeT / S.arm, 0, 1) : 0;
+      const w = r, d = r * TILT;                                      // a whole tile, squashed like the floor
       ctx.save(); ctx.translate(p.x + shud, p.y);
-      this.shadow(0, d * 0.5, w * 1.1, d * 0.8);
-      // The lid, drawn first: shut it is the top of the box, open it is a board tipped away behind it.
-      ctx.fillStyle = out > 0.15 ? '#5a3f26' : PALETTE.wood;
-      ctx.fillRect(-w, lidY, w * 2, lidH);
-      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(-w, lidY, w * 2, Math.min(3, lidH));
-      if (lidH > 6) {                                                // two boards to a lid
-        ctx.strokeStyle = 'rgba(26,16,22,0.45)'; ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(-w * 0.33, lidY); ctx.lineTo(-w * 0.33, lidY + lidH);
-        ctx.moveTo(w * 0.33, lidY); ctx.lineTo(w * 0.33, lidY + lidH);
-        ctx.stroke();
+      // the frame, sunk a little into the boards
+      ctx.fillStyle = 'rgba(0,0,0,0.42)'; ctx.fillRect(-w, -d, w * 2, d * 2);
+      ctx.fillStyle = arming ? '#4a4038' : '#3b352f'; ctx.fillRect(-w + 1.5, -d + 1.5, w * 2 - 3, d * 2 - 3);
+      // four slots across it: this is where the teeth live, and they are visible empty
+      const slots = 4, sw = (w * 2 - 7) / slots;
+      for (let k = 0; k < slots; k++) {
+        const sx = -w + 3.5 + k * sw;
+        ctx.fillStyle = '#0e0a0c'; ctx.fillRect(sx, -d + 3.5, sw * 0.55, d * 2 - 7);
+        ctx.fillStyle = arming ? `rgba(255,224,138,${0.22 + 0.18 * Math.sin(this.t * 26 + k)})` : 'rgba(239,230,208,0.10)';
+        ctx.fillRect(sx, -d + 3.5, sw * 0.55, 1.4);
       }
-      // The mouth of the box, and the iron standing up out of it. Shut, there is no mouth: the lid
-      // that was drawn behind it is the whole of the top of the box.
+      // the rail along the near lip, so the grate has a thickness
+      ctx.fillStyle = arming ? PALETTE.ochre : '#6a635b'; ctx.fillRect(-w + 1.5, d - 3, w * 2 - 3, 1.6);
       if (out > 0) {
-        ctx.fillStyle = '#140d10'; ctx.fillRect(-w + 1.5, -d - h, w * 2 - 3, d * 2 - 1);
-        const hgt = 21 * out;
-        for (const [fill, half, lean] of [['#8d8a85', 4.6, 0], ['#d7d2c8', 1.5, -1.1]]) {
+        const hgt = 22 * out;
+        for (const [fill, half, lean] of [['#8d8a85', 3.6, 0], ['#d7d2c8', 1.2, -0.9]]) {
           ctx.fillStyle = fill;
-          for (let k = -1; k <= 1; k++) {
-            const bx = k * (w * 0.52);
-            ctx.beginPath(); ctx.moveTo(bx - half, d - h - 1);
-            ctx.lineTo(bx + lean, d - h - 1 - hgt); ctx.lineTo(bx + half * 0.3, d - h - 1); ctx.closePath(); ctx.fill();
+          for (let k = 0; k < slots; k++) {
+            const bx = -w + 3.5 + k * sw + sw * 0.27;
+            ctx.beginPath(); ctx.moveTo(bx - half, d - 2);
+            ctx.lineTo(bx + lean, d - 2 - hgt); ctx.lineTo(bx + half * 0.3, d - 2); ctx.closePath(); ctx.fill();
           }
         }
       }
-      // The side of the box, over the teeth, so they stand in it rather than in front of it.
-      ctx.fillStyle = '#4a3320'; ctx.fillRect(-w, d - h, w * 2, h);
-      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(-w, d - h, w * 2, 1.5);
-      // Two iron straps and the catch between them. Armed, the catch is the only warm thing on it.
-      ctx.fillStyle = arming ? PALETTE.ochre : '#3c3730';
-      ctx.fillRect(-w * 0.78, d - h, 3, h); ctx.fillRect(w * 0.78 - 3, d - h, 3, h);
-      if (arming) { ctx.fillStyle = `rgba(255,224,138,${0.35 + 0.3 * Math.sin(this.t * 24)})`; ctx.fillRect(-w + 1.5, d - h - 2, w * 2 - 3, 2); }
-      ctx.fillStyle = arming ? PALETTE.fireHi : '#6a635b';
-      ctx.beginPath(); ctx.arc(0, d - h * 0.5, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    } else if (p.kind === 'crate') {
+      // A box of the compound's own stores, one to a tile: planks, two iron bands and a stud. The
+      // plainest object in the game, and it is plain on purpose — everything you can do with it you
+      // can already do with a pot, so the only thing it has to say is *pick me up*.
+      const r = p.r;
+      const lift = p.held ? 4 : 0, spin = p.flung ? Math.atan2(p.vy, p.vx) * 0.4 : 0;
+      ctx.save(); ctx.translate(p.x, p.y - lift); ctx.rotate(spin);
+      this.shadow(0, r * 0.45 + lift, r * 0.95, r * 0.5);
+      ctx.fillStyle = '#3f2b18'; ctx.fillRect(-r, -r * 0.82, r * 2, r * 1.64);
+      ctx.fillStyle = PALETTE.wood; ctx.fillRect(-r + 1.5, -r * 0.82 + 1.5, r * 2 - 3, r * 1.64 - 3);
+      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(-r + 1.5, -r * 0.82 + 1.5, r * 2 - 3, 2.6);
+      // the boards, and the bands across them
+      ctx.strokeStyle = 'rgba(26,16,22,0.45)'; ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.33, -r * 0.82); ctx.lineTo(-r * 0.33, r * 0.82);
+      ctx.moveTo(r * 0.33, -r * 0.82); ctx.lineTo(r * 0.33, r * 0.82);
+      ctx.stroke();
+      ctx.fillStyle = '#4a443c';
+      ctx.fillRect(-r + 1.5, -r * 0.34, r * 2 - 3, 2.4); ctx.fillRect(-r + 1.5, r * 0.18, r * 2 - 3, 2.4);
+      ctx.fillStyle = '#8a8177';
+      ctx.beginPath(); ctx.arc(0, -r * 0.08, 2, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     } else if (p.kind === 'cage') {
       const h = TUNING.prop.cage.height;

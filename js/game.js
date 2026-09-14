@@ -74,7 +74,14 @@ class Game {
       }
       if (!found) { px = this.goat.x; py = this.goat.y; }
     }
-    this.tomes.push({ x: px, y: py, r: TUNING.tome.r, phase: Math.random() * 6, life: 0 });
+    this.placeTome(px, py);
+  }
+  // A tome on ground that is known to be good, with none of the rescue above. The vault's is laid
+  // down with the level: `dropTome` asks the flow field whether a spot can be reached, the flow field
+  // only reaches ninety tiles from wherever it was last computed, and a vault in the back half of a
+  // level is further away than that — so the rescue would fetch it back and drop it at the goat's feet.
+  placeTome(x, y) {
+    this.tomes.push({ x, y, r: TUNING.tome.r, phase: Math.random() * 6, life: 0 });
   }
   // A tome offers three of one kind: actives change what a button does, passives sharpen everything.
   // The first tome always offers actives, so every run picks a skill before it picks numbers.
@@ -305,6 +312,12 @@ class Game {
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
     this.audio.intensity = 0; this.audio.hunterAware = false;
     this.world.computeFlow(this.goat.x, this.goat.y);
+    // What is behind the iron door. It is laid down with the level rather than dropped by anything,
+    // so it is there from the first second and it is there whether or not you go and get it. After
+    // the flow field and not before: `dropTome` asks the world whether a spot can be reached, and
+    // asked that question with the last level's field still in it, it walks the tome out of the
+    // vault and puts it at the goat's feet.
+    if (this.level.vault) this.placeTome(this.level.vault.x, this.level.vault.y);
     // Arriving up the stairs: the goat rises into the room under the card.
     if (this.intro) this.audio.duck(1, 0.3);   // Backspace out of the scene must not leave the sound down
     this.intro = null; this.stairFx = this.level.entry ? { t: -0.45, dir: -1 } : null;
@@ -951,7 +964,10 @@ class Game {
       const dx = e.x - g.x, dy = e.y - g.y, d = Math.hypot(dx, dy), min = e.r + g.r;
       if (d >= min || d === 0) continue;
       const nx = dx / d, ny = dy / d, push = (min - d);
-      if (e.kind === 'butcher') { g.x -= nx * push; g.y -= ny * push; }
+      // The big man does not move for you, and neither does a man holding a post: the first man of
+      // the run is standing in a one-tile doorway on purpose, and shouldering him down the corridor
+      // ahead of you is not a way past him. Everybody else gives ground.
+      if (e.kind === 'butcher' || e.sentry) { g.x -= nx * push; g.y -= ny * push; }
       else { g.x -= nx * push * 0.4; g.y -= ny * push * 0.4; e.x += nx * push * 0.6; e.y += ny * push * 0.6; }
     }
     for (const p of this.props) {

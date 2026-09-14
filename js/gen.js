@@ -243,15 +243,24 @@ function tryGenerate(levelDef, seed) {
     entry = { x0: first.x - 2, y0: ey, x: (first.x + 1.9) * TILE, y: (ey + 1) * TILE };
   }
 
+  // The vault. A small room cut into the stone above or below one ordinary room in the middle of the
+  // level, with one tile of doorway between them and an iron door in it. Nothing walks out of it and
+  // nothing is on the way to the stairs: it is four blows, the noise of four blows, and a tome.
+  const vault = levelDef.vaultAt !== undefined ? carveVault(tiles, W, H, rooms[levelDef.vaultAt], props, rng) : null;
+
   // Props from the template markers, and the men the plan asked for placed on whatever the room has.
   const plan = planEncounters(levelDef, rooms, rng);
   // Arms are rare, and a level can hold them back: nothing to pick up until it is this far in.
   // Level one shows the first stand at the halfway mark, so the first half of the run is the goat,
   // his head, and whatever the room was already built out of.
   const racksFrom = Math.round((levelDef.racksFrom || 0) * (n - 1));
-  // The room that holds the first man of the run. Level one stands him in the mouth of it and paints
-  // the word for the button on the floor under him.
-  let lessonRoom = null;
+  // The room that holds the first man of the run. Level one shuts the way out of it behind him and
+  // paints the word for the button on the floor. Nothing else is scattered into it: no crate to
+  // throw, no grating to herd him onto and no bowl of milk — the room is one man and one verb.
+  let lessonRoom = null, lessonIndex = -1;
+  if (levelDef.showControls) {
+    for (const r of rooms) { const c = plan.rooms.get(r.index); if (c && c.intro) { lessonIndex = r.index; break; } }
+  }
   rooms.forEach((room) => {
     const spots = [];
     const cell = plan.rooms.get(room.index);
@@ -288,19 +297,25 @@ function tryGenerate(levelDef, seed) {
         break;
       }
     }
-    // Spike plates, from the third level on. They go in a short run rather than one at a time: one
-    // plate in a room is a curiosity, three across the middle of it is a shape you have to read.
-    // Not in the control rooms, not in the pen, and never close enough to a prop to hide under it.
-    // A trap room already laid its own out in a shape; scattering more over the top of it turns the
-    // shape back into noise.
-    if (room.index > 0 && !room.calm && !room.isTrap && rng.chance(levelDef.spikes || 0)) {
+    // The grating, from the third level on. It goes down as one patch of floor rather than as a
+    // scatter: a single grate is a curiosity you step over without noticing, and a stretch of eight
+    // across the middle of a room is ground you have to decide about. Not in the control rooms, not
+    // in the pen, and never under the furniture. A trap room already laid its own out in a shape;
+    // throwing more over the top of it turns the shape back into noise.
+    if (room.index > 0 && !room.calm && !room.isTrap && room.index !== lessonIndex && rng.chance(levelDef.spikes || 0)) {
+      const S = TUNING.prop.spike;
+      spikePatch(tiles, W, room, props, rng, rng.int(S.run[0], S.run[1]));
+    }
+    // Crates. Boxes of the compound's own stores, one to a tile, left where they were set down —
+    // the plainest thing in a room: pick it up, throw it at a man, it comes apart on him.
+    if (room.index > 0 && !room.calm && room.index !== lessonIndex && rng.chance(levelDef.crates || 0)) {
       const want = rng.int(2, 4);
-      for (let a = 0, placed = 0; a < 60 && placed < want; a++) {
-        const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
+      for (let a = 0, placed = 0; a < 40 && placed < want; a++) {
+        const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
         if (tiles[ty * W + tx] !== T.FLOOR) continue;
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
-        if (props.some((p) => len(p.x - px, p.y - py) < 1.5 * TILE)) continue;
-        props.push({ x: px, y: py, kind: 'spike' });
+        if (props.some((p) => len(p.x - px, p.y - py) < 1.4 * TILE)) continue;
+        props.push({ x: px, y: py, kind: 'crate' });
         placed++;
       }
     }
@@ -310,11 +325,15 @@ function tryGenerate(levelDef, seed) {
     // you have to try on somebody, and somebody charging you is not somebody you can try it on.
     if (cell.intro && !lessonRoom && levelDef.showControls) {
       lessonRoom = room;
-      const at = levelDef.sentryIntro && room.enter ? postSpot(tiles, W, room, room.enter, props) : null;
+      // He does not stand in the middle of the room to be admired: he stands in the way out of it,
+      // and the way out is one tile wide. Everybody who played it walked round the first man without
+      // trying anything on him, so there is nowhere left to walk round to — the room opens when he
+      // goes down and not before.
+      const at = levelDef.sentryIntro ? blockSpot(tiles, W, room, props) : null;
       if (at) {
         spawns.push({ x: at.x, y: at.y, kind: cell.intro === 'champion' ? 'bearer' : cell.intro,
           champion: cell.intro === 'champion', roomIndex: room.index, intro: true, sentry: true,
-          facing: at.x > room.enter.x ? 0 : Math.PI });
+          facing: Math.PI });                                   // back to the door, facing the room
         return;
       }
     }
@@ -373,7 +392,8 @@ function tryGenerate(levelDef, seed) {
   // so the level is cut into that many bands and each band gives one up — the room inside a band is
   // random, the spacing is not. `heals` is a floor: a long level gets more bowls, never a longer
   // dry spell, and the same eligibility as before keeps them out of the set pieces.
-  const healable = rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.calm && !r.isGallery && !r.isKillbox);
+  const healable = rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.calm && !r.isGallery
+    && !r.isKillbox && r.index !== lessonIndex);
   const wantHeals = Math.min(healable.length, Math.max(levelDef.heals || 0, Math.ceil((n - 1) / TUNING.prop.heal.every)));
   const healRooms = [], usedHeal = new Set();
   for (let i = 0; i < wantHeals; i++) {
@@ -432,7 +452,7 @@ function tryGenerate(levelDef, seed) {
       y: (lessonRoom.y + lessonRoom.h / 2) * TILE, w: lessonRoom.w * TILE, part: 2 });
   }
   return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt };
+    hints, controls, cagePrompt, vault };
 }
 
 // A ring of iron bars around a point. The pen around the start comes apart under a headbutt;
@@ -478,6 +498,9 @@ function carveCorridor(tiles, W, a, b, rng, width) {
   const carve = (tx, ty) => { if (tx >= 0 && tx < W && ty >= 1 && ty < H - 1) tiles[ty * W + tx] = T.FLOOR; };
   const band = (tx, ty) => { for (let k = 0; k < wide; k++) carve(tx, ty + k); };
   for (let tx = xA; tx <= midX + wide - 1; tx++) band(tx, yA);
+  // The stretch of corridor leaving `a`. A room that has to be shut behind one man needs to know
+  // exactly which tiles let you out of it.
+  a.exitBand = { y: yA, x0: xA, x1: midX + wide - 1, wide };
   const y0 = Math.min(yA, yB), y1 = Math.max(yA, yB) + wide - 1;
   for (let ty = y0; ty <= y1; ty++) for (let k = 0; k < wide; k++) carve(midX + k, ty);
   for (let tx = midX; tx <= xB; tx++) band(tx, yB);
@@ -506,6 +529,101 @@ function pickTrapRooms(levelDef, n, available, rng) {
   const pool = eligible.slice(2);
   for (const i of rng.shuffle(pool).slice(0, want)) out.add(i);
   return out;
+}
+
+// Cut a sealed chamber into the stone off one side of a room and hang an iron door in the gap. It is
+// tried above the room first and then below; either way there has to be solid rock for it to go in,
+// so a room hard against the top of the world simply does not get one. Returns where the tome goes.
+function carveVault(tiles, W, H, room, props, rng) {
+  if (!room) return null;
+  const vw = VAULT.w, vh = VAULT.h;
+  const x0 = room.x + Math.floor((room.w - vw) / 2);
+  if (x0 < 1 || x0 + vw >= W - 1) return null;
+  for (const side of rng.chance(0.5) ? ['up', 'down'] : ['down', 'up']) {
+    // Where the chamber sits, and the stone between it and the room. Above the room that stone is two
+    // rows deep — the rock the chamber was cut out of, and the room's own wall under it — and both
+    // have to come out or the door opens onto a wall and the tome is sealed in by the level itself.
+    const y0 = side === 'up' ? room.y - vh - 1 : room.y + room.h;
+    const gapY = side === 'up' ? y0 + vh : y0 - 1;
+    const doorY = side === 'up' ? gapY + 1 : gapY;
+    if (y0 < 1 || y0 + vh >= H - 1) continue;
+    // It has to go into rock: anything already carved there is another room or a corridor.
+    let clear = true;
+    for (let ty = Math.min(y0, gapY); ty <= Math.max(y0 + vh - 1, gapY) && clear; ty++) {
+      for (let tx = x0 - 1; tx <= x0 + vw && clear; tx++) {
+        if (tx < 0 || tx >= W || ty < 0 || ty >= H) { clear = false; break; }
+        if (tiles[ty * W + tx] !== T.WALL) clear = false;
+      }
+    }
+    if (!clear) continue;
+    for (let ty = y0; ty < y0 + vh; ty++) for (let tx = x0; tx < x0 + vw; tx++) tiles[ty * W + tx] = T.FLOOR;
+    const gapX = x0 + Math.floor(vw / 2);
+    tiles[gapY * W + gapX] = T.FLOOR;
+    tiles[doorY * W + gapX] = T.FLOOR;
+    // The door hangs in the room's own wall, where it can be seen from the floor you walk in on.
+    props.push({ x: (gapX + 0.5) * TILE, y: (doorY + 0.5) * TILE, kind: 'door', vertical: false, iron: true });
+    return { x: (gapX + 0.5) * TILE, y: (y0 + vh / 2) * TILE };
+  }
+  return null;
+}
+
+// A stretch of grating laid into the floor of a room. It starts somewhere in the middle third and
+// grows along one axis with a wander on the other, so what goes down is a band you have to go round
+// or cross rather than a handful of dots — and a band is the only version of this the eye reads as
+// a piece of ground with an opinion.
+function spikePatch(tiles, W, room, props, rng, want) {
+  const horiz = rng.chance(0.6);
+  let tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
+  const taken = new Set();
+  for (let a = 0, placed = 0; a < want * 6 && placed < want; a++) {
+    const inRoom = tx >= room.x + 1 && tx <= room.x + room.w - 2 && ty >= room.y + 1 && ty <= room.y + room.h - 2;
+    const key = ty * W + tx;
+    if (inRoom && !taken.has(key) && tiles[key] === T.FLOOR) {
+      const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+      if (!props.some((p) => p.kind !== 'spike' && len(p.x - px, p.y - py) < 1.2 * TILE)) {
+        props.push({ x: px, y: py, kind: 'spike' }); taken.add(key); placed++;
+      }
+    }
+    // Walk the band on: one step along, and now and then one step sideways, so it bends.
+    if (horiz) { tx += 1; if (rng.chance(0.3)) ty += rng.chance(0.5) ? 1 : -1; }
+    else { ty += 1; if (rng.chance(0.3)) tx += rng.chance(0.5) ? 1 : -1; }
+    if (tx > room.x + room.w - 2) tx = room.x + 1;
+    if (ty > room.y + room.h - 2) ty = room.y + 1;
+  }
+}
+
+// Shut the way out of a room down to a single tile and stand a man in front of it. `exitBand` is the
+// stretch of corridor the next room's carve took out of this one; everything in it but the top row
+// goes back to stone, and the man is posted a step inside the room on that row. Nothing else about
+// him changes: he is a clubman with two hearts who can be knocked into the wall like anybody.
+function blockSpot(tiles, W, room, props) {
+  const b = room.exitBand;
+  if (!b) return null;
+  // Whatever door the corridor was given is now half inside stone and standing in the last tile out
+  // of the room. The man is the obstacle here; nothing else gets to be.
+  for (let i = props.length - 1; i >= 0; i--) {
+    const p = props[i];
+    if (p.kind !== 'door') continue;
+    if (p.x < b.x0 * TILE || p.x > (b.x1 + 1) * TILE) continue;
+    if (p.y < (b.y - 1) * TILE || p.y > (b.y + b.wide + 1) * TILE) continue;
+    props.splice(i, 1);
+  }
+  for (let k = 1; k < b.wide; k++) {
+    for (let tx = b.x0; tx <= b.x1; tx++) {
+      const ty = b.y + k;
+      if (tx >= 0 && tx < W) tiles[ty * W + tx] = T.WALL;
+    }
+  }
+  // A step inside the room from the mouth of that corridor, on the one row still open.
+  for (let dx = 1; dx <= 4; dx++) {
+    const tx = b.x0 - dx, ty = b.y;
+    if (tx < room.x + 1) break;
+    if (tiles[ty * W + tx] !== T.FLOOR) continue;
+    const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+    if (props.some((p) => len(p.x - px, p.y - py) < 1.4 * TILE)) continue;
+    return { x: px, y: py };
+  }
+  return null;
 }
 
 // A few tiles inside the mouth of a room, on clear floor and clear of the furniture: where you put

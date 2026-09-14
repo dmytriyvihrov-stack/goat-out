@@ -96,7 +96,13 @@ rather than a fix. Both `sees` and `reaches` are `clearLine` with a different pr
 getter.
 
 **A man who does not walk.** `enemy.sentry` is the first man of a run on level one (`levelDef.sentryIntro`,
-placed by `postSpot` a few tiles inside `room.enter` with his back to the door). `chaseGoat` turns him to
+placed by `blockSpot` in the **only way out of his room**: `carveCorridor` records the band it cut out of
+each room as `room.exitBand`, `blockSpot` puts every row of that band but one back to stone, deletes any
+door the corridor was given, and stands him a step inside the single tile that is left. `collideEntities`
+also refuses to shove him — like the Butcher, he takes the whole of the separation and gives none of it,
+because bulldozing him down a one-tile corridor was a way past him. The room does not open until he is
+down. Nothing else is scattered into that room either: `lessonIndex` keeps the milk, the crates and the
+grating out of it, so it is one man and one verb.) `chaseGoat` turns him to
 face the goat and returns without moving, `idleWander` leaves his facing alone and `investigate` puts him
 straight back to idle — so he is the only man in the game you get to choose the moment of the fight with.
 Everything else about him is a clubman: windup, swing, recovery, two hearts of nothing, killed by geometry
@@ -404,17 +410,39 @@ comes back at `goat.safeX/safeY` — the last non-pit point he stood on, recorde
 `TUNING.fall.damage`. Nothing burns over a hole and the renderer draws pits in `drawPits` **after** the
 decals, so blood never lies across one; a pit with stone above and below it draws as a window instead.
 
-**Crates.** `kind === 'spike'`, driven by `updateSpike`, cycling `idle → armed → up → down →
+**The grating.** `kind === 'spike'`, driven by `updateSpike`, cycling `idle → armed → up → down →
 rest`. **Only the goat trips one** (`spike.trigger` tiles), which is what makes it a tool rather than
-furniture: the lid goes over behind him, on the ground whoever is chasing him is crossing. `bite`
+furniture: the teeth come up behind him, on the ground whoever is chasing him is crossing. `bite`
 kills men and costs the goat a heart, `this.bit` stops one rise biting the same man twice, and
-`spikeThreat()` is what `hazardAt` and `avoidHazard` ask — a shut crate is furniture and is skipped
-entirely. `levelDef.spikes` is the per-room chance, and the generator places two to four at a time
-because one crate in a room is a curiosity and three across the middle of it is a shape.
-It used to be a plate lying flush in the boards, and a seam in a floor is not a thing anybody can read
-at a run: the kind is still `'spike'` and `'S'` is still the marker, but what is drawn is a small
-banded box whose lid tips back and whose teeth stand up out of it. Everything readable about it —
-which state it is in, how close it is to going — is in `drawPropBody`'s `spike` branch.
+`spikeThreat()` is what `hazardAt` and `avoidHazard` ask — a grate at rest is floor and is skipped
+entirely. It is drawn as a tile of iron grating sunk into the boards with four dark slots in it, and
+that is the whole of the art direction: it has to read as *a piece of floor that is not floor*. It was
+a plate flush with the boards (a seam nobody could see) and then briefly a crate (an object, which said
+the wrong thing — you cannot pick it up). `spikePatch` in `gen.js` lays `spike.run` of them as one band
+that walks along an axis and bends, never as a scatter: `levelDef.spikes` is the per-room chance and a
+room that gets them gets nine to fifteen, because a single grate is stepped over without being noticed
+and a stretch across the middle of a room is ground you have to decide about.
+
+**Crates.** `kind === 'crate'` is the plainest object in the game: one tile of floor, planks and two
+iron bands, and everything it does it does through `item` — grab it, carry it, throw it. It flies down
+the same path as a pot (the thrown-item branch of `Prop.update`), breaks on the same things, and floors
+a man for `crate.stun` rather than the pot's, which is the only number that separates them. Boxes are
+what a compound is full of; the point of it is that nothing has to be explained.
+
+**Two kinds of door.** `prop.door.hits` is one — a plank door in a corridor is a thing you run through,
+not a wall you stand at — and `ironHits` is four. `prop.iron` is the flag, it is set only by the vault,
+and an iron door also refuses `openPressure`: nobody shoulders it open, it is broken or it is shut. Every
+blow on one floats what is left in it, so four is a count and not a wall.
+
+**The vault.** `levelDef.vaultAt` names one ordinary room in the middle of a level. `carveVault` cuts a
+five-by-five chamber into the rock above or below it, opens **two** tiles of stone — the rock and the
+room's own wall border under it, which is the bug that sealed the first version in — hangs an iron door
+in the room's wall and returns where the tome goes. `startLevel` lays that tome down with
+`placeTome`, **not** `dropTome`: `dropTome` carries a rescue for a boss who died against a wall, that
+rescue asks the flow field whether a spot can be reached, `computeFlow` stops at ninety tiles from
+wherever it was last computed, and a vault in the back half of a level is further away than that — so
+the rescue fetched the tome back and dropped it at the goat's feet on the first frame of the level.
+Nothing in the vault is on the way to the stairs: it is four blows, the noise of four blows, and a tome.
 
 **Reach.** `game.reaches(ax, ay, bx, by)` is the single answer to "is there a way from here to there
 for a blow": line of sight plus every `blocking` prop as a circle against the segment. `meleeHit`'s

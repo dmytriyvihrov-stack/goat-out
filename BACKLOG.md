@@ -10,6 +10,23 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ---
 
+## 14 September 2026 — the third sitting, with 1.7
+
+**Where this batch went: all of it shipped in 1.8.** Seven notes again, and the rule under this batch
+is different from the last one's: it is not *say what a thing is*, it is **make me use it**.
+
+- **A teaching room has to have no way round the lesson.** The first man was already standing still
+  with the word for the button painted under him, and he was still being walked past. He is in the only
+  doorway now. The general form: if the room is there to teach a verb, the room does not open until the
+  verb has been used.
+- **A thing that lives in the floor has to cover ground.** Two or three of anything underfoot is
+  scenery. What made the grating read was laying nine to fifteen of it in a band.
+- **Not every door is the same door.** One number for every door in the game meant every door was
+  either a nuisance or nothing. Wood one blow, iron four, and iron only ever in front of something
+  worth four blows.
+
+---
+
 ## 14 September 2026 — the second sitting, with 1.6
 
 **Where this batch went: all of it shipped in 1.7.** Seven notes, and every one of them the same

@@ -156,7 +156,10 @@ const TUNING = {
   prop: {
     // A door is the one thing in a corridor that can hold you still, and holding you still in a
     // corridor is worth more than the shortcut was: three blows, and the first two only splinter it.
-    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 3 },
+    // Two kinds. A plank door in a corridor is one blow and gone — it is a thing to run through,
+    // not a wall to stand at. Iron is the other answer: it takes `ironHits` and it is never on the
+    // way out of a room, only on the way into somewhere you did not have to go.
+    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 4 },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE },
     // A lamp post is not a pillar: a body arriving at `knock` goes through it and it goes over,
     // and it pours its oil where the body is about to land.
@@ -177,6 +180,10 @@ const TUNING = {
     // A thrown pot no longer just trips a man over. It takes his legs and his head with them,
     // and he lies there seeing stars long enough that you can do something about him.
     pot: { r: 9, stun: 2.4 },
+    // A one-tile crate. Everything the compound owns is in boxes, and a box is the plainest thing
+    // in the game to read: it sits there, you can pick it up, and you can throw it at a man. Heavier
+    // than a pot, so it puts him down for longer, and it takes up a whole tile of the floor.
+    crate: { r: 14, stun: 3.2 },
     // A stand of arms. Grab what is in it, carry it, let go to throw it. The sword goes through
     // the first man it finds; the shield knocks a row of them flat and turns bullets while carried.
     weapon: {
@@ -210,7 +217,12 @@ const TUNING = {
     // a plate arms it and they follow a moment later, so the trap is the ground you just left. Men
     // read it the way they read the wheel — `lead` is how far ahead of the teeth `hazardAt` calls the
     // tile taken — and the man who fails his trap check is the one you can walk onto it.
-    spike: { r: 18, trigger: 1.3, arm: 0.5, up: 0.95, down: 0.4, rest: 1.7, lead: 0.3, damage: 1 },
+    // The teeth. Not a thing standing in the room — a stretch of floor that is not floor: a grating
+    // of iron slots the boards were laid over, and what comes up comes up through the gaps. They go
+    // down in a patch rather than one at a time, because one grate is a curiosity and a stretch of
+    // eight across the middle of a room is a piece of ground you have to decide about.
+    spike: { r: 16, trigger: 1.3, arm: 0.5, up: 0.95, down: 0.4, rest: 1.7, lead: 0.3, damage: 1,
+      run: [9, 15] },
   },
   // Going over an edge. A man who goes down a hole is gone; the goat is only rented — he comes back
   // up on the last boards he stood on, one heart lighter, which is the same price the wheel charges.
@@ -291,6 +303,11 @@ const TUNING = {
 // `node tools/balance.js` prints what these numbers actually produce and fails if a rule is broken.
 
 // What one of each is worth. A rifle is not a clubman however you count heads.
+// The vault. One small room off the middle of a level, sealed with an iron door, with a tome in it
+// and nothing else. Four blows and the noise of them is the price, and none of it is on the way to
+// the stairs: it is the one thing in a level you go out of your way for.
+const VAULT = { w: 5, h: 5, gap: 1 };
+
 const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.8, champion: 3.2, butcher: 5 };
 
 const ENCOUNTER = {
@@ -380,8 +397,11 @@ const BARKS = {
 
 const LEVELS = [
   {
-    // Level one teaches, in this order: one clubman standing still in a doorway, a room of ordinary
-    // clubmen, the Mill, a hound, a room of both, and only then the man who takes more than one hit.
+    // Level one teaches, in this order: one clubman standing in the only way out of his room, a room
+    // of ordinary clubmen, the Mill, and only then the man who takes more than one hit — and the big
+    // man at the end of it. Three things and nothing else: a small one, a big one, and the block.
+    // The hound used to be here too and is now the first new thing level two has, because an animal
+    // that darts is a different lesson from a man who swings and does not belong in the same hour.
     // Nothing here appears in a crowd before it has appeared alone.
     // `ritual` paints the altar, the remains and the tools into the first room, and is what makes the
     // opening scene possible; every later level arrives up a flight of stairs into a bare room instead.
@@ -389,17 +409,18 @@ const LEVELS = [
     // after your first clubman and one room before his own arena, which is no time at all to have
     // learned what a headbutt is for: now four rooms of ordinary work stand between them.
     name: 'THE ALTAR', sub: 'Level 1', rooms: 12, showControls: true, startCage: true, ritual: true,
-    // The first man of the run holds his post instead of walking at you: he stands in the mouth of
-    // the room with his back to the door, and the floor under him says what the button does. He is
-    // there to be tried, and a man who charges you cannot be tried.
+    // The first man of the run holds his post instead of walking at you: he stands in the only way
+    // out of his room — the generator narrows that corridor to a single tile for him — and the floor
+    // under him says what the button does. Walking round him was the one thing everybody did, so now
+    // there is nowhere to walk round to: the room does not open until he is down.
     sentryIntro: true,
     arenas: [{ at: 9, boss: 'champion' }, { at: 11, boss: 'butcher' }],
     // The wheel is met with nobody standing in the room, and arms are not a thing you find until
     // halfway in: the first half of the run is the goat and his head and nothing else.
-    millAt: 5, millSolo: true, heals: 3, racks: 0.2, racksFrom: 0.5, traps: 1,
+    millAt: 5, millSolo: true, heals: 3, racks: 0.2, racksFrom: 0.5, traps: 1, crates: 0.3,
     encounters: {
-      kinds: ['bearer', 'champion', 'dog'],
-      introduce: [['bearer', 0], ['dog', 0.4], ['champion', 0.8]],
+      kinds: ['bearer', 'champion'],
+      introduce: [['bearer', 0], ['champion', 0.8]],
       from: 1, to: 4.5, ease: 1.5,
     },
     floor: '#2b1a26', floorAlt: '#31202c', wall: '#7c5a36', wallTop: '#9c7446',
@@ -407,13 +428,15 @@ const LEVELS = [
     hint: null,
   },
   {
-    // The mage arrives, on his own, a third of the way in.
+    // Two new things and a long way between them: the hound early, on his own, and the mage a third
+    // of the way in. The hound is here rather than on level one because level one is about a man
+    // standing still and what a head does to him.
     name: 'THE YARD', sub: 'Level 2', rooms: 12,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
-    millAt: 7, heals: 2, racks: 0.16, traps: 1,
+    millAt: 7, heals: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],
-      introduce: [['seer', 0.35]],
+      introduce: [['dog', 0.12], ['seer', 0.5]],
       from: 2, to: 7.5, ease: 1.3,
     },
     floor: '#8a7554', floorAlt: '#907b5a', wall: '#3b2233', wallTop: '#55344a',
@@ -425,8 +448,9 @@ const LEVELS = [
     name: 'THE ROAD', sub: 'Level 3', rooms: 14,
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
     millAt: 8, heals: 2, hallAt: 9, hallThreat: 26, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
-    // The floor starts answering back here: a plate you cross arms behind you.
-    spikes: 0.25,
+    // The floor starts answering back here: a stretch of grating you cross and whoever is on your
+    // heels crosses a beat later, when it is no longer floor.
+    spikes: 0.3, crates: 0.35, vaultAt: 7,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [['hunter', 0.2]],
@@ -444,11 +468,14 @@ const LEVELS = [
     // Nothing new walks in: the room itself is the new thing.
     name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, pool: 'open', corridorW: 5,
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
-    millAt: 6, heals: 3, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.3,
+    millAt: 6, heals: 3, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
-      from: 5, to: 14, ease: 1.2,
+      // Nothing new walks in here, so the only thing that can make the yard harder than the road is
+      // the curve itself: the road carries a Great Hall and a gallery and this does not, and the two
+      // levels were coming out level.
+      from: 6, to: 15.5, ease: 1.2,
     },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
     fog: '#0b0b0a', doorChance: 0.12,
@@ -458,7 +485,7 @@ const LEVELS = [
     // Everything the compound has left, all at once, on the bridge they were driving you over.
     name: 'THE BRIDGE', sub: 'Level 5', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
-    millAt: 7, heals: 3, hallAt: 12, hallThreat: 32, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.3, traps: 2,
+    millAt: 7, heals: 3, hallAt: 12, hallThreat: 32, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 8,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -479,7 +506,7 @@ const LEVELS = [
     // without being in the room.
     name: 'THE RAFTERS', sub: 'Level 6', rooms: 16, pool: 'high',
     arenas: [{ at: 4, boss: 'seer' }, { at: 10, boss: 'butcher' }, { at: 14, boss: 'champion' }],
-    millAt: 7, heals: 4, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.35,
+    millAt: 7, heals: 4, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -497,7 +524,7 @@ const LEVELS = [
     // your back — the only cover on this ground is which way you are looking.
     name: 'THE OSSUARY', sub: 'Level 7', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
-    millAt: 6, heals: 4, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.3, traps: 2,
+    millAt: 6, heals: 4, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
       // The first room of the level is the wraith on its own, because nothing else in the game
