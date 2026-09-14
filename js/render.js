@@ -79,6 +79,7 @@ class Renderer {
       this.worldTransform(game);
       this.drawTiles(game, cam);
       this.drawDecals(game, cam);
+      this.drawPits(game, cam);
       this.drawHints(game);
       this.drawFire(game, cam);
       this.drawLight(game, cam);
@@ -165,6 +166,8 @@ class Renderer {
         } else if (t === T.ASH) {
           ctx.fillStyle = PALETTE.ash; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
           ctx.fillStyle = '#3a3230'; ctx.fillRect(px + 8, py + 10, 6, 4); ctx.fillRect(px + 18, py + 20, 7, 4);
+        } else if (t === T.PIT) {
+          continue;                       // holes are drawn after the decals, in drawPits
         } else if (t === T.EXIT) {
           this.drawStairs(px, py, tx - game.level.exitTile.x0, true, def);
         } else if (t === T.ENTRY) {
@@ -204,6 +207,37 @@ class Renderer {
     const cw = clamp(sx + v.w, 0, wd.W * TILE) - cx, ch = clamp(sy + v.h, 0, wd.H * TILE) - cy;
     if (cw <= 0 || ch <= 0) return;
     ctx.drawImage(wd.decal, cx * DECAL_SCALE, cy * DECAL_SCALE, cw * DECAL_SCALE, ch * DECAL_SCALE, cx, cy, cw, ch);
+  }
+
+  // The drops. Drawn after the decals so that no amount of blood ever ends up lying across a hole,
+  // and with a lit lip on the side you are looking at: a hole the eye reads as a hole is the whole
+  // of the level's safety rail.
+  drawPits(game, cam) {
+    const ctx = this.ctx, wd = game.world, def = game.level.def;
+    const { x0, y0, x1, y1 } = this.visibleTiles(cam);
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        if (wd.tileAt(tx, ty) !== T.PIT) continue;
+        const px = tx * TILE, py = ty * TILE;
+        const n = wd.tileAt(tx, ty - 1) !== T.PIT, s2 = wd.tileAt(tx, ty + 1) !== T.PIT;
+        const wl = wd.tileAt(tx - 1, ty) !== T.PIT, e = wd.tileAt(tx + 1, ty) !== T.PIT;
+        // A window is a drop with stone either side of it: it gets the night behind it instead of
+        // the dark of the floor below, which is the only thing that tells the two apart at a glance.
+        const window = wd.isSolid(tx, ty - 1) && wd.isSolid(tx, ty + 1);
+        ctx.fillStyle = window ? '#0e1626' : '#08070a';
+        ctx.fillRect(px, py, TILE, TILE);
+        if (window) {
+          ctx.fillStyle = 'rgba(120,150,200,0.10)'; ctx.fillRect(px, py + 4, TILE, TILE - 10);
+          ctx.fillStyle = 'rgba(239,230,208,0.16)'; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+        } else {
+          // the boards break off over the edge, and the dark gets darker as it goes down
+          if (n) { ctx.fillStyle = def.wallTop; ctx.fillRect(px, py, TILE, 5); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(px, py + 5, TILE, 9); }
+          if (s2) { ctx.fillStyle = 'rgba(239,230,208,0.09)'; ctx.fillRect(px, py + TILE - 4, TILE, 4); }
+          if (wl) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px, py, 5, TILE); }
+          if (e) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px + TILE - 5, py, 5, TILE); }
+        }
+      }
+    }
   }
 
   // Words painted on the floor instead of a tutorial box, the way Ape Out does it.
@@ -403,6 +437,34 @@ class Renderer {
       ctx.strokeStyle = '#44342a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(p.x, p.y + 3); ctx.lineTo(p.x, p.y - 14); ctx.stroke();
       ctx.fillStyle = PALETTE.ochre; ctx.beginPath(); ctx.ellipse(p.x, p.y - 17, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
       this.flame(p.x, p.y - 20, 8 + 2 * Math.sin(this.t * 12 + p.phase), p.phase);
+    } else if (p.kind === 'spike') {
+      // The plate. Flat it is a seam in the boards you can read if you are looking; armed it shakes
+      // and breathes dust; up it is a mouth. The teeth rise out of the seam rather than appearing,
+      // so the beat between arming and biting is something the eye can actually use.
+      const S = TUNING.prop.spike, r = p.r;
+      const state = p.spikeState, arming = state === 'armed';
+      const out = state === 'up' ? clamp((S.up - p.spikeT) * 9, 0, 1)
+        : state === 'down' ? clamp(p.spikeT / S.down, 0, 1) : 0;
+      const shud = arming ? Math.sin(this.t * 70) * 1.6 * clamp(1 - p.spikeT / S.arm, 0, 1) : 0;
+      ctx.save(); ctx.translate(p.x + shud, p.y);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-r, -r * 0.72, r * 2, r * 1.44);
+      ctx.fillStyle = arming ? '#4a3a34' : '#3a322e'; ctx.fillRect(-r + 2, -r * 0.72 + 2, r * 2 - 4, r * 1.44 - 4);
+      ctx.strokeStyle = arming ? PALETTE.ochre : 'rgba(239,230,208,0.16)'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(-r + 2, -r * 0.72 + 2, r * 2 - 4, r * 1.44 - 4);
+      if (out > 0) {
+        const hgt = 19 * out;
+        ctx.fillStyle = '#8d8a85';
+        for (let k = -1; k <= 1; k++) {
+          const bx = k * (r * 0.55);
+          ctx.beginPath(); ctx.moveTo(bx - 4.5, 3); ctx.lineTo(bx, 3 - hgt); ctx.lineTo(bx + 4.5, 3); ctx.closePath(); ctx.fill();
+        }
+        ctx.fillStyle = '#d7d2c8';
+        for (let k = -1; k <= 1; k++) {
+          const bx = k * (r * 0.55);
+          ctx.beginPath(); ctx.moveTo(bx - 1.6, 3); ctx.lineTo(bx, 3 - hgt); ctx.lineTo(bx + 0.6, 3); ctx.closePath(); ctx.fill();
+        }
+      }
+      ctx.restore();
     } else if (p.kind === 'cage') {
       const h = TUNING.prop.cage.height;
       // Every headbutt the pen survives leaves the bars further out of true.
@@ -954,7 +1016,9 @@ class Renderer {
     const ctx = this.ctx;
     // motion smear
     for (const t of g.trail) {
-      ctx.globalAlpha = (t.life / 0.18) * 0.16;
+      // `max` is what this ghost was born with, which is what the tome lengthened: divide by it and
+      // a long smear fades over its whole length rather than snapping on at the far end.
+      ctx.globalAlpha = (t.life / (t.max || TUNING.goat.trail.life)) * 0.16;
       ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.a);
       ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(-5, 0.5, 13.5, 8.4, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
@@ -966,6 +1030,14 @@ class Renderer {
     ctx.save(); ctx.translate(g.x, g.y); ctx.scale(1, 1 / TILT); ctx.translate(0, -5);
     if (g.jitter) ctx.translate(g.jitter.x, g.jitter.y);
     if (climb > 0) { ctx.translate(0, -TUNING.stairs.rise * climb); ctx.scale(1 - 0.22 * climb, 1 - 0.22 * climb); ctx.globalAlpha = 1 - climb * 0.55; }
+    // Down a hole: he drops out of the frame turning over, and the dark takes him. `back` is the beat
+    // he is out of sight for before he is put back on the boards, which is where this stops drawing.
+    if (g.state === 'falling') {
+      const F = TUNING.fall, dropped = clamp((F.time + F.back - g.timer) / F.time, 0, 1);
+      ctx.translate(0, dropped * 26); ctx.rotate(dropped * 1.5);
+      ctx.scale(1 - 0.72 * dropped, 1 - 0.72 * dropped);
+      ctx.globalAlpha = 1 - dropped;
+    }
     if (g.state === 'roll') ctx.rotate(g.facing + g.rollSpin);
     else ctx.rotate(g.facing);
     // The sprite is built for a goat facing right with its near side down. Facing left it is mirrored
@@ -1669,10 +1741,13 @@ class Renderer {
     game.menu.rects.length = 0;
     const run = game.save, def = run ? LEVELS[run.level] : null;
     const tomes = run && run.boons ? run.boons.length : 0;
+    const board = game.best || { levels: {}, run: 0 };
+    const cleared = Object.keys(board.levels || {}).length;
     const items = [
       { label: 'NEW GAME' },
       { label: 'CONTINUE', locked: !run,
         note: def ? `(${def.sub.toLowerCase()} · ${def.name.toLowerCase()}${tomes ? ` · ${tomes} tome${tomes === 1 ? '' : 's'}` : ''})` : '(nothing to come back to)' },
+      { label: 'BEST', note: cleared ? `(best run ${board.run || 0})` : '(nothing on the board yet)' },
     ];
     for (let i = 0; i < items.length; i++) {
       const it = items[i], sel = game.menu.index === i;
@@ -1706,6 +1781,53 @@ class Renderer {
       ctx.globalAlpha = 1;
     }
     ctx.textAlign = 'left';
+    if (game.menu.board) this.drawBoard(game, board);
+  }
+
+  // The record sheet: what every level has been cleared in, and what a whole run has been worth.
+  // It covers the menu rather than replacing the screen, and anything at all puts it away.
+  drawBoard(game, board) {
+    const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
+    ctx.fillStyle = 'rgba(9,7,9,0.985)'; ctx.fillRect(0, 0, w, h);
+    const rowH = clamp(h * 0.072, 20 * s, 40 * s);
+    const top = h / 2 - (LEVELS.length + 3) * rowH / 2;
+    const bw = clamp(Math.min(w * 0.86, 460 * s), 200 * s, 520 * s), x0 = cx - bw / 2;
+    ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.bone;
+    ctx.font = `700 ${clamp(rowH * 0.82, 16 * s, 30 * s)}px ${FONT_SC}`;
+    ctx.fillText('BEST', cx, top);
+    ctx.font = `${clamp(rowH * 0.44, 10 * s, 15 * s)}px ${FONT}`;
+    ctx.fillStyle = 'rgba(239,230,208,0.5)';
+    ctx.textAlign = 'left'; ctx.fillText('level', x0, top + rowH * 0.9);
+    ctx.textAlign = 'right'; ctx.fillText('score', x0 + bw * 0.74, top + rowH * 0.9);
+    ctx.fillText('time', x0 + bw, top + rowH * 0.9);
+    for (let i = 0; i < LEVELS.length; i++) {
+      const y = top + rowH * (1.6 + i), rec = (board.levels || {})[i];
+      ctx.font = `${clamp(rowH * 0.5, 11 * s, 17 * s)}px ${FONT}`;
+      ctx.globalAlpha = rec ? 1 : 0.34;
+      ctx.textAlign = 'left'; ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(LEVELS[i].name.toLowerCase(), x0, y);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = rec ? PALETTE.fireHi : PALETTE.bone;
+      ctx.fillText(rec ? String(rec.score) : '—', x0 + bw * 0.74, y);
+      ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(rec ? `${rec.time.toFixed(1)}s` : '—', x0 + bw, y);
+      ctx.globalAlpha = 1;
+    }
+    const by = top + rowH * (1.9 + LEVELS.length);
+    ctx.strokeStyle = 'rgba(239,230,208,0.18)'; ctx.lineWidth = 1 * s;
+    ctx.beginPath(); ctx.moveTo(x0, by - rowH * 0.5); ctx.lineTo(x0 + bw, by - rowH * 0.5); ctx.stroke();
+    ctx.textAlign = 'left'; ctx.fillStyle = PALETTE.bone;
+    ctx.font = `700 ${clamp(rowH * 0.52, 11 * s, 18 * s)}px ${FONT_SC}`;
+    ctx.fillText('WHOLE RUN', x0, by + rowH * 0.15);
+    ctx.textAlign = 'right'; ctx.fillStyle = board.run ? PALETTE.fireHi : PALETTE.bone;
+    ctx.fillText(board.run ? String(board.run) : '—', x0 + bw * 0.74, by + rowH * 0.15);
+    ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(239,230,208,0.45)';
+    ctx.font = `${clamp(rowH * 0.42, 10 * s, 14 * s)}px ${FONT}`;
+    ctx.fillText(`${game.tapWord.toLowerCase()} to go back`, cx, by + rowH * 1.5);
+    ctx.textAlign = 'left';
+    // Nothing behind the sheet is clickable while it is up.
+    game.menu.rects.length = 0;
+    game.menu.rects.push({ x: 0, y: 0, w, h });
   }
 
   // A pair of horns rising out of the name, drawn with the same tapered curve the goat wears.

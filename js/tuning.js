@@ -45,6 +45,10 @@ const TUNING = {
     scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat.
     roll: { speed: 9.9 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7 },
+    // The smear behind him is the only thing on screen that says he is faster than he was, so the
+    // tome that makes him faster lengthens it: at `fastAt` times his own speed it is `fast*` all
+    // through, and anywhere between the two it is mixed.
+    trail: { at: 0.55, gap: 0.028, keep: 7, life: 0.18, fastGap: 0.014, fastKeep: 16, fastLife: 0.34, fastAt: 1.18 },
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
     devour: { time: 1.15, healChance: 0.45 },
     bomb: { fuse: 0.34, radius: 2.6 * TILE, impulse: 24 * TILE },
@@ -73,7 +77,9 @@ const TUNING = {
   // think its way through a BAAH — a screamed pack is a dead pack, and that is the point of it.
   dog: {
     radius: 10, speed: 0.98 * 8.2 * TILE, sight: 12, cone: Math.PI * 0.9,
-    reach: 0.95 * TILE, windup: 0.3, swing: 0.12, recover: 0.3, damage: 1, knock: 0.8 * TILE,
+    // The windup is the beat after the dart, not part of it: at 0.3 s the bite landed before the eye
+    // had the tell, and the dart was doing work it could not be read doing.
+    reach: 0.95 * TILE, windup: 0.44, swing: 0.12, recover: 0.3, damage: 1, knock: 0.8 * TILE,
     flooredTime: 0.7,
     dodge: 0.38, dodgeCd: 1.2, dodgeSpeed: 15 * TILE, dodgeTime: 0.2,
     circle: 2.6, circleFlip: 0.9, lungeCd: 1.5, dartTime: 0.9, retreat: 0.45,
@@ -123,7 +129,8 @@ const TUNING = {
   ai: { senseMin: 0.5, senseMax: 0.95, blindFor: 0.9, rollGap: 0.7,
     millLead: 0.6,     // s of arm sweep he looks ahead before deciding a spot is taken
     millClear: 15,     // px of berth he wants round the arms: stepping to the very edge is not enough
-    trapLook: 30 },    // px past his own radius he checks for a wheel or a brazier (flame he reads later)
+    trapLook: 30,      // px past his own radius he checks for a wheel or a brazier (flame he reads later)
+    feel: 5 },         // px past the two bodies where being walked into counts as being seen
   physics: {
     splatSpeed: 11 * TILE,
     flungDrag: 3.5,
@@ -136,7 +143,9 @@ const TUNING = {
     avoidLook: 18,     // px past his own radius a man checks before walking into flame
   },
   prop: {
-    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE },
+    // A door is the one thing in a corridor that can hold you still, and holding you still in a
+    // corridor is worth more than the shortcut was: three blows, and the first two only splinter it.
+    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 3 },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE },
     lamp: { r: 9, poolRadius: 1.2 },
     // A bowl of milk is not a lucky find. `every` is how many rooms a level may go without offering
@@ -161,6 +170,12 @@ const TUNING = {
       // one throw: it goes into whatever it finds and snaps there. A shield is three, and every man
       // it flattens and every bullet it turns spends one of them.
       uses: { sword: 1, shield: 3 },
+      // What a carried shield covers. It was a circle the size of the shield itself, which meant
+      // almost everything aimed at the goat went past the edge of it and hit him anyway — a shield
+      // that does not stop the shot is a shield that reads as broken. It is an arc across his front
+      // now: anything arriving inside `coverArc` of where he is pointing is turned, and every turn
+      // spends a charge. `parry` is what the man who swung into it has to stand there and eat.
+      coverR: 30, coverArc: 2.5, parry: 0.45,
     },
     // The pen. Bars sit close enough together that a goat cannot slip between two of them.
     // Seven blows, and the third and the sixth take his feet out from under him. It is meant to
@@ -168,10 +183,23 @@ const TUNING = {
     cage: { r: 10, halfW: 2.1, halfH: 1.6, spacing: 26, height: 30,
       hits: 7, stunAt: [3, 6], stun: 1.0,
       strain: ['NNGH', 'IT HOLDS', 'MMMAAAH', 'IT BENDS', 'NNNGH', 'BAAAAH', 'OUT'] },
-    // The other cage in the first room: smaller, shut, and nobody in it is getting out.
-    deadCage: { halfW: 1.15, halfH: 0.9, dx: 3.7, dy: -2.5 },
+    // The other cage in the first room. It gives in quicker than the pen and takes nothing out of
+    // him: the pen teaches the verb the hard way, and this is what having learned it is worth. What
+    // is inside stopped waiting a long time ago, which is what the last line is for.
+    deadCage: { halfW: 1.15, halfH: 0.9, dx: 3.7, dy: -2.5, hits: 3,
+      strain: ['NNGH', 'IT GIVES', 'OPEN'], done: 'TOO LATE' },
+    // Spike floor, from the third level on. The teeth come up where you have already been: crossing
+    // a plate arms it and they follow a moment later, so the trap is the ground you just left. Men
+    // read it the way they read the wheel — `lead` is how far ahead of the teeth `hazardAt` calls the
+    // tile taken — and the man who fails his trap check is the one you can walk onto it.
+    spike: { r: 18, trigger: 1.3, arm: 0.5, up: 0.95, down: 0.4, rest: 1.7, lead: 0.3, damage: 1 },
   },
   // The Mill: a ritual grinding wheel with two sweeping arms. It does not care whose side you are on.
+  // Going over an edge. A man who goes down a hole is gone; the goat is only rented — he comes back
+  // up on the last boards he stood on, one heart lighter, which is the same price the wheel charges.
+  // Make it free and the level is a shortcut; make it fatal and nobody goes near the interesting half
+  // of the room.
+  fall: { time: 0.5, back: 0.3, damage: 1 },
   // The Mill: a ritual grinding wheel with two sweeping arms. It does not care whose side you are on.
   // Slow enough to read and to time, and its room leaves a lane past it at the top and the bottom.
   mill: {
@@ -213,7 +241,14 @@ const TUNING = {
   // Barks: one man at a time, and never the same man twice in a hurry.
   bark: { life: 1.9, gap: 0.42, perEnemy: 4.5, nearDist: 7.5, nearChance: 0.22 },
   audio: { master: 0.92, drums: 1.0, sfx: 1.05, music: 0.85 },
-  camera: { lead: 2.4 * TILE, lerp: 7, zoomRest: 1.0, zoomFast: 0.88, zoomLerp: 2.2 },
+  // The lead point is carried rather than read: on a mouse the aim flips the instant the pointer
+  // crosses the goat, and a lead that flips with it throws the whole picture across the screen.
+  // `leadLerp` is how fast the camera agrees to the new side, `leadStill` how much of the lead a
+  // goat who is not running gets at all.
+  camera: { lead: 2.4 * TILE, lerp: 7, leadLerp: 3.4, leadStill: 0.3, zoomRest: 1.0, zoomFast: 0.88, zoomLerp: 2.2 },
+  // A score is time first and bodies second, so that running is never the wrong answer: pace against
+  // par is the whole of it and kills only multiply. Par for a level is its rooms times `perRoom`.
+  score: { perRoom: 9, timePoints: 1000, fastCap: 2, killMul: 0.06, killCap: 2.5 },
   held: { bulletsAbsorbed: 2 },
   tome: { r: 13, pickupR: 22 },
   // How long a tome's three cards refuse every input after they appear, so the click that killed the
@@ -361,6 +396,8 @@ const LEVELS = [
     name: 'THE ROAD', sub: 'Level 3', rooms: 14,
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
     millAt: 8, heals: 2, hallAt: 9, hallThreat: 26, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14,
+    // The floor starts answering back here: a plate you cross arms behind you.
+    spikes: 0.25,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [['hunter', 0.2]],
@@ -378,7 +415,7 @@ const LEVELS = [
     // Nothing new walks in: the room itself is the new thing.
     name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, pool: 'open', corridorW: 5,
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
-    millAt: 6, heals: 3, killboxAt: 10, lonePosts: 4, racks: 0.18,
+    millAt: 6, heals: 3, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.3,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -392,7 +429,7 @@ const LEVELS = [
     // Everything the compound has left, all at once, on the bridge they were driving you over.
     name: 'THE BRIDGE', sub: 'Level 5', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
-    millAt: 7, heals: 3, hallAt: 12, hallThreat: 32, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16,
+    millAt: 7, heals: 3, hallAt: 12, hallThreat: 32, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.3,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -405,22 +442,42 @@ const LEVELS = [
     hint: 'EVERYTHING THEY HAVE LEFT IS HERE',
   },
   {
+    // Up in the roof of the hall, and the first ground in the compound that is not all there. Holes
+    // in the boards, windows out into the night, and the same drop under both. A man who goes over an
+    // edge does not come back; the goat comes back a heart lighter at the spot he went in, which is
+    // what makes an edge something to work with rather than something to keep away from. Nothing new
+    // walks in — the missing floor is the new thing, and it is the only thing here that kills for you
+    // without being in the room.
+    name: 'THE RAFTERS', sub: 'Level 6', rooms: 16, pool: 'high',
+    arenas: [{ at: 4, boss: 'seer' }, { at: 10, boss: 'butcher' }, { at: 14, boss: 'champion' }],
+    millAt: 7, heals: 4, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.35,
+    encounters: {
+      kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
+      introduce: [],
+      from: 8, to: 26, ease: 1.15,
+      cap: { men: 9, hunter: 3, dog: 3 },
+    },
+    floor: '#4b433a', floorAlt: '#544a40', wall: '#241d1a', wallTop: '#453629',
+    fog: '#06060a', doorChance: 0.2,
+    hint: 'THE FLOOR ENDS. THEY FALL FURTHER THAN YOU.',
+  },
+  {
     // Under the bridge is where everything the compound ever killed went, and none of it stayed put.
     // The living are a garrison here rather than the point: what the level is about is the thing that
     // is not in the room until it is behind you. Walls do not hold them, so there is nowhere to put
     // your back — the only cover on this ground is which way you are looking.
-    name: 'THE OSSUARY', sub: 'Level 6', rooms: 16,
+    name: 'THE OSSUARY', sub: 'Level 7', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
-    millAt: 6, heals: 4, killboxAt: 11, lonePosts: 2, racks: 0.2,
+    millAt: 6, heals: 4, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.3,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
       // The first room of the level is the wraith on its own, because nothing else in the game
       // teaches you that you cannot hit it.
       introduce: [['wraith', 0]],
-      from: 8, to: 23, ease: 1.12,
+      from: 11, to: 34, ease: 1.12,
       // The dead outnumber the garrison here, and a room may hold three of them.
       weight: { wraith: 9, bearer: 4, dog: 2, champion: 1, hunter: 2, seer: 1 },
-      cap: { wraith: 3, men: 8 },
+      cap: { wraith: 4, men: 9 },
     },
     floor: '#22242b', floorAlt: '#282a33', wall: '#3a3730', wallTop: '#565044',
     fog: '#05060a', doorChance: 0.22,

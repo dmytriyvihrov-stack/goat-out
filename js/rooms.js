@@ -3,6 +3,7 @@
 // 'w' a stand of arms: a sword or a shield to grab and throw
 // 'e' bearer spawn  'r' hunter spawn (bearer if level has no hunters)  'X' butcher spawn
 // 'R' always a rifle where the level has them  'm' seer spawn  'M' the Mill's hub
+// 'O' a drop: a hole in the boards where it sits in the floor, a window where it sits in a wall
 // Rooms are randomly flipped on both axes at generation time.
 // A template with a `tag` is only drawn by a level whose `pool` matches it; untagged ones are the
 // default pool every other level uses.
@@ -268,6 +269,87 @@ const ROOM_TEMPLATES = [
     '#..P...P...P...P...P...P...#',
     '#..........................#',
     '############################',
+  ]},
+
+  // ---- the rafters: the pool for the level whose floor is not all there ----
+  // 'O' is a drop. In the floor it is a hole in the boards; in a wall run it is a window. Men will
+  // not path into either and a thrown one goes through both, so every one of these rooms is built
+  // to leave a way across that is worth less than the way round. They are deliberately narrow: the
+  // level is about edges, and an edge you can walk a long way round is not an edge.
+  { name: 'gantry', tag: 'high', rows: [
+    '######OO#####OO######',
+    '#...................#',
+    '#..e.............e..#',
+    '#...OOOO.....OOOO...#',
+    '#...OOOO.....OOOO...#',
+    '#...................#',
+    '#..B.....o........B.#',
+    '#...OOOO.....OOOO...#',
+    '#...OOOO.....OOOO...#',
+    '#..e......r......e..#',
+    '#...................#',
+    '######OO#####OO######',
+  ]},
+  // Fight it along the rail. Everything worth standing on is against the one long wall, and the
+  // whole of the other side of the room is not there.
+  { name: 'ledge', tag: 'high', rows: [
+    '######################',
+    '#....................#',
+    '#..tt...B.....B..tt..#',
+    '#..tt.............e..#',
+    '#....e...o...o.......#',
+    '#....................#',
+    '#..OOOOOOOOOOOOOOOO..#',
+    '#..OOOOOOOOOOOOOOOO..#',
+    '#....................#',
+    '#...r.........m..e...#',
+    '#....................#',
+    '######################',
+  ]},
+  // Joists with the boards off between them. Crossing is two short hops of nerve, and anyone who
+  // follows you has to take the long way round the ends.
+  { name: 'joists', tag: 'high', rows: [
+    '#######################',
+    '#.....................#',
+    '#..e...............e..#',
+    '#....OOO...OOO...OO...#',
+    '#....OOO...OOO...OO...#',
+    '#....OOO...OOO...OO...#',
+    '#..o......w...........#',
+    '#....OOO...OOO...OO...#',
+    '#....OOO...OOO...OO...#',
+    '#..e.....r.........e..#',
+    '#.....................#',
+    '#######################',
+  ]},
+  // The well: one hole in the middle of an otherwise ordinary room, posted round it, so a man
+  // shoved off a post has somewhere to go.
+  { name: 'wellhole', tag: 'high', rows: [
+    '####OO########OO####',
+    '#..................#',
+    '#..P............P..#',
+    '#......OOOOO.......#',
+    '#..e...OOOOO...e...#',
+    '#......OOOOO.......#',
+    '#..B...OOOOO...B...#',
+    '#..P.....r......P..#',
+    '#..................#',
+    '####OO########OO####',
+  ]},
+  // All wall and all window. Nothing in here kills for you except what is behind the men.
+  { name: 'windowrow', tag: 'high', rows: [
+    '###OO#####OO#####OO###',
+    '#....................#',
+    '#..e...t....t...t.e..#',
+    '#......t....t...t....#',
+    '#....................#',
+    '#..o..............o..#',
+    '#....................#',
+    '#..m...t....t...t.e..#',
+    '#......t....t...t....#',
+    '#..r.................#',
+    '#....................#',
+    '###OO#####OO#####OO###',
   ]},
 ];
 

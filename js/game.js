@@ -1,6 +1,8 @@
 // Game: state machine, fixed-step loop, pointer/keyboard/touch input, entity collisions, effects, cards.
 // Where a run is left for CONTINUE. Bump the version and old saves are simply ignored.
 const SAVE_KEY = 'goatout.run.v1';
+// The board. It is deliberately not part of the run: NEW GAME wipes the run and never the record.
+const BEST_KEY = 'goatout.best.v1';
 // Whether this browser has watched the opening scene through once. The first time is not skippable:
 // everything the run means is in it, and a key pressed to start the game should not also end it.
 const SEEN_KEY = 'goatout.intro.v1';
@@ -20,12 +22,14 @@ class Game {
     // What the men have to read in the room: standing fire and the Mill (fixed for the level), and
     // whatever rune is being painted right now (rebuilt each step).
     this.hazards = []; this.runes = []; this.houndTold = false;
-    this.cam = { x: 0, y: 0, zoom: 1 }; this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0;
+    this.cam = { x: 0, y: 0, zoom: 1 }; this.camLead = { x: 0, y: 0 };
+    this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0;
     // juice: a directional camera punch, a lens shove, a screen flash and a kill counter
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0; this.flashColor = PALETTE.bone;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
     this.hitstopTimer = 0; this.timeScale = 1; this.slowTimer = 0; this.hurt = null;
-    this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0;
+    this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0; this.totalScore = 0;
+    this.best = this.loadBest();
     this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.tomes = []; this.boonChoice = null; this.boonRects = [];
     // A tome is spent by a click that starts and ends on the same card. `boonDown` is the card the
     // pointer went down on; `boonArm` is the beat the cards ignore everything after they appear.
@@ -284,11 +288,14 @@ class Game {
       return e;
     });
     this.props = this.level.props.map((p) => new Prop(p.x, p.y, p.kind, p));
-    this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill');
+    this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike');
     this.runes = []; this.houndTold = false;
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null;
     this.tomes = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
+    // What he walked in with. A death rolls him back to this list, one short.
+    this.levelBoons = this.boons.slice();
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
+    this.camLead.x = 0; this.camLead.y = 0;
     this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0;
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
@@ -307,9 +314,13 @@ class Game {
     this.card = { lines, dim: 0.6, size: 40, small: 2 }; this.stateTimer = 1.3;
     this.audio.sfxCard();
   }
+  // A death costs a tome, not the run. You come back with what you walked into the level carrying,
+  // minus the newest thing you had learned — so a run can be survived badly instead of only
+  // perfectly, and what you lose is always what you have had the least time with.
   restartLevel() {
     if (this.state === 'title') return;
-    this.startLevel(this.levelIndex, (Math.random() * 1e9) | 0);
+    this.boons = (this.levelBoons || []).slice(0, -1);
+    this.startLevel(this.levelIndex, (Math.random() * 1e9) | 0, true);
   }
 
   // ---------- the first screen ----------
@@ -319,8 +330,11 @@ class Game {
     this.state = 'title'; this.card = null; this.level = null; this.world = null; this.goat = null;
     this.enemies = []; this.props = []; this.bullets = []; this.tomes = [];
     this.save = this.loadRun();
+    this.best = this.loadBest();
     // A run waiting to be picked up is the likelier intent, so the keyboard starts on it.
-    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0 };
+    // `board` is the record sheet: it covers the menu rather than replacing the screen, and
+    // anything at all puts it away again.
+    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0, board: false };
     this.showHelp(false);
   }
   updateTitle(dt) {
@@ -335,25 +349,61 @@ class Game {
   }
   // The menu answers the keys the game already uses: run up and down it, headbutt to choose.
   menuKey(code) {
-    if (code === 'KeyW' || code === 'ArrowUp' || code === 'KeyS' || code === 'ArrowDown') {
-      this.menu.index = this.menu.index ? 0 : 1; this.audio.sfxSwing();
-    } else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.menuPick(this.menu.index);
+    if (this.menu.board) { this.menu.board = false; this.audio.sfxSwing(); return; }
+    const n = 3;
+    if (code === 'KeyW' || code === 'ArrowUp') { this.menu.index = (this.menu.index + n - 1) % n; this.audio.sfxSwing(); }
+    else if (code === 'KeyS' || code === 'ArrowDown') { this.menu.index = (this.menu.index + 1) % n; this.audio.sfxSwing(); }
+    else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.menuPick(this.menu.index);
   }
   menuPick(i) {
+    // While the board is up it is the only thing the menu does, and anything closes it.
+    if (this.menu.board) { this.menu.board = false; this.audio.sfxSwing(); return; }
     this.menu.index = i;
     // Nothing to come back to: the button shakes its head and stays where it is.
     if (i === 1 && !this.save) { this.menu.shake = 0.35; this.audio.sfxThud(); return; }
     this.audio.sfxCard();
+    if (i === 2) { this.menu.board = true; return; }
     if (i === 1) { this.resumeRun(); return; }
-    this.clearRun(); this.boons = []; this.totalKills = 0; this.deaths = 0;
+    this.clearRun(); this.boons = []; this.totalKills = 0; this.deaths = 0; this.totalScore = 0;
     this.startLevel(0, (Math.random() * 1e9) | 0, false, true);
   }
   // CONTINUE is the head of the furthest level the run reached, with the tomes it was carrying there.
   resumeRun() {
     const s = this.save; if (!s) return;
     this.boons = (s.boons || []).map((id) => BOONS.find((b) => b.id === id)).filter(Boolean);
-    this.totalKills = s.totalKills || 0; this.deaths = s.deaths || 0;
+    this.totalKills = s.totalKills || 0; this.deaths = s.deaths || 0; this.totalScore = s.score || 0;
     this.startLevel(clamp(s.level | 0, 0, LEVELS.length - 1), (Math.random() * 1e9) | 0, true);
+  }
+  // Time first, bodies second. Pace against the level's par is the whole of a score and kills only
+  // multiply it, so running is never the wrong answer and the best run is a fast one with bodies in
+  // it rather than a slow one that cleared every room. Par is the level's rooms times `perRoom`.
+  scoreFor(kills, time, levelIndex) {
+    const S = TUNING.score, def = LEVELS[levelIndex] || LEVELS[0];
+    const pace = clamp((def.rooms * S.perRoom) / Math.max(time, 1), 0, S.fastCap);
+    return Math.round(S.timePoints * pace * Math.min(1 + kills * S.killMul, S.killCap));
+  }
+  loadBest() {
+    try {
+      const b = JSON.parse(localStorage.getItem(BEST_KEY) || 'null');
+      if (b && b.v === 1 && b.levels) return b;
+    } catch (err) { /* storage refused: the board is empty and stays empty */ }
+    return { v: 1, levels: {}, run: 0 };
+  }
+  // What a cleared level is worth, written down. A record outlives the run that set it.
+  noteBest(index, score, time) {
+    const b = this.best || (this.best = this.loadBest());
+    const cur = b.levels[index];
+    const better = !cur || score > cur.score;
+    b.levels[index] = { score: Math.max(score, cur ? cur.score : 0), time: cur ? Math.min(time, cur.time) : time };
+    try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (err) { /* nothing to be done */ }
+    return better;
+  }
+  noteRunBest(total) {
+    const b = this.best || (this.best = this.loadBest());
+    if (total <= (b.run || 0)) return false;
+    b.run = total;
+    try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (err) { /* nothing to be done */ }
+    return true;
   }
   // The run in localStorage, best-effort: a browser that refuses storage simply never offers CONTINUE.
   loadRun() {
@@ -365,7 +415,8 @@ class Game {
     } catch (err) { return null; }
   }
   saveRun() {
-    this.save = { v: 1, level: this.levelIndex, boons: this.boons.map((b) => b.id), totalKills: this.totalKills, deaths: this.deaths, at: Date.now() };
+    this.save = { v: 1, level: this.levelIndex, boons: this.boons.map((b) => b.id), totalKills: this.totalKills,
+      deaths: this.deaths, score: this.totalScore, at: Date.now() };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (err) { /* private mode: the run dies with the tab */ }
   }
   clearRun() {
@@ -380,17 +431,26 @@ class Game {
   onGoatDied() {
     this.deaths++; this.state = 'dead'; this.stateTimer = 0.9; this.slowTimer = 1.4;
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxToll();
-    const lost = this.boons.length ? `${this.boons.length} tome${this.boons.length === 1 ? '' : 's'} lost` : 'no tomes to lose';
+    // What a death takes is named, because losing something with a name is a different feeling from
+    // losing a number: the newest tome goes and everything he walked in with stays.
+    const held = this.levelBoons || [];
+    const lost = held.length ? `${held[held.length - 1].name} LOST` : 'nothing left to lose';
     this.card = { lines: ['THE GOAT DIED', '', `${lost} · ${this.tapWord.toLowerCase()} to try again`], dim: 0.55, size: 40, small: true, color: PALETTE.blood };
     this.shake(12); this.vibe(70);
   }
   levelCleared() {
     this.state = 'clear'; this.totalKills += this.kills;
+    const score = this.scoreFor(this.kills, this.timer, this.levelIndex);
+    this.totalScore += score;
+    const best = this.noteBest(this.levelIndex, score, this.timer);
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxCard();
     this.cardQueue = [
       { lines: ['Do you want sacrifices?'], dim: 0.75, size: 34, time: 1.4 },
       { lines: ['You will get sacrifices!'], dim: 0.85, size: 40, time: 1.6, color: PALETTE.blood },
-      { lines: [`${this.kills} sacrificed in ${this.timer.toFixed(1)}s`], dim: 0.9, size: 26, time: 1.4 },
+      // The level's own score: what the time was worth and what the bodies did to it.
+      { lines: [`SCORE ${score}`, '', `${this.kills} sacrificed in ${this.timer.toFixed(1)}s`,
+        best ? 'A NEW BEST' : `run so far ${this.totalScore}`],
+        dim: 0.9, size: 34, small: 2, time: 1.9, color: best ? PALETTE.fireHi : null },
     ];
     this.nextCard();
   }
@@ -400,7 +460,11 @@ class Game {
     if (this.levelIndex + 1 < LEVELS.length) this.startLevel(this.levelIndex + 1, (Math.random() * 1e9) | 0, true);
     else {
       this.state = 'win'; this.clearRun();
-      this.card = { lines: ['THE GOAT ESCAPED.', '', `${this.totalKills} sacrificed · ${this.deaths} death${this.deaths === 1 ? '' : 's'}`, `${this.tapWord.toLowerCase()} to run again`], dim: 1, size: 40, small: 2 };
+      const runBest = this.noteRunBest(this.totalScore);
+      this.card = { lines: ['THE GOAT ESCAPED.', `SCORE ${this.totalScore}`,
+        `${this.totalKills} sacrificed · ${this.deaths} death${this.deaths === 1 ? '' : 's'}`,
+        runBest ? 'THE BEST RUN YET' : `best run ${this.best.run}`,
+        `${this.tapWord.toLowerCase()} to run again`], dim: 1, size: 40, small: 2 };
     }
   }
 
@@ -483,7 +547,7 @@ class Game {
     if (this.state === 'dead') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) this.restartLevel(); this.clearEdges(); return; }
     if (this.state === 'clear') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) this.nextCard(); this.clearEdges(); return; }
     if (this.state === 'boon') { this.boonArm = Math.max(0, this.boonArm - dt); this.updateEffects(dt); this.clearEdges(); return; }
-    if (this.state === 'win') { if (this.input.lmbPressed) { this.totalKills = 0; this.deaths = 0; this.startLevel(0, (Math.random() * 1e9) | 0, false, true); } this.clearEdges(); return; }
+    if (this.state === 'win') { if (this.input.lmbPressed) { this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.startLevel(0, (Math.random() * 1e9) | 0, false, true); } this.clearEdges(); return; }
     if (this.state !== 'play') { this.clearEdges(); return; }
 
     if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; this.clearEdges(); return; }
@@ -497,6 +561,9 @@ class Game {
     // room went on stepping round for the rest of the level.
     for (const e of this.enemies) if (e.rune && !e.dead) this.runes.push(e.rune);
     this.goat.update(dt, this);
+    // The floor stopped under him. Everything else waits while he goes down it.
+    if (this.goat.state === 'falling') { this.updateFall(dt); this.updateEffects(dt); this.updateCamera(dt); this.clearEdges(); return; }
+    if (!this.goat.dead && w.isPitPx(this.goat.x, this.goat.y)) { this.goatFalls(); this.clearEdges(); return; }
     for (const e of this.enemies) e.update(dt, this);
     for (const b of this.bullets) b.update(dt, this);
     for (const p of this.props) p.update(dt, this);
@@ -635,14 +702,20 @@ class Game {
 
   // camera: follow, lead toward the aim, pull back a little at speed
   updateCamera(dt) {
-    const w = this.world;
+    const w = this.world, C = TUNING.camera;
     const spd = Math.hypot(this.goat.vx, this.goat.vy) / TUNING.goat.speed;
-    const lead = TUNING.camera.lead * (this.touch.active ? 0.7 : 1);
-    const cx = this.goat.x + this.input.aim.x * lead, cy = this.goat.y + this.input.aim.y * lead;
-    const k = 1 - Math.exp(-TUNING.camera.lerp * dt);
+    // The lead is carried, not read. Reading it straight off the aim meant that crossing the pointer
+    // over the goat threw the whole picture to the other side of him in one frame, which is what
+    // made turning around on the spot feel like being shaken. Standing still, he barely leads at all.
+    const lead = C.lead * (this.touch.active ? 0.7 : 1) * lerp(C.leadStill, 1, clamp(spd, 0, 1));
+    const lk = 1 - Math.exp(-C.leadLerp * dt);
+    this.camLead.x += (this.input.aim.x * lead - this.camLead.x) * lk;
+    this.camLead.y += (this.input.aim.y * lead - this.camLead.y) * lk;
+    const cx = this.goat.x + this.camLead.x, cy = this.goat.y + this.camLead.y;
+    const k = 1 - Math.exp(-C.lerp * dt);
     this.cam.x += (cx - this.cam.x) * k; this.cam.y += (cy - this.cam.y) * k;
-    const targetZoom = this.renderer.zoomFit * lerp(TUNING.camera.zoomRest, TUNING.camera.zoomFast, clamp(spd, 0, 1));
-    this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-TUNING.camera.zoomLerp * dt));
+    const targetZoom = this.renderer.zoomFit * lerp(C.zoomRest, C.zoomFast, clamp(spd, 0, 1));
+    this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-C.zoomLerp * dt));
     const v = this.renderer.view(this.cam);
     this.cam.x = clamp(this.cam.x, v.w / 2, w.W * TILE - v.w / 2);
     this.cam.y = clamp(this.cam.y, v.h / 2, w.H * TILE - v.h / 2);
@@ -783,6 +856,35 @@ class Game {
 
   // ---------- the stairs out ----------
   // The exit is a flight up. The goat takes it for a moment, into the light, before the cards.
+  // The floor stops. He goes down it, and comes back up on the last boards he stood on a heart
+  // lighter — the same price the wheel charges. A hole takes a man out of the room for good and only
+  // rents the goat, which is what makes an edge something to fight beside rather than away from.
+  goatFalls() {
+    const g = this.goat, F = TUNING.fall;
+    if (g.dead || g.state === 'falling') return;
+    g.state = 'falling'; g.timer = F.time + F.back; g.vx *= 0.3; g.vy *= 0.3;
+    // Whatever was in his mouth goes down with him.
+    if (g.holding) {
+      const h = g.holding; g.holding = null; h.held = false;
+      if (h.item) h.snap(this); else h.die(this, 'fall');
+      g.grabCd = TUNING.goat.grab.cooldown * this.mods.grabCooldown;
+    }
+    this.audio.sfxSwing(); this.shake(7); this.vibe(45); this.zoomPunch(0.7);
+    this.floatText(g.x, g.y - 26, 'THE FLOOR ENDS', PALETTE.blood);
+  }
+  updateFall(dt) {
+    const g = this.goat, F = TUNING.fall;
+    if (g.timer > F.back) return;                      // still going down
+    if (g.x !== g.safeX || g.y !== g.safeY) {
+      g.x = g.safeX; g.y = g.safeY; g.vx = 0; g.vy = 0;
+      this.cam.x = g.x; this.cam.y = g.y; this.camLead.x = 0; this.camLead.y = 0;
+      this.world.computeFlow(g.x, g.y);
+      g.damage(F.damage, this, 0, 0, true);
+      this.audio.sfxThud(); this.shake(5);
+      if (!g.dead) this.floatText(g.x, g.y - 34, 'BACK UP', PALETTE.bone);
+    }
+    if (g.timer <= 0 && !g.dead) { g.state = 'idle'; g.invuln = Math.max(g.invuln, TUNING.goat.invuln); }
+  }
   beginClimb() {
     this.state = 'climb'; this.stateTimer = TUNING.stairs.climb; this.stairFx = { t: 0, dir: 1 };
     const g = this.goat; g.state = 'idle'; g.facing = 0;
@@ -837,6 +939,7 @@ class Game {
         if (aFl && !bFl) this.flungHits(a, b, nx, ny);
         else if (bFl && !aFl) this.flungHits(b, a, -nx, -ny);
         else { const push = (min - d) / 2; a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push; }
+        if (a.burning > 0 || b.burning > 0) this.passFire(a, b);
       }
     }
     for (const e of en) {
@@ -874,6 +977,15 @@ class Game {
       }
     }
   }
+  // A man alight blunders into another and hands it over — once. The man he hands it to is the end
+  // of the line and passes it to nobody, so a brazier costs a room two men rather than the room.
+  passFire(a, b) {
+    const lit = a.burning > 0 ? a : b, cold = a.burning > 0 ? b : a;
+    if (cold.burning > 0 || cold.dead || cold.ghosted || lit.litByMan || lit.passedFire) return;
+    lit.passedFire = true;
+    cold.ignite(this, lit.witchBurn, true);
+    this.floatText(cold.x, cold.y - 30, 'IT SPREADS', lit.witchBurn ? PALETTE.witch : PALETTE.fire);
+  }
   flungHits(f, other, nx, ny) {
     if (f.thrown && other.kind !== 'butcher') { other.die(this, 'splat', nx, ny); f.vx *= 0.55; f.vy *= 0.55; }
     else if (other.kind === 'butcher') { other.state = 'stagger'; other.timer = 0.3; f.vx *= -0.3; f.vy *= -0.3; }
@@ -907,12 +1019,39 @@ class Game {
     if (blocked) { w.dot(mx, my, 2, '#2a2020'); return; }
     this.bullets.push(new Bullet(mx, my, dx * s, dy * s));
   }
+  // A swing has to have a way to what it is swinging at. Stone, a pillar, a table, a shut door, the
+  // hub of the Mill: whatever is in the way takes the blow instead, and both sides are held to it —
+  // a club that comes through a wall reads as the room not being real.
+  reaches(ax, ay, bx, by) {
+    if (!this.world.los(ax, ay, bx, by)) return false;
+    const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+    for (const p of this.props) {
+      if (!p.blocking) continue;
+      // How far the prop's centre is off the line, clamped to the segment itself.
+      const t = len2 ? clamp(((p.x - ax) * dx + (p.y - ay) * dy) / len2, 0, 1) : 0;
+      const px = ax + dx * t - p.x, py = ay + dy * t - p.y;
+      if (Math.hypot(px, py) < p.r * 0.8) return false;
+    }
+    return true;
+  }
   meleeHit(att, reach, arc, damage, knock, skipGoat) {
     const g = this.goat;
-    const inArc = (o) => { const dx = o.x - att.x, dy = o.y - att.y, d = Math.hypot(dx, dy); return d < reach + o.r && Math.abs(angleDiff(att.facing, Math.atan2(dy, dx))) < arc / 2; };
+    const inArc = (o) => { const dx = o.x - att.x, dy = o.y - att.y, d = Math.hypot(dx, dy);
+      return d < reach + o.r && Math.abs(angleDiff(att.facing, Math.atan2(dy, dx))) < arc / 2
+        && this.reaches(att.x, att.y, o.x, o.y); };
     const dirx = Math.cos(att.facing), diry = Math.sin(att.facing);
     if (!g.dead && !skipGoat) {
       if (g.holding && !g.holding.item && inArc(g.holding)) { const h = g.holding; this.floatText(h.x, h.y - 26, 'SHIELD', PALETTE.bone); h.die(this, 'club', dirx, diry); }
+      // A club into a carried shield is a club into a shield. He spends a charge, the man who swung
+      // it stands there holding the shock of it, and the goat takes nothing.
+      else if (inArc(g) && g.shielded(att.x, att.y)) {
+        const W = TUNING.prop.weapon, sh = g.holding;
+        this.floatText(sh.x, sh.y - 28, 'CLANG', PALETTE.bone);
+        this.audio.sfxSteel(); this.shake(5); this.hitstop(0.05); this.vibe(22);
+        this.particles(sh.x, sh.y, 7, PALETTE.fireHi, 180);
+        att.state = 'stagger'; att.timer = W.parry; att.vx = dirx * -3 * TILE; att.vy = diry * -3 * TILE;
+        if (--sh.uses <= 0) sh.snap(this);
+      }
       else if (inArc(g)) g.damage(damage, this, dirx * knock * 4, diry * knock * 4);
     }
     // A hound bites what it was sent for. It does not floor its own handlers on the way past — a pack

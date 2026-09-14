@@ -233,6 +233,10 @@ class World {
   }
   isSolid(tx, ty) { return this.tileAt(tx, ty) === T.WALL; }
   tileAtPx(x, y) { return this.tileAt(Math.floor(x / TILE), Math.floor(y / TILE)); }
+  // A drop stops nothing and holds nobody up. It is deliberately not solid: walking into one is
+  // the whole point of it, and everything that must not walk into one is kept out by the flow
+  // field and by `hazardAt` instead.
+  isPitPx(x, y) { return this.tileAtPx(x, y) === T.PIT; }
   isBurningPx(x, y) {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
     if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return false;
@@ -286,6 +290,10 @@ class World {
     return true;
   }
 
+  // What a man may put a boot on: stone stops him and so does a hole, which is why no route the
+  // flow field offers anybody ever crosses one.
+  walkable(i) { const t = this.tiles[i]; return t !== T.WALL && t !== T.PIT; }
+  walkableAt(tx, ty) { const t = this.tileAt(tx, ty); return t !== T.WALL && t !== T.PIT; }
   // BFS distance field from a point; enemies descend it.
   computeFlow(px, py) {
     const W = this.W, H = this.H, flow = this.flow;
@@ -297,10 +305,10 @@ class World {
       const i = q[head++]; const d = flow[i];
       if (d > 90) continue;
       const cx = i % W, cy = (i / W) | 0;
-      if (cx > 0 && this.tiles[i - 1] !== T.WALL && flow[i - 1] < 0) { flow[i - 1] = d + 1; q[tail++] = i - 1; }
-      if (cx < W - 1 && this.tiles[i + 1] !== T.WALL && flow[i + 1] < 0) { flow[i + 1] = d + 1; q[tail++] = i + 1; }
-      if (cy > 0 && this.tiles[i - W] !== T.WALL && flow[i - W] < 0) { flow[i - W] = d + 1; q[tail++] = i - W; }
-      if (cy < H - 1 && this.tiles[i + W] !== T.WALL && flow[i + W] < 0) { flow[i + W] = d + 1; q[tail++] = i + W; }
+      if (cx > 0 && this.walkable(i - 1) && flow[i - 1] < 0) { flow[i - 1] = d + 1; q[tail++] = i - 1; }
+      if (cx < W - 1 && this.walkable(i + 1) && flow[i + 1] < 0) { flow[i + 1] = d + 1; q[tail++] = i + 1; }
+      if (cy > 0 && this.walkable(i - W) && flow[i - W] < 0) { flow[i - W] = d + 1; q[tail++] = i - W; }
+      if (cy < H - 1 && this.walkable(i + W) && flow[i + W] < 0) { flow[i + W] = d + 1; q[tail++] = i + W; }
     }
   }
   flowDist(x, y) {
@@ -316,7 +324,9 @@ class World {
     let best = here, bx = 0, by = 0;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue;
-      if (dx && dy && (this.isSolid(tx + dx, ty) || this.isSolid(tx, ty + dy))) continue;
+      // No cutting a corner past stone, and none past a hole either: the diagonal that clips the
+      // lip of a drop is a step into it.
+      if (dx && dy && (!this.walkableAt(tx + dx, ty) || !this.walkableAt(tx, ty + dy))) continue;
       const nx = tx + dx, ny = ty + dy;
       if (nx < 0 || ny < 0 || nx >= this.W || ny >= this.H) continue;
       const d = this.flow[this.idx(nx, ny)];
@@ -337,7 +347,7 @@ class World {
     if (this.fire[i] > 0) return false;
     const t = this.tiles[i];
     if (t === T.HAY) { this.fire[i] = TUNING.fire.burn; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
-    if (force && t !== T.WALL) { this.fire[i] = dur || TUNING.fire.pool; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
+    if (force && t !== T.WALL && t !== T.PIT) { this.fire[i] = dur || TUNING.fire.pool; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
     return false;
   }
   // A breathed cone of flame: short-lived on bare floor, but it sets hay going properly.

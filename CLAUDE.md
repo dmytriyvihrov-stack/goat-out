@@ -44,7 +44,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 |---|---|
 | `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `LEVELS`. Every tunable number, every line the cult shouts, and the five level definitions. |
 | `js/rng.js` | Seeded RNG (mulberry32) plus `clamp` / `lerp` / `len` / `angleDiff`. |
-| `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top (`'w'` is a stand of arms). Also the start room, the arena, the Mill room, the Great Hall and the Gallery. Templates carrying a `tag` belong to one level's pool. |
+| `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top (`'w'` is a stand of arms, `'O'` a drop). Also the start room, the arena, the Mill room, the Great Hall and the Gallery. Templates carrying a `tag` belong to one level's pool. |
 | `js/gen.js` | Level generation: chains rooms, carves corridors, places props, spawns, heals, validates reachability. Defines the tile enum `T`. |
 | `js/audio.js` | WebAudio. Buses, the drum machine, the music bed (`MUSIC`) and every one-shot effect. |
 | `js/world.js` | Tile grid, collision, line of sight, flow field, fire (ordinary and witchfire), noise events, the persistent decal canvas, cult pictograms, the ritual start room. |
@@ -81,6 +81,13 @@ mush. Raising `DECAL_SCALE` costs memory fast: the world is 420x78 tiles.
 it goes down floored, loses one, gets up, and a Seer blinks clear. Fire counts, so a mage has to be lit
 twice. Only `devour` and `boom` skip it.
 
+**A front and nothing else.** `canSeeGoat` is a cone and a line of sight and nothing else. There used to
+be a close-range bypass — inside 2.5 tiles he saw you wherever you stood — which took away the one thing
+the cone was for; what is left of it is `TUNING.ai.feel`, a couple of pixels past the two bodies where
+being walked into counts as being seen. A `watchful` man (the killbox) has no cone at all and a wraith
+needs no eyes. What gives the goat away behind a man is the noise system, which already turns a man to
+face what he heard: running emits `noise.footstep` above a walk, and everything loud is loud on purpose.
+
 **Dazed.** `enemy.daze(game, seconds)` is the scream's whole effect: the man freezes, whatever he was
 winding up is cancelled, and stars orbit his head. It is a timer, not a state, so the flung / floored /
 burning machinery underneath is untouched.
@@ -99,7 +106,8 @@ them readable. The counter is the scream: `daze()` multiplies by `cfg.dazeMul` f
 and a dazed dog cannot dodge. `game.houndSeen()` growls and teaches that once per run.
 
 **Trap sense.** `hazardAt()` answers what will kill whoever is at a point — flame, a lit brazier, a rune
-mid-cast, or the arm of the Mill about to come round (`Prop.millThreat` predicts `TUNING.ai.millLead`
+mid-cast, the lip of a drop, a spike plate that is up or about to be, or the arm of the Mill about to
+come round (`Prop.millThreat` predicts `TUNING.ai.millLead`
 seconds ahead, with `millClear` px of berth). `avoidHazard()` checks both **where he is walking and where
 he is standing**: an arm sweeps onto a man who is holding still just as happily, and before that check
 existed half a crowd died waiting at the edge. Standing in it, he leaves radially; walking into it, he
@@ -119,7 +127,7 @@ over `burnTick`, and when `burning` runs out he lands in `stagger` instead of dy
 his line at you through a fire reads as the fire not counting, which is why nothing does it any more.
 `ignite` also takes whatever it lit out of the goat's mouth.
 
-**Props.** One `Prop` class for brazier, pot, bell, door, table, lamp, mill, heal and weapon. `blocking`,
+**Props.** One `Prop` class for brazier, pot, bell, door, table, lamp, mill, heal, spike and weapon. `blocking`,
 `stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item` is what the
 goat can pick up and throw — a pot or a weapon — and it is the test everywhere the code used to ask
 `kind !== 'pot'`.
@@ -154,6 +162,12 @@ the mouth into a cone, Loose Joints adds a second turn to the roll. Add a boon, 
 man leaves your mouth, so grab is not a button you hold. Roll has its own. Both show on the rail and as
 rings on the touch buttons; both read `game.mods`, never `TUNING`, at the use site.
 
+**Fire is handed on once.** A burning man who touches another lights him in `game.passFire`, called
+from the enemy-vs-enemy pass in `collideEntities`. `ignite(game, witch, fromMan)` marks the man it lit
+with `litByMan`, and a man who was lit that way never passes it on; the man who did it sets
+`passedFire` and cannot do it twice. So a brazier costs a room two men rather than the whole room,
+which is the difference between fire being a hazard and fire being a win button.
+
 **Fire has two kinds.** `world.fire` holds seconds left, `world.fireKind` holds 0 for ordinary flame and
 1 for the Seer's witchfire. Witchfire spreads as witchfire, draws violet, scorches violet and ignores
 `mods.fireImmune`; `isWitchPx` is the test. Anything that lights a tile passes the kind through.
@@ -169,9 +183,13 @@ empty room was where it used to sit reading as scenery.
 `grab.holdVary`, so every grab lasts a different seven-to-nine seconds. Two kinds go on working while
 held, and the branch for them is at the top of `Enemy.update` above every other state: a Hunter fires
 `enemy.heldShots` rounds (rolled once per man in the constructor, never refilled — re-grabbing is not
-reloading) and then is dry, and a Seer paints a rune **on himself**, which is to say on you.
-`castRune` is the one place a rune goes off, shared by the held mage and the standing one; `fling`
-clears `rune`, which is the only counter to a mage in your mouth.
+reloading) and then is dry, and a Seer paints a rune **on the ground he is over when he starts**, which
+stays where it was put. It used to be dragged along under him, so the fire came up under the goat
+wherever the goat had run to and carrying a mage was simply fatal; now keeping moving leaves a trail of
+it behind you and standing still is what kills you. `castRune` is the one place a rune goes off, shared
+by the held mage and the standing one; `fling` clears `rune`, which is still the fastest counter.
+The same branch ends with the fire check, so **a man in your mouth burns like anybody else** and comes
+straight out of it when he catches.
 
 **Barks.** `game.bark(enemy, kind, chance)` is the only way to make a man speak. It enforces a global gap
 and a per-man cooldown, so a crowd never shouts at once. Lines live in `BARKS` in `tuning.js`; the bubble
@@ -205,7 +223,9 @@ harder than the one before. Adding an enemy kind means: a `THREAT` value, an `EN
 a `cap`, and an `introduce` entry on the level that first shows it.
 
 **Room pools.** `ROOM_TEMPLATES` entries with a `tag` are drawn only by a level whose `pool` matches;
-untagged ones are the default set everything else uses. THE THRESHING FLOOR is `pool: 'open'`, and its
+untagged ones are the default set everything else uses. THE RAFTERS is `pool: 'high'` — five rooms built
+round drops, deliberately narrow, because seventeen wide rooms do not fit across a 420-tile world and
+because an edge you can walk a long way round is not an edge. THE THRESHING FLOOR is `pool: 'open'`, and its
 `corridorW: 5` widens the S-corridor so the rooms read as one yard. A wide corridor deliberately eats
 the room borders it passes through — that is the mechanism behind "fewer walls", and it is why the level
 needs furniture (posts, tables, braziers, hay) to keep kills coming from geometry.
@@ -242,14 +262,25 @@ lying floored. `game.mistTold` is the only tutorial it gets.
 while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` draws the stars over it.
 `game.stunGoat(seconds)` is the only way in, and the pen is the only thing that uses it.
 
-**The first screen.** State `title`, drawn entirely by `drawTitle` and holding two buttons and nothing
+**The first screen.** State `title`, drawn entirely by `drawTitle` and holding three buttons and nothing
 else: the opening scene tells the story and the floor of level 1 teaches the buttons, so the menu
-explains neither. `game.menu` is `{ index, rects, t, shake }`; `drawTitle` refills `rects` every frame
-and `menuAt` / `menuPick` are the only ways in, from a pointer (hit-tested in `pointerdown` like the
-tome cards) or from the keys the game already uses (`menuKey`: W/S or the arrows to move, SPACE or
+explains neither. `game.menu` is `{ index, rects, t, shake, board }`; `drawTitle` refills `rects` every
+frame and `menuAt` / `menuPick` are the only ways in, from a pointer (hit-tested in `pointerdown` like
+the tome cards) or from the keys the game already uses (`menuKey`: W/S or the arrows to move, SPACE or
 ENTER to choose). NEW GAME wipes the save and plays the opening scene; CONTINUE is dark and shakes
-its head until there is a run to come back to. `drawTitle` paints the whole canvas, vignette and empty
-thumb deck included, so nothing from the play view shows through.
+its head until there is a run to come back to; BEST raises `menu.board`, which `drawBoard` paints over
+the whole screen and which anything at all — key or pointer — puts away again, so while it is up it
+takes the single rect and nothing behind it is clickable. `drawTitle` paints the whole canvas, vignette
+and empty thumb deck included, so nothing from the play view shows through.
+
+**Score, and the board.** `scoreFor(kills, time, levelIndex)` is the only place a score is computed:
+pace against par (`rooms * score.perRoom`, capped at `fastCap`) times a kill multiplier (`killMul`,
+capped at `killCap`). Time is the axis and kills only multiply, so nothing about the score argues with
+*run, don't fight*. `levelCleared` scores the level, adds it to `game.totalScore` and offers it to
+`noteBest`; the win card reports the sum and offers it to `noteRunBest`. The board lives under
+`BEST_KEY`, separate from the run on purpose — `clearRun` never touches it, so a record outlives the
+run that set it. Every read and write is wrapped: a browser that refuses storage shows an empty BEST
+rather than breaking the menu.
 
 **The tome cards.** `takeBoon` is reachable from three places and all three are explicit: Digit1/2/3,
 and a pointer that goes **down and up on the same card** (`boonDown` holds the index it went down on,
@@ -257,7 +288,12 @@ and a pointer that goes **down and up on the same card** (`boonDown` holds the i
 beat after they appear, so the click that killed the boss cannot spend what he dropped. Nothing
 selects on hover, and nothing selects on a press alone.
 
-**The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, at }` to
+**What a death costs.** `startLevel` snapshots `game.levelBoons` from `game.boons`, and `restartLevel`
+comes back with that list minus its last entry — so a death takes the newest tome and nothing else, and
+a tome picked up inside the level that killed you goes with it. `onGoatDied` names what went off the
+same list. Nothing else may reset `boons` on a death: `restartLevel` passes `keepBoons`.
+
+**The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, score, at }` to
 `localStorage` under `SAVE_KEY` at the head of every level and again whenever a tome is taken; `loadRun`
 refuses anything of another version or off the end of `LEVELS`, and every call is wrapped, so a browser
 that refuses storage simply never offers CONTINUE. Winning clears it. CONTINUE re-enters the head of
@@ -283,6 +319,36 @@ too; `goat.state = 'ko'` is a render pose only, `goat.dazed` draws the stars, `g
 `skipIntro()` jumps to the dark, `skipIntro(true)` straight to play, and `endIntro` resets the goat and
 removes the men. Only `startLevel(..., withIntro)` from the title or the win screen plays it; the
 `ritual` flag on a level definition is what makes the first room the ritual room at all.
+
+**The drop.** `T.PIT` is the one tile that is neither floor nor wall. `isSolid` is false for it — the
+goat has to be able to walk in — so everything that must not walk in is kept out somewhere else:
+`World.walkable` keeps the flow field out of it (and `walkableAt` stops a man cutting the corner of
+one), and `hazardAt` reports it as a trap so a man steers round the lip the way he steers round the
+wheel, failing his `trapSense` roll now and then and going over. `Enemy.update` kills anything standing
+over one at the top of the method, before any state branch, so a flung body is as gone as a walking
+man; cause `'fall'` skips the two-hit absorb and leaves no body, no blood and no scorch. The goat gets
+`goatFalls` / `updateFall` and the `'falling'` state (a real state: `Goat.update` returns early in it),
+comes back at `goat.safeX/safeY` — the last non-pit point he stood on, recorded every frame — and pays
+`TUNING.fall.damage`. Nothing burns over a hole and the renderer draws pits in `drawPits` **after** the
+decals, so blood never lies across one; a pit with stone above and below it draws as a window instead.
+
+**Spike plates.** `kind === 'spike'`, driven by `updateSpike`, cycling `idle → armed → up → down →
+rest`. **Only the goat arms one** (`spike.trigger` tiles), which is what makes it a tool rather than
+furniture: the teeth come up behind him, on the ground whoever is chasing him is crossing. `bite`
+kills men and costs the goat a heart, `this.bit` stops a rise biting the same man twice, and
+`spikeThreat()` is what `hazardAt` and `avoidHazard` ask — a plate lying flat is floor and is skipped
+entirely. `levelDef.spikes` is the per-room chance, and the generator places two to four at a time
+because one plate in a room is a curiosity and three across the middle of it is a shape.
+
+**Reach.** `game.reaches(ax, ay, bx, by)` is the single answer to "is there a way from here to there
+for a blow": line of sight plus every `blocking` prop as a circle against the segment. `meleeHit`'s
+`inArc` and the goat's `headbuttHits` both ask it, so a club and a pair of horns are held to the same
+rule and neither comes through a wall, a pillar, a table or a shut door.
+
+**The shield you are carrying.** `Goat.shielded(x, y)` is the one test: within `weapon.coverR` of him
+and inside `weapon.coverArc` of where he is pointing. `Bullet.update` and `meleeHit` both use it, each
+turn spends a `uses` charge, and a club that lands on it staggers the man who swung for `weapon.parry`.
+It was the disc of the shield itself, which let almost everything past the edge.
 
 **Stairs.** `T.EXIT` and `T.ENTRY` are both drawn by `drawStairs`; `level.exitTile` and `level.entry`
 say where each flight starts. Stepping onto the exit enters state `climb` (`beginClimb`, `updateClimb`)
@@ -312,6 +378,18 @@ rifles first, then the men on your side — and the first `cell.alert` spawns co
 `cfg.sight + cfg.watchSight` tiles with no cone at all, and `updateHunter` keeps him on his post
 instead of closing. The room is only itself once rifles are a kind the run has met; before that it
 fills like any other room.
+
+**The camera lead.** `game.camLead` is carried, not read: `updateCamera` lerps it toward
+`aim * camera.lead` at `camera.leadLerp` and scales the lead by run speed (`camera.leadStill` at a
+standstill). Reading the aim straight meant that crossing the pointer over the goat threw the whole
+picture to the other side of him in a frame, which is what made turning around feel like being shaken.
+Reset it anywhere you hard-set `cam.x/y` (`startLevel`, `updateFall`).
+
+**The smear.** `TUNING.goat.trail` holds both ends of it and `Goat.update` mixes them by
+`game.mods.speed` against `trail.fastAt`, so SURE HOOVES lengthens the ghosts rather than only the
+number. Each ghost carries its own `max` life and `drawGoat` fades it against that, so a long smear
+fades over its whole length. This is the only place that boon is visible: it hangs off no button, so
+the rail cannot report it.
 
 **The loop.** Fixed 1/60 step, max 5 substeps, in `game.frame`. `timeScale` drives slow motion.
 A `setInterval` fallback drives the loop when `requestAnimationFrame` stalls, which it does when the
@@ -430,10 +508,9 @@ pass it as `--artifact <file>`; without it the script prints the local byte coun
   refers to her: no room, no ending, no line from the cult.
 - Pixel art proper. Everything is still drawn with canvas primitives in the final palette.
 - Gamepad support, a Priest boss, and the later acts sketched in `GOAT_OUT_brief.md`.
-- One thing from the 14 Sep 2026 playtest, written up in `BACKLOG.md`: how a score weighs time against
-  kills without quietly turning a run into a clearing job. The soul barrier was asked for and parked the
-  same day, for the same reason pillar 1 gives; the new level goes in at six and THE OSSUARY moves to
-  seven, keeping the finale. Everything else in that batch is buildable as written.
+- The endless roll against a wall, reported in the 14 Sep 2026 playtest and **not reproduced** — see
+  `BACKLOG.md` for what was measured and what to ask him. The soul barrier from the same batch was
+  parked, for the reason pillar 1 gives; everything else in it shipped in 1.4.
 
 `GOAT_OUT_brief.md` is the original stage-one design brief. It is history, not spec: several of its
 decisions have since been overridden. `CONCEPT.md` is the current truth.

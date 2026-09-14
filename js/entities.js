@@ -16,6 +16,7 @@ class Goat {
     this.holdLimit = 0;    // how long the man in his mouth will take to work loose, rolled per grab
     this.dazed = 0;        // stars over its head: the club in the opening scene, nothing else yet
     this.jitter = null;    // a tremble the opening scene puts on it; drawn, never simulated
+    this.safeX = x; this.safeY = y;   // the last floor he stood on, which is where a fall returns him
   }
 
   update(dt, game) {
@@ -28,6 +29,9 @@ class Goat {
     this.screamCd = Math.max(0, this.screamCd - dt * cdRate); this.screaming = Math.max(0, this.screaming - dt);
     this.grabCd = Math.max(0, this.grabCd - dt * cdRate);
     this.invuln = Math.max(0, this.invuln - dt); this.dazed = Math.max(0, this.dazed - dt);
+
+    // Over the edge. Nothing but the fall until the game puts him back on the boards.
+    if (this.state === 'falling') { this.vx *= 0.82; this.vy *= 0.82; this.timer -= dt; return; }
 
     // Off his feet. Nothing but the floor until it passes: no verbs, no aim, no momentum.
     // The pen is the only thing that does this to him, twice on the way out of it.
@@ -112,7 +116,13 @@ class Goat {
       const h = this.holding;
       if (h.dead || h.broken) { this.holding = null; }
       else {
-        h.x = this.x + this.aim.x * (g.grab.holdDist + h.r * 0.4); h.y = this.y + this.aim.y * (g.grab.holdDist + h.r * 0.4);
+        // He is carried in front of the face, but never inside stone: from a face full of wall the
+        // hold point is walked back toward the goat until it is on floor again. Before that, a throw
+        // from hard against a wall started inside the wall and ended up through it — which is the one
+        // throw the whole game is built to pay out on.
+        let reach = g.grab.holdDist + h.r * 0.4;
+        while (reach > 4 && world.isSolid(Math.floor((this.x + this.aim.x * reach) / TILE), Math.floor((this.y + this.aim.y * reach) / TILE))) reach -= 4;
+        h.x = this.x + this.aim.x * reach; h.y = this.y + this.aim.y * reach;
         h.vx = 0; h.vy = 0; h.facing = Math.atan2(this.aim.y, this.aim.x);
         this.holdTimer += dt;
         if (!inp.rmbDown) {
@@ -184,11 +194,15 @@ class Goat {
 
     // ---- motion smear + bloody hoof prints ----
     const spd = Math.hypot(this.vx, this.vy);
+    // The tome that makes him faster lengthens the smear. It is the only place SURE HOOVES is
+    // visible at all, and a boon nothing on screen answers is a boon that reads as nothing.
+    const TR = g.trail, quick = clamp((game.mods.speed - 1) / (TR.fastAt - 1), 0, 1);
+    const trailLife = lerp(TR.life, TR.fastLife, quick);
     this.trailTimer -= dt;
-    if (spd > g.speed * 0.55 && this.trailTimer <= 0) {
-      this.trailTimer = 0.028;
-      this.trail.push({ x: this.x, y: this.y, a: this.facing, life: 0.18 });
-      if (this.trail.length > 7) this.trail.shift();
+    if (spd > g.speed * TR.at && this.trailTimer <= 0) {
+      this.trailTimer = lerp(TR.gap, TR.fastGap, quick);
+      this.trail.push({ x: this.x, y: this.y, a: this.facing, life: trailLife, max: trailLife });
+      if (this.trail.length > Math.round(lerp(TR.keep, TR.fastKeep, quick))) this.trail.shift();
     }
     for (const t of this.trail) t.life -= dt;
     this.trail = this.trail.filter((t) => t.life > 0);
@@ -197,6 +211,8 @@ class Goat {
       if (this.hoofTimer <= 0) { this.hoofTimer = 0.09; world.dot(this.x + (Math.random() - 0.5) * 8, this.y + (Math.random() - 0.5) * 8, 2.2, PALETTE.bloodDark); }
     }
     if (spd > 100 && Math.random() < dt * 4) world.emitNoise(this.x, this.y, TUNING.noise.footstep);
+    // The last boards he stood on. A fall puts him back on them, so they are worth keeping.
+    if (!world.isPitPx(this.x, this.y)) { this.safeX = this.x; this.safeY = this.y; }
   }
 
   // The roll is a panic button, and it has to behave like one. With no direction asked for it throws
@@ -209,6 +225,8 @@ class Goat {
     const threats = [];
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted || e === this.holding) continue;
+      // Horns do not go through furniture either: a man behind a table is behind it.
+      if (!game.reaches(this.x, this.y, e.x, e.y)) continue;
       const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
       if (d > range || d < 1) continue;
       // Anyone winding up a swing is more of a reason to be elsewhere than anyone who is not.
@@ -353,6 +371,16 @@ class Goat {
     game.vibe(10);
   }
 
+  // Is a point in front of the shield he is carrying? Everything the shield is supposed to answer
+  // asks this: a rifle round, a club, a hound's teeth. An arc across his front rather than the disc
+  // of the shield itself, because the disc let almost everything past its edge.
+  shielded(x, y) {
+    const h = this.holding;
+    if (!h || h.kind !== 'weapon' || h.weapon !== 'shield' || h.broken) return false;
+    const W = TUNING.prop.weapon;
+    if (Math.hypot(x - this.x, y - this.y) > this.r + W.coverR) return false;
+    return Math.abs(angleDiff(Math.atan2(this.aim.y, this.aim.x), Math.atan2(y - this.y, x - this.x))) < W.coverArc / 2;
+  }
   damage(n, game, kx, ky, fromFire) {
     if (this.dead || (this.invuln > 0 && !fromFire)) return;
     if (game.dev.god) { game.particles(this.x, this.y, 4, PALETTE.fireHi, 90); return; }
@@ -382,7 +410,7 @@ class Prop {
       : kind === 'table' ? P.table.r : kind === 'lamp' ? P.lamp.r
       : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r
       : kind === 'weapon' ? P.weapon.r
-      : kind === 'cage' ? P.cage.r : 13;
+      : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : 13;
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
     this.deco = !!(opts && opts.deco);        // a cage that is scenery: it never opens
     this.gate = 0;                            // 1 while the opening scene has this bar laid flat
@@ -397,12 +425,16 @@ class Prop {
     // What this one has left in it. A blade is one throw; a shield is three men or three bullets.
     this.uses = kind === 'weapon' ? (P.weapon.uses[this.weapon] || 1) : 0;
     this.vertical = opts && opts.vertical; this.open = 0; this.pressure = 0; this.wobble = 0;
+    // A spike plate sits in the floor doing nothing until the goat crosses it: 'idle' waiting,
+    // 'armed' counting down under his hooves, 'up' with the teeth out, then 'down' and a rest.
+    this.spikeState = 'idle'; this.spikeT = 0; this.hits = 0;
   }
   // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing.
   get item() { return this.kind === 'pot' || this.kind === 'weapon'; }
   get blocking() {
     if (this.broken) return false;
-    if (this.item || this.kind === 'heal') return false;
+    // Nothing stands on a plate's shoulders: it is floor until it is teeth.
+    if (this.item || this.kind === 'heal' || this.kind === 'spike') return false;
     if (this.kind === 'door') return this.open < 0.5;
     return true;
   }
@@ -423,7 +455,7 @@ class Prop {
       case 'door': this.smash(game, ax, ay); break;
       case 'table': this.shove(game, ax, ay); break;
       case 'lamp': this.topple(game, ax, ay); break;
-      case 'cage': if (this.deco) { this.wobble = 0.3; game.audio.sfxCageHit(); game.shake(3); } else this.breakCage(game); break;
+      case 'cage': if (this.deco) this.breakDeadCage(game); else this.breakCage(game); break;
       default: this.wobble = 0.3; game.audio.sfxThud(); break;
     }
   }
@@ -470,6 +502,79 @@ class Prop {
     game.floatText(this.x, this.y - 30, C.strain[need - 1] || 'OUT', PALETTE.fireHi);
   }
 
+  // The other cage. Three blows, nothing taken out of him for them, and no prompt on the floor
+  // asking for it: the pen taught the verb the hard way and this is what having learned it is worth.
+  // What it is worth is the last line, which is the only thing the room ever says about the sheep.
+  breakDeadCage(game) {
+    const C = TUNING.prop.deadCage, need = C.hits;
+    const bars = game.props.filter((p) => p.kind === 'cage' && !p.broken && p.deco);
+    if (!bars.length) return;
+    if (game.deadCageLunge === game.goat.lungeId) return;
+    game.deadCageLunge = game.goat.lungeId;
+    const hits = (bars[0].hits || 0) + 1;
+    for (const p of bars) { p.hits = hits; p.wobble = 0.3; }
+    if (hits < need) {
+      game.world.emitNoise(this.x, this.y, TUNING.noise.cage * 0.3);
+      game.audio.sfxCageHit(); game.shake(4); game.hitstop(0.03); game.vibe(18);
+      game.particles(this.x, this.y, 5 + hits, PALETTE.bone, 200);
+      game.audio.sfxBleat(230 + hits * 24, 0.08, 0.22);
+      game.floatText(this.x, this.y - 28, C.strain[hits - 1] || 'IT HOLDS', PALETTE.bone);
+      return;
+    }
+    for (const p of game.props) {
+      if (p.kind !== 'cage' || p.broken || !p.deco) continue;
+      p.broken = true; p.dead = true;
+      game.particles(p.x, p.y, 5, PALETTE.ash, 200);
+      game.world.dot(p.x + (Math.random() - 0.5) * 12, p.y + 5, 2.2, '#2e2a26');
+    }
+    game.world.emitNoise(this.x, this.y, TUNING.noise.cage * 0.7);
+    game.audio.sfxCage(); game.shake(8); game.hitstop(0.05); game.vibe(35);
+    game.audio.sfxBleat(300, 0.18, 0.5);
+    game.floatText(this.x, this.y - 30, C.done, PALETTE.blood);
+  }
+
+  // The spike plate. It is floor until the goat has crossed it: his own weight arms it and the teeth
+  // follow a moment later, so what it takes is the ground he has just left — which is the one piece
+  // of floor whoever is chasing him is looking at least.
+  updateSpike(dt, game) {
+    const S = TUNING.prop.spike, g = game.goat;
+    this.spikeT -= dt;
+    if (this.spikeState === 'armed') {
+      if (this.spikeT <= 0) {
+        this.spikeState = 'up'; this.spikeT = S.up; this.bit = [];
+        game.world.emitNoise(this.x, this.y, TUNING.noise.swing); game.audio.sfxSteel(); game.shake(3);
+        game.particles(this.x, this.y, 7, PALETTE.ash, 130);
+      }
+    } else if (this.spikeState === 'up') {
+      this.bite(game);
+      if (this.spikeT <= 0) { this.spikeState = 'down'; this.spikeT = S.down; }
+    } else if (this.spikeState === 'down') {
+      if (this.spikeT <= 0) { this.spikeState = 'rest'; this.spikeT = S.rest; }
+    } else if (this.spikeT <= 0 && !g.dead && len(g.x - this.x, g.y - this.y) < S.trigger * TILE) {
+      this.spikeState = 'armed'; this.spikeT = S.arm;
+      game.audio.sfxThud();
+    }
+  }
+  // Everything standing on the plate when the teeth come, goat included. A man dies on them; the
+  // goat pays the same heart the Mill charges, and the plate does not ask him twice.
+  bite(game) {
+    const S = TUNING.prop.spike;
+    const bit = this.bit || (this.bit = []);
+    for (const e of game.enemies) {
+      if (e.dead || e.held || e.ghosted || bit.indexOf(e) >= 0) continue;
+      if (len(e.x - this.x, e.y - this.y) > this.r + e.r) continue;
+      bit.push(e);
+      e.die(game, 'spike');
+    }
+    const g = game.goat;
+    if (!g.dead && len(g.x - this.x, g.y - this.y) < this.r + g.r) g.damage(S.damage, game, 0, -40);
+  }
+  // Is the plate a place nobody should be standing? Up, or close enough to up that a man walking on
+  // now would be on it when the teeth arrive.
+  spikeThreat() {
+    return this.spikeState === 'up' || (this.spikeState === 'armed' && this.spikeT <= TUNING.prop.spike.lead);
+  }
+
   // The gong answers back. Every man on the floor now knows where you are — and for the next few
   // seconds the goat runs half again as fast and his hands come back half again as quick, which is
   // exactly the trade you want in a room that already had twelve men in it.
@@ -485,9 +590,21 @@ class Prop {
     game.ring(g.x, g.y, 3 * TILE, PALETTE.fireHi); game.flash(PALETTE.fireHi, 0.12); game.vibe(25);
   }
 
-  // Doors: the goat goes through them. Anyone loitering on the far side goes down with it.
+  // Doors: the goat goes through them, on the third blow. A door is the one thing in a corridor
+  // that can hold you still, and two extra beats of being held still in a corridor — with whatever
+  // heard the first blow already coming — is worth more than the shortcut ever was.
   smash(game, ax, ay) {
     if (this.broken) return;
+    const D = TUNING.prop.door;
+    this.hits = (this.hits || 0) + 1;
+    if (this.hits < D.hits) {
+      this.wobble = 0.3; this.open = Math.max(this.open, 0);
+      game.world.emitNoise(this.x, this.y, TUNING.noise.door * 0.5);
+      game.audio.sfxThud(); game.shake(4); game.hitstop(0.02); game.vibe(14);
+      game.particles(this.x, this.y, 8, PALETTE.wood, 210);
+      game.floatText(this.x, this.y - 28, this.hits === 1 ? 'IT HOLDS' : 'IT SPLITS', PALETTE.wood);
+      return;
+    }
     this.broken = true; this.dead = true;
     game.world.emitNoise(this.x, this.y, TUNING.noise.door); game.audio.sfxSplat(); game.shake(5); game.hitstop(0.03);
     game.particles(this.x, this.y, 16, PALETTE.wood, 260);
@@ -521,6 +638,7 @@ class Prop {
     if (this.rung > 0) this.rung -= dt;
     if (this.wobble > 0) this.wobble -= dt;
     if (this.kind === 'mill') { this.updateMill(dt, game); return; }
+    if (this.kind === 'spike') { this.updateSpike(dt, game); return; }
     if (this.kind === 'heal' || this.kind === 'cage') return;
     if (this.kind === 'weapon') { this.updateWeapon(dt, game); return; }
     if (this.kind === 'door') { this.updateDoor(dt, game); return; }
@@ -717,7 +835,7 @@ class Bullet {
       // A carried shield turns bullets until it is scrap: the one thing in the game that answers
       // a rifle without you having to be holding a man.
       const hold = goat.holding;
-      if (hold && hold.kind === 'weapon' && hold.weapon === 'shield' && Math.hypot(hold.x - this.x, hold.y - this.y) < hold.r + 4) {
+      if (hold && hold.kind === 'weapon' && hold.weapon === 'shield' && goat.shielded(this.x, this.y)) {
         this.dead = true;
         game.particles(this.x, this.y, 6, PALETTE.fireHi, 170); game.audio.sfxSteel();
         game.floatText(hold.x, hold.y - 28, 'CLANG', PALETTE.bone); game.shake(2);

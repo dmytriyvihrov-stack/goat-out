@@ -12,6 +12,12 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ## 14 September 2026 — a long sitting with 1.3
 
+**Where this batch went: all of it shipped in 1.4 except two.** The soul barrier was asked for and
+parked the same day (below, with the reason), and the endless roll against a wall did not reproduce —
+pressed against a wall with the key mashed the cooldown holds, three rolls in three seconds, exactly as
+on open floor. Everything else is in the build; `CHANGELOG.md` carries what each one turned into. The
+entries stay here because the reasoning behind them is worth keeping.
+
 ### Kept, and worth protecting
 
 **The wraith goes through the walls.** Called out unprompted as the best thing in the build. It is the
@@ -29,13 +35,17 @@ it. Fix at the hold: sweep the hold point back toward the goat until it is on fl
 keep starting from wherever the man actually is. A throw that has a wall in it is supposed to be the best
 throw in the game — this is the one place it silently is not.
 
-### bug — an endless roll against a wall
+### bug — an endless roll against a wall — not reproduced, 14 Sep 2026
 
-Pressed up against a wall, the roll comes back with no cooldown and can be spammed. Not diagnosed.
-`rollCd` is set at the top of the roll and the state machine is timer-driven, so the fault is upstream of
-the cooldown — an input edge or a state that returns to `idle` early when the collision eats the motion.
-Reproduce it against a wall on level 1 with the harness before touching anything, and check `goat.rollCd`
-across the frames rather than trusting the look of it.
+Pressed up against a wall, the roll is said to come back with no cooldown. **Measured and it does not.**
+Driven from the harness with `rollPressed` set every frame for three seconds, hard against a wall and
+then on open floor: three rolls both times, `rollCd` 1.05 s at the end of each, against a 1.35 s
+cooldown. `rollCd` is written in exactly one place and nothing clears it.
+
+So it is something the measurement did not have: a tome (LOOSE JOINTS takes the cooldown to 0.61 s), the
+gong on top of it (another ×1.5 off every cooldown as it ticks, so 0.4 s — which is fast enough to read
+as endless), or a different meaning of *pressed against a wall*. Worth asking him which, before
+changing a number that is behaving.
 
 ### number — the door between rooms should take three blows, not one
 
@@ -156,3 +166,48 @@ time — written at `levelCleared` and wrapped like every other storage call, so
 storage shows a BEST with nothing in it rather than breaking the menu. A level never played shows a dash.
 Deciding needed: whether NEW GAME wipes it along with the run (it should not — a record survives the
 runs that set it).
+
+---
+
+## 14 September 2026, later — while 1.4 was being built
+
+Sent one at a time while the work was going on. All of it shipped in 1.4.
+
+### bug — a man in your mouth was safe from everything
+
+Two of them, and they were the same hole: the branch that runs a held man sits above every other state
+in `Enemy.update` and returned before anything else could touch him. So **a mage standing in his own
+witchfire did not burn**, and neither did anyone else you carried through a fire. The branch ends with
+the fire check now, and whatever catches comes straight out of the mouth — which is the counter to
+carrying a mage at all.
+
+### bug — the held mage's fire followed the goat
+
+The rune was dragged along under him every frame, so it went off under the goat wherever the goat had
+run to. It is planted where he started painting it now. Keep moving and you leave a trail of it behind
+you; stand still and you are standing in it. That is the difference between a mage being a death
+sentence and a mage being a thing to be handled.
+
+### feel — enemies had no back
+
+Inside two and a half tiles a man saw you wherever you stood, which took away the one thing his cone was
+for. The cone holds at every range now, and what gives you away behind a man is noise — which the noise
+system already turns him toward. Stealth is never the plan and is always available.
+
+### bug — clubs came through walls
+
+`meleeHit` asked only for reach and an arc. It asks `game.reaches` now: line of sight plus every
+blocking prop against the segment. The goat's horns are held to it too — a man behind a table is behind
+it, both ways round.
+
+### bug — a carried shield did not stop anything (with a screenshot of it not stopping anything)
+
+It was a disc the size of the shield, hung 26 px in front of the goat, so almost everything aimed at him
+went past its edge. It is an arc across his front now — `weapon.coverR` / `coverArc` — every turn spends
+a charge, and a club that lands on it staggers the man who swung. His back is still his back.
+
+### system — a death costs one tome, not the run
+
+Asked for as "минус один том, как было в начале уровня". `startLevel` snapshots what he walked in with
+and `restartLevel` returns that list minus its newest entry, so a tome picked up in the level that
+killed you goes with it. The death card names what went.

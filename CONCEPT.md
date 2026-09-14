@@ -103,7 +103,15 @@ seen you yet, when a scream pulls them somewhere, when they commit to a swing, w
 front of them, and when they run into fire. One man speaks at a time so a crowd reads as a cult rather
 than as noise.
 
-**They read the room.** Flame, a lit brazier, a rune about to erupt and the arms of the Mill all make a
+**They have a front and nothing else.** A man sees what is inside his cone and nothing outside it,
+however close you are standing — walk up behind one and he does not know. What gives you away back
+there is noise: running makes it, the gong makes it, a door coming off its hinges makes it, and a man
+who hears something turns to face it and goes to look. Bumping into him counts as being seen, a rifle
+posted to watch a door has no blind side worth walking round, and the dead do not need eyes at all.
+Stealth is never the plan, but it is always available, and how loud you are is the whole of it.
+
+**They read the room.** Flame, a lit brazier, a rune about to erupt, a spike plate about to come up,
+the lip of a drop and the arms of the Mill all make a
 man steer round rather than through — and for the Mill he checks where the arms will be by the time he
 arrives, not where they are now. Hemmed in, he stops at the edge or gives ground. A man already alight has
 nothing to dodge and spreads it.
@@ -134,9 +142,10 @@ nastier, and a later level is harder than the one before it. Caps keep any singl
 mage, one champion, two rifles, seven men. `node tools/balance.js` prints what the numbers produce and
 fails when a rule breaks.
 
-Six levels. Every level holds arena bosses, one Mill room near the middle, and milk bowls that restore
-a heart. The later ones add a Gallery of posted rifles, a Great Hall, a killbox, and one level built the
-other way round: almost no walls, and furniture instead.
+Seven levels. Every level holds arena bosses, one Mill room near the middle, and milk bowls that restore
+a heart. The later ones add a Gallery of posted rifles, a Great Hall, a killbox, spike floors, one level
+built the other way round — almost no walls, and furniture instead — and one whose floor is not all
+there.
 
 **The killbox**, late on the four levels that have rifles. A wide room with almost nothing in it and two
 rifles posted on the far side of it, watching the door you have to come in by. A posted man sees a good
@@ -152,6 +161,7 @@ you. The room asks which of those you trust.
 | **THE ROAD** | 14 | Bearers, Seers, Hunters, hounds | Two Butchers |
 | **THE THRESHING FLOOR** | 12 | All five, mixed | Elite Seer, Butcher |
 | **THE BRIDGE** | 16 | All five, mixed | Butcher, elite Seer, Butcher |
+| **THE RAFTERS** | 16 | All five, mixed | Elite Seer, Butcher, champion |
 | **THE OSSUARY** | 16 | Wraiths, and a garrison | Butcher, elite wraith, elite Seer |
 
 **THE OSSUARY** is the last ground and the only one whose enemy cannot be fought on the terms the rest
@@ -171,6 +181,14 @@ field of stone posts, table rows you can shove into lanes, an island of posts ri
 braziers down the flanks, and a ring of hay that becomes a wall the moment you light it and never
 becomes floor again. Rifles hold the long lines and hounds own the middle, so the level is one long
 argument about which half of a room is yours.
+
+**THE RAFTERS** is up in the roof of the hall, and it is the first ground in the compound that is not
+all there. Holes in the boards, windows in the walls, and the same drop under both. A man who goes over
+an edge is gone — no body, no blood, nothing left on the floor — and the goat is only rented to it: he
+comes back up on the last boards he stood on a heart lighter, the same price the Mill charges. That
+price is the whole design of the level. Free, and every room is a shortcut; fatal, and nobody goes near
+the interesting half of one. Nobody paths into a hole, so the men take the long way round the ends —
+except the one in a crowd who reads it wrong, which is the man you can lead over the edge.
 
 **The Great Hall**, late on THE ROAD and again on THE BRIDGE: a single room 38 by 22 tiles holding two
 Mills, rows of pillars, hay fields, tables, braziers, lamps, a bell and fifteen men or more. The exit is
@@ -194,7 +212,8 @@ to level 1 alone.
 **The first room** is the one you woke up in. The altar stands off to one side — strapped open, waiting,
 with the knife and the remains of the one that went before you, about your own size — and you are in
 the pen beside it, on a cult pictogram burned into the floor. Across the room stands a second, smaller
-cage, shut for good, with a sheep in it that stopped waiting a while ago. Seven blows anywhere on your
+cage with a sheep in it that stopped waiting a while ago — three blows open that one, and what it is
+worth is the one line the room ever says about her. Seven blows anywhere on your
 bars take the whole pen apart and are heard across the level; the third and the sixth take your feet out
 from under you. Stand in it for five seconds without working that out and the floor tells you which
 button opens it.
@@ -223,16 +242,25 @@ top-down game explains itself.
 - **Hay** spreads fire tile to tile and burns down to ash.
 - **Pots** break on use and make noise.
 - **Bells** call the entire level.
-- **Doors** block corridors. The goat smashes through and floors whoever waited behind. Cultists who
-  pile up eventually shoulder them open.
+- **Doors** block corridors and take three blows. The goat goes through on the third and floors whoever
+  waited behind it; cultists who pile up eventually shoulder them open from their side. Two extra beats
+  of being held still in a corridor, with whatever heard the first blow already coming, is what the
+  door is for.
+- **Spike floors**, from the third level on. The teeth come up where you have already been: crossing a
+  plate arms it and it bites a beat later, so what it takes is the ground you have just left — which is
+  the ground whoever is chasing you is standing on. A man dies on them and the goat pays a heart.
+- **Drops** — holes in the floor and windows in the walls — on the level that has them. Anything thrown
+  through one is gone; walking into one costs a heart and puts you back where you stepped off.
 - **Tables** slide when headbutted and carry men into the wall behind.
 - **Oil lamps** topple into a pool of fire.
 - **Stands of arms** hold a sword or a shield, and they are rare: one to an arena, about one ordinary
   room in six, and nothing at all on level 1 until halfway in. Nothing you take off one survives being
   used. A thrown blade goes into whatever it finds and snaps there, and a blade thrown at a wall is a
   blade thrown away. A shield is worth three — men flattened, bullets turned, or any mix — and
-  splinters on the third. Neither is picked up twice, so a stand is a moment the room offers you
-  rather than a tool you carry through the level.
+  splinters on the third. A carried shield covers an arc across the goat's front: rounds and clubs
+  arriving anywhere he is facing are turned, each turn spends a charge, and the man who swung into it
+  stands there holding the shock of it. His back is still his back. Neither blade nor shield is picked
+  up twice, so a stand is a moment the room offers you rather than a tool you carry through the level.
 - **The Mill** is a ritual grinding wheel with two sweeping arms. It flings cultists to their deaths and
   takes a heart off you. It does not care whose side anyone is on. Its room is deliberately taller than
   the arms are long: there is a lane along the top and the bottom, so the room is crossed by reading it.
@@ -244,7 +272,9 @@ top-down game explains itself.
 
 Each boss drops one. A tome offers **three of one kind**: either three actives or three passives. The
 first tome of a run always offers actives, so every run picks a skill before it picks numbers. Boons
-carry across levels and die with the goat.
+carry across levels, and a death costs one of them rather than all of them: you come back at the head
+of the level with what you walked into it carrying, minus the newest thing you had learned. The card
+names what went, because losing IRON SKULL is a different feeling from losing a number.
 
 **Actives** change what a button does.
 
@@ -279,6 +309,12 @@ the end the level is a record of the run.
 **Juice.** Every kill throws the camera away from the body, shoves the lens in, flashes the screen and
 sprays chunks that stain the floor where they land. Kills inside 2.4 s of each other stack: the hold gets
 longer, and at three the game goes briefly slow.
+
+**Score.** Every level ends on its own: pace against the level's par, multiplied by what you killed on
+the way. Time is the axis and bodies are the multiplier, so running is never the wrong answer and the
+best run is a fast one with bodies in it rather than a slow one that cleared every room. The run ends on
+the sum of them, and BEST on the first screen keeps the best score and the best time for each level and
+the best whole run. NEW GAME wipes the run and never the board.
 
 **Sound.** A pad, a walking bass and a phrygian motif under synthesised ritual percussion that escalates
 with how many enemies are aware of you, plus a metallic shaker whenever a Hunter has you. The motif only

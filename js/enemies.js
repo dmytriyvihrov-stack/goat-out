@@ -9,6 +9,7 @@ class Enemy {
     this.aware = false; this.target = null; this.lastSeen = null;
     this.flung = false; this.thrown = false; this.held = false; this.dead = false;
     this.burning = 0; this.burnDir = 0; this.burnTick = 0; this.chargeCd = 0; this.reload = 0; this.flash = 0;
+    this.litByMan = false; this.passedFire = false;   // who may hand fire on, and who has already
     this.lastLunge = -1; this.shieldHits = 0; this.wander = Math.random() * 3; this.lostTimer = 0;
     this.bombFuse = 0; this.flail = 0; this.heldSwing = 0;
     this.castCd = Math.random() * 1.2; this.blinkCd = 0; this.rune = null; this.blinkFx = 0;
@@ -81,8 +82,12 @@ class Enemy {
     game.particles(this.x, this.y - 6, 4, PALETTE.bone, 90);
   }
 
-  ignite(game, witch) {
+  // `fromMan` is a fire that was handed to him by somebody already alight. It marks him as the end
+  // of the line: he burns like anyone else and passes it to nobody, so a brazier costs the room two
+  // men rather than every man in it.
+  ignite(game, witch, fromMan) {
     if (this.dead || this.burning > 0 || this.ghosted) return;
+    this.litByMan = !!fromMan;
     this.burning = this.kind === 'butcher' ? 3.0 : TUNING.fire.burnRunTime;
     // Fire was never what took the big man down. He walks out of it scorched and one heart lighter.
     if (this.kind === 'butcher') this.burnHearts = this.cfg.burnHearts;
@@ -100,7 +105,7 @@ class Enemy {
     // Anyone carrying more than one hit — an arena elite, or any Seer — eats it, goes down and gets
     // back up; a Seer blinks clear as he does. Fire counts, so a mage has to be lit twice. Being torn
     // open or going off like a bomb does not: there is nothing left to get up.
-    if (this.hp > 1 && cause !== 'devour' && cause !== 'boom') {
+    if (this.hp > 1 && cause !== 'devour' && cause !== 'boom' && cause !== 'fall') {
       this.hp -= 1; this.flash = 0.3; this.aware = true;
       if (this.kind === 'wraith') {
         // It comes apart and puts itself back together somewhere else. Catching it once is not enough.
@@ -129,7 +134,10 @@ class Enemy {
       game.onKill(this, 'unmade');
       return;
     }
-    if (cause === 'burn') { w.scorch(this.x, this.y, this.r * 1.6); w.body(this.x, this.y, this.r, this.facing, '#241a16'); }
+    // Over an edge there is no body and no blood: he is simply not in the room any more, and the
+    // hole he went down is the only mark of it.
+    if (cause === 'fall') { game.particles(this.x, this.y, 10, PALETTE.ink, 120); game.audio.sfxSwing(); }
+    else if (cause === 'burn') { w.scorch(this.x, this.y, this.r * 1.6); w.body(this.x, this.y, this.r, this.facing, '#241a16'); }
     else {
       w.splat(this.x, this.y, dx || 0, dy || 0, this.kind === 'butcher' ? 26 : 16);
       w.body(this.x, this.y, this.r, Math.atan2(dy || 0, dx || 1), PALETTE.ink);
@@ -172,7 +180,13 @@ class Enemy {
     // The dead do not need a line of sight and they do not have a front. They simply know.
     if (this.kind === 'wraith') return true;
     const ang = Math.atan2(dy, dx);
-    if (!this.watchful && Math.abs(angleDiff(this.facing, ang)) > this.cfg.cone / 2 && d > 2.5 * TILE) return false;
+    // Behind a man is behind him however close you are standing. Walking up on somebody used to
+    // stop working inside two and a half tiles, which took away the one thing the cone was for; what
+    // gives you away back there now is noise, and how much of it you make is yours to decide.
+    // Bumping into him still counts: `feel` is the couple of pixels past the two bodies where he
+    // stops needing eyes.
+    if (!this.watchful && Math.abs(angleDiff(this.facing, ang)) > this.cfg.cone / 2
+        && d > this.r + g.r + TUNING.ai.feel) return false;
     return game.world.los(this.x, this.y, g.x, g.y);
   }
 
@@ -181,9 +195,11 @@ class Enemy {
   // right thing about it.
   hazardAt(game, x, y, near) {
     if (game.world.isBurningPx(x, y)) return { kind: 'fire' };
+    if (game.world.isPitPx(x, y)) return { kind: 'trap' };
     for (const p of (near || game.hazards)) {
       if (p.broken) continue;
       if (p.kind === 'mill') { if (p.millThreat(x, y, this.r + TUNING.ai.millClear)) return { kind: 'trap', p }; }
+      else if (p.kind === 'spike') { if (p.spikeThreat() && len(p.x - x, p.y - y) < p.r + this.r) return { kind: 'trap', p }; }
       else if (len(p.x - x, p.y - y) < p.r + this.r + 4) return { kind: 'fire', p };
     }
     for (const rn of game.runes) if (len(rn.x - x, rn.y - y) < TUNING.seer.runeRadius * TILE + this.r) return { kind: 'trap' };
@@ -197,13 +213,15 @@ class Enemy {
     const w = game.world;
     // Flame he can walk up to and read late. A wheel has to be read from further out, or the step
     // aside happens inside the arc he is stepping out of.
-    const millNear = game.hazards.some((p) => p.kind === 'mill' && Math.abs(p.x - this.x) < 9 * TILE && Math.abs(p.y - this.y) < 9 * TILE);
+    const millNear = game.hazards.some((p) => (p.kind === 'mill' || p.kind === 'spike')
+      && Math.abs(p.x - this.x) < 9 * TILE && Math.abs(p.y - this.y) < 9 * TILE);
     const look = this.r + (millNear ? TUNING.ai.trapLook : TUNING.fire.avoidLook);
     const l = Math.hypot(dirx, diry) || 1; dirx /= l; diry /= l;
     // Only what is within a step of him can matter, and gathering that once keeps the probes cheap.
     const near = [];
     for (const p of game.hazards) {
       const reach = (p.kind === 'mill' ? TUNING.mill.armLen : p.r) + this.r + look + TUNING.ai.millClear + 6;
+      if (p.kind === 'spike' && !p.spikeThreat()) continue;   // a plate lying flat is floor
       if (Math.abs(p.x - this.x) < reach && Math.abs(p.y - this.y) < reach) near.push(p);
     }
     const bad = (ax, ay) => this.hazardAt(game, this.x + ax * look, this.y + ay * look, near);
@@ -262,6 +280,9 @@ class Enemy {
   update(dt, game) {
     if (this.dead || this.scripted) return;
     const w = game.world, g = game.goat, cfg = this.cfg;
+    // The floor stops. Flung, floored, alight or simply walking: a man over a hole is gone, and the
+    // mist is the one thing that can cross one.
+    if (!this.ghosted && !this.held && w.isPitPx(this.x, this.y)) { this.die(game, 'fall'); return; }
     this.chargeCd = Math.max(0, this.chargeCd - dt); this.reload = Math.max(0, this.reload - dt);
     this.barkCd = Math.max(0, this.barkCd - dt);
     this.dazed = Math.max(0, this.dazed - dt);
@@ -314,7 +335,10 @@ class Enemy {
       if (this.kind === 'seer') {
         this.castCd = Math.max(0, this.castCd - dt);
         if (this.rune) {
-          this.rune.x = this.x; this.rune.y = this.y;
+          // The mark goes where he started painting it and stays there. It used to be dragged along
+          // under him, which meant it went off under the goat wherever the goat had run to — so
+          // carrying a mage was a death sentence rather than a thing to be handled. Now the fire
+          // comes up where you were: keep moving and you are leaving a trail of it behind you.
           this.timer -= dt;
           if (this.timer <= 0) this.castRune(game);
         } else if (this.castCd <= 0) {
@@ -331,6 +355,9 @@ class Enemy {
           game.audio.sfxSwing();
         }
       }
+      // Fire does not care that he is in your mouth, and a mage standing in his own is no exception:
+      // whatever catches comes straight out of it, which is the counter to carrying one at all.
+      if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
       return;
     }
 

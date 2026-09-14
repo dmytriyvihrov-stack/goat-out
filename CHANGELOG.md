@@ -5,6 +5,96 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.4 — a seventh level, a floor that opens, and a shield that is a shield
+
+**THE RAFTERS, and the floor stops being a promise.**
+
+- **A new sixth level, up in the roof of the hall.** Holes in the boards and windows in the walls,
+  and the same drop under both. THE OSSUARY moves to seven and stays the finale — it was built as the
+  last ground and a level behind it would have taken that off it.
+- **A man who goes over an edge is gone.** No body, no blood, nothing on the floor: he is simply not
+  in the room any more. It counts as a kill, because it was one.
+- **The goat is only rented to the drop.** You come back up on the last boards you stood on, one
+  heart lighter — the same price the Mill charges. That price is the whole design of it: free, and
+  the level is a shortcut; fatal, and nobody goes near the interesting half of a room.
+- **Nobody walks into a hole on purpose.** The flow field treats a drop as stone and men read the lip
+  the way they read the wheel, so they take the long way round — except the one in a crowd who fails
+  his trap check, which is the man you can lead over the edge.
+- **Five hand-authored rooms for it**, narrow on purpose: a gantry over two shafts, a ledge with the
+  whole far side missing, joists with the boards off between them, a well, and a wall of windows.
+
+**Spike floors, from the third level on.**
+
+- **The teeth come up where you have already been.** Crossing a plate arms it and it bites a beat
+  later, so what it takes is the ground you have just left — which is the ground whoever is chasing
+  you is standing on. A man dies on them; the goat pays a heart.
+- **Men read a plate the way they read the Mill**, and the one who fails his roll walks onto it. The
+  plates are the first thing in the building that kills for you without being a wall.
+
+**A score, and somewhere to keep it.**
+
+- **Every level now ends on its own score**, out of the time it took and the bodies in it. Pace
+  against the level's par is the whole of it and kills only multiply, so running is never the wrong
+  answer and the best run is a fast one with bodies in it, not a slow one that cleared every room.
+- **The run ends on the sum of them**, in place of the old count of kills and deaths.
+- **BEST, on the first screen.** A third thing on the menu holding the best score and the best time
+  for every level, and the best whole run. NEW GAME wipes the run and never the board.
+
+**A death costs a tome, not the run.**
+
+- You come back with what you walked into the level carrying, **minus the newest thing you had
+  learned** — and the card names it, because losing IRON SKULL is a different feeling from losing a
+  number. A run can be survived badly now instead of only perfectly.
+
+**Fixed, and most of it was the room not being real.**
+
+- **A thrown man no longer ends up inside the wall.** The fault was the hold, not the throw: the man
+  was placed a fixed distance in front of the face with nothing asking whether that point was floor,
+  so from hard against a wall he was already standing in the stone before you let go. The hold point
+  is walked back to floor now, and a throw into a wall pays out the way it always should have.
+- **A door takes three blows.** It is the one thing in a corridor that can hold you still, and two
+  more beats of being held still — with whatever heard the first blow already coming — is worth more
+  than the shortcut was.
+- **A carried shield actually stops things.** It was a disc the size of the shield, so almost
+  everything aimed at the goat went past its edge and hit him anyway. It is an arc across his front
+  now: rounds and clubs arriving anywhere he is facing are turned, each one spends a charge, and the
+  man who swung into it stands there holding the shock of it. His back is still his back.
+- **Blows no longer come through walls and furniture.** A club, a bite or a pair of horns needs a way
+  to the thing it is swinging at; stone, a pillar, a table, a shut door or the hub of the Mill takes
+  it instead. Both sides are held to it.
+- **A man has a front and nothing else.** Inside two and a half tiles he used to see you wherever you
+  stood, which took away the one thing his cone was for. Walk up behind him now and he does not know
+  — what gives you away back there is noise, and how much of it you make is yours to decide. Bumping
+  into him still counts.
+- **The mage in your mouth paints the ground where he started, and it stays there.** The mark used to
+  be dragged along under him, which meant the fire came up under the goat wherever the goat had run
+  to: carrying a mage was a death sentence rather than a thing to be handled. Keep moving now and you
+  are leaving a trail of it behind you.
+- **And a man in your mouth burns like anybody else.** Fire does not care that he is being carried,
+  a mage standing in his own is no exception, and whatever catches comes straight out of the mouth.
+- **Fire goes from a man to the first man he blunders into, and stops there.** The one who was handed
+  it never hands it on, so a brazier costs a room two men rather than the room.
+- **The camera stopped throwing the picture across the screen.** The lead was read straight off the
+  aim, so crossing the pointer over the goat moved the whole view to the other side of him in one
+  frame. It is carried now, and a turn on the spot barely moves it at all.
+- **The hound's bite is slower than its dart.** At three-tenths of a second the bite landed before
+  the eye had the tell, and the dart was doing work it could not be read doing.
+- **The second cage in the first room opens.** Three blows, nothing taken out of him for them, and no
+  prompt asking for it: the pen teaches the verb the hard way and this is what having learned it is
+  worth. What it is worth is the one line the room ever says about the sheep in it.
+- **SURE HOOVES is visible.** The smear behind the goat now lengthens with the tome that makes him
+  faster — sixteen ghosts over a third of a second instead of seven over a fifth. It was the best
+  passive in the game and nothing on screen answered it.
+- **The last two levels are harder**, because a level went in in front of the finale and the finale
+  has to stay the finale. `node tools/balance.js` agrees.
+
+**Not fixed**
+
+- **The endless roll against a wall.** Pressed against a wall with the key mashed, the cooldown holds:
+  three rolls in three seconds, exactly as everywhere else. Not reproduced, so not touched.
+
+---
+
 ## 1.3 — a shorter goat, a gong worth hitting, and a mage you should think twice about picking up
 
 **The goat moves less, and everything he waits for is now a real wait.**

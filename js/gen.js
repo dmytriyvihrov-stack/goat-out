@@ -1,6 +1,8 @@
 // Level generation: a chain of template rooms joined by 2-wide corridors, trending up-right.
 // EXIT is the flight of stairs up out of the last room; ENTRY the flight you came up into the first.
-const T = { FLOOR: 0, WALL: 1, HAY: 2, ASH: 3, EXIT: 4, ENTRY: 5 };
+// PIT is the one tile that is neither floor nor wall: the goat walks into it and falls, a man will
+// not path into it, and anything thrown through it is gone. In a wall run it reads as a window.
+const T = { FLOOR: 0, WALL: 1, HAY: 2, ASH: 3, EXIT: 4, ENTRY: 5, PIT: 6 };
 
 // A room whose sides mean something — the killbox's rifles are its far wall — sets `noFlipX` and
 // keeps its left and right the way they were written. Up and down never matter to anyone.
@@ -191,6 +193,7 @@ function tryGenerate(levelDef, seed) {
         let t = T.FLOOR;
         if (c === '#' || c === 'P') t = T.WALL;
         else if (c === 'h') t = T.HAY;
+        else if (c === 'O') t = T.PIT;
         tiles[wy * W + wx] = t;
         if ('eoRrmXBbtLMw'.includes(c)) room.markers.push({ tx: wx, ty: wy, c });
       }
@@ -265,6 +268,20 @@ function tryGenerate(levelDef, seed) {
         if (props.some((p) => len(p.x - px, p.y - py) < 1.8 * TILE)) continue;
         props.push({ x: px, y: py, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
         break;
+      }
+    }
+    // Spike plates, from the third level on. They go in a short run rather than one at a time: one
+    // plate in a room is a curiosity, three across the middle of it is a shape you have to read.
+    // Not in the control rooms, not in the pen, and never close enough to a prop to hide under it.
+    if (room.index > 0 && !room.calm && rng.chance(levelDef.spikes || 0)) {
+      const want = rng.int(2, 4);
+      for (let a = 0, placed = 0; a < 60 && placed < want; a++) {
+        const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
+        if (tiles[ty * W + tx] !== T.FLOOR) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (props.some((p) => len(p.x - px, p.y - py) < 1.5 * TILE)) continue;
+        props.push({ x: px, y: py, kind: 'spike' });
+        placed++;
       }
     }
     if (!cell) return;                                  // the pen and the two control rooms stay empty
@@ -440,7 +457,7 @@ function reachable(tiles, W, H, sx, sy, tx, ty) {
     for (const j of nb) {
       if (j < 0 || j >= W * H || seen[j]) continue;
       const t = tiles[j];
-      if (t === T.WALL) continue;
+      if (t === T.WALL || t === T.PIT) continue;
       seen[j] = 1; q.push(j);
     }
   }
