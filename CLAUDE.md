@@ -358,18 +358,31 @@ mix follow.
 
 **The level tool.** `LEVEL TOOL` in the dev drawer opens a page over the whole screen — `dev.rules`
 holds the simulation (`update` returns at once) and `hitDev` swallows every click and key under it.
-It has two tabs (`dev.tab`, drawn by `drawTool`) and they used to be a page in the game and a script
-in a terminal, which meant reading one of them with the other's numbers in your head:
+It has three tabs (`dev.tab`, drawn by `drawTool`), and the split is general / particular / whole
+game, so that nothing is said twice and each tab gets the screen:
 
-- **RULES** — the generation rules held against one level, described below.
-- **BALANCE** — what `node tools/balance.js` prints, computed in the page by `game.balanceReport`:
-  every level walked over `dev.balanceSeeds` seeds (the SEEDS button cycles 4 / 8 / 16 / 30 and
-  clears the cache), reduced to a row of bars, one bar a room, height its threat, colour its role.
-  Beside each row the two numbers that decide whether a level is in the right place in the run — its
-  total and its worst *ordinary* room — and under all seven, the rule failures or the line saying
-  there are none. It runs `checkRules` on every seed on the way past, so it fails the way the report
-  fails; the two averaged rules (threat rising, each level harder than the last) are checked here
-  and in the report and nowhere else.
+- **RULES** (`drawRuleTab`) — every rule against every level as a matrix, one row a rule and one
+  column a level, off `game.ruleMatrix` (one sample per level, `game.levelSample`). A rule is a
+  promise about the generator rather than about a level, so what you want is the row: six levels
+  keeping it and one not. The first level that breaks one says why, under it.
+- **LEVEL** (`drawLevelTab`) — one level on the whole screen: its canon, its numbers out of
+  `levelFacts`, the rules that have something to say about *it* as a line of marks, and every room
+  it built as a floor plan. It used to share the page with the rules, which took half of it to say
+  things that are true everywhere.
+- **BALANCE** (`drawBalance`) — what `node tools/balance.js` prints, computed by
+  `game.balanceReport`: every level over `dev.balanceSeeds` seeds (SEEDS cycles 4 / 8 / 16 / 30),
+  as a row of bars. A bar is a room **at its real width and its real place in the world**, so the x
+  axis is the level's ground and the size of a level and of its rooms is the shape of the row; the
+  height is its averaged threat and the count of men rides on it. Beside each row, the two numbers
+  that decide whether a level is in the right place in the run — its total and its worst *ordinary*
+  room. It runs `checkRules` on every seed on the way past, and the two averaged rules (threat
+  rising, each level harder than the last) are checked here and in the report and nowhere else.
+
+**Going deeper.** A room tile on LEVEL and a bar on BALANCE are the same button: both push
+`dev.room` and open `drawRoomSheet`, the plan at whatever size the screen allows with a grid over
+the tiles, a name against every man, and a column saying what the floor is made of, who is standing
+on it and what is standing in it. Both halves read `game.levelSample`, so the room the curve opens
+is the room the level page was showing.
 
 The page has its own address: **`#rules` and `#balance`** open the game straight onto that tab, so
 the tool can be linked to — `http://localhost:8766/#balance` against `node tools/serve.js 8766`.
@@ -385,11 +398,11 @@ page generates from `dev.sampleSeed` (`game.rulesPage`) and REROLL reseeds it, s
 inspected without playing up to it. `drawRules` in `render.js` paints it: fire for a rule that holds,
 blood for one that does not with its reason under it, ash for one that does not apply.
 
-The right half is the level as pictures rather than as words. Every room is a tile carrying its floor
-plan at a few pixels to the tile (`roomPlan`, drawn off the **generated** level rather than off the
-template, so corridors, grates and the vault's door are in it), with its index and role above, `×N` for
-the men in it, and the canon tiles lit. Names are the last resort and the prose is one line per rule:
-the page is a thing you scan while a level is paused behind it, so a shape beats a sentence and
+A level is shown as pictures rather than as words. Every room is a tile carrying its floor plan
+(`roomPlan`, drawn off the **generated** level rather than off the template, so corridors, grates and
+the vault's door are in it), with its index and role above, `×N` for the men in it, its size and
+template under it, and the canon tiles lit. Names are the last resort and the prose is one line per
+rule: the page is a thing you scan while a level is paused behind it, so a shape beats a sentence and
 `levelFacts` reads out as `name value` and not as English.
 
 **Trap rooms.** `tag: 'trap'` is a pool of its own, drawn *into* a level's ordinary rooms rather than

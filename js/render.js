@@ -1329,10 +1329,69 @@ class Renderer {
     ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     this.devButton(d, pad, pad, 76 * s, 20 * s, 'RULES', 'tab-rules', d.tab === 'rules');
-    this.devButton(d, pad + 80 * s, pad, 76 * s, 20 * s, 'BALANCE', 'tab-balance', d.tab === 'balance');
+    this.devButton(d, pad + 80 * s, pad, 76 * s, 20 * s, 'LEVEL', 'tab-levels', d.tab === 'levels');
+    this.devButton(d, pad + 160 * s, pad, 76 * s, 20 * s, 'BALANCE', 'tab-balance', d.tab === 'balance');
     this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'CLOSE', 'rules', false);
     if (d.tab === 'balance') this.drawBalance(game, pad, pad + 30 * s);
-    else this.drawRules(game, pad, pad + 30 * s);
+    else if (d.tab === 'levels') this.drawLevelTab(game, pad, pad + 30 * s);
+    else this.drawRuleTab(game, pad, pad + 30 * s);
+    // A room opened from either of the other two covers them: it is the deepest the tool goes.
+    if (d.room) this.drawRoomSheet(game, pad);
+  }
+
+  // The rules that hold everywhere, as a matrix: one row a rule, one column a level, one mark per
+  // answer. The rules used to live down the side of the level page, where they were checked against
+  // one level at a time and took half the screen doing it — but a rule is a promise about the whole
+  // generator, and what you want to see is the row: six levels keeping it and one not.
+  drawRuleTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, W = this.w, H = this.h, d = game.dev;
+    const m = game.ruleMatrix();
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('WHAT THE GENERATOR PROMISES', pad, top);
+    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText(`every rule against every level · one sample each, seed ${d.sampleSeed} · fire holds, blood broken, ash not this level`,
+      pad + 210 * s, top);
+    this.devButton(d, W - pad - 70 * s, top + 5 * s, 70 * s, 18 * s, 'REROLL', 'rules-roll', false);
+    // the level columns, named down the right of the text
+    const colW = Math.min(64 * s, (W - pad * 2) * 0.38 / LEVELS.length);
+    const gridX = W - pad - LEVELS.length * colW;
+    const textW = gridX - pad - 12 * s;
+    let y = top + 24 * s;
+    ctx.font = `700 ${8 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
+    LEVELS.forEach((lv, i) => {
+      ctx.save(); ctx.translate(gridX + i * colW + colW / 2, y);
+      ctx.textAlign = 'center'; ctx.fillText(String(i + 1), 0, 0);
+      ctx.restore();
+    });
+    ctx.textAlign = 'left';
+    y += 8 * s;
+    const rowH = Math.min(30 * s, (H - y - pad - 30 * s) / m.rows.length);
+    const tint = (ok) => (ok === true ? PALETTE.fireHi : ok === false ? PALETTE.blood : 'rgba(90,82,80,0.5)');
+    m.rows.forEach((row, ri) => {
+      const ry = y + ri * rowH;
+      if (ri % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, ry - 2 * s, W - pad * 2 + 8 * s, rowH); }
+      ctx.font = `400 ${Math.min(11, rowH * 0.42) * s}px ${FONT}`;
+      const broken = row.cells.some((c) => c.ok === false);
+      ctx.fillStyle = broken ? PALETTE.bone : 'rgba(239,230,208,0.8)';
+      ctx.fillText(this.clip(row.rule.text, textW), pad, ry + rowH * 0.62);
+      row.cells.forEach((c, i) => {
+        const cx = gridX + i * colW + colW / 2, cy = ry + rowH * 0.52;
+        const r = Math.min(5 * s, rowH * 0.2);
+        ctx.fillStyle = tint(c.ok);
+        if (c.ok === null) { ctx.fillRect(cx - r * 0.7, cy - 1 * s, r * 1.4, 2 * s); }
+        else { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); }
+      });
+      // the first level that breaks it says why, under the rule
+      const bad = row.cells.find((c) => c.ok === false);
+      if (bad && bad.why) {
+        ctx.font = `400 ${Math.min(9, rowH * 0.33) * s}px ${FONT}`; ctx.fillStyle = PALETTE.blood;
+        ctx.fillText(this.clip('— ' + bad.why, textW), pad + 10 * s, ry + rowH * 0.95);
+      }
+    });
+    const broken = m.rows.filter((r) => r.cells.some((c) => c.ok === false)).length;
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+    ctx.fillStyle = broken ? PALETTE.blood : PALETTE.fireHi;
+    ctx.fillText(broken ? `${broken} RULES BROKEN ON THIS SEED` : 'EVERY RULE HOLDS ON EVERY LEVEL', pad, H - pad - 4 * s);
   }
 
   // The curve, level by level and room by room, averaged over `dev.balanceSeeds` seeds: the same
@@ -1346,12 +1405,11 @@ class Renderer {
     ctx.fillText('DIFFICULTY', pad, top);
     this.devButton(d, pad + 74 * s, top - 12 * s, 66 * s, 17 * s, 'SEEDS ' + rep.seeds, 'bal-seeds', false);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText(this.clip('one bar a room, height is threat · ochre canon · pale mix · blood trap · violet set piece',
+    ctx.fillText(this.clip('a bar is a room at its real width and place in the world · height is threat · click one to open it · ochre canon, pale mix, blood trap, violet set piece',
       W - pad * 2 - 150 * s), pad + 150 * s, top);
     let y = top + 16 * s;
-    const failH = 14 * s * (rep.fails.length + 1) + 18 * s;
+    const failH = 14 * s * (rep.fails.length + 1) + 32 * s;
     const rowH = Math.max(34 * s, (H - y - pad - failH) / rep.levels.length);
-    const barTop = 13 * s;
     const nameW = 150 * s, statW = 128 * s;
     const plotX = pad + nameW + statW, plotW = W - pad - plotX;
     const roleTint = { canon: PALETTE.ochre, mix: 'rgba(239,230,208,0.5)', trap: PALETTE.blood,
@@ -1359,30 +1417,44 @@ class Renderer {
     const peak = Math.max(...rep.levels.map((l) => l.peak)) || 1;
     for (const lv of rep.levels) {
       const h = rowH - 4 * s;
+      // Everything in a row hangs off the line the bars stand on, so a level's name is level with
+      // its own ground. Reading it off the top of the row put every name against the row below it.
+      const base = y + h;
+      ctx.fillStyle = 'rgba(239,230,208,0.08)'; ctx.fillRect(pad, base, W - pad * 2, 1 * s);
       ctx.font = `700 ${10.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-      ctx.fillText(`${lv.li + 1} ${lv.def.name}`, pad, y + barTop);
+      ctx.fillText(`${lv.li + 1} ${lv.def.name}`, pad, base - 14 * s);
       ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-      ctx.fillText(lv.def.canon ? lv.def.canon.name.toLowerCase() : '—', pad, y + barTop + 11 * s);
+      ctx.fillText(lv.def.canon ? lv.def.canon.name.toLowerCase() : '—', pad, base - 3 * s);
       // the two numbers that decide whether a level is in the right place in the run
       ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
-      ctx.fillText(`total ${lv.total.toFixed(0)}`, pad + nameW, y + barTop);
-      ctx.fillText(`worst room ${lv.plainPeak.toFixed(1)}`, pad + nameW, y + barTop + 11 * s);
+      ctx.fillText(`total ${lv.total.toFixed(0)}`, pad + nameW, base - 14 * s);
+      ctx.fillText(`worst room ${lv.plainPeak.toFixed(1)}`, pad + nameW, base - 3 * s);
       // the level's own bar of total, against the hardest level, so the run's shape is one glance
-      ctx.fillStyle = 'rgba(239,230,208,0.1)'; ctx.fillRect(pad + nameW, y + barTop + 16 * s, statW - 14 * s, 3 * s);
+      ctx.fillStyle = 'rgba(239,230,208,0.1)'; ctx.fillRect(pad + nameW, base + 4 * s, statW - 14 * s, 3 * s);
       ctx.fillStyle = PALETTE.fire;
-      ctx.fillRect(pad + nameW, y + barTop + 16 * s, (statW - 14 * s) * lv.total / rep.max, 3 * s);
+      ctx.fillRect(pad + nameW, base + 4 * s, (statW - 14 * s) * lv.total / rep.max, 3 * s);
       // and the rooms
-      // The bars fill the plot: a level's rooms are the x axis, so every level's row is the same
-      // width and the seven rows read as one curve rather than as seven charts of different sizes.
-      const step = plotW / Math.max(1, lv.rooms.length);
-      const bw = Math.max(2 * s, Math.min(step - 3 * s, 34 * s));
+      // The rooms, laid out where they actually are: a bar starts at the room's own x in the world
+      // and is as wide as the room is, so the axis is the level's ground rather than a room count.
+      // That answers the size question — the threshing floor is visibly a wider level made of wider
+      // rooms, and a level running out of world would show as one running off the end. Height is
+      // still threat, the count of men rides on the bar, and clicking one opens that room.
+      const WORLD = 420;
       lv.rooms.forEach((r, i) => {
-        const bx = plotX + i * step + (step - bw) / 2;
-        const bh = Math.max(1 * s, (r.threat / peak) * (h - 12 * s));
+        const g = r.sample && r.sample.room;
+        const bx = plotX + (g ? g.x / WORLD : i / lv.rooms.length) * plotW;
+        const bw = Math.max(2 * s, (g ? g.w / WORLD : 1 / lv.rooms.length) * plotW - 1 * s);
+        const bh = Math.max(1 * s, (r.threat / peak) * (h - 14 * s));
         ctx.fillStyle = roleTint[r.role] || PALETTE.witch;
         ctx.fillRect(bx, y + h - bh, bw, bh);
+        if (r.sample && r.sample.men.length && bw > 15 * s) {
+          ctx.font = `700 ${7 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(13,10,12,0.8)'; ctx.textAlign = 'center';
+          ctx.fillText('×' + r.sample.men.length, bx + bw / 2, y + h - 3 * s);
+          ctx.textAlign = 'left';
+        }
         ctx.font = `400 ${6.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
-        ctx.fillText(String(r.index), bx + 1 * s, y + h + 7 * s);
+        ctx.fillText(String(r.index), bx, y + h + 7 * s);
+        d.rects.push({ x: bx, y, w: Math.max(bw, 6 * s), h, id: `room=${lv.li},${i}` });
       });
       y += rowH;
     }
@@ -1394,7 +1466,11 @@ class Renderer {
     rep.fails.slice(0, 12).forEach((f, i) => { ctx.fillText(this.clip(f, W - pad * 2), pad, y + 14 * s * (i + 1)); });
   }
 
-  drawRules(game, pad, headTop) {
+  // One level, on the whole screen. It used to share the page with the rules, which took half of it
+  // to say things that are true of every level; the rules have a tab of their own now and what is
+  // left here is this level and nothing else — its idea, its numbers, the rules that are about it in
+  // particular, and every room it built, big enough to read. A room opens when you click it.
+  drawLevelTab(game, pad, headTop) {
     const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
     const page = game.rulesPage(), def = page.def, L = page.level;
     // one tab per level; the one in play carries a mark
@@ -1407,75 +1483,74 @@ class Renderer {
       this.devButton(d, tx, ty, w, th, label, 'rules-L' + i, page.index === i);
       tx += w + 4 * s;
     });
-    const y0 = ty + th + 16 * s;
-    const colW = W * 0.42 - pad, x1 = W * 0.45, col2 = W - x1 - pad;
-    const results = checkRules(L);
-    const tint = (ok) => (ok === true ? PALETTE.fireHi : ok === false ? PALETTE.blood : PALETTE.ash);
-
-    // ---- every level: the rules, each lit by its answer ----
-    let y = y0;
-    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-    ctx.fillText('EVERY LEVEL', pad, y);
-    ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText(page.live ? 'checked against the level in play' : `checked against a sample of ${def.name}, seed ${page.seed}`, pad, y + 12 * s);
-    y += 26 * s;
-    // Wrap everything first so the column can be shrunk to fit the screen it is on.
-    const blocks = results.map((r) => {
-      ctx.font = `400 ${9.5 * s}px ${FONT}`;
-      const lines = this.wrap(r.rule.text, colW - 14 * s);
-      const why = r.ok === false && r.why ? this.wrap('— ' + r.why, colW - 14 * s) : [];
-      return { r, lines, why };
-    });
-    const count = blocks.reduce((a, b) => a + b.lines.length + b.why.length, 0);
-    const fit = (H - y - pad) / (count * 11.5 * s + blocks.length * 4 * s);
-    const k = Math.min(1, fit), lh = 11.5 * s * k, fs = Math.max(6.5, 9.5 * k) * s;
-    for (const b of blocks) {
-      ctx.fillStyle = tint(b.r.ok);
-      ctx.fillRect(pad, y - 6 * s * k, 6 * s * k, 6 * s * k);
-      ctx.font = `400 ${fs}px ${FONT}`; ctx.fillStyle = b.r.ok === false ? PALETTE.bone : 'rgba(239,230,208,0.85)';
-      for (const ln of b.lines) { ctx.fillText(ln, pad + 12 * s, y); y += lh; }
-      ctx.fillStyle = PALETTE.blood;
-      for (const ln of b.why) { ctx.fillText(ln, pad + 12 * s, y); y += lh; }
-      y += 4 * s * k;
-    }
-
-    // ---- this level: its canon, its numbers, and the rooms it built ----
-    y = y0;
+    let y = ty + th + 18 * s;
+    const full = W - pad * 2;
     ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-    ctx.fillText(`${def.sub.toUpperCase()} — ${def.name}`, x1, y); y += 15 * s;
+    ctx.fillText(`${def.sub.toUpperCase()} — ${def.name}`, pad, y);
+    ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText(page.live ? 'the level in play' : `a sample, seed ${page.seed}`, pad + 260 * s, y);
+    this.devButton(d, W - pad - 70 * s, y - 13 * s, 70 * s, 18 * s, 'REROLL', 'rules-roll', false);
+    y += 16 * s;
     if (def.canon) {
       ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi;
-      ctx.fillText(`CANON: ${def.canon.name}`, x1, y); y += 12 * s;
-      ctx.font = `400 ${9.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.bone;
-      for (const ln of this.wrap(def.canon.idea, col2)) { ctx.fillText(ln, x1, y); y += 11 * s; }
+      ctx.fillText(`CANON: ${def.canon.name}`, pad, y);
+      ctx.font = `400 ${10 * s}px ${FONT}`; ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(this.clip(def.canon.idea, full - 150 * s), pad + 150 * s, y);
+      y += 14 * s;
     }
-    y += 4 * s;
     ctx.font = `400 ${8.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
-    for (const f of levelFacts(def)) for (const ln of this.wrap(f, col2)) { ctx.fillText(ln, x1, y); y += 10.5 * s; }
-    y += 10 * s;
-    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-    ctx.fillText(page.live ? 'ROOMS — THE LEVEL IN PLAY' : `ROOMS — A SAMPLE, SEED ${page.seed}`, x1, y);
-    if (!page.live) this.devButton(d, W - pad - 64 * s, y - 13 * s, 64 * s, 17 * s, 'REROLL', 'rules-roll', false);
+    for (const f of levelFacts(def)) { ctx.fillText(this.clip(f, full), pad, y); y += 11 * s; }
+
+    // What this level in particular is held to: only the rules that have something to say about it,
+    // as marks on one line, with whatever is broken spelled out under them. The whole list lives on
+    // the rules tab; this is the level's own answer to it.
     y += 8 * s;
-    // The rooms as pictures rather than as a list of words. A room's floor plan at three pixels a
-    // tile says in one look what "lanes" or "wellhole" only says to somebody who wrote them: where
-    // the stone is, where the holes are, where the men are standing. The count under each is what
-    // walks in it. Everything about a level that used to be a column of names is this strip.
+    const results = checkRules(L).filter((r) => r.ok !== null);
+    const broken = results.filter((r) => r.ok === false);
+    ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
+    ctx.fillStyle = broken.length ? PALETTE.blood : PALETTE.fireHi;
+    ctx.fillText(broken.length ? `${broken.length} OF ${results.length} RULES BROKEN HERE` : `ALL ${results.length} RULES THAT APPLY HOLD HERE`, pad, y);
+    let mx = pad + 215 * s;
+    for (const r of results) {
+      ctx.fillStyle = r.ok ? PALETTE.fireHi : PALETTE.blood;
+      ctx.beginPath(); ctx.arc(mx, y - 3 * s, 3.4 * s, 0, Math.PI * 2); ctx.fill();
+      mx += 10 * s;
+    }
+    if (broken.length) {
+      ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.blood;
+      y += 12 * s;
+      for (const r of broken.slice(0, 2)) { ctx.fillText(this.clip(`${r.rule.id} — ${r.why}`, full), pad + 10 * s, y); y += 11 * s; }
+    }
+
+    // The rooms, as plans. This is what the tab is for, so it gets everything that is left.
+    y += 16 * s;
     const rooms = roomsOf(L);
-    // Four across on a narrow screen and eight on a wide one, then as tall as the space left under
-    // them allows: a plan three pixels to the tile is a smudge, and the whole point of the strip is
-    // that the shape of a room is legible without reading its name.
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('ROOMS — CLICK ONE TO OPEN IT', pad, y);
+    const ord = rooms.filter((r) => ORDINARY.has(r.role)), cn = ord.filter((r) => r.role === 'canon').length;
+    const canonRule = results.find((r) => r.rule.id === 'canon');
+    ctx.fillStyle = canonRule ? (canonRule.ok ? PALETTE.fireHi : PALETTE.blood) : PALETTE.ash;
+    ctx.fillText(def.canon
+      ? `CANON ${cn} OF ${ord.length} ORDINARY — ${Math.round(100 * cn / Math.max(1, ord.length))}%, NEEDS ${Math.round(CANON.share * 100)}%`
+      : 'NO CANON ON THIS LEVEL', pad + 300 * s, y);
+    y += 8 * s;
     const cols = Math.min(this.w < 1100 * s ? 4 : 6, rooms.length);
     const rowsN = Math.ceil(rooms.length / cols);
-    const cellW = (col2 - (cols - 1) * 5 * s) / cols;
-    const cellH = clamp((H - y - pad - 18 * s) / rowsN - 5 * s, 44 * s, cellW * 1.6);
+    const cellW = (full - (cols - 1) * 6 * s) / cols;
+    const cellH = clamp((H - y - pad) / rowsN - 7 * s, 50 * s, cellW * 1.5);
+    this.roomTiles(game, rooms, L, page.index, pad, y, cellW, cellH, cols, 6 * s);
+  }
+
+  // A grid of room plans, each one a button that opens the room sheet. It is the shape the tool
+  // thinks in: index, role, men, plan, size and name.
+  roomTiles(game, rooms, L, li, x0, y0, cellW, cellH, cols, gap) {
+    const ctx = this.ctx, s = this.ts, d = game.dev;
     const roleTint = { canon: PALETTE.ochre, mix: 'rgba(239,230,208,0.45)', trap: PALETTE.blood,
       pen: PALETTE.ash, calm: PALETTE.ash, arena: PALETTE.witch, mill: PALETTE.witch,
       hall: PALETTE.witch, gallery: PALETTE.witch, killbox: PALETTE.witch };
     rooms.forEach((r, i) => {
-      const cx = x1 + (i % cols) * (cellW + 5 * s), cy = y + Math.floor(i / cols) * (cellH + 5 * s);
+      const cx = x0 + (i % cols) * (cellW + gap), cy = y0 + Math.floor(i / cols) * (cellH + gap);
       const tone = roleTint[r.role] || PALETTE.bone;
-      // The canon rooms are the point of the page, so their tile is lit and everything else is not.
       ctx.fillStyle = r.role === 'canon' ? 'rgba(185,135,58,0.14)' : 'rgba(239,230,208,0.04)';
       ctx.fillRect(cx, cy, cellW, cellH);
       ctx.strokeStyle = r.role === 'canon' ? PALETTE.ochre : 'rgba(239,230,208,0.16)';
@@ -1487,24 +1562,88 @@ class Renderer {
       ctx.textAlign = 'left';
       this.roomPlan(L, r, cx + 2 * s, cy + 12 * s, cellW - 4 * s, cellH - 24 * s);
       ctx.font = `400 ${7 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)';
-      ctx.fillText(this.clip(r.cell && r.cell.intro ? 'meets ' + r.cell.intro : r.name, cellW - 6 * s), cx + 3 * s, cy + cellH - 4 * s);
+      const foot = r.cell && r.cell.intro ? 'meets ' + r.cell.intro : `${r.room.w}×${r.room.h}  ${r.name}`;
+      ctx.fillText(this.clip(foot, cellW - 6 * s), cx + 3 * s, cy + cellH - 4 * s);
+      d.rects.push({ x: cx, y: cy, w: cellW, h: cellH, id: `room=${li},${i}` });
     });
-    // The share, in one line, lit by whether it holds.
-    const canonRule = results.find((r) => r.rule.id === 'canon');
-    const ord = rooms.filter((r) => ORDINARY.has(r.role)), cn = ord.filter((r) => r.role === 'canon').length;
-    y += rowsN * (cellH + 5 * s) + 10 * s;
-    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = tint(canonRule ? canonRule.ok : null);
-    ctx.fillText(def.canon
-      ? `CANON ${cn} OF ${ord.length} ORDINARY — ${Math.round(100 * cn / Math.max(1, ord.length))}%, NEEDS ${Math.round(CANON.share * 100)}%`
-      : 'NO CANON ON THIS LEVEL', x1, y);
+  }
+
+  // One room, as deep as the tool goes: the plan at whatever size the screen allows, what the tiles
+  // under it are, everything standing in it and everyone standing on it. This is what going deeper
+  // means — the strip of plans is a map of a level, and this is one square of it opened up.
+  drawRoomSheet(game, pad) {
+    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
+    const li = clamp(d.room.li, 0, LEVELS.length - 1);
+    const L = game.levelSample(li), rooms = roomsOf(L);
+    const r = rooms[clamp(d.room.index, 0, rooms.length - 1)];
+    if (!r) { d.room = null; return; }
+    ctx.fillStyle = '#09070a'; ctx.fillRect(0, 0, W, H);   // opaque: the tab under it must not show through
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText(`${LEVELS[li].name} · ROOM ${r.index} · ${r.role.toUpperCase()} · ${r.name}`, pad, pad + 14 * s);
+    this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'BACK', 'room-close', false);
+    const top = pad + 30 * s;
+    // the plan on the left, as big as it will go; the facts on the right
+    const colR = Math.min(300 * s, W * 0.3), planW = W - pad * 2 - colR - 16 * s;
+    const planH = H - top - pad;
+    this.roomPlan(L, r, pad, top, planW, planH, true);
+    let x = pad + planW + 16 * s, y = top + 12 * s;
+    const line = (t, c, size) => {
+      ctx.font = `400 ${(size || 10) * s}px ${FONT}`; ctx.fillStyle = c || 'rgba(239,230,208,0.8)';
+      ctx.fillText(this.clip(t, colR), x, y); y += (size || 10) * 1.35 * s;
+    };
+    const head = (t) => { y += 8 * s; ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText(t, x, y); y += 13 * s; };
+    head('THE FLOOR');
+    line(`${r.room.w} × ${r.room.h} tiles, at ${r.room.x},${r.room.y}`);
+    line(`template ${r.name}${r.room.tpl.canon ? ' · canon ' + r.room.tpl.canon : ''}`);
+    // what the tiles actually are, counted: the quickest read there is of a room's shape
+    const count = {};
+    for (let ty = 0; ty < r.room.h; ty++) {
+      for (let tx = 0; tx < r.room.w; tx++) {
+        const t = L.tiles[(r.room.y + ty) * L.W + (r.room.x + tx)];
+        const k = t === T.WALL ? 'stone' : t === T.PIT ? 'drop' : t === T.HAY ? 'hay'
+          : t === T.EXIT || t === T.ENTRY ? 'stairs' : 'floor';
+        count[k] = (count[k] || 0) + 1;
+      }
+    }
+    line(Object.entries(count).map(([k, n]) => `${n} ${k}`).join(' · '), 'rgba(239,230,208,0.6)', 9);
+    head(`MEN — ${r.men.length}`);
+    if (!r.spawns.length) line('nobody', PALETTE.ash);
+    const byKind = {};
+    for (const sp of r.spawns) {
+      const k = (sp.champion ? 'champion' : sp.kind)
+        + (sp.boss ? ' (boss)' : sp.sentry ? ' (sentry)' : sp.alert ? ' (posted)' : sp.lone ? ' (lone post)' : '');
+      byKind[k] = (byKind[k] || 0) + 1;
+    }
+    for (const [k, n] of Object.entries(byKind)) line(`${n} × ${k}`, k.includes('boss') ? PALETTE.fireHi : PALETTE.blood);
+    line(`threat ${r.threat.toFixed(1)}`, 'rgba(239,230,208,0.6)', 9);
+    if (r.cell && r.cell.intro) line(`introduces ${r.cell.intro}`, PALETTE.fireHi, 9);
+    head('WHAT IS STANDING IN IT');
+    const props = {};
+    for (const p of L.props) {
+      if (p.x < r.room.x * TILE || p.x >= (r.room.x + r.room.w) * TILE) continue;
+      if (p.y < r.room.y * TILE || p.y >= (r.room.y + r.room.h) * TILE) continue;
+      const k = p.kind === 'door' ? (p.gate ? 'soul gate' : p.vault ? 'soul door' : p.stair ? 'stair door' : p.iron ? 'iron door' : 'door')
+        : p.kind === 'weapon' ? p.weapon : p.kind;
+      props[k] = (props[k] || 0) + 1;
+    }
+    const keys = Object.keys(props);
+    if (!keys.length) line('nothing', PALETTE.ash);
+    for (const k of keys) line(`${props[k]} × ${k}`, PALETTE.ochre);
+    head('LEGEND');
+    line('red dots are men, pale one a boss', 'rgba(239,230,208,0.55)', 9);
+    line('ochre squares props, bone is milk', 'rgba(239,230,208,0.55)', 9);
+    line('black is a drop, gold the stairs', 'rgba(239,230,208,0.55)', 9);
   }
 
   // One room's floor plan, fitted into a box: stone, floor, hay and holes off the tile grid, then a
   // dot for every prop and a dot for every man. It is drawn from the generated level rather than
   // from the template, so what it shows is what was actually built — corridors cut through it, the
   // grating laid into it, the vault's door hung in its wall.
-  roomPlan(L, room, bx, by, bw, bh) {
-    const ctx = this.ctx;
+  // `big` is the opened room: the same plan with a grid over the tiles, names against the men and a
+  // ruler along two sides, because at that size the picture can afford to say what it is made of.
+  roomPlan(L, room, bx, by, bw, bh, big) {
+    const ctx = this.ctx, s = this.ts;
     const k = Math.min(bw / room.room.w, bh / room.room.h);
     const ox = bx + (bw - room.room.w * k) / 2, oy = by + (bh - room.room.h * k) / 2;
     const R = room.room, px = Math.max(1, k);
@@ -1517,19 +1656,39 @@ class Renderer {
         ctx.fillRect(ox + tx * k, oy + ty * k, px, px);
       }
     }
+    if (big && k > 7) {
+      // one line a tile, so the size of the room is countable rather than only comparable
+      ctx.strokeStyle = 'rgba(239,230,208,0.06)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let tx = 0; tx <= R.w; tx++) { ctx.moveTo(ox + tx * k, oy); ctx.lineTo(ox + tx * k, oy + R.h * k); }
+      for (let ty = 0; ty <= R.h; ty++) { ctx.moveTo(ox, oy + ty * k); ctx.lineTo(ox + R.w * k, oy + ty * k); }
+      ctx.stroke();
+      ctx.font = `400 ${7 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.35)'; ctx.textAlign = 'center';
+      for (let tx = 0; tx < R.w; tx += 5) ctx.fillText(String(tx), ox + (tx + 0.5) * k, oy - 3 * s);
+      ctx.textAlign = 'right';
+      for (let ty = 0; ty < R.h; ty += 5) ctx.fillText(String(ty), ox - 3 * s, oy + (ty + 0.7) * k);
+      ctx.textAlign = 'left';
+    }
     const inRoom = (o) => o.x >= R.x * TILE && o.x < (R.x + R.w) * TILE && o.y >= R.y * TILE && o.y < (R.y + R.h) * TILE;
     const at = (o) => [ox + (o.x / TILE - R.x) * k, oy + (o.y / TILE - R.y) * k];
     for (const p of L.props) {
       if (!inRoom(p)) continue;
       const [dx, dy] = at(p);
-      ctx.fillStyle = p.kind === 'heal' ? PALETTE.bone : p.kind === 'door' ? PALETTE.wood
+      ctx.fillStyle = p.kind === 'heal' ? PALETTE.bone : p.kind === 'door' ? (p.gate || p.vault ? PALETTE.witch : PALETTE.wood)
         : p.kind === 'brazier' ? PALETTE.fire : p.kind === 'spike' ? PALETTE.ash : PALETTE.ochre;
-      ctx.fillRect(dx - 0.5, dy - 0.5, Math.max(1.4, k * 0.7), Math.max(1.4, k * 0.7));
+      const w = Math.max(1.4, k * 0.7);
+      ctx.fillRect(dx - w / 2, dy - w / 2, w, w);
     }
-    for (const s of room.spawns) {
-      const [dx, dy] = at(s);
-      ctx.fillStyle = s.boss ? PALETTE.fireHi : PALETTE.blood;
-      ctx.beginPath(); ctx.arc(dx, dy, Math.max(1.3, k * (s.boss ? 0.8 : 0.6)), 0, Math.PI * 2); ctx.fill();
+    for (const sp of room.spawns) {
+      const [dx, dy] = at(sp);
+      ctx.fillStyle = sp.boss ? PALETTE.fireHi : PALETTE.blood;
+      ctx.beginPath(); ctx.arc(dx, dy, Math.max(1.3, k * (sp.boss ? 0.8 : 0.6)), 0, Math.PI * 2); ctx.fill();
+      if (big && k > 9) {
+        ctx.font = `700 ${7.5 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.85)';
+        ctx.textAlign = 'center';
+        ctx.fillText((sp.champion ? 'brute' : sp.kind) + (sp.boss ? '*' : ''), dx, dy - k * 1.05);
+        ctx.textAlign = 'left';
+      }
     }
   }
 

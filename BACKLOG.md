@@ -32,7 +32,12 @@ weak."* All of it shipped in 1.11; the reasoning is in `CHANGELOG.md`.
   THE FULL THROAT and DRAGON BREATH.
 - ~~**You only see a room when you open its door.**~~ Shipped as `room.seen`.
 - ~~**Put the rules tool and the balance tool together, with tabs to switch between them.**~~
-  Shipped: one page, two tabs, and `#rules` / `#balance` as addresses for it.
+  Shipped: one page, and `#rules` / `#balance` as addresses for it.
+- ~~**See the actual rooms and the men in them on both tabs. Understand size on the balance tab, and
+  go deeper by zooming in. Put the general rules on a tab of their own and the particular ones
+  inside each level, so a level has more room to show its space.**~~ Shipped as three tabs — RULES
+  as a rule-by-level matrix, LEVEL as one level on the whole screen, BALANCE with a bar per room at
+  its real width and place in the world — and a room sheet both of the last two open.
 
 ---
 

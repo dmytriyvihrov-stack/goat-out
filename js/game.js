@@ -43,8 +43,13 @@ class Game {
     // `rules` is the drawer's tool page: the whole screen, the simulation held. `tab` is which half
     // of it you are looking at — the generation rules held against one level, or the difficulty
     // curve of all seven — and `page` the level the first half is looking at.
+    // `rules` is the drawer's tool page: the whole screen, the simulation held. `tab` is which of
+    // the three it is showing — the rules that hold everywhere, one level in full, or the curve of
+    // all seven — `page` the level the middle one is looking at, and `room` the one room the page
+    // has been asked to open, which is reachable from either of the other two.
     this.dev = { open: false, god: false, rects: [], toast: null, rules: false, tab: 'rules',
-      page: 0, sample: null, sampleSeed: 1, balance: null, balanceSeeds: 8 };
+      page: 0, sample: null, sampleSeed: 1, samples: {}, matrix: null,
+      balance: null, balanceSeeds: 8, room: null };
     this.intro = null;      // the opening scene while it plays; see beginIntro
     this.stairFx = null;    // the goat on a flight of stairs: { t, dir } with dir 1 going up and out, -1 arriving
     this.state = 'title'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
@@ -247,11 +252,19 @@ class Game {
   devAction(id) {
     if (id === 'toggle') { this.dev.open = !this.dev.open; return; }
     if (id === 'god') { this.dev.god = !this.dev.god; this.devToast(this.dev.god ? 'GOD MODE ON' : 'GOD MODE OFF'); return; }
-    if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) this.dev.page = this.level ? this.levelIndex : 0; return; }
-    if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); return; }
-    if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; return; }
-    if (id === 'tab-rules') { this.dev.tab = 'rules'; return; }
-    if (id === 'tab-balance') { this.dev.tab = 'balance'; return; }
+    if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) { this.dev.page = this.level ? this.levelIndex : 0; this.dev.room = null; } return; }
+    if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); this.dev.room = null; return; }
+    if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; this.dev.samples = {}; this.dev.matrix = null; this.dev.room = null; return; }
+    if (id === 'tab-rules' || id === 'tab-levels' || id === 'tab-balance') { this.dev.tab = id.slice(4); this.dev.room = null; return; }
+    if (id === 'room-close') { this.dev.room = null; return; }
+    // Opening one room: reachable from the level page and from a bar on the curve. Both of them
+    // draw the same sample of the same level, so a room is a level index and a room index and the
+    // page does not care which half of the tool asked for it.
+    if (id.startsWith('room=')) {
+      const [li, idx] = id.slice(5).split(',').map(Number);
+      this.dev.room = { li, index: idx };
+      return;
+    }
     if (id === 'bal-seeds') {
       const steps = [4, 8, 16, 30];
       this.dev.balanceSeeds = steps[(steps.indexOf(this.dev.balanceSeeds) + 1) % steps.length];
@@ -296,10 +309,30 @@ class Game {
   rulesPage() {
     const d = this.dev, i = clamp(d.page, 0, LEVELS.length - 1), def = LEVELS[i];
     if (this.level && this.levelIndex === i) return { index: i, def, level: this.level, live: true, seed: this.level.seed };
-    if (!d.sample || d.sample.index !== i || d.sample.seed !== d.sampleSeed) {
-      d.sample = { index: i, seed: d.sampleSeed, level: generateLevel(def, d.sampleSeed >>> 0) };
-    }
-    return { index: i, def, level: d.sample.level, live: false, seed: d.sampleSeed };
+    return { index: i, def, level: this.levelSample(i), live: false, seed: d.sampleSeed };
+  }
+
+  // One generated level per level index, off `dev.sampleSeed`, kept until the seed changes. It is
+  // what every part of the tool looks at when it is not looking at the level in play, so a room
+  // opened from the curve is the same room the level page was showing.
+  levelSample(li) {
+    const d = this.dev;
+    if (this.level && this.levelIndex === li) return this.level;
+    const key = li + ':' + d.sampleSeed;
+    if (!d.samples[key]) d.samples[key] = generateLevel(LEVELS[li], d.sampleSeed >>> 0);
+    return d.samples[key];
+  }
+
+  // Every rule against every level, one sample each: the rules tab is the whole list at once rather
+  // than one level's answer to it, because a rule that holds on six levels and not on the seventh is
+  // a thing you want to see as a row.
+  ruleMatrix() {
+    const d = this.dev;
+    if (d.matrix && d.matrix.seed === d.sampleSeed) return d.matrix;
+    const per = LEVELS.map((def, li) => checkRules(this.levelSample(li)));
+    const rows = GEN_RULES.map((rule, ri) => ({ rule, cells: per.map((r) => r[ri]) }));
+    d.matrix = { seed: d.sampleSeed, rows };
+    return d.matrix;
   }
 
   // The balance half of the tool: what `node tools/balance.js` prints, computed in the page so the
@@ -311,7 +344,7 @@ class Game {
   // It is cached on `dev.balance` because it is a few dozen level generations and the page is still.
   balanceReport() {
     const seeds = this.dev.balanceSeeds;
-    if (this.dev.balance && this.dev.balance.seeds === seeds) return this.dev.balance;
+    if (this.dev.balance && this.dev.balance.seeds === seeds && this.dev.balance.seed === this.dev.sampleSeed) return this.dev.balance;
     const ordinary = new Set(['canon', 'mix', 'trap']);
     const fails = [], seen = new Set();
     const levels = LEVELS.map((def, li) => {
@@ -334,7 +367,11 @@ class Game {
           men: cells.reduce((a, c) => a + c.men.length, 0) / cells.length });
       }
       const plain = rooms.filter((c) => ordinary.has(c.role));
-      return { def, li, rooms,
+      // The numbers are averaged over the seeds; the geometry is one sample, the same one the level
+      // page and the room sheet use, so a bar on the curve is a room you can open and walk through.
+      const sample = roomsOf(this.levelSample(li));
+      rooms.forEach((r, i) => { r.sample = sample[i] || null; });
+      return { def, li, rooms, sample,
         total: rooms.reduce((a, c) => a + c.threat, 0),
         peak: Math.max(0, ...rooms.map((c) => c.threat)),
         plainPeak: Math.max(0, ...plain.map((c) => c.threat)) };
@@ -345,7 +382,8 @@ class Game {
       if (b.total <= a.total) fails.push(`${b.def.name} (${b.total.toFixed(0)}) is not harder than ${a.def.name} (${a.total.toFixed(0)})`);
       if (b.plainPeak < a.plainPeak) fails.push(`${b.def.name}'s worst ordinary room is easier than ${a.def.name}'s`);
     }
-    this.dev.balance = { seeds, levels, fails, max: Math.max(...levels.map((l) => l.total)) };
+    this.dev.balance = { seeds, seed: this.dev.sampleSeed, levels, fails,
+      max: Math.max(...levels.map((l) => l.total)) };
     return this.dev.balance;
   }
 

@@ -41,12 +41,17 @@ in it is worth the trouble.
   value`, and the room list is gone — in its place is every room as a **floor plan** drawn off the
   generated level, with the men on it as dots and `×N` over each. Three new rules: the stair door, the
   soul gate, and that a level has somewhere to put every soul it was authored to give.
-- **The balance report moved into the page.** RULES and BALANCE are two tabs of one tool now: the
-  second is what `node tools/balance.js` prints — every level over 4 to 30 seeds as a row of bars,
-  one bar a room, its height the room's threat and its colour its role, with the level's total and
-  its worst ordinary room beside it, and the rule failures under all seven. Reading the curve and
-  reading the rules used to mean a page in the game and a script in a terminal. The tool has an
-  address of its own: `#rules` and `#balance` open the game straight onto that tab.
+- **The balance report moved into the page, and the tool became three tabs.** RULES is every rule
+  against every level as a matrix — a rule is a promise about the generator, so what you want is the
+  row: six levels keeping it and one not. LEVEL is one level on the whole screen, with the rules that
+  are about *it* reduced to a line of marks. BALANCE is what `node tools/balance.js` prints, over 4
+  to 30 seeds, as a row of bars a level — and a bar is a room **at its real width and its real place
+  in the world**, so the row is the size and shape of the level's ground, the height is its threat
+  and the count of men rides on the bar.
+- **You can open a room.** A tile on LEVEL and a bar on BALANCE are the same button: both open the
+  room sheet — the plan as big as the screen allows, a grid over the tiles, a name against every man,
+  and a column saying what the floor is made of, who is standing on it and what is standing in it.
+  The tool has an address of its own: `#rules` and `#balance` open the game straight onto that tab.
 
 ---
 
