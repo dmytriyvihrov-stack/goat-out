@@ -31,7 +31,7 @@ function roomsOf(L) {
 }
 
 const GEN_RULES = [
-  { id: 'alone', text: 'Every kind is met alone. The first room of a run to hold a kind holds that one enemy and nothing else, and a boss never seen before stands in his ring alone.',
+  { id: 'alone', text: 'Every kind is met alone — one enemy in the room, and a first-time boss with no escort.',
     check: (L) => {
       const def = L.def, E = def.encounters;
       const fresh = new Set((E.introduce || []).map(([k]) => k));
@@ -48,7 +48,7 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'first', text: 'The run opens on one man: the first fighting room of level one holds a single clubman, and he stands in the only way out of it.',
+  { id: 'first', text: 'The run opens on one clubman, standing in the only way out of his room.',
     check: (L) => {
       if (LEVELS.indexOf(L.def) !== 0) return null;
       const r = roomsOf(L).find((x) => x.spawns.length);
@@ -56,7 +56,7 @@ const GEN_RULES = [
       if (r.spawns.length !== 1) return `it holds ${r.men.join(', ')}`;
       return r.spawns[0].sentry ? true : 'he is not standing in the way out';
     } },
-  { id: 'rises', text: 'Threat rises across a level. Rooms are bought off the curve from → to, so the last third of the ordinary rooms is harder than the first. Per seed here; the report averages it.',
+  { id: 'rises', text: 'Threat rises across a level: the last third of the ordinary rooms beats the first.',
     check: (L) => {
       const o = roomsOf(L).filter((r) => ORDINARY.has(r.role) && r.threat > 0);
       if (o.length < 4) return null;
@@ -65,14 +65,14 @@ const GEN_RULES = [
       const early = avg(o.slice(0, third)), late = avg(o.slice(-third));
       return late > early * 1.2 ? true : `${early.toFixed(1)} → ${late.toFixed(1)}`;
     } },
-  { id: 'harder', text: 'Every level is harder than the one before: the top of its curve is above the last level\'s, and the report holds the totals to it.',
+  { id: 'harder', text: 'Every level is harder than the one before it.',
     check: (L) => {
       const i = LEVELS.indexOf(L.def);
       if (i <= 0) return null;
       const a = LEVELS[i - 1].encounters, b = L.def.encounters;
       return b.to > a.to ? true : `its top (${b.to}) is not above ${LEVELS[i - 1].name} (${a.to})`;
     } },
-  { id: 'caps', text: 'No room breaks the caps: one mage, one brute, two rifles, two hounds, three dead, seven men — unless the level loosens them. Only the Great Hall is exempt.',
+  { id: 'caps', text: 'No room breaks its caps. Only the Great Hall is exempt.',
     check: (L) => {
       const caps = Object.assign({}, ENCOUNTER.cap, L.def.encounters.cap || {});
       for (const r of roomsOf(L)) {
@@ -87,7 +87,7 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'canon', text: 'A level is about one thing. At least half of its ordinary rooms are built round its canon, and the first ordinary room always is.',
+  { id: 'canon', text: 'Half the ordinary rooms are the canon, and the first one always is.',
     check: (L) => {
       if (!L.def.canon) return null;
       const o = roomsOf(L).filter((r) => ORDINARY.has(r.role));
@@ -96,7 +96,7 @@ const GEN_RULES = [
       if (o.length && o[0].role !== 'canon') return `it opens on a ${o[0].role} room`;
       return true;
     } },
-  { id: 'mix', text: 'The rest are the mix: rooms the run already knows — the plain set and the canons of earlier levels — and never an idea from a level it has not reached.',
+  { id: 'mix', text: 'The rest are the mix: plain rooms and canons the run has already met.',
     check: (L) => {
       for (const r of L.rooms) {
         if (r.role !== 'mix') continue;
@@ -105,13 +105,13 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'written', text: 'A canon is at least four rooms. Fewer would be the same floor twice in one level.',
+  { id: 'written', text: 'A canon has at least four rooms written for it.',
     check: (L) => {
       if (!L.def.canon) return null;
       const n = ROOM_TEMPLATES.filter((t) => t.canon === L.def.canon.id).length;
       return n >= CANON.minRooms ? true : `${n} rooms written for ${L.def.canon.id}`;
     } },
-  { id: 'teach', text: 'Set pieces teach nothing. The Mill, the Hall, the Gallery, the killbox and a trap room buy their men off the curve but never introduce a kind.',
+  { id: 'teach', text: 'Set pieces never introduce a kind.',
     check: (L) => {
       if (!L.plan) return null;
       let any = false;
@@ -122,7 +122,7 @@ const GEN_RULES = [
       }
       return any ? true : null;
     } },
-  { id: 'mill', text: 'The Mill\'s room is half a crowd, and nobody at all on the level that first shows the wheel: the wheel is a thing to learn on its own.',
+  { id: 'mill', text: 'The Mill is half a crowd, and empty on the level that first shows the wheel.',
     check: (L) => {
       const rs = roomsOf(L), m = rs.find((r) => r.role === 'mill');
       if (!m) return null;
@@ -130,7 +130,7 @@ const GEN_RULES = [
       const peak = Math.max(0, ...rs.filter((r) => ORDINARY.has(r.role)).map((r) => r.threat));
       return m.threat <= peak ? true : `${m.threat.toFixed(1)} threat, above the worst ordinary room (${peak.toFixed(1)})`;
     } },
-  { id: 'rifles', text: 'Rifles hold posts only once a rifle has been met: the killbox, the Gallery and the lone posts all come after the room that introduces one.',
+  { id: 'rifles', text: 'A rifle holds a post only after rifles have been met.',
     check: (L) => {
       if (!L.plan || !L.def.encounters.kinds.includes('hunter')) return null;
       const from = L.plan.hunterFrom;
@@ -143,7 +143,7 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'milk', text: 'Milk is on a rhythm. The level is cut into bands and every band gives up a bowl, so it never goes longer than heal.every rooms dry, and no bowl sits in a set piece.',
+  { id: 'milk', text: 'Milk is on a rhythm: never more than heal.every rooms dry, never in a set piece.',
     check: (L) => {
       const n = L.def.rooms, limit = Math.ceil(TUNING.prop.heal.every);
       const rooms = L.props.filter((p) => p.kind === 'heal').map((p) => roomAt(L, p.x, p.y)).filter(Boolean);
@@ -154,13 +154,13 @@ const GEN_RULES = [
       worst = Math.max(worst, n - 1 - prev);
       return worst <= limit ? true : `${worst} rooms without a bowl (limit ${limit})`;
     } },
-  { id: 'pen', text: 'Nothing spawns within five tiles of where you wake, and the two control rooms after the pen hold nobody.',
+  { id: 'pen', text: 'Nothing spawns by the pen, and the control rooms hold nobody.',
     check: (L) => {
       for (const s of L.spawns) if (Math.hypot(s.x - L.start.x, s.y - L.start.y) <= 5 * TILE) return 'a man beside the pen';
       for (const r of roomsOf(L)) if ((r.role === 'calm' || r.role === 'pen') && r.spawns.length) return `${r.men.join(', ')} in the ${r.role}`;
       return true;
     } },
-  { id: 'arms', text: 'Arms are held back: no stand before the level\'s racksFrom, and never more than one loose stand in a room on top of what the template drew.',
+  { id: 'arms', text: 'No stand of arms before racksFrom, and one loose stand to a room.',
     check: (L) => {
       const from = Math.round((L.def.racksFrom || 0) * (L.def.rooms - 1)), per = new Map();
       for (const p of L.props) {
@@ -176,17 +176,40 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'traps', text: 'A trap room is never a set piece and never one of the first two ordinary rooms, where kinds are introduced. The random grating skips it.',
+  { id: 'traps', text: 'A trap room is never a set piece nor one of the first two ordinary rooms.',
     check: (L) => {
       const o = L.rooms.filter((r) => ORDINARY.has(r.role)), t = o.filter((r) => r.role === 'trap');
       if (!t.length) return null;
       for (const r of t) if (o.indexOf(r) < 2) return `room ${r.index} is a trap room`;
       return true;
     } },
-  { id: 'vault', text: 'The vault is a sealed chamber off one ordinary room in the middle of the level, behind the soul door, and nothing about it is on the way to the stairs.',
+  { id: 'stairdoor', text: 'The way out is barred: an iron door in front of every level\'s stairs.',
+    check: (L) => {
+      const d = L.props.find((p) => p.kind === 'door' && p.stair);
+      if (!d) return 'nothing standing in front of them';
+      const last = L.rooms[L.rooms.length - 1];
+      const inLast = d.x >= last.x * TILE && d.x < (last.x + last.w) * TILE;
+      return inLast ? true : 'it is not in the last room';
+    } },
+  { id: 'soulgate', text: 'A gated arena is shut by a door no blow opens, and its boss carries the soul that opens it.',
+    check: (L) => {
+      if (L.def.soulGate === undefined) return null;
+      if (!L.soulGate) return 'the gate was never hung';
+      const cell = L.plan && L.plan.rooms.get(L.def.soulGate);
+      if (!cell || !cell.boss) return `room ${L.def.soulGate} has no boss in it`;
+      return L.props.some((p) => p.kind === 'door' && p.gate) ? true : 'no gate prop on the level';
+    } },
+  { id: 'budget', text: 'A level hands out every soul it was authored to give: a gate, a vault, then its last bosses.',
+    check: (L) => {
+      if (L.def.souls === undefined) return null;
+      const bosses = L.spawns.filter((s) => s.boss).length;
+      const places = bosses + (L.vault ? 1 : 0);
+      return places >= L.def.souls ? true : `${L.def.souls} souls and only ${places} places to put them`;
+    } },
+  { id: 'vault', text: 'The vault is sealed off an ordinary room, and never on the way to the stairs.',
     check: (L) => {
       if (L.def.vaultAt === undefined) return null;
-      if (!L.vault) return 'no rock to cut it into on this seed, so the level is a tome short';
+      if (!L.vault) return 'no rock to cut it into on this seed, so the level is a soul short';
       const r = L.rooms[L.def.vaultAt];
       return ORDINARY.has(r.role) ? true : `off the ${r.role}`;
     } },
@@ -212,18 +235,16 @@ function levelFacts(def) {
   const canon = def.canon ? ROOM_TEMPLATES.filter((t) => t.canon === def.canon.id).map((t) => t.name) : [];
   const mix = ROOM_TEMPLATES.filter((t) => !t.tag && (!t.canon || (def.known && def.known.has(t.canon))) && fits(t)).map((t) => t.name);
   const traps = ROOM_TEMPLATES.filter((t) => t.tag === 'trap' && fits(t)).map((t) => t.name);
+  // Four lines and no sentences. The page is a thing you scan while a level is paused behind it, so
+  // everything here is `name value`, in the order you would ask for it.
   return [
-    `${def.rooms} rooms · curve ${E.from} → ${E.to}, ease ${E.ease} · kinds: ${E.kinds.join(', ')}`,
-    `introduces: ${(E.introduce || []).map(([k, a]) => `${k} @ ${a}`).join(', ') || 'nothing new'}`
-      + (E.cap ? ' · caps loosened: ' + Object.entries(E.cap).map(([k, v]) => `${k} ${v}`).join(', ') : '')
-      + (E.weight ? ' · draw reweighed: ' + Object.entries(E.weight).map(([k, v]) => `${k} ${v}`).join(', ') : ''),
-    `arenas: ${(def.arenas || []).map((a) => `${a.boss} @ ${a.at}`).join(', ') || '—'} · mill @ ${at(def.millAt)}${def.millSolo ? ' (empty)' : ''}`
-      + ` · hall @ ${at(def.hallAt)}${def.hallThreat ? ` (${def.hallThreat})` : ''} · gallery @ ${at(def.galleryAt)} · killbox @ ${at(def.killboxAt)} · vault @ ${at(def.vaultAt)}`,
-    `lone posts ${def.lonePosts || 0} · trap rooms ${def.traps || 0} · grating ${pct(def.spikes)} · crates ${pct(def.crates)} · windows ${pct(def.windows)} · corridor ${def.corridorW || 2} wide`,
-    `milk ≥ ${def.heals || 0} · tomes ${def.tomes} · stands ${pct(def.racks)} of rooms from ${pct(def.racksFrom)} of the level · doors ${pct(def.doorChance)}, iron ${pct(def.ironDoors)}`
-      + (def.sentryIntro ? ' · the first man is a sentry' : '') + (def.ritual ? ' · the ritual room' : ''),
-    `canon rooms (${canon.length}): ${canon.join(', ') || '—'}`,
-    `mix rooms (${mix.length}): ${mix.join(', ')}`,
-    `trap rooms (${traps.length}): ${traps.join(', ') || '—'}`,
+    `${def.rooms} rooms · curve ${E.from}→${E.to} ease ${E.ease} · souls ${def.souls} · milk ≥${def.heals || 0}`,
+    `kinds ${E.kinds.join(' ')} · new ${(E.introduce || []).map(([k, a]) => `${k}@${a}`).join(' ') || '—'}`
+      + (E.cap ? ' · caps ' + Object.entries(E.cap).map(([k, v]) => `${k} ${v}`).join(' ') : ''),
+    `arenas ${(def.arenas || []).map((a) => `${a.boss}@${a.at}`).join(' ') || '—'} · mill ${at(def.millAt)}${def.millSolo ? '(empty)' : ''}`
+      + ` · hall ${at(def.hallAt)} · gallery ${at(def.galleryAt)} · killbox ${at(def.killboxAt)} · vault ${at(def.vaultAt)} · gate ${at(def.soulGate)}`,
+    `traps ${def.traps || 0} · posts ${def.lonePosts || 0} · grates ${pct(def.spikes)} · crates ${pct(def.crates)}`
+      + ` · windows ${pct(def.windows)} · stands ${pct(def.racks)} from ${pct(def.racksFrom)} · doors ${pct(def.doorChance)} iron ${pct(def.ironDoors)}`,
+    `canon ${canon.length}: ${canon.join(' ')} · mix ${mix.length} · trap ${traps.length}`,
   ];
 }

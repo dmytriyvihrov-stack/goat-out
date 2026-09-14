@@ -10,6 +10,30 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ---
 
+## 14 September 2026, night — the sixth sitting
+
+Nine lines in one message, plus the rule under them: *"I want to build a power fantasy where you start
+weak."* All of it shipped in 1.11; the reasoning is in `CHANGELOG.md`.
+
+- ~~**Less text in the dev tool where possible.**~~ Every rule is one line and the facts read as
+  `name value`.
+- ~~**Where the tool generates a random seed, show the enemy count and the room design.**~~ The room
+  list is a strip of floor plans now, drawn off the generated level, with `×N` over each.
+- ~~**Level one: a door at the first mini-boss that only opens once he is beaten and his soul taken.**~~
+  Shipped as `levelDef.soulGate`.
+- ~~**A boss carrying a soul has red eyes and a light yellow glow, so he reads.**~~ Shipped.
+- ~~**An iron door in front of the stairs on every level.**~~ Shipped as `stair: true`.
+- ~~**Tome → corrupted soul, with a picture. A goat cannot read.**~~ Shipped, code and art.
+- ~~**Hide the timer unless it is switched on in settings; show it at the end.**~~ Shipped with a
+  SETTINGS page on the title screen.
+- ~~**Nerf the base headbutt a little more.**~~ Recovery 0.35 → 0.44, impulse 30 → 25, reach 1.7 → 1.55.
+- ~~**Base grab takes objects only; carrying a man is a skill.**~~ Shipped as BY THE COLLAR.
+- ~~**Base BAAH is only a noise that lures; upgrades make it a stun or fire.**~~ Shipped as
+  THE FULL THROAT and DRAGON BREATH.
+- ~~**You only see a room when you open its door.**~~ Shipped as `room.seen`.
+
+---
+
 ## 14 September 2026, evening — the fifth sitting
 
 Asked for in one message and built in the same sitting; kept here so the file stays a record of what

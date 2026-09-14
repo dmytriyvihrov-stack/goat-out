@@ -59,7 +59,7 @@ class Goat {
       }
       game.audio.sfxRoll(); world.emitNoise(this.x, this.y, TUNING.noise.swing); game.vibe(12);
       game.particles(this.x, this.y, 9, PALETTE.ash, 150);
-      // DEAD WEIGHT: the list of who this tumble has already been through. No list, no tome.
+      // DEAD WEIGHT: the list of who this tumble has already been through. No list, no soul.
       this.rollHit = game.mods.rollStun > 0 ? [] : null;
       if (this.rollHit) game.ring(this.x, this.y, R.stunR * 1.4, PALETTE.bone);
     }
@@ -175,10 +175,13 @@ class Goat {
     }
 
     // ---- scream ----
+    // Three things one button can be, and which one it is was decided by a soul. Fire, a blow, or
+    // what a goat's voice actually is: a noise, loud enough to bring the room to the spot you made
+    // it at. The bare version is the one you start with and the only one that is not a weapon.
     if (inp.spacePressed && this.screamCd <= 0 && !this.dead) {
       if (game.mods.breath) this.breathe(game);
-      else {
-        // It is not a lure any more. Everyone in earshot loses a moment, and that moment is the point.
+      else if (game.mods.screamStun) {
+        // THE FULL THROAT: everyone in earshot loses a moment, and that moment is the point.
         this.screamCd = game.mods.screamCooldown; this.screaming = g.scream.duration;
         game.audio.sfxScream();
         game.floatText(this.x, this.y - 26, 'BAAAAH', PALETTE.bone);
@@ -193,6 +196,21 @@ class Goat {
           e.daze(game, g.scream.stun); n++;
         }
         if (n) game.floatText(this.x, this.y - 44, n + (n === 1 ? ' REELS' : ' REEL'), PALETTE.fireHi);
+      } else {
+        // The bare voice. It is a `lure` noise, which is the one kind of noise that pulls a man to
+        // the spot rather than only turning his head — so it is a way of emptying the far side of a
+        // room, and a way of filling the side you are standing on. Both of those are the same button.
+        this.screamCd = game.mods.screamCooldown; this.screaming = g.scream.duration;
+        game.audio.sfxScream();
+        game.floatText(this.x, this.y - 26, 'BAAAAH', PALETTE.bone);
+        game.ring(this.x, this.y, g.scream.call * TILE, 'rgba(239,230,208,0.5)');
+        world.emitNoise(this.x, this.y, g.scream.call, 'lure');
+        let n = 0;
+        for (const e of game.enemies) {
+          if (e.dead || e.held || e.ghosted) continue;
+          if (Math.hypot(e.x - this.x, e.y - this.y) <= g.scream.call * TILE) n++;
+        }
+        if (n) game.floatText(this.x, this.y - 44, n === 1 ? '1 HEARD IT' : n + ' HEARD IT', PALETTE.ash);
       }
     }
 
@@ -202,7 +220,7 @@ class Goat {
     if (this.state === 'lunge' && impact > 0) { this.state = 'recover'; this.timer = g.headbutt.recovery * game.mods.headbuttRecovery * 0.6; game.shake(3); game.audio.sfxThud(); }
 
     // ---- fire ----
-    // Witchfire goes straight through the coat: nothing the tomes offer turns the Seer's fire away.
+    // Witchfire goes straight through the coat: nothing the souls offer turns the Seer's fire away.
     const witch = world.isWitchPx(this.x, this.y);
     this.witchFire = witch;
     this.onFire = witch || (!game.mods.fireImmune && (world.isBurningPx(this.x, this.y) || game.touchingBrazier(this)));
@@ -216,7 +234,7 @@ class Goat {
 
     // ---- motion smear + bloody hoof prints ----
     const spd = Math.hypot(this.vx, this.vy);
-    // The tome that makes him faster lengthens the smear. It is the only place SURE HOOVES is
+    // The soul that makes him faster lengthens the smear. It is the only place SURE HOOVES is
     // visible at all, and a boon nothing on screen answers is a boon that reads as nothing.
     // SURE HOOVES and the run-up both come out here: the ghosts lengthen as he winds up, which is
     // the only thing on screen that says he is faster now than he was two rooms ago.
@@ -373,7 +391,12 @@ class Goat {
       if ((dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) return;
       if (d < bestD) { bestD = d; best = o; }
     };
-    for (const e of game.enemies) if (!e.dead && e.kind !== 'butcher' && e.kind !== 'dog' && e.kind !== 'wraith' && e.state !== 'flung' && !e.held) consider(e);
+    // Out of the pen the mouth takes objects and nothing else. A grown man is BY THE COLLAR, and
+    // until that soul is swallowed reaching for one is a thing you are told about rather than a
+    // thing that silently does nothing.
+    if (game.mods.grabMen) {
+      for (const e of game.enemies) if (!e.dead && e.kind !== 'butcher' && e.kind !== 'dog' && e.kind !== 'wraith' && e.state !== 'flung' && !e.held) consider(e);
+    }
     for (const p of game.props) if (p.item && !p.broken && !p.held && !p.flung) consider(p);
     if (!best) {
       // Reaching for a hound and closing on nothing is a rule worth stating once, where it happened.
@@ -382,6 +405,7 @@ class Goat {
         if (Math.hypot(e.x - this.x, e.y - this.y) > this.r + e.r + g.reach) continue;
         game.floatText(e.x, e.y - 24, 'TOO QUICK', PALETTE.ash); break;
       }
+      if (!game.mods.grabMen) game.reachedForAMan(this);
       return;
     }
     // Taking it out of the stand tips the stand over. What is left is the thing in your mouth.
@@ -456,9 +480,13 @@ class Prop {
     this.uses = kind === 'weapon' ? (P.weapon.uses[this.weapon] || 1) : 0;
     this.vertical = opts && opts.vertical; this.open = 0; this.pressure = 0; this.wobble = 0;
     // Iron: barred from the far side, three blows, and a level puts a couple of them in its
-    // corridors. `vault` is the soul door on top of that — the one with a tome behind it, worth a
+    // corridors. `vault` is the soul door on top of that — the one with a soul behind it, worth a
     // fourth blow and drawn so that nobody mistakes it for the iron door they passed two rooms ago.
+    // `stair` is the iron door at the top of every level, `gate` the barred one on level one that
+    // opens for a swallowed soul and for nothing else — the only door in the game a headbutt cannot
+    // answer, which is what makes the soul behind it the answer.
     this.iron = !!(opts && opts.iron); this.vault = !!(opts && opts.vault);
+    this.stair = !!(opts && opts.stair); this.gate = !!(opts && opts.gate);
     // A spike plate sits in the floor doing nothing until the goat crosses it: 'idle' waiting,
     // 'armed' counting down under his hooves, 'up' with the teeth out, then 'down' and a rest.
     this.spikeState = 'idle'; this.spikeT = 0; this.hits = 0;
@@ -697,7 +725,15 @@ class Prop {
   // The soul door is four, and it is the one door in a level that is not on the way anywhere.
   smash(game, ax, ay, by) {
     if (this.broken) return;
-    const D = TUNING.prop.door, need = this.vault ? D.vaultHits : this.iron ? D.ironHits : D.hits;
+    // The soul gate is barred from the far side and there is nothing on this one to break. It says
+    // so, once per blow, in the language of the thing that opens it.
+    if (this.gate) {
+      this.wobble = 0.3; game.audio.sfxSteel(); game.shake(3); game.vibe(10);
+      game.floatText(this.x, this.y - 28, 'THE SOUL OPENS IT', PALETTE.witchHi);
+      return;
+    }
+    const D = TUNING.prop.door;
+    const need = this.vault ? D.vaultHits : this.stair ? D.stairHits : this.iron ? D.ironHits : D.hits;
     this.hits = (this.hits || 0) + 1;
     if (this.hits < need) {
       this.wobble = 0.3; this.open = Math.max(this.open, 0);
@@ -867,7 +903,7 @@ class Prop {
     if (this.open >= 0.5) return;
     // Iron is barred from the far side and nobody on this one has the key. It opens by being broken
     // or it does not open — which is the only reason the thing behind it is still there.
-    if (this.iron) return;
+    if (this.iron || this.gate) return;
     // Cultists who cannot get through eventually shoulder it open.
     let pressed = false;
     for (const e of game.enemies) {

@@ -22,8 +22,8 @@ node tools/serve.js 8766
 Then open http://127.0.0.1:8766. The first screen is two buttons — NEW GAME, and CONTINUE, which stays
 dark until there is a run to come back to. Audio unlocks on that first input.
 
-A run is written to the browser at the head of every level and whenever a tome is taken, so CONTINUE
-puts you back at the start of the furthest level you reached with the tomes you had there. Starting a
+A run is written to the browser at the head of every level and whenever a soul is taken, so CONTINUE
+puts you back at the start of the furthest level you reached with the souls you had there. Starting a
 new game throws it away, and so does escaping.
 
 ---
@@ -39,14 +39,14 @@ the thumbs get their own deck below it. In landscape the controls overlay the bo
 | aim follows your run and snaps to nearby men | mouse | aim |
 | BUTT on the bars | left click on the bars | break out of the pen you start level 1 in — seven blows, and the third and the sixth leave you on the floor |
 | BUTT | left click | headbutt — into a wall, pillar, brazier or another man it kills; on open floor it only knocks down |
-| hold GRAB | hold right click | carry a man in front as a shield — he stops two bullets and any swing — or a pot, or what is in a stand of arms |
-| release GRAB | release right click | throw — a man kills what he hits and dies on the wall, a pot flattens, a sword goes through |
-| ROLL | E | clumsy sideways tumble with brief mercy frames |
-| BAAH | space | scream — it is a stun, not a lure. Everyone in earshot stands there for a second, whatever he was doing. It calls nobody. |
-| hold GRAB | hold right click | carry a man in front as a shield — he stops two bullets and any swing |
-| release GRAB | release right click | throw — he kills what he hits and dies on the wall. Then a beat before you can grab again |
-| ROLL | E | clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
-| BAAH | space | scream — everyone in earshot is dazed for a second, whatever he was doing. It calls nobody. |
+| hold GRAB | hold right click | carry a box, a blade or a shield. A man is a soul away: until BY THE COLLAR the mouth takes objects only |
+| release GRAB | release right click | throw — a box flattens, a sword goes through, a man kills what he hits and dies on the wall |
+| ROLL | E | nothing, until TUCK AND ROLL. Then a clumsy sideways tumble with brief mercy frames |
+| BAAH | space | a noise. Every man who hears it walks to the spot you made it at. THE FULL THROAT turns it into a stun, DRAGON BREATH into fire — you get one |
+| hold GRAB | hold right click | carry a box, a blade or a shield — and a man too, once BY THE COLLAR is in you |
+| release GRAB | release right click | throw — it kills what it hits and comes apart. Then a beat before you can grab again |
+| ROLL | E | once a soul gives it to you: a clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
+| BAAH | space | a noise they walk toward, until a soul makes it a stun or a cone of fire |
 | tap after death | Backspace | new level |
 | — | M | mute |
 
@@ -109,7 +109,7 @@ circles out past your horns, picks a moment, runs in for one bite and gets out a
 there for a good share of the headbutts you aim at it. One hit kills it. The answer to a pack is the
 scream: a hound loses far longer to BAAH than a man does, and a dazed hound cannot dodge at all.
 
-**Two bosses per level**, each dropping a tome. A tome offers three actives or three passives. Dragon
+**A level gives up an authored number of souls** — one on the first, two after — and the boss carrying one glows. A soul offers three actives or three passives. Dragon
 Breath turns the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Devour lets you
 tear a held man open for a chance to heal. Boons last the run and die with you.
 
@@ -139,7 +139,7 @@ watching the door, a shield by that door, two of their own to carry in front of 
 behind you if you would rather not.
 
 **The skill rail**, top right: your four verbs as icons, whether each is ready, the cooldown on throw,
-roll and scream, and what your tomes have done to each of them. Long Horns lengthens the horns on the
+roll and scream, and what your souls have done to each of them. Long Horns lengthens the horns on the
 icon and on the goat; Dragon Breath turns the scream into a cone of fire.
 
 **Presentation.** A slightly tilted camera that punches on every kill, blocky cult pictograms stamped into
@@ -151,7 +151,7 @@ that escalates with how many enemies are aware of you. No audio or image assets 
 
 ## Dev drawer
 
-Bottom-right corner, works with mouse or finger. God mode, spawn any enemy, drop a tome, heal, clear the
+Bottom-right corner, works with mouse or finger. God mode, spawn any enemy, drop a soul, heal, clear the
 room, new level, skip level.
 
 ---

@@ -55,11 +55,19 @@ it out instead, and the first screen is a menu.
 |---|---|
 | WASD / left thumb | Move. Momentum-heavy: 0.15 s to top speed, 0.25 s to stop. Faster than any cultist. |
 | Mouse / auto-aim | Aim. On touch the aim follows your run and snaps onto men within about five tiles. |
-| Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.35 s recovery, no cancel. |
-| Hold right click / GRAB | Carry a man in front as a shield. He stops two bullets and any swing. Breaks free after 3 s. |
+| Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.44 s recovery, no cancel. Deliberately blunt out of the pen: short reach, little throw behind it, and long enough on the end that a second man walks in on it. |
+| Hold right click / GRAB | Carry a box, a blade or a shield. **A man is a soul away** — until BY THE COLLAR is swallowed the mouth takes objects and nothing else. |
 | Release | Throw. A thrown man kills what he hits and dies on the wall. Your mouth is then empty for about 1.3 s. |
-| E / ROLL | Clumsy sideways tumble. Brief mercy frames, then a stagger you must eat, then about 1.3 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. |
-| Space / BAAH | Scream. Everyone within about eight tiles is dazed for a second, whatever he was doing. It calls nobody, and it is deliberately shorter than the screen is wide: it answers the men on top of you, not the room. |
+| E / ROLL | Nothing at all until TUCK AND ROLL. Then: a clumsy sideways tumble, brief mercy frames, a stagger you must eat, about 1.3 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. |
+| Space / BAAH | A noise. Every man who hears it walks to the spot you made it at, which empties one end of a room and fills the other. **THE FULL THROAT** turns it into a blow that dazes everyone in earshot; **DRAGON BREATH** turns it into fire. You get one of the two. |
+
+**Three of the four buttons start half-shut, and the souls open them.** A goat out of a pen can run,
+put his head into things, pick up what is lying about, and shout — that is the whole animal. He cannot
+dodge, he cannot carry a grown man, and his voice is a voice and not a weapon. Each of those is a soul,
+and the bare headbutt is blunt enough that LONG HORNS and IRON SKULL are felt rather than noticed. The
+run starts weak on purpose: the power fantasy is the climb, and there is nothing to climb from if the
+first room already hands you everything. The rail says which half you have — `THINGS` before GRAB,
+`CALL` before BAAH, `LOCKED` before ROLL — so a dark chip is a promise rather than a missing feature.
 
 Four hearts, no regeneration, one life per level. A new level puts every heart back. Blood smears the
 coat as you take hits, so health reads on the character as well as in the corner.
@@ -75,7 +83,7 @@ pay with a beat of about a second and a third. Nothing is on a global cooldown a
 button is lit it fires, and the corner rail is where you read which ones are lit.
 
 **The skill rail** in the top-right corner is the goat's sheet: four icons for four verbs, each showing
-whether it is ready, how long until it is, and what the tomes have done to it. A boon has to change its
+whether it is ready, how long until it is, and what the souls have done to it. A boon has to change its
 icon — Long Horns lengthens the horns there and on the goat, Dragon Breath turns the mouth into a cone of
 fire — so a build reads as a shape rather than as a list of names.
 
@@ -96,7 +104,7 @@ past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 | **Butcher** | Heavy. Three hits, and fire only ever costs him one of them however long he burns. Cannot be interrupted mid-swing, answers a stagger with a quick retaliation, and charges in a straight line after a visible windup. A charge into a wall stuns him for a free hit. Deals one heart. |
 
 **Arena bosses** carry an elite flag: they absorb three hits, going down and getting back up, and a Seer
-blinks clear each time. Every boss drops a tome.
+blinks clear each time. Every boss drops a soul.
 
 **They talk.** Short barks over their heads: on first sight of you, when you are close and they have not
 seen you yet, when a scream pulls them somewhere, when they commit to a swing, when a man goes down in
@@ -214,6 +222,15 @@ up and right, validated by flood fill. Templates are randomly flipped on both ax
 toward the exit. Nothing spawns within five tiles of the start. Death means a new seed; the seed is
 printed in the corner.
 
+**You see a room when you open its door.** A room is dark until the goat has walked into it, and then
+it stays lit for the rest of the level. Corridors are always visible, so what you can see ahead of you
+is a doorway and whatever is standing in it. Before this, a corridor ended in a room you had already
+read from twenty tiles away and every room in the game gave you the same length of warning.
+
+**The way out is barred.** Every level ends on an iron door in front of its stairs: three blows, no
+shouldering it open, and every blow is noise. The last thing a level asks is that you stand still in
+the open with whatever is left of it walking toward the sound.
+
 **Stairs.** The exit is a flight of steps cut into the right wall of the last room, climbing into
 light. The goat takes them for a moment, rising and thinning out, before the cards. Every level after
 the first is entered up another flight cut into the left wall of its first room, and the goat comes up
@@ -296,22 +313,39 @@ top-down game explains itself.
 
 ---
 
-## Tomes
+## Corrupted souls
 
-Each boss drops one. A tome offers **three of one kind**: either three actives or three passives. The
-first tome of a run always offers actives, so every run picks a skill before it picks numbers. Boons
-carry across levels, and a death costs one of them rather than all of them: you come back at the head
-of the level with what you walked into it carrying, minus the newest thing you had learned. The card
-names what went, because losing IRON SKULL is a different feeling from losing a number.
+What a boss leaves, and what the goat swallows to get stronger. It is a violet wisp with two cold
+points in it — the compound's own dead, kept in a man — and it is violet because violet is this game's
+colour for what should not exist: witchfire, the Seer's runes, the wraith. It was a tome, which asked
+the player to believe that a goat reads.
 
-**Actives** change what a button does.
+**A level gives up an authored number of them**: one on level one, two on every level after, thirteen
+across a run against sixteen boons, so no run gets everything and no two runs are the same goat. The
+gated arena is paid first, then the vault, then the last bosses of the level; every other boss leaves
+milk. **A man carrying one is lit** — an amber haze that breathes, a ring at his feet, and red eyes —
+so the one man in a room worth crossing the room for says so from across it.
 
-- **Dragon Breath** turns the scream into a cone of fire. The gauge goes red.
+A soul offers **three of one kind**: either three actives or three passives. The first soul of a run
+always offers the roll, and while any button is still shut the cards lean hard toward the actives.
+Boons carry across levels and a death takes none of them.
+
+**Actives** change what a button does, and three of them switch one on.
+
+- **By the Collar** lets you take a man in your teeth at all.
+- **The Full Throat** turns BAAH from a noise into a blow.
+- **Tuck and Roll** answers the fourth button.
+- **Dragon Breath** turns the scream into a cone of fire instead. The gauge goes red.
 - **Bomb Charge** makes anyone you headbutt detonate a moment later.
 - **Devour** lets you keep holding a man until you tear him open, with a chance to feed.
 
 **Passives** sharpen what you already have: Thick Hide, Long Horns, Iron Skull, Strong Jaw, Living
-Shield, Raw Throat, Sure Hooves, Loose Joints, Ember Coat.
+Shield, Raw Throat, Sure Hooves, Loose Joints, Dead Weight, Ember Coat.
+
+**The soul gate**, on level one only: the brute's arena is shut behind a barred door that no blow
+opens, and the soul he is carrying is the bar. It is there because the first soul a run is offered lies
+on the floor of a room whose fight is already over, and it is very easy to walk past a thing like that
+and meet level two with none of the three buttons still shut.
 
 ---
 

@@ -5,6 +5,45 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.11 — a goat that starts weak, and souls instead of books
+
+**One sitting, about the climb.** The ask was a power fantasy that begins at the bottom: the verbs you
+start with should be the plain version of themselves, and everything after that should be earned. Every
+change here is that, plus the reading of it — what a room tells you before you are in it, and which man
+in it is worth the trouble.
+
+- **A tome is a corrupted soul.** A goat does not read. It is a violet wisp with two cold points in
+  it now, drawn by one routine that the thing on the floor, the choice cards and both soul doors all
+  use, and the goat swallows it to get stronger. `tomes` is `souls` everywhere in the code.
+- **Three of the four buttons start half-shut.** GRAB lifts boxes, blades and shields, and a man is
+  **BY THE COLLAR**. BAAH is a **noise** that walks every man who hears it to the spot you shouted
+  from — a tool for emptying one end of a room, and a way to fill the other — and turning it into a
+  weapon is **THE FULL THROAT** or **DRAGON BREATH**, one or the other. ROLL is still **TUCK AND
+  ROLL**. The rail says which half you have: `THINGS`, `CALL`, `LOCKED`, each dimmed, each changing
+  its word when the soul lands. While any button is shut the cards deal actives three times in four.
+- **The bare headbutt is blunter**: shorter reach, less throw behind it, and a recovery long enough
+  that a second man arrives on the end of the first swing. LONG HORNS and IRON SKULL both got stronger
+  to match, so the same tomes that were numbers are now felt.
+- **The gate on level one.** The brute's arena is shut behind a barred door that no blow opens; the
+  soul he is carrying is the bar. Nobody walks past the first soul they are ever offered any more,
+  which is what was happening — the fight was over, the thing on the floor was scenery, and the run
+  met level two with every button still shut.
+- **A man with a soul in him is lit**: an amber haze that breathes, a ring at his feet, red eyes. Two
+  Butchers in a run used to look identical and one of them was worth a verb.
+- **An iron door in front of every level's stairs.** Three blows and the noise of three blows. The
+  last room of a level was the one room you could always outrun.
+- **You see a room when you walk into it.** Everything you have not been in is painted out, and stays
+  painted out until you are in it; corridors are always visible, so the warning you get is the width
+  of a door rather than the width of the screen.
+- **The clock is a setting, and it is off.** A new SETTINGS page on the title screen holds it and the
+  sound switch. The level card reports the time either way, which is where a time belongs.
+- **The RULES page reads faster.** Every rule is one line, the level's numbers read out as `name
+  value`, and the room list is gone — in its place is every room as a **floor plan** drawn off the
+  generated level, with the men on it as dots and `×N` over each. Three new rules: the stair door, the
+  soul gate, and that a level has somewhere to put every soul it was authored to give.
+
+---
+
 ## 1.10 — every level is about one thing, and a page that says so
 
 **One sitting, about the shape of a level.** Asked for as a tab in the dev tool — the level

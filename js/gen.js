@@ -231,7 +231,8 @@ function tryGenerate(levelDef, seed) {
     const role = i === 0 ? 'pen' : arena ? 'arena' : i === levelDef.millAt ? 'mill' : i === levelDef.hallAt ? 'hall'
       : i === levelDef.galleryAt ? 'gallery' : i === levelDef.killboxAt ? 'killbox' : calm ? 'calm'
       : trapRooms.has(i) ? 'trap' : canonRooms.has(i) ? 'canon' : 'mix';
-    const room = { x, y, w, h, tpl, index: i, markers: [], arena, role,
+    // `seen` is the fog: a room is dark until the goat is standing in it. The first one is not.
+    const room = { x, y, w, h, tpl, index: i, markers: [], arena, role, seen: i === 0,
       isMill: i === levelDef.millAt, isHall: i === levelDef.hallAt, isGallery: i === levelDef.galleryAt,
       isKillbox: i === levelDef.killboxAt, isTrap: trapRooms.has(i), calm };
     for (let ty = 0; ty < h; ty++) {
@@ -273,6 +274,12 @@ function tryGenerate(levelDef, seed) {
   }
   const exit = { x: (last.x + last.w) * TILE, y: (doorY + 1) * TILE };
   const exitTile = { x0: last.x + last.w - 1, y0: doorY };
+  // The way out is barred. Every level ends on an iron door standing in front of its stairs, so the
+  // last thing a level asks of you is to stand still in the open and break something noisy while
+  // whatever is left of the room walks toward the sound. It used to end on the stairs simply being
+  // there, which meant the last room of a level was the one room in it you could always outrun.
+  props.push({ x: (last.x + last.w - 1.5) * TILE, y: (doorY + 1) * TILE,
+    kind: 'door', vertical: true, iron: true, stair: true });
 
   // Every level after the first is entered the same way: up a flight cut into the left wall of the
   // first room. The goat starts at the top of it, a step inside.
@@ -298,12 +305,24 @@ function tryGenerate(levelDef, seed) {
 
   // The vault. A small room cut into the stone above or below one ordinary room in the middle of the
   // level, with one tile of doorway between them and an iron door in it. Nothing walks out of it and
-  // nothing is on the way to the stairs: it is four blows, the noise of four blows, and a tome.
+  // nothing is on the way to the stairs: it is four blows, the noise of four blows, and a soul.
   const vault = levelDef.vaultAt !== undefined ? carveVault(tiles, W, H, rooms[levelDef.vaultAt], props, rng) : null;
   // A level that asks for a vault gets one. About one seed in two hundred put the room hard against
   // the top or the bottom of the world with no rock on either side to cut into, and the level went
-  // out a tome short with nothing to say about it; a fresh seed is cheaper than a missing tome.
+  // out a soul short with nothing to say about it; a fresh seed is cheaper than a missing soul.
   if (levelDef.vaultAt !== undefined && !vault) return null;
+
+  // The soul gate. One arena on level one is shut behind a barred door that no blow opens: the boss
+  // inside it is carrying the soul that is the bar, and swallowing it is what lifts it. The way out
+  // of that room is narrowed to a single tile first, the same way the sentry's room is, because a
+  // gate you can walk round is a decoration.
+  let soulGate = null;
+  if (levelDef.soulGate !== undefined && rooms[levelDef.soulGate]) {
+    const at = gateSpot(tiles, W, rooms[levelDef.soulGate], props);
+    if (!at) return null;
+    props.push({ x: at.x, y: at.y, kind: 'door', vertical: true, iron: true, gate: true });
+    soulGate = { room: levelDef.soulGate, x: at.x, y: at.y };
+  }
 
   // Props from the template markers, and the men the plan asked for placed on whatever the room has.
   const plan = planEncounters(levelDef, rooms, rng);
@@ -509,7 +528,7 @@ function tryGenerate(levelDef, seed) {
       y: (lessonRoom.y + lessonRoom.h / 2) * TILE, w: lessonRoom.w * TILE, part: 2 });
   }
   return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt, vault, windows, plan };
+    hints, controls, cagePrompt, vault, windows, plan, soulGate };
 }
 
 // A ring of iron bars around a point. The pen around the start comes apart under a headbutt;
@@ -611,7 +630,7 @@ function pickCanonRooms(levelDef, n, trapRooms) {
 
 // Cut a sealed chamber into the stone off one side of a room and hang an iron door in the gap. It is
 // tried above the room first and then below; either way there has to be solid rock for it to go in,
-// so a room hard against the top of the world simply does not get one. Returns where the tome goes.
+// so a room hard against the top of the world simply does not get one. Returns where the soul goes.
 function carveVault(tiles, W, H, room, props, rng) {
   if (!room) return null;
   const vw = VAULT.w, vh = VAULT.h;
@@ -620,7 +639,7 @@ function carveVault(tiles, W, H, room, props, rng) {
   for (const side of rng.chance(0.5) ? ['up', 'down'] : ['down', 'up']) {
     // Where the chamber sits, and the stone between it and the room. Above the room that stone is two
     // rows deep — the rock the chamber was cut out of, and the room's own wall under it — and both
-    // have to come out or the door opens onto a wall and the tome is sealed in by the level itself.
+    // have to come out or the door opens onto a wall and the soul is sealed in by the level itself.
     const y0 = side === 'up' ? room.y - vh - 1 : room.y + room.h;
     const gapY = side === 'up' ? y0 + vh : y0 - 1;
     const doorY = side === 'up' ? gapY + 1 : gapY;
@@ -698,11 +717,13 @@ function spikePatch(tiles, W, room, props, rng, want) {
 // stretch of corridor the next room's carve took out of this one; everything in it but the top row
 // goes back to stone, and the man is posted a step inside the room on that row. Nothing else about
 // him changes: he is a clubman with two hearts who can be knocked into the wall like anybody.
-function blockSpot(tiles, W, room, props) {
+// Shut the way out of a room down to a single tile. `exitBand` is the stretch of corridor the next
+// room's carve took out of this one; everything in it but the top row goes back to stone, and
+// whatever door that corridor was given is removed — it is now half inside the stone, and the thing
+// standing in the gap is supposed to be the only thing standing in the gap.
+function narrowExit(tiles, W, room, props) {
   const b = room.exitBand;
   if (!b) return null;
-  // Whatever door the corridor was given is now half inside stone and standing in the last tile out
-  // of the room. The man is the obstacle here; nothing else gets to be.
   for (let i = props.length - 1; i >= 0; i--) {
     const p = props[i];
     if (p.kind !== 'door') continue;
@@ -716,6 +737,21 @@ function blockSpot(tiles, W, room, props) {
       if (tx >= 0 && tx < W) tiles[ty * W + tx] = T.WALL;
     }
   }
+  return b;
+}
+
+// The soul gate hangs in that single tile, in the mouth of the corridor where the room's own wall
+// used to be, so it is read from inside the room as the way out being shut rather than as a door
+// somebody left standing in a passage.
+function gateSpot(tiles, W, room, props) {
+  const b = narrowExit(tiles, W, room, props);
+  if (!b) return null;
+  return { x: (b.x0 + 0.5) * TILE, y: (b.y + 0.5) * TILE };
+}
+
+function blockSpot(tiles, W, room, props) {
+  const b = narrowExit(tiles, W, room, props);
+  if (!b) return null;
   // A step inside the room from the mouth of that corridor, on the one row still open.
   for (let dx = 1; dx <= 4; dx++) {
     const tx = b.x0 - dx, ty = b.y;

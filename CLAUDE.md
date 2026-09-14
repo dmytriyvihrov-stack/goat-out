@@ -69,7 +69,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 **Coordinates.** Simulation is flat top-down world space. Rendering squashes Y by `TILT` (0.86) so the
 camera reads as slightly tilted. Sprites counter-squash with `ctx.scale(1, 1 / TILT)` so they stand
 upright on a tilted floor. Anything drawn in world space that should not look squashed — floating text,
-the `?` marks, the tome label — needs that same counter-scale with its `y` multiplied by `TILT`.
+the `?` marks, the soul label — needs that same counter-scale with its `y` multiplied by `TILT`.
 The mouse-to-world conversion in `readMoveInput` divides by `zoom * TILT` on the Y axis. If you add a
 new screen-to-world conversion, do the same.
 
@@ -116,7 +116,7 @@ burning machinery underneath is untouched.
 **Enemies.** One `Enemy` class. `kind` is `bearer`, `hunter`, `dog`, `seer` or `butcher`; `update()`
 dispatches to `updateBearer` / `updateHunter` / `updateDog` / `updateSeer` / `updateButcher`. Shared
 machinery (perception, being flung, burning, being held, the bomb fuse) sits above the dispatch. Arena
-bosses carry `elite` and `boss` flags: elites absorb hits before dying, bosses drop a tome.
+bosses carry `elite` and `boss` flags: elites absorb hits before dying, bosses drop a soul.
 
 **The hound.** `kind === 'dog'` is the one enemy that is not a man: no barks (only `sfxGrowl`), no grab
 (`tryGrab` skips it and says TOO QUICK), and `tryDodge` lets it slip `TUNING.dog.dodge` of the headbutts
@@ -175,19 +175,44 @@ kinds, `'mill'`, `'<kind> boss'`. It is passed into `generateLevel` and comes ba
 `taught`. Any kind not in it gets a room to itself the first time it appears (the room's other men are
 dropped); a new boss gets his arena alone, and the first Mill room keeps one man. `metRoom` inside the
 generator also keeps the lone rifle posts from landing earlier in the level than the room that
-introduces a rifle. A run that keeps its tomes keeps what it has learned; a fresh run forgets.
+introduces a rifle. A run that keeps its souls keeps what it has learned; a fresh run forgets.
 
-**Tomes are a budget, not a by-product.** `levelDef.tomes` is how many a level gives up, all in, and it
-is authored: **one on level one, two on every level after**, thirteen across a run, which is exactly the
-number of boons in `BOONS` minus the one you will not have room for. It used to be however many bosses
-the level happened to hold plus the vault — two, three or four, twenty-four across a clean run — which
-is not a decision about how strong the goat should be by level five, it is an accident of where the
-arenas are. `startLevel` spends the budget before a blow is struck: the vault takes the first (an iron
-door that costs four blows must not pay milk), and the rest go to the **last** bosses of the level, so
-the fight you finish on always pays. `Enemy.die` calls `game.bossPrize`, which drops a tome if the boss
-was given one and **milk** if he was not — nothing you had to break through is ever worth nothing. The
-level card reports the count, because a progression nobody can see is not one. A level definition with
-no `tomes` at all falls back to the old behaviour.
+**Corrupted souls are a budget, not a by-product.** `levelDef.souls` is how many a level gives up, all
+in, and it is authored: **one on level one, two on every level after**, thirteen across a run against
+sixteen boons, so no run gets everything. It used to be however many bosses the level happened to hold
+plus the vault — twenty-four across a clean run — which is not a decision about how strong the goat
+should be by level five, it is an accident of where the arenas are. `startLevel` spends the budget
+before a blow is struck, in this order: the `soulGate` arena (its door does not open without one), then
+the vault (an iron door that costs four blows must not pay milk), then the **last** bosses of the level,
+so the fight you finish on always pays. `Enemy.die` calls `game.bossPrize`, which drops a soul if the
+boss was given one and **milk** if he was not — nothing you had to break through is ever worth nothing.
+The level card reports the count, because a progression nobody can see is not one.
+
+It was a tome, and a tome asked the player to believe that a goat reads. A soul is a violet wisp with
+two cold points in it (`Renderer.soulWisp`, used by the thing on the floor, by the cards and by the two
+doors that are about one), it is `game.souls` in the code, and the goat swallows it. Violet is the
+game's colour for what should not exist — witchfire, runes, the wraith — so the power curve of a run is
+the goat eating the compound's own dead, which is the only part of the fantasy that needed saying.
+
+**A man with a soul in him is lit.** Which boss is carrying one was decided in `startLevel` and used to
+be something you found out by killing him. `drawEnemy` gives him an amber haze that breathes and a thin
+ring at his feet; `drawCultist` and `drawHound` turn his eyes red off the same `e.soul` flag. Neither
+changes anything about the fight — it is a label, readable across a room, on the one man in it worth
+crossing the room for.
+
+**The soul gate.** `levelDef.soulGate` is a room index — one arena, on level one only. `gateSpot` in
+`gen.js` narrows that room's exit to a single tile the way `blockSpot` does for the sentry and hangs a
+door in it with `gate: true`. That door has no hit points: `Prop.smash` returns early and says so, and
+`updateDoor` will not let anyone shoulder it. `game.openSoulGate`, called from the soul pickup, is the
+only thing that opens it. It exists because the first thing a run is offered is a soul lying on the
+floor of a room whose fight is already over, and the first player we watched walked straight past it
+and met level two with none of the three buttons the souls open.
+
+**The way out is barred.** Every level now ends on an iron door standing in front of its stairs
+(`stair: true`, `prop.door.stairHits`), placed by the generator right after it cuts the exit. Three
+blows, no shouldering, and every blow is noise: the last thing a level asks is that you stand still in
+the open with whatever is left of it walking toward you. Before it, the last room of a level was the
+one room in it you could always simply outrun.
 
 **Boons.** `game.mods` is recomputed from `game.boons` by `applyBoons()`. Every use site reads
 `game.mods.X` rather than `TUNING` directly, so nothing mutates `TUNING` (which would leak across runs).
@@ -195,15 +220,27 @@ Adding a boon means: add it to `BOONS`, add its default to `BOON_BASE`, and read
 Give it a `skill` (`butt` / `grab` / `roll` / `scream`) and it hangs off that button in the HUD rail; leave
 `skill` off and it is body work, listed but attached to nothing. `needs` names a mod that has to already
 be on before the card is dealt at all — `LOOSE JOINTS` on a goat who cannot roll yet is a card that does
-nothing, and with thirteen tomes in a run against fourteen boons there is no room for a dead draw.
+nothing, and the three grab boons need `grabMen` for the same reason.
+
+**Three of the four buttons start half-shut.** This is the whole progression and it is the one thing
+not to undo. A goat out of a pen can run, put his head into things, pick up what is lying about, and
+shout. He cannot dodge (`mods.roll`, TUCK AND ROLL), he cannot carry a grown man (`mods.grabMen`, BY
+THE COLLAR — `tryGrab` simply does not consider enemies, and `game.reachedForAMan` says so once a
+level), and his voice is a noise rather than a weapon (`mods.screamStun`, THE FULL THROAT, or `breath`,
+DRAGON BREATH — the bare scream emits a `lure` noise, which is the one kind that walks a man to the
+spot rather than only turning his head). The bare headbutt is blunt too: shorter reach, less throw, a
+recovery long enough that a second man walks in on the end of it, and LONG HORNS and IRON SKULL are
+what put that back. `drawSkills` reports the state of each — `THINGS` before GRAB, `CALL` before BAAH,
+`LOCKED` before ROLL, each dimmed — and `openBoonChoice` deals actives at 0.75 rather than 0.4 while
+any button is still shut, on top of the run's first soul always offering the roll.
 
 **The skill rail.** `drawSkills` (top right) is the only place the four verbs are reported: availability,
-cooldown, and what the tomes did to each. `skillIcon` draws each verb from `game.mods`, so an icon has to
+cooldown, and what the souls did to each. `skillIcon` draws each verb from `game.mods`, so an icon has to
 change when a boon lands — Long Horns lengthens the horns on the icon and on the goat, Dragon Breath turns
 the mouth into a cone, Loose Joints adds a second turn to the roll. Add a boon, draw its effect here.
-A chip can also be dark: `row.locked` is the roll before its tome, drawn at a fifth alpha with LOCKED
+A chip can also be dark: `row.locked` is the roll before its soul, drawn at a fifth alpha with LOCKED
 under it instead of the verb's name.
-The whole top band — the level name, the hearts, the rail, the count, the clock, the tome list — is sized
+The whole top band — the level name, the hearts, the rail, the count, the clock, the soul list — is sized
 by `renderer.hs`, which is `ts` times `TUNING.hud.scale`. That is the one number to turn if the corner of
 the screen is not being read; the cards, the menu and the floor text are on `ts` and stay where they are.
 
@@ -329,8 +366,14 @@ numbers. `tools/balance.js` runs the same `checkRules` over many seeds, which is
 there and nowhere else. The page shows the level in play as it stands; any other tab is a sample the
 page generates from `dev.sampleSeed` (`game.rulesPage`) and REROLL reseeds it, so every level can be
 inspected without playing up to it. `drawRules` in `render.js` paints it: fire for a rule that holds,
-blood for one that does not with its reason under it, ash for one that does not apply, and a bar of
-light behind every canon row of the room list.
+blood for one that does not with its reason under it, ash for one that does not apply.
+
+The right half is the level as pictures rather than as words. Every room is a tile carrying its floor
+plan at a few pixels to the tile (`roomPlan`, drawn off the **generated** level rather than off the
+template, so corridors, grates and the vault's door are in it), with its index and role above, `×N` for
+the men in it, and the canon tiles lit. Names are the last resort and the prose is one line per rule:
+the page is a thing you scan while a level is paused behind it, so a shape beats a sentence and
+`levelFacts` reads out as `name value` and not as English.
 
 **Trap rooms.** `tag: 'trap'` is a pool of its own, drawn *into* a level's ordinary rooms rather than
 instead of them: `levelDef.traps` is a count, `pickTrapRooms` chooses the indices (never the pen, the
@@ -386,16 +429,33 @@ no longer runs off both ends of the room it is lying in. A `hintKey` on the leve
 the four skill ids — paints the button under it from `HINT_KEYS`, keyboard or touch. A hint that names
 a verb should carry the key for it; one that names the ground should not.
 
-**The first screen.** State `title`, drawn entirely by `drawTitle` and holding three buttons and nothing
+**The first screen.** State `title`, drawn entirely by `drawTitle` and holding four buttons and nothing
 else: the opening scene tells the story and the floor of level 1 teaches the buttons, so the menu
-explains neither. `game.menu` is `{ index, rects, t, shake, board }`; `drawTitle` refills `rects` every
-frame and `menuAt` / `menuPick` are the only ways in, from a pointer (hit-tested in `pointerdown` like
-the tome cards) or from the keys the game already uses (`menuKey`: W/S or the arrows to move, SPACE or
-ENTER to choose). NEW GAME wipes the save and plays the opening scene; CONTINUE is dark and shakes
-its head until there is a run to come back to; BEST raises `menu.board`, which `drawBoard` paints over
-the whole screen and which anything at all — key or pointer — puts away again, so while it is up it
-takes the single rect and nothing behind it is clickable. `drawTitle` paints the whole canvas, vignette
-and empty thumb deck included, so nothing from the play view shows through.
+explains neither. `game.menu` is `{ index, rects, t, shake, panel, sub }`; `drawTitle` refills `rects`
+every frame and `menuAt` / `menuPick` are the only ways in, from a pointer (hit-tested in `pointerdown`
+like the soul cards) or from the keys the game already uses (`menuKey`: W/S or the arrows to move,
+SPACE or ENTER to choose). NEW GAME wipes the save and plays the opening scene; CONTINUE is dark and
+shakes its head until there is a run to come back to; BEST and SETTINGS raise `menu.panel`, and while a
+panel is up it owns `menu.rects` entirely, so nothing behind it is clickable. The board is put away by
+anything at all; the switches are not — a click on a row throws that row and only BACK leaves, which is
+why the hover lands on `menu.sub` rather than on the menu underneath. `drawTitle` paints the whole
+canvas, vignette and empty thumb deck included, so nothing from the play view shows through.
+
+**Settings.** `SETTINGS` in `tuning.js` is the list, `game.settings` the values, `SET_KEY` the
+`localStorage` slot, and every read and write is wrapped like the rest of them. Two switches, both
+things the game is better off not doing by default: **SHOW THE CLOCK** (off — a number climbing in the
+corner of a game about running turns the run into the number, and the level card reports the time
+either way) and **SOUND**, which is the same switch `M` throws. Adding one is a line in `SETTINGS` and
+a line at the use site; nothing else reads them.
+
+**The fog.** `room.seen` starts false on every room but the first, `game.revealRooms` sets it when the
+goat's own tile is inside the room's box widened by one — so a room opens as you come through its wall,
+not after it — and it is never re-hidden. `drawUnseen` paints the unopened rooms out in `def.fog` after
+the floor, the blood, the holes and the firelight and before anything that stands on them, and the draw
+order filters props, men and bullets through `game.hidden`. Corridors are never hidden: they are two
+tiles wide and what you can see down one is a doorway. The point is that a room used to be readable
+from twenty tiles away, so every room in the game gave the same length of warning; now the warning is
+the width of a door.
 
 **Score, and the board.** `scoreFor(kills, time, levelIndex)` is the only place a score is computed:
 pace against par (`rooms * score.perRoom`, capped at `fastCap`) times a kill multiplier (`killMul`,
@@ -406,7 +466,7 @@ capped at `killCap`). Time is the axis and kills only multiply, so nothing about
 run that set it. Every read and write is wrapped: a browser that refuses storage shows an empty BEST
 rather than breaking the menu.
 
-**The tome cards.** `takeBoon` is reachable from three places and all three are explicit: Digit1/2/3,
+**The soul cards.** `takeBoon` is reachable from three places and all three are explicit: Digit1/2/3,
 and a pointer that goes **down and up on the same card** (`boonDown` holds the index it went down on,
 `boonAt` hit-tests `boonRects`). `boonArm` (`TUNING.boonArm`) makes the cards refuse everything for a
 beat after they appear, so the click that killed the boss cannot spend what he dropped. Nothing
@@ -415,17 +475,17 @@ selects on hover, and nothing selects on a press alone.
 **What a death costs.** The level, not the learning. `startLevel` snapshots `game.levelBoons` from
 `game.boons` and `restartLevel` comes back with **exactly** that list, so everything the goat walked in
 carrying stays. It used to come back one short, which meant dying on the level that had just rewarded
-you cost you the reward and a bad run only got worse. What a death still takes is a tome found *inside*
+you cost you the reward and a bad run only got worse. What a death still takes is a soul found *inside*
 the level: the layout is generated again and it is back where it was, guarded by whoever was guarding
 it — which is also why a death is not a way to farm one. `onGoatDied` names what was kept rather than
 what was lost, because a card is the only place the player finds out that he keeps it. Nothing else may
 reset `boons` on a death: `restartLevel` passes `keepBoons`.
 
 **The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, score, at }` to
-`localStorage` under `SAVE_KEY` at the head of every level and again whenever a tome is taken; `loadRun`
+`localStorage` under `SAVE_KEY` at the head of every level and again whenever a soul is taken; `loadRun`
 refuses anything of another version or off the end of `LEVELS`, and every call is wrapped, so a browser
 that refuses storage simply never offers CONTINUE. Winning clears it. CONTINUE re-enters the head of
-that level with those tomes and a fresh seed — the layout is generated again, as it is after a death.
+that level with those souls and a fresh seed — the layout is generated again, as it is after a death.
 Boons are stored by `id`, so renaming one in `BOONS` silently drops it from old saves.
 
 **The opening scene.** It cannot be skipped until a browser has watched it through once: `SEEN_KEY` in
@@ -508,8 +568,9 @@ deliberately plain: four shapes, an outline, a face, a lit top edge and one band
 bands and a stud, which is detail spent saying nothing. Boxes are
 what a compound is full of; the point of it is that nothing has to be explained.
 
-**Three kinds of door.** `prop.door.hits` is one — a plank door in a corridor is a thing you run
-through, not a wall you stand at. `ironHits` is three and `vaultHits` four. `prop.iron` is the flag and
+**Five kinds of door.** `prop.door.hits` is one — a plank door in a corridor is a thing you run
+through, not a wall you stand at. `ironHits` is three, `stairHits` three (the barred way out of every
+level) and `vaultHits` four; `prop.gate` is the soul gate and has no count at all. `prop.iron` is the flag and
 `levelDef.ironDoors` is the chance an ordinary corridor door gets it, rolled in `gen.js` on top of
 `doorChance`: about two a level from level two on, none at all on level one, which is still teaching
 that a door goes. An iron door refuses `openPressure` — nobody shoulders it open, it is broken or it is
@@ -519,20 +580,21 @@ so the count is a count and not a wall.
 
 **The soul door.** `prop.vault` is the vault's door and it is the fourth-blow one. It used to be an
 iron slab like any other, which since level two now has iron slabs in its corridors would make the one
-thing in a level worth going out of your way for indistinguishable from a speed bump. It carries the
-tome's own halo, the book painted small on its face in `PALETTE.plum` and `fireHi`, and the same
-floating `TOME` the tome on the floor carries — the door says what is behind it in the language of the
-thing behind it, which is the only wording nobody has to be taught.
+thing in a level worth going out of your way for indistinguishable from a speed bump. It carries a
+halo, the wisp painted small on its face, and the floating word `SOUL` — the door says what is behind
+it in the language of the thing behind it, which is the only wording nobody has to be taught. The soul
+gate (`prop.gate`) is the same idea inverted: violet rather than amber, and the word on it is
+`A SOUL OPENS IT`, because what it names is not what is behind it but what it costs.
 
 **The vault.** `levelDef.vaultAt` names one ordinary room in the middle of a level. `carveVault` cuts a
 five-by-five chamber into the rock above or below it, opens **two** tiles of stone — the rock and the
 room's own wall border under it, which is the bug that sealed the first version in — hangs an iron door
-in the room's wall and returns where the tome goes. `startLevel` lays that tome down with
-`placeTome`, **not** `dropTome`: `dropTome` carries a rescue for a boss who died against a wall, that
+in the room's wall and returns where the soul goes. `startLevel` lays that soul down with
+`placeSoul`, **not** `dropSoul`: `dropSoul` carries a rescue for a boss who died against a wall, that
 rescue asks the flow field whether a spot can be reached, `computeFlow` stops at ninety tiles from
 wherever it was last computed, and a vault in the back half of a level is further away than that — so
-the rescue fetched the tome back and dropped it at the goat's feet on the first frame of the level.
-Nothing in the vault is on the way to the stairs: it is four blows, the noise of four blows, and a tome.
+the rescue fetched the soul back and dropped it at the goat's feet on the first frame of the level.
+Nothing in the vault is on the way to the stairs: it is four blows, the noise of four blows, and a soul.
 
 **Reach.** `game.reaches(ax, ay, bx, by)` is the single answer to "is there a way from here to there
 for a blow": line of sight plus every `blocking` prop as a circle against the segment. `meleeHit`'s
@@ -553,12 +615,13 @@ with an `entry`. Levels without `ritual` start at the top of the entry flight ra
 **The other cage.** Built by `buildCage(..., deco)` from `TUNING.prop.deadCage`; its bars carry `deco`,
 which keeps them out of `breakCage`, out of the gate, and out of the in-front-of-the-goat draw pass.
 What is in it is painted on the decal canvas by `paintStartRoom`.
-**The roll.** The one verb the goat is not born with. `mods.roll` is false out of the pen and the button
-does nothing until **TUCK AND ROLL** is taken: the chip stays on the rail reading LOCKED, the thumb
-button reads LOCKED, and a floor hint never names a key the goat has not been given (`drawHints` checks).
+**The roll.** The verb the goat has none of at all — the other two shut buttons still do half of
+something. `mods.roll` is false out of the pen and the button does nothing until **TUCK AND ROLL** is
+taken: the chip stays on the rail reading LOCKED, the thumb button reads LOCKED, and a floor hint never
+names a key the goat has not been given (`drawHints` checks).
 A locked fourth chip is the clearest promise the game makes, which is the whole point of locking it.
-`openBoonChoice` puts it on the table for the run's **first** tome whatever the shuffle says — you still
-spend the tome on it rather than on fire breath, but a button withheld by a bad draw is not a decision.
+`openBoonChoice` puts it on the table for the run's **first** soul whatever the shuffle says — you still
+spend the soul on it rather than on fire breath, but a button withheld by a bad draw is not a decision.
 `Goat.rollDirection` scores 24 candidate angles against nearby men (weighted up if one is mid-swing),
 walls and fire, and honours the stick when there is one. With no direction asked for it is a pure escape,
 which is the whole reason the button exists on a phone.

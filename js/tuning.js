@@ -34,15 +34,22 @@ const TUNING = {
     hp: 4,
     // The lunge carries him a short way and no further: a headbutt is a step into a man, not a
     // charge across the room, and closing the distance yourself is the part you are paid for.
-    headbutt: { windup: 0.12, active: 0.15, recovery: 0.35, lunge: 18.2 * TILE, impulse: 30 * TILE, reach: 1.7 * TILE },
+    // The bare head is deliberately blunt. It is the verb you have on the first screen and the one
+    // every tome sharpens, so what it does out of the pen has to leave those tomes something to do:
+    // a shorter reach, less throw behind it, and a recovery long enough that a second man gets to
+    // walk in on the end of the first swing. LONG HORNS and IRON SKULL put back what was taken.
+    headbutt: { windup: 0.12, active: 0.15, recovery: 0.44, lunge: 18.2 * TILE, impulse: 25 * TILE, reach: 1.55 * TILE },
     // A throw is a commitment now: you let him go, and your mouth is empty for a beat.
     // He is in your mouth a long time, and he works himself loose somewhere in `holdVary` either
     // side of it, so you never learn the exact beat he goes: carrying one is a gamble, not a timer.
     grab: { reach: 1.6 * TILE, speedMul: 0.7, holdTime: 8.0, holdVary: 0.125, throwImpulse: 34 * TILE, holdDist: 22, cooldown: 1.35 },
-    // BAAH no longer calls them in. It takes the sense out of everyone who hears it, briefly.
-    // The radius is deliberately short of what the screen shows: BAAH is for the men on top of you,
-    // not for the room. Anything you want stunned you have to be standing in the middle of.
-    scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9 },
+    // BAAH out of the pen is what a goat's voice actually is: a noise. It calls every man who hears
+    // it to the spot you shouted from, which is a tool — you throw your voice at one end of a room
+    // and leave by the other — and a way to get killed. What it is NOT is a weapon: taking the sense
+    // out of a crowd is THE FULL THROAT, and setting fire to one is DRAGON BREATH, and the goat
+    // picks one of the two. `call` is how far the noise carries; `radius` is what the two tomes
+    // reach, deliberately short of what the screen shows, so a stun is for the men on top of you.
+    scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9, call: 13, callCooldown: 3.0 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat.
     // `stun` and `stunR` are DEAD WEIGHT's, and nothing else reads them: the roll on its own
     // goes through a man without touching him.
@@ -171,7 +178,10 @@ const TUNING = {
     // noise of three blows, with whatever heard the first already coming. The soul door — the vault's,
     // the one with a tome behind it — is four, because it is the only door in a level that is not on
     // the way anywhere: you go to it on purpose or you never see what is in it.
-    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 3, vaultHits: 4 },
+    // `stairHits` is the door at the top of every level. It is iron, so nobody opens it for you and
+    // nothing shoulders it: the last thing you do on a level is stand still and break it, with
+    // whatever is left of the level walking toward the noise.
+    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 3, vaultHits: 4, stairHits: 3 },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE },
     // A lamp post is not a pillar: a body arriving at `knock` goes through it and it goes over,
     // and it pours its oil where the body is about to land.
@@ -300,11 +310,21 @@ const TUNING = {
   // par is the whole of it and kills only multiply. Par for a level is its rooms times `perRoom`.
   score: { perRoom: 9, timePoints: 1000, fastCap: 2, killMul: 0.06, killCap: 2.5 },
   held: { bulletsAbsorbed: 2 },
-  tome: { r: 13, pickupR: 22 },
-  // How long a tome's three cards refuse every input after they appear, so the click that killed the
+  // A corrupted soul: what a boss leaves, and what the goat swallows to get stronger. It was a tome,
+  // which asked the player to believe that a goat reads.
+  soul: { r: 13, pickupR: 22 },
+  // How long a soul's three cards refuse every input after they appear, so the click that killed the
   // boss cannot also spend what he dropped.
   boonArm: 0.4,
 };
+
+// The switches on the title screen, in the order they are drawn. `key` is the field in
+// `game.settings` and nothing else reads them, so adding one is a line here and a line at the use
+// site. Both of them are things the game is better off not doing by default.
+const SETTINGS = [
+  { key: 'timer', name: 'SHOW THE CLOCK', note: 'A time counting up in the corner. The level card tells you at the end either way.' },
+  { key: 'sound', name: 'SOUND', note: 'Drums, voices, and the rest of it. M does the same thing mid-run.' },
+];
 
 // ---------------------------------------------------------------------------------------------
 // DIFFICULTY. Everything about who you meet, when, and how many of them, lives here — the generator
@@ -359,15 +379,30 @@ const ENCOUNTER = {
 const CANON = { share: 0.5, minRooms: 4 };
 
 // Boons bend numbers and verbs the goat already has. Actives change what a button does;
-// passives change how well everything works. The Butcher drops a tome: three of one kind.
-// `skill` is the button a boon hangs off in the HUD rail; the three without one are body work.
+// passives change how well everything works. A boss leaves a corrupted soul: three of one kind.
+// `skill` is the button a boon hangs off in the HUD rail; the ones without one are body work.
+//
+// Three of the four buttons start half-shut, and the souls are what open them. A goat out of a pen
+// can run, put his head into things, pick up what is lying about, and shout — and that is the whole
+// animal. He cannot dodge, he cannot carry a grown man in his teeth, and his voice is a voice rather
+// than a weapon. Every one of those is a soul, which is what makes the first three worth more than a
+// number and what makes the rail readable: a dark chip is a promise, and there are three of them.
 const BOON_BASE = {
   maxHp: 4, speed: 1, butcherDamage: 1, fireImmune: false,
   headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
   shieldBullets: 2, holdTime: 8.0, livingShield: false, grabCooldown: 1,
-  screamCooldown: 4.0, screamRadius: 8.5,
+  // Grab lifts objects out of the pen and nothing else. A crate, a blade, a shield: things a goat
+  // could plausibly get its teeth into. A man is BY THE COLLAR, and until that soul is swallowed
+  // every trick built on carrying one — the living shield, the strong jaw, devouring — is off the
+  // table, because a card that needs a verb you have not got is a wasted card.
+  grabMen: false,
+  screamCooldown: 3.0, screamRadius: 8.5,
+  // What BAAH is. `call` out of the pen: a noise that pulls the room to where you shouted. `stun`
+  // is THE FULL THROAT and `breath` is DRAGON BREATH — the two ways of turning a voice into a
+  // weapon, and you get one of them.
+  screamStun: false,
   // The roll starts switched off. The button is there from the first second and does nothing until
-  // a tome turns it on: a goat that can already dodge has nothing left to be given on level one,
+  // a soul turns it on: a goat that can already dodge has nothing left to be given on level one,
   // and the fourth chip on the rail sitting dark is the clearest promise the game can make.
   roll: false, rollDistance: 1, rollCooldown: 1, rollStun: 0,
   breath: false, bomb: false, devour: false,
@@ -375,21 +410,27 @@ const BOON_BASE = {
 
 const BOONS = [
   // ---- actives: they change what a button does ----
+  { id: 'collar', skill: 'grab', active: true, name: 'BY THE COLLAR',
+    desc: 'Take a man in your teeth the way you take a box. He stops bullets, and he throws.',
+    apply: (m) => { m.grabMen = true; } },
+  { id: 'howl', skill: 'scream', active: true, name: 'THE FULL THROAT',
+    desc: 'BAAH stops being a noise. Everyone who hears it loses a moment, and that moment is yours.',
+    apply: (m) => { m.screamStun = true; m.screamCooldown = TUNING.goat.scream.cooldown; } },
   { id: 'breath', skill: 'scream', active: true, name: 'DRAGON BREATH', desc: 'The scream becomes a cone of fire. Slower to recharge.',
     apply: (m) => { m.breath = true; m.screamCooldown = TUNING.goat.breath.cooldown; } },
   { id: 'bomb', skill: 'butt', active: true, name: 'BOMB CHARGE', desc: 'Anyone you headbutt detonates a moment later.',
     apply: (m) => { m.bomb = true; } },
-  { id: 'devour', skill: 'grab', active: true, name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
+  { id: 'devour', skill: 'grab', active: true, needs: 'grabMen', name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
     apply: (m) => { m.devour = true; } },
   { id: 'tuck', skill: 'roll', active: true, name: 'TUCK AND ROLL', desc: 'The fourth button answers. Nothing lands on you while you are down there.',
     apply: (m) => { m.roll = true; } },
 
   // ---- passives ----
   { id: 'hide', name: 'THICK HIDE', desc: 'One more heart, and it fills now.', apply: (m) => { m.maxHp += 1; }, heal: 1 },
-  { id: 'horns', skill: 'butt', name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.', apply: (m) => { m.headbuttReach *= 1.45; m.headbuttImpulse *= 1.25; } },
-  { id: 'skull', skill: 'butt', name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.', apply: (m) => { m.headbuttRecovery *= 0.55; } },
-  { id: 'jaw', skill: 'grab', name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.', apply: (m) => { m.shieldBullets = 4; m.holdTime = 13; m.grabCooldown *= 0.6; } },
-  { id: 'shield', skill: 'grab', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing. At his own.', apply: (m) => { m.livingShield = true; } },
+  { id: 'horns', skill: 'butt', name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.', apply: (m) => { m.headbuttReach *= 1.55; m.headbuttImpulse *= 1.35; } },
+  { id: 'skull', skill: 'butt', name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.', apply: (m) => { m.headbuttRecovery *= 0.5; } },
+  { id: 'jaw', skill: 'grab', needs: 'grabMen', name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.', apply: (m) => { m.shieldBullets = 4; m.holdTime = 13; m.grabCooldown *= 0.6; } },
+  { id: 'shield', skill: 'grab', needs: 'grabMen', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing. At his own.', apply: (m) => { m.livingShield = true; } },
   { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 13; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
   { id: 'joints', skill: 'roll', needs: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
@@ -429,12 +470,12 @@ const BARKS = {
 
 // How many tomes a level gives up is a number on the level and not a consequence of how many bosses
 // it happens to hold: the run's power curve is authored, and a Butcher standing in room four of the
-// bridge is not a design decision about how strong the goat should be by then. `tomes` is that
-// number, all in. The vault takes the first of them — breaking an iron door for a pail of milk is a
-// swindle — and the rest go to the LAST bosses of the level, so the fight you finish on is always
-// worth something. A boss with none left to give leaves milk instead: nothing you had to break
-// through is ever worth nothing. The seven numbers add up to thirteen, which is every tome in the
-// game, so a run that never misses one learns everything and a run that skips the vaults does not.
+// bridge is not a design decision about how strong the goat should be by then. `souls` is that
+// number, all in. A level's `soulGate` arena takes the first of them, the vault the next — breaking
+// an iron door for a pail of milk is a swindle — and the rest go to the LAST bosses of the level, so
+// the fight you finish on is always worth something. A boss with none left to give leaves milk
+// instead: nothing you had to break through is ever worth nothing. The seven numbers add up to
+// thirteen against sixteen boons, so no run gets everything and no two runs are the same goat.
 const LEVELS = [
   {
     // Level one teaches, in this order: one clubman standing in the only way out of his room, a room
@@ -459,9 +500,15 @@ const LEVELS = [
     // there is nowhere to walk round to: the room does not open until he is down.
     sentryIntro: true,
     arenas: [{ at: 9, boss: 'champion' }, { at: 11, boss: 'butcher' }],
+    // The one locked door in the game that is not opened by breaking it. The brute's ring is shut
+    // behind a barred gate and the bar is the soul he is carrying: kill him, swallow it, and the
+    // gate goes. It exists because the first run we watched walked past the first soul it was ever
+    // offered — it was a thing glowing on the floor of a room whose fight was already over — and
+    // then met level two with none of the three buttons the souls open. Nobody walks past this one.
+    soulGate: 9,
     // The wheel is met with nobody standing in the room, and arms are not a thing you find until
     // halfway in: the first half of the run is the goat and his head and nothing else.
-    millAt: 5, millSolo: true, heals: 3, tomes: 1, racks: 0.2, racksFrom: 0.5, traps: 1, crates: 0.3,
+    millAt: 5, millSolo: true, heals: 3, souls: 1, racks: 0.2, racksFrom: 0.5, traps: 1, crates: 0.3,
     encounters: {
       kinds: ['bearer', 'champion'],
       introduce: [['bearer', 0], ['champion', 0.8]],
@@ -480,7 +527,7 @@ const LEVELS = [
     // does to the floor is a thing you have been doing to the floor yourself since the second room.
     canon: { id: 'fire', name: 'FIRE', idea: 'Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself.' },
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
-    millAt: 7, heals: 2, tomes: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
+    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],
       introduce: [['dog', 0.12], ['seer', 0.5]],
@@ -497,7 +544,7 @@ const LEVELS = [
     // cover: the level is about the strip of floor a rifle cannot see and how you get to it.
     canon: { id: 'line', name: 'THE LINE', idea: 'Long sightlines and hard cover. A rifle owns whatever it can see, so the room is about what it cannot, and about crossing the rest.' },
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    millAt: 8, heals: 2, tomes: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
+    millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
     // heels crosses a beat later, when it is no longer floor.
     spikes: 0.3, crates: 0.35, vaultAt: 7,
@@ -508,7 +555,10 @@ const LEVELS = [
     },
     floor: '#4a3a2e', floorAlt: '#524032', wall: '#2a2430', wallTop: '#3e3346',
     fog: '#0b0a0d', doorChance: 0.35, ironDoors: 0.5,
-    hint: 'HOLD A MAN. HE STOPS BULLETS.', hintKey: 'grab',
+    // It used to read HOLD A MAN. HE STOPS BULLETS, which stopped being true out of the pen: a man
+    // is BY THE COLLAR and a goat who has not swallowed that soul cannot lift one. What is true
+    // either way is the sentence under both — get something solid between you and the line.
+    hint: 'PUT SOMETHING SOLID BETWEEN YOU AND THE LINE', hintKey: 'grab',
   },
   {
     // The threshing floor: the widest ground in the compound and the least wall in it. A headbutt on
@@ -519,7 +569,7 @@ const LEVELS = [
     name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, corridorW: 5,
     canon: { id: 'open', name: 'OPEN GROUND', idea: 'Almost no wall. What kills is what is standing in the room — posts, tables, braziers, a ring of hay — and which half of it you decide is yours.' },
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
-    millAt: 6, heals: 3, tomes: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
+    millAt: 6, heals: 3, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -540,7 +590,7 @@ const LEVELS = [
     // in a doorway, and the doorway is what every room here has.
     canon: { id: 'funnel', name: 'THE FUNNEL', idea: 'Seven men are one man in a doorway. Every room narrows somewhere, and the fight is at the narrow part — on whichever side of it you chose.' },
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
-    millAt: 7, heals: 3, tomes: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 8,
+    millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 8,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -564,7 +614,7 @@ const LEVELS = [
     arenas: [{ at: 4, boss: 'seer' }, { at: 10, boss: 'butcher' }, { at: 14, boss: 'champion' }],
     // Windows are this level's and nobody else's: a hole in a wall is a drop, and the drop is the
     // one new thing THE RAFTERS has. Every other level's walls are the inside of a compound.
-    millAt: 7, heals: 4, tomes: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8, windows: 0.55,
+    millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8, windows: 0.55,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -587,7 +637,7 @@ const LEVELS = [
     // about how often you have to stop looking.
     canon: { id: 'niche', name: 'THE NICHE', idea: 'A body cannot form inside stone. Niches and lanes take arcs away from the dead; the open floor between them gives every arc back.' },
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
-    millAt: 6, heals: 4, tomes: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
+    millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
       // The first room of the level is the wraith on its own, because nothing else in the game

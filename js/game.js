@@ -6,6 +6,8 @@ const BEST_KEY = 'goatout.best.v1';
 // Whether this browser has watched the opening scene through once. The first time is not skippable:
 // everything the run means is in it, and a key pressed to start the game should not also end it.
 const SEEN_KEY = 'goatout.intro.v1';
+// What the player turned on. Two switches, and the game runs the same without either of them.
+const SET_KEY = 'goatout.settings.v1';
 class Game {
   constructor(canvas) {
     this.canvas = canvas; this.renderer = new Renderer(canvas); this.audio = new GameAudio();
@@ -30,10 +32,10 @@ class Game {
     this.hitstopTimer = 0; this.timeScale = 1; this.slowTimer = 0; this.hurt = null;
     this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0; this.totalScore = 0;
     this.best = this.loadBest();
-    this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.tomes = []; this.boonChoice = null; this.boonRects = [];
-    this.tomesHere = 0;   // how many the level being played gives up, all in. Reported on its card.
+    this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.souls = []; this.boonChoice = null; this.boonRects = [];
+    this.soulsHere = 0;   // how many the level being played gives up, all in. Reported on its card.
     this.fallers = [];    // men on their way down a hole: a picture, with nothing simulated in it
-    // A tome is spent by a click that starts and ends on the same card. `boonDown` is the card the
+    // A soul is spent by a click that starts and ends on the same card. `boonDown` is the card the
     // pointer went down on; `boonArm` is the beat the cards ignore everything after they appear.
     this.boonDown = -1; this.boonArm = 0;
     // `rules` is the drawer's RULES page: the whole screen, the simulation held, `page` the level it
@@ -46,6 +48,8 @@ class Game {
     this.menu = { index: 0, rects: [], t: 0, shake: 0 }; this.save = null;
     this.introSeen = false;
     try { this.introSeen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { /* storage refused */ }
+    this.settings = this.loadSettings();
+    if (!this.settings.sound) this.audio.toggleMute();
     this.layoutTouch();
     this.bindInput();
     this.showTitle();
@@ -77,20 +81,20 @@ class Game {
     }
     return { x: this.goat.x, y: this.goat.y };
   }
-  dropTome(x, y) {
+  dropSoul(x, y) {
     const p = this.freeSpot(x, y);
-    this.placeTome(p.x, p.y);
+    this.placeSoul(p.x, p.y);
   }
-  // What a boss leaves when the level has no tome left to give. A wall you had to break through is
+  // What a boss leaves when the level has no soul left to give. A wall you had to break through is
   // never worth nothing, and milk is the one other thing in the game worth walking back for.
   dropMilk(x, y) {
     const p = this.freeSpot(x, y);
     this.props.push(new Prop(p.x, p.y, 'heal'));
   }
-  // Every boss leaves something. Which one leaves the tome was decided in `startLevel` off the
+  // Every boss leaves something. Which one leaves the soul was decided in `startLevel` off the
   // level's own count, so a level gives up exactly what it was authored to give up.
   bossPrize(e) {
-    if (e.tome) this.dropTome(e.x, e.y); else this.dropMilk(e.x, e.y);
+    if (e.soul) this.dropSoul(e.x, e.y); else this.dropMilk(e.x, e.y);
   }
   // A man on his way down. The kill is instant and happens at the top of `Enemy.update`, so nothing
   // here is simulated: it is the picture of a fall, held for `fall.showFor` and then gone, and it
@@ -100,31 +104,101 @@ class Game {
       spin: (Math.random() < 0.5 ? -1 : 1) * (2.2 + Math.random() * 2.4),
       dx: e.vx * 0.14, dy: e.vy * 0.14 });
   }
-  // A tome on ground that is known to be good, with none of the rescue above. The vault's is laid
-  // down with the level: `dropTome` asks the flow field whether a spot can be reached, the flow field
+  // A soul on ground that is known to be good, with none of the rescue above. The vault's is laid
+  // down with the level: `dropSoul` asks the flow field whether a spot can be reached, the flow field
   // only reaches ninety tiles from wherever it was last computed, and a vault in the back half of a
   // level is further away than that — so the rescue would fetch it back and drop it at the goat's feet.
-  placeTome(x, y) {
-    this.tomes.push({ x, y, r: TUNING.tome.r, phase: Math.random() * 6, life: 0 });
+  placeSoul(x, y) {
+    this.souls.push({ x, y, r: TUNING.soul.r, phase: Math.random() * 6, life: 0 });
   }
-  // A tome offers three of one kind: actives change what a button does, passives sharpen everything.
-  // The first tome always offers actives, so every run picks a skill before it picks numbers.
+  // The barred arena on level one. Its door has no hit points and no handle: the soul the boss was
+  // carrying is the bar, and swallowing one anywhere in that room lifts it. Everything else in the
+  // game opens by being hit, which is exactly why this one does not — it is the only sentence the
+  // game gets to say about what a soul is for, and it says it by being the way out.
+  openSoulGate() {
+    const sg = this.soulGate;
+    if (!sg || !sg.prop || sg.prop.broken) return;
+    sg.prop.broken = true; sg.prop.dead = true;
+    this.audio.sfxSteel(); this.audio.sfxBell(); this.shake(6); this.flash(PALETTE.witchHi, 0.18);
+    this.ring(sg.prop.x, sg.prop.y, 3.4 * TILE, PALETTE.witch);
+    this.particles(sg.prop.x, sg.prop.y, 22, PALETTE.witch, 230);
+    this.floatText(sg.prop.x, sg.prop.y - 30, 'THE GATE GIVES', PALETTE.witchHi);
+  }
+
+  // ---------- the fog ----------
+  // A room is dark until the goat has been in it. Nothing is hidden by distance and nothing is ever
+  // re-hidden: what you have seen stays seen, and what you have not is a black rectangle with a
+  // doorway in it. The point is the doorway — a corridor used to end in a room you had already read
+  // from twenty tiles away, so the only thing left to do with it was run in, and every room in the
+  // game was the same length of warning. Now the warning is the width of a door.
+  // The test is the goat's own tile inside the room's box, widened by one so that standing in the
+  // mouth of the corridor counts: you see the room as you come through the wall, not after it.
+  revealRooms() {
+    const g = this.goat, tx = g.x / TILE, ty = g.y / TILE;
+    for (const r of this.level.rooms) {
+      if (r.seen) continue;
+      if (tx < r.x - 1 || tx > r.x + r.w || ty < r.y - 1 || ty > r.y + r.h) continue;
+      r.seen = true;
+    }
+  }
+  // Is this point inside a room nobody has walked into? Everything the world draws and everything
+  // that would give a room away — a man, a crate, a body on its way down a hole — asks this.
+  hidden(x, y) {
+    if (!this.level) return false;
+    for (const r of this.level.rooms) {
+      if (r.seen) continue;
+      if (x >= r.x * TILE && x < (r.x + r.w) * TILE && y >= r.y * TILE && y < (r.y + r.h) * TILE) return true;
+    }
+    return false;
+  }
+
+  // ---------- settings ----------
+  // Two switches and a browser that may refuse to remember either of them. The clock is off by
+  // default: a number counting up in the corner of a game about running is a game about the number,
+  // and the run is timed either way — the card at the end of a level is where the time belongs.
+  loadSettings() {
+    const d = { timer: false, sound: true };
+    try { return Object.assign(d, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (err) { return d; }
+  }
+  saveSettings() {
+    try { localStorage.setItem(SET_KEY, JSON.stringify(this.settings)); } catch (err) { /* private mode: it lasts the tab */ }
+  }
+  toggleSetting(key) {
+    this.settings[key] = !this.settings[key];
+    if (key === 'sound' && this.audio.muted === this.settings.sound) this.audio.toggleMute();
+    this.saveSettings(); this.audio.sfxSwing();
+  }
+
+  // Reaching for a man with a mouth that only takes objects. Said once per level and then never
+  // again: it is a missing verb, not a mistake, and repeating it every time would read as a fault.
+  reachedForAMan(goat) {
+    if (this.toldGrab) return;
+    this.toldGrab = true;
+    this.floatText(goat.x, goat.y - 34, 'TOO BIG TO CARRY', PALETTE.ash);
+  }
+
+  // A soul offers three of one kind: actives change what a button does, passives sharpen everything.
+  // The first soul always offers actives, so every run picks a skill before it picks numbers.
   openBoonChoice() {
-    // `needs` is a mod that has to be on before the tome is worth anything: LOOSE JOINTS on a goat
+    // `needs` is a mod that has to be on before the soul is worth anything: LOOSE JOINTS on a goat
     // who cannot roll yet is a card that does nothing, and there are only thirteen of these.
     const open = (b) => !this.boons.includes(b) && (!b.needs || this.mods[b.needs]);
     const actives = BOONS.filter((b) => b.active && open(b));
     const passives = BOONS.filter((b) => !b.active && open(b));
     if (!actives.length && !passives.length) { this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + 1); return; }
+    // While a button is still dark the cards lean hard toward the actives. Three of the four verbs
+    // start shut and a run that spends its first four souls on percentages is a run that never got
+    // to play the game — so until every button does something, a skill is the likely draw.
+    const shut = !this.mods.roll || !this.mods.grabMen || !(this.mods.screamStun || this.mods.breath);
     const hasActive = this.boons.some((b) => b.active);
     let pool, other;
-    if (actives.length && (!hasActive || Math.random() < 0.4)) { pool = actives.slice(); other = passives.slice(); }
+    if (actives.length && (!hasActive || Math.random() < (shut ? 0.75 : 0.4))) { pool = actives.slice(); other = passives.slice(); }
     else if (passives.length) { pool = passives.slice(); other = actives.slice(); }
     else { pool = actives.slice(); other = []; }
     const pick = [];
     while (pick.length < 3 && pool.length) pick.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
     while (pick.length < 3 && other.length) pick.push(other.splice((Math.random() * other.length) | 0, 1)[0]);
-    // The run's first tome always has the roll on the table. You still have to spend the tome on it
+    // The run's first soul always has the roll on the table. You still have to spend the soul on it
     // rather than on a fire breath, but a fourth button withheld by a shuffle is not a decision.
     if (!this.boons.length) {
       const tuck = BOONS.find((b) => b.id === 'tuck');
@@ -168,7 +242,7 @@ class Game {
     if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; return; }
     if (this.state !== 'play' || !this.world) return;
     if (id === 'heal') { this.goat.hp = this.goat.maxHp; this.devToast('HEALED'); return; }
-    if (id === 'tome') { this.dropTome(this.goat.x + 28, this.goat.y); this.devToast('TOME DROPPED'); return; }
+    if (id === 'soul') { this.dropSoul(this.goat.x + 28, this.goat.y); this.devToast('SOUL DROPPED'); return; }
     if (id === 'next') { this.levelCleared(); return; }
     if (id === 'restart') { this.restartLevel(); return; }
     if (id === 'clear') {
@@ -353,7 +427,7 @@ class Game {
     this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill');
     this.runes = []; this.houndTold = false;
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null; this.fallers = [];
-    this.tomes = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
+    this.souls = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
     // What he walked in with. A death rolls him back to exactly this list.
     this.levelBoons = this.boons.slice();
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
@@ -361,25 +435,40 @@ class Game {
     this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0;
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
+    this.toldGrab = false;
     this.audio.intensity = 0; this.audio.hunterAware = false;
     this.world.computeFlow(this.goat.x, this.goat.y);
-    // The level's tomes, handed out before a blow is struck. `def.tomes` is the whole count (see the
+    // The level's souls, handed out before a blow is struck. `def.souls` is the whole count (see the
     // note over `LEVELS`): the vault takes the first, the rest go to the LAST bosses of the level so
     // the fight you finish on always pays, and any boss left over drops milk instead. A level
     // definition with no count falls back to what the game used to do — every boss, and the vault.
     // The vault's is laid down with the level rather than dropped by anything, so it is there from
     // the first second and it is there whether or not you go and get it. After the flow field and
-    // not before: `dropTome` asks the world whether a spot can be reached, and asked that question
-    // with the last level's field still in it, it walks the tome out of the vault and puts it at
-    // the goat's feet — which is why the vault's uses `placeTome` and nothing else does.
+    // not before: `dropSoul` asks the world whether a spot can be reached, and asked that question
+    // with the last level's field still in it, it walks the soul out of the vault and puts it at
+    // the goat's feet — which is why the vault's uses `placeSoul` and nothing else does.
     const bosses = this.level.spawns
       .map((s, i) => ({ i, room: s.roomIndex === undefined ? 0 : s.roomIndex }))
       .filter((b) => this.level.spawns[b.i].boss)
       .sort((a, b) => a.room - b.room);
-    this.tomesHere = def.tomes === undefined ? bosses.length + (this.level.vault ? 1 : 0) : def.tomes;
-    let budget = this.tomesHere;
-    if (this.level.vault && budget > 0) { this.placeTome(this.level.vault.x, this.level.vault.y); budget--; }
-    for (let n = bosses.length - 1; n >= 0 && budget > 0; n--) { this.enemies[bosses[n].i].tome = true; budget--; }
+    this.soulsHere = def.souls === undefined ? bosses.length + (this.level.vault ? 1 : 0) : def.souls;
+    let budget = this.soulsHere;
+    // The gated arena is paid first: the door out of that room does not open until its soul is
+    // swallowed, so the one boss in the game who MUST be carrying one is the one standing behind it.
+    this.soulGate = null;
+    const gated = this.level.soulGate ? bosses.find((b) => b.room === this.level.soulGate.room) : null;
+    if (gated && budget > 0) { this.enemies[gated.i].soul = true; budget--; }
+    if (this.level.vault && budget > 0) { this.placeSoul(this.level.vault.x, this.level.vault.y); budget--; }
+    for (let n = bosses.length - 1; n >= 0 && budget > 0; n--) {
+      const e = this.enemies[bosses[n].i];
+      if (!e.soul) { e.soul = true; budget--; }
+    }
+    // The gate itself: the prop, and the room it shuts. Nothing else in the game is opened by
+    // anything but a blow, so it is held here rather than inferred from the level every frame.
+    if (this.level.soulGate) {
+      const g = this.level.soulGate;
+      this.soulGate = { room: g.room, prop: this.props.find((p) => p.gate) || null };
+    }
     // Arriving up the stairs: the goat rises into the room under the card.
     if (this.intro) this.audio.duck(1, 0.3);   // Backspace out of the scene must not leave the sound down
     this.intro = null; this.stairFx = this.level.entry ? { t: -0.45, dir: -1 } : null;
@@ -393,7 +482,7 @@ class Game {
     // nobody can see is not one: you should walk in knowing what there is to walk out with.
     const tail = [];
     if (index > 0 || keepBoons) tail.push(this.goat.maxHp + ' hearts again');
-    if (this.tomesHere) tail.push(this.tomesHere === 1 ? '1 tome in here' : this.tomesHere + ' tomes in here');
+    if (this.soulsHere) tail.push(this.soulsHere === 1 ? '1 soul in here' : this.soulsHere + ' souls in here');
     if (tail.length) lines.push('', tail.join(' \u00b7 '));
     this.card = { lines, dim: 0.6, size: 40, small: 2 }; this.stateTimer = 1.3;
     this.audio.sfxCard();
@@ -401,7 +490,7 @@ class Game {
   // A death costs the level, not the learning. You come back with everything you walked in carrying
   // and nothing less: the goat gets stronger every level and stays stronger, which is the only way
   // seven levels of one life read as a run rather than seven separate walls. What a death still
-  // takes is the tome you found INSIDE the level — the room is generated again and it is back where
+  // takes is the soul you found INSIDE the level — the room is generated again and it is back where
   // it was, guarded by whoever was guarding it — so dying is never a way to farm one.
   restartLevel() {
     if (this.state === 'title') return;
@@ -414,19 +503,25 @@ class Game {
   // story and the floor of level 1 carries the controls, so the menu only has to be a way in.
   showTitle() {
     this.state = 'title'; this.card = null; this.level = null; this.world = null; this.goat = null;
-    this.enemies = []; this.props = []; this.bullets = []; this.tomes = []; this.sightBlockers = []; this.fallers = [];
+    this.enemies = []; this.props = []; this.bullets = []; this.souls = []; this.sightBlockers = []; this.fallers = [];
     this.save = this.loadRun();
     this.best = this.loadBest();
     // A run waiting to be picked up is the likelier intent, so the keyboard starts on it.
-    // `board` is the record sheet: it covers the menu rather than replacing the screen, and
-    // anything at all puts it away again.
-    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0, board: false };
+    // `panel` is whatever is laid over the menu — the record sheet, or the two switches. The board
+    // is put away by anything at all; the switches are not, because a click on one is meant to
+    // throw it rather than to leave.
+    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0, panel: null, sub: 0 };
     this.showHelp(false);
   }
   updateTitle(dt) {
     this.menu.t += dt; this.menu.shake = Math.max(0, this.menu.shake - dt);
-    // The mouse chooses what it is over; the keyboard chooses what it was left on.
-    if (!this.touch.active) { const i = this.menuAt(this.input.mouse); if (i >= 0) this.menu.index = i; }
+    // The mouse chooses what it is over; the keyboard chooses what it was left on. While a panel is
+    // up its rows are what `menu.rects` holds, so the hover lands on `sub` rather than on the menu
+    // behind it — otherwise reading the settings would silently move what NEW GAME is.
+    if (!this.touch.active) {
+      const i = this.menuAt(this.input.mouse);
+      if (i >= 0) { if (this.menu.panel === 'settings') this.menu.sub = i; else if (!this.menu.panel) this.menu.index = i; }
+    }
   }
   menuAt(p) {
     const r = this.menu.rects;
@@ -435,25 +530,43 @@ class Game {
   }
   // The menu answers the keys the game already uses: run up and down it, headbutt to choose.
   menuKey(code) {
-    if (this.menu.board) { this.menu.board = false; this.audio.sfxSwing(); return; }
-    const n = 3;
-    if (code === 'KeyW' || code === 'ArrowUp') { this.menu.index = (this.menu.index + n - 1) % n; this.audio.sfxSwing(); }
-    else if (code === 'KeyS' || code === 'ArrowDown') { this.menu.index = (this.menu.index + 1) % n; this.audio.sfxSwing(); }
-    else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.menuPick(this.menu.index);
+    const m = this.menu;
+    if (m.panel === 'best') { m.panel = null; this.audio.sfxSwing(); return; }
+    if (m.panel === 'settings') {
+      const n = SETTINGS.length + 1;                                   // the switches, and the way out
+      if (code === 'KeyW' || code === 'ArrowUp') { m.sub = (m.sub + n - 1) % n; this.audio.sfxSwing(); }
+      else if (code === 'KeyS' || code === 'ArrowDown') { m.sub = (m.sub + 1) % n; this.audio.sfxSwing(); }
+      else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.menuPick(m.sub);
+      else { m.panel = null; this.audio.sfxSwing(); }
+      return;
+    }
+    const n = 4;
+    if (code === 'KeyW' || code === 'ArrowUp') { m.index = (m.index + n - 1) % n; this.audio.sfxSwing(); }
+    else if (code === 'KeyS' || code === 'ArrowDown') { m.index = (m.index + 1) % n; this.audio.sfxSwing(); }
+    else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.menuPick(m.index);
   }
   menuPick(i) {
+    const m = this.menu;
     // While the board is up it is the only thing the menu does, and anything closes it.
-    if (this.menu.board) { this.menu.board = false; this.audio.sfxSwing(); return; }
-    this.menu.index = i;
+    if (m.panel === 'best') { m.panel = null; this.audio.sfxSwing(); return; }
+    // The switches stay up while they are being thrown. Only the last row leaves.
+    if (m.panel === 'settings') {
+      m.sub = i;
+      if (i >= SETTINGS.length) { m.panel = null; this.audio.sfxCard(); return; }
+      this.toggleSetting(SETTINGS[i].key);
+      return;
+    }
+    m.index = i;
     // Nothing to come back to: the button shakes its head and stays where it is.
-    if (i === 1 && !this.save) { this.menu.shake = 0.35; this.audio.sfxThud(); return; }
+    if (i === 1 && !this.save) { m.shake = 0.35; this.audio.sfxThud(); return; }
     this.audio.sfxCard();
-    if (i === 2) { this.menu.board = true; return; }
+    if (i === 2) { m.panel = 'best'; return; }
+    if (i === 3) { m.panel = 'settings'; m.sub = 0; return; }
     if (i === 1) { this.resumeRun(); return; }
     this.clearRun(); this.boons = []; this.totalKills = 0; this.deaths = 0; this.totalScore = 0;
     this.startLevel(0, (Math.random() * 1e9) | 0, false, true);
   }
-  // CONTINUE is the head of the furthest level the run reached, with the tomes it was carrying there.
+  // CONTINUE is the head of the furthest level the run reached, with the souls it was carrying there.
   resumeRun() {
     const s = this.save; if (!s) return;
     this.boons = (s.boons || []).map((id) => BOONS.find((b) => b.id === id)).filter(Boolean);
@@ -520,7 +633,7 @@ class Game {
     // What a death does NOT take is named, because a card that says you keep everything is the only
     // way the player finds out that he does. Anything found inside this level goes back in the room.
     const held = this.levelBoons || [];
-    const kept = held.length ? `${held.length} TOME${held.length > 1 ? 'S' : ''} KEPT` : 'NOTHING LOST';
+    const kept = held.length ? `${held.length} SOUL${held.length > 1 ? 'S' : ''} KEPT` : 'NOTHING LOST';
     this.card = { lines: ['THE GOAT DIED', '', `${kept} · ${this.tapWord.toLowerCase()} to try again`], dim: 0.55, size: 40, small: true, color: PALETTE.blood };
     this.shake(12); this.vibe(70);
   }
@@ -644,6 +757,7 @@ class Game {
     w.flowTimer -= dt;
     if (w.flowTimer <= 0) { w.flowTimer = 0.15; w.computeFlow(this.goat.x, this.goat.y); }
 
+    this.revealRooms();
     this.runes.length = 0;
     // A dead mage paints nothing: leaving his last rune in the list left a patch of floor the whole
     // room went on stepping round for the rest of the level.
@@ -661,15 +775,16 @@ class Game {
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.updateEffects(dt);
 
-    for (const tm of this.tomes) {
+    for (const tm of this.souls) {
       tm.life += dt;
       if (this.goat.dead || tm.taken) continue;
-      if (Math.hypot(tm.x - this.goat.x, tm.y - this.goat.y) < TUNING.tome.pickupR + this.goat.r) {
-        tm.taken = true; this.particles(tm.x, tm.y, 18, PALETTE.fireHi, 180); this.ring(tm.x, tm.y, 3 * TILE, PALETTE.fireHi);
+      if (Math.hypot(tm.x - this.goat.x, tm.y - this.goat.y) < TUNING.soul.pickupR + this.goat.r) {
+        tm.taken = true; this.particles(tm.x, tm.y, 18, PALETTE.witchHi, 180); this.ring(tm.x, tm.y, 3 * TILE, PALETTE.witch);
+        this.openSoulGate();
         this.openBoonChoice(); this.clearEdges(); return;
       }
     }
-    this.tomes = this.tomes.filter((tm) => !tm.taken);
+    this.souls = this.souls.filter((tm) => !tm.taken);
     for (const p of this.props) {
       if (p.kind !== 'heal' || p.broken || this.goat.dead) continue;
       if (this.goat.hp >= this.goat.maxHp) continue;
