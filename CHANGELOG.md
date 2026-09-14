@@ -5,6 +5,44 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.7 — his own voice, and a box on the floor
+
+**A second sitting, on the same day.** Seven notes, all of them about the game not saying what it is:
+a hint that names a verb and not the button, a trap nobody could identify, a scream that sounded like a
+synthesiser, a line of help text longer than anybody reads.
+
+- **The goat has a voice.** BAAH was a sawtooth with vibrato on it — a siren, not an animal. It is now
+  a real bleat: a buzzy throat put through two vowel formants, shaken twenty-six times a second and
+  falling away at the end, with the mouth opening over the call so it travels from a *bèh* to a
+  *baaah*. Two of them a fifth apart, so there is weight behind it. Every sheep in the game and every
+  small frightened noise the goat makes now comes out of the same throat (`bleatVoice`), which is the
+  first thing in the build that sounds like the thing making it.
+- **The plates are crates.** The floor trap was a plate lying flush in the boards, and a seam in a
+  floor is not something anybody can read at a run — nobody knew what they were looking at. It is a
+  small banded crate now: the goat's weight trips the catch, the lid knocks against it while it arms,
+  and then the lid goes over backwards and the iron in it stands up. Same trigger, same bite, same
+  heart it costs you, same everything the AI asks of it — what changed is that you can see it coming.
+- **A hint says which button it is about.** The line painted across the first room of a level names a
+  verb — *hold a man, he stops bullets* — and never said what to press. Each one now carries the key
+  under it, keyboard or touch, from a `hintKey` on the level definition.
+- **And it fits the room it is painted in.** The longest of them ran off both ends of the floor and off
+  both ends of the screen. They break over two lines at the full stop they already have and shrink to
+  what is left of the room, so the widest hint in the game now sits inside its own walls.
+- **DEAD WEIGHT.** A new tome on the roll: everything the tumble goes through loses its head for a
+  moment. Surrounded by six men it catches all six, which is what the roll is for — it is the way out
+  of a crowd, and now it costs the crowd something. Nothing changes without the tome: the base roll
+  goes through a man without touching him, and the chip in the rail grows three stars when it lands.
+- **The mage minds his own fire, and still burns in it.** Witchfire takes the Seer exactly as it takes
+  anybody — that was never in question and has not changed. What he was not doing was avoiding it: he
+  would blink out of a fight and land in his own rune. He now reads flame from twice the distance a
+  clubman does, all but never fails his trap roll, and will not blink onto ground that is alight.
+  Across a wall of his own fire eight times he caught none; a clubman caught two.
+- **The help line is shorter.** And the one thing on it nobody could parse — `SPACE BAAH` — now says
+  what it does: *scream — BAAH stuns every man in earshot*. The floor lesson in the pen rooms says the
+  same word.
+
+---
+
 ## 1.6 — the first ten minutes
 
 **Watching somebody play it for the first time.** He read two rooms of writing about a headbutt,

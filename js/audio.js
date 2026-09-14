@@ -161,19 +161,52 @@ class GameAudio {
   }
   sfxGunshot() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.18, { gain: 0.7, hp: 300 }); this.tone(120, t, 0.1, { gain: 0.5, sweep: 0.3 }); }
   sfxPot() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.2, { gain: 0.45, hp: 2000 }); this.tone(900, t, 0.12, { gain: 0.2, sweep: 0.4, type: 'triangle' }); }
+  // An animal, not a siren. A goat's voice is a buzzy sawtooth put through two vowel formants and
+  // shaken hard — the shake is the whole character of it, and it is why the old sweep-and-vibrato
+  // screech read as a synth. `f` is the pitch it starts at, `wob` how fast the throat shakes, and
+  // `open` how far the mouth opens over the call, which is what turns a 'bèh' into a 'baaah'.
+  bleatVoice(t, { f = 300, dur = 0.5, gain = 0.3, wob = 24, depth = 0.11, open = 1.5, breath = 0.1 } = {}) {
+    const ctx = this.ctx;
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.linearRampToValueAtTime(f * 1.06, t + dur * 0.18);   // it goes up before it gives out
+    o.frequency.exponentialRampToValueAtTime(Math.max(40, f * 0.72), t + dur);
+    // The throat, shaking. Deep enough to hear as a bleat rather than as vibrato on a note.
+    const lfo = ctx.createOscillator(), lg = ctx.createGain();
+    lfo.type = 'triangle'; lfo.frequency.setValueAtTime(wob, t);
+    lfo.frequency.linearRampToValueAtTime(wob * 0.7, t + dur);
+    lg.gain.value = f * depth; lfo.connect(lg); lg.connect(o.frequency);
+    lfo.start(t); lfo.stop(t + dur + 0.05);
+    // Two formants: the first opens as the jaw does, the second holds and gives it the nasal edge.
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(gain, t + 0.035);
+    env.gain.setValueAtTime(gain, t + dur * 0.55);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.Q.value = 4.5;
+    f1.frequency.setValueAtTime(560, t); f1.frequency.linearRampToValueAtTime(560 * open, t + dur * 0.6);
+    const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = 6; f2.frequency.value = 1750;
+    const g2 = ctx.createGain(); g2.gain.value = 0.5;
+    o.connect(f1); f1.connect(env);
+    o.connect(f2); f2.connect(g2); g2.connect(env);
+    env.connect(this.sfxBus);
+    o.start(t); o.stop(t + dur + 0.05);
+    // The air in it, at the front of the call.
+    if (breath > 0) this.noise(t, Math.min(0.12, dur * 0.3), { gain: gain * breath, hp: 1200, lp: 5200 });
+    return o;
+  }
+  // BAAAH. The goat's own voice, loud and ragged, and the one sound in the game that is his.
   sfxScream() {
     if (!this.ctx || this.muted) return; const t = this.now();
-    const o = this.tone(520, t, 0.55, { type: 'sawtooth', gain: 0.35, sweep: 0.55 });
-    const lfo = this.ctx.createOscillator(); const lg = this.ctx.createGain();
-    lfo.frequency.value = 22; lg.gain.value = 40; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + 0.6);
+    this.bleatVoice(t, { f: 330, dur: 0.62, gain: 0.34, wob: 26, depth: 0.13, open: 1.8, breath: 0.22 });
+    // A second throat a fifth under it, quieter and later: one goat, with weight behind him.
+    this.bleatVoice(t + 0.02, { f: 218, dur: 0.5, gain: 0.16, wob: 21, depth: 0.1, open: 1.6, breath: 0 });
   }
-  // A small frightened bleat: the scream's shape, quieter, shorter, and shaking.
+  // A small frightened bleat: the same throat, quieter, shorter, and shaking harder.
   sfxBleat(f, gain, dur) {
     if (!this.ctx || this.muted) return; const t = this.now();
-    const o = this.tone(f, t, dur || 0.28, { type: 'sawtooth', gain: gain || 0.1, sweep: 0.82, attack: 0.02 });
-    const lfo = this.ctx.createOscillator(); const lg = this.ctx.createGain();
-    lfo.frequency.value = 17; lg.gain.value = f * 0.06; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + (dur || 0.28) + 0.05);
-    this.tone(f * 2, t, (dur || 0.28) * 0.7, { type: 'triangle', gain: (gain || 0.1) * 0.35, sweep: 0.85, attack: 0.02 });
+    const d = dur || 0.28;
+    this.bleatVoice(t, { f: f * 0.62, dur: d, gain: (gain || 0.1) * 1.5, wob: 19 + f * 0.02, depth: 0.09, open: 1.35, breath: 0.14 });
   }
   // A club coming down on a skull, heard from inside the skull.
   sfxClub() {

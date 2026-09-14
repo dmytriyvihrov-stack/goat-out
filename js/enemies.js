@@ -219,7 +219,10 @@ class Enemy {
     // aside happens inside the arc he is stepping out of.
     const millNear = game.hazards.some((p) => (p.kind === 'mill' || p.kind === 'spike')
       && Math.abs(p.x - this.x) < 9 * TILE && Math.abs(p.y - this.y) < 9 * TILE);
-    const look = this.r + (millNear ? TUNING.ai.trapLook : TUNING.fire.avoidLook);
+    // The mage lit it, and the mage is the one man in the building who knows how far it goes: he
+    // reads flame and his own runes from further out. He still burns if he gets it wrong.
+    const care = this.kind === 'seer' ? TUNING.seer.fireCare : 1;
+    const look = this.r + (millNear ? TUNING.ai.trapLook : TUNING.fire.avoidLook) * care;
     const l = Math.hypot(dirx, diry) || 1; dirx /= l; diry /= l;
     // Only what is within a step of him can matter, and gathering that once keeps the probes cheap.
     const near = [];
@@ -754,6 +757,10 @@ class Enemy {
       const nx = g.x + Math.cos(a) * r, ny = g.y + Math.sin(a) * r;
       if (w.tileAtPx(nx, ny) === T.WALL) continue;
       if (w.flowDist(nx, ny) < 0) continue;
+      // Blinking out of a fight and into his own fire was the one thing that read as the rune not
+      // counting for him. He lands on ground that is neither alight nor about to be, or not at all.
+      if (w.isBurningPx(nx, ny) || w.isPitPx(nx, ny)) continue;
+      if (this.hazardAt(game, nx, ny)) continue;
       best = { x: nx, y: ny }; break;
     }
     if (!best) { this.blinkCd = 1; return; }

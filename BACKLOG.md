@@ -10,6 +10,21 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ---
 
+## 14 September 2026 — the second sitting, with 1.6
+
+**Where this batch went: all of it shipped in 1.7.** Seven notes, and every one of them the same
+complaint underneath: *the game is not telling me what this is*. `CHANGELOG.md` carries what each one
+turned into. Two of them are worth keeping as rules rather than as fixes:
+
+- **A trap has to look like an object.** The spike plate was drawn flush with the boards and read as
+  floor decoration, so nobody could tell what it was — not what it did, *what it was*. It is a crate
+  now. Anything else that lies flat in the floor will land the same way.
+- **A line that names a verb has to name the button.** The floor hints were written as instructions and
+  read as atmosphere. They carry the key now. The general form: **anywhere the game tells you to do
+  something, the thing to press goes with it.**
+
+---
+
 ## 14 September 2026 — Max's first sitting, with 1.5
 
 **Where this batch went: all of it shipped in 1.6 except the scream, which was already done.**

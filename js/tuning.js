@@ -44,7 +44,10 @@ const TUNING = {
     // not for the room. Anything you want stunned you have to be standing in the middle of.
     scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat.
-    roll: { speed: 9.9 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7 },
+    // `stun` and `stunR` are DEAD WEIGHT's, and nothing else reads them: the roll on its own
+    // goes through a man without touching him.
+    roll: { speed: 9.9 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7,
+      stun: 0.7, stunR: 1.6 * TILE },
     // The smear behind him is the only thing on screen that says he is faster than he was, so the
     // tome that makes him faster lengthens it: at `fastAt` times his own speed it is `fast*` all
     // through, and anywhere between the two it is mixed.
@@ -95,6 +98,10 @@ const TUNING = {
     keepMin: 5, keepMax: 9, damage: 1, hp: 2,
     castWind: 0.8, castCooldown: 2.5, runeRadius: 1.4, runeFire: 2.0,
     blinkRange: 3.2, blinkDist: 5.5, blinkCooldown: 3.0,
+    // His own fire burns him like anybody's — he is simply better than anybody at not standing in
+    // it. `fireCare` is how much further than a clubman he reads flame from, `trapSense` the floor
+    // under his trap roll, and he will not blink onto ground that is alight or about to be.
+    fireCare: 2.2, trapSense: 0.97,
   },
   // The wraith. It is not there most of the time: no body, no collision, nothing to hit, and walls
   // are not walls to it. It becomes real only once it has worked its way onto your flank or your back
@@ -315,7 +322,7 @@ const BOON_BASE = {
   headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
   shieldBullets: 2, holdTime: 8.0, livingShield: false, grabCooldown: 1,
   screamCooldown: 4.0, screamRadius: 8.5,
-  rollDistance: 1, rollCooldown: 1,
+  rollDistance: 1, rollCooldown: 1, rollStun: 0,
   breath: false, bomb: false, devour: false,
 };
 
@@ -337,6 +344,8 @@ const BOONS = [
   { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 13; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
   { id: 'joints', skill: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
+  { id: 'weight', skill: 'roll', name: 'DEAD WEIGHT', desc: 'Everything your roll goes through loses its head for a moment.',
+    apply: (m) => { m.rollStun = TUNING.goat.roll.stun; } },
   { id: 'ember', name: 'EMBER COAT', desc: 'Ordinary fire stops burning you. Witchfire does not care.', apply: (m) => { m.fireImmune = true; } },
 ];
 
@@ -409,7 +418,7 @@ const LEVELS = [
     },
     floor: '#8a7554', floorAlt: '#907b5a', wall: '#3b2233', wallTop: '#55344a',
     fog: '#120d12', doorChance: 0.42,
-    hint: 'THE SEER BURNS THE GROUND YOU STAND ON',
+    hint: 'THE SEER BURNS THE GROUND YOU STAND ON', hintKey: 'roll',
   },
   {
     // The rifle arrives early, alone, and then never stops being the reason you keep moving.
@@ -425,7 +434,7 @@ const LEVELS = [
     },
     floor: '#4a3a2e', floorAlt: '#524032', wall: '#2a2430', wallTop: '#3e3346',
     fog: '#0b0a0d', doorChance: 0.35,
-    hint: 'HOLD A MAN. HE STOPS BULLETS.',
+    hint: 'HOLD A MAN. HE STOPS BULLETS.', hintKey: 'grab',
   },
   {
     // The threshing floor: the widest ground in the compound and the least wall in it. A headbutt on
@@ -443,7 +452,7 @@ const LEVELS = [
     },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
     fog: '#0b0b0a', doorChance: 0.12,
-    hint: 'NOTHING OUT HERE KILLS FOR YOU. USE WHAT IS STANDING.',
+    hint: 'NOTHING OUT HERE KILLS FOR YOU. USE WHAT IS STANDING.', hintKey: 'butt',
   },
   {
     // Everything the compound has left, all at once, on the bridge they were driving you over.
@@ -459,7 +468,7 @@ const LEVELS = [
     },
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
     fog: '#06070a', doorChance: 0.3,
-    hint: 'EVERYTHING THEY HAVE LEFT IS HERE',
+    hint: 'EVERYTHING THEY HAVE LEFT IS HERE', hintKey: 'scream',
   },
   {
     // Up in the roof of the hall, and the first ground in the compound that is not all there. Holes
@@ -479,7 +488,7 @@ const LEVELS = [
     },
     floor: '#4b433a', floorAlt: '#544a40', wall: '#241d1a', wallTop: '#453629',
     fog: '#06060a', doorChance: 0.2,
-    hint: 'THE FLOOR ENDS. THEY FALL FURTHER THAN YOU.',
+    hint: 'THE FLOOR ENDS. THEY FALL FURTHER THAN YOU.', hintKey: 'butt',
   },
   {
     // Under the bridge is where everything the compound ever killed went, and none of it stayed put.
@@ -501,7 +510,7 @@ const LEVELS = [
     },
     floor: '#22242b', floorAlt: '#282a33', wall: '#3a3730', wallTop: '#565044',
     fog: '#05060a', doorChance: 0.22,
-    hint: 'IT CANNOT STOP ONCE IT STARTS. LET IT START.',
+    hint: 'IT CANNOT STOP ONCE IT STARTS. LET IT START.', hintKey: 'butt',
   },
 ];
 

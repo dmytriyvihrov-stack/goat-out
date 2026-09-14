@@ -9,7 +9,7 @@ class Goat {
     this.holding = null; this.holdTimer = 0;
     this.screamCd = 0; this.screaming = 0; this.invuln = 0; this.fireTick = 0; this.onFire = false; this.witchFire = false;
     this.hoofTimer = 0; this.kind = 'goat';
-    this.rollCd = 0; this.rollSpin = 0; this.rollDir = { x: 1, y: 0 }; this.grabCd = 0;
+    this.rollCd = 0; this.rollSpin = 0; this.rollDir = { x: 1, y: 0 }; this.rollHit = null; this.grabCd = 0;
     this.trail = [];       // ghost positions for the speed smear
     this.trailTimer = 0;
     this.gong = 0;         // seconds of the bell still ringing in him: fast hooves and quick hands
@@ -58,9 +58,22 @@ class Goat {
       }
       game.audio.sfxRoll(); world.emitNoise(this.x, this.y, TUNING.noise.swing); game.vibe(12);
       game.particles(this.x, this.y, 9, PALETTE.ash, 150);
+      // DEAD WEIGHT: the list of who this tumble has already been through. No list, no tome.
+      this.rollHit = game.mods.rollStun > 0 ? [] : null;
+      if (this.rollHit) game.ring(this.x, this.y, R.stunR * 1.4, PALETTE.bone);
     }
     if (this.state === 'roll') {
       this.timer -= dt; this.rollSpin += dt * 16;
+      // A goat going over sideways at speed is a thing that happens to whoever is standing there:
+      // everything the tumble passes through loses its head for a moment, once per roll.
+      if (this.rollHit) {
+        for (const e of game.enemies) {
+          if (e.dead || e.held || e.ghosted || this.rollHit.indexOf(e) >= 0) continue;
+          if (Math.hypot(e.x - this.x, e.y - this.y) > R.stunR + e.r) continue;
+          this.rollHit.push(e); e.daze(game, game.mods.rollStun);
+          game.particles(e.x, e.y - 6, 5, PALETTE.bone, 120); game.audio.sfxThud(); game.vibe(10);
+        }
+      }
       if (this.timer <= 0) { this.state = 'rollrecover'; this.timer = R.recover; this.vx *= 0.22; this.vy *= 0.22; }
     } else if (this.state === 'rollrecover') {
       this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
@@ -598,17 +611,20 @@ class Prop {
     game.floatText(this.x, this.y - 30, C.done, PALETTE.blood);
   }
 
-  // The spike plate. It is floor until the goat has crossed it: his own weight arms it and the teeth
-  // follow a moment later, so what it takes is the ground he has just left — which is the one piece
-  // of floor whoever is chasing him is looking at least.
+  // The crate. It is furniture until the goat has crossed it: his own weight trips the catch and the
+  // lid goes over a moment later, so what it takes is the ground he has just left — which is the one
+  // piece of floor whoever is chasing him is looking at least.
   updateSpike(dt, game) {
     const S = TUNING.prop.spike, g = game.goat;
     this.spikeT -= dt;
     if (this.spikeState === 'armed') {
       if (this.spikeT <= 0) {
         this.spikeState = 'up'; this.spikeT = S.up; this.bit = [];
-        game.world.emitNoise(this.x, this.y, TUNING.noise.swing); game.audio.sfxSteel(); game.shake(3);
-        game.particles(this.x, this.y, 7, PALETTE.ash, 130);
+        // Boards first, then the iron: the lid is what you hear go, and it is louder than the teeth.
+        game.world.emitNoise(this.x, this.y, TUNING.noise.swing);
+        game.audio.sfxCrack(); game.audio.sfxSteel(); game.shake(3);
+        game.particles(this.x, this.y, 5, PALETTE.wood, 150);
+        game.particles(this.x, this.y, 5, PALETTE.ash, 130);
       }
     } else if (this.spikeState === 'up') {
       this.bite(game);
@@ -620,8 +636,8 @@ class Prop {
       game.audio.sfxThud();
     }
   }
-  // Everything standing on the plate when the teeth come, goat included. A man dies on them; the
-  // goat pays the same heart the Mill charges, and the plate does not ask him twice.
+  // Everything standing on the crate when the lid goes, goat included. A man dies on it; the goat
+  // pays the same heart the Mill charges, and the crate does not ask him twice.
   bite(game) {
     const S = TUNING.prop.spike;
     const bit = this.bit || (this.bit = []);
@@ -637,8 +653,8 @@ class Prop {
     const g = game.goat;
     if (!g.dead && len(g.x - this.x, g.y - this.y) < this.r + g.r) g.damage(S.damage, game, 0, -40);
   }
-  // Is the plate a place nobody should be standing? Up, or close enough to up that a man walking on
-  // now would be on it when the teeth arrive.
+  // Is the crate a place nobody should be standing? Open, or close enough to open that a man walking
+  // on now would be on it when the teeth arrive.
   spikeThreat() {
     return this.spikeState === 'up' || (this.spikeState === 'armed' && this.spikeT <= TUNING.prop.spike.lead);
   }

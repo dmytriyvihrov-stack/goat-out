@@ -134,6 +134,12 @@ everybody. Fail the roll and he is blind for `TUNING.ai.blindFor`, which is the 
 still rides the wheel into a wall. `game.hazards` (fixed for the level) and `game.runes` (rebuilt each
 step) keep all of it off the per-frame prop loop.
 
+**The mage minds his own fire.** Witchfire burns the Seer exactly like anybody else — that is deliberate
+and is not to be taken away. What he gets instead is care: `TUNING.seer.trapSense` is near-perfect,
+`seer.fireCare` multiplies the distance `avoidHazard` reads flame and runes from, and `blink` refuses a
+landing spot that is alight, over a drop, or inside anything `hazardAt` calls a hazard. Blinking out of a
+fight and into his own rune was the one thing that read as the fire not counting for the man who lit it.
+
 **Fire takes the wheel.** Anything alight loses its AI and blunders: `burnDir` wanders, walls turn it,
 and `moveToward` is called with no `game` so it does not even dodge hazards. The Butcher is no longer
 the exception — he blunders too, and what he alone gets is the far side of it: `burnHearts` comes off
@@ -232,6 +238,13 @@ straight out of it when he catches.
 and a per-man cooldown, so a crowd never shouts at once. Lines live in `BARKS` in `tuning.js`; the bubble
 is drawn in `drawEnemy`.
 
+**His voice.** `GameAudio.bleatVoice` is the goat: a sawtooth put through two vowel formants, shaken
+at `wob` Hz and falling away at the end, with the first formant opening over the call so it travels from
+a *bèh* to a *baaah*. `sfxScream` is two of them a fifth apart, `sfxBleat` is one of them small and
+frightened, and every sheep in the game speaks through the same throat. Before it, the scream was a
+sawtooth with vibrato on it, which is a siren and not an animal. Add a new animal sound here rather than
+building another one-shot from `tone`.
+
 **Juice.** `game.kick(dx, dy, amt)` shoves the whole picture (capped at `juice.kickMax`), `zoomPunch`
 drives the lens, `flash(color, amt)` paints an additive overlay, and `gore` throws chunks that stain the
 decal canvas when they expire. The renderer applies kick and zoom in `draw`, and everything decays in
@@ -314,6 +327,13 @@ man of the run (`lessonRoom` in `gen.js`), and it exists because two rooms of wr
 with nothing in them to use it on did not add up to *the men can be hit*. Each block has a keyboard and a
 touch wording; add a line to one and add it to both.
 
+A level's own `hint` is the other half of it: `gen.js` paints it across the middle of the first room
+carrying that room's width, `drawHints` breaks it over two lines (`wrapFloor`, at the full stop it
+already has, or at the space nearest the middle) and shrinks it to fit (`fitFloorText`), so a long line
+no longer runs off both ends of the room it is lying in. A `hintKey` on the level definition — one of
+the four skill ids — paints the button under it from `HINT_KEYS`, keyboard or touch. A hint that names
+a verb should carry the key for it; one that names the ground should not.
+
 **The first screen.** State `title`, drawn entirely by `drawTitle` and holding three buttons and nothing
 else: the opening scene tells the story and the floor of level 1 teaches the buttons, so the menu
 explains neither. `game.menu` is `{ index, rects, t, shake, board }`; `drawTitle` refills `rects` every
@@ -384,13 +404,17 @@ comes back at `goat.safeX/safeY` — the last non-pit point he stood on, recorde
 `TUNING.fall.damage`. Nothing burns over a hole and the renderer draws pits in `drawPits` **after** the
 decals, so blood never lies across one; a pit with stone above and below it draws as a window instead.
 
-**Spike plates.** `kind === 'spike'`, driven by `updateSpike`, cycling `idle → armed → up → down →
-rest`. **Only the goat arms one** (`spike.trigger` tiles), which is what makes it a tool rather than
-furniture: the teeth come up behind him, on the ground whoever is chasing him is crossing. `bite`
-kills men and costs the goat a heart, `this.bit` stops a rise biting the same man twice, and
-`spikeThreat()` is what `hazardAt` and `avoidHazard` ask — a plate lying flat is floor and is skipped
+**Crates.** `kind === 'spike'`, driven by `updateSpike`, cycling `idle → armed → up → down →
+rest`. **Only the goat trips one** (`spike.trigger` tiles), which is what makes it a tool rather than
+furniture: the lid goes over behind him, on the ground whoever is chasing him is crossing. `bite`
+kills men and costs the goat a heart, `this.bit` stops one rise biting the same man twice, and
+`spikeThreat()` is what `hazardAt` and `avoidHazard` ask — a shut crate is furniture and is skipped
 entirely. `levelDef.spikes` is the per-room chance, and the generator places two to four at a time
-because one plate in a room is a curiosity and three across the middle of it is a shape.
+because one crate in a room is a curiosity and three across the middle of it is a shape.
+It used to be a plate lying flush in the boards, and a seam in a floor is not a thing anybody can read
+at a run: the kind is still `'spike'` and `'S'` is still the marker, but what is drawn is a small
+banded box whose lid tips back and whose teeth stand up out of it. Everything readable about it —
+which state it is in, how close it is to going — is in `drawPropBody`'s `spike` branch.
 
 **Reach.** `game.reaches(ax, ay, bx, by)` is the single answer to "is there a way from here to there
 for a blow": line of sight plus every `blocking` prop as a circle against the segment. `meleeHit`'s

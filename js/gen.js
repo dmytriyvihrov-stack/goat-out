@@ -412,7 +412,10 @@ function tryGenerate(levelDef, seed) {
   const filtered = spawns.filter((s) => len(s.x - start.x, s.y - start.y) > 5 * TILE);
   const cleanProps = props.filter((p) => p.kind === 'door' || p.kind === 'cage' || len(p.x - start.x, p.y - start.y) > 3 * TILE);
   // The level's own hint goes across the middle of the first room; the pen's own prompt goes below the pen.
-  const hints = levelDef.hint ? [{ x: centre.x, y: centre.y - 2.0 * TILE, text: levelDef.hint }] : [];
+  // It carries the room it is painted in, so a long line can be broken and fitted to the floor it
+  // is lying on rather than running off both ends of it, and the button it is about if it is about one.
+  const hints = levelDef.hint ? [{ x: centre.x, y: centre.y - 2.0 * TILE, text: levelDef.hint,
+    w: rooms[0].w * TILE, key: levelDef.hintKey || null }] : [];
   const cagePrompt = levelDef.startCage ? { x: start.x, y: start.y + 2.9 * TILE } : null;
   // Ape Out paints the controls on the floor. We split them over the two rooms after the pen,
   // and both of those rooms are left empty so they can be read without being clubbed.

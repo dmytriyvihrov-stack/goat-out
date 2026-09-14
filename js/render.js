@@ -11,15 +11,25 @@ const CONTROL_LINES = {
   key: [
     ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL'],
     ['HOLD RIGHT CLICK — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
-      'SPACE — BAAH', 'IT STUNS EVERY EAR'],
+      'SPACE — SCREAM', 'BAAH STUNS EVERY EAR'],
     ['BUTT HIM', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS'],
   ],
   touch: [
     ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — TUMBLE'],
     ['HOLD GRAB — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
-      'BAAH — IT STUNS EVERY EAR'],
+      'BAAH — SCREAM, IT STUNS EVERY EAR'],
     ['BUTT HIM', 'BUTT — HEADBUTT', 'INTO A WALL KILLS'],
   ],
+};
+
+// A level's hint says what the room is about; this says which button it is about. `hintKey` on a
+// level definition picks one, and the keyboard or the touch wording follows what is in the player's
+// hands, the way the floor controls do.
+const HINT_KEYS = {
+  butt: ['LEFT CLICK — HEADBUTT', 'BUTT'],
+  grab: ['HOLD RIGHT CLICK — CARRY', 'HOLD GRAB — CARRY'],
+  roll: ['E — ROLL', 'ROLL'],
+  scream: ['SPACE — BAAH', 'BAAH'],
 };
 
 // The pixel heart: the HUD hearts, and the one that hangs between the two of them in the pen.
@@ -254,11 +264,24 @@ class Renderer {
     const ctx = this.ctx, lv = game.level;
     ctx.save(); ctx.scale(1, 1 / TILT); ctx.textAlign = 'center';
     if (lv.hints) {
-      ctx.font = `700 26px ${FONT_SC}`;
       for (const hn of lv.hints) {
         if (Math.abs(hn.x - game.cam.x) > 1100 || Math.abs(hn.y - game.cam.y) > 800) continue;
+        // A sentence long enough to run off both ends of the room is broken over two lines and then
+        // fitted to what is left of the floor. It used to be painted at one size whatever it said,
+        // and the longest of them was unreadable at both ends.
+        const lines = this.wrapFloor(hn.text), wide = (hn.w || 14 * TILE) - 3.2 * TILE;
+        const size = this.fitFloorText(lines, wide, 26), lh = size * 1.34;
+        const key = hn.key ? HINT_KEYS[hn.key][game.touch.active ? 1 : 0] : null;
+        const block = (lines.length - 1) * lh + (key ? lh * 0.95 : 0);
+        let y = hn.y - block / 2;
         ctx.fillStyle = 'rgba(239,230,208,0.15)';
-        ctx.fillText(hn.text, hn.x, hn.y * TILT);
+        for (const l of lines) { ctx.fillText(l, hn.x, y * TILT); y += lh; }
+        // The button the line is about, under it and warmer, so a hint about a verb says which verb.
+        if (key) {
+          this.fitFloorText([key], wide, size * 0.66);
+          ctx.fillStyle = 'rgba(255,224,138,0.17)';
+          ctx.fillText(key, hn.x, (y - lh * 0.12) * TILT);
+        }
       }
     }
     if (lv.controls) {
@@ -287,6 +310,22 @@ class Renderer {
       }
     }
     ctx.textAlign = 'left'; ctx.restore();
+  }
+
+  // One line of floor text becomes two if it is long, broken at the full stop it already has or, with
+  // none, at the space nearest the middle. Shrinking to fit alone left the longest hints at a size
+  // nobody reads while running.
+  wrapFloor(text) {
+    if (text.length <= 28) return [text];
+    const stop = text.indexOf('. ');
+    if (stop > 6 && stop < text.length - 8) return [text.slice(0, stop + 1), text.slice(stop + 2)];
+    const mid = text.length / 2;
+    let cut = -1;
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] !== ' ') continue;
+      if (cut < 0 || Math.abs(i - mid) < Math.abs(cut - mid)) cut = i;
+    }
+    return cut > 0 ? [text.slice(0, cut), text.slice(cut + 1)] : [text];
   }
 
   // Sets the font so the widest line fits the space it is painted on, and returns the size used.
@@ -450,32 +489,55 @@ class Renderer {
       ctx.fillStyle = PALETTE.ochre; ctx.beginPath(); ctx.ellipse(p.x, p.y - 17, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
       this.flame(p.x, p.y - 20, 8 + 2 * Math.sin(this.t * 12 + p.phase), p.phase);
     } else if (p.kind === 'spike') {
-      // The plate. Flat it is a seam in the boards you can read if you are looking; armed it shakes
-      // and breathes dust; up it is a mouth. The teeth rise out of the seam rather than appearing,
-      // so the beat between arming and biting is something the eye can actually use.
+      // A small crate, left standing about the way everything else in this compound is crated, which
+      // is the whole reason nobody moves it. The goat's own weight trips the catch: the lid goes over
+      // backwards and what was packed in it stands up. It used to be a plate lying flush in the
+      // boards, and a seam in a floor is not a thing anybody can read at a run.
       const S = TUNING.prop.spike, r = p.r;
       const state = p.spikeState, arming = state === 'armed';
       const out = state === 'up' ? clamp((S.up - p.spikeT) * 9, 0, 1)
         : state === 'down' ? clamp(p.spikeT / S.down, 0, 1) : 0;
       const shud = arming ? Math.sin(this.t * 70) * 1.6 * clamp(1 - p.spikeT / S.arm, 0, 1) : 0;
+      // Half the lid across and back, and the side of the box below it. Low enough to run over.
+      const w = r * 0.92, d = r * 0.58, h = 8;
+      const jump = arming ? 2 + Math.sin(this.t * 70) : 0;          // the lid knocking against the catch
+      const lidY = -d - h - out * 13 - jump, lidH = d * 2 * (1 - out * 0.8);
       ctx.save(); ctx.translate(p.x + shud, p.y);
-      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-r, -r * 0.72, r * 2, r * 1.44);
-      ctx.fillStyle = arming ? '#4a3a34' : '#3a322e'; ctx.fillRect(-r + 2, -r * 0.72 + 2, r * 2 - 4, r * 1.44 - 4);
-      ctx.strokeStyle = arming ? PALETTE.ochre : 'rgba(239,230,208,0.16)'; ctx.lineWidth = 1.5;
-      ctx.strokeRect(-r + 2, -r * 0.72 + 2, r * 2 - 4, r * 1.44 - 4);
+      this.shadow(0, d * 0.5, w * 1.1, d * 0.8);
+      // The lid, drawn first: shut it is the top of the box, open it is a board tipped away behind it.
+      ctx.fillStyle = out > 0.15 ? '#5a3f26' : PALETTE.wood;
+      ctx.fillRect(-w, lidY, w * 2, lidH);
+      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(-w, lidY, w * 2, Math.min(3, lidH));
+      if (lidH > 6) {                                                // two boards to a lid
+        ctx.strokeStyle = 'rgba(26,16,22,0.45)'; ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.33, lidY); ctx.lineTo(-w * 0.33, lidY + lidH);
+        ctx.moveTo(w * 0.33, lidY); ctx.lineTo(w * 0.33, lidY + lidH);
+        ctx.stroke();
+      }
+      // The mouth of the box, and the iron standing up out of it. Shut, there is no mouth: the lid
+      // that was drawn behind it is the whole of the top of the box.
       if (out > 0) {
-        const hgt = 19 * out;
-        ctx.fillStyle = '#8d8a85';
-        for (let k = -1; k <= 1; k++) {
-          const bx = k * (r * 0.55);
-          ctx.beginPath(); ctx.moveTo(bx - 4.5, 3); ctx.lineTo(bx, 3 - hgt); ctx.lineTo(bx + 4.5, 3); ctx.closePath(); ctx.fill();
-        }
-        ctx.fillStyle = '#d7d2c8';
-        for (let k = -1; k <= 1; k++) {
-          const bx = k * (r * 0.55);
-          ctx.beginPath(); ctx.moveTo(bx - 1.6, 3); ctx.lineTo(bx, 3 - hgt); ctx.lineTo(bx + 0.6, 3); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#140d10'; ctx.fillRect(-w + 1.5, -d - h, w * 2 - 3, d * 2 - 1);
+        const hgt = 21 * out;
+        for (const [fill, half, lean] of [['#8d8a85', 4.6, 0], ['#d7d2c8', 1.5, -1.1]]) {
+          ctx.fillStyle = fill;
+          for (let k = -1; k <= 1; k++) {
+            const bx = k * (w * 0.52);
+            ctx.beginPath(); ctx.moveTo(bx - half, d - h - 1);
+            ctx.lineTo(bx + lean, d - h - 1 - hgt); ctx.lineTo(bx + half * 0.3, d - h - 1); ctx.closePath(); ctx.fill();
+          }
         }
       }
+      // The side of the box, over the teeth, so they stand in it rather than in front of it.
+      ctx.fillStyle = '#4a3320'; ctx.fillRect(-w, d - h, w * 2, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(-w, d - h, w * 2, 1.5);
+      // Two iron straps and the catch between them. Armed, the catch is the only warm thing on it.
+      ctx.fillStyle = arming ? PALETTE.ochre : '#3c3730';
+      ctx.fillRect(-w * 0.78, d - h, 3, h); ctx.fillRect(w * 0.78 - 3, d - h, 3, h);
+      if (arming) { ctx.fillStyle = `rgba(255,224,138,${0.35 + 0.3 * Math.sin(this.t * 24)})`; ctx.fillRect(-w + 1.5, d - h - 2, w * 2 - 3, 2); }
+      ctx.fillStyle = arming ? PALETTE.fireHi : '#6a635b';
+      ctx.beginPath(); ctx.arc(0, d - h * 0.5, 2.4, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     } else if (p.kind === 'cage') {
       const h = TUNING.prop.cage.height;
@@ -1610,6 +1672,13 @@ class Renderer {
       if (m.rollCooldown < 1) {                                        // Loose Joints: a second turn
         ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = h * 0.14;
         ctx.beginPath(); ctx.arc(0, 0, h * 0.36, Math.PI * 0.3, Math.PI * 1.7); ctx.stroke();
+      }
+      if (m.rollStun > 0) {                                            // Dead Weight: stars off the turn
+        ctx.fillStyle = PALETTE.fireHi;
+        for (let k = 0; k < 3; k++) {
+          const a = Math.PI * (0.15 + k * 0.62), rr = h * 1.15;
+          ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, h * 0.17, 0, Math.PI * 2); ctx.fill();
+        }
       }
       return;
     }
