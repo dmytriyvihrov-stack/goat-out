@@ -431,7 +431,34 @@ man; cause `'fall'` skips the two-hit absorb and leaves no body, no blood and no
 `goatFalls` / `updateFall` and the `'falling'` state (a real state: `Goat.update` returns early in it),
 comes back at `goat.safeX/safeY` — the last non-pit point he stood on, recorded every frame — and pays
 `TUNING.fall.damage`. Nothing burns over a hole and the renderer draws pits in `drawPits` **after** the
-decals, so blood never lies across one; a pit with stone above and below it draws as a window instead.
+decals, so blood never lies across one.
+
+**What is under a hole.** A hole used to be a flat black square, and from directly above a flat black
+square is also what a pillar looks like — people were reading one as the other. There is a landscape
+under them now: `throughHoles` clips every visible hole of a kind into one path and paints the ground
+a long way down through all of them at once, laid out in a space shifted by the part of the camera the
+far layer does **not** follow (`DEPTH.below` / `DEPTH.night`), so it slides against the lip as you run
+past. Parallax is the only cue that says *down* on a flat top-down picture and it is doing all the work
+here; the roofs, the rubble and the torches are only there to have something for it to move. `farHash`
+keeps the landscape the same landscape every frame. The rim is a gradient (`rimShade`) rather than a
+hard band, because a hard band reads as a border drawn round a black tile.
+
+**Windows.** `levelDef.windows` is the chance a room gets one, and only THE RAFTERS has it: a hole in a
+wall is a drop, and the drop is that level's one new thing. `carveWindow` cuts a run of three to five
+tiles through the wall band along the top of a room — wall above it, the room's own floor below it, so
+it can be seen and walked into from inside — turns them to `T.PIT` and records them in `level.windows`,
+which is the **only** way `drawPits` tells a window from a hole. It used to guess from the tiles around
+it, and that guess never once answered yes: the renderer had known how to draw a window since the drop
+landed and the generator had never made one, so the level's own note promising "windows out into the
+night" was describing something that did not exist. A window is a drop like any other — walk into it,
+or be shoved into it, and you go out of it.
+
+**Going down.** An enemy over a hole dies at the top of `Enemy.update`, in one frame, and always did.
+What is new is that you get to watch it: `game.spawnFaller` keeps a picture of him in `game.fallers`
+for `fall.showFor`, turning over, shrinking and fading, drawn by `drawFallers` straight after the pits
+so he is inside the hole and under everything else. Nothing in it is simulated and nothing in it can
+be interacted with — he is already dead — but a body that simply stops existing reads as a bug rather
+than as a drop. `sfxFall` is the sound, and it keeps falling after he is gone.
 
 **The grating.** `kind === 'spike'`, driven by `updateSpike`, cycling `idle → armed → up → down →
 rest`. **Only the goat trips one** (`spike.trigger` tiles), which is what makes it a tool rather than
@@ -531,9 +558,17 @@ standstill). Reading the aim straight meant that crossing the pointer over the g
 picture to the other side of him in a frame, which is what made turning around feel like being shaken.
 Reset it anywhere you hard-set `cam.x/y` (`startLevel`, `updateFall`).
 
+**The run-up.** `goat.runT` is seconds of asking for at least `momentum.atLeast` of a stride without a
+break, and `goat.runUp` is what they are worth: 1 at a standstill, `1 + momentum.max` after
+`momentum.time` of running. It multiplies into `base` alongside `mods.speed`, drains at `momentum.lose`
+times real time the moment he stops, and a hit or a stun takes the whole of it at once. That last part
+is the design: the reward for running is a thing everything else in the game can take off you, so it
+argues for *run, don't fight* rather than against it. It has no chip on the rail — the smear is where
+it is visible.
+
 **The smear.** `TUNING.goat.trail` holds both ends of it and `Goat.update` mixes them by
-`game.mods.speed` against `trail.fastAt`, so SURE HOOVES lengthens the ghosts rather than only the
-number. Each ghost carries its own `max` life and `drawGoat` fades it against that, so a long smear
+`game.mods.speed * goat.runUp` against `trail.fastAt`, so SURE HOOVES and the run-up both lengthen the
+ghosts rather than only the number. Each ghost carries its own `max` life and `drawGoat` fades it against that, so a long smear
 fades over its whole length. This is the only place that boon is visible: it hangs off no button, so
 the rail cannot report it.
 

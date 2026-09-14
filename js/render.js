@@ -32,6 +32,20 @@ const HINT_KEYS = {
   scream: ['SPACE — BAAH', 'BAAH'],
 };
 
+// How far under the boards what you see through a hole is, as a share of the camera's own movement.
+// 1 would be the floor you are standing on and 0 would be infinitely far away, so the smaller the
+// number the deeper it reads. It is the whole trick: from directly above, a hole and a pillar are
+// both a dark square, and the only thing that separates them is that the ground under a hole is a
+// long way down and therefore slides against the lip of the hole as you run past it.
+const DEPTH = { below: 0.42, night: 0.1 };
+
+// A stable value in 0..1 for one cell of the far layer. The landscape has to be the same landscape
+// every frame — generated from the cell rather than from `Math.random` — or it boils.
+function farHash(i, j) {
+  const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
 // The pixel heart: the HUD hearts, and the one that hangs between the two of them in the pen.
 const HEART_GLYPH = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
 
@@ -99,6 +113,7 @@ class Renderer {
       this.drawTiles(game, cam);
       this.drawDecals(game, cam);
       this.drawPits(game, cam);
+      this.drawFallers(game);
       this.drawHints(game);
       this.drawFire(game, cam);
       this.drawLight(game, cam);
@@ -234,29 +249,132 @@ class Renderer {
   drawPits(game, cam) {
     const ctx = this.ctx, wd = game.world, def = game.level.def;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
+    // A window is a slot the generator cut through a wall and wrote down: what is behind it is
+    // outside. Everything else is a hole in the floor, and what is under it is the compound. It used
+    // to be guessed from the tiles around it, which never once answered yes because the generator
+    // was not making any windows at all.
+    const marked = game.level.windows, holes = [], windows = [];
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         if (wd.tileAt(tx, ty) !== T.PIT) continue;
-        const px = tx * TILE, py = ty * TILE;
-        const n = wd.tileAt(tx, ty - 1) !== T.PIT, s2 = wd.tileAt(tx, ty + 1) !== T.PIT;
-        const wl = wd.tileAt(tx - 1, ty) !== T.PIT, e = wd.tileAt(tx + 1, ty) !== T.PIT;
-        // A window is a drop with stone either side of it: it gets the night behind it instead of
-        // the dark of the floor below, which is the only thing that tells the two apart at a glance.
-        const window = wd.isSolid(tx, ty - 1) && wd.isSolid(tx, ty + 1);
-        ctx.fillStyle = window ? '#0e1626' : '#08070a';
-        ctx.fillRect(px, py, TILE, TILE);
-        if (window) {
-          ctx.fillStyle = 'rgba(120,150,200,0.10)'; ctx.fillRect(px, py + 4, TILE, TILE - 10);
-          ctx.fillStyle = 'rgba(239,230,208,0.16)'; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+        (marked && marked.has(ty * wd.W + tx) ? windows : holes).push([tx, ty]);
+      }
+    }
+    if (!holes.length && !windows.length) return;
+    // The ground first, through every hole of a kind at once: one clip and one pass rather than one
+    // of each per tile. A flat black square was the whole of this, and a flat black square is what a
+    // pillar looks like from above — which is exactly the two things people were mixing up.
+    this.throughHoles(holes, cam, false);
+    this.throughHoles(windows, cam, true);
+    for (const [tx, ty] of holes) {
+      const px = tx * TILE, py = ty * TILE;
+      // the boards break off over the edge, and the near lip catches the light off the floor
+      if (wd.tileAt(tx, ty - 1) !== T.PIT) {
+        ctx.fillStyle = def.wallTop; ctx.fillRect(px, py, TILE, 5);
+        this.rimShade(px, py + 5, TILE, 13, 'v', 1);
+      }
+      if (wd.tileAt(tx, ty + 1) !== T.PIT) {
+        ctx.fillStyle = 'rgba(239,230,208,0.11)'; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+        this.rimShade(px, py + TILE - 13, TILE, 9, 'v', -1);
+      }
+      if (wd.tileAt(tx - 1, ty) !== T.PIT) this.rimShade(px, py, 11, TILE, 'h', 1);
+      if (wd.tileAt(tx + 1, ty) !== T.PIT) this.rimShade(px + TILE - 11, py, 11, TILE, 'h', -1);
+    }
+    for (const [tx, ty] of windows) {
+      const px = tx * TILE, py = ty * TILE;
+      // the stone reveal above and the sill below: a window is a thing cut through something thick
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(px, py, TILE, 5);
+      ctx.fillStyle = 'rgba(239,230,208,0.18)'; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+    }
+  }
+
+  // What is behind a set of holes, painted once through all of them. `k` in `DEPTH` is how much of
+  // the camera's movement the far layer takes: everything here is laid out in a space that is then
+  // shifted by the part of the camera the far layer does NOT follow, so it lags behind the lip.
+  throughHoles(cells, cam, night) {
+    if (!cells.length) return;
+    const ctx = this.ctx;
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    ctx.save(); ctx.beginPath();
+    for (const [tx, ty] of cells) {
+      const px = tx * TILE, py = ty * TILE;
+      ctx.rect(px, py, TILE, TILE);
+      if (px < bx0) bx0 = px; if (py < by0) by0 = py;
+      if (px + TILE > bx1) bx1 = px + TILE; if (py + TILE > by1) by1 = py + TILE;
+    }
+    ctx.clip();
+    ctx.fillStyle = night ? '#0b1224' : '#0a0910';
+    ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+    const k = night ? DEPTH.night : DEPTH.below;
+    const ox = cam.x * (1 - k), oy = cam.y * (1 - k), cell = night ? 32 : 72;
+    const i0 = Math.floor((bx0 - ox) / cell) - 1, i1 = Math.ceil((bx1 - ox) / cell);
+    const j0 = Math.floor((by0 - oy) / cell) - 1, j1 = Math.ceil((by1 - oy) / cell);
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const h = farHash(i, j), h2 = farHash(i + 91, j - 17), h3 = farHash(i - 43, j + 7);
+        const x = ox + i * cell + h * cell * 0.6, y = oy + j * cell + h2 * cell * 0.6;
+        if (night) {
+          // stars, and now and then something burning a very long way off
+          if (h3 > 0.4) { ctx.fillStyle = `rgba(206,222,255,${0.16 + h * 0.42})`; ctx.fillRect(x, y, 1.6, 1.6); }
+          if (h3 < 0.035) {
+            const gl = ctx.createRadialGradient(x, y, 0, x, y, 26);
+            gl.addColorStop(0, 'rgba(242,162,51,0.30)'); gl.addColorStop(1, 'rgba(242,162,51,0)');
+            ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(x, y, 26, 0, Math.PI * 2); ctx.fill();
+          }
         } else {
-          // the boards break off over the edge, and the dark gets darker as it goes down
-          if (n) { ctx.fillStyle = def.wallTop; ctx.fillRect(px, py, TILE, 5); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(px, py + 5, TILE, 9); }
-          if (s2) { ctx.fillStyle = 'rgba(239,230,208,0.09)'; ctx.fillRect(px, py + TILE - 4, TILE, 4); }
-          if (wl) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px, py, 5, TILE); }
-          if (e) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px + TILE - 5, py, 5, TILE); }
+          // The hall a long way down: roof ridges, the slabs between them, and the odd torch still
+          // burning on one. Long and thin with a lit upper edge, because a roof seen from directly
+          // above is a bar of light with a bar of shadow under it and almost nothing else.
+          if (h > 0.34) {
+            const rw = cell * (0.45 + h2 * 0.55), rh = cell * (0.16 + h3 * 0.2);
+            ctx.fillStyle = `rgba(96,84,74,${0.3 + h2 * 0.3})`; ctx.fillRect(x, y, rw, rh);
+            ctx.fillStyle = `rgba(168,150,128,${0.16 + h3 * 0.2})`; ctx.fillRect(x, y, rw, 2.4);
+            ctx.fillStyle = 'rgba(4,3,6,0.5)'; ctx.fillRect(x, y + rh, rw, 3);
+          }
+          // rubble on the ground between them, so it is not two shapes and a void
+          if (h2 > 0.5) { ctx.fillStyle = `rgba(70,62,56,${0.2 + h * 0.2})`; ctx.fillRect(x + cell * 0.1, y + cell * 0.62, 3 + h * 5, 2.4); }
+          if (h3 > 0.8) {
+            const gl = ctx.createRadialGradient(x, y, 0, x, y, 40);
+            gl.addColorStop(0, 'rgba(242,162,51,0.42)'); gl.addColorStop(1, 'rgba(242,162,51,0)');
+            ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,224,138,0.65)'; ctx.fillRect(x - 1.2, y - 1.2, 2.8, 2.8);
+          }
         }
       }
     }
+    // The air between here and there. Without it the far layer reads as a picture stuck to the floor
+    // rather than as something a long way under it.
+    ctx.fillStyle = night ? 'rgba(14,22,38,0.3)' : 'rgba(10,8,12,0.26)';
+    ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+    ctx.restore();
+  }
+
+  // The shadow the lip of a hole throws down its own inside wall. `dir` is which way it fades: 1
+  // away from the near edge, -1 toward it. A hard band read as a border drawn round a black square,
+  // which is the thing that made a hole look like a tile rather than an absence of one.
+  rimShade(x, y, w, h, axis, dir) {
+    const ctx = this.ctx;
+    const g = axis === 'v' ? ctx.createLinearGradient(0, dir > 0 ? y : y + h, 0, dir > 0 ? y + h : y)
+      : ctx.createLinearGradient(dir > 0 ? x : x + w, 0, dir > 0 ? x + w : x, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0.72)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  }
+
+  // Somebody going down. He turns over as he goes, gets smaller, and the dark takes him. It is the
+  // one death in the game with nothing left on the floor afterwards, so the fall has to be the whole
+  // of it — before this he simply stopped existing, which reads as a bug and not as a drop.
+  drawFallers(game) {
+    const ctx = this.ctx;
+    for (const f of game.fallers) {
+      const k = clamp(f.t / f.life, 0, 1), sc = 1 - 0.8 * k;
+      ctx.save();
+      ctx.globalAlpha = 1 - k * k;
+      ctx.translate(f.x + f.dx * k, f.y + f.dy * k + k * 14);
+      ctx.scale(1, 1 / TILT); ctx.rotate(f.spin * k); ctx.scale(sc, sc);
+      if (f.e.kind === 'dog') this.drawHound(f.e); else this.drawCultist(f.e, f.e.r);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
   }
 
   // Words painted on the floor instead of a tutorial box, the way Ape Out does it.

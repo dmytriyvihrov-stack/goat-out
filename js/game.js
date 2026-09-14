@@ -32,6 +32,7 @@ class Game {
     this.best = this.loadBest();
     this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.tomes = []; this.boonChoice = null; this.boonRects = [];
     this.tomesHere = 0;   // how many the level being played gives up, all in. Reported on its card.
+    this.fallers = [];    // men on their way down a hole: a picture, with nothing simulated in it
     // A tome is spent by a click that starts and ends on the same card. `boonDown` is the card the
     // pointer went down on; `boonArm` is the beat the cards ignore everything after they appear.
     this.boonDown = -1; this.boonArm = 0;
@@ -88,6 +89,14 @@ class Game {
   // level's own count, so a level gives up exactly what it was authored to give up.
   bossPrize(e) {
     if (e.tome) this.dropTome(e.x, e.y); else this.dropMilk(e.x, e.y);
+  }
+  // A man on his way down. The kill is instant and happens at the top of `Enemy.update`, so nothing
+  // here is simulated: it is the picture of a fall, held for `fall.showFor` and then gone, and it
+  // exists because a body that simply stops existing reads as a bug rather than as a drop.
+  spawnFaller(e) {
+    this.fallers.push({ e, x: e.x, y: e.y, t: 0, life: TUNING.fall.showFor,
+      spin: (Math.random() < 0.5 ? -1 : 1) * (2.2 + Math.random() * 2.4),
+      dx: e.vx * 0.14, dy: e.vy * 0.14 });
   }
   // A tome on ground that is known to be good, with none of the rescue above. The vault's is laid
   // down with the level: `dropTome` asks the flow field whether a spot can be reached, the flow field
@@ -323,7 +332,7 @@ class Game {
     this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike');
     this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill');
     this.runes = []; this.houndTold = false;
-    this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null;
+    this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null; this.fallers = [];
     this.tomes = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
     // What he walked in with. A death rolls him back to exactly this list.
     this.levelBoons = this.boons.slice();
@@ -385,7 +394,7 @@ class Game {
   // story and the floor of level 1 carries the controls, so the menu only has to be a way in.
   showTitle() {
     this.state = 'title'; this.card = null; this.level = null; this.world = null; this.goat = null;
-    this.enemies = []; this.props = []; this.bullets = []; this.tomes = []; this.sightBlockers = [];
+    this.enemies = []; this.props = []; this.bullets = []; this.tomes = []; this.sightBlockers = []; this.fallers = [];
     this.save = this.loadRun();
     this.best = this.loadBest();
     // A run waiting to be picked up is the likelier intent, so the keyboard starts on it.
@@ -977,6 +986,8 @@ class Game {
     this.floats = this.floats.filter((f) => f.life > 0);
     for (const r of this.rings) r.life -= dt;
     this.rings = this.rings.filter((r) => r.life > 0);
+    for (const f of this.fallers) f.t += dt;
+    this.fallers = this.fallers.filter((f) => f.t < f.life);
     if (this.breathFx) { this.breathFx.life -= dt; if (this.breathFx.life <= 0) this.breathFx = null; }
     if (this.dev.toast) { this.dev.toast.life -= dt; if (this.dev.toast.life <= 0) this.dev.toast = null; }
   }

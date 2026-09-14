@@ -31,6 +31,14 @@ three, so nothing about the game read as progress.
 - ~~**The soul door should be clearer.**~~ Shipped: the tome's halo, the book painted on the face, and
   the word TOME over it.
 
+- ~~**Pits and windows should read as holes, not as pillars. Put a distant landscape under them.**~~
+  Shipped, and it turned up a real bug on the way: windows had never generated once. The renderer had
+  drawn them since the drop landed and the test for one could not be satisfied by anything the
+  generator made.
+- ~~**A different fall animation for a man who goes over.**~~ Shipped as `game.fallers`.
+- ~~**Running without stopping builds up to +50% speed.**~~ Shipped as `goat.momentum`: four seconds
+  to the whole of it, three times as fast to lose it, and all of it gone on a hit.
+
 ### system — a souls resource, one soul per man
 
 **Asked as a question, not built.** "А что если мы добавим ресурс душ? Но тут 1 душа = 1 человек. И его

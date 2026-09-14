@@ -249,6 +249,16 @@ function tryGenerate(levelDef, seed) {
     entry = { x0: first.x - 2, y0: ey, x: (first.x + 1.9) * TILE, y: (ey + 1) * TILE };
   }
 
+  // Windows. THE RAFTERS is up in the roof of the hall and its own note has said "windows out into
+  // the night" since it was written; there has never been one in the build. The renderer has known
+  // how to draw one the whole time and the generator simply never made any, so every hole in the
+  // game was a hole in the floor and the word meant nothing. They go in last, into wall that is
+  // still wall, so nothing a corridor or a vault already cut through is touched.
+  const windows = new Set();
+  for (let i = 1; i < rooms.length - 1; i++) {
+    if (rng.chance(levelDef.windows || 0)) carveWindow(tiles, W, rooms[i], rng, windows);
+  }
+
   // The vault. A small room cut into the stone above or below one ordinary room in the middle of the
   // level, with one tile of doorway between them and an iron door in it. Nothing walks out of it and
   // nothing is on the way to the stairs: it is four blows, the noise of four blows, and a tome.
@@ -458,7 +468,7 @@ function tryGenerate(levelDef, seed) {
       y: (lessonRoom.y + lessonRoom.h / 2) * TILE, w: lessonRoom.w * TILE, part: 2 });
   }
   return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt, vault };
+    hints, controls, cagePrompt, vault, windows };
 }
 
 // A ring of iron bars around a point. The pen around the start comes apart under a headbutt;
@@ -571,6 +581,30 @@ function carveVault(tiles, W, H, room, props, rng) {
     return { x: (gapX + 0.5) * TILE, y: (y0 + vh / 2) * TILE };
   }
   return null;
+}
+
+// One window: a short slot cut clean through the wall band along the top of a room, with rock behind
+// it that the renderer paints as the night. It has to have wall above it and the room's own floor
+// below it, or it is a hole in the ground and not a hole in a wall — which is the difference the
+// renderer needs and the only way `drawPits` can tell the two apart. It is a drop like any other: the
+// tile is `T.PIT`, so a man shoved into one goes out of it, and so does the goat.
+function carveWindow(tiles, W, room, rng, out) {
+  const run = rng.int(3, 5);
+  const ty = room.y;
+  if (ty < 2 || room.w < run + 6) return false;
+  for (let a = 0; a < 14; a++) {
+    const tx = rng.int(room.x + 3, room.x + room.w - 3 - run);
+    let ok = true;
+    for (let k = 0; k < run && ok; k++) {
+      ok = tiles[ty * W + tx + k] === T.WALL
+        && tiles[(ty - 1) * W + tx + k] === T.WALL
+        && tiles[(ty + 1) * W + tx + k] === T.FLOOR;
+    }
+    if (!ok) continue;
+    for (let k = 0; k < run; k++) { tiles[ty * W + tx + k] = T.PIT; out.add(ty * W + tx + k); }
+    return true;
+  }
+  return false;
 }
 
 // A stretch of grating laid into the floor of a room. It starts somewhere in the middle third and

@@ -17,6 +17,7 @@ class Goat {
     this.dazed = 0;        // stars over its head: the club in the opening scene, nothing else yet
     this.jitter = null;    // a tremble the opening scene puts on it; drawn, never simulated
     this.safeX = x; this.safeY = y;   // the last floor he stood on, which is where a fall returns him
+    this.runT = 0; this.runUp = 1;    // seconds of running without a break, and what they are worth
   }
 
   update(dt, game) {
@@ -36,7 +37,7 @@ class Goat {
     // Off his feet. Nothing but the floor until it passes: no verbs, no aim, no momentum.
     // The pen is the only thing that does this to him, twice on the way out of it.
     if (this.state === 'stunned') {
-      this.timer -= dt; this.vx *= 0.86; this.vy *= 0.86;
+      this.timer -= dt; this.vx *= 0.86; this.vy *= 0.86; this.runT = 0; this.runUp = 1;
       this.x += this.vx * dt; this.y += this.vy * dt; world.collideCircle(this);
       if (this.timer <= 0) this.state = 'idle';
       return;
@@ -79,12 +80,20 @@ class Goat {
       this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
     }
 
+    // ---- the run-up ----
+    // Seconds of asking for most of a stride, turned into top speed. It builds while he runs and
+    // drains several times faster than it built the moment he stops, so a room you cross without
+    // touching anything hands you the far side of it faster than a room you fight your way through.
+    const M = g.momentum, asking = Math.hypot(inp.mx, inp.my) >= M.atLeast;
+    this.runT = clamp(asking ? this.runT + dt : this.runT - dt * M.lose, 0, M.time);
+    this.runUp = 1 + M.max * (this.runT / M.time);
+
     // ---- movement (momentum) ----
     let mul = this.holding ? g.grab.speedMul : 1;
     if (this.state === 'recover') mul *= 0.55;
     else if (this.state === 'windup') mul *= 0.3;
     else if (this.state === 'rollrecover') mul *= 0.35;
-    const base = g.speed * game.mods.speed * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1);
+    const base = g.speed * game.mods.speed * this.runUp * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1);
     const top = base * mul;
     if (this.state !== 'lunge' && this.state !== 'roll') {
       const moving = inp.mx !== 0 || inp.my !== 0;
@@ -209,7 +218,9 @@ class Goat {
     const spd = Math.hypot(this.vx, this.vy);
     // The tome that makes him faster lengthens the smear. It is the only place SURE HOOVES is
     // visible at all, and a boon nothing on screen answers is a boon that reads as nothing.
-    const TR = g.trail, quick = clamp((game.mods.speed - 1) / (TR.fastAt - 1), 0, 1);
+    // SURE HOOVES and the run-up both come out here: the ghosts lengthen as he winds up, which is
+    // the only thing on screen that says he is faster now than he was two rooms ago.
+    const TR = g.trail, quick = clamp((game.mods.speed * this.runUp - 1) / (TR.fastAt - 1), 0, 1);
     const trailLife = lerp(TR.life, TR.fastLife, quick);
     this.trailTimer -= dt;
     if (spd > g.speed * TR.at && this.trailTimer <= 0) {
@@ -403,6 +414,8 @@ class Goat {
     if (game.dev.god) { game.particles(this.x, this.y, 4, PALETTE.fireHi, 90); return; }
     this.hp -= n; this.invuln = TUNING.goat.invuln;
     this.vx += kx || 0; this.vy += ky || 0;
+    this.runT = 0; this.runUp = 1;             // whatever he had built up, the club took it
+
     game.shake(TUNING.juice.shakeHit); game.audio.sfxHit();
     game.hurtFlash(Math.atan2(-(ky || 0), -(kx || 0)));
     game.world.splat(this.x, this.y, (kx || 0) / 100, (ky || 0) / 100, 9);

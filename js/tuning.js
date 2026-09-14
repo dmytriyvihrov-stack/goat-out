@@ -55,6 +55,12 @@ const TUNING = {
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
     devour: { time: 1.15, healChance: 0.45 },
     bomb: { fuse: 0.34, radius: 2.6 * TILE, impulse: 24 * TILE },
+    // The run-up. A goat that has been running flat out for a while is going faster than one that
+    // just set off: `time` seconds of asking for at least `atLeast` of a stride buys the whole of
+    // `max`, and it drains at `lose` times real time the moment he stops — or all at once when he is
+    // hit. It is the only speed in the game you earn rather than pick up, and it is worth having
+    // because everything that stops you costs it: a fight costs it, a door costs it, a club costs it.
+    momentum: { max: 0.5, time: 4.0, lose: 3.0, atLeast: 0.6 },
     turn: 9,                // rad/s he swings his head round to where you are pointing, standing still
     fireDamageInterval: 0.7,
     invuln: 0.5,            // s of invulnerability after a hit
@@ -234,7 +240,11 @@ const TUNING = {
   // up on the last boards he stood on, one heart lighter, which is the same price the wheel charges.
   // Make it free and the level is a shortcut; make it fatal and nobody goes near the interesting half
   // of the room.
-  fall: { time: 0.5, back: 0.3, damage: 1 },
+  // `showFor` is how long a man who went over an edge is still on screen turning over. He is dead the
+  // frame he crossed the lip — nothing about the fall is simulated — but a body that simply stops
+  // existing reads as a bug, and the one death in the game with nothing left at the end of it is the
+  // one that most needs to be watched happening.
+  fall: { time: 0.5, back: 0.3, damage: 1, showFor: 0.75 },
   // The Mill: a ritual grinding wheel with two sweeping arms. It does not care whose side you are on.
   // Slow enough to read and to time, and its room leaves a lane past it at the top and the bottom.
   mill: {
@@ -525,7 +535,9 @@ const LEVELS = [
     // without being in the room.
     name: 'THE RAFTERS', sub: 'Level 6', rooms: 16, pool: 'high',
     arenas: [{ at: 4, boss: 'seer' }, { at: 10, boss: 'butcher' }, { at: 14, boss: 'champion' }],
-    millAt: 7, heals: 4, tomes: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8,
+    // Windows are this level's and nobody else's: a hole in a wall is a drop, and the drop is the
+    // one new thing THE RAFTERS has. Every other level's walls are the inside of a compound.
+    millAt: 7, heals: 4, tomes: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8, windows: 0.55,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],

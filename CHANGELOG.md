@@ -49,6 +49,28 @@ how steeply the ground rises under it.
   It now carries the tome's own halo, the book painted small on its face, and the same floating `TOME`
   the tome on the floor carries. It is still four blows, one more than the iron you passed two rooms
   back, and that difference is now something you can see before you spend them.
+- **There is a landscape under the holes.** A drop was a flat black square, and from directly above a
+  flat black square is also what a pillar looks like — which is exactly what people were mixing up.
+  You can see the hall a long way down through them now: roof ridges with lit upper edges, rubble, the
+  odd torch still burning. It is painted at a fraction of the camera's own movement, so it **slides
+  against the lip of the hole as you run past** — parallax is the only thing that says *down* on a flat
+  top-down picture, and the scenery is only there to give it something to move. The rim is a gradient
+  instead of a hard band, which was reading as a border drawn round a black tile.
+- **Windows exist now.** THE RAFTERS' own design note has promised "windows out into the night" since
+  the level was written and the generator had never made a single one: the renderer had known how to
+  draw a window the whole time and the test for one — stone above and below — never once answered yes.
+  They are cut properly now, three to five tiles through the wall along the top of a room, with the
+  night and the stars behind them, and the generator writes down which tiles they are instead of the
+  renderer guessing. A window is a drop like any other: shove a man out of one.
+- **You watch a man go down.** He used to stop existing in the frame he crossed the lip, which reads
+  as a bug and not as a drop. He turns over, shrinks into the dark and fades, and the sound of him
+  keeps falling after he is gone. Nothing about it is simulated — he is dead the moment he is over the
+  hole, exactly as before — it is only that the fall is now something you see happen.
+- **Running builds speed.** Four seconds of running without a break is worth **+50% top speed**, and it
+  drains three times as fast as it built the moment you stop. A club takes the whole of it at once. It
+  is the only speed in the game you earn instead of pick up, and everything that stops you costs it —
+  a fight, a door, a man in your way — so it pays for the thing the game is named after. The smear
+  behind him is where it shows: the ghosts lengthen as he winds up, the same way SURE HOOVES does it.
 - **No more plates.** The pot was drawn as an ochre disc, and a disc on a floor of boards reads as a
   plate or a puddle rather than as a thing you lift. Every one of them is a **crate** now, and the
   crate is smaller and plainer than it was: an outline, a face, a lit top edge, one band. Four shapes
