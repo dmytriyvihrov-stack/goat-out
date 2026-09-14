@@ -20,6 +20,10 @@ class Enemy {
     this.champion = false;                                      // the brute: three hearts and a frame that says so
     this.watchful = false;                                      // posted to watch a door: no blind side, and he sees further
     this.maxHp = this.hp; this.burnHearts = 0;
+    // What a rifle can get off while somebody has him by the collar, rolled once and never again:
+    // spend them and he is out for good, so re-grabbing is not a way of reloading him.
+    const hs = TUNING.hunter.heldShots;
+    this.heldShots = kind === 'hunter' ? hs[0] + ((Math.random() * (hs[1] - hs[0] + 1)) | 0) : 0;
     // Trap sense, rolled per man: most of them step round the Mill and the braziers, and the one who
     // rolls badly walks straight into what he is looking at. A hound reads the room better than any.
     this.trapSense = cfg.trapSense !== undefined ? cfg.trapSense
@@ -31,6 +35,13 @@ class Enemy {
     // wraith: whether it is a body at this instant, when it may next try, and where it is drifting
     this.solid = false; this.fadeCd = Math.random() * 1.2; this.driftPhase = Math.random() * 6.28;
     this.lurkT = 0;
+    // The line it comes in on, rolled once and kept: anywhere from your shoulder round to your back,
+    // left or right, and never your front. Each one rolls its own, so three of them do not queue up
+    // behind you — they arrive from three sides at once and you cannot face all of them.
+    if (kind === 'wraith') {
+      const lo = cfg.behind + cfg.flank;
+      this.approach = (lo + Math.random() * (Math.PI - lo)) * (Math.random() < 0.5 ? -1 : 1);
+    } else this.approach = Math.PI;
   }
 
   // Mist. There is no body here to hit, hold, burn, push or knock over, and a wall is not a wall
@@ -40,6 +51,9 @@ class Enemy {
   fling(vx, vy, thrown) {
     if (this.dead || this.ghosted) return;
     this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true;
+    // Whatever he was halfway through painting goes with him. Throwing a mage mid-cast is the answer
+    // to a mage in your mouth, so it has to actually stop the rune.
+    this.rune = null;
   }
 
   // BAAH does not call him in any more. It empties his head for a moment, wherever he was going.
@@ -74,7 +88,9 @@ class Enemy {
     if (this.kind === 'butcher') this.burnHearts = this.cfg.burnHearts;
     this.witchBurn = !!witch;
     this.burnDir = Math.random() * Math.PI * 2; this.burnTick = 0;
-    if (this.kind !== 'butcher') { this.state = 'burning'; this.held = false; }
+    this.state = 'burning'; this.held = false;
+    // Whatever is alight is not in your mouth any more, whoever put it there.
+    if (game.goat.holding === this) { game.goat.holding = null; game.goat.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
     game.audio.sfxFire(); game.floatText(this.x, this.y - 26, 'AAAAH', witch ? PALETTE.witch : PALETTE.fire);
     this.aware = true;
   }
@@ -259,9 +275,18 @@ class Enemy {
     if (this.bombFuse > 0) { this.bombFuse -= dt; if (this.bombFuse <= 0) { this.explode(game); return; } }
 
     // ---- burning ----
+    // Nobody on fire is steering. Not the brute, not the boss: a man alight who keeps walking his
+    // line at you is the one thing that reads as the fire not counting, so everything that catches
+    // blunders. What the big man alone gets is the far side of it — he comes out scorched and a
+    // heart lighter instead of dead, and the blunder ends in a stagger you can still punish.
     if (this.burning > 0) {
       this.burning -= dt;
       w.ignitePx(this.x, this.y);
+      if (Math.random() < dt * 4) this.burnDir += (Math.random() - 0.5) * 2.5;
+      this.moveToward(Math.cos(this.burnDir), Math.sin(this.burnDir), TUNING.fire.burnRunSpeed, dt);
+      this.x += this.vx * dt; this.y += this.vy * dt;
+      if (w.collideCircle(this) > 0) this.burnDir += Math.PI * (0.6 + Math.random() * 0.8);
+      if (Math.random() < dt * 25) game.particles(this.x, this.y, 1, PALETTE.fire, 60);
       if (this.kind === 'butcher') {
         this.burnTick += dt;
         if (this.burnTick >= cfg.burnTick && this.burnHearts > 0) {
@@ -269,22 +294,34 @@ class Enemy {
           game.floatText(this.x, this.y - 30, 'BURNING', PALETTE.fire);
           if (this.hp <= 0) { this.die(game, 'burn'); return; }
         }
-      } else {
-        if (Math.random() < dt * 4) this.burnDir += (Math.random() - 0.5) * 2.5;
-        this.moveToward(Math.cos(this.burnDir), Math.sin(this.burnDir), TUNING.fire.burnRunSpeed, dt);
-        this.x += this.vx * dt; this.y += this.vy * dt;
-        if (w.collideCircle(this) > 0) this.burnDir += Math.PI * (0.6 + Math.random() * 0.8);
-        if (this.burning <= 0) { this.die(game, 'burn'); return; }
-        if (Math.random() < dt * 25) game.particles(this.x, this.y, 1, PALETTE.fire, 60);
-        return;
-      }
+        if (this.burning <= 0) { this.state = 'stagger'; this.timer = cfg.stagger; this.vx = 0; this.vy = 0; }
+      } else if (this.burning <= 0) { this.die(game, 'burn'); return; }
+      return;
     }
     if (this.state === 'held') {
-      // A held Hunter keeps shooting where he is pointed. With Living Shield a held Bearer
-      // keeps swinging too, and everything he hits is on his own side.
-      if (this.kind === 'hunter' && this.reload <= 0) {
+      // A held Hunter keeps shooting where he is pointed — for two or three rounds, and then he is
+      // out and you are carrying a man. With Living Shield a held Bearer keeps swinging too, and
+      // everything he hits is on his own side.
+      if (this.kind === 'hunter' && this.reload <= 0 && this.heldShots > 0) {
         this.reload = cfg.reload * (game.mods.livingShield ? 0.55 : 1);
+        this.heldShots -= 1;
         game.fireBullet(this, Math.cos(this.facing), Math.sin(this.facing));
+        if (this.heldShots <= 0) game.floatText(this.x, this.y - 28, 'CLICK', PALETTE.ash);
+      }
+      // A mage goes on painting the ground while you carry him, and the ground he can reach is the
+      // ground under his own feet — which is the ground under yours. That is the joke, and it is
+      // the reason a Seer is the one man in the building you should think twice about picking up.
+      if (this.kind === 'seer') {
+        this.castCd = Math.max(0, this.castCd - dt);
+        if (this.rune) {
+          this.rune.x = this.x; this.rune.y = this.y;
+          this.timer -= dt;
+          if (this.timer <= 0) this.castRune(game);
+        } else if (this.castCd <= 0) {
+          this.rune = { x: this.x, y: this.y }; this.timer = cfg.castWind;
+          game.audio.sfxCast(); game.world.emitNoise(this.x, this.y, TUNING.noise.cast);
+          game.floatText(this.x, this.y - 32, 'STILL CASTING', PALETTE.witch);
+        }
       }
       if (game.mods.livingShield && this.kind !== 'hunter') {
         this.heldSwing -= dt;
@@ -573,8 +610,12 @@ class Enemy {
     // the aim instead means pointing at one is an absolute answer to it, which is the deal the level
     // is offering. The sprite turns toward the same angle, so what you see is still what it reads.
     const look = Math.atan2(g.aim.y, g.aim.x);
-    const back = look + Math.PI;
-    const wobble = Math.sin(this.driftPhase * 0.9) * cfg.driftWobble;
+    const back = look + this.approach;
+    // It wanders as it closes, so a drift does not read as a missile — but never far enough to
+    // wander back into the cone it cannot arrive from. A shoulder approach gets almost no slack;
+    // one coming straight up your back gets all of it.
+    const slack = Math.min(cfg.driftWobble, Math.abs(this.approach) - cfg.behind);
+    const wobble = Math.sin(this.driftPhase * 0.9) * slack;
     const tx = g.x + Math.cos(back + wobble) * cfg.standoff * TILE;
     const ty = g.y + Math.sin(back + wobble) * cfg.standoff * TILE;
     const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy);
@@ -623,21 +664,7 @@ class Enemy {
 
     if (this.state === 'cast') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
-      if (this.timer <= 0) {
-        if (this.rune) {
-          w.ignitePool(this.rune.x, this.rune.y, cfg.runeRadius, true);
-          for (let k = 0; k < 24; k++) {
-            const a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * 260;
-            game.parts.push({ x: this.rune.x, y: this.rune.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-              life: 0.3 + Math.random() * 0.45, color: Math.random() < 0.5 ? PALETTE.witch : PALETTE.witchHi, size: 3 + Math.random() * 3 });
-          }
-          game.ring(this.rune.x, this.rune.y, cfg.runeRadius * TILE * 1.6, PALETTE.witchHi);
-          game.flash(PALETTE.witch, 0.14);
-          w.emitNoise(this.rune.x, this.rune.y, TUNING.noise.rune);
-          game.audio.sfxRune(); game.shake(5);
-        }
-        this.rune = null; this.state = 'chase'; this.castCd = cfg.castCooldown;
-      }
+      if (this.timer <= 0) { this.castRune(game); this.state = 'chase'; }
       return;
     }
 
@@ -652,6 +679,24 @@ class Enemy {
     if (d < cfg.keepMin * TILE && sees) { this.moveToward(-dx, -dy, this.speed, dt, game); this.facing = Math.atan2(dy, dx); return; }
     if (d > cfg.keepMax * TILE || !sees) { this.chaseGoat(game, this.speed, dt); return; }
     this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx);
+  }
+
+  // The rune he has been painting goes off where he painted it. Held or standing, same fire.
+  castRune(game) {
+    const cfg = this.cfg, w = game.world;
+    if (this.rune) {
+      w.ignitePool(this.rune.x, this.rune.y, cfg.runeRadius, true);
+      for (let k = 0; k < 24; k++) {
+        const a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * 260;
+        game.parts.push({ x: this.rune.x, y: this.rune.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          life: 0.3 + Math.random() * 0.45, color: Math.random() < 0.5 ? PALETTE.witch : PALETTE.witchHi, size: 3 + Math.random() * 3 });
+      }
+      game.ring(this.rune.x, this.rune.y, cfg.runeRadius * TILE * 1.6, PALETTE.witchHi);
+      game.flash(PALETTE.witch, 0.14);
+      w.emitNoise(this.rune.x, this.rune.y, TUNING.noise.rune);
+      game.audio.sfxRune(); game.shake(5);
+    }
+    this.rune = null; this.castCd = cfg.castCooldown;
   }
 
   blink(game) {

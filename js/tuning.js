@@ -32,15 +32,19 @@ const TUNING = {
     accel: 0.15,            // s to top speed
     decel: 0.25,            // s to stop
     hp: 4,
-    headbutt: { windup: 0.12, active: 0.15, recovery: 0.35, lunge: 26 * TILE, impulse: 30 * TILE, reach: 1.7 * TILE },
+    // The lunge carries him a short way and no further: a headbutt is a step into a man, not a
+    // charge across the room, and closing the distance yourself is the part you are paid for.
+    headbutt: { windup: 0.12, active: 0.15, recovery: 0.35, lunge: 18.2 * TILE, impulse: 30 * TILE, reach: 1.7 * TILE },
     // A throw is a commitment now: you let him go, and your mouth is empty for a beat.
-    grab: { reach: 1.6 * TILE, speedMul: 0.7, holdTime: 3.0, throwImpulse: 34 * TILE, holdDist: 22, cooldown: 1.35 },
+    // He is in your mouth a long time, and he works himself loose somewhere in `holdVary` either
+    // side of it, so you never learn the exact beat he goes: carrying one is a gamble, not a timer.
+    grab: { reach: 1.6 * TILE, speedMul: 0.7, holdTime: 8.0, holdVary: 0.125, throwImpulse: 34 * TILE, holdDist: 22, cooldown: 1.35 },
     // BAAH no longer calls them in. It takes the sense out of everyone who hears it, briefly.
     // The radius is deliberately short of what the screen shows: BAAH is for the men on top of you,
     // not for the room. Anything you want stunned you have to be standing in the middle of.
     scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat.
-    roll: { speed: 16.5 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7 },
+    roll: { speed: 9.9 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7 },
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
     devour: { time: 1.15, healChance: 0.45 },
     bomb: { fuse: 0.34, radius: 2.6 * TILE, impulse: 24 * TILE },
@@ -55,7 +59,10 @@ const TUNING = {
   },
   hunter: {
     radius: 11, speed: 0.8 * 8.2 * TILE, sight: 10, cone: Math.PI / 2,
-    keepMin: 5, keepMax: 8, backoffDist: 4, aimTime: 0.8, reload: 1.35,
+    keepMin: 5, keepMax: 8, backoffDist: 4, aimTime: 0.88, reload: 1.35,
+    // What he has left once you have him by the collar. He empties it into the room and then he is
+    // only a man being carried: a rifle is worth holding, but not for the whole level.
+    heldShots: [2, 3],
     // A rifle posted to watch a door sees this much further than one wandering a room, and he does
     // not leave the post: he tracks you across the floor and fires the moment he has the shot.
     watchSight: 8,
@@ -80,7 +87,7 @@ const TUNING = {
   seer: {
     radius: 11, speed: 0.55 * 8.2 * TILE, sight: 11, cone: Math.PI * 0.62,
     keepMin: 5, keepMax: 9, damage: 1, hp: 2,
-    castWind: 1.15, castCooldown: 2.5, runeRadius: 1.4, runeFire: 2.0,
+    castWind: 0.8, castCooldown: 2.5, runeRadius: 1.4, runeFire: 2.0,
     blinkRange: 3.2, blinkDist: 5.5, blinkCooldown: 3.0,
   },
   // The wraith. It is not there most of the time: no body, no collision, nothing to hit, and walls
@@ -93,6 +100,9 @@ const TUNING = {
     hp: 1, flooredTime: 0.6,
     standoff: 1.15,     // tiles behind you it wants to be before it commits
     behind: 1.15,       // radians off your facing: inside this cone in front of you it cannot manifest
+    flank: 0.2,         // margin past that cone for the line it drifts in on, so its approach is
+                        // never one it cannot finish. Each one rolls its own angle, left or right,
+                        // anywhere from your shoulder to your back — a pack arrives from every side
     lurk: 0.24,         // it has to hold your blind side this long before it commits, so sweeping
                         // past the back of your head is not the same thing as getting behind you
     manifest: 0.26,     // becoming real: the one beat of warning you get
@@ -129,7 +139,14 @@ const TUNING = {
     door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE },
     lamp: { r: 9, poolRadius: 1.2 },
-    heal: { r: 12, pickupR: 22 },
+    // A bowl of milk is not a lucky find. `every` is how many rooms a level may go without offering
+    // one; the level's own `heals` is a floor under that, and the generator spaces them rather than
+    // scattering them, so a run never opens six doors in a row on nothing.
+    heal: { r: 12, pickupR: 22, every: 4.5 },
+    // The gong. It was noise and nothing else, which made it the one thing in a room you could not
+    // read. Now it pays: a stretch of speed and quick hands, bought by telling the whole floor where
+    // you are. In an empty room that is a terrible trade. In a full one it is the best one you get.
+    bell: { r: 14, buff: 8, speedMul: 1.5, cooldownMul: 1.5 },
     // A thrown pot no longer just trips a man over. It takes his legs and his head with them,
     // and he lies there seeing stars long enough that you can do something about him.
     pot: { r: 9, stun: 2.4 },
@@ -179,11 +196,15 @@ const TUNING = {
   },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
-  // The scene that opens a run. Seconds per beat; the camera comes in for it and a little further
-  // as they take her. `stars` is how long the goat sees them after it wakes.
+  // The scene that opens a run. Seconds per beat, and every one of them slower than it reads on
+  // paper: this is the only place in the game where nothing is chasing you, and it is worth the time
+  // it takes. The camera comes in over `push` and a little further as they take her; `arrive` is the
+  // beat he stands at the gate before he kicks it, `lunge` the beat the club is already up before
+  // the goat moves, and `stars` how long the goat sees them after it wakes.
   intro: {
-    zoom: 1.4, zoomPush: 1.58, huddle: 3.4, gate: 0.5, fade: 2.3, black: 2.0, wake: 1.7,
-    walk: 150, run: 210, shiver: 0.7, fear: 1.5, bleatEvery: 1.25, stars: 3.2, skipAfter: 0.8, duck: 0.12,
+    zoom: 1.4, zoomPush: 1.58, huddle: 6.4, gate: 0.8, gateHold: 0.45, fade: 3.4, black: 2.9, wake: 2.2,
+    walk: 98, run: 148, shiver: 0.7, fear: 1.5, bleatEvery: 1.25, stars: 3.2, skipAfter: 0.8, duck: 0.12,
+    push: 12, arrive: 1.4, lunge: 0.45,
     club: { knock: 7 * TILE, slow: 0.8, hitstop: 0.12 },
   },
   // The way out is a flight of stairs. The goat climbs them for a moment before the cards, and on
@@ -195,6 +216,9 @@ const TUNING = {
   camera: { lead: 2.4 * TILE, lerp: 7, zoomRest: 1.0, zoomFast: 0.88, zoomLerp: 2.2 },
   held: { bulletsAbsorbed: 2 },
   tome: { r: 13, pickupR: 22 },
+  // How long a tome's three cards refuse every input after they appear, so the click that killed the
+  // boss cannot also spend what he dropped.
+  boonArm: 0.4,
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -239,7 +263,7 @@ const ENCOUNTER = {
 const BOON_BASE = {
   maxHp: 4, speed: 1, butcherDamage: 1, fireImmune: false,
   headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
-  shieldBullets: 2, holdTime: 3.0, livingShield: false, grabCooldown: 1,
+  shieldBullets: 2, holdTime: 8.0, livingShield: false, grabCooldown: 1,
   screamCooldown: 4.0, screamRadius: 8.5,
   rollDistance: 1, rollCooldown: 1,
   breath: false, bomb: false, devour: false,
@@ -258,7 +282,7 @@ const BOONS = [
   { id: 'hide', name: 'THICK HIDE', desc: 'One more heart, and it fills now.', apply: (m) => { m.maxHp += 1; }, heal: 1 },
   { id: 'horns', skill: 'butt', name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.', apply: (m) => { m.headbuttReach *= 1.45; m.headbuttImpulse *= 1.25; } },
   { id: 'skull', skill: 'butt', name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.', apply: (m) => { m.headbuttRecovery *= 0.55; } },
-  { id: 'jaw', skill: 'grab', name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.', apply: (m) => { m.shieldBullets = 4; m.holdTime = 5.5; m.grabCooldown *= 0.6; } },
+  { id: 'jaw', skill: 'grab', name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.', apply: (m) => { m.shieldBullets = 4; m.holdTime = 13; m.grabCooldown *= 0.6; } },
   { id: 'shield', skill: 'grab', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing. At his own.', apply: (m) => { m.livingShield = true; } },
   { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 13; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },

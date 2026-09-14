@@ -1,6 +1,9 @@
 // Game: state machine, fixed-step loop, pointer/keyboard/touch input, entity collisions, effects, cards.
 // Where a run is left for CONTINUE. Bump the version and old saves are simply ignored.
 const SAVE_KEY = 'goatout.run.v1';
+// Whether this browser has watched the opening scene through once. The first time is not skippable:
+// everything the run means is in it, and a key pressed to start the game should not also end it.
+const SEEN_KEY = 'goatout.intro.v1';
 class Game {
   constructor(canvas) {
     this.canvas = canvas; this.renderer = new Renderer(canvas); this.audio = new GameAudio();
@@ -24,12 +27,17 @@ class Game {
     this.hitstopTimer = 0; this.timeScale = 1; this.slowTimer = 0; this.hurt = null;
     this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0;
     this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.tomes = []; this.boonChoice = null; this.boonRects = [];
+    // A tome is spent by a click that starts and ends on the same card. `boonDown` is the card the
+    // pointer went down on; `boonArm` is the beat the cards ignore everything after they appear.
+    this.boonDown = -1; this.boonArm = 0;
     this.dev = { open: false, god: false, rects: [], toast: null };
     this.intro = null;      // the opening scene while it plays; see beginIntro
     this.stairFx = null;    // the goat on a flight of stairs: { t, dir } with dir 1 going up and out, -1 arriving
     this.state = 'title'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
     // The first screen: two ways in, and whatever run the browser still remembers behind the second.
     this.menu = { index: 0, rects: [], t: 0, shake: 0 }; this.save = null;
+    this.introSeen = false;
+    try { this.introSeen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { /* storage refused */ }
     this.layoutTouch();
     this.bindInput();
     this.showTitle();
@@ -80,11 +88,20 @@ class Game {
     while (pick.length < 3 && other.length) pick.push(other.splice((Math.random() * other.length) | 0, 1)[0]);
     this.boonChoice = pick;
     this.boonKind = pick[0] && pick[0].active ? 'SKILL' : 'BLESSING';
+    this.boonDown = -1; this.boonArm = TUNING.boonArm;
     this.state = 'boon'; this.card = null; this.audio.sfxCard(); this.vibe(30);
+  }
+  // Which card a point is on, or -1. The rects are refilled by the renderer every frame.
+  boonAt(p) {
+    for (let i = 0; i < this.boonRects.length; i++) {
+      const r = this.boonRects[i];
+      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return i;
+    }
+    return -1;
   }
   takeBoon(i) {
     const b = this.boonChoice && this.boonChoice[i];
-    if (!b) return;
+    if (!b || this.boonArm > 0) return;
     this.boons.push(b); this.applyBoons(); this.saveRun();
     if (b.heal) this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + b.heal);
     this.boonChoice = null; this.state = 'play';
@@ -173,10 +190,7 @@ class Game {
       }
       if (this.state === 'boon') {
         if (e.pointerType !== 'mouse') this.touch.active = true;
-        for (let i = 0; i < this.boonRects.length; i++) {
-          const r = this.boonRects[i];
-          if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.takeBoon(i); return; }
-        }
+        this.boonDown = this.boonArm > 0 ? -1 : this.boonAt(p);
         return;
       }
       if (e.pointerType === 'mouse') {
@@ -197,12 +211,19 @@ class Game {
     }, { passive: false });
 
     const up = (e) => {
-      if (e.pointerType === 'mouse') { if (e.button === 2) this.input.rmbDown = false; return; }
+      if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false;
+      // A card is taken here and nowhere else: the pointer has to leave the same card it arrived on.
+      if (this.state === 'boon') {
+        const i = this.boonDown; this.boonDown = -1;
+        if (i >= 0 && this.boonAt(this.canvasPos(e)) === i) this.takeBoon(i);
+        return;
+      }
+      if (e.pointerType === 'mouse') return;
       this.touch.up(e.pointerId);
     };
     c.addEventListener('pointerup', up);
     c.addEventListener('pointercancel', up);
-    window.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false; });
+    window.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false; this.boonDown = -1; });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('blur', () => { this.keys.clear(); this.input.rmbDown = false; this.touch.clear(); });
     window.addEventListener('resize', () => { this.renderer.resize(); this.layoutTouch(); });
@@ -461,7 +482,7 @@ class Game {
     if (this.state === 'card') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) { this.card = null; this.state = 'play'; } }
     if (this.state === 'dead') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) this.restartLevel(); this.clearEdges(); return; }
     if (this.state === 'clear') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) this.nextCard(); this.clearEdges(); return; }
-    if (this.state === 'boon') { this.updateEffects(dt); this.clearEdges(); return; }
+    if (this.state === 'boon') { this.boonArm = Math.max(0, this.boonArm - dt); this.updateEffects(dt); this.clearEdges(); return; }
     if (this.state === 'win') { if (this.input.lmbPressed) { this.totalKills = 0; this.deaths = 0; this.startLevel(0, (Math.random() * 1e9) | 0, false, true); } this.clearEdges(); return; }
     if (this.state !== 'play') { this.clearEdges(); return; }
 
@@ -472,7 +493,9 @@ class Game {
     if (w.flowTimer <= 0) { w.flowTimer = 0.15; w.computeFlow(this.goat.x, this.goat.y); }
 
     this.runes.length = 0;
-    for (const e of this.enemies) if (e.rune) this.runes.push(e.rune);
+    // A dead mage paints nothing: leaving his last rune in the list left a patch of floor the whole
+    // room went on stepping round for the rest of the level.
+    for (const e of this.enemies) if (e.rune && !e.dead) this.runes.push(e.rune);
     this.goat.update(dt, this);
     for (const e of this.enemies) e.update(dt, this);
     for (const b of this.bullets) b.update(dt, this);
@@ -521,10 +544,10 @@ class Game {
     const I = TUNING.intro, it = this.intro, g = this.goat, s = it.sheep, S = it.S, ph = it.phase;
     if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; return; }
     it.t += dt; it.timer += dt;
-    if (this.input.anyPressed && it.t > I.skipAfter && ph !== 'black' && ph !== 'wake') { this.skipIntro(); return; }
+    if (this.introSeen && this.input.anyPressed && it.t > I.skipAfter && ph !== 'black' && ph !== 'wake') { this.skipIntro(); return; }
 
     // the camera creeps in the whole time they are in the room
-    const push = clamp(it.t / 9, 0, 1);
+    const push = clamp(it.t / I.push, 0, 1);
     this.cam.zoom = this.renderer.zoomFit * lerp(I.zoom, I.zoomPush, push * push);
     this.cam.x = S.x + 12; this.cam.y = S.y;
 
@@ -597,7 +620,7 @@ class Game {
     if (there) {
       k.facing = Math.atan2(S.y - k.y, S.x - k.x); it.club.facing = k.facing;
       if (!it.arrived) { it.arrived = it.timer; this.say(k, BARKS.intro.ewe); }
-      else if (it.timer - it.arrived > 0.7) this.introPhase('gate');
+      else if (it.timer - it.arrived > I.arrive) this.introPhase('gate');
     }
   }
 
@@ -607,7 +630,7 @@ class Game {
     for (const b of it.gate) b.gate = p;
     it.knife.x = it.stand.x - Math.sin(p * Math.PI) * 9;
     if (!it.clank && p > 0.5) { it.clank = true; this.audio.sfxCageHit(); this.shake(3); for (const b of it.gate) this.particles(b.x, b.y, 3, PALETTE.ash, 90); }
-    if (it.timer >= I.gate + 0.25) this.introPhase('grab');
+    if (it.timer >= I.gate + I.gateHold) this.introPhase('grab');
   }
 
   // camera: follow, lead toward the aim, pull back a little at speed
@@ -648,7 +671,7 @@ class Game {
     // the club comes up before the goat moves, so the arc is on the floor in front of him first
     if (since >= 0 && !it.clubWind) { it.clubWind = true; c.state = 'windup'; c.timer = TUNING.bearer.windup; c.path = []; }
     if (c.state === 'windup') { c.timer = Math.max(0.01, c.timer - dt); c.facing = Math.atan2(g.y - c.y, g.x - c.x); }
-    if (since > 0.3 && !it.lunged) {
+    if (since > I.lunge && !it.lunged) {
       it.lunged = true; g.state = 'windup'; g.timer = TUNING.goat.headbutt.windup; g.path = null;
       this.floatText(g.x, g.y - 30, 'BAAAH!', PALETTE.bone); this.audio.sfxBleat(280, 0.22, 0.4);
     }
@@ -747,6 +770,9 @@ class Game {
   }
   endIntro() {
     const g = this.goat;
+    // It has been watched. From here on a key gets you past it.
+    this.introSeen = true;
+    try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) { /* storage refused */ }
     this.enemies = this.enemies.filter((e) => !e.scripted);
     for (const p of this.props) if (p.kind === 'cage') p.gate = 0;
     g.state = 'idle'; g.timer = 0; g.vx = 0; g.vy = 0; g.jitter = null; g.path = null; g.hp = g.maxHp;
@@ -864,11 +890,22 @@ class Game {
   }
 
   // ---------- helpers used by entities ----------
+  // The muzzle sits a way out in front of him, and that gap used to be the one stretch of the shot
+  // nothing checked: fire diagonally past a corner and the bullet simply appeared on the far side of
+  // the stone. Walk it out instead, and stop at whatever it meets.
   fireBullet(shooter, dx, dy) {
-    const s = TUNING.hunter.bulletSpeed;
-    this.bullets.push(new Bullet(shooter.x + dx * (shooter.r + 16), shooter.y + dy * (shooter.r + 16), dx * s, dy * s));
+    const s = TUNING.hunter.bulletSpeed, w = this.world, out = shooter.r + 16;
+    let mx = shooter.x, my = shooter.y, blocked = false;
+    for (let t = 4; t <= out; t += 4) {
+      const px = shooter.x + dx * t, py = shooter.y + dy * t;
+      if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE))) { blocked = true; break; }
+      mx = px; my = py;
+    }
     this.audio.sfxGunshot(); this.world.emitNoise(shooter.x, shooter.y, TUNING.noise.gunshot);
-    this.particles(shooter.x + dx * (shooter.r + 16), shooter.y + dy * (shooter.r + 16), 4, PALETTE.fireHi, 120); this.shake(1.5);
+    this.particles(mx, my, 4, PALETTE.fireHi, 120); this.shake(1.5);
+    // Firing into the wall he is standing against is a wasted round, not a shot through it.
+    if (blocked) { w.dot(mx, my, 2, '#2a2020'); return; }
+    this.bullets.push(new Bullet(mx, my, dx * s, dy * s));
   }
   meleeHit(att, reach, arc, damage, knock, skipGoat) {
     const g = this.goat;

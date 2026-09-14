@@ -863,11 +863,12 @@ class Renderer {
     ctx.restore();
   }
 
-  // The Seer's rune, burning in on the floor where you were standing.
+  // The Seer's rune, burning in on the floor where you were standing — or, if you are carrying him,
+  // on the floor under his own feet, which is the floor under yours.
   drawRunes(game) {
     const ctx = this.ctx;
     for (const e of game.enemies) {
-      if (e.dead || e.state !== 'cast' || !e.rune) continue;
+      if (e.dead || !e.rune || (e.state !== 'cast' && e.state !== 'held')) continue;
       const cfg = TUNING.seer, p = 1 - e.timer / cfg.castWind;
       const R = cfg.runeRadius * TILE;
       ctx.save(); ctx.translate(e.rune.x, e.rune.y); ctx.rotate(this.t * 0.7);
@@ -1201,7 +1202,8 @@ class Renderer {
       ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'right';
       ctx.fillText('beeh...', this.w * 0.9, this.vh * 0.47); ctx.restore();
     }
-    if (it.t > TUNING.intro.skipAfter + 0.7 && it.phase !== 'black' && it.phase !== 'wake') {
+    // Only once it has been watched through. The first run sits and watches.
+    if (game.introSeen && it.t > TUNING.intro.skipAfter + 0.7 && it.phase !== 'black' && it.phase !== 'wake') {
       ctx.save(); ctx.globalAlpha = 0.4 * (1 - it.fade); ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'left';
       ctx.fillText(`${game.tapWord} TO SKIP`, 14 * s, this.vh - 14 * s); ctx.restore();
     }
@@ -1436,8 +1438,20 @@ class Renderer {
       ctx.fillStyle = hot ? PALETTE.fireHi : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.6)';
       ctx.fillText(row.name, x + box / 2, y + box + 18 * s);
     });
+    // The gong, while it is still in him: a strip under the rail that drains with it, so four
+    // cooldowns coming back faster than they should has something on screen saying why.
+    let end = top + box + 22 * s;
+    const gong = clamp(g.gong / TUNING.prop.bell.buff, 0, 1);
+    if (gong > 0) {
+      const bw = right - x0, by = end + 2 * s;
+      ctx.fillStyle = 'rgba(13,10,12,0.5)'; ctx.fillRect(x0, by, bw, 4 * s);
+      ctx.fillStyle = PALETTE.fireHi; ctx.fillRect(x0, by, bw * gong, 4 * s);
+      ctx.textAlign = 'center'; ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi;
+      ctx.fillText('THE GONG', x0 + bw / 2, by + 14 * s);
+      end = by + 24 * s;
+    }
     ctx.textAlign = 'left';
-    return top + box + 22 * s;
+    return end;
   }
 
   // The tome names, under the score. The pips on the chips already say which button each one bends;

@@ -2,6 +2,7 @@
 
 Instructions for any session picking this project up. Read this first, then `CONCEPT.md` for what the
 game is trying to be. `README.md` is for a player, this file is for whoever is building it.
+`MARKET.md` is the commercial picture: comparables, the 2026 storefront and the open positioning decisions.
 
 ---
 
@@ -10,6 +11,9 @@ game is trying to be. `README.md` is for a player, this file is for whoever is b
 A playable prototype of a top-down, one-life, procedurally generated escape game. You are a sacrificial
 goat running out of a cult's compound. Vanilla JavaScript, Canvas 2D, WebAudio. No build step, no
 dependencies, no framework. Opening `index.html` runs the game.
+
+`GENRE_RESEARCH.md` collects what reviews of reference games (Hotline Miami, Ape Out, and format-mates
+that stayed niche) actually praise and blame, as a genre guideline. Background reading, not a spec.
 
 The published build lives at **https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021**.
 Always update that same URL rather than publishing a new artifact (see *Publishing* below).
@@ -106,6 +110,13 @@ everybody. Fail the roll and he is blind for `TUNING.ai.blindFor`, which is the 
 still rides the wheel into a wall. `game.hazards` (fixed for the level) and `game.runes` (rebuilt each
 step) keep all of it off the per-frame prop loop.
 
+**Fire takes the wheel.** Anything alight loses its AI and blunders: `burnDir` wanders, walls turn it,
+and `moveToward` is called with no `game` so it does not even dodge hazards. The Butcher is no longer
+the exception — he blunders too, and what he alone gets is the far side of it: `burnHearts` comes off
+over `burnTick`, and when `burning` runs out he lands in `stagger` instead of dying. A boss that walks
+his line at you through a fire reads as the fire not counting, which is why nothing does it any more.
+`ignite` also takes whatever it lit out of the goat's mouth.
+
 **Props.** One `Prop` class for brazier, pot, bell, door, table, lamp, mill, heal and weapon. `blocking`,
 `stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item` is what the
 goat can pick up and throw — a pot or a weapon — and it is the test everywhere the code used to ask
@@ -145,6 +156,21 @@ rings on the touch buttons; both read `game.mods`, never `TUNING`, at the use si
 1 for the Seer's witchfire. Witchfire spreads as witchfire, draws violet, scorches violet and ignores
 `mods.fireImmune`; `isWitchPx` is the test. Anything that lights a tile passes the kind through.
 
+**The gong.** `Prop.ring` sets `goat.gong` to `TUNING.prop.bell.buff` seconds. While it runs, `Goat.update`
+multiplies the three real cooldowns (`screamCd`, `grabCd`, `rollCd`) by `bell.cooldownMul` as they tick
+and the top speed by `bell.speedMul`; `drawSkills` puts a draining strip under the rail. The noise it
+makes is unchanged and is the price. `planEncounters` does not place it: the generator drops a `'b'`
+marker unless the room's plan holds men, so it never lands in the pen or the two control rooms — an
+empty room was where it used to sit reading as scenery.
+
+**A man in your mouth.** `goat.holdLimit` is rolled in `tryGrab` from `mods.holdTime` and
+`grab.holdVary`, so every grab lasts a different seven-to-nine seconds. Two kinds go on working while
+held, and the branch for them is at the top of `Enemy.update` above every other state: a Hunter fires
+`enemy.heldShots` rounds (rolled once per man in the constructor, never refilled — re-grabbing is not
+reloading) and then is dry, and a Seer paints a rune **on himself**, which is to say on you.
+`castRune` is the one place a rune goes off, shared by the held mage and the standing one; `fling`
+clears `rune`, which is the only counter to a mage in your mouth.
+
 **Barks.** `game.bark(enemy, kind, chance)` is the only way to make a man speak. It enforces a global gap
 and a per-man cooldown, so a crowd never shouts at once. Lines live in `BARKS` in `tuning.js`; the bubble
 is drawn in `drawEnemy`.
@@ -165,6 +191,12 @@ generator only finds floor for what the plan says. Two rules it enforces:
    is spent on whatever has been introduced, capped per kind and per room. A level is harder than the
    last because its two numbers are bigger.
 
+**Milk.** `heals` on a level definition is a floor, not the count. The generator takes
+`max(levelDef.heals, ceil((rooms - 1) / TUNING.prop.heal.every))`, cuts the level into that many bands
+measured **in rooms rather than in eligible rooms**, and gives each band the ordinary room nearest its
+middle. A run of arenas and set pieces can no longer stretch the dry spell: the worst gap on any level
+is five rooms. Only the tile inside the room is random.
+
 Change any of it and run **`node tools/balance.js`**: it prints the curve room by room and exits non-zero
 if a kind arrives in a crowd first, a cap breaks, threat stops rising inside a level, or a level is not
 harder than the one before. Adding an enemy kind means: a `THREAT` value, an `ENCOUNTER.weight`, usually
@@ -182,6 +214,13 @@ headbutt can reach two or three bars at once, so `breakCage` counts blows and no
 `game.cageLunge === goat.lungeId`. Each blow bleats a line from `prop.cage.strain`; on the blows in
 `prop.cage.stunAt` the goat is put on the floor by `game.stunGoat`. The last blow breaks every bar and
 sets `game.cageOpen`, which is what hides the floor prompt. Only levels with `startCage` get one.
+
+**Which side the dead come from.** Every wraith rolls `enemy.approach` once in the constructor: a signed
+angle between `wraith.behind + wraith.flank` and π, so it drifts to a point on your shoulder, your
+flank or your back, left or right, but never your front. `updateWraith` uses `look + this.approach`
+rather than `look + π`, and the drift wobble is clamped to `|approach| - behind` so a shoulder approach
+can never wander into the cone it is not allowed to manifest from. Three of them no longer queue up in
+the same place behind you — they surround you.
 
 **The wraith, and what "not there" means.** `Enemy.ghosted` is `kind === 'wraith' && !solid`, and it is
 the question every single thing that reaches for an enemy has to ask: headbutt, breath, grab, thrown pot,
@@ -210,6 +249,12 @@ ENTER to choose). NEW GAME wipes the save and plays the opening scene; CONTINUE 
 its head until there is a run to come back to. `drawTitle` paints the whole canvas, vignette and empty
 thumb deck included, so nothing from the play view shows through.
 
+**The tome cards.** `takeBoon` is reachable from three places and all three are explicit: Digit1/2/3,
+and a pointer that goes **down and up on the same card** (`boonDown` holds the index it went down on,
+`boonAt` hit-tests `boonRects`). `boonArm` (`TUNING.boonArm`) makes the cards refuse everything for a
+beat after they appear, so the click that killed the boss cannot spend what he dropped. Nothing
+selects on hover, and nothing selects on a press alone.
+
 **The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, at }` to
 `localStorage` under `SAVE_KEY` at the head of every level and again whenever a tome is taken; `loadRun`
 refuses anything of another version or off the end of `LEVELS`, and every call is wrapped, so a browser
@@ -217,7 +262,14 @@ that refuses storage simply never offers CONTINUE. Winning clears it. CONTINUE r
 that level with those tomes and a fresh seed — the layout is generated again, as it is after a death.
 Boons are stored by `id`, so renaming one in `BOONS` silently drops it from old saves.
 
-**The opening scene.** `game.beginIntro()` runs in the real level 1 with the real pen, in state `intro`,
+**The opening scene.** It cannot be skipped until a browser has watched it through once: `SEEN_KEY` in
+`localStorage` gates both the skip in `updateIntro` and the CLICK TO SKIP line in `drawIntroOverlay`,
+and `endIntro` is what writes it. `skipIntro(true)` is unconditional so the harness still works.
+Every beat is in `TUNING.intro` — `huddle`, `arrive`, `gate`, `gateHold`, `lunge`, `fade`, `black`,
+`wake`, and the `walk`/`run` speeds the two men move at, with `push` the camera creep. Nothing in
+`updateIntro` carries a literal duration any more.
+
+`game.beginIntro()` runs in the real level 1 with the real pen, in state `intro`,
 driven by `updateIntro` and one method per beat (`introHuddle`, `introApproach`, `introGate`,
 `introGrab`, `introClub`, `introFade`, `introBlack`, `introWake`). Everything it owns lives in
 `game.intro`: the sheep, the heart, the two men, the gate bars. The men are ordinary `Enemy` objects

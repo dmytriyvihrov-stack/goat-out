@@ -5,6 +5,75 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.3 — a shorter goat, a gong worth hitting, and a mage you should think twice about picking up
+
+**The goat moves less, and everything he waits for is now a real wait.**
+
+- **The headbutt lunge is 30% shorter.** It is a step into a man, not a charge across the room. Reach
+  is untouched — closing the gap is the part you are paid for now.
+- **The roll is 40% shorter.** Same duration, same mercy frames, a good deal less ground. It is a
+  panic button rather than a second way of travelling.
+- **A man stays in your mouth seven to nine seconds** instead of three, and the exact beat he works
+  loose is rolled fresh every grab, so you never learn it. STRONG JAW takes it to thirteen.
+
+**Three of them are weaker in your hands, one is worse.**
+
+- **A rifle in your mouth has two or three rounds in it and no more.** He fires them into his own
+  room and then he is a man being carried — and he is out for good, so letting go and grabbing him
+  again is not a way of reloading him.
+- **A rifle takes 10% longer to line you up.**
+- **A mage goes on painting the ground while you carry him, and the ground he can reach is the ground
+  under his own feet — which is the ground under yours.** The circle appears under him, says STILL
+  CASTING, and eight-tenths of a second later you are both standing in witchfire. Throwing him breaks
+  the cast. That is the whole answer, and it is the only one.
+- **The mage's circle lands 30% sooner** everywhere else, too: less time to walk off the mark.
+
+**Everything on fire has stopped steering.**
+
+- **A boss alight blunders like everybody else.** The Butcher used to walk his line at you through the
+  flames, which read as the fire not counting for anything. Now he panics, wanders, and comes out the
+  far side scorched, a heart down and staggered — still not killed by fire, but not ignoring it either.
+
+**The gong does something.**
+
+- **Hit it and the goat runs half again as fast and every cooldown comes back half again as quick for
+  eight seconds** — and every man on the floor knows exactly where you are. A strip under the skill
+  rail counts it down. In an empty room that is a terrible trade; in a room with twelve men in it,
+  it is the best one on offer. So it is never placed in an empty room any more, which is where it
+  used to sit reading as scenery.
+
+**Two things the generator stopped leaving to chance.**
+
+- **A bowl of milk every four or five rooms, guaranteed.** The level is cut into bands measured in
+  doors rather than in lucky rooms, and each band gives one up. Worst gap on any level is now five
+  rooms; it used to be ten. THE YARD, THE ROAD and THE BRIDGE each gained a bowl.
+- **The dead now arrive from every side.** A wraith used to drift to the point directly behind you;
+  every wraith did, so three of them queued up in the same place. Each one now rolls its own line in
+  — anywhere from your shoulder round to your back, left or right, never your front — and keeps it.
+  A pack of them surrounds you.
+
+**Fixed**
+
+- **Rifle rounds no longer come through walls.** The muzzle sits 27px in front of the man and that
+  gap was the one stretch of a shot nothing checked: fire diagonally past a corner and the round
+  simply appeared on the far side of the stone. Of every shot fired into a wall in a sweep of the
+  whole map, one in twenty-four used to fly clean through it. The muzzle is walked out now and a shot
+  into stone is a wasted round.
+- **A tome is taken by a click on a card and nothing else.** Hovering over one, a click that starts on
+  one card and ends on another, and anything at all in the first four-tenths of a second after the
+  cards appear — all do nothing. The click that killed the boss can no longer spend what he dropped.
+- **A dead or thrown mage stops painting.** His half-finished rune used to stay in the list the whole
+  room steers around, so a patch of empty floor went on being avoided for the rest of the level.
+- **Anything that catches fire leaves your mouth.**
+
+**The opening scene**
+
+- **It cannot be skipped the first time.** Once a browser has watched it through, CLICK TO SKIP comes
+  back and works as before.
+- **And it is eight and a half seconds longer**, all of it spent slowing down what was already there:
+  they huddle longer, the two men walk in slower, he stands at the gate longer before he kicks it,
+  the club is up longer before the goat moves, and the dark lasts longer.
+
 ## 1.2 — arms that break, the brute, a room with two rifles in it, and a first screen that is a menu
 
 - **Nothing you pick up survives being used.** A thrown blade goes into whatever it finds and snaps

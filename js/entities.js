@@ -12,6 +12,8 @@ class Goat {
     this.rollCd = 0; this.rollSpin = 0; this.rollDir = { x: 1, y: 0 }; this.grabCd = 0;
     this.trail = [];       // ghost positions for the speed smear
     this.trailTimer = 0;
+    this.gong = 0;         // seconds of the bell still ringing in him: fast hooves and quick hands
+    this.holdLimit = 0;    // how long the man in his mouth will take to work loose, rolled per grab
     this.dazed = 0;        // stars over its head: the club in the opening scene, nothing else yet
     this.jitter = null;    // a tremble the opening scene puts on it; drawn, never simulated
   }
@@ -19,8 +21,12 @@ class Goat {
   update(dt, game) {
     const g = TUNING.goat, inp = game.input, world = game.world;
     this.aim = inp.aim;
-    this.screamCd = Math.max(0, this.screamCd - dt); this.screaming = Math.max(0, this.screaming - dt);
-    this.grabCd = Math.max(0, this.grabCd - dt);
+    // The gong is still ringing in his head: everything he has to wait for comes back half again
+    // as fast, and so does he. It runs down whatever he is doing, stunned included.
+    this.gong = Math.max(0, this.gong - dt);
+    const cdRate = this.gong > 0 ? TUNING.prop.bell.cooldownMul : 1;
+    this.screamCd = Math.max(0, this.screamCd - dt * cdRate); this.screaming = Math.max(0, this.screaming - dt);
+    this.grabCd = Math.max(0, this.grabCd - dt * cdRate);
     this.invuln = Math.max(0, this.invuln - dt); this.dazed = Math.max(0, this.dazed - dt);
 
     // Off his feet. Nothing but the floor until it passes: no verbs, no aim, no momentum.
@@ -34,7 +40,7 @@ class Goat {
 
     // ---- clumsy sideways roll ----
     const R = TUNING.goat.roll;
-    this.rollCd = Math.max(0, this.rollCd - dt);
+    this.rollCd = Math.max(0, this.rollCd - dt * cdRate);
     if (inp.rollPressed && this.rollCd <= 0 && this.state !== 'lunge' && this.state !== 'roll' && this.state !== 'rollrecover' && !this.dead) {
       this.rollDir = this.rollDirection(game, inp.mx, inp.my); this.rollSpin = 0;
       this.state = 'roll'; this.timer = R.duration; this.rollCd = R.cooldown * game.mods.rollCooldown;
@@ -61,7 +67,7 @@ class Goat {
     if (this.state === 'recover') mul *= 0.55;
     else if (this.state === 'windup') mul *= 0.3;
     else if (this.state === 'rollrecover') mul *= 0.35;
-    const base = g.speed * game.mods.speed;
+    const base = g.speed * game.mods.speed * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1);
     const top = base * mul;
     if (this.state !== 'lunge' && this.state !== 'roll') {
       const moving = inp.mx !== 0 || inp.my !== 0;
@@ -127,7 +133,7 @@ class Goat {
           h.die(game, 'devour', this.aim.x, this.aim.y);
           this.grabCd = g.grab.cooldown * game.mods.grabCooldown;
           game.hitstop(0.06); game.shake(7); game.vibe(30);
-        } else if (!h.item && this.holdTimer >= game.mods.holdTime) {
+        } else if (!h.item && this.holdTimer >= this.holdLimit) {
           // He works his way loose. Losing him costs less than throwing him, but it still costs.
           h.held = false; this.holding = null; h.state = 'floored'; h.timer = 0.6;
           h.x += this.aim.x * 10; h.y += this.aim.y * 10;
@@ -340,6 +346,9 @@ class Goat {
       game.floatText(best.x, best.y - 32, best.weapon === 'sword' ? 'SWORD' : 'SHIELD', PALETTE.bone);
     }
     best.held = true; best.flung = false; best.thrown = false; this.holding = best; this.holdTimer = 0;
+    // He is yours for a while, and you do not get to know exactly how long: the roll is made here.
+    const v = TUNING.goat.grab.holdVary;
+    this.holdLimit = game.mods.holdTime * (1 - v + Math.random() * v * 2);
     if (!best.item) { best.state = 'held'; best.aware = true; }
     game.vibe(10);
   }
@@ -369,7 +378,7 @@ class Prop {
   constructor(x, y, kind, opts) {
     const P = TUNING.prop;
     this.x = x; this.y = y; this.kind = kind; this.vx = 0; this.vy = 0;
-    this.r = kind === 'pot' ? P.pot.r : kind === 'bell' ? 14 : kind === 'door' ? P.door.r
+    this.r = kind === 'pot' ? P.pot.r : kind === 'bell' ? P.bell.r : kind === 'door' ? P.door.r
       : kind === 'table' ? P.table.r : kind === 'lamp' ? P.lamp.r
       : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r
       : kind === 'weapon' ? P.weapon.r
@@ -461,10 +470,19 @@ class Prop {
     game.floatText(this.x, this.y - 30, C.strain[need - 1] || 'OUT', PALETTE.fireHi);
   }
 
+  // The gong answers back. Every man on the floor now knows where you are — and for the next few
+  // seconds the goat runs half again as fast and his hands come back half again as quick, which is
+  // exactly the trade you want in a room that already had twelve men in it.
   ring(game) {
+    const B = TUNING.prop.bell;
     this.rung = 1.5; game.world.emitNoise(this.x, this.y, TUNING.noise.bell); game.audio.sfxBell();
     game.floatText(this.x, this.y - 30, 'BONNNG', PALETTE.fireHi); game.shake(4);
     game.ring(this.x, this.y, TUNING.noise.bell * TILE, PALETTE.fireHi);
+    const g = game.goat;
+    if (!g || g.dead) return;
+    g.gong = B.buff;
+    game.floatText(g.x, g.y - 44, 'THE GONG IS IN HIM', PALETTE.fireHi);
+    game.ring(g.x, g.y, 3 * TILE, PALETTE.fireHi); game.flash(PALETTE.fireHi, 0.12); game.vibe(25);
   }
 
   // Doors: the goat goes through them. Anyone loitering on the far side goes down with it.

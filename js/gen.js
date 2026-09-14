@@ -234,12 +234,17 @@ function tryGenerate(levelDef, seed) {
   const racksFrom = Math.round((levelDef.racksFrom || 0) * (n - 1));
   rooms.forEach((room) => {
     const spots = [];
+    const cell = plan.rooms.get(room.index);
+    // A gong is only worth anything with men in the room to answer it. In an empty room it is a
+    // thing you hit once, hear nothing back from, and never touch again — which is how it came to
+    // read as scenery. So the first rooms, the two control rooms and the pen simply do not get one.
+    const manned = !!(cell && (cell.men.length || cell.boss));
     let wIdx = rng.int(0, 1);
     room.markers.forEach((m) => {
       const px = (m.tx + 0.5) * TILE, py = (m.ty + 0.5) * TILE;
       if (m.c === 'B') props.push({ x: px, y: py, kind: 'brazier' });
       else if (m.c === 'o') props.push({ x: px, y: py, kind: 'pot' });
-      else if (m.c === 'b') props.push({ x: px, y: py, kind: 'bell' });
+      else if (m.c === 'b') { if (manned) props.push({ x: px, y: py, kind: 'bell' }); }
       else if (m.c === 'L') props.push({ x: px, y: py, kind: 'lamp' });
       else if (m.c === 't') { if (m.tx % 2 === 0 && m.ty % 2 === 0) props.push({ x: px + TILE / 2, y: py + TILE / 2, kind: 'table' }); }
       else if (m.c === 'M') props.push({ x: px, y: py, kind: 'mill', phase: rng.float(0, Math.PI * 2) });
@@ -262,7 +267,6 @@ function tryGenerate(levelDef, seed) {
         break;
       }
     }
-    const cell = plan.rooms.get(room.index);
     if (!cell) return;                                  // the pen and the two control rooms stay empty
     rng.shuffle(spots);
     // A rifle likes a post and a mage likes his own mark; everyone else takes what is left.
@@ -315,8 +319,25 @@ function tryGenerate(levelDef, seed) {
     }
   }
 
-  // Two bowls of milk per level, dropped in ordinary rooms between the set pieces.
-  const healRooms = rng.shuffle(rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.calm && !r.isGallery && !r.isKillbox)).slice(0, levelDef.heals || 0);
+  // Milk, on a rhythm rather than on a roll. A run is meant to be offered a bowl every few rooms,
+  // so the level is cut into that many bands and each band gives one up — the room inside a band is
+  // random, the spacing is not. `heals` is a floor: a long level gets more bowls, never a longer
+  // dry spell, and the same eligibility as before keeps them out of the set pieces.
+  const healable = rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.calm && !r.isGallery && !r.isKillbox);
+  const wantHeals = Math.min(healable.length, Math.max(levelDef.heals || 0, Math.ceil((n - 1) / TUNING.prop.heal.every)));
+  const healRooms = [], usedHeal = new Set();
+  for (let i = 0; i < wantHeals; i++) {
+    // The band is measured in doors, not in eligible rooms, so a run of arenas and set pieces cannot
+    // stretch the dry spell: the bowl goes to whatever ordinary room sits nearest the middle of it.
+    const mid = 1 + (i + 0.5) * (n - 1) / wantHeals;
+    let room = null;
+    for (const r of healable) {
+      if (usedHeal.has(r.index)) continue;
+      if (!room || Math.abs(r.index - mid) < Math.abs(room.index - mid)) room = r;
+    }
+    if (!room) break;
+    usedHeal.add(room.index); healRooms.push(room);
+  }
   healRooms.forEach((room) => {
     for (let k = 0; k < 30; k++) {
       const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
