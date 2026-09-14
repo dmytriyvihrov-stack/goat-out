@@ -5,6 +5,51 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.10 — every level is about one thing, and a page that says so
+
+**One sitting, about the shape of a level.** Asked for as a tab in the dev tool — the level
+generation rules, per room and per level, lit up — and, under it, the rule the tab is there to keep:
+every level has its own idea, most of its rooms are that idea, and the rest is a mix of what the run
+already knows.
+
+- **Every level has a canon.** `levelDef.canon` names it and `ROOM_TEMPLATES` entries carry it:
+  STONE on THE ALTAR (pillars, corners, stub walls — the wall is the weapon), FIRE on THE YARD (coals
+  and straw in every room before the mage brings his own), THE LINE on THE ROAD (colonnades, trenches
+  of cover, the strip a rifle cannot see), OPEN GROUND on THE THRESHING FLOOR, THE FUNNEL on THE BRIDGE
+  (a gate, a throat, an hourglass, weirs, a chute: seven men are one man in a doorway), THE DROP on
+  THE RAFTERS, and THE NICHE on THE OSSUARY (a crypt, cells, alcoves, a catacomb, a charnel comb —
+  stone to put your back to, because a body cannot form inside it). THE THRESHING FLOOR and THE
+  RAFTERS already had pools of their own; the other five got them, three existing rooms each plus new
+  ones, so every canon is five rooms.
+- **At least half of a level's ordinary rooms are its canon**, on an even spread that always starts
+  with the first one, so a level says what it is about on the first floor you fight on. The rest are
+  the mix: the plain rooms and the canons of every earlier level, never an idea the run has not
+  reached — level one's mix is four plain rooms, level seven's is thirty-four. THE THRESHING FLOOR and
+  THE RAFTERS used to be their pool and nothing else; now they are half it, which is what was asked
+  for, and the back half of a run is everything it has taught you, shuffled.
+- **A width budget in the generator.** The mix holds the yard's thirty-tile rooms from level five
+  on, and a sixteen-room level could draw enough of them to seal itself short of its last door. A
+  room now takes no more than its fair share of the width that is left, the set pieces still ahead
+  subtracted, and a template that does not fit is passed over for the next one that does.
+- **A level that asks for a vault gets one.** About one seed in two hundred put the vault's room
+  against the top or the bottom of the world with no rock to cut into, and the level went out a tome
+  short and said nothing about it. It is regenerated now. The RULES page found it.
+- **RULES, in the dev drawer.** A page over the whole screen with the simulation held: every rule the
+  generator keeps down the left, lit by whether this level keeps it — fire for holds, blood for does
+  not with the reason under it, ash for does not apply — and down the right the level: its canon and
+  idea, its definition read out of `LEVELS` so nothing can drift, its canon, mix and trap pools by
+  name, and the rooms it actually built with role, template, men and threat, the canon rows lit. One
+  tab per level; the level in play is checked as it stands and any other tab is a sample the page
+  generates and can reroll, so all seven can be read without playing up to them.
+- **The rules are written once.** `js/rules.js` holds the list — every kind met alone, the run
+  opening on one man, threat rising, every level harder, the caps, the canon share, the mix never
+  ahead of the run, a canon at least four rooms, set pieces teaching nothing, the Mill's room, rifles
+  posted only after they are met, milk on a rhythm, nothing beside the pen, arms held back, trap rooms
+  placed right, the vault — and `tools/balance.js` runs the same list over many seeds instead of its
+  own copy, so a rule cannot hold in the report and fail on the page.
+
+---
+
 ## 1.9 — a run that gets stronger, a fourth button to find, and no more plates
 
 **One sitting, about progression.** The complaint was that the first levels were already hard and the

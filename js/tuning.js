@@ -347,6 +347,17 @@ const ENCOUNTER = {
   killbox: { men: ['hunter', 'hunter'], near: ['bearer', 'bearer'] },
 };
 
+// THE CANON. Every level is about one thing — stone, fire, the line, open ground, the funnel, the
+// drop, the niche — and the rooms are how it says so. A room template carries `canon: '<id>'`, a
+// level carries `canon: { id, name, idea }`, and the generator builds at least `share` of the level's
+// ordinary rooms (everything that is not the pen, a control room or a set piece) out of that pool.
+// The rest are the mix: the untagged rooms plus the canons of every level before this one, which is
+// "what you already know" and nothing you have not been shown. `minRooms` is how many templates a
+// canon has to have written for it before it counts as one; a level whose canon has fewer would be
+// the same two rooms over and over. The dev drawer's RULES page and `node tools/balance.js` both
+// hold the level to this.
+const CANON = { share: 0.5, minRooms: 4 };
+
 // Boons bend numbers and verbs the goat already has. Actives change what a button does;
 // passives change how well everything works. The Butcher drops a tome: three of one kind.
 // `skill` is the button a boon hangs off in the HUD rail; the three without one are body work.
@@ -438,6 +449,10 @@ const LEVELS = [
     // after your first clubman and one room before his own arena, which is no time at all to have
     // learned what a headbutt is for: now four rooms of ordinary work stand between them.
     name: 'THE ALTAR', sub: 'Level 1', rooms: 12, showControls: true, startCage: true, ritual: true,
+    // The first idea and the plainest: a headbutt only ever knocks a man down, and it is the stone he
+    // lands against that kills him. So the rooms here are pillars, corners and stub walls, and the
+    // level is one long lesson in where to stand when you swing.
+    canon: { id: 'stone', name: 'STONE', idea: 'The wall is the weapon. Pillars, corners and stub walls: a man knocked into any of them stays down. A man knocked onto open floor gets up.' },
     // The first man of the run holds his post instead of walking at you: he stands in the only way
     // out of his room — the generator narrows that corridor to a single tile for him — and the floor
     // under him says what the button does. Walking round him was the one thing everybody did, so now
@@ -461,6 +476,9 @@ const LEVELS = [
     // of the way in. The hound is here rather than on level one because level one is about a man
     // standing still and what a head does to him.
     name: 'THE YARD', sub: 'Level 2', rooms: 12,
+    // The mage brings fire; the rooms already have it. Coals, straw and ovens, so the thing the Seer
+    // does to the floor is a thing you have been doing to the floor yourself since the second room.
+    canon: { id: 'fire', name: 'FIRE', idea: 'Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself.' },
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
     millAt: 7, heals: 2, tomes: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
     encounters: {
@@ -475,6 +493,9 @@ const LEVELS = [
   {
     // The rifle arrives early, alone, and then never stops being the reason you keep moving.
     name: 'THE ROAD', sub: 'Level 3', rooms: 14,
+    // A rifle owns everything it can see. The rooms are colonnades, long naves and lines of stub
+    // cover: the level is about the strip of floor a rifle cannot see and how you get to it.
+    canon: { id: 'line', name: 'THE LINE', idea: 'Long sightlines and hard cover. A rifle owns whatever it can see, so the room is about what it cannot, and about crossing the rest.' },
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
     millAt: 8, heals: 2, tomes: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
@@ -495,7 +516,8 @@ const LEVELS = [
     // posts, tables, braziers, a ring of hay you light yourself — and decide which half of a room is
     // yours before the rifles decide it for you. Corridors are wide enough that it reads as one yard.
     // Nothing new walks in: the room itself is the new thing.
-    name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, pool: 'open', corridorW: 5,
+    name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, corridorW: 5,
+    canon: { id: 'open', name: 'OPEN GROUND', idea: 'Almost no wall. What kills is what is standing in the room — posts, tables, braziers, a ring of hay — and which half of it you decide is yours.' },
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
     millAt: 6, heals: 3, tomes: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
     encounters: {
@@ -513,6 +535,10 @@ const LEVELS = [
   {
     // Everything the compound has left, all at once, on the bridge they were driving you over.
     name: 'THE BRIDGE', sub: 'Level 5', rooms: 16,
+    // The most men of any level so far, and the rooms are built so that they cannot all reach you
+    // at once: a gate of pillars, a throat of tables, a pinch in the middle. Seven men are one man
+    // in a doorway, and the doorway is what every room here has.
+    canon: { id: 'funnel', name: 'THE FUNNEL', idea: 'Seven men are one man in a doorway. Every room narrows somewhere, and the fight is at the narrow part — on whichever side of it you chose.' },
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
     millAt: 7, heals: 3, tomes: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 8,
     encounters: {
@@ -533,7 +559,8 @@ const LEVELS = [
     // what makes an edge something to work with rather than something to keep away from. Nothing new
     // walks in — the missing floor is the new thing, and it is the only thing here that kills for you
     // without being in the room.
-    name: 'THE RAFTERS', sub: 'Level 6', rooms: 16, pool: 'high',
+    name: 'THE RAFTERS', sub: 'Level 6', rooms: 16,
+    canon: { id: 'drop', name: 'THE DROP', idea: 'The floor is not all there. Holes in the boards and windows in the walls, the same fall under both, and nobody who goes over comes back.' },
     arenas: [{ at: 4, boss: 'seer' }, { at: 10, boss: 'butcher' }, { at: 14, boss: 'champion' }],
     // Windows are this level's and nobody else's: a hole in a wall is a drop, and the drop is the
     // one new thing THE RAFTERS has. Every other level's walls are the inside of a compound.
@@ -554,6 +581,11 @@ const LEVELS = [
     // is not in the room until it is behind you. Walls do not hold them, so there is nowhere to put
     // your back — the only cover on this ground is which way you are looking.
     name: 'THE OSSUARY', sub: 'Level 7', rooms: 16,
+    // The dead come from behind, and a body cannot form inside stone. So the rooms are niches and
+    // lanes — stone to put your back to — with open floor between them that you have to cross with
+    // nothing at your back at all. The level is about where you are looking, and the rooms are
+    // about how often you have to stop looking.
+    canon: { id: 'niche', name: 'THE NICHE', idea: 'A body cannot form inside stone. Niches and lanes take arcs away from the dead; the open floor between them gives every arc back.' },
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
     millAt: 6, heals: 4, tomes: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
     encounters: {
@@ -575,13 +607,18 @@ const LEVELS = [
 // What the player has already been shown by the time each level starts: every kind an earlier level
 // put in front of him, bosses included. A kind is introduced on its own once a run, not once a level,
 // so the second Butcher of a run arrives with company like anybody else.
+// `known` is the same idea for rooms: the canons of every level before this one, which is what the
+// mix half of a level is allowed to draw from. A room built round the drop never turns up before the
+// level whose whole point is the drop.
 (() => {
-  const met = new Set();
+  const met = new Set(), known = new Set();
   for (const def of LEVELS) {
     def.met = new Set(met);
     for (const k of def.encounters.kinds) met.add(k);
     for (const [k] of (def.encounters.introduce || [])) met.add(k);
     for (const a of (def.arenas || [])) met.add(a.boss);
+    def.known = new Set(known);
+    if (def.canon) known.add(def.canon.id);
   }
 })();
 

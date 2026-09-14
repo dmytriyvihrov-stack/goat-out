@@ -165,17 +165,46 @@ function tryGenerate(levelDef, seed) {
   let x = 2;
   let y = Math.floor(H * 0.62);
   const n = levelDef.rooms;
-  // A level can draw from its own set of rooms: `pool` matches a template's `tag`, and a level
-  // without one gets the untagged default set.
-  const want = levelDef.pool || null;
-  const pool = rng.shuffle(ROOM_TEMPLATES.filter((t) => (t.tag || null) === want));
-  let poolIdx = 0;
-  // Rooms whose point is the floor rather than the men on it. A template that `needs` something the
-  // level does not have — teeth on a level whose floor has none — is never drawn, so a trap room is
-  // always built out of things this level has already shown you.
-  const trapPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.tag === 'trap' && (!t.needs || levelDef[t.needs])));
+  // Two pools. The canon is the level's own idea, and at least `CANON.share` of its ordinary rooms
+  // are built out of it; the mix is what the run already knows — the untagged rooms and the canons
+  // of the levels before this one — and never an idea it has not been shown yet. A template that
+  // `needs` something the level does not have — teeth on a level whose floor has none — is in
+  // neither, so no room is ever built out of a thing this level cannot show you.
+  const fits = (t) => !t.needs || levelDef[t.needs];
+  const canonId = levelDef.canon ? levelDef.canon.id : null;
+  const canonPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.canon && t.canon === canonId && fits(t)));
+  const known = levelDef.known || new Set();
+  let mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && (!t.canon || known.has(t.canon)) && fits(t)));
+  if (!mixPool.length) mixPool = canonPool;
+  let canonIdx = 0, mixIdx = 0;
+  // Rooms whose point is the floor rather than the men on it.
+  const trapPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.tag === 'trap' && fits(t)));
   const trapRooms = pickTrapRooms(levelDef, n, trapPool.length, rng);
+  const canonRooms = canonPool.length ? pickCanonRooms(levelDef, n, trapRooms) : new Set();
   let trapIdx = 0;
+  // The gap between one room and the next, on average, for the width budget below.
+  const GAP = 5;
+  // Which of the set pieces still lie ahead of room `i`, by width, so a room can be given its fair
+  // share of what is left rather than an average that a Great Hall then eats.
+  const fixedW = (j) => {
+    if ((levelDef.arenas || []).some((a) => a.at === j)) return ARENA_TEMPLATE.rows[0].length;
+    if (j === levelDef.millAt) return MILL_TEMPLATE.rows[0].length;
+    if (j === levelDef.hallAt) return GREAT_HALL_TEMPLATE.rows[0].length;
+    if (j === levelDef.galleryAt) return GALLERY_TEMPLATE.rows[0].length;
+    if (j === levelDef.killboxAt) return KILLBOX_TEMPLATE.rows[0].length;
+    return 0;
+  };
+  // A room may not take more than its share of the width that is left: the pool cycles, and a
+  // template too wide for what remains is passed over for the next one that fits. The mix holds the
+  // yard's thirty-tile rooms from level five on, and without this a sixteen-room level was sealed
+  // short of its last door often enough that the twenty retries ran out.
+  const draw = (pool, at, i) => {
+    let fixed = 0, flex = 1;
+    for (let j = i + 1; j < n; j++) { const fw = fixedW(j); if (fw) fixed += fw; else flex++; }
+    const budget = Math.floor((W - 8 - x - fixed - GAP * (n - i)) / flex);
+    for (let k = 0; k < pool.length; k++) { const t = pool[(at + k) % pool.length]; if (t.rows[0].length <= budget) return t; }
+    return pool[at % pool.length];
+  };
 
   for (let i = 0; i < n; i++) {
     let tpl;
@@ -187,16 +216,24 @@ function tryGenerate(levelDef, seed) {
     else if (i === levelDef.galleryAt) tpl = GALLERY_TEMPLATE;
     else if (i === levelDef.killboxAt) tpl = KILLBOX_TEMPLATE;
     else if (trapRooms.has(i)) tpl = trapPool[trapIdx++ % trapPool.length];
-    else tpl = pool[poolIdx++ % pool.length];
+    else if (canonRooms.has(i)) tpl = draw(canonPool, canonIdx++, i);
+    else tpl = draw(mixPool, mixIdx++, i);
+    const source = tpl;
     tpl = flipTemplate(tpl, rng);
+    tpl.canon = source.canon || null;
     const w = tpl.rows[0].length, h = tpl.rows.length;
     y = clamp(y, 1, H - h - 2);
     if (x + w >= W - 6) return null;
 
-    const room = { x, y, w, h, tpl, index: i, markers: [], arena,
+    const calm = !!levelDef.showControls && (i === 1 || i === 2);
+    // What the room is for, in one word: the dev drawer's RULES page and `tools/balance.js` both
+    // read it, and it is the only place the canon-or-mix decision is written down.
+    const role = i === 0 ? 'pen' : arena ? 'arena' : i === levelDef.millAt ? 'mill' : i === levelDef.hallAt ? 'hall'
+      : i === levelDef.galleryAt ? 'gallery' : i === levelDef.killboxAt ? 'killbox' : calm ? 'calm'
+      : trapRooms.has(i) ? 'trap' : canonRooms.has(i) ? 'canon' : 'mix';
+    const room = { x, y, w, h, tpl, index: i, markers: [], arena, role,
       isMill: i === levelDef.millAt, isHall: i === levelDef.hallAt, isGallery: i === levelDef.galleryAt,
-      isKillbox: i === levelDef.killboxAt, isTrap: trapRooms.has(i),
-      calm: !!levelDef.showControls && (i === 1 || i === 2) };
+      isKillbox: i === levelDef.killboxAt, isTrap: trapRooms.has(i), calm };
     for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
         const c = tpl.rows[ty][tx];
@@ -263,6 +300,10 @@ function tryGenerate(levelDef, seed) {
   // level, with one tile of doorway between them and an iron door in it. Nothing walks out of it and
   // nothing is on the way to the stairs: it is four blows, the noise of four blows, and a tome.
   const vault = levelDef.vaultAt !== undefined ? carveVault(tiles, W, H, rooms[levelDef.vaultAt], props, rng) : null;
+  // A level that asks for a vault gets one. About one seed in two hundred put the room hard against
+  // the top or the bottom of the world with no rock on either side to cut into, and the level went
+  // out a tome short with nothing to say about it; a fresh seed is cheaper than a missing tome.
+  if (levelDef.vaultAt !== undefined && !vault) return null;
 
   // Props from the template markers, and the men the plan asked for placed on whatever the room has.
   const plan = planEncounters(levelDef, rooms, rng);
@@ -468,7 +509,7 @@ function tryGenerate(levelDef, seed) {
       y: (lessonRoom.y + lessonRoom.h / 2) * TILE, w: lessonRoom.w * TILE, part: 2 });
   }
   return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt, vault, windows };
+    hints, controls, cagePrompt, vault, windows, plan };
 }
 
 // A ring of iron bars around a point. The pen around the start comes apart under a headbutt;
@@ -536,14 +577,35 @@ function pickTrapRooms(levelDef, n, available, rng) {
   const out = new Set();
   const want = Math.min(levelDef.traps || 0, available);
   if (want <= 0) return out;
+  // The first two ordinary rooms of a level are where its kinds get introduced; leave them alone.
+  const pool = ordinaryRooms(levelDef, n).slice(2);
+  for (const i of rng.shuffle(pool).slice(0, want)) out.add(i);
+  return out;
+}
+
+// The rooms of a level that are nobody's set piece: not the pen, not the two control rooms, not an
+// arena, the Mill, the Hall, the Gallery or the killbox. These are the rooms the canon, the mix and
+// the trap rooms are dealt out of, in order.
+function ordinaryRooms(levelDef, n) {
   const taken = new Set([0, levelDef.millAt, levelDef.hallAt, levelDef.galleryAt, levelDef.killboxAt]);
   for (const a of (levelDef.arenas || [])) taken.add(a.at);
   if (levelDef.showControls) { taken.add(1); taken.add(2); }
-  const eligible = [];
-  for (let i = 1; i < n; i++) if (!taken.has(i)) eligible.push(i);
-  // The first two ordinary rooms of a level are where its kinds get introduced; leave them alone.
-  const pool = eligible.slice(2);
-  for (const i of rng.shuffle(pool).slice(0, want)) out.add(i);
+  const out = [];
+  for (let i = 1; i < n; i++) if (!taken.has(i)) out.push(i);
+  return out;
+}
+
+// Which rooms of a level are its canon: `CANON.share` of the ordinary rooms, taken off the ones that
+// are not trap rooms on an even spread that always starts with the first. A level says what it is
+// about on the first floor you fight on, and the mix is what you get between one canon room and the
+// next — never instead of the first. It is a spread and not a roll so that a run of three mix rooms
+// in a row cannot happen: the idea is never out of sight for long.
+function pickCanonRooms(levelDef, n, trapRooms) {
+  const out = new Set();
+  const ordinary = ordinaryRooms(levelDef, n);
+  const plain = ordinary.filter((i) => !trapRooms.has(i));
+  const want = Math.min(plain.length, Math.ceil(CANON.share * ordinary.length));
+  for (let k = 0; k < want; k++) out.add(plain[want === 1 ? 0 : Math.round(k * (plain.length - 1) / (want - 1))]);
   return out;
 }
 

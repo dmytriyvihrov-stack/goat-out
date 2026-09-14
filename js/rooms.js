@@ -6,8 +6,11 @@
 // 'O' a drop: a hole in the boards where it sits in the floor, a window where it sits in a wall
 // 'S' a spike plate: floor until the goat crosses it, and then teeth
 // Rooms are randomly flipped on both axes at generation time.
-// A template with a `tag` is only drawn by a level whose `pool` matches it; untagged ones are the
-// default pool every other level uses.
+// A template with a `canon` belongs to the level whose `canon.id` matches it: at least half of that
+// level's ordinary rooms are drawn from its canon, and the rest from the mix — the untagged rooms
+// here plus the canons of every level before it, so a room never shows an idea the run has not
+// reached. `tag: 'trap'` is the one pool that is neither: a trap room is dropped into a level's
+// ordinary rooms by count (`levelDef.traps`) rather than drawn as one.
 const ROOM_TEMPLATES = [
   { name: 'hall', rows: [
     '################',
@@ -21,7 +24,7 @@ const ROOM_TEMPLATES = [
     '#..............#',
     '################',
   ]},
-  { name: 'pillars', rows: [
+  { name: 'pillars', canon: 'stone', rows: [
     '##############',
     '#............#',
     '#..P..e...P..#',
@@ -33,7 +36,7 @@ const ROOM_TEMPLATES = [
     '#............#',
     '##############',
   ]},
-  { name: 'kitchen', rows: [
+  { name: 'kitchen', canon: 'fire', rows: [
     '############',
     '#..........#',
     '#.o....B...#',
@@ -58,7 +61,7 @@ const ROOM_TEMPLATES = [
     '#..............#',
     '################',
   ]},
-  { name: 'shrine', rows: [
+  { name: 'shrine', canon: 'fire', rows: [
     '##############',
     '#............#',
     '#..B......B..#',
@@ -71,7 +74,7 @@ const ROOM_TEMPLATES = [
     '#...t....t...#',
     '##############',
   ]},
-  { name: 'corridors', rows: [
+  { name: 'corridors', canon: 'line', rows: [
     '##################',
     '#................#',
     '#.PPPP..e..PPPP..#',
@@ -95,7 +98,7 @@ const ROOM_TEMPLATES = [
     '#..........#',
     '############',
   ]},
-  { name: 'cross', rows: [
+  { name: 'cross', canon: 'stone', rows: [
     '################',
     '#..............#',
     '#..e...PP...e..#',
@@ -121,7 +124,7 @@ const ROOM_TEMPLATES = [
 
   // A yard with almost nothing in it. Two braziers, one pillar block, and a great deal of floor:
   // out here a rifle or a mage owns the room and you have to cross it anyway.
-  { name: 'yard', rows: [
+  { name: 'yard', canon: 'line', rows: [
     '####################',
     '#..................#',
     '#....B........B....#',
@@ -136,7 +139,7 @@ const ROOM_TEMPLATES = [
   ]},
   // Livestock pens: three ranks of stub walls with lanes between them. Everything here is a corner,
   // and a man driven into one stops being a man.
-  { name: 'pens', rows: [
+  { name: 'pens', canon: 'stone', rows: [
     '##################',
     '#................#',
     '#.PPPP...PPPP....#',
@@ -151,7 +154,7 @@ const ROOM_TEMPLATES = [
     '##################',
   ]},
   // A long nave under two colonnades, with the bell at the end of it. Sightlines the whole length.
-  { name: 'nave', rows: [
+  { name: 'nave', canon: 'line', rows: [
     '######################',
     '#....................#',
     '#..P..P..P..P..P..P..#',
@@ -163,7 +166,7 @@ const ROOM_TEMPLATES = [
     '######################',
   ]},
   // Where they cook for the compound. Tight, hot, and full of things that burn.
-  { name: 'ovens', rows: [
+  { name: 'ovens', canon: 'fire', rows: [
     '##############',
     '#............#',
     '#.B..tt..B...#',
@@ -177,12 +180,109 @@ const ROOM_TEMPLATES = [
     '##############',
   ]},
 
-  // ---- THE THRESHING FLOOR: open ground, tagged 'open' so only that level draws from them. ----
+  // ---- STONE: THE ALTAR's canon. The wall is the weapon, so every one of these is corners. ----
+  // A square of pillars with a walk round it and a way into the middle on every side. Wherever a man
+  // is standing there is stone within a lunge of him.
+  { name: 'cloister', canon: 'stone', rows: [
+    '################',
+    '#..............#',
+    '#..PPPP..PPPP..#',
+    '#..P........P..#',
+    '#..P..e..o..P..#',
+    '#.....tt.......#',
+    '#..P..tt.e..P..#',
+    '#..P........P..#',
+    '#..PPPP..PPPP..#',
+    '#......r.......#',
+    '################',
+  ]},
+  // Stalls: stub walls off both long walls with a lane down the middle. Every stall is a corner
+  // with a man in it, and a man backed into a stall has nowhere to be knocked but the stone.
+  { name: 'stalls', canon: 'stone', rows: [
+    '##################',
+    '#..P...P...P...P.#',
+    '#..P.e.P...P.o.P.#',
+    '#..P...P.r.P...P.#',
+    '#................#',
+    '#..B...........L.#',
+    '#................#',
+    '#.P...P...P...P..#',
+    '#.P.e.P.o.P.e.P..#',
+    '#.P...P...P...P..#',
+    '##################',
+  ]},
+
+  // ---- FIRE: THE YARD's canon. Something in every room burns, before the mage gets there. ----
+  // A loft of straw with a bowl of coals at each end of it. Light one bale and the room is a
+  // different room; light it with a man standing in it and it is a smaller room.
+  { name: 'hayloft', canon: 'fire', rows: [
+    '################',
+    '#..............#',
+    '#.hhh..B...hhh.#',
+    '#.hhh......hhh.#',
+    '#....e.......e.#',
+    '#......hhh.....#',
+    '#..o...hhh..r..#',
+    '#..............#',
+    '#.hhh......hhh.#',
+    '#.hhh..B...hhh.#',
+    '#..............#',
+    '################',
+  ]},
+  // The forge: six bowls of coals in two rows, and the anvil between them. Nothing here is straw —
+  // the fire is wherever you knock it, and a spilled bowl is a wall for as long as it burns.
+  { name: 'forge', canon: 'fire', rows: [
+    '################',
+    '#..............#',
+    '#..e.........r.#',
+    '#....B..B..B...#',
+    '#..............#',
+    '#..tt.PP.....o.#',
+    '#..tt.PP.......#',
+    '#....B..B..B...#',
+    '#..e.........m.#',
+    '#..............#',
+    '################',
+  ]},
+
+  // ---- THE LINE: THE ROAD's canon. Long sightlines, hard cover, and the strip a rifle cannot see. ----
+  // A colonnade of pillar blocks down both sides and a clear line down the middle with the rifle at
+  // the end of it. The middle is fast and the sides are alive; the room is about which you take.
+  { name: 'colonnade', canon: 'line', rows: [
+    '######################',
+    '#....................#',
+    '#..PP...PP...PP...PP.#',
+    '#..PP...PP...PP...PP.#',
+    '#..e.......o.......R.#',
+    '#....................#',
+    '#..PP...PP...PP...PP.#',
+    '#..PP...PP...PP...PP.#',
+    '#.....e.......m......#',
+    '######################',
+  ]},
+  // Lines of stub cover thrown across the room in staggered rows: you cross it in hops, and every
+  // hop is a beat the rifle has you and the next stub does not.
+  { name: 'trench', canon: 'line', rows: [
+    '##################',
+    '#................#',
+    '#..e.......PPP...#',
+    '#................#',
+    '#.....PPP........#',
+    '#.......o...R....#',
+    '#...........PPP..#',
+    '#................#',
+    '#..PPP...........#',
+    '#..........e.....#',
+    '#.....m..........#',
+    '##################',
+  ]},
+
+  // ---- THE THRESHING FLOOR: open ground, its canon, so only that level and the ones after draw them. ----
   // Out here the walls are nearly gone and the structure is furniture: posts, tables, braziers and
   // hay. A headbutt on bare floor still only knocks a man down, so the level is about herding him
   // into something that finishes the job — and about deciding which half of the room is yours.
   // Props in the middle and open ground all round it: the fight happens on your side of the island.
-  { name: 'island', tag: 'open', rows: [
+  { name: 'island', canon: 'open', rows: [
     '############################',
     '#..........................#',
     '#..e....................e..#',
@@ -200,7 +300,7 @@ const ROOM_TEMPLATES = [
     '############################',
   ]},
   // Everything useful is along the two edges. Crossing the middle is fast, open and stupid.
-  { name: 'flanks', tag: 'open', rows: [
+  { name: 'flanks', canon: 'open', rows: [
     '##############################',
     '#............................#',
     '#.PP...B...hh........hh...B..#',
@@ -218,7 +318,7 @@ const ROOM_TEMPLATES = [
     '##############################',
   ]},
   // A ring of hay: a wall you do not have until you light it, and cannot take back once you have.
-  { name: 'hayring', tag: 'open', rows: [
+  { name: 'hayring', canon: 'open', rows: [
     '############################',
     '#..........................#',
     '#..B....................B..#',
@@ -236,7 +336,7 @@ const ROOM_TEMPLATES = [
     '############################',
   ]},
   // Table rows you can shoulder about. The lanes are only where you leave them.
-  { name: 'lanes', tag: 'open', rows: [
+  { name: 'lanes', canon: 'open', rows: [
     '##############################',
     '#............................#',
     '#..tt..tt..tt..tt..tt..tt....#',
@@ -254,7 +354,7 @@ const ROOM_TEMPLATES = [
     '##############################',
   ]},
   // A field of posts, spread wide. The only hard geometry out here, and the only thing that kills for you.
-  { name: 'posts', tag: 'open', rows: [
+  { name: 'posts', canon: 'open', rows: [
     '############################',
     '#..........................#',
     '#..P...P...P...P...P...P...#',
@@ -272,12 +372,93 @@ const ROOM_TEMPLATES = [
     '############################',
   ]},
 
-  // ---- the rafters: the pool for the level whose floor is not all there ----
+  // ---- THE FUNNEL: THE BRIDGE's canon. Seven men are one man in a doorway. ----
+  // A wall of pillars across the room with one tile of gap in it. Whoever is on the other side comes
+  // through one at a time, and one at a time is the only way you were ever going to take seven.
+  { name: 'gate', canon: 'funnel', rows: [
+    '##################',
+    '#................#',
+    '#..e.....P...e...#',
+    '#........P.......#',
+    '#..o.....P....r..#',
+    '#................#',
+    '#........P.....o.#',
+    '#..e.....P.......#',
+    '#.....B..P..e....#',
+    '#........P.......#',
+    '#................#',
+    '##################',
+  ]},
+  // Tables narrowing to a throat of two pillars. The tables can be shoved, so the throat is only as
+  // narrow as you have left it — and a table shoved into it with a crowd behind it is a kill.
+  { name: 'throat', canon: 'funnel', rows: [
+    '####################',
+    '#..................#',
+    '#..e....tt....e....#',
+    '#.......tt.........#',
+    '#....tt......tt....#',
+    '#....tt.PP...tt....#',
+    '#.......PP.......o.#',
+    '#..r....tt....e....#',
+    '#.......tt.........#',
+    '#..o..........m....#',
+    '#..................#',
+    '####################',
+  ]},
+  // The walls pinch the middle from both sides. Two halves of a room and four tiles of floor between
+  // them, and whichever half you are in, everyone in the other has to come through the pinch.
+  { name: 'hourglass', canon: 'funnel', rows: [
+    '##################',
+    '#................#',
+    '#..e..........e..#',
+    '#.PP..........PP.#',
+    '#.PPPP..o...PPPP.#',
+    '#.PPPPP....PPPPP.#',
+    '#.PPPP..r...PPPP.#',
+    '#.PP..........PP.#',
+    '#..e.....B....m..#',
+    '#................#',
+    '##################',
+  ]},
+  // Two weirs across the room with their gaps on opposite sides, so a crowd coming for you has to
+  // snake, and snakes one man wide. The gap you are standing at is the one they arrive through.
+  { name: 'weir', canon: 'funnel', rows: [
+    '######################',
+    '#....................#',
+    '#..e....P......P.....#',
+    '#.......P......P..e..#',
+    '#..o....P......P.....#',
+    '#.......P......P.....#',
+    '#..............P...o.#',
+    '#.......P............#',
+    '#..e....P......P..r..#',
+    '#.......P......P.....#',
+    '#....................#',
+    '######################',
+  ]},
+  // A chute: two pillar blocks with three tiles of floor between them and a bowl of coals at each
+  // lip. The way round the outside is long and the way through is short and lit.
+  { name: 'chute', canon: 'funnel', rows: [
+    '################',
+    '#..............#',
+    '#..e.......e...#',
+    '#..PPP...PPP...#',
+    '#..PPP...PPP...#',
+    '#....B...B.....#',
+    '#..PPP...PPP...#',
+    '#..PPP...PPP.o.#',
+    '#......r.......#',
+    '#..e.......m...#',
+    '#..............#',
+    '################',
+  ]},
+
+  // ---- THE DROP: the rafters' canon, for the level whose floor is not all there ----
   // 'O' is a drop. In the floor it is a hole in the boards; in a wall run it is a window. Men will
   // not path into either and a thrown one goes through both, so every one of these rooms is built
   // to leave a way across that is worth less than the way round. They are deliberately narrow: the
   // level is about edges, and an edge you can walk a long way round is not an edge.
-  { name: 'gantry', tag: 'high', rows: [
+  { name: 'gantry', canon: 'drop', rows: [
     '######OO#####OO######',
     '#...................#',
     '#..e.............e..#',
@@ -293,7 +474,7 @@ const ROOM_TEMPLATES = [
   ]},
   // Fight it along the rail. Everything worth standing on is against the one long wall, and the
   // whole of the other side of the room is not there.
-  { name: 'ledge', tag: 'high', rows: [
+  { name: 'ledge', canon: 'drop', rows: [
     '######################',
     '#....................#',
     '#..tt...B.....B..tt..#',
@@ -309,7 +490,7 @@ const ROOM_TEMPLATES = [
   ]},
   // Joists with the boards off between them. Crossing is two short hops of nerve, and anyone who
   // follows you has to take the long way round the ends.
-  { name: 'joists', tag: 'high', rows: [
+  { name: 'joists', canon: 'drop', rows: [
     '#######################',
     '#.....................#',
     '#..e...............e..#',
@@ -325,7 +506,7 @@ const ROOM_TEMPLATES = [
   ]},
   // The well: one hole in the middle of an otherwise ordinary room, posted round it, so a man
   // shoved off a post has somewhere to go.
-  { name: 'wellhole', tag: 'high', rows: [
+  { name: 'wellhole', canon: 'drop', rows: [
     '####OO########OO####',
     '#..................#',
     '#..P............P..#',
@@ -338,7 +519,7 @@ const ROOM_TEMPLATES = [
     '####OO########OO####',
   ]},
   // All wall and all window. Nothing in here kills for you except what is behind the men.
-  { name: 'windowrow', tag: 'high', rows: [
+  { name: 'windowrow', canon: 'drop', rows: [
     '###OO#####OO#####OO###',
     '#....................#',
     '#..e...t....t...t.e..#',
@@ -352,6 +533,85 @@ const ROOM_TEMPLATES = [
     '#....................#',
     '###OO#####OO#####OO###',
   ]},
+  // ---- THE NICHE: THE OSSUARY's canon. A body cannot form inside stone. ----
+  // The dead come from the side you are not looking at, and the only thing the ground does for you
+  // is refuse them a place to stand. Every room here is stone to put your back to — niches, cells,
+  // alcoves — with open floor between that you have to cross with nothing at your back at all.
+  // A crypt: a row of niches down each long wall, two tiles wide and one deep. Stand in one and half
+  // the room's arcs are gone; the middle of the room has every one of them.
+  { name: 'crypt', canon: 'niche', rows: [
+    '##################',
+    '#.P..P..P..P..P..#',
+    '#................#',
+    '#..e....L.....e..#',
+    '#................#',
+    '#....o.......o...#',
+    '#................#',
+    '#..e....B.....e..#',
+    '#................#',
+    '#.P..P..P..P..P..#',
+    '##################',
+  ]},
+  // Cells off a lane. Each has one mouth, and inside one there is only one way anything can come.
+  { name: 'cells', canon: 'niche', rows: [
+    '####################',
+    '#....P.....P.....P.#',
+    '#.e..P..o..P..e..P.#',
+    '#....P.....P.....P.#',
+    '#.PPPP..PPPP..PPPP.#',
+    '#..................#',
+    '#.PPPP..PPPP..PPPP.#',
+    '#....P.....P.....P.#',
+    '#.e..P..r..P..m..P.#',
+    '#....P.....P.....P.#',
+    '####################',
+  ]},
+  // Alcoves cut into the top and bottom walls, and a bare floor between them.
+  { name: 'alcoves', canon: 'niche', rows: [
+    '##################',
+    '#PP..PP..PP..PP..#',
+    '#................#',
+    '#....e......e....#',
+    '#..o.............#',
+    '#.......B.....o..#',
+    '#................#',
+    '#....e......r....#',
+    '#................#',
+    '#..PP..PP..PP..PP#',
+    '##################',
+  ]},
+  // A catacomb: one chamber with a single mouth in the middle of the room, and stubs either side of
+  // it. In the chamber there is exactly one way in; outside it there are all of them.
+  { name: 'catacomb', canon: 'niche', rows: [
+    '####################',
+    '#..................#',
+    '#..e..PPPPPPP....e.#',
+    '#.....P.....P......#',
+    '#..o..P..L..P..o...#',
+    '#.....P.....P......#',
+    '#..PPPP.....PPPP...#',
+    '#..................#',
+    '#..e....r....m..e..#',
+    '#..................#',
+    '####################',
+  ]},
+  // The charnel: a comb of single pillars along both walls, the slots between them one tile wide.
+  // A slot is the narrowest place in the game to stand and the hardest to be come at.
+  { name: 'charnel', canon: 'niche', rows: [
+    '################',
+    '#..............#',
+    '#.P.P.P.P.P.P..#',
+    '#..............#',
+    '#..e..o....e...#',
+    '#..............#',
+    '#.......B......#',
+    '#..............#',
+    '#..r......m....#',
+    '#..............#',
+    '#.P.P.P.P.P.P..#',
+    '################',
+  ]},
+
   // ---- TRAP ROOMS: the room is the weapon, tagged 'trap'. ----
   // An ordinary room gives you furniture and asks you to work out what to do with it. These four
   // are built the other way round: the shape is already a kill and what you have to work out is how

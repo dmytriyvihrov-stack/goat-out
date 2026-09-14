@@ -1184,12 +1184,13 @@ class Renderer {
   drawDev(game) {
     const ctx = this.ctx, s = this.ts, d = game.dev;
     d.rects = [];
+    if (d.rules) { this.drawRules(game); return; }
     const pad = 8 * s, cw = 62 * s, chH = 22 * s;
     const cx = this.w - pad - cw, cy = this.h - pad - chH;
     let toastY = cy - 10 * s;
     if (d.open) {
       const rows = [
-        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'],
+        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['rules', 'RULES'],
         ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'],
         ['wraith', '+ WRAITH'], ['butcher', '+ BUTCHER'],
         ['tome', '+ TOME'], ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
@@ -1234,6 +1235,148 @@ class Renderer {
       ctx.fillText(d.toast.text, this.w - 12 * s, toastY);
       ctx.textAlign = 'left'; ctx.globalAlpha = 1;
     }
+  }
+
+  // A button in the drawer's own style, and its rect.
+  devButton(d, x, y, w, h, label, id, on) {
+    const ctx = this.ctx, s = this.ts;
+    ctx.fillStyle = on ? 'rgba(185,135,58,0.55)' : 'rgba(59,34,51,0.75)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = on ? PALETTE.ochre : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 1 * s;
+    ctx.strokeRect(x, y, w, h);
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = on ? PALETTE.fireHi : PALETTE.bone;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + w / 2, y + h / 2);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    d.rects.push({ x, y, w, h, id });
+  }
+
+  // Break a line on its spaces to fit a width, in whatever font is set.
+  wrap(text, maxW) {
+    const ctx = this.ctx, out = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+      const t = line ? line + ' ' + word : word;
+      if (line && ctx.measureText(t).width > maxW) { out.push(line); line = word; } else line = t;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+
+  // Cut a line to a width with an ellipsis, in whatever font is set.
+  clip(text, maxW) {
+    const ctx = this.ctx;
+    if (ctx.measureText(text).width <= maxW) return text;
+    let t = text;
+    while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+    return t + '…';
+  }
+
+  // The RULES page of the dev drawer: what the generator promises, held against a level. The left
+  // column is every rule in GEN_RULES with its answer painted beside it — fire for a rule that holds,
+  // blood for one that does not, ash for one with nothing to say about this level — and the right
+  // column is the level: its canon, its definition read out, and the rooms it actually built, with
+  // the canon rooms lit. The level in play is checked as it stands; any other level is a sample the
+  // drawer generates for the page and can reroll, so every level's rules can be read without
+  // playing up to it. Nothing here is a number: everything it shows comes off LEVELS, the templates
+  // and the level itself, so the page cannot disagree with the game.
+  drawRules(game) {
+    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
+    const page = game.rulesPage(), def = page.def, L = page.level;
+    ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
+    const pad = 14 * s;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('LEVEL GENERATION RULES', pad, pad + 12 * s);
+    this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'CLOSE', 'rules', false);
+    // one tab per level; the one in play carries a mark
+    let tx = pad;
+    const ty = pad + 22 * s, th = 18 * s;
+    LEVELS.forEach((lv, i) => {
+      const label = `${i + 1} ${lv.name}${game.level && game.levelIndex === i ? ' •' : ''}`;
+      ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+      const w = ctx.measureText(label).width + 14 * s;
+      this.devButton(d, tx, ty, w, th, label, 'rules-L' + i, page.index === i);
+      tx += w + 4 * s;
+    });
+    const y0 = ty + th + 16 * s;
+    const colW = W * 0.42 - pad, x1 = W * 0.45, col2 = W - x1 - pad;
+    const results = checkRules(L);
+    const tint = (ok) => (ok === true ? PALETTE.fireHi : ok === false ? PALETTE.blood : PALETTE.ash);
+
+    // ---- every level: the rules, each lit by its answer ----
+    let y = y0;
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('EVERY LEVEL', pad, y);
+    ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText(page.live ? 'checked against the level in play' : `checked against a sample of ${def.name}, seed ${page.seed}`, pad, y + 12 * s);
+    y += 26 * s;
+    // Wrap everything first so the column can be shrunk to fit the screen it is on.
+    const blocks = results.map((r) => {
+      ctx.font = `400 ${9.5 * s}px ${FONT}`;
+      const lines = this.wrap(r.rule.text, colW - 14 * s);
+      const why = r.ok === false && r.why ? this.wrap('— ' + r.why, colW - 14 * s) : [];
+      return { r, lines, why };
+    });
+    const count = blocks.reduce((a, b) => a + b.lines.length + b.why.length, 0);
+    const fit = (H - y - pad) / (count * 11.5 * s + blocks.length * 4 * s);
+    const k = Math.min(1, fit), lh = 11.5 * s * k, fs = Math.max(6.5, 9.5 * k) * s;
+    for (const b of blocks) {
+      ctx.fillStyle = tint(b.r.ok);
+      ctx.fillRect(pad, y - 6 * s * k, 6 * s * k, 6 * s * k);
+      ctx.font = `400 ${fs}px ${FONT}`; ctx.fillStyle = b.r.ok === false ? PALETTE.bone : 'rgba(239,230,208,0.85)';
+      for (const ln of b.lines) { ctx.fillText(ln, pad + 12 * s, y); y += lh; }
+      ctx.fillStyle = PALETTE.blood;
+      for (const ln of b.why) { ctx.fillText(ln, pad + 12 * s, y); y += lh; }
+      y += 4 * s * k;
+    }
+
+    // ---- this level: its canon, its numbers, and the rooms it built ----
+    y = y0;
+    ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText(`${def.sub.toUpperCase()} — ${def.name}`, x1, y); y += 15 * s;
+    if (def.canon) {
+      ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi;
+      ctx.fillText(`CANON: ${def.canon.name}`, x1, y); y += 12 * s;
+      ctx.font = `400 ${9.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.bone;
+      for (const ln of this.wrap(def.canon.idea, col2)) { ctx.fillText(ln, x1, y); y += 11 * s; }
+    }
+    y += 4 * s;
+    ctx.font = `400 ${8.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
+    for (const f of levelFacts(def)) for (const ln of this.wrap(f, col2)) { ctx.fillText(ln, x1, y); y += 10.5 * s; }
+    y += 10 * s;
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText(page.live ? 'ROOMS — THE LEVEL IN PLAY' : `ROOMS — A SAMPLE, SEED ${page.seed}`, x1, y);
+    if (!page.live) this.devButton(d, W - pad - 64 * s, y - 13 * s, 64 * s, 17 * s, 'REROLL', 'rules-roll', false);
+    y += 4 * s;
+    const rooms = roomsOf(L);
+    const rh = Math.max(7 * s, Math.min(11.5 * s, (H - y - pad - 18 * s) / (rooms.length + 1)));
+    const roleTint = { canon: PALETTE.ochre, mix: 'rgba(239,230,208,0.55)', trap: PALETTE.blood, pen: PALETTE.ash, calm: PALETTE.ash };
+    const peak = Math.max(1, ...rooms.map((r) => r.threat));
+    const bx = x1 + 128 * s, bw = 56 * s;
+    for (const r of rooms) {
+      y += rh;
+      // The canon rooms are the point of the page: they get a bar of light behind the whole row.
+      if (r.role === 'canon') { ctx.fillStyle = 'rgba(185,135,58,0.16)'; ctx.fillRect(x1 - 4 * s, y - rh + 3 * s, col2 + 8 * s, rh); }
+      else if (r.role === 'trap') { ctx.fillStyle = 'rgba(192,57,43,0.10)'; ctx.fillRect(x1 - 4 * s, y - rh + 3 * s, col2 + 8 * s, rh); }
+      ctx.font = `700 ${8.5 * s}px ${FONT_SC}`;
+      ctx.fillStyle = PALETTE.ash; ctx.fillText(String(r.index).padStart(2, ' '), x1, y);
+      ctx.fillStyle = roleTint[r.role] || PALETTE.witch; ctx.fillText(r.role.toUpperCase(), x1 + 16 * s, y);
+      ctx.fillStyle = PALETTE.bone; ctx.fillText(r.name, x1 + 62 * s, y);
+      ctx.fillStyle = 'rgba(239,230,208,0.12)'; ctx.fillRect(bx, y - 6 * s, bw, 5 * s);
+      if (r.threat) { ctx.fillStyle = PALETTE.blood; ctx.fillRect(bx, y - 6 * s, bw * r.threat / peak, 5 * s); }
+      ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.8)';
+      const men = r.men.join(' ') + (r.cell && r.cell.intro ? `  ← meets ${r.cell.intro}` : '');
+      ctx.fillText(this.clip(men, col2 - (bx + bw + 8 * s - x1)), bx + bw + 8 * s, y);
+    }
+    // The share, in one line, lit by whether it holds.
+    const canonRule = results.find((r) => r.rule.id === 'canon');
+    const ord = rooms.filter((r) => ORDINARY.has(r.role)), cn = ord.filter((r) => r.role === 'canon').length;
+    y += rh + 6 * s;
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = tint(canonRule ? canonRule.ok : null);
+    ctx.fillText(def.canon
+      ? `CANON ${cn} OF ${ord.length} ORDINARY ROOMS — ${Math.round(100 * cn / Math.max(1, ord.length))}%, NEEDS ${Math.round(CANON.share * 100)}%`
+      : 'NO CANON ON THIS LEVEL', x1, y);
   }
 
   drawBullet(b) {

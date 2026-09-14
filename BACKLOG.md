@@ -10,6 +10,20 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ---
 
+## 14 September 2026, evening — the fifth sitting
+
+Asked for in one message and built in the same sitting; kept here so the file stays a record of what
+was asked. The reasoning is in `CHANGELOG.md` under 1.10.
+
+- ~~**A tab in the dev tool — the level generation rules — with the rules per room and the enemies
+  per level lit up; the general rules apart from each level's own.**~~ Shipped as RULES in the dev
+  drawer, with `js/rules.js` as the one list the drawer and `tools/balance.js` both read.
+- ~~**Every level gets a sub-idea of its own, a canon, with many rooms written for it: at least half
+  of the fighting rooms on the canon, the rest a mix of what you already know.**~~ Shipped as
+  `levelDef.canon`, five rooms per canon, and the canon/mix split in `gen.js`.
+
+---
+
 ## 14 September 2026 — the fourth sitting, with 1.8
 
 **Where this batch went: everything but the last line shipped in 1.9.** The rule under this batch is

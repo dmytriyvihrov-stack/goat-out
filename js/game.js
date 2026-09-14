@@ -36,7 +36,9 @@ class Game {
     // A tome is spent by a click that starts and ends on the same card. `boonDown` is the card the
     // pointer went down on; `boonArm` is the beat the cards ignore everything after they appear.
     this.boonDown = -1; this.boonArm = 0;
-    this.dev = { open: false, god: false, rects: [], toast: null };
+    // `rules` is the drawer's RULES page: the whole screen, the simulation held, `page` the level it
+    // is looking at and `sample` a level generated for a page that is not the one in play.
+    this.dev = { open: false, god: false, rects: [], toast: null, rules: false, page: 0, sample: null, sampleSeed: 1 };
     this.intro = null;      // the opening scene while it plays; see beginIntro
     this.stairFx = null;    // the goat on a flight of stairs: { t, dir } with dir 1 going up and out, -1 arriving
     this.state = 'title'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
@@ -155,12 +157,15 @@ class Game {
     for (const r of this.dev.rects) {
       if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.devAction(r.id); return true; }
     }
-    return false;
+    return this.dev.rules;   // the RULES page takes the whole screen: nothing under it is clickable
   }
   devToast(text) { this.dev.toast = { text, life: 1.6 }; }
   devAction(id) {
     if (id === 'toggle') { this.dev.open = !this.dev.open; return; }
     if (id === 'god') { this.dev.god = !this.dev.god; this.devToast(this.dev.god ? 'GOD MODE ON' : 'GOD MODE OFF'); return; }
+    if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) this.dev.page = this.level ? this.levelIndex : 0; return; }
+    if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); return; }
+    if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; return; }
     if (this.state !== 'play' || !this.world) return;
     if (id === 'heal') { this.goat.hp = this.goat.maxHp; this.devToast('HEALED'); return; }
     if (id === 'tome') { this.dropTome(this.goat.x + 28, this.goat.y); this.devToast('TOME DROPPED'); return; }
@@ -193,6 +198,19 @@ class Game {
     return null;
   }
 
+  // What the RULES page is looking at: the level in play, as it stands, or a sample of any other
+  // level generated for the page from `dev.sampleSeed` and kept until the page or the seed changes.
+  // A sample costs a few milliseconds and is what lets every level's rules be checked without
+  // playing up to it.
+  rulesPage() {
+    const d = this.dev, i = clamp(d.page, 0, LEVELS.length - 1), def = LEVELS[i];
+    if (this.level && this.levelIndex === i) return { index: i, def, level: this.level, live: true, seed: this.level.seed };
+    if (!d.sample || d.sample.index !== i || d.sample.seed !== d.sampleSeed) {
+      d.sample = { index: i, seed: d.sampleSeed, level: generateLevel(def, d.sampleSeed >>> 0) };
+    }
+    return { index: i, def, level: d.sample.level, live: false, seed: d.sampleSeed };
+  }
+
   layoutTouch() { this.touch.layout(this.renderer.w, this.renderer.h, this.renderer.s, this.renderer.vh); }
 
   // ---------- input ----------
@@ -207,6 +225,8 @@ class Game {
 
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
+      // The RULES page has no keys: Backspace under it would regenerate the level it is describing.
+      if (this.dev.rules) { e.preventDefault(); return; }
       // anyPressed skips the opening scene; muting should not
       this.keys.add(e.code); if (e.code !== 'KeyM') this.input.anyPressed = true; this.touch.active = false;
       if (e.code === 'Space') { this.input.spacePressed = true; e.preventDefault(); }
@@ -605,6 +625,8 @@ class Game {
   }
 
   update(dt) {
+    // The RULES page holds everything where it is: a dev reading a table should not be clubbed.
+    if (this.dev.rules) { this.clearEdges(); return; }
     this.readMoveInput();
     if (this.state === 'title') { this.updateTitle(dt); this.clearEdges(); return; }
     if (this.state === 'intro') { this.updateIntro(dt); this.clearEdges(); return; }

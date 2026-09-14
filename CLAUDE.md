@@ -52,12 +52,13 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/entities.js` | `Goat`, `Prop` (every world object), `Bullet`. |
 | `js/enemies.js` | `Enemy` — one class, behaviour branches on `kind`. |
 | `js/render.js` | Everything drawn. Roughly half the codebase. |
+| `js/rules.js` | `GEN_RULES`, the generator's promises with a `check(level)` each; `checkRules`, `roomsOf`, `levelFacts`. Read by the dev drawer's RULES page and by `tools/balance.js`, so a rule is written once. |
 | `js/game.js` | State machine, fixed-step loop, input plumbing, entity-vs-entity collision, boons, dev drawer. |
 | `index.html` | Local build. |
 | `artifact.html` | Published build. Same scripts, artifact-shaped head. **Keep the two script lists in sync.** |
 | `tools/serve.js` | Dev server. Also accepts `POST /shot?name=x` with a data URL and writes a PNG to `tools/shots/`. |
 | `tools/harness.js` | Console test harness. See *Testing*. |
-| `tools/balance.js` | Prints the difficulty curve of every level and fails on a broken balance rule. |
+| `tools/balance.js` | Prints the difficulty curve and the canon/mix split of every level, runs every rule in `js/rules.js` over many seeds, and fails on a broken one. |
 | `tools/check-sync.js` | Checks the working tree, `origin/main` and the published artifact are one build. See *Publishing*. |
 | `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
 
@@ -297,13 +298,39 @@ if a kind arrives in a crowd first, a cap breaks, threat stops rising inside a l
 harder than the one before. Adding an enemy kind means: a `THREAT` value, an `ENCOUNTER.weight`, usually
 a `cap`, and an `introduce` entry on the level that first shows it.
 
-**Room pools.** `ROOM_TEMPLATES` entries with a `tag` are drawn only by a level whose `pool` matches;
-untagged ones are the default set everything else uses. THE RAFTERS is `pool: 'high'` — five rooms built
-round drops, deliberately narrow, because seventeen wide rooms do not fit across a 420-tile world and
-because an edge you can walk a long way round is not an edge. THE THRESHING FLOOR is `pool: 'open'`, and its
-`corridorW: 5` widens the S-corridor so the rooms read as one yard. A wide corridor deliberately eats
-the room borders it passes through — that is the mechanism behind "fewer walls", and it is why the level
-needs furniture (posts, tables, braziers, hay) to keep kills coming from geometry.
+**Canons.** Every level is about one thing, and `levelDef.canon` — `{ id, name, idea }` — is what: STONE
+on THE ALTAR, FIRE on THE YARD, THE LINE on THE ROAD, OPEN GROUND on THE THRESHING FLOOR, THE FUNNEL on
+THE BRIDGE, THE DROP on THE RAFTERS, THE NICHE on THE OSSUARY. A `ROOM_TEMPLATES` entry carrying
+`canon: '<id>'` belongs to that level's pool, and `pickCanonRooms` hands at least `CANON.share` of the
+level's ordinary rooms (`ordinaryRooms`: not the pen, the control rooms or a set piece) to it, on an even
+spread that always starts with the first ordinary room — a level says what it is about on the first
+floor you fight on. The rest are the mix: the untagged templates plus the canons in `levelDef.known`,
+which the block under `LEVELS` fills with the canons of every earlier level, so a room never shows an
+idea the run has not reached. `room.role` is the one word that records the decision — `pen`, `calm`,
+`canon`, `mix`, `trap`, `arena`, `mill`, `hall`, `gallery`, `killbox` — and it is what the RULES page
+and `tools/balance.js` read. `draw` in `tryGenerate` is the width budget: the mix holds the yard's
+thirty-tile rooms from level five on, and a template wider than its fair share of what is left (the
+set pieces still ahead subtracted) is passed over for the next one that fits, which is what keeps a
+sixteen-room level inside a 420-tile world. THE RAFTERS' five rooms are still deliberately narrow — an
+edge you can walk a long way round is not an edge — and THE THRESHING FLOOR's `corridorW: 5` still
+widens the S-corridor so its rooms read as one yard; a wide corridor deliberately eats the room borders
+it passes through, which is why that level needs furniture to keep kills coming from geometry. A canon
+needs `CANON.minRooms` templates written for it or the level is the same floor twice. Adding a canon
+means: `canon` on the level, `canon: id` on four or more templates, and nothing else — `known` and the
+mix follow.
+
+**The RULES page.** `RULES` in the dev drawer opens a page over the whole screen — `dev.rules` holds
+the simulation (`update` returns at once) and `hitDev` swallows every click under it. `js/rules.js`
+is the page's whole content and it is written once for two readers: `GEN_RULES` is every promise the
+generator makes, each with a `check(level)` that answers true, a string (why not) or null (nothing to
+say about this level); `checkRules` runs the list; `roomsOf` reduces a level to rooms with roles, men
+and threat; `levelFacts` reads a `LEVELS` entry out as lines, so the page cannot drift from the
+numbers. `tools/balance.js` runs the same `checkRules` over many seeds, which is why a rule lives
+there and nowhere else. The page shows the level in play as it stands; any other tab is a sample the
+page generates from `dev.sampleSeed` (`game.rulesPage`) and REROLL reseeds it, so every level can be
+inspected without playing up to it. `drawRules` in `render.js` paints it: fire for a rule that holds,
+blood for one that does not with its reason under it, ash for one that does not apply, and a bar of
+light behind every canon row of the room list.
 
 **Trap rooms.** `tag: 'trap'` is a pool of its own, drawn *into* a level's ordinary rooms rather than
 instead of them: `levelDef.traps` is a count, `pickTrapRooms` chooses the indices (never the pen, the
@@ -626,8 +653,10 @@ A fourth trap: `H.startPlay()` leaves the goat in the pen on level 1. Break out 
 drops men **aware and adjacent**, so a handful of them will kill the goat during a test unless
 `game.dev.god` is on — a dead goat freezes every enemy, which reads as the feature under test being broken.
 
-**Always run `node tools/balance.js` after touching anything about who spawns where.** It is the only
-place the balance rules are written down in a form that can fail.
+**Always run `node tools/balance.js` after touching anything about who spawns where or which rooms go
+where.** It runs every rule in `js/rules.js` over many seeds of every level, plus the two averaged
+rules a single level cannot know about itself, and it is the only place they can fail. The same list is
+on the RULES page of the dev drawer, per level and live, which is the quicker way to look at one seed.
 
 **Always run the generator sweep after touching `gen.js`, `rooms.js` or `LEVELS`.** It catches broken
 templates and impossible layouts in seconds:
@@ -653,7 +682,7 @@ the remote is not live. Never stop at the feature branch and never leave `main` 
 was developing on `claude/<something>`, merge that branch into `main` and push `main` as part of the
 deploy, then publish. Opening a pull request instead is only right when the user asks for one.
 
-The artifact is published from `artifact.html` with all eleven scripts passed as supporting files, and
+The artifact is published from `artifact.html` with all twelve scripts passed as supporting files, and
 always to the existing URL. Republishing without the `url` creates a second artifact.
 
 - `file_path`: `artifact.html`
