@@ -53,6 +53,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/serve.js` | Dev server. Also accepts `POST /shot?name=x` with a data URL and writes a PNG to `tools/shots/`. |
 | `tools/harness.js` | Console test harness. See *Testing*. |
 | `tools/balance.js` | Prints the difficulty curve of every level and fails on a broken balance rule. |
+| `tools/check-sync.js` | Checks the working tree, `origin/main` and the published artifact are one build. See *Publishing*. |
 
 ---
 
@@ -328,6 +329,12 @@ always to the existing URL. Republishing without the `url` creates a second arti
 
 If you add a new file under `js/`, it must go into three places: both HTML files' script lists and the
 publish `files` map. Forgetting the map means the live page breaks while the local one works.
+
+Run **`node tools/check-sync.js`** to confirm all three copies agree: it fails on a dirty tree, a `main`
+that is ahead of or behind the remote, a branch that was never folded in, script lists that have drifted
+apart, and a file in `js/` that no HTML file loads. The artifact half needs the published sizes, which
+only Claude can fetch — `action: "list_files"` on the artifact URL — so save that listing to a file and
+pass it as `--artifact <file>`; without it the script prints the local byte counts to compare by eye.
 
 ---
 
