@@ -586,7 +586,12 @@ class Prop {
   // bars. He shouts through every one of them, and the third and the sixth put him on the floor:
   // getting out of the pen is the hardest thing he does all run, and it should look like it.
   breakCage(game) {
-    const C = TUNING.prop.cage, need = C.hits;
+    // The first pen of a browser is seven blows and two falls. Every pen after it is two: the goat
+    // has done this before, the player has done this before, and making him do it again is a toll
+    // rather than a lesson. `strain` shrinks with it, so the lines still count down to OUT.
+    const C = TUNING.prop.cage, again = !!game.penBroken;
+    const need = again ? C.againHits : C.hits;
+    const strain = again ? C.againStrain : C.strain;
     const bars = game.props.filter((p) => p.kind === 'cage' && !p.broken && !p.deco);
     if (!bars.length) return;
     if (game.cageLunge === game.goat.lungeId) return;
@@ -600,8 +605,8 @@ class Prop {
       game.kick(0, -1, TUNING.juice.kick * 0.6);
       // The voice climbs with the effort. By the sixth he is not bleating, he is roaring.
       game.audio.sfxBleat(210 + hits * 28, 0.09 + hits * 0.016, 0.26 + hits * 0.03);
-      game.floatText(this.x, this.y - 30, C.strain[hits - 1] || 'IT HOLDS', PALETTE.bone);
-      if (C.stunAt.indexOf(hits) >= 0) {
+      game.floatText(this.x, this.y - 30, strain[hits - 1] || 'IT HOLDS', PALETTE.bone);
+      if (!again && C.stunAt.indexOf(hits) >= 0) {
         game.stunGoat(C.stun);
         game.floatText(game.goat.x, game.goat.y - 48, 'HIS HEAD RINGS', PALETTE.blood);
       }
@@ -615,13 +620,13 @@ class Prop {
       game.world.dot(p.x + (Math.random() - 0.5) * 12, p.y + 5, 2.4, '#2e2a26');
     }
     if (!n) return;
-    game.cageOpen = true;
+    game.cageOpen = true; game.notePenBroken();
     game.world.emitNoise(this.x, this.y, TUNING.noise.cage);
     game.audio.sfxCage(); game.shake(12); game.hitstop(0.06); game.vibe(50);
     game.flash(PALETTE.bone, 0.3); game.zoomPunch(1.5);
     game.slowTimer = Math.max(game.slowTimer, 0.4);
     game.audio.sfxBleat(430, 0.22, 0.55);
-    game.floatText(this.x, this.y - 30, C.strain[need - 1] || 'OUT', PALETTE.fireHi);
+    game.floatText(this.x, this.y - 30, strain[need - 1] || 'OUT', PALETTE.fireHi);
   }
 
   // The other cage. Three blows, nothing taken out of him for them, and no prompt on the floor
@@ -799,6 +804,9 @@ class Prop {
     const spd = Math.hypot(this.vx, this.vy);
     // Coming down over a hole: it goes down it, and nothing breaks.
     if (spd < 40 && game.world.isPitPx(this.x, this.y)) { this.fall(game); return; }
+    // Into a fire. A box of dry boards does not break in a flame, it goes up — and what it leaves
+    // behind is wider than what lit it and burns a good deal longer, which is a doorway closed.
+    if (game.world.isBurningPx(this.x, this.y)) { this.burst(game, game.world.isWitchPx(this.x, this.y)); return; }
     if (impact > 2 * TILE || spd < 40) { this.shatter(game); return; }
     // A shut door, a table or a gong is not something a crate flies through. It breaks on it — and
     // on a lamp it breaks the lamp, which is how you start a fire across a room.
@@ -820,6 +828,22 @@ class Prop {
         this.shatter(game); return;
       }
     }
+  }
+
+  // A crate that went into a fire. It is the one thing the goat carries that answers a flame with
+  // more flame: `burst` tiles of it, for `burstTime`, of whichever kind lit the box — witchfire
+  // spreads as witchfire here as it does everywhere. Everything else about it is a shatter.
+  burst(game, witch) {
+    if (this.broken) return;
+    const C = TUNING.prop.crate;
+    game.world.ignitePool(this.x, this.y, C.burst, witch, C.burstTime);
+    game.audio.sfxBoom(); game.shake(7); game.hitstop(0.05); game.vibe(35);
+    game.flash(witch ? PALETTE.witch : PALETTE.fire, 0.22); game.zoomPunch(1.1);
+    game.ring(this.x, this.y, C.burst * TILE, witch ? PALETTE.witchHi : PALETTE.fireHi);
+    game.particles(this.x, this.y, 16, witch ? PALETTE.witchHi : PALETTE.fireHi, 240);
+    game.floatText(this.x, this.y - 28, 'IT GOES UP', witch ? PALETTE.witchHi : PALETTE.fireHi);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.boom);
+    this.shatter(game);
   }
 
   // A blade that has done its work, or a shield that has taken its last. Neither is picked up again:

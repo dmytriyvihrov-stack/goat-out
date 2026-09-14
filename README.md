@@ -19,8 +19,9 @@ Or run the dev server, which also accepts saved canvas frames from the test harn
 node tools/serve.js 8766
 ```
 
-Then open http://127.0.0.1:8766. The first screen is two buttons — NEW GAME, and CONTINUE, which stays
-dark until there is a run to come back to. Audio unlocks on that first input.
+Then open http://127.0.0.1:8766. The first screen is NEW GAME; CONTINUE, which stays dark until there
+is a run to come back to; LEVELS, which puts you on any floor of the game with the souls a run would
+have banked getting there; and BEST and SETTINGS. Audio unlocks on that first input.
 
 A run is written to the browser at the head of every level and whenever a soul is taken, so CONTINUE
 puts you back at the start of the furthest level you reached with the souls you had there. Starting a
@@ -37,15 +38,15 @@ the thumbs get their own deck below it. In landscape the controls overlay the bo
 |---|---|---|
 | left thumb, anywhere on the left | WASD / arrows | run — momentum, no turning on a dime |
 | aim follows your run and snaps to nearby men | mouse | aim |
-| BUTT on the bars | left click on the bars | break out of the pen you start level 1 in — seven blows, and the third and the sixth leave you on the floor |
-| BUTT | left click | headbutt — into a wall, pillar, brazier or another man it kills; on open floor it only knocks down |
+| BUTT on the bars | left click on the bars | break out of the pen you start level 1 in — seven blows the first time ever, and the third and the sixth leave you on the floor. Every run after that, two |
+| BUTT | left click | headbutt — into a wall, pillar, brazier or another man it kills; on open floor it only knocks down. A man thrown hard into a man standing next to him takes them both |
 | hold GRAB | hold right click | carry a box, a blade or a shield. A man is a soul away: until BY THE COLLAR the mouth takes objects only |
 | release GRAB | release right click | throw — a box flattens, a sword goes through, a man kills what he hits and dies on the wall |
-| ROLL | E | nothing, until TUCK AND ROLL. Then a clumsy sideways tumble with brief mercy frames |
+| ROLL | E | a clumsy sideways tumble with brief mercy frames. DEAD WEIGHT makes everything it goes through lose its head |
 | BAAH | space | a noise. Every man who hears it walks to the spot you made it at. THE FULL THROAT turns it into a stun, DRAGON BREATH into fire — you get one |
 | hold GRAB | hold right click | carry a box, a blade or a shield — and a man too, once BY THE COLLAR is in you |
 | release GRAB | release right click | throw — it kills what it hits and comes apart. Then a beat before you can grab again |
-| ROLL | E | once a soul gives it to you: a clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
+| ROLL | E | a clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
 | BAAH | space | a noise they walk toward, until a soul makes it a stun or a cone of fire |
 | tap after death | Backspace | new level |
 | — | M | mute |

@@ -35,10 +35,13 @@ const TUNING = {
     // The lunge carries him a short way and no further: a headbutt is a step into a man, not a
     // charge across the room, and closing the distance yourself is the part you are paid for.
     // The bare head is deliberately blunt. It is the verb you have on the first screen and the one
-    // every tome sharpens, so what it does out of the pen has to leave those tomes something to do:
+    // every soul sharpens, so what it does out of the pen has to leave those souls something to do:
     // a shorter reach, less throw behind it, and a recovery long enough that a second man gets to
     // walk in on the end of the first swing. LONG HORNS and IRON SKULL put back what was taken.
-    headbutt: { windup: 0.12, active: 0.15, recovery: 0.44, lunge: 18.2 * TILE, impulse: 25 * TILE, reach: 1.55 * TILE },
+    // It was cut too far. A bare head that neither reached nor threw made the first hour a game
+    // about walking backwards, so a third of the cut is given back — not the whole of it: the goat
+    // still starts underpowered, and what he has out of the pen is a shove with a body behind it.
+    headbutt: { windup: 0.12, active: 0.15, recovery: 0.38, lunge: 18.2 * TILE, impulse: 28 * TILE, reach: 1.64 * TILE },
     // A throw is a commitment now: you let him go, and your mouth is empty for a beat.
     // He is in your mouth a long time, and he works himself loose somewhere in `holdVary` either
     // side of it, so you never learn the exact beat he goes: carrying one is a gamble, not a timer.
@@ -160,6 +163,10 @@ const TUNING = {
     flungDrag: 3.5,
     flungFloorSpeed: 3.5 * TILE,
     knockHitSpeed: 7 * TILE,
+    // A body arriving on another body this fast kills it, the way a wall does. Two men standing
+    // together used to be the safest place in the room — the first one bowled the second over and
+    // both got up — which read as the game saying that men are not part of the geometry. They are.
+    bodyKillSpeed: 10 * TILE,
   },
   fire: {
     spread: 0.4, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE,
@@ -205,7 +212,9 @@ const TUNING = {
     // carry in your teeth is not a crate a man packs — and plain, because everything it has to say
     // is *pick me up*. A thrown one does not trip a man, it takes his legs and his head with them,
     // and he lies there seeing stars long enough that you can do something about him.
-    crate: { r: 10, stun: 2.8 },
+    // And what a box of dry boards does when it is thrown into a fire: it goes up. Wider than the
+    // flame that lit it and burning longer, so a brazier plus a crate is a room you have closed.
+    crate: { r: 10, stun: 2.8, burst: 2.1, burstTime: 6.5 },
     // A stand of arms. Grab what is in it, carry it, let go to throw it. The sword goes through
     // the first man it finds; the shield knocks a row of them flat and turns bullets while carried.
     weapon: {
@@ -227,9 +236,13 @@ const TUNING = {
     // The pen. Bars sit close enough together that a goat cannot slip between two of them.
     // Seven blows, and the third and the sixth take his feet out from under him. It is meant to
     // read as work: the first thing the goat does in the run is the hardest thing a goat can do.
+    // The second time is not the first time. Once a browser has broken the pen once, `againHits` is
+    // what it takes and nothing is taken out of him for it: the pen is a lesson, and a lesson you
+    // have had is a toll. Everything after the first run of a player starts on the second blow.
     cage: { r: 10, halfW: 2.1, halfH: 1.6, spacing: 26, height: 30,
       hits: 7, stunAt: [3, 6], stun: 1.0,
-      strain: ['NNGH', 'IT HOLDS', 'MMMAAAH', 'IT BENDS', 'NNNGH', 'BAAAAH', 'OUT'] },
+      strain: ['NNGH', 'IT HOLDS', 'MMMAAAH', 'IT BENDS', 'NNNGH', 'BAAAAH', 'OUT'],
+      againHits: 2, againStrain: ['NNGH', 'OUT'] },
     // The other cage in the first room. It gives in quicker than the pen and takes nothing out of
     // him: the pen teaches the verb the hard way, and this is what having learned it is worth. What
     // is inside stopped waiting a long time ago, which is what the last line is for.
@@ -282,6 +295,14 @@ const TUNING = {
   // after the level rather than during it. `scale` multiplies the whole top band — hearts, rail,
   // count, clock — and nothing else: the cards, the menu and the floor text keep their own size.
   hud: { scale: 1.3 },
+  // THE FOG. A room is opened by walking into it and never closes again — that is `room.seen`. This
+  // is the other half: what a partition hides from where he is standing right now. `shade` is how
+  // far down anything out of his line of sight goes, and `radius` how far the line is cast at all
+  // (past it the room is drawn as it always was, so a big hall does not end in a black wall).
+  // `res` is how many pixels of the mask one tile gets before it is blown up over the world, which
+  // is the whole of how soft the edge of a shadow is: at 1 a shadow fades over a tile and reads as
+  // a smudge, and at 2 it fades over half of one and reads as an edge.
+  fog: { shade: 0.8, radius: 26, res: 2 },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
   // The scene that opens a run. Seconds per beat, and every one of them slower than it reads on
@@ -300,7 +321,11 @@ const TUNING = {
   stairs: { climb: 0.85, climbSpeed: 2.2 * TILE, rise: 16, arrive: 1.1 },
   // Barks: one man at a time, and never the same man twice in a hurry.
   bark: { life: 1.9, gap: 0.42, perEnemy: 4.5, nearDist: 7.5, nearChance: 0.22 },
-  audio: { master: 0.92, drums: 1.0, sfx: 1.05, music: 0.85 },
+  // `crowd` is how many men who know where you are it takes for the score to climb a step: up to
+  // `warm` it is the motif and the toms, up to `hot` the kick and the hats, and past it the whole
+  // kit. It used to go to the top on five, which is an ordinary room on level three, so the loudest
+  // music in the game played through most of the game. It takes a proper crowd now.
+  audio: { master: 0.92, drums: 1.0, sfx: 1.05, music: 0.85, crowd: { warm: 3, hot: 6 } },
   // The lead point is carried rather than read: on a mouse the aim flips the instant the pointer
   // crosses the goat, and a lead that flips with it throws the whole picture across the screen.
   // `leadLerp` is how fast the camera agrees to the new side, `leadStill` how much of the lead a
@@ -317,6 +342,11 @@ const TUNING = {
   // boss cannot also spend what he dropped.
   boonArm: 0.4,
 };
+
+// The first screen, top to bottom. The renderer draws a row per id and `menuPick` acts on one, so
+// the order of the menu lives here and in one place. LEVELS is a way onto any floor of the game
+// without playing up to it: it is a prototype, and the fifth level is worth looking at on a Tuesday.
+const MENU = ['new', 'continue', 'levels', 'best', 'settings'];
 
 // The switches on the title screen, in the order they are drawn. `key` is the field in
 // `game.settings` and nothing else reads them, so adding one is a line here and a line at the use
@@ -382,11 +412,11 @@ const CANON = { share: 0.5, minRooms: 4 };
 // passives change how well everything works. A boss leaves a corrupted soul: three of one kind.
 // `skill` is the button a boon hangs off in the HUD rail; the ones without one are body work.
 //
-// Three of the four buttons start half-shut, and the souls are what open them. A goat out of a pen
-// can run, put his head into things, pick up what is lying about, and shout — and that is the whole
-// animal. He cannot dodge, he cannot carry a grown man in his teeth, and his voice is a voice rather
-// than a weapon. Every one of those is a soul, which is what makes the first three worth more than a
-// number and what makes the rail readable: a dark chip is a promise, and there are three of them.
+// Two of the four buttons start half-shut, and the souls are what open them. A goat out of a pen
+// can run, put his head into things, get out of the way, pick up what is lying about, and shout —
+// and that is the whole animal. What he cannot do is carry a grown man in his teeth, and his voice
+// is a voice rather than a weapon. Each of those is a soul, which is what makes them worth more than
+// a number: a half-lit chip is a promise, and the two of them are the shape of the first hour.
 const BOON_BASE = {
   maxHp: 4, speed: 1, butcherDamage: 1, fireImmune: false,
   headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
@@ -401,10 +431,12 @@ const BOON_BASE = {
   // is THE FULL THROAT and `breath` is DRAGON BREATH — the two ways of turning a voice into a
   // weapon, and you get one of them.
   screamStun: false,
-  // The roll starts switched off. The button is there from the first second and does nothing until
-  // a soul turns it on: a goat that can already dodge has nothing left to be given on level one,
-  // and the fourth chip on the rail sitting dark is the clearest promise the game can make.
-  roll: false, rollDistance: 1, rollCooldown: 1, rollStun: 0,
+  // The roll is the one verb the goat is born with in full. It was withheld behind a soul, which
+  // meant the first level was played by a goat who could not get out of the way of anything — the
+  // one thing an animal that is running away has to be able to do. What the roll's soul buys now is
+  // not the button but the teeth in it: DEAD WEIGHT, and everything the tumble goes through loses
+  // its head. He still starts underpowered; he starts underpowered with somewhere to go.
+  roll: true, rollDistance: 1, rollCooldown: 1, rollStun: 0,
   breath: false, bomb: false, devour: false,
 };
 
@@ -422,8 +454,8 @@ const BOONS = [
     apply: (m) => { m.bomb = true; } },
   { id: 'devour', skill: 'grab', active: true, needs: 'grabMen', name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
     apply: (m) => { m.devour = true; } },
-  { id: 'tuck', skill: 'roll', active: true, name: 'TUCK AND ROLL', desc: 'The fourth button answers. Nothing lands on you while you are down there.',
-    apply: (m) => { m.roll = true; } },
+  { id: 'weight', skill: 'roll', active: true, name: 'DEAD WEIGHT', desc: 'The tumble stops being an escape. Everything it goes through loses its head for a moment.',
+    apply: (m) => { m.rollStun = TUNING.goat.roll.stun; } },
 
   // ---- passives ----
   { id: 'hide', name: 'THICK HIDE', desc: 'One more heart, and it fills now.', apply: (m) => { m.maxHp += 1; }, heal: 1 },
@@ -433,9 +465,7 @@ const BOONS = [
   { id: 'shield', skill: 'grab', needs: 'grabMen', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing. At his own.', apply: (m) => { m.livingShield = true; } },
   { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 13; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
-  { id: 'joints', skill: 'roll', needs: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
-  { id: 'weight', skill: 'roll', needs: 'roll', name: 'DEAD WEIGHT', desc: 'Everything your roll goes through loses its head for a moment.',
-    apply: (m) => { m.rollStun = TUNING.goat.roll.stun; } },
+  { id: 'joints', skill: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
   { id: 'ember', name: 'EMBER COAT', desc: 'Ordinary fire stops burning you. Witchfire does not care.', apply: (m) => { m.fireImmune = true; } },
 ];
 

@@ -135,14 +135,16 @@ class GameAudio {
       if (bar === 10) this.tomHi(t, 0.35);
     }
     if (lvl >= 2) {
-      if (bar % 4 === 0) this.kick(t, 0.8);
+      if (bar % 4 === 0) this.kick(t, 0.72);
       if (bar % 2 === 1) this.hat(t);
       if (bar === 7 || bar === 15) this.tomHi(t, 0.5);
     }
+    // The top of the kit. It used to fill every gap — a hat on every step, four more toms, a crash
+    // and the chant — which turned a busy room into a wall of percussion you stopped hearing. What
+    // is left is the two toms that answer the backbeat, a quieter crash, and the chant under it all.
     if (lvl >= 3) {
-      if (bar % 2 === 0) this.hat(t, 0.14);
-      if ([2, 5, 11, 13].includes(bar)) this.tomLo(t, 0.45);
-      if (s % 64 === 0) this.crash(t, 0.2);
+      if ([5, 13].includes(bar)) this.tomLo(t, 0.4);
+      if (s % 64 === 0) this.crash(t, 0.15);
       if (bar === 0) this.chant(t, stepLen * 16);
     }
     if (this.hunterAware && bar % 2 === 1) this.shaker(t);

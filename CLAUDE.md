@@ -42,7 +42,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 
 | File | Holds |
 |---|---|
-| `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `LEVELS`. Every tunable number, every line the cult shouts, and the five level definitions. |
+| `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `SETTINGS`, `MENU`, `LEVELS`. Every tunable number, every line the cult shouts, the rows of the title screen and the seven level definitions. |
 | `js/rng.js` | Seeded RNG (mulberry32) plus `clamp` / `lerp` / `len` / `angleDiff`. |
 | `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top (`'w'` is a stand of arms, `'O'` a drop). Also the start room, the arena, the Mill room, the Great Hall and the Gallery. Templates carrying a `tag` belong to one level's pool. |
 | `js/gen.js` | Level generation: chains rooms, carves corridors, places props, spawns, heals, validates reachability. Defines the tile enum `T`. |
@@ -219,28 +219,33 @@ one room in it you could always simply outrun.
 Adding a boon means: add it to `BOONS`, add its default to `BOON_BASE`, and read the mod at the use site.
 Give it a `skill` (`butt` / `grab` / `roll` / `scream`) and it hangs off that button in the HUD rail; leave
 `skill` off and it is body work, listed but attached to nothing. `needs` names a mod that has to already
-be on before the card is dealt at all — `LOOSE JOINTS` on a goat who cannot roll yet is a card that does
-nothing, and the three grab boons need `grabMen` for the same reason.
+be on before the card is dealt at all — the three grab boons need `grabMen`, because a card that needs
+a verb you have not been given is a wasted card.
 
-**Three of the four buttons start half-shut.** This is the whole progression and it is the one thing
-not to undo. A goat out of a pen can run, put his head into things, pick up what is lying about, and
-shout. He cannot dodge (`mods.roll`, TUCK AND ROLL), he cannot carry a grown man (`mods.grabMen`, BY
-THE COLLAR — `tryGrab` simply does not consider enemies, and `game.reachedForAMan` says so once a
-level), and his voice is a noise rather than a weapon (`mods.screamStun`, THE FULL THROAT, or `breath`,
-DRAGON BREATH — the bare scream emits a `lure` noise, which is the one kind that walks a man to the
-spot rather than only turning his head). The bare headbutt is blunt too: shorter reach, less throw, a
-recovery long enough that a second man walks in on the end of it, and LONG HORNS and IRON SKULL are
-what put that back. `drawSkills` reports the state of each — `THINGS` before GRAB, `CALL` before BAAH,
-`LOCKED` before ROLL, each dimmed — and `openBoonChoice` deals actives at 0.75 rather than 0.4 while
-any button is still shut, on top of the run's first soul always offering the roll.
+**Two of the four buttons start half-shut.** This is the whole progression and it is the one thing not
+to undo. A goat out of a pen can run, put his head into things, get out of the way, pick up what is
+lying about, and shout. What he cannot do is carry a grown man (`mods.grabMen`, BY THE COLLAR —
+`tryGrab` simply does not consider enemies, and `game.reachedForAMan` says so once a level), and his
+voice is a noise rather than a weapon (`mods.screamStun`, THE FULL THROAT, or `breath`, DRAGON BREATH —
+the bare scream emits a `lure` noise, which is the one kind that walks a man to the spot rather than
+only turning his head). The bare headbutt is blunt too: shorter reach, less throw, a recovery long
+enough that a second man walks in on the end of it, and LONG HORNS and IRON SKULL are what put that
+back. It is deliberately *blunt* rather than useless — a third of that cut was given back when the
+first hour turned into a game about walking backwards. `drawSkills` reports the state of each —
+`THINGS` before GRAB, `CALL` before BAAH — and `openBoonChoice` deals actives at 0.75 rather than 0.4
+while either is still half of itself.
 
 **The skill rail.** `drawSkills` (top right) is the only place the four verbs are reported: availability,
 cooldown, and what the souls did to each. `skillIcon` draws each verb from `game.mods`, so an icon has to
 change when a boon lands — Long Horns lengthens the horns on the icon and on the goat, Dragon Breath turns
 the mouth into a cone, Loose Joints adds a second turn to the roll. Add a boon, draw its effect here.
-A chip can also be dark: `row.locked` is the roll before its soul, drawn at a fifth alpha with LOCKED
-under it instead of the verb's name.
-The whole top band — the level name, the hearts, the rail, the count, the clock, the soul list — is sized
+What is written **under** a chip is the key that throws it — LMB / RMB / E / SPC — and not the name of
+the verb: a caption you have read a hundred times has stopped saying anything and the key never does.
+The name and the sentence live on `drawSkillNote`, the panel that comes up while the pointer is on a
+chip (`renderer.skillHover`, set in `drawSkills` and drawn at the end of `drawUI` so it sits over the
+column under it). Each row carries its own `note`, and the note changes with the mods: add a boon that
+changes what a button does, change the sentence there.
+The whole top band — the hearts, the rail, the count, the clock, the soul list — is sized
 by `renderer.hs`, which is `ts` times `TUNING.hud.scale`. That is the one number to turn if the corner of
 the screen is not being read; the cards, the menu and the floor text are on `ts` and stay where they are.
 
@@ -307,6 +312,19 @@ a *bèh* to a *baaah*. `sfxScream` is two of them a fifth apart, `sfxBleat` is o
 frightened, and every sheep in the game speaks through the same throat. Before it, the scream was a
 sawtooth with vibrato on it, which is a siren and not an animal. Add a new animal sound here rather than
 building another one-shot from `tone`.
+
+**A body is part of the room.** `game.flungHits` is where one body arrives on another. A man out of
+your mouth kills whoever he lands on and carries on — he is the weapon. A man off your horns kills too
+if he is still travelling at `physics.bodyKillSpeed` when he gets there, and at `physics.splatSpeed` —
+the speed a wall kills at — the man who was thrown dies with him. Below that it is the old bowling-over:
+both floored, both up again. Two men standing shoulder to shoulder used to be the safest place in the
+room, which read as the game saying a man is not part of the geometry. He is.
+
+**How loud the drums get.** `game.update` counts the men who are awake, near and not mist, and
+`TUNING.audio.crowd` is where the two steps are: up to `warm` it is the motif and the toms, up to `hot`
+the kick and the hats, past it the whole kit. It used to go to the top on five, which is an ordinary
+room from level three on, so the loudest music in the game played through most of the game and a real
+crowd had nothing left to sound like.
 
 **Juice.** `game.kick(dx, dy, amt)` shoves the whole picture (capped at `juice.kickMax`), `zoomPunch`
 drives the lens, `flash(color, amt)` paints an additive overlay, and `gore` throws chunks that stain the
@@ -415,7 +433,11 @@ shape on the floor plus three plates thrown on top of it is not a shape any more
 teeth on a level whose floor does not. `'S'` in a template is a plate, the way `'B'` is a bowl of coals.
 
 **The pen.** Cage bars are ordinary `Prop`s of kind `cage`, built by `buildCage` in `gen.js` and exempt
-from the three-tile prop clearance around the start. It takes `prop.cage.hits` blows — seven — and one
+from the three-tile prop clearance around the start. It takes `prop.cage.hits` blows — seven — the
+**first time a browser ever does it**, and `prop.cage.againHits` — two, with no fall and a two-line
+`againStrain` — every time after: `game.penBroken` is the flag, written to `PEN_KEY` by
+`game.notePenBroken` on the blow that opens it, and the pen is a lesson rather than a toll paid again
+on every restart of level one. One
 headbutt can reach two or three bars at once, so `breakCage` counts blows and not bars by gating on
 `game.cageLunge === goat.lungeId`. Each blow bleats a line from `prop.cage.strain`; on the blows in
 `prop.cage.stunAt` the goat is put on the floor by `game.stunGoat`. The last blow breaks every bar and
@@ -459,14 +481,18 @@ no longer runs off both ends of the room it is lying in. A `hintKey` on the leve
 the four skill ids — paints the button under it from `HINT_KEYS`, keyboard or touch. A hint that names
 a verb should carry the key for it; one that names the ground should not.
 
-**The first screen.** State `title`, drawn entirely by `drawTitle` and holding four buttons and nothing
-else: the opening scene tells the story and the floor of level 1 teaches the buttons, so the menu
-explains neither. `game.menu` is `{ index, rects, t, shake, panel, sub }`; `drawTitle` refills `rects`
+**The first screen.** State `title`, drawn entirely by `drawTitle` and holding the rows of `MENU`
+(`tuning.js`, which is where the order of this screen lives) and nothing else: the opening scene tells
+the story and the floor of level 1 teaches the buttons, so the menu explains neither. `game.menu` is `{ index, rects, t, shake, panel, sub }`; `drawTitle` refills `rects`
 every frame and `menuAt` / `menuPick` are the only ways in, from a pointer (hit-tested in `pointerdown`
 like the soul cards) or from the keys the game already uses (`menuKey`: W/S or the arrows to move,
 SPACE or ENTER to choose). NEW GAME wipes the save and plays the opening scene; CONTINUE is dark and
-shakes its head until there is a run to come back to; BEST and SETTINGS raise `menu.panel`, and while a
-panel is up it owns `menu.rects` entirely, so nothing behind it is clickable. The board is put away by
+shakes its head until there is a run to come back to; LEVELS, BEST and SETTINGS raise `menu.panel`, and
+while a panel is up it owns `menu.rects` entirely, so nothing behind it is clickable. LEVELS
+(`drawLevelPick`, `game.startAtLevel`) is a way straight onto any floor of the game: it deals the souls
+a run would have banked getting there — the sum of `def.souls` before it, drawn at random and honouring
+`needs` — because a goat who is still the goat out of the pen on level five is a different and much
+worse game. It touches neither the saved run nor the board. The board is put away by
 anything at all; the switches are not — a click on a row throws that row and only BACK leaves, which is
 why the hover lands on `menu.sub` rather than on the menu underneath. `drawTitle` paints the whole
 canvas, vignette and empty thumb deck included, so nothing from the play view shows through.
@@ -478,14 +504,25 @@ corner of a game about running turns the run into the number, and the level card
 either way) and **SOUND**, which is the same switch `M` throws. Adding one is a line in `SETTINGS` and
 a line at the use site; nothing else reads them.
 
-**The fog.** `room.seen` starts false on every room but the first, `game.revealRooms` sets it when the
-goat's own tile is inside the room's box widened by one — so a room opens as you come through its wall,
-not after it — and it is never re-hidden. `drawUnseen` paints the unopened rooms out in `def.fog` after
-the floor, the blood, the holes and the firelight and before anything that stands on them, and the draw
-order filters props, men and bullets through `game.hidden`. Corridors are never hidden: they are two
-tiles wide and what you can see down one is a doorway. The point is that a room used to be readable
-from twenty tiles away, so every room in the game gave the same length of warning; now the warning is
-the width of a door.
+**The fog, and its two halves.** The first half never moves: `room.seen` starts false on every room but
+the first, `game.revealRooms` sets it when the goat's own tile is inside the room's box widened by one —
+so a room opens as you come through its wall, not after it — and it is never re-hidden. `drawUnseen`
+paints the unopened rooms out in `def.fog` after the floor, the blood, the holes and the firelight and
+before anything that stands on them, and the draw order filters props, men and bullets through
+`game.hidden`. Corridors are never hidden: they are two tiles wide and what you can see down one is a
+doorway. The point is that a room used to be readable from twenty tiles away, so every room in the game
+gave the same length of warning; now the warning is the width of a door.
+
+The second half moves with him. `World.computeVis` is a symmetric recursive shadowcast (`castVis`, the
+eight octants of `VIS_OCTANTS`) run every step from the goat's own tile out to `TUNING.fog.radius`, and
+it fills `world.vis`, one byte a tile. `Renderer.drawShade` builds a mask of that at `fog.res` pixels a
+tile on a small offscreen canvas and blows it up over the world with smoothing on — so the edge of a
+partition's shadow is a gradient rather than a staircase of squares — at `fog.shade` alpha, **last of
+everything in world space**. So a pillar, a stub wall or the corner of a room hides what is behind it
+until he steps round to where it can be seen from, and a man standing back there is not culled, he is
+simply not lit. Nothing else in the game reads `vis`: the cult's eyes, ears and flow field are
+untouched, and a man in the dark still hears you and still comes. It costs about 0.01 ms a step.
+`startLevel` primes it next to `computeFlow`, and it is skipped during the opening scene.
 
 **Score, and the board.** `scoreFor(kills, time, levelIndex)` is the only place a score is computed:
 pace against par (`rooms * score.perRoom`, capped at `fastCap`) times a kill multiplier (`killMul`,
@@ -597,6 +634,9 @@ catches for `crate.stun`. It is deliberately small — `r` is 10, a third under 
 deliberately plain: four shapes, an outline, a face, a lit top edge and one band. It had planks, two
 bands and a stud, which is detail spent saying nothing. Boxes are
 what a compound is full of; the point of it is that nothing has to be explained.
+A thrown crate that reaches a burning tile does not break, it **bursts**: `Prop.burst` lays
+`crate.burst` tiles of flame for `crate.burstTime`, of whichever kind lit it, and then shatters. It is
+the one thing the goat carries that answers a fire with more fire, and it is how a doorway is shut.
 
 **Five kinds of door.** `prop.door.hits` is one — a plank door in a corridor is a thing you run
 through, not a wall you stand at. `ironHits` is three, `stairHits` three (the barred way out of every
@@ -645,13 +685,11 @@ with an `entry`. Levels without `ritual` start at the top of the entry flight ra
 **The other cage.** Built by `buildCage(..., deco)` from `TUNING.prop.deadCage`; its bars carry `deco`,
 which keeps them out of `breakCage`, out of the gate, and out of the in-front-of-the-goat draw pass.
 What is in it is painted on the decal canvas by `paintStartRoom`.
-**The roll.** The verb the goat has none of at all — the other two shut buttons still do half of
-something. `mods.roll` is false out of the pen and the button does nothing until **TUCK AND ROLL** is
-taken: the chip stays on the rail reading LOCKED, the thumb button reads LOCKED, and a floor hint never
-names a key the goat has not been given (`drawHints` checks).
-A locked fourth chip is the clearest promise the game makes, which is the whole point of locking it.
-`openBoonChoice` puts it on the table for the run's **first** soul whatever the shuffle says — you still
-spend the soul on it rather than on fire breath, but a button withheld by a bad draw is not a decision.
+**The roll.** The one verb the goat is born with in full. It was withheld behind a soul (TUCK AND ROLL,
+now gone from `BOONS`), which meant the first level was played by an animal that could not get out of
+the way of anything — the one thing a creature running away has to be able to do. `BOON_BASE.roll` is
+true, and what the roll's soul buys now is the teeth in it: **DEAD WEIGHT** is an active, and everything
+the tumble goes through loses its head (`mods.rollStun`, read by the `rollHit` list in `Goat.update`).
 `Goat.rollDirection` scores 24 candidate angles against nearby men (weighted up if one is mid-swing),
 walls and fire, and honours the stick when there is one. With no direction asked for it is a pure escape,
 which is the whole reason the button exists on a phone.

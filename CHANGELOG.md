@@ -5,6 +5,43 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.12 — a corner you cannot see round, and a goat who can already dodge
+
+**One sitting, twelve lines off a screenshot.** Half of it is the screen: everything the HUD was saying
+out of habit came off, and what is left says its piece when it is asked. The other half is the first
+hour — the roll is his from the first second, the pen is a lesson rather than a toll, and a head with a
+body behind it kills two men who are standing together.
+
+- **The fog has a second half, and it moves.** A shadowcast runs from the goat's own tile every step,
+  and anything a pillar, a stub wall or the corner of a room is standing in front of goes dark until he
+  steps round to where it can be seen from. Nothing is culled — a man back there still hears you and
+  still comes — he is simply not lit. Rooms still open by being walked into and still never close.
+- **The roll is his out of the pen.** It was behind a soul, which meant the first level was played by
+  an animal that could not get out of the way of anything. TUCK AND ROLL is gone; **DEAD WEIGHT** is
+  the roll's soul now, and it is an active: everything the tumble goes through loses its head.
+- **Some of the head came back.** Recovery 0.44 → 0.38, throw 25 → 28, reach 1.55 → 1.64: a third of
+  the 1.11 cut, not the whole of it. He still starts underpowered — he starts underpowered with a
+  shove that has a body behind it.
+- **A body is part of the room.** Throw a man off your horns into a man standing next to him and they
+  both die: the struck one at `bodyKillSpeed`, and the one who was thrown at the speed a wall kills at.
+  Two men shoulder to shoulder used to be the safest place in a room.
+- **A crate thrown into a fire goes up.** Wider than the flame that lit it and burning a good deal
+  longer — a doorway you can shut. Witchfire lights it as witchfire.
+- **The pen gives on the second blow, once you have got out of it once.** Seven blows and two falls is
+  the hardest thing the goat does all run, and it is worth doing once. `goatout.pen.v1` remembers.
+- **The rail says the key, and the note says the verb.** Under each chip is LMB / RMB / E / SPC; the
+  name and the sentence about what it does come up while the pointer is on the chip, with the souls
+  hanging off that button under them.
+- **Off the screen:** the level's name over the hearts (the card has just said it), the strip of
+  controls along the bottom of the page (the rail says it), and DEV's box — it is a word in the corner
+  now. The kill count is smaller.
+- **LEVELS on the title screen.** Any floor of the game, with the souls a run would have banked getting
+  there, dealt at random. It touches neither the saved run nor the board.
+- **The drums climb later.** It took five men for the whole kit, which is an ordinary room from level
+  three on; it takes seven now, and the top of the kit is two toms and a chant rather than a wall.
+
+---
+
 ## 1.11 — a goat that starts weak, and souls instead of books
 
 **One sitting, about the climb.** The ask was a power fantasy that begins at the bottom: the verbs you

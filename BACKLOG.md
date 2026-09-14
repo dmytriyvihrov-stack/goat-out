@@ -10,6 +10,41 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ---
 
+## 14 September 2026, late — the seventh sitting
+
+Twelve lines off an annotated screenshot, plus four sent after it, plus the rule under all of them:
+*"and take into account in the new balance — the new division of powers — that you start underpowered."*
+All of it shipped in 1.12; the reasoning is in `CHANGELOG.md`.
+
+- ~~**Fog behind a partition, from the place it is seen from.**~~ A shadowcast from the goat's own tile
+  every step, painted over the world last. Asked as *"да, можно чтобы было скрыто за перегородкой"*,
+  which settled it: hidden, not dimmed.
+- ~~**Delete everything struck through in red.**~~ The level's name over the hearts, and the strip of
+  controls along the bottom of the page.
+- ~~**The caption under each button becomes the control; the long caption is a hover.**~~ LMB / RMB /
+  E / SPC under the chips, and `drawSkillNote` while the pointer is on one.
+- ~~**Less intense music in a fight with a lot of men.**~~ The steps are at three and seven now, and
+  the top of the kit is thinner.
+- ~~**Smaller SACRIFICED.**~~ 15px → 11px, and dimmer.
+- ~~**DEV as a short phrase rather than a button, slightly smaller.**~~ A word in the corner.
+- ~~**Level select in the menu.**~~ LEVELS, with the souls a run would have banked getting there.
+- ~~**The roll available by default; its soul gives a stun instead.**~~ DEAD WEIGHT is the roll's soul
+  and it is an active now.
+- ~~**Restarting level one after you have played: the pen gives on the second blow.**~~ `PEN_KEY`.
+- ~~**A crate thrown into a fire goes up bigger than the fire that lit it.**~~ `Prop.burst`.
+- ~~**Give the headbutt a bit of its strength back (not all of it), and men thrown into men die.**~~
+  A third of the 1.11 cut back, and `flungHits` kills at speed.
+
+**Watch on the next play.** Two of these are worth a second opinion rather than a number:
+- The shadow is at `TUNING.fog.shade` (0.8) with `fog.res` (2) deciding how hard its edge is. A man
+  standing behind a partition is now very nearly invisible while he can still hear you perfectly — if
+  that reads as unfair rather than as tense, the alpha is the dial, not the shadowcast.
+- Two men who stand together now die together to one headbutt, which is a real jump in what the bare
+  head is worth. `physics.bodyKillSpeed` is the bar for the man who is struck and `physics.splatSpeed`
+  the bar for the man who was thrown; raising the second one makes it one death instead of two.
+
+---
+
 ## 14 September 2026, night — the sixth sitting
 
 Nine lines in one message, plus the rule under them: *"I want to build a power fantasy where you start

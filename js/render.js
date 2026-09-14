@@ -9,13 +9,13 @@ const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 // rooms of words about a headbutt turned out not to add up to "the men can be hit" on their own.
 const CONTROL_LINES = {
   key: [
-    ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL, WHEN YOU FIND IT'],
+    ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL OUT OF THE WAY'],
     ['HOLD RIGHT CLICK — CARRY', 'A BOX, A BLADE, A SHIELD', 'LET GO — THROW',
       'SPACE — BAAH', 'THEY COME TO THE NOISE'],
     ['BUTT HIM', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS'],
   ],
   touch: [
-    ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — WHEN YOU FIND IT'],
+    ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — OUT OF THE WAY'],
     ['HOLD GRAB — CARRY', 'A BOX, A BLADE, A SHIELD', 'LET GO — THROW',
       'BAAH — THEY COME TO THE NOISE'],
     ['BUTT HIM', 'BUTT — HEADBUTT', 'INTO A WALL KILLS'],
@@ -135,6 +135,7 @@ class Renderer {
       this.drawRings(game);
       this.drawParticles(game);
       this.drawFloatTexts(game);
+      this.drawShade(game, cam);        // last of everything in world space: it covers what it covers
       ctx.restore();
     }
     this.drawVignette(game);
@@ -391,9 +392,7 @@ class Renderer {
         // and the longest of them was unreadable at both ends.
         const lines = this.wrapFloor(hn.text), wide = (hn.w || 14 * TILE) - 3.2 * TILE;
         const size = this.fitFloorText(lines, wide, 26), lh = size * 1.34;
-        // A hint never names a button the goat has not been given yet.
-        const has = hn.key !== 'roll' || game.mods.roll;
-        const key = hn.key && has ? HINT_KEYS[hn.key][game.touch.active ? 1 : 0] : null;
+        const key = hn.key ? HINT_KEYS[hn.key][game.touch.active ? 1 : 0] : null;
         const block = (lines.length - 1) * lh + (key ? lh * 0.95 : 0);
         let y = hn.y - block / 2;
         ctx.fillStyle = 'rgba(239,230,208,0.15)';
@@ -1225,7 +1224,11 @@ class Renderer {
     const ctx = this.ctx, s = this.ts, d = game.dev;
     d.rects = [];
     if (d.rules) { this.drawTool(game); return; }
-    const pad = 8 * s, cw = 62 * s, chH = 22 * s;
+    // The way in is a word in the corner, not a button. A bordered box down there reads as part of
+    // the game and this is not part of the game: it is a door for whoever is building it.
+    const pad = 8 * s, label = d.open ? 'close dev' : 'dev tools';
+    ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
+    const cw = ctx.measureText(label).width + 16 * s, chH = 17 * s;
     const cx = this.w - pad - cw, cy = this.h - pad - chH;
     let toastY = cy - 10 * s;
     if (d.open) {
@@ -1256,12 +1259,10 @@ class Renderer {
         d.rects.push({ x: px + 5 * s, y, w: rw - 10 * s, h: rh, id });
       });
     }
-    ctx.fillStyle = d.open ? 'rgba(185,135,58,0.85)' : 'rgba(13,10,12,0.7)';
-    ctx.fillRect(cx, cy, cw, chH);
-    ctx.strokeStyle = 'rgba(185,135,58,0.75)'; ctx.lineWidth = 1.5 * s; ctx.strokeRect(cx, cy, cw, chH);
-    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = d.open ? PALETTE.ink : PALETTE.ochre;
+    ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
+    ctx.fillStyle = d.open ? PALETTE.fireHi : 'rgba(185,135,58,0.55)';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('DEV', cx + cw / 2, cy + chH / 2);
+    ctx.fillText(label, cx + cw / 2, cy + chH / 2);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     d.rects.push({ x: cx, y: cy, w: cw, h: chH, id: 'toggle' });
 
@@ -2027,6 +2028,45 @@ class Renderer {
   // holes and before anything standing on them, and everything that stands on them is filtered by
   // `game.hidden` in the draw order above — so an unopened room is a wall-coloured rectangle with a
   // doorway in it, and the doorway is the only thing the room tells you about itself.
+  // The moving half of the fog. `world.vis` is one byte a tile — set by the shadowcast in `World`
+  // from wherever the goat is standing — and this paints everything outside it down. The mask is
+  // built at one pixel a tile on a small offscreen canvas and blown up over the world with
+  // smoothing on, so the edge of a partition's shadow is a gradient and not a staircase of squares.
+  // It goes on after everything else in world space, so a man standing behind a pillar is as dark
+  // as the floor he is standing on: nothing is culled, it is simply not lit.
+  drawShade(game, cam) {
+    const wd = game.world;
+    if (!wd || !wd.visBox || game.state === 'intro') return;
+    const { x0, y0, x1, y1 } = this.visibleTiles(cam);
+    const nx = x1 - x0 + 1, ny = y1 - y0 + 1, R = TUNING.fog.res;
+    if (nx < 1 || ny < 1) return;
+    if (!this.shade || this.shade.width < nx * R || this.shade.height < ny * R) {
+      this.shade = document.createElement('canvas');
+      this.shade.width = Math.max(nx * R, 128 * R); this.shade.height = Math.max(ny * R, 96 * R);
+      this.shadeCtx = this.shade.getContext('2d');
+    }
+    const sc = this.shadeCtx;
+    sc.clearRect(0, 0, nx * R, ny * R);
+    sc.fillStyle = game.level.def.fog;
+    // One run of dark tiles at a time: a row of a room is usually all one thing or the other.
+    for (let ty = y0; ty <= y1; ty++) {
+      let run = -1;
+      for (let tx = x0; tx <= x1; tx++) {
+        const dark = !wd.seesTile(tx, ty);
+        if (dark && run < 0) run = tx;
+        else if (!dark && run >= 0) { sc.fillRect((run - x0) * R, (ty - y0) * R, (tx - run) * R, R); run = -1; }
+      }
+      if (run >= 0) sc.fillRect((run - x0) * R, (ty - y0) * R, (x1 + 1 - run) * R, R);
+    }
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalAlpha = TUNING.fog.shade;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(this.shade, 0, 0, nx * R, ny * R, x0 * TILE, y0 * TILE, nx * TILE, ny * TILE);
+    ctx.restore();
+    ctx.imageSmoothingEnabled = false;
+  }
+
   drawUnseen(game) {
     const ctx = this.ctx, def = game.level.def;
     ctx.fillStyle = def.fog;
@@ -2145,12 +2185,13 @@ class Renderer {
     const ctx = this.ctx; if (!game.world || game.state === 'intro') return;
     const g = game.goat, s = this.hs, top = 8 * s + (this.portrait ? 12 * s : 0);
     ctx.textAlign = 'left';
-    ctx.font = `700 ${15 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-    ctx.fillText(`${game.level.def.sub.toUpperCase()}: ${game.level.def.name}`, 14 * s, top + 14 * s);
+    // The level's name used to stand over the hearts. The card at the head of every level has
+    // already said it, the floor of the first room says what the level is about, and a title in the
+    // corner of the screen is a thing you read once and then look past for ten minutes.
     const HEART = HEART_GLYPH;
     const px = 2.6 * s;
     for (let i = 0; i < g.maxHp; i++) {
-      const ox = 14 * s + i * 22 * s, oy = top + 28 * s;
+      const ox = 14 * s + i * 22 * s, oy = top + 14 * s;
       const on = i < g.hp;
       ctx.fillStyle = on ? PALETTE.blood : 'rgba(239,230,208,0.16)';
       for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) {
@@ -2164,7 +2205,7 @@ class Renderer {
       const a = Math.min(1, game.comboTimer / 0.6);
       ctx.font = `700 ${(15 + Math.min(11, game.combo * 2)) * s}px ${FONT_SC}`;
       ctx.fillStyle = `rgba(192,57,43,${a})`;
-      ctx.fillText(`x${game.combo} IN A ROW`, 14 * s, top + 72 * s);
+      ctx.fillText(`x${game.combo} IN A ROW`, 14 * s, top + 58 * s);
     }
 
     // The right column reads top down: what your buttons do, then what they have got you.
@@ -2172,12 +2213,12 @@ class Renderer {
     const right = this.w - 20 * s;
     const below = this.drawSkills(game, top + 14 * s);   // the rail centres its own text, so re-anchor
     ctx.textAlign = 'right';
-    ctx.font = `700 ${15 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-    ctx.fillText(`${game.kills} SACRIFICED`, right, below + 16 * s);
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.82)';
+    ctx.fillText(`${game.kills} SACRIFICED`, right, below + 13 * s);
     // The clock is a setting and it is off by default. A number climbing in the corner of a game
     // about running turns the run into the number, and the run is timed whether it is shown or not:
     // the card at the end of a level says what it took, which is where a time is worth reading.
-    let line = below + 16 * s;
+    let line = below + 13 * s;
     if (game.settings.timer) {
       ctx.font = `${13 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
       ctx.fillText(`${game.timer.toFixed(1)}s`, right, line + 17 * s); line += 17 * s;
@@ -2190,6 +2231,7 @@ class Renderer {
     ctx.fillText(`seed ${game.level.seed}`, right, line + 15 * s);
     this.drawBoonList(game, line + 34 * s);
     ctx.textAlign = 'left';
+    this.drawSkillNote(game);
 
     // exit compass, pinned just inside the bottom of the play view
     if (game.state === 'play' && !g.dead) {
@@ -2210,21 +2252,31 @@ class Renderer {
   drawSkills(game, top) {
     const ctx = this.ctx, s = this.hs, g = game.goat, fire = !!game.mods.breath;
     const R = TUNING.goat.roll;
-    // Three of the four buttons start half-shut and the souls open them, so the rail has to say
-    // which half you have got: GRAB carries THINGS until BY THE COLLAR, BAAH is a CALL until it is
-    // a blow or a fire, and ROLL is dark until TUCK AND ROLL. A chip that is dim is a promise, and
-    // a chip whose word changes is the reward arriving where the promise was.
+    // Two of the four buttons start half-shut and the souls open them, so the rail has to say which
+    // half you have got: GRAB carries THINGS until BY THE COLLAR, and BAAH is a CALL until it is a
+    // blow or a fire. What is written under a chip is the key that throws it — the word for the verb
+    // and what it does are on the note the pointer brings up, because a caption you have read a
+    // hundred times is a caption that has stopped saying anything, and the key never stops.
     const rows = [
-      { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding },
+      { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
+        note: game.mods.bomb ? 'Put your head into him. He goes down, the wall kills him, and a moment later he goes off.'
+          : 'Put your head into him. On its own it only knocks him down: the wall, the fire or the next man is what kills.' },
       { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: 'RMB', cd: g.grabCd,
-        max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen },
-      // The roll is the one verb the goat does not have at all. Locked, the chip stays and says so.
-      { id: 'roll', name: game.mods.roll ? 'ROLL' : 'LOCKED', cap: 'E', cd: game.mods.roll ? g.rollCd : 0,
-        max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0 && !!game.mods.roll, locked: !game.mods.roll },
+        max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
+        note: game.mods.grabMen ? 'Hold to take a box, a blade, a shield — or a man — in your teeth. Let go to throw it.'
+          : 'Hold to carry a box, a blade or a shield. Let go to throw it. A grown man is too big, until a soul says otherwise.' },
+      { id: 'roll', name: 'ROLL', cap: 'E', cd: g.rollCd,
+        max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
+        note: game.mods.rollStun > 0 ? 'A tumble through it all. Nothing lands on you down there, and everything you pass through loses its head.'
+          : 'A tumble out of the way. Nothing lands on you while you are down there, and then you have to get up.' },
       { id: 'scream', name: fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: 'SPC',
         cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0,
-        half: !fire && !game.mods.screamStun },
+        half: !fire && !game.mods.screamStun,
+        note: fire ? 'The scream comes out as a cone of fire. Slower to come back.'
+          : game.mods.screamStun ? 'Everyone who hears it loses a moment, and that moment is yours.'
+            : 'A noise, and they walk toward the spot you made it from. It is a tool and a way to get killed, and not yet a weapon.' },
     ];
+    this.skillHover = null;
     const box = 32 * s, gap = 7 * s, right = this.w - 14 * s;
     const x0 = right - rows.length * box - (rows.length - 1) * gap;
     rows.forEach((row, i) => {
@@ -2252,14 +2304,18 @@ class Renderer {
         ctx.lineTo(px, py + 5.6 * s); ctx.lineTo(px - 2.4 * s, py + 2.8 * s); ctx.closePath(); ctx.fill();
       });
       ctx.textAlign = 'center';
+      // What is written under the chip is the key, not the verb. The verb and what it does now are
+      // on the note, which comes up when the pointer is on the chip.
       if (!game.touch.active) {
-        ctx.font = `700 ${8 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.4)';
-        ctx.fillText(row.cap, x + box / 2, y - 4 * s);
+        const m = game.input.mouse;
+        if (m.x >= x - 3 * s && m.x <= x + box + 3 * s && m.y >= y - 3 * s && m.y <= y + box + 22 * s) {
+          this.skillHover = { row, x, y: y + box + 26 * s, hot, boons };
+        }
+        ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+        ctx.fillStyle = hot ? PALETTE.fireHi : row.half ? 'rgba(239,230,208,0.38)'
+          : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.55)';
+        ctx.fillText(row.cap, x + box / 2, y + box + 18 * s);
       }
-      ctx.font = `700 ${9 * s}px ${FONT_SC}`;
-      ctx.fillStyle = row.locked ? 'rgba(239,230,208,0.28)' : hot ? PALETTE.fireHi
-        : row.half ? 'rgba(239,230,208,0.38)' : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.6)';
-      ctx.fillText(row.name, x + box / 2, y + box + 18 * s);
     });
     // The gong, while it is still in him: a strip under the rail that drains with it, so four
     // cooldowns coming back faster than they should has something on screen saying why.
@@ -2275,6 +2331,35 @@ class Renderer {
     }
     ctx.textAlign = 'left';
     return end;
+  }
+
+  // What the chip under the pointer does, in words. The rail says which key throws a verb and the
+  // note says what the verb is — so the sentence is there when it is wanted and out of the way the
+  // rest of the time, which is the opposite of a caption that lives on the screen for ten minutes.
+  // It carries the souls hanging off that button too, because that is where a run's build is felt.
+  drawSkillNote(game) {
+    const h = this.skillHover; if (!h) return;
+    const ctx = this.ctx, s = this.hs;
+    const w = Math.min(230 * s, this.w - 28 * s), right = this.w - 14 * s, x = right - w;
+    ctx.font = `${11 * s}px ${FONT}`;
+    const lines = this.wrap(h.row.note, w - 20 * s);
+    const names = h.boons.map((b) => (b.active ? '◆ ' : '❖ ') + b.name);
+    const bh = 26 * s + lines.length * 14 * s + names.length * 13 * s;
+    const y = Math.min(h.y, this.vh - bh - 10 * s);
+    ctx.fillStyle = 'rgba(13,10,12,0.94)'; ctx.fillRect(x, y, w, bh);
+    ctx.strokeStyle = h.hot ? 'rgba(242,162,51,0.7)' : 'rgba(239,230,208,0.22)'; ctx.lineWidth = 1.4 * s;
+    ctx.strokeRect(x, y, w, bh);
+    ctx.textAlign = 'left';
+    ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = h.row.half ? 'rgba(239,230,208,0.7)' : PALETTE.bone;
+    ctx.fillText(h.row.name, x + 10 * s, y + 15 * s);
+    ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.68)';
+    lines.forEach((ln, i) => ctx.fillText(ln, x + 10 * s, y + 30 * s + i * 14 * s));
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+    names.forEach((n, i) => {
+      ctx.fillStyle = h.boons[i].active ? PALETTE.blood : PALETTE.ochre;
+      ctx.fillText(n, x + 10 * s, y + 32 * s + lines.length * 14 * s + i * 13 * s);
+    });
+    ctx.textAlign = 'right';
   }
 
   // The soul names, under the score. The pips on the chips already say which button each one bends;
@@ -2410,11 +2495,10 @@ class Renderer {
     // buttons
     const held = !!game.goat.holding;
     const fire = !!game.mods.breath;
-    const canRoll = !!game.mods.roll;
     const labels = { butt: 'BUTT', grab: held ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS',
-      scream: fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', roll: canRoll ? 'ROLL' : 'LOCKED' };
+      scream: fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', roll: 'ROLL' };
     const ready = { butt: game.goat.state === 'idle' && !held, grab: held || game.goat.grabCd <= 0,
-      scream: game.goat.screamCd <= 0, roll: canRoll && game.goat.rollCd <= 0 };
+      scream: game.goat.screamCd <= 0, roll: game.goat.rollCd <= 0 };
     for (const k of ['butt', 'grab', 'scream', 'roll']) {
       const b = t.buttons[k], down = t.pressed[k] !== undefined;
       const hot = k === 'scream' && fire;
@@ -2516,13 +2600,16 @@ class Renderer {
     const souls = run && run.boons ? run.boons.length : 0;
     const board = game.best || { levels: {}, run: 0 };
     const cleared = Object.keys(board.levels || {}).length;
-    const items = [
-      { label: 'NEW GAME' },
-      { label: 'CONTINUE', locked: !run,
+    // One row per id in MENU, which is where the order of this screen lives.
+    const rowFor = {
+      new: { label: 'NEW GAME' },
+      continue: { label: 'CONTINUE', locked: !run,
         note: def ? `(${def.sub.toLowerCase()} · ${def.name.toLowerCase()}${souls ? ` · ${souls} soul${souls === 1 ? '' : 's'}` : ''})` : '(nothing to come back to)' },
-      { label: 'BEST', note: cleared ? `(best run ${board.run || 0})` : '(nothing on the board yet)' },
-      { label: 'SETTINGS', note: `(clock ${game.settings.timer ? 'on' : 'off'} · sound ${game.settings.sound ? 'on' : 'off'})` },
-    ];
+      levels: { label: 'LEVELS', note: `(start on any of the ${LEVELS.length}, with the souls it takes)` },
+      best: { label: 'BEST', note: cleared ? `(best run ${board.run || 0})` : '(nothing on the board yet)' },
+      settings: { label: 'SETTINGS', note: `(clock ${game.settings.timer ? 'on' : 'off'} · sound ${game.settings.sound ? 'on' : 'off'})` },
+    };
+    const items = MENU.map((id) => rowFor[id]);
     for (let i = 0; i < items.length; i++) {
       const it = items[i], sel = game.menu.index === i;
       // a locked CONTINUE shakes its head when it is pressed
@@ -2557,6 +2644,7 @@ class Renderer {
     ctx.textAlign = 'left';
     if (game.menu.panel === 'best') this.drawBoard(game, board);
     if (game.menu.panel === 'settings') this.drawSettings(game);
+    if (game.menu.panel === 'levels') this.drawLevelPick(game, board);
   }
 
   // The switches. It covers the menu the way the board does, but it does not leave when it is
@@ -2600,6 +2688,48 @@ class Renderer {
       ctx.fillStyle = on ? PALETTE.fireHi : 'rgba(239,230,208,0.4)';
       ctx.fillRect(on ? tx + tw - th + 2 * s : tx + 2 * s, ty + 2 * s, th - 4 * s, th - 4 * s);
       ctx.textAlign = 'center';
+    }
+    ctx.textAlign = 'left';
+  }
+
+  // The level sheet. Every floor of the game, its canon and what it is about, and a row is a way
+  // straight onto it — with the souls a run would have banked getting there, dealt at random. It is
+  // built like the switches: while it is up it owns `menu.rects` entirely, and only BACK leaves.
+  drawLevelPick(game, board) {
+    const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
+    ctx.fillStyle = 'rgba(9,7,9,0.985)'; ctx.fillRect(0, 0, w, h);
+    const rows = LEVELS.length + 1;
+    const rowH = clamp(h * 0.085, 30 * s, 52 * s), gap = 6 * s;
+    const bw = clamp(Math.min(w * 0.86, 460 * s), 200 * s, 520 * s), x0 = cx - bw / 2;
+    const top = h / 2 - (rows * (rowH + gap)) / 2;
+    ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.ochre;
+    ctx.font = `700 ${clamp(rowH * 0.42, 15 * s, 24 * s)}px ${FONT_SC}`;
+    ctx.fillText('LEVELS', cx, top - 16 * s);
+    game.menu.rects.length = 0;
+    let souls = 0;
+    for (let i = 0; i < rows; i++) {
+      const y = top + i * (rowH + gap), last = i === LEVELS.length, sel = game.menu.sub === i;
+      game.menu.rects.push({ x: x0, y, w: bw, h: rowH });
+      ctx.fillStyle = sel ? '#4a2428' : '#190f16'; ctx.fillRect(x0, y, bw, rowH);
+      ctx.strokeStyle = sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s;
+      ctx.strokeRect(x0, y, bw, rowH);
+      if (last) {
+        ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${16 * s}px ${FONT_SC}`;
+        ctx.fillText('BACK', cx, y + rowH * 0.62);
+        continue;
+      }
+      const def = LEVELS[i], rec = (board.levels || {})[i];
+      ctx.textAlign = 'left';
+      ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${15 * s}px ${FONT_SC}`;
+      ctx.fillText(`${i + 1}. ${def.name}`, x0 + 16 * s, y + rowH * 0.42);
+      ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
+      const carry = souls ? `${souls} soul${souls === 1 ? '' : 's'}` : 'nothing but a goat';
+      ctx.fillText(this.clip(`${def.canon ? def.canon.name.toLowerCase() : 'the compound'} · ${def.rooms} rooms · ${carry}`, bw - 110 * s), x0 + 16 * s, y + rowH * 0.74);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = rec ? PALETTE.fireHi : 'rgba(239,230,208,0.25)';
+      ctx.font = `${12 * s}px ${FONT}`;
+      ctx.fillText(rec ? String(rec.score) : '—', x0 + bw - 16 * s, y + rowH * 0.58);
+      souls += def.souls || 0;
     }
     ctx.textAlign = 'left';
   }

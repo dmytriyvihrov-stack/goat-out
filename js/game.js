@@ -8,6 +8,9 @@ const BEST_KEY = 'goatout.best.v1';
 const SEEN_KEY = 'goatout.intro.v1';
 // What the player turned on. Two switches, and the game runs the same without either of them.
 const SET_KEY = 'goatout.settings.v1';
+// Whether this browser has ever got out of the pen. Seven blows and two falls is the hardest thing
+// the goat does all run and it is worth doing once; every run after it opens on the second blow.
+const PEN_KEY = 'goatout.pen.v1';
 class Game {
   constructor(canvas) {
     this.canvas = canvas; this.renderer = new Renderer(canvas); this.audio = new GameAudio();
@@ -55,8 +58,9 @@ class Game {
     this.state = 'title'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
     // The first screen: two ways in, and whatever run the browser still remembers behind the second.
     this.menu = { index: 0, rects: [], t: 0, shake: 0 }; this.save = null;
-    this.introSeen = false;
+    this.introSeen = false; this.penBroken = false;
     try { this.introSeen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { /* storage refused */ }
+    try { this.penBroken = localStorage.getItem(PEN_KEY) === '1'; } catch (e) { /* storage refused */ }
     this.settings = this.loadSettings();
     if (!this.settings.sound) this.audio.toggleMute();
     // The tool has its own address: `#rules` and `#balance` open it on that tab at load, so the
@@ -148,6 +152,11 @@ class Game {
   // game was the same length of warning. Now the warning is the width of a door.
   // The test is the goat's own tile inside the room's box, widened by one so that standing in the
   // mouth of the corridor counts: you see the room as you come through the wall, not after it.
+  // The fog has two halves and this does both. A room is opened by walking into it and is never
+  // hidden again; what a partition inside an opened room keeps from him is dark until he steps
+  // round to where it can be seen from, and that half moves with him. `computeVis` is the second
+  // half — the renderer paints down everything outside it, and nothing else reads it: a man behind
+  // a pillar is still in the room, still hears you, and still comes.
   revealRooms() {
     const g = this.goat, tx = g.x / TILE, ty = g.y / TILE;
     for (const r of this.level.rooms) {
@@ -155,6 +164,7 @@ class Game {
       if (tx < r.x - 1 || tx > r.x + r.w || ty < r.y - 1 || ty > r.y + r.h) continue;
       r.seen = true;
     }
+    this.world.computeVis(g.x, g.y, TUNING.fog.radius);
   }
   // Is this point inside a room nobody has walked into? Everything the world draws and everything
   // that would give a room away — a man, a crate, a body on its way down a hole — asks this.
@@ -186,6 +196,13 @@ class Game {
 
   // Reaching for a man with a mouth that only takes objects. Said once per level and then never
   // again: it is a missing verb, not a mistake, and repeating it every time would read as a fault.
+  // The pen has been out of once. Everything after this run starts on the second blow instead of
+  // the seventh: the first time is the lesson and a lesson you have had is only a toll.
+  notePenBroken() {
+    if (this.penBroken) return;
+    this.penBroken = true;
+    try { localStorage.setItem(PEN_KEY, '1'); } catch (e) { /* storage refused: it lasts the tab */ }
+  }
   reachedForAMan(goat) {
     if (this.toldGrab) return;
     this.toldGrab = true;
@@ -201,10 +218,10 @@ class Game {
     const actives = BOONS.filter((b) => b.active && open(b));
     const passives = BOONS.filter((b) => !b.active && open(b));
     if (!actives.length && !passives.length) { this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + 1); return; }
-    // While a button is still dark the cards lean hard toward the actives. Three of the four verbs
-    // start shut and a run that spends its first four souls on percentages is a run that never got
-    // to play the game — so until every button does something, a skill is the likely draw.
-    const shut = !this.mods.roll || !this.mods.grabMen || !(this.mods.screamStun || this.mods.breath);
+    // While a button is still half-shut the cards lean hard toward the actives. Two of the four verbs
+    // are half of themselves out of the pen, and a run that spends its first souls on percentages is
+    // a run that never got to play the game — so until every button is whole, a skill is the likely draw.
+    const shut = !this.mods.grabMen || !(this.mods.screamStun || this.mods.breath);
     const hasActive = this.boons.some((b) => b.active);
     let pool, other;
     if (actives.length && (!hasActive || Math.random() < (shut ? 0.75 : 0.4))) { pool = actives.slice(); other = passives.slice(); }
@@ -213,12 +230,6 @@ class Game {
     const pick = [];
     while (pick.length < 3 && pool.length) pick.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
     while (pick.length < 3 && other.length) pick.push(other.splice((Math.random() * other.length) | 0, 1)[0]);
-    // The run's first soul always has the roll on the table. You still have to spend the soul on it
-    // rather than on a fire breath, but a fourth button withheld by a shuffle is not a decision.
-    if (!this.boons.length) {
-      const tuck = BOONS.find((b) => b.id === 'tuck');
-      if (tuck && open(tuck) && !pick.includes(tuck)) pick[pick.length - 1] = tuck;
-    }
     this.boonChoice = pick;
     this.boonKind = pick[0] && pick[0].active ? 'SKILL' : 'BLESSING';
     this.boonDown = -1; this.boonArm = TUNING.boonArm;
@@ -540,6 +551,7 @@ class Game {
     this.toldGrab = false;
     this.audio.intensity = 0; this.audio.hunterAware = false;
     this.world.computeFlow(this.goat.x, this.goat.y);
+    this.world.computeVis(this.goat.x, this.goat.y, TUNING.fog.radius);
     // The level's souls, handed out before a blow is struck. `def.souls` is the whole count (see the
     // note over `LEVELS`): the vault takes the first, the rest go to the LAST bosses of the level so
     // the fight you finish on always pays, and any boss left over drops milk instead. A level
@@ -575,7 +587,7 @@ class Game {
     if (this.intro) this.audio.duck(1, 0.3);   // Backspace out of the scene must not leave the sound down
     this.intro = null; this.stairFx = this.level.entry ? { t: -0.45, dir: -1 } : null;
     // Every level starts by writing the run down: that head is what CONTINUE comes back to.
-    this.saveRun(); this.showHelp(true);
+    this.saveRun();
     if (withIntro && def.ritual && def.startCage) { this.beginIntro(); return; }
     this.state = 'card';
     // A new level puts every heart back. The card is where the goat finds that out.
@@ -613,7 +625,6 @@ class Game {
     // is put away by anything at all; the switches are not, because a click on one is meant to
     // throw it rather than to leave.
     this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0, panel: null, sub: 0 };
-    this.showHelp(false);
   }
   updateTitle(dt) {
     this.menu.t += dt; this.menu.shake = Math.max(0, this.menu.shake - dt);
@@ -622,7 +633,10 @@ class Game {
     // behind it — otherwise reading the settings would silently move what NEW GAME is.
     if (!this.touch.active) {
       const i = this.menuAt(this.input.mouse);
-      if (i >= 0) { if (this.menu.panel === 'settings') this.menu.sub = i; else if (!this.menu.panel) this.menu.index = i; }
+      if (i >= 0) {
+        if (this.menu.panel === 'settings' || this.menu.panel === 'levels') this.menu.sub = i;
+        else if (!this.menu.panel) this.menu.index = i;
+      }
     }
   }
   menuAt(p) {
@@ -634,15 +648,16 @@ class Game {
   menuKey(code) {
     const m = this.menu;
     if (m.panel === 'best') { m.panel = null; this.audio.sfxSwing(); return; }
-    if (m.panel === 'settings') {
-      const n = SETTINGS.length + 1;                                   // the switches, and the way out
+    if (m.panel === 'settings' || m.panel === 'levels') {
+      // the rows of whatever is up, and the way out at the bottom of them
+      const n = (m.panel === 'settings' ? SETTINGS.length : LEVELS.length) + 1;
       if (code === 'KeyW' || code === 'ArrowUp') { m.sub = (m.sub + n - 1) % n; this.audio.sfxSwing(); }
       else if (code === 'KeyS' || code === 'ArrowDown') { m.sub = (m.sub + 1) % n; this.audio.sfxSwing(); }
       else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.menuPick(m.sub);
       else { m.panel = null; this.audio.sfxSwing(); }
       return;
     }
-    const n = 4;
+    const n = MENU.length;
     if (code === 'KeyW' || code === 'ArrowUp') { m.index = (m.index + n - 1) % n; this.audio.sfxSwing(); }
     else if (code === 'KeyS' || code === 'ArrowDown') { m.index = (m.index + 1) % n; this.audio.sfxSwing(); }
     else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.menuPick(m.index);
@@ -658,15 +673,43 @@ class Game {
       this.toggleSetting(SETTINGS[i].key);
       return;
     }
+    // The level sheet. A row is a floor of the game; the last row is the way back.
+    if (m.panel === 'levels') {
+      m.sub = i;
+      if (i >= LEVELS.length) { m.panel = null; this.audio.sfxCard(); return; }
+      this.audio.sfxCard(); this.startAtLevel(i);
+      return;
+    }
     m.index = i;
+    const id = MENU[i] || 'new';
     // Nothing to come back to: the button shakes its head and stays where it is.
-    if (i === 1 && !this.save) { m.shake = 0.35; this.audio.sfxThud(); return; }
+    if (id === 'continue' && !this.save) { m.shake = 0.35; this.audio.sfxThud(); return; }
     this.audio.sfxCard();
-    if (i === 2) { m.panel = 'best'; return; }
-    if (i === 3) { m.panel = 'settings'; m.sub = 0; return; }
-    if (i === 1) { this.resumeRun(); return; }
+    if (id === 'levels') { m.panel = 'levels'; m.sub = 0; return; }
+    if (id === 'best') { m.panel = 'best'; return; }
+    if (id === 'settings') { m.panel = 'settings'; m.sub = 0; return; }
+    if (id === 'continue') { this.resumeRun(); return; }
     this.clearRun(); this.boons = []; this.totalKills = 0; this.deaths = 0; this.totalScore = 0;
     this.startLevel(0, (Math.random() * 1e9) | 0, false, true);
+  }
+  // Straight onto one floor of the game. A run that starts on level five with the goat it had out of
+  // the pen is not that level, it is a different and much worse game, so the souls the run would
+  // have banked on the way are dealt out here — at random, because the point of the row is to put
+  // you on that floor and not to reproduce somebody's build. Level one is the ordinary opening,
+  // scene and all. Nothing about it touches the saved run or the board.
+  startAtLevel(li) {
+    this.clearRun();
+    this.boons = []; this.totalKills = 0; this.deaths = 0; this.totalScore = 0;
+    let budget = 0;
+    for (let i = 0; i < li; i++) budget += LEVELS[i].souls || 0;
+    for (let n = 0; n < budget; n++) {
+      this.applyBoons();
+      const open = BOONS.filter((b) => !this.boons.includes(b) && (!b.needs || this.mods[b.needs]));
+      if (!open.length) break;
+      this.boons.push(open[(Math.random() * open.length) | 0]);
+    }
+    this.applyBoons();
+    this.startLevel(li, (Math.random() * 1e9) | 0, true, li === 0);
   }
   // CONTINUE is the head of the furthest level the run reached, with the souls it was carrying there.
   resumeRun() {
@@ -725,10 +768,6 @@ class Game {
     try { localStorage.removeItem(SAVE_KEY); } catch (err) { /* nothing to be done about it */ }
   }
   // The page's control line belongs to the game, not to the menu.
-  showHelp(on) {
-    const el = typeof document !== 'undefined' && document.getElementById('help');
-    if (el) el.style.display = on ? '' : 'none';
-  }
   onGoatDied() {
     this.deaths++; this.state = 'dead'; this.stateTimer = 0.9; this.slowTimer = 1.4;
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxToll();
@@ -906,7 +945,11 @@ class Game {
       if (Math.hypot(e.x - this.goat.x, e.y - this.goat.y) > 16 * TILE) continue;
       aware++; if (e.kind === 'hunter') hunter = true;
     }
-    this.audio.intensity = aware === 0 ? 0 : aware <= 2 ? 1 : aware <= 4 ? 2 : 3;
+    // What it takes to make the drums climb. It used to be five men for the whole kit, which is an
+    // ordinary room from level three on, so the loudest music in the game played through most of it
+    // and a real crowd had nothing left to sound like. `crowd` is where the two steps are now.
+    const C = TUNING.audio.crowd;
+    this.audio.intensity = aware === 0 ? 0 : aware <= C.warm ? 1 : aware <= C.hot ? 2 : 3;
     this.audio.hunterAware = hunter;
     this.clearEdges();
   }
@@ -1311,15 +1354,25 @@ class Game {
     cold.ignite(this, lit.witchBurn, true);
     this.floatText(cold.x, cold.y - 30, 'IT SPREADS', lit.witchBurn ? PALETTE.witch : PALETTE.fire);
   }
+  // A body arriving on a body. A man out of your mouth kills whoever he lands on and carries on —
+  // he is the weapon. A man off your horns kills too, if he is still travelling at `bodyKillSpeed`
+  // when he gets there: two men standing shoulder to shoulder used to be the safe place in the room,
+  // because the first one bowled the second over and both stood up, and that read as the game saying
+  // a man is not part of the room. He is. And at the speed a wall kills at, the one who was thrown
+  // is as dead as the one he was thrown at.
   flungHits(f, other, nx, ny) {
-    if (f.thrown && other.kind !== 'butcher') { other.die(this, 'splat', nx, ny); f.vx *= 0.55; f.vy *= 0.55; }
-    else if (other.kind === 'butcher') { other.state = 'stagger'; other.timer = 0.3; f.vx *= -0.3; f.vy *= -0.3; }
-    else {
-      other.state = 'floored'; other.timer = TUNING.bearer.flooredTime; other.aware = true;
-      other.vx = f.vx * 0.5; other.vy = f.vy * 0.5; f.vx *= 0.5; f.vy *= 0.5;
-      other.x += nx * 4; other.y += ny * 4;
-      this.audio.sfxThud();
+    const ph = TUNING.physics, spd = Math.hypot(f.vx, f.vy);
+    if (other.kind === 'butcher') { other.state = 'stagger'; other.timer = 0.3; f.vx *= -0.3; f.vy *= -0.3; return; }
+    if (f.thrown || spd > ph.bodyKillSpeed) {
+      other.die(this, 'splat', nx, ny);
+      if (!f.thrown && spd > ph.splatSpeed && !f.dead) { f.die(this, 'splat', -nx, -ny); return; }
+      f.vx *= f.thrown ? 0.55 : 0.45; f.vy *= f.thrown ? 0.55 : 0.45;
+      return;
     }
+    other.state = 'floored'; other.timer = TUNING.bearer.flooredTime; other.aware = true;
+    other.vx = f.vx * 0.5; other.vy = f.vy * 0.5; f.vx *= 0.5; f.vy *= 0.5;
+    other.x += nx * 4; other.y += ny * 4;
+    this.audio.sfxThud();
   }
   // The brazier something is up against, or null. Truthy, so the old boolean callers still read.
   touchingBrazier(e) {

@@ -55,19 +55,20 @@ it out instead, and the first screen is a menu.
 |---|---|
 | WASD / left thumb | Move. Momentum-heavy: 0.15 s to top speed, 0.25 s to stop. Faster than any cultist. |
 | Mouse / auto-aim | Aim. On touch the aim follows your run and snaps onto men within about five tiles. |
-| Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.44 s recovery, no cancel. Deliberately blunt out of the pen: short reach, little throw behind it, and long enough on the end that a second man walks in on it. |
+| Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.38 s recovery, no cancel. Deliberately blunt out of the pen: short reach, little throw behind it, and long enough on the end that a second man walks in on it. A man thrown into a man standing next to him kills him, and dies with him if he arrived fast enough. |
 | Hold right click / GRAB | Carry a box, a blade or a shield. **A man is a soul away** — until BY THE COLLAR is swallowed the mouth takes objects and nothing else. |
 | Release | Throw. A thrown man kills what he hits and dies on the wall. Your mouth is then empty for about 1.3 s. |
-| E / ROLL | Nothing at all until TUCK AND ROLL. Then: a clumsy sideways tumble, brief mercy frames, a stagger you must eat, about 1.3 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. |
+| E / ROLL | A clumsy sideways tumble, brief mercy frames, a stagger you must eat, about 1.3 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. The one verb that is whole out of the pen; **DEAD WEIGHT** is what its soul buys, and everything the tumble goes through loses its head. |
 | Space / BAAH | A noise. Every man who hears it walks to the spot you made it at, which empties one end of a room and fills the other. **THE FULL THROAT** turns it into a blow that dazes everyone in earshot; **DRAGON BREATH** turns it into fire. You get one of the two. |
 
-**Three of the four buttons start half-shut, and the souls open them.** A goat out of a pen can run,
-put his head into things, pick up what is lying about, and shout — that is the whole animal. He cannot
-dodge, he cannot carry a grown man, and his voice is a voice and not a weapon. Each of those is a soul,
-and the bare headbutt is blunt enough that LONG HORNS and IRON SKULL are felt rather than noticed. The
-run starts weak on purpose: the power fantasy is the climb, and there is nothing to climb from if the
-first room already hands you everything. The rail says which half you have — `THINGS` before GRAB,
-`CALL` before BAAH, `LOCKED` before ROLL — so a dark chip is a promise rather than a missing feature.
+**Two of the four buttons start half-shut, and the souls open them.** A goat out of a pen can run, put
+his head into things, get out of the way, pick up what is lying about, and shout — that is the whole
+animal. What he cannot do is carry a grown man, and his voice is a voice and not a weapon. Each of
+those is a soul, and the bare headbutt is blunt enough that LONG HORNS and IRON SKULL are felt rather
+than noticed. The run starts weak on purpose: the power fantasy is the climb, and there is nothing to
+climb from if the first room already hands you everything. The rail says which half you have —
+`THINGS` before GRAB, `CALL` before BAAH — so a half-lit chip is a promise rather than a missing
+feature. The keys are written under the chips; what a verb does is a sentence the pointer brings up.
 
 Four hearts, no regeneration, one life per level. A new level puts every heart back. Blood smears the
 coat as you take hits, so health reads on the character as well as in the corner.
@@ -379,8 +380,14 @@ the sum of them, and BEST on the first screen keeps the best score and the best 
 the best whole run. NEW GAME wipes the run and never the board.
 
 **Sound.** A pad, a walking bass and a phrygian motif under synthesised ritual percussion that escalates
-with how many enemies are aware of you, plus a metallic shaker whenever a Hunter has you. The motif only
+with how many enemies are aware of you — the motif and the toms at three, the kick and the hats at
+seven, the whole kit past that — plus a metallic shaker whenever a Hunter has you. The motif only
 enters once somebody knows you are there. No audio assets at all.
+
+**What you can see.** A room is dark until you walk into it and then it stays open for good; on top of
+that, what is standing behind a pillar, a stub wall or the corner of a room is dark until you step round
+to where it can be seen from. Nothing is taken out of the simulation by either — a man in the dark hears
+you, comes for you, and arrives.
 
 ---
 

@@ -1,6 +1,13 @@
 // World: tile grid, fire simulation, line of sight, flow field for chasing, noise events, persistent decals.
 const DECAL_SCALE = 0.34;
 
+// The eight octants a shadowcast is split into: [xx, xy, yx, yy] for each. One pass of the same
+// routine per octant is the whole of the algorithm.
+const VIS_OCTANTS = [
+  [1, 0, 0, -1], [0, 1, -1, 0], [0, -1, -1, 0], [-1, 0, 0, -1],
+  [-1, 0, 0, 1], [0, -1, 1, 0], [0, 1, 1, 0], [1, 0, 0, 1],
+];
+
 // Blocky cult pictograms, drawn cell by cell so they read as stamped pixel art.
 const CULT_GLYPHS = [
   ['#.......#', '.#.....#.', '..#####..', '.##...##.', '##..#..##', '.##...##.', '..#####..', '...#.#...', '..#...#..'],
@@ -27,6 +34,10 @@ class World {
     this.dctx = this.decal.getContext('2d');
     this.dctx.scale(DECAL_SCALE, DECAL_SCALE);
     this.fireSfxTimer = 0;
+    // What the goat can see from where he is standing. One byte a tile, rebuilt every step by
+    // `computeVis`, and the box it last filled so the clear costs the same as the cast.
+    this.vis = new Uint8Array(n);
+    this.visBox = null;
     this.paintGlyphs(level);
   }
 
@@ -278,6 +289,62 @@ class World {
     }
     e.wallHit = hit;
     return impact;
+  }
+
+  // ---------- what can be seen from where he is standing ----------
+  // Symmetric recursive shadowcasting over the eight octants. A room is opened by walking into it
+  // and never closes again — that is `room.seen`, and it is the other half of the fog. This is the
+  // half that moves: a partition, a pillar or the corner of a stub wall keeps what is behind it dark
+  // until he steps round to where it can be seen from. `vis` is one byte a tile and the renderer
+  // paints everything outside it down; nothing else in the game reads it, so the cult's own eyes are
+  // untouched — a man behind a pillar can still hear you.
+  computeVis(px, py, radius) {
+    const v = this.vis, W = this.W, H = this.H;
+    // Clear only what the last pass lit: the world is 420 by 78 tiles and this runs every step.
+    const b = this.visBox;
+    if (b) for (let y = b.y0; y <= b.y1; y++) v.fill(0, y * W + b.x0, y * W + b.x1 + 1);
+    const cx = Math.floor(px / TILE), cy = Math.floor(py / TILE);
+    this.visBox = { x0: Math.max(0, cx - radius), y0: Math.max(0, cy - radius),
+      x1: Math.min(W - 1, cx + radius), y1: Math.min(H - 1, cy + radius) };
+    if (cx < 0 || cy < 0 || cx >= W || cy >= H) return;
+    v[cy * W + cx] = 1;
+    // He can always see the ring of tiles he is standing in the middle of, wall or not: a goat with
+    // his nose against a partition is not blind, he is against a partition.
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const tx = cx + dx, ty = cy + dy;
+      if (tx >= 0 && ty >= 0 && tx < W && ty < H) v[ty * W + tx] = 1;
+    }
+    for (const m of VIS_OCTANTS) this.castVis(cx, cy, 1, 1, 0, radius, m[0], m[1], m[2], m[3]);
+  }
+  castVis(cx, cy, row, start, end, radius, xx, xy, yx, yy) {
+    if (start < end) return;
+    const v = this.vis, W = this.W, H = this.H, r2 = radius * radius;
+    let newStart = 0;
+    for (let i = row; i <= radius; i++) {
+      let blocked = false;
+      for (let dx = -i, dy = -i; dx <= 0; dx++) {
+        const tx = cx + dx * xx + dy * xy, ty = cy + dx * yx + dy * yy;
+        const lSlope = (dx - 0.5) / (dy + 0.5), rSlope = (dx + 0.5) / (dy - 0.5);
+        if (start < rSlope) continue;
+        if (end > lSlope) break;
+        const inside = tx >= 0 && ty >= 0 && tx < W && ty < H;
+        if (dx * dx + dy * dy <= r2 && inside) v[ty * W + tx] = 1;
+        const solid = !inside || this.isSolid(tx, ty);
+        if (blocked) {
+          if (solid) { newStart = rSlope; continue; }
+          blocked = false; start = newStart;
+        } else if (solid && i < radius) {
+          blocked = true;
+          this.castVis(cx, cy, i + 1, start, lSlope, radius, xx, xy, yx, yy);
+          newStart = rSlope;
+        }
+      }
+      if (blocked) break;
+    }
+  }
+  seesTile(tx, ty) {
+    if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return false;
+    return this.vis[ty * this.W + tx] === 1;
   }
 
   los(x0, y0, x1, y1) {
