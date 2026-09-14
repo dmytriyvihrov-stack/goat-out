@@ -10,6 +10,55 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ---
 
+## 14 September 2026 — Max's first sitting, with 1.5
+
+**Where this batch went: all of it shipped in 1.6 except the scream, which was already done.**
+Somebody playing it for the first time, watched. `CHANGELOG.md` carries what each one turned into; the
+entries stay here because what a first-time player did not work out is worth keeping.
+
+### feel — he did not work out that the men could be hit
+
+Read both rooms of writing on the floor, walked past the first clubman without trying anything, and got
+a long way in still treating the men as terrain. Shipped as two changes at once: the first man of the run
+is a sentry who holds his post so there is something safe to try it on, and the word for the button is
+painted on the floor of that same room. **The general lesson: a control room with nothing in it teaches
+the button and not the verb.** Anything else the game wants to teach wants a thing in the room to use it
+on, in the same room as the words.
+
+### number — the brute arrived second
+
+Met the man with three hearts as the second enemy of the run. Level one is twelve rooms now and he comes
+four ordinary rooms after the first clubman, which is the rule the introduction order was supposed to
+have all along: `planEncounters` will honour any `introduce` fraction, so this is a `tuning.js` number
+and not a mechanism.
+
+### bug — seen through a wall
+
+A shut door was see-through to a man and a wall to the goat. Fixed in 1.6. **Not fixed, and deliberately
+so: a man still hears you through stone.** If that comes back as a complaint the answer is probably to
+attenuate `emitNoise` by path rather than by line — but the noise system is the entire counterplay to the
+sight cone, and taking it out would make walking up behind a man free.
+
+### number — the Butcher's damage radius
+
+Halved, to the square foot. Left alone: the charge, which is the thing that is supposed to cover ground.
+
+### number — the scream's stun radius — already done, not cut again
+
+Asked for with "if it was cut before, no need to cut it twice". It was: twelve tiles to eight and a half
+in 1.2. Left at 8.5. If it comes back a third time the number to look at is probably the stun *duration*
+(`goat.scream.stun`, 0.9s) rather than the radius, because what reads as "too big" in a room of four men
+is usually how long they all stand there.
+
+### system — rooms built round their traps
+
+Shipped in 1.6 as four templates and a `traps` count per level. **What is still not there:** a trap room
+on THE THRESHING FLOOR or THE RAFTERS, both of which draw from their own pool and would need trap
+templates written to their shapes (wide and open; narrow and full of holes). And no trap room uses a
+drop, because drops only exist in the `high` pool.
+
+---
+
 ## 14 September 2026 — a long sitting with 1.3
 
 **Where this batch went: all of it shipped in 1.4 except two.** The soul barrier was asked for and

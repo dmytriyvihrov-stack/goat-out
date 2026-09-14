@@ -364,10 +364,11 @@ class World {
     }
   }
   ignitePx(x, y, force) { return this.ignite(Math.floor(x / TILE), Math.floor(y / TILE), force); }
-  // A round pool of flame, used by a smashed oil lamp.
-  ignitePool(x, y, radiusTiles, witch) {
+  // A round pool of flame: a smashed oil lamp, a Seer's rune, or coals knocked out of a brazier.
+  // `dur` overrides how long it burns; without it a pool lasts `fire.pool`, witchfire `fire.witch`.
+  ignitePool(x, y, radiusTiles, witch, dur) {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), r = Math.ceil(radiusTiles);
-    const dur = witch ? TUNING.fire.witch : undefined;
+    if (!dur) dur = witch ? TUNING.fire.witch : undefined;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       if (Math.hypot(dx, dy) <= radiusTiles) this.ignite(cx + dx, cy + dy, true, dur, witch);
     }

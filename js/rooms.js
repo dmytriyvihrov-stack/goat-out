@@ -4,6 +4,7 @@
 // 'e' bearer spawn  'r' hunter spawn (bearer if level has no hunters)  'X' butcher spawn
 // 'R' always a rifle where the level has them  'm' seer spawn  'M' the Mill's hub
 // 'O' a drop: a hole in the boards where it sits in the floor, a window where it sits in a wall
+// 'S' a spike plate: floor until the goat crosses it, and then teeth
 // Rooms are randomly flipped on both axes at generation time.
 // A template with a `tag` is only drawn by a level whose `pool` matches it; untagged ones are the
 // default pool every other level uses.
@@ -350,6 +351,75 @@ const ROOM_TEMPLATES = [
     '#..r.................#',
     '#....................#',
     '###OO#####OO#####OO###',
+  ]},
+  // ---- TRAP ROOMS: the room is the weapon, tagged 'trap'. ----
+  // An ordinary room gives you furniture and asks you to work out what to do with it. These four
+  // are built the other way round: the shape is already a kill and what you have to work out is how
+  // to be on the right side of it. A level asks for `traps` of them and the generator drops them
+  // into ordinary rooms; a template that `needs` a thing the level does not have is never drawn, so
+  // no floor grows teeth on a level whose floor does not.
+  // Coals and hay, and lanes between them. A headbutt spills a bowl across the lane in front of it
+  // and the straw carries it the rest of the way: this is a room you can close a half of.
+  { name: 'coalrow', tag: 'trap', rows: [
+    '################',
+    '#..............#',
+    '#.hh.B....B.hh.#',
+    '#.hh........hh.#',
+    '#....e....e....#',
+    '#.B....oo....B.#',
+    '#....r....e....#',
+    '#.hh........hh.#',
+    '#.hh.B....B.hh.#',
+    '#..............#',
+    '################',
+  ]},
+  // A wall of straw down the middle with one gap in it, and a bowl of coals at each lip of the gap.
+  // Nothing here blocks anybody until you light it, and then the room has one door and you choose
+  // which side of it everyone is standing on.
+  { name: 'firebreak', tag: 'trap', rows: [
+    '##################',
+    '#................#',
+    '#..e...hh...e....#',
+    '#......hh........#',
+    '#..o...hB........#',
+    '#................#',
+    '#................#',
+    '#......hB....o...#',
+    '#......hh........#',
+    '#..r...hh...e....#',
+    '#................#',
+    '##################',
+  ]},
+  // Two banks of teeth across the room and a clear lane between them. Only the goat arms a plate,
+  // so the room is a question about which way you run: cross a bank and whoever is on your heels
+  // crosses it a beat later, when it is no longer floor.
+  { name: 'teeth', tag: 'trap', needs: 'spikes', rows: [
+    '####################',
+    '#..................#',
+    '#..e............e..#',
+    '#......SSSSSS......#',
+    '#..................#',
+    '#..P..o......o..P..#',
+    '#..................#',
+    '#......SSSSSS......#',
+    '#..r............e..#',
+    '#..................#',
+    '####################',
+  ]},
+  // The same idea turned ninety degrees: three lanes, and the two that divide them bite. Tables in
+  // the corners so the lanes are the only quick way through and the plates are on the quick way.
+  { name: 'mangle', tag: 'trap', needs: 'spikes', rows: [
+    '################',
+    '#..............#',
+    '#.tt........tt.#',
+    '#.tt.S....S.tt.#',
+    '#....S....S....#',
+    '#..e.S.oo.S..e.#',
+    '#....S....S....#',
+    '#.tt........tt.#',
+    '#.tt...r....tt.#',
+    '#..............#',
+    '################',
   ]},
 ];
 

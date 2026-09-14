@@ -5,6 +5,86 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.6 — the first ten minutes
+
+**Watching somebody play it for the first time.** He read two rooms of writing about a headbutt,
+walked past the first clubman without trying it, met the man with three hearts as the second enemy
+of his life, and found the hearts and the cooldowns in the corner of the screen somewhere after the
+level had ended. None of that is a bug. All of it is the first ten minutes not doing its job.
+
+- **The first man of the run stands still.** He is posted a few tiles inside the mouth of the room
+  with his back to the door, he is the only man in it, and he does not walk: he turns to face you, he
+  swings if you come inside his arm, and he waits. A man charging you is not a man you can try a new
+  button on. He is there to be walked round, hit, knocked over, hit into a wall — and the floor under
+  him says **BUTT HIM** and what the button is, because two rooms of words about a headbutt with
+  nothing to use it on turned out not to add up to *the men can be hit*.
+- **The brute comes later.** He used to be the second enemy on the level and the room before his own
+  arena, which is no time at all in which to have learned what a headbutt is for. Level one is twelve
+  rooms now instead of ten, and the order is: a clubman on his own, a room of clubmen, the wheel, a
+  hound, a room of both, and *then* the man who takes more than one hit, four rooms of ordinary work
+  after the first one.
+- **Nobody sees through a shut door any more.** A door is a wall with hinges, and a man on the far
+  side of one could see straight through it and come round for you — which from where you were
+  standing was being seen through stone. Sight now stops at a shut door, at the gong and at the hub of
+  the wheel, the same way a blow does. Everything else in a room — a table, a lamp post, a bowl of
+  coals, the bars of a pen — you can still see past, and so can he. He can still *hear* you through a
+  wall, and running is still loud: that is the part of it that is meant to be there.
+- **The cleaver is a cleaver, not a room.** The Butcher's swing reached two and a half tiles out from
+  a body already twice the size of a man's, through a hundred and twenty degrees, so you were hit by
+  a blow that plainly finished nowhere near you. Two tiles and ninety-nine degrees now — half the
+  ground, to the square foot. He still out-reaches a clubman, which is the only thing that number was
+  ever for, and he still has the charge for everything further out than that.
+- **Rooms that are about the floor.** Four new room shapes where the trap is the point rather than
+  the furniture: hay and coals with lanes between them, a straw wall with one gap in it and a bowl of
+  coals at each lip, two banks of teeth with a clear run between them, and three lanes of which two
+  bite. A level asks for a count of them and they land in its ordinary rooms — never the pen, never a
+  set piece, and never the room that introduces a kind, because a hound and a floor full of teeth in
+  the same room means meeting neither.
+- **The corner of the screen is bigger.** The hearts, the skill rail, the count and the clock are up
+  by a third. They were sized to stay out of the way and managed it too well.
+
+The scream's radius is unchanged: it was already cut from twelve tiles to eight and a half back in
+1.2, and cutting it twice for the same report would take the answer to a pack away from it.
+
+---
+
+## 1.5 — the room answers
+
+**Everything that flies through a room now meets the room.** Until now only a man did: a pot went
+through a shut door, a blade went through a brazier, a body thrown at a lamp post died on it as if it
+were stone, and a Butcher's charge slid off furniture like a man walking. The rule is one rule now —
+whatever is moving at speed hits what is standing there, and what is standing there does what it does.
+
+- **Coals.** A headbutt on a brazier knocks a spill of coals out of the far side of it: a tile of fire
+  a beat long, a line you draw across a doorway, and the bowl needs three seconds to build its heat
+  back — the flame drops and climbs so you can read when it is ready. A body thrown into a brazier
+  does the same, so a man thrown into one lights the floor beyond it as well as himself. The brazier
+  was the one thing in the room you could only use by putting a man in it; now it is a thing you use
+  with your head, and EMBER COAT walks through what it makes.
+- **A lamp post is not a pillar.** A body arriving at speed takes it over and the oil goes down where
+  the body is about to land, so a man headbutted into a lamp is a man headbutted into a fire. A pot or
+  a thrown blade does the same to it, which is how you start a fire across a room without crossing it.
+  And fire that reaches a lamp post — hay burning up to one — takes the lamp with it.
+- **Nothing flies through a shut door.** A pot breaks on it, a blade snaps on it the way it snaps on
+  stone, a shield rings off it, and a table sliding at speed takes it off its hinges. A gong hit by any
+  of them rings.
+- **The Butcher's charge is a thing the room answers.** A door comes off its hinges and he keeps
+  going; a table goes ahead of him at speed, into whoever was standing behind it; a lamp goes over and
+  he runs into his own oil; a brazier lights him; and the gong, the hub of the Mill or a bar of the pen
+  stops him the way a wall does, for the same free hit.
+- **A man in your mouth is in the room.** Walk him into a brazier and he lights and comes out of it.
+  Hold him into the arm of the Mill and the wheel takes him out of your mouth and throws him for you.
+  Stand him over a plate as the teeth come and they take him. Fire already did not care that he was
+  being carried; now nothing in the room does.
+- **The drop takes what lands on it.** A pot, a blade, a shield or a table that comes to rest over a
+  hole goes down it — no shards, nothing on the floor — the way a man does. `CONCEPT.md` already said
+  anything thrown through one was gone; only the men were.
+- **The panic roll never ends in a hole.** It already refused walls, fire, braziers and the wheel; a
+  drop is worse than a wall, because a wall stops the tumble and a hole charges a heart for it. A
+  plate lying flat no longer counts as a place it must not end, either — flat, it is floor.
+
+---
+
 ## 1.4 — a seventh level, a floor that opens, and a shield that is a shield
 
 **THE RAFTERS, and the floor stops being a promise.**

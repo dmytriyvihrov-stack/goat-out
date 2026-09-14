@@ -236,23 +236,34 @@ top-down game explains itself.
 ## The world fights too
 
 - **Walls and pillars** are the kill surfaces.
-- **Braziers** set men alight; they run, scream and die, lighting whatever they cross.
+- **Braziers** set men alight; they run, scream and die, lighting whatever they cross. A headbutt on
+  one — or a body arriving at speed — knocks a spill of coals out of the far side of it: a tile of fire
+  a beat long, a line drawn across a doorway, and the bowl takes three seconds to build its heat back.
+  The flame drops and climbs so you can read when it is ready.
 - **Witchfire** is the Seer's. His rune erupts into violet flame that lights its own colour, leaves its
   own scorch and burns through Ember Coat, which turns away every ordinary fire in the building.
 - **Hay** spreads fire tile to tile and burns down to ash.
-- **Pots** break on use and make noise.
-- **Bells** call the entire level.
+- **Pots** break on use and make noise. Thrown, one breaks on the first thing it meets — a man, a shut
+  door, a gong — and a pot into a lamp post takes the lamp over, which is how you start a fire across
+  a room without crossing it.
+- **Bells** call the entire level, and ring for anything that hits them.
 - **Doors** block corridors and take three blows. The goat goes through on the third and floors whoever
   waited behind it; cultists who pile up eventually shoulder them open from their side. Two extra beats
   of being held still in a corridor, with whatever heard the first blow already coming, is what the
-  door is for.
+  door is for. Nothing flies through a shut one: a pot breaks on it, a blade snaps on it, a shield
+  rings off it. A table sliding at speed, or a Butcher on a charge, takes it off its hinges.
 - **Spike floors**, from the third level on. The teeth come up where you have already been: crossing a
   plate arms it and it bites a beat later, so what it takes is the ground you have just left — which is
-  the ground whoever is chasing you is standing on. A man dies on them and the goat pays a heart.
+  the ground whoever is chasing you is standing on. A man dies on them and the goat pays a heart, and
+  a man held over one as the teeth come is taken out of your mouth by them.
 - **Drops** — holes in the floor and windows in the walls — on the level that has them. Anything thrown
-  through one is gone; walking into one costs a heart and puts you back where you stepped off.
-- **Tables** slide when headbutted and carry men into the wall behind.
-- **Oil lamps** topple into a pool of fire.
+  through one is gone — a man, a pot, a blade, a shield, a table that comes to rest over it; walking
+  into one costs a heart and puts you back where you stepped off. The panic roll never ends in one.
+- **Tables** slide when headbutted and carry men into the wall behind. At speed one takes a shut door
+  off its hinges, and stops on anything a man would: a brazier, the wheel, another table.
+- **Oil lamps** topple into a pool of fire, and a lamp post is not a pillar: a body thrown into one
+  takes it over and the oil goes down where the body is about to land. So does a pot, a thrown blade,
+  a Butcher on a charge, or fire that has burned its way up to the post.
 - **Stands of arms** hold a sword or a shield, and they are rare: one to an arena, about one ordinary
   room in six, and nothing at all on level 1 until halfway in. Nothing you take off one survives being
   used. A thrown blade goes into whatever it finds and snaps there, and a blade thrown at a wall is a
@@ -262,8 +273,14 @@ top-down game explains itself.
   stands there holding the shock of it. His back is still his back. Neither blade nor shield is picked
   up twice, so a stand is a moment the room offers you rather than a tool you carry through the level.
 - **The Mill** is a ritual grinding wheel with two sweeping arms. It flings cultists to their deaths and
-  takes a heart off you. It does not care whose side anyone is on. Its room is deliberately taller than
-  the arms are long: there is a lane along the top and the bottom, so the room is crossed by reading it.
+  takes a heart off you. It does not care whose side anyone is on — a man held out in front of you is a
+  man held into the arm, and the wheel takes him out of your mouth and throws him for you. Its room is
+  deliberately taller than the arms are long: there is a lane along the top and the bottom, so the room
+  is crossed by reading it.
+- **The Butcher's charge** is answered by all of it. A door comes off its hinges and he keeps going; a
+  table goes ahead of him at speed, into whoever was behind it; a lamp goes over and he runs into his
+  own oil; a brazier lights him; and the gong, the hub of the wheel or a bar of the pen stops him the way
+  a wall does, for the same free hit.
 - **The pen** in the first room takes seven blows, and two of them put the goat on the floor.
 
 ---

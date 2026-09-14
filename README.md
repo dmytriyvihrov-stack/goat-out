@@ -113,9 +113,12 @@ scream: a hound loses far longer to BAAH than a man does, and a dazed hound cann
 Breath turns the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Devour lets you
 tear a held man open for a chance to heal. Boons last the run and die with you.
 
-**A room that fights back.** Braziers, spreading hay fire, breakable pots, a bell that calls the level,
-doors you smash through, tables that slide and crush, oil lamps that spill fire, and the Mill — a
-ritual grinding wheel whose arms fling cultists to their deaths and take a heart off you.
+**A room that fights back.** Braziers that spill coals when you headbutt them, spreading hay fire,
+breakable pots, a bell that calls the level, doors you smash through, tables that slide and crush, oil
+lamps that go over — under a thrown man, a thrown pot, or a Butcher on a charge — and spill fire, and
+the Mill — a ritual grinding wheel whose arms fling cultists to their deaths and take a heart off you.
+Everything that flies through a room meets the room: nothing goes through a shut door, and a man in your
+mouth burns, gets thrown by the wheel and bitten by the spikes like anybody else.
 
 **Stands of arms.** A rack with a sword or a shield in it, sometimes one or two to a room and always two
 in a boss room. Grab what is in it and throw: a thrown sword goes through the first man it finds and

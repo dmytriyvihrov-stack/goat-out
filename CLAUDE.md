@@ -87,6 +87,20 @@ the cone was for; what is left of it is `TUNING.ai.feel`, a couple of pixels pas
 being walked into counts as being seen. A `watchful` man (the killbox) has no cone at all and a wraith
 needs no eyes. What gives the goat away behind a man is the noise system, which already turns a man to
 face what he heard: running emits `noise.footstep` above a walk, and everything loud is loud on purpose.
+The line itself is `game.sees`, not `world.los`: stone, plus the short list in `game.sightBlockers` — a
+shut door, the gong, the hub of the wheel — each tested as a circle against the segment the way
+`reaches` tests a blow. `Prop.opaque` is the getter, and the set is deliberately small: a door is a wall
+with hinges and a man used to spot you straight through one, but a table, a lamp post, a bowl of coals
+and the bars of a pen are all things you can see over, and making them cover would be a stealth system
+rather than a fix. Both `sees` and `reaches` are `clearLine` with a different prop list and a different
+getter.
+
+**A man who does not walk.** `enemy.sentry` is the first man of a run on level one (`levelDef.sentryIntro`,
+placed by `postSpot` a few tiles inside `room.enter` with his back to the door). `chaseGoat` turns him to
+face the goat and returns without moving, `idleWander` leaves his facing alone and `investigate` puts him
+straight back to idle — so he is the only man in the game you get to choose the moment of the fight with.
+Everything else about him is a clubman: windup, swing, recovery, two hearts of nothing, killed by geometry
+like anybody. He is a teaching device and there is exactly one of him per run.
 
 **Dazed.** `enemy.daze(game, seconds)` is the scream's whole effect: the man freezes, whatever he was
 winding up is cancelled, and stars orbit his head. It is a timer, not a state, so the flung / floored /
@@ -157,10 +171,33 @@ Give it a `skill` (`butt` / `grab` / `roll` / `scream`) and it hangs off that bu
 cooldown, and what the tomes did to each. `skillIcon` draws each verb from `game.mods`, so an icon has to
 change when a boon lands — Long Horns lengthens the horns on the icon and on the goat, Dragon Breath turns
 the mouth into a cone, Loose Joints adds a second turn to the roll. Add a boon, draw its effect here.
+The whole top band — the level name, the hearts, the rail, the count, the clock, the tome list — is sized
+by `renderer.hs`, which is `ts` times `TUNING.hud.scale`. That is the one number to turn if the corner of
+the screen is not being read; the cards, the menu and the floor text are on `ts` and stay where they are.
 
 **Cooldowns.** Headbutt has none (its recovery is the cost). Throw does: `goat.grabCd`, set on every way a
 man leaves your mouth, so grab is not a button you hold. Roll has its own. Both show on the rail and as
 rings on the touch buttons; both read `game.mods`, never `TUNING`, at the use site.
+
+**The room is real to what flies through it.** `Prop.hitProp(game, nx, ny)` is the one place a moving
+prop — a thrown pot, a thrown blade or shield, a sliding table — meets the furniture: a lamp topples in
+the direction it was hit, a gong rings, and anything else pushes the mover out and is as solid as stone
+(a pot shatters, a sword snaps, a shield bounces, a table stops, or takes a door off if it is at
+`table.killSpeed`). Bodies get the same treatment in `collideEntities`: a flung man arriving above
+`lamp.knock` topples the lamp instead of dying on it, and a Butcher in state `'charge'` smashes a door
+(`smash(..., by)` spares him the fling), shoves a table (`shove(..., by)` stops it turning on him),
+topples a lamp, lights on a brazier, and is `chargeStopped` — the wall stun — by anything else. Anything
+that comes to rest over a `T.PIT` calls `Prop.fall`, which is the silent version of `snap`.
+
+**Coals.** `Prop.spill(game, ax, ay)` is the brazier's verb: a headbutt, a body arriving above
+`physics.knockHitSpeed` (from the flung branch of `Enemy.update`) or a charge knocks a short pool —
+`ignitePool` with `prop.brazier.spillTime` — out of the far side. `spillCd` gates it and `drawPropBody`
+scales the flame by it, so the bowl reports its own cooldown. `game.touchingBrazier` returns the
+brazier rather than a boolean; every old caller still reads it as truthy.
+
+**A held man is in the room.** The held branch of `Enemy.update` checks `touchingBrazier` as well as
+the tile; `Prop.updateMill` and `Prop.bite` no longer skip `held` and take him out of `goat.holding`
+themselves, setting `grabCd` as `ignite` does. Nothing in the room may treat a carried man as absent.
 
 **Fire is handed on once.** A burning man who touches another lights him in `game.passFire`, called
 from the enemy-vs-enemy pass in `collideEntities`. `ignite(game, witch, fromMan)` marks the man it lit
@@ -230,6 +267,15 @@ because an edge you can walk a long way round is not an edge. THE THRESHING FLOO
 the room borders it passes through — that is the mechanism behind "fewer walls", and it is why the level
 needs furniture (posts, tables, braziers, hay) to keep kills coming from geometry.
 
+**Trap rooms.** `tag: 'trap'` is a pool of its own, drawn *into* a level's ordinary rooms rather than
+instead of them: `levelDef.traps` is a count, `pickTrapRooms` chooses the indices (never the pen, the
+control rooms, a set piece, or the first two ordinary rooms, which are where kinds get introduced) and
+the room carries `isTrap`. `planEncounters` still buys its men off the curve but never introduces a kind
+in one — `plain` is `ordinary` minus the trap rooms — and the random spike scatter skips them, because a
+shape on the floor plus three plates thrown on top of it is not a shape any more. A template may declare
+`needs: 'spikes'`, and is then only drawn by a level whose `levelDef.spikes` is set, so no floor grows
+teeth on a level whose floor does not. `'S'` in a template is a plate, the way `'B'` is a bowl of coals.
+
 **The pen.** Cage bars are ordinary `Prop`s of kind `cage`, built by `buildCage` in `gen.js` and exempt
 from the three-tile prop clearance around the start. It takes `prop.cage.hits` blows — seven — and one
 headbutt can reach two or three bars at once, so `breakCage` counts blows and not bars by gating on
@@ -261,6 +307,12 @@ lying floored. `game.mistTold` is the only tutorial it gets.
 **Goat stun.** `goat.state === 'stunned'` is a real state, not a render pose: `Goat.update` returns early
 while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` draws the stars over it.
 `game.stunGoat(seconds)` is the only way in, and the pen is the only thing that uses it.
+
+**Words on the floor.** `CONTROL_LINES` in `render.js` holds three blocks and `level.controls` says where
+each goes. Blocks 0 and 1 are the two empty rooms after the pen; block 2 is the room that holds the first
+man of the run (`lessonRoom` in `gen.js`), and it exists because two rooms of writing about a headbutt
+with nothing in them to use it on did not add up to *the men can be hit*. Each block has a keyboard and a
+touch wording; add a line to one and add it to both.
 
 **The first screen.** State `title`, drawn entirely by `drawTitle` and holding three buttons and nothing
 else: the opening scene tells the story and the floor of level 1 teaches the buttons, so the menu
@@ -434,6 +486,11 @@ in `localStorage` by an earlier test is what CONTINUE offers — `game.clearRun(
 - `H.freeze()` freezing the very enemy under test. Use `H.freeze(target)` to spare one.
 - Reading the console and seeing errors from *before* the last reload. The buffer is not cleared by
   navigation. Install a fresh counter and wait, rather than trusting the tail of the buffer.
+- A test `Prop` of kind `mill` keeps sweeping after `broken = true`: `Prop.update` dispatches to
+  `updateMill` before it looks at `broken`. Splice it out of `game.props` when the scene is done, or
+  the next scene's man is flung sideways by an arm nobody can see and every result downstream lies.
+- Spawning a man a beat before flinging him at something. Aware, he chases the goat in that beat and
+  leaves the line you put him on. Create him and fling him in the same tick.
 
 A fourth trap: `H.startPlay()` leaves the goat in the pen on level 1. Break out first
 (`H.aimAt = {x, y}` at a bar, then `H.headbutt()`) or nothing downstream can move. And the dev spawner

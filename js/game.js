@@ -21,7 +21,7 @@ class Game {
     this.enemies = []; this.props = []; this.bullets = []; this.parts = []; this.floats = []; this.rings = [];
     // What the men have to read in the room: standing fire and the Mill (fixed for the level), and
     // whatever rune is being painted right now (rebuilt each step).
-    this.hazards = []; this.runes = []; this.houndTold = false;
+    this.hazards = []; this.sightBlockers = []; this.runes = []; this.houndTold = false;
     this.cam = { x: 0, y: 0, zoom: 1 }; this.camLead = { x: 0, y: 0 };
     this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0;
     // juice: a directional camera punch, a lens shove, a screen flash and a kill counter
@@ -284,11 +284,15 @@ class Game {
       if (s.champion) { e.elite = true; e.champion = true; e.hp = s.boss ? TUNING.champion.bossHp : TUNING.champion.hp; e.maxHp = e.hp; }
       // A rifle posted to watch a door has no blind side worth walking round.
       if (s.alert) e.watchful = true;
+      // The first man of a run holds his ground: he turns, he swings, he never walks. You get to
+      // choose when the first fight of your life starts, which is the only way it teaches anything.
+      if (s.sentry) { e.sentry = true; e.facing = s.facing || 0; }
       if (s.boss) e.boss = true;
       return e;
     });
     this.props = this.level.props.map((p) => new Prop(p.x, p.y, p.kind, p));
     this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike');
+    this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill');
     this.runes = []; this.houndTold = false;
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null;
     this.tomes = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
@@ -328,7 +332,7 @@ class Game {
   // story and the floor of level 1 carries the controls, so the menu only has to be a way in.
   showTitle() {
     this.state = 'title'; this.card = null; this.level = null; this.world = null; this.goat = null;
-    this.enemies = []; this.props = []; this.bullets = []; this.tomes = [];
+    this.enemies = []; this.props = []; this.bullets = []; this.tomes = []; this.sightBlockers = [];
     this.save = this.loadRun();
     this.best = this.loadBest();
     // A run waiting to be picked up is the likelier intent, so the keyboard starts on it.
@@ -964,8 +968,23 @@ class Game {
         if (d >= min || d === 0) continue;
         const nx = dx / d, ny = dy / d;
         const vn = e.vx * nx + e.vy * ny;
+        // The Butcher's charge is a thing the room answers. A door comes off its hinges and he
+        // keeps going; a table goes ahead of him at speed, into whoever was behind it; a lamp goes
+        // over and he runs into his own fire; a brazier lights him; and anything as solid as a wall
+        // — the gong, the hub, a bar of the pen — stops him the way a wall does.
+        if (e.state === 'charge' && vn < 0) {
+          if (p.kind === 'door') { p.hits = Math.max(p.hits || 0, TUNING.prop.door.hits - 1); p.smash(this, -nx, -ny, e); continue; }
+          if (p.kind === 'table' && !p.flung) { p.shove(this, -nx, -ny, e); continue; }
+          if (p.kind === 'lamp') { p.topple(this, -nx, -ny); continue; }
+          if (p.kind === 'brazier') { p.spill(this, -nx, -ny); e.ignite(this); continue; }
+          if (p.kind === 'bell') p.ring(this);
+          e.chargeStopped(this);
+        }
         if (e.state === 'flung' && p.kind === 'bell' && -vn > 3 * TILE) p.ring(this);
         if (e.state === 'flung' && -vn > TUNING.prop.door.smashSpeed && p.kind === 'door') { p.smash(this, -nx, -ny); continue; }
+        // A lamp post is not a pillar. A body arriving at speed takes it over, and the oil goes
+        // down where the body is about to land.
+        if (e.state === 'flung' && -vn > TUNING.prop.lamp.knock && p.kind === 'lamp') { p.topple(this, -nx, -ny); e.vx *= 0.6; e.vy *= 0.6; continue; }
         if (e.state === 'flung' && -vn > ph.splatSpeed && e !== g) { e.die(this, 'splat', -nx, -ny); continue; }
         if (e === g && p.kind === 'table' && !p.flung) {
           // the goat can shoulder a table along slowly
@@ -996,9 +1015,10 @@ class Game {
       this.audio.sfxThud();
     }
   }
+  // The brazier something is up against, or null. Truthy, so the old boolean callers still read.
   touchingBrazier(e) {
-    for (const p of this.props) if (p.kind === 'brazier' && !p.broken && Math.hypot(p.x - e.x, p.y - e.y) < p.r + e.r + 3) return true;
-    return false;
+    for (const p of this.props) if (p.kind === 'brazier' && !p.broken && Math.hypot(p.x - e.x, p.y - e.y) < p.r + e.r + 3) return p;
+    return null;
   }
 
   // ---------- helpers used by entities ----------
@@ -1022,11 +1042,13 @@ class Game {
   // A swing has to have a way to what it is swinging at. Stone, a pillar, a table, a shut door, the
   // hub of the Mill: whatever is in the way takes the blow instead, and both sides are held to it —
   // a club that comes through a wall reads as the room not being real.
-  reaches(ax, ay, bx, by) {
+  // Line of sight plus a set of props, each as a circle against the segment. `reaches` asks it of
+  // everything that blocks a blow; `sees` asks it of the few things you cannot see over.
+  clearLine(ax, ay, bx, by, props, stops) {
     if (!this.world.los(ax, ay, bx, by)) return false;
     const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
-    for (const p of this.props) {
-      if (!p.blocking) continue;
+    for (const p of props) {
+      if (!p[stops]) continue;
       // How far the prop's centre is off the line, clamped to the segment itself.
       const t = len2 ? clamp(((p.x - ax) * dx + (p.y - ay) * dy) / len2, 0, 1) : 0;
       const px = ax + dx * t - p.x, py = ay + dy * t - p.y;
@@ -1034,6 +1056,10 @@ class Game {
     }
     return true;
   }
+  reaches(ax, ay, bx, by) { return this.clearLine(ax, ay, bx, by, this.props, 'blocking'); }
+  // A shut door is a wall until somebody opens it, and nobody sees through a wall. `sightBlockers`
+  // is the short list of props that could ever be one, so this stays off the per-frame prop loop.
+  sees(ax, ay, bx, by) { return this.clearLine(ax, ay, bx, by, this.sightBlockers, 'opaque'); }
   meleeHit(att, reach, arc, damage, knock, skipGoat) {
     const g = this.goat;
     const inArc = (o) => { const dx = o.x - att.x, dy = o.y - att.y, d = Math.hypot(dx, dy);

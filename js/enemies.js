@@ -20,6 +20,7 @@ class Enemy {
     this.scripted = false; this.knife = false;                  // the two in the opening scene: moved by hand, one with a knife
     this.champion = false;                                      // the brute: three hearts and a frame that says so
     this.watchful = false;                                      // posted to watch a door: no blind side, and he sees further
+    this.sentry = false;                                        // the first man of a run: he holds his ground and never walks
     this.maxHp = this.hp; this.burnHearts = 0;
     // What a rifle can get off while somebody has him by the collar, rolled once and never again:
     // spend them and he is out for good, so re-grabbing is not a way of reloading him.
@@ -187,7 +188,10 @@ class Enemy {
     // stops needing eyes.
     if (!this.watchful && Math.abs(angleDiff(this.facing, ang)) > this.cfg.cone / 2
         && d > this.r + g.r + TUNING.ai.feel) return false;
-    return game.world.los(this.x, this.y, g.x, g.y);
+    // Stone, and the two or three things in a room that are as good as stone. A shut door used to be
+    // see-through to a man and a wall to the goat, which is the one shape of unfairness the cone was
+    // built to prevent: you were stood behind something you could not see past, being seen.
+    return game.sees(this.x, this.y, g.x, g.y);
   }
 
   // Everything in the building that kills whoever walks into it: flame, a lit brazier, a rune about
@@ -271,6 +275,10 @@ class Enemy {
   chaseGoat(game, speed, dt) {
     const g = game.goat, w = game.world;
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
+    // A man on a post does not come and get you. He turns to face you and waits to be walked into,
+    // which is what makes him something you can practise a headbutt on instead of something that
+    // happens to you. Everything else about him — the windup, the swing, the recovery — is normal.
+    if (this.sentry) { this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); return d; }
     if (d < 3.5 * TILE && w.los(this.x, this.y, g.x, g.y)) { this.moveToward(dx, dy, speed, dt, game); return d; }
     const f = w.flowDir(this.x, this.y);
     if (f) this.moveToward(f.x, f.y, speed, dt, game); else this.moveToward(dx, dy, speed * 0.5, dt, game);
@@ -357,7 +365,9 @@ class Enemy {
       }
       // Fire does not care that he is in your mouth, and a mage standing in his own is no exception:
       // whatever catches comes straight out of it, which is the counter to carrying one at all.
+      // A brazier is fire too: walk him into one and he lights the way a thrown man does.
       if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+      if (game.touchingBrazier(this)) { this.ignite(game); return; }
       return;
     }
 
@@ -374,7 +384,10 @@ class Enemy {
       }
       if (impact > 0 && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }
       if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
-      if (game.touchingBrazier(this)) { this.ignite(game); return; }
+      // A body arriving at speed knocks the coals out of the bowl as well as catching from it, so
+      // a man thrown into a brazier lights the floor on the far side of it too.
+      const bz = game.touchingBrazier(this);
+      if (bz) { if (preSpeed > TUNING.physics.knockHitSpeed) bz.spill(game, this.vx, this.vy); this.ignite(game); return; }
       if (Math.hypot(this.vx, this.vy) < TUNING.physics.flungFloorSpeed) { this.state = 'floored'; this.timer = TUNING.bearer.flooredTime; this.flung = false; this.thrown = false; }
       return;
     }
@@ -437,19 +450,26 @@ class Enemy {
     // Mist goes through the wall. That is the point of it, and it is why there is no safe corner
     // on the Ossuary: the only cover on that ground is which way you are facing.
     const impact = this.ghosted ? 0 : w.collideCircle(this);
-    if (this.state === 'charge' && impact > 3 * TILE) {
-      this.state = 'stunned'; this.timer = cfg.stun; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown;
-      game.shake(6); game.audio.sfxSplat(); game.hitstop(0.04); game.floatText(this.x, this.y - 34, 'STUNNED', PALETTE.fireHi);
-      w.emitNoise(this.x, this.y, TUNING.noise.splat);
-    }
+    if (this.state === 'charge' && impact > 3 * TILE) this.chargeStopped(game);
+  }
+
+  // The charge meets something that does not move — stone, a gong, the hub of the wheel — and he
+  // is the one who stops. That beat is the free hit the charge exists to offer.
+  chargeStopped(game) {
+    const cfg = this.cfg;
+    this.state = 'stunned'; this.timer = cfg.stun; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown;
+    game.shake(6); game.audio.sfxSplat(); game.hitstop(0.04); game.floatText(this.x, this.y - 34, 'STUNNED', PALETTE.fireHi);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.splat);
   }
 
   idleWander(dt, game) {
+    this.vx = 0; this.vy = 0;
+    if (this.sentry) return;                    // he was put facing that way on purpose
     this.wander -= dt;
     if (this.wander <= 0) { this.wander = 1 + Math.random() * 3; this.facing += (Math.random() - 0.5) * 2; }
-    this.vx = 0; this.vy = 0;
   }
   investigate(dt, game) {
+    if (this.sentry) { this.target = null; this.state = 'idle'; this.vx = 0; this.vy = 0; return; }
     if (!this.target) { this.state = 'idle'; return; }
     const dx = this.target.x - this.x, dy = this.target.y - this.y, d = Math.hypot(dx, dy);
     if (d < TILE || (this.wallHit && Math.random() < dt * 2)) { this.target = null; this.state = 'idle'; this.vx = 0; this.vy = 0; return; }

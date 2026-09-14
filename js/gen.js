@@ -62,6 +62,9 @@ function planEncounters(levelDef, rooms, rng) {
   // means meeting neither of them.
   const ordinary = fight.filter((r) => !r.arena && !r.isHall && !r.isGallery && !r.isMill && !r.isKillbox);
   if (!ordinary.length) return out;
+  // A trap room still buys its men off the curve, but it never introduces a kind: meeting a hound
+  // and a floor full of teeth in the same room means meeting neither of them.
+  const plain = ordinary.filter((r) => !r.isTrap);
 
   // Hand each new kind a room of its own: start where the level asks for it and walk forward to the
   // first ordinary room nobody has claimed, then backward if the level ran out of room forward.
@@ -71,8 +74,9 @@ function planEncounters(levelDef, rooms, rng) {
     // If an arena on this level is built round that kind, he has to be met in the open first: the
     // first brute you ever see should not be the one with the extra heart standing in the ring.
     const ring = fight.find((r) => r.arena && r.arena.boss === kind);
-    const early = ring ? ordinary.filter((r) => r.index < ring.index) : ordinary;
-    const list = early.length ? early : ordinary;
+    const clean = plain.length ? plain : ordinary;
+    const early = ring ? clean.filter((r) => r.index < ring.index) : clean;
+    const list = early.length ? early : clean;
     const w = Math.min(want, list.length - 1);
     const room = list.slice(w).find((r) => !intro.has(r.index))
       || list.slice(0, w).reverse().find((r) => !intro.has(r.index))
@@ -166,6 +170,12 @@ function tryGenerate(levelDef, seed) {
   const want = levelDef.pool || null;
   const pool = rng.shuffle(ROOM_TEMPLATES.filter((t) => (t.tag || null) === want));
   let poolIdx = 0;
+  // Rooms whose point is the floor rather than the men on it. A template that `needs` something the
+  // level does not have — teeth on a level whose floor has none — is never drawn, so a trap room is
+  // always built out of things this level has already shown you.
+  const trapPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.tag === 'trap' && (!t.needs || levelDef[t.needs])));
+  const trapRooms = pickTrapRooms(levelDef, n, trapPool.length, rng);
+  let trapIdx = 0;
 
   for (let i = 0; i < n; i++) {
     let tpl;
@@ -176,6 +186,7 @@ function tryGenerate(levelDef, seed) {
     else if (i === levelDef.hallAt) tpl = GREAT_HALL_TEMPLATE;
     else if (i === levelDef.galleryAt) tpl = GALLERY_TEMPLATE;
     else if (i === levelDef.killboxAt) tpl = KILLBOX_TEMPLATE;
+    else if (trapRooms.has(i)) tpl = trapPool[trapIdx++ % trapPool.length];
     else tpl = pool[poolIdx++ % pool.length];
     tpl = flipTemplate(tpl, rng);
     const w = tpl.rows[0].length, h = tpl.rows.length;
@@ -184,7 +195,7 @@ function tryGenerate(levelDef, seed) {
 
     const room = { x, y, w, h, tpl, index: i, markers: [], arena,
       isMill: i === levelDef.millAt, isHall: i === levelDef.hallAt, isGallery: i === levelDef.galleryAt,
-      isKillbox: i === levelDef.killboxAt,
+      isKillbox: i === levelDef.killboxAt, isTrap: trapRooms.has(i),
       calm: !!levelDef.showControls && (i === 1 || i === 2) };
     for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
@@ -195,13 +206,16 @@ function tryGenerate(levelDef, seed) {
         else if (c === 'h') t = T.HAY;
         else if (c === 'O') t = T.PIT;
         tiles[wy * W + wx] = t;
-        if ('eoRrmXBbtLMw'.includes(c)) room.markers.push({ tx: wx, ty: wy, c });
+        if ('eoRrmXBbtLMwS'.includes(c)) room.markers.push({ tx: wx, ty: wy, c });
       }
     }
     rooms.push(room);
     if (i > 0) {
-      const door = carveCorridor(tiles, W, rooms[i - 1], room, rng, levelDef.corridorW);
-      if (door && rng.chance(levelDef.doorChance)) props.push({ x: door.x, y: door.y, kind: 'door', vertical: door.vertical });
+      const link = carveCorridor(tiles, W, rooms[i - 1], room, rng, levelDef.corridorW);
+      if (link) {
+        room.enter = link.enter;    // where you walk in, so a room can put something in your way
+        if (link.door && rng.chance(levelDef.doorChance)) props.push({ x: link.door.x, y: link.door.y, kind: 'door', vertical: link.door.vertical });
+      }
     }
     x += w + rng.int(3, 7);
     y += rng.int(-6, 3);
@@ -235,6 +249,9 @@ function tryGenerate(levelDef, seed) {
   // Level one shows the first stand at the halfway mark, so the first half of the run is the goat,
   // his head, and whatever the room was already built out of.
   const racksFrom = Math.round((levelDef.racksFrom || 0) * (n - 1));
+  // The room that holds the first man of the run. Level one stands him in the mouth of it and paints
+  // the word for the button on the floor under him.
+  let lessonRoom = null;
   rooms.forEach((room) => {
     const spots = [];
     const cell = plan.rooms.get(room.index);
@@ -251,6 +268,7 @@ function tryGenerate(levelDef, seed) {
       else if (m.c === 'L') props.push({ x: px, y: py, kind: 'lamp' });
       else if (m.c === 't') { if (m.tx % 2 === 0 && m.ty % 2 === 0) props.push({ x: px + TILE / 2, y: py + TILE / 2, kind: 'table' }); }
       else if (m.c === 'M') props.push({ x: px, y: py, kind: 'mill', phase: rng.float(0, Math.PI * 2) });
+      else if (m.c === 'S') props.push({ x: px, y: py, kind: 'spike' });
       else if (m.c === 'X') room.bossSpot = { x: px, y: py };
       // A pair of stands alternates, so an arena always offers one of each rather than two swords.
       // The killbox's own stand is always the shield: the room is a rifle problem, and the shield is
@@ -273,7 +291,9 @@ function tryGenerate(levelDef, seed) {
     // Spike plates, from the third level on. They go in a short run rather than one at a time: one
     // plate in a room is a curiosity, three across the middle of it is a shape you have to read.
     // Not in the control rooms, not in the pen, and never close enough to a prop to hide under it.
-    if (room.index > 0 && !room.calm && rng.chance(levelDef.spikes || 0)) {
+    // A trap room already laid its own out in a shape; scattering more over the top of it turns the
+    // shape back into noise.
+    if (room.index > 0 && !room.calm && !room.isTrap && rng.chance(levelDef.spikes || 0)) {
       const want = rng.int(2, 4);
       for (let a = 0, placed = 0; a < 60 && placed < want; a++) {
         const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
@@ -285,6 +305,19 @@ function tryGenerate(levelDef, seed) {
       }
     }
     if (!cell) return;                                  // the pen and the two control rooms stay empty
+    // The first man of the run holds a post instead of walking at you. He stands a few tiles inside
+    // the mouth of the room with his back to it, and he is the only man in it: a headbutt is a thing
+    // you have to try on somebody, and somebody charging you is not somebody you can try it on.
+    if (cell.intro && !lessonRoom && levelDef.showControls) {
+      lessonRoom = room;
+      const at = levelDef.sentryIntro && room.enter ? postSpot(tiles, W, room, room.enter, props) : null;
+      if (at) {
+        spawns.push({ x: at.x, y: at.y, kind: cell.intro === 'champion' ? 'bearer' : cell.intro,
+          champion: cell.intro === 'champion', roomIndex: room.index, intro: true, sentry: true,
+          facing: at.x > room.enter.x ? 0 : Math.PI });
+        return;
+      }
+    }
     rng.shuffle(spots);
     // A rifle likes a post and a mage likes his own mark; everyone else takes what is left.
     const take = (kind) => {
@@ -389,6 +422,11 @@ function tryGenerate(levelDef, seed) {
       const r = rooms[k + 1];
       if (r) controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: k });
     }
+    // And the same word again on the floor of the room that finally has a man standing on it. The
+    // two rooms of text before this one were read and not connected to anything: the first player we
+    // watched got all the way to the wheel without working out that the men could be hit at all.
+    if (lessonRoom) controls.push({ x: (lessonRoom.x + lessonRoom.w / 2) * TILE,
+      y: (lessonRoom.y + lessonRoom.h / 2) * TILE, w: lessonRoom.w * TILE, part: 2 });
   }
   return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
     hints, controls, cagePrompt };
@@ -440,8 +478,47 @@ function carveCorridor(tiles, W, a, b, rng, width) {
   const y0 = Math.min(yA, yB), y1 = Math.max(yA, yB) + wide - 1;
   for (let ty = y0; ty <= y1; ty++) for (let k = 0; k < wide; k++) carve(midX + k, ty);
   for (let tx = midX; tx <= xB; tx++) band(tx, yB);
-  if (y1 - y0 >= 4) return { x: (midX + 1) * TILE, y: (Math.floor((y0 + y1) / 2) + 0.5) * TILE, vertical: false };
-  if (midX - xA >= 3) return { x: (Math.floor((xA + midX) / 2) + 0.5) * TILE, y: (yA + 1) * TILE, vertical: true };
+  // Where the corridor opens into b, a step inside its wall: a room that wants to stand something in
+  // the way of whoever walks in needs to know which way that is.
+  const enter = { x: (xB + 1) * TILE, y: (yB + wide / 2) * TILE };
+  if (y1 - y0 >= 4) return { enter, door: { x: (midX + 1) * TILE, y: (Math.floor((y0 + y1) / 2) + 0.5) * TILE, vertical: false } };
+  if (midX - xA >= 3) return { enter, door: { x: (Math.floor((xA + midX) / 2) + 0.5) * TILE, y: (yA + 1) * TILE, vertical: true } };
+  return { enter, door: null };
+}
+
+// Which rooms of a level are built round their floor rather than round their men. Never the pen, the
+// control rooms or a set piece, and never the room that opens the fighting: the first man of a run
+// gets bare ground to be met on. They are spread over the back of the level, where a shape on the
+// floor is something to use rather than one more thing to learn.
+function pickTrapRooms(levelDef, n, available, rng) {
+  const out = new Set();
+  const want = Math.min(levelDef.traps || 0, available);
+  if (want <= 0) return out;
+  const taken = new Set([0, levelDef.millAt, levelDef.hallAt, levelDef.galleryAt, levelDef.killboxAt]);
+  for (const a of (levelDef.arenas || [])) taken.add(a.at);
+  if (levelDef.showControls) { taken.add(1); taken.add(2); }
+  const eligible = [];
+  for (let i = 1; i < n; i++) if (!taken.has(i)) eligible.push(i);
+  // The first two ordinary rooms of a level are where its kinds get introduced; leave them alone.
+  const pool = eligible.slice(2);
+  for (const i of rng.shuffle(pool).slice(0, want)) out.add(i);
+  return out;
+}
+
+// A few tiles inside the mouth of a room, on clear floor and clear of the furniture: where you put
+// a man who is supposed to be standing in the way when you walk in.
+function postSpot(tiles, W, room, enter, props) {
+  const ex = Math.floor(enter.x / TILE), ey = Math.floor(enter.y / TILE);
+  for (let dx = 2; dx <= 6; dx++) {
+    for (const dy of [0, -1, 1, -2, 2]) {
+      const tx = ex + dx, ty = ey + dy;
+      if (tx < room.x + 1 || tx > room.x + room.w - 2 || ty < room.y + 1 || ty > room.y + room.h - 2) continue;
+      if (tiles[ty * W + tx] !== T.FLOOR) continue;
+      const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+      if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
+      return { x: px, y: py };
+    }
+  }
   return null;
 }
 

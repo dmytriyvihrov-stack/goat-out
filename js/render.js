@@ -5,16 +5,20 @@ const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 
 // The controls, painted on the floor over the two rooms after the pen. Nothing about the mouse:
 // a crosshair on a top-down game explains itself, and the floor has room for what it does not.
+// The third block is not in an empty room: it goes under the first man of the run, because two
+// rooms of words about a headbutt turned out not to add up to "the men can be hit" on their own.
 const CONTROL_LINES = {
   key: [
     ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL'],
     ['HOLD RIGHT CLICK — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
       'SPACE — BAAH', 'IT STUNS EVERY EAR'],
+    ['BUTT HIM', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS'],
   ],
   touch: [
     ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — TUMBLE'],
     ['HOLD GRAB — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
       'BAAH — IT STUNS EVERY EAR'],
+    ['BUTT HIM', 'BUTT — HEADBUTT', 'INTO A WALL KILLS'],
   ],
 };
 
@@ -64,6 +68,11 @@ class Renderer {
     const z = cam.zoom;
     return { w: this.vw / z, h: this.vh / (z * TILT), z };
   }
+
+  // The scale of the top band — hearts, rail, count, clock. It is the UI scale times one number in
+  // `TUNING.hud`, so the corner of the screen can be made to read without touching the cards, the
+  // menu or the floor text, all of which are sized for their own jobs.
+  get hs() { return this.ts * TUNING.hud.scale; }
 
   draw(game, dt) {
     this.t += dt;
@@ -351,7 +360,8 @@ class Renderer {
     ctx.fillStyle = witch ? PALETTE.witch : PALETTE.fire;
     ctx.beginPath(); ctx.ellipse(x, y - size * 0.2, size * 0.7, size, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = witch ? PALETTE.witchHi : PALETTE.fireHi;
-    ctx.beginPath(); ctx.ellipse(x + Math.sin(t) * 3, y - size * 0.1, size * 0.35, size * 0.55 + Math.sin(t * 1.7) * 3, 0, 0, Math.PI * 2); ctx.fill();
+    // A small flame — a brazier with its coals knocked out — must not flicker to a negative radius.
+    ctx.beginPath(); ctx.ellipse(x + Math.sin(t) * 3, y - size * 0.1, size * 0.35, Math.max(0.5, size * 0.55 + Math.sin(t * 1.7) * 3), 0, 0, Math.PI * 2); ctx.fill();
   }
 
   shadow(x, y, rx, ry) {
@@ -399,7 +409,9 @@ class Renderer {
       this.shadow(p.x, p.y, p.r * 1.1, p.r * 0.55);
       ctx.fillStyle = PALETTE.brazier; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#2a2018'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r - 4, 0, Math.PI * 2); ctx.fill();
-      this.flame(p.x, p.y - 6, 12 + 3 * Math.sin(this.t * 11 + p.phase), p.phase * 10);
+      // Coals knocked out of it: the flame drops and builds back, so the bowl says when it is ready.
+      const heat = p.spillCd > 0 ? 0.4 + 0.6 * (1 - p.spillCd / TUNING.prop.brazier.spillCd) : 1;
+      this.flame(p.x, p.y - 6, (12 + 3 * Math.sin(this.t * 11 + p.phase)) * heat, p.phase * 10);
     } else if (p.kind === 'bell') {
       const ring = p.rung > 0 ? Math.sin(this.t * 40) * 3 : 0;
       this.shadow(p.x, p.y, p.r, p.r * 0.5);
@@ -1411,7 +1423,7 @@ class Renderer {
 
   drawUI(game) {
     const ctx = this.ctx; if (!game.world || game.state === 'intro') return;
-    const g = game.goat, s = this.ts, top = 8 * s + (this.portrait ? 12 * s : 0);
+    const g = game.goat, s = this.hs, top = 8 * s + (this.portrait ? 12 * s : 0);
     ctx.textAlign = 'left';
     ctx.font = `700 ${15 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
     ctx.fillText(`${game.level.def.sub.toUpperCase()}: ${game.level.def.name}`, 14 * s, top + 14 * s);
@@ -1466,7 +1478,7 @@ class Renderer {
   // and as names under the score, so a run's build lives in one corner instead of a list of words.
   // Returns the y it finished at, because everything else in that column hangs off the bottom of it.
   drawSkills(game, top) {
-    const ctx = this.ctx, s = this.ts, g = game.goat, fire = !!game.mods.breath;
+    const ctx = this.ctx, s = this.hs, g = game.goat, fire = !!game.mods.breath;
     const R = TUNING.goat.roll;
     const rows = [
       { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding },
@@ -1530,7 +1542,7 @@ class Renderer {
   // this is the list you read when you are deciding what the run has turned into.
   drawBoonList(game, top) {
     if (!game.boons.length) return;
-    const ctx = this.ctx, s = this.ts, right = this.w - 20 * s;
+    const ctx = this.ctx, s = this.hs, right = this.w - 20 * s;
     ctx.textAlign = 'right'; ctx.font = `700 ${10 * s}px ${FONT_SC}`;
     // Actives first, and never more than six lines: on a phone the seventh would sit over the level.
     const ordered = game.boons.slice().sort((a, b) => (a.active ? 0 : 1) - (b.active ? 0 : 1));
