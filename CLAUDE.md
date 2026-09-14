@@ -3,6 +3,7 @@
 Instructions for any session picking this project up. Read this first, then `CONCEPT.md` for what the
 game is trying to be. `README.md` is for a player, this file is for whoever is building it.
 `MARKET.md` is the commercial picture: comparables, the 2026 storefront and the open positioning decisions.
+`BACKLOG.md` is what playtesting has asked for and has not got yet — read it before inventing work.
 
 ---
 
@@ -58,6 +59,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/harness.js` | Console test harness. See *Testing*. |
 | `tools/balance.js` | Prints the difficulty curve of every level and fails on a broken balance rule. |
 | `tools/check-sync.js` | Checks the working tree, `origin/main` and the published artifact are one build. See *Publishing*. |
+| `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
 
 ---
 
@@ -428,6 +430,10 @@ pass it as `--artifact <file>`; without it the script prints the local byte coun
   refers to her: no room, no ending, no line from the cult.
 - Pixel art proper. Everything is still drawn with canvas primitives in the final palette.
 - Gamepad support, a Priest boss, and the later acts sketched in `GOAT_OUT_brief.md`.
+- One thing from the 14 Sep 2026 playtest, written up in `BACKLOG.md`: how a score weighs time against
+  kills without quietly turning a run into a clearing job. The soul barrier was asked for and parked the
+  same day, for the same reason pillar 1 gives; the new level goes in at six and THE OSSUARY moves to
+  seven, keeping the finale. Everything else in that batch is buildable as written.
 
 `GOAT_OUT_brief.md` is the original stage-one design brief. It is history, not spec: several of its
 decisions have since been overridden. `CONCEPT.md` is the current truth.

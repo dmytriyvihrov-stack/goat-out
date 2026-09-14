@@ -3,6 +3,10 @@
 The design as it actually stands, v0.6. Where this disagrees with `GOAT_OUT_brief.md`, this file wins;
 the brief is the original stage-one document and several of its calls have since been overridden.
 
+`GENRE_RESEARCH.md` is the review research behind these pillars: what critics and players actually
+praised and blamed in Hotline Miami, Ape Out and format-mates that stayed niche, boiled down into a
+genre guideline. Background reading, not itself a design decision.
+
 ---
 
 ## The pitch
@@ -190,9 +194,10 @@ to level 1 alone.
 **The first room** is the one you woke up in. The altar stands off to one side — strapped open, waiting,
 with the knife and the remains of the one that went before you, about your own size — and you are in
 the pen beside it, on a cult pictogram burned into the floor. Across the room stands a second, smaller
-cage, shut for good, with a sheep in it that stopped waiting a while ago. Three headbutts anywhere on
-your bars take the whole pen apart and are heard across the level. Stand in it for five seconds without
-working that out and the floor tells you which button opens it.
+cage, shut for good, with a sheep in it that stopped waiting a while ago. Seven blows anywhere on your
+bars take the whole pen apart and are heard across the level; the third and the sixth take your feet out
+from under you. Stand in it for five seconds without working that out and the floor tells you which
+button opens it.
 
 **The opening scene** plays in that room, once, when a run starts from the title. The goat and his wife
 are in the pen, pressed together and trembling, a heart beating between them. Two men come round the
@@ -287,3 +292,7 @@ Mirrors as an environmental puzzle, pixel art proper, gamepad support, a Priest 
 sketched in the original brief. Enemies are still drawn with canvas primitives rather than sprites.
 The opening scene takes his wife deeper into the compound and nothing after it mentions her: whether
 she is somewhere in the building to be found, and what the ending does about it, is undecided.
+
+`BACKLOG.md` is the rest of it: what playtesting has asked for and what is wrong with what is here,
+batch by batch and dated. Anything in it is a request, not a decision — the ones that would bend a
+pillar say so on the line.
