@@ -131,7 +131,7 @@ class Enemy {
       game.ring(this.x, this.y, 2.6 * TILE, PALETTE.witchHi);
       game.audio.sfxUnmade();
       if (game.goat.holding === this) game.goat.holding = null;
-      if (this.boss) game.dropTome(this.x, this.y);
+      if (this.boss) game.bossPrize(this);
       game.onKill(this, 'unmade');
       return;
     }
@@ -145,7 +145,7 @@ class Enemy {
       if (this.kind === 'hunter') w.dot(this.x + 8, this.y + 6, 3, '#3a3236');
     }
     if (game.goat.holding === this) game.goat.holding = null;
-    if (this.boss) game.dropTome(this.x, this.y);
+    if (this.boss) game.bossPrize(this);
     game.onKill(this, cause);
   }
 

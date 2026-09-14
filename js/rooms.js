@@ -1,5 +1,5 @@
 // Hand-authored room templates. Legend:
-// '#' wall  '.' floor  'P' pillar  'h' hay  'B' brazier  'o' pot  'b' bell  't' table  'L' lamp post
+// '#' wall  '.' floor  'P' pillar  'h' hay  'B' brazier  'o' crate  'b' bell  't' table  'L' lamp post
 // 'w' a stand of arms: a sword or a shield to grab and throw
 // 'e' bearer spawn  'r' hunter spawn (bearer if level has no hunters)  'X' butcher spawn
 // 'R' always a rifle where the level has them  'm' seer spawn  'M' the Mill's hub

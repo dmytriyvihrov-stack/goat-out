@@ -31,6 +31,7 @@ class Game {
     this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0; this.totalScore = 0;
     this.best = this.loadBest();
     this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.tomes = []; this.boonChoice = null; this.boonRects = [];
+    this.tomesHere = 0;   // how many the level being played gives up, all in. Reported on its card.
     // A tome is spent by a click that starts and ends on the same card. `boonDown` is the card the
     // pointer went down on; `boonArm` is the beat the cards ignore everything after they appear.
     this.boonDown = -1; this.boonArm = 0;
@@ -58,23 +59,35 @@ class Game {
     for (const b of this.boons) b.apply(this.mods);
     if (this.goat) { this.goat.maxHp = this.mods.maxHp; this.goat.hp = Math.min(this.goat.hp, this.goat.maxHp); }
   }
-  dropTome(x, y) {
-    // A boss can fall against a wall, and a tome inside one is a tome nobody can reach.
+  // A boss can fall against a wall, and a prize inside one is a prize nobody can reach: walk out in
+  // rings until the ground is floor the flow field says can be stood on.
+  freeSpot(x, y) {
     const w = this.world;
-    let px = x, py = y;
     const ok = (ax, ay) => w.tileAtPx(ax, ay) !== T.WALL && w.flowDist(ax, ay) >= 0;
-    if (w && !ok(px, py)) {
-      let found = false;
-      for (let ring = 1; ring <= 7 && !found; ring++) {
-        for (let a = 0; a < 16 && !found; a++) {
-          const ang = a / 16 * Math.PI * 2;
-          const nx = x + Math.cos(ang) * ring * TILE * 0.7, ny = y + Math.sin(ang) * ring * TILE * 0.7;
-          if (ok(nx, ny)) { px = nx; py = ny; found = true; }
-        }
+    if (!w || ok(x, y)) return { x, y };
+    for (let ring = 1; ring <= 7; ring++) {
+      for (let a = 0; a < 16; a++) {
+        const ang = a / 16 * Math.PI * 2;
+        const nx = x + Math.cos(ang) * ring * TILE * 0.7, ny = y + Math.sin(ang) * ring * TILE * 0.7;
+        if (ok(nx, ny)) return { x: nx, y: ny };
       }
-      if (!found) { px = this.goat.x; py = this.goat.y; }
     }
-    this.placeTome(px, py);
+    return { x: this.goat.x, y: this.goat.y };
+  }
+  dropTome(x, y) {
+    const p = this.freeSpot(x, y);
+    this.placeTome(p.x, p.y);
+  }
+  // What a boss leaves when the level has no tome left to give. A wall you had to break through is
+  // never worth nothing, and milk is the one other thing in the game worth walking back for.
+  dropMilk(x, y) {
+    const p = this.freeSpot(x, y);
+    this.props.push(new Prop(p.x, p.y, 'heal'));
+  }
+  // Every boss leaves something. Which one leaves the tome was decided in `startLevel` off the
+  // level's own count, so a level gives up exactly what it was authored to give up.
+  bossPrize(e) {
+    if (e.tome) this.dropTome(e.x, e.y); else this.dropMilk(e.x, e.y);
   }
   // A tome on ground that is known to be good, with none of the rescue above. The vault's is laid
   // down with the level: `dropTome` asks the flow field whether a spot can be reached, the flow field
@@ -86,8 +99,11 @@ class Game {
   // A tome offers three of one kind: actives change what a button does, passives sharpen everything.
   // The first tome always offers actives, so every run picks a skill before it picks numbers.
   openBoonChoice() {
-    const actives = BOONS.filter((b) => b.active && !this.boons.includes(b));
-    const passives = BOONS.filter((b) => !b.active && !this.boons.includes(b));
+    // `needs` is a mod that has to be on before the tome is worth anything: LOOSE JOINTS on a goat
+    // who cannot roll yet is a card that does nothing, and there are only thirteen of these.
+    const open = (b) => !this.boons.includes(b) && (!b.needs || this.mods[b.needs]);
+    const actives = BOONS.filter((b) => b.active && open(b));
+    const passives = BOONS.filter((b) => !b.active && open(b));
     if (!actives.length && !passives.length) { this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + 1); return; }
     const hasActive = this.boons.some((b) => b.active);
     let pool, other;
@@ -97,6 +113,12 @@ class Game {
     const pick = [];
     while (pick.length < 3 && pool.length) pick.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
     while (pick.length < 3 && other.length) pick.push(other.splice((Math.random() * other.length) | 0, 1)[0]);
+    // The run's first tome always has the roll on the table. You still have to spend the tome on it
+    // rather than on a fire breath, but a fourth button withheld by a shuffle is not a decision.
+    if (!this.boons.length) {
+      const tuck = BOONS.find((b) => b.id === 'tuck');
+      if (tuck && open(tuck) && !pick.includes(tuck)) pick[pick.length - 1] = tuck;
+    }
     this.boonChoice = pick;
     this.boonKind = pick[0] && pick[0].active ? 'SKILL' : 'BLESSING';
     this.boonDown = -1; this.boonArm = TUNING.boonArm;
@@ -303,7 +325,7 @@ class Game {
     this.runes = []; this.houndTold = false;
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null;
     this.tomes = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
-    // What he walked in with. A death rolls him back to this list, one short.
+    // What he walked in with. A death rolls him back to exactly this list.
     this.levelBoons = this.boons.slice();
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
     this.camLead.x = 0; this.camLead.y = 0;
@@ -312,12 +334,23 @@ class Game {
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
     this.audio.intensity = 0; this.audio.hunterAware = false;
     this.world.computeFlow(this.goat.x, this.goat.y);
-    // What is behind the iron door. It is laid down with the level rather than dropped by anything,
-    // so it is there from the first second and it is there whether or not you go and get it. After
-    // the flow field and not before: `dropTome` asks the world whether a spot can be reached, and
-    // asked that question with the last level's field still in it, it walks the tome out of the
-    // vault and puts it at the goat's feet.
-    if (this.level.vault) this.placeTome(this.level.vault.x, this.level.vault.y);
+    // The level's tomes, handed out before a blow is struck. `def.tomes` is the whole count (see the
+    // note over `LEVELS`): the vault takes the first, the rest go to the LAST bosses of the level so
+    // the fight you finish on always pays, and any boss left over drops milk instead. A level
+    // definition with no count falls back to what the game used to do — every boss, and the vault.
+    // The vault's is laid down with the level rather than dropped by anything, so it is there from
+    // the first second and it is there whether or not you go and get it. After the flow field and
+    // not before: `dropTome` asks the world whether a spot can be reached, and asked that question
+    // with the last level's field still in it, it walks the tome out of the vault and puts it at
+    // the goat's feet — which is why the vault's uses `placeTome` and nothing else does.
+    const bosses = this.level.spawns
+      .map((s, i) => ({ i, room: s.roomIndex === undefined ? 0 : s.roomIndex }))
+      .filter((b) => this.level.spawns[b.i].boss)
+      .sort((a, b) => a.room - b.room);
+    this.tomesHere = def.tomes === undefined ? bosses.length + (this.level.vault ? 1 : 0) : def.tomes;
+    let budget = this.tomesHere;
+    if (this.level.vault && budget > 0) { this.placeTome(this.level.vault.x, this.level.vault.y); budget--; }
+    for (let n = bosses.length - 1; n >= 0 && budget > 0; n--) { this.enemies[bosses[n].i].tome = true; budget--; }
     // Arriving up the stairs: the goat rises into the room under the card.
     if (this.intro) this.audio.duck(1, 0.3);   // Backspace out of the scene must not leave the sound down
     this.intro = null; this.stairFx = this.level.entry ? { t: -0.45, dir: -1 } : null;
@@ -327,16 +360,23 @@ class Game {
     this.state = 'card';
     // A new level puts every heart back. The card is where the goat finds that out.
     const lines = [def.sub.toUpperCase(), def.name];
-    if (index > 0 || keepBoons) lines.push('', this.goat.maxHp + ' hearts again');
+    // Hearts back, and what the level is holding. The count is on the card because a progression
+    // nobody can see is not one: you should walk in knowing what there is to walk out with.
+    const tail = [];
+    if (index > 0 || keepBoons) tail.push(this.goat.maxHp + ' hearts again');
+    if (this.tomesHere) tail.push(this.tomesHere === 1 ? '1 tome in here' : this.tomesHere + ' tomes in here');
+    if (tail.length) lines.push('', tail.join(' \u00b7 '));
     this.card = { lines, dim: 0.6, size: 40, small: 2 }; this.stateTimer = 1.3;
     this.audio.sfxCard();
   }
-  // A death costs a tome, not the run. You come back with what you walked into the level carrying,
-  // minus the newest thing you had learned — so a run can be survived badly instead of only
-  // perfectly, and what you lose is always what you have had the least time with.
+  // A death costs the level, not the learning. You come back with everything you walked in carrying
+  // and nothing less: the goat gets stronger every level and stays stronger, which is the only way
+  // seven levels of one life read as a run rather than seven separate walls. What a death still
+  // takes is the tome you found INSIDE the level — the room is generated again and it is back where
+  // it was, guarded by whoever was guarding it — so dying is never a way to farm one.
   restartLevel() {
     if (this.state === 'title') return;
-    this.boons = (this.levelBoons || []).slice(0, -1);
+    this.boons = (this.levelBoons || []).slice();
     this.startLevel(this.levelIndex, (Math.random() * 1e9) | 0, true);
   }
 
@@ -448,11 +488,11 @@ class Game {
   onGoatDied() {
     this.deaths++; this.state = 'dead'; this.stateTimer = 0.9; this.slowTimer = 1.4;
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxToll();
-    // What a death takes is named, because losing something with a name is a different feeling from
-    // losing a number: the newest tome goes and everything he walked in with stays.
+    // What a death does NOT take is named, because a card that says you keep everything is the only
+    // way the player finds out that he does. Anything found inside this level goes back in the room.
     const held = this.levelBoons || [];
-    const lost = held.length ? `${held[held.length - 1].name} LOST` : 'nothing left to lose';
-    this.card = { lines: ['THE GOAT DIED', '', `${lost} · ${this.tapWord.toLowerCase()} to try again`], dim: 0.55, size: 40, small: true, color: PALETTE.blood };
+    const kept = held.length ? `${held.length} TOME${held.length > 1 ? 'S' : ''} KEPT` : 'NOTHING LOST';
+    this.card = { lines: ['THE GOAT DIED', '', `${kept} · ${this.tapWord.toLowerCase()} to try again`], dim: 0.55, size: 40, small: true, color: PALETTE.blood };
     this.shake(12); this.vibe(70);
   }
   levelCleared() {
@@ -905,7 +945,7 @@ class Game {
   beginClimb() {
     this.state = 'climb'; this.stateTimer = TUNING.stairs.climb; this.stairFx = { t: 0, dir: 1 };
     const g = this.goat; g.state = 'idle'; g.facing = 0;
-    if (g.holding) { const h = g.holding; h.held = false; g.holding = null; if (h.kind !== 'pot') { h.state = 'floored'; h.timer = 0.6; } }
+    if (g.holding) { const h = g.holding; h.held = false; g.holding = null; if (!h.item) { h.state = 'floored'; h.timer = 0.6; } }
   }
   updateClimb(dt) {
     const C = TUNING.stairs, g = this.goat; this.stateTimer -= dt;
@@ -973,7 +1013,7 @@ class Game {
     for (const p of this.props) {
       if (p.broken) continue;
       if (p.item) {
-        if (p.kind === 'pot' && p.flung) for (const e of en) { if (!e.dead && !e.held && e.state === 'flung' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
+        if (p.kind === 'crate' && p.flung) for (const e of en) { if (!e.dead && !e.held && e.state === 'flung' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
         continue;
       }
       if (!p.blocking) continue;

@@ -9,14 +9,14 @@ const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 // rooms of words about a headbutt turned out not to add up to "the men can be hit" on their own.
 const CONTROL_LINES = {
   key: [
-    ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL'],
-    ['HOLD RIGHT CLICK — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
+    ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL, WHEN YOU FIND IT'],
+    ['HOLD RIGHT CLICK — CARRY', 'A MAN, A BOX, A BLADE', 'LET GO — THROW',
       'SPACE — SCREAM', 'BAAH STUNS EVERY EAR'],
     ['BUTT HIM', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS'],
   ],
   touch: [
-    ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — TUMBLE'],
-    ['HOLD GRAB — CARRY', 'A MAN, A POT, A BLADE', 'LET GO — THROW',
+    ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — WHEN YOU FIND IT'],
+    ['HOLD GRAB — CARRY', 'A MAN, A BOX, A BLADE', 'LET GO — THROW',
       'BAAH — SCREAM, IT STUNS EVERY EAR'],
     ['BUTT HIM', 'BUTT — HEADBUTT', 'INTO A WALL KILLS'],
   ],
@@ -271,7 +271,9 @@ class Renderer {
         // and the longest of them was unreadable at both ends.
         const lines = this.wrapFloor(hn.text), wide = (hn.w || 14 * TILE) - 3.2 * TILE;
         const size = this.fitFloorText(lines, wide, 26), lh = size * 1.34;
-        const key = hn.key ? HINT_KEYS[hn.key][game.touch.active ? 1 : 0] : null;
+        // A hint never names a button the goat has not been given yet.
+        const has = hn.key !== 'roll' || game.mods.roll;
+        const key = hn.key && has ? HINT_KEYS[hn.key][game.touch.active ? 1 : 0] : null;
         const block = (lines.length - 1) * lh + (key ? lh * 0.95 : 0);
         let y = hn.y - block / 2;
         ctx.fillStyle = 'rgba(239,230,208,0.15)';
@@ -460,6 +462,14 @@ class Renderer {
     } else if (p.kind === 'door') {
       const tall = p.vertical;
       const wdt = tall ? 13 : 58, hgt = tall ? 58 : 13;
+      // The soul door carries the tome's own halo. An iron door in a corridor and the one with a
+      // tome behind it used to be the same grey slab, which is why nobody went to the second one.
+      if (p.vault) {
+        const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 56);
+        halo.addColorStop(0, `rgba(255,224,138,${0.14 + 0.08 * Math.sin(this.t * 2.4)})`);
+        halo.addColorStop(1, 'rgba(255,224,138,0)');
+        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(p.x, p.y, 56, 0, Math.PI * 2); ctx.fill();
+      }
       ctx.save(); ctx.translate(p.x, p.y);
       if (p.open > 0) ctx.rotate((tall ? -1 : 1) * p.open * 1.25);
       this.shadow(0, 0, wdt * 0.6, hgt * 0.4);
@@ -485,10 +495,25 @@ class Renderer {
           ctx.stroke();
         }
       }
-      ctx.fillStyle = p.iron ? '#c9ccd4' : PALETTE.ochre;
-      ctx.beginPath(); ctx.arc(0, 0, p.iron ? 4 : 3.2, 0, Math.PI * 2); ctx.fill();
+      if (p.vault) {
+        // The book itself, painted small on the face: the door says what is behind it in the
+        // language of the thing behind it, which is the only wording nobody has to be taught.
+        ctx.fillStyle = PALETTE.plum; ctx.fillRect(-4.5, -4.5, 9, 9);
+        ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 1.4; ctx.strokeRect(-3.4, -3.4, 6.8, 6.8);
+        ctx.beginPath(); ctx.moveTo(-1.6, -0.4); ctx.lineTo(1.6, -0.4); ctx.moveTo(0, -2); ctx.lineTo(0, 1.6); ctx.stroke();
+      } else {
+        ctx.fillStyle = p.iron ? '#c9ccd4' : PALETTE.ochre;
+        ctx.beginPath(); ctx.arc(0, 0, p.iron ? 4 : 3.2, 0, Math.PI * 2); ctx.fill();
+      }
       if (p.pressure > 0.15) { ctx.strokeStyle = `rgba(192,57,43,${Math.min(0.8, p.pressure)})`; ctx.lineWidth = 2; ctx.strokeRect(-wdt / 2 - 2, -hgt / 2 - 2, wdt + 4, hgt + 4); }
       ctx.restore();
+      // ...and the same word the tome on the floor carries, over the top of it.
+      if (p.vault) {
+        ctx.save(); ctx.scale(1, 1 / TILT);
+        ctx.font = `700 ${11}px ${FONT_SC}`; ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(255,224,138,${0.45 + 0.3 * Math.sin(this.t * 2.4)})`;
+        ctx.fillText('TOME', p.x, (p.y - 24) * TILT); ctx.textAlign = 'left'; ctx.restore();
+      }
     } else if (p.kind === 'table') {
       const a = p.flung ? Math.atan2(p.vy, p.vx) : 0;
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(a);
@@ -542,26 +567,18 @@ class Renderer {
       }
       ctx.restore();
     } else if (p.kind === 'crate') {
-      // A box of the compound's own stores, one to a tile: planks, two iron bands and a stud. The
-      // plainest object in the game, and it is plain on purpose — everything you can do with it you
-      // can already do with a pot, so the only thing it has to say is *pick me up*.
+      // A small wooden box, and that is the whole drawing: an outline, a face, a lit top edge and one
+      // band across it. It was bigger and had planks, bands and a stud on it, which is detail spent
+      // saying nothing — a box has to read as *liftable* from across a room and nothing else, and
+      // four shapes do that better than nine. It is the only thing on this floor you can pick up.
       const r = p.r;
       const lift = p.held ? 4 : 0, spin = p.flung ? Math.atan2(p.vy, p.vx) * 0.4 : 0;
       ctx.save(); ctx.translate(p.x, p.y - lift); ctx.rotate(spin);
-      this.shadow(0, r * 0.45 + lift, r * 0.95, r * 0.5);
-      ctx.fillStyle = '#3f2b18'; ctx.fillRect(-r, -r * 0.82, r * 2, r * 1.64);
-      ctx.fillStyle = PALETTE.wood; ctx.fillRect(-r + 1.5, -r * 0.82 + 1.5, r * 2 - 3, r * 1.64 - 3);
-      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(-r + 1.5, -r * 0.82 + 1.5, r * 2 - 3, 2.6);
-      // the boards, and the bands across them
-      ctx.strokeStyle = 'rgba(26,16,22,0.45)'; ctx.lineWidth = 1.3;
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.33, -r * 0.82); ctx.lineTo(-r * 0.33, r * 0.82);
-      ctx.moveTo(r * 0.33, -r * 0.82); ctx.lineTo(r * 0.33, r * 0.82);
-      ctx.stroke();
-      ctx.fillStyle = '#4a443c';
-      ctx.fillRect(-r + 1.5, -r * 0.34, r * 2 - 3, 2.4); ctx.fillRect(-r + 1.5, r * 0.18, r * 2 - 3, 2.4);
-      ctx.fillStyle = '#8a8177';
-      ctx.beginPath(); ctx.arc(0, -r * 0.08, 2, 0, Math.PI * 2); ctx.fill();
+      this.shadow(0, r * 0.5 + lift, r * 0.9, r * 0.5);
+      ctx.fillStyle = '#3f2b18'; ctx.fillRect(-r, -r * 0.85, r * 2, r * 1.7);
+      ctx.fillStyle = PALETTE.wood; ctx.fillRect(-r + 1.5, -r * 0.85 + 1.5, r * 2 - 3, r * 1.7 - 3);
+      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(-r + 1.5, -r * 0.85 + 1.5, r * 2 - 3, 2.4);
+      ctx.fillStyle = '#4a443c'; ctx.fillRect(-r + 1.5, -1.2, r * 2 - 3, 2.4);
       ctx.restore();
     } else if (p.kind === 'cage') {
       const h = TUNING.prop.cage.height;
@@ -641,12 +658,9 @@ class Renderer {
       ctx.font = `700 ${11}px ${FONT_SC}`; ctx.textAlign = 'center';
       ctx.fillStyle = `rgba(239,230,208,${0.45 + 0.25 * Math.sin(this.t * 3)})`;
       ctx.fillText('MILK', p.x, (p.y - 22 + bob) * TILT); ctx.textAlign = 'left'; ctx.restore();
-    } else {
-      this.shadow(p.x, p.y, p.r, p.r * 0.5);
-      ctx.fillStyle = PALETTE.ochre; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = PALETTE.plum; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.r - 3, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(239,230,208,0.25)'; ctx.beginPath(); ctx.arc(p.x - 3, p.y - 3, p.r * 0.35, 0, Math.PI * 2); ctx.fill();
     }
+    // There is no fallback branch any more. The one that was here drew an ochre disc for the pot,
+    // and a disc on a floor of boards reads as a plate rather than as a thing you lift.
   }
 
   // A rank of iron spikes stood up along an arc of a body: the brute's back, and nobody else's.
@@ -1570,7 +1584,9 @@ class Renderer {
       { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding },
       { id: 'grab', name: g.holding ? 'THROW' : 'GRAB', cap: 'RMB', cd: g.grabCd,
         max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0 },
-      { id: 'roll', name: 'ROLL', cap: 'E', cd: g.rollCd, max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0 },
+      // The roll is the one verb you are not born with. Locked, the chip stays on the rail and says so.
+      { id: 'roll', name: game.mods.roll ? 'ROLL' : 'LOCKED', cap: 'E', cd: game.mods.roll ? g.rollCd : 0,
+        max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0 && !!game.mods.roll, locked: !game.mods.roll },
       { id: 'scream', name: fire ? 'FIRE' : 'BAAH', cap: 'SPC', cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0 },
     ];
     const box = 32 * s, gap = 7 * s, right = this.w - 14 * s;
@@ -1589,7 +1605,7 @@ class Renderer {
         : row.ready ? 'rgba(239,230,208,0.42)' : 'rgba(239,230,208,0.16)';
       ctx.lineWidth = 1.6 * s; ctx.strokeRect(x, y, box, box);
       ctx.save(); ctx.translate(x + box / 2, y + box / 2);
-      ctx.globalAlpha = row.cd > 0 ? 0.4 : row.ready ? 1 : 0.55;
+      ctx.globalAlpha = row.locked ? 0.2 : row.cd > 0 ? 0.4 : row.ready ? 1 : 0.55;
       this.skillIcon(row.id, box * 0.33, game, fire);
       ctx.globalAlpha = 1; ctx.restore();
       // one pip per tome hanging off this button
@@ -1605,7 +1621,8 @@ class Renderer {
         ctx.fillText(row.cap, x + box / 2, y - 4 * s);
       }
       ctx.font = `700 ${9 * s}px ${FONT_SC}`;
-      ctx.fillStyle = hot ? PALETTE.fireHi : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.6)';
+      ctx.fillStyle = row.locked ? 'rgba(239,230,208,0.28)' : hot ? PALETTE.fireHi
+        : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.6)';
       ctx.fillText(row.name, x + box / 2, y + box + 18 * s);
     });
     // The gong, while it is still in him: a strip under the rail that drains with it, so four
@@ -1744,9 +1761,10 @@ class Renderer {
     // buttons
     const held = !!game.goat.holding;
     const fire = !!game.mods.breath;
-    const labels = { butt: 'BUTT', grab: held ? 'THROW' : 'GRAB', scream: fire ? 'FIRE' : 'BAAH', roll: 'ROLL' };
+    const canRoll = !!game.mods.roll;
+    const labels = { butt: 'BUTT', grab: held ? 'THROW' : 'GRAB', scream: fire ? 'FIRE' : 'BAAH', roll: canRoll ? 'ROLL' : 'LOCKED' };
     const ready = { butt: game.goat.state === 'idle' && !held, grab: held || game.goat.grabCd <= 0,
-      scream: game.goat.screamCd <= 0, roll: game.goat.rollCd <= 0 };
+      scream: game.goat.screamCd <= 0, roll: canRoll && game.goat.rollCd <= 0 };
     for (const k of ['butt', 'grab', 'scream', 'roll']) {
       const b = t.buttons[k], down = t.pressed[k] !== undefined;
       const hot = k === 'scream' && fire;

@@ -214,7 +214,13 @@ function tryGenerate(levelDef, seed) {
       const link = carveCorridor(tiles, W, rooms[i - 1], room, rng, levelDef.corridorW);
       if (link) {
         room.enter = link.enter;    // where you walk in, so a room can put something in your way
-        if (link.door && rng.chance(levelDef.doorChance)) props.push({ x: link.door.x, y: link.door.y, kind: 'door', vertical: link.door.vertical });
+        // Some of the doors between rooms are iron. Nobody shoulders one open and it does not go on
+        // the first blow, so a corridor you were going to run straight down is three blows of standing
+        // still instead — which is the only thing in a corridor that can make you turn round and look.
+        if (link.door && rng.chance(levelDef.doorChance)) {
+          props.push({ x: link.door.x, y: link.door.y, kind: 'door', vertical: link.door.vertical,
+            iron: rng.chance(levelDef.ironDoors || 0) });
+        }
       }
     }
     x += w + rng.int(3, 7);
@@ -272,7 +278,7 @@ function tryGenerate(levelDef, seed) {
     room.markers.forEach((m) => {
       const px = (m.tx + 0.5) * TILE, py = (m.ty + 0.5) * TILE;
       if (m.c === 'B') props.push({ x: px, y: py, kind: 'brazier' });
-      else if (m.c === 'o') props.push({ x: px, y: py, kind: 'pot' });
+      else if (m.c === 'o') props.push({ x: px, y: py, kind: 'crate' });
       else if (m.c === 'b') { if (manned) props.push({ x: px, y: py, kind: 'bell' }); }
       else if (m.c === 'L') props.push({ x: px, y: py, kind: 'lamp' });
       else if (m.c === 't') { if (m.tx % 2 === 0 && m.ty % 2 === 0) props.push({ x: px + TILE / 2, y: py + TILE / 2, kind: 'table' }); }
@@ -561,7 +567,7 @@ function carveVault(tiles, W, H, room, props, rng) {
     tiles[gapY * W + gapX] = T.FLOOR;
     tiles[doorY * W + gapX] = T.FLOOR;
     // The door hangs in the room's own wall, where it can be seen from the floor you walk in on.
-    props.push({ x: (gapX + 0.5) * TILE, y: (doorY + 0.5) * TILE, kind: 'door', vertical: false, iron: true });
+    props.push({ x: (gapX + 0.5) * TILE, y: (doorY + 0.5) * TILE, kind: 'door', vertical: false, iron: true, vault: true });
     return { x: (gapX + 0.5) * TILE, y: (y0 + vh / 2) * TILE };
   }
   return null;

@@ -153,14 +153,17 @@ over `burnTick`, and when `burning` runs out he lands in `stagger` instead of dy
 his line at you through a fire reads as the fire not counting, which is why nothing does it any more.
 `ignite` also takes whatever it lit out of the goat's mouth.
 
-**Props.** One `Prop` class for brazier, pot, bell, door, table, lamp, mill, heal, spike and weapon. `blocking`,
-`stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item` is what the
-goat can pick up and throw — a pot or a weapon — and it is the test everywhere the code used to ask
-`kind !== 'pot'`.
+**Props.** One `Prop` class for brazier, crate, bell, door, table, lamp, mill, heal, spike and weapon.
+`blocking`, `stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item`
+is what the goat can pick up and throw — a crate or a weapon — and it is the test everywhere the code
+asks whether a thing is a thing you lift. There used to be a `pot` as well, drawn by the fallback branch
+of `drawPropBody` as an ochre disc; a disc on a floor of boards reads as a plate rather than as
+something to pick up, so every one of them is a crate and the kind is gone. There is no fallback
+branch any more: a prop kind with no branch of its own does not draw.
 
 **Stands of arms.** A `weapon` prop is both the rack and the thing in it: `inStand` is true until it is
 first taken, and the rack is only drawn while it is. `weapon` is `sword` or `shield`. It is grabbed like
-a pot, thrown by releasing grab, and flies in `updateWeapon`; `hitMan` is where a sword kills and sticks
+a crate, thrown by releasing grab, and flies in `updateWeapon`; `hitMan` is where a sword kills and sticks
 and a shield flattens and carries on, `passed` stopping it hitting the same man twice on one throw. A
 carried shield turns `prop.weapon.shieldHits` bullets in `Bullet.update` before it splinters. Nothing is
 consumed: both lie where they land and are grabbable again. `'w'` in a room template places one; `racks`
@@ -173,16 +176,32 @@ dropped); a new boss gets his arena alone, and the first Mill room keeps one man
 generator also keeps the lone rifle posts from landing earlier in the level than the room that
 introduces a rifle. A run that keeps its tomes keeps what it has learned; a fresh run forgets.
 
+**Tomes are a budget, not a by-product.** `levelDef.tomes` is how many a level gives up, all in, and it
+is authored: **one on level one, two on every level after**, thirteen across a run, which is exactly the
+number of boons in `BOONS` minus the one you will not have room for. It used to be however many bosses
+the level happened to hold plus the vault — two, three or four, twenty-four across a clean run — which
+is not a decision about how strong the goat should be by level five, it is an accident of where the
+arenas are. `startLevel` spends the budget before a blow is struck: the vault takes the first (an iron
+door that costs four blows must not pay milk), and the rest go to the **last** bosses of the level, so
+the fight you finish on always pays. `Enemy.die` calls `game.bossPrize`, which drops a tome if the boss
+was given one and **milk** if he was not — nothing you had to break through is ever worth nothing. The
+level card reports the count, because a progression nobody can see is not one. A level definition with
+no `tomes` at all falls back to the old behaviour.
+
 **Boons.** `game.mods` is recomputed from `game.boons` by `applyBoons()`. Every use site reads
 `game.mods.X` rather than `TUNING` directly, so nothing mutates `TUNING` (which would leak across runs).
 Adding a boon means: add it to `BOONS`, add its default to `BOON_BASE`, and read the mod at the use site.
 Give it a `skill` (`butt` / `grab` / `roll` / `scream`) and it hangs off that button in the HUD rail; leave
-`skill` off and it is body work, listed but attached to nothing.
+`skill` off and it is body work, listed but attached to nothing. `needs` names a mod that has to already
+be on before the card is dealt at all — `LOOSE JOINTS` on a goat who cannot roll yet is a card that does
+nothing, and with thirteen tomes in a run against fourteen boons there is no room for a dead draw.
 
 **The skill rail.** `drawSkills` (top right) is the only place the four verbs are reported: availability,
 cooldown, and what the tomes did to each. `skillIcon` draws each verb from `game.mods`, so an icon has to
 change when a boon lands — Long Horns lengthens the horns on the icon and on the goat, Dragon Breath turns
 the mouth into a cone, Loose Joints adds a second turn to the roll. Add a boon, draw its effect here.
+A chip can also be dark: `row.locked` is the roll before its tome, drawn at a fifth alpha with LOCKED
+under it instead of the verb's name.
 The whole top band — the level name, the hearts, the rail, the count, the clock, the tome list — is sized
 by `renderer.hs`, which is `ts` times `TUNING.hud.scale`. That is the one number to turn if the corner of
 the screen is not being read; the cards, the menu and the floor text are on `ts` and stay where they are.
@@ -192,9 +211,9 @@ man leaves your mouth, so grab is not a button you hold. Roll has its own. Both 
 rings on the touch buttons; both read `game.mods`, never `TUNING`, at the use site.
 
 **The room is real to what flies through it.** `Prop.hitProp(game, nx, ny)` is the one place a moving
-prop — a thrown pot, a thrown blade or shield, a sliding table — meets the furniture: a lamp topples in
+prop — a thrown crate, a thrown blade or shield, a sliding table — meets the furniture: a lamp topples in
 the direction it was hit, a gong rings, and anything else pushes the mover out and is as solid as stone
-(a pot shatters, a sword snaps, a shield bounces, a table stops, or takes a door off if it is at
+(a crate shatters, a sword snaps, a shield bounces, a table stops, or takes a door off if it is at
 `table.killSpeed`). Bodies get the same treatment in `collideEntities`: a flung man arriving above
 `lamp.knock` topples the lamp instead of dying on it, and a Butcher in state `'charge'` smashes a door
 (`smash(..., by)` spares him the fling), shoves a table (`shove(..., by)` stops it turning on him),
@@ -310,7 +329,7 @@ can never wander into the cone it is not allowed to manifest from. Three of them
 the same place behind you — they surround you.
 
 **The wraith, and what "not there" means.** `Enemy.ghosted` is `kind === 'wraith' && !solid`, and it is
-the question every single thing that reaches for an enemy has to ask: headbutt, breath, grab, thrown pot,
+the question every single thing that reaches for an enemy has to ask: headbutt, breath, grab, thrown crate,
 thrown blade, bullet, Mill arm, door, table, bomb, scream, fire, entity collision, friendly fire, the
 roll's threat sense, the music's threat count and the health notches. Mist also skips `collideCircle`,
 which is how it crosses walls. `updateWraith` drifts it to a point `wraith.standoff` tiles behind the
@@ -366,10 +385,14 @@ and a pointer that goes **down and up on the same card** (`boonDown` holds the i
 beat after they appear, so the click that killed the boss cannot spend what he dropped. Nothing
 selects on hover, and nothing selects on a press alone.
 
-**What a death costs.** `startLevel` snapshots `game.levelBoons` from `game.boons`, and `restartLevel`
-comes back with that list minus its last entry — so a death takes the newest tome and nothing else, and
-a tome picked up inside the level that killed you goes with it. `onGoatDied` names what went off the
-same list. Nothing else may reset `boons` on a death: `restartLevel` passes `keepBoons`.
+**What a death costs.** The level, not the learning. `startLevel` snapshots `game.levelBoons` from
+`game.boons` and `restartLevel` comes back with **exactly** that list, so everything the goat walked in
+carrying stays. It used to come back one short, which meant dying on the level that had just rewarded
+you cost you the reward and a bad run only got worse. What a death still takes is a tome found *inside*
+the level: the layout is generated again and it is back where it was, guarded by whoever was guarding
+it — which is also why a death is not a way to farm one. `onGoatDied` names what was kept rather than
+what was lost, because a card is the only place the player finds out that he keeps it. Nothing else may
+reset `boons` on a death: `restartLevel` passes `keepBoons`.
 
 **The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, score, at }` to
 `localStorage` under `SAVE_KEY` at the head of every level and again whenever a tome is taken; `loadRun`
@@ -425,14 +448,27 @@ and a stretch across the middle of a room is ground you have to decide about.
 
 **Crates.** `kind === 'crate'` is the plainest object in the game: one tile of floor, planks and two
 iron bands, and everything it does it does through `item` — grab it, carry it, throw it. It flies down
-the same path as a pot (the thrown-item branch of `Prop.update`), breaks on the same things, and floors
-a man for `crate.stun` rather than the pot's, which is the only number that separates them. Boxes are
+the thrown-item branch of `Prop.update`, breaks on doors, tables, gongs and men, and floors whoever it
+catches for `crate.stun`. It is deliberately small — `r` is 10, a third under the tile it sits on — and
+deliberately plain: four shapes, an outline, a face, a lit top edge and one band. It had planks, two
+bands and a stud, which is detail spent saying nothing. Boxes are
 what a compound is full of; the point of it is that nothing has to be explained.
 
-**Two kinds of door.** `prop.door.hits` is one — a plank door in a corridor is a thing you run through,
-not a wall you stand at — and `ironHits` is four. `prop.iron` is the flag, it is set only by the vault,
-and an iron door also refuses `openPressure`: nobody shoulders it open, it is broken or it is shut. Every
-blow on one floats what is left in it, so four is a count and not a wall.
+**Three kinds of door.** `prop.door.hits` is one — a plank door in a corridor is a thing you run
+through, not a wall you stand at. `ironHits` is three and `vaultHits` four. `prop.iron` is the flag and
+`levelDef.ironDoors` is the chance an ordinary corridor door gets it, rolled in `gen.js` on top of
+`doorChance`: about two a level from level two on, none at all on level one, which is still teaching
+that a door goes. An iron door refuses `openPressure` — nobody shoulders it open, it is broken or it is
+shut — so a corridor with one in it is three blows of standing still with whatever heard the first
+already coming, which is the entire point of putting them there. Every blow floats what is left in it,
+so the count is a count and not a wall.
+
+**The soul door.** `prop.vault` is the vault's door and it is the fourth-blow one. It used to be an
+iron slab like any other, which since level two now has iron slabs in its corridors would make the one
+thing in a level worth going out of your way for indistinguishable from a speed bump. It carries the
+tome's own halo, the book painted small on its face in `PALETTE.plum` and `fireHi`, and the same
+floating `TOME` the tome on the floor carries — the door says what is behind it in the language of the
+thing behind it, which is the only wording nobody has to be taught.
 
 **The vault.** `levelDef.vaultAt` names one ordinary room in the middle of a level. `carveVault` cuts a
 five-by-five chamber into the rock above or below it, opens **two** tiles of stone — the rock and the
@@ -463,9 +499,15 @@ with an `entry`. Levels without `ritual` start at the top of the entry flight ra
 **The other cage.** Built by `buildCage(..., deco)` from `TUNING.prop.deadCage`; its bars carry `deco`,
 which keeps them out of `breakCage`, out of the gate, and out of the in-front-of-the-goat draw pass.
 What is in it is painted on the decal canvas by `paintStartRoom`.
-**The roll.** `Goat.rollDirection` scores 24 candidate angles against nearby men (weighted up if one is
-mid-swing), walls and fire, and honours the stick when there is one. With no direction asked for it is a
-pure escape, which is the whole reason the button exists on a phone.
+**The roll.** The one verb the goat is not born with. `mods.roll` is false out of the pen and the button
+does nothing until **TUCK AND ROLL** is taken: the chip stays on the rail reading LOCKED, the thumb
+button reads LOCKED, and a floor hint never names a key the goat has not been given (`drawHints` checks).
+A locked fourth chip is the clearest promise the game makes, which is the whole point of locking it.
+`openBoonChoice` puts it on the table for the run's **first** tome whatever the shuffle says — you still
+spend the tome on it rather than on fire breath, but a button withheld by a bad draw is not a decision.
+`Goat.rollDirection` scores 24 candidate angles against nearby men (weighted up if one is mid-swing),
+walls and fire, and honours the stick when there is one. With no direction asked for it is a pure escape,
+which is the whole reason the button exists on a phone.
 
 **Arms are consumable.** `prop.uses` counts what a weapon has left, off `TUNING.prop.weapon.uses` —
 a sword 1, a shield 3. `Prop.snap()` is the single place one is destroyed: it is called by the sword
@@ -616,6 +658,12 @@ pass it as `--artifact <file>`; without it the script prints the local byte coun
 - Where his wife is. The opening scene carries her off deeper into the compound and nothing after it
   refers to her: no room, no ending, no line from the cult.
 - Pixel art proper. Everything is still drawn with canvas primitives in the final palette.
+- **A souls resource.** Asked for on 14 Sep 2026 and not yet built: one soul per man killed, banked and
+  spent on something. The shape it wants is already half in the game — `game.kills` counts men and
+  `scoreFor` already refuses to let kills beat pace — so the open question is not how to count them but
+  what they buy, and whether buying anything with bodies argues with *run, don't fight*. The obvious
+  home is the soul door: a vault that opens for souls instead of, or as well as, four blows. See
+  `BACKLOG.md`.
 - Gamepad support, a Priest boss, and the later acts sketched in `GOAT_OUT_brief.md`.
 - The endless roll against a wall, reported in the 14 Sep 2026 playtest and **not reproduced** — see
   `BACKLOG.md` for what was measured and what to ask him. The soul barrier from the same batch was

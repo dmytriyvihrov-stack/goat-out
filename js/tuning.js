@@ -159,7 +159,13 @@ const TUNING = {
     // Two kinds. A plank door in a corridor is one blow and gone — it is a thing to run through,
     // not a wall to stand at. Iron is the other answer: it takes `ironHits` and it is never on the
     // way out of a room, only on the way into somewhere you did not have to go.
-    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 4 },
+    // Three kinds of door and three prices. Planks go on the first blow — a door in a corridor is a
+    // thing you run through, not a wall you stand at. Iron does not go, and that is the whole of its
+    // value: it cannot be shouldered open by anybody, so the only way past is three blows and the
+    // noise of three blows, with whatever heard the first already coming. The soul door — the vault's,
+    // the one with a tome behind it — is four, because it is the only door in a level that is not on
+    // the way anywhere: you go to it on purpose or you never see what is in it.
+    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 3, vaultHits: 4 },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE },
     // A lamp post is not a pillar: a body arriving at `knock` goes through it and it goes over,
     // and it pours its oil where the body is about to land.
@@ -177,13 +183,13 @@ const TUNING = {
     // read. Now it pays: a stretch of speed and quick hands, bought by telling the whole floor where
     // you are. In an empty room that is a terrible trade. In a full one it is the best one you get.
     bell: { r: 14, buff: 8, speedMul: 1.5, cooldownMul: 1.5 },
-    // A thrown pot no longer just trips a man over. It takes his legs and his head with them,
+    // The crate, and the only thing in the game you pick up off the floor and throw. There used to
+    // be a pot as well, drawn as a circle, and a circle on a floor of squares reads as a plate or a
+    // puddle rather than as a thing to lift: every one of them is a crate now. Small — a box you can
+    // carry in your teeth is not a crate a man packs — and plain, because everything it has to say
+    // is *pick me up*. A thrown one does not trip a man, it takes his legs and his head with them,
     // and he lies there seeing stars long enough that you can do something about him.
-    pot: { r: 9, stun: 2.4 },
-    // A one-tile crate. Everything the compound owns is in boxes, and a box is the plainest thing
-    // in the game to read: it sits there, you can pick it up, and you can throw it at a man. Heavier
-    // than a pot, so it puts him down for longer, and it takes up a whole tile of the floor.
-    crate: { r: 14, stun: 3.2 },
+    crate: { r: 10, stun: 2.8 },
     // A stand of arms. Grab what is in it, carry it, let go to throw it. The sword goes through
     // the first man it finds; the shield knocks a row of them flat and turns bullets while carried.
     weapon: {
@@ -242,7 +248,7 @@ const TUNING = {
   // shoulders, a spiked mask, a studded club — and the notches over his head count it down.
   champion: { hp: 3, bossHp: 4, scale: 1.34, spikes: 5 },
   noise: {
-    footstep: 2, headbutt: 5, splat: 8, pot: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13, steel: 9, embers: 6,
+    footstep: 2, headbutt: 5, splat: 8, smash: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13, steel: 9, embers: 6,
   },
   juice: {
     hitstop: 0.07, shakeKill: 9, shakeHit: 6, shakeDecay: 12, deathSlow: 1.6, killSlow: 0.22,
@@ -339,7 +345,10 @@ const BOON_BASE = {
   headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
   shieldBullets: 2, holdTime: 8.0, livingShield: false, grabCooldown: 1,
   screamCooldown: 4.0, screamRadius: 8.5,
-  rollDistance: 1, rollCooldown: 1, rollStun: 0,
+  // The roll starts switched off. The button is there from the first second and does nothing until
+  // a tome turns it on: a goat that can already dodge has nothing left to be given on level one,
+  // and the fourth chip on the rail sitting dark is the clearest promise the game can make.
+  roll: false, rollDistance: 1, rollCooldown: 1, rollStun: 0,
   breath: false, bomb: false, devour: false,
 };
 
@@ -351,6 +360,8 @@ const BOONS = [
     apply: (m) => { m.bomb = true; } },
   { id: 'devour', skill: 'grab', active: true, name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
     apply: (m) => { m.devour = true; } },
+  { id: 'tuck', skill: 'roll', active: true, name: 'TUCK AND ROLL', desc: 'The fourth button answers. Nothing lands on you while you are down there.',
+    apply: (m) => { m.roll = true; } },
 
   // ---- passives ----
   { id: 'hide', name: 'THICK HIDE', desc: 'One more heart, and it fills now.', apply: (m) => { m.maxHp += 1; }, heal: 1 },
@@ -360,8 +371,8 @@ const BOONS = [
   { id: 'shield', skill: 'grab', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing. At his own.', apply: (m) => { m.livingShield = true; } },
   { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 13; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
-  { id: 'joints', skill: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
-  { id: 'weight', skill: 'roll', name: 'DEAD WEIGHT', desc: 'Everything your roll goes through loses its head for a moment.',
+  { id: 'joints', skill: 'roll', needs: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
+  { id: 'weight', skill: 'roll', needs: 'roll', name: 'DEAD WEIGHT', desc: 'Everything your roll goes through loses its head for a moment.',
     apply: (m) => { m.rollStun = TUNING.goat.roll.stun; } },
   { id: 'ember', name: 'EMBER COAT', desc: 'Ordinary fire stops burning you. Witchfire does not care.', apply: (m) => { m.fireImmune = true; } },
 ];
@@ -395,6 +406,14 @@ const BARKS = {
   wraith: ['IT IS UP', 'DO NOT LOOK AT IT', 'THE DEAD WALK', 'COLD! COLD!', 'WE BURIED THAT'],
 };
 
+// How many tomes a level gives up is a number on the level and not a consequence of how many bosses
+// it happens to hold: the run's power curve is authored, and a Butcher standing in room four of the
+// bridge is not a design decision about how strong the goat should be by then. `tomes` is that
+// number, all in. The vault takes the first of them — breaking an iron door for a pail of milk is a
+// swindle — and the rest go to the LAST bosses of the level, so the fight you finish on is always
+// worth something. A boss with none left to give leaves milk instead: nothing you had to break
+// through is ever worth nothing. The seven numbers add up to thirteen, which is every tome in the
+// game, so a run that never misses one learns everything and a run that skips the vaults does not.
 const LEVELS = [
   {
     // Level one teaches, in this order: one clubman standing in the only way out of his room, a room
@@ -417,7 +436,7 @@ const LEVELS = [
     arenas: [{ at: 9, boss: 'champion' }, { at: 11, boss: 'butcher' }],
     // The wheel is met with nobody standing in the room, and arms are not a thing you find until
     // halfway in: the first half of the run is the goat and his head and nothing else.
-    millAt: 5, millSolo: true, heals: 3, racks: 0.2, racksFrom: 0.5, traps: 1, crates: 0.3,
+    millAt: 5, millSolo: true, heals: 3, tomes: 1, racks: 0.2, racksFrom: 0.5, traps: 1, crates: 0.3,
     encounters: {
       kinds: ['bearer', 'champion'],
       introduce: [['bearer', 0], ['champion', 0.8]],
@@ -433,31 +452,31 @@ const LEVELS = [
     // standing still and what a head does to him.
     name: 'THE YARD', sub: 'Level 2', rooms: 12,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
-    millAt: 7, heals: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
+    millAt: 7, heals: 2, tomes: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],
       introduce: [['dog', 0.12], ['seer', 0.5]],
-      from: 2, to: 7.5, ease: 1.3,
+      from: 2, to: 8.5, ease: 1.3,
     },
     floor: '#8a7554', floorAlt: '#907b5a', wall: '#3b2233', wallTop: '#55344a',
-    fog: '#120d12', doorChance: 0.42,
+    fog: '#120d12', doorChance: 0.42, ironDoors: 0.45,
     hint: 'THE SEER BURNS THE GROUND YOU STAND ON', hintKey: 'roll',
   },
   {
     // The rifle arrives early, alone, and then never stops being the reason you keep moving.
     name: 'THE ROAD', sub: 'Level 3', rooms: 14,
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    millAt: 8, heals: 2, hallAt: 9, hallThreat: 26, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
+    millAt: 8, heals: 2, tomes: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
     // heels crosses a beat later, when it is no longer floor.
     spikes: 0.3, crates: 0.35, vaultAt: 7,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [['hunter', 0.2]],
-      from: 3, to: 10, ease: 1.25,
+      from: 3, to: 9, ease: 1.25,
     },
     floor: '#4a3a2e', floorAlt: '#524032', wall: '#2a2430', wallTop: '#3e3346',
-    fog: '#0b0a0d', doorChance: 0.35,
+    fog: '#0b0a0d', doorChance: 0.35, ironDoors: 0.5,
     hint: 'HOLD A MAN. HE STOPS BULLETS.', hintKey: 'grab',
   },
   {
@@ -468,33 +487,33 @@ const LEVELS = [
     // Nothing new walks in: the room itself is the new thing.
     name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, pool: 'open', corridorW: 5,
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
-    millAt: 6, heals: 3, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
+    millAt: 6, heals: 3, tomes: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
       // Nothing new walks in here, so the only thing that can make the yard harder than the road is
       // the curve itself: the road carries a Great Hall and a gallery and this does not, and the two
       // levels were coming out level.
-      from: 6, to: 15.5, ease: 1.2,
+      from: 6, to: 13.2, ease: 1.2,
     },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
-    fog: '#0b0b0a', doorChance: 0.12,
+    fog: '#0b0b0a', doorChance: 0.12, ironDoors: 0.8,
     hint: 'NOTHING OUT HERE KILLS FOR YOU. USE WHAT IS STANDING.', hintKey: 'butt',
   },
   {
     // Everything the compound has left, all at once, on the bridge they were driving you over.
     name: 'THE BRIDGE', sub: 'Level 5', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
-    millAt: 7, heals: 3, hallAt: 12, hallThreat: 32, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 8,
+    millAt: 7, heals: 3, tomes: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 8,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
-      from: 5, to: 17, ease: 1.15,
+      from: 5, to: 15, ease: 1.15,
       // The bridge is the only ground allowed a room this crowded, and a third rifle on it.
       cap: { men: 9, hunter: 3, dog: 3 },
     },
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
-    fog: '#06070a', doorChance: 0.3,
+    fog: '#06070a', doorChance: 0.3, ironDoors: 0.55,
     hint: 'EVERYTHING THEY HAVE LEFT IS HERE', hintKey: 'scream',
   },
   {
@@ -506,15 +525,15 @@ const LEVELS = [
     // without being in the room.
     name: 'THE RAFTERS', sub: 'Level 6', rooms: 16, pool: 'high',
     arenas: [{ at: 4, boss: 'seer' }, { at: 10, boss: 'butcher' }, { at: 14, boss: 'champion' }],
-    millAt: 7, heals: 4, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8,
+    millAt: 7, heals: 4, tomes: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
-      from: 8, to: 26, ease: 1.15,
+      from: 8, to: 23.5, ease: 1.15,
       cap: { men: 9, hunter: 3, dog: 3 },
     },
     floor: '#4b433a', floorAlt: '#544a40', wall: '#241d1a', wallTop: '#453629',
-    fog: '#06060a', doorChance: 0.2,
+    fog: '#06060a', doorChance: 0.2, ironDoors: 0.7,
     hint: 'THE FLOOR ENDS. THEY FALL FURTHER THAN YOU.', hintKey: 'butt',
   },
   {
@@ -524,7 +543,7 @@ const LEVELS = [
     // your back — the only cover on this ground is which way you are looking.
     name: 'THE OSSUARY', sub: 'Level 7', rooms: 16,
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
-    millAt: 6, heals: 4, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
+    millAt: 6, heals: 4, tomes: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
       // The first room of the level is the wraith on its own, because nothing else in the game
@@ -536,7 +555,7 @@ const LEVELS = [
       cap: { wraith: 4, men: 9 },
     },
     floor: '#22242b', floorAlt: '#282a33', wall: '#3a3730', wallTop: '#565044',
-    fog: '#05060a', doorChance: 0.22,
+    fog: '#05060a', doorChance: 0.22, ironDoors: 0.65,
     hint: 'IT CANNOT STOP ONCE IT STARTS. LET IT START.', hintKey: 'butt',
   },
 ];

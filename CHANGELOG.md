@@ -5,6 +5,57 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.9 — a run that gets stronger, a fourth button to find, and no more plates
+
+**One sitting, about progression.** The complaint was that the first levels were already hard and the
+difficulty did not climb evenly, and that nothing carried forward — you learned something, died, and
+were handed the same goat back. Every change here is that: what the run keeps, what it is given, and
+how steeply the ground rises under it.
+
+- **A death no longer takes a tome.** It took the newest one, which meant that dying on a level you
+  had just been rewarded on cost you the reward, and a bad run only ever got worse. You now come back
+  with **everything you walked into the level carrying**. What a death still takes is the tome you
+  found *inside* the level that killed you — the room is generated again and it is back where it was,
+  guarded by whoever was guarding it — so dying is not a way to farm one. The death card says
+  `N TOMES KEPT` instead of naming a loss.
+- **A level gives up an authored number of tomes.** It used to be however many bosses the level
+  happened to hold, plus the vault: two on level one, four on level six, twenty-four across a run that
+  never died — far more than there are tomes in the game. `tomes` is now a number on each level
+  definition. **One on level one, two on every level after**, which is thirteen across a run and
+  exactly the number of tomes that exist. The vault takes the first of a level's two (breaking an iron
+  door for a pail of milk is a swindle) and the LAST boss of the level takes the other, so the fight
+  you finish on always pays. **Every other boss now drops milk** — nothing you had to break through is
+  worth nothing. The level card says what is in the level: *2 tomes in here*.
+- **The roll is a tome, not a birthright.** The fourth chip on the rail starts dark and says LOCKED,
+  and the E key does nothing until **TUCK AND ROLL** is picked up. It is the game's clearest promise:
+  there is a verb you have not been given yet. The run's first tome always has it on the table — you
+  still spend the tome on it rather than on fire breath, but a fourth button withheld by a shuffle is
+  not a decision. LOOSE JOINTS and DEAD WEIGHT are held out of the deck until there is a roll to
+  sharpen, which is what the new `needs` field on a boon is for.
+- **The difficulty climbs evenly now.** It went 27 → 50 → **115** → 123 → 167 → 181 → 199: a wall at
+  level three and a plateau after it. Per room, which is what a player actually feels, that is
+  +1.9, **+4.0**, +0.6, +1.7, +0.8, +1.1. It now runs 27 → 53 → 97 → 118 → 157 → 179 → 199, or per
+  room +2.1, +2.5, +1.5, +1.4, +1.4, +1.2 — the same finale, the same first two levels, and no wall
+  in the middle. Level three's Great Hall was the single worst offender at 26 threat in one room when
+  the level's own rooms averaged 8; the first Hall you ever walk into is a smaller one now (11), and
+  the bridge's is still the wall of bodies it was meant to be.
+- **Iron doors between rooms.** Every door in a corridor was planks and went on the first blow, so a
+  corridor was never a decision. About **two a level** from level two on are iron: nobody shoulders one
+  open, it takes **three blows**, and the noise of the first one is already bringing whatever is in the
+  next room. Level one has none — it is still teaching that a door goes at all. `levelDef.ironDoors`
+  is the chance, rolled on top of `doorChance`.
+- **The soul door says what is behind it.** With iron in the corridors, the vault's door — the only
+  door in a level that is not on the way anywhere — was suddenly indistinguishable from a speed bump.
+  It now carries the tome's own halo, the book painted small on its face, and the same floating `TOME`
+  the tome on the floor carries. It is still four blows, one more than the iron you passed two rooms
+  back, and that difference is now something you can see before you spend them.
+- **No more plates.** The pot was drawn as an ochre disc, and a disc on a floor of boards reads as a
+  plate or a puddle rather than as a thing you lift. Every one of them is a **crate** now, and the
+  crate is smaller and plainer than it was: an outline, a face, a lit top edge, one band. Four shapes
+  instead of nine. A box has to say *pick me up* from across a room and nothing else.
+
+---
+
 ## 1.8 — the man in the doorway, and what is behind the iron
 
 **The same sitting, carried on.** Where 1.7 was about the game not saying what a thing *is*, this one
