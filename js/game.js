@@ -953,7 +953,18 @@ class Game {
     };
     this.cam.x = S.x + 12; this.cam.y = S.y; this.cam.zoom = this.renderer.zoomFit * I.zoom;
     this.state = 'intro'; this.card = null;
+    // The three screens before the pen. They have their own clock, so `it.t` — which paces the
+    // camera creep and the skip prompt once the pen is on screen — does not start until the pen
+    // is. The two of them are lightweight stand-ins for the sprites: the renderer draws them with
+    // the same `drawGoat` / `drawSheep` the pen uses, so they are the same animals.
+    const actor = (x, y, facing) => ({ x, y, facing, vx: 0, vy: 0, state: 'idle', trail: [], jitter: null,
+      dazed: 0, invuln: 0, hp: 4, maxHp: 4, onFire: false, witchFire: false, timer: 0, rollSpin: 0, kick: 0, bleating: 0 });
+    this.intro.pro = { t: 0, sceneT: 0, bleat: 1.2, turn: 0, engine: 0, goat: actor(-40, 10, 0), ewe: actor(40, -6, Math.PI) };
+    this.introPhase('meadow');
   }
+
+  // Which phases are the prologue: the pen's own clock and camera stay frozen through them.
+  inPrologue() { const p = this.intro && this.intro.phase; return p === 'meadow' || p === 'road' || p === 'dark' || p === 'cloth'; }
 
   // Moves anything with a `path` of points along it at `speed`; true once the path is used up.
   followPath(e, speed, dt) {
@@ -972,6 +983,82 @@ class Game {
     else if (name === 'grab') it.knife.path = [it.way[0], it.way[1], it.grabAt];
     else if (name === 'fade') this.audio.duck(I.duck, I.fade);
     else if (name === 'wake') this.audio.duck(1, I.wake * 0.8);
+    if (it.pro) it.pro.sceneT = 0;
+  }
+
+  // ---------- the prologue: a meadow, a truck, the dark, and the sacking coming off ----------
+  // Three screens with nothing in them but the two of them and the sound they make. What changes
+  // from one to the next is how often they call and how frightened it sounds, and that is the
+  // whole of the storytelling: the pen scene that follows is the same two animals a minute later.
+  updatePrologue(dt) {
+    const I = TUNING.intro, P = I.prologue, it = this.intro, pr = it.pro, ph = it.phase;
+    pr.t += dt; pr.sceneT += dt;
+    const gt = pr.goat, ew = pr.ewe;
+    if (ph === 'meadow') {
+      // Two halves. First each of them has an end of the field and a loop of his own; then, over
+      // `close` seconds, the two loops become one loop with the ewe a little ahead on it and the
+      // goat behind her, and the heart comes up between them. Nothing in this screen is in a hurry.
+      const a = pr.sceneT * 0.6;
+      const blend = clamp((pr.sceneT - P.meet) / P.close, 0, 1), e = blend * blend * (3 - 2 * blend);
+      pr.met = blend >= 1;
+      const at = (ox, oy, rx, ry, ang) => ({ x: ox + Math.cos(ang) * rx, y: oy + Math.sin(ang) * ry });
+      const place = (o, apart, together) => {
+        const nx = lerp(apart.x, together.x, e), ny = lerp(apart.y, together.y, e);
+        o.vx = (nx - o.x) / dt; o.vy = (ny - o.y) / dt;
+        if (Math.hypot(o.vx, o.vy) > 1) o.facing = Math.atan2(o.vy, o.vx);
+        o.x = nx; o.y = ny; o.kick = Math.sin(pr.t * 14) * 3;
+      };
+      // his own end and hers, then the one loop they share
+      place(gt, at(-112, 12, 34, 20, a), at(0, 4, 78, 32, a));
+      place(ew, at(112, -8, 32, 18, -a + 1.5), at(0, 4, 78, 32, a + 0.85));
+      // the heart, once they are near enough for one: the same heart the pen has
+      if (blend > 0.35) {
+        const b = (pr.t * 1.15) % 1, beat = (o) => Math.pow(Math.max(0, Math.sin(b * Math.PI * 2 - o)), 3);
+        pr.heart = { x: (gt.x + ew.x) / 2, y: Math.min(gt.y, ew.y) - 30 + Math.sin(pr.t * 2) * 1.5,
+          pulse: 1 + 0.16 * beat(0) + 0.1 * beat(1.3), broken: 0, a: clamp((blend - 0.35) / 0.4, 0, 1) };
+      }
+      if (pr.sceneT >= P.meadow) this.introPhase('road');
+    } else if (ph === 'road') {
+      // In the cage on the flatbed. The truck jolts and they jolt with it, and they are turned to
+      // each other now rather than off on their own lines.
+      const j = Math.sin(pr.t * 9.3) * P.bounce + Math.sin(pr.t * 23.7) * P.bounce * 0.35;
+      pr.jolt = j;
+      gt.x = -16; gt.y = 6 + j; gt.facing = 0.15; gt.vx = 0; gt.vy = 0; gt.kick = 0;
+      ew.x = 18; ew.y = 2 + j * 0.8; ew.facing = Math.PI - 0.15; ew.vx = 0; ew.vy = 0; ew.kick = 0;
+      gt.jitter = { x: Math.sin(pr.t * 37) * 0.4, y: j * 0.2 }; ew.jitter = { x: Math.cos(pr.t * 41) * 0.4, y: j * 0.2 };
+      pr.engine -= dt;
+      if (pr.engine <= 0) { pr.engine = 0.5; this.audio.sfxEngine(); }
+      if (pr.sceneT >= P.road) this.introPhase('dark');
+    } else if (ph === 'dark') {
+      // Nothing to see. The bleats are all there is, and they are close together now.
+      gt.jitter = null; ew.jitter = null;
+      if (pr.sceneT >= P.dark) this.introPhase('cloth');
+    } else if (ph === 'cloth') {
+      // The pen, and the sacking coming off it. The pen's actors take over from here.
+      if (pr.sceneT >= P.cloth) { it.pro = null; this.introPhase('huddle'); return; }
+    }
+    // The through-line. Softer and further apart in the field, closer and louder on the road, and
+    // in the dark it is one animal answering the other with nothing between them.
+    if (ph !== 'cloth') {
+      const gap = P.bleat[ph], loud = ph === 'dark' ? 2 : ph === 'road' ? 1 : 0;
+      pr.bleat -= dt;
+      if (pr.bleat <= 0) {
+        pr.turn ^= 1;
+        // Apart, each calls on his own clock and nobody answers. Once they have met, a call gets
+        // its answer `answer` seconds later, and then the pair of them wait — so what the ear hears
+        // change across the screen is not the volume but that the second voice has started to
+        // come back for the first.
+        const answering = (pr.met || ph !== 'meadow') && pr.turn === 0;
+        pr.bleat = answering ? P.answer : gap * (0.7 + Math.random() * 0.6);
+        const word = pr.turn ? ['baah', 'b-baah', 'BAAH!'][loud] : ['beeh', 'b-beeh', 'BEEH!'][loud];
+        const who = pr.turn ? gt : ew;
+        pr.last = { who: pr.turn ? 'goat' : 'ewe', word, life: 1.2, x: who.x, y: who.y };
+        if (pr.turn) this.audio.sfxBleat(300, [0.07, 0.1, 0.16][loud], [0.34, 0.3, 0.28][loud]);
+        else { this.audio.sfxBleat(470, [0.06, 0.09, 0.14][loud], [0.3, 0.27, 0.25][loud]); ew.bleating = 0.3; }
+      }
+    }
+    if (pr.last) { pr.last.life -= dt; if (pr.last.life <= 0) pr.last = null; }
+    ew.bleating = Math.max(0, ew.bleating - dt);
   }
 
   // ---------- loop ----------
@@ -1079,6 +1166,14 @@ class Game {
   updateIntro(dt) {
     const I = TUNING.intro, it = this.intro, g = this.goat, s = it.sheep, S = it.S, ph = it.phase;
     if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; return; }
+    // The three screens before the pen run on their own clock, and nothing of the pen's — the
+    // camera creep, the tremble, the heart — starts until they are done.
+    if (this.inPrologue()) {
+      if (this.introSeen && this.input.anyPressed && it.pro.t > I.skipAfter) { this.skipIntro(); return; }
+      this.updatePrologue(dt);
+      if (this.intro) this.updateEffects(dt);
+      return;
+    }
     it.t += dt; it.timer += dt;
     if (this.introSeen && this.input.anyPressed && it.t > I.skipAfter && ph !== 'black' && ph !== 'wake') { this.skipIntro(); return; }
 
@@ -1328,6 +1423,7 @@ class Game {
     if (it.phase === 'black' || it.phase === 'wake') return;
     const g = this.goat; g.state = 'ko'; g.vx = 0; g.vy = 0; g.dazed = 99; g.jitter = null; g.path = null;
     this.slowTimer = 0; this.hitstopTimer = 0; this.audio.duck(TUNING.intro.duck, 0.2);
+    it.pro = null;                       // skipped from the prologue: the dark is the same dark
     this.introPhase('black'); it.timer = 0.5;
   }
   endIntro() {

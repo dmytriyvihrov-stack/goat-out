@@ -5,6 +5,28 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.17 — a meadow, a road, and the dark
+
+**Three screens before the pen.** The run used to open on two animals already in a cage; now it
+opens on a field. A meadow with a rail fence and a low sun, the two of them at opposite ends of it
+on a loop each, calling to nobody; then they come together, the heart comes up between them, and
+they run one loop and answer each other. Then the back of a truck on a road at night — a cage on
+the flatbed, the road going past, the wheels going round, a motor under it. Then nothing: a black
+screen and two voices. Then the sacking comes off, and it is the pen, and the men are coming.
+
+The bleats are the through-line. They are further apart in the field, closer on the road, and in
+the dark they are all there is — so what changes from screen to screen is not the picture but how
+often one of them calls and whether the other one still answers. The pen scene that follows is
+untouched: it is the same two animals a minute later, and it lands harder for the minute.
+
+It is the first version, drawn plain on purpose — a fence is two rails and some posts, a truck is
+three boxes and two circles — so that the shape of the story can be looked at before the finish is
+spent on it. Every beat is in `TUNING.intro.prologue`, it can be skipped like the rest once a
+browser has watched it through, and `drawGoat` / `drawSheep` draw the two of them, so they are the
+same animals in the field that they are in the cage.
+
+---
+
 ## 1.16 — a hen
 
 **There is a chicken in the compound and she is on your side.** A `coop` — two tiles of slatted

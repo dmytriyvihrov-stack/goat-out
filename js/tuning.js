@@ -412,6 +412,22 @@ const TUNING = {
     walk: 98, run: 148, shiver: 0.7, fear: 1.5, bleatEvery: 1.25, stars: 3.2, skipAfter: 0.8, duck: 0.12,
     push: 12, arrive: 1.4, lunge: 0.45,
     club: { knock: 7 * TILE, slow: 0.8, hitstop: 0.12 },
+    // Three screens before the pen, so the pen is the end of something rather than the start of
+    // nothing: a meadow, the back of a truck, and the dark. Seconds each, and `cloth` is the beat
+    // the sacking comes off them in the pen. The bleats are the through-line — `bleat` is the
+    // gap between them in each screen, and it closes as the run goes on, so what was two animals
+    // calling to each other across a field is by the last screen two animals calling into
+    // nothing. `roadSpeed` is how fast the road goes past; `bounce` how much the truck jolts.
+    // The meadow has two halves. Until `meet` they are at opposite ends of the field, each on a
+    // loop of his own and calling to nobody; over `close` seconds they come together, the heart
+    // comes up between them, and from there they run one loop and answer each other — `answer` is
+    // how quickly the second bleat follows the first once they have met. People care about the
+    // pen because they saw the field, and they care about the field because they saw it start.
+    prologue: {
+      meadow: 11.0, meet: 4.2, close: 2.2, answer: 0.5, road: 7.0, dark: 3.4, cloth: 1.0,
+      bleat: { meadow: 2.4, road: 1.4, dark: 0.62 },
+      roadSpeed: 420, bounce: 2.2, zoom: 1.35,
+    },
   },
   // The way out is a flight of stairs. The goat climbs them for a moment before the cards, and on
   // the next level it comes up another flight into the first room.

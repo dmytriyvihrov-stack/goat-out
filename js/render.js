@@ -148,6 +148,7 @@ class Renderer {
       const p = clamp(game.stairFx.t, 0, 1);
       ctx.fillStyle = `rgba(239,230,208,${0.6 * p * p})`; ctx.fillRect(0, 0, this.vw, this.vh);
     }
+    if (game.intro && game.inPrologue()) this.drawPrologue(game);
     if (game.intro) this.drawIntroOverlay(game);
     this.drawUI(game);
     this.drawTitle(game, dt);
@@ -2092,11 +2093,128 @@ class Renderer {
       ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'right';
       ctx.fillText('beeh...', this.w * 0.9, this.vh * 0.47); ctx.restore();
     }
-    // Only once it has been watched through. The first run sits and watches.
-    if (game.introSeen && it.t > TUNING.intro.skipAfter + 0.7 && it.phase !== 'black' && it.phase !== 'wake') {
+    // Only once it has been watched through. The first run sits and watches. The prologue keeps its
+    // own clock, so the line comes up on it the same way it does on the pen.
+    const clock = it.pro ? it.pro.t : it.t;
+    if (game.introSeen && clock > TUNING.intro.skipAfter + 0.7 && it.phase !== 'black' && it.phase !== 'wake') {
       ctx.save(); ctx.globalAlpha = 0.4 * (1 - it.fade); ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'left';
       ctx.fillText(`${game.tapWord} TO SKIP`, 14 * s, this.vh - 14 * s); ctx.restore();
     }
+  }
+
+  // The three screens before the pen, and the sacking coming off it. Flat scenes in screen space:
+  // a sky, a ground, and the two of them drawn with the same `drawGoat` / `drawSheep` the pen uses,
+  // inside a transform that squashes Y by TILT so their own counter-squash stands them up. Nothing
+  // here is simulated — the positions come from `updatePrologue` — and everything is deliberately
+  // plain: a fence is two rails and some posts, a truck is three boxes and two circles. It is the
+  // first version, drawn to be replaced, and what it has to carry is the shape of the story rather
+  // than the finish.
+  drawPrologue(game) {
+    const it = game.intro, pr = it.pro, ctx = this.ctx, P = TUNING.intro.prologue;
+    const w = this.vw, h = this.vh, cx = this.vcx, cy = this.vcy, k = this.zoomFit * P.zoom, ph = it.phase, s = this.ts;
+    if (!pr) return;
+    const scene = () => { ctx.translate(cx, cy); ctx.scale(k, k * TILT); };
+    // Screen position of a scene point, for the words that float over the animals.
+    const over = (o, lift) => ({ x: cx + o.x * k, y: cy + o.y * k * TILT - lift * k });
+    const word = (txt, x, y, alpha, size) => {
+      ctx.save(); ctx.globalAlpha = clamp(alpha, 0, 1); ctx.font = `700 ${size * s}px ${FONT_SC}`;
+      ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'center'; ctx.fillText(txt, x, y); ctx.restore();
+    };
+
+    if (ph === 'meadow') {
+      // The one bright screen in the game. Sky, a low sun, a hill, and a field.
+      const sky = ctx.createLinearGradient(0, 0, 0, h * 0.5);
+      sky.addColorStop(0, '#6f8a99'); sky.addColorStop(1, '#c9b98a');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h * 0.5);
+      ctx.fillStyle = 'rgba(255,224,138,0.85)'; ctx.beginPath(); ctx.arc(w * 0.78, h * 0.3, 26 * s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5f7a3e'; ctx.beginPath(); ctx.moveTo(0, h * 0.5);
+      ctx.quadraticCurveTo(w * 0.3, h * 0.38, w * 0.55, h * 0.46); ctx.quadraticCurveTo(w * 0.8, h * 0.52, w, h * 0.44);
+      ctx.lineTo(w, h * 0.5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = PALETTE.grass; ctx.fillRect(0, h * 0.5, w, h * 0.5);
+      // grass, scattered the same way every frame
+      ctx.strokeStyle = PALETTE.grassHi; ctx.lineWidth = 1.6 * s; ctx.lineCap = 'round';
+      for (let i = 0; i < 90; i++) {
+        const gx = ((i * 137.5) % w), gy = h * 0.5 + ((i * 89.3) % (h * 0.5)), sway = Math.sin(this.t * 1.4 + i) * 1.5 * s;
+        ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx - 3 * s + sway, gy - 7 * s); ctx.moveTo(gx, gy); ctx.lineTo(gx + 3 * s + sway, gy - 8 * s); ctx.stroke();
+      }
+      ctx.save(); scene();
+      // the fence: back rails first, then the two of them, then the front rails
+      const fx0 = -160, fx1 = 160, fy0 = -62, fy1 = 62;
+      const rail = (x0, y0, x1, y1) => { ctx.strokeStyle = PALETTE.woodHi; ctx.lineWidth = 3.2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
+      const post = (x, y) => { ctx.fillStyle = PALETTE.wood; ctx.fillRect(x - 2.6, y - 22, 5.2, 24); ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(x - 2.6, y - 22, 5.2, 3); };
+      for (const yy of [-12, -3]) { rail(fx0, fy0 + yy, fx1, fy0 + yy); }
+      for (let x = fx0; x <= fx1; x += 32) post(x, fy0);
+      for (const yy of [-12, -3]) { rail(fx0, fy0 + yy, fx0, fy1 + yy); rail(fx1, fy0 + yy, fx1, fy1 + yy); }
+      for (let y = fy0 + 32; y < fy1; y += 32) { post(fx0, y); post(fx1, y); }
+      // them, back to front
+      const actors = [pr.goat, pr.ewe].sort((a, b) => a.y - b.y);
+      for (const o of actors) o === pr.goat ? this.drawGoat(o, game) : this.drawSheep(o);
+      if (pr.heart) { ctx.save(); ctx.globalAlpha = pr.heart.a; this.drawHeart(pr.heart); ctx.restore(); }
+      for (const yy of [-12, -3]) rail(fx0, fy1 + yy, fx1, fy1 + yy);
+      for (let x = fx0; x <= fx1; x += 32) post(x, fy1);
+      ctx.restore();
+    } else if (ph === 'road') {
+      // Night, a moon, and a road going past under a truck that stays where it is.
+      const sky = ctx.createLinearGradient(0, 0, 0, h * 0.55);
+      sky.addColorStop(0, '#171420'); sky.addColorStop(1, '#2b2434');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h * 0.55);
+      ctx.fillStyle = 'rgba(239,230,208,0.8)'; ctx.beginPath(); ctx.arc(w * 0.2, h * 0.2, 18 * s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1c1719'; ctx.fillRect(0, h * 0.55, w, h * 0.45);
+      const ry0 = h * 0.6, ry1 = h * 0.86;
+      ctx.fillStyle = '#3a3538'; ctx.fillRect(0, ry0, w, ry1 - ry0);
+      ctx.fillStyle = '#4a4448'; ctx.fillRect(0, ry0, w, 3 * s); ctx.fillRect(0, ry1 - 3 * s, w, 3 * s);
+      // the centre line, and the ground going past with it
+      const period = 90 * s, off = (pr.t * P.roadSpeed * s) % period;
+      ctx.fillStyle = 'rgba(239,230,208,0.55)';
+      for (let x = -off; x < w + period; x += period) ctx.fillRect(x, (ry0 + ry1) / 2 - 2 * s, period * 0.5, 4 * s);
+      ctx.strokeStyle = 'rgba(239,230,208,0.12)'; ctx.lineWidth = 1.5 * s;
+      for (let i = 0; i < 14; i++) {
+        const lx = ((i * 173 - pr.t * P.roadSpeed * 1.3 * s) % (w + 200)) + (i % 2 ? 0 : 100), ly = h * 0.56 + (i * 41) % (h * 0.04);
+        ctx.beginPath(); ctx.moveTo(((lx % (w + 200)) + w + 200) % (w + 200) - 100, ly); ctx.lineTo(((lx % (w + 200)) + w + 200) % (w + 200) - 100 + 40 * s, ly); ctx.stroke();
+      }
+      ctx.save(); scene(); ctx.translate(0, 44 + (pr.jolt || 0) * 0.5);   // wheels on the asphalt, not the verge
+      // the truck: a flatbed, a cab, two wheels, and a cage on the back
+      ctx.fillStyle = '#2a2224'; ctx.fillRect(-118, 8, 214, 12);                   // bed
+      ctx.fillStyle = '#3b2f33'; ctx.fillRect(96, -34, 52, 54); ctx.fillStyle = '#6f8a99'; ctx.fillRect(104, -28, 34, 22);   // cab, window
+      ctx.fillStyle = PALETTE.fireHi; ctx.fillRect(146, -4, 5, 8);                // headlamp
+      const wheel = (x) => {
+        ctx.save(); ctx.translate(x, 26); ctx.rotate(pr.t * P.roadSpeed / 16);
+        ctx.fillStyle = '#141013'; ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#4a4448'; ctx.lineWidth = 3;
+        for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 13, Math.sin(a) * 13); ctx.stroke(); }
+        ctx.fillStyle = '#4a4448'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      };
+      wheel(-76); wheel(64);
+      // the cage, back bars, then them, then the front bars
+      const bar = (x, y0, y1) => { ctx.fillStyle = '#7a7377'; ctx.fillRect(x - 1.6, y0, 3.2, y1 - y0); };
+      ctx.fillStyle = 'rgba(20,16,19,0.5)'; ctx.fillRect(-104, -56, 168, 64);
+      for (let x = -104; x <= 64; x += 21) if (x < -40 || x > 30) bar(x, -56, 8);
+      ctx.fillStyle = '#5a5257'; ctx.fillRect(-106, -58, 172, 4);
+      for (const o of [pr.goat, pr.ewe]) o === pr.goat ? this.drawGoat(o, game) : this.drawSheep(o);
+      for (let x = -104; x <= 64; x += 21) bar(x, -56, 8);
+      ctx.restore();
+    } else if (ph === 'dark') {
+      ctx.fillStyle = '#0d0a0c'; ctx.fillRect(0, 0, w, h);
+    } else if (ph === 'cloth') {
+      // The pen is under this. Sacking, dropping off it from the top down, with a sway in it.
+      const p = clamp(pr.sceneT / P.cloth, 0, 1), e = p * p, drop = e * h * 1.2, sway = Math.sin(p * 7) * 14 * s * (1 - p);
+      // The sacking covers the view and slides down off it, so the pen comes out from the top edge.
+      ctx.save(); ctx.translate(sway, drop);
+      ctx.fillStyle = '#2a2119'; ctx.fillRect(-40 * s, 0, w + 80 * s, h * 1.05);
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
+      for (let y = 0; y < h; y += 9 * s) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y + 4 * s); ctx.stroke(); }
+      ctx.restore();
+      ctx.fillStyle = `rgba(13,10,12,${(1 - p) * 0.6})`; ctx.fillRect(0, 0, w, h);
+    }
+    // The words. Over whoever said it in the field and on the road; in the dark they are all there is,
+    // and they come from the two sides of the screen the two of them were last on.
+    if (pr.last) {
+      const L = pr.last, a = Math.min(1, L.life * 3), size = ph === 'dark' ? 22 : 13;
+      if (ph === 'dark') word(L.word, L.who === 'goat' ? w * 0.36 : w * 0.64, cy + (1 - L.life) * 12 * s, a, size);
+      else if (ph !== 'cloth') { const o = over(L.who === 'goat' ? pr.goat : pr.ewe, ph === 'road' ? 62 : 34); word(L.word, o.x, o.y, a, size); }
+    }
+    if (ph !== 'cloth') this.drawVignette(game);
   }
 
   // A corrupted soul, hanging where the man it was in fell. It was a book, which asked the player to

@@ -223,6 +223,13 @@ class GameAudio {
     // The wings, at the front of it: a bird makes as much noise with those as with her throat.
     this.noise(t, 0.1, { gain: alarm ? 0.16 : 0.1, hp: 900, lp: 4200 });
   }
+  // The truck under them. Half a second of low rumble, called every half second while the road
+  // goes past, so it runs on without a loop: a fixed pitch is a hum and a hum is a motor.
+  sfxEngine() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.noise(t, 0.6, { gain: 0.11, lp: 140 });
+    this.tone(46, t, 0.6, { type: 'triangle', gain: 0.09, attack: 0.05 });
+  }
   // A club coming down on a skull, heard from inside the skull.
   sfxClub() {
     if (!this.ctx || this.muted) return; const t = this.now();

@@ -625,6 +625,26 @@ that refuses storage simply never offers CONTINUE. Winning clears it. CONTINUE r
 that level with those souls and a fresh seed — the layout is generated again, as it is after a death.
 Boons are stored by `id`, so renaming one in `BOONS` silently drops it from old saves.
 
+**Before the pen: the prologue.** Three flat screens run ahead of the pen scene so the pen is the end
+of something rather than the start of nothing — a meadow, the back of a truck, and the dark — and
+then the sacking comes off. They are intro phases like the rest (`meadow`, `road`, `dark`, `cloth`,
+then `huddle`), `game.inPrologue()` says which, and everything they own sits in `intro.pro`: its own
+clock (`pro.t` / `pro.sceneT` — `it.t`, which paces the pen's camera creep and skip prompt, does not
+start until the pen is on screen), two lightweight stand-ins for the sprites that `drawGoat` /
+`drawSheep` draw as themselves, the heart, and the last word said. `updatePrologue` drives positions
+and bleats; `Renderer.drawPrologue` paints the screens in screen space inside a transform squashed
+by `TILT`, so the sprites' own counter-squash stands them up. Every number is in
+`TUNING.intro.prologue`.
+
+The meadow has two halves and the halves are the point: until `meet` they are at opposite ends of
+the field on a loop each, calling to nobody; over `close` seconds the two loops become one with her
+a little ahead on it, the heart comes up between them, and from there a call gets its `answer`. The
+through-line of all three screens is the bleats — `bleat.meadow / road / dark` is the gap between
+them, and it closes as the run goes on, so what was two animals calling across a field is by the
+dark two animals calling into nothing. `skipIntro` from any prologue phase goes to the same `black`
+the pen's skip does, and nulls `pro` on the way. It is the first version, drawn to be replaced: a
+fence is two rails and some posts, a truck is three boxes and two circles.
+
 **The opening scene.** It cannot be skipped until a browser has watched it through once: `SEEN_KEY` in
 `localStorage` gates both the skip in `updateIntro` and the CLICK TO SKIP line in `drawIntroOverlay`,
 and `endIntro` is what writes it. `skipIntro(true)` is unconditional so the harness still works.
