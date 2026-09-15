@@ -10,6 +10,141 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ---
 
+## 16 September 2026 — the tenth sitting
+
+Twenty lines, sent one and two at a time rather than in a single note, with screenshots on most
+of them. Nineteen shipped in 1.25 and one is open; the reasoning behind each shipped line is in
+`CHANGELOG.md`.
+
+- ~~**WASD — TO MOVE showed before the cage broke.**~~ **bug.** It now waits on `game.cageOpen`
+  and takes over the exact spot the headbutt prompt was painting.
+- ~~**An idle man wandered into the next room and picked a fight he wasn't placed for.**~~ **bug.**
+  `Enemy.home` plus a leash on `idleWander` — see the new note in `CLAUDE.md`.
+- ~~**Wall tiles: flip the brick to face into the room.**~~ **feel.** Left and right walls mirror
+  the same stamp across their own centre now.
+- ~~**The bottom of that same wall crop wasn't bricked.**~~ Turned out to be the secret wall's own
+  mismatched art, not an ordinary wall — see the next line.
+- ~~**The crack reads as being in the floor, not the wall.**~~ **bug.** Same cause: the secret
+  prop drew a different, flatter stone-block texture tinted to the room's colour instead of the
+  room's actual brick stamp. It draws the real one now.
+- ~~**Patrolling guards should stay in their own room until they've noticed you.**~~ **system.**
+  The same leash as the idle-wander bug above; one fix covers both complaints.
+- ~~**Delete the BAAH line from the ambush room's floor text.**~~ Two lines now, not three.
+- ~~**Weapons should only come into his mouth on a deliberate right-click, not by walking over
+  them.**~~ **system.** The auto-sweep pickup is gone; a rack now takes the identical press-and-
+  reach a crate already used.
+- ~~**Hard rule: no em dashes anywhere a player (or the dev tool) can read text.**~~ Swept every
+  string literal in the game, not the prose comments around them.
+- ~~**A crate thrown into a brazier should catch fire too, not just break.**~~ **bug.** It bursts
+  now, the same as one landing on ground already alight.
+- **The room with the brazier should be shorter still.** Open. Nothing in the level's own rooms is
+  named after a brazier specifically, and the screenshot's own room (the wheel, going by what was
+  in it) didn't point at an obvious height to cut that the Mill's own lesson room doesn't already
+  enforce (`MILL_LESSON_TEMPLATE` is already the narrow one-lane room the wheel's arm needs). Needs
+  which room, by name or by what's standing in it, rather than a guess against one screenshot.
+- ~~**In the ambush room, rack two swords together near the door and keep the far men from
+  walking toward the player while on patrol.**~~ Both: `AMBUSH_TEMPLATE` racks two now, and the
+  patrol leash keeps them at the far end until the goat is actually seen or heard.
+- ~~**Same thing in the first trap room: let them wait at the far end.**~~ Same leash fix.
+- ~~**The lesson room's far wall is a walk away rather than a step — a headbutt doesn't reliably
+  kill the first man.**~~ **number.** Ten tiles of width cut to nine. **Watch on the next play:**
+  a headbutt thrown dead straight down the room's own exit corridor still doesn't kill — nothing
+  stands in that direction for a body to hit, since the corridor is the only way through and has
+  to stay open. Approaching from anywhere off that exact line lands the kill; a player rarely
+  walks it dead straight (the room's own entrance sits a tile off that line already), but a seed
+  where it lines up more than that is worth a second look before calling this fully closed.
+- ~~**A burning man lighting the next one should be a soul, not something every run already
+  has.**~~ **system.** Shipped as KINDLING; `passFire` now returns at once without it.
+- ~~**The painted figures float visibly clear of their own shadows.**~~ **bug.** Measured the
+  actual foot position in each sprite sheet rather than guessing; two different anchors for the
+  walk-cycle art and the newer static "Facing" art, and a leftover manual nudge removed.
+- ~~**A touch less camera shake on an explosion.**~~ BOMB CHARGE's `explode()` 13 → 9.
+- ~~**Remove the acquired-boons list under SACRIFICED.**~~ A chip's own hover note already says
+  the same thing.
+- ~~**Delete "THE SOUL OFFERS A BLESSING" / "Choose one. It dies with you." from the boon-choice
+  screen.**~~ The cards say what they do without a caption over them.
+- ~~**The boon cards should show something when the pointer is actually over one.**~~ A bright
+  ring outside the card's own border, plus a slightly lighter fill, on whichever of the three the
+  pointer is on.
+
+---
+
+## 15 September 2026, later — the ninth sitting
+
+Twenty-seven lines in one long voice note. Most of it shipped; a handful were already true and are
+noted rather than touched, and four are open.
+
+- ~~**Shield down to two before it snaps, and it should ring off a wall or a man rather than just
+  stopping.**~~ `uses.shield` 3→2, and a wall bounce keeps 60% of its speed instead of losing 70%.
+- ~~**Melee reach on the cult, down a fifth.**~~ Bearer, hound, Butcher and wraith together — a club
+  or a bite landing from most of a body-length off read as the wall behind him not mattering.
+- ~~**A weapon on its stand should be the same size as one in his mouth.**~~ It drew bigger racked
+  than anywhere else it is ever seen; one size now.
+- ~~**Throw distance, down a fifth.**~~ `throwImpulse` 34 → 27.2 tiles' worth.
+- **A rifle should be able to kill his own man.** Already true — `Bullet.update` hits whoever it
+  reaches first, ally or not, and says FRIENDLY FIRE when it does. Nothing changed here.
+- ~~**Coop in one blow, and the hen goes in the mouth like a crate too.**~~ Grab-then-throw now runs
+  through the same kick-and-seek she already had off a headbutt, rather than a straight throw.
+- **The Butcher should not be liftable.** Already true — `tryGrab` excludes him by kind, the same as
+  the hound and the wraith. Nothing changed here.
+- ~~**Delete the floor line on THE THRESHING FLOOR.**~~ `hint: null`.
+- **THE THRESHING FLOOR reads too sparse at this density; make it smaller, or only for the
+  run-through rooms.** Open. The level's own note already says the wide corridors are load-bearing
+  (`corridorW: 5`, "reads as one yard"), so the fix is a number on `encounters.from`/`to` or the room
+  count rather than a line of code, and it wants a second playtest before either is touched.
+- ~~**A different cursor: headbutt by default, something else once he is carrying something.**~~
+  `crosshair` / `grabbing` — the OS cursor rather than a drawn one. A custom goat-head cursor is an
+  art asset, not code, and belongs with the next `ART_HANDOFF.md` pass.
+- **"What is this — delete the bird."** Not reproduced. Nothing in the hen's own code path draws a
+  `?` or any other stray mark over her; that belongs to `investigate` state on an `Enemy`, which she
+  is not. Needs the screenshot again, or which build it was on.
+- ~~**Build number under the seed.**~~ `BUILD` in `tuning.js`, bumped by hand alongside a CHANGELOG
+  entry from here on.
+- ~~**Scream stun radius, down a fifth.**~~ `goat.scream.radius` 8.5 → 6.8 tiles.
+- ~~**Strange spikes near the Mill — remove them.**~~ The per-room grate scatter could land in the
+  Mill's own room (and the arena, the Hall, the Gallery, the killbox), stacking one hazard system on
+  top of another that was already built narrow on purpose. Excluded now.
+- ~~**Idle men should shift around the room a little, if they are not scripted.**~~ `idleWander` only
+  ever turned on the spot; about half of every wander beat is now a few slow steps.
+- **A spinner drawn over the traps.** Not reproduced — the screenshot didn't say which overlay it
+  was. Needs a name for the element (the trap-sense mark, a hazard's bark bubble, something else) or
+  the screenshot again.
+- ~~**Traps sometimes in front of the soul door.**~~ On a level that already has spikes, half the
+  time the last stretch of floor before the vault's own door grows them too.
+- ~~**A big room like THE THRESHING FLOOR's should get an iron door right on its own exit.**~~
+  `BIG_ROOM`: 20-plus tiles of width forces the roll, so running a wide room the length of it is no
+  longer free.
+- **Enemies react to noise, especially a fight or an explosion, and walking should be quieter than
+  fighting.** Already true — `TUNING.noise` gives every event its own radius (`footstep` 2, `headbutt`
+  5, `boom` 16, and so on) and every man checks `world.noises` for one in range. Nothing changed here;
+  see the new HEARING toggle below if it needs to be seen rather than taken on faith.
+- ~~**A dev-tool toggle for a man's sight cone, and one for what the goat's own noise reaches.**~~
+  VISION and HEARING, next to GOD in the drawer — a cone per man, two rings on the goat for a
+  footstep and a fight.
+- ~~**"Too quick" for a hound shouldn't repeat a thousand times.**~~ It fired every single frame the
+  button was held down; gated to once every 0.8s.
+- **Enemies should go round pits even while retreating — a mage blinking included.** Already true for
+  ordinary movement and for a blink's own landing spot (`hazardAt`/`isPitPx` both refuse one). Nothing
+  changed here.
+- **A level's hint should say what new hazard is on this floor.** Partly open. THE RAFTERS already
+  does this for the drop (*"THE FLOOR ENDS. THEY FALL FURTHER THAN YOU."*); THE ROAD, where the grate
+  first appears, did not — it does now: *"...WATCH YOUR STEP."* Level one's Mill and pen are taught
+  in-room rather than on the floor and were left alone.
+- ~~**Minimal camera shake and slowdown on a multi-kill — it breaks the pace right now.**~~
+  `comboSlow` 0.26 → 0.12s, and the extra hitstop a streak buys came down by more than half.
+- ~~**A mage should never blink into a room you have already cleared, if the fight is in the next
+  one.**~~ `blink` used to only mind a sealed room's own walls; it now keeps every blink inside
+  whichever room the goat is currently standing in.
+- **I'm in the first room and something says a kill has already happened.** Not reproduced.
+  `game.kills` resets to 0 at the top of every `startLevel`, and the intro's scripted men are removed
+  rather than killed, so nothing touches it before the first real blow. Needs the number that was
+  actually on screen, or whether LEVELS (which deals a run's boons up front) was how the level was
+  reached.
+- ~~**Wraiths close a third faster, and drift toward you during the windup rather than standing
+  still.**~~ `wraith.speed` ×1.3; the windup now pulls a little toward wherever the goat actually is.
+
+---
+
 ## 15 September 2026 — the eighth sitting
 
 Twenty lines against 1.20, sent in five bursts with screenshots. Everything here shipped in 1.21

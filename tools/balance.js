@@ -46,6 +46,7 @@ for (let li = 0; li < LEVELS.length; li++) {
   const def = LEVELS[li];
   const runs = [], seen = new Set();
   let canonMin = 1, canonSum = 0, ordSum = 0;
+  let gEarly = 0, gLate = 0, gSeeds = 0;
   for (let s = 1; s <= SEEDS; s++) {
     const L = generateLevel(def, s * 7717);
     const rooms = roomsOf(L);
@@ -53,8 +54,18 @@ for (let li = 0; li < LEVELS.length; li++) {
     // ---- every per-level rule, from the one list the game itself reads ----
     // `rises` is the one rule a single seed cannot be held to: one room filled a man short of its
     // budget is noise, not a broken curve, so here it is judged on the average below instead.
+    // `ground` joins `rises` as a rule one seed cannot answer: the draw picks at random inside a
+    // window of the pool, so a single level running the other way is noise. Both are judged below,
+    // on the average of every seed.
+    const drawnRooms = rooms.filter((r) => ORDINARY.has(r.role) && r.drawn);
+    if (drawnRooms.length >= 4) {
+      const t = Math.floor(drawnRooms.length / 3) || 1;
+      gEarly += drawnRooms.slice(0, t).reduce((a, r) => a + r.ground, 0) / t;
+      gLate += drawnRooms.slice(-t).reduce((a, r) => a + r.ground, 0) / t;
+      gSeeds++;
+    }
     for (const r of checkRules(L)) {
-      if (r.ok !== false || r.rule.id === 'rises') continue;
+      if (r.ok !== false || r.rule.id === 'rises' || r.rule.id === 'ground') continue;
       const msg = `${def.name}: ${r.rule.id} — ${r.why}`;
       if (!seen.has(msg)) { seen.add(msg); fail(msg); }
     }
@@ -73,6 +84,8 @@ for (let li = 0; li < LEVELS.length; li++) {
       index: i,
       threat: +(cells.reduce((a, c) => a + c.threat, 0) / cells.length).toFixed(1),
       men: +(cells.reduce((a, c) => a + c.men.length, 0) / cells.length).toFixed(1),
+      ground: +(cells.reduce((a, c) => a + c.ground, 0) / cells.length).toFixed(2),
+      pressure: +(cells.reduce((a, c) => a + c.pressure, 0) / cells.length).toFixed(1),
       role: cells[0].role,
       tpl: first ? first.name : '',
       sample: first ? first.men.join(' ') + (first.cell && first.cell.intro ? `  (meets ${first.cell.intro})` : '') : '',
@@ -91,6 +104,11 @@ for (let li = 0; li < LEVELS.length; li++) {
     const late = ordinary.slice(-third).reduce((a, c) => a + c.threat, 0) / third;
     if (late <= early * 1.2) fail(`${def.name}: threat barely grows on average (${early.toFixed(1)} → ${late.toFixed(1)})`);
   }
+  // ---- and the floor opens up: GEN_RULES.ground, over the rooms the draw chose, on every seed ----
+  if (gSeeds) {
+    const a = gEarly / gSeeds, b = gLate / gSeeds;
+    if (b <= a) fail(`${def.name}: the floor does not open up (${a.toFixed(2)} → ${b.toFixed(2)})`);
+  }
 
   if (!QUIET) {
     console.log(`\n${def.name}  (${def.rooms} rooms, curve ${def.encounters.from} → ${def.encounters.to})`);
@@ -102,9 +120,11 @@ for (let li = 0; li < LEVELS.length; li++) {
     for (const c of avg) {
       if (!c.men && (c.role === 'pen' || c.role === 'calm')) { console.log(`  ${String(c.index).padStart(2)}  —        ${c.role.toUpperCase().padEnd(7)} ${c.tpl}`); continue; }
       const bar = '#'.repeat(Math.round(c.threat));
-      console.log(`  ${String(c.index).padStart(2)}  ${c.threat.toFixed(1).padStart(5)}  ${bar.padEnd(20)} ${c.men.toFixed(1)} men  ${c.role.toUpperCase().padEnd(7)} ${c.tpl.padEnd(10)} ${c.sample}`);
+      console.log(`  ${String(c.index).padStart(2)}  ${c.threat.toFixed(1).padStart(5)}  ${bar.padEnd(20)} ${c.men.toFixed(1)} men  gr ${c.ground.toFixed(2)}  ${c.role.toUpperCase().padEnd(7)} ${c.tpl.padEnd(10)} ${c.sample}`);
     }
-    console.log(`  total threat ${total}`);
+    const ordGround = avg.filter((c) => ORDINARY.has(c.role) && c.threat > 0);
+    const gAvg = ordGround.length ? ordGround.reduce((a, c) => a + c.ground, 0) / ordGround.length : 0;
+    console.log(`  total threat ${total} · ground ${gAvg.toFixed(2)} avg · pressure ${avg.reduce((a, c) => a + c.pressure, 0).toFixed(1)}`);
   }
 }
 

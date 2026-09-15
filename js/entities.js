@@ -23,6 +23,7 @@ class Goat {
     this.runT = 0; this.runUp = 1;    // seconds of running without a break, and what they are worth
     this.autoHeld = false; // the thing in his mouth walked into it: a butt drops it, a press throws it
     this.rmbWas = false;   // grab last frame, so the press can be told from the holding
+    this.fussCd = 0;       // holding rmb near a hound used to repaint TOO QUICK every single frame
   }
 
   update(dt, game) {
@@ -38,6 +39,7 @@ class Goat {
     const cdRate = this.gong > 0 ? TUNING.prop.bell.cooldownMul : 1;
     this.screamCd = Math.max(0, this.screamCd - dt * cdRate); this.screaming = Math.max(0, this.screaming - dt);
     this.grabCd = Math.max(0, this.grabCd - dt * cdRate);
+    this.fussCd = Math.max(0, this.fussCd - dt);
     this.invuln = Math.max(0, this.invuln - dt); this.dazed = Math.max(0, this.dazed - dt);
 
     // Over the edge. Nothing but the fall until the game puts him back on the boards.
@@ -153,20 +155,6 @@ class Goat {
       this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
     }
 
-    // ---- arms, taken in passing ----
-    // A blade or a shield on the floor goes into his mouth by itself as he runs over it. It is not
-    // a new button, it is one fewer: at a run there was never a beat in which to press for it, and
-    // a stand of arms standing in a doorway is only worth putting there if taking one costs nothing.
-    // It leaves on either button, the way everything he carries does.
-    if (!this.holding && this.grabCd <= 0 && !this.dead
-        && (this.state === 'idle' || this.state === 'recover')) {
-      for (const p of game.props) {
-        if (p.kind !== 'weapon' || p.broken || p.held || p.flung) continue;
-        const d = Math.hypot(p.x - this.x, p.y - this.y);
-        if (d > this.r + p.r + g.grab.sweep) continue;
-        this.takeArm(game, p); break;
-      }
-    }
 
     // ---- grab / hold / throw ----
     if (inp.rmbDown && !this.holding && this.state === 'idle' && this.grabCd <= 0) this.tryGrab(game);
@@ -463,6 +451,10 @@ class Goat {
   throwHeld(game) {
     const h = this.holding, g = TUNING.goat; if (!h) return;
     h.held = false; this.holding = null; this.autoHeld = false;
+    // A hen out of the mouth is a hen off the horns: the same kick, the same seeking flight, the
+    // same man she was already good at finding. Reaching for her on purpose buys nothing new — it
+    // is one more way she ends up airborne.
+    if (h.kind === 'chicken') { h.kick(game, this.aim.x, this.aim.y); this.grabCd = g.grab.cooldown * game.mods.grabCooldown; return; }
     // A goat is not a gorilla. A crate or a blade goes the length of the room; a grown man goes a
     // short way and lands, which is still every wall in it and every man standing by one.
     const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul : h.item ? 1 : g.grab.manThrow;
@@ -490,11 +482,14 @@ class Goat {
     }
     for (const p of game.props) if (p.item && !p.broken && !p.held && !p.flung) consider(p);
     if (!best) {
-      // Reaching for a hound and closing on nothing is a rule worth stating once, where it happened.
-      for (const e of game.enemies) {
-        if (e.dead || e.kind !== 'dog') continue;
-        if (Math.hypot(e.x - this.x, e.y - this.y) > this.r + e.r + g.reach) continue;
-        game.floatText(e.x, e.y - 24, 'TOO QUICK', PALETTE.ash); break;
+      // Reaching for a hound and closing on nothing is a rule worth stating once, where it happened
+      // — and only once a beat, since holding the button down near one asks every single frame.
+      if (this.fussCd <= 0) {
+        for (const e of game.enemies) {
+          if (e.dead || e.kind !== 'dog') continue;
+          if (Math.hypot(e.x - this.x, e.y - this.y) > this.r + e.r + g.reach) continue;
+          game.floatText(e.x, e.y - 24, 'TOO QUICK', PALETTE.ash); this.fussCd = 0.8; break;
+        }
       }
       if (!game.mods.grabMen) game.reachedForAMan(this);
       return;
@@ -595,6 +590,13 @@ class Prop {
     // A sealed arena's pair of doors: no hit points either, the same as the soul gate, but lifted by
     // clearing the room rather than by a soul. `sealRoom` names which room's fight has to end first.
     this.seal = !!(opts && opts.seal); this.sealRoom = (opts && opts.sealRoom !== undefined) ? opts.sealRoom : -1;
+    // The door that is already closing. It stands open — `open` 1 is a door swung clear of the gap,
+    // and `blocking`/`opaque` both read that, so while the count runs it is not in the room at all —
+    // and `clockRoom` is the room in front of it whose first sighting starts the count.
+    this.timed = !!(opts && opts.timed);
+    this.clockRoom = (opts && opts.clockRoom !== undefined) ? opts.clockRoom : -1;
+    this.clock = this.timed ? TUNING.prop.door.clockFor : 0;
+    if (this.timed) this.open = 1;
     // The one table that is the ritual altar rather than furniture: same kind, same blocking and
     // headbutt handling as any other table, tagged only so the painted layer draws it as itself.
     this.isAltar = !!(opts && opts.altar);
@@ -609,14 +611,19 @@ class Prop {
     this.wallColor = (opts && opts.wallColor) || '#7c5a36'; this.wallTop = (opts && opts.wallTop) || '#9c7446';
     // A secret's own three tiles, so that knocking it through can light what is behind it for good.
     this.nicheTiles = (opts && opts.nicheTiles) || null;
+    // Which of the room's walls a secret was carved from: 'up' reads as a top wall (the painted art
+    // gives it the coping band an ordinary top wall gets), 'down' as a bottom wall (it does not).
+    this.wallSide = (opts && opts.wallSide) || null;
     // The bird: 'loose' walking with the goat, 'flying' once he has put his head under her, and
     // 'stunned' for the beat after she has hit something that was not a man. `target` is whoever
     // she picked at the kick and is steering at; `flap` and `bob` are hers alone and are drawn.
     this.birdState = 'loose'; this.target = null; this.flap = 0; this.bob = Math.random() * 6;
     this.birdT = 0; this.wanderA = Math.random() * Math.PI * 2;
   }
-  // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing.
-  get item() { return this.kind === 'crate' || this.kind === 'weapon'; }
+  // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing. A
+  // loose hen counts too — the same mouth that takes a crate takes her — but not mid-flight or
+  // stunned, since a bird already on her way to a man is not a thing you can also be carrying.
+  get item() { return this.kind === 'crate' || this.kind === 'weapon' || (this.kind === 'chicken' && this.birdState === 'loose'); }
   get blocking() {
     if (this.broken) return false;
     // Nothing stands on a plate's shoulders: it is floor until it is teeth. A loose bird is not
@@ -743,6 +750,7 @@ class Prop {
     for (const p of game.props) {
       if (p.kind !== 'cage' || p.broken || p.deco) continue;
       p.broken = true; p.dead = true; n++;
+      game.renderer?.painted?.brokenPost(game,p);
       game.particles(p.x, p.y, 5, PALETTE.ash, 210);
       game.world.dot(p.x + (Math.random() - 0.5) * 12, p.y + 5, 2.4, '#2e2a26');
     }
@@ -779,6 +787,7 @@ class Prop {
     for (const p of game.props) {
       if (p.kind !== 'cage' || p.broken || !p.deco) continue;
       p.broken = true; p.dead = true;
+      game.renderer?.painted?.brokenPost(game,p);
       game.particles(p.x, p.y, 5, PALETTE.ash, 200);
       game.world.dot(p.x + (Math.random() - 0.5) * 12, p.y + 5, 2.2, '#2e2a26');
     }
@@ -901,6 +910,7 @@ class Prop {
     }
     this.broken = true; this.dead = true;
     game.world.emitNoise(this.x, this.y, TUNING.noise.door); game.audio.sfxSplat(); game.shake(5); game.hitstop(0.03);
+    game.renderer?.painted?.brokenDoor(game,this);
     if (this.iron) { game.audio.sfxSteel(); game.floatText(this.x, this.y - 30, 'IT GIVES', PALETTE.fireHi); }
     game.particles(this.x, this.y, 16, this.iron ? PALETTE.ash : PALETTE.wood, 260);
     for (let i = 0; i < 10; i++) game.world.dot(this.x + (Math.random() - 0.5) * 54, this.y + (Math.random() - 0.5) * 54, 2 + Math.random() * 2.5, PALETTE.wood);
@@ -996,6 +1006,9 @@ class Prop {
   // three states, the way every other prop in here branches on its own kind.
   updateBird(dt, game) {
     if (this.broken) return;
+    // In the goat's mouth she goes where his mouth goes — `Goat.update` sets her x/y directly, the
+    // same way it does a crate's — so nothing here may also be steering her.
+    if (this.held) return;
     const C = TUNING.prop.chicken, g = game.goat;
     this.flap += dt * (this.birdState === 'flying' ? 26 : 6);
     this.bob += dt * (this.birdState === 'flying' ? 0 : 4);
@@ -1126,8 +1139,12 @@ class Prop {
     if (game.world.isBurningPx(this.x, this.y)) { this.burst(game, game.world.isWitchPx(this.x, this.y)); return; }
     if (impact > 2 * TILE || spd < 40) { this.shatter(game); return; }
     // A shut door, a table or a gong is not something a crate flies through. It breaks on it — and
-    // on a lamp it breaks the lamp, which is how you start a fire across a room.
-    if (this.hitProp(game, this.vx / (spd || 1), this.vy / (spd || 1))) { this.shatter(game); return; }
+    // on a lamp it breaks the lamp, which is how you start a fire across a room. A brazier is the
+    // one prop that answers a crate the way a burning tile already does: it goes up rather than
+    // just breaking, since a box that reaches the coals themselves has reached fire either way.
+    const hitP = this.hitProp(game, this.vx / (spd || 1), this.vy / (spd || 1));
+    if (hitP && hitP.kind === 'brazier') { this.burst(game, false); return; }
+    if (hitP) { this.shatter(game); return; }
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
       if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) {
@@ -1193,7 +1210,9 @@ class Prop {
       // Into a wall: a blade thrown at stone is a blade thrown away. A shield only rings off it.
       game.audio.sfxSteel(); game.particles(this.x, this.y, 5, PALETTE.bone, 170);
       if (this.weapon === 'sword') { this.vx = 0; this.vy = 0; this.snap(game); return; }
-      this.vx *= -0.3; this.vy *= -0.3;
+      // A shield does not stick, it rings off — and off a wall keeps enough of its speed to reach a
+      // second one, which is what makes it worth throwing at a room rather than at one man in it.
+      this.vx *= -W.shieldBounce; this.vy *= -W.shieldBounce;
     }
     const spd = Math.hypot(this.vx, this.vy);
     if (spd <= W.restSpeed) {
@@ -1240,6 +1259,28 @@ class Prop {
 
   updateDoor(dt, game) {
     if (this.broken) return;
+    // The one door that shuts itself. Nothing starts it but being looked at: the count runs from the
+    // first moment the goat can see the room it stands at the far end of, so what he sees when he
+    // walks in is a way out that is already going. Once it seats it is an ordinary iron door and
+    // this branch is done with it forever.
+    if (this.timed) {
+      const D = TUNING.prop.door;
+      const room = game.level && game.level.rooms[this.clockRoom];
+      if (!room || !room.seen) return;
+      this.clock = Math.max(0, this.clock - dt);
+      // It will not shut on anybody. A body in the gap holds it at a hair over the blocking line the
+      // way a real one would — the crowd on your heels props your own way out open for a moment —
+      // and it seats as soon as the gap is clear.
+      const near = (b) => b && !b.dead && Math.hypot(b.x - this.x, b.y - this.y) < b.r + this.r * 0.5;
+      const blocked = near(game.goat) || game.enemies.some((e) => !e.ghosted && !e.held && near(e));
+      const t = Math.pow(this.clock / D.clockFor, D.clockEase);
+      this.open = blocked ? Math.max(t, 0.52) : t;
+      if (this.open <= 0) {
+        this.open = 0; this.timed = false;
+        game.audio.sfxThud(); game.audio.sfxSteel(); game.shake(3);
+      }
+      return;
+    }
     if (this.open > 0 && this.open < 1) this.open = Math.min(1, this.open + dt * 3);
     if (this.open >= 0.5) return;
     // Iron is barred from the far side and nobody on this one has the key. It opens by being broken

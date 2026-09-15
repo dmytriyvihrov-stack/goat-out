@@ -4,6 +4,9 @@ class Enemy {
   constructor(x, y, kind) {
     const cfg = TUNING[kind];
     this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.kind = kind; this.cfg = cfg;
+    // Where he was put. Idle, he does not wander past a leash of this — a patrol keeps to its own
+    // room until it has a reason not to, rather than drifting out through whatever doorway is handy.
+    this.home = { x, y };
     this.r = cfg.radius; this.hp = cfg.hp || 1; this.speed = cfg.speed;
     this.state = 'idle'; this.timer = 0; this.facing = Math.random() * Math.PI * 2;
     this.aware = false; this.target = null; this.lastSeen = null;
@@ -184,7 +187,7 @@ class Enemy {
     game.particles(this.x, this.y, 30, PALETTE.blood, 320);
     game.particles(this.x, this.y, 16, PALETTE.fire, 260);
     game.ring(this.x, this.y, B.radius, PALETTE.fireHi);
-    game.shake(13); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
+    game.shake(9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
     w.emitNoise(this.x, this.y, TUNING.noise.boom);
     for (const o of game.enemies) {
       if (o === this || o.dead || o.held || o.ghosted) continue;
@@ -274,7 +277,11 @@ class Enemy {
     if (!overPit) {
       if (this.hazardRoll <= 0) {
         this.hazardRoll = TUNING.ai.rollGap;
-        if (Math.random() > this.trapSense) this.hazardBlind = TUNING.ai.blindFor;
+        // The blunder is for a man already coming for you, rattled and in a hurry — a patrol who
+        // has not even noticed the goat has no reason to misread the ground under his own feet.
+        // Without `aware` here a bored guard would eventually wander into every plate in his room
+        // simply from pacing past it enough times, which reads as broken rather than as a mistake.
+        if (this.aware && Math.random() > this.trapSense) this.hazardBlind = TUNING.ai.blindFor;
       }
       if (this.hazardBlind > 0) return { x: dirx, y: diry };
     }
@@ -501,10 +508,25 @@ class Enemy {
   }
 
   idleWander(dt, game) {
-    this.vx = 0; this.vy = 0;
-    if (this.sentry) return;                    // he was put facing that way on purpose
+    if (this.sentry) { this.vx = 0; this.vy = 0; return; }   // he was put facing that way on purpose
     this.wander -= dt;
-    if (this.wander <= 0) { this.wander = 1 + Math.random() * 3; this.facing += (Math.random() - 0.5) * 2; }
+    // A man who has not seen or heard anything patrols his own room and nothing past it: once he
+    // has drifted `ai.leash` tiles from where he was put, the next beat walks him home instead of
+    // choosing a fresh direction, so idling never drifts a man through a doorway into the next room
+    // (or, in a room built to teach one idea, out of the corner the level put him in to wait).
+    const out = len(this.x - this.home.x, this.y - this.home.y) > TUNING.ai.leash * TILE;
+    if (this.wander <= 0 || out) {
+      this.wander = 1 + Math.random() * 3;
+      this.facing = out ? Math.atan2(this.home.y - this.y, this.home.x - this.x) : this.facing + (Math.random() - 0.5) * 2;
+      // A man who has not seen anything still shifts his weight now and then rather than standing
+      // like a post: about half of a wander beat is a few slow steps in whatever direction he just
+      // turned to face, the rest is standing and looking. A room nobody has walked into yet used to
+      // hold every man in it dead still until the moment he spotted you, which read as a stage set
+      // rather than a room somebody was actually standing in.
+      this.walking = out || Math.random() < 0.5;
+    }
+    if (this.walking) this.moveToward(Math.cos(this.facing), Math.sin(this.facing), this.speed * TUNING.ai.wanderSpeed, dt, game);
+    else { this.vx = 0; this.vy = 0; }
   }
   investigate(dt, game) {
     if (this.sentry) { this.target = null; this.state = 'idle'; this.vx = 0; this.vy = 0; return; }
@@ -678,6 +700,11 @@ class Enemy {
         if (this.timer <= 0) { this.state = 'windup'; this.timer = cfg.windup * game.mods.enemySlow; }
       } else if (this.state === 'windup') {
         this.facing = Math.atan2(g.y - this.y, g.x - this.x);
+        // It has committed, not frozen: stepping back during the windup only buys a little, since
+        // whatever is materializing keeps closing the last short stretch while it comes on.
+        const wd = Math.hypot(g.x - this.x, g.y - this.y) || 1;
+        this.x += (g.x - this.x) / wd * cfg.windupPull * dt;
+        this.y += (g.y - this.y) / wd * cfg.windupPull * dt;
         if (this.timer <= 0) {
           this.state = 'swing'; this.timer = cfg.swing * game.mods.enemySlow;
           game.meleeHit(this, cfg.reach, Math.PI * 0.9, cfg.damage, cfg.knock);
@@ -790,6 +817,11 @@ class Enemy {
     // not leave it: blinking out through the wall left him alive on the far side of a door nothing
     // could open, with the goat locked in behind it and the level unfinishable.
     const seal = game.sealHolding(this);
+    // And short of a seal, he still may not land somewhere the fight has already left behind: a
+    // blink close to a doorway could put him a room back the way the goat came, alive in ground
+    // that reads as cleared. `curRoom` is whatever room the goat is standing in right now — a
+    // corridor answers with nothing, and nothing here restricts a blink from one.
+    const curRoom = roomAt(game.level, g.x, g.y);
     let best = null;
     for (let k = 0; k < 24; k++) {
       const a = Math.random() * Math.PI * 2, r = cfg.blinkDist * TILE * (0.7 + Math.random() * 0.6);
@@ -797,6 +829,8 @@ class Enemy {
       if (w.tileAtPx(nx, ny) === T.WALL) continue;
       if (w.flowDist(nx, ny) < 0) continue;
       if (seal && !game.inRoom({ x: nx, y: ny }, seal.room, 1)) continue;
+      if (curRoom && (nx < curRoom.x * TILE || nx >= (curRoom.x + curRoom.w) * TILE
+          || ny < curRoom.y * TILE || ny >= (curRoom.y + curRoom.h) * TILE)) continue;
       // Blinking out of a fight and into his own fire was the one thing that read as the rune not
       // counting for him. He lands on ground that is neither alight nor about to be, or not at all.
       if (w.isBurningPx(nx, ny) || w.isPitPx(nx, ny)) continue;

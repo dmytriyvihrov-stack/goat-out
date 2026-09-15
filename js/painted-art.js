@@ -12,7 +12,7 @@ const WALK_FPS = { sheep: 8, clubman: 8, mage: 7, hound: 10 };
 class PaintedArt extends AltarArt {
   constructor() {
     super(); this.images = {}; this.loaded = 0; this.failed = [];
-    const entries = [...Object.entries(PAINTED_ASSETS), ...Object.entries(PAINTED_ASSETS_V1)];
+    const entries = Object.entries({...PAINTED_ASSETS, ...PAINTED_ASSETS_V1, ...PAINTED_ASSETS_V2});
     this.ready = false;
     for (const [key, asset] of entries) {
       const image = new Image(); this.images[key] = image;
@@ -67,27 +67,12 @@ class PaintedArt extends AltarArt {
     return true;
   }
 
-  // The secret wall has to read as *that level's own wall* until it cracks (see CLAUDE.md's "A wall
-  // that gives") — the delivered art is one fixed stone colour, so it is tinted to `p.wallColor` and
-  // cached per colour rather than drawn raw.
-  secretWallTinted(color) {
-    this.secretTint || (this.secretTint = new Map());
-    if (this.secretTint.has(color)) return this.secretTint.get(color);
-    const image = this.images.propsAtlas, cell = ATLAS_CELL['secret-wall'];
-    const c = document.createElement('canvas'); c.width = 128; c.height = 128;
-    const cx = c.getContext('2d');
-    cx.drawImage(image, cell[0], cell[1], 128, 128, 0, 0, 128, 128);
-    cx.globalCompositeOperation = 'source-atop';
-    cx.fillStyle = color; cx.globalAlpha = 0.6;
-    cx.fillRect(0, 0, 128, 128);
-    this.secretTint.set(color, c);
-    return c;
-  }
-
   drawTiles(renderer, game, cam) {
     if (!this.ready) return super.drawTiles(renderer, game, cam);
     this.prepare(game);
     const ctx = renderer.ctx, wd = game.world, b = renderer.visibleTiles(cam);
+    const prefix = game.levelIndex ? 'level'+game.levelIndex+'_' : '';
+    this.prefix = prefix;   // read back by the secret-wall prop, which has to match this exactly
     for (let y=b.y0; y<=b.y1; y++) for (let x=b.x0; x<=b.x1; x++) {
       const t=wd.tileAt(x,y), px=x*TILE, py=y*TILE, h=this.hash(x,y,game.level.seed);
       if (t===T.WALL) {
@@ -99,13 +84,19 @@ class PaintedArt extends AltarArt {
         // bottom wall the surface you are looking at is the inner face, there is no top of it in
         // view from here, and the pale plate drawn there read as a stripe painted along the edge of
         // the floor.
-        this.stamp(ctx,'wallFace',px+16,py+16,32,32);
-        if (!n) this.stamp(ctx,'wallTop',px+16,py+10,32,20);
+        // A room's own left or right wall mirrors the same square texture across its own centre, so
+        // whatever asymmetry the brick art carries reads as facing into the room on both sides
+        // instead of the same unmirrored tile pointing the one way everywhere it is stamped.
+        const sideWall = (e && !w) || (w && !e);
+        if (sideWall) { ctx.save(); ctx.translate(px+32,0); ctx.scale(-1,1); ctx.translate(-(px),0); }
+        this.stamp(ctx,prefix+'wallFace',px+16,py+16,32,32);
+        if (!n) this.stamp(ctx,prefix+'wallTop',px+16,py+10,32,20);
+        if (sideWall) ctx.restore();
         if (s&&x%5===1&&h%3!==0&&!w&&!e) this.stamp(ctx,'banner',px+16,py+14,17,23,0.2);
         continue;
       }
       if (t===T.PIT) continue;
-      this.stamp(ctx,this.boards[y*wd.W+x]?'boards'+(h%2):'stone'+(h%4),px+16,py+16,32,32);
+      this.stamp(ctx,prefix+(this.boards[y*wd.W+x]?'boards'+(h%2):'stone'+(h%4)),px+16,py+16,32,32);
       ctx.fillStyle=PALETTE.altar.shadow;
       if(wd.isSolid(x,y-1))ctx.fillRect(px,py,32,5);
       if(wd.isSolid(x-1,y))ctx.fillRect(px,py,3,32);
@@ -182,9 +173,25 @@ class PaintedArt extends AltarArt {
       ctx.restore();
       return drew?true:super.drawProp(renderer,p);
     }
-    // The cage stays fully procedural: `cage-bars`/`cage-broken` in the atlas are a whole three-post
-    // fence panel, not a single post, and this game's pen is built from one `Prop` per bar — stamping
-    // the panel on every bar would triple-draw posts. See the new brief in ART_HANDOFF.md.
+    if(p.kind==='cage'&&this.images.cagePostTight?.naturalWidth){
+      const h=TUNING.prop.cage.height,sgn=Math.round(p.x/7)%2?1:-1;
+      const lean=(p.hits||0)*0.05*sgn+(p.wobble>0?Math.sin(renderer.t*62)*0.06:0)+(p.gate||0)*1.5;
+      renderer.shadow(p.x,p.y,5,3);
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(lean);
+      // The connecting rail belongs to the assembled fence; the art contains just one post.
+      if(p.axis==='h'){ctx.fillStyle='#3c3730';ctx.fillRect(-15,-h+3,30,4);ctx.fillStyle='#6a635b';ctx.fillRect(-15,-h+3,30,1.5);}
+      this.stamp(ctx,'cagePostTight',0,0,7,h,1);ctx.restore();return true;
+    }
+    if(p.kind==='chicken'&&this.images.chickenFacing?.naturalWidth){
+      const flying=p.birdState==='flying',stunned=p.birdState==='stunned';
+      if(Math.hypot(p.vx||0,p.vy||0)>2)p.artFacing=Math.atan2(p.vy,p.vx);
+      const angle=p.artFacing??Math.PI/4;
+      renderer.shadow(p.x,p.y,8,3.5);ctx.save();ctx.translate(p.x,p.y);
+      if(stunned)ctx.rotate(Math.PI*0.4);
+      if(flying){ctx.save();ctx.rotate(angle);ctx.fillStyle='rgba(232,221,200,0.3)';for(let k=1;k<=3;k++)ctx.fillRect(-k*7,-2,4,2);ctx.restore();}
+      this.character(renderer,{facing:angle},'chicken',28);ctx.restore();
+      if(stunned)renderer.drawStars(p.x,p.y,14,Math.min(1,p.birdT*2));return true;
+    }
     if(p.kind==='weapon'){
       if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
       const up=p.inStand;
@@ -199,7 +206,10 @@ class PaintedArt extends AltarArt {
       ctx.save();
       ctx.translate(p.x,p.y-(up?24:0));
       ctx.rotate(up?(p.weapon==='sword'?-Math.PI/2:0):p.flung?p.spin:(p.facing||0));
-      this.atlas(ctx,p.weapon,0,0,up?(p.weapon==='sword'?46:32):(p.weapon==='sword'?24:22),undefined,0.5);
+      // One size, whatever it is doing: racked, lying or in his mouth. It used to draw bigger on the
+      // stand than anywhere else it is ever seen, which read as the object changing size the moment
+      // you took it rather than as the same blade wherever it is.
+      this.atlas(ctx,p.weapon,0,0,p.weapon==='sword'?24:22,undefined,0.5);
       ctx.restore();
       // What is left in a shield you are carrying: three studs, one per man or bullet it has in it.
       if(p.weapon==='shield'&&p.held&&p.uses>0){
@@ -213,6 +223,9 @@ class PaintedArt extends AltarArt {
     }
     if(p.kind==='heal'){
       if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
+      // v2's tighter, static 23px patch (brief item F) tested as too quiet to read as a heal spot in
+      // a moving crowd — reverted to the original atlas stamp: bigger, with its own shadow and a slow
+      // bob, so a bowl of milk still finds the eye the way the wisp or a lamp's firelight does.
       const bob=Math.sin(renderer.t*2.4+p.phase)*2;
       renderer.shadow(p.x,p.y+4,11,5);
       this.atlas(ctx,'healing-grass',p.x,p.y+bob,44,undefined,0.72);
@@ -236,16 +249,18 @@ class PaintedArt extends AltarArt {
       return true;
     }
     if(p.kind==='secret'){
-      if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
-      const top=p.y-TILE*0.12;
-      // A wall stands in the wall row, not the floor row: anchored a shade above the tile's own
-      // centre (0.62, against the stamp's usual 0.5) so it sits with the rest of the wall course
-      // rather than reading as flush with the ground the niche's own floor is drawn on.
-      this.drawFrame(ctx,this.secretWallTinted(p.wallColor),0,0,128,128,p.x,top,TILE,TILE,0.62);
+      const key=(this.prefix||'')+'wallFace';
+      if(!this.images[key]?.naturalWidth)return super.drawProp(renderer,p);
+      // Until it cracks this has to read as an unremarkable length of the room's own wall — the
+      // same brick course (and, on a wall carved from the top of its room, the same coping) every
+      // ordinary wall tile there gets. It used to be a different, unbricked stone-block art tinted
+      // to the room's colour, which read as a smoother, flatter patch of *something* rather than as
+      // the wall itself, and made the crack drawn over it look like it was sitting on bare floor.
+      this.stamp(ctx,key,p.x,p.y,32,32);
+      if (p.wallSide==='up') this.stamp(ctx,(this.prefix||'')+'wallTop',p.x,p.y-6,32,20);
       // The crack tells still have to be drawn: the art carries none, and they're what the blow count
-      // reads as (see `Renderer.wallCrack` / CLAUDE.md's "A wall that gives"). Drawn off the same
-      // raised centre as the stamp above, so it sits on the stone and not on the boards in front of it.
-      renderer.wallCrack(p.x,top,p.hits||0);
+      // reads as (see `Renderer.wallCrack` / CLAUDE.md's "A wall that gives").
+      renderer.wallCrack(p.x,p.y,p.hits||0);
       return true;
     }
     return false;
@@ -257,12 +272,37 @@ class PaintedArt extends AltarArt {
     return this.atlas(ctx, 'soul-wisp', 0, 0, w, undefined, 0.56);
   }
 
-  characterKey(e) { return e.kind==='bearer'?'clubman':e.kind==='seer'?'mage':e.kind==='dog'?'hound':null; }
+  characterKey(e) { return e.kind==='bearer'?(e.champion?'brute':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith','butcher'].includes(e.kind)?e.kind:null; }
+
+  // The art is a top-down slab at the collision footprint, with no frame or square padding.
+  doorSlab(ctx,p,wdt,hgt) {
+    const type=p.gate?'Soul':p.vault?'Vault':p.iron?'Iron':'Wood',key='slab'+type+'Closed';
+    if(!this.images[key]?.naturalWidth)return false;
+    ctx.save();if(!p.vertical)ctx.rotate(Math.PI/2);
+    this.stamp(ctx,key,0,0,13,58);ctx.restore();return true;
+  }
+
+  brokenPost(game,p) {
+    if(!this.images.cageBrokenTight?.naturalWidth)return;
+    const ctx=game.world.dctx;ctx.save();ctx.globalAlpha=0.8;
+    this.stamp(ctx,'cageBrokenTight',p.x,p.y,22,7,0.5);ctx.restore();
+  }
+
+  brokenDoor(game,p) {
+    const type=p.gate?'Soul':p.vault?'Vault':p.iron?'Iron':'Wood',image=this.images['slab'+type];
+    if(!image?.naturalWidth)return;
+    const ctx=game.world.dctx;ctx.save();ctx.translate(p.x,p.y);if(!p.vertical)ctx.rotate(Math.PI/2);
+    ctx.globalAlpha=0.75;this.drawFrame(ctx,image,384,0,128,128,0,0,64,64);ctx.restore();
+  }
 
   character(renderer,e,key,width) {
     const ctx=renderer.ctx, angle=e.facing||0, moving=Math.hypot(e.vx||0,e.vy||0)>30;
-    const sheet=this.images[key+'Walk'];
+    const facingSheet=this.images[key+'Facing'],sheet=facingSheet||this.images[key+'Walk'];
     ctx.save();
+    if(key==='wraith'){
+      const born=e.state==='manifest'?1-Math.max(0,e.timer)/TUNING.wraith.manifest:(e.ghosted?0:1);
+      ctx.globalAlpha*=0.35+born*0.65;const puff=1.12-born*0.12;ctx.scale(puff,puff);
+    }
     if(sheet&&sheet.naturalWidth){
       // Eight drawn facings rather than a mirrored front/back pair: row picks the facing, column
       // the walk frame. `angle` is already atan2(dy,dx) in screen space, the sheet's own convention
@@ -273,8 +313,12 @@ class PaintedArt extends AltarArt {
       if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
       if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
       const row=(Math.round(angle/(Math.PI/4))+14)%8;
-      const col=moving?Math.floor(renderer.t*(WALK_FPS[key]||8)+(e.x||0)*0.05)%4:1;
-      this.drawFrame(ctx,sheet,col*128,row*128,128,128,0,0,width,width,0.8125);
+      const col=facingSheet?0:moving?Math.floor(renderer.t*(WALK_FPS[key]||8)+(e.x||0)*0.05)%4:1;
+      // Where the feet actually sit in the cell, measured off the art rather than guessed: the
+      // walk-cycle sheets (v1) draw the body nearly the full 128px tall, feet close to the bottom
+      // edge; the newer static "Facing" sheets (v2) sit smaller and more centred in the same cell.
+      // One shared anchor read the walk-cycle characters as floating well clear of their own shadow.
+      this.drawFrame(ctx,sheet,col*128,row*128,128,128,0,0,width,width,facingSheet?0.81:0.89);
     } else {
       // Fallback to the original front/back pair if an expansion sheet failed to load.
       const back=Math.sin(angle)<-0.2, name=key+(back?'Back':'Front');
@@ -290,7 +334,7 @@ class PaintedArt extends AltarArt {
       if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
       this.stamp(ctx,name,0,0,width,undefined,key==='sheep'||key==='hound'?0.52:0.68);
     }
-    if(e.champion)renderer.spikeRing(e.r*0.9,Math.PI,Math.PI*2,5,6,PALETTE.altar.ironHi);
+    // Spikes are reserved for a future distinct enemy; this brute is the plain heavy clubman.
     ctx.restore();
   }
 

@@ -1,5 +1,8 @@
 // GOAT OUT — all tuning values in one place. Units: px, seconds. 1 tile = TILE px.
 const TILE = 32;
+// The version tag shown under the seed in the corner of the screen, and nothing else — bump it
+// by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
+const BUILD = '1.25';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -84,9 +87,10 @@ const TUNING = {
     // Two weights and two prices for carrying. A man in your mouth is `speedMul` — most of your
     // stride, because he is most of your size. A blade or a shield is `itemSpeedMul` and barely
     // anything, which is what makes an arm worth taking in passing rather than a thing you commit to.
-    // `sweep` is how far past the two bodies an arm on the floor jumps into his mouth by itself.
+    // `throwImpulse` is a fifth less than it was: a throw that crossed most of a room made the
+    // grab-and-launch loop the answer to everything a headbutt was supposed to be for.
     grab: { reach: 1.6 * TILE, speedMul: 0.7, itemSpeedMul: 0.94, holdTime: 8.0, holdVary: 0.125,
-      throwImpulse: 34 * TILE, manThrow: 0.7, sweep: 0.5 * TILE, holdDist: 22, cooldown: 1.35 },
+      throwImpulse: 27.2 * TILE, manThrow: 0.7, holdDist: 22, cooldown: 1.35 },
     // BAAH out of the pen is what a goat's voice actually is: a noise. It calls every man who hears
     // it to the spot you shouted from, which is a tool — you throw your voice at one end of a room
     // and leave by the other — and a way to get killed. What it is NOT is a weapon: taking the sense
@@ -100,7 +104,9 @@ const TUNING = {
     // and a man it interrupts is walking at you again a blink later. What it buys is the one thing
     // the bare voice never had — an answer to being caught, rather than only a way of moving a crowd
     // about. The lure is untouched and still goes out to `call` tiles: one button, both jobs.
-    scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9, call: 13, callCooldown: 3.0,
+    // `radius` came in a fifth: a stun that reached across most of a room answered a crowd rather
+    // than the handful of men on top of you, which is what THE FULL THROAT is supposed to cost for.
+    scream: { duration: 0.3, cooldown: 4.0, radius: 6.8, stun: 0.9, call: 13, callCooldown: 3.0,
       balk: 2.2, balkStun: 0.3 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat. It is a
     // fifth shorter than it was — the same beat of mercy, a fifth less ground — because a dodge that
@@ -131,7 +137,9 @@ const TUNING = {
   },
   bearer: {
     radius: 11, speed: 0.85 * CULT_PACE, sight: 8, cone: Math.PI / 2,
-    reach: 1.2 * TILE, windup: 0.58, swing: 0.15, recover: 0.55, damage: 1, knock: 1 * TILE,
+    // Reach came in a fifth: a club that landed from most of a body-length off read as the room's
+    // geometry not mattering, when the wall behind him is supposed to be doing the killing.
+    reach: 0.96 * TILE, windup: 0.58, swing: 0.15, recover: 0.55, damage: 1, knock: 1 * TILE,
     flooredTime: 0.8,
   },
   hunter: {
@@ -152,7 +160,7 @@ const TUNING = {
     radius: 10, speed: 0.98 * CULT_PACE, sight: 12, cone: Math.PI * 0.9,
     // The windup is the beat after the dart, not part of it: at 0.3 s the bite landed before the eye
     // had the tell, and the dart was doing work it could not be read doing.
-    reach: 0.95 * TILE, windup: 0.44, swing: 0.12, recover: 0.3, damage: 1, knock: 0.8 * TILE,
+    reach: 0.76 * TILE, windup: 0.44, swing: 0.12, recover: 0.3, damage: 1, knock: 0.8 * TILE,
     flooredTime: 0.7,
     dodge: 0.38, dodgeCd: 1.2, dodgeSpeed: 15 * TILE, dodgeTime: 0.2,
     circle: 2.6, circleFlip: 0.9, lungeCd: 1.5, dartTime: 0.9, retreat: 0.45,
@@ -183,9 +191,13 @@ const TUNING = {
   // and started to swing — and from that moment it cannot stop, so the window it opens to hurt you is
   // the same window you get to unmake it in. Face it and it can do nothing. Turn away and it arrives.
   wraith: {
-    radius: 12, speed: 0.62 * CULT_PACE, sight: 17, cone: Math.PI * 2,
-    reach: 1.35 * TILE, windup: 0.52, swing: 0.14, damage: 1, knock: 1.2 * TILE,
+    radius: 12, speed: 0.806 * CULT_PACE, sight: 17, cone: Math.PI * 2,
+    reach: 1.08 * TILE, windup: 0.52, swing: 0.14, damage: 1, knock: 1.2 * TILE,
     hp: 1, flooredTime: 0.6,
+    // It closes a third faster than it used to, and it does not stand still even once it has
+    // committed: a beat of windup that does not follow a goat stepping back read as it having
+    // aimed at where he used to be rather than at him.
+    windupPull: 26,
     standoff: 1.15,     // tiles behind you it wants to be before it commits
     behind: 1.15,       // radians off your facing: inside this cone in front of you it cannot manifest
     flank: 0.2,         // margin past that cone for the line it drifts in on, so its approach is
@@ -206,17 +218,19 @@ const TUNING = {
   // and he still out-reaches a clubman, which was the only thing that number was ever for.
   butcher: {
     radius: 20, speed: 0.6 * CULT_PACE, sight: 9, cone: Math.PI * 0.7,
-    hp: 3, reach: 1.35 * TILE, windup: 0.88, swing: 0.2, recover: 0.62, arc: Math.PI * 0.55, damage: 1,
+    hp: 3, reach: 1.08 * TILE, windup: 0.88, swing: 0.2, recover: 0.62, arc: Math.PI * 0.55, damage: 1,
     chargeMin: 4, chargeWind: 0.6, chargeSpeed: 14 * TILE, chargeTime: 1.1, chargeCooldown: 2.5, stun: 1.5, stagger: 0.4,
     burnTick: 1.0, burnHearts: 1,   // he comes out of a fire scorched and one heart down, not dead
   },
   // What a man makes of the room he is running through. Trap sense is rolled per man, so one of them
   // in a crowd reads the Mill wrong and rides it into a wall while the rest step round.
   ai: { senseMin: 0.5, senseMax: 0.95, blindFor: 0.9, rollGap: 0.7,
+    leash: 3.5,        // tiles an idle man drifts from where he was put before he is walked home
     millLead: 0.6,     // s of arm sweep he looks ahead before deciding a spot is taken
     millClear: 15,     // px of berth he wants round the arms: stepping to the very edge is not enough
     trapLook: 30,      // px past his own radius he checks for a wheel or a brazier (flame he reads later)
-    feel: 5 },         // px past the two bodies where being walked into counts as being seen
+    feel: 5,           // px past the two bodies where being walked into counts as being seen
+    wanderSpeed: 0.28 }, // fraction of his own speed a man not yet aware of you moves at, idling
   physics: {
     splatSpeed: 11 * TILE,
     flungDrag: 3.5,
@@ -247,7 +261,19 @@ const TUNING = {
     // `stairHits` is the door at the top of every level. It is iron, so nobody opens it for you and
     // nothing shoulders it: the last thing you do on a level is stand still and break it, with
     // whatever is left of the level walking toward the noise.
-    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 3, vaultHits: 4, stairHits: 3 },
+    // `clockFor` is the fourth kind, and it is the only door in the game that is on your side to
+    // begin with: a heavy iron one already swinging shut under its own weight, which stands OPEN
+    // when you first see the room in front of it and is an ordinary three-blow slab once it seats.
+    // Beat it and you paid nothing and it falls shut between you and whatever was chasing you; miss
+    // it and you pay the three blows and the noise of them, standing still in the open — the price
+    // every other iron door charges anyway. It is the one place in the world (rather than in the
+    // score) that says *run, don't fight*, which is why the count matches `score.perRoom`: the door
+    // becomes a wall at one room's par, so beating par is what buys the free way through.
+    // It closes on a curve rather than evenly — `clockEase` under 1 holds it near-open for most of
+    // the count and slams it at the end, which is the tell, since a door creeping shut at a steady
+    // eight degrees a second is a door nobody notices is moving.
+    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 3, vaultHits: 4, stairHits: 3,
+      clockFor: 12, clockEase: 0.5 },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE },
     // A lamp post is not a pillar: a body arriving at `knock` goes through it and it goes over,
     // and it pours its oil where the body is about to land.
@@ -282,12 +308,18 @@ const TUNING = {
     weapon: {
       r: 11, standR: 13, throwMul: 1.35, drag: 1.4, restSpeed: 3 * TILE,
       stickImpact: 6 * TILE,  // a scrape along a wall does not end a throw; a proper hit does
+      // How much of its speed a thrown shield keeps off a wall or a prop it did not stick in. A
+      // sword snaps there; a shield rings off and keeps going, which is the whole of why it is worth
+      // throwing at a room rather than at one man — it can still reach a second wall, or a second man.
+      shieldBounce: 0.6,
       swordStun: 1.6,        // what a sword does to a Butcher, who does not go down to one
-      shieldStun: 2.8,       // how long a man the shield bowls over stays down
+      shieldStun: 2.8,       // how long a man the shield bowls over stays down, dazed the same way a
+                              // scream leaves him
       // What one is worth before it is scrap, so neither can be dragged through a level. A blade is
-      // one throw: it goes into whatever it finds and snaps there. A shield is three, and every man
-      // it flattens and every bullet it turns spends one of them.
-      uses: { sword: 1, shield: 3 },
+      // one throw: it goes into whatever it finds and snaps there. A shield came down to two men or
+      // two bullets — three read as a thing you carried through half a level rather than a thing
+      // spent on a room.
+      uses: { sword: 1, shield: 2 },
       // What a carried shield covers. It was a circle the size of the shield itself, which meant
       // almost everything aimed at the goat went past the edge of it and hit him anyway — a shield
       // that does not stop the shot is a shield that reads as broken. It is an arc across his front
@@ -324,9 +356,9 @@ const TUNING = {
     // accident, and nothing else about it — its size, what it blocks, what it hides — is its own.
     secret: { hits: 2 },
     // The coop: two tiles of slatted crate with a bird in it, standing about in the compound's
-    // stores. Two blows, like every other small thing that opens, and what comes out is the one
-    // ally in the game.
-    coop: { r: 26, hits: 2 },
+    // stores. One blow — two read as a second cage to break before the one ally in the game gets
+    // to do anything, and the coop is not the lesson here, she is.
+    coop: { r: 26, hits: 1 },
     // The bird. Loose, she trots after the goat at `followSpeed`, hanging back `followAt` tiles and
     // only closing when he gets further than `followFar`; she is a thing that walks with you, not a
     // thing stuck to your heel.
@@ -384,7 +416,12 @@ const TUNING = {
     kick: 7, kickDecay: 11, kickMax: 15, // directional camera punch, thrown away from the impact
     zoomKick: 0.05, zoomDecay: 7,       // the lens shoves in on a kill and settles back
     flashDecay: 6,                      // additive screen flash
-    comboWindow: 2.4, comboSlow: 0.26,  // kills inside the window stack, and stretch time
+    // Kills inside the window stack, and used to stretch time and shake the camera harder with
+    // every one of them — which read as the game stumbling over its own feet at the exact moment
+    // a run through a room was going well. `comboSlow` and the hitstop bonus below are both cut
+    // by more than half: a multi-kill still says so, it no longer breaks stride to do it.
+    comboWindow: 2.4, comboSlow: 0.12,
+    comboHitstopMul: 0.004, comboHitstopCap: 0.025,
   },
   // The corner of the screen that says what you have and what your buttons are doing. It was sized
   // to stay out of the way and succeeded too well: a first-time player found the hearts and the rail
@@ -520,6 +557,13 @@ const EASY = { maxHp: 2, enemySlow: 1.4 };
 // the stairs: it is the one thing in a level you go out of your way for.
 const VAULT = { w: 5, h: 5, gap: 1 };
 
+// A room wide enough that simply running its length is a real option gets an iron door standing
+// across its own exit more often than an ordinary corridor does: three blows and the noise of them
+// is what makes stopping to fight in the open room a better trade than eating whatever is still
+// coming when the door finally goes. `w` is tiles of room width; below it the roll falls back to
+// the level's own `doorChance`/`ironDoors`.
+const BIG_ROOM = { w: 20, doorChance: 0.85 };
+
 const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.8, champion: 3.2, butcher: 5 };
 
 const ENCOUNTER = {
@@ -541,7 +585,27 @@ const ENCOUNTER = {
   millEase: 0.45,
   // The killbox: two rifles on the far side of an empty room, watching the door you come in by.
   killbox: { men: ['hunter', 'hunter'], near: ['bearer', 'bearer'] },
+  // THE CHEAPEST MAN IS NOT THE FILLER. Every other kind has a cap of its own; the clubman never
+  // did, so he was whatever a big budget had left over once those caps were full — and a room on
+  // the late curve came out as an early room with four more of him standing in it. This is his cap
+  // and it is the one that *tightens* as a room gets richer: `max` of him while the budget is under
+  // `full`, down to `min` by the time it reaches `none`. Never zero — a clubman is still a body to
+  // throw another man into, and a crowd with none of them in it stops reading as a compound.
+  // It does not touch a room that was handed its own head count: the Great Hall is *supposed* to be
+  // a wall of bodies, and an escort is too small a budget for any of this to reach.
+  cheap: { kind: 'bearer', full: 8, none: 22, max: 6, min: 2 },
 };
+
+// THE SECOND AXIS. `groundOf` in `rooms.js` measures how much of a room is floor with nothing solid
+// within a step — how little of the room is available as a weapon. The crowd curve buys men; this
+// buys the ground they are standing on, and a level deals its rooms out along it, tight first and
+// open last. Without it the curve could only ever make a late room *fuller*, which is the one way
+// of getting harder that pillar 3 says the least about.
+// `window` is what keeps it a tendency instead of a running order: the draw takes at random among
+// the nearest few templates that fit, so two seeds of a level are still two different levels and the
+// rule that holds it is an averaged one. `weight` is what the balance report multiplies threat by to
+// get *pressure* — what a room actually asks of you, men and floor together.
+const GROUND = { window: 3, weight: 0.5 };
 
 // THE CANON. Every level is about one thing — stone, fire, the line, open ground, the funnel, the
 // drop, the niche — and the rooms are how it says so. A room template carries `canon: '<id>'`, a
@@ -576,7 +640,7 @@ const BOON_BASE = {
   // every trick built on carrying one — the living shield, the strong jaw, devouring — is off the
   // table, because a card that needs a verb you have not got is a wasted card.
   grabMen: false,
-  screamCooldown: 3.0, screamRadius: 8.5,
+  screamCooldown: 3.0, screamRadius: 6.8,
   // What BAAH is. `call` out of the pen: a noise that pulls the room to where you shouted. `stun`
   // is THE FULL THROAT and `breath` is DRAGON BREATH — the two ways of turning a voice into a
   // weapon, and you get one of them.
@@ -588,36 +652,69 @@ const BOON_BASE = {
   // its head. He still starts underpowered; he starts underpowered with somewhere to go.
   roll: true, rollDistance: 1, rollCooldown: 1, rollStun: 0,
   breath: false, bomb: false, devour: false,
+  // Off by default: a burning man stops with the man he caught fire from, unless this soul is spent.
+  firePass: false,
 };
 
+// Every boon's tunable numbers live in its own `params`, not buried in `apply`'s body, so the
+// BOONS tab of the dev tool can list, show and edit them generically — `apply(m, p)` always
+// reads its multipliers off `p` rather than off a literal, the same read-the-mod-at-the-use-site
+// discipline `TUNING`/`mods` already follow. A boon with nothing numeric to turn (it only flips a
+// flag) simply has no `params`. `emoji` is the one glyph that stands for the boon everywhere it is
+// named at a glance — the rail, the hover note, the pick-one-of-three cards. `minLevel` is the
+// level index (0 = THE ALTAR) below which the card is never dealt — off by default, so the dev
+// tool is the only thing that ever needs to set one.
 const BOONS = [
   // ---- actives: they change what a button does ----
-  { id: 'collar', skill: 'grab', active: true, name: 'BY THE COLLAR',
+  { id: 'collar', skill: 'grab', active: true, emoji: '⛓️', minLevel: 0, name: 'BY THE COLLAR',
     desc: 'Take a man in your teeth the way you take a box. He stops bullets, and he throws.',
     apply: (m) => { m.grabMen = true; } },
-  { id: 'howl', skill: 'scream', active: true, name: 'THE FULL THROAT',
+  { id: 'howl', skill: 'scream', active: true, emoji: '📢', minLevel: 0, name: 'THE FULL THROAT',
     desc: 'BAAH stops being a noise. Everyone who hears it loses a moment, and that moment is yours.',
-    apply: (m) => { m.screamStun = true; m.screamCooldown = TUNING.goat.scream.cooldown; } },
-  { id: 'breath', skill: 'scream', active: true, name: 'DRAGON BREATH', desc: 'The scream becomes a cone of fire. Slower to recharge.',
-    apply: (m) => { m.breath = true; m.screamCooldown = TUNING.goat.breath.cooldown; } },
-  { id: 'bomb', skill: 'butt', active: true, name: 'BOMB CHARGE', desc: 'Anyone you headbutt goes off if he lands on a wall or another man.',
+    params: { cooldown: TUNING.goat.scream.cooldown },
+    apply: (m, p) => { m.screamStun = true; m.screamCooldown = p.cooldown; } },
+  { id: 'breath', skill: 'scream', active: true, emoji: '🔥', minLevel: 0, name: 'DRAGON BREATH', desc: 'The scream becomes a cone of fire. Slower to recharge.',
+    params: { cooldown: TUNING.goat.breath.cooldown },
+    apply: (m, p) => { m.breath = true; m.screamCooldown = p.cooldown; } },
+  { id: 'bomb', skill: 'butt', active: true, emoji: '💣', minLevel: 0, name: 'BOMB CHARGE', desc: 'Anyone you headbutt goes off if he lands on a wall or another man.',
     apply: (m) => { m.bomb = true; } },
-  { id: 'devour', skill: 'grab', active: true, needs: 'grabMen', name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
+  { id: 'devour', skill: 'grab', active: true, needs: 'grabMen', emoji: '🍖', minLevel: 0, name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
     apply: (m) => { m.devour = true; } },
-  { id: 'weight', skill: 'roll', active: true, name: 'DEAD WEIGHT', desc: 'The tumble stops being an escape. Everything it goes through loses its head for a moment.',
-    apply: (m) => { m.rollStun = TUNING.goat.roll.stun; } },
+  { id: 'weight', skill: 'roll', active: true, emoji: '🪨', minLevel: 0, name: 'DEAD WEIGHT', desc: 'The tumble stops being an escape. Everything it goes through loses its head for a moment.',
+    params: { stun: TUNING.goat.roll.stun },
+    apply: (m, p) => { m.rollStun = p.stun; } },
 
   // ---- passives ----
-  { id: 'hide', name: 'THICK HIDE', desc: 'One more heart, and it fills now.', apply: (m) => { m.maxHp += 1; }, heal: 1 },
-  { id: 'horns', skill: 'butt', name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.', apply: (m) => { m.headbuttReach *= 1.55; m.headbuttImpulse *= 1.35; } },
-  { id: 'skull', skill: 'butt', name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.', apply: (m) => { m.headbuttRecovery *= 0.5; } },
-  { id: 'jaw', skill: 'grab', needs: 'grabMen', name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.', apply: (m) => { m.shieldBullets = 4; m.holdTime = 13; m.grabCooldown *= 0.6; } },
-  { id: 'shield', skill: 'grab', needs: 'grabMen', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing — at his own side, not you.', apply: (m) => { m.livingShield = true; } },
-  { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 13; } },
-  { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
-  { id: 'joints', skill: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
-  { id: 'ember', name: 'EMBER COAT', desc: 'Ordinary fire takes three times as long to start hurting you. Witchfire never cared.', apply: (m) => { m.fireResist = 3; } },
-  { id: 'oracle', name: 'THE ORACLE', desc: 'Nothing in sight range stays hidden from you, wall or no wall.', apply: (m) => { m.oracle = true; } },
+  { id: 'hide', emoji: '❤️', minLevel: 0, name: 'THICK HIDE', desc: 'One more heart, and it fills now.',
+    params: { heartsAdd: 1 },
+    apply: (m, p) => { m.maxHp += p.heartsAdd; }, heal: 1 },
+  { id: 'horns', skill: 'butt', emoji: '🐏', minLevel: 0, name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.',
+    params: { reachMul: 1.55, impulseMul: 1.35 },
+    apply: (m, p) => { m.headbuttReach *= p.reachMul; m.headbuttImpulse *= p.impulseMul; } },
+  { id: 'skull', skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.',
+    params: { recoveryMul: 0.5 },
+    apply: (m, p) => { m.headbuttRecovery *= p.recoveryMul; } },
+  { id: 'jaw', skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.',
+    params: { shieldBullets: 4, holdTime: 13, cooldownMul: 0.6 },
+    apply: (m, p) => { m.shieldBullets = p.shieldBullets; m.holdTime = p.holdTime; m.grabCooldown *= p.cooldownMul; } },
+  { id: 'shield', skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing, at his own side, not you.',
+    apply: (m) => { m.livingShield = true; } },
+  { id: 'kindling', emoji: '🪵', minLevel: 0, name: 'KINDLING', desc: 'A man on fire lights the next one he touches.',
+    apply: (m) => { m.firePass = true; } },
+  { id: 'throat', skill: 'scream', emoji: '🗣️', minLevel: 0, name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.',
+    params: { cooldownMul: 0.5, radius: 13 },
+    apply: (m, p) => { m.screamCooldown *= p.cooldownMul; m.screamRadius = p.radius; } },
+  { id: 'hooves', emoji: '💨', minLevel: 0, name: 'SURE HOOVES', desc: 'Run faster than anything in the building.',
+    params: { speedMul: 1.18 },
+    apply: (m, p) => { m.speed *= p.speedMul; } },
+  { id: 'joints', skill: 'roll', emoji: '🤸', minLevel: 0, name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.',
+    params: { distanceMul: 1.35, cooldownMul: 0.45 },
+    apply: (m, p) => { m.rollDistance *= p.distanceMul; m.rollCooldown *= p.cooldownMul; } },
+  { id: 'ember', emoji: '🧯', minLevel: 0, name: 'EMBER COAT', desc: 'Ordinary fire takes three times as long to start hurting you. Witchfire never cared.',
+    params: { fireResist: 3 },
+    apply: (m, p) => { m.fireResist = p.fireResist; } },
+  { id: 'oracle', emoji: '👁️', minLevel: 0, name: 'THE ORACLE', desc: 'Nothing in sight range stays hidden from you, wall or no wall.',
+    apply: (m) => { m.oracle = true; } },
 ];
 
 // Short things the cult shouts. A few words each: they have to read at a glance while you run.
@@ -763,13 +860,18 @@ const LEVELS = [
       from: 3, to: 9, ease: 1.25,
     },
     floor: '#4a3a2e', floorAlt: '#524032', wall: '#2a2430', wallTop: '#3e3346',
-    fog: '#0b0a0d', doorChance: 0.35, ironDoors: 0.5,
+    // The first level with a door already swinging shut in it. Not before this one: levels one and
+    // two are still teaching that a door is a thing that goes when you hit it, and a door that is
+    // better not hit at all is the wrong second lesson.
+    fog: '#0b0a0d', doorChance: 0.35, ironDoors: 0.5, clockDoors: 0.5,
     // It used to read HOLD A MAN. HE STOPS BULLETS, which stopped being true out of the pen: a man
     // is BY THE COLLAR and a goat who has not swallowed that soul cannot lift one. What is true
     // either way is the sentence under both — get something solid between you and the line.
     // No key under it. A hint that names a verb should carry the button for it; this one names the
     // ground — anything solid will do, and most of what will do is furniture you never pick up.
-    hint: 'PUT SOMETHING SOLID BETWEEN YOU AND THE LINE', hintKey: null,
+    // The second sentence is the floor's own new teeth: this is the first level with a grate in it,
+    // and a hint that only warned about the rifle said nothing about the ground growing them.
+    hint: 'PUT SOMETHING SOLID BETWEEN YOU AND THE LINE. WATCH YOUR STEP.', hintKey: null,
   },
   {
     // The threshing floor: the widest ground in the compound and the least wall in it. A headbutt on
@@ -778,7 +880,7 @@ const LEVELS = [
     // yours before the rifles decide it for you. Corridors are wide enough that it reads as one yard.
     // Nothing new walks in: the room itself is the new thing.
     name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, corridorW: 5,
-    canon: { id: 'open', name: 'OPEN GROUND', idea: 'Almost no wall. What kills is what is standing in the room — posts, tables, braziers, a ring of hay — and which half of it you decide is yours.' },
+    canon: { id: 'open', name: 'OPEN GROUND', idea: 'Almost no wall. What kills is what is standing in the room: posts, tables, braziers, a ring of hay, and which half of it you decide is yours.' },
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
     millAt: 6, heals: 3, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
     encounters: {
@@ -790,8 +892,8 @@ const LEVELS = [
       from: 6, to: 13.2, ease: 1.2,
     },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
-    fog: '#0b0b0a', doorChance: 0.12, ironDoors: 0.8,
-    hint: 'NOTHING OUT HERE KILLS FOR YOU. USE WHAT IS STANDING.', hintKey: 'butt',
+    fog: '#0b0b0a', doorChance: 0.12, ironDoors: 0.8, clockDoors: 0.55,
+    hint: null,
   },
   {
     // Everything the compound has left, all at once, on the bridge they were driving you over.
@@ -799,7 +901,7 @@ const LEVELS = [
     // The most men of any level so far, and the rooms are built so that they cannot all reach you
     // at once: a gate of pillars, a throat of tables, a pinch in the middle. Seven men are one man
     // in a doorway, and the doorway is what every room here has.
-    canon: { id: 'funnel', name: 'THE FUNNEL', idea: 'Seven men are one man in a doorway. Every room narrows somewhere, and the fight is at the narrow part — on whichever side of it you chose.' },
+    canon: { id: 'funnel', name: 'THE FUNNEL', idea: 'Seven men are one man in a doorway. Every room narrows somewhere, and the fight is at the narrow part, on whichever side of it you chose.' },
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
     millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 8,
     encounters: {
@@ -810,7 +912,7 @@ const LEVELS = [
       cap: { men: 9, hunter: 3, dog: 3 },
     },
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
-    fog: '#06070a', doorChance: 0.3, ironDoors: 0.55,
+    fog: '#06070a', doorChance: 0.3, ironDoors: 0.55, clockDoors: 0.6,
     hint: 'EVERYTHING THEY HAVE LEFT IS HERE', hintKey: 'scream',
   },
   {
@@ -833,7 +935,7 @@ const LEVELS = [
       cap: { men: 9, hunter: 3, dog: 3 },
     },
     floor: '#4b433a', floorAlt: '#544a40', wall: '#241d1a', wallTop: '#453629',
-    fog: '#06060a', doorChance: 0.2, ironDoors: 0.7,
+    fog: '#06060a', doorChance: 0.2, ironDoors: 0.7, clockDoors: 0.6,
     hint: 'THE FLOOR ENDS. THEY FALL FURTHER THAN YOU.', hintKey: 'butt',
   },
   {
@@ -860,7 +962,7 @@ const LEVELS = [
       cap: { wraith: 4, men: 9 },
     },
     floor: '#22242b', floorAlt: '#282a33', wall: '#3a3730', wallTop: '#565044',
-    fog: '#05060a', doorChance: 0.22, ironDoors: 0.65,
+    fog: '#05060a', doorChance: 0.22, ironDoors: 0.65, clockDoors: 0.6,
     hint: 'IT CANNOT STOP ONCE IT STARTS. LET IT START.', hintKey: 'butt',
   },
 ];

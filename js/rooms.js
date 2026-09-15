@@ -6,6 +6,39 @@
 // 'O' a drop: a hole in the boards where it sits in the floor, a window where it sits in a wall
 // 'S' a spike plate: floor until the goat crosses it, and then teeth
 // Rooms are randomly flipped on both axes at generation time.
+//
+// HOW MUCH WEAPON A ROOM HANDS YOU. Pillar 3 says the wall is the weapon: a headbutt on its own only
+// knocks a man down, and it is what he lands against that kills him. `groundOf` is that, as one
+// number — the fraction of a template's floor with nothing solid within a step of it. 0 is a room
+// where he can be put into something from anywhere you are standing; 1 is a yard where a headbutt is
+// a shove. `HARD` is everything a body dies against, is stopped by or falls into: wall, pillar,
+// brazier, lamp post, table, drop. Hay is not in it (a man lands in straw and gets up) and neither
+// is a crate or a rack (you pick those up, so they are not the room) or a grate (trap rooms lay
+// their own shape and are drawn from a pool of their own).
+// The generator deals a level's rooms out along this, tight first and open last, so the ground a
+// fight happens on gets worse as a level goes on and not only the count of men standing on it.
+const HARD = '#PBLtO';
+function groundOf(tpl) {
+  if (tpl.ground !== undefined) return tpl.ground;
+  const rows = tpl.rows;
+  let floor = 0, open = 0;
+  for (let y = 0; y < rows.length; y++) {
+    for (let x = 0; x < rows[y].length; x++) {
+      if (HARD.includes(rows[y][x])) continue;
+      floor++;
+      let near = false;
+      for (let dy = -1; dy <= 1 && !near; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const r = rows[y + dy];
+          if (r && HARD.includes(r[x + dx] || '')) { near = true; break; }
+        }
+      }
+      if (!near) open++;
+    }
+  }
+  tpl.ground = floor ? open / floor : 1;
+  return tpl.ground;
+}
 // A template with a `canon` belongs to the level whose `canon.id` matches it: at least half of that
 // level's ordinary rooms are drawn from its canon, and the rest from the mix — the untagged rooms
 // here plus the canons of every level before it, so a room never shows an idea the run has not
@@ -787,10 +820,12 @@ const KILLBOX_TEMPLATE = { name: 'killbox', noFlipX: true, rows: [
 // chain left to right, so the door is always in the left wall, and the arm has to be the thing
 // just inside it with the men at the far end. Flipped, the men stood in the doorway you walked in
 // through and the rack was behind them, which is the opposite of what the room is for.
+// Two racks side by side rather than one: a miss on the first throw is not the end of the lesson,
+// and the men at the far end have both of them to watch rather than one.
 const AMBUSH_TEMPLATE = { name: 'ambush', noFlipX: true, rows: [
   '################',
   '#..............#',
-  '#.w..o....e...e#',
+  '#.ww.o....e...e#',
   '#..............#',
   '################',
 ]};
@@ -802,13 +837,16 @@ const AMBUSH_TEMPLATE = { name: 'ambush', noFlipX: true, rows: [
 // bales were the loudest thing in a room whose entire point is the man. Two crates on the near half
 // instead, against the top and the bottom wall: something for the eye to measure the room by, well
 // clear of the line from the door to him and well clear of where `blockSpot` stands him.
+// Narrower than it was, too: ten tiles of walk from the door to the far wall put enough ground
+// behind him that a headbutt did not always reach it. Nine tiles of width closes that gap without
+// touching the depth, so the first swing a player ever tries is one that reliably kills.
 const LESSON_TEMPLATE = { name: 'lesson', canon: 'stone', noFlipX: true, rows: [
-  '############',
-  '#..o.......#',
-  '#..........#',
-  '#..........#',
-  '#..o.......#',
-  '############',
+  '#########',
+  '#..o....#',
+  '#.......#',
+  '#.......#',
+  '#..o....#',
+  '#########',
 ]};
 
 // The room you woke up in. The altar stands off to one side, made ready, with the straps and the

@@ -1,5 +1,64 @@
 # ART_HANDOFF — status of the painted-art pass, for whoever picks it up next
 
+## Playtest correction — same day, after the first look at v2 in motion
+
+The five new static-facing units (hunter, brute, butcher, wraith, chicken) packed short:
+`assets/painted-expansion-v2/pack.cjs`'s `frame()` fit every character to `maxH: 96` out of
+the 128px cell — 75% of the cell — while the existing clubman walk sheet fills closer to
+80%. Nothing was actually cropped (the source art has full boots, confirmed against
+`source/hunter.png`), but at the same on-screen `width` a 75%-fill character reads shorter
+and squatter than an 80%-fill one standing next to it — reported as "not full height, torn
+from the ground" and a size mismatch between the clubman and the new units. Raised to
+`maxH: 102` (102/128 ≈ 79.7%, matching the clubman's own fill) and re-ran the packer; two
+safety pixels are kept under the `baseline: 104` ceiling so a tall hat brim can't clip the
+top of the canvas. Confirmed in-browser against a debug shadow marker (`Renderer.shadow`
+patched to draw a crosshair at the exact `(e.x, e.y)` it's called with) that every new
+unit's feet now land on its own shadow, at gameplay zoom, across several directions.
+
+Healing grass (brief item F, below) was also reverted: shrunk to a quiet static 23px patch
+per the brief, it then read as too quiet once actually played — a heal spot has to find the
+eye in a moving crowd the way a lamp's firelight or the soul wisp does. Back to the original
+44px `healing-grass` atlas stamp with its shadow and slow bob; `healingGrassTight` is still
+packed but no longer drawn by anything.
+
+## Current status — expansion v2 integrated locally, 2026-09-15
+
+**Brief items A, B, C, E and F below are complete in the local build.** The earlier
+status and commission text below are retained as history, not an outstanding queue.
+Full delivery notes: `assets/painted-expansion-v2/HANDOFF.md`; visual inspection:
+`assets/painted-expansion-v2/preview.html`; browser evidence and screenshots are in that folder.
+
+- User chose hunter body/hat B with bandaged arms C and an old flintlock musket;
+  brute B without spikes, closer to the rusty-red bearer; butcher D; wraith A;
+  chicken D. All five now have **8 static facings, one frame each**, explicitly
+  replacing item B's request for four walk frames. Existing other walk cycles remain.
+- Clubman, brute and butcher received the user's right-hand weapon correction;
+  compass rows are remapped when mirrored, with targeted brute/butcher corrections.
+  The champion now uses the plain brute art; spikes are reserved for a future type,
+  which this art pass does not add or rebalance.
+- Six sets of eight floor/wall/board textures now render on levels 2–7. Level one's
+  existing walls remain. The tile dispatch is level-agnostic, while the ritual and
+  other level-one-specific decoration still use the existing `renderer.altar` gate.
+- Single-post cage art keeps individual lean/wobble and the connecting procedural rail.
+  Breaking either cage stamps the bent-post art onto the existing decal canvas.
+- Four top-down door types now stamp a tight **26×116 source at 13×58 world pixels**,
+  turned 90° for the other wall orientation. The current continuous swing, collision,
+  pressure, hit counts and soul markings remain. Broken door art leaves a decal.
+- Healing grass was repacked as a quiet 23px patch; reverted the same day, see the
+  playtest correction above — it renders at the original 44px size again.
+- `js/painted-assets-v2.js` is embedded and loaded in both `index.html` and `artifact.html`.
+  The packer and manifest are in `assets/painted-expansion-v2/`; source images are retained.
+- Validation passed: 59 nonempty exported cells with transparent edges, all 40 new
+  compass selections, static columns while moving, ghost/materialized opacity,
+  cage decals, all seven level texture sets, door orientations/open amounts, and
+  both HTML builds loading 103 assets without page errors. See `browser-validation.json`.
+
+**Optional item D remains optional:** crate debris and a new decorative wall-torch
+fixture were not added. This is a local integration; no remote artifact publication
+was requested or performed in this pass.
+
+---
+
 This is for the session that generates and packs art (currently GPT, working through
 `output/character-concepts/` and `tools/pack-painted-art.cjs`). It says what is already
 painted and wired into the game, and what is still the placeholder canvas shapes. Read
@@ -104,7 +163,7 @@ See brief item **E** for the redo.
 - **Torch-fire.** No fixture to attach it to — only `brazier` and `lamp` exist as lit
   Props today; there is no decorative wall-torch object in the game.
 
-## Not done — what to paint next
+## Historical gaps before expansion v2 (resolved above)
 
 In roughly the order a playthrough meets it:
 
@@ -127,7 +186,7 @@ In roughly the order a playthrough meets it:
 
 ---
 
-## Brief for the next commission — technical spec, 2026-09-15
+## Original commission brief — technical spec, 2026-09-15 (A/B/C/E/F delivered)
 
 Six separate asks. Each can be delivered independently; none block each other.
 

@@ -40,6 +40,27 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
    add cancels, combos, or i-frames beyond the roll's.
 5. **Comment the why, not the what.** The code is dense; a one-line comment above a non-obvious block
    that explains the intent is worth more than a paragraph.
+6. **Nothing may reward remembering a layout.** The game is in the regeneration camp — Ape Out,
+   Spelunky, Isaac — and not the memorization camp Hotline Miami and Katana Zero are in: the level is
+   never the same twice, so nothing in it can be worth *learning by heart*. What a level **is** —
+   its canon, that it has a wheel, that a vault is cut off the middle of it — is knowledge and is
+   meant to be had. Where a particular thing **stands** is not, and no reward may depend on it. The
+   test: if a feature gets better the tenth time somebody plays that level, it belongs to a different
+   game. See `GENERATION_RESEARCH.md` for why the two camps are the line they are.
+7. **A room is bought on two axes, and neither of them is "more of the cheapest man".** `THREAT` buys
+   the crowd; `groundOf` (`rooms.js`) buys the floor under it — how little of the room is available
+   as a weapon — and `gen.js` deals a level's rooms out along both, tight and quiet first. Pillar 3
+   is the reason there are two: if the wall is what kills, then taking the wall away is a way of
+   making a room harder that a body count can never say. And `ENCOUNTER.cheap` is the floor under
+   the whole thing — the clubman has a cap that *tightens* as a room gets richer, because a late
+   room that is an early room with four more of him in it is not a late room.
+8. **A promise the generator makes is written down as a rule.** Every one of them lives in
+   `GEN_RULES` (`js/rules.js`) with a `check(level)`, so `node tools/balance.js` can hold it against
+   many seeds of every level and the dev drawer's RULES page can paint it live. Add a behaviour to
+   `gen.js`, add its rule in the same sitting — a promise nothing checks is a promise that has
+   already quietly broken on some seed nobody has played. If one seed genuinely cannot answer it
+   (`rises`, `ground`), the per-seed check says so by returning `true` or `null` and never blood, and
+   the averaged version lives in the report.
 
 ---
 
@@ -87,6 +108,15 @@ mush. Raising `DECAL_SCALE` costs memory fast: the world is 420x78 tiles.
 **Two hits.** Anything with `hp > 1` — an arena elite, or any Seer — absorbs a killing blow in `die()`:
 it goes down floored, loses one, gets up, and a Seer blinks clear. Fire counts, so a mage has to be lit
 twice. Only `devour` and `boom` skip it.
+
+**A patrol keeps to its own room.** `Enemy.home` is where he was put, and `idleWander` will not let him
+drift more than `TUNING.ai.leash` tiles from it: past that, the next wander beat turns and walks him
+home instead of picking a fresh direction. A man idling in a room used to wander freely inside it, which
+in a room with a doorway meant he could wander straight through it — an escort from a crowded room
+turning up alone in the empty one next door, or a room built to hold exactly one idea (the ambush's two
+racks, a trap's own men) filling in from whoever wandered in from off camera. The leash is idle-only:
+`chaseGoat` and `investigate` are what they always were, because a man who has heard or seen something
+is answering that and not patrolling any more.
 
 **A front and nothing else.** `canSeeGoat` is a cone and a line of sight and nothing else. There used to
 be a close-range bypass — inside 2.5 tiles he saw you wherever you stood — which took away the one thing
@@ -143,12 +173,13 @@ throw — is painted here** rather than in an empty room two rooms after the pen
 
 Four things about it are deliberate. `noFlipX`: rooms chain left to right, so the door is always in the
 left wall, and flipped, the men stood in the doorway you walked in through with the rack behind them —
-the exact opposite of what the room is for. Its stand is **always the sword** (`room.isAmbush` in the
-marker loop), because a thrown shield only knocks a man flat and a lesson whose payoff is "he gets back
-up" is not one anybody keeps. Nothing is scattered into it — no extra crates, no grating, no coop, never
-a trap room and never a canon room — so the one crate in it is the one the template put there. And its
-bowl of milk, if the heal rhythm gives it one, is **placed rather than scattered**: the spot furthest
-from `room.enter`, which is the far corner past the men.
+the exact opposite of what the room is for. Its two stands are **always the sword** (`room.isAmbush` in
+the marker loop), because a thrown shield only knocks a man flat and a lesson whose payoff is "he gets
+back up" is not one anybody keeps — two of them side by side rather than one, so a missed first throw
+is not the end of the room's own idea. Nothing is scattered into it — no extra crates, no grating, no
+coop, never a trap room and never a canon room — so the one crate in it is the one the template put
+there. And its bowl of milk, if the heal rhythm gives it one, is **placed rather than scattered**: the
+spot furthest from `room.enter`, which is the far corner past the men.
 
 Nothing about who spawns there is special-cased: it is an ordinary room and
 fills off the threat curve like any other, so "they wait" is room geometry (the distance from the
@@ -397,11 +428,14 @@ brazier rather than a boolean; every old caller still reads it as truthy.
 the tile; `Prop.updateMill` and `Prop.bite` no longer skip `held` and take him out of `goat.holding`
 themselves, setting `grabCd` as `ignite` does. Nothing in the room may treat a carried man as absent.
 
-**Fire is handed on once.** A burning man who touches another lights him in `game.passFire`, called
-from the enemy-vs-enemy pass in `collideEntities`. `ignite(game, witch, fromMan)` marks the man it lit
-with `litByMan`, and a man who was lit that way never passes it on; the man who did it sets
-`passedFire` and cannot do it twice. So a brazier costs a room two men rather than the whole room,
-which is the difference between fire being a hazard and fire being a win button.
+**Fire is handed on once, and only once KINDLING is taken.** A burning man who touches another lights
+him in `game.passFire`, called from the enemy-vs-enemy pass in `collideEntities`, but the whole method
+returns at once unless `mods.firePass` is set — without that soul a brazier costs the room the one man
+who found it and nobody else, which is the base case now rather than something every run already had.
+With it, `ignite(game, witch, fromMan)` marks the man it lit with `litByMan`, and a man who was lit that
+way never passes it on; the man who did it sets `passedFire` and cannot do it twice. So even with the
+soul spent, a brazier costs a room two men rather than the whole room, which is the difference between
+fire being a hazard and fire being a win button.
 
 **Fire has two kinds.** `world.fire` holds seconds left, `world.fireKind` holds 0 for ordinary flame and
 1 for the Seer's witchfire. Witchfire spreads as witchfire, draws violet, scorches violet and ignores
@@ -488,6 +522,67 @@ Change any of it and run **`node tools/balance.js`**: it prints the curve room b
 if a kind arrives in a crowd first, a cap breaks, threat stops rising inside a level, or a level is not
 harder than the one before. Adding an enemy kind means: a `THREAT` value, an `ENCOUNTER.weight`, usually
 a `cap`, and an `introduce` entry on the level that first shows it.
+
+**The second axis: what the floor is worth.** `groundOf(tpl)` in `rooms.js` is one number per room
+template — the fraction of its floor with nothing solid within a step, measured off the legend itself
+(`HARD` is wall, pillar, brazier, lamp, table, drop; hay is not, because a man lands in straw and gets
+up, and neither is a crate or a rack, because you pick those up, or a grate, because trap rooms are
+their own pool). 0.06 is `cloister`, all pillars; 0.68 is `flanks`, a yard. It is memoised onto the
+template, carried onto the generated room across the flip (a mirror cannot change it) as `tpl.ground`,
+and read out by `roomsOf` for the rules, the report and the room sheet.
+
+The curve used to buy only men, so the only thing a late room could be was a fuller one — which is
+the one way of getting harder that pillar 3 says the least about. Now `draw` in `tryGenerate` sorts
+both pools by ground and walks a level along it: how far into the level a room is says where in the
+sorted pool to look, and it takes at random among the `GROUND.window` nearest entries that fit the
+width budget and have not been spent. The window is what keeps it a tendency instead of a running
+order — two seeds of a level are still two levels, and the rule that holds it is an averaged one.
+Measured over forty seeds it moves the floor +18 to +25 percentage points from the first third of a
+level to the last, on every level that has enough rooms for the question to mean anything.
+
+`room.drawn` is whether the draw chose this room's shape at all. A set piece, the two teaching rooms
+and a trap room are forced or dealt from a pool of their own, so none of them is the generator
+keeping this promise — `GEN_RULES.ground` and the report both filter on it, and level one (six
+ordinary rooms, two of them forced and one a trap) correctly has nothing to say. `pressure` is
+`threat * (1 + ground * GROUND.weight)`: threat against the ground it is on, which is what a room
+actually asks. On BALANCE a bar is threat and the **hollow top of it** is ground — drawn as absence
+rather than as more paint, because an added pale cap was invisible on the pale bars the mix rooms
+already use. THE THRESHING FLOOR's bars are visibly mostly hollow and THE ALTAR's are solid, which is
+the two levels' own canons read back off the curve.
+
+**The cheapest man is not the filler.** Every kind has a cap; the clubman never did, so he was
+whatever a big budget had left once the others were full, and a room on the late curve came out as an
+early room with four more of him in it (THE RAFTERS was running seven bearers in a room of nine).
+`ENCOUNTER.cheap` is his own cap and it is the only one that *tightens* as the budget grows — `max`
+of him under `full`, down to `min` by `none`. Never zero: a clubman is still a body to throw another
+man into. It does not touch a room handed its own head count, so the Great Hall is still the wall of
+bodies it is supposed to be, and an escort's budget is too small for it to reach. Threat did not drop
+when it landed — it *rose*, because the budget now has to be spent on quality (RAFTERS 178 → 186,
+OSSUARY 201 → 207), and the clubman share of a rich room went from roughly seven-in-nine to 21–34%.
+`GEN_RULES.crowd` is what says so.
+
+**The door that is already closing.** `prop.door.clockFor` seconds, on some of the iron corridor
+doors from level three on (`levelDef.clockDoors`), and it is the only door in the game that is on
+your side to begin with. It **stands open** — `open` is 1, and `blocking`/`opaque` both read `open`,
+so while the count runs it is not in the room at all — and it shuts itself. Beat it and you paid
+nothing and it falls shut between you and whatever was chasing you; miss it and it is an ordinary
+three-blow iron door and you pay standing still in the open, which is what every other iron door
+charges anyway. It is the one place in the **world** rather than in the score that says *run, don't
+fight*, and the count is matched to that: it becomes a wall at 9 seconds, which is `score.perRoom`,
+one room's par. Beating par is what buys the free way through.
+
+Four things about it are load-bearing. It closes on a curve (`clockEase` under 1), holding near-open
+for most of the count and slamming at the end, because a door creeping shut at eight degrees a second
+is a door nobody notices is moving. It **will not shut on anybody** — a body in the gap holds it a
+hair over the blocking line, so the crowd on your heels props your own way out open for a moment, and
+it seats as soon as the gap is clear. It **lights itself** while the count runs, the same way a broken
+secret wall lights its niche and for the same reason: the fog is the width of a doorway, and an offer
+you cannot see across a dark room is not an offer — once it seats it goes back under the shade like
+any other door. And `gen.js` takes the flag back off any door whose room turned out to hold fewer
+than two men, or which is the room that introduces a kind or the quiet beat after one: a count running
+down in an empty room is a timer with nothing to beat, and a door shutting on the one room a level
+asks you to stand and look at something in is the level arguing with itself. `game.clockTold` says
+IT IS CLOSING once a run. `GEN_RULES.clock` holds all of it.
 
 **Canons.** Every level is about one thing, and `levelDef.canon` — `{ id, name, idea }` — is what: STONE
 on THE ALTAR, FIRE on THE YARD, THE LINE on THE ROAD, OPEN GROUND on THE THRESHING FLOOR, THE FUNNEL on
@@ -729,7 +824,19 @@ it — which is also why a death is not a way to farm one. `onGoatDied` names wh
 what was lost, because a card is the only place the player finds out that he keeps it. Nothing else may
 reset `boons` on a death: `restartLevel` passes `keepBoons`.
 
-**The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, score, at }` to
+**One seed a run.** `game.runSeed` is the run, and `game.levelSeed(i)` derives every level's out of it
+(`runSeed`, the level index and `deaths` through a small integer hash). The corner has shown the
+level's own seed for a while, which is enough to report a bad room and no use at all for handing
+somebody your run: every level of it used to be a fresh `Math.random`, so nothing but that one floor
+could ever be got back. What the corner shows now is the run's, in base 36 — five characters, because
+a player has to be able to pass it on — and **`#seed=k3j9a` is how it is typed back in**: NEW GAME and
+LEVELS take `askedSeed` off the address instead of rolling one, which is why there is no text field
+anywhere in the game and does not need to be. `deaths` is in the hash on purpose: a death still
+regenerates the level, so it is not a way to learn a layout, and that promise is now kept by
+arithmetic rather than by a fresh roll. `saveRun` carries `runSeed`, so CONTINUE is the same run; a
+save written before any of this existed has none and gets a fresh one rather than nothing.
+
+**The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, score, runSeed, at }` to
 `localStorage` under `SAVE_KEY` at the head of every level and again whenever a soul is taken; `loadRun`
 refuses anything of another version or off the end of `LEVELS`, and every call is wrapped, so a browser
 that refuses storage simply never offers CONTINUE. Winning clears it. CONTINUE re-enters the head of
@@ -945,13 +1052,14 @@ which is the whole reason the button exists on a phone. Its distance is `roll.sp
 and the ground is the half to turn: cutting the speed leaves the mercy frames where they are, which is
 the difference between a dodge and a second way of running.
 
-**An arm is picked up by running over it.** `Goat.takeArm` is the one way one enters the mouth and both
-callers go through it: `tryGrab` for a deliberate reach, and the sweep at the top of `Goat.update` for a
-blade or shield inside `grab.sweep` of him with an empty mouth and no cooldown. It is not a new button,
-it is one fewer — at a run there was never a beat in which to press for it. `goat.autoHeld` is which way
-it got there and it decides how grab lets go of it: something reached for goes when grab comes **up**,
-something that came in on its own goes on the next **press** of grab (the edge is `rmbWas`, carried on
-the goat so the input object needs nothing new).
+**An arm is picked up by reaching for it, not by walking over it.** `Goat.takeArm` is the one way one
+enters the mouth, and `tryGrab` is the one way in: a rack or a lying blade is `item`, the same test a
+crate goes through, so a press of grab within `grab.reach` of one takes it exactly as deliberately as
+a crate does. There used to be a second way in — a sweep at the top of `Goat.update` that put a blade
+or shield in his mouth the moment he walked near one, no button pressed — and it read as the opposite
+of deliberate: a stand of arms in a doorway armed you whether you meant to reach for it or not. `goat.
+autoHeld` is what is left of that distinction and is always false for a weapon now, so holding one
+always lets go the same way everything else does — release, or a press of grab again.
 
 **And either button throws it.** `inp.lmbPressed` with anything `item` in his mouth is `throwHeld`, not
 a headbutt: a thing held is a thing thrown, and which hand you throw it with is not a decision worth

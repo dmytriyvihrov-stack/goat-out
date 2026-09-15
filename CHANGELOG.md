@@ -5,6 +5,163 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.25 — a patrol that stays in its own room, and a wall that finally looks like one
+
+Twenty notes off one long playtest, most of them small and several of them the same complaint
+from a different angle: the level was showing things it did not mean to.
+
+**A patrol keeps to its own room.** `Enemy.home` is where he was put, and idling now leashes him
+to `TUNING.ai.leash` tiles of it — past that the next wander beat walks him home instead of
+picking a new direction. He used to wander freely inside whatever room he was in, which in a
+room with a door meant wandering out of it: an escort from a crowded room turning up alone next
+door, or the two men the ambush and the first trap room stand deliberately at the far end
+drifting toward the goat before he had done anything to earn it. Chasing and investigating are
+untouched — a man answering a sound or a sighting was never the problem.
+
+**The secret wall matched its own room until you looked closely.** The crackable wall used a
+dedicated stone-block art tinted to the room's colour, which read as a different, flatter
+material next to the actual brick course either side of it — so the crack drawn over it looked
+like it was sitting on bare floor rather than in a wall. It now draws the exact same wall stamp
+an ordinary tile there gets (coping band included, on a wall carved from the top of its room),
+so nothing gives it away before the crack does. A room's own side walls also mirror that stamp
+across their own centre now, so the brick reads as facing into the room from both sides instead
+of the same unmirrored tile pointing one way everywhere it is stamped.
+
+**Every character stood noticeably clear of his own shadow.** Measured off the actual sprite
+sheets rather than guessed: the walk-cycle art (goat, clubman, hound, mage) sits close to the
+full height of its cell, feet near the very bottom edge, while the newer static "Facing" sheets
+(brute, butcher, hunter, wraith, chicken) sit smaller and more centred in the same cell. One
+shared anchor number was tuned for neither, and a leftover manual nudge on top of it pushed the
+walk-cycle cast higher still. Both are gone in favour of two measured anchors, and everyone's
+feet now sit where the shadow actually is.
+
+**A blade or a shield now takes a deliberate press to pick up.** It used to come into his mouth
+by itself the moment he walked near one, no button pressed — which read as arming him whether he
+meant to or not, especially the moment a headbutt sent him stumbling past a rack. Grab already
+picks up a crate or a man this way; a weapon now goes through the identical press-and-reach, and
+lets go the identical way, release or another press of grab.
+
+**The lesson room's far wall was a walk away rather than a step.** Ten tiles of floor between
+the door and the far wall meant the first man of a run did not always die to the one headbutt he
+is there to teach; nine tiles closes that gap without touching the room's depth. The ambush room
+now racks two swords side by side rather than one, so a missed first throw is not the end of the
+room's idea, and lost the line about BAAH from its own floor text — a throwing lesson does not
+need a third verb painted across it.
+
+**A burning man no longer lights the next one for free.** `passFire` used to run for anyone
+already alight; it now waits on a new passive, KINDLING, so a brazier costs a room the one man
+who found it until that soul is spent. A thrown crate that lands square on a brazier now bursts
+into flame the way one landing in an already-burning tile always did, rather than just breaking
+against it like any other piece of furniture.
+
+**Smaller things in the same batch:** the WASD hint now waits for the cage to break, taking over
+the exact spot the headbutt prompt was painting rather than sitting on screen the whole time;
+BOMB CHARGE's explosion shakes the camera a little less; the boon-choice screen lost its two
+lines of caption (the cards say what they do on their own) and gained a highlight on whichever
+card the pointer is actually over; the acquired-boons list under SACRIFICED is gone, since
+hovering a chip on the rail already says the same thing; and every line of prose an em dash was
+holding together, in every piece of text a player (or the dev tool) can actually read, now reads
+some other way — a comma, a colon, a full stop, or nothing at all.
+
+---
+
+## 1.24 — a bestiary and an upgrades editor, and a patrol that stopped shrugging at spikes
+
+**A patrol is not a chase.** `avoidHazard`'s trap-check roll — the one that lets a man in a
+crowd occasionally misread the Mill and ride it into a wall — used to run for anybody near a
+hazard, wandering or chasing alike. A man merely pacing a room has nothing rattling him into
+misreading his own floor, and re-rolling every `rollGap` while he paced past the same grate for
+a full minute meant he found it eventually no matter how good his own trap sense was, which
+read as broken rather than as a mistake. The roll is now gated on `aware`: a chasing, rattled
+man can still blunder exactly as before, a patrolling one always routes clean around it.
+
+**Every boon carries its own glyph now**, on the pick-one-of-three cards (bigger, beside the
+name), in the rail's hover note and acquired-boons list, and as a small in-place icon on the
+skill rail itself — 💣 for BOMB CHARGE, 🔥 for DRAGON BREATH, 📢 for THE FULL THROAT, and one
+each for the rest of the sixteen.
+
+**The dev tool grows two tabs, ENEMIES and BOONS**, alongside RULES/LEVEL/BALANCE (`#enemies`
+and `#boons` link straight to them, same as the others). ENEMIES is a live bestiary: one row a
+kind, its portrait drawn by the exact same `drawEnemy` call the game itself makes every frame
+(nothing separately rendered or pre-baked), speed/hp/damage/attack-cycle read straight off
+`TUNING`, which levels it appears on read off `LEVELS`, and a line on how it actually behaves —
+plus the goat's own numbers underneath, for scale. BOONS is the upgrades table, and it edits:
+every numeric knob a boon's `apply` reads is now named in its own `params` rather than buried
+as a literal in that function body, so the tab can list and change any of them, plus a new
+`minLevel` gate (0/ANY by default) for holding a card back until a level the dev tool names.
+Click a number to change it — it takes effect at once, and is also written into `js/tuning.js`
+itself through a new `POST /tuning-edit` on `tools/serve.js` (`tools/tuning-patch.js` finds the
+right literal by walking the file's own object literals, so nothing about the file's comments
+or formatting moves) — the published artifact and a bare `index.html` have nowhere to send that
+write, so the edit simply stays session-only there.
+
+## 1.23 — the floor gets meaner too, and a door already closing
+
+A pass over the generator taken straight off `GENERATION_RESEARCH.md`, which is new in this
+sitting: what Spelunky, Isaac, Gungeon, Dead Cells, Nuclear Throne, Risk of Rain, Hades, Ape
+Out, Streets of Rogue and Downwell actually do to build a level, and which of their laws this
+game was already keeping. Three it was not are now kept, and each one is written down as a
+rule the report can fail on.
+
+**A room is bought on two axes now, not one.** `groundOf` in `rooms.js` measures how much of a
+room is floor with nothing solid within a step of it — how little of it is available as a
+weapon — and it reads true off the existing rooms without anything being re-authored: the
+pillared `cloister` is 0.06, the yard `flanks` is 0.68, and a canon's average lines up with
+what the level says it is about (STONE 0.17, OPEN GROUND 0.51). `draw` in `tryGenerate` now
+deals both pools out along it, tight first, so the ground a fight happens on gets worse across
+a level and not only the number of men standing on it. Measured over forty seeds that is +18
+to +25 percentage points from a level's first third to its last. It picks at random among the
+nearest few templates that fit rather than the single nearest, so two seeds of a level are
+still two levels — which is also why `GEN_RULES.ground` is an averaged rule and never paints
+one seed's noise as a broken promise.
+
+The reason it matters is pillar 3: if the wall is what kills, then taking the wall away is a
+way of making a room harder that a body count can never say, and until now the curve could
+only ever make a late room *fuller*.
+
+**And the clubman stopped being what a big budget gets spent on.** Every kind had a cap except
+him, so he was whatever was left once the others filled — THE RAFTERS was running seven
+bearers in a room of nine, which is a late room that is an early room with four more clubmen
+in it. `ENCOUNTER.cheap` is his own cap and the only one that tightens as a room gets richer.
+Threat did not drop when it landed, it rose, because the budget now has to be spent on quality:
+RAFTERS 178 → 186, OSSUARY 201 → 207, and the clubman share of a rich room went from roughly
+seven-in-nine to 21–34%. The Great Hall is untouched — it is handed its own head count and is
+supposed to be a wall of bodies.
+
+**A door that is already closing.** Some of the iron corridor doors from level three on stand
+**open** and shut themselves. Beat one and you paid nothing and it falls shut between you and
+whatever was chasing you; miss it and it is the ordinary three blows in the open that every
+iron door charges anyway. It is the first thing in the world rather than in the score that says
+*run, don't fight*, and the count is matched to that — it becomes a wall at 9 seconds, which is
+`score.perRoom`, one room's par. It closes on a curve so the last stretch slams (a door
+creeping shut at eight degrees a second is one nobody notices is moving), it will not shut on
+anybody standing in the gap, and it **lights itself** while the count runs the same way a
+broken secret wall lights its niche — the fog is the width of a doorway, and a race you cannot
+see across a dark room is not a race. The generator takes the flag back off any door whose room
+turned out to hold fewer than two men, or that stands on the room introducing a kind or the
+quiet beat after one.
+
+**One seed a run.** The corner showed the level's seed, which is enough to report a bad room
+and no use for handing somebody your run. It shows the run's now, in base 36 — five characters
+— and `#seed=k3j9a` takes it back on NEW GAME or LEVELS, so a link is how a seed is typed in
+and the game still has no text field in it. `deaths` is in the derivation, so a death still
+regenerates the level and is still not a way to learn a layout.
+
+**The tool got the second axis.** On BALANCE a bar is threat and the hollow top of it is open
+ground, drawn as absence rather than as more paint; THE THRESHING FLOOR's bars are visibly
+mostly hollow and THE ALTAR's are solid, which is those two levels' canons read back off the
+curve. Each level carries its own `ground early→late`, blood when it runs the wrong way. The
+room sheet reports a room's open ground, its pressure (threat against the ground it is on) and
+whether the draw chose its shape at all. Three new rules — `ground`, `crowd`, `clock` — are on
+the RULES page and in `node tools/balance.js` like every other one.
+
+Three pillars were added to `CLAUDE.md` alongside them: nothing may reward remembering a
+layout (the game is in the regeneration camp, and that kills a whole class of future ideas), a
+room is bought on two axes and neither is more of the cheapest man, and a promise the generator
+makes is written down as a rule in the same sitting it is made.
+
+---
+
 ## 1.21 — the teaching floor rebuilt, and a softlock that ended runs
 
 Twenty lines off the live build in one sitting, most of them screenshots. The through-line

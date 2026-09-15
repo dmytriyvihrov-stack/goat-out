@@ -35,12 +35,19 @@ function weightedPick(kinds, rng, weight) {
 }
 
 // Spend a threat budget on whoever has been introduced, respecting the per-room caps.
+// The cheapest kind gets one more cap on top, and it is the only one that tightens as the budget
+// grows: see `ENCOUNTER.cheap`. A room handed its own head count — the Great Hall, which is meant to
+// be a wall of bodies — is left out of it entirely.
 function fillRoom(budget, available, rng, caps, maxMen, weight) {
   const men = [], used = {};
   const cap = maxMen || caps.men;
+  const C = ENCOUNTER.cheap;
+  const cheapCap = maxMen ? 99
+    : Math.round(lerp(C.max, C.min, clamp((budget - C.full) / (C.none - C.full), 0, 1)));
   let left = budget;
   for (let guard = 0; guard < 80 && men.length < cap; guard++) {
-    const choices = available.filter((k) => (used[k] || 0) < (caps[k] || 99) && THREAT[k] <= left + 0.5);
+    const choices = available.filter((k) => (used[k] || 0) < (k === C.kind ? Math.min(caps[k] || 99, cheapCap) : (caps[k] || 99))
+      && THREAT[k] <= left + 0.5);
     if (!choices.length) break;
     const kind = weightedPick(choices, rng, weight);
     men.push(kind); used[kind] = (used[kind] || 0) + 1; left -= THREAT[kind];
@@ -178,11 +185,17 @@ function tryGenerate(levelDef, seed) {
   // neither, so no room is ever built out of a thing this level cannot show you.
   const fits = (t) => !t.needs || levelDef[t.needs];
   const canonId = levelDef.canon ? levelDef.canon.id : null;
-  const canonPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.canon && t.canon === canonId && fits(t)));
+  // Both pools are ordered by how much open ground each template gives (`groundOf`), tight first,
+  // so the draw below can walk a level along that axis the way the curve walks it along threat.
+  // Shuffled first, so templates that measure the same come out in a different order every seed.
+  const byGround = (a, b) => groundOf(a) - groundOf(b);
+  const canonPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.canon && t.canon === canonId && fits(t))).sort(byGround);
   const known = levelDef.known || new Set();
-  let mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && (!t.canon || known.has(t.canon)) && fits(t)));
+  let mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && (!t.canon || known.has(t.canon)) && fits(t))).sort(byGround);
   if (!mixPool.length) mixPool = canonPool;
-  let canonIdx = 0, mixIdx = 0;
+  // Which entries of each pool this level has already spent. A pool smaller than the level's share
+  // of rooms simply starts again once it is empty.
+  const canonUsed = new Set(), mixUsed = new Set();
   // Rooms whose point is the floor rather than the men on it.
   const trapPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.tag === 'trap' && fits(t)));
   const trapRooms = pickTrapRooms(levelDef, n, trapPool.length, rng);
@@ -208,20 +221,36 @@ function tryGenerate(levelDef, seed) {
     if (j === levelDef.ambushAt) return AMBUSH_TEMPLATE.rows[0].length;
     return 0;
   };
-  // A room may not take more than its share of the width that is left: the pool cycles, and a
-  // template too wide for what remains is passed over for the next one that fits. The mix holds the
-  // yard's thirty-tile rooms from level five on, and without this a sixteen-room level was sealed
-  // short of its last door often enough that the twenty retries ran out.
-  const draw = (pool, at, i) => {
+  // A room may not take more than its share of the width that is left: a template too wide for what
+  // remains is passed over for one that fits. The mix holds the yard's thirty-tile rooms from level
+  // five on, and without this a sixteen-room level was sealed short of its last door often enough
+  // that the twenty retries ran out.
+  // Which of the ones that fit is the second axis: the pool is sorted by open ground, and how far
+  // into the level this room is says where in that pool to look. It takes at random among the
+  // `GROUND.window` nearest unspent entries rather than the single nearest, so the trend holds on
+  // average — which is all `GEN_RULES.ground` asks of it — while two seeds stay two levels.
+  const draw = (pool, used, i) => {
     let fixed = 0, flex = 1;
     for (let j = i + 1; j < n; j++) { const fw = fixedW(j); if (fw) fixed += fw; else flex++; }
     const budget = Math.floor((W - 8 - x - fixed - GAP * (n - i)) / flex);
-    for (let k = 0; k < pool.length; k++) { const t = pool[(at + k) % pool.length]; if (t.rows[0].length <= budget) return t; }
-    return pool[at % pool.length];
+    const target = clamp((i - 1) / Math.max(1, n - 2), 0, 1) * (pool.length - 1);
+    const fitting = [];
+    for (let k = 0; k < pool.length; k++) if (pool[k].rows[0].length <= budget) fitting.push(k);
+    if (!fitting.length) return pool[Math.round(target)];
+    let free = fitting.filter((k) => !used.has(k));
+    if (!free.length) { used.clear(); free = fitting; }
+    free.sort((a, b) => Math.abs(a - target) - Math.abs(b - target));
+    const k = free[rng.int(0, Math.min(GROUND.window, free.length) - 1)];
+    used.add(k);
+    return pool[k];
   };
 
   for (let i = 0; i < n; i++) {
     let tpl;
+    // Whether the ground-ordered draw below actually chose this room's shape. A set piece, the two
+    // teaching rooms and a trap room are all forced or drawn from a pool of their own, so none of
+    // them is the generator keeping — or breaking — its promise about the floor opening up.
+    let drawn = false;
     const arena = (levelDef.arenas || []).find((a) => a.at === i);
     if (i === 0) tpl = START_TEMPLATE;
     else if (arena) tpl = ARENA_TEMPLATE;
@@ -232,11 +261,14 @@ function tryGenerate(levelDef, seed) {
     else if (i === sentryRoomAt) tpl = LESSON_TEMPLATE;
     else if (i === levelDef.ambushAt) tpl = AMBUSH_TEMPLATE;
     else if (trapRooms.has(i)) tpl = trapPool[trapIdx++ % trapPool.length];
-    else if (canonRooms.has(i)) tpl = draw(canonPool, canonIdx++, i);
-    else tpl = draw(mixPool, mixIdx++, i);
+    else if (canonRooms.has(i)) { tpl = draw(canonPool, canonUsed, i); drawn = true; }
+    else { tpl = draw(mixPool, mixUsed, i); drawn = true; }
     const source = tpl;
     tpl = flipTemplate(tpl, rng);
     tpl.canon = source.canon || null;
+    // Carried across the flip, which mirrors the room and so cannot change it: the rules page and
+    // the balance report both read the room's own ground rather than going back to the template.
+    tpl.ground = groundOf(source);
     const w = tpl.rows[0].length, h = tpl.rows.length;
     y = clamp(y, 1, H - h - 2);
     if (x + w >= W - 6) return null;
@@ -247,7 +279,7 @@ function tryGenerate(levelDef, seed) {
       : i === levelDef.galleryAt ? 'gallery' : i === levelDef.killboxAt ? 'killbox'
       : trapRooms.has(i) ? 'trap' : canonRooms.has(i) ? 'canon' : 'mix';
     // `seen` is the fog: a room is dark until the goat is standing in it. The first one is not.
-    const room = { x, y, w, h, tpl, index: i, markers: [], arena, role, seen: i === 0,
+    const room = { x, y, w, h, tpl, index: i, markers: [], arena, role, seen: i === 0, drawn,
       isMill: i === levelDef.millAt, isHall: i === levelDef.hallAt, isGallery: i === levelDef.galleryAt,
       isKillbox: i === levelDef.killboxAt, isTrap: trapRooms.has(i), isAmbush: i === levelDef.ambushAt };
     for (let ty = 0; ty < h; ty++) {
@@ -270,9 +302,22 @@ function tryGenerate(levelDef, seed) {
         // Some of the doors between rooms are iron. Nobody shoulders one open and it does not go on
         // the first blow, so a corridor you were going to run straight down is three blows of standing
         // still instead — which is the only thing in a corridor that can make you turn round and look.
-        if (link.door && rng.chance(levelDef.doorChance)) {
+        // A wide room is the exception the ordinary roll does not reach often enough on its own: it
+        // is ground open enough to simply be run the length of, and a level with almost no wall in it
+        // (THE THRESHING FLOOR's `doorChance` is 0.12) offered the door that argues with that far too
+        // rarely. `BIG_ROOM.w` tiles of width forces the roll up, so the room's own exit — not just
+        // its corridor doors — carries the same counter-play a narrower level gets for free.
+        const bigExit = rooms[i - 1].w >= BIG_ROOM.w && link.door && rng.chance(BIG_ROOM.doorChance);
+        if (link.door && (bigExit || rng.chance(levelDef.doorChance))) {
+          const iron = bigExit || rng.chance(levelDef.ironDoors || 0);
+          // Some of the iron ones are already swinging shut. `clockRoom` is the room in front of it,
+          // because the count starts when that room is first seen and the whole of the offer is
+          // crossing it before the door does. Whether it keeps the flag is decided further down,
+          // once the plan says who is actually standing in that room — a door on a clock in an empty
+          // room is a timer with nothing to beat.
+          const timed = iron && rng.chance(levelDef.clockDoors || 0);
           props.push({ x: link.door.x, y: link.door.y, kind: 'door', vertical: link.door.vertical,
-            iron: rng.chance(levelDef.ironDoors || 0) });
+            iron, timed, clockRoom: timed ? i - 1 : -1 });
         }
       }
     }
@@ -326,6 +371,12 @@ function tryGenerate(levelDef, seed) {
   // the top or the bottom of the world with no rock on either side to cut into, and the level went
   // out a soul short with nothing to say about it; a fresh seed is cheaper than a missing soul.
   if (levelDef.vaultAt !== undefined && !vault) return null;
+  // The soul is guarded, now and then, by the same floor that guards everything else once a level
+  // has taught it: on a level that already has spikes, half the time the last stretch of ground in
+  // front of the vault's own door grows teeth too, so the fourth blow is not the only price of it.
+  if (vault && levelDef.spikes && rng.chance(0.5)) {
+    spikePatch(tiles, W, rooms[levelDef.vaultAt], props, rng, rng.int(4, 8), vault.doorTile);
+  }
 
   // The soul gate. One arena on level one is shut behind a barred door that no blow opens: the boss
   // inside it is carrying the soul that is the bar, and swallowing it is what lifts it. The way out
@@ -368,7 +419,7 @@ function tryGenerate(levelDef, seed) {
     const spot = carveSecret(tiles, W, H, rooms[idx], rng);
     if (!spot) continue;
     props.push({ x: spot.wall.x, y: spot.wall.y, kind: 'secret', wallColor: levelDef.wall, wallTop: levelDef.wallTop,
-      nicheTiles: spot.tiles });
+      nicheTiles: spot.tiles, wallSide: spot.side });
     props.push({ x: spot.heal.x, y: spot.heal.y, kind: 'heal' });
     props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
     secretsPlaced++;
@@ -376,6 +427,17 @@ function tryGenerate(levelDef, seed) {
 
   // Props from the template markers, and the men the plan asked for placed on whatever the room has.
   const plan = planEncounters(levelDef, rooms, rng);
+  // Which of the doors on a clock keep it. The offer only means anything if the room in front of it
+  // holds enough to make staying costly — a count running down in an empty room is a timer with
+  // nothing to beat — and it is never hung on a room that is teaching: the room that introduces a
+  // kind, or the quiet beat after one, is the one place a level asks you to stand and look at
+  // something, and a door shutting on that is the level arguing with itself.
+  for (const p of props) {
+    if (!p.timed) continue;
+    const cell = plan.rooms.get(p.clockRoom);
+    const teaching = plan.introRooms.has(p.clockRoom) || plan.introRooms.has(p.clockRoom - 1);
+    if (!cell || teaching || (cell.men || []).length < 2) { p.timed = false; p.clockRoom = -1; }
+  }
   // Arms are rare, and a level can hold them back: nothing to pick up until it is this far in.
   // Level one shows the first stand at the halfway mark, so the first half of the run is the goat,
   // his head, and whatever the room was already built out of.
@@ -432,7 +494,11 @@ function tryGenerate(levelDef, seed) {
     // across the middle of a room is ground you have to decide about. Not in the control rooms, not
     // in the pen, and never under the furniture. A trap room already laid its own out in a shape;
     // throwing more over the top of it turns the shape back into noise.
-    if (room.index > 0 && !room.isTrap && !room.isAmbush && room.index !== lessonIndex && rng.chance(levelDef.spikes || 0)) {
+    // Never a set piece: the Mill's own room is already narrowed to the one lane its lesson needs,
+    // and a grate laid across the top of that on top of the arm's own sweep is two hazard systems
+    // arguing over the same few tiles of floor rather than either one reading as a decision.
+    if (room.index > 0 && !room.isTrap && !room.isAmbush && !room.isMill && !room.arena && !room.isHall
+        && !room.isGallery && !room.isKillbox && room.index !== lessonIndex && rng.chance(levelDef.spikes || 0)) {
       const S = TUNING.prop.spike;
       spikePatch(tiles, W, room, props, rng, rng.int(S.run[0], S.run[1]));
     }
@@ -631,9 +697,9 @@ function tryGenerate(levelDef, seed) {
   // the wheel without working out that the men could be hit at all.
   const controls = [];
   if (levelDef.showControls) {
-    // Block 0 is the pen itself, under the bars, above the prompt that says which button opens them.
-    // Moving means moving inside a cage, which is where everybody starts pressing keys anyway.
-    controls.push({ x: start.x, y: start.y + 1.8 * TILE, w: 13 * TILE, part: 0 });
+    // Block 0 waits for the cage to give, and then takes over the exact spot the headbutt prompt was
+    // painting: moving is the next thing worth saying once the one that got him out has been said.
+    controls.push({ x: start.x, y: cagePrompt ? cagePrompt.y : start.y + 1.8 * TILE, w: 13 * TILE, part: 0 });
     // Block 1 is grab and throw, in the room that stands a blade inside the door and a crate a step
     // past it with the men well down the far end — see `AMBUSH_TEMPLATE`.
     const amb = rooms[levelDef.ambushAt];
@@ -797,7 +863,7 @@ function carveVault(tiles, W, H, room, props, rng) {
     tiles[doorY * W + gapX] = T.FLOOR;
     // The door hangs in the room's own wall, where it can be seen from the floor you walk in on.
     props.push({ x: (gapX + 0.5) * TILE, y: (doorY + 0.5) * TILE, kind: 'door', vertical: false, iron: true, vault: true });
-    return { x: (gapX + 0.5) * TILE, y: (y0 + vh / 2) * TILE };
+    return { x: (gapX + 0.5) * TILE, y: (y0 + vh / 2) * TILE, doorTile: { tx: gapX, ty: doorY } };
   }
   return null;
 }
@@ -855,6 +921,10 @@ function carveSecret(tiles, W, H, room, rng) {
         // The three tiles the gap opens onto. The prop carries them so that breaking the wall can
         // light them and keep them lit: a niche is a reward, and a reward you cannot see is not one.
         tiles: [wallRow * W + tx, nicheRow * W + tx, nicheRow * W + tx + 1],
+        // Which of the room's own walls this is: the painted art draws the same brick course an
+        // ordinary wall tile gets there, and a top wall carries the coping band an ordinary bottom
+        // wall does not.
+        side,
       };
     }
   }
@@ -865,9 +935,13 @@ function carveSecret(tiles, W, H, room, rng) {
 // grows along one axis with a wander on the other, so what goes down is a band you have to go round
 // or cross rather than a handful of dots — and a band is the only version of this the eye reads as
 // a piece of ground with an opinion.
-function spikePatch(tiles, W, room, props, rng, want) {
+// `near`, when given, is a tile to grow the band out from rather than a random point in the room —
+// the vault's own approach asks for this, so the grate is the last thing between the door and the
+// room rather than wherever the walk happened to land.
+function spikePatch(tiles, W, room, props, rng, want, near) {
   const horiz = rng.chance(0.6);
-  let tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
+  let tx = near ? clamp(near.tx, room.x + 2, room.x + room.w - 3) : rng.int(room.x + 2, room.x + room.w - 3);
+  let ty = near ? clamp(near.ty, room.y + 2, room.y + room.h - 3) : rng.int(room.y + 2, room.y + room.h - 3);
   const taken = new Set();
   for (let a = 0, placed = 0; a < want * 6 && placed < want; a++) {
     const inRoom = tx >= room.x + 1 && tx <= room.x + room.w - 2 && ty >= room.y + 1 && ty <= room.y + room.h - 2;

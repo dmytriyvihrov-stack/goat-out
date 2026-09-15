@@ -26,12 +26,17 @@ function roomsOf(L) {
     const men = spawns.map((s) => kindOf(s) + (s.boss ? '*' : ''));
     const threat = spawns.reduce((a, s) => a + (THREAT[kindOf(s)] || 1) * (s.boss ? 1.6 : 1), 0);
     const cell = L.plan ? L.plan.rooms.get(room.index) || null : null;
-    return { index: room.index, name: room.tpl.name, role: room.role, men, spawns, threat, cell, room };
+    // The second axis, beside the crowd: how much of this room is floor with nothing solid within a
+    // step of it, and so how little of it the goat can use as a weapon. `pressure` is the two put
+    // together — what the room actually asks — and it is the number the balance report ranks by.
+    const ground = room.tpl.ground === undefined ? 0 : room.tpl.ground;
+    return { index: room.index, name: room.tpl.name, role: room.role, men, spawns, threat, cell, room,
+      ground, drawn: !!room.drawn, pressure: threat * (1 + ground * GROUND.weight) };
   });
 }
 
 const GEN_RULES = [
-  { id: 'alone', text: 'Every kind is met alone — one enemy in the room, and a first-time boss with no escort.',
+  { id: 'alone', text: 'Every kind is met alone: one enemy in the room, and a first-time boss with no escort.',
     check: (L) => {
       const def = L.def, E = def.encounters;
       const fresh = new Set((E.introduce || []).map(([k]) => k));
@@ -64,6 +69,36 @@ const GEN_RULES = [
       const avg = (a) => a.reduce((s, r) => s + r.threat, 0) / a.length;
       const early = avg(o.slice(0, third)), late = avg(o.slice(-third));
       return late > early * 1.2 ? true : `${early.toFixed(1)} → ${late.toFixed(1)}`;
+    } },
+  // The floor's own half of the curve, and it is held against the rooms the DRAW chose and nothing
+  // else: a set piece, the two teaching rooms and a trap room are all forced or dealt from a pool of
+  // their own, so none of them is the generator keeping this promise or breaking it. Like `rises` it
+  // is really an averaged rule — the draw takes at random inside a window of the pool, so one seed
+  // running the other way is noise — and `tools/balance.js` judges it over many seeds instead.
+  { id: 'ground', text: 'The floor opens up across a level. One seed may run the other way; BALANCE judges the average.',
+    check: (L) => {
+      const o = roomsOf(L).filter((r) => ORDINARY.has(r.role) && r.drawn);
+      if (o.length < 4) return null;
+      const third = Math.floor(o.length / 3) || 1;
+      const avg = (a) => a.reduce((s, r) => s + r.ground, 0) / a.length;
+      // True where this seed shows the trend, ash where it does not — never blood. A pool of five
+      // templates drawn through a window of three swaps two ranks often enough that one level
+      // running flat is noise, and a page that paints noise as a broken promise teaches nobody.
+      return avg(o.slice(-third)) > avg(o.slice(0, third)) ? true : null;
+    } },
+  // What that curve is allowed to be spent on. A level past the cheap threshold that is still
+  // mostly clubmen is a late level built out of early men.
+  { id: 'crowd', text: 'A rich room is not a poor one with more clubmen in it.',
+    check: (L) => {
+      const C = ENCOUNTER.cheap;
+      const o = roomsOf(L).filter((r) => ORDINARY.has(r.role) && r.spawns.length);
+      const rich = o.filter((r) => (r.cell && r.cell.threat ? r.cell.threat : r.threat) > C.none * 0.6);
+      if (!rich.length) return null;
+      for (const r of rich) {
+        const cheap = r.men.filter((m) => m === C.kind).length;
+        if (cheap > C.max) return `room ${r.index}: ${cheap} ${C.kind}s of ${r.men.length}`;
+      }
+      return true;
     } },
   { id: 'harder', text: 'Every level is harder than the one before it.',
     check: (L) => {
@@ -221,6 +256,19 @@ const GEN_RULES = [
       for (const r of t) if (o.indexOf(r) < 2) return `room ${r.index} is a trap room`;
       return true;
     } },
+  { id: 'clock', text: 'A door on a clock is iron, never the way out, and never on a room that is teaching.',
+    check: (L) => {
+      const timed = L.props.filter((p) => p.kind === 'door' && p.timed);
+      if (!timed.length) return L.def.clockDoors ? null : true;
+      for (const p of timed) {
+        if (!p.iron || p.stair || p.vault || p.gate || p.seal) return `one is not an ordinary iron door`;
+        const cell = L.plan && L.plan.rooms.get(p.clockRoom);
+        if (!cell) return `room ${p.clockRoom} has no plan behind it`;
+        if (L.plan.introRooms.has(p.clockRoom)) return `room ${p.clockRoom} is where a kind is met`;
+        if ((cell.men || []).length < 2) return `room ${p.clockRoom} holds ${(cell.men || []).length}`;
+      }
+      return true;
+    } },
   { id: 'stairdoor', text: 'The way out is barred: an iron door in front of every level\'s stairs.',
     check: (L) => {
       const d = L.props.find((p) => p.kind === 'door' && p.stair);
@@ -267,8 +315,8 @@ function checkRules(L) {
 // so the page cannot drift from `LEVELS`.
 function levelFacts(def) {
   const E = def.encounters;
-  const pct = (v) => (v ? Math.round(v * 100) + '%' : '—');
-  const at = (v) => (v === undefined ? '—' : String(v));
+  const pct = (v) => (v ? Math.round(v * 100) + '%' : '-');
+  const at = (v) => (v === undefined ? '-' : String(v));
   const fits = (t) => !t.needs || def[t.needs];
   const canon = def.canon ? ROOM_TEMPLATES.filter((t) => t.canon === def.canon.id).map((t) => t.name) : [];
   const mix = ROOM_TEMPLATES.filter((t) => !t.tag && (!t.canon || (def.known && def.known.has(t.canon))) && fits(t)).map((t) => t.name);
@@ -277,9 +325,9 @@ function levelFacts(def) {
   // everything here is `name value`, in the order you would ask for it.
   return [
     `${def.rooms} rooms · curve ${E.from}→${E.to} ease ${E.ease} · souls ${def.souls} · milk ≥${def.heals || 0}`,
-    `kinds ${E.kinds.join(' ')} · new ${(E.introduce || []).map(([k, a]) => `${k}@${a}`).join(' ') || '—'}`
+    `kinds ${E.kinds.join(' ')} · new ${(E.introduce || []).map(([k, a]) => `${k}@${a}`).join(' ') || '-'}`
       + (E.cap ? ' · caps ' + Object.entries(E.cap).map(([k, v]) => `${k} ${v}`).join(' ') : ''),
-    `arenas ${(def.arenas || []).map((a) => `${a.boss}@${a.at}`).join(' ') || '—'} · mill ${at(def.millAt)}${def.millLesson ? '(lesson)' : ''}`
+    `arenas ${(def.arenas || []).map((a) => `${a.boss}@${a.at}`).join(' ') || '-'} · mill ${at(def.millAt)}${def.millLesson ? '(lesson)' : ''}`
       + ` · hall ${at(def.hallAt)} · gallery ${at(def.galleryAt)} · killbox ${at(def.killboxAt)} · vault ${at(def.vaultAt)} · gate ${at(def.soulGate)}`,
     `traps ${def.traps || 0} · posts ${def.lonePosts || 0} · grates ${pct(def.spikes)} · crates ${pct(def.crates)}`
       + ` · windows ${pct(def.windows)} · stands ${pct(def.racks)} from ${pct(def.racksFrom)} · doors ${pct(def.doorChance)} iron ${pct(def.ironDoors)}`,

@@ -27,6 +27,7 @@ class Game {
     // What the men have to read in the room: standing fire and the Mill (fixed for the level), and
     // whatever rune is being painted right now (rebuilt each step).
     this.hazards = []; this.sightBlockers = []; this.runes = []; this.houndTold = false; this.henTold = false;
+    this.clockTold = false;   // the first door that shuts itself says so, once a run
     this.cam = { x: 0, y: 0, zoom: 1 }; this.camLead = { x: 0, y: 0 };
     this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0;
     // juice: a directional camera punch, a lens shove, a screen flash and a kill counter
@@ -54,7 +55,10 @@ class Game {
     // has been asked to open, which is reachable from either of the other two.
     this.dev = { open: false, god: false, rects: [], toast: null, rules: false, tab: 'rules',
       page: 0, sample: null, sampleSeed: 1, samples: {}, matrix: null,
-      balance: null, balanceSeeds: 8, room: null };
+      balance: null, balanceSeeds: 8, room: null,
+      // Two read-only overlays: a man's sight (cone plus range) and how far the goat's own noise
+      // carries (a walk against a fight), both drawn in world space by `Renderer.drawDevOverlay`.
+      vision: false, hearing: false };
     this.intro = null;      // the opening scene while it plays; see beginIntro
     this.stairFx = null;    // the goat on a flight of stairs: { t, dir } with dir 1 going up and out, -1 arriving
     this.state = 'title'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
@@ -67,9 +71,17 @@ class Game {
     if (!this.settings.sound) this.audio.toggleMute();
     // The tool has its own address: `#rules` and `#balance` open it on that tab at load, so the
     // page can be linked to and bookmarked rather than found through the drawer every time.
+    this.runSeed = 0; this.askedSeed = 0;
     try {
       const h = (location.hash || '').replace('#', '');
-      if (h === 'rules' || h === 'balance') { this.dev.open = true; this.dev.rules = true; this.dev.tab = h; }
+      if (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons') {
+        this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
+      }
+      // `#seed=k3j9a` is the whole of sharing a run: NEW GAME takes it instead of rolling one, so a
+      // link is the way a seed is typed in. There is no text field anywhere in the game and this is
+      // why there does not need to be one.
+      const m = h.match(/^seed=([0-9a-z]+)$/i);
+      if (m) this.askedSeed = parseInt(m[1], 36) >>> 0;
     } catch (e) { /* no location worth reading */ }
     this.layoutTouch();
     this.bindInput();
@@ -84,7 +96,7 @@ class Game {
   // Boons only ever bend numbers the goat already uses, so the two-button scheme never grows.
   applyBoons() {
     this.mods = Object.assign({}, BOON_BASE);
-    for (const b of this.boons) b.apply(this.mods);
+    for (const b of this.boons) b.apply(this.mods, b.params || {});
     if (this.settings.easy) { this.mods.maxHp += EASY.maxHp; this.mods.enemySlow = EASY.enemySlow; }
     if (this.goat) { this.goat.maxHp = this.mods.maxHp; this.goat.hp = Math.min(this.goat.hp, this.goat.maxHp); }
   }
@@ -274,6 +286,30 @@ class Game {
         }
       }
     }
+    // A door on a clock lights itself, for exactly the same reason and by the same means. The fog is
+    // the width of a doorway, and this door is at the far end of a room you have only just walked
+    // into: the offer it makes — cross before it seats and pay nothing — is not an offer at all if
+    // the thing you are racing is in the dark until you are standing at it. It is lit only while the
+    // count runs; once it seats it is an ordinary iron door and goes back under the shade like one.
+    for (const p of this.props) {
+      if (p.kind !== 'door' || !p.timed || p.broken) continue;
+      const room = this.level.rooms[p.clockRoom];
+      if (!room || !room.seen) continue;
+      const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = tx + dx, ny = ty + dy;
+          if (nx < 0 || ny < 0 || nx >= w.W || ny >= w.H) continue;
+          if (!w.isSolid(nx, ny)) w.vis[ny * w.W + nx] = 1;
+        }
+      }
+      // Once a run, in the room it first happens in, because a door that is open when you look at it
+      // and shut when you get there explains itself only after it has already cost you something.
+      if (!this.clockTold && this.inRoom(this.goat, p.clockRoom, -1)) {
+        this.clockTold = true;
+        this.floatText(p.x, p.y - 34, 'IT IS CLOSING', PALETTE.fireHi);
+      }
+    }
   }
   // Is this point inside a room nobody has walked into? Everything the world draws and everything
   // that would give a room away — a man, a crate, a body on its way down a hole — asks this.
@@ -323,7 +359,10 @@ class Game {
   openBoonChoice() {
     // `needs` is a mod that has to be on before the soul is worth anything: LOOSE JOINTS on a goat
     // who cannot roll yet is a card that does nothing, and there are only thirteen of these.
-    const open = (b) => !this.boons.includes(b) && (!b.needs || this.mods[b.needs]);
+    // `minLevel` is the dev tool's own knob — a card too strong for an early run is held back until
+    // the level index it names, off (0) for every boon until somebody sets one.
+    const open = (b) => !this.boons.includes(b) && (!b.needs || this.mods[b.needs])
+      && this.levelIndex >= (b.minLevel || 0);
     const actives = BOONS.filter((b) => b.active && open(b));
     const passives = BOONS.filter((b) => !b.active && open(b));
     if (!actives.length && !passives.length) { this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + 1); return; }
@@ -344,7 +383,6 @@ class Game {
     while (pick.length < 3 && pool.length) pick.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
     while (pick.length < 3 && other.length) pick.push(other.splice((Math.random() * other.length) | 0, 1)[0]);
     this.boonChoice = pick;
-    this.boonKind = pick[0] && pick[0].active ? 'SKILL' : 'BLESSING';
     this.boonDown = -1; this.boonArm = TUNING.boonArm;
     this.state = 'boon'; this.card = null; this.audio.sfxCard(); this.vibe(30);
   }
@@ -373,13 +411,49 @@ class Game {
     return this.dev.rules;   // the RULES page takes the whole screen: nothing under it is clickable
   }
   devToast(text) { this.dev.toast = { text, life: 1.6 }; }
+  // Best-effort write-through to js/tuning.js via the local dev server (tools/serve.js). The edit
+  // has already taken effect in memory by the time this is called; off the dev server (the
+  // published artifact, or index.html opened as a bare file) there is nothing to write to and the
+  // fetch simply fails quietly rather than leaving a broken promise on screen.
+  persistTuningEdit(edit) {
+    try {
+      fetch('/tuning-edit', { method: 'POST', body: JSON.stringify(edit) })
+        .then((r) => r.json())
+        .then((res) => this.devToast(res.ok ? 'SAVED TO tuning.js' : 'NOT SAVED: ' + res.error))
+        .catch(() => this.devToast('NOT SAVED (no dev server)'));
+    } catch (e) { /* fetch unavailable */ }
+  }
   devAction(id) {
     if (id === 'toggle') { this.dev.open = !this.dev.open; return; }
     if (id === 'god') { this.dev.god = !this.dev.god; this.devToast(this.dev.god ? 'GOD MODE ON' : 'GOD MODE OFF'); return; }
+    if (id === 'vision') { this.dev.vision = !this.dev.vision; return; }
+    if (id === 'hearing') { this.dev.hearing = !this.dev.hearing; return; }
     if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) { this.dev.page = this.level ? this.levelIndex : 0; this.dev.room = null; } return; }
     if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); this.dev.room = null; return; }
     if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; this.dev.samples = {}; this.dev.matrix = null; this.dev.room = null; return; }
-    if (id === 'tab-rules' || id === 'tab-levels' || id === 'tab-balance') { this.dev.tab = id.slice(4); this.dev.room = null; return; }
+    if (id === 'tab-rules' || id === 'tab-levels' || id === 'tab-balance' || id === 'tab-enemies' || id === 'tab-boons') {
+      this.dev.tab = id.slice(4); this.dev.room = null; return;
+    }
+    // The BOONS tab: click a number to change it. It takes effect at once (`applyBoons` re-reads
+    // every `params` off the live BOONS entries) and is also asked to land in js/tuning.js itself,
+    // through the dev server started for this session — see tools/tuning-patch.js. Off the dev
+    // server (the published artifact, or index.html opened as a bare file) the write simply has
+    // nowhere to land and the edit stays session-only, which is why the fetch is best-effort.
+    if (id.startsWith('boon-edit=')) {
+      const [boonId, ...pathParts] = id.slice(10).split('.');
+      const b = BOONS.find((x) => x.id === boonId);
+      if (!b) return;
+      const isLevel = pathParts[0] === 'minLevel';
+      const current = isLevel ? (b.minLevel || 0) : b.params[pathParts[1]];
+      const raw = window.prompt(`${b.name} — ${pathParts[pathParts.length - 1]}`, String(current));
+      if (raw === null) return;
+      const value = Number(raw);
+      if (!Number.isFinite(value)) return;
+      if (isLevel) b.minLevel = value; else b.params[pathParts[1]] = value;
+      this.applyBoons();
+      this.persistTuningEdit({ root: 'BOONS', id: boonId, path: isLevel ? ['minLevel'] : ['params', pathParts[1]], value });
+      return;
+    }
     if (id === 'room-close') { this.dev.room = null; return; }
     // Opening one room: reachable from the level page and from a bar on the curve. Both of them
     // draw the same sample of the same level, so a room is a level index and a room index and the
@@ -473,11 +547,24 @@ class Game {
     const fails = [], seen = new Set();
     const levels = LEVELS.map((def, li) => {
       const runs = [];
+      let gEarly = 0, gLate = 0, gSeeds = 0;
       for (let s = 1; s <= seeds; s++) {
         const L = generateLevel(def, s * 7717);
         runs.push(roomsOf(L));
+        // The floor's own curve, seed by seed and over the rooms the DRAW chose: a set piece, the
+        // teaching rooms and a trap room are forced or dealt from a pool of their own, so none of
+        // them is the generator keeping this promise.
+        const drawn = runs[runs.length - 1].filter((r) => ordinary.has(r.role) && r.drawn);
+        if (drawn.length >= 4) {
+          const t = Math.floor(drawn.length / 3) || 1;
+          gEarly += drawn.slice(0, t).reduce((a, r) => a + r.ground, 0) / t;
+          gLate += drawn.slice(-t).reduce((a, r) => a + r.ground, 0) / t;
+          gSeeds++;
+        }
         for (const r of checkRules(L)) {
-          if (r.ok !== false || r.rule.id === 'rises') continue;
+          // `ground` joins `rises` as a rule no single seed can answer — the draw picks at random
+          // inside a window of the pool — so both are judged on the average, below and in the report.
+          if (r.ok !== false || r.rule.id === 'rises' || r.rule.id === 'ground') continue;
           const msg = `${def.name}: ${r.rule.id} — ${r.why}`;
           if (!seen.has(msg)) { seen.add(msg); fails.push(msg); }
         }
@@ -488,14 +575,22 @@ class Game {
         const cells = runs.map((r) => r[i]).filter(Boolean);
         rooms.push({ index: i, role: cells[0].role,
           threat: cells.reduce((a, c) => a + c.threat, 0) / cells.length,
-          men: cells.reduce((a, c) => a + c.men.length, 0) / cells.length });
+          men: cells.reduce((a, c) => a + c.men.length, 0) / cells.length,
+          // The floor's own half of the curve, and the two together. A bar is drawn as threat with
+          // the ground riding on top of it, so the axis the level walks is visible beside the crowd.
+          ground: cells.reduce((a, c) => a + c.ground, 0) / cells.length,
+          pressure: cells.reduce((a, c) => a + c.pressure, 0) / cells.length });
       }
       const plain = rooms.filter((c) => ordinary.has(c.role));
       // The numbers are averaged over the seeds; the geometry is one sample, the same one the level
       // page and the room sheet use, so a bar on the curve is a room you can open and walk through.
       const sample = roomsOf(this.levelSample(li));
       rooms.forEach((r, i) => { r.sample = sample[i] || null; });
-      return { def, li, rooms, sample,
+      const ground = gSeeds ? { early: gEarly / gSeeds, late: gLate / gSeeds } : null;
+      if (ground && ground.late <= ground.early) {
+        fails.push(`${def.name}: the floor does not open up (${ground.early.toFixed(2)} → ${ground.late.toFixed(2)})`);
+      }
+      return { def, li, rooms, sample, ground,
         total: rooms.reduce((a, c) => a + c.threat, 0),
         peak: Math.max(0, ...rooms.map((c) => c.threat)),
         plainPeak: Math.max(0, ...plain.map((c) => c.threat)) };
@@ -749,7 +844,9 @@ class Game {
   restartLevel() {
     if (this.state === 'title') return;
     this.boons = (this.levelBoons || []).slice();
-    this.startLevel(this.levelIndex, (Math.random() * 1e9) | 0, true);
+    // `deaths` has already gone up by the time this runs, and it is in the mix, so the level comes
+    // back generated again — the same promise it always made, now made by arithmetic.
+    this.startLevel(this.levelIndex, this.levelSeed(this.levelIndex), true);
   }
 
   // ---------- the first screen ----------
@@ -830,7 +927,23 @@ class Game {
     if (id === 'settings') { m.panel = 'settings'; m.sub = 0; return; }
     if (id === 'continue') { this.resumeRun(); return; }
     this.clearRun(); this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0;
-    this.startLevel(0, (Math.random() * 1e9) | 0, false, true);
+    this.runSeed = this.askedSeed || ((Math.random() * 1e9) | 0);
+    this.askedSeed = 0;   // a seed off the address is spent on the run it was asked for and no other
+    this.startLevel(0, this.levelSeed(0), false, true);
+  }
+  // ONE SEED A RUN. The corner has shown the level's own seed for a while, which is enough to report
+  // a bad room and no use at all for handing somebody your run: every level of it was a fresh
+  // `Math.random`, so nothing but that one floor could ever be got back. A run has a seed of its own
+  // now and a level's is derived from it, which is what makes `#seed=` below mean anything.
+  // `deaths` is in the mix on purpose: dying still regenerates the level, so a death is not a way to
+  // learn a layout — it is a way to be handed another one, exactly as it was before this existed.
+  levelSeed(index) {
+    let h = (this.runSeed ^ 0x9e3779b9) >>> 0;
+    for (const v of [index + 1, (this.deaths || 0) + 1]) {
+      h = Math.imul(h ^ v, 0x85ebca6b) >>> 0;
+      h = ((h << 13) | (h >>> 19)) >>> 0;
+    }
+    return h >>> 0;
   }
   // Straight onto one floor of the game. A run that starts on level five with the goat it had out of
   // the pen is not that level, it is a different and much worse game, so the souls the run would
@@ -844,19 +957,26 @@ class Game {
     for (let i = 0; i < li; i++) budget += LEVELS[i].souls || 0;
     for (let n = 0; n < budget; n++) {
       this.applyBoons();
-      const open = BOONS.filter((b) => !this.boons.includes(b) && (!b.needs || this.mods[b.needs]));
+      const open = BOONS.filter((b) => !this.boons.includes(b) && (!b.needs || this.mods[b.needs])
+        && li >= (b.minLevel || 0));
       if (!open.length) break;
       this.boons.push(open[(Math.random() * open.length) | 0]);
     }
     this.applyBoons();
-    this.startLevel(li, (Math.random() * 1e9) | 0, true, li === 0);
+    this.runSeed = this.askedSeed || ((Math.random() * 1e9) | 0);
+    this.askedSeed = 0;
+    this.startLevel(li, this.levelSeed(li), true, li === 0);
   }
   // CONTINUE is the head of the furthest level the run reached, with the souls it was carrying there.
   resumeRun() {
     const s = this.save; if (!s) return;
     this.boons = (s.boons || []).map((id) => BOONS.find((b) => b.id === id)).filter(Boolean);
     this.totalKills = s.totalKills || 0; this.deaths = s.deaths || 0; this.totalScore = s.score || 0;
-    this.startLevel(clamp(s.level | 0, 0, LEVELS.length - 1), (Math.random() * 1e9) | 0, true);
+    // A run picked up where it was left off is the same run, so it keeps its seed. One saved before
+    // seeds existed has none, and gets a fresh one rather than nothing.
+    this.runSeed = s.runSeed || ((Math.random() * 1e9) | 0);
+    const li = clamp(s.level | 0, 0, LEVELS.length - 1);
+    this.startLevel(li, this.levelSeed(li), true);
   }
   // Time first, bodies second. Pace against the level's par is the whole of a score and kills only
   // multiply it, so running is never the wrong answer and the best run is a fast one with bodies in
@@ -900,7 +1020,7 @@ class Game {
   }
   saveRun() {
     this.save = { v: 1, level: this.levelIndex, boons: this.boons.map((b) => b.id), totalKills: this.totalKills,
-      deaths: this.deaths, score: this.totalScore, at: Date.now() };
+      deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, at: Date.now() };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (err) { /* private mode: the run dies with the tab */ }
   }
   clearRun() {
@@ -937,7 +1057,7 @@ class Game {
   nextCard() {
     const c = this.cardQueue.shift();
     if (c) { this.card = c; this.stateTimer = c.time; if (c.color) this.audio.sfxCard(); return; }
-    if (this.levelIndex + 1 < LEVELS.length) this.startLevel(this.levelIndex + 1, (Math.random() * 1e9) | 0, true);
+    if (this.levelIndex + 1 < LEVELS.length) this.startLevel(this.levelIndex + 1, this.levelSeed(this.levelIndex + 1), true);
     else {
       this.state = 'win'; this.clearRun();
       const runBest = this.noteRunBest(this.totalScore);
@@ -1103,6 +1223,14 @@ class Game {
     this.layoutTouch();
     this.renderer.draw(this, dtReal);
     if (this.hurt) this.hurt.life -= dtReal;
+    this.updateCursor();
+  }
+  // The OS pointer rather than a drawn one: a crosshair for a head aimed at something to hit, and
+  // a closed hand once there is something in his mouth to let go of instead of a wall to put his
+  // skull into. `crosshair` was the one cursor in the whole game regardless of what he was carrying.
+  updateCursor() {
+    const want = this.state === 'play' && this.goat && this.goat.holding ? 'grabbing' : 'crosshair';
+    if (this.canvas.style.cursor !== want) this.canvas.style.cursor = want;
   }
 
   update(dt) {
@@ -1116,7 +1244,7 @@ class Game {
     if (this.state === 'dead') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) this.restartLevel(); this.clearEdges(); return; }
     if (this.state === 'clear') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) this.nextCard(); this.clearEdges(); return; }
     if (this.state === 'boon') { this.boonArm = Math.max(0, this.boonArm - dt); this.updateEffects(dt); this.clearEdges(); return; }
-    if (this.state === 'win') { if (this.input.lmbPressed) { this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.startLevel(0, (Math.random() * 1e9) | 0, false, true); } this.clearEdges(); return; }
+    if (this.state === 'win') { if (this.input.lmbPressed) { this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.runSeed = (Math.random() * 1e9) | 0; this.startLevel(0, this.levelSeed(0), false, true); } this.clearEdges(); return; }
     if (this.state !== 'play') { this.clearEdges(); return; }
 
     if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; this.clearEdges(); return; }
@@ -1661,7 +1789,9 @@ class Game {
   }
   // A man alight blunders into another and hands it over — once. The man he hands it to is the end
   // of the line and passes it to nobody, so a brazier costs a room two men rather than the room.
+  // Off until KINDLING is taken: without it a brazier costs the room the one man who found it.
   passFire(a, b) {
+    if (!this.mods.firePass) return;
     const lit = a.burning > 0 ? a : b, cold = a.burning > 0 ? b : a;
     if (cold.burning > 0 || cold.dead || cold.ghosted || lit.litByMan || lit.passedFire) return;
     lit.passedFire = true;
@@ -1791,7 +1921,7 @@ class Game {
     this.combo = this.comboTimer > 0 ? this.combo + 1 : 1;
     this.comboTimer = J.comboWindow;
     const dx = e.x - this.goat.x, dy = e.y - this.goat.y;
-    this.hitstop(J.hitstop + Math.min(0.05, this.combo * 0.008));
+    this.hitstop(J.hitstop + Math.min(J.comboHitstopCap, this.combo * J.comboHitstopMul));
     this.shake(big ? 14 : J.shakeKill);
     this.kick(dx, dy, J.kick * (big ? 1.7 : 1));
     this.zoomPunch(big ? 2 : 1);

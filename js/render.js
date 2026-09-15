@@ -13,16 +13,16 @@ const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 //   3  the roll, in the first crowded room past the lesson — see `rollCandidates` in `gen.js`.
 const CONTROL_LINES = {
   key: [
-    ['WASD — TO MOVE'],
-    ['RIGHT CLICK — GRAB OBJECT', 'RELEASE OR LEFT CLICK — THROW', 'SPACE — BAAH, THEY COME TO THE NOISE'],
-    ['LEFT CLICK — HEADBUTT'],
-    ['E — ROLL', 'OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
+    ['WASD, TO MOVE'],
+    ['RIGHT CLICK, GRAB OBJECT', 'RELEASE OR LEFT CLICK, THROW'],
+    ['LEFT CLICK, HEADBUTT'],
+    ['E, ROLL', 'OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
   touch: [
-    ['LEFT THUMB — TO MOVE'],
-    ['GRAB — HOLD TO CARRY', 'RELEASE OR BUTT — THROW', 'BAAH — THEY COME TO THE NOISE'],
-    ['BUTT — HEADBUTT'],
-    ['ROLL — OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
+    ['LEFT THUMB, TO MOVE'],
+    ['GRAB, HOLD TO CARRY', 'RELEASE OR BUTT, THROW'],
+    ['BUTT, HEADBUTT'],
+    ['ROLL, OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
 };
 
@@ -35,10 +35,10 @@ const SKILL_KEYS = { butt: 'LMB', grab: 'RMB', roll: 'E', scream: 'SPC' };
 // level definition picks one, and the keyboard or the touch wording follows what is in the player's
 // hands, the way the floor controls do.
 const HINT_KEYS = {
-  butt: ['LEFT CLICK — HEADBUTT', 'BUTT'],
-  grab: ['HOLD RIGHT CLICK — CARRY', 'HOLD GRAB — CARRY'],
-  roll: ['E — ROLL', 'ROLL'],
-  scream: ['SPACE — BAAH', 'BAAH'],
+  butt: ['LEFT CLICK, HEADBUTT', 'BUTT'],
+  grab: ['HOLD RIGHT CLICK, CARRY', 'HOLD GRAB, CARRY'],
+  roll: ['E, ROLL', 'ROLL'],
+  scream: ['SPACE, BAAH', 'BAAH'],
 };
 
 // How far under the boards what you see through a hole is, as a share of the camera's own movement.
@@ -153,6 +153,7 @@ class Renderer {
       this.drawCageThought(game);
       this.drawFloatTexts(game);
       this.drawShade(game, cam);        // last of everything in world space: it covers what it covers
+      if (game.dev.vision || game.dev.hearing) this.drawDevOverlay(game);
       ctx.restore();
     }
     this.drawVignette(game);
@@ -191,6 +192,7 @@ class Renderer {
   }
 
   drawTiles(game, cam) {
+    if (this.painted.ready && (game.levelIndex === 0 || this.painted.images['level'+game.levelIndex+'_stone0'])) { this.painted.drawTiles(this, game, cam); return; }
     if (this.altar) { this.altar.drawTiles(this, game, cam); return; }
     const ctx = this.ctx, wd = game.world, def = game.level.def;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
@@ -442,6 +444,10 @@ class Renderer {
       const sets = game.touch.active ? CONTROL_LINES.touch : CONTROL_LINES.key;
       ctx.fillStyle = 'rgba(239,230,208,0.19)';
       for (const c of lv.controls) {
+        // Block 0 (WASD) waits on the cage: while it is shut the only line worth reading is the
+        // headbutt prompt below, and painting both at once said two things at the one moment the
+        // player is meant to be trying just the one.
+        if (c.part === 0 && lv.cagePrompt && !game.cageOpen) continue;
         if (Math.abs(c.x - game.cam.x) > 1400) continue;
         const lines = sets[c.part] || [];
         const size = this.fitFloorText(lines, (c.w || 14 * TILE) - 2.6 * TILE, 26);
@@ -454,7 +460,7 @@ class Renderer {
       const C = TUNING.cagePrompt, a = clamp((game.timer - C.delay) / C.fade, 0, 1);
       if (a > 0) {
         const p = lv.cagePrompt, pulse = 0.3 + 0.12 * Math.sin(this.t * 3.2);
-        const label = game.touch.active ? 'BUTT — HEADBUTT' : 'LEFT CLICK — HEADBUTT';
+        const label = game.touch.active ? 'BUTT, HEADBUTT' : 'LEFT CLICK, HEADBUTT';
         this.fitFloorText([label], 15 * TILE, 27);
         ctx.fillStyle = `rgba(255,224,138,${a * pulse})`;
         ctx.fillText(label, p.x, p.y * TILT);
@@ -677,11 +683,8 @@ class Renderer {
     } else if (p.kind === 'door') {
       const tall = p.vertical;
       const wdt = tall ? 13 : 58, hgt = tall ? 58 : 13;
-      // The expansion pack's door art is a square, front-facing door leaf (128x128, meant to be
-      // seen face-on); this game's door is a thin slab spanning a wall gap (13x58 or 58x13, a
-      // fifth as wide as it is tall). Stamped at any readable size it either floats tiny in the
-      // gap or smears sideways — squeezed screenshot in the brief in ART_HANDOFF.md. Left fully
-      // procedural until a top-down-proportioned version exists; see the brief for the ask.
+      // The replacement art has the same 13x58 footprint as this slab. Keep the existing swing,
+      // hit marks, pressure tell and soul wording above it: artwork must not hide its state.
       // The soul door carries the soul's own halo. An iron door in a corridor and the one with a
       // soul behind it used to be the same grey slab, which is why nobody went to the second one.
       if (p.vault || p.gate) {
@@ -697,9 +700,12 @@ class Renderer {
       this.shadow(0, 0, wdt * 0.6, hgt * 0.4);
       // Planks, unless it is the vault's: iron is darker, banded across, studded, and carries a
       // notch for every blow it has already taken, so four hits is a count and not a wall.
-      ctx.fillStyle = p.iron ? '#3a3a40' : PALETTE.wood; ctx.fillRect(-wdt / 2, -hgt / 2, wdt, hgt);
-      ctx.fillStyle = p.iron ? '#5d5f68' : PALETTE.woodHi; ctx.fillRect(-wdt / 2, -hgt / 2, tall ? 4 : wdt, tall ? hgt : 4);
-      if (this.altar) this.altar.doorDetail(ctx, p, wdt, hgt);
+      const paintedSlab=this.painted.ready&&this.painted.doorSlab(ctx,p,wdt,hgt);
+      if(!paintedSlab){
+        ctx.fillStyle = p.iron ? '#3a3a40' : PALETTE.wood; ctx.fillRect(-wdt / 2, -hgt / 2, wdt, hgt);
+        ctx.fillStyle = p.iron ? '#5d5f68' : PALETTE.woodHi; ctx.fillRect(-wdt / 2, -hgt / 2, tall ? 4 : wdt, tall ? hgt : 4);
+        if (this.altar) this.altar.doorDetail(ctx, p, wdt, hgt);
+      }
       ctx.strokeStyle = p.iron ? 'rgba(10,10,14,0.7)' : 'rgba(26,16,22,0.55)'; ctx.lineWidth = p.iron ? 3 : 2;
       ctx.beginPath();
       for (let k = -1; k <= 1; k++) { if (tall) { ctx.moveTo(-wdt / 2, k * 16); ctx.lineTo(wdt / 2, k * 16); } else { ctx.moveTo(k * 16, -hgt / 2); ctx.lineTo(k * 16, hgt / 2); } }
@@ -1284,8 +1290,10 @@ class Renderer {
       ctx.beginPath(); ctx.ellipse(e.x, e.y + e.r * 0.5, e.r * 1.25, e.r * 1.25 * TILT, 0, 0, Math.PI * 2); ctx.stroke();
     }
     if (!e.ghosted) this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
-    ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.translate(0, lying ? 0 : -4);
     const paintedKey = this.painted.ready && this.painted.characterKey(e);
+    // `character()` already anchors each sheet at its own measured foot line (walk-cycle and static
+    // "Facing" art sit at different heights in their 128px cell) — nothing needs nudging again here.
+    ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
     if (e.state === 'flung') ctx.rotate(this.t * 14); else if (!paintedKey) ctx.rotate(e.facing);
     if (e.state === 'stagger') ctx.translate(Math.sin(this.t * 60) * 2, 0);
     if (e.dazed > 0) ctx.rotate(Math.sin(this.t * 24) * 0.12);
@@ -1294,7 +1302,7 @@ class Renderer {
     if (e.elite) ctx.scale(e.champion ? TUNING.champion.scale : 1.28, e.champion ? TUNING.champion.scale : 1.28);
     if (lying) ctx.scale(1.35, 0.7);
 
-    if (paintedKey) this.painted.character(this,e,paintedKey,e.kind==='dog'?42:e.kind==='seer'?38:42);
+    if (paintedKey) this.painted.character(this,e,paintedKey,e.kind==='butcher'?58:e.kind==='dog'?42:e.kind==='seer'?38:42);
     else if (e.kind === 'dog') this.drawHound(e);
     else if (e.kind === 'wraith') this.drawWraith(e, r);
     else this.drawCultist(e, r);
@@ -1420,6 +1428,42 @@ class Renderer {
     }
   }
 
+  // Two read-only overlays for the dev drawer, drawn in world space so they sit against the room
+  // they are answering for. VISION is what `canSeeGoat` actually asks each man for — his sight
+  // radius and his cone, or the wide blind-spot-free arc a watchful post gets — so a spot that
+  // reads as safe on screen can be checked against what the AI is actually allowed to see. HEARING
+  // answers a different question, and it is not per-man: every noise in the game carries a fixed
+  // radius set by what made it (`TUNING.noise`), so the two rings are centred on the goat and show
+  // what a footstep and a fight reach right now, wherever he is standing.
+  drawDevOverlay(game) {
+    const ctx = this.ctx, d = game.dev;
+    if (d.vision) {
+      for (const e of game.enemies) {
+        if (e.dead || e.ghosted || e.held) continue;
+        const cfg = e.cfg;
+        if (!cfg || !cfg.sight) continue;
+        const sight = (e.watchful ? cfg.sight + (cfg.watchSight || 0) : cfg.sight) * TILE;
+        const cone = e.watchful ? Math.PI * 2 : (cfg.cone || Math.PI * 2);
+        ctx.fillStyle = e.aware ? 'rgba(192,57,43,0.16)' : 'rgba(239,230,208,0.11)';
+        ctx.beginPath(); ctx.moveTo(e.x, e.y);
+        ctx.arc(e.x, e.y, sight, e.facing - cone / 2, e.facing + cone / 2);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    if (d.hearing) {
+      const g = game.goat;
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(185,135,58,0.55)';
+      ctx.beginPath(); ctx.arc(g.x, g.y, TUNING.noise.footstep * TILE, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(192,57,43,0.6)';
+      ctx.beginPath(); ctx.arc(g.x, g.y, TUNING.noise.headbutt * TILE, 0, Math.PI * 2); ctx.stroke();
+      ctx.font = `700 10px ${FONT_SC}`; ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(239,230,208,0.75)'; ctx.fillText('WALK', g.x, g.y - TUNING.noise.footstep * TILE - 4);
+      ctx.fillStyle = 'rgba(255,150,130,0.85)'; ctx.fillText('FIGHT', g.x, g.y - TUNING.noise.headbutt * TILE - 4);
+      ctx.textAlign = 'left';
+    }
+  }
+
   // A dev drawer in the bottom-right: god mode and spawns, for poking at the game.
   drawDev(game) {
     const ctx = this.ctx, s = this.ts, d = game.dev;
@@ -1435,6 +1479,8 @@ class Renderer {
     if (d.open) {
       const rows = [
         ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['rules', 'LEVEL TOOL'],
+        ['vision', d.vision ? 'VISION  ON' : 'VISION  OFF'],
+        ['hearing', d.hearing ? 'HEARING  ON' : 'HEARING  OFF'],
         ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'],
         ['wraith', '+ WRAITH'], ['butcher', '+ BUTCHER'],
         ['soul', '+ SOUL'], ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
@@ -1450,7 +1496,7 @@ class Renderer {
       ctx.fillText('DEV MODE', px + 8 * s, py - 7 * s);
       rows.forEach(([id, label], i) => {
         const y = py + i * (rh + gap);
-        const on = id === 'god' && d.god;
+        const on = (id === 'god' && d.god) || (id === 'vision' && d.vision) || (id === 'hearing' && d.hearing);
         ctx.fillStyle = on ? 'rgba(192,57,43,0.5)' : 'rgba(59,34,51,0.75)';
         ctx.fillRect(px + 5 * s, y, rw - 10 * s, rh);
         ctx.strokeStyle = on ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 1 * s;
@@ -1533,9 +1579,13 @@ class Renderer {
     this.devButton(d, pad, pad, 76 * s, 20 * s, 'RULES', 'tab-rules', d.tab === 'rules');
     this.devButton(d, pad + 80 * s, pad, 76 * s, 20 * s, 'LEVEL', 'tab-levels', d.tab === 'levels');
     this.devButton(d, pad + 160 * s, pad, 76 * s, 20 * s, 'BALANCE', 'tab-balance', d.tab === 'balance');
+    this.devButton(d, pad + 240 * s, pad, 76 * s, 20 * s, 'ENEMIES', 'tab-enemies', d.tab === 'enemies');
+    this.devButton(d, pad + 320 * s, pad, 76 * s, 20 * s, 'BOONS', 'tab-boons', d.tab === 'boons');
     this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'CLOSE', 'rules', false);
     if (d.tab === 'balance') this.drawBalance(game, pad, pad + 30 * s);
     else if (d.tab === 'levels') this.drawLevelTab(game, pad, pad + 30 * s);
+    else if (d.tab === 'enemies') this.drawEnemiesTab(game, pad, pad + 30 * s);
+    else if (d.tab === 'boons') this.drawBoonsTab(game, pad, pad + 30 * s);
     else this.drawRuleTab(game, pad, pad + 30 * s);
     // A room opened from either of the other two covers them: it is the deepest the tool goes.
     if (d.room) this.drawRoomSheet(game, pad);
@@ -1587,7 +1637,7 @@ class Renderer {
       const bad = row.cells.find((c) => c.ok === false);
       if (bad && bad.why) {
         ctx.font = `400 ${Math.min(9, rowH * 0.33) * s}px ${FONT}`; ctx.fillStyle = PALETTE.blood;
-        ctx.fillText(this.clip('— ' + bad.why, textW), pad + 10 * s, ry + rowH * 0.95);
+        ctx.fillText(this.clip(bad.why, textW), pad + 10 * s, ry + rowH * 0.95);
       }
     });
     const broken = m.rows.filter((r) => r.cells.some((c) => c.ok === false)).length;
@@ -1607,7 +1657,7 @@ class Renderer {
     ctx.fillText('DIFFICULTY', pad, top);
     this.devButton(d, pad + 74 * s, top - 12 * s, 66 * s, 17 * s, 'SEEDS ' + rep.seeds, 'bal-seeds', false);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText(this.clip('a bar is a room at its real width and place in the world · height is threat · click one to open it · ochre canon, pale mix, blood trap, violet set piece',
+    ctx.fillText(this.clip('a bar is a room at its real width and place in the world · height is threat, the hollow top of it is open ground · click one to open it · ochre canon, pale mix, blood trap, violet set piece',
       W - pad * 2 - 150 * s), pad + 150 * s, top);
     let y = top + 16 * s;
     const failH = 14 * s * (rep.fails.length + 1) + 32 * s;
@@ -1626,11 +1676,18 @@ class Renderer {
       ctx.font = `700 ${10.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
       ctx.fillText(`${lv.li + 1} ${lv.def.name}`, pad, base - 14 * s);
       ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-      ctx.fillText(lv.def.canon ? lv.def.canon.name.toLowerCase() : '—', pad, base - 3 * s);
+      ctx.fillText(lv.def.canon ? lv.def.canon.name.toLowerCase() : '-', pad, base - 3 * s);
       // the two numbers that decide whether a level is in the right place in the run
       ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
       ctx.fillText(`total ${lv.total.toFixed(0)}`, pad + nameW, base - 14 * s);
       ctx.fillText(`worst room ${lv.plainPeak.toFixed(1)}`, pad + nameW, base - 3 * s);
+      // The second axis as a number: what the floor under the fighting does from one end of the
+      // level to the other. Blood if it runs the wrong way, which is what `GEN_RULES.ground` fails on.
+      if (lv.ground) {
+        ctx.font = `400 ${8 * s}px ${FONT}`;
+        ctx.fillStyle = lv.ground.late > lv.ground.early ? 'rgba(239,230,208,0.5)' : PALETTE.blood;
+        ctx.fillText(`ground ${lv.ground.early.toFixed(2)}→${lv.ground.late.toFixed(2)}`, pad + nameW, base - 25 * s);
+      }
       // the level's own bar of total, against the hardest level, so the run's shape is one glance
       ctx.fillStyle = 'rgba(239,230,208,0.1)'; ctx.fillRect(pad + nameW, base + 4 * s, statW - 14 * s, 3 * s);
       ctx.fillStyle = PALETTE.fire;
@@ -1649,6 +1706,19 @@ class Renderer {
         const bh = Math.max(1 * s, (r.threat / peak) * (h - 14 * s));
         ctx.fillStyle = roleTint[r.role] || PALETTE.witch;
         ctx.fillRect(bx, y + h - bh, bw, bh);
+        // The second axis rides on the same bar, and it is drawn as absence rather than as more
+        // paint: the top `ground` of the bar is knocked back toward the page, so a tall bar that is
+        // mostly hollow is a crowd standing on floor with nothing in it to kill them with, and a
+        // tall solid one is the same crowd among pillars. Height is what the room costs; the hollow
+        // part is how little of it the room hands back. An added pale cap was invisible on the pale
+        // bars the mix rooms already use.
+        const gh = bh * clamp(r.ground || 0, 0, 1);
+        if (gh > 0.5 * s) {
+          ctx.fillStyle = 'rgba(9,7,10,0.62)';
+          ctx.fillRect(bx, y + h - bh, bw, gh);
+          ctx.fillStyle = 'rgba(239,230,208,0.22)';
+          ctx.fillRect(bx, y + h - bh + gh, bw, 1 * s);
+        }
         if (r.sample && r.sample.men.length && bw > 15 * s) {
           ctx.font = `700 ${7 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(13,10,12,0.8)'; ctx.textAlign = 'center';
           ctx.fillText('×' + r.sample.men.length, bx + bw / 2, y + h - 3 * s);
@@ -1688,7 +1758,7 @@ class Renderer {
     let y = ty + th + 18 * s;
     const full = W - pad * 2;
     ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-    ctx.fillText(`${def.sub.toUpperCase()} — ${def.name}`, pad, y);
+    ctx.fillText(`${def.sub.toUpperCase()}, ${def.name}`, pad, y);
     ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
     ctx.fillText(page.live ? 'the level in play' : `a sample, seed ${page.seed}`, pad + 260 * s, y);
     this.devButton(d, W - pad - 70 * s, y - 13 * s, 70 * s, 18 * s, 'REROLL', 'rules-roll', false);
@@ -1721,19 +1791,19 @@ class Renderer {
     if (broken.length) {
       ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.blood;
       y += 12 * s;
-      for (const r of broken.slice(0, 2)) { ctx.fillText(this.clip(`${r.rule.id} — ${r.why}`, full), pad + 10 * s, y); y += 11 * s; }
+      for (const r of broken.slice(0, 2)) { ctx.fillText(this.clip(`${r.rule.id}: ${r.why}`, full), pad + 10 * s, y); y += 11 * s; }
     }
 
     // The rooms, as plans. This is what the tab is for, so it gets everything that is left.
     y += 16 * s;
     const rooms = roomsOf(L);
     ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-    ctx.fillText('ROOMS — CLICK ONE TO OPEN IT', pad, y);
+    ctx.fillText('ROOMS: CLICK ONE TO OPEN IT', pad, y);
     const ord = rooms.filter((r) => ORDINARY.has(r.role)), cn = ord.filter((r) => r.role === 'canon').length;
     const canonRule = results.find((r) => r.rule.id === 'canon');
     ctx.fillStyle = canonRule ? (canonRule.ok ? PALETTE.fireHi : PALETTE.blood) : PALETTE.ash;
     ctx.fillText(def.canon
-      ? `CANON ${cn} OF ${ord.length} ORDINARY — ${Math.round(100 * cn / Math.max(1, ord.length))}%, NEEDS ${Math.round(CANON.share * 100)}%`
+      ? `CANON ${cn} OF ${ord.length} ORDINARY, ${Math.round(100 * cn / Math.max(1, ord.length))}%, NEEDS ${Math.round(CANON.share * 100)}%`
       : 'NO CANON ON THIS LEVEL', pad + 300 * s, y);
     y += 8 * s;
     const cols = Math.min(this.w < 1100 * s ? 4 : 6, rooms.length);
@@ -1760,13 +1830,164 @@ class Renderer {
       ctx.font = `700 ${7.5 * s}px ${FONT_SC}`; ctx.textAlign = 'left';
       ctx.fillStyle = tone; ctx.fillText(`${r.index} ${r.role.toUpperCase()}`, cx + 3 * s, cy + 9 * s);
       ctx.textAlign = 'right'; ctx.fillStyle = r.men.length ? PALETTE.blood : PALETTE.ash;
-      ctx.fillText(r.men.length ? '×' + r.men.length : '—', cx + cellW - 3 * s, cy + 9 * s);
+      ctx.fillText(r.men.length ? '×' + r.men.length : '-', cx + cellW - 3 * s, cy + 9 * s);
       ctx.textAlign = 'left';
       this.roomPlan(L, r, cx + 2 * s, cy + 12 * s, cellW - 4 * s, cellH - 24 * s);
       ctx.font = `400 ${7 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)';
       const foot = r.cell && r.cell.intro ? 'meets ' + r.cell.intro : `${r.room.w}×${r.room.h}  ${r.name}`;
       ctx.fillText(this.clip(foot, cellW - 6 * s), cx + 3 * s, cy + cellH - 4 * s);
       d.rects.push({ x: cx, y: cy, w: cellW, h: cellH, id: `room=${li},${i}` });
+    });
+  }
+
+  // THE BESTIARY: every kind that can stand in front of the goat, read live off TUNING so the page
+  // cannot say something the game does not. The portrait in each row is not a separate drawing —
+  // it is `drawEnemy` itself, called against a stand-in enemy object the way the game calls it
+  // against a real one every frame, so a change to a sprite shows up here for free.
+  drawEnemiesTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, W = this.w, H = this.h;
+    const cycle = (tag, cfg) => tag === 'hunter' ? cfg.aimTime + cfg.reload
+      : tag === 'seer' ? cfg.castWind + cfg.castCooldown
+      : tag === 'wraith' ? TUNING.wraith.manifest + TUNING.wraith.solidAfter + TUNING.wraith.fadeCd
+      : (cfg.windup || 0) + (cfg.swing || 0) + (cfg.recover || 0);
+    const levelsFor = (tag) => LEVELS.map((lv, i) => (lv.encounters.kinds.includes(tag)
+      || (lv.encounters.introduce || []).some(([k]) => k === tag)
+      || (lv.arenas || []).some((a) => a.boss === tag)) ? i + 1 : 0).filter(Boolean);
+    const KINDS = [
+      { kind: 'bearer', tag: 'bearer', label: 'CLUBMAN', cfg: TUNING.bearer, hp: TUNING.bearer.hp || 1,
+        note: 'Cone plus line of sight. Reads you, winds up, swings once. The wall behind you kills, not his club.' },
+      { kind: 'bearer', tag: 'champion', champion: true, label: 'BRUTE',
+        cfg: Object.assign({}, TUNING.bearer, { hp: TUNING.champion.hp }), hp: TUNING.champion.hp, boss: TUNING.champion.bossHp,
+        note: 'A clubman built twice over: three hits before he stays down, four as an arena boss. Bigger and slower to match.' },
+      { kind: 'butcher', tag: 'butcher', label: 'BUTCHER', cfg: TUNING.butcher, hp: TUNING.butcher.hp,
+        note: `Two hits. Charges after ${TUNING.butcher.chargeMin}s of chasing, bulldozes doors and tables, blunders but keeps swinging on fire.` },
+      { kind: 'dog', tag: 'dog', label: 'HOUND', cfg: TUNING.dog, hp: TUNING.dog.hp || 1,
+        note: `Never holds still. Dodges ${Math.round(TUNING.dog.dodge * 100)}% of headbutts, darts in from orbit, one at a time per pack. No grab, no bark.` },
+      { kind: 'seer', tag: 'seer', label: 'SEER', cfg: TUNING.seer, hp: TUNING.seer.hp,
+        note: 'Never closes. Blinks away when you get near, paints a rune under himself, near-perfect trap sense.' },
+      { kind: 'hunter', tag: 'hunter', label: 'HUNTER', cfg: TUNING.hunter, hp: TUNING.hunter.hp || 1,
+        note: `Keeps ${TUNING.hunter.keepMin}-${TUNING.hunter.keepMax} tiles off, fires on a reload timer. Empties a fixed mag once grabbed, never reloads again.` },
+      { kind: 'wraith', tag: 'wraith', label: 'WRAITH', cfg: TUNING.wraith, hp: TUNING.wraith.hp,
+        note: 'No body, no collision, until it commits. Drifts to your flank or back, manifests, swings once, fades. Dies only in that window.' },
+    ];
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+    ctx.fillText('THE BESTIARY', pad, top);
+    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText('every kind, read live off TUNING · the portrait is the same drawEnemy call the game itself uses', pad + 120 * s, top);
+
+    const rowH = Math.min(58 * s, Math.max(34 * s, (H - top - 24 * s - 78 * s - pad) / KINDS.length));
+    const thumb = rowH - 6 * s;
+    const nameX = pad + thumb + 12 * s, levelsX = nameX + 128 * s, speedX = levelsX + 96 * s,
+      hpX = speedX + 60 * s, dmgX = hpX + 70 * s, cycX = dmgX + 50 * s, noteX = cycX + 60 * s;
+    let y = top + 18 * s;
+    ctx.font = `700 ${7.5 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
+    [[nameX, 'KIND'], [levelsX, 'LEVELS'], [speedX, 'SPEED'], [hpX, 'HP'], [dmgX, 'DMG'], [cycX, 'CYCLE'], [noteX, 'BEHAVIOUR']]
+      .forEach(([cx, label]) => ctx.fillText(label, cx, y));
+    y += 10 * s;
+    KINDS.forEach((k, i) => {
+      const ry = y + i * rowH;
+      if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, ry, W - pad * 2 + 8 * s, rowH); }
+      const fake = { x: pad + thumb / 2, y: ry + rowH / 2, r: k.cfg.radius, kind: k.kind,
+        champion: !!k.champion, elite: !!k.champion, facing: Math.PI / 2, hp: k.hp, maxHp: k.hp,
+        dead: false, ghosted: false, vx: 0, vy: 0, flash: 0, burning: 0, bombFuse: 0, dazed: 0,
+        state: 'idle', say: null, soul: false, witchBurn: false };
+      ctx.save(); this.drawEnemy(fake, game); ctx.restore();
+      ctx.textAlign = 'left';
+      ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(k.label, nameX, ry + rowH / 2 - 3 * s);
+      ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
+      ctx.fillText('threat ' + THREAT[k.tag], nameX, ry + rowH / 2 + 9 * s);
+      ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
+      const lv = levelsFor(k.tag);
+      ctx.fillText(lv.length ? lv.join(',') : '-', levelsX, ry + rowH / 2 + 3 * s);
+      ctx.fillText(String(Math.round(k.cfg.speed)), speedX, ry + rowH / 2 + 3 * s);
+      ctx.fillText(k.boss ? `${k.hp} (boss ${k.boss})` : String(k.hp), hpX, ry + rowH / 2 + 3 * s);
+      ctx.fillText(String(k.cfg.damage || 1), dmgX, ry + rowH / 2 + 3 * s);
+      ctx.fillText(cycle(k.tag, k.cfg).toFixed(2) + 's', cycX, ry + rowH / 2 + 3 * s);
+      ctx.fillStyle = 'rgba(239,230,208,0.62)'; ctx.font = `400 ${7.8 * s}px ${FONT}`;
+      const lines = this.wrap(k.note, W - pad - noteX - 6 * s).slice(0, 3);
+      const noteTop = ry + rowH / 2 - (lines.length - 1) * 5 * s;
+      lines.forEach((l, li) => ctx.fillText(l, noteX, noteTop + li * 10 * s));
+    });
+
+    // THE GOAT, underneath: the numbers everything above is measured against.
+    const gy = y + KINDS.length * rowH + 16 * s;
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('THE GOAT', pad, gy);
+    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
+    const G = TUNING.goat;
+    const facts = [
+      `speed ${Math.round(G.speed)}px/s · hp ${G.hp} · run-up ×${(1 + G.momentum.max).toFixed(2)} after ${G.momentum.time}s flat out`,
+      `headbutt: reach ${(G.headbutt.reach / TILE).toFixed(2)} tiles, recovery ${G.headbutt.recovery}s`,
+      `grab: hold ${G.grab.holdTime}±${G.grab.holdVary}s, cooldown ${G.grab.cooldown}s`,
+      `roll: ${G.roll.duration}s at ${Math.round(G.roll.speed)}px/s, ${G.roll.invuln}s invulnerable, cooldown ${G.roll.cooldown}s`,
+      `scream: stun radius ${G.scream.radius} tiles, call ${G.scream.call} tiles, cooldown ${G.scream.cooldown}s`,
+    ];
+    facts.forEach((f, i) => ctx.fillText(f, pad, gy + 14 * s + i * 11 * s));
+  }
+
+  // THE UPGRADES: every boon in BOONS, off the same table the game deals cards from. Click a number
+  // to change it — `params` is the only place a boon's `apply` reads a multiplier from, so nothing
+  // here can show a knob the game does not actually turn. It takes effect at once (`applyBoons`
+  // re-reads `params` off the live BOONS entries) and is asked to land in js/tuning.js itself
+  // through the dev server (`tools/tuning-patch.js`); off the server the edit stays session-only.
+  // MIN LVL is the dev tool's own gate on a card ever being dealt — 0 (ANY) until somebody sets one.
+  drawBoonsTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, W = this.w, H = this.h, d = game.dev;
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+    ctx.fillText('THE UPGRADES', pad, top);
+    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText('click a number to change it: takes effect now, saved to js/tuning.js if the dev server is running', pad + 120 * s, top);
+
+    const rowH = Math.min(48 * s, Math.max(36 * s, (H - top - 24 * s - pad) / BOONS.length));
+    const iconW = 30 * s, nameX = pad + iconW + 10 * s, nameW = Math.min(230 * s, W * 0.28),
+      levelX = nameX + nameW + 8 * s, paramsX = levelX + 62 * s;
+    let y = top + 20 * s;
+    BOONS.forEach((b, i) => {
+      const ry = y + i * rowH;
+      if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, ry, W - pad * 2 + 8 * s, rowH); }
+      ctx.textAlign = 'center'; ctx.font = `${Math.min(22, rowH * 0.46) * s}px ${FONT}`;
+      ctx.fillText(b.emoji || '•', pad + iconW / 2, ry + rowH / 2 + 6 * s);
+      ctx.textAlign = 'left';
+      ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre;
+      ctx.fillText(b.name, nameX, ry + 13 * s);
+      ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
+      ctx.fillText(this.clip(b.desc, nameW), nameX, ry + 24 * s);
+      ctx.font = `400 ${7.2 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.38)';
+      const tags = [b.skill ? b.skill.toUpperCase() : 'BODY WORK', b.needs ? 'needs ' + b.needs : null].filter(Boolean).join(' · ');
+      ctx.fillText(tags, nameX, ry + rowH - 5 * s);
+
+      // MIN LVL: the dev tool's own gate, edited the same way a param is
+      const lvlLabel = (b.minLevel || 0) > 0 ? 'L' + (b.minLevel + 1) + '+' : 'ANY';
+      ctx.font = `700 ${8 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
+      ctx.fillText('MIN LVL', levelX, ry + 13 * s);
+      ctx.fillStyle = 'rgba(185,135,58,0.22)'; ctx.fillRect(levelX, ry + 16 * s, 46 * s, 16 * s);
+      ctx.strokeStyle = 'rgba(242,162,51,0.5)'; ctx.lineWidth = 1 * s; ctx.strokeRect(levelX, ry + 16 * s, 46 * s, 16 * s);
+      ctx.fillStyle = PALETTE.fireHi; ctx.textAlign = 'center';
+      ctx.fillText(lvlLabel, levelX + 23 * s, ry + 27.5 * s);
+      ctx.textAlign = 'left';
+      d.rects.push({ x: levelX, y: ry + 16 * s, w: 46 * s, h: 16 * s, id: `boon-edit=${b.id}.minLevel` });
+
+      // every numeric knob `apply` actually reads — none at all for a boon that only flips a flag
+      let px = paramsX, py = ry + rowH / 2 - 9 * s;
+      const entries = Object.entries(b.params || {});
+      if (!entries.length) {
+        ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.28)';
+        ctx.fillText('(flag only, nothing numeric to turn)', paramsX, ry + rowH / 2 + 3 * s);
+      }
+      entries.forEach(([key, val]) => {
+        const label = `${key} ${val}`;
+        ctx.font = `700 ${8 * s}px ${FONT_SC}`;
+        const w = ctx.measureText(label).width + 10 * s;
+        if (px + w > W - pad) { px = paramsX; py += 20 * s; }
+        ctx.fillStyle = 'rgba(185,135,58,0.22)'; ctx.fillRect(px, py, w, 16 * s);
+        ctx.strokeStyle = 'rgba(242,162,51,0.5)'; ctx.lineWidth = 1 * s; ctx.strokeRect(px, py, w, 16 * s);
+        ctx.fillStyle = PALETTE.fireHi; ctx.textAlign = 'center';
+        ctx.fillText(label, px + w / 2, py + 11.5 * s);
+        ctx.textAlign = 'left';
+        d.rects.push({ x: px, y: py, w, h: 16 * s, id: `boon-edit=${b.id}.params.${key}` });
+        px += w + 6 * s;
+      });
     });
   }
 
@@ -1809,7 +2030,12 @@ class Renderer {
       }
     }
     line(Object.entries(count).map(([k, n]) => `${n} ${k}`).join(' · '), 'rgba(239,230,208,0.6)', 9);
-    head(`MEN — ${r.men.length}`);
+    // How much of this room is a weapon, and whether the draw is the reason it is here at all.
+    line(`open ground ${r.ground.toFixed(2)}, ${Math.round(r.ground * 100)}% of the floor has nothing solid within a step`,
+      r.ground > 0.5 ? PALETTE.blood : 'rgba(239,230,208,0.6)', 9);
+    line(r.drawn ? 'the draw chose this shape, off the ground order' : 'forced: a set piece, a teaching room or a trap',
+      PALETTE.ash, 9);
+    head(`MEN ${r.men.length}`);
     if (!r.spawns.length) line('nobody', PALETTE.ash);
     const byKind = {};
     for (const sp of r.spawns) {
@@ -1818,7 +2044,8 @@ class Renderer {
       byKind[k] = (byKind[k] || 0) + 1;
     }
     for (const [k, n] of Object.entries(byKind)) line(`${n} × ${k}`, k.includes('boss') ? PALETTE.fireHi : PALETTE.blood);
-    line(`threat ${r.threat.toFixed(1)}`, 'rgba(239,230,208,0.6)', 9);
+    line(`threat ${r.threat.toFixed(1)} · pressure ${r.pressure.toFixed(1)} (threat against the ground it is on)`,
+      'rgba(239,230,208,0.6)', 9);
     if (r.cell && r.cell.intro) line(`introduces ${r.cell.intro}`, PALETTE.fireHi, 9);
     head('WHAT IS STANDING IN IT');
     const props = {};
@@ -2410,22 +2637,33 @@ class Renderer {
     const gap = 13 * s;
     const blockH = stack ? n * ch + (n - 1) * gap : ch;
     const topY = this.h / 2 - blockH / 2;
-    ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-    ctx.fillText(game.boonKind === 'SKILL' ? 'THE SOUL OFFERS A SKILL' : 'THE SOUL OFFERS A BLESSING', this.w / 2, topY - 44 * s);
-    this.soulWisp(this.w / 2, topY - 92 * s, 1.5 * s, 0, 0.9, true);
-    ctx.font = `${13 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
-    ctx.fillText('Choose one. It dies with you.', this.w / 2, topY - 22 * s);
+    this.soulWisp(this.w / 2, topY - 44 * s, 1.5 * s, 0, 0.9, true);
     const rowW = n * cw + (n - 1) * gap;
+    // The pointer's own card, so a hover reads as pointing at something rather than as nothing at
+    // all: `game.boonAt` is the same hit-test the click itself goes through.
+    const hoverI = game.boonDown < 0 ? game.boonAt(game.input.mouse) : -1;
     for (let i = 0; i < n; i++) {
       const x = stack ? (this.w - cw) / 2 : (this.w - rowW) / 2 + i * (cw + gap);
       const y = stack ? topY + i * (ch + gap) : topY;
-      const b = game.boonChoice[i];
+      const b = game.boonChoice[i], hover = i === hoverI;
       game.boonRects.push({ x, y, w: cw, h: ch });
-      ctx.fillStyle = b.active ? 'rgba(74,36,40,0.92)' : 'rgba(59,34,51,0.9)'; ctx.fillRect(x, y, cw, ch);
-      ctx.strokeStyle = b.active ? PALETTE.blood : PALETTE.ochre; ctx.lineWidth = 2 * s; ctx.strokeRect(x, y, cw, ch);
+      // A ring outside the card's own border, plain and bright regardless of active/passive, so the
+      // pointer clearly has hold of one of the three rather than nothing changing at all.
+      if (hover) { ctx.strokeStyle = 'rgba(239,230,208,0.9)'; ctx.lineWidth = 2 * s; ctx.strokeRect(x - 4 * s, y - 4 * s, cw + 8 * s, ch + 8 * s); }
+      ctx.fillStyle = b.active ? (hover ? 'rgba(97,47,52,0.95)' : 'rgba(74,36,40,0.92)') : (hover ? 'rgba(76,45,66,0.95)' : 'rgba(59,34,51,0.9)');
+      ctx.fillRect(x, y, cw, ch);
+      ctx.strokeStyle = b.active ? PALETTE.blood : PALETTE.ochre; ctx.lineWidth = (hover ? 3 : 2) * s; ctx.strokeRect(x, y, cw, ch);
       ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre; ctx.fillRect(x, y, cw, 3 * s);
       ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${16 * s}px ${FONT_SC}`;
       ctx.fillText(b.name, x + cw / 2, y + 30 * s);
+      // The glyph that stands for the boon everywhere it is named, bigger here than anywhere
+      // else — this is the one place a player is deciding, so it is the one place it earns the size.
+      if (b.emoji) {
+        const half = ctx.measureText(b.name).width / 2;
+        ctx.font = `${20 * s}px ${FONT}`; ctx.textAlign = 'right';
+        ctx.fillText(b.emoji, x + cw / 2 - half - 8 * s, y + 32 * s);
+        ctx.textAlign = 'center';
+      }
       ctx.font = `${12.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
       const lines = this.wrap(b.desc, cw - 24 * s);
       lines.forEach((l, k) => ctx.fillText(l, x + cw / 2, y + 52 * s + k * 16 * s));
@@ -2611,13 +2849,18 @@ class Renderer {
       ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
       ctx.fillText('muted', right, line + 15 * s); line += 15 * s;
     }
-    this.drawBoonList(game, line + 13 * s);
     ctx.textAlign = 'left';
     this.drawSkillNote(game);
 
-    // The seed, bottom-left — out of the way of the corner everything else reports through.
+    // The seed, bottom-left — out of the way of the corner everything else reports through — and
+    // the build under it, so a report of something odd can name the version it happened on.
+    // The run's seed is the one worth reading out: the level's own is derived from it, so this is
+    // the whole run in five characters and `#seed=` takes it back. In base 36 because a player is
+    // going to have to type or paste it, and nine digits is not something anybody passes on.
     ctx.textAlign = 'left'; ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
-    ctx.fillText(`seed ${game.level.seed}`, 14 * s, this.h - 12 * s);
+    ctx.fillText(`seed ${(game.runSeed >>> 0).toString(36)}`, 14 * s, this.h - 23 * s);
+    ctx.font = `${9.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
+    ctx.fillText(`v${BUILD}`, 14 * s, this.h - 12 * s);
     // exit compass, pinned just inside the bottom of the play view
     if (game.state === 'play' && !g.dead) {
       const dx = game.level.exit.x - g.x, dy = game.level.exit.y - g.y, d = Math.hypot(dx, dy);
@@ -2647,11 +2890,11 @@ class Renderer {
     const rows = [
       { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
         note: game.mods.bomb ? 'Ram him. Whoever you hit blows up a moment later.'
-          : 'Ram him. It only knocks him down — walls, fire and other men do the killing.' },
+          : 'Ram him. It only knocks him down: walls, fire and other men do the killing.' },
       { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: 'RMB', cd: g.grabCd,
         max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
-        note: game.mods.grabMen ? 'Hold to carry a box or a man, let go to throw. A blade or a shield you pick up by running over it — press to throw that.'
-          : 'Hold to carry a box, let go to throw. A blade or a shield you pick up by running over it — press to throw that. Men are too heavy for now.' },
+        note: game.mods.grabMen ? 'Press near a box, a blade, a shield or a man to carry it. Let go to throw.'
+          : 'Press near a box, a blade or a shield to carry it. Let go to throw. Men are too heavy for now.' },
       { id: 'roll', name: 'ROLL', cap: 'E', cd: g.rollCd,
         max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
         note: game.mods.rollStun > 0 ? 'Dodge. Nothing can hit you, and anyone you roll through is stunned.'
@@ -2683,12 +2926,16 @@ class Renderer {
       ctx.globalAlpha = row.locked ? 0.2 : row.half ? 0.62 : row.cd > 0 ? 0.4 : row.ready ? 1 : 0.55;
       this.skillIcon(row.id, box * 0.33, game, fire);
       ctx.globalAlpha = 1; ctx.restore();
-      // one pip per soul hanging off this button
+      // one small glyph per soul hanging off this button, the same emoji that names it everywhere
+      // else — a diamond pip only ever said "something is here", the emoji says what.
       boons.forEach((b, k) => {
-        ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre;
-        const px = x + 5 * s + k * 7 * s, py = y + box + 4 * s;
-        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 2.4 * s, py + 2.8 * s);
-        ctx.lineTo(px, py + 5.6 * s); ctx.lineTo(px - 2.4 * s, py + 2.8 * s); ctx.closePath(); ctx.fill();
+        const px = x + 6 * s + k * 9 * s, py = y + box + 12 * s;
+        if (b.emoji) { ctx.textAlign = 'center'; ctx.font = `${9 * s}px ${FONT}`; ctx.fillText(b.emoji, px, py); ctx.textAlign = 'left'; }
+        else {
+          ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre;
+          ctx.beginPath(); ctx.moveTo(px, py - 8 * s); ctx.lineTo(px + 2.4 * s, py - 5.2 * s);
+          ctx.lineTo(px, py - 2.4 * s); ctx.lineTo(px - 2.4 * s, py - 5.2 * s); ctx.closePath(); ctx.fill();
+        }
       });
       ctx.textAlign = 'center';
       // What is written under the chip is the key, not the verb. The verb and what it does now are
@@ -2730,7 +2977,7 @@ class Renderer {
     const w = Math.min(230 * s, this.w - 28 * s), right = this.w - 14 * s, x = right - w;
     ctx.font = `${11 * s}px ${FONT}`;
     const lines = this.wrap(h.row.note, w - 20 * s);
-    const names = h.boons.map((b) => (b.active ? '◆ ' : '❖ ') + b.name);
+    const names = h.boons.map((b) => (b.active ? '◆ ' : '❖ ') + (b.emoji ? b.emoji + ' ' : '') + b.name);
     const bh = 26 * s + lines.length * 14 * s + names.length * 13 * s;
     const y = Math.min(h.y, this.vh - bh - 10 * s);
     ctx.fillStyle = 'rgba(13,10,12,0.94)'; ctx.fillRect(x, y, w, bh);
@@ -2747,26 +2994,6 @@ class Renderer {
       ctx.fillText(n, x + 10 * s, y + 32 * s + lines.length * 14 * s + i * 13 * s);
     });
     ctx.textAlign = 'right';
-  }
-
-  // The soul names, under the score. The pips on the chips already say which button each one bends;
-  // this is the list you read when you are deciding what the run has turned into.
-  drawBoonList(game, top) {
-    if (!game.boons.length) return;
-    const ctx = this.ctx, s = this.hs, right = this.w - 20 * s;
-    ctx.textAlign = 'right'; ctx.font = `700 ${10 * s}px ${FONT_SC}`;
-    // Actives first, and never more than six lines: on a phone the seventh would sit over the level.
-    const ordered = game.boons.slice().sort((a, b) => (a.active ? 0 : 1) - (b.active ? 0 : 1));
-    const shown = ordered.slice(0, 6);
-    shown.forEach((b, i) => {
-      ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre;
-      ctx.fillText((b.active ? '◆ ' : '❖ ') + b.name, right, top + i * 13 * s);
-    });
-    if (ordered.length > shown.length) {
-      ctx.fillStyle = 'rgba(239,230,208,0.45)';
-      ctx.fillText(`+${ordered.length - shown.length} MORE`, right, top + shown.length * 13 * s);
-    }
-    ctx.textAlign = 'left';
   }
 
   // The four verbs as icons, drawn around the origin with a half-size of h. Each one carries what the
@@ -3125,7 +3352,7 @@ class Renderer {
       ctx.textAlign = 'right';
       ctx.fillStyle = rec ? PALETTE.fireHi : 'rgba(239,230,208,0.25)';
       ctx.font = `${12 * s}px ${FONT}`;
-      ctx.fillText(rec ? String(rec.score) : '—', x0 + bw - 16 * s, y + rowH * 0.58);
+      ctx.fillText(rec ? String(rec.score) : '-', x0 + bw - 16 * s, y + rowH * 0.58);
       souls += def.souls || 0;
     }
     ctx.textAlign = 'left';
@@ -3155,9 +3382,9 @@ class Renderer {
       ctx.fillText(LEVELS[i].name.toLowerCase(), x0, y);
       ctx.textAlign = 'right';
       ctx.fillStyle = rec ? PALETTE.fireHi : PALETTE.bone;
-      ctx.fillText(rec ? String(rec.score) : '—', x0 + bw * 0.74, y);
+      ctx.fillText(rec ? String(rec.score) : '-', x0 + bw * 0.74, y);
       ctx.fillStyle = PALETTE.bone;
-      ctx.fillText(rec ? `${rec.time.toFixed(1)}s` : '—', x0 + bw, y);
+      ctx.fillText(rec ? `${rec.time.toFixed(1)}s` : '-', x0 + bw, y);
       ctx.globalAlpha = 1;
     }
     const by = top + rowH * (1.9 + LEVELS.length);
@@ -3167,7 +3394,7 @@ class Renderer {
     ctx.font = `700 ${clamp(rowH * 0.52, 11 * s, 18 * s)}px ${FONT_SC}`;
     ctx.fillText('WHOLE RUN', x0, by + rowH * 0.15);
     ctx.textAlign = 'right'; ctx.fillStyle = board.run ? PALETTE.fireHi : PALETTE.bone;
-    ctx.fillText(board.run ? String(board.run) : '—', x0 + bw * 0.74, by + rowH * 0.15);
+    ctx.fillText(board.run ? String(board.run) : '-', x0 + bw * 0.74, by + rowH * 0.15);
     ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(239,230,208,0.45)';
     ctx.font = `${clamp(rowH * 0.42, 10 * s, 14 * s)}px ${FONT}`;
     ctx.fillText(`${game.tapWord.toLowerCase()} to go back`, cx, by + rowH * 1.5);
