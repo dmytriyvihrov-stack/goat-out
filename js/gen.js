@@ -324,6 +324,40 @@ function tryGenerate(levelDef, seed) {
     soulGate = { room: levelDef.soulGate, x: at.x, y: at.y };
   }
 
+  // Sealed arenas. A second kind of gate, earned by winning rather than by a soul: both ends of the
+  // room narrow to a single tile the same way the soul gate's does, and neither door has any give in
+  // it until `game.updateSeals` finds the room empty. Only an arena with a room on both sides
+  // qualifies — the entrance narrows the room before it and the exit narrows the arena itself, and
+  // the last room of a level has no far corridor for that second cut.
+  const sealedArenas = [];
+  for (const a of (levelDef.arenas || [])) {
+    if (!a.sealed) continue;
+    const at = a.at;
+    if (at <= 0 || at >= rooms.length - 1) return null;
+    const enter = gateSpot(tiles, W, rooms[at - 1], props);
+    const exit = gateSpot(tiles, W, rooms[at], props);
+    if (!enter || !exit) return null;
+    props.push({ x: enter.x, y: enter.y, kind: 'door', vertical: true, iron: true, seal: true, sealRoom: at });
+    props.push({ x: exit.x, y: exit.y, kind: 'door', vertical: true, iron: true, seal: true, sealRoom: at });
+    sealedArenas.push(at);
+  }
+
+  // Secrets. One or two a level: a patch of an ordinary room's own top or bottom wall that gives on
+  // the second blow, with a bowl of milk and a rack tucked into the rock behind it. Never the pen, a
+  // set piece or the vault's own room — only rock nothing else has already carved.
+  const secretPool = rng.shuffle(ordinaryRooms(levelDef, rooms.length).filter((i) => i !== levelDef.vaultAt && !trapRooms.has(i)));
+  const wantSecrets = 1 + (rng.chance(TUNING.secret.chance2) ? 1 : 0);
+  let secretsPlaced = 0;
+  for (const idx of secretPool) {
+    if (secretsPlaced >= wantSecrets) break;
+    const spot = carveSecret(tiles, W, H, rooms[idx], rng);
+    if (!spot) continue;
+    props.push({ x: spot.wall.x, y: spot.wall.y, kind: 'secret', wallColor: levelDef.wall, wallTop: levelDef.wallTop });
+    props.push({ x: spot.heal.x, y: spot.heal.y, kind: 'heal' });
+    props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
+    secretsPlaced++;
+  }
+
   // Props from the template markers, and the men the plan asked for placed on whatever the room has.
   const plan = planEncounters(levelDef, rooms, rng);
   // Arms are rare, and a level can hold them back: nothing to pick up until it is this far in.
@@ -548,7 +582,7 @@ function tryGenerate(levelDef, seed) {
       y: (lessonRoom.y + lessonRoom.h / 2) * TILE, w: lessonRoom.w * TILE, part: 2 });
   }
   return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt, vault, windows, plan, soulGate };
+    hints, controls, cagePrompt, vault, windows, plan, soulGate, sealedArenas };
 }
 
 // A ring of iron bars around a point. The pen around the start comes apart under a headbutt;
@@ -706,6 +740,38 @@ function carveWindow(tiles, W, room, rng, out) {
     return true;
   }
   return false;
+}
+
+// A worn patch of a room's own top or bottom wall, with a small pocket cut into the rock behind it:
+// the gap tile itself (where the cracked-wall prop sits until it gives) and, one step further out, a
+// two-tile niche wide enough for a bowl of milk and a rack. Tried on the top wall first and then the
+// bottom, same as the vault; unlike the vault it never widens further than this, because the point
+// of a niche is that it stays a niche. Every tile it touches has to still be solid rock — anything
+// already carved there is another room or a corridor, and this never trades on either.
+function carveSecret(tiles, W, H, room, rng) {
+  for (const side of rng.chance(0.5) ? ['up', 'down'] : ['down', 'up']) {
+    const wallRow = side === 'up' ? room.y : room.y + room.h - 1;
+    const nicheRow = side === 'up' ? room.y - 1 : room.y + room.h;
+    const guardRow = side === 'up' ? room.y - 2 : room.y + room.h + 1;
+    if (nicheRow < 1 || guardRow < 1 || guardRow >= H - 1) continue;
+    const spots = rng.shuffle(Array.from({ length: Math.max(0, room.w - 5) }, (_, k) => room.x + 2 + k));
+    for (const tx of spots) {
+      let clear = true;
+      for (const [cx, cy] of [[tx - 1, wallRow], [tx, wallRow], [tx + 1, wallRow],
+        [tx, nicheRow], [tx + 1, nicheRow], [tx, guardRow], [tx + 1, guardRow]]) {
+        if (tiles[cy * W + cx] !== T.WALL) { clear = false; break; }
+      }
+      if (!clear) continue;
+      tiles[wallRow * W + tx] = T.FLOOR;
+      tiles[nicheRow * W + tx] = T.FLOOR; tiles[nicheRow * W + tx + 1] = T.FLOOR;
+      return {
+        wall: { x: (tx + 0.5) * TILE, y: (wallRow + 0.5) * TILE },
+        heal: { x: (tx + 0.5) * TILE, y: (nicheRow + 0.5) * TILE },
+        weapon: { x: (tx + 1.5) * TILE, y: (nicheRow + 0.5) * TILE },
+      };
+    }
+  }
+  return null;
 }
 
 // A stretch of grating laid into the floor of a room. It starts somewhere in the middle third and

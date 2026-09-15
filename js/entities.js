@@ -17,6 +17,9 @@ class Goat {
     this.dazed = 0;        // stars over its head: the club in the opening scene, nothing else yet
     this.jitter = null;    // a tremble the opening scene puts on it; drawn, never simulated
     this.safeX = x; this.safeY = y;   // the last floor he stood on, which is where a fall returns him
+    this.safeTrail = [];   // a few seconds of where that was, so a fall can hand back a point with
+                            // room behind it rather than the exact board his hoof was leaving
+    this.landed = true;    // a fall resolves its landing once; see Game.updateFall
     this.runT = 0; this.runUp = 1;    // seconds of running without a break, and what they are worth
     this.autoHeld = false; // the thing in his mouth walked into it: a butt drops it, a press throws it
     this.rmbWas = false;   // grab last frame, so the press can be told from the holding
@@ -258,12 +261,16 @@ class Goat {
     // Witchfire goes straight through the coat: nothing the souls offer turns the Seer's fire away.
     const witch = world.isWitchPx(this.x, this.y);
     this.witchFire = witch;
-    this.onFire = witch || (!game.mods.fireImmune && (world.isBurningPx(this.x, this.y) || game.touchingBrazier(this)));
+    this.onFire = witch || world.isBurningPx(this.x, this.y) || game.touchingBrazier(this);
     if (this.onFire) {
       this.fireTick += dt;
-      if (this.fireTick >= g.fireDamageInterval) {
+      // EMBER COAT does not stop the burning, it buys time against it: ordinary fire takes
+      // `fireResist` times as long to land its tick, and stacking up flame under a goat who never
+      // takes damage from it made running through it a way of not playing the level.
+      const interval = g.fireDamageInterval * (witch ? 1 : game.mods.fireResist);
+      if (this.fireTick >= interval) {
         this.fireTick = 0; this.damage(1, game, -this.aim.x * 60, -this.aim.y * 60, true);
-        if (witch && game.mods.fireImmune) game.floatText(this.x, this.y - 32, 'WITCHFIRE', PALETTE.cult);
+        if (witch && game.mods.fireResist > 1) game.floatText(this.x, this.y - 32, 'WITCHFIRE', PALETTE.cult);
       }
     } else this.fireTick = Math.min(this.fireTick, g.fireDamageInterval * 0.6);
 
@@ -288,8 +295,16 @@ class Goat {
       if (this.hoofTimer <= 0) { this.hoofTimer = 0.09; world.dot(this.x + (Math.random() - 0.5) * 8, this.y + (Math.random() - 0.5) * 8, 2.2, PALETTE.bloodDark); }
     }
     if (spd > 100 && Math.random() < dt * 4) world.emitNoise(this.x, this.y, TUNING.noise.footstep);
-    // The last boards he stood on. A fall puts him back on them, so they are worth keeping.
-    if (!world.isPitPx(this.x, this.y)) { this.safeX = this.x; this.safeY = this.y; }
+    // The last boards he stood on. A fall puts him back on them, so they are worth keeping. The
+    // trail behind it is the same idea a few seconds deep: `goatFalls` reaches into it for a point
+    // with room behind it, rather than the exact edge his hoof was leaving.
+    if (!world.isPitPx(this.x, this.y)) {
+      this.safeX = this.x; this.safeY = this.y;
+      const tr = this.safeTrail;
+      tr.push({ x: this.x, y: this.y, t: 0 });
+      for (const s of tr) s.t += dt;
+      while (tr.length > 1 && tr[0].t > TUNING.fall.setback + 0.2) tr.shift();
+    }
   }
 
   // The roll is a panic button, and it has to behave like one. With no direction asked for it throws
@@ -527,7 +542,7 @@ class Prop {
     this.r = kind === 'crate' ? P.crate.r : kind === 'bell' ? P.bell.r : kind === 'door' ? P.door.r
       : kind === 'table' ? P.table.r : kind === 'lamp' ? P.lamp.r
       : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r
-      : kind === 'weapon' ? P.weapon.r
+      : kind === 'weapon' ? P.weapon.r : kind === 'secret' ? P.door.r
       : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r : 13;
     this.spillCd = 0;                         // a brazier building its coals back after a spill
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
@@ -552,6 +567,9 @@ class Prop {
     // answer, which is what makes the soul behind it the answer.
     this.iron = !!(opts && opts.iron); this.vault = !!(opts && opts.vault);
     this.stair = !!(opts && opts.stair); this.gate = !!(opts && opts.gate);
+    // A sealed arena's pair of doors: no hit points either, the same as the soul gate, but lifted by
+    // clearing the room rather than by a soul. `sealRoom` names which room's fight has to end first.
+    this.seal = !!(opts && opts.seal); this.sealRoom = (opts && opts.sealRoom !== undefined) ? opts.sealRoom : -1;
     // The one table that is the ritual altar rather than furniture: same kind, same blocking and
     // headbutt handling as any other table, tagged only so the painted layer draws it as itself.
     this.isAltar = !!(opts && opts.altar);
@@ -559,6 +577,10 @@ class Prop {
     // 'armed' counting down under his hooves, 'up' with the teeth out, then 'down' and a rest.
     this.spikeState = 'idle'; this.spikeT = 0; this.hits = 0;
     this.graze = 0;   // heal only: seconds the goat has stood in it, still and near, unbroken
+    // A secret's own patch of wall colour, carried on the prop because the renderer never otherwise
+    // reaches back to the level's palette mid-draw. Falls back to level one's colours; gen.js always
+    // supplies the real ones.
+    this.wallColor = (opts && opts.wallColor) || '#7c5a36'; this.wallTop = (opts && opts.wallTop) || '#9c7446';
   }
   // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing.
   get item() { return this.kind === 'crate' || this.kind === 'weapon'; }
@@ -569,7 +591,7 @@ class Prop {
     if (this.kind === 'door') return this.open < 0.5;
     return true;
   }
-  get stopsBullets() { return !this.broken && (this.kind === 'table' || this.kind === 'brazier' || this.kind === 'bell' || (this.kind === 'door' && this.open < 0.5)); }
+  get stopsBullets() { return !this.broken && (this.kind === 'table' || this.kind === 'brazier' || this.kind === 'bell' || this.kind === 'secret' || (this.kind === 'door' && this.open < 0.5)); }
   // What an eye stops at. A shut door is a wall with hinges, and a man on the far side of one used
   // to spot you straight through it and come round — which from where you were standing was being
   // seen through stone. The gong and the hub of the wheel are the only other two things in a room
@@ -578,7 +600,7 @@ class Prop {
   get opaque() {
     if (this.broken) return false;
     if (this.kind === 'door') return this.open < 0.5;
-    return this.kind === 'bell' || this.kind === 'mill';
+    return this.kind === 'bell' || this.kind === 'mill' || this.kind === 'secret';
   }
 
   fling(vx, vy, thrown) { this.vx = vx; this.vy = vy; this.flung = true; this.thrown = thrown; this.held = false; this.passed.length = 0; }
@@ -593,7 +615,7 @@ class Prop {
         game.audio.sfxSteel();
       } break;
       case 'bell': this.ring(game); break;
-      case 'door': this.smash(game, ax, ay); break;
+      case 'door': case 'secret': this.smash(game, ax, ay); break;
       case 'table': this.shove(game, ax, ay); break;
       case 'lamp': this.topple(game, ax, ay); break;
       case 'brazier': this.spill(game, ax, ay); break;
@@ -799,11 +821,20 @@ class Prop {
   // The soul door is four, and it is the one door in a level that is not on the way anywhere.
   smash(game, ax, ay, by) {
     if (this.broken) return;
+    // A patch of wall is not a door: two blows and a crack, not a count of what a door has left.
+    if (this.kind === 'secret') { this.crackWall(game); return; }
     // The soul gate is barred from the far side and there is nothing on this one to break. It says
     // so, once per blow, in the language of the thing that opens it.
     if (this.gate) {
       this.wobble = 0.3; game.audio.sfxSteel(); game.shake(3); game.vibe(10);
       game.floatText(this.x, this.y - 28, 'THE SOUL OPENS IT', PALETTE.witchHi);
+      return;
+    }
+    // A sealed arena's own pair: barred the same way, and lifted the same way — nothing on this
+    // side of it opens it, only the room going quiet does.
+    if (this.seal) {
+      this.wobble = 0.3; game.audio.sfxSteel(); game.shake(3); game.vibe(10);
+      game.floatText(this.x, this.y - 28, 'IT WILL NOT GIVE', PALETTE.bone);
       return;
     }
     const D = TUNING.prop.door;
@@ -832,6 +863,24 @@ class Prop {
       if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.35; }
       else e.fling(ax * 17 * TILE, ay * 17 * TILE, false);
     }
+  }
+
+  // A patch of wall that used to be a wall. Two blows, and nothing on the way there says which
+  // patch: the crack in it is the only hint the level ever gives, and finding it was the game.
+  crackWall(game) {
+    const need = TUNING.prop.secret.hits;
+    this.hits = (this.hits || 0) + 1;
+    if (this.hits < need) {
+      this.wobble = 0.3; game.world.emitNoise(this.x, this.y, TUNING.noise.smash * 0.6);
+      game.audio.sfxThud(); game.shake(3); game.hitstop(0.02); game.vibe(10);
+      game.particles(this.x, this.y, 6, PALETTE.ash, 170);
+      game.floatText(this.x, this.y - 26, 'IT CRACKS', PALETTE.ash);
+      return;
+    }
+    this.broken = true; this.dead = true;
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash); game.audio.sfxSplat(); game.shake(6); game.hitstop(0.03);
+    game.particles(this.x, this.y, 18, PALETTE.ash, 240);
+    game.floatText(this.x, this.y - 30, 'A HIDDEN NICHE', PALETTE.fireHi);
   }
 
   // Tables slide, and men they catch ride the impulse into whatever is behind them. `by` is whoever
@@ -996,7 +1045,7 @@ class Prop {
     if (this.open >= 0.5) return;
     // Iron is barred from the far side and nobody on this one has the key. It opens by being broken
     // or it does not open — which is the only reason the thing behind it is still there.
-    if (this.iron || this.gate) return;
+    if (this.iron || this.gate || this.seal) return;
     // Cultists who cannot get through eventually shoulder it open.
     let pressed = false;
     for (const e of game.enemies) {

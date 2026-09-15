@@ -5,6 +5,70 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.15 — a room that shuts behind you, a wall that gives, and a gentler first floor
+
+**Sealed arenas.** `{ at, boss, sealed: true }` on a level's `arenas` entry narrows both ends
+of that room to a single tile and hangs a door in each. They stand **open** until the goat is
+a tile inside, then slam together, and neither gives until the last man shut in with him is
+down. Nothing smashes or shoulders one; `Game.updateSeals` runs all three beats. Level two's
+mage arena is the first, and is the one room on that floor carrying its own soul.
+
+Two things about it are deliberate and were found by playing it. The doors *must* start open —
+shut from the first frame they were simply a wall, and since a seal refuses to be broken that
+put the arena, its soul and the stairs beyond it out of reach: the level could not be finished
+at all. And the seal waits on whoever is **standing in the room when it shuts**, not on whoever
+was spawned there: an escort who chased the goat out through the open door and stayed out would
+otherwise have kept the room uncleared for ever, from the outside, with no way to reach him.
+
+**A wall that gives.** One or two ordinary rooms a level carry a worn patch of their own top or
+bottom wall — `TUNING.prop.secret.hits`, two blows, a crack after the first — with a niche cut
+into the rock behind it holding a patch of milk and a stand of arms. `carveSecret` in `gen.js`
+only ever takes tiles that are still solid rock, so it never trades on a room or a corridor, and
+it is drawn in the room's own wall colour: the crack is the only tell it ever gives.
+
+**The wheel got smaller.** `mill.armLen` is half what it was and `MILL_TEMPLATE` shrank with it,
+so a shorter reach reads as a tighter room rather than as the same floor with less of it
+dangerous. Men no longer blunder into a **drop** on their own either — every other hazard in the
+building is a wound and the trap roll lets a man walk into one now and then, but a hole is gone
+for good, so he falls only when something throws him in.
+
+**Two new things to spend a soul on.** THE ORACLE lights everything inside sight range, wall or
+no wall — the one thing in the game that reads `game.mods` from inside the fog, because it is not
+a sharper eye but a different sense standing in for the one the fog was built to limit. And EMBER
+COAT no longer makes ordinary fire free: it multiplies how long a flame takes to bite by
+`mods.fireResist` (3×). Standing in fire you could not feel made running through it a way of not
+playing the level. Witchfire never cared and still does not. The offer itself alternates now once
+both half-shut buttons are whole — a coin flip could hand out three actives running, which reads
+as the other kind not existing.
+
+**Level one asks for less.** `encounters.cap = { men: 2 }`: two men to a room, and the soul-gate
+arena's boss gets two at his back rather than three. The curve is untouched — a room may spend
+exactly what it could before, it simply has to spend it on better men rather than more of them —
+so the floor still climbs and still ends on the brute. Three men converging is not a harder
+version of the lesson level one is teaching, it is a different lesson, and it arrives before the
+player has the verbs to answer it. Total threat 29.6 → 26.6, worst ordinary room 3.6 → 2.8.
+
+**The mage leaves less often.** `seer.blinkCooldown` 3.0 → 4.3, a third fewer blinks. One who
+re-sited himself every three seconds answered every approach before it landed, so the counter-play
+was to wait rather than to move. He still goes when you get near — he just cannot do it twice in
+the time it takes to cross the room after him.
+
+**Going down a hole no longer strands you.** Two faults, both able to end a run on their own. A
+fall returned the goat to a remembered point without ever checking it was still floor, so a
+landing over another drop dropped him again, and again, for as long as he had hearts; every
+candidate is now tested against the ground, with `Game.groundNear` as a last resort that cannot
+fail. And the landing itself was gated on his position differing from the spot he was headed
+for, which silently did nothing on the fall where the two already matched — no damage, no move,
+and the goat left standing in the hole. It is an explicit flag now, resolved exactly once per
+fall. He also comes back `fall.setback` (0.35s) further back along his own last few steps, with
+`fall.invuln` (1.5s) to notice it, rather than flush with the lip that just took a heart.
+
+**Smaller things.** Milk sits in a ring of earth rather than sprouting out of bare boards, and
+has lost the floating `GRASS` label. `ART_HANDOFF.md` lists the secret-wall patch among what is
+still procedural.
+
+---
+
 ## 1.14 — the Altar in pixel art, a slower camera, and an easy mode
 
 Level one now uses cached 32 px stone and timber tiles, plum masonry, worn cult banners,

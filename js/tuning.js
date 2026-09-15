@@ -25,6 +25,8 @@ const PALETTE = {
   brazier: '#4a3b2f',
   wood: '#6b4a2c',
   woodHi: '#8a6238',
+  dirt: '#463524',
+  dirtHi: '#5a4530',
   altar: {
     outline: '#19131c', mortar: '#3b3437', stones: ['#665c54', '#625951', '#6b6057', '#605750'],
     stoneLight: '#786c60', stoneEdge: '#71665d', stoneShade: '#564e49', stoneFleck: '#6d6259', crack: '#494143',
@@ -148,7 +150,12 @@ const TUNING = {
     radius: 11, speed: 0.55 * CULT_PACE, sight: 11, cone: Math.PI * 0.62,
     keepMin: 5, keepMax: 9, damage: 1, hp: 2,
     castWind: 0.8, castCooldown: 2.5, runeRadius: 1.4, runeFire: 2.0,
-    blinkRange: 3.2, blinkDist: 5.5, blinkCooldown: 3.0,
+    // A third fewer blinks than he used to get (3.0 → 4.3, which is 0.7 of the old rate). A mage who
+    // re-sited himself every three seconds was a fight you could not close on: every approach you
+    // committed to was answered before it arrived, so the counter-play was to wait rather than to
+    // move. The longer gap is the window — he still leaves when you get near, he just cannot do it
+    // twice in the time it takes you to cross the room after him.
+    blinkRange: 3.2, blinkDist: 5.5, blinkCooldown: 4.3,
     // His own fire burns him like anybody's — he is simply better than anybody at not standing in
     // it. `fireCare` is how much further than a clubman he reads flame from, `trapSense` the floor
     // under his trap roll, and he will not blink onto ground that is alight or about to be.
@@ -296,6 +303,9 @@ const TUNING = {
     // eight across the middle of a room is a piece of ground you have to decide about.
     spike: { r: 16, trigger: 1.3, arm: 0.5, up: 0.95, down: 0.4, rest: 1.7, lead: 0.3, damage: 1,
       run: [9, 15] },
+    // A patch of wall that gives like the pen does: two blows rather than one so it never breaks by
+    // accident, and nothing else about it — its size, what it blocks, what it hides — is its own.
+    secret: { hits: 2 },
   },
   // Going over an edge. A man who goes down a hole is gone; the goat is only rented — he comes back
   // up on the last boards he stood on, one heart lighter, which is the same price the wheel charges.
@@ -305,11 +315,19 @@ const TUNING = {
   // frame he crossed the lip — nothing about the fall is simulated — but a body that simply stops
   // existing reads as a bug, and the one death in the game with nothing left at the end of it is the
   // one that most needs to be watched happening.
-  fall: { time: 0.5, back: 0.3, damage: 1, showFor: 0.75 },
+  // `setback` is how far back in his own last few steps the goat lands, rather than on the exact
+  // board his hoof was leaving when the floor gave: coming back flush with the lip meant the same
+  // step that dropped him could drop him again, or hand him straight back to whatever was on his
+  // heels. `invuln` is longer than an ordinary hit's — coming back up a floor short is not a fight
+  // he was ready for, and he is entitled to a couple of seconds to notice that before anything else
+  // is allowed to touch him.
+  fall: { time: 0.5, back: 0.3, damage: 1, showFor: 0.75, setback: 0.35, invuln: 1.5 },
   // The Mill: a ritual grinding wheel with two sweeping arms. It does not care whose side you are on.
   // Slow enough to read and to time, and its room leaves a lane past it at the top and the bottom.
+  // `armLen` is half what it was: a shorter reach asks for a tighter room around it rather than the
+  // same floor with a smaller danger in the middle of it, so MILL_TEMPLATE shrank to match.
   mill: {
-    hubR: 26, armLen: 4.1 * TILE, armHalfWidth: 0.2, innerR: 20,
+    hubR: 26, armLen: 2.05 * TILE, armHalfWidth: 0.2, innerR: 20,
     speed: 0.82, impulse: 30 * TILE, damage: 1, hitCooldown: 1.15, goatKnock: 0.3,
   },
   elite: { hp: 3 },
@@ -341,6 +359,10 @@ const TUNING = {
   // is the whole of how soft the edge of a shadow is: at 1 a shadow fades over a tile and reads as
   // a smudge, and at 2 it fades over half of one and reads as an edge.
   fog: { shade: 0.8, radius: 26, res: 2 },
+  // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
+  // first has found a room, so most levels get one and some get two rather than every level getting
+  // a guaranteed pair. `carveSecret` in gen.js does the finding; this is only ever the odds.
+  secret: { chance2: 0.35 },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
   // The scene that opens a run. Seconds per beat, and every one of them slower than it reads on
@@ -468,7 +490,11 @@ const CANON = { share: 0.5, minRooms: 4 };
 // is a voice rather than a weapon. Each of those is a soul, which is what makes them worth more than
 // a number: a half-lit chip is a promise, and the two of them are the shape of the first hour.
 const BOON_BASE = {
-  maxHp: 4, speed: 1, butcherDamage: 1, fireImmune: false, enemySlow: 1,
+  maxHp: 4, speed: 1, butcherDamage: 1, fireResist: 1, enemySlow: 1,
+  // Nothing between him and what is coming, as far as the fog would otherwise let him see. Off by
+  // default because the fog is the game reading a room to you at the pace you cross it — this soul
+  // is the one that reads it for you all at once.
+  oracle: false,
   headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
   shieldBullets: 2, holdTime: 8.0, livingShield: false, grabCooldown: 1,
   // Grab lifts objects out of the pen and nothing else. A crate, a blade, a shield: things a goat
@@ -516,7 +542,8 @@ const BOONS = [
   { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 13; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
   { id: 'joints', skill: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
-  { id: 'ember', name: 'EMBER COAT', desc: 'Ordinary fire stops burning you. Witchfire does not care.', apply: (m) => { m.fireImmune = true; } },
+  { id: 'ember', name: 'EMBER COAT', desc: 'Ordinary fire takes three times as long to start hurting you. Witchfire never cared.', apply: (m) => { m.fireResist = 3; } },
+  { id: 'oracle', name: 'THE ORACLE', desc: 'Nothing in sight range stays hidden from you, wall or no wall.', apply: (m) => { m.oracle = true; } },
 ];
 
 // Short things the cult shouts. A few words each: they have to read at a glance while you run.
@@ -593,6 +620,13 @@ const LEVELS = [
       kinds: ['bearer', 'champion'],
       introduce: [['bearer', 0], ['champion', 0.8]],
       from: 1, to: 4.5, ease: 1.5,
+      // Two men to a room, and the arena's boss gets two rather than three at his back. Every other
+      // level buys its difficulty in bodies; level one may not, because three men converging is not
+      // a harder version of the lesson it is teaching, it is a different lesson — spacing — and it
+      // arrives before the player has the verbs to answer it. The curve is untouched: what a room is
+      // allowed to SPEND is the same, it simply has to spend it on better men rather than on more of
+      // them, so the level still climbs and still ends on the brute.
+      cap: { men: 2 },
     },
     floor: '#2b1a26', floorAlt: '#31202c', wall: '#7c5a36', wallTop: '#9c7446',
     fog: '#0d0a0c', doorChance: 0.5,
@@ -606,7 +640,12 @@ const LEVELS = [
     // The mage brings fire; the rooms already have it. Coals, straw and ovens, so the thing the Seer
     // does to the floor is a thing you have been doing to the floor yourself since the second room.
     canon: { id: 'fire', name: 'FIRE', idea: 'Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself.' },
-    arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }],
+    // The vault takes the first of this level's two souls, which leaves exactly one for the LAST
+    // boss of the level (see the note over `LEVELS`) — the seer, here, every run. He is sealed in
+    // for it: both doors of his room go iron the moment the goat is inside, and neither gives until
+    // he does. The first arena, ahead of the vault, is not worth locking — nothing about it is the
+    // level's one soul, and a door that means nothing is a door not worth building.
+    arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer', sealed: true }],
     millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],

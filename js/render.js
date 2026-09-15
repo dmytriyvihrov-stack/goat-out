@@ -669,6 +669,23 @@ class Renderer {
         ctx.fillText(p.gate ? 'A SOUL OPENS IT' : 'SOUL', p.x, (p.y - 24) * TILT);
         ctx.textAlign = 'left'; ctx.restore();
       }
+    } else if (p.kind === 'secret') {
+      // This tile is already floor — `carveSecret` cut it that way so what is behind it is real
+      // ground rather than a curtain — and the wall is the only lie. Full tile, the room's own wall
+      // colour, so nothing under it gives it away before the crack does.
+      const h = TILE / 2;
+      ctx.fillStyle = p.wallColor; ctx.fillRect(p.x - h, p.y - h, TILE, TILE);
+      ctx.fillStyle = p.wallTop; ctx.fillRect(p.x - h, p.y - h, TILE, 6);
+      ctx.strokeStyle = 'rgba(10,8,10,0.55)'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(p.x - h * 0.5, p.y - h * 0.6); ctx.lineTo(p.x - h * 0.1, p.y);
+      ctx.lineTo(p.x - h * 0.4, p.y + h * 0.4); ctx.lineTo(p.x + h * 0.3, p.y + h * 0.8);
+      ctx.stroke();
+      // A second crack once it has taken a blow: what "IT CRACKS" said, on the wall itself.
+      if ((p.hits || 0) > 0) {
+        ctx.strokeStyle = 'rgba(10,8,10,0.7)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(p.x + h * 0.5, p.y - h * 0.5); ctx.lineTo(p.x - h * 0.2, p.y + h * 0.6); ctx.stroke();
+      }
     } else if (p.kind === 'table') {
       const a = p.flung ? Math.atan2(p.vy, p.vx) : 0;
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(a);
@@ -806,6 +823,11 @@ class Renderer {
       glow.addColorStop(0, 'rgba(168,189,108,0.22)'); glow.addColorStop(1, 'rgba(168,189,108,0)');
       ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y + bob, 34, 0, Math.PI * 2); ctx.fill();
       this.shadow(p.x, p.y + 4, 11, 5);
+      // A patch of real dirt under it: grass sprouting straight out of the boards read as a decal
+      // laid over the floor rather than as ground of its own, so there is a small ring of earth
+      // under the blades before anything green is drawn.
+      ctx.fillStyle = PALETTE.dirt; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6, 16, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.dirtHi; ctx.beginPath(); ctx.ellipse(p.x, p.y + 4.5, 12.5, 5.4, 0, 0, Math.PI * 2); ctx.fill();
       // Sprouted grass rather than a bowl: a few blades pushed up through the boards, leaning
       // together like something breathes on them. Grazed, not grabbed — see the pickup in game.js.
       for (let k = -3; k <= 3; k++) {
@@ -820,10 +842,6 @@ class Renderer {
         ctx.strokeStyle = 'rgba(168,189,108,0.85)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.arc(p.x, p.y + bob, 17, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
       }
-      ctx.save(); ctx.scale(1, 1 / TILT);
-      ctx.font = `700 ${11}px ${FONT_SC}`; ctx.textAlign = 'center';
-      ctx.fillStyle = `rgba(168,189,108,${0.5 + 0.25 * Math.sin(this.t * 3)})`;
-      ctx.fillText('GRASS', p.x, (p.y - 22 + bob) * TILT); ctx.textAlign = 'left'; ctx.restore();
     }
     // There is no fallback branch any more. The one that was here drew an ochre disc for the pot,
     // and a disc on a floor of boards reads as a plate rather than as a thing you lift.

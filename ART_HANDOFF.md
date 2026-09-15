@@ -46,10 +46,10 @@ In roughly the order a playthrough meets it:
    `renderer.altar` at it for that level too — the gating logic will need to widen from
    a single level check to a per-level art-set lookup.
 4. **Doors, the cage/pen bars, the Mill, spike plates, the weapon stand, the heal
-   (grass) patch, the soul wisp, fire** — all still procedural. None of these are
-   blocking; they read fine as placeholder shapes. Worth painting in roughly that order
-   if there's appetite, since doors and the pen are what a player looks at longest in
-   the opening minutes.
+   (grass) patch, the soul wisp, fire, the secret-wall patch** — all still procedural.
+   None of these are blocking; they read fine as placeholder shapes. Worth painting in
+   roughly that order if there's appetite, since doors and the pen are what a player
+   looks at longest in the opening minutes.
 
 ## How to add a character (the pattern that already worked four times)
 

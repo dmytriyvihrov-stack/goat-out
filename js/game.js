@@ -36,6 +36,7 @@ class Game {
     this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0; this.totalScore = 0;
     this.best = this.loadBest();
     this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.souls = []; this.boonChoice = null; this.boonRects = [];
+    this.lastBoonActive = false;   // which kind the last soul offered, so the next one alternates
     this.soulsHere = 0;   // how many the level being played gives up, all in. Reported on its card.
     this.fallers = [];    // men on their way down a hole: a picture, with nothing simulated in it
     // A soul is spent by a click that starts and ends on the same card. `boonDown` is the card the
@@ -145,6 +146,61 @@ class Game {
     this.floatText(sg.prop.x, sg.prop.y - 30, 'THE GATE GIVES', PALETTE.witchHi);
   }
 
+  // Sealed arenas, in three beats: the doors stand open, they slam once he is inside, and they give
+  // when the last man in the room is down. `sealedRooms` was built once at `startLevel`.
+  //
+  // The doors MUST start open. They used to stand shut from the first frame of the level, and since
+  // a seal refuses to be smashed and refuses to be shouldered, that made every room behind one —
+  // the arena, its soul, and the stairs out — unreachable: the level could not be finished at all.
+  // A seal is a door that closes behind you, and a door that closes behind you has to be open first.
+  updateSeals() {
+    const g = this.goat;
+    for (const s of this.sealedRooms) {
+      if (s.open) continue;
+      // Who the door is waiting on. Before it slams that is whoever was PUT in the room; after, it
+      // is whoever was actually standing in it at the moment it shut. The two differ whenever an
+      // escort followed the goat out through the open door and he then stepped back in — and the
+      // spawn list alone would have left that man alive, outside, with the room he belongs to
+      // impossible to clear from the inside. Whoever is in the room with you is who you have to beat.
+      const alive = (s.held || this.enemies.filter((e) => e.room === s.room))
+        .some((e) => !e.dead && !e.ghosted);
+      // Nobody left to fight: give, whether or not it ever slammed. A room he cleared by luring it
+      // out through the open door is a room he cleared.
+      if (!alive) {
+        s.open = true;
+        for (const d of s.doors) {
+          if (d.broken) continue;
+          d.seal = false; d.broken = true; d.dead = true;
+          this.audio.sfxSteel(); this.shake(4); this.flash(PALETTE.fireHi, 0.1);
+          this.particles(d.x, d.y, 14, PALETTE.ash, 220);
+          this.floatText(d.x, d.y - 28, 'THE ROOM IS CLEAR', PALETTE.fireHi);
+        }
+        continue;
+      }
+      // Still open, and he is properly inside — a tile clear of the doorway itself, so neither door
+      // can come down on the goat standing in it. Both slam at once and the fight starts.
+      if (!s.armed && this.inRoom(g, s.room, 1)) {
+        s.armed = true;
+        // Everyone shut in with him, wherever they were spawned — including anyone who chased him
+        // through the door on his way in. From here the door reads this list and nothing else.
+        s.held = this.enemies.filter((e) => !e.dead && this.inRoom(e, s.room, 0));
+        for (const d of s.doors) d.open = 0;
+        this.audio.sfxSteel(); this.shake(5); this.vibe(24);
+        this.flash(PALETTE.bone, 0.12);
+        for (const d of s.doors) this.particles(d.x, d.y, 10, PALETTE.ash, 200);
+        this.floatText(g.x, g.y - 40, 'SEALED IN', PALETTE.bone);
+      }
+    }
+  }
+
+  // Is this body inside that room's box, `inset` tiles clear of its walls? Only the seals ask.
+  inRoom(e, index, inset) {
+    const r = this.level.rooms[index];
+    if (!r) return false;
+    const tx = e.x / TILE, ty = e.y / TILE, m = inset || 0;
+    return tx >= r.x + m && tx < r.x + r.w - m && ty >= r.y + m && ty < r.y + r.h - m;
+  }
+
   // ---------- the fog ----------
   // A room is dark until the goat has been in it. Nothing is hidden by distance and nothing is ever
   // re-hidden: what you have seen stays seen, and what you have not is a black rectangle with a
@@ -181,7 +237,7 @@ class Game {
       }
     }
     w.setVisBlocks(blocks);
-    w.computeVis(g.x, g.y, TUNING.fog.radius);
+    w.computeVis(g.x, g.y, TUNING.fog.radius, this.mods.oracle);
     // And a room opens when he can see into it, not only once he is standing in it. It is still the
     // width of the door: what he cannot see from where he stands is painted down by the shade, so a
     // look through a doorway hands him the sliver of the room the doorway shows and nothing more.
@@ -245,9 +301,13 @@ class Game {
     const shut = !this.mods.grabMen || !(this.mods.screamStun || this.mods.breath);
     const hasActive = this.boons.some((b) => b.active);
     let pool, other;
-    if (actives.length && (!hasActive || Math.random() < (shut ? 0.75 : 0.4))) { pool = actives.slice(); other = passives.slice(); }
-    else if (passives.length) { pool = passives.slice(); other = actives.slice(); }
-    else { pool = actives.slice(); other = []; }
+    // Once both buttons are whole, the offer alternates rather than rolling for it: a soul that
+    // dealt a skill hands the next one out of the numbers, and back again. A coin flip could hand
+    // the same kind out three souls running, which reads as the other kind not existing.
+    if (actives.length && (!hasActive || (shut ? Math.random() < 0.75 : !this.lastBoonActive))) {
+      pool = actives.slice(); other = passives.slice(); this.lastBoonActive = true;
+    } else if (passives.length) { pool = passives.slice(); other = actives.slice(); this.lastBoonActive = false; }
+    else { pool = actives.slice(); other = []; this.lastBoonActive = true; }
     const pick = [];
     while (pick.length < 3 && pool.length) pick.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
     while (pick.length < 3 && other.length) pick.push(other.splice((Math.random() * other.length) | 0, 1)[0]);
@@ -539,7 +599,7 @@ class Game {
   // `withIntro` plays the opening scene in the pen instead of the level card. Only a run started
   // from the title gets it; a death drops you straight back in.
   startLevel(index, seed, keepBoons, withIntro) {
-    if (!keepBoons) { this.boons = []; }
+    if (!keepBoons) { this.boons = []; this.lastBoonActive = false; }
     this.levelIndex = index;
     const def = LEVELS[index];
     this.level = generateLevel(def, seed >>> 0);
@@ -547,6 +607,9 @@ class Game {
     this.goat = new Goat(this.level.start.x, this.level.start.y);
     this.enemies = this.level.spawns.map((s) => {
       const e = new Enemy(s.x, s.y, s.kind);
+      // Which room he was put in. Nothing but a sealed arena reads this — it is how `updateSeals`
+      // knows the fight behind a pair of doors is actually over.
+      e.room = s.roomIndex === undefined ? -1 : s.roomIndex;
       if (s.elite) { e.elite = true; e.hp = TUNING.elite.hp; e.maxHp = e.hp; }
       // The brute: three killing blows, four if he is the one standing in the arena. Bigger frame,
       // spiked shoulders, a spiked mask and a studded club, so you never mistake him for a clubman.
@@ -567,7 +630,18 @@ class Game {
       this.props.push(new Prop(S.x - 4 * TILE, S.y - 0.2 * TILE, 'table', { altar: true }));
     }
     this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike');
-    this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill');
+    this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill' || p.kind === 'secret');
+    // Sealed arenas: which pair of doors belongs to which room, whether they have slammed behind him
+    // yet, and whether that room has already been paid for. `updateSeals` runs all three beats. The
+    // doors stand OPEN until he is inside — a seal is a door that shuts behind you, and one that
+    // starts shut is a wall, since nothing on either side of it may smash or shoulder one.
+    this.sealedRooms = (this.level.sealedArenas || []).map((at) => {
+      const doors = this.props.filter((p) => p.seal && p.sealRoom === at);
+      for (const d of doors) d.open = 1;
+      // `held` is filled at the moment the doors slam: who is shut in, which is what the seal waits
+      // on from then on. Null until then, when the spawn list is the best answer there is.
+      return { room: at, doors, armed: false, open: false, held: null };
+    });
     this.runes = []; this.houndTold = false;
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null; this.fallers = [];
     this.souls = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
@@ -581,7 +655,7 @@ class Game {
     this.toldGrab = false;
     this.audio.intensity = 0; this.audio.hunterAware = false;
     this.world.computeFlow(this.goat.x, this.goat.y);
-    this.world.computeVis(this.goat.x, this.goat.y, TUNING.fog.radius);
+    this.world.computeVis(this.goat.x, this.goat.y, TUNING.fog.radius, this.mods.oracle);
     // The level's souls, handed out before a blow is struck. `def.souls` is the whole count (see the
     // note over `LEVELS`): the vault takes the first, the rest go to the LAST bosses of the level so
     // the fight you finish on always pays, and any boss left over drops milk instead. A level
@@ -719,7 +793,7 @@ class Game {
     if (id === 'best') { m.panel = 'best'; return; }
     if (id === 'settings') { m.panel = 'settings'; m.sub = 0; return; }
     if (id === 'continue') { this.resumeRun(); return; }
-    this.clearRun(); this.boons = []; this.totalKills = 0; this.deaths = 0; this.totalScore = 0;
+    this.clearRun(); this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0;
     this.startLevel(0, (Math.random() * 1e9) | 0, false, true);
   }
   // Straight onto one floor of the game. A run that starts on level five with the goat it had out of
@@ -729,7 +803,7 @@ class Game {
   // scene and all. Nothing about it touches the saved run or the board.
   startAtLevel(li) {
     this.clearRun();
-    this.boons = []; this.totalKills = 0; this.deaths = 0; this.totalScore = 0;
+    this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0;
     let budget = 0;
     for (let i = 0; i < li; i++) budget += LEVELS[i].souls || 0;
     for (let n = 0; n < budget; n++) {
@@ -941,6 +1015,7 @@ class Game {
     for (const b of this.bullets) b.update(dt, this);
     for (const p of this.props) p.update(dt, this);
     this.collideEntities(dt);
+    this.updateSeals();
     w.updateFire(dt);
     w.noises.length = 0;
     this.bullets = this.bullets.filter((b) => !b.dead);
@@ -1267,7 +1342,25 @@ class Game {
   goatFalls() {
     const g = this.goat, F = TUNING.fall;
     if (g.dead || g.state === 'falling') return;
-    g.state = 'falling'; g.timer = F.time + F.back; g.vx *= 0.3; g.vy *= 0.3;
+    g.state = 'falling'; g.timer = F.time + F.back; g.vx *= 0.3; g.vy *= 0.3; g.landed = false;
+    // Land somewhere with room behind it. `safeX/safeY` is the exact board his hoof was leaving,
+    // which is also the board the same step can drop him off of again; the trail holds a few seconds
+    // of where he already was, so he comes back a little further from the lip than he fell off it.
+    // Every candidate is checked against the floor before it is taken. The trail only ever records
+    // ground he was standing on, so in ordinary play the first one answers — but if the whole of it
+    // is somehow unusable (a trail emptied by a level change, a hole opened under a remembered
+    // board), putting him back over a drop means he falls again from the spot he was returned to,
+    // and again, for as long as he has hearts. `groundNear` is the last resort that cannot fail.
+    const tr = g.safeTrail, safe = (p) => p && !this.world.isPitPx(p.x, p.y);
+    let land = null;
+    for (let i = tr.length - 1; i >= 0; i--) {
+      if (!safe(tr[i])) continue;
+      land = tr[i];
+      if (tr[i].t >= F.setback) break;   // far enough back; anything older is only a fallback
+    }
+    if (!land && safe({ x: g.safeX, y: g.safeY })) land = { x: g.safeX, y: g.safeY };
+    if (!land) land = this.groundNear(g.x, g.y);
+    g.safeX = land.x; g.safeY = land.y;
     // Whatever was in his mouth goes down with him.
     if (g.holding) {
       const h = g.holding; g.holding = null; h.held = false;
@@ -1277,10 +1370,32 @@ class Game {
     this.audio.sfxSwing(); this.shake(7); this.vibe(45); this.zoomPunch(0.7);
     this.floatText(g.x, g.y - 26, 'THE FLOOR ENDS', PALETTE.blood);
   }
+  // The nearest tile centre that is floor and is not a hole, spiralling out from a point. Only the
+  // fall asks, and only when the trail behind the goat has nothing usable left in it — but it has to
+  // answer, because the alternative is putting him back over the drop he just went down.
+  groundNear(x, y) {
+    const w = this.world, cx = Math.floor(x / TILE), cy = Math.floor(y / TILE);
+    for (let r = 1; r < 24; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;   // the ring at this radius only
+          const tx = cx + dx, ty = cy + dy;
+          if (tx < 0 || ty < 0 || tx >= w.W || ty >= w.H) continue;
+          if (w.isSolid(tx, ty) || w.tiles[ty * w.W + tx] === T.PIT) continue;
+          return { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
+        }
+      }
+    }
+    return { x: this.level.start.x, y: this.level.start.y };   // the room he came in by, if all else fails
+  }
   updateFall(dt) {
     const g = this.goat, F = TUNING.fall;
     if (g.timer > F.back) return;                      // still going down
-    if (g.x !== g.safeX || g.y !== g.safeY) {
+    // Exactly once per fall. This used to test his position against the spot he was headed for,
+    // which silently did nothing on the fall where the two already matched — no damage, no move,
+    // and he was left standing in the hole.
+    if (!g.landed) {
+      g.landed = true;
       g.x = g.safeX; g.y = g.safeY; g.vx = 0; g.vy = 0;
       this.cam.x = g.x; this.cam.y = g.y; this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null;
       this.world.computeFlow(g.x, g.y);
@@ -1288,7 +1403,7 @@ class Game {
       this.audio.sfxThud(); this.shake(5);
       if (!g.dead) this.floatText(g.x, g.y - 34, 'BACK UP', PALETTE.bone);
     }
-    if (g.timer <= 0 && !g.dead) { g.state = 'idle'; g.invuln = Math.max(g.invuln, TUNING.goat.invuln); }
+    if (g.timer <= 0 && !g.dead) { g.state = 'idle'; g.invuln = Math.max(g.invuln, F.invuln); }
   }
   beginClimb() {
     this.state = 'climb'; this.stateTimer = TUNING.stairs.climb; this.stairFx = { t: 0, dir: 1 };

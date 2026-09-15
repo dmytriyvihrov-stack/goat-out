@@ -205,7 +205,7 @@ class Enemy {
   // right thing about it.
   hazardAt(game, x, y, near) {
     if (game.world.isBurningPx(x, y)) return { kind: 'fire' };
-    if (game.world.isPitPx(x, y)) return { kind: 'trap' };
+    if (game.world.isPitPx(x, y)) return { kind: 'trap', pit: true };
     for (const p of (near || game.hazards)) {
       if (p.broken) continue;
       if (p.kind === 'mill') { if (p.millThreat(x, y, this.r + TUNING.ai.millClear)) return { kind: 'trap', p }; }
@@ -247,11 +247,17 @@ class Enemy {
     // against the same wheel eventually walks into it, however careful he is. The roll only comes
     // back after he has been clear of everything for `rollGap` (see the timer in update).
     this.hazardSeen = true;
-    if (this.hazardRoll <= 0) {
-      this.hazardRoll = TUNING.ai.rollGap;
-      if (Math.random() > this.trapSense) this.hazardBlind = TUNING.ai.blindFor;
+    // A drop is the one hazard nobody blunders into on his own. Everything else in the building is
+    // a wound and the trap roll lets a man walk into one now and then; a hole is gone for good, so
+    // the roll does not apply to it at all — he falls only when something throws him in.
+    const overPit = (ahead && ahead.pit) || (here && here.pit);
+    if (!overPit) {
+      if (this.hazardRoll <= 0) {
+        this.hazardRoll = TUNING.ai.rollGap;
+        if (Math.random() > this.trapSense) this.hazardBlind = TUNING.ai.blindFor;
+      }
+      if (this.hazardBlind > 0) return { x: dirx, y: diry };
     }
-    if (this.hazardBlind > 0) return { x: dirx, y: diry };
     // A way out has to be a way he can actually walk, or he just slides along the wall into it.
     const walkable = (ax, ay) => !w.isSolid(Math.floor((this.x + ax * look) / TILE), Math.floor((this.y + ay * look) / TILE));
     if (here && here.p) {

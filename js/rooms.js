@@ -700,26 +700,22 @@ const ARENA_TEMPLATE = { name: 'arena', rows: [
   '##############',
 ]};
 
-// The Mill: a big open room built around a ritual grinding wheel. 'M' is the hub.
-// The room is deliberately taller than the arms are long: there is a lane along the top and the
-// bottom that the sweep never reaches, so the room can be crossed by reading it rather than by luck.
+// The Mill: a ritual grinding wheel with a shorter reach now, in a room built tighter around it.
+// 'M' is the hub. The room is still taller than the arms are long — there is a lane along the top
+// and the bottom that the sweep never reaches — but the whole footprint shrank with the arm, so a
+// shorter reach reads as a tighter room rather than as the same floor with less of it dangerous.
 const MILL_TEMPLATE = { name: 'mill', rows: [
-  '##################',
-  '#................#',
-  '#..o.............#',
-  '#................#',
-  '#.e............e.#',
-  '#................#',
-  '#................#',
-  '#.......M........#',
-  '#................#',
-  '#................#',
-  '#.e............e.#',
-  '#................#',
-  '#..hh........hh..#',
-  '#..B..........B..#',
-  '#................#',
-  '##################',
+  '##############',
+  '#............#',
+  '#.o..........#',
+  '#.e........e.#',
+  '#............#',
+  '#......M.....#',
+  '#............#',
+  '#.e........e.#',
+  '#.hh......hh.#',
+  '#.B........B.#',
+  '##############',
 ]};
 
 // The Gallery: long sightlines, hard cover, and rifles standing on their own rather than in a pile.

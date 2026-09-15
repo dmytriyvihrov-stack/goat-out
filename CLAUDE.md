@@ -219,6 +219,29 @@ only thing that opens it. It exists because the first thing a run is offered is 
 floor of a room whose fight is already over, and the first player we watched walked straight past it
 and met level two with none of the three buttons the souls open.
 
+**The room that shuts behind you.** `{ at, boss, sealed: true }` on a level's `arenas` entry is the
+other kind of locked room, and it is earned by winning rather than by a soul. `gen.js` narrows both
+ends — the previous room's exit and the arena's own — with `gateSpot` and hangs a `seal: true` door in
+each, recorded on the level as `sealedArenas`. `game.updateSeals` runs the three beats and is the only
+thing that touches them: the doors stand **open**, they slam the moment the goat is a tile inside
+(`game.inRoom`), and they break outright when the last man shut in with him is down.
+
+Two things about it are load-bearing and both were found by playing it rather than by reading it.
+The doors have to *start* open: a seal refuses `smash` and refuses `openPressure`, so a pair that is
+shut on the first frame of the level is a wall, and everything past it — the arena, its soul, the
+stairs — is unreachable. The level simply could not be finished. And the seal waits on `s.held`,
+the men **standing in the room at the moment it shut**, not on the spawn list: an escort who chased
+the goat out through the open door and stayed out there is alive, outside, in a room that can then
+never be cleared from the inside. Whoever is in the room with you is who you have to beat.
+
+**A wall that gives.** `carveSecret` in `gen.js` takes a patch of one ordinary room's own top or
+bottom wall, once or twice a level (`TUNING.secret.chance2` is the odds of the second), and cuts a
+two-tile niche into the rock behind it holding a patch of milk and a stand of arms. Every tile it
+touches has to still be solid rock, so it never trades on a room or a corridor. The prop is
+`kind === 'secret'`: it is a wall to sight and to bullets, `Prop.crackWall` gives it
+`TUNING.prop.secret.hits` (two) and a visible crack after the first, and it is drawn in the room's
+own `wallColor` so nothing gives it away before that crack does.
+
 **The way out is barred.** Every level now ends on an iron door standing in front of its stairs
 (`stair: true`, `prop.door.stairHits`), placed by the generator right after it cuts the exit. Three
 blows, no shouldering, and every blow is noise: the last thing a level asks is that you stand still in
@@ -617,9 +640,20 @@ wheel, failing his `trapSense` roll now and then and going over. `Enemy.update` 
 over one at the top of the method, before any state branch, so a flung body is as gone as a walking
 man; cause `'fall'` skips the two-hit absorb and leaves no body, no blood and no scorch. The goat gets
 `goatFalls` / `updateFall` and the `'falling'` state (a real state: `Goat.update` returns early in it),
-comes back at `goat.safeX/safeY` — the last non-pit point he stood on, recorded every frame — and pays
-`TUNING.fall.damage`. Nothing burns over a hole and the renderer draws pits in `drawPits` **after** the
-decals, so blood never lies across one.
+and pays `TUNING.fall.damage`. Nothing burns over a hole and the renderer draws pits in `drawPits`
+**after** the decals, so blood never lies across one.
+
+Where he comes back is `goat.safeTrail`, a few seconds of the non-pit points he stood on: `goatFalls`
+reaches back `fall.setback` (0.35s) into it so he lands with room behind him rather than flush with the
+lip that just took a heart, and `fall.invuln` (1.5s) gives him a moment to notice. **Every candidate is
+tested against the floor before it is taken**, with `Game.groundNear` — nearest non-pit, non-solid tile
+centre — as a last resort that cannot fail. Handing him back a point that is itself over a drop makes
+him fall again from where he was returned to, and again, until his hearts run out; the trail only ever
+records safe ground, so in ordinary play the first candidate answers, but the check is what makes that
+a guarantee rather than an assumption. For the same reason the landing is latched on `goat.landed`
+rather than on his position differing from the one he is headed for: on the fall where those two
+already matched, the old test silently skipped the whole block — no damage, no move, and the goat left
+standing in the hole.
 
 **What is under a hole.** A hole used to be a flat black square, and from directly above a flat black
 square is also what a pillar looks like — people were reading one as the other. There is a landscape
@@ -872,7 +906,7 @@ the remote is not live. Never stop at the feature branch and never leave `main` 
 was developing on `claude/<something>`, merge that branch into `main` and push `main` as part of the
 deploy, then publish. Opening a pull request instead is only right when the user asks for one.
 
-The artifact is published from `artifact.html` with all twelve scripts passed as supporting files, and
+The artifact is published from `artifact.html` with all fifteen scripts passed as supporting files, and
 always to the existing URL. Republishing without the `url` creates a second artifact.
 
 - `file_path`: `artifact.html`

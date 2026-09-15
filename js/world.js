@@ -310,7 +310,11 @@ class World {
   // until he steps round to where it can be seen from. `vis` is one byte a tile and the renderer
   // paints everything outside it down; nothing else in the game reads it, so the cult's own eyes are
   // untouched — a man behind a pillar can still hear you.
-  computeVis(px, py, radius) {
+  // `throughWalls` is THE ORACLE: nothing between him and the edge of the radius stays dark, so the
+  // cast below is skipped for a plain distance fill instead. It is the only thing in the game that
+  // reads `game.mods` — everything else about the fog is blind to boons on purpose — because it is
+  // not a sharper eye, it is a different sense standing in for the one the fog was built to limit.
+  computeVis(px, py, radius, throughWalls) {
     const v = this.vis, W = this.W, H = this.H;
     // Clear only what the last pass lit: the world is 420 by 78 tiles and this runs every step.
     const b = this.visBox;
@@ -319,6 +323,14 @@ class World {
     this.visBox = { x0: Math.max(0, cx - radius), y0: Math.max(0, cy - radius),
       x1: Math.min(W - 1, cx + radius), y1: Math.min(H - 1, cy + radius) };
     if (cx < 0 || cy < 0 || cx >= W || cy >= H) return;
+    if (throughWalls) {
+      const r2 = radius * radius, bx = this.visBox;
+      for (let ty = bx.y0; ty <= bx.y1; ty++) {
+        const dy = ty - cy, row = ty * W;
+        for (let tx = bx.x0; tx <= bx.x1; tx++) { const dx = tx - cx; if (dx * dx + dy * dy <= r2) v[row + tx] = 1; }
+      }
+      return;
+    }
     v[cy * W + cx] = 1;
     // He can always see the ring of tiles he is standing in the middle of, wall or not: a goat with
     // his nose against a partition is not blind, he is against a partition.
