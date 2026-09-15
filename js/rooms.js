@@ -753,6 +753,23 @@ const KILLBOX_TEMPLATE = { name: 'killbox', noFlipX: true, rows: [
   '######################',
 ]};
 
+// The room the first man of a run stands in. Every other template is drawn from the mix or the
+// canon pool and could be anything the level owns, but this one room's whole job is "try the
+// headbutt on somebody," and a floor full of pillars and furniture between the door and him argued
+// with that. `blockSpot` in `gen.js` stands him a step inside whichever wall the corridor onward
+// left him, so the room itself carries nothing to break the line back to whichever wall the goat
+// came in by — open floor, and nothing else.
+const LESSON_TEMPLATE = { name: 'lesson', canon: 'stone', rows: [
+  '##############',
+  '#............#',
+  '#............#',
+  '#............#',
+  '#............#',
+  '#............#',
+  '#............#',
+  '##############',
+]};
+
 // The room you woke up in. The altar stands off to one side, made ready, with the straps and the
 // knife and what is left of the goat that went before you. You are in the pen beside it.
 // Two tiles wider than it was, so the second cage fits on the right without crowding the way out.

@@ -127,9 +127,14 @@ class Goat {
     if (this.state === 'roll') this.facing = Math.atan2(this.rollDir.y, this.rollDir.x);
 
     // ---- headbutt state machine ----
-    // An arm he picked up in passing is no reason he cannot use his head: the blow puts it down at
-    // his feet and lands anyway. Anything he reached for on purpose still has to leave the mouth first.
-    if (inp.lmbPressed && this.state === 'idle' && (!this.holding || this.autoHeld)) {
+    // A blade or a shield in his mouth is not a thing a headbutt can also do, and standing there
+    // with it while the bash button does nothing used to be the result of pressing it: now the same
+    // press launches it, the way letting go of grab already does. A crate he picked up in passing is
+    // different — the blow puts it down at his feet and lands anyway. Anything else he reached for
+    // on purpose still has to leave the mouth first.
+    if (inp.lmbPressed && this.state === 'idle' && this.holding && this.holding.kind === 'weapon') {
+      this.throwHeld(game);
+    } else if (inp.lmbPressed && this.state === 'idle' && (!this.holding || this.autoHeld)) {
       if (this.holding) this.dropHeld(game);
       this.state = 'windup'; this.timer = g.headbutt.windup;
     }
@@ -184,15 +189,7 @@ class Goat {
         // What throws it. Something he reached for goes when the button he reached with comes up;
         // something that came into his mouth on its own goes on the next press of that button.
         if (this.autoHeld ? rmbEdge : !inp.rmbDown) {
-          h.held = false; this.holding = null; this.autoHeld = false;
-          // A goat is not a gorilla. A crate or a blade goes the length of the room; a grown man
-          // goes a short way and lands, which is still every wall in it and every man standing by one.
-          const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul : h.item ? 1 : g.grab.manThrow;
-          h.fling(this.aim.x * g.grab.throwImpulse * mul, this.aim.y * g.grab.throwImpulse * mul, true);
-          this.grabCd = g.grab.cooldown * game.mods.grabCooldown;
-          if (h.kind === 'weapon') { game.audio.sfxSteel(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
-          else game.audio.sfxSwing();
-          game.vibe(18);
+          this.throwHeld(game);
         } else if (game.mods.devour && !h.item && this.holdTimer >= TUNING.goat.devour.time) {
           // Keep holding and the goat opens him up. Sometimes that is a meal.
           this.holding = null; h.held = false;
@@ -476,6 +473,22 @@ class Goat {
     game.audio.sfxSteel();
   }
 
+  // Let go of whatever is in his mouth by throwing it — grab's release, and now the bash too, when
+  // what he is carrying is a blade or a shield: there is no swing to spend on a weapon he cannot
+  // wield, so launching it is what the button does instead.
+  throwHeld(game) {
+    const h = this.holding, g = TUNING.goat; if (!h) return;
+    h.held = false; this.holding = null; this.autoHeld = false;
+    // A goat is not a gorilla. A crate or a blade goes the length of the room; a grown man goes a
+    // short way and lands, which is still every wall in it and every man standing by one.
+    const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul : h.item ? 1 : g.grab.manThrow;
+    h.fling(this.aim.x * g.grab.throwImpulse * mul, this.aim.y * g.grab.throwImpulse * mul, true);
+    this.grabCd = g.grab.cooldown * game.mods.grabCooldown;
+    if (h.kind === 'weapon') { game.audio.sfxSteel(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
+    else game.audio.sfxSwing();
+    game.vibe(18);
+  }
+
   tryGrab(game) {
     const g = TUNING.goat.grab;
     let best = null, bestD = Infinity;
@@ -590,6 +603,7 @@ class Prop {
     // 'armed' counting down under his hooves, 'up' with the teeth out, then 'down' and a rest.
     this.spikeState = 'idle'; this.spikeT = 0; this.hits = 0;
     this.graze = 0;   // heal only: seconds the goat has stood in it, still and near, unbroken
+    this.fullTold = false;   // heal only: said FULL once this visit, so standing there does not spam it
     // A secret's own patch of wall colour, carried on the prop because the renderer never otherwise
     // reaches back to the level's palette mid-draw. Falls back to level one's colours; gen.js always
     // supplies the real ones.
@@ -735,6 +749,7 @@ class Prop {
     }
     if (!n) return;
     game.cageOpen = true; game.notePenBroken();
+    game.cageThought = TUNING.cageThought;
     game.world.emitNoise(this.x, this.y, TUNING.noise.cage);
     game.audio.sfxCage(); game.shake(12); game.hitstop(0.06); game.vibe(50);
     game.flash(PALETTE.bone, 0.3); game.zoomPunch(1.5);

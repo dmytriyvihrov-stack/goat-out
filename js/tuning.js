@@ -395,13 +395,20 @@ const TUNING = {
   // `res` is how many pixels of the mask one tile gets before it is blown up over the world, which
   // is the whole of how soft the edge of a shadow is: at 1 a shadow fades over a tile and reads as
   // a smudge, and at 2 it fades over half of one and reads as an edge.
-  fog: { shade: 0.8, radius: 26, res: 2 },
+  // `shade` was 0.8: dark enough to hide a man standing still, not dark enough to hide one moving —
+  // a red hood or a rifle's silhouette read through it from across a room that had not been opened,
+  // which gave away what was coming before the door did. Raised to keep the room's contents a
+  // shape you cannot name rather than one you can.
+  fog: { shade: 0.94, radius: 26, res: 2 },
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
   // first has found a room, so most levels get one and some get two rather than every level getting
   // a guaranteed pair. `carveSecret` in gen.js does the finding; this is only ever the odds.
   secret: { chance2: 0.35 },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
+  // A beat of thought the moment the pen gives: not a caption, a small comic-panel bubble over his
+  // head with her in it, gone before the room needs looking at. `cageThought` counts it down.
+  cageThought: 2.4,
   // The scene that opens a run. Seconds per beat, and every one of them slower than it reads on
   // paper: this is the only place in the game where nothing is chasing you, and it is worth the time
   // it takes. The camera comes in over `push` and a little further as they take her; `arrive` is the
@@ -585,7 +592,7 @@ const BOONS = [
     apply: (m) => { m.screamStun = true; m.screamCooldown = TUNING.goat.scream.cooldown; } },
   { id: 'breath', skill: 'scream', active: true, name: 'DRAGON BREATH', desc: 'The scream becomes a cone of fire. Slower to recharge.',
     apply: (m) => { m.breath = true; m.screamCooldown = TUNING.goat.breath.cooldown; } },
-  { id: 'bomb', skill: 'butt', active: true, name: 'BOMB CHARGE', desc: 'Anyone you headbutt detonates a moment later.',
+  { id: 'bomb', skill: 'butt', active: true, name: 'BOMB CHARGE', desc: 'Anyone you headbutt goes off if he lands on a wall or another man.',
     apply: (m) => { m.bomb = true; } },
   { id: 'devour', skill: 'grab', active: true, needs: 'grabMen', name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
     apply: (m) => { m.devour = true; } },
@@ -597,7 +604,7 @@ const BOONS = [
   { id: 'horns', skill: 'butt', name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.', apply: (m) => { m.headbuttReach *= 1.55; m.headbuttImpulse *= 1.35; } },
   { id: 'skull', skill: 'butt', name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.', apply: (m) => { m.headbuttRecovery *= 0.5; } },
   { id: 'jaw', skill: 'grab', needs: 'grabMen', name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.', apply: (m) => { m.shieldBullets = 4; m.holdTime = 13; m.grabCooldown *= 0.6; } },
-  { id: 'shield', skill: 'grab', needs: 'grabMen', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing. At his own.', apply: (m) => { m.livingShield = true; } },
+  { id: 'shield', skill: 'grab', needs: 'grabMen', name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing — at his own side, not you.', apply: (m) => { m.livingShield = true; } },
   { id: 'throat', skill: 'scream', name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.', apply: (m) => { m.screamCooldown *= 0.5; m.screamRadius = 13; } },
   { id: 'hooves', name: 'SURE HOOVES', desc: 'Run faster than anything in the building.', apply: (m) => { m.speed *= 1.18; } },
   { id: 'joints', skill: 'roll', name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.', apply: (m) => { m.rollDistance *= 1.35; m.rollCooldown *= 0.45; } },
@@ -675,7 +682,8 @@ const LEVELS = [
     // The wheel is met with nobody standing in the room, and arms are not a thing you find until
     // halfway in: the first half of the run is the goat and his head and nothing else.
     millAt: 5, millSolo: true, heals: 3, souls: 1, racks: 0.2, racksFrom: 0.5, traps: 1, crates: 0.3,
-    coops: 0.14,
+    // No hen yet. She is the one thing in the compound on your side, and a goat who has not been
+    // shown a single fight to the finish has nothing to weigh "an ally who kills once" against.
     encounters: {
       kinds: ['bearer', 'champion'],
       introduce: [['bearer', 0], ['champion', 0.8]],
@@ -706,7 +714,7 @@ const LEVELS = [
     // he does. The first arena, ahead of the vault, is not worth locking — nothing about it is the
     // level's one soul, and a door that means nothing is a door not worth building.
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer', sealed: true }],
-    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6, coops: 0.12,
+    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6, coops: 0.1,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],
       introduce: [['dog', 0.12], ['seer', 0.5]],
@@ -723,7 +731,7 @@ const LEVELS = [
     // cover: the level is about the strip of floor a rifle cannot see and how you get to it.
     canon: { id: 'line', name: 'THE LINE', idea: 'Long sightlines and hard cover. A rifle owns whatever it can see, so the room is about what it cannot, and about crossing the rest.' },
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2, coops: 0.1,
+    millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2, coops: 0.08,
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
     // heels crosses a beat later, when it is no longer floor.
     spikes: 0.3, crates: 0.35, vaultAt: 7,

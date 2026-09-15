@@ -182,6 +182,13 @@ function tryGenerate(levelDef, seed) {
   const trapRooms = pickTrapRooms(levelDef, n, trapPool.length, rng);
   const canonRooms = canonPool.length ? pickCanonRooms(levelDef, n, trapRooms) : new Set();
   let trapIdx = 0;
+  // The sentry's room is the first ordinary room of the level — `introduce: [['bearer', 0]]` always
+  // resolves to it — and it is the one room whose template is not left to the canon/mix draw: it is
+  // forced to `LESSON_TEMPLATE`, open floor with nothing in it to break the line from the door to
+  // whichever wall he is standing against. Computed the same way `ordinaryRooms` is, before any
+  // room exists yet, because the template is chosen room by room below and this one has to be known
+  // going in rather than fixed up after the fact.
+  const sentryRoomAt = levelDef.sentryIntro ? ordinaryRooms(levelDef, n)[0] : -1;
   // The gap between one room and the next, on average, for the width budget below.
   const GAP = 5;
   // Which of the set pieces still lie ahead of room `i`, by width, so a room can be given its fair
@@ -215,6 +222,7 @@ function tryGenerate(levelDef, seed) {
     else if (i === levelDef.hallAt) tpl = GREAT_HALL_TEMPLATE;
     else if (i === levelDef.galleryAt) tpl = GALLERY_TEMPLATE;
     else if (i === levelDef.killboxAt) tpl = KILLBOX_TEMPLATE;
+    else if (i === sentryRoomAt) tpl = LESSON_TEMPLATE;
     else if (trapRooms.has(i)) tpl = trapPool[trapIdx++ % trapPool.length];
     else if (canonRooms.has(i)) tpl = draw(canonPool, canonIdx++, i);
     else tpl = draw(mixPool, mixIdx++, i);
@@ -595,6 +603,20 @@ function tryGenerate(levelDef, seed) {
     // watched got all the way to the wheel without working out that the men could be hit at all.
     if (lessonRoom) controls.push({ x: (lessonRoom.x + lessonRoom.w / 2) * TILE,
       y: (lessonRoom.y + lessonRoom.h / 2) * TILE, w: lessonRoom.w * TILE, part: 2 });
+    // The roll used to be taught here too, before there was a single thing in the level worth
+    // dodging. It waits instead for the first room past the lesson that already holds a small crowd
+    // — a dodge means nothing as a word on an empty floor — picked closest to the level's own middle
+    // so it lands well into the run rather than right on the man who is still teaching the headbutt.
+    const rollCandidates = ordinaryRooms(levelDef, rooms.length)
+      .filter((i) => i !== lessonIndex && i !== levelDef.vaultAt && !trapRooms.has(i))
+      .map((i) => ({ i, men: ((plan.rooms.get(i) || {}).men || []).length }))
+      .filter((c) => c.men >= 2);
+    if (rollCandidates.length) {
+      const mid = (rooms.length - 1) / 2;
+      rollCandidates.sort((a, b) => Math.abs(a.i - mid) - Math.abs(b.i - mid));
+      const r = rooms[rollCandidates[0].i];
+      controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: 3 });
+    }
   }
   return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
     hints, controls, cagePrompt, vault, windows, plan, soulGate, sealedArenas };

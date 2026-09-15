@@ -5,22 +5,33 @@ const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 
 // The controls, painted on the floor over the two rooms after the pen. Nothing about the mouse:
 // a crosshair on a top-down game explains itself, and the floor has room for what it does not.
-// The third block is not in an empty room: it goes under the first man of the run, because two
-// rooms of words about a headbutt turned out not to add up to "the men can be hit" on their own.
+// Block 2 is not in an empty room: it goes under the first man of the run, and it no longer
+// repeats the headbutt and wall lines — he has already read them two rooms back, and a room
+// whose whole point is trying the verb on somebody does not need the verb explained again.
+// Block 3 is the roll: it used to sit in block 0, taught before there was anything in the level
+// worth dodging, and now waits for a room with a small crowd already in it, further into the
+// level — see `rollRoom` in `gen.js`.
 const CONTROL_LINES = {
   key: [
-    ['WASD — RUN', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'E — ROLL OUT OF THE WAY'],
-    ['HOLD RIGHT CLICK — CARRY', 'A BOX, A BLADE, A SHIELD', 'LET GO — THROW',
-      'SPACE — BAAH', 'THEY COME TO THE NOISE'],
-    ['BUTT HIM', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS'],
+    ['WASD — TO MOVE', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS'],
+    ['RIGHT CLICK — GRAB OBJECT', 'RELEASE — THROW',
+      'SPACE — BAAH, THEY COME TO THE NOISE', 'CLOSE UP IT BREAKS THEIR SWING'],
+    ['BUTT HIM'],
+    ['E — ROLL', 'OUT OF THE WAY'],
   ],
   touch: [
-    ['LEFT THUMB — RUN', 'BUTT — HEADBUTT', 'INTO A WALL KILLS', 'ROLL — OUT OF THE WAY'],
-    ['HOLD GRAB — CARRY', 'A BOX, A BLADE, A SHIELD', 'LET GO — THROW',
-      'BAAH — THEY COME TO THE NOISE'],
-    ['BUTT HIM', 'BUTT — HEADBUTT', 'INTO A WALL KILLS'],
+    ['LEFT THUMB — TO MOVE', 'BUTT — HEADBUTT', 'INTO A WALL KILLS'],
+    ['GRAB — HOLD TO CARRY', 'RELEASE — THROW',
+      'BAAH — THEY COME TO THE NOISE', 'CLOSE UP IT BREAKS THEIR SWING'],
+    ['BUTT HIM'],
+    ['ROLL — OUT OF THE WAY'],
   ],
 };
+
+// The key that throws each skill, read by the soul card so a new boon shows what activates it
+// next to what it does, not just a name to remember. Kept in step with the `cap` on each row of
+// `drawSkills`.
+const SKILL_KEYS = { butt: 'LMB', grab: 'RMB', roll: 'E', scream: 'SPC' };
 
 // A level's hint says what the room is about; this says which button it is about. `hintKey` on a
 // level definition picks one, and the keyboard or the touch wording follows what is in the player's
@@ -124,7 +135,12 @@ class Renderer {
       this.drawRunes(game);
       this.drawSouls(game);
       const lit = (o) => !game.hidden(o.x, o.y);
-      for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && lit(p) && !(p.kind === 'cage' && !p.deco && p.y > game.goat.y)) this.drawProp(p);
+      // Nothing else in the game Y-sorts against the goat — draw order is otherwise fixed, which is
+      // fine for a wall-hugging crate or a bowl of coals. A cage bar always needed the exception; a
+      // sword or shield lying on the floor is the same problem at the same scale, and drawing it
+      // flat underneath him whenever he had walked past it read as the weapon sinking into the floor.
+      const inFront = (p) => (p.kind === 'cage' && !p.deco || p.kind === 'weapon' && !p.inStand) && p.y > game.goat.y;
+      for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && lit(p) && !inFront(p)) this.drawProp(p);
       for (const e of game.enemies) if (!e.dead && lit(e) && (e.state === 'floored' || e.state === 'stunned')) this.drawEnemy(e, game);
       for (const p of game.props) if (!p.broken && p.kind === 'lamp' && lit(p)) this.drawProp(p);
       for (const e of game.enemies) if (!e.dead && lit(e) && e.state !== 'floored' && e.state !== 'stunned' && e !== game.goat.holding) this.drawEnemy(e, game);
@@ -132,10 +148,11 @@ class Renderer {
       if (!game.goat.dead) this.drawGoat(game.goat, game);
       if (game.goat.holding) { const hld = game.goat.holding; if (hld.item) this.drawProp(hld); else this.drawEnemy(hld, game); }
       if (game.intro) this.drawIntroWorld(game);
-      for (const p of game.props) if (!p.broken && p.kind === 'cage' && !p.deco && p.y > game.goat.y) this.drawProp(p);
+      for (const p of game.props) if (!p.broken && lit(p) && inFront(p)) this.drawProp(p);
       this.drawBreath(game);
       this.drawRings(game);
       this.drawParticles(game);
+      this.drawCageThought(game);
       this.drawFloatTexts(game);
       this.drawShade(game, cam);        // last of everything in world space: it covers what it covers
       ctx.restore();
@@ -560,16 +577,21 @@ class Renderer {
     ctx.rotate(p.angle);
     for (const dir of [0, Math.PI]) {
       ctx.save(); ctx.rotate(dir);
-      ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.fillRect(M.innerR - 6, -7 + 6, M.armLen - M.innerR + 10, 16);
-      ctx.fillStyle = PALETTE.wood; ctx.fillRect(M.innerR - 6, -8, M.armLen - M.innerR + 10, 16);
-      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(M.innerR - 6, -8, M.armLen - M.innerR + 10, 4);
-      if (this.altar) {
-        const P = PALETTE.altar;
-        ctx.fillStyle = P.woodDark; ctx.fillRect(M.innerR - 6, 5, M.armLen - M.innerR + 10, 2);
-        for (let x = M.innerR; x < M.armLen - 18; x += 19) {
-          ctx.fillStyle = P.woodGrain; ctx.fillRect(x, -1, 12, 1);
-          ctx.fillStyle = P.iron; ctx.fillRect(x, -8, 3, 16);
-          ctx.fillStyle = P.ironHi; ctx.fillRect(x + 1, -6, 1, 2);
+      // The source beam is a fixed-proportion prop, so it is stretched to the tuned arm length
+      // rather than tiled; the extra level-one-only grain/stud detail below it is dropped in favour,
+      // since the art already carries its own grain and bands.
+      if (!(this.painted.ready && this.painted.millArm(ctx, M.innerR - 6, M.armLen - M.innerR + 10))) {
+        ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.fillRect(M.innerR - 6, -7 + 6, M.armLen - M.innerR + 10, 16);
+        ctx.fillStyle = PALETTE.wood; ctx.fillRect(M.innerR - 6, -8, M.armLen - M.innerR + 10, 16);
+        ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(M.innerR - 6, -8, M.armLen - M.innerR + 10, 4);
+        if (this.altar) {
+          const P = PALETTE.altar;
+          ctx.fillStyle = P.woodDark; ctx.fillRect(M.innerR - 6, 5, M.armLen - M.innerR + 10, 2);
+          for (let x = M.innerR; x < M.armLen - 18; x += 19) {
+            ctx.fillStyle = P.woodGrain; ctx.fillRect(x, -1, 12, 1);
+            ctx.fillStyle = P.iron; ctx.fillRect(x, -8, 3, 16);
+            ctx.fillStyle = P.ironHi; ctx.fillRect(x + 1, -6, 1, 2);
+          }
         }
       }
       ctx.fillStyle = '#6d6a66'; ctx.fillRect(M.armLen - 16, -12, 16, 24);        // iron cap
@@ -578,7 +600,7 @@ class Renderer {
       ctx.restore();
     }
     if (this.altar) ctx.drawImage(this.altar.sprite('mill', M.hubR), -48, -64);
-    else {
+    else if (!(this.painted.ready && this.painted.atlas(ctx, 'mill-hub', 0, 0, M.hubR * 2.2, undefined, 0.5))) {
       ctx.fillStyle = '#4d4741'; ctx.beginPath(); ctx.arc(0, 0, M.hubR, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#6a635b'; ctx.beginPath(); ctx.arc(0, -3, M.hubR - 5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#2e2a26'; ctx.beginPath(); ctx.arc(0, -3, 7, 0, Math.PI * 2); ctx.fill();
@@ -587,7 +609,7 @@ class Renderer {
   }
 
   drawPropBody(p) {
-    if (this.altar && this.altar.drawProp(this, p)) return;
+    if (this.painted.ready && this.painted.drawProp(this, p)) return;
     const ctx = this.ctx;
     if (p.kind === 'brazier') {
       this.shadow(p.x, p.y, p.r * 1.1, p.r * 0.55);
@@ -605,6 +627,10 @@ class Renderer {
     } else if (p.kind === 'door') {
       const tall = p.vertical;
       const wdt = tall ? 13 : 58, hgt = tall ? 58 : 13;
+      // The expansion pack only drew the vertical (north-wall-facing) orientation — the vault door
+      // is horizontal and keeps the fully procedural slab. See assets/painted-expansion-v1/HANDOFF.md.
+      const painted = tall && this.painted.ready;
+      const bw = painted ? 34 : wdt, bh = painted ? 34 : hgt;
       // The soul door carries the soul's own halo. An iron door in a corridor and the one with a
       // soul behind it used to be the same grey slab, which is why nobody went to the second one.
       if (p.vault || p.gate) {
@@ -616,29 +642,35 @@ class Renderer {
         ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(p.x, p.y, 56, 0, Math.PI * 2); ctx.fill();
       }
       ctx.save(); ctx.translate(p.x, p.y);
-      if (p.open > 0) ctx.rotate((tall ? -1 : 1) * p.open * 1.25);
-      this.shadow(0, 0, wdt * 0.6, hgt * 0.4);
-      // Planks, unless it is the vault's: iron is darker, banded across, studded, and carries a
-      // notch for every blow it has already taken, so four hits is a count and not a wall.
-      ctx.fillStyle = p.iron ? '#3a3a40' : PALETTE.wood; ctx.fillRect(-wdt / 2, -hgt / 2, wdt, hgt);
-      ctx.fillStyle = p.iron ? '#5d5f68' : PALETTE.woodHi; ctx.fillRect(-wdt / 2, -hgt / 2, tall ? 4 : wdt, tall ? hgt : 4);
-      if (this.altar) this.altar.doorDetail(ctx, p, wdt, hgt);
-      ctx.strokeStyle = p.iron ? 'rgba(10,10,14,0.7)' : 'rgba(26,16,22,0.55)'; ctx.lineWidth = p.iron ? 3 : 2;
-      ctx.beginPath();
-      for (let k = -1; k <= 1; k++) { if (tall) { ctx.moveTo(-wdt / 2, k * 16); ctx.lineTo(wdt / 2, k * 16); } else { ctx.moveTo(k * 16, -hgt / 2); ctx.lineTo(k * 16, hgt / 2); } }
-      ctx.stroke();
-      if (p.iron) {
-        ctx.fillStyle = '#8a8d96';
-        for (let k = -1; k <= 1; k += 2) for (let j = -1; j <= 1; j += 2) {
-          ctx.beginPath(); ctx.arc(k * (tall ? 3.5 : 22), j * (tall ? 22 : 3.5), 1.9, 0, Math.PI * 2); ctx.fill();
-        }
-        // what it has left in it, scored across the face
-        ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 2;
-        for (let k = 0; k < (p.hits || 0); k++) {
-          const o = (k - 1) * 9;
-          ctx.beginPath();
-          if (tall) { ctx.moveTo(-wdt / 2, o); ctx.lineTo(wdt / 2, o + 4); } else { ctx.moveTo(o, -hgt / 2); ctx.lineTo(o + 4, hgt / 2); }
-          ctx.stroke();
+      if (!painted && p.open > 0) ctx.rotate((tall ? -1 : 1) * p.open * 1.25);
+      this.shadow(0, 0, bw * 0.6, bh * 0.4);
+      if (painted) {
+        // Sprite-switched closed/opening/open/broken art. The hit count still pops as floating text
+        // from `Prop.smash`, so nothing here needs the old scored-notch tally.
+        this.painted.door(this, p, 0, 0, bw, bh);
+      } else {
+        // Planks, unless it is the vault's: iron is darker, banded across, studded, and carries a
+        // notch for every blow it has already taken, so four hits is a count and not a wall.
+        ctx.fillStyle = p.iron ? '#3a3a40' : PALETTE.wood; ctx.fillRect(-wdt / 2, -hgt / 2, wdt, hgt);
+        ctx.fillStyle = p.iron ? '#5d5f68' : PALETTE.woodHi; ctx.fillRect(-wdt / 2, -hgt / 2, tall ? 4 : wdt, tall ? hgt : 4);
+        if (this.altar) this.altar.doorDetail(ctx, p, wdt, hgt);
+        ctx.strokeStyle = p.iron ? 'rgba(10,10,14,0.7)' : 'rgba(26,16,22,0.55)'; ctx.lineWidth = p.iron ? 3 : 2;
+        ctx.beginPath();
+        for (let k = -1; k <= 1; k++) { if (tall) { ctx.moveTo(-wdt / 2, k * 16); ctx.lineTo(wdt / 2, k * 16); } else { ctx.moveTo(k * 16, -hgt / 2); ctx.lineTo(k * 16, hgt / 2); } }
+        ctx.stroke();
+        if (p.iron) {
+          ctx.fillStyle = '#8a8d96';
+          for (let k = -1; k <= 1; k += 2) for (let j = -1; j <= 1; j += 2) {
+            ctx.beginPath(); ctx.arc(k * (tall ? 3.5 : 22), j * (tall ? 22 : 3.5), 1.9, 0, Math.PI * 2); ctx.fill();
+          }
+          // what it has left in it, scored across the face
+          ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 2;
+          for (let k = 0; k < (p.hits || 0); k++) {
+            const o = (k - 1) * 9;
+            ctx.beginPath();
+            if (tall) { ctx.moveTo(-wdt / 2, o); ctx.lineTo(wdt / 2, o + 4); } else { ctx.moveTo(o, -hgt / 2); ctx.lineTo(o + 4, hgt / 2); }
+            ctx.stroke();
+          }
         }
       }
       if (p.vault || p.gate) {
@@ -654,11 +686,11 @@ class Renderer {
         ctx.moveTo(0, -3.6); ctx.bezierCurveTo(2, -1, 2.2, 1.8, 0, 3);
         ctx.bezierCurveTo(-2.2, 1.8, -2, -1, 0, -3.6); ctx.fill();
         ctx.restore(); ctx.globalAlpha = 1;
-      } else {
+      } else if (!painted) {
         ctx.fillStyle = p.iron ? '#c9ccd4' : PALETTE.ochre;
         ctx.beginPath(); ctx.arc(0, 0, p.iron ? 4 : 3.2, 0, Math.PI * 2); ctx.fill();
       }
-      if (p.pressure > 0.15) { ctx.strokeStyle = `rgba(192,57,43,${Math.min(0.8, p.pressure)})`; ctx.lineWidth = 2; ctx.strokeRect(-wdt / 2 - 2, -hgt / 2 - 2, wdt + 4, hgt + 4); }
+      if (p.pressure > 0.15) { ctx.strokeStyle = `rgba(192,57,43,${Math.min(0.8, p.pressure)})`; ctx.lineWidth = 2; ctx.strokeRect(-bw / 2 - 2, -bh / 2 - 2, bw + 4, bh + 4); }
       ctx.restore();
       // ...and a word over the top of it. The vault says what is behind it; the gate says what it
       // wants, which is the only instruction in the game that is also a reward.
@@ -2235,20 +2267,22 @@ class Renderer {
     halo.addColorStop(0.55, `rgba(125,92,255,${0.12 * flick})`);
     halo.addColorStop(1, 'rgba(125,92,255,0)');
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, 34 * k, 0, Math.PI * 2); ctx.fill();
-    // the body of it: a teardrop of flame, wider at the bottom, drawn upward
-    ctx.fillStyle = PALETTE.witch; ctx.beginPath();
-    ctx.moveTo(0, -15 * k * flick);
-    ctx.bezierCurveTo(7.5 * k, -5 * k, 8.5 * k, 6 * k, 0, 10 * k);
-    ctx.bezierCurveTo(-8.5 * k, 6 * k, -7.5 * k, -5 * k, 0, -15 * k * flick);
-    ctx.fill();
-    ctx.fillStyle = PALETTE.witchHi; ctx.beginPath();
-    ctx.moveTo(0, -8 * k * flick);
-    ctx.bezierCurveTo(4 * k, -2 * k, 4.4 * k, 4 * k, 0, 6.4 * k);
-    ctx.bezierCurveTo(-4.4 * k, 4 * k, -4 * k, -2 * k, 0, -8 * k * flick);
-    ctx.fill();
-    // and the two cold points in it, which is the only part of the man that is left
-    ctx.fillStyle = PALETTE.blood;
-    ctx.fillRect(-3 * k, -1.4 * k, 1.8 * k, 2.6 * k); ctx.fillRect(1.2 * k, -1.4 * k, 1.8 * k, 2.6 * k);
+    if (!(this.painted.ready && this.painted.soulWispBody(ctx, 26 * k * flick))) {
+      // the body of it: a teardrop of flame, wider at the bottom, drawn upward
+      ctx.fillStyle = PALETTE.witch; ctx.beginPath();
+      ctx.moveTo(0, -15 * k * flick);
+      ctx.bezierCurveTo(7.5 * k, -5 * k, 8.5 * k, 6 * k, 0, 10 * k);
+      ctx.bezierCurveTo(-8.5 * k, 6 * k, -7.5 * k, -5 * k, 0, -15 * k * flick);
+      ctx.fill();
+      ctx.fillStyle = PALETTE.witchHi; ctx.beginPath();
+      ctx.moveTo(0, -8 * k * flick);
+      ctx.bezierCurveTo(4 * k, -2 * k, 4.4 * k, 4 * k, 0, 6.4 * k);
+      ctx.bezierCurveTo(-4.4 * k, 4 * k, -4 * k, -2 * k, 0, -8 * k * flick);
+      ctx.fill();
+      // and the two cold points in it, which is the only part of the man that is left
+      ctx.fillStyle = PALETTE.blood;
+      ctx.fillRect(-3 * k, -1.4 * k, 1.8 * k, 2.6 * k); ctx.fillRect(1.2 * k, -1.4 * k, 1.8 * k, 2.6 * k);
+    }
     // sparks, going round it against the turn of everything else in the game
     for (let i = 0; i < 5; i++) {
       const a = -this.t * 1.7 + phase + i * (Math.PI * 2 / 5);
@@ -2329,7 +2363,7 @@ class Renderer {
   drawBoonChoice(game) {
     game.boonRects = [];
     if (game.state !== 'boon' || !game.boonChoice) return;
-    const ctx = this.ctx, s = this.ts, n = game.boonChoice.length;
+    const ctx = this.ctx, s = this.ts, n = game.boonChoice.length, fire = !!game.mods.breath;
     ctx.fillStyle = 'rgba(13,10,12,0.86)'; ctx.fillRect(0, 0, this.w, this.h);
     ctx.textAlign = 'center';
     const stack = this.portrait || this.vw < 760 * s;
@@ -2361,6 +2395,16 @@ class Renderer {
         ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${12 * s}px ${FONT_SC}`;
         ctx.fillText(String(i + 1), x + 15 * s, y + 19 * s);
       }
+      // What it hangs off, drawn the same way the rail draws it, so the card that offers a boon
+      // and the chip that later shows it are recognisably the same picture. A boon with no `skill`
+      // is body work and gets neither — nothing on the rail changes for it either.
+      if (b.skill) {
+        ctx.save(); ctx.translate(x + cw - 20 * s, y + 17 * s);
+        this.skillIcon(b.skill, 10 * s, game, fire);
+        ctx.restore();
+        ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
+        ctx.fillText(SKILL_KEYS[b.skill], x + cw - 20 * s, y + 34 * s);
+      }
     }
     ctx.textAlign = 'left';
   }
@@ -2379,6 +2423,63 @@ class Renderer {
     const ctx = this.ctx;
     for (const p of game.parts) { ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
     ctx.globalAlpha = 1;
+  }
+
+  // The moment the pen gives, before the room needs looking at: a small comic-panel thought over
+  // his head with her in it, in miniature — the same shape the sheep is built from — and gone in a
+  // couple of seconds. It says what the three flat prologue screens already carry the weight of:
+  // who this run is actually for, at the one moment control has just come back and there is
+  // otherwise nothing on screen asking to be looked at.
+  drawCageThought(game) {
+    if (game.cageThought <= 0 || game.goat.dead) return;
+    const dur = TUNING.cageThought, left = game.cageThought;
+    const a = clamp(Math.min((dur - left) / 0.4, left / 0.7), 0, 1);
+    if (a <= 0) return;
+    const ctx = this.ctx, g = game.goat, bob = Math.sin(this.t * 3) * 1.5;
+    ctx.save(); ctx.translate(g.x, g.y); ctx.scale(1, 1 / TILT);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba(239,230,208,0.9)'; ctx.strokeStyle = 'rgba(13,10,12,0.55)'; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.arc(6, -28, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(13, -37, 4.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // The panel itself is grass, not a dark thought-cloud: the same colour the healing patches use,
+    // which is the one place the game already draws a meadow. A black bubble read as an ominous
+    // thing rather than as a memory.
+    const bx = 32, by = -58 + bob, bw = 42, bh = 29;
+    ctx.beginPath(); ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(239,230,208,0.94)'; ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = PALETTE.grass; ctx.fillRect(bx - bw / 2, by, bw, bh / 2 + 2);
+    ctx.fillStyle = PALETTE.grassHi;
+    for (let i = -bw / 2; i < bw / 2; i += 3.4) {
+      ctx.beginPath(); ctx.moveTo(bx + i, by + 1); ctx.lineTo(bx + i + 1, by - 4); ctx.lineTo(bx + i + 2, by + 1); ctx.fill();
+    }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(13,10,12,0.55)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Her, not a stand-in shape: the same drawing `drawSheep` does for the real one, at a third the
+    // size, so what he is picturing is recognisably her rather than a generic woolly blob.
+    ctx.save(); ctx.translate(bx - 3, by + 3); ctx.scale(0.42, 0.42);
+    ctx.strokeStyle = '#3a322f'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(3, -4); ctx.lineTo(4.5, -11); ctx.moveTo(-8, -4); ctx.lineTo(-9.5, -11); ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(3, 4); ctx.lineTo(5, 15); ctx.moveTo(-8, 4); ctx.lineTo(-10, 15); ctx.stroke();
+    ctx.fillStyle = PALETTE.bone;
+    for (let i = 0; i < 11; i++) {
+      const ang = i / 11 * Math.PI * 2;
+      ctx.beginPath(); ctx.arc(-3 + Math.cos(ang) * 12, 0.5 + Math.sin(ang) * 6.6, 5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.beginPath(); ctx.ellipse(-3, 0.5, 13.5, 7.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-17, 1, 3.6, 0, Math.PI * 2); ctx.fill();   // tail
+    ctx.fillStyle = '#4a3f3a';
+    ctx.beginPath(); ctx.moveTo(5, -1); ctx.quadraticCurveTo(13, 0, 17, 4.5); ctx.quadraticCurveTo(20, 7.5, 16.5, 10.5);
+    ctx.quadraticCurveTo(11, 14, 6, 10); ctx.quadraticCurveTo(3.5, 7.5, 5, -1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PALETTE.bone;
+    ctx.beginPath(); ctx.arc(7.5, 0.5, 4.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(11.2, 1.6, 3.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4a3f3a'; ctx.beginPath(); ctx.ellipse(8.5, 11.5, 4.6, 2.3, 0.8, 0, Math.PI * 2); ctx.fill();   // ear
+    ctx.fillStyle = '#fbf5e6'; ctx.beginPath(); ctx.ellipse(12.5, 5.6, 2.9, 2.3, 0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(11.4, 5, 3.4, 1.8);
+    ctx.restore();
+    ctx.restore(); ctx.globalAlpha = 1;
   }
 
   drawFloatTexts(game) {

@@ -30,26 +30,170 @@ level but the first — still falls back to the original primitive-shape renderi
 `js/render.js` / `js/altar-art.js`. That fallback is deliberate, not broken: `PaintedArt
 extends AltarArt` and only overrides what has been painted.
 
+## Expansion pack integrated — 2026-09-15
+
+`assets/painted-expansion-v1/HANDOFF.md` describes the separate asset package GPT
+delivered: four approved units with 8 directions and 4 walk frames, sheep tail wag,
+8-frame brazier/torch/lantern fire loops, four door types with four states, and 16
+level-one props. Open `assets/painted-expansion-v1/preview.html` to inspect the
+animations. Claude wired the pack into the runtime the same day: `tools/pack-painted-
+expansion.cjs` base64-embeds the already-packed sheets (`units/*-walk.png`,
+`effects/*-fire.png`, `doors/*.png`, `objects/atlas.png` — the idle sheets are not
+embedded, since idle is just column 1 of the walk sheet) into `js/painted-assets-v1.js`,
+loaded by both HTML files right after `js/painted-assets.js`. `js/painted-art.js` reads
+both asset files into one `PaintedArt` instance.
+
+**What changed and where it now shows:**
+
+- **Sheep, clubman, mage, hound** (`PaintedArt.character`) draw the real 8-direction
+  walk cycle instead of the old mirrored front/back pair with a shear-and-bob fake
+  trot. Row picks the facing (the manifest's own `atan2(dy,dx)` convention, which is
+  also this game's `facing` convention — no transform needed), column picks the walk
+  frame; idle holds column 1. Windup/swing now lean along the real facing angle rather
+  than a screen-space nudge that only ever worked because of the old mirror. Falls back
+  to the original front/back stamp if a walk sheet fails to load. This was never gated
+  to level one, so it's already live everywhere.
+- **Brazier and lamp** (`PaintedArt.drawProp`) draw the animated 8-frame fire loop
+  instead of a static bowl/post. Along with **crate and bell**, these are no longer
+  gated to level one — `Renderer.drawPropBody`'s painted check is now
+  `this.painted.ready` instead of `this.altar` (which stays level-one-only, for tiles).
+  So all four now render on every level.
+- **Doors** (`Renderer`'s door branch) swap in the four-state (closed/opening/open/
+  broken) sprite for **vertical** doors only — the pack only drew the north-wall-facing
+  orientation (see its HANDOFF.md); the one horizontal door in the game, the vault,
+  keeps the fully procedural slab. The halo, the pressure-outline flash, the soul-gate
+  wisp icon and the "SOUL" / "A SOUL OPENS IT" floor text are all unchanged and still
+  draw on top — only the plank/iron slab body was swapped, and the old scored-hit-count
+  notches are dropped in favor of the (already-existing) floating "N MORE" text.
+- **Worktable, weapon stand + sword + shield, healing grass, spike plates, mill hub,
+  mill arm, secret wall, soul wisp** now use the atlas art (`objects/atlas.png`),
+  all level-agnostic. Spikes keep their arm/idle/arming distinction (down still shows
+  teeth, since it's still retracting). The mill arm — a moving hazard whose readability
+  is load-bearing, see `CLAUDE.md`'s **Trap sense** — is stretched from the atlas beam
+  to the tuned `TUNING.mill.armLen`, verified in-browser at gameplay zoom rather than
+  guessed; the iron tip is still a small procedural block on top, kept for the "this
+  end kills" tell. The secret wall is tinted to each patch's own `p.wallColor` at draw
+  time (`PaintedArt.secretWallTinted`, cached per colour) so it still hides until it
+  cracks — the delivered art is one fixed stone colour and would otherwise give every
+  hidden wall away by its color alone. The soul wisp keeps its procedural halo (before)
+  and orbiting sparks (after) — those are what read as motion — with only the static
+  teardrop body swapped for the art (`Renderer.soulWisp`).
+- **Cage bars are still fully procedural, and this is a real finding, not a gap**:
+  `cage-bars.png` / `cage-broken.png` turned out to be a whole three-post fence panel,
+  not a single post — this game builds the pen from one `Prop` per individual bar
+  (`buildCage` in `gen.js`), so stamping the panel on every bar would triple-draw posts.
+  See the brief below for the correction to ask for.
+
+**Still not wired — no clean hook, left for a future pass or a data-model change:**
+
+- **Crate-debris.** A shattered crate is removed outright (`Prop.shatter` in
+  `entities.js`) and never re-rendered; there is no lingering Prop or decal to stamp
+  the debris art onto. Would need a small addition to `shatter()` (a brief decal stamp
+  on `world.decal`, the same pattern already used for blood and scorch marks) — that's
+  a deliberate scope call, not a missing asset, so it's listed in the brief below rather
+  than requested again.
+- **Torch-fire.** No fixture to attach it to — only `brazier` and `lamp` exist as lit
+  Props today; there is no decorative wall-torch object in the game.
+
 ## Not done — what to paint next
 
 In roughly the order a playthrough meets it:
 
-1. **Hunter** (rifleman). No art exists. `characterKey()` returns `null` for it, so it
-   still renders as the old vector shape everywhere, including on level one.
-2. **Wraith** and **Butcher**. Same — no art, no `characterKey()` entry. These only
-   appear from level 3 on, so lower priority than the hunter.
-3. **Levels two through seven** (THE YARD, THE ROAD, THE THRESHING FLOOR, THE BRIDGE,
-   THE RAFTERS, THE OSSUARY). The whole painted-tile/painted-prop system is gated to
-   level one (`renderer.altar` is only set when `game.levelIndex === 0`, in `Renderer.draw`).
-   Extending it to another level means new tile/wall art matching that level's canon
-   (see `CLAUDE.md`'s **Canons** section for what each level is about) and pointing
-   `renderer.altar` at it for that level too — the gating logic will need to widen from
-   a single level check to a per-level art-set lookup.
-4. **Doors, the cage/pen bars, the Mill, spike plates, the weapon stand, the heal
-   (grass) patch, the soul wisp, fire, the secret-wall patch** — all still procedural.
-   None of these are blocking; they read fine as placeholder shapes. Worth painting in
-   roughly that order if there's appetite, since doors and the pen are what a player
-   looks at longest in the opening minutes.
+1. **Hunter, Wraith, Butcher.** No art exists — `characterKey()` returns `null` for all
+   three, so they still render as the old vector shapes on every level. **Concept sheets
+   already exist and are unused**: `output/character-concepts/remaining-characters-v1/`
+   (four design options each, A–D, generated but never turned into full sheets or
+   integrated — see the brief below for which option to take forward).
+2. **Levels two through seven's tiles and walls** (THE YARD, THE ROAD, THE THRESHING
+   FLOOR, THE BRIDGE, THE RAFTERS, THE OSSUARY). `renderer.altar` (the tile/wall/mill-
+   decal layer) is still only set when `game.levelIndex === 0`, because no other
+   level's floor/wall art has been drawn yet — the characters, fixtures, doors and
+   props above are level-agnostic and already show everywhere, but the ground under
+   them is still procedural past level one.
+3. Cage bars (single-post correction) and, optionally, crate-debris and torch-fire —
+   see the brief below.
+
+---
+
+## Brief for the next commission — technical spec, 2026-09-15
+
+Three separate asks. Each can be delivered independently; none block each other.
+
+### A. Levels 2–7: tile and wall art, one set per level
+
+Same deliverable shape as the level-one set already live (`assets/painted/source/tiles.png`,
+packed by `tools/pack-painted-art.cjs`): **8 tiles a level** — `stone0-3` (floor variants),
+`wallFace`, `wallTop`, `boards0-1` (the worked-floor variant `js/altar-art.js`'s
+`prepare()` scatters through storage rooms) — same 128px-ish source-cell convention as
+that pipeline, so it can be packed the same way (a new source sheet, or a row added to
+one, plus the crop math in a `pack-painted-<level>.cjs` copied from the existing packer).
+
+Match each level's **existing procedural palette** below — these are the exact colors
+`js/tuning.js`'s `LEVELS` already use for the fallback floor/wall/fog, so the painted
+version should read as the same room, not a different one:
+
+| # | Canon (`js/tuning.js`) | Idea | floor / floorAlt | wall / wallTop | fog |
+|---|---|---|---|---|---|
+| 2 THE YARD | FIRE | "Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself." | `#8a7554` / `#907b5a` | `#3b2233` / `#55344a` | `#120d12` |
+| 3 THE ROAD | THE LINE | "Long sightlines and hard cover. A rifle owns whatever it can see..." | `#4a3a2e` / `#524032` | `#2a2430` / `#3e3346` | `#0b0a0d` |
+| 4 THE THRESHING FLOOR | OPEN GROUND | "Almost no wall. What kills is what is standing in the room..." | `#5f5a4a` / `#67624f` | `#7b6c50` / `#9d8c69` | `#0b0b0a` |
+| 5 THE BRIDGE | THE FUNNEL | "Seven men are one man in a doorway..." | `#2f3640` / `#353d48` | `#1d2028` / `#2f3440` | `#06070a` |
+| 6 THE RAFTERS | THE DROP | "The floor is not all there. Holes in the boards and windows in the walls..." | `#4b433a` / `#544a40` | `#241d1a` / `#453629` | `#06060a` |
+| 7 THE OSSUARY | THE NICHE | "A body cannot form inside stone. Niches and lanes take arcs away from the dead..." | `#22242b` / `#282a33` | `#3a3730` / `#565044` | `#05060a` |
+
+THE YARD (fire) and THE THRESHING FLOOR (open ground, warm/dusty) are the two most
+distinct from THE ALTAR's cold stone and from each other — good ones to start with if
+this lands in batches rather than all six at once.
+
+### B. Hunter, Wraith, Butcher: full character sheets
+
+Concept sheets already exist and were never taken further — `output/character-concepts/
+remaining-characters-v1/{hunter,wraith,butcher}-options.png`, four options (A–D) each,
+per that folder's own `prompts.json` ("design alternatives... not integrated into game").
+Recommendation, each with one line of why — happy to be overridden:
+
+- **Hunter — option B** (wide-brim hat, bandolier straps): the hat silhouette reads as
+  "rifleman" fastest at gameplay zoom and distinguishes him from the hooded bearer/seer
+  at a glance, which matters since he's usually seen at range.
+- **Wraith — option A** (plain tattered shroud, least surface noise): the wraith has to
+  read as *not a man* in the half-second it manifests; the busier options (rope sashes,
+  heavy tearing) cost readability that a boss with a "you cannot hit this most of the
+  time" mechanic can't spare.
+- **Butcher — option D** (bare arms, wide-horned skull): bare arms read as "brute" at a
+  glance and the horns give the widest, most distinct silhouette on turn — he's already
+  "a clubman built twice over," and the silhouette should say so before anything else does.
+
+Whichever is chosen, generate the **same deliverable shape as `assets/painted-expansion-
+v1`**: an 8-direction, 4-frame walk sheet per character, `512×1024`, 4 columns × 8 rows,
+128×128 frames, same row order (S/SW/W/NW/N/NE/E/SE) and the same ground origin `[64,104]`
+— see that pack's own `manifest.json` and `HANDOFF.md` for the exact convention, so
+`js/painted-art.js`'s existing `character()` code (row = facing, column = walk frame)
+needs nothing new to read it. Idle is column 1, same as the other four — no separate
+idle sheet needed. Hunter needs no held-weapon variant baked into the sheet; the rifle
+already draws as its own thing in `js/render.js`.
+
+### C. Cage bars — a correction, not a new ask
+
+`assets/painted-expansion-v1/objects/{cage-bars,cage-broken}.png` are a three-post fence
+panel. This game's pen (`buildCage` in `js/gen.js`) is built from one `Prop` per
+individual bar, each leaning independently as it takes hits (see `CLAUDE.md`'s
+**The pen**) — a panel sprite doesn't fit that model. What's needed instead: a
+**single post**, 128×128 like the rest of the atlas, upright and centred, in the same
+iron style as the existing panel — plus a second frame for it bent/knocked flat, for
+the state after the pen's last blow (`p.broken`, `js/entities.js`'s `Prop.smash`/
+`breakCage`). Two frames, not four; there's no "opening" state, a bar is up or it's down.
+
+### D. Optional, not blocking
+
+- **Crate-debris** (`objects/crate-debris.png`) has art already but nothing in the game
+  currently leaves a lingering mark where a crate shattered — if a follow-up wants this
+  used, say so explicitly, since wiring it means adding a small decal stamp to
+  `Prop.shatter()` in `entities.js` (`world.decal`, the same canvas blood and scorch
+  already use), not just packing the art.
+- **Torch-fire** (`effects/torch-fire.png`) has no object to attach to today — only
+  `brazier` and `lamp` exist as lit Props. A decorative wall-mounted torch (not a Prop,
+  just a scatter in `PaintedArt.drawTiles` the way `banner` already is) is a plausible
+  small addition if there's appetite, but nobody has asked for it yet.
 
 ## How to add a character (the pattern that already worked four times)
 

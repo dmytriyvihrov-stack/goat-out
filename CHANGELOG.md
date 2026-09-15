@@ -5,6 +5,129 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.19 — the pen room teaches less at once, and a bomb only goes off on a wall
+
+Twenty-six lines off an annotated set of screenshots. Where a line was a question about
+what the game already did (the bomb, the hen), it was checked in the browser before
+anything was changed rather than assumed.
+
+**Level one's opening rooms say less, and say it once.** `WASD — RUN` is `WASD — TO
+MOVE`; the roll's line is out of the first room entirely — dodging meant nothing painted
+on a floor with nothing on it to dodge, so it now waits for the first room past the
+lesson that already holds two men or more, picked closest to the level's own middle
+(`rollRoom` in `gen.js`, part 3 of `CONTROL_LINES`). The grab room is shorter — `RIGHT
+CLICK — GRAB OBJECT` / `RELEASE — THROW` in place of the old three-line version — and
+carries a line it did not have before: `CLOSE UP IT BREAKS THEIR SWING`, naming the
+scream's point-blank parry for the first time anywhere on the floor. The room that
+finally puts a man in front of you no longer repeats the headbutt and wall lines from
+two rooms back — it says `BUTT HIM` and nothing else.
+
+**The first man's room is now one shape, not whatever the mix pool draws.** Every other
+room in the game is dealt from the level's canon or mix pool and could be anything; this
+one room's whole job is "try the headbutt on somebody," so it is forced to a new
+`LESSON_TEMPLATE` — open floor, no pillars, nothing between the door and whichever wall
+`blockSpot` stands him against. `sentryRoomAt` in `gen.js` resolves to the same room
+`planEncounters` would have introduced the bearer in anyway (`ordinaryRooms(...)[0]`),
+so nothing about the difficulty curve or the room's role changes — only what it looks
+like when you walk in.
+
+**Bomb Charge only goes off on a wall or a body now, not on anything.** It used to
+detonate on the first touch of anything at all, however gentle, and again on a timer if
+nothing was touched inside 0.9s — a headbutted man could go up in mid-air over open
+floor. Both of those were the trigger; now only a lethal collision is: `Enemy.die`'s
+bomb check reads `cause === 'splat'` instead of `cause !== 'fall'`, the eager touch
+checks in `enemies.js` and `game.js` (furniture, body-to-body) are gone, and a fuse that
+runs out with nothing to answer it simply clamps to zero and fizzles rather than forcing
+`explode()`. The card's own text says so now: "Anyone you headbutt goes off if he lands
+on a wall or another man." Checked in the browser: a caught two-heart man (a Butcher)
+already only lost one heart to the blast, which was correct and untouched.
+
+**A blade or a shield in his mouth answers the bash button instead of ignoring it.**
+Pressing headbutt while carrying a weapon used to either drop an auto-picked one at his
+feet (and start a headbutt with an empty mouth) or do nothing at all for one he had
+reached for on purpose — there was no swing to spend on a weapon he cannot wield with
+his teeth. Now either button launches it: `Goat.throwHeld` is the release logic pulled
+out of grab's own throw, and the headbutt state machine calls it whenever what is in his
+mouth is a `weapon`.
+
+**A sword or shield on the floor draws in front of him when it is, and smaller.** Every
+prop but a cage bar drew at a fixed place in the stack regardless of where it stood
+against the goat, which put a large sword sprite behind him whenever he had walked past
+it. The same Y-sort the pen's bars already used is now shared with a lying (not
+racked) weapon prop; a dropped sword or shield also draws smaller than one still
+standing in its rack (32px / 28px against 46px / 32px), closer to what it actually
+covers on the ground.
+
+**The fog hides more than it dimmed.** `TUNING.fog.shade` was 0.8 — dark enough to read
+as fog, not dark enough to keep a red hood or a rifle's silhouette from being nameable
+through a doorway into a room that had not been opened yet. Raised to 0.94.
+
+**A full heart on the grass says so instead of doing nothing.** Standing in a patch of
+healing grass at max hearts used to be silent — nothing on screen said whether it had
+worked, which read as the patch being broken rather than as there being nothing left to
+gain from it. It says `FULL` once per visit now.
+
+**The hen waits for level two.** She used to turn up as early as level one; now
+`coops` is unset there (no chance at all) and trimmed slightly on the two levels after
+it (0.12 → 0.10, 0.10 → 0.08) — a level built around the goat's own head is not the
+level to also be teaching an ally that kills once. `henFreed`'s own line — `SHE
+FOLLOWS. BUTT HER AT A MAN` — was checked and already says how she works; the kick's
+homing (`Prop.pickTarget` / `updateBird`) was checked in the browser too and already
+steers onto whoever is nearest the line she was kicked along, at a wide arc and a fast
+turn rate.
+
+**The moment the pen gives, before the room needs looking at.** A small comic-panel
+thought over his head, gone in a couple of seconds: two trailing dots and an oval
+holding her in miniature — the same drawing `drawSheep` does for the real one, scaled
+down, rather than a stand-in shape. The panel itself is a strip of grass, the same
+colour the healing patches use, not the dark cloud a first pass tried — a black bubble
+read as ominous rather than as a memory.
+
+**The soul card shows what a boon hangs off, not just its name.** A skill boon (one
+with `skill` set) now carries the same icon `drawSkills` draws for it on the rail, plus
+the key that throws it, in the corner of its card — so a new boon and the chip it later
+shows up as are recognisably the same picture instead of a name to go and look for.
+
+---
+
+## 1.18 — a second batch of paint, and it walks now
+
+**The sheep, the bearer, the mage and the hound turn.** GPT delivered a second asset
+package (`assets/painted-expansion-v1/`) — the same four characters redrawn across all
+8 directions with 4 walk frames each, animated fire for the brazier and lamp, four
+door types in four states, and 16 level-one props. `tools/pack-painted-expansion.cjs`
+embeds the pack's own already-cut sheets into `js/painted-assets-v1.js`; `PaintedArt`
+in `js/painted-art.js` reads it alongside the original set. The four characters now
+turn to face the way they're actually moving instead of mirroring a front/back pair,
+and windup/swing lean along the real facing rather than a left/right-only nudge.
+
+**And it is no longer level one's alone.** The painted brazier, lamp, crate and bell
+used to draw only when `game.levelIndex === 0`; that gate (`Renderer.drawPropBody`)
+now checks `this.painted.ready` instead, so those four — plus the new animated fire,
+the worktable, weapon rack, healing grass and spike plates — render on every level,
+not just THE ALTAR. Doors get the pack's four-state sprite too, for the vertical
+orientation the pack actually drew (the one horizontal door, the vault, keeps its
+procedural slab); the halo, the pressure flash and the soul-gate wisp and text are
+untouched.
+
+**A same-day second pass finished what the first left half-done.** The mill's hub *and*
+arm now draw from the atlas — the arm is stretched to `TUNING.mill.armLen` rather than
+guessed, checked in-browser at gameplay zoom since it's a hazard whose readability
+matters. The secret wall now uses the atlas art too, tinted to each patch's own
+`p.wallColor` at draw time and cached per colour, so it still hides until it cracks
+instead of giving itself away by color. The soul wisp's body is the atlas art now, with
+its halo and orbiting sparks still procedural. **Cage bars went back to fully
+procedural** — `cage-bars.png` turned out to be a three-post fence panel, not the
+single post this game's per-bar pen model needs, so using it as delivered would have
+tripled every post. The tile and wall art itself is still level-one only — no other
+level's floor has been painted yet. `ART_HANDOFF.md` now carries a full technical brief
+for what's still needed: tile/wall art for levels two through seven (with each level's
+exact procedural palette to match), full sheets for Hunter, Wraith and Butcher (whose
+concept sheets already exist, unused, in `output/character-concepts/remaining-
+characters-v1/`), and the cage correction above.
+
+---
+
 ## 1.17 — a meadow, a road, and the dark
 
 **Three screens before the pen.** The run used to open on two animals already in a cage; now it

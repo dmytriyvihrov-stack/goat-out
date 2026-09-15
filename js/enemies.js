@@ -123,10 +123,10 @@ class Enemy {
 
   die(game, cause, dx, dy) {
     if (this.dead || this.ghosted) return;
-    // A fused man does not simply die. Whatever killed him — a wall, a body, a blade, a fire — is
-    // what sets him off, because that is what the soul promised: you put your head into him and the
-    // room goes up wherever he lands. A hole is the one exception: there is nothing down there to take.
-    if (this.bombFuse > 0 && !this.exploded && cause !== 'fall') { this.explode(game); return; }
+    // A fused man only goes off if a collision is what kills him — flung into a wall, into another
+    // body, or thrown into one. A blade, fire, a bullet, a trap: those just kill him same as anybody,
+    // and the fuse that was counting down under it goes nowhere.
+    if (this.bombFuse > 0 && !this.exploded && cause === 'splat') { this.explode(game); return; }
     // Anyone carrying more than one hit — an arena elite, or any Seer — eats it, goes down and gets
     // back up; a Seer blinks clear as he does. Fire counts, so a mage has to be lit twice. Being torn
     // open or going off like a bomb does not: there is nothing left to get up.
@@ -336,7 +336,11 @@ class Enemy {
     if (this.say) { this.say.life -= dt; if (this.say.life <= 0) this.say = null; }
     this.flash = Math.max(0, this.flash - dt); this.lured = Math.max(0, (this.lured || 0) - dt);
     this.flail = Math.max(0, this.flail - dt);
-    if (this.bombFuse > 0) { this.bombFuse -= dt; if (this.bombFuse <= 0) { this.explode(game); return; } }
+    // The fuse used to be the trigger as well as the clock: whoever was still ticking when it hit
+    // zero went off wherever he stood, mid-air or not. Now only a collision sets him off, so a fuse
+    // that runs out with no wall or body to answer it just fizzles — `die()`'s own check reads
+    // `bombFuse > 0`, so clamping it to exactly zero here is what closes the window.
+    if (this.bombFuse > 0) { this.bombFuse = Math.max(0, this.bombFuse - dt); }
 
     // ---- burning ----
     // Nobody on fire is steering. Not the brute, not the boss: a man alight who keeps walking his
@@ -413,10 +417,6 @@ class Enemy {
       this.x += this.vx * dt; this.y += this.vy * dt;
       const preSpeed = Math.hypot(this.vx, this.vy);
       const impact = w.collideCircle(this);
-      // A fused man goes off on the first thing he touches, however gently. The fuse is the longstop,
-      // not the trigger: he used to pop in mid-air over an empty floor, which is a firework rather
-      // than a man you threw at something.
-      if (impact > 0 && this.bombFuse > 0) { this.explode(game); return; }
       if (impact > TUNING.physics.splatSpeed) {
         this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1)); return;
       }

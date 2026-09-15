@@ -1,9 +1,18 @@
 // The approved illustrated assets, drawn directly rather than rebuilt from primitive shapes.
 // Simulation coordinates and collision radii remain the same; artwork has its own visual bounds.
+// assets/painted-expansion-v1/objects/atlas.png — four columns, four rows, 128px cells (manifest.json).
+const ATLAS_CELL = {
+  'cage-bars': [0, 0], 'cage-broken': [128, 0], 'mill-hub': [256, 0], 'mill-arm': [384, 0],
+  'spikes-idle': [0, 128], 'spikes-arming': [128, 128], 'spikes-up': [256, 128], 'weapon-stand': [384, 128],
+  sword: [0, 256], shield: [128, 256], 'healing-grass': [256, 256], 'soul-wisp': [384, 256],
+  'secret-wall': [0, 384], 'crate-debris': [128, 384], 'brazier-unlit': [256, 384], worktable: [384, 384],
+};
+const WALK_FPS = { sheep: 8, clubman: 8, mage: 7, hound: 10 };
+
 class PaintedArt extends AltarArt {
   constructor() {
     super(); this.images = {}; this.loaded = 0; this.failed = [];
-    const entries = Object.entries(PAINTED_ASSETS);
+    const entries = [...Object.entries(PAINTED_ASSETS), ...Object.entries(PAINTED_ASSETS_V1)];
     this.ready = false;
     for (const [key, asset] of entries) {
       const image = new Image(); this.images[key] = image;
@@ -20,6 +29,69 @@ class PaintedArt extends AltarArt {
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(image, x - w / 2, y - h * anchor, w, h);
     ctx.imageSmoothingEnabled = smooth;
+  }
+
+  // Crops one cell out of a sprite sheet — the shared primitive under every animated stamp below,
+  // used for the expansion pack's walk cycles, fire loops, door states and props atlas.
+  drawFrame(ctx, image, sx, sy, sw, sh, x, y, w, h, anchor = 0.5) {
+    if (!image || !image.naturalWidth) return false;
+    const smooth = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(image, sx, sy, sw, sh, x - w / 2, y - h * anchor, w, h);
+    ctx.imageSmoothingEnabled = smooth;
+    return true;
+  }
+
+  // objects/atlas.png: one 128px cell per named prop. `h` defaults to `w` — every cell is square.
+  atlas(ctx, name, x, y, w, h, anchor = 0.5) {
+    const cell = ATLAS_CELL[name]; if (!cell) return false;
+    return this.drawFrame(ctx, this.images.propsAtlas, cell[0], cell[1], 128, 128, x, y, w, h === undefined ? w : h, anchor);
+  }
+
+  // The three lit fixtures each get one 8-frame, 10fps loop: the whole fixture animates in the
+  // sheet, so nothing else is drawn under it (see ART_HANDOFF in assets/painted-expansion-v1).
+  fire(renderer, key, x, y, w, anchor = 0.875) {
+    const col = Math.floor(renderer.t * 10) % 8;
+    return this.drawFrame(renderer.ctx, this.images[key], col * 128, 0, 128, 128, x, y, w, w, anchor);
+  }
+
+  // The mill arm's source art is one fixed-proportion beam, not a tileable strip, so it is stretched
+  // to the tuned arm length rather than repeated. `x` is the inner edge (by the hub), `len` the span
+  // out to the iron tip; height is cosmetic only — collision stays on `TUNING.mill`, untouched.
+  millArm(ctx, x, len) {
+    const image = this.images.propsAtlas; if (!image || !image.naturalWidth) return false;
+    const cell = ATLAS_CELL['mill-arm'];
+    const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(image, cell[0], cell[1], 128, 128, x, -15, len, 30);
+    ctx.imageSmoothingEnabled = smooth;
+    return true;
+  }
+
+  // The secret wall has to read as *that level's own wall* until it cracks (see CLAUDE.md's "A wall
+  // that gives") — the delivered art is one fixed stone colour, so it is tinted to `p.wallColor` and
+  // cached per colour rather than drawn raw.
+  secretWallTinted(color) {
+    this.secretTint || (this.secretTint = new Map());
+    if (this.secretTint.has(color)) return this.secretTint.get(color);
+    const image = this.images.propsAtlas, cell = ATLAS_CELL['secret-wall'];
+    const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+    const cx = c.getContext('2d');
+    cx.drawImage(image, cell[0], cell[1], 128, 128, 0, 0, 128, 128);
+    cx.globalCompositeOperation = 'source-atop';
+    cx.fillStyle = color; cx.globalAlpha = 0.6;
+    cx.fillRect(0, 0, 128, 128);
+    this.secretTint.set(color, c);
+    return c;
+  }
+
+  // Four sprite-switched states — closed / opening / open / broken — rather than a swing animation.
+  // Only the vertical (north-wall-facing) orientation is covered by this delivery: a horizontal
+  // door (the vault) is left to the caller's own fallback. See assets/painted-expansion-v1/HANDOFF.md.
+  door(renderer, p, x, y, w, h, anchor = 0.5) {
+    if (!p.vertical) return false;
+    const key = p.gate ? 'doorSoul' : p.vault ? 'doorVault' : p.iron ? 'doorIron' : 'doorWood';
+    const stateCol = p.broken ? 3 : p.open >= 0.95 ? 2 : p.open > 0.02 ? 1 : 0;
+    return this.drawFrame(renderer.ctx, this.images[key], stateCol * 128, 0, 128, 128, x, y, w, h, anchor);
   }
 
   drawTiles(renderer, game, cam) {
@@ -66,53 +138,166 @@ class PaintedArt extends AltarArt {
 
   drawProp(renderer,p) {
     if(!this.ready)return super.drawProp(renderer,p);
+    const ctx=renderer.ctx;
     // The ritual altar: a real, blocking, breakable table tagged only so it keeps its own art
     // instead of the plain procedural table every other one falls back to.
     if(p.kind==='table'&&p.isAltar){
-      const ctx=renderer.ctx;
       ctx.save();ctx.translate(p.x,p.y);
       if(p.flung)ctx.rotate(Math.atan2(p.vy,p.vx));
       renderer.shadow(0,8,48,15);
       this.stamp(ctx,'altar',0,0,108,undefined,0.58);
       ctx.restore();return true;
     }
-    // The altar is the one big breakable object in the ritual room, not a stand-in for every table —
-    // an ordinary table falls back to AltarArt's procedural version rather than reusing its art.
-    const keys={crate:'crate',brazier:'brazier',lamp:'lamp',bell:'gong'};
-    const key=keys[p.kind]; if(!key)return super.drawProp(renderer,p);
-    const ctx=renderer.ctx;
-    let w=p.kind==='brazier'?p.r*2.7:p.kind==='lamp'?20:p.kind==='bell'?p.r*2.7:p.r*2.6;
-    ctx.save();ctx.translate(p.x,p.y-(p.held?6:0));
-    if(p.flung&&p.kind==='crate')ctx.rotate(Math.atan2(p.vy,p.vx)*0.4);
-    if(p.kind==='bell'&&p.rung>0)ctx.rotate(Math.sin(renderer.t*28)*0.035);
-    const h=w*this.images[key].naturalHeight/this.images[key].naturalWidth;
-    renderer.shadow(0,3,w*0.44,Math.min(9,h*0.15));
-    this.stamp(ctx,key,0,0,w,h,p.kind==='lamp'?0.85:0.68);
-    // Keep the original coals-spill tell even though the bowl is now an image.
-    if(p.kind==='brazier'&&p.spillCd>0){ctx.fillStyle='rgba(26,16,22,0.45)';ctx.globalAlpha=p.spillCd/TUNING.prop.brazier.spillCd;ctx.beginPath();ctx.ellipse(0,-h*0.4,w*0.27,h*0.19,0,0,Math.PI*2);ctx.fill();}
-    ctx.restore();return true;
+    // Lit fixtures: the whole fixture is an animated loop now, so the old static bowl/post is gone.
+    if(p.kind==='brazier'){
+      const w=p.r*2.9;
+      ctx.save();ctx.translate(p.x,p.y);
+      renderer.shadow(0,4,w*0.4,9);
+      if(!this.fire(renderer,'brazierFire',0,0,w))this.stamp(ctx,'brazier',0,0,p.r*2.7);
+      // Keep the coals-spill tell even though the bowl is now an animated sprite.
+      if(p.spillCd>0){ctx.fillStyle='rgba(26,16,22,0.45)';ctx.globalAlpha=p.spillCd/TUNING.prop.brazier.spillCd;ctx.beginPath();ctx.ellipse(0,-w*0.16,w*0.27,w*0.14,0,0,Math.PI*2);ctx.fill();}
+      ctx.restore();return true;
+    }
+    if(p.kind==='lamp'){
+      const w=34;
+      ctx.save();ctx.translate(p.x,p.y-10);
+      renderer.shadow(0,24,7,4);
+      if(!this.fire(renderer,'lanternFire',0,0,w))this.stamp(ctx,'lamp',0,10,20);
+      ctx.restore();return true;
+    }
+    // The two already-painted, level-agnostic objects: same art, no longer level-one only.
+    const keys={crate:'crate',bell:'gong'};
+    const key=keys[p.kind];
+    if(key){
+      const w=p.kind==='crate'?p.r*2.6:p.r*2.7;
+      ctx.save();ctx.translate(p.x,p.y-(p.held?6:0));
+      if(p.flung&&p.kind==='crate')ctx.rotate(Math.atan2(p.vy,p.vx)*0.4);
+      if(p.kind==='bell'&&p.rung>0)ctx.rotate(Math.sin(renderer.t*28)*0.035);
+      const h=w*this.images[key].naturalHeight/this.images[key].naturalWidth;
+      renderer.shadow(0,3,w*0.44,Math.min(9,h*0.15));
+      this.stamp(ctx,key,0,0,w,h,0.68);
+      ctx.restore();return true;
+    }
+    if(p.kind==='table'){
+      const a=p.flung?Math.atan2(p.vy,p.vx):0;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);
+      renderer.shadow(0,p.r*0.6,p.r*1.05,p.r*0.5);
+      const drew=this.atlas(ctx,'worktable',0,0,p.r*2.6,undefined,0.62);
+      ctx.restore();
+      return drew?true:super.drawProp(renderer,p);
+    }
+    // The cage stays fully procedural: `cage-bars`/`cage-broken` in the atlas are a whole three-post
+    // fence panel, not a single post, and this game's pen is built from one `Prop` per bar — stamping
+    // the panel on every bar would triple-draw posts. See the new brief in ART_HANDOFF.md.
+    if(p.kind==='weapon'){
+      if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
+      const up=p.inStand;
+      if(up){
+        const gl=ctx.createRadialGradient(p.x,p.y-12,0,p.x,p.y-12,40);
+        const a=0.14+0.05*Math.sin(renderer.t*2.6+p.phase);
+        gl.addColorStop(0,`rgba(239,230,208,${a})`);gl.addColorStop(1,'rgba(239,230,208,0)');
+        ctx.fillStyle=gl;ctx.beginPath();ctx.arc(p.x,p.y-12,40,0,Math.PI*2);ctx.fill();
+        renderer.shadow(p.x,p.y,14,6);
+        this.atlas(ctx,'weapon-stand',p.x,p.y,44,undefined,0.78);
+      } else renderer.shadow(p.x,p.y,10,5);
+      ctx.save();
+      ctx.translate(p.x,p.y-(up?24:0));
+      ctx.rotate(up?(p.weapon==='sword'?-Math.PI/2:0):p.flung?p.spin:(p.facing||0));
+      this.atlas(ctx,p.weapon,0,0,up?(p.weapon==='sword'?46:32):(p.weapon==='sword'?32:28),undefined,0.5);
+      ctx.restore();
+      // What is left in a shield you are carrying: three studs, one per man or bullet it has in it.
+      if(p.weapon==='shield'&&p.held&&p.uses>0){
+        const n=TUNING.prop.weapon.uses.shield;
+        for(let k=0;k<n;k++){
+          ctx.fillStyle=k<p.uses?PALETTE.bone:'rgba(239,230,208,0.22)';
+          ctx.fillRect(p.x-(n*5-2)/2+k*5,p.y-23,3.2,3.2);
+        }
+      }
+      return true;
+    }
+    if(p.kind==='heal'){
+      if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
+      const bob=Math.sin(renderer.t*2.4+p.phase)*2;
+      renderer.shadow(p.x,p.y+4,11,5);
+      this.atlas(ctx,'healing-grass',p.x,p.y+bob,44,undefined,0.72);
+      if(p.graze>0){
+        const frac=clamp(p.graze/TUNING.prop.heal.grazeTime,0,1);
+        ctx.strokeStyle='rgba(168,189,108,0.85)';ctx.lineWidth=2.4;ctx.lineCap='round';
+        ctx.beginPath();ctx.arc(p.x,p.y+bob,17,-Math.PI/2,-Math.PI/2+frac*Math.PI*2);ctx.stroke();
+      }
+      return true;
+    }
+    if(p.kind==='spike'){
+      if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
+      const S=TUNING.prop.spike,r=p.r,state=p.spikeState,arming=state==='armed';
+      const shud=arming?Math.sin(renderer.t*70)*1.1*clamp(1-p.spikeT/S.arm,0,1):0;
+      // Down still shows teeth (it is retracting, not safe yet); idle and rest share the flat plate.
+      const name=state==='up'||state==='down'?'spikes-up':arming?'spikes-arming':'spikes-idle';
+      ctx.save();ctx.translate(p.x+shud,p.y);
+      // A whole tile, squashed like the floor — see the spike branch in AltarArt/Renderer for why.
+      this.atlas(ctx,name,0,0,r*2.2,r*2.2*TILT,0.5);
+      ctx.restore();
+      return true;
+    }
+    if(p.kind==='secret'){
+      if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
+      const h=TILE/2;
+      this.drawFrame(ctx,this.secretWallTinted(p.wallColor),0,0,128,128,p.x,p.y,TILE,TILE,0.5);
+      // The crack tells still have to be drawn: the art carries none, and they're what the blow count
+      // reads as (see AltarArt.drawProp / CLAUDE.md's "A wall that gives").
+      ctx.strokeStyle='rgba(10,8,10,0.55)';ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.moveTo(p.x-h*0.5,p.y-h*0.6);ctx.lineTo(p.x-h*0.1,p.y);
+      ctx.lineTo(p.x-h*0.4,p.y+h*0.4);ctx.lineTo(p.x+h*0.3,p.y+h*0.8);
+      ctx.stroke();
+      if((p.hits||0)>0){
+        ctx.strokeStyle='rgba(10,8,10,0.7)';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(p.x+h*0.5,p.y-h*0.5);ctx.lineTo(p.x-h*0.2,p.y+h*0.6);ctx.stroke();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // The wisp's painted body: `Renderer.soulWisp` keeps its own halo (before) and orbiting sparks
+  // (after) procedural — those are what read as motion, and the art has no frames to animate them.
+  soulWispBody(ctx, w) {
+    return this.atlas(ctx, 'soul-wisp', 0, 0, w, undefined, 0.56);
   }
 
   characterKey(e) { return e.kind==='bearer'?'clubman':e.kind==='seer'?'mage':e.kind==='dog'?'hound':null; }
 
   character(renderer,e,key,width) {
     const ctx=renderer.ctx, angle=e.facing||0, moving=Math.hypot(e.vx||0,e.vy||0)>30;
-    const back=Math.sin(angle)<-0.2, name=key+(back?'Back':'Front');
-    const legHz=key==='hound'?19:14, step=Math.sin(renderer.t*legHz+(e.x||0)*0.01);
-    ctx.save();if(Math.cos(angle)<0)ctx.scale(-1,1);
-    // A flat image cannot swing its own legs, so the trot reads through a quicker double-bob and a
-    // touch of horizontal shear in time with the footfall — a still photo of four legs is two beats.
-    if(moving){
-      const stride=Math.sin(renderer.t*legHz*2+(e.x||0)*0.01);
-      ctx.translate(stride*0.9,-Math.abs(step)*1.4);
-      ctx.rotate(step*0.025);
-      ctx.transform(1,0,stride*0.05,1,0,0);
-    } else ctx.scale(1,1+Math.sin(renderer.t*3)*0.008);
-    if(e.state==='windup'||e.state==='chargewind'){ctx.translate(-2,0);ctx.rotate(-0.13);}
-    if(e.state==='swing'){ctx.translate(3,0);ctx.rotate(0.17);}
-    if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
-    if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
-    this.stamp(ctx,name,0,0,width,undefined,key==='sheep'||key==='hound'?0.52:0.68);
+    const sheet=this.images[key+'Walk'];
+    ctx.save();
+    if(sheet&&sheet.naturalWidth){
+      // Eight drawn facings rather than a mirrored front/back pair: row picks the facing, column
+      // the walk frame. `angle` is already atan2(dy,dx) in screen space, the sheet's own convention
+      // (assets/painted-expansion-v1/manifest.json). Windup/swing lean along the real facing now,
+      // in place of the old screen-space nudge that only ever worked because of the left/right mirror.
+      if(e.state==='windup'||e.state==='chargewind'){ctx.translate(Math.cos(angle)*-2,Math.sin(angle)*-2);ctx.rotate(-0.13);}
+      if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
+      if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
+      if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
+      const row=(Math.round(angle/(Math.PI/4))+14)%8;
+      const col=moving?Math.floor(renderer.t*(WALK_FPS[key]||8)+(e.x||0)*0.05)%4:1;
+      this.drawFrame(ctx,sheet,col*128,row*128,128,128,0,0,width,width,0.8125);
+    } else {
+      // Fallback to the original front/back pair if an expansion sheet failed to load.
+      const back=Math.sin(angle)<-0.2, name=key+(back?'Back':'Front');
+      const legHz=key==='hound'?19:14, step=Math.sin(renderer.t*legHz+(e.x||0)*0.01);
+      if(Math.cos(angle)<0)ctx.scale(-1,1);
+      if(moving){
+        const stride=Math.sin(renderer.t*legHz*2+(e.x||0)*0.01);
+        ctx.translate(stride*0.9,-Math.abs(step)*1.4);ctx.rotate(step*0.025);ctx.transform(1,0,stride*0.05,1,0,0);
+      } else ctx.scale(1,1+Math.sin(renderer.t*3)*0.008);
+      if(e.state==='windup'||e.state==='chargewind'){ctx.translate(-2,0);ctx.rotate(-0.13);}
+      if(e.state==='swing'){ctx.translate(3,0);ctx.rotate(0.17);}
+      if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
+      if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
+      this.stamp(ctx,name,0,0,width,undefined,key==='sheep'||key==='hound'?0.52:0.68);
+    }
     if(e.champion)renderer.spikeRing(e.r*0.9,Math.PI,Math.PI*2,5,6,PALETTE.altar.ironHi);
     ctx.restore();
   }

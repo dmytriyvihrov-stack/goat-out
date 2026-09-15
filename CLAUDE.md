@@ -115,6 +115,15 @@ straight back to idle — so he is the only man in the game you get to choose th
 Everything else about him is a clubman: windup, swing, recovery, two hearts of nothing, killed by geometry
 like anybody. He is a teaching device and there is exactly one of him per run.
 
+**His room is one shape, not whatever the mix pool draws.** Every other room in the level is dealt
+from the canon or mix pool and could be anything the level owns; this one is forced to
+`LESSON_TEMPLATE` in `rooms.js` — open floor, nothing in it to break the line from the door to
+whichever wall he ends up standing against. `sentryRoomAt` in `gen.js`, computed before any room
+exists, resolves to `ordinaryRooms(levelDef, n)[0]` — the same room `planEncounters` would have
+introduced the bearer in anyway, since `introduce: [['bearer', 0]]` always resolves to the first
+ordinary room — so forcing the template changes nothing about the difficulty curve or the room's
+`canon`/`mix` accounting, only what furniture (none) stands between the entrance and him.
+
 **Dazed.** `enemy.daze(game, seconds)` is the scream's whole effect: the man freezes, whatever he was
 winding up is cancelled, and stars orbit his head. It is a timer, not a state, so the flung / floored /
 burning machinery underneath is untouched.
@@ -175,11 +184,17 @@ gets. It shoves, it blocks, it takes a blow — everything a table already does 
 
 **Stands of arms.** A `weapon` prop is both the rack and the thing in it: `inStand` is true until it is
 first taken, and the rack is only drawn while it is. `weapon` is `sword` or `shield`. It is grabbed like
-a crate, thrown by releasing grab, and flies in `updateWeapon`; `hitMan` is where a sword kills and sticks
+a crate, thrown by releasing grab **or by pressing headbutt** — `Goat.throwHeld` is the one throw both
+go through, since there is no swing to spend on a blade he cannot wield with his teeth, and the bash
+button used to just drop an auto-picked one or do nothing for one he had reached for on purpose — and
+flies in `updateWeapon`; `hitMan` is where a sword kills and sticks
 and a shield flattens and carries on, `passed` stopping it hitting the same man twice on one throw. A
 carried shield turns `prop.weapon.shieldHits` bullets in `Bullet.update` before it splinters. Nothing is
 consumed: both lie where they land and are grabbable again. `'w'` in a room template places one; `racks`
-on a level definition is the chance an ordinary room gets one or two more.
+on a level definition is the chance an ordinary room gets one or two more. A lying (not racked) one
+also Y-sorts against the goat the way a cage bar always has, so it draws in front of him once he has
+drawn level with it rather than always underneath, and draws smaller than one still standing in its
+rack — closer to what it actually covers on the ground.
 
 **One new thing to a room.** `game.taught` is a list of what the run has already been shown — enemy
 kinds, `'mill'`, `'<kind> boss'`. It is passed into `generateLevel` and comes back on the level as
@@ -525,10 +540,15 @@ lying floored. `game.mistTold` is the only tutorial it gets.
 while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` draws the stars over it.
 `game.stunGoat(seconds)` is the only way in, and the pen is the only thing that uses it.
 
-**Words on the floor.** `CONTROL_LINES` in `render.js` holds three blocks and `level.controls` says where
+**Words on the floor.** `CONTROL_LINES` in `render.js` holds four blocks and `level.controls` says where
 each goes. Blocks 0 and 1 are the two empty rooms after the pen; block 2 is the room that holds the first
 man of the run (`lessonRoom` in `gen.js`), and it exists because two rooms of writing about a headbutt
-with nothing in them to use it on did not add up to *the men can be hit*. Each block has a keyboard and a
+with nothing in them to use it on did not add up to *the men can be hit* — it carries only `BUTT HIM`
+now, not a repeat of block 0's headbutt and wall lines, since those are already read by the time he is
+standing here. Block 3 is the roll, and it does not live in block 0 any more: a dodge painted on an
+empty floor means nothing, so `gen.js` picks the first room past the lesson that already holds two men
+or more, closest to the level's own middle (`rollCandidates`, next to where `controls` is built), and
+puts it there instead. Each block has a keyboard and a
 touch wording; add a line to one and add it to both.
 
 A level's own `hint` is the other half of it: `gen.js` paints it across the middle of the first room
@@ -729,8 +749,9 @@ room that gets them gets nine to fifteen, because a single grate is stepped over
 and a stretch across the middle of a room is ground you have to decide about.
 
 **The hen, and the only thing in the compound on your side.** A `coop` is two tiles of slatted crate
-standing about in the stores of the early floors (`levelDef.coops`, a per-room chance, levels one to
-three only — about one and a quarter a level, and a quarter of levels get none). Two blows open it,
+standing about in the stores of the early floors (`levelDef.coops`, a per-room chance, levels two and
+three only — level one is unset, none at all, because a room built around the goat's own head is not
+the room to also be teaching an ally that kills once). Two blows open it,
 and `Prop.breakCoop` pushes a `chicken` out at your feet.
 
 She has three states and `Prop.updateBird` runs all of them. **Loose**, she walks with the goat —
@@ -963,7 +984,7 @@ the remote is not live. Never stop at the feature branch and never leave `main` 
 was developing on `claude/<something>`, merge that branch into `main` and push `main` as part of the
 deploy, then publish. Opening a pull request instead is only right when the user asks for one.
 
-The artifact is published from `artifact.html` with all fifteen scripts passed as supporting files, and
+The artifact is published from `artifact.html` with all sixteen scripts passed as supporting files, and
 always to the existing URL. Republishing without the `url` creates a second artifact.
 
 - `file_path`: `artifact.html`

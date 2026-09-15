@@ -32,6 +32,7 @@ class Game {
     // juice: a directional camera punch, a lens shove, a screen flash and a kill counter
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0; this.flashColor = PALETTE.bone;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
+    this.cageThought = 0;   // a beat of "her" over his head the moment the pen gives, comic-panel style
     this.hitstopTimer = 0; this.timeScale = 1; this.slowTimer = 0; this.hurt = null;
     this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0; this.totalScore = 0;
     this.best = this.loadBest();
@@ -661,6 +662,7 @@ class Game {
     this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0;
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
+    this.cageThought = 0;   // a beat of "her" over his head the moment the pen gives, comic-panel style
     this.toldGrab = false;
     this.audio.intensity = 0; this.audio.hunterAware = false;
     this.world.computeFlow(this.goat.x, this.goat.y);
@@ -1129,14 +1131,23 @@ class Game {
     this.souls = this.souls.filter((tm) => !tm.taken);
     for (const p of this.props) {
       if (p.kind !== 'heal' || p.broken) continue;
-      if (this.goat.dead || this.goat.hp >= this.goat.maxHp) { p.graze = 0; continue; }
       const H = TUNING.prop.heal;
-      const grazing = Math.hypot(p.x - this.goat.x, p.y - this.goat.y) <= H.pickupR + this.goat.r
+      if (this.goat.dead) { p.graze = 0; continue; }
+      const near = Math.hypot(p.x - this.goat.x, p.y - this.goat.y) <= H.pickupR + this.goat.r
         && Math.hypot(this.goat.vx, this.goat.vy) < H.grazeSpeed;
+      if (this.goat.hp >= this.goat.maxHp) {
+        p.graze = 0;
+        // Standing in it with a full heart already used to do nothing at all, which reads as the
+        // grass being broken rather than as the goat having nothing left to gain from it.
+        if (near && !p.fullTold) { p.fullTold = true; this.floatText(p.x, p.y - 24, 'FULL', PALETTE.bone); }
+        else if (!near) p.fullTold = false;
+        continue;
+      }
+      p.fullTold = false;
       // Standing in it is the whole cost: running through does nothing, and stepping off — or simply
       // moving — bleeds the count back down rather than snapping it to zero, so a stray jostle from
       // a passing man does not cost the whole graze.
-      p.graze = grazing ? p.graze + dt : Math.max(0, p.graze - dt * 2);
+      p.graze = near ? p.graze + dt : Math.max(0, p.graze - dt * 2);
       if (p.graze < H.grazeTime) continue;
       p.broken = true; p.dead = true; this.goat.hp += 1;
       this.particles(p.x, p.y, 18, PALETTE.bone, 170); this.ring(p.x, p.y, 2 * TILE, PALETTE.bone);
@@ -1533,6 +1544,7 @@ class Game {
     this.zoomKick *= Math.exp(-J.zoomDecay * dt);
     this.flashAmt = Math.max(0, this.flashAmt - J.flashDecay * dt * Math.max(1, this.flashAmt * 4));
     this.barkCd = Math.max(0, this.barkCd - dt);
+    this.cageThought = Math.max(0, this.cageThought - dt);
     this.comboTimer = Math.max(0, this.comboTimer - dt);
     if (this.comboTimer <= 0) this.combo = 0;
     for (const p of this.parts) {
@@ -1611,8 +1623,6 @@ class Game {
         // A lamp post is not a pillar. A body arriving at speed takes it over, and the oil goes
         // down where the body is about to land.
         if (e.state === 'flung' && -vn > TUNING.prop.lamp.knock && p.kind === 'lamp') { p.topple(this, -nx, -ny); e.vx *= 0.6; e.vy *= 0.6; continue; }
-        // And a fused man put through the furniture goes off against the furniture.
-        if (e.state === 'flung' && e.bombFuse > 0 && -vn > 2 * TILE) { e.explode(this); continue; }
         if (e.state === 'flung' && -vn > ph.splatSpeed && e !== g) { e.die(this, 'splat', -nx, -ny); continue; }
         if (e === g && p.kind === 'table' && !p.flung) {
           // the goat can shoulder a table along slowly
@@ -1641,10 +1651,11 @@ class Game {
   // is as dead as the one he was thrown at.
   flungHits(f, other, nx, ny) {
     const ph = TUNING.physics, spd = Math.hypot(f.vx, f.vy);
-    // A fused man who arrives on somebody goes off on him. He is the bomb, not the delivery.
-    if (f.bombFuse > 0) { f.explode(this); return; }
     if (other.kind === 'butcher') { other.state = 'stagger'; other.timer = 0.3; f.vx *= -0.3; f.vy *= -0.3; return; }
     if (f.thrown || spd > ph.bodyKillSpeed) {
+      // A fused man who arrives on somebody hard enough to kill him goes off on him instead of
+      // just killing him — he is the bomb, not the delivery.
+      if (f.bombFuse > 0) { f.explode(this); return; }
       other.die(this, 'splat', nx, ny);
       if (!f.thrown && spd > ph.splatSpeed && !f.dead) { f.die(this, 'splat', -nx, -ny); return; }
       f.vx *= f.thrown ? 0.55 : 0.45; f.vy *= f.thrown ? 0.55 : 0.45;
