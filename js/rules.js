@@ -122,13 +122,45 @@ const GEN_RULES = [
       }
       return any ? true : null;
     } },
-  { id: 'mill', text: 'The Mill is half a crowd, and empty on the level that first shows the wheel.',
+  { id: 'mill', text: 'The Mill is half a crowd, and two men on the level that first shows the wheel.',
     check: (L) => {
       const rs = roomsOf(L), m = rs.find((r) => r.role === 'mill');
       if (!m) return null;
-      if (L.def.millSolo) return m.spawns.length ? `${m.men.join(', ')} standing in it` : true;
+      // The teaching room: exactly two, one who reads the arm and one who does not. More than two
+      // and the room is a fight with a wheel in it rather than the wheel being the thing it is.
+      if (L.def.millLesson) {
+        if (m.spawns.length !== 2) return `${m.spawns.length} men standing in it`;
+        const sense = m.spawns.map((s) => s.sense).sort();
+        return sense[0] === 0 && sense[1] === 1 ? true : 'neither careless nor careful';
+      }
       const peak = Math.max(0, ...rs.filter((r) => ORDINARY.has(r.role)).map((r) => r.threat));
       return m.threat <= peak ? true : `${m.threat.toFixed(1)} threat, above the worst ordinary room (${peak.toFixed(1)})`;
+    } },
+  // The teaching floor is the one place in the game where the generator may not surprise anybody:
+  // the same four rooms in the same shapes with the same things standing in them, every seed. See
+  // "Words on the floor" in CLAUDE.md for where each block of text goes and why.
+  { id: 'lessons', text: 'The teaching rooms are the same every run: pen, sentry, wheel, ambush.',
+    check: (L) => {
+      const def = L.def;
+      if (!def.showControls) return null;
+      const parts = (L.controls || []).map((c) => c.part).sort().join('');
+      if (parts !== '0123') return `floor text blocks ${parts || 'none'}`;
+      const rs = roomsOf(L);
+      const sentry = rs.find((r) => r.spawns.some((s) => s.sentry));
+      if (!sentry) return 'nobody holds the first room';
+      if (sentry.name !== 'lesson') return `the first man stands in a ${sentry.name} room`;
+      if (sentry.spawns.length !== 1) return `${sentry.spawns.length} men in the lesson room`;
+      if (def.ambushAt === undefined) return true;
+      const amb = rs[def.ambushAt];
+      if (!amb || amb.name !== 'ambush') return `room ${def.ambushAt} is ${amb ? amb.name : 'missing'}`;
+      const box = L.props.filter((p) => roomAt(L, p.x, p.y) === amb.room);
+      const blade = box.find((p) => p.kind === 'weapon');
+      if (!blade || blade.weapon !== 'sword') return 'no sword inside the ambush door';
+      if (!box.some((p) => p.kind === 'crate')) return 'no crate in the ambush room';
+      // Everyone in it stands past the middle of it, which is the whole of "they wait".
+      const midX = (amb.room.x + amb.room.w / 2) * TILE;
+      if (amb.spawns.some((s) => s.x < midX)) return 'a man on the near side of the ambush room';
+      return true;
     } },
   { id: 'rifles', text: 'A rifle holds a post only after rifles have been met.',
     check: (L) => {
@@ -160,10 +192,10 @@ const GEN_RULES = [
       worst = Math.max(worst, n - 1 - prev);
       return worst <= limit ? true : `${worst} rooms without a bowl (limit ${limit})`;
     } },
-  { id: 'pen', text: 'Nothing spawns by the pen, and the control rooms hold nobody.',
+  { id: 'pen', text: 'Nothing spawns by the pen, and the pen holds nobody.',
     check: (L) => {
       for (const s of L.spawns) if (Math.hypot(s.x - L.start.x, s.y - L.start.y) <= 5 * TILE) return 'a man beside the pen';
-      for (const r of roomsOf(L)) if ((r.role === 'calm' || r.role === 'pen') && r.spawns.length) return `${r.men.join(', ')} in the ${r.role}`;
+      for (const r of roomsOf(L)) if (r.role === 'pen' && r.spawns.length) return `${r.men.join(', ')} in the pen`;
       return true;
     } },
   { id: 'arms', text: 'No stand of arms before racksFrom, and one loose stand to a room.',
@@ -247,7 +279,7 @@ function levelFacts(def) {
     `${def.rooms} rooms · curve ${E.from}→${E.to} ease ${E.ease} · souls ${def.souls} · milk ≥${def.heals || 0}`,
     `kinds ${E.kinds.join(' ')} · new ${(E.introduce || []).map(([k, a]) => `${k}@${a}`).join(' ') || '—'}`
       + (E.cap ? ' · caps ' + Object.entries(E.cap).map(([k, v]) => `${k} ${v}`).join(' ') : ''),
-    `arenas ${(def.arenas || []).map((a) => `${a.boss}@${a.at}`).join(' ') || '—'} · mill ${at(def.millAt)}${def.millSolo ? '(empty)' : ''}`
+    `arenas ${(def.arenas || []).map((a) => `${a.boss}@${a.at}`).join(' ') || '—'} · mill ${at(def.millAt)}${def.millLesson ? '(lesson)' : ''}`
       + ` · hall ${at(def.hallAt)} · gallery ${at(def.galleryAt)} · killbox ${at(def.killboxAt)} · vault ${at(def.vaultAt)} · gate ${at(def.soulGate)}`,
     `traps ${def.traps || 0} · posts ${def.lonePosts || 0} · grates ${pct(def.spikes)} · crates ${pct(def.crates)}`
       + ` · windows ${pct(def.windows)} · stands ${pct(def.racks)} from ${pct(def.racksFrom)} · doors ${pct(def.doorChance)} iron ${pct(def.ironDoors)}`,

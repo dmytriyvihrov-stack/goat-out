@@ -93,11 +93,14 @@ class PaintedArt extends AltarArt {
       if (t===T.WALL) {
         const n=!wd.isSolid(x,y-1),s=!wd.isSolid(x,y+1),w=!wd.isSolid(x-1,y),e=!wd.isSolid(x+1,y);
         if (!(n||s||w||e||!wd.isSolid(x-1,y-1)||!wd.isSolid(x+1,y-1)||!wd.isSolid(x-1,y+1)||!wd.isSolid(x+1,y+1))) continue;
-        // The brick face is the dominant texture on every visible wall tile, coping capping only its
-        // top band — not just the row that happens to border floor to the south, as the reference art has
-        // brick coursing running the full height of every wall, top and sides alike.
+        // The brick face is the dominant texture on every visible wall tile: the reference art has
+        // brick coursing running the full height of every wall, top and sides alike. The coping
+        // caps its top band, and only where that band is the OUTSIDE of the wall — on a room's
+        // bottom wall the surface you are looking at is the inner face, there is no top of it in
+        // view from here, and the pale plate drawn there read as a stripe painted along the edge of
+        // the floor.
         this.stamp(ctx,'wallFace',px+16,py+16,32,32);
-        this.stamp(ctx,'wallTop',px+16,py+10,32,20);
+        if (!n) this.stamp(ctx,'wallTop',px+16,py+10,32,20);
         if (s&&x%5===1&&h%3!==0&&!w&&!e) this.stamp(ctx,'banner',px+16,py+14,17,23,0.2);
         continue;
       }
@@ -142,7 +145,7 @@ class PaintedArt extends AltarArt {
     if(p.kind==='brazier'){
       const w=p.r*2.9;
       ctx.save();ctx.translate(p.x,p.y);
-      renderer.shadow(0,4,w*0.4,9);
+      renderer.shadow(0,-4,w*0.36,7.5);
       if(!this.fire(renderer,'brazierFire',0,0,w))this.stamp(ctx,'brazier',0,0,p.r*2.7);
       // Keep the coals-spill tell even though the bowl is now an animated sprite.
       if(p.spillCd>0){ctx.fillStyle='rgba(26,16,22,0.45)';ctx.globalAlpha=p.spillCd/TUNING.prop.brazier.spillCd;ctx.beginPath();ctx.ellipse(0,-w*0.16,w*0.27,w*0.14,0,0,Math.PI*2);ctx.fill();}
@@ -151,7 +154,10 @@ class PaintedArt extends AltarArt {
     if(p.kind==='lamp'){
       const w=34;
       ctx.save();ctx.translate(p.x,p.y-10);
-      renderer.shadow(0,24,7,4);
+      // Under the foot of the post, not a body's length below it. The sprite is anchored at 0.875,
+      // so its own base sits a shade under the translated origin — the shadow was drawn twenty-odd
+      // pixels lower than that, and a lamp with its shadow that far off is a lamp hanging in the air.
+      renderer.shadow(0,-1.5,8,4);
       if(!this.fire(renderer,'lanternFire',0,0,w))this.stamp(ctx,'lamp',0,10,20);
       ctx.restore();return true;
     }
@@ -231,23 +237,15 @@ class PaintedArt extends AltarArt {
     }
     if(p.kind==='secret'){
       if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
-      const h=TILE/2, top=p.y-TILE*0.12;
+      const top=p.y-TILE*0.12;
       // A wall stands in the wall row, not the floor row: anchored a shade above the tile's own
       // centre (0.62, against the stamp's usual 0.5) so it sits with the rest of the wall course
       // rather than reading as flush with the ground the niche's own floor is drawn on.
       this.drawFrame(ctx,this.secretWallTinted(p.wallColor),0,0,128,128,p.x,top,TILE,TILE,0.62);
       // The crack tells still have to be drawn: the art carries none, and they're what the blow count
-      // reads as (see AltarArt.drawProp / CLAUDE.md's "A wall that gives"). Drawn off the same raised
-      // centre as the stamp above, so the crack sits on the stone and not on the boards in front of it.
-      ctx.strokeStyle='rgba(10,8,10,0.55)';ctx.lineWidth=1.5;
-      ctx.beginPath();
-      ctx.moveTo(p.x-h*0.5,top-h*0.6);ctx.lineTo(p.x-h*0.1,top);
-      ctx.lineTo(p.x-h*0.4,top+h*0.4);ctx.lineTo(p.x+h*0.3,top+h*0.7);
-      ctx.stroke();
-      if((p.hits||0)>0){
-        ctx.strokeStyle='rgba(10,8,10,0.7)';ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(p.x+h*0.5,top-h*0.5);ctx.lineTo(p.x-h*0.2,top+h*0.5);ctx.stroke();
-      }
+      // reads as (see `Renderer.wallCrack` / CLAUDE.md's "A wall that gives"). Drawn off the same
+      // raised centre as the stamp above, so it sits on the stone and not on the boards in front of it.
+      renderer.wallCrack(p.x,top,p.hits||0);
       return true;
     }
     return false;

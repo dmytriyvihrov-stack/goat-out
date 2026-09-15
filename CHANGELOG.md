@@ -5,6 +5,100 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.21 — the teaching floor rebuilt, and a softlock that ended runs
+
+Twenty lines off the live build in one sitting, most of them screenshots. The through-line
+is the first ten minutes: level one's tutorial is now four rooms that each hand you the
+thing they are about, and nothing in them is left to the seed.
+
+**A run could end behind a locked door on level two, and that is fixed first.** The Seer's
+arena there is a sealed room — both doors slam behind you and lift when the room is empty
+— and a Seer blinks. `blink` asks the tiles, the flow field and `hazardAt` about a landing
+spot and none of those three know anything about a door, so the mage could blink out
+through the wall and stand there, alive, outside a room whose doors only open when it is
+empty, with the goat shut in behind him and nothing left to hit. `game.sealHolding(e)`
+answers "which shut seal is this man one of the reasons for", and `blink` now refuses any
+spot outside that room. `updateSeals` carries the belt to that brace: a held man more than
+a tile outside the room's own box stops counting. A door that gives too early costs a
+fight; this cost the whole game.
+
+**Level one is ten rooms, and the two empty ones are gone.** They were rooms of painted
+text — one saying `WASD`, one saying `GRAB` — read, nodded at, and connected to nothing.
+Every block of floor text now lies in the room that hands you the verb: `WASD — TO MOVE`
+in the pen under the bars, over the prompt that says which button opens them; grab and
+throw in the ambush room, which stands a sword inside the door and a crate a step past it;
+the headbutt on the floor the first man of the run is standing on, cut to one line from
+three. The count of *ordinary* rooms is unchanged, so the difficulty curve is the curve it
+was — the set pieces simply moved up two: wheel at 3, ambush at 4, the brute's ring at 7,
+the Butcher at 9.
+
+**The first man of the run stands in a room four tiles deep.** It was six and packed with
+hay: half the swings put him down on open floor where he got straight back up, which
+teaches the opposite of the one thing level one is about, and the bales were the loudest
+thing in a room whose whole point is the man. Two crates against the walls of the near
+half instead, clear of the line from the door to him.
+
+**The wheel is met in a room built round it, with two men who teach it.** `millLesson`
+replaces `millSolo`: `MILL_LESSON_TEMPLATE` is narrow enough that the arm's sweep reaches
+the top wall and leaves one lane along the bottom, and the two men stand past it. Neither
+is scripted — `startLevel` pins their `trapSense` to the two ends of the roll every man in
+the game makes, so the nearer one never sees the arm and takes it in the chest on his way
+to you, and the other always sees it and comes round. An empty room taught that the arm
+hurts. What has to be learned is that it hurts *them*.
+
+**The ambush room is a corridor now: three tiles of floor, fourteen long.** A blade thrown
+down it cannot miss and a man walking up it cannot go round. `noFlipX`, because flipped,
+the men stood in the doorway you came in through with the rack behind them. Its stand is
+always the **sword** — a thrown shield only knocks a man flat, and a lesson whose payoff is
+"he gets back up" is not one anybody keeps. Nothing is scattered into it, so the one crate
+is the one the template put there, and its bowl of milk, if the rhythm gives it one, is
+placed in the far corner past the men rather than rolled for.
+
+**`GEN_RULES.lessons`** holds all of that to the promise over every seed: four blocks of
+floor text, the sentry alone in a `lesson` room, the ambush room built from its own
+template with a sword and a crate in it and nobody on the near side. The teaching floor is
+the one place the generator may not surprise anybody.
+
+**The first boss of the game is one brute and one man.** `escorts` on an arena is a hard
+count rather than a threat budget, and level one's first ring sets it to 1.
+
+**Either button throws what is in your mouth.** `lmbPressed` with anything `item` held is
+`throwHeld`. The bash button used to launch a blade, put a swept-up crate down at his feet,
+or do nothing at all depending on how the thing got there — three answers to one press.
+`dropHeld` and `prop.dropped` went with it.
+
+**A crate held in the way takes one blow for you.** `Goat.crated` is the shield's own arc
+with a box in it; `meleeHit` shatters the box and the goat pays nothing. No parry, no
+charges — a crate is free and lying about everywhere, so what stops it being a shield is
+that it is gone on the first blow.
+
+**Anything alive trips the grating.** It answered to the goat and nobody else, which made
+it a tool with a switch on it; a man could stand on the boards over the teeth all day. The
+teeth still come up a beat late, which is what keeps it behind you at a run. Mist is the
+exception.
+
+**Quieter men.** `bark.gap` doubled and `perEnemy` up half again: a room that answers every
+event out loud stops being read, and the two lines that matter were lost in the chatter.
+
+**Art, four ways.** The pen has two tiles of straw in it — a pen with bedding was somewhere
+animals were kept. Hay draws as the painted bale on every level rather than only the one
+with the altar in it. `wallTop` — the pale coping — is skipped on a room's bottom wall,
+where what you are looking at is the inner face and the band read as a stripe painted along
+the floor's edge. And the lantern's and brazier's shadows sit under their own feet: the
+offsets are tuned to where the opaque pixels of the cell end, not to where the cell ends,
+which is why the lamp's shadow had been sitting a body's length below the post.
+
+**The secret wall's crack is a crack.** One shared `Renderer.wallCrack` for the painted and
+primitive draws: a hairline that staggers as it goes, a fork, a pale mortar lip a pixel
+over, and after the first blow a wider gap with chips of stone out of it. It was a
+four-point zigzag down the middle of the tile, which reads as a bolt of lightning painted
+on the stonework.
+
+**Small.** THE ROAD's hint drops its `HOLD RIGHT CLICK — CARRY` line: the hint names the
+ground, and a hint that names the ground should not carry a button.
+
+---
+
 ## 1.20 — an ambush room, a shorter headbutt, and the tutorial split three ways
 
 A second, faster round on top of 1.19 — fifteen short lines against the live build, most

@@ -786,12 +786,17 @@ class Enemy {
 
   blink(game) {
     const cfg = this.cfg, w = game.world, g = game.goat;
+    // A sealed arena's doors open when the room is empty and not before, so a mage shut in one may
+    // not leave it: blinking out through the wall left him alive on the far side of a door nothing
+    // could open, with the goat locked in behind it and the level unfinishable.
+    const seal = game.sealHolding(this);
     let best = null;
     for (let k = 0; k < 24; k++) {
       const a = Math.random() * Math.PI * 2, r = cfg.blinkDist * TILE * (0.7 + Math.random() * 0.6);
       const nx = g.x + Math.cos(a) * r, ny = g.y + Math.sin(a) * r;
       if (w.tileAtPx(nx, ny) === T.WALL) continue;
       if (w.flowDist(nx, ny) < 0) continue;
+      if (seal && !game.inRoom({ x: nx, y: ny }, seal.room, 1)) continue;
       // Blinking out of a fight and into his own fire was the one thing that read as the rune not
       // counting for him. He lands on ground that is neither alight nor about to be, or not at all.
       if (w.isBurningPx(nx, ny) || w.isPitPx(nx, ny)) continue;

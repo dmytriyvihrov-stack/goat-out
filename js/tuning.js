@@ -444,8 +444,11 @@ const TUNING = {
   // The way out is a flight of stairs. The goat climbs them for a moment before the cards, and on
   // the next level it comes up another flight into the first room.
   stairs: { climb: 0.85, climbSpeed: 2.2 * TILE, rise: 16, arrive: 1.1 },
-  // Barks: one man at a time, and never the same man twice in a hurry.
-  bark: { life: 1.9, gap: 0.42, perEnemy: 4.5, nearDist: 7.5, nearChance: 0.22 },
+  // Barks: one man at a time, and never the same man twice in a hurry. Quieter than it was — the
+  // gap between any two lines is twice what it used to be and a man waits half again as long for
+  // his own next one, because a room that shouts on every event stops being read at all and the
+  // lines that matter (a rifle calling the line, a man seeing the goat) were lost in the chatter.
+  bark: { life: 1.9, gap: 0.9, perEnemy: 7, nearDist: 7.5, nearChance: 0.13 },
   // `crowd` is how many men who know where you are it takes for the score to climb a step: up to
   // `warm` it is the motif and the toms, up to `hot` the kick and the hats, and past it the whole
   // kit. It used to go to the top on five, which is an ordinary room on level three, so the loudest
@@ -664,10 +667,13 @@ const LEVELS = [
     // Nothing here appears in a crowd before it has appeared alone.
     // `ritual` paints the altar, the remains and the tools into the first room, and is what makes the
     // opening scene possible; every later level arrives up a flight of stairs into a bare room instead.
-    // Twelve rooms rather than ten. The brute used to be the second man you ever met, three rooms
-    // after your first clubman and one room before his own arena, which is no time at all to have
-    // learned what a headbutt is for: now four rooms of ordinary work stand between them.
-    name: 'THE ALTAR', sub: 'Level 1', rooms: 12, showControls: true, startCage: true, ritual: true,
+    // Ten rooms. It was twelve, two of which were empty floors carrying nothing but painted words —
+    // the goat walked through a room that said WASD and a room that said GRAB before he had met
+    // anybody to use either on. Both lines now live where the verb is: the pen teaches move and
+    // headbutt on the bars themselves, and grab is painted in the room that stands a blade and a
+    // crate in front of you. The rooms after the pen are rooms with men in them, and the count of
+    // ordinary rooms — and so the whole difficulty curve — is exactly what it was.
+    name: 'THE ALTAR', sub: 'Level 1', rooms: 10, showControls: true, startCage: true, ritual: true,
     // The first idea and the plainest: a headbutt only ever knocks a man down, and it is the stone he
     // lands against that kills him. So the rooms here are pillars, corners and stub walls, and the
     // level is one long lesson in where to stand when you swing.
@@ -677,19 +683,27 @@ const LEVELS = [
     // under him says what the button does. Walking round him was the one thing everybody did, so now
     // there is nowhere to walk round to: the room does not open until he is down.
     sentryIntro: true,
-    arenas: [{ at: 9, boss: 'champion' }, { at: 11, boss: 'butcher' }],
+    // The first boss of the game is one brute and one man at his back, and `escorts` is what says
+    // so: the arena's threat budget would otherwise buy two, and the first thing in the run with
+    // more than one heart in it should be read as the brute rather than as a crowd.
+    arenas: [{ at: 7, boss: 'champion', escorts: 1 }, { at: 9, boss: 'butcher' }],
     // The one locked door in the game that is not opened by breaking it. The brute's ring is shut
     // behind a barred gate and the bar is the soul he is carrying: kill him, swallow it, and the
     // gate goes. It exists because the first run we watched walked past the first soul it was ever
     // offered — it was a thing glowing on the floor of a room whose fight was already over — and
     // then met level two with none of the three buttons the souls open. Nobody walks past this one.
-    soulGate: 9,
+    soulGate: 7,
     // The wheel is met with nobody standing in the room, and arms are not a thing you find until
     // halfway in: the first half of the run is the goat and his head and nothing else.
     // The first stand of arms in the game is not a scatter, it is this room: a long approach, the
     // arm right inside the door, and whoever the room holds standing well down the far end of it.
-    ambushAt: 6,
-    millAt: 5, millSolo: true, heals: 3, souls: 1, racks: 0.2, racksFrom: 0.5, traps: 1, crates: 0.3,
+    ambushAt: 4,
+    // The wheel is met in a room built round it: a narrow one with a single lane past the arm, and
+    // two men on the far side of it — one who cannot read it and rides it into the wall, one who
+    // walks around it and comes on. `millLesson` is that pair, and it replaced the empty room the
+    // wheel used to turn in: a hazard nobody is standing near is a thing to walk round rather than
+    // a thing to use. See `millRoom` in `gen.js`.
+    millAt: 3, millLesson: true, heals: 3, souls: 1, racks: 0.2, racksFrom: 0.4, traps: 1, crates: 0.3,
     // No hen yet. She is the one thing in the compound on your side, and a goat who has not been
     // shown a single fight to the finish has nothing to weigh "an ally who kills once" against.
     encounters: {
@@ -753,7 +767,9 @@ const LEVELS = [
     // It used to read HOLD A MAN. HE STOPS BULLETS, which stopped being true out of the pen: a man
     // is BY THE COLLAR and a goat who has not swallowed that soul cannot lift one. What is true
     // either way is the sentence under both — get something solid between you and the line.
-    hint: 'PUT SOMETHING SOLID BETWEEN YOU AND THE LINE', hintKey: 'grab',
+    // No key under it. A hint that names a verb should carry the button for it; this one names the
+    // ground — anything solid will do, and most of what will do is furniture you never pick up.
+    hint: 'PUT SOMETHING SOLID BETWEEN YOU AND THE LINE', hintKey: null,
   },
   {
     // The threshing floor: the widest ground in the compound and the least wall in it. A headbutt on

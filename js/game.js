@@ -163,8 +163,12 @@ class Game {
       // escort followed the goat out through the open door and he then stepped back in — and the
       // spawn list alone would have left that man alive, outside, with the room he belongs to
       // impossible to clear from the inside. Whoever is in the room with you is who you have to beat.
+      // Whoever it is waiting on has to still be IN the room. Nothing that plays by the rules can
+      // leave one once both doors are shut, but a mage blinking through a wall could, and a man
+      // alive on the far side of a door that only opens when he dies is a run that cannot be
+      // finished. A door that gives too early costs a fight; this cost the whole game.
       const alive = (s.held || this.enemies.filter((e) => e.room === s.room))
-        .some((e) => !e.dead && !e.ghosted);
+        .some((e) => !e.dead && !e.ghosted && (!s.armed || this.inRoom(e, s.room, -1)));
       // Nobody left to fight: give, whether or not it ever slammed. A room he cleared by luring it
       // out through the open door is a room he cleared.
       if (!alive) {
@@ -192,6 +196,13 @@ class Game {
         this.floatText(g.x, g.y - 40, 'SEALED IN', PALETTE.bone);
       }
     }
+  }
+
+  // Which shut seal, if any, this man is one of the reasons for. The mage asks before he blinks: a
+  // body that leaves a room whose doors only open when it is empty is a run that ends there.
+  sealHolding(e) {
+    for (const s of this.sealedRooms) if (s.armed && !s.open && s.held && s.held.indexOf(e) >= 0) return s;
+    return null;
   }
 
   // Is this body inside that room's box, `inset` tiles clear of its walls? Only the seals ask.
@@ -637,6 +648,9 @@ class Game {
       if (s.champion) { e.elite = true; e.champion = true; e.hp = s.boss ? TUNING.champion.bossHp : TUNING.champion.hp; e.maxHp = e.hp; }
       // A rifle posted to watch a door has no blind side worth walking round.
       if (s.alert) e.watchful = true;
+      // The wheel's two men: one who never reads a hazard and one who always does. It is the same
+      // roll every man in the game makes, pinned to its two ends — see `millLesson` in `gen.js`.
+      if (s.sense !== undefined) e.trapSense = s.sense;
       // The first man of a run holds his ground: he turns, he swings, he never walks. You get to
       // choose when the first fight of your life starts, which is the only way it teaches anything.
       if (s.sentry) { e.sentry = true; e.facing = s.facing || 0; }
@@ -1747,6 +1761,15 @@ class Game {
         this.particles(sh.x, sh.y, 7, PALETTE.fireHi, 180);
         att.state = 'stagger'; att.timer = W.parry; att.vx = dirx * -3 * TILE; att.vy = diry * -3 * TILE;
         if (--sh.uses <= 0) sh.snap(this);
+      }
+      // A crate held in the way is cover for exactly one blow: it comes apart and the goat takes
+      // nothing. No parry with it — the man who swung is left standing there, and the goat is left
+      // holding nothing.
+      else if (inArc(g) && g.crated(att.x, att.y)) {
+        const box = g.holding;
+        this.floatText(box.x, box.y - 28, 'IT TAKES IT', PALETTE.wood);
+        this.shake(4); this.hitstop(0.04); this.vibe(18);
+        box.shatter(this);
       }
       else if (inArc(g)) g.damage(damage, this, dirx * knock * 4, diry * knock * 4);
     }

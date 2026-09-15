@@ -3,25 +3,25 @@
 const FONT = "'Alegreya', Georgia, 'Times New Roman', serif";
 const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 
-// The controls, painted on the floor over the two rooms after the pen. Nothing about the mouse:
-// a crosshair on a top-down game explains itself, and the floor has room for what it does not.
-// Block 2 is not in an empty room: it goes under the first man of the run, and it no longer
-// repeats the headbutt and wall lines — he has already read them two rooms back, and a room
-// whose whole point is trying the verb on somebody does not need the verb explained again.
-// Block 3 is the roll: it used to sit in block 0, taught before there was anything in the level
-// worth dodging, and now waits for a room with a small crowd already in it, further into the
-// level — see `rollRoom` in `gen.js`.
+// The controls, painted on the floor. Nothing about the mouse: a crosshair on a top-down game
+// explains itself, and the floor has room for what it does not. Every block lies in the room that
+// hands you the thing it is about, and none of them lies in an empty one:
+//   0  the pen, under the bars, over the prompt that says which button opens them
+//   1  the ambush room — a blade inside the door, a crate a step past it, the men down the far end
+//   2  the floor the first man of the run is standing on. One line: he can be hit. What a wall does
+//      to him is the whole of level one and it is learned by doing it, not by reading it here.
+//   3  the roll, in the first crowded room past the lesson — see `rollCandidates` in `gen.js`.
 const CONTROL_LINES = {
   key: [
     ['WASD — TO MOVE'],
-    ['RIGHT CLICK — GRAB OBJECT', 'RELEASE — THROW', 'SPACE — BAAH, THEY COME TO THE NOISE'],
-    ['LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'BUTT HIM'],
+    ['RIGHT CLICK — GRAB OBJECT', 'RELEASE OR LEFT CLICK — THROW', 'SPACE — BAAH, THEY COME TO THE NOISE'],
+    ['LEFT CLICK — HEADBUTT'],
     ['E — ROLL', 'OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
   touch: [
     ['LEFT THUMB — TO MOVE'],
-    ['GRAB — HOLD TO CARRY', 'RELEASE — THROW', 'BAAH — THEY COME TO THE NOISE'],
-    ['BUTT — HEADBUTT', 'INTO A WALL KILLS', 'BUTT HIM'],
+    ['GRAB — HOLD TO CARRY', 'RELEASE OR BUTT — THROW', 'BAAH — THEY COME TO THE NOISE'],
+    ['BUTT — HEADBUTT'],
     ['ROLL — OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
 };
@@ -205,7 +205,9 @@ class Renderer {
           if (!open) continue;
           ctx.fillStyle = def.wall; ctx.fillRect(px, py, TILE, TILE);
           ctx.fillStyle = def.wallTop;
-          if (openN) ctx.fillRect(px, py, TILE, 7);
+          // No cap on a room's bottom wall: what faces you there is the inside of it, and a pale
+          // band along that edge reads as a stripe painted on the floor. Same call as the painted
+          // walls make — see `drawTiles` in `painted-art.js`.
           if (openW) ctx.fillRect(px, py, 4, TILE);
           if (openE) { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(px + TILE - 4, py, 4, TILE); }
           if (openS) { ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.fillRect(px, py + TILE - 6, TILE, 6); }
@@ -215,10 +217,16 @@ class Renderer {
         // A dark lip under every wall gives the floor some depth.
         if (wd.isSolid(tx, ty - 1)) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(px, py, TILE, 5); }
         if (t === T.HAY) {
-          ctx.fillStyle = PALETTE.hay; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
-          ctx.strokeStyle = PALETTE.hayDark; ctx.lineWidth = 2; ctx.beginPath();
-          for (let k = 0; k < 4; k++) { const sx = px + 5 + k * 7, sy = py + 5 + ((tx * 3 + ty * 5 + k) % 3) * 6; ctx.moveTo(sx, sy); ctx.lineTo(sx + 5, sy + 12); }
-          ctx.stroke();
+          // The painted bale, on every level rather than only the one with the altar in it: a level
+          // keeps its own floor and wall colours, but a yellow square with four strokes scratched
+          // into it does not read as a thing that burns, and the art for it was already loaded.
+          if (this.painted.ready) this.painted.stamp(ctx, 'hay', px + 16, py + 17, 30, 27);
+          else {
+            ctx.fillStyle = PALETTE.hay; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+            ctx.strokeStyle = PALETTE.hayDark; ctx.lineWidth = 2; ctx.beginPath();
+            for (let k = 0; k < 4; k++) { const sx = px + 5 + k * 7, sy = py + 5 + ((tx * 3 + ty * 5 + k) % 3) * 6; ctx.moveTo(sx, sy); ctx.lineTo(sx + 5, sy + 12); }
+            ctx.stroke();
+          }
         } else if (t === T.ASH) {
           ctx.fillStyle = PALETTE.ash; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
           ctx.fillStyle = '#3a3230'; ctx.fillRect(px + 8, py + 10, 6, 4); ctx.fillRect(px + 18, py + 20, 7, 4);
@@ -550,6 +558,50 @@ class Renderer {
     ctx.beginPath(); ctx.ellipse(x + Math.sin(t) * 3, y - size * 0.1, size * 0.35, Math.max(0.5, size * 0.55 + Math.sin(t * 1.7) * 3), 0, 0, Math.PI * 2); ctx.fill();
   }
 
+  // The fissure in a wall that gives. It was one four-point zigzag drawn straight down the middle of
+  // the tile, which reads as a bolt of lightning painted on the stonework rather than as damage: a
+  // crack is a hairline that wanders, forks, and ends where it runs out of energy. Drawn from the
+  // tile's own position so it is the same crack every frame, dark with a chipped highlight under it,
+  // and the blow count widens it and adds a fork — `hits` is what the player is reading.
+  wallCrack(x, y, hits) {
+    const ctx = this.ctx, h = TILE / 2;
+    const seed = Math.abs(Math.floor(x * 0.31 + y * 0.17));
+    // One fissure: a walk across the stone from `(sx, sy)` that staggers as it goes. Plenty of short
+    // steps rather than a few long ones — a crack is a line that never manages to be straight.
+    const fork = (sx, sy, dx, dy, steps, w, light) => {
+      ctx.lineWidth = w;
+      ctx.beginPath(); ctx.moveTo(x + sx, y + sy);
+      // The jitter is an offset from the line, not a step added to the last point: accumulated, a
+      // crack wandered clean off the tile it was supposed to be in.
+      for (let k = 1; k <= steps; k++) {
+        const wob = ((seed * 31 + k * k * 17 + k * 59) % 9 - 4) * 0.42;
+        ctx.lineTo(x + sx + dx * k / steps + wob, y + sy + dy * k / steps + wob * 0.3);
+      }
+      ctx.stroke();
+      // The mortar lip on one side of the gap, a pixel over, so the line has a thickness to it
+      // without being drawn thick.
+      if (!light) return;
+      ctx.strokeStyle = 'rgba(236,226,206,0.13)'; ctx.lineWidth = 1;
+      ctx.stroke();
+    };
+    const open = hits > 0;
+    ctx.save(); ctx.translate(1, 1);
+    ctx.strokeStyle = open ? 'rgba(6,5,7,0.85)' : 'rgba(6,5,7,0.52)';
+    fork(-h * 0.16, -h * 0.78, h * 0.22, h * 1.5, 11, open ? 1.7 : 1.1, true);
+    ctx.strokeStyle = open ? 'rgba(6,5,7,0.7)' : 'rgba(6,5,7,0.4)';
+    fork(-h * 0.06, -h * 0.2, -h * 0.44, h * 0.3, 4, open ? 1.2 : 0.9);
+    if (open) {
+      fork(h * 0.06, h * 0.26, h * 0.5, h * 0.22, 4, 1.2);
+      // Stone knocked out of it. Three chips off the seed, so they sit still.
+      ctx.fillStyle = 'rgba(6,5,7,0.45)';
+      for (let k = 0; k < 3; k++) {
+        const t = (seed + k * 53) % 9;
+        ctx.fillRect(x - h * 0.34 + (t % 3) * 5, y - h * 0.46 + ((t / 3) | 0) * 8, 2, 2);
+      }
+    }
+    ctx.restore();
+  }
+
   shadow(x, y, rx, ry) {
     const ctx = this.ctx; ctx.fillStyle = 'rgba(0,0,0,0.32)';
     ctx.beginPath(); ctx.ellipse(x, y + ry * 0.55, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
@@ -702,16 +754,9 @@ class Renderer {
       const h = TILE / 2;
       ctx.fillStyle = p.wallColor; ctx.fillRect(p.x - h, p.y - h, TILE, TILE);
       ctx.fillStyle = p.wallTop; ctx.fillRect(p.x - h, p.y - h, TILE, 6);
-      ctx.strokeStyle = 'rgba(10,8,10,0.55)'; ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(p.x - h * 0.5, p.y - h * 0.6); ctx.lineTo(p.x - h * 0.1, p.y);
-      ctx.lineTo(p.x - h * 0.4, p.y + h * 0.4); ctx.lineTo(p.x + h * 0.3, p.y + h * 0.8);
-      ctx.stroke();
-      // A second crack once it has taken a blow: what "IT CRACKS" said, on the wall itself.
-      if ((p.hits || 0) > 0) {
-        ctx.strokeStyle = 'rgba(10,8,10,0.7)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(p.x + h * 0.5, p.y - h * 0.5); ctx.lineTo(p.x - h * 0.2, p.y + h * 0.6); ctx.stroke();
-      }
+      // A hairline until it takes a blow, and a gap with chips out of it after — what "IT CRACKS"
+      // said, on the wall itself.
+      this.wallCrack(p.x, p.y, p.hits || 0);
     } else if (p.kind === 'table') {
       const a = p.flung ? Math.atan2(p.vy, p.vx) : 0;
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(a);

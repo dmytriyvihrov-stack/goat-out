@@ -55,7 +55,7 @@ function planEncounters(levelDef, rooms, rng) {
   const caps = Object.assign({}, ENCOUNTER.cap, E.cap || {});
   const weight = E.weight ? Object.assign({}, ENCOUNTER.weight, E.weight) : null;
   const out = { rooms: new Map(), introRooms: new Set(), hunterFrom: -1, caps };
-  const fight = rooms.filter((r) => r.index > 0 && !r.calm);
+  const fight = rooms.filter((r) => r.index > 0);
   // The curve is bought in ordinary rooms only. Every set piece — the wheel, the hall, the gallery,
   // the killbox — is a thing to be read rather than a number of men, and none of them may be the
   // room that introduces a kind: meeting the Mill and your first two-hearted man at the same moment
@@ -97,7 +97,9 @@ function planEncounters(levelDef, rooms, rng) {
     if (room.arena) {
       const boss = room.arena.boss;
       const known = seen.has(boss);
-      const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss), rng, caps, 0, weight) : [];
+      // `escorts` on the arena is a hard count rather than a budget: the first boss of the game is
+      // one brute and one man, whatever the threat curve would have bought him.
+      const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss), rng, caps, room.arena.escorts || 0, weight) : [];
       out.rooms.set(room.index, { men: escorts, boss, intro: known ? null : boss, arena: true });
       if (!known) out.introRooms.add(room.index);
       seen.add(boss);
@@ -114,11 +116,15 @@ function planEncounters(levelDef, rooms, rng) {
       easeOff = true; step++;
       continue;
     }
-    // The Mill's room is a set piece. Half a crowd, and nobody at all on the level that shows you
-    // the wheel for the first time: it is a thing to learn, on its own, like a new kind of man.
+    // The Mill's room is a set piece. Half a crowd, and on the level that shows you the wheel for
+    // the first time the two men who teach it and nobody else.
     if (room.isMill) {
-      out.rooms.set(room.index, { men: levelDef.millSolo ? []
-        : fillRoom(curve * ENCOUNTER.millEase, mixable, rng, caps, 0, weight), mill: true });
+      // The level that first shows the wheel gives it two men and no more: one who cannot read it
+      // and one who can. An empty room taught that the arm hurts and nothing else — what has to be
+      // learned is that it hurts THEM, and that needs somebody in it to be hurt.
+      out.rooms.set(room.index, { men: levelDef.millLesson ? ['bearer', 'bearer']
+        : fillRoom(curve * ENCOUNTER.millEase, mixable, rng, caps, 0, weight), mill: true,
+        lesson: !!levelDef.millLesson });
       continue;
     }
     // The killbox: two rifles on the far side watching the door, two men on your side of the room,
@@ -195,7 +201,7 @@ function tryGenerate(levelDef, seed) {
   // share of what is left rather than an average that a Great Hall then eats.
   const fixedW = (j) => {
     if ((levelDef.arenas || []).some((a) => a.at === j)) return ARENA_TEMPLATE.rows[0].length;
-    if (j === levelDef.millAt) return MILL_TEMPLATE.rows[0].length;
+    if (j === levelDef.millAt) return (levelDef.millLesson ? MILL_LESSON_TEMPLATE : MILL_TEMPLATE).rows[0].length;
     if (j === levelDef.hallAt) return GREAT_HALL_TEMPLATE.rows[0].length;
     if (j === levelDef.galleryAt) return GALLERY_TEMPLATE.rows[0].length;
     if (j === levelDef.killboxAt) return KILLBOX_TEMPLATE.rows[0].length;
@@ -219,7 +225,7 @@ function tryGenerate(levelDef, seed) {
     const arena = (levelDef.arenas || []).find((a) => a.at === i);
     if (i === 0) tpl = START_TEMPLATE;
     else if (arena) tpl = ARENA_TEMPLATE;
-    else if (i === levelDef.millAt) tpl = MILL_TEMPLATE;
+    else if (i === levelDef.millAt) tpl = levelDef.millLesson ? MILL_LESSON_TEMPLATE : MILL_TEMPLATE;
     else if (i === levelDef.hallAt) tpl = GREAT_HALL_TEMPLATE;
     else if (i === levelDef.galleryAt) tpl = GALLERY_TEMPLATE;
     else if (i === levelDef.killboxAt) tpl = KILLBOX_TEMPLATE;
@@ -235,16 +241,15 @@ function tryGenerate(levelDef, seed) {
     y = clamp(y, 1, H - h - 2);
     if (x + w >= W - 6) return null;
 
-    const calm = !!levelDef.showControls && (i === 1 || i === 2);
     // What the room is for, in one word: the dev drawer's RULES page and `tools/balance.js` both
     // read it, and it is the only place the canon-or-mix decision is written down.
     const role = i === 0 ? 'pen' : arena ? 'arena' : i === levelDef.millAt ? 'mill' : i === levelDef.hallAt ? 'hall'
-      : i === levelDef.galleryAt ? 'gallery' : i === levelDef.killboxAt ? 'killbox' : calm ? 'calm'
+      : i === levelDef.galleryAt ? 'gallery' : i === levelDef.killboxAt ? 'killbox'
       : trapRooms.has(i) ? 'trap' : canonRooms.has(i) ? 'canon' : 'mix';
     // `seen` is the fog: a room is dark until the goat is standing in it. The first one is not.
     const room = { x, y, w, h, tpl, index: i, markers: [], arena, role, seen: i === 0,
       isMill: i === levelDef.millAt, isHall: i === levelDef.hallAt, isGallery: i === levelDef.galleryAt,
-      isKillbox: i === levelDef.killboxAt, isTrap: trapRooms.has(i), calm };
+      isKillbox: i === levelDef.killboxAt, isTrap: trapRooms.has(i), isAmbush: i === levelDef.ambushAt };
     for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
         const c = tpl.rows[ty][tx];
@@ -376,8 +381,9 @@ function tryGenerate(levelDef, seed) {
   // his head, and whatever the room was already built out of.
   const racksFrom = Math.round((levelDef.racksFrom || 0) * (n - 1));
   // The room that holds the first man of the run. Level one shuts the way out of it behind him and
-  // paints the word for the button on the floor. Nothing else is scattered into it: no crate to
-  // throw, no grating to herd him onto and no bowl of milk — the room is one man and one verb.
+  // paints the word for the button on the floor. Nothing is SCATTERED into it: no grating to herd
+  // him onto and no bowl of milk. What it has is what `LESSON_TEMPLATE` puts there by hand — two
+  // crates on the near half, so the room has a size the eye can read — and one man.
   let lessonRoom = null, lessonIndex = -1;
   if (levelDef.showControls) {
     for (const r of rooms) { const c = plan.rooms.get(r.index); if (c && c.intro) { lessonIndex = r.index; break; } }
@@ -403,7 +409,10 @@ function tryGenerate(levelDef, seed) {
       // A pair of stands alternates, so an arena always offers one of each rather than two swords.
       // The killbox's own stand is always the shield: the room is a rifle problem, and the shield is
       // the answer to a rifle that does not involve holding a man.
-      else if (m.c === 'w') { if (room.index >= racksFrom) props.push({ x: px, y: py, kind: 'weapon', weapon: room.isKillbox ? 'shield' : (wIdx++ % 2) ? 'shield' : 'sword' }); }
+      // The ambush room's own stand is always the sword: it is the room that teaches the throw, and
+      // a thrown sword kills the man it reaches while a thrown shield only knocks him flat — a
+      // lesson whose payoff is "he gets back up" is not a lesson anybody keeps.
+      else if (m.c === 'w') { if (room.index >= racksFrom) props.push({ x: px, y: py, kind: 'weapon', weapon: room.isAmbush ? 'sword' : room.isKillbox ? 'shield' : (wIdx++ % 2) ? 'shield' : 'sword' }); }
       else spots.push(m);
     });
     // Now and then a single stand of arms, anywhere a man might have left one. Never two, never
@@ -423,13 +432,13 @@ function tryGenerate(levelDef, seed) {
     // across the middle of a room is ground you have to decide about. Not in the control rooms, not
     // in the pen, and never under the furniture. A trap room already laid its own out in a shape;
     // throwing more over the top of it turns the shape back into noise.
-    if (room.index > 0 && !room.calm && !room.isTrap && room.index !== lessonIndex && rng.chance(levelDef.spikes || 0)) {
+    if (room.index > 0 && !room.isTrap && !room.isAmbush && room.index !== lessonIndex && rng.chance(levelDef.spikes || 0)) {
       const S = TUNING.prop.spike;
       spikePatch(tiles, W, room, props, rng, rng.int(S.run[0], S.run[1]));
     }
     // Crates. Boxes of the compound's own stores, one to a tile, left where they were set down —
     // the plainest thing in a room: pick it up, throw it at a man, it comes apart on him.
-    if (room.index > 0 && !room.calm && room.index !== lessonIndex && rng.chance(levelDef.crates || 0)) {
+    if (room.index > 0 && !room.isAmbush && room.index !== lessonIndex && rng.chance(levelDef.crates || 0)) {
       const want = rng.int(2, 4);
       for (let a = 0, placed = 0; a < 40 && placed < want; a++) {
         const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
@@ -444,7 +453,7 @@ function tryGenerate(levelDef, seed) {
     // stores — `levelDef.coops` is the per-room chance and only the early floors set it. Wants a
     // clear pair of tiles and a wide berth from everything else, because a thing you have to walk
     // up to and put your head under twice is a thing you have to be able to stand in front of.
-    if (room.index > 0 && !room.calm && room.index !== lessonIndex && rng.chance(levelDef.coops || 0)) {
+    if (room.index > 0 && !room.isAmbush && room.index !== lessonIndex && rng.chance(levelDef.coops || 0)) {
       for (let a = 0; a < 40; a++) {
         const tx = rng.int(room.x + 1, room.x + room.w - 3), ty = rng.int(room.y + 1, room.y + room.h - 2);
         if (tiles[ty * W + tx] !== T.FLOOR || tiles[ty * W + tx + 1] !== T.FLOOR) continue;
@@ -454,7 +463,24 @@ function tryGenerate(levelDef, seed) {
         break;
       }
     }
-    if (!cell) return;                                  // the pen and the two control rooms stay empty
+    if (!cell) return;                                                       // the pen stays empty
+    // The wheel's own lesson, on the level that first shows it: the two men stand past the arm, on
+    // the far side of it from the door, and one of them cannot read it. `trapSense` does all of the
+    // work — nought means he never sees a hazard and takes the arm in the chest on his way to you,
+    // one means he always does and comes round it — so nothing here is scripted and neither man is
+    // a special case anywhere else in the game. Sorted by distance from where you walk in, because
+    // the room is flipped as freely as any other and "past the wheel" has to survive that.
+    if (cell.lesson && room.enter) {
+      const off = (m) => len((m.tx + 0.5) * TILE - room.enter.x, (m.ty + 0.5) * TILE - room.enter.y);
+      const far = spots.filter((m) => m.c === 'e').sort((a, b) => off(a) - off(b)).slice(-2);
+      if (far.length >= 2) {
+        // The nearer of the two starts running first, so he is the one who cannot read it: the arm
+        // takes him while the other is still coming round, which is the order that reads.
+        far.forEach((m, i) => spawns.push({ x: (m.tx + 0.5) * TILE, y: (m.ty + 0.5) * TILE,
+          kind: 'bearer', roomIndex: room.index, sense: i === 0 ? 0 : 1 }));
+        return;
+      }
+    }
     // The first man of the run holds a post instead of walking at you. He stands a few tiles inside
     // the mouth of the room with his back to it, and he is the only man in it: a headbutt is a thing
     // you have to try on somebody, and somebody charging you is not somebody you can try it on.
@@ -504,7 +530,7 @@ function tryGenerate(levelDef, seed) {
   // Lone rifle posts, once rifles are something you have met. A rifle on its own is a different
   // problem from a rifle inside a crowd: you have to cross its line rather than out-run the pile.
   if (levelDef.lonePosts && plan.hunterFrom >= 0) {
-    const eligible = rng.shuffle(rooms.filter((r) => r.index > plan.hunterFrom && !r.arena && !r.isMill && !r.calm
+    const eligible = rng.shuffle(rooms.filter((r) => r.index > plan.hunterFrom && !r.arena && !r.isMill
       && !r.isGallery && !r.isHall && !r.isKillbox && !plan.introRooms.has(r.index)));
     let placed = 0;
     for (const room of eligible) {
@@ -527,7 +553,7 @@ function tryGenerate(levelDef, seed) {
   // so the level is cut into that many bands and each band gives one up — the room inside a band is
   // random, the spacing is not. `heals` is a floor: a long level gets more bowls, never a longer
   // dry spell, and the same eligibility as before keeps them out of the set pieces.
-  const healable = rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.calm && !r.isGallery
+  const healable = rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.isGallery
     && !r.isKillbox && r.index !== lessonIndex);
   const wantHeals = Math.min(healable.length, Math.max(levelDef.heals || 0, Math.ceil((n - 1) / TUNING.prop.heal.every)));
   const healRooms = [], usedHeal = new Set();
@@ -568,7 +594,13 @@ function tryGenerate(levelDef, seed) {
     let pool = spots.filter((p) => p.fire >= 2.6 * TILE && p.near >= 1.7 * TILE);
     if (!pool.length) pool = spots.filter((p) => p.fire >= 2.6 * TILE);
     if (!pool.length) pool = spots.slice().sort((a, b) => b.fire - a.fire).slice(0, 3);
-    const pick = pool[rng.int(0, pool.length - 1)];
+    // The ambush room is the one room where the bowl is placed rather than scattered: it goes in the
+    // far corner, past the men, so grazing it is something you do after the room is won and never
+    // something in the lane the blade is thrown down.
+    const off = (p) => len(p.x - room.enter.x, p.y - room.enter.y);
+    const pick = room.isAmbush && room.enter
+      ? pool.reduce((a, b) => (off(b) > off(a) ? b : a), pool[0])
+      : pool[rng.int(0, pool.length - 1)];
     props.push({ x: pick.x, y: pick.y, kind: 'heal' });
   });
 
@@ -591,28 +623,37 @@ function tryGenerate(levelDef, seed) {
   // is lying on rather than running off both ends of it, and the button it is about if it is about one.
   const hints = levelDef.hint ? [{ x: centre.x, y: centre.y - 2.0 * TILE, text: levelDef.hint,
     w: rooms[0].w * TILE, key: levelDef.hintKey || null }] : [];
-  const cagePrompt = levelDef.startCage ? { x: start.x, y: start.y + 2.9 * TILE } : null;
-  // Ape Out paints the controls on the floor. We split them over the two rooms after the pen,
-  // and both of those rooms are left empty so they can be read without being clubbed.
+  // A tile lower than it was, to leave room under the bars for the line about moving.
+  const cagePrompt = levelDef.startCage ? { x: start.x, y: start.y + 3.05 * TILE } : null;
+  // Ape Out paints the controls on the floor. Every block now lies in the room that gives you
+  // something to try it on: there are no empty rooms of text any more, because two of them were
+  // read, nodded at and not connected to anything — the first player we watched got all the way to
+  // the wheel without working out that the men could be hit at all.
   const controls = [];
   if (levelDef.showControls) {
-    for (let k = 0; k < 2; k++) {
-      const r = rooms[k + 1];
-      if (r) controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: k });
-    }
-    // And the same word again on the floor of the room that finally has a man standing on it. The
-    // two rooms of text before this one were read and not connected to anything: the first player we
-    // watched got all the way to the wheel without working out that the men could be hit at all.
+    // Block 0 is the pen itself, under the bars, above the prompt that says which button opens them.
+    // Moving means moving inside a cage, which is where everybody starts pressing keys anyway.
+    controls.push({ x: start.x, y: start.y + 1.8 * TILE, w: 13 * TILE, part: 0 });
+    // Block 1 is grab and throw, in the room that stands a blade inside the door and a crate a step
+    // past it with the men well down the far end — see `AMBUSH_TEMPLATE`.
+    const amb = rooms[levelDef.ambushAt];
+    if (amb) controls.push({ x: (amb.x + amb.w / 2) * TILE, y: (amb.y + amb.h / 2) * TILE, w: amb.w * TILE, part: 1 });
+    // Block 2 is the headbutt, on the floor of the room that finally has a man standing on it.
     if (lessonRoom) controls.push({ x: (lessonRoom.x + lessonRoom.w / 2) * TILE,
       y: (lessonRoom.y + lessonRoom.h / 2) * TILE, w: lessonRoom.w * TILE, part: 2 });
     // The roll used to be taught here too, before there was a single thing in the level worth
     // dodging. It waits instead for the first room past the lesson that already holds a small crowd
     // — a dodge means nothing as a word on an empty floor — picked closest to the level's own middle
     // so it lands well into the run rather than right on the man who is still teaching the headbutt.
-    const rollCandidates = ordinaryRooms(levelDef, rooms.length)
-      .filter((i) => i !== lessonIndex && i !== levelDef.vaultAt && !trapRooms.has(i))
+    const eligible = ordinaryRooms(levelDef, rooms.length)
+      .filter((i) => i !== lessonIndex && i !== levelDef.vaultAt && i !== levelDef.ambushAt && !trapRooms.has(i))
       .map((i) => ({ i, men: ((plan.rooms.get(i) || {}).men || []).length }))
-      .filter((c) => c.men >= 2);
+      .filter((c) => c.men >= 1);
+    // A small crowd if the level has one going spare, and otherwise the fullest room that is left:
+    // level one is short and its first rooms hold one man each, so insisting on two could leave the
+    // line unpainted altogether — which is worse than painting it on a floor with one man on it.
+    const crowded = eligible.filter((c) => c.men >= 2);
+    const rollCandidates = crowded.length ? crowded : eligible;
     if (rollCandidates.length) {
       const mid = (rooms.length - 1) / 2;
       rollCandidates.sort((a, b) => Math.abs(a.i - mid) - Math.abs(b.i - mid));
@@ -681,27 +722,28 @@ function carveCorridor(tiles, W, a, b, rng, width) {
   return { enter, door: null };
 }
 
-// Which rooms of a level are built round their floor rather than round their men. Never the pen, the
-// control rooms or a set piece, and never the room that opens the fighting: the first man of a run
-// gets bare ground to be met on. They are spread over the back of the level, where a shape on the
-// floor is something to use rather than one more thing to learn.
+// Which rooms of a level are built round their floor rather than round their men. Never the pen or a
+// set piece, and never the room that opens the fighting: the first man of a run gets bare ground to
+// be met on. They are spread over the back of the level, where a shape on the floor is something to
+// use rather than one more thing to learn.
 function pickTrapRooms(levelDef, n, available, rng) {
   const out = new Set();
   const want = Math.min(levelDef.traps || 0, available);
   if (want <= 0) return out;
   // The first two ordinary rooms of a level are where its kinds get introduced; leave them alone.
-  const pool = ordinaryRooms(levelDef, n).slice(2);
+  // The ambush room is left alone too: it is a forced shape teaching a forced lesson, and three
+  // plates thrown across it is one more thing to read in the one room that may not have any.
+  const pool = ordinaryRooms(levelDef, n).slice(2).filter((i) => i !== levelDef.ambushAt);
   for (const i of rng.shuffle(pool).slice(0, want)) out.add(i);
   return out;
 }
 
-// The rooms of a level that are nobody's set piece: not the pen, not the two control rooms, not an
-// arena, the Mill, the Hall, the Gallery or the killbox. These are the rooms the canon, the mix and
-// the trap rooms are dealt out of, in order.
+// The rooms of a level that are nobody's set piece: not the pen, not an arena, the Mill, the Hall,
+// the Gallery or the killbox. These are the rooms the canon, the mix and the trap rooms are dealt
+// out of, in order.
 function ordinaryRooms(levelDef, n) {
   const taken = new Set([0, levelDef.millAt, levelDef.hallAt, levelDef.galleryAt, levelDef.killboxAt]);
   for (const a of (levelDef.arenas || [])) taken.add(a.at);
-  if (levelDef.showControls) { taken.add(1); taken.add(2); }
   const out = [];
   for (let i = 1; i < n; i++) if (!taken.has(i)) out.push(i);
   return out;
@@ -715,7 +757,10 @@ function ordinaryRooms(levelDef, n) {
 function pickCanonRooms(levelDef, n, trapRooms) {
   const out = new Set();
   const ordinary = ordinaryRooms(levelDef, n);
-  const plain = ordinary.filter((i) => !trapRooms.has(i));
+  // The ambush room is an ordinary room by the curve and a forced shape by the template, so calling
+  // it a canon room would be counting a room the canon never got to build. It still counts toward
+  // the share owed — the canon simply has to find it elsewhere.
+  const plain = ordinary.filter((i) => !trapRooms.has(i) && i !== levelDef.ambushAt);
   const want = Math.min(plain.length, Math.ceil(CANON.share * ordinary.length));
   for (let k = 0; k < want; k++) out.add(plain[want === 1 ? 0 : Math.round(k * (plain.length - 1) / (want - 1))]);
   return out;

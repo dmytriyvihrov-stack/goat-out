@@ -157,6 +157,25 @@ THE YARD (fire) and THE THRESHING FLOOR (open ground, warm/dusty) are the two mo
 distinct from THE ALTAR's cold stone and from each other — good ones to start with if
 this lands in batches rather than all six at once.
 
+Three things about the tile layer were settled while this brief was open, and a new set has
+to keep to them:
+
+- **The hay bale is already level-agnostic.** `T.HAY` stamps the painted bale on *every* level
+  now — `Renderer.drawTiles` falls back to the old flat yellow square only while the art is
+  still loading. So a level set does not owe a hay tile, and a painted bale has to sit happily
+  on six different floors.
+- **`wallTop` is a coping and it only draws where it faces out of the room.** `drawTiles` skips
+  it on any wall tile whose north neighbour is floor — a room's bottom wall, where what you are
+  looking at is the inner face and there is no top of it in view. Drawn there it read as a pale
+  stripe painted along the edge of the floor. Paint `wallTop` as the top surface of a wall seen
+  from slightly in front of it, not as a band that works anywhere.
+- **A prop's shadow belongs under the sprite's own feet.** Every stamp is anchored (`0.5`
+  default, `0.875` for the fire loops), and the shadow offsets in `PaintedArt.drawProp` are
+  tuned to where the *opaque pixels* of the cell end, not to where the cell ends: the lantern's
+  art stops twelve source pixels short of the bottom of its 128px cell, and the shadow drawn at
+  the cell bottom sat a body's length below the post. If a cell's padding changes, the shadow
+  offset in that branch changes with it.
+
 ### B. Hunter, Wraith, Butcher: full character sheets
 
 Concept sheets already exist and were never taken further — `output/character-concepts/

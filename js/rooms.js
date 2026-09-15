@@ -704,6 +704,24 @@ const ARENA_TEMPLATE = { name: 'arena', rows: [
 // 'M' is the hub. The room is still taller than the arms are long — there is a lane along the top
 // and the bottom that the sweep never reaches — but the whole footprint shrank with the arm, so a
 // shorter reach reads as a tighter room rather than as the same floor with less of it dangerous.
+// The room the wheel is MET in, on the level that first shows it. Narrow enough that the arm's own
+// sweep — the hub plus `mill.armLen`, a shade under three tiles — reaches the top wall and leaves
+// exactly one lane of clear floor along the bottom: the way through is a decision about the arm
+// rather than a walk round it. The two men stand well past it, out of the sweep, and `millLesson`
+// in `gen.js` is what makes one of them careless and the other careful.
+const MILL_LESSON_TEMPLATE = { name: 'millroom', noFlipX: true, rows: [
+  '##############',
+  '#............#',
+  '#..........e.#',
+  '#............#',
+  '#.....M......#',
+  '#............#',
+  '#..........e.#',
+  '#............#',
+  '#............#',
+  '##############',
+]};
+
 const MILL_TEMPLATE = { name: 'mill', rows: [
   '##############',
   '#............#',
@@ -764,34 +782,47 @@ const KILLBOX_TEMPLATE = { name: 'killbox', noFlipX: true, rows: [
 // grabbing the arm and throwing it is the answer that is actually in front of you before anyone
 // has closed the distance. `levelDef.ambushAt` forces it the same way `millAt` and the rest of the
 // set pieces do; the room otherwise fills off the ordinary threat curve like any other.
-const AMBUSH_TEMPLATE = { name: 'ambush', rows: [
-  '####################',
-  '#..................#',
-  '#.w..o.......e.e.e.#',
-  '#..................#',
-  '#..................#',
-  '####################',
+// Three tiles of floor and nothing to the sides: a corridor rather than a room, so a blade thrown
+// down it cannot miss and a man walking up it cannot go round. `noFlipX` is load-bearing — rooms
+// chain left to right, so the door is always in the left wall, and the arm has to be the thing
+// just inside it with the men at the far end. Flipped, the men stood in the doorway you walked in
+// through and the rack was behind them, which is the opposite of what the room is for.
+const AMBUSH_TEMPLATE = { name: 'ambush', noFlipX: true, rows: [
+  '################',
+  '#..............#',
+  '#.w..o....e...e#',
+  '#..............#',
+  '################',
 ]};
 
-const LESSON_TEMPLATE = { name: 'lesson', canon: 'stone', rows: [
+// The room the first man of the run stands in. Four tiles of floor and no deeper, so wherever he is
+// standing there is stone a tile away and every direction a headbutt can throw him ends against it
+// — the level's whole idea, on the one man it is safe to learn it on. It was six tiles deep and
+// packed with hay: half the swings put him down on open floor where he got back up again, and the
+// bales were the loudest thing in a room whose entire point is the man. Two crates on the near half
+// instead, against the top and the bottom wall: something for the eye to measure the room by, well
+// clear of the line from the door to him and well clear of where `blockSpot` stands him.
+const LESSON_TEMPLATE = { name: 'lesson', canon: 'stone', noFlipX: true, rows: [
   '############',
+  '#..o.......#',
   '#..........#',
-  '#.hh....hh.#',
   '#..........#',
-  '#.hh....hh.#',
-  '#..........#',
+  '#..o.......#',
   '############',
 ]};
 
 // The room you woke up in. The altar stands off to one side, made ready, with the straps and the
 // knife and what is left of the goat that went before you. You are in the pen beside it.
 // Two tiles wider than it was, so the second cage fits on the right without crowding the way out.
+// The two hay tiles on row four are inside the bars: a pen with bedding in it is somewhere animals
+// were kept, and a pen with nothing in it is a rectangle of iron. `buildCage` puts the bars at
+// `cage.halfW`/`halfH` around the middle of this room, which is what fixes them to these tiles.
 const START_TEMPLATE = { name: 'start', rows: [
   '##################',
   '#................#',
   '#.B............B.#',
   '#................#',
-  '#................#',
+  '#......hh........#',
   '#................#',
   '#................#',
   '#................#',

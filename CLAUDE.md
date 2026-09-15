@@ -108,8 +108,9 @@ each room as `room.exitBand`, `blockSpot` puts every row of that band but one ba
 door the corridor was given, and stands him a step inside the single tile that is left. `collideEntities`
 also refuses to shove him — like the Butcher, he takes the whole of the separation and gives none of it,
 because bulldozing him down a one-tile corridor was a way past him. The room does not open until he is
-down. Nothing else is scattered into that room either: `lessonIndex` keeps the milk, the crates and the
-grating out of it, so it is one man and one verb.) `chaseGoat` turns him to
+down. Nothing else is **scattered** into that room either: `lessonIndex` keeps the milk, the random
+crates and the grating out of it, so it is one man, one verb and whatever the template put there by
+hand.) `chaseGoat` turns him to
 face the goat and returns without moving, `idleWander` leaves his facing alone and `investigate` puts him
 straight back to idle — so he is the only man in the game you get to choose the moment of the fight with.
 Everything else about him is a clubman: windup, swing, recovery, two hearts of nothing, killed by geometry
@@ -117,21 +118,39 @@ like anybody. He is a teaching device and there is exactly one of him per run.
 
 **His room is one shape, not whatever the mix pool draws.** Every other room in the level is dealt
 from the canon or mix pool and could be anything the level owns; this one is forced to
-`LESSON_TEMPLATE` in `rooms.js` — open floor, nothing in it to break the line from the door to
-whichever wall he ends up standing against. `sentryRoomAt` in `gen.js`, computed before any room
+`LESSON_TEMPLATE` in `rooms.js` — **four tiles of floor and no deeper**, so wherever he is standing
+there is stone a tile away and every direction a headbutt can throw him ends against it. It was six
+deep and packed with hay: half the swings put him down on open floor where he got back up again, which
+taught the opposite of the level's one idea, and the bales were the loudest thing in a room whose whole
+point is the man. What is in it now is two crates against the top and bottom wall of the **near** half —
+something for the eye to measure the room by, well clear of the line from the door to him and well clear
+of where `blockSpot` stands him (it refuses a spot within 1.4 tiles of a prop, so furniture at the far
+end could push him off the wall). `noFlipX` keeps them out of the doorway.
+`sentryRoomAt` in `gen.js`, computed before any room
 exists, resolves to `ordinaryRooms(levelDef, n)[0]` — the same room `planEncounters` would have
 introduced the bearer in anyway, since `introduce: [['bearer', 0]]` always resolves to the first
 ordinary room — so forcing the template changes nothing about the difficulty curve or the room's
-`canon`/`mix` accounting, only what furniture (none) stands between the entrance and him.
+`canon`/`mix` accounting, only what stands between the entrance and him.
 
 **A second forced room, further in: grab and throw taught by standing something in front of you.**
-`AMBUSH_TEMPLATE` in `rooms.js` is a long, narrow room — a stand of arms just inside the door, a
-crate a step past it, whoever the room holds standing well down the far end. `levelDef.ambushAt`
-forces it in the same way `millAt`/`hallAt`/`galleryAt`/`killboxAt` already do (and is in `fixedW`
-alongside them, so the width budget accounts for it); level one sets it to room 6, which is also
-where `racksFrom` already allows the level's first stand of arms and where the roll's own crowded-
-room search (see **Words on the floor**) tends to land — one room now carries all three rather than
-three separate ones. Nothing about who spawns there is special-cased: it is an ordinary room and
+`AMBUSH_TEMPLATE` in `rooms.js` is **three tiles of floor and fourteen long** — a corridor rather than
+a room, so a blade thrown down it cannot miss and a man walking up it cannot go round. A stand of arms
+just inside the door, a crate a step past it, and the room's men standing well down the far end.
+`levelDef.ambushAt` forces it in the same way `millAt`/`hallAt`/`galleryAt`/`killboxAt` already do (and
+is in `fixedW` alongside them, so the width budget accounts for it); level one sets it to room 4, which
+is where `racksFrom` allows the level's first stand of arms, and **block 1 of the floor text — grab and
+throw — is painted here** rather than in an empty room two rooms after the pen.
+
+Four things about it are deliberate. `noFlipX`: rooms chain left to right, so the door is always in the
+left wall, and flipped, the men stood in the doorway you walked in through with the rack behind them —
+the exact opposite of what the room is for. Its stand is **always the sword** (`room.isAmbush` in the
+marker loop), because a thrown shield only knocks a man flat and a lesson whose payoff is "he gets back
+up" is not one anybody keeps. Nothing is scattered into it — no extra crates, no grating, no coop, never
+a trap room and never a canon room — so the one crate in it is the one the template put there. And its
+bowl of milk, if the heal rhythm gives it one, is **placed rather than scattered**: the spot furthest
+from `room.enter`, which is the far corner past the men.
+
+Nothing about who spawns there is special-cased: it is an ordinary room and
 fills off the threat curve like any other, so "they wait" is room geometry (the distance from the
 door to them) rather than a passive-AI state — nothing in `Enemy` was touched for it.
 
@@ -151,6 +170,19 @@ and `drawHound` gives it the only tell it has (flattened body, streaks, lit eyes
 touch the sprite. `packBusy()` lets one hound of a pack commit at a time, which is what keeps three of
 them readable. The counter is the scream: `daze()` multiplies by `cfg.dazeMul` for a dog, cancels a dart,
 and a dazed dog cannot dodge. `game.houndSeen()` growls and teaches that once per run.
+
+**The wheel is met in a room built round it.** `levelDef.millLesson` — level one, and nowhere else —
+picks `MILL_LESSON_TEMPLATE` instead of `MILL_TEMPLATE` and puts exactly **two men** in it. The room is
+narrow on purpose: the arm's own sweep (the hub plus `mill.armLen`, a shade under three tiles) reaches
+the top wall and leaves one lane of clear floor along the bottom, so getting through is a decision about
+the wheel rather than a walk round it. `noFlipX` keeps the two men on the far side of it from the door.
+The men are the lesson and neither of them is scripted: `planEncounters` asks for two bearers, the
+generator stands them on the two `e` markers furthest from `room.enter`, and `startLevel` pins their
+`trapSense` to the two ends of the roll every man in the game makes — nought for the nearer one, who
+therefore never sees a hazard and takes the arm in the chest on his way to you, and one for the other,
+who always does and comes round it. One man dies to the room and one man walks through it, in that
+order, while you stand and watch. It used to be `millSolo`: an empty room, which taught that the arm
+hurts and nothing else. What has to be learned is that it hurts *them*, and that needs somebody in it.
 
 **Trap sense.** `hazardAt()` answers what will kill whoever is at a point — flame, a lit brazier, a rune
 mid-cast, the lip of a drop, a spike plate that is up or about to be, or the arm of the Mill about to
@@ -210,7 +242,7 @@ rack — closer to what it actually covers on the ground.
 **One new thing to a room.** `game.taught` is a list of what the run has already been shown — enemy
 kinds, `'mill'`, `'<kind> boss'`. It is passed into `generateLevel` and comes back on the level as
 `taught`. Any kind not in it gets a room to itself the first time it appears (the room's other men are
-dropped); a new boss gets his arena alone, and the first Mill room keeps one man. `metRoom` inside the
+dropped); a new boss gets his arena alone, and the wheel keeps the two men that teach it. `metRoom` inside the
 generator also keeps the lone rifle posts from landing earlier in the level than the room that
 introduces a rifle. A run that keeps its souls keeps what it has learned; a fresh run forgets.
 
@@ -252,13 +284,23 @@ each, recorded on the level as `sealedArenas`. `game.updateSeals` runs the three
 thing that touches them: the doors stand **open**, they slam the moment the goat is a tile inside
 (`game.inRoom`), and they break outright when the last man shut in with him is down.
 
-Two things about it are load-bearing and both were found by playing it rather than by reading it.
+Three things about it are load-bearing and every one of them was found by playing it rather than by
+reading it.
 The doors have to *start* open: a seal refuses `smash` and refuses `openPressure`, so a pair that is
 shut on the first frame of the level is a wall, and everything past it — the arena, its soul, the
 stairs — is unreachable. The level simply could not be finished. And the seal waits on `s.held`,
 the men **standing in the room at the moment it shut**, not on the spawn list: an escort who chased
 the goat out through the open door and stayed out there is alive, outside, in a room that can then
 never be cleared from the inside. Whoever is in the room with you is who you have to beat.
+
+And **nobody it is waiting on may leave**. The level-two arena is the Seer's, sealed, and a Seer
+blinks: `blink` picks a landing spot around the goat and asks the tiles, the flow field and
+`hazardAt` about it, and none of those three know anything about a door. A mage who blinked out
+through the wall was alive, outside, in a room whose doors only open when it is empty, with the goat
+shut in behind him — the run ended there with nothing to hit. `game.sealHolding(e)` is the question
+(which shut seal is this man one of the reasons for) and `blink` now refuses any spot outside that
+room. `updateSeals` has the belt to that brace: a held man more than a tile outside the room's own box
+stops counting, because a door that gives too early costs a fight and this cost the whole game.
 
 **A wall that gives.** `carveSecret` in `gen.js` takes a patch of one ordinary room's own top or
 bottom wall, once or twice a level (`TUNING.secret.chance2` is the odds of the second), and cuts a
@@ -267,6 +309,15 @@ touches has to still be solid rock, so it never trades on a room or a corridor. 
 `kind === 'secret'`: it is a wall to sight and to bullets, `Prop.crackWall` gives it
 `TUNING.prop.secret.hits` (two) and a visible crack after the first, and it is drawn in the room's
 own `wallColor` so nothing gives it away before that crack does.
+
+`Renderer.wallCrack(x, y, hits)` is the crack itself and both draws call it — the painted branch in
+`painted-art.js` and the primitive one in `drawPropBody` — so there is one crack in the game and not
+two. It is a hairline that staggers as it goes, with a forking branch, a pale mortar lip a pixel over
+and, once it has taken a blow, a wider gap with three chips of stone out of it. Everything about it is
+derived from the tile's own position, so it is the same crack every frame. It was one four-point
+zigzag straight down the middle of the tile, which reads as a bolt of lightning painted on the
+stonework rather than as damage: the jitter on each point is an offset from the line rather than a step
+added to the last point, because accumulated it wandered clean off the tile.
 
 Once it is down the niche behind it **stays lit**. `carveSecret` returns the three tiles the gap
 opens onto, the prop carries them as `nicheTiles`, and `revealRooms` sets them in `world.vis` every
@@ -360,7 +411,7 @@ which is the difference between fire being a hazard and fire being a win button.
 multiplies the three real cooldowns (`screamCd`, `grabCd`, `rollCd`) by `bell.cooldownMul` as they tick
 and the top speed by `bell.speedMul`; `drawSkills` puts a draining strip under the rail. The noise it
 makes is unchanged and is the price. `planEncounters` does not place it: the generator drops a `'b'`
-marker unless the room's plan holds men, so it never lands in the pen or the two control rooms — an
+marker unless the room's plan holds men, so it never lands in the pen — an
 empty room was where it used to sit reading as scenery.
 
 **A man in your mouth.** `goat.holdLimit` is rolled in `tryGrab` from `mods.holdTime` and
@@ -377,7 +428,9 @@ straight out of it when he catches.
 
 **Barks.** `game.bark(enemy, kind, chance)` is the only way to make a man speak. It enforces a global gap
 and a per-man cooldown, so a crowd never shouts at once. Lines live in `BARKS` in `tuning.js`; the bubble
-is drawn in `drawEnemy`.
+is drawn in `drawEnemy`. `bark.gap` is twice what it was and `perEnemy` half again, because a room that
+answers every event out loud stops being read at all and the two lines that matter — a rifle calling
+the line, a man saying he has seen you — were lost in the chatter.
 
 **His voice.** `GameAudio.bleatVoice` is the goat: a sawtooth put through two vowel formants, shaken
 at `wob` Hz and falling away at the end, with the first formant opening over the call so it travels from
@@ -440,7 +493,7 @@ a `cap`, and an `introduce` entry on the level that first shows it.
 on THE ALTAR, FIRE on THE YARD, THE LINE on THE ROAD, OPEN GROUND on THE THRESHING FLOOR, THE FUNNEL on
 THE BRIDGE, THE DROP on THE RAFTERS, THE NICHE on THE OSSUARY. A `ROOM_TEMPLATES` entry carrying
 `canon: '<id>'` belongs to that level's pool, and `pickCanonRooms` hands at least `CANON.share` of the
-level's ordinary rooms (`ordinaryRooms`: not the pen, the control rooms or a set piece) to it, on an even
+level's ordinary rooms (`ordinaryRooms`: not the pen or a set piece) to it, on an even
 spread that always starts with the first ordinary room — a level says what it is about on the first
 floor you fight on. The rest are the mix: the untagged templates plus the canons in `levelDef.known`,
 which the block under `LEVELS` fills with the canons of every earlier level, so a room never shows an
@@ -507,8 +560,8 @@ rule: the page is a thing you scan while a level is paused behind it, so a shape
 `levelFacts` reads out as `name value` and not as English.
 
 **Trap rooms.** `tag: 'trap'` is a pool of its own, drawn *into* a level's ordinary rooms rather than
-instead of them: `levelDef.traps` is a count, `pickTrapRooms` chooses the indices (never the pen, the
-control rooms, a set piece, or the first two ordinary rooms, which are where kinds get introduced) and
+instead of them: `levelDef.traps` is a count, `pickTrapRooms` chooses the indices (never the pen, a
+set piece, the ambush room, or the first two ordinary rooms, which are where kinds get introduced) and
 the room carries `isTrap`. `planEncounters` still buys its men off the curve but never introduces a kind
 in one — `plain` is `ordinary` minus the trap rooms — and the random spike scatter skips them, because a
 shape on the floor plus three plates thrown on top of it is not a shape any more. A template may declare
@@ -525,6 +578,13 @@ headbutt can reach two or three bars at once, so `breakCage` counts blows and no
 `game.cageLunge === goat.lungeId`. Each blow bleats a line from `prop.cage.strain`; on the blows in
 `prop.cage.stunAt` the goat is put on the floor by `game.stunGoat`. The last blow breaks every bar and
 sets `game.cageOpen`, which is what hides the floor prompt. Only levels with `startCage` get one.
+
+Two tiles of it are bedding. `START_TEMPLATE` carries `hh` on row four, which `buildCage`'s
+`cage.halfW`/`halfH` around the middle of that room puts **inside the bars** — and on row four
+because the template is flipped vertically as freely as any other and four and six are the same
+distance from the middle. A pen with straw in it is somewhere animals were kept; a pen with nothing in
+it is a rectangle of iron. It has to be tiles rather than props, because `cleanProps` throws out
+everything but doors and bars within three tiles of the start.
 
 **Which side the dead come from.** Every wraith rolls `enemy.approach` once in the constructor: a signed
 angle between `wraith.behind + wraith.flank` and π, so it drifts to a point on your shoulder, your
@@ -552,18 +612,35 @@ while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` 
 `game.stunGoat(seconds)` is the only way in, and the pen is the only thing that uses it.
 
 **Words on the floor.** `CONTROL_LINES` in `render.js` holds four blocks and `level.controls` says where
-each goes, one idea per block rather than one room per idea. Block 0 (the first empty room after the
-pen) is `WASD — TO MOVE` alone. Block 1 (the second empty room) is grab and throw. Block 2 is the room
-that holds the first man of the run (`lessonRoom` in `gen.js`) and carries the headbutt and wall lines
-*with* `BUTT HIM` — they used to sit in block 0, two rooms before there was anyone to try them on, which
-is exactly backwards from *the men can be hit* being the thing nobody worked out. Block 3 is the roll,
-plus the point-blank scream parry (`CLOSE UP IT BREAKS THEIR SWING`) — neither lives with its own verb's
-room any more, because a line about dodging or about a parry means nothing painted on a floor with
-nothing on it to dodge or parry. `gen.js` picks the first room past the lesson that already holds two
-men or more, closest to the level's own middle (`rollCandidates`, next to where `controls` is built),
-and puts both lines there — which on level one is usually the ambush room above, since that is also the
-first room past the lesson with a crowd in it. Each block has a keyboard and a
-touch wording; add a line to one and add it to both.
+each goes. **Every block lies in the room that hands you the thing it is about, and none of them lies
+in an empty one** — there are no empty rooms any more. There used to be two, immediately after the pen,
+one saying `WASD` and one saying `GRAB`, and they were read, nodded at and connected to nothing: the
+first player we watched got all the way to the wheel without working out that the men could be hit.
+Level one is ten rooms rather than twelve because both of those rooms are gone, and the count of
+*ordinary* rooms — and so the whole difficulty curve — is exactly what it was.
+
+- **Block 0** — `WASD — TO MOVE`, in the pen, a tile under the bars and just above `cagePrompt`, the
+  prompt that says which button opens them. Moving means moving inside a cage, which is where
+  everybody starts pressing keys anyway.
+- **Block 1** — grab and throw, in the ambush room: a blade inside the door, a crate a step past it,
+  the men down the far end.
+- **Block 2** — the headbutt, on the floor the first man of the run is standing on (`lessonRoom` in
+  `gen.js`). **One line.** It carried the wall line and `BUTT HIM` as well and was three lines stacked
+  in a room five tiles deep; what a wall does to a man is the whole of level one and it is learned by
+  doing it there, not by reading it.
+- **Block 3** — the roll, plus the point-blank scream parry (`CLOSE UP IT BREAKS THEIR SWING`):
+  neither lives with its own verb's room, because a line about dodging or about a parry means nothing
+  painted on a floor with nothing on it to dodge or parry. `gen.js` takes the room closest to the
+  level's own middle that already holds a small crowd (`rollCandidates`, next to where `controls` is
+  built), skipping the lesson room, the vault's room, a trap room and the ambush room — that last one
+  because block 1 is already painted there and a three-tile corridor will not carry six lines. With no
+  crowded room left it falls back to the fullest room that has anybody in it at all, because an
+  unpainted line is worse than a line with one man under it.
+
+Each block has a keyboard and a touch wording; add a line to one and add it to both. `GEN_RULES.lessons`
+holds all of it to the promise: four blocks, the sentry in a `lesson` room on his own, the ambush room
+built from `AMBUSH_TEMPLATE` with a sword and a crate in it and nobody on the near side. The teaching
+floor is the one place the generator may not surprise anybody, and that rule is what says so.
 
 A level's own `hint` is the other half of it: `gen.js` paints it across the middle of the first room
 carrying that room's width, `drawHints` breaks it over two lines (`wrapFloor`, at the full stop it
@@ -750,8 +827,12 @@ be interacted with — he is already dead — but a body that simply stops exist
 than as a drop. `sfxFall` is the sound, and it keeps falling after he is gone.
 
 **The grating.** `kind === 'spike'`, driven by `updateSpike`, cycling `idle → armed → up → down →
-rest`. **Only the goat trips one** (`spike.trigger` tiles), which is what makes it a tool rather than
-furniture: the teeth come up behind him, on the ground whoever is chasing him is crossing. `bite`
+rest`. **Anything alive on it trips one** — `Prop.tripped` is the goat within `spike.trigger` tiles or
+any man who is not dead, not held and not mist. It used to answer to the goat and nobody else, which
+made it a tool with a switch on it: a man could stand on the boards over the teeth all day, and the
+grate was a thing you led him onto rather than a thing in the room. Either way the teeth come up a
+beat late, which is what keeps it *behind* you at a run and under whoever is on your heels. A wraith in
+mist is the exception, because nothing under the floor reaches something that is not there. `bite`
 kills men and costs the goat a heart, `this.bit` stops one rise biting the same man twice, and
 `spikeThreat()` is what `hazardAt` and `avoidHazard` ask — a grate at rest is floor and is skipped
 entirely. It is drawn as a tile of iron grating sunk into the boards with four dark slots in it, and
@@ -831,10 +912,18 @@ for a blow": line of sight plus every `blocking` prop as a circle against the se
 `inArc` and the goat's `headbuttHits` both ask it, so a club and a pair of horns are held to the same
 rule and neither comes through a wall, a pillar, a table or a shut door.
 
-**The shield you are carrying.** `Goat.shielded(x, y)` is the one test: within `weapon.coverR` of him
-and inside `weapon.coverArc` of where he is pointing. `Bullet.update` and `meleeHit` both use it, each
-turn spends a `uses` charge, and a club that lands on it staggers the man who swung for `weapon.parry`.
-It was the disc of the shield itself, which let almost everything past the edge.
+**The shield you are carrying.** `Goat.covers(x, y)` is the one test: within `weapon.coverR` of him
+and inside `weapon.coverArc` of where he is pointing. It was the disc of the shield itself, which let
+almost everything past the edge. `Goat.shielded` is that arc plus "what he is holding is a shield" —
+`Bullet.update` and `meleeHit` both use it, each turn spends a `uses` charge, and a club that lands on
+it staggers the man who swung for `weapon.parry`.
+
+**And the crate you are carrying, once.** `Goat.crated` is the same arc with a crate in it, and
+`meleeHit` answers a club into one by shattering the box and giving the goat nothing to pay: no parry,
+no charges, no stagger — the man who swung is left standing there and the goat is left holding nothing.
+A crate is free and lying about everywhere, so what stops it being a shield is that it is gone on the
+first blow. It makes anything swept up on the way past worth holding a moment longer, which is the
+point of it. Bullets are not covered: a box is not iron.
 
 **Stairs.** `T.EXIT` and `T.ENTRY` are both drawn by `drawStairs`; `level.exitTile` and `level.entry`
 say where each flight starts. Stepping onto the exit enters state `climb` (`beginClimb`, `updateClimb`)
@@ -860,12 +949,17 @@ the difference between a dodge and a second way of running.
 callers go through it: `tryGrab` for a deliberate reach, and the sweep at the top of `Goat.update` for a
 blade or shield inside `grab.sweep` of him with an empty mouth and no cooldown. It is not a new button,
 it is one fewer — at a run there was never a beat in which to press for it. `goat.autoHeld` is which way
-it got there and it decides how it leaves: something reached for goes when grab comes **up**, something
-that came in on its own goes on the next **press** of grab (the edge is `rmbWas`, carried on the goat so
-the input object needs nothing new). A headbutt is allowed with an arm in the mouth and `dropHeld` puts
-it down at his feet first — at his feet, and with `lastLunge` set one ahead, so the blow that dropped it
-cannot also punt it across the room. `prop.dropped` is what stops it jumping straight back in: it stays
-down until he has walked off it. Carrying an arm costs `grab.itemSpeedMul` and carrying a man still costs
+it got there and it decides how grab lets go of it: something reached for goes when grab comes **up**,
+something that came in on its own goes on the next **press** of grab (the edge is `rmbWas`, carried on
+the goat so the input object needs nothing new).
+
+**And either button throws it.** `inp.lmbPressed` with anything `item` in his mouth is `throwHeld`, not
+a headbutt: a thing held is a thing thrown, and which hand you throw it with is not a decision worth
+making. The bash button used to launch a blade, put a swept-up crate down at his feet, or do nothing at
+all, depending on how the thing got there — three answers to one press. A man is not an object and is
+not covered by this: he goes where he always went, on grab. `dropHeld` and `prop.dropped` are gone with
+it, since nothing puts a thing down any more.
+Carrying an arm costs `grab.itemSpeedMul` and carrying a man still costs
 `grab.speedMul`, because auto-pickup would otherwise be a way of being slowed down by the scenery.
 
 **Arms are consumable.** `prop.uses` counts what a weapon has left, off `TUNING.prop.weapon.uses` —

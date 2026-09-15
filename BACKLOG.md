@@ -10,6 +10,63 @@ it works and the number is wrong; **system**, it does not exist yet.
 
 ---
 
+## 15 September 2026 — the eighth sitting
+
+Twenty lines against 1.20, sent in five bursts with screenshots. Everything here shipped in 1.21
+except the two notes at the end; the reasoning is in `CHANGELOG.md`.
+
+- ~~**Softlocked on level two behind shut doors.**~~ **bug.** The sealed Seer arena: he blinks, and
+  a blink asked the tiles and the flow field about its landing spot and nothing about a door, so the
+  mage could leave a room whose doors only open when it is empty.
+- ~~**Put a tuft of hay in the starting pen.**~~ Two tiles of it, inside the bars.
+- ~~**`WASD — TO MOVE` on the first screen, where you break the cage, with the headbutt line under
+  it — and then the second room can go, it has no controls left.**~~ Both empty rooms went; level one
+  is ten rooms.
+- ~~**On the screen with the man, keep only the top of the text.**~~ One line: `LEFT CLICK —
+  HEADBUTT`. **The wall line and `BUTT HIM` are gone with it** — see the note below.
+- ~~**And for the look of that room: barrels down the sides or a small crate in the corner. Hay
+  makes it hard to read.**~~ Two crates on the near half.
+- ~~**In that corridor, less distance to the wall, so the man definitely hits it.**~~ Four tiles of
+  floor rather than six.
+- ~~**The teaching elements should be clear and well scripted, without too many options, so the
+  player definitely learns — and random generation should not break it.**~~ `GEN_RULES.lessons`,
+  checked over every seed by `tools/balance.js` and live on the RULES page.
+- ~~**The wheel in a narrower room with one way through, and two men: one runs at you and is thrown
+  by it, the other walks round it safely and comes on.**~~ `millLesson`, and the two men's
+  `trapSense` pinned to the two ends of the roll.
+- ~~**The throwing room: add the grab instruction, a sword rather than a shield, narrower and lower
+  — a three-tile corridor — crates not in the way, and the grass only in the far corner.**~~
+- ~~**And the men always on the far side of that room, not like this.**~~ `noFlipX`.
+- ~~**The crack in the wall should be a crack, not who-knows-what.**~~ One shared `wallCrack`.
+- ~~**In the walls that tile should face outward — except the bottom wall, where it should not be
+  visible at all.**~~ `wallTop` is skipped where the room is above.
+- ~~**What is going on with the lamp and its shadow? They should be next to each other.**~~
+- ~~**In the first boss's room: one mini-boss and one helper.**~~ `escorts: 1`.
+- ~~**If that is hay on level two, make it look like hay.**~~ The painted bale draws on every level
+  now; only levels 2–7's floors and walls are still the procedural fallback (see `ART_HANDOFF.md`).
+- ~~**The men should talk a little less often.**~~
+- ~~**At the start of level three, this can go.**~~ The `HOLD RIGHT CLICK — CARRY` line under the
+  hint.
+- ~~**If you are holding a crate and it is between you and an enemy's blow, the crate breaks like a
+  shield and the damage does not reach you.**~~
+- ~~**Objects should stand closer to their shadows — the distance is large right now.**~~ The
+  lantern and the brazier; every other prop was already within a pixel or two of its own feet.
+- ~~**Enemies trigger the spike traps when they cross them (except the ghosts).**~~
+- ~~**When you are holding an object, both mouse buttons let go of it.**~~
+
+**Two lines from this batch are still open.**
+
+- **Which single line belongs on the floor at the first man.** It is `LEFT CLICK — HEADBUTT` now,
+  which is what the screenshot boxed — but the pen says exactly that two rooms earlier, so the line
+  at the man repeats rather than adds. The alternative is `INTO A WALL KILLS`, which is the whole of
+  level one's canon and the thing players did not work out on their own. One word settles it.
+- **Barrels.** The ask was "barrels down the sides or a small crate in the corner" and it shipped as
+  crates, because there is no barrel `Prop` — only a painted barrel in the ritual room's decal
+  layer. A real barrel kind (blocks, burns, is not liftable) is a small piece of work and would give
+  the storage rooms something to read that is not a crate.
+
+---
+
 ## 14 September 2026, late — the seventh sitting
 
 Twelve lines off an annotated screenshot, plus four sent after it, plus the rule under all of them:
