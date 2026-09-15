@@ -27,6 +27,12 @@ const PALETTE = {
   woodHi: '#8a6238',
   dirt: '#463524',
   dirtHi: '#5a4530',
+  // The bird. Bone-white body so she reads against the compound's plum and timber at a glance, with
+  // the comb and the beak the one warm note on her — she has to be findable across a room.
+  hen: '#e8ddc8',
+  henShade: '#bfb49f',
+  comb: '#c0392b',
+  beak: '#d9a548',
   altar: {
     outline: '#19131c', mortar: '#3b3437', stones: ['#665c54', '#625951', '#6b6057', '#605750'],
     stoneLight: '#786c60', stoneEdge: '#71665d', stoneShade: '#564e49', stoneFleck: '#6d6259', crack: '#494143',
@@ -84,7 +90,15 @@ const TUNING = {
     // out of a crowd is THE FULL THROAT, and setting fire to one is DRAGON BREATH, and the goat
     // picks one of the two. `call` is how far the noise carries; `radius` is what the two tomes
     // reach, deliberately short of what the screen shows, so a stun is for the men on top of you.
-    scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9, call: 13, callCooldown: 3.0 },
+    // `balk` and `balkStun` are what the BARE voice does to a man already swinging at you: inside
+    // `balk` tiles — arm's length, near enough that he is the one about to land a blow — a shout in
+    // his face breaks whatever he had committed to and costs him `balkStun` before he can start it
+    // again. It is not THE FULL THROAT: it reaches two bodies rather than a room, it does not stack,
+    // and a man it interrupts is walking at you again a blink later. What it buys is the one thing
+    // the bare voice never had — an answer to being caught, rather than only a way of moving a crowd
+    // about. The lure is untouched and still goes out to `call` tiles: one button, both jobs.
+    scream: { duration: 0.3, cooldown: 4.0, radius: 8.5, stun: 0.9, call: 13, callCooldown: 3.0,
+      balk: 2.2, balkStun: 0.3 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat. It is a
     // fifth shorter than it was — the same beat of mercy, a fifth less ground — because a dodge that
     // clears the whole room is a second way of running rather than a way of not being hit.
@@ -306,6 +320,29 @@ const TUNING = {
     // A patch of wall that gives like the pen does: two blows rather than one so it never breaks by
     // accident, and nothing else about it — its size, what it blocks, what it hides — is its own.
     secret: { hits: 2 },
+    // The coop: two tiles of slatted crate with a bird in it, standing about in the compound's
+    // stores. Two blows, like every other small thing that opens, and what comes out is the one
+    // ally in the game.
+    coop: { r: 26, hits: 2 },
+    // The bird. Loose, she trots after the goat at `followSpeed`, hanging back `followAt` tiles and
+    // only closing when he gets further than `followFar`; she is a thing that walks with you, not a
+    // thing stuck to your heel.
+    //
+    // A horn under her is the whole of the mechanic (`headbutt` in entities.js — a kick, not a
+    // throw, so no new button and no arm in the mouth). She leaves at `launchSpeed`, picks the man
+    // nearest the line she was kicked along inside `seekArc`, and from then on steers at `turn`
+    // radians a second toward whoever she has. `seekRange` is how far she will look. She loses very
+    // little speed in the air (`drag`) because a bird that is aimed and then peters out reads as a
+    // dropped ball rather than as a shot.
+    //
+    // She kills what she reaches and comes apart doing it. A wall is not a man: she tumbles, lands,
+    // and is loose again after `stunned` seconds — a miss costs you the walk back to her and the
+    // setup, which is price enough for something you had to find and let out in the first place.
+    chicken: {
+      r: 11, followSpeed: 210, followAt: 1.6, followFar: 3.2, wander: 0.5,
+      launchSpeed: 760, drag: 0.35, turn: 7.5, seekRange: 15, seekArc: Math.PI * 0.75,
+      stunned: 0.9, life: 4.0,
+    },
   },
   // Going over an edge. A man who goes down a hole is gone; the goat is only rented — he comes back
   // up on the last boards he stood on, one heart lighter, which is the same price the wheel charges.
@@ -385,7 +422,13 @@ const TUNING = {
   // `warm` it is the motif and the toms, up to `hot` the kick and the hats, and past it the whole
   // kit. It used to go to the top on five, which is an ordinary room on level three, so the loudest
   // music in the game played through most of the game. It takes a proper crowd now.
-  audio: { master: 0.92, drums: 1.0, sfx: 1.05, music: 0.85, crowd: { warm: 3, hot: 6 } },
+  // `hunterCue` is the hiss that says a rifle has you. It is a tell and it has to stay one, but it
+  // was a bright noise burst every other bar at most of the kit's volume, sitting right on top of
+  // the hats — with a rifle awake anywhere on the level it was the loudest thing in the mix and the
+  // music underneath it stopped being audible at all. A third of the gain and half as often: still
+  // the one dry tick in the bar that nothing else makes, now under the drums rather than over them.
+  audio: { master: 0.92, drums: 1.0, sfx: 1.05, music: 0.85, crowd: { warm: 3, hot: 6 },
+    hunterCue: { gain: 0.04, everyBars: 4 } },
   // The lead point is carried rather than read: on a mouse the aim flips the instant the pointer
   // crosses the goat, and a lead that flips with it throws the whole picture across the screen.
   // `leadLerp` is how fast the camera agrees to the new side, `leadStill` how much of the lead a
@@ -616,6 +659,7 @@ const LEVELS = [
     // The wheel is met with nobody standing in the room, and arms are not a thing you find until
     // halfway in: the first half of the run is the goat and his head and nothing else.
     millAt: 5, millSolo: true, heals: 3, souls: 1, racks: 0.2, racksFrom: 0.5, traps: 1, crates: 0.3,
+    coops: 0.14,
     encounters: {
       kinds: ['bearer', 'champion'],
       introduce: [['bearer', 0], ['champion', 0.8]],
@@ -646,7 +690,7 @@ const LEVELS = [
     // he does. The first arena, ahead of the vault, is not worth locking — nothing about it is the
     // level's one soul, and a door that means nothing is a door not worth building.
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer', sealed: true }],
-    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
+    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6, coops: 0.12,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],
       introduce: [['dog', 0.12], ['seer', 0.5]],
@@ -663,7 +707,7 @@ const LEVELS = [
     // cover: the level is about the strip of floor a rifle cannot see and how you get to it.
     canon: { id: 'line', name: 'THE LINE', idea: 'Long sightlines and hard cover. A rifle owns whatever it can see, so the room is about what it cannot, and about crossing the rest.' },
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
+    millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2, coops: 0.1,
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
     // heels crosses a beat later, when it is no longer floor.
     spikes: 0.3, crates: 0.35, vaultAt: 7,

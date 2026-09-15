@@ -752,6 +752,34 @@ class Renderer {
       ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(-r + 1.5, -r * 0.85 + 1.5, r * 2 - 3, 2.4);
       ctx.fillStyle = '#4a443c'; ctx.fillRect(-r + 1.5, -1.2, r * 2 - 3, 2.4);
       ctx.restore();
+    } else if (p.kind === 'coop') {
+      // Two tiles of slatted crate. The slats are the whole of it: a solid box is a crate and gets
+      // picked up, and this is a thing you have to open. The gaps read as gaps because there is a
+      // dark interior painted behind them and something pale moving about in it.
+      const r = p.r, w = r * 2, h = r * 1.25;
+      const shake = p.wobble > 0 ? Math.sin(this.t * 55) * p.wobble * 4 : 0;
+      ctx.save(); ctx.translate(p.x + shake, p.y);
+      this.shadow(0, h * 0.5, r * 0.95, r * 0.45);
+      ctx.fillStyle = '#231710'; ctx.fillRect(-r, -h * 0.5, w, h);             // the dark inside
+      // The bird in there, shifting about. She is the reason to break it, so she has to be visible.
+      const bx = Math.sin(this.t * 1.3 + p.phase) * r * 0.35;
+      ctx.fillStyle = PALETTE.hen;
+      ctx.beginPath(); ctx.ellipse(bx, 1, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.comb; ctx.fillRect(bx - 1.5, -7, 3, 2.5);
+      // The slats over her, and the frame round them.
+      ctx.fillStyle = PALETTE.wood;
+      for (let k = 0; k <= 5; k++) ctx.fillRect(-r + 2 + k * ((w - 4) / 5) - 1.3, -h * 0.5, 2.6, h);
+      ctx.fillStyle = PALETTE.woodHi;
+      ctx.fillRect(-r, -h * 0.5, w, 3); ctx.fillRect(-r, h * 0.5 - 3, w, 3);
+      ctx.strokeStyle = '#231710'; ctx.lineWidth = 2; ctx.strokeRect(-r, -h * 0.5, w, h);
+      // One blow in: the frame is starting to come apart, so the second is worth trying.
+      if ((p.hits || 0) > 0) {
+        ctx.strokeStyle = 'rgba(20,14,10,0.8)'; ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.moveTo(-r * 0.5, -h * 0.5); ctx.lineTo(r * 0.1, h * 0.5); ctx.stroke();
+      }
+      ctx.restore();
+    } else if (p.kind === 'chicken') {
+      this.drawHen(p);
     } else if (p.kind === 'cage') {
       const h = TUNING.prop.cage.height;
       // Every headbutt the pen survives leaves the bars further out of true.
@@ -845,6 +873,53 @@ class Renderer {
     }
     // There is no fallback branch any more. The one that was here drew an ochre disc for the pot,
     // and a disc on a floor of boards reads as a plate rather than as a thing you lift.
+  }
+
+  // The hen, in her three states. She has to read as an ally at a glance and as a projectile at a
+  // glance, and those are two different silhouettes: walking she is upright and round with her head
+  // up, flying she is stretched out along her own velocity with her wings back. The counter-squash
+  // is the usual one — she stands on a tilted floor like everything else that stands.
+  drawHen(p) {
+    const ctx = this.ctx;
+    const flying = p.birdState === 'flying', stunned = p.birdState === 'stunned';
+    const a = flying ? Math.atan2(p.vy, p.vx) : 0;
+    const bob = flying ? 0 : Math.sin(p.bob) * 1.6;
+    this.shadow(p.x, p.y + 6, flying ? 6 : 8, flying ? 3 : 4.5);
+    // World space is already squashed on Y here, so the translate is plain world coordinates and
+    // the counter-scale after it is what stands her upright — the same pair every creature uses.
+    ctx.save(); ctx.translate(p.x, p.y + bob); ctx.scale(1, 1 / TILT);
+    if (flying) ctx.rotate(a);
+    if (stunned) ctx.rotate(Math.PI * 0.4);           // over on her side, legs out
+    // Feathers trailing off her while she is in the air: the only thing that says how fast she is.
+    if (flying) {
+      ctx.fillStyle = 'rgba(232,221,200,0.30)';
+      for (let k = 1; k <= 3; k++) {
+        ctx.beginPath(); ctx.ellipse(-k * 9, Math.sin(p.flap + k) * 2.5, 5 - k * 0.9, 3.4 - k * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // The wings. Back and beating when she is flying, folded at her sides when she is not.
+    const beat = Math.sin(p.flap) * (flying ? 5 : 1.6);
+    ctx.fillStyle = PALETTE.henShade;
+    ctx.beginPath(); ctx.ellipse(flying ? -3 : 0, -3 - beat, flying ? 7 : 5, 3.2, flying ? -0.5 : 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(flying ? -3 : 0, 3 + beat, flying ? 7 : 5, 3.2, flying ? 0.5 : 0, 0, Math.PI * 2); ctx.fill();
+    // The body, stretched along the line of flight or round and sitting up.
+    ctx.fillStyle = PALETTE.hen;
+    ctx.beginPath(); ctx.ellipse(0, 0, flying ? 10 : 7.5, flying ? 5.5 : 7, 0, 0, Math.PI * 2); ctx.fill();
+    // The tail, at the back of her whichever way she is pointing.
+    ctx.fillStyle = PALETTE.henShade;
+    ctx.beginPath(); ctx.moveTo(flying ? -9 : -6, flying ? 0 : -1);
+    ctx.lineTo(flying ? -16 : -12, -6); ctx.lineTo(flying ? -14 : -10, 2); ctx.closePath(); ctx.fill();
+    // The head, and the two warm marks that make her findable across a room.
+    const hx = flying ? 9 : 5.5, hy = flying ? 0 : -6;
+    ctx.fillStyle = PALETTE.hen; ctx.beginPath(); ctx.arc(hx, hy, 4.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.comb;
+    ctx.beginPath(); ctx.ellipse(hx - 0.5, hy - 4.4, 2.6, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.beak;
+    ctx.beginPath(); ctx.moveTo(hx + 3.4, hy - 0.6); ctx.lineTo(hx + 7.4, hy + 0.4); ctx.lineTo(hx + 3.4, hy + 1.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(hx + 1.4, hy - 0.8, 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // Stars over her while she picks herself up, the same as anything else that has been floored.
+    if (stunned) this.drawStars(p.x, p.y, 14, Math.min(1, p.birdT * 2));
   }
 
   // A rank of iron spikes stood up along an arc of a body: the brute's back, and nobody else's.
@@ -2333,7 +2408,7 @@ class Renderer {
         half: !fire && !game.mods.screamStun,
         note: fire ? 'Breathe fire the way you are running. Long wait after it.'
           : game.mods.screamStun ? 'A shout. Everyone who hears it is stunned.'
-            : 'A shout. Everyone who hears it walks to where you shouted.' },
+            : 'A shout. It breaks the swing of anyone right on top of you, and walks everyone else to where you shouted.' },
     ];
     this.skillHover = null;
     const box = 32 * s, gap = 7 * s, right = this.w - 14 * s;

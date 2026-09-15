@@ -83,6 +83,26 @@ class Enemy {
     game.particles(this.x, this.y - 6, 4, PALETTE.bone, 90);
   }
 
+  // Shouted at from arm's length. This is the bare BAAH and it is a great deal less than `daze`: it
+  // breaks the blow he had already committed to and costs him a blink, and it does nothing at all to
+  // a man who was not swinging. Returns whether it landed, so the goat can say so.
+  //
+  // The two exceptions are the two things in the game that cannot be called off once started, and
+  // they are the same exceptions `daze` makes: a Butcher mid-swing rides it out, and a wraith that
+  // has begun to arrive arrives. Everything else in here is an ordinary man being made to flinch.
+  balk(game, t) {
+    if (this.dead || this.held || this.ghosted || this.kind === 'wraith') return false;
+    if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return false;
+    if (this.kind === 'butcher' && this.state === 'swing') return false;
+    if (this.state !== 'windup' && this.state !== 'aim' && this.state !== 'cast'
+        && this.state !== 'chargewind' && this.state !== 'dart') return false;
+    this.state = 'chase'; this.rune = null;
+    this.dazed = Math.max(this.dazed, t);
+    this.vx = 0; this.vy = 0;
+    game.particles(this.x, this.y - 6, 5, PALETTE.bone, 110);
+    return true;
+  }
+
   // `fromMan` is a fire that was handed to him by somebody already alight. It marks him as the end
   // of the line: he burns like anyone else and passes it to nobody, so a brazier costs the room two
   // men rather than every man in it.

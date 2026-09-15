@@ -26,7 +26,7 @@ class Game {
     this.enemies = []; this.props = []; this.bullets = []; this.parts = []; this.floats = []; this.rings = [];
     // What the men have to read in the room: standing fire and the Mill (fixed for the level), and
     // whatever rune is being painted right now (rebuilt each step).
-    this.hazards = []; this.sightBlockers = []; this.runes = []; this.houndTold = false;
+    this.hazards = []; this.sightBlockers = []; this.runes = []; this.houndTold = false; this.henTold = false;
     this.cam = { x: 0, y: 0, zoom: 1 }; this.camLead = { x: 0, y: 0 };
     this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0;
     // juice: a directional camera punch, a lens shove, a screen flash and a kill counter
@@ -242,6 +242,15 @@ class Game {
     // width of the door: what he cannot see from where he stands is painted down by the shade, so a
     // look through a doorway hands him the sliver of the room the doorway shows and nothing more.
     for (const r of this.level.rooms) if (!r.seen && w.anyFloorSeen(r)) r.seen = true;
+    // A niche you have opened stays open. The shadowcast is honest about a one-tile gap — from a
+    // step back it lights a sliver of what is past it and shades the rest — which is right for a
+    // doorway and wrong for this: the whole point of the wall is what is behind it, and a player who
+    // has spent two blows finding out has earned the sight of it rather than a dark patch he has to
+    // walk into. Three tiles, and only once the wall is actually down.
+    for (const p of this.sightBlockers) {
+      if (p.kind !== 'secret' || !p.broken || !p.nicheTiles) continue;
+      for (const i of p.nicheTiles) w.vis[i] = 1;
+    }
   }
   // Is this point inside a room nobody has walked into? Everything the world draws and everything
   // that would give a room away — a man, a crate, a body on its way down a hole — asks this.
@@ -642,7 +651,7 @@ class Game {
       // on from then on. Null until then, when the spawn list is the best answer there is.
       return { room: at, doors, armed: false, open: false, held: null };
     });
-    this.runes = []; this.houndTold = false;
+    this.runes = []; this.houndTold = false; this.henTold = false;
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null; this.fallers = [];
     this.souls = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
     // What he walked in with. A death rolls him back to exactly this list.
@@ -1714,6 +1723,14 @@ class Game {
     if (this.houndTold) return;
     this.houndTold = true;
     this.floatText(dog.x, dog.y - 34, this.mods.breath ? 'BURN THE HOUNDS' : 'BAAH BREAKS A HOUND', PALETTE.fireHi);
+  }
+  // The one thing in the compound that is not trying to kill him. The first coop of a run says what
+  // she is for, because a bird walking after you explains nothing on its own — and a player who
+  // does not know she is ammunition simply leaves her in the room she was let out of.
+  henFreed(coop) {
+    if (this.henTold) return;
+    this.henTold = true;
+    this.floatText(coop.x, coop.y - 52, 'SHE FOLLOWS. BUTT HER AT A MAN', PALETTE.hen);
   }
   // One man speaks at a time: a crowd all shouting at once reads as noise, not as a cult.
   bark(e, kind, chance) {

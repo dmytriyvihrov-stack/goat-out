@@ -352,7 +352,8 @@ function tryGenerate(levelDef, seed) {
     if (secretsPlaced >= wantSecrets) break;
     const spot = carveSecret(tiles, W, H, rooms[idx], rng);
     if (!spot) continue;
-    props.push({ x: spot.wall.x, y: spot.wall.y, kind: 'secret', wallColor: levelDef.wall, wallTop: levelDef.wallTop });
+    props.push({ x: spot.wall.x, y: spot.wall.y, kind: 'secret', wallColor: levelDef.wall, wallTop: levelDef.wallTop,
+      nicheTiles: spot.tiles });
     props.push({ x: spot.heal.x, y: spot.heal.y, kind: 'heal' });
     props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
     secretsPlaced++;
@@ -427,6 +428,20 @@ function tryGenerate(levelDef, seed) {
         if (props.some((p) => len(p.x - px, p.y - py) < 1.4 * TILE)) continue;
         props.push({ x: px, y: py, kind: 'crate' });
         placed++;
+      }
+    }
+    // A coop. Two tiles of slatted crate with a bird in it, standing where the compound keeps its
+    // stores — `levelDef.coops` is the per-room chance and only the early floors set it. Wants a
+    // clear pair of tiles and a wide berth from everything else, because a thing you have to walk
+    // up to and put your head under twice is a thing you have to be able to stand in front of.
+    if (room.index > 0 && !room.calm && room.index !== lessonIndex && rng.chance(levelDef.coops || 0)) {
+      for (let a = 0; a < 40; a++) {
+        const tx = rng.int(room.x + 1, room.x + room.w - 3), ty = rng.int(room.y + 1, room.y + room.h - 2);
+        if (tiles[ty * W + tx] !== T.FLOOR || tiles[ty * W + tx + 1] !== T.FLOOR) continue;
+        const px = (tx + 1) * TILE, py = (ty + 0.5) * TILE;
+        if (props.some((p) => len(p.x - px, p.y - py) < 2.2 * TILE)) continue;
+        props.push({ x: px, y: py, kind: 'coop' });
+        break;
       }
     }
     if (!cell) return;                                  // the pen and the two control rooms stay empty
@@ -768,6 +783,9 @@ function carveSecret(tiles, W, H, room, rng) {
         wall: { x: (tx + 0.5) * TILE, y: (wallRow + 0.5) * TILE },
         heal: { x: (tx + 0.5) * TILE, y: (nicheRow + 0.5) * TILE },
         weapon: { x: (tx + 1.5) * TILE, y: (nicheRow + 0.5) * TILE },
+        // The three tiles the gap opens onto. The prop carries them so that breaking the wall can
+        // light them and keep them lit: a niche is a reward, and a reward you cannot see is not one.
+        tiles: [wallRow * W + tx, nicheRow * W + tx, nicheRow * W + tx + 1],
       };
     }
   }

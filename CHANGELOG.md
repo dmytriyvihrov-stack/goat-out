@@ -5,6 +5,45 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.16 — a hen
+
+**There is a chicken in the compound and she is on your side.** A `coop` — two tiles of slatted
+crate — stands about in the stores of the first three floors (`levelDef.coops`, about one and a
+quarter a level, and a quarter of levels get none). Two blows open it and she walks out.
+
+Loose, she follows the goat, hanging back a tile and a half and only hurrying when he has got away
+from her. Put your head under her and she goes: she leaves fast, takes whoever is nearest the line
+she was kicked along, and steers onto him the rest of the way. What she reaches, she kills — and she
+comes apart doing it. **The kick is the headbutt.** There is no new button and nothing to pick up;
+she is the one thing in the game you aim by pointing your own head at it.
+
+It is a direct kill and that is deliberate. She is on the same footing as a thrown sword — found,
+opened and spent, gone the moment she lands — and what keeps her from being a win button is that
+there is about one of her a level. A wall is not a man: she tumbles, sits down for a beat, and gets
+up loose again, so a miss costs the walk back to her rather than the bird. Her voice goes through
+`bleatVoice` like every other animal in the game, pitched right up and cut into two clipped notes.
+
+**The bare voice answers a man who is already swinging.** Inside a couple of tiles, BAAH now breaks a
+blow he has committed to and costs him a blink before he can start it again. It is not THE FULL
+THROAT — two bodies rather than a room, no stacking, and he is walking at you again almost at once —
+but being caught at arm's length used to have no answer in it at all until a soul turned up. The two
+things that cannot be called off once begun are the two a scream already spared: a Butcher mid-swing,
+and a wraith that has started to arrive. The lure is untouched and still carries thirteen tiles, so
+it is one button doing both jobs at two ranges.
+
+**The rifles are much quieter about it.** The hiss that says a rifle has you was a bright noise burst
+every other bar at most of the kit's volume, sitting straight on top of the hats — with one rifleman
+awake anywhere on the level it was the loudest thing in the mix and the music under it stopped being
+audible. A third of the gain and half as often (`TUNING.audio.hunterCue`): still the one dry tick in
+the bar that nothing else makes, now under the drums rather than over them.
+
+**A niche you have opened stays open.** Breaking a secret wall now lights the three tiles behind it
+for good. The shadowcast is honest about a one-tile gap — from a step back it lit a sliver and shaded
+the rest — which is right for a doorway and wrong for this: the whole point of the wall is what is
+behind it, and the reward was a dark patch you had to walk into before you could read it.
+
+---
+
 ## 1.15 — a room that shuts behind you, a wall that gives, and a gentler first floor
 
 **Sealed arenas.** `{ at, boss, sealed: true }` on a level's `arenas` entry narrows both ends

@@ -242,6 +242,13 @@ touches has to still be solid rock, so it never trades on a room or a corridor. 
 `TUNING.prop.secret.hits` (two) and a visible crack after the first, and it is drawn in the room's
 own `wallColor` so nothing gives it away before that crack does.
 
+Once it is down the niche behind it **stays lit**. `carveSecret` returns the three tiles the gap
+opens onto, the prop carries them as `nicheTiles`, and `revealRooms` sets them in `world.vis` every
+step the wall is broken. The shadowcast is honest about a one-tile gap — from a step back it lights a
+sliver of what is past it and shades the rest — which is right for a doorway and wrong here: the
+whole point of the wall is what is behind it, and two blows spent finding out should buy the sight of
+it rather than a dark patch you have to walk into to read.
+
 **The way out is barred.** Every level now ends on an iron door standing in front of its stairs
 (`stair: true`, `prop.door.stairHits`), placed by the generator right after it cuts the exit. Three
 blows, no shouldering, and every blow is noise: the last thing a level asks is that you stand still in
@@ -262,7 +269,13 @@ lying about, and shout. What he cannot do is carry a grown man (`mods.grabMen`, 
 `tryGrab` simply does not consider enemies, and `game.reachedForAMan` says so once a level), and his
 voice is a noise rather than a weapon (`mods.screamStun`, THE FULL THROAT, or `breath`, DRAGON BREATH —
 the bare scream emits a `lure` noise, which is the one kind that walks a man to the spot rather than
-only turning his head). The bare headbutt is blunt too: shorter reach, less throw, a recovery long
+only turning his head). That bare voice does one more thing at arm's length: inside `scream.balk`
+tiles it **breaks a blow a man has already committed to** (`Enemy.balk`, `scream.balkStun`), which is
+a great deal less than THE FULL THROAT — two bodies rather than a room, no stacking, and he is coming
+at you again a blink later — but it means being caught close has an answer in it before a soul turns
+up. The two things that cannot be called off once begun are the two `daze` already spares: a Butcher
+mid-swing, and a wraith that has started to arrive. The lure is untouched and still goes out to
+`scream.call`: one button, both jobs, at two ranges. The bare headbutt is blunt too: shorter reach, less throw, a recovery long
 enough that a second man walks in on the end of it, and LONG HORNS and IRON SKULL are what put that
 back. It is deliberately *blunt* rather than useless — a third of that cut was given back when the
 first hour turned into a game about walking backwards. `drawSkills` reports the state of each —
@@ -694,6 +707,30 @@ the wrong thing — you cannot pick it up). `spikePatch` in `gen.js` lays `spike
 that walks along an axis and bends, never as a scatter: `levelDef.spikes` is the per-room chance and a
 room that gets them gets nine to fifteen, because a single grate is stepped over without being noticed
 and a stretch across the middle of a room is ground you have to decide about.
+
+**The hen, and the only thing in the compound on your side.** A `coop` is two tiles of slatted crate
+standing about in the stores of the early floors (`levelDef.coops`, a per-room chance, levels one to
+three only — about one and a quarter a level, and a quarter of levels get none). Two blows open it,
+and `Prop.breakCoop` pushes a `chicken` out at your feet.
+
+She has three states and `Prop.updateBird` runs all of them. **Loose**, she walks with the goat —
+hanging back `chicken.followAt` tiles and only hurrying when he has got further than `followFar`, so
+she reads as something that came along rather than something stuck to his heel. **Kicked** — and the
+kick is `headbutt`, not a throw, because a seventh button is not on offer and there is nothing in
+this to pick up — she leaves at `launchSpeed`, takes whoever is nearest the line she was kicked along
+(`pickTarget`, inside `seekArc` and `seekRange`, refusing everything the rest of the game refuses to
+hit), and from there steers onto him at `turn` radians a second. She barely slows in the air, because
+a bird that is aimed and then peters out reads as a dropped ball rather than as a shot. **Struck
+home**, `Prop.strike` kills the man outright and she comes apart doing it.
+
+That last part is a direct kill and it is meant to be. Pillar 3 is about the goat's own head — a
+headbutt only ever knocks a man down — and the hen is on the same footing as a thrown sword: a thing
+you had to find, open and spend, gone the moment it lands. What stops her being a win button is that
+there is about one of her a level and she only kills once. A wall is not a man: she tumbles, is
+`stunned` for a beat and gets up loose again, so a miss costs the walk back to her rather than the
+bird. `game.henFreed` says what she is for the first time a run lets one out, because a bird walking
+after you explains nothing on its own and a player who does not know she is ammunition leaves her in
+the room she came out of.
 
 **Crates.** `kind === 'crate'` is the plainest object in the game: one tile of floor, planks and two
 iron bands, and everything it does it does through `item` — grab it, carry it, throw it. It flies down

@@ -243,12 +243,24 @@ class Goat {
         game.floatText(this.x, this.y - 26, 'BAAAAH', PALETTE.bone);
         game.ring(this.x, this.y, g.scream.call * TILE, 'rgba(239,230,208,0.5)');
         world.emitNoise(this.x, this.y, g.scream.call, 'lure');
-        let n = 0;
+        // Two jobs out of one shout, and they work at two ranges. Far off it is a lure and pulls a
+        // man to the spot. In his face it breaks the blow he was already swinging — which is the
+        // thing the bare voice never did, so being caught at arm's length had no answer in it at all
+        // until a soul turned up.
+        let n = 0, balked = 0;
+        const B = g.scream.balk * TILE;
         for (const e of game.enemies) {
           if (e.dead || e.held || e.ghosted) continue;
-          if (Math.hypot(e.x - this.x, e.y - this.y) <= g.scream.call * TILE) n++;
+          const d = Math.hypot(e.x - this.x, e.y - this.y);
+          if (d <= B + e.r && e.balk(game, g.scream.balkStun)) balked++;
+          if (d <= g.scream.call * TILE) n++;
         }
-        if (n) game.floatText(this.x, this.y - 44, n === 1 ? '1 HEARD IT' : n + ' HEARD IT', PALETTE.ash);
+        // What it did beats who heard it: a broken swing is the thing you need told about.
+        if (balked) {
+          game.ring(this.x, this.y, B, PALETTE.fireHi);
+          game.audio.sfxThud(); game.shake(3);
+          game.floatText(this.x, this.y - 44, balked === 1 ? 'SWING BROKEN' : balked + ' SWINGS BROKEN', PALETTE.fireHi);
+        } else if (n) game.floatText(this.x, this.y - 44, n === 1 ? '1 HEARD IT' : n + ' HEARD IT', PALETTE.ash);
       }
     }
 
@@ -543,6 +555,7 @@ class Prop {
       : kind === 'table' ? P.table.r : kind === 'lamp' ? P.lamp.r
       : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r
       : kind === 'weapon' ? P.weapon.r : kind === 'secret' ? P.door.r
+      : kind === 'coop' ? P.coop.r : kind === 'chicken' ? P.chicken.r
       : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r : 13;
     this.spillCd = 0;                         // a brazier building its coals back after a spill
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
@@ -581,13 +594,21 @@ class Prop {
     // reaches back to the level's palette mid-draw. Falls back to level one's colours; gen.js always
     // supplies the real ones.
     this.wallColor = (opts && opts.wallColor) || '#7c5a36'; this.wallTop = (opts && opts.wallTop) || '#9c7446';
+    // A secret's own three tiles, so that knocking it through can light what is behind it for good.
+    this.nicheTiles = (opts && opts.nicheTiles) || null;
+    // The bird: 'loose' walking with the goat, 'flying' once he has put his head under her, and
+    // 'stunned' for the beat after she has hit something that was not a man. `target` is whoever
+    // she picked at the kick and is steering at; `flap` and `bob` are hers alone and are drawn.
+    this.birdState = 'loose'; this.target = null; this.flap = 0; this.bob = Math.random() * 6;
+    this.birdT = 0; this.wanderA = Math.random() * Math.PI * 2;
   }
   // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing.
   get item() { return this.kind === 'crate' || this.kind === 'weapon'; }
   get blocking() {
     if (this.broken) return false;
-    // Nothing stands on a plate's shoulders: it is floor until it is teeth.
-    if (this.item || this.kind === 'heal' || this.kind === 'spike') return false;
+    // Nothing stands on a plate's shoulders: it is floor until it is teeth. A loose bird is not
+    // furniture either — she is got out of the way of, not walked into.
+    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'chicken') return false;
     if (this.kind === 'door') return this.open < 0.5;
     return true;
   }
@@ -620,6 +641,8 @@ class Prop {
       case 'lamp': this.topple(game, ax, ay); break;
       case 'brazier': this.spill(game, ax, ay); break;
       case 'cage': if (this.deco) this.breakDeadCage(game); else this.breakCage(game); break;
+      case 'coop': this.breakCoop(game); break;
+      case 'chicken': this.kick(game, ax, ay); break;
       default: this.wobble = 0.3; game.audio.sfxThud(); break;
     }
   }
@@ -883,6 +906,155 @@ class Prop {
     game.floatText(this.x, this.y - 30, 'A HIDDEN NICHE', PALETTE.fireHi);
   }
 
+  // Two blows and the slats come off. What walks out is the only thing in the compound on the
+  // goat's side, so the break is worth a beat of noise and a line on the floor.
+  breakCoop(game) {
+    if (this.broken) return;
+    const need = TUNING.prop.coop.hits;
+    this.hits = (this.hits || 0) + 1;
+    if (this.hits < need) {
+      this.wobble = 0.35; game.world.emitNoise(this.x, this.y, TUNING.noise.smash * 0.6);
+      game.audio.sfxThud(); game.shake(3); game.hitstop(0.02); game.vibe(10);
+      game.particles(this.x, this.y, 7, PALETTE.wood, 180);
+      return;
+    }
+    this.broken = true; this.dead = true;
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
+    game.audio.sfxSplat(); game.shake(5); game.hitstop(0.03); game.vibe(16);
+    game.particles(this.x, this.y, 16, PALETTE.wood, 230);
+    game.particles(this.x, this.y, 10, PALETTE.hen, 190);
+    // Out she comes, loose, at his feet.
+    game.props.push(new Prop(this.x, this.y - 6, 'chicken'));
+    game.audio.sfxCluck && game.audio.sfxCluck();
+    game.floatText(this.x, this.y - 34, 'A HEN', PALETTE.hen);
+    game.henFreed(this);
+  }
+
+  // A horn under a bird. She is not thrown — there is nothing to pick up and nothing to hold — she
+  // is kicked, which is the headbutt doing what it already does to a crate, and she finds her own
+  // man on the way. The target is chosen once, off the line she was kicked along, and `updateBird`
+  // keeps her steering at it.
+  kick(game, ax, ay) {
+    if (this.broken || this.birdState === 'flying') return;
+    const C = TUNING.prop.chicken;
+    const l = Math.hypot(ax, ay) || 1; ax /= l; ay /= l;
+    this.birdState = 'flying'; this.birdT = 0;
+    this.vx = ax * C.launchSpeed; this.vy = ay * C.launchSpeed;
+    this.target = this.pickTarget(game, ax, ay);
+    this.passed.length = 0;
+    game.audio.sfxCluck && game.audio.sfxCluck();
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash * 0.5);
+    game.particles(this.x, this.y, 8, PALETTE.hen, 200);
+    game.shake(3); game.vibe(12); game.kick(ax, ay, TUNING.juice.kick * 0.4);
+  }
+
+  // Whoever is nearest the line she was kicked along, inside the arc and the range. Everything the
+  // rest of the game refuses to hit — the dead, the held, a wraith that is not there — is refused
+  // here too, so a kick is never spent on a thing that was never going to be struck.
+  pickTarget(game, ax, ay) {
+    const C = TUNING.prop.chicken;
+    let best = null, bestScore = Infinity;
+    for (const e of game.enemies) {
+      if (e.dead || e.held || e.ghosted) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy) || 1;
+      if (d > C.seekRange * TILE) continue;
+      const off = Math.acos(Math.max(-1, Math.min(1, (dx * ax + dy * ay) / d)));
+      if (off > C.seekArc / 2) continue;
+      const score = d * (1 + off);        // near and ahead beats near and off to one side
+      if (score < bestScore) { bestScore = score; best = e; }
+    }
+    return best;
+  }
+
+  // Loose she walks with him; flying she steers; stunned she sits where she landed. One method,
+  // three states, the way every other prop in here branches on its own kind.
+  updateBird(dt, game) {
+    if (this.broken) return;
+    const C = TUNING.prop.chicken, g = game.goat;
+    this.flap += dt * (this.birdState === 'flying' ? 26 : 6);
+    this.bob += dt * (this.birdState === 'flying' ? 0 : 4);
+    if (this.birdState === 'stunned') {
+      this.birdT -= dt;
+      if (this.birdT <= 0) { this.birdState = 'loose'; this.vx = 0; this.vy = 0; }
+      return;
+    }
+    if (this.birdState === 'loose') {
+      // She keeps the goat company at a distance and only hurries when he has got away from her.
+      const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy) || 1;
+      if (d > C.followAt * TILE) {
+        const haste = d > C.followFar * TILE ? 1.5 : 1;
+        this.vx = (dx / d) * C.followSpeed * haste; this.vy = (dy / d) * C.followSpeed * haste;
+      } else {
+        // Close enough: a few steps of her own, so she reads as a bird rather than as a magnet.
+        this.wanderA += (Math.random() - 0.5) * 4 * dt;
+        this.vx = Math.cos(this.wanderA) * C.followSpeed * C.wander;
+        this.vy = Math.sin(this.wanderA) * C.followSpeed * C.wander;
+      }
+      this.x += this.vx * dt; this.y += this.vy * dt;
+      game.world.collideCircle(this);
+      // A bird will not walk down a hole on her own account.
+      if (game.world.isPitPx(this.x, this.y)) { this.x -= this.vx * dt; this.y -= this.vy * dt; this.wanderA += Math.PI; }
+      return;
+    }
+    // Flying. She holds her speed — a bird that is aimed and then peters out reads as a dropped
+    // ball — and turns onto whoever she has at a fixed rate, so a target behind her is a miss.
+    this.birdT += dt;
+    if (this.target && (this.target.dead || this.target.held || this.target.ghosted)) this.target = null;
+    if (this.target) {
+      const dx = this.target.x - this.x, dy = this.target.y - this.y;
+      const want = Math.atan2(dy, dx), have = Math.atan2(this.vy, this.vx);
+      const turn = Math.max(-C.turn * dt, Math.min(C.turn * dt, angleDiff(have, want)));
+      const a = have + turn, spd = Math.hypot(this.vx, this.vy);
+      this.vx = Math.cos(a) * spd; this.vy = Math.sin(a) * spd;
+    }
+    const drag = Math.exp(-C.drag * dt);
+    this.vx *= drag; this.vy *= drag;
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    const spd = Math.hypot(this.vx, this.vy) || 1;
+    // Into a man: she comes apart on him and takes him with her. That is the whole of the bargain.
+    for (const e of game.enemies) {
+      if (e.dead || e.held || e.ghosted) continue;
+      if (Math.hypot(e.x - this.x, e.y - this.y) > e.r + this.r) continue;
+      this.strike(game, e, this.vx / spd, this.vy / spd);
+      return;
+    }
+    // Into anything else: she is a bird, not a blade. She tumbles, lands, and gets up loose again —
+    // a miss costs the walk back to her rather than the bird.
+    const impact = game.world.collideCircle(this);
+    if (impact > 2 || this.hitProp(game, this.vx / spd, this.vy / spd) || this.birdT > C.life) {
+      this.land(game); return;
+    }
+    if (game.world.isPitPx(this.x, this.y)) { this.gone(game); return; }
+  }
+
+  // She reaches her man. He dies of it the way anything the room throws at him does, and she is
+  // spent: a burst of feathers and gone.
+  strike(game, e, nx, ny) {
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
+    e.die(game, e.kind === 'wraith' ? 'unmade' : 'splat', nx, ny);
+    this.broken = true; this.dead = true;
+    game.particles(this.x, this.y, 22, PALETTE.hen, 260);
+    game.particles(this.x, this.y, 8, PALETTE.comb, 220);
+    game.audio.sfxSplat(); game.shake(6); game.hitstop(0.05); game.vibe(28);
+    game.kick(nx, ny, TUNING.juice.kick * 0.7);
+    game.floatText(this.x, this.y - 30, 'THE HEN', PALETTE.hen);
+  }
+
+  // Down in a heap, and up again in a moment.
+  land(game) {
+    const C = TUNING.prop.chicken;
+    this.birdState = 'stunned'; this.birdT = C.stunned;
+    this.vx = 0; this.vy = 0; this.target = null;
+    game.particles(this.x, this.y, 6, PALETTE.hen, 150);
+    game.audio.sfxThud();
+  }
+
+  // Over an edge, like everything else that goes over one.
+  gone(game) {
+    this.broken = true; this.dead = true;
+    game.audio.sfxFall && game.audio.sfxFall();
+  }
+
   // Tables slide, and men they catch ride the impulse into whatever is behind them. `by` is whoever
   // sent it — the Butcher on a charge — and it does not turn round and take him on the way.
   shove(game, ax, ay, by) {
@@ -904,7 +1076,8 @@ class Prop {
     if (this.wobble > 0) this.wobble -= dt;
     if (this.kind === 'mill') { this.updateMill(dt, game); return; }
     if (this.kind === 'spike') { this.updateSpike(dt, game); return; }
-    if (this.kind === 'heal' || this.kind === 'cage') return;
+    if (this.kind === 'chicken') { this.updateBird(dt, game); return; }
+    if (this.kind === 'heal' || this.kind === 'cage' || this.kind === 'coop') return;
     if (this.kind === 'brazier') { this.spillCd = Math.max(0, this.spillCd - dt); return; }
     // Fire that reaches a lamp post takes the lamp with it: hay burning up to one tips it over,
     // and the oil goes wherever it falls. The room keeps answering after the first thing lit.

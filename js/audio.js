@@ -147,7 +147,9 @@ class GameAudio {
       if (s % 64 === 0) this.crash(t, 0.15);
       if (bar === 0) this.chant(t, stepLen * 16);
     }
-    if (this.hunterAware && bar % 2 === 1) this.shaker(t);
+    // A rifle has you. Quiet and sparse on purpose: see the note over TUNING.audio.hunterCue.
+    const HC = TUNING.audio.hunterCue;
+    if (this.hunterAware && bar % HC.everyBars === 1) this.shaker(t, HC.gain);
     if (this.ctx.currentTime < this.droneUntil && bar % 8 === 0) {
       this.tone(55, t, stepLen * 8, { type: 'triangle', gain: 0.12, bus: this.drumBus, attack: 0.1 });
     }
@@ -209,6 +211,17 @@ class GameAudio {
     if (!this.ctx || this.muted) return; const t = this.now();
     const d = dur || 0.28;
     this.bleatVoice(t, { f: f * 0.62, dur: d, gain: (gain || 0.1) * 1.5, wob: 19 + f * 0.02, depth: 0.09, open: 1.35, breath: 0.14 });
+  }
+  // The hen. The same throat as the goat, pitched right up and cut short: two clipped notes, the
+  // second higher and quieter, which is what a cluck is. Everything with a voice in this game goes
+  // through `bleatVoice` — a bird built out of `tone` would be a beep with feathers drawn on it.
+  sfxCluck(alarm) {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    const f = alarm ? 980 : 760;
+    this.bleatVoice(t, { f, dur: 0.1, gain: 0.16, wob: 42, depth: 0.16, open: 1.2, breath: 0.3 });
+    this.bleatVoice(t + 0.1, { f: f * 1.22, dur: 0.08, gain: 0.11, wob: 48, depth: 0.14, open: 1.1, breath: 0.2 });
+    // The wings, at the front of it: a bird makes as much noise with those as with her throat.
+    this.noise(t, 0.1, { gain: alarm ? 0.16 : 0.1, hp: 900, lp: 4200 });
   }
   // A club coming down on a skull, heard from inside the skull.
   sfxClub() {
