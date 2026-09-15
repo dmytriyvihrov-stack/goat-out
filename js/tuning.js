@@ -56,10 +56,10 @@ const CULT_PACE = 0.9 * PACE;
 const TUNING = {
   goat: {
     radius: 12,
-    // A fifth off the stride he walks about with. The run-up is what gives it back: four seconds of
-    // running flat out and he is at the old top speed again, so the speed he used to have for free
-    // is now the speed he has for not stopping.
-    speed: 0.8 * PACE,
+    // A fifth off the stride he walks about with, and then another fifth off that. The run-up is
+    // what gives it back: four seconds of running flat out and he is closer to the old top speed
+    // again, so the speed he used to have for free is now the speed he has for not stopping.
+    speed: 0.8 * 0.8 * PACE,
     accel: 0.15,            // s to top speed
     decel: 0.25,            // s to stop
     hp: 4,
@@ -72,7 +72,10 @@ const TUNING = {
     // It was cut too far. A bare head that neither reached nor threw made the first hour a game
     // about walking backwards, so a third of the cut is given back — not the whole of it: the goat
     // still starts underpowered, and what he has out of the pen is a shove with a body behind it.
-    headbutt: { windup: 0.12, active: 0.15, recovery: 0.38, lunge: 18.2 * TILE, impulse: 28 * TILE, reach: 1.64 * TILE },
+    // `lunge` is a speed, not a distance, but at `active` seconds it used to carry him close to three
+    // tiles on a single press — noticeably further than the reach a headbutt reads as. Cut to land
+    // close to two.
+    headbutt: { windup: 0.12, active: 0.15, recovery: 0.38, lunge: 13.3 * TILE, impulse: 28 * TILE, reach: 1.64 * TILE },
     // A throw is a commitment now: you let him go, and your mouth is empty for a beat.
     // He is in your mouth a long time, and he works himself loose somewhere in `holdVary` either
     // side of it, so you never learn the exact beat he goes: carrying one is a gamble, not a timer.
@@ -398,8 +401,10 @@ const TUNING = {
   // `shade` was 0.8: dark enough to hide a man standing still, not dark enough to hide one moving —
   // a red hood or a rifle's silhouette read through it from across a room that had not been opened,
   // which gave away what was coming before the door did. Raised to keep the room's contents a
-  // shape you cannot name rather than one you can.
-  fog: { shade: 0.94, radius: 26, res: 2 },
+  // shape you cannot name rather than one you can. 0.94 read as a hard black edge anywhere a forced-
+  // lit patch (a secret niche) sat next to ordinary shadowcast, so backed off a step to 0.9 — still
+  // much darker than the original.
+  fog: { shade: 0.9, radius: 26, res: 2 },
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
   // first has found a room, so most levels get one and some get two rather than every level getting
   // a guaranteed pair. `carveSecret` in gen.js does the finding; this is only ever the odds.
@@ -681,6 +686,9 @@ const LEVELS = [
     soulGate: 9,
     // The wheel is met with nobody standing in the room, and arms are not a thing you find until
     // halfway in: the first half of the run is the goat and his head and nothing else.
+    // The first stand of arms in the game is not a scatter, it is this room: a long approach, the
+    // arm right inside the door, and whoever the room holds standing well down the far end of it.
+    ambushAt: 6,
     millAt: 5, millSolo: true, heals: 3, souls: 1, racks: 0.2, racksFrom: 0.5, traps: 1, crates: 0.3,
     // No hen yet. She is the one thing in the compound on your side, and a goat who has not been
     // shown a single fight to the finish has nothing to weigh "an ally who kills once" against.

@@ -124,6 +124,17 @@ introduced the bearer in anyway, since `introduce: [['bearer', 0]]` always resol
 ordinary room — so forcing the template changes nothing about the difficulty curve or the room's
 `canon`/`mix` accounting, only what furniture (none) stands between the entrance and him.
 
+**A second forced room, further in: grab and throw taught by standing something in front of you.**
+`AMBUSH_TEMPLATE` in `rooms.js` is a long, narrow room — a stand of arms just inside the door, a
+crate a step past it, whoever the room holds standing well down the far end. `levelDef.ambushAt`
+forces it in the same way `millAt`/`hallAt`/`galleryAt`/`killboxAt` already do (and is in `fixedW`
+alongside them, so the width budget accounts for it); level one sets it to room 6, which is also
+where `racksFrom` already allows the level's first stand of arms and where the roll's own crowded-
+room search (see **Words on the floor**) tends to land — one room now carries all three rather than
+three separate ones. Nothing about who spawns there is special-cased: it is an ordinary room and
+fills off the threat curve like any other, so "they wait" is room geometry (the distance from the
+door to them) rather than a passive-AI state — nothing in `Enemy` was touched for it.
+
 **Dazed.** `enemy.daze(game, seconds)` is the scream's whole effect: the man freezes, whatever he was
 winding up is cancelled, and stars orbit his head. It is a timer, not a state, so the flung / floored /
 burning machinery underneath is untouched.
@@ -541,14 +552,17 @@ while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` 
 `game.stunGoat(seconds)` is the only way in, and the pen is the only thing that uses it.
 
 **Words on the floor.** `CONTROL_LINES` in `render.js` holds four blocks and `level.controls` says where
-each goes. Blocks 0 and 1 are the two empty rooms after the pen; block 2 is the room that holds the first
-man of the run (`lessonRoom` in `gen.js`), and it exists because two rooms of writing about a headbutt
-with nothing in them to use it on did not add up to *the men can be hit* — it carries only `BUTT HIM`
-now, not a repeat of block 0's headbutt and wall lines, since those are already read by the time he is
-standing here. Block 3 is the roll, and it does not live in block 0 any more: a dodge painted on an
-empty floor means nothing, so `gen.js` picks the first room past the lesson that already holds two men
-or more, closest to the level's own middle (`rollCandidates`, next to where `controls` is built), and
-puts it there instead. Each block has a keyboard and a
+each goes, one idea per block rather than one room per idea. Block 0 (the first empty room after the
+pen) is `WASD — TO MOVE` alone. Block 1 (the second empty room) is grab and throw. Block 2 is the room
+that holds the first man of the run (`lessonRoom` in `gen.js`) and carries the headbutt and wall lines
+*with* `BUTT HIM` — they used to sit in block 0, two rooms before there was anyone to try them on, which
+is exactly backwards from *the men can be hit* being the thing nobody worked out. Block 3 is the roll,
+plus the point-blank scream parry (`CLOSE UP IT BREAKS THEIR SWING`) — neither lives with its own verb's
+room any more, because a line about dodging or about a parry means nothing painted on a floor with
+nothing on it to dodge or parry. `gen.js` picks the first room past the lesson that already holds two
+men or more, closest to the level's own middle (`rollCandidates`, next to where `controls` is built),
+and puts both lines there — which on level one is usually the ambush room above, since that is also the
+first room past the lesson with a crowd in it. Each block has a keyboard and a
 touch wording; add a line to one and add it to both.
 
 A level's own `hint` is the other half of it: `gen.js` paints it across the middle of the first room

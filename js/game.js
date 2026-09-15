@@ -247,10 +247,21 @@ class Game {
     // step back it lights a sliver of what is past it and shades the rest — which is right for a
     // doorway and wrong for this: the whole point of the wall is what is behind it, and a player who
     // has spent two blows finding out has earned the sight of it rather than a dark patch he has to
-    // walk into. Three tiles, and only once the wall is actually down.
+    // walk into. Three tiles, and only once the wall is actually down. The ring a tile out from each
+    // of those is lit too — at `fog.shade` raised, the seam between a forced-bright niche tile (no
+    // shadowcast, no falloff) and its ordinary shadowcast-lit neighbour one step into the room read
+    // as a hard black edge rather than as a wall.
     for (const p of this.sightBlockers) {
       if (p.kind !== 'secret' || !p.broken || !p.nicheTiles) continue;
-      for (const i of p.nicheTiles) w.vis[i] = 1;
+      for (const i of p.nicheTiles) {
+        w.vis[i] = 1;
+        const tx = i % w.W, ty = Math.floor(i / w.W);
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = tx + dx, ny = ty + dy;
+          if (nx < 0 || ny < 0 || nx >= w.W || ny >= w.H) continue;
+          if (!w.isSolid(nx, ny)) w.vis[ny * w.W + nx] = 1;
+        }
+      }
     }
   }
   // Is this point inside a room nobody has walked into? Everything the world draws and everything

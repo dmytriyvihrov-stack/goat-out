@@ -5,6 +5,61 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.20 — an ambush room, a shorter headbutt, and the tutorial split three ways
+
+A second, faster round on top of 1.19 — fifteen short lines against the live build, most
+of them screenshots.
+
+**Level one's opening rooms are cut to one idea each.** `WASD — TO MOVE` is now the whole
+of the first room; the headbutt and wall lines moved to the room that actually has
+someone to try them on, next to `BUTT HIM`; and the point-blank scream parry moved with
+the roll into the crowded room down the line — a line about a parry means nothing painted
+on an empty floor.
+
+**A new room teaches grab and throw the way the level already teaches everything else: by
+standing something in front of you.** `AMBUSH_TEMPLATE` (`rooms.js`) is a long, narrow
+room — a stand of arms just inside the door, a crate a step past it, whoever the room
+holds standing well down the far end. `levelDef.ambushAt` forces it in at room 6, which
+is also where `racksFrom` already puts the level's first stand of arms and where the
+roll's own room lands — one room now carries all three, rather than three different
+empty ones. It fills off the ordinary threat curve like any other room; nothing about
+who waits there was special-cased.
+
+**The headbutt covers two tiles, not three.** `goat.headbutt.lunge` (a speed, not a
+distance) was carrying him close to three tiles in `active`'s 0.15s; cut from 18.2 to
+13.3 tiles/s.
+
+**The soul card lost its number badges.** `Press 1, 2 or 3` and the corner digit on each
+card are gone — the cards are clicked, and a caption teaching a keyboard shortcut nobody
+asked about was reading as instructions rather than as a page.
+
+**The secret niche's seam is softer, and the wall now stands like one.** The tile ring
+one step out from a broken niche is force-lit too, not just the niche's own three tiles —
+at the raised `fog.shade` (eased back from 0.94 to 0.9 for the same reason) the boundary
+between a forced-bright niche and its ordinary shadowcast-dimmed neighbour was reading as
+a hard black edge. The still-cracked (not yet broken) wall itself is now stamped anchored
+above the tile's centre rather than dead on it, so it reads as standing in the wall
+course rather than lying flush with the floor in front of it — worth another look once
+it is live.
+
+**Lying arms are smaller again.** 32px / 28px (sword / shield) down to 24px / 22px,
+closer to the 22px they actually cover on the ground.
+
+**Another fifth off the goat's base speed**, on top of the run-up cut already in place.
+
+**Doors, tried and reverted the same day — not this session's change, landed alongside
+it.** The expansion pack's door art is a square, front-facing leaf; this game's door is
+roughly a 1:4.5 slab spanning a wall gap, and stamped at any readable size the square art
+either floated as a disconnected icon or squashed unrecognisably sideways. Pulled back
+out to the procedural slab in `Renderer.drawPropBody`; `ART_HANDOFF.md`'s brief now
+specs the redo at the game's actual proportions.
+
+**Left for the next pass, not guessed at blind:** the lamp and brazier reading as
+floating rather than grounded, and a level-two floor patch that reads as misplaced hay —
+both need a closer look together against the live build rather than another inferred fix.
+
+---
+
 ## 1.19 — the pen room teaches less at once, and a bomb only goes off on a wall
 
 Twenty-six lines off an annotated set of screenshots. Where a line was a question about
@@ -105,10 +160,7 @@ and windup/swing lean along the real facing rather than a left/right-only nudge.
 used to draw only when `game.levelIndex === 0`; that gate (`Renderer.drawPropBody`)
 now checks `this.painted.ready` instead, so those four — plus the new animated fire,
 the worktable, weapon rack, healing grass and spike plates — render on every level,
-not just THE ALTAR. Doors get the pack's four-state sprite too, for the vertical
-orientation the pack actually drew (the one horizontal door, the vault, keeps its
-procedural slab); the halo, the pressure flash and the soul-gate wisp and text are
-untouched.
+not just THE ALTAR.
 
 **A same-day second pass finished what the first left half-done.** The mill's hub *and*
 arm now draw from the atlas — the arm is stretched to `TUNING.mill.armLen` rather than
@@ -119,12 +171,24 @@ instead of giving itself away by color. The soul wisp's body is the atlas art no
 its halo and orbiting sparks still procedural. **Cage bars went back to fully
 procedural** — `cage-bars.png` turned out to be a three-post fence panel, not the
 single post this game's per-bar pen model needs, so using it as delivered would have
-tripled every post. The tile and wall art itself is still level-one only — no other
-level's floor has been painted yet. `ART_HANDOFF.md` now carries a full technical brief
-for what's still needed: tile/wall art for levels two through seven (with each level's
-exact procedural palette to match), full sheets for Hunter, Wraith and Butcher (whose
-concept sheets already exist, unused, in `output/character-concepts/remaining-
-characters-v1/`), and the cage correction above.
+tripled every post.
+
+**And a third pass pulled the doors back out.** They went in with the pack's four-state
+sprite for the vertical orientation, and came straight back out the same day: the
+delivered art is a square, front-facing door leaf, and this game's door is a thin slab
+spanning a wall gap at roughly a 1:4.5 ratio — stamped at any readable size the square
+art either floated as a small icon disconnected from the gap it stood in, or had to be
+squashed sideways past recognizing. `Renderer.drawPropBody`'s door branch is back to
+the plain procedural slab; the halo, the pressure flash and the soul-gate wisp and text
+were never touched either way. The tile and wall art itself is still level-one only —
+no other level's floor has been painted yet. `ART_HANDOFF.md` now carries a full
+technical brief for what's still needed: tile/wall art for levels two through seven
+(with each level's exact procedural palette to match), full sheets for Hunter, Wraith
+and Butcher (whose concept sheets already exist, unused, in `output/character-concepts/
+remaining-characters-v1/`), the cage correction above, doors redrawn at the game's own
+proportions and proven by testing in the running game rather than in isolation, and a
+smaller, simpler healing-grass sprite — the delivered one reads too big and busy for a
+small floor patch.
 
 ---
 

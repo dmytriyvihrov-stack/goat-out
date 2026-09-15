@@ -58,13 +58,10 @@ both asset files into one `PaintedArt` instance.
   gated to level one — `Renderer.drawPropBody`'s painted check is now
   `this.painted.ready` instead of `this.altar` (which stays level-one-only, for tiles).
   So all four now render on every level.
-- **Doors** (`Renderer`'s door branch) swap in the four-state (closed/opening/open/
-  broken) sprite for **vertical** doors only — the pack only drew the north-wall-facing
-  orientation (see its HANDOFF.md); the one horizontal door in the game, the vault,
-  keeps the fully procedural slab. The halo, the pressure-outline flash, the soul-gate
-  wisp icon and the "SOUL" / "A SOUL OPENS IT" floor text are all unchanged and still
-  draw on top — only the plank/iron slab body was swapped, and the old scored-hit-count
-  notches are dropped in favor of the (already-existing) floating "N MORE" text.
+- **Doors — tried, then reverted; still fully procedural.** See **Still not wired**
+  below and brief item **E**: the delivered door art doesn't fit this game's door shape
+  and shipping it looked worse than the plain slab, so it was pulled back out the same
+  day it went in.
 - **Worktable, weapon stand + sword + shield, healing grass, spike plates, mill hub,
   mill arm, secret wall, soul wisp** now use the atlas art (`objects/atlas.png`),
   all level-agnostic. Spikes keep their arm/idle/arming distinction (down still shows
@@ -83,6 +80,18 @@ both asset files into one `PaintedArt` instance.
   not a single post — this game builds the pen from one `Prop` per individual bar
   (`buildCage` in `gen.js`), so stamping the panel on every bar would triple-draw posts.
   See the brief below for the correction to ask for.
+
+**Doors reverted — the delivered art doesn't fit and shipping it looked worse than the
+plain slab.** `doors/{wood,iron,vault,soul}.png` are a square, front-facing door leaf
+(128×128, meant to be seen face-on, like a side-view or first-person game would draw
+one). This game's door is a thin slab spanning a wall gap — `13×58` px standing in a
+horizontal wall, `58×13` in a vertical one, roughly a 1:4.5 ratio — because the camera
+looks down at it. Stamped at any size that reads as "a door" the square art either
+floats as a small disconnected icon in the gap (see the screenshot in the brief, item
+E) or has to be squashed sideways until the plank/iron banding is unrecognisable.
+Reverted the same day in `Renderer.drawPropBody`'s door branch back to the fully
+procedural slab; `PaintedArt`'s door-stamping code was removed rather than left dead.
+See brief item **E** for the redo.
 
 **Still not wired — no clean hook, left for a future pass or a data-model change:**
 
@@ -110,14 +119,17 @@ In roughly the order a playthrough meets it:
    level's floor/wall art has been drawn yet — the characters, fixtures, doors and
    props above are level-agnostic and already show everywhere, but the ground under
    them is still procedural past level one.
-3. Cage bars (single-post correction) and, optionally, crate-debris and torch-fire —
-   see the brief below.
+3. **Doors** — redrawn to the game's actual proportions, not the delivered square leaf.
+   See brief item E.
+4. Cage bars (single-post correction), healing grass (too big and busy at gameplay
+   scale — brief item F) and, optionally, crate-debris and torch-fire — see the brief
+   below.
 
 ---
 
 ## Brief for the next commission — technical spec, 2026-09-15
 
-Three separate asks. Each can be delivered independently; none block each other.
+Six separate asks. Each can be delivered independently; none block each other.
 
 ### A. Levels 2–7: tile and wall art, one set per level
 
@@ -194,6 +206,39 @@ the state after the pen's last blow (`p.broken`, `js/entities.js`'s `Prop.smash`
   `brazier` and `lamp` exist as lit Props. A decorative wall-mounted torch (not a Prop,
   just a scatter in `PaintedArt.drawTiles` the way `banner` already is) is a plausible
   small addition if there's appetite, but nobody has asked for it yet.
+
+### E. Doors — redraw to the game's actual shape, and prove it by testing in the running game
+
+`doors/{wood,iron,vault,soul}.png` were tried and reverted the same day (see above): they're
+a square, front-facing door leaf, 128×128, drawn as if seen straight-on — this game looks
+down at a slight tilt (`TILT` in `js/tuning.js`) and its door is a **thin slab spanning a
+wall gap**, not a leaf you see the face of. Stamped at any size that reads as "a door," the
+square art either floats as a small disconnected icon inside the gap or has to be squashed
+sideways until it's unrecognisable — a screenshot of exactly that problem is what prompted
+this brief. What's actually needed: art drawn **at the game's own proportions from the
+start** — roughly **1 wide to 4.5 tall** (a door in a north/south-running wall; the other
+orientation is the same shape turned 90°), no surrounding frame baked in (the level's own
+wall tiles already frame the gap — see `js/render.js`'s wall drawing), four states in one
+sheet as before (closed / opening / open / broken), one sheet per door kind (wood, iron,
+vault, soul). Trimmed transparent padding matters more here than in the square props: at
+that aspect ratio, padding on the long axis wastes most of the resolution.
+
+**Before calling this delivered, integrate it and look at it in the actual game** — not
+just `preview.html` in isolation, which is exactly what let the square-leaf mismatch
+through last time. `node tools/serve.js 8766`, walk (or `H.tp`/`H.walkTo` from the console
+harness — see `CLAUDE.md`'s **Testing**) up to an ordinary corridor door, and take a
+screenshot close enough to judge whether it reads as a door filling its gap rather than an
+icon floating in it, the way the door in this session's screenshot did not.
+
+### F. Healing grass — too big and busy, simplify
+
+`objects/healing-grass.png` reads oversized and detailed for what it is on screen: it's
+stamped at about 44px wide (`PaintedArt.drawProp`'s `heal` branch, `js/painted-art.js`) —
+a small patch of grazing-grass on the floor, not a hero prop. The old procedural version
+(`js/render.js`, the same branch's fallback) drew it as a handful of thin blades over a
+small dirt ellipse, on purpose: it has to sit quietly in a room among braziers, crates and
+men, not compete with them. Ask for fewer, simpler blades and a smaller footprint —
+something that reads at a glance from gameplay zoom as "a patch of grass," not a bush.
 
 ## How to add a character (the pattern that already worked four times)
 

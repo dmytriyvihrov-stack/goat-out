@@ -199,6 +199,7 @@ function tryGenerate(levelDef, seed) {
     if (j === levelDef.hallAt) return GREAT_HALL_TEMPLATE.rows[0].length;
     if (j === levelDef.galleryAt) return GALLERY_TEMPLATE.rows[0].length;
     if (j === levelDef.killboxAt) return KILLBOX_TEMPLATE.rows[0].length;
+    if (j === levelDef.ambushAt) return AMBUSH_TEMPLATE.rows[0].length;
     return 0;
   };
   // A room may not take more than its share of the width that is left: the pool cycles, and a
@@ -223,6 +224,7 @@ function tryGenerate(levelDef, seed) {
     else if (i === levelDef.galleryAt) tpl = GALLERY_TEMPLATE;
     else if (i === levelDef.killboxAt) tpl = KILLBOX_TEMPLATE;
     else if (i === sentryRoomAt) tpl = LESSON_TEMPLATE;
+    else if (i === levelDef.ambushAt) tpl = AMBUSH_TEMPLATE;
     else if (trapRooms.has(i)) tpl = trapPool[trapIdx++ % trapPool.length];
     else if (canonRooms.has(i)) tpl = draw(canonPool, canonIdx++, i);
     else tpl = draw(mixPool, mixIdx++, i);

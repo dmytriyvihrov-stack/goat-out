@@ -84,16 +84,6 @@ class PaintedArt extends AltarArt {
     return c;
   }
 
-  // Four sprite-switched states — closed / opening / open / broken — rather than a swing animation.
-  // Only the vertical (north-wall-facing) orientation is covered by this delivery: a horizontal
-  // door (the vault) is left to the caller's own fallback. See assets/painted-expansion-v1/HANDOFF.md.
-  door(renderer, p, x, y, w, h, anchor = 0.5) {
-    if (!p.vertical) return false;
-    const key = p.gate ? 'doorSoul' : p.vault ? 'doorVault' : p.iron ? 'doorIron' : 'doorWood';
-    const stateCol = p.broken ? 3 : p.open >= 0.95 ? 2 : p.open > 0.02 ? 1 : 0;
-    return this.drawFrame(renderer.ctx, this.images[key], stateCol * 128, 0, 128, 128, x, y, w, h, anchor);
-  }
-
   drawTiles(renderer, game, cam) {
     if (!this.ready) return super.drawTiles(renderer, game, cam);
     this.prepare(game);
@@ -203,7 +193,7 @@ class PaintedArt extends AltarArt {
       ctx.save();
       ctx.translate(p.x,p.y-(up?24:0));
       ctx.rotate(up?(p.weapon==='sword'?-Math.PI/2:0):p.flung?p.spin:(p.facing||0));
-      this.atlas(ctx,p.weapon,0,0,up?(p.weapon==='sword'?46:32):(p.weapon==='sword'?32:28),undefined,0.5);
+      this.atlas(ctx,p.weapon,0,0,up?(p.weapon==='sword'?46:32):(p.weapon==='sword'?24:22),undefined,0.5);
       ctx.restore();
       // What is left in a shield you are carrying: three studs, one per man or bullet it has in it.
       if(p.weapon==='shield'&&p.held&&p.uses>0){
@@ -241,18 +231,22 @@ class PaintedArt extends AltarArt {
     }
     if(p.kind==='secret'){
       if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
-      const h=TILE/2;
-      this.drawFrame(ctx,this.secretWallTinted(p.wallColor),0,0,128,128,p.x,p.y,TILE,TILE,0.5);
+      const h=TILE/2, top=p.y-TILE*0.12;
+      // A wall stands in the wall row, not the floor row: anchored a shade above the tile's own
+      // centre (0.62, against the stamp's usual 0.5) so it sits with the rest of the wall course
+      // rather than reading as flush with the ground the niche's own floor is drawn on.
+      this.drawFrame(ctx,this.secretWallTinted(p.wallColor),0,0,128,128,p.x,top,TILE,TILE,0.62);
       // The crack tells still have to be drawn: the art carries none, and they're what the blow count
-      // reads as (see AltarArt.drawProp / CLAUDE.md's "A wall that gives").
+      // reads as (see AltarArt.drawProp / CLAUDE.md's "A wall that gives"). Drawn off the same raised
+      // centre as the stamp above, so the crack sits on the stone and not on the boards in front of it.
       ctx.strokeStyle='rgba(10,8,10,0.55)';ctx.lineWidth=1.5;
       ctx.beginPath();
-      ctx.moveTo(p.x-h*0.5,p.y-h*0.6);ctx.lineTo(p.x-h*0.1,p.y);
-      ctx.lineTo(p.x-h*0.4,p.y+h*0.4);ctx.lineTo(p.x+h*0.3,p.y+h*0.8);
+      ctx.moveTo(p.x-h*0.5,top-h*0.6);ctx.lineTo(p.x-h*0.1,top);
+      ctx.lineTo(p.x-h*0.4,top+h*0.4);ctx.lineTo(p.x+h*0.3,top+h*0.7);
       ctx.stroke();
       if((p.hits||0)>0){
         ctx.strokeStyle='rgba(10,8,10,0.7)';ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(p.x+h*0.5,p.y-h*0.5);ctx.lineTo(p.x-h*0.2,p.y+h*0.6);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(p.x+h*0.5,top-h*0.5);ctx.lineTo(p.x-h*0.2,top+h*0.5);ctx.stroke();
       }
       return true;
     }

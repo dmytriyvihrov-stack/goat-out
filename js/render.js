@@ -13,18 +13,16 @@ const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 // level — see `rollRoom` in `gen.js`.
 const CONTROL_LINES = {
   key: [
-    ['WASD — TO MOVE', 'LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS'],
-    ['RIGHT CLICK — GRAB OBJECT', 'RELEASE — THROW',
-      'SPACE — BAAH, THEY COME TO THE NOISE', 'CLOSE UP IT BREAKS THEIR SWING'],
-    ['BUTT HIM'],
-    ['E — ROLL', 'OUT OF THE WAY'],
+    ['WASD — TO MOVE'],
+    ['RIGHT CLICK — GRAB OBJECT', 'RELEASE — THROW', 'SPACE — BAAH, THEY COME TO THE NOISE'],
+    ['LEFT CLICK — HEADBUTT', 'INTO A WALL KILLS', 'BUTT HIM'],
+    ['E — ROLL', 'OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
   touch: [
-    ['LEFT THUMB — TO MOVE', 'BUTT — HEADBUTT', 'INTO A WALL KILLS'],
-    ['GRAB — HOLD TO CARRY', 'RELEASE — THROW',
-      'BAAH — THEY COME TO THE NOISE', 'CLOSE UP IT BREAKS THEIR SWING'],
-    ['BUTT HIM'],
-    ['ROLL — OUT OF THE WAY'],
+    ['LEFT THUMB — TO MOVE'],
+    ['GRAB — HOLD TO CARRY', 'RELEASE — THROW', 'BAAH — THEY COME TO THE NOISE'],
+    ['BUTT — HEADBUTT', 'INTO A WALL KILLS', 'BUTT HIM'],
+    ['ROLL — OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
 };
 
@@ -627,10 +625,11 @@ class Renderer {
     } else if (p.kind === 'door') {
       const tall = p.vertical;
       const wdt = tall ? 13 : 58, hgt = tall ? 58 : 13;
-      // The expansion pack only drew the vertical (north-wall-facing) orientation — the vault door
-      // is horizontal and keeps the fully procedural slab. See assets/painted-expansion-v1/HANDOFF.md.
-      const painted = tall && this.painted.ready;
-      const bw = painted ? 34 : wdt, bh = painted ? 34 : hgt;
+      // The expansion pack's door art is a square, front-facing door leaf (128x128, meant to be
+      // seen face-on); this game's door is a thin slab spanning a wall gap (13x58 or 58x13, a
+      // fifth as wide as it is tall). Stamped at any readable size it either floats tiny in the
+      // gap or smears sideways — squeezed screenshot in the brief in ART_HANDOFF.md. Left fully
+      // procedural until a top-down-proportioned version exists; see the brief for the ask.
       // The soul door carries the soul's own halo. An iron door in a corridor and the one with a
       // soul behind it used to be the same grey slab, which is why nobody went to the second one.
       if (p.vault || p.gate) {
@@ -642,35 +641,29 @@ class Renderer {
         ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(p.x, p.y, 56, 0, Math.PI * 2); ctx.fill();
       }
       ctx.save(); ctx.translate(p.x, p.y);
-      if (!painted && p.open > 0) ctx.rotate((tall ? -1 : 1) * p.open * 1.25);
-      this.shadow(0, 0, bw * 0.6, bh * 0.4);
-      if (painted) {
-        // Sprite-switched closed/opening/open/broken art. The hit count still pops as floating text
-        // from `Prop.smash`, so nothing here needs the old scored-notch tally.
-        this.painted.door(this, p, 0, 0, bw, bh);
-      } else {
-        // Planks, unless it is the vault's: iron is darker, banded across, studded, and carries a
-        // notch for every blow it has already taken, so four hits is a count and not a wall.
-        ctx.fillStyle = p.iron ? '#3a3a40' : PALETTE.wood; ctx.fillRect(-wdt / 2, -hgt / 2, wdt, hgt);
-        ctx.fillStyle = p.iron ? '#5d5f68' : PALETTE.woodHi; ctx.fillRect(-wdt / 2, -hgt / 2, tall ? 4 : wdt, tall ? hgt : 4);
-        if (this.altar) this.altar.doorDetail(ctx, p, wdt, hgt);
-        ctx.strokeStyle = p.iron ? 'rgba(10,10,14,0.7)' : 'rgba(26,16,22,0.55)'; ctx.lineWidth = p.iron ? 3 : 2;
-        ctx.beginPath();
-        for (let k = -1; k <= 1; k++) { if (tall) { ctx.moveTo(-wdt / 2, k * 16); ctx.lineTo(wdt / 2, k * 16); } else { ctx.moveTo(k * 16, -hgt / 2); ctx.lineTo(k * 16, hgt / 2); } }
-        ctx.stroke();
-        if (p.iron) {
-          ctx.fillStyle = '#8a8d96';
-          for (let k = -1; k <= 1; k += 2) for (let j = -1; j <= 1; j += 2) {
-            ctx.beginPath(); ctx.arc(k * (tall ? 3.5 : 22), j * (tall ? 22 : 3.5), 1.9, 0, Math.PI * 2); ctx.fill();
-          }
-          // what it has left in it, scored across the face
-          ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 2;
-          for (let k = 0; k < (p.hits || 0); k++) {
-            const o = (k - 1) * 9;
-            ctx.beginPath();
-            if (tall) { ctx.moveTo(-wdt / 2, o); ctx.lineTo(wdt / 2, o + 4); } else { ctx.moveTo(o, -hgt / 2); ctx.lineTo(o + 4, hgt / 2); }
-            ctx.stroke();
-          }
+      if (p.open > 0) ctx.rotate((tall ? -1 : 1) * p.open * 1.25);
+      this.shadow(0, 0, wdt * 0.6, hgt * 0.4);
+      // Planks, unless it is the vault's: iron is darker, banded across, studded, and carries a
+      // notch for every blow it has already taken, so four hits is a count and not a wall.
+      ctx.fillStyle = p.iron ? '#3a3a40' : PALETTE.wood; ctx.fillRect(-wdt / 2, -hgt / 2, wdt, hgt);
+      ctx.fillStyle = p.iron ? '#5d5f68' : PALETTE.woodHi; ctx.fillRect(-wdt / 2, -hgt / 2, tall ? 4 : wdt, tall ? hgt : 4);
+      if (this.altar) this.altar.doorDetail(ctx, p, wdt, hgt);
+      ctx.strokeStyle = p.iron ? 'rgba(10,10,14,0.7)' : 'rgba(26,16,22,0.55)'; ctx.lineWidth = p.iron ? 3 : 2;
+      ctx.beginPath();
+      for (let k = -1; k <= 1; k++) { if (tall) { ctx.moveTo(-wdt / 2, k * 16); ctx.lineTo(wdt / 2, k * 16); } else { ctx.moveTo(k * 16, -hgt / 2); ctx.lineTo(k * 16, hgt / 2); } }
+      ctx.stroke();
+      if (p.iron) {
+        ctx.fillStyle = '#8a8d96';
+        for (let k = -1; k <= 1; k += 2) for (let j = -1; j <= 1; j += 2) {
+          ctx.beginPath(); ctx.arc(k * (tall ? 3.5 : 22), j * (tall ? 22 : 3.5), 1.9, 0, Math.PI * 2); ctx.fill();
+        }
+        // what it has left in it, scored across the face
+        ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 2;
+        for (let k = 0; k < (p.hits || 0); k++) {
+          const o = (k - 1) * 9;
+          ctx.beginPath();
+          if (tall) { ctx.moveTo(-wdt / 2, o); ctx.lineTo(wdt / 2, o + 4); } else { ctx.moveTo(o, -hgt / 2); ctx.lineTo(o + 4, hgt / 2); }
+          ctx.stroke();
         }
       }
       if (p.vault || p.gate) {
@@ -686,11 +679,11 @@ class Renderer {
         ctx.moveTo(0, -3.6); ctx.bezierCurveTo(2, -1, 2.2, 1.8, 0, 3);
         ctx.bezierCurveTo(-2.2, 1.8, -2, -1, 0, -3.6); ctx.fill();
         ctx.restore(); ctx.globalAlpha = 1;
-      } else if (!painted) {
+      } else {
         ctx.fillStyle = p.iron ? '#c9ccd4' : PALETTE.ochre;
         ctx.beginPath(); ctx.arc(0, 0, p.iron ? 4 : 3.2, 0, Math.PI * 2); ctx.fill();
       }
-      if (p.pressure > 0.15) { ctx.strokeStyle = `rgba(192,57,43,${Math.min(0.8, p.pressure)})`; ctx.lineWidth = 2; ctx.strokeRect(-bw / 2 - 2, -bh / 2 - 2, bw + 4, bh + 4); }
+      if (p.pressure > 0.15) { ctx.strokeStyle = `rgba(192,57,43,${Math.min(0.8, p.pressure)})`; ctx.lineWidth = 2; ctx.strokeRect(-wdt / 2 - 2, -hgt / 2 - 2, wdt + 4, hgt + 4); }
       ctx.restore();
       // ...and a word over the top of it. The vault says what is behind it; the gate says what it
       // wants, which is the only instruction in the game that is also a reward.
@@ -2376,7 +2369,7 @@ class Renderer {
     ctx.fillText(game.boonKind === 'SKILL' ? 'THE SOUL OFFERS A SKILL' : 'THE SOUL OFFERS A BLESSING', this.w / 2, topY - 44 * s);
     this.soulWisp(this.w / 2, topY - 92 * s, 1.5 * s, 0, 0.9, true);
     ctx.font = `${13 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
-    ctx.fillText(game.touch.active ? 'Tap one. It dies with you.' : 'Press 1, 2 or 3. It dies with you.', this.w / 2, topY - 22 * s);
+    ctx.fillText('Choose one. It dies with you.', this.w / 2, topY - 22 * s);
     const rowW = n * cw + (n - 1) * gap;
     for (let i = 0; i < n; i++) {
       const x = stack ? (this.w - cw) / 2 : (this.w - rowW) / 2 + i * (cw + gap);
@@ -2391,10 +2384,6 @@ class Renderer {
       ctx.font = `${12.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
       const lines = this.wrap(b.desc, cw - 24 * s);
       lines.forEach((l, k) => ctx.fillText(l, x + cw / 2, y + 52 * s + k * 16 * s));
-      if (!game.touch.active) {
-        ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${12 * s}px ${FONT_SC}`;
-        ctx.fillText(String(i + 1), x + 15 * s, y + 19 * s);
-      }
       // What it hangs off, drawn the same way the rail draws it, so the card that offers a boon
       // and the chip that later shows it are recognisably the same picture. A boon with no `skill`
       // is body work and gets neither — nothing on the rail changes for it either.

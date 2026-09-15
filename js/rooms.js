@@ -759,15 +759,28 @@ const KILLBOX_TEMPLATE = { name: 'killbox', noFlipX: true, rows: [
 // with that. `blockSpot` in `gen.js` stands him a step inside whichever wall the corridor onward
 // left him, so the room itself carries nothing to break the line back to whichever wall the goat
 // came in by — open floor, and nothing else.
+// A long, narrow room built round a single idea: a stand of arms right inside the door, a crate a
+// step past it, and whoever the room holds standing well down the far end of it — far enough that
+// grabbing the arm and throwing it is the answer that is actually in front of you before anyone
+// has closed the distance. `levelDef.ambushAt` forces it the same way `millAt` and the rest of the
+// set pieces do; the room otherwise fills off the ordinary threat curve like any other.
+const AMBUSH_TEMPLATE = { name: 'ambush', rows: [
+  '####################',
+  '#..................#',
+  '#.w..o.......e.e.e.#',
+  '#..................#',
+  '#..................#',
+  '####################',
+]};
+
 const LESSON_TEMPLATE = { name: 'lesson', canon: 'stone', rows: [
-  '##############',
-  '#............#',
-  '#............#',
-  '#............#',
-  '#............#',
-  '#............#',
-  '#............#',
-  '##############',
+  '############',
+  '#..........#',
+  '#.hh....hh.#',
+  '#..........#',
+  '#.hh....hh.#',
+  '#..........#',
+  '############',
 ]};
 
 // The room you woke up in. The altar stands off to one side, made ready, with the straps and the
