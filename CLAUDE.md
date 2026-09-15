@@ -4,6 +4,8 @@ Instructions for any session picking this project up. Read this first, then `CON
 game is trying to be. `README.md` is for a player, this file is for whoever is building it.
 `MARKET.md` is the commercial picture: comparables, the 2026 storefront and the open positioning decisions.
 `BACKLOG.md` is what playtesting has asked for and has not got yet — read it before inventing work.
+`ART_HANDOFF.md` is for whoever is generating and packing art (painted sprites and tiles): what is
+already painted and wired in, what is still the placeholder shapes, and how the pipeline works.
 
 ---
 
@@ -64,6 +66,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/balance.js` | Prints the difficulty curve and the canon/mix split of every level, runs every rule in `js/rules.js` over many seeds, and fails on a broken one. |
 | `tools/check-sync.js` | Checks the working tree, `origin/main` and the published artifact are one build. See *Publishing*. |
 | `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
+| `ART_HANDOFF.md` | What is painted and wired in vs. still placeholder shapes, and how to paint the next thing. |
 
 ---
 
