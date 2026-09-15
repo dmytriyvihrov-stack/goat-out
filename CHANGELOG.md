@@ -5,6 +5,64 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.14 — the Altar in pixel art, a slower camera, and an easy mode
+
+Level one now uses cached 32 px stone and timber tiles, plum masonry, worn cult banners,
+and sparse straw and rubble at wall edges, following the approved room concept. Crates,
+braziers, lamps, the gong, pen bars and the Mill have a dedicated pixel-art pass; doors
+retain their opening animation, damage marks and soul seals. `js/painted-art.js` draws the
+goat, the clubman, the mage and the hound from the approved hand-painted sheet
+(`assets/painted/`, packed to base64 in `js/painted-assets.js` by
+`tools/pack-painted-art.cjs` so `file://` and the artifact build stay dependency-free) in
+place of the primitive shapes. `PaintedArt extends AltarArt`, falling back to the
+procedural draw for anything not yet painted — everyone else's rendering (hunter, wraith,
+butcher, and every level but the first) is untouched. The brick face shows on every
+visible wall tile, top and sides alike, with the coping texture capping only a thin band
+at the top of each; it used to show only on the row bordering floor to the south, so most
+of a room's walls read as flat coping with no masonry at all. The pen room's two "previous
+sacrifice" markers are the procedural bone piles again rather than the faded ghost sheep
+a first pass tried, since the room already carries them on the layer under the altar. The
+goat's stride is a quicker double-bob with a touch of shear in it now — a flat sprite
+can't swing its own legs, so that is what reads as a trot rather than a still photograph
+sliding across the floor.
+
+**The ritual altar is furniture, not scenery.** It is a real `table` prop now — `Prop`'s
+`isAltar` flag is the only thing that tells it apart from an ordinary one, so it takes a
+blow and blocks the way exactly like any other table, and the painted layer draws it as
+itself rather than the plain procedural table every other one falls back to. An ordinary
+table prop elsewhere in the level was never meant to wear the ritual altar's art in the
+first place, so that mapping is gone too.
+
+**Milk is a patch of sprouted grass now, and it is grazed rather than grabbed.** Walking
+through one used to bank a heart on contact; now the goat has to stand in it, near enough
+and slow enough, for `TUNING.prop.heal.grazeTime` (1.4s) before it pays out — a progress
+ring reads the count, and stepping away or moving lets it bleed back down rather than
+snapping to zero. Running past on the way to somewhere else does nothing, which was the
+point: a heart is worth a beat of standing still in the open.
+
+**The camera got a deadzone.** It used to re-centre on the goat's exact position every
+frame, which read as a shiver rather than a pan — a small window around the follow point
+now absorbs any motion that small, and only real travel past its edge moves the camera at
+all. A room that already fits the screen whole is held dead centre instead of tracked,
+since there is nothing off-screen to pan toward and tracking it only added to the shiver.
+See `TUNING.camera.deadzone` / `fitMargin` and `Game.updateCamera`.
+
+**Escape always reaches the title,** from anywhere in a run — the equivalent of closing
+the tab and coming back, which is what the saved run already tolerates. The top HUD band
+is a fifth smaller (`hud.scale` 1.3 → 1.05) and sits closer to the corner, and the seed
+moved out of that corner entirely, down to the bottom-left, out of the way of everything
+else it was competing with.
+
+**EASY MODE**, a fourth switch on the title screen: six hearts to start instead of four,
+and every enemy windup, swing, recovery, cast and reload takes 40% longer, off one number
+each — `EASY.maxHp` and `EASY.enemySlow` in `tuning.js`. `applyBoons` folds both into
+`game.mods` when `settings.easy` is on, so a normal run reads `mods.enemySlow` as 1 and
+nothing changes; every attack timer in `enemies.js` multiplies its own `TUNING` duration
+by it at the point it is set, the same read-the-mod-at-the-use-site pattern boons use.
+Movement, sight and AI decisions are untouched — only how long a hit takes to land.
+
+---
+
 ## 1.13 — a slower goat who earns it back, and arms you pick up without asking
 
 **Thirteen lines off one playtest, and most of them are about pace.** The goat walks a fifth slower

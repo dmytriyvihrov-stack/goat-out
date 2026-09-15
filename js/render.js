@@ -1,5 +1,5 @@
 // Rendering: responsive canvas, tiles, decals, firelight, props, enemies, goat, effects, HUD,
-// on-screen touch controls and title cards. Placeholder shapes in the final palette.
+// on-screen touch controls and title cards. Level one uses the cached AltarArt environment.
 const FONT = "'Alegreya', Georgia, 'Times New Roman', serif";
 const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 
@@ -54,6 +54,7 @@ class Renderer {
     this.c = canvas; this.ctx = canvas.getContext('2d');
     this.t = 0; this.dust = []; this.vignette = null; this.vigKey = '';
     this.touchBand = false;
+    this.painted = new PaintedArt(); this.altarArt = this.painted; this.altar = null;
     this.resize();
   }
 
@@ -100,6 +101,7 @@ class Renderer {
 
   draw(game, dt) {
     this.t += dt;
+    this.altar = game.level && game.levelIndex === 0 ? this.altarArt : null;
     if (this.c.clientWidth && (Math.abs(this.c.clientWidth - this.cssW) > 1 || Math.abs(this.c.clientHeight - this.cssH) > 1)) this.resize();
     const ctx = this.ctx, w = this.w, h = this.h;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -173,6 +175,7 @@ class Renderer {
   }
 
   drawTiles(game, cam) {
+    if (this.altar) { this.altar.drawTiles(this, game, cam); return; }
     const ctx = this.ctx, wd = game.world, def = game.level.def;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
     for (let ty = y0; ty <= y1; ty++) {
@@ -239,6 +242,12 @@ class Renderer {
 
   drawDecals(game, cam) {
     const ctx = this.ctx, wd = game.world, v = this.view(cam);
+    if (this.altar && this.painted.ready) this.painted.drawRitual(this,game);
+    else if (this.altar && wd.ritualArt) {
+      const a = wd.ritualArt;
+      if (Math.abs(cam.x - (a.x + a.canvas.width / 2)) < (v.w + a.canvas.width) / 2
+        && Math.abs(cam.y - (a.y + a.canvas.height / 2)) < (v.h + a.canvas.height) / 2) ctx.drawImage(a.canvas, a.x, a.y);
+    }
     const sx = cam.x - v.w / 2, sy = cam.y - v.h / 2;
     const cx = clamp(sx, 0, wd.W * TILE), cy = clamp(sy, 0, wd.H * TILE);
     const cw = clamp(sx + v.w, 0, wd.W * TILE) - cx, ch = clamp(sy + v.h, 0, wd.H * TILE) - cy;
@@ -516,6 +525,7 @@ class Renderer {
 
   // `witch` draws the Seer's fire: the same shape, cold, and nothing turns it away.
   flame(x, y, size, seed, witch) {
+    if (this.altar) { this.altar.flame(this.ctx, x, y, size, this.t, seed, witch); return; }
     const ctx = this.ctx, t = this.t * 10 + seed;
     ctx.fillStyle = witch ? PALETTE.witch : PALETTE.fire;
     ctx.beginPath(); ctx.ellipse(x, y - size * 0.2, size * 0.7, size, 0, 0, Math.PI * 2); ctx.fill();
@@ -552,18 +562,31 @@ class Renderer {
       ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.fillRect(M.innerR - 6, -7 + 6, M.armLen - M.innerR + 10, 16);
       ctx.fillStyle = PALETTE.wood; ctx.fillRect(M.innerR - 6, -8, M.armLen - M.innerR + 10, 16);
       ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(M.innerR - 6, -8, M.armLen - M.innerR + 10, 4);
+      if (this.altar) {
+        const P = PALETTE.altar;
+        ctx.fillStyle = P.woodDark; ctx.fillRect(M.innerR - 6, 5, M.armLen - M.innerR + 10, 2);
+        for (let x = M.innerR; x < M.armLen - 18; x += 19) {
+          ctx.fillStyle = P.woodGrain; ctx.fillRect(x, -1, 12, 1);
+          ctx.fillStyle = P.iron; ctx.fillRect(x, -8, 3, 16);
+          ctx.fillStyle = P.ironHi; ctx.fillRect(x + 1, -6, 1, 2);
+        }
+      }
       ctx.fillStyle = '#6d6a66'; ctx.fillRect(M.armLen - 16, -12, 16, 24);        // iron cap
       ctx.fillStyle = '#8d8a85'; ctx.fillRect(M.armLen - 16, -12, 16, 5);
       ctx.fillStyle = PALETTE.bloodDark; ctx.fillRect(M.armLen - 16, 6, 16, 6);
       ctx.restore();
     }
-    ctx.fillStyle = '#4d4741'; ctx.beginPath(); ctx.arc(0, 0, M.hubR, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#6a635b'; ctx.beginPath(); ctx.arc(0, -3, M.hubR - 5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#2e2a26'; ctx.beginPath(); ctx.arc(0, -3, 7, 0, Math.PI * 2); ctx.fill();
+    if (this.altar) ctx.drawImage(this.altar.sprite('mill', M.hubR), -48, -64);
+    else {
+      ctx.fillStyle = '#4d4741'; ctx.beginPath(); ctx.arc(0, 0, M.hubR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#6a635b'; ctx.beginPath(); ctx.arc(0, -3, M.hubR - 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2e2a26'; ctx.beginPath(); ctx.arc(0, -3, 7, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
   }
 
   drawPropBody(p) {
+    if (this.altar && this.altar.drawProp(this, p)) return;
     const ctx = this.ctx;
     if (p.kind === 'brazier') {
       this.shadow(p.x, p.y, p.r * 1.1, p.r * 0.55);
@@ -598,6 +621,7 @@ class Renderer {
       // notch for every blow it has already taken, so four hits is a count and not a wall.
       ctx.fillStyle = p.iron ? '#3a3a40' : PALETTE.wood; ctx.fillRect(-wdt / 2, -hgt / 2, wdt, hgt);
       ctx.fillStyle = p.iron ? '#5d5f68' : PALETTE.woodHi; ctx.fillRect(-wdt / 2, -hgt / 2, tall ? 4 : wdt, tall ? hgt : 4);
+      if (this.altar) this.altar.doorDetail(ctx, p, wdt, hgt);
       ctx.strokeStyle = p.iron ? 'rgba(10,10,14,0.7)' : 'rgba(26,16,22,0.55)'; ctx.lineWidth = p.iron ? 3 : 2;
       ctx.beginPath();
       for (let k = -1; k <= 1; k++) { if (tall) { ctx.moveTo(-wdt / 2, k * 16); ctx.lineTo(wdt / 2, k * 16); } else { ctx.moveTo(k * 16, -hgt / 2); ctx.lineTo(k * 16, hgt / 2); } }
@@ -778,17 +802,28 @@ class Renderer {
       }
     } else if (p.kind === 'heal') {
       const bob = Math.sin(this.t * 2.4 + p.phase) * 2;
-      const g = ctx.createRadialGradient(p.x, p.y + bob, 0, p.x, p.y + bob, 34);
-      g.addColorStop(0, 'rgba(239,230,208,0.25)'); g.addColorStop(1, 'rgba(239,230,208,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y + bob, 34, 0, Math.PI * 2); ctx.fill();
-      this.shadow(p.x, p.y + 3, 11, 5);
-      ctx.fillStyle = '#6b5340'; ctx.beginPath(); ctx.ellipse(p.x, p.y + bob, 12, 9, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(p.x, p.y - 1.5 + bob, 9.5, 6.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(p.x - 3, p.y - 3 + bob, 3, 2, 0.4, 0, Math.PI * 2); ctx.fill();
+      const glow = ctx.createRadialGradient(p.x, p.y + bob, 0, p.x, p.y + bob, 34);
+      glow.addColorStop(0, 'rgba(168,189,108,0.22)'); glow.addColorStop(1, 'rgba(168,189,108,0)');
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y + bob, 34, 0, Math.PI * 2); ctx.fill();
+      this.shadow(p.x, p.y + 4, 11, 5);
+      // Sprouted grass rather than a bowl: a few blades pushed up through the boards, leaning
+      // together like something breathes on them. Grazed, not grabbed — see the pickup in game.js.
+      for (let k = -3; k <= 3; k++) {
+        const lean = Math.sin(this.t * 1.6 + p.phase + k) * 3, bx = p.x + k * 2.6;
+        ctx.strokeStyle = k % 2 ? PALETTE.grassHi : PALETTE.grass; ctx.lineWidth = 2; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(bx, p.y + 5 + bob);
+        ctx.quadraticCurveTo(bx + lean * 0.5, p.y - 4 + bob, bx + lean, p.y - 11 - Math.abs(k) * 0.6 + bob);
+        ctx.stroke();
+      }
+      if (p.graze > 0) {
+        const frac = clamp(p.graze / TUNING.prop.heal.grazeTime, 0, 1);
+        ctx.strokeStyle = 'rgba(168,189,108,0.85)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(p.x, p.y + bob, 17, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
+      }
       ctx.save(); ctx.scale(1, 1 / TILT);
       ctx.font = `700 ${11}px ${FONT_SC}`; ctx.textAlign = 'center';
-      ctx.fillStyle = `rgba(239,230,208,${0.45 + 0.25 * Math.sin(this.t * 3)})`;
-      ctx.fillText('MILK', p.x, (p.y - 22 + bob) * TILT); ctx.textAlign = 'left'; ctx.restore();
+      ctx.fillStyle = `rgba(168,189,108,${0.5 + 0.25 * Math.sin(this.t * 3)})`;
+      ctx.fillText('GRASS', p.x, (p.y - 22 + bob) * TILT); ctx.textAlign = 'left'; ctx.restore();
     }
     // There is no fallback branch any more. The one that was here drew an ochre disc for the pot,
     // and a disc on a floor of boards reads as a plate rather than as a thing you lift.
@@ -1086,7 +1121,8 @@ class Renderer {
     }
     if (!e.ghosted) this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.translate(0, lying ? 0 : -4);
-    if (e.state === 'flung') ctx.rotate(this.t * 14); else ctx.rotate(e.facing);
+    const paintedKey = this.painted.ready && this.painted.characterKey(e);
+    if (e.state === 'flung') ctx.rotate(this.t * 14); else if (!paintedKey) ctx.rotate(e.facing);
     if (e.state === 'stagger') ctx.translate(Math.sin(this.t * 60) * 2, 0);
     if (e.dazed > 0) ctx.rotate(Math.sin(this.t * 24) * 0.12);
     if (e.state === 'chargewind') ctx.translate(-4 + Math.sin(this.t * 50) * 3, Math.cos(this.t * 47) * 2);
@@ -1094,7 +1130,8 @@ class Renderer {
     if (e.elite) ctx.scale(e.champion ? TUNING.champion.scale : 1.28, e.champion ? TUNING.champion.scale : 1.28);
     if (lying) ctx.scale(1.35, 0.7);
 
-    if (e.kind === 'dog') this.drawHound(e);
+    if (paintedKey) this.painted.character(this,e,paintedKey,e.kind==='dog'?42:e.kind==='seer'?38:42);
+    else if (e.kind === 'dog') this.drawHound(e);
     else if (e.kind === 'wraith') this.drawWraith(e, r);
     else this.drawCultist(e, r);
     if (e.flash > 0) { ctx.globalAlpha = Math.min(0.8, e.flash * 4); ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.arc(0, 0, r + 1, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
@@ -1633,7 +1670,7 @@ class Renderer {
     for (const k of keys) line(`${props[k]} × ${k}`, PALETTE.ochre);
     head('LEGEND');
     line('red dots are men, pale one a boss', 'rgba(239,230,208,0.55)', 9);
-    line('ochre squares props, bone is milk', 'rgba(239,230,208,0.55)', 9);
+    line('ochre squares props, green is grass', 'rgba(239,230,208,0.55)', 9);
     line('black is a drop, gold the stairs', 'rgba(239,230,208,0.55)', 9);
   }
 
@@ -1675,7 +1712,7 @@ class Renderer {
     for (const p of L.props) {
       if (!inRoom(p)) continue;
       const [dx, dy] = at(p);
-      ctx.fillStyle = p.kind === 'heal' ? PALETTE.bone : p.kind === 'door' ? (p.gate || p.vault ? PALETTE.witch : PALETTE.wood)
+      ctx.fillStyle = p.kind === 'heal' ? PALETTE.grassHi : p.kind === 'door' ? (p.gate || p.vault ? PALETTE.witch : PALETTE.wood)
         : p.kind === 'brazier' ? PALETTE.fire : p.kind === 'spike' ? PALETTE.ash : PALETTE.ochre;
       const w = Math.max(1.4, k * 0.7);
       ctx.fillRect(dx - w / 2, dy - w / 2, w, w);
@@ -1700,6 +1737,7 @@ class Renderer {
   }
 
   drawGoat(g, game) {
+    if (this.painted.ready) { this.painted.drawGoat(this,g,game); return; }
     const ctx = this.ctx;
     // motion smear
     for (const t of g.trail) {
@@ -2183,7 +2221,7 @@ class Renderer {
 
   drawUI(game) {
     const ctx = this.ctx; if (!game.world || game.state === 'intro') return;
-    const g = game.goat, s = this.hs, top = 8 * s + (this.portrait ? 12 * s : 0);
+    const g = game.goat, s = this.hs, top = 3 * s + (this.portrait ? 12 * s : 0);
     ctx.textAlign = 'left';
     // The level's name used to stand over the hearts. The card at the head of every level has
     // already said it, the floor of the first room says what the level is about, and a title in the
@@ -2227,12 +2265,13 @@ class Renderer {
       ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
       ctx.fillText('muted', right, line + 15 * s); line += 15 * s;
     }
-    ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
-    ctx.fillText(`seed ${game.level.seed}`, right, line + 15 * s);
-    this.drawBoonList(game, line + 34 * s);
+    this.drawBoonList(game, line + 13 * s);
     ctx.textAlign = 'left';
     this.drawSkillNote(game);
 
+    // The seed, bottom-left — out of the way of the corner everything else reports through.
+    ctx.textAlign = 'left'; ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
+    ctx.fillText(`seed ${game.level.seed}`, 14 * s, this.h - 12 * s);
     // exit compass, pinned just inside the bottom of the play view
     if (game.state === 'play' && !g.dead) {
       const dx = game.level.exit.x - g.x, dy = game.level.exit.y - g.y, d = Math.hypot(dx, dy);
@@ -2617,7 +2656,7 @@ class Renderer {
         note: def ? `(${def.sub.toLowerCase()} · ${def.name.toLowerCase()}${souls ? ` · ${souls} soul${souls === 1 ? '' : 's'}` : ''})` : '(nothing to come back to)' },
       levels: { label: 'LEVELS', note: `(start on any of the ${LEVELS.length}, with the souls it takes)` },
       best: { label: 'BEST', note: cleared ? `(best run ${board.run || 0})` : '(nothing on the board yet)' },
-      settings: { label: 'SETTINGS', note: `(clock ${game.settings.timer ? 'on' : 'off'} · sound ${game.settings.sound ? 'on' : 'off'})` },
+      settings: { label: 'SETTINGS', note: `(clock ${game.settings.timer ? 'on' : 'off'} · sound ${game.settings.sound ? 'on' : 'off'} · easy ${game.settings.easy ? 'on' : 'off'})` },
     };
     const items = MENU.map((id) => rowFor[id]);
     for (let i = 0; i < items.length; i++) {

@@ -552,9 +552,13 @@ class Prop {
     // answer, which is what makes the soul behind it the answer.
     this.iron = !!(opts && opts.iron); this.vault = !!(opts && opts.vault);
     this.stair = !!(opts && opts.stair); this.gate = !!(opts && opts.gate);
+    // The one table that is the ritual altar rather than furniture: same kind, same blocking and
+    // headbutt handling as any other table, tagged only so the painted layer draws it as itself.
+    this.isAltar = !!(opts && opts.altar);
     // A spike plate sits in the floor doing nothing until the goat crosses it: 'idle' waiting,
     // 'armed' counting down under his hooves, 'up' with the teeth out, then 'down' and a rest.
     this.spikeState = 'idle'; this.spikeT = 0; this.hits = 0;
+    this.graze = 0;   // heal only: seconds the goat has stood in it, still and near, unbroken
   }
   // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing.
   get item() { return this.kind === 'crate' || this.kind === 'weapon'; }

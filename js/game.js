@@ -83,6 +83,7 @@ class Game {
   applyBoons() {
     this.mods = Object.assign({}, BOON_BASE);
     for (const b of this.boons) b.apply(this.mods);
+    if (this.settings.easy) { this.mods.maxHp += EASY.maxHp; this.mods.enemySlow = EASY.enemySlow; }
     if (this.goat) { this.goat.maxHp = this.mods.maxHp; this.goat.hp = Math.min(this.goat.hp, this.goat.maxHp); }
   }
   // A boss can fall against a wall, and a prize inside one is a prize nobody can reach: walk out in
@@ -202,7 +203,7 @@ class Game {
   // default: a number counting up in the corner of a game about running is a game about the number,
   // and the run is timed either way — the card at the end of a level is where the time belongs.
   loadSettings() {
-    const d = { timer: false, sound: true };
+    const d = { timer: false, sound: true, easy: false };
     try { return Object.assign(d, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (err) { return d; }
   }
   saveSettings() {
@@ -438,6 +439,9 @@ class Game {
       this.keys.add(e.code); if (e.code !== 'KeyM') this.input.anyPressed = true; this.touch.active = false;
       if (e.code === 'Space') { this.input.spacePressed = true; e.preventDefault(); }
       if (e.code === 'Backspace') { e.preventDefault(); this.restartLevel(); }
+      // Escape always reaches the menu, whatever is happening on the floor — a run in progress
+      // simply drops back to the title the way closing the tab and coming back would.
+      if (e.code === 'Escape' && this.state !== 'title' && !this.dev.rules) { e.preventDefault(); this.showTitle(); }
       if (e.code === 'KeyM') this.audio.toggleMute();
       if (e.code === 'KeyN' && this.state === 'play') this.levelCleared();
       if (e.code === 'KeyE') this.input.rollPressed = true;
@@ -556,6 +560,12 @@ class Game {
       return e;
     });
     this.props = this.level.props.map((p) => new Prop(p.x, p.y, p.kind, p));
+    // The ritual altar: real furniture rather than scenery, so it blocks the way and takes a blow
+    // like any other table. Its position matches where the decal layer has always drawn it.
+    if (this.level.def === LEVELS[0]) {
+      const S = this.level.start;
+      this.props.push(new Prop(S.x - 4 * TILE, S.y - 0.2 * TILE, 'table', { altar: true }));
+    }
     this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike');
     this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill');
     this.runes = []; this.houndTold = false;
@@ -564,7 +574,7 @@ class Game {
     // What he walked in with. A death rolls him back to exactly this list.
     this.levelBoons = this.boons.slice();
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
-    this.camLead.x = 0; this.camLead.y = 0;
+    this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null;
     this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0;
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
@@ -947,9 +957,16 @@ class Game {
     }
     this.souls = this.souls.filter((tm) => !tm.taken);
     for (const p of this.props) {
-      if (p.kind !== 'heal' || p.broken || this.goat.dead) continue;
-      if (this.goat.hp >= this.goat.maxHp) continue;
-      if (Math.hypot(p.x - this.goat.x, p.y - this.goat.y) > TUNING.prop.heal.pickupR + this.goat.r) continue;
+      if (p.kind !== 'heal' || p.broken) continue;
+      if (this.goat.dead || this.goat.hp >= this.goat.maxHp) { p.graze = 0; continue; }
+      const H = TUNING.prop.heal;
+      const grazing = Math.hypot(p.x - this.goat.x, p.y - this.goat.y) <= H.pickupR + this.goat.r
+        && Math.hypot(this.goat.vx, this.goat.vy) < H.grazeSpeed;
+      // Standing in it is the whole cost: running through does nothing, and stepping off — or simply
+      // moving — bleeds the count back down rather than snapping it to zero, so a stray jostle from
+      // a passing man does not cost the whole graze.
+      p.graze = grazing ? p.graze + dt : Math.max(0, p.graze - dt * 2);
+      if (p.graze < H.grazeTime) continue;
       p.broken = true; p.dead = true; this.goat.hp += 1;
       this.particles(p.x, p.y, 18, PALETTE.bone, 170); this.ring(p.x, p.y, 2 * TILE, PALETTE.bone);
       this.floatText(p.x, p.y - 24, '+1 HEART', PALETTE.bone); this.audio.sfxBell(); this.vibe(20);
@@ -1079,14 +1096,34 @@ class Game {
     const lk = 1 - Math.exp(-C.leadLerp * dt);
     this.camLead.x += (this.input.aim.x * lead - this.camLead.x) * lk;
     this.camLead.y += (this.input.aim.y * lead - this.camLead.y) * lk;
-    const cx = this.goat.x + this.camLead.x, cy = this.goat.y + this.camLead.y;
+    let tx = this.goat.x + this.camLead.x, ty = this.goat.y + this.camLead.y;
+
+    // A room that already fits the screen whole is held dead centre rather than tracked — there is
+    // nothing off-screen to pan toward, so tracking it only shivers the picture with every step he
+    // takes across it. `roomAt` is the same lookup the rule checker uses.
+    const v = this.renderer.view(this.cam);
+    const room = this.level && roomAt(this.level, this.goat.x, this.goat.y);
+    const fits = room && room.w * TILE <= v.w - C.fitMargin && room.h * TILE <= v.h - C.fitMargin;
+    if (fits) { tx = (room.x + room.w / 2) * TILE; ty = (room.y + room.h / 2) * TILE; }
+
+    // The deadzone: the follow point only moves once the target has stepped past a small window
+    // round it, so a shiver of motion at a standstill never nudges the whole picture — only real
+    // travel does. A locked room has nowhere to drift to, so it skips the window and is simply held.
+    if (!this.camFollow) this.camFollow = { x: tx, y: ty };
+    if (fits) { this.camFollow.x = tx; this.camFollow.y = ty; }
+    else {
+      const fdx = tx - this.camFollow.x, fdy = ty - this.camFollow.y, dz = C.deadzone;
+      if (fdx > dz) this.camFollow.x = tx - dz; else if (fdx < -dz) this.camFollow.x = tx + dz;
+      if (fdy > dz) this.camFollow.y = ty - dz; else if (fdy < -dz) this.camFollow.y = ty + dz;
+    }
+
     const k = 1 - Math.exp(-C.lerp * dt);
-    this.cam.x += (cx - this.cam.x) * k; this.cam.y += (cy - this.cam.y) * k;
+    this.cam.x += (this.camFollow.x - this.cam.x) * k; this.cam.y += (this.camFollow.y - this.cam.y) * k;
     const targetZoom = this.renderer.zoomFit * lerp(C.zoomRest, C.zoomFast, clamp(spd, 0, 1));
     this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-C.zoomLerp * dt));
-    const v = this.renderer.view(this.cam);
-    this.cam.x = clamp(this.cam.x, v.w / 2, w.W * TILE - v.w / 2);
-    this.cam.y = clamp(this.cam.y, v.h / 2, w.H * TILE - v.h / 2);
+    const v2 = this.renderer.view(this.cam);
+    this.cam.x = clamp(this.cam.x, v2.w / 2, w.W * TILE - v2.w / 2);
+    this.cam.y = clamp(this.cam.y, v2.h / 2, w.H * TILE - v2.h / 2);
   }
 
   // He walks round the goat to her, takes her, and heads for the gate. The goat goes for him and
@@ -1245,7 +1282,7 @@ class Game {
     if (g.timer > F.back) return;                      // still going down
     if (g.x !== g.safeX || g.y !== g.safeY) {
       g.x = g.safeX; g.y = g.safeY; g.vx = 0; g.vy = 0;
-      this.cam.x = g.x; this.cam.y = g.y; this.camLead.x = 0; this.camLead.y = 0;
+      this.cam.x = g.x; this.cam.y = g.y; this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null;
       this.world.computeFlow(g.x, g.y);
       g.damage(F.damage, this, 0, 0, true);
       this.audio.sfxThud(); this.shake(5);

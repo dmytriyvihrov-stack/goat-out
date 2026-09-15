@@ -20,9 +20,22 @@ const PALETTE = {
   ash: '#5a5250',
   hay: '#d9a548',
   hayDark: '#a5732a',
+  grass: '#7c8f52',
+  grassHi: '#a8bd6c',
   brazier: '#4a3b2f',
   wood: '#6b4a2c',
   woodHi: '#8a6238',
+  altar: {
+    outline: '#19131c', mortar: '#3b3437', stones: ['#665c54', '#625951', '#6b6057', '#605750'],
+    stoneLight: '#786c60', stoneEdge: '#71665d', stoneShade: '#564e49', stoneFleck: '#6d6259', crack: '#494143',
+    wallBody: '#352a34', wallFaces: ['#51404c', '#594650', '#4c3c48'], wallLight: '#75606a',
+    wallShade: '#2c222c', wallWear: '#67545e', shadow: 'rgba(15,10,18,0.23)', deepShadow: 'rgba(15,10,18,0.34)',
+    woodDark: '#382825', wood: '#76543b', woodHi: '#a27b50', woodLight: '#84644b', woodGrain: '#5d4334',
+    boards: ['#654d3d', '#705440', '#604737', '#6b503c'], iron: '#45404a', ironHi: '#8a7b79',
+    clothDark: '#48252d', cloth: '#743c3b', clothHi: '#93534a', glyph: '#b49476',
+    straw: ['#8a673d', '#ab8349', '#715333'], ash: '#4b4345', coal: '#28202a', ember: '#bb4d2c',
+    bronzeDark: '#694a32', bronze: '#a87843', bronzeHi: '#d0a66b',
+  },
 };
 
 // The two paces every creature in the game is written against. `PACE` is the yardstick — it is what
@@ -220,10 +233,13 @@ const TUNING = {
     // `spillTime` — and the bowl needs `spillCd` to build the heat back. Short, so it is a line you
     // draw across a doorway for a beat, not a fire you keep pressing for.
     brazier: { r: 13, spillAt: 1.1, spill: 1.05, spillTime: 1.7, spillCd: 3.0 },
-    // A bowl of milk is not a lucky find. `every` is how many rooms a level may go without offering
-    // one; the level's own `heals` is a floor under that, and the generator spaces them rather than
-    // scattering them, so a run never opens six doors in a row on nothing.
-    heal: { r: 12, pickupR: 22, every: 4.5 },
+    // A patch of sprouted grass is not a lucky find. `every` is how many rooms a level may go
+    // without offering one; the level's own `heals` is a floor under that, and the generator spaces
+    // them rather than scattering them, so a run never opens six doors in a row on nothing.
+    // It is grazed, not grabbed: `grazeTime` is how long the goat has to stand in it, near enough
+    // and slow enough (under `grazeSpeed`), before it pays out, so running through on the way past
+    // does nothing — the whole point is that it costs a beat of standing still in the open.
+    heal: { r: 12, pickupR: 22, every: 4.5, grazeTime: 1.4, grazeSpeed: 30 },
     // The gong. It was noise and nothing else, which made it the one thing in a room you could not
     // read. Now it pays: a stretch of speed and quick hands, bought by telling the whole floor where
     // you are. In an empty room that is a terrible trade. In a full one it is the best one you get.
@@ -316,7 +332,7 @@ const TUNING = {
   // to stay out of the way and succeeded too well: a first-time player found the hearts and the rail
   // after the level rather than during it. `scale` multiplies the whole top band — hearts, rail,
   // count, clock — and nothing else: the cards, the menu and the floor text keep their own size.
-  hud: { scale: 1.3 },
+  hud: { scale: 1.05 },
   // THE FOG. A room is opened by walking into it and never closes again — that is `room.seen`. This
   // is the other half: what a partition hides from where he is standing right now. `shade` is how
   // far down anything out of his line of sight goes, and `radius` how far the line is cast at all
@@ -352,7 +368,12 @@ const TUNING = {
   // crosses the goat, and a lead that flips with it throws the whole picture across the screen.
   // `leadLerp` is how fast the camera agrees to the new side, `leadStill` how much of the lead a
   // goat who is not running gets at all.
-  camera: { lead: 2.4 * TILE, lerp: 7, leadLerp: 3.4, leadStill: 0.3, zoomRest: 1.0, zoomFast: 0.88, zoomLerp: 2.2 },
+  // `deadzone` is the window round the follow point the goat can move inside before the camera
+  // bothers to react at all — without it every step, however small, re-centres the whole picture,
+  // which is what reads as a shiver rather than a pan. `fitMargin` is the room a small room keeps
+  // round its walls when it is held centred instead of tracked; see `updateCamera`.
+  camera: { lead: 2.4 * TILE, lerp: 7, leadLerp: 3.4, leadStill: 0.3, zoomRest: 1.0, zoomFast: 0.88, zoomLerp: 2.2,
+    deadzone: 0.55 * TILE, fitMargin: 2 * TILE },
   // A score is time first and bodies second, so that running is never the wrong answer: pace against
   // par is the whole of it and kills only multiply. Par for a level is its rooms times `perRoom`.
   score: { perRoom: 9, timePoints: 1000, fastCap: 2, killMul: 0.06, killCap: 2.5 },
@@ -376,7 +397,14 @@ const MENU = ['new', 'continue', 'levels', 'best', 'settings'];
 const SETTINGS = [
   { key: 'timer', name: 'SHOW THE CLOCK', note: 'A time counting up in the corner. The level card tells you at the end either way.' },
   { key: 'sound', name: 'SOUND', note: 'Drums, voices, and the rest of it. M does the same thing mid-run.' },
+  { key: 'easy', name: 'EASY MODE', note: 'Six hearts to start instead of four, and every blow in the compound takes 40% longer to land.' },
 ];
+
+// What EASY MODE bends: a bigger cushion of hearts and a slower cult. `applyBoons` adds `maxHp` to
+// the goat's base and sets `mods.enemySlow`, which every windup, swing, recovery, cast and reload
+// in enemies.js multiplies its own TUNING duration by — the same read-the-mod-at-the-use-site
+// pattern boons use, so nothing here mutates TUNING and a normal run is untouched (enemySlow: 1).
+const EASY = { maxHp: 2, enemySlow: 1.4 };
 
 // ---------------------------------------------------------------------------------------------
 // DIFFICULTY. Everything about who you meet, when, and how many of them, lives here — the generator
@@ -440,7 +468,7 @@ const CANON = { share: 0.5, minRooms: 4 };
 // is a voice rather than a weapon. Each of those is a soul, which is what makes them worth more than
 // a number: a half-lit chip is a promise, and the two of them are the shape of the first hour.
 const BOON_BASE = {
-  maxHp: 4, speed: 1, butcherDamage: 1, fireImmune: false,
+  maxHp: 4, speed: 1, butcherDamage: 1, fireImmune: false, enemySlow: 1,
   headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
   shieldBullets: 2, holdTime: 8.0, livingShield: false, grabCooldown: 1,
   // Grab lifts objects out of the pen and nothing else. A crate, a blade, a shield: things a goat
@@ -723,4 +751,3 @@ const LEVELS = [
     if (def.canon) known.add(def.canon.id);
   }
 })();
-

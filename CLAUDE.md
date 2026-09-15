@@ -15,6 +15,9 @@ dependencies, no framework. Opening `index.html` runs the game.
 
 `GENRE_RESEARCH.md` collects what reviews of reference games (Hotline Miami, Ape Out, and format-mates
 that stayed niche) actually praise and blame, as a genre guideline. Background reading, not a spec.
+`GENERATION_RESEARCH.md` is the companion piece specifically about level/world *generation* — how
+Spelunky, Isaac, Gungeon, Dead Cells, Ape Out and others actually build a level, and what laws hold
+across most of them. Also background reading, not a spec.
 
 The published build lives at **https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021**.
 Always update that same URL rather than publishing a new artifact (see *Publishing* below).
@@ -161,6 +164,11 @@ asks whether a thing is a thing you lift. There used to be a `pot` as well, draw
 of `drawPropBody` as an ochre disc; a disc on a floor of boards reads as a plate rather than as
 something to pick up, so every one of them is a crate and the kind is gone. There is no fallback
 branch any more: a prop kind with no branch of its own does not draw.
+
+**The ritual altar** is a real `table` Prop, not decoration: `startLevel` spawns it directly (not
+through the generator) at the same spot the painted layer has always drawn it, tagged `isAltar` so
+`PaintedArt.drawProp` keeps its own art instead of falling back to the plain table every other one
+gets. It shoves, it blocks, it takes a blow — everything a table already does — for free.
 
 **Stands of arms.** A `weapon` prop is both the rack and the thing in it: `inStand` is true until it is
 first taken, and the rack is only drawn while it is. `weapon` is `sword` or `shield`. It is grabbed like
@@ -351,6 +359,12 @@ of the furniture, and a wide berth from a brazier or a lamp. It was the one scat
 checked the tile and nothing else, so a bowl could be laid down on top of a brazier. A narrow room gives
 up the clearance before it gives up the berth, and the last resort is the tile furthest from the nearest
 flame, because the band is promised a bowl. `GEN_RULES.milk` fails a level that puts one in a fire.
+It reads as sprouted grass now rather than a bowl of milk, and it is grazed rather than grabbed: the
+kind is still `'heal'` throughout the generator and the rules (nothing above changed), but walking
+across one no longer banks the heart on contact. `Prop.graze` is seconds spent standing in it, near
+enough and under `heal.grazeSpeed`; it climbs while the goat holds still there and bleeds back down
+otherwise, and only pays out — `+1 HEART`, same as before — once it clears `heal.grazeTime`. Running
+through on the way past does nothing, which is the point of it.
 
 Change any of it and run **`node tools/balance.js`**: it prints the curve room by room and exits non-zero
 if a kind arrives in a crowd first, a cap breaks, threat stops rising inside a level, or a level is not
@@ -746,6 +760,15 @@ fills like any other room.
 standstill). Reading the aim straight meant that crossing the pointer over the goat threw the whole
 picture to the other side of him in a frame, which is what made turning around feel like being shaken.
 Reset it anywhere you hard-set `cam.x/y` (`startLevel`, `updateFall`).
+
+**The deadzone, and a room that needs no camera at all.** `game.camFollow` is a second carried point,
+behind `cam.x/y` the way `camLead` is behind the aim: `updateCamera` only drags it toward the goat
+once he has stepped `camera.deadzone` px past it, so the small motion of standing still — even the
+walk-cycle bob — never re-centres the picture, and only real travel does. A room whose whole footprint
+already fits the view (`room.w/h * TILE` under the view size less `camera.fitMargin`, on both axes) skips
+tracking entirely: `camFollow` is simply held at the room's centre, because there is nothing off-screen
+to pan toward and tracking it only added to the shiver. `camFollow` is reset alongside `camLead`
+wherever `cam.x/y` is hard-set.
 
 **The run-up.** `goat.runT` is seconds of asking for at least `momentum.atLeast` of a stride without a
 break, and `goat.runUp` is what they are worth: 1 at a standstill, `1 + momentum.max` after

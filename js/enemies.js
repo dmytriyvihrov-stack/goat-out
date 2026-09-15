@@ -341,7 +341,7 @@ class Enemy {
       // out and you are carrying a man. With Living Shield a held Bearer keeps swinging too, and
       // everything he hits is on his own side.
       if (this.kind === 'hunter' && this.reload <= 0 && this.heldShots > 0) {
-        this.reload = cfg.reload * (game.mods.livingShield ? 0.55 : 1);
+        this.reload = cfg.reload * (game.mods.livingShield ? 0.55 : 1) * game.mods.enemySlow;
         this.heldShots -= 1;
         game.fireBullet(this, Math.cos(this.facing), Math.sin(this.facing));
         if (this.heldShots <= 0) game.floatText(this.x, this.y - 28, 'CLICK', PALETTE.ash);
@@ -359,7 +359,7 @@ class Enemy {
           this.timer -= dt;
           if (this.timer <= 0) this.castRune(game);
         } else if (this.castCd <= 0) {
-          this.rune = { x: this.x, y: this.y }; this.timer = cfg.castWind;
+          this.rune = { x: this.x, y: this.y }; this.timer = cfg.castWind * game.mods.enemySlow;
           game.audio.sfxCast(); game.world.emitNoise(this.x, this.y, TUNING.noise.cast);
           game.floatText(this.x, this.y - 32, 'STILL CASTING', PALETTE.witch);
         }
@@ -410,7 +410,7 @@ class Enemy {
       if (this.timer <= 0) {
         this.aware = true; this.state = 'chase';
         // The Butcher answers a stagger with a quick retaliation swing if you stayed close.
-        if (this.kind === 'butcher' && !g.dead && Math.hypot(g.x - this.x, g.y - this.y) < cfg.reach * 1.6 + g.r) { this.state = 'windup'; this.timer = cfg.windup * 0.55; }
+        if (this.kind === 'butcher' && !g.dead && Math.hypot(g.x - this.x, g.y - this.y) < cfg.reach * 1.6 + g.r) { this.state = 'windup'; this.timer = cfg.windup * 0.55 * game.mods.enemySlow; }
       }
       return;
     }
@@ -469,7 +469,7 @@ class Enemy {
   // is the one who stops. That beat is the free hit the charge exists to offer.
   chargeStopped(game) {
     const cfg = this.cfg;
-    this.state = 'stunned'; this.timer = cfg.stun; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown;
+    this.state = 'stunned'; this.timer = cfg.stun; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow;
     game.shake(6); game.audio.sfxSplat(); game.hitstop(0.04); game.floatText(this.x, this.y - 34, 'STUNNED', PALETTE.fireHi);
     game.world.emitNoise(this.x, this.y, TUNING.noise.splat);
   }
@@ -494,18 +494,18 @@ class Enemy {
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
     if (this.state === 'chase') {
       const d = this.chaseGoat(game, this.speed, dt);
-      if (d < cfg.reach + g.r && !g.dead) { this.state = 'windup'; this.timer = cfg.windup; this.vx = 0; this.vy = 0; game.bark(this, 'attack', 0.25); }
+      if (d < cfg.reach + g.r && !g.dead) { this.state = 'windup'; this.timer = cfg.windup * game.mods.enemySlow; this.vx = 0; this.vy = 0; game.bark(this, 'attack', 0.25); }
       return;
     }
     if (this.state === 'windup') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(g.y - this.y, g.x - this.x); this.timer -= dt;
-      if (this.timer <= 0) { this.state = 'swing'; this.timer = cfg.swing; game.audio.sfxSwing(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); this.swingHit = false; }
+      if (this.timer <= 0) { this.state = 'swing'; this.timer = cfg.swing * game.mods.enemySlow; game.audio.sfxSwing(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); this.swingHit = false; }
       return;
     }
     if (this.state === 'swing') {
       this.timer -= dt;
       if (!this.swingHit) { this.swingHit = true; game.meleeHit(this, cfg.reach + 6, Math.PI / 2, cfg.damage, cfg.knock); }
-      if (this.timer <= 0) { this.state = 'recover'; this.timer = cfg.recover; }
+      if (this.timer <= 0) { this.state = 'recover'; this.timer = cfg.recover * game.mods.enemySlow; }
       return;
     }
     if (this.state === 'recover') { this.vx = 0; this.vy = 0; this.timer -= dt; if (this.timer <= 0) this.state = 'chase'; }
@@ -522,13 +522,13 @@ class Enemy {
       if (this.timer <= 0) {
         const spread = (Math.random() - 0.5) * 0.1;
         game.fireBullet(this, Math.cos(this.facing + spread), Math.sin(this.facing + spread));
-        this.reload = cfg.reload; this.state = 'chase';
+        this.reload = cfg.reload * game.mods.enemySlow; this.state = 'chase';
       }
       return;
     }
     // chase: keep distance, shoot when possible
     const reach = (cfg.sight + (this.watchful ? cfg.watchSight : 0)) * TILE;
-    if (sees && this.reload <= 0 && d < reach) { this.state = 'aim'; this.timer = cfg.aimTime; this.vx = 0; this.vy = 0; return; }
+    if (sees && this.reload <= 0 && d < reach) { this.state = 'aim'; this.timer = cfg.aimTime * game.mods.enemySlow; this.vx = 0; this.vy = 0; return; }
     // A man posted to watch a door does not leave it to come and find you. He holds it, turns on the
     // spot and waits out his reload: the room in front of him is the trap, not the man himself.
     if (this.watchful && d > cfg.backoffDist * TILE) { this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); return; }
@@ -559,7 +559,7 @@ class Enemy {
     }
     if (this.state === 'windup') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
-      if (this.timer <= 0) { this.state = 'swing'; this.timer = cfg.swing; this.swingHit = false; game.audio.sfxSnap(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
+      if (this.timer <= 0) { this.state = 'swing'; this.timer = cfg.swing * game.mods.enemySlow; this.swingHit = false; game.audio.sfxSnap(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
       return;
     }
     if (this.state === 'swing') {
@@ -567,7 +567,7 @@ class Enemy {
       // He goes where he bit, so a miss carries him straight past you.
       this.vx = Math.cos(this.facing) * cfg.dodgeSpeed * 0.5; this.vy = Math.sin(this.facing) * cfg.dodgeSpeed * 0.5;
       if (!this.swingHit) { this.swingHit = true; game.meleeHit(this, cfg.reach + this.r, Math.PI * 0.7, cfg.damage, cfg.knock); }
-      if (this.timer <= 0) { this.state = 'recover'; this.timer = cfg.recover; }
+      if (this.timer <= 0) { this.state = 'recover'; this.timer = cfg.recover * game.mods.enemySlow; }
       return;
     }
     if (this.state === 'recover') {
@@ -580,7 +580,7 @@ class Enemy {
     if (this.state === 'dart') {
       this.timer -= dt;
       this.moveToward(dx, dy, this.speed * 1.08, dt, game);
-      if (d < cfg.reach + g.r + 8 && !g.dead) { this.state = 'windup'; this.timer = cfg.windup; this.vx = 0; this.vy = 0; }
+      if (d < cfg.reach + g.r + 8 && !g.dead) { this.state = 'windup'; this.timer = cfg.windup * game.mods.enemySlow; this.vx = 0; this.vy = 0; }
       else if (this.timer <= 0) { this.state = 'chase'; this.lungeCd = cfg.lungeCd * 0.5; }
       return;
     }
@@ -649,11 +649,11 @@ class Enemy {
     if (this.solid) {
       this.timer -= dt; this.vx = 0; this.vy = 0;
       if (this.state === 'manifest') {
-        if (this.timer <= 0) { this.state = 'windup'; this.timer = cfg.windup; }
+        if (this.timer <= 0) { this.state = 'windup'; this.timer = cfg.windup * game.mods.enemySlow; }
       } else if (this.state === 'windup') {
         this.facing = Math.atan2(g.y - this.y, g.x - this.x);
         if (this.timer <= 0) {
-          this.state = 'swing'; this.timer = cfg.swing;
+          this.state = 'swing'; this.timer = cfg.swing * game.mods.enemySlow;
           game.meleeHit(this, cfg.reach, Math.PI * 0.9, cfg.damage, cfg.knock);
           game.audio.sfxWraithHit(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing);
           game.shake(4);
@@ -730,7 +730,7 @@ class Enemy {
     // Too close: blink out rather than trade blows.
     if (d < cfg.blinkRange * TILE && this.blinkCd <= 0 && !g.dead) { this.blink(game); return; }
     if (sees && this.castCd <= 0 && !g.dead) {
-      this.state = 'cast'; this.timer = cfg.castWind; this.vx = 0; this.vy = 0;
+      this.state = 'cast'; this.timer = cfg.castWind * game.mods.enemySlow; this.vx = 0; this.vy = 0;
       this.rune = { x: g.x, y: g.y };
       game.audio.sfxCast(); w.emitNoise(this.x, this.y, TUNING.noise.cast);
       return;
@@ -755,7 +755,7 @@ class Enemy {
       w.emitNoise(this.rune.x, this.rune.y, TUNING.noise.rune);
       game.audio.sfxRune(); game.shake(5);
     }
-    this.rune = null; this.castCd = cfg.castCooldown;
+    this.rune = null; this.castCd = cfg.castCooldown * game.mods.enemySlow;
   }
 
   blink(game) {
@@ -794,9 +794,9 @@ class Enemy {
       }
       if (!g.dead && d < this.r + g.r + 2) {
         g.damage(game.mods.butcherDamage, game, this.vx * 0.6, this.vy * 0.6);
-        this.state = 'recover'; this.timer = cfg.recover; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown; return;
+        this.state = 'recover'; this.timer = cfg.recover * game.mods.enemySlow; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow; return;
       }
-      if (this.timer <= 0) { this.state = 'chase'; this.chargeCd = cfg.chargeCooldown; this.vx = 0; this.vy = 0; }
+      if (this.timer <= 0) { this.state = 'chase'; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow; this.vx = 0; this.vy = 0; }
       return;
     }
     if (this.state === 'chargewind') {
@@ -811,22 +811,22 @@ class Enemy {
     }
     if (this.state === 'chase') {
       if (sees && d >= cfg.chargeMin * TILE && this.chargeCd <= 0 && !g.dead) {
-        this.state = 'chargewind'; this.timer = cfg.chargeWind; this.facing = Math.atan2(dy, dx);
+        this.state = 'chargewind'; this.timer = cfg.chargeWind * game.mods.enemySlow; this.facing = Math.atan2(dy, dx);
         game.floatText(this.x, this.y - 34, 'RAAAGH', PALETTE.blood); game.audio.sfxThud(); return;
       }
       const dd = this.chaseGoat(game, this.speed, dt);
-      if (dd < cfg.reach + g.r && !g.dead) { this.state = 'windup'; this.timer = cfg.windup; this.vx = 0; this.vy = 0; }
+      if (dd < cfg.reach + g.r && !g.dead) { this.state = 'windup'; this.timer = cfg.windup * game.mods.enemySlow; this.vx = 0; this.vy = 0; }
       return;
     }
     if (this.state === 'windup') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
-      if (this.timer <= 0) { this.state = 'swing'; this.timer = cfg.swing; this.swingHit = false; game.audio.sfxSwing(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
+      if (this.timer <= 0) { this.state = 'swing'; this.timer = cfg.swing * game.mods.enemySlow; this.swingHit = false; game.audio.sfxSwing(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
       return;
     }
     if (this.state === 'swing') {
       this.timer -= dt;
       if (!this.swingHit) { this.swingHit = true; game.meleeHit(this, cfg.reach + 8, cfg.arc, game.mods.butcherDamage, 2.5 * TILE); }
-      if (this.timer <= 0) { this.state = 'recover'; this.timer = cfg.recover; }
+      if (this.timer <= 0) { this.state = 'recover'; this.timer = cfg.recover * game.mods.enemySlow; }
       return;
     }
     if (this.state === 'recover') { this.vx = 0; this.vy = 0; this.timer -= dt; if (this.timer <= 0) this.state = 'chase'; }

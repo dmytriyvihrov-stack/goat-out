@@ -111,6 +111,12 @@ class World {
       c.globalAlpha = 1; c.restore();
       return;
     }
+    if (level.def === LEVELS[0]) {
+      // Static objects keep full world-pixel detail; blood still lands on the normal decal layer.
+      this.ritualArt = new AltarArt().makeRitual(level);
+      this.pixelGlyph(sx, sy, 8.5 * TILE, CULT_GLYPHS[0], 0.09, PALETTE.altar.glyph);
+      return;
+    }
     const ax = sx - 4 * TILE, ay = sy - 0.2 * TILE;      // the altar, beside you, still waiting
     this.pixelGlyph(sx, sy, 8.5 * TILE, CULT_GLYPHS[0], 0.2, PALETTE.ochre);
     this.pixelGlyph(ax, ay, 4.6 * TILE, CULT_GLYPHS[2], 0.13, PALETTE.blood);
