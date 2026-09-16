@@ -299,6 +299,17 @@ const GEN_RULES = [
       const r = L.rooms[L.def.vaultAt];
       return ORDINARY.has(r.role) ? true : `off the ${r.role}`;
     } },
+  { id: 'secrets', text: 'A level that gates its secrets behind its first boss carves none of them before it.',
+    check: (L) => {
+      if (!L.def.secretsAfterBoss) return null;
+      const at = L.def.arenas && L.def.arenas[0] ? L.def.arenas[0].at : -1;
+      for (const p of L.props) {
+        if (p.kind !== 'secret') continue;
+        const r = roomAt(L, p.x, p.y);
+        if (r && r.index <= at) return `one in room ${r.index}, at or before the first arena (room ${at})`;
+      }
+      return true;
+    } },
 ];
 
 // Every rule held against one level. `ok` is true, false or null; `why` is the rule's own words for

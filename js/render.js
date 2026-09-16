@@ -15,13 +15,13 @@ const CONTROL_LINES = {
   key: [
     ['WASD, TO MOVE'],
     ['RIGHT CLICK - GRAB', 'RELEASE - THROW'],
-    ['LEFT CLICK, HEADBUTT'],
+    ['LEFT CLICK - HEADBUTT'],
     ['E, ROLL', 'OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
   touch: [
     ['LEFT THUMB, TO MOVE'],
     ['GRAB, HOLD TO CARRY', 'RELEASE, THROW'],
-    ['BUTT, HEADBUTT'],
+    ['BUTT - HEADBUTT'],
     ['ROLL, OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
 };
@@ -35,7 +35,7 @@ const SKILL_KEYS = { butt: 'LMB', grab: 'RMB', roll: 'E', scream: 'SPC' };
 // level definition picks one, and the keyboard or the touch wording follows what is in the player's
 // hands, the way the floor controls do.
 const HINT_KEYS = {
-  butt: ['LEFT CLICK, HEADBUTT', 'BUTT'],
+  butt: ['LEFT CLICK - HEADBUTT', 'BUTT'],
   grab: ['HOLD RIGHT CLICK, CARRY', 'HOLD GRAB, CARRY'],
   roll: ['E, ROLL', 'ROLL'],
   scream: ['SPACE, BAAH', 'BAAH'],
@@ -467,7 +467,7 @@ class Renderer {
       const C = TUNING.cagePrompt, a = clamp((game.timer - C.delay) / C.fade, 0, 1);
       if (a > 0) {
         const p = lv.cagePrompt, pulse = 0.3 + 0.12 * Math.sin(this.t * 3.2);
-        const label = game.touch.active ? 'BUTT, HEADBUTT' : 'LEFT CLICK, HEADBUTT';
+        const label = game.touch.active ? 'BUTT - HEADBUTT' : 'LEFT CLICK - HEADBUTT';
         this.fitFloorText([label], 15 * TILE, 27);
         ctx.fillStyle = `rgba(255,224,138,${a * pulse})`;
         ctx.fillText(label, p.x, p.y * TILT);
@@ -2742,10 +2742,18 @@ class Renderer {
   drawUnseen(game) {
     const ctx = this.ctx, def = game.level.def;
     ctx.fillStyle = def.fog;
+    // The death screen wants the opposite of what play does: a room nobody opened is still part of
+    // the level and the point of showing it is that it was there, so it is dimmed rather than
+    // painted out solid — a corridor between two rooms is never hidden at all (see CLAUDE.md), and
+    // an opaque fill here left every unopened room reading as a gap between corridor stubs instead
+    // of as a room. In play the same rectangle stays the flat wall it always was: the fog is there
+    // to keep a room unseen, not to be looked at.
+    ctx.globalAlpha = game.state === 'dead' ? 0.6 : 1;
     for (const r of game.level.rooms) {
       if (r.seen) continue;
       ctx.fillRect(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE);
     }
+    ctx.globalAlpha = 1;
   }
 
   // The death screen's own mark on the map: a plain line along `game.pathTrail`, a dot where the run
@@ -2776,8 +2784,12 @@ class Renderer {
 
   // One choice per Butcher. Tap a card, or press its number.
   drawBoonChoice(game) {
+    if (game.state !== 'boon' || !game.boonChoice) { game.boonRects = []; return; }
+    // The pointer's own card, so a hover reads as pointing at something rather than as nothing at
+    // all: `game.boonAt` is the same hit-test the click itself goes through, against last frame's
+    // rects — they never move while the choice is up, so the one-frame lag is not felt.
+    const hoverI = game.boonDown < 0 ? game.boonAt(game.input.mouse) : -1;
     game.boonRects = [];
-    if (game.state !== 'boon' || !game.boonChoice) return;
     const ctx = this.ctx, s = this.ts, n = game.boonChoice.length, fire = !!game.mods.breath;
     ctx.fillStyle = 'rgba(13,10,12,0.86)'; ctx.fillRect(0, 0, this.w, this.h);
     ctx.textAlign = 'center';
@@ -2789,9 +2801,6 @@ class Renderer {
     const topY = this.h / 2 - blockH / 2;
     this.soulWisp(this.w / 2, topY - 44 * s, 1.5 * s, 0, 0.9, true);
     const rowW = n * cw + (n - 1) * gap;
-    // The pointer's own card, so a hover reads as pointing at something rather than as nothing at
-    // all: `game.boonAt` is the same hit-test the click itself goes through.
-    const hoverI = game.boonDown < 0 ? game.boonAt(game.input.mouse) : -1;
     for (let i = 0; i < n; i++) {
       const x = stack ? (this.w - cw) / 2 : (this.w - rowW) / 2 + i * (cw + gap);
       const y = stack ? topY + i * (ch + gap) : topY;
@@ -2828,6 +2837,23 @@ class Renderer {
         ctx.fillText(SKILL_KEYS[b.skill], x + cw - 20 * s, y + 34 * s);
       }
     }
+    // The fourth choice: none of the three. Set apart from the cards — no border colour a card
+    // uses, no emoji, just the soul's own violet — so it reads as declining rather than as a
+    // fourth thing on offer.
+    const skipW = stack ? cw : Math.min(rowW, 260 * s), skipH = 30 * s;
+    const skipX = (this.w - skipW) / 2;
+    const skipY = (stack ? topY + blockH : topY + ch) + 18 * s;
+    const skipHover = hoverI === n;
+    game.boonRects.push({ x: skipX, y: skipY, w: skipW, h: skipH });
+    ctx.fillStyle = skipHover ? 'rgba(53,40,74,0.75)' : 'rgba(37,29,48,0.5)';
+    ctx.fillRect(skipX, skipY, skipW, skipH);
+    ctx.strokeStyle = skipHover ? PALETTE.witchHi : 'rgba(125,92,255,0.5)';
+    ctx.lineWidth = (skipHover ? 2 : 1.4) * s; ctx.strokeRect(skipX, skipY, skipW, skipH);
+    ctx.fillStyle = skipHover ? PALETTE.bone : 'rgba(239,230,208,0.65)';
+    ctx.font = `700 ${12.5 * s}px ${FONT_SC}`;
+    ctx.fillText('RELEASE THE SOUL', skipX + skipW / 2, skipY + skipH / 2 + 4.5 * s);
+    ctx.font = `${9.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.4)';
+    ctx.fillText('none of these · 4', skipX + skipW / 2, skipY + skipH + 13 * s);
     ctx.textAlign = 'left';
   }
 
@@ -3097,20 +3123,20 @@ class Renderer {
       // on the note, which comes up when the pointer is on the chip.
       if (!game.touch.active) {
         const m = game.input.mouse;
-        if (m.x >= x - 3 * s && m.x <= x + box + 3 * s && m.y >= y - 3 * s && m.y <= y + box + 26 * s) {
-          this.skillHover = { row, x, y: y + box + 30 * s, hot, boons };
+        if (m.x >= x - 3 * s && m.x <= x + box + 3 * s && m.y >= y - 3 * s && m.y <= y + box + 31 * s) {
+          this.skillHover = { row, x, y: y + box + 35 * s, hot, boons };
         }
         ctx.font = `700 ${10 * s}px ${FONT_SC}`;
         ctx.fillStyle = hot ? PALETTE.fireHi : row.half ? 'rgba(239,230,208,0.38)'
           : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.55)';
         // A little clear of the box itself: flush under it read as part of the icon rather than a
         // caption of its own.
-        ctx.fillText(row.cap, x + box / 2, y + box + 22 * s);
+        ctx.fillText(row.cap, x + box / 2, y + box + 27 * s);
       }
     });
     // The gong, while it is still in him: a strip under the rail that drains with it, so four
     // cooldowns coming back faster than they should has something on screen saying why.
-    let end = top + box + 26 * s;
+    let end = top + box + 31 * s;
     const gong = clamp(g.gong / TUNING.prop.bell.buff, 0, 1);
     if (gong > 0) {
       const bw = right - x0, by = end + 2 * s;

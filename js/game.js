@@ -409,6 +409,13 @@ class Game {
     this.boonChoice = null; this.state = 'play';
     this.audio.sfxBell(); this.floatText(this.goat.x, this.goat.y - 34, b.name, PALETTE.fireHi);
   }
+  // The fourth card: none of the three. A soul spent this way buys nothing and costs nothing more
+  // than itself — there is no bank to put it back in, so it is simply not taken.
+  skipBoon() {
+    if (!this.boonChoice || this.boonArm > 0) return;
+    this.boonChoice = null; this.state = 'play';
+    this.audio.sfxCard(); this.floatText(this.goat.x, this.goat.y - 34, 'SOUL RELEASED', PALETTE.witch);
+  }
 
   // ---------- dev mode ----------
   hitDev(p) {
@@ -653,7 +660,10 @@ class Game {
       if (e.code === 'KeyM') this.audio.toggleMute();
       if (e.code === 'KeyN' && this.state === 'play') this.levelCleared();
       if (e.code === 'KeyE') this.input.rollPressed = true;
-      if (this.state === 'boon') { if (e.code === 'Digit1') this.takeBoon(0); if (e.code === 'Digit2') this.takeBoon(1); if (e.code === 'Digit3') this.takeBoon(2); }
+      if (this.state === 'boon') {
+        if (e.code === 'Digit1') this.takeBoon(0); if (e.code === 'Digit2') this.takeBoon(1); if (e.code === 'Digit3') this.takeBoon(2);
+        if (e.code === 'Digit4') this.skipBoon();
+      }
       if (this.state === 'title') this.menuKey(e.code);
       wake();
     });
@@ -696,7 +706,10 @@ class Game {
       // A card is taken here and nowhere else: the pointer has to leave the same card it arrived on.
       if (this.state === 'boon') {
         const i = this.boonDown; this.boonDown = -1;
-        if (i >= 0 && this.boonAt(this.canvasPos(e)) === i) this.takeBoon(i);
+        if (i >= 0 && this.boonAt(this.canvasPos(e)) === i) {
+          if (this.boonChoice && i === this.boonChoice.length) this.skipBoon();
+          else this.takeBoon(i);
+        }
         return;
       }
       if (e.pointerType === 'mouse') return;
@@ -1069,17 +1082,23 @@ class Game {
     // job, which is exactly the seen/unseen split this screen is supposed to be showing.
     const r = this.renderer, lvl = this.level;
     this.pathTrail.push({ x: this.goat.x, y: this.goat.y });
+    // The world buffer is a fixed 420x78 tiles regardless of how much of it a level actually used —
+    // fitting this camera to that whole buffer fit it to rock that was never carved, which is why
+    // the rooms he actually ran through used to read as a small, disconnected huddle off to one
+    // side rather than as the run. Fit to the rooms themselves instead.
+    const rx0 = Math.min(...lvl.rooms.map((rm) => rm.x)), rx1 = Math.max(...lvl.rooms.map((rm) => rm.x + rm.w));
+    const ry0 = Math.min(...lvl.rooms.map((rm) => rm.y)), ry1 = Math.max(...lvl.rooms.map((rm) => rm.y + rm.h));
     this.deathCam = {
       t: 0,
       fromX: this.cam.x, fromY: this.cam.y, fromZoom: this.cam.zoom,
-      toX: lvl.W * TILE / 2, toY: lvl.H * TILE / 2,
-      toZoom: Math.min(r.vw / (lvl.W * TILE), r.vh / (lvl.H * TILE * TILT)) * DC.margin,
+      toX: (rx0 + rx1) / 2 * TILE, toY: (ry0 + ry1) / 2 * TILE,
+      toZoom: Math.min(r.vw / ((rx1 - rx0) * TILE), r.vh / ((ry1 - ry0) * TILE * TILT)) * DC.margin,
     };
     // What a death does NOT take is named, because a card that says you keep everything is the only
     // way the player finds out that he does. Anything found inside this level goes back in the room.
     const held = this.levelBoons || [];
     const kept = held.length ? `${held.length} SOUL${held.length > 1 ? 'S' : ''} KEPT` : 'NOTHING LOST';
-    this.card = { lines: ['THE GOAT DIED', '', `${kept} · ${this.tapWord.toLowerCase()} to try again`], dim: 0.55, size: 40, small: true, color: PALETTE.blood };
+    this.card = { lines: ['THE GOAT DIED', '', `${this.kills} sacrificed`, `${kept} · ${this.tapWord.toLowerCase()} to try again`], dim: 0.55, size: 40, small: true, color: PALETTE.blood };
     this.shake(12); this.vibe(70);
   }
   levelCleared() {
@@ -1833,9 +1852,29 @@ class Game {
       const all = [g].concat(en);
       for (const e of all) {
         if (e.dead || e.held || e.ghosted) continue;
-        const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy), min = e.r + p.r;
-        if (d >= min || d === 0) continue;
-        const nx = dx / d, ny = dy / d;
+        // A door is a slab, not a disc: a plain circle of radius `r` (tuned for the span it has to
+        // cover across the gap) stopped anyone walking straight at its face a whole extra tile
+        // short of it. Closest point on its actual rectangle instead, `r` still the half-span and
+        // `thick` the other side of it, so the span the door was tuned to cover is untouched.
+        let d, min, nx, ny;
+        if (p.kind === 'door') {
+          const hx = p.vertical ? TUNING.prop.door.thick / 2 : TUNING.prop.door.r;
+          const hy = p.vertical ? TUNING.prop.door.r : TUNING.prop.door.thick / 2;
+          const cx = clamp(e.x, p.x - hx, p.x + hx), cy = clamp(e.y, p.y - hy, p.y + hy);
+          const dx = e.x - cx, dy = e.y - cy; d = Math.hypot(dx, dy); min = e.r;
+          if (d < 0.001) {
+            // Centre inside the slab — a fast body can tunnel a 16px-thick one in a single step —
+            // out along its own thin axis, the same rescue `world.js`'s wall collision gives a body
+            // landing dead centre in a tile.
+            if (p.vertical) { nx = e.x >= p.x ? 1 : -1; ny = 0; } else { nx = 0; ny = e.y >= p.y ? 1 : -1; }
+            d = 0;
+          } else { nx = dx / d; ny = dy / d; }
+        } else {
+          const dx = e.x - p.x, dy = e.y - p.y; d = Math.hypot(dx, dy); min = e.r + p.r;
+          if (d === 0) continue;
+          nx = dx / d; ny = dy / d;
+        }
+        if (d >= min) continue;
         const vn = e.vx * nx + e.vy * ny;
         // The Butcher's charge is a thing the room answers. A door comes off its hinges and he
         // keeps going; a table goes ahead of him at speed, into whoever was behind it; a lamp goes

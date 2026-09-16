@@ -74,27 +74,36 @@ class PaintedArt extends AltarArt {
     const key = prefix + mask;
     if (this.wallTiles.has(key)) return this.wallTiles.get(key);
     const tile = document.createElement('canvas'); tile.width = tile.height = 128;
-    const c = tile.getContext('2d'), lip = 40;
+    const c = tile.getContext('2d'), lip = 40, nearDepth = 76;
     const left = mask & 8 ? lip : 0, right = mask & 2 ? 128-lip : 128;
     const top = mask & 1 ? lip : 0, bottom = mask & 4 ? 128-lip : 128;
+    const nearFaceDepth = (mask & 2 || mask & 8) ? lip : nearDepth;
     this.stamp(c, prefix+'wallTop', 64, 64, 128, 128);
     const faces = [
       // N's shade used to be 0.27, nearly as dark as the mortar line it sits next to: on the wall
       // closest to camera (the near/bottom wall of a room) the whole coursed face washed into one
       // flat dark band and read as bare rock. Brought down to keep the same darker-than-S
       // direction without crushing the brick reading it is the only visible face for.
-      {bit:1, a:Math.PI, points:[[0,0],[128,0],[right,top],[left,top]], shade:0.1},
-      {bit:2, a:-Math.PI/2, points:[[128,0],[128,128],[right,bottom],[right,top]], shade:0.06},
-      {bit:4, a:0, points:[[128,128],[0,128],[left,bottom],[right,bottom]], shade:0},
-      {bit:8, a:Math.PI/2, points:[[0,128],[0,0],[left,top],[left,bottom]], shade:0.08},
+      // Its own depth is `lip` no longer, except where it still has to be: every other face's band
+      // is bounded by the room's OWN perpendicular walls trimming it at a corner, but N's was tied
+      // to its own bit, so a plain run of near wall — no corner in sight — still only ever showed
+      // the 40px sliver a junction needs to leave room for. `nearFaceDepth` gives a straight run
+      // the deeper `nearDepth` instead; a tile that is itself a corner or a boxed-in block (an E or
+      // W wall sharing it) keeps the shallow `lip` unchanged, the same as it always drew — a pillar
+      // is not a straight run of wall and reading like one is what "wrong" looked like.
+      {bit:1, a:Math.PI, depth:nearFaceDepth, points:[[0,0],[128,0],[right,nearFaceDepth],[left,nearFaceDepth]], shade:0.1},
+      {bit:2, a:-Math.PI/2, depth:lip, points:[[128,0],[128,128],[right,bottom],[right,top]], shade:0.06},
+      {bit:4, a:0, depth:lip, points:[[128,128],[0,128],[left,bottom],[right,bottom]], shade:0},
+      {bit:8, a:Math.PI/2, depth:lip, points:[[0,128],[0,0],[left,top],[left,bottom]], shade:0.08},
     ];
     for (const f of faces) if (mask & f.bit) {
       c.save(); c.beginPath(); f.points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y)); c.closePath(); c.clip();
       c.translate(64,64); c.rotate(f.a);
-      this.stamp(c,prefix+'wallFace',0,44,128,40);
-      c.fillStyle=`rgba(10,7,12,${f.shade})`; c.fillRect(-64,24,128,40);
+      const d = f.depth;
+      this.stamp(c,prefix+'wallFace',0,64-d/2,128,d);
+      c.fillStyle=`rgba(10,7,12,${f.shade})`; c.fillRect(-64,64-d,128,d);
       c.fillStyle='rgba(8,5,10,0.55)'; c.fillRect(-64,60,128,4);
-      c.fillStyle='rgba(225,203,180,0.22)'; c.fillRect(-64,24,128,3);
+      c.fillStyle='rgba(225,203,180,0.22)'; c.fillRect(-64,64-d,128,3);
       c.restore();
     }
     this.wallTiles.set(key,tile); return tile;
@@ -271,6 +280,26 @@ class PaintedArt extends AltarArt {
       this.atlas(ctx,name,0,0,r*2.2,r*2.2*TILT,0.5);
       ctx.restore();
       return true;
+    }
+    if(p.kind==='bomb'){
+      // No painted asset for this one — a rare find drawn plainly, primitive on purpose: a dark
+      // shell and a fuse that shortens and sparks faster the closer it is to going off, which is
+      // the whole of how a player who has never seen one before reads "this is about to go off."
+      const armed=p.fuseT>=0, pct=armed?clamp(p.fuseT/TUNING.prop.bomb.fuse,0,1):1;
+      renderer.shadow(p.x,p.y,p.r*0.9,p.r*0.4);
+      ctx.save();ctx.translate(p.x,p.y-(p.held?6:0));
+      if(p.flung)ctx.rotate(Math.atan2(p.vy,p.vx)*0.3);
+      ctx.fillStyle='#1c1a1e';ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#332e33';ctx.beginPath();ctx.arc(-p.r*0.28,-p.r*0.28,p.r*0.4,0,Math.PI*2);ctx.fill();
+      const fuseLen=4*pct+2;
+      ctx.strokeStyle='#5a4a3a';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(0,-p.r);ctx.lineTo(p.r*0.3,-p.r-fuseLen);ctx.stroke();
+      if(armed){
+        const spark=0.5+0.5*Math.sin(renderer.t*(20+40*(1-pct)));
+        ctx.fillStyle=`rgba(255,180,90,${0.6+0.4*spark})`;
+        ctx.beginPath();ctx.arc(p.r*0.3,-p.r-fuseLen,2.2+1.4*spark,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();return true;
     }
     if(p.kind==='secret'){
       const key=(this.prefix||'')+'wallFace';

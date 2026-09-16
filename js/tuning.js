@@ -283,7 +283,13 @@ const TUNING = {
     // It closes on a curve rather than evenly — `clockEase` under 1 holds it near-open for most of
     // the count and slams it at the end, which is the tell, since a door creeping shut at a steady
     // eight degrees a second is a door nobody notices is moving.
-    door: { r: 29, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 3, vaultHits: 4, stairHits: 3,
+    // `r` is the door's own half-span across the gap it hangs in (see `collideEntities`'s rectangle
+    // test) — it has to cover close to the full two-tile opening or a diagonal run slips past a
+    // corner. `thick` is what it is along the other axis: the slab itself is 13px in the painted
+    // art, so a goat walking straight at its face used to be stopped a whole extra tile short of it
+    // by a plain circle of radius `r` in every direction at once — the "why can't I get near the
+    // door" gap.
+    door: { r: 29, thick: 16, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 3, vaultHits: 4, stairHits: 3,
       clockFor: 12, clockEase: 0.5 },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE },
     // A lamp post is not a pillar: a body arriving at `knock` goes through it and it goes over,
@@ -314,6 +320,13 @@ const TUNING = {
     // And what a box of dry boards does when it is thrown into a fire: it goes up. Wider than the
     // flame that lit it and burning longer, so a brazier plus a crate is a room you have closed.
     crate: { r: 10, stun: 2.8, burst: 2.1, burstTime: 6.5 },
+    // A rare find rather than a tool: grabbed and thrown exactly like a crate, but armed the moment
+    // it leaves the goat's mouth (`Prop.fling`) rather than breaking on the first thing it hits, so
+    // it comes to rest wherever it lands and counts down from there. `nearR` is the two-heart
+    // half — the goat pays the same falloff his own blast does, `TUNING.goat.bomb` — everything out
+    // to `blastR` is the one-heart ring, and anyone that far out who is not killed outright is flung
+    // rather than hurt directly, same as a headbutted man's own charge.
+    bomb: { r: 11, fuse: 1.6, blastR: 2 * TILE, nearR: 0.75 * TILE, dmgNear: 2, dmgFar: 1, impulse: 20 * TILE },
     // A stand of arms. Grab what is in it, carry it, let go to throw it. The sword goes through
     // the first man it finds; the shield knocks a row of them flat and turns bullets while carried.
     weapon: {
@@ -456,7 +469,10 @@ const TUNING = {
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
   // first has found a room, so most levels get one and some get two rather than every level getting
   // a guaranteed pair. `carveSecret` in gen.js does the finding; this is only ever the odds.
-  secret: { chance2: 0.35 },
+  // `bombChance` is how often a secret's own stand of arms is a bomb instead — a level almost never
+  // carves more than two of these, which is what keeps the bomb itself rare (one to two a level)
+  // without a per-room chance of its own or a count to hold it to.
+  secret: { chance2: 0.35, bombChance: 0.45 },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
   // A beat of thought the moment the pen gives: not a caption, a small comic-panel bubble over his
@@ -806,6 +822,9 @@ const LEVELS = [
     // so: the arena's threat budget would otherwise buy two, and the first thing in the run with
     // more than one heart in it should be read as the brute rather than as a crowd.
     arenas: [{ at: 7, boss: 'champion', escorts: 1 }, { at: 9, boss: 'butcher' }],
+    // A wall that gives is not a thing to look for yet: the first arena above is what teaches a
+    // soul is worth going out of your way for, so no secret is carved before it.
+    secretsAfterBoss: true,
     // The one locked door in the game that is not opened by breaking it. The brute's ring is shut
     // behind a barred gate and the bar is the soul he is carrying: kill him, swallow it, and the
     // gate goes. It exists because the first run we watched walked past the first soul it was ever

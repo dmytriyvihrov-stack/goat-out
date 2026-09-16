@@ -8,6 +8,91 @@ then goes to `CHANGELOG.md` — or when it is decided against, and the reason go
 Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and does not read; **number**,
 it works and the number is wrong; **system**, it does not exist yet.
 
+## 16 September 2026, a correction and two more — right after the eleven-item batch shipped
+
+A look at the build the eleven-item batch produced, three lines.
+
+- ~~**bug — the bottom-wall fix still read as wrong: a pillar or a boxed-in block showed the same
+  deep brick band a straight run now gets, which is not what a "closed corner" should look
+  like.**~~ `nearFaceDepth` (`painted-art.js`) now only widens for a near face that is the *only*
+  thing exposed on that tile — an E or W bit still set on the same mask falls back to the plain
+  `lip` it always used, so a corner or a pillar keeps its old, shallow look and a plain run of wall
+  keeps the new, deep one. See the correction in `ART_HANDOFF.md`.
+- ~~**feel — a room nobody opened should still show on the death screen, not read as a gap between
+  corridor stubs.**~~ `drawUnseen` painted an unopened room fully opaque, in the level's own near-
+  black `fog` colour — since a corridor is never hidden at all (see `CLAUDE.md`'s fog section), the
+  practical effect on the death screen was corridor fragments floating in black voids where the
+  actual rooms were. It now dims the same fog to 0.6 alpha whenever `game.state === 'dead'`, and
+  stays fully opaque for ordinary play — the fog is there to keep a room unseen, not to be looked
+  at, so nothing about how it plays changed.
+- ~~**system — the rare pickable bomb (asked for 14/16 Sep, never built) genuinely does not exist
+  anywhere in the game.**~~ Built: `kind === 'bomb'`, an `item` like a crate, grabbed and thrown the
+  same way, armed the first time it is thrown (`Prop.fling`) and detonating wherever it comes to
+  rest once its fuse runs out — two hearts inside `nearR`, one heart out to `blastR`, the goat pays
+  it too if he is standing in it, and anything past `nearR` that survives is flung rather than
+  killed outright. Placed by `carveSecret` in the niche a stand of arms would otherwise go
+  (`TUNING.secret.bombChance`), which is what keeps it to the one-or-two-a-level the original ask
+  wanted without a count of its own. No painted asset exists for it, so it draws as a plain dark
+  shell with a shortening, sparking fuse. See `CLAUDE.md`'s "The bomb."
+
+## 16 September 2026, another sitting — eleven items, one burst
+
+Most of it shipped same sitting; the reasoning behind each is in `CHANGELOG.md` under 1.29.
+
+- ~~**bug — the death screen's level map read as a scatter of disconnected rooms with black gaps
+  between them, and did not fill the width of the screen.**~~ Both were the same bug: the death
+  camera fit itself to `lvl.W`/`lvl.H` — the fixed 420×78-tile world **buffer** — rather than to
+  the rooms the level actually carved into it. A ten-room level barely dents that buffer, so the
+  run's own rooms rendered as a small huddle off to one side with the rest of the (unused, solid)
+  buffer read as empty black gaps. `onGoatDied` now fits to the bounding box of `lvl.rooms`
+  instead. Confirmed against both a short death (pen) and a long one (last room) — the map now
+  runs edge to edge either way.
+- ~~**feel — the death screen should say how many were killed.**~~ Added as its own line on the
+  card, the same wording the level-clear and run-end cards already use (`N sacrificed`).
+- ~~**bug — couldn't get close to a door; a big, unexplained gap stood between the goat and it.**~~
+  `Prop.r` (29, tuned to cover the door's span across a two-tile gap) was being used as a plain
+  circle for the goat/enemy-vs-door push-out too, which stops anyone 29px from the door's **centre
+  in every direction** — including straight at its 13px-thick face, a whole extra tile short of
+  where the (much thinner) painted slab actually is. `collideEntities` now finds the closest point
+  on the door's actual rectangle (`TUNING.prop.door.thick`, new) instead of treating it as a disc;
+  the span (`r`) it was tuned to fully cover is untouched. A tunnelling fallback (centre landing
+  inside the thin slab in one step) mirrors the one `world.js`'s wall collision already has.
+- ~~**feel — a room's bottom (near) wall did not read as bricked; a flat panel where the coursing
+  should be.**~~ Flagged before and apparently lost — see `ART_HANDOFF.md`'s "still open" note,
+  now closed. `PaintedArt.wallTile`'s near face (`bit:1`) tied its own depth to its own presence
+  bit, so it was capped at the 40px junction lip on *every* tile, corner or not — the other three
+  faces get that same cap only where a perpendicular wall actually needs the room. A straight run
+  of near wall (the common case) now gets a much deeper face (`nearDepth`, 76px of the 128px
+  tile) since there is no corner to leave room for; a real corner still narrows the same as ever.
+  Checked against both a straight run and a corner.
+- ~~**feel — the skill-rail captions (LMB/RMB/E/SPC) still read as crowding `N SACRIFICED`, after
+  the last 4px nudge.**~~ Nudged again, another 5px (`drawSkills`, `render.js`).
+- ~~**feel — inconsistent punctuation: `LEFT CLICK, HEADBUTT` still used a comma where the ambush
+  room's lines were already moved to a hyphen.**~~ Every place that exact string is drawn (the
+  keyboard control line, its touch equivalent, the pen's own cage prompt, and the hint-key table)
+  now reads `LEFT CLICK - HEADBUTT` / `BUTT - HEADBUTT`.
+- ~~**system — secret walls (the cracked-wall niches) show up before they mean anything on level
+  one; not needed until after the first miniboss.**~~ `levelDef.secretsAfterBoss` (set only on THE
+  ALTAR) keeps the secret pool to rooms past `arenas[0].at` — no wall gives before the champion.
+  Every other level is untouched; they already assume the mechanic is known.
+- ~~**system — the roll (E) should be called out at the entrance to the first miniboss, not just
+  "somewhere past the middle of the level".**~~ Block 3's room pick now prefers the ordinary room
+  right before a level's first arena, when that room is itself a valid candidate (has men, isn't
+  the lesson/ambush/vault/trap room); falls back to the old "closest to the middle" pick otherwise.
+- ~~**system — an option to decline a soul: take none of the three cards offered.**~~ A fourth
+  choice, `RELEASE THE SOUL`, on the boon-choice screen (violet, apart from the three cards rather
+  than styled as a fourth one) — click, tap, or `4`. There is no bank to put a released soul back
+  in yet (see the open "a souls resource" question at the bottom of this file), so it is simply not
+  taken; nothing is owed back for it.
+- **bug — reported: the near bearer in the Mill lesson room ran past the wheel on level one without
+  it touching him.** Not reproduced. Tried the room fresh three times (three seeds), goat entering
+  at the room's own `enter` point each time and left standing there while the room played out in
+  real time: the `trapSense: 0` bearer took the arm and died on all three. If it comes back, the
+  thing worth knowing is *how* the room was approached — from a dead stop at the door like these
+  tries, or moving fast/at an angle through it (a boon-heavy or mid-roll goat could reach the far
+  side quickly enough that the bearer's own path to him never crosses the arm's sweep at all, which
+  would be a real gap in the room rather than a re-roll of the same test).
+
 ## 16 September 2026, later still — six screenshots, sent in small bursts
 
 All of it shipped same sitting, once the first pass at two of these turned out to be a real look
@@ -88,8 +173,9 @@ through the boon system again. The three marked bugs are fixed same sitting (rea
 
 ### system — the deck at 36, restated with new candidates
 
-This is the already-parked **"the deck at 36, dealt in turns"** further down this file (16 Sep,
-daytime sitting): two actives a verb (three eventually), two passives a verb (three eventually),
+This is the already-parked **"the deck at 36: a grid of four verbs by three archetypes, dealt in
+turns"** further down this file (16 Sep, evening sitting; it was "dealt in turns" alone until the
+archetype grid was added to it): two actives a verb (three eventually), two passives a verb (three eventually),
 eight general passives, dealt active/passive/active/passive until every verb has one, then one
 active-as-replacement plus two passives. Two pieces of that plan were re-described tonight,
 word for word, without having been shown the file — worth treating as confirmation rather than
@@ -248,23 +334,48 @@ newcomer. What heaven is once reached is unwritten and is not this item.
 
 ---
 
-### system — the deck at 36, dealt in turns — *parked, 16 Sep 2026*
+### system — the deck at 36: a grid of four verbs by three archetypes, dealt in turns — *parked, 16 Sep 2026*
 
 Thirteen souls against seventeen cards is three quarters of the deck every run, so two runs are
-one build in a different order. The shape he wants: every verb a **slot with three mutually
-exclusive actives** (FULL THROAT against DRAGON BREATH is the pattern, already in the game),
-three passives per verb that only mean something with that verb's active on, and six to eight
-general passives (twelve was the ask; passives are what stacks, and stacking is where level five
-gets overpowered). Dealing alternates, **active, passive, active, passive**, so a triple is always
-one kind and the choice is inside it; the first soul of a run is an active and opens one of the
-two half-shut buttons, which retires the 0.75 weight in `openBoonChoice`. An active triple is
-one variant for each of three *empty* verbs while there are three; once all four are filled
-every deal is **one active as a replacement plus two passives**, the replacement card saying
-what it gives up (`replaces`) and not paying its `heal` again. Passives deal only onto verbs
-whose active is on, which is one rule in place of the three `needs`. Parity is the length of
-`game.boons`, so the save needs nothing new. An active is only an active if the icon and the
-note change and pillars 3 and 4 hold; write the twelve as one line each and cut what fails
-before counting. Twelve actives first (six exist), then play, then passives.
+one build in a different order. The shape: every verb a **slot with three mutually exclusive
+actives**, and the three are the three archetypes, so the twelve actives are a grid and not a
+list. **Fire** kills (BOMB CHARGE, DRAGON BREATH exist). **Stun** stops (THE FULL THROAT, DEAD
+WEIGHT exist). **Poison** makes a man err: it never kills, the wall still does; a poisoned man
+is slowed and blind, his cone shut, and he swings at the nearest body (LIVING SHIELD already
+has "at his own side"); it passes by touch the way `passFire` does. Poison is a **status on the
+man**, a timer like `daze`, not a layer on the tiles like `world.fire`: a cloud is a second
+world layer and is dear. A build is a row of the grid collected, which is what he felt "through
+stun" on the tenth sitting.
+
+The stun row's headbutt is **hold to lower the horns**: a hold on an existing button, so pillar
+1 holds. It is **not** frontal invulnerability (pillar 4: no i-frames but the roll's; a free run
+through the room is what *run, don't fight* costs). It is the carried shield's own rule turned
+into a posture: `covers` in front, `parry` staggers the man who struck, every parry spends the
+run-up, and a wall stops him the way it stops the Butcher (`chargeStopped`). No bullets: horns
+are not iron.
+
+**Crossings fall out of the world, never out of a table of pairs.** Fire ticks while you stand,
+so a stunned man burns longer, and so does a cornered one and the Butcher already on `burnTick`;
+it matters only for `hp > 1` (elites, bosses, the Seer), which is where it should. **Spit
+burns:** a glob of poison on the floor is a pool and lights like a crate's `burst` at a brazier,
+so poison spat into a doorway ahead of a crowd is a trap the first torch springs (whether a
+blind burning man carrying fire to his own goes round KINDLING is open). Poison and stun need no
+line at all. Three pairs, no triple. Each crossing has to be visible the moment it happens (a
+stunned burning man needs his stars over the flame) or a player collects it and never knows.
+
+Around the grid: three passives per verb that only mean something with that verb's active on,
+and six to eight general passives (twelve was the ask; passives stack, and stacking is where a
+late level gets overpowered). Dealing alternates, **active, passive, active, passive**, so a
+triple is always one kind and the choice is inside it; the first soul of a run is an active and
+opens one of the two half-shut buttons, which retires the 0.75 weight in `openBoonChoice`. An
+active triple is one variant for each of three *empty* verbs while there are three; once all
+four are filled every deal is **one active as a replacement plus two passives**, the
+replacement card saying what it gives up (`replaces`) and not paying its `heal` again. Passives
+deal only onto verbs whose active is on: one rule in place of the three `needs`. Parity is the
+length of `game.boons`, so the save needs nothing new. Unbalanced is fine for a first pass;
+unreadable is not: every cell changes its icon and the note under the chip, or the row a player
+collected is invisible. Order: the generation batch first, this second, blind playtests after
+both. `balance.js` measures none of the crossings; they are tested by hand, one at a time.
 
 ### system — the shop: a mouse, a rat ogre, souls of the killed, a talisman — *parked, 16 Sep 2026*
 

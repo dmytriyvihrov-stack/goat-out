@@ -570,7 +570,11 @@ class Prop {
       : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r
       : kind === 'weapon' ? P.weapon.r : kind === 'secret' ? P.door.r
       : kind === 'coop' ? P.coop.r : kind === 'chicken' ? P.chicken.r
-      : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r : 13;
+      : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r
+      : kind === 'bomb' ? P.bomb.r : 13;
+    // -1 until it is thrown for the first time (`fling` arms it); ticking down after that regardless
+    // of whether it is picked up and thrown again, so a live bomb stays live.
+    this.fuseT = -1;
     this.spillCd = 0;                         // a brazier building its coals back after a spill
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
     this.deco = !!(opts && opts.deco);        // a cage that is scenery: it never opens
@@ -629,7 +633,7 @@ class Prop {
   // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing. A
   // loose hen counts too — the same mouth that takes a crate takes her — but not mid-flight or
   // stunned, since a bird already on her way to a man is not a thing you can also be carrying.
-  get item() { return this.kind === 'crate' || this.kind === 'weapon' || (this.kind === 'chicken' && this.birdState === 'loose'); }
+  get item() { return this.kind === 'crate' || this.kind === 'weapon' || this.kind === 'bomb' || (this.kind === 'chicken' && this.birdState === 'loose'); }
   get blocking() {
     if (this.broken) return false;
     // Nothing stands on a plate's shoulders: it is floor until it is teeth. A loose bird is not
@@ -650,7 +654,12 @@ class Prop {
     return this.kind === 'bell' || this.kind === 'mill' || this.kind === 'secret';
   }
 
-  fling(vx, vy, thrown) { this.vx = vx; this.vy = vy; this.flung = true; this.thrown = thrown; this.held = false; this.passed.length = 0; }
+  fling(vx, vy, thrown) {
+    this.vx = vx; this.vy = vy; this.flung = true; this.thrown = thrown; this.held = false; this.passed.length = 0;
+    // Armed on the first throw only: a bomb caught and thrown again keeps the fuse it already had
+    // rather than being handed a fresh one, so re-throwing it is not a way to stall it forever.
+    if (this.kind === 'bomb' && this.fuseT < 0) this.fuseT = TUNING.prop.bomb.fuse;
+  }
 
   headbutt(game, ax, ay) {
     switch (this.kind) {
@@ -1131,6 +1140,7 @@ class Prop {
       return;
     }
     if (this.kind === 'weapon') { this.updateWeapon(dt, game); return; }
+    if (this.kind === 'bomb') { this.updateBomb(dt, game); return; }
     if (this.kind === 'door') { this.updateDoor(dt, game); return; }
     if (this.kind === 'table') { this.updateTable(dt, game); return; }
     // A thrown crate. It is the one thing you lift off the floor and put through somebody.
@@ -1262,6 +1272,55 @@ class Prop {
     game.particles(e.x, e.y, 7, PALETTE.bone, 210);
     // Three men is all a shield is good for, and it comes apart on the third.
     if (--this.uses <= 0) this.snap(game);
+  }
+
+  // A thrown bomb. It does not break on the first thing it hits the way a crate does — it just
+  // stops there, dead, and keeps counting down: `fuseT` was set once, in `fling`, and runs out
+  // wherever it happens to be when it does.
+  updateBomb(dt, game) {
+    if (this.broken) return;
+    if (this.flung) {
+      this.x += this.vx * dt; this.y += this.vy * dt;
+      // Down a hole is not a room this bomb gets to finish: gone like anything else thrown over one.
+      if (game.world.isPitPx(this.x, this.y)) { this.fall(game); return; }
+      const impact = game.world.collideCircle(this);
+      const spd = Math.hypot(this.vx, this.vy) || 1;
+      const hit = this.hitProp(game, this.vx / spd, this.vy / spd);
+      if (impact > 0 || hit) { this.vx = 0; this.vy = 0; this.flung = false; this.thrown = false; }
+      else { const drag = Math.exp(-TUNING.prop.weapon.drag * dt); this.vx *= drag; this.vy *= drag; if (Math.hypot(this.vx, this.vy) < 8) { this.vx = 0; this.vy = 0; this.flung = false; this.thrown = false; } }
+    }
+    if (this.fuseT < 0) return;
+    this.fuseT -= dt;
+    if (this.fuseT <= 0) this.explode(game);
+  }
+
+  // Falls off from the centre exactly the way the goat's own headbutted-bomb charge does: two
+  // hearts inside `nearR`, one heart out to `blastR`, and past `nearR` anything left alive is
+  // flung rather than hurt directly — the wall is still what finishes it.
+  explode(game) {
+    if (this.broken) return;
+    this.broken = true; this.dead = true; this.flung = false;
+    if (game.goat.holding === this) game.goat.holding = null;
+    const B = TUNING.prop.bomb;
+    game.fx.explosion(this.x, this.y, B.blastR, false);
+    game.world.splat(this.x, this.y, 0, 0, 24); game.world.scorch(this.x, this.y, B.blastR * 0.5);
+    game.particles(this.x, this.y, 16, PALETTE.fire, 260);
+    game.ring(this.x, this.y, B.blastR, PALETTE.fireHi);
+    game.shake(9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.boom);
+    for (const e of game.enemies) {
+      if (e.dead || e.held || e.ghosted) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
+      if (d > B.blastR + e.r) continue;
+      const nx = dx / (d || 1), ny = dy / (d || 1);
+      if (d <= B.nearR) e.die(game, 'splat', nx, ny);
+      else e.fling(nx * B.impulse, ny * B.impulse, true);
+    }
+    const g = game.goat, gd = Math.hypot(g.x - this.x, g.y - this.y);
+    if (!g.dead && gd <= B.blastR + g.r) {
+      const nx = (g.x - this.x) / (gd || 1), ny = (g.y - this.y) / (gd || 1);
+      g.damage(gd <= B.nearR ? B.dmgNear : B.dmgFar, game, nx * 260, ny * 260);
+    }
   }
 
   updateDoor(dt, game) {

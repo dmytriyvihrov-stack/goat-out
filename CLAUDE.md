@@ -366,7 +366,10 @@ two-tile niche into the rock behind it holding a patch of milk and a stand of ar
 touches has to still be solid rock, so it never trades on a room or a corridor. The prop is
 `kind === 'secret'`: it is a wall to sight and to bullets, `Prop.crackWall` gives it
 `TUNING.prop.secret.hits` (two) and a visible crack after the first, and it is drawn in the room's
-own `wallColor` so nothing gives it away before that crack does.
+own `wallColor` so nothing gives it away before that crack does. `levelDef.secretsAfterBoss` (level
+one only) keeps the secret pool to rooms past the level's own first arena: a wall that gives is not
+a thing to look for before a run has any reason to go out of its way for a soul.
+`GEN_RULES.secrets` holds it.
 
 `Renderer.wallCrack(x, y, hits)` is the crack itself and both draws call it — the painted branch in
 `painted-art.js` and the primitive one in `drawPropBody` — so there is one crack in the game and not
@@ -1013,6 +1016,24 @@ A thrown crate that reaches a burning tile does not break, it **bursts**: `Prop.
 `crate.burst` tiles of flame for `crate.burstTime`, of whichever kind lit it, and then shatters. It is
 the one thing the goat carries that answers a fire with more fire, and it is how a doorway is shut.
 
+**The bomb.** `kind === 'bomb'` is a rare find rather than a tool, `item` like a crate and grabbed and
+thrown the same way — there is no button for it beyond grab and release, per the ground rules. It does
+not break on the first thing it hits: `updateBomb` lets it come to rest (or fall down a hole, gone like
+anything else thrown over one) and only then does the thing that matters, which already started the
+moment it left the goat's mouth. `Prop.fling` arms `fuseT` off `TUNING.prop.bomb.fuse` the first time
+only — caught and thrown again, it keeps the fuse it already had rather than a fresh one, so re-throwing
+a live bomb buys distance, not time. When it reaches zero, `explode()` falls off from the centre the
+same way the goat's own headbutted-bomb charge does: two hearts inside `nearR`, one heart out to
+`blastR`, and the goat pays it too if he is standing in it (`Goat.damage`, which god mode and his own
+`invuln` still cover). Past `nearR`, nothing is killed outright — an enemy that far out is only flung,
+the same as the headbutt charge does, because the wall is still what is supposed to finish it. Placed by
+`carveSecret` in `gen.js`, in the same spot a secret's own stand of arms would otherwise go
+(`TUNING.secret.bombChance`), which is what keeps it to about one or two a level without a count of its
+own to hold it to — a level with no secret in it has no bomb either. There is no painted asset for it:
+`PaintedArt.drawProp` draws it plainly, a dark shell with a fuse that shortens and sparks faster as
+`fuseT` runs out, which is the whole of how a player who has never seen one before reads "this is about
+to go off."
+
 **Five kinds of door.** `prop.door.hits` is one — a plank door in a corridor is a thing you run
 through, not a wall you stand at. `ironHits` is three, `stairHits` three (the barred way out of every
 level) and `vaultHits` four; `prop.gate` is the soul gate and has no count at all. `prop.iron` is the flag and
@@ -1021,7 +1042,10 @@ level) and `vaultHits` four; `prop.gate` is the soul gate and has no count at al
 that a door goes. An iron door refuses `openPressure` — nobody shoulders it open, it is broken or it is
 shut — so a corridor with one in it is three blows of standing still with whatever heard the first
 already coming, which is the entire point of putting them there. Every blow floats what is left in it,
-so the count is a count and not a wall.
+so the count is a count and not a wall. A door is a slab, not a disc: `game.collideEntities` finds the
+closest point on its actual rectangle (`prop.door.r` the half-span across the gap, `prop.door.thick` the
+13px-in-the-art other way) rather than treating the whole thing as a circle of radius `r` in every
+direction — that circle used to stop anyone walking straight at its face a whole extra tile short of it.
 
 **The soul door.** `prop.vault` is the vault's door and it is the fourth-blow one. It used to be an
 iron slab like any other, which since level two now has iron slabs in its corridors would make the one

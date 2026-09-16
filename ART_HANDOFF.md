@@ -20,13 +20,25 @@ down to 0.1), and a hunter's aim tell had gone dark once his painted sprite repl
 primitive body that alone drew it (now its own method, `drawAimTelegraph`, called for either).
 All three fixed; reasoning in `CHANGELOG.md` under 1.26.
 
-**Still open, same screenshot:** the far side of a wall — what should show through a doorway or
-round a corner as the tilt looks past it — did not read as "pulled" the way the request asked.
-`wallTile`'s four faces are geometrically symmetric (each anchored at its own tile's floor-facing
-edge, `lip` 40 of 128), so if this persists after the shade fix above, the next lever is `lip`
-itself or whether a corridor mouth needs a second wall row rendered through it — not shade. Needs
-a second screenshot once the shade fix has been played against, since some of the original
-complaint may have been the same near/far contrast read from a different angle.
+**Closed, a later playtest (16 Sep, another sitting):** it was `lip`, as guessed above — not
+shade, and not a doorway/corridor-mouth thing. `top`/`bottom`/`left`/`right` correctly key an
+*adjacent* face's trim to a corner's perpendicular bit (so an E face narrows only where a real N
+or S wall shares the corner), but the **near (bit:1) face's own depth** was wired to its own
+presence bit instead — meaning every near-wall tile, corner or plain straight run alike, only ever
+showed the 40-of-128px junction sliver, with the rest of the tile falling back to the flat
+`wallTop` coping. A long run of near wall (the ordinary case, no corner in sight) reads as almost
+no brick at all this way. Fixed by giving the near face its own, much bigger depth constant
+(`nearDepth`, 76 of 128) when it draws, independent of the `lip`(40) two other faces still use to
+trim around it at a real corner — so a straight run gets far more coursing and a corner keeps its
+existing miter. Reasoning in `CHANGELOG.md` under 1.29.
+
+**Correction to the correction, same day:** the first pass gave `nearDepth` to the near face on
+*every* tile it is drawn on, corner or not — a pillar (all four bits set, floor on every side) got
+the same deep band as a straight run, which read as wrong for the opposite reason: a boxed-in
+block is not a run of wall and showing it like one is what "you still did it wrong" was pointing
+at. `nearFaceDepth` now only widens for a tile whose near face is the *only* thing exposed nearby
+— `mask & 2` (E) and `mask & 8` (W) both unset — and falls back to the plain `lip` the moment
+either is set, the same as it always drew there. Reasoning in `CHANGELOG.md` under 1.30.
 
 ## Playtest correction — same day, after the first look at v2 in motion
 

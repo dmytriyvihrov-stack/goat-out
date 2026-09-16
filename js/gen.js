@@ -411,7 +411,11 @@ function tryGenerate(levelDef, seed) {
   // Secrets. One or two a level: a patch of an ordinary room's own top or bottom wall that gives on
   // the second blow, with a bowl of milk and a rack tucked into the rock behind it. Never the pen, a
   // set piece or the vault's own room — only rock nothing else has already carved.
-  const secretPool = rng.shuffle(ordinaryRooms(levelDef, rooms.length).filter((i) => i !== levelDef.vaultAt && !trapRooms.has(i)));
+  // `secretsAfterBoss` keeps a wall that gives out of a level's opening rooms: level one is the
+  // only level that needs telling, since a wall that cracks is not yet a thing the run has any
+  // reason to go looking for before its own first arena has taught what a soul is worth chasing.
+  const secretsAfter = levelDef.secretsAfterBoss && levelDef.arenas && levelDef.arenas[0] ? levelDef.arenas[0].at : -1;
+  const secretPool = rng.shuffle(ordinaryRooms(levelDef, rooms.length).filter((i) => i !== levelDef.vaultAt && !trapRooms.has(i) && i > secretsAfter));
   const wantSecrets = 1 + (rng.chance(TUNING.secret.chance2) ? 1 : 0);
   let secretsPlaced = 0;
   for (const idx of secretPool) {
@@ -421,7 +425,11 @@ function tryGenerate(levelDef, seed) {
     props.push({ x: spot.wall.x, y: spot.wall.y, kind: 'secret', wallColor: levelDef.wall, wallTop: levelDef.wallTop,
       nicheTiles: spot.tiles, wallSide: spot.side });
     props.push({ x: spot.heal.x, y: spot.heal.y, kind: 'heal' });
-    props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
+    // Almost never a rack: a secret is the one place a bomb is worth hiding at all, since finding
+    // one is the whole of what makes it rare. `bombChance` against a niche that otherwise always
+    // held a rack is what keeps the count to what a level's own secrets already cap it at.
+    if (rng.chance(TUNING.secret.bombChance)) props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'bomb' });
+    else props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
     secretsPlaced++;
   }
 
@@ -711,6 +719,7 @@ function tryGenerate(levelDef, seed) {
     // dodging. It waits instead for the first room past the lesson that already holds a small crowd
     // — a dodge means nothing as a word on an empty floor — picked closest to the level's own middle
     // so it lands well into the run rather than right on the man who is still teaching the headbutt.
+    const firstArenaAt = levelDef.arenas && levelDef.arenas[0] ? levelDef.arenas[0].at : -1;
     const eligible = ordinaryRooms(levelDef, rooms.length)
       .filter((i) => i !== lessonIndex && i !== levelDef.vaultAt && i !== levelDef.ambushAt && !trapRooms.has(i))
       .map((i) => ({ i, men: ((plan.rooms.get(i) || {}).men || []).length }))
@@ -723,7 +732,12 @@ function tryGenerate(levelDef, seed) {
     if (rollCandidates.length) {
       const mid = (rooms.length - 1) / 2;
       rollCandidates.sort((a, b) => Math.abs(a.i - mid) - Math.abs(b.i - mid));
-      const r = rooms[rollCandidates[0].i];
+      // The room right outside a level's own first arena is where the dodge and the point-blank
+      // parry actually matter — whatever is on the far side of that door is the first real fight
+      // in the run — so it wins the pick over "closest to the middle" whenever it is itself a
+      // valid candidate at all.
+      const bossDoor = rollCandidates.find((c) => c.i === firstArenaAt - 1);
+      const r = rooms[(bossDoor || rollCandidates[0]).i];
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: 3 });
     }
   }

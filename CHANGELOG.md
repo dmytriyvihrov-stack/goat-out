@@ -5,6 +5,68 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.30 — a corner that stopped pretending to be a straight wall, and the bomb that was only ever talked about
+
+A look at what 1.29 shipped, three lines.
+
+The near-wall fix from 1.29 went too far: it widened the brick band on *every* tile the near face
+draws on, so a pillar or a boxed-in corner — a wall that is meant to read as a closed block, not a
+run — picked up the same deep coursing a plain stretch of wall now gets, which is what "you still
+did the walls wrong" was about. `nearFaceDepth` (`painted-art.js`) now checks the tile's own E/W
+bits first: widen only where the near face is the one thing exposed there, and fall back to the
+old, shallow `lip` the moment a corner is sharing the tile.
+
+The death screen's unopened rooms used to paint fully opaque, in the level's own near-black fog —
+since a corridor between two rooms is never hidden (unlike a room, which only opens once you have
+stood in or seen it), the practical result was corridor stubs floating in black gaps where the
+actual, larger rooms were, which is a second reading of "the map flew apart" 1.29 did not catch.
+`drawUnseen` dims to 0.6 alpha instead, but only when `game.state === 'dead'` — ordinary play is
+untouched, since the fog there is doing a real job and not just being looked at.
+
+And the rare pickable bomb — asked for on the 14th, described down to its falloff, never actually
+built — exists now. `kind === 'bomb'`: grabbed and thrown exactly like a crate, armed the moment it
+first leaves the goat's mouth rather than breaking on the first thing it hits, and going off
+wherever its fuse runs out with the same two-heart/one-heart falloff the goat's own headbutted-bomb
+charge already uses. It lives in a secret's own niche, in the slot a stand of arms would otherwise
+take, which is what keeps it to about one or two a level without a count of its own — and since it
+has no painted asset, it draws as a plain dark shell with a fuse that shortens and sparks faster as
+it runs out.
+
+## 1.29 — the death screen fit to the level rather than the world, and a door you can walk up to
+
+Eleven lines from a playtest, one burst.
+
+The death screen's level map used to fit itself to the world **buffer** (`lvl.W`/`H`, a fixed
+420×78 tiles regardless of the level) rather than to the rooms actually carved into it — a
+ten-room run barely dents that buffer, so it read as a huddle of disconnected rooms adrift in a
+lot of unexplained black. `onGoatDied` now fits the death camera to the bounding box of
+`lvl.rooms` instead, and the card names how many were killed alongside what was kept.
+
+A door could not be walked up to: `Prop.r` (29, tuned to cover its span across the two-tile gap
+it hangs in) was being used as a plain circle for the goat/enemy push-out as well, which stops
+anyone 29px from the door's *centre* in every direction — including straight at its 13px-thick
+face, a whole extra tile short of the actual slab. `collideEntities` finds the closest point on
+the door's real rectangle now (`TUNING.prop.door.thick`, new); the span it was already tuned to
+cover is untouched, and a fast body landing dead centre in the thin slab in one step gets the same
+axis-of-least-penetration rescue `world.js`'s wall collision already has.
+
+A room's near (bottom) wall read as a flat panel rather than brick: `PaintedArt.wallTile`'s near
+face tied its own visible depth to its own presence bit, capping it at the 40px junction lip meant
+for corners on *every* tile, straight run or not. It gets a much deeper face now when there is no
+corner to leave room for; a real corner still narrows exactly as before.
+
+Level one's secret walls wait until after the first arena now (`levelDef.secretsAfterBoss`) — a
+wall that gives was showing up before a run had any reason to go looking for one. The roll's own
+floor text prefers the room right outside a level's first arena, when that room qualifies, over
+"closest to the level's middle". A fourth choice, RELEASE THE SOUL, sits apart from the three boon
+cards for whenever none of them are worth the soul. `LEFT CLICK, HEADBUTT` is `LEFT CLICK -
+HEADBUTT` everywhere it is drawn, matching the hyphen the ambush room's lines already use. The
+skill rail's captions moved another 5px clear of the kill count under them.
+
+A report that the Mill lesson's nearer bearer ran past the wheel untouched was not reproduced —
+three fresh seeds, goat left standing at the room's own door, the `trapSense: 0` bearer took the
+arm and died every time. Left open in `BACKLOG.md` with what would narrow it down.
+
 ## 1.28 — a softer fourth level, a quieter cult, and a death screen that shows you the level
 
 Playtest feedback, six lines.
