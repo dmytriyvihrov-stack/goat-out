@@ -379,10 +379,15 @@ best run is a fast one with bodies in it rather than a slow one that cleared eve
 the sum of them, and BEST on the first screen keeps the best score and the best time for each level and
 the best whole run. NEW GAME wipes the run and never the board.
 
-**Sound.** A pad, a walking bass and a phrygian motif under synthesised ritual percussion that escalates
-with how many enemies are aware of you — the motif and the toms at three, the kick and the hats at
-seven, the whole kit past that — plus a metallic shaker whenever a Hunter has you. The motif only
-enters once somebody knows you are there. No audio assets at all.
+**Sound.** A pad and walking bass carry a quiet exploration bed and a simpler combat rhythm.
+The room adds short synthesised parts for small, ranged, large and mystical enemies, up to six
+voices per family, plus a fire rhythm within four tiles. Everything shares one 16-bar phrase;
+parts join on the beat and fade as the room changes. Each large enemy adds a bass pair. Levels 5+
+switch to a second harmony with separate idle and combat melodies. Standing coals tick once per bar;
+active fire adds crackles that linger for two bars, and nearby healing grass adds soft chimes.
+The original threat-driven ritual score,
+including the Hunter shaker, remains selectable in SETTINGS by switching LAYERED MUSIC off.
+No audio assets at all. `MUSIC.md` records both arrangements and how to extend the new one.
 
 **What you can see.** A room is dark until you walk into it and then it stays open for good; on top of
 that, what is standing behind a pillar, a stub wall or the corner of a room is dark until you step round

@@ -1557,6 +1557,29 @@ class Renderer {
     d.rects.push({ x, y, w, h, id });
   }
 
+  // One editable number, the same small box the BOONS tab always edited its params in — reused by
+  // the ENEMIES tab (and THE GOAT underneath it) so every dial in the tool looks and clicks the same
+  // way instead of each page inventing its own widget. `id` is what `Game.devAction` reads to know
+  // which TUNING leaf to write; returns the width drawn, for callers laying out several in a row.
+  numChip(d, x, y, label, value, id) {
+    const ctx = this.ctx, s = this.ts;
+    // Display only: a raw TUNING float (`CULT_PACE` multiplied through) prints as
+    // 190.344960000000001, which is unreadable and is never what anyone meant to type. The prompt
+    // this chip opens still reads the real value straight off TUNING, so nothing here can round away
+    // precision that matters — it only keeps the chip itself legible.
+    const shown = typeof value === 'number' && !Number.isInteger(value) ? Math.round(value * 100) / 100 : value;
+    const text = `${label} ${shown}`;
+    ctx.font = `700 ${8 * s}px ${FONT_SC}`;
+    const w = ctx.measureText(text).width + 10 * s;
+    ctx.fillStyle = 'rgba(185,135,58,0.22)'; ctx.fillRect(x, y, w, 16 * s);
+    ctx.strokeStyle = 'rgba(242,162,51,0.5)'; ctx.lineWidth = 1 * s; ctx.strokeRect(x, y, w, 16 * s);
+    ctx.fillStyle = PALETTE.fireHi; ctx.textAlign = 'center';
+    ctx.fillText(text, x + w / 2, y + 11.5 * s);
+    ctx.textAlign = 'left';
+    d.rects.push({ x, y, w, h: 16 * s, id });
+    return w;
+  }
+
   // Break a line on its spaces to fit a width, in whatever font is set.
   wrap(text, maxW) {
     const ctx = this.ctx, out = [];
@@ -1677,15 +1700,33 @@ class Renderer {
     ctx.fillText('DIFFICULTY', pad, top);
     this.devButton(d, pad + 74 * s, top - 12 * s, 66 * s, 17 * s, 'SEEDS ' + rep.seeds, 'bal-seeds', false);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText(this.clip('a bar is a room at its real width and place in the world · height is threat, the hollow top of it is open ground · click one to open it · ochre canon, pale mix, blood trap, violet set piece',
+    ctx.fillText(this.clip('a bar is a room at its real width and place in the world · height is threat · click one to open it',
       W - pad * 2 - 150 * s), pad + 150 * s, top);
-    let y = top + 16 * s;
+    const roleTint = { canon: PALETTE.ochre, mix: 'rgba(239,230,208,0.5)', trap: PALETTE.blood,
+      pen: PALETTE.ash, calm: PALETTE.ash };
+    // A colour legend, not just a sentence about one: `roleTint` (plus `PALETTE.witch`, the
+    // fallback for every set-piece role) is the same map the bars below are painted from, so this
+    // row can never say a colour the bars themselves do not use.
+    let ly = top + 15 * s;
+    ctx.font = `700 ${7.5 * s}px ${FONT_SC}`;
+    const legend = [['CANON', roleTint.canon], ['MIX', roleTint.mix], ['TRAP', roleTint.trap], ['SET PIECE', PALETTE.witch]];
+    let lx = pad;
+    legend.forEach(([label, color]) => {
+      ctx.fillStyle = color; ctx.fillRect(lx, ly - 7 * s, 8 * s, 8 * s);
+      ctx.fillStyle = 'rgba(239,230,208,0.65)'; ctx.fillText(label, lx + 11 * s, ly);
+      lx += 11 * s + ctx.measureText(label).width + 14 * s;
+    });
+    // The ground overlay is not a colour, it is an absence, so it gets its own small sample rather
+    // than a swatch: a short bar with the same dark cap knocked into its top that a real one gets.
+    ctx.fillStyle = roleTint.mix; ctx.fillRect(lx, ly - 7 * s, 8 * s, 8 * s);
+    ctx.fillStyle = 'rgba(9,7,10,0.62)'; ctx.fillRect(lx, ly - 7 * s, 8 * s, 3.5 * s);
+    ctx.fillStyle = 'rgba(239,230,208,0.65)';
+    ctx.fillText('HOLLOW TOP = OPEN GROUND (little to fight with)', lx + 11 * s, ly);
+    let y = top + 30 * s;
     const failH = 14 * s * (rep.fails.length + 1) + 32 * s;
     const rowH = Math.max(34 * s, (H - y - pad - failH) / rep.levels.length);
     const nameW = 150 * s, statW = 128 * s;
     const plotX = pad + nameW + statW, plotW = W - pad - plotX;
-    const roleTint = { canon: PALETTE.ochre, mix: 'rgba(239,230,208,0.5)', trap: PALETTE.blood,
-      pen: PALETTE.ash, calm: PALETTE.ash };
     const peak = Math.max(...rep.levels.map((l) => l.peak)) || 1;
     for (const lv of rep.levels) {
       const h = rowH - 4 * s;
@@ -1782,6 +1823,11 @@ class Renderer {
     ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
     ctx.fillText(page.live ? 'the level in play' : `a sample, seed ${page.seed}`, pad + 260 * s, y);
     this.devButton(d, W - pad - 70 * s, y - 13 * s, 70 * s, 18 * s, 'REROLL', 'rules-roll', false);
+    // Opening a level as a picture is most of what the page is for, but sometimes the picture raises
+    // a question only walking it answers. PLAY drops the goat straight into this level — this seed if
+    // it is the one in play, a fresh one otherwise, the same door LEVELS on the title screen uses — so
+    // inspecting a room and standing in it are one tool rather than two.
+    this.devButton(d, W - pad - 152 * s, y - 13 * s, 76 * s, 18 * s, 'PLAY LEVEL', 'rules-play', false);
     y += 16 * s;
     if (def.canon) {
       ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi;
@@ -1813,24 +1859,32 @@ class Renderer {
     ctx.font = `400 ${8.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
     for (const f of levelFacts(def)) { ctx.fillText(this.clip(f, full), pad, y); y += 11 * s; }
 
-    // What this level in particular is held to: only the rules that have something to say about it,
-    // as marks on one line, with whatever is broken spelled out under them. The whole list lives on
-    // the rules tab; this is the level's own answer to it.
+    // What this level in particular is held to: only the rules that have something to say about it —
+    // the whole matrix lives on the RULES tab, but the rules unique to one level (the sentry's room,
+    // the wheel's own lesson, a soul gate) are exactly the level's own scripted promises, and reading
+    // them off a column of dots there meant knowing the matrix by heart first. Named here instead, as
+    // chips carrying the rule's own id, so a level's scripted behaviour is legible on the level itself.
     y += 8 * s;
     const results = checkRules(L).filter((r) => r.ok !== null);
     const broken = results.filter((r) => r.ok === false);
     ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
     ctx.fillStyle = broken.length ? PALETTE.blood : PALETTE.fireHi;
     ctx.fillText(broken.length ? `${broken.length} OF ${results.length} RULES BROKEN HERE` : `ALL ${results.length} RULES THAT APPLY HOLD HERE`, pad, y);
-    let mx = pad + 215 * s;
+    y += 12 * s;
+    let cx2 = pad;
+    ctx.font = `700 ${7.6 * s}px ${FONT_SC}`;
     for (const r of results) {
+      const w = ctx.measureText(r.rule.id).width + 10 * s;
+      if (cx2 + w > pad + full) { cx2 = pad; y += 13 * s; }
+      ctx.fillStyle = r.ok ? 'rgba(133,209,151,0.16)' : 'rgba(192,57,43,0.22)';
+      ctx.fillRect(cx2, y - 9 * s, w, 12 * s);
       ctx.fillStyle = r.ok ? PALETTE.fireHi : PALETTE.blood;
-      ctx.beginPath(); ctx.arc(mx, y - 3 * s, 3.4 * s, 0, Math.PI * 2); ctx.fill();
-      mx += 10 * s;
+      ctx.fillText(r.rule.id, cx2 + 5 * s, y);
+      cx2 += w + 4 * s;
     }
     if (broken.length) {
       ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.blood;
-      y += 12 * s;
+      y += 15 * s;
       for (const r of broken.slice(0, 2)) { ctx.fillText(this.clip(`${r.rule.id}: ${r.why}`, full), pad + 10 * s, y); y += 11 * s; }
     }
 
@@ -1876,6 +1930,15 @@ class Renderer {
       ctx.font = `400 ${7 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)';
       const foot = r.cell && r.cell.intro ? 'meets ' + r.cell.intro : `${r.room.w}×${r.room.h}  ${r.name}`;
       ctx.fillText(this.clip(foot, cellW - 6 * s), cx + 3 * s, cy + cellH - 4 * s);
+      // A canon or mix room forced to one hand-authored template — the sentry's four tiles, the
+      // ambush corridor — reads as an ordinary room right up until you notice it never changes
+      // shape. `r.drawn` is false for exactly those, so the tag is off the same data the ROOMS page
+      // and BALANCE's hollow bars already read, not a second guess about which rooms are special.
+      if (!r.drawn && ORDINARY.has(r.role)) {
+        ctx.font = `700 ${6.4 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi; ctx.textAlign = 'right';
+        ctx.fillText('SCRIPTED', cx + cellW - 3 * s, cy + cellH - 4 * s);
+        ctx.textAlign = 'left';
+      }
       d.rects.push({ x: cx, y: cy, w: cellW, h: cellH, id: `room=${li},${i}` });
     });
   }
@@ -1883,9 +1946,16 @@ class Renderer {
   // THE BESTIARY: every kind that can stand in front of the goat, read live off TUNING so the page
   // cannot say something the game does not. The portrait in each row is not a separate drawing —
   // it is `drawEnemy` itself, called against a stand-in enemy object the way the game calls it
-  // against a real one every frame, so a change to a sprite shows up here for free.
+  // against a real one every frame, so a change to a sprite shows up here for free. `edit` on a
+  // KINDS entry is every real knob `apply`/`update` actually reads for that kind, each an
+  // `[LABEL, [path...]]` pair into TUNING; it is drawn with the same `numChip` BOONS edits its own
+  // params in and clicking one goes through `enemy-edit=` in `Game.devAction`, which is nothing more
+  // than `persistTuningEdit` under a different root — one editor, one write-through, for every dial
+  // in the tool. A stat with no real field behind it (a bearer's own hp, defaulted to 1 in `Enemy`
+  // rather than written anywhere) is left as plain text: showing a knob that turns nothing would be
+  // lying about what the number does, same as BOONS never lists a param `apply` does not read.
   drawEnemiesTab(game, pad, top) {
-    const ctx = this.ctx, s = this.ts, W = this.w, H = this.h;
+    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
     const cycle = (tag, cfg) => tag === 'hunter' ? cfg.aimTime + cfg.reload
       : tag === 'seer' ? cfg.castWind + cfg.castCooldown
       : tag === 'wraith' ? TUNING.wraith.manifest + TUNING.wraith.solidAfter + TUNING.wraith.fadeCd
@@ -1893,77 +1963,104 @@ class Renderer {
     const levelsFor = (tag) => LEVELS.map((lv, i) => (lv.encounters.kinds.includes(tag)
       || (lv.encounters.introduce || []).some(([k]) => k === tag)
       || (lv.arenas || []).some((a) => a.boss === tag)) ? i + 1 : 0).filter(Boolean);
+    const melee = (key) => [['SPEED', [key, 'speed']], ['DMG', [key, 'damage']],
+      ['WINDUP', [key, 'windup']], ['SWING', [key, 'swing']], ['RECOVER', [key, 'recover']]];
     const KINDS = [
       { kind: 'bearer', tag: 'bearer', label: 'CLUBMAN', cfg: TUNING.bearer, hp: TUNING.bearer.hp || 1,
+        edit: melee('bearer'),
         note: 'Cone plus line of sight. Reads you, winds up, swings once. The wall behind you kills, not his club.' },
       { kind: 'bearer', tag: 'champion', champion: true, label: 'BRUTE',
         cfg: Object.assign({}, TUNING.bearer, { hp: TUNING.champion.hp }), hp: TUNING.champion.hp, boss: TUNING.champion.bossHp,
+        edit: [...melee('bearer'), ['HP', ['champion', 'hp']], ['BOSS HP', ['champion', 'bossHp']]],
         note: 'A clubman built twice over: three hits before he stays down, four as an arena boss. Bigger and slower to match.' },
       { kind: 'butcher', tag: 'butcher', label: 'BUTCHER', cfg: TUNING.butcher, hp: TUNING.butcher.hp,
+        edit: [...melee('butcher'), ['HP', ['butcher', 'hp']], ['CHARGE AT', ['butcher', 'chargeMin']], ['CHARGE SPD', ['butcher', 'chargeSpeed']]],
         note: `Two hits. Charges after ${TUNING.butcher.chargeMin}s of chasing, bulldozes doors and tables, blunders but keeps swinging on fire.` },
       { kind: 'dog', tag: 'dog', label: 'HOUND', cfg: TUNING.dog, hp: TUNING.dog.hp || 1,
+        edit: [...melee('dog'), ['DODGE', ['dog', 'dodge']]],
         note: `Never holds still. Dodges ${Math.round(TUNING.dog.dodge * 100)}% of headbutts, darts in from orbit, one at a time per pack. No grab, no bark.` },
       { kind: 'seer', tag: 'seer', label: 'SEER', cfg: TUNING.seer, hp: TUNING.seer.hp,
+        edit: [['SPEED', ['seer', 'speed']], ['DMG', ['seer', 'damage']], ['HP', ['seer', 'hp']],
+          ['CAST', ['seer', 'castWind']], ['CAST CD', ['seer', 'castCooldown']], ['BLINK CD', ['seer', 'blinkCooldown']]],
         note: 'Never closes. Blinks away when you get near, paints a rune under himself, near-perfect trap sense.' },
       { kind: 'hunter', tag: 'hunter', label: 'HUNTER', cfg: TUNING.hunter, hp: TUNING.hunter.hp || 1,
+        edit: [['SPEED', ['hunter', 'speed']], ['DMG', ['hunter', 'damage']],
+          ['AIM', ['hunter', 'aimTime']], ['RELOAD', ['hunter', 'reload']]],
         note: `Keeps ${TUNING.hunter.keepMin}-${TUNING.hunter.keepMax} tiles off, fires on a reload timer. Empties a fixed mag once grabbed, never reloads again.` },
       { kind: 'wraith', tag: 'wraith', label: 'WRAITH', cfg: TUNING.wraith, hp: TUNING.wraith.hp,
+        edit: [['SPEED', ['wraith', 'speed']], ['DMG', ['wraith', 'damage']], ['HP', ['wraith', 'hp']],
+          ['WINDUP', ['wraith', 'windup']], ['MANIFEST', ['wraith', 'manifest']], ['SOLID', ['wraith', 'solidAfter']], ['FADE', ['wraith', 'fadeCd']]],
         note: 'No body, no collision, until it commits. Drifts to your flank or back, manifests, swings once, fades. Dies only in that window.' },
     ];
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE BESTIARY', pad, top);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText('every kind, read live off TUNING · the portrait is the same drawEnemy call the game itself uses', pad + 120 * s, top);
+    ctx.fillText('read and edited live off TUNING · the portrait is the same drawEnemy call the game itself uses · click a number to change it', pad + 120 * s, top);
 
-    const rowH = Math.min(58 * s, Math.max(34 * s, (H - top - 24 * s - 78 * s - pad) / KINDS.length));
-    const thumb = rowH - 6 * s;
-    const nameX = pad + thumb + 12 * s, levelsX = nameX + 128 * s, speedX = levelsX + 96 * s,
-      hpX = speedX + 60 * s, dmgX = hpX + 70 * s, cycX = dmgX + 50 * s, noteX = cycX + 60 * s;
+    const rowH = Math.min(84 * s, Math.max(58 * s, (H - top - 24 * s - 150 * s - pad) / KINDS.length));
+    const thumb = Math.min(rowH - 6 * s, 52 * s);
+    const nameX = pad + thumb + 12 * s, statsX = nameX + 150 * s, statsW = 230 * s, noteX = statsX + statsW + 12 * s;
     let y = top + 18 * s;
     ctx.font = `700 ${7.5 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
-    [[nameX, 'KIND'], [levelsX, 'LEVELS'], [speedX, 'SPEED'], [hpX, 'HP'], [dmgX, 'DMG'], [cycX, 'CYCLE'], [noteX, 'BEHAVIOUR']]
-      .forEach(([cx, label]) => ctx.fillText(label, cx, y));
+    [[nameX, 'KIND'], [statsX, 'STATS'], [noteX, 'BEHAVIOUR']].forEach(([cx, label]) => ctx.fillText(label, cx, y));
     y += 10 * s;
     KINDS.forEach((k, i) => {
       const ry = y + i * rowH;
       if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, ry, W - pad * 2 + 8 * s, rowH); }
-      const fake = { x: pad + thumb / 2, y: ry + rowH / 2, r: k.cfg.radius, kind: k.kind,
+      const fake = { x: pad + thumb / 2, y: ry + thumb / 2 + 6 * s, r: k.cfg.radius, kind: k.kind,
         champion: !!k.champion, elite: !!k.champion, facing: Math.PI / 2, hp: k.hp, maxHp: k.hp,
         dead: false, ghosted: false, vx: 0, vy: 0, flash: 0, burning: 0, bombFuse: 0, dazed: 0,
         state: 'idle', say: null, soul: false, witchBurn: false };
       ctx.save(); this.drawEnemy(fake, game); ctx.restore();
       ctx.textAlign = 'left';
       ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-      ctx.fillText(k.label, nameX, ry + rowH / 2 - 3 * s);
+      ctx.fillText(k.label, nameX, ry + 12 * s);
       ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-      ctx.fillText('threat ' + THREAT[k.tag], nameX, ry + rowH / 2 + 9 * s);
-      ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
       const lv = levelsFor(k.tag);
-      ctx.fillText(lv.length ? lv.join(',') : '-', levelsX, ry + rowH / 2 + 3 * s);
-      ctx.fillText(String(Math.round(k.cfg.speed)), speedX, ry + rowH / 2 + 3 * s);
-      ctx.fillText(k.boss ? `${k.hp} (boss ${k.boss})` : String(k.hp), hpX, ry + rowH / 2 + 3 * s);
-      ctx.fillText(String(k.cfg.damage || 1), dmgX, ry + rowH / 2 + 3 * s);
-      ctx.fillText(cycle(k.tag, k.cfg).toFixed(2) + 's', cycX, ry + rowH / 2 + 3 * s);
+      ctx.fillText(`threat ${THREAT[k.tag]} · levels ${lv.length ? lv.join(',') : '-'}`, nameX, ry + 24 * s);
+      ctx.fillStyle = 'rgba(239,230,208,0.35)';
+      ctx.fillText(`cycle ${cycle(k.tag, k.cfg).toFixed(2)}s`, nameX, ry + 35 * s);
+      // Every real knob for this kind, as chips wrapped into the stats column — the same box and the
+      // same click BOONS already uses, so the bestiary is not a second kind of editor.
+      let px = statsX, py = ry + 2 * s;
+      for (const [label, path] of k.edit) {
+        let obj = TUNING; for (let j = 0; j < path.length - 1; j++) obj = obj[path[j]];
+        const val = obj[path[path.length - 1]];
+        ctx.font = `700 ${8 * s}px ${FONT_SC}`;
+        const w = ctx.measureText(`${label} ${val}`).width + 10 * s;
+        if (px + w > statsX + statsW) { px = statsX; py += 19 * s; }
+        this.numChip(d, px, py, label, val, `enemy-edit=${path.join('.')}`);
+        px += w + 5 * s;
+      }
       ctx.fillStyle = 'rgba(239,230,208,0.62)'; ctx.font = `400 ${7.8 * s}px ${FONT}`;
-      const lines = this.wrap(k.note, W - pad - noteX - 6 * s).slice(0, 3);
-      const noteTop = ry + rowH / 2 - (lines.length - 1) * 5 * s;
-      lines.forEach((l, li) => ctx.fillText(l, noteX, noteTop + li * 10 * s));
+      const lines = this.wrap(k.note, W - pad - noteX - 6 * s).slice(0, 4);
+      lines.forEach((l, li) => ctx.fillText(l, noteX, ry + 12 * s + li * 10 * s));
     });
 
-    // THE GOAT, underneath: the numbers everything above is measured against.
-    const gy = y + KINDS.length * rowH + 16 * s;
+    // THE GOAT, underneath: the numbers everything above is measured against, and just as editable —
+    // every chip here is a real path into `TUNING.goat`, so a change lands exactly where the goat's
+    // own `update` reads it from.
+    const gy = y + KINDS.length * rowH + 18 * s;
     ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
     ctx.fillText('THE GOAT', pad, gy);
-    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
-    const G = TUNING.goat;
-    const facts = [
-      `speed ${Math.round(G.speed)}px/s · hp ${G.hp} · run-up ×${(1 + G.momentum.max).toFixed(2)} after ${G.momentum.time}s flat out`,
-      `headbutt: reach ${(G.headbutt.reach / TILE).toFixed(2)} tiles, recovery ${G.headbutt.recovery}s`,
-      `grab: hold ${G.grab.holdTime}±${G.grab.holdVary}s, cooldown ${G.grab.cooldown}s`,
-      `roll: ${G.roll.duration}s at ${Math.round(G.roll.speed)}px/s, ${G.roll.invuln}s invulnerable, cooldown ${G.roll.cooldown}s`,
-      `scream: stun radius ${G.scream.radius} tiles, call ${G.scream.call} tiles, cooldown ${G.scream.cooldown}s`,
+    const goatEdit = [
+      ['SPEED', ['goat', 'speed']], ['HP', ['goat', 'hp']],
+      ['RUN-UP MAX', ['goat', 'momentum', 'max']], ['RUN-UP AFTER', ['goat', 'momentum', 'time']],
+      ['BUTT WINDUP', ['goat', 'headbutt', 'windup']], ['BUTT RECOVER', ['goat', 'headbutt', 'recovery']],
+      ['GRAB HOLD', ['goat', 'grab', 'holdTime']], ['GRAB CD', ['goat', 'grab', 'cooldown']],
+      ['ROLL TIME', ['goat', 'roll', 'duration']], ['ROLL CD', ['goat', 'roll', 'cooldown']],
+      ['SCREAM CD', ['goat', 'scream', 'cooldown']],
     ];
-    facts.forEach((f, i) => ctx.fillText(f, pad, gy + 14 * s + i * 11 * s));
+    let gx = pad, gyy = gy + 8 * s;
+    for (const [label, path] of goatEdit) {
+      let obj = TUNING; for (let j = 0; j < path.length - 1; j++) obj = obj[path[j]];
+      const val = obj[path[path.length - 1]];
+      ctx.font = `700 ${8 * s}px ${FONT_SC}`;
+      const w = ctx.measureText(`${label} ${val}`).width + 10 * s;
+      if (gx + w > W - pad) { gx = pad; gyy += 19 * s; }
+      this.numChip(d, gx, gyy, label, val, `enemy-edit=${path.join('.')}`);
+      gx += w + 5 * s;
+    }
   }
 
   // THE UPGRADES: every boon in BOONS, off the same table the game deals cards from. Click a number
@@ -2016,16 +2113,10 @@ class Renderer {
         ctx.fillText('(flag only, nothing numeric to turn)', paramsX, ry + rowH / 2 + 3 * s);
       }
       entries.forEach(([key, val]) => {
-        const label = `${key} ${val}`;
         ctx.font = `700 ${8 * s}px ${FONT_SC}`;
-        const w = ctx.measureText(label).width + 10 * s;
+        const w = ctx.measureText(`${key} ${val}`).width + 10 * s;
         if (px + w > W - pad) { px = paramsX; py += 20 * s; }
-        ctx.fillStyle = 'rgba(185,135,58,0.22)'; ctx.fillRect(px, py, w, 16 * s);
-        ctx.strokeStyle = 'rgba(242,162,51,0.5)'; ctx.lineWidth = 1 * s; ctx.strokeRect(px, py, w, 16 * s);
-        ctx.fillStyle = PALETTE.fireHi; ctx.textAlign = 'center';
-        ctx.fillText(label, px + w / 2, py + 11.5 * s);
-        ctx.textAlign = 'left';
-        d.rects.push({ x: px, y: py, w, h: 16 * s, id: `boon-edit=${b.id}.params.${key}` });
+        this.numChip(d, px, py, key, val, `boon-edit=${b.id}.params.${key}`);
         px += w + 6 * s;
       });
     });
@@ -2034,57 +2125,64 @@ class Renderer {
   // THE FIXTURES: every kind of Prop that stands in a room, read live off TUNING the way the
   // bestiary reads enemies. The thumbnail is a real `Prop`, drawn with the game's own `drawProp` —
   // a brazier or a stand of arms shown here is the same call the game makes against it, so a change
-  // to a sprite shows up here for free. The note column is where the request behind this tab lives:
-  // not just what a thing is, but what it does to or with something else — fire, a throw, a body.
+  // to a sprite shows up here for free. `hits` on an entry is every way something in the game meets
+  // this prop — a headbutt, something thrown at it, fire, a body arriving — as badges rather than
+  // buried in the prose: the note still says what happens, the badges say who can make it happen.
   drawPropsTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, W = this.w, H = this.h, P = TUNING.prop;
     const FIXTURES = [
-      { kind: 'brazier', label: 'BRAZIER', make: (x, y) => new Prop(x, y, 'brazier'),
+      { kind: 'brazier', label: 'BRAZIER', make: (x, y) => new Prop(x, y, 'brazier'), hits: ['HEADBUTT', 'BODY', 'THROWN', 'FIRE'],
         stats: `spill ${P.brazier.spill} tiles, alight ${P.brazier.spillTime}s, refills in ${P.brazier.spillCd}s`,
         note: 'A headbutt, or a body arriving fast enough, knocks a pool of coals out its far side. A crate or a weapon that reaches it goes up too, and a man already burning lights the next one he touches once KINDLING is taken.' },
-      { kind: 'lamp', label: 'LAMP POST', make: (x, y) => new Prop(x, y, 'lamp'),
+      { kind: 'lamp', label: 'LAMP POST', make: (x, y) => new Prop(x, y, 'lamp'), hits: ['BODY', 'FIRE'],
         stats: `topples above ${Math.round(P.lamp.knock)}px/s of impact, pours oil ${P.lamp.poolRadius} tiles across`,
         note: 'Not a pillar — a fast body (flung, charging, or falling past it) knocks it over, and it pours a burning pool of oil where it lands. The only way to start a fire in a room with no brazier in it.' },
-      { kind: 'crate', label: 'CRATE', make: (x, y) => new Prop(x, y, 'crate'),
+      { kind: 'crate', label: 'CRATE', make: (x, y) => new Prop(x, y, 'crate'), hits: ['HEADBUTT', 'THROWN', 'FIRE'],
         stats: `floors for ${P.crate.stun}s on a hit, bursts for ${P.crate.burstTime}s if thrown through flame`,
         note: 'The one thing on the floor you pick up and throw. Breaks on a door, table, gong or man; a burning tile makes it burst into a wider, longer fire instead of just breaking. Carried, it blocks one club for free, then it is gone.' },
-      { kind: 'weapon', label: 'STAND OF ARMS', make: (x, y) => new Prop(x, y, 'weapon', { weapon: 'sword' }),
+      { kind: 'weapon', label: 'STAND OF ARMS', make: (x, y) => new Prop(x, y, 'weapon', { weapon: 'sword' }), hits: ['HEADBUTT', 'THROWN', 'BODY'],
         stats: `sword: one throw, kills+sticks · shield: ${P.weapon.uses.shield} men or bullets before it snaps`,
         note: 'Grab it, carry it, let go or press headbutt to throw it — there is no separate swing for a blade the goat cannot wield in his teeth. A sword goes through the first man it finds; a shield knocks a row flat and turns bullets while carried, and a man who swings into it eats the parry.' },
-      { kind: 'table', label: 'TABLE', make: (x, y) => new Prop(x, y, 'table'),
+      { kind: 'table', label: 'TABLE', make: (x, y) => new Prop(x, y, 'table'), hits: ['HEADBUTT', 'BODY'],
         stats: `pushes at ${Math.round(P.table.pushSpeed)}px/s, kills above ${Math.round(P.table.killSpeed)}px/s`,
         note: 'Shoved or charged, it stops anything smaller and turns bullets. Above killSpeed — mostly a Butcher’s charge — it kills whoever it hits and can take a door off its hinges on the way through.' },
-      { kind: 'door', label: 'DOOR', make: (x, y) => new Prop(x, y, 'door', { iron: true }),
+      { kind: 'door', label: 'DOOR', make: (x, y) => new Prop(x, y, 'door', { iron: true }), hits: ['HEADBUTT', 'BODY'],
         stats: `plank 1 hit · iron ${P.door.ironHits} · vault ${P.door.vaultHits} · stairs ${P.door.stairHits} · clock shuts in ${P.door.clockFor}s`,
         note: 'Iron refuses to be shouldered open: it is broken or it stays shut, so every blow on one is noise with whatever heard the first already coming. A table above killSpeed, or a Butcher’s charge, smashes through instead of counting blows.' },
-      { kind: 'mill', label: 'THE MILL', make: (x, y) => new Prop(x, y, 'mill'),
+      { kind: 'mill', label: 'THE MILL', make: (x, y) => new Prop(x, y, 'mill'), hits: ['BODY'],
         stats: `arm ${(TUNING.mill.armLen / TILE).toFixed(1)} tiles, ${TUNING.mill.damage} dmg, ${TUNING.mill.hitCooldown}s between passes`,
         note: 'A sweeping arm that does not care whose side you are on. Trap sense is what lets a man dodge it or ride it into a wall — it only ever knocks down, so what it kills against is whatever the room put behind him.' },
-      { kind: 'spike', label: 'SPIKE GRATE', make: (x, y) => new Prop(x, y, 'spike'),
+      { kind: 'spike', label: 'SPIKE GRATE', make: (x, y) => new Prop(x, y, 'spike'), hits: ['BODY'],
         stats: `arms ${P.spike.arm}s after a step, up ${P.spike.up}s, laid ${P.spike.run[0]}–${P.spike.run[1]} tiles at a time`,
         note: 'Floor, not furniture: crossing a plate arms it and the teeth come up a beat later, behind whoever tripped it. Anything alive trips one but a wraith in mist; trap sense is what lets a man in a crowd walk round it instead.' },
-      { kind: 'secret', label: 'SECRET WALL', make: (x, y) => new Prop(x, y, 'secret'),
+      { kind: 'secret', label: 'SECRET WALL', make: (x, y) => new Prop(x, y, 'secret'), hits: ['HEADBUTT'],
         stats: `${P.secret.hits} hits to open, the niche behind it stays lit after`,
         note: 'Ordinary wall until the second blow: blocks sight and bullets like stone right up to the crack. Behind it is always the same pair — a patch of milk and a stand of arms — never a room or a corridor.' },
-      { kind: 'heal', label: 'HEAL PATCH', make: (x, y) => new Prop(x, y, 'heal'),
+      { kind: 'heal', label: 'HEAL PATCH', make: (x, y) => new Prop(x, y, 'heal'), hits: ['BODY'],
         stats: `graze ${P.heal.grazeTime}s under ${P.heal.grazeSpeed}px/s for +1 heart`,
         note: 'Grazed, not grabbed: hold still (or nearly) inside it and it pays out once. Running through it on the way past does nothing — the point is that it costs a beat of standing in the open.' },
-      { kind: 'bell', label: 'BELL', make: (x, y) => new Prop(x, y, 'bell'),
+      { kind: 'bell', label: 'BELL', make: (x, y) => new Prop(x, y, 'bell'), hits: ['HEADBUTT', 'BODY'],
         stats: `${P.bell.buff}s of ×${P.bell.speedMul} speed, ×${P.bell.cooldownMul} faster cooldowns`,
         note: 'Rung, it buys a stretch of speed and quick hands for a noise the whole floor hears at once. A terrible trade in an empty room; the best one you get in a full one.' },
-      { kind: 'coop', label: 'COOP & HEN', make: (x, y) => new Prop(x, y, 'coop'),
+      { kind: 'coop', label: 'COOP & HEN', make: (x, y) => new Prop(x, y, 'coop'), hits: ['HEADBUTT', 'BODY'],
         stats: `${P.coop.hits} hit to open · kicked at ${Math.round(P.chicken.launchSpeed)}px/s · kills once`,
         note: 'The one thing in the compound on your side. Loose, she walks with you; kicked — a headbutt, not a throw, so no seventh button — she homes onto whoever she was aimed at and kills on contact, then comes apart. A miss only costs the walk back to her.' },
-      { kind: 'cage', label: 'THE PEN', make: (x, y) => new Prop(x, y, 'cage'),
+      { kind: 'cage', label: 'THE PEN', make: (x, y) => new Prop(x, y, 'cage'), hits: ['HEADBUTT'],
         stats: `${P.cage.hits} hits the first time a browser ever does it, ${P.cage.againHits} every time after`,
         note: 'The one object that is a lesson rather than a fixture: what it costs the first time is remembered (`penBroken`), so a run that has already learned the verb only pays the toll.' },
     ];
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE FIXTURES', pad, top);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText('every prop kind, read live off TUNING · properties, then what it does with fire, a throw or a body', pad + 140 * s, top);
+    ctx.fillText('every prop kind, read live off TUNING · badges are what can reach it, the note is what happens when it does', pad + 140 * s, top);
 
-    const rowH = Math.max(30 * s, (H - top - 24 * s - pad) / FIXTURES.length);
+    const hitTint = {
+      HEADBUTT: { fg: PALETTE.ochre, bg: 'rgba(185,135,58,0.2)' },
+      THROWN: { fg: PALETTE.fireHi, bg: 'rgba(255,224,138,0.18)' },
+      FIRE: { fg: PALETTE.fire, bg: 'rgba(242,162,51,0.2)' },
+      BODY: { fg: PALETTE.blood, bg: 'rgba(192,57,43,0.2)' },
+    };
+    const rowH = Math.max(46 * s, (H - top - 24 * s - pad) / FIXTURES.length);
     const thumb = Math.min(rowH - 4 * s, 48 * s);
     const nameX = pad + thumb + 12 * s, noteX = nameX + 200 * s;
     let y = top + 16 * s;
@@ -2101,10 +2199,23 @@ class Renderer {
       ctx.restore();
       ctx.textAlign = 'left';
       ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-      ctx.fillText(f.label, nameX, ry + rowH / 2 - 3 * s);
+      ctx.fillText(f.label, nameX, ry + rowH / 2 - 12 * s);
+      // What can reach it: a small badge per interaction, coloured by kind so the same colour always
+      // means the same verb across every row — never a second guess about which prop does what.
+      let bx = nameX;
+      ctx.font = `700 ${6.2 * s}px ${FONT_SC}`;
+      for (const hit of f.hits) {
+        const tint = hitTint[hit];
+        const w = ctx.measureText(hit).width + 8 * s;
+        ctx.fillStyle = tint.bg; ctx.fillRect(bx, ry + rowH / 2 - 4 * s, w, 11 * s);
+        ctx.fillStyle = tint.fg; ctx.textAlign = 'center';
+        ctx.fillText(hit, bx + w / 2, ry + rowH / 2 + 4 * s);
+        ctx.textAlign = 'left';
+        bx += w + 3 * s;
+      }
       ctx.font = `400 ${7.6 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
       const statLines = this.wrap(f.stats, noteX - nameX - 8 * s).slice(0, 3);
-      statLines.forEach((l, li) => ctx.fillText(l, nameX, ry + rowH / 2 + 9 * s + li * 9 * s));
+      statLines.forEach((l, li) => ctx.fillText(l, nameX, ry + rowH / 2 + 16 * s + li * 9 * s));
       ctx.fillStyle = 'rgba(239,230,208,0.62)'; ctx.font = `400 ${7.8 * s}px ${FONT}`;
       const lines = this.wrap(f.note, W - pad - noteX - 6 * s).slice(0, 4);
       const noteTop = ry + rowH / 2 - (lines.length - 1) * 5 * s;
@@ -2154,7 +2265,7 @@ class Renderer {
     // How much of this room is a weapon, and whether the draw is the reason it is here at all.
     line(`open ground ${r.ground.toFixed(2)}, ${Math.round(r.ground * 100)}% of the floor has nothing solid within a step`,
       r.ground > 0.5 ? PALETTE.blood : 'rgba(239,230,208,0.6)', 9);
-    line(r.drawn ? 'the draw chose this shape, off the ground order' : 'forced: a set piece, a teaching room or a trap',
+    line(r.drawn ? 'the draw chose this shape, off the ground order' : 'scripted: a set piece, a teaching room or a trap',
       PALETTE.ash, 9);
     head(`MEN ${r.men.length}`);
     if (!r.spawns.length) line('nobody', PALETTE.ash);
@@ -2743,12 +2854,13 @@ class Renderer {
     const ctx = this.ctx, def = game.level.def;
     ctx.fillStyle = def.fog;
     // The death screen wants the opposite of what play does: a room nobody opened is still part of
-    // the level and the point of showing it is that it was there, so it is dimmed rather than
-    // painted out solid — a corridor between two rooms is never hidden at all (see CLAUDE.md), and
-    // an opaque fill here left every unopened room reading as a gap between corridor stubs instead
-    // of as a room. In play the same rectangle stays the flat wall it always was: the fog is there
-    // to keep a room unseen, not to be looked at.
-    ctx.globalAlpha = game.state === 'dead' ? 0.6 : 1;
+    // the level and the point of showing it is that it was there, so it is only lightly tinted
+    // rather than painted out solid — a corridor between two rooms is never hidden at all (see
+    // CLAUDE.md), and a heavy fill here left every unopened room unreadable next to the ones the run
+    // actually walked through, which is the opposite of what a recap of the level is for. In play
+    // the same rectangle stays the flat wall it always was: the fog is there to keep a room unseen,
+    // not to be looked at.
+    ctx.globalAlpha = game.state === 'dead' ? TUNING.deathCam.fogAlpha : 1;
     for (const r of game.level.rooms) {
       if (r.seen) continue;
       ctx.fillRect(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE);
@@ -3069,7 +3181,12 @@ class Renderer {
     // One line each, and the line says what the button does — not what it means. It is read while a
     // room is walking toward you, so it is a caption and not a paragraph.
     const rows = [
+      // Headbutt carries no cooldown ring — its recovery is the cost, per CLAUDE.md — but a cost
+      // with nothing to see was a button that looked free between swings. `recover` drains the same
+      // chip in the opposite direction, in fire rather than blood, since it is a vulnerability window
+      // and not a lockout: the button is simply not what threw it a moment ago.
       { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
+        recover: g.state === 'recover' && g.recoverMax > 0 ? clamp(g.timer / g.recoverMax, 0, 1) : 0,
         note: game.mods.bomb ? 'Ram him. Whoever you hit blows up a moment later.'
           : 'Ram him. It only knocks him down: walls, fire and other men do the killing.' },
       { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: 'RMB', cd: g.grabCd,
@@ -3099,9 +3216,11 @@ class Renderer {
       if (row.cd > 0 && row.max > 0) {
         const p = clamp(row.cd / row.max, 0, 1);
         ctx.fillStyle = 'rgba(192,57,43,0.32)'; ctx.fillRect(x, y + box * (1 - p), box, box * p);
+      } else if (row.recover > 0) {
+        ctx.fillStyle = 'rgba(242,162,51,0.38)'; ctx.fillRect(x, y + box * (1 - row.recover), box, box * row.recover);
       }
-      ctx.strokeStyle = row.cd > 0 ? 'rgba(192,57,43,0.8)' : hot ? 'rgba(242,162,51,0.85)'
-        : row.ready ? 'rgba(239,230,208,0.42)' : 'rgba(239,230,208,0.16)';
+      ctx.strokeStyle = row.cd > 0 ? 'rgba(192,57,43,0.8)' : row.recover > 0 ? 'rgba(242,162,51,0.85)'
+        : hot ? 'rgba(242,162,51,0.85)' : row.ready ? 'rgba(239,230,208,0.42)' : 'rgba(239,230,208,0.16)';
       ctx.lineWidth = 1.6 * s; ctx.strokeRect(x, y, box, box);
       ctx.save(); ctx.translate(x + box / 2, y + box / 2);
       ctx.globalAlpha = row.locked ? 0.2 : row.half ? 0.62 : row.cd > 0 ? 0.4 : row.ready ? 1 : 0.55;

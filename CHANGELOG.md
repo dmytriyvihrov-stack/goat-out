@@ -5,6 +5,28 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.31 — music made from the room, and a fire that was too eager to catch
+
+Follow-up after listening: each heavy now plays a two-hit bass signature, with a quieter eighth-note
+reply. Levels 1–4 retain the first bed; levels 5+ have a new progression and distinct idle/combat
+melodies, with the enemy voices following their harmony. Standing coals/lamps give one tick per bar;
+actual burning area adds denser crackles and keeps a two-bar memory after it disappears. Nearby
+healing grass adds soft harmonic chimes and a one-bar tail. Checks count the actual emitted notes
+for every enemy family at 1–6 enemies, so density changes are verified in the audible score.
+
+Exploration and combat keep the old harmonic bed, with a simpler combat rhythm making room for
+four additive enemy families: small, ranged, large and mystical. Each enemy enables another
+interlocking synth voice, capped at six per family; nearby fire adds one quiet texture. The parts
+share a 16-bar phrase, react on the beat and fade instead of restarting when the room changes.
+Dense rooms reduce layer gain to leave headroom for the original game sounds.
+
+The original arrangement is preserved as a working fallback: turn SETTINGS → LAYERED MUSIC off.
+The browser remembers the choice. `MUSIC.md` records the design, mappings and extension points;
+`tools/audio-check.js` and the optional browser check cover the new behaviour and fallback.
+
+`TUNING.fire.spread` — how long a burning tile sits before it catches the hay next to it — is 0.48s
+now rather than 0.4s, a fifth slower: a room catching alight read as too eager to finish itself off.
+
 ## 1.30 — a corner that stopped pretending to be a straight wall, and the bomb that was only ever talked about
 
 A look at what 1.29 shipped, three lines.

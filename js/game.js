@@ -11,12 +11,23 @@ const SET_KEY = 'goatout.settings.v1';
 // Whether this browser has ever got out of the pen. Seven blows and two falls is the hardest thing
 // the goat does all run and it is worth doing once; every run after it opens on the second blow.
 const PEN_KEY = 'goatout.pen.v1';
-// The pointer, drawn as the animal rather than as a plain OS crosshair. `encodeURIComponent` rather
-// than hand-escaping the quotes and the emoji's own bytes, since a cursor string that is wrong is
+// The pointer, drawn as the animal rather than as a plain OS crosshair. It used to be the 🐐 emoji
+// glyph, which every OS draws facing its own way (several draw it left, aiming nowhere near where a
+// click actually lands) and which is a whole standing goat when the one part of him that matters to
+// aim is the head — headbutt is the verb the cursor exists to aim. It is a drawn head now, in the
+// game's own palette, muzzle forward on the aim direction, and the hotspot sits on the muzzle tip
+// rather than the glyph's own centre so the point that "hits" is the point that clicks.
+// `encodeURIComponent` rather than hand-escaping the quotes, since a cursor string that is wrong is
 // silently wrong — the browser just falls back to `crosshair` with nothing in the console about it.
 const CURSOR_GOAT = `url("data:image/svg+xml,${encodeURIComponent(
-  "<svg xmlns='http://www.w3.org/2000/svg' width='34' height='34'><text x='17' y='26' font-size='26' text-anchor='middle'>🐐</text></svg>"
-)}") 17 17, crosshair`;
+  "<svg xmlns='http://www.w3.org/2000/svg' width='34' height='34'>"
+  + "<path d='M8,19 Q5,13 10,11 Q12,7 16,9.5 Q18,5.5 22,8.5 Q20,12 21,14.5' fill='none' stroke='#b9873a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/>"
+  + "<ellipse cx='14.5' cy='19' rx='7.6' ry='6.2' fill='#efe6d0' stroke='#1a1016' stroke-width='1.3'/>"
+  + "<ellipse cx='22.5' cy='19.5' rx='3.4' ry='3' fill='#efe6d0' stroke='#1a1016' stroke-width='1.3'/>"
+  + "<circle cx='18.5' cy='16.5' r='1.2' fill='#1a1016'/>"
+  + "<path d='M13,25 L12,29 L15,25.5 Z' fill='#b9873a'/>"
+  + "</svg>"
+)}") 25 20, crosshair`;
 class Game {
   constructor(canvas) {
     this.canvas = canvas; this.renderer = new Renderer(canvas); this.audio = new GameAudio();
@@ -75,6 +86,7 @@ class Game {
     try { this.introSeen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { /* storage refused */ }
     try { this.penBroken = localStorage.getItem(PEN_KEY) === '1'; } catch (e) { /* storage refused */ }
     this.settings = this.loadSettings();
+    this.audio.setLayered(this.settings.layeredMusic);
     if (!this.settings.sound) this.audio.toggleMute();
     // The tool has its own address: `#rules` and `#balance` open it on that tab at load, so the
     // page can be linked to and bookmarked rather than found through the drawer every time.
@@ -334,7 +346,7 @@ class Game {
   // default: a number counting up in the corner of a game about running is a game about the number,
   // and the run is timed either way — the card at the end of a level is where the time belongs.
   loadSettings() {
-    const d = { timer: false, sound: true, easy: false };
+    const d = { timer: false, sound: true, easy: false, layeredMusic: true };
     try { return Object.assign(d, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (err) { return d; }
   }
   saveSettings() {
@@ -343,6 +355,7 @@ class Game {
   toggleSetting(key) {
     this.settings[key] = !this.settings[key];
     if (key === 'sound' && this.audio.muted === this.settings.sound) this.audio.toggleMute();
+    if (key === 'layeredMusic') this.audio.setLayered(this.settings.layeredMusic);
     this.saveSettings(); this.audio.sfxSwing();
   }
 
@@ -445,6 +458,15 @@ class Game {
     if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) { this.dev.page = this.level ? this.levelIndex : 0; this.dev.room = null; } return; }
     if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); this.dev.room = null; return; }
     if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; this.dev.samples = {}; this.dev.matrix = null; this.dev.room = null; return; }
+    // PLAY LEVEL, on the LEVEL tab: close the tool and drop the goat into the level it is looking
+    // at, for real — walking it rather than only reading the plan. `startAtLevel` is the same door
+    // LEVELS on the title screen already opens (souls dealt out for the levels skipped), so this is
+    // not a second way into a level, only a second place to reach the first one from.
+    if (id === 'rules-play') {
+      this.dev.rules = false; this.dev.open = false;
+      this.startAtLevel(this.dev.page);
+      return;
+    }
     if (id.startsWith('tab-')) { this.dev.tab = id.slice(4); this.dev.room = null; return; }
     // The BOONS tab: click a number to change it. It takes effect at once (`applyBoons` re-reads
     // every `params` off the live BOONS entries) and is also asked to land in js/tuning.js itself,
@@ -464,6 +486,28 @@ class Game {
       if (isLevel) b.minLevel = value; else b.params[pathParts[1]] = value;
       this.applyBoons();
       this.persistTuningEdit({ root: 'BOONS', id: boonId, path: isLevel ? ['minLevel'] : ['params', pathParts[1]], value });
+      return;
+    }
+    // The ENEMIES tab (and THE GOAT underneath it): click a number to change it. `id` is a dotted
+    // path straight into TUNING — `bearer.speed`, `champion.bossHp`, `goat.headbutt.recovery` — since
+    // every kind and the goat himself are read live off TUNING already; there is nothing here to look
+    // up by id the way a BOONS entry or a LEVELS entry is, only a path to walk. Same write-through as
+    // a boon: takes effect at once, and `persistTuningEdit` best-effort lands it in tuning.js itself.
+    if (id.startsWith('enemy-edit=')) {
+      const path = id.slice('enemy-edit='.length).split('.');
+      let obj = TUNING;
+      for (let i = 0; i < path.length - 1; i++) obj = obj[path[i]];
+      const key = path[path.length - 1];
+      const current = obj[key];
+      // The default text in the prompt, rounded the same way the chip's own label is: a speed built
+      // off CULT_PACE prints as 190.344960000000001 raw, which nobody typed and nobody wants back.
+      const shown = typeof current === 'number' && !Number.isInteger(current) ? Math.round(current * 100) / 100 : current;
+      const raw = window.prompt(path.join('.'), String(shown));
+      if (raw === null) return;
+      const value = Number(raw);
+      if (!Number.isFinite(value)) return;
+      obj[key] = value;
+      this.persistTuningEdit({ root: 'TUNING', path, value });
       return;
     }
     // The LEVEL tab's HINT / THEME / DECOR lines: free text on a LEVELS entry, found by `name`
@@ -1282,6 +1326,7 @@ class Game {
     let n = 0;
     while (this.acc >= step && n < 5) { this.update(step); this.acc -= step; n++; }
     if (n === 5) this.acc = 0;
+    this.audio.updateScene(this, dtReal);
     this.renderer.configure(this.touch.active);
     this.layoutTouch();
     this.renderer.draw(this, dtReal);

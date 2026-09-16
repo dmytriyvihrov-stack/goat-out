@@ -7,11 +7,93 @@ const MUSIC = {
   scale: [0, 1, 3, 5, 7, 8, 10],                        // phrygian: the mode the cult sings in
   motif: [0, -1, -1, -1, 3, -1, -1, 2, -1, -1, 1, -1, 0, -1, -1, 4],
 };
+// The upper floors answer in G minor, with a separate quiet melody and combat reply.
+// The enemy voices follow this harmony too; the original/legacy score keeps MUSIC unchanged.
+const LATE_MUSIC = {
+  roots: [49.00, 43.65, 41.20, 49.00],
+  scale: [0, 2, 3, 5, 7, 8, 10],
+  idle: [4, -1, -1, -1, -1, -1, 2, -1, -1, -1, 0, -1, -1, -1, 2, -1],
+  combat: [0, -1, -1, 2, -1, -1, 4, -1, 3, -1, -1, 2, 0, -1, 4, -1],
+};
+
+// Six interlocking voices per family, on a single 16-bar / 256-sixteenth clock.
+// Families occupy different sixteenths of a beat; adding a man adds a voice, never a louder hit.
+// Four answers turn the two-bar seed into a phrase, without random notes fighting the harmony.
+const ROOM_MUSIC = {
+  bars: 16, stepsPerBar: 16,
+  slots: [0, 8, 20, 28, 4, 24], answers: [0, 8, 0, 16],
+  small: { phase: 2, octave: 8, notes: [0, 4, 2, 4, 0, 2], type: 'square', gain: 0.065, length: 0.46 },
+  ranged: { phase: 1, octave: 4, notes: [4, 0, 2, 4, 2, 0], type: 'triangle', gain: 0.13, length: 1.25 },
+  large: { phase: 0, octave: 1, notes: [0, 0, 4, 0, 4, 0], type: 'triangle', gain: 0.20, length: 1.75 },
+  mystical: { phase: 3, octave: 16, notes: [0, 4, 2, 0, 2, 4], type: 'sine', gain: 0.085, length: 3.0 },
+};
+const MUSIC_FAMILIES = ['small', 'ranged', 'large', 'mystical'];
+const emptyMusicScene = () => ({ small: 0, ranged: 0, large: 0, mystical: 0,
+  fire: false, blaze: 0, grass: 0, combat: false, late: false });
+
+function musicFamily(e) {
+  if (e.kind === 'wraith') return 'mystical';
+  if (e.kind === 'hunter' || e.kind === 'seer') return 'ranged';
+  if (e.kind === 'butcher' || e.champion) return 'large';
+  if (e.kind === 'bearer' || e.kind === 'dog') return 'small';
+  return null;
+}
+
+// Position, not spawn-room, follows men through doors. Mist counts too: a wraith must not
+// switch its instrument off and on every time it becomes intangible.
+function roomMusicScene(game) {
+  const scene = emptyMusicScene(), g = game.goat, L = TUNING.audio.layers;
+  scene.late = game.state !== 'title' && game.levelIndex + 1 >= L.lateFromLevel;
+  if (game.state !== 'play' || !g || g.dead || game.dev.rules) return scene;
+  const room = roomAt(game.level, g.x, g.y);
+  const near = (x, y, radius) => Math.hypot(x - g.x, y - g.y) <= radius;
+  let burning = g.onFire ? 1 : 0;
+  for (const e of game.enemies) {
+    if (e.dead) continue;
+    if (e.burning > 0 && near(e.x, e.y, L.fireRadius)) burning++;
+    const family = musicFamily(e);
+    if (!family) continue;
+    const inRoom = room && roomAt(game.level, e.x, e.y) === room;
+    const pursuing = e.aware && e.state !== 'idle' && near(e.x, e.y, L.pursuitRadius)
+      && game.sees(g.x, g.y, e.x, e.y);
+    if (!inRoom && !pursuing) continue;
+    scene[family] = Math.min(L.maxPerFamily, scene[family] + 1);
+    if (e.aware && e.state !== 'idle') scene.combat = true;
+  }
+  // Standing coals and lamps are fire as well as burning tiles and men. A tile's nearest edge
+  // defines the radius, so crossing its centre does not change whether a nearby flame counts.
+  for (const p of game.props) {
+    if (p.broken || p.dead) continue;
+    if ((p.kind === 'brazier' || p.kind === 'lamp') && near(p.x, p.y, L.fireRadius)) scene.fire = true;
+    if (p.kind === 'heal' && near(p.x, p.y, L.grassRadius)) scene.grass = Math.min(L.grassVoices, scene.grass + 1);
+  }
+  const w = game.world, r = L.fireRadius;
+  for (let y = Math.max(0, Math.ceil((g.y - r) / TILE) - 1); y <= Math.min(w.H - 1, Math.floor((g.y + r) / TILE)); y++) {
+    for (let x = Math.max(0, Math.ceil((g.x - r) / TILE) - 1); x <= Math.min(w.W - 1, Math.floor((g.x + r) / TILE)); x++) {
+      if (w.fire[y * w.W + x] <= 0) continue;
+      if (near(Math.max(x * TILE, Math.min(g.x, (x + 1) * TILE)),
+        Math.max(y * TILE, Math.min(g.y, (y + 1) * TILE)), r)) burning++;
+    }
+  }
+  scene.blaze = L.blazeThresholds.filter((n) => burning >= n).length;
+  scene.fire = scene.fire || burning > 0;
+  return scene;
+}
+
+function roomMusicHit(family, voice, step) {
+  const answer = ROOM_MUSIC.answers[Math.floor(step / 64) % 4];
+  return step % 32 === (ROOM_MUSIC.slots[voice] + ROOM_MUSIC[family].phase + answer) % 32;
+}
+
 class GameAudio {
   constructor() {
     this.ctx = null; this.muted = false;
     this.intensity = 0; this.hunterAware = false; this.droneUntil = 0;
     this.step = 0; this.nextTime = 0; this.bpm = 118;
+    this.layered = true; this.scene = emptyMusicScene(); this.sceneTimer = 0;
+    this.voices = Object.fromEntries(MUSIC_FAMILIES.map((k) => [k, ROOM_MUSIC.slots.map(() => 0)]));
+    this.combatMix = 0; this.fireMix = 0; this.blazeMix = 0; this.grassMix = 0; this.lateTheme = false;
+    this.resetAmbience();
   }
   init() {
     if (this.ctx) return;
@@ -23,6 +105,7 @@ class GameAudio {
     this.drumBus = this.ctx.createGain(); this.drumBus.gain.value = A.drums; this.drumBus.connect(this.master);
     this.sfxBus = this.ctx.createGain(); this.sfxBus.gain.value = A.sfx; this.sfxBus.connect(this.master);
     this.musicBus = this.ctx.createGain(); this.musicBus.gain.value = A.music; this.musicBus.connect(this.master);
+    this.layerBus = this.ctx.createGain(); this.layerBus.gain.value = A.layers.gain; this.layerBus.connect(this.musicBus);
     const len = this.ctx.sampleRate * 1.5;
     this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this.noiseBuf.getChannelData(0);
@@ -31,6 +114,30 @@ class GameAudio {
     setInterval(() => this.schedule(), 25);
   }
   resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+  setLayered(enabled) { this.layered = !!enabled; }
+  resetAmbience() {
+    this.ambience = { blaze: { value: 0, left: 0, pending: 0 }, grass: { value: 0, left: 0, pending: 0 } };
+  }
+  ambientLevel(key, current, holdSteps) {
+    const memory = this.ambience[key], value = Math.max(current, memory.pending);
+    memory.pending = 0;
+    if (value >= memory.value || memory.left <= 0) {
+      memory.value = value; memory.left = value > 0 ? holdSteps : 0;
+    } else memory.left--;
+    return memory.value;
+  }
+  updateScene(game, dt) {
+    this.sceneTimer -= dt;
+    if (game.state !== 'play' || !game.goat || game.goat.dead || game.dev.rules) {
+      this.scene = roomMusicScene(game); this.beatScene = { ...this.scene };
+      this.resetAmbience(); this.sceneTimer = 0; return;
+    }
+    if (this.sceneTimer > 0) return;
+    this.sceneTimer = TUNING.audio.layers.sampleSeconds;
+    this.scene = roomMusicScene(game);
+    // Remember a brief flare or a grazed patch even if it disappears before the next beat.
+    for (const key of ['blaze', 'grass']) this.ambience[key].pending = Math.max(this.ambience[key].pending, this.scene[key]);
+  }
   toggleMute() { this.muted = !this.muted; if (this.master) { this.master.gain.cancelScheduledValues(0); this.master.gain.value = this.muted ? 0 : TUNING.audio.master; } return this.muted; }
   // Everything sinks to `level` of full volume over `secs`: the world going away as the goat does.
   duck(level, secs) {
@@ -111,16 +218,112 @@ class GameAudio {
   }
 
   schedule() {
-    if (!this.ctx) return;
+    if (!this.ctx || this.ctx.state === 'suspended') return;
     const stepLen = 60 / this.bpm / 4;
+    // A background tab may miss minutes. Advance the clock instead of scheduling all those
+    // missed notes in the past, which would turn resuming the game into a single huge burst.
+    if (this.nextTime < this.ctx.currentTime) {
+      const missed = Math.ceil((this.ctx.currentTime - this.nextTime) / stepLen);
+      this.step = (this.step + missed) % (ROOM_MUSIC.bars * ROOM_MUSIC.stepsPerBar);
+      this.nextTime += missed * stepLen;
+    }
     while (this.nextTime < this.ctx.currentTime + 0.12) {
       this.playStep(this.step, this.nextTime, stepLen);
-      this.step = (this.step + 1) % 64;
+      this.step = (this.step + 1) % (ROOM_MUSIC.bars * ROOM_MUSIC.stepsPerBar);
       this.nextTime += stepLen;
     }
   }
   playStep(s, t, stepLen) {
+    if (this.layered) this.playLayeredStep(s, t, stepLen);
+    else if (!this.muted) this.playLegacyStep(s % 64, t, stepLen);
+  }
+  playLayeredStep(s, t, stepLen) {
+    const L = TUNING.audio.layers, beat = s % 16;
+    // Commit additions/removals on the beat, then ease their note envelopes. The shared clock
+    // never restarts on a kill, doorway or settings change.
+    if (s % 4 === 0) this.beatScene = { ...this.scene };
+    const scene = this.beatScene || this.scene, ease = 1 - Math.exp(-stepLen / L.fadeSeconds);
+    if (beat === 0) this.lateTheme = scene.late;
+    const theme = this.lateTheme ? LATE_MUSIC : MUSIC, root = theme.roots[(s >> 4) & 3];
+    const blaze = this.ambientLevel('blaze', scene.blaze, L.blazeTailBars * ROOM_MUSIC.stepsPerBar);
+    const grass = this.ambientLevel('grass', scene.grass, L.grassTailBars * ROOM_MUSIC.stepsPerBar);
+    this.combatMix += ((scene.combat ? 1 : 0) - this.combatMix) * ease;
+    this.fireMix += ((scene.fire || blaze > 0 ? 1 : 0) - this.fireMix) * ease;
+    this.blazeMix += (blaze - this.blazeMix) * ease;
+    this.grassMix += (grass - this.grassMix) * ease;
+    const combat = this.combatMix;
+    let density = 0;
+    for (const family of MUSIC_FAMILIES) {
+      this.voices[family].forEach((v, i, voices) => {
+        voices[i] = v + ((i < scene[family] ? 1 : 0) - v) * ease;
+        density += voices[i] * (family === 'large' ? 2 : 1);
+      });
+    }
+    // Silence does not freeze the ambient memory: an extinguished fire should not return
+    // when M is pressed again several bars later.
     if (this.muted) return;
+    // Keep the original harmonic bed; leave its bus and one-shot effects at their old levels.
+    if (this.lateTheme) this.playLateBed(s, t, stepLen, combat);
+    else this.playBed(s, t, stepLen, 0);
+    if (beat === 0 || beat === 8) this.kick(t, 0.20 + combat * 0.14);
+    if ((beat === 4 || beat === 12) && combat > 0.01) this.tomHi(t, 0.16 * combat);
+    const n = MUSIC.motif[beat];
+    if (!this.lateTheme && n >= 0 && beat % 4 === 0 && combat > 0.01) {
+      this.lead(t, root * 4 * Math.pow(2, MUSIC.scale[n] / 12), stepLen * 1.8, 0.045 * combat);
+    }
+    const headroom = 1 / Math.sqrt(Math.max(1, density / L.fullGainVoices));
+    for (const family of MUSIC_FAMILIES) {
+      const part = ROOM_MUSIC[family];
+      this.voices[family].forEach((v, i) => {
+        if (v < 0.005 || !roomMusicHit(family, i, s)) return;
+        const degree = part.notes[(i + Math.floor(s / 64)) % part.notes.length];
+        const f = root * part.octave * Math.pow(2, theme.scale[degree] / 12);
+        const gain = part.gain * v * headroom * (L.exploreMix + (1 - L.exploreMix) * combat);
+        this.tone(f, t, stepLen * part.length, { type: part.type,
+          gain,
+          bus: this.layerBus, attack: family === 'mystical' ? 0.06 : 0.004 });
+        // Every heavy has a low two-hit signature. The quieter eighth-note reply sits under
+        // the small enemies' high ticks; it never borrows another heavy's counted voice.
+        if (family === 'large') this.tone(f, t + stepLen * L.largeReplySteps, stepLen * part.length,
+          { type: part.type, gain: gain * L.largeReplyGain, bus: this.layerBus, attack: 0.004 });
+      });
+    }
+    // A lamp/coals gives one dry tick per bar. Burning area adds up to three answering pops,
+    // and a broad flame gets a little low rustle; no permanent hiss over the enemy rhythm.
+    if (this.fireMix > 0.005 && beat === 7) this.fireTick(t, L.fireGain * this.fireMix * headroom);
+    [11, 3, 15].forEach((slot, i) => {
+      const amount = Math.max(0, Math.min(1, this.blazeMix - i));
+      if (beat !== slot || amount < 0.005) return;
+      this.fireTick(t, L.fireGain * amount * headroom * 0.8);
+      if (i === 2) this.noise(t, stepLen * 1.8, { gain: L.fireGain * amount * headroom * 0.5, hp: 400, lp: 2400, bus: this.layerBus });
+    });
+    [6, 14, 10].forEach((slot, i) => {
+      const amount = Math.max(0, Math.min(1, this.grassMix - i));
+      if (beat !== slot || amount < 0.005) return;
+      const f = root * 8 * Math.pow(2, theme.scale[[4, 2, 0][i]] / 12);
+      this.tone(f, t, stepLen * 2.8, { type: 'sine', gain: L.grassGain * amount * headroom, bus: this.layerBus, attack: 0.025 });
+      this.tone(f * 2, t, stepLen * 1.1, { type: 'triangle', gain: L.grassGain * amount * headroom * 0.2, bus: this.layerBus, attack: 0.012 });
+    });
+  }
+  fireTick(t, gain) {
+    this.noise(t, 0.035, { gain, hp: 1200, lp: 5500, bus: this.layerBus });
+    this.noise(t + 0.025, 0.09, { gain: gain * 0.35, hp: 650, lp: 3000, bus: this.layerBus });
+  }
+  playLateBed(s, t, stepLen, combat) {
+    const beat = s % 16, root = LATE_MUSIC.roots[(s >> 4) & 3];
+    if (beat === 0) this.pad(t, root, stepLen * 16.4, 0.055);
+    if (beat === 0 || beat === 8) this.bass(t, root, stepLen * 3.2, 0.23);
+    if (beat === 12) this.bass(t, root * 1.5, stepLen * 2.2, 0.16);
+    for (const [motif, mix, gain] of [[LATE_MUSIC.idle, 1 - combat, 0.043], [LATE_MUSIC.combat, combat, 0.05]]) {
+      const degree = motif[beat];
+      if (degree < 0 || mix < 0.01) continue;
+      const f = root * 4 * Math.pow(2, LATE_MUSIC.scale[degree] / 12);
+      this.lead(t, f, stepLen * 2.4, gain * mix);
+    }
+  }
+  // Preserved original arrangement, including the threat tiers, hunter cue and bell drone.
+  // SETTINGS > LAYERED MUSIC off selects this; keep future room-score changes above it.
+  playLegacyStep(s, t, stepLen) {
     const lvl = this.intensity;
     const bar = s % 16;
     this.playBed(s, t, stepLen, lvl);

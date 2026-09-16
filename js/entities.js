@@ -5,7 +5,7 @@ class Goat {
     this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.r = g.radius;
     this.hp = g.hp; this.maxHp = g.hp; this.dead = false;   // overwritten by applyBoons on spawn
     this.aim = { x: 1, y: 0 }; this.facing = 0;
-    this.state = 'idle'; this.timer = 0; this.lungeId = 0;
+    this.state = 'idle'; this.timer = 0; this.lungeId = 0; this.recoverMax = 0;   // set fresh on every 'recover' entry; see render.js drawSkills
     this.holding = null; this.holdTimer = 0;
     this.screamCd = 0; this.screaming = 0; this.invuln = 0; this.fireTick = 0; this.onFire = false; this.witchFire = false;
     this.hoofTimer = 0; this.kind = 'goat';
@@ -150,7 +150,7 @@ class Goat {
     } else if (this.state === 'lunge') {
       this.timer -= dt;
       this.headbuttHits(game);
-      if (this.timer <= 0) { this.state = 'recover'; this.timer = g.headbutt.recovery * game.mods.headbuttRecovery; this.vx *= 0.35; this.vy *= 0.35; }
+      if (this.timer <= 0) { this.state = 'recover'; this.timer = this.recoverMax = g.headbutt.recovery * game.mods.headbuttRecovery; this.vx *= 0.35; this.vy *= 0.35; }
     } else if (this.state === 'recover') {
       this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
     }
@@ -249,7 +249,7 @@ class Goat {
     // ---- integrate + walls ----
     this.x += this.vx * dt; this.y += this.vy * dt;
     const impact = world.collideCircle(this);
-    if (this.state === 'lunge' && impact > 0) { this.state = 'recover'; this.timer = g.headbutt.recovery * game.mods.headbuttRecovery * 0.6; game.shake(3); game.audio.sfxThud(); }
+    if (this.state === 'lunge' && impact > 0) { this.state = 'recover'; this.timer = this.recoverMax = g.headbutt.recovery * game.mods.headbuttRecovery * 0.6; game.shake(3); game.audio.sfxThud(); }
 
     // ---- fire ----
     // Witchfire goes straight through the coat: nothing the souls offer turns the Seer's fire away.

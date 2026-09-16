@@ -510,7 +510,16 @@ the speed a wall kills at — the man who was thrown dies with him. Below that i
 both floored, both up again. Two men standing shoulder to shoulder used to be the safest place in the
 room, which read as the game saying a man is not part of the geometry. He is.
 
-**How loud the drums get.** `game.update` counts the men who are awake, near and not mist, and
+**Room music.** The default score now uses the current room's small, ranged, large and mystical
+enemy counts, capped at six per family, plus fire within four tiles. `GameAudio.updateScene` samples
+the game once per frame (throttled internally); one 16-bar transport plays interlocking voices with
+beat-aligned changes and smooth envelopes. See `MUSIC.md` for the mappings and extension points.
+Large enemies have a two-hit bass signature. Levels 5+ use `LATE_MUSIC` with distinct idle/combat
+melodies. Fire area adds crackles with a two-bar memory; nearby healing grass adds a chime with a
+one-bar memory. Both clear outside play. SETTINGS → LAYERED MUSIC off selects the preserved
+original `playLegacyStep` arrangement below.
+
+**How loud the original drums get.** `game.update` counts the men who are awake, near and not mist, and
 `TUNING.audio.crowd` is where the two steps are: up to `warm` it is the motif and the toms, up to `hot`
 the kick and the hats, past it the whole kit. It used to go to the top on five, which is an ordinary
 room from level three on, so the loudest music in the game played through most of the game and a real

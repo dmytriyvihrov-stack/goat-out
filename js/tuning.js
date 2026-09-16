@@ -253,7 +253,7 @@ const TUNING = {
     bodyKillSpeed: 10 * TILE,
   },
   fire: {
-    spread: 0.4, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE,
+    spread: 0.48, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE,   // spread was 0.4; a burning tile catching its neighbour that fast read as too eager
     witch: 3.6,        // the Seer's fire: colder to look at, and no coat turns it away
     avoidLook: 18,     // px past his own radius a man checks before walking into flame
   },
@@ -523,7 +523,12 @@ const TUNING = {
   // music underneath it stopped being audible at all. A third of the gain and half as often: still
   // the one dry tick in the bar that nothing else makes, now under the drums rather than over them.
   audio: { master: 0.92, drums: 1.0, sfx: 1.05, music: 0.85, crowd: { warm: 3, hot: 6 },
-    hunterCue: { gain: 0.04, everyBars: 4 } },
+    hunterCue: { gain: 0.04, everyBars: 4 },
+    layers: { maxPerFamily: 6, fireRadius: 4 * TILE, pursuitRadius: 8 * TILE,
+      sampleSeconds: 0.1, fadeSeconds: 0.30, gain: 0.75, exploreMix: 0.6,
+      fullGainVoices: 8, fireGain: 0.055, largeReplySteps: 2, largeReplyGain: 0.72,
+      lateFromLevel: 5, blazeThresholds: [1, 4, 10], blazeTailBars: 2,
+      grassRadius: 4 * TILE, grassVoices: 3, grassTailBars: 1, grassGain: 0.085 } },
   // The lead point is carried rather than read: on a mouse the aim flips the instant the pointer
   // crosses the goat, and a lead that flips with it throws the whole picture across the screen.
   // `leadLerp` is how fast the camera agrees to the new side, `leadStill` how much of the lead a
@@ -548,8 +553,10 @@ const TUNING = {
   // the toll are still landing — before `zoomTime` seconds of easing out to the whole level, margin
   // clear on every side. `sampleGap` is how often a dot goes on the trail `game.pathTrail` draws as
   // a line once the pull-back gets there; `lineWidth` is in screen pixels, not world ones, so the
-  // line reads the same thickness at any zoom.
-  deathCam: { delay: 0.5, zoomTime: 2.2, margin: 0.88, sampleGap: 0.2, lineWidth: 2.4 },
+  // line reads the same thickness at any zoom. `fogAlpha` is how dark a room nobody opened stays
+  // once the pull-back reaches it: `Renderer.drawUnseen` reads it in place of full black, so a room
+  // that was never walked into still reads as a room on the recap rather than as a hole in the map.
+  deathCam: { delay: 0.5, zoomTime: 2.2, margin: 0.88, sampleGap: 0.2, lineWidth: 2.4, fogAlpha: 0.16 },
 };
 
 // The first screen, top to bottom. The renderer draws a row per id and `menuPick` acts on one, so
@@ -563,6 +570,7 @@ const MENU = ['new', 'continue', 'levels', 'best', 'settings'];
 const SETTINGS = [
   { key: 'timer', name: 'SHOW THE CLOCK', note: 'A time counting up in the corner. The level card tells you at the end either way.' },
   { key: 'sound', name: 'SOUND', note: 'Drums, voices, and the rest of it. M does the same thing mid-run.' },
+  { key: 'layeredMusic', name: 'LAYERED MUSIC', note: 'Switch off to restore the original score.' },
   { key: 'easy', name: 'EASY MODE', note: 'Six hearts to start instead of four, and every blow in the compound takes 40% longer to land.' },
 ];
 
