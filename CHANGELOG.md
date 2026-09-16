@@ -5,6 +5,40 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.32 — a pause that holds the room, individual rhythms, and a round of playtest fixes
+
+Escape mid-level now pauses in place instead of dropping to the title: RESUME is the goat standing
+exactly where Escape caught him, the room exactly as it was, not a freshly generated level from its
+own head. QUIT TO TITLE is the old behaviour for anyone who actually means to leave. SETTINGS gained
+two sliders, MUSIC VOLUME and EFFECT VOLUME, both starting at the mix already tuned and adjustable
+either side of it; combat's own base volume also came down a fifth.
+
+A room the goat has not opened yet no longer goes on patrolling behind the fog: an enemy freezes
+until the room he is standing in is actually seen, so nothing dies to a pit or the Mill before the
+door to it has even been touched. A flung body — and a charging Butcher — that hits a door refusing
+to break (the soul gate, a sealed arena, an iron door still short of its count) now stops on it
+instead of clipping straight through; the same charge no longer commits to a line a pillar was
+always going to break it on, and it shatters a crate in its way rather than walking through or into
+it. The bomb moves out of the secret niche it usually had nothing near it in and into whichever
+ordinary room of the level scored the most threat. Milk from level 4 on caps its worst dry spell at
+four rooms rather than five. The bare bleat's point-blank interrupt comes down to a flat two tiles.
+
+A kill combo shakes the camera a third as hard from the second kill on, and taking a hit reddens the
+corners of the screen for a beat on top of the arc that already points back at what hit you. The
+Hunter and the Seer each get a guaranteed line — NOT ME, WHO DID IT? — when their own shot or their
+own fire catches one of their own, rather than leaving it to `panic`'s ordinary roll.
+
+Bearers/hounds and Hunters/Seers now share registers but have different rhythms and envelopes.
+Hit budgets for 1/2/3 enemies are 1/2/3 for small enemies, 2/4/5 for ranged and 3/5/7 for heavies.
+Spike plates and Mills add a distinct trap instrument. Fire is sensed across the current room,
+with stronger crackles, two bars of memory and an intensity lift for a broad blaze.
+
+Kills and actual player actions retain immediate effects and also queue a separate musical reply
+about 1-2 seconds later on a half-bar boundary. Event stacking and queue length are bounded.
+TOOLS > MUSIC (also #music) auditions all types at counts 0-6, solo/mixed with either base,
+both level themes, fire/grass and event echoes. It pauses gameplay and cancels preview notes on exit.
+See MUSIC.md and the audio checks for pattern, sensing, timing, headroom and UI validation.
+
 ## 1.31 — music made from the room, and a fire that was too eager to catch
 
 Follow-up after listening: each heavy now plays a two-hit bass signature, with a quieter eighth-note

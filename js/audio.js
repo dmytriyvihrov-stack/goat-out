@@ -16,20 +16,51 @@ const LATE_MUSIC = {
   combat: [0, -1, -1, 2, -1, -1, 4, -1, 3, -1, -1, 2, 0, -1, 4, -1],
 };
 
-// Six interlocking voices per family, on a single 16-bar / 256-sixteenth clock.
-// Families occupy different sixteenths of a beat; adding a man adds a voice, never a louder hit.
-// Four answers turn the two-bar seed into a phrase, without random notes fighting the harmony.
+// Shared registers over a 16-bar clock. Each type below supplies its own ranked onsets;
+// four answers turn the two-bar seeds into a phrase without random competing harmony.
 const ROOM_MUSIC = {
   bars: 16, stepsPerBar: 16,
-  slots: [0, 8, 20, 28, 4, 24], answers: [0, 8, 0, 16],
+  answers: [0, 8, 0, 16],
   small: { phase: 2, octave: 8, notes: [0, 4, 2, 4, 0, 2], type: 'square', gain: 0.065, length: 0.46 },
   ranged: { phase: 1, octave: 4, notes: [4, 0, 2, 4, 2, 0], type: 'triangle', gain: 0.13, length: 1.25 },
   large: { phase: 0, octave: 1, notes: [0, 0, 4, 0, 4, 0], type: 'triangle', gain: 0.20, length: 1.75 },
   mystical: { phase: 3, octave: 16, notes: [0, 4, 2, 0, 2, 4], type: 'sine', gain: 0.085, length: 3.0 },
 };
 const MUSIC_FAMILIES = ['small', 'ranged', 'large', 'mystical'];
-const emptyMusicScene = () => ({ small: 0, ranged: 0, large: 0, mystical: 0,
-  fire: false, blaze: 0, grass: 0, combat: false, late: false });
+// Ranked onsets: enabling another enemy preserves the earlier accents. Related instruments
+// share a register, but their rhythms and envelopes remain recognisable in a mixed room.
+const MUSIC_PARTS = {
+  bearer: { family: 'small', label: 'BEARER', slots: [2,18,10,26,6,22], length: 0.46 },
+  dog: { family: 'small', label: 'HOUND', slots: [7,23,15,31,3,19], length: 0.32 },
+  hunter: { family: 'ranged', label: 'HUNTER', slots: [1,17,9,25,5,21,13,29], length: 0.8 },
+  seer: { family: 'ranged', label: 'SEER', slots: [4,20,12,28,8,24,0,16], length: 1.6 },
+  champion: { family: 'large', label: 'BRUTE', slots: [0,8,10,16,24,26,4,12,18,20,28,30,6], length: 1.4 },
+  butcher: { family: 'large', label: 'BUTCHER', slots: [4,12,14,20,28,30,0,8,22,24,16,18,2], length: 1.8 },
+  wraith: { family: 'mystical', label: 'WRAITH', slots: [3,19,11,27,7,23], length: 3 },
+  spike: { family: 'trap', label: 'SPIKES', slots: [5,21,13,29,1,17], length: 0.45 },
+  mill: { family: 'trap', label: 'MILLS', slots: [14,30,6,22,10,26,2], length: 1.1 },
+};
+ROOM_MUSIC.trap = { octave: 2, notes: [4,0,2,4,2,0], type: 'triangle', gain: 0.12 };
+const emptyMusicScene = () => ({ ...Object.fromEntries(Object.keys(MUSIC_PARTS).map((k) => [k, 0])),
+  fire: false, blaze: 0, fireTiles: 0, grass: 0, combat: false, late: false });
+function musicHitCount(kind, count) {
+  const P = MUSIC_PARTS[kind], budgets = TUNING.audio.layers.hitBudgets;
+  const budget = budgets[kind === 'mill' ? 'mill' : P.family] || budgets.small;
+  return budget[Math.max(0, Math.min(6, Math.floor(count || 0)))];
+}
+function capMusicScene(scene) {
+  for (const family of MUSIC_FAMILIES) {
+    const kinds = Object.keys(MUSIC_PARTS).filter((k) => MUSIC_PARTS[k].family === family);
+    const raw = kinds.map((k) => Math.max(0, Math.floor(scene[k] || 0)));
+    kinds.forEach((k) => { scene[k] = 0; });
+    let left = TUNING.audio.layers.maxPerFamily;
+    for (let rank = 0; rank < 6 && left; rank++) for (let i = 0; i < kinds.length && left; i++) {
+      if (raw[i] > rank) { scene[kinds[i]]++; left--; }
+    }
+  }
+  for (const k of ['spike', 'mill']) scene[k] = Math.min(6, Math.max(0, scene[k] || 0));
+  return scene;
+}
 
 function musicFamily(e) {
   if (e.kind === 'wraith') return 'mystical';
@@ -47,51 +78,56 @@ function roomMusicScene(game) {
   if (game.state !== 'play' || !g || g.dead || game.dev.rules) return scene;
   const room = roomAt(game.level, g.x, g.y);
   const near = (x, y, radius) => Math.hypot(x - g.x, y - g.y) <= radius;
+  const inRoom = (x, y) => room ? roomAt(game.level, x, y) === room : false;
   let burning = g.onFire ? 1 : 0;
   for (const e of game.enemies) {
     if (e.dead) continue;
-    if (e.burning > 0 && near(e.x, e.y, L.fireRadius)) burning++;
+    if (e.burning > 0 && inRoom(e.x, e.y)) burning++;
     const family = musicFamily(e);
     if (!family) continue;
-    const inRoom = room && roomAt(game.level, e.x, e.y) === room;
     const pursuing = e.aware && e.state !== 'idle' && near(e.x, e.y, L.pursuitRadius)
       && game.sees(g.x, g.y, e.x, e.y);
-    if (!inRoom && !pursuing) continue;
-    scene[family] = Math.min(L.maxPerFamily, scene[family] + 1);
+    if (!inRoom(e.x, e.y) && !pursuing) continue;
+    const kind = e.champion && e.kind === 'bearer' ? 'champion' : e.kind;
+    scene[kind]++;
     if (e.aware && e.state !== 'idle') scene.combat = true;
   }
-  // Standing coals and lamps are fire as well as burning tiles and men. A tile's nearest edge
-  // defines the radius, so crossing its centre does not change whether a nearby flame counts.
+  // Fixtures, traps and burning area belong to the whole current room. Grass stays a nearby cue.
   for (const p of game.props) {
     if (p.broken || p.dead) continue;
-    if ((p.kind === 'brazier' || p.kind === 'lamp') && near(p.x, p.y, L.fireRadius)) scene.fire = true;
+    if ((p.kind === 'brazier' || p.kind === 'lamp') && inRoom(p.x, p.y)) scene.fire = true;
+    if ((p.kind === 'mill' || p.kind === 'spike') && inRoom(p.x, p.y)) scene[p.kind]++;
     if (p.kind === 'heal' && near(p.x, p.y, L.grassRadius)) scene.grass = Math.min(L.grassVoices, scene.grass + 1);
   }
-  const w = game.world, r = L.fireRadius;
-  for (let y = Math.max(0, Math.ceil((g.y - r) / TILE) - 1); y <= Math.min(w.H - 1, Math.floor((g.y + r) / TILE)); y++) {
-    for (let x = Math.max(0, Math.ceil((g.x - r) / TILE) - 1); x <= Math.min(w.W - 1, Math.floor((g.x + r) / TILE)); x++) {
+  const w = game.world;
+  for (let y = room ? Math.max(0, room.y) : 0; room && y < Math.min(w.H, room.y + room.h); y++) {
+    for (let x = Math.max(0, room.x); x < Math.min(w.W, room.x + room.w); x++) {
       if (w.fire[y * w.W + x] <= 0) continue;
-      if (near(Math.max(x * TILE, Math.min(g.x, (x + 1) * TILE)),
-        Math.max(y * TILE, Math.min(g.y, (y + 1) * TILE)), r)) burning++;
+      scene.fireTiles++; burning++;
     }
   }
   scene.blaze = L.blazeThresholds.filter((n) => burning >= n).length;
   scene.fire = scene.fire || burning > 0;
-  return scene;
+  return capMusicScene(scene);
 }
 
-function roomMusicHit(family, voice, step) {
-  const answer = ROOM_MUSIC.answers[Math.floor(step / 64) % 4];
-  return step % 32 === (ROOM_MUSIC.slots[voice] + ROOM_MUSIC[family].phase + answer) % 32;
+function musicPartHit(kind, hit, step) {
+  return step % 32 === (MUSIC_PARTS[kind].slots[hit] + ROOM_MUSIC.answers[Math.floor(step / 64) % 4]) % 32;
 }
 
 class GameAudio {
   constructor() {
     this.ctx = null; this.muted = false;
+    // 0.5 is "as tuned" for both — `setVolumes` is called with whatever the settings panel holds
+    // before the context necessarily exists yet (a browser will not open one before a gesture), so
+    // `init()` reads these back rather than always starting the two buses at TUNING's own values.
+    this.volMusic = 0.5; this.volSfx = 0.5;
     this.intensity = 0; this.hunterAware = false; this.droneUntil = 0;
     this.step = 0; this.nextTime = 0; this.bpm = 118;
     this.layered = true; this.scene = emptyMusicScene(); this.sceneTimer = 0;
-    this.voices = Object.fromEntries(MUSIC_FAMILIES.map((k) => [k, ROOM_MUSIC.slots.map(() => 0)]));
+    this.voices = Object.fromEntries(Object.entries(MUSIC_PARTS).map(([k, p]) => [k, p.slots.map(() => 0)]));
+    this.musicTick = 0; this.musicEvents = []; this.musicNodes = new Set(); this.preview = null;
+    this.lab = { playing: false, bed: 'combat', scene: emptyMusicScene() };
     this.combatMix = 0; this.fireMix = 0; this.blazeMix = 0; this.grassMix = 0; this.lateTheme = false;
     this.resetAmbience();
   }
@@ -102,10 +138,11 @@ class GameAudio {
     this.ctx = new AC();
     const A = TUNING.audio;
     this.master = this.ctx.createGain(); this.master.gain.value = A.master; this.master.connect(this.ctx.destination);
-    this.drumBus = this.ctx.createGain(); this.drumBus.gain.value = A.drums; this.drumBus.connect(this.master);
-    this.sfxBus = this.ctx.createGain(); this.sfxBus.gain.value = A.sfx; this.sfxBus.connect(this.master);
-    this.musicBus = this.ctx.createGain(); this.musicBus.gain.value = A.music; this.musicBus.connect(this.master);
+    this.drumBus = this.ctx.createGain(); this.drumBus.connect(this.master);
+    this.sfxBus = this.ctx.createGain(); this.sfxBus.connect(this.master);
+    this.musicBus = this.ctx.createGain(); this.musicBus.connect(this.master);
     this.layerBus = this.ctx.createGain(); this.layerBus.gain.value = A.layers.gain; this.layerBus.connect(this.musicBus);
+    this.setVolumes(this.volMusic, this.volSfx);
     const len = this.ctx.sampleRate * 1.5;
     this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this.noiseBuf.getChannelData(0);
@@ -115,6 +152,77 @@ class GameAudio {
   }
   resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
   setLayered(enabled) { this.layered = !!enabled; }
+  // The two sliders in SETTINGS. 0.5 reproduces `TUNING.audio`'s own tuned levels exactly, so the
+  // scale is `value / 0.5`: the room score and its drums (`musicBus`, `drumBus` — `layerBus` rides
+  // on `musicBus` already) against the noise of a fight (`sfxBus` — swings, hits, barks, voice).
+  setVolumes(musicVol, sfxVol) {
+    this.volMusic = clamp(musicVol == null ? 0.5 : musicVol, 0, 1);
+    this.volSfx = clamp(sfxVol == null ? 0.5 : sfxVol, 0, 1);
+    if (!this.ctx) return;
+    const A = TUNING.audio;
+    this.drumBus.gain.value = A.drums * (this.volMusic / 0.5);
+    this.musicBus.gain.value = A.music * (this.volMusic / 0.5);
+    this.sfxBus.gain.value = A.sfx * (this.volSfx / 0.5);
+  }
+  trackMusicNode(node) {
+    if (!this.scoring) return;
+    this.musicNodes.add(node); node.onended = () => this.musicNodes.delete(node);
+  }
+  resetScore() {
+    for (const node of this.musicNodes) { try { node.stop(); } catch (_) { /* already ended */ } }
+    this.musicNodes.clear(); this.musicEvents.length = 0; this.resetAmbience();
+    for (const voices of Object.values(this.voices)) voices.fill(0);
+    this.combatMix = this.fireMix = this.blazeMix = this.grassMix = 0;
+    this.beatScene = null; this.sceneTimer = 0;
+  }
+  musicEvent(kind) {
+    if ((!this.layered && !this.preview) || this.muted || (this.preview && !this.preview.playing)) return;
+    const L = TUNING.audio.layers;
+    const due = Math.ceil((this.musicTick + L.eventDelaySteps) / L.eventGridSteps) * L.eventGridSteps;
+    const old = this.musicEvents.find((e) => e.kind === kind && e.due === due);
+    if (old) old.count = Math.min(L.eventStackCap, old.count + 1);
+    else if (this.musicEvents.length < L.eventQueueCap) this.musicEvents.push({ kind, due, count: 1 });
+  }
+  playMusicEvents(t, stepLen, root, theme, headroom) {
+    const due = this.musicEvents.filter((e) => e.due <= this.musicTick);
+    this.musicEvents = this.musicEvents.filter((e) => e.due > this.musicTick);
+    if (this.muted) return;
+    // Crowd kills coalesce into a single chord accent; actions get one short woodblock reply.
+    const kills = due.filter((e) => e.kind === 'kill').reduce((n, e) => n + e.count, 0);
+    if (kills) {
+      const gain = TUNING.audio.layers.killGain * headroom;
+      this.tone(root * 16, t, stepLen * 2, { type: 'triangle', gain, bus: this.layerBus });
+      this.tone(root * 16 * Math.pow(2, theme.scale[4] / 12), t + stepLen * 2,
+        stepLen * 2, { type: 'sine', gain: gain * 0.65, bus: this.layerBus });
+      if (kills > 1) this.noise(t, 0.12, { gain: gain * 0.25, hp: 5000, bus: this.layerBus });
+    }
+    const action = due.find((e) => e.kind !== 'kill');
+    if (action) {
+      const degree = { headbutt: 0, roll: 2, throw: 4, scream: 5 }[action.kind] || 0;
+      this.tone(root * 2 * Math.pow(2, theme.scale[degree] / 12), t + stepLen,
+        stepLen * 0.8, { type: 'square', gain: TUNING.audio.layers.actionGain * headroom, sweep: 0.8, bus: this.layerBus });
+    }
+  }
+  labAction(action, game) {
+    this.init(); this.resume();
+    const lab = this.lab, [key, value] = action.split('=');
+    if (key === 'play') lab.playing = !lab.playing;
+    else if (key === 'mute') this.toggleMute();
+    else if (key === 'clear') { lab.scene = emptyMusicScene(); this.resetScore(); }
+    else if (key === 'room') { lab.scene = roomMusicScene({ ...game, dev: { ...game.dev, rules: false } }); }
+    else if (key === 'bed') lab.bed = value;
+    else if (key === 'theme') lab.scene.late = value === 'late';
+    else if (key === 'fire') { lab.scene.fireTiles = Number(value); lab.scene.blaze = TUNING.audio.layers.blazeThresholds.filter((n) => Number(value) >= n).length; lab.scene.fire = Number(value) > 0; }
+    else if (key === 'coals') lab.scene.fire = !lab.scene.fire;
+    else if (key === 'grass') lab.scene.grass = Number(value);
+    else if (key === 'event') { lab.playing = true; this.musicEvent(value); }
+    else if (key === 'solo') {
+      const count = lab.scene[value] || 1, late = lab.scene.late;
+      lab.scene = emptyMusicScene(); lab.scene[value] = count; lab.scene.late = late;
+      this.resetScore(); lab.playing = true;
+    } else if (MUSIC_PARTS[key]) { lab.scene[key] = Number(value); lab.playing = true; }
+    if (!lab.playing) this.resetScore();
+  }
   resetAmbience() {
     this.ambience = { blaze: { value: 0, left: 0, pending: 0 }, grass: { value: 0, left: 0, pending: 0 } };
   }
@@ -127,10 +235,16 @@ class GameAudio {
     return memory.value;
   }
   updateScene(game, dt) {
+    const preview = game.dev.rules && game.dev.tab === 'music' ? this.lab : null;
+    if (this.preview !== preview) { this.resetScore(); this.preview = preview; }
+    if (preview) {
+      this.scene = capMusicScene({ ...preview.scene, combat: preview.bed === 'combat' });
+      return;
+    }
     this.sceneTimer -= dt;
     if (game.state !== 'play' || !game.goat || game.goat.dead || game.dev.rules) {
       this.scene = roomMusicScene(game); this.beatScene = { ...this.scene };
-      this.resetAmbience(); this.sceneTimer = 0; return;
+      this.resetAmbience(); this.musicEvents.length = 0; this.sceneTimer = 0; return;
     }
     if (this.sceneTimer > 0) return;
     this.sceneTimer = TUNING.audio.layers.sampleSeconds;
@@ -155,6 +269,7 @@ class GameAudio {
     g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(bus || this.sfxBus); o.start(t); o.stop(t + dur + 0.02);
+    this.trackMusicNode(o);
     return o;
   }
   noise(t, dur, { gain = 0.4, hp = 0, lp = 20000, bus = null, q = 0.7 } = {}) {
@@ -165,6 +280,7 @@ class GameAudio {
     if (hp > 0) { const f = this.ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; f.Q.value = q; node.connect(f); node = f; }
     if (lp < 20000) { const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; f.Q.value = q; node.connect(f); node = f; }
     node.connect(g); g.connect(bus || this.sfxBus); s.start(t); s.stop(t + dur + 0.02);
+    this.trackMusicNode(s);
   }
 
   // ---- drums ----
@@ -190,6 +306,7 @@ class GameAudio {
     g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(lp); lp.connect(g); g.connect(this.musicBus); o.start(t); o.stop(t + dur + 0.02);
+    this.trackMusicNode(o);
   }
   lead(t, f, dur, gain) {
     this.tone(f, t, dur, { type: 'triangle', gain, bus: this.musicBus, attack: 0.012 });
@@ -225,6 +342,9 @@ class GameAudio {
     if (this.nextTime < this.ctx.currentTime) {
       const missed = Math.ceil((this.ctx.currentTime - this.nextTime) / stepLen);
       this.step = (this.step + missed) % (ROOM_MUSIC.bars * ROOM_MUSIC.stepsPerBar);
+      this.musicTick += missed;
+      this.musicEvents = this.musicEvents.filter((e) => e.due >= this.musicTick);
+      if (missed > TUNING.audio.layers.blazeTailBars * 16) this.resetAmbience();
       this.nextTime += missed * stepLen;
     }
     while (this.nextTime < this.ctx.currentTime + 0.12) {
@@ -234,14 +354,18 @@ class GameAudio {
     }
   }
   playStep(s, t, stepLen) {
-    if (this.layered) this.playLayeredStep(s, t, stepLen);
-    else if (!this.muted) this.playLegacyStep(s % 64, t, stepLen);
+    this.scoring = true;
+    try {
+      if (this.preview && !this.preview.playing) return;
+      if (this.layered || this.preview) this.playLayeredStep(s, t, stepLen);
+      else if (!this.muted) this.playLegacyStep(s % 64, t, stepLen);
+    } finally { this.scoring = false; this.musicTick++; }
   }
   playLayeredStep(s, t, stepLen) {
     const L = TUNING.audio.layers, beat = s % 16;
     // Commit additions/removals on the beat, then ease their note envelopes. The shared clock
     // never restarts on a kill, doorway or settings change.
-    if (s % 4 === 0) this.beatScene = { ...this.scene };
+    if (s % 4 === 0) this.beatScene = capMusicScene({ ...this.scene });
     const scene = this.beatScene || this.scene, ease = 1 - Math.exp(-stepLen / L.fadeSeconds);
     if (beat === 0) this.lateTheme = scene.late;
     const theme = this.lateTheme ? LATE_MUSIC : MUSIC, root = theme.roots[(s >> 4) & 3];
@@ -253,41 +377,42 @@ class GameAudio {
     this.grassMix += (grass - this.grassMix) * ease;
     const combat = this.combatMix;
     let density = 0;
-    for (const family of MUSIC_FAMILIES) {
-      this.voices[family].forEach((v, i, voices) => {
-        voices[i] = v + ((i < scene[family] ? 1 : 0) - v) * ease;
-        density += voices[i] * (family === 'large' ? 2 : 1);
+    for (const kind of Object.keys(MUSIC_PARTS)) {
+      this.voices[kind].forEach((v, i, voices) => {
+        voices[i] = v + ((i < musicHitCount(kind, scene[kind]) ? 1 : 0) - v) * ease;
+        density += voices[i];
       });
     }
     // Silence does not freeze the ambient memory: an extinguished fire should not return
     // when M is pressed again several bars later.
-    if (this.muted) return;
+    if (this.muted) { this.playMusicEvents(t, stepLen, root, theme, 1); return; }
     // Keep the original harmonic bed; leave its bus and one-shot effects at their old levels.
-    if (this.lateTheme) this.playLateBed(s, t, stepLen, combat);
-    else this.playBed(s, t, stepLen, 0);
-    if (beat === 0 || beat === 8) this.kick(t, 0.20 + combat * 0.14);
-    if ((beat === 4 || beat === 12) && combat > 0.01) this.tomHi(t, 0.16 * combat);
-    const n = MUSIC.motif[beat];
-    if (!this.lateTheme && n >= 0 && beat % 4 === 0 && combat > 0.01) {
-      this.lead(t, root * 4 * Math.pow(2, MUSIC.scale[n] / 12), stepLen * 1.8, 0.045 * combat);
+    if (!this.preview || this.preview.bed !== 'none') {
+      if (this.lateTheme) this.playLateBed(s, t, stepLen, combat);
+      else this.playBed(s, t, stepLen, 0);
+      if (beat === 0 || beat === 8) this.kick(t, 0.20 + combat * 0.14 + this.blazeMix * 0.018);
+      if ((beat === 4 || beat === 12) && combat > 0.01) this.tomHi(t, 0.16 * combat);
+      const n = MUSIC.motif[beat];
+      if (!this.lateTheme && n >= 0 && beat % 4 === 0 && combat > 0.01) {
+        this.lead(t, root * 4 * Math.pow(2, MUSIC.scale[n] / 12), stepLen * 1.8, 0.045 * combat);
+      }
     }
     const headroom = 1 / Math.sqrt(Math.max(1, density / L.fullGainVoices));
-    for (const family of MUSIC_FAMILIES) {
-      const part = ROOM_MUSIC[family];
-      this.voices[family].forEach((v, i) => {
-        if (v < 0.005 || !roomMusicHit(family, i, s)) return;
+    for (const kind of Object.keys(MUSIC_PARTS)) {
+      const instrument = MUSIC_PARTS[kind], part = ROOM_MUSIC[instrument.family];
+      this.voices[kind].forEach((v, i) => {
+        if (v < 0.005 || !musicPartHit(kind, i, s)) return;
         const degree = part.notes[(i + Math.floor(s / 64)) % part.notes.length];
         const f = root * part.octave * Math.pow(2, theme.scale[degree] / 12);
         const gain = part.gain * v * headroom * (L.exploreMix + (1 - L.exploreMix) * combat);
-        this.tone(f, t, stepLen * part.length, { type: part.type,
+        this.tone(f, t, stepLen * instrument.length, { type: part.type,
           gain,
-          bus: this.layerBus, attack: family === 'mystical' ? 0.06 : 0.004 });
-        // Every heavy has a low two-hit signature. The quieter eighth-note reply sits under
-        // the small enemies' high ticks; it never borrows another heavy's counted voice.
-        if (family === 'large') this.tone(f, t + stepLen * L.largeReplySteps, stepLen * part.length,
-          { type: part.type, gain: gain * L.largeReplyGain, bus: this.layerBus, attack: 0.004 });
+          bus: this.layerBus, attack: kind === 'wraith' ? 0.06 : kind === 'seer' ? 0.025 : 0.004 });
+        if (instrument.family === 'trap') this.tone(f * 2, t, stepLen * 0.3,
+          { type: 'sine', gain: gain * 0.35, bus: this.layerBus });
       });
     }
+    this.playMusicEvents(t, stepLen, root, theme, headroom);
     // A lamp/coals gives one dry tick per bar. Burning area adds up to three answering pops,
     // and a broad flame gets a little low rustle; no permanent hiss over the enemy rhythm.
     if (this.fireMix > 0.005 && beat === 7) this.fireTick(t, L.fireGain * this.fireMix * headroom);

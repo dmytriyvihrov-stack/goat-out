@@ -31,10 +31,11 @@ new game throws it away, and so does escaping.
 
 ## Controls
 
-Music now adds simple rhythmic layers for small, ranged, large and mystical enemies, up to six
-per category, plus fire and healing grass within four tiles. Large enemies add paired bass hits;
-fires leave two bars of crackles. Levels 5+ have a second base theme for exploration and combat.
-All parts share a 16-bar phrase and fade with the room.
+Music gives each enemy type a recognisable rhythm, with heavier patterns for ranged and large
+enemies. Traps and fire across the current room join in; nearby healing grass adds chimes.
+Kills and player actions get delayed musical replies, and fires leave two bars of crackles.
+Levels 5+ have a second base theme. Audition counts, combinations and events in
+**DEV TOOLS → TOOLS → MUSIC**, or open `index.html#music`.
 To restore the original soundtrack, turn **SETTINGS → LAYERED MUSIC** off. See [MUSIC.md](MUSIC.md)
 for the arrangement and tuning notes.
 

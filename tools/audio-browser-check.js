@@ -48,7 +48,11 @@ fs.mkdirSync(output, { recursive: true });
         for (let i = 0; i < noise.length; i++) { seed = (1664525 * seed + 1013904223) >>> 0; noise[i] = seed / 2147483648 - 1; }
         a.scene = scene; a.layered = layered; a.intensity = 3; a.hunterAware = true;
         const len = 60 / a.bpm / 4;
-        for (let s = 0; s < 256; s++) { a.step = s; a.playStep(s, 0.05 + s * len, len); }
+        for (let s = 0; s < 256; s++) {
+          a.step = s;
+          if (scene.blaze === 3 && s % 16 === 0) { for (let n = 0; n < 20; n++) a.musicEvent('kill'); a.musicEvent('roll'); }
+          a.playStep(s, 0.05 + s * len, len);
+        }
         const buffer = await a.ctx.startRendering(), samples = buffer.getChannelData(0);
         let peak = 0, power = 0, clipped = 0;
         for (const sample of samples) { peak = Math.max(peak, Math.abs(sample)); power += sample * sample; if (Math.abs(sample) >= 1) clipped++; }
@@ -57,11 +61,11 @@ fs.mkdirSync(output, { recursive: true });
       const empty = emptyMusicScene();
       return {
         empty: await render(empty, true),
-        oneSmall: await render({ ...empty, small: 1, combat: true }, true),
-        threeSmall: await render({ ...empty, small: 3, combat: true }, true),
-        full: await render({ ...empty, small: 6, ranged: 6, large: 6, mystical: 6, fire: true, blaze: 3, grass: 3, combat: true }, true),
+        oneSmall: await render({ ...empty, bearer: 1, combat: true }, true),
+        threeSmall: await render({ ...empty, bearer: 3, combat: true }, true),
+        full: await render({ ...empty, bearer: 3, dog: 3, hunter: 3, seer: 3, champion: 3, butcher: 3, wraith: 6, spike: 6, mill: 6, fire: true, blaze: 3, grass: 3, combat: true }, true),
         lateIdle: await render({ ...empty, late: true, grass: 1 }, true),
-        lateCombat: await render({ ...empty, late: true, small: 6, ranged: 6, large: 6, mystical: 6, fire: true, blaze: 3, grass: 3, combat: true }, true),
+        lateCombat: await render({ ...empty, late: true, bearer: 6, hunter: 6, butcher: 6, wraith: 6, spike: 6, mill: 6, fire: true, blaze: 3, grass: 3, combat: true }, true),
         legacy: await render(empty, false),
       };
     });
@@ -76,11 +80,36 @@ fs.mkdirSync(output, { recursive: true });
       const e = game.enemies.find((e) => !e.dead && !e.scripted);
       game.goat.x = e.x; game.goat.y = e.y; game.audio.init(); game.audio.resume();
     });
-    await page.waitForFunction(() => MUSIC_FAMILIES.some((k) => game.audio.scene[k] > 0));
+    await page.waitForFunction(() => Object.keys(MUSIC_PARTS).some((k) => game.audio.scene[k] > 0));
     const gameplay = await page.evaluate(() => ({ scene: game.audio.scene, audioState: game.audio.ctx.state }));
     assert.equal(gameplay.audioState, 'running');
     await page.evaluate(() => { game.state = 'dead'; });
-    await page.waitForFunction(() => MUSIC_FAMILIES.every((k) => game.audio.scene[k] === 0) && !game.audio.scene.fire);
+    await page.waitForFunction(() => Object.keys(MUSIC_PARTS).every((k) => game.audio.scene[k] === 0) && !game.audio.scene.fire);
+    await page.goto('http://127.0.0.1:8766/?music-lab#music');
+    await page.waitForFunction(() => window.game && game.dev.rects.some(r => r.id === 'music-bearer=3'));
+    const clickTool = async (id) => {
+      await page.waitForFunction(id => game.dev.rects.some(r => r.id === id), id);
+      const p = await page.evaluate(id => { const r = game.dev.rects.find(r => r.id === id); return {x:r.x+r.w/2,y:r.y+r.h/2}; }, id);
+      await page.mouse.click(p.x,p.y);
+    };
+    await clickTool('music-bearer=3'); await clickTool('music-dog=2'); await clickTool('music-hunter=2');
+    await clickTool('music-fire=10'); await clickTool('music-event=kill');
+    await page.waitForFunction(() => game.audio.scene.bearer === 3 && game.audio.scene.dog === 2 && game.audio.scene.blaze === 3);
+    assert.equal(await page.evaluate(() => game.audio.lab.playing),true);
+    await page.screenshot({path:path.join(output,'music-lab-desktop.png')});
+    await clickTool('music-solo=seer'); await clickTool('music-seer=3'); await clickTool('music-bed=none');
+    await page.waitForFunction(() => game.audio.scene.seer === 3 && game.audio.scene.bearer === 0);
+    for (const viewport of [{width:390,height:844},{width:844,height:390}]) {
+      await page.setViewportSize(viewport);
+      await page.waitForFunction(v => game.renderer.w === v.width && game.renderer.h === v.height,viewport);
+      const bounds=await page.evaluate(()=>game.dev.rects);
+      assert(bounds.every(r=>r.x>=0&&r.y>=0&&r.x+r.w<=viewport.width&&r.y+r.h<=viewport.height),'Music Lab fits screen');
+      await page.screenshot({path:path.join(output,`music-lab-${viewport.width}.png`)});
+    }
+    await clickTool('music-play');
+    assert.equal(await page.evaluate(()=>game.audio.lab.playing),false);
+    assert.equal(await page.evaluate(()=>game.audio.musicNodes.size),0,'STOP cancels queued music nodes');
+    await clickTool('rules');await page.waitForFunction(()=>game.audio.preview===null);
     assert.deepEqual(errors, []);
     fs.writeFileSync(path.join(output, 'validation.json'), JSON.stringify({ stats, gameplay, errors }, null, 2));
     console.log(JSON.stringify({ stats, gameplay, errors }, null, 2));

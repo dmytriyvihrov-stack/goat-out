@@ -112,8 +112,10 @@ const TUNING = {
     // about. The lure is untouched and still goes out to `call` tiles: one button, both jobs.
     // `radius` came in a fifth: a stun that reached across most of a room answered a crowd rather
     // than the handful of men on top of you, which is what THE FULL THROAT is supposed to cost for.
+    // `balk` came down a further fifth, to a plain two tiles: even arm's length read as a little more
+    // reach than the bare voice should have, and the lure is what still carries the room at `call`.
     scream: { duration: 0.3, cooldown: 4.0, radius: 6.8, stun: 0.9, call: 13, callCooldown: 3.0,
-      balk: 2.2, balkStun: 0.3 },
+      balk: 2, balkStun: 0.3 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat. It is a
     // fifth shorter than it was — the same beat of mercy, a fifth less ground — because a dodge that
     // clears the whole room is a second way of running rather than a way of not being hit.
@@ -306,7 +308,11 @@ const TUNING = {
     // It is grazed, not grabbed: `grazeTime` is how long the goat has to stand in it, near enough
     // and slow enough (under `grazeSpeed`), before it pays out, so running through on the way past
     // does nothing — the whole point is that it costs a beat of standing still in the open.
-    heal: { r: 12, pickupR: 22, every: 4.5, grazeTime: 1.4, grazeSpeed: 30 },
+    // `gapMax` is a hard cap rather than an average, and only bites from level 4 on: the forced
+    // rooms a late level carries — two or three arenas, the mill, the vault, a killbox — crowd
+    // together and can push a band's nearest eligible room well past what `every` promises on
+    // its own, so a run into the back half of the game could go six or seven rooms on nothing.
+    heal: { r: 12, pickupR: 22, every: 4.5, gapMax: 4, grazeTime: 1.4, grazeSpeed: 30 },
     // The gong. It was noise and nothing else, which made it the one thing in a room you could not
     // read. Now it pays: a stretch of speed and quick hands, bought by telling the whole floor where
     // you are. In an empty room that is a terrible trade. In a full one it is the best one you get.
@@ -326,7 +332,11 @@ const TUNING = {
     // half — the goat pays the same falloff his own blast does, `TUNING.goat.bomb` — everything out
     // to `blastR` is the one-heart ring, and anyone that far out who is not killed outright is flung
     // rather than hurt directly, same as a headbutted man's own charge.
-    bomb: { r: 11, fuse: 1.6, blastR: 2 * TILE, nearR: 0.75 * TILE, dmgNear: 2, dmgFar: 1, impulse: 20 * TILE },
+    // `chance` used to be rolled against a secret niche, which meant the rare find that could hurt
+    // a room most sat tucked behind a wall with nothing but the goat standing near it when it went
+    // off. It is placed on its own now, in whichever ordinary room of the level scores the most
+    // threat, so the one bomb a level carries lands where a room is actually worth throwing it into.
+    bomb: { r: 11, fuse: 1.6, blastR: 2 * TILE, nearR: 0.75 * TILE, dmgNear: 2, dmgFar: 1, impulse: 20 * TILE, chance: 0.45 },
     // A stand of arms. Grab what is in it, carry it, let go to throw it. The sword goes through
     // the first man it finds; the shield knocks a row of them flat and turns bullets while carried.
     weapon: {
@@ -446,6 +456,14 @@ const TUNING = {
     // by more than half: a multi-kill still says so, it no longer breaks stride to do it.
     comboWindow: 2.4, comboSlow: 0.12,
     comboHitstopMul: 0.004, comboHitstopCap: 0.025,
+    // The shake and the kick were never cut for a combo kill the way hitstop and comboSlow were: at
+    // full value on every kill of a streak, and each one re-triggers before the last has decayed, so
+    // a five-kill run felt like it never stopped shaking. `comboShakeMul` is what the second kill of
+    // a streak and every one after it actually gets.
+    comboShakeMul: 0.35,
+    // The plain, non-directional half of a hit taken: the corners of the screen redden and fade
+    // over `life` seconds. `alpha` is how dark it gets at its darkest corner.
+    hurtVignette: { life: 1.0, alpha: 0.32 },
   },
   // The corner of the screen that says what you have and what your buttons are doing. It was sized
   // to stay out of the way and succeeded too well: a first-time player found the hearts and the rail
@@ -469,10 +487,7 @@ const TUNING = {
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
   // first has found a room, so most levels get one and some get two rather than every level getting
   // a guaranteed pair. `carveSecret` in gen.js does the finding; this is only ever the odds.
-  // `bombChance` is how often a secret's own stand of arms is a bomb instead — a level almost never
-  // carves more than two of these, which is what keeps the bomb itself rare (one to two a level)
-  // without a per-room chance of its own or a count to hold it to.
-  secret: { chance2: 0.35, bombChance: 0.45 },
+  secret: { chance2: 0.35 },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
   // A beat of thought the moment the pen gives: not a caption, a small comic-panel bubble over his
@@ -512,7 +527,7 @@ const TUNING = {
   // gap between any two lines is twice what it used to be and a man waits half again as long for
   // his own next one, because a room that shouts on every event stops being read at all and the
   // lines that matter (a rifle calling the line, a man seeing the goat) were lost in the chatter.
-  bark: { life: 1.9, gap: 0.9, perEnemy: 7, nearDist: 7.5, nearChance: 0.13 },
+  bark: { life: 1.9, gap: 0.9, perEnemy: 7, nearDist: 7.5, nearChance: 0.13, witnessDist: 7 },
   // `crowd` is how many men who know where you are it takes for the score to climb a step: up to
   // `warm` it is the motif and the toms, up to `hot` the kick and the hats, and past it the whole
   // kit. It used to go to the top on five, which is an ordinary room on level three, so the loudest
@@ -522,11 +537,18 @@ const TUNING = {
   // the hats — with a rifle awake anywhere on the level it was the loudest thing in the mix and the
   // music underneath it stopped being audible at all. A third of the gain and half as often: still
   // the one dry tick in the bar that nothing else makes, now under the drums rather than over them.
-  audio: { master: 0.92, drums: 1.0, sfx: 1.05, music: 0.85, crowd: { warm: 3, hot: 6 },
+  // `sfx` came down a fifth from 1.05: the swings, thuds and hits of an ordinary fight were louder
+  // than the drums under them, which is backwards for a bus that fires on every blow rather than
+  // once a bar.
+  audio: { master: 0.92, drums: 1.0, sfx: 0.85, music: 0.85, crowd: { warm: 3, hot: 6 },
     hunterCue: { gain: 0.04, everyBars: 4 },
-    layers: { maxPerFamily: 6, fireRadius: 4 * TILE, pursuitRadius: 8 * TILE,
+    layers: { maxPerFamily: 6, pursuitRadius: 8 * TILE,
       sampleSeconds: 0.1, fadeSeconds: 0.30, gain: 0.75, exploreMix: 0.6,
-      fullGainVoices: 8, fireGain: 0.055, largeReplySteps: 2, largeReplyGain: 0.72,
+      fullGainVoices: 12, fireGain: 0.11,
+      hitBudgets: { small: [0,1,2,3,4,5,6], ranged: [0,2,4,5,6,7,8],
+        large: [0,3,5,7,9,11,13], mill: [0,2,3,4,5,6,7] },
+      eventDelaySteps: 8, eventGridSteps: 8, eventQueueCap: 12, eventStackCap: 3,
+      killGain: 0.12, actionGain: 0.09,
       lateFromLevel: 5, blazeThresholds: [1, 4, 10], blazeTailBars: 2,
       grassRadius: 4 * TILE, grassVoices: 3, grassTailBars: 1, grassGain: 0.085 } },
   // The lead point is carried rather than read: on a mouse the aim flips the instant the pointer
@@ -564,12 +586,32 @@ const TUNING = {
 // without playing up to it: it is a prototype, and the fifth level is worth looking at on a Tuesday.
 const MENU = ['new', 'continue', 'levels', 'best', 'settings'];
 
+// Escape, mid-level, used to drop straight back to the title — which threw away the room exactly as
+// it stood and handed CONTINUE a freshly generated level from its own head, so checking a setting or
+// an accidental Escape cost the same as dying. This is the actual pause: `game.state` holds at
+// `'paused'` rather than tearing anything down, so RESUME is the goat standing exactly where Escape
+// caught him, the room exactly as it was. `game.pause` (`index`, `rects`) is its own small menu,
+// separate from the title's `game.menu`, though the two share `game.menu.panel === 'settings'` —
+// opening the sliders from here draws the identical panel `drawSettings` already knows how to draw.
+const PAUSE_MENU = [
+  { id: 'resume', name: 'RESUME' },
+  { id: 'settings', name: 'SETTINGS' },
+  { id: 'quit', name: 'QUIT TO TITLE' },
+];
+
 // The switches on the title screen, in the order they are drawn. `key` is the field in
 // `game.settings` and nothing else reads them, so adding one is a line here and a line at the use
 // site. Both of them are things the game is better off not doing by default.
+// `type: 'slider'` rows carry a 0..1 value instead of a boolean — `game.setSliderAt` and
+// `game.adjustSlider` are the only things that write them, a drag or a left/right press where a
+// toggle would take Space. 0.5 is the middle both start at, which reproduces today's tuned mix
+// exactly (`game.applyVolumeSettings` scales each bus by `value / 0.5`), so a browser that never
+// touches the row sounds exactly as it always has.
 const SETTINGS = [
   { key: 'timer', name: 'SHOW THE CLOCK', note: 'A time counting up in the corner. The level card tells you at the end either way.' },
-  { key: 'sound', name: 'SOUND', note: 'Drums, voices, and the rest of it. M does the same thing mid-run.' },
+  { key: 'sound', name: 'SOUND', note: 'Everything at once. M does the same thing mid-run.' },
+  { key: 'musicVolume', name: 'MUSIC VOLUME', note: 'The room score and its drums.', type: 'slider' },
+  { key: 'sfxVolume', name: 'EFFECT VOLUME', note: 'Swings, hits, voices — the noise of a fight.', type: 'slider' },
   { key: 'layeredMusic', name: 'LAYERED MUSIC', note: 'Switch off to restore the original score.' },
   { key: 'easy', name: 'EASY MODE', note: 'Six hearts to start instead of four, and every blow in the compound takes 40% longer to land.' },
 ];
@@ -775,7 +817,11 @@ const BARKS = {
   // the goat is close and he has not seen it yet
   near: ['SOMETHING BREATHES', 'SMELL THAT?', 'CLOSE NOW', 'QUIET'],
   // a man goes down in front of him
-  panic: ['IT KILLED HIM', 'NOT ME', 'THE PRIEST LIED', 'RUN', 'MERCY'],
+  panic: ['IT KILLED HIM', 'THE PRIEST LIED', 'RUN', 'MERCY'],
+  // the one who is actually responsible, said by him and nobody else: a Hunter whose shot found a
+  // man of his own, or a Seer whose fire spread to one. Guaranteed rather than left to `panic`'s own
+  // roll, because the man who did it having nothing to say about it read as the game not noticing.
+  friendlyFire: { hunter: ['NOT ME', 'WRONG MARK', 'HOLD YOUR LINE'], seer: ['WHO DID IT?', 'NOT MY FLAME', 'WATCH THE GROUND'] },
   // committing to a swing
   attack: ['HOLD IT DOWN', 'FOR THE ALTAR', 'BLEED', 'STAY STILL'],
   // walking into flame is for the goat, not for him

@@ -52,7 +52,7 @@ class Game {
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0; this.flashColor = PALETTE.bone;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
     this.cageThought = 0;   // a beat of "her" over his head the moment the pen gives, comic-panel style
-    this.hitstopTimer = 0; this.timeScale = 1; this.slowTimer = 0; this.hurt = null;
+    this.hitstopTimer = 0; this.timeScale = 1; this.slowTimer = 0; this.hurt = null; this.hurtVignette = null;
     this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0; this.totalScore = 0;
     this.best = this.loadBest();
     this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.souls = []; this.boonChoice = null; this.boonRects = [];
@@ -81,19 +81,21 @@ class Game {
     this.stairFx = null;    // the goat on a flight of stairs: { t, dir } with dir 1 going up and out, -1 arriving
     this.state = 'title'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
     // The first screen: two ways in, and whatever run the browser still remembers behind the second.
-    this.menu = { index: 0, rects: [], t: 0, shake: 0 }; this.save = null;
+    this.menu = { index: 0, rects: [], t: 0, shake: 0, sliderDrag: null }; this.save = null;
+    this.pause = { index: 0, rects: [] };
     this.introSeen = false; this.penBroken = false;
     try { this.introSeen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { /* storage refused */ }
     try { this.penBroken = localStorage.getItem(PEN_KEY) === '1'; } catch (e) { /* storage refused */ }
     this.settings = this.loadSettings();
     this.audio.setLayered(this.settings.layeredMusic);
     if (!this.settings.sound) this.audio.toggleMute();
+    this.applyVolumeSettings();
     // The tool has its own address: `#rules` and `#balance` open it on that tab at load, so the
     // page can be linked to and bookmarked rather than found through the drawer every time.
     this.runSeed = 0; this.askedSeed = 0;
     try {
       const h = (location.hash || '').replace('#', '');
-      if (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'props') {
+      if (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'props' || h === 'music') {
         this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
       }
       // `#seed=k3j9a` is the whole of sharing a run: NEW GAME takes it instead of rolling one, so a
@@ -346,7 +348,7 @@ class Game {
   // default: a number counting up in the corner of a game about running is a game about the number,
   // and the run is timed either way — the card at the end of a level is where the time belongs.
   loadSettings() {
-    const d = { timer: false, sound: true, easy: false, layeredMusic: true };
+    const d = { timer: false, sound: true, easy: false, layeredMusic: true, musicVolume: 0.5, sfxVolume: 0.5 };
     try { return Object.assign(d, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (err) { return d; }
   }
   saveSettings() {
@@ -357,6 +359,23 @@ class Game {
     if (key === 'sound' && this.audio.muted === this.settings.sound) this.audio.toggleMute();
     if (key === 'layeredMusic') this.audio.setLayered(this.settings.layeredMusic);
     this.saveSettings(); this.audio.sfxSwing();
+  }
+  // The two sliders read straight off `this.settings` and write straight back to it — nothing else
+  // carries its own copy of the value, so a drag, an arrow key and a reload all agree.
+  applyVolumeSettings() { this.audio.setVolumes(this.settings.musicVolume, this.settings.sfxVolume); }
+  adjustSlider(i, delta) {
+    const it = SETTINGS[i]; if (!it || it.type !== 'slider') return;
+    const v = clamp(Math.round(((this.settings[it.key] ?? 0.5) + delta) * 20) / 20, 0, 1);
+    this.settings[it.key] = v; this.applyVolumeSettings(); this.saveSettings();
+  }
+  // A click or a drag sets the value directly off where the pointer landed on the bar; `menu.rects[i]`
+  // carries the bar's own bounds (`sliderX`/`sliderW`), stamped on by `Renderer.drawSettings` — the
+  // row rect used for hover and hit-testing is wider than the bar itself.
+  setSliderAt(i, x) {
+    const it = SETTINGS[i]; if (!it || it.type !== 'slider') return;
+    const rect = this.menu.rects[i]; if (!rect || rect.sliderW === undefined) return;
+    const v = clamp(Math.round(clamp((x - rect.sliderX) / rect.sliderW, 0, 1) * 20) / 20, 0, 1);
+    this.settings[it.key] = v; this.applyVolumeSettings(); this.saveSettings();
   }
 
   // Reaching for a man with a mouth that only takes objects. Said once per level and then never
@@ -451,6 +470,7 @@ class Game {
     } catch (e) { /* fetch unavailable */ }
   }
   devAction(id) {
+    if (id.startsWith('music-')) { this.audio.labAction(id.slice(6), this); return; }
     if (id === 'toggle') { this.dev.open = !this.dev.open; return; }
     if (id === 'god') { this.dev.god = !this.dev.god; this.devToast(this.dev.god ? 'GOD MODE ON' : 'GOD MODE OFF'); return; }
     if (id === 'vision') { this.dev.vision = !this.dev.vision; return; }
@@ -698,9 +718,22 @@ class Game {
       this.keys.add(e.code); if (e.code !== 'KeyM') this.input.anyPressed = true; this.touch.active = false;
       if (e.code === 'Space') { this.input.spacePressed = true; e.preventDefault(); }
       if (e.code === 'Backspace') { e.preventDefault(); this.restartLevel(); }
-      // Escape always reaches the menu, whatever is happening on the floor — a run in progress
-      // simply drops back to the title the way closing the tab and coming back would.
-      if (e.code === 'Escape' && this.state !== 'title' && !this.dev.rules) { e.preventDefault(); this.showTitle(); }
+      // Escape out of actual play pauses in place rather than dropping to the title — the room
+      // stays exactly as it is and RESUME is the only way this function runs again. Escape out of
+      // the pause overlay's own settings panel backs out one step, the way it always has from the
+      // title; out of the bare pause overlay it resumes. Everywhere else it still goes to the
+      // title, since those screens (dead, win, a boon) are not a thing "resume" means anything for.
+      // Fully self-contained: the state === 'paused' dispatch below skips Escape on purpose so the
+      // same keypress cannot pause and immediately unpause itself in one event.
+      if (e.code === 'Escape' && !this.dev.rules) {
+        e.preventDefault();
+        if (this.state === 'play') { this.state = 'paused'; this.pause.index = 0; this.menu.panel = null; this.audio.sfxCard(); }
+        else if (this.state === 'paused') {
+          if (this.menu.panel) { this.menu.panel = null; this.audio.sfxSwing(); }
+          else { this.state = 'play'; this.audio.sfxSwing(); }
+        }
+        else if (this.state !== 'title') this.showTitle();
+      }
       if (e.code === 'KeyM') this.audio.toggleMute();
       if (e.code === 'KeyN' && this.state === 'play') this.levelCleared();
       if (e.code === 'KeyE') this.input.rollPressed = true;
@@ -709,6 +742,7 @@ class Game {
         if (e.code === 'Digit4') this.skipBoon();
       }
       if (this.state === 'title') this.menuKey(e.code);
+      else if (this.state === 'paused' && e.code !== 'Escape') { if (this.menu.panel) this.menuKey(e.code); else this.pauseKey(e.code); }
       wake();
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
@@ -720,7 +754,13 @@ class Game {
       if (this.hitDev(p)) return;
       if (this.state === 'title') {
         this.touch.active = e.pointerType !== 'mouse'; this.input.mouse = p;
-        const i = this.menuAt(p); if (i >= 0) this.menuPick(i);
+        this.menuPanelClick(p);
+        return;
+      }
+      if (this.state === 'paused') {
+        this.touch.active = e.pointerType !== 'mouse'; this.input.mouse = p;
+        if (this.menu.panel) this.menuPanelClick(p);
+        else { const i = this.pauseAt(p); if (i >= 0) this.pausePick(i); }
         return;
       }
       if (this.state === 'boon') {
@@ -741,11 +781,16 @@ class Game {
 
     c.addEventListener('pointermove', (e) => {
       const p = this.canvasPos(e);
-      if (e.pointerType === 'mouse') { this.input.mouse = p; if (this.touch.active && this.coarse === false) this.touch.active = false; return; }
+      if (e.pointerType === 'mouse') {
+        this.input.mouse = p; if (this.touch.active && this.coarse === false) this.touch.active = false;
+        if ((this.state === 'title' || this.state === 'paused') && this.menu.sliderDrag != null) this.setSliderAt(this.menu.sliderDrag, p.x);
+        return;
+      }
       e.preventDefault(); this.touch.move(e.pointerId, p.x, p.y);
     }, { passive: false });
 
     const up = (e) => {
+      this.menu.sliderDrag = null;
       if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false;
       // A card is taken here and nowhere else: the pointer has to leave the same card it arrived on.
       if (this.state === 'boon') {
@@ -761,7 +806,7 @@ class Game {
     };
     c.addEventListener('pointerup', up);
     c.addEventListener('pointercancel', up);
-    window.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false; this.boonDown = -1; });
+    window.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false; this.boonDown = -1; this.menu.sliderDrag = null; });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('blur', () => { this.keys.clear(); this.input.rmbDown = false; this.touch.clear(); });
     window.addEventListener('resize', () => { this.renderer.resize(); this.layoutTouch(); });
@@ -853,7 +898,7 @@ class Game {
       return { room: at, doors, armed: false, open: false, held: null };
     });
     this.runes = []; this.houndTold = false; this.henTold = false;
-    this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null; this.fallers = [];
+    this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null; this.hurtVignette = null; this.fallers = [];
     this.fx = new CombatFX(this);
     this.souls = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
     // What he walked in with. A death rolls him back to exactly this list.
@@ -945,7 +990,7 @@ class Game {
     // `panel` is whatever is laid over the menu — the record sheet, or the two switches. The board
     // is put away by anything at all; the switches are not, because a click on one is meant to
     // throw it rather than to leave.
-    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0, panel: null, sub: 0 };
+    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0, panel: null, sub: 0, sliderDrag: null };
   }
   updateTitle(dt) {
     this.menu.t += dt; this.menu.shake = Math.max(0, this.menu.shake - dt);
@@ -972,8 +1017,11 @@ class Game {
     if (m.panel === 'settings' || m.panel === 'levels') {
       // the rows of whatever is up, and the way out at the bottom of them
       const n = (m.panel === 'settings' ? SETTINGS.length : LEVELS.length) + 1;
+      const row = m.panel === 'settings' ? SETTINGS[m.sub] : null;
       if (code === 'KeyW' || code === 'ArrowUp') { m.sub = (m.sub + n - 1) % n; this.audio.sfxSwing(); }
       else if (code === 'KeyS' || code === 'ArrowDown') { m.sub = (m.sub + 1) % n; this.audio.sfxSwing(); }
+      else if (row && row.type === 'slider' && (code === 'ArrowLeft' || code === 'KeyA')) this.adjustSlider(m.sub, -0.05);
+      else if (row && row.type === 'slider' && (code === 'ArrowRight' || code === 'KeyD')) this.adjustSlider(m.sub, 0.05);
       else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.menuPick(m.sub);
       else { m.panel = null; this.audio.sfxSwing(); }
       return;
@@ -991,6 +1039,9 @@ class Game {
     if (m.panel === 'settings') {
       m.sub = i;
       if (i >= SETTINGS.length) { m.panel = null; this.audio.sfxCard(); return; }
+      // A slider takes a drag or the left/right keys, both handled before this is ever reached; a
+      // press on the row itself — Enter, or a tap that was not a drag — does nothing to it.
+      if (SETTINGS[i].type === 'slider') return;
       this.toggleSetting(SETTINGS[i].key);
       return;
     }
@@ -1014,6 +1065,35 @@ class Game {
     this.runSeed = this.askedSeed || ((Math.random() * 1e9) | 0);
     this.askedSeed = 0;   // a seed off the address is spent on the run it was asked for and no other
     this.startLevel(0, this.levelSeed(0), false, true);
+  }
+  // The pause overlay's own three rows — RESUME, SETTINGS, QUIT TO TITLE — kept apart from the
+  // title's own `menu` so pausing mid-level can never disturb what row the title was last left on.
+  pauseAt(p) {
+    const r = this.pause.rects;
+    for (let i = 0; i < r.length; i++) if (p.x >= r[i].x && p.x <= r[i].x + r[i].w && p.y >= r[i].y && p.y <= r[i].y + r[i].h) return i;
+    return -1;
+  }
+  pauseKey(code) {
+    const n = PAUSE_MENU.length;
+    if (code === 'KeyW' || code === 'ArrowUp') { this.pause.index = (this.pause.index + n - 1) % n; this.audio.sfxSwing(); }
+    else if (code === 'KeyS' || code === 'ArrowDown') { this.pause.index = (this.pause.index + 1) % n; this.audio.sfxSwing(); }
+    else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.pausePick(this.pause.index);
+  }
+  pausePick(i) {
+    this.pause.index = i;
+    const id = (PAUSE_MENU[i] || PAUSE_MENU[0]).id;
+    if (id === 'resume') { this.state = 'play'; this.audio.sfxSwing(); return; }
+    if (id === 'settings') { this.menu.panel = 'settings'; this.menu.sub = 0; this.audio.sfxCard(); return; }
+    // QUIT TO TITLE is the old Escape behaviour: abandon the room rather than resume it.
+    this.showTitle();
+  }
+  // Shared by the title menu and the pause overlay's own settings panel: a slider takes the click
+  // position, anything else is an ordinary row pick.
+  menuPanelClick(p) {
+    const i = this.menuAt(p); if (i < 0) return;
+    const row = this.menu.panel === 'settings' ? SETTINGS[i] : null;
+    if (row && row.type === 'slider') { this.setSliderAt(i, p.x); this.menu.sliderDrag = i; }
+    else this.menuPick(i);
   }
   // ONE SEED A RUN. The corner has shown the level's own seed for a while, which is enough to report
   // a bad room and no use at all for handing somebody your run: every level of it was a fresh
@@ -1331,6 +1411,7 @@ class Game {
     this.layoutTouch();
     this.renderer.draw(this, dtReal);
     if (this.hurt) this.hurt.life -= dtReal;
+    if (this.hurtVignette) this.hurtVignette.life -= dtReal;
     this.updateCursor();
   }
   // The OS pointer rather than a drawn one: the goat's own head, aimed at something to hit, and a
@@ -1345,6 +1426,16 @@ class Game {
   update(dt) {
     // The RULES page holds everything where it is: a dev reading a table should not be clubbed.
     if (this.dev.rules) { this.clearEdges(); return; }
+    // Nothing ages: no goat, no enemy, no timer, no camera. RESUME is not a second `startLevel`, it
+    // is simply letting this function run again from the exact frame Escape stopped it on. The
+    // mouse still gets to choose what it is hovering, the same courtesy the title menu gives it.
+    if (this.state === 'paused') {
+      if (!this.touch.active) {
+        if (this.menu.panel === 'settings') { const i = this.menuAt(this.input.mouse); if (i >= 0) this.menu.sub = i; }
+        else { const i = this.pauseAt(this.input.mouse); if (i >= 0) this.pause.index = i; }
+      }
+      this.clearEdges(); return;
+    }
     this.readMoveInput();
     if (this.state === 'title') { this.updateTitle(dt); this.clearEdges(); return; }
     if (this.state === 'intro') { this.updateIntro(dt); this.clearEdges(); return; }
@@ -1389,6 +1480,16 @@ class Game {
     const curRoom = roomAt(this.level, this.goat.x, this.goat.y), curIdx = curRoom ? curRoom.index : -1;
     for (const e of this.enemies) {
       if (curIdx >= 0 && e.room >= 0 && Math.abs(e.room - curIdx) >= 2) continue;
+      // A room the goat has not opened yet — no floor of it seen, not walked into — used to go on
+      // patrolling anyway once it was only the immediate neighbour of his own room, which let a man
+      // wander into the wheel or over a drop and die to it before the door that room sits behind
+      // was ever touched: a kill with nothing the player did behind it. Frozen until `revealRooms`
+      // marks the room seen, the same as its floor plan is frozen behind the fog. The cost is
+      // narrow — a man mid-chase who ducks round a blind corner into a room with no sightline into
+      // it yet stops answering noise for the few frames before he is seen, rather than the whole
+      // room past it, which is what the distance skip above already accepts losing.
+      const eroom = e.room >= 0 ? this.level.rooms[e.room] : null;
+      if (eroom && !eroom.seen) continue;
       e.update(dt, this);
     }
     for (const b of this.bullets) b.update(dt, this);
@@ -1891,6 +1992,10 @@ class Game {
       if (p.broken) continue;
       if (p.item) {
         if (p.kind === 'crate' && p.flung) for (const e of en) { if (!e.dead && !e.held && e.state === 'flung' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
+        // A crate is `item`, so it never reaches `blocking` below and the charge's own door/table/
+        // lamp/brazier branch further down can never see it — it would otherwise be a box a charging
+        // Butcher runs clean through without a mark on it, which is the wrong kind of invisible.
+        if (p.kind === 'crate' && !p.flung) for (const e of en) { if (!e.dead && !e.held && e.state === 'charge' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
         continue;
       }
       if (!p.blocking) continue;
@@ -1926,7 +2031,15 @@ class Game {
         // over and he runs into his own fire; a brazier lights him; and anything as solid as a wall
         // — the gong, the hub, a bar of the pen — stops him the way a wall does.
         if (e.state === 'charge' && vn < 0) {
-          if (p.kind === 'door') { p.hits = Math.max(p.hits || 0, TUNING.prop.door.hits - 1); p.smash(this, -nx, -ny, e); continue; }
+          // A gate or a sealed arena's door refuses `smash` outright and stays standing — `door`
+          // used to `continue` here regardless, which let the charge carry him straight through a
+          // door that had not actually moved. Unbroken, it is exactly the wall the comment above
+          // already promises anything else on this list is.
+          if (p.kind === 'door') {
+            p.hits = Math.max(p.hits || 0, TUNING.prop.door.hits - 1); p.smash(this, -nx, -ny, e);
+            if (p.broken) continue;
+            e.chargeStopped(this); continue;
+          }
           if (p.kind === 'table' && !p.flung) { p.shove(this, -nx, -ny, e); continue; }
           if (p.kind === 'lamp') { p.topple(this, -nx, -ny); continue; }
           if (p.kind === 'brazier') { p.spill(this, -nx, -ny); e.ignite(this); continue; }
@@ -1934,7 +2047,11 @@ class Game {
           e.chargeStopped(this);
         }
         if (e.state === 'flung' && p.kind === 'bell' && -vn > 3 * TILE) p.ring(this);
-        if (e.state === 'flung' && -vn > TUNING.prop.door.smashSpeed && p.kind === 'door') { p.smash(this, -nx, -ny); continue; }
+        // Same rescue as the charge above, for a flung body: a gate or a sealed door that refuses to
+        // break is not an open doorway, and used to let a body a headbutt sent flying pass straight
+        // through it — reported as a man knocked clean through a story door that stood there after.
+        // Left unbroken, nothing here `continue`s, so it falls to the ordinary solid-prop stop below.
+        if (e.state === 'flung' && -vn > TUNING.prop.door.smashSpeed && p.kind === 'door') { p.smash(this, -nx, -ny); if (p.broken) continue; }
         // A lamp post is not a pillar. A body arriving at speed takes it over, and the oil goes
         // down where the body is about to land.
         if (e.state === 'flung' && -vn > TUNING.prop.lamp.knock && p.kind === 'lamp') { p.topple(this, -nx, -ny); e.vx *= 0.6; e.vy *= 0.6; continue; }
@@ -2008,14 +2125,17 @@ class Game {
     this.particles(mx, my, 4, PALETTE.fireHi, 120); this.shake(1.5);
     // Firing into the wall he is standing against is a wasted round, not a shot through it.
     if (blocked) { w.dot(mx, my, 2, '#2a2020'); return; }
-    this.bullets.push(new Bullet(mx, my, dx * s, dy * s));
+    this.bullets.push(new Bullet(mx, my, dx * s, dy * s, shooter));
   }
   // A swing has to have a way to what it is swinging at. Stone, a pillar, a table, a shut door, the
   // hub of the Mill: whatever is in the way takes the blow instead, and both sides are held to it —
   // a club that comes through a wall reads as the room not being real.
   // Line of sight plus a set of props, each as a circle against the segment. `reaches` asks it of
   // everything that blocks a blow; `sees` asks it of the few things you cannot see over.
-  clearLine(ax, ay, bx, by, props, stops) {
+  // `moverR` is the width of whatever is asking, on top of the prop's own radius: a blow only needs
+  // a thin ray past a pillar (the `0.8` fudge below), a body charging down the same line needs the
+  // clearance an actual body that wide takes.
+  clearLine(ax, ay, bx, by, props, stops, moverR) {
     if (!this.world.los(ax, ay, bx, by)) return false;
     const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
     for (const p of props) {
@@ -2023,7 +2143,7 @@ class Game {
       // How far the prop's centre is off the line, clamped to the segment itself.
       const t = len2 ? clamp(((p.x - ax) * dx + (p.y - ay) * dy) / len2, 0, 1) : 0;
       const px = ax + dx * t - p.x, py = ay + dy * t - p.y;
-      if (Math.hypot(px, py) < p.r * 0.8) return false;
+      if (Math.hypot(px, py) < (moverR === undefined ? p.r * 0.8 : p.r + moverR)) return false;
     }
     return true;
   }
@@ -2031,6 +2151,10 @@ class Game {
   // A shut door is a wall until somebody opens it, and nobody sees through a wall. `sightBlockers`
   // is the short list of props that could ever be one, so this stays off the per-frame prop loop.
   sees(ax, ay, bx, by) { return this.clearLine(ax, ay, bx, by, this.sightBlockers, 'opaque'); }
+  // Whether a body of radius `r` can actually run the straight line rather than only see down it —
+  // `props` and not `enemies`, so a room full of his own kind is never a reason not to try; only
+  // furniture and stone are. See the Butcher's `chase` → `chargewind` decision.
+  runClear(ax, ay, bx, by, r) { return this.clearLine(ax, ay, bx, by, this.props, 'blocking', r); }
   meleeHit(att, reach, arc, damage, knock, skipGoat) {
     const g = this.goat;
     // Nothing that is not on the screen lands a blow. A man inside a room the goat has not opened
@@ -2077,6 +2201,7 @@ class Game {
     }
   }
   onKill(e, cause) {
+    if (this.state === 'play' && !this.goat.dead) this.audio.musicEvent('kill');
     this.kills++;
     const J = TUNING.juice, big = e.kind === 'butcher';
     // Kills inside the window stack: each one hits harder and holds the frame longer.
@@ -2084,8 +2209,9 @@ class Game {
     this.comboTimer = J.comboWindow;
     const dx = e.x - this.goat.x, dy = e.y - this.goat.y;
     this.hitstop(J.hitstop + Math.min(J.comboHitstopCap, this.combo * J.comboHitstopMul));
-    this.shake(big ? 14 : J.shakeKill);
-    this.kick(dx, dy, J.kick * (big ? 1.7 : 1));
+    const comboMul = this.combo >= 2 ? J.comboShakeMul : 1;
+    this.shake((big ? 14 : J.shakeKill) * comboMul);
+    this.kick(dx, dy, J.kick * (big ? 1.7 : 1) * comboMul);
     this.zoomPunch(big ? 2 : 1);
     const cold = e.kind === 'wraith';
     this.flash(cold ? PALETTE.witchHi : PALETTE.blood, big ? 0.24 : cold ? 0.16 : 0.11);
@@ -2177,7 +2303,14 @@ class Game {
     this.barkCd = TUNING.bark.gap; e.barkCd = TUNING.bark.perEnemy;
   }
   vibe(ms) { if (this.coarse && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { /* ignore */ } } }
-  hurtFlash(angle) { this.hurt = { angle, life: 0.6 }; this.vibe(35); this.flash(PALETTE.blood, 0.16); }
+  // `hurt` is the arc pointing back at what just hit you; `hurtVignette` is a plainer, non-directional
+  // cue on top of it — the corners of the screen going red for a beat — because an arc on one edge of
+  // the screen is easy to miss at a glance and a hit landing is the one thing a player must never be
+  // unsure happened. It carries no direction and no angle, only that a heart just went.
+  hurtFlash(angle) {
+    this.hurt = { angle, life: 0.6 }; this.hurtVignette = { life: TUNING.juice.hurtVignette.life };
+    this.vibe(35); this.flash(PALETTE.blood, 0.16);
+  }
   ring(x, y, r, color) { this.rings.push({ x, y, r, color, life: 0.6, max: 0.6 }); }
   particles(x, y, n, color, speed) {
     for (let i = 0; i < n; i++) {

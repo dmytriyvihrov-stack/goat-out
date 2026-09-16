@@ -210,9 +210,10 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'milk', text: 'Milk is on a rhythm: never more than heal.every rooms dry, never in a set piece, never in a fire.',
+  { id: 'milk', text: 'Milk is on a rhythm: never more than heal.every rooms dry (heal.gapMax from level 4), never in a set piece, never in a fire.',
     check: (L) => {
-      const n = L.def.rooms, limit = Math.ceil(TUNING.prop.heal.every);
+      const n = L.def.rooms;
+      const limit = LEVELS.indexOf(L.def) >= 3 ? TUNING.prop.heal.gapMax : Math.ceil(TUNING.prop.heal.every);
       const bowls = L.props.filter((p) => p.kind === 'heal');
       const rooms = bowls.map((p) => roomAt(L, p.x, p.y)).filter(Boolean);
       // A heart you have to pay a heart for is not a heart: no bowl stands in a brazier or under a lamp.
@@ -226,6 +227,16 @@ const GEN_RULES = [
       for (const i of idx) { worst = Math.max(worst, i - prev); prev = i; }
       worst = Math.max(worst, n - 1 - prev);
       return worst <= limit ? true : `${worst} rooms without a bowl (limit ${limit})`;
+    } },
+  { id: 'bomb', text: 'At most one bomb a level, standing in an ordinary room and never a set piece.',
+    check: (L) => {
+      const bombs = L.props.filter((p) => p.kind === 'bomb');
+      if (bombs.length > 1) return `${bombs.length} bombs`;
+      if (!bombs.length) return null;
+      const r = roomAt(L, bombs[0].x, bombs[0].y);
+      if (!r) return 'a bomb outside any room';
+      if (SET_PIECE.has(r.role) || r.isTrap || r.isAmbush) return `a bomb in the ${r.role || 'set piece'}`;
+      return true;
     } },
   { id: 'pen', text: 'Nothing spawns by the pen, and the pen holds nobody.',
     check: (L) => {

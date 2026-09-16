@@ -125,6 +125,15 @@ class Enemy {
     if (game.goat.holding === this) { game.goat.holding = null; game.goat.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
     game.audio.sfxFire(); game.floatText(this.x, this.y - 26, 'AAAAH', witch ? PALETTE.witch : PALETTE.fire);
     this.aware = true;
+    // Caught from the ground rather than handed on by another burning man: that ground is only ever
+    // witchfire, which is only ever a Seer's doing. Whichever one is close enough to have watched it
+    // happen has something to say about it — the same courtesy the shooter of a friendly-fire bullet
+    // already gets.
+    if (witch && !fromMan) {
+      const mage = game.enemies.find((o) => o.kind === 'seer' && o !== this && !o.dead && !o.held
+        && Math.hypot(o.x - this.x, o.y - this.y) < TUNING.bark.witnessDist * TILE && game.world.los(o.x, o.y, this.x, this.y));
+      if (mage) game.bark(mage, 'friendlyFire', 1);
+    }
   }
 
   die(game, cause, dx, dy) {
@@ -909,9 +918,18 @@ class Enemy {
       return;
     }
     if (this.state === 'chase') {
+      // A charge that starts at a pillar he was never going to clear read as him crashing into the
+      // furniture rather than choosing a line. `runClear` is the clearance an actual body that wide
+      // needs, not `sees`'s thin ray, checked only as far as the goat's own spot — reaching past it
+      // was tried and it does not work: the tile just beyond the goat is wall as often as it is
+      // floor, so it failed the ordinary case of a goat standing anywhere near his own back wall.
+      // `game.props` only, never `enemies` — a room full of his own kind is a reason to charge, not
+      // a reason not to.
       if (sees && d >= cfg.chargeMin * TILE && this.chargeCd <= 0 && !g.dead) {
-        this.state = 'chargewind'; this.timer = cfg.chargeWind * game.mods.enemySlow; this.facing = Math.atan2(dy, dx);
-        game.floatText(this.x, this.y - 34, 'RAAAGH', PALETTE.blood); game.audio.sfxThud(); return;
+        if (game.runClear(this.x, this.y, g.x, g.y, this.r)) {
+          this.state = 'chargewind'; this.timer = cfg.chargeWind * game.mods.enemySlow; this.facing = Math.atan2(dy, dx);
+          game.floatText(this.x, this.y - 34, 'RAAAGH', PALETTE.blood); game.audio.sfxThud(); return;
+        }
       }
       const dd = this.chaseGoat(game, this.speed, dt);
       if (dd < cfg.reach + g.r && !g.dead) { this.state = 'windup'; this.timer = cfg.windup * game.mods.enemySlow; this.vx = 0; this.vy = 0; }

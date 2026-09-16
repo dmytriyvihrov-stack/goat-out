@@ -425,11 +425,7 @@ function tryGenerate(levelDef, seed) {
     props.push({ x: spot.wall.x, y: spot.wall.y, kind: 'secret', wallColor: levelDef.wall, wallTop: levelDef.wallTop,
       nicheTiles: spot.tiles, wallSide: spot.side });
     props.push({ x: spot.heal.x, y: spot.heal.y, kind: 'heal' });
-    // Almost never a rack: a secret is the one place a bomb is worth hiding at all, since finding
-    // one is the whole of what makes it rare. `bombChance` against a niche that otherwise always
-    // held a rack is what keeps the count to what a level's own secrets already cap it at.
-    if (rng.chance(TUNING.secret.bombChance)) props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'bomb' });
-    else props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
+    props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
     secretsPlaced++;
   }
 
@@ -623,6 +619,31 @@ function tryGenerate(levelDef, seed) {
     }
   }
 
+  // The bomb. A level carries one or it does not, and it goes to whichever ordinary room scored
+  // the most threat rather than to a secret's own quiet niche — a bomb tucked behind a broken
+  // wall had nothing near it worth throwing it at, which is the whole reason a rare find sat
+  // unused. `spawns` is final by now, so the score is the room's real men, boss included.
+  if (rng.chance(TUNING.prop.bomb.chance)) {
+    const scoreOf = (s) => THREAT[s.champion ? 'champion' : s.kind] || 0;
+    const eligible = rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.isHall
+      && !r.isGallery && !r.isKillbox && !r.isTrap && !r.isAmbush && r.index !== lessonIndex);
+    let best = null, bestScore = -1;
+    for (const room of eligible) {
+      const score = spawns.filter((s) => s.roomIndex === room.index).reduce((a, s) => a + scoreOf(s), 0);
+      if (score > bestScore) { best = room; bestScore = score; }
+    }
+    if (best && bestScore > 0) {
+      for (let a = 0; a < 40; a++) {
+        const tx = rng.int(best.x + 1, best.x + best.w - 2), ty = rng.int(best.y + 1, best.y + best.h - 2);
+        if (tiles[ty * W + tx] !== T.FLOOR) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
+        props.push({ x: px, y: py, kind: 'bomb' });
+        break;
+      }
+    }
+  }
+
   // Milk, on a rhythm rather than on a roll. A run is meant to be offered a bowl every few rooms,
   // so the level is cut into that many bands and each band gives one up — the room inside a band is
   // random, the spacing is not. `heals` is a floor: a long level gets more bowls, never a longer
@@ -642,6 +663,29 @@ function tryGenerate(levelDef, seed) {
     }
     if (!room) break;
     usedHeal.add(room.index); healRooms.push(room);
+  }
+  // From level 4 on, a level carries enough forced rooms — two or three arenas, the mill, the
+  // vault, a killbox — that a band's nearest eligible room can land well past what its idealised
+  // width promised, and several thin bands can end up crowding the same stretch while another
+  // goes hungry. This walks the picks in room order and drops one more bowl into any real gap
+  // over `heal.gapMax`, rather than trusting the band math alone to have kept every gap that short.
+  if (LEVELS.indexOf(levelDef) >= 3) {
+    healRooms.sort((a, b) => a.index - b.index);
+    const marks = [0, ...healRooms.map((r) => r.index), n - 1];
+    for (let i = 0; i < marks.length - 1; i++) {
+      if (marks[i + 1] - marks[i] <= TUNING.prop.heal.gapMax) continue;
+      const midGap = (marks[i] + marks[i + 1]) / 2;
+      let room = null;
+      for (const r of healable) {
+        if (usedHeal.has(r.index)) continue;
+        if (r.index <= marks[i] || r.index >= marks[i + 1]) continue;
+        if (!room || Math.abs(r.index - midGap) < Math.abs(room.index - midGap)) room = r;
+      }
+      if (!room) continue;
+      usedHeal.add(room.index); healRooms.push(room);
+      marks.splice(i + 1, 0, room.index);
+      i--; // recheck the two halves the new pick just split
+    }
   }
   // Where in the room it goes. This was the one scatter in the generator that asked whether the tile
   // was floor and nothing else, so a bowl could be laid down on top of a brazier — the last heart of

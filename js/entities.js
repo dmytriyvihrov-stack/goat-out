@@ -68,7 +68,7 @@ class Goat {
         if (!h.item) { h.state = 'floored'; h.timer = 0.5; }
         this.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown;
       }
-      game.audio.sfxRoll(); world.emitNoise(this.x, this.y, TUNING.noise.swing); game.vibe(12);
+      game.audio.sfxRoll(); game.audio.musicEvent('roll'); world.emitNoise(this.x, this.y, TUNING.noise.swing); game.vibe(12);
       game.particles(this.x, this.y, 9, PALETTE.ash, 150);
       // DEAD WEIGHT: the list of who this tumble has already been through. No list, no soul.
       this.rollHit = game.mods.rollStun > 0 ? [] : null;
@@ -145,7 +145,7 @@ class Goat {
       if (this.timer <= 0) {
         this.state = 'lunge'; this.timer = g.headbutt.active; this.lungeId++;
         this.vx = this.aim.x * g.headbutt.lunge; this.vy = this.aim.y * g.headbutt.lunge;
-        game.audio.sfxHeadbutt(); world.emitNoise(this.x, this.y, TUNING.noise.headbutt);
+        game.audio.sfxHeadbutt(); game.audio.musicEvent('headbutt'); world.emitNoise(this.x, this.y, TUNING.noise.headbutt);
       }
     } else if (this.state === 'lunge') {
       this.timer -= dt;
@@ -199,6 +199,7 @@ class Goat {
     // what a goat's voice actually is: a noise, loud enough to bring the room to the spot you made
     // it at. The bare version is the one you start with and the only one that is not a weapon.
     if (inp.spacePressed && this.screamCd <= 0 && !this.dead) {
+      game.audio.musicEvent('scream');
       if (game.mods.breath) this.breathe(game);
       else if (game.mods.screamStun) {
         // THE FULL THROAT: everyone in earshot loses a moment, and that moment is the point.
@@ -453,6 +454,7 @@ class Goat {
   // wield, so launching it is what the button does instead.
   throwHeld(game) {
     const h = this.holding, g = TUNING.goat; if (!h) return;
+    game.audio.musicEvent('throw');
     h.held = false; this.holding = null; this.autoHeld = false;
     // A hen out of the mouth is a hen off the horns: the same kick, the same seeking flight, the
     // same man she was already good at finding. Reaching for her on purpose buys nothing new — it
@@ -1460,7 +1462,7 @@ class Prop {
 }
 
 class Bullet {
-  constructor(x, y, vx, vy) { this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.life = 1.6; this.dead = false; }
+  constructor(x, y, vx, vy, shooter) { this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.life = 1.6; this.dead = false; this.shooter = shooter; }
   update(dt, game) {
     this.life -= dt; if (this.life <= 0) { this.dead = true; return; }
     const steps = 3;
@@ -1496,7 +1498,11 @@ class Bullet {
         if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + 2) {
           this.dead = true;
           if (e.kind === 'butcher') { e.hp -= 1; e.flash = 0.18; game.world.splat(e.x, e.y, this.vx / 900, this.vy / 900, 6); if (e.hp <= 0) e.die(game, 'shot', this.vx / 900, this.vy / 900); }
-          else { e.die(game, 'shot', this.vx / 900, this.vy / 900); game.floatText(e.x, e.y - 26, 'FRIENDLY FIRE', PALETTE.blood); }
+          else {
+            e.die(game, 'shot', this.vx / 900, this.vy / 900); game.floatText(e.x, e.y - 26, 'FRIENDLY FIRE', PALETTE.blood);
+            // The shooter, not a witness: he is the one who has something to say about it.
+            if (this.shooter && !this.shooter.dead) game.bark(this.shooter, 'friendlyFire', 1);
+          }
           return;
         }
       }

@@ -161,6 +161,7 @@ class Renderer {
     }
     this.drawVignette(game);
     this.drawHurt(game);
+    this.drawHurtVignette(game);
     this.drawFlash(game);
     if (game.state === 'climb' && game.stairFx) {
       // the light at the top of the stairs takes the picture
@@ -170,6 +171,7 @@ class Renderer {
     if (game.intro && game.inPrologue()) this.drawPrologue(game);
     if (game.intro) this.drawIntroOverlay(game);
     this.drawUI(game);
+    if (game.state === 'paused') this.drawPause(game);
     this.drawTitle(game, dt);
     if (game.touch.active && game.state === 'play') this.drawTouchUI(game);
     this.drawBoonChoice(game);
@@ -1496,7 +1498,7 @@ class Renderer {
     let toastY = cy - 10 * s;
     if (d.open) {
       const rows = [
-        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['rules', 'LEVEL TOOL'],
+        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['rules', 'TOOLS'],
         ['vision', d.vision ? 'VISION  ON' : 'VISION  OFF'],
         ['hearing', d.hearing ? 'HEARING  ON' : 'HEARING  OFF'],
         ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'],
@@ -1617,21 +1619,65 @@ class Renderer {
     const pad = 14 * s;
     ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    this.devButton(d, pad, pad, 76 * s, 20 * s, 'RULES', 'tab-rules', d.tab === 'rules');
-    this.devButton(d, pad + 80 * s, pad, 76 * s, 20 * s, 'LEVEL', 'tab-levels', d.tab === 'levels');
-    this.devButton(d, pad + 160 * s, pad, 76 * s, 20 * s, 'BALANCE', 'tab-balance', d.tab === 'balance');
-    this.devButton(d, pad + 240 * s, pad, 76 * s, 20 * s, 'ENEMIES', 'tab-enemies', d.tab === 'enemies');
-    this.devButton(d, pad + 320 * s, pad, 76 * s, 20 * s, 'BOONS', 'tab-boons', d.tab === 'boons');
-    this.devButton(d, pad + 400 * s, pad, 76 * s, 20 * s, 'OBJECTS', 'tab-props', d.tab === 'props');
+    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['props','OBJECTS'], ['music','MUSIC']];
+    const cols = Math.max(1, Math.floor((W - pad * 2 - 72 * s) / (80 * s)));
+    tabs.forEach(([id, label], i) => this.devButton(d, pad + i % cols * 80 * s,
+      pad + Math.floor(i / cols) * 24 * s, 76 * s, 20 * s, label, 'tab-' + id, d.tab === id));
+    const top = pad + Math.ceil(tabs.length / cols) * 24 * s + 6 * s;
     this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'CLOSE', 'rules', false);
-    if (d.tab === 'balance') this.drawBalance(game, pad, pad + 30 * s);
-    else if (d.tab === 'levels') this.drawLevelTab(game, pad, pad + 30 * s);
-    else if (d.tab === 'enemies') this.drawEnemiesTab(game, pad, pad + 30 * s);
-    else if (d.tab === 'boons') this.drawBoonsTab(game, pad, pad + 30 * s);
-    else if (d.tab === 'props') this.drawPropsTab(game, pad, pad + 30 * s);
-    else this.drawRuleTab(game, pad, pad + 30 * s);
+    if (d.tab === 'balance') this.drawBalance(game, pad, top);
+    else if (d.tab === 'levels') this.drawLevelTab(game, pad, top);
+    else if (d.tab === 'enemies') this.drawEnemiesTab(game, pad, top);
+    else if (d.tab === 'boons') this.drawBoonsTab(game, pad, top);
+    else if (d.tab === 'props') this.drawPropsTab(game, pad, top);
+    else if (d.tab === 'music') this.drawMusicTab(game, pad, top);
+    else this.drawRuleTab(game, pad, top);
     // A room opened from either of the other two covers them: it is the deepest the tool goes.
     if (d.room) this.drawRoomSheet(game, pad);
+  }
+
+  drawMusicTab(game, pad, top) {
+    const ctx = this.ctx, d = game.dev, audio = game.audio, lab = audio.lab;
+    const s = Math.min(this.ts, (this.h - top - pad) / 426), width = this.w - pad * 2;
+    const effective = capMusicScene({ ...lab.scene });
+    const text = (value, x, y, color = PALETTE.bone) => {
+      ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = color;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(value, x, y);
+    };
+    const button = (x, y, w, label, id, on = false) => this.devButton(d, x, y, w, 21 * s, label, 'music-' + id, on);
+    text('MUSIC LAB  /  ' + (lab.playing ? 'PLAYING' : 'STOPPED') + '  /  BAR ' + (1 + Math.floor(audio.step / 16)), pad, top + 11 * s, PALETTE.ochre);
+    const commands = [[lab.playing ? 'STOP' : 'PLAY','play'], ['CLEAR','clear'], ['ROOM','room'], [audio.muted ? 'UNMUTE' : 'MUTE','mute']];
+    commands.forEach(([label,id], i) => button(pad + i * 76 * s, top + 20 * s, 70 * s, label, id));
+    [['NO BASE','none'], ['IDLE','idle'], ['COMBAT','combat']].forEach(([label,id], i) => button(pad + i * 65 * s, top + 47 * s, 60 * s, label, 'bed=' + id, lab.bed === id));
+    button(pad + 201 * s, top + 47 * s, 66 * s, 'LEVEL 1-4', 'theme=early', !lab.scene.late);
+    button(pad + 272 * s, top + 47 * s, 66 * s, 'LEVEL 5+', 'theme=late', lab.scene.late);
+    Object.entries(MUSIC_PARTS).forEach(([kind, part], row) => {
+      const y = top + (79 + row * 26) * s, hits = musicHitCount(kind, effective[kind]);
+      text(part.label, pad, y + 14 * s);
+      for (let n = 0; n <= 6; n++) button(pad + (77 + n * 25) * s, y, 22 * s,
+        String(n), kind + '=' + n, lab.scene[kind] === n);
+      button(pad + 256 * s, y, 38 * s, 'SOLO', 'solo=' + kind);
+      text(effective[kind] + ' / ' + hits, pad + 303 * s, y + 14 * s, PALETTE.ochre);
+      // The same onset function drives sound and the visual score. No separate fake pattern.
+      const start = pad + 355 * s, cell = Math.min(11 * s, (width - 360 * s) / 32);
+      if (cell >= 4 * s) for (let step = 0; step < 32; step++) {
+        const active = Array.from({ length: hits }, (_, i) => musicPartHit(kind, i, step + Math.floor(audio.step / 64) * 64)).some(Boolean);
+        ctx.fillStyle = active ? PALETTE.ochre : 'rgba(239,230,208,0.09)';
+        ctx.fillRect(start + cell * step, y + 5 * s, cell - s, 10 * s);
+        if (lab.playing && step === audio.step % 32) { ctx.strokeStyle = PALETTE.fireHi; ctx.strokeRect(start + cell * step, y + 3 * s, cell - s, 14 * s); }
+      }
+    });
+    let y = top + 319 * s;
+    text('FIRE', pad, y + 14 * s);
+    [0,1,4,10,24].forEach((n,i) => button(pad + (50 + i * 36) * s, y, 32 * s, String(n), 'fire=' + n, lab.scene.fireTiles === n));
+    button(pad + 239 * s, y, 61 * s, 'COALS', 'coals', lab.scene.fire && !lab.scene.blaze);
+    y += 26 * s; text('GRASS', pad, y + 14 * s);
+    [0,1,2,3].forEach((n,i) => button(pad + (50 + i * 36) * s, y, 32 * s, String(n), 'grass=' + n, lab.scene.grass === n));
+    text('FIRE TAIL: 2 BARS', pad + 204 * s, y + 14 * s, PALETTE.ochre);
+    y += 28 * s;
+    [['KILL','kill'], ['BUTT','headbutt'], ['ROLL','roll'], ['THROW','throw'], ['BAAH','scream']].forEach(([label,id], i) => button(pad + i * 68 * s, y, 63 * s, label, 'event=' + id));
+    text('Count / hits per 2 bars. Related enemies share a cap of 6.', pad, y + 36 * s);
+    text('SOLO isolates a part; NO BASE removes the bed. Events reply on the beat.', pad, y + 50 * s);
   }
 
   // The rules that hold everywhere, as a matrix: one row a rule, one column a level, one mark per
@@ -3096,6 +3142,16 @@ class Renderer {
     ctx.restore();
   }
 
+  // The plain half of a hit taken: every corner reddens, not just the one the arc points from, so a
+  // hit landing is never a thing you have to notice — it is a thing you cannot miss.
+  drawHurtVignette(game) {
+    if (!game.hurtVignette || game.hurtVignette.life <= 0) return;
+    const V = TUNING.juice.hurtVignette, ctx = this.ctx, p = clamp(game.hurtVignette.life / V.life, 0, 1);
+    const g = ctx.createRadialGradient(this.vcx, this.vcy, Math.min(this.vw, this.vh) * 0.3, this.vcx, this.vcy, Math.max(this.vw, this.vh) * 0.72);
+    g.addColorStop(0, 'rgba(192,57,43,0)'); g.addColorStop(1, `rgba(192,57,43,${V.alpha * p})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, this.vw, this.vh);
+  }
+
   drawUI(game) {
     const ctx = this.ctx; if (!game.world || game.state === 'intro') return;
     const g = game.goat, s = this.hs, top = 3 * s + (this.portrait ? 12 * s : 0);
@@ -3467,7 +3523,10 @@ class Renderer {
   // The name, a pair of horns round it, and the two ways in. Nothing is explained here: the opening
   // scene carries the story and the floor of level 1 carries the controls.
   drawTitle(game, dt) {
-    if (game.state !== 'title') { if (game.menu) game.menu.rects.length = 0; return; }
+    // Cleared here so stale click zones do not linger once the title is gone — except while paused,
+    // where `drawPause` (called earlier in the same `draw()`) may have just filled `menu.rects` with
+    // its own settings panel and this would wipe it before a click ever got to read it.
+    if (game.state !== 'title') { if (game.menu && game.state !== 'paused') game.menu.rects.length = 0; return; }
     const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
     const step = Math.min(dt || 0, 0.05);
     // The menu owns the whole canvas: it paints over the vignette and the empty thumb deck under it.
@@ -3573,6 +3632,35 @@ class Renderer {
     if (game.menu.panel === 'levels') this.drawLevelPick(game, board);
   }
 
+  // Escape mid-level. The world behind it is drawn exactly as `draw` always draws it — nothing
+  // about pausing skips a line of that — so this is only ever the panel on top of it, dimmer than
+  // the settings panel's own near-black because there is a frozen room worth still being able to
+  // read behind it. Its own settings sub-panel is `drawSettings` itself: `game.menu.panel` is what
+  // that function reads and it does not care whether the title or the pause overlay opened it.
+  drawPause(game) {
+    if (game.menu.panel === 'settings') { this.drawSettings(game); return; }
+    const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
+    ctx.fillStyle = 'rgba(9,7,9,0.72)'; ctx.fillRect(0, 0, w, h);
+    const rows = PAUSE_MENU.length;
+    const rowH = clamp(h * 0.1, 40 * s, 66 * s), gap = 10 * s;
+    const bw = clamp(Math.min(w * 0.86, 420 * s), 200 * s, 480 * s), x0 = cx - bw / 2;
+    const top = h / 2 - (rows * (rowH + gap)) / 2;
+    ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.ochre;
+    ctx.font = `700 ${clamp(rowH * 0.46, 16 * s, 28 * s)}px ${FONT_SC}`;
+    ctx.fillText('PAUSED', cx, top - 24 * s);
+    game.pause.rects.length = 0;
+    for (let i = 0; i < rows; i++) {
+      const y = top + i * (rowH + gap), sel = game.pause.index === i;
+      game.pause.rects.push({ x: x0, y, w: bw, h: rowH });
+      ctx.fillStyle = sel ? '#4a2428' : '#190f16'; ctx.fillRect(x0, y, bw, rowH);
+      ctx.strokeStyle = sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s;
+      ctx.strokeRect(x0, y, bw, rowH);
+      ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${16 * s}px ${FONT_SC}`;
+      ctx.fillText(PAUSE_MENU[i].name, cx, y + rowH * 0.62);
+    }
+    ctx.textAlign = 'left';
+  }
+
   // The switches. It covers the menu the way the board does, but it does not leave when it is
   // touched: a click on a row throws that row, and only the last row is the way out. `menu.rects` is
   // refilled with the rows while it is up, so `menuAt` and `menuPick` need to know nothing about it.
@@ -3605,14 +3693,28 @@ class Renderer {
       ctx.fillText(it.name, x0 + 16 * s, y + rowH * 0.42);
       ctx.font = `${11.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
       ctx.fillText(this.clip(it.note, bw - 110 * s), x0 + 16 * s, y + rowH * 0.74);
-      // the switch itself: a bar with a block in one end of it, lit when it is thrown
-      const tw = 46 * s, th = 20 * s, tx = x0 + bw - tw - 16 * s, ty = y + rowH / 2 - th / 2;
-      ctx.fillStyle = on ? 'rgba(242,162,51,0.45)' : 'rgba(239,230,208,0.1)';
-      ctx.fillRect(tx, ty, tw, th);
-      ctx.strokeStyle = on ? PALETTE.ochre : 'rgba(239,230,208,0.28)'; ctx.lineWidth = 1.6 * s;
-      ctx.strokeRect(tx, ty, tw, th);
-      ctx.fillStyle = on ? PALETTE.fireHi : 'rgba(239,230,208,0.4)';
-      ctx.fillRect(on ? tx + tw - th + 2 * s : tx + 2 * s, ty + 2 * s, th - 4 * s, th - 4 * s);
+      if (it.type === 'slider') {
+        // A bar with a lit fill up to the value and a knob at the edge of it — the value itself
+        // never printed as a number, the same way nothing else in this panel prints one.
+        const v = clamp(game.settings[it.key] ?? 0.5, 0, 1);
+        const sw = 92 * s, sh = 8 * s, sx = x0 + bw - sw - 16 * s, sy = y + rowH / 2 - sh / 2;
+        game.menu.rects[i].sliderX = sx; game.menu.rects[i].sliderW = sw;
+        ctx.fillStyle = 'rgba(239,230,208,0.12)'; ctx.fillRect(sx, sy, sw, sh);
+        ctx.fillStyle = 'rgba(242,162,51,0.55)'; ctx.fillRect(sx, sy, sw * v, sh);
+        ctx.strokeStyle = 'rgba(239,230,208,0.28)'; ctx.lineWidth = 1.4 * s;
+        ctx.strokeRect(sx, sy, sw, sh);
+        const kr = 6 * s;
+        ctx.fillStyle = PALETTE.fireHi; ctx.beginPath(); ctx.arc(sx + sw * v, sy + sh / 2, kr, 0, Math.PI * 2); ctx.fill();
+      } else {
+        // the switch itself: a bar with a block in one end of it, lit when it is thrown
+        const tw = 46 * s, th = 20 * s, tx = x0 + bw - tw - 16 * s, ty = y + rowH / 2 - th / 2;
+        ctx.fillStyle = on ? 'rgba(242,162,51,0.45)' : 'rgba(239,230,208,0.1)';
+        ctx.fillRect(tx, ty, tw, th);
+        ctx.strokeStyle = on ? PALETTE.ochre : 'rgba(239,230,208,0.28)'; ctx.lineWidth = 1.6 * s;
+        ctx.strokeRect(tx, ty, tw, th);
+        ctx.fillStyle = on ? PALETTE.fireHi : 'rgba(239,230,208,0.4)';
+        ctx.fillRect(on ? tx + tw - th + 2 * s : tx + 2 * s, ty + 2 * s, th - 4 * s, th - 4 * s);
+      }
       ctx.textAlign = 'center';
     }
     ctx.textAlign = 'left';

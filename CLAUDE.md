@@ -511,10 +511,14 @@ both floored, both up again. Two men standing shoulder to shoulder used to be th
 room, which read as the game saying a man is not part of the geometry. He is.
 
 **Room music.** The default score now uses the current room's small, ranged, large and mystical
-enemy counts, capped at six per family, plus fire within four tiles. `GameAudio.updateScene` samples
+enemy counts, capped at six per family, plus fire and traps throughout the room. `GameAudio.updateScene` samples
 the game once per frame (throttled internally); one 16-bar transport plays interlocking voices with
 beat-aligned changes and smooth envelopes. See `MUSIC.md` for the mappings and extension points.
-Large enemies have a two-hit bass signature. Levels 5+ use `LATE_MUSIC` with distinct idle/combat
+Each enemy type has its own ranked pattern in `MUSIC_PARTS`, sharing its family's register. Hit
+budgets in `TUNING.audio.layers` give ranged counts 1/2/3 two/four/five hits and heavy counts
+three/five/seven per two bars. Action/kill hooks queue separate delayed musical replies, with
+bounded stacking. TOOLS > MUSIC auditions this same engine with a paused game and cancels its
+own nodes on exit. Levels 5+ use `LATE_MUSIC` with distinct idle/combat
 melodies. Fire area adds crackles with a two-bar memory; nearby healing grass adds a chime with a
 one-bar memory. Both clear outside play. SETTINGS → LAYERED MUSIC off selects the preserved
 original `playLegacyStep` arrangement below.
