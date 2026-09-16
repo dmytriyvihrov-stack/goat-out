@@ -8,6 +8,301 @@ then goes to `CHANGELOG.md` — or when it is decided against, and the reason go
 Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and does not read; **number**,
 it works and the number is wrong; **system**, it does not exist yet.
 
+## 16 September 2026, later still — six screenshots, sent in small bursts
+
+All of it shipped same sitting, once the first pass at two of these turned out to be a real look
+rather than a full build; the reasoning behind each is in `CHANGELOG.md` under 1.27.
+
+- ~~**The ambush room's floor text is too long to read at a glance.**~~ **feel.** `RIGHT CLICK,
+  GRAB OBJECT` / `RELEASE OR LEFT CLICK, THROW` cut to `RIGHT CLICK - GRAB` / `RELEASE - THROW`
+  (and the touch line to match, `RELEASE, THROW`): drop the redundant "OBJECT" and the second way
+  to let go, which the ambush room does not need to teach at once.
+- ~~**The skill-rail captions (LMB/RMB/E/SPC) sit flush under their icons, crowding `N SACRIFICED`
+  right under them.**~~ **feel.** Both nudged down 4px worth (`drawSkills` in `render.js`).
+- ~~**The Mill lesson's nearer bearer sees the goat and takes the wheel too fast to read as cause
+  and effect.**~~ **feel.** `Enemy.noticeFor`, set only on the room's own two men: a beat to plant
+  and face the goat before either one moves, so the one about to take the wheel in the chest reads
+  as the room deciding rather than a coin flip landed before the door was even open.
+- ~~**That same room, three tiles shorter, height fixed rather than left to the row count.**~~
+  **number.** `MILL_LESSON_TEMPLATE` in `rooms.js` cut from ten rows to seven. Checked against
+  `mill.armLen` rather than by eye first: the hub now sits one row off the top wall (inside the
+  arm's own reach, so it hits that wall outright) with three rows below it, of which only the
+  last sits outside that reach — exactly the one lane of clear floor the room was always meant to
+  leave. `node tools/balance.js` and the generator sweep both hold across every level and seed.
+- ~~**A patrolling man can end up facing a wall for no reason.**~~ **feel.** `idleWander` now
+  resamples a chosen facing up to five times against a look-ahead probe (`TUNING.ai.wanderClear`)
+  before committing to it, the same kind of check `avoidHazard`'s own `walkable()` already does.
+- ~~**The bomb explosion is too big and too slow on screen; it hides the fight behind it.**~~
+  **feel.** The real blast radius (what it flings and damages) is untouched; `TUNING.goat.bomb`
+  grew a separate `fxScale` and `fxLife` that only shrink and shorten the burst graphic itself.
+- ~~**A goat-head cursor.**~~ **system.** Asked before (ninth sitting, 15 Sep 2026) and parked as
+  an art-pipeline item; an inline SVG wrapping the 🐐 emoji turned out to need no art pipeline at
+  all — `CURSOR_GOAT` in `game.js`, `encodeURIComponent`-built rather than hand-escaped.
+- ~~**The spike-grate band is hard to read where it runs into the unlit part of a room.**~~
+  **feel.** The grate's metal rail and slot highlight are a shade brighter now, so a band still
+  reads as iron rather than floor shadow under the fog's own shading pass.
+- ~~**Bomb Charge should cost a real hit, not skip the two-hit rule.**~~ **number/system.**
+  `die()`'s absorb no longer excludes `'boom'`: a multi-hit target takes one off and goes down
+  floored on a first charge, and only a second charge (or any other blow) landed while he is
+  already at his last heart actually finishes him. `CLAUDE.md`'s "Two hits" note updated with it —
+  this was a documented rule changed on purpose, not a bug quietly patched.
+- **feel — patrolling (not yet aware) men should never die to a trap they are only walking past.**
+  Confirmed already true rather than changed: `avoidHazard` in `enemies.js` only ever rolls the
+  trap-blunder chance `if (this.aware && ...)` — an idle patrol steers clear of a hazard every
+  time, on purpose. If this comes back, ask which room: it is probably the Mill lesson's own
+  scripted `trapSense: 0`, not a hole in ordinary patrol behaviour.
+- ~~**Freeze whatever is at least a room away from the goat.**~~ **system.** The enemy update loop
+  now skips anyone whose home room is two or more rooms off by index from wherever the goat is
+  standing — never the room he is in or its immediate neighbour, which stays wider than any noise
+  radius in the game, so "a man still hears you through stone" is never something this quietly
+  breaks. See the new note on it in `CLAUDE.md`, right after the patrol leash.
+
+## 16 September 2026, night — one screenshot and a second pass at the deck
+
+A screenshot of the live 1.26 build with three things marked on it, plus a chunk of talking
+through the boon system again. The three marked bugs are fixed same sitting (reasoning in
+`CHANGELOG.md` and `ART_HANDOFF.md` under 1.26); everything else here is unbuilt.
+
+- ~~**bug — a dying butcher/elite bearer tore into plain clubman gore.**~~ `CombatFX.snapshot`
+  kept its own kind map instead of `PaintedArt.characterKey`; one map now.
+- ~~**feel — the near wall of a room read as bare rock, no bricks.**~~ Its face-shade overlay
+  (0.27) was crushing its own coursing next to the far wall's (0) — down to 0.1.
+- ~~**feel — a hunter's aim tell had gone dark.**~~ It only ever lived inside the primitive
+  fallback body; once his painted sprite took over it silently stopped drawing. Its own method
+  now, called for either body.
+- **feel — the far side of a wall did not read as "pulled" for the tilt.** Open. `wallTile`'s four
+  faces are geometrically symmetric, so this is a different complaint from the one above and not
+  fixed by the shade change — see the note in `ART_HANDOFF.md` for where to look next (`lip`, or a
+  second wall row through a corridor mouth) once it has been played against the fix that did ship.
+- **system — a rare pickable bomb, mostly found in secrets.** One to two a level, an item like a
+  crate or a weapon (grab, carry, thrown by the same button that throws anything else). Explodes
+  in a 4×4 area; the goat takes damage from his own blast too if he is in it. Two hearts at the
+  centre, tapering to one at the outer edge of the area — a radius-scored hit rather than a flat
+  cost, the same shape `flungHits`' two speed thresholds already use for a body. Rare enough that
+  it reads as a find, not a tool: the number to hold it to is per-level count, not per-room chance.
+- **feel — return the hunter's shot to being readable before it lands, further than the tell
+  above.** Distinct from the aim-tell bug: that one is about the tell existing at all; this is
+  about how far ahead of the shot it gives you, and was asked for as "how it read in a build
+  before this one" rather than as a fresh idea. Needs which build, or a description of what read
+  better about it — realism is explicitly not the ask ("we'll work on realism later").
+
+### system — the deck at 36, restated with new candidates
+
+This is the already-parked **"the deck at 36, dealt in turns"** further down this file (16 Sep,
+daytime sitting): two actives a verb (three eventually), two passives a verb (three eventually),
+eight general passives, dealt active/passive/active/passive until every verb has one, then one
+active-as-replacement plus two passives. Two pieces of that plan were re-described tonight,
+word for word, without having been shown the file — worth treating as confirmation rather than
+as a new ask: the replacement card names what it gives up (`replaces`, "instead of DRAGON
+BREATH" on the card itself, not just a rail icon changing after the fact), and once every verb is
+full the deal shifts to one active plus two passives instead of the usual alternation.
+
+New tonight, to fold into the same system rather than build alongside it:
+
+- **A card can be refused.** A fourth option under the three — RELEASE THE SOUL, or similar — that
+  spends nothing and takes nothing. `openBoonChoice` has no such exit today; a soul taken is a
+  card taken.
+- **Three candidate passives**, as concrete examples for the twelve-general-passives count: a
+  three-second bubble of invulnerability after taking a hit (distinct from `goat.invuln`'s
+  half-second flinch, above); holding an object or a man slows time for two seconds so a throw can
+  actually be aimed (reads as the grab-and-throw verb's own passive, not a general one); grass
+  heals two hearts instead of one but the run's own max is one heart lower (a trade, not a
+  straight upgrade — the kind of passive that argues with itself, which the file's shop item
+  section already flags as the interesting kind).
+- **Two candidate actives:** the roll becomes a pounce — jump onto the man in front of you and
+  land behind him — at double the cooldown; and a headbutt active that throws the struck man's
+  own knock-on into whoever is standing behind him, so one blow can end two men in a line. That
+  second one is offered with a flag on it, not a decision: the headbutt is pillar 3 in `CLAUDE.md`
+  by itself, so what an "active" version of it should mean was asked as an open question rather
+  than settled — a headbutt with more teeth risks arguing with "a headbutt only ever knocks a man
+  down; walls kill."
+- **A `synergy` / `addition` mark on a boon, visible in the dev tool wherever the list of them is
+  read.** `addition`: this boon makes another one modestly better in passing. `synergy`: this boon
+  is built to be read together with a named other one. Nothing today lists `BOONS` anywhere in the
+  dev drawer for a mark like this to attach to — closest is the skill rail's own hover note, which
+  is player-facing and per-card, not a design-time table. Wants a page or a tab before it wants
+  the mark itself.
+
+## 16 September 2026, evening — a design sitting, not a playtest
+
+No screenshots this time: an hour of talking about why the game has no pressure in it, why a
+run is over in an hour and a half, and what an act two and a secret ending would have to be.
+Nothing below is built, and most of it is **parked on purpose** (marked *parked* in its title):
+the same evening he decided the next stretch is level generation, enemy balance and getting
+more people to play, and that lives, the hunt, hell, heaven and hearts-by-level are things to
+think about, not to build, until the playtests say what is actually missing. What is live off
+this batch is the two cheap and telling ones: the invulnerability number and the power column
+in the balance tool. Also settles one of the open questions in `CLAUDE.md`: *one life* is
+meant to mean one life per **run**, with hearts staying the budget of a level.
+
+The diagnosis, so the items below make sense together: the game has three separate problems
+that felt like one. **Pressure** lives only in the score, and the clock is hidden on purpose, so
+nobody feels it. **Length** in the regeneration camp is run length times runs-to-win, and
+runs-to-win is currently one because a level restarts for free. **Power** by level five feels
+too high, but nothing measures it: `tools/balance.js` knows threat and ground and has no idea
+what the goat is carrying by then.
+
+### number — a hit should buy more than half a second
+
+`TUNING.goat.invuln` is 0.5 s. Three men take four hearts in two seconds, so a death reads as one
+bad moment rather than four decisions. Spelunky and Isaac give about a second and knock the
+player back. Try 0.8 to 1.0 before touching the heart count at all.
+
+How to know which number is wrong: count in the dev drawer the deaths where the last two hearts
+went inside 1.5 s ("burst deaths") against the ones that bled out a heart at a time across rooms.
+Mostly bursts: the invulnerability is the lever. Mostly attrition: hearts are.
+
+### number — hearts that grow with the run, by level and not by card — *parked, 16 Sep 2026*
+
+Four hearts is the genre's number (Spelunky four, Isaac three, Ape Out two or three) and they are
+already the budget of a **level**: `startLevel` fills them. Growing to six or seven by the end is
+right, but THICK HIDE is one card in sixteen against thirteen souls, so today it is a lottery.
+Put it where the threat curve is: a `hearts` field on each `LEVELS` entry (4 on levels one and
+two, 5 on three and four, 6 from five), read by `applyBoons` under `mods.maxHp` the way `EASY`
+is, with the new heart arriving full as THICK HIDE's does. THICK HIDE on top makes seven, EASY
+MODE still adds two. `drawUI` has to fit nine hearts on the band without shrinking the rail.
+Hell (below) takes them back to four, which is the "reset for your crimes" in numbers.
+
+### tool — a third column in the balance: what the goat is by then
+
+The curve that has to hold is threat over power, and only the numerator is measured. Give every
+boon in `BOONS` a rough `power` weight (and hearts a weight per heart), compute the expected
+loadout at the head of each level from the souls dealt before it (the same sum `startAtLevel`
+already uses), and print threat, power and the ratio per level in `tools/balance.js` and on the
+BALANCE tab. Add a `GEN_RULES`-style averaged check that the ratio never falls from one level to
+the next. Until this exists "overpowered by level five" is a feeling and cannot be tuned.
+
+### system — one life per run — *parked, 16 Sep 2026*
+
+Three lives on the run (`TUNING.run.lives`, and in `saveRun`). Losing one restarts the level
+exactly as a death does now, boons kept. Losing the last one ends the run: back to the title,
+board updated, save cleared. Hearts stay per-level and refill on the stairs, so "four hearts gone
+in one room" still costs a level and not the run; what the run pays is that it can only happen
+three times. Show the count on the level card and next to the hearts, not as a number in the
+corner. LEVELS on the title (`startAtLevel`) starts with full lives. If hell ships, entering it
+writes a save and refills lives: dying in hell restarts hell, never the compound.
+
+Why this and not a run timer: a twenty-minute clock on the run argues with grazing (standing
+still), the vault (a detour), the secret wall (two blows on a hunch) and the soul cards (a
+pause); and a death late in a timed run is a certain loss, which sends the player to the menu
+instead of the retry. Lives make death cost more without touching any of that.
+
+### system — the hunt: pressure from behind, once a level runs past par — *parked, 16 Sep 2026*
+
+The generalisation of the closing door. Par is `rooms * score.perRoom`; once the level has run
+`TUNING.hunt.after` times par (try 1.5), the compound wakes: every `hunt.every` seconds a man
+walks in from the level's own entry and comes down the flow field to the goat, the kind drawn
+off the level's own curve, count uncapped. Not a death, a rising cost of standing still, and it
+is read in the world rather than in the corner: the drums are already tied to the count of men
+awake and near (`TUNING.audio.crowd`), so the music says it; one bark once a run says it in
+words (`game.huntTold`, "HE IS IN THE EAST WING" or the like, in `BARKS`). Off on level one
+like the clock doors; off during the cards and the climb. Fighting still pays kills and still
+costs time, and time now costs men, who die on the same walls, so run-or-fight stays a choice
+with a price on each side. A `GEN_RULES` line cannot check a timer, but `balance.js` can print
+the par it will run against per level so a level whose par is wrong is caught there.
+
+### system — act two, hell: a second run inside the run — *parked, 16 Sep 2026*
+
+Longer levels, more souls, harder men, more hazards, and the boons taken back. This works only
+as a **second curve with a second deck**, not as the compound's curve continued: a goat with no
+souls put on the fifth level's threat is the "much worse game" `CLAUDE.md` already names.
+
+- `act` on each `LEVELS` entry. `met` and `known` reset at the act boundary so hell's own new
+  kinds get their intro rooms; the two teaching rooms of level one are **not** repeated (he
+  knows men can be hit). Threat starts near level one's and rises again; the "harder than the
+  last" rule and the power ratio are checked **within** an act, and `balance.js` prints two
+  curves.
+- The deck is different or the build is the same twice with a longer walk to it. Base goat in
+  hell is not the pen goat either: the two half-shut buttons are tutorial, and re-teaching them
+  is dead time. Open: what is withheld instead. One candidate: hell's deck bends the **world**
+  rather than the goat (walls kill at a lower speed, fire passes further, bodies fly differently),
+  so Power in act two reads as "the room is worse for them" and not "I am stronger". The other
+  half of the answer is that hell should be built from the things the compound's boons do not
+  answer, and the precedents exist: witchfire ignores `fireImmune`, mist cannot be grabbed, the
+  arm goes over a shield. Wraiths, seers, drops, witchfire are the pool.
+- Hearts back to four at the boundary (see the hearts item), lives refilled, a save written at
+  the door: death in hell restarts hell.
+- Cost, honestly: every level needs a canon and `CANON.minRooms` templates. Three levels with
+  three ideas beat five with the same floor twice.
+- How it is entered is open. Two candidates: in order, after the seventh stairs (his current
+  read: you are sent down for what you did); or earned, Spelunky-style, by carrying something
+  through the run, and the vault is the ready-made hook: a soul behind four blows off the way to
+  the stairs on every level, currently worth nothing but the soul. Earned scales the length of
+  the game with skill and makes the vault matter.
+
+### system — heaven, the secret: a run that swallowed no soul — *parked, 16 Sep 2026*
+
+Beat all seven levels without taking a single soul and go up instead of down. Nothing to teach,
+readable from the world, and the one run where *run, don't fight* is literal. Pillar 6 is
+safe: the condition is about what you did, not where anything stood.
+
+It is **impossible today by construction**: the level-one soul gate (`levelDef.soulGate`) opens
+only from the soul pickup, and the pickup is the swallow. The fix that stays inside the five
+buttons: a soul on the floor is also `item`, so grab picks it up like a crate and either button
+throws it, and the gate accepts one **thrown at it**. Given to the door, not eaten. It is also
+the first place a player learns a soul can be refused, so the secret has a door into it that is
+not a wiki. Check that no arena forces the pickup on contact (they lie on the floor, so it is
+enough not to step on them) and that the vault is skippable, which it is. Keep the gate's
+wording so the first player still eats the first soul: this is a hard mode and a trap for a
+newcomer. What heaven is once reached is unwritten and is not this item.
+
+---
+
+### system — the deck at 36, dealt in turns — *parked, 16 Sep 2026*
+
+Thirteen souls against seventeen cards is three quarters of the deck every run, so two runs are
+one build in a different order. The shape he wants: every verb a **slot with three mutually
+exclusive actives** (FULL THROAT against DRAGON BREATH is the pattern, already in the game),
+three passives per verb that only mean something with that verb's active on, and six to eight
+general passives (twelve was the ask; passives are what stacks, and stacking is where level five
+gets overpowered). Dealing alternates, **active, passive, active, passive**, so a triple is always
+one kind and the choice is inside it; the first soul of a run is an active and opens one of the
+two half-shut buttons, which retires the 0.75 weight in `openBoonChoice`. An active triple is
+one variant for each of three *empty* verbs while there are three; once all four are filled
+every deal is **one active as a replacement plus two passives**, the replacement card saying
+what it gives up (`replaces`) and not paying its `heal` again. Passives deal only onto verbs
+whose active is on, which is one rule in place of the three `needs`. Parity is the length of
+`game.boons`, so the save needs nothing new. An active is only an active if the icon and the
+note change and pillars 3 and 4 hold; write the twelve as one line each and cut what fails
+before counting. Twelve actives first (six exist), then play, then passives.
+
+### system — the shop: a mouse, a rat ogre, souls of the killed, a talisman — *parked, 16 Sep 2026*
+
+Items, bought with **souls of the killed** (`game.kills`, the count already on the HUD; this is
+the 14 Sep "souls resource" with an answer to what they buy). Two currencies, two counters, no
+competition with the cards. What an item is: a **rule of the world** bent, not a number behind
+a button. His examples: a fire amulet (a lit man lights the one he touches; note this is
+KINDLING, already a card, so the split is: cards are about the goat, items about the compound,
+and KINDLING and THE ORACLE move across). A clover (better odds of a secret, a rack or grass in
+the next room; goes through `mods` into `generateLevel` like `taught`, and `balance.js` runs
+the rules with and without it).
+
+- **The mouse** lives in a two-tile hole in a room's wall (`carveSecret` already cuts these),
+  one a level from some level on, never in a teaching room, a sealed arena or the wheel's room;
+  a `GEN_RULES` line. Grab is buy; if the count is short she shows how short. Headbutt her once
+  and she asks you not to (`say`, once); twice and she is a **rat ogre**: `hp` two or three,
+  `elite`/`boss`, its own `kind`, killed by walls like anybody, first met alone through
+  `taught`. He comes out into the room because the hole cannot hold him. Kill him and the
+  stock is free (the Spelunky deal, honest only if the fight is dear). He drops no corrupted
+  soul, or he is the best boss in the game. He is **not on the curve**: the mouse is optional,
+  so `THREAT` and the report ignore her.
+- **Slots by act:** one in the compound, two in hell. With one slot a late item costs the early
+  one; buying onto a full slot puts the old item back on the mouse's shelf, and the ogre drops
+  that too.
+- **Tiers, three at most, and a tier is how far the rule bends, not a bigger number.** Which
+  tier a mouse stocks is `minLevel` on the item, like a card. Price comes off the curve rather
+  than a table: a fraction of the men in the mouse's own level (a third for tier one, a level
+  and a half for tier three), one number a tier in `TUNING.shop`.
+- **Death takes the level's kills back** or dying is a farm: the men stand up again on the
+  regenerated level. `totalKills` is already written at the head of a level.
+- **The item is drawn on the goat**, a talisman between the horns (act two: neck and head, two
+  drawings), each tier its own drawing; the same law as `skillIcon`. A layer over every walk
+  frame, so a line in `ART_HANDOFF.md` when it comes.
+- Heaven stays about corrupted souls: killing is allowed, swallowing is not.
+
+Why the shop and not items on the floor: the depth is in the decision in front of the item
+(pay, or hit and fight), and in spend-early-or-save, not in the item itself.
+
 ---
 
 ## 16 September 2026 — the tenth sitting

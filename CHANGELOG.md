@@ -5,6 +5,104 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.28 — a softer fourth level, a quieter cult, and a death screen that shows you the level
+
+Playtest feedback, six lines.
+
+Every enemy kind takes a tenth longer over every windup, swing, recovery, cast and reload:
+`BOON_BASE.enemySlow` (read at every one of those use sites in `enemies.js`, the same dial EASY MODE
+already turns to 1.4) moves from 1 to 1.1 for an ordinary run, so the whole cult is a tenth slower to
+land a blow without a single per-kind number changing.
+
+THE THRESHING FLOOR (level four) is a room shorter (14 → 13, the room nothing pointed at) and its
+threat curve gives up a step on both ends — `from` 6 → 5, `to` 13.2 → 12 — after a playtest flagged
+it as the hardest floor in the run for what is only level four; it also picks up a fourth bowl of
+milk. THE BRIDGE, THE RAFTERS and THE OSSUARY are each a room shorter too (16 → 15), the one room at
+the tail of each that no arena, mill, hall, gallery, killbox or vault index ever pointed at, so every
+set piece in all four levels sits at exactly the room index it always did. `node tools/balance.js`
+holds on every level after the cut.
+
+Dying no longer just freezes on the spot: the camera holds where he went down for half a second and
+then pulls back over `deathCam.zoomTime` seconds to the whole level, margin clear on every side —
+bloodied rooms he opened lit the way they always are, rooms he never reached still under
+`drawUnseen`'s fog, since `drawShade`'s own per-tile vision froze with him and would otherwise have
+dragged his last few tiles of sight out across a level-wide view. `game.pathTrail`, a dot on a clock
+rather than every step, draws as a plain line under it once the pull-back gets there — a dot where
+the run began, a cross where it ended. `restartLevel` already regenerated the level on every death
+(`deaths` has been in the seed hash since the sixth sitting); this only gives you something to look
+at while that promise is being kept.
+
+## 1.27 — the Mill lesson rebuilt, a bomb charge that respects a second heart, and a goat for a cursor
+
+Nine lines from a playtest, screenshots on most of them, all shipped same sitting.
+
+The Mill lesson room (level one) is three tiles shorter: the hub now sits one row off the top wall
+instead of three, so the arm's own sweep reaches that wall outright rather than leaving a second safe
+lane nobody needed, and of the three rows left below the hub only the last one sits outside its reach —
+exactly one lane of clear floor, which is what the room was always supposed to leave. Its two men also
+get a short, scoped beat (`Enemy.noticeFor`, set only on them) to plant and face the goat before either
+one moves, so the one who is about to take the wheel in the chest reads as the room deciding rather than
+a coin flip landed before the door was even open. Nobody else in the game gets this — every other man
+still closes the instant he sees you.
+
+Bomb Charge no longer skips the two-hit rule: `die()`'s absorb used to exclude `'boom'` outright, so the
+explosion killed a two-heart target regardless of his own hearts. It is an ordinary hit now — a first
+charge floors a multi-hit target down to his last heart, and a second charge (or any other blow) landed
+while he is already there is what actually finishes him. The headbutt that lights a fresh fuse also
+resets `exploded`, which is what lets a second charge go off at all. The burst itself is smaller and
+quicker too — a separate visual scale and duration on top of the same real blast radius, so the AOE and
+the damage are untouched and only the graphic covering the fight behind it shrank.
+
+An idle patrol's random turn used to have nothing checking what was in that direction, so a man could
+end up facing a wall and simply standing there looking at it. `idleWander` now resamples the facing
+against a short look-ahead probe before committing to it.
+
+Nothing simulates two rooms away from the goat any more: the enemy update loop skips anyone whose home
+room is two or more rooms off by index, using room order as a cheap stand-in for distance since the
+generator already chains rooms in one line. It never touches the room the goat is in or its immediate
+neighbour, which stays comfortably wider than any noise radius in the game — so "a man still hears you
+through stone" is never something this quietly breaks.
+
+The OS cursor is the goat's own head now (an inline SVG data URI) rather than a plain crosshair,
+everywhere except while he is holding something, which stays the native `grabbing` hand. A spike grate's
+metal rail and slot highlight are a shade brighter, so a band of them still reads as iron rather than
+floor shadow by the time it runs off into the part of a room the fog hasn't lit yet. And the ambush
+room's floor text is shorter — `RIGHT CLICK - GRAB` / `RELEASE - THROW` in place of the old two-line,
+two-clause version — with the skill rail's own key captions nudged a few pixels further from their
+icons so they stop crowding the kill count under them.
+
+## 1.26 — four wall facings and combat effects (local build)
+
+Every level now assembles walls from exposed north/east/south/west faces, with 16
+cached junction variants per palette. Side walls, lower walls, corners, pillars and
+secret panels share the same assembly. Door placement and opening behavior are unchanged.
+
+Ordinary deaths leave a falling painted body; devouring and explosions scatter pieces
+of the victim's sprite. Burning leaves a charred body, wraiths disperse, and falls leave
+no corpse or blood. Fragments rotate, bounce off stone and settle on the floor.
+Wooden doors and crates shed splinters; iron doors shed metal. Ground debris persists.
+
+An eight-frame painted atlas supplies ordinary fire, witchfire, explosions and blood
+bursts. Blood and scorch marks use bounded, sparse full-resolution canvases rather than
+the low-resolution ritual-decal layer. Effect pools reset per level and have hard caps.
+Both HTML entry points include the embedded atlas and effects code.
+
+Validation: `tools/check-art.cjs` renders all seven palettes and all 16 masks, exercises
+real death/break/explosion hooks, checks settling, clean falls, caps and level resets,
+and saves screenshots under `tools/shots/`.
+
+**Three corrections from the first look at it live**, all still inside 1.26 since it had not
+shipped: a dying butcher or elite bearer tore into plain clubman gore, because `CombatFX.snapshot`
+kept its own shorter kind-to-sprite map instead of `PaintedArt.characterKey` — one map now, read
+from the one place. The near wall of a room (the one facing the camera) read as bare rock while
+the far wall showed clean brick coursing; both faces were geometrically the same, but the near
+face's own shading overlay (0.27 alpha, against the far face's zero) was dark enough to crush the
+coursing into flat shadow — brought down to 0.1 (and the side faces eased to match) so it reads
+as the same wall. And a hunter's aim tell — the dashed line that grows across his windup before
+he fires — used to live only inside the primitive fallback body (`drawCultist`); once the painted
+sprite took over hunters it silently stopped drawing, so a rifle read as a hitscan. It is its own
+method now, called for either body.
+
 ## 1.25 — a patrol that stays in its own room, and a wall that finally looks like one
 
 Twenty notes off one long playtest, most of them small and several of them the same complaint

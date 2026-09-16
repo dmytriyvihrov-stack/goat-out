@@ -114,6 +114,7 @@ function findConst(text, name) {
 }
 
 function formatValue(value) {
+  if (value === null) return 'null';
   if (typeof value === 'string') return JSON.stringify(value);
   if (typeof value === 'boolean') return String(value);
   const n = Number(value);
@@ -127,6 +128,8 @@ function formatValue(value) {
 //       literals named in `path` (all but the last segment) to the last segment's leaf value.
 //   { root: 'BOON_BASE', path: ['maxHp'], value: 5 }
 //     — a field of a plain nested object; no `id` since there is only one of it.
+//   { root: 'LEVELS', id: 'THE ALTAR', path: ['hint'], value: 'WATCH THE ARM' }
+//     — LEVELS entries carry no `id` field of their own, so the lookup falls back to `name`.
 function applyEdit(text, edit) {
   const { root, id, path, value } = edit;
   if (!Array.isArray(path) || !path.length) throw new Error('empty path');
@@ -135,7 +138,7 @@ function applyEdit(text, edit) {
     const els = arrayElements(text, block.start, block.end);
     const found = els.find((el) => {
       const props = topLevelProps(text, el.start, el.end);
-      const idProp = props.get('id');
+      const idProp = props.get('id') || props.get('name');
       if (!idProp) return false;
       const raw = text.slice(idProp.valueStart, idProp.valueEnd).trim();
       return raw === "'" + id + "'" || raw === '"' + id + '"';

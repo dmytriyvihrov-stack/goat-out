@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.25';
+const BUILD = '1.27';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -57,6 +57,12 @@ const PACE = 8.2 * TILE;
 const CULT_PACE = 0.9 * PACE;
 
 const TUNING = {
+  effects: {
+    maxAir: 220, maxGround: 180, maxBursts: 24,
+    stainTile: 256, maxStainTiles: 96,
+    gravity: 460, drag: 2.8, lift: 145, fragmentSpeed: 145, bloodSpeed: 210,
+    maxFlight: 2, burstLife: 0.7, bloodLife: 0.32, fireFps: 12, doorPieces: 15, cratePieces: 11,
+  },
   goat: {
     radius: 12,
     // A fifth off the stride he walks about with, and then another fifth off that. The run-up is
@@ -121,7 +127,10 @@ const TUNING = {
     trail: { at: 0.55, gap: 0.028, keep: 7, life: 0.18, fastGap: 0.014, fastKeep: 16, fastLife: 0.34, fastAt: 1.18 },
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
     devour: { time: 1.15, healChance: 0.45 },
-    bomb: { fuse: 0.9, radius: 2.6 * TILE, impulse: 24 * TILE },
+    // `radius` is the real blast — what it flings and damages — and stays untouched by the two
+    // numbers under it: `fxScale` and `fxLife` only shrink and shorten the burst graphic itself, so
+    // the explosion reads without eating a third of the screen or the fight happening behind it.
+    bomb: { fuse: 0.9, radius: 2.6 * TILE, impulse: 24 * TILE, fxScale: 0.55, fxLife: 0.4 },
     // The run-up. A goat that has been running flat out for a while is going faster than one that
     // just set off: `time` seconds of asking for at least `atLeast` of a stride buys the whole of
     // `max`, and it drains at `lose` times real time the moment he stops — or all at once when he is
@@ -133,7 +142,7 @@ const TUNING = {
     momentum: { max: 0.25, time: 4.0, lose: 3.0, atLeast: 0.6 },
     turn: 9,                // rad/s he swings his head round to where you are pointing, standing still
     fireDamageInterval: 0.7,
-    invuln: 0.5,            // s of invulnerability after a hit
+    invuln: 0.9,            // s of invulnerability after a hit
   },
   bearer: {
     radius: 11, speed: 0.85 * CULT_PACE, sight: 8, cone: Math.PI / 2,
@@ -230,7 +239,9 @@ const TUNING = {
     millClear: 15,     // px of berth he wants round the arms: stepping to the very edge is not enough
     trapLook: 30,      // px past his own radius he checks for a wheel or a brazier (flame he reads later)
     feel: 5,           // px past the two bodies where being walked into counts as being seen
-    wanderSpeed: 0.28 }, // fraction of his own speed a man not yet aware of you moves at, idling
+    wanderSpeed: 0.28, // fraction of his own speed a man not yet aware of you moves at, idling
+    wanderClear: 1.4,  // tiles ahead an idle turn is checked for wall before he commits to facing it
+    millNotice: 0.35 }, // s the Mill lesson's two men plant and face you before either one moves
   physics: {
     splatSpeed: 11 * TILE,
     flungDrag: 3.5,
@@ -517,6 +528,12 @@ const TUNING = {
   // How long a soul's three cards refuse every input after they appear, so the click that killed the
   // boss cannot also spend what he dropped.
   boonArm: 0.4,
+  // The death screen's pull-back. `delay` holds the camera where it died for a beat — the shake and
+  // the toll are still landing — before `zoomTime` seconds of easing out to the whole level, margin
+  // clear on every side. `sampleGap` is how often a dot goes on the trail `game.pathTrail` draws as
+  // a line once the pull-back gets there; `lineWidth` is in screen pixels, not world ones, so the
+  // line reads the same thickness at any zoom.
+  deathCam: { delay: 0.5, zoomTime: 2.2, margin: 0.88, sampleGap: 0.2, lineWidth: 2.4 },
 };
 
 // The first screen, top to bottom. The renderer draws a row per id and `menuPick` acts on one, so
@@ -628,7 +645,10 @@ const CANON = { share: 0.5, minRooms: 4 };
 // is a voice rather than a weapon. Each of those is a soul, which is what makes them worth more than
 // a number: a half-lit chip is a promise, and the two of them are the shape of the first hour.
 const BOON_BASE = {
-  maxHp: 4, speed: 1, butcherDamage: 1, fireResist: 1, enemySlow: 1,
+  // 1.1 rather than 1: every windup, swing, recovery, cast and reload in enemies.js multiplies its
+  // own TUNING duration by this, so a tenth added here is a tenth off every kind's attack speed at
+  // once, without touching a single per-kind number. EASY MODE still overwrites it outright (1.4).
+  maxHp: 4, speed: 1, butcherDamage: 1, fireResist: 1, enemySlow: 1.1,
   // Nothing between him and what is coming, as far as the fog would otherwise let him see. Off by
   // default because the fog is the game reading a room to you at the pace you cross it — this soul
   // is the one that reads it for you all at once.
@@ -775,6 +795,8 @@ const LEVELS = [
     // lands against that kills him. So the rooms here are pillars, corners and stub walls, and the
     // level is one long lesson in where to stand when you swing.
     canon: { id: 'stone', name: 'STONE', idea: 'The wall is the weapon. Pillars, corners and stub walls: a man knocked into any of them stays down. A man knocked onto open floor gets up.' },
+    theme: "The cult's inner sanctum — the altar the sacrifice never reached.",
+    decor: 'Bare stone: pillars, corners, stub walls, straw in the pen, one stand of arms, the Mill.',
     // The first man of the run holds his post instead of walking at you: he stands in the only way
     // out of his room — the generator narrows that corridor to a single tile for him — and the floor
     // under him says what the button does. Walking round him was the one thing everybody did, so now
@@ -827,6 +849,8 @@ const LEVELS = [
     // The mage brings fire; the rooms already have it. Coals, straw and ovens, so the thing the Seer
     // does to the floor is a thing you have been doing to the floor yourself since the second room.
     canon: { id: 'fire', name: 'FIRE', idea: 'Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself.' },
+    theme: 'The yard behind the sanctum, kept lit for the rendering to come.',
+    decor: 'Braziers, straw, ovens, oil lamps, a hound pack, the Seer’s witchfire.',
     // The vault takes the first of this level's two souls, which leaves exactly one for the LAST
     // boss of the level (see the note over `LEVELS`) — the seer, here, every run. He is sealed in
     // for it: both doors of his room go iron the moment the goat is inside, and neither gives until
@@ -849,6 +873,8 @@ const LEVELS = [
     // A rifle owns everything it can see. The rooms are colonnades, long naves and lines of stub
     // cover: the level is about the strip of floor a rifle cannot see and how you get to it.
     canon: { id: 'line', name: 'THE LINE', idea: 'Long sightlines and hard cover. A rifle owns whatever it can see, so the room is about what it cannot, and about crossing the rest.' },
+    theme: 'The processional road out of the compound, watched the whole way by rifles.',
+    decor: 'Colonnades, long naves, stub cover, a killbox, grating underfoot, the Great Hall.',
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
     millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2, coops: 0.08,
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
@@ -879,29 +905,42 @@ const LEVELS = [
     // posts, tables, braziers, a ring of hay you light yourself — and decide which half of a room is
     // yours before the rifles decide it for you. Corridors are wide enough that it reads as one yard.
     // Nothing new walks in: the room itself is the new thing.
-    name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 14, corridorW: 5,
+    // A room shorter than it was (14 → 13) and a softer approach into it: every set piece below is
+    // still at the room index it always was — the cut room was the one at the tail nothing points
+    // at — and the curve starts a beat lower and tops out a beat lower too, off a 14 Sep 2026
+    // playtest note that this floor ran hard for what is level four.
+    name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 13, corridorW: 5,
     canon: { id: 'open', name: 'OPEN GROUND', idea: 'Almost no wall. What kills is what is standing in the room: posts, tables, braziers, a ring of hay, and which half of it you decide is yours.' },
+    theme: 'An open threshing floor, swept for grain and now for bodies.',
+    decor: 'Wide yards, posts, tables, braziers, rings of hay, almost no wall at all.',
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
-    millAt: 6, heals: 3, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
+    millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
       // Nothing new walks in here, so the only thing that can make the yard harder than the road is
       // the curve itself: the road carries a Great Hall and a gallery and this does not, and the two
-      // levels were coming out level.
-      from: 6, to: 13.2, ease: 1.2,
+      // levels were coming out level. Eased back a step on both ends after it played harder than a
+      // level four should: `from` now dips the way level five's own opening does, and `to` gives up
+      // a tenth of what it topped out at.
+      from: 5, to: 12, ease: 1.2,
     },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
     fog: '#0b0b0a', doorChance: 0.12, ironDoors: 0.8, clockDoors: 0.55,
-    hint: null,
+    // Every other level says what to watch for on its own floor; this one went without because the
+    // canon idea was thought to say it already. It did not — a first-time player read "open ground"
+    // as relief rather than as a warning that the wall stops helping here.
+    hint: 'THE WALL WON’T KILL FOR YOU HERE. THE FURNITURE WILL.', hintKey: null,
   },
   {
     // Everything the compound has left, all at once, on the bridge they were driving you over.
-    name: 'THE BRIDGE', sub: 'Level 5', rooms: 16,
+    name: 'THE BRIDGE', sub: 'Level 5', rooms: 15,
     // The most men of any level so far, and the rooms are built so that they cannot all reach you
     // at once: a gate of pillars, a throat of tables, a pinch in the middle. Seven men are one man
     // in a doorway, and the doorway is what every room here has.
     canon: { id: 'funnel', name: 'THE FUNNEL', idea: 'Seven men are one man in a doorway. Every room narrows somewhere, and the fight is at the narrow part, on whichever side of it you chose.' },
+    theme: 'The bridge that carries the compound’s stores across the ravine.',
+    decor: 'Pillar gates, table throats, hunters and hounds crowding every narrow doorway.',
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
     millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 8,
     encounters: {
@@ -922,8 +961,10 @@ const LEVELS = [
     // what makes an edge something to work with rather than something to keep away from. Nothing new
     // walks in — the missing floor is the new thing, and it is the only thing here that kills for you
     // without being in the room.
-    name: 'THE RAFTERS', sub: 'Level 6', rooms: 16,
+    name: 'THE RAFTERS', sub: 'Level 6', rooms: 15,
     canon: { id: 'drop', name: 'THE DROP', idea: 'The floor is not all there. Holes in the boards and windows in the walls, the same fall under both, and nobody who goes over comes back.' },
+    theme: 'The rafters over the great hall, where the roof itself has started to give.',
+    decor: 'Holes in the boards, windows in the walls, narrow catwalks, the same fall under both.',
     arenas: [{ at: 4, boss: 'seer' }, { at: 10, boss: 'butcher' }, { at: 14, boss: 'champion' }],
     // Windows are this level's and nobody else's: a hole in a wall is a drop, and the drop is the
     // one new thing THE RAFTERS has. Every other level's walls are the inside of a compound.
@@ -943,12 +984,14 @@ const LEVELS = [
     // The living are a garrison here rather than the point: what the level is about is the thing that
     // is not in the room until it is behind you. Walls do not hold them, so there is nowhere to put
     // your back — the only cover on this ground is which way you are looking.
-    name: 'THE OSSUARY', sub: 'Level 7', rooms: 16,
+    name: 'THE OSSUARY', sub: 'Level 7', rooms: 15,
     // The dead come from behind, and a body cannot form inside stone. So the rooms are niches and
     // lanes — stone to put your back to — with open floor between them that you have to cross with
     // nothing at your back at all. The level is about where you are looking, and the rooms are
     // about how often you have to stop looking.
     canon: { id: 'niche', name: 'THE NICHE', idea: 'A body cannot form inside stone. Niches and lanes take arcs away from the dead; the open floor between them gives every arc back.' },
+    theme: 'The ossuary beneath the bridge, where nothing the compound ever killed stayed put.',
+    decor: 'Stone niches and lanes, open floor between them, wraiths arriving from behind.',
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
     millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
     encounters: {

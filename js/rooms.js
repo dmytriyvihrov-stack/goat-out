@@ -742,15 +742,18 @@ const ARENA_TEMPLATE = { name: 'arena', rows: [
 // exactly one lane of clear floor along the bottom: the way through is a decision about the arm
 // rather than a walk round it. The two men stand well past it, out of the sweep, and `millLesson`
 // in `gen.js` is what makes one of them careless and the other careful.
+// Three tiles shorter than it was: the hub sits one row off the top wall now instead of three, so
+// the arm's own sweep (`mill.armLen` plus a man's own radius, a shade under 2.5 tiles) reaches that
+// wall outright rather than leaving a second safe lane nobody needed. Below the hub the three rows
+// that are left put the same math the other way: the first two sit inside that reach and the last
+// one does not, so exactly one lane of clear floor survives at the very bottom — the one the room
+// is built to make you decide about.
 const MILL_LESSON_TEMPLATE = { name: 'millroom', noFlipX: true, rows: [
   '##############',
-  '#............#',
   '#..........e.#',
-  '#............#',
   '#.....M......#',
   '#............#',
   '#..........e.#',
-  '#............#',
   '#............#',
   '##############',
 ]};

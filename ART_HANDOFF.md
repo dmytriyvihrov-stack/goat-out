@@ -1,5 +1,33 @@
 # ART_HANDOFF — status of the painted-art pass, for whoever picks it up next
 
+## September 16 update: walls and combat effects
+
+Build 1.26 uses `PaintedArt.wallTile` for all four facings and their 16 junction masks
+on all seven levels. The earlier wall-mirroring/coping notes below are superseded.
+Door art and placement remain unchanged; broken doors and crates now emit persistent
+wood/metal debris through `CombatFX`. Deaths retain the victim's painted sprite;
+explosions and devouring split it. Blood and scorch have a sparse detailed ground layer.
+The new eight-frame fire, witchfire, explosion and blood atlas and its generation prompt
+are in [assets/combat-fx/README.md](assets/combat-fx/README.md). Both HTML script lists
+include `combat-assets.js` and `combat-fx.js`. Browser regression: `tools/check-art.cjs`.
+
+## Playtest correction — same day, off one screenshot of the live build
+
+A dying butcher/elite bearer tore into clubman gore (`CombatFX.snapshot` had its own kind map
+instead of reading `PaintedArt.characterKey`), the near wall of a room read as bare rock next to
+a clearly bricked far wall (the near face's 0.27 shade overlay was crushing its own coursing —
+down to 0.1), and a hunter's aim tell had gone dark once his painted sprite replaced the
+primitive body that alone drew it (now its own method, `drawAimTelegraph`, called for either).
+All three fixed; reasoning in `CHANGELOG.md` under 1.26.
+
+**Still open, same screenshot:** the far side of a wall — what should show through a doorway or
+round a corner as the tilt looks past it — did not read as "pulled" the way the request asked.
+`wallTile`'s four faces are geometrically symmetric (each anchored at its own tile's floor-facing
+edge, `lip` 40 of 128), so if this persists after the shade fix above, the next lever is `lip`
+itself or whether a corridor mouth needs a second wall row rendered through it — not shade. Needs
+a second screenshot once the shade fix has been played against, since some of the original
+complaint may have been the same near/far contrast read from a different angle.
+
 ## Playtest correction — same day, after the first look at v2 in motion
 
 The five new static-facing units (hunter, brute, butcher, wraith, chicken) packed short:

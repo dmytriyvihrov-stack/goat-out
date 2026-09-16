@@ -107,7 +107,11 @@ mush. Raising `DECAL_SCALE` costs memory fast: the world is 420x78 tiles.
 
 **Two hits.** Anything with `hp > 1` — an arena elite, or any Seer — absorbs a killing blow in `die()`:
 it goes down floored, loses one, gets up, and a Seer blinks clear. Fire counts, so a mage has to be lit
-twice. Only `devour` and `boom` skip it.
+twice. Only `devour` skips it — there is nothing left to get up. A bomb charge used to skip it as well
+and killed a two-heart target outright regardless of his own hearts; it is an ordinary hit now, so
+`explode()` floors him down to his last heart and it takes a second charge (or any other blow) landed
+while he is already there to actually finish him. `entities.js`'s headbutt hands out a fresh fuse on
+every hit and resets `exploded` with it, which is what lets a second charge go off at all.
 
 **A patrol keeps to its own room.** `Enemy.home` is where he was put, and `idleWander` will not let him
 drift more than `TUNING.ai.leash` tiles from it: past that, the next wander beat turns and walks him
@@ -117,6 +121,22 @@ turning up alone in the empty one next door, or a room built to hold exactly one
 racks, a trap's own men) filling in from whoever wandered in from off camera. The leash is idle-only:
 `chaseGoat` and `investigate` are what they always were, because a man who has heard or seen something
 is answering that and not patrolling any more.
+
+A wander beat's new facing used to be a pure random turn with nothing checking what was in that
+direction, so a man could turn to face the wall behind him and simply stand there looking at it until
+the next beat. It resamples now: up to five times against a look-ahead probe (`TUNING.ai.wanderClear`
+tiles out), and only when he is not already walking home over the leash — a man walking home is allowed
+to face the doorway he is heading through even if a wall probe would otherwise reject it.
+
+**Nothing simulates two rooms away.** `game.frame`'s enemy loop skips `e.update()` outright for anyone
+whose `e.room` (the index he was spawned into) is two or more away from whichever room the goat's own
+tile is in (`roomAt`) — the room he is standing in and its immediate neighbour still patrol, chase and
+swing exactly as before. Room index is a fair stand-in for distance because the generator chains rooms
+in one line (see *Canons* below), so this is a straight `Math.abs` rather than a graph search. It never
+touches the room the goat is in or the one next to it, which is deliberately more generous than any
+noise radius in the game (`boom`, the loudest one, is 16 tiles): a man still hears you through stone
+(see *A front and nothing else*, just below) and that counterplay is never this skipping something —
+by the time a room is far enough away to freeze, nothing in it could have heard him anyway.
 
 **A front and nothing else.** `canSeeGoat` is a cone and a line of sight and nothing else. There used to
 be a close-range bypass — inside 2.5 tiles he saw you wherever you stood — which took away the one thing
@@ -204,16 +224,23 @@ and a dazed dog cannot dodge. `game.houndSeen()` growls and teaches that once pe
 
 **The wheel is met in a room built round it.** `levelDef.millLesson` — level one, and nowhere else —
 picks `MILL_LESSON_TEMPLATE` instead of `MILL_TEMPLATE` and puts exactly **two men** in it. The room is
-narrow on purpose: the arm's own sweep (the hub plus `mill.armLen`, a shade under three tiles) reaches
-the top wall and leaves one lane of clear floor along the bottom, so getting through is a decision about
-the wheel rather than a walk round it. `noFlipX` keeps the two men on the far side of it from the door.
-The men are the lesson and neither of them is scripted: `planEncounters` asks for two bearers, the
-generator stands them on the two `e` markers furthest from `room.enter`, and `startLevel` pins their
-`trapSense` to the two ends of the roll every man in the game makes — nought for the nearer one, who
-therefore never sees a hazard and takes the arm in the chest on his way to you, and one for the other,
-who always does and comes round it. One man dies to the room and one man walks through it, in that
-order, while you stand and watch. It used to be `millSolo`: an empty room, which taught that the arm
-hurts and nothing else. What has to be learned is that it hurts *them*, and that needs somebody in it.
+seven tiles tall rather than ten (three tiles came off it after a playtest read the two safe rows above
+the hub as a way to just walk round the whole thing): the hub now sits one row off the top wall, so the
+arm's own sweep (`mill.armLen` plus a man's own radius, a shade under 2.5 tiles) reaches that wall
+outright, and of the three rows left below the hub only the last one sits outside that reach — one lane
+of clear floor along the bottom, so getting through is a decision about the wheel rather than a walk
+round it. `noFlipX` keeps the two men on the far side of it from the door. The men are the lesson and
+neither of them is scripted: `planEncounters` asks for two bearers, the generator stands them on the two
+`e` markers furthest from `room.enter`, and `startLevel` pins their `trapSense` to the two ends of the
+roll every man in the game makes — nought for the nearer one, who therefore never sees a hazard and
+takes the arm in the chest on his way to you, and one for the other, who always does and comes round it.
+Both are also given `noticeFor` (`TUNING.ai.millNotice`), which is `Enemy.noticeFor` on nobody else in
+the game: the instant a man sees you he closes, and that snap is the whole point of the cone everywhere
+else, but a room whose entire idea is one man walking into the wheel needs a beat where he has plainly
+seen you and plainly not moved yet, or the death reads as a coin flip that landed before the door was
+even open rather than as the room's own decision. One man dies to the room and one man walks through it,
+in that order, while you stand and watch. It used to be `millSolo`: an empty room, which taught that the
+arm hurts and nothing else. What has to be learned is that it hurts *them*, and that needs somebody in it.
 
 **Trap sense.** `hazardAt()` answers what will kill whoever is at a point — flame, a lit brazier, a rune
 mid-cast, the lip of a drop, a spike plate that is up or about to be, or the arm of the Mill about to
@@ -1120,6 +1147,12 @@ the rail cannot report it.
 **The loop.** Fixed 1/60 step, max 5 substeps, in `game.frame`. `timeScale` drives slow motion.
 A `setInterval` fallback drives the loop when `requestAnimationFrame` stalls, which it does when the
 Browser pane is hidden. Do not remove it.
+
+**The pointer.** `game.updateCursor` sets the canvas's own OS cursor rather than drawing one, and it is
+the goat's head (`CURSOR_GOAT` in `game.js`, an inline SVG data URI wrapping the 🐐 emoji, built once with
+`encodeURIComponent` rather than hand-escaped) everywhere except while he is holding something, which is
+still the OS `grabbing` hand. A plain `crosshair` is the CSS fallback in both HTML files and the second
+half of the `cursor` value itself, for a browser that cannot render the inline SVG at all.
 
 ---
 

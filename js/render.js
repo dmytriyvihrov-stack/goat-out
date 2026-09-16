@@ -14,13 +14,13 @@ const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 const CONTROL_LINES = {
   key: [
     ['WASD, TO MOVE'],
-    ['RIGHT CLICK, GRAB OBJECT', 'RELEASE OR LEFT CLICK, THROW'],
+    ['RIGHT CLICK - GRAB', 'RELEASE - THROW'],
     ['LEFT CLICK, HEADBUTT'],
     ['E, ROLL', 'OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
   touch: [
     ['LEFT THUMB, TO MOVE'],
-    ['GRAB, HOLD TO CARRY', 'RELEASE OR BUTT, THROW'],
+    ['GRAB, HOLD TO CARRY', 'RELEASE, THROW'],
     ['BUTT, HEADBUTT'],
     ['ROLL, OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
   ],
@@ -123,6 +123,7 @@ class Renderer {
       this.worldTransform(game);
       this.drawTiles(game, cam);
       this.drawDecals(game, cam);
+      game.fx.drawGround(this,game);
       this.drawPits(game, cam);
       this.drawFallers(game);
       this.drawHints(game);
@@ -150,9 +151,11 @@ class Renderer {
       this.drawBreath(game);
       this.drawRings(game);
       this.drawParticles(game);
+      game.fx.draw(this,game);
       this.drawCageThought(game);
       this.drawFloatTexts(game);
       this.drawShade(game, cam);        // last of everything in world space: it covers what it covers
+      if (game.state === 'dead') this.drawDeathPath(game);
       if (game.dev.vision || game.dev.hearing) this.drawDevOverlay(game);
       ctx.restore();
     }
@@ -279,6 +282,10 @@ class Renderer {
     const cw = clamp(sx + v.w, 0, wd.W * TILE) - cx, ch = clamp(sy + v.h, 0, wd.H * TILE) - cy;
     if (cw <= 0 || ch <= 0) return;
     ctx.drawImage(wd.decal, cx * DECAL_SCALE, cy * DECAL_SCALE, cw * DECAL_SCALE, ch * DECAL_SCALE, cx, cy, cw, ch);
+    ctx.save();ctx.imageSmoothingEnabled=true;
+    const size=TUNING.effects.stainTile;
+    for(const p of wd.stains.values())if(p.x+size>=cx&&p.x<=cx+cw&&p.y+size>=cy&&p.y<=cy+ch)ctx.drawImage(p.canvas,p.x,p.y);
+    ctx.restore();
   }
 
   // The drops. Drawn after the decals so that no amount of blood ever ends up lying across a hole,
@@ -555,13 +562,7 @@ class Renderer {
 
   // `witch` draws the Seer's fire: the same shape, cold, and nothing turns it away.
   flame(x, y, size, seed, witch) {
-    if (this.altar) { this.altar.flame(this.ctx, x, y, size, this.t, seed, witch); return; }
-    const ctx = this.ctx, t = this.t * 10 + seed;
-    ctx.fillStyle = witch ? PALETTE.witch : PALETTE.fire;
-    ctx.beginPath(); ctx.ellipse(x, y - size * 0.2, size * 0.7, size, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = witch ? PALETTE.witchHi : PALETTE.fireHi;
-    // A small flame — a brazier with its coals knocked out — must not flicker to a negative radius.
-    ctx.beginPath(); ctx.ellipse(x + Math.sin(t) * 3, y - size * 0.1, size * 0.35, Math.max(0.5, size * 0.55 + Math.sin(t * 1.7) * 3), 0, 0, Math.PI * 2); ctx.fill();
+    CombatFX.flame(this,x,y,size,seed,witch);
   }
 
   // The fissure in a wall that gives. It was one four-point zigzag drawn straight down the middle of
@@ -792,17 +793,21 @@ class Renderer {
       ctx.save(); ctx.translate(p.x + shud, p.y);
       // the frame, sunk a little into the boards
       ctx.fillStyle = 'rgba(0,0,0,0.42)'; ctx.fillRect(-w, -d, w * 2, d * 2);
-      ctx.fillStyle = arming ? '#4a4038' : '#3b352f'; ctx.fillRect(-w + 1.5, -d + 1.5, w * 2 - 3, d * 2 - 3);
+      // A touch lighter than before: the fog shade dims everything under it last of all, and a
+      // grate this dark to begin with read as a floor stain rather than iron by the time a whole
+      // band of them ran off into the part of the room he had not lit yet.
+      ctx.fillStyle = arming ? '#4a4038' : '#453e35'; ctx.fillRect(-w + 1.5, -d + 1.5, w * 2 - 3, d * 2 - 3);
       // four slots across it: this is where the teeth live, and they are visible empty
       const slots = 4, sw = (w * 2 - 7) / slots;
       for (let k = 0; k < slots; k++) {
         const sx = -w + 3.5 + k * sw;
         ctx.fillStyle = '#0e0a0c'; ctx.fillRect(sx, -d + 3.5, sw * 0.55, d * 2 - 7);
-        ctx.fillStyle = arming ? `rgba(255,224,138,${0.22 + 0.18 * Math.sin(this.t * 26 + k)})` : 'rgba(239,230,208,0.10)';
+        ctx.fillStyle = arming ? `rgba(255,224,138,${0.22 + 0.18 * Math.sin(this.t * 26 + k)})` : 'rgba(239,230,208,0.16)';
         ctx.fillRect(sx, -d + 3.5, sw * 0.55, 1.4);
       }
-      // the rail along the near lip, so the grate has a thickness
-      ctx.fillStyle = arming ? PALETTE.ochre : '#6a635b'; ctx.fillRect(-w + 1.5, d - 3, w * 2 - 3, 1.6);
+      // the rail along the near lip, so the grate has a thickness — brighter metal against the dark
+      // frame is what keeps reading as iron rather than shadow the further it sits from the goat.
+      ctx.fillStyle = arming ? PALETTE.ochre : '#948a7d'; ctx.fillRect(-w + 1.5, d - 3, w * 2 - 3, 1.6);
       if (out > 0) {
         const hgt = 22 * out;
         for (const [fill, half, lean] of [['#8d8a85', 3.6, 0], ['#d7d2c8', 1.2, -0.9]]) {
@@ -1103,13 +1108,8 @@ class Renderer {
       ctx.beginPath(); ctx.moveTo(-r * 0.2, r * 0.5); ctx.lineTo(r + 20, r * 0.42); ctx.stroke();
       ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(-r * 0.2, r * 0.5); ctx.lineTo(r * 0.35, r * 0.48); ctx.stroke();
-      if (e.state === 'aim' || e.held) {
-        const p = e.state === 'aim' ? 1 - e.timer / TUNING.hunter.aimTime : 0.5;
-        ctx.strokeStyle = `rgba(192,57,43,${0.2 + p * 0.65})`; ctx.lineWidth = 1.6;
-        ctx.setLineDash([7, 6]); ctx.lineDashOffset = -this.t * 40;
-        ctx.beginPath(); ctx.moveTo(r + 20, r * 0.42); ctx.lineTo(r + 20 + 10 * TILE * p, r * 0.42); ctx.stroke();
-        ctx.setLineDash([]);
-      }
+      // The aim tell itself moved to `drawAimTelegraph`, called for every hunter whether the
+      // painted sprite or this primitive body drew him.
     } else {
       ctx.save(); ctx.rotate(swing * 0.9);
       ctx.strokeStyle = '#c9c2b5'; ctx.lineWidth = 10; ctx.lineCap = 'butt';
@@ -1271,6 +1271,7 @@ class Renderer {
     const ctx = this.ctx;
     const lying = e.state === 'floored' || e.state === 'stunned';
     this.drawTelegraph(e);
+    this.drawAimTelegraph(e);
     // The man with a soul in him. Which boss is carrying one is decided before the level starts and
     // was, until now, something you found out by killing him: two Butchers in a run looked the same
     // and one of them was worth a verb. He glows — a low amber haze that breathes, the colour of the
@@ -1385,6 +1386,23 @@ class Renderer {
       ctx.strokeStyle = `rgba(239,230,208,${0.2 + 0.55 * p})`; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(0, 0, reach, -arc / 2, -arc / 2 + arc * p); ctx.stroke();
     }
+    ctx.restore();
+  }
+
+  // A hunter's shot is the one thing in the game you cannot see coming without this: the dashed
+  // line grows and brightens across `hunter.aimTime` before he fires. It used to live inside
+  // `drawCultist` and only a hunter drawn by that primitive fallback ever showed it — once the
+  // painted sprite took over his body (`characterKey` returns 'hunter'), the tell silently went
+  // dark and a rifle became a hitscan nobody could read. Drawn here, once, for either body.
+  drawAimTelegraph(e) {
+    if (e.kind !== 'hunter' || (e.state !== 'aim' && !e.held)) return;
+    const ctx = this.ctx, r = e.r;
+    ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.rotate(e.facing);
+    const p = e.state === 'aim' ? 1 - e.timer / TUNING.hunter.aimTime : 0.5;
+    ctx.strokeStyle = `rgba(192,57,43,${0.2 + p * 0.65})`; ctx.lineWidth = 1.6;
+    ctx.setLineDash([7, 6]); ctx.lineDashOffset = -this.t * 40;
+    ctx.beginPath(); ctx.moveTo(r + 20, r * 0.42); ctx.lineTo(r + 20 + 10 * TILE * p, r * 0.42); ctx.stroke();
+    ctx.setLineDash([]);
     ctx.restore();
   }
 
@@ -1581,11 +1599,13 @@ class Renderer {
     this.devButton(d, pad + 160 * s, pad, 76 * s, 20 * s, 'BALANCE', 'tab-balance', d.tab === 'balance');
     this.devButton(d, pad + 240 * s, pad, 76 * s, 20 * s, 'ENEMIES', 'tab-enemies', d.tab === 'enemies');
     this.devButton(d, pad + 320 * s, pad, 76 * s, 20 * s, 'BOONS', 'tab-boons', d.tab === 'boons');
+    this.devButton(d, pad + 400 * s, pad, 76 * s, 20 * s, 'OBJECTS', 'tab-props', d.tab === 'props');
     this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'CLOSE', 'rules', false);
     if (d.tab === 'balance') this.drawBalance(game, pad, pad + 30 * s);
     else if (d.tab === 'levels') this.drawLevelTab(game, pad, pad + 30 * s);
     else if (d.tab === 'enemies') this.drawEnemiesTab(game, pad, pad + 30 * s);
     else if (d.tab === 'boons') this.drawBoonsTab(game, pad, pad + 30 * s);
+    else if (d.tab === 'props') this.drawPropsTab(game, pad, pad + 30 * s);
     else this.drawRuleTab(game, pad, pad + 30 * s);
     // A room opened from either of the other two covers them: it is the deepest the tool goes.
     if (d.room) this.drawRoomSheet(game, pad);
@@ -1770,6 +1790,26 @@ class Renderer {
       ctx.fillText(this.clip(def.canon.idea, full - 150 * s), pad + 150 * s, y);
       y += 14 * s;
     }
+    // HINT / THEME / DECOR: free text on the level definition, painted on the floor (HINT only) or
+    // read nowhere else in the game — this page is the only place to see them and to change them.
+    // Each line is a click target: `game.devAction` prompts for the new text and, off the dev
+    // server, writes it straight back into js/tuning.js the same way a BOONS number is edited.
+    ctx.font = `400 ${7.3 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.35)';
+    ctx.fillText('click a line below to edit it — saved to js/tuning.js if the dev server is running', pad, y);
+    y += 10 * s;
+    const editRow = (label, field) => {
+      const has = !!def[field];
+      ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+      ctx.fillText(label, pad, y);
+      ctx.font = `400 ${8.8 * s}px ${FONT}`; ctx.fillStyle = has ? 'rgba(239,230,208,0.85)' : 'rgba(239,230,208,0.32)';
+      ctx.fillText(has ? this.clip(def[field], full - 56 * s) : '(none — click to add)', pad + 56 * s, y);
+      d.rects.push({ x: pad, y: y - 9 * s, w: full, h: 11 * s, id: `level-edit=${def.name}.${field}` });
+      y += 12 * s;
+    };
+    editRow('HINT', 'hint');
+    editRow('THEME', 'theme');
+    editRow('DECOR', 'decor');
+    y += 4 * s;
     ctx.font = `400 ${8.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
     for (const f of levelFacts(def)) { ctx.fillText(this.clip(f, full), pad, y); y += 11 * s; }
 
@@ -1988,6 +2028,87 @@ class Renderer {
         d.rects.push({ x: px, y: py, w, h: 16 * s, id: `boon-edit=${b.id}.params.${key}` });
         px += w + 6 * s;
       });
+    });
+  }
+
+  // THE FIXTURES: every kind of Prop that stands in a room, read live off TUNING the way the
+  // bestiary reads enemies. The thumbnail is a real `Prop`, drawn with the game's own `drawProp` —
+  // a brazier or a stand of arms shown here is the same call the game makes against it, so a change
+  // to a sprite shows up here for free. The note column is where the request behind this tab lives:
+  // not just what a thing is, but what it does to or with something else — fire, a throw, a body.
+  drawPropsTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, W = this.w, H = this.h, P = TUNING.prop;
+    const FIXTURES = [
+      { kind: 'brazier', label: 'BRAZIER', make: (x, y) => new Prop(x, y, 'brazier'),
+        stats: `spill ${P.brazier.spill} tiles, alight ${P.brazier.spillTime}s, refills in ${P.brazier.spillCd}s`,
+        note: 'A headbutt, or a body arriving fast enough, knocks a pool of coals out its far side. A crate or a weapon that reaches it goes up too, and a man already burning lights the next one he touches once KINDLING is taken.' },
+      { kind: 'lamp', label: 'LAMP POST', make: (x, y) => new Prop(x, y, 'lamp'),
+        stats: `topples above ${Math.round(P.lamp.knock)}px/s of impact, pours oil ${P.lamp.poolRadius} tiles across`,
+        note: 'Not a pillar — a fast body (flung, charging, or falling past it) knocks it over, and it pours a burning pool of oil where it lands. The only way to start a fire in a room with no brazier in it.' },
+      { kind: 'crate', label: 'CRATE', make: (x, y) => new Prop(x, y, 'crate'),
+        stats: `floors for ${P.crate.stun}s on a hit, bursts for ${P.crate.burstTime}s if thrown through flame`,
+        note: 'The one thing on the floor you pick up and throw. Breaks on a door, table, gong or man; a burning tile makes it burst into a wider, longer fire instead of just breaking. Carried, it blocks one club for free, then it is gone.' },
+      { kind: 'weapon', label: 'STAND OF ARMS', make: (x, y) => new Prop(x, y, 'weapon', { weapon: 'sword' }),
+        stats: `sword: one throw, kills+sticks · shield: ${P.weapon.uses.shield} men or bullets before it snaps`,
+        note: 'Grab it, carry it, let go or press headbutt to throw it — there is no separate swing for a blade the goat cannot wield in his teeth. A sword goes through the first man it finds; a shield knocks a row flat and turns bullets while carried, and a man who swings into it eats the parry.' },
+      { kind: 'table', label: 'TABLE', make: (x, y) => new Prop(x, y, 'table'),
+        stats: `pushes at ${Math.round(P.table.pushSpeed)}px/s, kills above ${Math.round(P.table.killSpeed)}px/s`,
+        note: 'Shoved or charged, it stops anything smaller and turns bullets. Above killSpeed — mostly a Butcher’s charge — it kills whoever it hits and can take a door off its hinges on the way through.' },
+      { kind: 'door', label: 'DOOR', make: (x, y) => new Prop(x, y, 'door', { iron: true }),
+        stats: `plank 1 hit · iron ${P.door.ironHits} · vault ${P.door.vaultHits} · stairs ${P.door.stairHits} · clock shuts in ${P.door.clockFor}s`,
+        note: 'Iron refuses to be shouldered open: it is broken or it stays shut, so every blow on one is noise with whatever heard the first already coming. A table above killSpeed, or a Butcher’s charge, smashes through instead of counting blows.' },
+      { kind: 'mill', label: 'THE MILL', make: (x, y) => new Prop(x, y, 'mill'),
+        stats: `arm ${(TUNING.mill.armLen / TILE).toFixed(1)} tiles, ${TUNING.mill.damage} dmg, ${TUNING.mill.hitCooldown}s between passes`,
+        note: 'A sweeping arm that does not care whose side you are on. Trap sense is what lets a man dodge it or ride it into a wall — it only ever knocks down, so what it kills against is whatever the room put behind him.' },
+      { kind: 'spike', label: 'SPIKE GRATE', make: (x, y) => new Prop(x, y, 'spike'),
+        stats: `arms ${P.spike.arm}s after a step, up ${P.spike.up}s, laid ${P.spike.run[0]}–${P.spike.run[1]} tiles at a time`,
+        note: 'Floor, not furniture: crossing a plate arms it and the teeth come up a beat later, behind whoever tripped it. Anything alive trips one but a wraith in mist; trap sense is what lets a man in a crowd walk round it instead.' },
+      { kind: 'secret', label: 'SECRET WALL', make: (x, y) => new Prop(x, y, 'secret'),
+        stats: `${P.secret.hits} hits to open, the niche behind it stays lit after`,
+        note: 'Ordinary wall until the second blow: blocks sight and bullets like stone right up to the crack. Behind it is always the same pair — a patch of milk and a stand of arms — never a room or a corridor.' },
+      { kind: 'heal', label: 'HEAL PATCH', make: (x, y) => new Prop(x, y, 'heal'),
+        stats: `graze ${P.heal.grazeTime}s under ${P.heal.grazeSpeed}px/s for +1 heart`,
+        note: 'Grazed, not grabbed: hold still (or nearly) inside it and it pays out once. Running through it on the way past does nothing — the point is that it costs a beat of standing in the open.' },
+      { kind: 'bell', label: 'BELL', make: (x, y) => new Prop(x, y, 'bell'),
+        stats: `${P.bell.buff}s of ×${P.bell.speedMul} speed, ×${P.bell.cooldownMul} faster cooldowns`,
+        note: 'Rung, it buys a stretch of speed and quick hands for a noise the whole floor hears at once. A terrible trade in an empty room; the best one you get in a full one.' },
+      { kind: 'coop', label: 'COOP & HEN', make: (x, y) => new Prop(x, y, 'coop'),
+        stats: `${P.coop.hits} hit to open · kicked at ${Math.round(P.chicken.launchSpeed)}px/s · kills once`,
+        note: 'The one thing in the compound on your side. Loose, she walks with you; kicked — a headbutt, not a throw, so no seventh button — she homes onto whoever she was aimed at and kills on contact, then comes apart. A miss only costs the walk back to her.' },
+      { kind: 'cage', label: 'THE PEN', make: (x, y) => new Prop(x, y, 'cage'),
+        stats: `${P.cage.hits} hits the first time a browser ever does it, ${P.cage.againHits} every time after`,
+        note: 'The one object that is a lesson rather than a fixture: what it costs the first time is remembered (`penBroken`), so a run that has already learned the verb only pays the toll.' },
+    ];
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+    ctx.fillText('THE FIXTURES', pad, top);
+    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText('every prop kind, read live off TUNING · properties, then what it does with fire, a throw or a body', pad + 140 * s, top);
+
+    const rowH = Math.max(30 * s, (H - top - 24 * s - pad) / FIXTURES.length);
+    const thumb = Math.min(rowH - 4 * s, 48 * s);
+    const nameX = pad + thumb + 12 * s, noteX = nameX + 200 * s;
+    let y = top + 16 * s;
+    FIXTURES.forEach((f, i) => {
+      const ry = y + i * rowH;
+      if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, ry, W - pad * 2 + 8 * s, rowH); }
+      // The thumbnail is a real Prop at the row's own centre, clipped to the cell: a stand of arms
+      // reads at a glance and a wheel is not asked to fit inside one — its arms simply run off the
+      // edge of the box the way they would run off the edge of a small window onto the room.
+      ctx.save();
+      ctx.beginPath(); ctx.rect(pad, ry, thumb, rowH); ctx.clip();
+      const fake = f.make(pad + thumb / 2, ry + rowH / 2);
+      this.drawProp(fake);
+      ctx.restore();
+      ctx.textAlign = 'left';
+      ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(f.label, nameX, ry + rowH / 2 - 3 * s);
+      ctx.font = `400 ${7.6 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
+      const statLines = this.wrap(f.stats, noteX - nameX - 8 * s).slice(0, 3);
+      statLines.forEach((l, li) => ctx.fillText(l, nameX, ry + rowH / 2 + 9 * s + li * 9 * s));
+      ctx.fillStyle = 'rgba(239,230,208,0.62)'; ctx.font = `400 ${7.8 * s}px ${FONT}`;
+      const lines = this.wrap(f.note, W - pad - noteX - 6 * s).slice(0, 4);
+      const noteTop = ry + rowH / 2 - (lines.length - 1) * 5 * s;
+      lines.forEach((l, li) => ctx.fillText(l, noteX, noteTop + li * 10 * s));
     });
   }
 
@@ -2584,7 +2705,10 @@ class Renderer {
   // as the floor he is standing on: nothing is culled, it is simply not lit.
   drawShade(game, cam) {
     const wd = game.world;
-    if (!wd || !wd.visBox || game.state === 'intro') return;
+    // A dead goat's vision froze with him: without this the pull-back would drag his own small sight
+    // circle out across the whole level, blotting out every room but the one he died in. `drawUnseen`
+    // already carries the seen/unseen split the death screen actually wants, room by room.
+    if (!wd || !wd.visBox || game.state === 'intro' || game.state === 'dead') return;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
     const nx = x1 - x0 + 1, ny = y1 - y0 + 1, R = TUNING.fog.res;
     if (nx < 1 || ny < 1) return;
@@ -2622,6 +2746,32 @@ class Renderer {
       if (r.seen) continue;
       ctx.fillRect(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE);
     }
+  }
+
+  // The death screen's own mark on the map: a plain line along `game.pathTrail`, a dot where the run
+  // began and a small cross where it ended. `lineWidth` is a screen-pixel width divided back out of
+  // the camera zoom, since we are inside `worldTransform` here and a world-space width would go from
+  // a thread to a rope over the length of the pull-back.
+  drawDeathPath(game) {
+    const trail = game.pathTrail;
+    if (!trail || trail.length < 2) return;
+    const ctx = this.ctx, z = game.cam.zoom;
+    ctx.save();
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = PALETTE.blood; ctx.globalAlpha = 0.8;
+    ctx.lineWidth = TUNING.deathCam.lineWidth / z;
+    ctx.beginPath(); ctx.moveTo(trail[0].x, trail[0].y);
+    for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i].x, trail[i].y);
+    ctx.stroke();
+    const start = trail[0], end = trail[trail.length - 1], dot = 4 / z, x = 6 / z;
+    ctx.fillStyle = PALETTE.bone; ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.arc(start.x, start.y, dot, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = TUNING.deathCam.lineWidth / z;
+    ctx.beginPath();
+    ctx.moveTo(end.x - x, end.y - x); ctx.lineTo(end.x + x, end.y + x);
+    ctx.moveTo(end.x - x, end.y + x); ctx.lineTo(end.x + x, end.y - x);
+    ctx.stroke();
+    ctx.restore();
   }
 
   // One choice per Butcher. Tap a card, or press its number.
@@ -2693,7 +2843,12 @@ class Renderer {
 
   drawParticles(game) {
     const ctx = this.ctx;
-    for (const p of game.parts) { ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
+    for (const p of game.parts) {
+      ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillStyle = p.color;
+      if(p.color===PALETTE.blood||p.color===PALETTE.bloodDark) {
+        ctx.beginPath();ctx.ellipse(p.x,p.y,p.size*0.7,p.size*0.35,Math.atan2(p.vy,p.vx),0,Math.PI*2);ctx.fill();
+      } else ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -2942,18 +3097,20 @@ class Renderer {
       // on the note, which comes up when the pointer is on the chip.
       if (!game.touch.active) {
         const m = game.input.mouse;
-        if (m.x >= x - 3 * s && m.x <= x + box + 3 * s && m.y >= y - 3 * s && m.y <= y + box + 22 * s) {
-          this.skillHover = { row, x, y: y + box + 26 * s, hot, boons };
+        if (m.x >= x - 3 * s && m.x <= x + box + 3 * s && m.y >= y - 3 * s && m.y <= y + box + 26 * s) {
+          this.skillHover = { row, x, y: y + box + 30 * s, hot, boons };
         }
         ctx.font = `700 ${10 * s}px ${FONT_SC}`;
         ctx.fillStyle = hot ? PALETTE.fireHi : row.half ? 'rgba(239,230,208,0.38)'
           : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.55)';
-        ctx.fillText(row.cap, x + box / 2, y + box + 18 * s);
+        // A little clear of the box itself: flush under it read as part of the icon rather than a
+        // caption of its own.
+        ctx.fillText(row.cap, x + box / 2, y + box + 22 * s);
       }
     });
     // The gong, while it is still in him: a strip under the rail that drains with it, so four
     // cooldowns coming back faster than they should has something on screen saying why.
-    let end = top + box + 22 * s;
+    let end = top + box + 26 * s;
     const gong = clamp(g.gong / TUNING.prop.bell.buff, 0, 1);
     if (gong > 0) {
       const bw = right - x0, by = end + 2 * s;

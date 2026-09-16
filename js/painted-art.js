@@ -67,6 +67,43 @@ class PaintedArt extends AltarArt {
     return true;
   }
 
+  // Bits name the exposed faces, not the room edge: N=1, E=2, S=4, W=8.
+  // Build each junction once; rotating the face keeps the courses parallel to its wall.
+  wallTile(prefix, mask) {
+    this.wallTiles ||= new Map();
+    const key = prefix + mask;
+    if (this.wallTiles.has(key)) return this.wallTiles.get(key);
+    const tile = document.createElement('canvas'); tile.width = tile.height = 128;
+    const c = tile.getContext('2d'), lip = 40;
+    const left = mask & 8 ? lip : 0, right = mask & 2 ? 128-lip : 128;
+    const top = mask & 1 ? lip : 0, bottom = mask & 4 ? 128-lip : 128;
+    this.stamp(c, prefix+'wallTop', 64, 64, 128, 128);
+    const faces = [
+      // N's shade used to be 0.27, nearly as dark as the mortar line it sits next to: on the wall
+      // closest to camera (the near/bottom wall of a room) the whole coursed face washed into one
+      // flat dark band and read as bare rock. Brought down to keep the same darker-than-S
+      // direction without crushing the brick reading it is the only visible face for.
+      {bit:1, a:Math.PI, points:[[0,0],[128,0],[right,top],[left,top]], shade:0.1},
+      {bit:2, a:-Math.PI/2, points:[[128,0],[128,128],[right,bottom],[right,top]], shade:0.06},
+      {bit:4, a:0, points:[[128,128],[0,128],[left,bottom],[right,bottom]], shade:0},
+      {bit:8, a:Math.PI/2, points:[[0,128],[0,0],[left,top],[left,bottom]], shade:0.08},
+    ];
+    for (const f of faces) if (mask & f.bit) {
+      c.save(); c.beginPath(); f.points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y)); c.closePath(); c.clip();
+      c.translate(64,64); c.rotate(f.a);
+      this.stamp(c,prefix+'wallFace',0,44,128,40);
+      c.fillStyle=`rgba(10,7,12,${f.shade})`; c.fillRect(-64,24,128,40);
+      c.fillStyle='rgba(8,5,10,0.55)'; c.fillRect(-64,60,128,4);
+      c.fillStyle='rgba(225,203,180,0.22)'; c.fillRect(-64,24,128,3);
+      c.restore();
+    }
+    this.wallTiles.set(key,tile); return tile;
+  }
+
+  drawWall(ctx, prefix, x, y, mask) {
+    ctx.drawImage(this.wallTile(prefix,mask),x,y,TILE,TILE);
+  }
+
   drawTiles(renderer, game, cam) {
     if (!this.ready) return super.drawTiles(renderer, game, cam);
     this.prepare(game);
@@ -78,21 +115,8 @@ class PaintedArt extends AltarArt {
       if (t===T.WALL) {
         const n=!wd.isSolid(x,y-1),s=!wd.isSolid(x,y+1),w=!wd.isSolid(x-1,y),e=!wd.isSolid(x+1,y);
         if (!(n||s||w||e||!wd.isSolid(x-1,y-1)||!wd.isSolid(x+1,y-1)||!wd.isSolid(x-1,y+1)||!wd.isSolid(x+1,y+1))) continue;
-        // The brick face is the dominant texture on every visible wall tile: the reference art has
-        // brick coursing running the full height of every wall, top and sides alike. The coping
-        // caps its top band, and only where that band is the OUTSIDE of the wall — on a room's
-        // bottom wall the surface you are looking at is the inner face, there is no top of it in
-        // view from here, and the pale plate drawn there read as a stripe painted along the edge of
-        // the floor.
-        // A room's own left or right wall mirrors the same square texture across its own centre, so
-        // whatever asymmetry the brick art carries reads as facing into the room on both sides
-        // instead of the same unmirrored tile pointing the one way everywhere it is stamped.
-        const sideWall = (e && !w) || (w && !e);
-        if (sideWall) { ctx.save(); ctx.translate(px+32,0); ctx.scale(-1,1); ctx.translate(-(px),0); }
-        this.stamp(ctx,prefix+'wallFace',px+16,py+16,32,32);
-        if (!n) this.stamp(ctx,prefix+'wallTop',px+16,py+10,32,20);
-        if (sideWall) ctx.restore();
-        if (s&&x%5===1&&h%3!==0&&!w&&!e) this.stamp(ctx,'banner',px+16,py+14,17,23,0.2);
+        this.drawWall(ctx,prefix,px,py,(n?1:0)|(e?2:0)|(s?4:0)|(w?8:0));
+        if (s&&x%5===1&&h%3!==0&&!w&&!e) this.stamp(ctx,'banner',px+16,py+18,13,17,0.2);
         continue;
       }
       if (t===T.PIT) continue;
@@ -251,13 +275,8 @@ class PaintedArt extends AltarArt {
     if(p.kind==='secret'){
       const key=(this.prefix||'')+'wallFace';
       if(!this.images[key]?.naturalWidth)return super.drawProp(renderer,p);
-      // Until it cracks this has to read as an unremarkable length of the room's own wall — the
-      // same brick course (and, on a wall carved from the top of its room, the same coping) every
-      // ordinary wall tile there gets. It used to be a different, unbricked stone-block art tinted
-      // to the room's colour, which read as a smoother, flatter patch of *something* rather than as
-      // the wall itself, and made the crack drawn over it look like it was sitting on bare floor.
-      this.stamp(ctx,key,p.x,p.y,32,32);
-      if (p.wallSide==='up') this.stamp(ctx,(this.prefix||'')+'wallTop',p.x,p.y-6,32,20);
+      // The sealed niche must share the same facing as the surrounding room wall.
+      this.drawWall(ctx,this.prefix||'',p.x-TILE/2,p.y-TILE/2,p.wallSide==='up'?4:1);
       // The crack tells still have to be drawn: the art carries none, and they're what the blow count
       // reads as (see `Renderer.wallCrack` / CLAUDE.md's "A wall that gives").
       renderer.wallCrack(p.x,p.y,p.hits||0);

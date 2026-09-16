@@ -33,6 +33,7 @@ class World {
     this.decal.height = Math.ceil(this.H * TILE * DECAL_SCALE);
     this.dctx = this.decal.getContext('2d');
     this.dctx.scale(DECAL_SCALE, DECAL_SCALE);
+    this.stains = new Map();
     this.fireSfxTimer = 0;
     // What the goat can see from where he is standing. One byte a tile, rebuilt every step by
     // `computeVis`, and the box it last filled so the clear costs the same as the cast.
@@ -514,23 +515,57 @@ class World {
   emitNoise(x, y, radiusTiles, kind) { this.noises.push({ x, y, r: radiusTiles * TILE, kind: kind || 'noise' }); }
 
   // ---- decals (persistent paint) ----
+  // Allocate detailed paint only where something happened, rather than a full-resolution world.
+  paintStain(x,y,r,paint) {
+    const size=TUNING.effects.stainTile;
+    for(let ty=Math.floor((y-r)/size);ty<=Math.floor((y+r)/size);ty++)
+      for(let tx=Math.floor((x-r)/size);tx<=Math.floor((x+r)/size);tx++) {
+        if(tx<0||ty<0||tx*size>=this.W*TILE||ty*size>=this.H*TILE)continue;
+        const key=tx+','+ty;let tile=this.stains.get(key);
+        if(!tile) {
+          if(this.stains.size>=TUNING.effects.maxStainTiles) {
+            const [oldKey,old]=this.stains.entries().next().value;
+            this.dctx.drawImage(old.canvas,old.x,old.y);this.stains.delete(oldKey);
+          }
+          const canvas=document.createElement('canvas');canvas.width=canvas.height=size;
+          tile={canvas,x:tx*size,y:ty*size};this.stains.set(key,tile);
+        }
+        const c=tile.canvas.getContext('2d');c.save();c.translate(-tile.x,-tile.y);paint(c);c.restore();
+      }
+  }
+
   splat(x, y, dirx, diry, size, color) {
-    const c = this.dctx; c.fillStyle = color || PALETTE.blood;
-    for (let i = 0; i < 7; i++) {
+    const d=Math.hypot(dirx,diry)||1;dirx/=d;diry/=d;
+    const droplets=[];
+    for(let i=0;i<12;i++) {
       const t = Math.random();
       const ox = dirx * t * size * 2 + (Math.random() - 0.5) * size, oy = diry * t * size * 2 + (Math.random() - 0.5) * size;
-      const rr = size * (0.25 + Math.random() * 0.45) * (1 - t * 0.6);
-      c.beginPath(); c.arc(x + ox, y + oy, rr, 0, Math.PI * 2); c.fill();
+      droplets.push([ox,oy,size*(0.035+Math.random()*0.12)]);
     }
+    const angle=Math.atan2(diry,dirx);
+    this.paintStain(x,y,size*3,c=>{
+      c.save();c.translate(x,y);c.rotate(angle);c.globalAlpha=0.8;
+      const painted=CombatFX.frame(c,3,3,0,0,size*3,size*2.3);
+      c.restore();c.fillStyle=color||PALETTE.bloodDark;
+      if(!painted){c.beginPath();c.ellipse(x,y,size*0.7,size*0.5,angle,0,Math.PI*2);c.fill();}
+      for(const [ox,oy,r] of droplets){c.beginPath();c.ellipse(x+ox,y+oy,r*1.5,r,angle,0,Math.PI*2);c.fill();}
+    });
   }
   body(x, y, r, angle, color) {
     const c = this.dctx; c.save(); c.translate(x, y); c.rotate(angle);
     c.fillStyle = color || PALETTE.ink; c.beginPath(); c.ellipse(0, 0, r * 1.5, r * 0.8, 0, 0, Math.PI * 2); c.fill();
     c.restore();
   }
-  dot(x, y, r, color) { const c = this.dctx; c.fillStyle = color; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+  dot(x, y, r, color) {
+    const paint=c=>{c.fillStyle=color;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();};
+    if(color===PALETTE.blood||color===PALETTE.bloodDark)this.paintStain(x,y,r,paint);else paint(this.dctx);
+  }
   scorch(x, y, r, witch) {
-    const c = this.dctx; c.fillStyle = witch ? 'rgba(38,26,64,0.72)' : 'rgba(20,14,12,0.7)';
-    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    this.paintStain(x,y,r,c=>{
+      const g=c.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,witch?'rgba(38,26,64,0.85)':'rgba(20,14,12,0.86)');
+      g.addColorStop(0.55,'rgba(24,17,18,0.6)');g.addColorStop(1,'rgba(24,17,18,0)');
+      c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
+    });
   }
 }

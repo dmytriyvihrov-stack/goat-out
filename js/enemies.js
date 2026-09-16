@@ -14,7 +14,10 @@ class Enemy {
     this.burning = 0; this.burnDir = 0; this.burnTick = 0; this.chargeCd = 0; this.reload = 0; this.flash = 0;
     this.litByMan = false; this.passedFire = false;   // who may hand fire on, and who has already
     this.lastLunge = -1; this.shieldHits = 0; this.wander = Math.random() * 3; this.lostTimer = 0;
-    this.bombFuse = 0; this.flail = 0; this.heldSwing = 0;
+    this.bombFuse = 0; this.exploded = false; this.flail = 0; this.heldSwing = 0;
+    // 0 for everybody: only the Mill lesson's two men are ever given a beat to plant and face the
+    // goat before they move, so this changes nothing about how fast the rest of the game notices you.
+    this.noticeFor = 0;
     this.castCd = Math.random() * 1.2; this.blinkCd = 0; this.rune = null; this.blinkFx = 0;
     this.elite = false; this.boss = false; this.millCd = 0;
     this.say = null; this.barkCd = 0; this.witchBurn = false;   // what he is shouting, and what lit him
@@ -132,8 +135,11 @@ class Enemy {
     if (this.bombFuse > 0 && !this.exploded && cause === 'splat') { this.explode(game); return; }
     // Anyone carrying more than one hit — an arena elite, or any Seer — eats it, goes down and gets
     // back up; a Seer blinks clear as he does. Fire counts, so a mage has to be lit twice. Being torn
-    // open or going off like a bomb does not: there is nothing left to get up.
-    if (this.hp > 1 && cause !== 'devour' && cause !== 'boom' && cause !== 'fall') {
+    // open does not: there is nothing left to get up. A bomb charge no longer skips this either — it
+    // is a hit like any other, so a two-heart target takes one off and goes down floored, and only a
+    // second charge (or any other killing blow) landed while he is already at his last heart actually
+    // finishes him.
+    if (this.hp > 1 && cause !== 'devour' && cause !== 'fall') {
       this.hp -= 1; this.flash = 0.3; this.aware = true;
       if (this.kind === 'wraith') {
         // It comes apart and puts itself back together somewhere else. Catching it once is not enough.
@@ -167,10 +173,9 @@ class Enemy {
     // Over an edge he is dead the frame he crossed the lip, but `spawnFaller` keeps the picture of
     // him for a beat: he turns over, shrinks into the dark and the sound of him goes down with him.
     if (cause === 'fall') { game.particles(this.x, this.y, 10, PALETTE.ink, 120); game.spawnFaller(this); game.audio.sfxFall(); }
-    else if (cause === 'burn') { w.scorch(this.x, this.y, this.r * 1.6); w.body(this.x, this.y, this.r, this.facing, '#241a16'); }
+    else if (cause === 'burn') { w.scorch(this.x, this.y, this.r * 1.6); }
     else {
       w.splat(this.x, this.y, dx || 0, dy || 0, this.kind === 'butcher' ? 26 : 16);
-      w.body(this.x, this.y, this.r, Math.atan2(dy || 0, dx || 1), PALETTE.ink);
       if (this.kind === 'hunter') w.dot(this.x + 8, this.y + 6, 3, '#3a3236');
     }
     if (game.goat.holding === this) game.goat.holding = null;
@@ -183,10 +188,14 @@ class Enemy {
     if (this.exploded) return;
     this.exploded = true;
     const B = TUNING.goat.bomb, w = game.world;
+    // The blast that flings and damages the room is still the full `B.radius` below; only the
+    // burst graphic itself is drawn smaller and shorter, so the explosion reads as a beat in the
+    // fight rather than something that eats the screen for a third of a second.
+    game.fx.explosion(this.x,this.y,B.radius * B.fxScale,false,false,B.fxLife);
     w.splat(this.x, this.y, 0, 0, 30); w.scorch(this.x, this.y, B.radius * 0.5);
-    game.particles(this.x, this.y, 30, PALETTE.blood, 320);
-    game.particles(this.x, this.y, 16, PALETTE.fire, 260);
-    game.ring(this.x, this.y, B.radius, PALETTE.fireHi);
+    game.particles(this.x, this.y, 18, PALETTE.blood, 320);
+    game.particles(this.x, this.y, 10, PALETTE.fire, 260);
+    game.ring(this.x, this.y, B.radius * B.fxScale, PALETTE.fireHi);
     game.shake(9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
     w.emitNoise(this.x, this.y, TUNING.noise.boom);
     for (const o of game.enemies) {
@@ -478,7 +487,21 @@ class Enemy {
         this.facing = Math.atan2(n.y - this.y, n.x - this.x);
       }
     }
-    if (this.aware && (this.state === 'idle' || this.state === 'investigate')) this.state = 'chase';
+    // Most men close the instant they see you — that snap is the whole point of the cone. The two
+    // men the Mill lesson stands on either side of the wheel get a beat to plant and face you
+    // first (`noticeFor`, set only on them in `startLevel`): the one who is about to walk into the
+    // arm should read as a decision the room made, not a coin flip that landed before the door was
+    // even open. Nobody else in the game carries this field, so this changes nothing elsewhere.
+    if (this.aware && (this.state === 'idle' || this.state === 'investigate')) {
+      if (this.noticeFor > 0) { this.state = 'noticed'; this.timer = this.noticeFor; }
+      else this.state = 'chase';
+    }
+    if (this.state === 'noticed') {
+      this.vx = 0; this.vy = 0; this.facing = Math.atan2(g.y - this.y, g.x - this.x);
+      if (!this.ghosted && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+      this.timer -= dt;
+      if (this.timer <= 0) this.state = 'chase'; else return;
+    }
     if (!this.ghosted && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
 
     // The scream took the sense out of him: he is still standing, and can do nothing with it.
@@ -517,7 +540,18 @@ class Enemy {
     const out = len(this.x - this.home.x, this.y - this.home.y) > TUNING.ai.leash * TILE;
     if (this.wander <= 0 || out) {
       this.wander = 1 + Math.random() * 3;
-      this.facing = out ? Math.atan2(this.home.y - this.y, this.home.x - this.x) : this.facing + (Math.random() - 0.5) * 2;
+      let f = out ? Math.atan2(this.home.y - this.y, this.home.x - this.x) : this.facing + (Math.random() - 0.5) * 2;
+      // A pure random turn can point him straight at the wall behind him, and nothing about idling
+      // ever checked: he'd just stand there looking at stone until the next wander beat. Resample a
+      // few times against a look-ahead probe rather than leave him facing it — this only ever
+      // touches the direction he is about to face, never whether he walks.
+      if (!out) {
+        const w = game.world, look = TUNING.ai.wanderClear * TILE;
+        for (let tries = 0; tries < 5 && w.isSolid(Math.floor((this.x + Math.cos(f) * look) / TILE), Math.floor((this.y + Math.sin(f) * look) / TILE)); tries++) {
+          f = this.facing + (Math.random() - 0.5) * 2;
+        }
+      }
+      this.facing = f;
       // A man who has not seen anything still shifts his weight now and then rather than standing
       // like a post: about half of a wander beat is a few slow steps in whatever direction he just
       // turned to face, the rest is standing and looking. A room nobody has walked into yet used to

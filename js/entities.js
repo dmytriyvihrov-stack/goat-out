@@ -419,7 +419,10 @@ class Goat {
         game.shake(2); game.audio.sfxThud(); game.vibe(10);
         game.particles(this.x + ax * this.r, this.y + ay * this.r, 6, PALETTE.bone, 260);
         game.kick(ax, ay, TUNING.juice.kick * 0.55);
-        if (game.mods.bomb) { e.bombFuse = TUNING.goat.bomb.fuse; e.aware = true; }
+        // `exploded` has to come back with the fuse: a bomb charge now only takes off one heart
+        // against a multi-hit target, and without this a second charge would relight a fuse that
+        // could never go off again.
+        if (game.mods.bomb) { e.bombFuse = TUNING.goat.bomb.fuse; e.exploded = false; e.aware = true; }
       }
     }
     for (const p of game.props) {
@@ -540,6 +543,9 @@ class Goat {
     this.runT = 0; this.runUp = 1;             // whatever he had built up, the club took it
 
     game.shake(TUNING.juice.shakeHit); game.audio.sfxHit();
+    // A goat that only grunts when it is hit reads as armour, not an animal — the frightened bleat
+    // is what says it felt that.
+    game.audio.sfxBleat(560, 0.24, 0.3);
     game.hurtFlash(Math.atan2(-(ky || 0), -(kx || 0)));
     game.world.splat(this.x, this.y, (kx || 0) / 100, (ky || 0) / 100, 9);
     if (this.state === 'windup') this.state = 'idle';
@@ -550,7 +556,7 @@ class Goat {
     this.dead = true; this.hp = 0;
     if (this.holding) { this.holding.held = false; if (!this.holding.item) { this.holding.state = 'idle'; } this.holding = null; }
     game.world.splat(this.x, this.y, 0, 0, 22);
-    game.world.body(this.x, this.y, this.r, this.facing, PALETTE.bone);
+    game.fx.death(this,'splat',Math.cos(this.facing),Math.sin(this.facing));
     game.onGoatDied();
   }
 }
@@ -911,9 +917,9 @@ class Prop {
     this.broken = true; this.dead = true;
     game.world.emitNoise(this.x, this.y, TUNING.noise.door); game.audio.sfxSplat(); game.shake(5); game.hitstop(0.03);
     game.renderer?.painted?.brokenDoor(game,this);
+    game.fx.debris(this,ax,ay);
     if (this.iron) { game.audio.sfxSteel(); game.floatText(this.x, this.y - 30, 'IT GIVES', PALETTE.fireHi); }
     game.particles(this.x, this.y, 16, this.iron ? PALETTE.ash : PALETTE.wood, 260);
-    for (let i = 0; i < 10; i++) game.world.dot(this.x + (Math.random() - 0.5) * 54, this.y + (Math.random() - 0.5) * 54, 2 + Math.random() * 2.5, PALETTE.wood);
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted || e === by) continue;
       const dx = e.x - this.x, dy = e.y - this.y;
@@ -1170,6 +1176,7 @@ class Prop {
   burst(game, witch) {
     if (this.broken) return;
     const C = TUNING.prop.crate;
+    game.fx.explosion(this.x,this.y,C.burst*TILE,witch);
     game.world.ignitePool(this.x, this.y, C.burst, witch, C.burstTime);
     game.audio.sfxBoom(); game.shake(7); game.hitstop(0.05); game.vibe(35);
     game.flash(witch ? PALETTE.witch : PALETTE.fire, 0.22); game.zoomPunch(1.1);
@@ -1384,10 +1391,11 @@ class Prop {
   // A crate coming apart: boards on the floor and the noise of it, which is loud enough to turn
   // a room. Nothing is left behind that can be picked up again.
   shatter(game) {
+    if (this.broken) return;
     this.broken = true; this.dead = true;
     game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
     game.audio.sfxCrack(); game.audio.sfxThud(); game.shake(3);
-    for (let i = 0; i < 9; i++) game.world.dot(this.x + (Math.random() - 0.5) * 34, this.y + (Math.random() - 0.5) * 34, 2 + Math.random() * 2.2, PALETTE.wood);
+    game.fx.debris(this,this.vx,this.vy);
     game.particles(this.x, this.y, 11, PALETTE.wood, 165);
   }
 }

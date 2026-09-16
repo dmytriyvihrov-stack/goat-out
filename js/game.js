@@ -11,9 +11,16 @@ const SET_KEY = 'goatout.settings.v1';
 // Whether this browser has ever got out of the pen. Seven blows and two falls is the hardest thing
 // the goat does all run and it is worth doing once; every run after it opens on the second blow.
 const PEN_KEY = 'goatout.pen.v1';
+// The pointer, drawn as the animal rather than as a plain OS crosshair. `encodeURIComponent` rather
+// than hand-escaping the quotes and the emoji's own bytes, since a cursor string that is wrong is
+// silently wrong — the browser just falls back to `crosshair` with nothing in the console about it.
+const CURSOR_GOAT = `url("data:image/svg+xml,${encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' width='34' height='34'><text x='17' y='26' font-size='26' text-anchor='middle'>🐐</text></svg>"
+)}") 17 17, crosshair`;
 class Game {
   constructor(canvas) {
     this.canvas = canvas; this.renderer = new Renderer(canvas); this.audio = new GameAudio();
+    this.fx = new CombatFX(this);
     this.touch = new TouchUI();
     this.coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches);
     this.touch.active = this.coarse;
@@ -74,7 +81,7 @@ class Game {
     this.runSeed = 0; this.askedSeed = 0;
     try {
       const h = (location.hash || '').replace('#', '');
-      if (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons') {
+      if (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'props') {
         this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
       }
       // `#seed=k3j9a` is the whole of sharing a run: NEW GAME takes it instead of rolling one, so a
@@ -431,9 +438,7 @@ class Game {
     if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) { this.dev.page = this.level ? this.levelIndex : 0; this.dev.room = null; } return; }
     if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); this.dev.room = null; return; }
     if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; this.dev.samples = {}; this.dev.matrix = null; this.dev.room = null; return; }
-    if (id === 'tab-rules' || id === 'tab-levels' || id === 'tab-balance' || id === 'tab-enemies' || id === 'tab-boons') {
-      this.dev.tab = id.slice(4); this.dev.room = null; return;
-    }
+    if (id.startsWith('tab-')) { this.dev.tab = id.slice(4); this.dev.room = null; return; }
     // The BOONS tab: click a number to change it. It takes effect at once (`applyBoons` re-reads
     // every `params` off the live BOONS entries) and is also asked to land in js/tuning.js itself,
     // through the dev server started for this session — see tools/tuning-patch.js. Off the dev
@@ -452,6 +457,22 @@ class Game {
       if (isLevel) b.minLevel = value; else b.params[pathParts[1]] = value;
       this.applyBoons();
       this.persistTuningEdit({ root: 'BOONS', id: boonId, path: isLevel ? ['minLevel'] : ['params', pathParts[1]], value });
+      return;
+    }
+    // The LEVEL tab's HINT / THEME / DECOR lines: free text on a LEVELS entry, found by `name`
+    // since a level carries no `id` of its own. Clearing the prompt writes `null` back rather than
+    // an empty string, which is how `hint` already spells "nothing painted here".
+    if (id.startsWith('level-edit=')) {
+      const rest = id.slice('level-edit='.length);
+      const dot = rest.lastIndexOf('.');
+      const name = rest.slice(0, dot), field = rest.slice(dot + 1);
+      const lv = LEVELS.find((l) => l.name === name);
+      if (!lv) return;
+      const raw = window.prompt(`${lv.name} — ${field.toUpperCase()}`, lv[field] || '');
+      if (raw === null) return;
+      const value = raw.trim() === '' ? null : raw.trim();
+      lv[field] = value;
+      this.persistTuningEdit({ root: 'LEVELS', id: lv.name, path: [field], value });
       return;
     }
     if (id === 'room-close') { this.dev.room = null; return; }
@@ -745,7 +766,9 @@ class Game {
       if (s.alert) e.watchful = true;
       // The wheel's two men: one who never reads a hazard and one who always does. It is the same
       // roll every man in the game makes, pinned to its two ends — see `millLesson` in `gen.js`.
-      if (s.sense !== undefined) e.trapSense = s.sense;
+      // Both also get a beat to plant and face you before either moves, so the one about to walk
+      // into the arm reads as the room deciding rather than as a coin flip landed off-screen.
+      if (s.sense !== undefined) { e.trapSense = s.sense; e.noticeFor = TUNING.ai.millNotice; }
       // The first man of a run holds his ground: he turns, he swings, he never walks. You get to
       // choose when the first fight of your life starts, which is the only way it teaches anything.
       if (s.sentry) { e.sentry = true; e.facing = s.facing || 0; }
@@ -774,11 +797,15 @@ class Game {
     });
     this.runes = []; this.houndTold = false; this.henTold = false;
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.hurt = null; this.fallers = [];
+    this.fx = new CombatFX(this);
     this.souls = []; this.boonChoice = null; this.breathFx = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
     // What he walked in with. A death rolls him back to exactly this list.
     this.levelBoons = this.boons.slice();
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
     this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null;
+    // A thin trail of where he actually walked, sampled on a clock rather than every step so a long
+    // level does not grow an enormous array. It is what the death screen's pull-back draws as a line.
+    this.pathTrail = [{ x: this.goat.x, y: this.goat.y }]; this.pathTimer = 0; this.deathCam = null;
     this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0;
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
@@ -1029,8 +1056,25 @@ class Game {
   }
   // The page's control line belongs to the game, not to the menu.
   onGoatDied() {
-    this.deaths++; this.state = 'dead'; this.stateTimer = 0.9; this.slowTimer = 1.4;
+    const DC = TUNING.deathCam;
+    this.deaths++; this.state = 'dead'; this.slowTimer = 1.4;
+    // The pull-back owns the wait now: input stays locked for the whole of it, so the level behind
+    // the card is what is on screen when TRY AGAIN finally means something.
+    this.stateTimer = DC.delay + DC.zoomTime;
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxToll();
+    // How far he got, in bloodied rooms behind him and rooms he never opened ahead — the whole level,
+    // at whatever zoom fits it on screen, with his own line drawn across it. `drawShade`'s per-tile
+    // vision freezes with him and would otherwise blot out everything he isn't standing on; it skips
+    // itself for the rest of `state === 'dead'` and leaves the per-room fog (`drawUnseen`) to do the
+    // job, which is exactly the seen/unseen split this screen is supposed to be showing.
+    const r = this.renderer, lvl = this.level;
+    this.pathTrail.push({ x: this.goat.x, y: this.goat.y });
+    this.deathCam = {
+      t: 0,
+      fromX: this.cam.x, fromY: this.cam.y, fromZoom: this.cam.zoom,
+      toX: lvl.W * TILE / 2, toY: lvl.H * TILE / 2,
+      toZoom: Math.min(r.vw / (lvl.W * TILE), r.vh / (lvl.H * TILE * TILT)) * DC.margin,
+    };
     // What a death does NOT take is named, because a card that says you keep everything is the only
     // way the player finds out that he does. Anything found inside this level goes back in the room.
     const held = this.levelBoons || [];
@@ -1225,11 +1269,12 @@ class Game {
     if (this.hurt) this.hurt.life -= dtReal;
     this.updateCursor();
   }
-  // The OS pointer rather than a drawn one: a crosshair for a head aimed at something to hit, and
-  // a closed hand once there is something in his mouth to let go of instead of a wall to put his
-  // skull into. `crosshair` was the one cursor in the whole game regardless of what he was carrying.
+  // The OS pointer rather than a drawn one: the goat's own head, aimed at something to hit, and a
+  // closed hand once there is something in his mouth to let go of instead of a wall to put his
+  // skull into. A plain `crosshair` was the one cursor in the whole game regardless of what he was
+  // carrying; `CURSOR_GOAT` still falls back to it if the browser can't render the inline SVG.
   updateCursor() {
-    const want = this.state === 'play' && this.goat && this.goat.holding ? 'grabbing' : 'crosshair';
+    const want = this.state === 'play' && this.goat && this.goat.holding ? 'grabbing' : CURSOR_GOAT;
     if (this.canvas.style.cursor !== want) this.canvas.style.cursor = want;
   }
 
@@ -1241,7 +1286,12 @@ class Game {
     if (this.state === 'intro') { this.updateIntro(dt); this.clearEdges(); return; }
     if (this.state === 'climb') { this.updateClimb(dt); this.clearEdges(); return; }
     if (this.state === 'card') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) { this.card = null; this.state = 'play'; } }
-    if (this.state === 'dead') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) this.restartLevel(); this.clearEdges(); return; }
+    if (this.state === 'dead') {
+      this.stateTimer -= dt; this.updateEffects(dt);
+      if (this.deathCam) this.updateDeathCam(dt);
+      if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) this.restartLevel();
+      this.clearEdges(); return;
+    }
     if (this.state === 'clear') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) this.nextCard(); this.clearEdges(); return; }
     if (this.state === 'boon') { this.boonArm = Math.max(0, this.boonArm - dt); this.updateEffects(dt); this.clearEdges(); return; }
     if (this.state === 'win') { if (this.input.lmbPressed) { this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.runSeed = (Math.random() * 1e9) | 0; this.startLevel(0, this.levelSeed(0), false, true); } this.clearEdges(); return; }
@@ -1259,10 +1309,24 @@ class Game {
     // room went on stepping round for the rest of the level.
     for (const e of this.enemies) if (e.rune && !e.dead) this.runes.push(e.rune);
     this.goat.update(dt, this);
+    // A dot on the trail every `sampleGap` seconds rather than every step, so an hours-long level
+    // does not grow this without bound. It is only ever read once, by the death screen's pull-back.
+    this.pathTimer -= dt;
+    if (this.pathTimer <= 0) { this.pathTimer = TUNING.deathCam.sampleGap; this.pathTrail.push({ x: this.goat.x, y: this.goat.y }); }
     // The floor stopped under him. Everything else waits while he goes down it.
     if (this.goat.state === 'falling') { this.updateFall(dt); this.updateEffects(dt); this.updateCamera(dt); this.clearEdges(); return; }
     if (!this.goat.dead && w.isPitPx(this.goat.x, this.goat.y)) { this.goatFalls(); this.clearEdges(); return; }
-    for (const e of this.enemies) e.update(dt, this);
+    // Nothing simulates two rooms away or further: the room he is in and the one next door still
+    // patrol, chase and swing exactly as before, but a man past that has nobody to hear or see him
+    // and nothing he does costs a frame. Room index is a fair proxy for distance because the
+    // generator chains rooms in one line; this never touches the room the goat is actually in or
+    // its immediate neighbour, so a man heard through a wall (see the note on that in CLAUDE.md)
+    // is never one of the ones this skips.
+    const curRoom = roomAt(this.level, this.goat.x, this.goat.y), curIdx = curRoom ? curRoom.index : -1;
+    for (const e of this.enemies) {
+      if (curIdx >= 0 && e.room >= 0 && Math.abs(e.room - curIdx) >= 2) continue;
+      e.update(dt, this);
+    }
     for (const b of this.bullets) b.update(dt, this);
     for (const p of this.props) p.update(dt, this);
     this.collideEntities(dt);
@@ -1467,6 +1531,19 @@ class Game {
     const v2 = this.renderer.view(this.cam);
     this.cam.x = clamp(this.cam.x, v2.w / 2, w.W * TILE - v2.w / 2);
     this.cam.y = clamp(this.cam.y, v2.h / 2, w.H * TILE - v2.h / 2);
+  }
+
+  // The death screen's own camera move: held where he died for `delay`, then eased the rest of the
+  // way out to the whole level over `zoomTime`. Nothing here reads `camFollow` or the deadzone —
+  // this is the one camera move in the game that is not chasing the goat.
+  updateDeathCam(dt) {
+    const dc = this.deathCam, DC = TUNING.deathCam;
+    dc.t += dt;
+    const p = clamp((dc.t - DC.delay) / DC.zoomTime, 0, 1);
+    const e = 1 - Math.pow(1 - p, 3);   // ease out: slows to a stop, reads as a move rather than a cut
+    this.cam.x = lerp(dc.fromX, dc.toX, e);
+    this.cam.y = lerp(dc.fromY, dc.toY, e);
+    this.cam.zoom = lerp(dc.fromZoom, dc.toZoom, e);
   }
 
   // He walks round the goat to her, takes her, and heads for the gate. The goat goes for him and
@@ -1688,6 +1765,7 @@ class Game {
   }
 
   updateEffects(dt) {
+    this.fx.update(dt);
     const J = TUNING.juice;
     if (this.stairFx && this.stairFx.dir < 0) { this.stairFx.t += dt / TUNING.stairs.arrive; if (this.stairFx.t >= 1) this.stairFx = null; }
     this.shakeAmt = Math.max(0, this.shakeAmt - J.shakeDecay * dt * Math.max(1, this.shakeAmt * 0.3));
@@ -1927,7 +2005,8 @@ class Game {
     this.zoomPunch(big ? 2 : 1);
     const cold = e.kind === 'wraith';
     this.flash(cold ? PALETTE.witchHi : PALETTE.blood, big ? 0.24 : cold ? 0.16 : 0.11);
-    if (!cold) this.gore(e.x, e.y, big ? 16 : 9, dx, dy);
+    const direction = Math.hypot(e.vx,e.vy) > 20 ? Math.atan2(e.vy,e.vx) : Math.atan2(dy,dx);
+    this.fx.death(e,cause,Math.cos(direction),Math.sin(direction));
     if (big) { this.audio.sfxBell(); this.floatText(e.x, e.y - 44, 'THE BUTCHER IS DOWN', PALETTE.fireHi); this.slowTimer = J.killSlow; this.vibe(40); }
     else if (cold) { this.vibe(12); }
     else { this.audio.sfxSplat(); this.vibe(12); }
@@ -1945,7 +2024,7 @@ class Game {
     }
     if (!cold) {
       this.world.emitNoise(e.x, e.y, TUNING.noise.splat);
-      this.particles(e.x, e.y, big ? 26 : 14, PALETTE.blood, 220);
+      if (cause !== 'fall' && cause !== 'burn') this.particles(e.x, e.y, big ? 12 : 6, PALETTE.blood, 160);
     }
   }
   // Off his feet: no verbs until it passes. The pen is the only thing that does it to him.
