@@ -5,6 +5,59 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.33 — detection, chase and combat music, and a second round of playtest fixes
+
+Level 1 gains a frightened, uncertain variation with its own idle/spotted/chase/combat motifs.
+Level completion gets a two-bar rising phrase, death a three-bar descending lament, and collecting
+a soul a two-bar luminous chime. All three briefly take over the score and have audition buttons,
+named score tracks and exported note data in MUSIC. Their lifecycle follows the actual game events.
+
+Both level groups now move from idle through a two-bar detection phrase into chase or active combat.
+Running/rolling keeps the chase; headbutts, throws and screams bring in the harder combat arrangement.
+The score relaxes as attacks and threats subside. Heavy enemies retain their sub bass and gain
+octave harmonics that reach smaller speakers. Mills are counted as 0–2 with three/six accents.
+
+MUSIC now auditions all four states. Repeated mixed action taps get separate rhythmic slots and a
+visible queue. MIX shows register notes and MIDI numbers; SCORE shows the complete sixteen-bar
+arrangement with per-track/per-bar notes and instruments. EXPORT provides its exact note/synth data
+as JSON for transcription in FL Studio. Existing volume settings and the legacy score are preserved.
+
+A chaser could cross several rooms with the goat and go stiff mid-stride: the two-room freeze and
+the fog's own room-reveal freeze both asked `e.room`, wherever a man was *spawned*, rather than
+wherever he actually stood, and a chase is explicitly let off that leash. Both now ask `roomAt` of
+his real position every step; `e.room` itself is untouched; the sealed-room and soul-gate bookkeeping
+still needs it to mean "who he was put with."
+
+Being spotted at range no longer closes the distance in the same frame it happens: past
+`ai.noticeNear` tiles a man plants for a beat that grows with distance (`ai.noticeMin` up close,
+out to `ai.noticeMax`) before he moves — a shape far off is a beat of doubt, not an instant snap,
+except right on top of him, where there is none to have. The Mill lesson's own fixed stare
+(`noticeFor`) still wins outright where it is set. Chasing men are noisier now too: `ai.chaseNoise`
+makes them audible on the move, the same as running is, so a bystander who never saw the chase can
+still hear it go by and join in.
+
+The pickable bomb's fuse now starts the moment it is in the goat's mouth, not the moment it leaves
+it — high risk, high reward, since carrying one no longer buys free time to find a target. Its blast
+comes down from a 4×4 patch to 3×3.
+
+Milk splits in two. The ordinary bowl a level hands out on its own rhythm is milk again — a plain
+wooden bowl, drawn as one — and worth the same heart it always was. The rarer, bigger patch of grass
+now lives only behind a secret wall, and only `secret.healChance` of the time a secret is found at
+all; it is worth two hearts instead of one, since going out of the way for a wall that gives is what
+pays for the extra.
+
+A headbutt aimed at a door away from its exact centre used to miss the door entirely: the hit test
+still measured against the door's centre point as a plain circle, the same one `collideEntities` was
+fixed to stop doing for the goat simply walking into it. It now measures against the same rectangle,
+so a swing anywhere along a door's actual span connects.
+
+The dodge-and-parry floor text is a hard preference now rather than a tiebreaker: it walks back from
+the level's own first arena looking for anywhere to land — a small crowd first, a single man second
+— and only falls back to "closest to the level's middle" once there is truly nothing populated left
+between the pen and that door. It used to lose to that fallback outright the moment the one room
+right before the arena happened to hold nobody, which could land the line on the far side of the
+level's first real fight instead of before it.
+
 ## 1.32 — a pause that holds the room, individual rhythms, and a round of playtest fixes
 
 Escape mid-level now pauses in place instead of dropping to the title: RESUME is the goat standing

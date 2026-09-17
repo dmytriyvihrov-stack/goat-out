@@ -129,14 +129,20 @@ tiles out), and only when he is not already walking home over the leash — a ma
 to face the doorway he is heading through even if a wall probe would otherwise reject it.
 
 **Nothing simulates two rooms away.** `game.frame`'s enemy loop skips `e.update()` outright for anyone
-whose `e.room` (the index he was spawned into) is two or more away from whichever room the goat's own
-tile is in (`roomAt`) — the room he is standing in and its immediate neighbour still patrol, chase and
-swing exactly as before. Room index is a fair stand-in for distance because the generator chains rooms
-in one line (see *Canons* below), so this is a straight `Math.abs` rather than a graph search. It never
-touches the room the goat is in or the one next to it, which is deliberately more generous than any
-noise radius in the game (`boom`, the loudest one, is 16 tiles): a man still hears you through stone
-(see *A front and nothing else*, just below) and that counterplay is never this skipping something —
-by the time a room is far enough away to freeze, nothing in it could have heard him anyway.
+whose *current* room (`roomAt` of his own position, not `e.room`) is two or more away from whichever
+room the goat's own tile is in — the room he is standing in and its immediate neighbour still patrol,
+chase and swing exactly as before. Room index is a fair stand-in for distance because the generator
+chains rooms in one line (see *Canons* below), so this is a straight `Math.abs` rather than a graph
+search. It never touches the room the goat is in or the one next to it, which is deliberately more
+generous than any noise radius in the game (`boom`, the loudest one, is 16 tiles): a man still hears
+you through stone (see *A front and nothing else*, just below) and that counterplay is never this
+skipping something — by the time a room is far enough away to freeze, nothing in it could have heard
+him anyway. It asks `roomAt` rather than trusting `e.room` (the index he was spawned into) precisely
+because a chase is let off the idle leash and can end up several rooms from where a man started: a
+stale `e.room` either froze a chaser mid-stride the moment the run got far enough from his own spawn,
+or kept answering noise from a room that had gone dark behind the fog because his spawn room still
+read as seen after he had long since walked out of it. `e.room` itself is never touched by this — the
+sealed-room and soul-gate bookkeeping still need it to mean "who he was put with," not "where he is."
 
 **A front and nothing else.** `canSeeGoat` is a cone and a line of sight and nothing else. There used to
 be a close-range bypass — inside 2.5 tiles he saw you wherever you stood — which took away the one thing
@@ -151,6 +157,19 @@ with hinges and a man used to spot you straight through one, but a table, a lamp
 and the bars of a pen are all things you can see over, and making them cover would be a stealth system
 rather than a fix. Both `sees` and `reaches` are `clearLine` with a different prop list and a different
 getter.
+
+**Seen is not the same beat as chasing.** Most men used to close the instant `canSeeGoat` went true,
+which is the whole point of the cone up close but read as an inhuman snap at any real distance. Past
+`ai.noticeNear` tiles, becoming `aware` now drops a man into `noticed` for a beat that scales with how
+far off he was when he saw you (`ai.noticeMin` seconds up close to that line, out to `ai.noticeMax` at
+`ai.noticeFar` tiles or beyond) — he plants and faces you but does not move, the same freeze the Mill
+lesson's two men already had, generalised and put on a distance curve instead of a fixed number.
+`noticeFor` (set only by `startLevel`, on those two men) still wins outright where it is set, because
+that beat is authored and not a function of range. Inside `noticeNear` there is no doubt to have, so
+there is no pause. Chasing is louder now too: `chaseGoat` (shared by every kind that has one) rolls
+`ai.chaseNoise` a second for `noise.chase`, so a man in full pursuit is heard the same way running is —
+a third man standing off to the side of a chase that never crossed his own sightline can still hear it
+go by and join it, rather than only ever answering the goat's own footsteps.
 
 **A man who does not walk.** `enemy.sentry` is the first man of a run on level one (`levelDef.sentryIntro`,
 placed by `blockSpot` in the **only way out of his room**: `carveCorridor` records the band it cut out of
@@ -362,8 +381,9 @@ stops counting, because a door that gives too early costs a fight and this cost 
 
 **A wall that gives.** `carveSecret` in `gen.js` takes a patch of one ordinary room's own top or
 bottom wall, once or twice a level (`TUNING.secret.chance2` is the odds of the second), and cuts a
-two-tile niche into the rock behind it holding a patch of milk and a stand of arms. Every tile it
-touches has to still be solid rock, so it never trades on a room or a corridor. The prop is
+two-tile niche into the rock behind it holding a stand of arms and, `secret.healChance` of the time,
+the rarer patch of grass (see *Milk and grass* above). Every tile it touches has to still be solid
+rock, so it never trades on a room or a corridor. The prop is
 `kind === 'secret'`: it is a wall to sight and to bullets, `Prop.crackWall` gives it
 `TUNING.prop.secret.hits` (two) and a visible crack after the first, and it is drawn in the room's
 own `wallColor` so nothing gives it away before that crack does. `levelDef.secretsAfterBoss` (level
@@ -518,8 +538,17 @@ Each enemy type has its own ranked pattern in `MUSIC_PARTS`, sharing its family'
 budgets in `TUNING.audio.layers` give ranged counts 1/2/3 two/four/five hits and heavy counts
 three/five/seven per two bars. Action/kill hooks queue separate delayed musical replies, with
 bounded stacking. TOOLS > MUSIC auditions this same engine with a paused game and cancels its
-own nodes on exit. Levels 5+ use `LATE_MUSIC` with distinct idle/combat
-melodies. Fire area adds crackles with a two-bar memory; nearby healing grass adds a chime with a
+own nodes on exit. Both level themes branch idle → two bars spotted → chase or combat;
+`encounterStage` uses sensed threats and accepted offensive actions, with bar-based grace/hold.
+`STAGE_MOTIFS` supplies the arrangements. `FIRST_MUSIC` and the `first` motifs give level 1
+its frightened variation in all four states.
+`startMusicCue` is called on level clear, death and actual soul pickup; `MUSIC_CUES` holds their
+two/three-bar authored phrases. They replace the bed briefly and remain alive in the matching
+non-play states. Terminal cues hold silence; soul resumes the room. MUSIC auditions/exports them.
+Large enemies have octave harmonics for
+small speakers. Mills cap at two and supply three/six accents. MUSIC's SCORE view and JSON export
+run the actual arranger to describe sixteen bars with note names, MIDI numbers and instruments.
+Fire area adds crackles with a two-bar memory; nearby healing grass adds a chime with a
 one-bar memory. Both clear outside play. SETTINGS → LAYERED MUSIC off selects the preserved
 original `playLegacyStep` arrangement below.
 
@@ -554,12 +583,20 @@ of the furniture, and a wide berth from a brazier or a lamp. It was the one scat
 checked the tile and nothing else, so a bowl could be laid down on top of a brazier. A narrow room gives
 up the clearance before it gives up the berth, and the last resort is the tile furthest from the nearest
 flame, because the band is promised a bowl. `GEN_RULES.milk` fails a level that puts one in a fire.
-It reads as sprouted grass now rather than a bowl of milk, and it is grazed rather than grabbed: the
-kind is still `'heal'` throughout the generator and the rules (nothing above changed), but walking
-across one no longer banks the heart on contact. `Prop.graze` is seconds spent standing in it, near
-enough and under `heal.grazeSpeed`; it climbs while the goat holds still there and bleeds back down
-otherwise, and only pays out — `+1 HEART`, same as before — once it clears `heal.grazeTime`. Running
-through on the way past does nothing, which is the point of it.
+It is grazed rather than grabbed: walking across one no longer banks the heart on contact. `Prop.graze`
+is seconds spent standing in it, near enough and under `heal.grazeSpeed`; it climbs while the goat
+holds still there and bleeds back down otherwise, and only pays out once it clears `heal.grazeTime`.
+Running through on the way past does nothing, which is the point of it.
+
+**Milk and grass are the same prop, worth two different things.** `kind` is still `'heal'` everywhere
+in the generator and the rules — nothing above changed — but `p.big` splits what it pays out and how
+it is drawn. What a level hands out on its own rhythm, above, is the ordinary bowl: painted as milk
+(`Renderer.drawProp`'s primitive bowl, or `PaintedArt`'s fallback to the same), worth `+1 HEART`. The
+rarer one is `big: true` — a real patch of grass, the atlas sprite `healing-grass` — and only
+`carveSecret` (`gen.js`) ever sets it, on `TUNING.secret.healChance` of the secrets a level finds at
+all, worth `+2 HEARTS`. A secret used to hand over a bowl of milk every time it was found, on top of
+the rack; the level's own rhythm already promises a bowl every few rooms, so a wall worth two blows
+paying out the exact same thing read as a rack with a coupon stapled to it rather than as a find.
 
 Change any of it and run **`node tools/balance.js`**: it prints the curve room by room and exits non-zero
 if a kind arrives in a crowd first, a cap breaks, threat stops rising inside a level, or a level is not
@@ -768,12 +805,15 @@ Level one is ten rooms rather than twelve because both of those rooms are gone, 
   doing it there, not by reading it.
 - **Block 3** — the roll, plus the point-blank scream parry (`CLOSE UP IT BREAKS THEIR SWING`):
   neither lives with its own verb's room, because a line about dodging or about a parry means nothing
-  painted on a floor with nothing on it to dodge or parry. `gen.js` takes the room closest to the
-  level's own middle that already holds a small crowd (`rollCandidates`, next to where `controls` is
-  built), skipping the lesson room, the vault's room, a trap room and the ambush room — that last one
-  because block 1 is already painted there and a three-tile corridor will not carry six lines. With no
-  crowded room left it falls back to the fullest room that has anybody in it at all, because an
-  unpainted line is worse than a line with one man under it.
+  painted on a floor with nothing on it to dodge or parry. It has to land before the level's own first
+  arena and not after it, because that door is the first real fight in the run and a dodge or a parry
+  learned on the far side of it arrived one fight too late — so `gen.js` walks backward from the room
+  right outside that arena (skipping the lesson room, the vault's room, a trap room and the ambush
+  room, that last one because block 1 is already painted there and a three-tile corridor will not carry
+  six lines), taking the first eligible room it finds: a small crowd first, a single man second if
+  nothing crowded stands between the pen and the door. Only once there is nothing eligible left before
+  the arena at all does it fall back to the old rule — a small crowd closest to the level's own middle,
+  or the fullest room with anybody in it — because an unpainted line is worse than a late one.
 
 Each block has a keyboard and a touch wording; add a line to one and add it to both. `GEN_RULES.lessons`
 holds all of it to the promise: four blocks, the sentry in a `lesson` room on his own, the ambush room
@@ -1032,17 +1072,20 @@ the one thing the goat carries that answers a fire with more fire, and it is how
 **The bomb.** `kind === 'bomb'` is a rare find rather than a tool, `item` like a crate and grabbed and
 thrown the same way — there is no button for it beyond grab and release, per the ground rules. It does
 not break on the first thing it hits: `updateBomb` lets it come to rest (or fall down a hole, gone like
-anything else thrown over one) and only then does the thing that matters, which already started the
-moment it left the goat's mouth. `Prop.fling` arms `fuseT` off `TUNING.prop.bomb.fuse` the first time
-only — caught and thrown again, it keeps the fuse it already had rather than a fresh one, so re-throwing
-a live bomb buys distance, not time. When it reaches zero, `explode()` falls off from the centre the
+anything else thrown over one) and only then does the thing that matters. `Goat.tryGrab` arms `fuseT`
+off `TUNING.prop.bomb.fuse` the moment it is in the goat's mouth, not the moment it leaves it — high
+risk, high reward, since there is no way to carry one safely and pick your moment. `Prop.fling` still
+carries the same check as a belt to that brace, in case anything ever flings one that was never held.
+Caught and thrown again, it keeps the fuse it already had rather than a fresh one, so re-throwing a
+live bomb buys distance, not time. When it reaches zero, `explode()` falls off from the centre the
 same way the goat's own headbutted-bomb charge does: two hearts inside `nearR`, one heart out to
-`blastR`, and the goat pays it too if he is standing in it (`Goat.damage`, which god mode and his own
-`invuln` still cover). Past `nearR`, nothing is killed outright — an enemy that far out is only flung,
-the same as the headbutt charge does, because the wall is still what is supposed to finish it. Placed by
-`carveSecret` in `gen.js`, in the same spot a secret's own stand of arms would otherwise go
-(`TUNING.secret.bombChance`), which is what keeps it to about one or two a level without a count of its
-own to hold it to — a level with no secret in it has no bomb either. There is no painted asset for it:
+`blastR` (1.5 tiles across the middle, 3×3 in all), and the goat pays it too if he is standing in it
+(`Goat.damage`, which god mode and his own `invuln` still cover). Past `nearR`, nothing is killed
+outright — an enemy that far out is only flung, the same as the headbutt charge does, because the wall
+is still what is supposed to finish it. It no longer lives in a secret's own niche: `gen.js` drops it
+(`TUNING.prop.bomb.chance`) into whichever ordinary room of the level scored the most threat once every
+spawn is placed, so the one bomb a level carries lands where a room is actually worth throwing it into
+rather than behind a wall with nothing near it. There is no painted asset for it:
 `PaintedArt.drawProp` draws it plainly, a dark shell with a fuse that shortens and sparks faster as
 `fuseT` runs out, which is the whole of how a player who has never seen one before reads "this is about
 to go off."
@@ -1059,6 +1102,10 @@ so the count is a count and not a wall. A door is a slab, not a disc: `game.coll
 closest point on its actual rectangle (`prop.door.r` the half-span across the gap, `prop.door.thick` the
 13px-in-the-art other way) rather than treating the whole thing as a circle of radius `r` in every
 direction — that circle used to stop anyone walking straight at its face a whole extra tile short of it.
+`Goat.headbuttHits` measures a door the same way for the same reason: a swing landed off to one side of
+a two-tile gap, rather than dead centre on it, used to be checked against the door's centre point as a
+plain circle and could fall just short of it while standing right at its face — a door that could take
+hits that never counted depending on exactly where in the gap you were standing.
 
 **The soul door.** `prop.vault` is the vault's door and it is the fourth-blow one. It used to be an
 iron slab like any other, which since level two now has iron slabs in its corridors would make the one

@@ -1199,6 +1199,7 @@ class Game {
     // the card is what is on screen when TRY AGAIN finally means something.
     this.stateTimer = DC.delay + DC.zoomTime;
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxToll();
+    this.audio.startMusicCue('death', this.levelIndex);
     // How far he got, in bloodied rooms behind him and rooms he never opened ahead — the whole level,
     // at whatever zoom fits it on screen, with his own line drawn across it. `drawShade`'s per-tile
     // vision freezes with him and would otherwise blot out everything he isn't standing on; it skips
@@ -1231,6 +1232,7 @@ class Game {
     this.totalScore += score;
     const best = this.noteBest(this.levelIndex, score, this.timer);
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxCard();
+    this.audio.startMusicCue('clear', this.levelIndex);
     this.cardQueue = [
       { lines: ['Do you want sacrifices?'], dim: 0.75, size: 34, time: 1.4 },
       { lines: ['You will get sacrifices!'], dim: 0.85, size: 40, time: 1.6, color: PALETTE.blood },
@@ -1477,9 +1479,20 @@ class Game {
     // generator chains rooms in one line; this never touches the room the goat is actually in or
     // its immediate neighbour, so a man heard through a wall (see the note on that in CLAUDE.md)
     // is never one of the ones this skips.
+    //
+    // The room asked about here is wherever he is standing NOW, not `e.room` (where he was spawned):
+    // a chase is explicitly let off the idle leash and can cross several rooms with the goat, and a
+    // man who has done that is nowhere near his own spawn index any more. Checking `e.room` against
+    // it froze him mid-stride the moment the run got far enough from wherever he started — a chaser
+    // stopping dead on screen — and separately let him keep answering noise from a room that had
+    // gone dark behind the fog, because his spawn room could still read as seen after he had walked
+    // out of it. `e.room` itself is untouched: the sealed-room and soul-gate bookkeeping key off who
+    // a man was PUT with, and that has to survive him stepping outside the doorway.
     const curRoom = roomAt(this.level, this.goat.x, this.goat.y), curIdx = curRoom ? curRoom.index : -1;
     for (const e of this.enemies) {
-      if (curIdx >= 0 && e.room >= 0 && Math.abs(e.room - curIdx) >= 2) continue;
+      const eroom = roomAt(this.level, e.x, e.y);
+      const eIdx = eroom ? eroom.index : e.room;
+      if (curIdx >= 0 && eIdx >= 0 && Math.abs(eIdx - curIdx) >= 2) continue;
       // A room the goat has not opened yet — no floor of it seen, not walked into — used to go on
       // patrolling anyway once it was only the immediate neighbour of his own room, which let a man
       // wander into the wheel or over a drop and die to it before the door that room sits behind
@@ -1487,8 +1500,8 @@ class Game {
       // marks the room seen, the same as its floor plan is frozen behind the fog. The cost is
       // narrow — a man mid-chase who ducks round a blind corner into a room with no sightline into
       // it yet stops answering noise for the few frames before he is seen, rather than the whole
-      // room past it, which is what the distance skip above already accepts losing.
-      const eroom = e.room >= 0 ? this.level.rooms[e.room] : null;
+      // room past it, which is what the distance skip above already accepts losing. A corridor
+      // answers `roomAt` with nothing, so a man caught mid-corridor is never frozen by this half.
       if (eroom && !eroom.seen) continue;
       e.update(dt, this);
     }
@@ -1507,6 +1520,7 @@ class Game {
       if (Math.hypot(tm.x - this.goat.x, tm.y - this.goat.y) < TUNING.soul.pickupR + this.goat.r) {
         tm.taken = true; this.particles(tm.x, tm.y, 18, PALETTE.witchHi, 180); this.ring(tm.x, tm.y, 3 * TILE, PALETTE.witch);
         this.openSoulGate();
+        this.audio.startMusicCue('soul', this.levelIndex);
         this.openBoonChoice(); this.clearEdges(); return;
       }
     }
@@ -1531,9 +1545,14 @@ class Game {
       // a passing man does not cost the whole graze.
       p.graze = near ? p.graze + dt : Math.max(0, p.graze - dt * 2);
       if (p.graze < H.grazeTime) continue;
-      p.broken = true; p.dead = true; this.goat.hp += 1;
+      p.broken = true; p.dead = true;
+      // A patch of real grass rather than a bowl of milk: rarer, tucked behind a wall a secret gave
+      // up, and worth twice what the milk does — the risk of going looking for it is what pays for
+      // the extra heart, not the room it happens to be standing in.
+      const gain = p.big ? 2 : 1;
+      this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + gain);
       this.particles(p.x, p.y, 18, PALETTE.bone, 170); this.ring(p.x, p.y, 2 * TILE, PALETTE.bone);
-      this.floatText(p.x, p.y - 24, '+1 HEART', PALETTE.bone); this.audio.sfxBell(); this.vibe(20);
+      this.floatText(p.x, p.y - 24, gain > 1 ? '+2 HEARTS' : '+1 HEART', PALETTE.bone); this.audio.sfxBell(); this.vibe(20);
     }
     if (!this.goat.dead && w.tileAtPx(this.goat.x, this.goat.y) === T.EXIT) { this.beginClimb(); this.clearEdges(); return; }
 

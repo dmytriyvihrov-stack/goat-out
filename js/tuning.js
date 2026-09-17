@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.27';
+const BUILD = '1.33';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -243,7 +243,12 @@ const TUNING = {
     feel: 5,           // px past the two bodies where being walked into counts as being seen
     wanderSpeed: 0.28, // fraction of his own speed a man not yet aware of you moves at, idling
     wanderClear: 1.4,  // tiles ahead an idle turn is checked for wall before he commits to facing it
-    millNotice: 0.35 }, // s the Mill lesson's two men plant and face you before either one moves
+    millNotice: 0.35,  // s the Mill lesson's two men plant and face you before either one moves
+    noticeNear: 3,     // tiles: spotted this close, there is no doubt, and he closes at once
+    noticeFar: 12,      // tiles: spotted this far or further, the doubt is at its longest
+    noticeMin: 0.35,   // s of doubt at noticeNear
+    noticeMax: 1.3,     // s of doubt at noticeFar and beyond
+    chaseNoise: 3 },   // chance a second of noise off a man in full pursuit — the herd is not quiet
   physics: {
     splatSpeed: 11 * TILE,
     flungDrag: 3.5,
@@ -336,7 +341,7 @@ const TUNING = {
     // a room most sat tucked behind a wall with nothing but the goat standing near it when it went
     // off. It is placed on its own now, in whichever ordinary room of the level scores the most
     // threat, so the one bomb a level carries lands where a room is actually worth throwing it into.
-    bomb: { r: 11, fuse: 1.6, blastR: 2 * TILE, nearR: 0.75 * TILE, dmgNear: 2, dmgFar: 1, impulse: 20 * TILE, chance: 0.45 },
+    bomb: { r: 11, fuse: 1.6, blastR: 1.5 * TILE, nearR: 0.56 * TILE, dmgNear: 2, dmgFar: 1, impulse: 20 * TILE, chance: 0.45 },
     // A stand of arms. Grab what is in it, carry it, let go to throw it. The sword goes through
     // the first man it finds; the shield knocks a row of them flat and turns bullets while carried.
     weapon: {
@@ -443,7 +448,7 @@ const TUNING = {
   // shoulders, a spiked mask, a studded club — and the notches over his head count it down.
   champion: { hp: 3, bossHp: 4, scale: 1.34, spikes: 5 },
   noise: {
-    footstep: 2, headbutt: 5, splat: 8, smash: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13, steel: 9, embers: 6,
+    footstep: 2, chase: 6, headbutt: 5, splat: 8, smash: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13, steel: 9, embers: 6,
   },
   juice: {
     hitstop: 0.07, shakeKill: 9, shakeHit: 6, shakeDecay: 12, deathSlow: 1.6, killSlow: 0.22,
@@ -487,7 +492,10 @@ const TUNING = {
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
   // first has found a room, so most levels get one and some get two rather than every level getting
   // a guaranteed pair. `carveSecret` in gen.js does the finding; this is only ever the odds.
-  secret: { chance2: 0.35 },
+  // `healChance` is separate from finding the wall at all: most secrets are just the rack, and only
+  // sometimes also the rarer, bigger patch of grass — a niche is not a guaranteed heart on top of
+  // whatever it already hands over.
+  secret: { chance2: 0.35, healChance: 0.4 },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
   // A beat of thought the moment the pen gives: not a caption, a small comic-panel bubble over his
@@ -546,7 +554,9 @@ const TUNING = {
       sampleSeconds: 0.1, fadeSeconds: 0.30, gain: 0.75, exploreMix: 0.6,
       fullGainVoices: 12, fireGain: 0.11,
       hitBudgets: { small: [0,1,2,3,4,5,6], ranged: [0,2,4,5,6,7,8],
-        large: [0,3,5,7,9,11,13], mill: [0,2,3,4,5,6,7] },
+        large: [0,3,5,7,9,11,13], mill: [0,3,6] },
+      maxMills: 2, spottedBars: 2, combatHoldBars: 2, calmBars: 1,
+      heavyBodyGain: 0.12, heavyEdgeGain: 0.045,
       eventDelaySteps: 8, eventGridSteps: 8, eventQueueCap: 12, eventStackCap: 3,
       killGain: 0.12, actionGain: 0.09,
       lateFromLevel: 5, blazeThresholds: [1, 4, 10], blazeTailBars: 2,

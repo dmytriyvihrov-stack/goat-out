@@ -34,8 +34,14 @@ new game throws it away, and so does escaping.
 Music gives each enemy type a recognisable rhythm, with heavier patterns for ranged and large
 enemies. Traps and fire across the current room join in; nearby healing grass adds chimes.
 Kills and player actions get delayed musical replies, and fires leave two bars of crackles.
-Levels 5+ have a second base theme. Audition counts, combinations and events in
+Both level themes move through idle, spotted, chase and active combat; levels 5+ have a second harmony.
+Level 1 has its own frightened variation of all four states. Clearing a level, dying and collecting
+a soul each get a short musical phrase, also available for audition in MUSIC.
+Heavy enemies have a stronger audible bass body; Mills use distinct patterns for one or two.
+Audition counts, combinations and repeated actions in
 **DEV TOOLS → TOOLS → MUSIC**, or open `index.html#music`.
+Its SCORE view shows sixteen bars, instrument names, notes and MIDI numbers. EXPORT saves a JSON
+note/synth reference for recreating the arrangement in a DAW such as FL Studio.
 To restore the original soundtrack, turn **SETTINGS → LAYERED MUSIC** off. See [MUSIC.md](MUSIC.md)
 for the arrangement and tuning notes.
 

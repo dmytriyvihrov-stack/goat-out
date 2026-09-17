@@ -339,6 +339,10 @@ class Enemy {
     // which is what makes him something you can practise a headbutt on instead of something that
     // happens to you. Everything else about him — the windup, the swing, the recovery — is normal.
     if (this.sentry) { this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); return d; }
+    // A hunt in full cry is not quiet: a man running you down is heard the same as one running from
+    // you, which is what lets a third man standing off to the side join a chase that never came
+    // within sight of him at all.
+    if (Math.random() < dt * TUNING.ai.chaseNoise) w.emitNoise(this.x, this.y, TUNING.noise.chase);
     if (d < 3.5 * TILE && w.los(this.x, this.y, g.x, g.y)) { this.moveToward(dx, dy, speed, dt, game); return d; }
     const f = w.flowDir(this.x, this.y);
     if (f) this.moveToward(f.x, f.y, speed, dt, game); else this.moveToward(dx, dy, speed * 0.5, dt, game);
@@ -496,13 +500,21 @@ class Enemy {
         this.facing = Math.atan2(n.y - this.y, n.x - this.x);
       }
     }
-    // Most men close the instant they see you — that snap is the whole point of the cone. The two
-    // men the Mill lesson stands on either side of the wheel get a beat to plant and face you
-    // first (`noticeFor`, set only on them in `startLevel`): the one who is about to walk into the
-    // arm should read as a decision the room made, not a coin flip that landed before the door was
-    // even open. Nobody else in the game carries this field, so this changes nothing elsewhere.
+    // Most men close the instant they see you, but not with nothing in between: at any real
+    // distance a shape in the dark is a beat of doubt before it is a threat, and only being spotted
+    // close up — inside `ai.noticeNear` — leaves no room for one. `noticeFor` (set only by
+    // `startLevel`, on the Mill lesson's two men) still wins outright where it is set, because that
+    // beat is a fixed, authored one and not a function of range. Everyone else gets a distance-scaled
+    // version of the same freeze: `ai.noticeMin` seconds up close, out to `ai.noticeMax` at
+    // `ai.noticeFar` tiles or beyond.
     if (this.aware && (this.state === 'idle' || this.state === 'investigate')) {
-      if (this.noticeFor > 0) { this.state = 'noticed'; this.timer = this.noticeFor; }
+      let notice = this.noticeFor;
+      if (!notice) {
+        const distTiles = Math.hypot(g.x - this.x, g.y - this.y) / TILE, A = TUNING.ai;
+        const t = clamp((distTiles - A.noticeNear) / (A.noticeFar - A.noticeNear), 0, 1);
+        notice = t > 0 ? lerp(A.noticeMin, A.noticeMax, t) : 0;
+      }
+      if (notice > 0) { this.state = 'noticed'; this.timer = notice; }
       else this.state = 'chase';
     }
     if (this.state === 'noticed') {

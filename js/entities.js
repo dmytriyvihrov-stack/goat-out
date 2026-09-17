@@ -428,8 +428,23 @@ class Goat {
     }
     for (const p of game.props) {
       if (p.broken || p.lastLunge === this.lungeId) continue;
-      const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy);
-      if (d > this.r + p.r + 8 + extra || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
+      let dx, dy, d, reach;
+      if (p.kind === 'door') {
+        // The same fix `collideEntities` already gives a door for walking into it: a slab, not a
+        // disc, so the closest point on its actual span is what a headbutt is measured against. A
+        // circle centred on the door read a swing landed against either edge of a two-tile gap as
+        // short of it, so a door could stand there taking hits that never counted.
+        const D = TUNING.prop.door;
+        const hx = p.vertical ? D.thick / 2 : p.r, hy = p.vertical ? p.r : D.thick / 2;
+        const cx = clamp(this.x, p.x - hx, p.x + hx), cy = clamp(this.y, p.y - hy, p.y + hy);
+        dx = cx - this.x; dy = cy - this.y; d = Math.hypot(dx, dy); reach = this.r + 8 + extra;
+      } else {
+        dx = p.x - this.x; dy = p.y - this.y; d = Math.hypot(dx, dy); reach = this.r + p.r + 8 + extra;
+      }
+      // Overlapping the slab already (nose right up against it, or a hair inside it) has no
+      // meaningful direction to check aim against — the same rescue the rectangle collision itself
+      // gives a body landing dead centre.
+      if (d > reach || (d > 1 && (dx * ax + dy * ay) / d < 0.15)) continue;
       p.lastLunge = this.lungeId;
       p.headbutt(game, ax, ay);
     }
@@ -504,6 +519,9 @@ class Goat {
     if (best.kind === 'weapon') { this.takeArm(game, best); this.autoHeld = false; return; }
     best.held = true; best.flung = false; best.thrown = false; this.holding = best; this.holdTimer = 0;
     this.autoHeld = false;   // reached for on purpose: it leaves when the button does
+    // High risk, high reward: the fuse starts the moment it is in your mouth, not the moment it
+    // leaves it. Reaching for it is the decision; holding onto it is what costs you the time back.
+    if (best.kind === 'bomb' && best.fuseT < 0) best.fuseT = TUNING.prop.bomb.fuse;
     // He is yours for a while, and you do not get to know exactly how long: the roll is made here.
     const v = TUNING.goat.grab.holdVary;
     this.holdLimit = game.mods.holdTime * (1 - v + Math.random() * v * 2);
@@ -617,6 +635,9 @@ class Prop {
     this.spikeState = 'idle'; this.spikeT = 0; this.hits = 0;
     this.graze = 0;   // heal only: seconds the goat has stood in it, still and near, unbroken
     this.fullTold = false;   // heal only: said FULL once this visit, so standing there does not spam it
+    // heal only: the rarer patch of grass a secret sometimes gives up instead of the rack alone,
+    // worth two hearts and painted as grass rather than the ordinary milk bowl.
+    this.big = !!(opts && opts.big);
     // A secret's own patch of wall colour, carried on the prop because the renderer never otherwise
     // reaches back to the level's palette mid-draw. Falls back to level one's colours; gen.js always
     // supplies the real ones.
@@ -658,8 +679,9 @@ class Prop {
 
   fling(vx, vy, thrown) {
     this.vx = vx; this.vy = vy; this.flung = true; this.thrown = thrown; this.held = false; this.passed.length = 0;
-    // Armed on the first throw only: a bomb caught and thrown again keeps the fuse it already had
-    // rather than being handed a fresh one, so re-throwing it is not a way to stall it forever.
+    // A bomb is actually armed at `tryGrab`, the moment it is in the goat's mouth, not here — high
+    // risk, high reward, since there is no button for it beyond grab and release. This is only the
+    // belt to that brace, in case something ever flings one that was never held.
     if (this.kind === 'bomb' && this.fuseT < 0) this.fuseT = TUNING.prop.bomb.fuse;
   }
 

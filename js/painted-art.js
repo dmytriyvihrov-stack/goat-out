@@ -255,10 +255,13 @@ class PaintedArt extends AltarArt {
       return true;
     }
     if(p.kind==='heal'){
-      if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
+      // Only the rarer, bigger patch — the one a secret sometimes gives up — is painted; the
+      // ordinary milk bowl a level's own rhythm hands out has no atlas art of its own yet and falls
+      // back to the primitive bowl `Renderer.drawProp` draws.
+      if(!p.big||!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
       // v2's tighter, static 23px patch (brief item F) tested as too quiet to read as a heal spot in
       // a moving crowd — reverted to the original atlas stamp: bigger, with its own shadow and a slow
-      // bob, so a bowl of milk still finds the eye the way the wisp or a lamp's firelight does.
+      // bob, so it still finds the eye the way the wisp or a lamp's firelight does.
       const bob=Math.sin(renderer.t*2.4+p.phase)*2;
       renderer.shadow(p.x,p.y+4,11,5);
       this.atlas(ctx,'healing-grass',p.x,p.y+bob,44,undefined,0.72);

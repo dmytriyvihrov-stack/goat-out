@@ -409,7 +409,9 @@ function tryGenerate(levelDef, seed) {
   }
 
   // Secrets. One or two a level: a patch of an ordinary room's own top or bottom wall that gives on
-  // the second blow, with a bowl of milk and a rack tucked into the rock behind it. Never the pen, a
+  // the second blow, with a rack tucked into the rock behind it and, less often, a patch of grass —
+  // rarer and worth more than the milk a level's ordinary rooms already hand out on a rhythm, so a
+  // wall worth breaking is sometimes worth more than the rack alone would have been. Never the pen, a
   // set piece or the vault's own room — only rock nothing else has already carved.
   // `secretsAfterBoss` keeps a wall that gives out of a level's opening rooms: level one is the
   // only level that needs telling, since a wall that cracks is not yet a thing the run has any
@@ -424,7 +426,7 @@ function tryGenerate(levelDef, seed) {
     if (!spot) continue;
     props.push({ x: spot.wall.x, y: spot.wall.y, kind: 'secret', wallColor: levelDef.wall, wallTop: levelDef.wallTop,
       nicheTiles: spot.tiles, wallSide: spot.side });
-    props.push({ x: spot.heal.x, y: spot.heal.y, kind: 'heal' });
+    if (rng.chance(TUNING.secret.healChance)) props.push({ x: spot.heal.x, y: spot.heal.y, kind: 'heal', big: true });
     props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
     secretsPlaced++;
   }
@@ -768,20 +770,37 @@ function tryGenerate(levelDef, seed) {
       .filter((i) => i !== lessonIndex && i !== levelDef.vaultAt && i !== levelDef.ambushAt && !trapRooms.has(i))
       .map((i) => ({ i, men: ((plan.rooms.get(i) || {}).men || []).length }))
       .filter((c) => c.men >= 1);
-    // A small crowd if the level has one going spare, and otherwise the fullest room that is left:
-    // level one is short and its first rooms hold one man each, so insisting on two could leave the
-    // line unpainted altogether — which is worse than painting it on a floor with one man on it.
-    const crowded = eligible.filter((c) => c.men >= 2);
-    const rollCandidates = crowded.length ? crowded : eligible;
-    if (rollCandidates.length) {
+    const byIndex = new Map(eligible.map((c) => [c.i, c]));
+    // The room right outside a level's own first arena is where the dodge and the point-blank
+    // parry actually matter — whatever is on the far side of that door is the first real fight
+    // in the run, so this is a hard preference and not merely a tiebreaker: walk back from that
+    // door looking for anywhere to paint it, a small crowd first and a single man second, and only
+    // give up on landing before the fight at all once there is nothing eligible left to walk back
+    // to. `closest to the middle` used to win outright whenever the exact room before the door
+    // happened to hold nobody, which could land the line on the far side of the level's first real
+    // fight instead of before it.
+    let pick = null;
+    if (firstArenaAt > 0) {
+      for (const wantCrowd of [true, false]) {
+        for (let i = firstArenaAt - 1; i >= 1 && !pick; i--) {
+          const c = byIndex.get(i);
+          if (c && (!wantCrowd || c.men >= 2)) pick = c;
+        }
+        if (pick) break;
+      }
+    }
+    if (!pick && eligible.length) {
+      // No populated ordinary room stands before the level's own first arena at all — a short
+      // level with the arena right past the pen. Falls back to the old placement: a small crowd
+      // closest to the level's own middle, so the line still lands somewhere worth trying it.
       const mid = (rooms.length - 1) / 2;
-      rollCandidates.sort((a, b) => Math.abs(a.i - mid) - Math.abs(b.i - mid));
-      // The room right outside a level's own first arena is where the dodge and the point-blank
-      // parry actually matter — whatever is on the far side of that door is the first real fight
-      // in the run — so it wins the pick over "closest to the middle" whenever it is itself a
-      // valid candidate at all.
-      const bossDoor = rollCandidates.find((c) => c.i === firstArenaAt - 1);
-      const r = rooms[(bossDoor || rollCandidates[0]).i];
+      const crowded = eligible.filter((c) => c.men >= 2);
+      const rollCandidates = (crowded.length ? crowded : eligible).slice()
+        .sort((a, b) => Math.abs(a.i - mid) - Math.abs(b.i - mid));
+      pick = rollCandidates[0];
+    }
+    if (pick) {
+      const r = rooms[pick.i];
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: 3 });
     }
   }

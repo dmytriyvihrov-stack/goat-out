@@ -935,19 +935,28 @@ class Renderer {
       glow.addColorStop(0, 'rgba(168,189,108,0.22)'); glow.addColorStop(1, 'rgba(168,189,108,0)');
       ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y + bob, 34, 0, Math.PI * 2); ctx.fill();
       this.shadow(p.x, p.y + 4, 11, 5);
-      // A patch of real dirt under it: grass sprouting straight out of the boards read as a decal
-      // laid over the floor rather than as ground of its own, so there is a small ring of earth
-      // under the blades before anything green is drawn.
-      ctx.fillStyle = PALETTE.dirt; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6, 16, 7, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = PALETTE.dirtHi; ctx.beginPath(); ctx.ellipse(p.x, p.y + 4.5, 12.5, 5.4, 0, 0, Math.PI * 2); ctx.fill();
-      // Sprouted grass rather than a bowl: a few blades pushed up through the boards, leaning
-      // together like something breathes on them. Grazed, not grabbed — see the pickup in game.js.
-      for (let k = -3; k <= 3; k++) {
-        const lean = Math.sin(this.t * 1.6 + p.phase + k) * 3, bx = p.x + k * 2.6;
-        ctx.strokeStyle = k % 2 ? PALETTE.grassHi : PALETTE.grass; ctx.lineWidth = 2; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(bx, p.y + 5 + bob);
-        ctx.quadraticCurveTo(bx + lean * 0.5, p.y - 4 + bob, bx + lean, p.y - 11 - Math.abs(k) * 0.6 + bob);
-        ctx.stroke();
+      if (p.big) {
+        // The rare one, worth twice the milk: a patch of real dirt under it, since grass sprouting
+        // straight out of the boards read as a decal laid over the floor rather than ground of its
+        // own, then a few blades pushed up through it leaning together like something breathes on
+        // them. Grazed, not grabbed — see the pickup in game.js.
+        ctx.fillStyle = PALETTE.dirt; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6, 16, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = PALETTE.dirtHi; ctx.beginPath(); ctx.ellipse(p.x, p.y + 4.5, 12.5, 5.4, 0, 0, Math.PI * 2); ctx.fill();
+        for (let k = -3; k <= 3; k++) {
+          const lean = Math.sin(this.t * 1.6 + p.phase + k) * 3, bx = p.x + k * 2.6;
+          ctx.strokeStyle = k % 2 ? PALETTE.grassHi : PALETTE.grass; ctx.lineWidth = 2; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(bx, p.y + 5 + bob);
+          ctx.quadraticCurveTo(bx + lean * 0.5, p.y - 4 + bob, bx + lean, p.y - 11 - Math.abs(k) * 0.6 + bob);
+          ctx.stroke();
+        }
+      } else {
+        // The ordinary one: a plain wooden bowl with milk standing in it, so what a run is offered
+        // every few rooms reads as milk rather than as the rarer, bigger patch a secret sometimes
+        // gives up instead.
+        ctx.fillStyle = PALETTE.wood; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6 + bob, 15, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = PALETTE.woodHi; ctx.beginPath(); ctx.ellipse(p.x, p.y + 5 + bob, 15, 5.6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(p.x, p.y + 3.6 + bob, 11.5, 4.4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(p.x - 3, p.y + 2.6 + bob, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
       }
       if (p.graze > 0) {
         const frac = clamp(p.graze / TUNING.prop.heal.grazeTime, 0, 1);
@@ -1638,27 +1647,45 @@ class Renderer {
 
   drawMusicTab(game, pad, top) {
     const ctx = this.ctx, d = game.dev, audio = game.audio, lab = audio.lab;
-    const s = Math.min(this.ts, (this.h - top - pad) / 426), width = this.w - pad * 2;
+    const width = this.w - pad * 2, s = Math.min(this.ts, (this.h - top - pad) / 545, width / 350);
     const effective = capMusicScene({ ...lab.scene });
-    const text = (value, x, y, color = PALETTE.bone) => {
-      ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = color;
+    const text = (value, x, y, color = PALETTE.bone, size = 11) => {
+      ctx.font = '700 ' + size * s + 'px ' + FONT_SC; ctx.fillStyle = color;
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(value, x, y);
     };
-    const button = (x, y, w, label, id, on = false) => this.devButton(d, x, y, w, 21 * s, label, 'music-' + id, on);
-    text('MUSIC LAB  /  ' + (lab.playing ? 'PLAYING' : 'STOPPED') + '  /  BAR ' + (1 + Math.floor(audio.step / 16)), pad, top + 11 * s, PALETTE.ochre);
-    const commands = [[lab.playing ? 'STOP' : 'PLAY','play'], ['CLEAR','clear'], ['ROOM','room'], [audio.muted ? 'UNMUTE' : 'MUTE','mute']];
-    commands.forEach(([label,id], i) => button(pad + i * 76 * s, top + 20 * s, 70 * s, label, id));
-    [['NO BASE','none'], ['IDLE','idle'], ['COMBAT','combat']].forEach(([label,id], i) => button(pad + i * 65 * s, top + 47 * s, 60 * s, label, 'bed=' + id, lab.bed === id));
-    button(pad + 201 * s, top + 47 * s, 66 * s, 'LEVEL 1-4', 'theme=early', !lab.scene.late);
-    button(pad + 272 * s, top + 47 * s, 66 * s, 'LEVEL 5+', 'theme=late', lab.scene.late);
+    const button = (x, y, w, label, id, on = false, h = 21 * s) => {
+      const old = this.ts; this.ts = s;
+      this.devButton(d, x, y, w, h, label, 'music-' + id, on); this.ts = old;
+    };
+    text('MUSIC / 118 BPM / 4:4 / ' + (lab.cue ? MUSIC_CUES[lab.cue].label + (lab.playing ? ' / PLAYING' : ' / READY') : lab.playing ? 'BAR ' + (1 + Math.floor(audio.step / 16)) : 'STOPPED'), pad, top + 11 * s, PALETTE.ochre);
+    [[lab.playing ? 'STOP' : 'PLAY','play'], ['CLEAR','clear'], ['ROOM','room'], [audio.muted ? 'UNMUTE' : 'MUTE','mute']]
+      .forEach(([label,id], i) => button(pad + i * 76 * s, top + 20 * s, 70 * s, label, id));
+    [['NO BASE','none'], ['IDLE','idle'], ['SPOTTED','spotted'], ['CHASE','chase'], ['COMBAT','combat']]
+      .forEach(([label,id], i) => button(pad + i * 69 * s, top + 47 * s, 65 * s, label, 'bed=' + id, lab.bed === id));
+    button(pad, top + 73 * s, 45 * s, 'LEVEL 1', 'theme=first', lab.scene.first);
+    button(pad + 51 * s, top + 73 * s, 52 * s, 'LEVEL 2-4', 'theme=early', !lab.scene.first && !lab.scene.late);
+    button(pad + 109 * s, top + 73 * s, 52 * s, 'LEVEL 5+', 'theme=late', lab.scene.late);
+    button(pad + 170 * s, top + 73 * s, 48 * s, 'MIX', 'view=mix', lab.view === 'mix');
+    button(pad + 224 * s, top + 73 * s, 55 * s, 'SCORE', 'view=score', lab.view === 'score');
+    button(pad + 285 * s, top + 73 * s, 55 * s, 'EXPORT', 'export');
+    Object.entries(MUSIC_CUES).forEach(([id, cue], i) => button(pad + i * 115 * s, top + 99 * s, 109 * s,
+      cue.label + ' / ' + cue.bars + 'B', 'cue=' + id, lab.cue === id));
+    if (lab.view === 'score') {
+      this.drawMusicScore(game, pad, top + 129 * s, s, text, button);
+      return;
+    }
+    const theme = musicTheme(lab.scene), root = theme.roots[(audio.step >> 4) & 3];
     Object.entries(MUSIC_PARTS).forEach(([kind, part], row) => {
-      const y = top + (79 + row * 26) * s, hits = musicHitCount(kind, effective[kind]);
-      text(part.label, pad, y + 14 * s);
-      for (let n = 0; n <= 6; n++) button(pad + (77 + n * 25) * s, y, 22 * s,
+      const y = top + (130 + row * 29) * s, hits = musicHitCount(kind, effective[kind]);
+      const family = ROOM_MUSIC[part.family], pitch = musicPitch(root * family.octave);
+      text(part.label, pad, y + 10 * s);
+      text(pitch.note + ' / ' + pitch.midi + ' ' + (part.family === 'large' ? 'TRI+SQ' : family.type.slice(0,3).toUpperCase()), pad, y + 22 * s, PALETTE.ash, 8);
+      const max = kind === 'mill' ? TUNING.audio.layers.maxMills : 6;
+      for (let n = 0; n <= max; n++) button(pad + (77 + n * 25) * s, y, 22 * s,
         String(n), kind + '=' + n, lab.scene[kind] === n);
+      if (kind === 'mill') text('1 = 3 / 2 = 6 HITS', pad + 155 * s, y + 14 * s, PALETTE.ochre, 9);
       button(pad + 256 * s, y, 38 * s, 'SOLO', 'solo=' + kind);
       text(effective[kind] + ' / ' + hits, pad + 303 * s, y + 14 * s, PALETTE.ochre);
-      // The same onset function drives sound and the visual score. No separate fake pattern.
       const start = pad + 355 * s, cell = Math.min(11 * s, (width - 360 * s) / 32);
       if (cell >= 4 * s) for (let step = 0; step < 32; step++) {
         const active = Array.from({ length: hits }, (_, i) => musicPartHit(kind, i, step + Math.floor(audio.step / 64) * 64)).some(Boolean);
@@ -1666,18 +1693,54 @@ class Renderer {
         ctx.fillRect(start + cell * step, y + 5 * s, cell - s, 10 * s);
         if (lab.playing && step === audio.step % 32) { ctx.strokeStyle = PALETTE.fireHi; ctx.strokeRect(start + cell * step, y + 3 * s, cell - s, 14 * s); }
       }
+      if (width > 970 * s) text(MUSIC_TRACKS[kind], pad + 726 * s, y + 14 * s, PALETTE.ash, 9);
     });
-    let y = top + 319 * s;
+    let y = top + 398 * s;
     text('FIRE', pad, y + 14 * s);
     [0,1,4,10,24].forEach((n,i) => button(pad + (50 + i * 36) * s, y, 32 * s, String(n), 'fire=' + n, lab.scene.fireTiles === n));
     button(pad + 239 * s, y, 61 * s, 'COALS', 'coals', lab.scene.fire && !lab.scene.blaze);
     y += 26 * s; text('GRASS', pad, y + 14 * s);
     [0,1,2,3].forEach((n,i) => button(pad + (50 + i * 36) * s, y, 32 * s, String(n), 'grass=' + n, lab.scene.grass === n));
     text('FIRE TAIL: 2 BARS', pad + 204 * s, y + 14 * s, PALETTE.ochre);
-    y += 28 * s;
-    [['KILL','kill'], ['BUTT','headbutt'], ['ROLL','roll'], ['THROW','throw'], ['BAAH','scream']].forEach(([label,id], i) => button(pad + i * 68 * s, y, 63 * s, label, 'event=' + id));
-    text('Count / hits per 2 bars. Related enemies share a cap of 6.', pad, y + 36 * s);
-    text('SOLO isolates a part; NO BASE removes the bed. Events reply on the beat.', pad, y + 50 * s);
+    this.drawMusicPads(game, pad, top + 454 * s, s, text, button);
+    text('Count / hits per 2 bars. Note = register root / MIDI.', pad, top + 508 * s, PALETTE.ash, 10);
+    text('SCORE: all 16 bars, instruments, exact notes. EXPORT: JSON.', pad, top + 521 * s, PALETTE.ash, 10);
+  }
+
+  drawMusicPads(game, pad, y, s, text, button) {
+    const audio = game.audio;
+    [['KILL','kill'], ...Object.entries(MUSIC_ACTIONS).map(([id,a]) => [a.label,id])]
+      .forEach(([label,id], i) => button(pad + i * 68 * s, y, 63 * s, label, 'event=' + id, false, 28 * s));
+    const queue = audio.musicEvents.map(e => e.kind === 'kill' ? 'KILL' : MUSIC_ACTIONS[e.kind].label).join(' > ');
+    text('QUEUE ' + audio.musicEvents.length + ': ' + queue.slice(0,42), pad, y + 41 * s, PALETTE.ochre, 9);
+  }
+
+  drawMusicScore(game, pad, top, s, text, button) {
+    const ctx = this.ctx, audio = game.audio, lab = audio.lab, score = audio.getLabScore();
+    const tracks = Object.keys(MUSIC_TRACKS), x = pad + 76 * s, width = this.w - pad - x;
+    const barWidth = width / 16, stepWidth = width / 256;
+    for (let bar = 0; bar < 16; bar++) button(x + bar * barWidth, top, barWidth - s, String(bar + 1), 'bar=' + bar, lab.bar === bar, 17 * s);
+    tracks.forEach((track, row) => {
+      const y = top + (22 + row * 12) * s;
+      button(pad, y, 71 * s, (MUSIC_PARTS[track]?.label || MUSIC_ACTIONS[track]?.label || track).toUpperCase(), 'track=' + track, lab.track === track, 12 * s);
+      ctx.fillStyle = 'rgba(239,230,208,0.07)'; ctx.fillRect(x, y, width, 10 * s);
+      ctx.fillStyle = 'rgba(185,135,58,0.15)'; ctx.fillRect(x + lab.bar * barWidth, y, barWidth, 10 * s);
+      for (const event of score.events) {
+        if (event.track !== track || event.step >= 256) continue;
+        ctx.fillStyle = track === lab.track ? PALETTE.fireHi : PALETTE.ochre;
+        ctx.fillRect(x + event.step * stepWidth, y + 2 * s, Math.min(width - event.step * stepWidth, Math.max(s, Math.min(event.duration,4) * stepWidth)), 6 * s);
+      }
+    });
+    if (lab.playing) { ctx.fillStyle = PALETTE.fireHi; const playhead = audio.cue ? Math.max(0, audio.musicTick - audio.cue.start) : audio.step; ctx.fillRect(x + playhead * stepWidth, top + 21 * s, s, tracks.length * 12 * s); }
+    const y = top + 310 * s;
+    text(lab.track.toUpperCase() + ': ' + MUSIC_TRACKS[lab.track], pad, y, PALETTE.ochre, 10);
+    const notes = score.events.filter(e => e.track === lab.track && Math.floor(e.step / 16) === lab.bar);
+    text('BAR ' + (lab.bar + 1) + ' / C4 = MIDI 60 / ' + (notes.length ? notes.length + ' NOTES' : 'REST'), pad, y + 15 * s, PALETTE.ash, 9);
+    // Exact pitches and positions of the selected bar; the export includes every harmonic/tail.
+    const lines = notes.slice(0,6).map(e => ((e.step % 16) / 4 + 1).toFixed(2) + ': ' + e.note + (e.midi == null ? '' : ' / ' + e.midi + ' / ' + e.hz + 'Hz'));
+    for (let i = 0; i < 2; i++) text(lines.slice(i * 3, i * 3 + 3).join('   ').slice(0, Math.floor((this.w - pad * 2) / (5 * s))), pad, y + (29 + i * 13) * s, PALETTE.bone, 9);
+    this.drawMusicPads(game, pad, top + 366 * s, s, text, button);
+    button(this.w - pad - 58 * s, top + 396 * s, 58 * s, 'ERASE', 'erase', false, 15 * s);
   }
 
   // The rules that hold everywhere, as a matrix: one row a rule, one column a level, one mark per
@@ -2203,10 +2266,13 @@ class Renderer {
         note: 'Floor, not furniture: crossing a plate arms it and the teeth come up a beat later, behind whoever tripped it. Anything alive trips one but a wraith in mist; trap sense is what lets a man in a crowd walk round it instead.' },
       { kind: 'secret', label: 'SECRET WALL', make: (x, y) => new Prop(x, y, 'secret'), hits: ['HEADBUTT'],
         stats: `${P.secret.hits} hits to open, the niche behind it stays lit after`,
-        note: 'Ordinary wall until the second blow: blocks sight and bullets like stone right up to the crack. Behind it is always the same pair — a patch of milk and a stand of arms — never a room or a corridor.' },
-      { kind: 'heal', label: 'HEAL PATCH', make: (x, y) => new Prop(x, y, 'heal'), hits: ['BODY'],
+        note: 'Ordinary wall until the second blow: blocks sight and bullets like stone right up to the crack. Behind it is always a stand of arms, and — secret.healChance of the time — the rarer patch of grass, never a room or a corridor.' },
+      { kind: 'heal', label: 'MILK BOWL', make: (x, y) => new Prop(x, y, 'heal'), hits: ['BODY'],
         stats: `graze ${P.heal.grazeTime}s under ${P.heal.grazeSpeed}px/s for +1 heart`,
-        note: 'Grazed, not grabbed: hold still (or nearly) inside it and it pays out once. Running through it on the way past does nothing — the point is that it costs a beat of standing in the open.' },
+        note: 'Grazed, not grabbed: hold still (or nearly) inside it and it pays out once. Running through it on the way past does nothing — the point is that it costs a beat of standing in the open. What a level hands out on its own rhythm, every few rooms.' },
+      { kind: 'heal', label: 'GRASS PATCH', make: (x, y) => new Prop(x, y, 'heal', { big: true }), hits: ['BODY'],
+        stats: `graze ${P.heal.grazeTime}s under ${P.heal.grazeSpeed}px/s for +2 hearts`,
+        note: 'The rare one: worth twice the milk, and only ever behind a secret wall — never on the level’s own rhythm.' },
       { kind: 'bell', label: 'BELL', make: (x, y) => new Prop(x, y, 'bell'), hits: ['HEADBUTT', 'BODY'],
         stats: `${P.bell.buff}s of ×${P.bell.speedMul} speed, ×${P.bell.cooldownMul} faster cooldowns`,
         note: 'Rung, it buys a stretch of speed and quick hands for a noise the whole floor hears at once. A terrible trade in an empty room; the best one you get in a full one.' },

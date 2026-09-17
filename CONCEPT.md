@@ -379,15 +379,22 @@ best run is a fast one with bodies in it rather than a slow one that cleared eve
 the sum of them, and BEST on the first screen keeps the best score and the best time for each level and
 the best whole run. NEW GAME wipes the run and never the board.
 
-**Sound.** A pad and walking bass carry a quiet exploration bed and a simpler combat rhythm.
+**Sound.** A pad and walking bass carry a quiet exploration bed. Detection introduces a two-bar
+warning, then running keeps a chase rhythm while offensive actions bring in harder combat music.
+Without attacks it relaxes to chase, and without threats to idle; both level themes follow this arc.
+Level 1 has a more frightened, lost variation with hesitant semitone answers. Level completion
+adds a short rising release, death a descending lament, and taking a soul a luminous high chime.
+These phrases briefly replace the room score and are also auditionable in MUSIC.
 The room adds short synthesised parts for small, ranged, large and mystical enemies, up to six
 enemies per family, plus rhythms for fire and traps throughout the room. Everything shares one 16-bar phrase;
 parts join on the beat and fade as the room changes. Individual enemy types share their family's
 register but have different rhythms, with more accents for ranged and heavy enemies. Levels 5+
-switch to a second harmony with separate idle and combat melodies. Standing coals tick once per bar;
+switch to a second harmony with its own melodies for these states. Standing coals tick once per bar;
 active fire across the current room adds crackles that linger for two bars, and nearby healing
 grass adds soft chimes. Spike plates and Mills add their own patterns; kills and player actions
-get separate delayed musical replies. TOOLS > MUSIC allows listening to each part and combination.
+get separate delayed musical replies. Large enemies have octave harmonics that reach small speakers;
+one/two Mills give three/six accents. TOOLS > MUSIC allows listening to each part and combination,
+tapping repeated action rhythms, and inspecting/exporting the sixteen-bar score with note and instrument data.
 The original threat-driven ritual score,
 including the Hunter shaker, remains selectable in SETTINGS by switching LAYERED MUSIC off.
 No audio assets at all. `MUSIC.md` records both arrangements and how to extend the new one.
