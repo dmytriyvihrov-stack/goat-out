@@ -427,7 +427,7 @@ function tryGenerate(levelDef, seed) {
     props.push({ x: spot.wall.x, y: spot.wall.y, kind: 'secret', wallColor: levelDef.wall, wallTop: levelDef.wallTop,
       nicheTiles: spot.tiles, wallSide: spot.side });
     if (rng.chance(TUNING.secret.healChance)) props.push({ x: spot.heal.x, y: spot.heal.y, kind: 'heal', big: true });
-    props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
+    props.push({ x: spot.weapon.x, y: spot.weapon.y, kind: 'weapon', weapon: rng.chance(TUNING.prop.weapon.swordShare) ? 'sword' : 'shield' });
     secretsPlaced++;
   }
 
@@ -456,6 +456,7 @@ function tryGenerate(levelDef, seed) {
   if (levelDef.showControls) {
     for (const r of rooms) { const c = plan.rooms.get(r.index); if (c && c.intro) { lessonIndex = r.index; break; } }
   }
+  let roasted = false;
   rooms.forEach((room) => {
     const spots = [];
     const cell = plan.rooms.get(room.index);
@@ -466,7 +467,13 @@ function tryGenerate(levelDef, seed) {
     let wIdx = rng.int(0, 1);
     room.markers.forEach((m) => {
       const px = (m.tx + 0.5) * TILE, py = (m.ty + 0.5) * TILE;
-      if (m.c === 'B') props.push({ x: px, y: py, kind: 'brazier' });
+      // A roast is picked off a hash of the tile, not the rng, so no seed moved when it landed —
+      // and there is at most one a level, because a crocodile on every third fire stopped being a find.
+      if (m.c === 'B') {
+        const roast = !roasted && (((m.tx * 73856093) ^ (m.ty * 19349663)) >>> 0) % 1000 < TUNING.prop.brazier.roast * 1000;
+        if (roast) roasted = true;
+        props.push({ x: px, y: py, kind: 'brazier', roast });
+      }
       else if (m.c === 'o') props.push({ x: px, y: py, kind: 'crate' });
       else if (m.c === 'b') { if (manned) props.push({ x: px, y: py, kind: 'bell' }); }
       else if (m.c === 'L') props.push({ x: px, y: py, kind: 'lamp' });
@@ -474,13 +481,14 @@ function tryGenerate(levelDef, seed) {
       else if (m.c === 'M') props.push({ x: px, y: py, kind: 'mill', phase: rng.float(0, Math.PI * 2) });
       else if (m.c === 'S') props.push({ x: px, y: py, kind: 'spike' });
       else if (m.c === 'X') room.bossSpot = { x: px, y: py };
-      // A pair of stands alternates, so an arena always offers one of each rather than two swords.
+      // A pair of stands alternates, so an arena always offers one of each rather than two swords,
+      // and a lone one is the shield: a sword is two kills now and is not handed out one to a room.
       // The killbox's own stand is always the shield: the room is a rifle problem, and the shield is
       // the answer to a rifle that does not involve holding a man.
       // The ambush room's own stand is always the sword: it is the room that teaches the throw, and
       // a thrown sword kills the man it reaches while a thrown shield only knocks him flat — a
       // lesson whose payoff is "he gets back up" is not a lesson anybody keeps.
-      else if (m.c === 'w') { if (room.index >= racksFrom) props.push({ x: px, y: py, kind: 'weapon', weapon: room.isAmbush ? 'sword' : room.isKillbox ? 'shield' : (wIdx++ % 2) ? 'shield' : 'sword' }); }
+      else if (m.c === 'w') { if (room.index >= racksFrom) props.push({ x: px, y: py, kind: 'weapon', weapon: room.isAmbush ? 'sword' : room.isKillbox ? 'shield' : (wIdx++ % 2) ? 'sword' : 'shield' }); }
       else spots.push(m);
     });
     // Now and then a single stand of arms, anywhere a man might have left one. Never two, never
@@ -491,7 +499,7 @@ function tryGenerate(levelDef, seed) {
         if (tiles[ty * W + tx] !== T.FLOOR) continue;
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
         if (props.some((p) => len(p.x - px, p.y - py) < 1.8 * TILE)) continue;
-        props.push({ x: px, y: py, kind: 'weapon', weapon: rng.chance(0.5) ? 'sword' : 'shield' });
+        props.push({ x: px, y: py, kind: 'weapon', weapon: rng.chance(TUNING.prop.weapon.swordShare) ? 'sword' : 'shield' });
         break;
       }
     }
@@ -738,6 +746,28 @@ function tryGenerate(levelDef, seed) {
   // Safety: nothing spawns within 5 tiles of the start, and the start room keeps no props underfoot.
   const filtered = spawns.filter((s) => len(s.x - start.x, s.y - start.y) > 5 * TILE);
   const cleanProps = props.filter((p) => p.kind === 'door' || p.kind === 'cage' || len(p.x - start.x, p.y - start.y) > 3 * TILE);
+  // Nobody is put down inside the furniture. A spawn marker and a crate scattered later could land
+  // on the same tile, and a man who starts inside a box is a man who never gets out of it — he
+  // stood there the whole level, wedged. Walk him out in rings to the nearest clear floor of the
+  // same room; the sentry is exempt because `blockSpot` already chose his tile with the props in it.
+  for (const sp of filtered) {
+    if (sp.sentry || !inFurniture(sp.x, sp.y, cleanProps)) continue;
+    const tx0 = Math.floor(sp.x / TILE), ty0 = Math.floor(sp.y / TILE);
+    const room = rooms[sp.roomIndex];
+    let moved = false;
+    for (let r = 1; r <= 5 && !moved; r++) {
+      for (let dy = -r; dy <= r && !moved; dy++) for (let dx = -r; dx <= r && !moved; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const tx = tx0 + dx, ty = ty0 + dy;
+        if (tiles[ty * W + tx] !== T.FLOOR) continue;
+        if (room && (tx <= room.x || tx >= room.x + room.w - 1 || ty <= room.y || ty >= room.y + room.h - 1)) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (inFurniture(px, py, cleanProps)) continue;
+        if (filtered.some((o) => o !== sp && len(o.x - px, o.y - py) < 0.8 * TILE)) continue;
+        sp.x = px; sp.y = py; moved = true;
+      }
+    }
+  }
   // The level's own hint goes across the middle of the first room; the pen's own prompt goes below the pen.
   // It carries the room it is painted in, so a long line can be broken and fitted to the floor it
   // is lying on rather than running off both ends of it, and the button it is about if it is about one.
@@ -1120,6 +1150,18 @@ function reachable(tiles, W, H, sx, sy, tx, ty) {
       if (t === T.WALL || t === T.PIT) continue;
       seen[j] = 1; q.push(j);
     }
+  }
+  return false;
+}
+
+// Is a point inside something a man cannot stand in? Everything a room puts on the floor except what
+// is floor itself — a bowl of milk, a grating — or a door, which stands in a corridor and not a room.
+// Shared by the generator's own spawn pass and `GEN_RULES.furniture`, so the two cannot disagree.
+function inFurniture(x, y, props) {
+  for (const p of props) {
+    if (p.kind === 'heal' || p.kind === 'spike' || p.kind === 'door' || p.kind === 'secret') continue;
+    const clear = p.kind === 'mill' ? 1.2 * TILE : p.kind === 'coop' ? 1.1 * TILE : 0.8 * TILE;
+    if (len(p.x - x, p.y - y) < clear) return true;
   }
   return false;
 }

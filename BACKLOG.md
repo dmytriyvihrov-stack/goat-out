@@ -8,6 +8,50 @@ then goes to `CHANGELOG.md` — or when it is decided against, and the reason go
 Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and does not read; **number**,
 it works and the number is wrong; **system**, it does not exist yet.
 
+## 18 September 2026 — a second pass, ten items
+
+Shipped in 1.36; the reasoning is in `CHANGELOG.md`.
+
+- ~~**bug — enemies do not always react to footstep noise; a run right up on somebody's back
+  sometimes goes unnoticed.**~~ The emission was a coin flip every frame and could go a half-second
+  without landing; it is a timer now, and the hearing radius came up with it.
+- ~~**number — the Butcher is weak. More HP, a bigger reach on his own swing, and charges that
+  actually happen.**~~ Three hearts to four, reach up a fifth, asks for less ground to charge on and
+  gets back to it sooner.
+- ~~**feel — the milk prop looks wrong; bring back the earlier grass look.**~~ Reverted the ordinary
+  heal's paint from a wooden bowl back to a smaller sprout of the same grass the rare, bigger patch
+  already is; the reward split (`+1` vs `+2` hearts) is untouched.
+- ~~**feel — the opening scene's music should have an arc: happier in the meadow, more tense through
+  the truck and the dark, and most tense of all when she is taken.**~~ `roomMusicScene` returned
+  empty for the whole intro, which is why nothing was moving; it now reads `game.intro.phase`.
+- ~~**feel — the first screen should open on black and say something, so it reads as a flashback and
+  not as the game starting somewhere strange: "Some time ago."**~~
+- ~~**system — the wraith should be immune to an ordinary flame and to the scream's stun (and it
+  already was to BY THE COLLAR); exposed as checkboxes in the tool.**~~
+- ~~**system — the Butcher and the hound should keep coming at you while they burn instead of losing
+  their AI to it; a per-kind immunity checkbox in the tool rather than a hardcoded exception.**~~
+
+## 18 September 2026 — eleven items after a death screen
+
+All shipped in 1.34; the reasoning is in `CHANGELOG.md`.
+
+- ~~**feel — the death card should say DIED, not THE GOAT DIED, and always name the level.**~~
+- ~~**feel — the shield should be bigger, on the stand and in the mouth, so blocking is more fun.**~~
+- ~~**system — a rifle inside 1–2 tiles misses half the time, wildly; in the bestiary and the tool.**~~
+- ~~**system — reaching for a hound with BY THE COLLAR makes it hop back a tile and spends the grab.**~~
+- ~~**bug — enemies should only come alive once they are near the screen, to stop deaths from
+  nowhere.**~~
+- ~~**bug — on phones the controls disappear a few seconds into play.**~~ Not reproduced on a phone:
+  the fix covers the two causes found in the code (a volume-key `keydown`, and a tap reported as a
+  `mouse` pointer). If it still happens, ask which browser and whether it follows a volume press.
+- ~~**bug — enemies spawn inside crates and cannot move.**~~
+- ~~**system — a sword has two lives like the shield, cuts on contact even in the teeth, and is
+  rarer.**~~
+- ~~**system — a rifle cocks audibly before it fires; in the game and the tool.**~~
+- ~~**system — the hen: pathfinds after you and avoids traps; a coop you pass breaks itself at the
+  edge of the screen; bringing her to the end of a level says so and is worth +1 heart.**~~
+- ~~**number — THE ORACLE sees too much: a big radius, but the far corners should stay unknown.**~~
+
 ## 16 September 2026, a correction and two more — right after the eleven-item batch shipped
 
 A look at the build the eleven-item batch produced, three lines.

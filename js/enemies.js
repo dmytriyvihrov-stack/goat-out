@@ -22,6 +22,8 @@ class Enemy {
     this.elite = false; this.boss = false; this.millCd = 0;
     this.say = null; this.barkCd = 0; this.witchBurn = false;   // what he is shouting, and what lit him
     this.dazed = 0;                                             // seconds of hearing nothing but the scream
+    this.poison = 0;                                            // seconds of being blind and slow (js/status.js)
+    this.scald = false;                                         // stunned when the fire caught: it hits twice
     this.gotUpFrom = null;
     this.scripted = false; this.knife = false;                  // the two in the opening scene: moved by hand, one with a knife
     this.champion = false;                                      // the brute: three hearts and a frame that says so
@@ -67,9 +69,11 @@ class Enemy {
   // BAAH does not call him in any more. It empties his head for a moment, wherever he was going.
   daze(game, t) {
     if (this.dead || this.held || this.ghosted) return;
-    // A wraith that has started cannot be called off — but it can be held still where it stands,
-    // solid, for as long as the scream lasts. That is the whole reason you want it frozen.
     if (this.kind === 'wraith') {
+      // Immune, by default: BAAH does not touch a dead thing. The particles are a shrug, not a hit.
+      if (this.cfg.immune && this.cfg.immune.stun) { game.particles(this.x, this.y - 6, 3, PALETTE.witch, 60); return; }
+      // Not immune: it cannot be called off once it has started, but it can be held still where it
+      // stands, solid, for as long as the scream lasts. That is the whole reason you want it frozen.
       this.dazed = Math.max(this.dazed, t); this.vx = 0; this.vy = 0;
       game.particles(this.x, this.y - 6, 5, PALETTE.witchHi, 90);
       return;
@@ -78,6 +82,9 @@ class Enemy {
     if (this.kind === 'butcher') { if (this.state === 'swing') return; t *= 0.6; }
     // A hound runs on reflex, and the scream is what reflex cannot survive: BAAH is the answer to a pack.
     if (this.kind === 'dog') t *= this.cfg.dazeMul;
+    // Stunned while he burns: the stars do nothing to a man already blundering, but the fire
+    // finds him twice (STUN + FIRE).
+    if (this.burning > 0) { this.scaldIt(game); return; }
     if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return;
     this.dazed = Math.max(this.dazed, t);
     this.vx = 0; this.vy = 0;
@@ -87,6 +94,7 @@ class Enemy {
       this.state = 'chase'; this.rune = null;
     }
     game.particles(this.x, this.y - 6, 4, PALETTE.bone, 90);
+    Status.stunned(game, this);
   }
 
   // Shouted at from arm's length. This is the bare BAAH and it is a great deal less than `daze`: it
@@ -106,6 +114,7 @@ class Enemy {
     this.dazed = Math.max(this.dazed, t);
     this.vx = 0; this.vy = 0;
     game.particles(this.x, this.y - 6, 5, PALETTE.bone, 110);
+    Status.stunned(game, this);
     return true;
   }
 
@@ -114,13 +123,19 @@ class Enemy {
   // men rather than every man in it.
   ignite(game, witch, fromMan) {
     if (this.dead || this.burning > 0 || this.ghosted) return;
+    // A dead thing does not catch from a hearth. Witchfire is a Seer's doing and still finds it.
+    if (!witch && this.cfg.immune && this.cfg.immune.fire) return;
     this.litByMan = !!fromMan;
     this.burning = this.kind === 'butcher' ? 3.0 : TUNING.fire.burnRunTime;
     // Fire was never what took the big man down. He walks out of it scorched and one heart lighter.
     if (this.kind === 'butcher') this.burnHearts = this.cfg.burnHearts;
-    this.witchBurn = !!witch;
+    this.witchBurn = !!witch; this.scald = false;
     this.burnDir = Math.random() * Math.PI * 2; this.burnTick = 0;
-    this.state = 'burning'; this.held = false;
+    // A blunder-immune kind (`TUNING.<kind>.immune.blunder` — the Butcher, the hound) keeps whatever
+    // it was doing rather than losing it to 'burning': the per-kind update has no branch for that
+    // state, so forcing him into it would silently freeze him instead of leaving him fighting.
+    if (!(this.cfg.immune && this.cfg.immune.blunder)) this.state = 'burning';
+    this.held = false;
     // Whatever is alight is not in your mouth any more, whoever put it there.
     if (game.goat.holding === this) { game.goat.holding = null; game.goat.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
     game.audio.sfxFire(); game.floatText(this.x, this.y - 26, 'AAAAH', witch ? PALETTE.witch : PALETTE.fire);
@@ -134,6 +149,17 @@ class Enemy {
         && Math.hypot(o.x - this.x, o.y - this.y) < TUNING.bark.witnessDist * TILE && game.world.los(o.x, o.y, this.x, this.y));
       if (mage) game.bark(mage, 'friendlyFire', 1);
     }
+    // Where the fire meets what was already wrong with him (js/status.js).
+    if (this.dazed > 0) this.scaldIt(game);
+    if (this.poison > 0) Status.blast(game, this.x, this.y, TUNING.status.blast, this);
+  }
+
+  // STUN + FIRE: the stun is spent, and the fire that has him does its damage twice.
+  scaldIt(game) {
+    if (this.scald) return;
+    this.scald = true; this.dazed = 0;
+    game.floatText(this.x, this.y - 40, 'SCALDED', PALETTE.fireHi);
+    game.particles(this.x, this.y - 6, 8, PALETTE.fireHi, 150);
   }
 
   die(game, cause, dx, dy) {
@@ -358,6 +384,7 @@ class Enemy {
     this.chargeCd = Math.max(0, this.chargeCd - dt); this.reload = Math.max(0, this.reload - dt);
     this.barkCd = Math.max(0, this.barkCd - dt);
     this.dazed = Math.max(0, this.dazed - dt);
+    this.poison = Math.max(0, this.poison - dt);
     this.hazardBlind = Math.max(0, this.hazardBlind - dt);
     if (!this.hazardSeen) this.hazardRoll = Math.max(0, this.hazardRoll - dt);
     this.hazardSeen = false;
@@ -372,34 +399,42 @@ class Enemy {
     if (this.bombFuse > 0) { this.bombFuse = Math.max(0, this.bombFuse - dt); }
 
     // ---- burning ----
-    // Nobody on fire is steering. Not the brute, not the boss: a man alight who keeps walking his
-    // line at you is the one thing that reads as the fire not counting, so everything that catches
-    // blunders. What the big man alone gets is the far side of it — he comes out scorched and a
-    // heart lighter instead of dead, and the blunder ends in a stagger you can still punish.
+    // Nobody on fire is steering — a man alight who keeps walking his line at you is the one thing
+    // that reads as the fire not counting, so everything that catches blunders. `immune.blunder`
+    // (the Butcher, the hound) is the one exception the tool can turn on a kind: it still catches,
+    // still bleeds hearts for it, but does not lose the room to it — it keeps whatever it was doing.
     if (this.burning > 0) {
+      const blunders = !(this.cfg.immune && this.cfg.immune.blunder);
       this.burning -= dt;
       w.ignitePx(this.x, this.y);
-      if (Math.random() < dt * 4) this.burnDir += (Math.random() - 0.5) * 2.5;
-      this.moveToward(Math.cos(this.burnDir), Math.sin(this.burnDir), TUNING.fire.burnRunSpeed, dt);
-      this.x += this.vx * dt; this.y += this.vy * dt;
-      if (w.collideCircle(this) > 0) this.burnDir += Math.PI * (0.6 + Math.random() * 0.8);
+      if (blunders) {
+        if (Math.random() < dt * 4) this.burnDir += (Math.random() - 0.5) * 2.5;
+        this.moveToward(Math.cos(this.burnDir), Math.sin(this.burnDir), TUNING.fire.burnRunSpeed, dt);
+        this.x += this.vx * dt; this.y += this.vy * dt;
+        if (w.collideCircle(this) > 0) this.burnDir += Math.PI * (0.6 + Math.random() * 0.8);
+      }
       if (Math.random() < dt * 25) game.particles(this.x, this.y, 1, PALETTE.fire, 60);
       if (this.kind === 'butcher') {
         this.burnTick += dt;
         if (this.burnTick >= cfg.burnTick && this.burnHearts > 0) {
-          this.burnTick = 0; this.burnHearts -= 1; this.hp -= 1;
+          this.burnTick = 0; this.burnHearts -= 1; this.hp -= this.scald ? TUNING.status.scald.damage : 1;
           game.floatText(this.x, this.y - 30, 'BURNING', PALETTE.fire);
           if (this.hp <= 0) { this.die(game, 'burn'); return; }
         }
-        if (this.burning <= 0) { this.state = 'stagger'; this.timer = cfg.stagger; this.vx = 0; this.vy = 0; }
-      } else if (this.burning <= 0) { this.die(game, 'burn'); return; }
-      return;
+        if (this.burning <= 0 && blunders) { this.state = 'stagger'; this.timer = cfg.stagger; this.vx = 0; this.vy = 0; this.scald = false; }
+        else if (this.burning <= 0) this.scald = false;
+      } else if (this.burning <= 0) {
+        const n = this.scald ? TUNING.status.scald.damage : 1;
+        this.scald = false; Status.hurt(game, this, n, 'burn'); return;
+      }
+      if (blunders) return;
+      // Not blundering: fall through into the ordinary state machine below, still on fire.
     }
     if (this.state === 'held') {
       // A held Hunter keeps shooting where he is pointed — for two or three rounds, and then he is
       // out and you are carrying a man. With Living Shield a held Bearer keeps swinging too, and
       // everything he hits is on his own side.
-      if (this.kind === 'hunter' && this.reload <= 0 && this.heldShots > 0) {
+      if (this.kind === 'hunter' && this.reload <= 0 && this.heldShots > 0 && this.poison <= 0) {
         this.reload = cfg.reload * (game.mods.livingShield ? 0.55 : 1) * game.mods.enemySlow;
         this.heldShots -= 1;
         game.fireBullet(this, Math.cos(this.facing), Math.sin(this.facing));
@@ -417,7 +452,7 @@ class Enemy {
           // comes up where you were: keep moving and you are leaving a trail of it behind you.
           this.timer -= dt;
           if (this.timer <= 0) this.castRune(game);
-        } else if (this.castCd <= 0) {
+        } else if (this.castCd <= 0 && this.poison <= 0) {
           this.rune = { x: this.x, y: this.y }; this.timer = cfg.castWind * game.mods.enemySlow;
           game.audio.sfxCast(); game.world.emitNoise(this.x, this.y, TUNING.noise.cast);
           game.floatText(this.x, this.y - 32, 'STILL CASTING', PALETTE.witch);
@@ -519,21 +554,28 @@ class Enemy {
     }
     if (this.state === 'noticed') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(g.y - this.y, g.x - this.x);
-      if (!this.ghosted && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+      // `this.burning <= 0` is what keeps this from re-triggering on a kind that is already alight
+      // and standing over the ground it is itself lighting: `ignite` no-ops while burning, but the
+      // `return` here does not, and blunder-immune kinds fall through to this point still on fire.
+      if (!this.ghosted && this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
       this.timer -= dt;
       if (this.timer <= 0) this.state = 'chase'; else return;
     }
-    if (!this.ghosted && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+    if (!this.ghosted && this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
 
     // The scream took the sense out of him: he is still standing, and can do nothing with it.
     if (this.dazed > 0) { this.vx = 0; this.vy = 0; return; }
 
-    if (this.kind === 'bearer') this.updateBearer(dt, game, sees);
-    else if (this.kind === 'hunter') this.updateHunter(dt, game, sees);
-    else if (this.kind === 'dog') this.updateDog(dt, game, sees);
-    else if (this.kind === 'seer') this.updateSeer(dt, game, sees);
-    else if (this.kind === 'wraith') this.updateWraith(dt, game, sees);
-    else this.updateButcher(dt, game, sees);
+    // Poison slows him twice over: his own clock (every windup, swing, recovery and reload runs at
+    // `tempo`) and his stride. It is his time that is passed down, not the world's.
+    const P = TUNING.status.poison, sick = this.poison > 0, kdt = sick ? dt * P.tempo : dt;
+    if (this.kind === 'bearer') this.updateBearer(kdt, game, sees);
+    else if (this.kind === 'hunter') this.updateHunter(kdt, game, sees);
+    else if (this.kind === 'dog') this.updateDog(kdt, game, sees);
+    else if (this.kind === 'seer') this.updateSeer(kdt, game, sees);
+    else if (this.kind === 'wraith') this.updateWraith(kdt, game, sees);
+    else this.updateButcher(kdt, game, sees);
+    if (sick) { this.vx *= P.moveMul; this.vy *= P.moveMul; }
 
     this.x += this.vx * dt; this.y += this.vy * dt;
     // Mist goes through the wall. That is the point of it, and it is why there is no safe corner
@@ -621,9 +663,12 @@ class Enemy {
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
     if (this.state === 'aim') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
-      if (!sees) { this.state = 'chase'; return; }
+      if (!sees || this.poison > 0) { this.state = 'chase'; return; }
       if (this.timer <= 0) {
-        const spread = (Math.random() - 0.5) * 0.1;
+        let spread = (Math.random() - 0.5) * 0.1;
+        // Point blank he flinches: half the time the round goes somewhere else altogether.
+        if (d < cfg.wildNear * TILE && Math.random() < cfg.wildChance)
+          spread = (Math.random() < 0.5 ? -1 : 1) * cfg.wildSpread * (1 + Math.random());
         game.fireBullet(this, Math.cos(this.facing + spread), Math.sin(this.facing + spread));
         this.reload = cfg.reload * game.mods.enemySlow; this.state = 'chase';
       }
@@ -631,7 +676,14 @@ class Enemy {
     }
     // chase: keep distance, shoot when possible
     const reach = (cfg.sight + (this.watchful ? cfg.watchSight : 0)) * TILE;
-    if (sees && this.reload <= 0 && d < reach) { this.state = 'aim'; this.timer = cfg.aimTime * game.mods.enemySlow; this.vx = 0; this.vy = 0; return; }
+    // Poisoned he is blind: he keeps his distance, and he cannot put the rifle on you.
+    if (sees && this.reload <= 0 && d < reach && this.poison <= 0) {
+      this.state = 'aim'; this.timer = cfg.aimTime * game.mods.enemySlow; this.vx = 0; this.vy = 0;
+      // The bolt going back is the one warning a rifle gives, and it is given by ear: loud up close,
+      // gone at `cockHear` tiles, never from a room the fog is still hiding.
+      if (!game.hidden(this.x, this.y)) game.audio.sfxCock(clamp(1 - d / (cfg.cockHear * TILE), 0, 1));
+      return;
+    }
     // A man posted to watch a door does not leave it to come and find you. He holds it, turns on the
     // spot and waits out his reload: the room in front of him is the trap, not the man himself.
     if (this.watchful && d > cfg.backoffDist * TILE) { this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); return; }
@@ -725,6 +777,18 @@ class Enemy {
 
   // The headbutt that does not land. A share of them he is simply not there for — and that share is
   // the whole reason a hound reads as unpredictable. A dazed hound cannot move, so he eats all of it.
+  // Out of the goat's mouth: straight back, away from him, one tile over `hopTime`. It rides the
+  // dodge state, which already carries a body on whatever velocity it was given and hands him back
+  // to the chase when it runs out.
+  hopBack(game, goat) {
+    const cfg = this.cfg, dx = this.x - goat.x, dy = this.y - goat.y, l = Math.hypot(dx, dy) || 1;
+    const spd = cfg.hop * TILE / cfg.hopTime;
+    this.vx = dx / l * spd; this.vy = dy / l * spd; this.facing = Math.atan2(-dy, -dx);
+    this.state = 'dodge'; this.timer = cfg.hopTime; this.dodgeFx = 0.28; this.aware = true;
+    game.floatText(this.x, this.y - 24, 'TOO QUICK', PALETTE.ash);
+    game.particles(this.x, this.y, 5, PALETTE.ash, 140);
+    game.audio.sfxSnap(); game.vibe(8);
+  }
   tryDodge(game, ax, ay) {
     if (this.kind !== 'dog' || this.dazed > 0 || this.dodgeCd > 0 || this.burning > 0) return false;
     const cfg = this.cfg;
@@ -830,6 +894,7 @@ class Enemy {
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
 
     if (this.state === 'cast') {
+      if (this.poison > 0) { this.state = 'chase'; this.rune = null; return; }
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
       if (this.timer <= 0) { this.castRune(game); this.state = 'chase'; }
       return;
@@ -837,7 +902,7 @@ class Enemy {
 
     // Too close: blink out rather than trade blows.
     if (d < cfg.blinkRange * TILE && this.blinkCd <= 0 && !g.dead) { this.blink(game); return; }
-    if (sees && this.castCd <= 0 && !g.dead) {
+    if (sees && this.castCd <= 0 && !g.dead && this.poison <= 0) {
       this.state = 'cast'; this.timer = cfg.castWind * game.mods.enemySlow; this.vx = 0; this.vy = 0;
       this.rune = { x: g.x, y: g.y };
       game.audio.sfxCast(); w.emitNoise(this.x, this.y, TUNING.noise.cast);
@@ -913,7 +978,7 @@ class Enemy {
         if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) e.fling(this.vx * 1.4, this.vy * 1.4, false);
       }
       if (!g.dead && d < this.r + g.r + 2) {
-        g.damage(game.mods.butcherDamage, game, this.vx * 0.6, this.vy * 0.6);
+        g.damage(game.mods.butcherDamage, game, this.vx * 0.6, this.vy * 0.6, false, this);
         this.state = 'recover'; this.timer = cfg.recover * game.mods.enemySlow; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow; return;
       }
       if (this.timer <= 0) { this.state = 'chase'; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow; this.vx = 0; this.vy = 0; }

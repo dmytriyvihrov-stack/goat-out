@@ -128,11 +128,13 @@ class Renderer {
       this.drawFallers(game);
       this.drawHints(game);
       this.drawFire(game, cam);
+      this.drawPoison(game, cam);
       this.drawLight(game, cam);
       this.drawDust(game, cam, dt);
       this.drawUnseen(game);            // ground, fire and firelight above it; everything that stands on it below
       this.drawRunes(game);
       this.drawSouls(game);
+      this.drawPuffs(game);
       const lit = (o) => !game.hidden(o.x, o.y);
       // Nothing else in the game Y-sorts against the goat — draw order is otherwise fixed, which is
       // fine for a wall-hugging crate or a bowl of coals. A cage bar always needed the exception; a
@@ -144,8 +146,10 @@ class Renderer {
       for (const p of game.props) if (!p.broken && p.kind === 'lamp' && lit(p)) this.drawProp(p);
       for (const e of game.enemies) if (!e.dead && lit(e) && e.state !== 'floored' && e.state !== 'stunned' && e !== game.goat.holding) this.drawEnemy(e, game);
       for (const b of game.bullets) if (lit(b)) this.drawBullet(b);
+      this.drawFlares(game);
+      for (const b of game.globs) this.drawGlob(b);
       if (!game.goat.dead) this.drawGoat(game.goat, game);
-      if (game.goat.holding) { const hld = game.goat.holding; if (hld.item) this.drawProp(hld); else this.drawEnemy(hld, game); }
+      if (game.goat.holding) { const hld = game.goat.holding; if (hld.item) this.drawProp(hld); else this.drawEnemy(hld, game); this.drawHoldCharge(game); }
       if (game.intro) this.drawIntroWorld(game);
       for (const p of game.props) if (!p.broken && lit(p) && inFront(p)) this.drawProp(p);
       this.drawBreath(game);
@@ -523,6 +527,48 @@ class Renderer {
     }
   }
 
+  // Poison on the floor: a sour green film per tile with a slow bubble in it, fading as it dries.
+  // Walked from the world's own set of poisoned tiles rather than the whole grid.
+  drawPoison(game, cam) {
+    const ctx = this.ctx, wd = game.world; if (!wd.poisonOn.size) return;
+    const { x0, y0, x1, y1 } = this.visibleTiles(cam), full = TUNING.status.poison.pool;
+    for (const i of wd.poisonOn) {
+      const tx = i % wd.W, ty = (i / wd.W) | 0;
+      if (tx < x0 || tx > x1 || ty < y0 || ty > y1) continue;
+      const a = clamp(wd.poison[i] / Math.min(1.2, full), 0, 1), x = tx * TILE, y = ty * TILE;
+      ctx.globalAlpha = 0.42 * a; ctx.fillStyle = PALETTE.venomDark; ctx.fillRect(x + 1, y + 1, TILE - 2, TILE - 2);
+      ctx.globalAlpha = 0.5 * a; ctx.fillStyle = PALETTE.venom;
+      ctx.beginPath(); ctx.ellipse(x + TILE / 2, y + TILE / 2, TILE * 0.44, TILE * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+      const ph = (this.t * 0.9 + (tx * 7 + ty * 13) * 0.137) % 1;
+      ctx.globalAlpha = a * (1 - ph) * 0.8; ctx.strokeStyle = PALETTE.venomHi; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(x + 8 + (tx * 11 + ty * 5) % 16, y + 8 + (tx * 3 + ty * 17) % 16, 1.5 + ph * 3.5, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // VENOM SPIT in the air.
+  drawGlob(b) {
+    const ctx = this.ctx, wob = Math.sin(this.t * 30) * 1.2;
+    ctx.save(); ctx.scale(1, 1 / TILT);
+    const y = b.y * TILT;
+    ctx.fillStyle = PALETTE.venomDark; ctx.beginPath(); ctx.arc(b.x, y, 7.5 + wob, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.venom; ctx.beginPath(); ctx.arc(b.x, y, 6 + wob, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.venomHi; ctx.beginPath(); ctx.arc(b.x - 2, y - 2.5, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // VENOM JAW / CHARGED: a ring closing round whatever is in his mouth, and once it is shut the
+  // thing pulses, green for poison and fire-yellow for a charge. The two seconds have to be seen.
+  drawHoldCharge(game) {
+    const g = game.goat, h = g.holding, p = Status.holdCharge(game, g); if (!h || p <= 0) return;
+    const ctx = this.ctx, col = game.mods.chargeHold ? PALETTE.fireHi : PALETTE.venomHi, r = (h.r || 12) + 7;
+    ctx.save(); ctx.translate(h.x, h.y);
+    ctx.lineWidth = 2.4; ctx.strokeStyle = 'rgba(13,10,12,0.5)';
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = col; ctx.globalAlpha = p >= 1 ? 0.6 + 0.4 * Math.sin(this.t * 18) : 0.85;
+    ctx.beginPath(); ctx.arc(0, 0, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); ctx.stroke();
+    if (p >= 1) { ctx.globalAlpha = 0.18 + 0.12 * Math.sin(this.t * 18); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+
   // Additive pools of light under every flame, so fire reads as a light source.
   drawLight(game, cam) {
     const ctx = this.ctx, wd = game.world;
@@ -616,6 +662,142 @@ class Renderer {
     ctx.beginPath(); ctx.ellipse(x, y + ry * 0.55, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
   }
 
+  // The roast: a campfire in a ring of stones, two forked sticks, and a crocodile turning on the
+  // spit between them. The fire keeps its stitched hatching; the animal is drawn plain and dark,
+  // as the real thing, charred. It turns: the spit's rotation is a vertical scale through zero, so
+  // half the time he is belly up with his legs in the air.
+  drawRoast(p) {
+    const ctx = this.ctx, t = this.t, B = TUNING.prop.brazier;
+    const heat = p.spillCd > 0 ? 0.35 + 0.65 * (1 - p.spillCd / B.spillCd) : 1;
+    const hatch = (path, color, angle, gap = 2.2) => {
+      ctx.save(); path(); ctx.clip();
+      ctx.strokeStyle = color; ctx.lineWidth = 0.7; ctx.globalAlpha *= 0.55;
+      const c = Math.cos(angle), s = Math.sin(angle);
+      ctx.beginPath();
+      for (let k = -60; k <= 60; k += gap) { ctx.moveTo(-c * 60 - s * k, -s * 60 + c * k); ctx.lineTo(c * 60 - s * k, s * 60 + c * k); }
+      ctx.stroke(); ctx.restore();
+    };
+    ctx.save(); ctx.translate(p.x, p.y + 6);
+    this.shadow(0, 4, 38, 10);
+    // the ring of stones, back half first so the flames stand inside it
+    const stone = (a, front) => {
+      const x = Math.cos(a) * 15, y = Math.sin(a) * 6 + 2;
+      if ((y > 2) !== front) return;
+      ctx.fillStyle = '#6b3f22'; ctx.beginPath(); ctx.ellipse(x, y, 4.2, 3, a * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8c5a30'; ctx.beginPath(); ctx.ellipse(x - 0.8, y - 0.8, 2.4, 1.5, a * 0.3, 0, Math.PI * 2); ctx.fill();
+    };
+    for (let k = 0; k < 9; k++) stone(k / 9 * Math.PI * 2, false);
+    // the fire: tongues red at the tips and yellow at the root, each with its own flicker
+    const tongue = (x, h, w, col, ph) => {
+      const hh = h * heat * (0.85 + 0.15 * Math.sin(t * 13 + ph));
+      const lean = Math.sin(t * 7 + ph) * 2.5;
+      const path = () => { ctx.beginPath(); ctx.moveTo(x - w, 2); ctx.quadraticCurveTo(x - w * 0.9, -hh * 0.5, x + lean, -hh);
+        ctx.quadraticCurveTo(x + w * 0.9, -hh * 0.5, x + w, 2); ctx.closePath(); };
+      ctx.fillStyle = col; path(); ctx.fill();
+      hatch(path, '#fff2b0', -1.35, 2);
+    };
+    tongue(-6, 16, 6, '#c8321a', 0); tongue(6, 15, 6, '#c8321a', 2); tongue(0, 22, 8, '#e8661e', 1);
+    tongue(-2, 15, 6, PALETTE.fire, 3); tongue(2, 10, 4.5, PALETTE.fireHi, 4);
+    for (let k = 0; k < 4; k++) {           // flecks lifting off it
+      const ph = (t * 0.9 + k * 0.27 + p.phase) % 1;
+      ctx.globalAlpha = (1 - ph) * heat; ctx.fillStyle = k % 2 ? '#c8321a' : PALETTE.fire;
+      ctx.fillRect(Math.sin(k * 3.1 + t * 2) * 12, -8 - ph * 26, 1.8, 2.8);
+    }
+    ctx.globalAlpha = 1;
+    for (let k = 0; k < 9; k++) stone(k / 9 * Math.PI * 2, true);
+    // the two forked sticks, a stitched brown with a lighter thread down one side
+    const stick = (x, dir) => {
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#4a2a16'; ctx.lineWidth = 4.6;
+      ctx.beginPath(); ctx.moveTo(x + dir * 3, 10); ctx.lineTo(x, -30); ctx.moveTo(x, -26); ctx.lineTo(x - dir * 5, -35);
+      ctx.moveTo(x + dir * 1.5, -16); ctx.lineTo(x + dir * 4, -21); ctx.stroke();
+      ctx.strokeStyle = '#7a4a28'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x + dir * 3 - 1, 8); ctx.lineTo(x - 1, -29); ctx.stroke();
+    };
+    stick(-45, -1);
+    // the spit: pale cord, run through him and resting in both forks
+    const turn = Math.cos(t * B.roastTurn + p.phase);
+    ctx.strokeStyle = '#d9c078'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-50, -29); ctx.lineTo(50, -29); ctx.stroke();
+    ctx.strokeStyle = '#f2dea0'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-50, -30); ctx.lineTo(50, -30); ctx.stroke();
+    // the crocodile, facing right; `turn` is the spit's rotation seen side-on. Drawn as the animal
+    // rather than as a logo: a long flat snout, a straight tapering tail with the double crest on it,
+    // rows of armour down the back, legs hanging limp, and the hide dark and charred where the fire
+    // has had it. It was a bright green cartoon with a white border, which read as a shirt badge.
+    ctx.save(); ctx.translate(0, -29); ctx.scale(1, turn >= 0 ? Math.max(0.18, turn) : Math.min(-0.18, turn));
+    const body = () => {
+      ctx.beginPath();
+      ctx.moveTo(-48, -0.5);                                                 // the tip of the tail
+      ctx.quadraticCurveTo(-32, -3.5, -17, -6);                              // top of the tail
+      ctx.quadraticCurveTo(-4, -9, 9, -7.2);                                 // the back
+      ctx.quadraticCurveTo(15, -6.6, 18.5, -6.2);                            // the neck
+      ctx.quadraticCurveTo(22, -8.6, 25.5, -6.6);                            // the brow over the eye
+      ctx.lineTo(41, -3.4); ctx.quadraticCurveTo(44.5, -2.6, 44, -0.6);      // long flat snout, blunt tip
+      ctx.lineTo(27, 1.8);                                                   // under the lower jaw
+      ctx.quadraticCurveTo(20, 3.6, 14, 4.2);                                // the throat
+      ctx.quadraticCurveTo(-2, 8.5, -17, 4.2);                               // the belly, sagging
+      ctx.quadraticCurveTo(-32, 2, -48, 0.8);                                // under the tail
+      ctx.closePath();
+    };
+    // legs first, so the body sits over their tops: short, bent at the joint, hanging limp
+    const leg = (lx, ly, back) => {
+      const kx = lx + (back ? -3 : 2.5), ky = ly + 4.5, fx = kx + (back ? 1 : 3), fy = ky + 3.5;
+      ctx.strokeStyle = '#262617'; ctx.lineWidth = back ? 4.2 : 3.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+      ctx.strokeStyle = '#1a1a10'; ctx.lineWidth = 0.9;
+      ctx.beginPath(); for (const k of [-1.3, 0, 1.3]) { ctx.moveTo(fx, fy); ctx.lineTo(fx + 1.8, fy + 1.4 + k); } ctx.stroke();
+    };
+    leg(-14, 4, true); leg(-8, 5.5, true); leg(9, 5, false); leg(14, 4, false);
+    // the hide: dark olive on the back fading to a dull cream belly, then the fire's own browning
+    const hide = ctx.createLinearGradient(0, -9, 0, 7);
+    hide.addColorStop(0, '#2c2f1c'); hide.addColorStop(0.45, '#4a4a2c'); hide.addColorStop(0.8, '#7d7048'); hide.addColorStop(1, '#8d7a4c');
+    ctx.fillStyle = hide; body(); ctx.fill();
+    ctx.save(); body(); ctx.clip();
+    // the armour: offset rows of small plates over the back and tail, belly scales as a grid below
+    ctx.fillStyle = 'rgba(12,12,6,0.55)';
+    for (let row = 0; row < 3; row++) {
+      for (let x = -46 + (row % 2) * 1.6; x < 17; x += 3.2) {
+        const top = x < -17 ? -3.5 + (x + 48) / 31 * -2.5 : -6 - Math.sin((x + 17) / 34 * Math.PI) * 2.6;
+        ctx.fillRect(x, top + 0.4 + row * 2.1, 2.2, 1.4);
+      }
+    }
+    ctx.strokeStyle = 'rgba(40,32,16,0.45)'; ctx.lineWidth = 0.5; ctx.beginPath();
+    for (let x = -30; x < 16; x += 2.4) { ctx.moveTo(x, 1); ctx.lineTo(x, 9); }
+    for (let y = 1.8; y < 9; y += 1.8) { ctx.moveTo(-30, y); ctx.lineTo(16, y); }
+    ctx.stroke();
+    // char: blackened patches where the flames reach, and a fat sheen on the belly while it is lit
+    ctx.fillStyle = 'rgba(10,6,4,0.6)';
+    for (const [cx, cy, rx, ry] of [[-6, 5, 9, 3.2], [8, 4, 5, 2.4], [-24, 2.6, 6, 2], [-38, 1, 4, 1.4], [32, 0.5, 5, 1.6]]) {
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 0.35 * heat; ctx.fillStyle = '#d0741e';
+    ctx.beginPath(); ctx.ellipse(-4, 7, 20, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    // the double crest along the tail, and the dark outline round the whole animal
+    ctx.fillStyle = '#1d1e12';
+    for (let x = -44; x < -18; x += 3) {
+      const y = -1.2 + (x + 48) / 31 * -4.6;
+      ctx.beginPath(); ctx.moveTo(x - 1.3, y + 0.8); ctx.lineTo(x, y - 1.6); ctx.lineTo(x + 1.3, y + 0.8); ctx.fill();
+    }
+    ctx.strokeStyle = '#141409'; ctx.lineWidth = 0.9; ctx.lineJoin = 'round'; body(); ctx.stroke();
+    // the jaw line, closed, with a few teeth showing the way a crocodile's always do
+    ctx.strokeStyle = '#151208'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(24.5, -1.2); ctx.quadraticCurveTo(33, -0.4, 43.5, -1.4); ctx.stroke();
+    ctx.fillStyle = '#cfc4a0';
+    for (const x of [30, 33.5, 37, 40]) { ctx.beginPath(); ctx.moveTo(x, -0.9); ctx.lineTo(x + 0.5, 0.7); ctx.lineTo(x + 1, -0.9); ctx.fill(); }
+    // the eye under its ridge, shut and filmed over, and the nostril on the end of the snout
+    ctx.fillStyle = '#3a3a24'; ctx.beginPath(); ctx.ellipse(22.3, -7.3, 2.2, 1.3, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9a9468'; ctx.beginPath(); ctx.ellipse(22.5, -7.1, 1.1, 0.6, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#111108'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(21.4, -7.3); ctx.lineTo(23.6, -6.9); ctx.stroke();
+    ctx.fillStyle = '#141409'; ctx.beginPath(); ctx.ellipse(42.2, -2.9, 0.9, 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    stick(45, 1);
+    ctx.restore();
+  }
+
+
   drawProp(p) {
     const ctx = this.ctx;
     if (p.kind === 'mill') { this.drawMill(p); return; }
@@ -670,7 +852,8 @@ class Renderer {
   drawPropBody(p) {
     if (this.painted.ready && this.painted.drawProp(this, p)) return;
     const ctx = this.ctx;
-    if (p.kind === 'brazier') {
+    if (p.kind === 'brazier' && p.roast) this.drawRoast(p);
+    else if (p.kind === 'brazier') {
       this.shadow(p.x, p.y, p.r * 1.1, p.r * 0.55);
       ctx.fillStyle = PALETTE.brazier; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#2a2018'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r - 4, 0, Math.PI * 2); ctx.fill();
@@ -912,6 +1095,7 @@ class Renderer {
         ctx.fillStyle = PALETTE.ochre; ctx.fillRect(-5.5, -7, 3.2, 14);    // crossguard
         ctx.beginPath(); ctx.arc(-13, 0, 2.8, 0, Math.PI * 2); ctx.fill(); // pommel
       } else {
+        const k = TUNING.prop.weapon.shieldScale; ctx.scale(k, k);
         ctx.fillStyle = '#2a2622'; ctx.beginPath(); ctx.ellipse(1, 1.5, 12, 13.5, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = PALETTE.wood; ctx.beginPath(); ctx.ellipse(0, 0, 12, 13.5, 0, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#8d8a85'; ctx.lineWidth = 2.6;
@@ -926,7 +1110,7 @@ class Renderer {
         const n = TUNING.prop.weapon.uses.shield;
         for (let k = 0; k < n; k++) {
           ctx.fillStyle = k < p.uses ? PALETTE.bone : 'rgba(239,230,208,0.22)';
-          ctx.fillRect(p.x - (n * 5 - 2) / 2 + k * 5, p.y - 23, 3.2, 3.2);
+          ctx.fillRect(p.x - (n * 5 - 2) / 2 + k * 5, p.y - 30, 3.2, 3.2);
         }
       }
     } else if (p.kind === 'heal') {
@@ -950,13 +1134,18 @@ class Renderer {
           ctx.stroke();
         }
       } else {
-        // The ordinary one: a plain wooden bowl with milk standing in it, so what a run is offered
-        // every few rooms reads as milk rather than as the rarer, bigger patch a secret sometimes
-        // gives up instead.
-        ctx.fillStyle = PALETTE.wood; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6 + bob, 15, 6.5, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = PALETTE.woodHi; ctx.beginPath(); ctx.ellipse(p.x, p.y + 5 + bob, 15, 5.6, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.ellipse(p.x, p.y + 3.6 + bob, 11.5, 4.4, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(p.x - 3, p.y + 2.6 + bob, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+        // The ordinary one, a smaller sprout of the same grass rather than a bowl: a wooden bowl
+        // standing on boards read as a piece of dressing furniture rather than as something that
+        // heals, and the game already has one prop that IS a bowl (a lamp's oil dish). Same plant,
+        // fewer blades and no dirt patch of its own, so the rare find two rooms later still reads
+        // as more of it rather than as an unrelated thing.
+        for (let k = -2; k <= 2; k++) {
+          const lean = Math.sin(this.t * 1.6 + p.phase + k) * 2.2, bx = p.x + k * 2.2;
+          ctx.strokeStyle = k % 2 ? PALETTE.grassHi : PALETTE.grass; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(bx, p.y + 5 + bob);
+          ctx.quadraticCurveTo(bx + lean * 0.5, p.y - 2 + bob, bx + lean, p.y - 7 - Math.abs(k) * 0.5 + bob);
+          ctx.stroke();
+        }
       }
       if (p.graze > 0) {
         const frac = clamp(p.graze / TUNING.prop.heal.grazeTime, 0, 1);
@@ -1314,11 +1503,19 @@ class Renderer {
     if (e.elite) ctx.scale(e.champion ? TUNING.champion.scale : 1.28, e.champion ? TUNING.champion.scale : 1.28);
     if (lying) ctx.scale(1.35, 0.7);
 
-    if (paintedKey) this.painted.character(this,e,paintedKey,e.kind==='butcher'?58:e.kind==='dog'?42:e.kind==='seer'?38:42);
-    else if (e.kind === 'dog') this.drawHound(e);
-    else if (e.kind === 'wraith') this.drawWraith(e, r);
-    else this.drawCultist(e, r);
-    if (e.flash > 0) { ctx.globalAlpha = Math.min(0.8, e.flash * 4); ctx.fillStyle = PALETTE.bone; ctx.beginPath(); ctx.arc(0, 0, r + 1, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+    const body = () => {
+      if (paintedKey) this.painted.character(this,e,paintedKey,e.kind==='butcher'?58:e.kind==='dog'?42:e.kind==='seer'?38:42);
+      else if (e.kind === 'dog') this.drawHound(e);
+      else if (e.kind === 'wraith') this.drawWraith(e, r);
+      else this.drawCultist(e, r);
+    };
+    body();
+    // The hit flash: the same body again, burnt to a white silhouette. It used to be a disc laid
+    // over him, which read as a light going off near him rather than as him being struck.
+    if (e.flash > 0) {
+      ctx.save(); ctx.globalAlpha = Math.min(0.9, e.flash * 10); ctx.filter = 'brightness(0) invert(1)';
+      body(); ctx.restore();
+    }
     // Stars: he heard the scream and is still hearing it.
     if (e.dazed > 0) {
       ctx.fillStyle = PALETTE.fireHi;
@@ -1326,6 +1523,19 @@ class Renderer {
         const a = this.t * 7 + k * 2.1;
         ctx.beginPath(); ctx.arc(Math.cos(a) * r * 0.95, Math.sin(a) * r * 0.5 - r - 5, 3, 0, Math.PI * 2); ctx.fill();
       }
+    }
+    // Poisoned: a green film over the eyes and bubbles coming off him. Blind and slow reads at once.
+    if (e.poison > 0) {
+      const a = Math.min(1, e.poison * 1.5);
+      ctx.globalAlpha = 0.55 * a; ctx.fillStyle = PALETTE.venom;
+      ctx.beginPath(); ctx.ellipse(0, -r * 0.35, r * 0.8, r * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.venomHi;
+      for (let k = 0; k < 3; k++) {
+        const ph = (this.t * 0.8 + k / 3) % 1;
+        ctx.globalAlpha = a * (1 - ph);
+        ctx.beginPath(); ctx.arc(Math.sin(k * 2.4 + this.t * 2) * r * 0.6, -r - 2 - ph * 16, 2 + ph * 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
     if (e.burning > 0) this.flame(0, -4, 12, e.x, e.witchBurn);
     ctx.restore();
@@ -1628,7 +1838,7 @@ class Renderer {
     const pad = 14 * s;
     ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['props','OBJECTS'], ['music','MUSIC']];
+    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE']];
     const cols = Math.max(1, Math.floor((W - pad * 2 - 72 * s) / (80 * s)));
     tabs.forEach(([id, label], i) => this.devButton(d, pad + i % cols * 80 * s,
       pad + Math.floor(i / cols) * 24 * s, 76 * s, 20 * s, label, 'tab-' + id, d.tab === id));
@@ -1638,11 +1848,99 @@ class Renderer {
     else if (d.tab === 'levels') this.drawLevelTab(game, pad, top);
     else if (d.tab === 'enemies') this.drawEnemiesTab(game, pad, top);
     else if (d.tab === 'boons') this.drawBoonsTab(game, pad, top);
+    else if (d.tab === 'status') this.drawStatusTab(game, pad, top);
     else if (d.tab === 'props') this.drawPropsTab(game, pad, top);
     else if (d.tab === 'music') this.drawMusicTab(game, pad, top);
+    else if (d.tab === 'juice') this.drawJuiceTab(game, pad, top);
     else this.drawRuleTab(game, pad, top);
     // A room opened from either of the other two covers them: it is the deepest the tool goes.
     if (d.room) this.drawRoomSheet(game, pad);
+  }
+
+  // THE JUICE tab: `JUICE` (js/juice.js) as a table — every piece of game feel, whether it is in the
+  // game, new, or still in the backlog, with its trigger, its look, its size read live off TUNING
+  // and how to build it in Godot 4. Filter chips along the top, pages when it does not fit, a click
+  // on a row opens it out to its full text, and EXPORT hands the same table over as Markdown.
+  drawJuiceTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
+    const filter = d.juiceFilter || 'all';
+    const rows = JUICE.filter((j) => filter === 'all' || j.status === filter);
+    const count = (st) => JUICE.filter((j) => j.status === st).length;
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+    ctx.fillText('THE JUICE', pad, top + 10 * s);
+    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText(`${JUICE.length} effects · ${count('in')} in game · ${count('new')} new · ${count('backlog')} backlog · sizes read live off TUNING · click a row to open it`, pad + 90 * s, top + 10 * s);
+    [['all', 'ALL'], ['in', 'IN GAME'], ['new', 'NEW'], ['backlog', 'BACKLOG']].forEach(([id, label], i) =>
+      this.devButton(d, pad + i * 74 * s, top + 18 * s, 70 * s, 18 * s, label, 'juice-filter=' + id, filter === id));
+    this.devButton(d, W - pad - 90 * s, top + 18 * s, 90 * s, 18 * s, 'EXPORT .MD', 'juice-export', false);
+
+    const cols = [['EFFECT', 0.15], ['TRIGGER', 0.17], ['HOW IT LOOKS', 0.22], ['SIZE · TIME', 0.13], ['GODOT 4', 0.33]];
+    const tableW = W - pad * 2, gap = 8 * s, font = 8.8 * s, lineH = 11 * s;
+    let x = pad; const colX = cols.map(([, f]) => { const at = x; x += tableW * f; return at; });
+    const y0 = top + 44 * s;
+    ctx.font = `700 ${9 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    cols.forEach(([label], i) => ctx.fillText(label, colX[i], y0 + 9 * s));
+    ctx.fillStyle = 'rgba(239,230,208,0.15)'; ctx.fillRect(pad, y0 + 13 * s, tableW, s);
+
+    ctx.font = `400 ${font}px ${FONT}`;
+    const wrap = (text, w, max) => {
+      const words = String(text).split(' '), lines = [];
+      let line = '';
+      for (const word of words) {
+        const next = line ? line + ' ' + word : word;
+        if (ctx.measureText(next).width > w && line) { lines.push(line); line = word; } else line = next;
+      }
+      if (line) lines.push(line);
+      if (lines.length > max) { lines.length = max; lines[max - 1] = lines[max - 1].replace(/\s*\S*$/, '') + ' …'; }
+      return lines;
+    };
+    const cellsOf = (j, max) => [j.trigger, j.look, j.size(), j.godot].map((t, i) => wrap(t, tableW * cols[i + 1][1] - gap, max));
+    // Pages are cut by height, so a page break always falls between rows: walk the list once and
+    // start a new page whenever the next row would run off the bottom of the screen.
+    const bottom = H - pad - 22 * s, pages = [[]];
+    let h = 0;
+    rows.forEach((j, i) => {
+      const open = d.juiceSel === j.name;
+      const rh = Math.max(34 * s, Math.max(...cellsOf(j, open ? 99 : 3).map((c) => c.length)) * lineH + 10 * s);
+      if (h + rh > bottom - y0 - 18 * s && pages[pages.length - 1].length) { pages.push([]); h = 0; }
+      pages[pages.length - 1].push([j, rh]); h += rh;
+    });
+    const page = clamp(d.juicePage || 0, 0, pages.length - 1);
+    d.juicePage = page;
+    const tint = { in: [PALETTE.bone, 'rgba(239,230,208,0.12)'], new: [PALETTE.fireHi, 'rgba(242,162,51,0.28)'], backlog: [PALETTE.ash, 'rgba(120,110,100,0.18)'] };
+    const word = { in: 'IN GAME', new: 'NEW', backlog: 'BACKLOG' };
+    let y = y0 + 18 * s;
+    pages[page].forEach(([j, rh], i) => {
+      const open = d.juiceSel === j.name;
+      if (open) { ctx.fillStyle = 'rgba(185,135,58,0.12)'; ctx.fillRect(pad - 4 * s, y, tableW + 8 * s, rh); }
+      else if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, y, tableW + 8 * s, rh); }
+      d.rects.push({ x: pad - 4 * s, y, w: tableW + 8 * s, h: rh, id: 'juice-row=' + j.name });
+      ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+      const nameLines = wrap(j.name.toUpperCase(), tableW * cols[0][1] - gap, 2);
+      nameLines.forEach((l, k) => ctx.fillText(l, colX[0], y + 12 * s + k * lineH));
+      const [fg, bg] = tint[j.status];
+      ctx.font = `700 ${7.5 * s}px ${FONT_SC}`;
+      const chip = word[j.status] + ' · ' + j.cat, cw = ctx.measureText(chip).width + 8 * s, cy = y + 12 * s + nameLines.length * lineH - 6 * s;
+      ctx.fillStyle = bg; ctx.fillRect(colX[0], cy, cw, 11 * s);
+      ctx.fillStyle = fg; ctx.fillText(chip, colX[0] + 4 * s, cy + 8.5 * s);
+      ctx.font = `400 ${font}px ${FONT}`;
+      cellsOf(j, open ? 99 : 3).forEach((lines, c) => {
+        ctx.fillStyle = c === 3 ? '#b9d7c0' : c === 2 ? PALETTE.fireHi : PALETTE.bone;
+        lines.forEach((l, k) => ctx.fillText(l, colX[c + 1], y + 12 * s + k * lineH));
+      });
+      if (open) {
+        ctx.fillStyle = PALETTE.ash; ctx.font = `400 ${8 * s}px ${FONT}`;
+        ctx.fillText(`source: ${JUICE_SRC[j.src]}${j.code ? '   ·   code: ' + j.code : ''}`, colX[1], y + rh - 3 * s);
+      }
+      y += rh;
+    });
+    if (pages.length > 1) {
+      const by = H - pad - 18 * s;
+      this.devButton(d, pad, by, 60 * s, 18 * s, '‹ PREV', 'juice-page=-1', false);
+      this.devButton(d, pad + 66 * s, by, 60 * s, 18 * s, 'NEXT ›', 'juice-page=1', false);
+      ctx.font = `700 ${9 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ash; ctx.textAlign = 'left';
+      ctx.fillText(`PAGE ${page + 1} / ${pages.length}`, pad + 136 * s, by + 12.5 * s);
+    }
   }
 
   drawMusicTab(game, pad, top) {
@@ -2083,23 +2381,28 @@ class Renderer {
         edit: [...melee('bearer'), ['HP', ['champion', 'hp']], ['BOSS HP', ['champion', 'bossHp']]],
         note: 'A clubman built twice over: three hits before he stays down, four as an arena boss. Bigger and slower to match.' },
       { kind: 'butcher', tag: 'butcher', label: 'BUTCHER', cfg: TUNING.butcher, hp: TUNING.butcher.hp,
-        edit: [...melee('butcher'), ['HP', ['butcher', 'hp']], ['CHARGE AT', ['butcher', 'chargeMin']], ['CHARGE SPD', ['butcher', 'chargeSpeed']]],
-        note: `Two hits. Charges after ${TUNING.butcher.chargeMin}s of chasing, bulldozes doors and tables, blunders but keeps swinging on fire.` },
+        edit: [...melee('butcher'), ['HP', ['butcher', 'hp']], ['CHARGE AT', ['butcher', 'chargeMin']], ['CHARGE SPD', ['butcher', 'chargeSpeed']], ['CHARGE CD', ['butcher', 'chargeCooldown']]],
+        immune: ['blunder'],
+        note: `Four hits, and out-reaches a clubman. Charges after ${TUNING.butcher.chargeMin}s of chasing, bulldozes doors and tables. BLUNDER off keeps him swinging on fire instead of losing the room to it.` },
       { kind: 'dog', tag: 'dog', label: 'HOUND', cfg: TUNING.dog, hp: TUNING.dog.hp || 1,
         edit: [...melee('dog'), ['DODGE', ['dog', 'dodge']]],
-        note: `Never holds still. Dodges ${Math.round(TUNING.dog.dodge * 100)}% of headbutts, darts in from orbit, one at a time per pack. No grab, no bark.` },
+        immune: ['blunder'],
+        note: `Never holds still. Dodges ${Math.round(TUNING.dog.dodge * 100)}% of headbutts, darts in from orbit, one at a time per pack. No bark. Reached for BY THE COLLAR, it springs ${TUNING.dog.hop} tile back and the grab is spent. BLUNDER off keeps it darting on fire.` },
       { kind: 'seer', tag: 'seer', label: 'SEER', cfg: TUNING.seer, hp: TUNING.seer.hp,
         edit: [['SPEED', ['seer', 'speed']], ['DMG', ['seer', 'damage']], ['HP', ['seer', 'hp']],
           ['CAST', ['seer', 'castWind']], ['CAST CD', ['seer', 'castCooldown']], ['BLINK CD', ['seer', 'blinkCooldown']]],
         note: 'Never closes. Blinks away when you get near, paints a rune under himself, near-perfect trap sense.' },
       { kind: 'hunter', tag: 'hunter', label: 'HUNTER', cfg: TUNING.hunter, hp: TUNING.hunter.hp || 1,
         edit: [['SPEED', ['hunter', 'speed']], ['DMG', ['hunter', 'damage']],
-          ['AIM', ['hunter', 'aimTime']], ['RELOAD', ['hunter', 'reload']]],
-        note: `Keeps ${TUNING.hunter.keepMin}-${TUNING.hunter.keepMax} tiles off, fires on a reload timer. Empties a fixed mag once grabbed, never reloads again.` },
+          ['AIM', ['hunter', 'aimTime']], ['RELOAD', ['hunter', 'reload']],
+          ['WILD INSIDE', ['hunter', 'wildNear']], ['WILD', ['hunter', 'wildChance']], ['COCK HEARD', ['hunter', 'cockHear']]],
+        sound: 'cock',
+        note: `Keeps ${TUNING.hunter.keepMin}-${TUNING.hunter.keepMax} tiles off, fires on a reload timer. Cocks the rifle as he starts to aim — that click is the tell. Inside ${TUNING.hunter.wildNear} tiles ${Math.round(TUNING.hunter.wildChance * 100)}% of his shots go wild. Empties a fixed mag once grabbed, never reloads again.` },
       { kind: 'wraith', tag: 'wraith', label: 'WRAITH', cfg: TUNING.wraith, hp: TUNING.wraith.hp,
         edit: [['SPEED', ['wraith', 'speed']], ['DMG', ['wraith', 'damage']], ['HP', ['wraith', 'hp']],
           ['WINDUP', ['wraith', 'windup']], ['MANIFEST', ['wraith', 'manifest']], ['SOLID', ['wraith', 'solidAfter']], ['FADE', ['wraith', 'fadeCd']]],
-        note: 'No body, no collision, until it commits. Drifts to your flank or back, manifests, swings once, fades. Dies only in that window.' },
+        immune: ['fire', 'stun', 'grab'],
+        note: 'No body, no collision, until it commits. Drifts to your flank or back, manifests, swings once, fades. Dies only in that window. Dead already: an ordinary flame, a scream and BY THE COLLAR all find nothing to take hold of — witchfire still burns it.' },
     ];
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE BESTIARY', pad, top);
@@ -2141,8 +2444,24 @@ class Renderer {
         this.numChip(d, px, py, label, val, `enemy-edit=${path.join('.')}`);
         px += w + 5 * s;
       }
+      // A kind with a sound of its own gets a button to hear it, off the same call the game makes.
+      if (k.sound) this.devButton(d, nameX, ry + 40 * s, 58 * s, 13 * s, 'HEAR ' + k.sound.toUpperCase(), `enemy-sound=${k.sound}`, false);
+      // Immunity checkboxes: `TUNING.<kind>.immune.<flag>`, on where the flag is true. A kind with
+      // none of these listed has no immune object at all and nothing to click — fire, stun, a grab
+      // and the burning-blunder all read the same as every other man's.
+      if (k.immune) {
+        let fx = nameX;
+        for (const flag of k.immune) {
+          const on = !!(k.cfg.immune && k.cfg.immune[flag]);
+          const label = flag.toUpperCase();
+          ctx.font = `700 ${7.5 * s}px ${FONT_SC}`;
+          const fw = ctx.measureText(label).width + 10 * s;
+          this.devButton(d, fx, ry + 40 * s, fw, 13 * s, label, `enemy-flag=${k.tag}.immune.${flag}`, on);
+          fx += fw + 4 * s;
+        }
+      }
       ctx.fillStyle = 'rgba(239,230,208,0.62)'; ctx.font = `400 ${7.8 * s}px ${FONT}`;
-      const lines = this.wrap(k.note, W - pad - noteX - 6 * s).slice(0, 4);
+      const lines = this.wrap(k.note, W - pad - noteX - 6 * s).slice(0, 5);
       lines.forEach((l, li) => ctx.fillText(l, noteX, ry + 12 * s + li * 10 * s));
     });
 
@@ -2231,6 +2550,130 @@ class Renderer {
     });
   }
 
+  // STATUS: the three things that can be wrong with a man, the three reactions where two of them
+  // meet, and the goat's own poison, all off `TUNING.status` (and the few older numbers stun and
+  // fire already had). Every number is a chip and a click edits it through `enemy-edit=`, which is
+  // a plain path into TUNING — one editor for the whole tool. The matrix in the middle is the
+  // picture to remember: a cell is what happens when the row meets the column, in either order.
+  drawStatusTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, W = this.w, d = game.dev;
+    const chips = (list, x, y, maxX) => {
+      let px = x, py = y;
+      for (const [label, path] of list) {
+        let obj = TUNING; for (let j = 0; j < path.length - 1; j++) obj = obj[path[j]];
+        const val = obj[path[path.length - 1]];
+        const shown = typeof val === 'number' && !Number.isInteger(val) ? Math.round(val * 100) / 100 : val;
+        ctx.font = `700 ${8 * s}px ${FONT_SC}`;
+        const w = ctx.measureText(`${label} ${shown}`).width + 10 * s;
+        if (px + w > maxX) { px = x; py += 19 * s; }
+        this.numChip(d, px, py, label, val, `enemy-edit=${path.join('.')}`);
+        px += w + 5 * s;
+      }
+      return py + 19 * s;
+    };
+    const icon = (id, x, y, r) => {
+      if (id === 'poison') {
+        ctx.fillStyle = PALETTE.venom;
+        ctx.beginPath(); ctx.moveTo(x, y - r); ctx.quadraticCurveTo(x + r * 0.9, y + r * 0.2, x, y + r * 0.8);
+        ctx.quadraticCurveTo(x - r * 0.9, y + r * 0.2, x, y - r); ctx.fill();
+        ctx.fillStyle = PALETTE.venomHi; ctx.beginPath(); ctx.arc(x - r * 0.2, y + r * 0.15, r * 0.18, 0, Math.PI * 2); ctx.fill();
+      } else if (id === 'stun') {
+        ctx.fillStyle = PALETTE.fireHi;
+        for (let k = 0; k < 3; k++) { const a = this.t * 3 + k * 2.1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r * 0.7, y + Math.sin(a) * r * 0.35, r * 0.22, 0, Math.PI * 2); ctx.fill(); }
+      } else this.flame(x, y + r * 0.5, r * 1.1, 3, false);
+    };
+    const NAMES = { poison: 'POISON', stun: 'STUN', fire: 'FIRE' };
+    const COL = { poison: PALETTE.venomHi, stun: PALETTE.fireHi, fire: PALETTE.fire };
+    ctx.textAlign = 'left';
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('STATUSES AND REACTIONS', pad, top);
+    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText('read and edited live off TUNING.status · click a number to change it · js/status.js is the code', pad + 190 * s, top);
+
+    // ---- the three statuses ----
+    const ROWS = [
+      { id: 'poison', edit: [['TIME', ['status', 'poison', 'time']], ['STRIDE', ['status', 'poison', 'moveMul']],
+          ['TEMPO', ['status', 'poison', 'tempo']], ['PUDDLE', ['status', 'poison', 'pool']]],
+        note: 'Blind: a rifle cannot aim and a mage cannot paint, held or standing. Slow: STRIDE of his speed, and his own clock (windup, swing, recovery, reload) runs at TEMPO. Comes from the goat\'s poison souls and from any puddle. The goat himself never has it.' },
+      { id: 'stun', edit: [['BAAH', ['goat', 'scream', 'stun']], ['PARRY', ['goat', 'scream', 'balkStun']], ['CRATE', ['prop', 'crate', 'stun']]],
+        note: 'The stars (Enemy.dazed): THE FULL THROAT, the bare BAAH breaking a swing, DEAD WEIGHT, a crate in the face. He stands there and does nothing until it passes.' },
+      { id: 'fire', edit: [['BURNS', ['fire', 'burnRunTime']], ['POOL', ['fire', 'pool']], ['WITCH', ['fire', 'witch']]],
+        note: 'Alight, he blunders with no AI and dies when it burns out: one hit, so a two-heart man gets up once. The Butcher loses a heart a tick instead.' },
+    ];
+    const noteX = pad + 250 * s, rowH = 54 * s;
+    let y = top + 16 * s;
+    ROWS.forEach((r, i) => {
+      if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, y - 4 * s, W - pad * 2 + 8 * s, rowH); }
+      icon(r.id, pad + 14 * s, y + 18 * s, 11 * s);
+      ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = COL[r.id]; ctx.textAlign = 'left';
+      ctx.fillText(NAMES[r.id], pad + 34 * s, y + 12 * s);
+      chips(r.edit, pad + 34 * s, y + 18 * s, noteX - 8 * s);
+      ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.62)';
+      this.wrap(r.note, W - pad - noteX).slice(0, 4).forEach((l, k) => ctx.fillText(l, noteX, y + 10 * s + k * 10.5 * s));
+      y += rowH;
+    });
+
+    // ---- the matrix ----
+    y += 10 * s;
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText('WHERE TWO MEET', pad, y);
+    const REACT = {
+      'poison|fire': { name: 'IT GOES OFF', edit: [['RADIUS', ['status', 'blast', 'radius']], ['HIT INSIDE', ['status', 'blast', 'hitR']],
+          ['THROW', ['status', 'blast', 'impulse']], ['GOAT SHOVE', ['status', 'blast', 'goatPush']]],
+        note: 'A poisoned man catches, a burning man is poisoned, or a flame reaches a puddle. A hit on everyone inside HIT INSIDE tiles, a throw out to RADIUS, the goat shoved and never hurt; the puddle round it burns off.' },
+      'poison|stun': { name: 'STING', edit: [['HITS', ['status', 'sting', 'damage']]],
+        note: 'A poisoned man is stunned, or a stunned one poisoned. That many hits, and both statuses are spent, so it cannot fire twice off one of each.' },
+      'stun|fire': { name: 'SCALD', edit: [['HITS', ['status', 'scald', 'damage']]],
+        note: 'A stunned man catches, or a burning one is stunned. The stun is spent and the fire that has him does that many hits instead of one.' },
+    };
+    const ids = ['poison', 'stun', 'fire'], cw = Math.min(118 * s, (W - pad * 2) * 0.13), chH = 30 * s;
+    const mx = pad, my = y + 10 * s;
+    ids.forEach((id, k) => {
+      const hx = mx + cw * (k + 1), vy = my + chH * (k + 1);
+      icon(id, hx + 14 * s, my + 13 * s, 7 * s); icon(id, mx + 12 * s, vy + 14 * s, 7 * s);
+      ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = COL[id];
+      ctx.fillText(NAMES[id], hx + 26 * s, my + 17 * s); ctx.fillText(NAMES[id], mx + 24 * s, vy + 18 * s);
+    });
+    ids.forEach((a, i) => ids.forEach((b, j) => {
+      const cx = mx + cw * (j + 1), cy = my + chH * (i + 1);
+      const key = REACT[a + '|' + b] ? a + '|' + b : REACT[b + '|' + a] ? b + '|' + a : null;
+      ctx.fillStyle = key ? 'rgba(185,135,58,0.14)' : 'rgba(239,230,208,0.03)'; ctx.fillRect(cx + 2 * s, cy + 2 * s, cw - 4 * s, chH - 4 * s);
+      ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = key ? PALETTE.fireHi : 'rgba(239,230,208,0.2)';
+      ctx.textAlign = 'center'; ctx.fillText(key ? REACT[key].name : '—', cx + cw / 2, cy + chH / 2 + 3 * s); ctx.textAlign = 'left';
+    }));
+    // what each reaction does, beside the matrix
+    const lx = mx + cw * 4 + 18 * s;
+    let ly = my + 4 * s;
+    for (const key of Object.keys(REACT)) {
+      const R = REACT[key], [a, b] = key.split('|');
+      ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(`${NAMES[a]} + ${NAMES[b]} — ${R.name}`, lx, ly + 9 * s);
+      const after = chips(R.edit, lx, ly + 14 * s, W - pad);
+      ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)';
+      const lines = this.wrap(R.note, W - pad - lx).slice(0, 3);
+      lines.forEach((l, k) => ctx.fillText(l, lx, after + 6 * s + k * 10.5 * s));
+      ly = after + 12 * s + lines.length * 10.5 * s;
+    }
+
+    // ---- the goat's poison ----
+    y = Math.max(my + chH * 4 + 16 * s, ly + 6 * s);
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText('WHERE IT COMES FROM', pad, y);
+    const SRC = [
+      ['💦 SPLASH (butt)', [['REACH', ['status', 'splash', 'range']], ['BEHIND PAST', ['status', 'splash', 'back']]]],
+      ['🐍 VENOM JAW (grab)', [['PUDDLE HALF', ['status', 'jaw', 'half']]]],
+      ['⚡ CHARGED (grab)', [['RADIUS', ['status', 'charge', 'radius']], ['HIT INSIDE', ['status', 'charge', 'hitR']], ['THROW', ['status', 'charge', 'impulse']]]],
+      ['🦠 SOUR TUMBLE (roll)', [['PUDDLE HALF', ['status', 'tumble', 'half']]]],
+      ['🫧 VENOM SPIT (scream)', [['SPEED', ['status', 'spit', 'speed']], ['RANGE', ['status', 'spit', 'range']], ['PUDDLE HALF', ['status', 'spit', 'half']]]],
+    ];
+    let sy = y + 8 * s;
+    for (const [name, list] of SRC) {
+      ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'left';
+      ctx.fillText(name, pad, sy + 11 * s);
+      sy = chips(list, pad + 170 * s, sy, W - pad);
+    }
+    ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
+    ctx.fillText('the hold time of VENOM JAW and CHARGED, and the SPIT cooldown, are the boons\' own params on the BOONS tab', pad, sy + 8 * s);
+  }
+
   // THE FIXTURES: every kind of Prop that stands in a room, read live off TUNING the way the
   // bestiary reads enemies. The thumbnail is a real `Prop`, drawn with the game's own `drawProp` —
   // a brazier or a stand of arms shown here is the same call the game makes against it, so a change
@@ -2243,6 +2686,9 @@ class Renderer {
       { kind: 'brazier', label: 'BRAZIER', make: (x, y) => new Prop(x, y, 'brazier'), hits: ['HEADBUTT', 'BODY', 'THROWN', 'FIRE'],
         stats: `spill ${P.brazier.spill} tiles, alight ${P.brazier.spillTime}s, refills in ${P.brazier.spillCd}s`,
         note: 'A headbutt, or a body arriving fast enough, knocks a pool of coals out its far side. A crate or a weapon that reaches it goes up too, and a man already burning lights the next one he touches once KINDLING is taken.' },
+      { kind: 'brazier', label: 'THE ROAST', make: (x, y) => new Prop(x, y, 'brazier', { roast: true }), hits: ['HEADBUTT', 'BODY', 'THROWN', 'FIRE'],
+        stats: `${Math.round(P.brazier.roast * 100)}% of braziers, one a level at most · turns every ${(Math.PI * 2 / P.brazier.roastTurn).toFixed(1)}s`,
+        note: 'A brazier in every way that matters — lights, spills, burns — drawn as a campfire with a crocodile turning on a spit over it. Which ones roast is picked off the tile, so no seed changes for it.' },
       { kind: 'lamp', label: 'LAMP POST', make: (x, y) => new Prop(x, y, 'lamp'), hits: ['BODY', 'FIRE'],
         stats: `topples above ${Math.round(P.lamp.knock)}px/s of impact, pours oil ${P.lamp.poolRadius} tiles across`,
         note: 'Not a pillar — a fast body (flung, charging, or falling past it) knocks it over, and it pours a burning pool of oil where it lands. The only way to start a fire in a room with no brazier in it.' },
@@ -2250,8 +2696,8 @@ class Renderer {
         stats: `floors for ${P.crate.stun}s on a hit, bursts for ${P.crate.burstTime}s if thrown through flame`,
         note: 'The one thing on the floor you pick up and throw. Breaks on a door, table, gong or man; a burning tile makes it burst into a wider, longer fire instead of just breaking. Carried, it blocks one club for free, then it is gone.' },
       { kind: 'weapon', label: 'STAND OF ARMS', make: (x, y) => new Prop(x, y, 'weapon', { weapon: 'sword' }), hits: ['HEADBUTT', 'THROWN', 'BODY'],
-        stats: `sword: one throw, kills+sticks · shield: ${P.weapon.uses.shield} men or bullets before it snaps`,
-        note: 'Grab it, carry it, let go or press headbutt to throw it — there is no separate swing for a blade the goat cannot wield in his teeth. A sword goes through the first man it finds; a shield knocks a row flat and turns bullets while carried, and a man who swings into it eats the parry.' },
+        stats: `sword: ${P.weapon.uses.sword} cuts or walls, ${Math.round(P.weapon.swordShare * 100)}% of loose stands · shield: ${P.weapon.uses.shield} men or bullets before it snaps`,
+        note: 'Grab it, carry it, let go or press headbutt to throw it. A sword cuts whoever its blade touches, thrown or still in the teeth, and is gone after its second cut or wall; a shield knocks a row flat and turns bullets while carried, and a man who swings into it eats the parry.' },
       { kind: 'table', label: 'TABLE', make: (x, y) => new Prop(x, y, 'table'), hits: ['HEADBUTT', 'BODY'],
         stats: `pushes at ${Math.round(P.table.pushSpeed)}px/s, kills above ${Math.round(P.table.killSpeed)}px/s`,
         note: 'Shoved or charged, it stops anything smaller and turns bullets. Above killSpeed — mostly a Butcher’s charge — it kills whoever it hits and can take a door off its hinges on the way through.' },
@@ -2277,8 +2723,8 @@ class Renderer {
         stats: `${P.bell.buff}s of ×${P.bell.speedMul} speed, ×${P.bell.cooldownMul} faster cooldowns`,
         note: 'Rung, it buys a stretch of speed and quick hands for a noise the whole floor hears at once. A terrible trade in an empty room; the best one you get in a full one.' },
       { kind: 'coop', label: 'COOP & HEN', make: (x, y) => new Prop(x, y, 'coop'), hits: ['HEADBUTT', 'BODY'],
-        stats: `${P.coop.hits} hit to open · kicked at ${Math.round(P.chicken.launchSpeed)}px/s · kills once`,
-        note: 'The one thing in the compound on your side. Loose, she walks with you; kicked — a headbutt, not a throw, so no seventh button — she homes onto whoever she was aimed at and kills on contact, then comes apart. A miss only costs the walk back to her.' },
+        stats: `${P.coop.hits} hit to open · kicked at ${Math.round(P.chicken.launchSpeed)}px/s · kills once · +${P.chicken.saveHearts} heart if she reaches the stairs`,
+        note: 'The one thing in the compound on your side. Loose, she follows you round walls and steps round fire, teeth and drops; walk past her coop and it breaks on its own as it leaves the screen. Kicked, she homes onto a man and kills on contact. Bring her to the stairs for a heart for the rest of the run.' },
       { kind: 'cage', label: 'THE PEN', make: (x, y) => new Prop(x, y, 'cage'), hits: ['HEADBUTT'],
         stats: `${P.cage.hits} hits the first time a browser ever does it, ${P.cage.againHits} every time after`,
         note: 'The one object that is a lesson rather than a fixture: what it costs the first time is remembered (`penBroken`), so a run that has already learned the verb only pays the toll.' },
@@ -2512,6 +2958,7 @@ class Renderer {
     else if (g.state === 'stunned') { ctx.rotate(0.34); sx = 1.14; sy = 0.76; }   // knocked off his feet
     else if (g.state === 'ko') { ctx.rotate(0.5); sx = 1.15; sy = 0.72; }   // out cold, on his side
     ctx.scale(sx, sy);
+    if (g.sqLeft) { const a = g.sqLeft * Math.cos(TUNING.juice.squash.freq * g.sqT); ctx.scale(1 + a, 1 - a); }
     if (g.invuln > 0 && Math.floor(this.t * 30) % 2 === 0) ctx.globalAlpha = 0.5;
     const dmg = g.maxHp - g.hp;
     // He is drawn a quarter turn toward the camera, and built in three pieces that never merge into
@@ -2794,6 +3241,16 @@ class Renderer {
       for (const yy of [-12, -3]) rail(fx0, fy1 + yy, fx1, fy1 + yy);
       for (let x = fx0; x <= fx1; x += 32) post(x, fy1);
       ctx.restore();
+      // A black screen and three words before anything else in the game has shown itself: nothing
+      // else opens on black, so this is the one place a player has to be told what they are looking
+      // at is a memory rather than the game starting somewhere strange. Held, then bleeds away as
+      // the field itself fades up through it.
+      if (pr.sceneT < P.titleCard) {
+        const tp = pr.sceneT / P.titleCard, veil = 1 - clamp((tp - 0.55) / 0.45, 0, 1);
+        ctx.fillStyle = `rgba(9,7,8,${veil})`; ctx.fillRect(0, 0, w, h);
+        const textA = 1 - clamp((tp - 0.4) / 0.3, 0, 1);
+        word('SOME TIME AGO', cx, cy, Math.min(clamp(tp / 0.12, 0, 1), textA), 15);
+      }
     } else if (ph === 'road') {
       // Night, a moon, and a road going past under a truck that stays where it is.
       const sky = ctx.createLinearGradient(0, 0, 0, h * 0.55);
@@ -3059,6 +3516,9 @@ class Renderer {
         ctx.restore();
         ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
         ctx.fillText(SKILL_KEYS[b.skill], x + cw - 20 * s, y + 34 * s);
+      } else {
+        ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
+        ctx.fillText('BODY', x + cw - 20 * s, y + 20 * s);
       }
     }
     // The fourth choice: none of the three. Set apart from the cards — no border colour a card
@@ -3085,17 +3545,48 @@ class Renderer {
     const ctx = this.ctx;
     for (const r of game.rings) {
       const p = 1 - r.life / r.max;
-      ctx.strokeStyle = r.color; ctx.globalAlpha = (1 - p) * 0.35; ctx.lineWidth = 3;
+      ctx.strokeStyle = r.color; ctx.globalAlpha = (1 - p) * (r.width > 3 ? 0.7 : 0.35); ctx.lineWidth = (r.width || 3) * (1 - p * 0.6);
       ctx.beginPath(); ctx.arc(r.x, r.y, r.r * p, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.globalAlpha = 1;
+  }
+
+  // Hoof dust: soft discs that swell and thin out. Drawn on the ground, under everything standing.
+  drawPuffs(game) {
+    const ctx = this.ctx, D = TUNING.juice.dust;
+    ctx.fillStyle = PALETTE.bone;
+    for (const p of game.puffs) {
+      const k = 1 - p.life / p.max;
+      ctx.globalAlpha = 0.22 * Math.min(1, p.life / p.max * 2);
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r + D.grow * k, (p.r + D.grow * k) * TILT, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // A rifle's muzzle flash: one frame of a pointed star along the shot, then nothing.
+  drawFlares(game) {
+    const ctx = this.ctx, M = TUNING.juice.muzzle;
+    for (const f of game.flares) {
+      const k = f.life / M.life, L = M.size * (0.6 + 0.4 * k);
+      ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.a); ctx.globalAlpha = Math.min(1, k * 1.5);
+      ctx.fillStyle = PALETTE.fire;
+      ctx.beginPath(); ctx.moveTo(-2, -5); ctx.lineTo(L, 0); ctx.lineTo(-2, 5); ctx.lineTo(L * 0.3, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = PALETTE.fireHi;
+      ctx.beginPath(); ctx.moveTo(-1, -2.5); ctx.lineTo(L * 0.6, 0); ctx.lineTo(-1, 2.5); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(L * 0.2, -L * 0.35); ctx.lineTo(L * 0.28, 0); ctx.lineTo(L * 0.2, L * 0.35); ctx.lineTo(L * 0.12, 0); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
   }
 
   drawParticles(game) {
     const ctx = this.ctx;
     for (const p of game.parts) {
       ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillStyle = p.color;
-      if(p.color===PALETTE.blood||p.color===PALETTE.bloodDark) {
+      if (p.streak) {
+        // A spark is a line along its own flight, not a square: fast things read as streaks.
+        ctx.strokeStyle = p.color; ctx.lineWidth = p.size; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.03, p.y - p.vy * 0.03); ctx.stroke();
+      } else if(p.color===PALETTE.blood||p.color===PALETTE.bloodDark) {
         ctx.beginPath();ctx.ellipse(p.x,p.y,p.size*0.7,p.size*0.35,Math.atan2(p.vy,p.vx),0,Math.PI*2);ctx.fill();
       } else ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
     }
@@ -3211,11 +3702,28 @@ class Renderer {
   // The plain half of a hit taken: every corner reddens, not just the one the arc points from, so a
   // hit landing is never a thing you have to notice — it is a thing you cannot miss.
   drawHurtVignette(game) {
+    this.drawHeartbeat(game);
     if (!game.hurtVignette || game.hurtVignette.life <= 0) return;
     const V = TUNING.juice.hurtVignette, ctx = this.ctx, p = clamp(game.hurtVignette.life / V.life, 0, 1);
     const g = ctx.createRadialGradient(this.vcx, this.vcy, Math.min(this.vw, this.vh) * 0.3, this.vcx, this.vcy, Math.max(this.vw, this.vh) * 0.72);
     g.addColorStop(0, 'rgba(192,57,43,0)'); g.addColorStop(1, `rgba(192,57,43,${V.alpha * p})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, this.vw, this.vh);
+  }
+
+  // On the last heart the edges of the picture beat: two quick pulses and a rest, like a pulse
+  // rather than a siren. It says "one more and you are gone" without a word or a number.
+  heartbeat() {
+    const B = TUNING.juice.heartbeat, ph = (this.t * B.bpm / 60) % 1;
+    return Math.max(0, Math.sin(Math.min(1, ph / 0.14) * Math.PI)) + 0.6 * Math.max(0, Math.sin(clamp((ph - 0.2) / 0.14, 0, 1) * Math.PI));
+  }
+  drawHeartbeat(game) {
+    const g = game.goat, B = TUNING.juice.heartbeat;
+    if (!g || g.dead || game.state !== 'play' || g.hp > B.hp || g.maxHp <= B.hp) return;
+    const ctx = this.ctx, a = B.alpha * this.heartbeat();
+    if (a <= 0.005) return;
+    const grad = ctx.createRadialGradient(this.vcx, this.vcy, Math.min(this.vw, this.vh) * 0.35, this.vcx, this.vcy, Math.max(this.vw, this.vh) * 0.7);
+    grad.addColorStop(0, 'rgba(192,57,43,0)'); grad.addColorStop(1, `rgba(192,57,43,${a})`);
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, this.vw, this.vh);
   }
 
   drawUI(game) {
@@ -3228,8 +3736,11 @@ class Renderer {
     const HEART = HEART_GLYPH;
     const px = 2.6 * s;
     for (let i = 0; i < g.maxHp; i++) {
-      const ox = 14 * s + i * 22 * s, oy = top + 14 * s;
       const on = i < g.hp;
+      // The last heart standing throbs with the vignette, from its own centre.
+      const beat = on && g.hp <= TUNING.juice.heartbeat.hp && game.state === 'play' ? 1 + TUNING.juice.heartbeat.throb * this.heartbeat() : 1;
+      const px = 2.6 * s * beat;
+      const ox = 14 * s + i * 22 * s - (px - 2.6 * s) * HEART[0].length / 2, oy = top + 14 * s - (px - 2.6 * s) * HEART.length / 2;
       ctx.fillStyle = on ? PALETTE.blood : 'rgba(239,230,208,0.16)';
       for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) {
         if (HEART[r][q] !== '#') continue;
@@ -3309,26 +3820,32 @@ class Renderer {
       // and not a lockout: the button is simply not what threw it a moment ago.
       { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
         recover: g.state === 'recover' && g.recoverMax > 0 ? clamp(g.timer / g.recoverMax, 0, 1) : 0,
-        note: game.mods.bomb ? 'Ram him. Whoever you hit blows up a moment later.'
-          : 'Ram him. It only knocks him down: walls, fire and other men do the killing.' },
+        note: (game.mods.bomb ? 'Ram him. Whoever you hit blows up a moment later.'
+          : 'Ram him. It only knocks him down: walls, fire and other men do the killing.')
+          + (game.mods.splash ? ' Lowering your head poisons whoever is right behind you.' : '') },
       { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: 'RMB', cd: g.grabCd,
         max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
-        note: game.mods.grabMen ? 'Press near a box, a blade, a shield or a man to carry it. Let go to throw.'
-          : 'Press near a box, a blade or a shield to carry it. Let go to throw. Men are too heavy for now.' },
+        note: (game.mods.grabMen ? 'Press near a box, a blade, a shield or a man to carry it. Let go to throw.'
+          : 'Press near a box, a blade or a shield to carry it. Let go to throw. Men are too heavy for now.')
+          + (game.mods.chargeHold ? ` Held ${game.mods.chargeHold}s, it is charged and goes off where it lands.`
+            : game.mods.venomHold ? ` Held ${game.mods.venomHold}s, it sprays poison all the way down.` : '') },
       { id: 'roll', name: 'ROLL', cap: 'E', cd: g.rollCd,
         max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
-        note: game.mods.rollStun > 0 ? 'Dodge. Nothing can hit you, and anyone you roll through is stunned.'
-          : 'Dodge. Nothing can hit you mid-roll, but you have to get up after it.' },
-      { id: 'scream', name: fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: 'SPC',
+        note: (game.mods.rollStun > 0 ? 'Dodge. Nothing can hit you, and anyone you roll through is stunned.'
+          : 'Dodge. Nothing can hit you mid-roll, but you have to get up after it.')
+          + (game.mods.venomRoll ? ' You get up out of a puddle of poison.' : '') },
+      { id: 'scream', name: game.mods.spit ? 'SPIT' : fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: 'SPC',
         cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0,
-        half: !fire && !game.mods.screamStun,
-        note: fire ? 'Breathe fire the way you are running. Long wait after it.'
+        half: !fire && !game.mods.screamStun && !game.mods.spit,
+        note: game.mods.spit ? 'Spit a glob of poison where you point. It bursts into three tiles by three of it.'
+          : fire ? 'Breathe fire the way you are running. Long wait after it.'
           : game.mods.screamStun ? 'A shout. Everyone who hears it is stunned.'
             : 'A shout. It breaks the swing of anyone right on top of you, and walks everyone else to where you shouted.' },
     ];
     this.skillHover = null;
     const box = 32 * s, gap = 7 * s, right = this.w - 14 * s;
     const x0 = right - rows.length * box - (rows.length - 1) * gap;
+    this.drawBodySouls(game, x0 - gap - box, top, box);
     rows.forEach((row, i) => {
       const x = x0 + i * (box + gap), y = top;
       const boons = game.boons.filter((b) => b.skill === row.id);
@@ -3391,6 +3908,29 @@ class Renderer {
     return end;
   }
 
+  // The souls that belong to no button — THE ORACLE, SURE HOOVES, THICK HIDE and the rest — in a
+  // square of four just left of the rail, one cell a slot. An empty cell is drawn too: the square
+  // says how many a build can hold (`BOON_SLOTS.general`) as well as what is in it. The pointer on
+  // a cell brings up the same note a verb's chip does.
+  drawBodySouls(game, x, y, box) {
+    const ctx = this.ctx, s = this.hs, n = BOON_SLOTS.general, cols = 2, gap = 2 * s;
+    const cell = (box - gap * (cols - 1)) / cols;
+    const body = game.boons.filter((b) => !b.skill);
+    const m = game.input.mouse;
+    for (let i = 0; i < n; i++) {
+      const cx = x + (i % cols) * (cell + gap), cy = y + Math.floor(i / cols) * (cell + gap), b = body[i];
+      ctx.fillStyle = 'rgba(13,10,12,0.5)'; ctx.fillRect(cx, cy, cell, cell);
+      ctx.strokeStyle = b ? 'rgba(185,135,58,0.85)' : 'rgba(239,230,208,0.14)'; ctx.lineWidth = 1.2 * s;
+      ctx.strokeRect(cx, cy, cell, cell);
+      if (!b) continue;
+      ctx.textAlign = 'center'; ctx.font = `${cell * 0.76}px ${FONT}`; ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(b.emoji || '•', cx + cell / 2, cy + cell * 0.8);
+      if (!game.touch.active && m.x >= cx && m.x <= cx + cell && m.y >= cy && m.y <= cy + cell)
+        this.skillHover = { row: { name: b.name, note: b.desc }, x: cx, y: y + box + 35 * s, hot: false, boons: [] };
+    }
+    ctx.textAlign = 'left';
+  }
+
   // What the chip under the pointer does, in words. The rail says which key throws a verb and the
   // note says what the verb is — so the sentence is there when it is wanted and out of the way the
   // rest of the time, which is the opposite of a caption that lives on the screen for ten minutes.
@@ -3423,6 +3963,23 @@ class Renderer {
   // The four verbs as icons, drawn around the origin with a half-size of h. Each one carries what the
   // souls have added to it, so the rail changes shape over a run instead of only gaining words.
   skillIcon(id, h, game, fire) {
+    this.skillIconBase(id, h, game, fire);
+    // The poison souls and the charge add a mark in the corner of the verb they ride on: a green
+    // drop for poison, a yellow spark for a charge. The spit draws its own glob instead.
+    const m = game.mods, ctx = this.ctx;
+    const venom = id === 'butt' ? m.splash : id === 'grab' ? m.venomHold > 0 : id === 'roll' ? m.venomRoll : false;
+    if (venom) {
+      ctx.fillStyle = PALETTE.venom;
+      ctx.beginPath(); ctx.moveTo(h * 0.95, h * 0.35); ctx.quadraticCurveTo(h * 1.35, h * 0.85, h * 0.95, h * 1.05);
+      ctx.quadraticCurveTo(h * 0.55, h * 0.85, h * 0.95, h * 0.35); ctx.fill();
+    }
+    if (id === 'grab' && m.chargeHold > 0) {
+      ctx.fillStyle = PALETTE.fireHi;
+      ctx.beginPath(); ctx.moveTo(h * 1.05, h * 0.2); ctx.lineTo(h * 0.7, h * 0.72); ctx.lineTo(h * 0.95, h * 0.72);
+      ctx.lineTo(h * 0.8, h * 1.1); ctx.lineTo(h * 1.2, h * 0.55); ctx.lineTo(h * 0.95, h * 0.55); ctx.closePath(); ctx.fill();
+    }
+  }
+  skillIconBase(id, h, game, fire) {
     const ctx = this.ctx, m = game.mods;
     if (id === 'butt') {
       const grow = clamp(m.headbuttReach, 1, 1.5);
@@ -3495,6 +4052,13 @@ class Renderer {
     // scream: an open mouth throwing either sound or fire
     ctx.fillStyle = PALETTE.bone;
     ctx.beginPath(); ctx.ellipse(-h * 0.55, 0, h * 0.3, h * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+    if (m.spit) {                                                      // Venom Spit: a glob on its way
+      ctx.fillStyle = PALETTE.venom; ctx.beginPath(); ctx.arc(h * 0.45, 0, h * 0.42, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.venomHi; ctx.beginPath(); ctx.arc(h * 0.33, -h * 0.13, h * 0.13, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(143,179,58,0.55)';
+      ctx.beginPath(); ctx.arc(h * 1.05, -h * 0.35, h * 0.14, 0, Math.PI * 2); ctx.arc(h * 1.1, h * 0.3, h * 0.1, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
     if (fire) {
       const gl = ctx.createLinearGradient(-h * 0.3, 0, h * 1.1, 0);
       gl.addColorStop(0, PALETTE.fireHi); gl.addColorStop(1, 'rgba(242,162,51,0.15)');

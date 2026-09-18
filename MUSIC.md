@@ -50,6 +50,14 @@ voices. Its bass is sparse, its pad is thinner and higher, and the melody leaves
 and replies in anxious semitones. Separate idle/spotted/chase/combat motifs keep that uncertainty
 even as the rhythm becomes urgent. Level 2 restores the established walking bed.
 
+**The opening scene has its own arc.** `roomMusicScene` returns an empty scene the instant
+`game.state !== 'play'`, which otherwise left the whole prologue and the pen sitting flat on
+`idle`. `INTRO_STAGE` (`js/audio.js`) maps `game.intro.phase` onto the same idle/spotted/chase/
+combat ladder a run's own encounters climb — the meadow stays idle and is the one phase that
+borrows the ordinary theme instead of `FIRST_MUSIC` (nothing has gone wrong yet), the truck is
+spotted, the dark is chase, and the men closing in and taking her hold chase through to combat on
+the blow itself. `black`/`wake` ease back to idle since the beat is over by then.
+
 Three one-shot phrases use the same clock and music volume:
 
 - **LEVEL CLEAR, 2 bars:** a rising triangle line with a final major-third release.

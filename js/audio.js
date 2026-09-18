@@ -33,6 +33,14 @@ const MUSIC_CUES = {
     chords: [[0,[0,7,14],2,14],[16,[0,7,12],4,14]] },
 };
 const MUSIC_STAGES = ['idle', 'spotted', 'chase', 'combat'];
+// The opening scene has an arc of its own: the meadow is the one bright cue in the game and the
+// only phase that leaves the frightened first-level theme for the ordinary one (`updateScene`
+// reads this against `phase`), then the truck, the dark and the men closing in climb the same
+// idle/spotted/chase/combat ladder a run's own encounters climb, peaking on the blow that takes
+// her. `black`/`wake` ease back down since the beat is already over by then.
+const INTRO_STAGE = { meadow: 'idle', road: 'spotted', dark: 'chase', cloth: 'chase',
+  huddle: 'chase', approach: 'chase', gate: 'chase', grab: 'combat', fade: 'combat',
+  black: 'idle', wake: 'idle' };
 const MUSIC_ACTIONS = { headbutt: { label: 'BUTT', degree: 0 }, roll: { label: 'ROLL', degree: 2 },
   throw: { label: 'THROW', degree: 4 }, scream: { label: 'BAAH', degree: 5 } };
 // Same scale and clock, but different phrasing: suspended warning, running ostinato, hard accents.
@@ -437,7 +445,16 @@ class GameAudio {
     }
     this.sceneTimer -= dt;
     if (game.state !== 'play' || !game.goat || game.goat.dead || game.dev.rules) {
-      this.scene = roomMusicScene(game); this.beatScene = { ...this.scene };
+      this.scene = roomMusicScene(game);
+      // `roomMusicScene` returns empty (no threat, no room) the moment state is not 'play', so the
+      // opening scene otherwise sits flat on 'idle' from the first frame to the last. It has its own
+      // beat instead — see `INTRO_STAGE`.
+      if (game.state === 'intro' && game.intro) {
+        const ph = game.intro.phase;
+        this.scene.first = ph !== 'meadow';
+        this.scene.stage = INTRO_STAGE[ph] || 'idle';
+      }
+      this.beatScene = { ...this.scene };
       this.resetAmbience(); this.resetEncounter(); this.musicEvents.length = 0; this.sceneTimer = 0; return;
     }
     if (this.sceneTimer > 0) return;
@@ -808,6 +825,15 @@ class GameAudio {
   }
   sfxRoll() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.22, { gain: 0.3, hp: 260, lp: 2200 }); this.tone(160, t, 0.18, { gain: 0.25, sweep: 0.45, type: 'triangle' }); }
   // The hound: a jaw snapping shut, dry and close.
+  // A rifle cocked: the bolt back and home, two dry clicks of metal a tenth of a second apart. It is
+  // the one tell a rifle gives, so it is bright and short and sits above everything else in the mix.
+  sfxCock(vol = 1) {
+    if (!this.ctx || this.muted || vol <= 0.02) return; const t = this.now();
+    this.noise(t, 0.03, { gain: 0.45 * vol, hp: 2600, lp: 9000 });
+    this.tone(1500, t, 0.03, { gain: 0.12 * vol, sweep: 0.6, type: 'square' });
+    this.noise(t + 0.11, 0.045, { gain: 0.55 * vol, hp: 1400, lp: 7000 });
+    this.tone(720, t + 0.11, 0.05, { gain: 0.16 * vol, sweep: 0.5, type: 'square' });
+  }
   sfxSnap() {
     if (!this.ctx || this.muted) return; const t = this.now();
     this.noise(t, 0.05, { gain: 0.35, hp: 1800, lp: 9000 });

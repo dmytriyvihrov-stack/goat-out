@@ -5,6 +5,187 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.38 — a rarer, real crocodile, two souls cut down, a brute too big to carry, and what killed you
+
+**The roast is a find.** At most one a level, and about one level in four has one (`brazier.roast`
+0.3 → 0.02, capped in `gen.js`). The crocodile is drawn as the animal now — dark olive hide, rows of
+armour, a long flat snout with its teeth showing, legs hanging and the belly charred — rather than a
+bright green patch with a white border, which read as a shirt logo.
+
+**LONG HORNS and SURE HOOVES, 30% off the bonus.** Reach 1.55 → 1.38, throw 1.35 → 1.25, speed
+1.18 → 1.13. Both were the pick every run.
+
+**The brute cannot be taken in the teeth.** Like the Butcher, he is put down by the room; reaching for
+either with BY THE COLLAR says TOO BIG.
+
+**The death card names what did it.** `Goat.damage` carries a source, and the last line of the card
+reads KILLED BY A CLUBMAN / THE BUTCHER / FIRE / THE WHEEL / THE DROP… where it used to say click
+to try again.
+
+---
+
+## 1.37 — juice, a JUICE tab, a door that gives from the side, and a roast
+
+**The door by the wall.** A headbutt thrown with the goat's nose already against stone bonked and
+ended the lunge on its first frame, before the hit check ever ran — so the vault's iron door, hung in a
+one-tile gap in a wall, only took a blow from dead centre and nothing from beside its ends. The blow
+now lands before the bonk, and a door reaches a little further (`door.reachSlack`) from a wider cone.
+
+**New juice.** A white silhouette hit flash on every man a headbutt lands on; an impact ring and spark
+streaks at the point of contact; a pale shockwave off every kill; hoof dust on the lunge, the roll, the
+landing and a full run-up; a squash spring on the goat when a blow lands, when he is hit and when a
+roll ends; a muzzle flash on every rifle shot; and on the last heart the edge of the screen beats and
+the heart on the HUD throbs with it. All of it under `TUNING.juice`.
+
+**The JUICE tab.** A new tab in the level tool (`#juice`): 41 effects — in game, new, and backlog —
+each with its trigger, how it looks, its size and time read live off TUNING, where it lives in the
+code, where the idea comes from (Vlambeer's *Art of Screenshake*, *Juice it or lose it*, Swink, GMTK)
+and how to build it in Godot 4. EXPORT downloads it as Markdown; `node tools/juice-md.js` writes
+`JUICE.md`.
+
+**The roast.** About a third of the braziers are now a campfire with a crocodile turning on a spit,
+drawn in the style of an embroidered patch. It is a brazier in every way that plays.
+
+---
+
+## 1.36 — a heavier Butcher, a wraith the world cannot touch, and an opening scene with an arc
+
+**Footstep noise was a coin flip, not a clock.** `Math.random() < dt * 4` could go a half-second
+without landing, which let a run right up on somebody's back read as luck rather than as noise; it is
+a timer now (`Goat.stepNoiseTimer`, `TUNING.noise.footstepGap`), the same shape as the goat's own
+hoofprint clock, so running for any real stretch always says so. `noise.footstep`'s own radius came
+up a tile (2 → 3) with it, so the warning is not only heard once you are already close enough to touch him.
+
+**The Butcher was reading as a bigger clubman rather than as a heavier one.** A fourth heart, a reach
+up a fifth (1.08 → 1.35 tiles, so he finally out-reaches the man he is twice the width of), and a
+charge that asks for less ground (`chargeMin` 4 → 3 tiles) and comes back sooner (`chargeCooldown`
+2.5s → 1.7s) — the read on him was that the charge almost never happened, and when it did the room
+was over before he could line up a second one.
+
+**Immunity is a checkbox now, per kind, on the ENEMIES tab.** `TUNING.<kind>.immune` holds whichever
+of `fire` / `stun` / `grab` / `blunder` a kind does not answer to, read live by `Enemy.ignite`, `daze`
+and `Goat.tryGrab`'s BY THE COLLAR filter — the same write-through every other dial in the tool
+already has. The wraith carries all three of the first: a dead thing does not catch from an ordinary
+hearth (witchfire still finds it — that is a Seer's doing), does not lose its head to a scream (`daze`
+used to freeze its manifest sequence in place, which was a workaround for not having this at all), and
+BY THE COLLAR already had nothing to close on. The Butcher and the hound carry `blunder`: fire used to
+take every kind's AI and send it wandering at random for the length of the burn (`ignite` forced
+`state = 'burning'`, which the per-kind `update` has no branch for), and a boss who lost the fight to
+his own bad footing while alight read as the flame doing the room's work rather than the goat. Marked
+immune to it, `ignite` leaves `state` alone, so the per-kind `update` keeps dispatching normally — he
+still bleeds hearts for the fire, he just does not lose the fight to it.
+
+**Milk went back to being grass.** The ordinary heal a level hands out on its own rhythm was a plain
+wooden bowl for a few versions; a bowl standing on a floor of boards read as furniture rather than as
+a thing that heals. `Renderer.drawProp` paints it as a smaller sprout of the same grass the rarer,
+bigger secret-wall patch already is — size and a patch of dirt are what tell the two apart now, not
+the plant. The `+1` / `+2` heart split behind a secret wall is unchanged.
+
+**The opening scene has a mood now.** `roomMusicScene` returns empty the instant `game.state !== 'play'`,
+which left the whole prologue and the pen scene sitting on flat `idle` from the first frame to the
+last — nothing built. `INTRO_STAGE` (`js/audio.js`) reads `game.intro.phase` onto the same
+idle/spotted/chase/combat ladder a run's own encounters climb: the meadow stays idle and is the one
+phase that borrows the ordinary theme instead of the frightened `FIRST_MUSIC` (nothing has gone wrong
+yet), the truck is spotted, the dark is chase, and the men closing in through the moment she is taken
+climb to combat on the blow itself. See `MUSIC.md`.
+
+**The meadow opens on black.** `TUNING.intro.prologue.titleCard` seconds of SOME TIME AGO over a
+fading veil, so the one screen in the game that opens on nothing reads as a memory starting rather
+than as the game itself starting somewhere strange.
+
+---
+
+## 1.35 — poison, three reactions between statuses, and a build with slots
+
+**Poison** is a new status (`js/status.js`, numbers in `TUNING.status`). A poisoned man is **blind** —
+a rifle cannot aim and a mage cannot paint, held or standing — and **slow**: his stride is `moveMul`
+and his own clock (windup, swing, recovery, reload) runs at `tempo`. It shows as a green film over
+his eyes and bubbles coming off him. The goat is never poisoned: every source of it is his.
+
+**Where two statuses meet, they react**, in either order:
+- POISON + FIRE — **it goes off**: a small green blast, a hit inside `blast.hitR`, a throw out to
+  `blast.radius`, the goat shoved and never hurt. A flame reaching a puddle does the same.
+- POISON + STUN — **sting**: one hit, and both statuses are spent.
+- STUN + FIRE — **scald**: the fire does two hits instead of one (a Seer lit while dazed stays down).
+
+**Five new actives**, one on each button plus a second on grab:
+- 💦 SPLASH (butt) — lowering the head poisons whoever is right behind the goat.
+- 🐍 VENOM JAW (grab) — held two seconds, a man or a thing leaves the mouth dripping: poison all the
+  way down its flight and a 3×3 puddle where it stops.
+- ⚡ CHARGED (grab) — held two seconds, it is charged and goes off where it lands.
+- 🦠 SOUR TUMBLE (roll) — every roll ends in a 3×3 puddle.
+- 🫧 VENOM SPIT (scream) — a glob along the pointer that bursts into a 3×3 puddle.
+
+A ring closes round whatever is in his mouth while the two seconds run.
+
+**A build has slots now** (`BOON_SLOTS`): one active a button, two passives under it, and four body
+passives that belong to no button. No card is dealt for a full slot. BY THE COLLAR is a `key` — it
+opens half a verb rather than bending it — and counts against nothing, so DEVOUR is still reachable.
+
+**The body passives have a place on the HUD**: a square of four cells left of the skill rail, empty
+cells drawn so the cap reads. The pointer on one brings up its note. A body card says BODY where a
+verb's card shows its key.
+
+**The tool has a STATUS tab** (`#status`): the three statuses, the reaction matrix and where poison
+comes from, every number editable.
+
+---
+
+## 1.34 — eleven playtest fixes: a sword that cuts, a hen that follows, men who wait for the screen
+
+The death card says **DIED** rather than THE GOAT DIED, and names the level (`LEVEL 2 · THE YARD`):
+a death is where somebody puts the game down, and the next time they pick it up the one thing they
+will not remember is how far in they were.
+
+**The shield is bigger** — `prop.weapon.shieldScale` draws it 1.45× on the rack and in the mouth,
+painted or primitive — and it covers more to match (`coverR` 30 → 38, `coverArc` 2.5 → 3.0). A bigger
+shield that stopped the same arc would have been a lie.
+
+**The sword is two lives now**, like the shield: two men, or a man and a wall. A thrown blade that
+hits stone drops there NOTCHED rather than snapping outright. And it **cuts while it is still in the
+teeth** — `Goat.cutWith` kills whoever the blade touches, spending a life each time, `cutGap` apart.
+That makes it the strongest thing in a room, so it is rarer: a loose or secret stand is a sword
+`swordShare` (30%) of the time, and a lone template stand is the shield. The ambush room still
+always hands you the sword.
+
+**A rifle cocks before he fires.** `sfxCock` — two dry clicks — plays the moment a hunter starts to
+aim, loud up close and gone at `hunter.cockHear` tiles, never from a room the fog is hiding. It is
+the one tell a rifle gives and it is given by ear. The bestiary row has a HEAR COCK button.
+**Point blank he flinches**: inside `hunter.wildNear` (2) tiles, `wildChance` (half) of his shots go
+off by `wildSpread` to twice that. Both are in the bestiary note and editable there.
+
+**A hound reached for BY THE COLLAR springs back a tile** (`dog.hop` over `dog.hopTime`) and the
+grab is spent as if something had been thrown. It used to close on nothing.
+
+**Men wake when they reach the screen.** An enemy is `woke` the first frame he stands within
+`ai.wake` tiles of the edge of the view, and until then he is not simulated at all — no hearing, no
+walking, no shooting. Once woke he lives normally, so a chase that runs off the side of the picture
+keeps running. A throw, a fire or a mouth also wakes him. Before, a man in a room wider than the
+screen could hear, close and shoot from somewhere the player had never seen him.
+
+**The touch controls no longer vanish.** Any `keydown` switched the game to keyboard mode, and a
+phone's volume rocker is a keydown — turning the sound down a few seconds in took the controls away
+for good. Only real playing keys (`KEYBOARD_KEY`) do that now. On a touch-first device (`coarse`)
+every pointer is treated as a finger too, because some phone browsers report a tap as `mouse`.
+
+**Nobody spawns inside a crate.** A spawn marker and a crate scattered later could share a tile, and
+the man stood wedged in the box the whole level. The generator now walks any such spawn out to the
+nearest clear floor of his room (`inFurniture`), and `GEN_RULES.furniture` holds it.
+
+**The hen** walks the flow field the men chase on instead of a straight line, so she follows through
+doorways and round walls rather than stopping at the first one; she steers round anything
+`hazardAt` calls a hazard, and keeps a chosen detour for `detourFor` so she does not dither on the lip
+of a fire. **A coop you walk past breaks on its own** as it slides off the trailing edge of the screen
+— SHE BROKE OUT. And **a hen that reaches the stairs with you** (inside `saveR` tiles, or in your
+mouth) is a card — THE HEN CAME WITH YOU — and `saveHearts` extra max heart for the rest of the run,
+once a level. It is `game.henHearts`, saved with the run.
+
+**THE ORACLE no longer sees everything.** It lit the whole 26-tile fog radius through stone; now it
+lights `fog.oracle` (11) tiles through walls and the ordinary shadowcast decides past that, so the far
+corners of the screen stay dark.
+
+---
+
 ## 1.33 — detection, chase and combat music, and a second round of playtest fixes
 
 Level 1 gains a frightened, uncertain variation with its own idle/spotted/chase/combat motifs.

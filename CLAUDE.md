@@ -77,6 +77,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/input.js` | `TouchUI` (on-screen controls) and `autoAim`. |
 | `js/entities.js` | `Goat`, `Prop` (every world object), `Bullet`. |
 | `js/enemies.js` | `Enemy` — one class, behaviour branches on `kind`. |
+| `js/status.js` | `Status`: poison, the three reactions between poison / stun / fire, puddles, the spit glob, thrown things that drip or are charged. |
 | `js/render.js` | Everything drawn. Roughly half the codebase. |
 | `js/rules.js` | `GEN_RULES`, the generator's promises with a `check(level)` each; `checkRules`, `roomsOf`, `levelFacts`. Read by the dev drawer's RULES page and by `tools/balance.js`, so a rule is written once. |
 | `js/game.js` | State machine, fixed-step loop, input plumbing, entity-vs-entity collision, boons, dev drawer. |
@@ -85,6 +86,8 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/serve.js` | Dev server. Also accepts `POST /shot?name=x` with a data URL and writes a PNG to `tools/shots/`. |
 | `tools/harness.js` | Console test harness. See *Testing*. |
 | `tools/balance.js` | Prints the difficulty curve and the canon/mix split of every level, runs every rule in `js/rules.js` over many seeds, and fails on a broken one. |
+| `js/juice.js` | `JUICE`, the game-feel catalogue: every effect with its trigger, look, size (read off `TUNING`), code pointer, source and a Godot 4 recipe. Read by the JUICE tab and by `tools/juice-md.js`. |
+| `tools/juice-md.js` | Writes `JUICE.md` from `js/juice.js`, for handing the list to somebody who never opens the game. |
 | `tools/check-sync.js` | Checks the working tree, `origin/main` and the published artifact are one build. See *Publishing*. |
 | `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
 | `ART_HANDOFF.md` | What is painted and wired in vs. still placeholder shapes, and how to paint the next thing. |
@@ -144,12 +147,22 @@ or kept answering noise from a room that had gone dark behind the fog because hi
 read as seen after he had long since walked out of it. `e.room` itself is never touched by this — the
 sealed-room and soul-gate bookkeeping still need it to mean "who he was put with," not "where he is."
 
+On top of that, **a man does not live until he has been on the screen.** `e.woke` is set the first
+frame he stands within `ai.wake` tiles of the edge of the view (or is held, flung or burning); until
+then the loop skips him outright — no hearing, no walking, no shots. Once woke he stays woke, so a
+chase that runs off the side of the picture keeps running. A room wider than the screen used to have
+men in its far half hearing, closing and shooting from somewhere the player had never seen.
+
 **A front and nothing else.** `canSeeGoat` is a cone and a line of sight and nothing else. There used to
 be a close-range bypass — inside 2.5 tiles he saw you wherever you stood — which took away the one thing
 the cone was for; what is left of it is `TUNING.ai.feel`, a couple of pixels past the two bodies where
 being walked into counts as being seen. A `watchful` man (the killbox) has no cone at all and a wraith
 needs no eyes. What gives the goat away behind a man is the noise system, which already turns a man to
 face what he heard: running emits `noise.footstep` above a walk, and everything loud is loud on purpose.
+That emission used to be a coin flip every frame (`Math.random() < dt * 4`), which could go a half-second
+without landing and let a run right up on somebody's back read as luck rather than as noise; it is a
+timer now (`Goat.stepNoiseTimer`, `TUNING.noise.footstepGap`), the same shape as the goat's own hoofprint
+clock, so running for any real stretch always says so, and `footstep`'s own radius came up a tile with it.
 The line itself is `game.sees`, not `world.los`: stone, plus the short list in `game.sightBlockers` — a
 shut door, the gong, the hub of the wheel — each tested as a circle against the segment the way
 `reaches` tests a blow. `Prop.opaque` is the getter, and the set is deliberately small: a door is a wall
@@ -233,8 +246,13 @@ dispatches to `updateBearer` / `updateHunter` / `updateDog` / `updateSeer` / `up
 machinery (perception, being flung, burning, being held, the bomb fuse) sits above the dispatch. Arena
 bosses carry `elite` and `boss` flags: elites absorb hits before dying, bosses drop a soul.
 
+**The rifle.** Starting to aim plays `sfxCock`, scaled by distance out to `hunter.cockHear` tiles and
+never from a room the fog hides — it is the one tell a rifle gives. Inside `hunter.wildNear` tiles,
+`wildChance` of his shots are off by `wildSpread` to twice that: point blank is a gamble, not suicide.
+
 **The hound.** `kind === 'dog'` is the one enemy that is not a man: no barks (only `sfxGrowl`), no grab
-(`tryGrab` skips it and says TOO QUICK), and `tryDodge` lets it slip `TUNING.dog.dodge` of the headbutts
+(without BY THE COLLAR `tryGrab` says TOO QUICK; with it, `Enemy.hopBack` springs the hound `dog.hop`
+tiles away from the goat and the grab is spent as if something had been thrown — it is never held), and `tryDodge` lets it slip `TUNING.dog.dodge` of the headbutts
 aimed at it. Its loop is orbit → `dart` → `windup` → bite → `retreat`; the dart is the window you get,
 and `drawHound` gives it the only tell it has (flattened body, streaks, lit eyes) — keep that tell if you
 touch the sprite. `packBusy()` lets one hound of a pack commit at a time, which is what keeps three of
@@ -282,12 +300,20 @@ and is not to be taken away. What he gets instead is care: `TUNING.seer.trapSens
 landing spot that is alight, over a drop, or inside anything `hazardAt` calls a hazard. Blinking out of a
 fight and into his own rune was the one thing that read as the fire not counting for the man who lit it.
 
-**Fire takes the wheel.** Anything alight loses its AI and blunders: `burnDir` wanders, walls turn it,
-and `moveToward` is called with no `game` so it does not even dodge hazards. The Butcher is no longer
-the exception — he blunders too, and what he alone gets is the far side of it: `burnHearts` comes off
-over `burnTick`, and when `burning` runs out he lands in `stagger` instead of dying. A boss that walks
-his line at you through a fire reads as the fire not counting, which is why nothing does it any more.
-`ignite` also takes whatever it lit out of the goat's mouth.
+**Fire takes the wheel, except on a kind that says it does not.** Anything alight loses its AI and
+blunders: `burnDir` wanders, walls turn it, and `moveToward` is called with no `game` so it does not
+even dodge hazards. `TUNING.<kind>.immune.blunder` is the one way out, toggled from the ENEMIES tab
+of the tool, and it is what the Butcher and the hound carry by default: they still catch, still bleed
+`burnHearts` over `burnTick` (the Butcher) or take the ordinary single hit when `burning` runs out
+(the hound), but they keep whatever they were doing rather than losing the room to it — `ignite`
+simply does not overwrite `state` to `'burning'` for a kind marked this way, since the per-kind
+`update` has no branch for that state and forcing it there would silently freeze him instead of
+leaving him fighting. A boss that walks his line at you through a fire used to read as the fire not
+counting; a Butcher who keeps swinging through one reads as the opposite, on purpose — the flame is
+one more thing trying to kill him, not a leash. `ignite` also takes whatever it lit out of the goat's
+mouth, and refuses outright — `TUNING.<kind>.immune.fire` — for a kind an ordinary flame cannot touch
+at all, which today is only the wraith (below); witchfire is exempt from that refusal; it is a Seer's
+doing and finds everything.
 
 **Props.** One `Prop` class for brazier, crate, bell, door, table, lamp, mill, heal, spike and weapon.
 `blocking`, `stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item`
@@ -307,7 +333,9 @@ first taken, and the rack is only drawn while it is. `weapon` is `sword` or `shi
 a crate, thrown by releasing grab **or by pressing headbutt** — `Goat.throwHeld` is the one throw both
 go through, since there is no swing to spend on a blade he cannot wield with his teeth, and the bash
 button used to just drop an auto-picked one or do nothing for one he had reached for on purpose — and
-flies in `updateWeapon`; `hitMan` is where a sword kills and sticks
+flies in `updateWeapon`; `hitMan` is where a sword kills and sticks (a wall costs a sword a life too,
+and it drops there NOTCHED; `Goat.cutWith` is the same sword cutting whoever its blade touches while
+it is still in his teeth, `cutGap` apart)
 and a shield flattens and carries on, `passed` stopping it hitting the same man twice on one throw. A
 carried shield turns `prop.weapon.shieldHits` bullets in `Bullet.update` before it splinters. Nothing is
 consumed: both lie where they land and are grabbable again. `'w'` in a room template places one; `racks`
@@ -478,6 +506,29 @@ brazier rather than a boolean; every old caller still reads it as truthy.
 the tile; `Prop.updateMill` and `Prop.bite` no longer skip `held` and take him out of `goat.holding`
 themselves, setting `grabCd` as `ignite` does. Nothing in the room may treat a carried man as absent.
 
+**Three statuses, and what happens where two meet.** Stun is `Enemy.dazed` (the stars), fire is
+`Enemy.burning`, and poison is `Enemy.poison` — seconds of being **blind** (a rifle cannot aim and a
+mage cannot paint, held or standing) and **slow** (`Enemy.update` passes the per-kind update his own
+`dt * tempo`, so every windup, swing, recovery and reload runs slow, and scales his velocity by
+`moveMul`). Everything about poison is `js/status.js` and `TUNING.status`. The reactions fire in
+either order: `Status.poison` checks for fire and stun, `ignite` checks for poison and stun, and
+`daze`, `balk` and a crate in the face call `Status.stunned`. POISON + FIRE is `Status.blast` (a hit
+inside `hitR`, a throw out to `radius`, the goat shoved and never hurt, the puddle round it burnt off
+so it cannot go off twice); POISON + STUN is `sting` (a hit, both spent — spending both is what stops a
+puddle stinging a dazed man every frame); STUN + FIRE is `scaldIt` (the stun spent, `scald` set, and the
+burn does `scald.damage` hits instead of one). The goat is never poisoned: every source is his own.
+Puddles are `world.poison` per tile with `world.poisonOn` as the set of live tiles, so `Status.update`
+walks a handful of tiles rather than the grid. The STATUS tab of the tool (`drawStatusTab`) is that
+block of TUNING, drawn and editable. New verbs that apply a status: SPLASH (headbutt windup, behind
+only), VENOM JAW and CHARGED (`Status.markThrow` on the way out of the mouth after `holdFor` seconds,
+`Status.updateCarried` when it stops flying), SOUR TUMBLE (roll end), VENOM SPIT (`game.globs`).
+
+**A build has slots.** `BOON_SLOTS` in `tuning.js`: one active per button, two passives under it,
+four body passives (no `skill`). `game.boonOpen` is the one test every deal goes through — the soul
+cards and LEVELS' random build both — and a `key` boon (BY THE COLLAR) counts against nothing, since
+it opens half a verb rather than bending one. The body passives are drawn by `drawBodySouls`, a
+square of four cells left of the rail.
+
 **Fire is handed on once, and only once KINDLING is taken.** A burning man who touches another lights
 him in `game.passFire`, called from the enemy-vs-enemy pass in `collideEntities`, but the whole method
 returns at once unless `mods.firePass` is set — without that soul a brazier costs the room the one man
@@ -561,7 +612,29 @@ crowd had nothing left to sound like.
 **Juice.** `game.kick(dx, dy, amt)` shoves the whole picture (capped at `juice.kickMax`), `zoomPunch`
 drives the lens, `flash(color, amt)` paints an additive overlay, and `gore` throws chunks that stain the
 decal canvas when they expire. The renderer applies kick and zoom in `draw`, and everything decays in
-`updateEffects`.
+`updateEffects`. On top of those: `impact(x, y, dx, dy)` is the ring and spark streaks where a headbutt
+lands, `dust(x, y, n, dx, dy)` the hoof puffs (lunge, roll, landing, a full run-up; `game.puffs`, drawn
+on the ground by `drawPuffs`), `squashGoat(amt)` a decaying spring on his scale that both goat
+drawers read off `goat.sqLeft`, `game.flares` the rifle's muzzle flash, `enemy.flash` a white
+silhouette (the same body redrawn through `ctx.filter`, not a disc over it), and `drawHeartbeat` the
+last-heart pulse. Every number is under `TUNING.juice`.
+
+**The JUICE tab** (`drawJuiceTab`, `#juice`) is `JUICE` in `js/juice.js` as a table — in game / new /
+backlog, filterable, paged, a row opens out on click, EXPORT downloads it as Markdown. Add an effect,
+add its row in the same sitting; a size that has a number in `TUNING` is a function reading it, so the
+table cannot drift. `node tools/juice-md.js` regenerates `JUICE.md`.
+
+**The roast.** `prop.roast` on a brazier is drawn by `Renderer.drawRoast` — a campfire, two forked
+sticks and a crocodile turning on a spit, drawn as the real animal and charred (it was an
+embroidered-patch cartoon and read as a shirt logo) — and is otherwise a brazier in every respect.
+`gen.js` picks it off a hash of the tile (`prop.brazier.roast`, 0.02), not off the generator's rng,
+and takes **at most one a level**, so about one level in four has one: it is a find, not furniture.
+
+**A lunge into stone still lands.** `Goat.update` ends a lunge the frame `collideCircle` reports an
+impact, and that frame used to come before the first `headbuttHits` — so a headbutt thrown with his
+nose already on a wall hit nothing at all: a door hung flush in a wall (the vault's) could only be
+struck from dead centre. The impact branch calls `headbuttHits` first now. A door also reaches
+`prop.door.reachSlack` further and takes the blow from a wider cone than a man does.
 
 **Difficulty.** `THREAT`, `ENCOUNTER` and each level's `encounters` block in `tuning.js` are the whole
 model; `planEncounters()` in `gen.js` turns them into a per-room plan before anything is placed, and the
@@ -590,13 +663,17 @@ Running through on the way past does nothing, which is the point of it.
 
 **Milk and grass are the same prop, worth two different things.** `kind` is still `'heal'` everywhere
 in the generator and the rules — nothing above changed — but `p.big` splits what it pays out and how
-it is drawn. What a level hands out on its own rhythm, above, is the ordinary bowl: painted as milk
-(`Renderer.drawProp`'s primitive bowl, or `PaintedArt`'s fallback to the same), worth `+1 HEART`. The
-rarer one is `big: true` — a real patch of grass, the atlas sprite `healing-grass` — and only
-`carveSecret` (`gen.js`) ever sets it, on `TUNING.secret.healChance` of the secrets a level finds at
-all, worth `+2 HEARTS`. A secret used to hand over a bowl of milk every time it was found, on top of
-the rack; the level's own rhythm already promises a bowl every few rooms, so a wall worth two blows
-paying out the exact same thing read as a rack with a coupon stapled to it rather than as a find.
+it is drawn. What a level hands out on its own rhythm, above, is the ordinary one, worth `+1 HEART`.
+The rarer one is `big: true` — the bigger patch of grass, on the atlas the same sprite `healing-grass`
+paints — and only `carveSecret` (`gen.js`) ever sets it, on `TUNING.secret.healChance` of the secrets
+a level finds at all, worth `+2 HEARTS`. A secret used to hand over a bowl of milk every time it was
+found, on top of the rack; the level's own rhythm already promises a heal every few rooms, so a wall
+worth two blows paying out the exact same thing read as a rack with a coupon stapled to it rather than
+as a find. Both were briefly drawn differently — the ordinary one a plain wooden bowl, the atlas fallback
+included, so a run could tell which was which before it was close enough to read the size — but a bowl
+standing on a floor of boards read as furniture rather than as a thing that heals, so `Renderer.drawProp`
+went back to what the ordinary one was before the split existed: a smaller sprout of the same grass, no
+dirt patch of its own. What still tells the two apart is size and the rarer one's dirt, not the plant.
 
 Change any of it and run **`node tools/balance.js`**: it prints the curve room by room and exits non-zero
 if a kind arrives in a crowd first, a cap breaks, threat stops rising inside a level, or a level is not
@@ -743,6 +820,11 @@ shape on the floor plus three plates thrown on top of it is not a shape any more
 `needs: 'spikes'`, and is then only drawn by a level whose `levelDef.spikes` is set, so no floor grows
 teeth on a level whose floor does not. `'S'` in a template is a plate, the way `'B'` is a bowl of coals.
 
+**Nobody stands in the furniture.** After spawns are placed, `generateLevel` walks any man whose
+spot is inside a crate, coop, table, brazier, lamp, rack or the wheel (`inFurniture`, shared with
+`GEN_RULES.furniture`) out in rings to the nearest clear floor of his own room. The sentry is exempt:
+`blockSpot` chose his tile with the props already in it.
+
 **The pen.** Cage bars are ordinary `Prop`s of kind `cage`, built by `buildCage` in `gen.js` and exempt
 from the three-tile prop clearance around the start. It takes `prop.cage.hits` blows — seven — the
 **first time a browser ever does it**, and `prop.cage.againHits` — two, with no fall and a two-line
@@ -781,6 +863,26 @@ it (the shared dazed check stops the timers, so a scream lengthens the window ra
 `unmanifest` puts it back to mist with `fadeCd`. It dies to anything that lands in that window, its
 `die` leaves no blood, body or scorch, and a boss with hearts left goes straight back to mist instead of
 lying floored. `game.mistTold` is the only tutorial it gets.
+
+**A dead thing does not answer to the living world's effects.** `TUNING.wraith.immune` (`{ fire: true,
+stun: true, grab: true }`) is the same checkbox-per-kind system the Butcher's `immune.blunder` uses, off
+the ENEMIES tab. `Enemy.ignite` refuses an ordinary flame outright for a kind with `immune.fire` — a
+wraith does not so much as catch, though witchfire still finds it, since that is a Seer's doing and not a
+hearth's. `daze` refuses a wraith with `immune.stun` before it does anything at all (previously it froze
+the manifest sequence in place, which was the only counter a scream had against it; a dead thing shrugging
+off BAAH entirely is the more honest reading, and `balk` already returned false against a wraith
+unconditionally). `Goat.tryGrab`'s BY THE COLLAR filter reads `immune.grab` the same way it already
+excluded the Butcher by kind, so a wraith was never reachable BY THE COLLAR either way — this only made
+that exclusion a flag instead of a second hardcoded kind check, so it shows up on the ENEMIES tab and a
+future kind can opt into the same thing without touching `entities.js`.
+
+**What killed you.** `Goat.damage`'s last argument is the source — the man who landed it, or a word
+for the room (`'fire'`, `'witchfire'`, `'spike'`, `'bomb'`, `'mill'`, `'fall'`, `'rifle'`) — kept on
+`goat.hurtBy`. `game.killedBy` turns it into a name off `KILLED_BY` in `tuning.js`, and the death card
+puts KILLED BY … on its last line. Add a new way for the goat to be hurt, pass it a source.
+
+**The brute is not carried.** `tryGrab` skips the champion as it skips the Butcher, and reaching for
+either with BY THE COLLAR floats TOO BIG.
 
 **Goat stun.** `goat.state === 'stunned'` is a real state, not a render pose: `Goat.update` returns early
 while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` draws the stars over it.
@@ -870,6 +972,8 @@ everything in world space**. So a pillar, a stub wall or the corner of a room hi
 until he steps round to where it can be seen from, and a man standing back there is not culled, he is
 simply not lit. Nothing else in the game reads `vis`: the cult's eyes, ears and flow field are
 untouched, and a man in the dark still hears you and still comes. It costs about 0.01 ms a step.
+THE ORACLE adds a disc of `fog.oracle` tiles lit through stone on top of the cast; past it the cast
+still decides, so the corners of the screen stay dark. It used to light the whole radius.
 `startLevel` primes it next to `computeFlow`, and it is skipped during the opening scene. What the cast
 stops at is stone **plus** `world.visBlock`, a tile mask `revealRooms` rebuilds each step from the opaque
 half of `game.sightBlockers` — every tile the thing actually covers, not the one its centre is in, because
@@ -919,7 +1023,7 @@ regenerates the level, so it is not a way to learn a layout, and that promise is
 arithmetic rather than by a fresh roll. `saveRun` carries `runSeed`, so CONTINUE is the same run; a
 save written before any of this existed has none and gets a fresh one rather than nothing.
 
-**The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, score, runSeed, at }` to
+**The saved run.** `saveRun` writes `{ v, level, boons: [id], totalKills, deaths, score, runSeed, henHearts, at }` to
 `localStorage` under `SAVE_KEY` at the head of every level and again whenever a soul is taken; `loadRun`
 refuses anything of another version or off the end of `LEVELS`, and every call is wrapped, so a browser
 that refuses storage simply never offers CONTINUE. Winning clears it. CONTINUE re-enters the head of
@@ -945,6 +1049,16 @@ them, and it closes as the run goes on, so what was two animals calling across a
 dark two animals calling into nothing. `skipIntro` from any prologue phase goes to the same `black`
 the pen's skip does, and nulls `pro` on the way. It is the first version, drawn to be replaced: a
 fence is two rails and some posts, a truck is three boxes and two circles.
+
+The meadow opens on black. `TUNING.intro.prologue.titleCard` seconds of SOME TIME AGO over a fading
+veil, painted at the end of the meadow's own draw block in `drawPrologue` so it sits over the finished
+scene rather than blocking it out — nothing else in the game opens on black, so this is the one place a
+player has to be told what they are looking at is a memory and not the game starting somewhere strange.
+The music says the same thing on its own clock: `INTRO_STAGE` (`js/audio.js`) reads `game.intro.phase`
+straight into the idle/spotted/chase/combat ladder a run's own encounters climb — the meadow is idle and
+the one phase that borrows the ordinary theme rather than the frightened `FIRST_MUSIC` (nothing has gone
+wrong yet), the truck is spotted, the dark is chase, and the men closing in through the taking itself
+climb to combat on the blow. See `MUSIC.md`.
 
 **The opening scene.** It cannot be skipped until a browser has watched it through once: `SEEN_KEY` in
 `localStorage` gates both the skip in `updateIntro` and the CLICK TO SKIP line in `drawIntroOverlay`,
@@ -1057,6 +1171,14 @@ there is about one of her a level and she only kills once. A wall is not a man: 
 bird. `game.henFreed` says what she is for the first time a run lets one out, because a bird walking
 after you explains nothing on its own and a player who does not know she is ammunition leaves her in
 the room she came out of.
+
+**She follows, and she is worth keeping.** Loose, the hen walks the flow field (`flowDir`) rather
+than the straight line, and `Prop.henSteer` borrows `Enemy.hazardAt` to step round fire, coals, the
+wheel, raised teeth and drops, holding a chosen detour for `chicken.detourFor` so she does not dither
+on a lip. `Prop.updateCoop` breaks a coop the goat has walked past as it slides off the trailing (left)
+edge of the screen. `beginClimb` checks for a hen inside `chicken.saveR` tiles (or in his mouth): that
+sets `henSaved`, a card on the clear, and `game.henHearts` — `saveHearts` of max heart for the rest
+of the run, once a level, added in `applyBoons` and saved with the run.
 
 **Crates.** `kind === 'crate'` is the plainest object in the game: one tile of floor, planks and two
 iron bands, and everything it does it does through `item` — grab it, carry it, throw it. It flies down
@@ -1182,7 +1304,8 @@ Carrying an arm costs `grab.itemSpeedMul` and carrying a man still costs
 `grab.speedMul`, because auto-pickup would otherwise be a way of being slowed down by the scenery.
 
 **Arms are consumable.** `prop.uses` counts what a weapon has left, off `TUNING.prop.weapon.uses` —
-a sword 1, a shield 3. `Prop.snap()` is the single place one is destroyed: it is called by the sword
+a sword 2, a shield 2 — a sword is a kill or a wall per life,
+thrown or carried, which is why only `weapon.swordShare` of loose and secret stands are swords. `Prop.snap()` is the single place one is destroyed: it is called by the sword
 when it kills or hits a wall, by the shield when a flattened man or a turned bullet takes the last
 charge, and it clears `goat.holding` itself. Nothing broken is ever picked up again, so a level's
 arms budget is the count of stands in it. `levelDef.racks` is the per-room chance and
@@ -1231,6 +1354,10 @@ the rail cannot report it.
 **The loop.** Fixed 1/60 step, max 5 substeps, in `game.frame`. `timeScale` drives slow motion.
 A `setInterval` fallback drives the loop when `requestAnimationFrame` stalls, which it does when the
 Browser pane is hidden. Do not remove it.
+
+**Touch mode.** `touch.active` decides whether the thumb controls are drawn. Only a `keydown` whose
+code matches `KEYBOARD_KEY` turns it off — a phone's volume rocker is a keydown and used to hide the
+controls for good — and on a `coarse` device every pointer, even one reported as `mouse`, is a finger.
 
 **The pointer.** `game.updateCursor` sets the canvas's own OS cursor rather than drawing one, and it is
 the goat's head (`CURSOR_GOAT` in `game.js`, an inline SVG data URI wrapping the 🐐 emoji, built once with
@@ -1317,7 +1444,7 @@ the remote is not live. Never stop at the feature branch and never leave `main` 
 was developing on `claude/<something>`, merge that branch into `main` and push `main` as part of the
 deploy, then publish. Opening a pull request instead is only right when the user asks for one.
 
-The artifact is published from `artifact.html` with all sixteen scripts passed as supporting files, and
+The artifact is published from `artifact.html` with every script passed as supporting files, and
 always to the existing URL. Republishing without the `url` creates a second artifact.
 
 - `file_path`: `artifact.html`

@@ -25,6 +25,10 @@ class World {
     this.fire = new Float32Array(n);      // seconds of burning left
     this.fireKind = new Uint8Array(n);    // 0 ordinary flame, 1 the Seer's witchfire
     this.spread = new Float32Array(n);    // spread accumulator
+    // Poison lying on the floor, seconds left a tile, and the tiles that have any — a puddle is a
+    // handful of tiles in a world of thirty thousand, so `js/status.js` walks the set, not the grid.
+    this.poison = new Float32Array(n);
+    this.poisonOn = new Set();
     this.flow = new Int16Array(n).fill(-1);
     this.flowTimer = 0;
     this.noises = [];
@@ -266,6 +270,18 @@ class World {
     if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return false;
     return this.fire[this.idx(tx, ty)] > 0;
   }
+  isPoisonPx(x, y) {
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return false;
+    return this.poison[this.idx(tx, ty)] > 0;
+  }
+  // A tile of poison. Not on stone and not over a drop: there is nothing there for it to lie on.
+  poisonTile(tx, ty, t) {
+    if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return;
+    const i = this.idx(tx, ty), k = this.tiles[i];
+    if (k === T.WALL || k === T.PIT) return;
+    this.poison[i] = Math.max(this.poison[i], t); this.poisonOn.add(i);
+  }
   // Witchfire burns through a coat that ordinary fire cannot touch.
   isWitchPx(x, y) {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
@@ -311,10 +327,11 @@ class World {
   // until he steps round to where it can be seen from. `vis` is one byte a tile and the renderer
   // paints everything outside it down; nothing else in the game reads it, so the cult's own eyes are
   // untouched — a man behind a pillar can still hear you.
-  // `throughWalls` is THE ORACLE: nothing between him and the edge of the radius stays dark, so the
-  // cast below is skipped for a plain distance fill instead. It is the only thing in the game that
-  // reads `game.mods` — everything else about the fog is blind to boons on purpose — because it is
-  // not a sharper eye, it is a different sense standing in for the one the fog was built to limit.
+  // `throughWalls` is THE ORACLE, as a radius in tiles: inside it nothing stays dark, wall or no
+  // wall; past it the ordinary cast still decides. It used to be the whole of `radius` through
+  // stone, which lit every corner of every room in reach and took the not-knowing out of the fog
+  // entirely. It is the only thing in the game that reads `game.mods` — everything else about the
+  // fog is blind to boons on purpose — because it is a different sense, not a sharper eye.
   computeVis(px, py, radius, throughWalls) {
     const v = this.vis, W = this.W, H = this.H;
     // Clear only what the last pass lit: the world is 420 by 78 tiles and this runs every step.
@@ -324,13 +341,12 @@ class World {
     this.visBox = { x0: Math.max(0, cx - radius), y0: Math.max(0, cy - radius),
       x1: Math.min(W - 1, cx + radius), y1: Math.min(H - 1, cy + radius) };
     if (cx < 0 || cy < 0 || cx >= W || cy >= H) return;
-    if (throughWalls) {
-      const r2 = radius * radius, bx = this.visBox;
-      for (let ty = bx.y0; ty <= bx.y1; ty++) {
+    if (throughWalls > 0) {
+      const r = Math.min(throughWalls, radius), r2 = r * r;
+      for (let ty = Math.max(0, cy - r); ty <= Math.min(H - 1, cy + r); ty++) {
         const dy = ty - cy, row = ty * W;
-        for (let tx = bx.x0; tx <= bx.x1; tx++) { const dx = tx - cx; if (dx * dx + dy * dy <= r2) v[row + tx] = 1; }
+        for (let tx = Math.max(0, cx - r); tx <= Math.min(W - 1, cx + r); tx++) { const dx = tx - cx; if (dx * dx + dy * dy <= r2) v[row + tx] = 1; }
       }
-      return;
     }
     v[cy * W + cx] = 1;
     // He can always see the ring of tiles he is standing in the middle of, wall or not: a goat with

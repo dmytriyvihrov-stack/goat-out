@@ -244,6 +244,12 @@ const GEN_RULES = [
       for (const r of roomsOf(L)) if (r.role === 'pen' && r.spawns.length) return `${r.men.join(', ')} in the pen`;
       return true;
     } },
+  { id: 'furniture', text: 'Nobody is put down inside a crate, a table or any other furniture.',
+    check: (L) => {
+      for (const sp of L.spawns) if (!sp.sentry && inFurniture(sp.x, sp.y, L.props))
+        return `a ${sp.kind} inside the furniture of room ${sp.roomIndex}`;
+      return true;
+    } },
   { id: 'arms', text: 'No stand of arms before racksFrom, and one loose stand to a room.',
     check: (L) => {
       const from = Math.round((L.def.racksFrom || 0) * (L.def.rooms - 1)), per = new Map();

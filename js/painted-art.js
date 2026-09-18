@@ -166,6 +166,7 @@ class PaintedArt extends AltarArt {
       ctx.restore();return true;
     }
     // Lit fixtures: the whole fixture is an animated loop now, so the old static bowl/post is gone.
+    if(p.kind==='brazier'&&p.roast){renderer.drawRoast(p);return true;}
     if(p.kind==='brazier'){
       const w=p.r*2.9;
       ctx.save();ctx.translate(p.x,p.y);
@@ -242,22 +243,22 @@ class PaintedArt extends AltarArt {
       // One size, whatever it is doing: racked, lying or in his mouth. It used to draw bigger on the
       // stand than anywhere else it is ever seen, which read as the object changing size the moment
       // you took it rather than as the same blade wherever it is.
-      this.atlas(ctx,p.weapon,0,0,p.weapon==='sword'?24:22,undefined,0.5);
+      this.atlas(ctx,p.weapon,0,0,p.weapon==='sword'?24:22*TUNING.prop.weapon.shieldScale,undefined,0.5);
       ctx.restore();
       // What is left in a shield you are carrying: three studs, one per man or bullet it has in it.
       if(p.weapon==='shield'&&p.held&&p.uses>0){
         const n=TUNING.prop.weapon.uses.shield;
         for(let k=0;k<n;k++){
           ctx.fillStyle=k<p.uses?PALETTE.bone:'rgba(239,230,208,0.22)';
-          ctx.fillRect(p.x-(n*5-2)/2+k*5,p.y-23,3.2,3.2);
+          ctx.fillRect(p.x-(n*5-2)/2+k*5,p.y-30,3.2,3.2);
         }
       }
       return true;
     }
     if(p.kind==='heal'){
       // Only the rarer, bigger patch — the one a secret sometimes gives up — is painted; the
-      // ordinary milk bowl a level's own rhythm hands out has no atlas art of its own yet and falls
-      // back to the primitive bowl `Renderer.drawProp` draws.
+      // ordinary sprout a level's own rhythm hands out has no atlas art of its own yet and falls
+      // back to the smaller primitive tuft `Renderer.drawProp` draws.
       if(!p.big||!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
       // v2's tighter, static 23px patch (brief item F) tested as too quiet to read as a heal spot in
       // a moving crowd — reverted to the original atlas stamp: bigger, with its own shadow and a slow
@@ -402,6 +403,8 @@ class PaintedArt extends AltarArt {
     if(g.state==='windup')ctx.scale(0.85,1.1);
     if(g.state==='lunge')ctx.scale(1.15,0.92);
     if(g.state==='ko'||g.state==='stunned'){ctx.rotate(0.9);ctx.scale(1.1,0.8);}
+    // The squash spring (game.squashGoat): a landed blow, a blow taken, the end of a roll.
+    if(g.sqLeft){const a=g.sqLeft*Math.cos(TUNING.juice.squash.freq*g.sqT);ctx.scale(1+a,1-a);}
     if(g.invuln>0&&Math.floor(renderer.t*30)%2===0)ctx.globalAlpha*=0.5;
     this.character(renderer,g,'sheep',40);
     if(g.maxHp-g.hp>0){ctx.fillStyle=PALETTE.bloodDark;ctx.globalAlpha*=0.6;for(let k=0;k<g.maxHp-g.hp;k++){ctx.beginPath();ctx.ellipse(-9+k*5,-4+(k%2)*6,2.8,1.8,0.3,0,Math.PI*2);ctx.fill();}}
