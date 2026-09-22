@@ -138,6 +138,27 @@ for (let i = 1; i < levelThreat.length; i++) {
 console.log('\n--- level totals ---');
 for (const l of levelThreat) console.log(`  ${l.name.padEnd(22)} total ${String(l.total).padStart(6)}   worst room ${String(l.peak).padStart(5)}   worst ordinary room ${l.plainPeak}`);
 
+// ---- the third column: what the goat is by then ----
+// Threat is only half of the curve. The other half is what he is carrying when he walks in: the
+// hearts he starts with plus the souls every level before this one hands out (the same sum LEVELS
+// deals on the title screen), each at its average `BOON_POWER`. The ratio is threat over that; it
+// should never fall from one level to the next, or a level has got easier for the goat it meets.
+// Reported, not failed: the weights are a guess, and a fall is a question for a person, not a test.
+const BOONS = grab('BOONS'), BOON_POWER = grab('BOON_POWER'), TUNING = grab('TUNING');
+const perSoul = BOONS.reduce((a, b) => a + (BOON_POWER[b.id] || 1), 0) / BOONS.length;
+if (!QUIET) console.log(`\n--- threat over power (a soul is worth ${perSoul.toFixed(2)} on average, a heart ${BOON_POWER.heart}) ---`);
+let soulsIn = 0, lastRatio = 0;
+const falls = [];
+for (let li = 0; li < levelThreat.length; li++) {
+  const l = levelThreat[li];
+  const power = TUNING.goat.hp * BOON_POWER.heart + soulsIn * perSoul, ratio = l.total / power;
+  const mark = li && ratio < lastRatio ? '  ▼ easier for him than the last' : '';
+  if (mark) falls.push(l.name);
+  if (!QUIET) console.log(`  ${l.name.padEnd(22)} souls in ${String(soulsIn).padStart(2)}   power ${power.toFixed(1).padStart(5)}   threat/power ${ratio.toFixed(1).padStart(5)}${mark}`);
+  soulsIn += LEVELS[li].souls || 0; lastRatio = ratio;
+}
+if (falls.length) console.log(`  (not a failure, since the weights are a guess, but ${falls.join(', ')} ${falls.length > 1 ? 'ask' : 'asks'} less of the goat than the level before)`);
+
 if (fails.length) {
   console.log(`\n${fails.length} RULE FAILURES:`);
   for (const f of fails.slice(0, 25)) console.log('  ✗ ' + f);

@@ -1003,6 +1003,7 @@ still until they are aware, and `drawEnemy` fades them by `lurkAlpha` until then
 item. `crackRock` takes `hits` blows. While it stands, `world.block` marks its tile and `walkable` refuses
 it, so the flow field goes round it; breaking it clears the mark. A body flung into one at `splatSpeed`
 dies on it the way the solid-prop branch of `collideEntities` already kills against anything blocking.
+A body flung into one faster than `knockHitSpeed` costs it a blow as well (`collideEntities`).
 `rockFits` only puts one down with plain, grassless floor on all eight sides and never two within two
 tiles — that is what keeps a scatter of them from ever closing a way through. `GEN_RULES.rocks`.
 
@@ -1644,6 +1645,9 @@ drops men **aware and adjacent**, so a handful of them will kill the goat during
 where.** It runs every rule in `js/rules.js` over many seeds of every level, plus the two averaged
 rules a single level cannot know about itself, and it is the only place they can fail. The same list is
 on the RULES page of the dev drawer, per level and live, which is the quicker way to look at one seed.
+
+The report ends on **threat over power**: the goat's starting hearts plus the souls dealt before each
+level, weighed by `BOON_POWER` in `tuning.js`. A level whose ratio falls is flagged but does not fail.
 
 **Always run the generator sweep after touching `gen.js`, `rooms.js` or `LEVELS`.** It catches broken
 templates and impossible layouts in seconds:

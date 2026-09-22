@@ -272,7 +272,11 @@ runs-to-win is currently one because a level restarts for free. **Power** by lev
 too high, but nothing measures it: `tools/balance.js` knows threat and ground and has no idea
 what the goat is carrying by then.
 
-### number — a hit should buy more than half a second
+### ~~number — a hit should buy more than half a second~~ — done, found 22 Sep 2026
+
+Already in the build: `TUNING.goat.invuln` is 0.9 s, inside the 0.8–1.0 range asked for below. The
+burst-death counter was never added; it is only worth building if deaths still read as one bad moment.
+
 
 `TUNING.goat.invuln` is 0.5 s. Three men take four hearts in two seconds, so a death reads as one
 bad moment rather than four decisions. Spelunky and Isaac give about a second and knock the
@@ -293,7 +297,14 @@ is, with the new heart arriving full as THICK HIDE's does. THICK HIDE on top mak
 MODE still adds two. `drawUI` has to fit nine hearts on the band without shrinking the rail.
 Hell (below) takes them back to four, which is the "reset for your crimes" in numbers.
 
-### tool — a third column in the balance: what the goat is by then
+### ~~tool — a third column in the balance: what the goat is by then~~ — shipped in 1.44
+
+`BOON_POWER` in `tuning.js` and a `threat over power` table at the end of `node tools/balance.js`.
+It reports rather than fails, because the weights are a guess. Its first reading: THE THRESHING
+FLOOR, THE RAFTERS and THE OSSUARY each ask less of the goat than the level before them, which is
+the "overpowered by level five" feeling in numbers. Not tuned yet: that is a design call. Not on the
+BALANCE tab yet either.
+
 
 The curve that has to hold is threat over power, and only the numerator is measured. Give every
 boon in `BOONS` a rough `power` weight (and hearts a weight per heart), compute the expected
@@ -872,6 +883,10 @@ in 1.2. Left at 8.5. If it comes back a third time the number to look at is prob
 is usually how long they all stand there.
 
 ### system — rooms built round their traps
+
+**The rest shipped in 1.44:** `ring` for THE THRESHING FLOOR (`needs: 'corridorW'`) and `chasm` for THE
+RAFTERS (`needs: 'windows'`), the first trap room built round a drop. Both levels now carry `traps: 1`.
+The note below is kept for the reasoning.
 
 Shipped in 1.6 as four templates and a `traps` count per level. **What is still not there:** a trap room
 on THE THRESHING FLOOR or THE RAFTERS, both of which draw from their own pool and would need trap

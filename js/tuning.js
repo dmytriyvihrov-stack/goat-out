@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.42';
+const BUILD = '1.44';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -1001,6 +1001,14 @@ const BOON_BASE = {
 // than bending it, and counts against nothing.
 const BOON_SLOTS = { active: 1, passive: 2, general: 4 };
 
+// What a soul is worth to the goat, roughly, for `tools/balance.js`'s third column: threat is the
+// numerator of the curve and this is the denominator. A heart is the unit. Anything not named is 1.
+// The key that opens half a verb (BY THE COLLAR) and the two actives that turn the voice into a
+// weapon are worth more; the passives that only shift a number at the edge of a fight, less.
+// Nothing in the game reads it — it is a guess to be argued with, not a rule.
+const BOON_POWER = { heart: 1, collar: 1.6, howl: 1.5, breath: 1.5, bomb: 1.3, devour: 1.2, hide: 1.2,
+  oracle: 0.6, ember: 0.6, kindling: 0.8, throat: 0.8 };
+
 // Every boon's tunable numbers live in its own `params`, not buried in `apply`'s body, so the
 // BOONS tab of the dev tool can list, show and edit them generically — `apply(m, p)` always
 // reads its multipliers off `p` rather than off a literal, the same read-the-mod-at-the-use-site
@@ -1325,7 +1333,7 @@ const LEVELS = [
     decor: 'Wide yards, posts, tables, braziers, rings of hay, almost no wall at all.',
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
     gates: [5, 11],
-    millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7,
+    millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7, traps: 1,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -1383,7 +1391,7 @@ const LEVELS = [
     gates: [6, 13],
     // Windows are this level's and nobody else's: a hole in a wall is a drop, and the drop is the
     // one new thing THE RAFTERS has. Every other level's walls are the inside of a compound.
-    millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8, windows: 0.55,
+    millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8, windows: 0.55, traps: 1,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],

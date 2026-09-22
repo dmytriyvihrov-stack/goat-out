@@ -692,8 +692,8 @@ const ROOM_TEMPLATES = [
     '#####......ggg####',
     '##################',
   ]},
-  // Teeth: single points of rock standing up out of the floor, each one a round stone to put a man on.
-  { name: 'teeth', canon: 'hollow', rows: [
+  // Fangs: single points of rock standing up out of the floor, each one a round stone to put a man on.
+  { name: 'fangs', canon: 'hollow', rows: [
     '################',
     '###....P.....###',
     '#...P.....e...##',
@@ -786,6 +786,38 @@ const ROOM_TEMPLATES = [
     '#....S....S....#',
     '#.tt........tt.#',
     '#.tt...r....tt.#',
+    '#..............#',
+    '################',
+  ]},  // THE THRESHING FLOOR's own: a ring of straw round a bowl of coals and a lamp, on a floor wide
+  // enough that you can walk round the ring rather than through it. Spill the bowl and the ring
+  // goes up; whoever is inside it when it does is inside it. The one trap room built for open
+  // ground, so it is drawn only where the corridors are that wide (`needs: 'corridorW'`).
+  { name: 'ring', tag: 'trap', needs: 'corridorW', rows: [
+    '######################',
+    '#....................#',
+    '#..e....hhhhhh....e..#',
+    '#......hh....hh......#',
+    '#.....hh..B...hh.....#',
+    '#.....h...L....h..r..#',
+    '#.....hh......hh.....#',
+    '#......hh....hh......#',
+    '#..e....hhhhhh....e..#',
+    '#....................#',
+    '######################',
+  ]},
+  // THE RAFTERS' own, and the first trap room built round the drop: two bands of broken boards
+  // across the middle with a two-tile bridge between them and a lane down either wall. A headbutt
+  // anywhere on the lip is a kill, and so is a step off the bridge. Only drawn where the level has
+  // windows (`needs: 'windows'`), which is the one level whose floor is not all there.
+  { name: 'chasm', tag: 'trap', needs: 'windows', rows: [
+    '################',
+    '#..............#',
+    '#..e.......r...#',
+    '#..............#',
+    '#.OOOOO..OOOOO.#',
+    '#.OOOOO..OOOOO.#',
+    '#..............#',
+    '#...e......e...#',
     '#..............#',
     '################',
   ]},

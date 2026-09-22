@@ -5,6 +5,26 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.44 — a boulder takes a body, and two trap rooms
+
+**A man thrown into a boulder takes a blow off it.** Anything flung into one faster than
+`physics.knockHitSpeed` cracks it the way a headbutt does (`crackRock`). Two bodies, or one body and
+one head, and it is rubble. At killing speed the man dies on it as before.
+
+**THE THRESHING FLOOR and THE RAFTERS get a trap room each, built to their shape.** `ring` is straw round
+a bowl of coals and a lamp on floor wide enough to walk round it. `chasm` is two bands of broken boards
+with a two-tile bridge between them and a lane down either wall, the first trap room built round the drop.
+They are gated by `needs` (`corridorW`, `windows`) so no other level draws them.
+
+**`tools/balance.js` has a third column: threat over power.** `BOON_POWER` weighs a soul and a heart. The
+report prints what the goat is carrying at the head of each level and the ratio. It does not fail on a fall,
+because the weights are a guess. Today THE THRESHING FLOOR, THE RAFTERS and THE OSSUARY each ask less of him
+than the level before.
+
+The cave's `teeth` room is `fangs` now: the trap room already had that name.
+
+---
+
 ## 1.43 — THE CAVE
 
 **An eighth level, under all of it, and nothing in it is square.** The rock is round: every outside
