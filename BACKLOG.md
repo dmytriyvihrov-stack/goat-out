@@ -421,7 +421,18 @@ unreadable is not: every cell changes its icon and the note under the chip, or t
 collected is invisible. Order: the generation batch first, this second, blind playtests after
 both. `balance.js` measures none of the crossings; they are tested by hand, one at a time.
 
-### system — the shop: a mouse, a rat ogre, souls of the killed, a talisman — *parked, 16 Sep 2026*
+### system — the shop: a mouse, a rat ogre, souls of the killed, a talisman — *shipped in 1.40, 18 Sep 2026*
+
+Built as parked below, with these decisions made on the way: one mouse a level from THE YARD, in
+the middle stretch; two wares, the second a tier cheaper; three strikes (two lines, then the ogre)
+rather than a run; the ogre at six hearts, hurt only floored (a crate, a shield), by blades,
+bullets, bodies at speed, the wheel and the bomb. The note's own "Q" is exactly what shipped: the
+boomerang and STRANGE SYMBOLS both hang off a fifth key, made honest against ground rule 1 by not
+existing at all until one of them is worn — an early pass had tried folding them into grab-on-
+nothing and the roll instead, on the theory that a fifth key is a fifth key; overruled the same
+day ("мои правила моя игра"), on the sounder theory that one active item earns its own button once
+there is something to press it for. What is still open: the second slot for the later acts, and
+the 18 Sep note's "talisman between the horns" is a collar at the neck for now.
 
 Items, bought with **souls of the killed** (`game.kills`, the count already on the HUD; this is
 the 14 Sep "souls resource" with an answer to what they buy). Two currencies, two counters, no

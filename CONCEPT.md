@@ -183,6 +183,7 @@ you. The room asks which of those you trust.
 | **THE BRIDGE** | 16 | The funnel | All five, mixed | Butcher, elite Seer, Butcher |
 | **THE RAFTERS** | 16 | The drop | All five, mixed | Elite Seer, Butcher, brute |
 | **THE OSSUARY** | 16 | The niche | Wraiths, and a garrison | Butcher, elite wraith, elite Seer |
+| **THE CAVE** | 15 | The hollow | Everything, hounds heavy | Butcher, brute, elite Seer |
 
 **THE OSSUARY** is the last ground and the only one whose enemy cannot be fought on the terms the rest
 of the game taught. A wraith is mist: nothing reaches it, it reaches nothing, and it goes through the

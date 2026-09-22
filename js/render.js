@@ -109,7 +109,7 @@ class Renderer {
   get hs() { return this.ts * TUNING.hud.scale; }
 
   draw(game, dt) {
-    this.t += dt;
+    this.t += dt; this.game = game;   // the shelf reads the goat off it mid-draw
     this.altar = game.level && game.levelIndex === 0 ? this.altarArt : null;
     if (this.c.clientWidth && (Math.abs(this.c.clientWidth - this.cssW) > 1 || Math.abs(this.c.clientHeight - this.cssH) > 1)) this.resize();
     const ctx = this.ctx, w = this.w, h = this.h;
@@ -133,6 +133,7 @@ class Renderer {
       this.drawDust(game, cam, dt);
       this.drawUnseen(game);            // ground, fire and firelight above it; everything that stands on it below
       this.drawRunes(game);
+      this.drawDashPaths(game);
       this.drawSouls(game);
       this.drawPuffs(game);
       const lit = (o) => !game.hidden(o.x, o.y);
@@ -148,10 +149,12 @@ class Renderer {
       for (const b of game.bullets) if (lit(b)) this.drawBullet(b);
       this.drawFlares(game);
       for (const b of game.globs) this.drawGlob(b);
+      this.drawBoomerang(game);
       if (!game.goat.dead) this.drawGoat(game.goat, game);
       if (game.goat.holding) { const hld = game.goat.holding; if (hld.item) this.drawProp(hld); else this.drawEnemy(hld, game); this.drawHoldCharge(game); }
       if (game.intro) this.drawIntroWorld(game);
       for (const p of game.props) if (!p.broken && lit(p) && inFront(p)) this.drawProp(p);
+      this.drawGrass(game, cam);
       this.drawBreath(game);
       this.drawRings(game);
       this.drawParticles(game);
@@ -201,6 +204,7 @@ class Renderer {
   }
 
   drawTiles(game, cam) {
+    if (game.world.round) { this.drawCaveTiles(game, cam); return; }
     if (this.painted.ready && (game.levelIndex === 0 || this.painted.images['level'+game.levelIndex+'_stone0'])) { this.painted.drawTiles(this, game, cam); return; }
     if (this.altar) { this.altar.drawTiles(this, game, cam); return; }
     const ctx = this.ctx, wd = game.world, def = game.level.def;
@@ -224,32 +228,178 @@ class Renderer {
           if (openS) { ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.fillRect(px, py + TILE - 6, TILE, 6); }
           continue;
         }
-        ctx.fillStyle = ((tx + ty) & 1) ? def.floor : def.floorAlt; ctx.fillRect(px, py, TILE, TILE);
         // A dark lip under every wall gives the floor some depth.
-        if (wd.isSolid(tx, ty - 1)) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(px, py, TILE, 5); }
-        if (t === T.HAY) {
-          // The painted bale, on every level rather than only the one with the altar in it: a level
-          // keeps its own floor and wall colours, but a yellow square with four strokes scratched
-          // into it does not read as a thing that burns, and the art for it was already loaded.
-          if (this.painted.ready) this.painted.stamp(ctx, 'hay', px + 16, py + 17, 30, 27);
-          else {
-            ctx.fillStyle = PALETTE.hay; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
-            ctx.strokeStyle = PALETTE.hayDark; ctx.lineWidth = 2; ctx.beginPath();
-            for (let k = 0; k < 4; k++) { const sx = px + 5 + k * 7, sy = py + 5 + ((tx * 3 + ty * 5 + k) % 3) * 6; ctx.moveTo(sx, sy); ctx.lineTo(sx + 5, sy + 12); }
-            ctx.stroke();
-          }
-        } else if (t === T.ASH) {
-          ctx.fillStyle = PALETTE.ash; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
-          ctx.fillStyle = '#3a3230'; ctx.fillRect(px + 8, py + 10, 6, 4); ctx.fillRect(px + 18, py + 20, 7, 4);
-        } else if (t === T.PIT) {
-          continue;                       // holes are drawn after the decals, in drawPits
-        } else if (t === T.EXIT) {
-          this.drawStairs(px, py, tx - game.level.exitTile.x0, true, def);
-        } else if (t === T.ENTRY) {
-          this.drawStairs(px, py, tx - game.level.entry.x0, false, def);
-        }
+        if (this.drawFloorTile(game, tx, ty, t) && wd.isSolid(tx, ty - 1)) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(px, py, TILE, 5); }
       }
     }
+  }
+
+  // One tile of whatever is not stone: boards, straw, ash, the two flights of stairs. Shared by the
+  // compound's square walls and the cave's round ones. Returns false for a hole, which is drawn later
+  // with the pits and gets no lip.
+  drawFloorTile(game, tx, ty, t) {
+    const ctx = this.ctx, def = game.level.def, px = tx * TILE, py = ty * TILE;
+    if (t === T.PIT) return false;
+    ctx.fillStyle = ((tx + ty) & 1) ? def.floor : def.floorAlt; ctx.fillRect(px, py, TILE, TILE);
+    if (t === T.HAY) {
+      // The painted bale, on every level rather than only the one with the altar in it: a level
+      // keeps its own floor and wall colours, but a yellow square with four strokes scratched
+      // into it does not read as a thing that burns, and the art for it was already loaded.
+      if (this.painted.ready) this.painted.stamp(ctx, 'hay', px + 16, py + 17, 30, 27);
+      else {
+        ctx.fillStyle = PALETTE.hay; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+        ctx.strokeStyle = PALETTE.hayDark; ctx.lineWidth = 2; ctx.beginPath();
+        for (let k = 0; k < 4; k++) { const sx = px + 5 + k * 7, sy = py + 5 + ((tx * 3 + ty * 5 + k) % 3) * 6; ctx.moveTo(sx, sy); ctx.lineTo(sx + 5, sy + 12); }
+        ctx.stroke();
+      }
+    } else if (t === T.ASH) {
+      ctx.fillStyle = PALETTE.ash; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+      ctx.fillStyle = '#3a3230'; ctx.fillRect(px + 8, py + 10, 6, 4); ctx.fillRect(px + 18, py + 20, 7, 4);
+    } else if (t === T.EXIT) {
+      this.drawStairs(px, py, tx - game.level.exitTile.x0, true, def);
+    } else if (t === T.ENTRY) {
+      this.drawStairs(px, py, tx - game.level.entry.x0, false, def);
+    }
+    return true;
+  }
+
+  // THE CAVE. The rock is one shape rather than a grid of squares: every wall tile next to the floor
+  // is added to a single path with its outside corners rounded to `world.round`, and every inside
+  // corner of the floor gets the fillet that fills it — the same shape `World.collideRound` pushes
+  // bodies out of, so what you see is what you slide along. It is filled three times: a shadow a few
+  // pixels down onto the floor, the rock's face in `wall`, and its top in `wallTop` lifted off every
+  // edge that faces the camera, which leaves the face showing as a band along the bottom of the rock.
+  // An unbroken secret wall is rock here too, and its prop draws only the crack.
+  drawCaveTiles(game, cam) {
+    const ctx = this.ctx, wd = game.world, def = game.level.def, R = wd.round, W = wd.W;
+    const { x0, y0, x1, y1 } = this.visibleTiles(cam);
+    const secret = new Set();
+    for (const p of game.props) if (p.kind === 'secret' && !p.broken) secret.add(Math.floor(p.y / TILE) * W + Math.floor(p.x / TILE));
+    const solid = (tx, ty) => wd.isSolid(tx, ty) || secret.has(ty * W + tx);
+    const LIFT = 7;
+    const base = new Path2D(), top = new Path2D(), edge = [];
+    // A rectangle with each corner rounded by its own radius, clockwise.
+    const rrect = (path, x, y, w, h, nw, ne, se, sw) => {
+      path.moveTo(x + nw, y);
+      path.lineTo(x + w - ne, y); if (ne) path.arc(x + w - ne, y + ne, ne, -Math.PI / 2, 0);
+      path.lineTo(x + w, y + h - se); if (se) path.arc(x + w - se, y + h - se, se, 0, Math.PI / 2);
+      path.lineTo(x + sw, y + h); if (sw) path.arc(x + sw, y + h - sw, sw, Math.PI / 2, Math.PI);
+      path.lineTo(x, y + nw); if (nw) path.arc(x + nw, y + nw, nw, Math.PI, Math.PI * 1.5);
+      path.closePath();
+    };
+    // The fillet in one corner of a floor tile: the corner square less the quarter circle.
+    const fillet = (path, cx, cy, sx, sy, dy) => {
+      const ox = cx + sx * R, oy = cy + sy * R + dy;       // the circle's centre
+      path.moveTo(cx, cy + dy);
+      path.lineTo(ox, cy + dy);
+      const a0 = sy > 0 ? -Math.PI / 2 : Math.PI / 2, a1 = sx > 0 ? Math.PI : 0;
+      path.arc(ox, oy, R, a0, a1, (sx < 0) === (sy < 0));
+      path.closePath();
+    };
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        const px = tx * TILE, py = ty * TILE;
+        if (!solid(tx, ty)) {
+          const t = wd.tileAt(tx, ty);
+          this.drawFloorTile(game, tx, ty, t);
+          // the grass lies on the floor as a dark mat under the blades that stand over everything
+          if (wd.grass[ty * W + tx]) {
+            const h = farHash(tx, ty);
+            ctx.fillStyle = def.grassDark || '#223618';
+            ctx.beginPath(); ctx.ellipse(px + 16, py + 17, 17 + h * 3, 15, h * 2, 0, Math.PI * 2); ctx.fill();
+          }
+          for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+            if (!solid(tx + sx, ty) || !solid(tx, ty + sy)) continue;
+            const cx = sx < 0 ? px : px + TILE, cy = sy < 0 ? py : py + TILE;
+            fillet(base, cx, cy, -sx, -sy, 0);
+            fillet(top, cx, cy, -sx, -sy, sy < 0 ? -LIFT : 0);
+          }
+          continue;
+        }
+        const oN = !solid(tx, ty - 1), oS = !solid(tx, ty + 1), oW = !solid(tx - 1, ty), oE = !solid(tx + 1, ty);
+        if (!(oN || oS || oW || oE || !solid(tx - 1, ty - 1) || !solid(tx + 1, ty - 1) || !solid(tx - 1, ty + 1) || !solid(tx + 1, ty + 1))) continue;
+        const nw = oN && oW ? R : 0, ne = oN && oE ? R : 0, se = oS && oE ? R : 0, sw = oS && oW ? R : 0;
+        rrect(base, px, py, TILE, TILE, nw, ne, se, sw); edge.push(tx, ty);
+        const lift = oS ? LIFT : 0;
+        rrect(top, px, py, TILE, TILE - lift, nw, ne, Math.min(se, TILE - lift - ne), Math.min(sw, TILE - lift - nw));
+      }
+    }
+    ctx.save(); ctx.translate(0, 6); ctx.fillStyle = 'rgba(0,0,0,0.34)'; ctx.fill(base); ctx.restore();
+    ctx.fillStyle = def.wall; ctx.fill(base);
+    ctx.fillStyle = def.wallTop; ctx.fill(top);
+    // Grain on the top of the rock: a few flecks a tile off a hash of the tile, so it holds still.
+    ctx.save(); ctx.clip(top);
+    for (let j = 0; j < edge.length; j += 2) {
+      const tx = edge[j], ty = edge[j + 1];
+      for (let k = 0; k < 3; k++) {
+        const h1 = farHash(tx * 3 + k, ty), h2 = farHash(tx, ty * 5 + k), h3 = farHash(tx + k * 11, ty - k);
+        ctx.fillStyle = h3 < 0.5 ? 'rgba(0,0,0,0.13)' : 'rgba(255,240,210,0.07)';
+        ctx.beginPath(); ctx.ellipse(tx * TILE + 4 + h1 * 24, ty * TILE + 4 + h2 * 22, 2 + h3 * 3, 1.4 + h3 * 2, h1 * 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // Tall grass, over everything that stands in it. Each tile is a handful of blades rooted at fixed
+  // spots off a hash, swaying, and parted by any body within a stride of them — laid right down under
+  // the goat so he is never lost in it himself. What it covers of a man is the lower half of him.
+  drawGrass(game, cam) {
+    const wd = game.world; if (!game.level.grass || !game.level.grass.length) return;
+    const ctx = this.ctx, def = game.level.def, W = wd.W, G = TUNING.grass;
+    const { x0, y0, x1, y1 } = this.visibleTiles(cam);
+    const bodies = [];
+    if (!game.goat.dead) bodies.push({ x: game.goat.x, y: game.goat.y, goat: true });
+    for (const e of game.enemies) if (!e.dead && !e.ghosted) bodies.push({ x: e.x, y: e.y });
+    const dark = def.grassColor || '#3d5a2a', hi = def.grassHi || '#6f8f45';
+    for (let ty = Math.max(0, y0); ty <= Math.min(wd.H - 1, y1); ty++) for (let tx = Math.max(0, x0); tx <= Math.min(W - 1, x1); tx++) {
+      if (!wd.grass[ty * W + tx]) continue;
+      const cx = (tx + 0.5) * TILE, cy = (ty + 0.5) * TILE;
+      if (game.hidden(cx, cy)) continue;
+      const near = bodies.filter((b) => Math.abs(b.x - cx) < TILE * 1.2 && Math.abs(b.y - cy) < TILE * 1.2);
+      for (let k = 0; k < 7; k++) {
+        const h1 = farHash(tx * 7 + k, ty * 3), h2 = farHash(tx - k * 5, ty * 7 + k);
+        const bx = tx * TILE + 2 + h1 * 28, by = ty * TILE + 6 + h2 * 26;
+        let len = 17 + farHash(tx + k, ty - k) * 9;
+        let lean = Math.sin(this.t * G.sway + h1 * 6.3 + tx * 0.7) * 0.18 + (h2 - 0.5) * 0.3;
+        for (const b of near) {
+          const dx = bx - b.x, dy = by - b.y, d = Math.hypot(dx, dy);
+          const reach = b.goat ? 22 : 16;
+          if (d > reach) continue;
+          const f = 1 - d / reach;
+          lean += Math.sign(dx || 1) * f * 0.9;
+          len *= 1 - f * (b.goat ? 0.6 : 0.3);
+        }
+        const tipX = bx + Math.sin(lean) * len, tipY = by - Math.cos(lean) * len;
+        ctx.fillStyle = k % 3 === 0 ? hi : dark;
+        ctx.beginPath(); ctx.moveTo(bx - 3, by); ctx.quadraticCurveTo(bx + (tipX - bx) * 0.4 - 1, by - len * 0.5, tipX, tipY);
+        ctx.quadraticCurveTo(bx + (tipX - bx) * 0.4 + 1, by - len * 0.5, bx + 3, by); ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+
+  // A boulder: a lump of rock off a hash of where it stands, so every one is its own shape and holds
+  // it. A crack across it after the first blow, the way the secret wall says it has been hit.
+  drawRock(p) {
+    const ctx = this.ctx, def = this.game && this.game.level ? this.game.level.def : {};
+    const wob = p.wobble > 0 ? Math.sin(this.t * 60) * 2 * p.wobble / 0.3 : 0;
+    const x = p.x + wob, y = p.y, r = p.r;
+    this.shadow(x, y + 4, r * 1.15, r * 0.55);
+    const pts = [];
+    for (let k = 0; k < 9; k++) {
+      const a = k / 9 * Math.PI * 2, f = 0.84 + farHash(p.x + k, p.y - k) * 0.24;
+      pts.push([x + Math.cos(a) * r * f, y - 4 + Math.sin(a) * r * f * 0.92]);
+    }
+    const shape = () => { ctx.beginPath(); pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.closePath(); };
+    shape(); ctx.fillStyle = def.wall || '#3b3731'; ctx.fill();
+    ctx.save(); shape(); ctx.clip();
+    ctx.fillStyle = def.wallTop || '#5f584b'; ctx.beginPath(); ctx.ellipse(x - 2, y - 8, r * 0.95, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,210,0.13)'; ctx.beginPath(); ctx.ellipse(x - 5, y - 12, r * 0.45, r * 0.3, -0.4, 0, Math.PI * 2); ctx.fill();
+    if (p.hits) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1.6; ctx.beginPath();
+      ctx.moveTo(x - r * 0.6, y - 12); ctx.lineTo(x - 2, y - 5); ctx.lineTo(x + 3, y - 9); ctx.lineTo(x + r * 0.7, y); ctx.stroke();
+    }
+    ctx.restore();
+    shape(); ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1.4; ctx.stroke();
   }
 
   // One tile of a flight of stairs, three tiles long. `k` is the tile's place in the flight, left to
@@ -850,6 +1000,10 @@ class Renderer {
   }
 
   drawPropBody(p) {
+    if (p.kind === 'rock') { this.drawRock(p); return; }
+    // In the cave the rock under a secret wall is drawn with the rest of the rock (`drawCaveTiles`):
+    // a square patch of wall in a round cave would give it away. Only the crack is its own.
+    if (p.kind === 'secret' && this.game && this.game.world && this.game.world.round) { this.wallCrack(p.x, p.y, p.hits || 0); return; }
     if (this.painted.ready && this.painted.drawProp(this, p)) return;
     const ctx = this.ctx;
     if (p.kind === 'brazier' && p.roast) this.drawRoast(p);
@@ -936,9 +1090,15 @@ class Renderer {
         ctx.font = `700 ${11}px ${FONT_SC}`; ctx.textAlign = 'center';
         ctx.fillStyle = p.gate ? `rgba(191,230,255,${0.55 + 0.3 * Math.sin(this.t * 3)})`
           : `rgba(255,224,138,${0.45 + 0.3 * Math.sin(this.t * 2.4)})`;
-        ctx.fillText(p.gate ? 'A SOUL OPENS IT' : 'SOUL', p.x, (p.y - 24) * TILT);
+        ctx.fillText(p.gate ? (p.shopGate ? 'TAKE ONE OF HERS' : 'A SOUL OPENS IT') : 'SOUL', p.x, (p.y - 24) * TILT);
         ctx.textAlign = 'left'; ctx.restore();
       }
+    } else if (p.kind === 'clamp') {
+      this.drawClamp(p);
+    } else if (p.kind === 'mouse') {
+      this.drawMouse(p);
+    } else if (p.kind === 'ware') {
+      this.drawWare(p);
     } else if (p.kind === 'secret') {
       // This tile is already floor — `carveSecret` cut it that way so what is behind it is real
       // ground rather than a curtain — and the wall is the only lie. Full tile, the room's own wall
@@ -1270,7 +1430,7 @@ class Renderer {
     }
     // weapon
     let swing = 0;
-    if (e.state === 'windup') swing = -1.3; else if (e.state === 'swing') swing = 1.1 - e.timer * 6; else if (e.state === 'recover') swing = 0.6;
+    if (e.state === 'windup' || e.state === 'slamwind') swing = -1.3; else if (e.state === 'swing') swing = 1.1 - e.timer * 6; else if (e.state === 'recover') swing = 0.6;
     if (e.flail > 0) swing = Math.sin(this.t * 26) * 1.5;
     if (e.kind === 'bearer' && e.knife) {
       // The one who comes for her carries the boning knife from beside the altar, not a club.
@@ -1469,6 +1629,15 @@ class Renderer {
 
   drawEnemy(e, game) {
     const ctx = this.ctx;
+    // A man lying in the grass who has not got up yet is half there: faded, and the blades drawn
+    // over him afterwards take the rest.
+    if (e.lurk && !e.aware && !e.grassDraw && game.world.grass[Math.floor(e.y / TILE) * game.world.W + Math.floor(e.x / TILE)]) {
+      e.grassDraw = true; ctx.save(); ctx.globalAlpha *= TUNING.grass.lurkAlpha;
+      this.drawEnemy(e, game);
+      ctx.restore(); e.grassDraw = false; return;
+    }
+    // A hidden wraith is whatever it is pretending to be, drawn exactly as the real one is.
+    if (e.state === 'hidden') { if (e.disguise) this.drawProp(e.disguise); return; }
     const lying = e.state === 'floored' || e.state === 'stunned';
     this.drawTelegraph(e);
     this.drawAimTelegraph(e);
@@ -1507,6 +1676,7 @@ class Renderer {
       if (paintedKey) this.painted.character(this,e,paintedKey,e.kind==='butcher'?58:e.kind==='dog'?42:e.kind==='seer'?38:42);
       else if (e.kind === 'dog') this.drawHound(e);
       else if (e.kind === 'wraith') this.drawWraith(e, r);
+      else if (e.kind === 'ratogre') this.drawRatOgre(e, r);
       else this.drawCultist(e, r);
     };
     body();
@@ -1590,7 +1760,8 @@ class Renderer {
 
   // Enemies wind up slowly and show the ground they are about to cover.
   drawTelegraph(e) {
-    if (e.state !== 'windup' && e.state !== 'chargewind') return;
+    if (e.state === 'slamwind') { this.drawSlamRing(e); return; }
+    if (e.kind === 'dog' || (e.state !== 'windup' && e.state !== 'chargewind')) return;
     const ctx = this.ctx, cfg = TUNING[e.kind];
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.rotate(e.facing);
     if (e.state === 'chargewind') {
@@ -1600,14 +1771,49 @@ class Renderer {
       ctx.strokeStyle = `rgba(239,230,208,${0.3 + 0.4 * p})`; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(len * p, -e.r); ctx.lineTo(len * p, e.r); ctx.stroke();
     } else {
-      const p = 1 - e.timer / cfg.windup;
-      const reach = cfg.reach + e.r + 10, arc = e.kind === 'butcher' ? cfg.arc : Math.PI * 0.55;
+      const p = 1 - e.timer / (e.atk ? e.atk('windup') : cfg.windup);
+      const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'butcher' ? cfg.arc : Math.PI * 0.55;
       ctx.fillStyle = `rgba(192,57,43,${0.09 + 0.2 * p})`;
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, reach, -arc / 2, arc / 2); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = `rgba(239,230,208,${0.2 + 0.55 * p})`; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(0, 0, reach, -arc / 2, -arc / 2 + arc * p); ctx.stroke();
     }
     ctx.restore();
+  }
+
+  // The brute's slam: the ring on the floor it will fill, filling in as he raises the club.
+  drawSlamRing(e) {
+    const ctx = this.ctx, SL = TUNING.champion.slam, R = SL.range * TILE, p = clamp(1 - e.timer / SL.wind, 0, 1);
+    ctx.save(); ctx.translate(e.x, e.y);
+    ctx.fillStyle = `rgba(192,57,43,${0.07 + 0.2 * p})`;
+    ctx.beginPath(); ctx.arc(0, 0, R * p, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = `rgba(239,230,208,${0.3 + 0.5 * p})`; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  // The hound's line: where the run goes, in red on the floor, brightening across the charge and
+  // shortening behind him as he runs it. Drawn under everything that stands, with the runes.
+  drawDashPaths(game) {
+    const ctx = this.ctx;
+    for (const e of game.enemies) {
+      if (e.dead || e.kind !== 'dog' || !e.dashPath || e.dashPath.length < 2 || game.hidden(e.x, e.y)) continue;
+      if (e.state !== 'windup' && e.state !== 'dart') continue;
+      const p = e.state === 'dart' ? 1 : clamp(1 - e.timer / TUNING.dog.windup, 0, 1), pts = e.dashPath;
+      ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = `rgba(192,57,43,${0.18 + 0.3 * p})`; ctx.lineWidth = e.r * 1.6;
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (const q of pts) ctx.lineTo(q.x, q.y); ctx.stroke();
+      ctx.strokeStyle = `rgba(232,80,60,${0.4 + 0.5 * p})`; ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]); ctx.lineDashOffset = -this.t * 60;
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (const q of pts) ctx.lineTo(q.x, q.y); ctx.stroke();
+      ctx.setLineDash([]);
+      // an arrowhead at the far end, so the line has a direction
+      const a = pts[pts.length - 1], b = pts[pts.length - 2], ang = Math.atan2(a.y - b.y, a.x - b.x), h = 9;
+      ctx.fillStyle = `rgba(232,80,60,${0.5 + 0.5 * p})`;
+      ctx.beginPath(); ctx.moveTo(a.x + Math.cos(ang) * h, a.y + Math.sin(ang) * h);
+      ctx.lineTo(a.x + Math.cos(ang + 2.4) * h, a.y + Math.sin(ang + 2.4) * h);
+      ctx.lineTo(a.x + Math.cos(ang - 2.4) * h, a.y + Math.sin(ang - 2.4) * h); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
   }
 
   // A hunter's shot is the one thing in the game you cannot see coming without this: the dashed
@@ -1721,7 +1927,8 @@ class Renderer {
         ['vision', d.vision ? 'VISION  ON' : 'VISION  OFF'],
         ['hearing', d.hearing ? 'HEARING  ON' : 'HEARING  OFF'],
         ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'],
-        ['wraith', '+ WRAITH'], ['butcher', '+ BUTCHER'],
+        ['wraith', '+ WRAITH'], ['butcher', '+ BUTCHER'], ['ratogre', '+ RAT OGRE'],
+        ['mouse', '+ MOUSE'], ['artifact', '+ ARTIFACT'],
         ['soul', '+ SOUL'], ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
         ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'],
       ];
@@ -2110,7 +2317,7 @@ class Renderer {
     ctx.fillText(this.clip('a bar is a room at its real width and place in the world · height is threat · click one to open it',
       W - pad * 2 - 150 * s), pad + 150 * s, top);
     const roleTint = { canon: PALETTE.ochre, mix: 'rgba(239,230,208,0.5)', trap: PALETTE.blood,
-      pen: PALETTE.ash, calm: PALETTE.ash };
+      pen: PALETTE.ash, calm: PALETTE.ash, rest: PALETTE.witchHi };
     // A colour legend, not just a sentence about one: `roleTint` (plus `PALETTE.witch`, the
     // fallback for every set-piece role) is the same map the bars below are painted from, so this
     // row can never say a colour the bars themselves do not use.
@@ -2319,7 +2526,7 @@ class Renderer {
   roomTiles(game, rooms, L, li, x0, y0, cellW, cellH, cols, gap) {
     const ctx = this.ctx, s = this.ts, d = game.dev;
     const roleTint = { canon: PALETTE.ochre, mix: 'rgba(239,230,208,0.45)', trap: PALETTE.blood,
-      pen: PALETTE.ash, calm: PALETTE.ash, arena: PALETTE.witch, mill: PALETTE.witch,
+      pen: PALETTE.ash, calm: PALETTE.ash, rest: PALETTE.witchHi, arena: PALETTE.witch, mill: PALETTE.witch,
       hall: PALETTE.witch, gallery: PALETTE.witch, killbox: PALETTE.witch };
     rooms.forEach((r, i) => {
       const cx = x0 + (i % cols) * (cellW + gap), cy = y0 + Math.floor(i / cols) * (cellH + gap);
@@ -2377,17 +2584,26 @@ class Renderer {
         edit: melee('bearer'),
         note: 'Cone plus line of sight. Reads you, winds up, swings once. The wall behind you kills, not his club.' },
       { kind: 'bearer', tag: 'champion', champion: true, label: 'BRUTE',
-        cfg: Object.assign({}, TUNING.bearer, { hp: TUNING.champion.hp }), hp: TUNING.champion.hp, boss: TUNING.champion.bossHp,
-        edit: [...melee('bearer'), ['HP', ['champion', 'hp']], ['BOSS HP', ['champion', 'bossHp']]],
-        note: 'A clubman built twice over: three hits before he stays down, four as an arena boss. Bigger and slower to match.' },
+        cfg: Object.assign({}, TUNING.bearer, TUNING.champion), hp: TUNING.champion.hp, boss: TUNING.champion.bossHp,
+        edit: [['REACH', ['champion', 'reach']], ['WINDUP', ['champion', 'windup']], ['HP', ['champion', 'hp']], ['BOSS HP', ['champion', 'bossHp']],
+          ['KNOCK', ['champion', 'flingMul']], ['SLAM %', ['champion', 'slam', 'chance']], ['SLAM R', ['champion', 'slam', 'range']],
+          ['SLAM CD', ['champion', 'slam', 'cd']], ['RAGE', ['champion', 'rage', 'speed']]],
+        immune: ['blunder'],
+        note: `A clubman built twice over: three hits, four as an arena boss. Never carried; a headbutt moves him ${Math.round(TUNING.champion.flingMul * 100)}% as far. Close in, ${Math.round(TUNING.champion.slam.chance * 100)}% of his blows are a slam on the floor — a ring round him, every side at once. On fire he comes on faster instead of running.` },
+      { kind: 'bearer', tag: 'soulBearer', soul: true, label: 'SOUL-BEARER',
+        cfg: TUNING.bearer, hp: 1 + TUNING.soulBearer.hp,
+        edit: [['HP +', ['soulBearer', 'hp']], ['KNOCK', ['soulBearer', 'flingMul']]],
+        note: `Any man with a soul in him — lit amber, eyes red. ${TUNING.soulBearer.hp} more heart${TUNING.soulBearer.hp === 1 ? '' : 's'} than he had, never carried, and a headbutt moves him ${Math.round(TUNING.soulBearer.flingMul * 100)}% as far. Rules and skills of his own per kind go here next.` },
       { kind: 'butcher', tag: 'butcher', label: 'BUTCHER', cfg: TUNING.butcher, hp: TUNING.butcher.hp,
-        edit: [...melee('butcher'), ['HP', ['butcher', 'hp']], ['CHARGE AT', ['butcher', 'chargeMin']], ['CHARGE SPD', ['butcher', 'chargeSpeed']], ['CHARGE CD', ['butcher', 'chargeCooldown']]],
+        edit: [...melee('butcher'), ['HP', ['butcher', 'hp']], ['CHARGE AT', ['butcher', 'chargeMin']], ['CHARGE SPD', ['butcher', 'chargeSpeed']], ['CHARGE CD', ['butcher', 'chargeCooldown']],
+          ['RAGE SPD', ['butcher', 'rage', 'speed']], ['RAGE TEMPO', ['butcher', 'rage', 'tempo']]],
         immune: ['blunder'],
-        note: `Four hits, and out-reaches a clubman. Charges after ${TUNING.butcher.chargeMin}s of chasing, bulldozes doors and tables. BLUNDER off keeps him swinging on fire instead of losing the room to it.` },
+        note: `Four hits, and out-reaches a clubman. Charges after ${TUNING.butcher.chargeMin}s of chasing, bulldozes doors and tables. Alight he does not run: he comes at you ${TUNING.butcher.rage.speed}x as fast and swings ${TUNING.butcher.rage.tempo}x as quick.` },
       { kind: 'dog', tag: 'dog', label: 'HOUND', cfg: TUNING.dog, hp: TUNING.dog.hp || 1,
-        edit: [...melee('dog'), ['DODGE', ['dog', 'dodge']]],
+        edit: [['SPEED', ['dog', 'speed']], ['DMG', ['dog', 'damage']], ['CHARGE', ['dog', 'windup']], ['RUN AT', ['dog', 'dashRange']],
+          ['RUN SPD', ['dog', 'dashSpeed']], ['RUN TIME', ['dog', 'dashTime']], ['TURN', ['dog', 'dashTurn']], ['BEND', ['dog', 'dashSkew']], ['DODGE', ['dog', 'dodge']]],
         immune: ['blunder'],
-        note: `Never holds still. Dodges ${Math.round(TUNING.dog.dodge * 100)}% of headbutts, darts in from orbit, one at a time per pack. No bark. Reached for BY THE COLLAR, it springs ${TUNING.dog.hop} tile back and the grab is spent. BLUNDER off keeps it darting on fire.` },
+        note: `Circles, then inside ${TUNING.dog.dashRange} tiles plants for ${TUNING.dog.windup}s with its run drawn on the floor in red — bent, homing — and runs it barking, biting what is in front. Dodges ${Math.round(TUNING.dog.dodge * 100)}% of headbutts outside the run. One at a time per pack.` },
       { kind: 'seer', tag: 'seer', label: 'SEER', cfg: TUNING.seer, hp: TUNING.seer.hp,
         edit: [['SPEED', ['seer', 'speed']], ['DMG', ['seer', 'damage']], ['HP', ['seer', 'hp']],
           ['CAST', ['seer', 'castWind']], ['CAST CD', ['seer', 'castCooldown']], ['BLINK CD', ['seer', 'blinkCooldown']]],
@@ -2400,9 +2616,9 @@ class Renderer {
         note: `Keeps ${TUNING.hunter.keepMin}-${TUNING.hunter.keepMax} tiles off, fires on a reload timer. Cocks the rifle as he starts to aim — that click is the tell. Inside ${TUNING.hunter.wildNear} tiles ${Math.round(TUNING.hunter.wildChance * 100)}% of his shots go wild. Empties a fixed mag once grabbed, never reloads again.` },
       { kind: 'wraith', tag: 'wraith', label: 'WRAITH', cfg: TUNING.wraith, hp: TUNING.wraith.hp,
         edit: [['SPEED', ['wraith', 'speed']], ['DMG', ['wraith', 'damage']], ['HP', ['wraith', 'hp']],
-          ['WINDUP', ['wraith', 'windup']], ['MANIFEST', ['wraith', 'manifest']], ['SOLID', ['wraith', 'solidAfter']], ['FADE', ['wraith', 'fadeCd']]],
+          ['WINDUP', ['wraith', 'windup']], ['MANIFEST', ['wraith', 'manifest']], ['SOLID', ['wraith', 'solidAfter']], ['FADE', ['wraith', 'fadeCd']], ['HIDE', ['wraith', 'hide', 'start']], ['HIDE AGAIN', ['wraith', 'hide', 'again']], ['SPRING R', ['wraith', 'hide', 'springR']]],
         immune: ['fire', 'stun', 'grab'],
-        note: 'No body, no collision, until it commits. Drifts to your flank or back, manifests, swings once, fades. Dies only in that window. Dead already: an ordinary flame, a scream and BY THE COLLAR all find nothing to take hold of — witchfire still burns it.' },
+        note: 'Can lie in a room as a box or a bowl of milk; headbutt or reach near it, or step on it, and it strikes from any side. No body, no collision, until it commits. Drifts to your flank or back, manifests, swings once, fades. Dies only in that window. Dead already: an ordinary flame, a scream and BY THE COLLAR all find nothing to take hold of — witchfire still burns it.' },
     ];
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE BESTIARY', pad, top);
@@ -2422,14 +2638,14 @@ class Renderer {
       const fake = { x: pad + thumb / 2, y: ry + thumb / 2 + 6 * s, r: k.cfg.radius, kind: k.kind,
         champion: !!k.champion, elite: !!k.champion, facing: Math.PI / 2, hp: k.hp, maxHp: k.hp,
         dead: false, ghosted: false, vx: 0, vy: 0, flash: 0, burning: 0, bombFuse: 0, dazed: 0,
-        state: 'idle', say: null, soul: false, witchBurn: false };
+        state: 'idle', say: null, soul: !!k.soul, witchBurn: false };
       ctx.save(); this.drawEnemy(fake, game); ctx.restore();
       ctx.textAlign = 'left';
       ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
       ctx.fillText(k.label, nameX, ry + 12 * s);
       ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
       const lv = levelsFor(k.tag);
-      ctx.fillText(`threat ${THREAT[k.tag]} · levels ${lv.length ? lv.join(',') : '-'}`, nameX, ry + 24 * s);
+      ctx.fillText(`threat ${THREAT[k.tag] === undefined ? '-' : THREAT[k.tag]} · levels ${lv.length ? lv.join(',') : '-'}`, nameX, ry + 24 * s);
       ctx.fillStyle = 'rgba(239,230,208,0.35)';
       ctx.fillText(`cycle ${cycle(k.tag, k.cfg).toFixed(2)}s`, nameX, ry + 35 * s);
       // Every real knob for this kind, as chips wrapped into the stats column — the same box and the
@@ -2439,7 +2655,8 @@ class Renderer {
         let obj = TUNING; for (let j = 0; j < path.length - 1; j++) obj = obj[path[j]];
         const val = obj[path[path.length - 1]];
         ctx.font = `700 ${8 * s}px ${FONT_SC}`;
-        const w = ctx.measureText(`${label} ${val}`).width + 10 * s;
+        const shown = typeof val === 'number' && !Number.isInteger(val) ? Math.round(val * 100) / 100 : val;
+        const w = ctx.measureText(`${label} ${shown}`).width + 10 * s;
         if (px + w > statsX + statsW) { px = statsX; py += 19 * s; }
         this.numChip(d, px, py, label, val, `enemy-edit=${path.join('.')}`);
         px += w + 5 * s;
@@ -2911,6 +3128,360 @@ class Renderer {
     }
   }
 
+  // The mouse in the wall. Small, grey, sat up on her haunches with her paws together, ears up,
+  // one bead of an eye and a tail curling out behind her — a trader, not a threat, until she has
+  // been hit twice, when the eye goes red and she shakes. What she says is a bubble over her head
+  // in the same plate the cult's barks use, so a line from her reads as a line from anybody.
+  // The burrow itself: a low, dirt-rimmed hole cut into the base of the wall, flush with the floor
+  // and squashed to it the way a spike plate or a crack is (this is a hole, not a doorway a body
+  // stands in). `p.gap` is the wall tile it opens through — one row from where she actually sits.
+  drawBurrow(p) {
+    const ctx = this.ctx, gx = p.gap.x, gy = p.gap.y, w = 13, h = 8 * TILT;
+    ctx.fillStyle = PALETTE.dirt;
+    ctx.beginPath(); ctx.ellipse(gx, gy, w + 5, h + 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.dirtHi;
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      ctx.beginPath(); ctx.ellipse(gx + Math.cos(a) * (w + 2), gy + Math.sin(a) * (h + 1.5), 3, 2, a, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#0b0810';
+    ctx.beginPath(); ctx.ellipse(gx, gy, w, h, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(70,53,36,0.7)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.ellipse(gx, gy, w, h, 0, 0, Math.PI * 2); ctx.stroke();
+    // a claw-scratch at the rim, and a wisp of straw dragged in for bedding
+    ctx.strokeStyle = 'rgba(20,15,12,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(gx - w * 0.6, gy - h * 0.5); ctx.lineTo(gx - w * 0.3, gy - h * 0.9); ctx.stroke();
+    ctx.strokeStyle = PALETTE.hayDark; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(gx + w * 0.5, gy + h * 0.6); ctx.lineTo(gx + w * 0.9, gy + h * 0.3); ctx.stroke();
+  }
+
+  drawMouse(p) {
+    const ctx = this.ctx, M = TUNING.prop.mouse, t = this.t;
+    const bob = Math.sin(t * 3.2 + p.phase) * 0.8, shake = p.wobble > 0 ? Math.sin(t * 60) * 1.6 : 0;
+    const angry = (p.angry || 0) > 0 || (p.strikes || 0) >= 2;
+    if (p.gap && !p.dead) this.drawBurrow(p);
+    // She sits to one side of her own hole rather than blocking it — a real mousehole shows the
+    // dark opening itself, with whatever lives there peeking out beside it, not centred over it.
+    const sx = p.x - 9, sy = p.y;
+    this.shadow(sx, sy + 2, 8, 3.5);
+    ctx.save(); ctx.translate(sx + shake, sy - 4 + bob);
+    // Faces the room: a top-wall hole looks down, a bottom-wall hole looks up.
+    const down = p.wallSide !== 'down';
+    const edge = 'rgba(26,16,22,0.55)';
+    // tail
+    ctx.strokeStyle = '#c99a9a'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-5, 4); ctx.quadraticCurveTo(-14, 6 + Math.sin(t * 2) * 2, -12, -2 + Math.cos(t * 1.7) * 2); ctx.stroke();
+    // body
+    ctx.fillStyle = '#8c8a86'; ctx.strokeStyle = edge; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.ellipse(0, 2, 7, 6.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#b3b0aa'; ctx.beginPath(); ctx.ellipse(0.5, 4, 4.2, 3.6, 0, 0, Math.PI * 2); ctx.fill();   // belly
+    // head, with the ears on top of it
+    const hy = down ? -4 : -5;
+    ctx.fillStyle = '#9a9894'; ctx.strokeStyle = edge;
+    for (const ex of [-4.6, 4.6]) {
+      ctx.beginPath(); ctx.arc(ex, hy - 5, 3.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#d9a0a6'; ctx.beginPath(); ctx.arc(ex, hy - 5, 1.9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#9a9894';
+    }
+    ctx.beginPath(); ctx.ellipse(0, hy, 5.6, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // snout, nose, whiskers
+    ctx.fillStyle = '#b3b0aa'; ctx.beginPath(); ctx.ellipse(0, hy + 2.4, 2.8, 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d98a94'; ctx.beginPath(); ctx.arc(0, hy + 3.4, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(239,230,208,0.7)'; ctx.lineWidth = 0.8;
+    for (const s of [-1, 1]) for (const k of [-1, 0, 1]) { ctx.beginPath(); ctx.moveTo(s * 2, hy + 2.6 + k * 0.6); ctx.lineTo(s * 7.5, hy + 1.6 + k * 1.6); ctx.stroke(); }
+    // eyes: two beads, red once she has been asked and not listened to
+    ctx.fillStyle = angry ? PALETTE.blood : PALETTE.ink;
+    ctx.beginPath(); ctx.arc(-2.2, hy - 0.6, 1.1, 0, Math.PI * 2); ctx.arc(2.2, hy - 0.6, 1.1, 0, Math.PI * 2); ctx.fill();
+    if (angry) { ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-4, hy - 3); ctx.lineTo(-1, hy - 1.6); ctx.moveTo(4, hy - 3); ctx.lineTo(1, hy - 1.6); ctx.stroke(); }
+    // paws held together in front: the trader's pose
+    ctx.fillStyle = '#b3b0aa'; ctx.strokeStyle = edge; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(-2, 4.6, 1.7, 1.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(2, 4.6, 1.7, 1.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    // A small lamp glow on her, so the hole reads as a lit stall across the room.
+    const gl = ctx.createRadialGradient(sx, sy - 6, 0, sx, sy - 6, 34);
+    gl.addColorStop(0, `rgba(255,224,138,${0.1 + 0.04 * Math.sin(t * 2.2)})`); gl.addColorStop(1, 'rgba(255,224,138,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(sx, sy - 6, 34, 0, Math.PI * 2); ctx.fill();
+    if (p.say) {
+      const a = Math.max(0, Math.min(1, p.say.life / 0.4, (p.say.max - p.say.life) / 0.08));
+      ctx.save(); ctx.scale(1, 1 / TILT);
+      const by = (sy - 24) * TILT;
+      ctx.font = `700 12px ${FONT_SC}`; ctx.textAlign = 'center';
+      const tw = ctx.measureText(p.say.text).width;
+      ctx.globalAlpha = a * 0.78; ctx.fillStyle = PALETTE.ink;
+      ctx.fillRect(sx - tw / 2 - 6, by - 11, tw + 12, 15);
+      ctx.beginPath(); ctx.moveTo(sx - 4, by + 4); ctx.lineTo(sx + 4, by + 4); ctx.lineTo(sx, by + 8); ctx.fill();
+      ctx.globalAlpha = a; ctx.fillStyle = p.say.angry ? PALETTE.blood : PALETTE.bone;
+      ctx.fillText(p.say.text, sx, by);
+      ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.restore();
+    }
+  }
+
+  // The clamp bolted over the mouth of a room left behind (`game.updateClamps`): a dark iron plate
+  // the width of the mouth, two bands across it and a rivet at each end, driven down into place over
+  // `clamp.slam`. The stone under it is what actually shuts the room; this is what says it was shut
+  // on purpose rather than never having been open.
+  drawClamp(p) {
+    const ctx = this.ctx, k = p.slam / TUNING.clamp.slam, long = p.span * TILE;
+    const w = p.vertical ? 18 : long + 6, h = p.vertical ? long * TILT + 6 : 18;
+    const drop = k * k * 26;
+    ctx.save(); ctx.translate(p.x, p.y - drop); ctx.globalAlpha = 1 - k * 0.6;
+    ctx.fillStyle = 'rgba(10,8,10,0.55)'; ctx.fillRect(-w / 2 + 2, -h / 2 + 3, w, h);
+    ctx.fillStyle = '#2c2c32'; ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.fillStyle = '#4c4e57'; ctx.fillRect(-w / 2, -h / 2, w, 3);
+    ctx.fillStyle = '#17171b';
+    for (const f of [-0.28, 0.28]) {
+      if (p.vertical) ctx.fillRect(-w / 2, f * h - 2, w, 4); else ctx.fillRect(f * w - 2, -h / 2, 4, h);
+    }
+    ctx.fillStyle = '#9a9ca6';
+    for (const f of [-0.42, 0, 0.42]) {
+      const rx = p.vertical ? 0 : f * w, ry = p.vertical ? f * h : 0;
+      ctx.beginPath(); ctx.arc(rx, ry, 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(8,6,8,0.8)'; ctx.lineWidth = 2; ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+
+  // A ware on her shelf: a stool with the talisman hanging over it and a word under it. She takes
+  // nothing for it — TAKE, and the gate says it is one of hers — dark and barred while the ogre is
+  // out, and the old talisman put back on the stool says YOURS, since reaching for it is a swap.
+  // Two stools sit a tile apart: anything longer than a word under each ran into its neighbour.
+  drawWare(p) {
+    const ctx = this.ctx, t = this.t, w = p.ware; if (!w) return;
+    const milk = w.id === 'milk';
+    const def = milk ? MILK_OFFER : ARTIFACTS.find((a) => a.id === w.id); if (!def) return;
+    const game = this.game;
+    const bob = Math.sin(t * 2.6 + p.phase) * 1.4;
+    this.shadow(p.x, p.y + 3, 9, 4);
+    // the stool
+    ctx.fillStyle = '#4a3420'; ctx.fillRect(p.x - 7, p.y - 2, 14, 7);
+    ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(p.x - 7, p.y - 2, 14, 2);
+    ctx.fillStyle = '#3a2a1a'; ctx.fillRect(p.x - 6, p.y + 5, 2.4, 4); ctx.fillRect(p.x + 3.6, p.y + 5, 2.4, 4);
+    const locked = p.locked, dim = locked ? 0.35 : 1;
+    // the talisman, hung a little above and breathing
+    ctx.save(); ctx.globalAlpha = dim;
+    if (!locked) {
+      const gl = ctx.createRadialGradient(p.x, p.y - 12 + bob, 0, p.x, p.y - 12 + bob, 22);
+      gl.addColorStop(0, this.tint(def.color, 0.26));
+      gl.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, p.y - 12 + bob, 22, 0, Math.PI * 2); ctx.fill();
+    }
+    this.artifactIcon(w.id, p.x, p.y - 12 + bob, 9, w.tier);
+    ctx.restore();
+    // tier pips under the stool's lip, then the word
+    ctx.save(); ctx.scale(1, 1 / TILT);
+    const ty = (p.y + 15) * TILT;
+    ctx.fillStyle = 'rgba(239,230,208,0.75)';
+    if (!milk) for (let k = 0; k < w.tier; k++) ctx.fillRect(p.x - (w.tier * 4 - 1) / 2 + k * 4, ty - 8, 2.6, 2.6);
+    ctx.font = `700 10px ${FONT_SC}`; ctx.textAlign = 'center';
+    const label = locked ? 'HIS' : p.chosen ? 'YOURS' : 'TAKE';
+    ctx.fillStyle = 'rgba(13,10,12,0.7)'; ctx.fillText(label, p.x + 1, ty + 1);
+    ctx.fillStyle = locked ? PALETTE.blood : p.chosen ? 'rgba(239,230,208,0.6)' : PALETTE.fireHi;
+    ctx.fillText(label, p.x, ty);
+    ctx.textAlign = 'left'; ctx.restore();
+    // What it does, read off the thing itself rather than off a HUD tooltip: nobody stops running
+    // to hover a corner of the screen, but a line hanging over the ware as you walk up to it is
+    // read on the way past. On approach, not on the pointer — the touch player gets it too.
+    const g = game && game.goat;
+    if (g && !locked && Math.hypot(g.x - p.x, g.y - p.y) < TUNING.prop.ware.readR + p.r) {
+      const tierInfo = def.tiers[w.tier - 1];
+      ctx.save(); ctx.scale(1, 1 / TILT);
+      ctx.font = `700 11px ${FONT_SC}`;
+      const title = milk ? def.name : `${def.name} ${'I'.repeat(w.tier)}`;
+      const lines = this.wrap(tierInfo.desc, 148);
+      const bw = 158, bh = 18 + lines.length * 13;
+      // The milk stands on the floor in front of her, so its note hangs under it rather than over
+      // her and her two stools.
+      const by = milk ? (p.y + 24) * TILT : (p.y - 40) * TILT - bh;
+      ctx.globalAlpha = 0.88; ctx.fillStyle = PALETTE.ink;
+      ctx.fillRect(p.x - bw / 2, by, bw, bh);
+      ctx.strokeStyle = this.tint(def.color, 0.65); ctx.lineWidth = 1.3;
+      ctx.strokeRect(p.x - bw / 2, by, bw, bh);
+      ctx.globalAlpha = 1; ctx.textAlign = 'center';
+      ctx.fillStyle = def.color; ctx.fillText(title, p.x, by + 14);
+      ctx.font = `10px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.88)';
+      lines.forEach((ln, i) => ctx.fillText(ln, p.x, by + 28 + i * 13));
+      ctx.textAlign = 'left'; ctx.restore();
+    }
+  }
+  // A hex colour with an alpha on it, for the glow under a ware.
+  tint(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+
+  // The talisman itself, drawn at `h` half-size. One drawing per artifact, the same one on the
+  // shelf, in the corner of the screen and at his neck, so it is learnt once. The tier is what the
+  // pips say; the drawing does not change with it.
+  artifactIcon(id, x, y, h, tier) {
+    const ctx = this.ctx, edge = 'rgba(26,16,22,0.7)';
+    ctx.save(); ctx.translate(x, y); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    if (id === 'milk') {
+      // a wooden bowl brimming white, seen a little from above
+      ctx.fillStyle = '#6b4a2c'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.14;
+      ctx.beginPath(); ctx.moveTo(-h, -h * 0.1); ctx.quadraticCurveTo(0, h * 1.2, h, -h * 0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#efe6d0'; ctx.beginPath(); ctx.ellipse(0, -h * 0.12, h * 0.92, h * 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(-h * 0.3, -h * 0.2, h * 0.25, h * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (id === 'firecharm') {
+      // an amber disc on a cord, with a flame cut into it
+      ctx.strokeStyle = '#6b4a2c'; ctx.lineWidth = h * 0.16;
+      ctx.beginPath(); ctx.moveTo(-h * 0.35, -h); ctx.quadraticCurveTo(0, -h * 1.35, h * 0.35, -h); ctx.stroke();
+      ctx.fillStyle = '#b9873a'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.14;
+      ctx.beginPath(); ctx.arc(0, 0, h * 0.85, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = PALETTE.fire;
+      ctx.beginPath(); ctx.moveTo(0, -h * 0.62); ctx.quadraticCurveTo(h * 0.55, -h * 0.1, 0, h * 0.5);
+      ctx.quadraticCurveTo(-h * 0.55, -h * 0.1, 0, -h * 0.62); ctx.fill();
+      ctx.fillStyle = PALETTE.fireHi;
+      ctx.beginPath(); ctx.moveTo(0, -h * 0.25); ctx.quadraticCurveTo(h * 0.25, 0.05 * h, 0, h * 0.35);
+      ctx.quadraticCurveTo(-h * 0.25, 0.05 * h, 0, -h * 0.25); ctx.fill();
+    } else if (id === 'clover') {
+      // four leaves on a stem
+      ctx.strokeStyle = '#4e5e30'; ctx.lineWidth = h * 0.16;
+      ctx.beginPath(); ctx.moveTo(0, h * 0.2); ctx.quadraticCurveTo(h * 0.25, h * 0.6, h * 0.1, h * 1.05); ctx.stroke();
+      for (const [lx, ly] of [[0, -h * 0.5], [h * 0.5, 0], [0, h * 0.42], [-h * 0.5, 0]]) {
+        ctx.fillStyle = PALETTE.grass; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1;
+        ctx.beginPath(); ctx.ellipse(lx * 0.9, ly * 0.9 - h * 0.05, h * 0.42, h * 0.36, Math.atan2(ly, lx), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = PALETTE.grassHi; ctx.beginPath(); ctx.ellipse(lx * 0.75, ly * 0.75 - h * 0.1, h * 0.16, h * 0.13, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (id === 'boomerang') {
+      // two arms of a bent stick, bone with an ochre edge
+      ctx.rotate(-0.5);
+      ctx.strokeStyle = edge; ctx.lineWidth = h * 0.62;
+      ctx.beginPath(); ctx.moveTo(-h * 0.9, h * 0.35); ctx.lineTo(0, -h * 0.55); ctx.lineTo(h * 0.9, h * 0.35); ctx.stroke();
+      ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = h * 0.42;
+      ctx.beginPath(); ctx.moveTo(-h * 0.9, h * 0.35); ctx.lineTo(0, -h * 0.55); ctx.lineTo(h * 0.9, h * 0.35); ctx.stroke();
+      ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = h * 0.14;
+      ctx.beginPath(); ctx.moveTo(-h * 0.7, h * 0.2); ctx.lineTo(-h * 0.35, -h * 0.15); ctx.moveTo(h * 0.7, h * 0.2); ctx.lineTo(h * 0.35, -h * 0.15); ctx.stroke();
+    } else if (id === 'symbols') {
+      // a violet sigil: a ring, a triangle in it, three points
+      ctx.strokeStyle = PALETTE.witch; ctx.lineWidth = h * 0.16;
+      ctx.beginPath(); ctx.arc(0, 0, h * 0.85, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = PALETTE.witchHi; ctx.lineWidth = h * 0.12;
+      ctx.beginPath(); ctx.moveTo(0, -h * 0.6); ctx.lineTo(h * 0.52, h * 0.3); ctx.lineTo(-h * 0.52, h * 0.3); ctx.closePath(); ctx.stroke();
+      ctx.fillStyle = PALETTE.witchHi;
+      for (const [px, py] of [[0, -h * 0.6], [h * 0.52, h * 0.3], [-h * 0.52, h * 0.3]]) { ctx.beginPath(); ctx.arc(px, py, h * 0.14, 0, Math.PI * 2); ctx.fill(); }
+      ctx.beginPath(); ctx.arc(0, 0, h * 0.12, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // The slot right of the hearts: the talisman he wears, its tier, and for the boomerang the wait
+  // until it is back in the holster. Empty, it is a faint cord with nothing on it — a slot that
+  // exists before there is anything to put in it is how a player finds out there is a shop.
+  drawArtifactChip(game, x, y, box) {
+    const ctx = this.ctx, s = this.hs, art = game.artifact, m = game.input.mouse, g = game.goat;
+    const def = art ? ARTIFACTS.find((a) => a.id === art.id) : null, tier = art ? Shop.tierOf(art) : null;
+    // Only the two verb artifacts have a button, and it does not exist until one of them is worn:
+    // this is the one place a player learns Q is there at all.
+    const isItem = art && (art.id === 'boomerang' || art.id === 'symbols');
+    ctx.fillStyle = 'rgba(13,10,12,0.5)'; ctx.fillRect(x, y, box, box);
+    ctx.strokeStyle = def ? 'rgba(185,135,58,0.85)' : 'rgba(239,230,208,0.14)'; ctx.lineWidth = 1.2 * s;
+    ctx.strokeRect(x, y, box, box);
+    const cx = x + box / 2, cy = y + box / 2;
+    if (def) {
+      this.artifactIcon(art.id, cx, cy - 1 * s, box * 0.3, art.tier);
+      ctx.fillStyle = 'rgba(239,230,208,0.8)';
+      const pw = 3 * s, gap = 2 * s, tot = art.tier * pw + (art.tier - 1) * gap;
+      for (let k = 0; k < art.tier; k++) ctx.fillRect(Math.round(cx - tot / 2 + k * (pw + gap)), Math.round(y + box - 5 * s), pw, 2.2 * s);
+      // Q's own wait, as a strip draining under the chip the way the gong's does under the rail —
+      // one clock for both verb artifacts, since only one is ever worn at once.
+      if (isItem && g.itemCdMax > 0 && g.itemCd > 0) {
+        const frac = game.boom.fly ? 1 : g.itemCd / g.itemCdMax;
+        ctx.fillStyle = 'rgba(13,10,12,0.7)'; ctx.fillRect(x, y + box + 2 * s, box, 3 * s);
+        ctx.fillStyle = game.boom.fly ? PALETTE.fireHi : PALETTE.ochre; ctx.fillRect(x, y + box + 2 * s, box * (1 - frac), 3 * s);
+      }
+    } else {
+      // the empty cord
+      ctx.strokeStyle = 'rgba(239,230,208,0.22)'; ctx.lineWidth = 1.4 * s;
+      ctx.beginPath(); ctx.moveTo(cx - box * 0.28, cy - box * 0.1); ctx.quadraticCurveTo(cx, cy + box * 0.32, cx + box * 0.28, cy - box * 0.1); ctx.stroke();
+    }
+    // The key, under the chip, exactly the way the rail prints one under each of the four verbs —
+    // and only once there is a fifth verb to name at all.
+    if (isItem && !game.touch.active) {
+      ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.textAlign = 'center';
+      ctx.fillStyle = g.itemCd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.55)';
+      ctx.fillText('Q', cx, y + box + 9 * s);
+      ctx.textAlign = 'left';
+    }
+    if (!game.touch.active && m.x >= x && m.x <= x + box && m.y >= y && m.y <= y + box) {
+      const noteY = y + box + (isItem ? 22 : 12) * s;
+      this.skillHover = def
+        ? { row: { name: `${def.name} ${'I'.repeat(art.tier)}`, note: tier.desc }, x, left: x, y: noteY, hot: false, boons: [] }
+        : { row: { name: 'NOTHING AT HIS NECK', note: 'A talisman goes here. The mouse in the wall sells them, for the level’s dead. Grab to buy.', half: true }, x, left: x, y: noteY, hot: false, boons: [] };
+    }
+  }
+
+  // The boomerang in the air: the same bent stick as the icon, spinning, with a short smear behind it.
+  drawBoomerang(game) {
+    const f = game.boom && game.boom.fly; if (!f) return;
+    const ctx = this.ctx;
+    ctx.save(); ctx.translate(f.x, f.y); ctx.scale(1, 1 / TILT);
+    ctx.globalAlpha = 0.25; ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = 3;
+    const l = Math.hypot(f.vx, f.vy) || 1;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-f.vx / l * 22, -f.vy / l * 22); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.rotate(f.spin);
+    this.artifactIcon('boomerang', 0, 0, 8, 1);
+    ctx.restore();
+    this.shadow(f.x, f.y + 10, 7, 3);
+  }
+
+  // The rat ogre: what the mouse in the wall becomes. Twice a man's width, hunched, grey-brown and
+  // matted, a rat's head on it — long snout, round ears, whiskers, red eyes, two teeth — and a
+  // naked pink tail longer than he is. Nothing else in the compound is an animal that walks on
+  // two legs, which is the point: he is the one thing here that is not the cult's and not yours.
+  drawRatOgre(e, r) {
+    const ctx = this.ctx, t = this.t, edge = 'rgba(26,16,22,0.6)';
+    const emerging = e.state === 'emerge' ? 1 - Math.max(0, e.timer) / TUNING.ratogre.emerge : 1;
+    ctx.save();
+    if (emerging < 1) { ctx.scale(0.4 + 0.6 * emerging, 0.4 + 0.6 * emerging); ctx.globalAlpha *= 0.5 + 0.5 * emerging; }
+    const step = Math.hypot(e.vx, e.vy) > 30 ? Math.sin(t * 13 + e.x * 0.02) : 0;
+    // tail: long, naked, sweeping behind him
+    ctx.strokeStyle = '#c98f98'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-r * 0.8, 0);
+    ctx.quadraticCurveTo(-r * 1.7, r * 0.5 + Math.sin(t * 2.3) * r * 0.4, -r * 2.4, Math.cos(t * 1.9) * r * 0.5); ctx.stroke();
+    // hind feet
+    ctx.fillStyle = '#5a4a44'; ctx.strokeStyle = edge; ctx.lineWidth = 1.4;
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(-r * 0.3 + step * s * 3, s * r * 0.72, r * 0.3, r * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    // body: hunched, wider at the shoulder
+    ctx.fillStyle = '#5e524c'; ctx.strokeStyle = edge; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.ellipse(-r * 0.15, 0, r * 0.95, r * 0.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // matted fur: a few dark strokes along the back
+    ctx.strokeStyle = 'rgba(26,16,22,0.35)'; ctx.lineWidth = 1.6;
+    for (let k = 0; k < 6; k++) { const a = -1.1 + k * 0.45; ctx.beginPath(); ctx.moveTo(-r * 0.2 + Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.45); ctx.lineTo(-r * 0.2 + Math.cos(a) * r * 0.85, Math.sin(a) * r * 0.7); ctx.stroke(); }
+    // shoulders and the two clawed forearms, reaching forward
+    ctx.fillStyle = '#6a5c55'; ctx.strokeStyle = edge; ctx.lineWidth = 1.5;
+    for (const s of [-1, 1]) {
+      const reach = e.state === 'swing' ? r * 0.55 : e.state === 'windup' ? -r * 0.2 : r * 0.2;
+      ctx.beginPath(); ctx.ellipse(r * 0.35 + reach * 0.5, s * r * 0.62, r * 0.42, r * 0.22, s * 0.35, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#d9d2c4'; ctx.lineWidth = 1.6;
+      for (const k of [-1, 0, 1]) { ctx.beginPath(); ctx.moveTo(r * 0.7 + reach * 0.5, s * r * 0.62 + k * 3); ctx.lineTo(r * 0.88 + reach * 0.5, s * r * 0.62 + k * 4); ctx.stroke(); }
+      ctx.strokeStyle = edge; ctx.lineWidth = 1.5;
+    }
+    // head: forward of the body, a long snout
+    ctx.fillStyle = '#6f635c'; ctx.strokeStyle = edge; ctx.lineWidth = 1.7;
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.arc(r * 0.55, s * r * 0.5, r * 0.26, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#c98f98'; ctx.beginPath(); ctx.arc(r * 0.55, s * r * 0.5, r * 0.14, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#6f635c';
+    }
+    ctx.beginPath(); ctx.ellipse(r * 0.7, 0, r * 0.5, r * 0.42, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r * 0.9, -r * 0.3); ctx.quadraticCurveTo(r * 1.5, -r * 0.08, r * 1.55, 0);
+    ctx.quadraticCurveTo(r * 1.5, r * 0.08, r * 0.9, r * 0.3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#d98a94'; ctx.beginPath(); ctx.arc(r * 1.5, 0, r * 0.08, 0, Math.PI * 2); ctx.fill();
+    // teeth
+    ctx.fillStyle = PALETTE.bone;
+    ctx.fillRect(r * 1.28, -r * 0.09, r * 0.14, r * 0.07); ctx.fillRect(r * 1.28, r * 0.02, r * 0.14, r * 0.07);
+    // whiskers
+    ctx.strokeStyle = 'rgba(239,230,208,0.55)'; ctx.lineWidth = 1;
+    for (const s of [-1, 1]) for (const k of [-1, 0, 1]) { ctx.beginPath(); ctx.moveTo(r * 1.25, s * r * 0.12); ctx.lineTo(r * 1.45 + k * 2, s * (r * 0.45 + k * r * 0.1)); ctx.stroke(); }
+    // eyes: red, always
+    ctx.fillStyle = PALETTE.blood;
+    ctx.beginPath(); ctx.arc(r * 0.8, -r * 0.2, r * 0.09, 0, Math.PI * 2); ctx.arc(r * 0.8, r * 0.2, r * 0.09, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.arc(r * 0.82, -r * 0.22, r * 0.03, 0, Math.PI * 2); ctx.arc(r * 0.82, r * 0.18, r * 0.03, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
   drawBullet(b) {
     const ctx = this.ctx; ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
     const l = 13 / (Math.hypot(b.vx, b.vy) || 1);
@@ -2986,6 +3557,13 @@ class Renderer {
     ctx.save(); ctx.beginPath(); ctx.ellipse(-5, 0.5, 13.5, 8.4, 0, 0, Math.PI * 2); ctx.clip();
     ctx.fillStyle = 'rgba(150,138,116,0.32)'; ctx.beginPath(); ctx.ellipse(-6, 6, 13, 5, 0, 0, Math.PI * 2); ctx.fill();
     if (dmg < 3) { ctx.fillStyle = PALETTE.ochre; ctx.fillRect(2, -10, 2.6, 22); }   // marigold collar
+    // The talisman on a cord round the neck, hanging off the near side. The painted goat gets the
+    // same thing from `PaintedArt.collar`; this is the primitive fallback's own.
+    if (game.artifact) {
+      ctx.strokeStyle = '#6b4a2c'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(4, -9); ctx.quadraticCurveTo(9, 2, 6, 10); ctx.stroke();
+      this.artifactIcon(game.artifact.id, 6.5, 10, 3.2, game.artifact.tier);
+    }
     ctx.fillStyle = PALETTE.blood;
     for (let k = 0; k < dmg * 2; k++) { ctx.beginPath(); ctx.ellipse(-11 + k * 4.5, (k % 2 ? 4 : -3.5), 4.2, 3, 0.5 * k, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
@@ -3460,6 +4038,25 @@ class Renderer {
     ctx.moveTo(end.x - x, end.y - x); ctx.lineTo(end.x + x, end.y + x);
     ctx.moveTo(end.x - x, end.y + x); ctx.lineTo(end.x + x, end.y - x);
     ctx.stroke();
+    // A small skull wherever a man went down, so the map says what the run did as well as where.
+    const k = TUNING.deathCam.skull / z;
+    for (const m of game.killMarks || []) this.skullMark(m.x, m.y, k);
+    ctx.restore();
+  }
+  // A skull `k` world units across, drawn upright on the tilted floor: a round cranium, a jaw, two
+  // eye sockets and a nose. Bone on a dark rim so it holds on a pale floor and a dark one alike.
+  skullMark(x, y, k) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT); ctx.globalAlpha = 0.92;
+    ctx.fillStyle = PALETTE.ink;
+    ctx.beginPath(); ctx.arc(0, -k * 0.12, k * 0.62, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-k * 0.42, k * 0.1, k * 0.84, k * 0.52);
+    ctx.fillStyle = PALETTE.bone;
+    ctx.beginPath(); ctx.arc(0, -k * 0.12, k * 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-k * 0.3, k * 0.12, k * 0.6, k * 0.4);
+    ctx.fillStyle = PALETTE.ink;
+    ctx.beginPath(); ctx.arc(-k * 0.2, -k * 0.1, k * 0.14, 0, Math.PI * 2); ctx.arc(k * 0.2, -k * 0.1, k * 0.14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-k * 0.04, k * 0.1, k * 0.08, k * 0.12);
     ctx.restore();
   }
 
@@ -3760,6 +4357,9 @@ class Renderer {
     ctx.textAlign = 'right';
     const right = this.w - 20 * s;
     const below = this.drawSkills(game, top + 14 * s);   // the rail centres its own text, so re-anchor
+    // The talisman, right of the hearts: one slot, and the shop is the only thing that fills it.
+    // After the rail, because the rail clears the hover it shares with this.
+    this.drawArtifactChip(game, 14 * s + g.maxHp * 22 * s + 4 * s, top + 3 * s, 26 * s);
     ctx.textAlign = 'right';
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.82)';
     ctx.fillText(`${game.kills} SACRIFICED`, right, below + 13 * s);
@@ -3938,7 +4538,9 @@ class Renderer {
   drawSkillNote(game) {
     const h = this.skillHover; if (!h) return;
     const ctx = this.ctx, s = this.hs;
-    const w = Math.min(230 * s, this.w - 28 * s), right = this.w - 14 * s, x = right - w;
+    const w = Math.min(230 * s, this.w - 28 * s), right = this.w - 14 * s;
+    // Under the rail by default; the talisman's chip, on the left, asks for it under itself.
+    const x = h.left !== undefined ? Math.min(h.left, right - w) : right - w;
     ctx.font = `${11 * s}px ${FONT}`;
     const lines = this.wrap(h.row.note, w - 20 * s);
     const names = h.boons.map((b) => (b.active ? '◆ ' : '❖ ') + (b.emoji ? b.emoji + ' ' : '') + b.name);
@@ -4097,11 +4699,15 @@ class Renderer {
     // buttons
     const held = !!game.goat.holding;
     const fire = !!game.mods.breath;
+    const g = game.goat, itemOn = t.itemReady;
     const labels = { butt: 'BUTT', grab: held ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS',
-      scream: fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', roll: 'ROLL' };
+      scream: fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', roll: 'ROLL',
+      item: game.mods.boomerang ? 'THROW' : 'BLINK' };
     const ready = { butt: game.goat.state === 'idle' && !held, grab: held || game.goat.grabCd <= 0,
-      scream: game.goat.screamCd <= 0, roll: game.goat.rollCd <= 0 };
-    for (const k of ['butt', 'grab', 'scream', 'roll']) {
+      scream: game.goat.screamCd <= 0, roll: game.goat.rollCd <= 0, item: g.itemCd <= 0 };
+    // The fifth key is drawn last of the five and only once the shop has put something on it —
+    // undrawn and untouchable before that, per `TouchUI.hitButton`.
+    for (const k of itemOn ? ['butt', 'grab', 'scream', 'roll', 'item'] : ['butt', 'grab', 'scream', 'roll']) {
       const b = t.buttons[k], down = t.pressed[k] !== undefined;
       const hot = k === 'scream' && fire;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, 0, Math.PI * 2);
@@ -4132,6 +4738,11 @@ class Renderer {
     // A throw empties your mouth for a beat, and the ring round GRAB is where you read that beat.
     if (game.goat.grabCd > 0 && !held) {
       const b = t.buttons.grab, p = 1 - game.goat.grabCd / (TUNING.goat.grab.cooldown * game.mods.grabCooldown);
+      ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3 * this.s;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
+    }
+    if (itemOn && g.itemCd > 0 && g.itemCdMax > 0) {
+      const b = t.buttons.item, p = 1 - g.itemCd / g.itemCdMax;
       ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3 * this.s;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
     }

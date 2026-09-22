@@ -47,9 +47,10 @@ class CombatFX {
     const sprite=this.snapshot(e), big=e.kind==='butcher', size=big?53:e.kind==='dog'?37:40;
     const torn=cause==='boom'||cause==='devour'||cause==='roll';
     if(cause!=='burn') {
-      this.blood(e.x,e.y,dx,dy,big?18:11);
+      const k=TUNING.effects.bloodScale;
+      this.blood(e.x,e.y,dx,dy,Math.round((big?18:11)*k));
       if(this.bursts.length>=TUNING.effects.maxBursts)this.bursts.shift();
-      this.bursts.push({x:e.x,y:e.y,r:big?46:30,t:0,blood:true});
+      this.bursts.push({x:e.x,y:e.y,r:(big?46:30)*k,t:0,blood:true});
     }
     if (!sprite) return;
     if(cause==='burn') {

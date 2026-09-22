@@ -1,5 +1,37 @@
 # ART_HANDOFF — status of the painted-art pass, for whoever picks it up next
 
+## September 18 update: the shop — four new things drawn as placeholders
+
+All four are canvas primitives in `js/render.js` and want painting; none has an atlas cell yet.
+
+- **The burrow** (`Renderer.drawBurrow`): the hole itself, at `p.gap` — a dirt-rimmed dark oval sunk
+  into the base of the wall, squashed flat to the floor like a spike plate or a crack rather than
+  standing tall. It has to keep reading as a hole low in the wall, not a doorway you could walk
+  through upright: that was the original bug (the gap was plain floor with nothing marking it, so
+  it read as a corridor). Drawn only while she is still a mouse (`!p.broken`); once she turns, the
+  wall physically opens either side of it (`Shop.breakWall`) and rubble stands in for the hole.
+- **The mouse** (`Renderer.drawMouse`): a grey trader sat up beside her own hole (not centred over
+  it — `sx = p.x - 9`), paws together, ears up, one tail. She faces the room (`p.wallSide`: a
+  top-wall hole looks down). Two states to paint: calm, and angry (red eyes, after the second
+  blow). About 20px tall in world space.
+- **The ware** (`Renderer.drawWare`): a stool with the talisman hovering over it and the price
+  under, plus a world-space read-out over the top of it once the goat is close (`prop.ware.readR`)
+  saying what buying it actually does. The talisman is `Renderer.artifactIcon` — four drawings
+  (fire amulet, four-leaf clover, boomerang, violet sigil) at any size, and the SAME drawing is
+  used on the stool, in the HUD chip right of the hearts, and at the goat's neck. Paint them once
+  at ~64px and all three places pick them up.
+- **The collar** (`PaintedArt.collar`): a small charm knotted into the wool at the back of the
+  neck, placed opposite the facing over the eight-way `sheepFacing` sheet (`-cos(facing)`, so it
+  sits behind him on every frame rather than at a fixed pixel). It deliberately does NOT hang at
+  the throat: the sheep sheet already paints a bell there, and the first version sat right on top
+  of it. If the sheep sheet is ever repainted with the talisman baked into each of the eight
+  frames by hand — properly placed per pose, between the horns as the original note asked for,
+  rather than one fixed offset mirrored across all eight — this overlay goes.
+- **The rat ogre** (`Renderer.drawRatOgre`): a hunched two-legged rat twice a man's width, red
+  eyes, long naked tail, clawed forearms. Needs the same eight-way sheet the other characters
+  have (see *How to add a character* below); `characterKey` returns null for him today, which is
+  what routes him to the primitive.
+
 ## September 16 update: walls and combat effects
 
 Build 1.26 uses `PaintedArt.wallTile` for all four facings and their 16 junction masks

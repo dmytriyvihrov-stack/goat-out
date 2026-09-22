@@ -68,7 +68,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 
 | File | Holds |
 |---|---|
-| `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `SETTINGS`, `MENU`, `LEVELS`. Every tunable number, every line the cult shouts, the rows of the title screen and the seven level definitions. |
+| `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `SETTINGS`, `MENU`, `LEVELS`. Every tunable number, every line the cult shouts, the rows of the title screen and the eight level definitions. |
 | `js/rng.js` | Seeded RNG (mulberry32) plus `clamp` / `lerp` / `len` / `angleDiff`. |
 | `js/rooms.js` | Hand-authored room templates as character grids, with a legend at the top (`'w'` is a stand of arms, `'O'` a drop). Also the start room, the arena, the Mill room, the Great Hall and the Gallery. Templates carrying a `tag` belong to one level's pool. |
 | `js/gen.js` | Level generation: chains rooms, carves corridors, places props, spawns, heals, validates reachability. Defines the tile enum `T`. |
@@ -78,6 +78,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/entities.js` | `Goat`, `Prop` (every world object), `Bullet`. |
 | `js/enemies.js` | `Enemy` — one class, behaviour branches on `kind`. |
 | `js/status.js` | `Status`: poison, the three reactions between poison / stun / fire, puddles, the spit glob, thrown things that drip or are charged. |
+| `js/shop.js` | `Shop`: the mouse in the wall — taking one of her two talismans (free, and it lifts her gate), provoking her, the rat ogre coming out, the shelf freeing when he is down — and the two artifacts that are verbs: the boomerang's flight and the blink. Data is `ARTIFACTS` and `TUNING.shop`. |
 | `js/render.js` | Everything drawn. Roughly half the codebase. |
 | `js/rules.js` | `GEN_RULES`, the generator's promises with a `check(level)` each; `checkRules`, `roomsOf`, `levelFacts`. Read by the dev drawer's RULES page and by `tools/balance.js`, so a rule is written once. |
 | `js/game.js` | State machine, fixed-step loop, input plumbing, entity-vs-entity collision, boons, dev drawer. |
@@ -131,6 +132,27 @@ the next beat. It resamples now: up to five times against a look-ahead probe (`T
 tiles out), and only when he is not already walking home over the leash — a man walking home is allowed
 to face the doorway he is heading through even if a wall probe would otherwise reject it.
 
+**Rooms stacked above and below.** The chain still runs in one line — room `i` is only ever
+reached from room `i - 1` — but it no longer always runs to the right. `levelDef.stack` (level two on)
+is the chance a room is hung over or under the one before it, found by `stackSpot` and reached by
+`carveShaft`, the vertical twin of `carveCorridor`: out of the lower room's top wall (or the upper
+one's bottom), a jog across the rock in between, and in; a door, when there is one, hangs across the
+shaft. The stacked room never reaches further left than the room it hangs off and never stops short
+of its right wall, which is what keeps it off every earlier room and keeps the corridor out of it from
+crossing the room below. `stackable` refuses anything built for a door in its left or right wall — a
+set piece, a `noFlipX` room, the two teaching rooms, and any room a gate or seal has to narrow (the
+`exitBand` that `narrowExit` walls up is horizontal). `STACK.run` keeps it to one in a row, so it reads
+as a turn in the road rather than a tower. The chain's drift is pulled back toward the middle of the
+world, because a stack starts the next stretch high and a chain that only climbs flattened out along
+the top edge. `GEN_RULES.stack` holds it. Anything that used to mean "behind him" as "to the left"
+has to mean an earlier room index instead — the coop that breaks itself open is the one place that did.
+
+**Nobody spawns on top of anybody.** A late room buys nine men and its template wrote four places to
+stand. The rest used to go on the first floor tile the dice landed on — two men on one spot, a man in
+a crate, a fifth of them within a lunge of the door. `take` in `tryGenerate` now scores a few dozen
+rolls and keeps the best: clear of the other men, clear of the props, well in from `room.enter`.
+`GEN_RULES.spacing` holds it.
+
 **Nothing simulates two rooms away.** `game.frame`'s enemy loop skips `e.update()` outright for anyone
 whose *current* room (`roomAt` of his own position, not `e.room`) is two or more away from whichever
 room the goat's own tile is in — the room he is standing in and its immediate neighbour still patrol,
@@ -163,6 +185,9 @@ That emission used to be a coin flip every frame (`Math.random() < dt * 4`), whi
 without landing and let a run right up on somebody's back read as luck rather than as noise; it is a
 timer now (`Goat.stepNoiseTimer`, `TUNING.noise.footstepGap`), the same shape as the goat's own hoofprint
 clock, so running for any real stretch always says so, and `footstep`'s own radius came up a tile with it.
+A noise lives for one pass of the men: `game.update` drops only what was emitted before the enemy
+loop, and carries everything after it — a crate breaking, a bomb, the grating, a man's own shot — into
+the next step. Clearing the whole list at the end of the step threw all of those away unheard.
 The line itself is `game.sees`, not `world.los`: stone, plus the short list in `game.sightBlockers` — a
 shut door, the gong, the hub of the wheel — each tested as a circle against the segment the way
 `reaches` tests a blow. `Prop.opaque` is the getter, and the set is deliberately small: a door is a wall
@@ -250,12 +275,15 @@ bosses carry `elite` and `boss` flags: elites absorb hits before dying, bosses d
 never from a room the fog hides — it is the one tell a rifle gives. Inside `hunter.wildNear` tiles,
 `wildChance` of his shots are off by `wildSpread` to twice that: point blank is a gamble, not suicide.
 
-**The hound.** `kind === 'dog'` is the one enemy that is not a man: no barks (only `sfxGrowl`), no grab
+**The hound.** `kind === 'dog'` is the one enemy that is not a man: no shouted lines (`sfxGrowl` as it plants, `sfxBark` as it runs), no grab
 (without BY THE COLLAR `tryGrab` says TOO QUICK; with it, `Enemy.hopBack` springs the hound `dog.hop`
 tiles away from the goat and the grab is spent as if something had been thrown — it is never held), and `tryDodge` lets it slip `TUNING.dog.dodge` of the headbutts
-aimed at it. Its loop is orbit → `dart` → `windup` → bite → `retreat`; the dart is the window you get,
-and `drawHound` gives it the only tell it has (flattened body, streaks, lit eyes) — keep that tell if you
-touch the sprite. `packBusy()` lets one hound of a pack commit at a time, which is what keeps three of
+aimed at it (never mid-run). Its loop is orbit → `windup` → `dart` → `recover` → `retreat`: inside
+`dog.dashRange` tiles it plants for `dog.windup` while `planDash` draws the run it is about to make on the
+floor in red (`Renderer.drawDashPaths`) — starting `dashSkew` off the straight line on the side it was
+circling, homing at `dashTurn` rad/s, so it bends — then runs it at `dashSpeed` and bites the first time
+the goat is in front of its teeth. A wall ends the run. The charge is the window you get, and the red
+line is the tell; `drawHound` keeps its own (flattened body, streaks) for the run itself. `packBusy()` lets one hound of a pack commit at a time, which is what keeps three of
 them readable. The counter is the scream: `daze()` multiplies by `cfg.dazeMul` for a dog, cancels a dart,
 and a dazed dog cannot dodge. `game.houndSeen()` growls and teaches that once per run.
 
@@ -315,6 +343,107 @@ mouth, and refuses outright — `TUNING.<kind>.immune.fire` — for a kind an or
 at all, which today is only the wraith (below); witchfire is exempt from that refusal; it is a Seer's
 doing and finds everything.
 
+**The shop.** The mouse is on three levels only — `TUNING.shop.levels`, THE YARD, THE THRESHING
+FLOOR and THE RAFTERS — and she stands in the level's **middle soul gate** instead of its soul
+(`shopRoomOf` in `gen.js`: `gates[0]` on those levels), which is a rest room like any gate room.
+`carveHole` finds a spot at the foot of the room's top or bottom wall with solid rock behind it and
+**cuts nothing**: the burrow is a mark on the wall (`gap`, on the seam between wall and boards) that
+nobody walks into — a tunnel you could step into read as somewhere to explore. A room with no such
+spot is a fresh seed, never a gate with nothing in it. She is a `Prop` of kind `mouse` on the first
+row of boards in front of it, and she makes **three offers**, all props of kind `ware`, laid out in a
+row on the boards before her (`shop.spread` tiles apart): a talisman either side, each `{ id, tier }`
+out of `ARTIFACTS`, and the milk between them — `{ id: 'milk' }`, drawn and read out off `MILK_OFFER` in `tuning.js`,
+carrying `milkSpots`, the `TUNING.shop.heals` places `gen.js` found for its bowls once the room's
+furniture was in. Everything that happens to any of it is `js/shop.js`. **She takes nothing.** The
+offer is a choice of one: both talismans are the tier of this visit (the n-th level in `shop.levels`
+sells tier n, `stockFor`); `Shop.buy` hangs the one reached for at his neck, or `Shop.takeMilk` lays
+the three bowls down, and either packs the rest away and calls `game.openSoulGate` on her room —
+taking is the bar of her gate. One slot: taking onto a full one
+puts the old talisman back on the stool you took from (`ware.chosen`, drawn YOURS), so a change of
+mind is a second reach, not a loss. Her language is the game's own and adds no key. **Grab is take**:
+`Goat.tryGrab` considers wares first, on the press (`rmbEdgeNow`) and at the full grab reach — a
+stool is reached up to from the gap in the wall. **A headbutt is rude**: `Shop.provoke` on her or on
+her shelf — two lines, then on `shop.strikes` she is the rat ogre and the shelf locks
+(`ware.locked`) until `Shop.ogreDown` frees it; the gate stays shut until he is down and one of the
+two is taken. A death takes back what was taken inside the level (`levelArtifact`). The niche is lit
+from the moment her room is open, the way a broken secret's is (`revealRooms`), because an offer you
+cannot see is not one. It used to be on every level from THE YARD on and sold for the level's dead
+(`game.kills`); that is gone, and so is `shopPrice`.
+
+**Read the ware, not the corner.** What a ware actually does is written over the thing itself
+(`Renderer.drawWare`) once the goat is within `prop.ware.readR` of it — the name, its tier and the
+tier's one-line `desc`, in world space — rather than only on a HUD tooltip nobody hovers while
+running. It shows on approach for anybody, mouse or thumb, and only while the ware is unlocked.
+
+**The hole is a hole, not a doorway.** `Renderer.drawBurrow` paints a low, dirt-rimmed opening
+flush with the floor at `p.gap` — squashed to the ground the way a spike plate or a crack is,
+because a mousehole is a hole and not something a body stands upright in. She herself sits a few
+pixels to one side of it (`drawMouse`'s `sx = p.x - 9`), so the dark opening reads at a glance and
+she is not blocking her own doorway. Both draws skip once she has turned (`p.broken`), because the
+render loop stops calling a broken prop's draw at all; what says the wall gave after that is the
+breach itself (below), not this decoration sitting over it.
+
+**A body that size does not fit through a mouse hole — it comes through the wall.**
+`Shop.breakWall`, called the instant she turns, flips the wall tile the burrow is in and one either
+side of it to floor (`holeSpots` chose it for solid rock behind, never another room, so nothing leaks
+past them) and scatters rubble on the boards. Skipping this left the rat ogre
+standing in a doorway barely wider than his own shoulders, as if he had squeezed through it —
+funny for the wrong reason. `World.tiles` is mutated live; collision, the flow field and the
+shadowcast all read it fresh every step, so nothing else has to be told.
+
+**The artifacts.** `ARTIFACTS` in `tuning.js`: four, three tiers each, `apply(m, p)` into
+`game.mods` from `applyBoons` exactly the way a boon goes, so every use site reads `mods`. Which
+tier a level stocks is `shop.tierAt`. `game.artifact` is `{ id, tier }`, saved with the run and
+restored by `resumeRun`, and it is drawn in three places off one drawing (`Renderer.artifactIcon`):
+the chip right of the hearts (`drawArtifactChip`, with its hover note and Q's own cooldown strip),
+the ware's stool, and a charm knotted into the wool at the back of his neck (`PaintedArt.collar`).
+It is not hung at the throat: the sheep sheet already paints a bell there, and a second small
+ornament on the same few pixels buried the talisman under the bell rather than beside it. `-cos`
+of his facing puts it opposite whichever of the eight painted facings is on screen — behind him
+the way his own nose is ahead of him — which is the one spot checked, facing by facing, to stay
+clear fur rather than land back on the bell, the face or the tail; it is drawn once, always on
+top, needing no away/toward split since nothing occludes the back of his own neck. The primitive
+`drawGoat` has its own version, and there it takes the marigold collar's own spot rather than
+sitting over it — a goat does not wear two things at his throat at once. A tier is how far the rule bends, not
+a bigger number:
+- **FIRE AMULET** — body work, no button. `mods.firePass` is a depth now (KINDLING sets it to
+  one, the amulet to one, two, or the room), `Enemy.fireDepth` is how far down the line a man was
+  lit, and `passFire` refuses past the depth.
+- **LUCKY CLOVER** — body work, no button. `mods.luck` is the one thing the goat carries that
+  reaches the generator: `generateLevel(def, seed, { luck })`, read by `startLevel` for the NEXT
+  floor, multiplying the odds of a second secret, of grass behind one and of a loose rack, and
+  adding bowls of milk. `tools/balance.js` runs without it.
+- **BOOMERANG** and **STRANGE SYMBOLS** are the shop's only two verbs, and neither is grab or roll
+  wearing a different hat: both hang off **Q**, a fifth key ground rule 1 would otherwise forbid,
+  made honest by not existing until one of them is worn — `TouchUI.itemReady` (set each step off
+  `game.mods.boomerang || game.mods.blink`) is what keeps the touch button undrawn and untouchable
+  before that, and the desktop key is simply never read for anything else. `Goat.itemCd` /
+  `itemCdMax` is the one cooldown clock both share, set by the press that used either, and it is
+  never `grabCd` or `rollCd` — the thing Q does is its own trick, not a reskin of a verb he
+  already had. `Shop.throwBoomerang` (out along the aim to `range` tiles or `pierce` men or a wall
+  or blocking furniture, then home through anything, `daze`ing everyone it touches for `stun`) and
+  `Shop.blink` (`dist` tiles along the stick, the velocity or the facing at once, stopped short by
+  stone, a drop or blocking furniture and never by a man, with the roll's own mercy-frame pose
+  borrowed for the landing) are what the press actually does; `Goat.update`'s Q block picks
+  whichever of `mods.boomerang` / `mods.blink` is set, since the one slot never holds both.
+
+**The rat ogre.** `kind === 'ratogre'`, `TUNING.ratogre`, made only by `Shop.spawnOgre` and
+never by the curve (`THREAT` and the report ignore him; he drops no soul). He is dear by
+construction, and every one of these is a deliberate exception in the code: `fling` refuses him,
+so the horns, the wheel's arm, a charge and a blast never move him and no wall kills him;
+`immune.fire` and the new `immune.witch` mean he never catches; `daze` and `balk` on him are
+`breakSwing` — the windup he was in is gone, nothing else. The stun that opens him is a state,
+not a timer: `floored` or `stunned`, which a crate in the face and a thrown shield set, and
+`Goat.headbuttHits` takes a heart off him only in that window (standing, the goat bounces off him
+and `Shop.ogreShrug` says once what would work). Every damage path goes through `die()`, and the
+`hp > 1` branch has its own arm for him: he takes it standing, in a beat of `stagger`, never
+floored by it — floored would be a fresh window off the very blow that spent the last one, six
+horns in a row off one crate. A blade, a bullet, a body at killing speed (`flungHits`, and the
+body dies on him like on a wall), the wheel (`updateMill`) and both bombs each cost him a heart.
+`updateOgre` goes for whatever is nearest him that he can see, the goat or a man of the cult
+(`meleeHit` from him flings a man like the Butcher's does), ignores every noise, and walks the
+flow field to the goat with nothing in sight; the cult never goes for him. `trapSense` 1.
+
 **Props.** One `Prop` class for brazier, crate, bell, door, table, lamp, mill, heal, spike and weapon.
 `blocking`, `stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item`
 is what the goat can pick up and throw — a crate or a weapon — and it is the test everywhere the code
@@ -352,15 +481,18 @@ generator also keeps the lone rifle posts from landing earlier in the level than
 introduces a rifle. A run that keeps its souls keeps what it has learned; a fresh run forgets.
 
 **Corrupted souls are a budget, not a by-product.** `levelDef.souls` is how many a level gives up, all
-in, and it is authored: **one on level one, two on every level after**, thirteen across a run against
-sixteen boons, so no run gets everything. It used to be however many bosses the level happened to hold
-plus the vault — twenty-four across a clean run — which is not a decision about how strong the goat
-should be by level five, it is an accident of where the arenas are. `startLevel` spends the budget
-before a blow is struck, in this order: the `soulGate` arena (its door does not open without one), then
-the vault (an iron door that costs four blows must not pay milk), then the **last** bosses of the level,
-so the fight you finish on always pays. `Enemy.die` calls `game.bossPrize`, which drops a soul if the
-boss was given one and **milk** if he was not — nothing you had to break through is ever worth nothing.
-The level card reports the count, because a progression nobody can see is not one.
+in, and it is authored: **two on every level**, less the three the mouse stands in for — fourteen across
+a run against sixteen boons, so no run gets everything. `startLevel` spends the budget before a blow is
+struck, in this order: the level's two **gates** (a soul lying in each rest room; the mouse's gate
+takes none), then the vault, then the **last** bosses of the level, so the fight you finish on pays. A
+vault left without one holds the big patch of grass instead. `Enemy.die` calls `game.bossPrize`, which
+drops a soul if the boss was given one and **milk** if he was not — nothing you had to break through
+is ever worth nothing. On top of the budget come two surprises, rolled off the level's own seed so a
+seed is still one level: `soul.bossChance` that one boss the budget passed over carries a soul anyway
+(lit, and counted on the card), and `soul.roomChance` that one ordinary fight room (`game.bonusRoom`,
+never a room that teaches a kind) gives one up when its last man goes down — `onKill` drops it, and
+nothing says which room it was until it happens. The level card reports the count (and the mouse),
+because a progression nobody can see is not one.
 
 It was a tome, and a tome asked the player to believe that a goat reads. A soul is a violet wisp with
 two cold points in it (`Renderer.soulWisp`, used by the thing on the floor, by the cards and by the two
@@ -374,13 +506,38 @@ ring at his feet; `drawCultist` and `drawHound` turn his eyes red off the same `
 changes anything about the fight — it is a label, readable across a room, on the one man in it worth
 crossing the room for.
 
-**The soul gate.** `levelDef.soulGate` is a room index — one arena, on level one only. `gateSpot` in
-`gen.js` narrows that room's exit to a single tile the way `blockSpot` does for the sentry and hangs a
-door in it with `gate: true`. That door has no hit points: `Prop.smash` returns early and says so, and
-`updateDoor` will not let anyone shoulder it. `game.openSoulGate`, called from the soul pickup, is the
-only thing that opens it. It exists because the first thing a run is offered is a soul lying on the
-floor of a room whose fight is already over, and the first player we watched walked straight past it
-and met level two with none of the three buttons the souls open.
+**The soul gates: two hard stops a level.** `levelDef.gates` is two room indices — one in the middle
+of the level, one before its end (never the last room: it has no corridor out to narrow, and never a
+set piece, the vault's room or a teaching room). Each is a **rest room**: role `rest`, built from
+`REST_TEMPLATE` (straw in the corners and nothing else), off the threat curve the way the pen is —
+`planEncounters` gives it nobody and it is out of `ordinaryRooms`, so nothing is scattered into it
+either. The fight was the room before; this is where you stop, pick up the soul lying in the middle
+of the floor (`gate.soul`, laid with `placeSoul`), or make the mouse's choice, and go on. `gateSpot`
+in `gen.js` narrows each room's exit to a single tile the way `blockSpot` does for the sentry and
+hangs a door in it with `gate: true` and `gateRoom`. That door has no hit points: `Prop.smash` returns
+early and says so, and `updateDoor` will not let anyone shoulder it. `game.openSoulGate(room)`, called
+from the soul pickup with the room the soul belongs to (`soul.gate`), or from `Shop.buy` /
+`Shop.takeMilk` in the mouse's room, is the only thing that opens it — a soul opens its own gate and no other. `stackable`
+keeps a gate room and the room after it on the level's own row, so the gate always has a side wall to
+narrow and the mouse's room keeps the rock her hole is cut into. `narrowExit` walls up only the
+straight run out of the room, never the columns where the corridor turns: it used to wall those too,
+which cut a corridor that turned downward clean through and threw the seed away — invisible with one
+gate a run, a level that could not be generated with two a level. `GEN_RULES.soulgate` holds it.
+
+**The clamp: a room left behind is shut.** `game.updateClamps` runs every step. Every room two or more
+behind the room the goat is standing in (`game.goatRoom`, the last room `roomAt` found him in), with
+nobody alive left in it, is sealed for good: the tiles of its own wall that the corridor out of it cut
+through (`room.exitMouth`, recorded by `carveCorridor` and `carveShaft`) go back to `T.WALL`, anything
+lying in them goes with them, and a `clamp` prop — a riveted iron plate, `Renderer.drawClamp`,
+`TUNING.clamp` — is bolted over the mouth. The room he has just come out of stays open, and so does any
+room with a man alive in it, because whoever is in there is still coming. It never waits on a body
+standing in the mouth: it simply tries again next step. `GEN_RULES.clamp` stones up every mouth in
+turn and floods from the next room, which is what found three old leaks that let a room be reached
+round its own way out: a secret's niche cut flush against a shaft (`carveSecret` checks both ends of
+the niche now), a vault opening flush onto whatever ran behind it (`carveVault` keeps a row of rock
+past its far side), and THE THRESHING FLOOR's five-wide corridors turning down through the next room's
+wall and out under it (`carveCorridor` keeps a wide band inside the wall's height and its turn clear
+of `b`'s wall).
 
 **The room that shuts behind you.** `{ at, boss, sealed: true }` on a level's `arenas` entry is the
 other kind of locked room, and it is earned by winning rather than by a soul. `gen.js` narrows both
@@ -609,15 +766,22 @@ the kick and the hats, past it the whole kit. It used to go to the top on five, 
 room from level three on, so the loudest music in the game played through most of the game and a real
 crowd had nothing left to sound like.
 
-**Juice.** `game.kick(dx, dy, amt)` shoves the whole picture (capped at `juice.kickMax`), `zoomPunch`
+**Juice.** `TUNING.juice.screen` and `juice.stop` are the master dials: every `shake`, `kick`,
+`zoomPunch` and `flash` is multiplied by the first and every `hitstop` by the second, inside those
+methods, so the sixty literal amounts at the call sites stay relative to each other. Turn these first.
+`game.kick(dx, dy, amt)` shoves the whole picture (capped at `juice.kickMax`), `zoomPunch`
 drives the lens, `flash(color, amt)` paints an additive overlay, and `gore` throws chunks that stain the
 decal canvas when they expire. The renderer applies kick and zoom in `draw`, and everything decays in
 `updateEffects`. On top of those: `impact(x, y, dx, dy)` is the ring and spark streaks where a headbutt
 lands, `dust(x, y, n, dx, dy)` the hoof puffs (lunge, roll, landing, a full run-up; `game.puffs`, drawn
-on the ground by `drawPuffs`), `squashGoat(amt)` a decaying spring on his scale that both goat
+on the ground by `drawPuffs` — never off an ordinary run, which read as fog following him about),
+`squashGoat(amt)` a decaying spring on his scale that both goat
 drawers read off `goat.sqLeft`, `game.flares` the rifle's muzzle flash, `enemy.flash` a white
 silhouette (the same body redrawn through `ctx.filter`, not a disc over it), and `drawHeartbeat` the
-last-heart pulse. Every number is under `TUNING.juice`.
+last-heart pulse. Every number is under `TUNING.juice`. Blood is on its own dials: the goat drips only on
+his last heart, a drop every `goat.bleed.gap` or so, and a kill's burst, droplets and stain all scale by
+`effects.bloodScale`. The death screen's pull-back draws `game.killMarks` (filled by `onKill`) as small
+skulls (`Renderer.skullMark`, `deathCam.skull` screen px) along the line of the run.
 
 **The JUICE tab** (`drawJuiceTab`, `#juice`) is `JUICE` in `js/juice.js` as a table — in game / new /
 backlog, filterable, paged, a row opens out on click, EXPORT downloads it as Markdown. Add an effect,
@@ -743,7 +907,7 @@ IT IS CLOSING once a run. `GEN_RULES.clock` holds all of it.
 
 **Canons.** Every level is about one thing, and `levelDef.canon` — `{ id, name, idea }` — is what: STONE
 on THE ALTAR, FIRE on THE YARD, THE LINE on THE ROAD, OPEN GROUND on THE THRESHING FLOOR, THE FUNNEL on
-THE BRIDGE, THE DROP on THE RAFTERS, THE NICHE on THE OSSUARY. A `ROOM_TEMPLATES` entry carrying
+THE BRIDGE, THE DROP on THE RAFTERS, THE NICHE on THE OSSUARY, THE HOLLOW on THE CAVE. A `ROOM_TEMPLATES` entry carrying
 `canon: '<id>'` belongs to that level's pool, and `pickCanonRooms` hands at least `CANON.share` of the
 level's ordinary rooms (`ordinaryRooms`: not the pen or a set piece) to it, on an even
 spread that always starts with the first ordinary room — a level says what it is about on the first
@@ -811,6 +975,37 @@ template under it, and the canon tiles lit. Names are the last resort and the pr
 rule: the page is a thing you scan while a level is paused behind it, so a shape beats a sentence and
 `levelFacts` reads out as `name value` and not as English.
 
+**THE CAVE: round rock.** `levelDef.cave` (level eight only) sets `world.round` to `TUNING.cave.roundR`,
+and two things read it. `World.collideRound` is `collideCircle` against the shape the renderer draws:
+every outside corner of a wall tile (both tiles either side of it open) is a quarter circle of that
+radius, and every inside corner of the floor (both of those tiles stone) is filled in by one — so a
+diagonal run of tile steps is a smooth wave a body slides along instead of a staircase it catches on,
+and a lone `P` is a round stone. `Renderer.drawCaveTiles` builds the same shape as one `Path2D` and
+fills it three times (a shadow, the face in `wall`, the top in `wallTop` lifted off every camera-facing
+edge). The two must stay one shape: change the corner rule in one, change it in the other. The painted
+tile path and the square-wall path are skipped entirely on a cave level. `erodeCave` in `gen.js` fills
+the corners of every ordinary room, arena and rest room back in with a diagonal of rock and grows a
+bulge or two out of straight wall, touching only plain floor and only where the room stays open round
+it. An unbroken secret wall is rock to the cave renderer and its prop draws only the crack, because a
+square patch of wall in a round cave would give it away.
+
+**Tall grass.** `level.grass` is a list of tile indices (a template's `g`, and `grassPatch` blobs on
+`levelDef.grass` of rooms); `world.grass` is one byte a tile. The tile under it is floor to everything
+but the eye: `revealRooms` adds every grass tile further than `grass.seeInto` from the goat to
+`visBlock`, so the cast lights a step into a patch and shades the rest of it and what is behind it; and
+`canSeeGoat` says no past `grass.hideR` to a goat standing in it, cone or not (a wraith still knows). A
+headbutt cuts what is in front of it (`Goat.cutGrass`), fire burns it off (`updateFire`). `drawGrass`
+draws blades over everything that stands, parted by bodies and flattened under the goat. `grass.lurk` of
+the ordinary men in a room with grass are moved onto its thickest tile as `lurk`: `idleWander` keeps them
+still until they are aware, and `drawEnemy` fades them by `lurkAlpha` until then. `GEN_RULES.grass`.
+
+**Boulders.** `kind === 'rock'`, `TUNING.prop.rock`: blocking and bullet-stopping, not opaque, not an
+item. `crackRock` takes `hits` blows. While it stands, `world.block` marks its tile and `walkable` refuses
+it, so the flow field goes round it; breaking it clears the mark. A body flung into one at `splatSpeed`
+dies on it the way the solid-prop branch of `collideEntities` already kills against anything blocking.
+`rockFits` only puts one down with plain, grassless floor on all eight sides and never two within two
+tiles — that is what keeps a scatter of them from ever closing a way through. `GEN_RULES.rocks`.
+
 **Trap rooms.** `tag: 'trap'` is a pool of its own, drawn *into* a level's ordinary rooms rather than
 instead of them: `levelDef.traps` is a count, `pickTrapRooms` chooses the indices (never the pen, a
 set piece, the ambush room, or the first two ordinary rooms, which are where kinds get introduced) and
@@ -824,6 +1019,13 @@ teeth on a level whose floor does not. `'S'` in a template is a plate, the way `
 spot is inside a crate, coop, table, brazier, lamp, rack or the wheel (`inFurniture`, shared with
 `GEN_RULES.furniture`) out in rings to the nearest clear floor of his own room. The sentry is exempt:
 `blockSpot` chose his tile with the props already in it.
+
+**Restarting.** `restartLevel` only runs out of `play`, `paused` or `dead`, and a restart you ask for
+counts as a death — `deaths` is in the level's seed, so Backspace no longer brings back the layout you
+just walked through, and it can no longer replay a level already banked on the clear card. Escape does
+nothing on the clear card or the climb, because the run is only saved at the head of the next level.
+N (clear the level) is a dev key and needs the drawer open. `forgetLessons` resets the once-a-run
+lines — the hound, the hen, the clock door, the mist — where a run begins, not per level.
 
 **The pen.** Cage bars are ordinary `Prop`s of kind `cage`, built by `buildCage` in `gen.js` and exempt
 from the three-tile prop clearance around the start. It takes `prop.cage.hits` blows — seven — the
@@ -860,7 +1062,15 @@ reach, off cooldown, and **not standing in a wall** — a body cannot form insid
 thing the ground still does for you there. From `manifest` it runs `manifest → windup → swing → solid`
 on timers and cannot be interrupted: `daze` on a wraith freezes it where it stands instead of cancelling
 it (the shared dazed check stops the timers, so a scream lengthens the window rather than ending it).
-`unmanifest` puts it back to mist with `fadeCd`. It dies to anything that lands in that window, its
+`unmanifest` puts it back to mist with `fadeCd`.
+
+**A wraith can hide.** State `hidden` (`Enemy.hide`): it sits on a tile centre as a box or a bowl of milk
+(`e.disguise`, a plain `Prop` that is never in `game.props` — `drawEnemy` draws it and nothing else can
+touch it, since a hidden wraith is still `ghosted`). `wraith.hide.start` of them begin that way, and
+after a blow `hide.again` may settle back into one once the goat is `minDist` off. It springs
+(`Enemy.spring`) the moment the goat starts a headbutt (`goat.buttTries`) or reaches for anything
+(`goat.grabTries`) within `springR` tiles, or steps within `touchR` of it: solid, straight into a
+`springWind` windup facing him, from whichever side — the disguise is its way round your face. It dies to anything that lands in that window, its
 `die` leaves no blood, body or scorch, and a boss with hearts left goes straight back to mist instead of
 lying floored. `game.mistTold` is the only tutorial it gets.
 
@@ -881,8 +1091,23 @@ for the room (`'fire'`, `'witchfire'`, `'spike'`, `'bomb'`, `'mill'`, `'fall'`, 
 `goat.hurtBy`. `game.killedBy` turns it into a name off `KILLED_BY` in `tuning.js`, and the death card
 puts KILLED BY … on its last line. Add a new way for the goat to be hurt, pass it a source.
 
-**The brute is not carried.** `tryGrab` skips the champion as it skips the Butcher, and reaching for
-either with BY THE COLLAR floats TOO BIG.
+**The brute is not carried.** `Enemy.unliftable` — the Butcher, the champion, and anyone carrying a
+soul — is what `tryGrab` skips, and reaching for one with BY THE COLLAR floats TOO BIG (THE SOUL HOLDS
+HIM for a soul-bearer). The brute is still `kind === 'bearer'` with `champion` set, but his arm is his own:
+`Enemy.atk(key)` reads `TUNING.champion` before the clubman's cfg, so cutting the clubman's reach does not
+cut his. `Enemy.knockMul()` is what a headbutt multiplies its throw by (`cfg.flingMul`, then
+`champion.flingMul`, then `soulBearer.flingMul`). Close in, `champion.slam.chance` of his attacks are a
+**slam**: state `slamwind` (a red ring filling on the floor, `drawSlamRing`), then `Enemy.slam` hurts and
+throws the goat straight out from him anywhere inside `slam.range` and floors his own men like a swing.
+
+**A soul makes a man a small boss.** `game.ensoul(e)` is the only way `e.soul` is set: `soulBearer.hp`
+more hearts, and `knockMul` / `unliftable` read the flag for the rest. Per-kind extra rules for a
+soul-bearer belong in `TUNING.soulBearer` and on its row on ENEMIES.
+
+**Fire makes the heavy ones angry.** A kind with a `rage` block (`TUNING.butcher.rage`,
+`TUNING.champion.rage`) does not blunder alight: `Enemy.update` runs his per-kind update on
+`dt * rage.tempo` and multiplies his stride by `rage.speed` while he chases. The brute reads
+`TUNING.champion.immune` through `Enemy.immunity` / `blunderProof`.
 
 **Goat stun.** `goat.state === 'stunned'` is a real state, not a render pose: `Goat.update` returns early
 while it lasts, so there are no verbs, no aim and no momentum, and `goat.dazed` draws the stars over it.

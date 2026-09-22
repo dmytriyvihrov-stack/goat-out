@@ -118,7 +118,7 @@ for (let li = 0; li < LEVELS.length; li++) {
       console.log(`  canon: ${def.canon.name} — ${(canonSum / SEEDS).toFixed(1)} of ${(ordSum / SEEDS).toFixed(1)} ordinary rooms, worst seed ${Math.round(canonMin * 100)}% (needs ${Math.round(CANON.share * 100)}%)`);
     }
     for (const c of avg) {
-      if (!c.men && (c.role === 'pen' || c.role === 'calm')) { console.log(`  ${String(c.index).padStart(2)}  —        ${c.role.toUpperCase().padEnd(7)} ${c.tpl}`); continue; }
+      if (!c.men && (c.role === 'pen' || c.role === 'calm' || c.role === 'rest')) { console.log(`  ${String(c.index).padStart(2)}  —        ${c.role.toUpperCase().padEnd(7)} ${c.tpl}`); continue; }
       const bar = '#'.repeat(Math.round(c.threat));
       console.log(`  ${String(c.index).padStart(2)}  ${c.threat.toFixed(1).padStart(5)}  ${bar.padEnd(20)} ${c.men.toFixed(1)} men  gr ${c.ground.toFixed(2)}  ${c.role.toUpperCase().padEnd(7)} ${c.tpl.padEnd(10)} ${c.sample}`);
     }

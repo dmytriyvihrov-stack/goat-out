@@ -360,7 +360,7 @@ class PaintedArt extends AltarArt {
       // the walk frame. `angle` is already atan2(dy,dx) in screen space, the sheet's own convention
       // (assets/painted-expansion-v1/manifest.json). Windup/swing lean along the real facing now,
       // in place of the old screen-space nudge that only ever worked because of the left/right mirror.
-      if(e.state==='windup'||e.state==='chargewind'){ctx.translate(Math.cos(angle)*-2,Math.sin(angle)*-2);ctx.rotate(-0.13);}
+      if(e.state==='windup'||e.state==='chargewind'||e.state==='slamwind'){ctx.translate(Math.cos(angle)*-2,Math.sin(angle)*-2);ctx.rotate(-0.13);}
       if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
       if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
       if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
@@ -380,13 +380,32 @@ class PaintedArt extends AltarArt {
         const stride=Math.sin(renderer.t*legHz*2+(e.x||0)*0.01);
         ctx.translate(stride*0.9,-Math.abs(step)*1.4);ctx.rotate(step*0.025);ctx.transform(1,0,stride*0.05,1,0,0);
       } else ctx.scale(1,1+Math.sin(renderer.t*3)*0.008);
-      if(e.state==='windup'||e.state==='chargewind'){ctx.translate(-2,0);ctx.rotate(-0.13);}
+      if(e.state==='windup'||e.state==='chargewind'||e.state==='slamwind'){ctx.translate(-2,0);ctx.rotate(-0.13);}
       if(e.state==='swing'){ctx.translate(3,0);ctx.rotate(0.17);}
       if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
       if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
       this.stamp(ctx,name,0,0,width,undefined,key==='sheep'||key==='hound'?0.52:0.68);
     }
     // Spikes are reserved for a future distinct enemy; this brute is the plain heavy clubman.
+    ctx.restore();
+  }
+
+  // A cord round the neck with the talisman hanging off it, placed off the facing: the neck of the
+  // eight-way sheep sits a little way toward the head from the cell's centre, and the pendant hangs
+  // toward the camera from there. One drawing per artifact (`Renderer.artifactIcon`), small.
+  // A charm knotted into the wool at the back of his neck, not a pendant at his throat: the sheep
+  // sheet already paints a bell there (the one he was born with — see `CLAUDE.md`), and stacking a
+  // second small ornament on the exact same few pixels buried the talisman under it rather than
+  // beside it. `-cx` puts the charm behind him the same way `+cx` is his own nose: opposite
+  // whichever of the eight painted facings is on screen, which is the one spot this sprite was
+  // actually checked, facing by facing, to be open fur rather than the bell, the face or the tail.
+  collar(renderer,g,art) {
+    const ctx=renderer.ctx,a=g.facing,cx=Math.cos(a),sy=Math.sin(a);
+    const nx=-cx*7,ny=-6+sy*3;
+    ctx.save();
+    ctx.strokeStyle='#5a3d24';ctx.lineWidth=1.5;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(nx-3,ny-2);ctx.lineTo(nx+3,ny+2);ctx.moveTo(nx+3,ny-2);ctx.lineTo(nx-3,ny+2);ctx.stroke();
+    renderer.artifactIcon(art.id,nx,ny,3.3,art.tier);
     ctx.restore();
   }
 
@@ -407,6 +426,9 @@ class PaintedArt extends AltarArt {
     if(g.sqLeft){const a=g.sqLeft*Math.cos(TUNING.juice.squash.freq*g.sqT);ctx.scale(1+a,1-a);}
     if(g.invuln>0&&Math.floor(renderer.t*30)%2===0)ctx.globalAlpha*=0.5;
     this.character(renderer,g,'sheep',40);
+    // On the back of the neck rather than at the throat, it is never occluded by his own head or
+    // body on any facing, so it is drawn once, always on top, and needs no away/toward split.
+    if(game.artifact)this.collar(renderer,g,game.artifact);
     if(g.maxHp-g.hp>0){ctx.fillStyle=PALETTE.bloodDark;ctx.globalAlpha*=0.6;for(let k=0;k<g.maxHp-g.hp;k++){ctx.beginPath();ctx.ellipse(-9+k*5,-4+(k%2)*6,2.8,1.8,0.3,0,Math.PI*2);ctx.fill();}}
     if(g.onFire)renderer.flame(0,-6,12,1,g.witchFire);
     ctx.restore();

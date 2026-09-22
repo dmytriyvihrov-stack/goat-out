@@ -126,7 +126,7 @@ function capMusicScene(scene) {
 function musicFamily(e) {
   if (e.kind === 'wraith') return 'mystical';
   if (e.kind === 'hunter' || e.kind === 'seer') return 'ranged';
-  if (e.kind === 'butcher' || e.champion) return 'large';
+  if (e.kind === 'butcher' || e.kind === 'ratogre' || e.champion) return 'large';
   if (e.kind === 'bearer' || e.kind === 'dog') return 'small';
   return null;
 }
@@ -150,7 +150,8 @@ function roomMusicScene(game) {
     const pursuing = e.aware && e.state !== 'idle' && near(e.x, e.y, L.pursuitRadius)
       && game.sees(g.x, g.y, e.x, e.y);
     if (!inRoom(e.x, e.y) && !pursuing) continue;
-    const kind = e.champion && e.kind === 'bearer' ? 'champion' : e.kind;
+    // The rat ogre has no part of his own: he plays the Butcher's, the one heavy voice there is.
+    const kind = e.champion && e.kind === 'bearer' ? 'champion' : e.kind === 'ratogre' ? 'butcher' : e.kind;
     scene[kind]++;
     if (e.aware && e.state !== 'idle') scene.combat = true;
   }
@@ -839,13 +840,21 @@ class GameAudio {
     this.noise(t, 0.05, { gain: 0.35, hp: 1800, lp: 9000 });
     this.tone(320, t, 0.07, { gain: 0.3, sweep: 0.3, type: 'square' });
   }
-  // A growl instead of a bark: the hounds are the only thing in the compound that does not shout.
+  // The growl: what a hound says as it plants to run at you (the run itself is `sfxBark`).
   sfxGrowl() {
     if (!this.ctx || this.muted) return; const t = this.now();
     const o = this.tone(96, t, 0.45, { type: 'sawtooth', gain: 0.22, sweep: 0.8 });
     const lfo = this.ctx.createOscillator(); const lg = this.ctx.createGain();
     lfo.frequency.value = 34; lg.gain.value = 26; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + 0.5);
     this.noise(t, 0.4, { gain: 0.12, hp: 120, lp: 900 });
+  }
+  // The run: a short, hoarse bark — a burst of noise with a falling square under it — so the one
+  // moment a hound commits is heard as well as drawn on the floor.
+  sfxBark() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.tone(330, t, 0.11, { type: 'square', gain: 0.2, sweep: 0.55 });
+    this.tone(180, t, 0.13, { type: 'sawtooth', gain: 0.16, sweep: 0.7 });
+    this.noise(t, 0.09, { gain: 0.22, hp: 500, lp: 3200 });
   }
   sfxBreath() {
     if (!this.ctx || this.muted) return; const t = this.now();

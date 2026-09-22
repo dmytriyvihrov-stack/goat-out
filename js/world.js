@@ -49,6 +49,15 @@ class World {
     // two disagreed. The list is a handful long, so it is cleared by what was last in it.
     this.visBlock = new Uint8Array(n);
     this.visBlockList = [];
+    // THE CAVE. `round` is the radius every corner of the rock is rounded to, in the collision
+    // (`collideCircle`) exactly as the renderer draws it; 0 everywhere else. `grass` is one byte a
+    // tile of tall grass, which fire burns off and a headbutt cuts. `block` is a boulder standing on
+    // a tile: the flow field walks round it the way it walks round stone, and it clears when the
+    // boulder breaks.
+    this.round = level.def && level.def.cave ? TUNING.cave.roundR : 0;
+    this.grass = new Uint8Array(n);
+    for (const i of (level.grass || [])) this.grass[i] = 1;
+    this.block = new Uint8Array(n);
     this.paintGlyphs(level);
   }
 
@@ -292,6 +301,7 @@ class World {
 
   // Push a circle out of solid tiles. Returns the strongest impact speed into a wall (0 if none).
   collideCircle(e) {
+    if (this.round) return this.collideRound(e);
     let impact = 0, hit = false;
     const r = e.r;
     const tx0 = Math.floor((e.x - r) / TILE), tx1 = Math.floor((e.x + r) / TILE);
@@ -314,6 +324,62 @@ class World {
         if (vn < 0) { impact = Math.max(impact, -vn); e.vx -= vn * nx; e.vy -= vn * ny; }
         e.x += nx * (r - d); e.y += ny * (r - d);
         hit = true;
+      }
+    }
+    e.wallHit = hit;
+    return impact;
+  }
+
+  // The cave's rock. The same push as `collideCircle`, against the shape the renderer draws: every
+  // outside corner of a wall tile (both of the tiles either side of it open) is a quarter circle of
+  // `round`, and every inside corner of the floor (both of those tiles stone) is filled in by one.
+  // A body sliding along a bend in the rock goes round it rather than catching on each step of the
+  // grid, which is the whole of what the cave feels like underfoot.
+  collideRound(e) {
+    let impact = 0, hit = false;
+    const r = e.r, R = this.round;
+    const push = (nx, ny, depth) => {
+      const vn = e.vx * nx + e.vy * ny;
+      if (vn < 0) { impact = Math.max(impact, -vn); e.vx -= vn * nx; e.vy -= vn * ny; }
+      e.x += nx * depth; e.y += ny * depth; hit = true;
+    };
+    const tx0 = Math.floor((e.x - r) / TILE), tx1 = Math.floor((e.x + r) / TILE);
+    const ty0 = Math.floor((e.y - r) / TILE), ty1 = Math.floor((e.y + r) / TILE);
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        const x0 = tx * TILE, y0 = ty * TILE, x1 = x0 + TILE, y1 = y0 + TILE;
+        if (!this.isSolid(tx, ty)) {
+          // An inside corner of the floor: inside the quarter of the tile nearest it, a body has to
+          // stay within `R - r` of the circle's centre. Only matters when the fillet is bigger than
+          // him; smaller, the two walls already keep him further out than it would.
+          if (R <= r) continue;
+          for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+            if (!this.isSolid(tx + sx, ty) || !this.isSolid(tx, ty + sy)) continue;
+            const cx = sx < 0 ? x0 + R : x1 - R, cy = sy < 0 ? y0 + R : y1 - R;
+            if ((e.x - cx) * sx <= 0 || (e.y - cy) * sy <= 0) continue;
+            const dx = e.x - cx, dy = e.y - cy, d = Math.hypot(dx, dy);
+            if (d <= R - r) continue;
+            push(-dx / d, -dy / d, d - (R - r));
+          }
+          continue;
+        }
+        // Which corner of this wall tile he is off, and whether that corner is an outside one.
+        const sx = e.x < x0 + R ? -1 : e.x > x1 - R ? 1 : 0;
+        const sy = e.y < y0 + R ? -1 : e.y > y1 - R ? 1 : 0;
+        if (sx && sy && !this.isSolid(tx + sx, ty) && !this.isSolid(tx, ty + sy)) {
+          const cx = sx < 0 ? x0 + R : x1 - R, cy = sy < 0 ? y0 + R : y1 - R;
+          const dx = e.x - cx, dy = e.y - cy, d = Math.hypot(dx, dy) || 0.001;
+          if (d - R >= r) continue;
+          push(dx / d, dy / d, r - (d - R));
+          continue;
+        }
+        const cx = clamp(e.x, x0, x1), cy = clamp(e.y, y0, y1);
+        const dx = e.x - cx, dy = e.y - cy, d = Math.hypot(dx, dy);
+        if (d >= r) continue;
+        if (d < 0.001) {
+          const px = e.x - (tx + 0.5) * TILE, py = e.y - (ty + 0.5) * TILE;
+          if (Math.abs(px) > Math.abs(py)) push(Math.sign(px) || 1, 0, r); else push(0, Math.sign(py) || 1, r);
+        } else push(dx / d, dy / d, r - d);
       }
     }
     e.wallHit = hit;
@@ -421,7 +487,7 @@ class World {
 
   // What a man may put a boot on: stone stops him and so does a hole, which is why no route the
   // flow field offers anybody ever crosses one.
-  walkable(i) { const t = this.tiles[i]; return t !== T.WALL && t !== T.PIT; }
+  walkable(i) { const t = this.tiles[i]; return t !== T.WALL && t !== T.PIT && !this.block[i]; }
   walkableAt(tx, ty) { const t = this.tileAt(tx, ty); return t !== T.WALL && t !== T.PIT; }
   // BFS distance field from a point; enemies descend it.
   computeFlow(px, py) {
@@ -506,6 +572,7 @@ class World {
     const W = this.W;
     for (let i = 0; i < this.fire.length; i++) {
       if (this.fire[i] <= 0) continue;
+      this.grass[i] = 0;                 // tall grass goes up with whatever is burning on it
       const wasHay = this.tiles[i] === T.HAY;
       this.fire[i] -= dt;
       if (wasHay) {

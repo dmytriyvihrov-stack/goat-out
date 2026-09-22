@@ -5,6 +5,7 @@
 // 'R' always a rifle where the level has them  'm' seer spawn  'M' the Mill's hub
 // 'O' a drop: a hole in the boards where it sits in the floor, a window where it sits in a wall
 // 'S' a spike plate: floor until the goat crosses it, and then teeth
+// 'g' tall grass on the floor (THE CAVE): it hides what is in it  'k' a boulder: breaks, or go round it
 // Rooms are randomly flipped on both axes at generation time.
 //
 // HOW MUCH WEAPON A ROOM HANDS YOU. Pillar 3 says the wall is the weapon: a headbutt on its own only
@@ -17,7 +18,7 @@
 // their own shape and are drawn from a pool of their own).
 // The generator deals a level's rooms out along this, tight first and open last, so the ground a
 // fight happens on gets worse as a level goes on and not only the count of men standing on it.
-const HARD = '#PBLtO';
+const HARD = '#PBLtOk';
 function groundOf(tpl) {
   if (tpl.ground !== undefined) return tpl.ground;
   const rows = tpl.rows;
@@ -645,6 +646,80 @@ const ROOM_TEMPLATES = [
     '################',
   ]},
 
+  // ---- THE HOLLOW: THE CAVE (level eight). ----
+  // Nothing here is square. The rock is rounded as it is drawn and as it collides (`TUNING.cave`), so a
+  // run of steps in these grids is a curve on the screen and under the hooves, and a lone `P` is a
+  // round stone. Grass (`g`) hides whoever is standing in it; a boulder (`k`) breaks or is gone round.
+  // A grotto: the rock comes in at every corner, a knot of stone in the middle, grass in the bends.
+  { name: 'grotto', canon: 'hollow', rows: [
+    '##################',
+    '####.......#######',
+    '##..........g.####',
+    '#...gg..e....gg..#',
+    '#..ggg.....k..g..#',
+    '#...g...P........#',
+    '#.....e.PP..e....#',
+    '#..k......P...gg.#',
+    '##.........ggg..##',
+    '####...r.....g.###',
+    '##################',
+  ]},
+  // A gullet: two throats of rock pinch the room, and what is past each pinch is in grass.
+  { name: 'gullet', canon: 'hollow', rows: [
+    '####################',
+    '#.....####.....g####',
+    '#..e...##...e..gg..#',
+    '#.gg.........k.....#',
+    '#.ggg..PP.......e..#',
+    '#..g...PPP...gg....#',
+    '#.....k.....ggg.k..#',
+    '##..r......##....m.#',
+    '####.....#####.....#',
+    '####################',
+  ]},
+  // A round chamber: the widest floor in the cave, a boss of stone off its middle and grass either side.
+  { name: 'chamber', canon: 'hollow', rows: [
+    '##################',
+    '#####........#####',
+    '###....gg.e....###',
+    '##..k..ggg......##',
+    '#..........PP....#',
+    '#..e..g...PPPP.r.#',
+    '#....ggg...PP....#',
+    '#.....gg.........#',
+    '##...........k..##',
+    '###..e......gg.###',
+    '#####......ggg####',
+    '##################',
+  ]},
+  // Teeth: single points of rock standing up out of the floor, each one a round stone to put a man on.
+  { name: 'teeth', canon: 'hollow', rows: [
+    '################',
+    '###....P.....###',
+    '#...P.....e...##',
+    '#.......P..g...#',
+    '#.e..P....ggg..#',
+    '#.......k..g.P.#',
+    '#..P..e........#',
+    '#.......P...r..#',
+    '##...gg.....P..#',
+    '###.ggg.......##',
+    '################',
+  ]},
+  // A burrow: two lobes and a neck between them, one lobe grown over, a boulder in the other.
+  { name: 'burrow', canon: 'hollow', rows: [
+    '##################',
+    '##.....####......#',
+    '#..gg...##..e..k.#',
+    '#.gggg..##.......#',
+    '#..e.........P...#',
+    '#....k.......PP..#',
+    '#..........##..m.#',
+    '#.r..gg....##....#',
+    '##...ggg..####..##',
+    '##################',
+  ]},
+
   // ---- TRAP ROOMS: the room is the weapon, tagged 'trap'. ----
   // An ordinary room gives you furniture and asks you to work out what to do with it. These four
   // are built the other way round: the shape is already a kill and what you have to work out is how
@@ -825,6 +900,21 @@ const KILLBOX_TEMPLATE = { name: 'killbox', noFlipX: true, rows: [
 // through and the rack was behind them, which is the opposite of what the room is for.
 // Two racks side by side rather than one: a miss on the first throw is not the end of the lesson,
 // and the men at the far end have both of them to watch rather than one.
+// The room behind a soul gate: somewhere to stop. Nobody is put in it and nothing is scattered into
+// it — the fight was the room before — only straw in the corners, the soul in the middle (or the mouse
+// in the top or bottom wall, which is why both walls are left long and plain), and the barred way on.
+// One shape for every level: that a gate room is a quiet room is a thing a run is meant to learn.
+const REST_TEMPLATE = { name: 'rest', rows: [
+  '############',
+  '#hh......hh#',
+  '#h........h#',
+  '#..........#',
+  '#..........#',
+  '#h........h#',
+  '#hh......hh#',
+  '############',
+]};
+
 const AMBUSH_TEMPLATE = { name: 'ambush', noFlipX: true, rows: [
   '################',
   '#..............#',

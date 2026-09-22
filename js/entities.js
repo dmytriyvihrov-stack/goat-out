@@ -25,6 +25,7 @@ class Goat {
     this.autoHeld = false; // the thing in his mouth walked into it: a butt drops it, a press throws it
     this.rmbWas = false;   // grab last frame, so the press can be told from the holding
     this.fussCd = 0;       // holding rmb near a hound used to repaint TOO QUICK every single frame
+    this.itemCd = 0; this.itemCdMax = 0;   // Q: whichever verb artifact is at his neck, its own clock
   }
 
   update(dt, game) {
@@ -33,7 +34,7 @@ class Goat {
     // The one press of grab, rather than the holding of it. An arm that came into his mouth on its
     // own was never picked up by a button, so there is no button to let go of: a press throws it.
     const rmbEdge = inp.rmbDown && !this.rmbWas;
-    this.rmbWas = inp.rmbDown;
+    this.rmbWas = inp.rmbDown; this.rmbEdgeNow = rmbEdge;   // `tryGrab` reads the press, not the hold, for buying a ware
     // The gong is still ringing in his head: everything he has to wait for comes back half again
     // as fast, and so does he. It runs down whatever he is doing, stunned included.
     this.gong = Math.max(0, this.gong - dt);
@@ -146,6 +147,7 @@ class Goat {
       this.throwHeld(game);
     } else if (inp.lmbPressed && this.state === 'idle' && !this.holding) {
       this.state = 'windup'; this.timer = g.headbutt.windup;
+      this.buttTries = (this.buttTries || 0) + 1;   // a hidden wraith watches for a headbutt near it
       // SPLASH: the head goes down, and what is at his back gets it.
       if (game.mods.splash) Status.splash(game, this);
     }
@@ -205,6 +207,21 @@ class Goat {
           h.x += this.aim.x * 10; h.y += this.aim.y * 10;
           this.grabCd = g.grab.cooldown * game.mods.grabCooldown * 0.7;
         }
+      }
+    }
+
+    // ---- the item (Q) ----
+    // A fifth key that does not exist until there is something to put on it. One slot, and the two
+    // artifacts that live in it are the only two things in the shop that are a verb rather than
+    // body work: BOOMERANG throws, STRANGE SYMBOLS steps through nowhere. Neither is grab or roll
+    // wearing a different hat — each keeps its own cooldown (`itemCd`), never `grabCd` or `rollCd`,
+    // because what it does is its own trick and not a reskin of a verb he already had.
+    this.itemCd = Math.max(0, this.itemCd - dt * cdRate);
+    if (inp.qPressed && this.itemCd <= 0 && !this.dead) {
+      if (game.mods.boomerang && !game.boom.fly) {
+        if (Shop.throwBoomerang(game, this)) this.itemCd = this.itemCdMax = game.mods.boomerang.cooldown;
+      } else if (game.mods.blink) {
+        if (Shop.blink(game, this, inp.mx, inp.my)) this.itemCd = this.itemCdMax = game.mods.blink.cooldown;
       }
     }
 
@@ -304,19 +321,15 @@ class Goat {
     }
     for (const t of this.trail) t.life -= dt;
     this.trail = this.trail.filter((t) => t.life > 0);
-    if (this.hp < this.maxHp && spd > 60) {
+    // One heart left and he bleeds: an occasional drop behind him, the one hint the floor gives.
+    const BL = TUNING.goat.bleed;
+    if (this.hp <= 1 && spd > BL.minSpeed) {
       this.hoofTimer -= dt;
-      if (this.hoofTimer <= 0) { this.hoofTimer = 0.09; world.dot(this.x + (Math.random() - 0.5) * 8, this.y + (Math.random() - 0.5) * 8, 2.2, PALETTE.bloodDark); }
+      if (this.hoofTimer <= 0) { this.hoofTimer = BL.gap * (1 + (Math.random() - 0.5) * 2 * BL.jitter); world.dot(this.x + (Math.random() - 0.5) * 8, this.y + (Math.random() - 0.5) * 8, BL.size, PALETTE.bloodDark); }
     }
     // Below a walk he makes nothing worth hearing — that silence is the stealth the cone is built
     // to reward. Above it, this used to be a coin flip every frame, which could go a half-second
     // without landing and let a run right up on somebody's back read as luck rather than as noise.
-    // Dust off the hooves once the run-up is worth something: speed you can see, not only hear.
-    const DU = TUNING.juice.dust;
-    if (spd > 100 && this.runUp - 1 >= DU.stepAt * TUNING.goat.momentum.max) {
-      this.dustTimer = (this.dustTimer || 0) - dt;
-      if (this.dustTimer <= 0) { this.dustTimer = DU.stepGap; game.dust(this.x, this.y + 4, DU.step, -this.vx / spd, -this.vy / spd); }
-    }
     if (spd > 100) {
       this.stepNoiseTimer -= dt;
       if (this.stepNoiseTimer <= 0) { this.stepNoiseTimer = TUNING.noise.footstepGap; world.emitNoise(this.x, this.y, TUNING.noise.footstep); }
@@ -411,10 +424,28 @@ class Goat {
     game.audio.sfxBreath(); game.shake(6); game.vibe(25);
   }
 
+  // Tall grass in front of a headbutt is cut down: what was hiding in it is not, and what it hid
+  // from you is in the open. The cuttings are the only noise it makes.
+  cutGrass(game, ax, ay) {
+    const w = game.world, R = TUNING.grass.cutR * TILE;
+    const cx = this.x + ax * TILE * 0.6, cy = this.y + ay * TILE * 0.6;
+    const x0 = Math.floor((cx - R) / TILE), x1 = Math.floor((cx + R) / TILE);
+    const y0 = Math.floor((cy - R) / TILE), y1 = Math.floor((cy + R) / TILE);
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      if (tx < 0 || ty < 0 || tx >= w.W || ty >= w.H) continue;
+      const i = ty * w.W + tx, px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+      if (!w.grass[i] || Math.hypot(px - cx, py - cy) > R) continue;
+      w.grass[i] = 0;
+      const def = game.level.def;
+      game.particles(px, py, 6, def.grassHi || PALETTE.hay, 150);
+    }
+  }
+
   headbuttHits(game) {
     const g = TUNING.goat.headbutt;
     const extra = (game.mods.headbuttReach - 1) * TILE, impulse = g.impulse * game.mods.headbuttImpulse;
     const ax = this.aim.x, ay = this.aim.y;
+    this.cutGrass(game, ax, ay);
     for (const e of game.enemies) {
       if (e.dead || e.held || e.lastLunge === this.lungeId) continue;
       // Horns through mist. Saying so where it happened is the only tutorial this enemy gets.
@@ -433,6 +464,24 @@ class Goat {
         e.die(game, 'unmade', ax, ay);
         continue;
       }
+      if (e.kind === 'ratogre') {
+        // The horns do nothing to him standing. Down — a crate or a shield in the face — and every
+        // blow is a heart; up, the goat bounces off him and is told, once, what would work.
+        const open = e.state === 'floored' || e.state === 'stunned';
+        this.vx = -ax * 4 * TILE; this.vy = -ay * 4 * TILE;
+        game.audio.sfxThud(); game.squashGoat(TUNING.juice.squash.hit);
+        if (open) {
+          game.hitstop(0.05); game.shake(6); game.kick(-ax, -ay, TUNING.juice.kick); game.zoomPunch(0.8);
+          game.impact(this.x + ax * (this.r + 6), this.y + ay * (this.r + 6), ax, ay);
+          game.particles(e.x, e.y, 9, PALETTE.blood, 260);
+          e.die(game, 'headbutt', ax, ay);
+        } else {
+          game.shake(2); game.particles(this.x + ax * this.r, this.y + ay * this.r, 5, PALETTE.ash, 200);
+          e.flash = Math.max(e.flash, 0.05); e.aware = true;
+          Shop.ogreShrug(game, e);
+        }
+        continue;
+      }
       if (e.kind === 'butcher') {
         e.hp -= 1; e.flash = 0.18;
         // Planted while attacking: the hit counts but does not interrupt him. Bait the swing, then hit.
@@ -447,7 +496,7 @@ class Goat {
       } else {
         // A hound is not always there for it: that is what makes him a hound and not a man.
         if (e.tryDodge && e.tryDodge(game, ax, ay)) continue;
-        const imp = impulse * (e.cfg && e.cfg.flingMul ? e.cfg.flingMul : 1);
+        const imp = impulse * (e.knockMul ? e.knockMul() : 1);
         e.fling(ax * imp, ay * imp, false);
         game.shake(2); game.audio.sfxThud(); game.vibe(10);
         game.particles(this.x + ax * this.r, this.y + ay * this.r, 6, PALETTE.bone, 260);
@@ -527,6 +576,7 @@ class Goat {
 
   tryGrab(game) {
     const g = TUNING.goat.grab;
+    this.grabTries = (this.grabTries || 0) + 1;   // a hidden wraith watches for a reach near it
     let best = null, bestD = Infinity;
     const consider = (o) => {
       const dx = o.x - this.x, dy = o.y - this.y, d = Math.hypot(dx, dy);
@@ -534,13 +584,26 @@ class Goat {
       if ((dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) return;
       if (d < bestD) { bestD = d; best = o; }
     };
+    // The shelf first. A ware is reached for the way a crate is, and reaching for it is the whole
+    // of taking it — the press, not the holding, so it is asked once and not every frame.
+    if (this.rmbEdgeNow) {
+      // The full reach rather than the crate's six tenths of it: a stool is reached up to from the
+      // gap in the wall, not stood over.
+      for (const p of game.props) {
+        if (p.kind !== 'ware' || p.broken) continue;
+        const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy);
+        if (d > this.r + p.r + g.reach || (dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) continue;
+        if (d < bestD) { bestD = d; best = p; }
+      }
+      if (best) { Shop.buy(game, best, this); this.grabCd = 0.3; return; }
+    }
     // Out of the pen the mouth takes objects and nothing else. A grown man is BY THE COLLAR, and
     // until that soul is swallowed reaching for one is a thing you are told about rather than a
     // thing that silently does nothing.
     if (game.mods.grabMen) {
-      // The brute is a clubman grown too big for a goat's jaw, the same as the Butcher: he is put
-      // down by the room, never carried out of it.
-      for (const e of game.enemies) if (!e.dead && e.kind !== 'butcher' && !e.champion && !(e.cfg.immune && e.cfg.immune.grab)
+      // The brute is a clubman grown too big for a goat's jaw, the same as the Butcher, and a man with
+      // a soul in him is more than a man: all three are put down by the room, never carried out of it.
+      for (const e of game.enemies) if (!e.dead && !e.unliftable && !(e.cfg.immune && e.cfg.immune.grab)
         && e.state !== 'flung' && !e.held) consider(e);
     }
     for (const p of game.props) if (p.item && !p.broken && !p.held && !p.flung) consider(p);
@@ -549,10 +612,10 @@ class Goat {
       // — and only once a beat, since holding the button down near one asks every single frame.
       if (this.fussCd <= 0) {
         for (const e of game.enemies) {
-          const big = game.mods.grabMen && (e.kind === 'butcher' || e.champion);
+          const big = game.mods.grabMen && e.unliftable;
           if (e.dead || (e.kind !== 'dog' && !big)) continue;
           if (Math.hypot(e.x - this.x, e.y - this.y) > this.r + e.r + g.reach) continue;
-          game.floatText(e.x, e.y - 24, big ? 'TOO BIG' : 'TOO QUICK', PALETTE.ash); this.fussCd = 0.8; break;
+          game.floatText(e.x, e.y - 24, big ? (e.soul && e.kind !== 'butcher' && !e.champion ? 'THE SOUL HOLDS HIM' : 'TOO BIG') : 'TOO QUICK', PALETTE.ash); this.fussCd = 0.8; break;
         }
       }
       if (!game.mods.grabMen) game.reachedForAMan(this);
@@ -658,7 +721,15 @@ class Prop {
       : kind === 'weapon' ? P.weapon.r : kind === 'secret' ? P.door.r
       : kind === 'coop' ? P.coop.r : kind === 'chicken' ? P.chicken.r
       : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r
-      : kind === 'bomb' ? P.bomb.r : 13;
+      : kind === 'bomb' ? P.bomb.r : kind === 'rock' ? P.rock.r : kind === 'mouse' ? P.mouse.r : kind === 'ware' ? P.ware.r : 13;
+    // The shop (js/shop.js). A mouse carries which room's shelf is hers (`shopId`), where the gap
+    // in the wall is (`gap`, which is where the ogre comes out), how many blows she has taken and
+    // what she is saying; a ware carries the artifact on it — `{ id, tier }` — and whether
+    // it is `locked` (the ogre is out) or `free` (he is down).
+    this.shopId = opts && opts.shopId !== undefined ? opts.shopId : -1;
+    this.gap = (opts && opts.gap) || null; this.strikes = 0; this.say = null; this.angry = 0;
+    this.ware = (opts && opts.ware) || null; this.locked = false; this.free = false;
+    this.milkSpots = (opts && opts.milkSpots) || null;   // the milk offer: where its three bowls go
     // -1 until it is thrown for the first time (`fling` arms it); ticking down after that regardless
     // of whether it is picked up and thrown again, so a live bomb stays live.
     this.fuseT = -1;
@@ -685,6 +756,13 @@ class Prop {
     // answer, which is what makes the soul behind it the answer.
     this.iron = !!(opts && opts.iron); this.vault = !!(opts && opts.vault);
     this.stair = !!(opts && opts.stair); this.gate = !!(opts && opts.gate);
+    // Which room's soul lifts a gate: a level has two of them (`gates` on the level).
+    this.gateRoom = (opts && opts.gateRoom !== undefined) ? opts.gateRoom : -1;
+    this.shopGate = !!(opts && opts.shopGate);   // the mouse's gate: a talisman lifts it, not a soul
+    // A clamp (`game.updateClamps`): the plate bolted over the mouth of a room left behind. `span`
+    // is how many tiles of mouth it covers and `slam` the beat it takes to drive home.
+    this.span = (opts && opts.span) || 2;
+    this.slam = kind === 'clamp' ? TUNING.clamp.slam : 0;
     // A sealed arena's pair of doors: no hit points either, the same as the soul gate, but lifted by
     // clearing the room rather than by a soul. `sealRoom` names which room's fight has to end first.
     this.seal = !!(opts && opts.seal); this.sealRoom = (opts && opts.sealRoom !== undefined) ? opts.sealRoom : -1;
@@ -729,11 +807,12 @@ class Prop {
     if (this.broken) return false;
     // Nothing stands on a plate's shoulders: it is floor until it is teeth. A loose bird is not
     // furniture either — she is got out of the way of, not walked into.
-    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'chicken') return false;
+    // A clamp is drawn over stone that is already stone: the tiles under it are what stop you.
+    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp') return false;
     if (this.kind === 'door') return this.open < 0.5;
     return true;
   }
-  get stopsBullets() { return !this.broken && (this.kind === 'table' || this.kind === 'brazier' || this.kind === 'bell' || this.kind === 'secret' || (this.kind === 'door' && this.open < 0.5)); }
+  get stopsBullets() { return !this.broken && (this.kind === 'table' || this.kind === 'rock' || this.kind === 'brazier' || this.kind === 'bell' || this.kind === 'secret' || (this.kind === 'door' && this.open < 0.5)); }
   // What an eye stops at. A shut door is a wall with hinges, and a man on the far side of one used
   // to spot you straight through it and come round — which from where you were standing was being
   // seen through stone. The gong and the hub of the wheel are the only other two things in a room
@@ -764,12 +843,15 @@ class Prop {
       } break;
       case 'bell': this.ring(game); break;
       case 'door': case 'secret': this.smash(game, ax, ay); break;
+      case 'rock': this.crackRock(game); break;
       case 'table': this.shove(game, ax, ay); break;
       case 'lamp': this.topple(game, ax, ay); break;
       case 'brazier': this.spill(game, ax, ay); break;
       case 'cage': if (this.deco) this.breakDeadCage(game); else this.breakCage(game); break;
       case 'coop': this.breakCoop(game); break;
       case 'chicken': this.kick(game, ax, ay); break;
+      // The trader and her shelf: rough is a strike against her, and the third one is the rat ogre.
+      case 'mouse': case 'ware': Shop.provoke(game, this); break;
       default: this.wobble = 0.3; game.audio.sfxThud(); break;
     }
   }
@@ -1049,6 +1131,24 @@ class Prop {
     game.floatText(this.x, this.y - 30, 'A HIDDEN NICHE', PALETTE.fireHi);
   }
 
+  // A boulder in the cave. `rock.hits` blows and it is rubble, the tile it stood on is floor to the
+  // flow field again, and until then it is stone to everything that moves.
+  crackRock(game) {
+    if (this.broken) return;
+    this.hits = (this.hits || 0) + 1;
+    if (this.hits < TUNING.prop.rock.hits) {
+      this.wobble = 0.3; game.world.emitNoise(this.x, this.y, TUNING.noise.smash * 0.6);
+      game.audio.sfxThud(); game.shake(3); game.hitstop(0.02); game.vibe(10);
+      game.particles(this.x, this.y, 7, PALETTE.ash, 170);
+      return;
+    }
+    this.broken = true; this.dead = true;
+    const w = game.world; w.block[Math.floor(this.y / TILE) * w.W + Math.floor(this.x / TILE)] = 0;
+    w.emitNoise(this.x, this.y, TUNING.noise.smash); game.audio.sfxSplat(); game.shake(5); game.hitstop(0.03); game.vibe(14);
+    game.particles(this.x, this.y, 18, PALETTE.ash, 240);
+    w.scorch(this.x, this.y, this.r * 1.1, false);
+  }
+
   // Two blows and the slats come off. What walks out is the only thing in the compound on the
   // goat's side, so the break is worth a beat of noise and a line on the floor.
   breakCoop(game) {
@@ -1216,9 +1316,13 @@ class Prop {
     if (this.broken || !game.level || game.state !== 'play') return;
     const own = roomAt(game.level, this.x, this.y);
     if (!own || !own.seen) return;
+    // Behind him means a room he has already moved on from, not the left of the screen: a room can
+    // be hung above or below the last one, so the coop he walked past can be sliding off any edge.
+    const cur = roomAt(game.level, game.goat.x, game.goat.y);
+    if (!cur || cur.index <= own.index) return;
     const v = game.renderer.view(game.cam);
-    const behind = (game.cam.x - this.x) / (v.w / 2);
-    if (behind < TUNING.prop.chicken.breakOut || behind > 1.6 || Math.abs(this.y - game.cam.y) > v.h / 2) return;
+    const behind = Math.max(Math.abs(game.cam.x - this.x) / (v.w / 2), Math.abs(game.cam.y - this.y) / (v.h / 2));
+    if (behind < TUNING.prop.chicken.breakOut || behind > 1.6) return;
     this.hits = TUNING.prop.coop.hits - 1;
     this.breakCoop(game);
     game.floatText(this.x, this.y - 52, 'SHE BROKE OUT', PALETTE.hen);
@@ -1275,7 +1379,9 @@ class Prop {
     if (this.kind === 'spike') { this.updateSpike(dt, game); return; }
     if (this.kind === 'chicken') { this.updateBird(dt, game); return; }
     if (this.kind === 'coop') { this.updateCoop(game); return; }
+    if (this.kind === 'mouse' || this.kind === 'ware') { Shop.updateStall(this, dt, game); return; }
     if (this.kind === 'heal' || this.kind === 'cage') return;
+    if (this.kind === 'clamp') { this.slam = Math.max(0, this.slam - dt); return; }
     if (this.kind === 'brazier') { this.spillCd = Math.max(0, this.spillCd - dt); return; }
     // Fire that reaches a lamp post takes the lamp with it: hay burning up to one tips it over,
     // and the oil goes wherever it falls. The room keeps answering after the first thing lit.
@@ -1463,7 +1569,8 @@ class Prop {
       const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
       if (d > B.blastR + e.r) continue;
       const nx = dx / (d || 1), ny = dy / (d || 1);
-      if (d <= B.nearR) e.die(game, 'splat', nx, ny);
+      // The rat ogre is never flung, so the whole of the blast is the one heart it takes off him.
+      if (d <= B.nearR || e.kind === 'ratogre') e.die(game, 'splat', nx, ny);
       else e.fling(nx * B.impulse, ny * B.impulse, true);
     }
     const g = game.goat, gd = Math.hypot(g.x - this.x, g.y - this.y);
@@ -1591,7 +1698,9 @@ class Prop {
         // A man held out in front of you is a man held into the arm: the wheel takes him out of
         // your mouth and throws him for you, which is the wheel doing what the wheel is for.
         if (e.held) { game.goat.holding = null; e.held = false; game.goat.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
-        e.fling(ix, iy, true); e.aware = true; game.floatText(e.x, e.y - 26, 'GROUND', PALETTE.blood);
+        // The rat ogre is never thrown, but the arm still lands: a heart off him, standing.
+        if (e.kind === 'ratogre') { e.die(game, 'mill', dx / (d || 1), dy / (d || 1)); }
+        else { e.fling(ix, iy, true); e.aware = true; game.floatText(e.x, e.y - 26, 'GROUND', PALETTE.blood); }
       }
       game.shake(6); game.audio.sfxThud(); game.world.emitNoise(this.x, this.y, TUNING.noise.table);
     }
@@ -1646,6 +1755,9 @@ class Bullet {
         if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + 2) {
           this.dead = true;
           if (e.kind === 'butcher') { e.hp -= 1; e.flash = 0.18; game.world.splat(e.x, e.y, this.vx / 900, this.vy / 900, 6); if (e.hp <= 0) e.die(game, 'shot', this.vx / 900, this.vy / 900); }
+          // A round is a sharp thing: the rat ogre bleeds a heart for it, which is what makes a
+          // room with a rifle in it somewhere worth leading him.
+          else if (e.kind === 'ratogre') { e.die(game, 'shot', this.vx / 900, this.vy / 900); }
           else {
             e.die(game, 'shot', this.vx / 900, this.vy / 900); game.floatText(e.x, e.y - 26, 'FRIENDLY FIRE', PALETTE.blood);
             // The shooter, not a witness: he is the one who has something to say about it.

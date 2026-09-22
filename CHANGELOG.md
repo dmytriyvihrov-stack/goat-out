@@ -5,6 +5,173 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.43 — THE CAVE
+
+**An eighth level, under all of it, and nothing in it is square.** The rock is round: every outside
+corner of a wall is a quarter circle and every inside corner is filled in by one, in the collision
+exactly as it is drawn (`TUNING.cave.roundR`, `World.collideRound`, `Renderer.drawCaveTiles`). A run of
+steps in the rock is a curve you slide along rather than a staircase you catch on, and a lone pillar is a
+round stone. Every ordinary room has its corners filled back in with rock and a bulge or two grown out
+of its walls (`erodeCave`), and five rooms are written for it (THE HOLLOW).
+
+**Tall grass.** You see a step into a patch and no further; what is deep in it and behind it is shade.
+A man more than a couple of tiles off does not see a goat standing in it, and some of the cult are lying
+in it already — still, faded, only the top of them showing — until something gets them up. A headbutt
+cuts it and fire burns it off.
+
+**Boulders.** Two blows and they are rubble; until then they are stone to a body, a bullet and a thrown
+crate, a man thrown into one dies on it, and the cult walk round them. Never where they could close the
+way through (`GEN_RULES.rocks`).
+
+**The curve** runs 12 → 44, heavier on hounds; `node tools/balance.js` holds it harder than THE OSSUARY.
+
+---
+
+## 1.42 — every kind gets a pattern of its own
+
+**The hound runs a line you can see.** Inside `dog.dashRange` tiles it stops circling and plants for
+a second (`dog.windup`) while the run it is about to make is drawn on the floor in red — bent, since
+it starts off the side it was circling and turns onto you. Then it runs it at `dashSpeed`, barking
+(`sfxBark`), homing at `dashTurn` rad/s, and bites whatever is in front of it. It cannot slip a
+headbutt mid-run. The old dart → windup → bite is gone.
+
+**The rifle's round is slower** — 25 → 19 tiles a second, a thing you can step off.
+
+**The clubman's arm is shorter and quicker**: reach 0.96 → 0.8 tiles, windup 0.58 → 0.46.
+
+**The brute has his own arm and a slam.** `TUNING.champion` carries his reach and timings (the
+clubman's cut did not touch him), a headbutt moves him `flingMul` 0.55 as far, and close in
+`slam.chance` of his blows are the club on the floor: a red ring fills round him and everything in
+it is hit and thrown straight out — his own men go over too.
+
+**On fire, the Butcher and the brute come at you.** No running from it: `rage.speed` on the stride and
+`rage.tempo` on every windup, swing and recovery while they burn.
+
+**A man with a soul in him is a small boss.** `TUNING.soulBearer`: a heart more than he had, never
+carried (THE SOUL HOLDS HIM), and a headbutt moves him 0.6 as far. A row of its own on ENEMIES.
+
+**The wraith can hide.** It may lie in a room as a box or a bowl of milk before you have ever seen
+it (`wraith.hide`); headbutt or reach for anything near it, or step onto it, and it comes up and
+strikes at once from whatever side you are on.
+
+**The mouse's hole is a hole, not a tunnel.** Nothing is cut into the wall any more: the burrow is a
+mark at its foot, she sits on the boards in front of it, and her three offers lie in a row before her.
+
+**Smaller things:** no dust off an ordinary run — only a headbutt, a roll or a landing raise it; the
+blood trail only on the last heart and a drop every so often (`goat.bleed`); a kill's blood a shade
+smaller (`effects.bloodScale`); and the death screen's map puts a small skull wherever a man went down.
+
+---
+
+## 1.41 — two hard stops a level, a mouse who gives, and rooms that shut behind you
+
+**Every level stops you twice.** `gates` on each level names two rooms — one in the middle, one before
+the end — and each is a **rest room**: nobody in it, straw in the corners, the fight was the room
+before. Its way on is narrowed to a single tile and barred by a door no blow opens; the bar is the soul
+lying in the middle of the floor, and swallowing it lifts that gate and no other. Level one went from one soul to two; every
+level now gives two, spent on the gates first, then the vault, then the last bosses. A vault with none
+left to give holds the big patch of grass. `GEN_RULES.soulgate`, `budget`.
+
+**The mouse gives instead of sells.** She is on THE YARD, THE THRESHING FLOOR and THE RAFTERS only,
+and she stands in the middle gate in place of its soul. Three offers, one to take: two talismans, both
+the tier of this visit — tier one, two, three across the run — or three bowls of milk. Reach for one
+and it is yours, the rest go back into the wall, and her gate gives; a talisman taken onto a full slot
+leaves the old one on the stool to swap back. THE THRESHING FLOOR's curve went up a step (5→12 to 6→13)
+to stay ahead of THE ROAD with two quiet rooms. No more prices in the dead. Fourteen souls a run against sixteen boons. `GEN_RULES.shop`.
+
+**And sometimes a fight pays anyway.** On top of the two a level owes you, now and then one of its
+bosses is carrying a soul of his own (lit, and on the card), and now and then an ordinary fight room
+gives one up when its last man goes down — nothing says which until you have won it
+(`soul.bossChance`, `soul.roomChance`).
+
+**Rooms behind you are clamped.** A room two back from the one you are standing in, with nobody alive
+left in it, is shut for good: its way out goes back to stone and an iron plate is bolted over the
+mouth. The room you just came out of stays open; a room with anybody alive in it stays open until it
+is empty. `game.updateClamps`, `GEN_RULES.clamp`.
+
+**Four generator leaks, found by the clamp's rule.** Narrowing a gate room's exit walled up the turn
+of its corridor as well, which cut a corridor that turned downward and quietly cost a seed — with two
+gates a level, some seeds ran out entirely. A secret's niche could be cut flush against a shaft, a
+vault could open onto whatever ran behind it, and THE THRESHING FLOOR's five-wide corridors could turn
+down through the next room's wall — each a second way into a room that no gate or seal knew about.
+
+## 1.40 — the mouse in the wall, four talismans, and the rat ogre
+
+**A shop, and it speaks the game's own language.** From THE YARD on, one room in the middle stretch
+of every level has a three-tile hole cut into its top or bottom wall (`carveHole`, the secret's cut
+with the wall left out) with a mouse sat in it and a ware on a stool either side of her — a real
+low burrow with a dirt rim, not a doorway, and she sits a step to the side of it rather than
+blocking her own hole. Walk up to a ware and it says what it does, over the thing itself, before
+you spend anything on it. Grab is buy: reach for a ware with enough of the level's dead behind you
+(`game.kills`, less what you have already spent) and it hangs at his neck at once; short, and she
+says how many more. A headbutt is rude: the first blow she asks you not to, the second she warns
+you, and the third she is the **rat ogre** — coming through the wall itself, not the hole, because
+a body that size never fit through what she left behind — and the shelf locks until he is down;
+kill him and it is free. Prices are a share of the level's own head count per tier
+(`TUNING.shop.priceShare`), and the second ware is a tier under the first, so there is always
+something cheaper beside the thing worth saving for. The kills that pay for it are reset with the
+level, so a death takes back what it bought inside the level along with the level (`levelArtifact`,
+the same rule the souls keep). `GEN_RULES.shop`.
+
+**Four talismans, one slot, three tiers each, drawn on him.** `ARTIFACTS` in `tuning.js`; the slot
+is right of the hearts and the thing itself hangs on a cord at the goat's neck on every facing
+(`PaintedArt.collar`). A tier is how far the rule bends, not a bigger number. Two of the four are
+body work and touch no button: FIRE AMULET (a burning man lights the next, KINDLING's own rule —
+then the next lights one more — then the room) and LUCKY CLOVER (the NEXT floor hides more:
+secrets, racks, grass, and at the higher tiers extra milk, through `generateLevel`'s new
+`opts.luck`). The other two are a verb, and rather than reskin grab or the roll they share a fifth
+key that plainly does not exist until one of them is worn: **Q**. BOOMERANG throws on Q, the men it
+meets reel, it comes home; more men, further, sooner up the tiers. STRANGE SYMBOLS is a step
+through nowhere on Q, three tiles then four and a half then six, and the top tier leaves whoever
+stood where you left reeling. `firePass` in `mods` is a depth now rather than a flag, and KINDLING
+sets it to one.
+
+**The rat ogre is dear on purpose.** Six hearts, and the horns do nothing to him standing: he is
+never flung, so no wall ever kills him, he does not burn (witchfire included), and a scream, the
+boomerang or a tumble only break the swing he was winding up. What lands is a blow while he is
+DOWN — a crate or a shield in the face floors him, and every horn in that window is a heart — a
+blade thrown or carried, a bullet, a body thrown into him at killing speed, the wheel and the bomb.
+He takes each hit standing (a beat of stagger, never floored by it), so one crate is one heart and
+not six. He swings at whoever is nearest him that he can see, the goat or a man of the cult, and
+the cult goes for you and not him: the way to spend him is to walk him into a full room. He walks
+round every trap. He is not on the curve and drops no soul. KILLED BY THE RAT OGRE.
+
+---
+
+## 1.39 — rooms above and below, a crowd that does not stand on itself, less juice, and seven bugs
+
+**Not every door is in the right-hand wall.** From level two on, a room is now and then hung above or
+below the one before it and reached by a shaft out of its top or bottom wall (`levelDef.stack`, 22%
+on THE YARD up to 35% from THE BRIDGE on; one in a row at most). A level used to be "run for the right
+edge of the screen" every time. The chain's drift is pulled toward the middle of the world so it no
+longer runs flat along the top edge. `GEN_RULES.stack` holds it.
+
+**A late room's crowd was thrown on the floor.** Levels four to seven buy up to nine men into rooms
+whose templates mark about four places to stand, and the rest went on the first floor tile the dice
+hit: about three pairs of men on one spot per level, men inside crates, and 18% of all men within four
+tiles of the door you walk in by. The spare men are placed by score now — clear of each other, of the
+furniture and of the door. Overlaps went from ~3 a level to none, and men at the door from 18% to 11%
+(what is left is the templates' own marks). `GEN_RULES.spacing` holds it.
+
+**Less juice.** Two master dials, `juice.screen` 0.6 on every shake, kick, lens punch and flash, and
+`juice.stop` 0.7 on every hitstop; the ring, sparks, dust and squash that 1.37 added are all smaller.
+
+**Bugs.**
+- Most noises were never heard: the list was cleared at the end of the step, after the crate, the
+  bomb, the grating, the mill and every man's own shot had emitted theirs. A bomb going off in a room
+  of idle men turned nobody's head.
+- A two-heart man knocked down while in your mouth stayed in it and got his AI back — a mage painting
+  at your feet, a clubman swinging at you point-blank.
+- Backspace restarted on the same seed, so a level could be scouted and replayed; from the clear card
+  it banked the level's kills and score a second time. It counts as a death now and only works in play.
+- Escape on the clear card went to the title and lost the level just won.
+- N cleared the level in the published build. It is a dev key now.
+- Falling with a crate, a hen or a bomb in your mouth played the steel sound and said SPLINTERED.
+- The hound and hen lines repeated every level; the clock-door and mist lines only came once a page
+  load. All four are once a run now.
+
+---
+
 ## 1.38 — a rarer, real crocodile, two souls cut down, a brute too big to carry, and what killed you
 
 **The roast is a find.** At most one a level, and about one level in four has one (`brazier.roast`

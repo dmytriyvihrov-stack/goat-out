@@ -74,9 +74,10 @@ printed in the top right.
 
 ## What is in
 
-**Six levels.** THE ALTAR is Bearers, with one hound near the end of it. THE YARD adds Seers, late and
+**Eight levels.** THE ALTAR is Bearers, with one hound near the end of it. THE YARD adds Seers, late and
 one to a room. THE ROAD adds Hunters, posted on their own as well as in crowds. THE THRESHING FLOOR takes
-the walls away. THE BRIDGE mixes everything. THE OSSUARY, under the bridge, belongs to the dead. Every
+the walls away. THE BRIDGE mixes everything. THE OSSUARY, under the bridge, belongs to the dead. THE CAVE, under
+all of it, has no straight wall in it: round rock, tall grass that hides you and them, and boulders. Every
 level carries more hounds than the one before. Each is
 a chain of hand-authored rooms stitched together differently every run, and each one hands your hearts
 back.
