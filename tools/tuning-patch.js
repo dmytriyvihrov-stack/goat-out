@@ -147,10 +147,17 @@ function applyEdit(text, edit) {
     block = found;
   }
   for (let i = 0; i < path.length - 1; i++) {
+    // A number steps into an array by position: `['tiers', 1, 'params', 'rooms']` on an ARTIFACTS entry.
+    if (typeof path[i] === 'number') {
+      const els = arrayElements(text, block.start, block.end);
+      if (!els[path[i]]) throw new Error('no element ' + path[i]);
+      block = els[path[i]];
+      continue;
+    }
     const props = topLevelProps(text, block.start, block.end);
     const p = props.get(path[i]);
     if (!p) throw new Error('missing key ' + path.slice(0, i + 1).join('.'));
-    if (text[p.valueStart] !== '{') throw new Error('key ' + path[i] + ' is not an object');
+    if (text[p.valueStart] !== '{' && text[p.valueStart] !== '[') throw new Error('key ' + path[i] + ' is not an object');
     block = { start: p.valueStart, end: matchBracket(text, p.valueStart) };
   }
   const props = topLevelProps(text, block.start, block.end);

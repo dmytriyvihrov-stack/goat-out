@@ -238,6 +238,29 @@ const GEN_RULES = [
       if (SET_PIECE.has(r.role) || r.isTrap || r.isAmbush) return `a bomb in the ${r.role || 'set piece'}`;
       return true;
     } },
+  { id: 'shrooms', text: 'At most one tuft of mushrooms, on plain floor of an ordinary room; never on the last level or on the trip.',
+    check: (L) => {
+      const t = L.props.filter((p) => p.kind === 'shrooms');
+      if (!t.length) return null;
+      if (t.length > 1) return `${t.length} tufts`;
+      const li = LEVELS.indexOf(L.def);
+      if (L.def.shroom || li < 0 || li >= LEVELS.length - 1) return 'a tuft on a level with no level after it';
+      const r = roomAt(L, t[0].x, t[0].y);
+      if (!r) return 'a tuft outside any room';
+      if (SET_PIECE.has(r.role) || r.role === 'pen' || r.isAmbush || r.isRest) return `a tuft in the ${r.role}`;
+      if (L.tiles[Math.floor(t[0].y / TILE) * L.W + Math.floor(t[0].x / TILE)] !== T.FLOOR) return 'a tuft off the floor';
+      return true;
+    } },
+  { id: 'trip', text: 'The trip asks little of the hands it scrambles: clubmen and brutes only, no grating, no drop, no trap room.',
+    check: (L) => {
+      if (!L.def.shroom) return null;
+      const bad = L.spawns.find((s) => s.kind !== 'bearer');
+      if (bad) return `a ${bad.kind} on the trip`;
+      if (L.props.some((p) => p.kind === 'spike')) return 'a grating on the trip';
+      if (L.tiles.some((t) => t === T.PIT)) return 'a drop on the trip';
+      if (L.rooms.some((r) => r.isTrap)) return 'a trap room on the trip';
+      return true;
+    } },
   { id: 'pen', text: 'Nothing spawns by the pen, and the pen holds nobody.',
     check: (L) => {
       for (const s of L.spawns) if (Math.hypot(s.x - L.start.x, s.y - L.start.y) <= 5 * TILE) return 'a man beside the pen';
@@ -251,8 +274,10 @@ const GEN_RULES = [
       return true;
     } },
   // THE CAVE's floor. A boulder is stone to everything that moves, so the only thing that keeps a
-  // scatter of them from shutting a way through is where they are allowed to stand.
-  { id: 'rocks', text: 'A boulder stands on open floor: plain floor all round it, no grass, never another boulder beside it.',
+  // scatter of them from shutting a way through is where they are allowed to stand. `placeRockCluster`
+  // grows a formation of three to six of them on purpose, and every cell of one carries the same
+  // `cluster` id — two of those may stand shoulder to shoulder; anything else still may not.
+  { id: 'rocks', text: 'A boulder stands on open floor: plain floor all round it, no grass, never another boulder beside it unless the two belong to the same formation.',
     check: (L) => {
       const rocks = L.props.filter((p) => p.kind === 'rock');
       if (!rocks.length) return null;
@@ -263,7 +288,9 @@ const GEN_RULES = [
           const i = (ty + dy) * L.W + tx + dx;
           if (L.tiles[i] !== T.FLOOR || grass.has(i)) return `a boulder hemmed in at ${tx},${ty}`;
         }
-        if (rocks.some((q) => q !== p && Math.hypot(q.x - p.x, q.y - p.y) < 2 * TILE)) return `two boulders side by side at ${tx},${ty}`;
+        const near = rocks.find((q) => q !== p && Math.hypot(q.x - p.x, q.y - p.y) < 2 * TILE
+          && (p.cluster === undefined || q.cluster !== p.cluster));
+        if (near) return `two boulders side by side at ${tx},${ty}`;
       }
       return true;
     } },

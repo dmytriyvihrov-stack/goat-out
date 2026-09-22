@@ -62,7 +62,7 @@ class CombatFX {
       for (const crop of [[20,0,56,35],[15,35,33,30],[48,35,33,30],[15,65,33,31],[48,65,33,31]]) {
         this.fragment(e.x,e.y,sprite,crop,size*crop[2]/96,size*crop[3]/96,dx,dy,'gore');
       }
-    } else {
+    } else if (!e.corpsed) {   // a body the spade kept is a prop in the room, not a piece of fx
       this.fragment(e.x,e.y,sprite,[0,0,96,96],size,size,dx,dy,cause==='burn'?'char':'body',
         {vx:dx*20,vy:dy*20,vz:95,spin:2.5,angle:(e.facing||0)+0.8});
       if(cause==='burn') this.explosion(e.x,e.y,19,!!e.witchBurn,true);

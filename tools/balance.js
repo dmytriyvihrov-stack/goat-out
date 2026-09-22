@@ -159,6 +159,29 @@ for (let li = 0; li < levelThreat.length; li++) {
 }
 if (falls.length) console.log(`  (not a failure, since the weights are a guess, but ${falls.join(', ')} ${falls.length > 1 ? 'ask' : 'asks'} less of the goat than the level before)`);
 
+// ---- THE TRIP ----
+// Not in LEVELS, so none of the above saw it: every level a tuft can send the run to, played as the
+// trip, held to the same per-level list over the same seeds, with its threat beside the level it
+// stands in for.
+const tripLevel = grab('tripLevel');
+if (!QUIET) console.log('\n--- the trip, in place of ---');
+for (let li = TUNING.shroom.from + 1; li < LEVELS.length; li++) {
+  const def = tripLevel(li), seen = new Set();
+  let total = 0, men = 0;
+  for (let s = 1; s <= SEEDS; s++) {
+    let L;
+    try { L = generateLevel(def, s * 7717); } catch (e) { fail(`THE TRIP (for ${LEVELS[li].name}): does not generate — ${e.message}`); break; }
+    const rooms = roomsOf(L);
+    total += rooms.reduce((a, r) => a + r.threat, 0); men += L.spawns.length;
+    for (const r of checkRules(L)) {
+      if (r.ok !== false || r.rule.id === 'rises' || r.rule.id === 'ground') continue;
+      const msg = `THE TRIP (for ${LEVELS[li].name}): ${r.rule.id} — ${r.why}`;
+      if (!seen.has(msg)) { seen.add(msg); fail(msg); }
+    }
+  }
+  if (!QUIET) console.log(`  ${LEVELS[li].name.padEnd(22)} total ${(total / SEEDS).toFixed(1).padStart(6)}   men ${(men / SEEDS).toFixed(1)}   (the level itself ${levelThreat[li] ? levelThreat[li].total.toFixed(1) : '?'})`);
+}
+
 if (fails.length) {
   console.log(`\n${fails.length} RULE FAILURES:`);
   for (const f of fails.slice(0, 25)) console.log('  ✗ ' + f);

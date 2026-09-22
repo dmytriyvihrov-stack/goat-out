@@ -112,6 +112,9 @@ class Game {
       // why there does not need to be one.
       const m = h.match(/^seed=([0-9a-z]+)$/i);
       if (m) this.askedSeed = parseInt(m[1], 36) >>> 0;
+      // `#trip` is the way to look at THE TRIP without finding the mushrooms first: whatever floor
+      // LEVELS starts is played as the trip in its place.
+      this.askedTrip = h === 'trip';
     } catch (e) { /* no location worth reading */ }
     this.layoutTouch();
     this.bindInput();
@@ -332,7 +335,7 @@ class Game {
       const gx = Math.floor(tx), gy = Math.floor(ty);
       for (let y = Math.max(0, gy - gr); y <= Math.min(w.H - 1, gy + gr); y++) for (let x = Math.max(0, gx - gr); x <= Math.min(w.W - 1, gx + gr); x++) {
         const i = y * w.W + x;
-        if (w.grass[i] && Math.hypot(x + 0.5 - tx, y + 0.5 - ty) > G.seeInto) blocks.push(i);
+        if (w.grass[i] && !w.fire[i] && Math.hypot(x + 0.5 - tx, y + 0.5 - ty) > G.seeInto) blocks.push(i);   // a patch alight hides nothing
       }
     }
     w.setVisBlocks(blocks);
@@ -393,6 +396,10 @@ class Game {
   // that would give a room away — a man, a crate, a body on its way down a hole — asks this.
   hidden(x, y) {
     if (!this.level) return false;
+    if (this.niches) {
+      const i = Math.floor(y / TILE) * this.world.W + Math.floor(x / TILE);
+      for (const p of this.niches) if (!p.broken && p.nicheTiles.indexOf(i) > 0) return true;
+    }
     for (const r of this.level.rooms) {
       if (r.seen) continue;
       if (x >= r.x * TILE && x < (r.x + r.w) * TILE && y >= r.y * TILE && y < (r.y + r.h) * TILE) return true;
@@ -553,6 +560,7 @@ class Game {
       return;
     }
     if (id.startsWith('tab-')) { this.dev.tab = id.slice(4); this.dev.room = null; return; }
+    if (id.startsWith('tal-') && Talisman.devAction(this, id)) return;   // the TALISMANS tab
     // The JUICE tab: a filter, a page, a row opened out, and the table handed over as Markdown.
     if (id.startsWith('juice-filter=')) { this.dev.juiceFilter = id.slice(13); this.dev.juicePage = 0; return; }
     if (id.startsWith('juice-page=')) { this.dev.juicePage = (this.dev.juicePage || 0) + Number(id.slice(11)); return; }
@@ -913,6 +921,7 @@ class Game {
         this.touch.active = false; this.input.anyPressed = true; this.input.mouse = p;
         if (e.button === 0) this.input.lmbPressed = true;
         if (e.button === 2) this.input.rmbDown = true;
+        this.mouseButtons = e.buttons;
         return;
       }
       this.touch.active = true; this.input.anyPressed = true;
@@ -924,6 +933,17 @@ class Game {
       const p = this.canvasPos(e);
       if (isMouse(e)) {
         this.input.mouse = p; if (this.touch.active) this.touch.active = false;
+        // A second button pressed while the first is still down is not a pointerdown — the browser
+        // reports it as a move with a changed `buttons`. Holding grab and clicking to throw is exactly
+        // that chord, and it used to be swallowed whole; so did letting go of grab while the other
+        // button was held, which left him clamped onto whatever he had.
+        const was = this.mouseButtons || 0, now = e.buttons;
+        if (now !== was && this.state === 'play') {
+          if ((now & 1) && !(was & 1)) this.input.lmbPressed = true;
+          if ((now & 2) && !(was & 2)) this.input.rmbDown = true;
+        }
+        if (!(now & 2)) this.input.rmbDown = false;
+        this.mouseButtons = now;
         if ((this.state === 'title' || this.state === 'paused') && this.menu.sliderDrag != null) this.setSliderAt(this.menu.sliderDrag, p.x);
         return;
       }
@@ -933,6 +953,7 @@ class Game {
     const up = (e) => {
       this.menu.sliderDrag = null;
       if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false;
+      if (e.pointerType === 'mouse') this.mouseButtons = e.buttons;
       // A card is taken here and nowhere else: the pointer has to leave the same card it arrived on.
       if (this.state === 'boon') {
         const i = this.boonDown; this.boonDown = -1;
@@ -977,7 +998,7 @@ class Game {
       if (this.touch.consumeRoll()) this.input.rollPressed = true;
       // The fifth button exists to be hit-tested only once something is at his neck to throw or
       // step through with it — before that it is not drawn and this flag keeps it from being felt.
-      this.touch.itemReady = !!(this.mods.boomerang || this.mods.blink);
+      this.touch.itemReady = !!(this.mods.boomerang || this.mods.blink || this.mods.effigy);
       if (this.touch.consumeItem()) this.input.qPressed = true;
       this.input.rmbDown = this.touch.grabDown;
       return;
@@ -994,9 +1015,12 @@ class Game {
   // `withIntro` plays the opening scene in the pen instead of the level card. Only a run started
   // from the title gets it; a death drops you straight back in.
   startLevel(index, seed, keepBoons, withIntro) {
-    if (!keepBoons) { this.boons = []; this.lastBoonActive = false; this.artifact = null; this.applyBoons(); }
+    if (!keepBoons) { this.boons = []; this.lastBoonActive = false; this.artifact = null; this.talRun = null; this.applyBoons(); }
     this.levelIndex = index;
-    const def = LEVELS[index];
+    // The level he ate the mushrooms before is played as THE TRIP, in the place of this one.
+    if (this.tripAt === undefined) this.tripAt = -1;
+    const def = index === this.tripAt ? tripLevel(index) : LEVELS[index];
+    this.levelTripAt = this.tripAt;
     // The clover at his neck reaches the generator and nothing else he carries does: it is the
     // one artifact about the floor rather than about him.
     this.level = generateLevel(def, seed >>> 0, { luck: this.mods.luck });
@@ -1038,6 +1062,14 @@ class Game {
     for (const p of this.props) if (p.kind === 'rock') this.world.block[Math.floor(p.y / TILE) * this.world.W + Math.floor(p.x / TILE)] = 1;
     this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike');
     this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill' || p.kind === 'secret');
+    // A niche is rock until its wall gives. It was floor from the first frame, lying one row outside
+    // the room's own box where the room fog never reaches, so the rack and the grass in it sat there
+    // under nothing but the shade for anybody to read through the wall. `crackWall` gives it back.
+    this.niches = this.props.filter((p) => p.kind === 'secret' && p.nicheTiles);
+    for (const p of this.niches) for (const i of p.nicheTiles.slice(1)) if (this.world.tiles[i] === T.FLOOR) this.world.tiles[i] = T.WALL;
+    // The cave cut through the middle of its tiles, when that is the shape asked for. Laid once the
+    // furniture is down, since nothing that was put somewhere may end up grown over.
+    if (this.world.round && TUNING.cave.shape === 'mid') this.world.buildCaveField(this.props, this.level.start);
     // Sealed arenas: which pair of doors belongs to which room, whether they have slammed behind him
     // yet, and whether that room has already been paid for. `updateSeals` runs all three beats. The
     // doors stand OPEN until he is inside — a seal is a door that shuts behind you, and one that
@@ -1143,6 +1175,8 @@ class Game {
     // without this Backspace brought back the very layout you had just walked through.
     if (this.state !== 'dead') this.deaths++;
     this.boons = (this.levelBoons || []).slice(); this.artifact = this.levelArtifact || null;
+    // Mushrooms eaten on a level you then died on go back on the floor with everything else in it.
+    this.tripAt = this.levelTripAt === undefined ? -1 : this.levelTripAt;
     // `deaths` has already gone up by the time this runs, and it is in the mix, so the level comes
     // back generated again — the same promise it always made, now made by arithmetic.
     this.startLevel(this.levelIndex, this.levelSeed(this.levelIndex), true);
@@ -1153,14 +1187,14 @@ class Game {
   // story and the floor of level 1 carries the controls, so the menu only has to be a way in.
   showTitle() {
     this.state = 'title'; this.card = null; this.level = null; this.world = null; this.goat = null;
-    this.enemies = []; this.props = []; this.bullets = []; this.souls = []; this.sightBlockers = []; this.fallers = []; this.globs = [];
+    this.enemies = []; this.props = []; this.bullets = []; this.souls = []; this.sightBlockers = []; this.niches = []; this.fallers = []; this.globs = [];
     this.save = this.loadRun();
     this.best = this.loadBest();
     // A run waiting to be picked up is the likelier intent, so the keyboard starts on it.
     // `panel` is whatever is laid over the menu — the record sheet, or the two switches. The board
     // is put away by anything at all; the switches are not, because a click on one is meant to
     // throw it rather than to leave.
-    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0, panel: null, sub: 0, sliderDrag: null };
+    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0, panel: null, sub: 0, sliderDrag: null, tripPick: false };
   }
   updateTitle(dt) {
     this.menu.t += dt; this.menu.shake = Math.max(0, this.menu.shake - dt);
@@ -1185,8 +1219,9 @@ class Game {
     const m = this.menu;
     if (m.panel === 'best') { m.panel = null; this.audio.sfxSwing(); return; }
     if (m.panel === 'settings' || m.panel === 'levels') {
-      // the rows of whatever is up, and the way out at the bottom of them
-      const n = (m.panel === 'settings' ? SETTINGS.length : LEVELS.length) + 1;
+      // the rows of whatever is up, and the way out at the bottom of them. LEVELS carries one row
+      // more than its floors: the trip toggle at the top, which does not leave when picked.
+      const n = m.panel === 'settings' ? SETTINGS.length + 1 : LEVELS.length + 2;
       const row = m.panel === 'settings' ? SETTINGS[m.sub] : null;
       if (code === 'KeyW' || code === 'ArrowUp') { m.sub = (m.sub + n - 1) % n; this.audio.sfxSwing(); }
       else if (code === 'KeyS' || code === 'ArrowDown') { m.sub = (m.sub + 1) % n; this.audio.sfxSwing(); }
@@ -1215,11 +1250,13 @@ class Game {
       this.toggleSetting(SETTINGS[i].key);
       return;
     }
-    // The level sheet. A row is a floor of the game; the last row is the way back.
+    // The level sheet. Row 0 is the mushroom toggle and does not leave; a row after it is a floor
+    // of the game, played straight or, with the toggle on, as its trip; the last row is the way back.
     if (m.panel === 'levels') {
       m.sub = i;
-      if (i >= LEVELS.length) { m.panel = null; this.audio.sfxCard(); return; }
-      this.audio.sfxCard(); this.startAtLevel(i);
+      if (i === 0) { m.tripPick = !m.tripPick; this.audio.sfxCard(); return; }
+      if (i > LEVELS.length) { m.panel = null; this.audio.sfxCard(); return; }
+      this.audio.sfxCard(); this.startAtLevel(i - 1, m.tripPick);
       return;
     }
     m.index = i;
@@ -1227,7 +1264,7 @@ class Game {
     // Nothing to come back to: the button shakes its head and stays where it is.
     if (id === 'continue' && !this.save) { m.shake = 0.35; this.audio.sfxThud(); return; }
     this.audio.sfxCard();
-    if (id === 'levels') { m.panel = 'levels'; m.sub = 0; return; }
+    if (id === 'levels') { m.panel = 'levels'; m.sub = 0; m.tripPick = false; return; }
     if (id === 'best') { m.panel = 'best'; return; }
     if (id === 'settings') { m.panel = 'settings'; m.sub = 0; return; }
     if (id === 'continue') { this.resumeRun(); return; }
@@ -1285,7 +1322,7 @@ class Game {
   // have banked on the way are dealt out here — at random, because the point of the row is to put
   // you on that floor and not to reproduce somebody's build. Level one is the ordinary opening,
   // scene and all. Nothing about it touches the saved run or the board.
-  startAtLevel(li) {
+  startAtLevel(li, trip) {
     this.clearRun();
     this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0;
     this.forgetLessons();
@@ -1300,7 +1337,10 @@ class Game {
     this.applyBoons();
     this.runSeed = this.askedSeed || ((Math.random() * 1e9) | 0);
     this.askedSeed = 0;
-    this.startLevel(li, this.levelSeed(li), true, li === 0);
+    // The row's own toggle picks a trip the same way `#trip` off the address does — a level has no
+    // trip of its own on the first floor, since nothing has found any shrooms yet.
+    this.tripAt = (trip || this.askedTrip) && li > 0 ? li : -1;
+    this.startLevel(li, this.levelSeed(li), true, li === 0 && this.tripAt !== li);
   }
   // CONTINUE is the head of the furthest level the run reached, with the souls it was carrying there.
   resumeRun() {
@@ -1313,6 +1353,7 @@ class Game {
     // A run picked up where it was left off is the same run, so it keeps its seed. One saved before
     // seeds existed has none, and gets a fresh one rather than nothing.
     this.runSeed = s.runSeed || ((Math.random() * 1e9) | 0);
+    this.tripAt = s.tripAt === undefined ? -1 : s.tripAt;
     const li = clamp(s.level | 0, 0, LEVELS.length - 1);
     this.startLevel(li, this.levelSeed(li), true);
   }
@@ -1358,7 +1399,7 @@ class Game {
   }
   saveRun() {
     this.save = { v: 1, level: this.levelIndex, boons: this.boons.map((b) => b.id), totalKills: this.totalKills,
-      deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, henHearts: this.henHearts || 0,
+      deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, henHearts: this.henHearts || 0, tripAt: this.tripAt === undefined ? -1 : this.tripAt,
       artifact: this.artifact ? { id: this.artifact.id, tier: this.artifact.tier } : null, at: Date.now() };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (err) { /* private mode: the run dies with the tab */ }
   }
@@ -1400,7 +1441,7 @@ class Game {
     const kept = held.length ? `${held.length} SOUL${held.length > 1 ? 'S' : ''} KEPT` : 'NOTHING LOST';
     // The level is on the card because a death is where somebody puts the game down, and the next
     // time they pick it up the one thing they will not remember is how far in they were.
-    const lv = LEVELS[this.levelIndex] || {};
+    const lv = this.level.def || {};
     // What took the last heart goes where the try-again line was: a death you cannot name is one
     // you cannot learn from, and every player already knows a click starts the level again.
     const by = this.killedBy(this.goat.hurtBy);
@@ -1657,7 +1698,11 @@ class Game {
     // A dead mage paints nothing: leaving his last rune in the list left a patch of floor the whole
     // room went on stepping round for the rest of the level.
     for (const e of this.enemies) if (e.rune && !e.dead) this.runes.push(e.rune);
-    this.goat.update(dt, this);
+    if (this.level.def.shroom) {
+      const real = this.input; this.input = this.tripInput(real);
+      this.goat.update(dt, this);
+      this.input = real;
+    } else this.goat.update(dt, this);
     // A dot on the trail every `sampleGap` seconds rather than every step, so an hours-long level
     // does not grow this without bound. It is only ever read once, by the death screen's pull-back.
     this.pathTimer -= dt;
@@ -1723,6 +1768,7 @@ class Game {
     this.updateClamps();
     w.updateFire(dt);
     Status.update(this, dt);
+    Talisman.update(this, dt);   // the mouse's talismans (js/talismans.js)
     w.noises.splice(0, heardUpTo);
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.updateEffects(dt);
@@ -1732,7 +1778,7 @@ class Game {
       if (this.goat.dead || tm.taken) continue;
       if (Math.hypot(tm.x - this.goat.x, tm.y - this.goat.y) < TUNING.soul.pickupR + this.goat.r) {
         tm.taken = true; this.particles(tm.x, tm.y, 18, PALETTE.witchHi, 180); this.ring(tm.x, tm.y, 3 * TILE, PALETTE.witch);
-        this.openSoulGate(tm.gate);
+        this.openSoulGate(tm.gate); Talisman.onSoul(this);
         this.audio.startMusicCue('soul', this.levelIndex);
         this.openBoonChoice(); this.clearEdges(); return;
       }
@@ -2305,7 +2351,7 @@ class Game {
         // A boulder takes a body the way a head takes it: one blow's worth off it, and a man thrown
         // into one twice has broken it. Whatever the speed, the rock pays; at killing speed he does too.
         if (e.state === 'flung' && e !== g && p.kind === 'rock' && -vn > ph.knockHitSpeed) p.crackRock(this);
-        if (e.state === 'flung' && -vn > ph.splatSpeed && e !== g) { e.die(this, 'splat', -nx, -ny); continue; }
+        if (e.state === 'flung' && -vn > ph.splatSpeed * Talisman.splatMul(this) && e !== g) { e.die(this, 'splat', -nx, -ny); continue; }
         if (e === g && p.kind === 'table' && !p.flung) {
           // the goat can shoulder a table along slowly
           const shove = Math.min(min - d, TUNING.prop.table.pushSpeed * dt);
@@ -2343,20 +2389,24 @@ class Game {
     // A body into the rat ogre at killing speed is a heart off him and the end of the body: he is
     // a wall to it, and a wall is what a thrown man dies on. Slower, he is barely moved.
     if (other.kind === 'ratogre') {
+      if (f.flungBy === other) { const push = f.r + other.r; f.x = other.x - nx * push; f.y = other.y - ny * push; return; }
       if (f.thrown || spd > ph.bodyKillSpeed) { other.die(this, 'splat', nx, ny); f.die(this, 'splat', -nx, -ny); }
       else { f.vx *= -0.3; f.vy *= -0.3; }
       return;
     }
     if (other.kind === 'butcher') { other.state = 'stagger'; other.timer = 0.3; f.vx *= -0.3; f.vy *= -0.3; return; }
-    if (f.thrown || spd > ph.bodyKillSpeed) {
+    // MASON'S MARK III lowers both lines at once: another man is stone to a body arriving fast.
+    const bm = Talisman.bodyMul(this);
+    if (f.thrown || spd > ph.bodyKillSpeed * bm) {
       // A fused man who arrives on somebody hard enough to kill him goes off on him instead of
       // just killing him — he is the bomb, not the delivery.
       if (f.bombFuse > 0) { f.explode(this); return; }
       other.die(this, 'splat', nx, ny);
-      if (!f.thrown && spd > ph.splatSpeed && !f.dead) { f.die(this, 'splat', -nx, -ny); return; }
+      if (!f.thrown && spd > ph.splatSpeed * bm && !f.dead) { f.die(this, 'splat', -nx, -ny); return; }
       f.vx *= f.thrown ? 0.55 : 0.45; f.vy *= f.thrown ? 0.55 : 0.45;
       return;
     }
+    if (Talisman.domino(this, f, other)) return;   // DOMINO BONE: he hands the throw on
     other.state = 'floored'; other.timer = TUNING.bearer.flooredTime; other.aware = true;
     other.vx = f.vx * 0.5; other.vy = f.vy * 0.5; f.vx *= 0.5; f.vy *= 0.5;
     other.x += nx * 4; other.y += ny * 4;
@@ -2429,6 +2479,8 @@ class Game {
       return d < reach + o.r && Math.abs(angleDiff(att.facing, Math.atan2(dy, dx))) < arc / 2
         && this.reaches(att.x, att.y, o.x, o.y); };
     const dirx = Math.cos(att.facing), diry = Math.sin(att.facing);
+    // MIRROR SHARD: caught inside the parry window, the blow goes back where it came from.
+    if (!g.dead && !skipGoat && inArc(g) && Talisman.parry(this, att, att.kind === 'dog' ? 'bite' : 'melee')) skipGoat = true;
     if (!g.dead && !skipGoat) {
       if (g.holding && !g.holding.item && inArc(g.holding)) { const h = g.holding; this.floatText(h.x, h.y - 26, 'SHIELD', PALETTE.bone); h.die(this, 'club', dirx, diry); }
       // A club into a carried shield is a club into a shield. He spends a charge, the man who swung
@@ -2462,9 +2514,23 @@ class Game {
       if (att.kind === 'butcher') { e.fling(dirx * 14 * TILE, diry * 14 * TILE, false); this.floatText(e.x, e.y - 26, 'OOPS', PALETTE.bone); }
       // The rat ogre swings at the cult on purpose, and a man off his arm goes the way a man off
       // the Butcher's does: across the room, into whatever is there. The walls do his killing too.
-      else if (att.kind === 'ratogre') { e.fling(dirx * 14 * TILE, diry * 14 * TILE, false); e.aware = true; }
+      else if (att.kind === 'ratogre') this.ogreHits(e, dirx, diry, att);
       else if (e.kind !== 'butcher' && e.kind !== 'ratogre' && Math.random() < 0.7) { e.state = 'floored'; e.timer = 0.6; e.aware = true; this.floatText(e.x, e.y - 26, 'OOPS', PALETTE.bone); }
     }
+  }
+  // The rat ogre's blow on a man of the cult: it hurts him, and then it throws him — as a thrown
+  // body, so whoever he is thrown into goes down under him. It used to only throw, which made the
+  // ogre a way of moving the cult about the room rather than a thing that was killing it.
+  ogreHits(e, dirx, diry, by) {
+    const S = TUNING.ratogre.flingSpeed;
+    if (e.hp > 1) {
+      e.hp -= 1; e.flash = 0.3;
+      this.floatText(e.x, e.y - 34, e.hp + ' LEFT', PALETTE.fireHi);
+    } else e.doomed = true;
+    this.world.splat(e.x, e.y, dirx, diry, 10);
+    this.audio.sfxThud();
+    e.fling(dirx * S, diry * S, true); e.aware = true;
+    e.flungBy = by;   // a body he threw himself is not a body thrown at him
   }
   // A man with a soul in him is a small boss of his own (`TUNING.soulBearer`): hearts on top of what
   // he had, and heavier — `knockMul` and `unliftable` read the flag, so the rest is automatic.
@@ -2473,6 +2539,7 @@ class Game {
     e.hp += TUNING.soulBearer.hp; e.maxHp = Math.max(e.maxHp, e.hp);
   }
   onKill(e, cause) {
+    Talisman.onKill(this, e, cause);
     // Where he fell, for the skulls on the death screen's map.
     if (this.killMarks) this.killMarks.push({ x: e.x, y: e.y });
     if (this.state === 'play' && !this.goat.dead) this.audio.musicEvent('kill');
@@ -2555,7 +2622,34 @@ class Game {
   // The one-line lessons the run gives once and not again: the hound's growl, the hen, the door that
   // shuts itself, the mist. They used to be reset on every level (the hound and the hen) or never at
   // all (the clock and the mist, once a page load), where each of them promises once a run.
-  forgetLessons() { this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; }
+  // THE TRIP's hands. Everything the goat reads is read through this for the length of the level:
+  // the stick the other way round, the horns on the grab button and the grab on the horns, the
+  // tumble on the voice and the voice on the tumble. No key is added and none is taken away; the
+  // same four verbs, each on a button the hand does not expect. Grab is a button that is held, so
+  // it goes to the physical button that is held (`mouseButtons`, or the butt pad under a thumb),
+  // and the headbutt is a press, so it takes the press edge of the grab button.
+  tripInput(real) {
+    const t = Object.assign({}, real);
+    t.mx = -real.mx; t.my = -real.my;
+    t.rollPressed = real.spacePressed; t.spacePressed = real.rollPressed;
+    const buttHeld = this.touch.active ? this.touch.pressed.butt !== undefined : !!((this.mouseButtons || 0) & 1);
+    const grabEdge = real.rmbDown && !this.tripGrabWas;
+    this.tripGrabWas = real.rmbDown;
+    t.lmbPressed = grabEdge; t.rmbDown = buttHeld;
+    return t;
+  }
+  // A tuft of mushrooms, gone down in one: the next level is THE TRIP.
+  eatShrooms(p) {
+    p.broken = true; p.dead = true;
+    this.tripAt = this.levelIndex + 1;
+    this.floatText(p.x, p.y - 30, 'YOU ATE SOMETHING', PALETTE.witchHi);
+    this.floatText(p.x, p.y - 50, 'THE NEXT FLOOR WILL BE WRONG', PALETTE.witch);
+    this.particles(p.x, p.y, 16, PALETTE.witchHi, 140);
+    this.ring(p.x, p.y, 2 * TILE, PALETTE.witch);
+    this.flash(PALETTE.witch, 0.25); this.zoomPunch(1.2);
+    this.audio.sfxBleat(380, 0.2, 0.6);
+  }
+  forgetLessons() { this.tripAt = -1; this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; }
 
   mistTold(e) {
     if (this.mistSaid === undefined) this.mistSaid = 0;

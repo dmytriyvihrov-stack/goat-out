@@ -79,6 +79,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/enemies.js` | `Enemy` — one class, behaviour branches on `kind`. |
 | `js/status.js` | `Status`: poison, the three reactions between poison / stun / fire, puddles, the spit glob, thrown things that drip or are charged. |
 | `js/shop.js` | `Shop`: the mouse in the wall — taking one of her two talismans (free, and it lifts her gate), provoking her, the rat ogre coming out, the shelf freeing when he is down — and the two artifacts that are verbs: the boomerang's flight and the blink. Data is `ARTIFACTS` and `TUNING.shop`. |
+| `js/talismans.js` | `Talisman`: the seventeen talismans from `ARTIFACTS_TZ.md` — every hook they need, their drawing, their icons and the TALISMANS tab of the tool. |
 | `js/render.js` | Everything drawn. Roughly half the codebase. |
 | `js/rules.js` | `GEN_RULES`, the generator's promises with a `check(level)` each; `checkRules`, `roomsOf`, `levelFacts`. Read by the dev drawer's RULES page and by `tools/balance.js`, so a rule is written once. |
 | `js/game.js` | State machine, fixed-step loop, input plumbing, entity-vs-entity collision, boons, dev drawer. |
@@ -274,6 +275,10 @@ bosses carry `elite` and `boss` flags: elites absorb hits before dying, bosses d
 **The rifle.** Starting to aim plays `sfxCock`, scaled by distance out to `hunter.cockHear` tiles and
 never from a room the fog hides — it is the one tell a rifle gives. Inside `hunter.wildNear` tiles,
 `wildChance` of his shots are off by `wildSpread` to twice that: point blank is a gamble, not suicide.
+`friendInLine` is the one courtesy he pays his own side: a man inside `hunter.friendClear` tiles of the
+muzzle and he does not aim (or does not fire, mid-aim) but `stepOff`s sideways for `stepOff` seconds and
+looks again. Past that he never checks, which is the friendly fire the rooms are built on.
+`drawAimTelegraph` draws the line in world space from the man to the goat, the line the round takes.
 
 **The hound.** `kind === 'dog'` is the one enemy that is not a man: no shouted lines (`sfxGrowl` as it plants, `sfxBark` as it runs), no grab
 (without BY THE COLLAR `tryGrab` says TOO QUICK; with it, `Enemy.hopBack` springs the hound `dog.hop`
@@ -281,8 +286,11 @@ tiles away from the goat and the grab is spent as if something had been thrown �
 aimed at it (never mid-run). Its loop is orbit → `windup` → `dart` → `recover` → `retreat`: inside
 `dog.dashRange` tiles it plants for `dog.windup` while `planDash` draws the run it is about to make on the
 floor in red (`Renderer.drawDashPaths`) — starting `dashSkew` off the straight line on the side it was
-circling, homing at `dashTurn` rad/s, so it bends — then runs it at `dashSpeed` and bites the first time
-the goat is in front of its teeth. A wall ends the run. The charge is the window you get, and the red
+circling, homing at `dashTurn` rad/s, so it bends — then runs it, from `dashStart` of `dashSpeed` up to
+all of it over `dashRamp` (a sprint, not a blink), and bites the first time the goat is in front of its
+teeth. A wall ends the run. `Enemy.clearAng` is its whisker: both the orbit and the run (and the red line,
+which `planDash` steers the same way) take the nearest heading with `orbitLook` / `dashLook` tiles of floor
+ahead of it, never looking past the goat himself, and the orbit turns back when its own side is walled off. The charge is the window you get, and the red
 line is the tell; `drawHound` keeps its own (flattened body, streaks) for the run itself. `packBusy()` lets one hound of a pack commit at a time, which is what keeps three of
 them readable. The counter is the scream: `daze()` multiplies by `cfg.dazeMul` for a dog, cancels a dart,
 and a dazed dog cannot dodge. `game.houndSeen()` growls and teaches that once per run.
@@ -427,6 +435,34 @@ a bigger number:
   borrowed for the landing) are what the press actually does; `Goat.update`'s Q block picks
   whichever of `mods.boomerang` / `mods.blink` is set, since the one slot never holds both.
 
+**The seventeen talismans.** `ARTIFACTS` grew from four to twenty-one; the seventeen added from
+`ARTIFACTS_TZ.md` keep all of their machinery in `js/talismans.js` (`Talisman`), the way poison keeps
+its in `js/status.js`, and the rest of the game only calls in at short hooks: `Talisman.update` after
+`Status.update`, `onKill` at the top of `game.onKill`, `onSoul` on a soul, `parry` in `meleeHit`, the
+Butcher's charge and the brute's slam, `reflectBullet` in `Bullet.update`, `redirectRune` in
+`castRune`, `absorb` / `scapegoat` / `loseRunUp` in `Goat.damage`, `buttImpulse` in `headbuttHits`,
+`onButtStart` / `onLunge` in the headbutt, `stepMul` on footsteps, `speedMul` / `gripMul` /
+`runUpTime` in movement, `splatMul` / `bodyMul` / `domino` / `dragMul` in the flung branch and
+`flungHits`, `visibleTo` at the top of `canSeeGoat`, `splinters` / `corpseGone` in `Prop.shatter`,
+and the enemy states `flee` and `decoyhit` dispatched before the per-kind update. Each `apply` puts
+its tier's params on `game.mods.<id>` and every hook reads that — no talisman number is a literal.
+State for one level is `game.tal` (rebuilt when `game.level` changes); what the goat carries between
+levels — the tallow's charge, the cup, the tally — is `game.talRun`, cleared with the run.
+
+Three of them are worth knowing before touching the code around them. MIRROR SHARD's window is
+`goat.parryT`, opened where a headbutt's windup starts: a blow, a bite or a round arriving inside it
+goes back where it came from, and a mistimed one is a full hit. SCAPEGOAT spends itself: it nulls
+`game.artifact` **and** `game.levelArtifact`, or the next real death would hand it back on the
+restart. GRAVEDIGGER'S SPADE's bodies are `crate` props with `corpse` set (`noGrab` below tier II),
+so they are thrown by the crate's own code; `Prop.shatter` sends one to `corpseGone` instead of
+boards, and `CombatFX.death` skips the body fragment for a man whose body was kept (`e.corpsed`).
+
+Every talisman has a `tag`, and `stockFor` never puts two of one tag on a shelf. STRAW EFFIGY is the
+third thing Q can be (after the boomerang and the blink). The **TALISMANS** tab of the tool is all
+twenty-one as a table — the three tiers side by side, every param a chip that edits live and writes
+back into tuning.js (`tools/tuning-patch.js` now steps into arrays by index), and I / II / III to
+hang one at his neck.
+
 **The rat ogre.** `kind === 'ratogre'`, `TUNING.ratogre`, made only by `Shop.spawnOgre` and
 never by the curve (`THREAT` and the report ignore him; he drops no soul). He is dear by
 construction, and every one of these is a deliberate exception in the code: `fling` refuses him,
@@ -440,9 +476,15 @@ and `Shop.ogreShrug` says once what would work). Every damage path goes through 
 floored by it — floored would be a fresh window off the very blow that spent the last one, six
 horns in a row off one crate. A blade, a bullet, a body at killing speed (`flungHits`, and the
 body dies on him like on a wall), the wheel (`updateMill`) and both bombs each cost him a heart.
-`updateOgre` goes for whatever is nearest him that he can see, the goat or a man of the cult
-(`meleeHit` from him flings a man like the Butcher's does), ignores every noise, and walks the
-flow field to the goat with nothing in sight; the cult never goes for him. `trapSense` 1.
+`updateOgre` goes for whatever is nearest him that he can see, the goat or a man of the cult, ignores
+every noise, and with nothing in sight heads down the flow field to the goat; the cult never goes for
+him. `trapSense` 1. He does not walk, he leaps: out of reach, `hopwind` (a crouch; `breakSwing` cancels
+it like a windup), `hop` (`hop.dist` tiles along a line `hopSpot` walks back off stone and drops, placed
+rather than pushed, `hopZ` lifting the sprite over its shadow) and `hopLand`, which strikes everything in
+`hop.radius` — `drawHopMark` paints that ring on the floor from the crouch. His blow on a man
+(`game.ogreHits`, from the swing and the landing alike) costs a heart and throws him as a thrown body at
+`flingSpeed`; a man with nothing left is `doomed` and dies where he stops. `flungBy` keeps a body he threw
+from counting as one thrown into him.
 
 **Props.** One `Prop` class for brazier, crate, bell, door, table, lamp, mill, heal, spike and weapon.
 `blocking`, `stopsBullets` and `item` are getters, not fields. `headbutt()` dispatches per kind. `item`
@@ -584,6 +626,12 @@ derived from the tile's own position, so it is the same crack every frame. It wa
 zigzag straight down the middle of the tile, which reads as a bolt of lightning painted on the
 stonework rather than as damage: the jitter on each point is an offset from the line rather than a step
 added to the last point, because accumulated it wandered clean off the tile.
+
+Until then **the niche is rock**. It lies one row outside the room's own box, where the room fog never
+reaches, so `startLevel` turns its two tiles to `T.WALL` in the world's grid (`World.tiles` is a copy of
+`level.tiles` for exactly this reason: the level as generated is what the rules read), `game.hidden`
+answers true for anything standing in them (`game.niches`), and `crackWall` turns them back to floor.
+It used to be floor from the first frame, and the rack and the grass sat there under the shade.
 
 Once it is down the niche behind it **stays lit**. `carveSecret` returns the three tiles the gap
 opens onto, the prop carries them as `nicheTiles`, and `revealRooms` sets them in `world.vis` every
@@ -989,15 +1037,53 @@ bulge or two out of straight wall, touching only plain floor and only where the 
 it. An unbroken secret wall is rock to the cave renderer and its prop draws only the crack, because a
 square patch of wall in a round cave would give it away.
 
+**The cave cut the second way.** `TUNING.cave.shape` picks the cut: `'round'` is the above; `'mid'`
+(the default) has `startLevel` call `World.buildCaveField`, and then `collideCircle` is `collideMid` and
+`drawCaveTiles` is `drawCaveMid`. Every tile has a value at its centre — stone 1, floor `caveF`, 0 to
+`cave.midMax` off a slow noise — and the rock's edge is where that crosses one half, marched square by
+square between four tile centres (`marchCell`, which both callers share, so the shape pushed against
+and the shape drawn are one). Floor at 0 puts the edge on the grid and makes a lone stone a diamond;
+floor near one half pulls the edge almost to the middle of the tile. It only ever grows rock into
+floor, so every tile the rest of the game calls stone is still stone and the flow field, sight and fire
+need not know. A way two tiles wide, anything that was put down, stairs and the start stay whole.
+
+**THE TRIP.** `tripLevel(i)` in `tuning.js` builds a level definition in place of `LEVELS[i]`: its
+length, souls, gates, vault and arena places, with `shroom: true`, `cave: true`, clubmen only (brutes in
+the rings), `TUNING.shroom.threatMul` of the curve, `shroom.men` a room, and no grating, trap room,
+wheel, drop, killbox or posts. It is not in `LEVELS`, so `LEVELS.indexOf(def)` is -1 for it; anything
+that asks the level by index should ask `this.level.def`. The way in is a `shrooms` prop, placed by
+`gen.js` on `shroom.chance` of the levels from `shroom.from` to the one before last, eaten by standing
+within `shroom.eatR` (`Prop.update` → `game.eatShrooms`), which sets `game.tripAt` to the next index.
+`startLevel` plays `tripLevel(index)` when `index === tripAt`; `levelTripAt` is the snapshot a restart
+goes back to, `forgetLessons` clears it with the run, and `saveRun` carries it. On the trip
+`game.update` hands the goat `game.tripInput(real)` instead of `game.input` for his update: the stick
+negated, `lmbPressed` from the grab button's press edge, `rmbDown` from the headbutt button held
+(`mouseButtons` bit 1, or the butt pad under a thumb), roll and scream swapped. Ground rule 1 holds:
+nothing is added, the same keys do other verbs. The renderer: `drawBigShroom` for a boulder,
+`drawFloorShrooms` on the floor, the mushroom fur in `drawCaveDecor`, `drawTrip` over the picture.
+`GEN_RULES.shrooms` and `GEN_RULES.trip`; `tools/balance.js` runs the list over every trip.
+
+**What grows on the rock.** `Renderer.drawCaveDecor`, called by both cave renderers with the rock's edge
+tiles: gems, stalactites off the face over the floor, stalagmites up off the top, and on the trip the
+mushroom fur. Stone tiles only, off a hash of the tile.
+
 **Tall grass.** `level.grass` is a list of tile indices (a template's `g`, and `grassPatch` blobs on
 `levelDef.grass` of rooms); `world.grass` is one byte a tile. The tile under it is floor to everything
 but the eye: `revealRooms` adds every grass tile further than `grass.seeInto` from the goat to
 `visBlock`, so the cast lights a step into a patch and shades the rest of it and what is behind it; and
 `canSeeGoat` says no past `grass.hideR` to a goat standing in it, cone or not (a wraith still knows). A
-headbutt cuts what is in front of it (`Goat.cutGrass`), fire burns it off (`updateFire`). `drawGrass`
+headbutt cuts what is in front of it (`Goat.cutGrass`). It is fuel like hay (`World.ignite`): alight it
+stands for `grass.burn`, hands the fire on after `grass.spread`, is drawn by `drawBurningGrass` (charring
+blades, a flame on each) and hides nothing, and only once it has burnt out is it gone. `drawGrass`
 draws blades over everything that stands, parted by bodies and flattened under the goat. `grass.lurk` of
 the ordinary men in a room with grass are moved onto its thickest tile as `lurk`: `idleWander` keeps them
 still until they are aware, and `drawEnemy` fades them by `lurkAlpha` until then. `GEN_RULES.grass`.
+
+`grass.hideR` is the exposed radius, not a stealth radius: it is how close a man has to be standing to
+you before his cone can find you at all, and past it grass hides you outright whatever he is facing.
+A *smaller* number is more hiding, not less — it shrinks the ring inside which you can still be spotted
+and so grows the ring outside it where you cannot be, all the way out to his own sight range. It came
+down from 2.6 tiles to 2.15 for exactly that reason.
 
 **Boulders.** `kind === 'rock'`, `TUNING.prop.rock`: blocking and bullet-stopping, not opaque, not an
 item. `crackRock` takes `hits` blows. While it stands, `world.block` marks its tile and `walkable` refuses
@@ -1006,6 +1092,22 @@ dies on it the way the solid-prop branch of `collideEntities` already kills agai
 A body flung into one faster than `knockHitSpeed` costs it a blow as well (`collideEntities`).
 `rockFits` only puts one down with plain, grassless floor on all eight sides and never two within two
 tiles — that is what keeps a scatter of them from ever closing a way through. `GEN_RULES.rocks`.
+
+**Boulder formations.** `levelDef.rockClusters` is a second, separate per-room chance — on top of
+the ordinary scatter, never in place of it — of one whole formation: three to six boulders grown
+together by `placeRockCluster` into a single big thing to break rather than a handful of loose
+stones. Every cell is an ordinary `rock` prop, its own crack and its own two hits, so nothing else in
+the game has to know a formation from a boulder; the only thing that marks one is `cluster`, an id
+shared by every cell of it, which is what lets `GEN_RULES.rocks` allow a formation's own cells to
+stand shoulder to shoulder while still refusing that from any two boulders that do not share one. It
+grows the way a grass patch does — pick at random off the edge of what it already has — and every
+cell it grows onto keeps the ordinary boulder's promise on its *outside* face once it stops growing:
+plain, grassless floor all round the shape, a neighbour inside the same formation exempted or nothing
+could ever grow past one cell. `clusterKeepsRoomOpen` is the belt to that brace: with the whole
+formation blocked, every other floor tile of the room — and the one tile of corridor just past each
+wall it opens onto — still has to be one connected piece, so a formation can knock a room's shape
+around but can never wall off a pocket of it the way a badly-drawn one could. THE CAVE is the only
+level that asks for one.
 
 **Trap rooms.** `tag: 'trap'` is a pool of its own, drawn *into* a level's ordinary rooms rather than
 instead of them: `levelDef.traps` is a count, `pickTrapRooms` chooses the indices (never the pen, a
@@ -1166,7 +1268,12 @@ while a panel is up it owns `menu.rects` entirely, so nothing behind it is click
 (`drawLevelPick`, `game.startAtLevel`) is a way straight onto any floor of the game: it deals the souls
 a run would have banked getting there — the sum of `def.souls` before it, drawn at random and honouring
 `needs` — because a goat who is still the goat out of the pen on level five is a different and much
-worse game. It touches neither the saved run nor the board. The board is put away by
+worse game. It touches neither the saved run nor the board. Its own top row is a toggle, `menu.tripPick`
+— 🍄 THE TRIP, on or off — and picking it does not leave the sheet, the same way a SETTINGS row does not;
+with it on, choosing any floor but the first plays `tripLevel(li)` in its place rather than the level
+itself, exactly what `#trip` off the address already did for CONTINUE and NEW GAME, now without needing
+the address bar. The first floor has no trip of its own — nothing has found any shrooms yet — so the
+toggle does nothing to that one row. The board is put away by
 anything at all; the switches are not — a click on a row throws that row and only BACK leaves, which is
 why the hover lands on `menu.sub` rather than on the menu underneath. `drawTitle` paints the whole
 canvas, vignette and empty thumb deck included, so nothing from the play view shows through.
@@ -1312,7 +1419,9 @@ goat has to be able to walk in — so everything that must not walk in is kept o
 one), and `hazardAt` reports it as a trap so a man steers round the lip the way he steers round the
 wheel, failing his `trapSense` roll now and then and going over. `Enemy.update` kills anything standing
 over one at the top of the method, before any state branch, so a flung body is as gone as a walking
-man; cause `'fall'` skips the two-hit absorb and leaves no body, no blood and no scorch. The goat gets
+man; cause `'fall'` skips the two-hit absorb and leaves no body, no blood and no scorch. From his windup to the end of his recovery the lip holds the goat like a wall (the integrate step in
+`Goat.update` backs him off it), so a headbutt that puts a man over the edge does not carry him after. The
+goat gets
 `goatFalls` / `updateFall` and the `'falling'` state (a real state: `Goat.update` returns early in it),
 and pays `TUNING.fall.damage`. Nothing burns over a hole and the renderer draws pits in `drawPits`
 **after** the decals, so blood never lies across one.
@@ -1521,7 +1630,8 @@ autoHeld` is what is left of that distinction and is always false for a weapon n
 always lets go the same way everything else does — release, or a press of grab again.
 
 **And either button throws it.** `inp.lmbPressed` with anything `item` in his mouth is `throwHeld`, not
-a headbutt: a thing held is a thing thrown, and which hand you throw it with is not a decision worth
+a headbutt (and the press is read off `pointermove` too: a second mouse button pressed while grab is held
+is a chord, which the browser never reports as a `pointerdown` — `game.mouseButtons` is the last mask): a thing held is a thing thrown, and which hand you throw it with is not a decision worth
 making. The bash button used to launch a blade, put a swept-up crate down at his feet, or do nothing at
 all, depending on how the thing got there — three answers to one press. A man is not an object and is
 not covered by this: he goes where he always went, on grab. `dropHeld` and `prop.dropped` are gone with

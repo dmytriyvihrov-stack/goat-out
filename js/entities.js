@@ -104,8 +104,9 @@ class Goat {
     // drains several times faster than it built the moment he stops, so a room you cross without
     // touching anything hands you the far side of it faster than a room you fight your way through.
     const M = g.momentum, asking = Math.hypot(inp.mx, inp.my) >= M.atLeast;
-    this.runT = clamp(asking ? this.runT + dt : this.runT - dt * M.lose, 0, M.time);
-    this.runUp = 1 + M.max * (this.runT / M.time);
+    const mt = M.time * Talisman.runUpTime(game);   // BRASS SPUR builds it faster
+    this.runT = clamp(asking ? this.runT + dt : this.runT - dt * M.lose, 0, mt);
+    this.runUp = 1 + M.max * (this.runT / mt);
 
     // ---- movement (momentum) ----
     // A man on your back is most of your stride. A blade in your teeth is barely any of it, which
@@ -114,12 +115,12 @@ class Goat {
     if (this.state === 'recover') mul *= 0.55;
     else if (this.state === 'windup') mul *= 0.3;
     else if (this.state === 'rollrecover') mul *= 0.35;
-    const base = g.speed * game.mods.speed * this.runUp * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1);
+    const base = g.speed * game.mods.speed * this.runUp * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1) * Talisman.speedMul(game);
     const top = base * mul;
     if (this.state !== 'lunge' && this.state !== 'roll') {
       const moving = inp.mx !== 0 || inp.my !== 0;
       const tx = inp.mx * top, ty = inp.my * top;
-      const rate = moving ? base / g.accel : base / g.decel;
+      const rate = (moving ? base / g.accel : base / g.decel) * Talisman.gripMul(game, this);
       const dx = tx - this.vx, dy = ty - this.vy, d = Math.hypot(dx, dy);
       const step = rate * dt;
       if (d <= step) { this.vx = tx; this.vy = ty; } else { this.vx += dx / d * step; this.vy += dy / d * step; }
@@ -148,6 +149,7 @@ class Goat {
     } else if (inp.lmbPressed && this.state === 'idle' && !this.holding) {
       this.state = 'windup'; this.timer = g.headbutt.windup;
       this.buttTries = (this.buttTries || 0) + 1;   // a hidden wraith watches for a headbutt near it
+      Talisman.onButtStart(game, this);             // MIRROR SHARD: the parry window opens here
       // SPLASH: the head goes down, and what is at his back gets it.
       if (game.mods.splash) Status.splash(game, this);
     }
@@ -155,6 +157,7 @@ class Goat {
       this.timer -= dt;
       if (this.timer <= 0) {
         this.state = 'lunge'; this.timer = g.headbutt.active; this.lungeId++;
+        Talisman.onLunge(game, this);   // ECHO HORN
         this.vx = this.aim.x * g.headbutt.lunge; this.vy = this.aim.y * g.headbutt.lunge;
         game.dust(this.x - this.aim.x * 8, this.y - this.aim.y * 8, TUNING.juice.dust.lunge, -this.aim.x, -this.aim.y);
         game.audio.sfxHeadbutt(); game.audio.musicEvent('headbutt'); world.emitNoise(this.x, this.y, TUNING.noise.headbutt);
@@ -222,6 +225,8 @@ class Goat {
         if (Shop.throwBoomerang(game, this)) this.itemCd = this.itemCdMax = game.mods.boomerang.cooldown;
       } else if (game.mods.blink) {
         if (Shop.blink(game, this, inp.mx, inp.my)) this.itemCd = this.itemCdMax = game.mods.blink.cooldown;
+      } else if (game.mods.effigy) {
+        if (Talisman.placeEffigy(game, this)) this.itemCd = this.itemCdMax = game.mods.effigy.cd;
       }
     }
 
@@ -280,8 +285,19 @@ class Goat {
     }
 
     // ---- integrate + walls ----
+    const ox = this.x, oy = this.y;
     this.x += this.vx * dt; this.y += this.vy * dt;
     const impact = world.collideCircle(this);
+    // A headbutt is aimed at a man, not at the hole behind him. Knocking somebody over the lip used
+    // to carry the goat over after him on the same lunge, so the drop punished the one move it is
+    // there to reward. From the windup to the end of the recovery the lip holds him like a wall:
+    // he slides along it, and walking off the edge is still his to do once the blow is spent.
+    if ((this.state === 'windup' || this.state === 'lunge' || this.state === 'recover')
+        && world.isPitPx(this.x, this.y) && !world.isPitPx(ox, oy)) {
+      if (!world.isPitPx(this.x, oy)) { this.y = oy; this.vy = 0; }
+      else if (!world.isPitPx(ox, this.y)) { this.x = ox; this.vx = 0; }
+      else { this.x = ox; this.y = oy; this.vx = 0; this.vy = 0; }
+    }
     // A lunge into stone ends the moment it touches — but the blow still lands first. The check
     // used to run only on the frame after, so with his nose already against a wall the lunge
     // bonked and ended on its first frame and nothing in reach was ever hit: the door hung in a
@@ -332,7 +348,11 @@ class Goat {
     // without landing and let a run right up on somebody's back read as luck rather than as noise.
     if (spd > 100) {
       this.stepNoiseTimer -= dt;
-      if (this.stepNoiseTimer <= 0) { this.stepNoiseTimer = TUNING.noise.footstepGap; world.emitNoise(this.x, this.y, TUNING.noise.footstep); }
+      if (this.stepNoiseTimer <= 0) {
+        this.stepNoiseTimer = TUNING.noise.footstepGap;
+        const quiet = Talisman.stepMul(game, this);   // MOTH WOOL
+        if (quiet > 0) world.emitNoise(this.x, this.y, TUNING.noise.footstep * quiet);
+      }
     } else this.stepNoiseTimer = 0;
     // The last boards he stood on. A fall puts him back on them, so they are worth keeping. The
     // trail behind it is the same idea a few seconds deep: `goatFalls` reaches into it for a point
@@ -496,7 +516,7 @@ class Goat {
       } else {
         // A hound is not always there for it: that is what makes him a hound and not a man.
         if (e.tryDodge && e.tryDodge(game, ax, ay)) continue;
-        const imp = impulse * (e.knockMul ? e.knockMul() : 1);
+        const imp = Talisman.buttImpulse(game, this, e, impulse * (e.knockMul ? e.knockMul() : 1));
         e.fling(ax * imp, ay * imp, false);
         game.shake(2); game.audio.sfxThud(); game.vibe(10);
         game.particles(this.x + ax * this.r, this.y + ay * this.r, 6, PALETTE.bone, 260);
@@ -688,9 +708,10 @@ class Goat {
   damage(n, game, kx, ky, fromFire, by) {
     if (this.dead || (this.invuln > 0 && !fromFire)) return;
     if (game.dev.god) { game.particles(this.x, this.y, 4, PALETTE.fireHi, 90); return; }
+    if (Talisman.absorb(game, this)) return;   // TALLOW SKIN took it
     this.hp -= n; this.invuln = TUNING.goat.invuln; this.hurtBy = by || null;
     this.vx += kx || 0; this.vy += ky || 0;
-    this.runT = 0; this.runUp = 1;             // whatever he had built up, the club took it
+    Talisman.loseRunUp(game, this);            // whatever he had built up, the club took it (BRASS SPUR keeps some)
 
     game.shake(TUNING.juice.shakeHit); game.audio.sfxHit(); game.squashGoat(TUNING.juice.squash.hurt);
     // A goat that only grunts when it is hit reads as armour, not an animal — the frightened bleat
@@ -699,7 +720,7 @@ class Goat {
     game.hurtFlash(Math.atan2(-(ky || 0), -(kx || 0)));
     game.world.splat(this.x, this.y, (kx || 0) / 100, (ky || 0) / 100, 9);
     if (this.state === 'windup') this.state = 'idle';
-    if (this.hp <= 0) this.die(game);
+    if (this.hp <= 0 && !Talisman.scapegoat(game, this)) this.die(game);
   }
   die(game) {
     if (this.dead) return;
@@ -802,13 +823,13 @@ class Prop {
   // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing. A
   // loose hen counts too — the same mouth that takes a crate takes her — but not mid-flight or
   // stunned, since a bird already on her way to a man is not a thing you can also be carrying.
-  get item() { return this.kind === 'crate' || this.kind === 'weapon' || this.kind === 'bomb' || (this.kind === 'chicken' && this.birdState === 'loose'); }
+  get item() { return (this.kind === 'crate' && !this.noGrab) || this.kind === 'weapon' || this.kind === 'bomb' || (this.kind === 'chicken' && this.birdState === 'loose'); }
   get blocking() {
     if (this.broken) return false;
     // Nothing stands on a plate's shoulders: it is floor until it is teeth. A loose bird is not
     // furniture either — she is got out of the way of, not walked into.
     // A clamp is drawn over stone that is already stone: the tiles under it are what stop you.
-    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp') return false;
+    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms') return false;
     if (this.kind === 'door') return this.open < 0.5;
     return true;
   }
@@ -1126,6 +1147,8 @@ class Prop {
       return;
     }
     this.broken = true; this.dead = true;
+    // The rock the niche was hiding under goes with the wall (see `startLevel`).
+    if (this.nicheTiles) for (const i of this.nicheTiles.slice(1)) game.world.tiles[i] = T.FLOOR;
     game.world.emitNoise(this.x, this.y, TUNING.noise.smash); game.audio.sfxSplat(); game.shake(6); game.hitstop(0.03);
     game.particles(this.x, this.y, 18, PALETTE.ash, 240);
     game.floatText(this.x, this.y - 30, 'A HIDDEN NICHE', PALETTE.fireHi);
@@ -1145,6 +1168,12 @@ class Prop {
     this.broken = true; this.dead = true;
     const w = game.world; w.block[Math.floor(this.y / TILE) * w.W + Math.floor(this.x / TILE)] = 0;
     w.emitNoise(this.x, this.y, TUNING.noise.smash); game.audio.sfxSplat(); game.shake(5); game.hitstop(0.03); game.vibe(14);
+    // On the trip the boulders are caps as tall as a man, and they come apart in a cloud of spores.
+    if (game.level.def.shroom) {
+      game.particles(this.x, this.y, 22, PALETTE.witchHi, 220); game.particles(this.x, this.y, 12, '#e86ad8', 160);
+      w.dot(this.x, this.y, this.r * 0.9, 'rgba(120,60,140,0.35)');
+      return;
+    }
     game.particles(this.x, this.y, 18, PALETTE.ash, 240);
     w.scorch(this.x, this.y, this.r * 1.1, false);
   }
@@ -1381,6 +1410,12 @@ class Prop {
     if (this.kind === 'coop') { this.updateCoop(game); return; }
     if (this.kind === 'mouse' || this.kind === 'ware') { Shop.updateStall(this, dt, game); return; }
     if (this.kind === 'heal' || this.kind === 'cage') return;
+    // A tuft of mushrooms is eaten by standing over it, the way milk is grazed: no button for it.
+    if (this.kind === 'shrooms') {
+      const g = game.goat;
+      if (!this.broken && !g.dead && Math.hypot(g.x - this.x, g.y - this.y) < TUNING.shroom.eatR * TILE) game.eatShrooms(this);
+      return;
+    }
     if (this.kind === 'clamp') { this.slam = Math.max(0, this.slam - dt); return; }
     if (this.kind === 'brazier') { this.spillCd = Math.max(0, this.spillCd - dt); return; }
     // Fire that reaches a lamp post takes the lamp with it: hay burning up to one tips it over,
@@ -1416,6 +1451,8 @@ class Prop {
       if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) {
         // A crate that catches a wraith in its window is as good as a horn.
         if (e.kind === 'wraith') { e.die(game, 'unmade', this.vx / 300, this.vy / 300); this.shatter(game); return; }
+        // GRAVEDIGGER'S SPADE III: a thrown body at killing speed kills like a live one.
+        if (this.corpse && Talisman.corpseHit(game, this, e, spd)) { this.shatter(game); return; }
         // A crate in the face is not a trip. He goes down properly, and he stays down seeing stars.
         if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.45; }
         else {
@@ -1509,6 +1546,7 @@ class Prop {
     this.passed.push(e);
     game.world.emitNoise(this.x, this.y, TUNING.noise.steel);
     if (this.weapon === 'sword') {
+      e.byBlade = true;   // the cup and the grease count the room's kills, not the blade's
       e.die(game, 'splat', nx, ny);
       game.gore(this.x, this.y, 6, nx, ny); game.audio.sfxSplat();
       game.shake(6); game.hitstop(0.05); game.kick(nx, ny, TUNING.juice.kick);
@@ -1710,6 +1748,8 @@ class Prop {
   // a room. Nothing is left behind that can be picked up again.
   shatter(game) {
     if (this.broken) return;
+    if (this.corpse) { Talisman.corpseGone(game, this); return; }
+    if (this.kind === 'crate') Talisman.splinters(game, this);   // CARPENTER'S AWL
     this.broken = true; this.dead = true;
     game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
     game.audio.sfxCrack(); game.audio.sfxThud(); game.shake(3);
@@ -1747,7 +1787,8 @@ class Bullet {
         if (h.shieldHits >= game.mods.shieldBullets) h.die(game, 'shot', this.vx / 900, this.vy / 900);
         return;
       }
-      if (!goat.dead && Math.hypot(goat.x - this.x, goat.y - this.y) < goat.r + 2) {
+      if (!goat.dead && !this.reflected && Math.hypot(goat.x - this.x, goat.y - this.y) < goat.r + 2) {
+        if (Talisman.reflectBullet(game, this)) continue;   // MIRROR SHARD
         this.dead = true; goat.damage(TUNING.hunter.damage, game, this.vx * 0.15, this.vy * 0.15, false, this.shooter || 'rifle'); return;
       }
       for (const e of game.enemies) {
@@ -1759,7 +1800,7 @@ class Bullet {
           // room with a rifle in it somewhere worth leading him.
           else if (e.kind === 'ratogre') { e.die(game, 'shot', this.vx / 900, this.vy / 900); }
           else {
-            e.die(game, 'shot', this.vx / 900, this.vy / 900); game.floatText(e.x, e.y - 26, 'FRIENDLY FIRE', PALETTE.blood);
+            e.die(game, 'shot', this.vx / 900, this.vy / 900); game.floatText(e.x, e.y - 26, this.reflected ? 'RETURNED' : 'FRIENDLY FIRE', this.reflected ? PALETTE.witchHi : PALETTE.blood);
             // The shooter, not a witness: he is the one who has something to say about it.
             if (this.shooter && !this.shooter.dead) game.bark(this.shooter, 'friendlyFire', 1);
           }

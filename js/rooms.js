@@ -245,6 +245,63 @@ const ROOM_TEMPLATES = [
     '#.P...P...P...P..#',
     '##################',
   ]},
+  // Piers jut alternately from both long walls, staggered so no two face each other across the room.
+  { name: 'buttress', canon: 'stone', rows: [
+    '##################',
+    '#................#',
+    '#...P.....P......#',
+    '#...P.....P......#',
+    '#........o.......#',
+    '#..e....r.....e..#',
+    '#................#',
+    '#......P.....P...#',
+    '#......P.....P...#',
+    '#................#',
+    '##################',
+  ]},
+  // Four pillar quads at the corners and a table between them: the middle is open, the edges are not.
+  { name: 'quad', canon: 'stone', rows: [
+    '################',
+    '#..............#',
+    '#.PP........PP.#',
+    '#.PPo.......PP.#',
+    '#..............#',
+    '#.....tt...e...#',
+    '#...e.tt.......#',
+    '#..............#',
+    '#.PP........PP.#',
+    '#.PP....r...PP.#',
+    '#..............#',
+    '################',
+  ]},
+  // A row of single pillars down each long wall, a lamp in the middle: cover on both sides of a lane.
+  { name: 'ambry', canon: 'stone', rows: [
+    '#################',
+    '#...............#',
+    '#.P..P..P..P..P.#',
+    '#...............#',
+    '#..e......r..e..#',
+    '#.......L.......#',
+    '#.....o.........#',
+    '#.P..P..P..P..P.#',
+    '#...............#',
+    '#################',
+  ]},
+  // Three pillar plinths on a line down the room's own middle, floor to spare either side of them.
+  { name: 'plinth', canon: 'stone', rows: [
+    '###############',
+    '#.............#',
+    '#......P......#',
+    '#..e..PPP..e..#',
+    '#.............#',
+    '#..P.......P..#',
+    '#..P...o...P..#',
+    '#.............#',
+    '#.....PPP.....#',
+    '#..m...P...r..#',
+    '#.............#',
+    '###############',
+  ]},
 
   // ---- FIRE: THE YARD's canon. Something in every room burns, before the mage gets there. ----
   // A loft of straw with a bowl of coals at each end of it. Light one bale and the room is a
@@ -278,6 +335,65 @@ const ROOM_TEMPLATES = [
     '#..............#',
     '################',
   ]},
+  // A smokehouse: a bale in the middle and a bowl of coals in each corner. Light either and the bale
+  // is a wall between them a few seconds later.
+  { name: 'smokehouse', canon: 'fire', rows: [
+    '################',
+    '#..............#',
+    '#..B...r....B..#',
+    '#..............#',
+    '#......hh......#',
+    '#..e...hh...e..#',
+    '#......hh......#',
+    '#..............#',
+    '#..B....o...B..#',
+    '#..............#',
+    '################',
+  ]},
+  // Two pairs of tables between four bowls of coals: shove a table into the fire and it is not a
+  // table for very long.
+  { name: 'tallow', canon: 'fire', rows: [
+    '##############',
+    '#............#',
+    '#.B........B.#',
+    '#............#',
+    '#..e......r..#',
+    '#....tt.tt...#',
+    '#....tt.tt...#',
+    '#............#',
+    '#..e......m..#',
+    '#.B...o....B.#',
+    '#............#',
+    '##############',
+  ]},
+  // Bales at both ends and a block of four bowls dead centre: the middle of the room is already lit.
+  { name: 'cinderyard', canon: 'fire', rows: [
+    '##################',
+    '#................#',
+    '#...hh...o..hh...#',
+    '#................#',
+    '#.......BB.......#',
+    '#..e....BB....e..#',
+    '#................#',
+    '#...hh..r...hh...#',
+    '#................#',
+    '##################',
+  ]},
+  // Two pillars down the middle and coals either side of it, hay banked against both. A man knocked
+  // off the middle lands in one or the other.
+  { name: 'brand', canon: 'fire', rows: [
+    '###############',
+    '#.............#',
+    '#......e..m...#',
+    '#..B.......B..#',
+    '#.............#',
+    '#..hh..P..hh..#',
+    '#......P......#',
+    '#..B.......B..#',
+    '#...o..r......#',
+    '#.............#',
+    '###############',
+  ]},
 
   // ---- THE LINE: THE ROAD's canon. Long sightlines, hard cover, and the strip a rifle cannot see. ----
   // A colonnade of pillar blocks down both sides and a clear line down the middle with the rifle at
@@ -308,6 +424,58 @@ const ROOM_TEMPLATES = [
     '#..PPP...........#',
     '#..........e.....#',
     '#.....m..........#',
+    '##################',
+  ]},
+  // A double colonnade the long way, a rifle at the far end: the whole room is his sightline.
+  { name: 'gallery2', canon: 'line', rows: [
+    '######################',
+    '#....................#',
+    '#..P..............P..#',
+    '#..P..............P..#',
+    '#..P..e...R....e..P..#',
+    '#..P..............P..#',
+    '#..P.......o......P..#',
+    '#....................#',
+    '######################',
+  ]},
+  // Three ranks of paired pillars off both walls, corridor-straight down the middle.
+  { name: 'rowhouse', canon: 'line', rows: [
+    '####################',
+    '#..................#',
+    '#...P....P....P....#',
+    '#...P....P....P....#',
+    '#.e........r.....e.#',
+    '#..................#',
+    '#...P....P....P....#',
+    '#...P.o..P....P....#',
+    '#..................#',
+    '####################',
+  ]},
+  // Two ranks of single pillars across the whole width: whichever rank you are behind, the rifle in
+  // the middle sees down every gap in the other.
+  { name: 'sightline', canon: 'line', rows: [
+    '########################',
+    '#......................#',
+    '#..P..P..P....P..P..P..#',
+    '#.e.........o........m.#',
+    '#..........R...........#',
+    '#..P..P..P....P..P..P..#',
+    '#......................#',
+    '########################',
+  ]},
+  // A barracks: two long piers of pillars down the sides, a table between them, floor down the
+  // middle the whole length of it.
+  { name: 'barracks', canon: 'line', rows: [
+    '##################',
+    '#................#',
+    '#.e............e.#',
+    '#..P....tt....P..#',
+    '#..P....tt....P..#',
+    '#..P..........P..#',
+    '#..P..........P..#',
+    '#..P..........P..#',
+    '#.......r.o......#',
+    '#................#',
     '##################',
   ]},
 
@@ -405,6 +573,64 @@ const ROOM_TEMPLATES = [
     '#..........................#',
     '############################',
   ]},
+  // Almost nothing at all: four lamp posts, a pillar block dead centre, and floor everywhere else.
+  { name: 'drover', canon: 'open', rows: [
+    '##########################',
+    '#........................#',
+    '#........................#',
+    '#...L...o........m...L...#',
+    '#........................#',
+    '#..e........PP........e..#',
+    '#...........PP...........#',
+    '#...L............o...L...#',
+    '#........................#',
+    '#........................#',
+    '##########################',
+  ]},
+  // Hay in the corners, coals dead centre, and a yard's worth of open floor round both.
+  { name: 'paddock', canon: 'open', rows: [
+    '########################',
+    '#......................#',
+    '#......................#',
+    '#...hh.........o..hh...#',
+    '#......................#',
+    '#..........BB..........#',
+    '#..e.......BB.......e..#',
+    '#......................#',
+    '#...hh............hh...#',
+    '#.......r..............#',
+    '#......................#',
+    '########################',
+  ]},
+  // A commons: two lone pillars, one table, and a great deal of ground between all three.
+  { name: 'commons', canon: 'open', rows: [
+    '############################',
+    '#..........................#',
+    '#.....P..............P.....#',
+    '#..........................#',
+    '#..e.........tt.........e..#',
+    '#............tt............#',
+    '#..r....................m..#',
+    '#.....P...o..........P.....#',
+    '#..........................#',
+    '############################',
+  ]},
+  // A stockyard: four bowls of coals, one at each corner, and a lone pillar block in the middle of
+  // an otherwise bare yard.
+  { name: 'stockyard', canon: 'open', rows: [
+    '######################',
+    '#....................#',
+    '#..B..............B..#',
+    '#.........r..........#',
+    '#....................#',
+    '#..e....o.PP......e..#',
+    '#.........PP.o.......#',
+    '#....................#',
+    '#.........m..........#',
+    '#..B..............B..#',
+    '#....................#',
+    '######################',
+  ]},
 
   // ---- THE FUNNEL: THE BRIDGE's canon. Seven men are one man in a doorway. ----
   // A wall of pillars across the room with one tile of gap in it. Whoever is on the other side comes
@@ -485,6 +711,63 @@ const ROOM_TEMPLATES = [
     '#..e.......m...#',
     '#..............#',
     '################',
+  ]},
+  // One pillar down the middle of the room, top and bottom: whichever side of it you take, the other
+  // side of the room is a straight look down a single tile of gap.
+  { name: 'sluice', canon: 'funnel', rows: [
+    '####################',
+    '#..................#',
+    '#.....o..P.........#',
+    '#........P.........#',
+    '#..e.....P......r..#',
+    '#..................#',
+    '#..e.....P......m..#',
+    '#........P..o......#',
+    '#..................#',
+    '####################',
+  ]},
+  // Two pillar blocks pinch both long walls down to a single-tile eye of a needle in the middle.
+  { name: 'needle', canon: 'funnel', rows: [
+    '##################',
+    '#................#',
+    '#.......r........#',
+    '#..PP........PP..#',
+    '#................#',
+    '#.e.....PP.....e.#',
+    '#................#',
+    '#..PP........PP..#',
+    '#.......o........#',
+    '#................#',
+    '##################',
+  ]},
+  // Four bowls of coals ring a pillar block dead centre: the fire is already narrowing the room
+  // before anybody lights anything on purpose.
+  { name: 'sconce', canon: 'funnel', rows: [
+    '################',
+    '#..............#',
+    '#..............#',
+    '#...B......B...#',
+    '#..............#',
+    '#.e....PP....r.#',
+    '#......PP......#',
+    '#.e..........m.#',
+    '#...B......B...#',
+    '#......o.......#',
+    '#..............#',
+    '################',
+  ]},
+  // A vise: two pillar piers close from both long walls at once, leaving a strip down the middle
+  // that is the only way through either half of the room.
+  { name: 'vise', canon: 'funnel', rows: [
+    '###################',
+    '#.................#',
+    '#.....P..m..P.....#',
+    '#.....P.....P.....#',
+    '#..e...........r..#',
+    '#.....P.....P.....#',
+    '#.....P..o..P.....#',
+    '#.................#',
+    '###################',
   ]},
 
   // ---- THE DROP: the rafters' canon, for the level whose floor is not all there ----
@@ -567,6 +850,64 @@ const ROOM_TEMPLATES = [
     '#....................#',
     '###OO#####OO#####OO###',
   ]},
+  // A catwalk over three drops: two square ones by the walls, one round one in the middle of the
+  // floor between them. The way across is never straight.
+  { name: 'catwalk', canon: 'drop', rows: [
+    '######################',
+    '#....................#',
+    '#.........r..........#',
+    '#...OO..........OO...#',
+    '#...OO..........OO...#',
+    '#.e................e.#',
+    '#.........OO.........#',
+    '#.....o..............#',
+    '#....................#',
+    '######################',
+  ]},
+  // A trestle: two drops in each of the long walls and a table between them. The floor down the
+  // middle is the only whole run across the room.
+  { name: 'trestle', canon: 'drop', rows: [
+    '####################',
+    '#..................#',
+    '#..O.....r......O..#',
+    '#..O............O..#',
+    '#..................#',
+    '#.e.....tt.......e.#',
+    '#.......tt.........#',
+    '#..O............O..#',
+    '#..O.....m......O..#',
+    '#..................#',
+    '####################',
+  ]},
+  // Four square drops at the corners of a diamond, a pillar block at the middle of it: the safe
+  // ground in this room is a cross and nothing else.
+  { name: 'skylight', canon: 'drop', rows: [
+    '##################',
+    '#................#',
+    '#.......r........#',
+    '#..OO.......OO...#',
+    '#..OO.......OO...#',
+    '#.e.....PP.....e.#',
+    '#.......PP.......#',
+    '#..OO.......OO...#',
+    '#..OO.......OO...#',
+    '#.......o........#',
+    '#................#',
+    '##################',
+  ]},
+  // Two long drops on the top wall and two on the bottom, staggered against each other, with a
+  // crate in the one strip that lines up clean across the middle.
+  { name: 'overhang', canon: 'drop', rows: [
+    '#####################',
+    '#...................#',
+    '#....OOO.....OOO....#',
+    '#...................#',
+    '#.e.......r.......e.#',
+    '#...................#',
+    '#....OOO..o..OOO....#',
+    '#...................#',
+    '#####################',
+  ]},
   // ---- THE NICHE: THE OSSUARY's canon. A body cannot form inside stone. ----
   // The dead come from the side you are not looking at, and the only thing the ground does for you
   // is refuse them a place to stand. Every room here is stone to put your back to — niches, cells,
@@ -645,6 +986,63 @@ const ROOM_TEMPLATES = [
     '#.P.P.P.P.P.P..#',
     '################',
   ]},
+  // A sepulcher: three pairs of niches down each long wall and a lamp lighting the gap between the
+  // last pair, so the one open stretch of the room is the one you can actually see.
+  { name: 'sepulcher', canon: 'niche', rows: [
+    '####################',
+    '#..................#',
+    '#..P....P....P.....#',
+    '#..P....P....P.....#',
+    '#....e.........eL..#',
+    '#.........r........#',
+    '#..P....P....P.....#',
+    '#..P..o.P....P.....#',
+    '#..................#',
+    '####################',
+  ]},
+  // A reliquary: a knot of stone at the centre and single niches at all four corners. Whatever is
+  // in the middle has its back to the same stone from every side at once.
+  { name: 'reliquary', canon: 'niche', rows: [
+    '################',
+    '#..............#',
+    '#.P....r.....P.#',
+    '#..............#',
+    '#......PP......#',
+    '#..e...PP...e..#',
+    '#......PP......#',
+    '#..............#',
+    '#.Po...m.....P.#',
+    '#..............#',
+    '################',
+  ]},
+  // A bonewall: a comb of single pillars down one wall only, so the niches are all on one side of
+  // the room and the other side is nothing but open floor.
+  { name: 'bonewall', canon: 'niche', rows: [
+    '##################',
+    '#................#',
+    '#..P.P.P.P.P.P.P.#',
+    '#................#',
+    '#..e..........e..#',
+    '#.......r........#',
+    '#...P...oP....P..#',
+    '#................#',
+    '##################',
+  ]},
+  // An undercroft: four pillar quads laid out as a checkerboard, a lamp in the one square of it
+  // that is neither niche nor corner.
+  { name: 'undercroft', canon: 'niche', rows: [
+    '##################',
+    '#................#',
+    '#.......r........#',
+    '#..PP.......PP...#',
+    '#..PP.......PP...#',
+    '#.e.....L......e.#',
+    '#................#',
+    '#..PP.......PP...#',
+    '#..PP...o...PP...#',
+    '#................#',
+    '##################',
+  ]},
 
   // ---- THE HOLLOW: THE CAVE (level eight). ----
   // Nothing here is square. The rock is rounded as it is drawn and as it collides (`TUNING.cave`), so a
@@ -718,6 +1116,62 @@ const ROOM_TEMPLATES = [
     '#.r..gg....##....#',
     '##...ggg..####..##',
     '##################',
+  ]},
+  // A sinkhole: grass in two opposite corners, a lone boulder and a round stone off the middle.
+  { name: 'sinkhole', canon: 'hollow', rows: [
+    '##################',
+    '#................#',
+    '#..gg............#',
+    '#..g.............#',
+    '#.....e.....e....#',
+    '#.......k........#',
+    '#........P.......#',
+    '#...o.........g..#',
+    '#........r...gg..#',
+    '#................#',
+    '##################',
+  ]},
+  // A warren: two grass beds on the same diagonal, a round stone and a boulder on the other one.
+  { name: 'warren', canon: 'hollow', rows: [
+    '####################',
+    '#..................#',
+    '#..gg....P.........#',
+    '#..gg..............#',
+    '#.........r...e....#',
+    '#.....e............#',
+    '#..............gg..#',
+    '#...k.....P.....g..#',
+    '#..................#',
+    '####################',
+  ]},
+  // A crag: two round stones over the doorways in, grass banked either side of the middle, a
+  // boulder in the one corner without any.
+  { name: 'crag', canon: 'hollow', rows: [
+    '################',
+    '#..............#',
+    '#......P.......#',
+    '#.e.....P....e.#',
+    '#..............#',
+    '#..gg...r..gg..#',
+    '#..g........g..#',
+    '#..............#',
+    '#..m....k......#',
+    '#..............#',
+    '################',
+  ]},
+  // A deepcut: grass and a boulder along one diagonal, a round stone in the middle of the room,
+  // grass on its own along the other.
+  { name: 'deepcut', canon: 'hollow', rows: [
+    '###################',
+    '#.................#',
+    '#...gg............#',
+    '#...g..........e..#',
+    '#........k........#',
+    '#........P........#',
+    '#..e..........g...#',
+    '#.....o..r...gg...#',
+    '#.................#',
+    '###################',
   ]},
 
   // ---- TRAP ROOMS: the room is the weapon, tagged 'trap'. ----

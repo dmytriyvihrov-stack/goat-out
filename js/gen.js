@@ -520,6 +520,8 @@ function tryGenerate(levelDef, seed, opts) {
     for (const r of rooms) { const c = plan.rooms.get(r.index); if (c && c.intro) { lessonIndex = r.index; break; } }
   }
   let roasted = false;
+  let clusterId = 0;  // one id per boulder formation (`placeRockCluster`), so `GEN_RULES.rocks` can
+                       // tell a formation's own cells apart from two unrelated boulders standing close
   rooms.forEach((room) => {
     const spots = [];
     const cell = plan.rooms.get(room.index);
@@ -627,6 +629,14 @@ function tryGenerate(levelDef, seed, opts) {
         props.push({ x: px, y: py, kind: 'rock' });
         placed++;
       }
+    }
+    // A boulder formation: three to six of them grown together into one big thing to break, rather
+    // than the ordinary scatter's lone stones. `levelDef.rockClusters` is the per-room chance, on top
+    // of and independent from `rocks` — a room can have both a scatter and one formation. Every cell
+    // is its own `rock` prop (its own crack, its own two hits) so nothing else in the game has to know
+    // a formation from a boulder; `cluster` only tells `GEN_RULES.rocks` the cells belong together.
+    if (room.index > 0 && !room.isRest && levelDef.rockClusters && rng.chance(levelDef.rockClusters)) {
+      if (placeRockCluster(tiles, W, room, grass, props, rng, clusterId)) clusterId++;
     }
     if (!cell) return;                                                       // the pen stays empty
     // The wheel's own lesson, on the level that first shows it: the two men stand past the arm, on
@@ -775,6 +785,28 @@ function tryGenerate(levelDef, seed, opts) {
         props.push({ x: px, y: py, kind: 'bomb' });
         break;
       }
+    }
+  }
+
+  // The mushrooms: one tuft, some levels, lying on the floor of an ordinary room where nothing else
+  // is, and nothing about it says it matters. Eaten, the next level is THE TRIP (`tripLevel`). Never
+  // on the last level (there is no next one), never on the trip itself, never in a room that is
+  // teaching or a room that is a fight you cannot walk out of.
+  const li = LEVELS.indexOf(levelDef), SH = TUNING.shroom;
+  if (li >= SH.from && li < LEVELS.length - 1 && rng.chance(SH.chance)) {
+    const eligible = rng.shuffle(rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.isHall && !r.isGallery
+      && !r.isKillbox && !r.isAmbush && !r.isRest && r.index !== lessonIndex && r.index !== levelDef.vaultAt));
+    let done = false;
+    for (const room of eligible) {
+      for (let a = 0; a < 40 && !done; a++) {
+        const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
+        if (tiles[ty * W + tx] !== T.FLOOR || grass.has(ty * W + tx)) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
+        if (room.enter && len(room.enter.x - px, room.enter.y - py) < 2 * TILE) continue;
+        props.push({ x: px, y: py, kind: 'shrooms' }); done = true;
+      }
+      if (done) break;
     }
   }
 
@@ -1048,7 +1080,15 @@ function stockFor(levelDef, rng) {
   const S = TUNING.shop, li = LEVELS.indexOf(levelDef);
   const visit = S.levels.filter((l) => l <= li).length;
   const tier = clamp(visit, 1, 3);
-  return rng.shuffle(ARTIFACTS.slice()).slice(0, S.wares).map((a) => ({ id: a.id, tier }));
+  // Never two of one sort on a shelf (`tag`): two talismans that both bend the headbutt are one
+  // choice offered twice. The shuffle is the same single roll it always was.
+  const out = [];
+  for (const a of rng.shuffle(ARTIFACTS.slice())) {
+    if (out.length >= S.wares) break;
+    if (a.tag && out.some((o) => o.tag === a.tag)) continue;
+    out.push(a);
+  }
+  return out.map((a) => ({ id: a.id, tier }));
 }
 
 // A ring of iron bars around a point. The pen around the start comes apart under a headbutt;
@@ -1521,6 +1561,90 @@ function rockFits(tiles, W, tx, ty, grass) {
     if (tiles[i] !== T.FLOOR || (grass && grass.has(i))) return false;
   }
   return true;
+}
+
+// A formation: three to six boulders grown into one another rather than scattered apart, so it reads
+// as a single big thing to break rather than a handful of loose stones. It grows the way a grass
+// patch does — pick at random off the edge of what the formation already has — except every cell has
+// to keep the ordinary boulder's own promise once the formation is done growing: plain floor, never
+// grass, all round the *outside* of the shape (a cell's neighbour inside the formation is exempt, or
+// nothing could ever grow). `clusterKeepsRoomOpen` is the belt to that brace: with every cell of it
+// blocked, the room's floor — everything a step past its own walls, so a corridor mouth counts — still
+// has to be one piece, or a formation could wall off part of a room the way a badly-drawn one could.
+function placeRockCluster(tiles, W, room, grass, props, rng, id) {
+  const wantSize = rng.int(3, 6);
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const sx = rng.int(room.x + 2, room.x + room.w - 3), sy = rng.int(room.y + 2, room.y + room.h - 3);
+    const seed = sy * W + sx;
+    if (tiles[seed] !== T.FLOOR || (grass && grass.has(seed))) continue;
+    const spx = (sx + 0.5) * TILE, spy = (sy + 0.5) * TILE;
+    if (room.enter && len(room.enter.x - spx, room.enter.y - spy) < 3.5 * TILE) continue;
+    if (props.some((p) => (p.kind === 'rock' || p.kind === 'door' || p.kind === 'mill') && len(p.x - spx, p.y - spy) < 3 * TILE)) continue;
+    const cells = [seed], cellSet = new Set(cells);
+    for (let guard = 0; cells.length < wantSize && guard < 40; guard++) {
+      const from = cells[rng.int(0, cells.length - 1)];
+      const fx = from % W, fy = Math.floor(from / W);
+      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      for (let i = dirs.length - 1; i > 0; i--) { const j = rng.int(0, i); const t = dirs[i]; dirs[i] = dirs[j]; dirs[j] = t; }
+      for (const [dx, dy] of dirs) {
+        const nx = fx + dx, ny = fy + dy, ni = ny * W + nx;
+        if (cellSet.has(ni)) continue;
+        if (nx <= room.x || nx >= room.x + room.w - 1 || ny <= room.y || ny >= room.y + room.h - 1) continue;
+        if (tiles[ni] !== T.FLOOR || (grass && grass.has(ni))) continue;
+        const npx = (nx + 0.5) * TILE, npy = (ny + 0.5) * TILE;
+        if (room.enter && len(room.enter.x - npx, room.enter.y - npy) < 2.5 * TILE) continue;
+        cellSet.add(ni); cells.push(ni); break;
+      }
+    }
+    if (cells.length < 3) continue;
+    // The outside of the shape has to be open floor the way a lone boulder's eight tiles are — a
+    // neighbour that is itself part of the formation is what let it grow this far in the first place.
+    let perimeterOk = true;
+    for (const i of cellSet) {
+      const cx = i % W, cy = Math.floor(i / W);
+      for (let dy = -1; dy <= 1 && perimeterOk; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const ni = (cy + dy) * W + (cx + dx);
+        if (cellSet.has(ni)) continue;
+        if (tiles[ni] !== T.FLOOR || (grass && grass.has(ni))) { perimeterOk = false; break; }
+      }
+      if (!perimeterOk) break;
+    }
+    if (!perimeterOk) continue;
+    if (!clusterKeepsRoomOpen(tiles, W, room, cellSet)) continue;
+    for (const i of cellSet) {
+      const cx = i % W, cy = Math.floor(i / W);
+      props.push({ x: (cx + 0.5) * TILE, y: (cy + 0.5) * TILE, kind: 'rock', cluster: id });
+    }
+    return true;
+  }
+  return false;
+}
+
+// With a formation's cells all blocked, is every other floor tile of the room — and the one tile of
+// corridor just past each wall it opens onto — still one connected piece? A flood fill from any one
+// of them has to reach every one of them, or the formation has walled off a pocket of the room.
+function clusterKeepsRoomOpen(tiles, W, room, blocked) {
+  const x0 = room.x - 1, x1 = room.x + room.w, y0 = room.y - 1, y1 = room.y + room.h;
+  let start = -1, total = 0;
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+    const i = ty * W + tx;
+    if (tiles[i] !== T.FLOOR || blocked.has(i)) continue;
+    total++;
+    if (start < 0) start = i;
+  }
+  if (start < 0) return true;
+  const seen = new Set([start]), stack = [start];
+  while (stack.length) {
+    const i = stack.pop(), cx = i % W, cy = Math.floor(i / W);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < x0 || nx > x1 || ny < y0 || ny > y1) continue;
+      const ni = ny * W + nx;
+      if (seen.has(ni) || blocked.has(ni) || tiles[ni] !== T.FLOOR) continue;
+      seen.add(ni); stack.push(ni);
+    }
+  }
+  return seen.size === total;
 }
 
 // A patch of tall grass: grown out from one floor tile of the room by picking at random off the edge

@@ -133,6 +133,7 @@ class Renderer {
       this.drawDust(game, cam, dt);
       this.drawUnseen(game);            // ground, fire and firelight above it; everything that stands on it below
       this.drawRunes(game);
+      Talisman.drawGround(this, game);   // grease, echoes, the straw goat
       this.drawDashPaths(game);
       this.drawSouls(game);
       this.drawPuffs(game);
@@ -162,9 +163,11 @@ class Renderer {
       this.drawCageThought(game);
       this.drawFloatTexts(game);
       this.drawShade(game, cam);        // last of everything in world space: it covers what it covers
+      Talisman.drawWorld(this, game);    // the bell's shapes through stone, the panic
       if (game.state === 'dead') this.drawDeathPath(game);
       if (game.dev.vision || game.dev.hearing) this.drawDevOverlay(game);
       ctx.restore();
+      if (game.level && game.level.def.shroom) this.drawTrip(game);
     }
     this.drawVignette(game);
     this.drawHurt(game);
@@ -184,6 +187,32 @@ class Renderer {
     this.drawBoonChoice(game);
     this.drawCard(game);
     this.drawDev(game);
+  }
+
+  // THE TRIP over the whole picture: a wash of colour whose hue walks slowly round the wheel and is
+  // laid on in soft light, so the floor goes violet, then teal, then rose under you; and spores
+  // drifting up the screen on a parallax of their own. None of it touches what anything is.
+  drawTrip(game) {
+    const ctx = this.ctx, t = this.t, w = this.vw, h = this.vh;
+    ctx.save();
+    ctx.globalCompositeOperation = 'soft-light';
+    const a = t * 0.25, hue = (t * 14) % 360;
+    const g = ctx.createLinearGradient(w * (0.5 + 0.5 * Math.cos(a)), h * (0.5 + 0.5 * Math.sin(a)), w * (0.5 - 0.5 * Math.cos(a)), h * (0.5 - 0.5 * Math.sin(a)));
+    g.addColorStop(0, `hsla(${hue},85%,55%,0.55)`);
+    g.addColorStop(0.5, `hsla(${(hue + 120) % 360},85%,50%,0.4)`);
+    g.addColorStop(1, `hsla(${(hue + 240) % 360},85%,55%,0.55)`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = 'lighter';
+    const cx = game.cam.x * 0.35, cy = game.cam.y * 0.35;
+    for (let k = 0; k < 46; k++) {
+      const hx = farHash(k * 7 + 1, 3), hy = farHash(k * 3, 11), hs = farHash(k, 29);
+      const x = (((hx * w * 1.3 - cx + Math.sin(t * 0.7 + k) * 20) % w) + w) % w;
+      const y = (((hy * h - cy - t * (12 + hs * 26)) % h) + h) % h;
+      const r = (1.2 + hs * 2.6) * (this.s || 1);
+      ctx.fillStyle = `hsla(${(hue + k * 37) % 360},90%,70%,${0.18 + 0.25 * (0.5 + 0.5 * Math.sin(t * 2 + k))})`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
   }
 
   // Screen to world: the camera, the tilt, and whatever kick and zoom punch the frame is carrying.
@@ -270,7 +299,206 @@ class Renderer {
   // pixels down onto the floor, the rock's face in `wall`, and its top in `wallTop` lifted off every
   // edge that faces the camera, which leaves the face showing as a band along the bottom of the rock.
   // An unbroken secret wall is rock here too, and its prop draws only the crack.
+  // The cave cut through the middle of its tiles (`World.marchCell`, the same shape the collision
+  // pushes against). The floor goes down under every tile that touches the open, stone included,
+  // since the march leaves the corners of a lone stone bare; then the rock is one path, filled as a
+  // shadow, as its face and — clipped to itself and lifted — as its top, the way the round cave is.
+  drawCaveMid(game, cam) {
+    const ctx = this.ctx, wd = game.world, def = game.level.def, W = wd.W;
+    const { x0, y0, x1, y1 } = this.visibleTiles(cam);
+    const secret = new Set();
+    for (const p of game.props) if (p.kind === 'secret' && !p.broken) secret.add(Math.floor(p.y / TILE) * W + Math.floor(p.x / TILE));
+    const solid = (tx, ty) => wd.isSolid(tx, ty) || secret.has(ty * W + tx);
+    const LIFT = 7, base = new Path2D(), edge = [];
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      const s = solid(tx, ty);
+      let open = !s;
+      if (s) for (let dy = -1; dy <= 1 && !open; dy++) for (let dx = -1; dx <= 1; dx++) if (!solid(tx + dx, ty + dy)) { open = true; break; }
+      if (!open) continue;
+      if (s) edge.push(tx, ty);
+      this.drawFloorTile(game, tx, ty, s ? T.FLOOR : wd.tileAt(tx, ty));
+      if (!s && wd.grass[ty * W + tx]) {
+        const h = farHash(tx, ty), px = tx * TILE, py = ty * TILE;
+        ctx.fillStyle = def.grassDark || '#223618';
+        ctx.beginPath(); ctx.ellipse(px + 16, py + 17, 17 + h * 3, 15, h * 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    if (def.shroom) this.drawFloorShrooms(game, x0, y0, x1, y1, solid);
+    const polys = [];
+    for (let j = y0 - 1; j <= y1; j++) for (let i = x0 - 1; i <= x1; i++) wd.marchCell(i, j, secret, polys, null);
+    for (const pts of polys) {
+      base.moveTo(pts[0], pts[1]);
+      for (let k = 2; k < pts.length; k += 2) base.lineTo(pts[k], pts[k + 1]);
+      base.closePath();
+    }
+    ctx.save(); ctx.translate(0, 6); ctx.fillStyle = 'rgba(0,0,0,0.34)'; ctx.fill(base); ctx.restore();
+    ctx.fillStyle = def.wall; ctx.fill(base);
+    ctx.save(); ctx.clip(base); ctx.translate(0, -LIFT);
+    ctx.fillStyle = def.wallTop; ctx.fill(base);
+    ctx.clip(base);
+    for (let j = 0; j < edge.length; j += 2) {
+      const tx = edge[j], ty = edge[j + 1];
+      for (let k = 0; k < 3; k++) {
+        const h1 = farHash(tx * 3 + k, ty), h2 = farHash(tx, ty * 5 + k), h3 = farHash(tx + k * 11, ty - k);
+        ctx.fillStyle = h3 < 0.5 ? 'rgba(0,0,0,0.13)' : 'rgba(255,240,210,0.07)';
+        ctx.beginPath(); ctx.ellipse(tx * TILE + 4 + h1 * 24, ty * TILE + 4 + h2 * 22, 2 + h3 * 3, 1.4 + h3 * 2, h1 * 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+    this.drawCaveDecor(game, edge, solid, LIFT);
+  }
+
+  // What grows on the rock. In any cave: seams of gems that catch the light, stalactites hanging off
+  // the face of the rock over the floor, and stalagmites standing up out of its top. On the trip the
+  // rock is also furred with mushrooms, lit from inside. All of it sits on stone tiles only — nothing
+  // here stands on floor you can walk on, so none of it can be mistaken for something in the way —
+  // and all of it is off a hash of the tile, so it is the same rock every frame.
+  drawCaveDecor(game, edge, solid, LIFT) {
+    const ctx = this.ctx, t = this.t, def = game.level.def, trip = !!def.shroom;
+    const GEMS = ['#b06cff', '#4fe0b0', '#ff5a7a', '#5ab4ff', '#ffd25a'];
+    const SH = ['#e86ad8', '#6af0e0', '#b8ff5a', '#ff9a4a', '#a98bff'];
+    for (let j = 0; j < edge.length; j += 2) {
+      const tx = edge[j], ty = edge[j + 1], px = tx * TILE, py = ty * TILE;
+      const h = farHash(tx * 13 + 5, ty * 17 + 3), h2 = farHash(tx * 5 - 9, ty * 11 + 1), h3 = farHash(tx + 31, ty * 3 - 7);
+      const southOpen = !solid(tx, ty + 1), northOpen = !solid(tx, ty - 1);
+      // stalactites: hanging off the face over the floor
+      if (southOpen && h < (trip ? 0.3 : 0.42)) {
+        const n = 1 + Math.floor(h2 * 3), base = py + TILE - LIFT;
+        for (let k = 0; k < n; k++) {
+          const x = px + 5 + ((k + 0.5) / n) * (TILE - 10) + (h3 - 0.5) * 6, len = 7 + farHash(tx + k, ty - k) * 12, w = 3 + h2 * 3;
+          ctx.fillStyle = def.wall; ctx.beginPath(); ctx.moveTo(x - w, base); ctx.lineTo(x + w, base); ctx.lineTo(x, base + len); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,240,210,0.12)'; ctx.beginPath(); ctx.moveTo(x - w, base); ctx.lineTo(x - w * 0.2, base); ctx.lineTo(x, base + len); ctx.closePath(); ctx.fill();
+          if (!trip && farHash(tx - k, ty + 9) < 0.3) {
+            // a drop gathering at the tip, now and then
+            const drip = (t * 0.6 + h3 * 7) % 1;
+            ctx.fillStyle = `rgba(170,200,230,${0.5 * (1 - drip)})`; ctx.beginPath(); ctx.arc(x, base + len + drip * 4, 1.4, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+      // stalagmites: spires standing up off the top of the rock behind the room's edge
+      if (northOpen && h2 > (trip ? 0.8 : 0.7)) {
+        const n = 1 + Math.floor(h3 * 2);
+        for (let k = 0; k < n; k++) {
+          const x = px + 8 + farHash(tx * 3 + k, ty) * (TILE - 16), y = py + 12 - LIFT + k * 5, len = 14 + farHash(tx, ty + k) * 14, w = 4 + h * 3;
+          ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(x + 3, y + 1, w * 1.1, w * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = def.wallTop; ctx.beginPath(); ctx.moveTo(x - w, y); ctx.quadraticCurveTo(x - w * 0.3, y - len * 0.5, x, y - len); ctx.quadraticCurveTo(x + w * 0.3, y - len * 0.5, x + w, y); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.moveTo(x, y - len); ctx.quadraticCurveTo(x + w * 0.3, y - len * 0.5, x + w, y); ctx.lineTo(x + w * 0.2, y); ctx.closePath(); ctx.fill();
+        }
+      }
+      // a seam of gems in the rock: faceted, and each one catches the light on its own beat
+      if (h3 < (trip ? 0.1 : 0.16)) {
+        const n = 2 + Math.floor(h * 3);
+        for (let k = 0; k < n; k++) {
+          const gx = px + 6 + farHash(tx * 7 + k, ty - 3) * (TILE - 12), gy = py + 5 - LIFT + farHash(tx, ty * 7 + k) * (TILE - 12);
+          const c = GEMS[Math.floor(farHash(tx + k * 3, ty + 2) * GEMS.length)], sz = 2.2 + farHash(tx - k, ty) * 2.4;
+          ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.moveTo(gx, gy - sz * 1.3); ctx.lineTo(gx + sz, gy); ctx.lineTo(gx, gy + sz * 1.3); ctx.lineTo(gx - sz, gy); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(gx, gy - sz); ctx.lineTo(gx + sz * 0.8, gy); ctx.lineTo(gx, gy + sz); ctx.lineTo(gx - sz * 0.8, gy); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.moveTo(gx, gy - sz); ctx.lineTo(gx + sz * 0.8, gy); ctx.lineTo(gx, gy); ctx.closePath(); ctx.fill();
+          const tw = Math.pow(Math.max(0, Math.sin(t * 2.2 + farHash(tx + k, ty - k) * 40)), 12);
+          if (tw > 0.05) {
+            ctx.strokeStyle = `rgba(255,255,255,${tw * 0.9})`; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(gx - sz * 2, gy - sz * 0.2); ctx.lineTo(gx + sz * 2, gy - sz * 0.2); ctx.moveTo(gx, gy - sz * 2.2); ctx.lineTo(gx, gy + sz * 1.8); ctx.stroke();
+          }
+        }
+      }
+      // the trip: the rock is furred with mushrooms along every edge that faces the room
+      if (trip && h > 0.12) {
+        const n = 2 + Math.floor(h2 * 4);
+        for (let k = 0; k < n; k++) {
+          const mx = px + 4 + farHash(tx * 11 + k, ty + 5) * (TILE - 8), my = py + 8 - LIFT + farHash(tx - 7, ty * 13 + k) * (TILE - 8);
+          const c = SH[Math.floor(farHash(tx + k, ty * 3) * SH.length)], cap = 2.5 + farHash(tx * 2 + k, ty) * 4.5;
+          this.shroom(mx, my, cap, c, 0.5 + 0.5 * Math.sin(t * 1.7 + (tx + k) * 0.9 + ty), k === 0);
+        }
+      }
+    }
+  }
+  // One mushroom standing on the ground at (x, y): a pale stalk, a cap of `c`, spots, and a glow
+  // round it that breathes with `pulse` (0..1).
+  shroom(x, y, cap, c, pulse, glow = true) {
+    const ctx = this.ctx, stalk = cap * 1.1;
+    if (glow) {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(x, y - stalk, 0, x, y - stalk, cap * 4);
+      g.addColorStop(0, this.alpha(c, 0.28 + 0.2 * pulse)); g.addColorStop(1, this.alpha(c, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - stalk, cap * 4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = '#e8dcc8'; ctx.fillRect(x - cap * 0.22, y - stalk, cap * 0.44, stalk);
+    ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y - stalk, cap, cap * 0.62, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - cap, y - stalk - 0.5, cap * 2, 1.2);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.arc(x - cap * 0.4, y - stalk - cap * 0.3, cap * 0.16, 0, Math.PI * 2); ctx.arc(x + cap * 0.3, y - stalk - cap * 0.4, cap * 0.12, 0, Math.PI * 2); ctx.fill();
+  }
+  // '#rrggbb' at alpha `a`.
+  alpha(c, a) {
+    const n = parseInt(c.slice(1), 16);
+    return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  // The trip's floor: a little ring of glowing caps on some tiles, which is most of the light there is.
+  // Never on a tile something was put down on, and never on the stairs.
+  drawFloorShrooms(game, x0, y0, x1, y1, solid) {
+    const wd = game.world, W = wd.W, t = this.t;
+    const SH = ['#6af0e0', '#e86ad8', '#b8ff5a', '#a98bff'];
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      if (solid(tx, ty) || wd.tiles[ty * W + tx] !== T.FLOOR) continue;
+      if (farHash(tx * 19 + 7, ty * 23 + 1) > 0.1) continue;
+      const n = 2 + Math.floor(farHash(tx, ty + 40) * 4), c = SH[Math.floor(farHash(tx + 3, ty) * SH.length)];
+      for (let k = 0; k < n; k++) {
+        const x = tx * TILE + 6 + farHash(tx * 3 + k, ty) * (TILE - 12), y = ty * TILE + 10 + farHash(tx, ty * 3 + k) * (TILE - 14);
+        this.shroom(x, y, 1.8 + farHash(tx - k, ty + k) * 2.2, c, 0.5 + 0.5 * Math.sin(t * 2.3 + tx * 1.3 + ty * 0.7 + k), k === 0);
+      }
+    }
+  }
+  // THE TRIP's boulder: a cap as tall as a man on a thick stalk. It is the same boulder in every other
+  // respect — it blocks, it kills a thrown body, it takes `rock.hits` blows — and a crack runs across
+  // the cap once it has taken the first.
+  drawBigShroom(p) {
+    const ctx = this.ctx, t = this.t;
+    const wob = p.wobble > 0 ? Math.sin(t * 60) * 2 * p.wobble / 0.3 : 0;
+    const x = p.x + wob, y = p.y + 6, r = p.r * 1.25;
+    const COL = ['#c9408f', '#3fa7a0', '#8a4fd6', '#d9772e'], c = COL[Math.floor(farHash(p.x, p.y) * COL.length)];
+    const breathe = 1 + 0.03 * Math.sin(t * 1.6 + p.x * 0.05);
+    this.shadow(x, y, r * 1.1, r * 0.45);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y - r * 1.3, 0, x, y - r * 1.3, r * 2.6);
+    g.addColorStop(0, this.alpha(c, 0.22)); g.addColorStop(1, this.alpha(c, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - r * 1.3, r * 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#e6d9c2'; ctx.beginPath();
+    ctx.moveTo(x - r * 0.32, y); ctx.quadraticCurveTo(x - r * 0.22, y - r * 0.8, x - r * 0.26, y - r * 1.2);
+    ctx.lineTo(x + r * 0.26, y - r * 1.2); ctx.quadraticCurveTo(x + r * 0.22, y - r * 0.8, x + r * 0.32, y); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(x + r * 0.05, y - r * 1.2, r * 0.2, r * 1.2);
+    const cy = y - r * 1.2, cw = r * 1.15 * breathe, ch = r * 0.8 * breathe;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, cy + 2, cw, ch * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, cy, cw, ch, 0, Math.PI, 0); ctx.quadraticCurveTo(x, cy + ch * 0.35, x - cw, cy); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(x - cw * 0.3, cy - ch * 0.55, cw * 0.4, ch * 0.22, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,248,230,0.85)';
+    for (let k = 0; k < 6; k++) {
+      const a = Math.PI + (k + 0.5) / 6 * Math.PI, rr = 0.35 + farHash(p.x + k, p.y) * 0.45;
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * cw * rr, cy + Math.sin(a) * ch * rr * 0.9, 1.5 + farHash(p.x, p.y + k) * 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    if (p.hits) {
+      ctx.strokeStyle = 'rgba(20,0,20,0.7)'; ctx.lineWidth = 1.8; ctx.beginPath();
+      ctx.moveTo(x - cw * 0.6, cy - ch * 0.5); ctx.lineTo(x - 2, cy - ch * 0.2); ctx.lineTo(x + 3, cy - ch * 0.6); ctx.lineTo(x + cw * 0.5, cy - ch * 0.1); ctx.stroke();
+    }
+  }
+  // The tuft on an ordinary floor: three small pale caps, meant to be walked past. The one thing about
+  // them that is not quite floor is a slow shimmer, and only up close.
+  drawShroomTuft(p) {
+    const g = this.game && this.game.goat;
+    const near = g ? clamp(1 - Math.hypot(g.x - p.x, g.y - p.y) / (4 * TILE), 0, 1) : 0;
+    const pulse = 0.5 + 0.5 * Math.sin(this.t * 1.3 + p.x);
+    this.shroom(p.x - 5, p.y + 4, 3.4, '#cdb8a0', pulse, near > 0.2);
+    this.shroom(p.x + 4, p.y + 6, 2.6, '#c4a98f', pulse, false);
+    this.shroom(p.x + 1, p.y - 2, 2.2, '#d6c3ad', pulse, false);
+    if (near > 0) {
+      const ctx = this.ctx;
+      ctx.fillStyle = `rgba(191,230,255,${0.25 * near * pulse})`;
+      for (let k = 0; k < 3; k++) { const a = this.t * 0.8 + k * 2.1; ctx.beginPath(); ctx.arc(p.x + Math.cos(a) * 9, p.y - 6 + Math.sin(a * 1.3) * 5, 1.2, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
   drawCaveTiles(game, cam) {
+    if (game.world.caveF) { this.drawCaveMid(game, cam); return; }
     const ctx = this.ctx, wd = game.world, def = game.level.def, R = wd.round, W = wd.W;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
     const secret = new Set();
@@ -338,6 +566,7 @@ class Renderer {
       }
     }
     ctx.restore();
+    this.drawCaveDecor(game, edge, solid, LIFT);
   }
 
   // Tall grass, over everything that stands in it. Each tile is a handful of blades rooted at fixed
@@ -355,6 +584,10 @@ class Renderer {
       if (!wd.grass[ty * W + tx]) continue;
       const cx = (tx + 0.5) * TILE, cy = (ty + 0.5) * TILE;
       if (game.hidden(cx, cy)) continue;
+      // Alight, a tile of grass burns down where it stands: the blades char from the root up and
+      // shorten, and every one of them carries its own flame at the tip until there is nothing left.
+      const fire = wd.fire[ty * W + tx];
+      if (fire > 0) { this.drawBurningGrass(tx, ty, fire / G.burn, wd.fireKind[ty * W + tx] === 1); continue; }
       const near = bodies.filter((b) => Math.abs(b.x - cx) < TILE * 1.2 && Math.abs(b.y - cy) < TILE * 1.2);
       for (let k = 0; k < 7; k++) {
         const h1 = farHash(tx * 7 + k, ty * 3), h2 = farHash(tx - k * 5, ty * 7 + k);
@@ -374,6 +607,28 @@ class Renderer {
         ctx.beginPath(); ctx.moveTo(bx - 3, by); ctx.quadraticCurveTo(bx + (tipX - bx) * 0.4 - 1, by - len * 0.5, tipX, tipY);
         ctx.quadraticCurveTo(bx + (tipX - bx) * 0.4 + 1, by - len * 0.5, bx + 3, by); ctx.closePath(); ctx.fill();
       }
+    }
+  }
+
+  drawBurningGrass(tx, ty, left, witch) {
+    const ctx = this.ctx, burnt = 1 - clamp(left, 0, 1);
+    const hi = witch ? PALETTE.witchHi : PALETTE.fireHi, mid = witch ? PALETTE.witch : PALETTE.fire;
+    for (let k = 0; k < 7; k++) {
+      const h1 = farHash(tx * 7 + k, ty * 3), h2 = farHash(tx - k * 5, ty * 7 + k);
+      const bx = tx * TILE + 2 + h1 * 28, by = ty * TILE + 6 + h2 * 26;
+      const len = (17 + farHash(tx + k, ty - k) * 9) * (1 - burnt * 0.85);
+      if (len < 2) continue;
+      const lean = Math.sin(this.t * 7 + h1 * 9) * 0.22 + (h2 - 0.5) * 0.3;
+      const tipX = bx + Math.sin(lean) * len, tipY = by - Math.cos(lean) * len;
+      ctx.fillStyle = burnt > 0.45 || k % 2 ? '#1e1712' : '#4a3a1c';
+      ctx.beginPath(); ctx.moveTo(bx - 2.5, by); ctx.quadraticCurveTo(bx + (tipX - bx) * 0.4, by - len * 0.5, tipX, tipY);
+      ctx.quadraticCurveTo(bx + (tipX - bx) * 0.4 + 1, by - len * 0.5, bx + 2.5, by); ctx.closePath(); ctx.fill();
+      const fl = (0.55 + 0.45 * Math.sin(this.t * 19 + h1 * 13 + k)) * (1 - burnt * 0.5), fh = 7 + 9 * fl;
+      ctx.fillStyle = mid; ctx.globalAlpha = 0.85;
+      ctx.beginPath(); ctx.ellipse(tipX, tipY - fh * 0.35, 3.6 * fl + 1.5, fh * 0.55, lean, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = hi; ctx.globalAlpha = 0.95;
+      ctx.beginPath(); ctx.ellipse(tipX, tipY - fh * 0.25, 1.8 * fl + 0.8, fh * 0.3, lean, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -950,6 +1205,7 @@ class Renderer {
 
   drawProp(p) {
     const ctx = this.ctx;
+    if (p.corpse) { Talisman.drawCorpse(this, p); return; }   // GRAVEDIGGER'S SPADE
     if (p.kind === 'mill') { this.drawMill(p); return; }
     ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, 1 / TILT); ctx.translate(-p.x, -p.y);
     this.drawPropBody(p);
@@ -1000,7 +1256,8 @@ class Renderer {
   }
 
   drawPropBody(p) {
-    if (p.kind === 'rock') { this.drawRock(p); return; }
+    if (p.kind === 'rock') { if (this.game && this.game.level && this.game.level.def.shroom) this.drawBigShroom(p); else this.drawRock(p); return; }
+    if (p.kind === 'shrooms') { this.drawShroomTuft(p); return; }
     // In the cave the rock under a secret wall is drawn with the rest of the rock (`drawCaveTiles`):
     // a square patch of wall in a round cave would give it away. Only the crack is its own.
     if (p.kind === 'secret' && this.game && this.game.world && this.game.world.round) { this.wallCrack(p.x, p.y, p.hits || 0); return; }
@@ -1641,6 +1898,7 @@ class Renderer {
     const lying = e.state === 'floored' || e.state === 'stunned';
     this.drawTelegraph(e);
     this.drawAimTelegraph(e);
+    this.drawHopMark(e);
     // The man with a soul in him. Which boss is carrying one is decided before the level starts and
     // was, until now, something you found out by killing him: two Butchers in a run looked the same
     // and one of them was worth a verb. He glows — a low amber haze that breathes, the colour of the
@@ -1666,6 +1924,9 @@ class Renderer {
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
     if (e.state === 'flung') ctx.rotate(this.t * 14); else if (!paintedKey) ctx.rotate(e.facing);
     if (e.state === 'stagger') ctx.translate(Math.sin(this.t * 60) * 2, 0);
+    // The rat ogre's leap: up off the floor over his own shadow, and a crouch before it.
+    if (e.state === 'hop' && e.hopZ) ctx.translate(0, -e.hopZ);
+    if (e.state === 'hopwind') ctx.scale(1.1, 0.86);
     if (e.dazed > 0) ctx.rotate(Math.sin(this.t * 24) * 0.12);
     if (e.state === 'chargewind') ctx.translate(-4 + Math.sin(this.t * 50) * 3, Math.cos(this.t * 47) * 2);
     const r = e.r;
@@ -1821,15 +2082,40 @@ class Renderer {
   // `drawCultist` and only a hunter drawn by that primitive fallback ever showed it — once the
   // painted sprite took over his body (`characterKey` returns 'hunter'), the tell silently went
   // dark and a rifle became a hitscan nobody could read. Drawn here, once, for either body.
+  // Where the rat ogre is coming down: a ring on the floor from the moment he crouches, filling as
+  // he nears it. It is his windup, drawn where it lands rather than on him.
+  drawHopMark(e) {
+    if (e.kind !== 'ratogre' || (e.state !== 'hopwind' && e.state !== 'hop') || !e.hopTo) return;
+    const H = TUNING.ratogre.hop, ctx = this.ctx, R = H.radius * TILE;
+    const p = e.state === 'hopwind' ? 0.25 * (1 - e.timer / H.wind) : 0.25 + 0.75 * (1 - e.timer / H.air);
+    ctx.save();
+    ctx.strokeStyle = `rgba(192,57,43,${0.35 + 0.5 * p})`; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(e.hopTo.x, e.hopTo.y, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = `rgba(192,57,43,${0.08 + 0.2 * p})`;
+    ctx.beginPath(); ctx.arc(e.hopTo.x, e.hopTo.y, R * clamp(p, 0, 1), 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
   drawAimTelegraph(e) {
     if (e.kind !== 'hunter' || (e.state !== 'aim' && !e.held)) return;
     const ctx = this.ctx, r = e.r;
-    ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.rotate(e.facing);
+    // In world space and not counter-squashed like a sprite: the line lies on the floor, so it has
+    // to be squashed the way the floor is or it points past the goat on every diagonal.
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.facing);
     const p = e.state === 'aim' ? 1 - e.timer / TUNING.hunter.aimTime : 0.5;
-    ctx.strokeStyle = `rgba(192,57,43,${0.2 + p * 0.65})`; ctx.lineWidth = 1.6;
+    // The line comes out of the man himself, down the line the round will actually take (the bullet
+    // leaves from his centre line, not from the hand the rifle is drawn in), and it reaches the goat
+    // from the first frame of the aim: what grows is how sure it is, not how long. It used to start a
+    // tile out in front of him and crawl outward, so it read as a thing floating in the room rather
+    // than as a man pointing a rifle.
+    const g = this.game && this.game.goat;
+    const reach = g ? Math.min(Math.hypot(g.x - e.x, g.y - e.y), TUNING.hunter.sight * TILE * 1.6) : 10 * TILE;
+    ctx.strokeStyle = `rgba(192,57,43,${0.25 + p * 0.65})`; ctx.lineWidth = 1.2 + p * 1.2;
     ctx.setLineDash([7, 6]); ctx.lineDashOffset = -this.t * 40;
-    ctx.beginPath(); ctx.moveTo(r + 20, r * 0.42); ctx.lineTo(r + 20 + 10 * TILE * p, r * 0.42); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r * 0.7, 0); ctx.lineTo(reach, 0); ctx.stroke();
     ctx.setLineDash([]);
+    ctx.fillStyle = `rgba(192,57,43,${0.3 + p * 0.6})`;
+    ctx.beginPath(); ctx.arc(reach, 0, 2 + p * 2.5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
@@ -2045,7 +2331,7 @@ class Renderer {
     const pad = 14 * s;
     ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE']];
+    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE'], ['talismans','TALISMANS']];
     const cols = Math.max(1, Math.floor((W - pad * 2 - 72 * s) / (80 * s)));
     tabs.forEach(([id, label], i) => this.devButton(d, pad + i % cols * 80 * s,
       pad + Math.floor(i / cols) * 24 * s, 76 * s, 20 * s, label, 'tab-' + id, d.tab === id));
@@ -2059,6 +2345,7 @@ class Renderer {
     else if (d.tab === 'props') this.drawPropsTab(game, pad, top);
     else if (d.tab === 'music') this.drawMusicTab(game, pad, top);
     else if (d.tab === 'juice') this.drawJuiceTab(game, pad, top);
+    else if (d.tab === 'talismans') Talisman.drawToolTab(this, game, pad, top);
     else this.drawRuleTab(game, pad, top);
     // A room opened from either of the other two covers them: it is the deepest the tool goes.
     if (d.room) this.drawRoomSheet(game, pad);
@@ -3361,7 +3648,7 @@ class Renderer {
       ctx.fillStyle = PALETTE.witchHi;
       for (const [px, py] of [[0, -h * 0.6], [h * 0.52, h * 0.3], [-h * 0.52, h * 0.3]]) { ctx.beginPath(); ctx.arc(px, py, h * 0.14, 0, Math.PI * 2); ctx.fill(); }
       ctx.beginPath(); ctx.arc(0, 0, h * 0.12, 0, Math.PI * 2); ctx.fill();
-    }
+    } else Talisman.icon(ctx, id, h);   // the seventeen in js/talismans.js
     ctx.restore();
   }
 
@@ -3373,7 +3660,7 @@ class Renderer {
     const def = art ? ARTIFACTS.find((a) => a.id === art.id) : null, tier = art ? Shop.tierOf(art) : null;
     // Only the two verb artifacts have a button, and it does not exist until one of them is worn:
     // this is the one place a player learns Q is there at all.
-    const isItem = art && (art.id === 'boomerang' || art.id === 'symbols');
+    const isItem = art && (art.id === 'boomerang' || art.id === 'symbols' || art.id === 'effigy');
     ctx.fillStyle = 'rgba(13,10,12,0.5)'; ctx.fillRect(x, y, box, box);
     ctx.strokeStyle = def ? 'rgba(185,135,58,0.85)' : 'rgba(239,230,208,0.14)'; ctx.lineWidth = 1.2 * s;
     ctx.strokeRect(x, y, box, box);
@@ -3409,6 +3696,7 @@ class Renderer {
         ? { row: { name: `${def.name} ${'I'.repeat(art.tier)}`, note: tier.desc }, x, left: x, y: noteY, hot: false, boons: [] }
         : { row: { name: 'NOTHING AT HIS NECK', note: 'A talisman goes here. The mouse in the wall sells them, for the level’s dead. Grab to buy.', half: true }, x, left: x, y: noteY, hot: false, boons: [] };
     }
+    if (def) Talisman.drawHud(this, game, x, y, box);   // the crust, the cup, the notches, the bell's thread
   }
 
   // The boomerang in the air: the same bent stick as the icon, spinning, with a short smear behind it.
@@ -4413,28 +4701,30 @@ class Renderer {
     // hundred times is a caption that has stopped saying anything, and the key never stops.
     // One line each, and the line says what the button does — not what it means. It is read while a
     // room is walking toward you, so it is a caption and not a paragraph.
+    // On THE TRIP every verb is on another key (`game.tripInput`), and the caption says which.
+    const trip = !!(game.level && game.level.def.shroom);
     const rows = [
       // Headbutt carries no cooldown ring — its recovery is the cost, per CLAUDE.md — but a cost
       // with nothing to see was a button that looked free between swings. `recover` drains the same
       // chip in the opposite direction, in fire rather than blood, since it is a vulnerability window
       // and not a lockout: the button is simply not what threw it a moment ago.
-      { id: 'butt', name: 'BUTT', cap: 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
+      { id: 'butt', name: 'BUTT', cap: trip ? 'RMB' : 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
         recover: g.state === 'recover' && g.recoverMax > 0 ? clamp(g.timer / g.recoverMax, 0, 1) : 0,
         note: (game.mods.bomb ? 'Ram him. Whoever you hit blows up a moment later.'
           : 'Ram him. It only knocks him down: walls, fire and other men do the killing.')
           + (game.mods.splash ? ' Lowering your head poisons whoever is right behind you.' : '') },
-      { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: 'RMB', cd: g.grabCd,
+      { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: trip ? 'LMB' : 'RMB', cd: g.grabCd,
         max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
         note: (game.mods.grabMen ? 'Press near a box, a blade, a shield or a man to carry it. Let go to throw.'
           : 'Press near a box, a blade or a shield to carry it. Let go to throw. Men are too heavy for now.')
           + (game.mods.chargeHold ? ` Held ${game.mods.chargeHold}s, it is charged and goes off where it lands.`
             : game.mods.venomHold ? ` Held ${game.mods.venomHold}s, it sprays poison all the way down.` : '') },
-      { id: 'roll', name: 'ROLL', cap: 'E', cd: g.rollCd,
+      { id: 'roll', name: 'ROLL', cap: trip ? 'SPC' : 'E', cd: g.rollCd,
         max: R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
         note: (game.mods.rollStun > 0 ? 'Dodge. Nothing can hit you, and anyone you roll through is stunned.'
           : 'Dodge. Nothing can hit you mid-roll, but you have to get up after it.')
           + (game.mods.venomRoll ? ' You get up out of a puddle of poison.' : '') },
-      { id: 'scream', name: game.mods.spit ? 'SPIT' : fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: 'SPC',
+      { id: 'scream', name: game.mods.spit ? 'SPIT' : fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: trip ? 'E' : 'SPC',
         cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0,
         half: !fire && !game.mods.screamStun && !game.mods.spit,
         note: game.mods.spit ? 'Spit a glob of poison where you point. It bursts into three tiles by three of it.'
@@ -4829,7 +5119,7 @@ class Renderer {
       new: { label: 'NEW GAME' },
       continue: { label: 'CONTINUE', locked: !run,
         note: def ? `(${def.sub.toLowerCase()} · ${def.name.toLowerCase()}${souls ? ` · ${souls} soul${souls === 1 ? '' : 's'}` : ''})` : '(nothing to come back to)' },
-      levels: { label: 'LEVELS', note: `(start on any of the ${LEVELS.length}, with the souls it takes)` },
+      levels: { label: 'LEVELS', note: `(start on any of the ${LEVELS.length}, with the souls it takes — or its trip)` },
       best: { label: 'BEST', note: cleared ? `(best run ${board.run || 0})` : '(nothing on the board yet)' },
       settings: { label: 'SETTINGS', note: `(clock ${game.settings.timer ? 'on' : 'off'} · sound ${game.settings.sound ? 'on' : 'off'} · easy ${game.settings.easy ? 'on' : 'off'})` },
     };
@@ -4967,7 +5257,8 @@ class Renderer {
   drawLevelPick(game, board) {
     const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
     ctx.fillStyle = 'rgba(9,7,9,0.985)'; ctx.fillRect(0, 0, w, h);
-    const rows = LEVELS.length + 1;
+    // One row more than there are floors: the mushroom toggle at the top, then every level, then BACK.
+    const rows = LEVELS.length + 2;
     const rowH = clamp(h * 0.085, 30 * s, 52 * s), gap = 6 * s;
     const bw = clamp(Math.min(w * 0.86, 460 * s), 200 * s, 520 * s), x0 = cx - bw / 2;
     const top = h / 2 - (rows * (rowH + gap)) / 2;
@@ -4976,8 +5267,9 @@ class Renderer {
     ctx.fillText('LEVELS', cx, top - 16 * s);
     game.menu.rects.length = 0;
     let souls = 0;
+    const trip = !!game.menu.tripPick;
     for (let i = 0; i < rows; i++) {
-      const y = top + i * (rowH + gap), last = i === LEVELS.length, sel = game.menu.sub === i;
+      const y = top + i * (rowH + gap), toggle = i === 0, last = i === rows - 1, sel = game.menu.sub === i;
       game.menu.rects.push({ x: x0, y, w: bw, h: rowH });
       ctx.fillStyle = sel ? '#4a2428' : '#190f16'; ctx.fillRect(x0, y, bw, rowH);
       ctx.strokeStyle = sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s;
@@ -4987,13 +5279,27 @@ class Renderer {
         ctx.fillText('BACK', cx, y + rowH * 0.62);
         continue;
       }
-      const def = LEVELS[i], rec = (board.levels || {})[i];
+      if (toggle) {
+        ctx.textAlign = 'left'; ctx.fillStyle = trip ? PALETTE.fireHi : PALETTE.bone;
+        ctx.font = `700 ${15 * s}px ${FONT_SC}`;
+        ctx.fillText('\u{1F344} THE TRIP', x0 + 16 * s, y + rowH * 0.42);
+        ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
+        ctx.fillText('every key the other way round, on whichever floor below', x0 + 16 * s, y + rowH * 0.74);
+        ctx.textAlign = 'right'; ctx.fillStyle = trip ? PALETTE.fireHi : 'rgba(239,230,208,0.4)';
+        ctx.font = `700 ${13 * s}px ${FONT_SC}`;
+        ctx.fillText(trip ? 'ON' : 'OFF', x0 + bw - 16 * s, y + rowH * 0.58);
+        ctx.textAlign = 'left';
+        continue;
+      }
+      const li = i - 1, def = LEVELS[li], rec = (board.levels || {})[li], asTrip = trip && li > 0;
       ctx.textAlign = 'left';
       ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${15 * s}px ${FONT_SC}`;
-      ctx.fillText(`${i + 1}. ${def.name}`, x0 + 16 * s, y + rowH * 0.42);
+      ctx.fillText(`${li + 1}. ${asTrip ? 'THE TRIP' : def.name}`, x0 + 16 * s, y + rowH * 0.42);
       ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
       const carry = souls ? `${souls} soul${souls === 1 ? '' : 's'}` : 'nothing but a goat';
-      ctx.fillText(this.clip(`${def.canon ? def.canon.name.toLowerCase() : 'the compound'} · ${def.rooms} rooms · ${carry}`, bw - 110 * s), x0 + 16 * s, y + rowH * 0.74);
+      const sub = asTrip ? `in place of ${def.name.toLowerCase()} · ${def.rooms} rooms · ${carry}`
+        : `${def.canon ? def.canon.name.toLowerCase() : 'the compound'} · ${def.rooms} rooms · ${carry}`;
+      ctx.fillText(this.clip(sub, bw - 110 * s), x0 + 16 * s, y + rowH * 0.74);
       ctx.textAlign = 'right';
       ctx.fillStyle = rec ? PALETTE.fireHi : 'rgba(239,230,208,0.25)';
       ctx.font = `${12 * s}px ${FONT}`;

@@ -5,6 +5,137 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.48 — Boulder formations, thirty-two more rooms, deeper grass, the trip off the menu
+
+**THE CAVE breaks bigger.** `levelDef.rockClusters` is a second, separate per-room chance of a whole
+formation — three to six boulders grown together by `placeRockCluster` (`js/gen.js`) into one big
+thing to break rather than a handful of loose stones. Every cell is still an ordinary `rock` prop,
+its own crack and its own two hits; only `cluster`, an id shared by every cell of one formation, marks
+them apart, which is what lets `GEN_RULES.rocks` allow a formation's own cells to stand shoulder to
+shoulder while still refusing that of any two boulders that do not share an id. `clusterKeepsRoomOpen`
+checks the room's floor stays one connected piece with the whole formation blocked, so it can reshape
+a room but never wall off a pocket of it. THE CAVE is the only level that asks for one.
+
+**Thirty-two new room templates, four to a canon.** Every canon in the game — STONE, FIRE, THE LINE,
+OPEN GROUND, THE FUNNEL, THE DROP, THE NICHE, THE HOLLOW — goes from five hand-authored templates to
+nine: `buttress`, `quad`, `ambry`, `plinth` (stone); `smokehouse`, `tallow`, `cinderyard`, `brand`
+(fire); `gallery2`, `rowhouse`, `sightline`, `barracks` (the line); `drover`, `paddock`, `commons`,
+`stockyard` (open ground); `sluice`, `needle`, `sconce`, `vise` (the funnel); `catwalk`, `trestle`,
+`skylight`, `overhang` (the drop); `sepulcher`, `reliquary`, `bonewall`, `undercroft` (the niche); and
+`sinkhole`, `warren`, `crag`, `deepcut` (the hollow, THE CAVE's own canon, so these carry `g`/`k`).
+Nothing about the pools, the width budget or the ground-ordering `tryGenerate` already did had to
+change — a template is just one more entry each canon's pool draws from.
+
+**The grass hides a little tighter.** `TUNING.grass.hideR` came down from 2.6 tiles to 2.15.
+`hideR` is the *exposed* radius, not a stealth one — how close a man has to stand before his cone can
+find you at all, past which grass hides you outright whatever he is facing — so a smaller number is
+more hiding, not less: it shrinks the ring you can still be spotted in and grows the one past it where
+you never can be.
+
+**THE TRIP off a menu row, not just the address bar.** The LEVELS sheet's own top row is now a toggle,
+🍄 THE TRIP, that does not leave the sheet when picked — the same way a SETTINGS row does not — and
+with it on, choosing any floor but the first plays that level's trip in its place, exactly what
+`#trip` off the address already did for CONTINUE and NEW GAME. The first floor has no trip of its own,
+since nothing has found any shrooms yet, so the toggle does nothing to that one row.
+
+---
+
+## 1.47 — Talismans: seventeen more on the mouse's shelves
+
+The mouse's shelf goes from four talismans to twenty-one, built from `ARTIFACTS_TZ.md`. Each has
+three tiers that bend its rule, and all of their machinery is one new file, `js/talismans.js`.
+
+- **The wall kills more:** MASON'S MARK (a man breaks on stone at lower speed; crates, racks and at
+  III other men count as stone), DOMINO BONE (a thrown man hands the throw on), GRAVEDIGGER'S SPADE
+  (bodies stay, trip the living, and from II can be thrown), BUTCHER'S GREASE (a wall kill leaves a
+  slick), CARPENTER'S AWL (a crate throws splinters), ECHO HORN (a ghost of the headbutt lands again).
+- **Their heads against them:** HORNED MASK (witnesses of a death run), STRAW EFFIGY on Q (a straw
+  goat they go for instead; rifles waste rounds on it).
+- **Running:** BRASS SPUR, MOTH WOOL, BELLWETHER'S BELL (a thread to the stairs and the vault, then
+  the shapes of men through stone), PILGRIM'S SANDAL (into a new room with them on your heels: a
+  burst of speed, then cooldowns back, then they lose you in the doorway).
+- **Defence that is paid for:** SCAPEGOAT (one death undone, then it is gone), TALLOW SKIN (one blow
+  taken, regrown over 5 / 4 / 3 new rooms, or at once by a soul from II), MIRROR SHARD (start a
+  headbutt as a blow arrives and it goes back — rounds and bites, then clubs, then everything).
+- **Counters:** BLOOD CUP (wall kills fill it; full, a heart; two a level at most), TALLY STICK
+  (every fourth or third blow that lands throws twice as hard).
+
+A shelf never holds two of the same sort (`tag`). The tool has a **TALISMANS** tab: all of them
+as a table, every param editable and saved back to tuning.js, and a button to wear any tier.
+
+---
+
+## 1.46 — THE TRIP
+
+**A tuft of mushrooms, and a level in place of the next one.** On some levels (`TUNING.shroom.chance`,
+from THE YARD, never the last) three small pale caps lie on the floor of an ordinary room, meant to be
+walked past. Standing over them eats them (`game.eatShrooms`), and the next level is THE TRIP
+(`tripLevel` in `tuning.js`) instead of itself: same length, same soul budget, same gates, vault and
+arena places, so it sits in the run where that level would have. A death takes the tuft back like
+anything else found inside a level; the run save carries `tripAt`. `#trip` in the address plays
+whatever floor LEVELS starts as the trip.
+
+**Every key is the other way round.** `game.tripInput` is what the goat reads for the length of the
+level: the stick reversed, the headbutt on the grab button and grab on the headbutt button, the roll
+on the voice and the voice on the roll. No key added, none removed; the rail's captions follow. What
+it asks of the goat is cut to match: clubmen only, brutes in the rings, `threatMul` of the curve and
+three men a room at most, no grating, no trap rooms, no wheel, no drop, no rifles, no hounds.
+
+**It is a cave that is growing.** The rock is furred with glowing mushrooms, the floor has rings of
+small ones that are most of the light, the boulders are caps as tall as a man (they break the same
+way, in a cloud of spores), and over all of it a wash of colour walks round the hue wheel in soft
+light while spores drift up the screen.
+
+**Gems, stalactites and stalagmites in every cave.** Seams of faceted gems that catch the light,
+stalactites off the rock face over the floor (dripping, now and then, in THE CAVE), stalagmites up off
+the top of the rock. All on stone tiles only, so nothing on the floor looks like it is in the way.
+
+`GEN_RULES.shrooms` and `GEN_RULES.trip` hold the tuft and the trip; `tools/balance.js` runs every rule
+over the trip in place of each level it can replace, and prints its threat beside the level's own.
+
+---
+
+## 1.45 — a playtest round: the cave cut through its tiles, a leaping ogre, a hound that runs
+
+**The cave can be cut through the middle of its tiles.** `TUNING.cave.shape` is `'mid'` now (`'round'` is
+the 1.43 cave). The rock's edge is marched through a field sampled at tile centres (`World.marchCell`):
+stone is 1, floor is 0 up to `midMax`, off a slow noise. Where the noise is low the edge sits on the grid
+and a lone stone is a diamond; where it rises the rock bulges up to nearly the middle of the floor tile.
+It only ever grows rock into floor, so everything else that reads tiles is unchanged. Collision
+(`collideMid`) and the renderer (`drawCaveMid`) read the same march. Two-tile ways, furniture and the
+start are left whole.
+
+**A secret's niche is rock until the wall gives.** It was floor from the first frame, one row outside the
+room box where the room fog never reaches, so the rack and the grass behind the wall sat under nothing
+but the shade. `startLevel` turns the niche to stone in the world's own copy of the grid (`World` no
+longer shares `level.tiles`), `game.hidden` hides what is in it, and `crackWall` gives it back.
+
+**The rat ogre leaps.** Out of reach he crouches (`hopwind`), bounds `hop.dist` tiles (`hop`) and comes
+down on a ring drawn on the floor from the crouch: the goat is hurt and thrown, a man is struck. A scream
+breaks the crouch the way it breaks his swing. And his blow now hurts a man as well as throwing him
+(`game.ogreHits`): a heart off him, then thrown as a thrown body that takes down whoever it lands on; a
+man with nothing left dies where he stops. A body he threw himself never counts as one thrown at him.
+
+**The hound runs round things.** `Enemy.clearAng` is a whisker: the orbit and the run both take the
+nearest heading with floor ahead of it, and the orbit turns back when its side is walled off. The run is
+a sprint rather than a blink: 9 tiles a second, from 45% off the crouch, about seven tiles long.
+
+**A rifle does not shoot through his own man at point blank.** Inside `hunter.friendClear` (2) tiles of the
+muzzle he lowers it and steps sideways off the line; further out he still never looks. The aim line comes
+out of the man himself down the line the round takes, reaches the goat from the first frame and firms up.
+
+**Knocking a man into a drop no longer takes the goat with him.** From the windup to the end of the
+recovery the lip holds him like a wall.
+
+**Holding grab and clicking throws.** A second mouse button pressed while the first is down arrives as a
+`pointermove`, not a `pointerdown`; it was swallowed. Letting go of grab under the other button was too.
+
+**Tall grass burns.** It is fuel like hay: it stands alight for `grass.burn`, hands the fire on after
+`grass.spread`, and is gone once it has burnt out. Each blade chars and carries its own flame, and a patch
+alight hides nothing.
+
+---
+
 ## 1.44 — a boulder takes a body, and two trap rooms
 
 **A man thrown into a boulder takes a blow off it.** Anything flung into one faster than

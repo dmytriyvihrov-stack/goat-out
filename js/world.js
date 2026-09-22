@@ -20,7 +20,9 @@ const CULT_GLYPHS = [
 
 class World {
   constructor(level) {
-    this.level = level; this.W = level.W; this.H = level.H; this.tiles = level.tiles;
+    // Its own copy of the grid: play mutates it (a clamp, a niche still behind its wall, the rat
+    // ogre's breach) and the level as generated is what the rules and the room plans read.
+    this.level = level; this.W = level.W; this.H = level.H; this.tiles = level.tiles.slice();
     const n = this.W * this.H;
     this.fire = new Float32Array(n);      // seconds of burning left
     this.fireKind = new Uint8Array(n);    // 0 ordinary flame, 1 the Seer's witchfire
@@ -301,7 +303,11 @@ class World {
 
   // Push a circle out of solid tiles. Returns the strongest impact speed into a wall (0 if none).
   collideCircle(e) {
+    if (this.caveF) return this.collideMid(e);
     if (this.round) return this.collideRound(e);
+    return this.collideTiles(e);
+  }
+  collideTiles(e) {
     let impact = 0, hit = false;
     const r = e.r;
     const tx0 = Math.floor((e.x - r) / TILE), tx1 = Math.floor((e.x + r) / TILE);
@@ -382,6 +388,111 @@ class World {
         } else push(dx / d, dy / d, r - d);
       }
     }
+    e.wallHit = hit;
+    return impact;
+  }
+
+  // ---------- the cave cut the second way ----------
+  // `TUNING.cave.shape === 'mid'`: the rock's edge is not tied to the edges of the tiles. Every tile
+  // has a value — stone 1, floor `caveF` (0 to `cave.midMax`) — sampled at its centre, and the edge
+  // of the rock is where that field crosses one half, marched square by square between the centres
+  // of four tiles. Floor at nought puts the edge on the tile's own border; floor near one half pulls
+  // it almost to the middle of the tile. The field only ever grows the rock into the floor, never
+  // the floor into the rock, so every tile the rest of the game calls stone is still stone here and
+  // the flow field, the line of sight and the fire need not know. `buildCaveField` lays the floor
+  // values once a level, off a slow noise, so the edge sits on the grid in one stretch of cave and
+  // wanders through the middle of the tiles in the next.
+  buildCaveField(props, start) {
+    const C = TUNING.cave, W = this.W, H = this.H, f = new Float32Array(W * H);
+    const solid = (x, y) => x < 0 || y < 0 || x >= W || y >= H || this.isSolid(x, y);
+    const hash = (x, y) => { let n = (x * 374761393 + y * 668265263) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+    const sm = (t) => t * t * (3 - 2 * t);
+    const noise = (x, y) => {
+      const x0 = Math.floor(x), y0 = Math.floor(y), fx = sm(x - x0), fy = sm(y - y0);
+      const a = hash(x0, y0), b = hash(x0 + 1, y0), c = hash(x0, y0 + 1), d = hash(x0 + 1, y0 + 1);
+      return lerp(lerp(a, b, fx), lerp(c, d, fx), fy);
+    };
+    // Where something was put down, the floor stays whole: rock grown over a crate, a rack or a door
+    // is furniture sunk in stone.
+    const keep = new Set();
+    for (const p of props) keep.add(Math.floor(p.y / TILE) * W + Math.floor(p.x / TILE));
+    const sx = Math.floor(start.x / TILE), sy = Math.floor(start.y / TILE);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (solid(x, y) || this.tiles[i] !== T.FLOOR || keep.has(i)) continue;
+      if (Math.abs(x - sx) <= 2 && Math.abs(y - sy) <= 2) continue;
+      // A way two tiles wide keeps both of them: grown into from both sides it would stop fitting a man.
+      if ((solid(x - 1, y) || solid(x - 2, y)) && (solid(x + 1, y) || solid(x + 2, y))) continue;
+      if ((solid(x, y - 1) || solid(x, y - 2)) && (solid(x, y + 1) || solid(x, y + 2))) continue;
+      const m = clamp((noise(x / C.midScale, y / C.midScale) - C.midFrom) / (1 - C.midFrom), 0, 1);
+      f[i] = C.midMax * sm(m) * (0.7 + 0.3 * hash(x * 3 + 1, y * 7 + 2));
+    }
+    this.caveF = f;
+  }
+  // The field at a tile's centre. `extra` is a set of tile indices to count as stone (the renderer's
+  // unbroken secret walls, which are props rather than tiles).
+  caveV(tx, ty, extra) {
+    if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return 1;
+    const i = ty * this.W + tx;
+    if (this.isSolid(tx, ty) || (extra && extra.has(i))) return 1;
+    return this.caveF[i];
+  }
+  // One square of the march, between the centres of tiles (i, j) and (i + 1, j + 1). Pushes the
+  // outline of its stone onto `poly` (a flat list of points, clockwise on screen) and each stretch of
+  // edge onto `segs` as [x1, y1, x2, y2], wound so that (dy, -dx) points off the stone; either may be null. A square with
+  // stone on two opposite corners joins them, the way two diagonal wall tiles already block the gap.
+  marchCell(i, j, extra, poly, segs) {
+    const T2 = TILE, L = 0.5;
+    const x0 = (i + 0.5) * T2, y0 = (j + 0.5) * T2, x1 = x0 + T2, y1 = y0 + T2;
+    const cs = [[x0, y0, this.caveV(i, j, extra)], [x1, y0, this.caveV(i + 1, j, extra)],
+      [x1, y1, this.caveV(i + 1, j + 1, extra)], [x0, y1, this.caveV(i, j + 1, extra)]];
+    if (cs[0][2] <= L && cs[1][2] <= L && cs[2][2] <= L && cs[3][2] <= L) return false;
+    const pts = [], cross = [];
+    for (let k = 0; k < 4; k++) {
+      const p = cs[k], q = cs[(k + 1) & 3], ps = p[2] > L, qs = q[2] > L;
+      if (ps) { pts.push(p[0], p[1]); cross.push(false); }
+      if (ps !== qs) { const t = (p[2] - L) / (p[2] - q[2]); pts.push(lerp(p[0], q[0], t), lerp(p[1], q[1], t)); cross.push(true); }
+    }
+    if (poly) poly.push(pts);
+    if (segs) {
+      const n = cross.length;
+      for (let k = 0; k < n; k++) {
+        const k2 = (k + 1) % n;
+        if (cross[k] && cross[k2]) segs.push([pts[k * 2], pts[k * 2 + 1], pts[k2 * 2], pts[k2 * 2 + 1]]);
+      }
+    }
+    return true;
+  }
+  // `collideCircle` against that edge: every stretch of it near him, pushed out along its own outward
+  // side. Only if he has somehow got his centre into a tile of stone does the plain tile push run.
+  collideMid(e) {
+    let impact = 0, hit = false;
+    const r = e.r, segs = [];
+    const i0 = Math.floor((e.x - r) / TILE - 0.5), i1 = Math.floor((e.x + r) / TILE - 0.5);
+    const j0 = Math.floor((e.y - r) / TILE - 0.5), j1 = Math.floor((e.y + r) / TILE - 0.5);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) this.marchCell(i, j, null, null, segs);
+    for (let pass = 0; pass < 2; pass++) {
+      for (const [ax, ay, bx, by] of segs) {
+        const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+        if (l2 < 1e-6) continue;
+        const t = clamp(((e.x - ax) * dx + (e.y - ay) * dy) / l2, 0, 1);
+        const px = ax + dx * t, py = ay + dy * t, ll = Math.sqrt(l2), onx = dy / ll, ony = -dx / ll;
+        const vx = e.x - px, vy = e.y - py, d = Math.hypot(vx, vy), side = vx * onx + vy * ony;
+        let nx, ny, depth;
+        if (side >= 0) {
+          if (d >= r) continue;
+          if (d < 0.001) { nx = onx; ny = ony; } else { nx = vx / d; ny = vy / d; }
+          depth = r - d;
+        } else {
+          if (t <= 0 || t >= 1 || -side > r * 2) continue;
+          nx = onx; ny = ony; depth = r - side;
+        }
+        const vn = e.vx * nx + e.vy * ny;
+        if (vn < 0) { impact = Math.max(impact, -vn); e.vx -= vn * nx; e.vy -= vn * ny; }
+        e.x += nx * depth; e.y += ny * depth; hit = true;
+      }
+    }
+    if (this.isSolid(Math.floor(e.x / TILE), Math.floor(e.y / TILE))) { impact = Math.max(impact, this.collideTiles(e)); hit = true; }
     e.wallHit = hit;
     return impact;
   }
@@ -542,6 +653,8 @@ class World {
     if (this.fire[i] > 0) return false;
     const t = this.tiles[i];
     if (t === T.HAY) { this.fire[i] = TUNING.fire.burn; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
+    // Tall grass is fuel the way hay is: it catches from anything and it carries the fire on.
+    if (this.grass[i]) { this.fire[i] = TUNING.grass.burn; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
     if (force && t !== T.WALL && t !== T.PIT) { this.fire[i] = dur || TUNING.fire.pool; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
     return false;
   }
@@ -572,12 +685,13 @@ class World {
     const W = this.W;
     for (let i = 0; i < this.fire.length; i++) {
       if (this.fire[i] <= 0) continue;
-      this.grass[i] = 0;                 // tall grass goes up with whatever is burning on it
-      const wasHay = this.tiles[i] === T.HAY;
+      // Tall grass burns rather than vanishing: it stands alight for `grass.burn`, carries the fire
+      // to the grass next to it faster than hay does, and is gone only once it has burnt out.
+      const wasHay = this.tiles[i] === T.HAY, wasGrass = this.grass[i] === 1;
       this.fire[i] -= dt;
-      if (wasHay) {
+      if (wasHay || wasGrass) {
         this.spread[i] += dt;
-        if (this.spread[i] >= TUNING.fire.spread) {
+        if (this.spread[i] >= (wasGrass ? TUNING.grass.spread : TUNING.fire.spread)) {
           this.spread[i] = 0;
           const tx = i % W, ty = (i / W) | 0, wk = this.fireKind[i] === 1;
           // Hay lit by witchfire burns as witchfire: the whole patch goes cold blue.
@@ -588,6 +702,7 @@ class World {
       if (this.fire[i] <= 0) {
         const witch = this.fireKind[i] === 1;
         this.fire[i] = 0; this.fireKind[i] = 0;
+        if (wasGrass) this.grass[i] = 0;
         if (wasHay) this.tiles[i] = T.ASH;
         else this.scorch((i % W + 0.5) * TILE, (((i / W) | 0) + 0.5) * TILE, TILE * 0.55, witch);
       }
