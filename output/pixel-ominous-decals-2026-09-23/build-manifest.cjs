@@ -1,0 +1,7 @@
+const fs=require('fs'),path=require('path');const root=__dirname,read=n=>JSON.parse(fs.readFileSync(path.join(root,n),'utf8').replace(/^\uFEFF/,''));
+const sources=read('sources.json'),inspection=read('source-inspection.json');
+const items=sources.map(s=>{const v=inspection.find(i=>i.id===s.id);if(v.cornerAlpha!==0)throw Error('Background not transparent');const[x,y,w,h,pixels]=v.cells[0];if(pixels<100||x<=0||y<=0||x+w>=v.width||y+h>=v.height)throw Error('Bounds');return{id:s.id,label:s.label,file:s.file,surface:s.surface,rect:[x,y,w,h],anchor:[.5,.5],suggestedWidth:s.displayWidth,suggestedHeight:Math.round(s.displayWidth*h/w)};});
+const floors=read('references/environment-manifest.json').items;
+const backgrounds={stone:floors.find(i=>i.id==='floors-09').rect,brick:floors.find(i=>i.id==='floors-08').rect,file:'references/floors-v2.png'};
+const m={version:1,status:'generated atmosphere decals; not integrated',sampling:'nearest-neighbor',items,backgrounds};fs.writeFileSync(path.join(root,'manifest.json'),JSON.stringify(m,null,2));fs.writeFileSync(path.join(root,'manifest.js'),'window.DECALS='+JSON.stringify(m)+';');
+fs.writeFileSync(path.join(root,'validation.json'),JSON.stringify({assets:items.length,transparentCorners:true,allBoundsInsideSource:true,sourcePngsUnmodified:true,notes:['Display sizes are suggested scene sizes; PNGs preserve original generated resolution.','Pixel grid and semi-transparent edges may require final art cleanup.']},null,2));console.log('4 decals: transparent corners and nonempty source bounds verified.');

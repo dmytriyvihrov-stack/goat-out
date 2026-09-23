@@ -1,0 +1,90 @@
+[
+  {
+    "id": "floor-small",
+    "file": "source/floor-small.png",
+    "width": 1312,
+    "height": 1199,
+    "cornerAlpha": 0,
+    "columns": 1,
+    "rows": 1,
+    "cells": [
+      [
+        307,
+        197,
+        700,
+        833,
+        141926,
+        0,
+        0,
+        1312,
+        1199
+      ]
+    ]
+  },
+  {
+    "id": "floor-medium",
+    "file": "source/floor-medium.png",
+    "width": 1312,
+    "height": 1199,
+    "cornerAlpha": 0,
+    "columns": 1,
+    "rows": 1,
+    "cells": [
+      [
+        313,
+        197,
+        685,
+        810,
+        187121,
+        0,
+        0,
+        1312,
+        1199
+      ]
+    ]
+  },
+  {
+    "id": "floor-large",
+    "file": "source/floor-large.png",
+    "width": 1430,
+    "height": 1100,
+    "cornerAlpha": 0,
+    "columns": 1,
+    "rows": 1,
+    "cells": [
+      [
+        27,
+        35,
+        1378,
+        1027,
+        282392,
+        0,
+        0,
+        1430,
+        1100
+      ]
+    ]
+  },
+  {
+    "id": "wall-watcher",
+    "file": "source/wall-watcher.png",
+    "width": 1122,
+    "height": 1402,
+    "cornerAlpha": 0,
+    "columns": 1,
+    "rows": 1,
+    "cells": [
+      [
+        153,
+        71,
+        816,
+        1260,
+        244204,
+        0,
+        0,
+        1122,
+        1402
+      ]
+    ]
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "floors",
+    "file": "source/floors-v2.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-83103fac-500c-41fc-922b-4afd6f149caf.png",
+    "columns": 4,
+    "rows": 4
+  },
+  {
+    "id": "cave-props",
+    "file": "source/cave-props-v2.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-ecd65385-b92e-4738-ad2e-ec2289d660cd.png",
+    "columns": 4,
+    "rows": 3
+  }
+]

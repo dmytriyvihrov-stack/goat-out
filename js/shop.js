@@ -42,16 +42,17 @@ const Shop = {
     game.openSoulGate(ware.shopId);
   },
 
-  // The third offer: no talisman, three bowls set down where the generator found room for them. The
-  // other two go back into the wall exactly as they do when a talisman is taken, and the gate gives.
+  // The third offer: no talisman, one pail of milk set down where the generator found room for it,
+  // holding `TUNING.shop.heals` hearts — a drink a heart, so a goat at full health can come back to
+  // it while he is still in her room instead of pouring two of the three away. The other two offers
+  // go back into the wall exactly as they do when a talisman is taken, and the gate gives.
   takeMilk(game, ware, goat) {
     const spots = ware.milkSpots && ware.milkSpots.length ? ware.milkSpots
-      : [0, 1, 2].map((k) => game.freeSpot(ware.x + (k - 1) * 1.4 * TILE, ware.y + TILE));
-    for (const s of spots.slice(0, TUNING.shop.heals)) {
-      game.props.push(new Prop(s.x, s.y, 'heal'));
-      game.particles(s.x, s.y, 8, PALETTE.bone, 110);
-    }
-    game.floatText(goat.x, goat.y - 36, 'THREE BOWLS', PALETTE.bone);
+      : [game.freeSpot(ware.x, ware.y + TILE)];
+    const s = spots[0] || { x: ware.x, y: ware.y + TILE };
+    game.props.push(new Prop(s.x, s.y, 'heal', { pail: TUNING.shop.heals }));
+    game.particles(s.x, s.y, 14, PALETTE.bone, 130);
+    game.floatText(goat.x, goat.y - 36, `${TUNING.shop.heals} HEARTS OF MILK`, PALETTE.bone);
     game.audio.sfxBell(); game.vibe(16);
     for (const o of game.props) {
       if (o.kind !== 'ware' || o.shopId !== ware.shopId || o.broken) continue;
@@ -91,7 +92,7 @@ const Shop = {
     const w = game.world, tx = Math.floor(m.gap.x / TILE), ty = Math.floor((m.gap.y + (m.wallSide === 'up' ? -1 : 1)) / TILE);
     for (const dx of [-1, 0, 1]) {
       const i = ty * w.W + (tx + dx);
-      if (w.tiles[i] === T.WALL) w.tiles[i] = T.FLOOR;
+      if (w.tiles[i] === T.WALL) { w.tiles[i] = T.FLOOR; w.caveDirty(); }
     }
     for (let k = 0; k < 6; k++) w.dot(m.gap.x + (Math.random() - 0.5) * 56, m.gap.y + (Math.random() - 0.5) * 18, 2 + Math.random() * 2.6, '#3a3630');
   },

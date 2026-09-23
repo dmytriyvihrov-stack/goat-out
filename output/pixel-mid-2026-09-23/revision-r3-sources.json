@@ -1,0 +1,35 @@
+[
+  {
+    "id": "goat-idle",
+    "file": "source/goat-idle-r3.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-5b286bba-3ffc-45f4-b357-fdaedfa2e2bd.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "goat-walk-a",
+    "file": "source/goat-walk-a-r3.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-b4c321c5-fc26-419c-ac4d-da8e2cebbcf4.png",
+    "columns": 4,
+    "rows": 4,
+    "directions": [
+      "S",
+      "SW",
+      "W",
+      "NW"
+    ]
+  },
+  {
+    "id": "goat-walk-b",
+    "file": "source/goat-walk-b-r3.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-7f0a56a8-2a54-4d4d-beb3-42392cfbcd58.png",
+    "columns": 4,
+    "rows": 4,
+    "directions": [
+      "N",
+      "NE",
+      "E",
+      "SE"
+    ]
+  }
+]

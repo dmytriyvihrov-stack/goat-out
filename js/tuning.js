@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.46';
+const BUILD = '1.53';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -154,6 +154,22 @@ const TUNING = {
     fireDamageInterval: 0.7,
     // On his last heart he leaves a drop now and then behind him — not a stripe on every tile.
     bleed: { gap: 0.4, jitter: 0.35, minSpeed: 60, size: 2 },
+    // A blot in his wool per lost heart (`PaintedArt.wounds`): world px from the foot, the first
+    // spots on the flank and the later ones spreading, each a little bigger than the last. `front`
+    // is how much of that size is left facing the camera: from the front the whole blot sits on his
+    // face and chest and read as twice the wound it is from the side.
+    // What the butt souls do to the pixel goat's horns (`PIXEL_ART.horns`): LONG HORNS grows them
+    // from the root by `growMul` of its reach bonus, at most `growMax`; BOMB CHARGE and SPLASH skin
+    // them in lava and in venom — `ramp` dark root to lit tip, a `glow` of `blur` px round them, and
+    // a venom drop off each tip every `drip` seconds.
+    hornLooks: { growMul: 0.75, growMax: 1.35,
+      lava: { ramp: ['#3a0d06', '#8f1e0a', '#e0521a', '#ffb43a', '#fff0a0'], glow: 'rgba(255,110,30,0.9)', blur: 5 },
+      venom: { ramp: ['#12260e', '#2f5a1c', '#5c9a2a', '#9fd84a', '#e4ffa0'], glow: 'rgba(140,220,70,0.9)', blur: 4, drip: 1.6 } },
+    // The collar a talisman hangs from on the pixel goat (`PaintedArt.collar`): half-width of the
+    // ring, how far it opens toward the camera from the front, its least depth on a side view, the
+    // strap's width and colours, and where the pendant hangs below the throat and how big.
+    collar: { r: 3.6, depth: 0.3, flat: 2, thin: 0.9, w: 1.3, edge: '#24160e', leather: '#6e4326', drop: 3.8, icon: 3 },
+    wounds: { r: 1.9, grow: 0.15, front: 0.65, alpha: 0.8, spots: [[-4, -10], [5, -9], [-1, -14], [-7, -7], [7, -13], [2, -6]] },
     invuln: 0.9,            // s of invulnerability after a hit
   },
   bearer: {
@@ -283,6 +299,11 @@ const TUNING = {
     // The charge itself was the read on him — too rare, too far off, too slow between them. He asks
     // for less ground to build one on and gets back to full speed on it sooner.
     chargeMin: 3, chargeWind: 0.6, chargeSpeed: 14 * TILE, chargeTime: 1.1, chargeCooldown: 1.7, stun: 1.5, stagger: 0.4,
+    // The charge is aimed at where the goat stood, not at the far wall: it runs `chargeOver` tiles
+    // past that spot and skids out over the last `chargeSkid` seconds. Run the whole `chargeTime`
+    // every time and a sidestep sent him fifteen tiles into whatever was behind you — he read as a
+    // man bouncing off every wall in the room. Only a goat with his back to the stone gets him stunned.
+    chargeOver: 2, chargeSkid: 0.18,
     burnTick: 1.0, burnHearts: 1,   // he comes out of a fire scorched and one heart down, not dead
     // Alight he does not run from it — he comes at you: `speed` times his stride, and every windup,
     // swing and recovery runs at `tempo` times the clock.
@@ -315,7 +336,9 @@ const TUNING = {
     // off the ground and `land` of getting up again. Where he comes down, everything inside `radius`
     // tiles is hit the way his arm hits — the goat for `damage` and thrown out by `knock`, a man hurt
     // and flung. The spot is drawn on the floor from the moment he crouches.
-    hop: { dist: 3, wind: 0.34, air: 0.42, land: 0.36, radius: 1.35, damage: 1, knock: 1.4 * TILE, lift: 26 },
+    // `minHop`: a leap shorter than this (tiles) toward his prey counts as pinned, and he bounds
+    // sideways round whatever pinned him instead (`Enemy.hopSpot`).
+    hop: { dist: 3, wind: 0.34, air: 0.42, land: 0.36, radius: 1.35, damage: 1, knock: 1.4 * TILE, lift: 26, minHop: 1 },
   },
   // What a man makes of the room he is running through. Trap sense is rolled per man, so one of them
   // in a crowd reads the Mill wrong and rides it into a wall while the rest step round.
@@ -359,8 +382,11 @@ const TUNING = {
     // POISON meets FIRE: it goes off. `hitR` tiles is a hit on everybody inside it (a heart off a
     // big man, the end of an ordinary one); out to `radius` it only throws, and the wall finishes it.
     blast: { radius: 2.2, hitR: 1.1, impulse: 11 * TILE, goatPush: 300 },
-    // POISON meets STUN: `damage` hits, and both statuses are spent doing it.
-    sting: { damage: 1 },
+    // POISON meets STUN: SHOCK. No hit — it used to be one, and a poisoned crate in the face killed
+    // a man outright, which is a win button in a game where kills come from geometry. Now both
+    // statuses are stretched to `stun` / `poison` seconds and he stands there in total shock, frozen
+    // and blind, one mark over his head for the pair: the window to put him into a wall.
+    sting: { stun: 4.0, poison: 6.0 },
     // STUN meets FIRE: the fire does `damage` hits rather than one. The stun is spent.
     scald: { damage: 2 },
     // The goat's own poison. SPLASH reaches `range` tiles and only behind him (`back` is the cosine
@@ -434,6 +460,11 @@ const TUNING = {
     // together and can push a band's nearest eligible room well past what `every` promises on
     // its own, so a run into the back half of the game could go six or seven rooms on nothing.
     heal: { r: 12, pickupR: 22, every: 4.5, gapMax: 4, grazeTime: 1.4, grazeSpeed: 30 },
+    // The cave's stone teeth (`TUNING.cave.spikes` is where and how hard). Not blocking — a thing
+    // you cannot walk into cannot hurt you, and the whole point of it is that it does — so it is
+    // floor to the flow field and a hazard to anything with eyes. `r` is what a body has to touch;
+    // it is deliberately under a half tile, because a wall's foot is a thin place to stand.
+    spire: { r: 11 },
     // The gong. It was noise and nothing else, which made it the one thing in a room you could not
     // read. Now it pays: a stretch of speed and quick hands, bought by telling the whole floor where
     // you are. In an empty room that is a terrible trade. In a full one it is the best one you get.
@@ -533,7 +564,8 @@ const TUNING = {
     // rudeness costs: `lines` are what she says on the first two blows, and the third is the rat
     // ogre; `thanks` is what she says when a talisman is taken and her gate lifts. `r` is small
     // because she is; she blocks nothing and nothing thrown breaks on her. `bob` is her idle.
-    mouse: { r: 9, lines: ['PLEASE. NOT THAT.', 'ONCE MORE AND YOU WILL SEE.'], thanks: 'GO ON, THEN. THE DOOR IS OPEN.', squeakPitch: 1400 },
+    mouse: { r: 9, lines: ['PLEASE. NOT THAT.', 'ONCE MORE AND YOU WILL SEE.'], thanks: 'GO ON, THEN. THE DOOR IS OPEN.', squeakPitch: 1400,
+      lookUp: 0.34 },   // radians she leans back to look at a goat standing above her
     // A ware on her shelf: an artifact on a stool, one of two, taken for nothing. It is reached for the way
     // a crate is (`Goat.tryGrab`), and reaching for it is the whole of buying it.
     // `readR` is how close he has to be before what a ware does is written over it — the same
@@ -565,7 +597,52 @@ const TUNING = {
       // the run, once a level however many he brings.
       look: 0.9, detourFor: 0.5, breakOut: 0.8, saveR: 8, saveHearts: 1,
     },
+    // ---- THE ESCORTS ----
+    // Three animals built on the hen's frame and nothing else: found in the first third of a floor,
+    // walked to the stairs, and worth something for the rest of the run if they get there
+    // (`js/beasts.js`). None of them adds a key — every one is met with the four verbs the goat
+    // already has, and the whole difficulty of each is that it does NOT simply follow you.
+    //
+    // The tortoise is slower than a walk and never catches up: the only ally you advance by picking
+    // it up and throwing it forward, one room at a time. Where it lands it pulls in and is a shell
+    // — solid, and rounds stop on it — so a thrown tortoise is also the cover you did not have.
+    // `cool`: a shell that has taken a round or a blow is on its back for that long — no cover,
+    // and nothing to pick up — before it rights itself. One block, then a wait (js/beasts.js).
+    tortoise: { r: 13, speed: 42, followAt: 1.4, throwSpeed: 520, drag: 2.6, tuck: 4.0, cool: 6, guardR: 6,
+      // What it is worth at the stairs: one more use on every shield in the compound, for the run.
+      saveR: 8, saveShield: 1 },
+    // The goose does not follow, it leads: it runs down a field grown out of the stairs at its own
+    // pace and does not wait for him — it stops only where something shut stands in its way. It honks at any man it can
+    // see inside `seeR` — which is a noise, so the room turns and comes for the GOAT, and which also
+    // breaks a blow a man has already committed to at any range at all (`balkStun`). A permanent
+    // alarm you have to live with, and the one thing in the game that parries across a room. Nothing
+    // in the cult ever goes for the goose: it is not a man and it is not the sacrifice.
+    // `lead` is how many tiles of the way out it will get ahead of him before it stands and waits:
+    // a goose that ran a room ahead raised that room and then stood at its shut door without him.
+    goose: { r: 12, speed: 150, seeR: 9, honkGap: 2.2, balkStun: 0.5, lead: 6,
+      // At the stairs: the voice carries further and comes back sooner, for the rest of the run.
+      saveR: 8, saveScreamRange: 1.2, saveScreamCd: 0.8 },
+    // The crow follows corpses, not you. Every room with nothing dead in it, it falls behind — which
+    // is the one escort that argues with *run, don't fight*, and it is meant to: it is the price of
+    // what it carries out. `markFor` is how long a body still draws it, `perch` how close it settles.
+    crow: { r: 11, speed: 230, slack: 0.55, followAt: 2.6, perch: 1.1, markFor: 14, markR: 13, hopGap: 1.4,
+      // A body it can SEE it flies to at `flySpeed`, the moment it sees it, and of two in sight it
+      // takes the one nearer the stairs — the crow pulls you on into the next room rather than back.
+      // Landing on one it says so, once a body.
+      flySpeed: 560, lines: ['FRESHLY COOKED', 'TASTY', 'STILL WARM', 'MINE'],
+      // At the stairs: it has found something. A tier III talisman stands at the head of the NEXT
+      // floor's stairs, free, taken the way one of the mouse's is.
+      saveR: 8, giftTier: 3 },
   },
+  // Where an escort comes from, and how many. `levelDef.beasts` is which of them a floor may hold;
+  // the generator picks one at random and puts it in an ordinary room inside the first `third` of
+  // the level, clear of the furniture and well in from the way in — first third, because the whole
+  // point of one is the walk from there to the stairs. One a level, never in the pen, a rest room,
+  // a teaching room or a set piece. `GEN_RULES.beasts` holds all of it.
+  // `hp` is how many blows (or touches of fire) an animal takes before it dies, `hurtCd` the beat
+  // after one in which nothing else lands. `callR` / `callGap`: a caged one calls out when he is that
+  // many tiles off, every few seconds, so nobody walks past a coop without hearing it.
+  beast: { third: 0.36, clear: 1.2, tellFor: 3.4, pactFor: 3.2, hp: 3, hurtCd: 0.6, callR: 6, callGap: 2.6 },
   // Going over an edge. A man who goes down a hole is gone; the goat is only rented — he comes back
   // up on the last boards he stood on, one heart lighter, which is the same price the wheel charges.
   // Make it free and the level is a shortcut; make it fatal and nobody goes near the interesting half
@@ -625,6 +702,15 @@ const TUNING = {
     // having one — the 18 Sep 2026 note was "a bit too much". Turn these before touching the sixty
     // literal amounts in the code.
     screen: 0.6, stop: 0.7,
+    // Which shakes are allowed at all. The 22 Sep 2026 note was "do not shake the screen on
+    // effects — a little shake, only when you took damage", and it is right: a kill, a crate, a
+    // door, a bomb and a gong all shook the picture, so the one shake that is information — you
+    // have just lost a heart — was lost in the sixty that were decoration. `shakeOther` is the
+    // multiplier on every shake that is NOT the goat being hurt (`game.shake(a, true)`), and it is
+    // zero: the call sites all stay where they are, they simply do nothing until somebody turns
+    // this back up. `kickOther` is the same idea for the directional shove, which reads as weight
+    // rather than as an earthquake and so keeps a third of itself.
+    shakeOther: 0, kickOther: 0.35,
     hitstop: 0.07, shakeKill: 9, shakeHit: 6, shakeDecay: 12, deathSlow: 1.6, killSlow: 0.22,
     kick: 7, kickDecay: 11, kickMax: 15, // directional camera punch, thrown away from the impact
     zoomKick: 0.05, zoomDecay: 7,       // the lens shoves in on a kill and settles back
@@ -704,7 +790,19 @@ const TUNING = {
   // so in places it runs through the middle of a tile — diamonds for lone stones, long slants where
   // the tiles step, and bulges into the floor wherever a slow noise of `midScale` tiles rises past
   // `midFrom`; `midMax` (under one half) is how far into a floor tile it may reach at most.
-  cave: { roundR: 16, erode: [2, 3], bump: 0.12, shape: 'mid', midScale: 4, midFrom: 0.15, midMax: 0.44 },
+  // `band` is how many tiles of rock are drawn out from the open floor. Past it the cave is fog,
+  // the same way a square-walled level draws one tile of wall and leaves the rest of the hill dark:
+  // a cave filled to the edges of the screen showed a great deal of level nobody can go into and
+  // cost more to draw than everything standing on the floor put together.
+  cave: { band: 2, roundR: 16, erode: [2, 3], bump: 0.12, shape: 'mid', midScale: 4, midFrom: 0.15, midMax: 0.44,
+    // THE SPIKES. Most of what grows on the rock is paint — see `Renderer.drawCaveDecor` — but a
+    // few of the spires are real: stone teeth standing at the foot of a wall, which is the one
+    // thing in a cave that looks as though it ought to hurt and so had better. `chance` is the odds
+    // an ordinary room gets one at all (rarely, on purpose: a hazard you meet in every room is
+    // furniture), `perRoom` the most it may ever get, `glint` how strongly the wet tips catch the
+    // light so they are read before they are walked into, and `damage` the hearts the goat pays.
+    // A man does not pay hearts: he dies on them, the way he dies on the grating.
+    spikes: { chance: 0.3, perRoom: 1, glint: 0.5, damage: 1 } },
   // Tall grass (level eight), Cult of the Lamb's: it stands over whatever is in it, so a body in it
   // shows from the waist up, and the goat's own eye stops at it — `seeInto` tiles of it are lit from
   // where he stands and the rest of the patch, and what is behind it, is shade. It hides him the same
@@ -724,23 +822,44 @@ const TUNING = {
   // `LEVELS`). Her offer is free and it is a choice: `wares` talismans on her stools, one of them
   // yours, the other packed away the moment you reach for one — and taking it is what lifts the
   // gate out of her room. Each visit stocks the next tier (the first of `levels` is tier one, the
-  // second tier two...), so the third mouse of a run is selling the room rewritten. `heals` bowls
-  // of milk are set down in front of her hole on top of it, taken or not. `strikes` is the blows
+  // second tier two...), so the third mouse of a run is selling the room rewritten. Her third offer is a pail
+  // of milk holding `heals` hearts, drunk a heart at a time where it stands. `strikes` is the blows
   // she takes before she turns; the rat ogre's shelf is free once he is down, and still one choice.
   // `spread` is tiles between the milk and each talisman in the row she lays out in front of herself.
   // The mushrooms. `chance` a level (from level index `from`, never the last) that a tuft of them
   // lies somewhere on an ordinary room's floor, plain enough to walk past; standing within `eatR`
-  // tiles of it eats it, and the next level is THE TRIP (`tripLevel`). `threatMul` is how much of the
-  // replaced level's curve the trip keeps and `men` its cap on a room — the controls are the difficulty.
-  shroom: { chance: 0.45, from: 1, eatR: 0.75, threatMul: 0.35, men: 3 },
+  // tiles of it eats it, and the next level is THE TRIP (`tripLevel`).
+  //
+  // What stands in it does not scale with the floor it replaced. Whichever level the mushrooms are
+  // eaten on, the trip is fought at the FIRST level's curve — `threatMul` of it — with `men` to a
+  // room and nothing in `kinds` that shoots: with the stick reversed and the buttons swapped, a
+  // rifle is not a harder version of a clubman, it is a death you cannot answer with hands that no
+  // longer do what you tell them. Mages are allowed, because a rune is a place on the floor and
+  // walking out of a place is the one thing the scrambled controls still let you do badly but do.
+  // The 22 Sep 2026 note was "very hard with the controls", and this is the answer to it: the
+  // controls are the difficulty of the level and nothing else is asked to be.
+  shroom: { chance: 0.45, from: 1, eatR: 0.75, eatTime: 1.6, threatMul: 1, men: 1, kinds: ['bearer', 'seer'],
+    // The lens on the trip, on top of `drawTrip`'s own warp: how far the picture breathes in and out
+    // (`zoom`, a share of the zoom) and how fast, and how far it leans (`sway` px). It is the camera
+    // and not the screen — nothing here is a shake, which the goat only ever gets for a lost heart.
+    cam: { zoom: 0.055, rate: 0.55, sway: 7, swayRate: 0.31 },
+    // Seconds added to the goat's fire tick on the trip: with the hands scrambled, getting out of a
+    // flame takes longer, and the flame waits for him.
+    burnDelay: 1,
+    // On the trip half the blows that land on him never did: he was standing somewhere else all
+    // along. `chance` of a hit is undone and he is `dist` tiles away from where it came from, with a
+    // line to say so. Never a fall — the hole is real.
+    phase: { chance: 0.5, dist: 2.6, text: 'OH, I WAS ACTUALLY OVER HERE' },
+    // Across the screen as the trip begins, so the player knows the wrongness is the floor and not the game.
+    banner: { time: 4.5, fade: 0.8, text: 'WHOOOOAAA, YOU ARE ON MUSHROOOOMS....' } },
   shop: { levels: [1, 3, 5], wares: 2, heals: 3, strikes: 3, spread: 1.5,
     // The boomerang in flight: its speed, its size against a man, and how long the way back may
     // take before it simply arrives (it curves home through anything; this is the belt to that).
     boomerang: { speed: 11 * TILE, r: 8, homeMax: 3.0 } },
   // THE CLAMP. A room two behind the goat, with nobody alive left in it, is shut for good: its way
-  // out goes back to stone and an iron clamp is bolted over the mouth (`game.updateClamps`). The
+  // out goes back to stone under a veil of dark and the room goes black (`game.updateClamps`). The
   // room he has just come out of stays open — that is the one you can still step back into. `slam`
-  // is the seconds the plate takes to drive home, `hear` how many tiles off the clank still carries.
+  // is a third of how long the dark takes to come down, `hear` how many tiles off it is heard.
   clamp: { slam: 0.35, hear: 14 },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
@@ -831,7 +950,11 @@ const TUNING = {
   // odds that one of its bosses carries a soul of his own (he is lit like any man with one, and the
   // card counts it), and the odds that one ordinary fight room gives one up when its last man goes
   // down (nothing says which — it is found by winning). At most one of each a level.
-  soul: { r: 13, pickupR: 22, bossChance: 0.4, roomChance: 0.35 },
+  soul: { r: 13, pickupR: 22, bossChance: 0.4, roomChance: 0.35,
+    // Butting a soul gate lays a running trail on the floor from the goat to what opens it (the
+    // soul lying in that room, or the mouse's shelf): `time` seconds, a chevron every `gap` px
+    // flowing at `speed` px/s. The gate says what it wants; the trail says where it is.
+    guide: { time: 3.2, gap: 20, speed: 70, size: 5 } },
   // How long a soul's three cards refuse every input after they appear, so the click that killed the
   // boss cannot also spend what he dropped.
   boonArm: 0.4,
@@ -911,6 +1034,15 @@ const VAULT = { w: 5, h: 5, gap: 1 };
 // coming when the door finally goes. `w` is tiles of room width; below it the roll falls back to
 // the level's own `doorChance`/`ironDoors`.
 const BIG_ROOM = { w: 20, doorChance: 0.85 };
+
+// Where a room's way out is allowed to be. A corridor used to leave by whichever row of the far wall
+// the dice picked, which now and then put it a tile from the one you walked in through: you came in
+// at the top and left at the top, and the room — its men, its pillars, its wheel — was something you
+// ran past rather than something you had to cross. `far` is the share of the greatest distance from
+// the way IN that a candidate row has to make to be considered at all, so the exit is always down
+// the other end of the room and the fight is always between you and it. 1 would be the single
+// furthest row every time; a little under it keeps two seeds of a room two rooms.
+const DOORS = { far: 0.7 };
 
 const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.8, champion: 3.2, butcher: 5 };
 
@@ -1002,6 +1134,12 @@ const BOON_BASE = {
   // table, because a card that needs a verb you have not got is a wasted card.
   grabMen: false,
   screamCooldown: 3.0, screamRadius: 6.8,
+  // How far the bare call carries — the lure, which is the half of the voice every goat has out of
+  // the pen. It was a literal off `TUNING.goat.scream.call` at three use sites; it is a mod because a
+  // goose walked to the stairs lengthens it (js/beasts.js), and nothing may read TUNING at a use site.
+  screamCall: 13,
+  // How many more blows every shield in the compound takes. A tortoise brought out is one of these.
+  shieldUses: 0,
   // What BAAH is. `call` out of the pen: a noise that pulls the room to where you shouted. `stun`
   // is THE FULL THROAT and `breath` is DRAGON BREATH — the two ways of turning a voice into a
   // weapon, and you get one of them.
@@ -1139,149 +1277,189 @@ const BOONS = [
 // things at once. `mods.boomerang` / `mods.blink` is what Q reads; `Goat.itemCd` is its own
 // cooldown, never the grab's and never the roll's, because the thing it throws or the step it
 // takes is its own trick and not a reskin of a verb he already has.
+// Every `desc` here is the literal thing, in numbers: what the tier does, how far, how long, how
+// often. It used to be a line of prose a tier — "the next floor is yours", "everything on its way
+// out and on its way back" — which reads well and tells a player who has three seconds and a mouse
+// hovering over a stool precisely nothing. The 22 Sep 2026 note was "the literal meaning of what it
+// does, next to each artifact, none of this smeared bullshit". The tiers under one talisman read as
+// a diff: tier I states the whole thing, II and III state only what changed. Add a tier, write its
+// numbers; change a param, change the line with it — `Renderer.drawWare` and the HUD chip both
+// print this and nothing else, so a lie here is a lie in the only place it is read.
 const ARTIFACTS = [
   { id: 'firecharm', name: 'FIRE AMULET', color: '#f2a233',
     tiers: [
-      { desc: 'A burning man lights the next one he touches. That one lights nobody.', params: { pass: 1 } },
-      { desc: 'A burning man lights the next, and the next one lights one more.', params: { pass: 2 } },
-      { desc: 'Fire runs the room: every burning man lights whoever he touches.', params: { pass: 6 } }],
+      { desc: 'FIRE PASSES 1 MAN DEEP. A burning man lights the next one he touches; that one lights nobody.', params: { pass: 1 } },
+      { desc: 'FIRE PASSES 2 MEN DEEP.', params: { pass: 2 } },
+      { desc: 'FIRE PASSES 6 MEN DEEP: the room.', params: { pass: 6 } }],
     apply: (m, p) => { m.firePass = Math.max(m.firePass, p.pass); } },
   { id: 'clover', name: 'LUCKY CLOVER', color: '#7c8f52',
     tiers: [
-      { desc: 'The next floor hides more: better odds of a wall that gives, a rack, and grass behind it.', params: { secret: 1.6, racks: 1.5, grass: 1.5, heals: 0 } },
-      { desc: 'The next floor is kinder still: two walls that give, more racks, and one more bowl of milk.', params: { secret: 2.4, racks: 2, grass: 1.9, heals: 1 } },
-      { desc: 'The next floor is yours: a wall that gives in most rooms, arms everywhere, milk one room sooner.', params: { secret: 3, racks: 2.8, grass: 2.4, heals: 2 } }],
+      { desc: 'NEXT FLOOR ONLY: x1.6 SECRET WALLS, x1.5 RACKS, x1.5 GRASS BEHIND ONE.', params: { secret: 1.6, racks: 1.5, grass: 1.5, heals: 0 } },
+      { desc: 'NEXT FLOOR ONLY: x2.4 SECRETS, x2 RACKS, x1.9 GRASS, +1 MILK.', params: { secret: 2.4, racks: 2, grass: 1.9, heals: 1 } },
+      { desc: 'NEXT FLOOR ONLY: x3 SECRETS, x2.8 RACKS, x2.4 GRASS, +2 MILK.', params: { secret: 3, racks: 2.8, grass: 2.4, heals: 2 } }],
     apply: (m, p) => { m.luck = p; } },
   { id: 'boomerang', name: 'BOOMERANG', color: '#efe6d0',
     tiers: [
-      { desc: 'Press Q to throw it. The first man it meets loses his head for a moment, and it comes back to you.', params: { stun: 1.2, cooldown: 10, range: 6, pierce: 1 } },
-      { desc: 'Two men, further out, and Q is ready sooner.', params: { stun: 1.8, cooldown: 7, range: 7.5, pierce: 2 } },
-      { desc: 'Everything on its way out and everything on its way back, and Q is barely ever waiting.', params: { stun: 2.4, cooldown: 5, range: 9, pierce: 99 } }],
+      { desc: 'Q: 6 TILES OUT AND BACK. 1 MAN, DAZED 1.2s. 10s COOLDOWN.', params: { stun: 1.2, cooldown: 10, range: 6, pierce: 1 } },
+      { desc: 'Q: 7.5 TILES. 2 MEN, DAZED 1.8s. 7s COOLDOWN.', params: { stun: 1.8, cooldown: 7, range: 7.5, pierce: 2 } },
+      { desc: 'Q: 9 TILES. EVERY MAN BOTH WAYS, DAZED 2.4s. 5s COOLDOWN.', params: { stun: 2.4, cooldown: 5, range: 9, pierce: 99 } }],
     apply: (m, p) => { m.boomerang = p; } },
   { id: 'symbols', name: 'STRANGE SYMBOLS', color: '#7d5cff',
     tiers: [
-      { desc: 'Press Q: a step through nowhere, three tiles the way you are going, at once and with no tumble.', params: { dist: 3, cooldown: 6, stun: 0 } },
-      { desc: 'Four tiles and a half, and Q is ready sooner.', params: { dist: 4.5, cooldown: 4, stun: 0 } },
-      { desc: 'Six tiles, barely any wait, and whoever stood where you left loses his head.', params: { dist: 6, cooldown: 2.2, stun: 0.9 } }],
+      { desc: 'Q: BLINK 3 TILES. NO TUMBLE. 6s COOLDOWN.', params: { dist: 3, cooldown: 6, stun: 0 } },
+      { desc: 'Q: BLINK 4.5 TILES. 4s COOLDOWN.', params: { dist: 4.5, cooldown: 4, stun: 0 } },
+      { desc: 'Q: BLINK 6 TILES. 2.2s COOLDOWN. 0.9s DAZE WHERE YOU LEFT.', params: { dist: 6, cooldown: 2.2, stun: 0.9 } }],
     apply: (m, p) => { m.blink = p; } },
   // ---- the seventeen from ARTIFACTS_TZ.md. Their machinery is js/talismans.js; `tag` keeps the
   // mouse from putting two of the same sort on one shelf (`stockFor`). ----
   { id: 'mason', tag: 'geo', name: "MASON'S MARK", color: '#8d8a85',
     tiers: [
-      { desc: 'A man breaks on stone at four-fifths the speed he used to.', params: { splat: 0.8, props: false, bodies: false } },
-      { desc: 'Crates and racks are stone to him too.', params: { splat: 0.8, props: true, bodies: false } },
-      { desc: 'So is another man: hit one hard enough and both go down for good.', params: { splat: 0.75, props: true, bodies: true } }],
+      { desc: 'STONE KILLS A THROWN MAN AT 80% OF THE USUAL SPEED.', params: { splat: 0.8, props: false, bodies: false } },
+      { desc: '80%, AND A CRATE OR A RACK COUNTS AS STONE.', params: { splat: 0.8, props: true, bodies: false } },
+      { desc: '75%, AND ANOTHER MAN COUNTS AS STONE: BOTH DIE.', params: { splat: 0.75, props: true, bodies: true } }],
     apply: (m, p) => { m.mason = p; } },
   { id: 'domino', tag: 'geo', name: 'DOMINO BONE', color: '#efe6d0',
     tiers: [
-      { desc: 'A man you throw passes the throw on to the man he hits.', params: { links: 1, keep: 0.7 } },
-      { desc: 'And that one passes it on once more.', params: { links: 2, keep: 0.7 } },
-      { desc: 'The throw runs down a crowd until it runs out of speed.', params: { links: 4, keep: 0.7 } }],
+      { desc: 'A THROWN MAN PASSES THE THROW ON 1 TIME, AT 70% OF ITS SPEED.', params: { links: 1, keep: 0.7 } },
+      { desc: 'PASSES ON 2 TIMES, AT 70% EACH.', params: { links: 2, keep: 0.7 } },
+      { desc: 'PASSES ON 4 TIMES, AT 70% EACH.', params: { links: 4, keep: 0.7 } }],
     apply: (m, p) => { m.domino = p; } },
   { id: 'echo', tag: 'butt', name: 'ECHO HORN', color: '#efe6d0',
     tiers: [
-      { desc: 'A moment after the horns, a ghost of them lands in the same place, half as hard.', params: { delay: 0.4, power: 0.5, count: 1, spread: 0, reach: 0.6 } },
-      { desc: 'The ghost lands as hard as you did.', params: { delay: 0.4, power: 1, count: 1, spread: 0, reach: 0.6 } },
-      { desc: 'Two ghosts, the second a beat later and a little wider.', params: { delay: 0.4, power: 1, count: 2, spread: 0.26, reach: 0.6 } }],
+      { desc: '0.4s AFTER THE HORNS: 1 GHOST BLOW, 50% THROW, 60% REACH.', params: { delay: 0.4, power: 0.5, count: 1, spread: 0, reach: 0.6 } },
+      { desc: '0.4s AFTER THE HORNS: 1 GHOST BLOW, 100% THROW, 60% REACH.', params: { delay: 0.4, power: 1, count: 1, spread: 0, reach: 0.6 } },
+      { desc: '0.4s AFTER: 2 GHOST BLOWS, 100% THROW, THE SECOND 0.26 RAD OFF.', params: { delay: 0.4, power: 1, count: 2, spread: 0.26, reach: 0.6 } }],
     apply: (m, p) => { m.echo = p; } },
   { id: 'spade', tag: 'geo', name: "GRAVEDIGGER'S SPADE", color: '#8d8a85',
     tiers: [
-      { desc: 'The dead stay where they fall, and the living trip over them.', params: { life: 20, trip: 0.6, grab: false, lethal: false, r: 12, cap: 6 } },
-      { desc: 'You can pick a body up and throw it like a crate.', params: { life: 20, trip: 0.6, grab: true, lethal: false, r: 12, cap: 6 } },
-      { desc: 'A thrown body hits like a live one: it kills.', params: { life: 25, trip: 0.6, grab: true, lethal: true, r: 12, cap: 6 } }],
+      { desc: 'BODIES STAY 20s, UP TO 6. A MAN RUNNING INTO ONE IS FLOORED 0.6s.', params: { life: 20, trip: 0.6, grab: false, lethal: false, r: 12, cap: 6 } },
+      { desc: 'AND A BODY IS GRABBED AND THROWN LIKE A CRATE.', params: { life: 20, trip: 0.6, grab: true, lethal: false, r: 12, cap: 6 } },
+      { desc: 'BODIES STAY 25s, AND A THROWN ONE KILLS WHAT IT HITS.', params: { life: 25, trip: 0.6, grab: true, lethal: true, r: 12, cap: 6 } }],
     apply: (m, p) => { m.spade = p; } },
   { id: 'grease', tag: 'geo', name: "BUTCHER'S GREASE", color: '#c0392b',
     tiers: [
-      { desc: 'Blood off a wall kill greases the floor: a thrown man slides further on it.', params: { life: 15, r: 1, drag: 0.5, slip: 0, grip: 0.7 } },
-      { desc: 'And a man running across it goes down.', params: { life: 15, r: 1, drag: 0.5, slip: 0.3, grip: 0.7 } },
-      { desc: 'On grease a thrown man barely slows at all.', params: { life: 20, r: 1.3, drag: 0.15, slip: 0.3, grip: 0.7 } }],
+      { desc: 'A WALL KILL GREASES 1 TILE FOR 15s: HALF DRAG ON A THROWN MAN, 70% GRIP ON YOU.', params: { life: 15, r: 1, drag: 0.5, slip: 0, grip: 0.7 } },
+      { desc: 'AND 30% OF MEN RUNNING ACROSS IT GO DOWN.', params: { life: 15, r: 1, drag: 0.5, slip: 0.3, grip: 0.7 } },
+      { desc: '1.3 TILES FOR 20s, AND 15% DRAG ON A THROWN MAN.', params: { life: 20, r: 1.3, drag: 0.15, slip: 0.3, grip: 0.7 } }],
     apply: (m, p) => { m.grease = p; } },
   { id: 'awl', tag: 'geo', name: "CARPENTER'S AWL", color: '#a57949',
     tiers: [
-      { desc: 'A crate that breaks throws splinters: everyone beside it goes down.', params: { r: 1, fling: 0 } },
-      { desc: 'And is thrown clear of it.', params: { r: 1.2, fling: 8 } },
-      { desc: 'Hard enough to break on a wall.', params: { r: 1.5, fling: 12 } }],
+      { desc: 'A CRATE THAT BREAKS FLOORS EVERYONE WITHIN 1 TILE.', params: { r: 1, fling: 0 } },
+      { desc: '1.2 TILES, AND THEY ARE THROWN CLEAR OF IT.', params: { r: 1.2, fling: 8 } },
+      { desc: '1.5 TILES, AND A THROWN CRATE BREAKS ON A WALL.', params: { r: 1.5, fling: 12 } }],
     apply: (m, p) => { m.awl = p; } },
   { id: 'mask', tag: 'ai', name: 'HORNED MASK', color: '#efe6d0',
     tiers: [
-      { desc: 'Whoever watches a man die runs from it.', params: { r: 4, flee: 1, drop: false, blind: false, cd: 4 } },
-      { desc: 'And drops whatever he was about to do.', params: { r: 4, flee: 1.5, drop: true, blind: false, cd: 4 } },
-      { desc: 'And runs without looking where.', params: { r: 5, flee: 1.5, drop: true, blind: true, cd: 4 } }],
+      { desc: 'A MAN WHO SEES A DEATH WITHIN 4 TILES RUNS 1s. ONCE EVERY 4s EACH.', params: { r: 4, flee: 1, drop: false, blind: false, cd: 4 } },
+      { desc: '1.5s, AND HIS WINDUP IS CANCELLED.', params: { r: 4, flee: 1.5, drop: true, blind: false, cd: 4 } },
+      { desc: '5 TILES, 1.5s, AND HE RUNS WITHOUT SEEING WHAT IS IN THE WAY.', params: { r: 5, flee: 1.5, drop: true, blind: true, cd: 4 } }],
     apply: (m, p) => { m.mask = p; } },
   { id: 'effigy', tag: 'q', name: 'STRAW EFFIGY', color: '#c9a24e',
     tiers: [
-      { desc: 'Press Q to set down a straw goat. They go for it instead.', params: { life: 4, r: 6, cd: 12, shots: false, oops: false } },
-      { desc: 'Rifles waste a round on it, and a round goes where it goes.', params: { life: 4, r: 6, cd: 10, shots: true, oops: false } },
-      { desc: 'A man who clubs it clubs whoever is beside him too.', params: { life: 6, r: 7, cd: 8, shots: true, oops: true } }],
+      { desc: 'Q: A STRAW GOAT FOR 4s. MEN WITHIN 6 TILES GO FOR IT. 12s COOLDOWN.', params: { life: 4, r: 6, cd: 12, shots: false, oops: false } },
+      { desc: 'AND RIFLES SPEND A ROUND ON IT. 10s COOLDOWN.', params: { life: 4, r: 6, cd: 10, shots: true, oops: false } },
+      { desc: '7 TILES FOR 6s, 8s COOLDOWN, AND A MAN WHO CLUBS IT CLUBS HIS NEIGHBOUR.', params: { life: 6, r: 7, cd: 8, shots: true, oops: true } }],
     apply: (m, p) => { m.effigy = p; } },
   { id: 'spur', tag: 'run', name: 'BRASS SPUR', color: '#c29a44',
     tiers: [
-      { desc: 'Your run-up builds twice as fast.', params: { time: 0.5, keep: 0, throw: 1 } },
-      { desc: 'A blow takes half of it, not all.', params: { time: 0.5, keep: 0.5, throw: 1 } },
-      { desc: 'At full run the horns throw far harder.', params: { time: 0.5, keep: 0.5, throw: 1.6 } }],
+      { desc: 'THE RUN-UP BUILDS IN HALF THE TIME.', params: { time: 0.5, keep: 0, throw: 1 } },
+      { desc: 'AND A BLOW TAKES HALF THE RUN-UP INSTEAD OF ALL OF IT.', params: { time: 0.5, keep: 0.5, throw: 1 } },
+      { desc: 'AND AT FULL RUN THE HORNS THROW x1.6.', params: { time: 0.5, keep: 0.5, throw: 1.6 } }],
     apply: (m, p) => { m.spur = p; } },
   { id: 'moth', tag: 'run', name: 'MOTH WOOL', color: '#b8ad97',
     tiers: [
-      { desc: 'Your running is half as loud.', params: { step: 0.5, near: 0, still: 0, hide: 4 } },
-      { desc: 'Close to a man who has not seen you, it makes no sound at all.', params: { step: 0.5, near: 3, still: 0, hide: 4 } },
-      { desc: 'Stand still a moment and the ones who have not seen you cannot, past four tiles.', params: { step: 0.5, near: 3, still: 1.2, hide: 4 } }],
+      { desc: 'FOOTSTEPS CARRY HALF AS FAR.', params: { step: 0.5, near: 0, still: 0, hide: 4 } },
+      { desc: 'AND MAKE NO SOUND WITHIN 3 TILES OF A MAN WHO HAS NOT SEEN YOU.', params: { step: 0.5, near: 3, still: 0, hide: 4 } },
+      { desc: 'AND STAND STILL 1.2s: NOBODY UNAWARE CAN SEE YOU PAST 4 TILES.', params: { step: 0.5, near: 3, still: 1.2, hide: 4 } }],
     apply: (m, p) => { m.moth = p; } },
   { id: 'bell', tag: 'run', name: "BELLWETHER'S BELL", color: '#c29a44',
     tiers: [
-      { desc: 'A thread pulls toward the stairs and the vault.', params: { sil: 0, mimic: false } },
-      { desc: 'You see the shapes of men through stone, six tiles out.', params: { sil: 6, mimic: false } },
-      { desc: 'Nine tiles out, and what lies still pretending to be a box twitches.', params: { sil: 9, mimic: true } }],
+      { desc: 'A THREAD POINTS AT THE STAIRS AND THE VAULT.', params: { sil: 0, mimic: false } },
+      { desc: 'AND MEN SHOW THROUGH STONE WITHIN 6 TILES.', params: { sil: 6, mimic: false } },
+      { desc: '9 TILES, AND A WRAITH PRETENDING TO BE A BOX TWITCHES.', params: { sil: 9, mimic: true } }],
     apply: (m, p) => { m.bell = p; } },
   { id: 'sandal', tag: 'run', name: "PILGRIM'S SANDAL", color: '#8a6238',
     tiers: [
-      { desc: 'Get into a new room with them on your heels and you run faster for a moment.', params: { speed: 0.2, time: 2.5, reset: false, shake: false, range: 10 } },
-      { desc: 'And your roll and your voice are ready again.', params: { speed: 0.2, time: 2.5, reset: true, shake: false, range: 10 } },
-      { desc: 'And the ones behind you lose you in the doorway.', params: { speed: 0.25, time: 3, reset: true, shake: true, range: 10 } }],
+      { desc: 'INTO A NEW ROOM WITH A MAN WITHIN 10 TILES: +20% SPEED FOR 2.5s.', params: { speed: 0.2, time: 2.5, reset: false, shake: false, range: 10 } },
+      { desc: 'AND YOUR ROLL AND YOUR VOICE COME OFF COOLDOWN.', params: { speed: 0.2, time: 2.5, reset: true, shake: false, range: 10 } },
+      { desc: '+25% FOR 3s, AND THEY LOSE YOU IN THE DOORWAY.', params: { speed: 0.25, time: 3, reset: true, shake: true, range: 10 } }],
     apply: (m, p) => { m.sandal = p; } },
   { id: 'scapegoat', tag: 'def', name: 'SCAPEGOAT', color: '#e8e0cc',
     tiers: [
-      { desc: 'The first time you die, something else dies instead. Then it is gone.', params: { hearts: 1, invuln: 1.5, stun: 0, r: 5 } },
-      { desc: 'You get up with two hearts.', params: { hearts: 2, invuln: 1.5, stun: 0, r: 5 } },
-      { desc: 'And everything near you reels.', params: { hearts: 2, invuln: 1.5, stun: 1.5, r: 5 } }],
+      { desc: 'ONCE: DEATH IS CANCELLED. UP WITH 1 HEART AND 1.5s OF MERCY, AND IT IS SPENT.', params: { hearts: 1, invuln: 1.5, stun: 0, r: 5 } },
+      { desc: 'ONCE: DEATH IS CANCELLED. UP WITH 2 HEARTS AND 1.5s OF MERCY.', params: { hearts: 2, invuln: 1.5, stun: 0, r: 5 } },
+      { desc: 'AND EVERYTHING WITHIN 5 TILES IS DAZED 1.5s.', params: { hearts: 2, invuln: 1.5, stun: 1.5, r: 5 } }],
     apply: (m, p) => { m.scapegoat = p; } },
   { id: 'tallow', tag: 'def', name: 'TALLOW SKIN', color: '#e8dcb0',
     tiers: [
-      { desc: 'A crust of tallow takes one blow, and grows back over five new rooms.', params: { rooms: 5, soul: false } },
-      { desc: 'Four rooms, and a soul swallowed mends it at once.', params: { rooms: 4, soul: true } },
-      { desc: 'Three rooms.', params: { rooms: 3, soul: true } }],
+      { desc: 'A CRUST EATS 1 BLOW. IT GROWS BACK OVER 5 NEW ROOMS.', params: { rooms: 5, soul: false } },
+      { desc: '4 NEW ROOMS, OR AT ONCE ON A SOUL.', params: { rooms: 4, soul: true } },
+      { desc: '3 NEW ROOMS, OR AT ONCE ON A SOUL.', params: { rooms: 3, soul: true } }],
     apply: (m, p) => { m.tallow = p; } },
   { id: 'mirror', tag: 'butt', name: 'MIRROR SHARD', color: '#bfe6ff',
     tiers: [
-      { desc: 'Start the horns as a bullet or a bite arrives and it goes back where it came from.', params: { window: 0.18, club: false, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
-      { desc: 'Clubs and blades too: the man who swung it is thrown back.', params: { window: 0.2, club: true, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
-      { desc: 'Everything: the cleaver, the charge, the slam, the rune.', params: { window: 0.25, club: true, heavy: true, throw: 0.8, stun: 1, runeR: 6 } }],
+      { desc: '0.18s WINDOW ON THE HORNS: A BULLET OR A BITE GOES BACK. A MISS IS A FULL HIT.', params: { window: 0.18, club: false, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
+      { desc: '0.2s WINDOW, CLUBS AND BLADES TOO: THROWN BACK AND DAZED 0.8s.', params: { window: 0.2, club: true, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
+      { desc: '0.25s WINDOW, EVERYTHING: CLEAVER, CHARGE, SLAM, RUNE (6 TILES). DAZED 1s.', params: { window: 0.25, club: true, heavy: true, throw: 0.8, stun: 1, runeR: 6 } }],
     apply: (m, p) => { m.mirror = p; } },
   { id: 'cup', tag: 'count', name: 'BLOOD CUP', color: '#c0392b',
     tiers: [
-      { desc: 'Every man broken on the room fills the cup. Full, it is a heart.', params: { need: 12, carry: false, max: 2 } },
-      { desc: 'It fills sooner.', params: { need: 10, carry: false, max: 2 } },
-      { desc: 'Sooner still, and what it holds keeps for the next floor.', params: { need: 8, carry: true, max: 2 } }],
+      { desc: '12 MEN BROKEN ON THE ROOM = 1 HEART. UP TO 2 A FLOOR.', params: { need: 12, carry: false, max: 2 } },
+      { desc: '10 MEN = 1 HEART. UP TO 2 A FLOOR.', params: { need: 10, carry: false, max: 2 } },
+      { desc: '8 MEN = 1 HEART, AND THE COUNT KEEPS FOR THE NEXT FLOOR.', params: { need: 8, carry: true, max: 2 } }],
     apply: (m, p) => { m.cup = p; } },
   { id: 'tally', tag: 'butt', name: 'TALLY STICK', color: '#a57949',
     tiers: [
-      { desc: 'Every fourth blow that lands throws twice as hard.', params: { every: 4, stun: 0, r: 1, mul: 2 } },
-      { desc: 'Every third.', params: { every: 3, stun: 0, r: 1, mul: 2 } },
-      { desc: 'And stuns everyone beside the man it throws.', params: { every: 3, stun: 1, r: 1, mul: 2 } }],
+      { desc: 'EVERY 4TH BLOW THAT LANDS THROWS x2.', params: { every: 4, stun: 0, r: 1, mul: 2 } },
+      { desc: 'EVERY 3RD BLOW THROWS x2.', params: { every: 3, stun: 0, r: 1, mul: 2 } },
+      { desc: 'EVERY 3RD, AND DAZES EVERYONE WITHIN 1 TILE FOR 1s.', params: { every: 3, stun: 1, r: 1, mul: 2 } }],
     apply: (m, p) => { m.tally = p; } },
 ];
 
-// The mouse's third offer, beside her two talismans: no talisman at all, three bowls of milk set down
-// in front of her hole. Shaped like an `ARTIFACTS` entry so the shelf can draw and read it out the same
-// way; `Shop.buy` is what knows it is not one.
-const MILK_OFFER = { id: 'milk', name: 'THREE BOWLS OF MILK', color: '#efe6d0',
-  tiers: [{ desc: 'No talisman. Three bowls set down in front of her: stand in one to drink, a heart a bowl.' }] };
+// The mouse's third offer, beside her two talismans: no talisman at all, a pail of milk as tall as
+// the goat, set down in front of her hole. It used to be three bowls scattered round the room with
+// the words THREE BOWLS OF MILK written under them — an offer that had to be read. One enormous
+// bucket says the same thing without a caption, which is what the 22 Sep 2026 note asked for, and it
+// still holds `TUNING.shop.heals` hearts: a drink a heart, drunk where it stands.
+// Shaped like an `ARTIFACTS` entry so the shelf can draw and read it out the same way; `Shop.buy` is
+// what knows it is not one.
+const MILK_OFFER = { id: 'milk', name: 'A PAIL OF MILK', color: '#efe6d0',
+  how: 'Heals you. Stand still in it to drink a heart; what you leave stays for later.',
+  tiers: [{ desc: `+${TUNING.shop.heals} HEARTS IN ALL. TAKING IT MEANS NO TALISMAN.` }] };
+
+// What a talisman IS, in one plain sentence, read on the shelf above the tier's numbers. A tier's
+// `desc` is a diff against tier I and full of terms (window, throw, depth) that only mean something
+// once you know what the thing is for; this is the line that says so. One per `ARTIFACTS` id.
+const ARTIFACT_HOW = {
+  firecharm: 'A man on fire sets alight whoever he bumps into.',
+  clover: 'Luck for the next floor: more hidden walls, more arms, more to heal on.',
+  boomerang: 'Press Q to throw it. It stuns the men it passes and comes back to you.',
+  symbols: 'Press Q to vanish and reappear a few steps ahead, through men but not walls.',
+  mason: 'Men you throw die against walls at a lower speed.',
+  domino: 'A man you throw knocks the next man on, like skittles.',
+  echo: 'Every headbutt is followed by a second, invisible one.',
+  spade: 'Bodies stay on the floor, and men trip over them.',
+  grease: 'Killing a man on a wall leaves a slick: thrown men slide further on it.',
+  awl: 'A crate breaking knocks down everyone next to it.',
+  mask: 'Men who watch another die nearby panic and run.',
+  effigy: 'Press Q to set down a straw goat. Men go for it instead of you.',
+  spur: 'You reach full running speed sooner.',
+  moth: 'Your running is quieter: men hear you from less far.',
+  bell: 'A thread on the floor shows the way to the stairs and the vault.',
+  sandal: 'Running into a room with men in it gives you a burst of speed.',
+  scapegoat: 'Saves your life once. Then it is gone.',
+  tallow: 'Takes one hit for you, then grows back as you go.',
+  mirror: 'Headbutt right as a hit reaches you and it goes back at them. Mistime it and you are hit.',
+  cup: 'Kill enough men and you get a heart back.',
+  tally: 'Every few headbutts that land, one throws twice as hard.',
+};
 
 // What the death card says took the last heart: a kind of man (a clubman is split into the
 // ordinary one and the brute in `game.killedBy`), or the word a hazard passes to `Goat.damage`.
 const KILLED_BY = {
   hunter: 'RIFLEMAN', dog: 'HOUND', seer: 'MAGE', butcher: 'BUTCHER', wraith: 'WRAITH', ratogre: 'RAT OGRE',
   fire: 'FIRE', witchfire: 'WITCHFIRE', spike: 'THE GRATING', bomb: 'A BOMB', mill: 'THE WHEEL',
-  fall: 'THE DROP', rifle: 'A STRAY BULLET',
+  fall: 'THE DROP', rifle: 'A STRAY BULLET', spire: 'THE ROCK',
 };
 
 // Short things the cult shouts. A few words each: they have to read at a glance while you run.
@@ -1405,12 +1583,15 @@ const LEVELS = [
     canon: { id: 'fire', name: 'FIRE', idea: 'Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself.' },
     theme: 'The yard behind the sanctum, kept lit for the rendering to come.',
     decor: 'Braziers, straw, ovens, oil lamps, a hound pack, the Seer’s witchfire.',
-    // The first mouse of the run stands in the middle gate; the late gate's soul and the vault's are
-    // the level's two. The seer is sealed in all the same: both doors of his room go iron the moment
+    // The first mouse of the run stands in the middle gate and is one of the level's two upgrades;
+    // the late gate's soul is the other, and the vault holds grass (`startLevel`). The seer is sealed in all the same: both doors of his room go iron the moment
     // the goat is inside, and neither gives until he does.
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer', sealed: true }],
     gates: [5, 10],
-    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6, coops: 0.1,
+    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
+    // The first escort of the run is the loudest one: a floor about fire and being found is the
+    // right floor to be handed something that gives you away (js/beasts.js).
+    beasts: ['chicken', 'goose'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],
       introduce: [['dog', 0.12], ['seer', 0.5]],
@@ -1421,8 +1602,56 @@ const LEVELS = [
     hint: 'THE SEER BURNS THE GROUND YOU STAND ON', hintKey: 'roll',
   },
   {
+    // Out under the compound, the ground stops being built. Nothing in the cave was laid by a hand:
+    // no wall runs straight, no corner is square, and the room is whatever the rock left. What that
+    // does to the one idea the whole game rests on — the wall kills — is make it a curve: a man
+    // thrown along a bend in the rock slides round it instead of stopping dead on a corner, so the
+    // stone that kills here is the stone he hits square. And the floor is not bare: tall grass that
+    // you cannot see into or past, with a man lying in some of it, and boulders you break or go round.
+    // Nothing new walks in. The cave itself is the new thing, the way the drop was.
+    //
+    // It was the last floor of the run and it is the third one now. It was in the wrong place twice
+    // over: a level whose whole idea is the SHAPE of a room reads best before the run is deep in men,
+    // and the eighth floor of anything is where the least of what you built gets looked at. Third, it
+    // arrives right after the fire and right before the rifle — the last floor that is still about
+    // the ground rather than about what is standing on it. Everything that made it a late level went
+    // with the move: the rifles it had no business owning, the grating (which is THE ROAD's own new
+    // thing, one floor later), its third ring, and two rooms of length.
+    name: 'THE CAVE', sub: 'Level 3', rooms: 13,
+    canon: { id: 'hollow', name: 'THE HOLLOW', idea: 'No wall runs straight. The rock curves, so a man thrown along it slides; he dies on what he hits square — a boulder, the end of a bend. The grass hides whoever is in it, and that includes you.' },
+    theme: 'The caves the compound was dug out of, where nobody bothered to square the walls.',
+    decor: 'Round rock, tall grass that hides, boulders that break, hounds and a garrison in the dark.',
+    // `cave` rounds the rock (`TUNING.cave`) and erodes the corners of every ordinary room; `grass`
+    // and `rocks` are the per-room chances of a patch of tall grass and a scatter of boulders, on top
+    // of whatever the room's own template already put down. `rockClusters` is separate again: the
+    // odds of a whole formation of them grown together — three to six cells, one big thing to break
+    // rather than a handful of loose stones (`placeRockCluster`, `js/gen.js`).
+    cave: true, grass: 0.8, rocks: 0.7, rockClusters: 0.35, grassColor: '#3d5a2a', grassHi: '#6f8f45', grassDark: '#223618',
+    arenas: [{ at: 4, boss: 'butcher' }, { at: 10, boss: 'champion' }],
+    gates: [6, 11],
+    // No grating: the floor growing teeth is THE ROAD's own new thing and it is one floor later now.
+    // What this floor has instead is the rock's own (`TUNING.cave.spikes`), which is not a trap — it
+    // never arms and never rests, it is simply standing there — so the cave is not short of a hazard.
+    // No trap room either, for the same reason: every template in that pool `needs: 'spikes'`.
+    millAt: 8, heals: 3, souls: 2, racks: 0.18, spikes: 0, crates: 0.25, traps: 0, vaultAt: 3,
+    // A floor whose one idea is the shape of the room is where a thing you throw down to make a
+    // shape belongs.
+    beasts: ['tortoise'],
+    encounters: {
+      kinds: ['bearer', 'champion', 'dog', 'seer'],
+      introduce: [],
+      from: 3, to: 10, ease: 1.25,
+      // Hounds are what a cave is kept with, and the grass is where they wait.
+      weight: { bearer: 3, dog: 4, seer: 2, champion: 2 },
+      cap: { men: 6, dog: 3 },
+    },
+    floor: '#2b2821', floorAlt: '#302c24', wall: '#3b3731', wallTop: '#5f584b',
+    fog: '#040405', doorChance: 0.15, ironDoors: 0.4, clockDoors: 0.35, stack: 0.28,
+    hint: 'THE GRASS HIDES YOU. IT HIDES THEM TOO.', hintKey: null,
+  },
+  {
     // The rifle arrives early, alone, and then never stops being the reason you keep moving.
-    name: 'THE ROAD', sub: 'Level 3', rooms: 14,
+    name: 'THE ROAD', sub: 'Level 4', rooms: 14,
     // A rifle owns everything it can see. The rooms are colonnades, long naves and lines of stub
     // cover: the level is about the strip of floor a rifle cannot see and how you get to it.
     canon: { id: 'line', name: 'THE LINE', idea: 'Long sightlines and hard cover. A rifle owns whatever it can see, so the room is about what it cannot, and about crossing the rest.' },
@@ -1430,14 +1659,16 @@ const LEVELS = [
     decor: 'Colonnades, long naves, stub cover, a killbox, grating underfoot, the Great Hall.',
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
     gates: [7, 12],
-    millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2, coops: 0.08,
+    millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
+    // A shell to put between you and the line, or a bird that tells the line where you are.
+    beasts: ['tortoise', 'goose', 'chicken'],
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
     // heels crosses a beat later, when it is no longer floor.
     spikes: 0.3, crates: 0.35, vaultAt: 4,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [['hunter', 0.2]],
-      from: 3, to: 9, ease: 1.25,
+      from: 5, to: 13, ease: 1.2,
     },
     floor: '#4a3a2e', floorAlt: '#524032', wall: '#2a2430', wallTop: '#3e3346',
     // The first level with a door already swinging shut in it. Not before this one: levels one and
@@ -1463,13 +1694,16 @@ const LEVELS = [
     // still at the room index it always was — the cut room was the one at the tail nothing points
     // at — and the curve starts a beat lower and tops out a beat lower too, off a 14 Sep 2026
     // playtest note that this floor ran hard for what is level four.
-    name: 'THE THRESHING FLOOR', sub: 'Level 4', rooms: 13, corridorW: 5,
+    name: 'THE THRESHING FLOOR', sub: 'Level 5', rooms: 13, corridorW: 5,
     canon: { id: 'open', name: 'OPEN GROUND', idea: 'Almost no wall. What kills is what is standing in the room: posts, tables, braziers, a ring of hay, and which half of it you decide is yours.' },
     theme: 'An open threshing floor, swept for grain and now for bodies.',
     decor: 'Wide yards, posts, tables, braziers, rings of hay, almost no wall at all.',
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
     gates: [5, 11],
     millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7, traps: 1,
+    // The crow is met on the widest, fullest floor in the game, because the one thing it asks for is
+    // bodies and this is the floor that has them (js/beasts.js).
+    beasts: ['crow', 'goose'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -1480,7 +1714,7 @@ const LEVELS = [
       // a tenth of what it topped out at.
       // A step up from 5→12 when the two gate rooms went quiet: with two fewer rooms to fight in, the
       // old curve left this level barely harder than THE ROAD.
-      from: 6, to: 13, ease: 1.2,
+      from: 9, to: 19, ease: 1.2,
     },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
     fog: '#0b0b0a', doorChance: 0.12, ironDoors: 0.8, clockDoors: 0.55, stack: 0.3,
@@ -1491,7 +1725,7 @@ const LEVELS = [
   },
   {
     // Everything the compound has left, all at once, on the bridge they were driving you over.
-    name: 'THE BRIDGE', sub: 'Level 5', rooms: 15,
+    name: 'THE BRIDGE', sub: 'Level 6', rooms: 15,
     // The most men of any level so far, and the rooms are built so that they cannot all reach you
     // at once: a gate of pillars, a throat of tables, a pinch in the middle. Seven men are one man
     // in a doorway, and the doorway is what every room here has.
@@ -1501,12 +1735,13 @@ const LEVELS = [
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
     gates: [8, 13],
     millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 5,
+    beasts: ['tortoise', 'crow'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
-      from: 5, to: 15, ease: 1.15,
+      from: 4, to: 24, ease: 1.15,
       // The bridge is the only ground allowed a room this crowded, and a third rifle on it.
-      cap: { men: 9, hunter: 3, dog: 3 },
+      cap: { men: 9, hunter: 2, dog: 3 },
     },
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
     fog: '#06070a', doorChance: 0.3, ironDoors: 0.55, clockDoors: 0.6, stack: 0.35,
@@ -1519,7 +1754,7 @@ const LEVELS = [
     // what makes an edge something to work with rather than something to keep away from. Nothing new
     // walks in — the missing floor is the new thing, and it is the only thing here that kills for you
     // without being in the room.
-    name: 'THE RAFTERS', sub: 'Level 6', rooms: 15,
+    name: 'THE RAFTERS', sub: 'Level 7', rooms: 15,
     canon: { id: 'drop', name: 'THE DROP', idea: 'The floor is not all there. Holes in the boards and windows in the walls, the same fall under both, and nobody who goes over comes back.' },
     theme: 'The rafters over the great hall, where the roof itself has started to give.',
     decor: 'Holes in the boards, windows in the walls, narrow catwalks, the same fall under both.',
@@ -1528,11 +1763,14 @@ const LEVELS = [
     // Windows are this level's and nobody else's: a hole in a wall is a drop, and the drop is the
     // one new thing THE RAFTERS has. Every other level's walls are the inside of a compound.
     millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8, windows: 0.55, traps: 1,
+    // Not the tortoise: a floor whose one idea is the drop is not the floor to be walking a thing
+    // that has to be thrown across it.
+    beasts: ['crow', 'goose'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
-      from: 8, to: 23.5, ease: 1.15,
-      cap: { men: 9, hunter: 3, dog: 3 },
+      from: 9, to: 34, ease: 1.15,
+      cap: { men: 9, hunter: 2, dog: 3 },
     },
     floor: '#4b433a', floorAlt: '#544a40', wall: '#241d1a', wallTop: '#453629',
     fog: '#06060a', doorChance: 0.2, ironDoors: 0.7, clockDoors: 0.6, stack: 0.35,
@@ -1543,7 +1781,7 @@ const LEVELS = [
     // The living are a garrison here rather than the point: what the level is about is the thing that
     // is not in the room until it is behind you. Walls do not hold them, so there is nowhere to put
     // your back — the only cover on this ground is which way you are looking.
-    name: 'THE OSSUARY', sub: 'Level 7', rooms: 15,
+    name: 'THE OSSUARY', sub: 'Level 8', rooms: 15,
     // The dead come from behind, and a body cannot form inside stone. So the rooms are niches and
     // lanes — stone to put your back to — with open floor between them that you have to cross with
     // nothing at your back at all. The level is about where you are looking, and the rooms are
@@ -1554,12 +1792,13 @@ const LEVELS = [
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
     gates: [8, 12],
     millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
+    beasts: ['crow', 'tortoise'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
       // The first room of the level is the wraith on its own, because nothing else in the game
       // teaches you that you cannot hit it.
       introduce: [['wraith', 0]],
-      from: 11, to: 34, ease: 1.12,
+      from: 15, to: 52, ease: 1.12,
       // The dead outnumber the garrison here, and a room may hold three of them.
       weight: { wraith: 9, bearer: 4, dog: 2, champion: 1, hunter: 2, seer: 1 },
       cap: { wraith: 4, men: 9 },
@@ -1568,40 +1807,16 @@ const LEVELS = [
     fog: '#05060a', doorChance: 0.22, ironDoors: 0.65, clockDoors: 0.6, stack: 0.35,
     hint: 'IT CANNOT STOP ONCE IT STARTS. LET IT START.', hintKey: 'butt',
   },
-  {
-    // Out under the compound, the ground stops being built. Nothing in the cave was laid by a hand:
-    // no wall runs straight, no corner is square, and the room is whatever the rock left. What that
-    // does to the one idea the whole game rests on — the wall kills — is make it a curve: a man
-    // thrown along a bend in the rock slides round it instead of stopping dead on a corner, so the
-    // stone that kills here is the stone he hits square. And the floor is not bare: tall grass that
-    // you cannot see into or past, with a man lying in some of it, and boulders you break or go round.
-    // Nothing new walks in. The cave itself is the new thing, the way the drop was.
-    name: 'THE CAVE', sub: 'Level 8', rooms: 15,
-    canon: { id: 'hollow', name: 'THE HOLLOW', idea: 'No wall runs straight. The rock curves, so a man thrown along it slides; he dies on what he hits square — a boulder, the end of a bend. The grass hides whoever is in it, and that includes you.' },
-    theme: 'The caves the compound was dug out of, where nobody bothered to square the walls.',
-    decor: 'Round rock, tall grass that hides, boulders that break, hounds and a garrison in the dark.',
-    // `cave` rounds the rock (`TUNING.cave`) and erodes the corners of every ordinary room; `grass`
-    // and `rocks` are the per-room chances of a patch of tall grass and a scatter of boulders, on top
-    // of whatever the room's own template already put down. `rockClusters` is separate again: the
-    // odds of a whole formation of them grown together — three to six cells, one big thing to break
-    // rather than a handful of loose stones (`placeRockCluster`, `js/gen.js`).
-    cave: true, grass: 0.8, rocks: 0.7, rockClusters: 0.35, grassColor: '#3d5a2a', grassHi: '#6f8f45', grassDark: '#223618',
-    arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'champion' }, { at: 14, boss: 'seer' }],
-    gates: [8, 13],
-    millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.18, spikes: 0.2, crates: 0.25, traps: 1, vaultAt: 7,
-    encounters: {
-      kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
-      introduce: [],
-      from: 12, to: 44, ease: 1.1,
-      // Hounds are what a cave is kept with, and the grass is where they wait.
-      weight: { bearer: 3, dog: 4, hunter: 2, seer: 2, champion: 2, wraith: 4 },
-      cap: { men: 10, dog: 4, wraith: 3 },
-    },
-    floor: '#2b2821', floorAlt: '#302c24', wall: '#3b3731', wallTop: '#5f584b',
-    fog: '#040405', doorChance: 0.15, ironDoors: 0.6, clockDoors: 0.5, stack: 0.3,
-    hint: 'THE GRASS HIDES YOU. IT HIDES THEM TOO.', hintKey: null,
-  },
 ];
+
+// What an escort is worth, said out loud on the clear card — the one place a player ever learns
+// that nursing the thing across a floor paid for itself. The numbers are read off TUNING so a line
+// here cannot drift from what js/beasts.js actually does.
+const BEAST_CARD = {
+  tortoise: ['THE TORTOISE CAME WITH YOU', `EVERY SHIELD TAKES ${TUNING.prop.tortoise.saveShield} MORE BLOW, FOR THE REST OF THE RUN`],
+  goose: ['THE GOOSE CAME WITH YOU', `YOUR VOICE REACHES ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% FURTHER AND COMES BACK ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% SOONER`],
+  crow: ['THE CROW CAME WITH YOU', 'IT HAS FOUND SOMETHING. IT WILL BE ON THE NEXT STAIRS'],
+};
 
 // What the player has already been shown by the time each level starts: every kind an earlier level
 // put in front of him, bosses included. A kind is introduced on its own once a run, not once a level,
@@ -1632,24 +1847,26 @@ const LEVELS = [
 const TRIP_LEVELS = {};
 function tripLevel(i) {
   if (TRIP_LEVELS[i]) return TRIP_LEVELS[i];
-  const base = LEVELS[i], S = TUNING.shroom, E = base.encounters;
+  // The curve is the FIRST level's, whichever floor the mushrooms were eaten on: see `TUNING.shroom`.
+  const base = LEVELS[i], S = TUNING.shroom, E = LEVELS[0].encounters;
   const def = {
     name: 'THE TRIP', sub: base.sub, rooms: base.rooms, shroom: true, trip: i,
     theme: 'Something in the floor of the last level, and now the floor of this one is breathing.',
     decor: 'Mushrooms on every wall, caps as tall as a man to break, a glow off the ground; every key the other way round.',
     cave: true, grass: 0.6, rocks: 0.95,
     grassColor: '#2d6f6a', grassHi: '#86e8c8', grassDark: '#173a3c',
-    arenas: (base.arenas || []).map((a) => ({ at: a.at, boss: 'champion' })),
+    // Level one's own ring: one brute, one man at his back. Not the boss of the floor it replaced.
+    arenas: (base.arenas || []).map((a) => ({ at: a.at, boss: 'champion', escorts: 1 })),
     gates: base.gates, vaultAt: base.vaultAt, souls: base.souls, heals: (base.heals || 0) + 1,
-    lonePosts: 0, racks: 0.25, spikes: 0, crates: 0.3, traps: 0, coops: 0, windows: 0,
+    lonePosts: 0, racks: 0.25, spikes: 0, crates: 0.3, traps: 0, windows: 0,
     encounters: {
-      kinds: ['bearer'], introduce: [],
-      from: Math.round(E.from * S.threatMul), to: Math.round(E.to * S.threatMul), ease: 1,
+      kinds: S.kinds.slice(), introduce: [],
+      from: E.from * S.threatMul, to: E.to * S.threatMul, ease: E.ease,
       cap: { men: S.men },
     },
     floor: '#2a2138', floorAlt: '#302541', wall: '#3b2350', wallTop: '#6a4380',
     fog: '#07040b', doorChance: 0.15, ironDoors: 0.15, clockDoors: 0, stack: 0.2,
-    hint: 'EVERYTHING IS THE OTHER WAY ROUND.', hintKey: null,
+    hint: 'YOU ATE THE MUSHROOMS. EVERYTHING IS THE OTHER WAY ROUND.', hintKey: null,
   };
   // It has met whatever the level it replaced had met, and it knows the rooms that level knew — all
   // but the drop, which with the stick reversed is not a room but a coin toss.

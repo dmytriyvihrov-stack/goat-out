@@ -5,6 +5,240 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.55 — all pixel, and a lighter build
+
+- **Every floor and wall is pixel art.** The square-walled levels were still painted tile sets, one per
+  level. They are built from the pixel pass's swatches now (`PIXEL_ROOMS`: a floor per canon — slabs
+  on THE ALTAR, cobble in THE YARD and on THE ROAD, dirt and straw on THE THRESHING FLOOR, slate on
+  THE BRIDGE, boards in THE RAFTERS — plus a brick face and stone cap for every wall), each multiplied
+  by the level's own colours and baked once (`PaintedArt.swatch`). THE OSSUARY, which
+  never had a painted set, get the same treatment instead of flat colour.
+- **Every body is pixel art.** The ART switch is gone from the dev drawer; the painted character sheets
+  are gone with it. The intro's ewe is the pixel pet sheep, and a man going down a hole falls as his
+  own sprite rather than as the old primitive figure.
+- **Smaller blood in the wool**, and smaller still facing the camera (`goat.wounds.front`), where the
+  blots sat on his face and chest.
+- **The build is half the size.** `painted-assets-v1.js` and `-v2.js` are deleted and
+  `painted-assets.js` keeps only the painted props with no pixel sprite yet (altar, banner, gong,
+  lantern, weapons, grating, wisp, wheel, cage, doors): 15 MB of scripts down to 7.5 MB.
+- **The folder is cleaned.** The painted sources (`assets/painted*`), old concept art, the painted pack
+  tools, the zip duplicates of the pixel hand-offs, their legacy frames and `GOAT_OUT_brief.md` are
+  gone (all but the untracked zips live on in git history). `CLAUDE.md` is condensed and
+  `ART_HANDOFF.md` rewritten for the pixel pipeline.
+
+## 1.54 — the boss can be hurt again, a cave painted once, and a crow with opinions
+
+- **A heavy man dies to a wall again.** A brute carrying a soul was thrown 0.55 × 0.6 as far, which
+  put a headbutt at nine tiles a second against a wall that asks eleven: the level-one boss could not
+  be hurt at all. `Enemy.splatLimit` asks a heavy man the same share less of the wall.
+- **Men no longer freeze in doorways.** A man in a corridor counted as still being in the room he was
+  spawned in, so one who had chased you out of a room two back stopped dead beside you. A corridor is
+  now whichever room is nearest (`game.nearestRoomIdx`).
+- **Poison + stun is SHOCK, not a kill.** Both run long (`status.sting`: 4 s frozen, 6 s blind) and one
+  turning green-and-gold spiral over his head says so. A poisoned crate in the face no longer kills.
+- **THE TRIP runs.** The cave's ground — floor, litter, mushrooms, rock and what grows on it — is
+  baked into bitmaps eight tiles a side and blitted (`Renderer.drawCaveBaked`); only the glows are
+  live, and not at all pulled far back. A frame of the trip went from ~25–60 ms to ~6–10 ms here.
+- **On the trip half the blows never land**: "OH, I WAS ACTUALLY OVER HERE" and he is 2.6 tiles away
+  (`shroom.phase`). The banner is in English, and the floor says YOU ATE THE MUSHROOMS.
+- **The crow flies to any body it can see**, fast (`crow.flySpeed`), takes the one nearer the stairs,
+  and says what it thinks of it: FRESHLY COOKED, TASTY, STILL WARM, MINE.
+- **The first wraith that hides does it in an empty room** — relief, and then the box that was never a
+  box (`game.stageFirstHide`).
+- **The mouse's shelf**: only the nearest ware writes its note (two were drawn over each other), she
+  turns to watch the goat, and the floor says RIGHT BUTTON - CHOOSE THE ARTIFACT.
+- **Fewer rifles**: two a room at most on every level, and a lone post only goes where no rifle is.
+- **Things stand on their shadows.** `Renderer.shadow` hung every shadow half its height below the
+  feet, so every figure hovered; it sits under them now. The brazier and the lamp stand on the middle
+  of their tile (`PROP_FOOT`) rather than on its bottom and top edges.
+- **The dirty floor tile is rare** — about one in twenty-odd instead of one in four.
+
+## 1.53 — animals in coops, a veil instead of a plate, side walls with brick
+
+- **Every animal starts shut in a coop** — the tortoise, the goose and the crow as well as the hen —
+  and one animal a floor, in its first third (`levelDef.beasts` now lists `chicken` too; the per-room
+  `coops` scatter is gone). A coop **calls out** when the goat is within `beast.callR` tiles
+  (`Audio.sfxAnimal`: cluck, honk, caw, or a tortoise knocking on the slats) so nobody walks past one.
+- **Animals can die.** A blow from the cult that finds one, or a touch of fire, is a wound;
+  `beast.hp` (3) of them and it is dead. The tortoise's shell turns every blow — only fire hurts it.
+- **The tortoise is ammunition too**: thrown into a man it floors him for `crate.stun`, like a crate,
+  and lands where it hit.
+- **The goose does not wait.** It runs for the stairs on its own down a distance field grown out of
+  the exit (`Beast.onward`), through S-bent corridors, and stops only at something shut.
+- **Everyone brought out is shown** as a row of animal emoji under the hearts (`Renderer.drawSaved`).
+- **Mushrooms are grazed like milk**: stand still over the tuft for `shroom.eatTime` while a violet
+  ring fills. Walking across them no longer eats them.
+- **A room left behind goes dark** instead of being plated: the mouth is a veil of breathing black
+  with violet threads, and the whole room behind it is blacked out (`Renderer.drawVeil`).
+- **Side walls show a narrow band of brick** on the side that faces the room — the right of a left
+  wall, the left of a right wall, the right of a wall with floor on both sides.
+- **The cursor is a pair of horns.** **The dev drawer is two columns**, switches and SPAWN.
+
+## 1.52 — pixel furniture, a pixel cave, and the trip says so
+
+- **Rooms are furnished in the pixel style** (`output/pixel-environment-2026-09-23`, packed by
+  `tools/pack-pixel-env.ps1` into `js/pixel-env-assets.js`, drawn by `PIXEL_ENV` in `js/pixel-art.js`
+  on the same ART switch as the characters): crate, hay bale, table, brazier (its flame still drops
+  when the coals are spilled), and a lone `P` pillar is a column rather than a cube of wall. A few
+  tiles in a hundred carry flat litter — planks, stone crumbs, straw, a worn rug.
+- **The cave** has stone floor swatches multiplied by the level's own floor colour (untinted they were
+  the rock's grey and the rock stopped reading as rock), pixel boulders, the stone teeth as
+  stalagmites, crystals on the rock face, and pebbles, moss, puddles and cracks on the floor. The rock
+  decoration keeps its drawn spires, so nothing that is not the hazard wears the hazard's sprite.
+- **THE TRIP** is on mushroom soil, its giant mushrooms and floor caps are the painted violet ones
+  under the same glow, and it opens with ВОООООУУУУ, ТЫ ПОДДДД ГРИБАМИ.... across the screen
+  (`TUNING.shroom.banner`).
+- **Fire is slower on the trip**: `TUNING.shroom.burnDelay` adds a second to the goat's fire tick,
+  since scrambled hands take longer to get out of a flame.
+
+## 1.51 — walls with one face, a charge that ends past you, a lighter trip
+
+- **Walls read from the camera.** Only the far wall of a room and the front of a pillar show brick
+  now — a cap on top and a tall face under it. The near wall and the side walls are just the cap
+  with a dark rim. Every exposed side used to get a band of brick, so the near wall showed its back.
+- **The Butcher stops a couple of tiles past where you stood** and skids out, instead of running a
+  fixed fifteen tiles into whatever was behind you. The floor strip shows the real run. He still
+  stuns himself on the wall if your back is to it.
+- **The ambush room is two clubmen**, never the brute's introduction.
+- **The roll's floor text is `E - ROLL`**, one line.
+- **THE TRIP is cheaper to draw.** Each mushroom's glow is a cached sprite, stamped in one additive
+  pass rather than a new gradient and two blend-mode switches apiece, and the fur on the rock is
+  a little sparser.
+
+## 1.50 — Three escorts, the cave moved to the third floor, and the frame cost cut five-fold
+
+**Three animals that do not follow you.** `js/beasts.js`. One a floor from the second on, standing
+loose in an ordinary room inside the first third of it, and worth something for the whole rest of the
+run if it is still with you at the stairs. They are plain `Prop`s with their own kinds, so nothing
+else in the game had to be taught a new noun, and none of them adds a key. The rule they are built to
+is that none of them simply trots after you:
+
+- **TORTOISE** — slower than a walk. You advance it by picking it up and throwing it, one room at a
+  time. Where it lands it pulls its head in for four seconds and is a shell: solid, rounds stop on
+  it, and it cannot be picked up again until it comes out — so the throw is a decision about cover.
+  At the stairs: one more blow on every shield in the compound, for the run.
+- **GOOSE** — it leads rather than follows, walking at the mouth of the next room and waiting when
+  you fall behind, and it honks at every man it can see. The honk is a noise, so the room turns and
+  comes for YOU — and it breaks a blow a man has already committed to, at any range at all, which is
+  the only parry in the game with no range on it. Nothing in the cult ever goes for the goose. At the
+  stairs: the voice carries 20% further and comes back 20% sooner.
+- **CROW** — it follows corpses, not you: every room with nothing dead in it, it falls behind. The one
+  escort that argues with *run, don't fight*, and that is the price of what it carries out — at the
+  stairs it leaves a **tier III talisman** standing on the next floor's own stairs, free, taken the
+  way one of the mouse's is.
+
+Each gets a card on the clear, a once-a-run line the first time you meet one, a row on the tool's
+FIXTURES tab and a button in the dev drawer. `GEN_RULES.beasts` holds the placement.
+
+**THE CAVE is the third floor.** It was the eighth. A level whose whole idea is the *shape* of a room
+reads best before the run is deep in men, and the last floor of anything is where the least of what
+you built gets looked at; third, it lands right after the fire and right before the rifle — the last
+floor still about the ground rather than about what is standing on it. Everything that made it late
+went with it: the rifles, the grating (THE ROAD's own new thing, one floor later — the cave keeps the
+rock's own teeth), the trap room, the third ring and two rooms of length. Everything below shifted up
+and the whole ladder was re-cut, since both the per-level rule and the report hold each floor above
+the last: 23.6 / 42.8 / 65.7 / 98.2 / 100.6 / 144.1 / 155.6 / 164. Five levels now draw cave rooms
+into their mix, so `GEN_RULES.grass` widened from "the cave and nowhere else" to "the cave and any
+floor after it" — grass *before* the cave is still a failure.
+
+**A cave stops showing the whole hill.** It used to be painted everywhere the camera could reach, so
+a room read as a small dark hole in a great pale field of stone nobody can walk into. `caveNear` is
+rock within `TUNING.cave.band` (2) tiles of open floor and nothing else is marched — the same rule
+the square-walled floors have always kept, with a cave's thickness.
+
+**The stalactites are dripstone.** The spires along the top wall used to be an even row of
+needle-pointed triangles, which reads as a mouth. Curved sides, an arc for a tip, a lean, lengths
+squared so most are stubs, shading along the column instead of a band across the top of it, and
+fewer of them. The stone teeth on the bottom wall stay sharp: the contrast is the point.
+
+**A late floor costs a fifth of what it did.** Measured at ~18 ms a frame and now ~3.5 ms in the same
+hidden pane. Three things, each of them a rule for anything written here next:
+
+- `game.liveEnemies` — the men who actually ran this step. Everything that asks "is anybody standing
+  near here" reads that instead of the level's whole cast: a man frozen two rooms away is not walking
+  onto a grate and nothing is walking onto him. The grating alone was asking all eighty men of a late
+  floor, nineteen times, three times a step.
+- `collideEntities` builds its entity list once rather than once per piece of furniture, rejects on a
+  box before any distance maths, and compares squared distances. It was the top of the profile; it is
+  off it.
+- The cave's rock is marched once and kept (`Renderer.caveRockPath`, `World.caveDirty`) instead of
+  two thousand `lineTo`s a frame.
+- And a **thrown exception inside `draw` costs the whole rest of the frame**: `drawRunes` measured a
+  Seer's cast against the raw `castWind` while the timer was set to `castWind * mods.enemySlow`, so
+  the progress ran negative for the first tenth of every rune (four tenths on EASY) and
+  `arc(0, 0, R * p)` threw. The floor, the men, the goat and the HUD all stopped being drawn for those
+  frames. It has been throwing since EASY MODE landed.
+
+Also: a corridor no longer un-freezes the entire level. `roomAt` answers nothing between two rooms,
+and the two-rooms-away skip read that as "no idea, simulate everyone" — so every man on the floor woke
+up for as long as the goat stood in a doorway. It falls back to the last room he was in.
+
+---
+
+## 1.49 — The far door, the screen stops shaking, stone teeth, a pail of milk, and plain words
+
+From the 22 Sep 2026 playtest notes. Nine of them, and most are about being told less and shown more.
+
+**The way out is at the far end of the room.** `pickDoorY` / `pickDoorX` (`js/gen.js`) now take the
+row or column the goat walks IN by and throw away every candidate that does not make `DOORS.far`
+(0.7) of the greatest distance available from it before the dice are rolled. A corridor used to leave
+by whichever row the dice picked, which now and then put the exit a tile from the entrance: you came
+in at the top of the room and left at the top of it, and the room's men, its pillars and its wheel
+were something you ran past rather than something between you and the door. The clamping a wide
+corridor does (`fit`) is applied to the candidates BEFORE the choice rather than to the row after it,
+or THE THRESHING FLOOR's five-wide corridors threw the whole thing away on every room.
+`GEN_RULES.farexit` holds it against what the generator recorded it could have done (`room.exitFar`).
+
+**The screen only shakes when you lose a heart.** `game.shake(a, hurt)` — every one of the sixty call
+sites is still there at the amount it always had, but anything that is not the goat being hit is
+multiplied by `TUNING.juice.shakeOther`, which is 0. The directional kick keeps `kickOther` (0.35) of
+itself, because one push in one direction reads as weight rather than as an earthquake. A shake is
+information; when a kill, a crate, a door, a gong and a bomb all shake the picture, the one event the
+player has to feel without looking at the hearts is the one that gets lost in them.
+
+**The cave's spires rise.** They used to hang: triangles pointing down out of the rock's face onto the
+floor, which from directly above reads as teeth stuck to a wall. They are rooted on the floor at the
+foot of the cliff now and go up over the face and past the top of the rock. And the seams of gems are
+on the visible face only — the top of a rock is the part of the cave you are looking over rather than
+at, so a seam drawn there was paint nobody ever saw.
+
+**And one of them is real.** `kind === 'spire'`, `TUNING.cave.spikes`: stone teeth standing at the
+foot of a cave wall, in `chance` (0.3) of its ordinary rooms and one to a room. Not blocking — a thing
+you cannot walk into cannot hurt you — so it is floor to the flow field and a hazard to everything
+with eyes (`Enemy.hazardAt`). It never arms and never rests: a man dies on it the way he dies on the
+grating, the goat pays a heart (KILLED BY THE ROCK), and the cult steers round it, so it is a thing to
+throw men into, on the wall that was already the weapon. Old blood round its foot is what says so from
+across a room. Never in a trap room, a set piece, a teaching room, a doorway or on the trip, and never
+on grass. `GEN_RULES.spikes`.
+
+**THE TRIP is fought at the first level's strength, whatever floor it replaces.** `TUNING.shroom` now
+carries the curve (`threatMul` of LEVELS[0]'s), the cap (`men`: 1) and the roster (`kinds`: the
+clubman and the mage; nothing that shoots). With the stick reversed and the buttons swapped a rifle is
+not a harder clubman, it is a death you cannot answer with hands that no longer do what you tell them;
+a rune is a place on the floor, and walking out of a place is the one thing scrambled controls still
+let you do badly but do. Its rings are level one's — one brute, one man at his back. The controls are
+the difficulty of that level and nothing else is asked to be. The lens breathes and leans with it
+(`TUNING.shroom.cam`, in `Renderer.worldTransform`) — never a shake, which means one thing only.
+
+**The mouse's third offer is a bucket.** One pail of milk as tall as the goat, holding
+`TUNING.shop.heals` hearts and drunk a heart at a time where it stands (`prop.pail`), in place of three
+bowls scattered round the room under the words THREE BOWLS OF MILK. A thing that size full of that
+needs no caption, and a goat who takes it at full health now has something to come back to instead of
+two thirds of an offer poured away.
+
+**Every talisman says what it does, in numbers.** All sixty-three tiers in `ARTIFACTS` rewritten from
+prose to the literal thing: `Q: 6 TILES OUT AND BACK. 1 MAN, DAZED 1.2s. 10s COOLDOWN.` rather than
+"the first man it meets loses his head for a moment, and it comes back to you". The tiers under one
+talisman read as a diff — I states the whole thing, II and III state only what changed. `drawWare`'s
+note is wider for it and hangs high enough to clear the pail between the stools.
+
+**Fixed:** a boulder formation could grow a cell shoulder to shoulder with a loose boulder already
+scattered into the same room — the seed is kept three tiles off one but the formation grows up to six
+cells from that seed, and the tiles stay floor under a boulder so nothing else caught it.
+`placeRockCluster`'s perimeter check now counts them.
+
+---
+
 ## 1.48 — Boulder formations, thirty-two more rooms, deeper grass, the trip off the menu
 
 **THE CAVE breaks bigger.** `levelDef.rockClusters` is a second, separate per-room chance of a whole

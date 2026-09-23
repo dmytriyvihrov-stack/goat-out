@@ -429,6 +429,43 @@ class World {
     }
     this.caveF = f;
   }
+  // ---------- how much of the rock is worth drawing ----------
+  // A cave used to be painted everywhere the camera could reach: every tile of solid rock in the
+  // window went into the path and was filled, so a room read as a small dark hole in a great pale
+  // field of stone nobody can walk into — a huge piece of the level shown for nothing. That is not
+  // what the square-walled floors do: there a wall tile is drawn only if something open stands next
+  // to it and everything behind it is fog. `caveNear` is the same rule with a cave's thickness —
+  // rock within `TUNING.cave.band` tiles of open floor — and `drawCaveMid` marches nothing else.
+  buildCaveBand() {
+    const W = this.W, H = this.H, band = TUNING.cave.band, n = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!this.isSolid(x, y)) n[y * W + x] = 1;
+    // grown one ring a pass, so the cost is the world and not the world times the square of the band
+    for (let k = 0; k < band; k++) {
+      const p = n.slice();
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (p[y * W + x]) continue;
+        let near = false;
+        for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const ax = x + dx, ay = y + dy;
+          if (ax < 0 || ay < 0 || ax >= W || ay >= H) continue;
+          if (p[ay * W + ax]) { near = true; break; }
+        }
+        if (near) n[y * W + x] = 1;
+      }
+    }
+    this.caveNear = n;
+  }
+  caveNearAt(tx, ty) {
+    if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return 0;
+    return this.caveNear ? this.caveNear[ty * this.W + tx] : 1;
+  }
+  // The rock's outline is the same outline every frame and only a wall coming down changes it, so
+  // the renderer keeps what it marched and `caveEpoch` is how it knows when to throw that away.
+  // Everything that turns a tile of this world from stone to floor or back says so here.
+  caveDirty() {
+    this.caveEpoch = (this.caveEpoch || 0) + 1;
+    if (this.round) this.buildCaveBand();
+  }
   // The field at a tile's centre. `extra` is a set of tile indices to count as stone (the renderer's
   // unbroken secret walls, which are props rather than tiles).
   caveV(tx, ty, extra) {

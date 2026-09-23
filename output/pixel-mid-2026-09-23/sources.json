@@ -1,0 +1,149 @@
+[
+  {
+    "id": "clubman",
+    "file": "source/clubman-facing.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-1e53350f-ebc1-41af-9fd7-e523f684016d.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "mage",
+    "file": "source/mage-facing.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-539ec82b-5b58-4623-a974-d0d269cbbefb.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "hound",
+    "file": "source/hound-facing.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-3bd7aee0-230b-4e40-bcdf-c78ef15991ad.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "hunter",
+    "file": "source/hunter-facing.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-0fd23fb1-3186-49f8-9b63-1179aa0e5d83.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "brute",
+    "file": "source/brute-facing.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-58ffcf8e-07c4-4d22-a730-38e636e7a021.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "butcher",
+    "file": "source/butcher-facing.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-943ddbfd-bf3a-4869-9198-a7a5aadeb92f.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "wraith",
+    "file": "source/wraith-facing.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-b4f04cbf-711b-4a9a-9af5-156d97dabf47.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "chicken",
+    "file": "source/chicken-facing.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-9270cf72-c058-4a6a-933b-e2ffb6bcc6e9.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "ratogre",
+    "file": "source/ratogre-facing.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-f006fb40-58a9-4289-a407-2a3f36448b3f.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "goat-idle",
+    "file": "source/goat-idle-r3.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-5b286bba-3ffc-45f4-b357-fdaedfa2e2bd.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "goat-walk-a",
+    "file": "source/goat-walk-a-r3.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-b4c321c5-fc26-419c-ac4d-da8e2cebbcf4.png",
+    "columns": 4,
+    "rows": 4,
+    "directions": [
+      "S",
+      "SW",
+      "W",
+      "NW"
+    ]
+  },
+  {
+    "id": "goat-walk-b",
+    "file": "source/goat-walk-b-r3.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-7f0a56a8-2a54-4d4d-beb3-42392cfbcd58.png",
+    "columns": 4,
+    "rows": 4,
+    "directions": [
+      "N",
+      "NE",
+      "E",
+      "SE"
+    ]
+  },
+  {
+    "id": "sheep-pet",
+    "file": "source/sheep-pet.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-6231f71e-e898-4fd3-805e-340597e8a341.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "mouse",
+    "file": "source/ally-mouse.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-8612c978-40b1-4bbc-9c80-39c0badefc4f.png",
+    "columns": 1,
+    "rows": 1,
+    "directions": [
+      "SE"
+    ],
+    "role": "ally"
+  },
+  {
+    "id": "goose",
+    "file": "source/ally-goose.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-0cff1d94-b4b2-490a-9e4e-eb5193a3144e.png",
+    "columns": 1,
+    "rows": 1,
+    "directions": [
+      "SE"
+    ],
+    "role": "ally"
+  },
+  {
+    "id": "raven",
+    "file": "source/ally-raven.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-15dbad6d-54d8-4fcd-a80c-f1dd215bef8b.png",
+    "columns": 1,
+    "rows": 1,
+    "directions": [
+      "SE"
+    ],
+    "role": "ally"
+  },
+  {
+    "id": "turtle",
+    "file": "source/ally-turtle.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-0a106910-badd-434b-9ba2-1e76887f0b30.png",
+    "columns": 1,
+    "rows": 1,
+    "directions": [
+      "SE"
+    ],
+    "role": "ally"
+  }
+]

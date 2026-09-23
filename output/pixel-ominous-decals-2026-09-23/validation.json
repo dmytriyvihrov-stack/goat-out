@@ -1,0 +1,10 @@
+{
+  "assets": 4,
+  "transparentCorners": true,
+  "allBoundsInsideSource": true,
+  "sourcePngsUnmodified": true,
+  "notes": [
+    "Display sizes are suggested scene sizes; PNGs preserve original generated resolution.",
+    "Pixel grid and semi-transparent edges may require final art cleanup."
+  ]
+}

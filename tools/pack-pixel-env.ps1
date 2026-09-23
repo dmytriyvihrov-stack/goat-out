@@ -1,0 +1,89 @@
+# Packs the environment hand-off (output/pixel-environment-2026-09-23: floors, room props, cave props)
+# into one atlas and writes js/pixel-env-assets.js. Every item is cut off its measured `rect` (never
+# the equal grid cell), cleaned of the generator's fringe — the half-transparent rim and the red and
+# yellow halo image_gen leaves round cut-outs — trimmed to what is left and scaled so its longer side
+# is $Prop px (a floor swatch: an inset square of $Floor px, since its own edge is where the fringe is).
+#   powershell -ExecutionPolicy Bypass -File tools/pack-pixel-env.ps1
+param(
+  [string]$Pack = "output/pixel-environment-2026-09-23",
+  [int]$Prop = 96,
+  [int]$Floor = 64,
+  [int]$Width = 1024
+)
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Drawing
+Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
+using System; using System.Drawing; using System.Drawing.Imaging; using System.Runtime.InteropServices;
+public static class EnvClean {
+  // Hard alpha, fringe colours dropped; returns the bounding box of what survived.
+  public static Rectangle Clean(Bitmap b, bool opaque) {
+    var d = b.LockBits(new Rectangle(0, 0, b.Width, b.Height), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+    var px = new byte[d.Stride * b.Height]; Marshal.Copy(d.Scan0, px, 0, px.Length);
+    int x0 = b.Width, y0 = b.Height, x1 = -1, y1 = -1;
+    for (int y = 0; y < b.Height; y++) for (int x = 0; x < b.Width; x++) {
+      int i = y * d.Stride + x * 4; int B = px[i], G = px[i + 1], R = px[i + 2], A = px[i + 3];
+      bool red = R > 160 && G < 80 && B < 80, yellow = R > 200 && G > 200 && B < 60;
+      if (opaque) A = 255;
+      else if (A < 170 || red || yellow) A = 0; else A = 255;
+      px[i + 3] = (byte)A;
+      if (A > 0) { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+    }
+    Marshal.Copy(px, 0, d.Scan0, px.Length); b.UnlockBits(d);
+    return x1 < 0 ? new Rectangle(0, 0, 1, 1) : new Rectangle(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+  }
+}
+'@
+$root = Split-Path -Parent $PSScriptRoot
+$packDir = Join-Path $root $Pack
+$m = Get-Content -Raw -Encoding UTF8 (Join-Path $packDir 'manifest.json') | ConvertFrom-Json
+
+$sources = @{}; $cuts = @()
+foreach ($it in $m.items) {
+  if (-not $sources.ContainsKey($it.file)) { $sources[$it.file] = [System.Drawing.Image]::FromFile((Join-Path $packDir $it.file)) }
+  $isFloor = $it.kind -eq 'floor'
+  $r = $it.rect
+  # a swatch loses its rim: that is where the fringe and the uneven edge of the generated square are
+  if ($isFloor) { $inset = 10; $s = [math]::Min($r[2], $r[3]) - 2 * $inset; $r = @(($r[0] + $inset), ($r[1] + $inset), $s, $s) }
+  $crop = New-Object System.Drawing.Bitmap $r[2], $r[3], ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $g = [System.Drawing.Graphics]::FromImage($crop)
+  $g.DrawImage($sources[$it.file], (New-Object System.Drawing.Rectangle 0, 0, $r[2], $r[3]), [int]$r[0], [int]$r[1], [int]$r[2], [int]$r[3], [System.Drawing.GraphicsUnit]::Pixel)
+  $g.Dispose()
+  $bb = [EnvClean]::Clean($crop, $isFloor)
+  if ($isFloor) { $w = $Floor; $h = $Floor }
+  else { $k = $Prop / [double][math]::Max($bb.Width, $bb.Height); $w = [int][math]::Ceiling($bb.Width * $k); $h = [int][math]::Ceiling($bb.Height * $k) }
+  $cuts += ,@($it.id, $crop, $bb, $w, $h)
+}
+
+$x = 0; $y = 0; $row = 0; $pad = 2; $placed = @()
+foreach ($c in $cuts) {
+  if ($x + $c[3] + $pad -gt $Width) { $x = 0; $y += $row + $pad; $row = 0 }
+  $placed += ,@($c, $x, $y); $x += $c[3] + $pad; if ($c[4] -gt $row) { $row = $c[4] }
+}
+$H = $y + $row
+$atlas = New-Object System.Drawing.Bitmap $Width, $H, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+$g = [System.Drawing.Graphics]::FromImage($atlas)
+$g.Clear([System.Drawing.Color]::Transparent)
+$g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+$g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+$g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
+$attr = New-Object System.Drawing.Imaging.ImageAttributes
+$attr.SetWrapMode([System.Drawing.Drawing2D.WrapMode]::TileFlipXY)
+$items = @()
+foreach ($pl in $placed) {
+  $c = $pl[0]; $bb = $c[2]
+  $g.DrawImage($c[1], (New-Object System.Drawing.Rectangle $pl[1], $pl[2], $c[3], $c[4]), $bb.X, $bb.Y, $bb.Width, $bb.Height, [System.Drawing.GraphicsUnit]::Pixel, $attr)
+  $items += "`"$($c[0])`":[$($pl[1]),$($pl[2]),$($c[3]),$($c[4])]"
+  $c[1].Dispose()
+}
+$g.Dispose(); foreach ($s in $sources.Values) { $s.Dispose() }
+# bicubic leaves a soft half-alpha rim on every edge; snap it hard again so the sprites keep a pixel outline
+[void][EnvClean]::Clean($atlas, $false)
+$ms = New-Object System.IO.MemoryStream
+$atlas.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+$atlas.Save((Join-Path $packDir 'atlas-packed.png'), [System.Drawing.Imaging.ImageFormat]::Png); $atlas.Dispose()
+$b64 = [Convert]::ToBase64String($ms.ToArray())
+$js = "// Generated by tools/pack-pixel-env.ps1 from $Pack. Do not edit by hand.`n" +
+  "// Each item is [x, y, w, h] in atlas px: props and decals trimmed with their longer side $Prop px, floors $Floor px square.`n" +
+  "const PIXEL_ENV_ASSETS = {`"items`":{" + ($items -join ',') + "},`"src`":`"data:image/png;base64,$b64`"};`n"
+[IO.File]::WriteAllText((Join-Path $root 'js/pixel-env-assets.js'), $js)
+Write-Output ("atlas {0}x{1}, {2} items, {3} KB" -f $Width, $H, $placed.Count, [int]($js.Length / 1024))

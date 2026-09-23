@@ -1,7 +1,7 @@
 # GOAT OUT — concept
 
-The design as it actually stands, v0.6. Where this disagrees with `GOAT_OUT_brief.md`, this file wins;
-the brief is the original stage-one document and several of its calls have since been overridden.
+The design as it actually stands. The original stage-one brief it replaced is in git history
+(`GOAT_OUT_brief.md`); several of its calls have since been overridden.
 
 `GENRE_RESEARCH.md` is the review research behind these pillars: what critics and players actually
 praised and blamed in Hotline Miami, Ape Out and format-mates that stayed niche, boiled down into a

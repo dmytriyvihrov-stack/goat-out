@@ -1,0 +1,86 @@
+[
+  {
+    "id": "goat-idle",
+    "file": "source/goat-idle.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-038da30d-8e2b-4635-816c-e8624f53330d.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "goat-walk-a",
+    "file": "source/goat-walk-a.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-d3a6b4cc-ac50-476e-8429-c81094afbdff.png",
+    "columns": 4,
+    "rows": 4,
+    "directions": [
+      "S",
+      "SW",
+      "W",
+      "NW"
+    ]
+  },
+  {
+    "id": "goat-walk-b",
+    "file": "source/goat-walk-b.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-09d5cbd1-fdf3-4d4f-8893-c66f70160049.png",
+    "columns": 4,
+    "rows": 4,
+    "directions": [
+      "N",
+      "NE",
+      "E",
+      "SE"
+    ]
+  },
+  {
+    "id": "sheep-pet",
+    "file": "source/sheep-pet.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-6231f71e-e898-4fd3-805e-340597e8a341.png",
+    "columns": 4,
+    "rows": 2
+  },
+  {
+    "id": "mouse",
+    "file": "source/ally-mouse.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-8612c978-40b1-4bbc-9c80-39c0badefc4f.png",
+    "columns": 1,
+    "rows": 1,
+    "directions": [
+      "SE"
+    ],
+    "role": "ally"
+  },
+  {
+    "id": "goose",
+    "file": "source/ally-goose.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-0cff1d94-b4b2-490a-9e4e-eb5193a3144e.png",
+    "columns": 1,
+    "rows": 1,
+    "directions": [
+      "SE"
+    ],
+    "role": "ally"
+  },
+  {
+    "id": "raven",
+    "file": "source/ally-raven.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-15dbad6d-54d8-4fcd-a80c-f1dd215bef8b.png",
+    "columns": 1,
+    "rows": 1,
+    "directions": [
+      "SE"
+    ],
+    "role": "ally"
+  },
+  {
+    "id": "turtle",
+    "file": "source/ally-turtle.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-0a106910-badd-434b-9ba2-1e76887f0b30.png",
+    "columns": 1,
+    "rows": 1,
+    "directions": [
+      "SE"
+    ],
+    "role": "ally"
+  }
+]

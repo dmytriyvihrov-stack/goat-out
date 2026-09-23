@@ -1,0 +1,58 @@
+[
+  {
+    "id": "goat-idle",
+    "prompt": "Use case: stylized-concept. Design the CORRECT player character for GOAT OUT: a YOUNG MALE GOAT (juvenile billy goat), unmistakably a goat, NOT A SHEEP or lamb. Eight full-body sprite facings on one transparent sheet, 4 columns x 2 rows: top row S front facing down, SW down-left, W left, NW away upper-left; bottom N rear facing up, NE away upper-right, E right, SE front down-right. Fixed steep top-down orthographic game camera, 60 degrees above ground, see back and top of head, short foreshortened legs in this camera. Small agile juvenile goat with SLIM elongated torso, SHORT smooth ivory/tan coat, warm brown dorsal patch, narrow angular grey-brown muzzle, two distinct POINTED ears extending sideways/upwards, two small backward-sweeping horn spikes, thin straight dark hoofed legs and a SHORT UPRIGHT TAIL. Tiny chin tuft at most, youthful not adult mountain goat. Absolutely NO wool, fluffy fleece, round sheep barrel, drooping lamb ears or curled ram horns. A vivid purple zigzag LIGHTNING MARK across ONE visible eye; eye stays black. Mark visible in face views, no mark on back. NO neck accessory. Style reference supplies chunky pixel economy only, do NOT copy its sheep silhouette. Style halfway between 24 and32 pixel game sprites, bold angular square clusters, 8-12 flat colors, 2 shades per material, hard edges no gradients no fur texture no blur. Consistent same goat all eight views. Uniform scale, one sprite centered in each equal square cell with generous blank margin, no text no labels no shadows, actual transparent alpha background. Friendly determined young protagonist.",
+    "refs": [
+      "C:/Users/USER/Google Диск/Clod code/Goat out/output/pixel-mid-2026-09-23/references/style-3.png"
+    ]
+  },
+  {
+    "id": "goat-walk-a",
+    "prompt": "Animate the EXACT YOUNG GOAT in reference; preserve short smooth tan ivory coat brown dorsal patch, slim body pointed lateral ears swept-back horns upright short tail narrow muzzle dark hooves purple zigzag eye mark. No wool or sheep. Create exactly 16 sprites, FOUR rows FOUR columns, transparent sprite sheet. Rows DIRECTIONS fixed across columns: row1 SOUTH head at bottom/front; row2 SOUTHWEST head lower-left rump upper-right; row3 WEST head left tail right from ABOVE; row4 NORTHWEST head upper-left rump lower-right, REAR three-quarter view no eye mark visible. Columns four chronological walking phases in place: A diagonal hoof pair forward, passing, opposite B diagonal pair forward, opposite passing. Clearly alternate front and rear legs, no static duplicates. Body/head/ears stay stable, fixed scale and pivot, maximum one logical pixel bob. True quadruped gait. Same 60-degree elevated orthographic top-down game camera as reference. Same coarse block pixels approximately 28-32 logical pixels height; flat limited palette no gradients or fine texture. All four frames in a given row have the SAME head orientation. Lightning consistently attached to visible eye in first3 rows, no marking visible in rear NW row. Generous blank margins within uniform square cells, same scale all frames, no shadows no labels no background or checkerboard. PNG transparent alpha.",
+    "refs": [
+      "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-038da30d-8e2b-4635-816c-e8624f53330d.png"
+    ]
+  },
+  {
+    "id": "goat-walk-b",
+    "prompt": "Companion animation sheet of EXACT young GOAT in reference, NOT sheep. Exactly FOUR rows FOUR columns =16 full-body sprites. Row1 NORTH straight away/up, rear body and upright tail, head at top. Row2 NORTHEAST away upper-right head upper-right rump lower-left. Row3 EAST rightward from above head on RIGHT rump LEFT. Row4 SOUTHEAST toward lower-right, head at LOWER RIGHT rump UPPER LEFT, front face visible exactly like BOTTOM-RIGHT goat in reference. Do not repeat rear NE on SE row. 4 chronological in-place walk phases across columns: diagonal hoof pair A forward, passing under body, opposite B pair forward, opposite passing. Alternate hooves clearly, same body dimensions fixed head direction and small 1px bob, all4 phases same facing per row. Slim juvenile goat short smooth ivory and tan coat brown dorsal saddle, narrow muzzle pointed sideways ears small backswept horn spikes short upright tail charcoal hooves. Purple zigzag lightning through visible eye consistently on E and SE rows, hidden N and NE rear rows. Same highly elevated top-down 60deg camera see backs/heads, foreshortened legs, no perspective changes. Coarse pixel art ~28-32 logical pixels body height flat limited palette no gradients fine texture or blur. No wool, no collar. Actual transparent alpha, no shadows background checkerboard text or borders. Equal square cells well centered generous blank margins.",
+    "refs": [
+      "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-038da30d-8e2b-4635-816c-e8624f53330d.png"
+    ]
+  },
+  {
+    "id": "sheep-pet",
+    "prompt": "Precise edit of supplied 8-view sheep sprite sheet. This is now an optional friendly PET SHEEP skin, NOT the main player goat. Keep all eight sheep silhouettes poses directions layout palette and coarse pixel style exactly unchanged, 4 columns 2 rows. REMOVE ALL purple/violet/blue lightning markings from every face and eye in every cell. Restore natural plain grey muzzle underneath, preserve normal black eyes, no bruises, no colored eye markings of any kind. Keep cream fleece little brown horns floppy grey ears dark legs natural wool tail. No collar/bell/accessories. Preserve all8 directions S SW W NW N NE E SE. Genuine transparent alpha, no scenery shadow text checkerboard. Only requested change is remove eye markings completely; don't redesign sheep.",
+    "refs": [
+      "C:/Users/USER/Google Диск/Clod code/Goat out/output/pixel-mid-2026-09-23/source/sheep-idle.png"
+    ]
+  },
+  {
+    "id": "mouse",
+    "prompt": "Use case: stylized-concept. ONE small full-body friendly ALLY sprite icon for GOAT OUT, SINGLE elevated top-down three-quarter view facing lower-right (SE), fixed orthographic camera about 60 degrees above ground, visible back and head top, foreshortened legs. Coarse pixel art in same style as referenced young goat: 22-28 logical pixels tall, chunky square blocks, 8-12 flat colors, 2 shades per material, no fine texture or blur or gradients. Strong recognizable silhouette readable at 32px. Center sprite occupying only middle 45% of small square canvas with generous blank margin. Genuine transparent alpha, no background, no shadow, no text labels frames or scenery. Exactly ONE character, no turnaround. Reference goat is ONLY style/camera guide; do NOT include goat or its purple mark. No lightning or blue bruising on this ally. SUBJECT: A TINY MOUSE MERCHANT, friendly and clever, rounded large pink ears, grey-brown fur pale muzzle, black dot eyes, long thin pink tail, modest brown hoodless waistcoat and small brown shoulder satchel with one brass coin clasp. Small upright mouse with tiny paws held together, animal mouse anatomy not human. No weapon, no stall, no giant backpack. Warm subtle trading personality.",
+    "refs": [
+      "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-038da30d-8e2b-4635-816c-e8624f53330d.png"
+    ]
+  },
+  {
+    "id": "goose",
+    "prompt": "Use case: stylized-concept. ONE small full-body friendly ALLY sprite icon for GOAT OUT, SINGLE elevated top-down three-quarter view facing lower-right (SE), fixed orthographic camera about 60 degrees above ground, visible back and head top, foreshortened legs. Coarse pixel art in same style as referenced young goat: 22-28 logical pixels tall, chunky square blocks, 8-12 flat colors, 2 shades per material, no fine texture or blur or gradients. Strong recognizable silhouette readable at 32px. Center sprite occupying only middle 45% of small square canvas with generous blank margin. Genuine transparent alpha, no background, no shadow, no text labels frames or scenery. Exactly ONE character, no turnaround. Reference goat is ONLY style/camera guide; do NOT include goat or its purple mark. No lightning or blue bruising on this ally. SUBJECT: Friendly white GOOSE companion, long curved upright neck, orange beak and webbed feet, cream-white body with a couple grey shadow clusters, small black eye, folded wings and short pointed tail. Natural goose, no clothes, no weapons. Clearly long-necked goose NOT duck, calm alert stance.",
+    "refs": [
+      "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-038da30d-8e2b-4635-816c-e8624f53330d.png"
+    ]
+  },
+  {
+    "id": "raven",
+    "prompt": "Use case: stylized-concept. ONE small full-body friendly ALLY sprite icon for GOAT OUT, SINGLE elevated top-down three-quarter view facing lower-right (SE), fixed orthographic camera about 60 degrees above ground, visible back and head top, foreshortened legs. Coarse pixel art in same style as referenced young goat: 22-28 logical pixels tall, chunky square blocks, 8-12 flat colors, 2 shades per material, no fine texture or blur or gradients. Strong recognizable silhouette readable at 32px. Center sprite occupying only middle 45% of small square canvas with generous blank margin. Genuine transparent alpha, no background, no shadow, no text labels frames or scenery. Exactly ONE character, no turnaround. Reference goat is ONLY style/camera guide; do NOT include goat or its purple mark. No lightning or blue bruising on this ally. SUBJECT: A friendly companion RAVEN, glossy charcoal-black body, slate blue-grey highlights (feather color only), large strong dark pointed beak, black legs, folded wings and wedge-shaped tail, one tiny light eye highlight. Natural corvid, no clothes no weapons, clever alert pose, robust raven silhouette NOT small songbird.",
+    "refs": [
+      "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-038da30d-8e2b-4635-816c-e8624f53330d.png"
+    ]
+  },
+  {
+    "id": "turtle",
+    "prompt": "Use case: stylized-concept. ONE small full-body friendly ALLY sprite icon for GOAT OUT, SINGLE elevated top-down three-quarter view facing lower-right (SE), fixed orthographic camera about 60 degrees above ground, visible back and head top, foreshortened legs. Coarse pixel art in same style as referenced young goat: 22-28 logical pixels tall, chunky square blocks, 8-12 flat colors, 2 shades per material, no fine texture or blur or gradients. Strong recognizable silhouette readable at 32px. Center sprite occupying only middle 45% of small square canvas with generous blank margin. Genuine transparent alpha, no background, no shadow, no text labels frames or scenery. Exactly ONE character, no turnaround. Reference goat is ONLY style/camera guide; do NOT include goat or its purple mark. No lightning or blue bruising on this ally. SUBJECT: A small friendly TURTLE companion, rounded olive green domed shell with 4-5 large dark polygon plate divisions, light moss-green head with black dot eye, four short stout legs and tiny pointed tail, shell seen prominently from above. Natural turtle no clothes no accessories no weapons.",
+    "refs": [
+      "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-038da30d-8e2b-4635-816c-e8624f53330d.png"
+    ]
+  }
+]

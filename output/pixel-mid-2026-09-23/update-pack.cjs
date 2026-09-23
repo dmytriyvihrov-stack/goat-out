@@ -1,0 +1,23 @@
+const fs=require('fs'),path=require('path');const root=__dirname;
+const read=n=>JSON.parse(fs.readFileSync(path.join(root,n),'utf8').replace(/^\uFEFF/,''));
+const write=(n,v)=>fs.writeFileSync(path.join(root,n),JSON.stringify(v,null,2));
+const old=['sheep-idle','sheep-walk-a','sheep-walk-b','sheep-walk-diagonals'];
+const sources=read('sources.json'),updates=read('update-sources.json');
+fs.mkdirSync(path.join(root,'legacy-sheep'),{recursive:true});
+for(const s of sources.filter(s=>old.includes(s.id))){const from=path.resolve(root,s.file),to=path.resolve(root,'legacy-sheep',path.basename(s.file));if(!from.startsWith(root+path.sep)||!to.startsWith(root+path.sep))throw Error('Path outside pack');if(fs.existsSync(from)&&!fs.existsSync(to))fs.renameSync(from,to);}
+const map=new Map(sources.filter(s=>!old.includes(s.id)).map(s=>[s.id,s]));updates.forEach(s=>map.set(s.id,s));write('sources.json',[...map.values()]);
+const oldPrompts=read('prompts.json');if(!fs.existsSync(path.join(root,'legacy-sheep','prompts-old.json')))write('legacy-sheep/prompts-old.json',oldPrompts);
+const pmap=new Map(oldPrompts.filter(p=>!p.id.startsWith('sheep')).map(p=>[p.id,p]));read('update-prompts.json').forEach(p=>pmap.set(p.id,p));write('prompts.json',[...pmap.values()]);
+let html=fs.readFileSync(path.join(root,'preview.html'),'utf8');
+html=html.replace('10 персонажей × 8 направлений. Овечка: стояние и четырёхкадровая ходьба во всех направлениях.','Главный герой — молодой козлик: 8 ракурсов и ходьба. Ещё 9 персонажей в 8 ракурсах, 4 союзника по одной иконке и овечка — будущий скин питомца без метки.');
+html=html.replace('Овечка · ходьба','Молодой козлик · ходьба').replace('габариту овечки','габариту козлика');
+html=html.replace('<h2>Все персонажи · 8 ракурсов</h2><div id="roster"></div>','<h2>Союзники · маленькие иконки</h2><div id="allies" class="grid"></div><h2>Главный герой и прежний состав · 8 ракурсов</h2><div id="roster"></div><h2>Будущий скин питомца</h2><div id="pets"></div>');
+html=html.replace('NW и SE используют исправленный лист sheep-walk-diagonals.png. Два отклонённых ряда из первых листов не включены в manifest.json.','Главный герой использует goat-walk-a.png и goat-walk-b.png. Овечка без метки сохранена отдельно как будущий скин питомца; прежние материалы овечки исключены из активного пакета.');
+html=html.replaceAll('const sheep=pack.units[0]','const sheep=pack.units.find(u=>u.id===\'goat\')').replaceAll("u.id==='sheep'","u.id==='goat'");
+html=html.replace("a.href=u.id==='goat'?'source/sheep-idle.png':u.idle[0].file","a.href=u.idle[0].file");
+html=html.replace("document.querySelector('#roster').append(details)","document.querySelector(u.role==='pet-skin'?'#pets':'#roster').append(details)");
+html=html.replace("for(const u of pack.units){const details", "for(const u of pack.units){if(u.role==='ally'){const c=cell(document.querySelector('#allies'),u.label+' · SE');views.push({canvas:c,u,f:u.idle[0]});continue;}const details");
+html=html.replace("{sheep:1,clubman", "{goat:1,'sheep-pet':1,mouse:0.6,goose:0.85,raven:0.65,turtle:0.55,clubman");
+html=html.replace('Загружено: 10 персонажей · 80 ракурсов · 32 кадра ходьбы','Загружено: козлик + 9 персонажей · 32 кадра ходьбы · 4 союзника · скин овечки');
+fs.writeFileSync(path.join(root,'preview.html'),html);
+console.log('Updated active sources, prompts, preview; legacy sheep isolated.');

@@ -72,7 +72,9 @@ function planEncounters(levelDef, rooms, rng) {
   if (!ordinary.length) return out;
   // A trap room still buys its men off the curve, but it never introduces a kind: meeting a hound
   // and a floor full of teeth in the same room means meeting neither of them.
-  const plain = ordinary.filter((r) => !r.isTrap);
+  // Nor does the ambush room: it teaches the throw, and the throw wants two ordinary men down the
+  // far end of it, not the first brute of the run standing there alone.
+  const plain = ordinary.filter((r) => !r.isTrap && !r.isAmbush);
 
   // Hand each new kind a room of its own: start where the level asks for it and walk forward to the
   // first ordinary room nobody has claimed, then backward if the level ran out of room forward.
@@ -127,6 +129,9 @@ function planEncounters(levelDef, rooms, rng) {
       easeOff = true; step++;
       continue;
     }
+    // The ambush room is two clubmen down the far end, whatever the curve would have bought: a
+    // blade thrown down a corridor at one man is a kill, at two it is a choice of which one.
+    if (room.isAmbush) { out.rooms.set(room.index, { men: ['bearer', 'bearer'] }); step++; continue; }
     // The Mill's room is a set piece. Half a crowd, and on the level that shows you the wheel for
     // the first time the two men who teach it and nobody else.
     if (room.isMill) {
@@ -348,7 +353,7 @@ function tryGenerate(levelDef, seed, opts) {
           // room is a timer with nothing to beat.
           const timed = iron && rng.chance(levelDef.clockDoors || 0);
           props.push({ x: link.door.x, y: link.door.y, kind: 'door', vertical: link.door.vertical,
-            iron, timed, clockRoom: timed ? i - 1 : -1 });
+            iron, timed, clockRoom: timed ? i - 1 : -1, fromRoom: i - 1 });
         }
       }
     }
@@ -361,7 +366,7 @@ function tryGenerate(levelDef, seed, opts) {
 
   // Exit: a 2-tall flight of stairs cut into the right wall of the last room, marked EXIT.
   const last = rooms[rooms.length - 1];
-  const doorY = pickDoorY(last, 'right', rng);
+  const doorY = pickDoorY(last, 'right', rng, enterRow(last));
   if (doorY < 0) return null;
   for (let dy = 0; dy < 2; dy++) {
     for (let dx = 0; dx < 3; dx++) tiles[(doorY + dy) * W + (last.x + last.w - 1 + dx)] = T.EXIT;
@@ -373,7 +378,7 @@ function tryGenerate(levelDef, seed, opts) {
   // whatever is left of the room walks toward the sound. It used to end on the stairs simply being
   // there, which meant the last room of a level was the one room in it you could always outrun.
   props.push({ x: (last.x + last.w - 1.5) * TILE, y: (doorY + 1) * TILE,
-    kind: 'door', vertical: true, iron: true, stair: true });
+    kind: 'door', vertical: true, iron: true, stair: true, fromRoom: last.index !== undefined ? last.index : rooms.length - 1 });
 
   // Every level after the first is entered the same way: up a flight cut into the left wall of the
   // first room. The goat starts at the top of it, a step inside.
@@ -597,20 +602,6 @@ function tryGenerate(levelDef, seed, opts) {
         placed++;
       }
     }
-    // A coop. Two tiles of slatted crate with a bird in it, standing where the compound keeps its
-    // stores — `levelDef.coops` is the per-room chance and only the early floors set it. Wants a
-    // clear pair of tiles and a wide berth from everything else, because a thing you have to walk
-    // up to and put your head under twice is a thing you have to be able to stand in front of.
-    if (room.index > 0 && !room.isAmbush && !room.isRest && room.index !== lessonIndex && rng.chance(levelDef.coops || 0)) {
-      for (let a = 0; a < 40; a++) {
-        const tx = rng.int(room.x + 1, room.x + room.w - 3), ty = rng.int(room.y + 1, room.y + room.h - 2);
-        if (tiles[ty * W + tx] !== T.FLOOR || tiles[ty * W + tx + 1] !== T.FLOOR) continue;
-        const px = (tx + 1) * TILE, py = (ty + 0.5) * TILE;
-        if (props.some((p) => len(p.x - px, p.y - py) < 2.2 * TILE)) continue;
-        props.push({ x: px, y: py, kind: 'coop' });
-        break;
-      }
-    }
     // The cave's floor: a patch or three of tall grass, and a scatter of boulders. Neither in the pen
     // or a rest room, and a boulder never within a few tiles of the way in, so walking into a room is
     // never walking into a rock.
@@ -637,6 +628,38 @@ function tryGenerate(levelDef, seed, opts) {
     // a formation from a boulder; `cluster` only tells `GEN_RULES.rocks` the cells belong together.
     if (room.index > 0 && !room.isRest && levelDef.rockClusters && rng.chance(levelDef.rockClusters)) {
       if (placeRockCluster(tiles, W, room, grass, props, rng, clusterId)) clusterId++;
+    }
+    // THE SPIKES. Most of the rock a cave grows is paint (`Renderer.drawCaveDecor`); this is the rare
+    // spire that is real, and everything about where it may stand follows from what it is for. It has
+    // to be AT A WALL — a spike in the middle of a room is a thing you walk round, a spike at the
+    // foot of a wall is a thing you throw men into, and the wall was already the weapon. It has to be
+    // clear of the way in, of the furniture and of the grass, and there is at most `perRoom` of it,
+    // because a hazard in every room is furniture. Never in a room that is teaching a kind and never
+    // in a trap room, for the same reason a grate is not scattered into one: one idea to a floor.
+    // Never on the trip: the controls are that level's whole difficulty and a thing that kills on
+    // contact is not something to meet with hands that do the opposite of what you tell them.
+    if (levelDef.cave && !levelDef.shroom && room.index > 0 && !room.isRest && !room.arena && !room.isTrap && !room.isAmbush
+        && !room.isMill && !room.isHall && !room.isGallery && !room.isKillbox
+        && !(cell && cell.intro) && rng.chance(TUNING.cave.spikes.chance)) {
+      const solidAt = (tx, ty) => tiles[ty * W + tx] === T.WALL;
+      for (let a = 0, placed = 0; a < 40 && placed < TUNING.cave.spikes.perRoom; a++) {
+        const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
+        const i = ty * W + tx;
+        if (tiles[i] !== T.FLOOR || grass.has(i)) continue;
+        // At the foot of a wall, with floor enough round it that it is standing in the room rather
+        // than tucked into a corner nobody goes into.
+        let stone = 0, floor = 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (solidAt(tx + dx, ty + dy)) stone++;
+          else if (tiles[(ty + dy) * W + tx + dx] === T.FLOOR) floor++;
+        }
+        if (stone < 1 || floor < 2) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (room.enter && len(room.enter.x - px, room.enter.y - py) < 3 * TILE) continue;
+        if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
+        props.push({ x: px, y: py, kind: 'spire' });
+        placed++;
+      }
     }
     if (!cell) return;                                                       // the pen stays empty
     // The wheel's own lesson, on the level that first shows it: the two men stand past the arm, on
@@ -749,8 +772,9 @@ function tryGenerate(levelDef, seed, opts) {
     let placed = 0;
     for (const room of eligible) {
       if (placed >= levelDef.lonePosts) break;
-      // The room's own plan already counts: a post on top of two rifles is a wall, not a line to cross.
-      if (spawns.filter((s) => s.roomIndex === room.index && s.kind === 'hunter').length >= plan.caps.hunter) continue;
+      // A post goes only where no rifle stands already: one line to cross, not a second one on top of
+      // the first — four rifles in one room was a wall nobody could read (playtest, 23 Sep 2026).
+      if (spawns.some((s) => s.roomIndex === room.index && s.kind === 'hunter')) continue;
       for (let k = 0; k < 40; k++) {
         const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
         if (tiles[ty * W + tx] !== T.FLOOR) continue;
@@ -785,6 +809,37 @@ function tryGenerate(levelDef, seed, opts) {
         props.push({ x: px, y: py, kind: 'bomb' });
         break;
       }
+    }
+  }
+
+  // THE ESCORT. One animal a floor, standing loose in an ordinary room inside the first
+  // `TUNING.beast.third` of the level — first third because the whole of one is the walk from where you
+  // find it to the stairs, and a tortoise found in the last room is a tortoise that was never a
+  // decision. `levelDef.beasts` is which of them this floor may hold and the dice pick one of those.
+  // Never in the pen, a rest room, a teaching room or a set piece: an escort is a thing to meet on
+  // an ordinary floor, and every one of those rooms is already saying something else.
+  // What each of them then does is js/beasts.js; `GEN_RULES.beasts` holds this placement.
+  if (levelDef.beasts && levelDef.beasts.length) {
+    const BT = TUNING.beast, cut = Math.max(2, Math.ceil(rooms.length * BT.third));
+    const kind = levelDef.beasts[rng.int(0, levelDef.beasts.length - 1)];
+    const eligible = rng.shuffle(rooms.filter((r) => r.index > 0 && r.index <= cut && !r.arena && !r.isMill
+      && !r.isHall && !r.isGallery && !r.isKillbox && !r.isAmbush && !r.isRest && !r.isTrap
+      && r.index !== lessonIndex && r.index !== levelDef.vaultAt));
+    // It starts shut in a coop, whichever animal it is — two tiles of slatted crate you have to put
+    // your head through (and which calls out as he comes near, `Prop.updateCoop`), so meeting one is
+    // a decision to stop rather than something that happened to be standing in the room.
+    let done = false;
+    for (const room of eligible) {
+      for (let a = 0; a < 60 && !done; a++) {
+        const tx = rng.int(room.x + 1, room.x + room.w - 3), ty = rng.int(room.y + 1, room.y + room.h - 2);
+        if (tiles[ty * W + tx] !== T.FLOOR || tiles[ty * W + tx + 1] !== T.FLOOR) continue;
+        if (grass.has(ty * W + tx) || grass.has(ty * W + tx + 1)) continue;
+        const px = (tx + 1) * TILE, py = (ty + 0.5) * TILE;
+        if (props.some((p) => len(p.x - px, p.y - py) < Math.max(BT.clear, 2.2) * TILE)) continue;
+        if (room.enter && len(room.enter.x - px, room.enter.y - py) < 2.5 * TILE) continue;
+        props.push({ x: px, y: py, kind: 'coop', holds: kind, beastRoom: room.index }); done = true;
+      }
+      if (done) break;
     }
   }
 
@@ -1109,15 +1164,60 @@ function buildCage(cx, cy, halfW, halfH, deco) {
   return out;
 }
 
-function pickDoorY(room, side, rng) {
+// The way out is at the far end of the room from the way in. `awayFrom` is the world row of the
+// doorway the goat walks in by (or the middle of the room, when there is no earlier room to have
+// come from): every candidate row that does not make `DOORS.far` of the greatest distance from it is
+// thrown away before the dice are rolled. A corridor used to leave by whichever row the dice picked,
+// which now and then put the exit a tile from the entrance — you came in at the top of the room and
+// left at the top of it, and the room's men, its pillars and its wheel were something you ran past
+// rather than something between you and the door. Far is the whole of the motivation to cross a room.
+function pickDoorY(room, side, rng, awayFrom, fit) {
   const col = side === 'right' ? room.w - 2 : 1;
-  const candidates = [];
+  const raw = [];
   for (let ty = 1; ty < room.h - 2; ty++) {
     if (room.tpl.rows[ty][col] !== '#' && room.tpl.rows[ty][col] !== 'P' &&
-        room.tpl.rows[ty + 1][col] !== '#' && room.tpl.rows[ty + 1][col] !== 'P') candidates.push(room.y + ty);
+        room.tpl.rows[ty + 1][col] !== '#' && room.tpl.rows[ty + 1][col] !== 'P') raw.push(room.y + ty);
   }
+  // A band wider than two tiles is pulled back inside the height of the wall it goes through, so the
+  // clamping is done to the candidates BEFORE the choice rather than to the row after it: fitting
+  // afterwards threw away the whole point of choosing far, which is what THE THRESHING FLOOR's
+  // five-wide corridors did on every room of the level.
+  const candidates = [];
+  for (const v of raw) { const m = fit ? fit(v) : v; if (candidates.indexOf(m) < 0) candidates.push(m); }
   if (!candidates.length) return -1;
-  return rng.pick(candidates);
+  return noteFar(room, rng.pick(farthest(candidates, awayFrom)), candidates, awayFrom);
+}
+
+// What the room could have done and what it did, so `GEN_RULES.farexit` can hold the generator to its
+// own promise rather than to a guess about room shapes: `max` is the furthest any candidate row (or
+// column) was from the way in, `d` what the chosen one actually made. A room with nothing to be far
+// from records nothing and the rule has nothing to say about it.
+function noteFar(room, pick, candidates, awayFrom) {
+  if (awayFrom !== undefined && awayFrom !== null && pick >= 0) {
+    room.exitFar = { away: awayFrom, d: Math.abs(pick - awayFrom),
+      max: Math.max(...candidates.map((v) => Math.abs(v - awayFrom))) };
+  }
+  return pick;
+}
+
+// The tail of `list` that lies `DOORS.far` or more of the way out to whatever is furthest from `from`.
+// With nothing to be far from, or with only one candidate, it is the list itself.
+function farthest(list, from) {
+  if (from === undefined || from === null || list.length < 2) return list;
+  const d = list.map((v) => Math.abs(v - from));
+  const max = Math.max(...d);
+  if (max <= 0) return list;
+  const keep = list.filter((v, k) => d[k] >= max * DOORS.far);
+  return keep.length ? keep : list;
+}
+
+// The row the goat walks into a room by, as a world tile: the corridor that brought him, or the
+// middle of the room for the first one, which has no room before it.
+function enterRow(room) {
+  return room.enter ? Math.floor(room.enter.y / TILE) : room.y + Math.floor(room.h / 2);
+}
+function enterCol(room) {
+  return room.enter ? Math.floor(room.enter.x / TILE) : room.x + Math.floor(room.w / 2);
 }
 
 // Carves an S-shaped corridor — two tiles wide by default, wider where a level asks for it — and
@@ -1131,8 +1231,8 @@ function carveCorridor(tiles, W, a, b, rng, width) {
   // shaft out of a room hung below that one also runs — the two corridors met, and the room had a
   // second way out that no gate, seal or clamp over its real one could shut.
   const fit = (r, y) => (y < 0 || wide <= 2 ? y : Math.max(r.y + 1, Math.min(y, r.y + r.h - 1 - wide)));
-  const yA = fit(a, pickDoorY(a, 'right', rng));
-  const yB = fit(b, pickDoorY(b, 'left', rng));
+  const yA = pickDoorY(a, 'right', rng, enterRow(a), (y) => fit(a, y));
+  const yB = pickDoorY(b, 'left', rng, null, (y) => fit(b, y));
   if (yA < 0 || yB < 0) return null;
   const xA = a.x + a.w - 1, xB = b.x;
   // The turn is kept clear of `b`'s own wall where there is rock enough for it: a five-wide turn
@@ -1153,6 +1253,9 @@ function carveCorridor(tiles, W, a, b, rng, width) {
   // Where the corridor opens into b, a step inside its wall: a room that wants to stand something in
   // the way of whoever walks in needs to know which way that is.
   const enter = { x: (xB + 1) * TILE, y: (yB + wide / 2) * TILE };
+  // A door is two tiles of slab. Hung in a five-wide band it covered two fifths of it and stood in
+  // open floor with a way round either side — a door in the middle of nowhere. Wide corridors get none.
+  if (wide > 2) return { enter, door: null };
   if (y1 - y0 >= 4) return { enter, door: { x: (midX + 1) * TILE, y: (Math.floor((y0 + y1) / 2) + 0.5) * TILE, vertical: false } };
   if (midX - xA >= 3) return { enter, door: { x: (Math.floor((xA + midX) / 2) + 0.5) * TILE, y: (yA + 1) * TILE, vertical: true } };
   return { enter, door: null };
@@ -1196,7 +1299,9 @@ function stackSpot(a, w, h, H, rng, width) {
 // The column a shaft may leave or enter a room by: `wide` tiles of the room's top (or bottom) row of
 // floor that are clear of the template's own walls and pillars, inside the span both rooms share
 // where it can be, so the jog between the two is short.
-function pickDoorX(room, side, wide, lo, hi, rng) {
+// `awayFrom` is the column the goat walked in by, held to the same promise the horizontal one keeps:
+// the shaft out of a room is at the far end of it from the door you came through.
+function pickDoorX(room, side, wide, lo, hi, rng, awayFrom, entry) {
   const row = side === 'top' ? 1 : room.h - 2;
   const all = [], inside = [];
   for (let tx = 1; tx + wide <= room.w - 1; tx++) {
@@ -1206,8 +1311,11 @@ function pickDoorX(room, side, wide, lo, hi, rng) {
     all.push(room.x + tx);
     if (room.x + tx >= lo && room.x + tx + wide - 1 <= hi) inside.push(room.x + tx);
   }
-  const from = inside.length ? inside : all;
-  return from.length ? rng.pick(from) : -1;
+  const list = inside.length ? inside : all;
+  const from = farthest(list, awayFrom);
+  if (!from.length) return -1;
+  // A way in is not a way out: `exitFar` is the room's promise about where it is left by.
+  return entry ? rng.pick(from) : noteFar(room, rng.pick(from), list, awayFrom);
 }
 
 // The vertical twin of `carveCorridor`: out of `a`'s top wall (or bottom), a jog across the rock in
@@ -1215,9 +1323,15 @@ function pickDoorX(room, side, wide, lo, hi, rng) {
 function carveShaft(tiles, W, a, b, dir, rng, width) {
   const wide = Math.max(2, width || 2);
   const H = tiles.length / W;
-  const lo = Math.max(a.x, b.x) + 1, hi = Math.min(a.x + a.w, b.x + b.w) - 2;
-  const xA = pickDoorX(a, dir === 'up' ? 'top' : 'bottom', wide, lo, hi, rng);
-  const xB = pickDoorX(b, dir === 'up' ? 'bottom' : 'top', wide, lo, hi, rng);
+  // A wide level's corridor into `a` eats `a`'s top-left corner on its way in, so a jog run back
+  // over that corner opened `a` straight onto the corridor behind it — a second way out that the
+  // clamp could not shut. There the shaft keeps a corridor's width clear of `a`'s left wall.
+  const lo = Math.max(a.x, b.x) + 1 + (wide > 2 ? wide + 1 : 0), hi = Math.min(a.x + a.w, b.x + b.w) - 2;
+  const xA = pickDoorX(a, dir === 'up' ? 'top' : 'bottom', wide, lo, hi, rng, enterCol(a));
+  // And the way into `b` is kept away from `b`'s right wall, which is where it will be left by: a
+  // shaft that came up a tile from the corridor out put the whole room beside the goat rather than
+  // in front of him. Up the far third of one room, across the whole of the next.
+  const xB = pickDoorX(b, dir === 'up' ? 'bottom' : 'top', wide, lo, hi, rng, b.x + b.w - 2, true);
   if (xA < 0 || xB < 0) return null;
   // The wall rows the shaft cuts through, and the rock between them.
   const yA = dir === 'up' ? a.y : a.y + a.h - 1;
@@ -1235,7 +1349,7 @@ function carveShaft(tiles, W, a, b, dir, rng, width) {
   a.exitMouth = { tiles: Array.from({ length: wide }, (_, k) => yA * W + xA + k), x: (xA + wide / 2) * TILE, y: (yA + 0.5) * TILE, vertical: false, span: wide };
   // The door stands in the stretch of shaft leaving `a`, in the rock rather than the room's wall.
   const doorY = dir === 'up' ? yA - 1 : yA + 1;
-  const clearRun = dir === 'up' ? yA - 1 >= jog + wide : yA + 1 < jog;
+  const clearRun = wide <= 2 && (dir === 'up' ? yA - 1 >= jog + wide : yA + 1 < jog);   // see carveCorridor
   return { enter, door: clearRun ? { x: (xA + wide / 2) * TILE, y: (doorY + 0.5) * TILE, vertical: false } : null };
 }
 
@@ -1599,13 +1713,19 @@ function placeRockCluster(tiles, W, room, grass, props, rng, id) {
     if (cells.length < 3) continue;
     // The outside of the shape has to be open floor the way a lone boulder's eight tiles are — a
     // neighbour that is itself part of the formation is what let it grow this far in the first place.
+    // A boulder already scattered into this room counts: the SEED is kept three tiles off one, but a
+    // formation grows up to six cells from that seed and can reach a loose stone the seed could not,
+    // and two boulders shoulder to shoulder that do not share a formation is the one thing
+    // `GEN_RULES.rocks` refuses. The tiles stay floor under a boulder, so nothing else catches this.
+    const taken = new Set();
+    for (const p of props) if (p.kind === 'rock') taken.add(Math.floor(p.y / TILE) * W + Math.floor(p.x / TILE));
     let perimeterOk = true;
     for (const i of cellSet) {
       const cx = i % W, cy = Math.floor(i / W);
       for (let dy = -1; dy <= 1 && perimeterOk; dy++) for (let dx = -1; dx <= 1; dx++) {
         const ni = (cy + dy) * W + (cx + dx);
         if (cellSet.has(ni)) continue;
-        if (tiles[ni] !== T.FLOOR || (grass && grass.has(ni))) { perimeterOk = false; break; }
+        if (tiles[ni] !== T.FLOOR || (grass && grass.has(ni)) || taken.has(ni)) { perimeterOk = false; break; }
       }
       if (!perimeterOk) break;
     }

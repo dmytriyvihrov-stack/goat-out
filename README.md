@@ -179,7 +179,7 @@ room, new level, skip level.
 | `CONCEPT.md` | What the game is and why. The current design truth. |
 | `CLAUDE.md` | How to work on it: architecture, conventions, testing traps, publishing. |
 | `CHANGELOG.md` | Version history and the reasoning behind each change. |
-| `GOAT_OUT_brief.md` | The original stage-one brief. History, not spec. |
-| `js/tuning.js` | Every tunable number and the five level definitions. Start here to change feel. |
+| `ART_HANDOFF.md` | What the game is drawn with (Pixel 2.5) and how to add art. |
+| `js/tuning.js` | Every tunable number and the eight level definitions. Start here to change feel. |
 | `js/rooms.js` | Room templates as character grids. |
 | `tools/harness.js` | Console test harness. |

@@ -67,6 +67,13 @@ class Enemy {
   knockMul() {
     return (this.cfg.flingMul || 1) * (this.champion ? TUNING.champion.flingMul : 1) * (this.soul ? TUNING.soulBearer.flingMul : 1);
   }
+  // How fast a wall has to be met to kill him. A heavy man is thrown `knockMul` as far, and the
+  // wall asks the same share less of him — or a brute carrying a soul (0.55 × 0.6 of a throw) left a
+  // headbutt at nine tiles a second against a wall that wanted eleven, and could not be hurt at all.
+  // Light men keep the full number: a hound flies further, not easier.
+  splatLimit(game) {
+    return TUNING.physics.splatSpeed * Talisman.splatMul(game) * Math.min(1, this.knockMul());
+  }
   // Too heavy or too much more than a man to be carried: the Butcher, the brute, a soul-bearer.
   get unliftable() { return this.kind === 'butcher' || this.champion || !!this.soul; }
 
@@ -329,6 +336,8 @@ class Enemy {
       if (p.broken) continue;
       if (p.kind === 'mill') { if (p.millThreat(x, y, this.r + TUNING.ai.millClear)) return { kind: 'trap', p }; }
       else if (p.kind === 'spike') { if (p.spikeThreat() && len(p.x - x, p.y - y) < p.r + this.r) return { kind: 'trap', p }; }
+      // The cave's stone teeth. Always out, so unlike a plate there is no beat at which they are floor.
+      else if (p.kind === 'spire') { if (len(p.x - x, p.y - y) < p.r + this.r) return { kind: 'trap', p }; }
       else if (len(p.x - x, p.y - y) < p.r + this.r + 4) return { kind: 'fire', p };
     }
     for (const rn of game.runes) if (len(rn.x - x, rn.y - y) < TUNING.seer.runeRadius * TILE + this.r) return { kind: 'trap' };
@@ -342,7 +351,7 @@ class Enemy {
     const w = game.world;
     // Flame he can walk up to and read late. A wheel has to be read from further out, or the step
     // aside happens inside the arc he is stepping out of.
-    const millNear = game.hazards.some((p) => (p.kind === 'mill' || p.kind === 'spike')
+    const millNear = game.hazards.some((p) => (p.kind === 'mill' || p.kind === 'spike' || p.kind === 'spire')
       && Math.abs(p.x - this.x) < 9 * TILE && Math.abs(p.y - this.y) < 9 * TILE);
     // The mage lit it, and the mage is the one man in the building who knows how far it goes: he
     // reads flame and his own runes from further out. He still burns if he gets it wrong.
@@ -353,6 +362,7 @@ class Enemy {
     const near = [];
     for (const p of game.hazards) {
       const reach = (p.kind === 'mill' ? TUNING.mill.armLen : p.r) + this.r + look + TUNING.ai.millClear + 6;
+      if (p.kind === 'spire' && p.broken) continue;
       if (p.kind === 'spike' && !p.spikeThreat()) continue;   // a plate lying flat is floor
       if (Math.abs(p.x - this.x) < reach && Math.abs(p.y - this.y) < reach) near.push(p);
     }
@@ -437,6 +447,7 @@ class Enemy {
     this.barkCd = Math.max(0, this.barkCd - dt);
     this.dazed = Math.max(0, this.dazed - dt);
     this.poison = Math.max(0, this.poison - dt);
+    if (this.shock > 0) this.shock = this.dazed > 0 && this.poison > 0 ? this.shock - dt : 0;
     this.hazardBlind = Math.max(0, this.hazardBlind - dt);
     if (!this.hazardSeen) this.hazardRoll = Math.max(0, this.hazardRoll - dt);
     this.hazardSeen = false;
@@ -533,7 +544,7 @@ class Enemy {
       this.x += this.vx * dt; this.y += this.vy * dt;
       const preSpeed = Math.hypot(this.vx, this.vy);
       const impact = w.collideCircle(this);
-      if (impact > TUNING.physics.splatSpeed * Talisman.splatMul(game)) {
+      if (impact > this.splatLimit(game)) {
         this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1)); return;
       }
       if (impact > 0 && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }
@@ -1127,6 +1138,7 @@ class Enemy {
     game.particles(this.x, this.y, 16, PALETTE.witchHi, 170);
     game.ring(this.x, this.y, 1.8 * TILE, PALETTE.witch);
     game.floatText(this.x, this.y - 30, 'IT WAS NEVER THAT', PALETTE.witchHi);
+    if (this.firstHide) game.hideTaught = true;
     game.audio.sfxWraith(); game.shake(4); game.vibe(20);
   }
   unmanifest(game, cd) {
@@ -1235,14 +1247,18 @@ class Enemy {
         g.damage(game.mods.butcherDamage, game, this.vx * 0.6, this.vy * 0.6, false, this);
         this.state = 'recover'; this.timer = cfg.recover * game.mods.enemySlow; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow; return;
       }
-      if (this.timer <= 0) { this.state = 'chase'; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow; this.vx = 0; this.vy = 0; }
+      if (this.timer <= 0) { this.state = 'chase'; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow; this.vx = 0; this.vy = 0; return; }
+      // The skid: the last of the run bleeds off, so what ends the charge is his own feet and not the
+      // wall — a body slowing past `3 * TILE` of impact is not stopped by stone, only held by it.
+      const k = clamp(this.timer / cfg.chargeSkid, 0.2, 1);
+      this.vx = Math.cos(this.facing) * cfg.chargeSpeed * k; this.vy = Math.sin(this.facing) * cfg.chargeSpeed * k;
       return;
     }
     if (this.state === 'chargewind') {
       // Visible telegraph: he plants his feet, faces you and roars before launching.
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
       if (this.timer <= 0) {
-        this.state = 'charge'; this.timer = cfg.chargeTime;
+        this.state = 'charge'; this.timer = Math.min(cfg.chargeTime, (d + cfg.chargeOver * TILE) / cfg.chargeSpeed);
         this.vx = Math.cos(this.facing) * cfg.chargeSpeed; this.vy = Math.sin(this.facing) * cfg.chargeSpeed;
         game.audio.sfxSwing();
       }
@@ -1309,15 +1325,33 @@ class Enemy {
       if (f) { ax = f.x; ay = f.y; } else { ax = game.goat.x - this.x; ay = game.goat.y - this.y; }
     }
     const l = Math.hypot(ax, ay) || 1; ax /= l; ay /= l;
+    // A shade inside his own radius: wall collision parks him exactly `r` off the stone, and probing
+    // at the full radius from there read the wall he was leaning on as in the way of every leap.
+    const pr = this.r * 0.85;
     const ok = (x, y) => {
-      for (const [ox, oy] of [[0, 0], [this.r, 0], [-this.r, 0], [0, this.r], [0, -this.r]]) {
+      for (const [ox, oy] of [[0, 0], [pr, 0], [-pr, 0], [0, pr], [0, -pr]]) {
         if (w.isSolid(Math.floor((x + ox) / TILE), Math.floor((y + oy) / TILE)) || w.isPitPx(x + ox, y + oy)) return false;
       }
       return true;
     };
-    let best = 0;
-    for (let s = 8; s <= want; s += 8) { if (!ok(this.x + ax * s, this.y + ay * s)) break; best = s; }
-    return { x: this.x + ax * best, y: this.y + ay * best };
+    const reach = (dx, dy, most) => { let b = 0; for (let s = 8; s <= most; s += 8) { if (!ok(this.x + dx * s, this.y + dy * s)) break; b = s; } return b; };
+    let best = reach(ax, ay, want), bx = ax, by = ay;
+    // Pinned — a corner, or a wall across the line to his prey: he used to crouch and leap on the
+    // spot for ever. Fan out round the line (and down the flow field, which knows the way round) and
+    // take the leap that gains the most ground toward it, so a corner costs him one sideways bound.
+    if (best < Math.min(want, H.minHop * TILE) - 8) {
+      const base = Math.atan2(ay, ax), f = w.flowDir(this.x, this.y), cands = [];
+      if (f) cands.push(Math.atan2(f.y, f.x) - base);
+      for (const o of [0.5, 1, 1.5, 2.1, 2.7]) cands.push(o, -o);
+      cands.push(Math.PI);
+      let score = best;
+      for (const off of cands) {
+        const cx = Math.cos(base + off), cy = Math.sin(base + off), b = reach(cx, cy, H.dist * TILE);
+        const sc = b * Math.max(0.25, Math.cos(off));
+        if (b >= H.minHop * TILE && sc > score) { score = sc; best = b; bx = cx; by = cy; }
+      }
+    }
+    return { x: this.x + bx * best, y: this.y + by * best };
   }
   // He comes down. Everything in the ring is struck the way his arm strikes: the goat hurt and
   // thrown clear, a man of the cult hurt and flung.

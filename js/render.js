@@ -3,6 +3,13 @@
 const FONT = "'Alegreya', Georgia, 'Times New Roman', serif";
 const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 
+// How big a square of cave the renderer marches and keeps at a time (`caveRockPath`). Small
+// enough that walking into fresh rock costs one chunk, big enough that a screen is a dozen of them.
+const CAVE_CHUNK = 16;
+// The cave's baked ground (`Renderer.drawCaveBaked`): tiles a bitmap, bitmaps painted a frame, and
+// the pixels all of them may hold between them before the least recently seen go.
+const CAVE_BAKE = 8, CAVE_BAKE_MAX = 6, CAVE_BAKE_PX = 24e6;
+
 // The controls, painted on the floor. Nothing about the mouse: a crosshair on a top-down game
 // explains itself, and the floor has room for what it does not. Every block lies in the room that
 // hands you the thing it is about, and none of them lies in an empty one:
@@ -16,13 +23,13 @@ const CONTROL_LINES = {
     ['WASD, TO MOVE'],
     ['RIGHT CLICK - GRAB', 'RELEASE - THROW'],
     ['LEFT CLICK - HEADBUTT'],
-    ['E, ROLL', 'OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
+    ['E - ROLL'],
   ],
   touch: [
     ['LEFT THUMB, TO MOVE'],
     ['GRAB, HOLD TO CARRY', 'RELEASE, THROW'],
     ['BUTT - HEADBUTT'],
-    ['ROLL, OUT OF THE WAY', 'CLOSE UP IT BREAKS THEIR SWING'],
+    ['ROLL'],
   ],
 };
 
@@ -135,6 +142,7 @@ class Renderer {
       this.drawRunes(game);
       Talisman.drawGround(this, game);   // grease, echoes, the straw goat
       this.drawDashPaths(game);
+      this.drawGuide(game);
       this.drawSouls(game);
       this.drawPuffs(game);
       const lit = (o) => !game.hidden(o.x, o.y);
@@ -213,14 +221,45 @@ class Renderer {
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
+    if (game.tripBanner > 0) this.drawTripBanner(game.tripBanner);
+  }
+  // The line across the screen as the trip begins: each letter on its own slow wave and its own hue,
+  // because a caption set straight would be the one thing on this floor that is not wrong.
+  drawTripBanner(left) {
+    const B = TUNING.shroom.banner, ctx = this.ctx, t = this.t, s = this.ts || 1;
+    const a = Math.min(1, (B.time - left) / B.fade, left / B.fade);
+    const size = Math.min(44 * s, this.vw / (B.text.length * 0.62));
+    ctx.save();
+    ctx.globalAlpha = clamp(a, 0, 1);
+    ctx.font = `700 ${size}px ${FONT_SC}`; ctx.textBaseline = 'middle';
+    const w = ctx.measureText(B.text).width;
+    let x = (this.vw - w) / 2;
+    // under the level card, which comes up over the same first seconds
+    const y = this.vh * 0.74;
+    for (let i = 0; i < B.text.length; i++) {
+      const ch = B.text[i], cw = ctx.measureText(ch).width, dy = Math.sin(t * 3 + i * 0.45) * size * 0.18;
+      ctx.fillStyle = 'rgba(10,4,16,0.6)'; ctx.fillText(ch, x + 3, y + dy + 3);
+      ctx.fillStyle = `hsl(${(t * 60 + i * 18) % 360},90%,72%)`; ctx.fillText(ch, x, y + dy);
+      x += cw;
+    }
+    ctx.restore();
   }
 
   // Screen to world: the camera, the tilt, and whatever kick and zoom punch the frame is carrying.
+  // On THE TRIP the lens also breathes and leans (`TUNING.shroom.cam`): slow, out of step with
+  // itself on the two axes, and never a shake — a shake in this game means a lost heart and nothing
+  // else. It is a render term like the zoom punch rather than anything the simulation knows about,
+  // so nothing it does can be walked into or killed by; the pointer-to-world conversion reads
+  // `cam.zoom` alone, the same as it already does through a shake.
   worldTransform(game) {
-    const ctx = this.ctx, cam = game.cam, zk = 1 + (game.zoomKick || 0);
+    const ctx = this.ctx, cam = game.cam, zk = 1 + (game.zoomKick || 0), t = this.t;
+    const trip = game.level && game.level.def.shroom ? TUNING.shroom.cam : null;
+    const tz = trip ? 1 + Math.sin(t * trip.rate) * trip.zoom : 1;
+    const lx = trip ? Math.sin(t * trip.swayRate) * trip.sway : 0;
+    const ly = trip ? Math.cos(t * trip.swayRate * 0.73) * trip.sway * 0.6 : 0;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.translate(this.vcx + (game.shakeX + game.kickX) * this.s, this.vcy + (game.shakeY + game.kickY) * this.s);
-    ctx.scale(cam.zoom * zk, cam.zoom * zk * TILT);
+    ctx.translate(this.vcx + (game.shakeX + game.kickX + lx) * this.s, this.vcy + (game.shakeY + game.kickY + ly) * this.s);
+    ctx.scale(cam.zoom * zk * tz, cam.zoom * zk * tz * TILT);
     ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
   }
 
@@ -234,7 +273,7 @@ class Renderer {
 
   drawTiles(game, cam) {
     if (game.world.round) { this.drawCaveTiles(game, cam); return; }
-    if (this.painted.ready && (game.levelIndex === 0 || this.painted.images['level'+game.levelIndex+'_stone0'])) { this.painted.drawTiles(this, game, cam); return; }
+    if (PIXEL_ENV.ready) { this.painted.drawTiles(this, game, cam); return; }
     if (this.altar) { this.altar.drawTiles(this, game, cam); return; }
     const ctx = this.ctx, wd = game.world, def = game.level.def;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
@@ -269,13 +308,13 @@ class Renderer {
   drawFloorTile(game, tx, ty, t) {
     const ctx = this.ctx, def = game.level.def, px = tx * TILE, py = ty * TILE;
     if (t === T.PIT) return false;
-    ctx.fillStyle = ((tx + ty) & 1) ? def.floor : def.floorAlt; ctx.fillRect(px, py, TILE, TILE);
-    if (t === T.HAY) {
-      // The painted bale, on every level rather than only the one with the altar in it: a level
-      // keeps its own floor and wall colours, but a yellow square with four strokes scratched
-      // into it does not read as a thing that burns, and the art for it was already loaded.
-      if (this.painted.ready) this.painted.stamp(ctx, 'hay', px + 16, py + 17, 30, 27);
-      else {
+    // The cave's floor is the pixel pass's swatches; the square-walled levels draw theirs in `PaintedArt.drawTiles`.
+    if (game.world.round && PIXEL_ENV.ready) PIXEL_ENV.floor(ctx, def.shroom ? 'trip' : 'cave', tx, ty, def.floor);
+    else { ctx.fillStyle = ((tx + ty) & 1) ? def.floor : def.floorAlt; ctx.fillRect(px, py, TILE, TILE); }
+    if (t === T.HAY && PIXEL_ENV.ready) PIXEL_ENV.draw(ctx, 'hay', px + 16, py + 29, 33);
+    else if (t === T.HAY) {
+      // Only before the pixel atlas has loaded: a yellow square with four strokes in it.
+      {
         ctx.fillStyle = PALETTE.hay; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
         ctx.strokeStyle = PALETTE.hayDark; ctx.lineWidth = 2; ctx.beginPath();
         for (let k = 0; k < 4; k++) { const sx = px + 5 + k * 7, sy = py + 5 + ((tx * 3 + ty * 5 + k) % 3) * 6; ctx.moveTo(sx, sy); ctx.lineTo(sx + 5, sy + 12); }
@@ -304,12 +343,108 @@ class Renderer {
   // since the march leaves the corners of a lone stone bare; then the rock is one path, filled as a
   // shadow, as its face and — clipped to itself and lifted — as its top, the way the round cave is.
   drawCaveMid(game, cam) {
-    const ctx = this.ctx, wd = game.world, def = game.level.def, W = wd.W;
+    const wd = game.world, W = wd.W;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
     const secret = new Set();
     for (const p of game.props) if (p.kind === 'secret' && !p.broken) secret.add(Math.floor(p.y / TILE) * W + Math.floor(p.x / TILE));
     const solid = (tx, ty) => wd.isSolid(tx, ty) || secret.has(ty * W + tx);
-    const LIFT = 7, base = new Path2D(), edge = [];
+    this.drawCaveBaked(game, cam, x0, y0, x1, y1, secret, solid);
+  }
+
+  // THE CAVE, baked. Everything `drawCaveRegion` paints is the same every frame — the floor, its
+  // litter and mushrooms, the rock and what grows on it — so it is painted once into a bitmap per
+  // `CAVE_BAKE` tiles and the frame is a handful of `drawImage`s. Painting it live was every tile's
+  // floor, every mushroom's cap and every stalactite's curve sixty times a second, and pulled back to
+  // the whole level (the death screen) it was thousands of them: THE TRIP ran at a few frames a
+  // second there (playtest, 23 Sep 2026). A chunk is painted from a region two tiles wider than
+  // itself and clipped to its own box, so nothing that spills across a seam — a spire, the rock's
+  // drop shadow — is lost at it. It is rebaked when anything under it changes (`caveBakeSig`), at a
+  // resolution picked off the zoom, and at most `CAVE_BAKE_MAX` a frame, a flat floor standing in for
+  // one not painted yet. What moves — the glow round each mushroom — is stamped live over it, and
+  // not at all once the camera is pulled back far enough that nobody could see it breathe.
+  drawCaveBaked(game, cam, x0, y0, x1, y1, secret, solid) {
+    const ctx = this.ctx, wd = game.world, def = game.level.def, K = CAVE_BAKE;
+    const z = cam.zoom, B = z > 2 ? 3 : z > 1 ? 2 : z > 0.5 ? 1 : z > 0.25 ? 0.5 : 0.25;
+    if (!this.bake || this.bake.world !== wd) this.bake = { world: wd, map: new Map(), px: 0, tick: 0 };
+    const bk = this.bake; bk.tick++;
+    let budget = CAVE_BAKE_MAX;
+    const glow = z > 0.9 && def.shroom, glows = [];
+    const c0 = Math.floor(x0 / K), c1 = Math.floor(x1 / K), r0 = Math.floor(y0 / K), r1 = Math.floor(y1 / K);
+    for (let cj = r0; cj <= r1; cj++) for (let ci = c0; ci <= c1; ci++) {
+      const key = cj * 65536 + ci;
+      let e = bk.map.get(key);
+      // Pulled far back there are hundreds of chunks and none of them is being looked at closely: a
+      // tenth of them are asked whether they have changed each frame rather than all of them.
+      const sig = e && e.B === B && B <= 0.5 && (bk.tick + ci + cj) % 10 ? e.sig : this.caveBakeSig(wd, ci * K, cj * K, secret);
+      if (!e || e.sig !== sig || e.B !== B) {
+        if (budget > 0) { budget--; e = this.bakeCaveChunk(game, ci, cj, B, sig, secret, solid, e); bk.map.set(key, e); }
+        else if (!e || e.sig !== sig) {
+          // not painted yet: the floor's own colour, so it reads as ground rather than a hole
+          ctx.fillStyle = def.floor; ctx.fillRect(ci * K * TILE, cj * K * TILE, K * TILE, K * TILE);
+          continue;
+        }
+      }
+      e.used = bk.tick;
+      if (e.cv) { ctx.imageSmoothingEnabled = true; ctx.drawImage(e.cv, 0, 0, e.cv.width, e.cv.height, ci * K * TILE, cj * K * TILE, K * TILE, K * TILE); ctx.imageSmoothingEnabled = false; }
+      if (glow && e.glows) glows.push(e.glows);
+    }
+    if (glows.length) {
+      const t = this.t;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.imageSmoothingEnabled = true;
+      for (const q of glows) for (let i = 0; i < q.length; i += 5) {
+        ctx.globalAlpha = Math.min(1, q[i + 4] * (0.75 + 0.25 * Math.sin(t * 2.3 + q[i + 1] * 0.04 + q[i + 2] * 0.02)));
+        ctx.drawImage(this.glowSprite(q[i]), q[i + 1], q[i + 2], q[i + 3], q[i + 3]);
+      }
+      ctx.restore(); ctx.imageSmoothingEnabled = false;
+    }
+    // Keep the bitmaps to a budget of pixels, dropping whatever has gone longest unseen.
+    if (bk.px > CAVE_BAKE_PX) {
+      const old = [...bk.map.entries()].filter(([, e]) => e.used !== bk.tick).sort((a, b) => a[1].used - b[1].used);
+      for (const [k, e] of old) { if (bk.px <= CAVE_BAKE_PX * 0.8) break; bk.px -= e.px || 0; bk.map.delete(k); }
+    }
+  }
+  // What a chunk is painted from, as one number: its tiles and grass two tiles round, the rock's own
+  // epoch and which secret walls still stand. Any change and the bitmap is stale.
+  caveBakeSig(wd, i0, j0, secret) {
+    const W = wd.W; let h = (wd.caveEpoch || 0) * 7919 + 17;
+    for (let j = j0 - 2; j < j0 + CAVE_BAKE + 2; j++) {
+      if (j < 0 || j >= wd.H) continue;
+      for (let i = i0 - 2; i < i0 + CAVE_BAKE + 2; i++) {
+        if (i < 0 || i >= W) continue;
+        const k = j * W + i;
+        h = (Math.imul(h, 31) + wd.tiles[k] * 3 + (wd.grass[k] ? 1 : 0) + (secret.has(k) ? 11 : 0)) | 0;
+      }
+    }
+    return h;
+  }
+  bakeCaveChunk(game, ci, cj, B, sig, secret, solid, prev) {
+    const K = CAVE_BAKE, bk = this.bake, S = K * TILE, size = Math.max(1, Math.round(S * B));
+    let cv = prev && prev.cv && prev.cv.width === size ? prev.cv : null;
+    if (!cv) { cv = document.createElement('canvas'); cv.width = cv.height = size; }
+    if (prev && prev.px) bk.px -= prev.px;
+    const cx = cv.getContext('2d'), real = this.ctx;
+    cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, size, size);
+    cx.imageSmoothingEnabled = false;
+    cx.setTransform(B, 0, 0, B, -ci * S * B, -cj * S * B);
+    const ox = ci * S, oy = cj * S;
+    this.ctx = cx; this.baking = true; this.glowQ = game.level.def.shroom ? [] : null;
+    try {
+      this.drawCaveRegion(game, ci * K - 2, cj * K - 2, ci * K + K + 1, cj * K + K + 1, secret, solid);
+    } finally { this.ctx = real; this.baking = false; }
+    const q = this.glowQ || []; this.glowQ = null;
+    const glows = [];
+    for (let i = 0; i < q.length; i += 5) {
+      const mx = q[i + 1] + q[i + 3] / 2, my = q[i + 2] + q[i + 3] / 2;
+      if (mx >= ox && mx < ox + S && my >= oy && my < oy + S) glows.push(q[i], q[i + 1], q[i + 2], q[i + 3], q[i + 4]);
+    }
+    bk.px += size * size;
+    return { cv, B, sig, glows, px: size * size, used: bk.tick };
+  }
+
+  // One region of the cave, painted into whatever `this.ctx` is — the chunk being baked.
+  drawCaveRegion(game, x0, y0, x1, y1, secret, solid) {
+    const ctx = this.ctx, wd = game.world, def = game.level.def, W = wd.W;
+    const LIFT = 7, edge = [];
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       const s = solid(tx, ty);
       let open = !s;
@@ -321,16 +456,10 @@ class Renderer {
         const h = farHash(tx, ty), px = tx * TILE, py = ty * TILE;
         ctx.fillStyle = def.grassDark || '#223618';
         ctx.beginPath(); ctx.ellipse(px + 16, py + 17, 17 + h * 3, 15, h * 2, 0, Math.PI * 2); ctx.fill();
-      }
+      } else if (!s && PIXEL_ENV.ready && wd.tiles[ty * W + tx] === T.FLOOR) PIXEL_ENV.litter(ctx, 'cave', tx, ty);
     }
     if (def.shroom) this.drawFloorShrooms(game, x0, y0, x1, y1, solid);
-    const polys = [];
-    for (let j = y0 - 1; j <= y1; j++) for (let i = x0 - 1; i <= x1; i++) wd.marchCell(i, j, secret, polys, null);
-    for (const pts of polys) {
-      base.moveTo(pts[0], pts[1]);
-      for (let k = 2; k < pts.length; k += 2) base.lineTo(pts[k], pts[k + 1]);
-      base.closePath();
-    }
+    const base = this.caveRockPath(wd, x0, y0, x1, y1, secret);
     ctx.save(); ctx.translate(0, 6); ctx.fillStyle = 'rgba(0,0,0,0.34)'; ctx.fill(base); ctx.restore();
     ctx.fillStyle = def.wall; ctx.fill(base);
     ctx.save(); ctx.clip(base); ctx.translate(0, -LIFT);
@@ -348,11 +477,58 @@ class Renderer {
     this.drawCaveDecor(game, edge, solid, LIFT);
   }
 
-  // What grows on the rock. In any cave: seams of gems that catch the light, stalactites hanging off
-  // the face of the rock over the floor, and stalagmites standing up out of its top. On the trip the
-  // rock is also furred with mushrooms, lit from inside. All of it sits on stone tiles only — nothing
-  // here stands on floor you can walk on, so none of it can be mistaken for something in the way —
-  // and all of it is off a hash of the tile, so it is the same rock every frame.
+  // The rock as one path, cut into chunks of `CAVE_CHUNK` tiles and kept between frames. Marching
+  // the window and pushing two thousand points into a fresh Path2D every frame was, measured, the
+  // single most expensive thing in the cave — more than every body and every prop on the floor put
+  // together. The shape only changes when a wall does, and `World.caveDirty` is what says so.
+  caveRockPath(wd, x0, y0, x1, y1, secret) {
+    const K = CAVE_CHUNK, epoch = wd.caveEpoch || 0;
+    if (!this.caveCache || this.caveCache.epoch !== epoch || this.caveCache.world !== wd) {
+      this.caveCache = { epoch, world: wd, chunks: new Map() };
+    }
+    const chunks = this.caveCache.chunks, out = new Path2D();
+    const c0 = Math.floor((x0 - 1) / K), c1 = Math.floor(x1 / K);
+    const r0 = Math.floor((y0 - 1) / K), r1 = Math.floor(y1 / K);
+    for (let cj = r0; cj <= r1; cj++) for (let ci = c0; ci <= c1; ci++) {
+      const key = cj * 65536 + ci;
+      let p = chunks.get(key);
+      if (p === undefined) { p = this.caveChunkPath(wd, ci * K, cj * K, secret); chunks.set(key, p); }
+      if (p) out.addPath(p);
+    }
+    return out;
+  }
+  // One chunk of it. A cell every one of whose corners is deep rock — out past `cave.band` from any
+  // open floor — is skipped outright: that is the inside of the hill, and drawing it was showing a
+  // huge piece of the level that has nothing in it and cannot be walked into.
+  caveChunkPath(wd, i0, j0, secret) {
+    const K = CAVE_CHUNK, polys = [];
+    for (let j = j0; j < j0 + K; j++) for (let i = i0; i < i0 + K; i++) {
+      if (!wd.caveNearAt(i, j) && !wd.caveNearAt(i + 1, j) && !wd.caveNearAt(i, j + 1) && !wd.caveNearAt(i + 1, j + 1)) continue;
+      wd.marchCell(i, j, secret, polys, null);
+    }
+    if (!polys.length) return null;
+    const p = new Path2D();
+    for (const pts of polys) {
+      p.moveTo(pts[0], pts[1]);
+      for (let k = 2; k < pts.length; k += 2) p.lineTo(pts[k], pts[k + 1]);
+      p.closePath();
+    }
+    return p;
+  }
+
+  // What grows on the rock. In any cave: stone spires that RISE at the foot of the rock's own face,
+  // spires standing up off its top, and seams of gems along the face — the band of rock the camera
+  // can actually see. All of it sits on stone tiles only — nothing here stands on floor you can walk
+  // on, so none of it can be mistaken for something in the way — and all of it is off a hash of the
+  // tile, so it is the same rock every frame. On the trip the rock is furred with mushrooms too.
+  //
+  // Two things changed after the 22 Sep 2026 playtest. The spires used to HANG: triangles pointing
+  // down out of the face onto the floor, which from directly above reads as teeth stuck to a wall
+  // rather than as anything a cave does. They are rooted on the floor at the foot of the cliff now
+  // and go up, over the face and past the top of the rock, which is what a stone spire looks like
+  // from any angle. And the gems used to be scattered anywhere on the tile, top surface included:
+  // the top of a rock is the part of the cave you are not looking at, so a seam drawn there is a
+  // seam nobody sees. They are on the visible face and nowhere else.
   drawCaveDecor(game, edge, solid, LIFT) {
     const ctx = this.ctx, t = this.t, def = game.level.def, trip = !!def.shroom;
     const GEMS = ['#b06cff', '#4fe0b0', '#ff5a7a', '#5ab4ff', '#ffd25a'];
@@ -361,21 +537,31 @@ class Renderer {
       const tx = edge[j], ty = edge[j + 1], px = tx * TILE, py = ty * TILE;
       const h = farHash(tx * 13 + 5, ty * 17 + 3), h2 = farHash(tx * 5 - 9, ty * 11 + 1), h3 = farHash(tx + 31, ty * 3 - 7);
       const southOpen = !solid(tx, ty + 1), northOpen = !solid(tx, ty - 1);
-      // stalactites: hanging off the face over the floor
-      if (southOpen && h < (trip ? 0.3 : 0.42)) {
-        const n = 1 + Math.floor(h2 * 3), base = py + TILE - LIFT;
+      // Dripstone on the far wall of the room — what hangs from a cave's ceiling, which from here
+      // is the rock above the floor. It used to be the same shape as the stone teeth below: a row
+      // of even, needle-pointed triangles all along the top of every room, which reads as a mouth
+      // rather than as a cave. Stalactites are grown, not broken: blunt tips, fluted sides, banded
+      // where the water left its rings, and wildly uneven in length — a couple of long ones and a
+      // lot of short stubs. Fewer of them, too, so what is left is a feature and not a fringe.
+      if (southOpen && h < (trip ? 0.2 : 0.28)) {
+        const n = 1 + Math.floor(h2 * 2), base = py + TILE;
         for (let k = 0; k < n; k++) {
-          const x = px + 5 + ((k + 0.5) / n) * (TILE - 10) + (h3 - 0.5) * 6, len = 7 + farHash(tx + k, ty - k) * 12, w = 3 + h2 * 3;
-          ctx.fillStyle = def.wall; ctx.beginPath(); ctx.moveTo(x - w, base); ctx.lineTo(x + w, base); ctx.lineTo(x, base + len); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = 'rgba(255,240,210,0.12)'; ctx.beginPath(); ctx.moveTo(x - w, base); ctx.lineTo(x - w * 0.2, base); ctx.lineTo(x, base + len); ctx.closePath(); ctx.fill();
-          if (!trip && farHash(tx - k, ty + 9) < 0.3) {
-            // a drop gathering at the tip, now and then
+          const hk = farHash(tx + k, ty - k);
+          const x = px + 6 + ((k + 0.5) / n) * (TILE - 12) + (h3 - 0.5) * 7;
+          // squared, so most of them are stubs and the long one is worth looking at
+          const len = 9 + hk * hk * 32, w = 1.7 + h2 * 1.7 + len * 0.03;
+          this.dripstone(x, base, len, w, def, hk);
+          if (!trip && !this.baking && farHash(tx - k, ty + 9) < 0.3) {
+            // a bead of water running down it, now and then
             const drip = (t * 0.6 + h3 * 7) % 1;
-            ctx.fillStyle = `rgba(170,200,230,${0.5 * (1 - drip)})`; ctx.beginPath(); ctx.arc(x, base + len + drip * 4, 1.4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgba(170,200,230,${0.5 * (1 - drip)})`;
+            ctx.beginPath(); ctx.arc(x, base - len * (1 - drip) + 2, 1.4, 0, Math.PI * 2); ctx.fill();
           }
         }
       }
       // stalagmites: spires standing up off the top of the rock behind the room's edge
+      // Not the pixel stalagmites: that sprite is the stone teeth that kill (`drawSpire`), and rock
+      // decoration wearing it would be a hazard drawn where there is none.
       if (northOpen && h2 > (trip ? 0.8 : 0.7)) {
         const n = 1 + Math.floor(h3 * 2);
         for (let k = 0; k < n; k++) {
@@ -385,17 +571,23 @@ class Renderer {
           ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.moveTo(x, y - len); ctx.quadraticCurveTo(x + w * 0.3, y - len * 0.5, x + w, y); ctx.lineTo(x + w * 0.2, y); ctx.closePath(); ctx.fill();
         }
       }
-      // a seam of gems in the rock: faceted, and each one catches the light on its own beat
-      if (h3 < (trip ? 0.1 : 0.16)) {
-        const n = 2 + Math.floor(h * 3);
+      // A seam of gems, and only along the face: the band of rock at the bottom of the tile is the
+      // part of it the camera is looking at, and a seam on the top surface — the part you are looking
+      // over rather than at — was paint nobody ever saw. Faceted, each catching the light on its own
+      // beat. The count is down with the room it has left to stand in.
+      if (southOpen && h3 < (trip ? 0.1 : 0.16) && PIXEL_ENV.ready) {
+        PIXEL_ENV.draw(ctx, 'crystals', px + 8 + h * 16, py + TILE + 1, 11 + h2 * 5);
+      } else if (southOpen && h3 < (trip ? 0.1 : 0.16)) {
+        const n = 1 + Math.floor(h * 2);
         for (let k = 0; k < n; k++) {
-          const gx = px + 6 + farHash(tx * 7 + k, ty - 3) * (TILE - 12), gy = py + 5 - LIFT + farHash(tx, ty * 7 + k) * (TILE - 12);
+          const gx = px + 6 + farHash(tx * 7 + k, ty - 3) * (TILE - 12);
+          const gy = py + TILE - LIFT + 1 + farHash(tx, ty * 7 + k) * (LIFT - 1);
           const c = GEMS[Math.floor(farHash(tx + k * 3, ty + 2) * GEMS.length)], sz = 2.2 + farHash(tx - k, ty) * 2.4;
           ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.moveTo(gx, gy - sz * 1.3); ctx.lineTo(gx + sz, gy); ctx.lineTo(gx, gy + sz * 1.3); ctx.lineTo(gx - sz, gy); ctx.closePath(); ctx.fill();
           ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(gx, gy - sz); ctx.lineTo(gx + sz * 0.8, gy); ctx.lineTo(gx, gy + sz); ctx.lineTo(gx - sz * 0.8, gy); ctx.closePath(); ctx.fill();
           ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.moveTo(gx, gy - sz); ctx.lineTo(gx + sz * 0.8, gy); ctx.lineTo(gx, gy); ctx.closePath(); ctx.fill();
           const tw = Math.pow(Math.max(0, Math.sin(t * 2.2 + farHash(tx + k, ty - k) * 40)), 12);
-          if (tw > 0.05) {
+          if (tw > 0.05 && !this.baking) {
             ctx.strokeStyle = `rgba(255,255,255,${tw * 0.9})`; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(gx - sz * 2, gy - sz * 0.2); ctx.lineTo(gx + sz * 2, gy - sz * 0.2); ctx.moveTo(gx, gy - sz * 2.2); ctx.lineTo(gx, gy + sz * 1.8); ctx.stroke();
           }
@@ -403,7 +595,7 @@ class Renderer {
       }
       // the trip: the rock is furred with mushrooms along every edge that faces the room
       if (trip && h > 0.12) {
-        const n = 2 + Math.floor(h2 * 4);
+        const n = 1 + Math.floor(h2 * 3);
         for (let k = 0; k < n; k++) {
           const mx = px + 4 + farHash(tx * 11 + k, ty + 5) * (TILE - 8), my = py + 8 - LIFT + farHash(tx - 7, ty * 13 + k) * (TILE - 8);
           const c = SH[Math.floor(farHash(tx + k, ty * 3) * SH.length)], cap = 2.5 + farHash(tx * 2 + k, ty) * 4.5;
@@ -412,22 +604,78 @@ class Renderer {
       }
     }
   }
+  // One stalactite, rooted at (x, base) and reaching `len` up the face of the rock. Everything about
+  // the shape is the opposite of the stone teeth on the floor below: the sides pull in on a curve
+  // instead of a straight taper, so the thing has a waist; the tip is an arc rather than a point;
+  // and two or three faint rings across it say it was laid down a drip at a time. The pale side is
+  // wet rock catching the light, not a highlight on a blade.
+  dripstone(x, base, len, w, def, h) {
+    const ctx = this.ctx;
+    // Nothing in a cave grows straight up. The lean is the whole difference between a row of these
+    // and a row of fence posts, and it costs one number.
+    const lean = (h - 0.5) * len * 0.26;
+    const tipX = x + lean, tipY = base - len, tipR = Math.max(0.9, w * 0.26);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(x + 2, base, w * 1.35, w * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+    // Sides that pull in on a curve and a tip that is an arc: a drip's shape, not a blade's.
+    ctx.beginPath();
+    ctx.moveTo(x - w, base);
+    ctx.bezierCurveTo(x - w * 0.92, base - len * 0.42, tipX - w * 0.44, base - len * 0.74, tipX - tipR, tipY + tipR * 1.7);
+    ctx.quadraticCurveTo(tipX, tipY, tipX + tipR, tipY + tipR * 1.7);
+    ctx.bezierCurveTo(tipX + w * 0.44, base - len * 0.74, x + w * 0.92, base - len * 0.42, x + w, base);
+    ctx.closePath();
+    ctx.save(); ctx.clip();
+    // Lit from the left down its whole length rather than capped at the top: a band across the top
+    // of one of these turns it into a lighthouse, and a column is shaded along it, not across it.
+    ctx.fillStyle = def.wallTop; ctx.fillRect(x - w - 2, tipY - 2, w * 2 + 4 + Math.abs(lean), len + 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + w * 0.12, tipY - 2, w * 2 + Math.abs(lean), len + 4);
+    ctx.fillStyle = 'rgba(255,246,226,0.3)'; ctx.fillRect(x - w - 2, tipY - 2, w * 0.7, len + 4);
+    ctx.restore();
+    // and the wet tip catches it
+    ctx.fillStyle = 'rgba(255,250,235,0.35)';
+    ctx.beginPath(); ctx.arc(tipX, tipY + tipR * 1.1, tipR * 0.8, 0, Math.PI * 2); ctx.fill();
+  }
   // One mushroom standing on the ground at (x, y): a pale stalk, a cap of `c`, spots, and a glow
   // round it that breathes with `pulse` (0..1).
   shroom(x, y, cap, c, pulse, glow = true) {
     const ctx = this.ctx, stalk = cap * 1.1;
     if (glow) {
-      ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      const g = ctx.createRadialGradient(x, y - stalk, 0, x, y - stalk, cap * 4);
-      g.addColorStop(0, this.alpha(c, 0.28 + 0.2 * pulse)); g.addColorStop(1, this.alpha(c, 0));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - stalk, cap * 4, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
+      // A glow is a sprite stamped at an alpha, not a gradient built fresh: the trip has a few hundred
+      // of these on screen, and a new radial gradient plus a save/restore each was most of why the
+      // level ran at half the frame rate of the cave it replaces.
+      // Inside a `glowQ` pass they are queued and stamped together by `flushGlows`: switching the
+      // blend mode twice per mushroom broke every batch the GPU could have made of them.
+      const R0 = cap * 4, a = (0.28 + 0.2 * pulse) / 0.48;
+      if (this.glowQ) this.glowQ.push(c, x - R0, y - stalk - R0, R0 * 2, a);
+      else {
+        const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha, sm = ctx.imageSmoothingEnabled;
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * a; ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(this.glowSprite(c), x - R0, y - stalk - R0, R0 * 2, R0 * 2);
+        ctx.globalCompositeOperation = op; ctx.globalAlpha = ga; ctx.imageSmoothingEnabled = sm;
+      }
     }
     ctx.fillStyle = '#e8dcc8'; ctx.fillRect(x - cap * 0.22, y - stalk, cap * 0.44, stalk);
     ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y - stalk, cap, cap * 0.62, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - cap, y - stalk - 0.5, cap * 2, 1.2);
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.beginPath(); ctx.arc(x - cap * 0.4, y - stalk - cap * 0.3, cap * 0.16, 0, Math.PI * 2); ctx.arc(x + cap * 0.3, y - stalk - cap * 0.4, cap * 0.12, 0, Math.PI * 2); ctx.fill();
+  }
+  flushGlows() {
+    const q = this.glowQ, ctx = this.ctx; this.glowQ = null;
+    if (!q || !q.length) return;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.imageSmoothingEnabled = true;
+    for (let i = 0; i < q.length; i += 5) { ctx.globalAlpha = q[i + 4]; ctx.drawImage(this.glowSprite(q[i]), q[i + 1], q[i + 2], q[i + 3], q[i + 3]); }
+    ctx.restore(); ctx.imageSmoothingEnabled = false;
+  }
+  // A soft disc of `c`, 0.48 alpha at the middle and nothing at the edge, drawn once per colour.
+  glowSprite(c) {
+    const cache = this.glowCache || (this.glowCache = {});
+    if (cache[c]) return cache[c];
+    const S = 64, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const g2 = cv.getContext('2d'), g = g2.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    g.addColorStop(0, this.alpha(c, 0.48)); g.addColorStop(1, this.alpha(c, 0));
+    g2.fillStyle = g; g2.fillRect(0, 0, S, S);
+    return (cache[c] = cv);
   }
   // '#rrggbb' at alpha `a`.
   alpha(c, a) {
@@ -443,6 +691,14 @@ class Renderer {
       if (solid(tx, ty) || wd.tiles[ty * W + tx] !== T.FLOOR) continue;
       if (farHash(tx * 19 + 7, ty * 23 + 1) > 0.1) continue;
       const n = 2 + Math.floor(farHash(tx, ty + 40) * 4), c = SH[Math.floor(farHash(tx + 3, ty) * SH.length)];
+      if (PIXEL_ENV.ready) {
+        // one painted clump a tile, under the same queued glow the drawn caps had
+        const x = tx * TILE + 10 + farHash(tx * 3, ty) * (TILE - 20), y = ty * TILE + 18 + farHash(tx, ty * 3) * (TILE - 22);
+        const w = 12 + n * 2, pulse = 0.5 + 0.5 * Math.sin(t * 2.3 + tx * 1.3 + ty * 0.7), R0 = w * 1.2;
+        if (this.glowQ) this.glowQ.push(c, x - R0, y - w * 0.5 - R0, R0 * 2, (0.28 + 0.2 * pulse) / 0.48);
+        PIXEL_ENV.draw(this.ctx, 'shrooms', x, y, w);
+        continue;
+      }
       for (let k = 0; k < n; k++) {
         const x = tx * TILE + 6 + farHash(tx * 3 + k, ty) * (TILE - 12), y = ty * TILE + 10 + farHash(tx, ty * 3 + k) * (TILE - 14);
         this.shroom(x, y, 1.8 + farHash(tx - k, ty + k) * 2.2, c, 0.5 + 0.5 * Math.sin(t * 2.3 + tx * 1.3 + ty * 0.7 + k), k === 0);
@@ -464,6 +720,14 @@ class Renderer {
     g.addColorStop(0, this.alpha(c, 0.22)); g.addColorStop(1, this.alpha(c, 0));
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - r * 1.3, r * 2.6, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
+    if (PIXEL_ENV.ready) {
+      const h = PIXEL_ENV.draw(ctx, 'shrooms', x, y, r * 3.1 * breathe);
+      if (p.hits) {
+        ctx.strokeStyle = 'rgba(20,0,20,0.75)'; ctx.lineWidth = 1.8; ctx.beginPath();
+        ctx.moveTo(x - r * 0.9, y - h * 0.85); ctx.lineTo(x - 3, y - h * 0.7); ctx.lineTo(x + 2, y - h * 0.9); ctx.lineTo(x + r * 0.6, y - h * 0.75); ctx.stroke();
+      }
+      return;
+    }
     ctx.fillStyle = '#e6d9c2'; ctx.beginPath();
     ctx.moveTo(x - r * 0.32, y); ctx.quadraticCurveTo(x - r * 0.22, y - r * 0.8, x - r * 0.26, y - r * 1.2);
     ctx.lineTo(x + r * 0.26, y - r * 1.2); ctx.quadraticCurveTo(x + r * 0.22, y - r * 0.8, x + r * 0.32, y); ctx.closePath(); ctx.fill();
@@ -495,6 +759,12 @@ class Renderer {
       const ctx = this.ctx;
       ctx.fillStyle = `rgba(191,230,255,${0.25 * near * pulse})`;
       for (let k = 0; k < 3; k++) { const a = this.t * 0.8 + k * 2.1; ctx.beginPath(); ctx.arc(p.x + Math.cos(a) * 9, p.y - 6 + Math.sin(a * 1.3) * 5, 1.2, 0, Math.PI * 2); ctx.fill(); }
+    }
+    // The same ring milk draws while it is being grazed, in the trip's own violet.
+    if (p.graze > 0) {
+      const ctx = this.ctx, frac = clamp(p.graze / TUNING.shroom.eatTime, 0, 1);
+      ctx.strokeStyle = PALETTE.witchHi; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(p.x, p.y + 2, 13, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
     }
   }
   drawCaveTiles(game, cam) {
@@ -535,7 +805,7 @@ class Renderer {
             const h = farHash(tx, ty);
             ctx.fillStyle = def.grassDark || '#223618';
             ctx.beginPath(); ctx.ellipse(px + 16, py + 17, 17 + h * 3, 15, h * 2, 0, Math.PI * 2); ctx.fill();
-          }
+          } else if (t === T.FLOOR && PIXEL_ENV.ready) PIXEL_ENV.litter(ctx, 'cave', tx, ty);
           for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
             if (!solid(tx + sx, ty) || !solid(tx, ty + sy)) continue;
             const cx = sx < 0 ? px : px + TILE, cy = sy < 0 ? py : py + TILE;
@@ -567,6 +837,7 @@ class Renderer {
     }
     ctx.restore();
     this.drawCaveDecor(game, edge, solid, LIFT);
+    this.flushGlows();
   }
 
   // Tall grass, over everything that stands in it. Each tile is a handful of blades rooted at fixed
@@ -576,10 +847,17 @@ class Renderer {
     const wd = game.world; if (!game.level.grass || !game.level.grass.length) return;
     const ctx = this.ctx, def = game.level.def, W = wd.W, G = TUNING.grass;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
-    const bodies = [];
+    // Only the bodies on screen can part anything on screen: a late floor has eighty men in it, and
+    // every tile of grass was filtering all of them.
+    const bodies = [], bx0 = x0 * TILE - TILE, bx1 = (x1 + 1) * TILE + TILE, by0 = y0 * TILE - TILE, by1 = (y1 + 1) * TILE + TILE;
+    const onView = (o) => o.x > bx0 && o.x < bx1 && o.y > by0 && o.y < by1;
     if (!game.goat.dead) bodies.push({ x: game.goat.x, y: game.goat.y, goat: true });
-    for (const e of game.enemies) if (!e.dead && !e.ghosted) bodies.push({ x: e.x, y: e.y });
+    for (const e of game.enemies) if (!e.dead && !e.ghosted && onView(e)) bodies.push({ x: e.x, y: e.y });
     const dark = def.grassColor || '#3d5a2a', hi = def.grassHi || '#6f8f45';
+    // Every blade goes into one of two paths and each path is filled once. It was a fill a blade —
+    // seven a tile, several hundred a frame on a cave floor — and that was the cave's slowness: each
+    // fill is its own trip through the rasteriser, however small the blade.
+    const pDark = new Path2D(), pHi = new Path2D();
     for (let ty = Math.max(0, y0); ty <= Math.min(wd.H - 1, y1); ty++) for (let tx = Math.max(0, x0); tx <= Math.min(W - 1, x1); tx++) {
       if (!wd.grass[ty * W + tx]) continue;
       const cx = (tx + 0.5) * TILE, cy = (ty + 0.5) * TILE;
@@ -603,11 +881,13 @@ class Renderer {
           len *= 1 - f * (b.goat ? 0.6 : 0.3);
         }
         const tipX = bx + Math.sin(lean) * len, tipY = by - Math.cos(lean) * len;
-        ctx.fillStyle = k % 3 === 0 ? hi : dark;
-        ctx.beginPath(); ctx.moveTo(bx - 3, by); ctx.quadraticCurveTo(bx + (tipX - bx) * 0.4 - 1, by - len * 0.5, tipX, tipY);
-        ctx.quadraticCurveTo(bx + (tipX - bx) * 0.4 + 1, by - len * 0.5, bx + 3, by); ctx.closePath(); ctx.fill();
+        const P = k % 3 === 0 ? pHi : pDark;
+        P.moveTo(bx - 3, by); P.quadraticCurveTo(bx + (tipX - bx) * 0.4 - 1, by - len * 0.5, tipX, tipY);
+        P.quadraticCurveTo(bx + (tipX - bx) * 0.4 + 1, by - len * 0.5, bx + 3, by); P.closePath();
       }
     }
+    ctx.fillStyle = dark; ctx.fill(pDark);
+    ctx.fillStyle = hi; ctx.fill(pHi);
   }
 
   drawBurningGrass(tx, ty, left, witch) {
@@ -639,6 +919,14 @@ class Renderer {
     const wob = p.wobble > 0 ? Math.sin(this.t * 60) * 2 * p.wobble / 0.3 : 0;
     const x = p.x + wob, y = p.y, r = p.r;
     this.shadow(x, y + 4, r * 1.15, r * 0.55);
+    if (PIXEL_ENV.ready) {
+      PIXEL_ENV.draw(ctx, 'boulder', x, y + r * 0.7, r * 2.5);
+      if (p.hits) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1.8; ctx.beginPath();
+        ctx.moveTo(x - r * 0.6, y - 12); ctx.lineTo(x - 2, y - 5); ctx.lineTo(x + 3, y - 9); ctx.lineTo(x + r * 0.7, y); ctx.stroke();
+      }
+      return;
+    }
     const pts = [];
     for (let k = 0; k < 9; k++) {
       const a = k / 9 * Math.PI * 2, f = 0.84 + farHash(p.x + k, p.y - k) * 0.24;
@@ -827,7 +1115,9 @@ class Renderer {
       ctx.globalAlpha = 1 - k * k;
       ctx.translate(f.x + f.dx * k, f.y + f.dy * k + k * 14);
       ctx.scale(1, 1 / TILT); ctx.rotate(f.spin * k); ctx.scale(sc, sc);
-      if (f.e.kind === 'dog') this.drawHound(f.e); else this.drawCultist(f.e, f.e.r);
+      const key = PIXEL_ART.ready && this.painted.characterKey(f.e);
+      if (key) this.painted.character(this, f.e, key, 42);
+      else if (f.e.kind === 'dog') this.drawHound(f.e); else this.drawCultist(f.e, f.e.r);
       ctx.restore();
     }
     ctx.globalAlpha = 1;
@@ -872,6 +1162,19 @@ class Renderer {
         const lh = size * 1.4, top = c.y - (lines.length - 1) * lh / 2;
         lines.forEach((l, i) => ctx.fillText(l, c.x, (top + i * lh) * TILT));
       }
+    }
+    // The mouse's room says on its floor which button takes one of hers, for as long as the offer
+    // stands — a stool with a thing on it reads as a display, not as a choice you are being handed.
+    for (const m of game.props) {
+      if (m.kind !== 'mouse' || m.broken) continue;
+      const room = lv.rooms[m.shopId]; if (!room || !room.seen) continue;
+      if (!game.props.some((q) => q.kind === 'ware' && !q.broken && q.shopId === m.shopId && !q.locked && !q.chosen)) continue;
+      const cx = (room.x + room.w / 2) * TILE, cy = (room.y + room.h / 2) * TILE;
+      if (Math.abs(cx - game.cam.x) > 1400) continue;
+      const label = game.touch.active ? 'GRAB - CHOOSE THE ARTIFACT' : 'RIGHT BUTTON - CHOOSE THE ARTIFACT';
+      this.fitFloorText([label], room.w * TILE - 2.6 * TILE, 24);
+      ctx.fillStyle = 'rgba(255,224,138,0.2)';
+      ctx.fillText(label, cx, cy * TILT);
     }
     // The pen. After five seconds of standing in it, the floor says which button opens it.
     if (lv.cagePrompt && !game.cageOpen) {
@@ -1062,9 +1365,13 @@ class Renderer {
     ctx.restore();
   }
 
+  // Centred a hair above the foot point rather than hung below it: every sprite stands with its
+  // lowest pixel on (x, y), and a shadow pushed half its own height down from there left the front
+  // feet on its middle and the back ones above it, so everything read as hovering over its own
+  // shadow (playtest, 23 Sep 2026). Now the front feet sit in the lower half and the back ones in it.
   shadow(x, y, rx, ry) {
     const ctx = this.ctx; ctx.fillStyle = 'rgba(0,0,0,0.32)';
-    ctx.beginPath(); ctx.ellipse(x, y + ry * 0.55, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x, y - ry * 0.15, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   // The roast: a campfire in a ring of stones, two forked sticks, and a crocodile turning on the
@@ -1212,6 +1519,162 @@ class Renderer {
     ctx.restore();
   }
 
+  // THE ESCORTS (js/beasts.js). Three animals drawn the way everything else in this game is drawn:
+  // a handful of shapes that have to read across a room at a glance and say what the thing does.
+  //
+  // The tortoise is a dome first and an animal second — it is cover as much as it is company, so the
+  // shell is most of the drawing and the head and legs come and go. Pulled in (`tuckT`) it is nothing
+  // but shell, which is the state in which it blocks and stops rounds; out, four stubby legs and a
+  // small head say it is walking again and can be picked up.
+  drawTortoise(p) {
+    // On its back after a block (`coolT`): drawn upside down, and the ring under it is ash, not bone.
+    const ctx = this.ctx, r = p.r, cool = p.coolT > 0 && !p.flying, tucked = (p.tuckT > 0 || cool) && !p.flying;
+    const lift = p.held ? 5 : 0, spin = p.flying ? this.t * 6 : 0;
+    const walk = tucked || p.held || p.flying ? 0 : Math.sin(p.bob * 2) * 1.4;
+    if (PIXEL_ART.ready) {
+      // Pixel pass: one drawing of her, so pulled in is squat and a shade darker, and walking bobs.
+      ctx.save(); ctx.translate(p.x, p.y + r * 0.5 - lift);
+      this.shadow(0, lift, r * 0.95, r * 0.48);
+      ctx.rotate(spin * 0.12); ctx.translate(0, -Math.abs(walk) * 0.6); ctx.scale(1, 1 / TILT);
+      if (tucked) { ctx.scale(1.04, 0.88); ctx.filter = 'brightness(0.78)'; }
+      if (cool) { ctx.translate(0, -r * 0.8); ctx.scale(1, -1); ctx.translate(0, r * 0.8); ctx.filter = 'brightness(0.6)'; }
+      PIXEL_ART.icon(ctx, 'turtle', (p.vx || 0) < -4);
+      ctx.restore();
+    } else {
+    ctx.save(); ctx.translate(p.x, p.y - lift);
+    this.shadow(0, r * 0.5 + lift, r * 0.95, r * 0.48);
+    ctx.rotate(spin * 0.12 + (cool ? Math.PI : 0));
+    // legs and head, only when it is out
+    if (!tucked) {
+      ctx.fillStyle = '#7d6a4a';
+      for (const [lx, ly] of [[-r * 0.66, r * 0.34], [r * 0.66, r * 0.34], [-r * 0.72, -r * 0.16], [r * 0.72, -r * 0.16]]) {
+        ctx.beginPath(); ctx.ellipse(lx, ly + walk * (lx > 0 ? 1 : -1), 3.4, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      // the head, out in front of whichever way it is going
+      const hx = Math.abs(p.vx) > 4 ? Math.sign(p.vx) * r * 0.9 : 0, hy = Math.abs(p.vx) > 4 ? r * 0.1 : r * 0.72;
+      ctx.beginPath(); ctx.ellipse(hx, hy, 4.2, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.ink;
+      ctx.beginPath(); ctx.arc(hx + (hx ? Math.sign(hx) * 1.4 : 1.4), hy - 0.8, 0.9, 0, Math.PI * 2); ctx.fill();
+    }
+    // the shell: a dome, a rim, and the scutes on it
+    ctx.fillStyle = '#2e2419';
+    ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.86, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#5c4a2a';
+    ctx.beginPath(); ctx.ellipse(0, -0.6, r - 1.6, r * 0.86 - 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7a6434';
+    ctx.beginPath(); ctx.ellipse(-r * 0.18, -r * 0.24, r * 0.58, r * 0.46, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(26,16,22,0.55)'; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let k = 0; k < 5; k++) {
+      const a = -Math.PI / 2 + (k / 5) * Math.PI * 2;
+      ctx.moveTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.26);
+      ctx.lineTo(Math.cos(a) * (r - 2), Math.sin(a) * (r * 0.86 - 2));
+    }
+    ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 0.32, r * 0.28, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    }
+    // Pulled in, it says so: a thin ring on the ground is the tell that it is cover right now and
+    // not a thing you can pick up, and it fades as the tuck runs out.
+    if (cool) {
+      // How long it stays over, as the ring filling back in.
+      const f = 1 - p.coolT / TUNING.prop.tortoise.cool;
+      ctx.strokeStyle = 'rgba(120,110,100,0.5)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y + r * 0.45, r * 1.35, r * 0.6, 0, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); ctx.stroke();
+    } else if (tucked) {
+      const a = Math.min(1, p.tuckT / TUNING.prop.tortoise.tuck);
+      ctx.strokeStyle = `rgba(239,230,208,${0.1 + 0.14 * a})`; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y + r * 0.45, r * 1.35, r * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // The goose: bone-white like the hen so the two read as the same side of the fight, but tall — the
+  // neck is the whole silhouette and the whole of what it says about itself. It is up and open when
+  // the honk is fresh, down and forward when it is walking.
+  drawGoose(p) {
+    const ctx = this.ctx, r = p.r, C = TUNING.prop.goose;
+    const honk = Math.max(0, 1 - (C.honkGap - (p.honkT || 0)) / 0.45);   // 1 just after a honk
+    const face = Math.abs(p.vx) > 4 ? Math.sign(p.vx) : 1;
+    const bob = Math.sin(p.bob * 2.2) * 1.2;
+    ctx.save(); ctx.translate(p.x, p.y);
+    this.shadow(0, r * 0.55, r * 0.9, r * 0.42);
+    if (PIXEL_ART.ready) {
+      // Pixel pass: the honk is a stretch up, the arcs below still say what it was.
+      ctx.translate(0, r * 0.55 + bob * 0.5); ctx.scale(1 / (1 + honk * 0.08), 1 / TILT * (1 + honk * 0.12));
+      PIXEL_ART.icon(ctx, 'goose', face < 0);
+    } else {
+    ctx.scale(face, 1);
+    ctx.fillStyle = '#c8a24a';                              // the feet
+    ctx.fillRect(-3, r * 0.3 + bob, 3, 3.4); ctx.fillRect(2, r * 0.3 + bob, 3, 3.4);
+    ctx.fillStyle = PALETTE.henShade;                        // the body, shaded under
+    ctx.beginPath(); ctx.ellipse(-1, bob, r * 0.9, r * 0.66, 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.hen;
+    ctx.beginPath(); ctx.ellipse(-1.5, bob - 1.4, r * 0.82, r * 0.56, 0.1, 0, Math.PI * 2); ctx.fill();
+    // the neck: an S when it is walking, straight up and out when it has just shouted
+    const hh = -r * (1.5 + 0.55 * honk) + bob, hx = r * (0.5 + 0.45 * honk);
+    ctx.strokeStyle = PALETTE.hen; ctx.lineWidth = 4.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, bob - r * 0.3);
+    ctx.quadraticCurveTo(r * 0.1 - honk * r * 0.4, hh * 0.55, hx * 0.72, hh);
+    ctx.stroke();
+    ctx.fillStyle = PALETTE.hen;
+    ctx.beginPath(); ctx.ellipse(hx * 0.72, hh, 4.2, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.beak;                            // the bill, open when it honks
+    ctx.beginPath(); ctx.moveTo(hx * 0.72 + 2, hh - 1.6 - honk * 1.4);
+    ctx.lineTo(hx * 0.72 + 8 + honk * 2, hh - 0.4);
+    ctx.lineTo(hx * 0.72 + 2, hh + 1.6 + honk * 1.4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PALETTE.ink;
+    ctx.beginPath(); ctx.arc(hx * 0.72 + 1.4, hh - 1.2, 1, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    // What a honk is, seen: two arcs off the bill, the way the goat's own call is drawn as a ring.
+    if (honk > 0.05) {
+      ctx.strokeStyle = `rgba(239,230,208,${0.5 * honk})`; ctx.lineWidth = 1.6;
+      for (const k of [1, 1.7]) {
+        ctx.beginPath();
+        ctx.arc(p.x + face * r * 1.1, p.y - r * 1.6, 5 * k, -0.9, 0.9); ctx.stroke();
+      }
+    }
+  }
+
+  // The crow: near-black with a cold blue sheen on it, so it reads against plum and timber without
+  // being another pale animal. A wing out and a hop when it is travelling, head down when it is on
+  // a body — which is the one thing it is ever doing, and the whole of what it asks of the player.
+  drawCrow(p) {
+    const ctx = this.ctx, r = p.r;
+    const moving = Math.hypot(p.vx || 0, p.vy || 0) > 8;
+    const face = Math.abs(p.vx) > 4 ? Math.sign(p.vx) : 1;
+    const hop = moving ? Math.abs(Math.sin(p.bob * 4)) * 4 : 0;
+    const peck = p.feeding ? Math.max(0, Math.sin(p.bob * 3)) * 3 : 0;
+    ctx.save(); ctx.translate(p.x, p.y - hop);
+    this.shadow(0, r * 0.5 + hop, r * 0.8, r * 0.36);
+    if (PIXEL_ART.ready) {
+      // Pixel pass: a hop is the lift above, feeding is a dip forward onto the body.
+      ctx.translate(0, r * 0.5); ctx.scale(1, 1 / TILT); ctx.rotate(face * peck * 0.06);
+      PIXEL_ART.icon(ctx, 'raven', face < 0);
+      ctx.restore(); return;
+    }
+    ctx.scale(face, 1);
+    ctx.fillStyle = '#3a3a46';                               // the legs
+    ctx.fillRect(-2.4, r * 0.28, 1.8, 3.4); ctx.fillRect(1.4, r * 0.28, 1.8, 3.4);
+    ctx.fillStyle = '#12111a';                               // the tail and the body
+    ctx.beginPath(); ctx.moveTo(-r * 1.25, -r * 0.1);
+    ctx.lineTo(-r * 0.4, -r * 0.5); ctx.lineTo(-r * 0.4, r * 0.3); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 0.82, r * 0.6, 0.12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#232233';                               // the wing, out when it is travelling
+    ctx.save(); ctx.rotate(moving ? -0.5 - Math.sin(p.bob * 4) * 0.35 : -0.12);
+    ctx.beginPath(); ctx.ellipse(-r * 0.15, -r * 0.1, r * 0.66, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    const hy = -r * 0.62 + peck;                             // the head, down on a body
+    ctx.fillStyle = '#12111a';
+    ctx.beginPath(); ctx.ellipse(r * 0.42, hy, 4, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6b6a78';                               // the beak
+    ctx.beginPath(); ctx.moveTo(r * 0.42 + 2, hy - 1.4);
+    ctx.lineTo(r * 0.42 + 9, hy + 0.2); ctx.lineTo(r * 0.42 + 2, hy + 1.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PALETTE.fireHi;                          // one bright eye is the whole face
+    ctx.beginPath(); ctx.arc(r * 0.42 + 1.2, hy - 1, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
   // The Mill: a ritual grinding wheel. Its arms sweep along the ground, so it stays squashed with it.
   drawMill(p) {
     const ctx = this.ctx, M = TUNING.mill;
@@ -1255,7 +1718,97 @@ class Renderer {
     ctx.restore();
   }
 
+  // The cave's stone teeth: three spikes of rock standing up out of the floor at the foot of a wall,
+  // the tallest in the middle, wet at the tips. It is drawn in the room's own rock colours because it
+  // IS the room's rock — nothing about it is a warning sign painted on the ground — and what has to
+  // read from across the room is the shape: narrow, tall, pointed, and the light running along the
+  // edge of each point. The glint is the only thing here that moves, and it is on `cave.spikes.glint`.
+  drawSpire(p) {
+    const ctx = this.ctx, def = this.game && this.game.level ? this.game.level.def : null;
+    const face = (def && def.wall) || '#5a544c', top = (def && def.wallTop) || '#8d8a85';
+    const G = TUNING.cave.spikes.glint, r = p.r;
+    // Old blood round the foot of them. It is the one thing here that is not rock, and it is what
+    // says the rock kills before anybody has to find out: a stone spike drawn in the room's own
+    // stone colours is honest and very nearly invisible, and this is read across a room.
+    ctx.fillStyle = 'rgba(74,20,16,0.45)';
+    ctx.beginPath(); ctx.ellipse(p.x + 1, p.y + 3, r * 1.15, r * 0.5, 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(122,31,24,0.3)';
+    ctx.beginPath(); ctx.ellipse(p.x - r * 0.5, p.y + 5, r * 0.4, r * 0.2, -0.3, 0, Math.PI * 2); ctx.fill();
+    this.shadow(p.x, p.y + 2, r * 0.95, r * 0.42);
+    if (PIXEL_ENV.ready) { PIXEL_ENV.draw(ctx, 'stalagmites', p.x, p.y + 4, r * 2.4); return; }
+    // back two first, then the tall one in front of them, so the group reads as one thing
+    const teeth = [[-r * 0.55, r * 0.62, 0.72], [r * 0.58, r * 0.55, 0.66], [r * 0.04, r * 0.78, 1]];
+    for (let k = 0; k < teeth.length; k++) {
+      const [ox, w, hMul] = teeth[k], x = p.x + ox, base = p.y + (k === 2 ? 3 : 0), len = r * 2.15 * hMul;
+      ctx.fillStyle = face; ctx.beginPath();
+      ctx.moveTo(x - w / 2, base);
+      ctx.quadraticCurveTo(x - w * 0.22, base - len * 0.55, x, base - len);
+      ctx.quadraticCurveTo(x + w * 0.22, base - len * 0.55, x + w / 2, base);
+      ctx.closePath(); ctx.fill();
+      // the lit side, and the point in the rock's top colour so the tip is the brightest thing on it
+      ctx.fillStyle = 'rgba(255,240,210,0.16)'; ctx.beginPath();
+      ctx.moveTo(x - w / 2, base); ctx.quadraticCurveTo(x - w * 0.22, base - len * 0.55, x, base - len);
+      ctx.lineTo(x - w * 0.06, base); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = top; ctx.beginPath();
+      ctx.moveTo(x - w * 0.2, base - len * 0.74); ctx.lineTo(x, base - len); ctx.lineTo(x + w * 0.2, base - len * 0.74);
+      ctx.closePath(); ctx.fill();
+      const tw = Math.pow(Math.max(0, Math.sin(this.t * 1.6 + k * 2.1 + p.x * 0.05)), 8);
+      if (tw > 0.04) {
+        ctx.fillStyle = `rgba(255,255,255,${tw * G})`;
+        ctx.beginPath(); ctx.arc(x, base - len + 1, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  // The mouse's pail, standing where she set it down: a bucket as tall as the goat, staved, hooped
+  // twice, brimming and slopping over the lip, with a pip on the band for every heart still in it.
+  // It is deliberately enormous. The offer used to be three bowls of milk with the words THREE BOWLS
+  // OF MILK written under them, and the 22 Sep 2026 note was that the caption should be a bucket
+  // instead — a thing that size, full of that, needs nothing said about it.
+  drawPail(p) {
+    const ctx = this.ctx, t = this.t, R = p.r * 1.7, H = R * 2.2;
+    const y0 = p.y + 4, wob = Math.sin(t * 1.4 + p.x * 0.03) * 0.8;
+    this.shadow(p.x, p.y + 4, R * 1.05, R * 0.45);
+    // the staves, narrower at the foot
+    ctx.fillStyle = '#6b4a2c'; ctx.beginPath();
+    ctx.moveTo(p.x - R * 0.72, y0); ctx.lineTo(p.x - R, y0 - H);
+    ctx.lineTo(p.x + R, y0 - H); ctx.lineTo(p.x + R * 0.72, y0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath(); ctx.moveTo(p.x + R * 0.28, y0 - H); ctx.lineTo(p.x + R, y0 - H);
+    ctx.lineTo(p.x + R * 0.72, y0); ctx.lineTo(p.x + R * 0.2, y0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,210,0.1)'; ctx.fillRect(p.x - R * 0.82, y0 - H * 0.9, R * 0.22, H * 0.8);
+    // two iron hoops, and a pip on the upper one for every drink left in it
+    for (const f of [0.28, 0.76]) {
+      ctx.fillStyle = '#8d8a85';
+      ctx.fillRect(p.x - R * (0.72 + 0.28 * f), y0 - H * f - 2, R * 2 * (0.72 + 0.28 * f), 3.4);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.fillRect(p.x - R * (0.72 + 0.28 * f), y0 - H * f - 2, R * 2 * (0.72 + 0.28 * f), 1.2);
+    }
+    // the milk, brimming and slopping with the wobble
+    const top = y0 - H;
+    ctx.fillStyle = '#efe6d0'; ctx.beginPath(); ctx.ellipse(p.x, top + wob, R * 0.96, R * 0.34, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.ellipse(p.x - R * 0.3, top - R * 0.06 + wob, R * 0.28, R * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(239,230,208,0.85)';
+    ctx.beginPath(); ctx.moveTo(p.x + R * 0.5, top + wob); ctx.quadraticCurveTo(p.x + R * 0.92, top + H * 0.3, p.x + R * 0.66, top + H * 0.34);
+    ctx.quadraticCurveTo(p.x + R * 0.62, top + H * 0.1, p.x + R * 0.5, top + wob); ctx.fill();
+    ctx.save(); ctx.scale(1, 1 / TILT);
+    ctx.fillStyle = PALETTE.bone;
+    for (let k = 0; k < p.pail; k++) {
+      const px = p.x - (p.pail * 5 - 2) / 2 + k * 5;
+      ctx.beginPath(); ctx.arc(px, (y0 - H * 0.76) * TILT, 1.7, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    if (p.graze > 0) {
+      const frac = clamp(p.graze / TUNING.prop.heal.grazeTime, 0, 1);
+      ctx.strokeStyle = 'rgba(239,230,208,0.85)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(p.x, p.y, R * 1.05, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
+    }
+  }
+
   drawPropBody(p) {
+    if (p.kind === 'heal' && p.pail) { this.drawPail(p); return; }
+    if (p.kind === 'spire') { this.drawSpire(p); return; }
     if (p.kind === 'rock') { if (this.game && this.game.level && this.game.level.def.shroom) this.drawBigShroom(p); else this.drawRock(p); return; }
     if (p.kind === 'shrooms') { this.drawShroomTuft(p); return; }
     // In the cave the rock under a secret wall is drawn with the rest of the rock (`drawCaveTiles`):
@@ -1447,9 +2000,22 @@ class Renderer {
       ctx.fillStyle = '#231710'; ctx.fillRect(-r, -h * 0.5, w, h);             // the dark inside
       // The bird in there, shifting about. She is the reason to break it, so she has to be visible.
       const bx = Math.sin(this.t * 1.3 + p.phase) * r * 0.35;
-      ctx.fillStyle = PALETTE.hen;
-      ctx.beginPath(); ctx.ellipse(bx, 1, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = PALETTE.comb; ctx.fillRect(bx - 1.5, -7, 3, 2.5);
+      if (!p.holds || p.holds === 'chicken') {
+        ctx.fillStyle = PALETTE.hen;
+        ctx.beginPath(); ctx.ellipse(bx, 1, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = PALETTE.comb; ctx.fillRect(bx - 1.5, -7, 3, 2.5);
+      } else {
+        // Any other animal is drawn by its own drawer, small, pacing behind the slats — a stand-in
+        // object rather than the real prop, which does not exist until the coop is broken.
+        ctx.save(); ctx.beginPath(); ctx.rect(-r, -h * 0.5, w, h); ctx.clip();
+        ctx.translate(bx, 2); ctx.scale(0.8, 0.8);
+        const pet = { x: 0, y: 0, kind: p.holds, r: TUNING.prop[p.holds].r, vx: Math.cos(this.t * 1.3 + p.phase) * 20, vy: 0,
+          bob: this.t * 2 + p.phase, phase: p.phase, tuckT: 0, honkT: 0 };
+        if (p.holds === 'tortoise') this.drawTortoise(pet);
+        else if (p.holds === 'goose') this.drawGoose(pet);
+        else if (p.holds === 'crow') this.drawCrow(pet);
+        ctx.restore();
+      }
       // The slats over her, and the frame round them.
       ctx.fillStyle = PALETTE.wood;
       for (let k = 0; k <= 5; k++) ctx.fillRect(-r + 2 + k * ((w - 4) / 5) - 1.3, -h * 0.5, 2.6, h);
@@ -1464,6 +2030,12 @@ class Renderer {
       ctx.restore();
     } else if (p.kind === 'chicken') {
       this.drawHen(p);
+    } else if (p.kind === 'tortoise') {
+      this.drawTortoise(p);
+    } else if (p.kind === 'goose') {
+      this.drawGoose(p);
+    } else if (p.kind === 'crow') {
+      this.drawCrow(p);
     } else if (p.kind === 'cage') {
       const h = TUNING.prop.cage.height;
       // Every headbutt the pen survives leaves the bars further out of true.
@@ -1918,7 +2490,7 @@ class Renderer {
       ctx.beginPath(); ctx.ellipse(e.x, e.y + e.r * 0.5, e.r * 1.25, e.r * 1.25 * TILT, 0, 0, Math.PI * 2); ctx.stroke();
     }
     if (!e.ghosted) this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
-    const paintedKey = this.painted.ready && this.painted.characterKey(e);
+    const paintedKey = PIXEL_ART.ready && this.painted.characterKey(e);
     // `character()` already anchors each sheet at its own measured foot line (walk-cycle and static
     // "Facing" art sit at different heights in their 128px cell) — nothing needs nudging again here.
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
@@ -1947,8 +2519,25 @@ class Renderer {
       ctx.save(); ctx.globalAlpha = Math.min(0.9, e.flash * 10); ctx.filter = 'brightness(0) invert(1)';
       body(); ctx.restore();
     }
+    // Shock: poison and stun at once, one mark for both — a green-and-gold spiral over his head,
+    // turning, in place of the stars and the bubbles, so the pair reads as one state.
+    if (e.shock > 0) {
+      // Half the size it was: at 16 px across it covered the man it was a label on.
+      ctx.save(); ctx.translate(0, -r - 9); ctx.rotate(this.t * 6);
+      ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+      for (let k = 0; k < 2; k++) {
+        ctx.strokeStyle = k ? PALETTE.venomHi : PALETTE.fireHi;
+        ctx.beginPath();
+        for (let a = 0; a < Math.PI * 3.2; a += 0.3) {
+          const rr = 1 + a * 0.8, aa = a + k * Math.PI;
+          if (a === 0) ctx.moveTo(Math.cos(aa) * rr, Math.sin(aa) * rr * 0.6); else ctx.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr * 0.6);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     // Stars: he heard the scream and is still hearing it.
-    if (e.dazed > 0) {
+    else if (e.dazed > 0) {
       ctx.fillStyle = PALETTE.fireHi;
       for (let k = 0; k < 3; k++) {
         const a = this.t * 7 + k * 2.1;
@@ -1956,7 +2545,7 @@ class Renderer {
       }
     }
     // Poisoned: a green film over the eyes and bubbles coming off him. Blind and slow reads at once.
-    if (e.poison > 0) {
+    if (e.poison > 0 && !(e.shock > 0)) {
       const a = Math.min(1, e.poison * 1.5);
       ctx.globalAlpha = 0.55 * a; ctx.fillStyle = PALETTE.venom;
       ctx.beginPath(); ctx.ellipse(0, -r * 0.35, r * 0.8, r * 0.28, 0, 0, Math.PI * 2); ctx.fill();
@@ -1984,16 +2573,20 @@ class Renderer {
     }
 
     // A bark: stamped caps on a dark plate, over his head, gone in under two seconds.
+    // Small on purpose: what a man shouts is colour, not information the fight turns on, and at the
+    // old size two of them in a room covered more of it than the men did. It sits over his head and
+    // over his notches, never across his face.
+    const head = this.spriteHead(e), notched = e.maxHp > 1 && !e.ghosted;
     if (e.say && !e.dead) {
       const a = Math.max(0, Math.min(1, e.say.life / 0.4, (e.say.max - e.say.life) / 0.08));
       ctx.save(); ctx.scale(1, 1 / TILT);
-      const by = (e.y - e.r - 21) * TILT;
-      ctx.font = `700 ${e.kind === 'butcher' ? 15 : 13}px ${FONT_SC}`;
+      const by = e.y * TILT - head - (notched ? 14 : 7);
+      ctx.font = `700 ${e.kind === 'butcher' ? 11 : 9.5}px ${FONT_SC}`;
       ctx.textAlign = 'center';
       const tw = ctx.measureText(e.say.text).width;
-      ctx.globalAlpha = a * 0.78; ctx.fillStyle = PALETTE.ink;
-      ctx.fillRect(e.x - tw / 2 - 6, by - 12, tw + 12, 16);
-      ctx.beginPath(); ctx.moveTo(e.x - 4, by + 4); ctx.lineTo(e.x + 4, by + 4); ctx.lineTo(e.x, by + 9); ctx.fill();
+      ctx.globalAlpha = a * 0.7; ctx.fillStyle = PALETTE.ink;
+      ctx.fillRect(e.x - tw / 2 - 4, by - 9, tw + 8, 12);
+      ctx.beginPath(); ctx.moveTo(e.x - 3, by + 3); ctx.lineTo(e.x + 3, by + 3); ctx.lineTo(e.x, by + 6); ctx.fill();
       ctx.globalAlpha = a;
       ctx.fillStyle = e.kind === 'seer' ? PALETTE.witchHi : e.kind === 'butcher' ? PALETTE.blood : PALETTE.bone;
       ctx.fillText(e.say.text, e.x, by);
@@ -2007,9 +2600,11 @@ class Renderer {
     }
     // Health notches over anyone who takes more than one blow — the Butcher, a Seer, an arena elite —
     // so what is left of him reads off his own head instead of off a text popup.
-    if (e.maxHp > 1 && !e.ghosted) {
+    // Measured off the top of the sprite he is actually drawn as: `e.r` is his footprint, and off
+    // that the notches landed across a pixel mage's eyes.
+    if (notched) {
       const max = e.maxHp, wdt = clamp(e.r * 0.5, 6, 9), gap = 3.5, total = max * wdt + (max - 1) * gap;
-      const top = e.y - e.r - (e.kind === 'butcher' ? 14 : 11);
+      const top = e.y - (head + 6) / TILT;
       for (let i = 0; i < max; i++) {
         const x = e.x - total / 2 + i * (wdt + gap);
         ctx.fillStyle = 'rgba(13,10,12,0.55)'; ctx.fillRect(x - 1, top - 1, wdt + 2, 6.5);
@@ -2019,6 +2614,14 @@ class Renderer {
     }
   }
 
+  // How far above his foot the top of his sprite stands, in screen px: the pixel unit's own extent
+  // where he has one, otherwise what the old painted bodies came to off his footprint.
+  spriteHead(e) {
+    const key = this.painted.characterKey(e), u = key && PIXEL_ART.unit(key);
+    const k = e.elite ? (e.champion ? TUNING.champion.scale : 1.28) : 1;
+    return (u ? PIXEL_EXTENT[u] : e.r * 2.3) * k + (e.state === 'hop' && e.hopZ ? e.hopZ : 0);
+  }
+
   // Enemies wind up slowly and show the ground they are about to cover.
   drawTelegraph(e) {
     if (e.state === 'slamwind') { this.drawSlamRing(e); return; }
@@ -2026,7 +2629,9 @@ class Renderer {
     const ctx = this.ctx, cfg = TUNING[e.kind];
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.rotate(e.facing);
     if (e.state === 'chargewind') {
-      const p = 1 - e.timer / cfg.chargeWind, len = cfg.chargeSpeed * cfg.chargeTime * 0.55;
+      // The strip is the run he will actually make: to where the goat stands and `chargeOver` past it.
+      const g = this.game.goat, run = Math.hypot(g.x - e.x, g.y - e.y) + cfg.chargeOver * TILE;
+      const p = clamp(1 - e.timer / cfg.chargeWind, 0, 1), len = Math.min(cfg.chargeSpeed * cfg.chargeTime, run);
       ctx.fillStyle = `rgba(192,57,43,${0.08 + 0.16 * p})`;
       ctx.fillRect(0, -e.r, len * p, e.r * 2);
       ctx.strokeStyle = `rgba(239,230,208,${0.3 + 0.4 * p})`; ctx.lineWidth = 2;
@@ -2054,6 +2659,30 @@ class Renderer {
   }
   // The hound's line: where the run goes, in red on the floor, brightening across the charge and
   // shortening behind him as he runs it. Drawn under everything that stands, with the runes.
+  // The running trail from the goat to what opens the soul gate he just butted (`game.guide`): a
+  // line of violet chevrons on the floor flowing toward it, thinning out at both ends, the whole
+  // thing fading over its last second. The Hades way of saying "that, over there".
+  drawGuide(game) {
+    const G = game.guide; if (!G) return;
+    const C = TUNING.soul.guide, g = game.goat, dx = G.ref.x - g.x, dy = G.ref.y - g.y, d = Math.hypot(dx, dy);
+    if (d < C.gap * 1.5) return;
+    const ux = dx / d, uy = dy / d, fade = Math.min(1, G.t) * Math.min(1, (C.time - G.t) * 4);
+    const ctx = this.ctx, S = C.size, off = (this.t * C.speed) % C.gap;
+    ctx.save(); ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let s = off + C.gap * 0.8; s < d - C.gap * 0.6; s += C.gap) {
+      const a = fade * Math.min(1, s / (C.gap * 2)) * Math.min(1, (d - s) / (C.gap * 2));
+      const x = g.x + ux * s, y = g.y + uy * s;
+      ctx.strokeStyle = `rgba(20,10,30,${0.5 * a})`;
+      for (const [w, col] of [[4, ctx.strokeStyle], [2.2, PALETTE.witchHi]]) {
+        ctx.lineWidth = w; ctx.strokeStyle = col; ctx.globalAlpha = col === PALETTE.witchHi ? a : 1;
+        ctx.beginPath();
+        ctx.moveTo(x - ux * S - uy * S, y - uy * S + ux * S); ctx.lineTo(x, y); ctx.lineTo(x - ux * S + uy * S, y - uy * S - ux * S);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
   drawDashPaths(game) {
     const ctx = this.ctx;
     for (const e of game.enemies) {
@@ -2140,7 +2769,16 @@ class Renderer {
     const ctx = this.ctx;
     for (const e of game.enemies) {
       if (e.dead || !e.rune || (e.state !== 'cast' && e.state !== 'held')) continue;
-      const cfg = TUNING.seer, p = 1 - e.timer / cfg.castWind;
+      // How far into the cast he is. It is measured against the windup he was actually given —
+      // `castWind * mods.enemySlow`, which is 1.1 of it by default and 1.4 in EASY MODE — and not
+      // against the raw TUNING number. Against the raw one this starts NEGATIVE (a tenth under
+      // zero, four tenths on easy) for the first fraction of every rune, and the filled disc below
+      // is `arc(0, 0, R * p)`: a negative radius, which Canvas throws IndexSizeError on. That
+      // exception came out of the middle of `draw`, so every frame at the start of every cast threw
+      // the whole rest of the picture away — the floor, the men, the goat, the HUD. Clamped as well
+      // as measured properly, because a render path may not depend on a timer never overrunning.
+      const cfg = TUNING.seer, wind = cfg.castWind * (game.mods.enemySlow || 1);
+      const p = clamp(1 - e.timer / wind, 0, 1);
       const R = cfg.runeRadius * TILE;
       ctx.save(); ctx.translate(e.rune.x, e.rune.y); ctx.rotate(this.t * 0.7);
       ctx.strokeStyle = `rgba(160,130,240,${0.25 + 0.5 * p})`; ctx.lineWidth = 2.5;
@@ -2208,34 +2846,46 @@ class Renderer {
     const cx = this.w - pad - cw, cy = this.h - pad - chH;
     let toastY = cy - 10 * s;
     if (d.open) {
-      const rows = [
-        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['rules', 'TOOLS'],
-        ['vision', d.vision ? 'VISION  ON' : 'VISION  OFF'],
-        ['hearing', d.hearing ? 'HEARING  ON' : 'HEARING  OFF'],
-        ['bearer', '+ BEARER'], ['hunter', '+ HUNTER'], ['dog', '+ HOUND'], ['seer', '+ SEER'],
-        ['wraith', '+ WRAITH'], ['butcher', '+ BUTCHER'], ['ratogre', '+ RAT OGRE'],
-        ['mouse', '+ MOUSE'], ['artifact', '+ ARTIFACT'],
-        ['soul', '+ SOUL'], ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
-        ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'],
+      // Two columns: the switches and the level on the left, and everything that can be dropped at
+      // his feet under SPAWN on the right. One column of twenty-three rows ran off the top of a
+      // laptop screen.
+      const cols = [
+        { head: 'DEV MODE', rows: [
+          ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['rules', 'TOOLS'],
+          ['vision', d.vision ? 'VISION  ON' : 'VISION  OFF'],
+          ['hearing', d.hearing ? 'HEARING  ON' : 'HEARING  OFF'],
+          ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
+          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'],
+        ] },
+        { head: 'SPAWN', rows: [
+          ['bearer', 'BEARER'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
+          ['wraith', 'WRAITH'], ['butcher', 'BUTCHER'], ['ratogre', 'RAT OGRE'],
+          ['mouse', 'MOUSE'], ['artifact', 'ARTIFACT'], ['soul', 'SOUL'],
+          ['coop', 'HEN'], ['tortoise', 'TORTOISE'], ['goose', 'GOOSE'], ['crow', 'CROW'],
+        ] },
       ];
-      const rw = 132 * s, rh = 24 * s, gap = 3 * s;
-      const px = this.w - pad - rw, py = cy - 6 * s - (rows.length * (rh + gap));
+      const rw = 132 * s, rh = 24 * s, gap = 3 * s, n = Math.max(...cols.map((c) => c.rows.length));
+      const boxW = rw * cols.length + 6 * s, boxH = n * (rh + gap) + 22 * s;
+      const px0 = this.w - pad - boxW, py = cy - 6 * s - (n * (rh + gap));
       toastY = py - 30 * s;
-      ctx.fillStyle = 'rgba(13,10,12,0.93)'; ctx.fillRect(px, py - 20 * s, rw, rows.length * (rh + gap) + 22 * s);
+      ctx.fillStyle = 'rgba(13,10,12,0.93)'; ctx.fillRect(px0, py - 20 * s, boxW, boxH);
       ctx.strokeStyle = 'rgba(185,135,58,0.6)'; ctx.lineWidth = 1.5 * s;
-      ctx.strokeRect(px, py - 20 * s, rw, rows.length * (rh + gap) + 22 * s);
-      ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
-      ctx.fillText('DEV MODE', px + 8 * s, py - 7 * s);
-      rows.forEach(([id, label], i) => {
-        const y = py + i * (rh + gap);
-        const on = (id === 'god' && d.god) || (id === 'vision' && d.vision) || (id === 'hearing' && d.hearing);
-        ctx.fillStyle = on ? 'rgba(192,57,43,0.5)' : 'rgba(59,34,51,0.75)';
-        ctx.fillRect(px + 5 * s, y, rw - 10 * s, rh);
-        ctx.strokeStyle = on ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 1 * s;
-        ctx.strokeRect(px + 5 * s, y, rw - 10 * s, rh);
-        ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = on ? PALETTE.fireHi : PALETTE.bone;
-        ctx.textBaseline = 'middle'; ctx.fillText(label, px + 13 * s, y + rh / 2); ctx.textBaseline = 'alphabetic';
-        d.rects.push({ x: px + 5 * s, y, w: rw - 10 * s, h: rh, id });
+      ctx.strokeRect(px0, py - 20 * s, boxW, boxH);
+      cols.forEach((col, ci) => {
+        const px = px0 + 3 * s + ci * rw;
+        ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+        ctx.fillText(col.head, px + 8 * s, py - 7 * s);
+        col.rows.forEach(([id, label], i) => {
+          const y = py + i * (rh + gap);
+          const on = (id === 'god' && d.god) || (id === 'vision' && d.vision) || (id === 'hearing' && d.hearing);
+          ctx.fillStyle = on ? 'rgba(192,57,43,0.5)' : 'rgba(59,34,51,0.75)';
+          ctx.fillRect(px + 5 * s, y, rw - 10 * s, rh);
+          ctx.strokeStyle = on ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 1 * s;
+          ctx.strokeRect(px + 5 * s, y, rw - 10 * s, rh);
+          ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = on ? PALETTE.fireHi : PALETTE.bone;
+          ctx.textBaseline = 'middle'; ctx.fillText(label, px + 13 * s, y + rh / 2); ctx.textBaseline = 'alphabetic';
+          d.rects.push({ x: px + 5 * s, y, w: rw - 10 * s, h: rh, id });
+        });
       });
     }
     ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
@@ -3124,8 +3774,8 @@ class Renderer {
       'poison|fire': { name: 'IT GOES OFF', edit: [['RADIUS', ['status', 'blast', 'radius']], ['HIT INSIDE', ['status', 'blast', 'hitR']],
           ['THROW', ['status', 'blast', 'impulse']], ['GOAT SHOVE', ['status', 'blast', 'goatPush']]],
         note: 'A poisoned man catches, a burning man is poisoned, or a flame reaches a puddle. A hit on everyone inside HIT INSIDE tiles, a throw out to RADIUS, the goat shoved and never hurt; the puddle round it burns off.' },
-      'poison|stun': { name: 'STING', edit: [['HITS', ['status', 'sting', 'damage']]],
-        note: 'A poisoned man is stunned, or a stunned one poisoned. That many hits, and both statuses are spent, so it cannot fire twice off one of each.' },
+      'poison|stun': { name: 'SHOCK', edit: [['STUN s', ['status', 'sting', 'stun']], ['POISON s', ['status', 'sting', 'poison']]],
+        note: 'A poisoned man is stunned, or a stunned one poisoned. No hit: he is in shock, frozen for STUN s and blind for POISON s, one spiral over his head for both.' },
       'stun|fire': { name: 'SCALD', edit: [['HITS', ['status', 'scald', 'damage']]],
         note: 'A stunned man catches, or a burning one is stunned. The stun is spent and the fire that has him does that many hits instead of one.' },
     };
@@ -3214,6 +3864,9 @@ class Renderer {
       { kind: 'spike', label: 'SPIKE GRATE', make: (x, y) => new Prop(x, y, 'spike'), hits: ['BODY'],
         stats: `arms ${P.spike.arm}s after a step, up ${P.spike.up}s, laid ${P.spike.run[0]}–${P.spike.run[1]} tiles at a time`,
         note: 'Floor, not furniture: crossing a plate arms it and the teeth come up a beat later, behind whoever tripped it. Anything alive trips one but a wraith in mist; trap sense is what lets a man in a crowd walk round it instead.' },
+      { kind: 'spire', label: 'STONE TEETH', make: (x, y) => new Prop(x, y, 'spire'), hits: ['BODY'],
+        stats: `${Math.round(TUNING.cave.spikes.chance * 100)}% of the cave's ordinary rooms, ${TUNING.cave.spikes.perRoom} at most · ${TUNING.cave.spikes.damage} heart`,
+        note: 'Rock standing up at the foot of a cave wall, and the one thing growing on the rock that is real. It never arms and never rests: anything that touches it pays. A man dies on it, the goat pays a heart, and everyone with eyes steers round it — so it is a thing to throw men into, on the wall that was already the weapon. Never on the trip.' },
       { kind: 'secret', label: 'SECRET WALL', make: (x, y) => new Prop(x, y, 'secret'), hits: ['HEADBUTT'],
         stats: `${P.secret.hits} hits to open, the niche behind it stays lit after`,
         note: 'Ordinary wall until the second blow: blocks sight and bullets like stone right up to the crack. Behind it is always a stand of arms, and — secret.healChance of the time — the rarer patch of grass, never a room or a corridor.' },
@@ -3229,6 +3882,15 @@ class Renderer {
       { kind: 'coop', label: 'COOP & HEN', make: (x, y) => new Prop(x, y, 'coop'), hits: ['HEADBUTT', 'BODY'],
         stats: `${P.coop.hits} hit to open · kicked at ${Math.round(P.chicken.launchSpeed)}px/s · kills once · +${P.chicken.saveHearts} heart if she reaches the stairs`,
         note: 'The one thing in the compound on your side. Loose, she follows you round walls and steps round fire, teeth and drops; walk past her coop and it breaks on its own as it leaves the screen. Kicked, she homes onto a man and kills on contact. Bring her to the stairs for a heart for the rest of the run.' },
+      { kind: 'tortoise', label: 'TORTOISE', make: (x, y) => new Prop(x, y, 'tortoise'), hits: ['THROWN', 'BODY'],
+        stats: `walks at ${P.tortoise.speed}px/s · thrown at ${P.tortoise.throwSpeed}px/s, floors a man ${P.crate.stun}s · a shell for ${P.tortoise.tuck}s where it lands · +${P.tortoise.saveShield} use on every shield if it reaches the stairs`,
+        note: 'Slower than a walk and it never catches up: the one escort you advance by picking it up and throwing it forward. Where it lands it pulls its head in and is a piece of the room — solid, and rounds stop on it — and cannot be picked up again until it comes out.' },
+      { kind: 'goose', label: 'GOOSE', make: (x, y) => new Prop(x, y, 'goose'), hits: [],
+        stats: `runs ahead at ${P.goose.speed}px/s, never waits · honks at anyone inside ${P.goose.seeR}, every ${P.goose.honkGap}s · breaks a swing for ${P.goose.balkStun}s at any range`,
+        note: 'It does not follow and it does not wait: it runs for the stairs on its own, room after room — and it honks at every man it sees, which is a noise, so the room turns and comes for YOU. The same honk breaks a blow a man has already committed to, at any range at all. A permanent alarm you have to live with. At the stairs: the voice carries further and comes back sooner.' },
+      { kind: 'crow', label: 'CROW', make: (x, y) => new Prop(x, y, 'crow'), hits: [],
+        stats: `answers a body inside ${P.crow.markR} tiles for ${P.crow.markFor}s · follows the goat at ${Math.round(P.crow.slack * 100)}% of its own pace · a tier ${P.crow.giftTier} talisman if it reaches the stairs`,
+        note: 'It follows corpses, not you: every room with nothing dead in it, it falls behind. The one escort that argues with run, don\'t fight, and that is the price of what it carries out — a tier III talisman standing on the next floor\'s stairs, free.' },
       { kind: 'cage', label: 'THE PEN', make: (x, y) => new Prop(x, y, 'cage'), hits: ['HEADBUTT'],
         stats: `${P.cage.hits} hits the first time a browser ever does it, ${P.cage.againHits} every time after`,
         note: 'The one object that is a lesson rather than a fixture: what it costs the first time is remembered (`penBroken`), so a run that has already learned the verb only pays the toll.' },
@@ -3398,7 +4060,7 @@ class Renderer {
       if (!inRoom(p)) continue;
       const [dx, dy] = at(p);
       ctx.fillStyle = p.kind === 'heal' ? PALETTE.grassHi : p.kind === 'door' ? (p.gate || p.vault ? PALETTE.witch : PALETTE.wood)
-        : p.kind === 'brazier' ? PALETTE.fire : p.kind === 'spike' ? PALETTE.ash : PALETTE.ochre;
+        : p.kind === 'brazier' ? PALETTE.fire : p.kind === 'spike' || p.kind === 'spire' ? PALETTE.ash : PALETTE.ochre;
       const w = Math.max(1.4, k * 0.7);
       ctx.fillRect(dx - w / 2, dy - w / 2, w, w);
     }
@@ -3452,6 +4114,25 @@ class Renderer {
     const sx = p.x - 9, sy = p.y;
     this.shadow(sx, sy + 2, 8, 3.5);
     ctx.save(); ctx.translate(sx + shake, sy - 4 + bob);
+    if (PIXEL_ART.ready) {
+      // Pixel pass: the trader herself; angry is a red cast over her rather than two beads going red.
+      ctx.translate(0, 6); ctx.scale(1, 1 / TILT);
+      if (angry) ctx.filter = 'sepia(1) saturate(4) hue-rotate(-40deg)';
+      // She watches him: turned to whichever side of her he is on, re-decided with a tile of slack so
+      // she does not flicker while he stands in front of her. The sprite is drawn facing right.
+      const g = this.game && this.game.goat;
+      if (g) { if (g.x < sx - 12) p.faceLeft = true; else if (g.x > sx + 12) p.faceLeft = false; }
+      // And up: there is one drawing of her, three-quarters to the front, so with him above her she
+      // leans back on her heels toward him, nose up, rather than staring on past him at the floor.
+      if (g) {
+        const dx = g.x - sx, dy = g.y - sy, d = Math.hypot(dx, dy) || 1;
+        const want = clamp(-dy / d, 0, 1) * M.lookUp;
+        p.lean = lerp(p.lean || 0, want, 0.12);
+        ctx.rotate(p.faceLeft ? p.lean : -p.lean);
+      }
+      PIXEL_ART.icon(ctx, 'mouse', !!p.faceLeft);
+      ctx.filter = 'none';
+    } else {
     // Faces the room: a top-wall hole looks down, a bottom-wall hole looks up.
     const down = p.wallSide !== 'down';
     const edge = 'rgba(26,16,22,0.55)';
@@ -3484,6 +4165,7 @@ class Renderer {
     ctx.fillStyle = '#b3b0aa'; ctx.strokeStyle = edge; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.ellipse(-2, 4.6, 1.7, 1.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.ellipse(2, 4.6, 1.7, 1.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
     ctx.restore();
     // A small lamp glow on her, so the hole reads as a lit stall across the room.
     const gl = ctx.createRadialGradient(sx, sy - 6, 0, sx, sy - 6, 34);
@@ -3539,6 +4221,11 @@ class Renderer {
     const def = milk ? MILK_OFFER : ARTIFACTS.find((a) => a.id === w.id); if (!def) return;
     const game = this.game;
     const bob = Math.sin(t * 2.6 + p.phase) * 1.4;
+    // Her third offer is not a talisman on a stool, it is a bucket. Drawn here rather than through
+    // `artifactIcon` because the whole point of it is the size: a pail up to the goat's shoulder, brimming,
+    // standing on the boards on its own. It used to be the bowl icon with THREE BOWLS OF MILK written
+    // under it, and a caption is exactly what a thing this obvious should not need.
+    if (milk) { this.drawMilkOffer(p, ctx); return; }
     this.shadow(p.x, p.y + 3, 9, 4);
     // the stool
     ctx.fillStyle = '#4a3420'; ctx.fillRect(p.x - 7, p.y - 2, 14, 7);
@@ -3569,28 +4256,93 @@ class Renderer {
     // What it does, read off the thing itself rather than off a HUD tooltip: nobody stops running
     // to hover a corner of the screen, but a line hanging over the ware as you walk up to it is
     // read on the way past. On approach, not on the pointer — the touch player gets it too.
-    const g = game && game.goat;
-    if (g && !locked && Math.hypot(g.x - p.x, g.y - p.y) < TUNING.prop.ware.readR + p.r) {
-      const tierInfo = def.tiers[w.tier - 1];
-      ctx.save(); ctx.scale(1, 1 / TILT);
-      ctx.font = `700 11px ${FONT_SC}`;
-      const title = milk ? def.name : `${def.name} ${'I'.repeat(w.tier)}`;
-      const lines = this.wrap(tierInfo.desc, 148);
-      const bw = 158, bh = 18 + lines.length * 13;
-      // The milk stands on the floor in front of her, so its note hangs under it rather than over
-      // her and her two stools.
-      const by = milk ? (p.y + 24) * TILT : (p.y - 40) * TILT - bh;
-      ctx.globalAlpha = 0.88; ctx.fillStyle = PALETTE.ink;
-      ctx.fillRect(p.x - bw / 2, by, bw, bh);
-      ctx.strokeStyle = this.tint(def.color, 0.65); ctx.lineWidth = 1.3;
-      ctx.strokeRect(p.x - bw / 2, by, bw, bh);
-      ctx.globalAlpha = 1; ctx.textAlign = 'center';
-      ctx.fillStyle = def.color; ctx.fillText(title, p.x, by + 14);
-      ctx.font = `10px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.88)';
-      lines.forEach((ln, i) => ctx.fillText(ln, p.x, by + 28 + i * 13));
-      ctx.textAlign = 'left'; ctx.restore();
-    }
+    // Only the nearest one: two stools a tile apart both in reach put two boxes over each other.
+    this.wareNote(p, def, `${def.name} ${'I'.repeat(w.tier)}`, ARTIFACT_HOW[w.id], def.tiers[w.tier - 1].desc);
   }
+  // The note over the nearest ware: its name, one plain sentence of what the thing is for, and then
+  // the tier's own numbers under a rule. The numbers alone ("0.18s WINDOW ON THE HORNS") were
+  // literal and still unreadable to anybody who did not already know what the talisman was.
+  wareNote(p, def, title, how, desc) {
+    const ctx = this.ctx, game = this.game, g = game && game.goat;
+    if (!g || p.locked || Math.hypot(g.x - p.x, g.y - p.y) >= TUNING.prop.ware.readR + p.r || this.nearestWare(game) !== p) return;
+    ctx.save(); ctx.scale(1, 1 / TILT);
+    const bw = 206, pad = 10;
+    ctx.font = `12px ${FONT}`;
+    const hl = how ? this.wrap(how, bw - pad * 2) : [];
+    ctx.font = `700 10px ${FONT_SC}`;
+    const dl = this.wrap(desc, bw - pad * 2);
+    const bh = 22 + hl.length * 15 + (hl.length ? 8 : 0) + dl.length * 13 + 4;
+    // High enough to clear her pail, which stands between the two stools and draws after them.
+    const by = (p.y - 46) * TILT - bh;
+    ctx.globalAlpha = 0.9; ctx.fillStyle = PALETTE.ink;
+    ctx.fillRect(p.x - bw / 2, by, bw, bh);
+    ctx.strokeStyle = this.tint(def.color, 0.65); ctx.lineWidth = 1.3;
+    ctx.strokeRect(p.x - bw / 2, by, bw, bh);
+    ctx.globalAlpha = 1; ctx.textAlign = 'center';
+    ctx.font = `700 12px ${FONT_SC}`; ctx.fillStyle = def.color; ctx.fillText(title, p.x, by + 16);
+    let y = by + 32;
+    ctx.font = `12px ${FONT}`; ctx.fillStyle = PALETTE.bone;
+    for (const ln of hl) { ctx.fillText(ln, p.x, y); y += 15; }
+    if (hl.length) {
+      ctx.fillStyle = this.tint(def.color, 0.35); ctx.fillRect(p.x - bw / 2 + pad, y - 9, bw - pad * 2, 1);
+      y += 6;
+    }
+    ctx.font = `700 10px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
+    for (const ln of dl) { ctx.fillText(ln, p.x, y); y += 13; }
+    ctx.textAlign = 'left'; ctx.restore();
+  }
+  // The ware the goat is nearest, once a frame, so only one note hangs over the shelf at a time.
+  nearestWare(game) {
+    if (this.wareAt === this.t) return this.wareNear;
+    const g = game.goat; let best = null, bd = Infinity;
+    for (const q of game.props) {
+      if (q.kind !== 'ware' || q.broken || q.locked || !q.ware) continue;
+      const d = Math.hypot(g.x - q.x, g.y - q.y); if (d < bd) { bd = d; best = q; }
+    }
+    this.wareAt = this.t; this.wareNear = best;
+    return best;
+  }
+  // The pail on her shelf, and the one word on it. It reads out its own worth in hearts rather than
+  // in a sentence — it is the same literal line every ware carries now, it is just short enough to
+  // live under the TAKE.
+  drawMilkOffer(p, ctx) {
+    const t = this.t, R = 12, H = 28, y0 = p.y + 5, top = y0 - H;
+    const wob = Math.sin(t * 1.5 + p.x * 0.03) * 0.9;
+    this.shadow(p.x, p.y + 4, R * 1.1, R * 0.5);
+    ctx.save(); ctx.globalAlpha = p.locked ? 0.35 : 1;
+    const gl = ctx.createRadialGradient(p.x, top, 0, p.x, top, 20);
+    gl.addColorStop(0, 'rgba(239,230,208,0.22)'); gl.addColorStop(1, 'rgba(0,0,0,0)');
+    if (!p.locked) { ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, top, 20, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = '#6b4a2c'; ctx.beginPath();
+    ctx.moveTo(p.x - R * 0.72, y0); ctx.lineTo(p.x - R, top); ctx.lineTo(p.x + R, top); ctx.lineTo(p.x + R * 0.72, y0);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath();
+    ctx.moveTo(p.x + R * 0.28, top); ctx.lineTo(p.x + R, top); ctx.lineTo(p.x + R * 0.72, y0); ctx.lineTo(p.x + R * 0.2, y0);
+    ctx.closePath(); ctx.fill();
+    for (const f of [0.3, 0.8]) {
+      const w = R * (0.72 + 0.28 * f);
+      ctx.fillStyle = '#8d8a85'; ctx.fillRect(p.x - w, y0 - H * f - 2, w * 2, 3.2);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(p.x - w, y0 - H * f - 2, w * 2, 1.2);
+    }
+    ctx.fillStyle = '#efe6d0'; ctx.beginPath(); ctx.ellipse(p.x, top + wob, R * 0.96, R * 0.34, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.ellipse(p.x - R * 0.3, top - 1 + wob, R * 0.28, R * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(239,230,208,0.85)'; ctx.beginPath();
+    ctx.moveTo(p.x + R * 0.5, top + wob); ctx.quadraticCurveTo(p.x + R * 0.95, top + H * 0.34, p.x + R * 0.66, top + H * 0.38);
+    ctx.quadraticCurveTo(p.x + R * 0.6, top + H * 0.12, p.x + R * 0.5, top + wob); ctx.fill();
+    ctx.restore();
+    ctx.save(); ctx.scale(1, 1 / TILT);
+    const ty = (p.y + 15) * TILT;
+    ctx.font = `700 10px ${FONT_SC}`; ctx.textAlign = 'center';
+    const label = p.locked ? 'HIS' : 'TAKE';
+    ctx.fillStyle = 'rgba(13,10,12,0.7)'; ctx.fillText(label, p.x + 1, ty + 1);
+    ctx.fillStyle = p.locked ? PALETTE.blood : PALETTE.fireHi; ctx.fillText(label, p.x, ty);
+    ctx.font = `700 9px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.8)';
+    ctx.fillText(`+${TUNING.shop.heals} HEARTS`, p.x, ty + 12);
+    ctx.textAlign = 'left'; ctx.restore();
+    this.wareNote(p, MILK_OFFER, MILK_OFFER.name, MILK_OFFER.how, MILK_OFFER.tiers[0].desc);
+  }
+
   // A hex colour with an alpha on it, for the glow under a ware.
   tint(hex, a) {
     const n = parseInt(hex.slice(1), 16);
@@ -3655,18 +4407,32 @@ class Renderer {
   // The slot right of the hearts: the talisman he wears, its tier, and for the boomerang the wait
   // until it is back in the holster. Empty, it is a faint cord with nothing on it — a slot that
   // exists before there is anything to put in it is how a player finds out there is a shop.
+  // The saved animals as a row of emoji (`Beast.EMOJI`), in the order they came out. Returns whether
+  // it drew anything, so what sits under it can make room.
+  drawSaved(game, x, y, s) {
+    const b = game.beasts; if (!b) return false;
+    const list = [];
+    for (const k of ['chicken', 'tortoise', 'goose', 'crow']) for (let i = 0; i < (b[k] || 0); i++) list.push(k);
+    if (!list.length) return false;
+    const ctx = this.ctx;
+    ctx.save(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.fillStyle = '#ffffff';
+    ctx.font = `${19 * s}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
+    list.forEach((k, i) => ctx.fillText(Beast.EMOJI[k], x + i * 24 * s, y));
+    ctx.restore();
+    return true;
+  }
+
   drawArtifactChip(game, x, y, box) {
     const ctx = this.ctx, s = this.hs, art = game.artifact, m = game.input.mouse, g = game.goat;
     const def = art ? ARTIFACTS.find((a) => a.id === art.id) : null, tier = art ? Shop.tierOf(art) : null;
     // Only the two verb artifacts have a button, and it does not exist until one of them is worn:
     // this is the one place a player learns Q is there at all.
     const isItem = art && (art.id === 'boomerang' || art.id === 'symbols' || art.id === 'effigy');
-    ctx.fillStyle = 'rgba(13,10,12,0.5)'; ctx.fillRect(x, y, box, box);
-    ctx.strokeStyle = def ? 'rgba(185,135,58,0.85)' : 'rgba(239,230,208,0.14)'; ctx.lineWidth = 1.2 * s;
-    ctx.strokeRect(x, y, box, box);
+    // No frame: the charm stands in the row of hearts as one more thing he carries, not in a box.
     const cx = x + box / 2, cy = y + box / 2;
     if (def) {
-      this.artifactIcon(art.id, cx, cy - 1 * s, box * 0.3, art.tier);
+      this.artifactIcon(art.id, cx, cy - 1 * s, box * 0.36, art.tier);
       ctx.fillStyle = 'rgba(239,230,208,0.8)';
       const pw = 3 * s, gap = 2 * s, tot = art.tier * pw + (art.tier - 1) * gap;
       for (let k = 0; k < art.tier; k++) ctx.fillRect(Math.round(cx - tot / 2 + k * (pw + gap)), Math.round(y + box - 5 * s), pw, 2.2 * s);
@@ -3777,7 +4543,7 @@ class Renderer {
   }
 
   drawGoat(g, game) {
-    if (this.painted.ready) { this.painted.drawGoat(this,g,game); return; }
+    if (PIXEL_ART.ready) { this.painted.drawGoat(this,g,game); return; }
     const ctx = this.ctx;
     // motion smear
     for (const t of g.trail) {
@@ -3970,6 +4736,15 @@ class Renderer {
   drawSheep(s) {
     const ctx = this.ctx;
     this.shadow(s.x, s.y, 15, 7.5);
+    if (PIXEL_ART.ready) {
+      // She is the pixel pass's pet sheep. There is no walk cycle for her, so a stride is a bob.
+      ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, 1 / TILT);
+      if (s.jitter) ctx.translate(s.jitter.x, s.jitter.y);
+      if (s.kick || Math.hypot(s.vx || 0, s.vy || 0) > 40) ctx.translate(0, -Math.abs(Math.sin(this.t * 11)) * 1.6);
+      if (s.bleating > 0) ctx.scale(1.04, 0.96);
+      PIXEL_ART.draw(ctx, 'sheep-pet', s.facing || 0, false, this.t, s.x);
+      ctx.restore(); return;
+    }
     ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, 1 / TILT); ctx.translate(0, -5);
     if (s.jitter) ctx.translate(s.jitter.x, s.jitter.y);
     ctx.rotate(s.facing);
@@ -4301,6 +5076,58 @@ class Renderer {
       ctx.fillRect(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE);
     }
     ctx.globalAlpha = 1;
+    // Rooms left behind (`game.updateClamps`): not fog but darkness, faded in over `clamp.slam`,
+    // and the veil hanging in the mouth that put them out. The death recap tints them the way it
+    // tints a room nobody opened, since the recap is the one place the whole level is the point.
+    const dead = game.state === 'dead';
+    for (const r of game.level.rooms) {
+      if (!r.clamped) continue;
+      const k = clamp((game.timer - (r.clampAt || 0)) / (TUNING.clamp.slam * 3), 0, 1);
+      ctx.globalAlpha = (dead ? TUNING.deathCam.fogAlpha : 1) * k;
+      ctx.fillStyle = '#050308';
+      ctx.fillRect(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE);
+      ctx.globalAlpha = 1;
+      if (r.exitMouth && !dead) this.drawVeil(r.exitMouth, k);
+    }
+  }
+
+  // The veil across the mouth of a room left behind: a curtain of dark that breathes, with a few
+  // violet threads drifting down it, fading out into the corridor on the near side. It sits over the
+  // stone `updateClamps` put back, so the wall under it is never seen — what shuts the room is magic,
+  // and it looks like nothing you could put your head through.
+  drawVeil(m, k) {
+    const ctx = this.ctx, t = this.t, long = m.span * TILE;
+    const w = m.vertical ? TILE * 2 : long + TILE * 0.6, h = m.vertical ? long + TILE * 0.6 : TILE * 2;
+    ctx.save(); ctx.translate(m.x, m.y); ctx.globalAlpha = k;
+    const g = m.vertical ? ctx.createLinearGradient(-w / 2, 0, w / 2, 0) : ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    g.addColorStop(0, 'rgba(5,3,8,0)'); g.addColorStop(0.3, 'rgba(5,3,8,0.97)');
+    g.addColorStop(0.7, 'rgba(5,3,8,0.97)'); g.addColorStop(1, 'rgba(5,3,8,0)');
+    ctx.fillStyle = g; ctx.fillRect(-w / 2, -h / 2, w, h);
+    // a faint cold glow on the face of it, breathing, so it reads as something put there
+    ctx.fillStyle = `rgba(125,92,255,${0.07 + 0.05 * Math.sin(t * 1.7)})`;
+    ctx.fillRect(m.vertical ? -6 : -long / 2, m.vertical ? -long / 2 : -6, m.vertical ? 12 : long, m.vertical ? long : 12);
+    // threads: wavering strands running the length of the veil, each at its own depth and phase
+    ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const off = (i - 1.5) * 5, ph = t * (0.7 + i * 0.23) + i * 1.9;
+      ctx.strokeStyle = `rgba(125,92,255,${0.18 + 0.2 * Math.sin(ph * 1.3) ** 2})`;
+      ctx.beginPath();
+      for (let s = 0; s <= 12; s++) {
+        const along = (s / 12 - 0.5) * long, across = off + Math.sin(ph + s * 0.9) * 2.5;
+        const x = m.vertical ? across : along, y = m.vertical ? along : across;
+        if (s === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    // a few motes rising off it
+    ctx.fillStyle = 'rgba(191,230,255,0.5)';
+    for (let i = 0; i < m.span * 2; i++) {
+      const a = (t * 0.35 + i * 0.37) % 1, f = ((i * 0.618) % 1) - 0.5;
+      const x = m.vertical ? Math.sin(t + i) * 6 : f * long, y = m.vertical ? f * long : Math.sin(t + i) * 6;
+      ctx.globalAlpha = k * (1 - a) * 0.6;
+      ctx.beginPath(); ctx.arc(x, y - a * 14, 1.1, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore(); ctx.globalAlpha = 1;
   }
 
   // The death screen's own mark on the map: a plain line along `game.pathTrail`, a dot where the run
@@ -4633,12 +5460,16 @@ class Renderer {
       }
       if (on) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(Math.round(ox + px), Math.round(oy + px), Math.ceil(px), Math.ceil(px)); }
     }
+    // Everyone brought out to the stairs this run, one animal each, under the hearts: what an escort
+    // is worth is a number buried in `mods`, and a row of the animals themselves is the way to see
+    // that the run is carrying them.
+    const saved = this.drawSaved(game, 14 * s, top + 46 * s, s);
     // Kills that landed on top of each other, while the window is still open.
     if (game.combo >= 2 && game.comboTimer > 0) {
       const a = Math.min(1, game.comboTimer / 0.6);
       ctx.font = `700 ${(15 + Math.min(11, game.combo * 2)) * s}px ${FONT_SC}`;
       ctx.fillStyle = `rgba(192,57,43,${a})`;
-      ctx.fillText(`x${game.combo} IN A ROW`, 14 * s, top + 58 * s);
+      ctx.fillText(`x${game.combo} IN A ROW`, 14 * s, top + (saved ? 80 : 58) * s);
     }
 
     // The right column reads top down: what your buttons do, then what they have got you.
@@ -4647,7 +5478,8 @@ class Renderer {
     const below = this.drawSkills(game, top + 14 * s);   // the rail centres its own text, so re-anchor
     // The talisman, right of the hearts: one slot, and the shop is the only thing that fills it.
     // After the rail, because the rail clears the hover it shares with this.
-    this.drawArtifactChip(game, 14 * s + g.maxHp * 22 * s + 4 * s, top + 3 * s, 26 * s);
+    // Centred on the row of hearts, a gap past the last one.
+    this.drawArtifactChip(game, 14 * s + g.maxHp * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
     ctx.textAlign = 'right';
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.82)';
     ctx.fillText(`${game.kills} SACRIFICED`, right, below + 13 * s);
@@ -5086,7 +5918,7 @@ class Renderer {
     const measure = () => {
       if (spaced) ctx.letterSpacing = `${(size * 0.09).toFixed(1)}px`;
       ctx.font = `700 ${size}px ${FONT_SC}`;
-      return ctx.measureText('GOAT OUT').width;
+      return ctx.measureText('DOOMED GOAT').width;
     };
     let tw = measure();
     if (tw + size * 2.2 > w * 0.92) { size *= (w * 0.92) / (tw + size * 2.2); tw = measure(); }
@@ -5104,8 +5936,8 @@ class Renderer {
     const top = clamp(h * 0.47 - block / 2, 10 * s, Math.max(10 * s, h - block - 10 * s));
     const titleY = top + above, btnTop = top + above + below + lead;
 
-    ctx.fillStyle = 'rgba(122,31,24,0.85)'; ctx.fillText('GOAT OUT', cx + size * 0.04, titleY + size * 0.05);
-    ctx.fillStyle = PALETTE.bone; ctx.fillText('GOAT OUT', cx, titleY);
+    ctx.fillStyle = 'rgba(122,31,24,0.85)'; ctx.fillText('DOOMED GOAT', cx + size * 0.04, titleY + size * 0.05);
+    ctx.fillStyle = PALETTE.bone; ctx.fillText('DOOMED GOAT', cx, titleY);
     if (spaced) ctx.letterSpacing = '0px';
     this.titleHorns(cx, titleY, tw / 2 + size * 0.16, size);
 

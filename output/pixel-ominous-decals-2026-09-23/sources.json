@@ -1,0 +1,42 @@
+[
+  {
+    "id": "floor-small",
+    "file": "source/floor-small.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-d05aba89-6805-4997-870f-dc7668ada0e5.png",
+    "columns": 1,
+    "rows": 1,
+    "label": "Расколотое клеймо",
+    "surface": "floor",
+    "displayWidth": 24
+  },
+  {
+    "id": "floor-medium",
+    "file": "source/floor-medium.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-4df735e5-aade-4049-96b6-9355f8521f43.png",
+    "columns": 1,
+    "rows": 1,
+    "label": "Печать наблюдателя",
+    "surface": "floor",
+    "displayWidth": 48
+  },
+  {
+    "id": "floor-large",
+    "file": "source/floor-large.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-9fd21593-126c-4590-a5ec-4bfaebf6219e.png",
+    "columns": 1,
+    "rows": 1,
+    "label": "Разорванный круг",
+    "surface": "floor",
+    "displayWidth": 96
+  },
+  {
+    "id": "wall-watcher",
+    "file": "source/wall-watcher.png",
+    "original": "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-8057fbaf-2671-439c-bcd3-f85a5399126f.png",
+    "columns": 1,
+    "rows": 1,
+    "label": "Знак смотрящего",
+    "surface": "wall",
+    "displayWidth": 64
+  }
+]

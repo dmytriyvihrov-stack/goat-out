@@ -16,7 +16,7 @@ class CombatFX {
 
   snapshot(e) {
     const art = this.game.renderer.painted;
-    if (!art.ready) return null;
+    if (!PIXEL_ART.ready) return null;
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 96;
     const c = canvas.getContext('2d'); c.translate(48,74);
     // The same key `drawEnemy` uses, kept in one place: a dying butcher or elite bearer used to
@@ -81,12 +81,13 @@ class CombatFX {
   }
 
   debris(p,dx=0,dy=0) {
-    const art=this.game.renderer.painted, metal=!!p.iron;
+    // Splinters are cut out of the pixel crate itself, so what flies off is the box that broke.
+    const metal=!!p.iron, f=PIXEL_ENV_ASSETS.items[PIXEL_ENV_ID.crate], img=PIXEL_ENV.ready?PIXEL_ENV.image:null;
     const count=p.kind==='door'?TUNING.effects.doorPieces:TUNING.effects.cratePieces;
     const speed=Math.hypot(dx,dy); if(speed){dx/=speed;dy/=speed;}
     for(let i=0;i<count;i++) {
       const plank=i<Math.ceil(count*0.6);
-      this.fragment(p.x,p.y,art.images.crate,[18+(i%3)*27,20+(i%4)*20,20,50],
+      this.fragment(p.x,p.y,img,[f[0]+f[2]*(0.15+(i%3)*0.24),f[1]+f[3]*(0.15+(i%4)*0.17),f[2]*0.18,f[3]*0.4],
         plank?4+Math.random()*3:3,plank?11+Math.random()*10:5,
         dx||Math.cos(i*2.4),dy||Math.sin(i*2.4),metal?'metal':'wood',
         {image:null,color:metal?'#555761':i%2?'#a57949':'#755034'});

@@ -8,6 +8,42 @@ then goes to `CHANGELOG.md` — or when it is decided against, and the reason go
 Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and does not read; **number**,
 it works and the number is wrong; **system**, it does not exist yet.
 
+## 23 September 2026 — first word on THE TRIP
+
+- **feel — THE TRIP reads okay.** Needs a minute to adjust, then it is fun, like an exercise for the
+  brain rather than a fight against the controls. The one thing that stuck afterward: coming back to
+  the normal layout on the next floor feels strange for a beat, the same way the scramble itself did
+  going in. Not a complaint — worth knowing whether that carries over into how the next floor plays,
+  or fades in a room or two. First playtest word on it; wider testing not run yet.
+
+## 22 September 2026 — nine items, mostly "tell me less, show me more"
+
+All shipped in 1.49; the reasoning is in `CHANGELOG.md`.
+
+- ~~**feel — the cave's stalactites do not stick out of walls, they rise upward.**~~ They used to hang
+  down out of the rock's face onto the floor. Rooted on the floor at the foot of the cliff now and
+  drawn up over the face and past the top of the rock.
+- ~~**system — if something spiky (rarely) sticks out of a wall, let it damage.**~~ `kind === 'spire'`,
+  `TUNING.cave.spikes`: stone teeth at the foot of a cave wall, in three rooms in ten and one to a
+  room. Not blocking, so it can be walked into; a man dies on it, the goat pays a heart, and the cult
+  steers round it, so it is a thing to throw men into. Old blood at its foot is the tell.
+- ~~**feel — the gem seams should only be on the cave edges you can actually see; you are not looking
+  inside the rock, so do not draw it there.**~~ On the visible face band only, and fewer of them.
+- ~~**number — on the mushroom level the enemies should be first-level strength whatever floor it
+  replaces: nothing that shoots, mages allowed, one man a room. It is very hard with those
+  controls.**~~ `TUNING.shroom` now carries the curve, the cap and the roster.
+- ~~**feel — a little more camera on the mushroom level.**~~ The lens breathes and leans
+  (`TUNING.shroom.cam`), out of step with itself on the two axes. Not a shake.
+- ~~**system — a door or a passage should only ever be at the far end of a room, never the near end,
+  so you are automatically given a reason to run there and to think about what to do with the men on
+  the way.**~~ `DOORS.far` and `GEN_RULES.farexit`.
+- ~~**feel — stop shaking the screen on effects. A little shake, and only when you took damage.**~~
+  `game.shake(a, hurt)`; everything else is multiplied by `juice.shakeOther`, which is 0.
+- ~~**feel — instead of the caption THREE BOWLS OF MILK, just make it a huge bucket of milk.**~~ One
+  pail as tall as the goat, three hearts in it, drunk a heart at a time where it stands.
+- ~~**feel — next to each artifact, the literal meaning of what it does. None of this smeared
+  bullshit.**~~ All sixty-three tiers rewritten from prose into numbers.
+
 ## 18 September 2026 — a second pass, ten items
 
 Shipped in 1.36; the reasoning is in `CHANGELOG.md`.

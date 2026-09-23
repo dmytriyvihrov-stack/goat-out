@@ -790,6 +790,26 @@ class GameAudio {
     // The wings, at the front of it: a bird makes as much noise with those as with her throat.
     this.noise(t, 0.1, { gain: alarm ? 0.16 : 0.1, hp: 900, lp: 4200 });
   }
+  // Every animal on our side through one door: the hen's cluck, the goose's honk (the goat's own
+  // throat pitched up and made nasal), a crow's caw (the same throat low and ragged), and the
+  // tortoise, which has no voice at all and knocks its shell on the slats. `hurt` is the cry.
+  sfxAnimal(kind, hurt) {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    if (kind === 'chicken') return this.sfxCluck(!!hurt);
+    if (kind === 'goose') {
+      this.bleatVoice(t, { f: hurt ? 640 : 520, dur: 0.14, gain: 0.18, wob: 30, depth: 0.05, open: 0.9, breath: 0.25 });
+      this.bleatVoice(t + 0.17, { f: hurt ? 700 : 560, dur: 0.12, gain: 0.14, wob: 30, depth: 0.05, open: 0.9, breath: 0.25 });
+      return;
+    }
+    if (kind === 'crow') {
+      this.bleatVoice(t, { f: hurt ? 460 : 380, dur: 0.18, gain: 0.16, wob: 55, depth: 0.22, open: 0.8, breath: 0.45 });
+      this.noise(t, 0.16, { gain: 0.08, hp: 700, lp: 3000 });
+      return;
+    }
+    // the tortoise: two dull knocks
+    this.noise(t, 0.05, { gain: 0.2, lp: 500 }); this.tone(110, t, 0.08, { type: 'triangle', gain: 0.12 });
+    this.noise(t + 0.14, 0.05, { gain: 0.16, lp: 500 }); this.tone(100, t + 0.14, 0.08, { type: 'triangle', gain: 0.1 });
+  }
   // The truck under them. Half a second of low rumble, called every half second while the road
   // goes past, so it runs on without a loop: a fixed pitch is a hum and a hum is a motor.
   sfxEngine() {
@@ -884,6 +904,14 @@ class GameAudio {
     this.noise(t, 0.14, { gain: 0.18, hp: 3000 });
   }
   // Steel: a blade leaving a stand, going into a man, or a shield taking a bullet.
+  // A room left behind going dark: a low breath drawn in, and a cold note under it. Not a clank —
+  // nothing was built there, something was put out.
+  sfxVeil() {
+    if (!this.ctx || this.muted) return; const t = this.now();
+    this.noise(t, 0.7, { gain: 0.12, lp: 520, hp: 60 });
+    this.tone(92, t, 0.8, { type: 'sine', gain: 0.08, attack: 0.12 });
+    this.tone(138, t + 0.05, 0.7, { type: 'sine', gain: 0.04, attack: 0.15 });
+  }
   sfxSteel() {
     if (!this.ctx || this.muted) return; const t = this.now();
     this.tone(1180, t, 0.22, { type: 'triangle', gain: 0.16, sweep: 0.5 });

@@ -5,7 +5,7 @@
 // is `TUNING.status`, and the STATUS tab of the tool draws that block.
 //
 //   POISON + FIRE  the poison goes off (`blast`)
-//   POISON + STUN  a hit, and both are spent (`sting`)
+//   POISON + STUN  shock: both run much longer, no hit (`sting`)
 //   STUN   + FIRE  the fire does two hits, not one (`Enemy.scald`)
 //
 // The goat is never poisoned. Every source of it is one of his own souls, and a soul that could
@@ -25,18 +25,25 @@ const Status = {
     e.poison = Math.max(e.poison, t || TUNING.status.poison.time);
   },
 
-  // He has just been stunned. Poison already in him turns it into a hit.
+  // He has just been stunned. Poison already in him turns it into shock.
   stunned(game, e) {
     if (e.poison > 0 && !e.dead) Status.sting(game, e);
   },
 
+  // SHOCK. Both statuses stretched long and no hit: `e.shock` is what the renderer reads to put one
+  // mark over his head instead of stars and bubbles. Already in shock, it only tops the clocks up —
+  // a puddle under a dazed man would otherwise announce it every frame.
   sting(game, e) {
-    e.poison = 0; e.dazed = 0;
-    game.floatText(e.x, e.y - 40, 'STING', PALETTE.venomHi);
+    const S = TUNING.status.sting;
+    e.dazed = Math.max(e.dazed, S.stun * game.mods.enemySlow);
+    e.poison = Math.max(e.poison, S.poison);
+    if (e.state === 'aim' || e.state === 'cast' || e.state === 'windup') { e.state = 'chase'; e.rune = null; }
+    if ((e.shock || 0) > 0) { e.shock = Math.max(e.shock, e.dazed); return; }
+    e.shock = e.dazed;
+    game.floatText(e.x, e.y - 40, 'SHOCK', PALETTE.venomHi);
     game.particles(e.x, e.y - 6, 12, PALETTE.venomHi, 180);
     game.ring(e.x, e.y, e.r * 2.4, PALETTE.venom);
-    game.audio.sfxThud(); game.hitstop(0.04); game.shake(4);
-    Status.hurt(game, e, TUNING.status.sting.damage, 'poison');
+    game.audio.sfxThud(); game.hitstop(0.04);
   },
 
   // `n` hits, each one through `die` so a two-heart man still eats the first and goes down.
@@ -147,7 +154,7 @@ const Status = {
   // How far along the hold is, 0..1, for whichever of the two is on. The renderer rings the thing.
   holdCharge(game, g) {
     const m = game.mods, need = m.chargeHold || m.venomHold;
-    return need > 0 && g.holding && g.holding.kind !== 'chicken' ? clamp(g.holdTimer / need, 0, 1) : 0;
+    return need > 0 && g.holding ? clamp(g.holdTimer / need, 0, 1) : 0;
   },
 
   // A thing thrown dripping leaves poison under its whole flight and a puddle where it stops; a
@@ -157,7 +164,9 @@ const Status = {
     const w = game.world;
     const each = (o, isMan) => {
       if (!o.venom && !o.charged) return;
-      const flying = isMan ? o.state === 'flung' && !o.dead : o.flung && !o.broken && !o.held;
+      // An animal flies on its own flag — a shell's `flying`, a kicked hen's `birdState` — not `flung`.
+      const up = o.flung || o.flying || o.birdState === 'flying';
+      const flying = isMan ? o.state === 'flung' && !o.dead : up && !o.broken && !o.held;
       if (flying) {
         if (o.venom) w.poisonTile(Math.floor(o.x / TILE), Math.floor(o.y / TILE), TUNING.status.poison.pool);
         if (Math.random() < 0.6) game.particles(o.x, o.y, 1, o.charged ? PALETTE.fireHi : PALETTE.venom, 60);

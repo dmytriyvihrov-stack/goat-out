@@ -1,0 +1,11 @@
+const fs=require('fs'),path=require('path');
+const root=__dirname,read=n=>JSON.parse(fs.readFileSync(path.join(root,n),'utf8').replace(/^\uFEFF/,''));
+const labels={floors:['Известняк','Треснувший известняк','Булыжник','Сланец','Доски поперёк','Доски вдоль','Земля и солома','Кирпич','Пещерный камень','Трещины в камне','Земля и галька','Гравий','Камень со мхом','Влажный камень','Тёмный камень','Грибная почва'],'room-props':['Ящик','Бочка','Сено','Стол','Колонна','Фрагмент стены','Жаровня','Горшок и черепки','Обломки досок','Каменная крошка','Рассыпанная солома','Потёртый коврик'],'cave-props':['Валун','Сталагмиты','Мшистый камень','Каменная плита','Грибы','Кристаллы','Пещерная трава','Корни','Галька','Пятно мха','Лужа','Трещина']};
+const sheets=read('source-inspection.json');
+const items=[];
+for(const s of sheets){if(s.cornerAlpha!==0)throw Error('Opaque background: '+s.id);s.cells.forEach((v,i)=>{const[x,y,w,h,pixels,cx,cy,cw,ch]=v;if(pixels<100||w<1||h<1)throw Error('Empty asset');if(x<=cx||y<=cy||x+w>=cx+cw||y+h>=cy+ch)throw Error('Boundary: '+s.id+i);items.push({id:s.id+'-'+String(i+1).padStart(2,'0'),group:s.id,label:labels[s.id][i],kind:s.id==='floors'?'floor':i>=8?'decal':'prop',file:s.file,rect:[x,y,w,h],cell:[cx,cy,cw,ch],sourceCell:i,anchor:s.id==='floors'||i>=8?[.5,.5]:[.5,1]});});}
+const manifest={version:2,status:'generated art sources; measured rectangles; not integrated',sampling:'nearest-neighbor',camera:'high top-down with slight tilt',seamlessVerified:false,items};
+fs.writeFileSync(path.join(root,'manifest.json'),JSON.stringify(manifest,null,2));
+fs.writeFileSync(path.join(root,'manifest.js'),'window.ENV_PACK='+JSON.stringify(manifest)+';');
+fs.writeFileSync(path.join(root,'validation.json'),JSON.stringify({sheets:sheets.length,assets:items.length,floors:16,props:16,decals:8,transparentCorners:true,framesInsideMeasuredCells:true,sourcePngsUnmodified:true,notes:['Bounds include all connected components of at least40 opaque pixels, preserving scattered debris.','Generated edges may need alpha cleanup; floor swatches are not validated seamless tiles.']},null,2));
+console.log('40 assets measured; transparent corners and extraction bounds verified.');

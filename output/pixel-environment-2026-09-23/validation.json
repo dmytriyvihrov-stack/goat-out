@@ -1,0 +1,14 @@
+{
+  "sheets": 3,
+  "assets": 40,
+  "floors": 16,
+  "props": 16,
+  "decals": 8,
+  "transparentCorners": true,
+  "framesInsideMeasuredCells": true,
+  "sourcePngsUnmodified": true,
+  "notes": [
+    "Bounds include all connected components of at least40 opaque pixels, preserving scattered debris.",
+    "Generated edges may need alpha cleanup; floor swatches are not validated seamless tiles."
+  ]
+}

@@ -1,0 +1,11 @@
+const fs=require('fs'),path=require('path');
+const root=__dirname,read=n=>JSON.parse(fs.readFileSync(path.join(root,n),'utf8').replace(/^\uFEFF/,'')),write=(n,v)=>fs.writeFileSync(path.join(root,n),typeof v==='string'?v:JSON.stringify(v,null,2));
+const revisions=read('revision-v2-sources.json'),byId=Object.fromEntries(revisions.map(s=>[s.id,s]));
+write('sources.json',read('sources.json').map(s=>byId[s.id]||s));
+write('prompts.json',[...read('prompts.json'),...read('revision-v2-prompts.json')]);
+let build=fs.readFileSync(path.join(root,'build-preview.cjs'),'utf8').replace('version:1','version:2');write('build-preview.cjs',build);
+let html=fs.readFileSync(path.join(root,'preview.html'),'utf8').replaceAll('source/floors.png','source/floors-v2.png').replaceAll('source/cave-props.png','source/cave-props-v2.png').replace('40 элементов для комнат и пещер. Посмотри их в маленьком размере и попробуй разные полы под предметами.','40 элементов для комнат и пещер. Полы теперь почти без мелкой фактуры. Фиолетовые грибы, бирюзовые кристаллы и зелёный мох добавляют пещере цвета. Примерь предметы на разные полы.');
+write('preview.html',html);
+let handoff=fs.readFileSync(path.join(root,'HANDOFF_CLAUDE.md'),'utf8').replace('23.09.2026','23.09.2026 · v2').replaceAll('floors.png','floors-v2.png').replaceAll('cave-props.png','cave-props-v2.png');
+handoff+='\n## Правка v2\n\nПо запросу пользователя сильно уменьшен шум всех16полов: почти плоская заливка, редкие крупные швы, минимум крапинок и мелкой фактуры. В пещере усилены отдельные акценты: фиолетовые грибы, бирюзовые кристаллы, зелёный мох/трава и небольшой бирюзовый отблеск лужи. Не увеличивать контраст самого пола при интеграции. Предметы комнат не менялись. Активная разметка пересчитана по новым PNG.\n\nСтарые floors.png и cave-props.png сохранены в legacy-v1 для сравнения и исключены из нового ZIP. Актуальная передача: pixel-environment-v2-2026-09-23.zip. Промпты правки — revision-v2-prompts.json.\n';write('HANDOFF_CLAUDE.md',handoff);
+console.log('Updated v2 sources, preview and handoff.');

@@ -14,20 +14,20 @@ const PEN_KEY = 'goatout.pen.v1';
 // The pointer, drawn as the animal rather than as a plain OS crosshair. It used to be the 🐐 emoji
 // glyph, which every OS draws facing its own way (several draw it left, aiming nowhere near where a
 // click actually lands) and which is a whole standing goat when the one part of him that matters to
-// aim is the head — headbutt is the verb the cursor exists to aim. It is a drawn head now, in the
-// game's own palette, muzzle forward on the aim direction, and the hotspot sits on the muzzle tip
-// rather than the glyph's own centre so the point that "hits" is the point that clicks.
+// aim is the head — headbutt is the verb the cursor exists to aim. Then it was a drawn head, which
+// at 32px read as a blob. It is a pair of horns now, symmetrical so it has no facing to get wrong,
+// with the hotspot on the red point between them.
 // `encodeURIComponent` rather than hand-escaping the quotes, since a cursor string that is wrong is
 // silently wrong — the browser just falls back to `crosshair` with nothing in the console about it.
 const CURSOR_GOAT = `url("data:image/svg+xml,${encodeURIComponent(
-  "<svg xmlns='http://www.w3.org/2000/svg' width='34' height='34'>"
-  + "<path d='M8,19 Q5,13 10,11 Q12,7 16,9.5 Q18,5.5 22,8.5 Q20,12 21,14.5' fill='none' stroke='#b9873a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/>"
-  + "<ellipse cx='14.5' cy='19' rx='7.6' ry='6.2' fill='#efe6d0' stroke='#1a1016' stroke-width='1.3'/>"
-  + "<ellipse cx='22.5' cy='19.5' rx='3.4' ry='3' fill='#efe6d0' stroke='#1a1016' stroke-width='1.3'/>"
-  + "<circle cx='18.5' cy='16.5' r='1.2' fill='#1a1016'/>"
-  + "<path d='M13,25 L12,29 L15,25.5 Z' fill='#b9873a'/>"
+  "<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'>"
+  // two ridged horns sweeping up and out from a brow, the verb the pointer aims
+  + "<path d='M14,20 Q6,19 4.5,11 Q4,5 9,4 Q6.5,8 8.5,12 Q10.5,15.5 15,16 Z' fill='#d9c49a' stroke='#1a1016' stroke-width='1.4' stroke-linejoin='round'/>"
+  + "<path d='M18,20 Q26,19 27.5,11 Q28,5 23,4 Q25.5,8 23.5,12 Q21.5,15.5 17,16 Z' fill='#d9c49a' stroke='#1a1016' stroke-width='1.4' stroke-linejoin='round'/>"
+  + "<path d='M6,14 L9,13 M5.5,10.5 L8.3,10.2 M26,14 L23,13 M26.5,10.5 L23.7,10.2' stroke='#8a6a3a' stroke-width='1.1' stroke-linecap='round'/>"
+  + "<circle cx='16' cy='18' r='2' fill='#c0392b' stroke='#1a1016' stroke-width='1'/>"
   + "</svg>"
-)}") 25 20, crosshair`;
+)}") 16 18, crosshair`;
 // The codes that mean somebody is playing on a keyboard. Anything else — a volume rocker, a media key,
 // a phone's own `Unidentified` — is not a reason to take the thumb controls off the screen.
 const KEYBOARD_KEY = /^(Key[A-Z]|Digit\d|Arrow|Space|Enter|Escape|Backspace|Tab|Shift|Control)/;
@@ -49,6 +49,13 @@ class Game {
     // What the men have to read in the room: standing fire and the Mill (fixed for the level), and
     // whatever rune is being painted right now (rebuilt each step).
     this.hazards = []; this.sightBlockers = []; this.runes = []; this.houndTold = false; this.henTold = false;
+    // Who actually ran this step. Everything that asks "is anybody standing here" — a grate's
+    // trigger, the wheel's arm, a stone tooth, a body arriving on a body — used to walk the level's
+    // whole cast, and a late floor carries eighty men; nineteen grates asking all of them three
+    // times a step was the single most expensive thing in the simulation. A man two rooms off is
+    // frozen (see the note in `update`), so he cannot walk onto anything and nothing can walk onto
+    // him: the short list is the only one worth asking.
+    this.liveEnemies = [];
     this.clockTold = false;   // the first door that shuts itself says so, once a run
     this.cam = { x: 0, y: 0, zoom: 1 }; this.camLead = { x: 0, y: 0 };
     this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0;
@@ -58,6 +65,7 @@ class Game {
     this.cageThought = 0;   // a beat of "her" over his head the moment the pen gives, comic-panel style
     this.hitstopTimer = 0; this.timeScale = 1; this.slowTimer = 0; this.hurt = null; this.hurtVignette = null;
     this.kills = 0; this.totalKills = 0; this.timer = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0;
+    this.beasts = {}; this.crowGift = false;   // the escorts walked to the stairs (js/beasts.js)
     this.best = this.loadBest();
     this.boons = []; this.mods = Object.assign({}, BOON_BASE); this.souls = []; this.boonChoice = null; this.boonRects = [];
     this.lastBoonActive = false;   // which kind the last soul offered, so the next one alternates
@@ -133,6 +141,7 @@ class Game {
     if (this.artifact) Shop.applyArtifact(this.mods, this.artifact);
     if (this.settings.easy) { this.mods.maxHp += EASY.maxHp; this.mods.enemySlow = EASY.enemySlow; }
     this.mods.maxHp += this.henHearts || 0;   // the hens he brought out with him, one heart a level
+    Beast.applyRewards(this, this.mods);      // and the escorts he walked to the stairs (js/beasts.js)
     if (this.goat) { this.goat.maxHp = this.mods.maxHp; this.goat.hp = Math.min(this.goat.hp, this.goat.maxHp); }
   }
   // A boss can fall against a wall, and a prize inside one is a prize nobody can reach: walk out in
@@ -185,6 +194,12 @@ class Game {
   // by whoever in that room was worth most is the bar, and swallowing it lifts that room's gate and
   // no other — or, in the mouse's room, taking one of her talismans does (`Shop.buy`). Everything
   // else in the game opens by being hit, which is exactly why this does not.
+  // The trail to what opens a soul gate, laid when the goat puts his head into one (`Prop.smash`).
+  guideTo(door) {
+    const tgt = this.souls.find((t) => t.gate === door.gateRoom && !t.taken)
+      || (door.shopGate ? this.props.find((p) => p.kind === 'ware' && !p.broken && !p.locked && p.shopId === door.gateRoom) : null);
+    if (tgt) this.guide = { ref: tgt, t: TUNING.soul.guide.time };
+  }
   openSoulGate(room) {
     const sg = (this.soulGates || []).find((g) => g.room === room);
     if (!sg || !sg.prop || sg.prop.broken) return;
@@ -218,12 +233,17 @@ class Game {
       if (onMouth(g.x, g.y, g.r) || this.enemies.some((e) => !e.dead && onMouth(e.x, e.y, e.r))) continue;
       room.clamped = true;
       for (const i of m.tiles) w.tiles[i] = T.WALL;
+      w.caveDirty();
       // Whatever was lying in the mouth goes into the stone with it, and a door hung there — a gate
       // long since opened, a seal — is part of the wall now rather than a slab drawn inside one.
       for (const p of this.props) if (!p.dead && p.kind !== 'clamp' && onMouth(p.x, p.y, 0)) { p.broken = true; p.dead = true; if (g.holding === p) g.holding = null; }
-      this.props.push(new Prop(m.x, m.y, 'clamp', { vertical: m.vertical, span: m.span }));
-      if (Math.hypot(m.x - g.x, m.y - g.y) < TUNING.clamp.hear * TILE) { this.audio.sfxSteel(); this.shake(2); }
-      this.particles(m.x, m.y, 10, PALETTE.ash, 120);
+      // What shuts it is a veil, not a plate: the mouth goes dark and the whole room behind it goes
+      // with it (`hidden`, `Renderer.drawUnseen`). An iron plate bolted over a doorway read as a wall
+      // somebody built, and left the room behind it lit and readable; a room you are done with is
+      // gone, and nothing about it is worth another look. `clampAt` times the veil coming down.
+      room.clampAt = this.timer;
+      if (Math.hypot(m.x - g.x, m.y - g.y) < TUNING.clamp.hear * TILE) this.audio.sfxVeil();
+      this.particles(m.x, m.y, 12, PALETTE.witch, 90);
     }
   }
 
@@ -234,6 +254,25 @@ class Game {
   // a seal refuses to be smashed and refuses to be shouldered, that made every room behind one —
   // the arena, its soul, and the stairs out — unreachable: the level could not be finished at all.
   // A seal is a door that closes behind you, and a door that closes behind you has to be open first.
+  // A room you have beaten lets you out. Once every man the level put in a room is dead, the door
+  // out of it — a corridor door, or the one barring the stairs — gives on its own: three blows of
+  // standing in the open are a price for running past a room, not for having emptied it. Only a
+  // room that had anybody in it, and only once it has been seen; a soul gate, a seal and the vault
+  // are not on this list and keep their own rules.
+  updateClearDoors() {
+    const L = this.level; if (!L) return;
+    for (const d of this.props) {
+      if (d.kind !== 'door' || d.broken || d.fromRoom < 0 || d.gate || d.seal || d.vault) continue;
+      const room = L.rooms[d.fromRoom]; if (!room || !room.seen) continue;
+      if (room.wasEmpty === undefined) room.wasEmpty = !this.enemies.some((e) => e.room === d.fromRoom && !e.scripted);
+      if (room.wasEmpty) continue;   // nobody was ever in it: nothing was beaten
+      if (this.enemies.some((e) => e.room === d.fromRoom && !e.dead && !e.scripted)) continue;
+      d.broken = true; d.dead = true; d.fromRoom = -1;
+      this.audio.sfxSteel(); this.flash(PALETTE.fireHi, 0.08);
+      this.particles(d.x, d.y, 14, PALETTE.ash, 220);
+      this.floatText(d.x, d.y - 28, 'THE WAY IS OPEN', PALETTE.fireHi);
+    }
+  }
   updateSeals() {
     const g = this.goat;
     for (const s of this.sealedRooms) {
@@ -401,7 +440,7 @@ class Game {
       for (const p of this.niches) if (!p.broken && p.nicheTiles.indexOf(i) > 0) return true;
     }
     for (const r of this.level.rooms) {
-      if (r.seen) continue;
+      if (r.seen && !r.clamped) continue;
       if (x >= r.x * TILE && x < (r.x + r.w) * TILE && y >= r.y * TILE && y < (r.y + r.h) * TILE) return true;
     }
     return false;
@@ -665,6 +704,15 @@ class Game {
     if (id === 'heal') { this.goat.hp = this.goat.maxHp; this.devToast('HEALED'); return; }
     if (id === 'soul') { this.dropSoul(this.goat.x + 28, this.goat.y); this.devToast('SOUL DROPPED'); return; }
     if (id === 'mouse') { this.spawnShop(); return; }
+    // The escorts and the hen's coop, dropped at his feet: the generator puts exactly one a floor
+    // in the first third of it, which is no way to look at one twice while tuning it.
+    if (id === 'coop' || Beast.is(id)) {
+      const s = this.freeSpot(this.goat.x + 40, this.goat.y);
+      this.props.push(new Prop(s.x, s.y, id));
+      this.particles(s.x, s.y, 8, PALETTE.hen, 130);
+      this.devToast('+ ' + id.toUpperCase());
+      return;
+    }
     if (id === 'artifact') { this.devArtifact(); return; }
     if (id === 'next') { this.levelCleared(); return; }
     if (id === 'restart') { this.restartLevel(); return; }
@@ -1021,6 +1069,7 @@ class Game {
     if (this.tripAt === undefined) this.tripAt = -1;
     const def = index === this.tripAt ? tripLevel(index) : LEVELS[index];
     this.levelTripAt = this.tripAt;
+    this.tripBanner = def.shroom ? TUNING.shroom.banner.time : 0;
     // The clover at his neck reaches the generator and nothing else he carries does: it is the
     // one artifact about the floor rather than about him.
     this.level = generateLevel(def, seed >>> 0, { luck: this.mods.luck });
@@ -1051,6 +1100,7 @@ class Game {
       if (s.lurk) { e.lurk = true; e.facing = Math.random() * Math.PI * 2; }
       return e;
     });
+    this.stageFirstHide();
     this.props = this.level.props.map((p) => new Prop(p.x, p.y, p.kind, p));
     // The ritual altar: real furniture rather than scenery, so it blocks the way and takes a blow
     // like any other table. Its position matches where the decal layer has always drawn it.
@@ -1060,13 +1110,19 @@ class Game {
     }
     // A boulder is stone to the flow field until it breaks (`Prop.crackRock` clears it).
     for (const p of this.props) if (p.kind === 'rock') this.world.block[Math.floor(p.y / TILE) * this.world.W + Math.floor(p.x / TILE)] = 1;
-    this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike');
+    // Every shield on the floor carries the tortoises the run has walked out (js/beasts.js). It is
+    // done here rather than in `Prop`'s constructor because a prop has no game to ask.
+    if (this.mods.shieldUses) for (const p of this.props) if (p.kind === 'weapon' && p.weapon === 'shield') p.uses += this.mods.shieldUses;
+    // And what the crow found on the last floor is standing on this one's stairs.
+    Beast.placeGift(this);
+    this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike' || p.kind === 'spire');
     this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill' || p.kind === 'secret');
     // A niche is rock until its wall gives. It was floor from the first frame, lying one row outside
     // the room's own box where the room fog never reaches, so the rack and the grass in it sat there
     // under nothing but the shade for anybody to read through the wall. `crackWall` gives it back.
     this.niches = this.props.filter((p) => p.kind === 'secret' && p.nicheTiles);
     for (const p of this.niches) for (const i of p.nicheTiles.slice(1)) if (this.world.tiles[i] === T.FLOOR) this.world.tiles[i] = T.WALL;
+    this.world.caveDirty();
     // The cave cut through the middle of its tiles, when that is the shape asked for. Laid once the
     // furniture is down, since nothing that was put somewhere may end up grown over.
     if (this.world.round && TUNING.cave.shape === 'mid') this.world.buildCaveField(this.props, this.level.start);
@@ -1095,6 +1151,7 @@ class Game {
     // level does not grow an enormous array. It is what the death screen's pull-back draws as a line.
     this.pathTrail = [{ x: this.goat.x, y: this.goat.y }]; this.pathTimer = 0; this.deathCam = null;
     this.killMarks = [];   // where each man of this level went down — skulls on the death screen's map
+    this.crowMarks = [];   // the same bodies, for the crow — a level's dead do not call it to the next one
     this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0;
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
@@ -1115,6 +1172,10 @@ class Game {
       .filter((b) => this.level.spawns[b.i].boss)
       .sort((a, b) => a.room - b.room);
     this.soulsHere = def.souls === undefined ? bosses.length + (this.level.vault ? 1 : 0) : def.souls;
+    // Two upgrades a level, and the mouse is one of them: her offer stands in for a soul rather than
+    // coming on top of the level's two, or a shop floor handed out three — and the vault next door to
+    // her room held a soul straight after her shelf.
+    if (this.level.shop && def.souls !== undefined) this.soulsHere = Math.max(0, this.soulsHere - 1);
     let budget = this.soulsHere;
     this.soulGates = (this.level.gates || []).map((g) => ({ room: g.room, shop: g.shop,
       prop: this.props.find((p) => p.gate && p.gateRoom === g.room) || null }));
@@ -1187,6 +1248,7 @@ class Game {
   // story and the floor of level 1 carries the controls, so the menu only has to be a way in.
   showTitle() {
     this.state = 'title'; this.card = null; this.level = null; this.world = null; this.goat = null;
+    this.guide = null;
     this.enemies = []; this.props = []; this.bullets = []; this.souls = []; this.sightBlockers = []; this.niches = []; this.fallers = []; this.globs = [];
     this.save = this.loadRun();
     this.best = this.loadBest();
@@ -1269,6 +1331,7 @@ class Game {
     if (id === 'settings') { m.panel = 'settings'; m.sub = 0; return; }
     if (id === 'continue') { this.resumeRun(); return; }
     this.clearRun(); this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0;
+    this.beasts = {}; this.crowGift = false;
     this.forgetLessons();
     this.runSeed = this.askedSeed || ((Math.random() * 1e9) | 0);
     this.askedSeed = 0;   // a seed off the address is spent on the run it was asked for and no other
@@ -1325,6 +1388,7 @@ class Game {
   startAtLevel(li, trip) {
     this.clearRun();
     this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0;
+    this.beasts = {}; this.crowGift = false;
     this.forgetLessons();
     let budget = 0;
     for (let i = 0; i < li; i++) budget += LEVELS[i].souls || 0;
@@ -1348,6 +1412,7 @@ class Game {
     this.boons = (s.boons || []).map((id) => BOONS.find((b) => b.id === id)).filter(Boolean);
     this.totalKills = s.totalKills || 0; this.deaths = s.deaths || 0; this.totalScore = s.score || 0;
     this.henHearts = s.henHearts || 0;
+    this.beasts = s.beasts || {}; this.crowGift = !!s.crowGift;
     // The talisman comes back with the run, if the artifact it names still exists.
     this.artifact = s.artifact && ARTIFACTS.some((a) => a.id === s.artifact.id) ? { id: s.artifact.id, tier: Math.max(1, Math.min(3, s.artifact.tier | 0)) } : null;
     // A run picked up where it was left off is the same run, so it keeps its seed. One saved before
@@ -1400,6 +1465,7 @@ class Game {
   saveRun() {
     this.save = { v: 1, level: this.levelIndex, boons: this.boons.map((b) => b.id), totalKills: this.totalKills,
       deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, henHearts: this.henHearts || 0, tripAt: this.tripAt === undefined ? -1 : this.tripAt,
+      beasts: this.beasts || {}, crowGift: !!this.crowGift,
       artifact: this.artifact ? { id: this.artifact.id, tier: this.artifact.tier } : null, at: Date.now() };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (err) { /* private mode: the run dies with the tab */ }
   }
@@ -1447,7 +1513,7 @@ class Game {
     const by = this.killedBy(this.goat.hurtBy);
     this.card = { lines: ['DIED', `${this.kills} sacrificed`, `LEVEL ${this.levelIndex + 1} · ${lv.name || ''}`,
       by ? `${kept} · KILLED BY ${by}` : `${kept} · ${this.tapWord.toLowerCase()} to try again`], dim: 0.55, size: 40, small: 2, color: PALETTE.blood };
-    this.shake(12); this.vibe(70);
+    this.shake(12, true); this.vibe(70);
   }
   // The name on the death card for whatever the goat's last heart went to: a man, or the room.
   killedBy(by) {
@@ -1469,6 +1535,12 @@ class Game {
       { lines: ['You will get sacrifices!'], dim: 0.85, size: 40, time: 1.6, color: PALETTE.blood },
       ...(this.henSaved ? [{ lines: ['THE HEN CAME WITH YOU', '', `+${TUNING.prop.chicken.saveHearts} HEART FOR THE REST OF THE RUN`],
         dim: 0.8, size: 34, small: 2, time: 1.8, color: PALETTE.hen }] : []),
+      // And each escort that walked out with him (js/beasts.js). One card each, because what one is
+      // worth is the only place the player ever finds out that nursing it across the floor paid.
+      ...((this.beastSaved || []).map((k) => ({
+        lines: [BEAST_CARD[k][0], '', BEAST_CARD[k][1]],
+        dim: 0.8, size: 34, small: 2, time: 1.8, color: PALETTE.hen,
+      }))),
       // The level's own score: what the time was worth and what the bodies did to it.
       { lines: [`SCORE ${score}`, '', `${this.kills} sacrificed in ${this.timer.toFixed(1)}s`,
         best ? 'A NEW BEST' : `run so far ${this.totalScore}`],
@@ -1684,7 +1756,7 @@ class Game {
     }
     if (this.state === 'clear') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) this.nextCard(); this.clearEdges(); return; }
     if (this.state === 'boon') { this.boonArm = Math.max(0, this.boonArm - dt); this.updateEffects(dt); this.clearEdges(); return; }
-    if (this.state === 'win') { if (this.input.lmbPressed) { this.forgetLessons(); this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.runSeed = (Math.random() * 1e9) | 0; this.startLevel(0, this.levelSeed(0), false, true); } this.clearEdges(); return; }
+    if (this.state === 'win') { if (this.input.lmbPressed) { this.forgetLessons(); this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.beasts = {}; this.crowGift = false; this.runSeed = (Math.random() * 1e9) | 0; this.startLevel(0, this.levelSeed(0), false, true); } this.clearEdges(); return; }
     if (this.state !== 'play') { this.clearEdges(); return; }
 
     if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; this.clearEdges(); return; }
@@ -1725,7 +1797,12 @@ class Game {
     // gone dark behind the fog, because his spawn room could still read as seen after he had walked
     // out of it. `e.room` itself is untouched: the sealed-room and soul-gate bookkeeping key off who
     // a man was PUT with, and that has to survive him stepping outside the doorway.
-    const curRoom = roomAt(this.level, this.goat.x, this.goat.y), curIdx = curRoom ? curRoom.index : -1;
+    // A corridor answers `roomAt` with nothing, and a -1 here used to switch the whole skip off:
+    // every man on the floor woke up for as long as the goat stood between two rooms, which is both
+    // a hitch you can feel and the opposite of what the rule says. The last room he was actually in
+    // is what a corridor means, so that is what it falls back to.
+    const curRoom = roomAt(this.level, this.goat.x, this.goat.y);
+    const curIdx = curRoom ? curRoom.index : (this.goatRoom === undefined ? -1 : this.goatRoom);
     // A man lives once he has been on the screen, and not before: he is `woke` the first frame he
     // stands within `ai.wake` tiles of its edge, and from then on he is simulated like anybody else,
     // so a chase that runs off the side of the picture keeps running. Before this, a man in a room
@@ -1740,13 +1817,18 @@ class Game {
     // breaking, a bomb, the grating, a table through a door — is carried into the next step, because
     // clearing the whole list at the end of this one threw all of those away before anybody heard them.
     const heardUpTo = w.noises.length;
+    const live = this.liveEnemies; live.length = 0;
     for (const e of this.enemies) {
+      e.live = false;
       if (!e.woke) {
         if ((e.x >= vx0 && e.x <= vx1 && e.y >= vy0 && e.y <= vy1) || e.held || e.state === 'flung' || e.burning > 0) e.woke = true;
         else continue;
       }
+      // In a corridor he is in whichever room is nearest him, not the one he was put in: a man who
+      // chased the goat out of a room two back and is now in the corridor right beside him used to
+      // count as two rooms away and stop dead there, stuck in the doorway (playtest, 23 Sep 2026).
       const eroom = roomAt(this.level, e.x, e.y);
-      const eIdx = eroom ? eroom.index : e.room;
+      const eIdx = eroom ? eroom.index : this.nearestRoomIdx(e.x, e.y, e.room);
       if (curIdx >= 0 && eIdx >= 0 && Math.abs(eIdx - curIdx) >= 2) continue;
       // A room the goat has not opened yet — no floor of it seen, not walked into — used to go on
       // patrolling anyway once it was only the immediate neighbour of his own room, which let a man
@@ -1758,13 +1840,17 @@ class Game {
       // room past it, which is what the distance skip above already accepts losing. A corridor
       // answers `roomAt` with nothing, so a man caught mid-corridor is never frozen by this half.
       if (eroom && !eroom.seen) continue;
+      e.live = true;
       e.update(dt, this);
+      // Listed after his own update, not before it: a wraith that manifested in it is a body now.
+      if (!e.dead && !e.held && !e.ghosted) live.push(e);
     }
     for (const b of this.bullets) b.update(dt, this);
     for (const p of this.props) p.update(dt, this);
     Shop.updateBoomerang(this, dt);
     this.collideEntities(dt);
     this.updateSeals();
+    this.updateClearDoors();
     this.updateClamps();
     w.updateFire(dt);
     Status.update(this, dt);
@@ -1804,7 +1890,10 @@ class Game {
       // a passing man does not cost the whole graze.
       p.graze = near ? p.graze + dt : Math.max(0, p.graze - dt * 2);
       if (p.graze < H.grazeTime) continue;
-      p.broken = true; p.dead = true;
+      // The mouse's pail holds several hearts and pays them out a drink at a time, so it stays where
+      // it is until it is empty: a goat who took it at full health has something to come back to
+      // while he is still in her room rather than three quarters of an offer poured away.
+      if (p.pail > 1) { p.pail--; p.graze = 0; } else { p.broken = true; p.dead = true; }
       // A patch of real grass rather than a bowl of milk: rarer, tucked behind a wall a secret gave
       // up, and worth twice what the milk does — the risk of going looking for it is what pays for
       // the extra heart, not the room it happens to be standing in.
@@ -2037,7 +2126,7 @@ class Game {
     it.hit = true; c.state = 'swing'; c.timer = TUNING.bearer.swing; this.audio.sfxSwing();
     const d = Math.hypot(g.vx, g.vy) || 1, nx = g.vx / d, ny = g.vy / d;
     g.state = 'ko'; g.vx = -nx * I.club.knock; g.vy = -ny * I.club.knock; g.dazed = 99; g.jitter = null;
-    this.hitstop(I.club.hitstop); this.shake(16); this.kick(-nx, -ny, TUNING.juice.kickMax); this.zoomPunch(2.2);
+    this.hitstop(I.club.hitstop); this.shake(16, true); this.kick(-nx, -ny, TUNING.juice.kickMax, true); this.zoomPunch(2.2);
     this.flash(PALETTE.blood, 0.4); this.hurtFlash(Math.atan2(ny, nx)); this.slowTimer = I.club.slow;
     this.audio.sfxClub(); this.vibe(80);
     this.particles(g.x + nx * 10, g.y + ny * 10, 12, PALETTE.bone, 260);
@@ -2203,6 +2292,15 @@ class Game {
     this.henSaved = this.props.some((p) => p.kind === 'chicken' && !p.broken
       && (p.held || Math.hypot(p.x - g.x, p.y - g.y) <= C.saveR * TILE));
     if (this.henSaved) this.henHearts += C.saveHearts;
+    // The three escorts of js/beasts.js ask the same question at the same door. A crow's reward is
+    // not a number, so it is remembered and stood on the next floor's own stairs instead.
+    this.beastSaved = Beast.saved(this);
+    Beast.bank(this, this.beastSaved);
+    // The hen's reward is her own (`henHearts`), but she is counted with the rest so the corner that
+    // lists everyone brought out (`Renderer.drawSaved`) lists her too.
+    if (this.henSaved) Beast.bank(this, ['chicken']);
+    if (this.beastSaved.indexOf('crow') >= 0) this.crowGift = true;
+    this.applyBoons();
     if (g.holding) { const h = g.holding; h.held = false; g.holding = null; if (!h.item) { h.state = 'floored'; h.timer = 0.6; } }
   }
   updateClimb(dt) {
@@ -2215,6 +2313,8 @@ class Game {
 
   updateEffects(dt) {
     this.fx.update(dt);
+    if (this.guide) { const G = this.guide, r = G.ref; G.t -= dt;
+      if (G.t <= 0 || r.taken || r.broken || (r.gate !== undefined && !this.souls.includes(r))) this.guide = null; }
     const J = TUNING.juice;
     if (this.stairFx && this.stairFx.dir < 0) { this.stairFx.t += dt / TUNING.stairs.arrive; if (this.stairFx.t >= 1) this.stairFx = null; }
     this.shakeAmt = Math.max(0, this.shakeAmt - J.shakeDecay * dt * Math.max(1, this.shakeAmt * 0.3));
@@ -2235,6 +2335,7 @@ class Game {
     this.parts = this.parts.filter((p) => p.life > 0);
     for (const f of this.floats) f.life -= dt;
     this.floats = this.floats.filter((f) => f.life > 0);
+    if (this.tripBanner > 0) this.tripBanner = Math.max(0, this.tripBanner - dt);
     for (const p of this.puffs) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.9; p.vy *= 0.9; }
     this.puffs = this.puffs.filter((p) => p.life > 0);
     for (const f of this.flares) f.life -= dt;
@@ -2255,12 +2356,19 @@ class Game {
   // ---------- collisions between circles ----------
   collideEntities(dt) {
     const g = this.goat, en = this.enemies, ph = TUNING.physics;
-    for (let i = 0; i < en.length; i++) {
-      const a = en[i]; if (a.dead || a.held || a.ghosted) continue;
-      for (let j = i + 1; j < en.length; j++) {
-        const b = en[j]; if (b.dead || b.held || b.ghosted) continue;
-        const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
-        if (d >= min || d === 0) continue;
+    // Only the men who actually ran this step (`liveEnemies`): a frozen man cannot have moved into
+    // anybody, and nobody can have moved into him, so the pair loop is over ten bodies on a late
+    // floor rather than over eighty. The squared compare before the root is the same saving again —
+    // this is the innermost loop in the game.
+    const act = this.liveEnemies;
+    for (let i = 0; i < act.length; i++) {
+      const a = act[i]; if (a.dead || a.held || a.ghosted) continue;
+      for (let j = i + 1; j < act.length; j++) {
+        const b = act[j]; if (b.dead || b.held || b.ghosted) continue;
+        const dx = b.x - a.x, dy = b.y - a.y, min = a.r + b.r;
+        if (dx * dx + dy * dy >= min * min) continue;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d === 0) continue;
         const nx = dx / d, ny = dy / d;
         const aFl = a.state === 'flung' && Math.hypot(a.vx, a.vy) > ph.knockHitSpeed;
         const bFl = b.state === 'flung' && Math.hypot(b.vx, b.vy) > ph.knockHitSpeed;
@@ -2270,10 +2378,12 @@ class Game {
         if (a.burning > 0 || b.burning > 0) this.passFire(a, b);
       }
     }
-    for (const e of en) {
+    for (const e of act) {
       if (e.dead || e.held || e.ghosted || g.dead) continue;
-      const dx = e.x - g.x, dy = e.y - g.y, d = Math.hypot(dx, dy), min = e.r + g.r;
-      if (d >= min || d === 0) continue;
+      const dx = e.x - g.x, dy = e.y - g.y, min = e.r + g.r;
+      if (dx * dx + dy * dy >= min * min) continue;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d === 0) continue;
       const nx = dx / d, ny = dy / d, push = (min - d);
       // The big man does not move for you, and neither does a man holding a post: the first man of
       // the run is standing in a one-tile doorway on purpose, and shouldering him down the corridor
@@ -2281,20 +2391,30 @@ class Game {
       if (e.kind === 'butcher' || e.kind === 'ratogre' || e.sentry) { g.x -= nx * push; g.y -= ny * push; }
       else { g.x -= nx * push * 0.4; g.y -= ny * push * 0.4; e.x += nx * push * 0.6; e.y += ny * push * 0.6; }
     }
+    // The goat and whoever is awake, built once rather than once per prop: `[g].concat(en)` inside
+    // the loop was a fresh eighty-element array for every piece of furniture in the level, every step.
+    const all = this.collideList || (this.collideList = []);
+    all.length = 0; all.push(g);
+    for (const e of act) all.push(e);
+    // The two escorts that walk on the ground are held by a shut door like anybody: a goose that
+    // ghosted through a gate ran a whole room ahead of him. The hen and the crow are birds.
+    for (const p of this.props) if ((p.kind === 'goose' || (p.kind === 'tortoise' && !p.flying)) && !p.broken && !p.held) all.push(p);
     for (const p of this.props) {
       if (p.broken) continue;
       if (p.item) {
-        if (p.kind === 'crate' && p.flung) for (const e of en) { if (!e.dead && !e.held && e.state === 'flung' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
+        if (p.kind === 'crate' && p.flung) for (const e of act) { if (!e.dead && !e.held && e.state === 'flung' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
         // A crate is `item`, so it never reaches `blocking` below and the charge's own door/table/
         // lamp/brazier branch further down can never see it — it would otherwise be a box a charging
         // Butcher runs clean through without a mark on it, which is the wrong kind of invisible.
-        if (p.kind === 'crate' && !p.flung) for (const e of en) { if (!e.dead && !e.held && e.state === 'charge' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
+        if (p.kind === 'crate' && !p.flung) for (const e of act) { if (!e.dead && !e.held && e.state === 'charge' && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) { p.shatter(this); break; } }
         continue;
       }
       if (!p.blocking) continue;
-      const all = [g].concat(en);
       for (const e of all) {
-        if (e.dead || e.held || e.ghosted) continue;
+        if (e === p || e.dead || e.held || e.ghosted) continue;
+        // Nothing within reach of this prop: the cheapest rejection there is, ahead of the slab and
+        // disc maths below. `far` is a generous box — the door's own half-span plus a body.
+        if (Math.abs(e.x - p.x) > e.r + p.r + TILE || Math.abs(e.y - p.y) > e.r + p.r + TILE) continue;
         // A door is a slab, not a disc: a plain circle of radius `r` (tuned for the span it has to
         // cover across the gap) stopped anyone walking straight at its face a whole extra tile
         // short of it. Closest point on its actual rectangle instead, `r` still the half-span and
@@ -2351,7 +2471,7 @@ class Game {
         // A boulder takes a body the way a head takes it: one blow's worth off it, and a man thrown
         // into one twice has broken it. Whatever the speed, the rock pays; at killing speed he does too.
         if (e.state === 'flung' && e !== g && p.kind === 'rock' && -vn > ph.knockHitSpeed) p.crackRock(this);
-        if (e.state === 'flung' && -vn > ph.splatSpeed * Talisman.splatMul(this) && e !== g) { e.die(this, 'splat', -nx, -ny); continue; }
+        if (e.state === 'flung' && e !== g && -vn > e.splatLimit(this)) { e.die(this, 'splat', -nx, -ny); continue; }
         if (e === g && p.kind === 'table' && !p.flung) {
           // the goat can shoulder a table along slowly
           const shove = Math.min(min - d, TUNING.prop.table.pushSpeed * dt);
@@ -2481,6 +2601,15 @@ class Game {
     const dirx = Math.cos(att.facing), diry = Math.sin(att.facing);
     // MIRROR SHARD: caught inside the parry window, the blow goes back where it came from.
     if (!g.dead && !skipGoat && inArc(g) && Talisman.parry(this, att, att.kind === 'dog' ? 'bite' : 'melee')) skipGoat = true;
+    // A tortoise standing between the blow and the goat takes it on the shell, once (`Beast.guards`).
+    // Asked without `reaches`, because a tucked shell is itself what `reaches` would stop at.
+    if (!g.dead && !skipGoat) {
+      const dx = g.x - att.x, dy = g.y - att.y;
+      if (Math.hypot(dx, dy) < reach + g.r && Math.abs(angleDiff(att.facing, Math.atan2(dy, dx))) < arc / 2 && this.world.los(att.x, att.y, g.x, g.y)) {
+        const sh = Beast.guards(this, att, g);
+        if (sh && Beast.shellTakes(sh, this)) skipGoat = true;
+      }
+    }
     if (!g.dead && !skipGoat) {
       if (g.holding && !g.holding.item && inArc(g.holding)) { const h = g.holding; this.floatText(h.x, h.y - 26, 'SHIELD', PALETTE.bone); h.die(this, 'club', dirx, diry); }
       // A club into a carried shield is a club into a shield. He spends a charge, the man who swung
@@ -2504,6 +2633,8 @@ class Game {
       }
       else if (inArc(g)) g.damage(damage, this, dirx * knock * 4, diry * knock * 4, false, att);
     }
+    // The animals on our side are in the room too: a club that finds one hurts it (`Beast.hurt`).
+    for (const p of this.props) if (Beast.animal(p) && !p.held && p.birdState !== 'flying' && inArc(p)) Beast.hurt(p, this, 'blow');
     // A hound bites what it was sent for. It does not floor its own handlers on the way past — a pack
     // of them doing that filled half the screen with OOPS.
     if (att.kind === 'dog') return;
@@ -2542,6 +2673,10 @@ class Game {
     Talisman.onKill(this, e, cause);
     // Where he fell, for the skulls on the death screen's map.
     if (this.killMarks) this.killMarks.push({ x: e.x, y: e.y });
+    // And for the crow, which follows the dead and not the goat (js/beasts.js). A mark ages out of
+    // the list after `crow.markFor` seconds, so a room cleared long ago stops calling it back.
+    this.crowMarks = this.crowMarks || [];
+    this.crowMarks.push({ x: e.x, y: e.y, t: this.timer });
     if (this.state === 'play' && !this.goat.dead) this.audio.musicEvent('kill');
     this.kills++;
     const J = TUNING.juice, big = e.kind === 'butcher' || e.kind === 'ratogre';
@@ -2591,17 +2726,25 @@ class Game {
     if (g.dead) return;
     if (g.holding) { const h = g.holding; g.holding = null; h.held = false; if (!h.item) { h.state = 'floored'; h.timer = 0.5; } }
     g.state = 'stunned'; g.timer = t; g.dazed = Math.max(g.dazed, t + 0.6);
-    this.shake(10); this.kick(0, 1, TUNING.juice.kick); this.hitstop(0.06);
+    this.shake(10, true); this.kick(0, 1, TUNING.juice.kick, true); this.hitstop(0.06);
     this.slowTimer = Math.max(this.slowTimer, 0.3); this.vibe(60);
     this.audio.sfxClub();
   }
   // Every call site passes its own amount; `juice.stop` and `juice.screen` scale them all at once.
   hitstop(t) { this.hitstopTimer = Math.max(this.hitstopTimer, t * TUNING.juice.stop); }
-  shake(a) { this.shakeAmt = Math.max(this.shakeAmt, a * TUNING.juice.screen); }
-  // A shove of the whole picture away from the impact, on top of the random shake.
-  kick(dx, dy, amt) {
+  // A shake of the whole picture. `hurt` is the second argument and it is the whole of the policy:
+  // only a blow the GOAT took is allowed to move the screen (`TUNING.juice.shakeOther` is zero for
+  // everything else). A kill, a crate, a gong, a door, a bomb, the wheel and the pen all still call
+  // it, at the amounts they always did — they simply do nothing until somebody turns that dial back
+  // up. The reason is that a shake is information: if everything shakes the picture, nothing does,
+  // and the one event the player has to feel without looking at the hearts is the one that gets lost.
+  shake(a, hurt) { this.shakeAmt = Math.max(this.shakeAmt, a * TUNING.juice.screen * (hurt ? 1 : TUNING.juice.shakeOther)); }
+  // A shove of the whole picture away from the impact, on top of the random shake. Not a shake — it
+  // is one push in one direction and it reads as weight — so it keeps `kickOther` of itself rather
+  // than none of it when what caused it was not the goat being hit.
+  kick(dx, dy, amt, hurt) {
     const d = Math.hypot(dx, dy) || 1;
-    amt *= TUNING.juice.screen;
+    amt *= TUNING.juice.screen * (hurt ? 1 : TUNING.juice.kickOther);
     this.kickX += dx / d * amt; this.kickY += dy / d * amt;
     const m = Math.hypot(this.kickX, this.kickY), max = TUNING.juice.kickMax;
     if (m > max) { this.kickX *= max / m; this.kickY *= max / m; }
@@ -2649,7 +2792,35 @@ class Game {
     this.flash(PALETTE.witch, 0.25); this.zoomPunch(1.2);
     this.audio.sfxBleat(380, 0.2, 0.6);
   }
-  forgetLessons() { this.tripAt = -1; this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; }
+  // The room whose box is closest to a point that is in none of them — a corridor's two ends.
+  nearestRoomIdx(x, y, fallback) {
+    let best = fallback, bd = Infinity;
+    for (const r of this.level.rooms) {
+      const dx = Math.max(r.x * TILE - x, 0, x - (r.x + r.w) * TILE), dy = Math.max(r.y * TILE - y, 0, y - (r.y + r.h) * TILE);
+      const d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = r.index; }
+    }
+    return best;
+  }
+  // The first wraith of a run that lies in wait as a box or a bowl does it in a room with nobody
+  // else in it. Met in the thick of a fight it was one more thing going on; met in an empty room
+  // it is the breath of relief and then the thing that was never a box (playtest, 23 Sep 2026).
+  // Every hidden one before that room comes out as mist instead, and whoever else was put in the
+  // room is taken out of it before the level starts. `hideTaught` is set when it springs.
+  stageFirstHide() {
+    if (this.hideTaught) return;
+    const wr = this.enemies.filter((e) => e.kind === 'wraith' && e.room > 0).sort((a, b) => a.room - b.room);
+    if (!wr.length) return;
+    const alone = (e) => this.enemies.every((o) => o.room !== e.room || o.kind === 'wraith');
+    const pick = wr.find((e) => e.state === 'hidden' && alone(e)) || wr.find(alone) || wr.find((e) => e.state === 'hidden');
+    if (!pick) return;
+    for (const e of wr) if (e !== pick && e.room <= pick.room && e.state === 'hidden') { e.state = 'idle'; e.disguise = null; }
+    this.enemies = this.enemies.filter((o) => o === pick || o.room !== pick.room || o.boss || o.kind === 'wraith');
+    if (pick.state !== 'hidden') pick.hide();
+    pick.firstHide = true;
+  }
+
+  forgetLessons() { this.hideTaught = false; this.tripAt = -1; this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; this.gooseTold = false; this.beastTold = {}; }
 
   mistTold(e) {
     if (this.mistSaid === undefined) this.mistSaid = 0;
@@ -2672,7 +2843,7 @@ class Game {
   henFreed(coop) {
     if (this.henTold) return;
     this.henTold = true;
-    this.floatText(coop.x, coop.y - 52, 'SHE FOLLOWS. BUTT HER AT A MAN', PALETTE.hen);
+    Beast.speak(this, coop, Beast.PACT.chicken);
   }
   // One man speaks at a time: a crowd all shouting at once reads as noise, not as a cult.
   bark(e, kind, chance) {

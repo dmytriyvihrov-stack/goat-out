@@ -1,0 +1,27 @@
+[
+  {
+    "id": "floor-small",
+    "prompt": "Generate ONE tiny ominous PIXEL ART FLOOR GLYPH decal for GOAT OUT game. Actual transparent PNG background. Only colored strokes, all negative spaces alpha-transparent. Design: an invented sinister split-horn brand, a crooked vertical stem branching into two inward hooked horns above a small hollow diamond. Primitive ritual chalk/paint mark, subtly asymmetrical, immediately readable at24logical pixels wide. COARSE pixel art built from large sharp square blocks, maximum3 flat colors: muted dried-oxblood red with dark burgundy edge and sparse dusty-red highlights. Thick simple strokes, almost no distress: only2 deliberate small gaps. Flat ground decal viewed from high topdown slight tilt, subtly compressed vertically about0.86. No actual floor, no bricks, no stone plaque, no disk, no badge or frame, no object thickness, no shading gradient, no glow, no shadow, no particles, no tiny ornamental noise, no text or letters. A SINGLE glyph centered with ample transparent margin, crisp nearest-neighbor pixel edges, dark eerie folk-horror atmosphere. Not a UI button."
+  },
+  {
+    "id": "floor-medium",
+    "prompt": "Create ONE medium-size sinister FLOOR SEAL decal, same primitive pixel-painted visual language as reference but different design. Single broken octagonal ring enclosing a narrow hollow eye with a vertical slit, three short downward tines under the ring. Imaginary ritual mark for atmospheric game floor. Readable at48logical pixels wide, chunky angular square pixel strokes, thick simple lines, generous empty negative space, very little texture. Muted dried oxblood red with sparse dusty red edges,2-3flat colors. ALL gaps and interior empty spaces are genuinely TRANSPARENT, no filled disk. Flat ground decal high topdown slight tilt, octagonal circle subtly flattened vertically0.86, no diamond isometric view. Centered ONE design. No actual floor/stone/background, no plaque, no badge/button, no cast shadow, no glow, no fine runic lettering, no noise or particles. Actual transparent PNG like reference. Do not repeat reference horn glyph, produce new eye seal.",
+    "refs": [
+      "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-d05aba89-6805-4997-870f-dc7668ada0e5.png"
+    ]
+  },
+  {
+    "id": "floor-large",
+    "prompt": "ONE LARGE ominous ritual FLOOR CIRCLE pixel-art decal for GOAT OUT. Same dried oxblood painted stroke style as reference, but DIFFERENT design: wide broken concentric octagonal circle enclosing three bold inward-pointing hooked wedges around an empty central diamond; four simple thick short tally/rune-like strokes at cardinal positions. Sparse balanced composition, large transparent empty areas, no fine inscriptions. Intended96logical pixels wide, strokes about3logical pixels thick. Wide circle ground perspective width:height about1.3:1, high topdown with slight tilt. Coarse square pixel steps,2-3flat muted red/burgundy tones, almost no weathering, absolutely no texture speckles or fine ornament. Whole design centered fully visible, ONE circle, not a sheet. Only drawn red lines exist, all interior gaps and background truly ALPHA TRANSPARENT. No filled disk, no platform, no floor, no bricks, no lighting or glow, no shadow, no labels, no decorative frame around canvas. Eerie abandoned ritual mark, not magical attack effect.",
+    "refs": [
+      "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-d05aba89-6805-4997-870f-dc7668ada0e5.png"
+    ]
+  },
+  {
+    "id": "wall-watcher",
+    "prompt": "ONE ominous PIXEL ART WALL GRAFFITI decal for distant rear wall of GOAT OUT. Same primitive ritual stroke language as reference but distinct upright motif: tall angular pair of antler-like horns over ONE hollow slit eye, a long central vertical stem with two short crossbars and three blunt dripping paint ends below. Simple coherent invented cult sigil, unsettling watchful presence, readable at64logical pixels wide. Paint color aged DIRTY BONE/PALE OCHRE with muted oxblood-red central pupil and2small red accent strokes. Only2-3flat paint colors, chunky square pixel steps and bold lines, no grain, no mottling, no small inscriptions. Straight-on FRONT VIEW on VERTICAL wall plane; NOT lying on floor, NOT perspective compressed. This is only the PAINT MARK for overlay on existing brick wall. Entire surroundings and all holes inside glyph genuinely alpha-transparent; DO NOT include bricks/wall/plaque/paper/floor/frame/filled backing shape. NO physical thickness, no bevel, no shadow, no bloom, no particles, no gradients, no text. Single complete glyph centered ample transparent margin, actual transparent PNG.",
+    "refs": [
+      "C:\\Users\\USER\\.codex\\generated_images\\01a0cb0c-df8d-77e3-befa-9ceebb8a60f8\\exec-d05aba89-6805-4997-870f-dc7668ada0e5.png"
+    ]
+  }
+]

@@ -1,18 +1,21 @@
-// The approved illustrated assets, drawn directly rather than rebuilt from primitive shapes.
-// Simulation coordinates and collision radii remain the same; artwork has its own visual bounds.
-// assets/painted-expansion-v1/objects/atlas.png — four columns, four rows, 128px cells (manifest.json).
+// The art layer over the primitive renderer: room floors and walls out of the pixel swatches, every
+// unit through `character()` (a pixel sprite in a frame of leans, collar and wounds), and the few
+// painted props no pixel sprite exists for yet. Collision radii never read any of it.
+// `propsAtlas` in js/painted-assets.js — four columns, four rows, 128px cells.
 const ATLAS_CELL = {
   'cage-bars': [0, 0], 'cage-broken': [128, 0], 'mill-hub': [256, 0], 'mill-arm': [384, 0],
   'spikes-idle': [0, 128], 'spikes-arming': [128, 128], 'spikes-up': [256, 128], 'weapon-stand': [384, 128],
   sword: [0, 256], shield: [128, 256], 'healing-grass': [256, 256], 'soul-wisp': [384, 256],
   'secret-wall': [0, 384], 'crate-debris': [128, 384], 'brazier-unlit': [256, 384], worktable: [384, 384],
 };
-const WALK_FPS = { sheep: 8, clubman: 8, mage: 7, hound: 10 };
+// How far below a tile's centre a thing standing on that tile puts its feet: the middle of the tile
+// in a camera tilted this little, not its bottom or top edge.
+const PROP_FOOT = 3;
 
 class PaintedArt extends AltarArt {
   constructor() {
     super(); this.images = {}; this.loaded = 0; this.failed = [];
-    const entries = Object.entries({...PAINTED_ASSETS, ...PAINTED_ASSETS_V1, ...PAINTED_ASSETS_V2});
+    const entries = Object.entries(PAINTED_ASSETS);
     this.ready = false;
     for (const [key, asset] of entries) {
       const image = new Image(); this.images[key] = image;
@@ -49,7 +52,7 @@ class PaintedArt extends AltarArt {
   }
 
   // The three lit fixtures each get one 8-frame, 10fps loop: the whole fixture animates in the
-  // sheet, so nothing else is drawn under it (see ART_HANDOFF in assets/painted-expansion-v1).
+  // sheet, so nothing else is drawn under it.
   fire(renderer, key, x, y, w, anchor = 0.875) {
     const col = Math.floor(renderer.t * 10) % 8;
     return this.drawFrame(renderer.ctx, this.images[key], col * 128, 0, 128, 128, x, y, w, w, anchor);
@@ -67,78 +70,124 @@ class PaintedArt extends AltarArt {
     return true;
   }
 
-  // Bits name the exposed faces, not the room edge: N=1, E=2, S=4, W=8.
-  // Build each junction once; rotating the face keeps the courses parallel to its wall.
-  wallTile(prefix, mask) {
+  // A pixel swatch multiplied by one of the level's colours, baked once into a canvas of its own:
+  // multiplying per tile per frame doubled the cost of every floor.
+  swatch(id, tint) {
+    this.swatches ||= new Map();
+    const key = id + tint; let c = this.swatches.get(key); if (c) return c;
+    const f = PIXEL_ENV_ASSETS.items[id]; c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
+    const x = c.getContext('2d'); x.drawImage(PIXEL_ENV.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
+    x.globalCompositeOperation = 'multiply'; x.fillStyle = PIXEL_ENV.lift(tint, PIXEL_ROOMS.lift); x.fillRect(0, 0, f[2], f[3]);
+    this.swatches.set(key, c); return c;
+  }
+  rooms(def) { return PIXEL_ROOMS[def.canon && def.canon.id] || PIXEL_ROOMS.stone; }
+  floorSwatch(def, h, boards) {
+    const R = this.rooms(def);
+    return this.swatch(boards ? R.boards : R.floor[(h >>> 4) % R.floor.length], (h >>> 9) % 5 ? def.floor : def.floorAlt || def.floor);
+  }
+
+  // Bits name the exposed sides, not the room edge: N=1, E=2, S=4, W=8.
+  // The camera looks north and down, so a wall shows its brick face on ONE side only: the south
+  // one, facing the lens. That is the far wall of a room (and the front of any pillar) — the cap
+  // on top, then a coursed face down to the boards. Every other exposed side is only the edge of
+  // the cap: the near wall faces away from the lens and the side walls run along its line of sight.
+  // Cap and face are the pixel swatches `PIXEL_ROOMS.wall` names, in the level's `wallTop` / `wall`.
+  wallTile(def, mask) {
     this.wallTiles ||= new Map();
-    const key = prefix + mask;
+    const key = def.wall + def.wallTop + mask;
     if (this.wallTiles.has(key)) return this.wallTiles.get(key);
     const tile = document.createElement('canvas'); tile.width = tile.height = 128;
-    const c = tile.getContext('2d'), lip = 40, nearDepth = 76;
-    const left = mask & 8 ? lip : 0, right = mask & 2 ? 128-lip : 128;
-    const top = mask & 1 ? lip : 0, bottom = mask & 4 ? 128-lip : 128;
-    const nearFaceDepth = (mask & 2 || mask & 8) ? lip : nearDepth;
-    this.stamp(c, prefix+'wallTop', 64, 64, 128, 128);
-    const faces = [
-      // N's shade used to be 0.27, nearly as dark as the mortar line it sits next to: on the wall
-      // closest to camera (the near/bottom wall of a room) the whole coursed face washed into one
-      // flat dark band and read as bare rock. Brought down to keep the same darker-than-S
-      // direction without crushing the brick reading it is the only visible face for.
-      // Its own depth is `lip` no longer, except where it still has to be: every other face's band
-      // is bounded by the room's OWN perpendicular walls trimming it at a corner, but N's was tied
-      // to its own bit, so a plain run of near wall — no corner in sight — still only ever showed
-      // the 40px sliver a junction needs to leave room for. `nearFaceDepth` gives a straight run
-      // the deeper `nearDepth` instead; a tile that is itself a corner or a boxed-in block (an E or
-      // W wall sharing it) keeps the shallow `lip` unchanged, the same as it always drew — a pillar
-      // is not a straight run of wall and reading like one is what "wrong" looked like.
-      {bit:1, a:Math.PI, depth:nearFaceDepth, points:[[0,0],[128,0],[right,nearFaceDepth],[left,nearFaceDepth]], shade:0.1},
-      {bit:2, a:-Math.PI/2, depth:lip, points:[[128,0],[128,128],[right,bottom],[right,top]], shade:0.06},
-      {bit:4, a:0, depth:lip, points:[[128,128],[0,128],[left,bottom],[right,bottom]], shade:0},
-      {bit:8, a:Math.PI/2, depth:lip, points:[[0,128],[0,0],[left,top],[left,bottom]], shade:0.08},
-    ];
-    for (const f of faces) if (mask & f.bit) {
-      c.save(); c.beginPath(); f.points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y)); c.closePath(); c.clip();
-      c.translate(64,64); c.rotate(f.a);
-      const d = f.depth;
-      this.stamp(c,prefix+'wallFace',0,64-d/2,128,d);
-      c.fillStyle=`rgba(10,7,12,${f.shade})`; c.fillRect(-64,64-d,128,d);
-      c.fillStyle='rgba(8,5,10,0.55)'; c.fillRect(-64,60,128,4);
-      c.fillStyle='rgba(225,203,180,0.22)'; c.fillRect(-64,64-d,128,3);
+    // A face that turns a corner (floor to its east or west as well) is a pillar or a stub and gets
+    // the shorter band: a tall one on every free-standing block read as a slab lying on the boards.
+    const pillar = (mask & 4) && (mask & 10), c = tile.getContext('2d'), face = pillar ? 58 : 70, edge = 5;
+    const W = PIXEL_ROOMS.wall, top = this.swatch(W.top, def.wallTop), brick = this.swatch(W.face, def.wall);
+    c.imageSmoothingEnabled = true;
+    c.drawImage(top, 0, 0, 128, 128);
+    // the cap's rim where it meets open floor on the three sides that show no face
+    c.fillStyle = 'rgba(8,5,10,0.6)';
+    if (mask & 1) c.fillRect(0, 0, 128, edge);
+    if (mask & 2) c.fillRect(128-edge, 0, edge, 128);
+    if (mask & 8) c.fillRect(0, 0, edge, 128);
+    c.fillStyle = 'rgba(225,203,180,0.18)';
+    if (mask & 1) c.fillRect(0, edge, 128, 3);
+    if (mask & 8) c.fillRect(edge, 0, 3, 128);
+    // A side wall shows a narrow sliver of its face on the one side that looks into the room: the
+    // camera sees it nearly edge on, but without it the side walls read as flat troughs of cap.
+    const sideE = mask & 2, sideW = !sideE && (mask & 8);
+    if (sideE || sideW) {
+      const band = 34, bot = (mask & 4) ? 128 - face : 128, x0 = sideE ? 128 - band : 0;
+      c.save(); c.beginPath(); c.rect(x0, 0, band, bot); c.clip();
+      c.drawImage(brick, x0 - 47, 0, 128, 128);
+      const g = c.createLinearGradient(sideE ? x0 : band, 0, sideE ? 128 : 0, 0);
+      g.addColorStop(0, 'rgba(10,7,12,0.02)'); g.addColorStop(1, 'rgba(10,7,12,0.22)');
+      c.fillStyle = g; c.fillRect(x0, 0, band, bot);
       c.restore();
+      // the lit lip of the cap along the band, and the seam where it meets the boards
+      c.fillStyle = 'rgba(225,203,180,0.28)'; c.fillRect(sideE ? x0 - 3 : band, 0, 3, bot);
+      c.fillStyle = 'rgba(8,5,10,0.55)'; c.fillRect(sideE ? x0 : band - 3, 0, 3, bot);
+      c.fillStyle = 'rgba(8,5,10,0.5)'; c.fillRect(sideE ? 124 : 0, 0, 4, bot);
+    }
+    if (mask & 4) {
+      const top = 128 - face;
+      c.save(); c.beginPath(); c.rect(0, top, 128, face); c.clip();
+      c.drawImage(brick, 0, top, 128, 128);
+      // darker toward the foot, where the floor's own shadow takes it
+      const g = c.createLinearGradient(0, top, 0, 128);
+      g.addColorStop(0, 'rgba(10,7,12,0.05)'); g.addColorStop(1, 'rgba(10,7,12,0.35)');
+      c.fillStyle = g; c.fillRect(0, top, 128, face);
+      c.restore();
+      // the lit lip of the cap, then the mortar line under it, then the foot
+      c.fillStyle = 'rgba(225,203,180,0.28)'; c.fillRect(0, top - 3, 128, 3);
+      c.fillStyle = 'rgba(8,5,10,0.55)'; c.fillRect(0, top, 128, 4);
+      c.fillStyle = 'rgba(8,5,10,0.5)'; c.fillRect(0, 124, 128, 4);
+      // a face that turns a corner shows it: a dark seam where it meets open floor at the side
+      c.fillStyle = 'rgba(8,5,10,0.45)';
+      if (mask & 2) c.fillRect(128-edge, top, edge, face);
+      if (mask & 8) c.fillRect(0, top, edge, face);
     }
     this.wallTiles.set(key,tile); return tile;
   }
 
-  drawWall(ctx, prefix, x, y, mask) {
-    ctx.drawImage(this.wallTile(prefix,mask),x,y,TILE,TILE);
+  drawWall(ctx, def, x, y, mask) {
+    ctx.drawImage(this.wallTile(def,mask),x,y,TILE,TILE);
   }
 
   drawTiles(renderer, game, cam) {
-    if (!this.ready) return super.drawTiles(renderer, game, cam);
     this.prepare(game);
-    const ctx = renderer.ctx, wd = game.world, b = renderer.visibleTiles(cam);
-    const prefix = game.levelIndex ? 'level'+game.levelIndex+'_' : '';
-    this.prefix = prefix;   // read back by the secret-wall prop, which has to match this exactly
+    const ctx = renderer.ctx, wd = game.world, b = renderer.visibleTiles(cam), def = game.level.def;
+    const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     for (let y=b.y0; y<=b.y1; y++) for (let x=b.x0; x<=b.x1; x++) {
       const t=wd.tileAt(x,y), px=x*TILE, py=y*TILE, h=this.hash(x,y,game.level.seed);
       if (t===T.WALL) {
         const n=!wd.isSolid(x,y-1),s=!wd.isSolid(x,y+1),w=!wd.isSolid(x-1,y),e=!wd.isSolid(x+1,y);
         if (!(n||s||w||e||!wd.isSolid(x-1,y-1)||!wd.isSolid(x+1,y-1)||!wd.isSolid(x-1,y+1)||!wd.isSolid(x+1,y+1))) continue;
-        this.drawWall(ctx,prefix,px,py,(n?1:0)|(e?2:0)|(s?4:0)|(w?8:0));
+        // A wall tile with floor on all four sides is a template's `P`, a pillar standing in the room,
+        // and it is drawn as one rather than as a cube of the room's wall. It runs up over the tile
+        // behind it, which this row-by-row pass has already drawn, so nothing paints over its top.
+        if (n&&s&&w&&e) {
+          ctx.drawImage(this.floorSwatch(def,h,false),px,py,TILE,TILE);
+          renderer.shadow(px+16,py+27,13,5);
+          PIXEL_ENV.draw(ctx,'pillar',px+16,py+31,27);
+          continue;
+        }
+        this.drawWall(ctx,def,px,py,(n?1:0)|(e?2:0)|(s?4:0)|(w?8:0));
         if (s&&x%5===1&&h%3!==0&&!w&&!e) this.stamp(ctx,'banner',px+16,py+18,13,17,0.2);
         continue;
       }
       if (t===T.PIT) continue;
-      this.stamp(ctx,prefix+(this.boards[y*wd.W+x]?'boards'+(h%2):'stone'+(h%4)),px+16,py+16,32,32);
+      const wood=this.boards[y*wd.W+x];
+      ctx.drawImage(this.floorSwatch(def,h,wood),px,py,TILE,TILE);
       ctx.fillStyle=PALETTE.altar.shadow;
       if(wd.isSolid(x,y-1))ctx.fillRect(px,py,32,5);
       if(wd.isSolid(x-1,y))ctx.fillRect(px,py,3,32);
-      if(t===T.HAY)this.stamp(ctx,'hay',px+16,py+17,30,27);
+      if(t===T.HAY)PIXEL_ENV.draw(ctx,'hay',px+16,py+29,33);
+      else if(t===T.FLOOR&&!wood&&!wd.isSolid(x,y-1))PIXEL_ENV.litter(ctx,'room',x,y);
       else if(t===T.ASH){ctx.fillStyle=PALETTE.altar.ash;ctx.globalAlpha=0.6;ctx.fillRect(px+3,py+5,26,23);ctx.globalAlpha=1;}
       else if(t===T.EXIT)renderer.drawStairs(px,py,x-game.level.exitTile.x0,true,game.level.def);
       else if(t===T.ENTRY)renderer.drawStairs(px,py,x-game.level.entry.x0,false,game.level.def);
       else if(wd.isSolid(x,y-1)&&h%5===0)this.straw(ctx,px+16,py+6,h,false);
     }
+    ctx.imageSmoothingEnabled = smooth;
   }
 
   drawRitual(renderer, game) {
@@ -149,8 +198,8 @@ class PaintedArt extends AltarArt {
     if (wd.ritualArt) ctx.drawImage(wd.ritualArt.canvas, wd.ritualArt.x, wd.ritualArt.y);
     // Room-edge storage is inset into the solid wall band, never an invisible obstacle on a path.
     const yy=(R.y+0.7)*TILE;
-    this.stamp(ctx,'barrel',(R.x+1.4)*TILE,yy,25,undefined,0.6);
-    this.stamp(ctx,'hay',(R.x+2.4)*TILE,yy+4,35,25);
+    PIXEL_ENV.draw(ctx,'barrel',(R.x+1.4)*TILE,yy+9,22);
+    PIXEL_ENV.draw(ctx,'hay',(R.x+2.4)*TILE,yy+14,35);
   }
 
   drawProp(renderer,p) {
@@ -167,43 +216,56 @@ class PaintedArt extends AltarArt {
     }
     // Lit fixtures: the whole fixture is an animated loop now, so the old static bowl/post is gone.
     if(p.kind==='brazier'&&p.roast){renderer.drawRoast(p);return true;}
-    if(p.kind==='brazier'){
-      const w=p.r*2.9;
-      ctx.save();ctx.translate(p.x,p.y);
-      renderer.shadow(0,-4,w*0.36,7.5);
-      if(!this.fire(renderer,'brazierFire',0,0,w))this.stamp(ctx,'brazier',0,0,p.r*2.7);
-      // Keep the coals-spill tell even though the bowl is now an animated sprite.
-      if(p.spillCd>0){ctx.fillStyle='rgba(26,16,22,0.45)';ctx.globalAlpha=p.spillCd/TUNING.prop.brazier.spillCd;ctx.beginPath();ctx.ellipse(0,-w*0.16,w*0.27,w*0.14,0,0,Math.PI*2);ctx.fill();}
-      ctx.restore();return true;
+    // The pixel brazier's coals are painted in, so only the flame over them moves; it still drops
+    // when the coals are knocked out and builds back, which is how the bowl says when it is ready.
+    if(p.kind==='brazier'&&PIXEL_ENV.ready){
+      const w=p.r*2.7;
+      // Standing in the middle of its tile: the feet on the tile's centre, not on its bottom edge.
+      const foot=p.y+PROP_FOOT;
+      // A soft pool gathered under the three feet, not the hard disc every body stands on: the bowl
+      // is the light in the room, so what is under it is small, and a wide flat ellipse lit orange by
+      // its own fire read as a plate the brazier was standing on.
+      const sr=w*0.24,sg=ctx.createRadialGradient(p.x,foot-1,0,p.x,foot-1,sr);
+      sg.addColorStop(0,'rgba(0,0,0,0.42)');sg.addColorStop(0.6,'rgba(0,0,0,0.2)');sg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.save();ctx.translate(p.x,foot-1);ctx.scale(1,0.34);ctx.translate(-p.x,-(foot-1));
+      ctx.fillStyle=sg;ctx.beginPath();ctx.arc(p.x,foot-1,sr,0,Math.PI*2);ctx.fill();ctx.restore();
+      const h=PIXEL_ENV.draw(ctx,'brazier',p.x,foot,w);
+      const heat=p.spillCd>0?0.4+0.6*(1-p.spillCd/TUNING.prop.brazier.spillCd):1;
+      renderer.flame(p.x,foot-h*0.72,(9+2.5*Math.sin(renderer.t*11+p.phase))*heat,p.phase*10);
+      return true;
     }
     if(p.kind==='lamp'){
       const w=34;
-      ctx.save();ctx.translate(p.x,p.y-10);
-      // Under the foot of the post, not a body's length below it. The sprite is anchored at 0.875,
-      // so its own base sits a shade under the translated origin — the shadow was drawn twenty-odd
-      // pixels lower than that, and a lamp with its shadow that far off is a lamp hanging in the air.
-      renderer.shadow(0,-1.5,8,4);
-      if(!this.fire(renderer,'lanternFire',0,0,w))this.stamp(ctx,'lamp',0,10,20);
+      // On the middle of its tile: it used to stand ten pixels up, on the tile's top edge. The sprite
+      // is anchored at 0.875, so its base sits a shade under the translated origin.
+      ctx.save();ctx.translate(p.x,p.y+PROP_FOOT-4);
+      renderer.shadow(0,2.5,8,4);
+      this.fire(renderer,'lanternFire',0,0,w);
       ctx.restore();return true;
     }
     // The two already-painted, level-agnostic objects: same art, no longer level-one only.
-    const keys={crate:'crate',bell:'gong'};
-    const key=keys[p.kind];
-    if(key){
-      const w=p.kind==='crate'?p.r*2.6:p.r*2.7;
+    if(p.kind==='crate'&&PIXEL_ENV.ready){
+      const w=p.r*2.7;
       ctx.save();ctx.translate(p.x,p.y-(p.held?6:0));
-      if(p.flung&&p.kind==='crate')ctx.rotate(Math.atan2(p.vy,p.vx)*0.4);
-      if(p.kind==='bell'&&p.rung>0)ctx.rotate(Math.sin(renderer.t*28)*0.035);
-      const h=w*this.images[key].naturalHeight/this.images[key].naturalWidth;
+      if(p.flung)ctx.rotate(Math.atan2(p.vy,p.vx)*0.4);
+      renderer.shadow(0,p.r*0.7,w*0.44,6);
+      PIXEL_ENV.draw(ctx,'crate',0,p.r*0.9,w);
+      ctx.restore();return true;
+    }
+    if(p.kind==='bell'){
+      const w=p.r*2.7,img=this.images.gong;
+      ctx.save();ctx.translate(p.x,p.y);
+      if(p.rung>0)ctx.rotate(Math.sin(renderer.t*28)*0.035);
+      const h=w*img.naturalHeight/img.naturalWidth;
       renderer.shadow(0,3,w*0.44,Math.min(9,h*0.15));
-      this.stamp(ctx,key,0,0,w,h,0.68);
+      this.stamp(ctx,'gong',0,0,w,h,0.68);
       ctx.restore();return true;
     }
     if(p.kind==='table'){
       const a=p.flung?Math.atan2(p.vy,p.vx):0;
       ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);
       renderer.shadow(0,p.r*0.6,p.r*1.05,p.r*0.5);
-      const drew=this.atlas(ctx,'worktable',0,0,p.r*2.6,undefined,0.62);
+      const drew=PIXEL_ENV.ready?PIXEL_ENV.draw(ctx,'table',0,p.r*0.75,p.r*2.7):0;
       ctx.restore();
       return drew?true:super.drawProp(renderer,p);
     }
@@ -216,7 +278,7 @@ class PaintedArt extends AltarArt {
       if(p.axis==='h'){ctx.fillStyle='#3c3730';ctx.fillRect(-15,-h+3,30,4);ctx.fillStyle='#6a635b';ctx.fillRect(-15,-h+3,30,1.5);}
       this.stamp(ctx,'cagePostTight',0,0,7,h,1);ctx.restore();return true;
     }
-    if(p.kind==='chicken'&&this.images.chickenFacing?.naturalWidth){
+    if(p.kind==='chicken'&&PIXEL_ART.ready){
       const flying=p.birdState==='flying',stunned=p.birdState==='stunned';
       if(Math.hypot(p.vx||0,p.vy||0)>2)p.artFacing=Math.atan2(p.vy,p.vx);
       const angle=p.artFacing??Math.PI/4;
@@ -306,10 +368,8 @@ class PaintedArt extends AltarArt {
       ctx.restore();return true;
     }
     if(p.kind==='secret'){
-      const key=(this.prefix||'')+'wallFace';
-      if(!this.images[key]?.naturalWidth)return super.drawProp(renderer,p);
       // The sealed niche must share the same facing as the surrounding room wall.
-      this.drawWall(ctx,this.prefix||'',p.x-TILE/2,p.y-TILE/2,p.wallSide==='up'?4:1);
+      this.drawWall(ctx,renderer.game.level.def,p.x-TILE/2,p.y-TILE/2,p.wallSide==='up'?4:1);
       // The crack tells still have to be drawn: the art carries none, and they're what the blow count
       // reads as (see `Renderer.wallCrack` / CLAUDE.md's "A wall that gives").
       renderer.wallCrack(p.x,p.y,p.hits||0);
@@ -324,7 +384,7 @@ class PaintedArt extends AltarArt {
     return this.atlas(ctx, 'soul-wisp', 0, 0, w, undefined, 0.56);
   }
 
-  characterKey(e) { return e.kind==='bearer'?(e.champion?'brute':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith','butcher'].includes(e.kind)?e.kind:null; }
+  characterKey(e) { if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'brute':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith','butcher'].includes(e.kind)?e.kind:null; }
 
   // The art is a top-down slab at the collision footprint, with no frame or square padding.
   doorSlab(ctx,p,wdt,hgt) {
@@ -347,46 +407,24 @@ class PaintedArt extends AltarArt {
     ctx.globalAlpha=0.75;this.drawFrame(ctx,image,384,0,128,128,0,0,64,64);ctx.restore();
   }
 
+  // Every unit is a pixel sprite now (`PIXEL_ART`); what is left here is the lean of a windup or a
+  // swing, the tip of a man on the floor, the wraith's fade and the rat ogre's grow-in.
   character(renderer,e,key,width) {
     const ctx=renderer.ctx, angle=e.facing||0, moving=Math.hypot(e.vx||0,e.vy||0)>30;
-    const facingSheet=this.images[key+'Facing'],sheet=facingSheet||this.images[key+'Walk'];
+    const pixel=PIXEL_ART.unit(key); if(!pixel)return;
     ctx.save();
+    if(key==='ratogre'&&e.state==='emerge'){const k=1-Math.max(0,e.timer)/TUNING.ratogre.emerge;ctx.scale(0.4+0.6*k,0.4+0.6*k);ctx.globalAlpha*=0.5+0.5*k;}
     if(key==='wraith'){
       const born=e.state==='manifest'?1-Math.max(0,e.timer)/TUNING.wraith.manifest:(e.ghosted?0:1);
       ctx.globalAlpha*=0.35+born*0.65;const puff=1.12-born*0.12;ctx.scale(puff,puff);
     }
-    if(sheet&&sheet.naturalWidth){
-      // Eight drawn facings rather than a mirrored front/back pair: row picks the facing, column
-      // the walk frame. `angle` is already atan2(dy,dx) in screen space, the sheet's own convention
-      // (assets/painted-expansion-v1/manifest.json). Windup/swing lean along the real facing now,
-      // in place of the old screen-space nudge that only ever worked because of the left/right mirror.
-      if(e.state==='windup'||e.state==='chargewind'||e.state==='slamwind'){ctx.translate(Math.cos(angle)*-2,Math.sin(angle)*-2);ctx.rotate(-0.13);}
-      if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
-      if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
-      if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
-      const row=(Math.round(angle/(Math.PI/4))+14)%8;
-      const col=facingSheet?0:moving?Math.floor(renderer.t*(WALK_FPS[key]||8)+(e.x||0)*0.05)%4:1;
-      // Where the feet actually sit in the cell, measured off the art rather than guessed: the
-      // walk-cycle sheets (v1) draw the body nearly the full 128px tall, feet close to the bottom
-      // edge; the newer static "Facing" sheets (v2) sit smaller and more centred in the same cell.
-      // One shared anchor read the walk-cycle characters as floating well clear of their own shadow.
-      this.drawFrame(ctx,sheet,col*128,row*128,128,128,0,0,width,width,facingSheet?0.81:0.89);
-    } else {
-      // Fallback to the original front/back pair if an expansion sheet failed to load.
-      const back=Math.sin(angle)<-0.2, name=key+(back?'Back':'Front');
-      const legHz=key==='hound'?19:14, step=Math.sin(renderer.t*legHz+(e.x||0)*0.01);
-      if(Math.cos(angle)<0)ctx.scale(-1,1);
-      if(moving){
-        const stride=Math.sin(renderer.t*legHz*2+(e.x||0)*0.01);
-        ctx.translate(stride*0.9,-Math.abs(step)*1.4);ctx.rotate(step*0.025);ctx.transform(1,0,stride*0.05,1,0,0);
-      } else ctx.scale(1,1+Math.sin(renderer.t*3)*0.008);
-      if(e.state==='windup'||e.state==='chargewind'||e.state==='slamwind'){ctx.translate(-2,0);ctx.rotate(-0.13);}
-      if(e.state==='swing'){ctx.translate(3,0);ctx.rotate(0.17);}
-      if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
-      if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
-      this.stamp(ctx,name,0,0,width,undefined,key==='sheep'||key==='hound'?0.52:0.68);
-    }
-    // Spikes are reserved for a future distinct enemy; this brute is the plain heavy clubman.
+    if(e.state==='windup'||e.state==='chargewind'||e.state==='slamwind'){ctx.translate(Math.cos(angle)*-2,Math.sin(angle)*-2);ctx.rotate(-0.13);}
+    if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
+    if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
+    if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
+    PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
+    // His horns as the butt souls have made them, in the same lean as the frame (`drawGoat` sets it).
+    if(key==='sheep'&&this.hornMods)PIXEL_ART.horns(ctx,pixel,angle,moving,renderer.t,e.x,this.hornMods);
     ctx.restore();
   }
 
@@ -401,12 +439,79 @@ class PaintedArt extends AltarArt {
   // actually checked, facing by facing, to be open fur rather than the bell, the face or the tail.
   collar(renderer,g,art) {
     const ctx=renderer.ctx,a=g.facing,cx=Math.cos(a),sy=Math.sin(a);
+    // The pixel goat has no bell: the charm hangs at his throat on a cord, per facing (`PIXEL_NECK`).
+    if(PIXEL_ART.unit('sheep')){
+      // One collar for every talisman, turned with him; only the pendant changes. It is a ring round
+      // the neck seen from the camera: an ellipse whose short axis lies along the way he faces
+      // (squashed to a band on a side view, opened to a curve under the chin from the front), and
+      // only its near half is drawn — the half toward the camera — because the rest is behind his
+      // neck. It was one fixed smile of cord at every facing, which lay across the neck like a
+      // mouth on the side views. Its front sits on the throat point `PIXEL_NECK` measured.
+      const d=(Math.round(a/(Math.PI/4))+14)%8,[nx,ny]=PIXEL_NECK[d],back=d>=3&&d<=5,C=TUNING.goat.collar;
+      const col=(ARTIFACTS.find((x)=>x.id===art.id)||{}).color||PALETTE.bone;
+      const fa=(d+2)*(Math.PI/4);                    // the facing this frame was drawn at
+      // A diagonal frame shows the head nearly side-on, so the ring turns further toward a side view
+      // than the world angle says (`C.flat` on the vertical part of the facing).
+      let vx=Math.cos(fa),vy=Math.sin(fa)*(Math.abs(Math.cos(fa))>0.1?C.flat:1);
+      const vl=Math.hypot(vx,vy)||1;vx/=vl;vy/=vl;
+      if(vy<-0.1){vx=-vx;vy=-vy;}                    // the near side of the ring
+      // On the two front diagonals the ring rises toward the nape, behind the jaw, and dips at the
+      // throat under the chin; turned the plain way it rose toward his face and sat on it like a hook.
+      if(d===1||d===7)vx=-vx;
+      const R=C.r,r=C.r*C.depth*Math.abs(vy)+C.thin,cx=nx-vx*r,cy=ny-vy*r;
+      const rot=Math.atan2(-vx,vy);                  // u = (vy, -vx), so the arc 0..π is the near half
+      ctx.save();ctx.lineCap='round';
+      ctx.strokeStyle=C.edge;ctx.lineWidth=C.w+1.2;
+      ctx.beginPath();ctx.ellipse(cx,cy,R,r,rot,0,Math.PI);ctx.stroke();
+      ctx.strokeStyle=C.leather;ctx.lineWidth=C.w;
+      ctx.beginPath();ctx.ellipse(cx,cy,R,r,rot,0.08,Math.PI-0.08);ctx.stroke();
+      if(back){ctx.fillStyle=col;ctx.fillRect(cx-R*0.55-0.8,cy+r*0.6-0.8,1.6,1.6);ctx.fillRect(cx+R*0.55-0.8,cy+r*0.6-0.8,1.6,1.6);}
+      else{
+        // The ring the pendant hangs from, then the pendant itself, below the front of the collar.
+        ctx.strokeStyle=C.edge;ctx.lineWidth=1;ctx.beginPath();ctx.arc(nx,ny+1.3,1.1,0,Math.PI*2);ctx.stroke();
+        renderer.artifactIcon(art.id,nx,ny+C.drop,C.icon,art.tier);
+      }
+      ctx.restore();return;
+    }
     const nx=-cx*7,ny=-6+sy*3;
     ctx.save();
     ctx.strokeStyle='#5a3d24';ctx.lineWidth=1.5;ctx.lineCap='round';
     ctx.beginPath();ctx.moveTo(nx-3,ny-2);ctx.lineTo(nx+3,ny+2);ctx.moveTo(nx+3,ny-2);ctx.lineTo(nx-3,ny+2);ctx.stroke();
     renderer.artifactIcon(art.id,nx,ny,3.3,art.tier);
     ctx.restore();
+  }
+
+  // One blot of blood in his wool per heart he has lost, big enough to count from across a room.
+  // They used to be small dark drops about his hooves, which read as something spilt on the floor
+  // rather than as him. On the pixel goat they are masked to the sprite itself — painted into a
+  // scratch canvas, then cut by the same frame with `destination-in` — so blood is only ever on him.
+  wounds(renderer,g,miss) {
+    const ctx=renderer.ctx,W=TUNING.goat.wounds,n=Math.min(miss,W.spots.length);
+    // Smaller the more he faces the camera (`W.front`): +y is toward it.
+    const face=1-(1-W.front)*Math.max(0,Math.sin(g.facing||0));
+    const blot=(c,k)=>{const[x,y]=W.spots[k],r=(W.r+k*W.grow)*face;
+      c.fillStyle=PALETTE.bloodDark;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.arc(x+r*0.7,y+r*0.35,r*0.6,0,Math.PI*2);c.fill();
+      c.fillStyle=PALETTE.blood;c.beginPath();c.arc(x-r*0.2,y-r*0.2,r*0.45,0,Math.PI*2);c.fill();};
+    const unit=PIXEL_ART.unit('sheep');
+    if(!unit){ctx.save();ctx.globalAlpha*=0.8;for(let k=0;k<n;k++)blot(ctx,k);ctx.restore();return;}
+    // 48 world px square round the foot at 2x, which holds the whole goat on every facing.
+    const S=2,B=48,ox=24,oy=40;
+    const cv=this.woundCanvas||(this.woundCanvas=document.createElement('canvas'));
+    if(cv.width!==B*S){cv.width=B*S;cv.height=B*S;}
+    const c=cv.getContext('2d');
+    c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.clearRect(0,0,cv.width,cv.height);
+    c.setTransform(S,0,0,S,ox*S,oy*S);
+    for(let k=0;k<n;k++)blot(c,k);
+    c.globalCompositeOperation='destination-in';
+    PIXEL_ART.draw(c,unit,g.facing||0,Math.hypot(g.vx||0,g.vy||0)>30,renderer.t,g.x);
+    c.globalCompositeOperation='source-over';
+    ctx.save();ctx.globalAlpha*=W.alpha;
+    // The same lean `character()` gives a windup or a swing, or the blots slide off him mid-blow.
+    const a=g.facing||0;
+    if(g.state==='windup'){ctx.translate(Math.cos(a)*-2,Math.sin(a)*-2);ctx.rotate(-0.13);}
+    if(g.state==='swing'){ctx.translate(Math.cos(a)*3,Math.sin(a)*3);ctx.rotate(0.17);}
+    if(g.state==='stunned')ctx.rotate(0.7);
+    ctx.drawImage(cv,-ox,-oy,B,B);ctx.restore();
   }
 
   drawGoat(renderer,g,game) {
@@ -425,11 +530,10 @@ class PaintedArt extends AltarArt {
     // The squash spring (game.squashGoat): a landed blow, a blow taken, the end of a roll.
     if(g.sqLeft){const a=g.sqLeft*Math.cos(TUNING.juice.squash.freq*g.sqT);ctx.scale(1+a,1-a);}
     if(g.invuln>0&&Math.floor(renderer.t*30)%2===0)ctx.globalAlpha*=0.5;
-    this.character(renderer,g,'sheep',40);
-    // On the back of the neck rather than at the throat, it is never occluded by his own head or
-    // body on any facing, so it is drawn once, always on top, and needs no away/toward split.
+    this.hornMods=game.mods;this.character(renderer,g,'sheep',40);this.hornMods=null;
+    // The blood is in his wool; the collar is over it, since a talisman has to read at any health.
+    if(g.maxHp-g.hp>0)this.wounds(renderer,g,g.maxHp-g.hp);
     if(game.artifact)this.collar(renderer,g,game.artifact);
-    if(g.maxHp-g.hp>0){ctx.fillStyle=PALETTE.bloodDark;ctx.globalAlpha*=0.6;for(let k=0;k<g.maxHp-g.hp;k++){ctx.beginPath();ctx.ellipse(-9+k*5,-4+(k%2)*6,2.8,1.8,0.3,0,Math.PI*2);ctx.fill();}}
     if(g.onFire)renderer.flame(0,-6,12,1,g.witchFire);
     ctx.restore();
     if(g.dazed>0&&!(game.intro&&game.intro.fade>0))renderer.drawStars(g.x,g.y,30,Math.min(1,g.dazed*1.5));

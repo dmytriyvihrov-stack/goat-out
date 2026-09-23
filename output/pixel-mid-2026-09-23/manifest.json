@@ -1,0 +1,3082 @@
+{
+  "version": 3,
+  "date": "2026-09-23",
+  "playerId": "goat",
+  "status": "generated-sources-with-measured-rectangles; not integrated",
+  "directions": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+  ],
+  "angleConvention": "atan2(dy,dx), screen Y down; index=(round(angle/(PI/4))+14)%8",
+  "walkFps": 8,
+  "walkFrames": 4,
+  "virtualCell": [
+    128,
+    128
+  ],
+  "suggestedOrigin": [
+    64,
+    104
+  ],
+  "anchorStatus": "bounds-derived preview anchor; tune visually against game shadows before release",
+  "sampling": "nearest-neighbor; imageSmoothingEnabled=false",
+  "units": [
+    {
+      "id": "goat",
+      "label": "Молодой козлик",
+      "role": "player",
+      "gameKind": "player (legacy art key sheep)",
+      "idle": [
+        {
+          "file": "source/goat-idle-r3.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            134,
+            102,
+            252,
+            320
+          ],
+          "bodyBounds": [
+            136,
+            104,
+            248,
+            316
+          ],
+          "sourceAnchor": [
+            126,
+            318
+          ],
+          "opaqueComponentPixels": 43067
+        },
+        {
+          "file": "source/goat-idle-r3.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            530,
+            111,
+            264,
+            318
+          ],
+          "bodyBounds": [
+            532,
+            113,
+            260,
+            314
+          ],
+          "sourceAnchor": [
+            132,
+            316
+          ],
+          "opaqueComponentPixels": 47907
+        },
+        {
+          "file": "source/goat-idle-r3.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            910,
+            127,
+            365,
+            300
+          ],
+          "bodyBounds": [
+            912,
+            129,
+            361,
+            296
+          ],
+          "sourceAnchor": [
+            182.5,
+            298
+          ],
+          "opaqueComponentPixels": 57515
+        },
+        {
+          "file": "source/goat-idle-r3.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1398,
+            99,
+            264,
+            339
+          ],
+          "bodyBounds": [
+            1400,
+            101,
+            260,
+            335
+          ],
+          "sourceAnchor": [
+            132,
+            337
+          ],
+          "opaqueComponentPixels": 44221
+        },
+        {
+          "file": "source/goat-idle-r3.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            134,
+            491,
+            252,
+            310
+          ],
+          "bodyBounds": [
+            136,
+            493,
+            248,
+            306
+          ],
+          "sourceAnchor": [
+            126,
+            308
+          ],
+          "opaqueComponentPixels": 40958
+        },
+        {
+          "file": "source/goat-idle-r3.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            549,
+            471,
+            268,
+            339
+          ],
+          "bodyBounds": [
+            551,
+            473,
+            264,
+            335
+          ],
+          "sourceAnchor": [
+            134,
+            337
+          ],
+          "opaqueComponentPixels": 45520
+        },
+        {
+          "file": "source/goat-idle-r3.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            935,
+            498,
+            354,
+            304
+          ],
+          "bodyBounds": [
+            937,
+            500,
+            350,
+            300
+          ],
+          "sourceAnchor": [
+            177,
+            302
+          ],
+          "opaqueComponentPixels": 56297
+        },
+        {
+          "file": "source/goat-idle-r3.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1410,
+            486,
+            276,
+            321
+          ],
+          "bodyBounds": [
+            1412,
+            488,
+            272,
+            317
+          ],
+          "sourceAnchor": [
+            138,
+            319
+          ],
+          "opaqueComponentPixels": 46874
+        }
+      ],
+      "walk": [
+        [
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "S",
+            "phase": 0,
+            "sourceCell": 0,
+            "rect": [
+              64,
+              35,
+              213,
+              265
+            ],
+            "bodyBounds": [
+              66,
+              37,
+              209,
+              261
+            ],
+            "sourceAnchor": [
+              106.5,
+              263
+            ],
+            "opaqueComponentPixels": 31260,
+            "relativeScale": 1.198501872659176
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "S",
+            "phase": 1,
+            "sourceCell": 1,
+            "rect": [
+              368,
+              36,
+              211,
+              264
+            ],
+            "bodyBounds": [
+              370,
+              38,
+              207,
+              260
+            ],
+            "sourceAnchor": [
+              105.5,
+              262
+            ],
+            "opaqueComponentPixels": 30226,
+            "relativeScale": 1.198501872659176
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "S",
+            "phase": 2,
+            "sourceCell": 2,
+            "rect": [
+              688,
+              36,
+              211,
+              267
+            ],
+            "bodyBounds": [
+              690,
+              38,
+              207,
+              263
+            ],
+            "sourceAnchor": [
+              105.5,
+              265
+            ],
+            "opaqueComponentPixels": 30631,
+            "relativeScale": 1.198501872659176
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "S",
+            "phase": 3,
+            "sourceCell": 3,
+            "rect": [
+              990,
+              34,
+              211,
+              266
+            ],
+            "bodyBounds": [
+              992,
+              36,
+              207,
+              262
+            ],
+            "sourceAnchor": [
+              105.5,
+              264
+            ],
+            "opaqueComponentPixels": 30968,
+            "relativeScale": 1.198501872659176
+          }
+        ],
+        [
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "SW",
+            "phase": 0,
+            "sourceCell": 4,
+            "rect": [
+              65,
+              374,
+              221,
+              235
+            ],
+            "bodyBounds": [
+              67,
+              376,
+              217,
+              231
+            ],
+            "sourceAnchor": [
+              110.5,
+              233
+            ],
+            "opaqueComponentPixels": 32783,
+            "relativeScale": 1.3361344537815125
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "SW",
+            "phase": 1,
+            "sourceCell": 5,
+            "rect": [
+              371,
+              374,
+              224,
+              235
+            ],
+            "bodyBounds": [
+              373,
+              376,
+              220,
+              231
+            ],
+            "sourceAnchor": [
+              112,
+              233
+            ],
+            "opaqueComponentPixels": 33340,
+            "relativeScale": 1.3361344537815125
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "SW",
+            "phase": 2,
+            "sourceCell": 6,
+            "rect": [
+              675,
+              375,
+              236,
+              238
+            ],
+            "bodyBounds": [
+              677,
+              377,
+              232,
+              234
+            ],
+            "sourceAnchor": [
+              118,
+              236
+            ],
+            "opaqueComponentPixels": 34571,
+            "relativeScale": 1.3361344537815125
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "SW",
+            "phase": 3,
+            "sourceCell": 7,
+            "rect": [
+              990,
+              375,
+              230,
+              232
+            ],
+            "bodyBounds": [
+              992,
+              377,
+              226,
+              228
+            ],
+            "sourceAnchor": [
+              115,
+              230
+            ],
+            "opaqueComponentPixels": 33930,
+            "relativeScale": 1.3361344537815125
+          }
+        ],
+        [
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "W",
+            "phase": 0,
+            "sourceCell": 8,
+            "rect": [
+              42,
+              657,
+              258,
+              229
+            ],
+            "bodyBounds": [
+              44,
+              659,
+              254,
+              225
+            ],
+            "sourceAnchor": [
+              129,
+              227
+            ],
+            "opaqueComponentPixels": 34448,
+            "relativeScale": 1.3984674329501916
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "W",
+            "phase": 1,
+            "sourceCell": 9,
+            "rect": [
+              359,
+              651,
+              255,
+              235
+            ],
+            "bodyBounds": [
+              361,
+              653,
+              251,
+              231
+            ],
+            "sourceAnchor": [
+              127.5,
+              233
+            ],
+            "opaqueComponentPixels": 34076,
+            "relativeScale": 1.3984674329501916
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "W",
+            "phase": 2,
+            "sourceCell": 10,
+            "rect": [
+              663,
+              654,
+              261,
+              235
+            ],
+            "bodyBounds": [
+              665,
+              656,
+              257,
+              231
+            ],
+            "sourceAnchor": [
+              130.5,
+              233
+            ],
+            "opaqueComponentPixels": 34455,
+            "relativeScale": 1.3984674329501916
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "W",
+            "phase": 3,
+            "sourceCell": 11,
+            "rect": [
+              983,
+              654,
+              254,
+              231
+            ],
+            "bodyBounds": [
+              985,
+              656,
+              250,
+              227
+            ],
+            "sourceAnchor": [
+              127,
+              229
+            ],
+            "opaqueComponentPixels": 33415,
+            "relativeScale": 1.3984674329501916
+          }
+        ],
+        [
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "NW",
+            "phase": 0,
+            "sourceCell": 12,
+            "rect": [
+              80,
+              927,
+              201,
+              269
+            ],
+            "bodyBounds": [
+              82,
+              929,
+              197,
+              265
+            ],
+            "sourceAnchor": [
+              100.5,
+              267
+            ],
+            "opaqueComponentPixels": 30092,
+            "relativeScale": 1.2602230483271375
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "NW",
+            "phase": 1,
+            "sourceCell": 13,
+            "rect": [
+              386,
+              927,
+              217,
+              265
+            ],
+            "bodyBounds": [
+              388,
+              929,
+              213,
+              261
+            ],
+            "sourceAnchor": [
+              108.5,
+              263
+            ],
+            "opaqueComponentPixels": 30967,
+            "relativeScale": 1.2602230483271375
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "NW",
+            "phase": 2,
+            "sourceCell": 14,
+            "rect": [
+              703,
+              929,
+              211,
+              268
+            ],
+            "bodyBounds": [
+              705,
+              931,
+              207,
+              264
+            ],
+            "sourceAnchor": [
+              105.5,
+              266
+            ],
+            "opaqueComponentPixels": 30286,
+            "relativeScale": 1.2602230483271375
+          },
+          {
+            "file": "source/goat-walk-a-r3.png",
+            "direction": "NW",
+            "phase": 3,
+            "sourceCell": 15,
+            "rect": [
+              996,
+              928,
+              222,
+              262
+            ],
+            "bodyBounds": [
+              998,
+              930,
+              218,
+              258
+            ],
+            "sourceAnchor": [
+              111,
+              260
+            ],
+            "opaqueComponentPixels": 31841,
+            "relativeScale": 1.2602230483271375
+          }
+        ],
+        [
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "N",
+            "phase": 0,
+            "sourceCell": 0,
+            "rect": [
+              83,
+              68,
+              177,
+              251
+            ],
+            "bodyBounds": [
+              85,
+              70,
+              173,
+              247
+            ],
+            "sourceAnchor": [
+              88.5,
+              249
+            ],
+            "opaqueComponentPixels": 23915,
+            "relativeScale": 1.206225680933852
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "N",
+            "phase": 1,
+            "sourceCell": 1,
+            "rect": [
+              399,
+              69,
+              169,
+              253
+            ],
+            "bodyBounds": [
+              401,
+              71,
+              165,
+              249
+            ],
+            "sourceAnchor": [
+              84.5,
+              251
+            ],
+            "opaqueComponentPixels": 22629,
+            "relativeScale": 1.206225680933852
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "N",
+            "phase": 2,
+            "sourceCell": 2,
+            "rect": [
+              702,
+              67,
+              176,
+              257
+            ],
+            "bodyBounds": [
+              704,
+              69,
+              172,
+              253
+            ],
+            "sourceAnchor": [
+              88,
+              255
+            ],
+            "opaqueComponentPixels": 23804,
+            "relativeScale": 1.206225680933852
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "N",
+            "phase": 3,
+            "sourceCell": 3,
+            "rect": [
+              1017,
+              68,
+              175,
+              254
+            ],
+            "bodyBounds": [
+              1019,
+              70,
+              171,
+              250
+            ],
+            "sourceAnchor": [
+              87.5,
+              252
+            ],
+            "opaqueComponentPixels": 23026,
+            "relativeScale": 1.206225680933852
+          }
+        ],
+        [
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "NE",
+            "phase": 0,
+            "sourceCell": 4,
+            "rect": [
+              89,
+              364,
+              186,
+              249
+            ],
+            "bodyBounds": [
+              91,
+              366,
+              182,
+              245
+            ],
+            "sourceAnchor": [
+              93,
+              247
+            ],
+            "opaqueComponentPixels": 22396,
+            "relativeScale": 1.3294117647058823
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "NE",
+            "phase": 1,
+            "sourceCell": 5,
+            "rect": [
+              402,
+              364,
+              184,
+              251
+            ],
+            "bodyBounds": [
+              404,
+              366,
+              180,
+              247
+            ],
+            "sourceAnchor": [
+              92,
+              249
+            ],
+            "opaqueComponentPixels": 22827,
+            "relativeScale": 1.3294117647058823
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "NE",
+            "phase": 2,
+            "sourceCell": 6,
+            "rect": [
+              713,
+              364,
+              194,
+              254
+            ],
+            "bodyBounds": [
+              715,
+              366,
+              190,
+              250
+            ],
+            "sourceAnchor": [
+              97,
+              252
+            ],
+            "opaqueComponentPixels": 22215,
+            "relativeScale": 1.3294117647058823
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "NE",
+            "phase": 3,
+            "sourceCell": 7,
+            "rect": [
+              1029,
+              363,
+              185,
+              255
+            ],
+            "bodyBounds": [
+              1031,
+              365,
+              181,
+              251
+            ],
+            "sourceAnchor": [
+              92.5,
+              253
+            ],
+            "opaqueComponentPixels": 22883,
+            "relativeScale": 1.3294117647058823
+          }
+        ],
+        [
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "E",
+            "phase": 0,
+            "sourceCell": 8,
+            "rect": [
+              64,
+              668,
+              240,
+              211
+            ],
+            "bodyBounds": [
+              66,
+              670,
+              236,
+              207
+            ],
+            "sourceAnchor": [
+              120,
+              209
+            ],
+            "opaqueComponentPixels": 26265,
+            "relativeScale": 1.4567901234567902
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "E",
+            "phase": 1,
+            "sourceCell": 9,
+            "rect": [
+              364,
+              668,
+              243,
+              211
+            ],
+            "bodyBounds": [
+              366,
+              670,
+              239,
+              207
+            ],
+            "sourceAnchor": [
+              121.5,
+              209
+            ],
+            "opaqueComponentPixels": 27064,
+            "relativeScale": 1.4567901234567902
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "E",
+            "phase": 2,
+            "sourceCell": 10,
+            "rect": [
+              678,
+              668,
+              236,
+              211
+            ],
+            "bodyBounds": [
+              680,
+              670,
+              232,
+              207
+            ],
+            "sourceAnchor": [
+              118,
+              209
+            ],
+            "opaqueComponentPixels": 26352,
+            "relativeScale": 1.4567901234567902
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "E",
+            "phase": 3,
+            "sourceCell": 11,
+            "rect": [
+              990,
+              665,
+              238,
+              217
+            ],
+            "bodyBounds": [
+              992,
+              667,
+              234,
+              213
+            ],
+            "sourceAnchor": [
+              119,
+              215
+            ],
+            "opaqueComponentPixels": 26963,
+            "relativeScale": 1.4567901234567902
+          }
+        ],
+        [
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "SE",
+            "phase": 0,
+            "sourceCell": 12,
+            "rect": [
+              91,
+              935,
+              185,
+              225
+            ],
+            "bodyBounds": [
+              93,
+              937,
+              181,
+              221
+            ],
+            "sourceAnchor": [
+              92.5,
+              223
+            ],
+            "opaqueComponentPixels": 23765,
+            "relativeScale": 1.4266666666666667
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "SE",
+            "phase": 1,
+            "sourceCell": 13,
+            "rect": [
+              393,
+              935,
+              191,
+              217
+            ],
+            "bodyBounds": [
+              395,
+              937,
+              187,
+              213
+            ],
+            "sourceAnchor": [
+              95.5,
+              215
+            ],
+            "opaqueComponentPixels": 23581,
+            "relativeScale": 1.4266666666666667
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "SE",
+            "phase": 2,
+            "sourceCell": 14,
+            "rect": [
+              699,
+              935,
+              200,
+              225
+            ],
+            "bodyBounds": [
+              701,
+              937,
+              196,
+              221
+            ],
+            "sourceAnchor": [
+              100,
+              223
+            ],
+            "opaqueComponentPixels": 25016,
+            "relativeScale": 1.4266666666666667
+          },
+          {
+            "file": "source/goat-walk-b-r3.png",
+            "direction": "SE",
+            "phase": 3,
+            "sourceCell": 15,
+            "rect": [
+              1026,
+              935,
+              192,
+              225
+            ],
+            "bodyBounds": [
+              1028,
+              937,
+              188,
+              221
+            ],
+            "sourceAnchor": [
+              96,
+              223
+            ],
+            "opaqueComponentPixels": 24278,
+            "relativeScale": 1.4266666666666667
+          }
+        ]
+      ],
+      "sourceExtent": 365
+    },
+    {
+      "id": "clubman",
+      "label": "Дубинщик",
+      "role": "existing-cast",
+      "gameKind": "bearer",
+      "idle": [
+        {
+          "file": "source/clubman-facing.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            109,
+            136,
+            272,
+            292
+          ],
+          "bodyBounds": [
+            111,
+            138,
+            268,
+            288
+          ],
+          "sourceAnchor": [
+            136,
+            290
+          ],
+          "opaqueComponentPixels": 50552
+        },
+        {
+          "file": "source/clubman-facing.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            516,
+            136,
+            298,
+            292
+          ],
+          "bodyBounds": [
+            518,
+            138,
+            294,
+            288
+          ],
+          "sourceAnchor": [
+            149,
+            290
+          ],
+          "opaqueComponentPixels": 49708
+        },
+        {
+          "file": "source/clubman-facing.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            945,
+            147,
+            291,
+            281
+          ],
+          "bodyBounds": [
+            947,
+            149,
+            287,
+            277
+          ],
+          "sourceAnchor": [
+            145.5,
+            279
+          ],
+          "opaqueComponentPixels": 49415
+        },
+        {
+          "file": "source/clubman-facing.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1357,
+            136,
+            308,
+            283
+          ],
+          "bodyBounds": [
+            1359,
+            138,
+            304,
+            279
+          ],
+          "sourceAnchor": [
+            154,
+            281
+          ],
+          "opaqueComponentPixels": 52488
+        },
+        {
+          "file": "source/clubman-facing.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            114,
+            489,
+            278,
+            297
+          ],
+          "bodyBounds": [
+            116,
+            491,
+            274,
+            293
+          ],
+          "sourceAnchor": [
+            139,
+            295
+          ],
+          "opaqueComponentPixels": 52011
+        },
+        {
+          "file": "source/clubman-facing.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            530,
+            489,
+            315,
+            289
+          ],
+          "bodyBounds": [
+            532,
+            491,
+            311,
+            285
+          ],
+          "sourceAnchor": [
+            157.5,
+            287
+          ],
+          "opaqueComponentPixels": 53762
+        },
+        {
+          "file": "source/clubman-facing.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            972,
+            493,
+            278,
+            298
+          ],
+          "bodyBounds": [
+            974,
+            495,
+            274,
+            294
+          ],
+          "sourceAnchor": [
+            139,
+            296
+          ],
+          "opaqueComponentPixels": 47973
+        },
+        {
+          "file": "source/clubman-facing.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1381,
+            489,
+            318,
+            301
+          ],
+          "bodyBounds": [
+            1383,
+            491,
+            314,
+            297
+          ],
+          "sourceAnchor": [
+            159,
+            299
+          ],
+          "opaqueComponentPixels": 54356
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 318
+    },
+    {
+      "id": "mage",
+      "label": "Маг",
+      "role": "existing-cast",
+      "gameKind": "seer",
+      "idle": [
+        {
+          "file": "source/mage-facing.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            98,
+            111,
+            258,
+            293
+          ],
+          "bodyBounds": [
+            100,
+            113,
+            254,
+            289
+          ],
+          "sourceAnchor": [
+            129,
+            291
+          ],
+          "opaqueComponentPixels": 48879
+        },
+        {
+          "file": "source/mage-facing.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            530,
+            116,
+            278,
+            288
+          ],
+          "bodyBounds": [
+            532,
+            118,
+            274,
+            284
+          ],
+          "sourceAnchor": [
+            139,
+            286
+          ],
+          "opaqueComponentPixels": 48650
+        },
+        {
+          "file": "source/mage-facing.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            970,
+            119,
+            235,
+            285
+          ],
+          "bodyBounds": [
+            972,
+            121,
+            231,
+            281
+          ],
+          "sourceAnchor": [
+            117.5,
+            283
+          ],
+          "opaqueComponentPixels": 42765
+        },
+        {
+          "file": "source/mage-facing.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1395,
+            112,
+            276,
+            293
+          ],
+          "bodyBounds": [
+            1397,
+            114,
+            272,
+            289
+          ],
+          "sourceAnchor": [
+            138,
+            291
+          ],
+          "opaqueComponentPixels": 48841
+        },
+        {
+          "file": "source/mage-facing.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            124,
+            481,
+            254,
+            297
+          ],
+          "bodyBounds": [
+            126,
+            483,
+            250,
+            293
+          ],
+          "sourceAnchor": [
+            127,
+            295
+          ],
+          "opaqueComponentPixels": 48975
+        },
+        {
+          "file": "source/mage-facing.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            545,
+            488,
+            263,
+            290
+          ],
+          "bodyBounds": [
+            547,
+            490,
+            259,
+            286
+          ],
+          "sourceAnchor": [
+            131.5,
+            288
+          ],
+          "opaqueComponentPixels": 46987
+        },
+        {
+          "file": "source/mage-facing.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            987,
+            487,
+            239,
+            292
+          ],
+          "bodyBounds": [
+            989,
+            489,
+            235,
+            288
+          ],
+          "sourceAnchor": [
+            119.5,
+            290
+          ],
+          "opaqueComponentPixels": 42606
+        },
+        {
+          "file": "source/mage-facing.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1410,
+            489,
+            278,
+            289
+          ],
+          "bodyBounds": [
+            1412,
+            491,
+            274,
+            285
+          ],
+          "sourceAnchor": [
+            139,
+            287
+          ],
+          "opaqueComponentPixels": 48226
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 297
+    },
+    {
+      "id": "hound",
+      "label": "Гончая",
+      "role": "existing-cast",
+      "gameKind": "dog",
+      "idle": [
+        {
+          "file": "source/hound-facing.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            139,
+            109,
+            167,
+            317
+          ],
+          "bodyBounds": [
+            141,
+            111,
+            163,
+            313
+          ],
+          "sourceAnchor": [
+            83.5,
+            315
+          ],
+          "opaqueComponentPixels": 35697
+        },
+        {
+          "file": "source/hound-facing.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            516,
+            109,
+            272,
+            309
+          ],
+          "bodyBounds": [
+            518,
+            111,
+            268,
+            305
+          ],
+          "sourceAnchor": [
+            136,
+            307
+          ],
+          "opaqueComponentPixels": 43568
+        },
+        {
+          "file": "source/hound-facing.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            929,
+            152,
+            346,
+            244
+          ],
+          "bodyBounds": [
+            931,
+            154,
+            342,
+            240
+          ],
+          "sourceAnchor": [
+            173,
+            242
+          ],
+          "opaqueComponentPixels": 46722
+        },
+        {
+          "file": "source/hound-facing.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1415,
+            112,
+            271,
+            314
+          ],
+          "bodyBounds": [
+            1417,
+            114,
+            267,
+            310
+          ],
+          "sourceAnchor": [
+            135.5,
+            312
+          ],
+          "opaqueComponentPixels": 41756
+        },
+        {
+          "file": "source/hound-facing.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            142,
+            493,
+            160,
+            283
+          ],
+          "bodyBounds": [
+            144,
+            495,
+            156,
+            279
+          ],
+          "sourceAnchor": [
+            80,
+            281
+          ],
+          "opaqueComponentPixels": 34364
+        },
+        {
+          "file": "source/hound-facing.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            521,
+            489,
+            267,
+            302
+          ],
+          "bodyBounds": [
+            523,
+            491,
+            263,
+            298
+          ],
+          "sourceAnchor": [
+            133.5,
+            300
+          ],
+          "opaqueComponentPixels": 40175
+        },
+        {
+          "file": "source/hound-facing.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            929,
+            545,
+            350,
+            234
+          ],
+          "bodyBounds": [
+            931,
+            547,
+            346,
+            230
+          ],
+          "sourceAnchor": [
+            175,
+            232
+          ],
+          "opaqueComponentPixels": 45446
+        },
+        {
+          "file": "source/hound-facing.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1412,
+            489,
+            275,
+            302
+          ],
+          "bodyBounds": [
+            1414,
+            491,
+            271,
+            298
+          ],
+          "sourceAnchor": [
+            137.5,
+            300
+          ],
+          "opaqueComponentPixels": 42273
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 350
+    },
+    {
+      "id": "hunter",
+      "label": "Охотник",
+      "role": "existing-cast",
+      "gameKind": "hunter",
+      "idle": [
+        {
+          "file": "source/hunter-facing.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            102,
+            118,
+            281,
+            291
+          ],
+          "bodyBounds": [
+            104,
+            120,
+            277,
+            287
+          ],
+          "sourceAnchor": [
+            140.5,
+            289
+          ],
+          "opaqueComponentPixels": 52298
+        },
+        {
+          "file": "source/hunter-facing.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            529,
+            120,
+            247,
+            307
+          ],
+          "bodyBounds": [
+            531,
+            122,
+            243,
+            303
+          ],
+          "sourceAnchor": [
+            123.5,
+            305
+          ],
+          "opaqueComponentPixels": 49439
+        },
+        {
+          "file": "source/hunter-facing.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            914,
+            121,
+            322,
+            289
+          ],
+          "bodyBounds": [
+            916,
+            123,
+            318,
+            285
+          ],
+          "sourceAnchor": [
+            161,
+            287
+          ],
+          "opaqueComponentPixels": 52496
+        },
+        {
+          "file": "source/hunter-facing.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1382,
+            120,
+            307,
+            299
+          ],
+          "bodyBounds": [
+            1384,
+            122,
+            303,
+            295
+          ],
+          "sourceAnchor": [
+            153.5,
+            297
+          ],
+          "opaqueComponentPixels": 53561
+        },
+        {
+          "file": "source/hunter-facing.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            68,
+            493,
+            294,
+            295
+          ],
+          "bodyBounds": [
+            70,
+            495,
+            290,
+            291
+          ],
+          "sourceAnchor": [
+            147,
+            293
+          ],
+          "opaqueComponentPixels": 52168
+        },
+        {
+          "file": "source/hunter-facing.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            528,
+            497,
+            284,
+            294
+          ],
+          "bodyBounds": [
+            530,
+            499,
+            280,
+            290
+          ],
+          "sourceAnchor": [
+            142,
+            292
+          ],
+          "opaqueComponentPixels": 49673
+        },
+        {
+          "file": "source/hunter-facing.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            957,
+            497,
+            310,
+            288
+          ],
+          "bodyBounds": [
+            959,
+            499,
+            306,
+            284
+          ],
+          "sourceAnchor": [
+            155,
+            286
+          ],
+          "opaqueComponentPixels": 50105
+        },
+        {
+          "file": "source/hunter-facing.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1418,
+            492,
+            283,
+            292
+          ],
+          "bodyBounds": [
+            1420,
+            494,
+            279,
+            288
+          ],
+          "sourceAnchor": [
+            141.5,
+            290
+          ],
+          "opaqueComponentPixels": 50199
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 322
+    },
+    {
+      "id": "brute",
+      "label": "Брут",
+      "role": "existing-cast",
+      "gameKind": "bearer + champion",
+      "idle": [
+        {
+          "file": "source/brute-facing.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            94,
+            114,
+            279,
+            294
+          ],
+          "bodyBounds": [
+            96,
+            116,
+            275,
+            290
+          ],
+          "sourceAnchor": [
+            139.5,
+            292
+          ],
+          "opaqueComponentPixels": 51438
+        },
+        {
+          "file": "source/brute-facing.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            487,
+            112,
+            326,
+            291
+          ],
+          "bodyBounds": [
+            489,
+            114,
+            322,
+            287
+          ],
+          "sourceAnchor": [
+            163,
+            289
+          ],
+          "opaqueComponentPixels": 54296
+        },
+        {
+          "file": "source/brute-facing.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            927,
+            111,
+            289,
+            295
+          ],
+          "bodyBounds": [
+            929,
+            113,
+            285,
+            291
+          ],
+          "sourceAnchor": [
+            144.5,
+            293
+          ],
+          "opaqueComponentPixels": 46499
+        },
+        {
+          "file": "source/brute-facing.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1406,
+            112,
+            281,
+            294
+          ],
+          "bodyBounds": [
+            1408,
+            114,
+            277,
+            290
+          ],
+          "sourceAnchor": [
+            140.5,
+            292
+          ],
+          "opaqueComponentPixels": 50118
+        },
+        {
+          "file": "source/brute-facing.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            93,
+            482,
+            290,
+            282
+          ],
+          "bodyBounds": [
+            95,
+            484,
+            286,
+            278
+          ],
+          "sourceAnchor": [
+            145,
+            280
+          ],
+          "opaqueComponentPixels": 53175
+        },
+        {
+          "file": "source/brute-facing.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            523,
+            483,
+            317,
+            293
+          ],
+          "bodyBounds": [
+            525,
+            485,
+            313,
+            289
+          ],
+          "sourceAnchor": [
+            158.5,
+            291
+          ],
+          "opaqueComponentPixels": 53874
+        },
+        {
+          "file": "source/brute-facing.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            954,
+            481,
+            288,
+            295
+          ],
+          "bodyBounds": [
+            956,
+            483,
+            284,
+            291
+          ],
+          "sourceAnchor": [
+            144,
+            293
+          ],
+          "opaqueComponentPixels": 46209
+        },
+        {
+          "file": "source/brute-facing.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1397,
+            487,
+            271,
+            291
+          ],
+          "bodyBounds": [
+            1399,
+            489,
+            267,
+            287
+          ],
+          "sourceAnchor": [
+            135.5,
+            289
+          ],
+          "opaqueComponentPixels": 52636
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 326
+    },
+    {
+      "id": "butcher",
+      "label": "Мясник",
+      "role": "existing-cast",
+      "gameKind": "butcher",
+      "idle": [
+        {
+          "file": "source/butcher-facing.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            84,
+            125,
+            295,
+            286
+          ],
+          "bodyBounds": [
+            86,
+            127,
+            291,
+            282
+          ],
+          "sourceAnchor": [
+            147.5,
+            284
+          ],
+          "opaqueComponentPixels": 55913
+        },
+        {
+          "file": "source/butcher-facing.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            518,
+            124,
+            310,
+            294
+          ],
+          "bodyBounds": [
+            520,
+            126,
+            306,
+            290
+          ],
+          "sourceAnchor": [
+            155,
+            292
+          ],
+          "opaqueComponentPixels": 52541
+        },
+        {
+          "file": "source/butcher-facing.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            994,
+            117,
+            225,
+            303
+          ],
+          "bodyBounds": [
+            996,
+            119,
+            221,
+            299
+          ],
+          "sourceAnchor": [
+            112.5,
+            301
+          ],
+          "opaqueComponentPixels": 45164
+        },
+        {
+          "file": "source/butcher-facing.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1381,
+            117,
+            293,
+            304
+          ],
+          "bodyBounds": [
+            1383,
+            119,
+            289,
+            300
+          ],
+          "sourceAnchor": [
+            146.5,
+            302
+          ],
+          "opaqueComponentPixels": 51602
+        },
+        {
+          "file": "source/butcher-facing.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            76,
+            500,
+            292,
+            291
+          ],
+          "bodyBounds": [
+            78,
+            502,
+            288,
+            287
+          ],
+          "sourceAnchor": [
+            146,
+            289
+          ],
+          "opaqueComponentPixels": 53684
+        },
+        {
+          "file": "source/butcher-facing.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            535,
+            486,
+            295,
+            313
+          ],
+          "bodyBounds": [
+            537,
+            488,
+            291,
+            309
+          ],
+          "sourceAnchor": [
+            147.5,
+            311
+          ],
+          "opaqueComponentPixels": 51654
+        },
+        {
+          "file": "source/butcher-facing.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            970,
+            481,
+            258,
+            319
+          ],
+          "bodyBounds": [
+            972,
+            483,
+            254,
+            315
+          ],
+          "sourceAnchor": [
+            129,
+            317
+          ],
+          "opaqueComponentPixels": 49288
+        },
+        {
+          "file": "source/butcher-facing.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1369,
+            490,
+            329,
+            307
+          ],
+          "bodyBounds": [
+            1371,
+            492,
+            325,
+            303
+          ],
+          "sourceAnchor": [
+            164.5,
+            305
+          ],
+          "opaqueComponentPixels": 55245
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 329
+    },
+    {
+      "id": "wraith",
+      "label": "Призрак",
+      "role": "existing-cast",
+      "gameKind": "wraith",
+      "idle": [
+        {
+          "file": "source/wraith-facing.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            99,
+            96,
+            279,
+            333
+          ],
+          "bodyBounds": [
+            101,
+            98,
+            275,
+            329
+          ],
+          "sourceAnchor": [
+            139.5,
+            331
+          ],
+          "opaqueComponentPixels": 51556
+        },
+        {
+          "file": "source/wraith-facing.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            523,
+            111,
+            272,
+            306
+          ],
+          "bodyBounds": [
+            525,
+            113,
+            268,
+            302
+          ],
+          "sourceAnchor": [
+            136,
+            304
+          ],
+          "opaqueComponentPixels": 46881
+        },
+        {
+          "file": "source/wraith-facing.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            933,
+            111,
+            314,
+            310
+          ],
+          "bodyBounds": [
+            935,
+            113,
+            310,
+            306
+          ],
+          "sourceAnchor": [
+            157,
+            308
+          ],
+          "opaqueComponentPixels": 55072
+        },
+        {
+          "file": "source/wraith-facing.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1394,
+            95,
+            282,
+            334
+          ],
+          "bodyBounds": [
+            1396,
+            97,
+            278,
+            330
+          ],
+          "sourceAnchor": [
+            141,
+            332
+          ],
+          "opaqueComponentPixels": 51647
+        },
+        {
+          "file": "source/wraith-facing.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            99,
+            475,
+            276,
+            325
+          ],
+          "bodyBounds": [
+            101,
+            477,
+            272,
+            321
+          ],
+          "sourceAnchor": [
+            138,
+            323
+          ],
+          "opaqueComponentPixels": 47862
+        },
+        {
+          "file": "source/wraith-facing.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            513,
+            475,
+            303,
+            325
+          ],
+          "bodyBounds": [
+            515,
+            477,
+            299,
+            321
+          ],
+          "sourceAnchor": [
+            151.5,
+            323
+          ],
+          "opaqueComponentPixels": 53408
+        },
+        {
+          "file": "source/wraith-facing.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            942,
+            483,
+            305,
+            317
+          ],
+          "bodyBounds": [
+            944,
+            485,
+            301,
+            313
+          ],
+          "sourceAnchor": [
+            152.5,
+            315
+          ],
+          "opaqueComponentPixels": 52603
+        },
+        {
+          "file": "source/wraith-facing.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1393,
+            491,
+            271,
+            309
+          ],
+          "bodyBounds": [
+            1395,
+            493,
+            267,
+            305
+          ],
+          "sourceAnchor": [
+            135.5,
+            307
+          ],
+          "opaqueComponentPixels": 50171
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 334
+    },
+    {
+      "id": "chicken",
+      "label": "Курица",
+      "role": "existing-cast",
+      "gameKind": "chicken prop",
+      "idle": [
+        {
+          "file": "source/chicken-facing.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            118,
+            151,
+            235,
+            295
+          ],
+          "bodyBounds": [
+            120,
+            153,
+            231,
+            291
+          ],
+          "sourceAnchor": [
+            117.5,
+            293
+          ],
+          "opaqueComponentPixels": 43377
+        },
+        {
+          "file": "source/chicken-facing.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            533,
+            151,
+            251,
+            298
+          ],
+          "bodyBounds": [
+            535,
+            153,
+            247,
+            294
+          ],
+          "sourceAnchor": [
+            125.5,
+            296
+          ],
+          "opaqueComponentPixels": 43360
+        },
+        {
+          "file": "source/chicken-facing.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            945,
+            197,
+            302,
+            252
+          ],
+          "bodyBounds": [
+            947,
+            199,
+            298,
+            248
+          ],
+          "sourceAnchor": [
+            151,
+            250
+          ],
+          "opaqueComponentPixels": 45397
+        },
+        {
+          "file": "source/chicken-facing.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1412,
+            158,
+            262,
+            285
+          ],
+          "bodyBounds": [
+            1414,
+            160,
+            258,
+            281
+          ],
+          "sourceAnchor": [
+            131,
+            283
+          ],
+          "opaqueComponentPixels": 43671
+        },
+        {
+          "file": "source/chicken-facing.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            129,
+            493,
+            215,
+            287
+          ],
+          "bodyBounds": [
+            131,
+            495,
+            211,
+            283
+          ],
+          "sourceAnchor": [
+            107.5,
+            285
+          ],
+          "opaqueComponentPixels": 37829
+        },
+        {
+          "file": "source/chicken-facing.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            514,
+            511,
+            255,
+            269
+          ],
+          "bodyBounds": [
+            516,
+            513,
+            251,
+            265
+          ],
+          "sourceAnchor": [
+            127.5,
+            267
+          ],
+          "opaqueComponentPixels": 41611
+        },
+        {
+          "file": "source/chicken-facing.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            941,
+            544,
+            292,
+            242
+          ],
+          "bodyBounds": [
+            943,
+            546,
+            288,
+            238
+          ],
+          "sourceAnchor": [
+            146,
+            240
+          ],
+          "opaqueComponentPixels": 40881
+        },
+        {
+          "file": "source/chicken-facing.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1417,
+            528,
+            256,
+            269
+          ],
+          "bodyBounds": [
+            1419,
+            530,
+            252,
+            265
+          ],
+          "sourceAnchor": [
+            128,
+            267
+          ],
+          "opaqueComponentPixels": 39216
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 302
+    },
+    {
+      "id": "ratogre",
+      "label": "Крысоогр",
+      "role": "existing-cast",
+      "gameKind": "ratogre",
+      "idle": [
+        {
+          "file": "source/ratogre-facing.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            79,
+            130,
+            300,
+            297
+          ],
+          "bodyBounds": [
+            81,
+            132,
+            296,
+            293
+          ],
+          "sourceAnchor": [
+            150,
+            295
+          ],
+          "opaqueComponentPixels": 60887
+        },
+        {
+          "file": "source/ratogre-facing.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            490,
+            130,
+            355,
+            308
+          ],
+          "bodyBounds": [
+            492,
+            132,
+            351,
+            304
+          ],
+          "sourceAnchor": [
+            177.5,
+            306
+          ],
+          "opaqueComponentPixels": 65437
+        },
+        {
+          "file": "source/ratogre-facing.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            915,
+            136,
+            388,
+            302
+          ],
+          "bodyBounds": [
+            917,
+            138,
+            384,
+            298
+          ],
+          "sourceAnchor": [
+            194,
+            300
+          ],
+          "opaqueComponentPixels": 62645
+        },
+        {
+          "file": "source/ratogre-facing.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1404,
+            131,
+            317,
+            317
+          ],
+          "bodyBounds": [
+            1406,
+            133,
+            313,
+            313
+          ],
+          "sourceAnchor": [
+            158.5,
+            315
+          ],
+          "opaqueComponentPixels": 61775
+        },
+        {
+          "file": "source/ratogre-facing.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            78,
+            486,
+            302,
+            320
+          ],
+          "bodyBounds": [
+            80,
+            488,
+            298,
+            316
+          ],
+          "sourceAnchor": [
+            151,
+            318
+          ],
+          "opaqueComponentPixels": 64332
+        },
+        {
+          "file": "source/ratogre-facing.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            503,
+            483,
+            307,
+            313
+          ],
+          "bodyBounds": [
+            505,
+            485,
+            303,
+            309
+          ],
+          "sourceAnchor": [
+            153.5,
+            311
+          ],
+          "opaqueComponentPixels": 60647
+        },
+        {
+          "file": "source/ratogre-facing.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            896,
+            487,
+            386,
+            309
+          ],
+          "bodyBounds": [
+            898,
+            489,
+            382,
+            305
+          ],
+          "sourceAnchor": [
+            193,
+            307
+          ],
+          "opaqueComponentPixels": 62956
+        },
+        {
+          "file": "source/ratogre-facing.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1368,
+            495,
+            351,
+            301
+          ],
+          "bodyBounds": [
+            1370,
+            497,
+            347,
+            297
+          ],
+          "sourceAnchor": [
+            175.5,
+            299
+          ],
+          "opaqueComponentPixels": 64590
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 388
+    },
+    {
+      "id": "mouse",
+      "label": "Мышь-торговец",
+      "role": "ally",
+      "gameKind": "ally / mouse merchant",
+      "idle": [
+        {
+          "file": "source/ally-mouse.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            394,
+            366,
+            429,
+            559
+          ],
+          "bodyBounds": [
+            396,
+            368,
+            425,
+            555
+          ],
+          "sourceAnchor": [
+            214.5,
+            557
+          ],
+          "opaqueComponentPixels": 129642
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 559
+    },
+    {
+      "id": "goose",
+      "label": "Гусь",
+      "role": "ally",
+      "gameKind": "ally concept",
+      "idle": [
+        {
+          "file": "source/ally-goose.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            441,
+            346,
+            421,
+            576
+          ],
+          "bodyBounds": [
+            443,
+            348,
+            417,
+            572
+          ],
+          "sourceAnchor": [
+            210.5,
+            574
+          ],
+          "opaqueComponentPixels": 127721
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 576
+    },
+    {
+      "id": "raven",
+      "label": "Ворон",
+      "role": "ally",
+      "gameKind": "ally concept",
+      "idle": [
+        {
+          "file": "source/ally-raven.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            367,
+            355,
+            527,
+            587
+          ],
+          "bodyBounds": [
+            369,
+            357,
+            523,
+            583
+          ],
+          "sourceAnchor": [
+            263.5,
+            585
+          ],
+          "opaqueComponentPixels": 151618
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 587
+    },
+    {
+      "id": "turtle",
+      "label": "Черепашка",
+      "role": "ally",
+      "gameKind": "ally concept",
+      "idle": [
+        {
+          "file": "source/ally-turtle.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            391,
+            433,
+            482,
+            453
+          ],
+          "bodyBounds": [
+            393,
+            435,
+            478,
+            449
+          ],
+          "sourceAnchor": [
+            241,
+            451
+          ],
+          "opaqueComponentPixels": 131809
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 482
+    },
+    {
+      "id": "sheep-pet",
+      "label": "Овечка без метки",
+      "role": "pet-skin",
+      "gameKind": "future pet skin",
+      "idle": [
+        {
+          "file": "source/sheep-pet.png",
+          "direction": "S",
+          "phase": 0,
+          "sourceCell": 0,
+          "rect": [
+            109,
+            142,
+            264,
+            284
+          ],
+          "bodyBounds": [
+            111,
+            144,
+            260,
+            280
+          ],
+          "sourceAnchor": [
+            132,
+            282
+          ],
+          "opaqueComponentPixels": 47286
+        },
+        {
+          "file": "source/sheep-pet.png",
+          "direction": "SW",
+          "phase": 0,
+          "sourceCell": 1,
+          "rect": [
+            502,
+            142,
+            302,
+            299
+          ],
+          "bodyBounds": [
+            504,
+            144,
+            298,
+            295
+          ],
+          "sourceAnchor": [
+            151,
+            297
+          ],
+          "opaqueComponentPixels": 55350
+        },
+        {
+          "file": "source/sheep-pet.png",
+          "direction": "W",
+          "phase": 0,
+          "sourceCell": 2,
+          "rect": [
+            921,
+            138,
+            346,
+            302
+          ],
+          "bodyBounds": [
+            923,
+            140,
+            342,
+            298
+          ],
+          "sourceAnchor": [
+            173,
+            300
+          ],
+          "opaqueComponentPixels": 61294
+        },
+        {
+          "file": "source/sheep-pet.png",
+          "direction": "NW",
+          "phase": 0,
+          "sourceCell": 3,
+          "rect": [
+            1400,
+            138,
+            289,
+            316
+          ],
+          "bodyBounds": [
+            1402,
+            140,
+            285,
+            312
+          ],
+          "sourceAnchor": [
+            144.5,
+            314
+          ],
+          "opaqueComponentPixels": 51518
+        },
+        {
+          "file": "source/sheep-pet.png",
+          "direction": "N",
+          "phase": 0,
+          "sourceCell": 4,
+          "rect": [
+            109,
+            497,
+            264,
+            300
+          ],
+          "bodyBounds": [
+            111,
+            499,
+            260,
+            296
+          ],
+          "sourceAnchor": [
+            132,
+            298
+          ],
+          "opaqueComponentPixels": 50069
+        },
+        {
+          "file": "source/sheep-pet.png",
+          "direction": "NE",
+          "phase": 0,
+          "sourceCell": 5,
+          "rect": [
+            510,
+            497,
+            294,
+            314
+          ],
+          "bodyBounds": [
+            512,
+            499,
+            290,
+            310
+          ],
+          "sourceAnchor": [
+            147,
+            312
+          ],
+          "opaqueComponentPixels": 51362
+        },
+        {
+          "file": "source/sheep-pet.png",
+          "direction": "E",
+          "phase": 0,
+          "sourceCell": 6,
+          "rect": [
+            921,
+            507,
+            338,
+            302
+          ],
+          "bodyBounds": [
+            923,
+            509,
+            334,
+            298
+          ],
+          "sourceAnchor": [
+            169,
+            300
+          ],
+          "opaqueComponentPixels": 58389
+        },
+        {
+          "file": "source/sheep-pet.png",
+          "direction": "SE",
+          "phase": 0,
+          "sourceCell": 7,
+          "rect": [
+            1400,
+            509,
+            305,
+            302
+          ],
+          "bodyBounds": [
+            1402,
+            511,
+            301,
+            298
+          ],
+          "sourceAnchor": [
+            152.5,
+            300
+          ],
+          "opaqueComponentPixels": 56602
+        }
+      ],
+      "walk": null,
+      "sourceExtent": 346
+    }
+  ]
+}

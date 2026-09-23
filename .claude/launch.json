@@ -4,14 +4,65 @@
     {
       "name": "goat-out",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["tools/serve.js", "8766"],
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8766"
+      ],
       "port": 8766
     },
     {
       "name": "goat-out-2",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["tools/serve.js", "8767"],
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8767"
+      ],
       "port": 8767
+    },
+    {
+      "name": "goat-out-3",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8768"
+      ],
+      "port": 8768
+    },
+    {
+      "name": "goat-out-4",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8769"
+      ],
+      "port": 8769
+    },
+    {
+      "name": "goat-out-5",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8770"
+      ],
+      "port": 8770
+    },
+    {
+      "name": "goat-out-6",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8771"
+      ],
+      "port": 8771
+    },
+    {
+      "name": "goat-out-7",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8772"
+      ],
+      "port": 8772
     }
   ]
 }
