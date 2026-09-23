@@ -27,7 +27,8 @@ The sprite itself always comes from `PIXEL_ART.draw`.
 
 ## Still to be drawn in pixel
 
-These are the painted or primitive leftovers, most visible first:
+These are the painted or primitive leftovers, most visible first. `ART_TODO_GPT.md` turns them into
+ready image-generation briefs, six sheets in priority order:
 
 - **Doors** — wood, iron, vault, soul gate: painted slabs today (`PaintedArt.doorSlab`, `brokenDoor`).
 - **Weapons and the stand of arms** — sword, shield, rack (props atlas).
