@@ -188,7 +188,7 @@ const Painting = {
     // The picture, fitted whole into its box, never smoothed — and never taller than leaves room for
     // the score, its line and the row with SAVE under it: on a phone held sideways (390 px tall)
     // the line under the score sat on "tap to go on" and under the button.
-    const dy = H * P.fit.top + 10 * s, room = Math.max(H * 0.2, H - 119 * s - dy);
+    const dy = H * P.fit.top + 10 * s, room = Math.max(H * 0.2, H - (card.code ? 137 : 119) * s - dy);
     const cv = pic.canvas, k = Math.min(W * P.fit.w / cv.width, H * P.fit.h / cv.height, room / cv.height);
     const dw = cv.width * k, dh = cv.height * k, dx = (W - dw) / 2;
     ctx.save(); ctx.imageSmoothingEnabled = false;
@@ -208,6 +208,8 @@ const Painting = {
     ctx.fillText(`SCORE ${card.score}`, W / 2, y);
     y += 26 * s; ctx.font = `${15 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.62)';
     ctx.fillText(`${m.kills} sacrificed in ${m.time.toFixed(1)}s · ${card.best ? 'A NEW BEST' : `run so far ${card.run}`}`, W / 2, y);
+    // The run code, quiet, for whoever is asked to paste it (as on the death and win cards).
+    if (card.code) { y += 18 * s; ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, y); }
     // Once it can be left: how to leave, and SAVE for whoever wants the picture.
     this.saveRect = null;
     if (game.stateTimer <= 0) {

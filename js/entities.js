@@ -841,6 +841,7 @@ class Goat {
     if (by !== 'fall' && this.tripPhase(game, kx, ky)) return;
     if (Talisman.absorb(game, this)) return;   // TALLOW SKIN took it
     this.hp -= n; this.invuln = TUNING.goat.invuln; this.hurtBy = by || null;
+    if (game.heartLog) for (let k = 0; k < n; k++) game.heartLog.push(game.timer);
     this.vx += kx || 0; this.vy += ky || 0;
     Talisman.loseRunUp(game, this);            // whatever he had built up, the club took it (BRASS SPUR keeps some)
 

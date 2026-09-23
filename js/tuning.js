@@ -469,6 +469,11 @@ const TUNING = {
     // together used to be the safest place in the room — the first one bowled the second over and
     // both got up — which read as the game saying that men are not part of the geometry. They are.
     bodyKillSpeed: 10 * TILE,
+    // The man off the horns dies with the one he lands on only above this. It used to be
+    // `splatSpeed`, a tile a second over `bodyKillSpeed`, so nearly every body-on-body headbutt was
+    // two deaths and the bare head bought a double kill (23 Sep 2026 answers: one death, not two).
+    // Over the bare headbutt's own impulse on purpose: LONG HORNS and a run-up can still reach it.
+    bodyBothSpeed: 32 * TILE,
   },
   fire: {
     spread: 0.48, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE,   // spread was 0.4; a burning tile catching its neighbour that fast read as too eager
@@ -915,7 +920,10 @@ const TUNING = {
   // much darker than the original.
   // `oracle` is THE ORACLE's reach through stone, in tiles. Past it the ordinary cast still decides,
   // so the far corners of a room stay the dark they always were.
-  fog: { shade: 0.9, radius: 26, res: 2, oracle: 11 },
+  // 23 Sep 2026: 0.9 → 0.8. A man behind a partition read as invisible while he could still hear
+  // you, which the questionnaire called unfair rather than tense. Rooms nobody has opened are kept
+  // by `drawUnseen`, not by this, so their contents stay unreadable either way.
+  fog: { shade: 0.8, radius: 26, res: 2, oracle: 11 },
   // THE DARK (`darkLevel`, drawn by `js/dark.js`): a floor with the lamps out. Only what burns lights
   // the room; the rest is `alpha` of `color` laid over it. `lights` are [radius in tiles, strength]
   // per source, cast through the tiles so no flame lights the far side of a wall. `near` is how far
@@ -1126,6 +1134,10 @@ const TUNING = {
     deadzone: 0.55 * TILE, fitMargin: 2 * TILE },
   // A score is time first and bodies second, so that running is never the wrong answer: pace against
   // par is the whole of it and kills only multiply. Par for a level is its rooms times `perRoom`.
+  // Dev only. A death is a burst when its last two hearts went inside `burstGap` seconds of each
+  // other, and a bleed when they went further apart: the dev drawer counts both, and the run code
+  // carries the gap, to say whether `goat.invuln` or the heart count is the lever (BACKLOG, 16 Sep).
+  dev: { burstGap: 1.5 },
   score: { perRoom: 9, timePoints: 1000, fastCap: 2, killMul: 0.06, killCap: 2.5 },
   held: { bulletsAbsorbed: 2 },
   // A corrupted soul: what a boss leaves, and what the goat swallows to get stronger. It was a tome,
@@ -1409,6 +1421,10 @@ const sayN = (v) => String(+(+v).toFixed(2));
 const sayPct = (v) => Math.round(v * 100) + '%';
 // What poison does to a man, said the same way on every card that makes it.
 const sayPoison = () => `POISON: ${sayN(TUNING.status.poison.time)}s AT ${sayPct(TUNING.status.poison.moveMul)} SPEED, NO SHOT OR SPELL`;
+// `synergy` names a boon this one is built to be read together with (a crossing the world makes,
+// such as poison meeting fire); `addition` names one it makes modestly better in passing. Neither is
+// read by the game: they are marks for the BOONS tab, so the deck can be looked at as a web rather
+// than a list (asked for 16 Sep 2026, built 23 Sep).
 const BOONS = [
   // ---- actives: they change what a button does ----
   { id: 'collar', skill: 'grab', active: true, key: true, emoji: '⛓️', minLevel: 0, name: 'BY THE COLLAR',
@@ -1420,7 +1436,7 @@ const BOONS = [
     stat: (p) => `DAZES EVERYONE WITHIN ${sayN(BOON_BASE.screamRadius)} TILES FOR ${sayN(TUNING.goat.scream.stun)}s · ${sayN(p.cooldown)}s COOLDOWN`,
     params: { cooldown: TUNING.goat.scream.cooldown },
     apply: (m, p) => { m.screamStun = true; m.screamCooldown = p.cooldown; } },
-  { id: 'breath', skill: 'scream', active: true, emoji: '🔥', minLevel: 0, name: 'DRAGON BREATH',
+  { id: 'breath', synergy: ['kindling', 'ember'], skill: 'scream', active: true, emoji: '🔥', minLevel: 0, name: 'DRAGON BREATH',
     desc: 'BAAH becomes fire: a cone the way you are running that lights the men and the floor in it.',
     stat: (p) => { const B = TUNING.goat.breath; return `CONE ${sayN(B.range / TILE)} TILES LONG, ${Math.round(B.halfAngle * 360 / Math.PI)}° WIDE · FLOOR BURNS ${sayN(B.fireTime)}s · ${sayN(p.cooldown)}s COOLDOWN`; },
     params: { cooldown: TUNING.goat.breath.cooldown },
@@ -1429,21 +1445,21 @@ const BOONS = [
     desc: 'A man you headbutt is lit for a moment: if he dies against a wall or another man in that time, he explodes.',
     stat: () => { const B = TUNING.goat.bomb; return `${sayN(B.fuse)}s FUSE · THROWS EVERYONE WITHIN ${sayN(B.radius / TILE)} TILES · YOU ARE ONLY SHOVED`; },
     apply: (m) => { m.bomb = true; } },
-  { id: 'devour', skill: 'grab', active: true, needs: 'grabMen', emoji: '🍖', minLevel: 0, name: 'DEVOUR',
+  { id: 'devour', synergy: ['jaw'], skill: 'grab', active: true, needs: 'grabMen', emoji: '🍖', minLevel: 0, name: 'DEVOUR',
     desc: 'Hold on to a man instead of throwing him and you tear him open. Sometimes that heals you.',
     stat: () => { const D = TUNING.goat.devour; return `KILLS AFTER ${sayN(D.time)}s HELD · ${sayPct(D.healChance)} CHANCE OF +1 HEART`; },
     apply: (m) => { m.devour = true; } },
-  { id: 'weight', skill: 'roll', active: true, emoji: '🪨', minLevel: 0, name: 'DEAD WEIGHT',
+  { id: 'weight', synergy: ['breath', 'splash'], skill: 'roll', active: true, emoji: '🪨', minLevel: 0, name: 'DEAD WEIGHT',
     desc: 'Your roll is a weapon now: everyone you tumble through is knocked senseless.',
     stat: (p) => `DAZES EVERYONE WITHIN ${sayN(TUNING.goat.roll.stunR / TILE)} TILES OF YOUR PATH FOR ${sayN(p.stun)}s · ONCE EACH PER ROLL`,
     params: { stun: TUNING.goat.roll.stun },
     apply: (m, p) => { m.rollStun = p.stun; } },
   // Poison, one on each button, and a second grab active that is a bomb you make yourself.
-  { id: 'splash', skill: 'butt', active: true, emoji: '💦', minLevel: 0, name: 'SPLASH',
+  { id: 'splash', synergy: ['breath'], skill: 'butt', active: true, emoji: '💦', minLevel: 0, name: 'SPLASH',
     desc: 'Every headbutt also poisons whoever is right behind you, the moment you lower your head.',
     stat: () => `REACHES ${sayN(TUNING.status.splash.range)} TILES BEHIND · ${sayPoison()}`,
     apply: (m) => { m.splash = true; } },
-  { id: 'venomjaw', skill: 'grab', active: true, emoji: '🐍', minLevel: 0, name: 'VENOM JAW',
+  { id: 'venomjaw', synergy: ['kindling'], skill: 'grab', active: true, emoji: '🐍', minLevel: 0, name: 'VENOM JAW',
     desc: 'Hold anything long enough and it leaves your mouth dripping: poison along its flight and a puddle where it stops.',
     stat: (p) => { const s = TUNING.status.jaw.half * 2 + 1; return `HOLD ${sayN(p.holdFor)}s · PUDDLE ${s}×${s} TILES FOR ${sayN(TUNING.status.poison.pool)}s · ${sayPoison()}`; },
     params: { holdFor: 2 },
@@ -1469,7 +1485,7 @@ const BOONS = [
     // the flight at which the hooves come down on the man's back.
     params: { reach: 3, cone: 0.6, behind: 1, daze: 0.9, cooldownMul: 2, time: 0.36, height: 20, over: 0.45 },
     apply: (m, p) => { m.leapfrog = Object.assign({}, p); } },
-  { id: 'spit', skill: 'scream', active: true, emoji: '🫧', minLevel: 0, name: 'VENOM SPIT',
+  { id: 'spit', synergy: ['kindling'], skill: 'scream', active: true, emoji: '🫧', minLevel: 0, name: 'VENOM SPIT',
     desc: 'BAAH becomes a glob of poison, spat where you point. It bursts into a puddle.',
     stat: (p) => { const S = TUNING.status.spit, s = S.half * 2 + 1; return `FLIES UP TO ${sayN(S.range)} TILES · PUDDLE ${s}×${s} · ${sayN(p.cooldown)}s COOLDOWN · ${sayPoison()}`; },
     params: { cooldown: 4.5 },
@@ -1492,15 +1508,15 @@ const BOONS = [
     stat: (p) => { const H = TUNING.goat.headbutt; return `REACH ${sayN(H.reach / TILE)} → ${sayN(H.reach * p.reachMul / TILE)} TILES · THROW +${sayPct(p.impulseMul - 1)}`; },
     params: { reachMul: 1.38, impulseMul: 1.25 },
     apply: (m, p) => { m.headbuttReach *= p.reachMul; m.headbuttImpulse *= p.impulseMul; m.antlers = true; } },
-  { id: 'skull', skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', desc: 'You get your head back after a headbutt in half the time, so a second man has less of a gap.',
+  { id: 'skull', addition: ['bomb', 'splash'], skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', desc: 'You get your head back after a headbutt in half the time, so a second man has less of a gap.',
     stat: (p) => { const r = TUNING.goat.headbutt.recovery; return `RECOVERY ${sayN(r)}s → ${sayN(r * p.recoveryMul)}s`; },
     params: { recoveryMul: 0.5 },
     apply: (m, p) => { m.headbuttRecovery *= p.recoveryMul; } },
-  { id: 'jaw', skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'The man in your mouth is a better shield and stays there longer, and your mouth is free again sooner.',
+  { id: 'jaw', addition: ['collar', 'shield'], skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'The man in your mouth is a better shield and stays there longer, and your mouth is free again sooner.',
     stat: (p) => `STOPS ${BOON_BASE.shieldBullets} → ${p.shieldBullets} BULLETS · HELD ~${sayN(BOON_BASE.holdTime)} → ${sayN(p.holdTime)}s · GRAB COOLDOWN ${sayN(TUNING.goat.grab.cooldown)} → ${sayN(TUNING.goat.grab.cooldown * p.cooldownMul)}s`,
     params: { shieldBullets: 4, holdTime: 13, cooldownMul: 0.6 },
     apply: (m, p) => { m.shieldBullets = p.shieldBullets; m.holdTime = p.holdTime; m.grabCooldown *= p.cooldownMul; } },
-  { id: 'shield', skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'The man in your mouth keeps fighting, for you: he swings at his own side, and a rifle keeps firing.',
+  { id: 'shield', synergy: ['jaw'], skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'The man in your mouth keeps fighting, for you: he swings at his own side, and a rifle keeps firing.',
     stat: (p) => `A HELD MAN SWINGS EVERY ${sayN(p.swing)}s · A HELD RIFLE RELOADS ${sayN(1 / p.reload)}× AS FAST`,
     params: { swing: 0.5, reload: 0.55 },
     apply: (m, p) => { m.livingShield = true; m.shieldSwing = p.swing; m.shieldReload = p.reload; } },
@@ -1517,19 +1533,19 @@ const BOONS = [
     apply: (m) => { m.firePass = Math.max(m.firePass, 1); } },
   // `radius` is how far THE FULL THROAT reaches and nothing else: the bare call, the breath and the
   // spit each have their own reach, so the card says so rather than promising a louder voice.
-  { id: 'throat', skill: 'scream', emoji: '🗣️', minLevel: 0, name: 'RAW THROAT', desc: 'BAAH comes back twice as fast, whatever your voice has become.',
+  { id: 'throat', addition: ['howl', 'breath', 'spit'], skill: 'scream', emoji: '🗣️', minLevel: 0, name: 'RAW THROAT', desc: 'BAAH comes back twice as fast, whatever your voice has become.',
     stat: (p) => `COOLDOWN ×${sayN(p.cooldownMul)} · THE FULL THROAT REACHES ${sayN(BOON_BASE.screamRadius)} → ${sayN(p.radius)} TILES`,
     params: { cooldownMul: 0.5, radius: 13 },
     apply: (m, p) => { m.screamCooldown *= p.cooldownMul; m.screamRadius = p.radius; } },
-  { id: 'hooves', emoji: '💨', minLevel: 0, name: 'SURE HOOVES', desc: 'You run faster, from a standing start and flat out alike.',
+  { id: 'hooves', addition: ['joints'], emoji: '💨', minLevel: 0, name: 'SURE HOOVES', desc: 'You run faster, from a standing start and flat out alike.',
     stat: (p) => `SPEED +${sayPct(p.speedMul - 1)}`,
     params: { speedMul: 1.13 },
     apply: (m, p) => { m.speed *= p.speedMul; } },
-  { id: 'joints', skill: 'roll', emoji: '🤸', minLevel: 0, name: 'LOOSE JOINTS', desc: 'Your roll carries you further and is ready again in half the time.',
+  { id: 'joints', addition: ['weight', 'venomroll'], skill: 'roll', emoji: '🤸', minLevel: 0, name: 'LOOSE JOINTS', desc: 'Your roll carries you further and is ready again in half the time.',
     stat: (p) => { const R = TUNING.goat.roll, d = R.speed * R.duration / TILE; return `ROLL ${sayN(d)} → ${sayN(d * p.distanceMul)} TILES · COOLDOWN ${sayN(R.cooldown)} → ${sayN(R.cooldown * p.cooldownMul)}s`; },
     params: { distanceMul: 1.35, cooldownMul: 0.45 },
     apply: (m, p) => { m.rollDistance *= p.distanceMul; m.rollCooldown *= p.cooldownMul; } },
-  { id: 'ember', emoji: '🧯', minLevel: 0, name: 'EMBER COAT', desc: 'Ordinary fire burns you far more slowly. Violet witchfire, the mages’ kind, does not care.',
+  { id: 'ember', addition: ['breath', 'kindling'], emoji: '🧯', minLevel: 0, name: 'EMBER COAT', desc: 'Ordinary fire burns you far more slowly. Violet witchfire, the mages’ kind, does not care.',
     stat: (p) => { const t = TUNING.goat.fireDamageInterval; return `STANDING IN FIRE: 1 HEART EVERY ${sayN(t)}s → EVERY ${sayN(t * p.fireResist)}s`; },
     params: { fireResist: 3 },
     apply: (m, p) => { m.fireResist = p.fireResist; } },
@@ -1955,7 +1971,9 @@ const LEVELS = [
     },
     floor: '#2b2821', floorAlt: '#302c24', wall: '#3b3731', wallTop: '#5f584b',
     fog: '#040405', doorChance: 0.15, ironDoors: 0.4, clockDoors: 0.35, stack: 0.28,
-    hint: 'THE GRASS HIDES YOU. IT HIDES THEM TOO.', hintKey: null,
+    // The rock teeth at the foot of the wall are new here too, and cost a heart the first time they
+    // are found by walking into them: the floor names every new thing on it (23 Sep 2026).
+    hint: 'THE GRASS HIDES YOU. IT HIDES THEM TOO. THE ROCK HAS TEETH.', hintKey: null,
   },
   {
     // The rifle arrives early, alone, and then never stops being the reason you keep moving.
@@ -2022,7 +2040,11 @@ const LEVELS = [
       // a tenth of what it topped out at.
       // A step up from 5→12 when the two gate rooms went quiet: with two fewer rooms to fight in, the
       // old curve left this level barely harder than THE ROAD.
-      from: 9, to: 19, ease: 1.2,
+      // 23 Sep 2026: the yard still read as sparse, rooms the width of this one holding what a
+      // narrower room holds. A step up on both ends and an eighth man allowed, so the width is
+      // filled rather than cut: the level is otherwise barely harder than THE ROAD.
+      from: 10, to: 21, ease: 1.2,
+      cap: { men: 8 },
     },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
     fog: '#0b0b0a', doorChance: 0.12, ironDoors: 0.8, clockDoors: 0.55, stack: 0.3,
@@ -2053,7 +2075,8 @@ const LEVELS = [
     },
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
     fog: '#06070a', doorChance: 0.3, ironDoors: 0.55, clockDoors: 0.6, stack: 0.35,
-    hint: 'EVERYTHING THEY HAVE LEFT IS HERE', hintKey: 'scream',
+    // Nothing new walks in here, so what the floor names is the canon: the doorway is the weapon.
+    hint: 'EVERYTHING THEY HAVE LEFT IS HERE. MEET THEM IN THE DOORWAY.', hintKey: 'scream',
   },
   {
     // Up in the roof of the hall, and the first ground in the compound that is not all there. Holes

@@ -109,6 +109,8 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/tuning-patch.js` | Writes tool-tab edits back into `tuning.js` (steps into arrays by index). |
 | `tools/check-sync.js` | Checks the working tree, `origin/main` and the published artifact are one build. See *Publishing*. |
 | `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
+| `tools/backlog-questions.html` | The open backlog as a questionnaire, published as its own artifact with a db (answers under `answers/<item id>`). |
+| `ART_TODO_GPT.md` | Every painted or primitive leftover as an image-generation brief, in priority order. |
 | `ART_HANDOFF.md` | What art is wired in vs. placeholder, and how to make the next thing. |
 
 ---
@@ -463,7 +465,7 @@ Butcher mid-swing or a manifesting wraith. The bare headbutt is blunt until LONG
 read `game.mods`, never mutate `TUNING`. New boon: `BOONS`, `BOON_BASE`, the use site, a plain-sentence
 `desc` and a `stat(p, b)` that builds the numbers off `p` / TUNING (`sayN`, `sayPct`, `sayPoison`) —
 never type a number into `desc`; `skill` hangs it on a button; `needs` gates the
-deal. `BOON_SLOTS` (one active + two passives per button, four body); `game.boonOpen` is the one deal
+deal. `synergy` / `addition` on a boon are marks for the BOONS tab only. `BOON_SLOTS` (one active + two passives per button, four body); `game.boonOpen` is the one deal
 test; `key` boons count against nothing. `drawBodySouls`.
 
 **The skill rail.** `drawSkills` is the only report of the verbs; `skillIcon` must change when a boon
@@ -509,7 +511,8 @@ use, a club staggers (`weapon.parry`), `shieldHits`. `Goat.crated`: a club shatt
 and nothing else happens; bullets pass.
 
 **Bodies and furniture.** `game.flungHits`: a man thrown from the mouth kills and carries on; off the
-horns he kills at `physics.bodyKillSpeed`, dies too at `physics.splatSpeed`, else both floored.
+horns he kills at `physics.bodyKillSpeed` and dies too only past `physics.bodyBothSpeed` (over the bare
+headbutt: one death, not two), else both floored.
 `Prop.hitProp` is where a moving prop meets furniture (lamp topples, gong rings, else solid;
 `table.killSpeed`); a flung man above `lamp.knock` topples a lamp; resting over `T.PIT` → `Prop.fall`.
 `Prop.spill` knocks coals (`prop.brazier.spillTime`, `spillCd`); `game.touchingBrazier` returns it.
@@ -695,6 +698,12 @@ never hidden. Sight: `World.computeVis` shadowcast (`castVis`, `VIS_OCTANTS`, `f
 `world.vis` → `Renderer.drawShade` (`fog.res`, `fog.shade`), last in world space; blocked by stone +
 `world.visBlock`. Only the renderer reads `vis`. THE ORACLE: `fog.oracle`.
 
+**Run code.** `game.runCode(by)`: build, level (T = trip), run seed, `seedDeaths` (the count the
+level's seed was cut with), room, kills, time, souls, killer, `G` gap between the last two hearts
+(`heartLog`), first body (`firstKill`). On the death, clear and win cards (`card.code`); leaving a death or
+win card copies it (`copyCode`). `game.replayCode(code)` rebuilds the floor. Burst vs bleed deaths are
+counted per browser under `DEATH_KEY` (`TUNING.dev.burstGap`) and shown in the dev drawer.
+
 **Death and restart.** `restartLevel` only from `play` / `paused` / `dead`, and counts as a death. It
 restores **exactly** `game.levelBoons` (`keepBoons`); only in-level souls are lost. `forgetLessons` resets
 once-a-run lines at run start. N needs the dev drawer.
@@ -845,7 +854,7 @@ pass it as `--artifact <file>`; without it the script prints the local byte coun
   refers to her: no room, no ending, no line from the cult.
 - The painted props still without a pixel sprite (altar, banner, gong, lantern, weapons, grating, big
   grass, soul wisp, mill, cage posts, door slabs) — see `ART_HANDOFF.md`.
-- **A souls resource.** Asked for on 14 Sep 2026 and not yet built: one soul per man killed, banked and
+- **A souls resource.** Decided against for now (23 Sep 2026: "the economy only distracted"); kept for the record. Asked for on 14 Sep 2026 and not built: one soul per man killed, banked and
   spent on something. `game.kills` already counts men and `scoreFor` already refuses to let kills beat
   pace, so the open question is what they buy, and whether buying anything with bodies argues with
   *run, don't fight*. The obvious home is the soul door: a vault that opens for souls instead of, or as

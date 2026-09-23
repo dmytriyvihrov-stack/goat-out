@@ -3,6 +3,7 @@
 const SAVE_KEY = 'goatout.run.v1';
 // The board. It is deliberately not part of the run: NEW GAME wipes the run and never the record.
 const BEST_KEY = 'goatout.best.v1';
+const DEATH_KEY = 'goatout.deaths.v1';   // dev: burst deaths against bleeds, this browser
 // Whether this browser has watched the opening scene through once. The first time is not skippable:
 // everything the run means is in it, and a key pressed to start the game should not also end it.
 const SEEN_KEY = 'goatout.intro.v1';
@@ -1201,6 +1202,9 @@ class Game {
     // A thin trail of where he actually walked, sampled on a clock rather than every step so a long
     // level does not grow an enormous array. It is what the death screen's pull-back draws as a line.
     this.pathTrail = [{ x: this.goat.x, y: this.goat.y }]; this.pathTimer = 0; this.deathCam = null; this.painting = null;
+    this.heartLog = [];   // the clock at every heart lost this level: the last two say burst or bleed
+    this.seedDeaths = this.deaths || 0;   // the death count this level's seed was cut with, for the run code
+    this.firstKill = null;   // the level's first body, for the run code: a kill nobody saw has a cause on it
     this.killMarks = [];   // where each man of this level went down — skulls on the death screen's map
     this.crowMarks = [];   // the same bodies, for the crow — a level's dead do not call it to the next one
     this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0; this.aimSlow = 0; this.aimSlowCd = 0;
@@ -1532,6 +1536,14 @@ class Game {
   // The page's control line belongs to the game, not to the menu.
   onGoatDied() {
     const DC = TUNING.deathCam;
+    // Burst or bleed: the gap between the last two hearts, kept per browser for the dev drawer.
+    const hl = this.heartLog || [];
+    this.lastGap = hl.length >= 2 ? hl[hl.length - 1] - hl[hl.length - 2] : null;
+    if (this.lastGap !== null) {
+      const st = this.deathStats(), burst = this.lastGap <= TUNING.dev.burstGap;
+      st[burst ? 'burst' : 'bleed']++;
+      try { localStorage.setItem(DEATH_KEY, JSON.stringify(st)); } catch (e) {}
+    }
     this.deaths++; this.state = 'dead'; this.slowTimer = 1.4;
     // The pull-back owns the wait now: input stays locked for the whole of it, so the level behind
     // the card is what is on screen when TRY AGAIN finally means something.
@@ -1570,9 +1582,42 @@ class Game {
     // What took the last heart goes where the try-again line was: a death you cannot name is one
     // you cannot learn from, and every player already knows a click starts the level again.
     const by = this.killedBy(this.goat.hurtBy);
-    this.card = { lines: ['DIED', `${this.kills} sacrificed`, `LEVEL ${this.levelIndex + 1} · ${lv.name || ''}`,
+    this.lastCode = this.runCode(this.goat.hurtBy);
+    this.card = { code: this.lastCode, lines: ['DIED', `${this.kills} sacrificed`, `LEVEL ${this.levelIndex + 1} · ${lv.name || ''}`,
       by ? `${kept} · KILLED BY ${by}` : `${kept} · ${this.tapWord.toLowerCase()} to try again`], dim: 0.55, size: 40, small: 2, color: PALETTE.blood };
     this.shake(12, true); this.vibe(70);
+  }
+  // One line a playtester can paste into a form: enough to stand on the same floor again
+  // (`replayCode`) and to say what happened on it, with no server behind it. Build, level (T for the
+  // trip), run seed, deaths (both are in `levelSeed`), room, kills, time, souls, what took the last
+  // heart and the gap before it (G, seconds), and the level's first body with its cause and second — the "a kill before I touched
+  // anyone" report had nothing to go on but a number.
+  runCode(by) {
+    const d = this.level.def || {}, fk = this.firstKill;
+    const who = !by ? '-' : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind);
+    const gap = by && this.lastGap !== null && this.lastGap !== undefined ? 'G' + this.lastGap.toFixed(1) : '-';
+    return ['v' + BUILD, (d.shroom ? 'T' : 'L') + (this.levelIndex + 1), (this.runSeed >>> 0).toString(36), 'D' + (this.seedDeaths || 0),
+      'R' + (this.goatRoom || 0), 'K' + this.kills, Math.round(this.timer) + 's', 'S' + this.boons.length, who, gap,
+      fk ? `${fk.kind}/${fk.cause}@${Math.round(fk.t)}` : '-'].join(' ');
+  }
+  // The click that leaves a death or the win card also puts its code on the clipboard, so the form
+  // asks for a paste rather than a transcription. Refused (no activation, a locked frame) is silent.
+  copyCode() {
+    if (!this.lastCode) return;
+    try { navigator.clipboard.writeText(this.lastCode).catch(() => {}); } catch (e) {}
+  }
+  // Dev: stand on the floor a run code names. Same seed, level and death count, so the same layout;
+  // the souls are dealt afresh, as LEVELS deals them.
+  replayCode(code) {
+    const t = String(code).trim().split(/\s+/);
+    const li = parseInt(t[1].slice(1), 10) - 1, deaths = parseInt(t[3].slice(1), 10) || 0;
+    this.askedSeed = parseInt(t[2], 36) >>> 0;
+    this.startAtLevel(li, t[1][0] === 'T');
+    if (deaths) { this.deaths = deaths; this.startLevel(li, this.levelSeed(li), true, false); }
+  }
+  deathStats() {
+    try { const v = JSON.parse(localStorage.getItem(DEATH_KEY) || 'null'); if (v && typeof v.burst === 'number') return v; } catch (e) {}
+    return { burst: 0, bleed: 0 };
   }
   // The name on the death card for whatever the goat's last heart went to: a man, or the room.
   killedBy(by) {
@@ -1603,7 +1648,7 @@ class Game {
       // The level's own score, under the picture of the floor it was earned on (`js/painting.js`):
       // what the time was worth, what the bodies did to it, and the paint they left. This one card
       // waits for a press, because it is the one worth a second look and SAVE is on it.
-      { painting: true, lines: [], score, best, run: this.totalScore, time: TUNING.painting.arm, color: best ? PALETTE.fireHi : null },
+      { painting: true, code: this.runCode(null), lines: [], score, best, run: this.totalScore, time: TUNING.painting.arm, color: best ? PALETTE.fireHi : null },
     ];
     this.pathTrail.push({ x: this.goat.x, y: this.goat.y });
     Painting.status = null;
@@ -1618,7 +1663,8 @@ class Game {
     else {
       this.state = 'win'; this.clearRun();
       const runBest = this.noteRunBest(this.totalScore);
-      this.card = { lines: ['THE GOAT ESCAPED.', `SCORE ${this.totalScore}`,
+      this.lastCode = this.runCode(null);
+      this.card = { code: this.lastCode, lines: ['THE GOAT ESCAPED.', `SCORE ${this.totalScore}`,
         `${this.totalKills} sacrificed · ${this.deaths} death${this.deaths === 1 ? '' : 's'}`,
         runBest ? 'THE BEST RUN YET' : `best run ${this.best.run}`,
         `${this.tapWord.toLowerCase()} to run again`], dim: 1, size: 40, small: 2 };
@@ -1819,7 +1865,7 @@ class Game {
     if (this.state === 'dead') {
       this.stateTimer -= dt; this.updateEffects(dt);
       if (this.deathCam) this.updateDeathCam(dt);
-      if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) this.restartLevel();
+      if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) { this.copyCode(); this.restartLevel(); }
       this.clearEdges(); return;
     }
     if (this.state === 'clear') {
@@ -1831,7 +1877,7 @@ class Game {
       this.clearEdges(); return;
     }
     if (this.state === 'boon') { this.boonArm = Math.max(0, this.boonArm - dt); this.updateEffects(dt); this.clearEdges(); return; }
-    if (this.state === 'win') { if (this.input.lmbPressed) { this.forgetLessons(); this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.beasts = {}; this.crowGift = false; this.runSeed = (Math.random() * 1e9) | 0; this.startLevel(0, this.levelSeed(0), false, true); } this.clearEdges(); return; }
+    if (this.state === 'win') { if (this.input.lmbPressed) { this.copyCode(); this.forgetLessons(); this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.beasts = {}; this.crowGift = false; this.runSeed = (Math.random() * 1e9) | 0; this.startLevel(0, this.levelSeed(0), false, true); } this.clearEdges(); return; }
     if (this.state !== 'play') { this.clearEdges(); return; }
 
     if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; this.clearEdges(); return; }
@@ -2613,7 +2659,7 @@ class Game {
       // just killing him — he is the bomb, not the delivery.
       if (f.bombFuse > 0) { f.explode(this); return; }
       other.die(this, 'splat', nx, ny);
-      if (!f.thrown && spd > ph.splatSpeed * bm && !f.dead) { f.die(this, 'splat', -nx, -ny); return; }
+      if (!f.thrown && spd > ph.bodyBothSpeed * bm && !f.dead) { f.die(this, 'splat', -nx, -ny); return; }
       f.vx *= f.thrown ? 0.55 : 0.45; f.vy *= f.thrown ? 0.55 : 0.45;
       return;
     }
@@ -2789,6 +2835,7 @@ class Game {
     Talisman.onKill(this, e, cause);
     // Where he fell, for the skulls on the death screen's map.
     if (this.killMarks) this.killMarks.push({ x: e.x, y: e.y });
+    if (!this.firstKill) this.firstKill = { kind: e.kind, cause: cause || '?', t: this.timer };
     // And for the crow, which follows the dead and not the goat (js/beasts.js). A mark ages out of
     // the list after `crow.markFor` seconds, so a room cleared long ago stops calling it back.
     this.crowMarks = this.crowMarks || [];
