@@ -1,0 +1,420 @@
+<title>Goat Out Open Questions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+SC:wght@500;700&display=swap">
+<style>
+:root {
+  --bg: #efe6d0; --paper: #f7f1e2; --ink: #231a14; --muted: #6b5d4f; --rule: #d6c8a8;
+  --accent: #8e2a1e; --accent-ink: #fff6ea; --soul: #6c4f9c;
+  --do: #2f6b3a; --later: #8a6a1c; --drop: #7a6f66; --ok: #2c5f7a;
+  --chip: #e4d8bc; --focus: #6c4f9c;
+  --serif: 'Alegreya', Georgia, 'Times New Roman', serif;
+  --sc: 'Alegreya SC', 'Alegreya', Georgia, serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #16110e; --paper: #1f1814; --ink: #ece2cc; --muted: #a8998a; --rule: #3a2f27;
+    --accent: #d0604c; --accent-ink: #1a0f0b; --soul: #a98ad8;
+    --do: #6fb07a; --later: #d2ac52; --drop: #9c9187; --ok: #6fa8c8;
+    --chip: #2c231d; --focus: #a98ad8;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #16110e; --paper: #1f1814; --ink: #ece2cc; --muted: #a8998a; --rule: #3a2f27;
+  --accent: #d0604c; --accent-ink: #1a0f0b; --soul: #a98ad8;
+  --do: #6fb07a; --later: #d2ac52; --drop: #9c9187; --ok: #6fa8c8;
+  --chip: #2c231d; --focus: #a98ad8;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 17px/1.5 var(--serif); padding-inline: 16px; padding-block: 0 80px; }
+.wrap { max-width: 780px; margin: 0 auto; }
+header.top { padding-block: 32px 8px; }
+h1 { font: 700 34px/1.1 var(--sc); letter-spacing: .02em; margin: 0 0 8px; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 62ch; margin: 0; }
+.lede b { color: var(--ink); font-weight: 500; }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--rule);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 12px; margin-bottom: 8px; }
+.progress { font: 500 15px var(--sc); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.meter { flex: 1 1 120px; height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; min-width: 80px; }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.save { font: 13px var(--mono); color: var(--muted); }
+.save.err { color: var(--accent); }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.fbtn { border: 1px solid var(--rule); background: transparent; border-radius: 999px; padding: 3px 12px; font: 500 14px var(--sc); letter-spacing: .04em; }
+.fbtn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+section.group { margin-top: 36px; }
+section.group > h2 { font: 700 22px/1.2 var(--sc); letter-spacing: .03em; margin: 0 0 4px; color: var(--accent); }
+section.group > p.gnote { color: var(--muted); margin: 0 0 12px; max-width: 62ch; font-size: 16px; }
+
+.item { padding-block: 18px; border-top: 1px solid var(--rule); display: grid; gap: 10px; }
+.item.done .ititle::after { content: ' ✓'; color: var(--do); }
+.ihead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.tag { font: 11px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 6px; }
+.date { font: 12px var(--mono); color: var(--muted); }
+.ititle { font: 700 19px/1.3 var(--serif); margin: 0; flex: 1 1 100%; text-wrap: balance; }
+.ctx { margin: 0; color: var(--muted); font-size: 16px; max-width: 66ch; }
+.ctx code, .ctx .k { font: 13px var(--mono); color: var(--ink); background: var(--chip); padding: 0 4px; border-radius: 3px; }
+.ask { margin: 0; font-style: italic; }
+
+.row { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt { position: relative; }
+.opt input { position: absolute; opacity: 0; pointer-events: none; }
+.opt span { display: inline-block; border: 1px solid var(--rule); background: var(--paper); border-radius: 6px; padding: 5px 11px; font-size: 15px; line-height: 1.3; }
+.opt input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+.opt input:checked + span { background: var(--soul); border-color: var(--soul); color: #fff; }
+.st .opt input:checked + span.s-do { background: var(--do); border-color: var(--do); }
+.st .opt input:checked + span.s-later { background: var(--later); border-color: var(--later); }
+.st .opt input:checked + span.s-drop { background: var(--drop); border-color: var(--drop); }
+.st .opt input:checked + span.s-ok { background: var(--ok); border-color: var(--ok); }
+.st .opt span { font: 500 14px var(--sc); letter-spacing: .03em; }
+.lbl { font: 12px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+textarea { width: 100%; min-height: 64px; resize: vertical; font: 16px/1.45 var(--serif); color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; }
+textarea::placeholder { color: var(--muted); opacity: .8; }
+
+.final { margin-top: 40px; padding: 20px; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; display: grid; gap: 12px; }
+.final h2 { font: 700 22px var(--sc); margin: 0; color: var(--accent); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.primary { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 6px; padding: 10px 18px; font: 700 16px var(--sc); letter-spacing: .04em; }
+.ghost { background: transparent; border: 1px solid var(--rule); border-radius: 6px; padding: 9px 16px; font: 500 15px var(--sc); }
+.note { color: var(--muted); font-size: 15px; margin: 0; }
+#copyOut { font: 12px/1.4 var(--mono); min-height: 160px; }
+@media (max-width: 480px) { h1 { font-size: 27px; } .ititle { font-size: 18px; } }
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Goat Out: открытые вопросы</h1>
+    <p class="lede">Всё незакрытое из <b>BACKLOG.md</b>, открытых вопросов в <b>CLAUDE.md</b> и решений из <b>MARKET.md</b> (билд 1.53). У каждого пункта: статус, варианты, если есть, и поле для ответа. Чтобы надиктовать, нажми микрофон на клавиатуре телефона. Всё сохраняется само, я прочитаю ответы отсюда.</p>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Прогресс и фильтр">
+    <span class="progress" id="progress">0 / 0</span>
+    <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+    <div class="filters">
+      <button class="fbtn" id="f-all" aria-pressed="true">Все</button>
+      <button class="fbtn" id="f-open" aria-pressed="false">Без ответа</button>
+    </div>
+    <span class="save" id="save" aria-live="polite">загрузка…</span>
+  </div>
+
+  <main id="list"></main>
+
+  <section class="final" id="final">
+    <h2>Чего в бэклоге нет</h2>
+    <p class="note">Новые хотелки, баги, идеи, всё, что пропущено. Можно одним потоком, я разберу по пунктам.</p>
+    <textarea id="extra-new" rows="6" placeholder="Надиктуй сюда…"></textarea>
+    <div class="actions">
+      <button class="primary" id="submit">Отправить ответы</button>
+      <button class="ghost" id="copy">Скопировать всё текстом</button>
+      <span class="save" id="submitted"></span>
+    </div>
+    <p class="note">«Отправить» ставит отметку, что ты закончил. После неё напиши мне в чат «готово», и я начну. Если сохранение не работает, скопируй текст и вставь в чат.</p>
+    <textarea id="copyOut" readonly hidden aria-label="Все ответы текстом"></textarea>
+  </section>
+</div>
+
+<script>
+const STATUS = [
+  ['do', 'Делать', 's-do'], ['later', 'Позже', 's-later'], ['drop', 'Неактуально', 's-drop'], ['ok', 'Уже ок', 's-ok'],
+];
+
+const GROUPS = [
+  { id: 'repro', title: 'Не воспроизвелось, нужна подсказка', note: 'Баги и жалобы, которые я не смог поймать. Одна фраза «как это было» обычно их закрывает. Если больше не видел, отметь «Неактуально».' },
+  { id: 'watch', title: 'Проверить на следующей игре', note: 'Сделано, но с пометкой «посмотреть, как играется». Ответ: нормально или нет, и что крутить.' },
+  { id: 'design', title: 'Небольшие решения по дизайну', note: 'Каждое решается одним словом или галочкой.' },
+  { id: 'big', title: 'Большие системы, запаркованные 16 сентября', note: 'Всё это отложено до плейтестов. Отметь, что всё ещё хочется, а что уже нет.' },
+  { id: 'market', title: 'Рынок и позиционирование', note: 'Открытые решения из MARKET.md §9. Решать тебе, не сессии.' },
+  { id: 'world', title: 'Мир, лор и прочее', note: 'Открытые вопросы из CLAUDE.md.' },
+];
+
+// id is the durable key in the db: never rename one after answers exist.
+const ITEMS = [
+  // --- repro
+  { id: 'mill-bearer', g: 'repro', tag: 'bug', date: '16 сен', title: 'Ближний в комнате с колесом пробежал мимо колеса',
+    ctx: 'Три сида подряд с места у двери: колесо сбивало его каждый раз. Если он проскакивает, то, видимо, когда в комнату влетаешь быстро.',
+    ask: 'Как ты входил в комнату?', opts: ['С места у двери', 'На бегу / по диагонали', 'Роллом или с бустами на скорость', 'Больше не видел'] },
+  { id: 'endless-roll', g: 'repro', tag: 'bug', date: '14 сен', title: 'Бесконечный ролл у стены',
+    ctx: 'Замерял: кулдаун держится и у стены, и на открытом полу. Похоже на LOOSE JOINTS (0.61 с) плюс гонг, тогда выходит 0.4 с, и это выглядит как «без кулдауна».',
+    ask: 'Что было надето?', opts: ['LOOSE JOINTS', 'Гонг', 'Оба', 'Ничего такого', 'Больше не видел'] },
+  { id: 'brazier-room', g: 'repro', tag: 'number', date: '16 сен', title: '«Комнату с жаровней сделать ещё короче»',
+    ctx: 'Комнаты, названной по жаровне, нет, а на скриншоте была, похоже, комната с колесом, которая и так узкая.',
+    ask: 'Какая комната? Название уровня и что в ней стоит.' },
+  { id: 'hunter-tell', g: 'repro', tag: 'feel', date: '16 сен', title: 'Выстрел охотника читался раньше в каком-то старом билде',
+    ctx: 'Сам прицел (tell) вернули. Отдельная просьба: чтобы выстрел было видно раньше, «как в билде до этого».',
+    ask: 'Какой билд или что там читалось лучше?', opts: ['Всё ещё поздно читается', 'Уже нормально'] },
+  { id: 'bird', g: 'repro', tag: 'bug', date: '15 сен', title: '«Что это, удали птицу»',
+    ctx: 'Над курицей в её коде ничего лишнего не рисуется. Нужен скриншот или какой это был билд.',
+    opts: ['Ещё вижу', 'Больше не вижу'] },
+  { id: 'spinner', g: 'repro', tag: 'bug', date: '15 сен', title: 'Крутилка над ловушками',
+    ctx: 'По скриншоту непонятно, что за элемент: метка trap sense, пузырь реплики или что-то ещё.',
+    opts: ['Ещё вижу', 'Больше не вижу'] },
+  { id: 'first-kill', g: 'repro', tag: 'bug', date: '15 сен', title: 'В первой комнате уже засчитано убийство',
+    ctx: '<code>game.kills</code> обнуляется в начале каждого уровня, люди из заставки убираются, а не убиваются.',
+    ask: 'Какое число было на экране? Заходил через меню LEVELS?', opts: ['Через LEVELS', 'Обычный NEW GAME', 'Больше не видел'] },
+  { id: 'phone-controls', g: 'repro', tag: 'bug', date: '18 сен', title: 'На телефоне пропадают кнопки через пару секунд',
+    ctx: 'Нашёл две причины в коде (нажатие громкости и тап, который браузер выдаёт за мышь) и исправил. На телефоне не проверял.',
+    ask: 'Если ещё бывает: какой браузер и было ли перед этим нажатие громкости?', opts: ['Ещё бывает', 'Больше нет'] },
+
+  // --- watch
+  { id: 'trip-after', g: 'watch', tag: 'feel', date: '23 сен', title: 'THE TRIP: после него нормальное управление кажется странным',
+    ctx: 'Первый отзыв о грибном уровне: через минуту уже весело. Непонятно, как долго держится странность на следующем уровне.',
+    ask: 'Проходит за комнату-две или портит следующий уровень?', opts: ['Проходит быстро, ок', 'Мешает, нужен переход', 'Ещё не понял'] },
+  { id: 'wall-tilt', g: 'watch', tag: 'feel', date: '16 сен', title: 'Дальняя сторона стены не «тянется» под наклон камеры',
+    ctx: 'После всех переделок стен и перехода на пиксель-арт могло уйти само.',
+    opts: ['Всё ещё видно', 'Ушло'] },
+  { id: 'lesson-straight', g: 'watch', tag: 'number', date: '16 сен', title: 'Комната-урок: хедбатт строго вдоль выходного коридора не убивает',
+    ctx: 'Под любым другим углом первый человек умирает об стену. Строго по линии коридора его не обо что ударить.',
+    opts: ['Не мешает', 'Натыкался, надо чинить'] },
+  { id: 'fog-alpha', g: 'watch', tag: 'feel', date: '14 сен', title: 'Человек за перегородкой почти невидим, но слышит тебя',
+    ctx: 'Тень <code>fog.shade</code> 0.8. Если это ощущается нечестно, крутить прозрачность, а не сам расчёт видимости.',
+    opts: ['Напряжённо, так и надо', 'Нечестно, сделать светлее'] },
+  { id: 'two-die', g: 'watch', tag: 'number', date: '14 сен', title: 'Двое рядом умирают от одного хедбатта',
+    ctx: 'Голый хедбатт от этого сильно подорожал. Можно сделать, чтобы умирал только один.',
+    opts: ['Оставить обоих', 'Пусть умирает один'] },
+  { id: 'threshing-sparse', g: 'watch', tag: 'number', date: '15 сен', title: 'THE THRESHING FLOOR выглядит пустым',
+    ctx: 'Широкие коридоры держат ощущение «одного двора». Крутить можно плотность людей или число комнат.',
+    opts: ['Больше людей', 'Меньше комнат', 'Только проходные комнаты', 'Уже ок'] },
+  { id: 'level-hints', g: 'watch', tag: 'feel', date: '15 сен', title: 'Подсказка уровня называет новую опасность',
+    ctx: 'Сделано для THE ROAD (решётка) и THE RAFTERS (провал). Колесо и загон на первом уровне учатся в комнатах.',
+    ask: 'Добавить такие строчки остальным уровням?', opts: ['Всем', 'Как сейчас'] },
+  { id: 'burst-deaths', g: 'watch', tag: 'tool', date: '16 сен', title: 'Счётчик «смертей залпом» в дев-тулзе',
+    ctx: 'Неуязвимость уже 0.9 с. Счётчик покажет, как чаще умирают: два сердца за 1.5 с или по одному через комнаты. Стоит делать, только если смерти всё ещё ощущаются как один плохой момент.' },
+
+  // --- design
+  { id: 'first-man-line', g: 'design', tag: 'feel', date: '15 сен', title: 'Какая строчка на полу у первого человека',
+    ctx: 'Сейчас там <span class="k">LEFT CLICK - HEADBUTT</span>, но загон говорит то же двумя комнатами раньше. Альтернатива: <span class="k">INTO A WALL KILLS</span>, вся идея первого уровня, до которой игроки сами не доходили.',
+    opts: ['LEFT CLICK - HEADBUTT', 'INTO A WALL KILLS', 'Обе строчки'], radio: true },
+  { id: 'barrels', g: 'design', tag: 'system', date: '15 сен', title: 'Бочка как настоящий проп',
+    ctx: 'Блокирует, горит, не поднимается. Даст складским комнатам что-то кроме ящиков. Небольшая работа, но нужен пиксельный спрайт.' },
+  { id: 'souls-sink', g: 'design', tag: 'system', date: '14 сен', title: 'Ресурс душ: 1 убитый = 1 душа. На что тратить?',
+    ctx: 'Счётчик уже есть (<code>game.kills</code>). Магазин мыши в итоге сделали без цены, «одна штука на выбор», так что стока у душ пока нет. Главный риск: если за убийства платить, игра становится бравлером.',
+    opts: ['Дверь сейфа открывается за души', 'Третья карта за души', 'Мета-валюта между забегами', 'Не нужен, магазина хватает'], radio: true },
+  { id: 'shop-slot2', g: 'design', tag: 'system', date: '18 сен', title: 'Второй слот талисмана',
+    ctx: 'Сейчас слот один. План был: два слота во втором акте.' },
+  { id: 'passives', g: 'design', tag: 'system', date: '16 сен', title: 'Кандидаты в пассивки',
+    ctx: 'Из разговора про колоду. Отметь, какие хочешь.', multi: true,
+    opts: ['3 с неуязвимости после удара', 'Держишь предмет или человека: время замедляется на 2 с', 'Трава лечит 2, но максимум на 1 сердце меньше'] },
+  { id: 'actives', g: 'design', tag: 'system', date: '16 сен', title: 'Кандидаты в активки',
+    ctx: 'Второй спорит с правилом «хедбатт только сбивает, убивает стена».', multi: true,
+    opts: ['Ролл-прыжок через человека (кулдаун ×2)', 'Хедбатт цепочкой: сбитый сносит того, кто за ним'] },
+  { id: 'synergy', g: 'design', tag: 'tool', date: '16 сен', title: 'Пометки synergy / addition на бустах и страница бустов в дев-тулзе',
+    ctx: 'Сейчас в дев-панели нет списка бустов, куда такую метку повесить. Сначала нужна страница.' },
+  { id: 'deck36', g: 'design', tag: 'system', date: '16 сен', title: 'Колода на 36: сетка 4 глагола × 3 архетипа (огонь, стан, яд)',
+    ctx: 'Частично уже есть: статусы, реакции огонь/яд/стан. Не сделано: раздача по очереди (активка, пассивка) и карта-замена с «вместо X».' },
+
+  // --- big
+  { id: 'hearts-level', g: 'big', tag: 'number', date: '16 сен', title: 'Сердца растут по уровням, а не по картам',
+    ctx: '4 на уровнях 1–2, 5 на 3–4, 6 с пятого. THICK HIDE сверху. Сейчас рост сердец лотерея.' },
+  { id: 'lives', g: 'big', tag: 'system', date: '16 сен', title: 'Три жизни на забег',
+    ctx: 'Смерть перезапускает уровень как сейчас, но смертей всего три, потом конец забега. Сердца остаются бюджетом уровня.',
+    ask: 'Заодно: «одна жизнь» значит на уровень (как сейчас) или на забег?', opts: ['На забег', 'На уровень, как сейчас'], radio: true },
+  { id: 'hunt', g: 'big', tag: 'system', date: '16 сен', title: 'Охота: давление сзади после полутора пар',
+    ctx: 'Если сидишь на уровне дольше 1.5× пара, из входа начинают приходить люди. Музыка это слышит, одна реплика за забег.' },
+  { id: 'hell', g: 'big', tag: 'system', date: '16 сен', title: 'Акт два: ад',
+    ctx: 'Вторая кривая, вторая колода, бусты забирают. Дорого: каждому уровню нужен свой канон и 4+ комнат.',
+    ask: 'Как в него попадать?', opts: ['После 7-го уровня', 'Заработать (через сейф)', 'Не делать'], radio: true },
+  { id: 'heaven', g: 'big', tag: 'system', date: '16 сен', title: 'Секрет: рай для забега без единой души',
+    ctx: 'Сейчас невозможно: гейт первого уровня открывается только съеденной душой. Решение: душу можно поднять и бросить в дверь.' },
+
+  // --- market
+  { id: 'route', g: 'market', tag: 'decision', title: 'Маршрут: глубина или краткость',
+    ctx: 'Глубина (как Balatro): много взаимодействующего контента, цена выше. Краткость (как Goose Game): короткие сессии, ниже цена. Билд сейчас идёт по глубине.',
+    opts: ['Глубина', 'Краткость', 'Ещё думаю'], radio: true },
+  { id: 'gore', g: 'market', tag: 'decision', title: 'Кровь: оставить или сделать комичной',
+    ctx: 'Решает порталы (Poki, CrazyGames), стримеров, возрастной рейтинг и то, для кого игра.',
+    opts: ['Оставить', 'Комично', 'Переключатель в настройках'], radio: true },
+  { id: 'price', g: 'market', tag: 'decision', title: 'Цена',
+    ctx: 'Идёт за маршрутом.', opts: ['$7.99–9.99', '$14.99', 'Ещё рано'], radio: true },
+  { id: 'photo', g: 'market', tag: 'decision', title: 'Фоторежим и экспорт GIF',
+    ctx: 'Уровень, залитый кровью, уже картина забега. По исследованию это самая выгодная маркетинговая работа, и это код, а не арт.' },
+  { id: 'web-funnel', g: 'market', tag: 'decision', title: 'Бесплатный веб-билд на 3 уровня и itch.io как воронка в Steam',
+    ctx: 'Для жанра это основной способ дать попробовать. Сейчас опубликован полный билд.' },
+  { id: 'publisher', g: 'market', tag: 'decision', title: 'Издатель',
+    ctx: 'Devolver принимает питчи на 2027+ и издавал Ape Out и Cult of the Lamb. Нужен билд с собственным визуальным стилем.',
+    opts: ['Питч в Devolver', 'Сам', 'Другой издатель', 'Ещё рано'], radio: true },
+
+  // --- world
+  { id: 'wife', g: 'world', tag: 'lore', title: 'Где жена',
+    ctx: 'Во вступлении её уносят вглубь комплекса, и дальше о ней ничего: ни комнаты, ни концовки, ни реплики культа.' },
+  { id: 'lizards-mirrors', g: 'world', tag: 'lore', title: '«Ящерицы и зеркала»',
+    ctx: 'Из старой голосовой. Зеркала отложены как головоломка. Про ящериц так и не понял.' },
+  { id: 'pixel-props', g: 'world', tag: 'art', title: 'Пропы без пиксельного спрайта',
+    ctx: 'Алтарь, знамя, гонг, фонарь, оружие, решётка, большая трава, душа, колесо, стойки клетки, двери. Сейчас нарисованы старым стилем.' },
+  { id: 'gamepad', g: 'world', tag: 'system', title: 'Геймпад', ctx: 'Нужен для Steam Deck и стримов.' },
+  { id: 'priest', g: 'world', tag: 'system', title: 'Босс-Жрец', ctx: 'Упоминался как финальная фигура культа, не спроектирован.' },
+];
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const state = {};           // id -> { status, pick, note }
+let db = null, filter = 'all';
+const DRAFT = 'goat-out-questions-draft';
+
+function load() { try { Object.assign(state, JSON.parse(localStorage.getItem(DRAFT) || '{}')); } catch (e) {} }
+function stash() { try { localStorage.setItem(DRAFT, JSON.stringify(state)); } catch (e) {} }
+
+function answered(id) { const a = state[id]; return !!(a && (a.status || (a.pick && a.pick.length) || (a.note && a.note.trim()))); }
+
+function render() {
+  const list = $('#list');
+  list.innerHTML = GROUPS.map(g => {
+    const items = ITEMS.filter(i => i.g === g.id);
+    return `<section class="group" id="g-${g.id}"><h2>${esc(g.title)}</h2><p class="gnote">${esc(g.note)}</p>${items.map(itemHTML).join('')}</section>`;
+  }).join('');
+  sync();
+}
+
+function itemHTML(it) {
+  const a = state[it.id] || {};
+  const st = STATUS.map(([v, l, c]) => `<label class="opt"><input type="radio" name="st-${it.id}" id="st-${it.id}-${v}" value="${v}" data-id="${it.id}" data-k="status"${a.status === v ? ' checked' : ''}><span class="${c}">${l}</span></label>`).join('');
+  let opts = '';
+  if (it.opts) {
+    const type = it.multi ? 'checkbox' : 'radio';
+    const picks = [].concat(a.pick || []);
+    opts = `<div class="row" role="group" aria-label="Варианты">${it.opts.map((o, n) =>
+      `<label class="opt"><input type="${type}" name="pk-${it.id}" id="pk-${it.id}-${n}" value="${esc(o)}" data-id="${it.id}" data-k="pick"${picks.includes(o) ? ' checked' : ''}><span>${esc(o)}</span></label>`).join('')}</div>`;
+  }
+  return `<article class="item" id="i-${it.id}" data-id="${it.id}">
+    <div class="ihead"><span class="tag">${esc(it.tag)}</span>${it.date ? `<span class="date">${esc(it.date)}</span>` : ''}<h3 class="ititle">${esc(it.title)}</h3></div>
+    <p class="ctx">${it.ctx}</p>
+    ${it.ask ? `<p class="ask">${esc(it.ask)}</p>` : ''}
+    ${opts}
+    <div class="row st" role="radiogroup" aria-label="Статус">${st}</div>
+    <textarea id="nt-${it.id}" data-id="${it.id}" data-k="note" rows="2" placeholder="Ответ голосом или текстом…">${esc(a.note || '')}</textarea>
+  </article>`;
+}
+
+function sync() {
+  const n = ITEMS.filter(i => answered(i.id)).length;
+  $('#progress').textContent = `${n} / ${ITEMS.length}`;
+  $('#meter').style.width = (100 * n / ITEMS.length) + '%';
+  for (const it of ITEMS) {
+    const el = document.getElementById('i-' + it.id);
+    if (!el) continue;
+    el.classList.toggle('done', answered(it.id));
+    el.hidden = filter === 'open' && answered(it.id) && !el.contains(document.activeElement);
+  }
+  for (const g of GROUPS) {
+    const sec = document.getElementById('g-' + g.id);
+    if (sec) sec.hidden = [...sec.querySelectorAll('.item')].every(e => e.hidden);
+  }
+}
+
+// One pending write per doc, debounced, so dictation does not fire a write per word.
+const timers = {};
+function queue(id) {
+  stash(); sync();
+  setSave('сохраняю…');
+  clearTimeout(timers[id]);
+  timers[id] = setTimeout(() => write(id), 700);
+}
+async function write(id) {
+  const body = { ...(state[id] || {}), updatedAt: new Date().toISOString() };
+  if (!db) { setSave('сохранено в браузере'); return; }
+  try {
+    await db.doc('answers/' + id).set(body);
+    setSave('сохранено');
+  } catch (e) {
+    if (e && e.code === 'unavailable') { setTimeout(() => write(id), 800 + Math.random() * 800); return; }
+    setSave('не сохранилось, скопируй текстом', true);
+  }
+}
+function setSave(t, err) { const s = $('#save'); s.textContent = t; s.classList.toggle('err', !!err); }
+
+document.addEventListener('change', e => {
+  const t = e.target, id = t.dataset.id, k = t.dataset.k;
+  if (!id || k === 'note') return;
+  const a = state[id] = state[id] || {};
+  if (k === 'status') a.status = t.value;
+  if (k === 'pick') {
+    const it = ITEMS.find(i => i.id === id);
+    a.pick = it.multi ? [...document.querySelectorAll(`input[name="pk-${id}"]:checked`)].map(x => x.value) : t.value;
+  }
+  queue(id);
+});
+document.addEventListener('input', e => {
+  const t = e.target, id = t.dataset.id;
+  if (t.id === 'extra-new') { state._new = { note: t.value }; queue('_new'); return; }
+  if (!id || t.dataset.k !== 'note') return;
+  (state[id] = state[id] || {}).note = t.value;
+  queue(id);
+});
+
+function setFilter(f) {
+  filter = f;
+  $('#f-all').setAttribute('aria-pressed', f === 'all');
+  $('#f-open').setAttribute('aria-pressed', f === 'open');
+  sync();
+}
+$('#f-all').onclick = () => setFilter('all');
+$('#f-open').onclick = () => setFilter('open');
+
+function asText() {
+  const out = [];
+  for (const g of GROUPS) {
+    const rows = ITEMS.filter(i => i.g === g.id && answered(i.id));
+    if (!rows.length) continue;
+    out.push('## ' + g.title);
+    for (const it of rows) {
+      const a = state[it.id], st = STATUS.find(s => s[0] === a.status);
+      const bits = [st ? st[1] : null, [].concat(a.pick || []).join(', ') || null].filter(Boolean).join(' · ');
+      out.push(`- [${it.id}] ${it.title}${bits ? ' — ' + bits : ''}${a.note && a.note.trim() ? '\n  ' + a.note.trim() : ''}`);
+    }
+  }
+  if (state._new && state._new.note && state._new.note.trim()) out.push('## Новое\n' + state._new.note.trim());
+  return out.join('\n');
+}
+$('#copy').onclick = async () => {
+  const box = $('#copyOut'); box.value = asText() || '(пока пусто)'; box.hidden = false;
+  try { await navigator.clipboard.writeText(box.value); $('#copy').textContent = 'Скопировано'; }
+  catch (e) { box.focus(); box.select(); $('#copy').textContent = 'Выделено, скопируй'; }
+};
+$('#submit').onclick = async () => {
+  for (const id in timers) { clearTimeout(timers[id]); await write(id); }
+  const n = ITEMS.filter(i => answered(i.id)).length;
+  if (db) {
+    try { await db.doc('meta/submission').set({ submittedAt: new Date().toISOString(), answered: n, total: ITEMS.length }); $('#submitted').textContent = `Отправлено: ${n} из ${ITEMS.length}. Напиши в чат «готово».`; }
+    catch (e) { $('#submitted').textContent = 'Не отправилось. Нажми «Скопировать всё текстом» и вставь в чат.'; }
+  } else {
+    $('#submitted').textContent = 'Сохранение недоступно в этом окне. Скопируй текстом и вставь в чат.';
+  }
+};
+
+load();
+render();
+if (state._new) $('#extra-new').value = state._new.note || '';
+setSave('сохранено в браузере');
+
+// Server answers win over the local draft: they are what Claude reads.
+(async () => {
+  db = await (window.claude?.use?.('db') ?? Promise.resolve(null));
+  if (!db) { setSave('только в этом браузере'); return; }
+  try {
+    const snap = await db.collection('answers').get();
+    let changed = false;
+    for (const d of snap.docs) {
+      const body = d.data(); if (!body) continue;
+      const { updatedAt, ...rest } = body;
+      state[d.id] = rest; changed = true;
+    }
+    if (changed) {
+      stash();
+      const focusId = document.activeElement && document.activeElement.id;
+      render();
+      if (state._new) $('#extra-new').value = state._new.note || '';
+      if (focusId) document.getElementById(focusId)?.focus();
+    }
+    const sub = await db.doc('meta/submission').get();
+    if (sub.exists) $('#submitted').textContent = 'Уже отправлялось ' + new Date(sub.data().submittedAt).toLocaleString('ru-RU') + '. Можно дополнить и отправить снова.';
+    setSave('сохранено');
+  } catch (e) { setSave('сервер недоступен, пишу в браузер', true); }
+})();
+</script>
