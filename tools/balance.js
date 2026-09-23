@@ -182,6 +182,35 @@ for (let li = TUNING.shroom.from + 1; li < LEVELS.length; li++) {
   if (!QUIET) console.log(`  ${LEVELS[li].name.padEnd(22)} total ${(total / SEEDS).toFixed(1).padStart(6)}   men ${(men / SEEDS).toFixed(1)}   (the level itself ${levelThreat[li] ? levelThreat[li].total.toFixed(1) : '?'})`);
 }
 
+// ---- THE DARK ----
+// Not in LEVELS either: every level played with the lamps out, held to the same list, its threat
+// beside the level it darkens (it is meant to come in under it) and how many of its rooms stay black.
+const darkLevel = grab('darkLevel');
+if (!QUIET) console.log('\n--- the dark, of ---');
+for (let li = 0; li < LEVELS.length; li++) {
+  const def = darkLevel(li), seen = new Set();
+  let total = 0, men = 0, black = 0, lamps = 0;
+  for (let s = 1; s <= SEEDS; s++) {
+    let L;
+    try { L = generateLevel(def, s * 7717); } catch (e) { fail(`THE DARK (of ${LEVELS[li].name}): does not generate — ${e.message}`); break; }
+    total += roomsOf(L).reduce((a, r) => a + r.threat, 0); men += L.spawns.length;
+    black += L.rooms.filter((r) => r.unlit).length; lamps += L.props.filter((p) => p.darkLamp).length;
+    for (const r of checkRules(L)) {
+      if (r.ok !== false || r.rule.id === 'rises' || r.rule.id === 'ground') continue;
+      const msg = `THE DARK (of ${LEVELS[li].name}): ${r.rule.id} — ${r.why}`;
+      if (!seen.has(msg)) { seen.add(msg); fail(msg); }
+    }
+  }
+  if (!QUIET) console.log(`  ${LEVELS[li].name.padEnd(22)} total ${(total / SEEDS).toFixed(1).padStart(6)}   men ${(men / SEEDS).toFixed(1)}   lamps ${(lamps / SEEDS).toFixed(1)}   black rooms ${(black / SEEDS).toFixed(1)}   (the level itself ${levelThreat[li] ? levelThreat[li].total.toFixed(1) : '?'})`);
+  // The floor every run plays dark (`dark.runAt`) stands in the ladder in place of the lit one, so it
+  // is held to the ladder: above the floor before it, under the floor after.
+  if (li === TUNING.dark.runAt) {
+    const t = total / SEEDS, lo = levelThreat[li - 1], hi = levelThreat[li + 1];
+    if (lo && t <= lo.total) fail(`THE DARK (of ${LEVELS[li].name}), the run's dark floor: ${t.toFixed(1)} is not above ${LEVELS[li - 1].name} (${lo.total.toFixed(1)})`);
+    if (hi && t >= hi.total) fail(`THE DARK (of ${LEVELS[li].name}), the run's dark floor: ${t.toFixed(1)} is not under ${LEVELS[li + 1].name} (${hi.total.toFixed(1)})`);
+  }
+}
+
 if (fails.length) {
   console.log(`\n${fails.length} RULE FAILURES:`);
   for (const f of fails.slice(0, 25)) console.log('  ✗ ' + f);

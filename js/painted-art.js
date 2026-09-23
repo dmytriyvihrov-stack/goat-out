@@ -231,7 +231,7 @@ class PaintedArt extends AltarArt {
       ctx.fillStyle=sg;ctx.beginPath();ctx.arc(p.x,foot-1,sr,0,Math.PI*2);ctx.fill();ctx.restore();
       const h=PIXEL_ENV.draw(ctx,'brazier',p.x,foot,w);
       const heat=p.spillCd>0?0.4+0.6*(1-p.spillCd/TUNING.prop.brazier.spillCd):1;
-      renderer.flame(p.x,foot-h*0.72,(9+2.5*Math.sin(renderer.t*11+p.phase))*heat,p.phase*10);
+      renderer.flame(p.x,foot-h*0.72,(9+(p.phase*2.5%2.5))*heat,p.phase*10);
       return true;
     }
     if(p.kind==='lamp'){
@@ -250,6 +250,27 @@ class PaintedArt extends AltarArt {
       if(p.flung)ctx.rotate(Math.atan2(p.vy,p.vx)*0.4);
       renderer.shadow(0,p.r*0.7,w*0.44,6);
       PIXEL_ENV.draw(ctx,'crate',0,p.r*0.9,w);
+      ctx.restore();return true;
+    }
+    // A barrel of lamp oil. Standing, the sprite as drawn; knocked over, it lies on its side, and
+    // rolling it goes end for end off how far it has come — whole quarter turns, so its pixels stay
+    // square. Lit, one small flame sits on it for the whole fuse and the barrel shivers as it runs out.
+    if(p.kind==='barrel'&&PIXEL_ENV.ready){
+      const B=TUNING.prop.barrel,w=B.draw,lit=p.oilT>=0;
+      ctx.save();ctx.translate(p.x,p.y);
+      let top;
+      if(p.lying){
+        renderer.shadow(0,p.r*0.55,w*0.62,5);
+        ctx.save();ctx.translate(0,p.r*0.15);
+        ctx.rotate(Math.floor(p.spinD/(B.spinEvery*TILE))%2?-Math.PI/2:Math.PI/2);
+        PIXEL_ENV.draw(ctx,'barrel',0,0,w,0.5);
+        ctx.restore();top=-w*0.35;
+      }else{
+        renderer.shadow(0,p.r*0.6,w*0.44,6);
+        const shiver=lit?Math.sin(renderer.t*60)*(1-p.oilT/B.fuse)*1.2:p.wobble>0?Math.sin(renderer.t*50)*p.wobble*4:0;
+        top=p.r*0.8-PIXEL_ENV.draw(ctx,'barrel',shiver,p.r*0.8,w);
+      }
+      if(lit&&!renderer.silPass&&!renderer.baking)renderer.flame(0,top+2,B.fuseDraw,p.phase*10,p.oilWitch);
       ctx.restore();return true;
     }
     if(p.kind==='bell'){
@@ -361,9 +382,16 @@ class PaintedArt extends AltarArt {
       ctx.strokeStyle='#5a4a3a';ctx.lineWidth=2;
       ctx.beginPath();ctx.moveTo(0,-p.r);ctx.lineTo(p.r*0.3,-p.r-fuseLen);ctx.stroke();
       if(armed){
-        const spark=0.5+0.5*Math.sin(renderer.t*(20+40*(1-pct)));
-        ctx.fillStyle=`rgba(255,180,90,${0.6+0.4*spark})`;
-        ctx.beginPath();ctx.arc(p.r*0.3,-p.r-fuseLen,2.2+1.4*spark,0,Math.PI*2);ctx.fill();
+        // Pixel sparks off the tip, more of them and further out the closer it is to going.
+        const c=2,tx=Math.round(p.r*0.3/c)*c,ty=Math.round((-p.r-fuseLen)/c)*c,n=2+Math.round(5*(1-pct));
+        ctx.fillStyle=PALETTE.fireHi;ctx.fillRect(tx-c/2,ty-c/2,c,c);
+        const f=Math.floor(renderer.t*(18+30*(1-pct)));
+        for(let k=0;k<n;k++){
+          const h=Math.imul(f*31+k,2654435761)>>>0,reach=2+(h%(3+Math.round(6*(1-pct))));
+          const a=(h>>>8)%628/100;
+          ctx.fillStyle=k%2?PALETTE.fire:PALETTE.fireHi;
+          ctx.fillRect(tx+Math.round(Math.cos(a)*reach/c)*c-c/2,ty+Math.round(Math.sin(a)*reach/c)*c-c/2,c,c);
+        }
       }
       ctx.restore();return true;
     }
@@ -424,7 +452,7 @@ class PaintedArt extends AltarArt {
     if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
     PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
     // His horns as the butt souls have made them, in the same lean as the frame (`drawGoat` sets it).
-    if(key==='sheep'&&this.hornMods)PIXEL_ART.horns(ctx,pixel,angle,moving,renderer.t,e.x,this.hornMods);
+    if(key==='sheep'&&this.hornMods){PIXEL_ART.horns(ctx,pixel,angle,moving,renderer.t,e.x,this.hornMods);PIXEL_ART.face(ctx,angle,renderer.t,this.hornMods,e);}
     ctx.restore();
   }
 
@@ -514,28 +542,108 @@ class PaintedArt extends AltarArt {
     ctx.drawImage(cv,-ox,-oy,B,B);ctx.restore();
   }
 
+  // What leaves his face and stays in the world a moment (`TUNING.goat.face`): VENOM SPIT's drop off
+  // the chin and the splat it makes, DRAGON BREATH's steam off a nostril and now and then a lick of
+  // flame. A point is where it stands on the floor plus `z` screen px above it, so a drop let go
+  // of mid-run falls where it was let go of, not after him. Cosmetic: nothing reads it back.
+  goatFx(renderer,g,game) {
+    const ctx=renderer.ctx,F=TUNING.goat.face,m=game.mods||{},t=renderer.t,fx=this.fx||(this.fx=[]);
+    const dt=clamp(t-(this.fxT??t),0,0.1);this.fxT=t;
+    const d=(Math.round((g.facing||0)/(Math.PI/4))+14)%8,P=PIXEL_FACE[d],fa=(d+2)*Math.PI/4,ux=Math.cos(fa),uy=Math.sin(fa);
+    const live=PIXEL_ART.unit('sheep')&&!['roll','falling','ko'].includes(g.state)&&!game.stairFx;
+    const at=([x,y])=>({x:g.x+x,y:g.y+1,z:-y});
+    if(live&&m.spit&&P.mouth){
+      const V=F.foam;if(this.dripAt===undefined||this.dripAt>t+V.drip+V.dripVary)this.dripAt=t+V.drip*Math.random();
+      if(t>=this.dripAt){this.dripAt=t+V.drip+Math.random()*V.dripVary;fx.push({kind:'drop',...at(P.mouth),vz:0,age:0,life:3});}
+    }
+    if(live&&m.breath){
+      const S=F.steam;
+      if(this.fireAt===undefined||this.fireAt>t+S.fire+S.fireVary)this.fireAt=t+S.fire*Math.random();
+      if(t>=this.fireAt){this.fireUntil=t+S.fireTime;this.fireAt=t+S.fire+Math.random()*S.fireVary;}
+      const fire=t<(this.fireUntil||0),gap=fire?S.fireGap:S.gap;
+      // Stale after a roll, a fall or the stairs (nothing puffs then): start again from now, not
+      // with every missed puff out of one nostril in a single frame.
+      if(!(this.puffAt<=t+gap)||this.puffAt<t-gap)this.puffAt=t;
+      while(this.puffAt<=t){
+        this.puffAt+=gap;this.nostril=((this.nostril||0)+1)%P.nose.length;
+        const p=at(P.nose[this.nostril]),j=Math.random()-0.5;
+        if(fire)fx.push({kind:'flame',...p,vx:(ux+j*0.5)*S.fireSpeed,vy:(uy+j*0.5)*S.fireSpeed*0.5,vz:6+Math.random()*8,age:0,life:S.fireLife*(0.7+Math.random()*0.5)});
+        else fx.push({kind:'steam',...p,vx:ux*S.drift+j*3,vy:uy*S.drift*0.5,vz:S.rise*(0.8+Math.random()*0.4),age:0,life:S.life*(0.8+Math.random()*0.4)});
+      }
+    }
+    for(let i=fx.length-1;i>=0;i--){
+      const p=fx[i];p.age+=dt;
+      if(p.kind==='drop'){p.vz-=F.foam.fall*dt;p.z+=p.vz*dt;if(p.z<=0){fx[i]={kind:'splat',x:p.x,y:p.y,z:0,age:0,life:F.foam.splatLife};continue;}}
+      else if(p.kind!=='splat'){p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;}
+      if(p.age>=p.life||fx.length>80)fx.splice(i,1);
+    }
+    if(!fx.length)return;
+    // Square pixels of the sprite's own size (`face.cell`), heights snapped to it, like everything
+    // else on him: a round puff beside a pixel goat reads as a different game.
+    const C=F.cell,cell=(i,j,z)=>ctx.fillRect(i*C-C/2,Math.round(-z/C)*C+j*C-C/2,C,C);
+    for(const p of fx){
+      const k=p.age/p.life;
+      ctx.save();ctx.translate(p.x,p.y);ctx.scale(1,1/TILT);
+      if(p.kind==='drop'){ctx.fillStyle=F.foam.color;cell(0,-1,p.z);ctx.fillStyle=F.foam.dark;cell(0,0,p.z);}
+      else if(p.kind==='splat'){ctx.globalAlpha*=0.85*(k<0.6?1:(1-k)/0.4);const n=Math.round(F.foam.splat/C);
+        ctx.fillStyle=F.foam.dark;for(let i=-n;i<=n;i++)cell(i,0,0);ctx.fillStyle=F.foam.color;cell(0,0,0);}
+      else if(p.kind==='steam'){const S=F.steam,n=Math.min(3,1+Math.floor(k*3));ctx.fillStyle=`rgba(${S.color},${S.alpha*(1-k)*(k<0.15?k/0.15:1)})`;
+        if(n===1)cell(0,0,p.z);else if(n===2){cell(0,0,p.z);cell(1,0,p.z);cell(0,-1,p.z);cell(1,-1,p.z);}
+        else{cell(0,0,p.z);cell(-1,0,p.z);cell(1,0,p.z);cell(0,-1,p.z);cell(0,1,p.z);}}
+      else{ctx.fillStyle=k<0.3?PALETTE.fireHi:k<0.65?PALETTE.fire:PALETTE.blood;ctx.globalAlpha*=k<0.6?1:0.6;cell(0,0,p.z);if(k<0.25){cell(0,-1,p.z);}}
+      ctx.restore();
+    }
+  }
+
   drawGoat(renderer,g,game) {
     const ctx=renderer.ctx;
     for(const t of g.trail){ctx.save();ctx.globalAlpha=t.life/(t.max||TUNING.goat.trail.life)*0.12;ctx.translate(t.x,t.y);ctx.scale(1,1/TILT);this.character(renderer,{facing:t.a},'sheep',40);ctx.restore();}
-    renderer.shadow(g.x,g.y,16,7);
+    // A fidget (`Goat.update`, `goat.idle`) as a 0..1 through it, and how high a pronk has him.
+    const I=TUNING.goat.idle,fid=g.fidget,fk=fid?clamp(fid.t/fid.dur,0,1):0;
+    // A pronk off the fidget, or a LEAPFROG vault: the same lift off his shadow, in whole pixels.
+    const lp=g.leap,hop=lp?Math.sin(clamp(lp.t/lp.time,0,1)*Math.PI)*lp.h
+      :fid&&fid.kind==='hop'&&fk>0.2&&fk<0.8?Math.sin((fk-0.2)/0.6*Math.PI)*I.hop.h:0;
+    const sh=Math.max(0.2,1-hop*0.03);   // a leap higher than ~26 px would hand `ellipse` a negative radius
+    renderer.shadow(g.x,g.y,16*sh,7*sh);
     ctx.save();ctx.translate(g.x,g.y);ctx.scale(1,1/TILT);
     if(g.jitter)ctx.translate(g.jitter.x,g.jitter.y);
+    // Weight in the stride: a hop per hoof-fall in step with the walk frames, in whole pixels, and
+    // the lean `Goat.update` smooths into a change of pace. Turned about the hooves.
+    const FE=TUNING.goat.feel,spd=Math.hypot(g.vx||0,g.vy||0);
+    if(g.state==='idle'&&spd>30){const k=Math.min(1,spd/(TUNING.goat.speed||1));ctx.translate(0,-Math.round(Math.abs(Math.sin((renderer.t*8+(g.x||0)*0.05)*Math.PI/2))*FE.bob*k));}
+    if(g.lean)ctx.rotate(g.lean);
+    if(hop)ctx.translate(0,-Math.round(hop));
+    if(fid){
+      if(fid.kind==='hop'){if(fk<0.2)ctx.scale(1.07,0.91);else if(fk<0.8)ctx.scale(0.96,1.05);else ctx.scale(1.06,0.93);}
+      else if(fid.kind==='shake')ctx.rotate(Math.sin(fid.t*I.shake.freq)*I.shake.amp*(1-fk));
+      else if(fid.kind==='paw'){const n=I.paw.scrapes,s=Math.sin(fk*n*Math.PI);ctx.translate(Math.cos(g.facing)*I.paw.dist*s,Math.sin(g.facing)*I.paw.dist*s*TILT);}
+    }
     const fx=game.stairFx,climb=fx?clamp(fx.dir>0?fx.t:1-fx.t,0,1):0;
     if(climb>0){ctx.translate(0,-TUNING.stairs.rise*climb);ctx.scale(1-0.22*climb,1-0.22*climb);ctx.globalAlpha=1-climb*0.55;}
     if(g.state==='falling'){const F=TUNING.fall,d=clamp((F.time+F.back-g.timer)/F.time,0,1);ctx.translate(0,d*26);ctx.rotate(d*1.5);ctx.scale(1-0.72*d,1-0.72*d);ctx.globalAlpha=1-d;}
-    if(g.state==='roll'){ctx.rotate(g.rollSpin);ctx.scale(0.88,0.88);}
-    if(g.state==='windup')ctx.scale(0.85,1.1);
+    // A vault is not a tumble: stretched out long at the top of it rather than spun.
+    if(g.state==='roll'){if(lp){const k=Math.sin(clamp(lp.t/lp.time,0,1)*Math.PI);ctx.scale(1+0.1*k,1-0.06*k);}else{ctx.rotate(g.rollSpin);ctx.scale(0.88,0.88);}}
+    if(g.state==='windup'){const W=TUNING.goat.headbutt.windup,k=clamp(1-(g.timer||0)/W,0,1),a=g.aim||{x:0,y:0};
+      ctx.translate(-a.x*FE.pull*k,-a.y*FE.pull*k*TILT);ctx.scale(0.85,1.1);}
     if(g.state==='lunge')ctx.scale(1.15,0.92);
     if(g.state==='ko'||g.state==='stunned'){ctx.rotate(0.9);ctx.scale(1.1,0.8);}
     // The squash spring (game.squashGoat): a landed blow, a blow taken, the end of a roll.
     if(g.sqLeft){const a=g.sqLeft*Math.cos(TUNING.juice.squash.freq*g.sqT);ctx.scale(1+a,1-a);}
     if(g.invuln>0&&Math.floor(renderer.t*30)%2===0)ctx.globalAlpha*=0.5;
-    this.hornMods=game.mods;this.character(renderer,g,'sheep',40);this.hornMods=null;
-    // The blood is in his wool; the collar is over it, since a talisman has to read at any health.
-    if(g.maxHp-g.hp>0)this.wounds(renderer,g,g.maxHp-g.hp);
-    if(game.artifact)this.collar(renderer,g,game.artifact);
-    if(g.onFire)renderer.flame(0,-6,12,1,g.witchFire);
+    // Standing still he breathes: taller and a touch narrower from the hooves up, then back.
+    if(g.state==='idle'&&Math.hypot(g.vx||0,g.vy||0)<=30){const B=TUNING.goat.breathe,b=(1-Math.cos(renderer.t*Math.PI*2/B.period))/2;ctx.scale(1-B.wide*b,1+B.amp*b);}
+    // A glance is one facing aside and back; the facing is lent for the drawing and handed back.
+    const f0=g.facing,look=fid&&fid.kind==='look'&&fk>0.12&&fk<0.88;
+    if(look)g.facing=f0+fid.dir*Math.PI/4;
+    try{
+      this.hornMods=game.mods;this.character(renderer,g,'sheep',40);
+      // The blood is in his wool; the collar is over it, since a talisman has to read at any health.
+      if(g.maxHp-g.hp>0)this.wounds(renderer,g,g.maxHp-g.hp);
+      if(game.artifact)this.collar(renderer,g,game.artifact);
+      if(g.onFire)renderer.flame(0,-6,12,1,g.witchFire);
+    }finally{g.facing=f0;this.hornMods=null;}   // a throw mid-glance must not leave the simulation's goat turned
     ctx.restore();
+    this.goatFx(renderer,g,game);
     if(g.dazed>0&&!(game.intro&&game.intro.fade>0))renderer.drawStars(g.x,g.y,30,Math.min(1,g.dazed*1.5));
     if(game.touch.active&&game.state==='play'){const a=game.input.aim;ctx.fillStyle=PALETTE.bone;ctx.beginPath();ctx.arc(g.x+a.x*34,g.y+a.y*34,2,0,Math.PI*2);ctx.fill();}
   }

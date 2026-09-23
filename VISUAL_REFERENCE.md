@@ -131,3 +131,57 @@ before anything else on this list.
 Sources for the sales and price figures above are web search results gathered 22–23 Sep 2026
 (developer/publisher announcements, SteamSpy, Gamalytic, and Steam store pages checked live);
 figures move over time and should be re-checked before being quoted anywhere outward-facing.
+
+---
+
+## Part 3 — how much of the build should show on the goat's own body
+
+Asked 23 Sep 2026, because the project is leaning hard on the goat visibly wearing his build, and the
+comparables split into two camps that disagree about how much of that is a good idea.
+
+**The case for it.** The Binding of Isaac's transformations (three items from one of several sets
+change Isaac's model outright, plus individual items retint or resize his tears and speed) are one of
+the most-loved parts of the item system — Steam threads exist purely to rank favourite
+appearance-changing items, people picking them for how they *look* as much as what they do
+([top 25 favorite appearance changing items](https://steamcommunity.com/app/250900/discussions/0/405692224223485216/)).
+Vampire Survivors' weapon evolutions pair the same idea with a wall-of-projectiles payoff — described in
+reviews as satisfying specifically because the escalating visual clutter *is* the power spike.
+
+**The case against overdoing it.** Risk of Rain 2 puts every item literally onto the character model,
+and it is a live, unresolved argument in its own community, not a settled win: alongside players who
+like reading a build at a glance, there is a standing complaint thread
+([I kinda preferred when items didn't appear on my character](https://steamcommunity.com/app/632360/discussions/0/2968393780776044369/))
+and enough demand for it that mods exist purely to hide item displays
+([PartialItemDisplay](https://thunderstore.io/package/KingEnderBrine/PartialItemDisplay/)) because past a
+certain item count the model stops reading as a character and starts reading as clutter — one player's
+own word for the end state was "a drugged up murder hobo." Dead Cells sits at the other extreme: its
+real build-shaping items (mutations) change nothing about how the character looks, only outfits
+(cosmetic, unlocked separately from any run) do — and there is no comparable complaint thread wishing
+mutations were visible. A game praised specifically for combat feel did not need the build to be worn to
+land that feel.
+
+**Why this matters more for Goat Out than for any of the three.** Ground rule 8 (`CLAUDE.md`) already
+commits to a poster-flat silhouette that "reads at a glance" with no HUD needed to explain a threat —
+that is the exact property RoR2's item pile-up erodes past a certain density, and it is a harder
+constraint here than in RoR2: the camera is smaller and higher relative to the goat than RoR2's
+over-the-shoulder view, run speed is high, and pillar 3 already spends the silhouette's legibility
+budget on reading a man's club, a rack, a lit fuse. A goat wearing eight readable changes at once is
+competing with all of that for the same few dozen pixels.
+
+**The number, worked from what already exists.** `BOON_SLOTS` (`js/tuning.js`) is `{ active: 1,
+passive: 2 }` per button, on two buttons (headbutt, grab), plus `general: 4` body slots — ten boon slots
+a run, plus one talisman worn at a time (seventeen to choose from, `js/talismans.js`). Call it a dozen
+things worn across a run, which is the ceiling the project is already sized to, not a new number to
+invent. Isaac's own most-loved transformations are the exception, not the rule, even in Isaac — most of
+its several hundred items change nothing about how Isaac looks. The read from both camps together: **a
+small, fixed set of showy, deliberately-chosen changes beats trying to cover the slot count.** Something
+under eight visibly-different states for the goat — realistically fewer once actives, passives and
+talismans are triaged for which ones are worth a redraw — sits inside what both Isaac and Dead Cells
+prove works, and stays clear of the RoR2 failure mode. This matches what is already built rather than
+arguing for more of it: `PIXEL_ART.hornsOf` / `.horns` (LONG HORNS, BOMB CHARGE, SPLASH), `.face`
+(THE ORACLE, THE FULL THROAT, VENOM SPIT), `goatFx` (DRAGON BREATH, venom drip) and the collar pendant
+are already exactly this shortlist, not a first pass toward covering every boon — the research says stop
+there in spirit, not extend it slot-for-slot.
+
+Sources for this section: Steam Community discussion threads and Thunderstore linked inline above,
+gathered 23 Sep 2026.

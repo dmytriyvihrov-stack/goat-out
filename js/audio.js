@@ -310,7 +310,7 @@ class GameAudio {
       if (this.preview) this.rememberLabAction(kind, due);
       return;
     }
-    if (kind !== 'kill') return;
+    if (kind !== 'kill' && kind !== 'cleared') return;
     const old = this.musicEvents.find((e) => e.kind === kind && e.due === due);
     if (old) old.count = Math.min(L.eventStackCap, old.count + 1);
     else if (this.musicEvents.length < L.eventQueueCap) this.musicEvents.push({ kind, due, count: 1 });
@@ -338,6 +338,16 @@ class GameAudio {
       this.tone(root * 16 * Math.pow(2, theme.scale[4] / 12), t + stepLen * 2,
         stepLen * 2, { type: 'sine', gain: gain * 0.65, bus: this.layerBus });
       if (kills > 1) this.noise(t, 0.12, { gain: gain * 0.25, hp: 5000, bus: this.layerBus });
+    }
+    // A room's last man (JUICE: room-clear sting): up the scale to the octave, after the kill's own
+    // accent has spoken, so the room going quiet has a sound of its own.
+    if (due.some((e) => e.kind === 'cleared')) {
+      this.scoreTrack = 'cleared';
+      const gain = TUNING.audio.layers.clearGain * headroom;
+      [0, 2, 4, 7].forEach((d, i) => {
+        const f = root * 8 * Math.pow(2, (d < theme.scale.length ? theme.scale[d] : 12) / 12);
+        this.tone(f, t + stepLen * (4 + i), stepLen * (i === 3 ? 4 : 1.4), { type: 'triangle', gain: gain * (i === 3 ? 1 : 0.8), bus: this.layerBus });
+      });
     }
     for (const action of due.filter(e => MUSIC_ACTIONS[e.kind])) {
       this.scoreTrack = action.kind;
@@ -834,6 +844,8 @@ class GameAudio {
   sfxToll() { if (!this.ctx || this.muted) return; const t = this.now() + 0.15; this.gong(t, 0.6); }
   sfxHit() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(180, t, 0.2, { gain: 0.5, sweep: 0.4, type: 'square' }); this.noise(t, 0.1, { gain: 0.2 }); }
   sfxFire() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.35, { gain: 0.25, hp: 900, lp: 5000 }); }
+  // A lit fuse: a thin hiss for as long as it has left to burn.
+  sfxFuse(dur) { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, dur, { gain: 0.1, hp: 3200, lp: 8000 }); }
   sfxSwing() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.1, { gain: 0.15, hp: 800, lp: 4000 }); }
   // Somebody going over an edge: a shout that runs away downward, and the air after it. The pitch
   // falls the whole way rather than stopping, because what sells a hole is that the sound keeps going.
@@ -845,6 +857,8 @@ class GameAudio {
     this.noise(t + 0.06, 0.62, { gain: 0.15, hp: 180, lp: 2400 });
   }
   sfxRoll() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.22, { gain: 0.3, hp: 260, lp: 2200 }); this.tone(160, t, 0.18, { gain: 0.25, sweep: 0.45, type: 'triangle' }); }
+  // A barrel on its side, a knock a turn: wood on stone, lower and quieter as it slows (`k` 1 → 0).
+  sfxStave(k = 1) { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(95 + 70 * k, t, 0.07, { gain: 0.08 + 0.16 * k, sweep: 0.6, type: 'triangle' }); this.noise(t, 0.035, { gain: 0.04 + 0.08 * k, hp: 150, lp: 1400 }); }
   // The hound: a jaw snapping shut, dry and close.
   // A rifle cocked: the bolt back and home, two dry clicks of metal a tenth of a second apart. It is
   // the one tell a rifle gives, so it is bright and short and sits above everything else in the mix.
@@ -965,4 +979,8 @@ class GameAudio {
     this.tone(f * 1.5, t + 0.03, 0.14, { type: 'triangle', gain: 0.14, sweep: 1.5 });
   }
   sfxCard() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(60, t, 0.9, { gain: 0.8, sweep: 0.5 }); this.noise(t, 0.3, { gain: 0.2, lp: 600 }); }
+  // COLD EYE: the world winding down — one falling note and a breath of air, nothing that hides a footstep.
+  sfxSlow() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(330, t, 0.6, { type: 'triangle', gain: 0.16, sweep: 0.45 }); this.noise(t, 0.25, { gain: 0.05, hp: 2000, lp: 6000 }); }
+  // LEAPFROG: hooves off a man's back — a short hollow knock under the tumble's own whoosh.
+  sfxVault() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(140, t, 0.12, { type: 'square', gain: 0.18, sweep: 0.6 }); this.noise(t, 0.08, { gain: 0.14, lp: 900 }); }
 }

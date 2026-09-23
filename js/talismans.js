@@ -628,9 +628,10 @@ const Talisman = {
       if (worn) r.devButton(d, pad + 36 * s + 96 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', 'tal-off', false);
       a.tiers.forEach((tier, ti) => {
         const cx = pad + leftW + ti * colW, cw = colW - 10 * s;
-        ctx.font = `400 ${8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.72)';
-        r.wrap(tier.desc, cw).slice(0, 2).forEach((l, li) => ctx.fillText(l, cx, y + 12 * s + li * 10 * s));
-        let px = cx, py = y + 28 * s;
+        // Three lines: a tier states itself whole now (`say`), not as a diff on the one before.
+        ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.72)';
+        r.wrap(tier.desc, cw).slice(0, 3).forEach((l, li) => ctx.fillText(l, cx, y + 11 * s + li * 9 * s));
+        let px = cx, py = y + 35 * s;
         for (const key of Object.keys(tier.params || {})) {
           const val = tier.params[key];
           if (val !== null && typeof val === 'object') continue;

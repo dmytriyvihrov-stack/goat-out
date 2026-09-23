@@ -5,6 +5,406 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.61 — THE DARK, barrels, three souls, the picture of the floor
+
+The build tag in the corner said 1.53 through 1.56–1.60; it says 1.61 now.
+
+- **A floor with the lamps out** (`darkLevel`, `TUNING.dark`, `js/dark.js`). Any level can also be played
+  dark from LEVELS (the top toggle now walks off → THE TRIP → THE DARK) or `#dark`. Only what burns
+  lights a room — braziers, lamps, fire on the floor, a burning man, a soul-bearer, souls, the stairs,
+  a blast, a muzzle flash — cast through the tiles, so no flame lights the far side of a wall.
+- **You hear before you see.** Within `dark.near` (4.5 tiles) of the goat the floor comes up a little
+  and whatever stands on it is a black silhouette with a cold rim: a shape, never a face. The goat has
+  a small patch of his own so you can read which way he faces.
+- **Eyes.** Seers, hounds and wraiths show two points of light from up to 24 tiles, in your line of
+  sight, never from behind, shut while they are down, blinking.
+- **Still fair.** Every windup, the rifle's line, a hound's run, a rune, and what hangs over a man's
+  head (his bark, his notches) is laid back over the dark.
+- **Gentler, fewer traps.** The dark floor's curve is cut (×0.8 → ×0.72) and so is the head count a
+  room may hold (×0.7), trap rooms and grating are halved, and there is no killbox: 80–90% of the
+  threat of the floor it darkens (`node tools/balance.js`, new "the dark, of" block).
+- **Lamps, and rooms with none.** Rooms with no flame get one to three lamps against their walls, and
+  about a third of them are left black on purpose. A lamp tips to a headbutt like any other: the oil
+  burns a while and then that room is black too. `GEN_RULES.dark`.
+- **The cult is in the dark too.** Out of the light a man sees the goat 3.5 tiles and no further, a
+  hound 5; standing in firelight you are seen as before. A trail goes cold in 1.2 s, after which he
+  hunts by what he hears, and every noise moves where he goes. No rifles on a dark floor.
+- **The seer casts by ear.** A noise he cannot see the maker of, up to 9 tiles off, is where he paints
+  his rune — never one a man of his own is standing in. Whatever is there when it goes off, burns.
+- **In the run.** THE CAVE is played dark in every run (`dark.runAt`): the floor near the fourth with
+  no rifle to introduce, only hounds and seers, and it still sits between THE YARD and THE ROAD on the
+  threat ladder (53 against 43 and 97).
+- **Fix: a gallery could break its own cap.** Three rifle posts plus a full crowd went over
+  `caps.men + 2`; the crowd is trimmed to fit.
+
+### The picture of the floor
+
+A cleared floor is a painting of the run (CONCEPT.md, "blood is paint"; MARKET.md calls it the one
+marketing asset the systems make by themselves), and now the game shows it (`js/painting.js`).
+
+- **The clear screen's last card is the floor, whole.** Baked once at the stairs: the floor plan in the
+  level's own colours, the decal canvas's blood, bodies and scorch laid over it texel for texel, the
+  line he ran, a skull where each man went down and his horned head where he got out. A level six to
+  ten times wider than tall is cut into up to four rows, always between rooms, whichever count comes
+  out nearest a screen's shape. A room he never opened sinks back into the rock; a niche nobody broke
+  into stays wall. The rows wipe in over a ghost of themselves in the order the run went, the score
+  sits under it where the old score card said it, and the press that leaves waits a beat so the
+  click that climbed the stairs cannot skip it.
+- **SAVE THE PICTURE** hands it over as a PNG, twice its own pixels, with the floor's name, the score,
+  the kills and time, and the seed that deals the same floors in a band underneath. On the published
+  page it goes through the viewer's download prompt (the artifact now declares `downloads`);
+  locally, an ordinary download.
+
+### A second polish pass
+
+Three readers over everything changed since 1.55, and the bot through every floor with an error
+counter on (THE ALTAR to THE ROAD and THE BRIDGE stair to stair, THE CAVE dark, the rest in part, a
+trip), drawing every third step. Nothing threw; what follows is what was quietly wrong.
+
+- **The picture's card on a phone held sideways.** At 390 px tall the line under the score sat on
+  "tap to go on" and under SAVE THE PICTURE. The picture now shrinks to leave room for both; on a
+  phone held upright, where there is no room beside the words, SAVE stands centred above them, and
+  it no longer sits on the dev drawer's word in the corner.
+
+- **The words on a dark floor were under the dark.** THE LAMPS ARE OUT. YOU HEAR THEM BEFORE YOU SEE
+  THEM sat in 98% black wherever no brazier reached it — the one line that says what the floor is.
+  On a dark floor the floor words go down over the dark now, as the comment always said they did.
+- **A seer who cast by ear knew where you were.** A rune painted at a sound from an idle seer sent
+  him into the chase afterwards, and the chase walks the flow field straight to the goat. He goes to
+  see what he burned now, unless he was already hunting you.
+- **A man whose trail went cold went to look at his own feet** about one time in twenty: his last
+  chase shout was still in the air the step he stopped hunting. A man never investigates a cult
+  noise inside a tile of himself (`ai.ownNoise`).
+- **Of two hounds, only one circled away from the other.** The first to run each step looked for a
+  packmate in a list that was still being built and never found the second.
+- **A lit barrel was walked round like a brazier**, at the edge of its 2.6-tile burst, instead of
+  out of it. Straight out, as from the wheel. And on a dark floor it was drawn as a light the cult
+  could not see you by: standing by burning oil you are seen as in firelight now.
+- **The picture showed every secret niche** as a one-tile notch in the wall: its tile in the wall row
+  is floor in the grid, covered in play only by the crack. It stays wall until broken.
+- **Cornered, the rifle and the seer pushed into the wall** they were backing into. With nowhere open
+  behind them they hold still, which is what the comment above it promised.
+- **DRAGON BREATH coughed** a handful of steam puffs (or twenty flame cells) out of one nostril in the
+  frame he came out of a roll, a fall or the stairs. It starts again from that frame.
+- **GOAT GRID's sixteen goats shared the real goat's plume** through the painter they were copied
+  from, and aged it sixteen times as fast. Each cell has its own.
+- **Latent, closed.** A LEAPFROG vault drawn higher than 26 px would have handed the shadow a negative
+  radius (and lost the rest of every frame of the vault); a throw in the middle of a glance fidget
+  would have left the simulation's goat turned 45°; the dark's mask buffer did not keep the larger of
+  its old and new sizes as it meant to.
+- **Numbers into `tuning.js`** (ground rule 2): the barrel's Butcher stagger, rebound and sideways
+  bowl, the moment LEAPFROG's hooves come down (`over`), the Butcher's lane give-up, how fresh a
+  sound a seer paints at and how near his own men it may be, how near the goat a noise is walked to
+  down the route, and how far a man leans out of a brazier's heat stepping round it.
+
+### A polish pass
+
+A bot run through every floor (lit, THE CAVE dark, a trip) with an error counter on, and frames
+pulled from a staged fight at each step of a headbutt. Nothing threw; what follows is what read wrong.
+
+- **A man in front of the goat stands in front of him.** The goat was always drawn last, so a man a
+  step south of him — in front, at this camera — had the goat's body over his hood, and every body
+  covered the bark of whoever stood behind it. Standing men and the goat are drawn in order of their
+  feet now (the goat over everyone while he is in the air over a man's back); what a man lays on the
+  floor — a windup's strip, the rifle's line, a soul's haze — goes down under all of them first, and
+  what hangs over a head (his bark, the search mark, his notches) goes on after all of them. Two men
+  a step apart shouting at once no longer print their words over each other: the plate further from
+  the camera steps up clear of the nearer one.
+- **A press a beat early is kept** (`goat.buffer`, 0.12 s; on the JUICE backlog). A headbutt pressed
+  while he is still recovering, or a roll pressed a moment before it is back, goes the frame he is
+  free instead of being dropped. It is not a cancel: the recovery is eaten whole, and a press made
+  earlier than the last 0.12 s of it is still lost. Butting the bars of the pen no longer asks for
+  the rhythm to be hit exactly.
+- **The room going quiet has a sound** (JUICE backlog: room-clear sting). When the last man of a
+  room goes down, the score answers the kill's accent with three notes up the scale to the octave.
+- **Spent cases** (JUICE backlog). A rifle throws a brass case out of the side of the breech, toward
+  the camera; it bounces once and stays on the floor.
+- **A rolling barrel knocks on the stone** every other turn of its staves, slower and quieter as it
+  slows (`staveEvery`, `sfxStave`).
+- **Words you can read.** TOO QUICK, TOO BIG, THE SOUL HOLDS HIM, NOTCHED, SNAPPED, NO ROOM, CLICK,
+  N HEARD IT and the rat ogre's STUN HIM FIRST were written in `ash`, under 2:1 against the floor —
+  and they are the only place the game says why a verb did nothing. A lighter ash now (`ashHi`).
+  The door's countdown and IT TAKES IT went from timber brown to ochre; WITCHFIRE from the cult's
+  dark violet to the witch's.
+- **The floor's control lines agree with each other.** `WASD, TO MOVE` stood over three lines
+  written `LEFT CLICK - HEADBUTT`; it is `WASD - MOVE` now, and the touch lines match.
+- **The title screen.** LEVELS says the floor can be played straight, as its trip, or dark (it said
+  only "or its trip"); BEST said "best run 0" until a run was finished, and now counts the levels on
+  the board instead.
+
+### Words that say what a thing does
+
+A playtest note: the soul cards read well and said nothing — DEAD WEIGHT was "everything it goes
+through loses its head", with no number anywhere. Every description in the game was read against
+the code that it describes.
+
+- **Every soul card has its numbers.** Under the one plain sentence of what the soul is, a line in
+  the fire colour says how much: DEAD WEIGHT dazes everyone within 1.6 tiles of your path for 0.7 s;
+  IRON SKULL takes recovery from 0.38 s to 0.19 s; LOOSE JOINTS rolls 2.53 → 3.42 tiles and comes
+  back in 0.61 s, not 1.35. The line is built off the soul's own params when it is drawn
+  (`BOONS[].stat`), so an edit in the BOONS tab changes it too. The card grows to fit.
+- **Two cards were wrong.** RAW THROAT said "half again as far"; it is 6.8 → 13 tiles, and only for
+  THE FULL THROAT — the call, the breath and the spit keep their own reach. It says so now. SURE
+  HOOVES said "faster than anything in the building"; it is +13%.
+- **Fix: RAW THROAT taken before a voice was lost.** THE FULL THROAT, DRAGON BREATH and VENOM SPIT set
+  the cooldown outright, so a RAW THROAT picked up first had its halving thrown away (DRAGON BREATH
+  stayed at 5 s instead of 2.5). Actives are applied before passives now, whatever the order taken.
+- **The rail's notes have numbers too**, as they stand with every soul counted: reach and recovery on
+  the horns, how many bullets a held man stops and how long before he works loose, roll distance and
+  cooldown, what the voice reaches. BOMB CHARGE's note said a man "blows up a moment later" — he only
+  does if he dies against a wall or another man inside the fuse, and it says that. THE FULL THROAT
+  now says it no longer calls the room.
+- **A talisman tier stands on its own.** Tiers II and III were written as a diff on tier I, but the
+  second mouse sells only tier II and the third only tier III, so BUTCHER'S GREASE III never said men
+  slip on it and MASON'S MARK III never said a crate counts as stone. Each talisman now has one
+  `say(p)` that states any tier whole off its params; the typed lines are gone. MIRROR SHARD II no
+  longer promises a daze it never did (a parried man is thrown back), and CARPENTER'S AWL III no
+  longer sells "a thrown crate breaks on a wall", which every crate always did.
+- **Smaller.** The worn talisman's chip says what it is before its numbers. The empty slot no longer
+  says the mouse sells for the level's dead — she takes nothing. The crow's card says what it found
+  (a tier III talisman). PILGRIM'S SANDAL is for men on your heels, not men in the room. LIVING
+  SHIELD's swing and reload and the big grass's two hearts moved into `tuning.js`. The TALISMANS tab
+  shows three lines a tier.
+
+### A pass over THE DARK, 1.59 and 1.60
+
+A read of the new code against a bot run through every floor, lit and dark. No errors thrown
+anywhere; what was wrong was quieter.
+
+- **Hunting by ear followed the cult's own noise.** A man who lost the goat in the dark moved his
+  "last heard" to every noise in range, his own chase shouts (three a second, six tiles) included,
+  so when the trail went cold he went and investigated his own feet. The cult's shouts, swings and
+  casts are tagged `'cult'` now and only what the goat makes moves the hunt. Measured on THE ROAD
+  dark: of 19 men sent to investigate, none at his own spot; all within four tiles of the goat.
+- **The dark no longer drops a blow in mid-swing.** The 1.2 s cold trail applied in every state, so
+  a Butcher who lost sight during a charge was snapped out of the run before it could earn its wall
+  stun. It cools a hunt (`chase`, `noticed`, `investigate`) now, never a windup, swing or charge.
+- **CONTINUE kept the lights on.** A floor picked dark in LEVELS was saved without the dark and came
+  back lit, at the full curve, rifles and all. `darkAt` is in the save.
+- **A dark THE ALTAR had no altar.** Two checks asked `def === LEVELS[0]`; they ask `levelIndexOf`
+  now, and so does the `first` rule, which a dark first floor had skipped.
+- **Tall grass stopped lamplight.** Grass joins the sight block only beyond 1.5 tiles of the goat,
+  so a lamp's pool changed shape as he walked and could draw him black where the men (`litAt`) saw
+  him lit. Grass hides from eyes, not from a flame.
+- **MOTH hid you twice as fast.** The fidget clock (1.60) shared `goat.stillT` with MOTH and doubled
+  it; MOTH III hid a still goat after 0.6 s instead of 1.2, and never while he held anything. The
+  fidget has its own clock (`idleT`).
+- **`turnGrip` braked more than his run.** Pulling back during a recovery or a knockback braked the
+  drift 1.6 times faster, trimming a recovery that is meant to be eaten. Only his own run now.
+- **An escort in the corridor was "left behind" on the goat's side of the wall.** The clamp asked
+  which room an animal was nearest, and one half-way down the corridor out of the room counted as
+  behind. It asks the tiles now: a fill from the goat after the mouth is stoned (about 2 ms, once
+  a clamp).
+- **Smaller.** An escort far behind laid its route again every step (its two wants threw each
+  other's cached waypoint away); each want keeps its own. The dark's mask buffers are no longer
+  reallocated each time the camera crosses a tile. The escorts' shy and stray numbers moved into
+  `TUNING.beast`.
+
+### Barrels
+
+Asked for on 15 Sep 2026 ("barrels down the sides") and shipped then as crates, because there was no
+barrel to put there. There is now, and it is not a crate.
+
+- **A barrel of lamp oil** (`kind === 'barrel'`, `TUNING.prop.barrel`). Too heavy to lift. A headbutt
+  tips it onto its side and it rolls the way it was hit, 16 tiles a second and slowing gently: about
+  a room's length.
+- **It bowls; it does not kill.** Every man it meets goes along its line, a little to his own side,
+  at 1.35× its speed, and sees stars for 1.8 s; it keeps 80% of its speed for the next. A man near a
+  wall dies on the wall; a row goes down together and is the goat's to finish. The Butcher staggers
+  and it comes back off him; the rat ogre is not moved.
+- **Anything can send it.** A body thrown into a standing barrel at 5 tiles/s sets it rolling at 80%
+  of the body's speed (and still dies on it at splatting speed); a barrel rolled into another hands
+  the roll on; a charging Butcher sends it ahead of him. Square on a wall above 6 tiles/s the staves
+  go; slower, it lies there and can be butted again.
+- **Oil.** Flame under it or a burning man against it lights it: OIL, one flame on it, 1.6 s, then it
+  goes up 2.6 tiles wide for 7 s wherever it has rolled to — wider and longer than a crate. Into a
+  brazier it goes up at once; witchfire lights it violet. Lit, it is a hazard to the cult's trap
+  sense: a man who reads it keeps out of its reach, and a man who fails the roll walks in. On a dark
+  floor a lit barrel is a light, as bright as a man alight.
+- **Where.** One or two, in about a room in three, from THE YARD on (never the altar or the cave):
+  where a boulder may stand, floor all round and clear of the way in, never in a teaching, rest or
+  trap room or a narrow set piece; arenas are allowed. Rolled off a stream of their own so the rest
+  of a level's rolls stay where they were. 1.7–3.8 a level. `GEN_RULES.barrels`; the generator sweep
+  has 0 fails and `node tools/balance.js` holds.
+- Drawn from the barrel already in the environment atlas (it was only ever scenery in the ritual
+  room): standing as painted, lying in whole quarter turns. In the FIXTURES tab and the JUICE list.
+
+### Three souls off the backlog
+
+The deck candidates asked for on 16 Sep 2026 ("the deck at 36, restated"), built as ordinary cards
+in the deal as it stands. The fourth candidate — three seconds of invulnerability after a hit — was
+left out: ground rule 4 allows no i-frames beyond the roll's.
+
+- **LEAPFROG** (roll, active). Rolled at a man in front of you — up to 3 tiles, within 34° of where
+  you are running, or pointing when you stand still — the tumble becomes a vault: 0.36 s in the air
+  over his back, landing a tile past him, and he reels for 0.9 s (a windup under way is lost). It
+  never kills; what kills is the wall he was facing when you came down behind him. A vault costs
+  twice the roll's cooldown; with nobody in front, or no floor behind him (stone, a hole, fire,
+  furniture, another man, a trap about to bite), it is the ordinary roll at the ordinary price. In
+  the air he touches no man and no hole takes him. Drawn as a lift off his shadow, stretched, not
+  spun; the rail's chip becomes an arc over a man and its drain shows what the last roll cost.
+  (`Goat.leapTarget`, `leapLands`, `goat.leap`.)
+- **COLD EYE** (grab, passive, no BY THE COLLAR needed). Anything into his mouth slows the world to
+  35% for up to 2 s of real time, so a throw can be aimed; the throw ends it at once, and it comes
+  back once every 5 s. The grab chip drains while it lasts. (`game.coldEye`, `game.aimSlow`.) Until
+  now the grab had no passive a goat without the collar could be dealt.
+- **FOUR STOMACHS** (body, passive). Grass is worth a heart more — +2, and the big patch +3 — and
+  he has one heart less. A card that argues with itself. The mouse's pail is milk and is unchanged.
+- `BOON_POWER` weighs them 1.1, 0.9 and 0.5; `node tools/balance.js` holds. Two JUICE rows.
+
+## 1.60 — weight in the stride, a goat who fidgets, bodies that lie down
+
+- **The stride has weight** (`goat.feel`). He leans into a change of pace and a touch forward at a
+  full run, and hops a pixel on each hoof-fall in step with the walk frames. Setting off stretches
+  him with a puff behind; letting go at speed settles him. Asking back against your own run grips
+  `turnGrip` (1.6) times harder, squashes him and sprays dirt ahead. That is the one simulation change:
+  the braking half of a full reversal is 1.6 times quicker, about 0.30 s → 0.24 s end to end at top
+  speed. Everything else is drawn.
+- **Standing still is not a statue** (`goat.idle`). After 1.4 s, every few seconds, one fidget: a
+  glance one facing aside, a little pronk, a shake of the head, or a hoof pawing the floor with a puff
+  of dirt. All drawn only. The facing is lent to the drawing and handed back, so a butt still goes
+  where you aim.
+- **Anticipation**: the headbutt windup draws him back `feel.pull` px off the aim before the lunge
+  (this was on the JUICE backlog).
+- **A dead man lies down** (`effects.corpse`, `CombatFX.corpseSprite / updateGround / pool`). He keeps
+  a third of the speed he died with, lands, skids a little leaving a smear, and rolls onto his side at
+  an exact quarter turn, where his pixels stay square instead of stair-stepping. He twitches twice, and
+  a dark pool seeps out from under him over 2.6 s, then goes into the stains. He is solid now; at 0.88
+  alpha the floor showed through and he read as a ghost. He is a shade duller than the living and lies
+  on his own silhouette for a shadow. A burnt man leaves no pool.
+- **Fix: blood with no direction came out square.** `World.splat` with a zero direction measured every
+  cell as the centre, so a bomb (size 30), the goat's own death, the hen, a talisman and every landing
+  piece of gore painted a hard red box. It is a round, lobed pool now, with its drops scattered round it.
+
+## 1.59 — the escorts find their way, and you can see one you left behind
+
+Measured first, with a bot (`tools/escorts.js`) that breaks a level's coop, runs the goat to the
+stairs round the furniture and stands two seconds over every man on the way, and asks whether the
+animal came. Before, on seven levels by three seeds: the hen 21 of 21; the goose 14 of 21, standing
+somewhere for good in ten of them; the crow **none** of 21, eighty tiles back and walking into a wall.
+
+- **Animals take the men's routes** (`Beast.way`): down the field laid round the furniture, pulled
+  tight to the furthest point they can reach in a straight line, the 1.57 `pickWaypoint` in a smaller
+  body. The goose's beak stayed against the first lamp on its tile; the hen and the tortoise did the
+  same against tables. The way out (`Beast.exit`) is laid round the furniture too, again every second,
+  since furniture moves. Past the ninety tiles the goat's field reaches, a straggler heads down the
+  way out instead of into the nearest wall.
+- **The goose leads.** It was slower than the goat it led (150 against 168, 210 run up). Now 200, and
+  1.35 times that while he is ahead of it (`goose.hurry`). Waiting, it looks back at him.
+- **The crow eats and moves on** (`crow.feedFor`, 2.5 s a body). It sat on each until the body aged
+  out, fourteen seconds a man. It still falls behind a goat who does not fight — that is its rule — but
+  it comes: standing at the stairs, the longest wait measured was thirteen seconds.
+- **The hen and the crow keep out of reach** (`Beast.shy`, `beast.shyR`): a man awake and on his feet
+  within 2.4 tiles sends them round to the far side of the goat, out of the arc of a club aimed at him.
+  The cult still does not go for them; a swing can still find one.
+- **One left behind is not a surprise at the stairs.** Out of the picture, its own sprite on a pip at
+  the edge of the screen points at it (`Renderer.drawStrays`); past eleven tiles it calls every few
+  seconds. One room from being walled in, the pip goes red and it calls twice as often. Walled in it is
+  lost — that is the price of not keeping its pace — and the goat is told: THE CROW WAS LEFT BEHIND
+  (`Beast.lost`). It used to stay alive in the dark with nothing to say it had happened.
+- **Smaller things.** A tortoise or a hen down a hole says THE TORTOISE FELL. A coop the goat walked
+  past says IT BROKE OUT for anything but the hen. The goose, the crow and the tortoise stop facing
+  right when they stop moving.
+
+- **A step over a drop slides along the lip** (`Beast.step`) instead of being refused whole, and the
+  crow only flies at a body it has a straight run to over floor: on THE RAFTERS it stood at the edge of
+  a hole for good, trying to walk to a body on the far side.
+
+After, same bot and seeds: the goose never stuck, under a tile off the lead on average, and at the
+stairs every time the bot itself got there (19 of 21; the other two are the bot lost on THE OSSUARY);
+the hen 21 of 21. The crow, with a goat who never once waits for it: 3 there on arrival, 9 walled in —
+which is the rule — and in 12 of the 21 it reached him within 13 seconds of standing at the stairs.
+
+## 1.58 — fire and blasts in the game's own pixels
+
+The playtest note was "explosions and fire look like they are from another universe", and they were:
+every flame, blast and blood spray was a frame off a painted sheet (`effects.png`, generated at 2048 px
+and shrunk with smoothing on, a red fringe round every flame) laid over a world that went Pixel 2.5.
+
+- **Everything that burns or goes off is baked pixel art.** `CombatFX.flameFrames` and
+  `CombatFX.burstFrames` build their frames at start, one texel a world pixel (`TUNING.effects.pixel`,
+  the units' grain), out of five flat colour bands, and draw with smoothing off. A flame is a
+  teardrop eaten from the top by noise scrolling up through it, sparks baked on the same loop. A blast
+  is a white flash and a star of rays, then a fireball of puffs cooling band by band into soot lit from
+  above, rising and ordered-dithered away. Dust (doors, crates, a man burnt out) is the same cloud
+  with no fire in it; a kill's spray is drops with tails that break off, not a painted ink splash.
+- **Flames come in whole-pixel sizes.** The sin wobble on a floor fire's, a brazier's and a lamp's size
+  was taken out: with baked sets it would have flicked between shapes every frame. The loop is the
+  motion now, and every burning tile starts its loop at a different frame.
+- **A blast weighs something without shaking the picture** (shakes stay the goat's alone): embers
+  streaking out past the cloud, the room lit for an instant (`blast.light`), a pixel shock ring on the
+  floor, a screen flash and a lens punch under `juice.screen`, and a darker soot column that starts
+  a beat late and goes on rising after the fireball (`blast.soot`, `sootAfter`, `sootLife`).
+- **The rest of the effects moved onto the grid with it.** Rings (`game.ring`: the scream, impacts,
+  kills, bells) are cells, not stroked arcs (`CombatFX.pixelRing`). Particles snap to world pixels and
+  sparks are runs of cells. The muzzle flash is a tongue of cells. Flying blood drops and splinters are
+  cells. Burning grass wears small baked flames. On the floor, a blood splat is a lobed pool of cells
+  with a darker rim and a wet glint, drops are cell discs (`CombatFX.cellDisc`), and scorch is soot
+  dithered out to nothing instead of an airbrushed blot.
+- **Cheap to carry.** Frames build lazily, one the first time it is shown, and `CombatFX.warm` bakes
+  every size a level asks for one frame a tick after load, so the first bomb of a run does not pay for
+  its own frames. Noise is sampled once per size and read shifted per frame.
+- **`js/combat-assets.js` is gone** (1.2 MB): both HTML files lost its script tag. At the next deploy
+  pass `"js/combat-assets.js": null` in the publish `files` map. The sheet and its packer stay in
+  `assets/combat-fx/` and `tools/` for history.
+
+## 1.57 — the cult finds its way: routes for the Butcher and the hound
+
+Measured first, with a harness that drops a goat and one man in random spots of every room of every
+level and counts who never gets to him. Before: the Butcher never arrived one time in seven (six in
+forty on THE CAVE), a hound or a clubman now and then, always the same way — pushing at something.
+
+- **Routes are pulled tight and walk round the furniture.** `Enemy.pathDir` walks the field
+  `ai.path.ahead` tiles forward and heads for the furthest point of it his body reaches in a straight
+  line (`bodyClear`: his middle and both shoulders against stone and holes, his whole width against
+  furniture). The field it walks, `World.route`, steps round the tiles standing furniture is in
+  (`World.setFurniture`); `flow`, which everything else asks, is untouched. No more zigzag down the
+  tile grid, no more nose into a lamp standing in the middle of his tile.
+- **A body wider than a tile has its own field.** `World.routeW` is laid on the corners of the grid:
+  a corner with four open tiles round it is a spot the Butcher (and the rat ogre) can stand, and the
+  step between two such corners is one he fits through. The tile-based version still took him at the
+  pinch between two offset stubs of wall, 32 px for a 40 px body. Only filled while such a body is awake.
+- **Pinned is noticed.** `Enemy.unstuck`: half a second of chase with under a third of a tile covered
+  and he steps off along the most open heading that still points at the goat. Not while he is leaning
+  on a shut door — that is how a door is opened, and a route that stopped short of the door left a
+  Butcher standing two tiles off it.
+- **Heat is walked round, not bounced off.** Inside a brazier's berth a man used to be sent straight
+  out and walked straight back in, rocking there with a body's width of floor to pass by. He slides
+  round anything that stays put now; the wheel's arms still send him straight out.
+- **Noise is followed round corners.** A noise near the goat on the far side of a wall is walked by the
+  route instead of in a straight line into the wall.
+- **The Butcher leads his charge** (`butcher.chargeLead`, `leadMax`): aimed at where you are going,
+  and the strip on the floor swings with it through the windup. Running on across his line is running
+  into it; breaking off after he leaves his feet is the answer.
+- **The Butcher steps round furniture to get a charge** (`findLane`, `laneLook`, `laneTime`): with a
+  pillar or table between him and a clear run, he walks a tile or three aside to a spot with a line on
+  you first. A spot he is not closing on is dropped.
+- **The hound goes round a wall, not along it.** A goat near him on the far side of stone had him
+  circling on the wrong side of it; he takes the route until there is a line. From well outside the
+  ring (`dog.ringIn`) he runs the route in rather than a straight lean across a room of pillars.
+- **The hound stops shivering in corridors** (`dog.flipGap`): the ring's turn-round could fire every
+  frame with both sides walled. **A pack spreads round you**: with another hound near, he circles away
+  from it. **Backing off runs round what is behind him**, for the hound, the rifle and the mage; a rifle
+  or a mage with nowhere to go but toward you holds his ground instead of pushing into the corner.
+- **The hound gives up a run when the floor under him arms.** He used to crouch a whole second on a
+  grating plate he had just tripped. Four hound deaths to the grating in fifty on THE RAFTERS, one now.
+
+Result on the same harness, all eight levels: every Butcher, hound and clubman that can physically
+reach the goat does. The step on a late floor with fourteen men chasing is 3.2 ms.
+
+## 1.56 — antlers, and the souls you can see on his face
+
+- **LONG HORNS is an active on the headbutt.** As a passive it sat beside BOMB CHARGE or SPLASH and
+  was too much to have for free; now it takes the butt's one active slot. Same numbers. He wears it
+  as a stag's antlers, built off each horn in the sprite's own pixels (`PIXEL_ART.antlerOf`), and the
+  BUTT chip grows tines.
+- **The scream souls show.** THE FULL THROAT draws his mouth out into a horn's bell, a size up while
+  he shouts. VENOM SPIT: froth at the lips and now and then a drop off the chin onto the floor.
+  DRAGON BREATH: steam off the nostrils nearly all the time, and every few seconds a lick of flame.
+- **THE ORACLE opens a third eye** between his two; it blinks on its own.
+- **He breathes** standing still.
+- All of it is hand-drawn pixels on the goat's grid (`PIXEL_FACE_ART`, `TUNING.goat.face`).
+
 ## 1.55 — all pixel, and a lighter build
 
 - **Every floor and wall is pixel art.** The square-walled levels were still painted tile sets, one per

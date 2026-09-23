@@ -55,7 +55,7 @@ const GEN_RULES = [
     } },
   { id: 'first', text: 'The run opens on one clubman, standing in the only way out of his room.',
     check: (L) => {
-      if (LEVELS.indexOf(L.def) !== 0) return null;
+      if (levelIndexOf(L.def) !== 0) return null;
       const r = roomsOf(L).find((x) => x.spawns.length);
       if (!r) return 'no fighting room at all';
       if (r.spawns.length !== 1) return `it holds ${r.men.join(', ')}`;
@@ -213,7 +213,7 @@ const GEN_RULES = [
   { id: 'milk', text: 'Milk is on a rhythm: never more than heal.every rooms dry (heal.gapMax from level 4), never in a set piece, never in a fire.',
     check: (L) => {
       const n = L.def.rooms;
-      const limit = LEVELS.indexOf(L.def) >= 3 ? TUNING.prop.heal.gapMax : Math.ceil(TUNING.prop.heal.every);
+      const limit = levelIndexOf(L.def) >= 3 ? TUNING.prop.heal.gapMax : Math.ceil(TUNING.prop.heal.every);
       const bowls = L.props.filter((p) => p.kind === 'heal');
       const rooms = bowls.map((p) => roomAt(L, p.x, p.y)).filter(Boolean);
       // A heart you have to pay a heart for is not a heart: no bowl stands in a brazier or under a lamp.
@@ -266,7 +266,7 @@ const GEN_RULES = [
       const t = L.props.filter((p) => p.kind === 'shrooms');
       if (!t.length) return null;
       if (t.length > 1) return `${t.length} tufts`;
-      const li = LEVELS.indexOf(L.def);
+      const li = levelIndexOf(L.def);
       if (L.def.shroom || li < 0 || li >= LEVELS.length - 1) return 'a tuft on a level with no level after it';
       const r = roomAt(L, t[0].x, t[0].y);
       if (!r) return 'a tuft outside any room';
@@ -292,6 +292,23 @@ const GEN_RULES = [
       if (L.props.some((p) => p.kind === 'spire')) return 'stone teeth on the trip';
       if (L.tiles.some((t) => t === T.PIT)) return 'a drop on the trip';
       if (L.rooms.some((r) => r.isTrap)) return 'a trap room on the trip';
+      return true;
+    } },
+  { id: 'dark', text: 'A dark floor is pockets of light: every arena and rest room has a flame, some rooms have none, and it is gentler than the floor it darkens, with fewer traps, no killbox and no rifle.',
+    check: (L) => {
+      const def = L.def;
+      if (!def.dark) return null;
+      const base = LEVELS[def.darkOf];
+      const flame = (r) => L.props.some((p) => (p.kind === 'lamp' || p.kind === 'brazier') && roomAt(L, p.x, p.y) === r);
+      for (const r of L.rooms) {
+        if (r.index === 0) continue;
+        if ((r.arena || r.isRest) && !flame(r) && r.index !== shopRoomOf(def)) return `room ${r.index} (${r.role}) has no flame`;
+        if (r.unlit && flame(r)) return `room ${r.index} was left black and has a flame`;
+      }
+      if (def.encounters.to >= base.encounters.to) return `its top (${def.encounters.to}) is not under ${base.name}'s (${base.encounters.to})`;
+      if ((def.traps || 0) > (base.traps || 0) || (def.traps || 0) > 0 && def.traps >= base.traps) return `${def.traps} trap rooms against ${base.traps}`;
+      if (L.rooms.some((r) => r.isKillbox)) return 'a killbox in the dark';
+      if (L.spawns.some((s) => s.kind === 'hunter')) return 'a rifle in the dark';
       return true;
     } },
   // The way out of a room is at the far end of it. `room.exitFar` is what the generator recorded when
@@ -339,6 +356,29 @@ const GEN_RULES = [
         const near = rocks.find((q) => q !== p && Math.hypot(q.x - p.x, q.y - p.y) < 2 * TILE
           && (p.cluster === undefined || q.cluster !== p.cluster));
         if (near) return `two boulders side by side at ${tx},${ty}`;
+      }
+      return true;
+    } },
+  // Barrels roll, so where one starts is the only promise about it that can be held: out in the
+  // room with floor all round it, so an untouched one never shuts a way through, and not in a room
+  // that is teaching, resting, or built narrow on purpose.
+  { id: 'barrels', text: 'A barrel stands out on the floor of an ordinary room or an arena, floor all round it, clear of the way in; only on floors that stock them.',
+    check: (L) => {
+      const barrels = L.props.filter((p) => p.kind === 'barrel');
+      if (!barrels.length) return null;
+      if (!L.def.barrels) return 'a barrel on a floor that stocks none';
+      const grass = new Set(L.grass || []);
+      for (const p of barrels) {
+        const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const i = (ty + dy) * L.W + tx + dx;
+          if (L.tiles[i] !== T.FLOOR || grass.has(i)) return `a barrel hemmed in at ${tx},${ty}`;
+        }
+        const r = roomAt(L, p.x, p.y);
+        if (!r) return 'a barrel outside any room';
+        if ((SET_PIECE.has(r.role) && r.role !== 'arena') || r.role === 'pen' || r.role === 'rest' || r.role === 'lesson' || r.isAmbush || r.isTrap)
+          return `a barrel in the ${r.isAmbush ? 'ambush' : r.isTrap ? 'trap room' : r.role}`;
+        if (r.enter && Math.hypot(r.enter.x - p.x, r.enter.y - p.y) < 3 * TILE) return `a barrel in the way in of room ${r.index}`;
       }
       return true;
     } },
@@ -495,7 +535,7 @@ const GEN_RULES = [
     } },
   { id: 'shop', text: 'The mouse stands in the middle gate of THE YARD, THE THRESHING FLOOR and THE RAFTERS only: two talismans of that visit\'s tier, or a pail of milk.',
     check: (L) => {
-      const li = LEVELS.indexOf(L.def), S = TUNING.shop;
+      const li = levelIndexOf(L.def), S = TUNING.shop;
       const mice = L.props.filter((p) => p.kind === 'mouse');
       if (!S.levels.includes(li)) return mice.length ? `a mouse on level ${li + 1}` : null;
       if (mice.length !== 1) return `${mice.length} mice`;

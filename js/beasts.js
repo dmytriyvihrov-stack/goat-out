@@ -16,6 +16,7 @@
 //
 // `TUNING.prop.<kind>` is every number; `TUNING.beast` is where one comes from. `GEN_RULES.beasts`
 // holds the placement to its promise.
+const NO_PROPS = [];   // `bodyClear` with no furniture to ask about: a bird hops what stands on the floor
 const Beast = {
   // Every kind this file drives. `Prop.update` and the generator both ask here rather than carrying
   // three literals about, so a fourth animal is one line in this list and one `update` branch.
@@ -52,11 +53,34 @@ const Beast = {
     game.audio.sfxSplat();
     game.floatText(p.x, p.y - 30, 'THE ' + Beast.NAME[p.kind] + ' IS DEAD', PALETTE.blood);
   },
+  // Walled in behind him by the clamp (`game.updateClamps`). Gone, and said over the goat's head
+  // rather than over the animal's, which is two rooms back in the dark where nobody can read it.
+  lost(p, game) {
+    p.broken = true; p.dead = true;
+    const g = game.goat;
+    game.audio.sfxAnimal(p.kind, true);
+    game.floatText(g.x, g.y - 46, 'THE ' + Beast.NAME[p.kind] + ' WAS LEFT BEHIND', PALETTE.blood);
+  },
   // Fire under its feet and the wound clock, every step, for the three escorts and the hen alike.
   tick(p, dt, game) {
     p.hurtCd = Math.max(0, (p.hurtCd || 0) - dt);
     p.hurtFlash = Math.max(0, (p.hurtFlash || 0) - dt);
     if (!p.held && !p.flying && game.world.isBurningPx(p.x, p.y)) Beast.hurt(p, game, 'fire');
+    // Left behind — further off him than `strayR` tiles, and not so far that it has gone out of
+    // hearing (`strayFar`) — it calls every `strayGap` seconds or so, and the edge of the picture
+    // points at it while it does (`Renderer.drawStrays`). A crow that had stopped three rooms back
+    // used to be found out only at the stairs, when the card said nothing had come.
+    // `behind` is how many rooms back it is; at one, the next room he walks into walls it in
+    // (the clamp takes rooms two behind), and it calls twice as often and its pip goes red.
+    p.strayT = (p.strayT || 0) - dt;
+    const B = TUNING.beast, d = Math.hypot(p.x - game.goat.x, p.y - game.goat.y) / TILE;
+    const r = game.level && roomAt(game.level, p.x, p.y);
+    p.behind = (game.goatRoom || 0) - (r ? r.index : game.nearestRoomIdx(p.x, p.y, game.goatRoom || 0));
+    if (p.strayT <= 0 && d > B.strayR && d < B.strayFar && game.state === 'play') {
+      p.strayT = B.strayGap * (1 + (Math.random() * 2 - 1) * B.strayJitter) * (p.behind >= 1 ? B.strayUrgent : 1);
+      p.calledAt = game.timer;
+      game.audio.sfxAnimal(p.kind);
+    }
   },
 
   // ---------------- the walk ----------------
@@ -79,18 +103,111 @@ const Beast = {
     const safe = Prop.prototype.henSteer.call(p, game, dx, dy);
     if (!safe) { p.vx = 0; p.vy = 0; p.wanderA = (p.wanderA || 0) + Math.PI; return; }
     p.vx = safe.x * spd; p.vy = safe.y * spd;
+    if (Math.abs(p.vx) > 4) p.face = Math.sign(p.vx);
     const ox = p.x, oy = p.y;
     p.x += p.vx * dt; p.y += p.vy * dt;
     game.world.collideCircle(p);
-    if (game.world.isPitPx(p.x, p.y)) { p.x = ox; p.y = oy; p.wanderA = (p.wanderA || 0) + Math.PI; }
+    // A step that would put it over a drop slides along the lip on whichever half of it stays on the
+    // boards. It used to be refused whole, and a crow heading past the corner of a hole on the
+    // rafters asked for the same refused step every frame and stood there for the rest of the level.
+    const w = game.world, bad = () => w.isPitPx(p.x, p.y) || w.isSolid(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
+    if (w.isPitPx(p.x, p.y)) {
+      p.x = ox + p.vx * dt; p.y = oy;
+      if (bad()) { p.x = ox; p.y = oy + p.vy * dt; }
+      if (bad()) { p.x = ox; p.y = oy; p.wanderA = (p.wanderA || 0) + Math.PI; }
+    }
   },
-  // Toward the goat the way the hen goes: the straight line only when he is close and in sight,
-  // otherwise the flow field every man in the building already chases down, so a wall between them
-  // is a way round rather than a nose against stone.
+  // Toward the goat: the straight line only when he is close and in sight, otherwise the route every
+  // man in the building already chases down (`way`), so a wall or a table between them is a way
+  // round rather than a nose against it. Past the ninety tiles the goat's field reaches, an animal
+  // left that far behind heads down the way out instead — he is somewhere along it, ahead.
   toGoat(p, game) {
-    const g = game.goat, dx = g.x - p.x, dy = g.y - p.y, d = Math.hypot(dx, dy) || 1;
-    const f = d < 3 * TILE && game.world.los(p.x, p.y, g.x, g.y) ? null : game.world.flowDir(p.x, p.y);
+    const g = game.goat, w = game.world, dx = g.x - p.x, dy = g.y - p.y, d = Math.hypot(dx, dy) || 1;
+    if (d < 3 * TILE && w.los(p.x, p.y, g.x, g.y)) return { x: dx / d, y: dy / d, d };
+    const f = Beast.way(p, game, w.route, w.flow, 'goat') || (Beast.ahead(p, game) < 0 ? Beast.onward(p, game) : null);
     return f ? { x: f.x, y: f.y, d } : { x: dx / d, y: dy / d, d };
+  },
+
+  // ---------------- the way ----------------
+  // A heading down a field (lower is nearer what it wants): `open`, the one laid round the
+  // furniture, wherever it numbers the animal's tile or one next to it, else `plain`, stone only.
+  // The men's `pickWaypoint` cut down to an animal: walk the field `ai.path.ahead` tiles on and head
+  // for the furthest of them it can reach in a straight line (`bodyClear`), looked up again every
+  // `ai.path.every`. A tile-by-tile step down a stone-only field put the goose's beak against the
+  // first lamp on its tile and held it there — ten runs in twenty-one, measured, stood somewhere
+  // for good. `key` gives each want on one animal its own waypoint and clock: sharing one, a
+  // straggler past the goat's field asked `goat` (no way), then `out`, and each threw the other's
+  // away, so both were laid again every step. A want with no way is remembered as none.
+  way(p, game, open, plain, key) {
+    const P = TUNING.ai.path, c = (p.ways = p.ways || {})[key] || (p.ways[key] = { t: 0, wp: null, none: false });
+    c.t -= 1 / 60;
+    if (c.t > 0) {
+      if (c.none) return null;
+      if (c.wp && Math.hypot(c.wp.x - p.x, c.wp.y - p.y) > P.reach * TILE) {
+        const l = Math.hypot(c.wp.x - p.x, c.wp.y - p.y) || 1;
+        return { x: (c.wp.x - p.x) / l, y: (c.wp.y - p.y) / l };
+      }
+    }
+    c.t = P.every; c.wp = null; c.none = true;
+    const w = game.world, pts = [];
+    let tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+    const onto = (f) => {
+      if (!f) return false;
+      if (f[ty * w.W + tx] >= 0) return true;
+      let best = -1, bd = 1e9;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+        const x = tx + ox, y = ty + oy;
+        if (x < 0 || y < 0 || x >= w.W || y >= w.H) continue;
+        const v = f[y * w.W + x];
+        if (v >= 0 && v < bd) { bd = v; best = y * w.W + x; }
+      }
+      if (best < 0) return false;
+      tx = best % w.W; ty = (best / w.W) | 0;
+      pts.push({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE });
+      return true;
+    };
+    const field = onto(open) ? open : onto(plain) ? plain : null;
+    if (!field) return null;
+    for (let k = 0; k < P.ahead && field[ty * w.W + tx] > 0; k++) {
+      const i = w.flowStep(tx, ty, field);
+      if (i < 0) break;
+      tx = i % w.W; ty = (i / w.W) | 0;
+      pts.push({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE });
+    }
+    if (!pts.length) return null;
+    const R = (P.ahead + 2) * TILE, r = p.r * P.bodyMul;
+    const props = game.props.filter((q) => q !== p && !q.broken && q.blocking && Math.abs(q.x - p.x) < R && Math.abs(q.y - p.y) < R);
+    c.wp = pts[0]; c.none = false;
+    for (let k = pts.length - 1; k > 0; k--) if (Enemy.prototype.bodyClear.call(p, game, pts[k].x, pts[k].y, r, props)) { c.wp = pts[k]; break; }
+    const l = Math.hypot(c.wp.x - p.x, c.wp.y - p.y) || 1;
+    return { x: (c.wp.x - p.x) / l, y: (c.wp.y - p.y) / l };
+  },
+
+  // ---------------- keeping out of it ----------------
+  // An animal on our side keeps out of a man's reach. Not afraid of the cult as a whole — a hen by
+  // a goat with three men round him is where she is meant to be — but of the one man close enough to
+  // swing: inside `beast.shyR` tiles it makes for the far side of the goat from him, `shyBack` tiles
+  // behind him, which is the one place a club aimed at the goat does not also find it. It stood in
+  // the arc before, and the room's blows killed more escorts than anything the room was built to do.
+  // Null when nobody is that close. The goose is exempt: it walks up to men to shout at them.
+  shy(p, game) {
+    const B = TUNING.beast, g = game.goat;
+    let man = null, md = B.shyR * TILE;
+    for (const e of game.liveEnemies) {
+      if (e.dead || e.held || e.ghosted || e.scripted || !e.aware) continue;
+      if (e.state === 'floored' || e.state === 'stunned' || e.state === 'flung') continue;
+      const d = Math.hypot(e.x - p.x, e.y - p.y);
+      if (d < md) { md = d; man = e; }
+    }
+    if (!man) return null;
+    let ax = g.x - man.x, ay = g.y - man.y, al = Math.hypot(ax, ay);
+    // With the goat not between them at all — the man is nearer to him than the animal is, or the
+    // goat is nowhere near — the only way to be out of reach is simply away from the man.
+    if (al < 1 || Math.hypot(g.x - p.x, g.y - p.y) > B.shyR * B.shyFar * TILE) { ax = p.x - man.x; ay = p.y - man.y; al = Math.hypot(ax, ay) || 1; }
+    const tx = g.x + (ax / al) * B.shyBack * TILE, ty = g.y + (ay / al) * B.shyBack * TILE;
+    const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+    if (d < TILE * B.shyArrive) return { x: 0, y: 0, d: 0 };
+    return { x: dx / d, y: dy / d, d };
   },
 
   // ---------------- the tortoise ----------------
@@ -109,7 +226,7 @@ const Beast = {
       const impact = game.world.collideCircle(p);
       // A shell is not a crate: nothing it hits breaks, and it does not break either. It stops.
       if (impact > 2 || p.hitProp(game, p.vx / spd, p.vy / spd) || spd < 90) Beast.land(p, game);
-      else if (game.world.isPitPx(p.x, p.y)) { p.broken = true; p.dead = true; game.audio.sfxFall && game.audio.sfxFall(); }
+      else if (game.world.isPitPx(p.x, p.y)) p.gone(game);
       else {
         // And a man is not a wall: a shell in the face floors him for `crate.stun` exactly the way a
         // crate does — the one difference being that the shell is still there afterwards.
@@ -141,6 +258,7 @@ const Beast = {
   throwTortoise(p, game, ax, ay) {
     const C = TUNING.prop.tortoise, l = Math.hypot(ax, ay) || 1;
     p.flying = true; p.vx = (ax / l) * C.throwSpeed; p.vy = (ay / l) * C.throwSpeed;
+    if (Math.abs(ax) > 0.1) p.face = Math.sign(ax);
     game.world.emitNoise(p.x, p.y, TUNING.noise.smash * 0.4);
     game.audio.sfxThud(); game.particles(p.x, p.y, 5, PALETTE.ash, 120);
   },
@@ -183,9 +301,12 @@ const Beast = {
     // further — a shut door (`collideEntities` holds it like a body), a gate, the stairs — or where
     // it has got `lead` tiles of the way ahead of him. It used to not wait at all: it raised a room
     // he had not reached yet and then stood at that room's shut door while the room came for him.
-    const on = Beast.onward(p, game);
-    if (on && Beast.ahead(p, game) < C.lead) Beast.step(p, game, on.x, on.y, C.speed, dt);
-    else { p.vx = 0; p.vy = 0; }
+    // It is a leader that was slower than the goat it led (150 against his 168 and 210 run up), so
+    // every level ended with it twenty-odd tiles behind him. Faster than him now, and faster again
+    // (`hurry`) while he is in front of it: a goose that has been overtaken runs to get ahead again.
+    const on = Beast.onward(p, game), ahead = Beast.ahead(p, game);
+    if (on && ahead < C.lead) Beast.step(p, game, on.x, on.y, C.speed * (ahead < 0 ? C.hurry : 1), dt);
+    else { p.vx = 0; p.vy = 0; if (Math.abs(game.goat.x - p.x) > 8) p.face = Math.sign(game.goat.x - p.x); }   // waiting: it looks back for him
     if (p.honkT > 0) return;
     // Anybody it can see. It is not a man and the cult never goes for it, so what a honk buys is
     // purely the two things it does to them: the room learns where the GOAT is, and whoever was
@@ -225,42 +346,40 @@ const Beast = {
   // tile a body can stand on, built once a level (`world.tiles` only ever changes behind him — the
   // clamps — or by opening things up). It used to be a straight line at the next room's mouth, which
   // is fine inside a room and walks nose-first into the wall of every S-bent corridor between them.
+  // Two of them: `d` over stone only, and `open`, the same laid round the furniture where it stands
+  // (`world.furn`), which moves — a table shoved, a lamp knocked flat — so it is laid again every
+  // `beast.exitEvery` seconds. `way` walks the second and falls back on the first.
   onward(p, game) {
+    const f = Beast.exit(game); if (!f) return null;
+    return Beast.way(p, game, f.open, f.d, 'out');
+  },
+  exit(game) {
     const w = game.world, L = game.level; if (!L || !L.exitTile) return null;
-    if (!game.exitField || game.exitField.level !== L) {
-      const d = new Int32Array(w.W * w.H).fill(-1), q = [];
-      const e = L.exitTile.y0 * w.W + L.exitTile.x0;
-      d[e] = 0; q.push(e);
-      for (let h = 0; h < q.length; h++) {
+    const grow = (ok) => {
+      const d = new Int32Array(w.W * w.H).fill(-1), q = new Int32Array(w.W * w.H);
+      let tail = 0; const e = L.exitTile.y0 * w.W + L.exitTile.x0;
+      d[e] = 0; q[tail++] = e;
+      for (let h = 0; h < tail; h++) {
         const i = q[h], x = i % w.W, y = (i / w.W) | 0;
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= w.W || ny >= w.H) continue;
           const n = ny * w.W + nx;
-          if (d[n] >= 0 || !w.walkable(n)) continue;
-          d[n] = d[i] + 1; q.push(n);
+          if (d[n] >= 0 || !ok(n)) continue;
+          d[n] = d[i] + 1; q[tail++] = n;
         }
       }
-      game.exitField = { level: L, d };
-    }
-    const d = game.exitField.d, tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
-    const here = d[ty * w.W + tx];
-    if (here <= 0) return null;
-    let best = here, bx = 0, by = 0;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      if (!dx && !dy) continue;
-      if (dx && dy && (!w.walkableAt(tx + dx, ty) || !w.walkableAt(tx, ty + dy))) continue;
-      const v = d[(ty + dy) * w.W + tx + dx];
-      if (v >= 0 && v < best) { best = v; bx = dx; by = dy; }
-    }
-    if (best === here) return null;
-    const vx = (tx + bx + 0.5) * TILE - p.x, vy = (ty + by + 0.5) * TILE - p.y, l = Math.hypot(vx, vy) || 1;
-    return { x: vx / l, y: vy / l };
+      return d;
+    };
+    let f = game.exitField;
+    if (!f || f.level !== L) f = game.exitField = { level: L, d: grow((n) => w.walkable(n)), open: null, at: -1e9 };
+    if (game.timer - f.at > TUNING.beast.exitEvery) { f.open = grow((n) => w.open(n)); f.at = game.timer; }
+    return f;
   },
 
   // How many tiles nearer the stairs it is than the goat, down the same field. Off the field on
   // either side reads as not ahead at all, so a goose never freezes over a question it cannot answer.
   ahead(p, game) {
-    Beast.onward(p, game);
+    Beast.exit(game);
     const f = game.exitField, w = game.world, g = game.goat; if (!f) return 0;
     const at = (x, y) => f.d[Math.floor(y / TILE) * w.W + Math.floor(x / TILE)];
     const mine = at(p.x, p.y), his = at(g.x, g.y);
@@ -275,11 +394,24 @@ const Beast = {
   updateCrow(p, dt, game) {
     const C = TUNING.prop.crow;
     p.hopT = Math.max(0, (p.hopT || 0) - dt);
+    // A man close enough to swing puts it up off the body and behind the goat; it comes back down
+    // on it the moment he is not (`Beast.shy`).
+    const away = Beast.shy(p, game);
+    if (away) {
+      p.feeding = false;
+      if (away.d) Beast.step(p, game, away.x, away.y, C.flySpeed * TUNING.beast.shyFly, dt); else { p.vx = 0; p.vy = 0; }
+      return;
+    }
     const mark = Beast.nearestMark(game, p);
     if (mark) {
       const dx = mark.x - p.x, dy = mark.y - p.y, d = Math.hypot(dx, dy) || 1;
       if (d < C.perch * TILE) {
         p.vx = 0; p.vy = 0; p.feeding = true;
+        // A few mouthfuls and it is done with that one (`feedFor`) and on to the next body down the
+        // road. It used to sit on each until the body aged out of `markFor`, fourteen seconds a man,
+        // and a goat that killed everything on his way still left it eighty tiles behind at the stairs.
+        mark.fed = (mark.fed || 0) + dt;
+        if (mark.fed >= C.feedFor) mark.done = true;
         if (!mark.said) {
           mark.said = true;
           game.floatText(p.x, p.y - 28, C.lines[Math.floor(Math.random() * C.lines.length)], PALETTE.bone);
@@ -298,20 +430,22 @@ const Beast = {
     Beast.step(p, game, to.x, to.y, C.speed * C.slack, dt);
   },
   // The body it goes for: one it has sight of, inside `markR` tiles, that has not aged out after
-  // `markFor` seconds — and of those, the one nearest the stairs (`onward`'s field), so a crow in a
+  // `markFor` seconds or been eaten (`feedFor`) — and of those, the one nearest the stairs (`onward`'s field), so a crow in a
   // cleared room is drawn on toward the next one rather than back through the last. A body it has
   // already settled on stays its choice while it sits there.
   nearestMark(game, p) {
     const C = TUNING.prop.crow, list = game.crowMarks;
     if (!list || !list.length) return null;
-    Beast.onward(p, game);
+    Beast.exit(game);
     const f = game.exitField, w = game.world;
     let best = null, bs = Infinity;
     for (const m of list) {
-      if (game.timer - m.t > C.markFor) continue;
+      if (m.done || game.timer - m.t > C.markFor) continue;
       const d = Math.hypot(m.x - p.x, m.y - p.y);
       if (d > C.markR * TILE) continue;
-      if (d > C.perch * TILE && !w.los(p.x, p.y, m.x, m.y)) continue;
+      // A straight run to it over floor, not only a line of sight: a body across a drop is in sight,
+      // and on the rafters the crow stood at the lip of the hole for good, trying to walk to it.
+      if (d > C.perch * TILE && !Enemy.prototype.bodyClear.call(p, game, m.x, m.y, p.r * 0.5, NO_PROPS)) continue;
       if (d < C.perch * TILE) return m;
       const i = Math.floor(m.y / TILE) * w.W + Math.floor(m.x / TILE);
       const s = f && f.d[i] >= 0 ? f.d[i] : 1e6 + d;

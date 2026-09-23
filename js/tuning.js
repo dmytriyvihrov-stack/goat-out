@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.53';
+const BUILD = '1.61';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -21,6 +21,9 @@ const PALETTE = {
   fire: '#f2a233',
   fireHi: '#ffe08a',
   ash: '#5a5250',
+  // Ash for words: a refusal said quietly (TOO QUICK, NOTCHED, NO ROOM). Plain `ash` on the floor
+  // is under 2:1 and those lines are the only place the player learns why a verb did nothing.
+  ashHi: '#b3aaa2',
   hay: '#d9a548',
   hayDark: '#a5732a',
   // Poison: the one sour green in a compound of plum, timber and fire, so a puddle reads as
@@ -67,6 +70,34 @@ const TUNING = {
     stainTile: 256, maxStainTiles: 96,
     gravity: 460, drag: 2.8, lift: 145, fragmentSpeed: 145, bloodSpeed: 210,
     maxFlight: 2, burstLife: 0.7, bloodLife: 0.32, fireFps: 12, doorPieces: 15, cratePieces: 11,
+    // A dead man (`CombatFX.death`, a whole body, not torn): he keeps `carry` of the speed he died
+    // with, lands and slides `keep` of what is left against `friction` px/s², leaving a smear dot
+    // every `smear` px, and turns over onto his side in `settle` s — a quarter turn, `lie` rad off
+    // it (0: square to the grid, where the sprite's pixels stay crisp instead of stair-stepping).
+    // He goes `dark` duller than the living, sits on a silhouette shadow `shade` strong, twitches
+    // `twitches` times inside `twitchBy` s, and a pool seeps out from under him after `delay` s over
+    // `time` s to `pool` px (`big` for a Butcher), darker than a fresh splash so the body still reads
+    // on it. A burnt one leaves no pool.
+    corpse: { carry: 0.35, keep: 0.6, friction: 320, smear: 3, lie: 0, settle: 0.22, dark: 0.3, shade: 0.5,
+      twitches: 2, twitchBy: 1.3, pool: 9, big: 13, delay: 0.3, time: 2.6, colors: ['#2e0a08', '#471210', PALETTE.bloodDark] },
+    // Fire, blasts, smoke and spray are baked pixel frames (`CombatFX.flameFrames` / `burstFrames`),
+    // `pixel` world px a texel — the grain the units are drawn at. `flame`: a flame of `size` is
+    // `size * scale` texels, `wide` × that across and `tall` × that high, looping over `frames`
+    // with `sparks` cells climbing off it. `blast`: a bomb's cloud is `scale` × its radius, dust
+    // `dustScale`; the fire burns out and the smoke dithers away from `fade` of its life; the floor is
+    // lit `light` × the radius for the first `lightFor`, and the shock ring runs out to `ringOut` ×
+    // the radius over the first `ringFor`.
+    pixel: 1,
+    flame: { scale: 1, wide: 1.5, tall: 2.3, frames: 8, sparks: 3 },
+    // A rifle's spent case: `w` × `h` world px of brass thrown `speed` px/s out of the side of the
+    // breech and `back` of that behind it, `lift` px/s up; it bounces once and stays on the floor.
+    shell: { w: 2, h: 4, speed: 150, back: 0.3, lift: 120 },
+    blast: { scale: 0.85, dustScale: 0.8, frames: 12, bloodFrames: 6, fade: 0.55, dustAlpha: 0.85,
+      light: 3.2, lightFor: 0.28, ringOut: 1.1, ringFor: 0.3,
+      // Its weight, with no shake in it: `embers` streaks (for a 40 px blast), a screen `flash` and
+      // a lens `punch` (both under `juice.screen`), and a column of smoke `soot` × the radius that
+      // starts `sootAfter` s in and rises for `sootLife` s.
+      embers: 16, flash: 0.28, punch: 1.3, soot: 0.75, sootAfter: 0.3, sootLife: 1.3 },
     // How big a kill's blood is: the burst, the droplets thrown and the stain left. It was a shade
     // loud — a clubman going down painted a patch the size of a room corner.
     bloodScale: 0.6,
@@ -93,6 +124,10 @@ const TUNING = {
     // tiles on a single press — noticeably further than the reach a headbutt reads as. Cut to land
     // close to two.
     headbutt: { windup: 0.12, active: 0.15, recovery: 0.38, lunge: 13.3 * TILE, impulse: 28 * TILE, reach: 1.64 * TILE },
+    // A headbutt or a roll pressed while he is still busy is kept `buffer` s and goes the frame he is
+    // free, instead of being dropped for being early. Not a cancel: what he was doing still runs
+    // its whole length (pillar 4). Only a press made while busy is kept.
+    buffer: 0.12,
     // A throw is a commitment now: you let him go, and your mouth is empty for a beat.
     // He is in your mouth a long time, and he works himself loose somewhere in `holdVary` either
     // side of it, so you never learn the exact beat he goes: carrying one is a gamble, not a timer.
@@ -158,17 +193,65 @@ const TUNING = {
     // spots on the flank and the later ones spreading, each a little bigger than the last. `front`
     // is how much of that size is left facing the camera: from the front the whole blot sits on his
     // face and chest and read as twice the wound it is from the side.
-    // What the butt souls do to the pixel goat's horns (`PIXEL_ART.horns`): LONG HORNS grows them
-    // from the root by `growMul` of its reach bonus, at most `growMax`; BOMB CHARGE and SPLASH skin
-    // them in lava and in venom — `ramp` dark root to lit tip, a `glow` of `blur` px round them, and
-    // a venom drop off each tip every `drip` seconds.
-    hornLooks: { growMul: 0.75, growMax: 1.35,
+    // What the butt souls do to the pixel goat's horns (`PIXEL_ART.horns`): LONG HORNS turns each
+    // one into a stag's antler (`antler`, below); BOMB CHARGE and SPLASH skin them in lava and in
+    // venom — `ramp` dark root to lit tip, a `glow` of `blur` px round them, and a venom drop off
+    // each tip every `drip` seconds.
+    // `antler` is built off the horn it replaces, in atlas px on a grid of `cell` (the art's own
+    // pixel): a beam `len` times the horn's length, `w0` thick at the root and `w1` at the tip,
+    // bending `bend` of the way outward, with a tine at each fraction of `tines` along it, `tineLen`
+    // of the beam long, turned `tineTurn` rad off it toward the sky.
+    hornLooks: {
+      antler: { cell: 3, len: 2.3, w0: 9, w1: 5, bend: 0.5, tines: [0.28, 0.52, 0.76], tineLen: [0.36, 0.34, 0.26],
+        tineW: 5, tineTurn: 0.95, fork: 0.22, outline: '#1e130c',
+        ramp: ['#2c1a10', '#4f3220', '#7a5636', '#b08a62', '#e6d3b0'] },
       lava: { ramp: ['#3a0d06', '#8f1e0a', '#e0521a', '#ffb43a', '#fff0a0'], glow: 'rgba(255,110,30,0.9)', blur: 5 },
       venom: { ramp: ['#12260e', '#2f5a1c', '#5c9a2a', '#9fd84a', '#e4ffa0'], glow: 'rgba(140,220,70,0.9)', blur: 4, drip: 1.6 } },
     // The collar a talisman hangs from on the pixel goat (`PaintedArt.collar`): half-width of the
     // ring, how far it opens toward the camera from the front, its least depth on a side view, the
     // strap's width and colours, and where the pendant hangs below the throat and how big.
     collar: { r: 3.6, depth: 0.3, flat: 2, thin: 0.9, w: 1.3, edge: '#24160e', leather: '#6e4326', drop: 3.8, icon: 3 },
+    // What the scream souls and THE ORACLE do to his face, the way the butt souls do his horns
+    // (`PIXEL_ART.face` on him, `PaintedArt.goatFx` for what leaves him), world px off `PIXEL_FACE`.
+    // All of it is hand-drawn pixels (`PIXEL_FACE_ART`) on the sprite's own grid, `cell` world px a
+    // side (three atlas texels); these are its colours and clocks. `throat` (THE FULL THROAT): the
+    // horn's bell his mouth is drawn out into. `foam` (VENOM SPIT): froth at his lips, `rate` frames
+    // a second, and a drop off his chin every `drip` (+ up to `dripVary`) seconds that falls at
+    // `fall` px/s² and leaves a `splat` on the floor for `splatLife`. `steam` (DRAGON BREATH): a puff
+    // off a nostril every `gap` s that lives `life` s, rising `rise` px/s and drifting `drift` px/s
+    // the way he faces and growing from one pixel to a cross of five; every `fire` (+ `fireVary`) s the puffs are flame for
+    // `fireTime` s, a spark every `fireGap`. `eye` (THE ORACLE): the third eye,
+    // shut for a moment every `blink` s.
+    face: {
+      cell: 34 / 112 * 3,
+      throat: { tube: '#9a918a', rim: '#efe4cc', inside: '#1a0b09', edge: '#24160e' },
+      foam: { rate: 3, color: '#d4f59a', dark: '#5c9a2a', drip: 2.6, dripVary: 1.8, fall: 160, splat: 1.6, splatLife: 1.6 },
+      steam: { gap: 0.3, life: 0.95, rise: 10, drift: 8, color: '232,229,222', alpha: 0.5,
+        fire: 3.6, fireVary: 2.6, fireTime: 0.4, fireGap: 0.035, fireSpeed: 34, fireLife: 0.32 },
+      eye: { iris: '#a46cff', pupil: '#16091f', white: '#f6efff', edge: '#24160e', blink: 4.2 },
+    },
+    // Standing still he breathes: the sprite stretches `amp` tall and `wide` narrower once every
+    // `period` seconds, from the feet, so the hooves stay planted and only the back and head rise.
+    breathe: { period: 2.8, amp: 0.03, wide: 0.012 },
+    // How his running feels. Only `turnGrip` touches the simulation: a reversal (asking against
+    // where he is already going, `skid.dot` or less) bites that many times harder, so a dodge back
+    // the other way answers the hand instead of drifting a body-length first. The rest is drawn:
+    // `lean` rad into a change of pace across the screen (smoothed at `leanRate`) plus `run` rad
+    // forward at full stride; `bob` px of hop per hoof-fall, in step with the walk frames. `kick` is
+    // setting off from under `from` of his stride (a stretch and a puff behind), `stop` letting go
+    // above `at` (a settle), `skid` a reversal above `at` (a squash and a spray of dirt ahead).
+    // `pull` px is how far he draws back off the aim over a headbutt's windup, so the lunge has
+    // somewhere to come from.
+    feel: { turnGrip: 1.6, lean: 0.14, leanRate: 14, run: 0.05, bob: 1.3, pull: 3,
+      kick: { from: 0.25, squash: -0.07, dust: 2 }, stop: { at: 0.7, squash: 0.06 },
+      skid: { dot: -0.3, at: 0.55, squash: 0.09, dust: 3, gap: 0.35 } },
+    // What he does standing still once he has stood `after` s: every `gap` s (a roll between the
+    // two) one fidget, picked by `weights` — glances one facing aside (`look` s), a little pronk
+    // (`hop`: `h` px up over `time` s), a shake of the head (`shake`: `amp` rad at `freq` rad/s),
+    // or paws the floor (`paw`: `scrapes` scrapes, a puff of dirt each). Drawn only; the aim and
+    // the facing a butt goes along are never touched.
+    idle: { after: 1.4, gap: [2.6, 5.2], weights: { look: 3, hop: 1, shake: 2, paw: 2 }, look: 1.1,
+      hop: { time: 0.42, h: 5 }, shake: { time: 0.45, amp: 0.09, freq: 44 }, paw: { time: 0.8, scrapes: 2, dist: 1.5 } },
     wounds: { r: 1.9, grow: 0.15, front: 0.65, alpha: 0.8, spots: [[-4, -10], [5, -9], [-1, -14], [-7, -7], [7, -13], [2, -6]] },
     invuln: 0.9,            // s of invulnerability after a hit
   },
@@ -222,6 +305,8 @@ const TUNING = {
     flooredTime: 0.7,
     dodge: 0.38, dodgeCd: 1.2, dodgeSpeed: 15 * TILE, dodgeTime: 0.2,
     circle: 2.6, circleFlip: 0.9, lungeCd: 1.8, retreat: 0.45,
+    flipGap: 0.4,       // s after the ring turns him round before a wall may turn him round again
+    ringIn: 1.5,        // times `circle`: further out than this he runs the route in, not the ring
     packGap: 7, packWait: 0.55,   // one hound runs in at a time; the rest hold the ring
     dazeMul: 2.6,       // the scream is the answer to a pack, and it has to read as the answer
     flingMul: 1.3,      // light enough that a headbutt really throws it
@@ -304,6 +389,14 @@ const TUNING = {
     // every time and a sidestep sent him fifteen tiles into whatever was behind you — he read as a
     // man bouncing off every wall in the room. Only a goat with his back to the stone gets him stunned.
     chargeOver: 2, chargeSkid: 0.18,
+    // He aims the charge at where you are going, not where you stood: `chargeLead` of the way there
+    // at your present speed, never more than `leadMax` tiles ahead of you. The strip on the floor
+    // swings with it through the windup, so the lead is read, not guessed.
+    chargeLead: 0.6, leadMax: 2.2,
+    // With furniture between him and a clear run, he looks (every `laneLook` s) for a spot up to three
+    // tiles to the side with a line on you, and gives walking there `laneTime` s before he gives up.
+    // `laneStill` s without closing on the spot and he drops it; within `laneAt` tiles he is on it.
+    laneLook: 0.6, laneTime: 1.4, laneStill: 0.35, laneAt: 0.35,
     burnTick: 1.0, burnHearts: 1,   // he comes out of a fire scorched and one heart down, not dead
     // Alight he does not run from it — he comes at you: `speed` times his stride, and every windup,
     // swing and recovery runs at `tempo` times the clock.
@@ -356,7 +449,17 @@ const TUNING = {
     noticeFar: 12,      // tiles: spotted this far or further, the doubt is at its longest
     noticeMin: 0.35,   // s of doubt at noticeNear
     noticeMax: 1.3,     // s of doubt at noticeFar and beyond
-    chaseNoise: 3 },   // chance a second of noise off a man in full pursuit — the herd is not quiet
+    chaseNoise: 3,     // chance a second of noise off a man in full pursuit — the herd is not quiet
+    ownNoise: 1,       // tiles: a cult noise this close to a man is his own shout or swing, and he never goes to see it
+    routeNoise: 3,     // tiles: a noise this near the goat is investigated down the route, not in a straight line
+    roundOut: 0.45,    // how much a man stepping round a brazier also leans out of its heat, of his own heading
+    // The route (`Enemy.pathDir`). The flow field is tile to tile and knows nothing about a body's
+    // width or the furniture: he walks it `ahead` tiles forward and heads for the furthest point of it
+    // a body `bodyMul` of his own width reaches in a straight line, and looks again every `every` s
+    // or when he is within `reach` tiles of it. `stuckCheck` s with less than `stuckMove` tiles of
+    // ground covered and he is pinned: he steps off along the most open heading for `unstick` s.
+    // `wideR` px and wider, a body walks the second field, the one with no one-tile gaps in it.
+    path: { ahead: 7, bodyMul: 0.9, every: 0.22, reach: 0.45, stuckCheck: 0.5, stuckMove: 0.3, unstick: 0.45, wideR: 17 } },
   physics: {
     splatSpeed: 11 * TILE,
     flungDrag: 3.5,
@@ -371,6 +474,12 @@ const TUNING = {
     spread: 0.48, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE,   // spread was 0.4; a burning tile catching its neighbour that fast read as too eager
     witch: 3.6,        // the Seer's fire: colder to look at, and no coat turns it away
     avoidLook: 18,     // px past his own radius a man checks before walking into flame
+    // Hay (or grass) about to catch from the tile beside it (`Renderer.drawCatching`): up to
+    // `embers` cells of `cell` px wake in it as the neighbour's spread fills, rising `rise` px and
+    // looping `flicker` times a second, never dimmer than `glow`; under them a smouldering band of
+    // cells along the foot of the tile, up to `base` alpha. A playtest death went from three
+    // hearts to none down a hay line nobody could see was about to go.
+    catch: { embers: 10, cell: 3, rise: 26, flicker: 1.2, glow: 0.8, base: 1 },
   },
   // Three things can be wrong with a man at once — poisoned, stunned (the stars: `daze`), alight —
   // and where two of them meet they react. Every number of it is here, and the STATUS tab of the
@@ -459,7 +568,8 @@ const TUNING = {
     // rooms a late level carries — two or three arenas, the mill, the vault, a killbox — crowd
     // together and can push a band's nearest eligible room well past what `every` promises on
     // its own, so a run into the back half of the game could go six or seven rooms on nothing.
-    heal: { r: 12, pickupR: 22, every: 4.5, gapMax: 4, grazeTime: 1.4, grazeSpeed: 30 },
+    // `bigGain` is the hearts in the big grass a secret wall gives up (`big: true`); milk is one.
+    heal: { r: 12, pickupR: 22, every: 4.5, gapMax: 4, grazeTime: 1.4, grazeSpeed: 30, bigGain: 2 },
     // The cave's stone teeth (`TUNING.cave.spikes` is where and how hard). Not blocking — a thing
     // you cannot walk into cannot hurt you, and the whole point of it is that it does — so it is
     // floor to the flow field and a hazard to anything with eyes. `r` is what a body has to touch;
@@ -478,6 +588,25 @@ const TUNING = {
     // And what a box of dry boards does when it is thrown into a fire: it goes up. Wider than the
     // flame that lit it and burning longer, so a brazier plus a crate is a room you have closed.
     crate: { r: 10, stun: 2.8, burst: 2.1, burstTime: 6.5 },
+    // THE BARREL. Too heavy to lift and too round to stay put: a horn tips it over and it rolls the
+    // way it was hit at `roll`, losing `drag` of its speed a second, until something stops it. Every
+    // man it meets above `knockSpeed` is bowled along its line at `fling` of its speed, seeing stars
+    // for `daze` s once he lands, and it keeps `keep` of that speed for the next one. The barrel kills
+    // nobody; the wall he lands on does, and the dazed row is the goat's to finish. A
+    // body thrown into a standing one at `knock` sets it rolling at `pass` of the body's speed, and a
+    // barrel rolled into another hands it on the same way. Past `breakSpeed` it comes apart on
+    // whatever stops it; slower, it lies there and can be butted again. It is lamp oil: a flame
+    // under it, or a burning man against it, lights it, and `fuse` s later it goes up `burst` tiles
+    // wide for `burstTime` wherever it has rolled to. Into a brazier it goes up at once.
+    // `fuseDraw` is the flame on its lid, in world px, one size for the whole fuse (a flame's size
+    // picks its baked frames and must not be animated). `spinEvery` is the tiles of travel per
+    // quarter turn in its drawing, and `draw` its width in world px. Rolling, it knocks on the stone
+    // once every `staveEvery` of those turns (`sfxStave`). A Butcher it meets staggers `stagger` s
+    // and it comes back off him at `rebound` of its speed; `side` is how far to his own side a bowled
+    // man goes, against the barrel's line.
+    barrel: { r: 12, roll: 16 * TILE, drag: 0.55, fling: 1.35, keep: 0.8, knockSpeed: 3 * TILE,
+      breakSpeed: 6 * TILE, stopSpeed: 0.6 * TILE, knock: 5 * TILE, pass: 0.8, daze: 1.8, fuse: 1.6, burst: 2.6,
+      burstTime: 7, fuseDraw: 8, spinEvery: 0.55, staveEvery: 2, draw: 26, stagger: 0.3, rebound: 0.2, side: 0.35 },
     // A rare find rather than a tool: grabbed and thrown exactly like a crate, but armed the moment
     // it leaves the goat's mouth (`Prop.fling`) rather than breaking on the first thing it hits, so
     // it comes to rest wherever it lands and counts down from there. `nearR` is the two-heart
@@ -619,7 +748,9 @@ const TUNING = {
     // in the cult ever goes for the goose: it is not a man and it is not the sacrifice.
     // `lead` is how many tiles of the way out it will get ahead of him before it stands and waits:
     // a goose that ran a room ahead raised that room and then stood at its shut door without him.
-    goose: { r: 12, speed: 150, seeR: 9, honkGap: 2.2, balkStun: 0.5, lead: 6,
+    // `speed` is above the goat's walk and `hurry` its multiple while he is ahead of it: a leader
+    // slower than the goat it leads ended every level twenty-odd tiles behind him.
+    goose: { r: 12, speed: 200, hurry: 1.35, seeR: 9, honkGap: 2.2, balkStun: 0.5, lead: 6,
       // At the stairs: the voice carries further and comes back sooner, for the rest of the run.
       saveR: 8, saveScreamRange: 1.2, saveScreamCd: 0.8 },
     // The crow follows corpses, not you. Every room with nothing dead in it, it falls behind — which
@@ -629,7 +760,8 @@ const TUNING = {
       // A body it can SEE it flies to at `flySpeed`, the moment it sees it, and of two in sight it
       // takes the one nearer the stairs — the crow pulls you on into the next room rather than back.
       // Landing on one it says so, once a body.
-      flySpeed: 560, lines: ['FRESHLY COOKED', 'TASTY', 'STILL WARM', 'MINE'],
+      // `feedFor` is how long it eats at one before it is done with it and goes on down the road.
+      flySpeed: 560, feedFor: 2.5, lines: ['FRESHLY COOKED', 'TASTY', 'STILL WARM', 'MINE'],
       // At the stairs: it has found something. A tier III talisman stands at the head of the NEXT
       // floor's stairs, free, taken the way one of the mouse's is.
       saveR: 8, giftTier: 3 },
@@ -642,7 +774,21 @@ const TUNING = {
   // `hp` is how many blows (or touches of fire) an animal takes before it dies, `hurtCd` the beat
   // after one in which nothing else lands. `callR` / `callGap`: a caged one calls out when he is that
   // many tiles off, every few seconds, so nobody walks past a coop without hearing it.
-  beast: { third: 0.36, clear: 1.2, tellFor: 3.4, pactFor: 3.2, hp: 3, hurtCd: 0.6, callR: 6, callGap: 2.6 },
+  // `shyR`: a man awake and on his feet this many tiles from the hen or the crow sends it round to
+  // the far side of the goat, `shyBack` tiles behind him (`Beast.shy`) — out of the arc of a club
+  // aimed at him. `exitEvery`: how often the way out is laid again round furniture that has moved.
+  beast: { third: 0.36, clear: 1.2, tellFor: 3.4, pactFor: 3.2, hp: 3, hurtCd: 0.6, callR: 6, callGap: 2.6,
+    shyR: 2.4, shyBack: 1.3, exitEvery: 1.0,
+    // Getting out of reach: the hen runs `shySpeed` × her follow speed and the crow flies `shyFly` ×
+    // its flight speed; within `shyArrive` tiles of the spot it stops; a goat further than `shyFar` ×
+    // `shyR` is no cover and it simply backs off from the man.
+    shySpeed: 1.2, shyFly: 0.5, shyArrive: 0.4, shyFar: 2,
+    // Left behind: past `strayR` tiles it calls every `strayGap` s until it is out of hearing at
+    // `strayFar`, and while it is out of the picture a pip `strayEdge` tiles in from the edge of the
+    // screen points at it, a size `strayPip` (`Renderer.drawStrays`).
+    // `strayJitter` spreads the calls so two strays never call in step; one room from being walled
+    // in it calls `strayUrgent` × as often.
+    strayR: 11, strayFar: 60, strayGap: 5.5, strayJitter: 0.2, strayUrgent: 0.5, strayEdge: 1.0, strayPip: 0.8 },
   // Going over an edge. A man who goes down a hole is gone; the goat is only rented — he comes back
   // up on the last boards he stood on, one heart lighter, which is the same price the wheel charges.
   // Make it free and the level is a shortcut; make it fatal and nobody goes near the interesting half
@@ -770,6 +916,44 @@ const TUNING = {
   // `oracle` is THE ORACLE's reach through stone, in tiles. Past it the ordinary cast still decides,
   // so the far corners of a room stay the dark they always were.
   fog: { shade: 0.9, radius: 26, res: 2, oracle: 11 },
+  // THE DARK (`darkLevel`, drawn by `js/dark.js`): a floor with the lamps out. Only what burns lights
+  // the room; the rest is `alpha` of `color` laid over it. `lights` are [radius in tiles, strength]
+  // per source, cast through the tiles so no flame lights the far side of a wall. `near` is how far
+  // the goat hears, in tiles: inside it the floor comes up to `floor` and whatever stands on it is a
+  // silhouette (`sil`, `body`, a `rim` of cold light round it one world pixel wide) — a shape, never a
+  // colour or a face. `self` is the patch round the goat himself, [radius, strength], because the
+  // player has to be able to read which way he is facing. `eyes` are the kinds whose eyes catch
+  // what little light there is and can be seen across a room: `range` tiles, in his line of sight,
+  // never from behind. Per kind [core, glow, height above the foot, forward on a side view, half
+  // the gap on a front one], sprite px. `lamps` is what the generator adds so the level is pockets
+  // of light and not one black room: a room with nothing alight gets one lamp per `per` floor tiles,
+  // `min`..`max`, against a wall, `apart` from any other flame and `door` from any doorway — except
+  // `unlit` of those rooms, which are left black on purpose. A lamp is a lamp: a headbutt tips it, the
+  // oil burns a while, and then that room is black too.
+  // `soften` is the other half of the deal: a floor you cannot see is a harder floor, so the curve
+  // is cut (`from`, `to`, `ease` pulled toward a straight line, and the head count a room may hold,
+  // `men` — late floors sit on that cap, so the curve alone moved nothing), trap rooms and grating are
+  // `traps` / `spikes` of what the level had, the killbox goes, and so do the rifles: a hunter
+  // in the dark is a gun you cannot answer. The cult is in the same dark (`ai`, `Enemy.canSeeGoat`):
+  // out of the light a man sees the goat `sight` tiles and no further (a hound a little more), and a
+  // lost trail goes cold in `lose` s, after which he hunts by ear. `lit` is how much of a flame's
+  // reach counts as standing in it (`game.litAt`). The seer paints his rune at what he hears, up to
+  // `earCast` tiles (`Enemy.hearForRune`), never one inside `earOwn` tiles of himself or of a man of
+  // his, and only while it is `earFresh` s old. `runAt` is the floor of every run played dark (index,
+  // -1 for none): THE CAVE for now, the one floor near the fourth with no rifle to introduce.
+  dark: {
+    alpha: 0.98, color: [5, 4, 10], res: 3, flicker: 0.08, maxFires: 140,
+    near: 4.5, floor: 0.3, sil: 0.94, body: '#07060c', rim: 'rgba(150,158,210,0.55)',
+    self: [1.3, 0.62],
+    lights: { brazier: [4.8, 1], lamp: [4.2, 0.95], fire: [2.4, 0.8], burning: [2.8, 0.9], soul: [1.8, 0.55],
+      bearer: [2.4, 0.6], exit: [3.4, 0.85], blast: [6, 1], muzzle: [3.4, 0.9], rune: [2.2, 0.55] },
+    eyes: { range: 24, blinkGap: [2.2, 5.5], blinkTime: 0.13, cell: 1.2,
+      kinds: { seer: ['#efe6ff', '#7d5cff', 27, 5, 2.4], dog: ['#fff2a8', '#f2a233', 16, 13, 2.6], wraith: ['#e6fbff', '#6fc3e8', 28, 4, 2.8] } },
+    lamps: { per: 45, min: 1, max: 3, apart: 4.5, door: 2.5, unlit: 0.35 },
+    soften: { from: 0.8, to: 0.72, ease: 1, men: 0.7, traps: 0.5, spikes: 0.5 },
+    ai: { sight: { all: 3.5, dog: 5 }, lit: 0.75, lose: 1.2, earCast: 9, earOwn: 1.5, earFresh: 0.3 },
+    runAt: 2,
+  },
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
   // first has found a room, so most levels get one and some get two rather than every level getting
   // a guaranteed pair. `carveSecret` in gen.js does the finding; this is only ever the odds.
@@ -927,7 +1111,7 @@ const TUNING = {
       maxMills: 2, spottedBars: 2, combatHoldBars: 2, calmBars: 1,
       heavyBodyGain: 0.12, heavyEdgeGain: 0.045,
       eventDelaySteps: 8, eventGridSteps: 8, eventQueueCap: 12, eventStackCap: 3,
-      killGain: 0.12, actionGain: 0.09,
+      killGain: 0.12, actionGain: 0.09, clearGain: 0.1,
       lateFromLevel: 5, blazeThresholds: [1, 4, 10], blazeTailBars: 2,
       grassRadius: 4 * TILE, grassVoices: 3, grassTailBars: 1, grassGain: 0.085 } },
   // The lead point is carried rather than read: on a mouse the aim flips the instant the pointer
@@ -967,6 +1151,24 @@ const TUNING = {
   // that was never walked into still reads as a room on the recap rather than as a hole in the map.
   // `skull` is the screen-pixel size of the mark left on the map where each man went down.
   deathCam: { delay: 0.5, zoomTime: 2.2, margin: 0.88, sampleGap: 0.2, lineWidth: 2.4, fogAlpha: 0.16, skull: 9 },
+  // The picture of a cleared floor (`js/painting.js`). `px` is painting pixels a tile — the decal's
+  // own 10.9, rounded, so the paint lands a texel for a texel. The level is cut into up to `maxRows`
+  // rows (at a column no room stands across, looked for within `cutLook` of a row's width of the
+  // even cut) so the whole comes out nearest `aspect`, width over height: a level is six to ten
+  // times wider than tall and one strip is a thread on any screen. `gap` and `pad` are tiles of dark
+  // between and round the rows. `floorAlt` is the percent of floor tiles in the level's second
+  // floor colour, `grass` how green tall grass paints, `unseen` how far a room he never opened sinks
+  // back into the rock. The trail is `w` pixels wide on a darker rim; `glyphCell` is a skull's cell.
+  // On screen: `reveal` s for the rows to wipe in over a `ghost` of themselves, `arm` s before a
+  // press leaves (so the click that climbed cannot skip it), and the box it fits in (`fit`, of the
+  // screen, `top` its upper edge). `export` is the saved PNG's pixels a painting pixel; `band` sizes
+  // its caption as a share of its width.
+  painting: {
+    px: 11, maxRows: 4, cutLook: 0.25, aspect: 1.75, gap: 3, pad: 3,
+    floorAlt: 35, grass: 0.55, unseen: 0.6, trail: { w: 2, alpha: 0.85 }, glyphCell: 2,
+    reveal: 1.6, ghost: 0.16, arm: 1.2, fit: { w: 0.9, h: 0.6, top: 0.17 },
+    export: 2, band: { big: 0.03, small: 0.015 },
+  },
 };
 
 // The first screen, top to bottom. The renderer draws a row per id and `menuPick` acts on one, so
@@ -1126,8 +1328,11 @@ const BOON_BASE = {
   // default because the fog is the game reading a room to you at the pace you cross it — this soul
   // is the one that reads it for you all at once.
   oracle: false,
-  headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1,
+  headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1, antlers: false,
   shieldBullets: 2, holdTime: 8.0, livingShield: false, grabCooldown: 1,
+  // LIVING SHIELD's: how often a held man swings at his own side, and what a held rifle's reload
+  // is multiplied by. Read only while `livingShield` is on.
+  shieldSwing: 0.5, shieldReload: 1,
   // Grab lifts objects out of the pen and nothing else. A crate, a blade, a shield: things a goat
   // could plausibly get its teeth into. A man is BY THE COLLAR, and until that soul is swallowed
   // every trick built on carrying one — the living shield, the strong jaw, devouring — is off the
@@ -1150,6 +1355,9 @@ const BOON_BASE = {
   // not the button but the teeth in it: DEAD WEIGHT, and everything the tumble goes through loses
   // its head. He still starts underpowered; he starts underpowered with somewhere to go.
   roll: true, rollDistance: 1, rollCooldown: 1, rollStun: 0,
+  // LEAPFROG's and COLD EYE's params, copied in whole by their `apply` (null is off), and what a
+  // tuft of grass gives on top of its own heart (FOUR STOMACHS). The pail is milk, not grass.
+  leapfrog: null, coldEye: null, grassGain: 0,
   breath: false, bomb: false, devour: false,
   // Off by default: a burning man stops with the man he caught fire from, unless this soul is spent.
   // A depth, not a flag: how many men a fire may be handed down through. KINDLING is 1; the FIRE
@@ -1177,7 +1385,7 @@ const BOON_SLOTS = { active: 1, passive: 2, general: 4 };
 // weapon are worth more; the passives that only shift a number at the edge of a fight, less.
 // Nothing in the game reads it — it is a guess to be argued with, not a rule.
 const BOON_POWER = { heart: 1, collar: 1.6, howl: 1.5, breath: 1.5, bomb: 1.3, devour: 1.2, hide: 1.2,
-  oracle: 0.6, ember: 0.6, kindling: 0.8, throat: 0.8 };
+  oracle: 0.6, ember: 0.6, kindling: 0.8, throat: 0.8, leapfrog: 1.1, coldeye: 0.9, stomachs: 0.5 };
 
 // Every boon's tunable numbers live in its own `params`, not buried in `apply`'s body, so the
 // BOONS tab of the dev tool can list, show and edit them generically — `apply(m, p)` always
@@ -1187,75 +1395,146 @@ const BOON_POWER = { heart: 1, collar: 1.6, howl: 1.5, breath: 1.5, bomb: 1.3, d
 // named at a glance — the rail, the hover note, the pick-one-of-three cards. `minLevel` is the
 // level index (0 = THE ALTAR) below which the card is never dealt — off by default, so the dev
 // tool is the only thing that ever needs to set one.
+//
+// Two lines of words per card, the way a talisman on the mouse's stool has two: `desc` is one plain
+// sentence saying what the soul IS, and `stat(p)` is the literal thing in numbers — tiles, seconds,
+// hearts, before and after — built off `p` and TUNING at the moment it is drawn. It used to be one
+// line of prose ("everything it goes through loses its head for a moment") that read well and told
+// a player choosing between three cards precisely nothing, and two of them were wrong (RAW THROAT's
+// "half again as far" was nearly twice as far, and only for one of the four voices). A number
+// typed into a sentence goes stale the first time the BOONS tab moves the param under it; a number
+// read off the param cannot. `desc` must never carry a number of its own for the same reason.
+// Numbers as a card prints them: two places at most, no trailing zeros; a share as a percentage.
+const sayN = (v) => String(+(+v).toFixed(2));
+const sayPct = (v) => Math.round(v * 100) + '%';
+// What poison does to a man, said the same way on every card that makes it.
+const sayPoison = () => `POISON: ${sayN(TUNING.status.poison.time)}s AT ${sayPct(TUNING.status.poison.moveMul)} SPEED, NO SHOT OR SPELL`;
 const BOONS = [
   // ---- actives: they change what a button does ----
   { id: 'collar', skill: 'grab', active: true, key: true, emoji: '⛓️', minLevel: 0, name: 'BY THE COLLAR',
-    desc: 'Take a man in your teeth the way you take a box. He stops bullets, and he throws.',
+    desc: 'Grab picks up men, not just boxes. The man in your mouth is a shield, and a thing to throw.',
+    stat: () => `HE STOPS ${BOON_BASE.shieldBullets} BULLETS · WORKS LOOSE IN ABOUT ${sayN(BOON_BASE.holdTime)}s · THROWN, HE KILLS WHOEVER HE LANDS ON`,
     apply: (m) => { m.grabMen = true; } },
   { id: 'howl', skill: 'scream', active: true, emoji: '📢', minLevel: 0, name: 'THE FULL THROAT',
-    desc: 'BAAH stops being a noise. Everyone who hears it loses a moment, and that moment is yours.',
+    desc: 'BAAH becomes a stun: everyone near you stops dead, mid-swing or not. It no longer calls the room.',
+    stat: (p) => `DAZES EVERYONE WITHIN ${sayN(BOON_BASE.screamRadius)} TILES FOR ${sayN(TUNING.goat.scream.stun)}s · ${sayN(p.cooldown)}s COOLDOWN`,
     params: { cooldown: TUNING.goat.scream.cooldown },
     apply: (m, p) => { m.screamStun = true; m.screamCooldown = p.cooldown; } },
-  { id: 'breath', skill: 'scream', active: true, emoji: '🔥', minLevel: 0, name: 'DRAGON BREATH', desc: 'The scream becomes a cone of fire. Slower to recharge.',
+  { id: 'breath', skill: 'scream', active: true, emoji: '🔥', minLevel: 0, name: 'DRAGON BREATH',
+    desc: 'BAAH becomes fire: a cone the way you are running that lights the men and the floor in it.',
+    stat: (p) => { const B = TUNING.goat.breath; return `CONE ${sayN(B.range / TILE)} TILES LONG, ${Math.round(B.halfAngle * 360 / Math.PI)}° WIDE · FLOOR BURNS ${sayN(B.fireTime)}s · ${sayN(p.cooldown)}s COOLDOWN`; },
     params: { cooldown: TUNING.goat.breath.cooldown },
     apply: (m, p) => { m.breath = true; m.screamCooldown = p.cooldown; } },
-  { id: 'bomb', skill: 'butt', active: true, emoji: '💣', minLevel: 0, name: 'BOMB CHARGE', desc: 'Anyone you headbutt goes off if he lands on a wall or another man.',
+  { id: 'bomb', skill: 'butt', active: true, emoji: '💣', minLevel: 0, name: 'BOMB CHARGE',
+    desc: 'A man you headbutt is lit for a moment: if he dies against a wall or another man in that time, he explodes.',
+    stat: () => { const B = TUNING.goat.bomb; return `${sayN(B.fuse)}s FUSE · THROWS EVERYONE WITHIN ${sayN(B.radius / TILE)} TILES · YOU ARE ONLY SHOVED`; },
     apply: (m) => { m.bomb = true; } },
-  { id: 'devour', skill: 'grab', active: true, needs: 'grabMen', emoji: '🍖', minLevel: 0, name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
+  { id: 'devour', skill: 'grab', active: true, needs: 'grabMen', emoji: '🍖', minLevel: 0, name: 'DEVOUR',
+    desc: 'Hold on to a man instead of throwing him and you tear him open. Sometimes that heals you.',
+    stat: () => { const D = TUNING.goat.devour; return `KILLS AFTER ${sayN(D.time)}s HELD · ${sayPct(D.healChance)} CHANCE OF +1 HEART`; },
     apply: (m) => { m.devour = true; } },
-  { id: 'weight', skill: 'roll', active: true, emoji: '🪨', minLevel: 0, name: 'DEAD WEIGHT', desc: 'The tumble stops being an escape. Everything it goes through loses its head for a moment.',
+  { id: 'weight', skill: 'roll', active: true, emoji: '🪨', minLevel: 0, name: 'DEAD WEIGHT',
+    desc: 'Your roll is a weapon now: everyone you tumble through is knocked senseless.',
+    stat: (p) => `DAZES EVERYONE WITHIN ${sayN(TUNING.goat.roll.stunR / TILE)} TILES OF YOUR PATH FOR ${sayN(p.stun)}s · ONCE EACH PER ROLL`,
     params: { stun: TUNING.goat.roll.stun },
     apply: (m, p) => { m.rollStun = p.stun; } },
   // Poison, one on each button, and a second grab active that is a bomb you make yourself.
   { id: 'splash', skill: 'butt', active: true, emoji: '💦', minLevel: 0, name: 'SPLASH',
-    desc: 'The moment you lower your head, whoever is right behind you is poisoned.',
+    desc: 'Every headbutt also poisons whoever is right behind you, the moment you lower your head.',
+    stat: () => `REACHES ${sayN(TUNING.status.splash.range)} TILES BEHIND · ${sayPoison()}`,
     apply: (m) => { m.splash = true; } },
   { id: 'venomjaw', skill: 'grab', active: true, emoji: '🐍', minLevel: 0, name: 'VENOM JAW',
-    desc: 'Hold anything two seconds and it leaves your mouth dripping: it sprays poison all the way down.',
+    desc: 'Hold anything long enough and it leaves your mouth dripping: poison along its flight and a puddle where it stops.',
+    stat: (p) => { const s = TUNING.status.jaw.half * 2 + 1; return `HOLD ${sayN(p.holdFor)}s · PUDDLE ${s}×${s} TILES FOR ${sayN(TUNING.status.poison.pool)}s · ${sayPoison()}`; },
     params: { holdFor: 2 },
     apply: (m, p) => { m.venomHold = p.holdFor; } },
   { id: 'charge', skill: 'grab', active: true, emoji: '⚡', minLevel: 0, name: 'CHARGED',
-    desc: 'Hold anything two seconds and it is charged. Thrown, it goes off where it lands.',
+    desc: 'Hold anything long enough and it is charged: thrown, it explodes where it stops.',
+    stat: (p) => { const C = TUNING.status.charge; return `HOLD ${sayN(p.holdFor)}s · HITS ALL WITHIN ${sayN(C.hitR)} TILES, THROWS ALL TO ${sayN(C.radius)} · YOU ARE ONLY SHOVED`; },
     params: { holdFor: 2 },
     apply: (m, p) => { m.chargeHold = p.holdFor; } },
   { id: 'venomroll', skill: 'roll', active: true, emoji: '🦠', minLevel: 0, name: 'SOUR TUMBLE',
-    desc: 'Every roll ends in a spray of poison where you get up.',
+    desc: 'Every roll leaves a puddle of poison where you get up.',
+    stat: () => { const s = TUNING.status.tumble.half * 2 + 1; return `PUDDLE ${s}×${s} TILES FOR ${sayN(TUNING.status.poison.pool)}s · ${sayPoison()}`; },
     apply: (m) => { m.venomRoll = true; } },
+  // A goat is a jumper. Rolled at a man in front of him, the tumble goes over the man's back and
+  // lands behind him, and the man is left reeling: a way round a doorway guard or a raised club,
+  // never a kill — what kills is still the wall he was facing when you came down at his back.
+  // With nobody in front it is the ordinary roll at the ordinary price.
+  { id: 'leapfrog', skill: 'roll', active: true, emoji: '🐸', minLevel: 0, name: 'LEAPFROG',
+    desc: 'Roll at a man in front of you and you go over his back instead: he is left reeling and you land behind him.',
+    stat: (p) => `A MAN UP TO ${sayN(p.reach)} TILES AHEAD · YOU LAND ${sayN(p.behind)} TILE${+p.behind === 1 ? '' : 'S'} PAST HIM · HE REELS ${sayN(p.daze)}s · A LEAP COSTS ×${sayN(p.cooldownMul)} COOLDOWN`,
+    // `cone` radians either side of where you are running (or pointing, standing still); `time` the
+    // seconds in the air; `height` how high he is drawn at the top of it, in px; `over` the share of
+    // the flight at which the hooves come down on the man's back.
+    params: { reach: 3, cone: 0.6, behind: 1, daze: 0.9, cooldownMul: 2, time: 0.36, height: 20, over: 0.45 },
+    apply: (m, p) => { m.leapfrog = Object.assign({}, p); } },
   { id: 'spit', skill: 'scream', active: true, emoji: '🫧', minLevel: 0, name: 'VENOM SPIT',
-    desc: 'The scream becomes a glob of poison. Where it bursts, three tiles by three of it.',
+    desc: 'BAAH becomes a glob of poison, spat where you point. It bursts into a puddle.',
+    stat: (p) => { const S = TUNING.status.spit, s = S.half * 2 + 1; return `FLIES UP TO ${sayN(S.range)} TILES · PUDDLE ${s}×${s} · ${sayN(p.cooldown)}s COOLDOWN · ${sayPoison()}`; },
     params: { cooldown: 4.5 },
     apply: (m, p) => { m.spit = true; m.screamCooldown = p.cooldown; } },
 
   // ---- passives ----
-  { id: 'hide', emoji: '❤️', minLevel: 0, name: 'THICK HIDE', desc: 'One more heart, and it fills now.',
+  { id: 'hide', emoji: '❤️', minLevel: 0, name: 'THICK HIDE', desc: 'One more heart for the rest of the run, and it comes full.',
+    stat: (p, b) => `+${p.heartsAdd} MAX HEART · +${b.heal} HEART NOW`,
     params: { heartsAdd: 1 },
     apply: (m, p) => { m.maxHp += p.heartsAdd; }, heal: 1 },
-  { id: 'horns', skill: 'butt', emoji: '🐏', minLevel: 0, name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.',
+  // A card that argues with itself: every tuft is worth more and there is less goat to fill. Worth
+  // it on a floor you mean to graze across, a mistake on one you mean to run through.
+  { id: 'stomachs', emoji: '🌿', minLevel: 0, name: 'FOUR STOMACHS', desc: 'Grass does you more good, but there is less of you to fill.',
+    stat: (p) => { const B = TUNING.prop.heal.bigGain; return `GRASS +1 → +${1 + p.gain} HEARTS · BIG GRASS +${B} → +${B + p.gain} · ${-p.heartsLess} MAX HEART · MILK UNCHANGED`; },
+    params: { gain: 1, heartsLess: 1 },
+    apply: (m, p) => { m.grassGain += p.gain; m.maxHp = Math.max(1, m.maxHp - p.heartsLess); } },
+  // An active since 23 Sep 2026: as a passive it sat beside BOMB CHARGE or SPLASH and was simply
+  // too much to have for free. Now it is what the headbutt *is*, and he wears it as a stag's antlers.
+  { id: 'horns', skill: 'butt', active: true, emoji: '🦌', minLevel: 0, name: 'LONG HORNS', desc: 'A stag’s antlers: your headbutt reaches further and throws a man harder.',
+    stat: (p) => { const H = TUNING.goat.headbutt; return `REACH ${sayN(H.reach / TILE)} → ${sayN(H.reach * p.reachMul / TILE)} TILES · THROW +${sayPct(p.impulseMul - 1)}`; },
     params: { reachMul: 1.38, impulseMul: 1.25 },
-    apply: (m, p) => { m.headbuttReach *= p.reachMul; m.headbuttImpulse *= p.impulseMul; } },
-  { id: 'skull', skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.',
+    apply: (m, p) => { m.headbuttReach *= p.reachMul; m.headbuttImpulse *= p.impulseMul; m.antlers = true; } },
+  { id: 'skull', skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', desc: 'You get your head back after a headbutt in half the time, so a second man has less of a gap.',
+    stat: (p) => { const r = TUNING.goat.headbutt.recovery; return `RECOVERY ${sayN(r)}s → ${sayN(r * p.recoveryMul)}s`; },
     params: { recoveryMul: 0.5 },
     apply: (m, p) => { m.headbuttRecovery *= p.recoveryMul; } },
-  { id: 'jaw', skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.',
+  { id: 'jaw', skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'The man in your mouth is a better shield and stays there longer, and your mouth is free again sooner.',
+    stat: (p) => `STOPS ${BOON_BASE.shieldBullets} → ${p.shieldBullets} BULLETS · HELD ~${sayN(BOON_BASE.holdTime)} → ${sayN(p.holdTime)}s · GRAB COOLDOWN ${sayN(TUNING.goat.grab.cooldown)} → ${sayN(TUNING.goat.grab.cooldown * p.cooldownMul)}s`,
     params: { shieldBullets: 4, holdTime: 13, cooldownMul: 0.6 },
     apply: (m, p) => { m.shieldBullets = p.shieldBullets; m.holdTime = p.holdTime; m.grabCooldown *= p.cooldownMul; } },
-  { id: 'shield', skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing, at his own side, not you.',
-    apply: (m) => { m.livingShield = true; } },
-  { id: 'kindling', emoji: '🪵', minLevel: 0, name: 'KINDLING', desc: 'A man on fire lights the next one he touches.',
+  { id: 'shield', skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'The man in your mouth keeps fighting, for you: he swings at his own side, and a rifle keeps firing.',
+    stat: (p) => `A HELD MAN SWINGS EVERY ${sayN(p.swing)}s · A HELD RIFLE RELOADS ${sayN(1 / p.reload)}× AS FAST`,
+    params: { swing: 0.5, reload: 0.55 },
+    apply: (m, p) => { m.livingShield = true; m.shieldSwing = p.swing; m.shieldReload = p.reload; } },
+  // The throw is the grab's whole point and the one verb with no time to aim it: this is that time.
+  // Everything slows — the goat too, so it is a moment to look, not a moment to run. It ends the
+  // instant the thing leaves his mouth, and `every` keeps a pick-up-drop-pick-up from living in it.
+  { id: 'coldeye', skill: 'grab', emoji: '⏳', minLevel: 0, name: 'COLD EYE',
+    desc: 'Pick anything up and the world slows around you for a moment, so the throw goes where you mean it.',
+    stat: (p) => `TIME AT ${sayPct(p.scale)} FOR UP TO ${sayN(p.time)}s AFTER A PICK-UP · ENDS ON THE THROW · ONCE EVERY ${sayN(p.every)}s`,
+    params: { scale: 0.35, time: 2, every: 5 },
+    apply: (m, p) => { m.coldEye = Object.assign({}, p); } },
+  { id: 'kindling', emoji: '🪵', minLevel: 0, name: 'KINDLING', desc: 'Fire spreads from man to man: a burning man lights the next one he bumps into.',
+    stat: () => 'ONE MAN DEEP: THE ONE HE LIGHTS LIGHTS NOBODY',
     apply: (m) => { m.firePass = Math.max(m.firePass, 1); } },
-  { id: 'throat', skill: 'scream', emoji: '🗣️', minLevel: 0, name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.',
+  // `radius` is how far THE FULL THROAT reaches and nothing else: the bare call, the breath and the
+  // spit each have their own reach, so the card says so rather than promising a louder voice.
+  { id: 'throat', skill: 'scream', emoji: '🗣️', minLevel: 0, name: 'RAW THROAT', desc: 'BAAH comes back twice as fast, whatever your voice has become.',
+    stat: (p) => `COOLDOWN ×${sayN(p.cooldownMul)} · THE FULL THROAT REACHES ${sayN(BOON_BASE.screamRadius)} → ${sayN(p.radius)} TILES`,
     params: { cooldownMul: 0.5, radius: 13 },
     apply: (m, p) => { m.screamCooldown *= p.cooldownMul; m.screamRadius = p.radius; } },
-  { id: 'hooves', emoji: '💨', minLevel: 0, name: 'SURE HOOVES', desc: 'Run faster than anything in the building.',
+  { id: 'hooves', emoji: '💨', minLevel: 0, name: 'SURE HOOVES', desc: 'You run faster, from a standing start and flat out alike.',
+    stat: (p) => `SPEED +${sayPct(p.speedMul - 1)}`,
     params: { speedMul: 1.13 },
     apply: (m, p) => { m.speed *= p.speedMul; } },
-  { id: 'joints', skill: 'roll', emoji: '🤸', minLevel: 0, name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.',
+  { id: 'joints', skill: 'roll', emoji: '🤸', minLevel: 0, name: 'LOOSE JOINTS', desc: 'Your roll carries you further and is ready again in half the time.',
+    stat: (p) => { const R = TUNING.goat.roll, d = R.speed * R.duration / TILE; return `ROLL ${sayN(d)} → ${sayN(d * p.distanceMul)} TILES · COOLDOWN ${sayN(R.cooldown)} → ${sayN(R.cooldown * p.cooldownMul)}s`; },
     params: { distanceMul: 1.35, cooldownMul: 0.45 },
     apply: (m, p) => { m.rollDistance *= p.distanceMul; m.rollCooldown *= p.cooldownMul; } },
-  { id: 'ember', emoji: '🧯', minLevel: 0, name: 'EMBER COAT', desc: 'Ordinary fire takes three times as long to start hurting you. Witchfire never cared.',
+  { id: 'ember', emoji: '🧯', minLevel: 0, name: 'EMBER COAT', desc: 'Ordinary fire burns you far more slowly. Violet witchfire, the mages’ kind, does not care.',
+    stat: (p) => { const t = TUNING.goat.fireDamageInterval; return `STANDING IN FIRE: 1 HEART EVERY ${sayN(t)}s → EVERY ${sayN(t * p.fireResist)}s`; },
     params: { fireResist: 3 },
     apply: (m, p) => { m.fireResist = p.fireResist; } },
-  { id: 'oracle', emoji: '👁️', minLevel: 0, name: 'THE ORACLE', desc: 'You see through the walls close about you. The far corners stay dark.',
+  { id: 'oracle', emoji: '👁️', minLevel: 0, name: 'THE ORACLE', desc: 'You see through the walls close around you: the next room before you are in it. The far corners stay dark.',
+    stat: () => `SEE THROUGH STONE WITHIN ${sayN(TUNING.fog.oracle)} TILES`,
     apply: (m) => { m.oracle = true; } },
 ];
 
@@ -1277,144 +1556,173 @@ const BOONS = [
 // things at once. `mods.boomerang` / `mods.blink` is what Q reads; `Goat.itemCd` is its own
 // cooldown, never the grab's and never the roll's, because the thing it throws or the step it
 // takes is its own trick and not a reskin of a verb he already has.
-// Every `desc` here is the literal thing, in numbers: what the tier does, how far, how long, how
+// Every tier's `desc` is the literal thing, in numbers: what the tier does, how far, how long, how
 // often. It used to be a line of prose a tier — "the next floor is yours", "everything on its way
 // out and on its way back" — which reads well and tells a player who has three seconds and a mouse
 // hovering over a stool precisely nothing. The 22 Sep 2026 note was "the literal meaning of what it
-// does, next to each artifact, none of this smeared bullshit". The tiers under one talisman read as
-// a diff: tier I states the whole thing, II and III state only what changed. Add a tier, write its
-// numbers; change a param, change the line with it — `Renderer.drawWare` and the HUD chip both
-// print this and nothing else, so a lie here is a lie in the only place it is read.
+// does, next to each artifact, none of this smeared bullshit".
+// It is no longer typed. Each talisman has one `say(p)` that states a tier WHOLE off that tier's own
+// params, and `desc` is a getter onto it (below the list). Two reasons. The lines used to read as a
+// diff — tier I the whole thing, II and III only what changed — but the n-th mouse of a run sells
+// tier n and nothing else, so the player who met BUTCHER'S GREASE III was told "1.3 TILES FOR 20s,
+// AND 15% DRAG" and never that men slip on it; a tier has to stand on its own. And a number typed
+// into a sentence is stale the moment the TALISMANS tab moves the param under it. `Renderer.drawWare`,
+// the HUD chip and the crow's gift all print `desc`, so what they print is now what the tier does.
 const ARTIFACTS = [
   { id: 'firecharm', name: 'FIRE AMULET', color: '#f2a233',
+    say: (p) => `A BURNING MAN LIGHTS THE NEXT ONE HE TOUCHES, ${p.pass === 1 ? 'AND THAT ONE LIGHTS NOBODY' : `AND ON IT GOES: ${p.pass} MEN DEEP`}.`,
     tiers: [
-      { desc: 'FIRE PASSES 1 MAN DEEP. A burning man lights the next one he touches; that one lights nobody.', params: { pass: 1 } },
-      { desc: 'FIRE PASSES 2 MEN DEEP.', params: { pass: 2 } },
-      { desc: 'FIRE PASSES 6 MEN DEEP: the room.', params: { pass: 6 } }],
+      { params: { pass: 1 } },
+      { params: { pass: 2 } },
+      { params: { pass: 6 } }],
     apply: (m, p) => { m.firePass = Math.max(m.firePass, p.pass); } },
   { id: 'clover', name: 'LUCKY CLOVER', color: '#7c8f52',
+    say: (p) => `NEXT FLOOR ONLY: x${sayN(p.secret)} SECRET WALLS, x${sayN(p.racks)} WEAPON RACKS, x${sayN(p.grass)} BIG GRASS (+${TUNING.prop.heal.bigGain} HEARTS) BEHIND A SECRET${p.heals ? `, +${p.heals} MILK` : ''}.`,
     tiers: [
-      { desc: 'NEXT FLOOR ONLY: x1.6 SECRET WALLS, x1.5 RACKS, x1.5 GRASS BEHIND ONE.', params: { secret: 1.6, racks: 1.5, grass: 1.5, heals: 0 } },
-      { desc: 'NEXT FLOOR ONLY: x2.4 SECRETS, x2 RACKS, x1.9 GRASS, +1 MILK.', params: { secret: 2.4, racks: 2, grass: 1.9, heals: 1 } },
-      { desc: 'NEXT FLOOR ONLY: x3 SECRETS, x2.8 RACKS, x2.4 GRASS, +2 MILK.', params: { secret: 3, racks: 2.8, grass: 2.4, heals: 2 } }],
+      { params: { secret: 1.6, racks: 1.5, grass: 1.5, heals: 0 } },
+      { params: { secret: 2.4, racks: 2, grass: 1.9, heals: 1 } },
+      { params: { secret: 3, racks: 2.8, grass: 2.4, heals: 2 } }],
     apply: (m, p) => { m.luck = p; } },
   { id: 'boomerang', name: 'BOOMERANG', color: '#efe6d0',
+    say: (p) => `Q: THROWN ${sayN(p.range)} TILES OUT AND BACK. ${p.pierce >= 99 ? 'EVERY MAN IT PASSES, BOTH WAYS, IS' : `UP TO ${p.pierce} ${p.pierce === 1 ? 'MAN EACH WAY IS' : 'MEN EACH WAY ARE'}`} DAZED ${sayN(p.stun)}s. ${sayN(p.cooldown)}s COOLDOWN.`,
     tiers: [
-      { desc: 'Q: 6 TILES OUT AND BACK. 1 MAN, DAZED 1.2s. 10s COOLDOWN.', params: { stun: 1.2, cooldown: 10, range: 6, pierce: 1 } },
-      { desc: 'Q: 7.5 TILES. 2 MEN, DAZED 1.8s. 7s COOLDOWN.', params: { stun: 1.8, cooldown: 7, range: 7.5, pierce: 2 } },
-      { desc: 'Q: 9 TILES. EVERY MAN BOTH WAYS, DAZED 2.4s. 5s COOLDOWN.', params: { stun: 2.4, cooldown: 5, range: 9, pierce: 99 } }],
+      { params: { stun: 1.2, cooldown: 10, range: 6, pierce: 1 } },
+      { params: { stun: 1.8, cooldown: 7, range: 7.5, pierce: 2 } },
+      { params: { stun: 2.4, cooldown: 5, range: 9, pierce: 99 } }],
     apply: (m, p) => { m.boomerang = p; } },
   { id: 'symbols', name: 'STRANGE SYMBOLS', color: '#7d5cff',
+    say: (p) => `Q: BLINK ${sayN(p.dist)} TILES AHEAD, THROUGH MEN BUT NOT WALLS. ${sayN(p.cooldown)}s COOLDOWN.${p.stun ? ` WHOEVER STOOD WHERE YOU LEFT IS DAZED ${sayN(p.stun)}s.` : ''}`,
     tiers: [
-      { desc: 'Q: BLINK 3 TILES. NO TUMBLE. 6s COOLDOWN.', params: { dist: 3, cooldown: 6, stun: 0 } },
-      { desc: 'Q: BLINK 4.5 TILES. 4s COOLDOWN.', params: { dist: 4.5, cooldown: 4, stun: 0 } },
-      { desc: 'Q: BLINK 6 TILES. 2.2s COOLDOWN. 0.9s DAZE WHERE YOU LEFT.', params: { dist: 6, cooldown: 2.2, stun: 0.9 } }],
+      { params: { dist: 3, cooldown: 6, stun: 0 } },
+      { params: { dist: 4.5, cooldown: 4, stun: 0 } },
+      { params: { dist: 6, cooldown: 2.2, stun: 0.9 } }],
     apply: (m, p) => { m.blink = p; } },
   // ---- the seventeen from ARTIFACTS_TZ.md. Their machinery is js/talismans.js; `tag` keeps the
   // mouse from putting two of the same sort on one shelf (`stockFor`). ----
   { id: 'mason', tag: 'geo', name: "MASON'S MARK", color: '#8d8a85',
+    say: (p) => `A THROWN MAN DIES ON STONE AT ${sayPct(p.splat)} OF THE USUAL SPEED${p.props ? '. A CRATE OR A RACK COUNTS AS STONE' : ''}${p.bodies ? '. SO DOES ANOTHER MAN, AND BOTH DIE' : ''}.`,
     tiers: [
-      { desc: 'STONE KILLS A THROWN MAN AT 80% OF THE USUAL SPEED.', params: { splat: 0.8, props: false, bodies: false } },
-      { desc: '80%, AND A CRATE OR A RACK COUNTS AS STONE.', params: { splat: 0.8, props: true, bodies: false } },
-      { desc: '75%, AND ANOTHER MAN COUNTS AS STONE: BOTH DIE.', params: { splat: 0.75, props: true, bodies: true } }],
+      { params: { splat: 0.8, props: false, bodies: false } },
+      { params: { splat: 0.8, props: true, bodies: false } },
+      { params: { splat: 0.75, props: true, bodies: true } }],
     apply: (m, p) => { m.mason = p; } },
   { id: 'domino', tag: 'geo', name: 'DOMINO BONE', color: '#efe6d0',
+    say: (p) => `A THROWN MAN WHO BOWLS ANOTHER OVER PASSES THE THROW ON ${p.links === 1 ? 'ONCE' : `UP TO ${p.links} TIMES`}, KEEPING ${sayPct(p.keep)} OF ITS SPEED${p.links === 1 ? '' : ' EACH TIME'}.`,
     tiers: [
-      { desc: 'A THROWN MAN PASSES THE THROW ON 1 TIME, AT 70% OF ITS SPEED.', params: { links: 1, keep: 0.7 } },
-      { desc: 'PASSES ON 2 TIMES, AT 70% EACH.', params: { links: 2, keep: 0.7 } },
-      { desc: 'PASSES ON 4 TIMES, AT 70% EACH.', params: { links: 4, keep: 0.7 } }],
+      { params: { links: 1, keep: 0.7 } },
+      { params: { links: 2, keep: 0.7 } },
+      { params: { links: 4, keep: 0.7 } }],
     apply: (m, p) => { m.domino = p; } },
   { id: 'echo', tag: 'butt', name: 'ECHO HORN', color: '#efe6d0',
+    say: (p) => `${sayN(p.delay)}s AFTER EVERY HEADBUTT ${p.count === 1 ? 'A GHOST BLOW FOLLOWS' : `${p.count} GHOST BLOWS FOLLOW`}: ${sayPct(p.reach)} OF THE REACH, ${sayPct(p.power)} OF THE THROW${p.count > 1 ? `, THE SECOND ${Math.round(p.spread * 180 / Math.PI)}° ASIDE` : ''}.`,
     tiers: [
-      { desc: '0.4s AFTER THE HORNS: 1 GHOST BLOW, 50% THROW, 60% REACH.', params: { delay: 0.4, power: 0.5, count: 1, spread: 0, reach: 0.6 } },
-      { desc: '0.4s AFTER THE HORNS: 1 GHOST BLOW, 100% THROW, 60% REACH.', params: { delay: 0.4, power: 1, count: 1, spread: 0, reach: 0.6 } },
-      { desc: '0.4s AFTER: 2 GHOST BLOWS, 100% THROW, THE SECOND 0.26 RAD OFF.', params: { delay: 0.4, power: 1, count: 2, spread: 0.26, reach: 0.6 } }],
+      { params: { delay: 0.4, power: 0.5, count: 1, spread: 0, reach: 0.6 } },
+      { params: { delay: 0.4, power: 1, count: 1, spread: 0, reach: 0.6 } },
+      { params: { delay: 0.4, power: 1, count: 2, spread: 0.26, reach: 0.6 } }],
     apply: (m, p) => { m.echo = p; } },
   { id: 'spade', tag: 'geo', name: "GRAVEDIGGER'S SPADE", color: '#8d8a85',
+    say: (p) => `BODIES STAY ${sayN(p.life)}s, UP TO ${p.cap}. A MAN WHO RUNS INTO ONE IS FLOORED ${sayN(p.trip)}s${p.grab ? '. GRAB ONE AND THROW IT LIKE A CRATE' : ''}${p.lethal ? ': IT KILLS WHAT IT HITS' : ''}.`,
     tiers: [
-      { desc: 'BODIES STAY 20s, UP TO 6. A MAN RUNNING INTO ONE IS FLOORED 0.6s.', params: { life: 20, trip: 0.6, grab: false, lethal: false, r: 12, cap: 6 } },
-      { desc: 'AND A BODY IS GRABBED AND THROWN LIKE A CRATE.', params: { life: 20, trip: 0.6, grab: true, lethal: false, r: 12, cap: 6 } },
-      { desc: 'BODIES STAY 25s, AND A THROWN ONE KILLS WHAT IT HITS.', params: { life: 25, trip: 0.6, grab: true, lethal: true, r: 12, cap: 6 } }],
+      { params: { life: 20, trip: 0.6, grab: false, lethal: false, r: 12, cap: 6 } },
+      { params: { life: 20, trip: 0.6, grab: true, lethal: false, r: 12, cap: 6 } },
+      { params: { life: 25, trip: 0.6, grab: true, lethal: true, r: 12, cap: 6 } }],
     apply: (m, p) => { m.spade = p; } },
   { id: 'grease', tag: 'geo', name: "BUTCHER'S GREASE", color: '#c0392b',
+    say: (p) => `A WALL KILL GREASES ${sayN(p.r)} ${p.r === 1 ? 'TILE' : 'TILES'} ROUND IT FOR ${sayN(p.life)}s: A THROWN MAN SLIDES ON ${sayPct(p.drag)} OF THE DRAG${p.slip ? `, A MAN CHASING ACROSS SLIPS ${sayPct(p.slip)} A SECOND` : ''}, YOU KEEP ${sayPct(p.grip)} GRIP.`,
     tiers: [
-      { desc: 'A WALL KILL GREASES 1 TILE FOR 15s: HALF DRAG ON A THROWN MAN, 70% GRIP ON YOU.', params: { life: 15, r: 1, drag: 0.5, slip: 0, grip: 0.7 } },
-      { desc: 'AND 30% OF MEN RUNNING ACROSS IT GO DOWN.', params: { life: 15, r: 1, drag: 0.5, slip: 0.3, grip: 0.7 } },
-      { desc: '1.3 TILES FOR 20s, AND 15% DRAG ON A THROWN MAN.', params: { life: 20, r: 1.3, drag: 0.15, slip: 0.3, grip: 0.7 } }],
+      { params: { life: 15, r: 1, drag: 0.5, slip: 0, grip: 0.7 } },
+      { params: { life: 15, r: 1, drag: 0.5, slip: 0.3, grip: 0.7 } },
+      { params: { life: 20, r: 1.3, drag: 0.15, slip: 0.3, grip: 0.7 } }],
     apply: (m, p) => { m.grease = p; } },
   { id: 'awl', tag: 'geo', name: "CARPENTER'S AWL", color: '#a57949',
+    say: (p) => `A CRATE THAT BREAKS ${p.fling ? 'THROWS' : 'FLOORS'} EVERYONE WITHIN ${sayN(p.r)} ${p.r === 1 ? 'TILE' : 'TILES'} OF IT${p.fling ? ` CLEAR, AT ${sayN(p.fling)} TILES A SECOND` : ''}. THE BIG ONES ONLY STAGGER.`,
     tiers: [
-      { desc: 'A CRATE THAT BREAKS FLOORS EVERYONE WITHIN 1 TILE.', params: { r: 1, fling: 0 } },
-      { desc: '1.2 TILES, AND THEY ARE THROWN CLEAR OF IT.', params: { r: 1.2, fling: 8 } },
-      { desc: '1.5 TILES, AND A THROWN CRATE BREAKS ON A WALL.', params: { r: 1.5, fling: 12 } }],
+      { params: { r: 1, fling: 0 } },
+      { params: { r: 1.2, fling: 8 } },
+      { params: { r: 1.5, fling: 12 } }],
     apply: (m, p) => { m.awl = p; } },
   { id: 'mask', tag: 'ai', name: 'HORNED MASK', color: '#efe6d0',
+    say: (p) => `A MAN WHO SEES ANOTHER DIE WITHIN ${sayN(p.r)} TILES PANICS AND RUNS ${sayN(p.flee)}s${p.blind ? ', BLIND TO WHAT IS IN HIS WAY' : ''}${p.drop ? ', DROPPING ANY BLOW HE WAS WINDING UP' : ''}. EACH MAN AT MOST ONCE EVERY ${sayN(p.cd)}s.`,
     tiers: [
-      { desc: 'A MAN WHO SEES A DEATH WITHIN 4 TILES RUNS 1s. ONCE EVERY 4s EACH.', params: { r: 4, flee: 1, drop: false, blind: false, cd: 4 } },
-      { desc: '1.5s, AND HIS WINDUP IS CANCELLED.', params: { r: 4, flee: 1.5, drop: true, blind: false, cd: 4 } },
-      { desc: '5 TILES, 1.5s, AND HE RUNS WITHOUT SEEING WHAT IS IN THE WAY.', params: { r: 5, flee: 1.5, drop: true, blind: true, cd: 4 } }],
+      { params: { r: 4, flee: 1, drop: false, blind: false, cd: 4 } },
+      { params: { r: 4, flee: 1.5, drop: true, blind: false, cd: 4 } },
+      { params: { r: 5, flee: 1.5, drop: true, blind: true, cd: 4 } }],
     apply: (m, p) => { m.mask = p; } },
   { id: 'effigy', tag: 'q', name: 'STRAW EFFIGY', color: '#c9a24e',
+    say: (p) => `Q: A STRAW GOAT STANDS ${sayN(p.life)}s. MEN WITHIN ${sayN(p.r)} TILES GO FOR IT INSTEAD OF YOU${p.shots ? ', AND RIFLES WASTE A ROUND ON IT' : ''}${p.oops ? '. A MAN WHO CLUBS IT HITS HIS NEIGHBOUR' : ''}. ${sayN(p.cd)}s COOLDOWN.`,
     tiers: [
-      { desc: 'Q: A STRAW GOAT FOR 4s. MEN WITHIN 6 TILES GO FOR IT. 12s COOLDOWN.', params: { life: 4, r: 6, cd: 12, shots: false, oops: false } },
-      { desc: 'AND RIFLES SPEND A ROUND ON IT. 10s COOLDOWN.', params: { life: 4, r: 6, cd: 10, shots: true, oops: false } },
-      { desc: '7 TILES FOR 6s, 8s COOLDOWN, AND A MAN WHO CLUBS IT CLUBS HIS NEIGHBOUR.', params: { life: 6, r: 7, cd: 8, shots: true, oops: true } }],
+      { params: { life: 4, r: 6, cd: 12, shots: false, oops: false } },
+      { params: { life: 4, r: 6, cd: 10, shots: true, oops: false } },
+      { params: { life: 6, r: 7, cd: 8, shots: true, oops: true } }],
     apply: (m, p) => { m.effigy = p; } },
   { id: 'spur', tag: 'run', name: 'BRASS SPUR', color: '#c29a44',
+    say: (p) => { const T = TUNING.goat.momentum.time; return `YOUR RUN-UP BUILDS IN ${sayN(T * p.time)}s, NOT ${sayN(T)}s${p.keep ? `, AND A HIT TAKES ${sayPct(1 - p.keep)} OF IT INSTEAD OF ALL` : ''}${p.throw > 1 ? `. AT A FULL RUN THE HORNS THROW x${sayN(p.throw)}` : ''}.`; },
     tiers: [
-      { desc: 'THE RUN-UP BUILDS IN HALF THE TIME.', params: { time: 0.5, keep: 0, throw: 1 } },
-      { desc: 'AND A BLOW TAKES HALF THE RUN-UP INSTEAD OF ALL OF IT.', params: { time: 0.5, keep: 0.5, throw: 1 } },
-      { desc: 'AND AT FULL RUN THE HORNS THROW x1.6.', params: { time: 0.5, keep: 0.5, throw: 1.6 } }],
+      { params: { time: 0.5, keep: 0, throw: 1 } },
+      { params: { time: 0.5, keep: 0.5, throw: 1 } },
+      { params: { time: 0.5, keep: 0.5, throw: 1.6 } }],
     apply: (m, p) => { m.spur = p; } },
   { id: 'moth', tag: 'run', name: 'MOTH WOOL', color: '#b8ad97',
+    say: (p) => `YOUR FOOTSTEPS CARRY ${sayPct(p.step)} AS FAR${p.near ? `, AND NOT AT ALL WITHIN ${sayN(p.near)} TILES OF A MAN WHO HAS NOT SEEN YOU` : ''}${p.still ? `. STAND STILL ${sayN(p.still)}s AND NOBODY WHO HAS NOT SEEN YOU YET CAN, PAST ${sayN(p.hide)} TILES` : ''}.`,
     tiers: [
-      { desc: 'FOOTSTEPS CARRY HALF AS FAR.', params: { step: 0.5, near: 0, still: 0, hide: 4 } },
-      { desc: 'AND MAKE NO SOUND WITHIN 3 TILES OF A MAN WHO HAS NOT SEEN YOU.', params: { step: 0.5, near: 3, still: 0, hide: 4 } },
-      { desc: 'AND STAND STILL 1.2s: NOBODY UNAWARE CAN SEE YOU PAST 4 TILES.', params: { step: 0.5, near: 3, still: 1.2, hide: 4 } }],
+      { params: { step: 0.5, near: 0, still: 0, hide: 4 } },
+      { params: { step: 0.5, near: 3, still: 0, hide: 4 } },
+      { params: { step: 0.5, near: 3, still: 1.2, hide: 4 } }],
     apply: (m, p) => { m.moth = p; } },
   { id: 'bell', tag: 'run', name: "BELLWETHER'S BELL", color: '#c29a44',
+    say: (p) => `A THREAD ON THE FLOOR POINTS TO THE STAIRS AND THE VAULT${p.sil ? `. MEN SHOW THROUGH STONE WITHIN ${sayN(p.sil)} TILES` : ''}${p.mimic ? '. A WRAITH HIDING AS A BOX OR MILK TWITCHES' : ''}.`,
     tiers: [
-      { desc: 'A THREAD POINTS AT THE STAIRS AND THE VAULT.', params: { sil: 0, mimic: false } },
-      { desc: 'AND MEN SHOW THROUGH STONE WITHIN 6 TILES.', params: { sil: 6, mimic: false } },
-      { desc: '9 TILES, AND A WRAITH PRETENDING TO BE A BOX TWITCHES.', params: { sil: 9, mimic: true } }],
+      { params: { sil: 0, mimic: false } },
+      { params: { sil: 6, mimic: false } },
+      { params: { sil: 9, mimic: true } }],
     apply: (m, p) => { m.bell = p; } },
   { id: 'sandal', tag: 'run', name: "PILGRIM'S SANDAL", color: '#8a6238',
+    say: (p) => `INTO A NEW ROOM WITH A MAN ON YOUR HEELS (WITHIN ${sayN(p.range)} TILES): +${sayPct(p.speed)} SPEED FOR ${sayN(p.time)}s${p.reset ? ', AND YOUR ROLL AND VOICE ARE READY AGAIN' : ''}${p.shake ? '. THE MEN BEHIND LOSE YOU IN THE DOORWAY' : ''}.`,
     tiers: [
-      { desc: 'INTO A NEW ROOM WITH A MAN WITHIN 10 TILES: +20% SPEED FOR 2.5s.', params: { speed: 0.2, time: 2.5, reset: false, shake: false, range: 10 } },
-      { desc: 'AND YOUR ROLL AND YOUR VOICE COME OFF COOLDOWN.', params: { speed: 0.2, time: 2.5, reset: true, shake: false, range: 10 } },
-      { desc: '+25% FOR 3s, AND THEY LOSE YOU IN THE DOORWAY.', params: { speed: 0.25, time: 3, reset: true, shake: true, range: 10 } }],
+      { params: { speed: 0.2, time: 2.5, reset: false, shake: false, range: 10 } },
+      { params: { speed: 0.2, time: 2.5, reset: true, shake: false, range: 10 } },
+      { params: { speed: 0.25, time: 3, reset: true, shake: true, range: 10 } }],
     apply: (m, p) => { m.sandal = p; } },
   { id: 'scapegoat', tag: 'def', name: 'SCAPEGOAT', color: '#e8e0cc',
+    say: (p) => `ONCE: A KILLING BLOW IS CANCELLED. UP WITH ${p.hearts} ${p.hearts === 1 ? 'HEART' : 'HEARTS'} AND ${sayN(p.invuln)}s UNTOUCHABLE${p.stun ? `, AND EVERYONE WITHIN ${sayN(p.r)} TILES IS DAZED ${sayN(p.stun)}s` : ''}. THEN IT IS GONE.`,
     tiers: [
-      { desc: 'ONCE: DEATH IS CANCELLED. UP WITH 1 HEART AND 1.5s OF MERCY, AND IT IS SPENT.', params: { hearts: 1, invuln: 1.5, stun: 0, r: 5 } },
-      { desc: 'ONCE: DEATH IS CANCELLED. UP WITH 2 HEARTS AND 1.5s OF MERCY.', params: { hearts: 2, invuln: 1.5, stun: 0, r: 5 } },
-      { desc: 'AND EVERYTHING WITHIN 5 TILES IS DAZED 1.5s.', params: { hearts: 2, invuln: 1.5, stun: 1.5, r: 5 } }],
+      { params: { hearts: 1, invuln: 1.5, stun: 0, r: 5 } },
+      { params: { hearts: 2, invuln: 1.5, stun: 0, r: 5 } },
+      { params: { hearts: 2, invuln: 1.5, stun: 1.5, r: 5 } }],
     apply: (m, p) => { m.scapegoat = p; } },
   { id: 'tallow', tag: 'def', name: 'TALLOW SKIN', color: '#e8dcb0',
+    say: (p) => `A CRUST THAT TAKES ONE HIT FOR YOU. IT GROWS BACK AFTER ${p.rooms} NEW ROOMS${p.soul ? ', OR AT ONCE WHEN YOU TAKE A SOUL' : ''}.`,
     tiers: [
-      { desc: 'A CRUST EATS 1 BLOW. IT GROWS BACK OVER 5 NEW ROOMS.', params: { rooms: 5, soul: false } },
-      { desc: '4 NEW ROOMS, OR AT ONCE ON A SOUL.', params: { rooms: 4, soul: true } },
-      { desc: '3 NEW ROOMS, OR AT ONCE ON A SOUL.', params: { rooms: 3, soul: true } }],
+      { params: { rooms: 5, soul: false } },
+      { params: { rooms: 4, soul: true } },
+      { params: { rooms: 3, soul: true } }],
     apply: (m, p) => { m.tallow = p; } },
   { id: 'mirror', tag: 'butt', name: 'MIRROR SHARD', color: '#bfe6ff',
+    say: (p) => `FOR ${sayN(p.window)}s FROM THE START OF A HEADBUTT: BULLETS FLY BACK, AND A BITE${p.club ? ', CLUB OR BLADE' : ''} THROWS ITS MAN BACK${p.heavy ? `. SO DO A CLEAVER, A CHARGE, A SLAM (REELING ${sayN(p.stun)}s) AND A RUNE WITHIN ${sayN(p.runeR)} TILES` : ''}. MISTIMED, YOU TAKE THE HIT.`,
     tiers: [
-      { desc: '0.18s WINDOW ON THE HORNS: A BULLET OR A BITE GOES BACK. A MISS IS A FULL HIT.', params: { window: 0.18, club: false, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
-      { desc: '0.2s WINDOW, CLUBS AND BLADES TOO: THROWN BACK AND DAZED 0.8s.', params: { window: 0.2, club: true, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
-      { desc: '0.25s WINDOW, EVERYTHING: CLEAVER, CHARGE, SLAM, RUNE (6 TILES). DAZED 1s.', params: { window: 0.25, club: true, heavy: true, throw: 0.8, stun: 1, runeR: 6 } }],
+      { params: { window: 0.18, club: false, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
+      { params: { window: 0.2, club: true, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
+      { params: { window: 0.25, club: true, heavy: true, throw: 0.8, stun: 1, runeR: 6 } }],
     apply: (m, p) => { m.mirror = p; } },
   { id: 'cup', tag: 'count', name: 'BLOOD CUP', color: '#c0392b',
+    say: (p) => `EVERY ${p.need} MEN KILLED BY THE ROOM (WALL, WHEEL, GRATING, DROP) GIVE 1 HEART, UP TO ${p.max} A FLOOR${p.carry ? '. THE COUNT CARRIES TO THE NEXT FLOOR' : ''}.`,
     tiers: [
-      { desc: '12 MEN BROKEN ON THE ROOM = 1 HEART. UP TO 2 A FLOOR.', params: { need: 12, carry: false, max: 2 } },
-      { desc: '10 MEN = 1 HEART. UP TO 2 A FLOOR.', params: { need: 10, carry: false, max: 2 } },
-      { desc: '8 MEN = 1 HEART, AND THE COUNT KEEPS FOR THE NEXT FLOOR.', params: { need: 8, carry: true, max: 2 } }],
+      { params: { need: 12, carry: false, max: 2 } },
+      { params: { need: 10, carry: false, max: 2 } },
+      { params: { need: 8, carry: true, max: 2 } }],
     apply: (m, p) => { m.cup = p; } },
   { id: 'tally', tag: 'butt', name: 'TALLY STICK', color: '#a57949',
+    say: (p) => `EVERY ${p.every}${p.every === 2 ? 'ND' : p.every === 3 ? 'RD' : 'TH'} HEADBUTT THAT LANDS THROWS x${sayN(p.mul)}${p.stun ? ` AND DAZES EVERYONE WITHIN ${sayN(p.r)} ${p.r === 1 ? 'TILE' : 'TILES'} FOR ${sayN(p.stun)}s` : ''}.`,
     tiers: [
-      { desc: 'EVERY 4TH BLOW THAT LANDS THROWS x2.', params: { every: 4, stun: 0, r: 1, mul: 2 } },
-      { desc: 'EVERY 3RD BLOW THROWS x2.', params: { every: 3, stun: 0, r: 1, mul: 2 } },
-      { desc: 'EVERY 3RD, AND DAZES EVERYONE WITHIN 1 TILE FOR 1s.', params: { every: 3, stun: 1, r: 1, mul: 2 } }],
+      { params: { every: 4, stun: 0, r: 1, mul: 2 } },
+      { params: { every: 3, stun: 0, r: 1, mul: 2 } },
+      { params: { every: 3, stun: 1, r: 1, mul: 2 } }],
     apply: (m, p) => { m.tally = p; } },
 ];
+// A tier's `desc` is its talisman's `say` over its own params, read when it is drawn.
+for (const a of ARTIFACTS) for (const tier of a.tiers) {
+  Object.defineProperty(tier, 'desc', { get() { return a.say(tier.params); }, enumerable: true });
+}
 
 // The mouse's third offer, beside her two talismans: no talisman at all, a pail of milk as tall as
 // the goat, set down in front of her hole. It used to be three bowls scattered round the room with
@@ -1446,7 +1754,7 @@ const ARTIFACT_HOW = {
   spur: 'You reach full running speed sooner.',
   moth: 'Your running is quieter: men hear you from less far.',
   bell: 'A thread on the floor shows the way to the stairs and the vault.',
-  sandal: 'Running into a room with men in it gives you a burst of speed.',
+  sandal: 'Get into a new room with men on your heels and you get a burst of speed.',
   scapegoat: 'Saves your life once. Then it is gone.',
   tallow: 'Takes one hit for you, then grows back as you go.',
   mirror: 'Headbutt right as a hit reaches you and it goes back at them. Mistime it and you are hit.',
@@ -1588,7 +1896,7 @@ const LEVELS = [
     // the goat is inside, and neither gives until he does.
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer', sealed: true }],
     gates: [5, 10],
-    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
+    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, barrels: 0.3, vaultAt: 6,
     // The first escort of the run is the loudest one: a floor about fire and being found is the
     // right floor to be handed something that gives you away (js/beasts.js).
     beasts: ['chicken', 'goose'],
@@ -1664,7 +1972,7 @@ const LEVELS = [
     beasts: ['tortoise', 'goose', 'chicken'],
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
     // heels crosses a beat later, when it is no longer floor.
-    spikes: 0.3, crates: 0.35, vaultAt: 4,
+    spikes: 0.3, crates: 0.35, barrels: 0.3, vaultAt: 4,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [['hunter', 0.2]],
@@ -1700,7 +2008,7 @@ const LEVELS = [
     decor: 'Wide yards, posts, tables, braziers, rings of hay, almost no wall at all.',
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
     gates: [5, 11],
-    millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7, traps: 1,
+    millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, barrels: 0.3, vaultAt: 7, traps: 1,
     // The crow is met on the widest, fullest floor in the game, because the one thing it asks for is
     // bodies and this is the floor that has them (js/beasts.js).
     beasts: ['crow', 'goose'],
@@ -1734,7 +2042,7 @@ const LEVELS = [
     decor: 'Pillar gates, table throats, hunters and hounds crowding every narrow doorway.',
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
     gates: [8, 13],
-    millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 5,
+    millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, barrels: 0.25, traps: 2, vaultAt: 5,
     beasts: ['tortoise', 'crow'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
@@ -1762,7 +2070,7 @@ const LEVELS = [
     gates: [6, 13],
     // Windows are this level's and nobody else's: a hole in a wall is a drop, and the drop is the
     // one new thing THE RAFTERS has. Every other level's walls are the inside of a compound.
-    millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8, windows: 0.55, traps: 1,
+    millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, barrels: 0.3, vaultAt: 8, windows: 0.55, traps: 1,
     // Not the tortoise: a floor whose one idea is the drop is not the floor to be walking a thing
     // that has to be thrown across it.
     beasts: ['crow', 'goose'],
@@ -1791,7 +2099,7 @@ const LEVELS = [
     decor: 'Stone niches and lanes, open floor between them, wraiths arriving from behind.',
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
     gates: [8, 12],
-    millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
+    millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, barrels: 0.2, traps: 2, vaultAt: 7,
     beasts: ['crow', 'tortoise'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
@@ -1815,7 +2123,7 @@ const LEVELS = [
 const BEAST_CARD = {
   tortoise: ['THE TORTOISE CAME WITH YOU', `EVERY SHIELD TAKES ${TUNING.prop.tortoise.saveShield} MORE BLOW, FOR THE REST OF THE RUN`],
   goose: ['THE GOOSE CAME WITH YOU', `YOUR VOICE REACHES ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% FURTHER AND COMES BACK ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% SOONER`],
-  crow: ['THE CROW CAME WITH YOU', 'IT HAS FOUND SOMETHING. IT WILL BE ON THE NEXT STAIRS'],
+  crow: ['THE CROW CAME WITH YOU', `IT HAS FOUND A TALISMAN, TIER ${'I'.repeat(TUNING.prop.crow.giftTier)}. IT WILL BE ON THE NEXT STAIRS, FREE`],
 };
 
 // What the player has already been shown by the time each level starts: every kind an earlier level
@@ -1873,4 +2181,30 @@ function tripLevel(i) {
   def.met = new Set([...(base.met || []), ...E.kinds, 'champion']);
   def.known = new Set([...(base.known || []), ...(base.canon ? [base.canon.id] : [])].filter((c) => c !== 'drop'));
   return (TRIP_LEVELS[i] = def);
+}
+
+// THE DARK. The same floor with the lamps out (`TUNING.dark`): its rooms, its canon, its bosses and
+// its souls, but only what burns is lit, so it is cut to a gentler curve and fewer traps
+// (`dark.soften`) and the generator hangs lamps in the rooms that had no flame. Unlike the trip it
+// is still that level to everything that asks which level it is — the mouse, the milk rhythm — so
+// those ask `levelIndexOf` and not `LEVELS.indexOf`.
+const DARK_LEVELS = {};
+function darkLevel(i) {
+  if (DARK_LEVELS[i]) return DARK_LEVELS[i];
+  const base = LEVELS[i], D = TUNING.dark.soften, E = base.encounters;
+  const def = Object.assign({}, base, {
+    dark: true, darkOf: i,
+    encounters: Object.assign({}, E, { from: E.from * D.from, to: E.to * D.to, ease: 1 + ((E.ease || 1) - 1) * D.ease,
+      kinds: E.kinds.filter((k) => k !== 'hunter'), introduce: (E.introduce || []).filter(([k]) => k !== 'hunter'),
+      weight: E.weight && Object.fromEntries(Object.entries(E.weight).filter(([k]) => k !== 'hunter')),
+      cap: Object.assign({}, E.cap, { men: Math.max(3, Math.round(((E.cap && E.cap.men) || ENCOUNTER.cap.men) * D.men)) }) }),
+    traps: Math.floor((base.traps || 0) * D.traps), spikes: (base.spikes || 0) * D.spikes, killboxAt: undefined, lonePosts: 0,
+    hint: 'THE LAMPS ARE OUT. YOU HEAR THEM BEFORE YOU SEE THEM.', hintKey: null,
+  });
+  return (DARK_LEVELS[i] = def);
+}
+// Which floor of the run a level is: its place in LEVELS, or, played dark, the place of the level
+// it is the dark of. THE TRIP stays -1 on purpose (see `tripLevel`).
+function levelIndexOf(def) {
+  return def && def.darkOf !== undefined ? def.darkOf : LEVELS.indexOf(def);
 }

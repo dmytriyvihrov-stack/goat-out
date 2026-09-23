@@ -129,7 +129,7 @@ const Shop = {
   ogreShrug(game, e) {
     if (game.ogreTold) return;
     game.ogreTold = true;
-    game.floatText(e.x, e.y - 44, 'STUN HIM FIRST. A CRATE, A SHIELD', PALETTE.ash);
+    game.floatText(e.x, e.y - 44, 'STUN HIM FIRST. A CRATE, A SHIELD', PALETTE.ashHi);
   },
 
   // The mouse and her wares age: what she is saying runs out, her fright fades.
@@ -223,7 +223,7 @@ const Shop = {
       if (solidAt(px, py) || solidAt(px + dy * goat.r * 0.7, py - dx * goat.r * 0.7) || solidAt(px - dy * goat.r * 0.7, py + dx * goat.r * 0.7)) break;
       bx = px; by = py;
     }
-    if (Math.hypot(bx - goat.x, by - goat.y) < TILE * 0.6) { game.floatText(goat.x, goat.y - 30, 'NO ROOM', PALETTE.ash); game.audio.sfxThud(); return false; }
+    if (Math.hypot(bx - goat.x, by - goat.y) < TILE * 0.6) { game.floatText(goat.x, goat.y - 30, 'NO ROOM', PALETTE.ashHi); game.audio.sfxThud(); return false; }
     const ox = goat.x, oy = goat.y;
     if (goat.holding) {
       const h = goat.holding; goat.holding = null; h.held = false; goat.autoHeld = false;

@@ -63,6 +63,42 @@
         "8772"
       ],
       "port": 8772
+    },
+    {
+      "name": "goat-out-8",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8773"
+      ],
+      "port": 8773
+    },
+    {
+      "name": "goat-out-9",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8774"
+      ],
+      "port": 8774
+    },
+    {
+      "name": "goat-out-10",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8775"
+      ],
+      "port": 8775
+    },
+    {
+      "name": "goat-out-11",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8776"
+      ],
+      "port": 8776
     }
   ]
 }

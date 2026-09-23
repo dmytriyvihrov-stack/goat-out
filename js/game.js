@@ -93,7 +93,9 @@ class Game {
       balance: null, balanceSeeds: 8, room: null,
       // Two read-only overlays: a man's sight (cone plus range) and how far the goat's own noise
       // carries (a walk against a fight), both drawn in world space by `Renderer.drawDevOverlay`.
-      vision: false, hearing: false };
+      vision: false, hearing: false,
+      // THE DARK's picture over whatever floor is up, without its gentler curve or its lamps.
+      dark: false };
     this.intro = null;      // the opening scene while it plays; see beginIntro
     this.stairFx = null;    // the goat on a flight of stairs: { t, dir } with dir 1 going up and out, -1 arriving
     this.state = 'title'; this.card = null; this.cardQueue = []; this.stateTimer = 0;
@@ -112,7 +114,7 @@ class Game {
     this.runSeed = 0; this.askedSeed = 0;
     try {
       const h = (location.hash || '').replace('#', '');
-      if (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'status' || h === 'props' || h === 'music' || h === 'juice') {
+      if (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats') {
         this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
       }
       // `#seed=k3j9a` is the whole of sharing a run: NEW GAME takes it instead of rolling one, so a
@@ -123,6 +125,8 @@ class Game {
       // `#trip` is the way to look at THE TRIP without finding the mushrooms first: whatever floor
       // LEVELS starts is played as the trip in its place.
       this.askedTrip = h === 'trip';
+      // `#dark` the same for THE DARK: whatever floor LEVELS starts is played with the lamps out.
+      this.askedDark = h === 'dark';
     } catch (e) { /* no location worth reading */ }
     this.layoutTouch();
     this.bindInput();
@@ -137,12 +141,23 @@ class Game {
   // Boons only ever bend numbers the goat already uses, so the two-button scheme never grows.
   applyBoons() {
     this.mods = Object.assign({}, BOON_BASE);
-    for (const b of this.boons) b.apply(this.mods, b.params || {});
+    // Actives before passives, whatever order they were taken in: an active that turns the voice
+    // into something sets its cooldown outright, and RAW THROAT's halving taken before it was
+    // silently thrown away. A passive bends what the active set; it never comes first.
+    for (const b of this.boons) if (b.active) b.apply(this.mods, b.params || {});
+    for (const b of this.boons) if (!b.active) b.apply(this.mods, b.params || {});
     if (this.artifact) Shop.applyArtifact(this.mods, this.artifact);
     if (this.settings.easy) { this.mods.maxHp += EASY.maxHp; this.mods.enemySlow = EASY.enemySlow; }
     this.mods.maxHp += this.henHearts || 0;   // the hens he brought out with him, one heart a level
     Beast.applyRewards(this, this.mods);      // and the escorts he walked to the stairs (js/beasts.js)
     if (this.goat) { this.goat.maxHp = this.mods.maxHp; this.goat.hp = Math.min(this.goat.hp, this.goat.maxHp); }
+  }
+  // COLD EYE: something just came into his mouth. The world slows (`frame`) until it leaves it or
+  // `time` runs out, and not again for `every` seconds, both counted in real time.
+  coldEye() {
+    const E = this.mods.coldEye;
+    if (!E || this.aimSlowCd > 0) return;
+    this.aimSlow = E.time; this.aimSlowCd = E.every; this.audio.sfxSlow();
   }
   // A boss can fall against a wall, and a prize inside one is a prize nobody can reach: walk out in
   // rings until the ground is floor the flow field says can be stood on.
@@ -216,11 +231,28 @@ class Game {
   // left open — one step back is still his — and a room with anybody alive in it is left open too,
   // because whoever is in there is still coming. The world is mutated live, the way the rat ogre's
   // breach is: collision, the flow field and the shadowcast all read `tiles` fresh every step.
+  // Every tile a body could walk to from (x, y), stone the only wall. A clamp is rare enough for a
+  // whole-world fill rather than a field kept up to date.
+  floodFrom(x, y) {
+    const w = this.world, W = w.W, H = w.H, seen = new Uint8Array(W * H);
+    const s0 = Math.floor(y / TILE) * W + Math.floor(x / TILE), stack = [s0];
+    seen[s0] = 1;
+    while (stack.length) {
+      const i = stack.pop(), tx = i % W, ty = (i / W) | 0;
+      for (let d = 0; d < 4; d++) {
+        const nx = tx + (d === 0 ? 1 : d === 1 ? -1 : 0), ny = ty + (d === 2 ? 1 : d === 3 ? -1 : 0), j = ny * W + nx;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[j] || w.isSolid(nx, ny)) continue;
+        seen[j] = 1; stack.push(j);
+      }
+    }
+    return seen;
+  }
   updateClamps() {
     const L = this.level, w = this.world, g = this.goat;
     const here = roomAt(L, g.x, g.y);
     if (here) this.goatRoom = here.index;
     const upTo = (this.goatRoom || 0) - 2;
+    let pets = null;
     for (let k = 0; k <= upTo; k++) {
       const room = L.rooms[k];
       if (!room || room.clamped || !room.exitMouth) continue;
@@ -232,7 +264,21 @@ class Game {
       });
       if (onMouth(g.x, g.y, g.r) || this.enemies.some((e) => !e.dead && onMouth(e.x, e.y, e.r))) continue;
       room.clamped = true;
+      // An animal of ours still this side of the mouth — in the room or one before it — is walled in
+      // with it, and that is meant: an escort left behind is the price of not keeping its pace. What
+      // is not meant is finding out at the stairs. It used to stay alive in the dark with nothing on
+      // screen to say so; it is lost now, and the goat is told where he stands (`Beast.lost`).
+      // Which side of the new stone it is on is asked of the tiles, not the room list: a corridor
+      // belongs to no room, and one half-way down the corridor out of the room he stands in counted
+      // as behind the wall and was lost on his side of it.
+      pets = pets || this.props.filter((p) => Beast.animal(p) && !p.held);
+      const walled = pets.filter((p) => !p.broken && onMouth(p.x, p.y, 0));
       for (const i of m.tiles) w.tiles[i] = T.WALL;
+      const open = pets.some((p) => !p.broken) ? this.floodFrom(g.x, g.y) : null;
+      for (const p of pets) {
+        if (p.broken) continue;
+        if (walled.includes(p) || !open[Math.floor(p.y / TILE) * w.W + Math.floor(p.x / TILE)]) Beast.lost(p, this);
+      }
       w.caveDirty();
       // Whatever was lying in the mouth goes into the stone with it, and a door hung there — a gate
       // long since opened, a seal — is part of the wall now rather than a slab drawn inside one.
@@ -493,7 +539,7 @@ class Game {
   reachedForAMan(goat) {
     if (this.toldGrab) return;
     this.toldGrab = true;
-    this.floatText(goat.x, goat.y - 34, 'TOO BIG TO CARRY', PALETTE.ash);
+    this.floatText(goat.x, goat.y - 34, 'TOO BIG TO CARRY', PALETTE.ashHi);
   }
 
   // A soul offers three of one kind: actives change what a button does, passives sharpen everything.
@@ -586,6 +632,7 @@ class Game {
     if (id === 'god') { this.dev.god = !this.dev.god; this.devToast(this.dev.god ? 'GOD MODE ON' : 'GOD MODE OFF'); return; }
     if (id === 'vision') { this.dev.vision = !this.dev.vision; return; }
     if (id === 'hearing') { this.dev.hearing = !this.dev.hearing; return; }
+    if (id === 'dark') { this.dev.dark = !this.dev.dark; return; }
     if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) { this.dev.page = this.level ? this.levelIndex : 0; this.dev.room = null; } return; }
     if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); this.dev.room = null; return; }
     if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; this.dev.samples = {}; this.dev.matrix = null; this.dev.room = null; return; }
@@ -600,6 +647,7 @@ class Game {
     }
     if (id.startsWith('tab-')) { this.dev.tab = id.slice(4); this.dev.room = null; return; }
     if (id.startsWith('tal-') && Talisman.devAction(this, id)) return;   // the TALISMANS tab
+    if (id.startsWith('grid-') && GoatGrid.devAction(this, id)) return;  // the GOAT GRID tab
     // The JUICE tab: a filter, a page, a row opened out, and the table handed over as Markdown.
     if (id.startsWith('juice-filter=')) { this.dev.juiceFilter = id.slice(13); this.dev.juicePage = 0; return; }
     if (id.startsWith('juice-page=')) { this.dev.juicePage = (this.dev.juicePage || 0) + Number(id.slice(11)); return; }
@@ -949,6 +997,7 @@ class Game {
       try { c.setPointerCapture(e.pointerId); } catch (err) { /* not fatal */ }
       const p = this.canvasPos(e);
       if (this.hitDev(p)) return;
+      if (this.state === 'clear') this.input.mouse = p;   // a finger on SAVE is where the press was, too
       if (this.state === 'title') {
         this.touch.active = !isMouse(e); this.input.mouse = p;
         this.menuPanelClick(p);
@@ -1067,7 +1116,9 @@ class Game {
     this.levelIndex = index;
     // The level he ate the mushrooms before is played as THE TRIP, in the place of this one.
     if (this.tripAt === undefined) this.tripAt = -1;
-    const def = index === this.tripAt ? tripLevel(index) : LEVELS[index];
+    // THE DARK is the same floor with the lamps out, played in its own place (`darkLevel`).
+    if (this.darkAt === undefined) this.darkAt = -1;
+    const def = index === this.tripAt ? tripLevel(index) : index === this.darkAt ? darkLevel(index) : LEVELS[index];
     this.levelTripAt = this.tripAt;
     this.tripBanner = def.shroom ? TUNING.shroom.banner.time : 0;
     // The clover at his neck reaches the generator and nothing else he carries does: it is the
@@ -1104,7 +1155,7 @@ class Game {
     this.props = this.level.props.map((p) => new Prop(p.x, p.y, p.kind, p));
     // The ritual altar: real furniture rather than scenery, so it blocks the way and takes a blow
     // like any other table. Its position matches where the decal layer has always drawn it.
-    if (this.level.def === LEVELS[0]) {
+    if (levelIndexOf(this.level.def) === 0) {   // the dark altar is still the altar
       const S = this.level.start;
       this.props.push(new Prop(S.x - 4 * TILE, S.y - 0.2 * TILE, 'table', { altar: true }));
     }
@@ -1115,7 +1166,7 @@ class Game {
     if (this.mods.shieldUses) for (const p of this.props) if (p.kind === 'weapon' && p.weapon === 'shield') p.uses += this.mods.shieldUses;
     // And what the crow found on the last floor is standing on this one's stairs.
     Beast.placeGift(this);
-    this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike' || p.kind === 'spire');
+    this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike' || p.kind === 'spire' || p.kind === 'barrel');
     this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill' || p.kind === 'secret');
     // A niche is rock until its wall gives. It was floor from the first frame, lying one row outside
     // the room's own box where the room fog never reaches, so the rack and the grass in it sat there
@@ -1149,10 +1200,10 @@ class Game {
     this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null;
     // A thin trail of where he actually walked, sampled on a clock rather than every step so a long
     // level does not grow an enormous array. It is what the death screen's pull-back draws as a line.
-    this.pathTrail = [{ x: this.goat.x, y: this.goat.y }]; this.pathTimer = 0; this.deathCam = null;
+    this.pathTrail = [{ x: this.goat.x, y: this.goat.y }]; this.pathTimer = 0; this.deathCam = null; this.painting = null;
     this.killMarks = [];   // where each man of this level went down — skulls on the death screen's map
     this.crowMarks = [];   // the same bodies, for the crow — a level's dead do not call it to the next one
-    this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0;
+    this.kills = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0; this.aimSlow = 0; this.aimSlowCd = 0;
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
     this.combo = 0; this.comboTimer = 0; this.barkCd = 0; this.cageOpen = false; this.cageLunge = -1;
     this.cageThought = 0;   // a beat of "her" over his head the moment the pen gives, comic-panel style
@@ -1316,9 +1367,10 @@ class Game {
     // of the game, played straight or, with the toggle on, as its trip; the last row is the way back.
     if (m.panel === 'levels') {
       m.sub = i;
-      if (i === 0) { m.tripPick = !m.tripPick; this.audio.sfxCard(); return; }
+      // The toggle walks off, THE TRIP, THE DARK, off.
+      if (i === 0) { if (m.darkPick) m.darkPick = false; else if (m.tripPick) { m.tripPick = false; m.darkPick = true; } else m.tripPick = true; this.audio.sfxCard(); return; }
       if (i > LEVELS.length) { m.panel = null; this.audio.sfxCard(); return; }
-      this.audio.sfxCard(); this.startAtLevel(i - 1, m.tripPick);
+      this.audio.sfxCard(); this.startAtLevel(i - 1, m.tripPick, m.darkPick);
       return;
     }
     m.index = i;
@@ -1326,7 +1378,7 @@ class Game {
     // Nothing to come back to: the button shakes its head and stays where it is.
     if (id === 'continue' && !this.save) { m.shake = 0.35; this.audio.sfxThud(); return; }
     this.audio.sfxCard();
-    if (id === 'levels') { m.panel = 'levels'; m.sub = 0; m.tripPick = false; return; }
+    if (id === 'levels') { m.panel = 'levels'; m.sub = 0; m.tripPick = false; m.darkPick = false; return; }
     if (id === 'best') { m.panel = 'best'; return; }
     if (id === 'settings') { m.panel = 'settings'; m.sub = 0; return; }
     if (id === 'continue') { this.resumeRun(); return; }
@@ -1385,7 +1437,7 @@ class Game {
   // have banked on the way are dealt out here — at random, because the point of the row is to put
   // you on that floor and not to reproduce somebody's build. Level one is the ordinary opening,
   // scene and all. Nothing about it touches the saved run or the board.
-  startAtLevel(li, trip) {
+  startAtLevel(li, trip, dark) {
     this.clearRun();
     this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0;
     this.beasts = {}; this.crowGift = false;
@@ -1404,7 +1456,9 @@ class Game {
     // The row's own toggle picks a trip the same way `#trip` off the address does — a level has no
     // trip of its own on the first floor, since nothing has found any shrooms yet.
     this.tripAt = (trip || this.askedTrip) && li > 0 ? li : -1;
-    this.startLevel(li, this.levelSeed(li), true, li === 0 && this.tripAt !== li);
+    // The toggle plays the picked floor dark; without it the run's own dark floor (`dark.runAt`) stays.
+    if ((dark || this.askedDark) && this.tripAt !== li) this.darkAt = li;
+    this.startLevel(li, this.levelSeed(li), true, li === 0 && this.tripAt !== li && this.darkAt !== li);
   }
   // CONTINUE is the head of the furthest level the run reached, with the souls it was carrying there.
   resumeRun() {
@@ -1419,6 +1473,7 @@ class Game {
     // seeds existed has none, and gets a fresh one rather than nothing.
     this.runSeed = s.runSeed || ((Math.random() * 1e9) | 0);
     this.tripAt = s.tripAt === undefined ? -1 : s.tripAt;
+    this.darkAt = s.darkAt === undefined ? TUNING.dark.runAt : s.darkAt;
     const li = clamp(s.level | 0, 0, LEVELS.length - 1);
     this.startLevel(li, this.levelSeed(li), true);
   }
@@ -1465,6 +1520,7 @@ class Game {
   saveRun() {
     this.save = { v: 1, level: this.levelIndex, boons: this.boons.map((b) => b.id), totalKills: this.totalKills,
       deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, henHearts: this.henHearts || 0, tripAt: this.tripAt === undefined ? -1 : this.tripAt,
+      darkAt: this.darkAt === undefined ? TUNING.dark.runAt : this.darkAt,
       beasts: this.beasts || {}, crowGift: !!this.crowGift,
       artifact: this.artifact ? { id: this.artifact.id, tier: this.artifact.tier } : null, at: Date.now() };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (err) { /* private mode: the run dies with the tab */ }
@@ -1503,8 +1559,11 @@ class Game {
     };
     // What a death does NOT take is named, because a card that says you keep everything is the only
     // way the player finds out that he does. Anything found inside this level goes back in the room.
-    const held = this.levelBoons || [];
-    const kept = held.length ? `${held.length} SOUL${held.length > 1 ? 'S' : ''} KEPT` : 'NOTHING LOST';
+    // And what it does take, too: a soul spent on this floor goes back into it, and a card that
+    // said NOTHING LOST over a pair of antlers that had just vanished was lying to him.
+    const held = this.levelBoons || [], lost = Math.max(0, (this.boons || []).length - held.length);
+    const souls = (k) => `${k} SOUL${k > 1 ? 'S' : ''}`;
+    const kept = [held.length ? `${souls(held.length)} KEPT` : '', lost ? `${souls(lost)} LOST` : ''].filter(Boolean).join(' · ') || 'NOTHING LOST';
     // The level is on the card because a death is where somebody puts the game down, and the next
     // time they pick it up the one thing they will not remember is how far in they were.
     const lv = this.level.def || {};
@@ -1541,11 +1600,15 @@ class Game {
         lines: [BEAST_CARD[k][0], '', BEAST_CARD[k][1]],
         dim: 0.8, size: 34, small: 2, time: 1.8, color: PALETTE.hen,
       }))),
-      // The level's own score: what the time was worth and what the bodies did to it.
-      { lines: [`SCORE ${score}`, '', `${this.kills} sacrificed in ${this.timer.toFixed(1)}s`,
-        best ? 'A NEW BEST' : `run so far ${this.totalScore}`],
-        dim: 0.9, size: 34, small: 2, time: 1.9, color: best ? PALETTE.fireHi : null },
+      // The level's own score, under the picture of the floor it was earned on (`js/painting.js`):
+      // what the time was worth, what the bodies did to it, and the paint they left. This one card
+      // waits for a press, because it is the one worth a second look and SAVE is on it.
+      { painting: true, lines: [], score, best, run: this.totalScore, time: TUNING.painting.arm, color: best ? PALETTE.fireHi : null },
     ];
+    this.pathTrail.push({ x: this.goat.x, y: this.goat.y });
+    Painting.status = null;
+    try { this.painting = Painting.bake(this); } catch (err) { console.error(err); this.painting = null; }
+    if (!this.painting) this.cardQueue.pop();   // no picture, no card for it: the run goes on
     this.nextCard();
   }
   nextCard() {
@@ -1707,7 +1770,12 @@ class Game {
     const dtReal = Math.min(0.1, (t - this.last) / 1000); this.last = t;
     this.slowTimer = Math.max(0, this.slowTimer - dtReal);
     const wantSlow = this.slowTimer > 0 || this.state === 'dead';
-    this.timeScale += ((wantSlow ? 0.32 : 1) - this.timeScale) * (1 - Math.exp(-7 * dtReal));
+    // COLD EYE: real seconds, so the moment to aim is the same length however slow it makes the
+    // world. It lives only while something is still in his mouth — the throw is what ends it.
+    const eye = this.mods && this.mods.coldEye;
+    this.aimSlowCd = Math.max(0, (this.aimSlowCd || 0) - dtReal);
+    if (this.aimSlow > 0) this.aimSlow = eye && this.state === 'play' && this.goat && this.goat.holding ? Math.max(0, this.aimSlow - dtReal) : 0;
+    this.timeScale += ((wantSlow ? 0.32 : this.aimSlow > 0 ? eye.scale : 1) - this.timeScale) * (1 - Math.exp(-7 * dtReal));
     this.acc += dtReal * this.timeScale;
     const step = 1 / 60;
     let n = 0;
@@ -1754,7 +1822,14 @@ class Game {
       if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) this.restartLevel();
       this.clearEdges(); return;
     }
-    if (this.state === 'clear') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) this.nextCard(); this.clearEdges(); return; }
+    if (this.state === 'clear') {
+      this.stateTimer -= dt; this.updateEffects(dt);
+      if (!(this.card && this.card.painting)) { if (this.stateTimer <= 0) this.nextCard(); }
+      else if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) {
+        if (this.input.lmbPressed && Painting.onSave(this.input.mouse)) Painting.save(this); else this.nextCard();
+      }
+      this.clearEdges(); return;
+    }
     if (this.state === 'boon') { this.boonArm = Math.max(0, this.boonArm - dt); this.updateEffects(dt); this.clearEdges(); return; }
     if (this.state === 'win') { if (this.input.lmbPressed) { this.forgetLessons(); this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.beasts = {}; this.crowGift = false; this.runSeed = (Math.random() * 1e9) | 0; this.startLevel(0, this.levelSeed(0), false, true); } this.clearEdges(); return; }
     if (this.state !== 'play') { this.clearEdges(); return; }
@@ -1763,7 +1838,15 @@ class Game {
     this.timer += dt;
     const w = this.world;
     w.flowTimer -= dt;
-    if (w.flowTimer <= 0) { w.flowTimer = 0.15; w.computeFlow(this.goat.x, this.goat.y); }
+    if (w.flowTimer <= 0) {
+      w.flowTimer = 0.15;
+      // The route fields walk round the furniture where it stands now; the wide one only costs
+      // anything while there is somebody awake who needs it.
+      const wideR = TUNING.ai.path.wideR;
+      w.wideWanted = this.enemies.some((e) => e.woke && !e.dead && e.r >= wideR);
+      w.setFurniture(this.props);
+      w.computeFlow(this.goat.x, this.goat.y);
+    }
 
     this.revealRooms();
     this.runes.length = 0;
@@ -1781,7 +1864,8 @@ class Game {
     if (this.pathTimer <= 0) { this.pathTimer = TUNING.deathCam.sampleGap; this.pathTrail.push({ x: this.goat.x, y: this.goat.y }); }
     // The floor stopped under him. Everything else waits while he goes down it.
     if (this.goat.state === 'falling') { this.updateFall(dt); this.updateEffects(dt); this.updateCamera(dt); this.clearEdges(); return; }
-    if (!this.goat.dead && w.isPitPx(this.goat.x, this.goat.y)) { this.goatFalls(); this.clearEdges(); return; }
+    // A goat in the air over a man (LEAPFROG) is over the hole too; he lands on floor or not at all.
+    if (!this.goat.dead && !this.goat.leap && w.isPitPx(this.goat.x, this.goat.y)) { this.goatFalls(); this.clearEdges(); return; }
     // Nothing simulates two rooms away or further: the room he is in and the one next door still
     // patrol, chase and swing exactly as before, but a man past that has nobody to hear or see him
     // and nothing he does costs a frame. Room index is a fair proxy for distance because the
@@ -1817,6 +1901,8 @@ class Game {
     // breaking, a bomb, the grating, a table through a door — is carried into the next step, because
     // clearing the whole list at the end of this one threw all of those away before anybody heard them.
     const heardUpTo = w.noises.length;
+    // THE DARK: whether the goat is standing where a flame shows him, asked once for every man.
+    this.goatLit = !this.level.def.dark || this.litAt(this.goat.x, this.goat.y);
     const live = this.liveEnemies; live.length = 0;
     for (const e of this.enemies) {
       e.live = false;
@@ -1897,10 +1983,11 @@ class Game {
       // A patch of real grass rather than a bowl of milk: rarer, tucked behind a wall a secret gave
       // up, and worth twice what the milk does — the risk of going looking for it is what pays for
       // the extra heart, not the room it happens to be standing in.
-      const gain = p.big ? 2 : 1;
+      // FOUR STOMACHS: grass is worth more to him; the pail (`p.pail`, still >= 1 on its last drink) is milk.
+      const gain = (p.big ? TUNING.prop.heal.bigGain : 1) + (p.pail > 0 ? 0 : this.mods.grassGain);
       this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + gain);
       this.particles(p.x, p.y, 18, PALETTE.bone, 170); this.ring(p.x, p.y, 2 * TILE, PALETTE.bone);
-      this.floatText(p.x, p.y - 24, gain > 1 ? '+2 HEARTS' : '+1 HEART', PALETTE.bone); this.audio.sfxBell(); this.vibe(20);
+      this.floatText(p.x, p.y - 24, gain > 1 ? `+${gain} HEARTS` : '+1 HEART', PALETTE.bone); this.audio.sfxBell(); this.vibe(20);
     }
     if (!this.goat.dead && w.tileAtPx(this.goat.x, this.goat.y) === T.EXIT) { this.beginClimb(); this.clearEdges(); return; }
 
@@ -2379,7 +2466,8 @@ class Game {
       }
     }
     for (const e of act) {
-      if (e.dead || e.held || e.ghosted || g.dead) continue;
+      // Over a man's back (LEAPFROG) he touches nobody until he lands.
+      if (e.dead || e.held || e.ghosted || g.dead || g.leap) continue;
       const dx = e.x - g.x, dy = e.y - g.y, min = e.r + g.r;
       if (dx * dx + dy * dy >= min * min) continue;
       const d = Math.sqrt(dx * dx + dy * dy);
@@ -2454,6 +2542,7 @@ class Game {
             e.chargeStopped(this); continue;
           }
           if (p.kind === 'table' && !p.flung) { p.shove(this, -nx, -ny, e); continue; }
+          if (p.kind === 'barrel') { p.roll(this, -nx, -ny, TUNING.prop.barrel.roll, e); continue; }
           if (p.kind === 'lamp') { p.topple(this, -nx, -ny); continue; }
           if (p.kind === 'brazier') { p.spill(this, -nx, -ny); e.ignite(this); continue; }
           if (p.kind === 'bell') p.ring(this);
@@ -2471,6 +2560,8 @@ class Game {
         // A boulder takes a body the way a head takes it: one blow's worth off it, and a man thrown
         // into one twice has broken it. Whatever the speed, the rock pays; at killing speed he does too.
         if (e.state === 'flung' && e !== g && p.kind === 'rock' && -vn > ph.knockHitSpeed) p.crackRock(this);
+        // A body thrown into a barrel sends it on rolling, and still meets it as hard as a wall.
+        if (e.state === 'flung' && e !== g && p.kind === 'barrel' && -vn > TUNING.prop.barrel.knock) p.roll(this, -nx, -ny, -vn * TUNING.prop.barrel.pass, e);
         if (e.state === 'flung' && e !== g && -vn > e.splatLimit(this)) { e.die(this, 'splat', -nx, -ny); continue; }
         if (e === g && p.kind === 'table' && !p.flung) {
           // the goat can shoulder a table along slowly
@@ -2556,6 +2647,11 @@ class Game {
     this.audio.sfxGunshot(); this.world.emitNoise(shooter.x, shooter.y, TUNING.noise.gunshot);
     this.particles(mx, my, 4, PALETTE.fireHi, 120); this.shake(1.5);
     this.flares.push({ x: mx, y: my, a: Math.atan2(dy, dx), life: TUNING.juice.muzzle.life });
+    // The spent case out of the side of the breech, left lying where it lands (JUICE: shell casings).
+    // Out of the side toward the camera: thrown the other way it lands behind him and is never seen.
+    const C = TUNING.effects.shell, flip = dx < 0 ? -1 : 1, ex = -dy * flip - dx * C.back, ey = dx * flip - dy * C.back;
+    this.fx.fragment(shooter.x + dx * shooter.r, shooter.y + dy * shooter.r, null, null, C.w, C.h, ex, ey, 'brass',
+      { color: PALETTE.hayDark, vx: ex * C.speed * (0.8 + Math.random() * 0.4), vy: ey * C.speed * (0.8 + Math.random() * 0.4), vz: C.lift });
     // Firing into the wall he is standing against is a wasted round, not a shot through it.
     if (blocked) { w.dot(mx, my, 2, '#2a2020'); return; }
     this.bullets.push(new Bullet(mx, my, dx * s, dy * s, shooter));
@@ -2584,6 +2680,26 @@ class Game {
   // A shut door is a wall until somebody opens it, and nobody sees through a wall. `sightBlockers`
   // is the short list of props that could ever be one, so this stays off the per-frame prop loop.
   sees(ax, ay, bx, by) { return this.clearLine(ax, ay, bx, by, this.sightBlockers, 'opaque'); }
+  // THE DARK, as the cult sees it: is this point inside `dark.ai.lit` of the reach of a flame with a
+  // clear line to it — a brazier, a lamp, a burning man or goat, fire on the floor. The same flames
+  // `Dark.sources` draws, less the ones that only glow (souls, the stairs), asked of one point.
+  litAt(x, y) {
+    const L = TUNING.dark.lights, k = TUNING.dark.ai.lit, w = this.world;
+    const lit = (sx, sy, l) => Math.hypot(sx - x, sy - y) < l[0] * k * TILE && this.sees(sx, sy, x, y);
+    if (this.goat.onFire) return true;
+    for (const p of this.props) {
+      if (p.broken) continue;
+      if ((p.kind === 'brazier' && lit(p.x, p.y, L.brazier)) || (p.kind === 'lamp' && lit(p.x, p.y, L.lamp))) return true;
+      // Lit oil is drawn as a light (`Dark.sources`), so it is one to the cult as well.
+      if (p.kind === 'barrel' && p.oilT >= 0 && lit(p.x, p.y, L.burning)) return true;
+    }
+    for (const e of this.enemies) if (!e.dead && e.burning > 0 && lit(e.x, e.y, L.burning)) return true;
+    const r = Math.ceil(L.fire[0] * k), cx = Math.floor(x / TILE), cy = Math.floor(y / TILE);
+    for (let ty = Math.max(0, cy - r); ty <= Math.min(w.H - 1, cy + r); ty++) for (let tx = Math.max(0, cx - r); tx <= Math.min(w.W - 1, cx + r); tx++) {
+      if (w.fire[ty * w.W + tx] > 0 && lit((tx + 0.5) * TILE, (ty + 0.5) * TILE, L.fire)) return true;
+    }
+    return false;
+  }
   // Whether a body of radius `r` can actually run the straight line rather than only see down it —
   // `props` and not `enemies`, so a room full of his own kind is never a reason not to try; only
   // furniture and stone are. See the Butcher's `chase` → `chargewind` decision.
@@ -2627,7 +2743,7 @@ class Game {
       // holding nothing.
       else if (inArc(g) && g.crated(att.x, att.y)) {
         const box = g.holding;
-        this.floatText(box.x, box.y - 28, 'IT TAKES IT', PALETTE.wood);
+        this.floatText(box.x, box.y - 28, 'IT TAKES IT', PALETTE.ochre);
         this.shake(4); this.hitstop(0.04); this.vibe(18);
         box.shatter(this);
       }
@@ -2678,6 +2794,9 @@ class Game {
     this.crowMarks = this.crowMarks || [];
     this.crowMarks.push({ x: e.x, y: e.y, t: this.timer });
     if (this.state === 'play' && !this.goat.dead) this.audio.musicEvent('kill');
+    // The last man of the room he was put in: the score says the room is done.
+    if (this.state === 'play' && !this.goat.dead && e.room >= 0 && !e.scripted &&
+      !this.enemies.some((o) => o !== e && !o.dead && !o.scripted && o.room === e.room)) this.audio.musicEvent('cleared');
     this.kills++;
     const J = TUNING.juice, big = e.kind === 'butcher' || e.kind === 'ratogre';
     if (e.kind === 'ratogre') Shop.ogreDown(this, e);
@@ -2820,7 +2939,7 @@ class Game {
     pick.firstHide = true;
   }
 
-  forgetLessons() { this.hideTaught = false; this.tripAt = -1; this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; this.gooseTold = false; this.beastTold = {}; }
+  forgetLessons() { this.hideTaught = false; this.tripAt = -1; this.darkAt = TUNING.dark.runAt; this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; this.gooseTold = false; this.beastTold = {}; }
 
   mistTold(e) {
     if (this.mistSaid === undefined) this.mistSaid = 0;

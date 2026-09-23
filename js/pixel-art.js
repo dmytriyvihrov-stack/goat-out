@@ -25,6 +25,42 @@ const PIXEL_UNIT = {
 // The two front diagonals came in and down a little more (23 Sep): at [±3.5, -8] the ring sat on
 // his cheek and read as a hook through the mouth rather than a collar under the jaw.
 const PIXEL_NECK = [[0, -6.3], [-2.2, -6.8], [-6.6, -11.7], [-1.5, -17], [0, -16.5], [1.5, -17], [6.6, -11.7], [2.2, -6.8]];
+// The rest of his face per facing, the same way and in the same units: `mouth` under the muzzle,
+// `nose` one point per nostril the camera can see, `brow` between and above the eyes. The back
+// views have no face; their `nose` is the front of the head beyond the crown, so steam still rises
+// from the far side of him.
+const PIXEL_FACE = [
+  { mouth: [0.1, -7.6], nose: [[-0.7, -9.3], [0.8, -9.3]], brow: [0.2, -16] },
+  { mouth: [-8.4, -7.2], nose: [[-9.4, -8.3], [-8, -8.7]], brow: [-6.4, -14.8] },
+  { mouth: [-14.8, -12], nose: [[-15.9, -13.9]], brow: [-10.6, -18.3] },
+  { mouth: null, nose: [[-5.6, -23.5]], brow: null },
+  { mouth: null, nose: [[0, -24]], brow: null },
+  { mouth: null, nose: [[6.3, -23.5]], brow: null },
+  { mouth: [14.4, -12.4], nose: [[15.7, -14.2]], brow: [10.6, -18.6] },
+  { mouth: [8.4, -7.5], nose: [[9.1, -8.5], [7.7, -8.9]], brow: [6.4, -14.7] },
+];
+// What the souls put on his face, drawn by hand one sprite pixel a character, facing right
+// (`PIXEL_ART.face` mirrors them for the facings to the left). `at` is the cell that sits on the
+// `PIXEL_FACE` point; the outline is added round whatever is filled. `t` tube, `w` rim, `i` the
+// dark inside a bell, `g`/`d` froth light and dark, `v` iris, `p` pupil, `h` a glint, `o` a lid.
+const PIXEL_FACE_ART = {
+  throat: {                                        // [calm, shouting] per view
+    front: [{ rows: ['www', 'wiw', 'www'], at: [1, 0] },
+      { rows: ['.www.', 'wiiiw', 'wiiiw', 'wiiiw', '.www.'], at: [2, 0] }],
+    diag: [{ rows: ['.www', 'twiw', '.www'], at: [0, 1] },
+      { rows: ['..www.', '.wiiiw', 'twiiiw', '.wiiiw', '..www.'], at: [0, 2] }],
+    side: [{ rows: ['..ww', 'ttwi', '..ww'], at: [0, 1] },
+      { rows: ['...ww', '..wii', 'ttwii', '..wii', '...ww'], at: [0, 2] }],
+  },
+  foam: [
+    { rows: ['..g..', 'gggg.', '.g.d.'], at: [1, 1] },
+    { rows: ['.d...', 'ggggg', '..g..'], at: [1, 1] },
+    { rows: ['...g.', 'gggg.', '.d.g.'], at: [1, 1] },
+    { rows: ['g....', 'ggggg', '...d.'], at: [1, 1] },
+  ],
+  eye: { front: { rows: ['.v.', 'hpv', 'vpv', '.v.'], at: [1, 2] }, side: { rows: ['v', 'p', 'p', 'v'], at: [0, 2] } },
+  eyeShut: { rows: ['ooo'], at: [1, 0] },
+};
 
 const PIXEL_ART = {
   image: null,
@@ -114,35 +150,135 @@ const PIXEL_ART = {
     x.putImageData(id, 0, 0);
     return (horn.skins[look] = c);
   },
+  // A stag's antler grown out of one horn blob, on the art's own pixel grid (`antler.cell` atlas
+  // px) so it reads as drawn with the goat and not pasted over him. The beam leaves the root along
+  // the horn and bends outward — away from the other horn, or back over his body when both horns
+  // are one behind the other on a side view — and each tine turns off it toward the sky. Shaded off
+  // `ramp` (a look's ramp if he has one: lava antlers, venom antlers), dark root to pale tip, lit
+  // on its upper edge and outlined like the sprite. Cached per horn per ramp; `pad` is how far past
+  // the frame the canvas reaches, since an antler is bigger than the frame's own headroom.
+  antlerOf(hn, spread, back, look) {
+    const key = 'antler:' + (look || '');
+    hn.skins = hn.skins || {};
+    if (hn.skins[key]) return hn.skins[key];
+    const A = TUNING.goat.hornLooks.antler, C = A.cell, [bx, by] = hn.base, [tx, ty] = hn.tip;
+    const L = Math.max(6, Math.hypot(tx - bx, ty - by)), ux = (tx - bx) / L, uy = (ty - by) / L;
+    const s = back || spread || 1;
+    let nx = -uy, ny = ux; if (nx * s < 0) { nx = -nx; ny = -ny; }
+    const B = L * A.len, pad = Math.ceil(B + A.w0) + C;
+    const W = Math.ceil((hn.w + pad * 2) / C), Hh = Math.ceil((hn.h + pad * 2) / C);
+    const val = new Float32Array(W * Hh).fill(-1);
+    // Stamp a disc of radius `r` (atlas px) at (x, y), keeping the larger tipward value per cell.
+    const stamp = (x, y, r, v) => {
+      const cx = (x + pad) / C, cy = (y + pad) / C, rc = r / C;
+      for (let j = Math.floor(cy - rc); j <= Math.ceil(cy + rc); j++) for (let i = Math.floor(cx - rc); i <= Math.ceil(cx + rc); i++) {
+        if (i < 0 || j < 0 || i >= W || j >= Hh) continue;
+        if ((i + 0.5 - cx) ** 2 + (j + 0.5 - cy) ** 2 > rc * rc + 0.15) continue;
+        const k = j * W + i; if (val[k] < v) val[k] = v;
+      } };
+    // The beam as a quadratic curve: along the horn, then out by `bend`.
+    const p1x = bx + ux * B * 0.55, p1y = by + uy * B * 0.55;
+    const p2x = bx + (ux * (1 - A.bend) + nx * A.bend) * B, p2y = by + (uy * (1 - A.bend) + ny * A.bend) * B;
+    const at = (q) => [(1 - q) ** 2 * bx + 2 * (1 - q) * q * p1x + q * q * p2x, (1 - q) ** 2 * by + 2 * (1 - q) * q * p1y + q * q * p2y];
+    const tan = (q) => { const dx = 2 * (1 - q) * (p1x - bx) + 2 * q * (p2x - p1x), dy = 2 * (1 - q) * (p1y - by) + 2 * q * (p2y - p1y), l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
+    const line = (x0, y0, dx, dy, len, r0, r1, v0, v1) => {
+      const n = Math.ceil(len / (C * 0.4));
+      for (let i = 0; i <= n; i++) { const q = i / n; stamp(x0 + dx * len * q, y0 + dy * len * q, (r0 + (r1 - r0) * q) / 2, v0 + (v1 - v0) * q); } };
+    const n = Math.ceil(B / (C * 0.4));
+    for (let i = 0; i <= n; i++) { const q = i / n, [x, y] = at(q); stamp(x, y, (A.w0 + (A.w1 - A.w0) * q) / 2, q * 0.85); }
+    // Tines: each turns off the beam by `tineTurn`, whichever way points more at the sky.
+    const turn = (dx, dy, a) => [dx * Math.cos(a) - dy * Math.sin(a), dx * Math.sin(a) + dy * Math.cos(a)];
+    A.tines.forEach((q, i) => {
+      const [x, y] = at(q), [dx, dy] = tan(q), l = turn(dx, dy, A.tineTurn), r = turn(dx, dy, -A.tineTurn), [ex, ey] = l[1] < r[1] ? l : r;
+      line(x, y, ex, ey, B * A.tineLen[i], A.tineW, A.w1 * 0.7, 0.35 + q * 0.4, 1);
+    });
+    // The crown: the beam ends in a fork, one point either side of its own tip.
+    const [ex, ey] = at(1), [dx, dy] = tan(1);
+    for (const a of [A.tineTurn * 0.5, -A.tineTurn * 0.5]) { const [fx, fy] = turn(dx, dy, a); line(ex, ey, fx, fy, B * A.fork, A.w1, A.w1 * 0.6, 0.85, 1); }
+    const ramp = (look ? TUNING.goat.hornLooks[look].ramp : A.ramp).map((c) => [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16)));
+    const c = document.createElement('canvas'); c.width = W * C; c.height = Hh * C;
+    const x = c.getContext('2d');
+    for (let j = 0; j < Hh; j++) for (let i = 0; i < W; i++) {
+      const k = j * W + i, v = val[k];
+      const on = (a, b) => a >= 0 && b >= 0 && a < W && b < Hh && val[b * W + a] >= 0;
+      if (v < 0) {
+        if (on(i + 1, j) || on(i - 1, j) || on(i, j + 1) || on(i, j - 1)) { x.fillStyle = A.outline; x.fillRect(i * C, j * C, C, C); }
+        continue;
+      }
+      const lit = on(i, j - 1) ? 0 : 0.18, dark = on(i, j + 1) ? 0 : -0.12;
+      const r = clamp(v + lit + dark, 0, 0.999) * (ramp.length - 1), a = ramp[r | 0], b = ramp[(r | 0) + 1], f = r - (r | 0);
+      x.fillStyle = `rgb(${[0, 1, 2].map((q) => Math.round(a[q] + (b[q] - a[q]) * f)).join(',')})`;
+      x.fillRect(i * C, j * C, C, C);
+    }
+    return (hn.skins[key] = { canvas: c, pad });
+  },
   // His horns as the souls on the headbutt have made them, over the frame `draw` just drew with
-  // the same foot and scale: LONG HORNS grows each one from its root (`mods.headbuttReach`), BOMB
-  // CHARGE runs lava down them and SPLASH venom, with a glow for the one and a drip for the other.
+  // the same foot and scale: LONG HORNS makes each one an antler (`antlerOf`), BOMB CHARGE runs
+  // lava down them and SPLASH venom, with a glow for the one and a drip for the other.
   horns(ctx, id, angle, moving, t, x, mods) {
-    const H = TUNING.goat.hornLooks, grow = clamp(1 + (mods.headbuttReach - 1) * H.growMul, 1, H.growMax);
+    const H = TUNING.goat.hornLooks, antler = !!mods.antlers;
     const look = mods.bomb ? 'lava' : mods.splash ? 'venom' : null;
-    if (grow <= 1.001 && !look) return;
+    if (!antler && !look) return;
     const u = PIXEL_ASSETS.units[id], d = (Math.round(angle / (Math.PI / 4)) + 14) % 8;
     const f = moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d];
     const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, smooth = ctx.imageSmoothingEnabled;
     ctx.save(); ctx.imageSmoothingEnabled = false;
     ctx.translate(-f[4] * k, -f[5] * k); ctx.scale(k, k);
-    for (const hn of this.hornsOf(f)) {
+    const all = this.hornsOf(f), mid = all.reduce((s, h) => s + h.base[0], 0) / (all.length || 1);
+    // Which way is "back" on this facing: away from his nose. 0 on the straight front and back views.
+    const back = [0, 1, 1, 1, 0, -1, -1, -1][d];
+    for (const hn of all) {
       const [bx, by] = hn.base;
-      ctx.save(); ctx.translate(bx, by); ctx.scale(grow, grow); ctx.translate(-bx, -by);
-      const img = look ? this.hornSkin(hn, look) : hn.canvas;
       if (look) { ctx.shadowColor = H[look].glow; ctx.shadowBlur = H[look].blur * (0.75 + 0.25 * Math.sin(t * 7 + bx)); }
-      ctx.drawImage(img, 0, 0);
-      ctx.restore();
+      if (antler) {
+        const spread = Math.abs(bx - mid) > 4 ? Math.sign(bx - mid) : 0, a = this.antlerOf(hn, spread, back, look);
+        ctx.drawImage(a.canvas, -a.pad, -a.pad);
+      } else ctx.drawImage(this.hornSkin(hn, look), 0, 0);
+      ctx.shadowBlur = 0;
       // A drop gathering at the tip and letting go, once every `drip` seconds, out of step per horn.
       if (look === 'venom') {
         const p = ((t + bx * 0.13) % H.venom.drip) / H.venom.drip, [tx, ty] = hn.tip;
-        const dx = bx + (tx - bx) * grow, dy = by + (ty - by) * grow;
         ctx.fillStyle = H.venom.glow; ctx.globalAlpha = p < 0.6 ? p / 0.6 : 1 - (p - 0.6) / 0.4;
-        ctx.fillRect(Math.round(dx), Math.round(dy + (p < 0.6 ? 1 : 1 + (p - 0.6) * 30)), 2, 2);
+        ctx.fillRect(Math.round(tx), Math.round(ty + (p < 0.6 ? 1 : 1 + (p - 0.6) * 30)), 2, 2);
         ctx.globalAlpha = 1;
       }
     }
     ctx.imageSmoothingEnabled = smooth; ctx.restore();
+  },
+
+  // His face as the scream souls and THE ORACLE have made it, over the frame just drawn, in world px
+  // off the foot (`PIXEL_FACE`). Drawn by hand, pixel by pixel (`PIXEL_FACE_ART`), on the sprite's
+  // own grid: at this size a shape computed from an ellipse comes out as noise. Only what stays on
+  // him is here; what leaves him — the drip, the steam, the flame — is `PaintedArt.goatFx`.
+  face(ctx, angle, t, mods, g) {
+    const d = (Math.round(angle / (Math.PI / 4)) + 14) % 8, P = PIXEL_FACE[d], F = TUNING.goat.face, A = PIXEL_FACE_ART;
+    const view = d === 0 ? 'front' : d === 2 || d === 6 ? 'side' : 'diag', flip = d === 1 || d === 2;
+    // THE FULL THROAT: the mouth drawn out into a horn's bell, a size up while he is shouting.
+    if (mods.screamStun && P.mouth) {
+      const T = F.throat, s = A.throat[view][(g.screaming || 0) > 0 ? 1 : 0];
+      this.sprite(ctx, s, P.mouth[0], P.mouth[1], { t: T.tube, w: T.rim, i: T.inside }, flip, T.edge);
+    }
+    // VENOM SPIT: a froth at his lips, pixel bubbles rising out of it and popping out of step.
+    if (mods.spit && P.mouth) {
+      const V = F.foam, fr = A.foam[Math.floor(t * V.rate) % A.foam.length];
+      this.sprite(ctx, fr, P.mouth[0], P.mouth[1], { g: V.color, d: V.dark }, flip, V.dark);
+    }
+    // THE ORACLE: a third eye, upright, between the two he was born with. It blinks on its own.
+    if (mods.oracle && P.brow) {
+      const E = F.eye, shut = (t % E.blink) < 0.14, s = shut ? A.eyeShut : A.eye[view === 'side' ? 'side' : 'front'];
+      this.sprite(ctx, s, P.brow[0], P.brow[1], { v: E.iris, p: E.pupil, h: E.white, o: E.edge }, flip, shut ? null : E.edge);
+    }
+  },
+  // One hand-drawn piece (`{ rows, at }`: a character grid and the cell of it that lands on the
+  // point), mirrored with `flip`, painted on the grid of `face.cell` world px and ringed in `edge`.
+  sprite(ctx, s, x, y, pal, flip, edge) {
+    const C = TUNING.goat.face.cell, rows = s.rows, w = rows[0].length, h = rows.length;
+    const i0 = Math.floor(x / C) - (flip ? w - 1 - s.at[0] : s.at[0]), j0 = Math.floor(y / C) - s.at[1];
+    const at = (i, j) => { if (i < 0 || j < 0 || i >= w || j >= h) return null; const c = rows[j][flip ? w - 1 - i : i]; return c === '.' ? null : pal[c]; };
+    for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++) {
+      const c = at(i, j) || (edge && (at(i + 1, j) || at(i - 1, j) || at(i, j + 1) || at(i, j - 1)) ? edge : null);
+      if (c) { ctx.fillStyle = c; ctx.fillRect((i0 + i) * C, (j0 + j) * C, C, C); }
+    }
   },
 
   // The allies were drawn once, facing SE; turned to face left they are mirrored, which is fine for

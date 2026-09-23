@@ -32,6 +32,17 @@ class World {
     this.poison = new Float32Array(n);
     this.poisonOn = new Set();
     this.flow = new Int16Array(n).fill(-1);
+    // The field a chasing man actually walks (`Enemy.pickWaypoint`). `flow` is the one everything
+    // else asks — is this floor reachable, how far is it — and stays stone-and-holes only; `route`
+    // also steps round the tiles standing furniture is in (`furn`, laid by the game each time the
+    // fields are rebuilt), and `routeW` is the same for a body wider than a tile (the Butcher, the rat
+    // ogre): only floor that sits in some two-by-two of open floor, so no route takes him at a gap he
+    // cannot fit through. That one is filled on demand (`wideWanted`), since most floors have nobody
+    // that size awake on them.
+    this.route = new Int16Array(n).fill(-1);
+    this.routeW = new Int16Array(n).fill(-1);
+    this.furn = new Uint8Array(n); this.furnList = [];
+    this.wideWanted = false;
     this.flowTimer = 0;
     this.noises = [];
     this.decal = document.createElement('canvas');
@@ -127,7 +138,7 @@ class World {
       c.globalAlpha = 1; c.restore();
       return;
     }
-    if (level.def === LEVELS[0]) {
+    if (levelIndexOf(level.def) === 0) {
       // Static objects keep full world-pixel detail; blood still lands on the normal decal layer.
       this.ritualArt = new AltarArt().makeRitual(level);
       this.pixelGlyph(sx, sy, 8.5 * TILE, CULT_GLYPHS[0], 0.09, PALETTE.altar.glyph);
@@ -653,6 +664,77 @@ class World {
       if (cy > 0 && this.walkable(i - W) && flow[i - W] < 0) { flow[i - W] = d + 1; q[tail++] = i - W; }
       if (cy < H - 1 && this.walkable(i + W) && flow[i + W] < 0) { flow[i + W] = d + 1; q[tail++] = i + W; }
     }
+    this.computeRoute(this.route, sx, sy, q, (j) => this.open(j));
+    if (this.wideWanted) {
+      // The wide field is laid on the corners of the grid, not its tiles: a corner with all four
+      // tiles round it open is somewhere a body up to a tile across can stand, and the step to the
+      // next such corner crosses two tiles of open floor on either side of it. Two tiles that are
+      // each in a two-by-two of floor can still meet only across a single tile's pinch (two stubs of
+      // wall offset from each other), and that pinch stopped the Butcher dead; corner to corner cannot.
+      const gx = px / TILE, gy = py / TILE;
+      let s = -1, bd = Infinity;
+      for (let cy = Math.floor(gy) - 1; cy <= Math.floor(gy) + 2; cy++) for (let cx = Math.floor(gx) - 1; cx <= Math.floor(gx) + 2; cx++) {
+        if (!this.corner(cx, cy)) continue;
+        const d = (cx - gx) * (cx - gx) + (cy - gy) * (cy - gy);
+        if (d < bd) { bd = d; s = cy * W + cx; }
+      }
+      if (s >= 0) this.computeRoute(this.routeW, s % W, (s / W) | 0, q, (j) => this.corner(j % W, (j / W) | 0));
+      else this.routeW.fill(-1);
+    }
+  }
+  // A corner of the grid (the top-left corner of tile cx, cy) with open floor in all four tiles round it.
+  corner(cx, cy) {
+    if (cx < 1 || cy < 1 || cx >= this.W || cy >= this.H) return false;
+    const i = cy * this.W + cx, W = this.W;
+    return this.open(i) && this.open(i - 1) && this.open(i - W) && this.open(i - W - 1);
+  }
+  // The tiles standing furniture is in: every tile whose middle is inside a blocking prop's own
+  // circle. Doors are not furniture (they are opened), and neither is anything on the move.
+  setFurniture(props) {
+    for (const i of this.furnList) this.furn[i] = 0;
+    const list = this.furnList; list.length = 0;
+    for (const p of props) {
+      if (p.kind === 'door' || p.flung || p.held || !p.blocking) continue;
+      const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE), k = Math.ceil(p.r / TILE);
+      for (let y = ty - k; y <= ty + k; y++) for (let x = tx - k; x <= tx + k; x++) {
+        if (x < 0 || y < 0 || x >= this.W || y >= this.H) continue;
+        if (Math.hypot((x + 0.5) * TILE - p.x, (y + 0.5) * TILE - p.y) >= p.r + 2) continue;
+        const i = y * this.W + x;
+        if (!this.furn[i]) { this.furn[i] = 1; list.push(i); }
+      }
+    }
+  }
+  open(i) { return this.walkable(i) && !this.furn[i]; }
+  computeRoute(flow, sx, sy, q, ok) {
+    const W = this.W, H = this.H;
+    flow.fill(-1);
+    let head = 0, tail = 0;
+    const s = sy * W + sx; flow[s] = 0; q[tail++] = s;
+    while (head < tail) {
+      const i = q[head++]; const d = flow[i];
+      if (d > 90) continue;
+      const cx = i % W, cy = (i / W) | 0;
+      if (cx > 0 && flow[i - 1] < 0 && ok(i - 1)) { flow[i - 1] = d + 1; q[tail++] = i - 1; }
+      if (cx < W - 1 && flow[i + 1] < 0 && ok(i + 1)) { flow[i + 1] = d + 1; q[tail++] = i + 1; }
+      if (cy > 0 && flow[i - W] < 0 && ok(i - W)) { flow[i - W] = d + 1; q[tail++] = i - W; }
+      if (cy < H - 1 && flow[i + W] < 0 && ok(i + W)) { flow[i + W] = d + 1; q[tail++] = i + W; }
+    }
+  }
+  // One step down a field from tile (tx, ty): the neighbour nearer the goat, diagonals only where
+  // both sides of the corner are floor. Returns its index, or -1 at the bottom or off the field.
+  flowStep(tx, ty, field) {
+    const f = field || this.flow, here = f[ty * this.W + tx];
+    if (here < 0) return -1;
+    let best = here, bi = -1;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = tx + dx, ny = ty + dy;
+      if (nx < 0 || ny < 0 || nx >= this.W || ny >= this.H) continue;
+      if (dx && dy && (!this.walkableAt(tx + dx, ty) || !this.walkableAt(tx, ty + dy))) continue;
+      const d = f[ny * this.W + nx];
+      if (d >= 0 && d < best) { best = d; bi = ny * this.W + nx; }
+    }
+    return bi;
   }
   flowDist(x, y) {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
@@ -770,20 +852,30 @@ class World {
   }
 
   splat(x, y, dirx, diry, size, color) {
-    const d=Math.hypot(dirx,diry)||1;dirx/=d;diry/=d;
+    // No direction (a body dropped straight down, a piece of gore landing) is a round pool: with a
+    // zero vector every cell measured zero from the centre and the stain came out a hard square.
+    const d=Math.hypot(dirx,diry);if(d){dirx/=d;diry/=d;}else{const a=Math.random()*Math.PI*2;dirx=Math.cos(a);diry=Math.sin(a);}
     const droplets=[];
     for(let i=0;i<12;i++) {
       const t = Math.random();
-      const ox = dirx * t * size * 2 + (Math.random() - 0.5) * size, oy = diry * t * size * 2 + (Math.random() - 0.5) * size;
+      const t2 = d ? t * size * 2 : 0, ox = dirx * t2 + (Math.random() - 0.5) * size * (d ? 1 : 2), oy = diry * t2 + (Math.random() - 0.5) * size * (d ? 1 : 2);
       droplets.push([ox,oy,size*(0.035+Math.random()*0.12)]);
     }
-    const angle=Math.atan2(diry,dirx);
+    // Cells on the world grid, not a painted splash: a lobed pool stretched along the blow with a
+    // darker rim and a wet glint, and the drops it threw, each a little disc of cells.
+    const px=TUNING.effects.pixel,R=size*0.6,seed=(x*7+y*13)|0,body=color||PALETTE.bloodDark;
     this.paintStain(x,y,size*3,c=>{
-      c.save();c.translate(x,y);c.rotate(angle);c.globalAlpha=0.8;
-      const painted=CombatFX.frame(c,3,3,0,0,size*3,size*2.3);
-      c.restore();c.fillStyle=color||PALETTE.bloodDark;
-      if(!painted){c.beginPath();c.ellipse(x,y,size*0.7,size*0.5,angle,0,Math.PI*2);c.fill();}
-      for(const [ox,oy,r] of droplets){c.beginPath();c.ellipse(x+ox,y+oy,r*1.5,r,angle,0,Math.PI*2);c.fill();}
+      c.save();c.globalAlpha=0.85;
+      const x0=Math.round(x/px)*px,y0=Math.round(y/px)*px,span=Math.ceil(R*1.5/px)*px;
+      for(let oy=-span;oy<=span;oy+=px)for(let ox=-span;ox<=span;ox+=px){
+        const al=ox*dirx+oy*diry,ac=-ox*diry+oy*dirx,dd=Math.hypot(al/(R*1.2),ac/(R*0.85));
+        const lim=0.72+CombatFX.noise((x0+ox)*0.2,(y0+oy)*0.2,seed)*0.5;if(dd>=lim)continue;
+        c.fillStyle=dd>lim-0.14?'#4f140f':dd<0.3&&CombatFX.bayer(ox/px,oy/px)<0.2?PALETTE.blood:body;
+        c.fillRect(x0+ox,y0+oy,px,px);
+      }
+      c.fillStyle=body;
+      for(const [ox,oy,r] of droplets)CombatFX.cellDisc(c,x+ox,y+oy,Math.max(px*0.6,r));
+      c.restore();
     });
   }
   body(x, y, r, angle, color) {
@@ -792,15 +884,21 @@ class World {
     c.restore();
   }
   dot(x, y, r, color) {
-    const paint=c=>{c.fillStyle=color;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();};
+    const paint=c=>{c.fillStyle=color;CombatFX.cellDisc(c,x,y,r);};
     if(color===PALETTE.blood||color===PALETTE.bloodDark)this.paintStain(x,y,r,paint);else paint(this.dctx);
   }
   scorch(x, y, r, witch) {
+    // Soot in cells: solid at the heart, ordered-dithered out to nothing at the edge, so a burnt
+    // patch sits in the floor's own pixels instead of a soft airbrushed blot.
+    const px=TUNING.effects.pixel,seed=(x*3+y*5)|0;
     this.paintStain(x,y,r,c=>{
-      const g=c.createRadialGradient(x,y,0,x,y,r);
-      g.addColorStop(0,witch?'rgba(38,26,64,0.85)':'rgba(20,14,12,0.86)');
-      g.addColorStop(0.55,'rgba(24,17,18,0.6)');g.addColorStop(1,'rgba(24,17,18,0)');
-      c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
+      const x0=Math.round(x/px)*px,y0=Math.round(y/px)*px,span=Math.ceil(r/px)*px;
+      c.fillStyle=witch?'rgba(38,26,64,0.8)':'rgba(20,14,12,0.8)';c.beginPath();
+      for(let oy=-span;oy<=span;oy+=px)for(let ox=-span;ox<=span;ox+=px){
+        const d=Math.hypot(ox,oy)/r+(CombatFX.noise((x0+ox)*0.15,(y0+oy)*0.15,seed)-0.5)*0.35;
+        if(d<1&&CombatFX.bayer(ox/px,oy/px)<1.35-d*1.4)c.rect(x0+ox,y0+oy,px,px);
+      }
+      c.fill();
     });
   }
 }

@@ -16,8 +16,10 @@ what it is before starting a fresh pass.
 | **Painted props (frozen)** | `js/painted-assets.js`, drawn by `PaintedArt` in `js/painted-art.js` | Only what has no pixel sprite yet: the ritual altar, wall banner, gong, lantern loop, the props atlas (sword, shield, weapon stand, spike grating states, big healing grass, soul wisp, mill hub and arm), cage posts, door slabs. |
 
 Anything with none of the three falls through to the canvas primitives in `js/render.js`
-(`Renderer.drawProp` and friends). Combat effects — flame loops, blood, gore — are `js/combat-fx.js`
-over `js/combat-assets.js` (source `assets/combat-fx/effects.png`, packed by `tools/pack-combat-art.cjs`).
+(`Renderer.drawProp` and friends). Combat effects — flame loops, blasts, smoke, blood — are `js/combat-fx.js`,
+baked procedurally at start into pixel frames on the units' grain (`TUNING.effects.pixel`, `.flame`, `.blast`).
+The painted sheet they used to be drawn from (`assets/combat-fx/effects.png`) was retired in 1.56: a smoothed
+painting read as a different game next to Pixel 2.5.
 
 `PaintedArt` is still the class every character goes through (`PaintedArt.character`): it owns the
 lean of a windup, the tilt of a man on the floor, the wraith's fade, the goat's collar and wounds.

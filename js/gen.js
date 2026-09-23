@@ -159,7 +159,10 @@ function planEncounters(levelDef, rooms, rng) {
     // The Gallery is rifles posted apart, but only once rifles are a thing you have met.
     if (room.isGallery) {
       const posts = mixable.includes('hunter') ? ['hunter', 'hunter', 'hunter'] : [];
-      out.rooms.set(room.index, { men: posts.concat(fillRoom(curve * 0.6, mixable, rng, caps, 0, weight)), gallery: true });
+      // Posts and crowd together stay inside `caps.men + 2`, the ceiling `GEN_RULES.caps` holds every
+      // room to: on a floor with a lower head count (THE DARK) three rifles and a full crowd broke it.
+      const crowd = fillRoom(curve * 0.6, mixable, rng, caps, 0, weight).slice(0, Math.max(0, caps.men + 2 - posts.length));
+      out.rooms.set(room.index, { men: posts.concat(crowd), gallery: true });
       continue;
     }
     const budget = curve * (easeOff ? ENCOUNTER.afterIntro : 1);
@@ -629,6 +632,25 @@ function tryGenerate(levelDef, seed, opts) {
     if (room.index > 0 && !room.isRest && levelDef.rockClusters && rng.chance(levelDef.rockClusters)) {
       if (placeRockCluster(tiles, W, room, grass, props, rng, clusterId)) clusterId++;
     }
+    // Barrels of lamp oil, one or two, stood where a boulder may stand: plain floor all round, so a
+    // barrel that nobody touches is never what shuts a way through, and clear of the way in, so the
+    // first thing a room does is not put one under his horns. Never in a room that is teaching,
+    // resting or a set piece built narrow on purpose; a trap room keeps the shape it was drawn in.
+    // Rolled off a stream of their own, so adding them did not reshuffle every roll that follows.
+    const brng = new RNG(((seed ^ 0x0ba77e1) + room.index * 7919) >>> 0);
+    if (levelDef.barrels && room.index > 0 && !room.isAmbush && !room.isRest && !room.isTrap && !room.isMill && !room.isHall
+        && !room.isGallery && !room.isKillbox && room.index !== lessonIndex && brng.chance(levelDef.barrels)) {
+      const want = brng.int(1, 2);
+      for (let a = 0, placed = 0; a < 40 && placed < want; a++) {
+        const tx = brng.int(room.x + 2, room.x + room.w - 3), ty = brng.int(room.y + 2, room.y + room.h - 3);
+        if (!rockFits(tiles, W, tx, ty, grass)) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (props.some((p) => len(p.x - px, p.y - py) < 2 * TILE)) continue;
+        if (room.enter && len(room.enter.x - px, room.enter.y - py) < 3 * TILE) continue;
+        props.push({ x: px, y: py, kind: 'barrel' });
+        placed++;
+      }
+    }
     // THE SPIKES. Most of the rock a cave grows is paint (`Renderer.drawCaveDecor`); this is the rare
     // spire that is real, and everything about where it may stand follows from what it is for. It has
     // to be AT A WALL — a spike in the middle of a room is a thing you walk round, a spike at the
@@ -847,7 +869,7 @@ function tryGenerate(levelDef, seed, opts) {
   // is, and nothing about it says it matters. Eaten, the next level is THE TRIP (`tripLevel`). Never
   // on the last level (there is no next one), never on the trip itself, never in a room that is
   // teaching or a room that is a fight you cannot walk out of.
-  const li = LEVELS.indexOf(levelDef), SH = TUNING.shroom;
+  const li = levelIndexOf(levelDef), SH = TUNING.shroom;
   if (li >= SH.from && li < LEVELS.length - 1 && rng.chance(SH.chance)) {
     const eligible = rng.shuffle(rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.isHall && !r.isGallery
       && !r.isKillbox && !r.isAmbush && !r.isRest && r.index !== lessonIndex && r.index !== levelDef.vaultAt));
@@ -890,7 +912,7 @@ function tryGenerate(levelDef, seed, opts) {
   // width promised, and several thin bands can end up crowding the same stretch while another
   // goes hungry. This walks the picks in room order and drops one more bowl into any real gap
   // over `heal.gapMax`, rather than trusting the band math alone to have kept every gap that short.
-  if (LEVELS.indexOf(levelDef) >= 3) {
+  if (levelIndexOf(levelDef) >= 3) {
     healRooms.sort((a, b) => a.index - b.index);
     const marks = [0, ...healRooms.map((r) => r.index), n - 1];
     for (let i = 0; i < marks.length - 1; i++) {
@@ -913,6 +935,54 @@ function tryGenerate(levelDef, seed, opts) {
   // a level standing in a fire, drawn over the coals with the flame coming up behind it. It keeps a
   // clearance from the furniture now and a wide berth from anything alight, and the second pass gives
   // up the clearance but never the berth: a bowl may be awkwardly placed, it may not be in a fire.
+  // THE DARK: a room with nothing alight in it is a room crossed by ear, and a level of nothing but
+  // those is one black corridor. Most rooms that have no flame of their own get lamps against their
+  // walls (`TUNING.dark.lamps`), off the doorways and apart from each other, so the level is pockets
+  // of light with the dark between them. Before the milk, which keeps its berth from these too.
+  // `GEN_RULES.dark` holds it.
+  if (levelDef.dark) {
+    const LA = TUNING.dark.lamps, alight = (p) => p.kind === 'brazier' || p.kind === 'lamp';
+    const lit = (room) => props.some((p) => alight(p) && p.x >= room.x * TILE && p.x < (room.x + room.w) * TILE && p.y >= room.y * TILE && p.y < (room.y + room.h) * TILE);
+    // Some rooms are left as black as they came, on purpose (`lamps.unlit` of the unlit ones): never
+    // an arena, never a rest room. Those are crossed by ear and by the eyes in them.
+    const bare = rooms.filter((r) => r.index > 0 && r.index !== shopAt && !lit(r));
+    const black = new Set(rng.shuffle(bare.filter((r) => !r.arena && !r.isRest)).slice(0, Math.round(bare.length * LA.unlit)).map((r) => r.index));
+    for (const room of bare) {
+      if (black.has(room.index)) { room.unlit = true; continue; }
+      const doors = [], cand = [];
+      for (let ty = room.y; ty < room.y + room.h; ty++) for (let tx = room.x; tx < room.x + room.w; tx++) {
+        const edge = tx === room.x || ty === room.y || tx === room.x + room.w - 1 || ty === room.y + room.h - 1;
+        if (edge && tiles[ty * W + tx] !== T.WALL) doors.push({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE });
+      }
+      let floor = 0;
+      for (let ty = room.y + 1; ty < room.y + room.h - 1; ty++) for (let tx = room.x + 1; tx < room.x + room.w - 1; tx++) {
+        if (tiles[ty * W + tx] !== T.FLOOR) continue;
+        floor++;
+        if (grass.has(ty * W + tx)) continue;
+        // Against a wall, with floor across from it and to either side: a lamp in a lane would be a
+        // plug in it.
+        const at = (dx, dy) => tiles[(ty + dy) * W + tx + dx];
+        let ok = false;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (at(dx, dy) !== T.WALL) continue;
+          if (at(-dx, -dy) === T.FLOOR && at(dy, dx) !== T.PIT && at(-dy, -dx) !== T.PIT && (at(dy, dx) === T.FLOOR || at(-dy, -dx) === T.FLOOR)) ok = true;
+        }
+        if (!ok) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (doors.some((d) => len(d.x - px, d.y - py) < LA.door * TILE)) continue;
+        if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
+        if (spawns.some((s) => len(s.x - px, s.y - py) < 1.5 * TILE)) continue;
+        cand.push({ x: px, y: py });
+      }
+      const want = clamp(Math.round(floor / LA.per), LA.min, LA.max);
+      const laid = [];
+      for (const c of rng.shuffle(cand)) {
+        if (laid.length >= want) break;
+        if (laid.some((l) => len(l.x - c.x, l.y - c.y) < LA.apart * TILE)) continue;
+        laid.push(c); props.push({ x: c.x, y: c.y, kind: 'lamp', darkLamp: true });
+      }
+    }
+  }
   healRooms.forEach((room) => {
     const alight = (p) => p.kind === 'brazier' || p.kind === 'lamp';
     const spots = [];
@@ -1125,14 +1195,14 @@ function carveHole(tiles, W, H, room, rng) {
 
 // Which room of a level the mouse stands in: the middle gate, on the levels she visits; -1 elsewhere.
 function shopRoomOf(levelDef) {
-  const li = LEVELS.indexOf(levelDef);
+  const li = levelIndexOf(levelDef);
   return TUNING.shop.levels.includes(li) && levelDef.gates && levelDef.gates.length ? levelDef.gates[0] : -1;
 }
 // What a mouse stocks: `TUNING.shop.wares` distinct artifacts, all at the tier of this visit — the
 // n-th level in `shop.levels` sells tier n, so every mouse of a run has something the last one did
 // not. Nothing is priced: the offer is a choice, not a sale.
 function stockFor(levelDef, rng) {
-  const S = TUNING.shop, li = LEVELS.indexOf(levelDef);
+  const S = TUNING.shop, li = levelIndexOf(levelDef);
   const visit = S.levels.filter((l) => l <= li).length;
   const tier = clamp(visit, 1, 3);
   // Never two of one sort on a shelf (`tag`): two talismans that both bend the headbutt are one

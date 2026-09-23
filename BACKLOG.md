@@ -268,6 +268,10 @@ New tonight, to fold into the same system rather than build alongside it:
 - **A card can be refused.** A fourth option under the three — RELEASE THE SOUL, or similar — that
   spends nothing and takes nothing. `openBoonChoice` has no such exit today; a soul taken is a
   card taken.
+- *Built 23 Sep 2026 as ordinary cards (see `CHANGELOG.md`, "Three souls off the backlog"): the
+  pounce is LEAPFROG, the throw's slow time is COLD EYE, the grass trade is FOUR STOMACHS. The
+  invulnerability bubble was left out — ground rule 4 allows no i-frames beyond the roll's. The
+  line-of-two headbutt stays an open question, for the reason given with it.*
 - **Three candidate passives**, as concrete examples for the twelve-general-passives count: a
   three-second bubble of invulnerability after taking a hit (distinct from `goat.invuln`'s
   half-second flinch, above); holding an object or a man slows time for two seconds so a throw can
@@ -703,7 +707,8 @@ except the two notes at the end; the reasoning is in `CHANGELOG.md`.
   which is what the screenshot boxed — but the pen says exactly that two rooms earlier, so the line
   at the man repeats rather than adds. The alternative is `INTO A WALL KILLS`, which is the whole of
   level one's canon and the thing players did not work out on their own. One word settles it.
-- **Barrels.** The ask was "barrels down the sides or a small crate in the corner" and it shipped as
+- ~~**Barrels.**~~ Built after 1.60: a real `barrel` that rolls, bowls a row of men and burns (see
+  `CHANGELOG.md`, "Barrels"). The ask was "barrels down the sides or a small crate in the corner" and it shipped as
   crates, because there is no barrel `Prop` — only a painted barrel in the ritual room's decal
   layer. A real barrel kind (blocks, burns, is not liftable) is a small piece of work and would give
   the storage rooms something to read that is not a crate.
