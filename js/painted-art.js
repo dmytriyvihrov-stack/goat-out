@@ -252,6 +252,17 @@ class PaintedArt extends AltarArt {
       PIXEL_ENV.draw(ctx,'crate',0,p.r*0.9,w);
       ctx.restore();return true;
     }
+    // The barrel is the pixel one the ritual room already stands against its wall; a blow rocks it,
+    // and one that has taken a blow wears a split stave until the second one opens it.
+    if(p.kind==='barrel'&&PIXEL_ENV.ready){
+      const w=p.r*2.3;
+      ctx.save();ctx.translate(p.x,p.y+PROP_FOOT);
+      if(p.wobble>0)ctx.rotate(Math.sin(renderer.t*48)*0.07*p.wobble/0.3);
+      renderer.shadow(0,0,w*0.42,5);
+      const h=PIXEL_ENV.draw(ctx,'barrel',0,2,w);
+      if(p.hits>0){ctx.strokeStyle='rgba(20,12,8,0.85)';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-2,-h*0.75);ctx.lineTo(1,-h*0.45);ctx.lineTo(-1,-h*0.18);ctx.stroke();}
+      ctx.restore();return true;
+    }
     if(p.kind==='bell'){
       const w=p.r*2.7,img=this.images.gong;
       ctx.save();ctx.translate(p.x,p.y);

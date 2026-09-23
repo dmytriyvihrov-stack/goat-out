@@ -715,6 +715,7 @@ class Goat {
     if (by !== 'fall' && this.tripPhase(game, kx, ky)) return;
     if (Talisman.absorb(game, this)) return;   // TALLOW SKIN took it
     this.hp -= n; this.invuln = TUNING.goat.invuln; this.hurtBy = by || null;
+    if (game.heartLog) for (let k = 0; k < n; k++) game.heartLog.push(game.timer);
     this.vx += kx || 0; this.vy += ky || 0;
     Talisman.loseRunUp(game, this);            // whatever he had built up, the club took it (BRASS SPUR keeps some)
 
@@ -771,7 +772,7 @@ class Prop {
       : kind === 'coop' ? P.coop.r : kind === 'chicken' ? P.chicken.r
       : kind === 'tortoise' ? P.tortoise.r : kind === 'goose' ? P.goose.r : kind === 'crow' ? P.crow.r
       : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r
-      : kind === 'bomb' ? P.bomb.r : kind === 'rock' ? P.rock.r : kind === 'spire' ? P.spire.r
+      : kind === 'bomb' ? P.bomb.r : kind === 'rock' ? P.rock.r : kind === 'barrel' ? P.barrel.r : kind === 'spire' ? P.spire.r
       : kind === 'mouse' ? P.mouse.r : kind === 'ware' ? P.ware.r : 13;
     // The shop (js/shop.js). A mouse carries which room's shelf is hers (`shopId`), where the gap
     // in the wall is (`gap`, which is where the ogre comes out), how many blows she has taken and
@@ -883,7 +884,7 @@ class Prop {
     if (this.kind === 'door') return this.open < 0.5;
     return true;
   }
-  get stopsBullets() { return !this.broken && ((this.kind === 'tortoise' && !this.flying && !this.held && !(this.coolT > 0)) || this.kind === 'table' || this.kind === 'rock' || this.kind === 'brazier' || this.kind === 'bell' || this.kind === 'secret' || (this.kind === 'door' && this.open < 0.5)); }
+  get stopsBullets() { return !this.broken && ((this.kind === 'tortoise' && !this.flying && !this.held && !(this.coolT > 0)) || this.kind === 'table' || this.kind === 'rock' || this.kind === 'barrel' || this.kind === 'brazier' || this.kind === 'bell' || this.kind === 'secret' || (this.kind === 'door' && this.open < 0.5)); }
   // What an eye stops at. A shut door is a wall with hinges, and a man on the far side of one used
   // to spot you straight through it and come round — which from where you were standing was being
   // seen through stone. The gong and the hub of the wheel are the only other two things in a room
@@ -915,6 +916,7 @@ class Prop {
       case 'bell': this.ring(game); break;
       case 'door': case 'secret': this.smash(game, ax, ay); break;
       case 'rock': this.crackRock(game); break;
+      case 'barrel': this.crackBarrel(game); break;
       case 'table': this.shove(game, ax, ay); break;
       case 'lamp': this.topple(game, ax, ay); break;
       case 'brazier': this.spill(game, ax, ay); break;
@@ -1254,6 +1256,52 @@ class Prop {
     w.scorch(this.x, this.y, this.r * 1.1, false);
   }
 
+  // A barrel stands until fire reaches its staves, and then it is the fire: the flame under it or at
+  // its side is read the way a crate reads the tile it lands on, a little out from its edge.
+  updateBarrel(game) {
+    if (this.broken) return;
+    const w = game.world, rr = this.r + 4;
+    for (const [dx, dy] of [[0, 0], [rr, 0], [-rr, 0], [0, rr], [0, -rr]]) {
+      if (w.isBurningPx(this.x + dx, this.y + dy)) { this.burstBarrel(game, w.isWitchPx(this.x + dx, this.y + dy)); return; }
+    }
+  }
+  // Two blows stave it in. Broken by a head or a body it only spills dark oil on the floor; it is
+  // fire, not a blow, that makes it a weapon.
+  crackBarrel(game) {
+    if (this.broken) return;
+    this.hits = (this.hits || 0) + 1;
+    this.wobble = 0.3;
+    if (this.hits < TUNING.prop.barrel.hits) {
+      game.world.emitNoise(this.x, this.y, TUNING.noise.smash * 0.6);
+      game.audio.sfxThud(); game.shake(3); game.hitstop(0.02); game.vibe(10);
+      game.particles(this.x, this.y, 6, PALETTE.wood, 150);
+      return;
+    }
+    this.openBarrel(game);
+    game.world.dot(this.x, this.y, this.r * 1.3, 'rgba(24,16,10,0.55)');
+    game.audio.sfxCrack(); game.audio.sfxThud(); game.shake(4);
+    game.particles(this.x, this.y, 14, PALETTE.wood, 190);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
+  }
+  burstBarrel(game, witch) {
+    if (this.broken) return;
+    const B = TUNING.prop.barrel;
+    this.openBarrel(game);
+    game.fx.explosion(this.x, this.y, B.burst * TILE, witch);
+    game.world.ignitePool(this.x, this.y, B.burst, witch, B.burstTime);
+    game.audio.sfxBoom(); game.shake(7); game.hitstop(0.05); game.vibe(35);
+    game.flash(witch ? PALETTE.witch : PALETTE.fire, 0.22); game.zoomPunch(1.1);
+    game.ring(this.x, this.y, B.burst * TILE, witch ? PALETTE.witchHi : PALETTE.fireHi);
+    game.particles(this.x, this.y, 18, witch ? PALETTE.witchHi : PALETTE.fireHi, 250);
+    game.floatText(this.x, this.y - 30, 'OIL', witch ? PALETTE.witchHi : PALETTE.fireHi);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.boom);
+  }
+  // Gone from the room and from the flow field, which walked round it while it stood.
+  openBarrel(game) {
+    this.broken = true; this.dead = true;
+    const w = game.world; w.block[Math.floor(this.y / TILE) * w.W + Math.floor(this.x / TILE)] = 0;
+  }
+
   // Two blows and the slats come off. What walks out is the only thing in the compound on the
   // goat's side, so the break is worth a beat of noise and a line on the floor.
   breakCoop(game) {
@@ -1516,6 +1564,7 @@ class Prop {
     }
     if (this.kind === 'clamp') { this.slam = Math.max(0, this.slam - dt); return; }
     if (this.kind === 'brazier') { this.spillCd = Math.max(0, this.spillCd - dt); return; }
+    if (this.kind === 'barrel') { this.updateBarrel(game); return; }
     // Fire that reaches a lamp post takes the lamp with it: hay burning up to one tips it over,
     // and the oil goes wherever it falls. The room keeps answering after the first thing lit.
     if (this.kind === 'lamp') {

@@ -602,6 +602,22 @@ function tryGenerate(levelDef, seed, opts) {
         placed++;
       }
     }
+    // Barrels. Stores stood down the side of a room, never out in it: each one on a tile with wall on
+    // exactly one side and open floor on every other, so one never narrows a way through, and never
+    // by the way in. `GEN_RULES.barrels` holds all of it.
+    if (room.index > 0 && !room.isAmbush && !room.isRest && !room.arena && room.index !== lessonIndex && !levelDef.cave
+        && rng.chance(levelDef.barrels || 0)) {
+      const B = TUNING.prop.barrel, want = rng.int(B.want[0], B.want[1]);
+      for (let a = 0, placed = 0; a < 60 && placed < want; a++) {
+        const tx = rng.int(room.x, room.x + room.w - 1), ty = rng.int(room.y, room.y + room.h - 1);
+        if (!barrelFits(tiles, W, tx, ty)) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
+        if (room.enter && len(room.enter.x - px, room.enter.y - py) < 3 * TILE) continue;
+        props.push({ x: px, y: py, kind: 'barrel' });
+        placed++;
+      }
+    }
     // The cave's floor: a patch or three of tall grass, and a scatter of boulders. Neither in the pen
     // or a rest room, and a boulder never within a few tiles of the way in, so walking into a room is
     // never walking into a rock.
@@ -1625,6 +1641,19 @@ function reachable(tiles, W, H, sx, sy, tx, ty) {
 // Is a point inside something a man cannot stand in? Everything a room puts on the floor except what
 // is floor itself — a bowl of milk, a grating — or a door, which stands in a corridor and not a room.
 // Shared by the generator's own spawn pass and `GEN_RULES.furniture`, so the two cannot disagree.
+// A barrel's tile: plain floor with wall on exactly one of its four sides and floor on the other
+// three and on every diagonal away from that wall, so it stands against the wall and cuts nothing.
+function barrelFits(tiles, W, tx, ty) {
+  if (tiles[ty * W + tx] !== T.FLOOR) return false;
+  const sides = [[0, -1], [1, 0], [0, 1], [-1, 0]].filter(([dx, dy]) => tiles[(ty + dy) * W + tx + dx] === T.WALL);
+  if (sides.length !== 1) return false;
+  const [wx, wy] = sides[0];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if ((dx || dy) && !(dx === wx && dy === wy) && !(wx && dx === wx) && !(wy && dy === wy) && tiles[(ty + dy) * W + tx + dx] !== T.FLOOR) return false;
+  }
+  return true;
+}
+
 function inFurniture(x, y, props) {
   for (const p of props) {
     if (p.kind === 'heal' || p.kind === 'spike' || p.kind === 'door' || p.kind === 'secret') continue;

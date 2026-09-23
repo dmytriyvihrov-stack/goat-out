@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.53';
+const BUILD = '1.56';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -366,6 +366,11 @@ const TUNING = {
     // together used to be the safest place in the room — the first one bowled the second over and
     // both got up — which read as the game saying that men are not part of the geometry. They are.
     bodyKillSpeed: 10 * TILE,
+    // The man off the horns dies with the one he lands on only above this. It used to be
+    // `splatSpeed`, a tile a second over `bodyKillSpeed`, so nearly every body-on-body headbutt was
+    // two deaths and the bare head bought a double kill (23 Sep 2026 answers: one death, not two).
+    // Over the bare headbutt's own impulse on purpose: LONG HORNS and a run-up can still reach it.
+    bodyBothSpeed: 32 * TILE,
   },
   fire: {
     spread: 0.48, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE,   // spread was 0.4; a burning tile catching its neighbour that fast read as too eager
@@ -495,6 +500,12 @@ const TUNING = {
     // take. It is never in the way of the only way through: the generator only sets one down on
     // open floor with a clear tile all round it (`GEN_RULES.rocks`).
     rock: { r: 14, hits: 2 },
+    // A barrel of lamp oil stood against a wall (asked for 15 Sep 2026, built 23 Sep). Furniture, not
+    // an item: too heavy to lift, it stops a man and a bullet, and two blows or a body arriving at
+    // `knockHitSpeed` stave it in. Fire does not break it, it opens it: `burst` tiles of burning oil
+    // for `burstTime` seconds, a crate's burst and then some. `chance` is per room, on the levels
+    // that set `barrels`; `want` how many a room that rolls it gets.
+    barrel: { r: 12, hits: 2, burst: 2.5, burstTime: 8, want: [1, 3] },
     bomb: { r: 11, fuse: 1.6, blastR: 1.5 * TILE, nearR: 0.56 * TILE, dmgNear: 2, dmgFar: 1, impulse: 20 * TILE, chance: 0.45 },
     // A stand of arms. Grab what is in it, carry it, let go to throw it. The sword goes through
     // the first man it finds; the shield knocks a row of them flat and turns bullets while carried.
@@ -769,7 +780,10 @@ const TUNING = {
   // much darker than the original.
   // `oracle` is THE ORACLE's reach through stone, in tiles. Past it the ordinary cast still decides,
   // so the far corners of a room stay the dark they always were.
-  fog: { shade: 0.9, radius: 26, res: 2, oracle: 11 },
+  // 23 Sep 2026: 0.9 → 0.8. A man behind a partition read as invisible while he could still hear
+  // you, which the questionnaire called unfair rather than tense. Rooms nobody has opened are kept
+  // by `drawUnseen`, not by this, so their contents stay unreadable either way.
+  fog: { shade: 0.8, radius: 26, res: 2, oracle: 11 },
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
   // first has found a room, so most levels get one and some get two rather than every level getting
   // a guaranteed pair. `carveSecret` in gen.js does the finding; this is only ever the odds.
@@ -942,6 +956,10 @@ const TUNING = {
     deadzone: 0.55 * TILE, fitMargin: 2 * TILE },
   // A score is time first and bodies second, so that running is never the wrong answer: pace against
   // par is the whole of it and kills only multiply. Par for a level is its rooms times `perRoom`.
+  // Dev only. A death is a burst when its last two hearts went inside `burstGap` seconds of each
+  // other, and a bleed when they went further apart: the dev drawer counts both, and the run code
+  // carries the gap, to say whether `goat.invuln` or the heart count is the lever (BACKLOG, 16 Sep).
+  dev: { burstGap: 1.5 },
   score: { perRoom: 9, timePoints: 1000, fastCap: 2, killMul: 0.06, killCap: 2.5 },
   held: { bulletsAbsorbed: 2 },
   // A corrupted soul: what a boss leaves, and what the goat swallows to get stronger. It was a tome,
@@ -1187,6 +1205,10 @@ const BOON_POWER = { heart: 1, collar: 1.6, howl: 1.5, breath: 1.5, bomb: 1.3, d
 // named at a glance — the rail, the hover note, the pick-one-of-three cards. `minLevel` is the
 // level index (0 = THE ALTAR) below which the card is never dealt — off by default, so the dev
 // tool is the only thing that ever needs to set one.
+// `synergy` names a boon this one is built to be read together with (a crossing the world makes,
+// such as poison meeting fire); `addition` names one it makes modestly better in passing. Neither is
+// read by the game: they are marks for the BOONS tab, so the deck can be looked at as a web rather
+// than a list (asked for 16 Sep 2026, built 23 Sep).
 const BOONS = [
   // ---- actives: they change what a button does ----
   { id: 'collar', skill: 'grab', active: true, key: true, emoji: '⛓️', minLevel: 0, name: 'BY THE COLLAR',
@@ -1196,21 +1218,21 @@ const BOONS = [
     desc: 'BAAH stops being a noise. Everyone who hears it loses a moment, and that moment is yours.',
     params: { cooldown: TUNING.goat.scream.cooldown },
     apply: (m, p) => { m.screamStun = true; m.screamCooldown = p.cooldown; } },
-  { id: 'breath', skill: 'scream', active: true, emoji: '🔥', minLevel: 0, name: 'DRAGON BREATH', desc: 'The scream becomes a cone of fire. Slower to recharge.',
+  { id: 'breath', synergy: ['kindling', 'ember'], skill: 'scream', active: true, emoji: '🔥', minLevel: 0, name: 'DRAGON BREATH', desc: 'The scream becomes a cone of fire. Slower to recharge.',
     params: { cooldown: TUNING.goat.breath.cooldown },
     apply: (m, p) => { m.breath = true; m.screamCooldown = p.cooldown; } },
-  { id: 'bomb', skill: 'butt', active: true, emoji: '💣', minLevel: 0, name: 'BOMB CHARGE', desc: 'Anyone you headbutt goes off if he lands on a wall or another man.',
+  { id: 'bomb', synergy: ['horns'], skill: 'butt', active: true, emoji: '💣', minLevel: 0, name: 'BOMB CHARGE', desc: 'Anyone you headbutt goes off if he lands on a wall or another man.',
     apply: (m) => { m.bomb = true; } },
-  { id: 'devour', skill: 'grab', active: true, needs: 'grabMen', emoji: '🍖', minLevel: 0, name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
+  { id: 'devour', synergy: ['jaw'], skill: 'grab', active: true, needs: 'grabMen', emoji: '🍖', minLevel: 0, name: 'DEVOUR', desc: 'Keep holding a man and you tear him open. It may feed you.',
     apply: (m) => { m.devour = true; } },
-  { id: 'weight', skill: 'roll', active: true, emoji: '🪨', minLevel: 0, name: 'DEAD WEIGHT', desc: 'The tumble stops being an escape. Everything it goes through loses its head for a moment.',
+  { id: 'weight', synergy: ['breath', 'splash'], skill: 'roll', active: true, emoji: '🪨', minLevel: 0, name: 'DEAD WEIGHT', desc: 'The tumble stops being an escape. Everything it goes through loses its head for a moment.',
     params: { stun: TUNING.goat.roll.stun },
     apply: (m, p) => { m.rollStun = p.stun; } },
   // Poison, one on each button, and a second grab active that is a bomb you make yourself.
-  { id: 'splash', skill: 'butt', active: true, emoji: '💦', minLevel: 0, name: 'SPLASH',
+  { id: 'splash', synergy: ['breath', 'bomb'], skill: 'butt', active: true, emoji: '💦', minLevel: 0, name: 'SPLASH',
     desc: 'The moment you lower your head, whoever is right behind you is poisoned.',
     apply: (m) => { m.splash = true; } },
-  { id: 'venomjaw', skill: 'grab', active: true, emoji: '🐍', minLevel: 0, name: 'VENOM JAW',
+  { id: 'venomjaw', synergy: ['kindling'], skill: 'grab', active: true, emoji: '🐍', minLevel: 0, name: 'VENOM JAW',
     desc: 'Hold anything two seconds and it leaves your mouth dripping: it sprays poison all the way down.',
     params: { holdFor: 2 },
     apply: (m, p) => { m.venomHold = p.holdFor; } },
@@ -1218,10 +1240,10 @@ const BOONS = [
     desc: 'Hold anything two seconds and it is charged. Thrown, it goes off where it lands.',
     params: { holdFor: 2 },
     apply: (m, p) => { m.chargeHold = p.holdFor; } },
-  { id: 'venomroll', skill: 'roll', active: true, emoji: '🦠', minLevel: 0, name: 'SOUR TUMBLE',
+  { id: 'venomroll', synergy: ['weight'], skill: 'roll', active: true, emoji: '🦠', minLevel: 0, name: 'SOUR TUMBLE',
     desc: 'Every roll ends in a spray of poison where you get up.',
     apply: (m) => { m.venomRoll = true; } },
-  { id: 'spit', skill: 'scream', active: true, emoji: '🫧', minLevel: 0, name: 'VENOM SPIT',
+  { id: 'spit', synergy: ['breath', 'kindling'], skill: 'scream', active: true, emoji: '🫧', minLevel: 0, name: 'VENOM SPIT',
     desc: 'The scream becomes a glob of poison. Where it bursts, three tiles by three of it.',
     params: { cooldown: 4.5 },
     apply: (m, p) => { m.spit = true; m.screamCooldown = p.cooldown; } },
@@ -1230,29 +1252,29 @@ const BOONS = [
   { id: 'hide', emoji: '❤️', minLevel: 0, name: 'THICK HIDE', desc: 'One more heart, and it fills now.',
     params: { heartsAdd: 1 },
     apply: (m, p) => { m.maxHp += p.heartsAdd; }, heal: 1 },
-  { id: 'horns', skill: 'butt', emoji: '🐏', minLevel: 0, name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.',
+  { id: 'horns', addition: ['bomb', 'splash'], skill: 'butt', emoji: '🐏', minLevel: 0, name: 'LONG HORNS', desc: 'Headbutt reaches further and throws harder.',
     params: { reachMul: 1.38, impulseMul: 1.25 },
     apply: (m, p) => { m.headbuttReach *= p.reachMul; m.headbuttImpulse *= p.impulseMul; } },
-  { id: 'skull', skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.',
+  { id: 'skull', addition: ['bomb', 'splash'], skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', desc: 'Recover from a headbutt far quicker.',
     params: { recoveryMul: 0.5 },
     apply: (m, p) => { m.headbuttRecovery *= p.recoveryMul; } },
-  { id: 'jaw', skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.',
+  { id: 'jaw', addition: ['collar', 'shield'], skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'A held man stops four bullets, struggles longer, and you reach for the next one sooner.',
     params: { shieldBullets: 4, holdTime: 13, cooldownMul: 0.6 },
     apply: (m, p) => { m.shieldBullets = p.shieldBullets; m.holdTime = p.holdTime; m.grabCooldown *= p.cooldownMul; } },
-  { id: 'shield', skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing, at his own side, not you.',
+  { id: 'shield', synergy: ['jaw'], skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'A held man keeps swinging and firing, at his own side, not you.',
     apply: (m) => { m.livingShield = true; } },
   { id: 'kindling', emoji: '🪵', minLevel: 0, name: 'KINDLING', desc: 'A man on fire lights the next one he touches.',
     apply: (m) => { m.firePass = Math.max(m.firePass, 1); } },
-  { id: 'throat', skill: 'scream', emoji: '🗣️', minLevel: 0, name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.',
+  { id: 'throat', addition: ['howl', 'breath', 'spit'], skill: 'scream', emoji: '🗣️', minLevel: 0, name: 'RAW THROAT', desc: 'Scream twice as often, and half again as far.',
     params: { cooldownMul: 0.5, radius: 13 },
     apply: (m, p) => { m.screamCooldown *= p.cooldownMul; m.screamRadius = p.radius; } },
-  { id: 'hooves', emoji: '💨', minLevel: 0, name: 'SURE HOOVES', desc: 'Run faster than anything in the building.',
+  { id: 'hooves', addition: ['joints'], emoji: '💨', minLevel: 0, name: 'SURE HOOVES', desc: 'Run faster than anything in the building.',
     params: { speedMul: 1.13 },
     apply: (m, p) => { m.speed *= p.speedMul; } },
-  { id: 'joints', skill: 'roll', emoji: '🤸', minLevel: 0, name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.',
+  { id: 'joints', addition: ['weight', 'venomroll'], skill: 'roll', emoji: '🤸', minLevel: 0, name: 'LOOSE JOINTS', desc: 'Roll further, and far more often.',
     params: { distanceMul: 1.35, cooldownMul: 0.45 },
     apply: (m, p) => { m.rollDistance *= p.distanceMul; m.rollCooldown *= p.cooldownMul; } },
-  { id: 'ember', emoji: '🧯', minLevel: 0, name: 'EMBER COAT', desc: 'Ordinary fire takes three times as long to start hurting you. Witchfire never cared.',
+  { id: 'ember', addition: ['breath', 'kindling'], emoji: '🧯', minLevel: 0, name: 'EMBER COAT', desc: 'Ordinary fire takes three times as long to start hurting you. Witchfire never cared.',
     params: { fireResist: 3 },
     apply: (m, p) => { m.fireResist = p.fireResist; } },
   { id: 'oracle', emoji: '👁️', minLevel: 0, name: 'THE ORACLE', desc: 'You see through the walls close about you. The far corners stay dark.',
@@ -1588,7 +1610,7 @@ const LEVELS = [
     // the goat is inside, and neither gives until he does.
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer', sealed: true }],
     gates: [5, 10],
-    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, vaultAt: 6,
+    millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, barrels: 0.3, vaultAt: 6,
     // The first escort of the run is the loudest one: a floor about fire and being found is the
     // right floor to be handed something that gives you away (js/beasts.js).
     beasts: ['chicken', 'goose'],
@@ -1647,7 +1669,9 @@ const LEVELS = [
     },
     floor: '#2b2821', floorAlt: '#302c24', wall: '#3b3731', wallTop: '#5f584b',
     fog: '#040405', doorChance: 0.15, ironDoors: 0.4, clockDoors: 0.35, stack: 0.28,
-    hint: 'THE GRASS HIDES YOU. IT HIDES THEM TOO.', hintKey: null,
+    // The rock teeth at the foot of the wall are new here too, and cost a heart the first time they
+    // are found by walking into them: the floor names every new thing on it (23 Sep 2026).
+    hint: 'THE GRASS HIDES YOU. IT HIDES THEM TOO. THE ROCK HAS TEETH.', hintKey: null,
   },
   {
     // The rifle arrives early, alone, and then never stops being the reason you keep moving.
@@ -1664,7 +1688,7 @@ const LEVELS = [
     beasts: ['tortoise', 'goose', 'chicken'],
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
     // heels crosses a beat later, when it is no longer floor.
-    spikes: 0.3, crates: 0.35, vaultAt: 4,
+    spikes: 0.3, crates: 0.35, barrels: 0.3, vaultAt: 4,
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [['hunter', 0.2]],
@@ -1700,7 +1724,7 @@ const LEVELS = [
     decor: 'Wide yards, posts, tables, braziers, rings of hay, almost no wall at all.',
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
     gates: [5, 11],
-    millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, vaultAt: 7, traps: 1,
+    millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, barrels: 0.35, vaultAt: 7, traps: 1,
     // The crow is met on the widest, fullest floor in the game, because the one thing it asks for is
     // bodies and this is the floor that has them (js/beasts.js).
     beasts: ['crow', 'goose'],
@@ -1714,7 +1738,11 @@ const LEVELS = [
       // a tenth of what it topped out at.
       // A step up from 5→12 when the two gate rooms went quiet: with two fewer rooms to fight in, the
       // old curve left this level barely harder than THE ROAD.
-      from: 9, to: 19, ease: 1.2,
+      // 23 Sep 2026: the yard still read as sparse, rooms the width of this one holding what a
+      // narrower room holds. A step up on both ends and an eighth man allowed, so the width is
+      // filled rather than cut: the level is otherwise barely harder than THE ROAD.
+      from: 10, to: 21, ease: 1.2,
+      cap: { men: 8 },
     },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
     fog: '#0b0b0a', doorChance: 0.12, ironDoors: 0.8, clockDoors: 0.55, stack: 0.3,
@@ -1734,7 +1762,7 @@ const LEVELS = [
     decor: 'Pillar gates, table throats, hunters and hounds crowding every narrow doorway.',
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
     gates: [8, 13],
-    millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 5,
+    millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, barrels: 0.3, traps: 2, vaultAt: 5,
     beasts: ['tortoise', 'crow'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
@@ -1745,7 +1773,8 @@ const LEVELS = [
     },
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
     fog: '#06070a', doorChance: 0.3, ironDoors: 0.55, clockDoors: 0.6, stack: 0.35,
-    hint: 'EVERYTHING THEY HAVE LEFT IS HERE', hintKey: 'scream',
+    // Nothing new walks in here, so what the floor names is the canon: the doorway is the weapon.
+    hint: 'EVERYTHING THEY HAVE LEFT IS HERE. MEET THEM IN THE DOORWAY.', hintKey: 'scream',
   },
   {
     // Up in the roof of the hall, and the first ground in the compound that is not all there. Holes
@@ -1762,7 +1791,7 @@ const LEVELS = [
     gates: [6, 13],
     // Windows are this level's and nobody else's: a hole in a wall is a drop, and the drop is the
     // one new thing THE RAFTERS has. Every other level's walls are the inside of a compound.
-    millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, vaultAt: 8, windows: 0.55, traps: 1,
+    millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, barrels: 0.25, vaultAt: 8, windows: 0.55, traps: 1,
     // Not the tortoise: a floor whose one idea is the drop is not the floor to be walking a thing
     // that has to be thrown across it.
     beasts: ['crow', 'goose'],
@@ -1791,7 +1820,7 @@ const LEVELS = [
     decor: 'Stone niches and lanes, open floor between them, wraiths arriving from behind.',
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
     gates: [8, 12],
-    millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, traps: 2, vaultAt: 7,
+    millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, barrels: 0.25, traps: 2, vaultAt: 7,
     beasts: ['crow', 'tortoise'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],

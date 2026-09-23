@@ -321,6 +321,20 @@ const GEN_RULES = [
         return `a ${sp.kind} inside the furniture of room ${sp.roomIndex}`;
       return true;
     } },
+  // Barrels are stone to the flow field until they break, so where they stand is the whole of what
+  // keeps them from shutting a way through: against a wall, open floor on the room side of them.
+  { id: 'barrels', text: 'A barrel stands against a wall with open floor round the rest of it, never by the way in.',
+    check: (L) => {
+      const bs = L.props.filter((p) => p.kind === 'barrel');
+      if (!bs.length) return null;
+      for (const p of bs) {
+        const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+        if (!barrelFits(L.tiles, L.W, tx, ty)) return `a barrel out of place at ${tx},${ty}`;
+        const room = L.rooms.find((r) => tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h);
+        if (room && room.enter && Math.hypot(room.enter.x - p.x, room.enter.y - p.y) < 3 * TILE) return `a barrel by the way into room ${room.index}`;
+      }
+      return true;
+    } },
   // THE CAVE's floor. A boulder is stone to everything that moves, so the only thing that keeps a
   // scatter of them from shutting a way through is where they are allowed to stand. `placeRockCluster`
   // grows a formation of three to six of them on purpose, and every cell of one carries the same

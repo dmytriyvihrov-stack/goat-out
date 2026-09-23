@@ -8,6 +8,37 @@ then goes to `CHANGELOG.md` — or when it is decided against, and the reason go
 Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and does not read; **number**,
 it works and the number is wrong; **system**, it does not exist yet.
 
+## 23 September 2026 — answers to the open-questions page
+
+Every open line in this file was put on one page (`tools/backlog-questions.html`) and marked. What
+was marked "do" shipped in 1.56 (reasoning in `CHANGELOG.md`): the run code, barrels, one death
+instead of two off a headbutt, a lighter fog shade, a fuller THE THRESHING FLOOR, hints naming the
+new thing on THE CAVE and THE BRIDGE, the burst/bleed death counter, and synergy/addition marks on
+the BOONS tab (the tab itself already existed). The rest, as answered:
+
+- **Closed, "already fine":** the endless roll, "delete the bird", the spinner over the traps, the
+  brazier room, the hunter's shot tell, the far wall's tilt, the lesson room's dead-straight headbutt,
+  the line at the first man (stays `LEFT CLICK - HEADBUTT`), and the deck at 36 as it stands.
+- **Still open, with what was said:**
+  - *The Mill lesson bearer who ran past the wheel:* approached **from a stop at the door**, the same
+    way the three reproduction tries did. So it is not speed; the thing left to check is the room's
+    own spawn and `trapSense` pin on the seed it happened on. The run code will carry the seed.
+  - *A kill already counted in the first room:* marked "do". Not reproduced: every level started on
+    two seeds and left alone for five seconds counts nothing. The run code now carries the level's
+    first body, its cause and its second, so the next sighting names what died and how.
+  - *Later:* phone controls vanishing, whether THE TRIP's scramble carries into the next floor, the
+    second talisman slot.
+  - *Passives:* of the three candidates, **grass heals two but the max is a heart lower** is the one
+    wanted. Not built.
+  - *Actives:* the pounce and the chain headbutt are wanted **as upgrades to passives**, not as
+    actives of their own. Not built.
+  - *A souls resource (one per man):* **decided against for now.** "Not spending them. Make them fewer
+    or take them out. We are not focusing on this; the economy only distracted." Nothing is built for
+    it, so nothing is taken out; whether the existing soul count should drop further is open.
+- **The plan around the playtest** (freeze features, polish the first thirty minutes, a clean build,
+  itch.io, 10–15 new players, 3–5 watched, a six-question form, the positioning question, three
+  numbers) was agreed as written on the page.
+
 ## 23 September 2026 — first word on THE TRIP
 
 - **feel — THE TRIP reads okay.** Needs a minute to adjust, then it is fun, like an exercise for the
@@ -703,7 +734,7 @@ except the two notes at the end; the reasoning is in `CHANGELOG.md`.
   which is what the screenshot boxed — but the pen says exactly that two rooms earlier, so the line
   at the man repeats rather than adds. The alternative is `INTO A WALL KILLS`, which is the whole of
   level one's canon and the thing players did not work out on their own. One word settles it.
-- **Barrels.** The ask was "barrels down the sides or a small crate in the corner" and it shipped as
+- ~~**Barrels.**~~ Shipped in 1.56 as `kind === 'barrel'`. The ask was "barrels down the sides or a small crate in the corner" and it shipped as
   crates, because there is no barrel `Prop` — only a painted barrel in the ritual room's decal
   layer. A real barrel kind (blocks, burns, is not liftable) is a small piece of work and would give
   the storage rooms something to read that is not a crate.
@@ -819,7 +850,7 @@ three, so nothing about the game read as progress.
 - ~~**Running without stopping builds up to +50% speed.**~~ Shipped as `goat.momentum`: four seconds
   to the whole of it, three times as fast to lose it, and all of it gone on a hit.
 
-### system — a souls resource, one soul per man
+### ~~system — a souls resource, one soul per man~~ — decided against for now, 23 Sep 2026 (see the top of this file)
 
 **Asked as a question, not built.** "А что если мы добавим ресурс душ? Но тут 1 душа = 1 человек. И его
 потом можно будет тратить." The counting half is free — `game.kills` is already exactly this number and

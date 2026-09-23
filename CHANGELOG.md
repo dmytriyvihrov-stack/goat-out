@@ -5,6 +5,38 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.56 — the questionnaire's answers: a run code for playtests, barrels, one death not two
+
+Built off the open-questions page (`tools/backlog-questions.html`), where every open backlog line was
+marked. Everything marked "do" is here; the rest stays in `BACKLOG.md` with its answer written in.
+
+- **A run code on every death, clear and win card.** One line at the foot of the card: build, level
+  (T for the trip), run seed, the death count the level was cut with, room, kills, time, souls, what
+  took the last heart, the gap between the last two hearts, and the level's first body with its cause
+  and second. The click that leaves a death or the win card also copies it. `game.replayCode(code)`
+  stands a dev on the same floor. This is what a playtest form asks for, and what the "a kill before I
+  touched anyone" report never had.
+- **Barrels.** A new prop, asked for on 15 Sep: stood against a wall, never in a room's way, too heavy
+  to lift, stops a man and a bullet, two blows or a body at `knockHitSpeed` stave it in, and fire opens
+  it into a pool of burning oil wider and longer than a crate's (`TUNING.prop.barrel`,
+  `levelDef.barrels` from THE YARD on, not in the cave). `GEN_RULES.barrels` holds where they stand.
+- **One death, not two.** A man off the horns used to die with the man he landed on at `splatSpeed`, a
+  tile a second over the speed that kills the other one, so nearly every body-on-body headbutt was a
+  double kill. He dies too only past `physics.bodyBothSpeed` (32 tiles/s), over the bare headbutt: LONG
+  HORNS and a run-up still reach it.
+- **The shadow is lighter** (`fog.shade` 0.9 → 0.8): a man behind a partition read as invisible while he
+  could still hear you. Unopened rooms are still hidden by `drawUnseen`, not by this.
+- **THE THRESHING FLOOR is fuller**: curve 9→19 to 10→21 and an eighth man allowed a room, so the width
+  is filled rather than cut. 98.9 → 109.1 threat, still well under THE BRIDGE.
+- **Every floor names what is new on it.** THE CAVE's hint adds the rock teeth; THE BRIDGE's says to
+  meet them in the doorway.
+- **Burst or bleed, counted.** The dev drawer counts deaths whose last two hearts went inside
+  `TUNING.dev.burstGap` (1.5 s) against the ones that bled out; the run code carries the gap. This is
+  the measurement the 16 Sep note asked for before touching hearts or `goat.invuln` again.
+- **Synergy and addition marks on the boons**, shown on the BOONS tab: who a boon is read with (both
+  ways round) and who it quietly helps. Marks only; the game reads neither.
+- `ART_TODO_GPT.md`: every painted or primitive leftover as an image-generation brief.
+
 ## 1.55 — all pixel, and a lighter build
 
 - **Every floor and wall is pixel art.** The square-walled levels were still painted tile sets, one per

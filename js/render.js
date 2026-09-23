@@ -1824,6 +1824,10 @@ class Renderer {
       // Coals knocked out of it: the flame drops and builds back, so the bowl says when it is ready.
       const heat = p.spillCd > 0 ? 0.4 + 0.6 * (1 - p.spillCd / TUNING.prop.brazier.spillCd) : 1;
       this.flame(p.x, p.y - 6, (12 + 3 * Math.sin(this.t * 11 + p.phase)) * heat, p.phase * 10);
+    } else if (p.kind === 'barrel') {
+      this.shadow(p.x, p.y, p.r, p.r * 0.5);
+      ctx.fillStyle = PALETTE.wood; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#4a443c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.r - 3, 0, Math.PI * 2); ctx.stroke();
     } else if (p.kind === 'bell') {
       const ring = p.rung > 0 ? Math.sin(this.t * 40) * 3 : 0;
       this.shadow(p.x, p.y, p.r, p.r * 0.5);
@@ -2865,8 +2869,8 @@ class Renderer {
         ] },
       ];
       const rw = 132 * s, rh = 24 * s, gap = 3 * s, n = Math.max(...cols.map((c) => c.rows.length));
-      const boxW = rw * cols.length + 6 * s, boxH = n * (rh + gap) + 22 * s;
-      const px0 = this.w - pad - boxW, py = cy - 6 * s - (n * (rh + gap));
+      const boxW = rw * cols.length + 6 * s, boxH = n * (rh + gap) + 38 * s;
+      const px0 = this.w - pad - boxW, py = cy - 22 * s - (n * (rh + gap));
       toastY = py - 30 * s;
       ctx.fillStyle = 'rgba(13,10,12,0.93)'; ctx.fillRect(px0, py - 20 * s, boxW, boxH);
       ctx.strokeStyle = 'rgba(185,135,58,0.6)'; ctx.lineWidth = 1.5 * s;
@@ -2887,6 +2891,10 @@ class Renderer {
           d.rects.push({ x: px + 5 * s, y, w: rw - 10 * s, h: rh, id });
         });
       });
+      // Burst or bleed, over every death this browser has had: which lever the deaths point at.
+      const st = game.deathStats();
+      ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+      ctx.fillText(`DEATHS  ${st.burst} BURST · ${st.bleed} BLED  (burst: 2 hearts < ${TUNING.dev.burstGap}s)`, px0 + 11 * s, py + n * (rh + gap) + 9 * s);
     }
     ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
     ctx.fillStyle = d.open ? PALETTE.fireHi : 'rgba(185,135,58,0.55)';
@@ -3675,6 +3683,23 @@ class Renderer {
       ctx.font = `400 ${7.2 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.38)';
       const tags = [b.skill ? b.skill.toUpperCase() : 'BODY WORK', b.needs ? 'needs ' + b.needs : null].filter(Boolean).join(' · ');
       ctx.fillText(tags, nameX, ry + rowH - 5 * s);
+      // The marks: who this one is read with (both ways round, so a pair shows on both rows) and who
+      // it quietly helps. Violet for a synergy, the dim ochre for an addition.
+      const nameOf = (id) => (BOONS.find((o) => o.id === id) || { name: id }).name;
+      const withIds = [...new Set([...(b.synergy || []), ...BOONS.filter((o) => (o.synergy || []).includes(b.id)).map((o) => o.id)])];
+      let mx = nameX + ctx.measureText(tags).width + 10 * s;
+      ctx.font = `700 ${7 * s}px ${FONT_SC}`;
+      // Both stop short of MIN LVL: the params column wraps down into this row.
+      const markEnd = levelX - 6 * s;
+      if (withIds.length && mx < markEnd) {
+        const t = this.clip('WITH ' + withIds.map(nameOf).join(', '), markEnd - mx);
+        ctx.fillStyle = PALETTE.witchHi; ctx.fillText(t, mx, ry + rowH - 5 * s);
+        mx += ctx.measureText(t).width + 10 * s;
+      }
+      if (b.addition && b.addition.length && mx < markEnd - 30 * s) {
+        ctx.fillStyle = 'rgba(242,162,51,0.75)';
+        ctx.fillText(this.clip('ADDS TO ' + b.addition.map(nameOf).join(', '), markEnd - mx), mx, ry + rowH - 5 * s);
+      }
 
       // MIN LVL: the dev tool's own gate, edited the same way a param is
       const lvlLabel = (b.minLevel || 0) > 0 ? 'L' + (b.minLevel + 1) + '+' : 'ANY';
@@ -6250,6 +6275,11 @@ class Renderer {
       y += lh(i);
       ctx.fillText(r.text, this.w / 2, y - lh(i) * 0.28);
     });
+    // The run code sits at the foot of the card, quiet, for whoever is asked to paste it.
+    if (card.code) {
+      ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
+      ctx.fillText(`RUN CODE  ${card.code}`, this.w / 2, this.h - 18 * s);
+    }
     ctx.globalAlpha = 1; ctx.textAlign = 'left';
   }
 }
