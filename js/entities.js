@@ -284,7 +284,10 @@ class Goat {
       if (game.mods.boomerang && !game.boom.fly) {
         if (Shop.throwBoomerang(game, this)) this.itemCd = this.itemCdMax = game.mods.boomerang.cooldown;
       } else if (game.mods.blink) {
-        if (Shop.blink(game, this, inp.mx, inp.my)) this.itemCd = this.itemCdMax = game.mods.blink.cooldown;
+        // Not out of a lunge, a roll or its stagger — the roll's own rule: a blink there cut the
+        // headbutt short, stacked its mercy frames on the roll's and skipped the recovery (rule 4).
+        const busy = this.state === 'lunge' || this.state === 'roll' || this.state === 'rollrecover';
+        if (!busy && Shop.blink(game, this, inp.mx, inp.my)) this.itemCd = this.itemCdMax = game.mods.blink.cooldown;
       } else if (game.mods.effigy) {
         if (Talisman.placeEffigy(game, this)) this.itemCd = this.itemCdMax = game.mods.effigy.cd;
       }
