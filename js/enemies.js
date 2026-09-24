@@ -92,6 +92,7 @@ class Enemy {
     // blast. No wall ever kills him, which is the whole of what makes him dear.
     if (this.kind === 'ratogre') { this.aware = true; return; }
     this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true; this.flungBy = null; this.chain = 0;
+    this.fromMouth = false;   // `Goat.throwHeld` sets it after this; anything else that throws him clears it
     // Whatever he was halfway through painting goes with him. Throwing a mage mid-cast is the answer
     // to a mage in your mouth, so it has to actually stop the rune.
     this.rune = null;
@@ -178,7 +179,7 @@ class Enemy {
     if (!this.blunderProof) this.state = 'burning';
     this.held = false;
     // Whatever is alight is not in your mouth any more, whoever put it there.
-    if (game.goat.holding === this) { game.goat.holding = null; game.goat.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
+    if (game.goat.holding === this) { game.goat.holding = null; game.goat.spendGrab(game, true); }
     game.audio.sfxFire(); game.floatText(this.x, this.y - 26, 'AAAAH', witch ? PALETTE.witch : PALETTE.fire);
     this.aware = true;
     // Caught from the ground rather than handed on by another burning man: that ground is only ever
@@ -215,7 +216,7 @@ class Enemy {
     // is a hit like any other, so a two-heart target takes one off and goes down floored, and only a
     // second charge (or any other killing blow) landed while he is already at his last heart actually
     // finishes him.
-    if (this.hp > 1 && cause !== 'devour' && cause !== 'fall') {
+    if (this.hp > 1 && cause !== 'fall') {
       this.hp -= 1; this.flash = 0.3; this.aware = true;
       if (this.kind === 'wraith') {
         // It comes apart and puts itself back together somewhere else. Catching it once is not enough.
@@ -240,7 +241,7 @@ class Enemy {
       // while still pinned in front of the goat — a mage painting at his feet, a clubman swinging.
       if (this.held) {
         this.held = false;
-        if (game.goat.holding === this) { game.goat.holding = null; game.goat.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
+        if (game.goat.holding === this) { game.goat.holding = null; game.goat.spendGrab(game, true); }
       }
       game.world.splat(this.x, this.y, dx || 0, dy || 0, 13);
       game.hitstop(0.05); game.shake(7); game.audio.sfxThud();
@@ -722,7 +723,10 @@ class Enemy {
       if (impact > this.splatLimit(game)) {
         this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1)); return;
       }
-      if (impact > 0 && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }
+      // A thrown body dies on any wall it touches — except a man out of the goat's mouth, who has to
+      // arrive at `physics.thrownKill` (MASON'S MARK lowers it the way it lowers `splatSpeed`).
+      const needs = this.fromMouth ? TUNING.physics.thrownKill * Talisman.splatMul(game) : 0;
+      if (impact > needs && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }
       if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
       // A body arriving at speed knocks the coals out of the bowl as well as catching from it, so
       // a man thrown into a brazier lights the floor on the far side of it too.

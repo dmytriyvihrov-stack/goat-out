@@ -247,7 +247,7 @@ class CombatFX {
     if (cause==='fall') return;
     if (e.kind==='wraith') { this.explosion(e.x,e.y,35,true,true); return; }
     const sprite=this.snapshot(e), big=e.kind==='butcher', size=big?53:e.kind==='dog'?37:40;
-    const torn=cause==='boom'||cause==='devour'||cause==='roll';
+    const torn=cause==='boom'||cause==='roll';
     if(cause!=='burn') {
       const k=TUNING.effects.bloodScale;
       this.blood(e.x,e.y,dx,dy,Math.round((big?18:11)*k));

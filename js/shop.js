@@ -228,7 +228,7 @@ const Shop = {
     if (goat.holding) {
       const h = goat.holding; goat.holding = null; h.held = false; goat.autoHeld = false;
       if (!h.item) { h.state = 'floored'; h.timer = 0.5; }
-      goat.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown;
+      goat.spendGrab(game, !h.item);
     }
     // Whoever stood where he left: the third tier leaves them reeling.
     if (B.stun > 0) for (const e of game.enemies) {

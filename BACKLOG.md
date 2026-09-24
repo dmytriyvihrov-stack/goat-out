@@ -8,6 +8,29 @@ then goes to `CHANGELOG.md` — or when it is decided against, and the reason go
 Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and does not read; **number**,
 it works and the number is wrong; **system**, it does not exist yet.
 
+## 24 September 2026 — the grab button's balance (decided, shipped in 1.65)
+
+Asked after a read of BY THE COLLAR against the rest of the deck. Everything below **shipped in
+1.65** (numbers and reasoning in `CHANGELOG.md`); it is written down here because these are the
+user's decisions, and a later pass must not quietly undo them:
+
+- **DEVOUR stays deleted.** "Сильно поломанный": a kill with no wall and a heart back nearly one time
+  in two. Do not bring it back as a boon, a talisman tier or a passive without asking.
+- **Lifting a man has a windup** (`grab.bite`), "because you get your teeth under him". Grabbing a man
+  mid-swing is **allowed on purpose** — the windup is the price, not a rule against it.
+- **The throw is weaker than the headbutt.** The headbutt is the universal verb and reaches further
+  (`physics.thrownKill` vs `splatSpeed`); the collar is a choice with its own pluses and minuses (a
+  shield, a throw, a slow walk), not a better headbutt. Keep the throw's lethal range under the
+  headbutt's when tuning either.
+- **A man costs a longer grab cooldown** than a thing (`grab.manCd`), and **the card says so**.
+- **Carrying a man is 0.6 of a stride**, so a mage casting in your mouth is only just escaped.
+- **The two grab-button actives are poison and fire, read differently.** VENOM JAW: floor, whoever it
+  hits, a puddle where it stops. FIREBRAND (was CHARGED): a line of fire along the flight only, never
+  where it lands or on who it hits, and men route round it. No explosion.
+- **Open, to watch in the next playtest (number):** whether `grab.bite` 0.18 s reads as "a little
+  preparation" or as lag; whether 3 s of FIREBRAND's line is long enough to split a room; whether
+  BY THE COLLAR still out-picks the scream actives with `BOON_POWER` 1.3.
+
 ## 23 September 2026 — answers to the open-questions page
 
 Every open line in this file was put on one page (`tools/backlog-questions.html`) and marked. What

@@ -2381,7 +2381,7 @@ class Game {
     if (g.holding) {
       const h = g.holding; g.holding = null; h.held = false;
       if (h.item) h.fall(this); else h.die(this, 'fall');
-      g.grabCd = TUNING.goat.grab.cooldown * this.mods.grabCooldown;
+      g.spendGrab(this, !h.item);
     }
     this.audio.sfxSwing(); this.shake(7); this.vibe(45); this.zoomPunch(0.7);
     this.floatText(g.x, g.y - 26, 'THE FLOOR ENDS', PALETTE.blood);
@@ -2651,18 +2651,22 @@ class Game {
   // is as dead as the one he was thrown at.
   flungHits(f, other, nx, ny) {
     const ph = TUNING.physics, spd = Math.hypot(f.vx, f.vy);
+    // Does he arrive hard enough to kill? A thrown body always does — unless the goat threw him out
+    // of his mouth, and then only at `thrownKill` (1.65: the throw sits behind the headbutt, not
+    // ahead of it). Anything else only at `bodyKillSpeed`. `bm` is MASON'S MARK's share of both.
+    const kills = (bm) => f.thrown ? !f.fromMouth || spd > ph.thrownKill * bm : spd > ph.bodyKillSpeed * bm;
     // A body into the rat ogre at killing speed is a heart off him and the end of the body: he is
     // a wall to it, and a wall is what a thrown man dies on. Slower, he is barely moved.
     if (other.kind === 'ratogre') {
       if (f.flungBy === other) { const push = f.r + other.r; f.x = other.x - nx * push; f.y = other.y - ny * push; return; }
-      if (f.thrown || spd > ph.bodyKillSpeed) { other.die(this, 'splat', nx, ny); f.die(this, 'splat', -nx, -ny); }
+      if (kills(1)) { other.die(this, 'splat', nx, ny); f.die(this, 'splat', -nx, -ny); }
       else { f.vx *= -0.3; f.vy *= -0.3; }
       return;
     }
     if (other.kind === 'butcher') { other.state = 'stagger'; other.timer = 0.3; f.vx *= -0.3; f.vy *= -0.3; return; }
     // MASON'S MARK III lowers both lines at once: another man is stone to a body arriving fast.
     const bm = Talisman.bodyMul(this);
-    if (f.thrown || spd > ph.bodyKillSpeed * bm) {
+    if (kills(bm)) {
       // A fused man who arrives on somebody hard enough to kill him goes off on him instead of
       // just killing him — he is the bomb, not the delivery.
       if (f.bombFuse > 0) { f.explode(this); return; }

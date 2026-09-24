@@ -126,8 +126,8 @@ there for a good share of the headbutts you aim at it. One hit kills it. The ans
 scream: a hound loses far longer to BAAH than a man does, and a dazed hound cannot dodge at all.
 
 **A level gives up an authored number of souls** — one on the first, two after — and the boss carrying one glows. A soul offers three actives or three passives. Dragon
-Breath turns the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Devour lets you
-tear a held man open for a chance to heal. Boons last the run and die with you.
+Breath turns the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Firebrand
+leaves a line of fire behind anything you throw. Boons last the run and die with you.
 
 **A room that fights back.** Braziers that spill coals when you headbutt them, spreading hay fire,
 breakable pots, a bell that calls the level, doors you smash through, tables that slide and crush, oil

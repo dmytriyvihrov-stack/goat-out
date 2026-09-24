@@ -83,7 +83,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/input.js` | `TouchUI` (on-screen controls) and `autoAim`. |
 | `js/entities.js` | `Goat`, `Prop` (every world object), `Bullet`. |
 | `js/enemies.js` | `Enemy` — one class, behaviour branches on `kind`. |
-| `js/status.js` | `Status`: poison, the three reactions between poison / stun / fire, puddles, the spit glob, thrown things that drip or are charged. |
+| `js/status.js` | `Status`: poison, the three reactions between poison / stun / fire, puddles, the spit glob, thrown things that drip poison (VENOM JAW) or burn a line (FIREBRAND, `brandTrail`). |
 | `js/shop.js` | `Shop`: the mouse in the wall, her offers, provoking her, the rat ogre, and the two Q-verb artifacts (boomerang flight, blink). |
 | `js/talismans.js` | `Talisman`: the seventeen talismans from `ARTIFACTS_TZ.md` — every hook, their drawing, icons and the TALISMANS tab. |
 | `js/beasts.js` | `Beast`: the escorts (tortoise, goose, crow; the hen is one of the choices) — one a floor, banked at the stairs for a run-long reward. |
@@ -413,7 +413,7 @@ New harm, pass a source.
 ### Enemy kinds
 
 **Two hits.** `hp > 1` (elite, Seer, soul-bearer) absorbs a killing blow in `die()`: floored, one lost,
-up again (a Seer blinks). Fire counts. `devour` and `'fall'` skip it. A bomb charge is an ordinary hit; a
+up again (a Seer blinks). Fire counts. `'fall'` skips it. A bomb charge is an ordinary hit; a
 headbutt gives a fresh fuse and resets `exploded`.
 
 **Rifle.** `sfxCock` on aim (`hunter.cockHear`, not from fog). Inside `wildNear`, `wildChance` of shots
@@ -491,8 +491,9 @@ lands. Chips show the key; `drawSkillNote` (`renderer.skillHover`) the name, a m
 The card (`drawBoonChoice`) grows to fit the wordiest of the three. HUD
 size: `renderer.hs` = `ts` × `TUNING.hud.scale`.
 
-**Timing.** Headbutt has no cooldown (recovery is the cost); `goat.grabCd` on every release of a man;
-roll its own. A lunge that hits stone calls `headbuttHits` before ending, or flush doors could not be hit.
+**Timing.** Headbutt has no cooldown (recovery is the cost); `goat.grabCd` on every release, set only
+through `Goat.spendGrab(game, man)` — a man costs `grab.manCd` × a thing, however he left the mouth,
+and `grabCdMax` is what the rail drains against; roll its own. A lunge that hits stone calls `headbuttHits` before ending, or flush doors could not be hit.
 `goat.state === 'stunned'` is real (`game.stunGoat` only). A headbutt pressed while busy, or a roll
 pressed before it can go, is kept `goat.buffer` s (`buttBuf`, `rollBuf`) and spent the frame he is
 free — the recovery is still eaten whole; a headbutt pressed while idle is never kept.
@@ -511,7 +512,11 @@ is in his mouth. `mods.grassGain` is added to a grass heal in the graze loop, ne
 **Run-up.** `goat.runT` / `goat.runUp`: 1 → `1 + momentum.max` over `momentum.time`, drains at
 `momentum.lose`, a hit takes it all. `momentum.max` is the fifth taken off `goat.speed`; keep them in step.
 
-**Holding a man.** `goat.holdLimit` from `mods.holdTime` + `grab.holdVary`. The held branch tops
+**Holding a man.** BY THE COLLAR takes a man through a windup: `tryGrab` puts the goat in state
+`'bite'` (`grab.bite`, `biteMove`) with `goat.biting`; `closeBite` takes him only if he is still
+liftable and within `biteSlack` × the reach, else `biteMiss`. He keeps acting through it; a blow on the
+goat cancels it (`Goat.damage`). Things are still instant (`takeHold`). Carried, `grab.speedMul` (0.6).
+`goat.holdLimit` from `mods.holdTime` + `grab.holdVary`. The held branch tops
 `Enemy.update`: a Hunter fires `enemy.heldShots` (never refilled); a Seer's rune stays where he started
 (`castRune`; `fling` clears it). He burns, touches braziers, is hit by the Mill and `Prop.bite`, which
 remove him from `goat.holding`.
@@ -527,7 +532,10 @@ throws an `item` (`Goat.throwHeld`; press also read off `pointermove`, `game.mou
 use, a club staggers (`weapon.parry`), `shieldHits`. `Goat.crated`: a club shatters the carried crate
 and nothing else happens; bullets pass.
 
-**Bodies and furniture.** `game.flungHits`: a man thrown from the mouth kills and carries on; off the
+**Bodies and furniture.** `game.flungHits`: a man thrown from the mouth (`Enemy.fromMouth`, set in
+`throwHeld`, cleared by `fling`) kills a wall or a man only above `physics.thrownKill` (lethal to ~3 tiles,
+short of the headbutt's ~5) and carries on; every other `thrown` body (blast, bomb, rat ogre) still
+kills on any touch; off the
 horns he kills at `physics.bodyKillSpeed` and dies too only past `physics.bodyBothSpeed` (over the bare
 headbutt: one death, not two), else both floored.
 `Prop.hitProp` is where a moving prop meets furniture (lamp topples, gong rings, else solid;
@@ -537,8 +545,11 @@ headbutt: one death, not two), else both floored.
 **Statuses.** Stun `Enemy.dazed`, fire `Enemy.burning`, poison `Enemy.poison` (blind + slow via
 `dt * tempo`, `moveMul`); `js/status.js`, `TUNING.status`. Reactions either order: POISON+FIRE
 `Status.blast`, POISON+STUN `sting` (no hit, `e.shock`), STUN+FIRE `scaldIt`. Goat never poisoned.
-`world.poison` / `world.poisonOn`. Sources: SPLASH, VENOM JAW, CHARGED (`Status.markThrow`,
-`updateCarried`), SOUR TUMBLE, VENOM SPIT (`game.globs`).
+`world.poison` / `world.poisonOn`. Sources: SPLASH, VENOM JAW (floor, whoever the throw meets
+within `jaw.touch`, a puddle; `Status.markThrow`, `updateCarried`), SOUR TUMBLE, VENOM SPIT
+(`game.globs`). FIREBRAND (id `charge`, `mods.brandHold`) is VENOM JAW's fire twin: `Status.brandTrail`
+lights the tiles a throw has *left* (never the one it is over, the goat's, or within `brand.gap` of
+the mouth), so nothing it hits catches and the thrown man never flies into his own fire.
 
 **Fire.** `world.fire` seconds, `world.fireKind` 0/1 (witchfire: violet, ignores `mods.fireImmune`,
 `isWitchPx`); lighters pass the kind. `game.passFire` does nothing without `mods.firePass` (KINDLING); a

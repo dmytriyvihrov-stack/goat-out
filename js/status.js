@@ -1,8 +1,9 @@
 // Statuses: poison, and what happens where two of the three things that can be wrong with a man
 // meet. Stun is `Enemy.dazed` (the stars) and fire is `Enemy.burning`; both are older than this
 // file and stay where they are. What lives here is poison itself, the three reactions, the puddles
-// on the floor, the glob the goat spits and the things he throws dripping or charged. Every number
-// is `TUNING.status`, and the STATUS tab of the tool draws that block.
+// on the floor, the glob the goat spits and the things he throws dripping or burning. Every number
+// is `TUNING.status`, and the STATUS tab of the tool draws that block. FIREBRAND's burning line
+// lives here too, beside VENOM JAW's drip, because they are the same hold read two ways.
 //
 //   POISON + FIRE  the poison goes off (`blast`)
 //   POISON + STUN  shock: both run much longer, no hit (`sting`)
@@ -51,7 +52,7 @@ const Status = {
     for (let k = 0; k < n && !e.dead; k++) e.die(game, cause, 0, 0);
   },
 
-  // A small bomb: the poison meeting a flame, or a charged throw landing. Everybody inside `hitR`
+  // A small bomb: the poison meeting a flame. Everybody inside `hitR`
   // takes a hit, everybody out to `radius` is thrown, the goat is shoved and never hurt, and any
   // poison on the floor inside it is burnt off so one puddle cannot go off twice.
   blast(game, x, y, B, source, green = true) {
@@ -108,7 +109,7 @@ const Status = {
   },
 
   // Once a step: the puddles dry, a puddle a flame reaches goes off, the glob flies, and whatever he
-  // threw dripping or charged does its thing once it comes down.
+  // threw dripping or burning does its thing on the way and once it comes down.
   update(game, dt) {
     const w = game.world;
     let lit = null;
@@ -145,44 +146,73 @@ const Status = {
     if (n) game.audio.sfxSplat();
   },
 
-  // What leaves his mouth after `venomHold` / `chargeHold` seconds is marked on the way out.
+  // What leaves his mouth after `venomHold` / `brandHold` seconds is marked on the way out. A
+  // firebrand remembers where the goat stood (`ox`, `oy`, for `brand.gap`) and the last point of
+  // its flight that has been laid (`lx`, `ly`).
   markThrow(game, g, h) {
     const m = game.mods;
-    if (m.venomHold > 0 && g.holdTimer >= m.venomHold) h.venom = true;
-    if (m.chargeHold > 0 && g.holdTimer >= m.chargeHold) h.charged = true;
+    if (m.venomHold > 0 && g.holdTimer >= m.venomHold) { h.venom = true; h.venomHit = null; }
+    if (m.brandHold > 0 && g.holdTimer >= m.brandHold) {
+      h.brand = { ox: g.x, oy: g.y, lx: h.x, ly: h.y };
+      game.audio.sfxFire();
+    }
   },
   // How far along the hold is, 0..1, for whichever of the two is on. The renderer rings the thing.
   holdCharge(game, g) {
-    const m = game.mods, need = m.chargeHold || m.venomHold;
+    const m = game.mods, need = m.brandHold || m.venomHold;
     return need > 0 && g.holding ? clamp(g.holdTimer / need, 0, 1) : 0;
   },
 
-  // A thing thrown dripping leaves poison under its whole flight and a puddle where it stops; a
-  // charged one goes off where it stops. "Stops" is the same test for a man and a crate: no longer
-  // flying, or no longer there at all.
+  // A thing thrown dripping poisons the floor under its whole flight, whoever it passes through,
+  // and a puddle where it stops. A thing thrown burning lights the floor it has flown over and
+  // nothing else. "Stops" is the same test for a man and a crate: no longer flying, or no longer
+  // there at all.
   updateCarried(game) {
-    const w = game.world;
+    const w = game.world, J = TUNING.status.jaw;
     const each = (o, isMan) => {
-      if (!o.venom && !o.charged) return;
+      if (!o.venom && !o.brand) return;
       // An animal flies on its own flag — a shell's `flying`, a kicked hen's `birdState` — not `flung`.
       const up = o.flung || o.flying || o.birdState === 'flying';
       const flying = isMan ? o.state === 'flung' && !o.dead : up && !o.broken && !o.held;
       if (flying) {
-        if (o.venom) w.poisonTile(Math.floor(o.x / TILE), Math.floor(o.y / TILE), TUNING.status.poison.pool);
-        if (Math.random() < 0.6) game.particles(o.x, o.y, 1, o.charged ? PALETTE.fireHi : PALETTE.venom, 60);
+        if (o.venom) {
+          w.poisonTile(Math.floor(o.x / TILE), Math.floor(o.y / TILE), TUNING.status.poison.pool);
+          // Poison splashes: whoever it meets on the way has it, not only whoever stands in it after.
+          for (const e of game.enemies) {
+            if (e === o || e.dead || e.held || e.ghosted || (o.venomHit && o.venomHit.has(e))) continue;
+            if (Math.hypot(e.x - o.x, e.y - o.y) > e.r + (o.r || 0) + J.touch) continue;
+            (o.venomHit || (o.venomHit = new Set())).add(e);
+            Status.poison(game, e);
+          }
+        }
+        if (o.brand) Status.brandTrail(game, o);
+        if (Math.random() < 0.6) game.particles(o.x, o.y, 1, o.brand ? PALETTE.fireHi : PALETTE.venom, 60);
         return;
       }
-      const venom = o.venom, charged = o.charged;
-      o.venom = false; o.charged = false;
-      if (venom) Status.puddle(game, o.x, o.y, TUNING.status.jaw.half);
-      if (charged) {
-        if (!isMan && o.kind === 'bomb' && !o.broken) { o.explode(game); return; }
-        Status.blast(game, o.x, o.y, TUNING.status.charge, isMan && !o.dead ? o : null, false);
-        if (!isMan && o.kind === 'crate' && !o.broken) o.shatter(game);
-      }
+      const venom = o.venom;
+      o.venom = false; o.venomHit = null; o.brand = null;
+      if (venom) Status.puddle(game, o.x, o.y, J.half);
     };
     for (const e of game.enemies) each(e, true);
     for (const p of game.props) each(p, false);
+  },
+
+  // FIREBRAND: the floor it has crossed since the last step catches — a line, and nothing else. Only
+  // tiles it has already left are lit, never the one it is over, so what it is (a man most of all)
+  // does not fly into its own trail and catch; nothing within `brand.gap` tiles of where the goat
+  // stood when it left his mouth, and never the tile he is on now. Walked in half-tile steps, so a
+  // fast throw leaves no gaps. Ordinary fire: EMBER COAT turns it, and a man reads it as a hazard.
+  brandTrail(game, o) {
+    const w = game.world, B = TUNING.status.brand, b = o.brand, g = game.goat;
+    const tile = (x, y) => Math.floor(y / TILE) * w.W + Math.floor(x / TILE);
+    const here = tile(o.x, o.y), goat = tile(g.x, g.y);
+    const n = Math.max(1, Math.ceil(Math.hypot(o.x - b.lx, o.y - b.ly) / (TILE * 0.5)));
+    for (let k = 0; k < n; k++) {
+      const x = b.lx + (o.x - b.lx) * k / n, y = b.ly + (o.y - b.ly) * k / n, t = tile(x, y);
+      if (t === here || t === goat || Math.hypot(x - b.ox, y - b.oy) < B.gap * TILE) continue;
+      w.ignite(Math.floor(x / TILE), Math.floor(y / TILE), true, B.burn);
+    }
+    b.lx = o.x; b.ly = o.y;
   },
 
   // VENOM SPIT: a glob along the pointer. It bursts on the first wall, man or solid thing it meets,
