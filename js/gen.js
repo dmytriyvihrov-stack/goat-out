@@ -182,7 +182,10 @@ function planEncounters(levelDef, rooms, rng) {
 // multipliers on the odds of a second secret, of grass behind one, and of a loose rack, plus bowls
 // of milk on top of the level's own count. Nothing else the goat carries reaches the generator.
 function generateLevel(levelDef, seed, opts) {
-  for (let attempt = 0; attempt < 20; attempt++) {
+  // Forty, not twenty: THE TRIP erodes every room into a cave and more than half its attempts die
+  // on a room edge with no row a door can use, so twenty tries in a row failed about once in four
+  // hundred floors once its whole pool could be dealt. A failed try costs a few milliseconds.
+  for (let attempt = 0; attempt < 40; attempt++) {
     const lvl = tryGenerate(levelDef, seed + attempt * 7919, opts || {});
     if (lvl) return lvl;
   }
