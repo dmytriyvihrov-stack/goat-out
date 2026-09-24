@@ -1281,7 +1281,7 @@ class Prop {
     if (this.broken) return;
     const C = TUNING.cave.spikes, g = game.goat;
     for (const e of game.liveEnemies) {
-      if (e.dead || e.ghosted || (e.spireAt || -1e9) > game.timer - C.again) continue;
+      if (e.dead || e.ghosted || (e.spireAt !== undefined && e.spireAt > game.timer - C.again)) continue;
       if (len(e.x - this.x, e.y - this.y) > this.r + e.r * 0.7) continue;
       e.spireAt = game.timer;
       // A man in your mouth is over the rock like anybody else, and the rock takes him out of it.
