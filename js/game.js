@@ -137,10 +137,20 @@ class Game {
     this.bindInput();
     this.showTitle();
     this.last = performance.now(); this.acc = 0; this.lastRaf = this.last;
-    const raf = (t) => { this.lastRaf = t; this.frame(t); requestAnimationFrame(raf); };
+    // The next frame is asked for before this one runs, and a throw inside one is logged and eaten:
+    // one bad frame used to end the rAF chain for good, and the rest of the session limped on the
+    // 16 ms interval below. Logged once per distinct message, so a throw every frame is one line.
+    this.frameErrs = new Set();
+    const safeFrame = (t) => {
+      try { this.frame(t); } catch (e) {
+        const k = String(e && e.message);
+        if (!this.frameErrs.has(k)) { this.frameErrs.add(k); console.error(e); }
+      }
+    };
+    const raf = (t) => { this.lastRaf = t; requestAnimationFrame(raf); safeFrame(t); };
     requestAnimationFrame(raf);
     // Fallback driver: keeps the simulation running when rAF stalls (hidden pane / background tab).
-    setInterval(() => { const now = performance.now(); if (now - this.lastRaf > 120) this.frame(now); }, 16);
+    setInterval(() => { const now = performance.now(); if (now - this.lastRaf > 120) safeFrame(now); }, 16);
   }
 
   // Boons only ever bend numbers the goat already uses, so the two-button scheme never grows.
