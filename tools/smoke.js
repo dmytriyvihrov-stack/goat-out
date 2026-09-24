@@ -64,8 +64,16 @@ window.SMOKE = {
     try { SMOKE.start(which, seed); } catch (e) { err('start', e); r.end = 'start threw'; return r; }
     let D = SMOKE.field(g), fieldT = 0, best = Infinity, stall = 0, buttCd = 0, steps = 0;
     const dir = { x: 0, y: 0 }, aim = { x: 1, y: 0 };
+    // THE TRIP turns the stick round and puts the horns on the other button (`game.tripInput`), so the
+    // bot pushes the other way and butts with a tap of the grab button.
+    let tripButt = false;
     const orig = g.readMoveInput.bind(g);
-    g.readMoveInput = function () { orig(); g.input.mx = dir.x; g.input.my = dir.y; g.input.aim = { x: aim.x, y: aim.y }; };
+    g.readMoveInput = function () {
+      orig(); const trip = g.level && g.level.def.shroom, k = trip ? -1 : 1;
+      g.input.mx = dir.x * k; g.input.my = dir.y * k; g.input.aim = { x: aim.x, y: aim.y };
+      if (trip) { g.input.rmbDown = tripButt; tripButt = false; }
+    };
+    const butt = () => { if (g.level && g.level.def.shroom) tripButt = true; else g.input.lmbPressed = true; };
     const w = () => g.world;
     const dAt = (x, y) => { const W = w().W, tx = Math.floor(x / TILE), ty = Math.floor(y / TILE); return D[ty * W + tx]; };
     // The neighbour tile that is nearer the stairs, as a unit vector, or null.
@@ -113,7 +121,7 @@ window.SMOKE = {
       }
       if (foe) { const l = fd || 1; aim.x = (foe.x - gt.x) / l; aim.y = (foe.y - gt.y) / l; }
       else if (n) { aim.x = n.x; aim.y = n.y; }
-      if ((foe || stall > 1.2) && buttCd <= 0) { g.input.lmbPressed = true; buttCd = 0.45; }
+      if ((foe || stall > 1.2) && buttCd <= 0) { butt(); buttCd = 0.45; }
       if (stall > 7) { hop(stall > 25 ? 14 : 5); stall = stall > 25 ? 0 : 1.5; best = Infinity; }
     };
     const step = () => {
