@@ -685,7 +685,9 @@ class Enemy {
     // (the Butcher, the hound) is the one exception the tool can turn on a kind: it still catches,
     // still bleeds hearts for it, but does not lose the room to it — it keeps whatever it was doing.
     if (this.burning > 0) {
-      const blunders = !this.blunderProof;
+      // A burning man thrown or butted still flies: the blunder's run is his own legs, and it used to
+      // overwrite the throw every frame, so a man alight could not be put into a wall at all.
+      const blunders = !this.blunderProof && this.state !== 'flung';
       this.burning -= dt;
       w.ignitePx(this.x, this.y);
       if (blunders) {
