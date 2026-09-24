@@ -30,8 +30,9 @@ const Shop = {
     game.ring(ware.x, ware.y, 1.6 * TILE, def.color); game.particles(ware.x, ware.y, 14, def.color, 150);
     game.audio.sfxBell(); game.vibe(20);
     if (!game.shopTold) { game.shopTold = true; game.floatText(goat.x, goat.y - 54, 'IT HANGS AT YOUR NECK', PALETTE.bone); }
-    // The others go back into the wall: one of the three, never two.
-    for (const o of game.props) {
+    // The others go back into the wall: one of the three, never two — unless the rat ogre is dead
+    // on her floor (`ogreDown`), which is what THE SHELF IS YOURS says: every stool is his then.
+    if (!ware.free) for (const o of game.props) {
       if (o === ware || o.kind !== 'ware' || o.shopId !== ware.shopId || o.broken || o.chosen) continue;
       o.broken = true; o.dead = true; game.particles(o.x, o.y, 8, PALETTE.ash, 90);
     }
@@ -55,7 +56,7 @@ const Shop = {
     game.floatText(goat.x, goat.y - 36, `${TUNING.shop.heals} HEARTS OF MILK`, PALETTE.bone);
     game.audio.sfxBell(); game.vibe(16);
     for (const o of game.props) {
-      if (o.kind !== 'ware' || o.shopId !== ware.shopId || o.broken) continue;
+      if (o.kind !== 'ware' || o.shopId !== ware.shopId || o.broken || (ware.free && o !== ware)) continue;
       o.broken = true; o.dead = true; if (o !== ware) game.particles(o.x, o.y, 8, PALETTE.ash, 90);
     }
     const m = Shop.mouseOf(game, ware);
@@ -104,6 +105,11 @@ const Shop = {
     m.broken = true; m.dead = true;
     Shop.breakWall(game, m);
     for (const w of game.props) if (w.kind === 'ware' && w.shopId === m.shopId && !w.broken) w.locked = true;
+    // She was the bar of her room's gate, and she is gone: the way on opens with her. It used to
+    // wait for a ware, and the wares wait for him — on THE YARD and THE ROAD her room and the one
+    // before it seldom hold enough to put six hearts' worth into him, so a goat who could not kill
+    // him could not leave the floor. Now the rudeness costs the offer, and killing him wins it back.
+    game.openSoulGate(m.shopId);
     const dir = m.wallSide === 'up' ? 1 : -1;
     const e = new Enemy(m.gap.x, m.gap.y + dir * TILE * 1.1, 'ratogre');
     e.aware = true; e.woke = true; e.state = 'emerge'; e.timer = cfg.emerge; e.shopId = m.shopId;
@@ -182,19 +188,20 @@ const Shop = {
         return;
       }
     }
+    // Up to `pierce` men each way, each way counted apart. The way back used to break only the frame's
+    // loop once the count was spent, and the next frame dazed whoever it passed: every man in the room.
+    f.outN = f.outN || 0; f.backN = f.backN || 0;
     for (const e of game.enemies) {
+      if ((f.out ? f.outN : f.backN) >= B.pierce) break;
       if (e.dead || e.held || e.ghosted || f.hit.includes(e)) continue;
       if (Math.hypot(e.x - f.x, e.y - f.y) > e.r + f.r) continue;
-      f.hit.push(e);
+      f.hit.push(e); if (f.out) f.outN++; else f.backN++;
       e.daze(game, B.stun); e.flash = Math.max(e.flash, TUNING.juice.hitFlash); e.aware = true;
       game.audio.sfxThud(); game.shake(2); game.hitstop(0.02);
       game.particles(e.x, e.y - 6, 6, PALETTE.bone, 120);
       game.floatText(e.x, e.y - 30, e.kind === 'ratogre' ? 'SWING BROKEN' : 'REELS', PALETTE.fireHi);
-      // On the way out it stops at its count of men and turns for home; on the way back it takes
-      // whoever it passes, still counting, and stops taking once the count is spent.
-      if (f.out && f.hit.length >= B.pierce) f.out = false;
-      else if (!f.out && f.hit.length >= B.pierce * 2) f.hit.push(null);
-      if (f.hit.filter(Boolean).length >= B.pierce * 2) break;
+      // On the way out it stops at its count of men and turns for home.
+      if (f.out && f.outN >= B.pierce) f.out = false;
     }
   },
 

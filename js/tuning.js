@@ -1718,7 +1718,10 @@ const ARTIFACTS = [
       { params: { pass: 6 } }],
     apply: (m, p) => { m.firePass = Math.max(m.firePass, p.pass); } },
   { id: 'clover', name: 'LUCKY CLOVER', color: '#7c8f52',
-    say: (p) => `NEXT FLOOR ONLY: x${sayN(p.secret)} SECRET WALLS, x${sayN(p.racks)} WEAPON RACKS, x${sayN(p.grass)} BIG GRASS (+${TUNING.prop.heal.bigGain} HEARTS) BEHIND A SECRET${p.heals ? `, +${p.heals} MILK` : ''}.`,
+    // What `generateLevel` does with `mods.luck`, said as it does it: every floor built while it is
+    // worn (not the next one only), the multiplier on the chance of a SECOND secret wall (at 3 and
+    // over, most rooms that can hold one get one), and the extra heals are grass.
+    say: (p) => `EVERY FLOOR BUILT WHILE WORN: ${p.secret >= 3 ? 'A SECRET WALL IN MOST ROOMS THAT CAN HOLD ONE' : `A SECOND SECRET WALL x${sayN(p.secret)} AS LIKELY`}, WEAPON RACKS x${sayN(p.racks)}, BIG GRASS (+${TUNING.prop.heal.bigGain} HEARTS) BEHIND A SECRET x${sayN(p.grass)}${p.heals ? `, +${p.heals} GRASS` : ''}.`,
     tiers: [
       { params: { secret: 1.6, racks: 1.5, grass: 1.5, heals: 0 } },
       { params: { secret: 2.4, racks: 2, grass: 1.9, heals: 1 } },
@@ -1743,7 +1746,7 @@ const ARTIFACTS = [
   // ---- the seventeen from ARTIFACTS_TZ.md. Their machinery is js/talismans.js; `tag` keeps the
   // mouse from putting two of the same sort on one shelf (`stockFor`). ----
   { id: 'mason', tag: 'geo', name: "MASON'S MARK", color: '#8d8a85',
-    say: (p) => `A THROWN MAN DIES ON STONE AT ${sayPct(p.splat)} OF THE USUAL SPEED${p.props ? '. A CRATE OR A RACK COUNTS AS STONE' : ''}${p.bodies ? '. SO DOES ANOTHER MAN, AND BOTH DIE' : ''}.`,
+    say: (p) => `A THROWN MAN DIES ON STONE AT ${sayPct(p.splat)} OF THE USUAL SPEED${p.props ? '. A CRATE OR A RACK COUNTS AS STONE' : ''}${p.bodies ? '. A MAN THROWN INTO ANOTHER KILLS HIM AT THAT SPEED TOO' : ''}.`,
     tiers: [
       { params: { splat: 0.8, props: false, bodies: false } },
       { params: { splat: 0.8, props: true, bodies: false } },
@@ -1757,7 +1760,8 @@ const ARTIFACTS = [
       { params: { links: 4, keep: 0.7 } }],
     apply: (m, p) => { m.domino = p; } },
   { id: 'echo', tag: 'butt', name: 'ECHO HORN', color: '#efe6d0',
-    say: (p) => `${sayN(p.delay)}s AFTER EVERY HEADBUTT ${p.count === 1 ? 'A GHOST BLOW FOLLOWS' : `${p.count} GHOST BLOWS FOLLOW`}: ${sayPct(p.reach)} OF THE REACH, ${sayPct(p.power)} OF THE THROW${p.count > 1 ? `, THE SECOND ${Math.round(p.spread * 180 / Math.PI)}° ASIDE` : ''}.`,
+    // The blows come `delay` apart, each after the last (`Talisman.onLunge`), not all at once.
+    say: (p) => `${sayN(p.delay)}s AFTER EVERY HEADBUTT A GHOST BLOW FOLLOWS${p.count > 1 ? `, AND ${p.count === 2 ? 'ANOTHER' : `${p.count - 1} MORE`} ${sayN(p.delay)}s AFTER THAT, ${Math.round(p.spread * 180 / Math.PI)}° ASIDE` : ''}: ${sayPct(p.reach)} OF THE REACH, ${sayPct(p.power)} OF THE THROW.`,
     tiers: [
       { params: { delay: 0.4, power: 0.5, count: 1, spread: 0, reach: 0.6 } },
       { params: { delay: 0.4, power: 1, count: 1, spread: 0, reach: 0.6 } },
@@ -1813,7 +1817,7 @@ const ARTIFACTS = [
       { params: { step: 0.5, near: 3, still: 1.2, hide: 4 } }],
     apply: (m, p) => { m.moth = p; } },
   { id: 'bell', tag: 'run', name: "BELLWETHER'S BELL", color: '#c29a44',
-    say: (p) => `A THREAD ON THE FLOOR POINTS TO THE STAIRS AND THE VAULT${p.sil ? `. MEN SHOW THROUGH STONE WITHIN ${sayN(p.sil)} TILES` : ''}${p.mimic ? '. A WRAITH HIDING AS A BOX OR GRASS TWITCHES' : ''}.`,
+    say: (p) => `A MARK AT THE EDGE OF THE SCREEN POINTS TO THE STAIRS AND THE VAULT${p.sil ? `. MEN SHOW THROUGH STONE WITHIN ${sayN(p.sil)} TILES` : ''}${p.mimic ? '. A WRAITH HIDING AS A BOX OR GRASS TWITCHES' : ''}.`,
     tiers: [
       { params: { sil: 0, mimic: false } },
       { params: { sil: 6, mimic: false } },
@@ -1841,7 +1845,7 @@ const ARTIFACTS = [
       { params: { rooms: 3, soul: true } }],
     apply: (m, p) => { m.tallow = p; } },
   { id: 'mirror', tag: 'butt', name: 'MIRROR SHARD', color: '#bfe6ff',
-    say: (p) => `FOR ${sayN(p.window)}s FROM THE START OF A HEADBUTT: BULLETS FLY BACK, AND A BITE${p.club ? ', CLUB OR BLADE' : ''} THROWS ITS MAN BACK${p.heavy ? `. SO DO A CLEAVER, A CHARGE, A SLAM (REELING ${sayN(p.stun)}s) AND A RUNE WITHIN ${sayN(p.runeR)} TILES` : ''}. MISTIMED, YOU TAKE THE HIT.`,
+    say: (p) => `FOR ${sayN(p.window)}s FROM THE START OF A HEADBUTT: BULLETS FLY BACK, AND A BITE${p.club ? ', CLUB OR BLADE' : ''} THROWS ITS MAN BACK${p.heavy ? `. SO DO THE RAT OGRE'S ARM, A CHARGE, A SLAM (REELING ${sayN(p.stun)}s) AND A RUNE WITHIN ${sayN(p.runeR)} TILES` : ''}. MISTIMED, YOU TAKE THE HIT.`,
     tiers: [
       { params: { window: 0.18, club: false, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
       { params: { window: 0.2, club: true, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
@@ -1883,7 +1887,7 @@ const MILK_OFFER = { id: 'milk', name: 'A PAIL OF MILK', color: '#efe6d0',
 // once you know what the thing is for; this is the line that says so. One per `ARTIFACTS` id.
 const ARTIFACT_HOW = {
   firecharm: 'A man on fire sets alight whoever he bumps into.',
-  clover: 'Luck for the next floor: more hidden walls, more arms, more to heal on.',
+  clover: 'Luck on every floor you walk onto wearing it: more hidden walls, more arms, more to heal on.',
   boomerang: 'Press Q to throw it. It stuns the men it passes and comes back to you.',
   symbols: 'Press Q to vanish and reappear a few steps ahead, through men but not walls.',
   mason: 'Men you throw die against walls at a lower speed.',
@@ -1896,7 +1900,7 @@ const ARTIFACT_HOW = {
   effigy: 'Press Q to set down a straw goat. Men go for it instead of you.',
   spur: 'You reach full running speed sooner.',
   moth: 'Your running is quieter: men hear you from less far.',
-  bell: 'A thread on the floor shows the way to the stairs and the vault.',
+  bell: 'A mark at the edge of the screen points the way to the stairs and the vault.',
   sandal: 'Get into a new room with men on your heels and you get a burst of speed.',
   scapegoat: 'Saves your life once. Then it is gone.',
   tallow: 'Takes one hit for you, then grows back as you go.',

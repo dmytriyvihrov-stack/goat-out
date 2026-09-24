@@ -166,7 +166,11 @@ const Talisman = {
       if (e.dead || e.ghosted || Math.hypot(e.x - g.x, e.y - g.y) > sg.r * TILE) continue;
       e.daze(game, sg.stun);
     }
-    game.artifact = null; game.levelArtifact = null; game.applyBoons(); game.saveRun();
+    // The snapshot only if it is this talisman: one bought at the mouse on this floor, over another
+    // he walked in wearing, goes back to that other on a restart, as any talisman taken here does.
+    game.artifact = null;
+    if (game.levelArtifact && game.levelArtifact.id === 'scapegoat') game.levelArtifact = null;
+    game.applyBoons(); game.saveRun();
     return true;
   },
   onSoul(game) {
