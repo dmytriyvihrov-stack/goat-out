@@ -142,22 +142,32 @@ for (const l of levelThreat) console.log(`  ${l.name.padEnd(22)} total ${String(
 
 // ---- the third column: what the goat is by then ----
 // Threat is only half of the curve. The other half is what he is carrying when he walks in: the
-// hearts he starts with plus the souls every level before this one hands out (the same sum LEVELS
-// deals on the title screen), each at its average `BOON_POWER`. The ratio is threat over that; it
+// hearts he starts with plus the souls every level before this one hands out, each at its average
+// `BOON_POWER`: a floor's authored souls (the mouse's talisman counted as the soul it stands in for)
+// and its two seeded surprises at their odds (`soul.bossChance`, `soul.roomChance`). A build holds
+// only so many cards (`BOON_SLOTS` against the deck, `cap` below); past it a soul is one heart back
+// (`openBoonChoice`), which is not power, so souls past the cap count for nothing. The ratio is threat over that; it
 // should never fall from one level to the next, or a level has got easier for the goat it meets.
 // Reported, not failed: the weights are a guess, and a fall is a question for a person, not a test.
 const BOONS = grab('BOONS'), BOON_POWER = grab('BOON_POWER'), TUNING = grab('TUNING');
 const perSoul = BOONS.reduce((a, b) => a + (BOON_POWER[b.id] || 1), 0) / BOONS.length;
-if (!QUIET) console.log(`\n--- threat over power (a soul is worth ${perSoul.toFixed(2)} on average, a heart ${BOON_POWER.heart}) ---`);
+const SLOTS = grab('BOON_SLOTS'), cap = (() => {
+  const n = {}; for (const b of BOONS) { const k = b.key ? 'key' : (b.skill || '') + (b.active ? 'A' : 'P'); n[k] = (n[k] || 0) + 1; }
+  let c = n.key || 0;
+  for (const [k, v] of Object.entries(n)) if (k !== 'key') c += Math.min(v, k === 'P' || k === 'A' ? SLOTS.general : k.endsWith('A') ? SLOTS.active : SLOTS.passive);
+  return c;
+})();
+if (!QUIET) console.log(`\n--- threat over power (a soul is worth ${perSoul.toFixed(2)} on average, a heart ${BOON_POWER.heart}, a build holds ${cap}) ---`);
 let soulsIn = 0, lastRatio = 0;
 const falls = [];
 for (let li = 0; li < levelThreat.length; li++) {
   const l = levelThreat[li];
-  const power = TUNING.goat.hp * BOON_POWER.heart + soulsIn * perSoul, ratio = l.total / power;
-  const mark = li && ratio < lastRatio ? '  ▼ easier for him than the last' : '';
-  if (mark) falls.push(l.name);
-  if (!QUIET) console.log(`  ${l.name.padEnd(22)} souls in ${String(soulsIn).padStart(2)}   power ${power.toFixed(1).padStart(5)}   threat/power ${ratio.toFixed(1).padStart(5)}${mark}`);
-  soulsIn += LEVELS[li].souls || 0; lastRatio = ratio;
+  const power = TUNING.goat.hp * BOON_POWER.heart + Math.min(soulsIn, cap) * perSoul, ratio = l.total / power;
+  // Within 2% is noise in a model this rough: flat, not a fall.
+  const mark = li && ratio < lastRatio * 0.98 ? '  ▼ easier for him than the last' : li && ratio < lastRatio * 1.02 ? '  ≈ flat' : '';
+  if (mark.includes('▼')) falls.push(l.name);
+  if (!QUIET) console.log(`  ${l.name.padEnd(22)} souls in ${soulsIn.toFixed(1).padStart(4)}   power ${power.toFixed(1).padStart(5)}   threat/power ${ratio.toFixed(1).padStart(5)}${mark}`);
+  soulsIn += (LEVELS[li].souls || 0) + TUNING.soul.bossChance + TUNING.soul.roomChance; lastRatio = ratio;
 }
 if (falls.length) console.log(`  (not a failure, since the weights are a guess, but ${falls.join(', ')} ${falls.length > 1 ? 'ask' : 'asks'} less of the goat than the level before)`);
 
