@@ -90,7 +90,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/talismans.js` | `Talisman`: the seventeen talismans from `ARTIFACTS_TZ.md` — every hook, their drawing, icons and the TALISMANS tab. |
 | `js/beasts.js` | `Beast`: the escorts (tortoise, goose, crow; the hen is one of the choices) — one a floor, banked at the stairs for a run-long reward. |
 | `js/altar-art.js` | `AltarArt`, base class of `PaintedArt`: hashing and small cached pixel canvases for level one's ornament. Never creates a Prop or consumes the simulation RNG. |
-| `js/painted-assets.js` | `PAINTED_ASSETS`: a frozen, slimmed pack of only the painted props with no pixel sprite yet — altar, banner, gong, lanternFire, propsAtlas (weapons, grating, big grass, soul wisp, mill), cage posts, door slabs. Sources were deleted and live in git history. Never edit by hand. |
+| `js/painted-assets.js` | `PAINTED_ASSETS`: the old painted props — altar, banner, gong, lanternFire, propsAtlas (weapons, grating, big grass, soul wisp, mill), cage posts, door slabs — drawn only as the `#paintedprops` fallback since 1.63 (every one has a sprite in `js/prop-pixels.js`), and still the source of two aspect ratios. Sources were deleted and live in git history. Never edit by hand. |
 | `js/painted-art.js` | `PaintedArt`: the frame round every unit (shadows, leans, collar, wounds) via `character` → `PIXEL_ART.draw`; `drawTiles` / `swatch` / `wallTile` for room floors and walls; the remaining painted props (`ATLAS_CELL`, `PROP_FOOT`). |
 | `js/ogre-pixels.js` | `OGRE_PIXELS`: the ogre (the Butcher's kind) as a hand-built pixel unit on `PROP_PIXELS.Grid` — five views, strides, the fists-up pose — and `OGRE_PIXELS.draw`, which `PaintedArt.character` calls for key `ogre`. Loads after `prop-pixels.js`. Node-requirable for a sheet. |
 | `js/prop-pixels.js` | `PROP_PIXELS`: every prop as hand-placed pixel sprites (`Grid`, palette `P`), and the page hook that hands them to `PaintedArt` / `Renderer` in place of the painted and primitive props. Loads after `render.js`. Node-requirable for the sheet renderer in `output/pixel-claude-2026-09-24/`. |
@@ -108,6 +108,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/serve.js` | Dev server. Also accepts `POST /shot?name=x` with a data URL and writes a PNG to `tools/shots/`. |
 | `tools/harness.js` | Console test harness. See *Testing*. |
 | `tools/escorts.js` | In-page bot: breaks a coop, runs the goat to the stairs, counts which animals arrive. |
+| `tools/smoke.js` | In-page smoke run: a bot walks every floor (and THE DARK, THE TRIP) to the stairs with the cult alive, god mode on, drawing a frame every few steps; reports throws, non-finite positions, set-downs and ms per update and draw (`SMOKE.run`, `SMOKE.report`). |
 | `tools/hounds.js` | In-page measure of how hounds run: reversals, sliding, planting, circling (`HOUNDS.sweep`), who never gets onto the ring (`HOUNDS.arrive`), and a picture of the lines (`HOUNDS.draw`). |
 | `tools/balance.js` | Prints the difficulty curve and canon/mix split of every level, runs every rule over many seeds, fails on a broken one. |
 | `tools/juice-md.js` | Writes `JUICE.md` from `js/juice.js`. |
@@ -121,7 +122,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `PLAYTEST.md` | The first itch.io playtest as a runnable plan: the three questions, the form, the observation sheet, how the numbers are counted, and the go / no-go for the build. |
 | `output/audit-2026-09-24/` | The six audits behind that day's `BACKLOG.md` batch, with their probes. Reference, never loaded. |
 | `tools/backlog-questions.html` | The open backlog as a questionnaire, published as its own artifact with a db (answers under `answers/<item id>`). |
-| `ART_TODO_GPT.md` | Every painted or primitive leftover as an image-generation brief, in priority order. |
+| `ART_TODO_GPT.md` | The image-brief format (`asset-spec`). Every sheet in it shipped as hand-placed pixels in 1.63–1.64; the ominous decals are the one live line. |
 | `ART_HANDOFF.md` | What art is wired in vs. placeholder, and how to make the next thing. |
 
 ---
@@ -893,6 +894,11 @@ A fourth trap: `H.startPlay()` leaves the goat in the pen on level 1. Break out 
 drops men **aware and adjacent**, so a handful of them will kill the goat during a test unless
 `game.dev.god` is on — a dead goat freezes every enemy, which reads as the feature under test being broken.
 
+**Before calling a build playable, run the smoke bot** (`tools/smoke.js`, loaded in the page like the
+harness): `SMOKE.run(['L0','L1','L2','L3','L4','L5','L6','L7','N','T2'], [11, 22], 'now')`, then
+`SMOKE.report('now')`. Every floor should end `OK` with no throws and no NaN. It is off the clock and
+slows to a crawl while the pane is hidden, so leave the pane open while it runs.
+
 **Always run `node tools/balance.js` after touching anything about who spawns where or which rooms go
 where.** It runs every rule in `js/rules.js` over many seeds of every level, plus the two averaged
 rules a single level cannot know about itself, and it is the only place they can fail. The same list is
@@ -981,11 +987,13 @@ Hooks load when a session starts.
   refers to her: no room, no ending, no line from the cult.
 - Whether to retire `js/painted-assets.js` now that `js/prop-pixels.js` covers every prop in it (it is
   kept as the `#paintedprops` fallback) — see `ART_HANDOFF.md`.
-- **A souls resource.** Decided against for now (23 Sep 2026: "the economy only distracted"); kept for the record. Asked for on 14 Sep 2026 and not built: one soul per man killed, banked and
-  spent on something. `game.kills` already counts men and `scoreFor` already refuses to let kills beat
-  pace, so the open question is what they buy, and whether buying anything with bodies argues with
-  *run, don't fight*. The obvious home is the soul door: a vault that opens for souls instead of, or as
-  well as, four blows. See `BACKLOG.md`.
+- **How many boon souls a run deals.** A souls *resource* (one per man killed, banked and spent) was
+  built once as the 1.40 mouse's prices, taken out in 1.41, and decided against on 23 Sep 2026 ("the
+  economy only distracted") — it is not open and nothing should be built toward it. What is open is
+  whether the boon souls should drop further: thirteen authored a run plus the seeded extras
+  (`soul.bossChance`, `soul.roomChance`) against a build that holds fourteen, and past a full build
+  a soul is a silent heart. The vault and the last bosses never see one (two gates spend the budget
+  first). See `BACKLOG.md`, 24 Sep 2026.
 - Gamepad support, a Priest boss, and later acts.
 - The endless roll against a wall, reported in the 14 Sep 2026 playtest and **not reproduced** — see
   `BACKLOG.md` for what was measured and what to ask him. The soul barrier from the same batch was
