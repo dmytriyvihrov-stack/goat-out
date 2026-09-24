@@ -112,6 +112,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/hounds.js` | In-page measure of how hounds run: reversals, sliding, planting, circling (`HOUNDS.sweep`), who never gets onto the ring (`HOUNDS.arrive`), and a picture of the lines (`HOUNDS.draw`). |
 | `tools/balance.js` | Prints the difficulty curve and canon/mix split of every level, runs every rule over many seeds, fails on a broken one. |
 | `tools/juice-md.js` | Writes `JUICE.md` from `js/juice.js`. |
+| `tools/itch-zip.js` | The itch.io upload: `dist/doomed-goat-<BUILD>-<commit>.zip` holding `index.html` and exactly the scripts it loads; refuses a dirty tree (`--dirty` overrides), lists the zip back CRC-checked. |
 | `tools/png-harden.js` | Both pixel packers' last step: the embedded atlas PNG hardened the way `PIXEL_ART.init` does it and re-encoded (adaptive filters, zlib 9), proved to decode to the same pixels before it is written. `--check` reports only. |
 | `tools/tuning-patch.js` | Writes tool-tab edits back into `tuning.js` (steps into arrays by index). |
 | `tools/check-sync.js` | Checks the working tree, `origin/main` and the published artifact are one build. See *Publishing*. |
