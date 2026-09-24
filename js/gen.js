@@ -382,6 +382,25 @@ function tryGenerate(levelDef, seed, opts) {
   // there, which meant the last room of a level was the one room in it you could always outrun.
   props.push({ x: (last.x + last.w - 1.5) * TILE, y: (doorY + 1) * TILE,
     kind: 'door', vertical: true, iron: true, stair: true, fromRoom: last.index !== undefined ? last.index : rooms.length - 1 });
+  // THE FORK (`TUNING.dark.fork`): on its floor the same wall carries a second flight, `apart` rows
+  // or more from the first so it reads as another way and not a wider one, barred the same way.
+  // It climbs to the next floor with the lamps out (`game.climbDark`). A last room with no row for
+  // it is another seed, never a fork quietly left out (`GEN_RULES.fork`).
+  let forkTile = null;
+  const FK = TUNING.dark.fork;
+  if (FK && FK.at >= 0 && FK.at + 1 < LEVELS.length && levelIndexOf(levelDef) === FK.at) {
+    const col = last.w - 2, R = last.tpl.rows, rows = [];
+    for (let ty = 1; ty < last.h - 2; ty++) {
+      if (R[ty][col] === '#' || R[ty][col] === 'P' || R[ty + 1][col] === '#' || R[ty + 1][col] === 'P') continue;
+      if (Math.abs(last.y + ty - doorY) >= FK.apart) rows.push(last.y + ty);
+    }
+    if (!rows.length) return null;
+    const fy = rng.pick(farthest(rows, doorY));
+    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) tiles[(fy + dy) * W + (last.x + last.w - 1 + dx)] = T.EXIT;
+    forkTile = { x0: last.x + last.w - 1, y0: fy };
+    props.push({ x: (last.x + last.w - 1.5) * TILE, y: (fy + 1) * TILE, kind: 'door', vertical: true, iron: true, stair: true, fork: true,
+      fromRoom: last.index !== undefined ? last.index : rooms.length - 1 });
+  }
 
   // Every level after the first is entered the same way: up a flight cut into the left wall of the
   // first room. The goat starts at the top of it, a step inside.
@@ -1049,6 +1068,7 @@ function tryGenerate(levelDef, seed, opts) {
     props.push(...buildCage(start.x + D.dx * TILE, start.y + D.dy * TILE, D.halfW, D.halfH, true));
   }
   if (!reachable(tiles, W, H, Math.floor(start.x / TILE), Math.floor(start.y / TILE), last.x + last.w - 1, doorY)) return null;
+  if (forkTile && !reachable(tiles, W, H, Math.floor(start.x / TILE), Math.floor(start.y / TILE), forkTile.x0, forkTile.y0)) return null;
 
   // Safety: nothing spawns within 5 tiles of the start, and the start room keeps no props underfoot.
   const filtered = spawns.filter((s) => len(s.x - start.x, s.y - start.y) > 5 * TILE);
@@ -1141,7 +1161,7 @@ function tryGenerate(levelDef, seed, opts) {
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: 3 });
     }
   }
-  return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, entry, seed, def: levelDef,
+  return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, forkTile, entry, seed, def: levelDef,
     hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop,
     // Grass lying under a wall that went back up is not grass: only what is still on floor.
     grass: [...grass].filter((i) => tiles[i] === T.FLOOR) };

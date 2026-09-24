@@ -488,6 +488,19 @@ const GEN_RULES = [
       const inLast = d.x >= last.x * TILE && d.x < (last.x + last.w) * TILE;
       return inLast ? true : 'it is not in the last room';
     } },
+  { id: 'fork', text: 'THE FORK: the fork floor ends on two flights in the one far wall, apart, each behind its own iron door; the second climbs into the dark.',
+    check: (L) => {
+      const F = TUNING.dark.fork, here = F && F.at >= 0 && levelIndexOf(L.def) === F.at && F.at + 1 < LEVELS.length;
+      if (!here) return L.forkTile ? 'a second flight on a floor that is not the fork' : null;
+      const f = L.forkTile, e = L.exitTile;
+      if (!f) return 'one flight only';
+      if (f.x0 !== e.x0) return 'the two flights are not in the same wall';
+      if (Math.abs(f.y0 - e.y0) < F.apart) return `the flights are ${Math.abs(f.y0 - e.y0)} rows apart`;
+      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) if (L.tiles[(f.y0 + dy) * L.W + f.x0 + dx] !== T.EXIT) return 'the second flight is not stairs';
+      const doors = L.props.filter((p) => p.kind === 'door' && p.stair);
+      if (doors.length !== 2 || !doors.some((p) => p.fork)) return `${doors.length} stair doors`;
+      return true;
+    } },
   { id: 'soulgate', text: 'Every level stops you twice, in the middle and before the end: a single-tile way out barred by a door no blow opens, in an empty rest room.',
     check: (L) => {
       const want = L.def.gates || [];

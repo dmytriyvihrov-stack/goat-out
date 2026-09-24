@@ -154,7 +154,9 @@ class Renderer {
       // sword or shield lying on the floor is the same problem at the same scale, and drawing it
       // flat underneath him whenever he had walked past it read as the weapon sinking into the floor.
       const inFront = (p) => (p.kind === 'cage' && !p.deco || p.kind === 'weapon' && !p.inStand) && p.y > game.goat.y;
-      for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && lit(p) && !inFront(p)) this.drawProp(p);
+      // What he carries is drawn with him, in his teeth (`drawCarried`), and nowhere else.
+      const carried = (p) => p === game.goat.holding;
+      for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && lit(p) && !inFront(p) && !carried(p)) this.drawProp(p);
       for (const e of game.enemies) if (!e.dead && lit(e) && (e.state === 'floored' || e.state === 'stunned')) this.drawEnemy(e, game);
       for (const p of game.props) if (!p.broken && p.kind === 'lamp' && lit(p)) this.drawProp(p);
       // Everyone on his feet and the goat, in order of where their feet are, so a man a step south of
@@ -173,8 +175,10 @@ class Renderer {
       try {
         for (const o of cast) {
           if (o !== g) { this.drawEnemy(o, game); continue; }
+          const behind = hld && hld.item && this.carryBehind(g);
+          if (behind) this.drawCarried(g, hld);
           if (!g.dead) this.drawGoat(g, game);
-          if (hld) { if (hld.item) this.drawProp(hld); else this.drawEnemy(hld, game); this.drawHoldCharge(game); }
+          if (hld) { if (hld.item) { if (!behind) this.drawCarried(g, hld); } else { this.drawEnemy(hld, game); this.drawHoldCharge(game); } }
         }
       } finally { this.groundDone = false; }
       for (const b of game.bullets) if (lit(b)) this.drawBullet(b);
@@ -182,7 +186,7 @@ class Renderer {
       for (const b of game.globs) this.drawGlob(b);
       this.drawBoomerang(game);
       if (game.intro) this.drawIntroWorld(game);
-      for (const p of game.props) if (!p.broken && lit(p) && inFront(p)) this.drawProp(p);
+      for (const p of game.props) if (!p.broken && lit(p) && inFront(p) && !carried(p)) this.drawProp(p);
       // Nearest the camera first, so a plate that has to step aside is the one behind.
       const heads = this.overheads.sort((a, b) => b.e.y - a.e.y), plates = []; this.overheads = null;
       for (const h of heads) { ctx.globalAlpha = h.a; this.drawOverhead(h.e, plates); }
@@ -352,7 +356,7 @@ class Renderer {
       ctx.fillStyle = PALETTE.ash; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
       ctx.fillStyle = '#3a3230'; ctx.fillRect(px + 8, py + 10, 6, 4); ctx.fillRect(px + 18, py + 20, 7, 4);
     } else if (t === T.EXIT) {
-      this.drawStairs(px, py, tx - game.level.exitTile.x0, true, def);
+      this.drawStairs(px, py, tx - game.level.exitTile.x0, true, def, Renderer.forkRow(game.level, ty));
     } else if (t === T.ENTRY) {
       this.drawStairs(px, py, tx - game.level.entry.x0, false, def);
     }
@@ -559,6 +563,7 @@ class Renderer {
   // seam nobody sees. They are on the visible face and nowhere else.
   drawCaveDecor(game, edge, solid, LIFT) {
     const ctx = this.ctx, t = this.t, def = game.level.def, trip = !!def.shroom;
+    const LK = trip ? TUNING.cave.look.trip : TUNING.cave.look.cave;
     const GEMS = ['#b06cff', '#4fe0b0', '#ff5a7a', '#5ab4ff', '#ffd25a'];
     const SH = ['#e86ad8', '#6af0e0', '#b8ff5a', '#ff9a4a', '#a98bff'];
     for (let j = 0; j < edge.length; j += 2) {
@@ -571,7 +576,7 @@ class Renderer {
       // rather than as a cave. Stalactites are grown, not broken: blunt tips, fluted sides, banded
       // where the water left its rings, and wildly uneven in length — a couple of long ones and a
       // lot of short stubs. Fewer of them, too, so what is left is a feature and not a fringe.
-      if (southOpen && h < (trip ? 0.2 : 0.28)) {
+      if (southOpen && h < LK.drips) {
         const n = 1 + Math.floor(h2 * 2), base = py + TILE;
         for (let k = 0; k < n; k++) {
           const hk = farHash(tx + k, ty - k);
@@ -590,7 +595,7 @@ class Renderer {
       // stalagmites: spires standing up off the top of the rock behind the room's edge
       // Not the pixel stalagmites: that sprite is the stone teeth that kill (`drawSpire`), and rock
       // decoration wearing it would be a hazard drawn where there is none.
-      if (northOpen && h2 > (trip ? 0.8 : 0.7)) {
+      if (northOpen && h2 > 1 - LK.spires) {
         const n = 1 + Math.floor(h3 * 2);
         for (let k = 0; k < n; k++) {
           const x = px + 8 + farHash(tx * 3 + k, ty) * (TILE - 16), y = py + 12 - LIFT + k * 5, len = 14 + farHash(tx, ty + k) * 14, w = 4 + h * 3;
@@ -603,26 +608,32 @@ class Renderer {
       // part of it the camera is looking at, and a seam on the top surface — the part you are looking
       // over rather than at — was paint nobody ever saw. Faceted, each catching the light on its own
       // beat. The count is down with the room it has left to stand in.
-      if (southOpen && h3 < (trip ? 0.1 : 0.16) && PIXEL_ENV.ready) {
+      if (southOpen && h3 < LK.crystals && PIXEL_ENV.ready) {
         PIXEL_ENV.draw(ctx, 'crystals', px + 8 + h * 16, py + TILE + 1, 11 + h2 * 5);
-      } else if (southOpen && h3 < (trip ? 0.1 : 0.16)) {
+      } else if (southOpen && h3 < LK.crystals) {
         const n = 1 + Math.floor(h * 2);
         for (let k = 0; k < n; k++) {
           const gx = px + 6 + farHash(tx * 7 + k, ty - 3) * (TILE - 12);
           const gy = py + TILE - LIFT + 1 + farHash(tx, ty * 7 + k) * (LIFT - 1);
           const c = GEMS[Math.floor(farHash(tx + k * 3, ty + 2) * GEMS.length)], sz = 2.2 + farHash(tx - k, ty) * 2.4;
-          ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.moveTo(gx, gy - sz * 1.3); ctx.lineTo(gx + sz, gy); ctx.lineTo(gx, gy + sz * 1.3); ctx.lineTo(gx - sz, gy); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(gx, gy - sz); ctx.lineTo(gx + sz * 0.8, gy); ctx.lineTo(gx, gy + sz); ctx.lineTo(gx - sz * 0.8, gy); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.moveTo(gx, gy - sz); ctx.lineTo(gx + sz * 0.8, gy); ctx.lineTo(gx, gy); ctx.closePath(); ctx.fill();
-          const tw = Math.pow(Math.max(0, Math.sin(t * 2.2 + farHash(tx + k, ty - k) * 40)), 12);
-          if (tw > 0.05 && !this.baking) {
-            ctx.strokeStyle = `rgba(255,255,255,${tw * 0.9})`; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(gx - sz * 2, gy - sz * 0.2); ctx.lineTo(gx + sz * 2, gy - sz * 0.2); ctx.moveTo(gx, gy - sz * 2.2); ctx.lineTo(gx, gy + sz * 1.8); ctx.stroke();
-          }
+          this.gem(gx, gy, sz, c, farHash(tx + k, ty - k));
         }
       }
-      // the trip: the rock is furred with mushrooms along every edge that faces the room
-      if (trip && h > 0.12) {
+      // Small crystals among the mushrooms on top of the rock (`gems` of the edges): a stone in the
+      // seam's own colours with, as often as not, a smaller one leaning on it — a little cluster
+      // rather than a lone speck — and a little of its own light, like the caps beside it.
+      if (farHash(tx * 17 + 3, ty * 29 - 11) < LK.gems) {
+        const gx = px + 6 + farHash(tx * 5, ty + 13) * (TILE - 12), gy = py + 7 - LIFT + farHash(tx + 19, ty * 11) * (TILE - 10);
+        const c = GEMS[Math.floor(farHash(tx - 5, ty + 7) * GEMS.length)], sz = 2.2 + farHash(tx, ty * 9) * 1.6;
+        if (this.glowQ) { const R0 = sz * 5; this.glowQ.push(c, gx - R0, gy - R0, R0 * 2, 0.6); }
+        if (h3 > 0.5) {
+          const side = farHash(tx + 3, ty - 3) < 0.5 ? -1 : 1, c2 = GEMS[Math.floor(farHash(tx + 9, ty - 1) * GEMS.length)];
+          this.gem(gx + side * sz * 1.3, gy + sz * 0.45, sz * 0.62, c2, farHash(tx - 1, ty + 3));
+        }
+        this.gem(gx, gy, sz, c, farHash(tx, ty + 3));
+      }
+      // the trip: the rock is furred with mushrooms along the edges that face the room, `fur` of them
+      if (trip && farHash(tx * 23 - 1, ty * 19 + 7) < LK.fur) {
         const n = 1 + Math.floor(h2 * 3);
         for (let k = 0; k < n; k++) {
           const mx = px + 4 + farHash(tx * 11 + k, ty + 5) * (TILE - 8), my = py + 8 - LIFT + farHash(tx - 7, ty * 13 + k) * (TILE - 8);
@@ -630,6 +641,19 @@ class Renderer {
           this.shroom(mx, my, cap, c, 0.5 + 0.5 * Math.sin(t * 1.7 + (tx + k) * 0.9 + ty), k === 0);
         }
       }
+    }
+  }
+  // One faceted crystal of `c` at (gx, gy), `sz` across the middle: a dark rim, the stone, a pale
+  // face catching the light, and now and then a glint (`seed` sets its beat; never while baking).
+  gem(gx, gy, sz, c, seed) {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.moveTo(gx, gy - sz * 1.3); ctx.lineTo(gx + sz, gy); ctx.lineTo(gx, gy + sz * 1.3); ctx.lineTo(gx - sz, gy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(gx, gy - sz); ctx.lineTo(gx + sz * 0.8, gy); ctx.lineTo(gx, gy + sz); ctx.lineTo(gx - sz * 0.8, gy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.moveTo(gx, gy - sz); ctx.lineTo(gx + sz * 0.8, gy); ctx.lineTo(gx, gy); ctx.closePath(); ctx.fill();
+    const tw = Math.pow(Math.max(0, Math.sin(this.t * 2.2 + seed * 40)), 12);
+    if (tw > 0.05 && !this.baking) {
+      ctx.strokeStyle = `rgba(255,255,255,${tw * 0.9})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(gx - sz * 2, gy - sz * 0.2); ctx.lineTo(gx + sz * 2, gy - sz * 0.2); ctx.moveTo(gx, gy - sz * 2.2); ctx.lineTo(gx, gy + sz * 1.8); ctx.stroke();
     }
   }
   // One stalactite, rooted at (x, base) and reaching `len` up the face of the rock. Everything about
@@ -712,24 +736,21 @@ class Renderer {
   }
   // The trip's floor: a little ring of glowing caps on some tiles, which is most of the light there is.
   // Never on a tile something was put down on, and never on the stairs.
+  // `look.trip.floor` of the tiles get one, and they are the rock's own mushrooms — the same caps,
+  // colours, sizes and glow as `drawCaveDecor`'s fur. They were the painted magenta clump, which is
+  // also the big mushroom you can break (`drawBigShroom`), so the floor was full of little copies of
+  // the one thing on it that matters (24 Sep 2026).
   drawFloorShrooms(game, x0, y0, x1, y1, solid) {
     const wd = game.world, W = wd.W, t = this.t;
-    const SH = ['#6af0e0', '#e86ad8', '#b8ff5a', '#a98bff'];
+    const SH = ['#e86ad8', '#6af0e0', '#b8ff5a', '#ff9a4a', '#a98bff'];
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       if (solid(tx, ty) || wd.tiles[ty * W + tx] !== T.FLOOR) continue;
-      if (farHash(tx * 19 + 7, ty * 23 + 1) > 0.1) continue;
-      const n = 2 + Math.floor(farHash(tx, ty + 40) * 4), c = SH[Math.floor(farHash(tx + 3, ty) * SH.length)];
-      if (PIXEL_ENV.ready) {
-        // one painted clump a tile, under the same queued glow the drawn caps had
-        const x = tx * TILE + 10 + farHash(tx * 3, ty) * (TILE - 20), y = ty * TILE + 18 + farHash(tx, ty * 3) * (TILE - 22);
-        const w = 12 + n * 2, pulse = 0.5 + 0.5 * Math.sin(t * 2.3 + tx * 1.3 + ty * 0.7), R0 = w * 1.2;
-        if (this.glowQ) this.glowQ.push(c, x - R0, y - w * 0.5 - R0, R0 * 2, (0.28 + 0.2 * pulse) / 0.48);
-        PIXEL_ENV.draw(this.ctx, 'shrooms', x, y, w);
-        continue;
-      }
+      if (farHash(tx * 19 + 7, ty * 23 + 1) > TUNING.cave.look.trip.floor) continue;
+      const n = 1 + Math.floor(farHash(tx, ty + 40) * 3);
       for (let k = 0; k < n; k++) {
-        const x = tx * TILE + 6 + farHash(tx * 3 + k, ty) * (TILE - 12), y = ty * TILE + 10 + farHash(tx, ty * 3 + k) * (TILE - 14);
-        this.shroom(x, y, 1.8 + farHash(tx - k, ty + k) * 2.2, c, 0.5 + 0.5 * Math.sin(t * 2.3 + tx * 1.3 + ty * 0.7 + k), k === 0);
+        const x = tx * TILE + 6 + farHash(tx * 3 + k, ty) * (TILE - 12), y = ty * TILE + 12 + farHash(tx, ty * 3 + k) * (TILE - 14);
+        const c = SH[Math.floor(farHash(tx + k, ty * 3 + 1) * SH.length)], cap = 2.5 + farHash(tx * 2 + k, ty + 3) * 4.5;
+        this.shroom(x, y, cap, c, 0.5 + 0.5 * Math.sin(t * 1.7 + (tx + k) * 0.9 + ty), k === 0);
       }
     }
   }
@@ -973,12 +994,20 @@ class Renderer {
 
   // One tile of a flight of stairs, three tiles long. `k` is the tile's place in the flight, left to
   // right. The way out climbs to the right into light; the way in comes up from the dark on the left.
-  drawStairs(px, py, k, up, def) {
+  // Whether tile row `ty` is THE FORK's dark flight.
+  static forkRow(L, ty) { const f = L && L.forkTile; return !!f && ty >= f.y0 && ty <= f.y0 + 1; }
+  // `cold` is THE FORK's second flight (`level.forkTile`): the same steps, going up into black
+  // instead of into the light, with a cold edge on each tread and nothing warm at the top.
+  drawStairs(px, py, k, up, def, cold) {
     const ctx = this.ctx, steps = 4, sw = TILE / steps;
     ctx.fillStyle = def.wall; ctx.fillRect(px, py, TILE, TILE);
     for (let i = 0; i < steps; i++) {
       const n = k * steps + i, f = n / (3 * steps - 1), x = px + i * sw;
-      if (up) {
+      if (up && cold) {
+        ctx.fillStyle = def.wallTop; ctx.fillRect(x, py, sw, TILE);
+        ctx.fillStyle = `rgba(5,4,10,${0.3 + 0.68 * f})`; ctx.fillRect(x, py, sw, TILE);
+        ctx.fillStyle = `rgba(150,158,210,${0.26 * (1 - f)})`; ctx.fillRect(x + 2, py, 1, TILE);
+      } else if (up) {
         ctx.fillStyle = def.wallTop; ctx.fillRect(x, py, sw, TILE);
         ctx.fillStyle = `rgba(239,230,208,${0.1 + 0.68 * f * f})`; ctx.fillRect(x, py, sw, TILE);
       } else {
@@ -988,7 +1017,7 @@ class Renderer {
       // the riser: each step throws a shadow down onto the one below it
       ctx.fillStyle = up ? 'rgba(0,0,0,0.42)' : 'rgba(0,0,0,0.5)'; ctx.fillRect(x, py, 2, TILE);
     }
-    if (up && k === 2) {
+    if (up && k === 2 && !cold) {
       const pulse = 0.55 + 0.25 * Math.sin(this.t * 3.4);
       ctx.fillStyle = `rgba(255,224,138,${pulse * 0.45})`; ctx.fillRect(px + TILE * 0.5, py - 8, TILE * 0.7, TILE + 16);
     }
@@ -1202,6 +1231,21 @@ class Renderer {
       ctx.fillStyle = 'rgba(255,224,138,0.2)';
       ctx.fillText(label, cx, cy * TILT);
     }
+    // THE FORK: the floor in front of each flight says where it goes, in the words the dark floor
+    // uses for itself — the one choice of road in a run has to be read, not found out on the card.
+    const fk = lv.forkTile, last = lv.rooms[lv.rooms.length - 1];
+    if (fk && last && last.seen && Math.abs(fk.x0 * TILE - game.cam.x) < 1400) {
+      const x = (fk.x0 - 1.5) * TILE, wide = Math.min(8, last.w - 3) * TILE;
+      ctx.textAlign = 'right';
+      const size = this.fitFloorText(['THE LAMPS ARE OUT'], wide, 22);
+      ctx.fillStyle = 'rgba(255,224,138,0.22)';
+      ctx.fillText('THE LAMPS ARE LIT', x, (lv.exitTile.y0 + 1.2) * TILE * TILT);
+      ctx.fillStyle = 'rgba(170,178,230,0.32)';
+      ctx.fillText('THE LAMPS ARE OUT', x, (fk.y0 + 1.2) * TILE * TILT);
+      ctx.font = `700 ${Math.round(size * 0.62)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(170,178,230,0.24)';
+      ctx.fillText('FEWER OF THEM. NO LIGHT.', x, (fk.y0 + 1.2) * TILE * TILT + size * 0.95);
+      ctx.textAlign = 'center';
+    }
     // The pen. After five seconds of standing in it, the floor says which button opens it.
     if (lv.cagePrompt && !game.cageOpen) {
       const C = TUNING.cagePrompt, a = clamp((game.timer - C.delay) / C.fade, 0, 1);
@@ -1331,6 +1375,20 @@ class Renderer {
     ctx.fillStyle = PALETTE.venom; ctx.beginPath(); ctx.arc(b.x, y, 6 + wob, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = PALETTE.venomHi; ctx.beginPath(); ctx.arc(b.x - 2, y - 2.5, 2, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
+  }
+  // A carried thing is drawn in his teeth rather than at the hold point (`grab.holdDist` out along
+  // his aim, which swung round him on its own circle while the sprite turned in eighths): at the
+  // mouth of the facing the frame is drawn at, a little ahead of the muzzle, turned with the head,
+  // and behind him on the three views of his back. Only the picture moves; x, y and facing go back.
+  carryBehind(g) { const d = (Math.round(g.facing / (Math.PI / 4)) + 14) % 8; return d >= 3 && d <= 5; }
+  drawCarried(g, h) {
+    const C = TUNING.goat.carry, d = (Math.round(g.facing / (Math.PI / 4)) + 14) % 8, fa = (d + 2) * Math.PI / 4;
+    const F = PIXEL_FACE[d], m = F.mouth || F.nose[0], lead = C.lead + h.r * C.reach;
+    const x = h.x, y = h.y, f = h.facing;
+    h.x = g.x + m[0] + Math.cos(fa) * lead;
+    h.y = g.y + m[1] / TILT + Math.sin(fa) * lead + (C.lift[h.kind] || 0);
+    h.facing = fa;
+    try { this.drawProp(h); this.drawHoldCharge(this.game); } finally { h.x = x; h.y = y; h.facing = f; }
   }
   // VENOM JAW / CHARGED: a ring closing round whatever is in his mouth, and once it is shut the
   // thing pulses, green for poison and fire-yellow for a charge. The two seconds have to be seen.
@@ -1806,12 +1864,16 @@ class Renderer {
           }
         }
       }
-      ctx.fillStyle = '#6d6a66'; ctx.fillRect(M.armLen - 16, -12, 16, 24);        // iron cap
-      ctx.fillStyle = '#8d8a85'; ctx.fillRect(M.armLen - 16, -12, 16, 5);
-      ctx.fillStyle = PALETTE.bloodDark; ctx.fillRect(M.armLen - 16, 6, 16, 6);
+      // The pixel arm (js/prop-pixels.js) carries its own iron head; only the old beams need one added.
+      if (!this.painted.pixelProps) {
+        ctx.fillStyle = '#6d6a66'; ctx.fillRect(M.armLen - 16, -12, 16, 24);        // iron cap
+        ctx.fillStyle = '#8d8a85'; ctx.fillRect(M.armLen - 16, -12, 16, 5);
+        ctx.fillStyle = PALETTE.bloodDark; ctx.fillRect(M.armLen - 16, 6, 16, 6);
+      }
       ctx.restore();
     }
-    if (this.altar) ctx.drawImage(this.altar.sprite('mill', M.hubR), -48, -64);
+    if (this.painted.pixelProps) this.painted.millHub(ctx, M.hubR);
+    else if (this.altar) ctx.drawImage(this.altar.sprite('mill', M.hubR), -48, -64);
     else if (!(this.painted.ready && this.painted.atlas(ctx, 'mill-hub', 0, 0, M.hubR * 2.2, undefined, 0.5))) {
       ctx.fillStyle = '#4d4741'; ctx.beginPath(); ctx.arc(0, 0, M.hubR, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#6a635b'; ctx.beginPath(); ctx.arc(0, -3, M.hubR - 5, 0, Math.PI * 2); ctx.fill();
@@ -4381,9 +4443,11 @@ class Renderer {
     if (milk) { this.drawMilkOffer(p, ctx); return; }
     this.shadow(p.x, p.y + 3, 9, 4);
     // the stool
-    ctx.fillStyle = '#4a3420'; ctx.fillRect(p.x - 7, p.y - 2, 14, 7);
-    ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(p.x - 7, p.y - 2, 14, 2);
-    ctx.fillStyle = '#3a2a1a'; ctx.fillRect(p.x - 6, p.y + 5, 2.4, 4); ctx.fillRect(p.x + 3.6, p.y + 5, 2.4, 4);
+    if (!this.painted.pixelProps) {
+      ctx.fillStyle = '#4a3420'; ctx.fillRect(p.x - 7, p.y - 2, 14, 7);
+      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(p.x - 7, p.y - 2, 14, 2);
+      ctx.fillStyle = '#3a2a1a'; ctx.fillRect(p.x - 6, p.y + 5, 2.4, 4); ctx.fillRect(p.x + 3.6, p.y + 5, 2.4, 4);
+    } else this.painted.stool(ctx, p);
     const locked = p.locked, dim = locked ? 0.35 : 1;
     // the talisman, hung a little above and breathing
     ctx.save(); ctx.globalAlpha = dim;
@@ -4466,6 +4530,8 @@ class Renderer {
     const gl = ctx.createRadialGradient(p.x, top, 0, p.x, top, 20);
     gl.addColorStop(0, 'rgba(239,230,208,0.22)'); gl.addColorStop(1, 'rgba(0,0,0,0)');
     if (!p.locked) { ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, top, 20, 0, Math.PI * 2); ctx.fill(); }
+    if (this.painted.pixelProps) { this.painted.pail(ctx, p.x, y0, R); ctx.restore(); }
+    else {
     ctx.fillStyle = '#6b4a2c'; ctx.beginPath();
     ctx.moveTo(p.x - R * 0.72, y0); ctx.lineTo(p.x - R, top); ctx.lineTo(p.x + R, top); ctx.lineTo(p.x + R * 0.72, y0);
     ctx.closePath(); ctx.fill();
@@ -4484,6 +4550,7 @@ class Renderer {
     ctx.moveTo(p.x + R * 0.5, top + wob); ctx.quadraticCurveTo(p.x + R * 0.95, top + H * 0.34, p.x + R * 0.66, top + H * 0.38);
     ctx.quadraticCurveTo(p.x + R * 0.6, top + H * 0.12, p.x + R * 0.5, top + wob); ctx.fill();
     ctx.restore();
+    }
     ctx.save(); ctx.scale(1, 1 / TILT);
     const ty = (p.y + 15) * TILT;
     ctx.font = `700 10px ${FONT_SC}`; ctx.textAlign = 'center';
@@ -6337,9 +6404,11 @@ class Renderer {
   drawLevelPick(game, board) {
     const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
     ctx.fillStyle = 'rgba(9,7,9,0.985)'; ctx.fillRect(0, 0, w, h);
-    // One row more than there are floors: the mushroom toggle at the top, then every level, then BACK.
-    const rows = LEVELS.length + 2;
-    const rowH = clamp(h * 0.085, 30 * s, 52 * s), gap = 6 * s;
+    // Two rows more than there are floors: the mushroom and the dark toggles at the top, then every
+    // level, then BACK.
+    const rows = LEVELS.length + LEVEL_TOGGLES + 1, gap = 5 * s;
+    // never taller than leaves the title its line above the first row
+    const rowH = Math.max(24 * s, Math.min(clamp(h * 0.078, 28 * s, 50 * s), (h - 70 * s) / rows - gap));
     const bw = clamp(Math.min(w * 0.86, 460 * s), 200 * s, 520 * s), x0 = cx - bw / 2;
     const top = h / 2 - (rows * (rowH + gap)) / 2;
     ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.ochre;
@@ -6349,7 +6418,7 @@ class Renderer {
     let souls = 0;
     const trip = !!game.menu.tripPick, dark = !!game.menu.darkPick;
     for (let i = 0; i < rows; i++) {
-      const y = top + i * (rowH + gap), toggle = i === 0, last = i === rows - 1, sel = game.menu.sub === i;
+      const y = top + i * (rowH + gap), toggle = i < LEVEL_TOGGLES, last = i === rows - 1, sel = game.menu.sub === i;
       game.menu.rects.push({ x: x0, y, w: bw, h: rowH });
       ctx.fillStyle = sel ? '#4a2428' : '#190f16'; ctx.fillRect(x0, y, bw, rowH);
       ctx.strokeStyle = sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s;
@@ -6360,21 +6429,21 @@ class Renderer {
         continue;
       }
       if (toggle) {
-        // One toggle, three ways round: off, THE TRIP, THE DARK (`Game.menuPick` walks it).
-        const on = trip || dark;
+        // Two switches, one each (`Game.menuPick`): THE TRIP, THE DARK. One on turns the other off.
+        const isDark = i === 1, on = isDark ? dark : trip;
         ctx.textAlign = 'left'; ctx.fillStyle = on ? PALETTE.fireHi : PALETTE.bone;
         ctx.font = `700 ${15 * s}px ${FONT_SC}`;
-        ctx.fillText(dark ? '\u{1F56F} THE DARK' : trip ? '\u{1F344} THE TRIP' : '\u{1F344} THE TRIP  ·  \u{1F56F} THE DARK', x0 + 16 * s, y + rowH * 0.42);
+        ctx.fillText(isDark ? '\u{1F56F} THE DARK' : '\u{1F344} THE TRIP', x0 + 16 * s, y + rowH * 0.42);
         ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
-        ctx.fillText(this.clip(dark ? 'lit only where something burns; gentler, fewer traps' : trip ? 'every key the other way round, on whichever floor below'
-          : 'play a floor below as one of these', bw - 90 * s), x0 + 16 * s, y + rowH * 0.74);
+        ctx.fillText(this.clip(isDark ? 'the floor below with the lamps out: lit only where something burns, gentler'
+          : 'every key the other way round, on whichever floor below', bw - 90 * s), x0 + 16 * s, y + rowH * 0.74);
         ctx.textAlign = 'right'; ctx.fillStyle = on ? PALETTE.fireHi : 'rgba(239,230,208,0.4)';
         ctx.font = `700 ${13 * s}px ${FONT_SC}`;
         ctx.fillText(on ? 'ON' : 'OFF', x0 + bw - 16 * s, y + rowH * 0.58);
         ctx.textAlign = 'left';
         continue;
       }
-      const li = i - 1, def = LEVELS[li], rec = (board.levels || {})[li], asTrip = trip && li > 0, asDark = dark || (!asTrip && li === TUNING.dark.runAt);
+      const li = i - LEVEL_TOGGLES, def = LEVELS[li], rec = (board.levels || {})[li], asTrip = trip && li > 0, asDark = dark || (!asTrip && li === TUNING.dark.runAt);
       ctx.textAlign = 'left';
       ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${15 * s}px ${FONT_SC}`;
       ctx.fillText(`${li + 1}. ${asTrip ? 'THE TRIP' : asDark ? def.name + ', DARK' : def.name}`, x0 + 16 * s, y + rowH * 0.42);
@@ -6382,7 +6451,7 @@ class Renderer {
       const carry = souls ? `${souls} soul${souls === 1 ? '' : 's'}` : 'nothing but a goat';
       const sub = asTrip ? `in place of ${def.name.toLowerCase()} · ${def.rooms} rooms · ${carry}`
         : asDark ? `the lamps out · ${def.rooms} rooms · ${carry}`
-        : `${def.canon ? def.canon.name.toLowerCase() : 'the compound'} · ${def.rooms} rooms · ${carry}`;
+        : `${def.canon ? def.canon.name.toLowerCase() : 'the compound'} · ${def.rooms} rooms · ${carry}${li === TUNING.dark.fork.at ? ' · ends on the fork' : ''}`;
       ctx.fillText(this.clip(sub, bw - 110 * s), x0 + 16 * s, y + rowH * 0.74);
       ctx.textAlign = 'right';
       ctx.fillStyle = rec ? PALETTE.fireHi : 'rgba(239,230,208,0.25)';

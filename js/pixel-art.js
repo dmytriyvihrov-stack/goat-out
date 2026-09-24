@@ -66,7 +66,20 @@ const PIXEL_ART = {
   image: null,
   init() {
     if (typeof PIXEL_ASSETS === 'undefined') return;
-    this.image = new Image(); this.image.src = PIXEL_ASSETS.src;
+    // The packer's downscale leaves every edge of every unit half transparent. Point-sampled, those
+    // half pixels came and went from frame to frame, so the goat and the cult read as cut out with
+    // blunt scissors, a soft rim round each. The alpha is hardened once, on load: a pixel is the unit
+    // or it is not. A canvas stands in for the image from then on (`naturalWidth` is what `ready` asks).
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'), x = c.getContext('2d');
+      c.width = img.naturalWidth; c.height = img.naturalHeight; x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height), a = d.data;
+      for (let i = 3; i < a.length; i += 4) a[i] = a[i] >= 128 ? 255 : 0;
+      x.putImageData(d, 0, 0); c.naturalWidth = c.width; c.naturalHeight = c.height;
+      this.image = c;
+    };
+    this.image = img; img.src = PIXEL_ASSETS.src;
   },
   get ready() { return !!this.image && this.image.naturalWidth > 0; },
   // The unit a painted slot draws as, or null before the atlas has loaded or for a slot with no art.

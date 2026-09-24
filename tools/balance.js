@@ -209,6 +209,15 @@ for (let li = 0; li < LEVELS.length; li++) {
     if (lo && t <= lo.total) fail(`THE DARK (of ${LEVELS[li].name}), the run's dark floor: ${t.toFixed(1)} is not above ${LEVELS[li - 1].name} (${lo.total.toFixed(1)})`);
     if (hi && t >= hi.total) fail(`THE DARK (of ${LEVELS[li].name}), the run's dark floor: ${t.toFixed(1)} is not under ${LEVELS[li + 1].name} (${hi.total.toFixed(1)})`);
   }
+  // The floor THE FORK's dark flight climbs to is a choice beside its lit twin, not a rung of the
+  // ladder: it is held under the lit one (it is harder to read) and no lower than `fork.band` of it.
+  const FK = TUNING.dark.fork;
+  if (FK && FK.at >= 0 && li === FK.at + 1) {
+    const t = total / SEEDS, lit = levelThreat[li];
+    if (lit && t >= lit.total) fail(`THE FORK's dark ${LEVELS[li].name}: ${t.toFixed(1)} is not under the lit one (${lit.total.toFixed(1)})`);
+    if (lit && t < lit.total * FK.band) fail(`THE FORK's dark ${LEVELS[li].name}: ${t.toFixed(1)} is under ${FK.band} of the lit one (${lit.total.toFixed(1)})`);
+    if (!QUIET) console.log(`    ↑ THE FORK: the dark flight of ${LEVELS[FK.at].name} climbs to this, ${(t / (lit ? lit.total : 1) * 100).toFixed(0)}% of the lit one`);
+  }
 }
 
 if (fails.length) {

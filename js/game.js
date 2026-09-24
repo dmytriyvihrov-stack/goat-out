@@ -1119,6 +1119,7 @@ class Game {
     if (this.tripAt === undefined) this.tripAt = -1;
     // THE DARK is the same floor with the lamps out, played in its own place (`darkLevel`).
     if (this.darkAt === undefined) this.darkAt = -1;
+    this.climbDark = false;
     const def = index === this.tripAt ? tripLevel(index) : index === this.darkAt ? darkLevel(index) : LEVELS[index];
     this.levelTripAt = this.tripAt;
     this.tripBanner = def.shroom ? TUNING.shroom.banner.time : 0;
@@ -1336,9 +1337,9 @@ class Game {
     const m = this.menu;
     if (m.panel === 'best') { m.panel = null; this.audio.sfxSwing(); return; }
     if (m.panel === 'settings' || m.panel === 'levels') {
-      // the rows of whatever is up, and the way out at the bottom of them. LEVELS carries one row
-      // more than its floors: the trip toggle at the top, which does not leave when picked.
-      const n = m.panel === 'settings' ? SETTINGS.length + 1 : LEVELS.length + 2;
+      // the rows of whatever is up, and the way out at the bottom of them. LEVELS carries two rows
+      // more than its floors: the trip and the dark toggles at the top, which do not leave when picked.
+      const n = m.panel === 'settings' ? SETTINGS.length + 1 : LEVELS.length + LEVEL_TOGGLES + 1;
       const row = m.panel === 'settings' ? SETTINGS[m.sub] : null;
       if (code === 'KeyW' || code === 'ArrowUp') { m.sub = (m.sub + n - 1) % n; this.audio.sfxSwing(); }
       else if (code === 'KeyS' || code === 'ArrowDown') { m.sub = (m.sub + 1) % n; this.audio.sfxSwing(); }
@@ -1367,14 +1368,16 @@ class Game {
       this.toggleSetting(SETTINGS[i].key);
       return;
     }
-    // The level sheet. Row 0 is the mushroom toggle and does not leave; a row after it is a floor
-    // of the game, played straight or, with the toggle on, as its trip; the last row is the way back.
+    // The level sheet. Rows 0 and 1 are the mushroom and the dark toggles and do not leave; a row
+    // after them is a floor of the game, played straight or as whichever toggle is on; the last row
+    // is the way back. The two were one switch walking off → TRIP → DARK, which hid the dark behind
+    // a second press nobody made; each is its own row now, and turning one on turns the other off.
     if (m.panel === 'levels') {
       m.sub = i;
-      // The toggle walks off, THE TRIP, THE DARK, off.
-      if (i === 0) { if (m.darkPick) m.darkPick = false; else if (m.tripPick) { m.tripPick = false; m.darkPick = true; } else m.tripPick = true; this.audio.sfxCard(); return; }
-      if (i > LEVELS.length) { m.panel = null; this.audio.sfxCard(); return; }
-      this.audio.sfxCard(); this.startAtLevel(i - 1, m.tripPick, m.darkPick);
+      if (i === 0) { m.tripPick = !m.tripPick; if (m.tripPick) m.darkPick = false; this.audio.sfxCard(); return; }
+      if (i === 1) { m.darkPick = !m.darkPick; if (m.darkPick) m.tripPick = false; this.audio.sfxCard(); return; }
+      if (i >= LEVELS.length + LEVEL_TOGGLES) { m.panel = null; this.audio.sfxCard(); return; }
+      this.audio.sfxCard(); this.startAtLevel(i - LEVEL_TOGGLES, m.tripPick, m.darkPick);
       return;
     }
     m.index = i;
@@ -1659,6 +1662,8 @@ class Game {
   nextCard() {
     const c = this.cardQueue.shift();
     if (c) { this.card = c; this.stateTimer = c.time; if (c.color) this.audio.sfxCard(); return; }
+    // The dark flight of THE FORK plays the next floor with the lamps out; it is saved with the run.
+    if (this.climbDark && this.levelIndex + 1 < LEVELS.length) this.darkAt = this.levelIndex + 1;
     if (this.levelIndex + 1 < LEVELS.length) this.startLevel(this.levelIndex + 1, this.levelSeed(this.levelIndex + 1), true);
     else {
       this.state = 'win'; this.clearRun();
@@ -2419,6 +2424,9 @@ class Game {
   beginClimb() {
     this.state = 'climb'; this.stateTimer = TUNING.stairs.climb; this.stairFx = { t: 0, dir: 1 };
     const g = this.goat; g.state = 'idle'; g.facing = 0;
+    // THE FORK: which of the two flights he took. The second climbs into the dark (`nextCard`).
+    const f = this.level.forkTile, ty = Math.floor(g.y / TILE);
+    this.climbDark = !!(f && ty >= f.y0 && ty <= f.y0 + 1);
     // A hen still at his heels — or in his mouth — when he reaches the stairs came out with him, and
     // that is worth a heart for the rest of the run. Once a level, however many he brings.
     const C = TUNING.prop.chicken;

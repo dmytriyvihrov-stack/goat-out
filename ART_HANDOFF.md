@@ -13,7 +13,8 @@ what it is before starting a fresh pass.
 |---|---|---|
 | **Pixel units** | `js/pixel-assets.js` (generated), drawn by `PIXEL_ART` in `js/pixel-art.js` | The goat (8 idle + 8×4 walk, horns recoloured off the atlas by `PIXEL_ART.horns`), clubman, brute, mage, hound, hunter, butcher, wraith, hen, rat ogre, the pet sheep (the intro's ewe) — 8 facings each — and the four one-view allies: mouse, goose, raven, tortoise. |
 | **Pixel environment** | `js/pixel-env-assets.js` (generated), drawn by `PIXEL_ENV` in `js/pixel-art.js` | Floor swatches for every level (rooms: `PIXEL_ROOMS`; cave and trip: `PIXEL_FLOORS`), the brick face and stone cap of every wall, crate, barrel, hay, table, pillar, brazier, floor litter, boulders, stalagmites, shrooms, crystals. |
-| **Painted props (frozen)** | `js/painted-assets.js`, drawn by `PaintedArt` in `js/painted-art.js` | Only what has no pixel sprite yet: the ritual altar, wall banner, gong, lantern loop, the props atlas (sword, shield, weapon stand, spike grating states, big healing grass, soul wisp, mill hub and arm), cage posts, door slabs. |
+| **Pixel props** (1.63) | `js/prop-pixels.js`: sprites built in code (`Grid` + palette `P`), no generated file | Doors and their debris, sword, shield, the stand of arms (layered), the wheel's hub and arms, cage posts, altar, banner, gong, lantern (8 frames), soul wisp, both healing grasses, the pail, spike grating (idle / arming / up), bomb, coop, burrow, ware stool, the roast. |
+| **Painted props (fallback)** | `js/painted-assets.js`, drawn by `PaintedArt` in `js/painted-art.js` | Nothing by default: only shown with `#paintedprops` (or `PROP_PIXELS.on = false`), for a side-by-side. |
 
 Anything with none of the three falls through to the canvas primitives in `js/render.js`
 (`Renderer.drawProp` and friends). Combat effects — flame loops, blasts, smoke, blood — are `js/combat-fx.js`,
@@ -29,43 +30,19 @@ The sprite itself always comes from `PIXEL_ART.draw`.
 
 ## Still to be drawn in pixel
 
-These are the painted or primitive leftovers, most visible first. `ART_TODO_GPT.md` turns them into
-ready image-generation briefs, six sheets in priority order:
+Every prop is pixel art since 1.63 (`js/prop-pixels.js`). What is still not:
 
-- **Doors** — wood, iron, vault, soul gate: painted slabs today (`PaintedArt.doorSlab`, `brokenDoor`).
-- **Weapons and the stand of arms** — sword, shield, rack (props atlas).
-- **Spike grating** — idle / arming / up (props atlas).
-- **The wheel** — hub and arm (props atlas).
-- **Soul wisp** and the **big healing grass** (props atlas); the ordinary sprout is primitive.
-- **Gong, lantern, altar, wall banner** — painted.
-- **Cage bars** — painted posts; the broken post is painted too.
-- **The mouse's burrow** (`Renderer.drawBurrow`) and **the ware stool** (`Renderer.drawWare`) — primitive.
-- **Bomb** — primitive on purpose so far (a dark shell and a burning fuse).
 - **Ominous decals** — `output/pixel-ominous-decals-2026-09-23` holds three floor pictograms and a
-  wall sign, generated and measured but **not integrated**. The cult pictograms on the decal canvas
-  (`world.js`) are the natural place for them.
+  wall sign, generated and measured but **not integrated**. The cult's own floor pictograms
+  (`CULT_GLYPHS`, `world.js`) were redrawn as a butcher's marks in 1.63 instead.
+- **The stairs** are still a gradient per tile (`Renderer.drawStairs`).
+- **The cave spires** draw the `stalagmites` pixel prop over two smooth blood ellipses.
 
----
+**Adding a prop sprite by hand** (the 1.63 way, no image generation): write a function in
+`js/prop-pixels.js` that fills a `Grid` with `rect` / `ell` / `line` / `poly` / `bar` in palette colours,
+shade it with `tone`, and `outline()` it; register it in `sprites`. Render it big with
+`node output/pixel-claude-2026-09-24/render.cjs 6 <name>` and look before wiring it. A layered sprite
+(`rack-`, `coop-`, `roast-` names) keeps its frame so the layers line up; everything else is trimmed.
+About 1.35 world px a texel (`TX`) is the grain of the crate and barrel.
 
-## The pipeline
 
-1. A hand-off lands in `output/<pack>-<date>/` with `source/*.png`, a `manifest.json` of measured
-   rects, and a `HANDOFF_CLAUDE.md`. Read the hand-off; the rects are measured, never the equal grid.
-2. Pack it with the PowerShell packer (Windows PowerShell 5.1, System.Drawing, no node image library):
-   - units: `powershell -ExecutionPolicy Bypass -File tools/pack-pixel.ps1` → `js/pixel-assets.js`
-   - environment: `powershell -ExecutionPolicy Bypass -File tools/pack-pixel-env.ps1` → `js/pixel-env-assets.js`
-   Never edit the generated files by hand.
-3. Wire it in:
-   - a new unit: its world-px size in `PIXEL_EXTENT`, the slot it fills in `PIXEL_UNIT`, and
-     `PaintedArt.characterKey` returning that slot for the enemy kind;
-   - a new environment item: a name in `PIXEL_ENV_ID`, then `PIXEL_ENV.draw(ctx, name, x, y, w, ay)`
-     at the prop's draw site, keeping the old draw as the fallback;
-   - a new floor look for a level: an entry in `PIXEL_ROOMS` keyed by the level's `canon.id`.
-4. Check it in the running game at the real camera (see *Testing* in `CLAUDE.md`), on a dark level
-   and a light one: swatches are multiplied by the level's own colours, so a swatch that reads on
-   THE YARD can vanish on THE BRIDGE.
-
-Sizes: a unit's whole `sourceExtent` is `PIXEL_ASSETS.target` px in the atlas and `PIXEL_EXTENT`
-world px on screen; the foot point sits at the origin, where the caller has already put the shadow.
-Units draw with smoothing off; environment items and swatches with smoothing on (they are two to
-three texels a screen pixel and crawl when point-sampled).

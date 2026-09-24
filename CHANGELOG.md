@@ -5,6 +5,67 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.63 — every prop in pixels, and what he carries in his teeth
+
+- **The last painted props are pixels** (`js/prop-pixels.js`, new). Doors (wood, iron, vault, soul
+  gate) and what each leaves on the floor, sword, shield, the stand of arms, the wheel's hub and arms,
+  the cage posts, the altar, the wall banner, the gong, the lantern's eight frames, the soul wisp, the
+  big healing grass — all hand-placed pixel sprites on the grain of the crate and barrel, fitted into
+  the painted ones' measured boxes, so nothing's size or footprint moved. `#paintedprops` shows the old
+  art for a side-by-side.
+- **The primitives went too:** the small sprout, the bomb (its fuse is cells, as long as the time left),
+  the mouse's pail and the pail on her shelf, her burrow, the ware stools, the coop (slats over a dark
+  inside, split after one blow), the roast (a ring of stones, the game's own pixel flames, forked sticks,
+  a crocodile on the spit). The wheel's arms carry their own iron heads; level one's millstone is the
+  pixel hub now.
+- **The stand of arms holds its arm** ("предмет должен быть прямо в ней"): uprights and a bar behind, the
+  base in front — a sword stands point down in the slot with its hilt up, a shield stands on its rim.
+- **The grating reads.** Raised, its teeth are bright steel with a hard rim and blood on some points;
+  arming, its slots light up amber and the tips yellow ("подготовка к удару — желтой").
+- **The cult is a butcher's cult on the floor too.** The six pictograms are a goat skull, a cleaver, a
+  meat hook, a rack of ribs, a carcass hung by its hind legs and crossed bones (`CULT_GLYPHS`).
+- **What he carries sits in his teeth** ("чтобы он появлялся четко перед козлом"). A crate, blade, bomb,
+  hen or tortoise was drawn at the hold point, 22 px out along the aim, circling him smoothly while his
+  sprite turned in eighths — a thing floating near him. It is drawn at the mouth of the facing the sprite
+  shows (`PIXEL_FACE`), a little ahead of the muzzle, turned with his head (a sword by its grip), behind
+  him when he faces away; the hold charge ring goes with it. Render only (`TUNING.goat.carry`): the hold
+  point and every throw are unchanged. A held prop is no longer drawn a second time at the hold point.
+- **Clean cutouts.** The unit atlas had every edge pixel half transparent from the packer's downscale;
+  point-sampled, the rim came and went frame to frame and the goat and the cult looked cut out with blunt
+  scissors. `PIXEL_ART.init` hardens the alpha once on load.
+
+---
+
+## 1.62 — THE FORK, and fewer mushrooms
+
+- **THE FORK.** THE ROAD (the fourth floor) now ends on two flights of stairs in its far wall, each
+  behind its own iron door. The floor in front of one says THE LAMPS ARE LIT; in front of the other,
+  drawn going up into black, THE LAMPS ARE OUT — FEWER OF THEM. NO LIGHT. That one climbs to THE
+  THRESHING FLOOR with the lamps out (79% of the lit floor's threat, no rifles; a death there keeps it
+  dark, CONTINUE remembers it). `TUNING.dark.fork`, `GEN_RULES.fork`, and `balance.js` holds the dark
+  floor under its lit twin and above `fork.band` (0.7) of it.
+- **THE CAVE is no longer dark in every run** (`dark.runAt` is -1): the dark is the fork's choice now.
+  The knob is still there to force a floor dark again.
+- **LEVELS: THE DARK has its own switch.** THE TRIP and THE DARK were one row that walked off → TRIP →
+  DARK, so the dark took a second press nobody made. They are two rows now, each ON/OFF, one turning the
+  other off; THE ROAD's row says it ends on the fork. The sheet also fits a 760 px screen again.
+- **A third fewer mushrooms and crystals.** THE TRIP: glowing mushrooms on 62% of the rock's edge
+  instead of 88%, clumps on 7% of the floor instead of 10%, crystal seams 7% instead of 10%. THE CAVE:
+  crystal seams 11% of the face instead of 16%. Nothing else about either floor's look changed — a
+  pass that redrew both caves on the pixel grid and toned the trip's glow and colours down was tried
+  and thrown out the same day ("верни свечение… они были прекрасны"). The shares are `TUNING.cave.look`.
+- **THE TRIP's floor mushrooms are the rock's mushrooms.** The little clumps on the floor were the
+  same painted magenta sprite as the big mushroom you break, so the floor was full of small copies of
+  the one thing on it that matters. They are the glowing caps from the rock now — same colours, sizes
+  and glow, one to three a tile — and the magenta clump is only ever the breakable one.
+- **Small crystals on THE TRIP's rock.** On 30% of the rock's edges, among the mushrooms: a faceted
+  stone in the crystal seam's colours, often with a smaller one leaning on it, with a little glow of
+  its own and the seam's glint (`look.trip.gems`; the plain cave's `gems` is 0).
+- **Fix: the bell's thread pointed at nothing.** BELLWETHER'S BELL's edge mark toward the stairs read
+  `exitTile.x`, which does not exist.
+
+---
+
 ## 1.61 — THE DARK, barrels, three souls, the picture of the floor
 
 The build tag in the corner said 1.53 through 1.56–1.60; it says 1.61 now. This build also carries

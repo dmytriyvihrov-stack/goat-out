@@ -580,7 +580,7 @@ const Talisman = {
     const B = m.bell;
     if (B && game.level && !game.goat.dead && game.state === 'play') {
       const cam = game.cam, z = cam.zoom, targets = [];
-      if (game.level.exitTile) targets.push([(game.level.exitTile.x + 0.5) * TILE, (game.level.exitTile.y + 0.5) * TILE, PALETTE.bone]);
+      if (game.level.exitTile) targets.push([(game.level.exitTile.x0 + 0.5) * TILE, (game.level.exitTile.y0 + 1) * TILE, PALETTE.bone]);
       const vd = game.props.find((p) => p.vault && !p.broken);
       if (vd) targets.push([vd.x, vd.y, PALETTE.witch]);
       for (const [wx, wy, col] of targets) {

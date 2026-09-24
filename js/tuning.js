@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.61';
+const BUILD = '1.63';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -140,6 +140,11 @@ const TUNING = {
     // grab-and-launch loop the answer to everything a headbutt was supposed to be for.
     grab: { reach: 1.6 * TILE, speedMul: 0.7, itemSpeedMul: 0.94, holdTime: 8.0, holdVary: 0.125,
       throwImpulse: 27.2 * TILE, manThrow: 0.7, holdDist: 22, cooldown: 1.35 },
+    // Where a carried THING is drawn (render only; `grab.holdDist` stays the hold point a throw starts
+    // from): in his teeth, at the mouth of the facing the sprite shows (`PIXEL_FACE`), `lead` px plus
+    // `reach` × its radius out ahead of the muzzle. `lift` is how far above its own y each drawer puts
+    // a held thing's middle, so the middle is what lands on the mouth.
+    carry: { lead: 2, reach: 0.7, lift: { crate: 10.5, bomb: 7, tortoise: 5, chicken: 6 } },
     // BAAH out of the pen is what a goat's voice actually is: a noise. It calls every man who hears
     // it to the spot you shouted from, which is a tool — you throw your voice at one end of a room
     // and leave by the other — and a way to get killed. What it is NOT is a weapon: taking the sense
@@ -947,8 +952,15 @@ const TUNING = {
   // lost trail goes cold in `lose` s, after which he hunts by ear. `lit` is how much of a flame's
   // reach counts as standing in it (`game.litAt`). The seer paints his rune at what he hears, up to
   // `earCast` tiles (`Enemy.hearForRune`), never one inside `earOwn` tiles of himself or of a man of
-  // his, and only while it is `earFresh` s old. `runAt` is the floor of every run played dark (index,
-  // -1 for none): THE CAVE for now, the one floor near the fourth with no rifle to introduce.
+  // his, and only while it is `earFresh` s old. `runAt` is a floor every run plays dark (index, -1
+  // for none). It was THE CAVE until 24 Sep 2026; the dark is a choice now instead (`fork`).
+  // `fork` is THE FORK: the last room of LEVELS[`at`] has two flights of stairs cut into its far
+  // wall, and the second of them (drawn cold, going up into black, THE DARK on the floor in front of
+  // it — `level.forkTile`) climbs to the next floor with the lamps out. THE ROAD, so the choice is the fifth
+  // floor — THE THRESHING FLOOR, which has no kind of its own to introduce and loses nothing the run
+  // needs to have met. `apart` is the least gap in rows between the two flights. `band` is what
+  // `balance.js` holds the dark floor to: at least that share of its lit twin's threat, and under it
+  // — the dark is meant to come in gentler, since it is harder to read.
   dark: {
     alpha: 0.98, color: [5, 4, 10], res: 3, flicker: 0.08, maxFires: 140,
     near: 4.5, floor: 0.3, sil: 0.94, body: '#07060c', rim: 'rgba(150,158,210,0.55)',
@@ -960,7 +972,8 @@ const TUNING = {
     lamps: { per: 45, min: 1, max: 3, apart: 4.5, door: 2.5, unlit: 0.35 },
     soften: { from: 0.8, to: 0.72, ease: 1, men: 0.7, traps: 0.5, spikes: 0.5 },
     ai: { sight: { all: 3.5, dog: 5 }, lit: 0.75, lose: 1.2, earCast: 9, earOwn: 1.5, earFresh: 0.3 },
-    runAt: 2,
+    runAt: -1,
+    fork: { at: 3, apart: 4, band: 0.7 },
   },
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
   // first has found a room, so most levels get one and some get two rather than every level getting
@@ -994,7 +1007,20 @@ const TUNING = {
     // furniture), `perRoom` the most it may ever get, `glint` how strongly the wet tips catch the
     // light so they are read before they are walked into, and `damage` the hearts the goat pays.
     // A man does not pay hearts: he dies on them, the way he dies on the grating.
-    spikes: { chance: 0.3, perRoom: 1, glint: 0.5, damage: 1 } },
+    spikes: { chance: 0.3, perRoom: 1, glint: 0.5, damage: 1 },
+    // What the rock wears (`Renderer.drawCaveDecor`, `drawFloorShrooms`), as the share of the edge
+    // tiles that grow each thing: `drips` stalactites on the far wall, `spires` the stone standing up
+    // off the top of the rock, `crystals` a seam on the face. The trip adds `fur`, the glowing
+    // mushrooms along the rock's edge, and `floor`, the share of floor tiles with a clump. 24 Sep 2026:
+    // mushrooms and crystals a third fewer (fur 0.88 → 0.62, floor 0.1 → 0.07, crystals 0.16 → 0.11
+    // and 0.1 → 0.07), their look, colours and glow exactly as they were — "они были прекрасны".
+    // `gems` is small glowing crystals on top of the rock among the fur (asked for on the trip; the
+    // plain cave has none — set it above 0 to give it some). The floor clumps are the fur's own
+    // mushrooms since then, so the painted clump is only ever the big one you can break.
+    look: {
+      cave: { drips: 0.28, spires: 0.3, crystals: 0.11, gems: 0 },
+      trip: { drips: 0.2, spires: 0.2, crystals: 0.07, fur: 0.62, floor: 0.07, gems: 0.3 },
+    } },
   // Tall grass (level eight), Cult of the Lamb's: it stands over whatever is in it, so a body in it
   // shows from the waist up, and the goat's own eye stops at it — `seeInto` tiles of it are lit from
   // where he stands and the rest of the patch, and what is behind it, is shade. It hides him the same
@@ -1187,6 +1213,8 @@ const TUNING = {
 // the order of the menu lives here and in one place. LEVELS is a way onto any floor of the game
 // without playing up to it: it is a prototype, and the fifth level is worth looking at on a Tuesday.
 const MENU = ['new', 'continue', 'levels', 'best', 'settings'];
+// The LEVELS sheet's switches above its floors: THE TRIP, THE DARK (`Game.menuPick`, `drawLevelPick`).
+const LEVEL_TOGGLES = 2;
 
 // Escape, mid-level, used to drop straight back to the title — which threw away the room exactly as
 // it stood and handed CONTINUE a freshly generated level from its own head, so checking a setting or
