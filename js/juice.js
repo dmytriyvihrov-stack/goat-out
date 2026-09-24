@@ -80,7 +80,7 @@ const JUICE = [
     godot: 'Same vignette shader; drive intensity from an AnimationPlayer loop (two keys close together, then a rest). Pair with a low-pass on the music bus.' },
   { name: 'Rumble', cat: 'SCREEN', status: 'in', src: 'SWINK', code: 'game.vibe',
     trigger: 'Hits, kills, throws — touch devices only', look: 'The phone buzzes, scaled to the blow',
-    size: () => '8–60 ms',
+    size: () => '6–80 ms',
     godot: 'Input.start_joy_vibration(0, weak, strong, dur) for pads; Input.vibrate_handheld(ms) on mobile.' },
   // ---- bodies ----
   { name: 'Hit flash (white)', cat: 'BODY', status: 'new', src: 'SCREENSHAKE', code: 'enemy.flash · juice.hitFlash · drawEnemy',
@@ -245,11 +245,11 @@ const JUICE = [
   // ---- the shop (js/shop.js) ----
   { name: 'The rat ogre comes out', cat: 'WORLD', status: 'new', src: 'GOAT', code: 'Shop.spawnOgre · ratogre.emerge',
     trigger: 'The third blow on the mouse or her shelf', look: 'Stone out of the hole, a blood ring, the picture shoved away from the wall, a beat of slow motion, and he scales up out of the gap',
-    size: () => `${TUNING.ratogre.emerge}s emerge · shake 12 · hitstop 0.08 · slow 0.35s`,
+    size: () => `${TUNING.ratogre.emerge}s emerge · hitstop 0.08 · slow 0.35s · no shake (only a lost heart shakes: juice.shakeOther ${TUNING.juice.shakeOther})`,
     godot: 'Spawn at the gap with scale 0.4→1 over a tween; Engine.time_scale 0.5 for 0.35s; camera trauma 0.6; a one-shot particle burst of stone.' },
   { name: 'A blow that does nothing', cat: 'BODY', status: 'new', src: 'GOAT', code: 'Goat.headbuttHits (ratogre) · Shop.ogreShrug',
     trigger: 'Horns on the rat ogre standing', look: 'The goat bounces off him, ash off the impact, no flash on him; once a run, the words for what would work',
-    size: () => '4 tiles/s bounce · shake 2',
+    size: () => `4 tiles/s bounce · no shake (juice.shakeOther ${TUNING.juice.shakeOther})`,
     godot: 'On hit with no damage: knock the player back along -aim, small shake, skip the hit-flash shader; show the hint label once per run.' },
   { name: 'The blink', cat: 'BODY', status: 'new', src: 'GOAT', code: 'Shop.blink · ARTIFACTS symbols',
     trigger: 'Q, with STRANGE SYMBOLS at his neck', look: 'Violet burst where he left and where he arrives, two rings, five ghosts along the line, dust at both ends, a squash on landing',
