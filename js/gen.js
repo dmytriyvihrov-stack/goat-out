@@ -256,18 +256,30 @@ function tryGenerate(levelDef, seed, opts) {
   // into the level this room is says where in that pool to look. It takes at random among the
   // `GROUND.window` nearest unspent entries rather than the single nearest, so the trend holds on
   // average — which is all `GEN_RULES.ground` asks of it — while two seeds stay two levels.
-  const draw = (pool, used, i) => {
+  // Where along the pool to look is this room's place among the rooms that draw from the same pool,
+  // not among all the rooms of the level: the last room is always an arena, so measured against the
+  // level the most open third of every canon was only ever reached by a room that never draws, and
+  // `sluice`, `flanks` and `rowhouse` were dealt 0 times in 200 seeds. And a pool of nine dealt to two
+  // rooms needs a wider window than three, or its middle is never anybody's nearest.
+  const forced = (j) => j === 0 || (levelDef.arenas || []).some((a) => a.at === j) || j === levelDef.millAt
+    || j === levelDef.hallAt || j === levelDef.galleryAt || j === levelDef.killboxAt || j === sentryRoomAt
+    || j === levelDef.ambushAt || j === levelDef.calmAt || restsOf(levelDef).includes(j) || trapRooms.has(j);
+  const drawOrder = { canon: [], mix: [] };
+  for (let j = 1; j < n; j++) if (!forced(j)) drawOrder[canonRooms.has(j) ? 'canon' : 'mix'].push(j);
+  const draw = (pool, used, i, order) => {
     let fixed = 0, flex = 1;
     for (let j = i + 1; j < n; j++) { const fw = fixedW(j); if (fw) fixed += fw; else flex++; }
     const budget = Math.floor((W - 8 - x - fixed - GAP * (n - i)) / flex);
-    const target = clamp((i - 1) / Math.max(1, n - 2), 0, 1) * (pool.length - 1);
+    const rank = order.indexOf(i), d = order.length;
+    const target = (d > 1 ? clamp(rank / (d - 1), 0, 1) : 0.5) * (pool.length - 1);
+    const win = Math.max(GROUND.window, Math.ceil(pool.length / Math.max(1, d)));
     const fitting = [];
     for (let k = 0; k < pool.length; k++) if (pool[k].rows[0].length <= budget) fitting.push(k);
     if (!fitting.length) return pool[Math.round(target)];
     let free = fitting.filter((k) => !used.has(k));
     if (!free.length) { used.clear(); free = fitting; }
     free.sort((a, b) => Math.abs(a - target) - Math.abs(b - target));
-    const k = free[rng.int(0, Math.min(GROUND.window, free.length) - 1)];
+    const k = free[rng.int(0, Math.min(win, free.length) - 1)];
     used.add(k);
     return pool[k];
   };
@@ -291,8 +303,8 @@ function tryGenerate(levelDef, seed, opts) {
     else if (i === levelDef.calmAt) tpl = CALM_TEMPLATE;
     else if (restsOf(levelDef).includes(i)) tpl = REST_TEMPLATE;
     else if (trapRooms.has(i)) tpl = (i === levelDef.trapAt && trapPool.find((t) => t.name === levelDef.trapTpl)) || trapPool[trapIdx++ % trapPool.length];
-    else if (canonRooms.has(i)) { tpl = draw(canonPool, canonUsed, i); drawn = true; }
-    else { tpl = draw(mixPool, mixUsed, i); drawn = true; }
+    else if (canonRooms.has(i)) { tpl = draw(canonPool, canonUsed, i, drawOrder.canon); drawn = true; }
+    else { tpl = draw(mixPool, mixUsed, i, drawOrder.mix); drawn = true; }
     const source = tpl;
     tpl = flipTemplate(tpl, rng);
     // The cave squares nothing off: an ordinary room, an arena or a rest room there has its corners
