@@ -165,6 +165,7 @@ class Game {
     if (this.settings.easy) { this.mods.maxHp += EASY.maxHp; this.mods.enemySlow = EASY.enemySlow; }
     this.mods.maxHp += this.henHearts || 0;   // the hens he brought out with him, one heart a level
     Beast.applyRewards(this, this.mods);      // and the escorts he walked to the stairs (js/beasts.js)
+    this.mods.screamCooldown = Math.max(this.mods.screamCooldown, TUNING.goat.scream.minCooldown);
     if (this.goat) { this.goat.maxHp = this.mods.maxHp; this.goat.hp = Math.min(this.goat.hp, this.goat.maxHp); }
   }
   // COLD EYE: something just came into his mouth. The world slows (`frame`) until it leaves it or
@@ -561,7 +562,7 @@ class Game {
   // The first soul always offers actives, so every run picks a skill before it picks numbers.
   openBoonChoice() {
     // `needs` is a mod that has to be on before the soul is worth anything: LOOSE JOINTS on a goat
-    // who cannot roll yet is a card that does nothing, and there are only thirteen of these.
+    // who cannot roll yet is a card that does nothing, and a run is only dealt thirteen or so.
     // `minLevel` is the dev tool's own knob — a card too strong for an early run is held back until
     // the level index it names, off (0) for every boon until somebody sets one.
     const open = (b) => this.boonOpen(b, this.levelIndex);

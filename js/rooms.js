@@ -1107,7 +1107,7 @@ const ROOM_TEMPLATES = [
   ]},
   // The store: hay stacked in the corners and a lamp standing among it. Put the lamp down and the
   // straw goes up with it; leave it standing and it is the one thing lighting who is coming.
-  { name: 'store', canon: 'lamp', rows: [
+  { name: 'lampstore', canon: 'lamp', rows: [
     '##################',
     '#................#',
     '#.hh.....o....hh.#',

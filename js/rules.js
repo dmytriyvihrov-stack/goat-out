@@ -557,7 +557,7 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'shop', text: 'The mouse stands in the middle gate of THE YARD, THE THRESHING FLOOR and THE RAFTERS only: two talismans of that visit\'s tier, or a pail of milk.',
+  { id: 'shop', text: 'The mouse stands in the middle gate of THE YARD, THE ROAD and THE BRIDGE only: two talismans of that visit\'s tier, or a pail of milk.',
     check: (L) => {
       const li = levelIndexOf(L.def), S = TUNING.shop;
       const mice = L.props.filter((p) => p.kind === 'mouse');

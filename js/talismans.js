@@ -622,7 +622,7 @@ const Talisman = {
       ctx.textAlign = 'left'; ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = worn ? PALETTE.fireHi : PALETTE.bone;
       ctx.fillText(a.name, pad + 36 * s, y + 14 * s);
       ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-      const q = a.tag === 'q' || a.id === 'boomerang' || a.id === 'symbols';
+      const q = a.tag === 'q';
       ctx.fillText(`${a.id} · ${a.tag || 'first four'}${q ? ' · Q' : ''}`, pad + 36 * s, y + 26 * s);
       [1, 2, 3].forEach((t) => r.devButton(d, pad + 36 * s + (t - 1) * 32 * s, y + 34 * s, 28 * s, 16 * s, 'I'.repeat(t), `tal-wear=${a.id}.${t}`, worn && art.tier === t));
       if (worn) r.devButton(d, pad + 36 * s + 96 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', 'tal-off', false);

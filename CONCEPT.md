@@ -34,6 +34,8 @@ the way.
    a door coming off its hinges. The scream is the exception — it is the one loud thing that makes no
    noise at all.
 6. **Six verbs, forever.** Upgrades bend numbers or change what a button does. They never add a button.
+   One exception was made on purpose (18 Sep 2026): a talisman with a use of its own — the boomerang,
+   the strange symbols, the straw effigy — puts it on Q, a key that does not exist until one is worn.
 
 ---
 
@@ -53,7 +55,7 @@ it out instead, and the first screen is a menu.
 
 | Input | Verb |
 |---|---|
-| WASD / left thumb | Move. Momentum-heavy: 0.15 s to top speed, 0.25 s to stop. Faster than any cultist. |
+| WASD / left thumb | Move. Momentum-heavy: 0.15 s to top speed, 0.25 s to stop. Faster than a man once he has a run-up behind him; a hound is always quicker. |
 | Mouse / auto-aim | Aim. On touch the aim follows your run and snaps onto men within about five tiles. |
 | Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.38 s recovery, no cancel. Deliberately blunt out of the pen: short reach, little throw behind it, and long enough on the end that a second man walks in on it. A man thrown into a man standing next to him kills him, and dies with him if he arrived fast enough. |
 | Hold right click / GRAB | Carry a box, a blade or a shield. **A man is a soul away** — until BY THE COLLAR is swallowed the mouth takes objects and nothing else. |
@@ -83,13 +85,10 @@ beard, and the same marigold collar. She bleats in a higher voice than he does.
 pay with a beat of about a second and a third. Nothing is on a global cooldown and nothing is queued: if a
 button is lit it fires, and the corner rail is where you read which ones are lit.
 
-**The skill rail** in the top-right corner is the goat's sheet: four icons for four verbs, each showing
+**The skill rail** in the bottom-right corner (the top right on a touch screen) is the goat's sheet: four icons for four verbs, each showing
 whether it is ready, how long until it is, and what the souls have done to it. A boon has to change its
 icon — Long Horns lengthens the horns there and on the goat, Dragon Breath turns the mouth into a cone of
 fire — so a build reads as a shape rather than as a list of names.
-
-He is drawn a quarter turn toward the camera: the head clear of the body, horns sweeping back and out
-past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 
 ---
 
@@ -97,10 +96,10 @@ past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 
 | | Behaviour |
 |---|---|
-| **Bearer** | Melee. 0.58 s windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
+| **Bearer** | Melee. About half a second of windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
 | **Brute** | A clubman built twice over: three killing blows, four when he is the one in the arena. A big shape in a bone apron with a bull's skull for a mask and a cleaver (since 1.66 — the Butcher's old body), and notches over his head counting down. Seen from three tiles or more with a clear run, he plants, roars and charges where you are going; a charge into a wall stuns him for a free hit. He is how level 1 says "some of them take more than one" without spending a boss on it, and he is unmistakable across a room — which is the point of him. |
 | **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the Butcher he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
-| **Hunter** | Rifle. Keeps five to eight tiles away, aims for 0.8 s with a visible line, bullets travel. Friendly fire is on and he does not care. |
+| **Hunter** | Rifle. Keeps five to eight tiles away, aims for most of a second with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
 | **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher) — a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit, and his own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
 

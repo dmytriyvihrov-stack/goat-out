@@ -173,7 +173,10 @@ const TUNING = {
     // `balk` came down a further fifth, to a plain two tiles: even arm's length read as a little more
     // reach than the bare voice should have, and the lure is what still carries the room at `call`.
     scream: { duration: 0.3, cooldown: 4.0 * GOAT_CD, radius: 6.8, stun: 0.9, call: 13, callCooldown: 3.0 * GOAT_CD,
-      balk: 2, balkStun: 0.3 },
+      balk: 2, balkStun: 0.3,
+      // However much bends the voice's cooldown — RAW THROAT, four geese brought out — it never comes back
+      // faster than this: at 0.82 s it outlasted its own daze and three men stood dazed 98% of a fight.
+      minCooldown: 2 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat. It is a
     // fifth shorter than it was — the same beat of mercy, a fifth less ground — because a dodge that
     // clears the whole room is a second way of running rather than a way of not being hit.
@@ -717,7 +720,7 @@ const TUNING = {
     // is inside stopped waiting a long time ago, which is what the last line is for.
     deadCage: { halfW: 1.15, halfH: 0.9, dx: 3.7, dy: -2.5, hits: 3,
       strain: ['NNGH', 'IT GIVES', 'OPEN'], done: 'TOO LATE' },
-    // Spike floor, from the third level on. The teeth come up where you have already been: crossing
+    // Spike floor, from THE ROAD (the fourth floor) on. The teeth come up where you have already been: crossing
     // a plate arms it and they follow a moment later, so the trap is the ground you just left. Men
     // read it the way they read the wheel — `lead` is how far ahead of the teeth `hazardAt` calls the
     // tile taken — and the man who fails his trap check is the one you can walk onto it.
@@ -1101,7 +1104,7 @@ const TUNING = {
   grass: { seeInto: 1.5, hideR: 2.15, cutR: 1.3, lurk: 0.3, lurkAlpha: 0.55, patch: [1, 3], size: [5, 12], sway: 1.6,
     burn: 2.6, spread: 0.3 },
   // THE SHOP. The mouse does not take the dead any more, and she is not on every level: she turns
-  // up on the levels in `levels` (indices — THE YARD, THE THRESHING FLOOR, THE RAFTERS) and stands
+  // up on the levels in `levels` (indices — THE YARD, THE ROAD, THE BRIDGE) and stands
   // in the level's MIDDLE soul gate in place of the soul that room would have held (see `gates` on
   // `LEVELS`). Her offer is free and it is a choice: `wares` talismans on her stools, one of them
   // yours, the other packed away the moment you reach for one — and taking it is what lifts the
@@ -1715,14 +1718,16 @@ const ARTIFACTS = [
       { params: { secret: 2.4, racks: 2, grass: 1.9, heals: 1 } },
       { params: { secret: 3, racks: 2.8, grass: 2.4, heals: 2 } }],
     apply: (m, p) => { m.luck = p; } },
-  { id: 'boomerang', name: 'BOOMERANG', color: '#efe6d0',
+  // The three Q verbs share a tag, so one shelf never offers two of them (`stockFor`): the Q key
+  // does one thing at a time, and two of them side by side are one choice offered twice.
+  { id: 'boomerang', tag: 'q', name: 'BOOMERANG', color: '#efe6d0',
     say: (p) => `Q: THROWN ${sayN(p.range)} TILES OUT AND BACK. ${p.pierce >= 99 ? 'EVERY MAN IT PASSES, BOTH WAYS, IS' : `UP TO ${p.pierce} ${p.pierce === 1 ? 'MAN EACH WAY IS' : 'MEN EACH WAY ARE'}`} DAZED ${sayN(p.stun)}s. ${sayN(p.cooldown)}s COOLDOWN.`,
     tiers: [
       { params: { stun: 1.2, cooldown: 10 * GOAT_CD, range: 6, pierce: 1 } },
       { params: { stun: 1.8, cooldown: 7 * GOAT_CD, range: 7.5, pierce: 2 } },
       { params: { stun: 2.4, cooldown: 5 * GOAT_CD, range: 9, pierce: 99 } }],
     apply: (m, p) => { m.boomerang = p; } },
-  { id: 'symbols', name: 'STRANGE SYMBOLS', color: '#7d5cff',
+  { id: 'symbols', tag: 'q', name: 'STRANGE SYMBOLS', color: '#7d5cff',
     say: (p) => `Q: BLINK ${sayN(p.dist)} TILES AHEAD, THROUGH MEN BUT NOT WALLS. ${sayN(p.cooldown)}s COOLDOWN.${p.stun ? ` WHOEVER STOOD WHERE YOU LEFT IS DAZED ${sayN(p.stun)}s.` : ''}`,
     tiers: [
       { params: { dist: 3, cooldown: 6 * GOAT_CD, stun: 0 } },
@@ -1944,7 +1949,8 @@ const BARKS = {
 // teaching room or the last room. `souls` is the level's whole count and is spent in `startLevel` in
 // this order: the gates, then the vault, then the level's LAST bosses. A boss with none left to give
 // leaves milk, and a vault with none left holds grass. Two a level, less the three the mouse stands
-// in for, is fourteen across a run against sixteen boons: no run gets everything.
+// in for, is thirteen across a run (and a lit boss or a room now and then gives one more) against
+// twenty-five boons and a build that holds fourteen: no run gets everything.
 const LEVELS = [
   {
     // Level one teaches, in this order: one clubman standing in the only way out of his room, a room
