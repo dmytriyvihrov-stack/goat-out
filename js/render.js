@@ -4188,7 +4188,7 @@ class Renderer {
       { kind: 'secret', label: 'SECRET WALL', make: (x, y) => new Prop(x, y, 'secret'), hits: ['HEADBUTT'],
         stats: `${P.secret.hits} hits to open, the niche behind it stays lit after`,
         note: 'Ordinary wall until the second blow: blocks sight and bullets like stone right up to the crack. Behind it is always a stand of arms, and — secret.healChance of the time — the rarer patch of grass, never a room or a corridor.' },
-      { kind: 'heal', label: 'MILK BOWL', make: (x, y) => new Prop(x, y, 'heal'), hits: ['BODY'],
+      { kind: 'heal', label: 'GRASS', make: (x, y) => new Prop(x, y, 'heal'), hits: ['BODY'],
         stats: `graze ${P.heal.grazeTime}s under ${P.heal.grazeSpeed}px/s for +1 heart`,
         note: 'Grazed, not grabbed: hold still (or nearly) inside it and it pays out once. Running through it on the way past does nothing — the point is that it costs a beat of standing in the open. What a level hands out on its own rhythm, every few rooms.' },
       { kind: 'heal', label: 'GRASS PATCH', make: (x, y) => new Prop(x, y, 'heal', { big: true }), hits: ['BODY'],

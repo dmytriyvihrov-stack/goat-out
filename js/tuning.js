@@ -1802,7 +1802,7 @@ const ARTIFACTS = [
       { params: { step: 0.5, near: 3, still: 1.2, hide: 4 } }],
     apply: (m, p) => { m.moth = p; } },
   { id: 'bell', tag: 'run', name: "BELLWETHER'S BELL", color: '#c29a44',
-    say: (p) => `A THREAD ON THE FLOOR POINTS TO THE STAIRS AND THE VAULT${p.sil ? `. MEN SHOW THROUGH STONE WITHIN ${sayN(p.sil)} TILES` : ''}${p.mimic ? '. A WRAITH HIDING AS A BOX OR MILK TWITCHES' : ''}.`,
+    say: (p) => `A THREAD ON THE FLOOR POINTS TO THE STAIRS AND THE VAULT${p.sil ? `. MEN SHOW THROUGH STONE WITHIN ${sayN(p.sil)} TILES` : ''}${p.mimic ? '. A WRAITH HIDING AS A BOX OR GRASS TWITCHES' : ''}.`,
     tiers: [
       { params: { sil: 0, mimic: false } },
       { params: { sil: 6, mimic: false } },
@@ -2201,7 +2201,7 @@ const LEVELS = [
     floor: '#2f3640', floorAlt: '#353d48', wall: '#1d2028', wallTop: '#2f3440',
     fog: '#06070a', doorChance: 0.3, ironDoors: 0.55, clockDoors: 0.6, stack: 0.35,
     // Nothing new walks in here, so what the floor names is the canon: the doorway is the weapon.
-    hint: 'EVERYTHING THEY HAVE LEFT IS HERE. MEET THEM IN THE DOORWAY.', hintKey: 'scream',
+    hint: 'MORE OF THEM THAN EVER. MEET THEM IN THE DOORWAY.', hintKey: 'scream',
   },
   {
     // Up in the roof of the hall, and the first ground in the compound that is not all there. Holes
