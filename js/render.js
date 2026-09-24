@@ -1182,13 +1182,16 @@ class Renderer {
   drawHints(game) {
     const ctx = this.ctx, lv = game.level;
     ctx.save(); ctx.scale(1, 1 / TILT); ctx.textAlign = 'center';
+    // Never wider than the view either: a phone held upright sees about fourteen tiles, and a line
+    // fitted to a wider room ran off both sides of it and could never be read whole.
+    const viewW = this.view(game.cam).w - 2 * TILE;
     if (lv.hints) {
       for (const hn of lv.hints) {
         if (Math.abs(hn.x - game.cam.x) > 1100 || Math.abs(hn.y - game.cam.y) > 800) continue;
         // A sentence long enough to run off both ends of the room is broken over two lines and then
         // fitted to what is left of the floor. It used to be painted at one size whatever it said,
         // and the longest of them was unreadable at both ends.
-        const lines = this.wrapFloor(hn.text), wide = (hn.w || 14 * TILE) - 3.2 * TILE;
+        const lines = this.wrapFloor(hn.text), wide = Math.min(viewW, (hn.w || 14 * TILE) - 3.2 * TILE);
         const size = this.fitFloorText(lines, wide, 26), lh = size * 1.34;
         const key = hn.key ? HINT_KEYS[hn.key][game.touch.active ? 1 : 0] : null;
         const block = (lines.length - 1) * lh + (key ? lh * 0.95 : 0);
@@ -1213,7 +1216,7 @@ class Renderer {
         if (c.part === 0 && lv.cagePrompt && !game.cageOpen) continue;
         if (Math.abs(c.x - game.cam.x) > 1400) continue;
         const lines = sets[c.part] || [];
-        const size = this.fitFloorText(lines, (c.w || 14 * TILE) - 2.6 * TILE, 26);
+        const size = this.fitFloorText(lines, Math.min(viewW, (c.w || 14 * TILE) - 2.6 * TILE), 26);
         const lh = size * 1.4;
         if (c.fy === undefined) c.fy = this.clearFloorRow(game, c, lines, lh);
         const top = c.fy - (lines.length - 1) * lh / 2;
