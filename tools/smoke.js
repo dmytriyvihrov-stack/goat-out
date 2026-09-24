@@ -16,7 +16,7 @@
 // and `draw` average and worst milliseconds.
 window.SMOKE = {
   res: {},
-  opts: { maxT: 420, drawEvery: 12, stepsPerTick: 240 },
+  opts: { maxT: 420, drawEvery: 12, stepsPerTick: 240, spikeUpd: 12, spikeDraw: 40 },
   field(g) {
     const w = g.world, W = w.W, H = w.H, D = new Int32Array(W * H).fill(-1), q = [];
     for (let i = 0; i < W * H; i++) if (w.tiles[i] === T.EXIT) { D[i] = 0; q.push(i); }
@@ -59,7 +59,7 @@ window.SMOKE = {
   },
   run1(which, seed) {
     const g = game, O = SMOKE.opts;
-    const r = { which, seed, ok: false, t: 0, errs: {}, nan: null, tp: 0, kills: 0, upd: 0, updMax: 0, draw: 0, drawMax: 0, nUpd: 0, nDraw: 0, souls: 0, end: '' };
+    const r = { which, seed, ok: false, t: 0, errs: {}, nan: null, tp: 0, kills: 0, upd: 0, updMax: 0, draw: 0, drawMax: 0, nUpd: 0, nDraw: 0, souls: 0, end: '', spikes: [] };
     const err = (where, e) => { const k = where + ': ' + (e && e.message || e) + ' @' + String(e && e.stack || '').split('\n').slice(1, 3).map((s) => s.trim().replace(/^at /, '').replace(/\(?https?:\/\/[^/]+\//, '')).join(' < '); r.errs[k] = (r.errs[k] || 0) + 1; };
     try { SMOKE.start(which, seed); } catch (e) { err('start', e); r.end = 'start threw'; return r; }
     let D = SMOKE.field(g), fieldT = 0, best = Infinity, stall = 0, buttCd = 0, steps = 0;
@@ -129,12 +129,14 @@ window.SMOKE = {
       const t0 = performance.now();
       try { g.update(1 / 60); } catch (e) { err('update', e); g.clearEdges && g.clearEdges(); }
       const t1 = performance.now(); r.upd += t1 - t0; r.updMax = Math.max(r.updMax, t1 - t0); r.nUpd++;
+      if (t1 - t0 > SMOKE.opts.spikeUpd && r.spikes.length < 40) r.spikes.push('u' + Math.round(t1 - t0) + '@' + Math.round(r.t) + 's/r' + g.goatRoom);
       steps++;
       if (steps % O.drawEvery === 0) {
         try { g.audio.updateScene(g, O.drawEvery / 60); } catch (e) { err('audio', e); }
         const t2 = performance.now();
         try { g.renderer.configure(false); g.renderer.draw(g, O.drawEvery / 60); } catch (e) { err('draw', e); }
         const t3 = performance.now(); r.draw += t3 - t2; r.drawMax = Math.max(r.drawMax, t3 - t2); r.nDraw++;
+        if (t3 - t2 > SMOKE.opts.spikeDraw && r.spikes.length < 40) r.spikes.push('d' + Math.round(t3 - t2) + '@' + Math.round(r.t) + 's/r' + g.goatRoom);
       }
       if (!r.nan) { const b = SMOKE.nanCheck(g); if (b) r.nan = b + ' @' + Math.round(r.t) + 's room ' + g.goatRoom; }
       if (g.state === 'play') r.t += 1 / 60;
@@ -176,7 +178,7 @@ window.SMOKE = {
   },
   report(tag = 'now') {
     const o = SMOKE.res[tag]; if (!o) return 'nothing under ' + tag;
-    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? 'OK ' : r.end.toUpperCase().slice(0, 7).padEnd(7)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} kills ${r.kills} souls ${r.souls} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.nan ? ' NaN ' + r.nan : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
+    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? 'OK ' : r.end.toUpperCase().slice(0, 7).padEnd(7)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} kills ${r.kills} souls ${r.souls} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.nan ? ' NaN ' + r.nan : ''}${r.spikes.length ? '\n     spikes ' + r.spikes.join(' ') : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
     return (o.done ? '' : '(still running)\n') + lines.join('\n');
   },
 };
