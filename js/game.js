@@ -115,7 +115,11 @@ class Game {
     this.runSeed = 0; this.askedSeed = 0;
     try {
       const h = (location.hash || '').replace('#', '');
-      if (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats') {
+      // On itch the dev corner is not drawn and the tool's addresses do nothing, unless the page was
+      // opened with `#dev`: one curious tester in GOD mode skews every number the playtest collects.
+      // Everywhere else — locally, the published artifact — it is there as it always was.
+      this.dev.hidden = /(^|.)(itch.io|itch.zone|hwcdn.net)$/i.test(location.hostname || '') && h !== 'dev';
+      if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats')) {
         this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
       }
       // `#seed=k3j9a` is the whole of sharing a run: NEW GAME takes it instead of rolling one, so a
@@ -1456,6 +1460,7 @@ class Game {
     this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0;
     this.beasts = {}; this.crowGift = false;
     this.forgetLessons();
+    this.runJumped = true;   // a run started off LEVELS: its codes say so (`runCode`)
     let budget = 0;
     for (let i = 0; i < li; i++) budget += LEVELS[i].souls || 0;
     for (let n = 0; n < budget; n++) {
@@ -1487,6 +1492,7 @@ class Game {
     this.runSeed = s.runSeed || ((Math.random() * 1e9) | 0);
     this.tripAt = s.tripAt === undefined ? -1 : s.tripAt;
     this.darkAt = s.darkAt === undefined ? -1 : s.darkAt;
+    this.runJumped = !!s.jumped;
     const li = clamp(s.level | 0, 0, LEVELS.length - 1);
     this.startLevel(li, this.levelSeed(li), true);
   }
@@ -1533,7 +1539,7 @@ class Game {
   saveRun() {
     this.save = { v: 1, level: this.levelIndex, boons: this.boons.map((b) => b.id), totalKills: this.totalKills,
       deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, henHearts: this.henHearts || 0, tripAt: this.tripAt === undefined ? -1 : this.tripAt,
-      darkAt: this.darkAt === undefined ? -1 : this.darkAt,
+      darkAt: this.darkAt === undefined ? -1 : this.darkAt, jumped: !!this.runJumped,
       beasts: this.beasts || {}, crowGift: !!this.crowGift,
       artifact: this.artifact ? { id: this.artifact.id, tier: this.artifact.tier } : null, at: Date.now() };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (err) { /* private mode: the run dies with the tab */ }
@@ -1600,14 +1606,17 @@ class Game {
   // (`replayCode`) and to say what happened on it, with no server behind it. Build, level (T for the
   // trip), run seed, deaths (both are in `levelSeed`), room, kills, time, souls, what took the last
   // heart and the gap before it (G, seconds), and the level's first body with its cause and second — the "a kill before I touched
-  // anyone" report had nothing to go on but a number.
+  // anyone" report had nothing to go on but a number. The level letter is N for THE DARK, and the last
+  // token is how the run was played — E easy, X god mode on, J started off LEVELS, `-` none of those —
+  // because a run code that cannot tell a god-mode run from a real one skews every number it is in.
   runCode(by) {
     const d = this.level.def || {}, fk = this.firstKill;
     const who = !by ? '-' : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind);
     const gap = by && this.lastGap !== null && this.lastGap !== undefined ? 'G' + this.lastGap.toFixed(1) : '-';
-    return ['v' + BUILD, (d.shroom ? 'T' : 'L') + (this.levelIndex + 1), (this.runSeed >>> 0).toString(36), 'D' + (this.seedDeaths || 0),
+    const flags = (this.settings && this.settings.easy ? 'E' : '') + (this.dev && this.dev.god ? 'X' : '') + (this.runJumped ? 'J' : '');
+    return ['v' + BUILD, (d.shroom ? 'T' : d.dark ? 'N' : 'L') + (this.levelIndex + 1), (this.runSeed >>> 0).toString(36), 'D' + (this.seedDeaths || 0),
       'R' + (this.goatRoom || 0), 'K' + this.kills, Math.round(this.timer) + 's', 'S' + this.boons.length, who, gap,
-      fk ? `${fk.kind}/${fk.cause}@${Math.round(fk.t)}` : '-'].join(' ');
+      fk ? `${fk.kind}/${fk.cause}@${Math.round(fk.t)}` : '-', flags || '-'].join(' ');
   }
   // The click that leaves a death or the win card also puts its code on the clipboard, so the form
   // asks for a paste rather than a transcription. Refused (no activation, a locked frame) is silent.
@@ -1621,7 +1630,7 @@ class Game {
     const t = String(code).trim().split(/\s+/);
     const li = parseInt(t[1].slice(1), 10) - 1, deaths = parseInt(t[3].slice(1), 10) || 0;
     this.askedSeed = parseInt(t[2], 36) >>> 0;
-    this.startAtLevel(li, t[1][0] === 'T');
+    this.startAtLevel(li, t[1][0] === 'T', t[1][0] === 'N');
     if (deaths) { this.deaths = deaths; this.startLevel(li, this.levelSeed(li), true, false); }
   }
   deathStats() {
@@ -1667,10 +1676,17 @@ class Game {
     this.nextCard();
   }
   nextCard() {
+    // Leaving the picture copies the floor's code, the way leaving a death card does.
+    if (this.card && this.card.painting && this.card.code) { this.lastCode = this.card.code; this.copyCode(); }
     const c = this.cardQueue.shift();
     if (c) { this.card = c; this.stateTimer = c.time; if (c.color) this.audio.sfxCard(); return; }
     // The dark flight of THE FORK climbs to THE DARK, in the next floor's place; saved with the run.
-    if (this.climbDark && this.levelIndex + 1 < LEVELS.length) this.darkAt = this.levelIndex + 1;
+    // The flight he climbed is the later choice, so it beats a tuft of mushrooms eaten on the way: the
+    // trip was the lit floor's, and down in the dark it is spent (`startLevel` asks the trip first).
+    if (this.climbDark && this.levelIndex + 1 < LEVELS.length) {
+      this.darkAt = this.levelIndex + 1;
+      if (this.tripAt === this.darkAt) this.tripAt = -1;
+    }
     if (this.levelIndex + 1 < LEVELS.length) this.startLevel(this.levelIndex + 1, this.levelSeed(this.levelIndex + 1), true);
     else {
       this.state = 'win'; this.clearRun();
@@ -3007,7 +3023,7 @@ class Game {
     pick.firstHide = true;
   }
 
-  forgetLessons() { this.hideTaught = false; this.tripAt = -1; this.darkAt = -1; this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; this.gooseTold = false; this.beastTold = {}; }
+  forgetLessons() { this.runJumped = false; this.hideTaught = false; this.tripAt = -1; this.darkAt = -1; this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; this.gooseTold = false; this.beastTold = {}; }
 
   mistTold(e) {
     if (this.mistSaid === undefined) this.mistSaid = 0;

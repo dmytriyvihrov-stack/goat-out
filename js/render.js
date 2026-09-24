@@ -1238,15 +1238,17 @@ class Renderer {
     // the card.
     const fk = lv.forkTile, last = lv.rooms[lv.rooms.length - 1];
     if (fk && last && last.seen && Math.abs(fk.x0 * TILE - game.cam.x) < 1400) {
-      const x = (fk.x0 - 1.5) * TILE, wide = Math.min(8, last.w - 3) * TILE, lit = LEVELS[levelIndexOf(lv.def) + 1];
+      // Mushrooms eaten on this floor make the lit flight THE TRIP, and it says so.
+      const next = levelIndexOf(lv.def) + 1, tripped = game.tripAt === next && next === game.levelIndex + 1;
+      const x = (fk.x0 - 1.5) * TILE, wide = Math.min(8, last.w - 3) * TILE, litName = tripped ? 'THE TRIP' : LEVELS[next].name;
       ctx.textAlign = 'right';
-      const size = this.fitFloorText([lit.name], wide, 22);
+      const size = this.fitFloorText([litName], wide, 22);
       ctx.fillStyle = 'rgba(255,224,138,0.22)';
-      ctx.fillText(lit.name, x, (lv.exitTile.y0 + 1.2) * TILE * TILT);
+      ctx.fillText(litName, x, (lv.exitTile.y0 + 1.2) * TILE * TILT);
       ctx.fillStyle = 'rgba(170,178,230,0.32)';
       ctx.fillText(DARK_LEVEL.name, x, (fk.y0 + 1.2) * TILE * TILT);
       ctx.font = `700 ${Math.round(size * 0.62)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(255,224,138,0.16)';
-      ctx.fillText('THE LAMPS ARE LIT', x, (lv.exitTile.y0 + 1.2) * TILE * TILT + size * 0.95);
+      ctx.fillText(tripped ? 'EVERYTHING THE OTHER WAY ROUND' : 'THE LAMPS ARE LIT', x, (lv.exitTile.y0 + 1.2) * TILE * TILT + size * 0.95);
       ctx.fillStyle = 'rgba(170,178,230,0.24)';
       ctx.fillText('FEWER OF THEM. A LAMP TO A ROOM.', x, (fk.y0 + 1.2) * TILE * TILT + size * 0.95);
       ctx.textAlign = 'center';
@@ -3102,6 +3104,7 @@ class Renderer {
     const ctx = this.ctx, s = this.ts, d = game.dev;
     d.rects = [];
     if (d.rules) { this.drawTool(game); return; }
+    if (d.hidden) return;   // served from itch without `#dev` (`Game` constructor)
     // The way in is a word in the corner, not a button. A bordered box down there reads as part of
     // the game and this is not part of the game: it is a door for whoever is building it.
     const pad = 8 * s, label = d.open ? 'close dev' : 'dev tools';

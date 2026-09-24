@@ -61,12 +61,12 @@ Copy back: the RUN CODE, off the last death card (it goes to the clipboard on th
   when the frozen build is cut, so every code in the form names it)*
 - **The run code, as it stands** (`game.js:1600-1607`, same at HEAD):
 
-  `v1.65 L2 21i3v9 D1 R6 K9 241s S3 dog G0.8 bearer/splat@14`
+  `v1.65 L2 21i3v9 D1 R6 K9 241s S3 dog G0.8 bearer/splat@14 -`
 
   | token | means |
   |---|---|
   | `v1.65` | the build |
-  | `L2` / `T3` | the floor, `T` when THE TRIP stands in its place |
+  | `L2` / `T3` / `N5` | the floor, `T` when THE TRIP stands in its place, `N` for THE DARK |
   | `21i3v9` | the run seed, base 36 |
   | `D1` | deaths in the run before this attempt |
   | `R6` | the room he was in |
@@ -76,8 +76,10 @@ Copy back: the RUN CODE, off the last death card (it goes to the clipboard on th
   | `dog` | what took the last heart (`-` on a win) |
   | `G0.8` | seconds between the last two hearts |
   | `bearer/splat@14` | this attempt's first body, its cause and its second. `splat` is a man driven hard into something: the wall, but also a sword, a blast (`enemies.js:749-751`, `entities.js:1792,1853`) |
+  | `-` / `EJ` | how it was played: `E` easy mode, `X` god mode on, `J` started off LEVELS; `-` a plain run. A code ending in anything but `-` is not a playtest number |
 
-  `game.replayCode('<code>')` from the console stands on the same floor, same layout.
+  `game.replayCode('<code>')` from the console stands on the same floor, same layout (THE DARK too). Leaving
+  the clear card's picture copies its code as well.
 
 - **What the code does not carry** (probe D, verified in node on both HEAD and the working tree):
   - **THE DARK.** A death there gives the same code as the lit floor it replaces, and the replay builds

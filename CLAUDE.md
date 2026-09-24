@@ -791,10 +791,11 @@ never hidden. Sight: `World.computeVis` shadowcast (`castVis`, `VIS_OCTANTS`, `f
 `world.vis` → `Renderer.drawShade` (`fog.res`, `fog.shade`), last in world space; blocked by stone +
 `world.visBlock`. Only the renderer reads `vis`. THE ORACLE: `fog.oracle`.
 
-**Run code.** `game.runCode(by)`: build, level (T = trip), run seed, `seedDeaths` (the count the
+**Run code.** `game.runCode(by)`: build, level (T = trip, N = THE DARK), run seed, `seedDeaths` (the count the
 level's seed was cut with), room, kills, time, souls, killer, `G` gap between the last two hearts
-(`heartLog`), first body (`firstKill`). On the death, clear and win cards (`card.code`); leaving a death or
-win card copies it (`copyCode`). `game.replayCode(code)` rebuilds the floor. Burst vs bleed deaths are
+(`heartLog`), first body (`firstKill`), and last a flags token (`E` easy, `X` god, `J` a LEVELS start —
+`game.runJumped` — or `-`). On the death, clear and win cards (`card.code`); leaving a death card, the
+win card or the clear card's picture copies it (`copyCode`). `game.replayCode(code)` rebuilds the floor. Burst vs bleed deaths are
 counted per browser under `DEATH_KEY` (`TUNING.dev.burstGap`) and shown in the dev drawer.
 
 **Death and restart.** `restartLevel` only from `play` / `paused` / `dead`, and counts as a death. It
