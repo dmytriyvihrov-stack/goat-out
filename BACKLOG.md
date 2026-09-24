@@ -30,18 +30,18 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   three cards), code outside the asset packs grew 22%, and barrels were built twice (1.56 cloud, 1.61).
   One line at the top of `CLAUDE.md` would hold it: until triage, only **bug** / **feel** / **number** on
   floors 1–3.
-- **bug — the dev corner is live in the build testers get.** Drawn on every screen (`render.js:229`,
+- ~~**bug — the dev corner is live in the build testers get.**~~ *Shipped 24 Sep, evening (the polish pass): Hidden on an itch host (itch.io, itch.zone, hwcdn.net) unless the page is opened with `#dev`; everywhere else as before. A code also says `X` for god mode.* Drawn on every screen (`render.js:229`,
   `:3048`), one click from GOD, SPAWN and skip level; `#rules`, `#seed=`, `#trip`, `#dark` work too
   (`game.js:117-131`). A god-mode or easy-mode run code is identical to a normal one, so one curious tester
   skews all three numbers without a trace. Show the corner only when served locally or with `#dev`.
-- **tool — the run code cannot tell THE DARK, easy, god or a LEVELS start, and the clear card never copies
-  it.** A dark floor's code equals the lit one's and `replayCode` rebuilds the lit floor. Copy happens only
+- ~~**tool — the run code cannot tell THE DARK, easy, god or a LEVELS start, and the clear card never copies
+  it.**~~ *Shipped 24 Sep, evening (the polish pass): `N` for THE DARK (and `replayCode` rebuilds it), a last token `E`/`X`/`J`/`-`, and leaving the picture card copies its code.* A dark floor's code equals the lit one's and `replayCode` rebuilds the lit floor. Copy happens only
   at `game.js:1876` / `:1888`. Proposed: `N` for THE DARK through `replayCode`, one flags token
   (`E`/`J`/`X`/`-`), a copy on leaving the clear card. About ten lines in `game.js`.
 - **number — what the first evening deals.** A mushroom tuft lies on THE YARD in 13 of 25 seeds and
   `shroom.from` is 1 (`tuning.js:1084`), so THE TRIP can take a new player's third floor, inside the thirty
   minutes the plan polishes. Proposed for the playtest build: THE TRIP off floors 2–3, kept in LEVELS.
-- **bug — README describes a different game, and testers will read it.** "Six levels" (:4; there are 8),
+- ~~**bug — README describes a different game, and testers will read it.**~~ *Shipped 24 Sep, evening (the polish pass): README rewritten with every number read off the code; the page title is DOOMED GOAT.* "Six levels" (:4; there are 8),
   a pen of "three headbutts" (:109; 7), "one [soul] on the first" (:136; 2), "Boons ... die with you"
   (:138; a death takes that floor's only), one hound on THE ALTAR (:77; 0 in 200 seeds), "two milk bowls"
   (:156; 3–5 tufts of grass), a shield worth three (:149; 2), the Butcher at three hits (:126; 4), the seed
@@ -53,7 +53,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   `game.js:1608`), the RUN CODE line readable at 960×540, the picture saves. Every floor, THE TRIP and THE
   DARK through LEVELS; one weak laptop for the new `foley.js`; a phone only if phones are invited (the
   vanishing phone buttons were never checked on one). *Lead: needs a browser.*
-- **tool — an itch zip that holds only the game.** `index.html` + `js/` is 30 files, about 6.2 MiB (≈4 MB
+- ~~**tool — an itch zip that holds only the game.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/itch-zip.js`: `index.html` and exactly its scripts, from a clean commit, listed back CRC-checked (3.1 MB zipped after the atlases were recompressed).* `index.html` + `js/` is 30 files, about 6.2 MiB (≈4 MB
   zipped). Zipping the folder instead is 517 files and 207 MB, 175 MB of it the gitignored `tools/shots/`.
   A script that zips the two and lists the zip back.
 
@@ -72,27 +72,27 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   OSSUARY's threat over power by 4.6%, because the cap stops soaking up the extras; with THE RAFTERS and
   THE OSSUARY cut to one authored soul each as well, the late floors stay flat within noise and the souls
   that open no card fall from 4.4 to 0.5 a run (measured).
-- **bug — `sluice` is never dealt, and the top of every canon is starved.** `draw` (`gen.js:256`) only
+- ~~**bug — `sluice` is never dealt, and the top of every canon is starved.**~~ *Shipped 24 Sep, evening (the polish pass): `draw` ranks a room among the rooms of its own pool, with a window that covers a pool larger than its draws: every template of every canon 40–150 times in 200 seeds.* `draw` (`gen.js:256`) only
   reaches a canon's most open room on the last room, which is always an arena: `sluice` (`rooms.js:717`)
   0 times in 200 seeds, windowrow 12, vise 17, gallery2 18, flanks 22, against 100–500 for their
   neighbours. The same at HEAD.
 - **bug — an escort on the last floor pays nothing, and the crow's card says it will.** THE OSSUARY has a
   coop on 200 of 200 seeds; the run ends in the win before the gift is placed, while the card says "IT WILL
   BE ON THE NEXT STAIRS, FREE" (`tuning.js:2214`). No coop on the last floor, or pay it on the win card.
-- **bug — THE BRIDGE's hint still thinks it is the last floor.** "EVERYTHING THEY HAVE LEFT IS HERE"
+- ~~**bug — THE BRIDGE's hint still thinks it is the last floor.**~~ *Shipped 24 Sep, evening (the polish pass): MORE OF THEM THAN EVER. MEET THEM IN THE DOORWAY.* "EVERYTHING THEY HAVE LEFT IS HERE"
   (`tuning.js:2144`) is from 0.8, when it was fourth of four. It is sixth of eight now.
-- **bug — BELLWETHER'S BELL III says MILK for a thing the player sees as grass.** `tuning.js:1754`; the
+- ~~**bug — BELLWETHER'S BELL III says MILK for a thing the player sees as grass.**~~ *Shipped 24 Sep, evening (the polish pass): GRASS, and the FIXTURES label too.* `tuning.js:1754`; the
   disguise is a `heal` prop drawn as a sprout since 1.38, and FOUR STOMACHS already calls it GRASS. The
   FIXTURES label `MILK BOWL` (`render.js:4092`) wants the same word.
 - **system — THE ROAD and THE BRIDGE deal no mix room at all.** Mix rooms per floor over 80 seeds: 1, 2,
   3, 0, 1, 0, 2, 1, and THE OSSUARY's one never uses THE HOLLOW, OPEN GROUND or THE FUNNEL, while
   `CONCEPT.md:165-167` promises the back half is "everything it has taught you, shuffled". Question below.
-- **bug — eat the mushrooms on THE ROAD, then take the dark stairs, and the trip wins.** `game.js:1124`.
+- ~~**bug — eat the mushrooms on THE ROAD, then take the dark stairs, and the trip wins.**~~ *Shipped 24 Sep, evening (the polish pass): The flight climbed wins; the lit flight's floor says THE TRIP when that is where it goes.* `game.js:1124`.
   *Lead: static only.*
 
 ### Balance
 
-- **tool — `balance.js`'s power column counts souls the game does not deal.** Two a floor forever
+- ~~**tool — `balance.js`'s power column counts souls the game does not deal.**~~ *Shipped 24 Sep, evening (the polish pass): It counts the floor's souls, the mouse's talisman and the two surprises at their odds, up to the fourteen a build holds; within 2% is "flat". Only THE THRESHING FLOOR still falls.* Two a floor forever
   (`tools/balance.js:152-160`): no mouse, no chance souls, no 14-card cap. Rebuilt from the real deal (40
   runs, two pick seeds, noise under 2%), power at each level's head is 4.0 / 6.94 / 8.92 / 11.74 / 13.31 /
   15.75 / 16.92 / 17.85, and THE RAFTERS and THE OSSUARY stop being "easier than the last": they rise.
@@ -101,11 +101,11 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   (−0.2% to −6%), and its `cap: { men: 8 }` starves 43% of its rooms. Proposed `cap: { men: 9, dog: 3 }`
   (`tuning.js:2112`): threat 109.1 → 113.0, +3.3% over THE ROAD, every rule holds (measured). The same
   direction as the 23 Sep "eighth man", and likely the "overpowered by level five" note.
-- **number — the score lets bodies beat pace.** `killCap` 2.5 is above `fastCap` 2 (`tuning.js:1204`), so
+- ~~**number — the score lets bodies beat pace.**~~ *Shipped 24 Sep, evening (the polish pass): `killMul` 0.02, `killCap` 1.5, as proposed.* `killCap` 2.5 is above `fastCap` 2 (`tuning.js:1204`), so
   at par a run of 25+ kills outscores the fastest run with none (2500 against 2000), against
   `CONCEPT.md:377-379`. Proposed `killMul 0.02, killCap 1.5`: a clear at par scores 1500, under the fastest
   pacifist's 2000. Measured on the real `scoreFor`.
-- **system — saved geese make the scream a permanent lock.** `beasts.js:484` multiplies the cooldown by 0.8
+- ~~**system — saved geese make the scream a permanent lock.**~~ *Shipped 24 Sep, evening (the polish pass): `TUNING.goat.scream.minCooldown` 2, applied after the geese in `applyBoons`.* `beasts.js:484` multiplies the cooldown by 0.8
   a goose with no floor: 0.82 s with four geese, under the 0.99 s daze. FULL THROAT + RAW THROAT + four
   geese: three men all dazed 98% of the time, no heart lost, against four hearts and eight of eight dead
   with no voice (8 seeds). Proposed `TUNING.goat.scream.minCooldown: 2`, applied after the geese: dazed
@@ -126,26 +126,26 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 
 ### Docs that teach the wrong game
 
-- **bug — CONCEPT's level table and souls section describe an older build.** "Seven levels" (8); six of
+- ~~**bug — CONCEPT's level table and souls section describe an older build.**~~ *Shipped 24 Sep, evening (the polish pass): CONCEPT read off the code by hand, and `tools/doc-numbers.js` now holds its numbers (and README's and CLAUDE's) against the code.* "Seven levels" (8); six of
   eight room counts wrong (:179-186); THE CAVE listed last with rifles and an elite Seer (it is third, no
   hunters, a Butcher and a brute); "thirteen across a run against sixteen boons" (:325; 25 boons);
   TUCK AND ROLL (:339, cut); "the soul gate, on level one only" (two gates on every floor); killbox on
   "four" levels (5); doors "three blows" (planks 1, iron 3); spikes "from the third level" (fourth);
   bearer windup 0.58 s (0.46); hunter aim 0.8 s (0.88); "pixel art proper" still under not built (:412).
   Generate the table from `LEVELS`, the way `juice-md.js` writes `JUICE.md`.
-- **bug — `CLAUDE.md` teaches the dropped souls design and the old painted pack.** Its open questions
+- ~~**bug — `CLAUDE.md` teaches the dropped souls design and the old painted pack.**~~ *Shipped 24 Sep, evening (the polish pass): The open question is now the boon souls' count; the painted pack is described as the `#paintedprops` fallback.* Its open questions
   still carry the souls resource as unsettled and suggest a soul door that opens for souls; the question
   that is actually open ("whether the existing soul count should drop further") is not there. The file map
   says `painted-assets.js` holds props with "no pixel sprite yet", which its own open question contradicts.
-- **bug — this file's 1.40 shop item still says she sells for souls of the killed.** 1.41 took the prices
+- ~~**bug — this file's 1.40 shop item still says she sells for souls of the killed.**~~ *Shipped 24 Sep, evening (the polish pass): A note under that heading says 1.41 took the prices out.* 1.41 took the prices
   out ("No more prices in the dead"). Also: the grass passive and the pounce are "Not built" in the
   23 Sep answers (above) but shipped in 1.61, and LEAPFROG shipped as an **active** where the answer asked
   for upgrades to passives (question below).
-- **tool — `ART_TODO_GPT.md` would waste an image-generation round.** It is the state at 1.53: every sheet
+- ~~**tool — `ART_TODO_GPT.md` would waste an image-generation round.**~~ *Shipped 24 Sep, evening (the polish pass): A DONE header; kept as the brief format. `ART_HANDOFF.md` says 1.58.* It is the state at 1.53: every sheet
   in it shipped as pixels in 1.63–1.64, it calls the deleted `js/combat-assets.js` "уже в игре", and two
   briefs contradict the 1.63 designs. A DONE header, keeping it as the brief template; the one live line is
   wiring the ominous decals. `ART_HANDOFF.md:22` says 1.56 for 1.58.
-- **tool — a numbers check for the docs, the way `balance.js` checks the generator.** A throwaway regex
+- ~~**tool — a numbers check for the docs, the way `balance.js` checks the generator.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/doc-numbers.js`, 57 claims, exits 1 on a wrong one. The three hand-typed sizes in `js/juice.js` are still open.* A throwaway regex
   runner (doc sentence → the `TUNING` / `LEVELS` value it names) found 28 conflicts in 82 numbers, some
   unnoticed for eight releases, and code comments too ("a third heart" over `hp: 4`, `tuning.js:412`; "a
   shield is three" against 2). As `tools/doc-numbers.js`, exiting non-zero. `js/juice.js` also carries
@@ -158,7 +158,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   gate (`painted-art.js:206`) and the source of two aspect ratios, so: gate on `PIXEL_ENV.ready`, write in
   the altar's 237/384 and the gong's 190/192, then drop it from both script lists and pass `null` in the
   files map. Answers the open question in `CLAUDE.md`.
-- **tool — harden alpha and recompress in both packers: 1.15 MB.** `pack-pixel.ps1` leaves about 48% of
+- ~~**tool — harden alpha and recompress in both packers: 1.15 MB.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/png-harden.js`, the packers' last step; checked pixel for pixel in the browser.* `pack-pixel.ps1` leaves about 48% of
   the atlas at alpha 250–254, which `PIXEL_ART.init` snaps to 0/255 on every load anyway. Re-encoded:
   2,799,768 → 1,820,692 bytes, and the environment atlas 546,084 → 373,640. Never a lossy palette:
   `hornsOf` reads exact colours (`pixel-art.js:119`).
@@ -168,7 +168,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 - **tool — the dead combat-art pipeline.** `tools/pack-combat-art.cjs` writes `js/combat-assets.js`,
   deleted in `12f00b1`; running it would make a 1.6 MB script no page loads that the publish rule would
   ship. Its source `assets/combat-fx/effects.png` (1.2 MB) has no loader. Delete both, trim the README.
-- **tool — `audio-check.js` never loads `foley.js`.** It passes while all 47 foley calls go unexercised.
+- ~~**tool — `audio-check.js` never loads `foley.js`.**~~ *Shipped 24 Sep, evening (the polish pass): It renders every recipe and checks every name `audio.js` asks for.* It passes while all 47 foley calls go unexercised.
   A scratch probe rendered all 43 recipes in node (no throws, no NaN, none silent) and checked every name
   `audio.js` asks for: fold it in.
 
@@ -691,6 +691,9 @@ collected is invisible. Order: the generation batch first, this second, blind pl
 both. `balance.js` measures none of the crossings; they are tested by hand, one at a time.
 
 ### system — the shop: a mouse, a rat ogre, souls of the killed, a talisman — *shipped in 1.40, 18 Sep 2026*
+
+> 1.41 took the prices out ("No more prices in the dead"): she gives, one choice of three, and takes
+> nothing. What follows is the 1.40 design as it was asked for, kept for the record.
 
 Built as parked below, with these decisions made on the way: one mouse a level from THE YARD, in
 the middle stretch; two wares, the second a tier cheaper; three strikes (two lines, then the ogre)
