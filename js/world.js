@@ -10,14 +10,13 @@ const VIS_OCTANTS = [
 
 // Blocky cult pictograms, drawn cell by cell so they read as stamped pixel art. The cult is a
 // butcher's cult, and its marks are the tools and the cuts: the skull of the last goat (the sign
-// under the pen), the cleaver, the hook (beside the altar and on the title), the rack of ribs, a
-// carcass hung by its hind legs, the crossed bones.
+// under the pen), the cleaver, the hook (beside the altar and on the title), the rack of ribs, the
+// crossed bones. All of them in blood.
 const CULT_GLYPHS = [
   ['##.......##', '.##.....##.', '..#######..', '.#########.', '.##..#..##.', '.##..#..##.', '..#######..', '...#####...', '...#.#.#...', '....###....', '.....#.....'],
-  ['...........', '...........', '#######....', '#.#########', '#######.###', '#######....', '#######....', '#######....', '.######....', '...........', '...........'],
+  ['...........', '#######....', '#.#########', '#######.###', '#######....', '#######....', '#######....', '#######....', '.######....', '..#####....', '...........'],
   ['....###....', '....#.#....', '....###....', '.....#.....', '.....#.....', '.....#.....', '.#...#.....', '.#...#.....', '.##.##.....', '..###......', '...........'],
   ['.....#.....', '.###.#.###.', '#....#....#', '.###.#.###.', '#....#....#', '.###.#.###.', '#....#....#', '..##.#.##..', '.....#.....', '....###....', '.....#.....'],
-  ['#.........#', '##.......##', '.##.....##.', '..#######..', '..#######..', '...#####...', '...#####...', '..#.###.#..', '.#..###..#.', '....#.#....', '...#...#...'],
   ['##.......##', '###.....###', '.##.....##.', '..##...##..', '...##.##...', '....###....', '...##.##...', '..##...##..', '.##.....##.', '###.....###', '##.......##'],
 ];
 
@@ -87,7 +86,7 @@ class World {
         const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
         if (this.tileAt(tx, ty) === T.WALL) continue;
         this.pixelGlyph((tx + 0.5) * TILE, (ty + 0.5) * TILE, rng.float(2.4, 4.6) * TILE,
-          CULT_GLYPHS[rng.int(0, CULT_GLYPHS.length - 1)], rng.float(0.07, 0.15), PALETTE.ochre);
+          CULT_GLYPHS[rng.int(0, CULT_GLYPHS.length - 1)], rng.float(0.1, 0.2), PALETTE.blood);
       }
       if (rng.chance(0.5)) {
         const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
@@ -144,11 +143,11 @@ class World {
     if (levelIndexOf(level.def) === 0) {
       // Static objects keep full world-pixel detail; blood still lands on the normal decal layer.
       this.ritualArt = new AltarArt().makeRitual(level);
-      this.pixelGlyph(sx, sy, 8.5 * TILE, CULT_GLYPHS[0], 0.09, PALETTE.altar.glyph);
+      this.pixelGlyph(sx, sy, 8.5 * TILE, CULT_GLYPHS[0], 0.12, PALETTE.blood);
       return;
     }
     const ax = sx - 4 * TILE, ay = sy - 0.2 * TILE;      // the altar, beside you, still waiting
-    this.pixelGlyph(sx, sy, 8.5 * TILE, CULT_GLYPHS[0], 0.2, PALETTE.ochre);
+    this.pixelGlyph(sx, sy, 8.5 * TILE, CULT_GLYPHS[0], 0.2, PALETTE.blood);
     this.pixelGlyph(ax, ay, 4.6 * TILE, CULT_GLYPHS[2], 0.13, PALETTE.blood);
 
     // the floor of the pen: trodden dirt and old straw

@@ -16,6 +16,10 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   once per level colour. Up a flight the treads pale toward the light at the top (the warm pulse is
   kept); THE FORK's cold flight goes into black with a cold rim on every nosing and no pulse; the way
   down darkens as before. Both are `js/prop-pixels.js` wraps of `Renderer.drawSpire` / `drawStairs`.
+- **The cult's signs are in blood** ("пиктограммы красные только"). Every floor pictogram, the sign
+  under the pen and the hook on the title are `PALETTE.blood` now (a touch stronger on the floor,
+  0.1–0.2, since red is darker than the ochre was). The hung carcass is gone ("не надо"); five signs:
+  skull, cleaver (its blade a little taller), hook, ribs, crossed bones.
 
 ---
 

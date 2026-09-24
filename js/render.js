@@ -6221,7 +6221,7 @@ class Renderer {
     ctx.globalAlpha = 0.86 + 0.14 * Math.sin(this.t * 1.7) * Math.sin(this.t * 0.9 + 1.3);
     ctx.fillStyle = this.titleGlow; ctx.fillRect(0, 0, w, h);
     ctx.globalAlpha = 1;
-    this.glyphStamp(cx, h * 0.46, Math.min(w, h) * 0.56, CULT_GLYPHS[2], 0.04, PALETTE.ochre);
+    this.glyphStamp(cx, h * 0.46, Math.min(w, h) * 0.56, CULT_GLYPHS[2], 0.05, PALETTE.blood);
     this.titleEmbers(step);
     ctx.fillStyle = this.titleVig; ctx.fillRect(0, 0, w, h);
 
