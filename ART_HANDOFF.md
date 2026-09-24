@@ -19,7 +19,7 @@ what it is before starting a fresh pass.
 Anything with none of the three falls through to the canvas primitives in `js/render.js`
 (`Renderer.drawProp` and friends). Combat effects — flame loops, blasts, smoke, blood — are `js/combat-fx.js`,
 baked procedurally at start into pixel frames on the units' grain (`TUNING.effects.pixel`, `.flame`, `.blast`).
-The painted sheet they used to be drawn from (`assets/combat-fx/effects.png`) was retired in 1.56: a smoothed
+The painted sheet they used to be drawn from (`assets/combat-fx/effects.png`) was retired in 1.58: a smoothed
 painting read as a different game next to Pixel 2.5.
 
 `PaintedArt` is still the class every character goes through (`PaintedArt.character`): it owns the
