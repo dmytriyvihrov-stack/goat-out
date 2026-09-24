@@ -1247,7 +1247,11 @@ const TUNING = {
   // other, and a bleed when they went further apart: the dev drawer counts both, and the run code
   // carries the gap, to say whether `goat.invuln` or the heart count is the lever (BACKLOG, 16 Sep).
   dev: { burstGap: 1.5 },
-  score: { perRoom: 9, timePoints: 1000, fastCap: 2, killMul: 0.06, killCap: 2.5 },
+  // `killCap` stays under `fastCap`, or bodies beat pace: at 2.5 a clear at par with 25 kills scored
+  // 2500 against the fastest run with none at 2000, the one ordering this score exists to prevent.
+  // Now a clear at par with every body in it scores 1500, the fastest pacifist 2000, and the fastest
+  // run with bodies in it 3000 — which is the best run the concept asks for.
+  score: { perRoom: 9, timePoints: 1000, fastCap: 2, killMul: 0.02, killCap: 1.5 },
   held: { bulletsAbsorbed: 2 },
   // A corrupted soul: what a boss leaves, and what the goat swallows to get stronger. It was a tome,
   // which asked the player to believe that a goat reads.
