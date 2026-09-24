@@ -988,7 +988,7 @@ class Game {
         }
         // Not off the clear card or the climb: the run is only saved at the head of the next level,
         // so leaving there went back to the head of the one just won.
-        else if (this.state !== 'title' && this.state !== 'clear' && this.state !== 'climb') this.showTitle();
+        else if (this.state !== 'title' && this.state !== 'clear' && this.state !== 'climb') this.quitToTitle();
       }
       if (e.code === 'KeyM') this.audio.toggleMute();
       if (e.code === 'KeyN' && this.state === 'play' && this.dev.open) this.levelCleared();
@@ -1014,6 +1014,9 @@ class Game {
       wake(); e.preventDefault();
       try { c.setPointerCapture(e.pointerId); } catch (err) { /* not fatal */ }
       const p = this.canvasPos(e);
+      // Every mouse press is counted, whatever screen it lands on: the click on RESUME came back as
+      // a fresh left button on the next move in play, and headbutted.
+      if (isMouse(e)) this.mouseButtons = e.buttons;
       if (this.hitDev(p)) return;
       if (this.state === 'clear') this.input.mouse = p;   // a finger on SAVE is where the press was, too
       if (this.state === 'title') {
@@ -1130,7 +1133,13 @@ class Game {
   // `withIntro` plays the opening scene in the pen instead of the level card. Only a run started
   // from the title gets it; a death drops you straight back in.
   startLevel(index, seed, keepBoons, withIntro) {
-    if (!keepBoons) { this.boons = []; this.lastBoonActive = false; this.artifact = null; this.talRun = null; this.applyBoons(); }
+    if (!keepBoons) { this.boons = []; this.lastBoonActive = false; this.artifact = null; this.talRun = null; }
+    // The build is applied before the floor is generated, because what he carries reaches it (the
+    // clover's luck, the tortoise's shield uses): on a CONTINUE after a reload `mods` was still the
+    // bare goat's, and a restart after a swap at the mouse was built with the swapped talisman's luck.
+    this.applyBoons();
+    // The crow's gift is spent on this floor's stairs below; a death on this floor puts it back.
+    this.levelCrowGift = !!this.crowGift;
     this.levelIndex = index;
     // The level he ate the mushrooms before is played as THE TRIP, in the place of this one.
     if (this.tripAt === undefined) this.tripAt = -1;
@@ -1186,8 +1195,6 @@ class Game {
     // Every shield on the floor carries the tortoises the run has walked out (js/beasts.js). It is
     // done here rather than in `Prop`'s constructor because a prop has no game to ask.
     if (this.mods.shieldUses) for (const p of this.props) if (p.kind === 'weapon' && p.weapon === 'shield') p.uses += this.mods.shieldUses;
-    // And what the crow found on the last floor is standing on this one's stairs.
-    Beast.placeGift(this);
     this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike' || p.kind === 'spire' || p.kind === 'barrel');
     this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill' || p.kind === 'secret');
     // A niche is rock until its wall gives. It was floor from the first frame, lying one row outside
@@ -1217,6 +1224,7 @@ class Game {
     // What he walked in with. A death rolls him back to exactly this list — and to the talisman he
     // walked in wearing: one taken inside the level goes back on the shelf with the level.
     this.levelBoons = this.boons.slice(); this.levelArtifact = this.artifact;
+    this.levelTalRun = this.talRun ? Object.assign({}, this.talRun) : null;   // the tallow, the cup, the tally
     this.boom = { fly: null };
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
     this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null;
@@ -1236,6 +1244,9 @@ class Game {
     this.audio.intensity = 0; this.audio.hunterAware = false;
     this.world.computeFlow(this.goat.x, this.goat.y);
     this.world.computeVis(this.goat.x, this.goat.y, TUNING.fog.radius, this.mods.oracle ? TUNING.fog.oracle : 0);
+    // And what the crow found on the last floor is standing on this one's stairs. After the flow
+    // field: `freeSpot` asks it, and asked before it existed it put the gift on the goat every time.
+    Beast.placeGift(this);
     // The level's souls, handed out before a blow is struck. `def.souls` is the whole count (see the
     // note over `LEVELS`) and it is spent in this order: the two gates first — each a rest room with
     // its soul lying in the middle of the floor; the mouse's gate takes none — then the vault, then
@@ -1312,6 +1323,7 @@ class Game {
     // without this Backspace brought back the very layout you had just walked through.
     if (this.state !== 'dead') this.deaths++;
     this.boons = (this.levelBoons || []).slice(); this.artifact = this.levelArtifact || null;
+    this.crowGift = !!this.levelCrowGift; this.talRun = this.levelTalRun ? Object.assign({}, this.levelTalRun) : null;
     // Mushrooms eaten on a level you then died on go back on the floor with everything else in it.
     this.tripAt = this.levelTripAt === undefined ? -1 : this.levelTripAt;
     // `deaths` has already gone up by the time this runs, and it is in the mix, so the level comes
@@ -1325,6 +1337,11 @@ class Game {
   showTitle() {
     this.state = 'title'; this.card = null; this.level = null; this.world = null; this.goat = null;
     this.guide = null;
+    // Escape out of the opening scene lands here with the scene still set: its overlay then drew
+    // stars round a goat that no longer exists, threw every frame, and the title never drew (nor
+    // came back up out of the scene's duck).
+    if (this.intro) this.audio.duck(1, 0.3);
+    this.intro = null; this.stairFx = null;
     this.enemies = []; this.props = []; this.bullets = []; this.souls = []; this.sightBlockers = []; this.niches = []; this.fallers = []; this.globs = [];
     this.save = this.loadRun();
     this.best = this.loadBest();
@@ -1435,6 +1452,13 @@ class Game {
     if (id === 'resume') { this.state = 'play'; this.audio.sfxSwing(); return; }
     if (id === 'settings') { this.menu.panel = 'settings'; this.menu.sub = 0; this.audio.sfxCard(); return; }
     // QUIT TO TITLE is the old Escape behaviour: abandon the room rather than resume it.
+    this.quitToTitle();
+  }
+  // Leaving a floor half played is a restart he chose, the way Backspace is, and it counts as a
+  // death: CONTINUE then deals him another layout and never the one he just walked through with a
+  // heart left (ground rule 6). The level card and the opening scene are not half played.
+  quitToTitle() {
+    if (this.level && (this.state === 'play' || this.state === 'paused' || this.state === 'boon')) { this.deaths++; this.saveRun(); }
     this.showTitle();
   }
   // Shared by the title menu and the pause overlay's own settings panel: a slider takes the click
@@ -1467,7 +1491,8 @@ class Game {
   startAtLevel(li, trip, dark) {
     // THE DARK (the row, or `#dark` on any row) is started at its own place in the run.
     if (dark || this.askedDark) { li = DARK_LEVEL.darkOf; trip = false; }
-    this.clearRun();
+    // Not `clearRun`: the run waiting under CONTINUE is still there when he comes back from practice.
+    this.artifact = null; this.levelArtifact = null; this.talRun = null;
     this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0;
     this.beasts = {}; this.crowGift = false;
     this.forgetLessons();
@@ -1492,6 +1517,9 @@ class Game {
   // CONTINUE is the head of the furthest level the run reached, with the souls it was carrying there.
   resumeRun() {
     const s = this.save; if (!s) return;
+    // A real run, whatever LEVELS practice came before it in this page (a jumped run never saves),
+    // and none of another run's talisman state: the tallow and the cup are not in the save.
+    this.runJumped = false; this.talRun = null;
     this.boons = (s.boons || []).map((id) => BOONS.find((b) => b.id === id)).filter(Boolean);
     this.totalKills = s.totalKills || 0; this.deaths = s.deaths || 0; this.totalScore = s.score || 0;
     this.henHearts = s.henHearts || 0;
@@ -1503,7 +1531,6 @@ class Game {
     this.runSeed = s.runSeed || ((Math.random() * 1e9) | 0);
     this.tripAt = s.tripAt === undefined ? -1 : s.tripAt;
     this.darkAt = s.darkAt === undefined ? -1 : s.darkAt;
-    this.runJumped = !!s.jumped;
     const li = clamp(s.level | 0, 0, LEVELS.length - 1);
     this.startLevel(li, this.levelSeed(li), true);
   }
@@ -1548,11 +1575,19 @@ class Game {
     } catch (err) { return null; }
   }
   saveRun() {
-    this.save = { v: 1, level: this.levelIndex, boons: this.boons.map((b) => b.id), totalKills: this.totalKills,
-      deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, henHearts: this.henHearts || 0, tripAt: this.tripAt === undefined ? -1 : this.tripAt,
-      darkAt: this.darkAt === undefined ? -1 : this.darkAt, jumped: !!this.runJumped,
-      beasts: this.beasts || {}, crowGift: !!this.crowGift,
-      artifact: this.artifact ? { id: this.artifact.id, tier: this.artifact.tier } : null, at: Date.now() };
+    // A run started off LEVELS is practice on one floor: it never touches the run under CONTINUE.
+    if (this.runJumped) return;
+    // CONTINUE comes back to the head of the floor, so the head is what is written, whenever the run
+    // is written: a soul, a talisman or a tuft of mushrooms taken on this floor lies on it again when
+    // the floor is rebuilt off the same seed, and writing them too let one soul be taken over and
+    // over through the title. `deaths` is the live count (a death is saved the moment it happens).
+    const boons = this.levelBoons || this.boons, art = this.levelArtifact === undefined ? this.artifact : this.levelArtifact;
+    const trip = this.levelTripAt === undefined ? this.tripAt : this.levelTripAt;
+    this.save = { v: 1, level: this.levelIndex, boons: boons.map((b) => b.id), totalKills: this.totalKills,
+      deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, henHearts: this.henHearts || 0, tripAt: trip === undefined ? -1 : trip,
+      darkAt: this.darkAt === undefined ? -1 : this.darkAt,
+      beasts: this.beasts || {}, crowGift: this.levelCrowGift === undefined ? !!this.crowGift : !!this.levelCrowGift,
+      artifact: art ? { id: art.id, tier: art.tier } : null, at: Date.now() };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (err) { /* private mode: the run dies with the tab */ }
   }
   clearRun() {
@@ -1571,6 +1606,9 @@ class Game {
       try { localStorage.setItem(DEATH_KEY, JSON.stringify(st)); } catch (e) {}
     }
     this.deaths++; this.state = 'dead'; this.slowTimer = 1.4;
+    // Written now, not at the next floor's head: a death quit to the title from its own card left the
+    // old count in the save, and CONTINUE rebuilt the very layout he had just died in.
+    this.saveRun();
     // The pull-back owns the wait now: input stays locked for the whole of it, so the level behind
     // the card is what is on screen when TRY AGAIN finally means something.
     this.stateTimer = DC.delay + DC.zoomTime;
@@ -1661,7 +1699,10 @@ class Game {
     const score = this.scoreFor(this.kills, this.timer, this.levelIndex, this.level.def);
     this.totalScore += score;
     // THE DARK keeps its own best, beside the floor whose place it takes (LEVELS reads `dark`).
-    const best = this.noteBest(this.level.def.dark ? 'dark' : this.levelIndex, score, this.timer);
+    // Not a LEVELS run (practice, souls dealt at random: "nothing about it touches the board") and
+    // not THE TRIP, which is an easier floor standing in this one's place and wrote this one's record.
+    const def = this.level.def, key = def.shroom ? null : def.dark ? 'dark' : this.levelIndex;
+    const best = key === null || this.runJumped ? false : this.noteBest(key, score, this.timer);
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxCard();
     this.audio.startMusicCue('clear', this.levelIndex);
     this.cardQueue = [
@@ -1700,8 +1741,8 @@ class Game {
     }
     if (this.levelIndex + 1 < LEVELS.length) this.startLevel(this.levelIndex + 1, this.levelSeed(this.levelIndex + 1), true);
     else {
-      this.state = 'win'; this.clearRun();
-      const runBest = this.noteRunBest(this.totalScore);
+      this.state = 'win'; if (!this.runJumped) this.clearRun();
+      const runBest = !this.runJumped && this.noteRunBest(this.totalScore);
       this.lastCode = this.runCode(null);
       this.card = { code: this.lastCode, lines: ['THE GOAT ESCAPED.', `SCORE ${this.totalScore}`,
         `${this.totalKills} sacrificed · ${this.deaths} death${this.deaths === 1 ? '' : 's'}`,
@@ -1919,7 +1960,9 @@ class Game {
     if (this.state === 'win') { if (this.input.lmbPressed) { this.copyCode(); this.forgetLessons(); this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.beasts = {}; this.crowGift = false; this.runSeed = (Math.random() * 1e9) | 0; this.startLevel(0, this.levelSeed(0), false, true); } this.clearEdges(); return; }
     if (this.state !== 'play') { this.clearEdges(); return; }
 
-    if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; this.clearEdges(); return; }
+    // The edges are kept through the freeze, not cleared: a headbutt or a roll pressed in the beat a
+    // kill holds the frame is what `goat.buffer` exists for, and clearing them here threw it away.
+    if (this.hitstopTimer > 0) { this.hitstopTimer -= dt; return; }
     this.timer += dt;
     const w = this.world;
     w.flowTimer -= dt;

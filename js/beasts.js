@@ -552,7 +552,9 @@ const Beast = {
   saved(game) {
     const g = game.goat, out = [];
     for (const p of game.props) {
-      if (p.broken || !Beast.is(p.kind)) continue;
+      // The bird that brought the crow's gift came with the gift, not with the goat: banked, it paid
+      // another tier III talisman on every floor after for the rest of the run.
+      if (p.broken || p.gift || !Beast.is(p.kind)) continue;
       const C = TUNING.prop[p.kind];
       if (p.held || Math.hypot(p.x - g.x, p.y - g.y) <= C.saveR * TILE) out.push(p.kind);
     }

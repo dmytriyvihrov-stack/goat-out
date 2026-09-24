@@ -803,12 +803,19 @@ win card or the clear card's picture copies it (`copyCode`). `game.replayCode(co
 counted per browser under `DEATH_KEY` (`TUNING.dev.burstGap`) and shown in the dev drawer.
 
 **Death and restart.** `restartLevel` only from `play` / `paused` / `dead`, and counts as a death. It
-restores **exactly** `game.levelBoons` (`keepBoons`); only in-level souls are lost. `forgetLessons` resets
+restores **exactly** `game.levelBoons` (`keepBoons`), `levelArtifact`, `levelTalRun` (the tallow, the
+cup, the tally) and `levelCrowGift`; only in-level souls are lost. `quitToTitle` from a floor under way
+(`play`, `paused`, `boon`) is a death too (rule 6: CONTINUE never replays a layout). `forgetLessons` resets
 once-a-run lines at run start. N needs the dev drawer.
 
 **Seeds and saves.** `game.runSeed`; `game.levelSeed(i)` hashes it with level and `deaths`; base 36 in the
 corner; **`#seed=k3j9a`** feeds `askedSeed`. `saveRun` → `{ v, level, boons: [id], totalKills, deaths,
-score, runSeed, henHearts, at }` under `SAVE_KEY` (wrapped); `loadRun` validates; winning clears it.
+score, runSeed, henHearts, tripAt, darkAt, beasts, crowGift, artifact, at }` under `SAVE_KEY` (wrapped);
+`loadRun` validates; winning clears it. **It always writes the head of the floor** (`levelBoons`,
+`levelArtifact`, `levelTripAt`, `levelCrowGift`) whenever it is called — a soul taken mid-floor lies on
+the floor again after CONTINUE, so saving it too let one soul be farmed — plus the live `deaths`
+(`onGoatDied` saves at once). A LEVELS run (`runJumped`) never saves, never clears the save and never
+writes BEST; THE TRIP writes no BEST either.
 Boons saved by `id` — renaming drops them.
 
 **Score.** `scoreFor(kills, time, levelIndex, def)`: pace vs par (`score.perRoom`, `fastCap`) × `killMul`

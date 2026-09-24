@@ -25,9 +25,10 @@ Then open http://127.0.0.1:8766. The first screen is NEW GAME; CONTINUE, which s
 is a run to come back to; LEVELS, which puts you on any floor of the game with the souls a run would
 have banked getting there; and BEST and SETTINGS. Audio unlocks on that first input.
 
-A run is written to the browser at the head of every floor and whenever a soul is taken, so CONTINUE
-puts you back at the start of the furthest floor you reached with the souls you had there. Starting a
-new game throws it away, and so does escaping.
+A run is written to the browser at the head of every floor, so CONTINUE puts you back at the start of
+the furthest floor you reached with what you had when you walked onto it. Quitting a floor half played
+counts as a death, the way dying does: you come back to a new layout. Starting a new game throws the
+run away, and so does escaping; a floor started from LEVELS is practice and never touches it.
 
 ---
 
