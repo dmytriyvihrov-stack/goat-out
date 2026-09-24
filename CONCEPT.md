@@ -59,8 +59,8 @@ it out instead, and the first screen is a menu.
 | Mouse / auto-aim | Aim. On touch the aim follows your run and snaps onto men within about five tiles. |
 | Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.38 s recovery, no cancel. Deliberately blunt out of the pen: short reach, little throw behind it, and long enough on the end that a second man walks in on it. A man thrown into a man standing next to him kills him, and dies with him if he arrived fast enough. |
 | Hold right click / GRAB | Carry a box, a blade or a shield. **A man is a soul away** — until BY THE COLLAR is swallowed the mouth takes objects and nothing else. |
-| Release | Throw. A thrown man kills what he hits and dies on the wall. Your mouth is then empty for about 1.3 s. |
-| E / ROLL | A clumsy sideways tumble, brief mercy frames, a stagger you must eat, about 1.3 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. The one verb that is whole out of the pen; **DEAD WEIGHT** is what its soul buys, and everything the tumble goes through loses its head. |
+| Release | Throw. A thrown man kills what he hits and dies on the wall. Your mouth is then empty for about 1.6 s. |
+| E / ROLL | A clumsy sideways tumble, brief mercy frames, a stagger you must eat, about 1.6 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. The one verb that is whole out of the pen; **DEAD WEIGHT** is what its soul buys, and everything the tumble goes through loses its head. |
 | Space / BAAH | A noise. Every man who hears it walks to the spot you made it at, which empties one end of a room and fills the other. **THE FULL THROAT** turns it into a blow that dazes everyone in earshot; **DRAGON BREATH** turns it into fire. You get one of the two. |
 
 **Two of the four buttons start half-shut, and the souls open them.** A goat out of a pen can run, put
@@ -82,8 +82,9 @@ visible eye. Facing left he is mirrored rather than turned over, so the horns st
 **His wife** appears only in the opening scene: wool where he has a coat, a dark face, no horns, no
 beard, and the same marigold collar. She bleats in a higher voice than he does.
 **Cooldowns exist to stop a verb becoming a held button.** Headbutt pays with its recovery; throw and roll
-pay with a beat of about a second and a third. Nothing is on a global cooldown and nothing is queued: if a
-button is lit it fires, and the corner rail is where you read which ones are lit.
+pay with a beat of about a second and a half. Nothing is on a global cooldown. A headbutt or a roll pressed a moment too early is kept for a
+breath and spent the instant he is free — the recovery is still eaten whole — and the corner rail is
+where you read which buttons are lit.
 
 **The skill rail** in the bottom-right corner (the top right on a touch screen) is the goat's sheet: four icons for four verbs, each showing
 whether it is ready, how long until it is, and what the souls have done to it. A boon has to change its
@@ -98,7 +99,7 @@ fire — so a build reads as a shape rather than as a list of names.
 |---|---|
 | **Bearer** | Melee. About half a second of windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
 | **Brute** | A clubman built twice over: three killing blows, four when he is the one in the arena. A big shape in a bone apron with a bull's skull for a mask and a cleaver (since 1.66 — the Butcher's old body), and notches over his head counting down. Seen from three tiles or more with a clear run, he plants, roars and charges where you are going; a charge into a wall stuns him for a free hit. He is how level 1 says "some of them take more than one" without spending a boss on it, and he is unmistakable across a room — which is the point of him. |
-| **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the Butcher he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
+| **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the ogre he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for most of a second with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
 | **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher) — a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit, and his own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
