@@ -237,8 +237,12 @@ class Goat {
         // hold point is walked back toward the goat until it is on floor again. Before that, a throw
         // from hard against a wall started inside the wall and ended up through it — which is the one
         // throw the whole game is built to pay out on.
+        // Nor past a shut door: held against one, a man sat on its far side and the throw landed him
+        // in the next room with the door still shut (`game.sees` is stone and every shut door).
         let reach = g.grab.holdDist + h.r * 0.4;
-        while (reach > 4 && world.isSolid(Math.floor((this.x + this.aim.x * reach) / TILE), Math.floor((this.y + this.aim.y * reach) / TILE))) reach -= 4;
+        const through = (r) => world.isSolid(Math.floor((this.x + this.aim.x * r) / TILE), Math.floor((this.y + this.aim.y * r) / TILE))
+          || !game.sees(this.x, this.y, this.x + this.aim.x * r, this.y + this.aim.y * r);
+        while (reach > 4 && through(reach)) reach -= 4;
         h.x = this.x + this.aim.x * reach; h.y = this.y + this.aim.y * reach;
         h.vx = 0; h.vy = 0; h.facing = Math.atan2(this.aim.y, this.aim.x);
         this.holdTimer += dt;
@@ -596,6 +600,9 @@ class Goat {
       }
       const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
       if (d > this.r + e.r + 10 + extra || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
+      // Held to the same line as everything else that reaches (ECHO HORN already was): with LONG
+      // HORNS a man on the far side of a shut iron door was thrown across the room behind it.
+      if (!game.sees(this.x, this.y, e.x, e.y)) continue;
       e.lastLunge = this.lungeId;
       // Caught while it is a body. Horn through a thing that has just made itself real undoes it —
       // no wall needed, because the window was the hard part.
@@ -731,6 +738,9 @@ class Goat {
       const dx = o.x - this.x, dy = o.y - this.y, d = Math.hypot(dx, dy);
       if (d > this.r + o.r + g.reach * 0.6) return;
       if ((dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) return;
+      // Not through a shut door: a crate, a blade or (BY THE COLLAR) a man pressed to its far face
+      // was taken through it, soul gates included.
+      if (!game.sees(this.x, this.y, o.x, o.y)) return;
       if (d < bestD) { bestD = d; best = o; }
     };
     // The shelf first. A ware is reached for the way a crate is, and reaching for it is the whole
@@ -752,8 +762,10 @@ class Goat {
     if (game.mods.grabMen) {
       // The brute is a clubman grown too big for a goat's jaw, the same as the Butcher, and a man with
       // a soul in him is more than a man: all three are put down by the room, never carried out of it.
+      // Nor a man alight: in the teeth he burned on for his whole fire, lighting the goat's own feet,
+      // and the fire's run overrode the throw.
       for (const e of game.enemies) if (!e.dead && !e.unliftable && !(e.cfg.immune && e.cfg.immune.grab)
-        && e.state !== 'flung' && !e.held) consider(e);
+        && e.state !== 'flung' && !e.held && !(e.burning > 0)) consider(e);
     }
     for (const p of game.props) if (p.item && !p.broken && !p.held && !p.flung) consider(p);
     if (!best) {
@@ -801,6 +813,7 @@ class Goat {
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
       if (Math.hypot(e.x - tx, e.y - ty) > e.r + reach * 0.75) continue;
+      if (!game.sees(this.x, this.y, e.x, e.y)) continue;   // not through a shut door
       e.die(game, 'splat', this.aim.x, this.aim.y);
       game.gore(e.x, e.y, 5, this.aim.x, this.aim.y); game.audio.sfxSplat(); game.audio.sfxSteel();
       game.world.emitNoise(h.x, h.y, TUNING.noise.steel);
@@ -1265,8 +1278,9 @@ class Prop {
     if (this.broken) return;
     const C = TUNING.cave.spikes, g = game.goat;
     for (const e of game.liveEnemies) {
-      if (e.dead || e.ghosted) continue;
+      if (e.dead || e.ghosted || (e.spireAt || -1e9) > game.timer - C.again) continue;
       if (len(e.x - this.x, e.y - this.y) > this.r + e.r * 0.7) continue;
+      e.spireAt = game.timer;
       // A man in your mouth is over the rock like anybody else, and the rock takes him out of it.
       if (e.held) { g.holding = null; e.held = false; g.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
       e.die(game, 'spire');
@@ -1344,7 +1358,7 @@ class Prop {
       const dx = e.x - this.x, dy = e.y - this.y;
       if (Math.hypot(dx, dy) > 2.1 * TILE) continue;
       if ((dx * ax + dy * ay) < -4) continue;
-      if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.35; }
+      if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.35; } }
       else e.fling(ax * 17 * TILE, ay * 17 * TILE, false);
     }
   }
@@ -1641,6 +1655,10 @@ class Prop {
   update(dt, game) {
     if (this.rung > 0) this.rung -= dt;
     if (this.wobble > 0) this.wobble -= dt;
+    // Let go of over a drop without a throw — a roll, a blink, a stun, the stairs — a crate, a blade
+    // or a bomb hung there in the air for good: only a thing in flight ever asked about the hole.
+    if ((this.kind === 'crate' || this.kind === 'weapon' || this.kind === 'bomb') && !this.held && !this.broken && !this.flung
+      && !this.inStand && game.world.isPitPx(this.x, this.y)) { this.fall(game); return; }
     if (this.kind === 'mill') { this.updateMill(dt, game); return; }
     if (this.kind === 'spike') { this.updateSpike(dt, game); return; }
     if (this.kind === 'spire') { this.updateSpire(dt, game); return; }
@@ -1700,7 +1718,8 @@ class Prop {
         // GRAVEDIGGER'S SPADE III: a thrown body at killing speed kills like a live one.
         if (this.corpse && Talisman.corpseHit(game, this, e, spd)) { this.shatter(game); return; }
         // A crate in the face is not a trip. He goes down properly, and he stays down seeing stars.
-        if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.45; }
+        // Never out of the air: an ogre knocked down mid-leap over a drop fell into it.
+        if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.45; } }
         else {
           const stun = TUNING.prop.crate.stun;
           e.state = 'floored'; e.timer = stun; e.dazed = Math.max(e.dazed, stun);
@@ -1769,6 +1788,20 @@ class Prop {
       // A shield does not stick, it rings off — and off a wall keeps enough of its speed to reach a
       // second one, which is what makes it worth throwing at a room rather than at one man in it.
       this.vx *= -W.shieldBounce; this.vy *= -W.shieldBounce;
+    } else if (!hit) {
+      // Too slow to be a blow, still a thing that cannot pass through furniture: below `stickImpact`
+      // nothing was asked at all, and a blade arriving at a shut door at a walk went through it and
+      // killed the man leaning on the far side. It stops against it (a shield rings back off it),
+      // with no blow spent and nothing knocked over.
+      for (const p of game.props) {
+        if (p === this || !p.blocking || p.kind === 'lamp' || p.kind === 'bell') continue;
+        const dx = this.x - p.x, dy = this.y - p.y, d = Math.hypot(dx, dy), pen = p.r + this.r - d;
+        if (pen <= 0) continue;
+        this.x += dx / (d || 1) * pen; this.y += dy / (d || 1) * pen;
+        if (this.weapon === 'sword') { this.vx = 0; this.vy = 0; this.flung = false; this.thrown = false; return; }
+        this.vx *= -W.shieldBounce; this.vy *= -W.shieldBounce;
+        break;
+      }
     }
     const spd = Math.hypot(this.vx, this.vy);
     if (spd <= W.restSpeed) {
@@ -1801,7 +1834,7 @@ class Prop {
       if (--this.uses <= 0) this.snap(game);                               // and it stays in him
       return;
     }
-    if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.5; e.aware = true; this.vx *= -0.25; this.vy *= -0.25; }
+    if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.5; } e.aware = true; this.vx *= -0.25; this.vy *= -0.25; }
     else {
       e.state = 'floored'; e.timer = W.shieldStun; e.dazed = Math.max(e.dazed, W.shieldStun); e.aware = true;
       e.vx = nx * 4 * TILE; e.vy = ny * 4 * TILE;
@@ -1848,17 +1881,20 @@ class Prop {
     game.ring(this.x, this.y, B.blastR, PALETTE.fireHi);
     game.shake(9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
     game.world.emitNoise(this.x, this.y, TUNING.noise.boom);
+    // Stone stops a blast the way it stops `Status.blast`: a bomb against one side of a wall took a
+    // heart off the goat on the other side of it.
+    const w = game.world;
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
       const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
-      if (d > B.blastR + e.r) continue;
+      if (d > B.blastR + e.r || !w.los(this.x, this.y, e.x, e.y)) continue;
       const nx = dx / (d || 1), ny = dy / (d || 1);
       // The rat ogre is never flung, so the whole of the blast is the one heart it takes off him.
       if (d <= B.nearR || e.kind === 'ratogre') e.die(game, 'splat', nx, ny);
       else e.fling(nx * B.impulse, ny * B.impulse, true);
     }
     const g = game.goat, gd = Math.hypot(g.x - this.x, g.y - this.y);
-    if (!g.dead && gd <= B.blastR + g.r) {
+    if (!g.dead && gd <= B.blastR + g.r && w.los(this.x, this.y, g.x, g.y)) {
       const nx = (g.x - this.x) / (gd || 1), ny = (g.y - this.y) / (gd || 1);
       g.damage(gd <= B.nearR ? B.dmgNear : B.dmgFar, game, nx * 260, ny * 260, false, 'bomb');
     }
@@ -1921,7 +1957,9 @@ class Prop {
     // else in the room that a man would: a brazier, the wheel, another table.
     if (spd > 1) {
       const nx = this.vx / spd, ny = this.vy / spd, hit = this.hitProp(game, nx, ny);
-      if (hit && hit.kind === 'door' && spd > cfg.killSpeed) { hit.smash(game, nx, ny, null); game.shake(4); }
+      // Not a soul gate or a seal, which no blow opens: the table stops on those like on anything
+      // else. It used to strike one every frame the two touched, THE SOUL OPENS IT sixteen times over.
+      if (hit && hit.kind === 'door' && spd > cfg.killSpeed && !hit.gate && !hit.seal) { hit.smash(game, nx, ny, null); game.shake(4); }
       else if (hit && hit.kind !== 'lamp') {
         this.vx *= -0.2; this.vy *= -0.2;
         game.audio.sfxThud(); game.particles(this.x, this.y, 5, PALETTE.wood, 110);
@@ -1932,7 +1970,7 @@ class Prop {
       for (const e of game.enemies) {
         if (e.dead || e.held || e.ghosted || e.state === 'flung' || e === this.by) continue;
         if (Math.hypot(e.x - this.x, e.y - this.y) > e.r + this.r + 2) continue;
-        if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.3; this.vx *= -0.2; this.vy *= -0.2; }
+        if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.3; } this.vx *= -0.2; this.vy *= -0.2; }
         else { e.fling(nx * spd * 1.25, ny * spd * 1.25, false); this.vx *= 0.75; this.vy *= 0.75; }
       }
       if (game.world.isBurningPx(this.x, this.y)) game.world.ignitePx(this.x, this.y, true);
@@ -2017,7 +2055,7 @@ class Prop {
       // Too heavy to bowl: the Butcher staggers and the barrel comes back off him; the ogre does not
       // even do that.
       if (e.kind === 'butcher' || e.kind === 'ratogre') {
-        if (e.kind === 'butcher') { e.state = 'stagger'; e.timer = B.stagger; }
+        if (e.kind === 'butcher' && e.state !== 'hop') { e.state = 'stagger'; e.timer = B.stagger; }
         e.aware = true; this.vx *= -B.rebound; this.vy *= -B.rebound; return;
       }
       const side = (dx * -ny + dy * nx) / (d || 1) * B.side;
@@ -2169,7 +2207,9 @@ class Bullet {
       }
       for (const p of game.props) {
         if (p.broken) continue;
-        if (p.kind === 'crate' && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) { this.dead = true; p.shatter(game); return; }
+        // Not the crate in his mouth: a carried crate answers a club (`Goat.crated`), and a rifle's
+        // answers are the shield and a man. Held in front of him it met every round first.
+        if (p.kind === 'crate' && !p.held && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) { this.dead = true; p.shatter(game); return; }
         // A shield standing in its rack is cover; a sword in one is not.
         if (p.kind === 'weapon' && p.weapon === 'shield' && p.inStand && Math.hypot(p.x - this.x, p.y - this.y) < p.r + 2) {
           this.dead = true; game.particles(this.x, this.y, 4, PALETTE.bone, 120); game.audio.sfxSteel(); return;

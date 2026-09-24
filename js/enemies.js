@@ -124,6 +124,9 @@ class Enemy {
     if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return;
     this.dazed = Math.max(this.dazed, t);
     this.vx = 0; this.vy = 0;
+    // A charge under way is called off too, with the wait for the next one: dazed, it only froze,
+    // and when the stars cleared he ran on down the old line with no plant to read first.
+    if (this.state === 'charge') { this.state = 'chase'; this.chargeCd = TUNING.champion.charge.cooldown * game.mods.enemySlow; }
     // Whatever he was winding up, aiming or painting is gone.
     if (this.state === 'windup' || this.state === 'aim' || this.state === 'cast' || this.state === 'chargewind'
         || this.state === 'dodge' || this.state === 'retreat' || this.state === 'dart' || this.state === 'slamwind'
@@ -238,6 +241,9 @@ class Enemy {
         game.floatText(this.x, this.y - 40, this.hp + ' LEFT', PALETTE.fireHi);
         return;
       }
+      // In the air he keeps flying: the heart is gone and the leap is not. Floored mid-leap over a
+      // drop, the pit check had him the next step, three hearts and all.
+      if (this.state === 'hop') { game.floatText(this.x, this.y - 40, this.hp + ' LEFT', PALETTE.fireHi); game.audio.sfxThud(); return; }
       this.state = 'floored'; this.timer = 0.75; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false;
       // A man knocked down is not in your mouth any more. Left there, he got up with his own AI back
       // while still pinned in front of the goat — a mage painting at his feet, a clubman swinging.
@@ -298,7 +304,8 @@ class Enemy {
       const dx = o.x - this.x, dy = o.y - this.y, d = Math.hypot(dx, dy);
       if (d > B.radius) continue;
       const nx = dx / (d || 1), ny = dy / (d || 1);
-      if (o.kind === 'butcher') { o.hp -= 1; o.flash = 0.2; o.state = 'stagger'; o.timer = 0.4; if (o.hp <= 0) o.die(game, 'splat', nx, ny); }
+      // A heart, but never out of the air (`Status.blast` the same).
+      if (o.kind === 'butcher') { o.hp -= 1; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = 0.4; } if (o.hp <= 0) o.die(game, 'splat', nx, ny); }
       else if (o.kind === 'ratogre') o.die(game, 'splat', nx, ny);
       else o.fling(nx * B.impulse, ny * B.impulse, true);
     }
@@ -646,6 +653,10 @@ class Enemy {
   update(dt, game) {
     if (this.dead || this.scripted) return;
     const w = game.world, g = game.goat, cfg = this.cfg;
+    // A rune lives only while he is painting it, standing or in the goat's mouth. A cast broken by
+    // a crate, a body, a bullet or fire left it set: not drawn, still a trap to every man's
+    // `hazardAt`, and picked up later he set it off on the first frame with no windup at all.
+    if (this.rune && this.state !== 'cast' && this.state !== 'held') this.rune = null;
     // The floor stops. Flung, floored, alight or simply walking: a man over a hole is gone, and the
     // mist is the one thing that can cross one.
     // A Butcher in the middle of a leap is over the hole, not in it: he never lands in one (`hopSpot`).
@@ -755,7 +766,7 @@ class Enemy {
         this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1)); return;
       }
       if (impact > 0 && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }
-      if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+      if (this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
       // A body arriving at speed knocks the coals out of the bowl as well as catching from it, so
       // a man thrown into a brazier lights the floor on the far side of it too.
       const bz = game.touchingBrazier(this);
@@ -770,7 +781,10 @@ class Enemy {
     if (this.state === 'floored' || this.state === 'stagger' || this.state === 'stunned') {
       this.timer -= dt; this.vx *= 0.85; this.vy *= 0.85;
       this.x += this.vx * dt; this.y += this.vy * dt; w.collideCircle(this);
-      if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+      // Not while already alight, the same guard as below: a kind that does not blunder stays in this
+      // state when `ignite` no-ops, and the return skipped the timer — an ogre knocked down in a pool
+      // of oil never got up and burned to death from full hearts.
+      if (this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
       if (this.timer <= 0) {
         this.aware = true; this.state = 'chase';
         // The Butcher answers a stagger with a quick slam if you stayed close: the same ring, sooner.
@@ -809,6 +823,13 @@ class Enemy {
       if (n.kind === 'lure') {
         // A scream pulls everyone who hears it to the spot, even men already hunting you.
         // Stand still and they find you; move and they search where you were.
+        // Not a man already committed to something: a windup, a charge, a cast, a leap, a wraith
+        // that has become a body. The call reaches thirteen tiles and it used to drop every one of
+        // those where it stood (an ogre mid-leap over a drop fell in); only `scream.balk`, two tiles
+        // round the goat, is allowed to break a committed blow (`Enemy.balk`), and it has exceptions.
+        const loose = !this.solid && (this.state === 'idle' || this.state === 'investigate' || this.state === 'noticed'
+          || this.state === 'chase' || this.state === 'retreat');
+        if (!loose) continue;
         this.target = { x: n.x, y: n.y }; this.state = 'investigate'; this.aware = false; this.lostTimer = 0;
         this.facing = Math.atan2(n.y - this.y, n.x - this.x); this.lured = 1.2;
         game.bark(this, 'search', 0.45);

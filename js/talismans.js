@@ -262,7 +262,7 @@ const Talisman = {
       if (e.dead || e.held || e.ghosted || e.state === 'flung') continue;
       const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy);
       if (d > A.r * TILE + e.r) continue;
-      if (Talisman.heavy(e) || e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.4; continue; }
+      if (Talisman.heavy(e) || e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.4; } continue; }
       if (A.fling > 0) { const l = d || 1; e.fling(dx / l * A.fling * TILE, dy / l * A.fling * TILE, false); }
       else { e.state = 'floored'; e.timer = 0.7; e.aware = true; }
     }
@@ -363,7 +363,7 @@ const Talisman = {
         if (d > g.r + e.r + 10 + extra + E.reach * TILE || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
         if (!game.reaches(ec.x, ec.y, e.x, e.y)) continue;
         if (e.tryDodge && e.tryDodge(game, ax, ay)) continue;
-        if (e.kind === 'butcher' || e.kind === 'ratogre') { e.state = 'stagger'; e.timer = 0.3; continue; }
+        if (e.kind === 'butcher' || e.kind === 'ratogre') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.3; } continue; }
         const k = imp * (e.knockMul ? e.knockMul() : 1);
         e.fling(ax * k, ay * k, false);
         game.audio.sfxThud(); game.impact(ec.x + ax * (g.r + 6), ec.y + ay * (g.r + 6), ax, ay);

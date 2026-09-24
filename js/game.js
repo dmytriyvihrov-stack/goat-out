@@ -2057,7 +2057,10 @@ class Game {
       e.live = true;
       e.update(dt, this);
       // Listed after his own update, not before it: a wraith that manifested in it is a body now.
-      if (!e.dead && !e.held && !e.ghosted) live.push(e);
+      // A man in the goat's mouth is listed too: the wheel, the grating and the rock teeth each have
+      // a branch for taking him out of it, and none of them could run while he was left off this
+      // list. Every other reader skips `held` itself.
+      if (!e.dead && !e.ghosted) live.push(e);
     }
     for (const b of this.bullets) b.update(dt, this);
     for (const p of this.props) p.update(dt, this);

@@ -35,9 +35,14 @@ const Status = {
   // a puddle under a dazed man would otherwise announce it every frame.
   sting(game, e) {
     const S = TUNING.status.sting;
-    e.dazed = Math.max(e.dazed, S.stun * game.mods.enemySlow);
+    // Not on a kind the stars do nothing to (the rat ogre, the wraith): SHOCK froze the rat ogre
+    // nearly five seconds, standing, where a crate alone gives him under three on the floor.
+    const stunProof = e.cfg && e.cfg.immune && e.cfg.immune.stun;
+    if (!stunProof) e.dazed = Math.max(e.dazed, S.stun * game.mods.enemySlow);
     e.poison = Math.max(e.poison, S.poison);
     if (e.state === 'aim' || e.state === 'cast' || e.state === 'windup') { e.state = 'chase'; e.rune = null; }
+    // A charge under way stops with the wait for the next one, as `daze` stops it.
+    if (!stunProof && e.state === 'charge') { e.state = 'chase'; e.chargeCd = TUNING.champion.charge.cooldown * game.mods.enemySlow; }
     if ((e.shock || 0) > 0) { e.shock = Math.max(e.shock, e.dazed); return; }
     e.shock = e.dazed;
     game.floatText(e.x, e.y - 40, 'SHOCK', PALETTE.venomHi);
@@ -78,7 +83,8 @@ const Status = {
       const nx = ddx / (d || 1), ny = ddy / (d || 1);
       o.poison = 0;
       if (d <= B.hitR * TILE + o.r || o === source) {
-        if (o.kind === 'butcher') { o.hp -= 1; o.flash = 0.2; o.state = 'stagger'; o.timer = 0.4; if (o.hp <= 0) o.die(game, 'boom', nx, ny); }
+        // A heart, but never out of the air: a leap over a drop knocked down is a fall to his death.
+        if (o.kind === 'butcher') { o.hp -= 1; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = 0.4; } if (o.hp <= 0) o.die(game, 'boom', nx, ny); }
         else o.die(game, 'boom', nx, ny);
       } else if (o.kind !== 'butcher') o.fling(nx * B.impulse, ny * B.impulse, true);
     }

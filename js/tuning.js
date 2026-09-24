@@ -1076,7 +1076,9 @@ const TUNING = {
     // furniture), `perRoom` the most it may ever get, `glint` how strongly the wet tips catch the
     // light so they are read before they are walked into, and `damage` the hearts the goat pays.
     // A man does not pay hearts: he dies on them, the way he dies on the grating.
-    spikes: { chance: 0.3, perRoom: 1, glint: 0.5, damage: 1 },
+    // `again`: seconds before the same tooth takes another heart off the same man. Without it a Seer
+    // standing up on it died in two frames and the two-hit rule never got its beat.
+    spikes: { chance: 0.3, perRoom: 1, glint: 0.5, damage: 1, again: 1 },
     // What the rock wears (`Renderer.drawCaveDecor`, `drawFloorShrooms`), as the share of the edge
     // tiles that grow each thing: `drips` stalactites on the far wall, `spires` the stone standing up
     // off the top of the rock, `crystals` a seam on the face. The trip adds `fur`, the glowing
