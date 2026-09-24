@@ -202,7 +202,8 @@ one collar for every talisman, a half-ellipse round the throat (`TUNING.goat.col
 facing the camera. `Renderer.artifactIcon` is the one artifact drawing (HUD chip, stool, collar).
 
 **What the step is allowed to ask** (23 Sep 2026 perf pass, ~18 → ~3.5 ms on a late floor):
-- `game.liveEnemies` is who ran this step. **"Anybody near here?" reads it, not `game.enemies`**
+- `game.liveEnemies` is who ran this step, **a man in the goat's mouth included** (the wheel, the grating and
+  the teeth take him out of it; every other reader skips `held`). **"Anybody near here?" reads it, not `game.enemies`**
   (collision pairs, grate, spires, wheel, door pressure).
 - `collideEntities` builds its body list **once**, box-rejects first, compares squared distances.
 - **A thrown exception inside `draw` costs the rest of the frame.** `drawRunes` once measured against
