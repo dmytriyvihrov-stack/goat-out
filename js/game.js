@@ -118,7 +118,7 @@ class Game {
       // On itch the dev corner is not drawn and the tool's addresses do nothing, unless the page was
       // opened with `#dev`: one curious tester in GOD mode skews every number the playtest collects.
       // Everywhere else — locally, the published artifact — it is there as it always was.
-      this.dev.hidden = /(^|.)(itch.io|itch.zone|hwcdn.net)$/i.test(location.hostname || '') && h !== 'dev';
+      this.dev.hidden = /(^|\.)(itch\.io|itch\.zone|hwcdn\.net)$/i.test(location.hostname || '') && h !== 'dev';
       if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats')) {
         this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
       }
