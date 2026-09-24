@@ -146,6 +146,8 @@ window.SMOKE = {
       r.kills = g.kills; r.room = g.goatRoom; r.rooms = g.level.rooms.length;
       r.upd = +(r.upd / Math.max(1, r.nUpd)).toFixed(2); r.draw = +(r.draw / Math.max(1, r.nDraw)).toFixed(2);
       r.updMax = +r.updMax.toFixed(1); r.drawMax = +r.drawMax.toFixed(1); r.t = Math.round(r.t);
+      // The JS heap after the floor (Chrome only): a figure that climbs floor after floor is a leak.
+      r.heap = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null;
       delete r.steps; delete r.finish; delete r.nUpd; delete r.nDraw;
     };
     return r;
@@ -178,7 +180,7 @@ window.SMOKE = {
   },
   report(tag = 'now') {
     const o = SMOKE.res[tag]; if (!o) return 'nothing under ' + tag;
-    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? 'OK ' : r.end.toUpperCase().slice(0, 7).padEnd(7)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} kills ${r.kills} souls ${r.souls} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.nan ? ' NaN ' + r.nan : ''}${r.spikes.length ? '\n     spikes ' + r.spikes.join(' ') : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
+    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? 'OK ' : r.end.toUpperCase().slice(0, 7).padEnd(7)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} kills ${r.kills} souls ${r.souls} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.heap ? ' heap ' + r.heap + 'MB' : ''}${r.nan ? ' NaN ' + r.nan : ''}${r.spikes.length ? '\n     spikes ' + r.spikes.join(' ') : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
     return (o.done ? '' : '(still running)\n') + lines.join('\n');
   },
 };
