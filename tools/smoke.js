@@ -34,6 +34,7 @@ window.SMOKE = {
   start(which, seed) {
     const g = game;
     g.forgetLessons(); g.boons = []; g.artifact = null; g.levelArtifact = null; g.beasts = {};
+    g.runJumped = true;   // a bot run is practice: it never writes the save or the BEST board
     g.tripAt = -1; g.darkAt = -1; g.deaths = 0; g.totalKills = 0; g.totalScore = 0; g.runSeed = seed;
     let li;
     if (which === 'N') { li = DARK_LEVEL.darkOf; g.darkAt = li; }
