@@ -112,6 +112,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/hounds.js` | In-page measure of how hounds run: reversals, sliding, planting, circling (`HOUNDS.sweep`), who never gets onto the ring (`HOUNDS.arrive`), and a picture of the lines (`HOUNDS.draw`). |
 | `tools/balance.js` | Prints the difficulty curve and canon/mix split of every level, runs every rule over many seeds, fails on a broken one. |
 | `tools/juice-md.js` | Writes `JUICE.md` from `js/juice.js`. |
+| `tools/doc-numbers.js` | Every number README, CONCEPT and CLAUDE state (floors, blows, hearts, hits, caps, rooms, souls, timings) held against the value the code pays; exits 1 on a wrong one, warns when a sentence it reads has moved. |
 | `tools/itch-zip.js` | The itch.io upload: `dist/doomed-goat-<BUILD>-<commit>.zip` holding `index.html` and exactly the scripts it loads; refuses a dirty tree (`--dirty` overrides), lists the zip back CRC-checked. |
 | `tools/png-harden.js` | Both pixel packers' last step: the embedded atlas PNG hardened the way `PIXEL_ART.init` does it and re-encoded (adaptive filters, zlib 9), proved to decode to the same pixels before it is written. `--check` reports only. |
 | `tools/tuning-patch.js` | Writes tool-tab edits back into `tuning.js` (steps into arrays by index). |
@@ -900,6 +901,9 @@ drops men **aware and adjacent**, so a handful of them will kill the goat during
 harness): `SMOKE.run(['L0','L1','L2','L3','L4','L5','L6','L7','N','T2'], [11, 22], 'now')`, then
 `SMOKE.report('now')`. Every floor should end `OK` with no throws and no NaN. It is off the clock and
 slows to a crawl while the pane is hidden, so leave the pane open while it runs.
+
+**After changing a number a doc states** (a count, a blow, a heart, a cooldown), run `node tools/doc-numbers.js`;
+it reads the sentences in README, CONCEPT and CLAUDE that quote that number and says which went stale.
 
 **Always run `node tools/balance.js` after touching anything about who spawns where or which rooms go
 where.** It runs every rule in `js/rules.js` over many seeds of every level, plus the two averaged
