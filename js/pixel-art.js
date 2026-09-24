@@ -8,12 +8,12 @@
 // point is drawn at the origin, which is where every caller has already put the shadow.
 const PIXEL_EXTENT = {
   goat: 34, clubman: 36, brute: 38, mage: 38, hound: 40, hunter: 38, butcher: 48, wraith: 38,
-  chicken: 22, ratogre: 70, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
+  chicken: 22, ratogre: 70, ogre: 66, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
 };
 // The painted slot names this pass fills. `sheep` is the goat's old slot name, not a sheep.
 const PIXEL_UNIT = {
   sheep: 'goat', clubman: 'clubman', brute: 'brute', mage: 'mage', hound: 'hound', hunter: 'hunter',
-  butcher: 'butcher', wraith: 'wraith', chicken: 'chicken', ratogre: 'ratogre',
+  butcher: 'butcher', wraith: 'wraith', chicken: 'chicken', ratogre: 'ratogre', ogre: 'ogre',   // the ogre draws off js/ogre-pixels.js, not the atlas
 };
 
 // The throat of the pixel goat in each of his eight idle facings, world px from the foot (the same
@@ -333,7 +333,10 @@ const PIXEL_FLOOR_LIFT = 1.25;
 // `lift`, so a level keeps the palette it was tuned in and only gains the texture.
 const PIXEL_ROOMS = {
   lift: 1.6,
-  wall: { top: 'floors-04', face: 'floors-08' },
+  // `top` only lends the cap its colour now: the cap is a sheet of coursed stone `sheet` tiles square
+  // laid in world space (`PaintedArt.wallCap`), `course` texels a course (64 a tile), blocks `block`
+  // long. A course that divides 64 lays a mortar line on every tile edge: the grid this replaced. `faceH` texels of brick face on every south-exposed tile, cut from `face` at row `faceFrom`.
+  wall: { top: 'floors-04', face: 'floors-08', sheet: 3, course: 24, block: [30, 62], faceH: 36, faceFrom: 13 },
   stone: { floor: ['floors-01', 'floors-01', 'floors-02'], boards: 'floors-06' },
   fire: { floor: ['floors-03'], boards: 'floors-06' },
   line: { floor: ['floors-03', 'floors-03', 'floors-12'], boards: 'floors-06' },

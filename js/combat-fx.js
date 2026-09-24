@@ -200,7 +200,9 @@ class CombatFX {
   // its silhouette, which is the shadow it lies on.
   corpseSprite(e,facing,burnt) {
     const art=this.game.renderer.painted,image=CombatFX.canvas(96,96),c=image.getContext('2d');
-    c.translate(48,74);art.character({ctx:c,t:0},{facing},art.characterKey(e)||'sheep',80);
+    // Feet at 64, not 74: the body turns about the canvas centre, and at full size a man hung off
+    // his feet rolled over a good way off the spot he died on.
+    c.translate(48,64);art.character({ctx:c,t:0},{facing},art.characterKey(e)||'sheep',80);
     c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-atop';
     c.fillStyle=burnt?'rgba(19,13,16,0.8)':`rgba(24,12,16,${TUNING.effects.corpse.dark})`;c.fillRect(0,0,96,96);
     const shade=CombatFX.canvas(96,96),s=shade.getContext('2d');s.drawImage(image,0,0);
@@ -246,7 +248,10 @@ class CombatFX {
   death(e,cause,dx,dy) {
     if (cause==='fall') return;
     if (e.kind==='wraith') { this.explosion(e.x,e.y,35,true,true); return; }
-    const sprite=this.snapshot(e), big=e.kind==='butcher', size=big?53:e.kind==='dog'?37:40;
+    // `size` is the 96-px canvas the snapshot and the corpse are drawn into, at world scale: the pixel
+    // sprite is already his living size there. Squeezed to 40 (a leftover of the painted sheets,
+    // drawn at 80) every body lay at under half the man it was (playtest, 24 Sep 2026).
+    const sprite=this.snapshot(e), big=e.kind==='butcher', size=96;
     const torn=cause==='boom'||cause==='devour'||cause==='roll';
     if(cause!=='burn') {
       const k=TUNING.effects.bloodScale;
@@ -383,7 +388,7 @@ class CombatFX {
   drawPiece(c,p,airborne) {
     c.save();c.translate(p.x,p.y);
     if(airborne&&p.material!=='blood') {
-      c.fillStyle='rgba(9,5,10,0.24)';c.beginPath();c.ellipse(0,2,p.width*0.45,2.5,0,0,Math.PI*2);c.fill();
+      c.fillStyle='rgba(9,5,10,0.24)';c.beginPath();c.ellipse(0,2,Math.min(p.width*0.45,15),2.5,0,0,Math.PI*2);c.fill();
     }
     // A body on the floor lies on its own silhouette, a pixel toward the camera: contact, not a halo.
     if(!airborne&&p.shade){c.save();c.translate(0,1.5);c.rotate(p.angle);c.globalAlpha*=TUNING.effects.corpse.shade;c.imageSmoothingEnabled=false;

@@ -90,7 +90,9 @@ class Enemy {
     if (this.dead || this.ghosted) return;
     // The rat ogre is not thrown by anything — not the horns, not the wheel, not a charge, not a
     // blast. No wall ever kills him, which is the whole of what makes him dear.
-    if (this.kind === 'ratogre') { this.aware = true; return; }
+    // Nor is the ogre (the Butcher, 1.66): too heavy to go anywhere, which is what sets him apart
+    // from the brute, who does. Every heart he has is taken standing, while he is on his knees.
+    if (this.kind === 'ratogre' || this.kind === 'butcher') { this.aware = true; return; }
     this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true; this.flungBy = null; this.chain = 0;
     // Whatever he was halfway through painting goes with him. Throwing a mage mid-cast is the answer
     // to a mage in your mouth, so it has to actually stop the rune.
@@ -112,8 +114,8 @@ class Enemy {
     // The rat ogre does not reel. What a scream, a boomerang or a tumble does to him is break the
     // swing he was winding up, and nothing more: the stun that opens him is a crate, not a noise.
     if (this.kind === 'ratogre') { this.breakSwing(game); return; }
-    // The Butcher rides out a swing he has already committed to, and shakes it off quicker.
-    if (this.kind === 'butcher') { if (this.state === 'swing') return; t *= 0.6; }
+    // The Butcher rides out a leap he has already left the floor for, and shakes it off quicker.
+    if (this.kind === 'butcher') { if (this.state === 'hop') return; t *= 0.6; }
     // A hound runs on reflex, and the scream is what reflex cannot survive: BAAH is the answer to a pack.
     if (this.kind === 'dog') t *= this.cfg.dazeMul;
     // Stunned while he burns: the stars do nothing to a man already blundering, but the fire
@@ -124,7 +126,8 @@ class Enemy {
     this.vx = 0; this.vy = 0;
     // Whatever he was winding up, aiming or painting is gone.
     if (this.state === 'windup' || this.state === 'aim' || this.state === 'cast' || this.state === 'chargewind'
-        || this.state === 'dodge' || this.state === 'retreat' || this.state === 'dart' || this.state === 'slamwind') {
+        || this.state === 'dodge' || this.state === 'retreat' || this.state === 'dart' || this.state === 'slamwind'
+        || this.state === 'hopwind') {
       this.dashPath = null;
       this.state = 'chase'; this.rune = null;
     }
@@ -137,15 +140,15 @@ class Enemy {
   // a man who was not swinging. Returns whether it landed, so the goat can say so.
   //
   // The two exceptions are the two things in the game that cannot be called off once started, and
-  // they are the same exceptions `daze` makes: a Butcher mid-swing rides it out, and a wraith that
+  // they are the same exceptions `daze` makes: a Butcher in the air rides it out, and a wraith that
   // has begun to arrive arrives. Everything else in here is an ordinary man being made to flinch.
   balk(game, t) {
     if (this.dead || this.held || this.ghosted || this.kind === 'wraith') return false;
     if (this.kind === 'ratogre') return this.breakSwing(game);
     if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return false;
-    if (this.kind === 'butcher' && this.state === 'swing') return false;
-    if (this.state !== 'windup' && this.state !== 'aim' && this.state !== 'cast'
-        && this.state !== 'chargewind' && this.state !== 'dart' && this.state !== 'slamwind') return false;
+    if (this.kind === 'butcher' && this.state === 'hop') return false;
+    if (this.state !== 'windup' && this.state !== 'aim' && this.state !== 'cast' && this.state !== 'chargewind'
+        && this.state !== 'dart' && this.state !== 'slamwind' && this.state !== 'hopwind') return false;
     this.state = 'chase'; this.rune = null; this.dashPath = null;
     this.dazed = Math.max(this.dazed, t);
     this.vx = 0; this.vy = 0;
@@ -327,7 +330,10 @@ class Enemy {
     // gives you away back there now is noise, and how much of it you make is yours to decide.
     // Bumping into him still counts: `feel` is the couple of pixels past the two bodies where he
     // stops needing eyes.
-    if (!this.watchful && Math.abs(angleDiff(this.facing, ang)) > this.cfg.cone / 2
+    // A hound on the hunt runs one way with his head turned the other, onto you: his body (`facing`)
+    // is where his legs are taking him round the ring, and his eyes do not leave the goat.
+    const eyesOn = this.kind === 'dog' && this.aware;
+    if (!this.watchful && !eyesOn && Math.abs(angleDiff(this.facing, ang)) > this.cfg.cone / 2
         && d > this.r + g.r + TUNING.ai.feel) return false;
     // Stone, and the two or three things in a room that are as good as stone. A shut door used to be
     // see-through to a man and a wall to the goat, which is the one shape of unfairness the cone was
@@ -432,15 +438,40 @@ class Enemy {
     return null;
   }
   moveToward(dirx, diry, speed, dt, game) {
+    // A hound goes round his own first, so that the floor still has the last word on where he steps.
+    if (this.kind === 'dog' && game) { const a = this.passBodies(game, Math.atan2(diry, dirx), dt); dirx = Math.cos(a); diry = Math.sin(a); }
     // A man already alight has nothing left to dodge, and he ought to spread it.
     if (game && this.burning <= 0) {
       const safe = this.avoidHazard(dirx, diry, game);
       if (!safe) { this.vx = 0; this.vy = 0; this.facing = Math.atan2(diry, dirx); return; }
       dirx = safe.x; diry = safe.y;
     }
+    if (this.kind === 'dog' && game) { this.stride(dirx, diry, speed, dt, game); return; }
     const l = Math.hypot(dirx, diry) || 1;
     this.vx = dirx / l * speed; this.vy = diry / l * speed;
     if (speed > 0) this.facing = Math.atan2(this.vy, this.vx);
+  }
+  // A hound's legs. Every other kind is set going the way he wants between one step and the next;
+  // on a hound that was a statue sliding sideways round the goat and reversing in a frame whenever
+  // the ring changed its mind (1.65: three to six reversals a second with three of them on a moving
+  // goat). He carries a heading and a pace (`runAng`, `runSp`), turns at `dog.turn`, checks his
+  // stride through a sharp turn, and his body points where he runs. Whatever set him going some
+  // other way — a run, a hop, a blow — is picked up as his heading the first step he is back on
+  // his legs.
+  stride(dirx, diry, speed, dt, game) {
+    const cfg = this.cfg, want = Math.atan2(diry, dirx);
+    if (!(game.timer - this.strideAt < 0.05)) {
+      this.runSp = Math.hypot(this.vx, this.vy);
+      this.runAng = this.runSp > 20 ? Math.atan2(this.vy, this.vx) : this.facing;
+    }
+    this.strideAt = game.timer;
+    const rate = cfg.turn * (this.runSp < this.speed * 0.3 ? cfg.pivot : 1) * dt;
+    this.runAng += clamp(angleDiff(this.runAng, want), -rate, rate);
+    const left = Math.abs(angleDiff(this.runAng, want));
+    const pace = speed * lerp(1, cfg.turnSlow, clamp(left / Math.PI, 0, 1));
+    this.runSp += clamp(pace - this.runSp, -cfg.brake * this.speed * dt, cfg.accel * this.speed * dt);
+    this.vx = Math.cos(this.runAng) * this.runSp; this.vy = Math.sin(this.runAng) * this.runSp;
+    this.facing = this.runAng;
   }
   // Steer toward the goat using the flow field, or directly when close with line of sight.
   chaseGoat(game, speed, dt) {
@@ -617,7 +648,8 @@ class Enemy {
     const w = game.world, g = game.goat, cfg = this.cfg;
     // The floor stops. Flung, floored, alight or simply walking: a man over a hole is gone, and the
     // mist is the one thing that can cross one.
-    if (!this.ghosted && !this.held && w.isPitPx(this.x, this.y)) { this.die(game, 'fall'); return; }
+    // A Butcher in the middle of a leap is over the hole, not in it: he never lands in one (`hopSpot`).
+    if (!this.ghosted && !this.held && this.state !== 'hop' && w.isPitPx(this.x, this.y)) { this.die(game, 'fall'); return; }
     this.chargeCd = Math.max(0, this.chargeCd - dt); this.reload = Math.max(0, this.reload - dt);
     this.barkCd = Math.max(0, this.barkCd - dt);
     this.dazed = Math.max(0, this.dazed - dt);
@@ -741,8 +773,8 @@ class Enemy {
       if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
       if (this.timer <= 0) {
         this.aware = true; this.state = 'chase';
-        // The Butcher answers a stagger with a quick retaliation swing if you stayed close.
-        if (this.kind === 'butcher' && !g.dead && Math.hypot(g.x - this.x, g.y - this.y) < cfg.reach * 1.6 + g.r) { this.state = 'windup'; this.timer = cfg.windup * 0.55 * game.mods.enemySlow; }
+        // The Butcher answers a stagger with a quick slam if you stayed close: the same ring, sooner.
+        if (this.kind === 'butcher' && !g.dead && Math.hypot(g.x - this.x, g.y - this.y) < cfg.slam.near * TILE * 1.3 + g.r) { this.state = 'slamwind'; this.timer = cfg.slam.wind * 0.6 * game.mods.enemySlow; }
       }
       return;
     }
@@ -761,7 +793,7 @@ class Enemy {
       // A blow already under way is finished, not dropped: the dark cools a hunt, never a swing or a
       // charge in mid-run (pillar 4 — his windup and recovery are the goat's to read and eat).
       const hunting = this.state === 'chase' || this.state === 'noticed' || this.state === 'investigate';
-      const cold = game.level.def.dark ? this.lostTimer > TUNING.dark.ai.lose && hunting : this.lostTimer > 6 && w.flowDist(this.x, this.y) > 14;
+      const cold = game.inDark ? this.lostTimer > TUNING.dark.ai.lose && hunting : this.lostTimer > 6 && w.flowDist(this.x, this.y) > 14;
       if (cold && this.state !== 'held') {
         this.aware = false; this.lostTimer = 0; this.target = this.lastSeen; this.state = 'investigate';
       }
@@ -773,14 +805,14 @@ class Enemy {
       // The rat ogre has his own mind: nothing lures him and nothing turns his head but what he sees.
       if (this.kind === 'ratogre' || this.state === 'hidden') break;
       if (Math.hypot(n.x - this.x, n.y - this.y) > n.r) continue;
-      if (this.kind === 'seer' && game.level.def.dark) this.hearForRune(game, n);
+      if (this.kind === 'seer' && game.inDark) this.hearForRune(game, n);
       if (n.kind === 'lure') {
         // A scream pulls everyone who hears it to the spot, even men already hunting you.
         // Stand still and they find you; move and they search where you were.
         this.target = { x: n.x, y: n.y }; this.state = 'investigate'; this.aware = false; this.lostTimer = 0;
         this.facing = Math.atan2(n.y - this.y, n.x - this.x); this.lured = 1.2;
         game.bark(this, 'search', 0.45);
-      } else if (this.aware && !sees && game.level.def.dark) {
+      } else if (this.aware && !sees && game.inDark) {
         // Only what the goat made: a man hunting by ear who follows the cult's own shouts and swings
         // (`'cult'`) ends up investigating his own feet.
         if (n.kind !== 'cult') this.lastSeen = { x: n.x, y: n.y };
@@ -853,8 +885,8 @@ class Enemy {
   // The charge meets something that does not move — stone, a gong, the hub of the wheel — and he
   // is the one who stops. That beat is the free hit the charge exists to offer.
   chargeStopped(game) {
-    const cfg = this.cfg;
-    this.state = 'stunned'; this.timer = cfg.stun; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow;
+    const C = TUNING.champion.charge;
+    this.state = 'stunned'; this.timer = C.stun; this.vx = 0; this.vy = 0; this.chargeCd = C.cooldown * game.mods.enemySlow;
     game.shake(6); game.audio.sfxSplat(); game.hitstop(0.04); game.floatText(this.x, this.y - 34, 'STUNNED', PALETTE.fireHi);
     game.world.emitNoise(this.x, this.y, TUNING.noise.splat);
   }
@@ -911,25 +943,13 @@ class Enemy {
 
   updateBearer(dt, game, sees) {
     const g = game.goat, cfg = this.cfg, reach = this.atk('reach');
-    this.slamCd = Math.max(0, this.slamCd - dt);
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
+    // The brute runs at you (`chargeStep`); the man holding a post never leaves it.
+    if (this.champion && !this.sentry && this.chargeStep(dt, game, sees)) return;
     if (this.state === 'chase') {
       const d = this.chaseGoat(game, this.speed, dt);
-      // The brute close in brings the club down on the floor now and then instead of swinging it.
-      const SL = TUNING.champion.slam;
-      if (this.champion && !this.sentry && !g.dead && d < SL.near * TILE + g.r && this.slamCd <= 0 && Math.random() < SL.chance) {
-        this.state = 'slamwind'; this.timer = SL.wind * game.mods.enemySlow; this.vx = 0; this.vy = 0; this.slamCd = SL.cd;
-        game.floatText(this.x, this.y - 40, 'HNNGH', PALETTE.blood); game.audio.sfxThud();
-        return;
-      }
-      if (this.champion && d < SL.near * TILE + g.r && this.slamCd <= 0) this.slamCd = SL.cd * 0.4;   // rolled against: not every frame
       if (d < reach + g.r && !g.dead) { this.state = 'windup'; this.timer = this.atk('windup') * game.mods.enemySlow; this.vx = 0; this.vy = 0; game.bark(this, 'attack', 0.25); }
-      return;
-    }
-    if (this.state === 'slamwind') {
-      this.vx = 0; this.vy = 0; this.facing = Math.atan2(g.y - this.y, g.x - this.x); this.timer -= dt;
-      if (this.timer <= 0) this.slam(game);
       return;
     }
     if (this.state === 'windup') {
@@ -946,24 +966,26 @@ class Enemy {
     if (this.state === 'recover') { this.vx = 0; this.vy = 0; this.timer -= dt; if (this.timer <= 0) this.state = 'chase'; }
   }
 
-  // The brute's club on the floor: a ring round him, every way at once. The goat inside it is hurt
-  // and thrown straight out from him; his own men inside it go over the way a swing floors them.
-  slam(game) {
-    const SL = TUNING.champion.slam, R = SL.range * TILE, g = game.goat;
-    this.state = 'recover'; this.timer = SL.recover * game.mods.enemySlow;
-    game.shake(9); game.hitstop(0.05); game.audio.sfxThud(); game.audio.sfxSplat();
+  // The ogre coming down, fists on the floor (`slam`) or out of a leap (`leap`): a ring round him,
+  // every way at once. The goat inside it is hurt and thrown straight out from him. His own men in
+  // it are left standing — it is the goat the ring is for — and so is anything he lands among.
+  quake(game, S, R) {
+    const g = game.goat;
+    game.shake(9); game.hitstop(0.05); game.audio.sfxThud(); game.audio.sfxSplat(); game.vibe(24);
     game.ring(this.x, this.y, R, PALETTE.blood, 0.45, 5); game.ring(this.x, this.y, R * 0.6, PALETTE.bone, 0.35, 3);
-    game.dust(this.x, this.y, 10, 0, 0);
+    game.dust(this.x, this.y, 12, 0, 0);
     game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult');
     if (game.hidden(this.x, this.y)) return;
     if (!g.dead) {
       const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
       if (d < R + g.r && game.reaches(this.x, this.y, g.x, g.y) && !Talisman.parry(game, this, 'slam')) {
         const nx = dx / (d || 1), ny = dy / (d || 1);
-        g.damage(SL.damage, game, nx * SL.knock * 4, ny * SL.knock * 4, false, this);
+        g.damage(S.damage * game.mods.butcherDamage, game, nx * S.knock * 4, ny * S.knock * 4, false, this);
       }
     }
-    game.meleeHit(this, R, Math.PI * 2, 0, 0, true);
+    for (const p of game.props) {
+      if (Beast.animal(p) && !p.held && p.birdState !== 'flying' && Math.hypot(p.x - this.x, p.y - this.y) < R + (p.r || 0)) Beast.hurt(p, game, 'blow');
+    }
   }
   updateHunter(dt, game, sees) {
     const g = game.goat, cfg = this.cfg;
@@ -1047,31 +1069,50 @@ class Enemy {
     const g = game.goat, cfg = this.cfg;
     this.lungeCd = Math.max(0, this.lungeCd - dt);
     this.flipCd = Math.max(0, this.flipCd - dt);
+    this.sideT = Math.max(0, (this.sideT || 0) - dt);
     this.circleTimer -= dt;
     if (this.circleTimer <= 0) {
       this.circleTimer = cfg.circleFlip * (0.6 + Math.random());
       // A pack spreads round you rather than bunching on one side: with another hound on the ring
-      // near him, he circles away from it. Alone, it is the coin it always was.
+      // near him, he circles away from it. Alone, it is the coin it always was — rarer, and never
+      // inside `sideHold` of the last time he wheeled: with a heading that has to come round, every
+      // flip is a turn on the floor, and a coin every second was a dog who could not decide.
+      // A mate well round the ring from him (`mateArc`) is not bunching and leaves him be: the sign
+      // off a mate's angle flipped each time the two of them crossed the goat's line.
       const mate = this.ringMate(game, cfg);
+      let sign = this.circleSign;
       if (mate) {
         const me = Math.atan2(this.y - g.y, this.x - g.x), it = Math.atan2(mate.y - g.y, mate.x - g.x);
         // A positive sign walks him clockwise on screen, which is his angle round the goat falling.
-        this.circleSign = angleDiff(it, me) > 0 ? -1 : 1;
-      } else if (Math.random() < 0.45) this.circleSign *= -1;
+        if (Math.abs(angleDiff(it, me)) < cfg.mateArc) sign = angleDiff(it, me) > 0 ? -1 : 1;
+      } else if (Math.random() < cfg.flipOdds) sign = -sign;
+      if (sign !== this.circleSign && this.sideT <= 0) { this.circleSign = sign; this.sideT = cfg.sideHold; }
     }
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
+    // A hound on the hunt is heard before he is seen, and from which side: he barks as he runs
+    // (`barkGap`), faster on the run in (`barkDart`), and not while he plants and growls.
+    if (this.state === 'chase' || this.state === 'retreat' || this.state === 'dart') {
+      this.barkT = (this.barkT == null ? Math.random() * cfg.barkGap : this.barkT) - dt;
+      if (this.barkT <= 0) {
+        this.barkT = (this.state === 'dart' ? cfg.barkDart : cfg.barkGap) * (0.6 + Math.random() * 0.8);
+        game.audio.sfxBark(game.audio.heard(this.x - g.x, this.y - g.y));
+      }
+    }
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
     // The sidestep carries him: the burst was set the moment he slipped the headbutt.
     if (this.state === 'dodge') { this.timer -= dt; if (this.timer <= 0) { this.state = 'chase'; this.vx *= 0.25; this.vy *= 0.25; } return; }
     if (this.state === 'retreat') {
       this.timer -= dt;
-      // Backing off is run round what is behind him, the same whisker as the ring: straight back he
-      // put his rump into the first wall and stood there, which is a hound that has stopped retreating.
-      const away = this.clearAng(game, Math.atan2(-dy + dx * this.circleSign * 0.7, -dx - dy * this.circleSign * 0.7), cfg.orbitLook * TILE);
+      // The break: out past you and wheeling off the side he was circling, round and away onto the
+      // ring — mostly round, a little out. He used to back straight off with his face to you, which
+      // on a sprite with no legs was a dog sliding backwards; and straight out is a turn right round
+      // off a run that was pointed at the goat. Run round what is in the way, the same whisker as the
+      // ring: straight back he put his rump into the first wall and stood there.
+      const nx = dx / (d || 1), ny = dy / (d || 1), out = cfg.breakOut;
+      const away = this.clearAng(game, Math.atan2(nx * this.circleSign - ny * out, -ny * this.circleSign - nx * out), cfg.orbitLook * TILE);
       this.moveToward(Math.cos(away), Math.sin(away), this.speed * 0.95, dt, game);
-      this.facing = Math.atan2(dy, dx);          // he backs off without taking his eyes off you
-      if (this.timer <= 0) this.state = 'chase';
+      if (this.timer <= 0 || d > cfg.circle * TILE * 1.1) { this.state = 'chase'; this.ringT = cfg.ringHold; }
       return;
     }
     // The charge: planted, the line on the floor re-aimed at wherever the goat has got to.
@@ -1086,7 +1127,8 @@ class Enemy {
       this.dashPath = this.planDash(game, this.x, this.y, this.dashAng, cfg.dashTime);
       if (this.timer <= 0) {
         this.state = 'dart'; this.timer = cfg.dashTime; this.swingHit = false;
-        game.audio.sfxBark(); game.floatText(this.x, this.y - 22, 'RRAF', PALETTE.bone);
+        game.audio.sfxBark(game.audio.heard(this.x - g.x, this.y - g.y)); this.barkT = cfg.barkDart;
+        game.floatText(this.x, this.y - 22, 'RRAF', PALETTE.bone);
         game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult');
       }
       return;
@@ -1095,13 +1137,12 @@ class Enemy {
     // time the goat is in front of his teeth he bites.
     if (this.state === 'dart') {
       this.timer -= dt;
-      if (!g.dead) {
-        const want = Math.atan2(dy, dx), turn = cfg.dashTurn * dt;
-        this.dashAng += clamp(angleDiff(this.dashAng, want), -turn, turn);
-      }
-      // A corner in the way is run round, not into: the same whisker the orbit uses bends the run.
-      // Never past the goat himself, though: a goat with his back to a wall is not a wall to steer off.
-      this.dashAng = this.clearAng(game, this.dashAng, Math.min(cfg.dashLook * TILE, Math.max(0, d - g.r - this.r)));
+      // Through him and a little on, and that is the run: once the goat is behind him and
+      // `overrun` tiles off, it is over. It used to go on for its whole time, homing back round,
+      // and past a goat by a wall the line on the floor came back on itself in a hook.
+      const ahead = Math.abs(angleDiff(this.dashAng, Math.atan2(dy, dx))) < Math.PI / 2;
+      if (!ahead && d > cfg.overrun * TILE) { this.dashEnd(game); return; }
+      this.dashAng = this.runStep(game, this.x, this.y, this.dashAng, dt);
       this.facing = this.dashAng;
       const sp = this.dashSpeedAt(cfg.dashTime - this.timer);
       this.vx = Math.cos(this.dashAng) * sp; this.vy = Math.sin(this.dashAng) * sp;
@@ -1111,24 +1152,29 @@ class Enemy {
         game.audio.sfxSnap();
         this.dashEnd(game); return;
       }
-      if (Math.random() < dt * 3) game.audio.sfxBark();
       if (this.timer <= 0) this.dashEnd(game);
       return;
     }
     if (this.state === 'recover') {
-      this.vx *= 0.55; this.vy *= 0.55; this.timer -= dt;
+      // He slides on off the run and gathers himself: the goat's window, still (pillar 4).
+      const k = Math.exp(-cfg.skid * dt); this.vx *= k; this.vy *= k; this.timer -= dt;
       if (this.timer <= 0) { this.state = 'retreat'; this.timer = cfg.retreat * (0.7 + Math.random() * 0.7); }
       return;
     }
     // chase: close the gap while he cannot see you, then orbit until the moment comes. A goat on the
     // far side of a wall is not a goat to circle, however near: he used to run the ring on the wrong
     // side of the stone with his nose to it. Round by the route instead, until there is a line.
-    if (!sees && (d > cfg.circle * TILE || !game.sees(this.x, this.y, g.x, g.y))) { this.chaseGoat(game, this.speed, dt); return; }
+    if (!sees && (d > cfg.circle * TILE || !game.sees(this.x, this.y, g.x, g.y))) { this.ringing = false; this.chaseGoat(game, this.speed, dt); return; }
     // Seen from well outside the ring, the ring's own steering was a straight line at you with a
     // sideways lean and a whisker, which across a room of pillars is a dog bouncing between them.
-    // He runs the route in, and only starts to circle once he is nearly on the ring.
-    if (d > cfg.circle * TILE * cfg.ringIn && !(this.lungeCd <= 0 && d < cfg.dashRange * TILE)) { this.chaseGoat(game, this.speed, dt); return; }
-    let commit = this.lungeCd <= 0 && !g.dead && sees && d < cfg.dashRange * TILE;
+    // He runs the route in, and only starts to circle once he is nearly on the ring — and once on
+    // it, keeps to it until the goat is clear of `ringOut` more: one edge for both ways was a goat
+    // walking past it and a dog switching between the route and the ring every other step.
+    const ringFar = cfg.circle * TILE * cfg.ringIn * (this.ringing ? cfg.ringOut : 1);
+    if (d > ringFar && !(this.lungeCd <= 0 && !(this.ringT > 0) && d < cfg.dashRange * TILE)) { this.ringing = false; this.chaseGoat(game, this.speed, dt); return; }
+    this.ringing = true;
+    this.ringT = Math.max(0, (this.ringT || 0) - dt);
+    let commit = this.lungeCd <= 0 && this.ringT <= 0 && !g.dead && sees && d < cfg.dashRange * TILE;
     // One hound goes in at a time. Three of them committing together is a coin toss you cannot read;
     // three of them taking turns is a pack, and it is the difference between hard and unfair.
     if (commit && this.packBusy(game, cfg)) { this.lungeCd = cfg.packWait * (0.7 + Math.random() * 0.6); commit = false; }
@@ -1146,9 +1192,11 @@ class Enemy {
     }
     const nx = dx / (d || 1), ny = dy / (d || 1);
     const tx = -ny * this.circleSign, ty = nx * this.circleSign;
-    // Closing, holding the ring, or easing out again, depending on how near he already is.
+    // Closing, holding the ring, or easing out again, depending on how near he already is — on a
+    // slope, not in three steps: each step was a 40° kink in his line wherever the goat's own
+    // walking moved the edge across him.
     const ring = cfg.circle * TILE;
-    const closing = d > ring ? 1 : d < ring * 0.7 ? -0.55 : 0.15;
+    const closing = clamp((d - ring) / (ring * 0.35), -0.6, 1);
     // The ring is run round what stands in it. Straight along the tangent he used to put his nose
     // into the first pillar on it and push, which read as a dog that had forgotten how to run: the
     // whisker finds the nearest heading with floor ahead of it, and if the circle is walled off on
@@ -1157,9 +1205,9 @@ class Enemy {
     const ang = this.clearAng(game, want, cfg.orbitLook * TILE);
     // Not every frame, though: walled on both sides of the ring (a corridor), that flip used to fire
     // sixty times a second and he shivered on the spot. Once, then he runs what he chose a beat.
-    if (Math.abs(angleDiff(ang, want)) > 1.3 && this.flipCd <= 0) { this.circleSign *= -1; this.flipCd = cfg.flipGap; }
+    if (Math.abs(angleDiff(ang, want)) > 1.3 && this.flipCd <= 0) { this.circleSign *= -1; this.flipCd = cfg.flipGap; this.sideT = cfg.sideHold; }
+    // His body goes where his legs do (`stride`); his eyes stay on you (`canSeeGoat`).
     this.moveToward(Math.cos(ang), Math.sin(ang), this.speed * (this.lungeCd > 0 ? 0.92 : 1), dt, game);
-    this.facing = Math.atan2(dy, dx);
   }
 
   // The nearest heading to `ang` with `look` px of floor in front of it — stone, a drop and blocking
@@ -1167,19 +1215,8 @@ class Enemy {
   // makes him go round a pillar rather than into it, orbiting and running alike. With nothing open
   // it hands back `none` (the heading asked for, unless the caller would rather hear so).
   clearAng(game, ang, look, x = this.x, y = this.y, props, none = ang) {
-    const w = game.world, r = this.r;
     if (!props) props = this.nearBlockers(game, x, y, look + 2 * TILE);
-    const open = (a) => {
-      const cx = Math.cos(a), cy = Math.sin(a);
-      for (let s = r; s <= look + r; s += 8) {
-        const px = x + cx * s, py = y + cy * s;
-        if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE)) || w.isPitPx(px, py)) return false;
-        const side = [[-cy * r, cx * r], [cy * r, -cx * r]];
-        for (const [ox, oy] of side) if (w.isSolid(Math.floor((px + ox) / TILE), Math.floor((py + oy) / TILE))) return false;
-        for (const p of props) if (Math.hypot(p.x - px, p.y - py) < p.r + r * 0.8) return false;
-      }
-      return true;
-    };
+    const open = (a) => this.openAng(game, a, look, x, y, props);
     if (open(ang)) return ang;
     for (let k = 1; k <= 6; k++) {
       const a = ang + k * 0.35 * this.circleSign, b = ang - k * 0.35 * this.circleSign;
@@ -1187,6 +1224,58 @@ class Enemy {
       if (open(b)) return b;
     }
     return none;
+  }
+  // Whether `look` px ahead of (x, y) on heading `a` take his width: stone and a drop at his middle
+  // and shoulders, blocking furniture, and with `bodies` the men and hounds in them as well.
+  openAng(game, a, look, x, y, props, bodies) {
+    const w = game.world, r = this.r, cx = Math.cos(a), cy = Math.sin(a);
+    for (let s = r; s <= look + r; s += 8) {
+      const px = x + cx * s, py = y + cy * s;
+      if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE)) || w.isPitPx(px, py)) return false;
+      if (w.isSolid(Math.floor((px - cy * r) / TILE), Math.floor((py + cx * r) / TILE))) return false;
+      if (w.isSolid(Math.floor((px + cy * r) / TILE), Math.floor((py - cx * r) / TILE))) return false;
+      for (const p of props) if (Math.hypot(p.x - px, p.y - py) < p.r + r * 0.8) return false;
+      // Past a body is along its edge, and a body stood at a lip must not be passed over the drop.
+      if (bodies && (w.isPitPx(px - cy * r, py + cx * r) || w.isPitPx(px + cy * r, py - cx * r))) return false;
+      if (bodies) for (const o of bodies) if (Math.hypot(o.x - px, o.y - py) < o.r + r) return false;
+    }
+    return true;
+  }
+  // The hound's eye for his own (24 Sep 2026: "he cannot get round his own"). Nothing else he
+  // steers by knows a body is there — the fields are stone, the whisker stone and furniture — so a
+  // clubman on his route or a packmate on the ring was run into and leaned on, the two of them
+  // shoved along at half his pace, and in a doorway not at all. With one ahead of him inside
+  // `pass.look` tiles (and nearer than the goat), he takes the nearest heading that clears it on
+  // the side away from it — kept `pass.hold` s, or a man square in front flipped him every step —
+  // that stone, drops, furniture, flame and the other bodies allow. Hemmed in on both sides he
+  // leans on as before, which is still how a one-tile corridor gets opened.
+  passBodies(game, want, dt) {
+    const cfg = this.cfg.pass, g = game.goat;
+    this.passT = Math.max(0, (this.passT || 0) - dt);
+    if (!cfg) return want;
+    const look = cfg.look * TILE, r = this.r, x = this.x, y = this.y, cx = Math.cos(want), cy = Math.sin(want);
+    const gd = len(g.x - x, g.y - y), bodies = [];
+    let first = null, fa = Infinity, fside = 0;
+    for (const o of game.enemies) {
+      if (o === this || o.dead || o.held || o.ghosted || o.state === 'hop' || o.state === 'flung') continue;
+      const ox = o.x - x, oy = o.y - y, box = look + r + o.r + TILE;
+      if (ox > box || ox < -box || oy > box || oy < -box) continue;
+      bodies.push(o);
+      const along = ox * cx + oy * cy, side = oy * cx - ox * cy;
+      if (along <= 0 || along > look + r + o.r || along > gd || Math.abs(side) >= o.r + r) continue;
+      if (along < fa) { fa = along; first = o; fside = side; }
+    }
+    if (!first) return want;
+    if (this.passT <= 0 || this.passBy !== first) { this.passSide = fside > 0 ? -1 : 1; this.passBy = first; }
+    this.passT = cfg.hold;
+    const props = this.nearBlockers(game, x, y, look + 2 * TILE);
+    for (let k = 1; k <= 8; k++) for (const s of [this.passSide, -this.passSide]) {
+      const a = want + s * k * cfg.step;
+      if (!this.openAng(game, a, look, x, y, props, bodies)) continue;
+      if (this.hazardAt(game, x + Math.cos(a) * look * 0.5, y + Math.sin(a) * look * 0.5) || this.hazardAt(game, x + Math.cos(a) * look, y + Math.sin(a) * look)) continue;
+      return a;
+    }
+    return want;
   }
   nearBlockers(game, x, y, R) {
     return game.props.filter((p) => !p.broken && p.blocking && Math.abs(p.x - x) < R && Math.abs(p.y - y) < R);
@@ -1198,15 +1287,26 @@ class Enemy {
     return cfg.dashSpeed * Math.min(1, cfg.dashStart + (1 - cfg.dashStart) * t / cfg.dashRamp);
   }
 
+  // One step of the run's heading, shared by the run and the line drawn for it so the two cannot
+  // disagree. He homes onto the goat at `dashTurn` only while the goat is still in front of him —
+  // homing on a goat he had passed turned the run back on itself. A corner in the way is run round,
+  // not into: the same whisker the orbit uses bends it, never past the goat himself (a goat with his
+  // back to a wall is not a wall to steer off), and never faster than `whiskTurn` — let the whisker
+  // snap and a run meeting a wall past the goat drew a kink of a right angle and more.
+  runStep(game, x, y, ang, dt, near) {
+    const cfg = this.cfg, g = game.goat, gd = Math.hypot(g.x - x, g.y - y), toG = Math.atan2(g.y - y, g.x - x);
+    if (!g.dead && gd > g.r && Math.abs(angleDiff(ang, toG)) < Math.PI / 2) ang += clamp(angleDiff(ang, toG), -cfg.dashTurn * dt, cfg.dashTurn * dt);
+    const want = this.clearAng(game, ang, Math.min(cfg.dashLook * TILE, Math.max(0, gd - g.r - this.r)), x, y, near);
+    return ang + clamp(angleDiff(ang, want), -cfg.whiskTurn * dt, cfg.whiskTurn * dt);
+  }
   // Where the run goes if the goat stands still: a few dozen steps of the same turn-limited homing
-  // the run itself does, cut short by stone or a drop. This is the red line on the floor.
+  // the run itself does, cut short by stone, a drop, or `overrun` past the goat. The red line.
   planDash(game, x, y, ang, time, t0) {
     const cfg = this.cfg, g = game.goat, w = game.world, pts = [{ x, y }], step = 1 / 30;
     const near = this.nearBlockers(game, x, y, cfg.dashSpeed * time + 2 * TILE);
     for (let t = 0; t < time; t += step) {
-      const want = Math.atan2(g.y - y, g.x - x), turn = cfg.dashTurn * step;
-      if (Math.hypot(g.x - x, g.y - y) > g.r) ang += clamp(angleDiff(ang, want), -turn, turn);
-      ang = this.clearAng(game, ang, Math.min(cfg.dashLook * TILE, Math.max(0, Math.hypot(g.x - x, g.y - y) - g.r - this.r)), x, y, near);
+      if (Math.abs(angleDiff(ang, Math.atan2(g.y - y, g.x - x))) >= Math.PI / 2 && Math.hypot(g.x - x, g.y - y) > cfg.overrun * TILE) break;
+      ang = this.runStep(game, x, y, ang, step, near);
       const sp = this.dashSpeedAt((t0 || 0) + t);
       const nx = x + Math.cos(ang) * sp * step, ny = y + Math.sin(ang) * sp * step;
       if (w.isSolid(Math.floor(nx / TILE), Math.floor(ny / TILE)) || w.isPitPx(nx, ny)) break;
@@ -1215,8 +1315,13 @@ class Enemy {
     return pts;
   }
   dashEnd(game) {
-    this.state = 'recover'; this.timer = this.cfg.recover * game.mods.enemySlow; this.dashPath = null;
+    const cfg = this.cfg;
+    this.state = 'recover'; this.timer = cfg.recover * game.mods.enemySlow; this.dashPath = null;
     this.vx *= 0.3; this.vy *= 0.3;
+    // The wait for the next run starts here as well as at the plant (which still covers a run a
+    // blow or the scream broke off): after a run he breaks away, comes back onto the ring and
+    // circles, and only then runs again.
+    this.lungeCd = cfg.lungeCd * (0.7 + Math.random() * 0.6);
   }
 
   // The nearest other hound on the ring round the goat with him, within `packGap` tiles of him.
@@ -1507,10 +1612,67 @@ class Enemy {
     game.audio.sfxBlink();
   }
 
+  // The Butcher (1.66). He walks at you slowly, and he does not swing: out of reach and in sight he
+  // leaps, close in he brings both fists down on the floor. Each is a ring you can read on the
+  // floor before it lands (`Renderer.drawHopMark`, `drawSlamRing`), and each ends with him on his
+  // knees for long enough to be hit — which is where every heart he has comes from.
   updateButcher(dt, game, sees) {
-    const g = game.goat, cfg = this.cfg;
+    const g = game.goat, cfg = this.cfg, L = cfg.leap, S = cfg.slam;
+    this.slamCd = Math.max(0, this.slamCd - dt);
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
+    const d = Math.hypot(g.x - this.x, g.y - this.y);
+    if (this.state === 'chase') {
+      if (!g.dead && d < S.near * TILE + g.r && game.reaches(this.x, this.y, g.x, g.y)) {
+        this.state = 'slamwind'; this.timer = S.wind * game.mods.enemySlow; this.vx = 0; this.vy = 0;
+        game.floatText(this.x, this.y - 50, 'HNNGH', PALETTE.blood); game.audio.sfxThud(); return;
+      }
+      // The leap wants the goat in sight and a floor to come down on; the spot is where the goat
+      // stands now, so moving off it during the crouch and the flight is the whole of the answer.
+      if (!g.dead && sees && this.slamCd <= 0 && d >= L.min * TILE && d <= L.max * TILE) {
+        const to = this.hopSpot(game, g, d);
+        if (len(to.x - this.x, to.y - this.y) >= L.minHop * TILE) {
+          this.hopFrom = { x: this.x, y: this.y }; this.hopTo = to;
+          this.facing = Math.atan2(to.y - this.y, to.x - this.x);
+          this.state = 'hopwind'; this.timer = L.wind * game.mods.enemySlow; this.vx = 0; this.vy = 0;
+          game.bark(this, 'attack', 0.5); return;
+        }
+        this.slamCd = 0.4;   // no spot from here: look again in a moment, not every frame
+      }
+      this.chaseGoat(game, this.speed, dt);
+      return;
+    }
+    if (this.state === 'hopwind') {
+      this.vx = 0; this.vy = 0; this.timer -= dt;
+      if (this.timer <= 0) { this.state = 'hop'; this.timer = L.air; game.audio.sfxGrowl(); }
+      return;
+    }
+    if (this.state === 'hop') {
+      this.timer -= dt;
+      const k = clamp(1 - this.timer / L.air, 0, 1);
+      // Placed rather than pushed, as the rat ogre is: the arc is his, the step adds nothing.
+      this.vx = 0; this.vy = 0; this.x = lerp(this.hopFrom.x, this.hopTo.x, k); this.y = lerp(this.hopFrom.y, this.hopTo.y, k);
+      this.hopZ = Math.sin(k * Math.PI) * L.lift;
+      if (this.timer <= 0) {
+        this.hopZ = 0; this.state = 'hopland'; this.timer = L.land * game.mods.enemySlow; this.slamCd = L.cd;
+        this.quake(game, L, L.radius * TILE);
+      }
+      return;
+    }
+    if (this.state === 'slamwind') {
+      this.vx = 0; this.vy = 0; this.facing = Math.atan2(g.y - this.y, g.x - this.x); this.timer -= dt;
+      if (this.timer <= 0) { this.state = 'recover'; this.timer = S.recover * game.mods.enemySlow; this.quake(game, S, S.range * TILE); }
+      return;
+    }
+    if (this.state === 'hopland' || this.state === 'recover') { this.vx = 0; this.vy = 0; this.timer -= dt; if (this.timer <= 0) this.state = 'chase'; return; }
+    this.state = 'chase';
+  }
+
+  // The brute's charge (the Butcher's until 1.66), run from `updateBearer`. Handles the frame and
+  // returns true while he is planting or running, or walking to a spot he means to run from; false
+  // hands the frame back to the ordinary chase.
+  chargeStep(dt, game, sees) {
+    const g = game.goat, C = TUNING.champion.charge;
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
     if (this.state === 'charge') {
       this.timer -= dt;
@@ -1519,87 +1681,65 @@ class Enemy {
         if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) e.fling(this.vx * 1.4, this.vy * 1.4, false);
       }
       if (!g.dead && d < this.r + g.r + 2) {
-        if (Talisman.parry(game, this, 'charge')) return;
-        g.damage(game.mods.butcherDamage, game, this.vx * 0.6, this.vy * 0.6, false, this);
-        this.state = 'recover'; this.timer = cfg.recover * game.mods.enemySlow; this.vx = 0; this.vy = 0; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow; return;
+        if (Talisman.parry(game, this, 'charge')) return true;
+        g.damage(C.damage, game, this.vx * 0.6, this.vy * 0.6, false, this);
+        this.state = 'recover'; this.timer = this.atk('recover') * game.mods.enemySlow; this.vx = 0; this.vy = 0; this.chargeCd = C.cooldown * game.mods.enemySlow; return true;
       }
-      if (this.timer <= 0) { this.state = 'chase'; this.chargeCd = cfg.chargeCooldown * game.mods.enemySlow; this.vx = 0; this.vy = 0; return; }
+      if (this.timer <= 0) { this.state = 'chase'; this.chargeCd = C.cooldown * game.mods.enemySlow; this.vx = 0; this.vy = 0; return true; }
       // The skid: the last of the run bleeds off, so what ends the charge is his own feet and not the
       // wall — a body slowing past `3 * TILE` of impact is not stopped by stone, only held by it.
-      const k = clamp(this.timer / cfg.chargeSkid, 0.2, 1);
-      this.vx = Math.cos(this.facing) * cfg.chargeSpeed * k; this.vy = Math.sin(this.facing) * cfg.chargeSpeed * k;
-      return;
+      const k = clamp(this.timer / C.skid, 0.2, 1);
+      this.vx = Math.cos(this.facing) * C.speed * k; this.vy = Math.sin(this.facing) * C.speed * k;
+      return true;
     }
     if (this.state === 'chargewind') {
-      // Visible telegraph: he plants his feet, faces you and roars before launching. What he faces
-      // is where you are going to be, and the strip on the floor swings with it: running on across
-      // his line is running into it, and the way out is to break off after he has left his feet.
+      // He plants his feet, faces where you are going to be and roars; the strip on the floor swings
+      // with it. Running on across his line is running into it: break off after he has left his feet.
       this.vx = 0; this.vy = 0; this.timer -= dt;
       const aim = this.chargeAim = this.leadAim(game);
       this.facing = Math.atan2(aim.y - this.y, aim.x - this.x);
       if (this.timer <= 0) {
         const ad = len(aim.x - this.x, aim.y - this.y);
-        this.state = 'charge'; this.timer = Math.min(cfg.chargeTime, (ad + cfg.chargeOver * TILE) / cfg.chargeSpeed);
-        this.vx = Math.cos(this.facing) * cfg.chargeSpeed; this.vy = Math.sin(this.facing) * cfg.chargeSpeed;
+        this.state = 'charge'; this.timer = Math.min(C.time, (ad + C.over * TILE) / C.speed);
+        this.vx = Math.cos(this.facing) * C.speed; this.vy = Math.sin(this.facing) * C.speed;
         game.audio.sfxSwing();
       }
-      return;
+      return true;
     }
-    if (this.state === 'chase') {
-      // A charge that starts at a pillar he was never going to clear read as him crashing into the
-      // furniture rather than choosing a line. `runClear` is the clearance an actual body that wide
-      // needs, not `sees`'s thin ray, checked only as far as the goat's own spot — reaching past it
-      // was tried and it does not work: the tile just beyond the goat is wall as often as it is
-      // floor, so it failed the ordinary case of a goat standing anywhere near his own back wall.
-      // `game.props` only, never `enemies` — a room full of his own kind is a reason to charge, not
-      // a reason not to.
-      this.laneT = Math.max(0, this.laneT - dt);
-      if (sees && d >= cfg.chargeMin * TILE && this.chargeCd <= 0 && !g.dead) {
-        if (game.runClear(this.x, this.y, g.x, g.y, this.r)) {
-          this.state = 'chargewind'; this.timer = cfg.chargeWind * game.mods.enemySlow; this.facing = Math.atan2(dy, dx);
-          this.lane = null;
-          game.floatText(this.x, this.y - 34, 'RAAAGH', PALETTE.blood); game.audio.sfxThud(); return;
-        }
-        // A pillar or a table between him and you is not the end of the charge, it is a reason to
-        // step round it: he looks for a spot a tile or two to the side with a clear run at you and
-        // walks there first, rather than trudging up to the furniture and swinging over it.
-        if (!this.lane && this.laneT <= 0) { this.laneT = cfg.laneLook; this.lane = this.findLane(game); }
+    if (this.state !== 'chase') return false;
+    // A charge that starts at a pillar he was never going to clear read as him crashing into the
+    // furniture rather than choosing a line. `runClear` is the clearance a body that wide needs,
+    // checked only as far as the goat's own spot; `game.props` only, never `enemies` — a room full
+    // of his own kind is a reason to charge, not a reason not to.
+    this.laneT = Math.max(0, this.laneT - dt);
+    if (sees && d >= C.min * TILE && this.chargeCd <= 0 && !g.dead) {
+      if (game.runClear(this.x, this.y, g.x, g.y, this.r)) {
+        this.state = 'chargewind'; this.timer = C.wind * game.mods.enemySlow; this.facing = Math.atan2(dy, dx);
+        this.lane = null; this.vx = 0; this.vy = 0;
+        game.floatText(this.x, this.y - 40, 'RAAAGH', PALETTE.blood); game.audio.sfxThud(); return true;
       }
-      if (this.lane) {
-        const L = this.lane, lx = L.x - this.x, ly = L.y - this.y, ld = len(lx, ly);
-        L.t -= dt;
-        // A walk that is not closing on the spot is a spot he cannot get to: drop it, and do not
-        // look for another straight away, or he picks the same one and walks into the same corner.
-        if (ld < L.best - 4) { L.best = ld; L.still = 0; } else L.still += dt;
-        if (L.still > cfg.laneStill) { this.lane = null; this.laneT = cfg.laneLook * 3; }
-        else if (ld < cfg.laneAt * TILE || L.t <= 0 || !sees || d < cfg.chargeMin * TILE || this.chargeCd > 0) this.lane = null;
-        else { this.moveToward(lx, ly, this.speed, dt, game); return; }
-      }
-      const dd = this.chaseGoat(game, this.speed, dt);
-      if (dd < cfg.reach + g.r && !g.dead) { this.state = 'windup'; this.timer = cfg.windup * game.mods.enemySlow; this.vx = 0; this.vy = 0; }
-      return;
+      // A pillar or a table between him and you is a reason to step round it, not to trudge up to it.
+      if (!this.lane && this.laneT <= 0) { this.laneT = C.laneLook; this.lane = this.findLane(game); }
     }
-    if (this.state === 'windup') {
-      this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
-      if (this.timer <= 0) { this.state = 'swing'; this.timer = cfg.swing * game.mods.enemySlow; this.swingHit = false; game.audio.sfxSwing(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult'); }
-      return;
-    }
-    if (this.state === 'swing') {
-      this.timer -= dt;
-      if (!this.swingHit) { this.swingHit = true; game.meleeHit(this, cfg.reach + 8, cfg.arc, game.mods.butcherDamage, 2.5 * TILE); }
-      if (this.timer <= 0) { this.state = 'recover'; this.timer = cfg.recover * game.mods.enemySlow; }
-      return;
-    }
-    if (this.state === 'recover') { this.vx = 0; this.vy = 0; this.timer -= dt; if (this.timer <= 0) this.state = 'chase'; }
+    if (!this.lane) return false;
+    const P = this.lane, lx = P.x - this.x, ly = P.y - this.y, ld = len(lx, ly);
+    P.t -= dt;
+    // A walk that is not closing on the spot is a spot he cannot get to: drop it, and do not look
+    // for another straight away, or he picks the same one and walks into the same corner.
+    if (ld < P.best - 4) { P.best = ld; P.still = 0; } else P.still += dt;
+    if (P.still > C.laneStill) { this.lane = null; this.laneT = C.laneLook * 3; return false; }
+    if (ld < C.laneAt * TILE || P.t <= 0 || !sees || d < C.min * TILE || this.chargeCd > 0) { this.lane = null; return false; }
+    this.moveToward(lx, ly, this.speed, dt, game);
+    return true;
   }
 
-  // Where the charge is aimed: where the goat will be when he arrives, `chargeLead` of the way there
-  // and never more than `leadMax` tiles ahead of him — and only a lead he could actually run.
+  // Where the charge is aimed: where the goat will be when he arrives, `lead` of the way there and
+  // never more than `leadMax` tiles ahead of him — and only a lead he could actually run.
   leadAim(game) {
-    const g = game.goat, cfg = this.cfg, d = len(g.x - this.x, g.y - this.y);
-    const t = Math.min(cfg.chargeTime, d / cfg.chargeSpeed) * cfg.chargeLead;
+    const g = game.goat, C = TUNING.champion.charge, d = len(g.x - this.x, g.y - this.y);
+    const t = Math.min(C.time, d / C.speed) * C.lead;
     let lx = g.vx * t, ly = g.vy * t;
-    const l = Math.hypot(lx, ly), cap = cfg.leadMax * TILE;
+    const l = Math.hypot(lx, ly), cap = C.leadMax * TILE;
     if (l > cap) { lx *= cap / l; ly *= cap / l; }
     const x = g.x + lx, y = g.y + ly;
     if (l > 1 && game.world.walkableAt(Math.floor(x / TILE), Math.floor(y / TILE)) && game.runClear(this.x, this.y, x, y, this.r * 0.6)) return { x, y };
@@ -1608,19 +1748,19 @@ class Enemy {
   // A spot to charge from: one, two or three tiles either side of the line to the goat (and a tile
   // back), reachable on foot, with a clear run from it to him. The nearest such spot, or null.
   findLane(game) {
-    const g = game.goat, cfg = this.cfg, w = game.world;
+    const g = game.goat, C = TUNING.champion.charge, w = game.world;
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
     const props = this.nearBlockers(game, this.x, this.y, d + 3 * TILE);
     let best = null, bd = Infinity;
     for (const back of [0, -1]) for (const side of [1, -1, 2, -2, 3, -3]) {
       const x = this.x + (-uy * side + ux * back) * TILE, y = this.y + (ux * side + uy * back) * TILE;
       if (!w.walkableAt(Math.floor(x / TILE), Math.floor(y / TILE))) continue;
-      if (len(g.x - x, g.y - y) < cfg.chargeMin * TILE) continue;
+      if (len(g.x - x, g.y - y) < C.min * TILE) continue;
       const walk = Math.abs(side) + Math.abs(back);
       if (walk >= bd) continue;
       if (!this.bodyClear(game, x, y, this.r * 0.9, props, true)) continue;
       if (!game.runClear(x, y, g.x, g.y, this.r)) continue;
-      best = { x, y, t: cfg.laneTime, best: Infinity, still: 0 }; bd = walk;
+      best = { x, y, t: C.laneTime, best: Infinity, still: 0 }; bd = walk;
     }
     return best;
   }
@@ -1644,11 +1784,13 @@ class Enemy {
   // if it is closer than that), down the flow field to the goat if not, walked back until the spot
   // and the line to it are floor — never into stone, never over a drop.
   hopSpot(game, target, td) {
-    const w = game.world, H = this.cfg.hop;
+    // The rat ogre's `hop` or the Butcher's `leap`: he comes down `short` tiles short of his prey
+    // (on it, at 0), and with `over` a drop under the line is flown over — only the spot must be floor.
+    const w = game.world, H = this.cfg.hop || this.cfg.leap, short = H.short != null ? H.short * TILE : this.cfg.reach * 0.6;
     let ax, ay, want = H.dist * TILE;
     if (target && td < Infinity) {
       ax = target.x - this.x; ay = target.y - this.y;
-      want = Math.min(want, Math.max(TILE, td - this.cfg.reach * 0.6));
+      want = Math.min(want, Math.max(TILE, td - short));
     } else {
       const f = w.flowDir(this.x, this.y);
       if (f) { ax = f.x; ay = f.y; } else { ax = game.goat.x - this.x; ay = game.goat.y - this.y; }
@@ -1657,18 +1799,27 @@ class Enemy {
     // A shade inside his own radius: wall collision parks him exactly `r` off the stone, and probing
     // at the full radius from there read the wall he was leaning on as in the way of every leap.
     const pr = this.r * 0.85;
-    const ok = (x, y) => {
+    const ok = (x, y, pits) => {
       for (const [ox, oy] of [[0, 0], [pr, 0], [-pr, 0], [0, pr], [0, -pr]]) {
-        if (w.isSolid(Math.floor((x + ox) / TILE), Math.floor((y + oy) / TILE)) || w.isPitPx(x + ox, y + oy)) return false;
+        if (w.isSolid(Math.floor((x + ox) / TILE), Math.floor((y + oy) / TILE)) || (pits && w.isPitPx(x + ox, y + oy))) return false;
       }
       return true;
     };
-    const reach = (dx, dy, most) => { let b = 0; for (let s = 8; s <= most; s += 8) { if (!ok(this.x + dx * s, this.y + dy * s)) break; b = s; } return b; };
+    const reach = (dx, dy, most) => {
+      let b = 0;
+      for (let s = 8; s <= most; s += 8) {
+        const x = this.x + dx * s, y = this.y + dy * s;
+        if (!ok(x, y, !H.over)) break;
+        if (!H.over || ok(x, y, true)) b = s;
+      }
+      return b;
+    };
     let best = reach(ax, ay, want), bx = ax, by = ay;
     // Pinned — a corner, or a wall across the line to his prey: he used to crouch and leap on the
     // spot for ever. Fan out round the line (and down the flow field, which knows the way round) and
     // take the leap that gains the most ground toward it, so a corner costs him one sideways bound.
-    if (best < Math.min(want, H.minHop * TILE) - 8) {
+    // Only the rat ogre: the Butcher leaps at you or not at all, and walks when he cannot.
+    if (this.kind === 'ratogre' && best < Math.min(want, H.minHop * TILE) - 8) {
       const base = Math.atan2(ay, ax), f = w.flowDir(this.x, this.y), cands = [];
       if (f) cands.push(Math.atan2(f.y, f.x) - base);
       for (const o of [0.5, 1, 1.5, 2.1, 2.7]) cands.push(o, -o);

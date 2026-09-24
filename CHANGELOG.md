@@ -5,6 +5,142 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.66 — the ogre comes down; the brute charges; level one climbs slowly; a soul is a party
+
+Asked for: the brute in the Butcher's body, the Butcher as a bigger ogre that leaps after you and
+hits a ring round him, "как раньше делал громила", and the two of them balanced to be more interesting.
+Then: not the rat ogre ("крыса огр — отдельная штука") but an ogre of his own, a two-legged
+half-beast drawn in pixels, bigger and fatter, who is never knocked back, whose ring leaves his own
+men standing, and who is plainly the cult's ("имел какие-то его атрибуты красные").
+
+- **The Butcher is an ogre** (OGRE in every text; kind `butcher` inside). His own pixel body,
+  `js/ogre-pixels.js`: a hunched olive half-beast, tusks, stub horns through the cult's red hood, a
+  ragged red mantle with the cult's sign on the back, a red loincloth, a broken shackle on each
+  wrist; five views mirrored to eight, a stride, and both fists over his head through the slam and
+  the leap. `butcher.scale` 1.15, radius 22. Nothing throws him (`Enemy.fling` refuses him, the
+  horns stagger him on the spot) — the brute flies, the ogre does not. He has no swing any more. Seen 2.6–7 tiles off he crouches (0.62 s) with a ring drawn where you
+  stand, flies (0.62 s, 46 px up, over men and over a drop — never into one) and lands: a 1.6-tile
+  ring. Within 1.5 tiles he slams both fists on the floor instead (0.72 s, a 1.9-tile ring) — the
+  brute's old slam. Both end with him on his knees (1.0 s / 0.95 s): that is where his four hearts
+  come from. His own men inside a ring are left standing: it is the goat the ring is for.
+  A headbutt in the crouch or the slam's windup counts and does not stop it; a scream breaks the
+  crouch, never the leap; the horns pass under him in the air.
+- **The brute has the charge.** He wears the Butcher's old body (skull mask, apron, cleaver;
+  `champion.scale` 1.06 on that 48 px sheet ≈ the size he was), loses the slam, and takes the
+  Butcher's charge a size smaller: from 3 tiles, 0.7 s planted, 12 tiles/s for at most 0.85 s,
+  3.4 s between. Into a wall he stands stunned 1.6 s. A brute holding a post (the lesson sentry)
+  never charges. Everything the charge did to a room it still does — door, table, lamp, brazier.
+- `THREAT` is unchanged (brute 3.2, ogre 5); `tools/balance.js` holds every rule.
+- **Level one climbs a step at a time** (twelve rooms, from ten): the sentry; one clubman loose in a
+  room; a room of lit bowls set in straw and nobody in it (`calmAt`, `CALM_TEMPLATE`) to butt one
+  over and watch it burn; the wheel and its two men; the blade and its two men; the first soul; two
+  clubmen standing in straw with a bowl in it (`trapAt`, the `hayloft` trap room, `trapMen`); the first
+  brute, alone; his arena; the second soul; the ogre. The brute used to be the second room.
+- **A soul is a party** (`TUNING.fanfare`, `Renderer.drawSoulFanfare`): a flash, a turning wheel of
+  gold and violet pixel rays behind the soul, the soul springing in, A SOUL bouncing up in gold,
+  pixel confetti; then the cards spring in one after another and the rays settle to a glow the cards
+  read over. Nothing can be picked until the last card is in.
+
+### Sound: drier, shorter, quieter; a tune
+
+Asked for: effects that take less space ("especially the strange cage break"), no echo or depth,
+not so loud; a main melody that is a melody and not noise.
+
+- **The room is a cell, not a hall.** `TUNING.audio.room` 1.4 s / send 0.3 (music 0.2) / return 0.8
+  became 0.32 s / 0.07 (0.06) / 0.6; every per-effect `wet` cut to a quarter or less (gunshot 0.6 →
+  0.12, blast 0.5 → 0.12, the pen 0.3 → 0).
+- **Every recipe shorter, no sub.** `Foley.finish` high-passes at 85 Hz; the lowest bodies (38–60 Hz
+  in the blast, club, splat, card, rune, heartbeats) moved up to 70–100 Hz. Lengths: the pen breaking
+  2.1 → 0.42 s, a bar struck 1.5 → 0.22 s, gong 3.6 → 1.3 s, toll 5 → 2 s, blast 2.2 → 0.85 s,
+  club 1.3 → 0.32 s (the ringing in the ears is gone), gunshot 1.4 → 0.42 s, card 1.1 → 0.38 s,
+  steel 1.1 → 0.42 s, rune 1.3 → 0.6 s, fire 0.9 → 0.5 s, and thud, splat, hit, pot, kill,
+  breath, cast, veil and COLD EYE about halved. All recipes together: 34.8 s of tail → 17.6 s.
+- **The pen** is now a dry knock: the frame's wood cracking, two damped bars knocking loose, a thump
+  — was five free iron bars ringing for two seconds, and the loudest sound in the game by 2 dB.
+- **About 6 dB quieter.** `sfx` bus 0.85 → 0.45 and every gain re-levelled on a 300 ms loudness
+  window: average −28 → −35 dB, loudest −14.5 (the pen) → −25 (a blast); the pen itself −14.5 → −27.5.
+- **A tune.** `THEME_BED`: a four-bar bone-flute phrase per theme (A Phrygian A-C-Bb-A falling to
+  A-G-F-E; G minor upstairs; the first floor's broken up round a tritone), a five-note bass gallop a
+  bar, an open-fifth drone an octave up, plucked-saw stage riffs under the flute, rim knocks
+  instead of noise hats, layers 0.75 → 0.65 and fire ticks 0.11 → 0.08 so the line leads. See
+  `MUSIC.md`. `tools/sfx-board.html` can now play the bed per theme and stage.
+
+### Playtest, 24 Sep 2026: the HUD, bodies, walls, icons
+
+- **The skill rail sits bottom right** (top was awkward to watch a cooldown in); its notes open
+  upward and THE GONG strip rides over it. On a touch screen it stays at the top, clear of the
+  thumbs (`renderer.railLow`). The kill count stays top right.
+- **The dev drawer is bottom left**, over the seed, and opens upward from there.
+- **Bodies are the size of the man.** `CombatFX.death` drew the 96-px snapshot into 40 px, a
+  leftover of the painted sheets drawn at 80: every corpse and torn piece lay at under half size.
+  Now 1:1; the corpse turns about its middle (feet at 64), the pool is 14 / 19 px to still show.
+- **Floor words step off furniture.** `Renderer.clearFloorRow` slides a block of control words by
+  half tiles to the nearest band no table, crate or stone stands in (a table sat on E - ROLL).
+- **Walls join.** One coursed-stone cap laid over the whole map instead of a tile repeated with
+  its own borders; brick only on south faces, one height, running round an L; other open sides a
+  dark line and a lit or shaded lip; corners read the diagonals (`js/painted-art.js`).
+- **The skill chips are pixel pictures** that change with the active soul on that button
+  (`js/skill-icons.js`): SPLASH is big green dripping horns, LONG HORNS antlers, BOMB CHARGE lava
+  horns, BY THE COLLAR a man in the teeth, DRAGON BREATH a cone of fire, and so on; passives add a
+  mark. The boon card shows the same picture.
+
+## 1.65 — THE DARK, a floor of its own; hounds that run like dogs
+
+### The hounds
+
+Measured with the new `tools/hounds.js` (1, then 3 hounds round a goat standing, walking a ring and
+walking side to side, four floors × four seeds, against 1.64 in a copy of the same tree).
+
+- **A hound has legs.** He was a picture of a dog set going whichever way the ring wanted between one
+  step and the next: with three of them on a moving goat that was 3–10 reversals a second each, and
+  for a quarter to two fifths of the time he slid sideways or backwards with his face to you. He has a
+  heading and a pace now (`Enemy.stride`, `dog.turn`, `turnSlow`, `accel`, `brake`): a change of mind
+  is an arc on the floor, a wheel right round is taken slow, and his body points where he runs while
+  his eyes stay on the goat (an aware hound has no blind cone). Reversals: 0. Sliding: 0. Routes as
+  good as before (5 of 360 never reached the goat, 6 of 360 in 1.64).
+- **He circles.** The wait for the next run was counted from the plant, so it was spent on the windup
+  and the run themselves, and a lone hound went plant, run, back off, plant — 44% of his time planted,
+  6–15% circling. It is set again when the run ends, and he circles `ringHold` at least before he
+  plants again: circling 23–27% of the time, runs a minute about the same (18–19, from 19–21).
+- **The run is a lunge through you, not a hook.** It homed on the goat for its whole time, turned
+  back after a goat it had passed, and its whisker snapped off walls — the red line on the floor came
+  out as a hook with a corner in it ("как собака так планирует движение"). It homes only while you are
+  ahead, bends round a corner no faster than `whiskTurn`, and ends `overrun` (1.5) tiles past you; the
+  line on the floor is the same steps.
+- **After the run he breaks away round the ring** (`breakOut`) and slides out of it (`skid`), where he
+  used to stop dead and back off. Hysteresis on the ring's edge (`ringOut`), a slope for how hard he
+  closes on it, `sideHold` between two wheels, a packmate only counts as bunching inside `mateArc`.
+- **Running, he bobs** (`dog.gait`, `dog.bob`): the pixel hound has no stride on the sheet.
+
+### THE DARK
+
+- **Its own level** (`DARK_LEVEL`). It was any floor with the lamps out and its curve cut by a
+  factor. It is one floor now, THE FORK's other flight, played in THE THRESHING FLOOR's place: its own
+  canon, THE LAMP, with five rooms built round their light (the well, the low vault, the cellblock, the
+  chapel, the store); its own crowd — hounds and seers weighted up, the dark's own, and never a rifle;
+  six men a room at most; its own curve, doors, palette, par and best score. 82 threat to THE
+  THRESHING FLOOR's 109 (75%; `balance.js` holds it between 70% and 100% of it).
+- **A lamp or two in every room** ("1-2 торшера в комнате"): every room with men, and every arena
+  and rest room, stands one, two in a big room, counting any flame of its own — none left black on
+  purpose any more. The lamp is the choice: it shows them to you and you to them, and a headbutt puts
+  it on the floor alight and then the room is black.
+- **A lantern on the wall by every door** ("настенный — и там всегда видимость"): a small light that
+  nothing puts out, on an iron arm off a side wall or a plate on the far one, in pixels. The way in
+  and the way on can always be seen — and a goat in a doorway can be.
+- **The walls round you are drawn** ("более четкие контуры стен"): inside your hearing every face
+  where floor meets stone gets a line of cold light, strongest at your feet.
+- **The eyes carry** ("подсветить глаза"): a hound's and a seer's eyes are a bigger cell with a
+  wider glow round it.
+- **LEVELS**: THE DARK has its own row (and `#dark` starts it); the dark switch that played any floor
+  dark is gone. The floor in front of THE FORK's two flights names where each goes.
+- **A rifle aimed through the dark** ("как в темноте стрелок целится?") on a floor painted black by
+  the dev drawer's DARK: the paint left the cult seeing by daylight. The cult is in the dark wherever
+  it is drawn now (`game.inDark`), and THE DARK itself has never had a rifle (`GEN_RULES.dark`).
+- **Silhouettes**: a wall crack, a lantern and a grate are no longer flattened into black shapes
+  standing in the room, and the stand of arms' glow no longer comes out as a black cloud.
+
+---
+
 ## 1.64 — the cave's teeth and the stairs in pixels
 
 - **The cave's teeth.** A spire was the environment pack's stalagmites standing on two smooth blood

@@ -440,6 +440,28 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
+  // ---------------------------------------------------------------- sconce, 8 frames, 13 x 17 / 9 x 17
+  // THE DARK's lantern on the wall by a doorway: a small cage lantern on iron. `side` hangs it off a
+  // wall to its left on an arm with a hooked end (the drawing flips it for a wall to the right);
+  // otherwise it is fixed to the wall behind it by a plate and a short rod over its roof.
+  function sconce(k, side) {
+    const g = new Grid(side ? 13 : 9, 17), ox = side ? 5 : 2, y0 = 6;
+    if (side) {
+      g.rect(0, 1, 2, 6, P.i1); g.vl(0, 1, 6, P.i2);                                  // wall plate
+      g.hl(2, 3, 5, P.i2); g.set(2, 2, P.i3); g.set(7, 2, P.i2); g.set(8, 3, P.i2); g.vl(8, 4, 2, P.i3);  // arm, hook
+    } else {
+      g.rect(3, 0, 3, 3, P.i1); g.hl(3, 0, 3, P.i2); g.vl(4, 3, 3, P.i2);             // plate, rod
+    }
+    g.hl(ox + 1, y0, 3, P.i2); g.hl(ox, y0 + 1, 5, P.i3);                             // roof
+    g.rect(ox, y0 + 2, 5, 6, P.i1);                                                   // cage
+    g.rect(ox + 1, y0 + 2, 3, 5, [P.b2, P.b3, P.b3, P.b2, P.b2, P.b3, P.b4, P.b3][k]); // glass, lit from inside
+    const H = [2, 3, 3, 2, 2, 3, 3, 2][k], sway = [0, 0, 1, 0, 0, -1, 0, 0][k];
+    g.set(ox + 2, y0 + 6, P.f1);
+    for (let j = 1; j <= H; j++) g.set(ox + 2 + (j > 1 ? sway : 0), y0 + 6 - j, j === H ? P.f2 : P.f3);
+    g.hl(ox, y0 + 8, 5, P.i2); g.set(ox + 2, y0 + 9, P.i2);                           // base, knob
+    return g.outline();
+  }
+
   // ---------------------------------------------------------------- soul wisp, 17 x 22
   function soulWisp() {
     const g = new Grid(17, 22);
@@ -639,6 +661,7 @@ const PROP_PIXELS = (() => {
     burrow: burrow(), stool: stool(), spire: spire(), 'roast-back': roastRing(false), 'roast-front': roastRing(true), 'roast-sticks': roastSticks(), 'roast-croc': croc(),
   };
   for (let k = 0; k < 8; k++) sprites['lantern-' + k] = lantern(k);
+  for (let k = 0; k < 8; k++) { sprites['sconce-s' + k] = sconce(k, true); sprites['sconce-f' + k] = sconce(k, false); }
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
   for (const k in sprites) if (!/^(rack|coop|roast)-/.test(k)) sprites[k] = sprites[k].trim();
   return { P, Grid, sprites, rng };
@@ -731,6 +754,19 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   A.pail = function (ctx, x, y, r) { const g = S.pail, k = r * 2 / (g.w - 2); put(ctx, 'pail', x - g.w * k / 2, y - g.h * k, k); return true; };
   // The ware's stool, under the talisman (render.js `drawWare` asks).
   A.stool = function (ctx, p) { put(ctx, 'stool', p.x - S.stool.w * TX / 2, p.y + 9 - S.stool.h * TX); return true; };
+  // THE DARK's lantern on the wall (`Prop.wall`), in the prop's own upright frame (`drawProp`): off a
+  // side wall on its arm, the plate on the wall's edge a quarter tile past the prop and the lantern
+  // up at a man's shoulder; on the far wall, fixed to its face. There is no painted one to fall
+  // back to, so it is drawn whether or not the pixel props are on.
+  A.sconce = function (ctx, p, t) {
+    const W = p.wall, side = W.x !== 0, k = Math.floor(t * 9 + p.phase * 3) % 8, name = (side ? 'sconce-s' : 'sconce-f') + k, g = S[name];
+    if (side) {
+      const ex = p.x + W.x * TILE * 0.25, y = p.y - 12 - g.h * TX;
+      ctx.save(); ctx.translate(ex, 0); if (W.x > 0) ctx.scale(-1, 1);
+      put(ctx, name, 0, y); ctx.restore();
+    } else put(ctx, name, p.x - g.w * TX / 2, p.y - TILE * 0.25 * TILT - 6 - g.h * TX);
+    return true;
+  };
 
   A.drawProp = function (renderer, p) {
     if (!PROP_PIXELS.on) return drawProp.call(this, renderer, p);
@@ -738,9 +774,12 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     // The stand of arms, with what it holds standing IN it: the uprights and base behind, the arm,
     // then the front of the base over its foot.
     if (p.kind === 'weapon' && p.inStand) {
-      const gl = ctx.createRadialGradient(p.x, p.y - 12, 0, p.x, p.y - 12, 40), a = 0.14 + 0.05 * Math.sin(renderer.t * 2.6 + p.phase);
-      gl.addColorStop(0, `rgba(239,230,208,${a})`); gl.addColorStop(1, 'rgba(239,230,208,0)');
-      ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, p.y - 12, 40, 0, Math.PI * 2); ctx.fill();
+      // Its glow is not the stand: in THE DARK's silhouette pass it came out as a black cloud.
+      if (!renderer.silPass) {
+        const gl = ctx.createRadialGradient(p.x, p.y - 12, 0, p.x, p.y - 12, 40), a = 0.14 + 0.05 * Math.sin(renderer.t * 2.6 + p.phase);
+        gl.addColorStop(0, `rgba(239,230,208,${a})`); gl.addColorStop(1, 'rgba(239,230,208,0)');
+        ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, p.y - 12, 40, 0, Math.PI * 2); ctx.fill();
+      }
       renderer.shadow(p.x, p.y + 1, 14, 5);
       const x0 = p.x - 12 * TX, y0 = p.y + 5 - 23 * TX;
       put(ctx, 'rack-back', x0, y0);
@@ -808,6 +847,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
         if (p.holds === 'tortoise') renderer.drawTortoise(pet);
         else if (p.holds === 'goose') renderer.drawGoose(pet);
         else if (p.holds === 'crow') renderer.drawCrow(pet);
+        else if (p.holds === 'horse') { ctx.scale(0.62, 0.62); renderer.horseSprite(ctx, Math.cos(renderer.t * 1.3 + p.phase) > 0 ? 0 : Math.PI, true, 'idle'); }
       }
       ctx.restore();
       put(ctx, (p.hits || 0) > 0 ? 'coop-cracked' : 'coop-front', -w / 2, -h / 2, k);

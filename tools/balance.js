@@ -20,7 +20,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const ctx = { console, Math, Uint8Array, Int16Array, Int32Array, Float32Array };
 vm.createContext(ctx);
-for (const f of ['js/tuning.js', 'js/rng.js', 'js/rooms.js', 'js/gen.js', 'js/rules.js']) {
+for (const f of ['js/tuning.js', 'js/rng.js', 'js/rooms.js', 'js/gen.js', 'js/rules.js', 'js/beasts.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 }
 
@@ -42,8 +42,9 @@ const fails = [];
 const fail = (msg) => { fails.push(msg); };
 const levelThreat = [];
 
-for (let li = 0; li < LEVELS.length; li++) {
-  const def = LEVELS[li];
+// One level, studied over the seeds: every rule on every seed, the two averaged ones, the room by
+// room report. Returns its totals for the ladder.
+function study(def) {
   const runs = [], seen = new Set();
   let canonMin = 1, canonSum = 0, ordSum = 0;
   let gEarly = 0, gLate = 0, gSeeds = 0;
@@ -94,7 +95,6 @@ for (let li = 0; li < LEVELS.length; li++) {
   const total = +(avg.reduce((a, c) => a + c.threat, 0)).toFixed(1);
   // The peak that matters is an ordinary room: a Great Hall is a set piece, not the level's baseline.
   const plainPeak = Math.max(...avg.filter((c) => ORDINARY.has(c.role)).map((c) => c.threat), 0);
-  levelThreat.push({ name: def.name, total, peak: Math.max(...avg.map((c) => c.threat)), plainPeak });
 
   // ---- threat rises within a level, on average (the per-seed version is in rules.js) ----
   const ordinary = avg.filter((c) => ORDINARY.has(c.role) && c.threat > 0);
@@ -126,7 +126,9 @@ for (let li = 0; li < LEVELS.length; li++) {
     const gAvg = ordGround.length ? ordGround.reduce((a, c) => a + c.ground, 0) / ordGround.length : 0;
     console.log(`  total threat ${total} · ground ${gAvg.toFixed(2)} avg · pressure ${avg.reduce((a, c) => a + c.pressure, 0).toFixed(1)}`);
   }
+  return { name: def.name, total, peak: Math.max(...avg.map((c) => c.threat)), plainPeak };
 }
+for (const def of LEVELS) levelThreat.push(study(def));
 
 // ---- every level is harder than the one before ----
 for (let i = 1; i < levelThreat.length; i++) {
@@ -183,41 +185,40 @@ for (let li = TUNING.shroom.from + 1; li < LEVELS.length; li++) {
 }
 
 // ---- THE DARK ----
-// Not in LEVELS either: every level played with the lamps out, held to the same list, its threat
-// beside the level it darkens (it is meant to come in under it) and how many of its rooms stay black.
-const darkLevel = grab('darkLevel');
-if (!QUIET) console.log('\n--- the dark, of ---');
-for (let li = 0; li < LEVELS.length; li++) {
-  const def = darkLevel(li), seen = new Set();
-  let total = 0, men = 0, black = 0, lamps = 0;
-  for (let s = 1; s <= SEEDS; s++) {
-    let L;
-    try { L = generateLevel(def, s * 7717); } catch (e) { fail(`THE DARK (of ${LEVELS[li].name}): does not generate — ${e.message}`); break; }
-    total += roomsOf(L).reduce((a, r) => a + r.threat, 0); men += L.spawns.length;
-    black += L.rooms.filter((r) => r.unlit).length; lamps += L.props.filter((p) => p.darkLamp).length;
-    for (const r of checkRules(L)) {
-      if (r.ok !== false || r.rule.id === 'rises' || r.rule.id === 'ground') continue;
-      const msg = `THE DARK (of ${LEVELS[li].name}): ${r.rule.id} — ${r.why}`;
-      if (!seen.has(msg)) { seen.add(msg); fail(msg); }
-    }
+// Not in LEVELS either: THE FORK's other flight climbs to it, and it is played in the run in place
+// of the floor after the fork. It is a level of its own, so it gets a level's report and a level's
+// rules; and it is held beside the lit floor it stands in for — under it, since a room you cannot
+// see all of is a harder room, and no lower than `fork.band` of it — and above the floor before it.
+const darkDef = grab('darkLevel')(), FK = TUNING.dark.fork;
+{
+  const d = study(darkDef);
+  let lamps = 0, sconces = 0;
+  for (let s = 1; s <= SEEDS; s++) { const L = generateLevel(darkDef, s * 7717); lamps += L.props.filter((p) => p.kind === 'lamp').length; sconces += L.props.filter((p) => p.kind === 'sconce').length; }
+  const li = darkDef.darkOf, lit = levelThreat[li], before = levelThreat[li - 1];
+  if (lit && d.total >= lit.total) fail(`THE DARK: ${d.total} is not under ${lit.name} (${lit.total}), the lit floor beside it`);
+  if (lit && d.total < lit.total * FK.band) fail(`THE DARK: ${d.total} is under ${FK.band} of ${lit.name} (${lit.total})`);
+  if (before && d.total <= before.total * FK.band) fail(`THE DARK: ${d.total} is not above ${FK.band} of ${before.name} (${before.total}), the floor before it`);
+  if (!QUIET) console.log(`  ${(lamps / SEEDS).toFixed(1)} standing lamps, ${(sconces / SEEDS).toFixed(1)} wall lanterns · ${(d.total / (lit ? lit.total : 1) * 100).toFixed(0)}% of ${lit ? lit.name : '?'}, the lit floor THE FORK also climbs to`);
+}
+
+// ---- THE ESCORTS' DEAL ----
+// Which floors of a run get an animal is the run's (`Beast.deal`, js/beasts.js), not a floor's, so
+// no single level can know it: over many run seeds, no kind twice in a run, every kind only on a
+// floor whose list holds it, the first on a floor in `deal.first` and no gap over `deal.gap`'s top
+// while any kind is left to deal.
+{
+  const Beast = grab('Beast'), D = TUNING.beast.deal, RUNS = SEEDS * 20, count = {};
+  let floors = 0, broken = 0;
+  for (let s = 1; s <= RUNS; s++) {
+    const plan = Beast.deal(s * 104729), got = plan.map((k, i) => (k ? i : -1)).filter((i) => i >= 0), seen = new Set();
+    floors += got.length;
+    let why = '';
+    for (const i of got) { const k = plan[i]; count[k] = (count[k] || 0) + 1; if (seen.has(k)) why = `${k} twice`; seen.add(k); if (!(LEVELS[i].beasts || []).includes(k)) why = `${k} on ${LEVELS[i].name}`; }
+    if (!got.length || got[0] < D.first[0] || got[0] > D.first[1]) why = why || `the first animal on floor ${got[0]}`;
+    for (let n = 1; n < got.length; n++) if (got[n] - got[n - 1] > D.gap[1]) why = why || `a gap of ${got[n] - got[n - 1]} floors`;
+    if (why) { broken++; if (broken <= 3) fail(`DEAL (run ${s}): ${why}`); }
   }
-  if (!QUIET) console.log(`  ${LEVELS[li].name.padEnd(22)} total ${(total / SEEDS).toFixed(1).padStart(6)}   men ${(men / SEEDS).toFixed(1)}   lamps ${(lamps / SEEDS).toFixed(1)}   black rooms ${(black / SEEDS).toFixed(1)}   (the level itself ${levelThreat[li] ? levelThreat[li].total.toFixed(1) : '?'})`);
-  // The floor every run plays dark (`dark.runAt`) stands in the ladder in place of the lit one, so it
-  // is held to the ladder: above the floor before it, under the floor after.
-  if (li === TUNING.dark.runAt) {
-    const t = total / SEEDS, lo = levelThreat[li - 1], hi = levelThreat[li + 1];
-    if (lo && t <= lo.total) fail(`THE DARK (of ${LEVELS[li].name}), the run's dark floor: ${t.toFixed(1)} is not above ${LEVELS[li - 1].name} (${lo.total.toFixed(1)})`);
-    if (hi && t >= hi.total) fail(`THE DARK (of ${LEVELS[li].name}), the run's dark floor: ${t.toFixed(1)} is not under ${LEVELS[li + 1].name} (${hi.total.toFixed(1)})`);
-  }
-  // The floor THE FORK's dark flight climbs to is a choice beside its lit twin, not a rung of the
-  // ladder: it is held under the lit one (it is harder to read) and no lower than `fork.band` of it.
-  const FK = TUNING.dark.fork;
-  if (FK && FK.at >= 0 && li === FK.at + 1) {
-    const t = total / SEEDS, lit = levelThreat[li];
-    if (lit && t >= lit.total) fail(`THE FORK's dark ${LEVELS[li].name}: ${t.toFixed(1)} is not under the lit one (${lit.total.toFixed(1)})`);
-    if (lit && t < lit.total * FK.band) fail(`THE FORK's dark ${LEVELS[li].name}: ${t.toFixed(1)} is under ${FK.band} of the lit one (${lit.total.toFixed(1)})`);
-    if (!QUIET) console.log(`    ↑ THE FORK: the dark flight of ${LEVELS[FK.at].name} climbs to this, ${(t / (lit ? lit.total : 1) * 100).toFixed(0)}% of the lit one`);
-  }
+  if (!QUIET) console.log(`\nESCORTS: ${(floors / RUNS).toFixed(1)} animals a run · ` + Object.keys(count).sort().map((k) => `${k} ${(count[k] / RUNS * 100).toFixed(0)}%`).join(' · '));
 }
 
 if (fails.length) {

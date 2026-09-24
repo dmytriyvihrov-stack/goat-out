@@ -98,11 +98,11 @@ past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 | | Behaviour |
 |---|---|
 | **Bearer** | Melee. 0.58 s windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
-| **Brute** | A clubman built twice over: three killing blows, four when he is the one in the arena. A frame a third larger, iron spikes stood up along his back, a studded club, and notches over his head counting down. He is how level 1 says "some of them take more than one" without spending a boss on it, and he is unmistakable across a room — which is the point of him. |
+| **Brute** | A clubman built twice over: three killing blows, four when he is the one in the arena. A big shape in a bone apron with a bull's skull for a mask and a cleaver (since 1.66 — the Butcher's old body), and notches over his head counting down. Seen from three tiles or more with a clear run, he plants, roars and charges where you are going; a charge into a wall stuns him for a free hit. He is how level 1 says "some of them take more than one" without spending a boss on it, and he is unmistakable across a room — which is the point of him. |
 | **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the Butcher he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for 0.8 s with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
-| **Butcher** | Heavy. Three hits, and fire only ever costs him one of them however long he burns. Cannot be interrupted mid-swing, answers a stagger with a quick retaliation, and charges in a straight line after a visible windup. A charge into a wall stuns him for a free hit. Deals one heart. |
+| **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher) — a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit, and his own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
 
 **Arena bosses** carry an elite flag: they absorb three hits, going down and getting back up, and a Seer
 blinks clear each time. Every boss drops a soul.
@@ -281,7 +281,7 @@ top-down game explains itself.
   waited behind it; cultists who pile up eventually shoulder them open from their side. Two extra beats
   of being held still in a corridor, with whatever heard the first blow already coming, is what the
   door is for. Nothing flies through a shut one: a pot breaks on it, a blade snaps on it, a shield
-  rings off it. A table sliding at speed, or a Butcher on a charge, takes it off its hinges.
+  rings off it. A table sliding at speed, or a brute on a charge, takes it off its hinges.
 - **Spike floors**, from the third level on. The teeth come up where you have already been: crossing a
   plate arms it and it bites a beat later, so what it takes is the ground you have just left — which is
   the ground whoever is chasing you is standing on. A man dies on them and the goat pays a heart, and
@@ -293,7 +293,7 @@ top-down game explains itself.
   off its hinges, and stops on anything a man would: a brazier, the wheel, another table.
 - **Oil lamps** topple into a pool of fire, and a lamp post is not a pillar: a body thrown into one
   takes it over and the oil goes down where the body is about to land. So does a pot, a thrown blade,
-  a Butcher on a charge, or fire that has burned its way up to the post.
+  a brute on a charge, or fire that has burned its way up to the post.
 - **Stands of arms** hold a sword or a shield, and they are rare: one to an arena, about one ordinary
   room in six, and nothing at all on level 1 until halfway in. Nothing you take off one survives being
   used. A thrown blade goes into whatever it finds and snaps there, and a blade thrown at a wall is a
@@ -307,7 +307,7 @@ top-down game explains itself.
   man held into the arm, and the wheel takes him out of your mouth and throws him for you. Its room is
   deliberately taller than the arms are long: there is a lane along the top and the bottom, so the room
   is crossed by reading it.
-- **The Butcher's charge** is answered by all of it. A door comes off its hinges and he keeps going; a
+- **The brute's charge** is answered by all of it. A door comes off its hinges and he keeps going; a
   table goes ahead of him at speed, into whoever was behind it; a lamp goes over and he runs into his
   own oil; a brazier lights him; and the gong, the hub of the wheel or a bar of the pen stops him the way
   a wall does, for the same free hit.
@@ -359,7 +359,7 @@ straight down, while creatures stand upright inside it. Roughly 14 tiles across 
 
 **Art.** Hard silhouettes in a seven-colour palette. Every enemy type reads differently at a glance:
 Bearer is a circle with a club, Seer a tall pointed hood with a lit staff, Hunter a low hood with a long
-rifle, Butcher a big shape in a bone apron with horns on his mask, the hound a long low four-legged thing
+rifle, the brute a big shape in a bone apron with horns on his mask, the ogre a hunched green half-beast in a red hood and mantle, the hound a long low four-legged thing
 with a lit spine and two yellow eyes. The goat reads as a goat from its snout, beard, swept horns and
 rectangular pupils — body, a short dark neck and a round head, each edged in dark so the pieces never
 merge into one blob from straight above.

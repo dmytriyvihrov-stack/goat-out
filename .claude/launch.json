@@ -99,6 +99,150 @@
         "8776"
       ],
       "port": 8776
+    },
+    {
+      "name": "goat-out-dogs",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8782"
+      ],
+      "port": 8782
+    },
+    {
+      "name": "goat-out-sound",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8781"
+      ],
+      "port": 8781
+    },
+    {
+      "name": "goat-out-sfx2",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8783"
+      ],
+      "port": 8783
+    },
+    {
+      "name": "goat-out-icons",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8784"
+      ],
+      "port": 8784
+    },
+    {
+      "name": "goat-out-walls",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8785"
+      ],
+      "port": 8785
+    },
+    {
+      "name": "goat-out-ogre",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8787"
+      ],
+      "port": 8787
+    },
+    {
+      "name": "goat-out-ui",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8786"
+      ],
+      "port": 8786
+    },
+    {
+      "name": "goat-out-horse",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8790"
+      ],
+      "port": 8790
+    },
+    {
+      "name": "goat-out-hounds2",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8791"
+      ],
+      "port": 8791
+    },
+    {
+      "name": "goat-out-enemytab",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8792"
+      ],
+      "port": 8792
+    },
+    {
+      "name": "goat-out-floors",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8793"
+      ],
+      "port": 8793
+    },
+    {
+      "name": "goat-out-cards",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8794"
+      ],
+      "port": 8794
+    },
+    {
+      "name": "goat-out-feel",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8795"
+      ],
+      "port": 8795
+    },
+    {
+      "name": "goat-out-combat",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8796"
+      ],
+      "port": 8796
+    },
+    {
+      "name": "goat-out-level1",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8797"
+      ],
+      "port": 8797
+    },
+    {
+      "name": "goat-out-sliders",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8798"
+      ],
+      "port": 8798
     }
   ]
 }

@@ -95,6 +95,14 @@ you can shove about to open or close a lane, an island of posts with clear groun
 down both flanks, and a ring of hay that turns into a wall the moment you light it. Nothing out there
 kills for you; you have to walk them into something.
 
+**THE DARK**, the other way up. THE ROAD ends on two flights of stairs: one climbs to THE THRESHING
+FLOOR, the other to the cellars under it, where nothing is lit but what burns. Every room has a standing
+lamp or two — it shows them to you and you to them, and a headbutt puts it on the floor, burning, and
+then the room is black — and a lantern on the wall by every door that nothing puts out. Out of the light
+they see you only close, and hunt by what they hear; you hear them before you see them, and see the
+eyes of the hounds and the mages across a room. Fewer of them, no rifles, and rooms built round their
+light. LEVELS has a row for it.
+
 **A pen, not an altar.** The run opens on the two of you in the pen: the goat and his wife, a heart
 between you, until two men come for her and one of them puts a club across your skull. You wake in the
 same pen, beside the slab they meant to use, with the one that went before you opened up on the floor,
@@ -113,10 +121,10 @@ company. The Mill's room counts too: it never introduces a man, and on level 1 i
 After that they arrive mixed, and the mix gets worse as the level goes on and worse again on the
 level after.
 
-**Seven enemy types.** Club-swinging Bearers; Brutes, a third larger with spikes along the back, who
-take three killing blows and carry notches over their heads to say so; blinking Seers whose runes erupt into violet witchfire that no boon protects you
-from; Hunters whose bullets travel and hit their own; the Butcher, who takes three hits and cannot be
-interrupted mid-swing; the hounds; and the wraiths. They shout short lines when they see you, hear
+**Seven enemy types.** Club-swinging Bearers; Brutes in bone aprons and bull-skull masks, who
+take three killing blows, carry notches over their heads to say so and charge you from across a room; blinking Seers whose runes erupt into violet witchfire that no boon protects you
+from; Hunters whose bullets travel and hit their own; the ogre, the cult's half-beast, who takes four hits, is never knocked back,
+leaps onto where you stand and brings his fists down on the floor all round him; the hounds; and the wraiths. They shout short lines when they see you, hear
 you, swing at you or watch one of their own come apart — and they read the room: fire, lit braziers, a
 rune about to go off and the sweeping arms of the Mill. Not all of them read it correctly.
 
@@ -131,7 +139,7 @@ tear a held man open for a chance to heal. Boons last the run and die with you.
 
 **A room that fights back.** Braziers that spill coals when you headbutt them, spreading hay fire,
 breakable pots, a bell that calls the level, doors you smash through, tables that slide and crush, oil
-lamps that go over — under a thrown man, a thrown pot, or a Butcher on a charge — and spill fire, and
+lamps that go over — under a thrown man, a thrown pot, or a brute on a charge — and spill fire, and
 the Mill — a ritual grinding wheel whose arms fling cultists to their deaths and take a heart off you.
 Everything that flies through a room meets the room: nothing goes through a shut door, and a man in your
 mouth burns, gets thrown by the wheel and bitten by the spikes like anybody else.

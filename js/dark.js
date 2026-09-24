@@ -25,6 +25,7 @@ const Dark = {
       if (p.broken) continue;
       if (p.kind === 'brazier') add(p.x, p.y, L.brazier);
       else if (p.kind === 'lamp') add(p.x, p.y, L.lamp);
+      else if (p.kind === 'sconce') add(p.x, p.y, L.sconce);
       else if (p.kind === 'barrel' && p.oilT >= 0) add(p.x, p.y, L.burning);   // lit oil, as bright as a man alight
     }
     let fires = 0;
@@ -168,9 +169,36 @@ const Dark = {
     ctx.restore();
     ctx.imageSmoothingEnabled = false;
 
+    this.walls(r, game);
     this.silhouettes(r, game, cam, sc, mw, mh);
     this.readable(r, game);
     this.eyes(r, game);
+  },
+
+  // The stone round him (`dark.edge`): every face where floor he can see meets wall, inside his
+  // hearing, drawn as one world pixel of the silhouettes' cold rim — whole out to `from` of `near`,
+  // gone at `near`. The dark is there to hide the men, not the room: a goat who cannot tell where
+  // the wall is cannot put anybody into it (pillar 3). Only floor in his own sight, so nothing shows
+  // through a wall; not in a cave, whose rock is not cut on the tile grid.
+  walls(r, game) {
+    const D = TUNING.dark, E = D.edge, wd = game.world, g = game.goat, ctx = r.ctx;
+    if (wd.round || !g) return;
+    const R = D.near, gx = g.x / TILE, gy = g.y / TILE;
+    const x0 = Math.max(1, Math.floor(gx - R)), x1 = Math.min(wd.W - 2, Math.ceil(gx + R));
+    const y0 = Math.max(1, Math.floor(gy - R)), y1 = Math.min(wd.H - 2, Math.ceil(gy + R));
+    ctx.save(); ctx.fillStyle = D.rim;
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      if (wd.isSolid(tx, ty) || !wd.seesTile(tx, ty)) continue;
+      const a = E.alpha * clamp((R - Math.hypot(tx + 0.5 - gx, ty + 0.5 - gy)) / (R * (1 - E.from)), 0, 1);
+      if (a <= 0.02) continue;
+      ctx.globalAlpha = a;
+      const X = tx * TILE, Y = ty * TILE;
+      if (wd.isSolid(tx, ty - 1)) ctx.fillRect(X, Y, TILE, 1);
+      if (wd.isSolid(tx, ty + 1)) ctx.fillRect(X, Y + TILE - 1, TILE, 1);
+      if (wd.isSolid(tx - 1, ty)) ctx.fillRect(X, Y, 1, TILE);
+      if (wd.isSolid(tx + 1, ty)) ctx.fillRect(X + TILE - 1, Y, 1, TILE);
+    }
+    ctx.restore();
   },
 
   // Everything standing inside his hearing, drawn again off-screen with the renderer pointed at it
@@ -179,8 +207,10 @@ const Dark = {
   silhouettes(r, game, cam, sc, mw, mh) {
     const D = TUNING.dark, ctx = r.ctx, g = game.goat, hold = g.holding;
     const reach = (D.near + 0.2) * TILE;
-    const list = [];
-    for (const p of game.props) if (!p.broken && p !== hold && Math.hypot(p.x - g.x, p.y - g.y) < reach + (p.r || 0) && !game.hidden(p.x, p.y)) list.push(p);
+    // Only what stands: a crack in the wall, a lantern up on it, a grate in the floor are the room,
+    // and flattened into a shape they read as something standing where nothing is.
+    const list = [], flat = new Set(['secret', 'sconce', 'spike', 'clamp']);
+    for (const p of game.props) if (!p.broken && p !== hold && !flat.has(p.kind) && Math.hypot(p.x - g.x, p.y - g.y) < reach + (p.r || 0) && !game.hidden(p.x, p.y)) list.push(p);
     const men = [];
     for (const e of game.enemies) if (!e.dead && e !== hold && Math.hypot(e.x - g.x, e.y - g.y) < reach + e.r && !game.hidden(e.x, e.y)) men.push(e);
     if (!list.length && !men.length) return;
@@ -264,8 +294,12 @@ const Dark = {
       ctx.save(); ctx.translate(e.x, e.y); ctx.scale(sc, sc / TILT);
       const y = -h;
       ctx.globalCompositeOperation = 'lighter';
+      // A cell of light with a cross of glow round it, and a fainter wider cross past that: the
+      // eyes are the one thing about a hound or a seer the dark lets through, so they carry.
       for (const x of at) {
-        ctx.globalAlpha = 0.35 * k; ctx.fillStyle = glow;
+        ctx.globalAlpha = E.glow * 0.4 * k; ctx.fillStyle = glow;
+        ctx.fillRect(x - c * 2.5, y - c * 0.5, c * 5, c); ctx.fillRect(x - c * 0.5, y - c * 2.5, c, c * 5);
+        ctx.globalAlpha = E.glow * k;
         ctx.fillRect(x - c * 1.5, y - c * 0.5, c * 3, c); ctx.fillRect(x - c * 0.5, y - c * 1.5, c, c * 3);
         ctx.globalAlpha = k; ctx.fillStyle = core;
         ctx.fillRect(x - c * 0.5, y - c * 0.5, c, c);

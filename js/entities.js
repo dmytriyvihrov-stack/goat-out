@@ -431,7 +431,7 @@ class Goat {
       if (this.stepNoiseTimer <= 0) {
         this.stepNoiseTimer = TUNING.noise.footstepGap;
         const quiet = Talisman.stepMul(game, this);   // MOTH WOOL
-        if (quiet > 0) world.emitNoise(this.x, this.y, TUNING.noise.footstep * quiet);
+        if (quiet > 0) { world.emitNoise(this.x, this.y, TUNING.noise.footstep * quiet); game.audio.sfxHoof(quiet); }
       }
     } else this.stepNoiseTimer = 0;
     // The last boards he stood on. A fall puts him back on them, so they are worth keeping. The
@@ -623,11 +623,15 @@ class Goat {
         }
         continue;
       }
+      // In the air he is over your horns, not in front of them.
+      if (e.kind === 'butcher' && e.state === 'hop') continue;
       if (e.kind === 'butcher') {
         e.hp -= 1; e.flash = 0.18;
-        // Planted while attacking: the hit counts but does not interrupt him. Bait the swing, then hit.
-        if (e.state === 'windup' || e.state === 'swing') { this.vx = -ax * 5 * TILE; this.vy = -ay * 5 * TILE; }
-        else { e.state = 'stagger'; e.timer = TUNING.butcher.stagger; e.vx = ax * 6 * TILE; e.vy = ay * 6 * TILE; }
+        // Planted while he crouches or winds a slam: the hit counts but does not stop it, and you are
+        // still standing in the ring. Bait it, step out, then hit him on his knees.
+        if (e.state === 'slamwind' || e.state === 'hopwind') { this.vx = -ax * 5 * TILE; this.vy = -ay * 5 * TILE; }
+        // He reels where he stands: the ogre is not moved by the horns (1.66), the brute is.
+        else { e.state = 'stagger'; e.timer = TUNING.butcher.stagger; e.vx = 0; e.vy = 0; }
         game.hitstop(0.05); game.shake(5); game.audio.sfxThud();
         game.particles(this.x + ax * this.r, this.y + ay * this.r, 9, PALETTE.bone, 300);
         game.kick(-ax, -ay, TUNING.juice.kick); game.zoomPunch(0.8);
@@ -896,7 +900,7 @@ class Prop {
       : kind === 'mill' ? TUNING.mill.hubR : kind === 'heal' ? P.heal.r
       : kind === 'weapon' ? P.weapon.r : kind === 'secret' ? P.door.r
       : kind === 'coop' ? P.coop.r : kind === 'chicken' ? P.chicken.r
-      : kind === 'tortoise' ? P.tortoise.r : kind === 'goose' ? P.goose.r : kind === 'crow' ? P.crow.r
+      : kind === 'tortoise' ? P.tortoise.r : kind === 'goose' ? P.goose.r : kind === 'crow' ? P.crow.r : kind === 'horse' ? P.horse.r
       : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r
       : kind === 'bomb' ? P.bomb.r : kind === 'rock' ? P.rock.r : kind === 'spire' ? P.spire.r
       : kind === 'barrel' ? P.barrel.r
@@ -919,6 +923,8 @@ class Prop {
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
     this.deco = !!(opts && opts.deco);        // a cage that is scenery: it never opens
     this.roast = !!(opts && opts.roast);      // a brazier drawn as a campfire with a crocodile on a spit
+    // A lantern on the wall (THE DARK): which way the wall it hangs on is, one tile's step.
+    this.wall = kind === 'sconce' ? { x: (opts && opts.wx) || 0, y: opts && opts.wy !== undefined ? opts.wy : -1 } : null;
     this.gate = 0;                            // 1 while the opening scene has this bar laid flat
     this.angle = (opts && opts.phase) || 0;
     this.held = false; this.flung = false; this.thrown = false; this.broken = false; this.dead = false;
@@ -1009,8 +1015,9 @@ class Prop {
     // cannot be picked up again until it comes out — which is what makes the throw a decision about
     // cover rather than a way of carrying it about. See js/beasts.js.
     if (this.kind === 'tortoise') return !this.flying && this.tuckT > 0 && !this.held && !(this.coolT > 0);
-    if (this.kind === 'goose' || this.kind === 'crow') return false;
-    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms') return false;
+    if (this.kind === 'goose' || this.kind === 'crow' || this.kind === 'horse') return false;
+    // A lantern on the wall is up on the stone, out of anybody's way.
+    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce') return false;
     if (this.kind === 'door') return this.open < 0.5;
     return true;
   }

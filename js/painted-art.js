@@ -86,81 +86,115 @@ class PaintedArt extends AltarArt {
     return this.swatch(boards ? R.boards : R.floor[(h >>> 4) % R.floor.length], (h >>> 9) % 5 ? def.floor : def.floorAlt || def.floor);
   }
 
-  // Bits name the exposed sides, not the room edge: N=1, E=2, S=4, W=8.
-  // The camera looks north and down, so a wall shows its brick face on ONE side only: the south
-  // one, facing the lens. That is the far wall of a room (and the front of any pillar) — the cap
-  // on top, then a coursed face down to the boards. Every other exposed side is only the edge of
-  // the cap: the near wall faces away from the lens and the side walls run along its line of sight.
-  // Cap and face are the pixel swatches `PIXEL_ROOMS.wall` names, in the level's `wallTop` / `wall`.
-  wallTile(def, mask) {
-    this.wallTiles ||= new Map();
-    const key = def.wall + def.wallTop + mask;
-    if (this.wallTiles.has(key)) return this.wallTiles.get(key);
-    const tile = document.createElement('canvas'); tile.width = tile.height = 128;
-    // A face that turns a corner (floor to its east or west as well) is a pillar or a stub and gets
-    // the shorter band: a tall one on every free-standing block read as a slab lying on the boards.
-    const pillar = (mask & 4) && (mask & 10), c = tile.getContext('2d'), face = pillar ? 58 : 70, edge = 5;
-    const W = PIXEL_ROOMS.wall, top = this.swatch(W.top, def.wallTop), brick = this.swatch(W.face, def.wall);
-    c.imageSmoothingEnabled = true;
-    c.drawImage(top, 0, 0, 128, 128);
-    // the cap's rim where it meets open floor on the three sides that show no face
-    c.fillStyle = 'rgba(8,5,10,0.6)';
-    if (mask & 1) c.fillRect(0, 0, 128, edge);
-    if (mask & 2) c.fillRect(128-edge, 0, edge, 128);
-    if (mask & 8) c.fillRect(0, 0, edge, 128);
-    c.fillStyle = 'rgba(225,203,180,0.18)';
-    if (mask & 1) c.fillRect(0, edge, 128, 3);
-    if (mask & 8) c.fillRect(edge, 0, 3, 128);
-    // A side wall shows a narrow sliver of its face on the one side that looks into the room: the
-    // camera sees it nearly edge on, but without it the side walls read as flat troughs of cap.
-    const sideE = mask & 2, sideW = !sideE && (mask & 8);
-    if (sideE || sideW) {
-      const band = 34, bot = (mask & 4) ? 128 - face : 128, x0 = sideE ? 128 - band : 0;
-      c.save(); c.beginPath(); c.rect(x0, 0, band, bot); c.clip();
-      c.drawImage(brick, x0 - 47, 0, 128, 128);
-      const g = c.createLinearGradient(sideE ? x0 : band, 0, sideE ? 128 : 0, 0);
-      g.addColorStop(0, 'rgba(10,7,12,0.02)'); g.addColorStop(1, 'rgba(10,7,12,0.22)');
-      c.fillStyle = g; c.fillRect(x0, 0, band, bot);
-      c.restore();
-      // the lit lip of the cap along the band, and the seam where it meets the boards
-      c.fillStyle = 'rgba(225,203,180,0.28)'; c.fillRect(sideE ? x0 - 3 : band, 0, 3, bot);
-      c.fillStyle = 'rgba(8,5,10,0.55)'; c.fillRect(sideE ? x0 : band - 3, 0, 3, bot);
-      c.fillStyle = 'rgba(8,5,10,0.5)'; c.fillRect(sideE ? 124 : 0, 0, 4, bot);
+  // The cap of every wall is one sheet of coursed stone, `sheet` tiles square and seamless at its
+  // borders, laid in world space: each wall tile shows the part of the sheet over it, so a run of
+  // wall reads as one piece of masonry, not as one square stamped again every tile. Its colour is
+  // the old cap swatch's in the level's `wallTop`, so a level keeps the wall it was tuned with.
+  wallCap(def) {
+    this.caps ||= new Map();
+    let c = this.caps.get(def.wallTop); if (c) return c;
+    const W = PIXEL_ROOMS.wall, S = W.sheet * 64, C = W.course, M = 2, lo = W.block[0], hi = W.block[1];
+    const d = this.swatch(W.top, def.wallTop).getContext('2d').getImageData(0, 0, 64, 64).data, avg = [0, 0, 0];
+    for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) avg[k] += d[i + k] / (d.length / 4);
+    const tone = (m) => 'rgb(' + avg.map((v) => Math.min(255, Math.round(v * m))).join(',') + ')';
+    c = document.createElement('canvas'); c.width = c.height = S;
+    const x = c.getContext('2d');
+    // a block that runs off the sheet's right edge comes back on its left, so every course wraps
+    const put = (m, bx, by, bw, bh) => {
+      x.fillStyle = tone(m); bx = ((bx % S) + S) % S;
+      x.fillRect(bx, by, bw, bh); if (bx + bw > S) x.fillRect(bx - S, by, bw, bh);
+    };
+    x.fillStyle = tone(0.62); x.fillRect(0, 0, S, S);
+    for (let row = 0, k = 0; row < S / C; row++) {
+      const y = row * C, start = this.hash(row, 7, 911) % S, joints = [start];
+      for (let at = start; ;) {
+        const len = lo + this.hash(row, k++, 912) % (hi - lo + 1);
+        if (at + len + lo > start + S) break;
+        joints.push(at += len);
+      }
+      joints.push(start + S);
+      for (let j = 0; j + 1 < joints.length; j++) {
+        const bx = joints[j] + M, bw = joints[j + 1] - joints[j] - M, h = this.hash(row, j, 913), t = [0.93, 1, 1, 1.06][h % 4];
+        put(t, bx, y + M, bw, C - M);
+        put(t * 1.1, bx, y + M, bw, 2);
+        put(t * 0.88, bx, y + C - 2, bw, 2);
+        for (let q = 0; q < 1 + (h >>> 4) % 3; q++) {
+          const g = this.hash(row * 31 + j, q, 914);
+          put(t * 0.86, bx + 2 + g % Math.max(1, bw - 6), y + M + 3 + (g >>> 8) % (C - M - 7), 2, 2);
+        }
+      }
     }
-    if (mask & 4) {
-      const top = 128 - face;
-      c.save(); c.beginPath(); c.rect(0, top, 128, face); c.clip();
-      c.drawImage(brick, 0, top, 128, 128);
-      // darker toward the foot, where the floor's own shadow takes it
-      const g = c.createLinearGradient(0, top, 0, 128);
-      g.addColorStop(0, 'rgba(10,7,12,0.05)'); g.addColorStop(1, 'rgba(10,7,12,0.35)');
-      c.fillStyle = g; c.fillRect(0, top, 128, face);
-      c.restore();
-      // the lit lip of the cap, then the mortar line under it, then the foot
-      c.fillStyle = 'rgba(225,203,180,0.28)'; c.fillRect(0, top - 3, 128, 3);
-      c.fillStyle = 'rgba(8,5,10,0.55)'; c.fillRect(0, top, 128, 4);
-      c.fillStyle = 'rgba(8,5,10,0.5)'; c.fillRect(0, 124, 128, 4);
-      // a face that turns a corner shows it: a dark seam where it meets open floor at the side
-      c.fillStyle = 'rgba(8,5,10,0.45)';
-      if (mask & 2) c.fillRect(128-edge, top, edge, face);
-      if (mask & 8) c.fillRect(0, top, edge, face);
-    }
-    this.wallTiles.set(key,tile); return tile;
+    this.caps.set(def.wallTop, c); return c;
   }
 
-  drawWall(ctx, def, x, y, mask) {
-    ctx.drawImage(this.wallTile(def,mask),x,y,TILE,TILE);
+  // Bits name the exposed sides, not the room edge: N=1, E=2, S=4, W=8; then an open diagonal whose
+  // two sides are both stone, NE=16, SE=32, SW=64, NW=128 — the inside corners, where an edge turns
+  // with neither tile open on that side.
+  // The camera looks north and down, so a wall shows its brick face on ONE side only: the south one,
+  // facing the lens. That is the far wall of a room and the front of every block, one height for all
+  // of them, so a face runs on unbroken from tile to tile and round the foot of an L. Every other
+  // exposed side is only the edge of the cap: a dark outline where it drops to the floor, a lit lip
+  // inside it on the north and west (the light is from the top left), a shaded one on the east.
+  // This is only that overlay, `wallCap` goes down under it.
+  wallTile(def, mask) {
+    this.wallTiles ||= new Map();
+    const key = def.wall + '|' + mask;
+    if (this.wallTiles.has(key)) return this.wallTiles.get(key);
+    const W = PIXEL_ROOMS.wall, T = 64, F = W.faceH, o = 2, tile = document.createElement('canvas');
+    tile.width = tile.height = T;
+    const c = tile.getContext('2d'), n = mask & 1, e = mask & 2, s = mask & 4, w = mask & 8;
+    const capB = s ? T - F : T, x0 = w ? o : 0, x1 = e ? T - o : T, y0 = n ? o : 0, lipB = capB - (s ? o : 0);
+    const band = (style, bx, by, bw, bh) => { if (bw > 0 && bh > 0) { c.fillStyle = style; c.fillRect(bx, by, bw, bh); } };
+    if (n) band('rgba(232,210,186,0.24)', x0, y0, x1 - x0, o);
+    if (w) band('rgba(232,210,186,0.14)', x0, y0 + (n ? o : 0), o, lipB - y0 - (n ? o : 0));
+    if (e) band('rgba(10,7,12,0.24)', x1 - o, y0 + (n ? o : 0), o, lipB - y0 - (n ? o : 0));
+    if (s) {
+      c.save(); c.beginPath(); c.rect(0, capB, T, F); c.clip();
+      c.drawImage(this.swatch(W.face, def.wall), 0, capB - W.faceFrom, T, T);
+      c.restore();
+      // the lower third in the floor's shadow, a flat step and not a gradient; then the lit lip of
+      // the cap over the face, the shadow line under it, and the foot
+      band('rgba(10,7,12,0.14)', 0, T - (F / 3 | 0), T, F / 3 | 0);
+      band('rgba(232,210,186,0.3)', x0, capB - o, x1 - x0, o);
+      band('rgba(8,5,10,0.55)', 0, capB, T, o);
+      band('rgba(8,5,10,0.5)', 0, T - o, T, o);
+    }
+    // the outline where the stone drops to the floor: the open sides, then the inside corners
+    const ink = 'rgba(8,5,10,0.62)';
+    if (n) band(ink, 0, 0, T, o);
+    if (w) band(ink, 0, n ? o : 0, o, T - (n ? o : 0));
+    if (e) band(ink, T - o, n ? o : 0, o, T - (n ? o : 0));
+    if (mask & 16) band(ink, T - o, 0, o, o);
+    if (mask & 128) band(ink, 0, 0, o, o);
+    // An open diagonal below: the neighbour's face ends against this cap, so the outline of the arm
+    // running south carries on up beside that face as far as the neighbour's cap.
+    if (mask & 32) band(ink, T - o, T - F - o, o, F + o);
+    if (mask & 64) band(ink, 0, T - F - o, o, F + o);
+    this.wallTiles.set(key, tile); return tile;
+  }
+
+  // `tx`, `ty` pick the cap's part of the sheet; left out, they are read off the position.
+  drawWall(ctx, def, x, y, mask, tx = Math.round(x / TILE), ty = Math.round(y / TILE)) {
+    const P = PIXEL_ROOMS.wall.sheet;
+    ctx.drawImage(this.wallCap(def), ((tx % P) + P) % P * 64, ((ty % P) + P) % P * 64, 64, 64, x, y, TILE, TILE);
+    ctx.drawImage(this.wallTile(def, mask), x, y, TILE, TILE);
   }
 
   drawTiles(renderer, game, cam) {
     this.prepare(game);
     const ctx = renderer.ctx, wd = game.world, b = renderer.visibleTiles(cam), def = game.level.def;
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+    // A wall that gives (`carveSecret`) stands on a floor tile until it is broken, and is drawn as a
+    // prop; to its neighbours it is stone, or the niche behind it showed a face of its own over it.
+    const shut = this.shutWalls ||= new Set(); shut.clear();
+    for (const p of game.props) if (p.kind === 'secret' && !p.broken) shut.add(Math.floor(p.y / TILE) * wd.W + Math.floor(p.x / TILE));
+    const stone = (x, y) => wd.isSolid(x, y) || (shut.size > 0 && shut.has(y * wd.W + x));
     for (let y=b.y0; y<=b.y1; y++) for (let x=b.x0; x<=b.x1; x++) {
       const t=wd.tileAt(x,y), px=x*TILE, py=y*TILE, h=this.hash(x,y,game.level.seed);
-      if (t===T.WALL) {
-        const n=!wd.isSolid(x,y-1),s=!wd.isSolid(x,y+1),w=!wd.isSolid(x-1,y),e=!wd.isSolid(x+1,y);
-        if (!(n||s||w||e||!wd.isSolid(x-1,y-1)||!wd.isSolid(x+1,y-1)||!wd.isSolid(x-1,y+1)||!wd.isSolid(x+1,y+1))) continue;
+      // (the wall that gives is drawn here as well as by its prop, so its smoothed edges fall on stone)
+      if (t===T.WALL||(shut.size>0&&shut.has(y*wd.W+x))) {
+        const n=!stone(x,y-1),s=!stone(x,y+1),w=!stone(x-1,y),e=!stone(x+1,y);
+        if (!(n||s||w||e||!stone(x-1,y-1)||!stone(x+1,y-1)||!stone(x-1,y+1)||!stone(x+1,y+1))) continue;
         // A wall tile with floor on all four sides is a template's `P`, a pillar standing in the room,
         // and it is drawn as one rather than as a cube of the room's wall. It runs up over the tile
         // behind it, which this row-by-row pass has already drawn, so nothing paints over its top.
@@ -170,7 +204,11 @@ class PaintedArt extends AltarArt {
           PIXEL_ENV.draw(ctx,'pillar',px+16,py+31,27);
           continue;
         }
-        this.drawWall(ctx,def,px,py,(n?1:0)|(e?2:0)|(s?4:0)|(w?8:0));
+        // an open diagonal counts only where both its sides are stone: an inside corner of the outline
+        let m=(n?1:0)|(e?2:0)|(s?4:0)|(w?8:0);
+        if(!n&&!e&&!stone(x+1,y-1))m|=16; if(!s&&!e&&!stone(x+1,y+1))m|=32;
+        if(!s&&!w&&!stone(x-1,y+1))m|=64; if(!n&&!w&&!stone(x-1,y-1))m|=128;
+        this.drawWall(ctx,def,px,py,m,x,y);
         if (s&&x%5===1&&h%3!==0&&!w&&!e) this.stamp(ctx,'banner',px+16,py+18,13,17,0.2);
         continue;
       }
@@ -178,8 +216,8 @@ class PaintedArt extends AltarArt {
       const wood=this.boards[y*wd.W+x];
       ctx.drawImage(this.floorSwatch(def,h,wood),px,py,TILE,TILE);
       ctx.fillStyle=PALETTE.altar.shadow;
-      if(wd.isSolid(x,y-1))ctx.fillRect(px,py,32,5);
-      if(wd.isSolid(x-1,y))ctx.fillRect(px,py,3,32);
+      if(stone(x,y-1))ctx.fillRect(px,py,32,5);
+      if(stone(x-1,y))ctx.fillRect(px,py,3,32);
       if(t===T.HAY)PIXEL_ENV.draw(ctx,'hay',px+16,py+29,33);
       else if(t===T.FLOOR&&!wood&&!wd.isSolid(x,y-1))PIXEL_ENV.litter(ctx,'room',x,y);
       else if(t===T.ASH){ctx.fillStyle=PALETTE.altar.ash;ctx.globalAlpha=0.6;ctx.fillRect(px+3,py+5,26,23);ctx.globalAlpha=1;}
@@ -397,7 +435,11 @@ class PaintedArt extends AltarArt {
     }
     if(p.kind==='secret'){
       // The sealed niche must share the same facing as the surrounding room wall.
+      // It is a tile of the wall, so it is drawn flat like the tiles either side of it: a prop stands
+      // counter-squashed (`Renderer.drawProp`), which made it a notch taller than the wall it is in.
+      ctx.save();ctx.translate(p.x,p.y);ctx.scale(1,TILT);ctx.translate(-p.x,-p.y);ctx.imageSmoothingEnabled=true;
       this.drawWall(ctx,renderer.game.level.def,p.x-TILE/2,p.y-TILE/2,p.wallSide==='up'?4:1);
+      ctx.restore();
       // The crack tells still have to be drawn: the art carries none, and they're what the blow count
       // reads as (see `Renderer.wallCrack` / CLAUDE.md's "A wall that gives").
       renderer.wallCrack(p.x,p.y,p.hits||0);
@@ -412,7 +454,10 @@ class PaintedArt extends AltarArt {
     return this.atlas(ctx, 'soul-wisp', 0, 0, w, undefined, 0.56);
   }
 
-  characterKey(e) { if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'brute':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith','butcher'].includes(e.kind)?e.kind:null; }
+  // 1.66: the brute wears the Butcher's old sheet (skull, apron, cleaver) and the Butcher's kind is
+  // the ogre, drawn by js/ogre-pixels.js (`butcher.scale` a size up). The red-robed `brute` sheet is
+  // unused for now.
+  characterKey(e) { if(e.kind==='butcher')return 'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'butcher':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
 
   // The art is a top-down slab at the collision footprint, with no frame or square padding.
   doorSlab(ctx,p,wdt,hgt) {
@@ -450,7 +495,12 @@ class PaintedArt extends AltarArt {
     if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
     if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
     if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
-    PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
+    // The hound has no stride on the sheet: running, he bounces (`dog.gait`, `dog.bob`), or he is a
+    // picture of a dog sliding round the floor.
+    if(key==='hound'&&moving){const G=TUNING.dog;ctx.translate(0,-Math.abs(Math.sin(renderer.t*G.gait*Math.PI+e.x*0.02))*G.bob);}
+    // The ogre has no atlas body: his own hand-drawn one (js/ogre-pixels.js), fists up through a slam or a leap.
+    if(key==='ogre'&&typeof OGRE_PIXELS!=='undefined'&&OGRE_PIXELS.draw)OGRE_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e.state==='slamwind'||e.state==='hopwind'||e.state==='hop'?'up':'idle');
+    else PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
     // His horns as the butt souls have made them, in the same lean as the frame (`drawGoat` sets it).
     if(key==='sheep'&&this.hornMods){PIXEL_ART.horns(ctx,pixel,angle,moving,renderer.t,e.x,this.hornMods);PIXEL_ART.face(ctx,angle,renderer.t,this.hornMods,e);}
     ctx.restore();

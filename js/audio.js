@@ -19,6 +19,35 @@ const LATE_MUSIC = {
 // hesitant answers and empty downbeats. All four states still share the room's rhythm grid.
 const FIRST_MUSIC = { roots: [55,58.27,49,41.20], scale: MUSIC.scale };
 const musicTheme = (scene) => scene.first ? FIRST_MUSIC : scene.late ? LATE_MUSIC : MUSIC;
+// The tune the compound hums. Until 1.66 the room score was a drone, a bass note or two a bar and no
+// line anybody could hum, under a stone room's wash, and it read as noise. Each theme now has one
+// four-bar phrase over its four roots, played by the bone flute (`lead`) whenever the goat is not in
+// the two-bar warning: [sixteenth of the 64, semitones above the theme's first root four octaves up,
+// length in sixteenths]. The ordinary theme's hook is A-C-Bb-A and every phrase ends on the Phrygian
+// fall A-G-F-E over the E; the upper floors answer it in G minor; the first floor's is the same fall
+// broken up, with rests and a tritone at the end of it. `bass` is one bar's line over each root:
+// [sixteenth, semitones above the root, length, gain] — a folk gallop, not one long note. `toms` are
+// the frame drum's answers between the kicks.
+const THEME_BED = {
+  early: { gain: 0.085, pad: 0.03, toms: [6, 14],
+    melody: [[0,0,3],[3,3,2],[5,1,2],[7,0,2],[9,-2,3],[12,0,2],[14,1,2],
+      [16,3,2],[18,5,2],[20,7,4],[24,5,2],[26,3,2],[28,1,4],
+      [32,5,3],[35,3,1],[36,1,4],[40,0,2],[42,-2,2],[44,1,4],
+      [48,0,2],[50,-2,2],[52,-4,2],[54,-5,6],[62,-2,2]],
+    bass: [[0,0,3,0.24],[3,0,1.5,0.12],[6,7,2,0.16],[8,0,2.5,0.2],[11,0,1.5,0.12],[14,10,2,0.14]] },
+  late: { gain: 0.08, pad: 0.03, toms: [6, 14],
+    melody: [[0,7,3],[3,3,1],[4,5,2],[6,2,2],[8,0,4],[12,3,1],[13,2,1],[14,0,2],
+      [16,-2,4],[20,2,2],[22,5,2],[24,2,6],[30,0,2],
+      [32,3,3],[35,0,1],[36,-3,4],[40,0,2],[42,3,2],[44,2,4],
+      [48,0,2],[50,-2,2],[52,0,6],[60,2,2],[62,3,2]],
+    bass: [[0,0,3,0.22],[6,0,1.5,0.12],[8,7,2.5,0.16],[12,0,2,0.15],[14,12,1.5,0.1]] },
+  first: { gain: 0.065, pad: 0.022, toms: [],
+    melody: [[0,7,4],[6,5,1],[7,3,1],[8,1,4],[12,0,3],
+      [18,5,3],[21,1,1],[22,3,2],[24,5,5],[30,1,2],
+      [32,-2,4],[36,1,2],[38,0,2],[40,-2,6],
+      [48,-5,5],[54,-2,2],[56,1,3],[60,0,4]],
+    bass: [[0,0,2.5,0.16],[8,0,1.2,0.07],[11,7,1.4,0.09]] },
+};
 // [sixteenth, semitones above root, octave multiplier, duration in sixteenths].
 // These small authored phrases replace the room score briefly; they never fight its harmony.
 const MUSIC_CUES = {
@@ -69,11 +98,11 @@ const musicPitch = (freq) => {
   return { midi, note: ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1), hz: Math.round(freq * 100) / 100 };
 };
 const MUSIC_TRACKS = {
-  pad: 'Triangle drone + fifth', bass: 'Low-pass saw bass', lead: 'Triangle flute + sine octave', drums: 'Sine kick / tom + noise hat',
-  bearer: 'Square ticks', dog: 'Short square ticks', hunter: 'Triangle pluck', seer: 'Soft triangle pluck',
-  champion: 'Triangle sub + octave + square edge', butcher: 'Triangle sub + octave + square edge', wraith: 'Sine chime',
+  pad: 'Open-fifth triangle drone', bass: 'Saw bass line, low-pass closing 700 to 170 Hz', lead: 'Bone flute theme (triangle, vibrato) + plucked saw riff', drums: 'Frame-drum kick / tom (swept sine + skin slap) + rim knock',
+  bearer: 'Muffled square ticks', dog: 'Short muffled square ticks', hunter: 'Triangle pluck', seer: 'Soft triangle pluck',
+  champion: 'Triangle sub + octave + muffled square edge', butcher: 'Triangle sub + octave + muffled square edge', wraith: 'Sine chime',
   spike: 'Triangle + sine octave', mill: 'Long triangle + sine octave', fire: 'Filtered noise crackles', grass: 'Sine + triangle octave',
-  kill: 'Triangle / sine chime', headbutt: 'Square woodblock', roll: 'Square woodblock', throw: 'Square woodblock', scream: 'Square woodblock',
+  kill: 'Triangle / sine chime', headbutt: 'Muffled square woodblock', roll: 'Muffled square woodblock', throw: 'Muffled square woodblock', scream: 'Muffled square woodblock',
   clear: 'Rising triangle / major release', death: 'Falling sine / minor lament', soul: 'High sine / open fifths',
 };
 
@@ -82,7 +111,7 @@ const MUSIC_TRACKS = {
 const ROOM_MUSIC = {
   bars: 16, stepsPerBar: 16,
   answers: [0, 8, 0, 16],
-  small: { phase: 2, octave: 8, notes: [0, 4, 2, 4, 0, 2], type: 'square', gain: 0.065, length: 0.46 },
+  small: { phase: 2, octave: 8, notes: [0, 4, 2, 4, 0, 2], type: 'square', gain: 0.075, length: 0.46, lp: 1500 },
   ranged: { phase: 1, octave: 4, notes: [4, 0, 2, 4, 2, 0], type: 'triangle', gain: 0.13, length: 1.25 },
   large: { phase: 0, octave: 1, notes: [0, 0, 4, 0, 4, 0], type: 'triangle', gain: 0.20, length: 1.75 },
   mystical: { phase: 3, octave: 16, notes: [0, 4, 2, 0, 2, 4], type: 'sine', gain: 0.085, length: 3.0 },
@@ -208,6 +237,16 @@ class GameAudio {
     this.sfxBus = this.ctx.createGain(); this.sfxBus.connect(this.master);
     this.musicBus = this.ctx.createGain(); this.musicBus.connect(this.master);
     this.layerBus = this.ctx.createGain(); this.layerBus.gain.value = A.layers.gain; this.layerBus.connect(this.musicBus);
+    // One small room under everything (`TUNING.audio.room`): a third of a second, a little of it.
+    // Bone dry, every effect was a sound in no place at all; 1.4 s of stone (1.61-1.65) put every
+    // blow at the far end of a cathedral. The score goes in a little too.
+    const R = A.room, gain = (v) => { const g = this.ctx.createGain(); g.gain.value = v; return g; };
+    this.roomIn = this.ctx.createConvolver(); this.roomIn.buffer = Foley.roomImpulse(this.ctx, R.decay, R.damp);
+    this.roomOut = gain(R.level); this.roomIn.connect(this.roomOut); this.roomOut.connect(this.master);
+    this.sfxRoom = gain(R.sfx); this.sfxBus.connect(this.sfxRoom); this.sfxRoom.connect(this.roomIn);
+    this.musicRoom = gain(R.music); this.musicBus.connect(this.musicRoom); this.drumBus.connect(this.musicRoom); this.musicRoom.connect(this.roomIn);
+    // A loud effect's extra share of the room (`foley`'s `wet`), kept at the SFX slider's level.
+    this.sfxWet = gain(0); this.sfxWet.connect(this.roomIn);
     this.setVolumes(this.volMusic, this.volSfx);
     const len = this.ctx.sampleRate * 1.5;
     this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -215,6 +254,7 @@ class GameAudio {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.nextTime = this.ctx.currentTime + 0.1;
     setInterval(() => this.schedule(), 25);
+    this.warm();
   }
   resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
   setLayered(enabled) { this.layered = !!enabled; }
@@ -229,6 +269,7 @@ class GameAudio {
     this.drumBus.gain.value = A.drums * (this.volMusic / 0.5);
     this.musicBus.gain.value = A.music * (this.volMusic / 0.5);
     this.sfxBus.gain.value = A.sfx * (this.volSfx / 0.5);
+    if (this.sfxWet) this.sfxWet.gain.value = this.sfxBus.gain.value;
   }
   trackMusicNode(node) {
     if (!this.scoring) return;
@@ -353,7 +394,7 @@ class GameAudio {
       this.scoreTrack = action.kind;
       const degree = MUSIC_ACTIONS[action.kind].degree;
       this.tone(root * 2 * Math.pow(2, theme.scale[degree] / 12), t + stepLen,
-        stepLen * 0.8, { type: 'square', gain: TUNING.audio.layers.actionGain * headroom, sweep: 0.8, bus: this.layerBus });
+        stepLen * 0.8, { type: 'square', gain: TUNING.audio.layers.actionGain * headroom, sweep: 0.8, bus: this.layerBus, lp: 1300 });
     }
   }
   labAction(action, game) {
@@ -425,7 +466,7 @@ class GameAudio {
     };
     a.tone = record;
     a.noise = (t, dur, options) => record(null, t, dur, { type: 'noise', ...options });
-    a.bass = (t, freq, dur, gain) => { a.scoreTrack = 'bass'; record(freq, t, dur, { type: 'sawtooth', gain, attack: 0.02, lowpass: [430,150] }); };
+    a.bass = (t, freq, dur, gain) => { a.scoreTrack = 'bass'; record(freq, t, dur, { type: 'sawtooth', gain, attack: 0.02, lowpass: [700,170] }); };
     for (let step = 0; step < 256; step++) a.playStep(step, step * stepLen, stepLen);
     lab.scoreKey = key;
     lab.score = { bpm: this.bpm, beatsPerBar: 4, stepsPerBar: 16, bars: 16, theme: lab.scene.first ? '1' : lab.scene.late ? '5+' : '2-4', stage: lab.cue || lab.bed,
@@ -485,13 +526,29 @@ class GameAudio {
   }
 
   // ---- synth primitives ----
-  tone(freq, t, dur, { type = 'sine', gain = 0.5, sweep = 0, bus = null, attack = 0.002 } = {}) {
+  // `lp` closes a low-pass over the note: a bare square is a chip beep, a square with its top taken
+  // off is a reed or a woodblock, which is what the score's ticks are meant to be.
+  // `lpEnd` closes that low-pass to `lpEnd` Hz over the note, which is a plucked string; `vib` is a
+  // breath's wobble in the pitch (a fraction of it, at 5 Hz), which is the difference between a flute
+  // and a test tone.
+  tone(freq, t, dur, { type = 'sine', gain = 0.5, sweep = 0, bus = null, attack = 0.002, lp = 0, lpEnd = 0, vib = 0 } = {}) {
     const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
     o.type = type; o.frequency.setValueAtTime(freq, t);
     if (sweep) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * sweep), t + dur);
+    if (vib) {
+      const lfo = this.ctx.createOscillator(), depth = this.ctx.createGain();
+      lfo.frequency.value = 5; depth.gain.setValueAtTime(0, t); depth.gain.linearRampToValueAtTime(freq * vib, t + Math.min(dur, 0.25));
+      lfo.connect(depth); depth.connect(o.frequency); lfo.start(t); lfo.stop(t + dur + 0.02);
+    }
     g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(bus || this.sfxBus); o.start(t); o.stop(t + dur + 0.02);
+    if (lp) {
+      const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(lp, t); f.Q.value = 0.5;
+      if (lpEnd) f.frequency.exponentialRampToValueAtTime(lpEnd, t + dur);
+      o.connect(f); f.connect(g);
+    }
+    else o.connect(g);
+    g.connect(bus || this.sfxBus); o.start(t); o.stop(t + dur + 0.02);
     this.trackMusicNode(o);
     return o;
   }
@@ -507,16 +564,25 @@ class GameAudio {
   }
 
   // ---- drums ----
-  kick(t, g = 0.9) { this.scoreTrack = 'drums'; this.tone(140, t, 0.28, { gain: g, sweep: 0.25, bus: this.drumBus }); }
+  // Skins, not a drum machine: a sine swept down is an 808, and the cult beats frame drums. Each hit
+  // gets the slap of the hand on the skin as well as its body, a little lower and a little longer.
+  kick(t, g = 0.9) {
+    this.scoreTrack = 'drums';
+    this.tone(120, t, 0.34, { gain: g, sweep: 0.4, bus: this.drumBus });
+    this.noise(t, 0.03, { gain: g * 0.14, lp: 1600, bus: this.drumBus });
+  }
   tomLo(t, g = 0.6) { this.tone(110, t, 0.35, { gain: g, sweep: 0.6, bus: this.drumBus }); this.noise(t, 0.05, { gain: 0.08, lp: 1200, bus: this.drumBus }); }
-  tomHi(t, g = 0.5) { this.scoreTrack = 'drums'; this.tone(190, t, 0.25, { gain: g, sweep: 0.6, bus: this.drumBus }); }
+  tomHi(t, g = 0.5) {
+    this.scoreTrack = 'drums';
+    this.tone(180, t, 0.28, { gain: g, sweep: 0.62, bus: this.drumBus });
+    this.noise(t, 0.035, { gain: g * 0.18, hp: 400, lp: 2600, bus: this.drumBus });
+  }
   hat(t, g = 0.18) { this.scoreTrack = 'drums'; this.noise(t, 0.05, { gain: g, hp: 6000, bus: this.drumBus }); }
+  // A stick on the rim of the frame drum: the layered score's off-beat, a knock with a pitch rather
+  // than a hiss of noise (the hats were half of why the score read as noise).
+  rim(t, g = 0.05) { this.scoreTrack = 'drums'; this.tone(1250, t, 0.05, { type: 'triangle', gain: g, sweep: 0.7, bus: this.drumBus, lp: 3200 }); }
   shaker(t, g = 0.12) { this.noise(t, 0.09, { gain: g, hp: 3500, lp: 9000, bus: this.drumBus }); }
   crash(t, g = 0.35) { this.noise(t, 1.2, { gain: g, hp: 2500, bus: this.drumBus }); }
-  gong(t, g = 0.5) {
-    [92, 138, 207, 311].forEach((f, i) => this.tone(f, t, 2.2 - i * 0.3, { gain: g / (i + 1.5), bus: this.drumBus }));
-    this.noise(t, 0.4, { gain: 0.15, hp: 1500, bus: this.drumBus });
-  }
   // ---- the bed: pad, bass and a bone flute ----
   pad(t, f, dur, gain) {
     this.scoreTrack = 'pad';
@@ -527,16 +593,22 @@ class GameAudio {
     this.scoreTrack = 'bass';
     const o = this.ctx.createOscillator(), g = this.ctx.createGain(), lp = this.ctx.createBiquadFilter();
     o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t);
-    lp.type = 'lowpass'; lp.frequency.setValueAtTime(430, t); lp.frequency.exponentialRampToValueAtTime(150, t + dur);
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(700, t); lp.frequency.exponentialRampToValueAtTime(170, t + dur);
     g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(lp); lp.connect(g); g.connect(this.musicBus); o.start(t); o.stop(t + dur + 0.02);
     this.trackMusicNode(o);
   }
+  // A bone flute: soft in, a breath of vibrato once the note is held, a thin octave over it.
   lead(t, f, dur, gain) {
     this.scoreTrack = 'lead';
-    this.tone(f, t, dur, { type: 'triangle', gain, bus: this.musicBus, attack: 0.012 });
-    this.tone(f * 2, t, dur * 0.5, { type: 'sine', gain: gain * 0.28, bus: this.musicBus, attack: 0.012 });
+    this.tone(f, t, dur, { type: 'triangle', gain, bus: this.musicBus, attack: 0.025, vib: 0.006 });
+    this.tone(f * 2, t, dur * 0.5, { type: 'sine', gain: gain * 0.22, bus: this.musicBus, attack: 0.025 });
+  }
+  // A plucked string (a saw whose top closes as it rings): the counter-riff under the flute.
+  pluck(t, f, dur, gain) {
+    this.scoreTrack = 'lead';
+    this.tone(f, t, Math.max(dur, 0.18), { type: 'sawtooth', gain, bus: this.musicBus, attack: 0.004, lp: 2400, lpEnd: 280 });
   }
   // Pad and bass play whatever happens; the motif only comes in once somebody knows you are there.
   playBed(s, t, stepLen, lvl) {
@@ -618,22 +690,22 @@ class GameAudio {
     if (this.muted) { this.playMusicEvents(t, stepLen, root, theme, 1); return; }
     // Keep the original harmonic bed; leave its bus and one-shot effects at their old levels.
     if (!this.preview || this.preview.bed !== 'none') {
-      if (this.firstTheme) this.playFirstBed(s, t, stepLen);
-      else if (this.lateTheme) this.playLateBed(s, t, stepLen);
-      else this.playBed(s, t, stepLen, 0);
+      this.playThemeBed(this.firstTheme ? 'first' : this.lateTheme ? 'late' : 'early', s, t, stepLen);
       if (beat === 0 || beat === 8) this.kick(t, (this.firstTheme ? 0.12 : 0.20) + combat * 0.08 + this.blazeMix * 0.018);
       for (const name of MUSIC_STAGES) {
         const mix = this.stageMix[name];
         if (mix < 0.01) continue;
         const degree = STAGE_MOTIFS[this.firstTheme ? 'first' : this.lateTheme ? 'late' : 'early'][name][beat];
-        if (degree >= 0) this.lead(t, root * 4 * Math.pow(2, theme.scale[degree] / 12),
-          stepLen * (name === 'spotted' ? 3.4 : name === 'combat' ? 1.25 : 2), mix * (name === 'combat' ? 0.065 : 0.043));
+        // The stage's own figure is a plucked riff an octave under the flute, so the two lines are
+        // told apart by their sound and not only by where they sit.
+        if (degree >= 0) this.pluck(t, root * 4 * Math.pow(2, theme.scale[degree] / 12),
+          stepLen * (name === 'spotted' ? 3.4 : name === 'combat' ? 1.25 : 2), mix * (name === 'combat' ? 0.06 : 0.045));
         if (name === 'spotted' && beat === 12) this.tomHi(t, 0.075 * mix);
-        if (name === 'chase' && [2,6,10,14].includes(beat)) this.hat(t, 0.035 * mix);
+        if (name === 'chase' && [2,6,10,14].includes(beat)) this.rim(t, 0.05 * mix);
         if (name === 'combat') {
           if ([4,12].includes(beat)) this.tomHi(t, 0.22 * mix);
           if ([6,14].includes(beat)) this.kick(t, 0.17 * mix);
-          if ([3,11].includes(beat)) this.hat(t, 0.04 * mix);
+          if ([3,11].includes(beat)) this.rim(t, 0.055 * mix);
         }
       }
     }
@@ -647,7 +719,7 @@ class GameAudio {
         const f = root * part.octave * Math.pow(2, theme.scale[degree] / 12);
         const gain = part.gain * v * headroom * (L.exploreMix + (1 - L.exploreMix) * combat);
         this.tone(f, t, stepLen * instrument.length, { type: part.type,
-          gain,
+          gain, lp: part.lp || 0,
           bus: this.layerBus, attack: kind === 'wraith' ? 0.06 : kind === 'seer' ? 0.025 : 0.004 });
         if (instrument.family === 'trap') this.tone(f * 2, t, stepLen * 0.3,
           { type: 'sine', gain: gain * 0.35, bus: this.layerBus });
@@ -655,7 +727,7 @@ class GameAudio {
         // at 82-165 Hz and a quiet square edge at 165-330 Hz, all on the exact same onset.
         if (instrument.family === 'large') {
           this.tone(f * 2, t, stepLen * instrument.length, { type: 'triangle', gain: L.heavyBodyGain * v * headroom, bus: this.layerBus });
-          this.tone(f * 4, t, stepLen * 0.75, { type: 'square', gain: L.heavyEdgeGain * v * headroom, bus: this.layerBus });
+          this.tone(f * 4, t, stepLen * 0.75, { type: 'square', gain: L.heavyEdgeGain * v * headroom, bus: this.layerBus, lp: 1100 });
         }
       });
     }
@@ -683,17 +755,20 @@ class GameAudio {
     this.noise(t, 0.035, { gain, hp: 1200, lp: 5500, bus: this.layerBus });
     this.noise(t + 0.025, 0.09, { gain: gain * 0.35, hp: 650, lp: 3000, bus: this.layerBus });
   }
-  playFirstBed(s, t, stepLen) {
-    const beat = s % 16, bar = (s >> 4) & 3, root = FIRST_MUSIC.roots[bar];
-    if (beat === 0) this.pad(t, root * 2, stepLen * 12, 0.032);
-    if (beat === 0) this.bass(t, root, stepLen * 2.3, 0.17);
-    if (beat === 11 && bar % 2 === 0) this.bass(t, root * 1.5, stepLen * 1.4, 0.10);
-  }
-  playLateBed(s, t, stepLen) {
-    const beat = s % 16, root = LATE_MUSIC.roots[(s >> 4) & 3];
-    if (beat === 0) this.pad(t, root, stepLen * 16.4, 0.055);
-    if (beat === 0 || beat === 8) this.bass(t, root, stepLen * 3.2, 0.23);
-    if (beat === 12) this.bass(t, root * 1.5, stepLen * 2.2, 0.16);
+  // The layered score's bed (`THEME_BED`): an open-fifth drone a bar long, the bass line, the tune
+  // and the frame drum's answers. The tune sings whole while nobody knows where he is, drops almost
+  // out for the two-bar warning, and comes back under the chase and the fight.
+  playThemeBed(key, s, t, stepLen) {
+    const B = THEME_BED[key], beat = s % 16, pos = s & 63, M = this.stageMix;
+    const theme = key === 'first' ? FIRST_MUSIC : key === 'late' ? LATE_MUSIC : MUSIC;
+    const root = theme.roots[(s >> 4) & 3], base = theme.roots[0] * 8;
+    if (beat === 0) this.pad(t, root * 2, stepLen * 16.4, B.pad);
+    for (const [at, semi, length, gain] of B.bass) if (at === beat) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain);
+    const sing = M.idle + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55;
+    if (sing > 0.01) for (const [at, semi, length] of B.melody) {
+      if (at === pos) this.lead(t, base * Math.pow(2, semi / 12), stepLen * length * 0.95, B.gain * sing * (at % 16 === 0 ? 1 : 0.85));
+    }
+    if (B.toms.includes(beat)) this.tomHi(t, 0.045);
   }
   // Preserved original arrangement, including the threat tiers, hunter cue and bell drone.
   // SETTINGS > LAYERED MUSIC off selects this; keep future room-score changes above it.
@@ -733,254 +808,170 @@ class GameAudio {
   }
 
   // ---- sfx ----
+  // Every effect is a Foley recipe (js/foley.js): a small physical model rendered into a buffer a few
+  // times over, one take picked each time and nudged in pitch and level (`TUNING.audio.foley`), then
+  // heard in the room. 1.66 re-levelled the gains below against a 300 ms loudness window (100 Hz up)
+  // after every recipe was shortened: each one sits about 6 dB under where it was and the loudest
+  // (the pen, the gong, a blast, a club) further still. `wet` is a thing's extra share of the room,
+  // and nothing sends much any more: the effects are meant to be close and dry.
   now() { return this.ctx ? this.ctx.currentTime : 0; }
-  sfxHeadbutt() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.12, { gain: 0.25, hp: 400, lp: 3000 }); }
-  sfxThud() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(90, t, 0.15, { gain: 0.5, sweep: 0.5 }); this.noise(t, 0.08, { gain: 0.2, lp: 800 }); }
-  sfxSplat() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(70, t, 0.25, { gain: 0.8, sweep: 0.3 }); this.noise(t, 0.25, { gain: 0.5, lp: 1800 }); this.crash(t, 0.25);
+  // `key` names the bank when one recipe is rendered with different `args` (a bleat's pitch, a fuse's
+  // length); `steady` keeps the pitch exact (a chain of kills climbs a scale); `at` delays it.
+  foley(name, { gain = 1, rate = 1, wet = 0, pan = 0, at = 0, key = name, args = null, takes = null, steady = false } = {}) {
+    if (!this.ctx || this.muted || gain <= 0) return null;
+    const F = TUNING.audio.foley, ctx = this.ctx;
+    const buffer = this.take(key, () => Foley.render(name, args), takes == null ? F.takes : takes, Foley.rateOf(name));
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = buffer;
+    src.playbackRate.value = rate * (steady ? 1 : 1 + (Math.random() * 2 - 1) * F.pitch);
+    g.gain.value = gain * (1 + (Math.random() * 2 - 1) * F.level);
+    src.connect(g);
+    let out = g;
+    if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); g.connect(p); out = p; }
+    out.connect(this.sfxBus);
+    if (wet > 0 && this.sfxWet) { const w = ctx.createGain(); w.gain.value = wet; out.connect(w); w.connect(this.sfxWet); }
+    src.start(this.now() + at);
+    return src;
   }
-  sfxGunshot() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.18, { gain: 0.7, hp: 300 }); this.tone(120, t, 0.1, { gain: 0.5, sweep: 0.3 }); }
-  sfxPot() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.2, { gain: 0.45, hp: 2000 }); this.tone(900, t, 0.12, { gain: 0.2, sweep: 0.4, type: 'triangle' }); }
-  // An animal, not a siren. A goat's voice is a buzzy sawtooth put through two vowel formants and
-  // shaken hard — the shake is the whole character of it, and it is why the old sweep-and-vibrato
-  // screech read as a synth. `f` is the pitch it starts at, `wob` how fast the throat shakes, and
-  // `open` how far the mouth opens over the call, which is what turns a 'bèh' into a 'baaah'.
-  bleatVoice(t, { f = 300, dur = 0.5, gain = 0.3, wob = 24, depth = 0.11, open = 1.5, breath = 0.1 } = {}) {
-    const ctx = this.ctx;
-    const o = ctx.createOscillator(); o.type = 'sawtooth';
-    o.frequency.setValueAtTime(f, t);
-    o.frequency.linearRampToValueAtTime(f * 1.06, t + dur * 0.18);   // it goes up before it gives out
-    o.frequency.exponentialRampToValueAtTime(Math.max(40, f * 0.72), t + dur);
-    // The throat, shaking. Deep enough to hear as a bleat rather than as vibrato on a note.
-    const lfo = ctx.createOscillator(), lg = ctx.createGain();
-    lfo.type = 'triangle'; lfo.frequency.setValueAtTime(wob, t);
-    lfo.frequency.linearRampToValueAtTime(wob * 0.7, t + dur);
-    lg.gain.value = f * depth; lfo.connect(lg); lg.connect(o.frequency);
-    lfo.start(t); lfo.stop(t + dur + 0.05);
-    // Two formants: the first opens as the jaw does, the second holds and gives it the nasal edge.
-    const env = ctx.createGain();
-    env.gain.setValueAtTime(0.0001, t);
-    env.gain.linearRampToValueAtTime(gain, t + 0.035);
-    env.gain.setValueAtTime(gain, t + dur * 0.55);
-    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.Q.value = 4.5;
-    f1.frequency.setValueAtTime(560, t); f1.frequency.linearRampToValueAtTime(560 * open, t + dur * 0.6);
-    const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = 6; f2.frequency.value = 1750;
-    const g2 = ctx.createGain(); g2.gain.value = 0.5;
-    o.connect(f1); f1.connect(env);
-    o.connect(f2); f2.connect(g2); g2.connect(env);
-    env.connect(this.sfxBus);
-    o.start(t); o.stop(t + dur + 0.05);
-    // The air in it, at the front of the call.
-    if (breath > 0) this.noise(t, Math.min(0.12, dur * 0.3), { gain: gain * breath, hp: 1200, lp: 5200 });
-    return o;
+  // A bank of takes per key. Mid-game only an empty bank renders (once, a few milliseconds); the rest
+  // of its takes are filled by `warm` between frames. Never the same take twice running.
+  take(key, make, want, rate) {
+    const bank = this.bank || (this.bank = {});
+    const b = bank[key] || (bank[key] = { list: [], want, make, rate, last: -1 });
+    if (!b.list.length) b.list.push(this.toBuffer(b.make(), b.rate));
+    let i = Math.floor(Math.random() * b.list.length);
+    if (b.list.length > 1 && i === b.last) i = (i + 1) % b.list.length;
+    b.last = i;
+    return b.list[i];
   }
+  toBuffer(data, rate) {
+    const b = this.ctx.createBuffer(1, data.length, rate);
+    b.getChannelData(0).set(data);
+    return b;
+  }
+  // Render ahead, one take at a time in idle moments: first one of every plain recipe, then the rest
+  // of every bank (including the bleats and fuses asked for so far), until each holds its `want`.
+  warm() {
+    if (this.warming || !this.ctx) return;
+    this.warming = true;
+    const F = TUNING.audio.foley, bank = this.bank || (this.bank = {});
+    const want = { bell: 2, hoof: 6 };
+    for (const name of Foley.plain) if (!bank[name]) bank[name] = { list: [], want: want[name] || F.takes, make: () => Foley.render(name), rate: Foley.rateOf(name), last: -1 };
+    if (!bank.toll) bank.toll = { list: [], want: 2, make: () => Foley.render('bell', { low: true }), rate: Foley.rateOf('bell'), last: -1 };
+    const later = () => {
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(next, { timeout: 500 });
+      else setTimeout(next, F.warmGap * 1000);
+    };
+    // As many takes as the idle moment has room for, and always at least one.
+    const next = (idle) => {
+      do {
+        const all = Object.values(this.bank);
+        const b = all.find((x) => !x.list.length) || all.find((x) => x.list.length < x.want);
+        if (!b) { this.warming = false; return; }
+        b.list.push(this.toBuffer(b.make(), b.rate));
+      } while (idle && !idle.didTimeout && idle.timeRemaining() > 8);
+      later();
+    };
+    later();
+  }
+  // Where a sound is, as the goat hears it: whole inside `space.near` tiles, falling to `space.floor`
+  // of itself at `far`, and swung across the speakers `pan` tiles to either side.
+  heard(dx, dy) {
+    const S = TUNING.audio.space, u = clamp((Math.hypot(dx, dy) / TILE - S.near) / (S.far - S.near), 0, 1);
+    return { vol: 1 - (1 - S.floor) * u, pan: clamp(dx / (S.pan * TILE), -1, 1) };
+  }
+
+  // Head down: hooves scuffing, a snort, the lunge moving air.
+  sfxHeadbutt() { this.foley('headbutt', { gain: 0.2 }); }
+  // Weight meeting a floor or a wall: a man knocked down, a crate landing, a door taking a shoulder.
+  sfxThud() { this.foley('thud', { gain: 0.3 }); }
+  // A man broken on stone.
+  sfxSplat() { this.foley('splat', { gain: 0.78, wet: 0.04 }); }
+  sfxGunshot() { this.foley('gunshot', { gain: 1.1, wet: 0.12 }); }
+  sfxPot() { this.foley('pot', { gain: 0.4 }); }
   // BAAAH. The goat's own voice, loud and ragged, and the one sound in the game that is his.
-  sfxScream() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.bleatVoice(t, { f: 330, dur: 0.62, gain: 0.34, wob: 26, depth: 0.13, open: 1.8, breath: 0.22 });
-    // A second throat a fifth under it, quieter and later: one goat, with weight behind him.
-    this.bleatVoice(t + 0.02, { f: 218, dur: 0.5, gain: 0.16, wob: 21, depth: 0.1, open: 1.6, breath: 0 });
-  }
-  // A small frightened bleat: the same throat, quieter, shorter, and shaking harder.
+  sfxScream() { this.foley('scream', { gain: 0.26, wet: 0.05 }); }
+  // A small frightened bleat, or any sheep's: the same throat, at the pitch, level and length asked.
   sfxBleat(f, gain, dur) {
-    if (!this.ctx || this.muted) return; const t = this.now();
     const d = dur || 0.28;
-    this.bleatVoice(t, { f: f * 0.62, dur: d, gain: (gain || 0.1) * 1.5, wob: 19 + f * 0.02, depth: 0.09, open: 1.35, breath: 0.14 });
+    this.foley('bleat', { key: `bleat:${f}:${d}`, takes: 2, gain: (gain || 0.1) * 0.75,
+      args: { f: f * 0.62, dur: d, wob: 19 + f * 0.02, depth: 0.09, open: 1.35, breath: 0.14 } });
   }
-  // The hen. The same throat as the goat, pitched right up and cut short: two clipped notes, the
-  // second higher and quieter, which is what a cluck is. Everything with a voice in this game goes
-  // through `bleatVoice` — a bird built out of `tone` would be a beep with feathers drawn on it.
-  sfxCluck(alarm) {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    const f = alarm ? 980 : 760;
-    this.bleatVoice(t, { f, dur: 0.1, gain: 0.16, wob: 42, depth: 0.16, open: 1.2, breath: 0.3 });
-    this.bleatVoice(t + 0.1, { f: f * 1.22, dur: 0.08, gain: 0.11, wob: 48, depth: 0.14, open: 1.1, breath: 0.2 });
-    // The wings, at the front of it: a bird makes as much noise with those as with her throat.
-    this.noise(t, 0.1, { gain: alarm ? 0.16 : 0.1, hp: 900, lp: 4200 });
-  }
-  // Every animal on our side through one door: the hen's cluck, the goose's honk (the goat's own
-  // throat pitched up and made nasal), a crow's caw (the same throat low and ragged), and the
-  // tortoise, which has no voice at all and knocks its shell on the slats. `hurt` is the cry.
+  // The hen: two clipped 'buk's, or alarmed a run of them and the wings going.
+  sfxCluck(alarm) { this.foley('cluck', { key: alarm ? 'cluck!' : 'cluck', args: { alarm: !!alarm }, gain: alarm ? 0.14 : 0.11 }); }
+  // Every animal on our side through one door: the hen's cluck, the goose's honk, a crow's caw, and
+  // the tortoise, which has no voice at all and knocks its shell on the slats. `hurt` is the cry.
   sfxAnimal(kind, hurt) {
-    if (!this.ctx || this.muted) return; const t = this.now();
     if (kind === 'chicken') return this.sfxCluck(!!hurt);
-    if (kind === 'goose') {
-      this.bleatVoice(t, { f: hurt ? 640 : 520, dur: 0.14, gain: 0.18, wob: 30, depth: 0.05, open: 0.9, breath: 0.25 });
-      this.bleatVoice(t + 0.17, { f: hurt ? 700 : 560, dur: 0.12, gain: 0.14, wob: 30, depth: 0.05, open: 0.9, breath: 0.25 });
-      return;
-    }
-    if (kind === 'crow') {
-      this.bleatVoice(t, { f: hurt ? 460 : 380, dur: 0.18, gain: 0.16, wob: 55, depth: 0.22, open: 0.8, breath: 0.45 });
-      this.noise(t, 0.16, { gain: 0.08, hp: 700, lp: 3000 });
-      return;
-    }
-    // the tortoise: two dull knocks
-    this.noise(t, 0.05, { gain: 0.2, lp: 500 }); this.tone(110, t, 0.08, { type: 'triangle', gain: 0.12 });
-    this.noise(t + 0.14, 0.05, { gain: 0.16, lp: 500 }); this.tone(100, t + 0.14, 0.08, { type: 'triangle', gain: 0.1 });
+    if (kind === 'goose' || kind === 'crow') return this.foley(kind, { key: kind + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: kind === 'goose' ? 0.11 : 0.08 });
+    if (kind === 'horse') return this.foley('horse', { key: 'horse' + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: 0.1 });
+    this.foley('tortoise', { gain: 0.115 });
   }
-  // The truck under them. Half a second of low rumble, called every half second while the road
-  // goes past, so it runs on without a loop: a fixed pitch is a hum and a hum is a motor.
-  sfxEngine() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.noise(t, 0.6, { gain: 0.11, lp: 140 });
-    this.tone(46, t, 0.6, { type: 'triangle', gain: 0.09, attack: 0.05 });
-  }
+  // The lorry under them: half a second of diesel knock, called every half second while the road
+  // goes past, each faded at its ends so they run on without a seam.
+  sfxEngine() { this.foley('engine', { gain: 0.039 }); }
   // A club coming down on a skull, heard from inside the skull.
-  sfxClub() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.noise(t, 0.16, { gain: 0.6, lp: 900 });
-    this.tone(120, t, 0.32, { gain: 0.9, sweep: 0.3 });
-    this.tone(48, t + 0.02, 0.9, { type: 'triangle', gain: 0.5, sweep: 0.6, attack: 0.01 });
-  }
-  // Something small giving way.
-  sfxCrack() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(880, t, 0.22, { type: 'triangle', gain: 0.12, sweep: 0.3 });
-    this.noise(t, 0.06, { gain: 0.12, hp: 2500 });
-  }
-  sfxBell() { if (!this.ctx || this.muted) return; const t = this.now(); this.gong(t, 0.8); this.droneUntil = t + 8; }
-  sfxToll() { if (!this.ctx || this.muted) return; const t = this.now() + 0.15; this.gong(t, 0.6); }
-  sfxHit() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(180, t, 0.2, { gain: 0.5, sweep: 0.4, type: 'square' }); this.noise(t, 0.1, { gain: 0.2 }); }
-  sfxFire() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.35, { gain: 0.25, hp: 900, lp: 5000 }); }
-  // A lit fuse: a thin hiss for as long as it has left to burn.
-  sfxFuse(dur) { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, dur, { gain: 0.1, hp: 3200, lp: 8000 }); }
-  sfxSwing() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.1, { gain: 0.15, hp: 800, lp: 4000 }); }
-  // Somebody going over an edge: a shout that runs away downward, and the air after it. The pitch
-  // falls the whole way rather than stopping, because what sells a hole is that the sound keeps going.
-  sfxFall() {
-    if (!this.ctx || this.muted) return;
-    const t = this.now();
-    this.tone(430, t, 0.8, { gain: 0.3, sweep: 0.13, type: 'sawtooth' });
-    this.tone(214, t, 0.8, { gain: 0.16, sweep: 0.13, type: 'square' });
-    this.noise(t + 0.06, 0.62, { gain: 0.15, hp: 180, lp: 2400 });
-  }
-  sfxRoll() { if (!this.ctx || this.muted) return; const t = this.now(); this.noise(t, 0.22, { gain: 0.3, hp: 260, lp: 2200 }); this.tone(160, t, 0.18, { gain: 0.25, sweep: 0.45, type: 'triangle' }); }
-  // A barrel on its side, a knock a turn: wood on stone, lower and quieter as it slows (`k` 1 → 0).
-  sfxStave(k = 1) { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(95 + 70 * k, t, 0.07, { gain: 0.08 + 0.16 * k, sweep: 0.6, type: 'triangle' }); this.noise(t, 0.035, { gain: 0.04 + 0.08 * k, hp: 150, lp: 1400 }); }
+  sfxClub() { this.foley('club', { gain: 0.82 }); }
+  // Something wooden giving way.
+  sfxCrack() { this.foley('crack', { gain: 0.26 }); }
+  sfxBell() { if (!this.ctx || this.muted) return; this.foley('bell', { gain: 0.78, takes: 2, wet: 0.1 }); this.droneUntil = this.now() + 8; }
+  sfxToll() { this.foley('bell', { key: 'toll', args: { low: true }, takes: 2, gain: 0.62, at: 0.15, wet: 0.12 }); }
+  // A blow landing on the goat.
+  sfxHit() { this.foley('hit', { gain: 0.61 }); }
+  // Something catching light.
+  sfxFire() { this.foley('fire', { gain: 0.22 }); }
+  // A lit fuse: a thin hiss that spits, for as long as it has left to burn.
+  sfxFuse(dur) { const d = Math.round((dur || 3) * 10) / 10; this.foley('fuse', { key: 'fuse:' + d, args: { dur: d }, takes: 1, gain: 0.085, steady: true }); }
+  sfxSwing() { this.foley('swing', { gain: 0.12 }); }
+  // Somebody going over an edge: a man's shout running away downward.
+  sfxFall() { this.foley('fall', { gain: 0.2, wet: 0.1 }); }
+  sfxRoll() { this.foley('roll', { gain: 0.17 }); }
+  // A barrel on its side, a knock a turn, lower and quieter as it slows (`k` 1 → 0).
+  sfxStave(k = 1) { this.foley('stave', { gain: 0.036 + 0.088 * k, rate: 0.82 + 0.22 * k }); }
+  // A rifle cocked: the one tell a rifle gives, so it is bright and dry and sits above the mix.
+  sfxCock(vol = 1) { if (vol <= 0.02) return; this.foley('cock', { gain: 0.45 * vol }); }
   // The hound: a jaw snapping shut, dry and close.
-  // A rifle cocked: the bolt back and home, two dry clicks of metal a tenth of a second apart. It is
-  // the one tell a rifle gives, so it is bright and short and sits above everything else in the mix.
-  sfxCock(vol = 1) {
-    if (!this.ctx || this.muted || vol <= 0.02) return; const t = this.now();
-    this.noise(t, 0.03, { gain: 0.45 * vol, hp: 2600, lp: 9000 });
-    this.tone(1500, t, 0.03, { gain: 0.12 * vol, sweep: 0.6, type: 'square' });
-    this.noise(t + 0.11, 0.045, { gain: 0.55 * vol, hp: 1400, lp: 7000 });
-    this.tone(720, t + 0.11, 0.05, { gain: 0.16 * vol, sweep: 0.5, type: 'square' });
+  sfxSnap() { this.foley('snap', { gain: 0.46 }); }
+  // The growl: what a hound says as it plants to run at you.
+  sfxGrowl() { this.foley('growl', { gain: 0.15 }); }
+  // A bark. `where` is `heard(dx, dy)` off the goat when the hound knows where it is; a pack never
+  // barks closer together than `foley.barkGap`, so three hounds are a pack and not a drum roll.
+  sfxBark(where) {
+    if (!this.ctx || this.muted) return;
+    const t = this.now(), vol = where ? where.vol : 1;
+    if (t - (this.lastBark || -1) < TUNING.audio.foley.barkGap || vol <= 0.02) return;
+    this.lastBark = t;
+    this.foley('bark', { gain: 0.2 * vol, pan: where ? where.pan : 0, wet: 0.03 });
   }
-  sfxSnap() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.noise(t, 0.05, { gain: 0.35, hp: 1800, lp: 9000 });
-    this.tone(320, t, 0.07, { gain: 0.3, sweep: 0.3, type: 'square' });
-  }
-  // The growl: what a hound says as it plants to run at you (the run itself is `sfxBark`).
-  sfxGrowl() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    const o = this.tone(96, t, 0.45, { type: 'sawtooth', gain: 0.22, sweep: 0.8 });
-    const lfo = this.ctx.createOscillator(); const lg = this.ctx.createGain();
-    lfo.frequency.value = 34; lg.gain.value = 26; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + 0.5);
-    this.noise(t, 0.4, { gain: 0.12, hp: 120, lp: 900 });
-  }
-  // The run: a short, hoarse bark — a burst of noise with a falling square under it — so the one
-  // moment a hound commits is heard as well as drawn on the floor.
-  sfxBark() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(330, t, 0.11, { type: 'square', gain: 0.2, sweep: 0.55 });
-    this.tone(180, t, 0.13, { type: 'sawtooth', gain: 0.16, sweep: 0.7 });
-    this.noise(t, 0.09, { gain: 0.22, hp: 500, lp: 3200 });
-  }
-  sfxBreath() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.noise(t, 0.55, { gain: 0.55, hp: 220, lp: 3600 });
-    this.tone(80, t, 0.5, { gain: 0.4, sweep: 2.4, type: 'sawtooth' });
-    this.tone(300, t, 0.4, { gain: 0.14, sweep: 0.4, type: 'square' });
-  }
-  sfxBoom() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(58, t, 0.7, { gain: 1.0, sweep: 0.25 });
-    this.noise(t, 0.5, { gain: 0.7, lp: 2400 });
-    this.crash(t, 0.4);
-  }
-  sfxCast() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(220, t, 0.9, { type: 'triangle', gain: 0.18, sweep: 2.2, attack: 0.06 });
-    this.tone(330, t, 0.9, { type: 'sine', gain: 0.1, sweep: 2.0, attack: 0.1 });
-  }
-  sfxRune() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(110, t, 0.5, { gain: 0.6, sweep: 0.35, type: 'sawtooth' });
-    this.noise(t, 0.4, { gain: 0.35, hp: 700, lp: 4200 });
-  }
-  sfxBlink() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(660, t, 0.22, { type: 'triangle', gain: 0.22, sweep: 0.25 });
-    this.noise(t, 0.14, { gain: 0.18, hp: 3000 });
-  }
+  // DRAGON BREATH.
+  sfxBreath() { this.foley('breath', { gain: 0.42 }); }
+  sfxBoom() { this.foley('boom', { gain: 1.1, wet: 0.12 }); }
+  sfxCast() { this.foley('cast', { gain: 0.18, wet: 0.05 }); }
+  sfxRune() { this.foley('rune', { gain: 0.53, wet: 0.05 }); }
+  sfxBlink() { this.foley('blink', { gain: 0.29 }); }
+  // A room left behind going dark: a breath drawn in, and the stone settling. Not a clank: nothing
+  // was built there, something was put out.
+  sfxVeil() { this.foley('veil', { gain: 0.1, wet: 0.05 }); }
   // Steel: a blade leaving a stand, going into a man, or a shield taking a bullet.
-  // A room left behind going dark: a low breath drawn in, and a cold note under it. Not a clank —
-  // nothing was built there, something was put out.
-  sfxVeil() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.noise(t, 0.7, { gain: 0.12, lp: 520, hp: 60 });
-    this.tone(92, t, 0.8, { type: 'sine', gain: 0.08, attack: 0.12 });
-    this.tone(138, t + 0.05, 0.7, { type: 'sine', gain: 0.04, attack: 0.15 });
-  }
-  sfxSteel() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(1180, t, 0.22, { type: 'triangle', gain: 0.16, sweep: 0.5 });
-    this.tone(1760, t + 0.008, 0.16, { type: 'sine', gain: 0.1, sweep: 0.6 });
-    this.noise(t, 0.09, { gain: 0.18, hp: 3200 });
-  }
-
+  sfxSteel() { this.foley('steel', { gain: 0.2, wet: 0.03 }); }
   // Something with no throat making a sound anyway: a cold swell as it becomes real.
-  sfxWraith() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(150, t, 0.5, { type: 'sine', gain: 0.3, sweep: 0.45, attack: 0.12 });
-    this.tone(226, t + 0.03, 0.45, { type: 'sine', gain: 0.18, sweep: 0.5, attack: 0.14 });
-    this.noise(t, 0.5, { gain: 0.16, hp: 1600, lp: 5200 });
-  }
+  sfxWraith() { this.foley('wraith', { gain: 0.35, wet: 0.08 }); }
   // The blow: no weight behind it, all cold.
-  sfxWraithHit() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.noise(t, 0.22, { gain: 0.35, hp: 2400 });
-    this.tone(320, t, 0.24, { type: 'sine', gain: 0.22, sweep: 2.2 });
-  }
+  sfxWraithHit() { this.foley('wraithHit', { gain: 0.53 }); }
   // Caught in the flesh and undone: it goes out rather than down.
-  sfxUnmade() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(880, t, 0.55, { type: 'sine', gain: 0.28, sweep: 0.16 });
-    this.tone(1320, t + 0.02, 0.4, { type: 'triangle', gain: 0.14, sweep: 0.2 });
-    this.noise(t, 0.45, { gain: 0.3, hp: 2000 });
-  }
-
-  // A headbutt that the pen holds: one bar rings and the frame shifts.
-  sfxCageHit() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.tone(620, t, 0.28, { type: 'square', gain: 0.2, sweep: 0.6 });
-    this.tone(930, t + 0.01, 0.2, { type: 'triangle', gain: 0.12, sweep: 0.7 });
-    this.noise(t, 0.12, { gain: 0.25, hp: 2200 });
-    this.tone(80, t, 0.2, { gain: 0.5, sweep: 0.4 });
-  }
-
-  // The pen coming apart: iron, and a lot of it.
-  sfxCage() {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    this.noise(t, 0.5, { gain: 0.5, hp: 1700 });
-    [740, 1100, 1480].forEach((f, i) => this.tone(f, t + i * 0.012, 0.5 - i * 0.1, { type: 'square', gain: 0.16, sweep: 0.75 }));
-    this.tone(70, t, 0.45, { gain: 0.85, sweep: 0.35 });
-    this.crash(t, 0.3);
-  }
-  // Stacked kills: the same stab, a little higher every time.
-  sfxKill(n) {
-    if (!this.ctx || this.muted) return; const t = this.now();
-    const f = 300 * Math.pow(1.14, Math.min(8, n));
-    this.tone(f, t, 0.18, { type: 'square', gain: 0.22, sweep: 1.6 });
-    this.tone(f * 1.5, t + 0.03, 0.14, { type: 'triangle', gain: 0.14, sweep: 1.5 });
-  }
-  sfxCard() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(60, t, 0.9, { gain: 0.8, sweep: 0.5 }); this.noise(t, 0.3, { gain: 0.2, lp: 600 }); }
-  // COLD EYE: the world winding down — one falling note and a breath of air, nothing that hides a footstep.
-  sfxSlow() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(330, t, 0.6, { type: 'triangle', gain: 0.16, sweep: 0.45 }); this.noise(t, 0.25, { gain: 0.05, hp: 2000, lp: 6000 }); }
-  // LEAPFROG: hooves off a man's back — a short hollow knock under the tumble's own whoosh.
-  sfxVault() { if (!this.ctx || this.muted) return; const t = this.now(); this.tone(140, t, 0.12, { type: 'square', gain: 0.18, sweep: 0.6 }); this.noise(t, 0.08, { gain: 0.14, lp: 900 }); }
+  sfxUnmade() { this.foley('unmade', { gain: 0.45, wet: 0.08 }); }
+  // A headbutt that the pen holds: a short dry knock of iron in a wooden frame.
+  sfxCageHit() { this.foley('cageHit', { gain: 0.38 }); }
+  // The pen giving way: the frame cracks, two bars knock loose. Short and dry, not a collapse.
+  sfxCage() { this.foley('cage', { gain: 0.53 }); }
+  // Stacked kills: the same struck bone, a step higher every time.
+  sfxKill(n) { this.foley('kill', { gain: 0.25, rate: Math.pow(1.14, Math.min(8, n)), steady: true }); }
+  // A card turning: one big frame drum in the hall.
+  sfxCard() { this.foley('card', { gain: 0.56, wet: 0.04 }); }
+  // COLD EYE: the world winding down: his heart, twice, and a breath of air falling away.
+  sfxSlow() { this.foley('slow', { gain: 0.12 }); }
+  // LEAPFROG: hooves off a man's back.
+  sfxVault() { this.foley('vault', { gain: 0.27 }); }
+  // One hoof on the stone, running (`TUNING.audio.foley.hooves`; `vol` is MOTH WOOL's quiet).
+  sfxHoof(vol = 1) { this.foley('hoof', { gain: TUNING.audio.foley.hooves * vol, takes: 6 }); }
 }

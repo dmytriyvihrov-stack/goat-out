@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.64';
+const BUILD = '1.65';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -61,7 +61,17 @@ const PALETTE = {
 // the goat's top speed used to be, and every man's speed is still quoted as a fraction of it. They
 // are two numbers now because the two were turned by different amounts: the goat lost a fifth of his
 // stride (and earns it back over a run-up, see `momentum`), and the cult lost a tenth of theirs.
-const PACE = 8.2 * TILE;
+// `SLOW` is the pace of the whole compound on top of that (24 Sep 2026: "everybody 30% slower"):
+// every creature's travel — the goat's walk, run-up and roll, every man's walk, the hound's run and
+// dart and hop aside, the brute's charge, a burning man's run, every animal — is multiplied by it,
+// so it is the one dial for how fast the game moves. What is thrown, flung or shot is not travel
+// and is not in it: the physics of a kill (a body into a wall) does not change with the pace.
+const SLOW = 0.7;
+// And every clock the goat's own verbs wait on — the roll, the grab, the voice, whatever Q throws —
+// is this much longer (the same day: "cooldowns +20%"). Written into each base number rather than
+// run at the use site, so every card, chip and ware that quotes a cooldown quotes the real one.
+const GOAT_CD = 1.2;
+const PACE = 8.2 * TILE * SLOW;
 const CULT_PACE = 0.9 * PACE;
 
 const TUNING = {
@@ -79,7 +89,7 @@ const TUNING = {
     // `time` s to `pool` px (`big` for a Butcher), darker than a fresh splash so the body still reads
     // on it. A burnt one leaves no pool.
     corpse: { carry: 0.35, keep: 0.6, friction: 320, smear: 3, lie: 0, settle: 0.22, dark: 0.3, shade: 0.5,
-      twitches: 2, twitchBy: 1.3, pool: 9, big: 13, delay: 0.3, time: 2.6, colors: ['#2e0a08', '#471210', PALETTE.bloodDark] },
+      twitches: 2, twitchBy: 1.3, pool: 14, big: 19, delay: 0.3, time: 2.6, colors: ['#2e0a08', '#471210', PALETTE.bloodDark] },
     // Fire, blasts, smoke and spray are baked pixel frames (`CombatFX.flameFrames` / `burstFrames`),
     // `pixel` world px a texel — the grain the units are drawn at. `flame`: a flame of `size` is
     // `size * scale` texels, `wide` × that across and `tall` × that high, looping over `frames`
@@ -139,7 +149,7 @@ const TUNING = {
     // `throwImpulse` is a fifth less than it was: a throw that crossed most of a room made the
     // grab-and-launch loop the answer to everything a headbutt was supposed to be for.
     grab: { reach: 1.6 * TILE, speedMul: 0.7, itemSpeedMul: 0.94, holdTime: 8.0, holdVary: 0.125,
-      throwImpulse: 27.2 * TILE, manThrow: 0.7, holdDist: 22, cooldown: 1.35 },
+      throwImpulse: 27.2 * TILE, manThrow: 0.7, holdDist: 22, cooldown: 1.35 * GOAT_CD },
     // Where a carried THING is drawn (render only; `grab.holdDist` stays the hold point a throw starts
     // from): in his teeth, at the mouth of the facing the sprite shows (`PIXEL_FACE`), `lead` px plus
     // `reach` × its radius out ahead of the muzzle. `lift` is how far above its own y each drawer puts
@@ -162,20 +172,20 @@ const TUNING = {
     // than the handful of men on top of you, which is what THE FULL THROAT is supposed to cost for.
     // `balk` came down a further fifth, to a plain two tiles: even arm's length read as a little more
     // reach than the bare voice should have, and the lure is what still carries the room at `call`.
-    scream: { duration: 0.3, cooldown: 4.0, radius: 6.8, stun: 0.9, call: 13, callCooldown: 3.0,
+    scream: { duration: 0.3, cooldown: 4.0 * GOAT_CD, radius: 6.8, stun: 0.9, call: 13, callCooldown: 3.0 * GOAT_CD,
       balk: 2, balkStun: 0.3 },
     // A clumsy sideways tumble: fast, brief mercy frames, then a stagger you have to eat. It is a
     // fifth shorter than it was — the same beat of mercy, a fifth less ground — because a dodge that
     // clears the whole room is a second way of running rather than a way of not being hit.
     // `stun` and `stunR` are DEAD WEIGHT's, and nothing else reads them: the roll on its own
     // goes through a man without touching him.
-    roll: { speed: 7.92 * TILE, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35, threatRange: 7,
+    roll: { speed: 7.92 * TILE * SLOW, duration: 0.32, invuln: 0.24, recover: 0.26, cooldown: 1.35 * GOAT_CD, threatRange: 7,
       stun: 0.7, stunR: 1.6 * TILE },
     // The smear behind him is the only thing on screen that says he is faster than he was, so the
     // tome that makes him faster lengthens it: at `fastAt` times his own speed it is `fast*` all
     // through, and anywhere between the two it is mixed.
     trail: { at: 0.55, gap: 0.028, keep: 7, life: 0.18, fastGap: 0.014, fastKeep: 16, fastLife: 0.34, fastAt: 1.18 },
-    breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 },
+    breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 * GOAT_CD },
     devour: { time: 1.15, healChance: 0.45 },
     // `radius` is the real blast — what it flings and damages — and stays untouched by the two
     // numbers under it: `fxScale` and `fxLife` only shrink and shorten the burst graphic itself, so
@@ -305,14 +315,44 @@ const TUNING = {
     // rather than as a dog running. Now it is a sprint: `dashStart` of top speed off the crouch,
     // full speed after `dashRamp` seconds, about seven tiles in all. `dashLook` and `orbitLook` are
     // the tiles of floor his whisker wants ahead of him before he commits to a heading.
-    dashRange: 4.5, dashSpeed: 9 * TILE, dashTime: 0.82, dashTurn: 2.6, dashSkew: 0.45,
+    dashRange: 4.5, dashSpeed: 9 * TILE * SLOW, dashTime: 0.82, dashTurn: 2.6, dashSkew: 0.45,
     dashStart: 0.45, dashRamp: 0.16, dashLook: 0.9, orbitLook: 1.1,
+    // The run ends `overrun` tiles past the goat (it bites him on the way, or it misses and is
+    // over); it homes only while he is ahead, and the whisker bends it no faster than `whiskTurn`
+    // rad/s. Before 1.65 it ran its whole time, turned back after a goat it had passed, and snapped
+    // off walls — the line on the floor came out as a hook with a corner in it.
+    overrun: 1.5, whiskTurn: 5,
     flooredTime: 0.7,
-    dodge: 0.38, dodgeCd: 1.2, dodgeSpeed: 15 * TILE, dodgeTime: 0.2,
-    circle: 2.6, circleFlip: 0.9, lungeCd: 1.8, retreat: 0.45,
+    dodge: 0.38, dodgeCd: 1.2, dodgeSpeed: 15 * TILE * SLOW, dodgeTime: 0.2,
+    // `lungeCd` counts from the end of a run, not from the plant: counted from the plant it was spent
+    // on the windup and the run themselves, and a lone hound went plant, run, back off, plant, never
+    // once circling (1.65 — 5.5 s of every 12 standing in the windup). `ringHold` is the least he
+    // circles after coming back onto the ring before he may plant again: the circling is the read.
+    circle: 2.6, circleFlip: 0.9, lungeCd: 1.4, retreat: 0.55, ringHold: 0.5,
     flipGap: 0.4,       // s after the ring turns him round before a wall may turn him round again
     ringIn: 1.5,        // times `circle`: further out than this he runs the route in, not the ring
+    ringOut: 1.25,      // times `ringIn`: once on the ring, only past this does he leave it for the route
+    // How he runs (1.65). He is a body with a heading, not a point with a velocity: he turns at `turn`
+    // rad/s (`pivot` times that standing), eases to `turnSlow` of his pace through a turn right round,
+    // and gets to his pace at `accel` and off it at `brake` (paces per second). His body — the sprite —
+    // points where he runs; his eyes stay on the goat. `sideHold` s is the least he keeps one way round
+    // the ring before he wheels the other; `flipOdds` the coin, alone, each time `circleFlip` comes up.
+    // `skid` is how fast a finished run bleeds off (per s): he slides on past, he does not stop dead.
+    turn: 7, pivot: 3, turnSlow: 0.35, accel: 4, brake: 7, sideHold: 1.1, flipOdds: 0.3, skid: 5,
+    // `mateArc` rad: a packmate nearer than this round the ring is bunching, and he circles away from
+    // it; further round, it is not. `breakOut` is how much of the break after a run is out, against
+    // one of round: he wheels off along the ring, not straight back.
+    mateArc: 1.7, breakOut: 0.55,
+    // Round his own (24 Sep 2026): a body — clubman or packmate — inside `look` tiles ahead of him is
+    // run round, not leaned on; the whisker swings `step` rad at a time off it (up to eight), and
+    // keeps the side it picked `hold` s so a man square in front cannot flip him left and right.
+    pass: { look: 1.3, step: 0.3, hold: 0.45 },
+    // A running hound bounces: `bob` px up at the top of each of `gait` strides a second.
+    gait: 6.5, bob: 1.5,
     packGap: 7, packWait: 0.55,   // one hound runs in at a time; the rest hold the ring
+    // He gives tongue as he runs: a bark every `barkGap` s (±40%) while he hunts, every `barkDart` s
+    // on the run in. Sound only — the men answer the goat's noise, not their own dogs'.
+    barkGap: 0.9, barkDart: 0.3,
     dazeMul: 2.6,       // the scream is the answer to a pack, and it has to read as the answer
     flingMul: 1.3,      // light enough that a headbutt really throws it
     trapSense: 0.95,    // a hound reads the room better than the men do
@@ -377,31 +417,27 @@ const TUNING = {
     // whatever side you are on: `springWind` of windup and the swing.
     hide: { start: 0.4, again: 0.35, minDist: 5, springR: 2.6, touchR: 0.9, springWind: 0.3, milk: 0.4 },
   },
-  // The cleaver used to cover half a room: two and a half tiles out from a body already twice the
-  // size of a man's, through a hundred and twenty degrees, which is a swing that hits you where it
-  // plainly is not. Two tiles and ninety-nine degrees now — half the ground, to the square foot —
-  // and he still out-reaches a clubman, which was the only thing that number was ever for.
+  // The Butcher (1.66): the big one, and he wears the rat ogre's body a size up (`scale`). He used
+  // to be a man with a cleaver and a charge; the charge went to the brute, and what he does now is
+  // come down on you. Seen `leap.min`..`leap.max` tiles off, he crouches (`wind`) with the spot he
+  // will land on drawn on the floor — where you stood when he crouched — goes up `lift` px for
+  // `air` s, over men and holes alike, and lands: everything inside `radius` tiles is hit. Close in
+  // (`slam.near`) he has no swing at all, only the fists on the floor: a ring round him, every side
+  // at once, which the old brute used to own. Both end on a long getting-up (`leap.land`,
+  // `slam.recover`) and that is the whole fight: read the ring, step out of it, and put your horns
+  // into him while he is still on his knees. His own men inside a ring are left standing: the ring
+  // is for the goat. And nothing throws him — not the horns, not a body, not a blast (`Enemy.fling`):
+  // the brute goes flying, the ogre does not, and that is the difference you read across the room.
   butcher: {
-    radius: 20, speed: 0.6 * CULT_PACE, sight: 9, cone: Math.PI * 0.7,
-    // A third heart (playtest read three as a clubman with a bigger frame) and a longer arm: his reach
-    // used to sit even with a clubman's, which a body twice the width should never have to share.
-    hp: 4, reach: 1.35 * TILE, windup: 0.88, swing: 0.2, recover: 0.62, arc: Math.PI * 0.55, damage: 1,
-    // The charge itself was the read on him — too rare, too far off, too slow between them. He asks
-    // for less ground to build one on and gets back to full speed on it sooner.
-    chargeMin: 3, chargeWind: 0.6, chargeSpeed: 14 * TILE, chargeTime: 1.1, chargeCooldown: 1.7, stun: 1.5, stagger: 0.4,
-    // The charge is aimed at where the goat stood, not at the far wall: it runs `chargeOver` tiles
-    // past that spot and skids out over the last `chargeSkid` seconds. Run the whole `chargeTime`
-    // every time and a sidestep sent him fifteen tiles into whatever was behind you — he read as a
-    // man bouncing off every wall in the room. Only a goat with his back to the stone gets him stunned.
-    chargeOver: 2, chargeSkid: 0.18,
-    // He aims the charge at where you are going, not where you stood: `chargeLead` of the way there
-    // at your present speed, never more than `leadMax` tiles ahead of you. The strip on the floor
-    // swings with it through the windup, so the lead is read, not guessed.
-    chargeLead: 0.6, leadMax: 2.2,
-    // With furniture between him and a clear run, he looks (every `laneLook` s) for a spot up to three
-    // tiles to the side with a line on you, and gives walking there `laneTime` s before he gives up.
-    // `laneStill` s without closing on the spot and he drops it; within `laneAt` tiles he is on it.
-    laneLook: 0.6, laneTime: 1.4, laneStill: 0.35, laneAt: 0.35,
+    radius: 22, speed: 0.55 * CULT_PACE, sight: 9, cone: Math.PI * 0.7, scale: 1.15,
+    // Four hearts; a headbutt costs him one wherever it lands, and one while he crouches or winds a
+    // slam still counts but does not stop him. `reach` is only what the dev tools and a decoy read.
+    hp: 4, reach: 1.35 * TILE, damage: 1, stun: 1.5, stagger: 0.4,
+    // `dist`: the longest leap; `short` tiles short of the goat he aims (0: on him); `over`: he goes
+    // over a drop, but never lands in one. `cd` s on the floor between leaps, so he also walks.
+    leap: { min: 2.6, max: 7, dist: 7, short: 0, over: true, minHop: 1.5, wind: 0.62, air: 0.62, land: 1.0,
+      radius: 1.6, damage: 1, knock: 1.4 * TILE, lift: 46, cd: 2.2 },
+    slam: { near: 1.5, range: 1.9, wind: 0.72, recover: 0.95, damage: 1, knock: 1.3 * TILE },
     burnTick: 1.0, burnHearts: 1,   // he comes out of a fire scorched and one heart down, not dead
     // Alight he does not run from it — he comes at you: `speed` times his stride, and every windup,
     // swing and recovery runs at `tempo` times the clock.
@@ -481,7 +517,7 @@ const TUNING = {
     bodyBothSpeed: 32 * TILE,
   },
   fire: {
-    spread: 0.48, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE,   // spread was 0.4; a burning tile catching its neighbour that fast read as too eager
+    spread: 0.48, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE * SLOW,   // spread was 0.4; a burning tile catching its neighbour that fast read as too eager
     witch: 3.6,        // the Seer's fire: colder to look at, and no coat turns it away
     avoidLook: 18,     // px past his own radius a man checks before walking into flame
     // Hay (or grass) about to catch from the tile beside it (`Renderer.drawCatching`): up to
@@ -726,7 +762,7 @@ const TUNING = {
     // and is loose again after `stunned` seconds — a miss costs you the walk back to her and the
     // setup, which is price enough for something you had to find and let out in the first place.
     chicken: {
-      r: 11, followSpeed: 210, followAt: 1.6, followFar: 3.2, wander: 0.5,
+      r: 11, followSpeed: 210 * SLOW, followAt: 1.6, followFar: 3.2, wander: 0.5,
       launchSpeed: 760, drag: 0.35, turn: 7.5, seekRange: 15, seekArc: Math.PI * 0.75,
       stunned: 0.9, life: 4.0,
       // She walks the same flow field the men chase on and steps round anything `hazardAt` calls a
@@ -747,7 +783,7 @@ const TUNING = {
     // — solid, and rounds stop on it — so a thrown tortoise is also the cover you did not have.
     // `cool`: a shell that has taken a round or a blow is on its back for that long — no cover,
     // and nothing to pick up — before it rights itself. One block, then a wait (js/beasts.js).
-    tortoise: { r: 13, speed: 42, followAt: 1.4, throwSpeed: 520, drag: 2.6, tuck: 4.0, cool: 6, guardR: 6,
+    tortoise: { r: 13, speed: 42 * SLOW, followAt: 1.4, throwSpeed: 520, drag: 2.6, tuck: 4.0, cool: 6, guardR: 6,
       // What it is worth at the stairs: one more use on every shield in the compound, for the run.
       saveR: 8, saveShield: 1 },
     // The goose does not follow, it leads: it runs down a field grown out of the stairs at its own
@@ -760,21 +796,39 @@ const TUNING = {
     // a goose that ran a room ahead raised that room and then stood at its shut door without him.
     // `speed` is above the goat's walk and `hurry` its multiple while he is ahead of it: a leader
     // slower than the goat it leads ended every level twenty-odd tiles behind him.
-    goose: { r: 12, speed: 200, hurry: 1.35, seeR: 9, honkGap: 2.2, balkStun: 0.5, lead: 6,
+    goose: { r: 12, speed: 200 * SLOW, hurry: 1.35, seeR: 9, honkGap: 2.2, balkStun: 0.5, lead: 6,
       // At the stairs: the voice carries further and comes back sooner, for the rest of the run.
       saveR: 8, saveScreamRange: 1.2, saveScreamCd: 0.8 },
     // The crow follows corpses, not you. Every room with nothing dead in it, it falls behind — which
     // is the one escort that argues with *run, don't fight*, and it is meant to: it is the price of
     // what it carries out. `markFor` is how long a body still draws it, `perch` how close it settles.
-    crow: { r: 11, speed: 230, slack: 0.55, followAt: 2.6, perch: 1.1, markFor: 14, markR: 13, hopGap: 1.4,
+    crow: { r: 11, speed: 230 * SLOW, slack: 0.55, followAt: 2.6, perch: 1.1, markFor: 14, markR: 13, hopGap: 1.4,
       // A body it can SEE it flies to at `flySpeed`, the moment it sees it, and of two in sight it
       // takes the one nearer the stairs — the crow pulls you on into the next room rather than back.
       // Landing on one it says so, once a body.
       // `feedFor` is how long it eats at one before it is done with it and goes on down the road.
-      flySpeed: 560, feedFor: 2.5, lines: ['FRESHLY COOKED', 'TASTY', 'STILL WARM', 'MINE'],
+      flySpeed: 560 * SLOW, feedFor: 2.5, lines: ['FRESHLY COOKED', 'TASTY', 'STILL WARM', 'MINE'],
       // At the stairs: it has found something. A tier III talisman stands at the head of the NEXT
       // floor's stairs, free, taken the way one of the mouse's is.
       saveR: 8, giftTier: 3 },
+    // The horse (24 Sep 2026) races you. Out of the coop it says so and gallops for the stairs down
+    // the goose's field, at `speed` — well over the goat's run-up, so it is always ahead — and it
+    // does not wait for him: it stops only at a bar no kick opens (a soul gate, a sealed arena),
+    // which is fine, and at the stairs, where it stands and says who won (`lines`). A shut door in
+    // its way it kicks (`kickWind` s rearing, then the blow, `kickGap` s between two on iron), and
+    // a man in its way it bowls aside at `bowl` px/s (× his own weight), dazed `daze` s — well under
+    // `physics.splatSpeed`, so it scatters a room and never kills in it: the wall is still the only
+    // killer (pillar 3). The cult hardly minds it: a man it bowls over keeps whatever he knew about
+    // the goat and learns nothing new. `hp` is its own, sturdier than the birds'. `slow` is how
+    // much of its pace a man in the way costs it, for `slowFor` s.
+    horse: { r: 17, speed: 1.15 * PACE, hp: 5, kickWind: 0.28, kickGap: 0.42, bowl: 7 * TILE, daze: 1.2,
+      slow: 0.55, slowFor: 0.35, stuckFor: 0.8, sideFor: 0.45,
+      // It has won when it stands within `homeR` tiles of the stairs; within `tellR` of it the goat
+      // hears which of them got there first.
+      homeR: 2.5, tellR: 5,
+      lines: { won: ['TOO SLOW, GOAT!', 'I WON. PAY UP'], lost: ['YOU CHEATED', 'FINE. NEXT TIME'] },
+      // At the stairs: he runs on its legs for the rest of the run — `saveSpeed` on his stride.
+      saveR: 8, saveSpeed: 1.07 },
   },
   // Where an escort comes from, and how many. `levelDef.beasts` is which of them a floor may hold;
   // the generator picks one at random and puts it in an ordinary room inside the first `third` of
@@ -787,7 +841,12 @@ const TUNING = {
   // `shyR`: a man awake and on his feet this many tiles from the hen or the crow sends it round to
   // the far side of the goat, `shyBack` tiles behind him (`Beast.shy`) — out of the arc of a club
   // aimed at him. `exitEvery`: how often the way out is laid again round furniture that has moved.
-  beast: { third: 0.36, clear: 1.2, tellFor: 3.4, pactFor: 3.2, hp: 3, hurtCd: 0.6, callR: 6, callGap: 2.6,
+  // `deal` is the run's, not the floor's (`Beast.deal`, off the run seed): the first animal is on
+  // one of the floors `first` (a level index), each after it `gap` floors on, and no kind is dealt
+  // twice in a run — a buff you could stack to its top on every floor is not a choice (24 Sep 2026:
+  // "one animal to one or two levels, never repeated"). A floor only ever gets a kind off its own
+  // `beasts` list; once every kind is spent the floors after it have none.
+  beast: { deal: { first: [1, 2], gap: [1, 2], tries: 60 }, third: 0.36, clear: 1.2, tellFor: 3.4, pactFor: 3.2, hp: 3, hurtCd: 0.6, callR: 6, callGap: 2.6,
     shyR: 2.4, shyBack: 1.3, exitEvery: 1.0,
     // Getting out of reach: the hen runs `shySpeed` × her follow speed and the crow flies `shyFly` ×
     // its flight speed; within `shyArrive` tiles of the spot it stops; a goat further than `shyFar` ×
@@ -825,17 +884,25 @@ const TUNING = {
   elite: { hp: 3 },
   // The brute: a clubman built twice over. Three separate killing blows before he stops getting up,
   // four when he is the one in the arena. He is how the game says "some of them take more than one"
-  // without spending a boss on it, so he has to be unmistakable at a glance — bigger frame, spiked
-  // shoulders, a spiked mask, a studded club — and the notches over his head count it down.
-  champion: { hp: 3, bossHp: 4, scale: 1.34, spikes: 5,
+  // without spending a boss on it, so he has to be unmistakable at a glance — since 1.66 he wears
+  // what was the Butcher's body (the bull's skull, the apron, the cleaver) — and the notches over
+  // his head count it down.
+  champion: { hp: 3, bossHp: 4, scale: 1.06, spikes: 5,   // on the Butcher's old sheet (48 px), not the brute's (38)
     // His own arm, not the clubman's: the clubman's got shorter and quicker, the brute's did not.
     reach: 1.0 * TILE, windup: 0.62, swing: 0.16, recover: 0.6,
     // Heavy: a headbutt moves him this much of what it moves a clubman, and he is never carried.
     flingMul: 0.55,
-    // The ground slam. Close in (`near` tiles) and off cooldown, `chance` of his attacks are the club
-    // brought down on the floor instead: `wind` seconds with the ring on the ground, then everything
-    // inside `range` tiles of him takes `damage` and is thrown out `knock`. His own men go over too.
-    slam: { near: 1.7, range: 1.9, chance: 0.45, cd: 3.2, wind: 0.8, damage: 1, knock: 1.3 * TILE, recover: 0.8 },
+    // The charge (1.66, the Butcher's until then): seen at `min` tiles or more with a clear run, he
+    // plants (`wind`, the strip on the floor) and runs at where you are going — `lead` of the way
+    // there, never more than `leadMax` tiles ahead — `over` tiles past it, skidding out over the last
+    // `skid` s, never longer than `time`. Into stone he is `stun` s on his feet doing nothing: the
+    // free hit the charge exists to offer, and only a goat with his back to a wall gets it. Shorter,
+    // slower and rarer than the Butcher's was: he is a room's second man, not its boss.
+    // With furniture in the way he looks (every `laneLook` s) for a spot up to three tiles aside with a
+    // clear run and walks there for up to `laneTime` s; `laneStill` s not closing on it and he drops
+    // it, within `laneAt` tiles he is on it.
+    charge: { min: 3, wind: 0.7, speed: 12 * TILE * SLOW, time: 0.85, cooldown: 3.4, stun: 1.6, over: 1.5, skid: 0.18,
+      lead: 0.5, leadMax: 1.8, damage: 1, laneLook: 0.6, laneTime: 1.4, laneStill: 0.35, laneAt: 0.35 },
     // Alight, he comes on like the Butcher does rather than blundering (`TUNING.butcher.rage`).
     rage: { speed: 1.4, tempo: 1.4 },
     immune: { blunder: true } },
@@ -929,50 +996,49 @@ const TUNING = {
   // you, which the questionnaire called unfair rather than tense. Rooms nobody has opened are kept
   // by `drawUnseen`, not by this, so their contents stay unreadable either way.
   fog: { shade: 0.8, radius: 26, res: 2, oracle: 11 },
-  // THE DARK (`darkLevel`, drawn by `js/dark.js`): a floor with the lamps out. Only what burns lights
-  // the room; the rest is `alpha` of `color` laid over it. `lights` are [radius in tiles, strength]
-  // per source, cast through the tiles so no flame lights the far side of a wall. `near` is how far
-  // the goat hears, in tiles: inside it the floor comes up to `floor` and whatever stands on it is a
+  // THE DARK (`darkLevel`, drawn by `js/dark.js`): a floor of its own where only what burns lights a
+  // room; the rest is `alpha` of `color` laid over it. `lights` are [radius in tiles, strength] per
+  // source, cast through the tiles so no flame lights the far side of a wall. `near` is how far the
+  // goat hears, in tiles: inside it the floor comes up to `floor` and whatever stands on it is a
   // silhouette (`sil`, `body`, a `rim` of cold light round it one world pixel wide) — a shape, never a
   // colour or a face. `self` is the patch round the goat himself, [radius, strength], because the
-  // player has to be able to read which way he is facing. `eyes` are the kinds whose eyes catch
-  // what little light there is and can be seen across a room: `range` tiles, in his line of sight,
-  // never from behind. Per kind [core, glow, height above the foot, forward on a side view, half
-  // the gap on a front one], sprite px. `lamps` is what the generator adds so the level is pockets
-  // of light and not one black room: a room with nothing alight gets one lamp per `per` floor tiles,
-  // `min`..`max`, against a wall, `apart` from any other flame and `door` from any doorway — except
-  // `unlit` of those rooms, which are left black on purpose. A lamp is a lamp: a headbutt tips it, the
-  // oil burns a while, and then that room is black too.
-  // `soften` is the other half of the deal: a floor you cannot see is a harder floor, so the curve
-  // is cut (`from`, `to`, `ease` pulled toward a straight line, and the head count a room may hold,
-  // `men` — late floors sit on that cap, so the curve alone moved nothing), trap rooms and grating are
-  // `traps` / `spikes` of what the level had, the killbox goes, and so do the rifles: a hunter
-  // in the dark is a gun you cannot answer. The cult is in the same dark (`ai`, `Enemy.canSeeGoat`):
-  // out of the light a man sees the goat `sight` tiles and no further (a hound a little more), and a
-  // lost trail goes cold in `lose` s, after which he hunts by ear. `lit` is how much of a flame's
-  // reach counts as standing in it (`game.litAt`). The seer paints his rune at what he hears, up to
-  // `earCast` tiles (`Enemy.hearForRune`), never one inside `earOwn` tiles of himself or of a man of
-  // his, and only while it is `earFresh` s old. `runAt` is a floor every run plays dark (index, -1
-  // for none). It was THE CAVE until 24 Sep 2026; the dark is a choice now instead (`fork`).
+  // player has to be able to read which way he is facing. `edge` is the stone round him inside his
+  // hearing: every face where floor meets wall gets a line of `rim` (`Dark.walls`), strongest at his
+  // feet and gone at `near`, so what he can run into is always drawn — the dark hides the men, never
+  // the room. `eyes` are the kinds whose eyes catch what little light there is and can be seen
+  // across a room: `range` tiles, in his line of sight, never from behind, `cell` world px a cell and
+  // `glow` how much of a halo; per kind [core, glow, height above the foot, forward on a side view,
+  // half the gap on a front one], sprite px.
+  // THE LAMP, the level's canon: every room with men in it has `lamps.min`..`lamps.max` standing
+  // lamps (two once its floor is `big` tiles), counting any flame its template already stands in it,
+  // against a wall, `apart` from each other and `door` off a doorway. A standing lamp is the choice
+  // the room hands you: it shows them to you and you to them, and a headbutt tips it — the oil burns
+  // where it falls, and then the room is black. `sconce` is the other light: a lantern on the wall by
+  // each way in and out of a room (never the near wall, which faces away), `lights.sconce` across,
+  // that nothing puts out — the doorway is always where you can see, and where you can be seen.
+  // The cult is in the same dark (`ai`, `Enemy.canSeeGoat`): out of the light a man sees the goat
+  // `sight` tiles and no further (a hound a little more), and a lost trail goes cold in `lose` s,
+  // after which he hunts by ear. `lit` is how much of a flame's reach counts as standing in it
+  // (`game.litAt`). The seer paints his rune at what he hears, up to `earCast` tiles
+  // (`Enemy.hearForRune`), never one inside `earOwn` tiles of himself or of a man of his, and only
+  // while it is `earFresh` s old. No rifle is ever in it: a gun in the dark is a gun you cannot answer.
   // `fork` is THE FORK: the last room of LEVELS[`at`] has two flights of stairs cut into its far
-  // wall, and the second of them (drawn cold, going up into black, THE DARK on the floor in front of
-  // it — `level.forkTile`) climbs to the next floor with the lamps out. THE ROAD, so the choice is the fifth
-  // floor — THE THRESHING FLOOR, which has no kind of its own to introduce and loses nothing the run
-  // needs to have met. `apart` is the least gap in rows between the two flights. `band` is what
-  // `balance.js` holds the dark floor to: at least that share of its lit twin's threat, and under it
-  // — the dark is meant to come in gentler, since it is harder to read.
+  // wall, and the second of them (drawn cold, going up into black — `level.forkTile`) climbs to THE
+  // DARK, played in place of the floor after it (THE THRESHING FLOOR, which has no kind of its own to
+  // introduce and loses nothing the run needs to have met). `apart` is the least gap in rows between
+  // the two flights. `band` is what `balance.js` holds THE DARK to: at least that share of the lit
+  // floor's threat beside it, and under it — the dark is harder to read, so it deals fewer men.
   dark: {
     alpha: 0.98, color: [5, 4, 10], res: 3, flicker: 0.08, maxFires: 140,
     near: 4.5, floor: 0.3, sil: 0.94, body: '#07060c', rim: 'rgba(150,158,210,0.55)',
     self: [1.3, 0.62],
-    lights: { brazier: [4.8, 1], lamp: [4.2, 0.95], fire: [2.4, 0.8], burning: [2.8, 0.9], soul: [1.8, 0.55],
+    edge: { alpha: 0.85, from: 0.35 },
+    lights: { brazier: [4.8, 1], lamp: [4.2, 0.95], sconce: [2.3, 0.85], fire: [2.4, 0.8], burning: [2.8, 0.9], soul: [1.8, 0.55],
       bearer: [2.4, 0.6], exit: [3.4, 0.85], blast: [6, 1], muzzle: [3.4, 0.9], rune: [2.2, 0.55] },
-    eyes: { range: 24, blinkGap: [2.2, 5.5], blinkTime: 0.13, cell: 1.2,
-      kinds: { seer: ['#efe6ff', '#7d5cff', 27, 5, 2.4], dog: ['#fff2a8', '#f2a233', 16, 13, 2.6], wraith: ['#e6fbff', '#6fc3e8', 28, 4, 2.8] } },
-    lamps: { per: 45, min: 1, max: 3, apart: 4.5, door: 2.5, unlit: 0.35 },
-    soften: { from: 0.8, to: 0.72, ease: 1, men: 0.7, traps: 0.5, spikes: 0.5 },
+    eyes: { range: 24, blinkGap: [2.2, 5.5], blinkTime: 0.13, cell: 2.2, glow: 0.65,
+      kinds: { seer: ['#f6f0ff', '#8f6bff', 27, 5, 2.4], dog: ['#fff6b8', '#ffab3a', 16, 13, 2.6], wraith: ['#e6fbff', '#6fc3e8', 28, 4, 2.8] } },
+    lamps: { min: 1, max: 2, big: 70, apart: 4, door: 2 },
     ai: { sight: { all: 3.5, dog: 5 }, lit: 0.75, lose: 1.2, earCast: 9, earOwn: 1.5, earFresh: 0.3 },
-    runAt: -1,
     fork: { at: 3, apart: 4, band: 0.7 },
   },
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
@@ -1134,12 +1200,12 @@ const TUNING = {
   // the one dry tick in the bar that nothing else makes, now under the drums rather than over them.
   // `sfx` came down a fifth from 1.05: the swings, thuds and hits of an ordinary fight were louder
   // than the drums under them, which is backwards for a bus that fires on every blow rather than
-  // once a bar.
-  audio: { master: 0.92, drums: 1.0, sfx: 0.85, music: 0.85, crowd: { warm: 3, hot: 6 },
+  // once a bar. 1.66 took it down again, 0.85 to 0.45 (about 6 dB): "very loud" was the playtest.
+  audio: { master: 0.92, drums: 1.0, sfx: 0.45, music: 0.85, crowd: { warm: 3, hot: 6 },
     hunterCue: { gain: 0.04, everyBars: 4 },
     layers: { maxPerFamily: 6, pursuitRadius: 8 * TILE,
-      sampleSeconds: 0.1, fadeSeconds: 0.30, gain: 0.75, exploreMix: 0.6,
-      fullGainVoices: 12, fireGain: 0.11,
+      sampleSeconds: 0.1, fadeSeconds: 0.30, gain: 0.65, exploreMix: 0.6,
+      fullGainVoices: 12, fireGain: 0.08,
       hitBudgets: { small: [0,1,2,3,4,5,6], ranged: [0,2,4,5,6,7,8],
         large: [0,3,5,7,9,11,13], mill: [0,3,6] },
       maxMills: 2, spottedBars: 2, combatHoldBars: 2, calmBars: 1,
@@ -1147,7 +1213,21 @@ const TUNING = {
       eventDelaySteps: 8, eventGridSteps: 8, eventQueueCap: 12, eventStackCap: 3,
       killGain: 0.12, actionGain: 0.09, clearGain: 0.1,
       lateFromLevel: 5, blazeThresholds: [1, 4, 10], blazeTailBars: 2,
-      grassRadius: 4 * TILE, grassVoices: 3, grassTailBars: 1, grassGain: 0.085 } },
+      grassRadius: 4 * TILE, grassVoices: 3, grassTailBars: 1, grassGain: 0.085 },
+    // The effects (js/foley.js). `takes` recordings of each are rendered and one is picked every time,
+    // nudged up to `pitch` in speed and `level` in loudness: the same blow twice running is what a
+    // machine sounds like. `warmGap` s between background renders where there is no idle callback.
+    // `hooves` is the goat's own step while he runs (0 is silent), `barkGap` the fewest seconds
+    // between two barks from the whole pack, so three hounds are a pack and not a drum roll.
+    foley: { takes: 3, pitch: 0.06, level: 0.12, warmGap: 0.05, hooves: 0.12, barkGap: 0.16 },
+    // The one room everything is heard in: `decay` s to silence, `damp` how much darker its tail
+    // gets, `sfx` / `music` how much of each bus goes into it and `level` how much comes back out.
+    // A small close room since 1.66 (it was 1.4 s of stone at 0.3 / 0.2 / 0.8, and every blow and the
+    // whole score sat at the far end of a hall): a cell, and not much sent into it.
+    room: { decay: 0.32, damp: 1.4, sfx: 0.07, music: 0.06, level: 0.6 },
+    // How a sound that knows where it came from falls off, in tiles from the goat: whole inside
+    // `near`, down to `floor` of itself at `far`, and all the way to one side at `pan`.
+    space: { near: 4, far: 20, floor: 0.12, pan: 14 } },
   // The lead point is carried rather than read: on a mouse the aim flips the instant the pointer
   // crosses the goat, and a lead that flips with it throws the whole picture across the screen.
   // `leadLerp` is how fast the camera agrees to the new side, `leadStill` how much of the lead a
@@ -1180,6 +1260,13 @@ const TUNING = {
   // How long a soul's three cards refuse every input after they appear, so the click that killed the
   // boss cannot also spend what he dropped.
   boonArm: 0.4,
+  // A soul is a party (1.66): the cards do not just appear. For `intro` s the screen flashes and the
+  // soul pops in over a wheel of `rays` gold and violet rays turning at `spin` turns a second, the
+  // words `A SOUL` bounce up, `sparks` cells of confetti burst out and fall; then the three cards
+  // spring in `stagger` s apart, each over `pop` s, and the rays settle to `settle` of their brightness. `px` is the size of a cell, in HUD px: the rays
+  // and the confetti are drawn on that grid like every other effect. Nothing can be picked until the
+  // last card is in (`boonArm` counts from then).
+  fanfare: { intro: 0.45, stagger: 0.09, pop: 0.24, rays: 14, spin: 0.06, sparks: 46, px: 4, flash: 0.22, settle: 0.45 },
   // The death screen's pull-back. `delay` holds the camera where it died for a beat — the shake and
   // the toll are still landing — before `zoomTime` seconds of easing out to the whole level, margin
   // clear on every side. `sampleGap` is how often a dot goes on the trail `game.pathTrail` draws as
@@ -1362,8 +1449,9 @@ const STACK = { gap: [3, 5], minOverlap: 6, run: 1 };
 const BOON_BASE = {
   // 1.1 rather than 1: every windup, swing, recovery, cast and reload in enemies.js multiplies its
   // own TUNING duration by this, so a tenth added here is a tenth off every kind's attack speed at
-  // once, without touching a single per-kind number. EASY MODE still overwrites it outright (1.4).
-  maxHp: 4, speed: 1, butcherDamage: 1, fireResist: 1, enemySlow: 1.1,
+  // once, without touching a single per-kind number. Another tenth on 24 Sep 2026 ("enemy blows
+  // 10% slower"), to go with the compound's pace (`SLOW`). EASY MODE still overwrites it outright (1.4).
+  maxHp: 4, speed: 1, butcherDamage: 1, fireResist: 1, enemySlow: 1.1 * 1.1,
   // Nothing between him and what is coming, as far as the fog would otherwise let him see. Off by
   // default because the fog is the game reading a room to you at the pace you cross it — this soul
   // is the one that reads it for you all at once.
@@ -1378,7 +1466,7 @@ const BOON_BASE = {
   // every trick built on carrying one — the living shield, the strong jaw, devouring — is off the
   // table, because a card that needs a verb you have not got is a wasted card.
   grabMen: false,
-  screamCooldown: 3.0, screamRadius: 6.8,
+  screamCooldown: 3.0 * GOAT_CD, screamRadius: 6.8,
   // How far the bare call carries — the lure, which is the half of the voice every goat has out of
   // the pen. It was a literal off `TUNING.goat.scream.call` at three use sites; it is a mod because a
   // goose walked to the stairs lengthens it (js/beasts.js), and nothing may read TUNING at a use site.
@@ -1516,7 +1604,7 @@ const BOONS = [
   { id: 'spit', synergy: ['kindling'], skill: 'scream', active: true, emoji: '🫧', minLevel: 0, name: 'VENOM SPIT',
     desc: 'BAAH becomes a glob of poison, spat where you point. It bursts into a puddle.',
     stat: (p) => { const S = TUNING.status.spit, s = S.half * 2 + 1; return `FLIES UP TO ${sayN(S.range)} TILES · PUDDLE ${s}×${s} · ${sayN(p.cooldown)}s COOLDOWN · ${sayPoison()}`; },
-    params: { cooldown: 4.5 },
+    params: { cooldown: 4.5 * GOAT_CD },
     apply: (m, p) => { m.spit = true; m.screamCooldown = p.cooldown; } },
 
   // ---- passives ----
@@ -1630,16 +1718,16 @@ const ARTIFACTS = [
   { id: 'boomerang', name: 'BOOMERANG', color: '#efe6d0',
     say: (p) => `Q: THROWN ${sayN(p.range)} TILES OUT AND BACK. ${p.pierce >= 99 ? 'EVERY MAN IT PASSES, BOTH WAYS, IS' : `UP TO ${p.pierce} ${p.pierce === 1 ? 'MAN EACH WAY IS' : 'MEN EACH WAY ARE'}`} DAZED ${sayN(p.stun)}s. ${sayN(p.cooldown)}s COOLDOWN.`,
     tiers: [
-      { params: { stun: 1.2, cooldown: 10, range: 6, pierce: 1 } },
-      { params: { stun: 1.8, cooldown: 7, range: 7.5, pierce: 2 } },
-      { params: { stun: 2.4, cooldown: 5, range: 9, pierce: 99 } }],
+      { params: { stun: 1.2, cooldown: 10 * GOAT_CD, range: 6, pierce: 1 } },
+      { params: { stun: 1.8, cooldown: 7 * GOAT_CD, range: 7.5, pierce: 2 } },
+      { params: { stun: 2.4, cooldown: 5 * GOAT_CD, range: 9, pierce: 99 } }],
     apply: (m, p) => { m.boomerang = p; } },
   { id: 'symbols', name: 'STRANGE SYMBOLS', color: '#7d5cff',
     say: (p) => `Q: BLINK ${sayN(p.dist)} TILES AHEAD, THROUGH MEN BUT NOT WALLS. ${sayN(p.cooldown)}s COOLDOWN.${p.stun ? ` WHOEVER STOOD WHERE YOU LEFT IS DAZED ${sayN(p.stun)}s.` : ''}`,
     tiers: [
-      { params: { dist: 3, cooldown: 6, stun: 0 } },
-      { params: { dist: 4.5, cooldown: 4, stun: 0 } },
-      { params: { dist: 6, cooldown: 2.2, stun: 0.9 } }],
+      { params: { dist: 3, cooldown: 6 * GOAT_CD, stun: 0 } },
+      { params: { dist: 4.5, cooldown: 4 * GOAT_CD, stun: 0 } },
+      { params: { dist: 6, cooldown: 2.2 * GOAT_CD, stun: 0.9 } }],
     apply: (m, p) => { m.blink = p; } },
   // ---- the seventeen from ARTIFACTS_TZ.md. Their machinery is js/talismans.js; `tag` keeps the
   // mouse from putting two of the same sort on one shelf (`stockFor`). ----
@@ -1695,9 +1783,9 @@ const ARTIFACTS = [
   { id: 'effigy', tag: 'q', name: 'STRAW EFFIGY', color: '#c9a24e',
     say: (p) => `Q: A STRAW GOAT STANDS ${sayN(p.life)}s. MEN WITHIN ${sayN(p.r)} TILES GO FOR IT INSTEAD OF YOU${p.shots ? ', AND RIFLES WASTE A ROUND ON IT' : ''}${p.oops ? '. A MAN WHO CLUBS IT HITS HIS NEIGHBOUR' : ''}. ${sayN(p.cd)}s COOLDOWN.`,
     tiers: [
-      { params: { life: 4, r: 6, cd: 12, shots: false, oops: false } },
-      { params: { life: 4, r: 6, cd: 10, shots: true, oops: false } },
-      { params: { life: 6, r: 7, cd: 8, shots: true, oops: true } }],
+      { params: { life: 4, r: 6, cd: 12 * GOAT_CD, shots: false, oops: false } },
+      { params: { life: 4, r: 6, cd: 10 * GOAT_CD, shots: true, oops: false } },
+      { params: { life: 6, r: 7, cd: 8 * GOAT_CD, shots: true, oops: true } }],
     apply: (m, p) => { m.effigy = p; } },
   { id: 'spur', tag: 'run', name: 'BRASS SPUR', color: '#c29a44',
     say: (p) => { const T = TUNING.goat.momentum.time; return `YOUR RUN-UP BUILDS IN ${sayN(T * p.time)}s, NOT ${sayN(T)}s${p.keep ? `, AND A HIT TAKES ${sayPct(1 - p.keep)} OF IT INSTEAD OF ALL` : ''}${p.throw > 1 ? `. AT A FULL RUN THE HORNS THROW x${sayN(p.throw)}` : ''}.`; },
@@ -1809,7 +1897,7 @@ const ARTIFACT_HOW = {
 // What the death card says took the last heart: a kind of man (a clubman is split into the
 // ordinary one and the brute in `game.killedBy`), or the word a hazard passes to `Goat.damage`.
 const KILLED_BY = {
-  hunter: 'RIFLEMAN', dog: 'HOUND', seer: 'MAGE', butcher: 'BUTCHER', wraith: 'WRAITH', ratogre: 'RAT OGRE',
+  hunter: 'RIFLEMAN', dog: 'HOUND', seer: 'MAGE', butcher: 'OGRE', wraith: 'WRAITH', ratogre: 'RAT OGRE',
   fire: 'FIRE', witchfire: 'WITCHFIRE', spike: 'THE GRATING', bomb: 'A BOMB', mill: 'THE WHEEL',
   fall: 'THE DROP', rifle: 'A STRAY BULLET', spire: 'THE ROCK',
 };
@@ -1873,7 +1961,13 @@ const LEVELS = [
     // headbutt on the bars themselves, and grab is painted in the room that stands a blade and a
     // crate in front of you. The rooms after the pen are rooms with men in them, and the count of
     // ordinary rooms — and so the whole difficulty curve — is exactly what it was.
-    name: 'THE ALTAR', sub: 'Level 1', rooms: 10, showControls: true, startCage: true, ritual: true,
+    // 1.66, the ramp asked for room by room: the sentry in the doorway; one clubman loose in a room,
+    // to be kicked about until it is clear what the horns are for; a room of lit bowls and straw
+    // with nobody in it (`calmAt`), to butt a bowl over and watch it take; the wheel and its two men;
+    // the blade and its two men; the first soul; two men stood in the straw (`trapAt`) with the fire
+    // now a weapon; the first brute, alone; his arena; a breather; the ogre, who carries the second
+    // soul. Twelve rooms, and each asks one new thing.
+    name: 'THE ALTAR', sub: 'Level 1', rooms: 12, showControls: true, startCage: true, ritual: true,
     // The first idea and the plainest: a headbutt only ever knocks a man down, and it is the stone he
     // lands against that kills him. So the rooms here are pillars, corners and stub walls, and the
     // level is one long lesson in where to stand when you swing.
@@ -1888,30 +1982,32 @@ const LEVELS = [
     // The first boss of the game is one brute and one man at his back, and `escorts` is what says
     // so: the arena's threat budget would otherwise buy two, and the first thing in the run with
     // more than one heart in it should be read as the brute rather than as a crowd.
-    arenas: [{ at: 7, boss: 'champion', escorts: 1 }, { at: 9, boss: 'butcher' }],
+    arenas: [{ at: 9, boss: 'champion', escorts: 1 }, { at: 11, boss: 'butcher' }],
     // A wall that gives is not a thing to look for yet: the first arena above is what teaches a
     // soul is worth going out of your way for, so no secret is carved before it.
     secretsAfterBoss: true,
-    // The two hard stops (see the note over `LEVELS`): the middle of the level, and the breather
-    // between the brute's ring and the butcher's. Nobody walks past the first soul of the run any
-    // more — it is the bar.
-    gates: [5, 8],
+    // The one hard stop (see the note over `LEVELS`): the middle of the level. Nobody walks past the
+    // first soul of the run any more — it is the bar. The breather between the brute's ring and the
+    // ogre's is a rest room with no gate and no soul in it (`rests`): the second soul of the run is
+    // the ogre's, carried by him and paid out when he goes down (24 Sep 2026: "the second soul after
+    // the ogre"), so the level ends on the fight that pays.
+    gates: [6], rests: [10],
     // The wheel is met with nobody standing in the room, and arms are not a thing you find until
     // halfway in: the first half of the run is the goat and his head and nothing else.
     // The first stand of arms in the game is not a scatter, it is this room: a long approach, the
     // arm right inside the door, and whoever the room holds standing well down the far end of it.
-    ambushAt: 4,
+    ambushAt: 5, calmAt: 3, trapAt: 7, trapTpl: 'hayloft', trapMen: ['bearer', 'bearer'],
     // The wheel is met in a room built round it: a narrow one with a single lane past the arm, and
     // two men on the far side of it — one who cannot read it and rides it into the wall, one who
     // walks around it and comes on. `millLesson` is that pair, and it replaced the empty room the
     // wheel used to turn in: a hazard nobody is standing near is a thing to walk round rather than
     // a thing to use. See `millRoom` in `gen.js`.
-    millAt: 3, millLesson: true, heals: 3, souls: 2, racks: 0.2, racksFrom: 0.4, traps: 1, crates: 0.3,
+    millAt: 4, millLesson: true, heals: 3, souls: 2, racks: 0.2, racksFrom: 0.4, traps: 1, crates: 0.3,
     // No hen yet. She is the one thing in the compound on your side, and a goat who has not been
     // shown a single fight to the finish has nothing to weigh "an ally who kills once" against.
     encounters: {
       kinds: ['bearer', 'champion'],
-      introduce: [['bearer', 0], ['champion', 0.8]],
+      introduce: [['bearer', 0], ['champion', 1]],
       from: 1, to: 4.5, ease: 1.5,
       // Two men to a room, and the arena's boss gets two rather than three at his back. Every other
       // level buys its difficulty in bodies; level one may not, because three men converging is not
@@ -1987,8 +2083,8 @@ const LEVELS = [
     // No trap room either, for the same reason: every template in that pool `needs: 'spikes'`.
     millAt: 8, heals: 3, souls: 2, racks: 0.18, spikes: 0, crates: 0.25, traps: 0, vaultAt: 3,
     // A floor whose one idea is the shape of the room is where a thing you throw down to make a
-    // shape belongs.
-    beasts: ['tortoise'],
+    // shape belongs. The hen too, as a second choice for the run's deal (`Beast.deal`).
+    beasts: ['tortoise', 'chicken'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],
       introduce: [],
@@ -2015,7 +2111,8 @@ const LEVELS = [
     gates: [7, 12],
     millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
     // A shell to put between you and the line, or a bird that tells the line where you are.
-    beasts: ['tortoise', 'goose', 'chicken'],
+    // THE LINE is a road, and a horse is a thing that runs a road.
+    beasts: ['tortoise', 'goose', 'chicken', 'horse'],
     // The floor starts answering back here: a stretch of grating you cross and whoever is on your
     // heels crosses a beat later, when it is no longer floor.
     spikes: 0.3, crates: 0.35, barrels: 0.3, vaultAt: 4,
@@ -2056,8 +2153,8 @@ const LEVELS = [
     gates: [5, 11],
     millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, barrels: 0.3, vaultAt: 7, traps: 1,
     // The crow is met on the widest, fullest floor in the game, because the one thing it asks for is
-    // bodies and this is the floor that has them (js/beasts.js).
-    beasts: ['crow', 'goose'],
+    // bodies and this is the floor that has them (js/beasts.js). Open ground is the horse's too.
+    beasts: ['crow', 'goose', 'horse'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -2093,7 +2190,7 @@ const LEVELS = [
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
     gates: [8, 13],
     millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, barrels: 0.25, traps: 2, vaultAt: 5,
-    beasts: ['tortoise', 'crow'],
+    beasts: ['tortoise', 'crow', 'horse'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -2124,7 +2221,7 @@ const LEVELS = [
     millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, barrels: 0.3, vaultAt: 8, windows: 0.55, traps: 1,
     // Not the tortoise: a floor whose one idea is the drop is not the floor to be walking a thing
     // that has to be thrown across it.
-    beasts: ['crow', 'goose'],
+    beasts: ['crow', 'goose', 'chicken'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter'],
       introduce: [],
@@ -2151,7 +2248,7 @@ const LEVELS = [
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
     gates: [8, 12],
     millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, barrels: 0.2, traps: 2, vaultAt: 7,
-    beasts: ['crow', 'tortoise'],
+    beasts: ['crow', 'tortoise', 'horse'],
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer', 'hunter', 'wraith'],
       // The first room of the level is the wraith on its own, because nothing else in the game
@@ -2234,28 +2331,46 @@ function tripLevel(i) {
   return (TRIP_LEVELS[i] = def);
 }
 
-// THE DARK. The same floor with the lamps out (`TUNING.dark`): its rooms, its canon, its bosses and
-// its souls, but only what burns is lit, so it is cut to a gentler curve and fewer traps
-// (`dark.soften`) and the generator hangs lamps in the rooms that had no flame. Unlike the trip it
-// is still that level to everything that asks which level it is — the mouse, the milk rhythm — so
-// those ask `levelIndexOf` and not `LEVELS.indexOf`.
-const DARK_LEVELS = {};
-function darkLevel(i) {
-  if (DARK_LEVELS[i]) return DARK_LEVELS[i];
-  const base = LEVELS[i], D = TUNING.dark.soften, E = base.encounters;
-  const def = Object.assign({}, base, {
-    dark: true, darkOf: i,
-    encounters: Object.assign({}, E, { from: E.from * D.from, to: E.to * D.to, ease: 1 + ((E.ease || 1) - 1) * D.ease,
-      kinds: E.kinds.filter((k) => k !== 'hunter'), introduce: (E.introduce || []).filter(([k]) => k !== 'hunter'),
-      weight: E.weight && Object.fromEntries(Object.entries(E.weight).filter(([k]) => k !== 'hunter')),
-      cap: Object.assign({}, E.cap, { men: Math.max(3, Math.round(((E.cap && E.cap.men) || ENCOUNTER.cap.men) * D.men)) }) }),
-    traps: Math.floor((base.traps || 0) * D.traps), spikes: (base.spikes || 0) * D.spikes, killboxAt: undefined, lonePosts: 0,
-    hint: 'THE LAMPS ARE OUT. YOU HEAR THEM BEFORE YOU SEE THEM.', hintKey: null,
-  });
-  return (DARK_LEVELS[i] = def);
-}
-// Which floor of the run a level is: its place in LEVELS, or, played dark, the place of the level
-// it is the dark of. THE TRIP stays -1 on purpose (see `tripLevel`).
+// THE DARK. A floor of its own, not a floor with the lights off: THE FORK's other flight climbs to
+// it, and it is played in the run in place of the floor after the fork (`dark.fork`), whose place it
+// keeps (`darkOf`) for everything that asks which floor of the run it is — the mouse, the milk
+// rhythm — so those ask `levelIndexOf` and not `LEVELS.indexOf`. Its own canon (THE LAMP, the rooms
+// tagged `canon: 'lamp'`), its own crowd and curve, its own lights (`TUNING.dark`): a standing lamp or
+// two in every room with men in it, a lantern on the wall by every doorway, and nothing else lit but
+// what burns. The kinds are the ones that have their own way in the dark — the hound's eyes and his
+// bark, the seer's eyes and his ear — over a backbone of clubmen; never a rifle. It deals fewer men
+// a room than the lit floor beside it (`balance.js` holds it under that floor and over
+// `dark.fork.band` of it): a room you cannot see all of is a harder room.
+const DARK_LEVEL = {
+  name: 'THE DARK', sub: 'Level 5', rooms: 12,
+  canon: { id: 'lamp', name: 'THE LAMP', idea: 'Every room has its lamp, and the lamp is a choice: it shows them to you and you to them. Knock it down and it burns where it falls, and then the room is black and they hunt you by ear.' },
+  theme: 'The cellars under the threshing floor, where the cult keeps what it does not want seen.',
+  decor: 'Low vaults and cells, a standing lamp or two to a room, a lantern on the wall by every door, and nothing else lit.',
+  arenas: [{ at: 3, boss: 'seer' }, { at: 7, boss: 'butcher' }, { at: 11, boss: 'champion' }],
+  gates: [5, 9],
+  heals: 4, souls: 2, vaultAt: 6, racks: 0.2, spikes: 0.15, crates: 0.45, barrels: 0.45, traps: 0, lonePosts: 0,
+  beasts: ['crow', 'goose', 'horse'],
+  encounters: {
+    kinds: ['bearer', 'champion', 'dog', 'seer'],
+    introduce: [],
+    // The hound and the seer are the dark's own, so they come oftener than anywhere lit; the head
+    // count a room may hold is lower than the lit floor's eight, because the room is not all there.
+    weight: { bearer: 5, dog: 4, seer: 3, champion: 2 },
+    from: 5.5, to: 22, ease: 1.2,
+    cap: { men: 6 },
+  },
+  floor: '#24222b', floorAlt: '#2a2731', wall: '#37333d', wallTop: '#524c5a',
+  fog: '#030306', doorChance: 0.2, ironDoors: 0.5, clockDoors: 0.3, stack: 0.25,
+  hint: 'A LAMP SHOWS THEM TO YOU, AND YOU TO THEM. KNOCK IT DOWN: IT BURNS, AND THEN THE ROOM IS BLACK.', hintKey: null,
+  dark: true, darkOf: TUNING.dark.fork.at + 1,
+};
+// It has met what the floor it stands in for has met, and knows the rooms that floor knew.
+DARK_LEVEL.met = new Set(LEVELS[DARK_LEVEL.darkOf].met);
+DARK_LEVEL.known = new Set(LEVELS[DARK_LEVEL.darkOf].known);
+// THE DARK wherever the run asks for it. There is one: the index is only ever its own place.
+function darkLevel() { return DARK_LEVEL; }
+// Which floor of the run a level is: its place in LEVELS, or, for THE DARK, the place of the floor
+// it is played in place of. THE TRIP stays -1 on purpose (see `tripLevel`).
 function levelIndexOf(def) {
   return def && def.darkOf !== undefined ? def.darkOf : LEVELS.indexOf(def);
 }

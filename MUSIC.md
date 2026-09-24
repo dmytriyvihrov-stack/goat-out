@@ -6,6 +6,26 @@ Phrygian walking bed; levels 5+ have a second progression. All three have idle, 
 combat arrangements. The original score remains available under
 SETTINGS > LAYERED MUSIC off, through the preserved `playLegacyStep` arrangement.
 
+## The tune (1.66)
+
+Until 1.66 the bed was a triangle drone, one or two bass notes a bar and no line anybody could hum,
+all sent into a 1.4 s stone reverb, and it read as noise. `THEME_BED` (`js/audio.js`) now gives each
+theme one four-bar phrase over its four roots, played by the bone flute (`lead`: triangle with a
+5 Hz vibrato that comes in as the note is held, a quiet sine octave over it) and a bass *line*
+(a folk gallop of five or six plucked-saw notes a bar, low-pass closing 700 to 170 Hz):
+
+- **Levels 2-4 (A Phrygian, roots A A G E):** the hook is A-C-Bb-A, climbs to E5 in bar two and
+  every phrase ends on the Phrygian fall A-G-F-E over the E.
+- **Levels 5+ (G minor, roots G F E G):** D-Bb-C-A-G, the answer in the upper register.
+- **Level 1 (roots A Bb G E):** the same fall broken up with rests, ending on a tritone (Bb over E).
+
+The tune sings whole at idle, drops to a third for the two-bar warning, and comes back under chase
+(0.8) and combat (0.55). The stage figures (`STAGE_MOTIFS`) are now a plucked saw riff an octave
+under the flute, so the two lines are told apart by sound. The drone is an open fifth an octave up
+(it was the bare root at 55 Hz), the frame drum answers the kicks with two soft toms, and the chase
+and combat off-beats are a rim knock instead of a noise hat. The room send is 0.06 into a 0.32 s
+room (`TUNING.audio.room`).
+
 ## Enemies and traps
 
 Each type has a fixed, recognisable ranked rhythm. Adding an enemy preserves the existing hits
@@ -15,7 +35,7 @@ still count. Spawn-room IDs do not pin moving enemies to their old room.
 
 | Type | Register / character | Hits per two bars for 1 / 2 / 3 / 4 / 5 / 6 |
 |---|---|---|
-| Bearer | High, dry square ticks | 1 / 2 / 3 / 4 / 5 / 6 |
+| Bearer | High, dry square ticks, low-passed (a reed, not a chip) | 1 / 2 / 3 / 4 / 5 / 6 |
 | Hound | Same register, shorter offbeat ticks | 1 / 2 / 3 / 4 / 5 / 6 |
 | Hunter | Middle, clipped triangle plucks | 2 / 4 / 5 / 6 / 7 / 8 |
 | Seer | Same register, shifted rhythm and softer attack | 2 / 4 / 5 / 6 / 7 / 8 |
@@ -155,7 +175,7 @@ in sixteenth notes, waveform, gain, envelopes/filter settings where specified, a
 For FL Studio, use **118 BPM, 4/4, sixteen steps per bar**. One score step is a sixteenth note;
 divide steps and durations by four for beats. C4 here is MIDI 60. FL Studio's octave labels may be
 different, so MIDI number and Hz are the unambiguous reference. A triangle/sine/square oscillator
-can reproduce most voices; bass uses a saw and a closing 430-to-150 Hz low-pass filter. Drum and
+can reproduce most voices; bass uses a saw and a closing 700-to-170 Hz low-pass filter. Drum and
 woodblock sweeps are indicated as end/start frequency ratios. Noise has no pitched MIDI note.
 The JSON is a transcription/synthesis reference, not an FL project or a native MIDI import.
 
