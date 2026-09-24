@@ -30,13 +30,11 @@ The sprite itself always comes from `PIXEL_ART.draw`.
 
 ## Still to be drawn in pixel
 
-Every prop is pixel art since 1.63 (`js/prop-pixels.js`). What is still not:
+Every prop is pixel art since 1.63 (`js/prop-pixels.js`), the cave spires and the stairs since 1.64. What is still not:
 
 - **Ominous decals** — `output/pixel-ominous-decals-2026-09-23` holds three floor pictograms and a
   wall sign, generated and measured but **not integrated**. The cult's own floor pictograms
   (`CULT_GLYPHS`, `world.js`) were redrawn as a butcher's marks in 1.63 instead.
-- **The stairs** are still a gradient per tile (`Renderer.drawStairs`).
-- **The cave spires** draw the `stalagmites` pixel prop over two smooth blood ellipses.
 
 **Adding a prop sprite by hand** (the 1.63 way, no image generation): write a function in
 `js/prop-pixels.js` that fills a `Grid` with `rect` / `ell` / `line` / `poly` / `bar` in palette colours,

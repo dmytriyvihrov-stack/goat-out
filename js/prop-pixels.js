@@ -606,6 +606,26 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
+  // ---------------------------------------------------------------- the cave's teeth
+  // Three stone teeth standing out of old blood: the back two lower, the front one tall, every point
+  // the brightest thing on it. The blood round the foot is what says the rock kills. 22 x 24.
+  function spire() {
+    const pool = new Grid(22, 24), r = rng(101);
+    pool.ell(11, 20.5, 10.5, 3.2, P.bl); pool.speckle(r, 26, P.r1, [P.bl]); pool.speckle(r, 8, P.r2, [P.bl]);
+    pool.ell(4, 22.5, 2.4, 1.2, P.bl); pool.set(19, 22, P.r1);
+    const tooth = (g, x0, x1, tx, ty, by) => {
+      g.poly([[x0, by], [tx + 0.5, ty], [x1, by]], P.s2);
+      g.tone((x, y) => x + 0.5 > tx + 0.5 + (y - ty) * 0.12, P.s1, [P.s2]);        // the far side in shade
+      g.tone((x, y) => x < tx - 1 + (y - ty) * -0.25 + 1, P.s3, [P.s2]);            // the lit edge
+      for (let y = ty; y < ty + 3; y++) g.set(tx, y, y === ty ? '#f2efe6' : P.s4);   // the point
+      for (let x = Math.ceil(x0); x < x1; x++) if (r() < 0.45) g.set(x, by - 1, P.r1); // blood up the foot
+    };
+    const back = new Grid(22, 24), front = new Grid(22, 24);
+    tooth(back, 1.5, 8.5, 5, 7, 19); tooth(back, 13.5, 20.5, 16, 8, 19); back.outline();
+    tooth(front, 6.5, 15.5, 11, 2, 21); front.outline();
+    return pool.blit(back, 0, 0).blit(front, 0, 0);
+  }
+
   const sprites = {
     'door-wood': doorWood(), 'door-iron': doorIron(), 'door-vault': doorVault(), 'door-soul': doorSoul(),
     'broken-wood': debris('wood'), 'broken-iron': debris('iron'), 'broken-vault': debris('vault'), 'broken-soul': debris('soul'),
@@ -616,12 +636,12 @@ const PROP_PIXELS = (() => {
     'spikes-idle': grating('idle'), 'spikes-arming': grating('arming'), 'spikes-up': grating('up'),
     'sword-up': swordUp(), 'rack-back': rackBack(), 'rack-base': rackBase(),
     'coop-back': coopBack(), 'coop-front': coopFront(false), 'coop-cracked': coopFront(true),
-    burrow: burrow(), stool: stool(), 'roast-back': roastRing(false), 'roast-front': roastRing(true), 'roast-sticks': roastSticks(), 'roast-croc': croc(),
+    burrow: burrow(), stool: stool(), spire: spire(), 'roast-back': roastRing(false), 'roast-front': roastRing(true), 'roast-sticks': roastSticks(), 'roast-croc': croc(),
   };
   for (let k = 0; k < 8; k++) sprites['lantern-' + k] = lantern(k);
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
   for (const k in sprites) if (!/^(rack|coop|roast)-/.test(k)) sprites[k] = sprites[k].trim();
-  return { P, Grid, sprites };
+  return { P, Grid, sprites, rng };
 })();
 if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
 
@@ -632,7 +652,7 @@ if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
 // drawn here outright at `TX` world px a texel, the grain of the crate and barrel beside them.
 // `PROP_PIXELS.on = false` (or `#paintedprops`) brings the old ones back for a side-by-side.
 if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() => {
-  const UP = 4, TX = 1.35, baked = {}, S = PROP_PIXELS.sprites;
+  const UP = 4, TX = 1.35, baked = {}, S = PROP_PIXELS.sprites, rng = PROP_PIXELS.rng;
   PROP_PIXELS.on = !/paintedprops/.test(location.hash);
   const canvasOf = name => {
     if (baked[name]) return baked[name];
@@ -796,7 +816,58 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     return drawProp.call(this, renderer, p);
   };
 
-  const R = Renderer.prototype, drawPail = R.drawPail, drawBurrow = R.drawBurrow, drawRoast = R.drawRoast;
+  const R = Renderer.prototype, drawPail = R.drawPail, drawBurrow = R.drawBurrow, drawRoast = R.drawRoast,
+    drawSpire = R.drawSpire, drawStairs = R.drawStairs;
+  // The cave's teeth, with their point catching the light now and then (`cave.spikes.glint`).
+  R.drawSpire = function (p) {
+    if (!PROP_PIXELS.on) return drawSpire.call(this, p);
+    const g = S.spire, k = p.r * 2.4 / g.w, x0 = p.x - g.w * k / 2, y0 = p.y + 5 - g.h * k;
+    this.shadow(p.x, p.y + 2, p.r * 0.95, p.r * 0.42);
+    put(this.ctx, 'spire', x0, y0, k);
+    const tw = Math.pow(Math.max(0, Math.sin(this.t * 1.6 + p.x * 0.05)), 8);
+    if (tw > 0.04 && !this.baking) { this.ctx.fillStyle = `rgba(255,255,255,${tw * TUNING.cave.spikes.glint})`; this.ctx.fillRect(x0 + 10 * k, y0 + 1 * k, k * 1.5, k * 1.5); }
+  };
+  // A flight of stairs as stone steps on the pixel grain: each tile four steps, each step a dark riser,
+  // a lit nosing and a speckled tread, the slabs' joints staggered step to step. Up a flight the treads
+  // pale toward the light at the top; the fork's cold flight and the way down go into black. Baked once
+  // per level colour, direction and tile of the flight.
+  const hex = c => { const n = parseInt(c.slice(1, 7), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  const css = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+  const BONE = [239, 230, 208], BLACK = [5, 4, 8], COLD = [150, 158, 210];
+  const stairTile = (def, k, up, cold, v) => {
+    const key = [def.wall, def.wallTop, k, up, cold, v].join('|');
+    if (baked[key]) return baked[key];
+    const c = document.createElement('canvas'), x = c.getContext('2d'), N = 24, r = rng(k * 31 + v * 7 + (up ? 3 : 0));
+    c.width = c.height = N * UP;
+    for (let i = 0; i < 4; i++) {
+      const n = k * 4 + i, f = Math.min(1, n / 11);
+      let tread = hex(up ? def.wallTop : def.wall);
+      if (up && cold) tread = mix(tread, BLACK, 0.3 + 0.68 * f);
+      else if (up) tread = mix(tread, BONE, 0.1 + 0.68 * f * f);
+      else tread = mix(mix(tread, BONE, 0.04 + 0.34 * f), BLACK, 0.85 * (1 - f) * (1 - f));
+      const joint = (n * 3) % 8;
+      for (let yy = 0; yy < N; yy++) for (let q = 0; q < 6; q++) {
+        let col = tread;
+        if (q === 0) col = mix(tread, BLACK, 0.5);
+        else if (q === 1) col = up && cold ? mix(tread, COLD, 0.26 * (1 - f)) : mix(tread, BONE, 0.2);
+        else if ((yy - joint + 8) % 8 === 0) col = mix(tread, BLACK, 0.3);
+        else { const d = r(); if (d < 0.16) col = mix(tread, BLACK, 0.14); else if (d > 0.92) col = mix(tread, BONE, 0.1); }
+        x.fillStyle = css(col); x.fillRect((i * 6 + q) * UP, yy * UP, UP, UP);
+      }
+    }
+    return baked[key] = c;
+  };
+  R.drawStairs = function (px, py, k, up, def, cold) {
+    if (!PROP_PIXELS.on) return drawStairs.call(this, px, py, k, up, def, cold);
+    const ctx = this.ctx, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(stairTile(def, k, up, !!cold, (py / TILE | 0) % 3), px, py, TILE, TILE);
+    ctx.imageSmoothingEnabled = smooth;
+    if (up && k === 2 && !cold) {
+      const pulse = 0.55 + 0.25 * Math.sin(this.t * 3.4);
+      ctx.fillStyle = `rgba(255,224,138,${pulse * 0.45})`; ctx.fillRect(px + TILE * 0.5, py - 8, TILE * 0.7, TILE + 16);
+    }
+  };
   // The mouse's pail as tall as the goat, a pip on its hoop for every heart still in it.
   R.drawPail = function (p) {
     if (!PROP_PIXELS.on) return drawPail.call(this, p);

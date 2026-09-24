@@ -5,6 +5,20 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.64 — the cave's teeth and the stairs in pixels
+
+- **The cave's teeth.** A spire was the environment pack's stalagmites standing on two smooth blood
+  ellipses. It is one pixel sprite now: three stone teeth, the back two lower, every point the
+  brightest thing on it and catching the light now and then (`cave.spikes.glint`), standing in a pool
+  of old blood drawn in cells.
+- **The stairs.** A flight was a per-step gradient. Each tile is four stone steps on the pixel grain
+  now — a dark riser, a lit nosing, a speckled tread, the slabs' joints staggered step to step — baked
+  once per level colour. Up a flight the treads pale toward the light at the top (the warm pulse is
+  kept); THE FORK's cold flight goes into black with a cold rim on every nosing and no pulse; the way
+  down darkens as before. Both are `js/prop-pixels.js` wraps of `Renderer.drawSpire` / `drawStairs`.
+
+---
+
 ## 1.63 — every prop in pixels, and what he carries in his teeth
 
 - **The last painted props are pixels** (`js/prop-pixels.js`, new). Doors (wood, iron, vault, soul

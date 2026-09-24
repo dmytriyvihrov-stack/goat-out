@@ -141,9 +141,9 @@ packer leaves every edge half transparent, which point-sampled into a ragged rim
 **Props are pixels too** (1.63). `js/prop-pixels.js` draws every prop the painted pack or a primitive
 used to: doors and their debris, sword, shield and the stand of arms (layered: the arm stands IN it),
 the wheel, cage posts, altar, banner, gong, lantern, soul wisp, both grasses, the pail, grating, bomb,
-coop, burrow, stool, the roast. Each sprite is a `Grid` built by drawing calls, outlined, baked at
+coop, burrow, stool, the roast, the cave spires (1.64) and the stairs (1.64, baked per tile, `cold` honoured). Each sprite is a `Grid` built by drawing calls, outlined, baked at
 `UP` and drawn smoothed; it wraps `PaintedArt.stamp` / `atlas` / `fire` / `millArm` / `brokenDoor` /
-`drawProp` and `Renderer.drawPail` / `drawBurrow` / `drawRoast`, fitting each into the painted one's
+`drawProp` and `Renderer.drawPail` / `drawBurrow` / `drawRoast` / `drawSpire` / `drawStairs`, fitting each into the painted one's
 measured box, so no footprint moved. render.js asks `painted.pixelProps` where a primitive sits
 inline (mill caps and hub, the ware's stool, the shelf pail). `#paintedprops` brings the old art back.
 `node output/pixel-claude-2026-09-24/render.cjs 6 [names]` renders them to a sheet.
