@@ -17,6 +17,47 @@ class AltarArt {
     return c;
   }
 
+  // What a burnt-out tile of straw leaves (`T.ASH`): a low heap of ash in 2px cells — grey on top,
+  // charred black straw ends through it, a couple of embers still red in it — thinning to single
+  // dithered cells at its rim so it sits in the floor. It used to be a flat translucent grey square
+  // that read as nothing (playtest, 25 Sep 2026: "unclear what it is"). A few baked variants, picked
+  // off the tile hash; the heap reaches the tile's edges so a burnt row of hay stays one row of ash.
+  ashTile(ctx, px, py, h) {
+    const key = 'ash' + (h % 6);
+    let c = this.sprites.get(key);
+    if (!c) {
+      const P = PALETTE.altar, s = 2, n = TILE / s, v = h % 6;
+      const rnd = (i, j, k) => (this.hash(i * 7 + k, j * 13 + v, 91) % 1000) / 1000;
+      c = this.canvas(TILE, TILE, (x) => {
+        const ox = (rnd(1, 2, 3) - 0.5) * 3, oy = (rnd(4, 5, 6) - 0.5) * 2 + 1;
+        for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+          const dx = (i + 0.5 - n / 2 - ox) / (n * 0.56), dy = (j + 0.5 - n / 2 - oy) / (n * 0.46);
+          const d = Math.hypot(dx, dy) + (rnd(i, j, 0) - 0.5) * 0.45, r = rnd(i, j, 1);
+          if (d > 1.05 || (d > 0.8 && r < (d - 0.8) * 3.2)) continue;
+          // top-lit heap: lighter grey on the crown, darker toward the rim and its south foot
+          const col = d < 0.35 && r > 0.45 ? '#6a6062' : d < 0.7 ? (r > 0.3 ? P.ash : '#3d3538') : (r > 0.5 ? '#3d3538' : P.coal);
+          this.rect(x, col, i * s, j * s, s, s);
+        }
+        // charred straw ends lying through it, and the black under the heap's south edge
+        for (let k = 0; k < 5; k++) {
+          const i = 3 + Math.floor(rnd(k, 9, 2) * (n - 8)), j = 3 + Math.floor(rnd(k, 9, 3) * (n - 7)), len = 2 + Math.floor(rnd(k, 9, 4) * 3);
+          const dir = rnd(k, 9, 5) < 0.5 ? 1 : -1;
+          for (let q = 0; q < len; q++) this.rect(x, P.coal, (i + q) * s, (j + (q >> 1) * dir) * s, s, s);
+        }
+        for (let i = 4; i < n - 4; i++) if (rnd(i, 30, 6) > 0.35) this.rect(x, P.coal, i * s, (n - 4 + (rnd(i, 30, 7) > 0.6 ? 1 : 0)) * s, s, s);
+        // two embers, one of them bright at the heart
+        for (let k = 0; k < 2; k++) {
+          const i = 5 + Math.floor(rnd(k, 40, 8) * (n - 10)), j = 5 + Math.floor(rnd(k, 40, 9) * (n - 11));
+          this.rect(x, k === 0 ? PALETTE.fire : P.ember, i * s, j * s, s, s);
+          if (k === 0) this.rect(x, P.ember, (i + 1) * s, j * s, s, s);
+        }
+      });
+      this.sprites.set(key, c);
+    }
+    const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(c, px, py); ctx.imageSmoothingEnabled = smooth;
+  }
+
   rect(ctx, color, x, y, w, h) {
     ctx.fillStyle = color; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
   }
@@ -117,10 +158,8 @@ class AltarArt {
       if (wd.isSolid(x, y - 1)) { r(P.shadow, px, py, 32, 5); r(P.deepShadow, px, py, 32, 2); }
       if (wd.isSolid(x - 1, y)) r(P.shadow, px, py + 2, 3, 30);
       if (t === T.HAY) this.straw(ctx, px + 16, py + 16, hash, true);
-      else if (t === T.ASH) {
-        r(P.ash, px + 4, py + 6, 24, 19);
-        for (let k = 0; k < 9; k++) r(P.coal, px + 6 + (hash >>> k) % 20, py + 7 + (hash >>> (k + 3)) % 17, 2, 1);
-      } else if (t === T.EXIT) renderer.drawStairs(px, py, x - game.level.exitTile.x0, true, game.level.def);
+      else if (t === T.ASH) this.ashTile(ctx, px, py, hash);
+      else if (t === T.EXIT) renderer.drawStairs(px, py, x - game.level.exitTile.x0, true, game.level.def);
       else if (t === T.ENTRY) renderer.drawStairs(px, py, x - game.level.entry.x0, false, game.level.def);
       else if (wd.isSolid(x, y - 1) && hash % 4 === 0) {
         // Only tiny floor litter by a wall: no fake crates, food or other apparent interactables.
@@ -272,6 +311,57 @@ class AltarArt {
     }
   }
 
+  // What is left of the sheep in the other pen: a skeleton on its side, head to the right — skull
+  // with an empty socket and a dropped jaw, a spine, the ribs standing open, the legs out straight —
+  // lying in a dried pool with a few tufts of dirty wool, in world pixels with a dark rim round every
+  // bone. It used to be a beige block with legs that read as a sheep asleep (playtest, 25 Sep 2026:
+  // "show more clearly that she is dead").
+  deadSheep(ctx, cx, cy) {
+    const P = PALETTE.altar, bone = new Map(), SHADE = '#c4b89c', DARK = P.outline;
+    const put = (x, y, c = PALETTE.bone) => bone.set(x + ',' + y, c);
+    const line = (x0, y0, x1, y1, c) => {
+      const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) || 1;
+      for (let i = 0; i <= n; i++) put(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), c);
+    };
+    const r = (c, x, y, w, h) => this.rect(ctx, c, cx + x, cy + y, w, h);
+    // the floor under her: rotten bedding, and a pool long since dried black at the edge
+    for (let y = -7; y <= 13; y++) for (let x = -27; x <= 29; x++) {
+      const d = Math.hypot(x / 27, (y - 3) / 10), h = this.hash(x, y, 57) % 100;
+      if (d < 0.75 && h < 70) r(d < 0.5 ? '#4a1c1c' : '#2e1719', x, y, 1, 1);
+      else if (d < 1 && h < 22) r(P.clothDark, x, y, 1, 1);
+    }
+    // spine and neck, the vertebrae picked out one in three
+    for (let x = -18; x <= 7; x++) { put(x, -6, x % 3 ? PALETTE.bone : SHADE); put(x, -5, SHADE); }
+    line(7, -6, 12, -9); line(7, -5, 12, -8, SHADE);
+    // the ribs, open, longest at the chest; the floor shows between them
+    for (let i = 0; i < 6; i++) {
+      const x = -10 + i * 3, l = 7 + Math.min(i, 3);
+      line(x, -4, x - 1, -4 + Math.floor(l * 0.5)); line(x - 1, -4 + Math.floor(l * 0.5), x, -4 + l, SHADE);
+    }
+    // the hip and the four legs out straight, a dark hoof at the end of each
+    for (let y = -9; y <= -4; y++) for (let x = -23; x <= -18; x++) put(x, y, y === -9 || x === -23 ? SHADE : PALETTE.bone);
+    const legs = [[-21, -3, -25, 4, -23, 11], [-18, -3, -16, 4, -18, 11], [4, -4, 6, 3, 5, 10], [7, -4, 11, 3, 12, 9]];
+    for (const [x0, y0, x1, y1, x2, y2] of legs) { line(x0, y0, x1, y1); line(x1, y1, x2, y2, SHADE); put(x1 + 1, y1); }
+    // the skull: long face, an empty socket, the nostril, and the jaw dropped open under it
+    const skull = [[-14, 13, 17], [-13, 12, 20], [-12, 12, 22], [-11, 12, 24], [-10, 13, 25], [-9, 15, 25]];
+    for (const [y, a, b] of skull) for (let x = a; x <= b; x++) put(x, y, y > -11 && x > 18 ? SHADE : PALETTE.bone);
+    for (let x = 16; x <= 23; x++) put(x, -6, SHADE);
+    put(24, -7, SHADE);
+    // a stray rib kicked loose, and tufts of the wool that is left
+    line(-6, 9, -1, 11, SHADE);
+    // outline first, then the bones over it
+    const dark = new Set();
+    for (const k of bone.keys()) {
+      const [x, y] = k.split(',').map(Number);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!bone.has((x + dx) + ',' + (y + dy))) dark.add((x + dx) + ',' + (y + dy));
+    }
+    for (const k of dark) { const [x, y] = k.split(',').map(Number); r(DARK, x, y, 1, 1); }
+    for (const [k, c] of bone) { const [x, y] = k.split(',').map(Number); r(c, x, y, 1, 1); }
+    // the eye and the nostril are holes, not paint
+    r(DARK, 14, -12, 2, 2); r(DARK, 23, -10, 1, 1); r(DARK, -21, -7, 2, 2);
+    for (const [x, y] of [[-26, 6], [-12, 8], [14, 4], [19, 1], [-3, -9]]) { r('#8f8676', x, y, 3, 2); r('#a79d8a', x, y, 2, 1); }
+  }
+
   makeRitual(level) {
     const room = level.rooms[0], ox = room.x * TILE, oy = room.y * TILE;
     const sx = level.start.x - ox, sy = level.start.y - oy, P = PALETTE.altar;
@@ -313,11 +403,8 @@ class AltarArt {
       r(P.wood, dx + 14, dy + 8, 7, 3); r(P.ironHi, dx + 21, dy + 8, 15, 2);
       // The second pen still contains the previous sacrifice.
       const D = TUNING.prop.deadCage, cx = sx + D.dx * TILE, cy = sy + D.dy * TILE;
-      r(P.clothDark, cx - 20, cy - 4, 42, 17);
-      for (const x of [-12, -5, 5, 12]) r(P.woodDark, cx + x, cy + 1, 2, 13);
-      r(P.glyph, cx - 17, cy - 8, 31, 14); r(PALETTE.bone, cx - 16, cy - 8, 28, 5);
-      r(P.stoneShade, cx + 13, cy - 11, 10, 9); r(P.outline, cx + 19, cy - 8, 2, 2);
-      for (let k = 0; k < 5; k++) r(PALETTE.bone, cx - 15 + k * 6, cy - 10, 4, 3);
+      // a little north of the middle: the pen's front rail crosses its centre and would cut her in two
+      this.deadSheep(ctx, Math.round(cx), Math.round(cy) - 10);
     });
     return { canvas, x: ox, y: oy };
   }

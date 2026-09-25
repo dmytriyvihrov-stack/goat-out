@@ -252,7 +252,7 @@ class PaintedArt extends AltarArt {
       if(stone(x-1,y)&&!post(x-1,y))ctx.fillRect(px,py,3,32);
       if(t===T.HAY)PIXEL_ENV.draw(ctx,'hay',px+16,py+29,33);
       else if(t===T.FLOOR&&!wood&&!wd.isSolid(x,y-1))PIXEL_ENV.litter(ctx,'room',x,y);
-      else if(t===T.ASH){ctx.fillStyle=PALETTE.altar.ash;ctx.globalAlpha=0.6;ctx.fillRect(px+3,py+5,26,23);ctx.globalAlpha=1;}
+      else if(t===T.ASH)this.ashTile(ctx,px,py,h);
       else if(t===T.EXIT)renderer.drawStairs(px,py,x-game.level.exitTile.x0,true,game.level.def,Renderer.forkRow(game.level,y));
       else if(t===T.ENTRY)renderer.drawStairs(px,py,x-game.level.entry.x0,false,game.level.def);
       else if(wd.isSolid(x,y-1)&&h%5===0)this.straw(ctx,px+16,py+6,h,false);
@@ -261,15 +261,13 @@ class PaintedArt extends AltarArt {
   }
 
   drawRitual(renderer, game) {
-    const ctx=renderer.ctx, wd=game.world, R=game.level.rooms[0];
+    const ctx=renderer.ctx, wd=game.world;
     // The stone base, candles and the two earlier sacrifices' bones are the procedural layer
     // underneath. Bones, not ghost sheep. The altar itself is a real Prop now — see drawProp — and
     // draws in its own turn through the ordinary prop pass, not here.
     if (wd.ritualArt) ctx.drawImage(wd.ritualArt.canvas, wd.ritualArt.x, wd.ritualArt.y);
-    // Room-edge storage is inset into the solid wall band, never an invisible obstacle on a path.
-    const yy=(R.y+0.7)*TILE;
-    PIXEL_ENV.draw(ctx,'barrel',(R.x+1.4)*TILE,yy+9,22);
-    PIXEL_ENV.draw(ctx,'hay',(R.x+2.4)*TILE,yy+14,35);
+    // The corner store (a barrel, straw) is real furniture on the floor now, put down with the
+    // altar in `Game.startLevel`; painted into the wall band it read as stuck in the stone.
   }
 
   drawProp(renderer,p) {

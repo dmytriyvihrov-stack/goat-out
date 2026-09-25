@@ -381,7 +381,7 @@ men in it are down. Load-bearing:
 `drawVeil`, `TUNING.clamp`). A body in the mouth only delays it. `GEN_RULES.clamp` floods round each
 stoned mouth; `carveSecret`, `carveVault` and wide `carveCorridor` guard the leaks it found.
 
-**Doors that open for you.** `fromRoom` doors break when that room's men are dead
+**Doors that open for you.** `fromRoom` doors swing open (`open`, never `broken`) when that room's men are dead
 (`game.updateClearDoors`; not gates, seals, vault). Butting a soul gate lays a violet trail to what opens
 it (`game.guideTo`, `drawGuide`, `TUNING.soul.guide`). The **clock door** (`prop.door.clockFor`,
 `levelDef.clockDoors`, level three on) stands open (`open` 1), shuts on `clockEase` at 9 s =

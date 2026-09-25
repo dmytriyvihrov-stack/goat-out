@@ -340,10 +340,19 @@ const PIXEL_ART = {
   draw(ctx, id, angle, moving, t, x) {
     const u = PIXEL_ASSETS.units[id]; if (!u) return false;
     // `% 8` before the + 14: an angle past about -11 rad (a heading nobody wrapped) made it negative.
-    const d = (Math.round(angle / (Math.PI / 4)) % 8 + 14) % 8;
+    const [d, flip] = this.facing(id, angle);
     const f = moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d];
-    this.frame(ctx, f, id);
+    this.frame(ctx, f, id, 1, flip);
     return true;
+  },
+  // Which packed facing a heading draws, and whether mirrored. The goat's up-right view was packed
+  // with both horns swept forward over his nose — every other view sweeps them back — which caught
+  // the eye on every run toward the top right (playtest, 25 Sep 2026). His up-left view mirrored is
+  // that view drawn right: the back views carry no mark on one side, and `PIXEL_FACE` / `PIXEL_NECK`
+  // were measured mirror-true between the two, so nothing hung on him moves.
+  facing(id, angle) {
+    const d = (Math.round(angle / (Math.PI / 4)) % 8 + 14) % 8, m = PIXEL_MIRROR[id] && PIXEL_MIRROR[id][d];
+    return m === undefined ? [d, false] : [m, true];
   },
 
   // The horns of whichever goat frame `draw` just put down, found off the atlas rather than
@@ -472,10 +481,11 @@ const PIXEL_ART = {
     const H = TUNING.goat.hornLooks, antler = !!mods.antlers;
     const look = mods.bomb ? 'lava' : mods.splash ? 'venom' : null;
     if (!antler && !look) return;
-    const u = PIXEL_ASSETS.units[id], d = (Math.round(angle / (Math.PI / 4)) % 8 + 14) % 8;
+    const u = PIXEL_ASSETS.units[id], [d, flip] = this.facing(id, angle);
     const f = moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d];
     const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, smooth = ctx.imageSmoothingEnabled;
     ctx.save(); ctx.imageSmoothingEnabled = false;
+    if (flip) ctx.scale(-1, 1);   // the frame `draw` mirrored (`facing`): the horns go with it
     ctx.translate(-f[4] * k, -f[5] * k); ctx.scale(k, k);
     const all = this.hornsOf(f), mid = all.reduce((s, h) => s + h.base[0], 0) / (all.length || 1);
     // Which way is "back" on this facing: away from his nose. 0 on the straight front and back views.
@@ -547,6 +557,10 @@ if (typeof location !== 'undefined') {
   if (/aspacked/.test(location.hash)) Object.assign(ART_PASS, { hunter: 0, clubman: 0, floors: false });
   else ART_PASS.set(true);
 }
+
+// Facings drawn as another facing mirrored, per unit (`PIXEL_ART.facing`): the goat's up-right (5)
+// is his up-left (3) turned over, since the packed 5 had its horns swept the wrong way.
+const PIXEL_MIRROR = { goat: { 5: 3 } };
 
 // The environment half of the same pass (output/pixel-environment-2026-09-23, packed by
 // tools/pack-pixel-env.ps1 into js/pixel-env-assets.js): the furniture of a room, the things that

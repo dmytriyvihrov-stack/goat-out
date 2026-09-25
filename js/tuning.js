@@ -730,7 +730,12 @@ const TUNING = {
     // take. It is never in the way of the only way through: the generator only sets one down on
     // open floor with a clear tile all round it (`GEN_RULES.rocks`).
     rock: { r: 14, hits: 2 },
-    bomb: { r: 11, fuse: 1.6, blastR: 1.5 * TILE, nearR: 0.56 * TILE, dmgNear: 2, dmgFar: 1, impulse: 20 * TILE, chance: 0.45 },
+    // `ring`: the lit fuse drawn as the blast's own reach on the floor (`Renderer.drawBombFuse`), a
+    // yellow rim closing round from the top that is a whole circle the moment it goes off (playtest,
+    // 25 Sep 2026: "it explodes when the circle is complete"). `cell` is its grid in world px, `track`
+    // the alpha of the unburnt part, `rim` of the burnt, `blink` how fast the shut ring flickers.
+    bomb: { r: 11, fuse: 1.6, blastR: 1.5 * TILE, nearR: 0.56 * TILE, dmgNear: 2, dmgFar: 1, impulse: 20 * TILE, chance: 0.45,
+      ring: { cell: 2, track: 0.16, rim: 0.9, blink: 30 } },
     // A stand of arms. Grab what is in it, carry it, let go to throw it. The sword goes through
     // the first man it finds; the shield knocks a row of them flat and turns bullets while carried.
     weapon: {
