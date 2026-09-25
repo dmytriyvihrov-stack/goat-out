@@ -282,7 +282,7 @@ earlier canons). `room.role`: `pen`, `calm`, `canon`, `mix`, `trap`, `arena`, `m
 `corridorW: 5` eats room borders, so it needs furniture.
 
 **The cave is third.** It has no killbox, `lonePosts`, grating (`spikes: 0`) or trap room. Ladder:
-26.8 / 38.9 / 64.3 / 96.0 / 104.5 / 139.0 / 146.1 / 159.8, and THE DARK 67.9 beside the fifth (1.72); `GEN_RULES.harder` and `balance.js` hold each
+29.3 / 39.7 / 67.5 / 97.3 / 108.4 / 141.1 / 151.7 / 163.8, and THE DARK 72.5 beside the fifth (1.73); `GEN_RULES.harder` and `balance.js` hold each
 level above the last. Later floors draw cave rooms via `known`, so `GEN_RULES.grass` allows grass on the
 cave and later floors that drew one — grass *before* the cave fails.
 
@@ -365,7 +365,7 @@ contents by `paintStartRoom`. The ritual altar is a real `table` Prop with `isAl
 
 **Soul gates.** `levelDef.gates`: two rest rooms (`REST_TEMPLATE`, role `rest`, off the curve, out of
 `ordinaryRooms`), never the last room, a set piece, the vault's room or a teaching room. Soul on the floor
-via `placeSoul` — or, on a `levelDef.gateKeeper` level (THE ALTAR), in a **keeper**: a `keeper` bearer
+via `placeSoul` — or, on a `levelDef.gateKeeper` level (every floor since 1.73; never the mouse's gate), in a **keeper**: a `keeper` bearer
 spawned on the soul's spot, ensouled with his kind's hearts + `soulKeeper.hp` (one), `soulKeeper.speed`, `fireCare` /
 `trapSense` like the seer, his swing lighting witchfire where it lands (`Enemy.keeperFire`); `bossPrize`
 drops his soul tagged `e.soulGate`. Placed, off the curve; `GEN_RULES.soulgate` requires exactly him. `gateSpot` narrows the exit and hangs a `gate: true` door with no hit points (`smash`
@@ -466,9 +466,9 @@ New harm, pass a source.
 ### Enemy kinds
 
 **One rule for every kind** (1.72, `TUNING.boss`). Without the outline a man has one heart, whatever his
-kind (the Seer's second and the butcher's three went). A boss (`e.boss`, `Renderer.isBoss`: never the
-rat ogre) is the champion version of his kind: `boss.hp` hearts (the ogre, boss-only, his own
-`butcher.hp`), drawn × `boss.scale` on top of his kind's sheet fit (`Renderer.bodyScaleOf`, which
+kind (the Seer's second went) — except the butcher, `champion.hp` (3). A boss (`e.boss`, `Renderer.isBoss`: never the
+rat ogre) is the champion version of his kind: `boss.hp` hearts, or his kind's own plus one where
+that is more (the butcher 4; the ogre, boss-only, his own `butcher.hp`), drawn × `boss.scale` on top of his kind's sheet fit (`Renderer.bodyScaleOf`, which
 THE DARK's eyes share) and outlined — `Renderer.bossOutline` lays his own body as a flat silhouette
 `outline.px` out on eight sides, yellow, over a dark `back` ring, via a canvas shadow (one exact
 colour, blur 0) so it is hard pixels, never a glow. Set in `startLevel` off the spawn's `boss`.
@@ -521,8 +521,8 @@ held by `GEN_RULES.ogre`. `daze` / `balk` break the crouch, never the leap.
 
 **Butcher and soul-bearers.** The BUTCHER is the brute renamed (1.72) — every player-facing string
 says BUTCHER; the code keeps `champion` (a `bearer` with the flag, `THREAT.champion`, `TUNING.champion`)
-and the run code's killer token `brute`, because kind `butcher` is the ogre (shown as OGRE). One heart
-off a ring, a boss in one. `Enemy.unliftable` (ogre, champion, soul-bearer) — TOO BIG / THE SOUL
+and the run code's killer token `brute`, because kind `butcher` is the ogre (shown as OGRE). Three hearts
+(`champion.hp`) off a ring, four as a boss. `Enemy.unliftable` (ogre, champion, soul-bearer) — TOO BIG / THE SOUL
 HOLDS HIM. `Enemy.atk(key)` reads `TUNING.champion` first; `knockMul()` = `cfg.flingMul` ×
 `champion.flingMul` × `soulBearer.flingMul`; `Enemy.splatLimit` scales `splatSpeed` by it (or a
 soul-butcher is unkillable). The butcher wears the old `butcher` sheet and has the charge (1.66,

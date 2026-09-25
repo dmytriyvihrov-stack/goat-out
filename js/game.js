@@ -1361,11 +1361,12 @@ class Game {
       // Which room he was put in. Nothing but a sealed arena reads this — it is how `updateSeals`
       // knows the fight behind a pair of doors is actually over.
       e.room = s.roomIndex === undefined ? -1 : s.roomIndex;
-      // The butcher (`champion`): a clubman's heart in the old Butcher's body, with a charge.
-      if (s.champion) e.champion = true;
-      // One rule for every kind (`TUNING.boss`): without the outline, one killing blow; a boss wears
-      // it, stands bigger and takes `boss.hp` — the ogre, a boss-only kind, his own `butcher.hp`.
-      if (s.boss) { e.elite = s.kind !== 'butcher'; e.hp = s.kind === 'butcher' ? e.cfg.hp : TUNING.boss.hp; e.maxHp = e.hp; }
+      // The butcher (`champion`): the old Butcher's body, a charge, and `champion.hp` hearts — the
+      // one kind that is heavy without being a boss (25 Sep 2026: "the ordinary butcher, 3 hearts").
+      if (s.champion) { e.champion = true; e.hp = e.maxHp = TUNING.champion.hp; }
+      // A boss wears the outline, stands bigger and takes `boss.hp`, or his kind's own hearts plus
+      // one where those are more (the butcher: 3 → 4). The ogre, boss-only, keeps his `butcher.hp`.
+      if (s.boss) { e.elite = s.kind !== 'butcher'; e.hp = s.kind === 'butcher' ? e.cfg.hp : Math.max(TUNING.boss.hp, e.hp + 1); e.maxHp = e.hp; }
       // A rifle posted to watch a door has no blind side worth walking round.
       if (s.alert) e.watchful = true;
       // The wheel's two men: one who never reads a hazard and one who always does. It is the same

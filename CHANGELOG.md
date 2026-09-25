@@ -5,6 +5,19 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.73 — the butcher is heavy again; every gate has a keeper
+
+Asked for on 25 Sep 2026, after 1.72.
+
+- **The butcher takes three** (`champion.hp` 3) without the outline, and **four as a boss**: a boss
+  takes `boss.hp` or his kind's own hearts plus one, whichever is more. `THREAT.champion` back to 3.2.
+- **Every floor's soul gates have a keeper** (`gateKeeper` on every level and THE DARK; never the
+  mouse's gate): the soul is in a clubman with his own heart plus one, the outline, a quicker step
+  and a club that lights witchfire, and it drops when he does.
+- Balance totals 29.3 / 39.7 / 67.5 / 97.3 / 108.4 / 141.1 / 151.7 / 163.8, THE DARK 72.5; every rule holds.
+
+---
+
 ## 1.72 — one rule for every kind; the butcher; level one rebuilt round its lessons
 
 Asked for on 25 Sep 2026, a long play of THE ALTAR and THE DARK.

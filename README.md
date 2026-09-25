@@ -100,7 +100,7 @@ to carry, who charge you from across a room; blinking Seers whose runes erupt in
 that no boon protects you from; Hunters whose bullets travel and hit their own; the ogre, the cult's
 half-beast, who takes four, is never knocked back, leaps onto where you stand and brings his fists down
 on the floor all round him; the hounds; and the wraiths. One rule for all of them: a man without a
-yellow outline dies to one killing blow; a boss wears the outline, stands a size bigger and takes three. They shout short lines when they see you, hear
+yellow outline dies to one killing blow (the Butcher takes three); a boss wears the outline, stands a size bigger and takes three. They shout short lines when they see you, hear
 you, swing at you or watch one of their own come apart — and they read the room: fire, lit braziers, a
 rune about to go off and the sweeping arms of the Mill. Not all of them read it correctly.
 

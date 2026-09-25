@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.72';
+const BUILD = '1.73';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -970,10 +970,11 @@ const TUNING = {
   // `back` line one more px out so it still reads on yellow straw.
   boss: { hp: 3, scale: 1.14, outline: { px: 1, color: '#ffd23f', back: '#2a1a08', alpha: 0.95 } },
   // The BUTCHER (the brute until 1.72; the code's flag is still `champion`): a clubman with a
-  // cleaver, a charge and too much weight to carry. Out of a ring he dies to one killing blow like
+  // cleaver, a charge and too much weight to carry. Out of a ring he takes three killing blows, unlike
   // anybody without the outline; in one he is a boss by the rule above. Since 1.66 he wears what
   // was the old Butcher's body (the bull's skull, the apron, the cleaver), hence the name.
-  champion: { scale: 1.06, spikes: 5,   // on the old Butcher's sheet (48 px), not the `brute` sheet (38)
+  // `hp`: out of a ring he takes three killing blows, in one four (`boss.hp` or his own plus one).
+  champion: { hp: 3, scale: 1.06, spikes: 5,   // on the old Butcher's sheet (48 px), not the `brute` sheet (38)
     // His own arm, not the clubman's: the clubman's got shorter and quicker, the butcher's did not.
     reach: 1.0 * TILE, windup: 0.62, swing: 0.16, recover: 0.6,
     // Heavy: a headbutt moves him this much of what it moves a clubman, and he is never carried.
@@ -999,7 +1000,7 @@ const TUNING = {
   // the soul adds `hp` more hearts and the amber haze, a headbutt moves him `flingMul` of what it
   // would, and nothing carries him out of the room. Edited on ENEMIES.
   soulBearer: { hp: 1, flingMul: 0.6 },
-  // The keeper of a gate (`levelDef.gateKeeper`, THE ALTAR's middle gate, 1.72): the soul that
+  // The keeper of a gate (`levelDef.gateKeeper`, every floor's gates since 25 Sep 2026): the soul that
   // lifts that gate is not lying on the floor, it is in a clubman standing over where it would lie,
   // and it comes out of him when he goes down (`game.bossPrize`). He is a soul-bearer like any
   // other (`soulBearer.flingMul`, unliftable, lit) with `hp` hearts in all; he walks at `speed` of a
@@ -1547,7 +1548,7 @@ const DOORS = { far: 0.7 };
 // The seer and the butcher came down in 1.72 (2.8 and 3.2) when the one rule (`TUNING.boss`) took
 // every man without the outline to one heart: the mage still never closes and the butcher still
 // charges, but one killing blow is all either of them now takes. A boss is priced × 1.6 on top.
-const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.4, champion: 2.6, butcher: 5 };
+const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.4, champion: 3.2, butcher: 5 };
 
 const ENCOUNTER = {
   // How often a kind is drawn once it is available. Clubmen stay the backbone of every crowd.
@@ -2238,7 +2239,7 @@ const LEVELS = [
     // budget buys: the first three rooms and then him at 10.8 was the climb that ran away
     // (24 Sep 2026: "the escalation at the start went a bit fast — smoother").
     arenas: [{ at: 4, boss: 'butcher', escorts: 1 }, { at: 9, boss: 'seer', sealed: true }],
-    gates: [5, 10],
+    gates: [5, 10], gateKeeper: true,
     millAt: 7, heals: 2, souls: 2, racks: 0.16, traps: 1, crates: 0.3, barrels: 0.3, vaultAt: 6,
     // The first escort of the run is the loudest one: a floor about fire and being found is the
     // right floor to be handed something that gives you away (js/beasts.js).
@@ -2287,7 +2288,7 @@ const LEVELS = [
     // rather than a handful of loose stones (`placeRockCluster`, `js/gen.js`).
     cave: true, grass: 0.8, rocks: 0.7, rockClusters: 0.35, grassColor: '#3d5a2a', grassHi: '#6f8f45', grassDark: '#223618',
     arenas: [{ at: 4, boss: 'butcher' }, { at: 10, boss: 'champion' }],
-    gates: [6, 11],
+    gates: [6, 11], gateKeeper: true,
     // No grating: the floor growing teeth is THE ROAD's own new thing and it is one floor later now.
     // What this floor has instead is the rock's own (`TUNING.cave.spikes`), which is not a trap — it
     // never arms and never rests, it is simply standing there — so the cave is not short of a hazard.
@@ -2323,7 +2324,7 @@ const LEVELS = [
     theme: 'The processional road out of the compound, watched the whole way by rifles.',
     decor: 'Colonnades, long naves, stub cover, a killbox, grating underfoot, the Great Hall.',
     arenas: [{ at: 5, boss: 'butcher' }, { at: 11, boss: 'butcher' }],
-    gates: [7, 12],
+    gates: [7, 12], gateKeeper: true,
     millAt: 8, heals: 2, souls: 2, hallAt: 9, hallThreat: 11, galleryAt: 6, killboxAt: 10, lonePosts: 3, racks: 0.14, traps: 2,
     // A shell to put between you and the line, or a bird that tells the line where you are.
     // THE LINE is a road, and a horse is a thing that runs a road.
@@ -2365,7 +2366,7 @@ const LEVELS = [
     theme: 'An open threshing floor, swept for grain and now for bodies.',
     decor: 'Wide yards, posts, tables, braziers, rings of hay, almost no wall at all.',
     arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'champion' }],
-    gates: [5, 11],
+    gates: [5, 11], gateKeeper: true,
     millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, barrels: 0.3, vaultAt: 7, traps: 1,
     // The crow is met on the widest, fullest floor in the game, because the one thing it asks for is
     // bodies and this is the floor that has them (js/beasts.js). Open ground is the horse's too.
@@ -2403,7 +2404,7 @@ const LEVELS = [
     theme: 'The bridge that carries the compound’s stores across the ravine.',
     decor: 'Pillar gates, table throats, hunters and hounds crowding every narrow doorway.',
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'seer' }, { at: 14, boss: 'butcher' }],
-    gates: [8, 13],
+    gates: [8, 13], gateKeeper: true,
     millAt: 7, heals: 3, souls: 2, hallAt: 12, hallThreat: 24, galleryAt: 2, killboxAt: 6, lonePosts: 4, racks: 0.16, spikes: 0.35, crates: 0.35, barrels: 0.25, traps: 2, vaultAt: 5,
     beasts: ['tortoise', 'crow', 'horse'],
     encounters: {
@@ -2430,7 +2431,7 @@ const LEVELS = [
     theme: 'The rafters over the great hall, where the roof itself has started to give.',
     decor: 'Holes in the boards, windows in the walls, narrow catwalks, the same fall under both.',
     arenas: [{ at: 4, boss: 'seer' }, { at: 10, boss: 'butcher' }, { at: 14, boss: 'champion' }],
-    gates: [6, 13],
+    gates: [6, 13], gateKeeper: true,
     // Windows are this level's and nobody else's: a hole in a wall is a drop, and the drop is the
     // one new thing THE RAFTERS has. Every other level's walls are the inside of a compound.
     millAt: 7, heals: 4, souls: 2, killboxAt: 12, lonePosts: 3, racks: 0.16, spikes: 0.4, crates: 0.3, barrels: 0.3, vaultAt: 8, windows: 0.55, traps: 1,
@@ -2461,7 +2462,7 @@ const LEVELS = [
     theme: 'The ossuary beneath the bridge, where nothing the compound ever killed stayed put.',
     decor: 'Stone niches and lanes, open floor between them, wraiths arriving from behind.',
     arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 13, boss: 'seer' }],
-    gates: [8, 12],
+    gates: [8, 12], gateKeeper: true,
     millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, barrels: 0.2, traps: 2, vaultAt: 7,
     beasts: ['crow', 'tortoise', 'horse'],
     encounters: {
@@ -2563,7 +2564,7 @@ const DARK_LEVEL = {
   theme: 'The cellars under the threshing floor, where the cult keeps what it does not want seen.',
   decor: 'Low vaults and cells, a standing lamp or two to a room, a lantern on the wall by every door, and nothing else lit.',
   arenas: [{ at: 3, boss: 'seer' }, { at: 7, boss: 'butcher' }, { at: 11, boss: 'champion' }],
-  gates: [5, 9],
+  gates: [5, 9], gateKeeper: true,
   heals: 4, souls: 2, vaultAt: 6, racks: 0.2, spikes: 0.15, crates: 0.45, barrels: 0.45, traps: 0, lonePosts: 0,
   beasts: ['crow', 'goose', 'horse'],
   encounters: {
