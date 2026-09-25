@@ -474,6 +474,9 @@ class Enemy {
     this.strideAt = game.timer;
     const rate = cfg.turn * (this.runSp < this.speed * 0.3 ? cfg.pivot : 1) * dt;
     this.runAng += clamp(angleDiff(this.runAng, want), -rate, rate);
+    // Kept within one turn: circling the ring it wound up past ±14 rad, and every eight-facing lookup
+    // (`(round(a / 45deg) + 14) % 8`) went negative and threw inside the draw.
+    this.runAng = Math.atan2(Math.sin(this.runAng), Math.cos(this.runAng));
     const left = Math.abs(angleDiff(this.runAng, want));
     const pace = speed * lerp(1, cfg.turnSlow, clamp(left / Math.PI, 0, 1));
     this.runSp += clamp(pace - this.runSp, -cfg.brake * this.speed * dt, cfg.accel * this.speed * dt);

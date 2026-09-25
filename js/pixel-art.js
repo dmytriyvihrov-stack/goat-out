@@ -100,7 +100,8 @@ const PIXEL_ART = {
   // standing still is his own idle frame rather than a phase of the stride.
   draw(ctx, id, angle, moving, t, x) {
     const u = PIXEL_ASSETS.units[id]; if (!u) return false;
-    const d = (Math.round(angle / (Math.PI / 4)) + 14) % 8;
+    // `% 8` before the + 14: an angle past about -11 rad (a heading nobody wrapped) made it negative.
+    const d = (Math.round(angle / (Math.PI / 4)) % 8 + 14) % 8;
     const f = moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d];
     this.frame(ctx, f, id);
     return true;
@@ -232,7 +233,7 @@ const PIXEL_ART = {
     const H = TUNING.goat.hornLooks, antler = !!mods.antlers;
     const look = mods.bomb ? 'lava' : mods.splash ? 'venom' : null;
     if (!antler && !look) return;
-    const u = PIXEL_ASSETS.units[id], d = (Math.round(angle / (Math.PI / 4)) + 14) % 8;
+    const u = PIXEL_ASSETS.units[id], d = (Math.round(angle / (Math.PI / 4)) % 8 + 14) % 8;
     const f = moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d];
     const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, smooth = ctx.imageSmoothingEnabled;
     ctx.save(); ctx.imageSmoothingEnabled = false;
@@ -264,7 +265,7 @@ const PIXEL_ART = {
   // own grid: at this size a shape computed from an ellipse comes out as noise. Only what stays on
   // him is here; what leaves him — the drip, the steam, the flame — is `PaintedArt.goatFx`.
   face(ctx, angle, t, mods, g) {
-    const d = (Math.round(angle / (Math.PI / 4)) + 14) % 8, P = PIXEL_FACE[d], F = TUNING.goat.face, A = PIXEL_FACE_ART;
+    const d = (Math.round(angle / (Math.PI / 4)) % 8 + 14) % 8, P = PIXEL_FACE[d], F = TUNING.goat.face, A = PIXEL_FACE_ART;
     const view = d === 0 ? 'front' : d === 2 || d === 6 ? 'side' : 'diag', flip = d === 1 || d === 2;
     // THE FULL THROAT: the mouth drawn out into a horn's bell, a size up while he is shouting.
     if (mods.screamStun && P.mouth) {
