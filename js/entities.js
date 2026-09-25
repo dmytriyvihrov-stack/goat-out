@@ -646,6 +646,15 @@ class Goat {
       }
       // In the air he is over your horns, not in front of them.
       if (e.kind === 'butcher' && e.state === 'hop') continue;
+      // The bare horns do not hurt him (`butcher.hornsHurt`, 25 Sep 2026): the goat rebounds off him
+      // and the room is told once what does. No stagger either — a free stagger per butt was a lock.
+      if (e.kind === 'butcher' && !TUNING.butcher.hornsHurt) {
+        this.vx = -ax * 3 * TILE; this.vy = -ay * 3 * TILE; e.aware = true;
+        e.flash = Math.max(e.flash, 0.05);
+        game.shake(2); game.audio.sfxThud(); game.particles(this.x + ax * this.r, this.y + ay * this.r, 5, PALETTE.ash, 200);
+        if (!game.ogreHornsTold) { game.ogreHornsTold = true; game.floatText(e.x, e.y - 50, 'THE HORNS DO NOTHING. BLADES. FIRE.', PALETTE.ashHi); }
+        continue;
+      }
       if (e.kind === 'butcher') {
         e.hp -= 1; e.flash = 0.18;
         // Planted while he crouches or winds a slam: the hit counts but does not stop it, and you are
@@ -1654,10 +1663,9 @@ class Prop {
     return null;
   }
 
-  // A coop the goat walked straight past. Once it is sliding off the trailing edge of the picture —
-  // the left one, since rooms chain left to right and he only ever leaves a coop behind him that way
-  // — she does not wait to be let out: the slats give and she comes running after him. Nobody finds
-  // a bird by going back for her, and a coop left shut was a bird the level never had.
+  // A coop that calls. It used to give on its own once the goat had walked past it and it slid off
+  // the trailing edge of the picture; since 25 Sep 2026 it does not ("walled in is walled in"): a
+  // coop left shut stays shut, and the clamp takes it with the room (`updateClamps`, `Beast.lost`).
   updateCoop(game, dt) {
     if (this.broken || !game.level || game.state !== 'play') return;
     const own = roomAt(game.level, this.x, this.y);
@@ -1672,16 +1680,6 @@ class Prop {
       game.audio.sfxAnimal(this.holds || 'chicken');
       game.floatText(this.x, this.y - 30, '!', PALETTE.hen);
     }
-    // Behind him means a room he has already moved on from, not the left of the screen: a room can
-    // be hung above or below the last one, so the coop he walked past can be sliding off any edge.
-    const cur = roomAt(game.level, game.goat.x, game.goat.y);
-    if (!cur || cur.index <= own.index) return;
-    const v = game.renderer.view(game.cam);
-    const behind = Math.max(Math.abs(game.cam.x - this.x) / (v.w / 2), Math.abs(game.cam.y - this.y) / (v.h / 2));
-    if (behind < TUNING.prop.chicken.breakOut || behind > 1.6) return;
-    this.hits = TUNING.prop.coop.hits - 1;
-    this.breakCoop(game);
-    game.floatText(this.x, this.y - 52, (this.holds || 'chicken') === 'chicken' ? 'SHE BROKE OUT' : 'IT BROKE OUT', PALETTE.hen);
   }
 
   // She reaches her man. He dies of it the way anything the room throws at him does, and she is

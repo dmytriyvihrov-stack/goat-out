@@ -1387,6 +1387,42 @@ const ARENA_TEMPLATE = { name: 'arena', rows: [
   '##############',
 ]};
 
+// The ogre's ring (25 Sep 2026). The horns do nothing to him (`butcher.hornsHurt`), so the room
+// is the weapon or there is none: three stands, every one a sword (`gen.js`), and the bowls moved
+// in off the wall to where a fight passes them, to be butted over onto him.
+const OGRE_ARENA_TEMPLATE = { name: 'ogre ring', rows: [
+  '##############',
+  '#............#',
+  '#..w......w..#',
+  '#....P..P....#',
+  '#.L........L.#',
+  '#...B..X.....#',
+  '#.........B..#',
+  '#....P..P....#',
+  '#..hh.w..hh..#',
+  '#............#',
+  '#............#',
+  '##############',
+]};
+
+// The first ogre of a run, on THE ALTAR: wide, two pillars and nothing else standing in the way,
+// so what the room hands you — the swords, the bowls — is the first thing you see in it.
+const OGRE_FIRST_TEMPLATE = { name: 'ogre hall', rows: [
+  '####################',
+  '#..................#',
+  '#..w............w..#',
+  '#..................#',
+  '#.L......P.......L.#',
+  '#..................#',
+  '#....B.....X...B...#',
+  '#..................#',
+  '#.........P........#',
+  '#..................#',
+  '#..hh....w.....hh..#',
+  '#..................#',
+  '####################',
+]};
+
 // The Mill: a ritual grinding wheel with a shorter reach now, in a room built tighter around it.
 // 'M' is the hub. The room is still taller than the arms are long — there is a lane along the top
 // and the bottom that the sweep never reaches — but the whole footprint shrank with the arm, so a

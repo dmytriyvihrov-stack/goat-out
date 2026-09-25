@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.70';
+const BUILD = '1.71';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -454,16 +454,21 @@ const TUNING = {
   // the brute goes flying, the ogre does not, and that is the difference you read across the room.
   butcher: {
     radius: 22, speed: 0.55 * CULT_PACE, sight: 9, cone: Math.PI * 0.7, scale: 1.15,
-    // Four hearts; a headbutt costs him one wherever it lands, and one while he crouches or winds a
-    // slam still counts but does not stop him. `reach` is only what the dev tools and a decoy read.
-    hp: 4, reach: 1.35 * TILE, damage: 1, stun: 1.5, stagger: 0.4,
+    // Four hearts, and the bare horns take none of them (25 Sep 2026): a headbutt only rocks him
+    // (`stagger`, never in a crouch or a slam). What costs him a heart is the room — a blade, fire
+    // off the bowls, a bomb, a body thrown at killing speed — which is why his arena always stands
+    // braziers and swords (`OGRE_ARENA_TEMPLATE`). `reach` is only what the dev tools and a decoy read.
+    hp: 4, reach: 1.35 * TILE, damage: 1, stun: 1.5, stagger: 0.4, hornsHurt: false,
     // `dist`: the longest leap; `short` tiles short of the goat he aims (0: on him); `over`: he goes
     // over a drop, but never lands in one. `cd` s on the floor between leaps, so he also walks.
-    leap: { min: 2.6, max: 7, dist: 7, short: 0, over: true, minHop: 1.5, wind: 0.62, air: 0.62, land: 1.0,
+    // 25 Sep 2026: the crouch and the flight a tenth slower (0.62 each), so the spot can be left.
+    leap: { min: 2.6, max: 7, dist: 7, short: 0, over: true, minHop: 1.5, wind: 0.68, air: 0.68, land: 1.0,
       // The cross of witchfire his landing used to leave (24 Sep 2026) was taken out the next day,
       // soul or no soul: a floor that burns wherever he lands was "a cheat" on top of the ring.
       radius: 1.6, damage: 1, knock: 1.4 * TILE, lift: 46, cd: 2.2 },
-    slam: { near: 1.5, range: 1.9, wind: 0.72, recover: 0.95, damage: 1, knock: 1.3 * TILE },
+    // The fists a tenth slower to come down (0.72), and longer on his knees after (0.95): the
+    // window a blade or a shove into the coals is put through.
+    slam: { near: 1.5, range: 1.9, wind: 0.8, recover: 1.3, damage: 1, knock: 1.3 * TILE },
     burnTick: 1.0, burnHearts: 1,   // he comes out of a fire scorched and one heart down, not dead
     // Alight he does not run from it — he comes at you: `speed` times his stride, and every windup,
     // swing and recovery runs at `tempo` times the clock.
@@ -824,11 +829,11 @@ const TUNING = {
       launchSpeed: 760, drag: 0.35, turn: 7.5, seekRange: 15, seekArc: Math.PI * 0.75,
       stunned: 0.9, life: 4.0,
       // She walks the same flow field the men chase on and steps round anything `hazardAt` calls a
-      // hazard, looking `look` tiles ahead. A coop the goat walks past gives on its own once it is
-      // `breakOut` of the half-screen behind the middle of the picture, going off its left edge. A hen still with
+      // hazard, looking `look` tiles ahead. A coop the goat walks past stays shut, and the clamp
+      // walls it in with its room (25 Sep 2026; it used to break out after him). A hen still with
       // him — inside `saveR` tiles — when he reaches the stairs is worth `saveHearts` for the rest of
       // the run, once a level however many he brings.
-      look: 0.9, detourFor: 0.5, breakOut: 0.8, saveR: 8, saveHearts: 1,
+      look: 0.9, detourFor: 0.5, saveR: 8, saveHearts: 1,
     },
     // ---- THE ESCORTS ----
     // Three animals built on the hen's frame and nothing else: found in the first third of a floor,
@@ -881,7 +886,8 @@ const TUNING = {
     // much of its pace a man in the way costs it, for `slowFor` s.
     // `r` is its body, not its picture: a tile-wide way out (every soul gate, a one-tile corridor) has
     // to take it the way it takes a goat, so it is a goose's width under a sprite twice the size.
-    horse: { r: 13, speed: 1.15 * PACE, hp: 5, kickWind: 0.28, kickGap: 0.42, bowl: 7 * TILE, daze: 1.2,
+    // `speed` 1.15 × PACE until 25 Sep 2026 ("a bit slower").
+    horse: { r: 13, speed: 1.02 * PACE, hp: 5, kickWind: 0.28, kickGap: 0.42, bowl: 7 * TILE, daze: 1.2,
       slow: 0.55, slowFor: 0.35, stuckFor: 0.8, sideFor: 0.45, ready: 1.8,
       // It has won when it stands within `homeR` tiles of the stairs; within `tellR` of it the goat
       // hears which of them got there first.
@@ -1105,14 +1111,16 @@ const TUNING = {
     alpha: 0.98, color: [5, 4, 10], res: 3, flicker: 0.08, maxFires: 140,
     near: 4.5, floor: 0.3, sil: 0.94, body: '#07060c', rim: 'rgba(150,158,210,0.55)',
     self: [1.3, 0.62],
-    edge: { alpha: 0.85, from: 0.35 },
-    lights: { brazier: [4.8, 1], lamp: [4.2, 0.95], sconce: [2.3, 0.85], fire: [2.4, 0.8], burning: [2.8, 0.9], soul: [1.8, 0.55],
+    edge: { alpha: 0.35, from: 0.35 },   // 0.85 until 25 Sep 2026: a bright frame round every wall read as a box
+    // Flames reach further since 25 Sep 2026 ("a little more light"): brazier 4.8, lamp 4.2,
+    // sconce 2.3, fire on the floor 2.4, a man alight 2.8.
+    lights: { brazier: [5.4, 1], lamp: [4.7, 0.95], sconce: [2.8, 0.9], fire: [2.8, 0.85], burning: [3.1, 0.9], soul: [1.8, 0.55],
       bearer: [2.4, 0.6], exit: [3.4, 0.85], blast: [6, 1], muzzle: [3.4, 0.9], rune: [2.2, 0.55] },
     eyes: { range: 24, blinkGap: [2.2, 5.5], blinkTime: 0.13, cell: 2.2, glow: 0.65,
       kinds: { seer: ['#f6f0ff', '#8f6bff', 27, 5, 2.4], dog: ['#fff6b8', '#ffab3a', 16, 13, 2.6], wraith: ['#e6fbff', '#6fc3e8', 28, 4, 2.8] } },
     lamps: { min: 1, max: 2, big: 70, apart: 4, door: 2 },
     ai: { sight: { all: 3.5, dog: 5 }, lit: 0.75, lose: 1.2, earCast: 9, earOwn: 1.5, earFresh: 0.3 },
-    fork: { at: 3, apart: 4, band: 0.7 },
+    fork: { at: 3, apart: 4, band: 0.6 },   // band 0.7 until the dark was thinned (25 Sep 2026)
   },
   // A worn patch of wall, once or twice a level: `chance2` is the odds of a second one once the
   // first has found a room, so most levels get one and some get two rather than every level getting
@@ -2517,8 +2525,9 @@ const DARK_LEVEL = {
     // The hound and the seer are the dark's own, so they come oftener than anywhere lit; the head
     // count a room may hold is lower than the lit floor's eight, because the room is not all there.
     weight: { bearer: 5, dog: 4, seer: 3, champion: 2 },
-    from: 5.5, to: 22, ease: 1.2,
-    cap: { men: 6 },
+    // 25 Sep 2026, "a little fewer in the dark": 5.5 → 22 and a cap of six before.
+    from: 5, to: 19.5, ease: 1.2,
+    cap: { men: 5 },
   },
   floor: '#24222b', floorAlt: '#2a2731', wall: '#37333d', wallTop: '#524c5a',
   fog: '#030306', doorChance: 0.2, ironDoors: 0.5, clockDoors: 0.3, stack: 0.25,

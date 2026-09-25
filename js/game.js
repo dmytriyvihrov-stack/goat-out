@@ -353,7 +353,9 @@ class Game {
       // Which side of the new stone it is on is asked of the tiles, not the room list: a corridor
       // belongs to no room, and one half-way down the corridor out of the room he stands in counted
       // as behind the wall and was lost on his side of it.
-      pets = pets || this.props.filter((p) => Beast.animal(p) && !p.held);
+      // A coop still shut counts: an animal never let out is walled in with its room like one left
+      // behind (25 Sep 2026: it no longer breaks out after him).
+      pets = pets || this.props.filter((p) => (Beast.animal(p) && !p.held) || (p.kind === 'coop' && !p.broken));
       const walled = pets.filter((p) => !p.broken && onMouth(p.x, p.y, 0));
       for (const i of m.tiles) w.tiles[i] = T.WALL;
       const open = pets.some((p) => !p.broken) ? this.floodFrom(g.x, g.y) : null;

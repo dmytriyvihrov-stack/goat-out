@@ -246,8 +246,12 @@ function tryGenerate(levelDef, seed, opts) {
   const GAP = 5;
   // Which of the set pieces still lie ahead of room `i`, by width, so a room can be given its fair
   // share of what is left rather than an average that a Great Hall then eats.
+  // An arena's shape is its boss's: the ogre's carries the swords and the bowls the horns cannot
+  // stand in for, and the first one of a run (THE ALTAR's) is the wide hall that shows it.
+  const arenaTpl = (a) => a.boss !== 'butcher' ? ARENA_TEMPLATE : levelIndexOf(levelDef) === 0 ? OGRE_FIRST_TEMPLATE : OGRE_ARENA_TEMPLATE;
   const fixedW = (j) => {
-    if ((levelDef.arenas || []).some((a) => a.at === j)) return ARENA_TEMPLATE.rows[0].length;
+    const aj = (levelDef.arenas || []).find((a) => a.at === j);
+    if (aj) return arenaTpl(aj).rows[0].length;
     if (j === levelDef.millAt) return (levelDef.millLesson ? MILL_LESSON_TEMPLATE : MILL_TEMPLATE).rows[0].length;
     if (j === levelDef.hallAt) return GREAT_HALL_TEMPLATE.rows[0].length;
     if (j === levelDef.galleryAt) return GALLERY_TEMPLATE.rows[0].length;
@@ -302,7 +306,7 @@ function tryGenerate(levelDef, seed, opts) {
     let drawn = false;
     const arena = (levelDef.arenas || []).find((a) => a.at === i);
     if (i === 0) tpl = START_TEMPLATE;
-    else if (arena) tpl = ARENA_TEMPLATE;
+    else if (arena) tpl = arenaTpl(arena);
     else if (i === levelDef.millAt) tpl = levelDef.millLesson ? MILL_LESSON_TEMPLATE : MILL_TEMPLATE;
     else if (i === levelDef.hallAt) tpl = GREAT_HALL_TEMPLATE;
     else if (i === levelDef.galleryAt) tpl = GALLERY_TEMPLATE;
@@ -613,7 +617,8 @@ function tryGenerate(levelDef, seed, opts) {
       // The ambush room's own stand is always the sword: it is the room that teaches the throw, and
       // a thrown sword kills the man it reaches while a thrown shield only knocks him flat — a
       // lesson whose payoff is "he gets back up" is not a lesson anybody keeps.
-      else if (m.c === 'w') { if (room.index >= racksFrom) props.push({ x: px, y: py, kind: 'weapon', weapon: room.isAmbush ? 'sword' : room.isKillbox ? 'shield' : (wIdx++ % 2) ? 'sword' : 'shield' }); }
+      // The ogre's ring is all swords: a blade is one of the few things that costs him a heart.
+      else if (m.c === 'w') { if (room.index >= racksFrom) props.push({ x: px, y: py, kind: 'weapon', weapon: room.isAmbush || (room.arena && room.arena.boss === 'butcher') ? 'sword' : room.isKillbox ? 'shield' : (wIdx++ % 2) ? 'sword' : 'shield' }); }
       else spots.push(m);
     });
     placeTables(tableTiles, W, props);
@@ -1076,6 +1081,10 @@ function tryGenerate(levelDef, seed, opts) {
         for (const [tx, ty, wx, wy] of spots) {
           const under = tileAt(tx, ty);
           if ((under !== T.FLOOR && under !== T.HAY) || tileAt(tx + wx, ty + wy) !== T.WALL) continue;
+          // On a side wall the lantern hangs at a man's shoulder, which on the screen is the tile
+          // above its own: that stretch of wall has to be stone too, or the plate is bolted to the
+          // air of the doorway (25 Sep 2026, a lantern hanging off nothing beside the opening).
+          if (wx && tileAt(tx + wx, ty - 1) !== T.WALL) continue;
           const px = (tx + 0.5 + wx * 0.25) * TILE, py = (ty + 0.5 + wy * 0.25) * TILE;
           if (props.some((p) => p.kind === 'sconce' && len(p.x - px, p.y - py) < 1.5 * TILE)) break;
           props.push({ x: px, y: py, kind: 'sconce', wx, wy });

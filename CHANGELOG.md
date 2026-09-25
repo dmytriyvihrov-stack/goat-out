@@ -5,6 +5,35 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.71 — the ogre is fought with the room; the dark, lit a little more
+
+Asked for on 25 Sep 2026, playing THE DARK and the ogre.
+
+- **The horns do nothing to the ogre** (`butcher.hornsHurt` false). A headbutt bounces the goat off
+  him and does not stagger him (a stagger per butt would have been a lock); the first time, the floor
+  says `THE HORNS DO NOTHING. BLADES. FIRE.` A blade, the coals of a brazier, a bomb or a body thrown
+  at killing speed still cost him a heart each.
+- **His arena hands over the weapons.** Every ogre arena is `OGRE_ARENA_TEMPLATE`: two braziers set in
+  off the walls where the fight passes them, and three stands, every one a sword. THE ALTAR's (the
+  run's first ogre) is `OGRE_FIRST_TEMPLATE`, twenty tiles wide with two pillars, so what the room
+  offers is the first thing seen in it. `GEN_RULES.ogre` holds two braziers and two swords in every one.
+- **Slower to come down, longer on his knees.** The slam's wind 0.72 → 0.8 s and its recovery
+  0.95 → 1.3 s; the leap's crouch and flight 0.62 → 0.68 s each.
+- **The horse runs slower**: 1.15 → 1.02 × PACE.
+- **A coop left shut stays shut.** It no longer breaks out after the goat once it slides off the
+  screen: the clamp walls it in with its room, and the floor says the animal was left behind.
+- **THE DARK**: a little fewer men (curve 5.5 → 22 is now 5 → 19.5, cap six → five; `fork.band`
+  0.7 → 0.6 so the balance report holds it where it now is). Flames reach further (brazier 4.8 → 5.4
+  tiles, lamp 4.2 → 4.7, wall lantern 2.3 → 2.8, fire on the floor 2.4 → 2.8, a man alight 2.8 → 3.1).
+- **The wall lantern hangs on stone.** On a side wall it is drawn a tile up, at a man's shoulder, and
+  was placed where that tile was the doorway itself: it hung off nothing. It now needs wall there too.
+- **The line round the walls in the dark** (`dark.edge`) is dimmer (0.85 → 0.35) and a pillar (stone
+  in a clump of four tiles or fewer) gets none: a square round a column read as a frame round nothing.
+- **The dark is cheaper to draw**: fire on the floor is lit two-by-two tiles at a time (a room gone up
+  in oil was a hundred shadowcasts a frame), and the light map does no `Math.hypot`.
+
+---
+
 ## 1.70 — the layers over the tune thinned; the rooms have a sound of their own
 
 Asked for on 25 Sep 2026: finish the music, the background sounds and the reactions to what happens;

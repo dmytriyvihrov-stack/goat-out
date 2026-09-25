@@ -495,6 +495,21 @@ const GEN_RULES = [
       }
       return true;
     } },
+  // The horns do nothing to the ogre (`butcher.hornsHurt`), so the room he stands in has to hand
+  // over what does: bowls to butt over onto him and blades to throw.
+  { id: 'ogre', text: 'The ogre\'s arena stands two braziers and at least two swords: the horns do nothing to him, the room has to.',
+    check: (L) => {
+      const rings = L.rooms.filter((r) => r.arena && r.arena.boss === 'butcher');
+      if (!rings.length) return null;
+      for (const r of rings) {
+        const inR = (p) => roomAt(L, p.x, p.y) === r;
+        const bowls = L.props.filter((p) => p.kind === 'brazier' && inR(p)).length;
+        const blades = L.props.filter((p) => p.kind === 'weapon' && p.weapon === 'sword' && inR(p)).length;
+        if (bowls < 2) return `${bowls} brazier(s) in the ogre's room ${r.index}`;
+        if (blades < 2) return `${blades} sword(s) in the ogre's room ${r.index}`;
+      }
+      return true;
+    } },
   { id: 'traps', text: 'A trap room is never a set piece nor one of the first two ordinary rooms.',
     check: (L) => {
       const o = L.rooms.filter((r) => ORDINARY.has(r.role)), t = o.filter((r) => r.role === 'trap');

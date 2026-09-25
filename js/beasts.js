@@ -63,8 +63,9 @@ const Beast = {
   lost(p, game) {
     p.broken = true; p.dead = true;
     const g = game.goat;
-    game.audio.sfxAnimal(p.kind, true);
-    game.floatText(g.x, g.y - 46, 'THE ' + Beast.NAME[p.kind] + ' WAS LEFT BEHIND', PALETTE.blood);
+    const kind = p.kind === 'coop' ? p.holds || 'chicken' : p.kind;
+    game.audio.sfxAnimal(kind, true);
+    game.floatText(g.x, g.y - 46, 'THE ' + Beast.NAME[kind] + ' WAS LEFT BEHIND', PALETTE.blood);
   },
   // Fire under its feet and the wound clock, every step, for the three escorts and the hen alike.
   tick(p, dt, game) {

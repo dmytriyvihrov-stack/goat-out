@@ -498,8 +498,10 @@ where he stands: nothing throws the ogre, which is what tells him from the brute
 `hopSpot` with `leap.short` 0 (on the goat's spot) and `leap.over` (flies over drops; `Enemy.update`
 spares `state === 'hop'` from the pit, `collideEntities` skips him, the horns miss him). Within
 `slam.near`: `slamwind` → `recover`. Both land through `Enemy.quake` (ring: the goat hurt and
-thrown out; his own men in it untouched). A headbutt in `slamwind` / `hopwind` costs a heart but does not stop it; `daze` / `balk`
-break the crouch, never the leap.
+thrown out; his own men in it untouched). **The horns do nothing to him** (1.71, `butcher.hornsHurt`): a butt bounces
+the goat off, no stagger; blades, fire, bombs and thrown bodies take his hearts, so every ogre arena is
+`OGRE_ARENA_TEMPLATE` (two braziers, three stands all swords; THE ALTAR's is the wide `OGRE_FIRST_TEMPLATE`),
+held by `GEN_RULES.ogre`. `daze` / `balk` break the crouch, never the leap.
 
 **Brute and soul-bearers.** `Enemy.unliftable` (Butcher, champion, soul-bearer) — TOO BIG / THE SOUL
 HOLDS HIM. `Enemy.atk(key)` reads `TUNING.champion` first; `knockMul()` = `cfg.flingMul` ×
@@ -632,7 +634,8 @@ his roll, within `brazier.into` of the bowl, inside `touch` px of the rims).
 within `jaw.touch`, a puddle; `Status.markThrow`, `updateCarried`), SOUR TUMBLE, VENOM SPIT
 (`game.globs`). FIREBRAND (id `charge`, `mods.brandHold`) is VENOM JAW's fire twin: `Status.brandTrail`
 lights the tiles a throw has *left* (never the one it is over, the goat's, or within `brand.gap` of
-the mouth), so nothing it hits catches and the thrown man never flies into his own fire. A blast costs `blast.hits` (2) hearts inside
+the mouth), so nothing it hits catches and the thrown man never flies into his own fire.
+ A blast costs `blast.hits` (2) hearts inside
 `hitR` and then spares that man for `blast.guard` s (`e.blastAt`), so a chain is two hearts, not four.
 
 **Fire.** `world.fire` seconds, `world.fireKind` 0/1 (witchfire: violet, ignores `mods.fireImmune`,
@@ -807,7 +810,8 @@ three (`beast.deal.first`), or level two once this browser has cleared it (`deal
 that floor's `levelDef.beasts` list, **never one kind twice in a run and none on the last floor**.
 Without `opts.beast` (balance, dev samples) the dice pick off the list; `balance.js` holds the deal
 over many run seeds. In a `coop` (`holds`) in the
-first `beast.third`; none on level one. Coops call (`beast.callGap`, `callR`). Banked within `saveR` at
+first `beast.third`; none on level one. A coop left shut stays shut (1.71): the clamp walls it in and
+`Beast.lost` says so. Coops call (`beast.callGap`, `callR`). Banked within `saveR` at
 the stairs: `beginClimb` → `Beast.bank` → `game.beasts` → `Beast.applyRewards`; `BEAST_CARD`,
 `drawSaved`. **No key, and none trots after you.** `Beast.hurt` (`beast.hp`, `hurtCd`). New escort:
 `Beast.KINDS`, `TUNING.prop`, update, draw, `applyRewards`, `BEAST_CARD`.

@@ -28,11 +28,17 @@ const Dark = {
       else if (p.kind === 'sconce') add(p.x, p.y, L.sconce);
       else if (p.kind === 'barrel' && p.oilT >= 0) add(p.x, p.y, L.burning);   // lit oil, as bright as a man alight
     }
+    // Fire on the floor is cast a two-by-two block at a time, from the middle of what burns in it
+    // and half a tile further: a room gone up in oil was a hundred shadowcasts a frame.
     let fires = 0;
-    for (let ty = Math.max(0, y0 - 2); ty <= Math.min(wd.H - 1, y1 + 2) && fires < D.maxFires; ty++) {
-      for (let tx = Math.max(0, x0 - 2); tx <= Math.min(wd.W - 1, x1 + 2) && fires < D.maxFires; tx++) {
-        if (wd.fire[ty * wd.W + tx] > 0) { out.push([(tx + 0.5) * TILE, (ty + 0.5) * TILE, L.fire[0], L.fire[1]]); fires++; }
+    const bx0 = Math.max(0, x0 - 2) >> 1, bx1 = Math.min(wd.W - 1, x1 + 2) >> 1;
+    const by0 = Math.max(0, y0 - 2) >> 1, by1 = Math.min(wd.H - 1, y1 + 2) >> 1;
+    for (let by = by0; by <= by1 && fires < D.maxFires; by++) for (let bx = bx0; bx <= bx1 && fires < D.maxFires; bx++) {
+      let n = 0, sx = 0, sy = 0;
+      for (let ty = by * 2; ty < by * 2 + 2 && ty < wd.H; ty++) for (let tx = bx * 2; tx < bx * 2 + 2 && tx < wd.W; tx++) {
+        if (wd.fire[ty * wd.W + tx] > 0) { n++; sx += tx + 0.5; sy += ty + 0.5; }
       }
+      if (n) { out.push([sx / n * TILE, sy / n * TILE, L.fire[0] + (n > 1 ? 0.5 : 0), Math.min(1, L.fire[1] * (1 + 0.08 * (n - 1)))]); fires++; }
     }
     for (const e of game.enemies) {
       if (e.dead) continue;
@@ -99,11 +105,12 @@ const Dark = {
       if (tx < box.x0 || tx > box.x1 || ty < box.y0 || ty > box.y1) continue;
       for (let sy2 = 0; sy2 < R; sy2++) {
         const wy = (ty + (sy2 + 0.5) / R) * TILE, row = ((ty - box.y0) * R + sy2) * nx * R + (tx - box.x0) * R;
+        const ddy = (wy - sy) * inv, ddy2 = ddy * ddy;
+        if (ddy2 >= 1) continue;
         for (let sx2 = 0; sx2 < R; sx2++) {
-          const wx = (tx + (sx2 + 0.5) / R) * TILE;
-          const d = Math.hypot(wx - sx, wy - sy) * inv;
-          if (d >= 1) continue;
-          const f = 1 - d * d, v = Math.min(1, k * f * f * 1.2);
+          const ddx = ((tx + (sx2 + 0.5) / R) * TILE - sx) * inv, d2 = ddx * ddx + ddy2;
+          if (d2 >= 1) continue;
+          const f = 1 - d2, v = Math.min(1, k * f * f * 1.2);
           map[row + sx2] = 1 - (1 - map[row + sx2]) * (1 - v);
         }
       }
@@ -153,7 +160,7 @@ const Dark = {
     for (let j = 0; j < mh; j++) {
       const wy = y0 + (j + 0.5) / R, dy = wy - gy;
       for (let i = 0; i < mw; i++) {
-        const wx = x0 + (i + 0.5) / R, dg = Math.hypot(wx - gx, dy), q = j * mw + i, o = (j * IW + i) * 4;
+        const ddx = x0 + (i + 0.5) / R - gx, dg = Math.sqrt(ddx * ddx + dy * dy), q = j * mw + i, o = (j * IW + i) * 4;
         const lit = this.map[q];
         const ear = clamp((hear - dg) / (hear * 0.45), 0, 1);
         const amb = Math.max(fl * ear, selfK * clamp(1 - dg / selfR, 0, 1));
@@ -186,6 +193,26 @@ const Dark = {
     const R = D.near, gx = g.x / TILE, gy = g.y / TILE;
     const x0 = Math.max(1, Math.floor(gx - R)), x1 = Math.min(wd.W - 2, Math.ceil(gx + R));
     const y0 = Math.max(1, Math.floor(gy - R)), y1 = Math.min(wd.H - 2, Math.ceil(gy + R));
+    // A pillar is drawn as a column, not as tiles of wall: a square drawn round it read as a frame
+    // round nothing (25 Sep 2026, "what is this outline?"). Stone in a clump of four tiles or fewer
+    // is a pillar and gets no line; only a run of wall does.
+    const big = new Map();
+    const edge = (x, y) => {
+      if (!wd.isSolid(x, y)) return false;
+      const i = y * wd.W + x;
+      if (big.has(i)) return big.get(i);
+      const seen = new Set([i]), stack = [i];
+      while (stack.length && seen.size <= 4) {
+        const j = stack.pop(), jx = j % wd.W, jy = (j / wd.W) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = jx + dx, ny = jy + dy, k = ny * wd.W + nx;
+          if (!seen.has(k) && wd.isSolid(nx, ny)) { seen.add(k); stack.push(k); }
+        }
+      }
+      const out = seen.size > 4;
+      for (const j of seen) big.set(j, out);
+      return out;
+    };
     ctx.save(); ctx.fillStyle = D.rim;
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       if (wd.isSolid(tx, ty) || !wd.seesTile(tx, ty)) continue;
@@ -193,10 +220,10 @@ const Dark = {
       if (a <= 0.02) continue;
       ctx.globalAlpha = a;
       const X = tx * TILE, Y = ty * TILE;
-      if (wd.isSolid(tx, ty - 1)) ctx.fillRect(X, Y, TILE, 1);
-      if (wd.isSolid(tx, ty + 1)) ctx.fillRect(X, Y + TILE - 1, TILE, 1);
-      if (wd.isSolid(tx - 1, ty)) ctx.fillRect(X, Y, 1, TILE);
-      if (wd.isSolid(tx + 1, ty)) ctx.fillRect(X + TILE - 1, Y, 1, TILE);
+      if (edge(tx, ty - 1)) ctx.fillRect(X, Y, TILE, 1);
+      if (edge(tx, ty + 1)) ctx.fillRect(X, Y + TILE - 1, TILE, 1);
+      if (edge(tx - 1, ty)) ctx.fillRect(X, Y, 1, TILE);
+      if (edge(tx + 1, ty)) ctx.fillRect(X + TILE - 1, Y, 1, TILE);
     }
     ctx.restore();
   },
