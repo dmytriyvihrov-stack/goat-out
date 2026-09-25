@@ -3108,6 +3108,9 @@ class Renderer {
     d.rects = [];
     if (d.rules) { this.drawTool(game); return; }
     if (d.hidden) return;   // served from itch without `#dev` (`Game` constructor)
+    // In a fight on touch the corner is under the stick's thumb: a brush of it opened the drawer.
+    // It is still there on the pause screen, and the open drawer keeps its close.
+    if (game.touch.active && game.state === 'play' && !d.open) return;
     // The way in is a word in the corner, not a button. A bordered box down there reads as part of
     // the game and this is not part of the game: it is a door for whoever is building it.
     const pad = 8 * s, label = d.open ? 'close dev' : 'dev tools';
@@ -5577,7 +5580,8 @@ class Renderer {
     // The pointer's own card, so a hover reads as pointing at something rather than as nothing at
     // all: `game.boonAt` is the same hit-test the click itself goes through, against last frame's
     // rects — they never move while the choice is up, so the one-frame lag is not felt.
-    const hoverI = game.boonDown < 0 ? game.boonAt(game.input.mouse) : -1;
+    // Not on touch: a lifted finger leaves the pointer where it was, and that card stayed lit.
+    const hoverI = game.boonDown < 0 && !game.touch.active ? game.boonAt(game.input.mouse) : -1;
     game.boonRects = [];
     const ctx = this.ctx, s = this.ts, n = game.boonChoice.length, fire = !!game.mods.breath;
     const F = TUNING.fanfare, bt = game.boonT === undefined ? 9 : game.boonT;
@@ -5647,8 +5651,11 @@ class Renderer {
         const pm = Object.assign({}, game.mods); b.apply(pm, b.params || {});
         this.skillIcon(b.skill, 9 * s, game, fire, pm);
         ctx.restore();
-        ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
-        ctx.fillText(SKILL_KEYS[b.skill], x + cw - 20 * s, y + 34 * s);
+        // A key name means nothing to a thumb: on touch the picture of the verb is the whole caption.
+        if (!game.touch.active) {
+          ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
+          ctx.fillText(SKILL_KEYS[b.skill], x + cw - 20 * s, y + 34 * s);
+        }
       } else {
         ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
         ctx.fillText('BODY', x + cw - 20 * s, y + 20 * s);

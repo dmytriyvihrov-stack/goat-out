@@ -980,6 +980,9 @@ const TUNING = {
   // after the level rather than during it. `scale` multiplies the whole top band — hearts, rail,
   // count, clock — and nothing else: the cards, the menu and the floor text keep their own size.
   hud: { scale: 1.05 },
+  // On touch the headbutt turns toward the likeliest man ahead of the stick: within `reach` tiles and
+  // `cone` radians of it, and only one the goat can see (never a mist, a disguise or a man in the fog).
+  touchAim: { reach: 5.2, cone: 0.95 },
   // THE FOG. A room is opened by walking into it and never closes again — that is `room.seen`. This
   // is the other half: what a partition hides from where he is standing right now. `shade` is how
   // far down anything out of his line of sight goes, and `radius` how far the line is cast at all
