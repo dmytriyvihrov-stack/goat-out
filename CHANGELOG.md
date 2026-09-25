@@ -5,6 +5,19 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.72 (in progress)
+
+- **Souls and talismans say what they do in a line or two** (asked 25 Sep 2026: "one or two lines
+  of what it does, no story, no exact numbers ... windup speed, what the hell?"). Every `BOONS`
+  `desc` is rewritten short ("You run 13% faster", "BAAH stuns everyone near you, even mid-swing");
+  a number only where it is the point, and then a getter over `params` (`sayTimes`, `sayWord`,
+  `sayHearts`, `sayNth` join `sayN` / `sayPct`). The card shows name and `desc` only; the rail's note
+  shows its `stat` numbers line only while the dev drawer is open, and the verbs' own notes lost
+  their numbers too. Each talisman gains `tell(p)`, the player's line per tier (a tier's `desc`), and
+  keeps `say(p)`, the full numbers, as `detail` for the TALISMANS tab only. `ARTIFACT_HOW` and
+  `MILK_OFFER.how` are gone: the shelf note and the chip hover are the name and that one line.
+  Ids unchanged, so saves keep their souls.
+
 ## 1.71 — the ogre is fought with the room; the dark, lit a little more
 
 Asked for on 25 Sep 2026, playing THE DARK and the ogre.

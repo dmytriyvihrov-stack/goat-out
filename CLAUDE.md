@@ -552,18 +552,21 @@ Butcher in the air or a manifesting wraith. The bare headbutt is blunt until LON
 
 **Boons.** `applyBoons()` rebuilds `game.mods` from `game.boons`, **actives first, then passives**
 (an active that sets a cooldown outright used to wipe a passive's halving taken before it); use sites
-read `game.mods`, never mutate `TUNING`. New boon: `BOONS`, `BOON_BASE`, the use site, a plain-sentence
-`desc` and a `stat(p, b)` that builds the numbers off `p` / TUNING (`sayN`, `sayPct`, `sayPoison`) —
-never type a number into `desc`; `skill` hangs it on a button; `needs` gates the
+read `game.mods`, never mutate `TUNING`. New boon: `BOONS`, `BOON_BASE`, the use site, a `desc` of one
+or two short lines of what it does for the player — no story, no timings, one number only when it is the
+point ("You run 13% faster"), and then a getter over `this.params`, never typed — and a `stat(p, b)`
+with the full numbers off `p` / TUNING (`sayN`, `sayPct`, `sayTimes`, `sayPoison`) for the dev drawer
+only; `skill` hangs it on a button; `needs` gates the
 deal. `synergy` / `addition` on a boon are marks for the BOONS tab only. `BOON_SLOTS` (one active + two passives per button, four body); `game.boonOpen` is the one deal
 test; `key` boons count against nothing. `drawBodySouls`.
 
 **The skill rail.** `drawSkills` is the only report of the verbs; `skillIcon` must change when a boon
 lands — it draws `SKILL_ICONS` (`js/skill-icons.js`, pixel pictures per verb and active soul, a mark
 per passive) and falls back to the old strokes. The rail is bottom right (`renderer.railLow`; top
-right on touch), its notes open upward; the dev drawer is bottom left. Chips show the key; `drawSkillNote` (`renderer.skillHover`) the name, a mod-aware `note` and a
-`stat` line of the verb's numbers as `game.mods` has them now (`wrapFacts` breaks it between facts).
-The card (`drawBoonChoice`) grows to fit the wordiest of the three. HUD
+right on touch), its notes open upward; the dev drawer is bottom left. Chips show the key; `drawSkillNote` (`renderer.skillHover`) the name and a
+mod-aware `note`, plus — only while the dev drawer is open — a `stat` line of the verb's numbers as
+`game.mods` has them now (`wrapFacts` breaks it between facts). The card (`drawBoonChoice`) shows the
+name and `desc` only, and grows to fit the wordiest of the three. HUD
 size: `renderer.hs` = `ts` × `TUNING.hud.scale`.
 
 **Timing.** Headbutt has no cooldown (recovery is the cost); `goat.grabCd` on every release, set only
@@ -781,12 +784,14 @@ nothing (`gap` is a mark; no spot → reseed). Three `ware`s `shop.spread` apart
 `shop.strikes` the rat ogre, wares `locked` until `Shop.ogreDown`. Death returns the level's take
 (`levelArtifact`). `drawBurrow`, `drawMouse`; `Shop.breakWall` opens three wall tiles when she turns.
 
-**Read the ware.** `Renderer.drawWare` within `prop.ware.readR`: name, tier, `desc`, and one sentence
-(`ARTIFACT_HOW`, `MILK_OFFER.how`, `wareNote` → `drawNote`, drawn after the fog and kept in the picture
-under the hearts by `Renderer.keepInView`, which the animals' plates and floating words share). **A tier's `desc` is a getter onto its talisman's
-`say(p)`**, which states that tier whole, in numbers, off its own params — never as a diff on tier I,
-because the n-th mouse sells tier n and nothing else. Shown there, on the chip hover (under the
-`ARTIFACT_HOW` line) and in the TALISMANS tab; a new tier needs no text, a new param needs `say` to read it.
+**Read the ware.** `Renderer.drawWare` within `prop.ware.readR`: name, tier and the tier's `desc`
+(`wareNote` → `drawNote`, drawn after the fog and kept in the picture under the hearts by
+`Renderer.keepInView`, which the animals' plates and floating words share). **A tier's `desc` is a
+getter onto its talisman's `tell(p)`** — one or two plain lines, a number only where it is the point
+— and `detail` onto `say(p)`, the tier in full numbers for the TALISMANS tab only. Both state the
+tier whole off its own params, never as a diff on tier I, because the n-th mouse sells tier n and
+nothing else. `desc` shows on the shelf and the chip hover; a new tier needs no text, a new param
+needs `tell` and `say` to read it.
 
 **Artifacts.** `ARTIFACTS`: twenty-one, three tiers, `apply(m, p)` via `applyBoons`; `game.artifact`
 `{ id, tier }`, saved, `resumeRun`. FIRE AMULET: `mods.firePass` depth. LUCKY CLOVER: `mods.luck` →

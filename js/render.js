@@ -4867,29 +4867,27 @@ class Renderer {
     // to hover a corner of the screen, but a line hanging over the ware as you walk up to it is
     // read on the way past. On approach, not on the pointer — the touch player gets it too.
     // Only the nearest one: two stools a tile apart both in reach put two boxes over each other.
-    this.wareNote(p, def, `${def.name} ${'I'.repeat(w.tier)}`, ARTIFACT_HOW[w.id], def.tiers[w.tier - 1].desc);
+    this.wareNote(p, def, `${def.name} ${'I'.repeat(w.tier)}`, def.tiers[w.tier - 1].desc);
   }
-  // The note over the nearest ware: its name, one plain sentence of what the thing is for, and then
-  // the tier's own numbers under a rule. The numbers alone ("0.18s WINDOW ON THE HORNS") were
-  // literal and still unreadable to anybody who did not already know what the talisman was.
+  // The note over the nearest ware: its name and one or two plain lines of what that tier does
+  // (`tell`). It used to be a sentence of what the thing was for over a rule and a line of the
+  // tier's numbers ("0.18s WINDOW ON THE HORNS"): a story and a pile of timings (25 Sep 2026).
   // Kept for `drawNote`, which puts it up after the fog: drawn with the stool, the shade over the
   // wall behind the shelf dimmed the half of it that stood over the stone.
-  wareNote(p, def, title, how, desc) {
+  wareNote(p, def, title, desc) {
     const game = this.game, g = game && game.goat;
     if (!g || p.locked || Math.hypot(g.x - p.x, g.y - p.y) >= TUNING.prop.ware.readR + p.r || this.nearestWare(game) !== p) return;
-    this.note = [p, def, title, how, desc];
+    this.note = [p, def, title, desc];
   }
   drawNote() {
     const n = this.note; if (!n) return;
     this.note = null;
-    const [p, def, title, how, desc] = n, ctx = this.ctx;
+    const [p, def, title, desc] = n, ctx = this.ctx;
     ctx.save(); ctx.scale(1, 1 / TILT);
     const bw = 206, pad = 10;
     ctx.font = `12px ${FONT}`;
-    const hl = how ? this.wrap(how, bw - pad * 2) : [];
-    ctx.font = `700 10px ${FONT_SC}`;
     const dl = this.wrap(desc, bw - pad * 2);
-    const bh = 22 + hl.length * 15 + (hl.length ? 8 : 0) + dl.length * 13 + 4;
+    const bh = 22 + dl.length * 15 + 4;
     // High enough to clear her pail, which stands between the two stools and draws after them. Kept
     // inside the picture (`keepInView`); pushed down onto the shelf itself, it goes under it instead.
     let box = this.keepInView(p.x - bw / 2, (p.y - 46) * TILT - bh, bw, bh);
@@ -4903,13 +4901,7 @@ class Renderer {
     ctx.font = `700 12px ${FONT_SC}`; ctx.fillStyle = def.color; ctx.fillText(title, cx, by + 16);
     let y = by + 32;
     ctx.font = `12px ${FONT}`; ctx.fillStyle = PALETTE.bone;
-    for (const ln of hl) { ctx.fillText(ln, cx, y); y += 15; }
-    if (hl.length) {
-      ctx.fillStyle = this.tint(def.color, 0.35); ctx.fillRect(box.x + pad, y - 9, bw - pad * 2, 1);
-      y += 6;
-    }
-    ctx.font = `700 10px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
-    for (const ln of dl) { ctx.fillText(ln, cx, y); y += 13; }
+    for (const ln of dl) { ctx.fillText(ln, cx, y); y += 15; }
     ctx.textAlign = 'left'; ctx.restore();
   }
   // The ware the goat is nearest, once a frame, so only one note hangs over the shelf at a time.
@@ -4964,7 +4956,7 @@ class Renderer {
     ctx.font = `700 9px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.8)';
     ctx.fillText(`+${TUNING.shop.heals} HEARTS`, p.x, ty + 12);
     ctx.textAlign = 'left'; ctx.restore();
-    this.wareNote(p, MILK_OFFER, MILK_OFFER.name, MILK_OFFER.how, MILK_OFFER.tiers[0].desc);
+    this.wareNote(p, MILK_OFFER, MILK_OFFER.name, MILK_OFFER.tiers[0].desc);
   }
 
   // A hex colour with an alpha on it, for the glow under a ware.
@@ -5083,7 +5075,7 @@ class Renderer {
     if (!game.touch.active && m.x >= x && m.x <= x + box && m.y >= y && m.y <= y + box) {
       const noteY = y + box + (isItem ? 22 : 12) * s;
       this.skillHover = def
-        ? { row: { name: `${def.name} ${'I'.repeat(art.tier)}`, note: ARTIFACT_HOW[def.id] || '', stat: tier.desc }, x, left: x, y: noteY, hot: false, boons: [] }
+        ? { row: { name: `${def.name} ${'I'.repeat(art.tier)}`, note: tier.desc }, x, left: x, y: noteY, hot: false, boons: [] }
         : { row: { name: 'NOTHING AT HIS NECK', note: 'A talisman goes here, one at a time. A mouse in a wall offers two for nothing: grab the one you want.', half: true }, x, left: x, y: noteY, hot: false, boons: [] };
     }
     if (def) Talisman.drawHud(this, game, x, y, box);   // the crust, the cup, the notches, the bell's thread
@@ -5878,15 +5870,13 @@ class Renderer {
     ctx.textAlign = 'center';
     const stack = this.portrait || this.vw < 760 * s;
     const cw = stack ? Math.min(this.w * 0.88, 440 * s) : Math.min(this.w * 0.29, 280 * s);
-    // What each card says, wrapped before anything is drawn: the sentence, then its numbers. Every
-    // card of the three is as tall as the wordiest one, so they still read as a row of equals.
-    const descFont = `${12.5 * s}px ${FONT}`, statFont = `700 ${9.5 * s}px ${FONT_SC}`, textW = cw - 24 * s;
-    const texts = game.boonChoice.map((b) => {
-      ctx.font = descFont; const desc = this.wrap(b.desc, textW);
-      ctx.font = statFont; const stat = this.boonStat(b) ? this.wrapFacts(this.boonStat(b), textW) : [];
-      return { desc, stat };
-    });
-    const tall = Math.max(...texts.map((t) => 52 + t.desc.length * 16 + (t.stat.length ? 6 + t.stat.length * 13 : 0)));
+    // What each card says, wrapped before anything is drawn: one or two short lines of what the soul
+    // does, and nothing else (25 Sep 2026: the numbers line under it was "windup speed, what the
+    // hell?" — it lives in the dev drawer now). Every card of the three is as tall as the wordiest
+    // one, so they still read as a row of equals; the minimum height keeps a one-liner a card.
+    const descFont = `${13.5 * s}px ${FONT}`, textW = cw - 24 * s;
+    const texts = game.boonChoice.map((b) => { ctx.font = descFont; return { desc: this.wrap(b.desc, textW) }; });
+    const tall = Math.max(...texts.map((t) => 54 + t.desc.length * 17));
     const ch = Math.max(stack ? 84 : 112, tall + 12) * s;
     const gap = 13 * s;
     const blockH = stack ? n * ch + (n - 1) * gap : ch;
@@ -5923,14 +5913,7 @@ class Renderer {
       }
       ctx.font = descFont; ctx.fillStyle = 'rgba(239,230,208,0.75)';
       const tx = texts[i];
-      tx.desc.forEach((l, k) => ctx.fillText(l, x + cw / 2, y + 52 * s + k * 16 * s));
-      // The numbers, in the fire colour and small capitals, the way a talisman's are on the stool:
-      // the sentence says what the soul is, this says how much of it.
-      if (tx.stat.length) {
-        const sy = y + (52 + tx.desc.length * 16 + 4) * s;
-        ctx.font = statFont; ctx.fillStyle = hover ? PALETTE.fireHi : 'rgba(242,162,51,0.85)';
-        tx.stat.forEach((l, k) => ctx.fillText(l, x + cw / 2, sy + k * 13 * s));
-      }
+      tx.desc.forEach((l, k) => ctx.fillText(l, x + cw / 2, y + 54 * s + k * 17 * s));
       // What it hangs off, drawn the same way the rail draws it, so the card that offers a boon
       // and the chip that later shows it are recognisably the same picture. A boon with no `skill`
       // is body work and gets neither — nothing on the rail changes for it either.
@@ -6277,7 +6260,8 @@ class Renderer {
     // On THE TRIP every verb is on another key (`game.tripInput`), and the caption says which.
     const trip = !!(game.level && game.level.def.shroom);
     // Each note also carries `stat`, the verb in numbers as it stands now — every soul and talisman
-    // already folded into `game.mods` — so hovering a chip after a pick shows what the pick did.
+    // already folded into `game.mods` — shown only while the dev drawer is open (`drawSkillNote`).
+    // The `note` is the player's: a line or two, no numbers (25 Sep 2026).
     const M = game.mods, H = TUNING.goat.headbutt, G = TUNING.goat.grab, V = TUNING.goat.scream;
     const rows = [
       // Headbutt carries no cooldown ring — its recovery is the cost, per CLAUDE.md — but a cost
@@ -6286,40 +6270,40 @@ class Renderer {
       // and not a lockout: the button is simply not what threw it a moment ago.
       { id: 'butt', name: 'BUTT', cap: trip ? 'RMB' : 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
         recover: g.state === 'recover' && g.recoverMax > 0 ? clamp(g.timer / g.recoverMax, 0, 1) : 0,
-        note: (game.mods.bomb ? 'Ram him. For a moment after, if he dies against a wall or another man, he explodes.'
-          : game.mods.antlers ? 'Ram him with the antlers: further, and he flies harder. A wall, a fire or another man finishes it.'
-          : 'Ram him. He goes down and he flies — into a wall, a fire or another man, and he stays down.')
-          + (game.mods.splash ? ' Lowering your head poisons whoever is right behind you.' : ''),
+        note: (game.mods.bomb ? 'Ram him. If he dies against something right after, he explodes.'
+          : game.mods.antlers ? 'Ram him further and harder. A wall, a fire or another man finishes him.'
+          : 'Ram him. He flies: a wall, a fire or another man finishes him.')
+          + (game.mods.splash ? ' It poisons whoever is behind you.' : ''),
         stat: `REACH ${sayN(H.reach * M.headbuttReach / TILE)} TILES · RECOVERY ${sayN(H.recovery * M.headbuttRecovery)}s`
           + (M.bomb ? ` · ${sayN(TUNING.goat.bomb.fuse)}s FUSE` : '') },
       { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: trip ? 'LMB' : 'RMB', cd: g.grabCd,
         max: g.grabCdMax || TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
         // COLD EYE's moment, draining the chip the way a headbutt's recovery drains its own.
         recover: M.coldEye && game.aimSlow > 0 ? clamp(game.aimSlow / M.coldEye.time, 0, 1) : 0,
-        note: (game.mods.grabMen ? 'Press near a box, a blade, a shield or a man to carry it. A man takes a moment to get your teeth under, and he is heavy. Let go to throw.'
-          : 'Press near a box, a blade or a shield to carry it. Let go to throw. Men are too heavy for now.')
-          + (game.mods.brandHold ? ` Held ${game.mods.brandHold}s, it catches: the floor it flies over burns.`
-            : game.mods.venomHold ? ` Held ${game.mods.venomHold}s, it drips poison all the way down and onto whoever it hits.` : '')
-          + (M.coldEye ? ' Picking something up slows the world until you throw it.' : ''),
+        note: (game.mods.grabMen ? 'Carry a box, a blade, a shield or a man. Let go to throw.'
+          : 'Carry a box, a blade or a shield. Let go to throw. Men are too heavy for now.')
+          + (game.mods.brandHold ? ' Held a moment, it sets the floor it flies over alight.'
+            : game.mods.venomHold ? ' Held a moment, it spreads poison wherever it goes.' : '')
+          + (M.coldEye ? ' Picking up slows time.' : ''),
         stat: `REACH ${sayN(G.reach / TILE)} TILES · ${sayN(G.cooldown * M.grabCooldown)}s BEFORE THE NEXT`
           + (M.grabMen ? ` · A MAN: ${sayN(G.bite)}s TO LIFT, ${sayPct(G.speedMul)} SPEED, STOPS ${M.shieldBullets} BULLETS, WORKS LOOSE IN ~${sayN(M.holdTime)}s, ${sayN(G.cooldown * M.grabCooldown * G.manCd)}s BEFORE THE NEXT` : '')
           + (M.coldEye ? ` · TIME AT ${sayPct(M.coldEye.scale)} FOR ${sayN(M.coldEye.time)}s, EVERY ${sayN(M.coldEye.every)}s` : '') },
       { id: 'roll', name: M.leapfrog ? 'LEAP' : 'ROLL', cap: trip ? 'SPC' : 'E', cd: g.rollCd,
         max: g.rollCdMax || R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
-        note: (game.mods.rollStun > 0 ? 'Dodge. Nothing can hit you mid-roll, and everyone you tumble through is dazed.'
-          : M.leapfrog ? 'Dodge. Rolled at a man in front of you, you go over his back instead: he reels and you land behind him.'
-          : 'Dodge. Nothing can hit you mid-roll, but you have to get up after it.')
-          + (game.mods.venomRoll ? ' You get up out of a puddle of poison.' : ''),
+        note: (game.mods.rollStun > 0 ? 'Dodge. Everyone you tumble through is knocked out.'
+          : M.leapfrog ? 'Dodge. Roll at a man to vault over him.'
+          : 'Dodge. Nothing can hit you mid-roll.')
+          + (game.mods.venomRoll ? ' You leave a puddle of poison.' : ''),
         stat: `${sayN(R.speed * R.duration * M.rollDistance / TILE)} TILES · UNTOUCHABLE ${sayN(R.invuln)}s · ${sayN(R.cooldown * M.rollCooldown)}s COOLDOWN`
           + (M.rollStun > 0 ? ` · DAZES ${sayN(M.rollStun)}s` : '')
           + (M.leapfrog ? ` · LEAP: A MAN UP TO ${sayN(M.leapfrog.reach)} TILES AHEAD, ${sayN(R.cooldown * M.rollCooldown * M.leapfrog.cooldownMul)}s COOLDOWN` : '') },
       { id: 'scream', name: game.mods.spit ? 'SPIT' : fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: trip ? 'E' : 'SPC',
         cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0,
         half: !fire && !game.mods.screamStun && !game.mods.spit,
-        note: game.mods.spit ? 'Spit a glob of poison where you point. It bursts into a puddle that poisons whoever walks in it.'
-          : fire ? 'Breathe fire the way you are running. It lights the men and the floor in it.'
-          : game.mods.screamStun ? 'A shout that stuns everyone near you, mid-swing or not.'
-            : 'A shout. It breaks the swing of anyone right on top of you, and walks everyone else to where you shouted.',
+        note: game.mods.spit ? 'Spit a glob of poison where you point.'
+          : fire ? 'Breathe fire the way you are running.'
+          : game.mods.screamStun ? 'Stun everyone near you, even mid-swing.'
+            : 'A shout. It breaks the swing of anyone on top of you and calls the rest to you.',
         stat: (M.spit ? `FLIES UP TO ${sayN(TUNING.status.spit.range)} TILES`
           : fire ? `CONE ${sayN(TUNING.goat.breath.range / TILE)} TILES`
           : M.screamStun ? `DAZES WITHIN ${sayN(M.screamRadius)} TILES FOR ${sayN(V.stun)}s`
@@ -6428,9 +6412,10 @@ class Renderer {
     const x = h.left !== undefined ? Math.min(h.left, right - w) : right - w;
     ctx.font = `${11 * s}px ${FONT}`;
     const lines = this.wrap(h.row.note, w - 20 * s);
-    // The numbers under the sentence: what the verb does now, with every soul on it counted in.
+    // The numbers under the sentence (what the verb does now, every soul on it counted in) are the
+    // dev drawer's, not the player's: shown only while it is open (25 Sep 2026, "no exact numbers").
     ctx.font = `700 ${9 * s}px ${FONT_SC}`;
-    const stat = h.row.stat ? this.wrapFacts(h.row.stat, w - 20 * s) : [];
+    const stat = h.row.stat && game.dev && game.dev.open ? this.wrapFacts(h.row.stat, w - 20 * s) : [];
     const statH = stat.length ? 4 * s + stat.length * 12 * s : 0;
     const names = h.boons.map((b) => (b.active ? '◆ ' : '❖ ') + (b.emoji ? b.emoji + ' ' : '') + b.name);
     const bh = 26 * s + lines.length * 14 * s + statH + names.length * 13 * s;

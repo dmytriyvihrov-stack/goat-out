@@ -1658,17 +1658,23 @@ const BOON_POWER = { heart: 1, collar: 1.3, howl: 1.5, breath: 1.5, bomb: 1.3, h
 // level index (0 = THE ALTAR) below which the card is never dealt — off by default, so the dev
 // tool is the only thing that ever needs to set one.
 //
-// Two lines of words per card, the way a talisman on the mouse's stool has two: `desc` is one plain
-// sentence saying what the soul IS, and `stat(p)` is the literal thing in numbers — tiles, seconds,
-// hearts, before and after — built off `p` and TUNING at the moment it is drawn. It used to be one
-// line of prose ("everything it goes through loses its head for a moment") that read well and told
-// a player choosing between three cards precisely nothing, and two of them were wrong (RAW THROAT's
-// "half again as far" was nearly twice as far, and only for one of the four voices). A number
-// typed into a sentence goes stale the first time the BOONS tab moves the param under it; a number
-// read off the param cannot. `desc` must never carry a number of its own for the same reason.
+// `desc` is all a player reads — on the card, on the rail's note — and it is one or two short lines
+// of what the soul does for him (25 Sep 2026: "one or two lines of what it does, no story, no exact
+// numbers ... windup speed, what the hell?"). One number is allowed only when it IS the soul ("You
+// run 13% faster"), and then it is a getter over `this.params`, never typed: a number typed into a
+// sentence goes stale the first time the BOONS tab moves the param under it.
+// `stat(p)` is the soul in full numbers — tiles, seconds, before and after — kept for the BOONS tab
+// and the rail's note while the dev drawer is open; the player never sees it.
 // Numbers as a card prints them: two places at most, no trailing zeros; a share as a percentage.
 const sayN = (v) => String(+(+v).toFixed(2));
 const sayPct = (v) => Math.round(v * 100) + '%';
+// Small counts and ratios as words, so a short line reads as a sentence: 2 → 'twice', 3 → 'three
+// times', 2.2 → '2.2×'; 1 → 'one', 12 → '12'; 'heart' or 'hearts'.
+const sayTimes = (v) => { const n = +sayN(v); return n === 2 ? 'twice' : n === 3 ? 'three times' : n === 4 ? 'four times' : `${sayN(n)}×`; };
+const sayWord = (n) => ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] || String(n);
+const sayHearts = (n) => (+n === 1 ? 'heart' : 'hearts');
+// 2 → '2nd', 3 → '3rd', 4 → '4th'.
+const sayNth = (n) => n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th');
 // What poison does to a man, said the same way on every card that makes it.
 const sayPoison = () => `POISON: ${sayN(TUNING.status.poison.time)}s AT ${sayPct(TUNING.status.poison.moveMul)} SPEED, NO SHOT OR SPELL`;
 // `synergy` names a boon this one is built to be read together with (a crossing the world makes,
@@ -1677,29 +1683,29 @@ const sayPoison = () => `POISON: ${sayN(TUNING.status.poison.time)}s AT ${sayPct
 // than a list (asked for 16 Sep 2026, built 23 Sep).
 const BOONS = [
   // ---- actives: they change what a button does ----
-  // What it costs is on the card as plainly as what it buys (asked for 24 Sep 2026): the windup,
-  // the stride, the wait, and how near a wall the throw has to be to finish him.
+  // What it costs (the windup, the stride, the wait) lives in `stat`, the dev drawer's line; the
+  // card says what the soul buys and nothing more (25 Sep 2026).
   { id: 'collar', skill: 'grab', active: true, key: true, emoji: '⛓️', minLevel: 0, name: 'BY THE COLLAR',
-    desc: 'Grab picks up men, not just boxes, once you get your teeth under him. The man in your mouth is a shield and a thing to throw, and he is heavy.',
+    desc: 'Grab lifts men too. Carried, a man is a shield; thrown, he is a weapon.',
     stat: () => { const G = TUNING.goat.grab, P = TUNING.physics, kill = (G.throwImpulse * G.manThrow - P.thrownKill) / P.flungDrag / TILE;
       return `LIFTING HIM ${sayN(G.bite)}s · CARRYING, ${sayPct(G.speedMul)} SPEED · HE STOPS ${BOON_BASE.shieldBullets} BULLETS · WORKS LOOSE IN ABOUT ${sayN(BOON_BASE.holdTime)}s · THROWN, A WALL WITHIN ${sayN(kill)} TILES KILLS HIM · ${sayN(G.cooldown * G.manCd)}s BEFORE THE NEXT GRAB`; },
     apply: (m) => { m.grabMen = true; } },
   { id: 'howl', skill: 'scream', active: true, emoji: '📢', minLevel: 0, name: 'THE FULL THROAT',
-    desc: 'BAAH becomes a stun: everyone near you stops dead, mid-swing or not. It no longer calls the room.',
+    desc: 'BAAH stuns everyone near you, even mid-swing.',
     stat: (p) => `DAZES EVERYONE WITHIN ${sayN(BOON_BASE.screamRadius)} TILES FOR ${sayN(TUNING.goat.scream.stun)}s · ${sayN(p.cooldown)}s COOLDOWN`,
     params: { cooldown: TUNING.goat.scream.cooldown },
     apply: (m, p) => { m.screamStun = true; m.screamCooldown = p.cooldown; } },
   { id: 'breath', synergy: ['kindling', 'ember'], skill: 'scream', active: true, emoji: '🔥', minLevel: 0, name: 'DRAGON BREATH',
-    desc: 'BAAH becomes fire: a cone the way you are running that lights the men and the floor in it.',
+    desc: 'BAAH breathes fire ahead of you, lighting men and floor.',
     stat: (p) => { const B = TUNING.goat.breath; return `CONE ${sayN(B.range / TILE)} TILES LONG, ${Math.round(B.halfAngle * 360 / Math.PI)}° WIDE · FLOOR BURNS ${sayN(B.fireTime)}s · ${sayN(p.cooldown)}s COOLDOWN`; },
     params: { cooldown: TUNING.goat.breath.cooldown },
     apply: (m, p) => { m.breath = true; m.screamCooldown = p.cooldown; } },
   { id: 'bomb', skill: 'butt', active: true, emoji: '💣', minLevel: 0, name: 'BOMB CHARGE',
-    desc: 'A man you headbutt is lit for a moment: if he dies against a wall or another man in that time, he explodes.',
+    desc: 'A man you headbutt explodes if he dies against a wall or a man right after.',
     stat: () => { const B = TUNING.goat.bomb; return `${sayN(B.fuse)}s FUSE · THROWS EVERYONE WITHIN ${sayN(B.radius / TILE)} TILES · YOU ARE ONLY SHOVED`; },
     apply: (m) => { m.bomb = true; } },
   { id: 'weight', synergy: ['breath', 'splash'], skill: 'roll', active: true, emoji: '🪨', minLevel: 0, name: 'DEAD WEIGHT',
-    desc: 'Your roll is a weapon now: everyone you tumble through is knocked senseless.',
+    desc: 'Your roll knocks out everyone you tumble through.',
     stat: (p) => `DAZES EVERYONE WITHIN ${sayN(TUNING.goat.roll.stunR / TILE)} TILES OF YOUR PATH FOR ${sayN(p.stun)}s · ONCE EACH PER ROLL`,
     params: { stun: TUNING.goat.roll.stun },
     apply: (m, p) => { m.rollStun = p.stun; } },
@@ -1707,11 +1713,11 @@ const BOONS = [
   // DEVOUR was a third, and was cut in 1.65: a kill with no wall in it and a heart back nearly one
   // time in two, on the most common man in the building, was the one card that broke a run.
   { id: 'splash', synergy: ['breath'], skill: 'butt', active: true, emoji: '💦', minLevel: 0, name: 'SPLASH',
-    desc: 'Every headbutt also poisons whoever is right behind you, the moment you lower your head.',
+    desc: 'Every headbutt poisons whoever stands right behind you.',
     stat: () => `REACHES ${sayN(TUNING.status.splash.range)} TILES BEHIND · ${sayPoison()}`,
     apply: (m) => { m.splash = true; } },
   { id: 'venomjaw', synergy: ['kindling'], skill: 'grab', active: true, emoji: '🐍', minLevel: 0, name: 'VENOM JAW',
-    desc: 'Hold anything long enough and it leaves your mouth dripping: poison along its flight, on whoever it hits, and a puddle where it stops.',
+    desc: 'Hold a thing a moment before you throw it and it spreads poison wherever it goes.',
     stat: (p) => { const s = TUNING.status.jaw.half * 2 + 1; return `HOLD ${sayN(p.holdFor)}s · POISONS WHO IT HITS · PUDDLE ${s}×${s} TILES FOR ${sayN(TUNING.status.poison.pool)}s · ${sayPoison()}`; },
     params: { holdFor: 2 },
     apply: (m, p) => { m.venomHold = p.holdFor; } },
@@ -1719,12 +1725,12 @@ const BOONS = [
   // (floor, the man it hits, a puddle where it stops); fire is the line it flew and nothing else.
   // It was CHARGED, a bomb where the throw stopped; the id stays `charge` so a saved run keeps it.
   { id: 'charge', synergy: ['kindling', 'spit'], skill: 'grab', active: true, emoji: '☄️', minLevel: 0, name: 'FIREBRAND',
-    desc: 'Hold anything long enough and it catches: thrown, it burns a line along the floor it flies over. Nothing it hits is set alight, and men walk the long way round the fire.',
+    desc: 'Hold a thing a moment before you throw it and the floor it flies over catches fire.',
     stat: (p) => { const B = TUNING.status.brand; return `HOLD ${sayN(p.holdFor)}s · ITS PATH BURNS ${sayN(B.burn)}s, FROM ${sayN(B.gap)} TILE OUT OF YOUR MOUTH · NOT WHERE IT LANDS`; },
     params: { holdFor: 2 },
     apply: (m, p) => { m.brandHold = p.holdFor; } },
   { id: 'venomroll', skill: 'roll', active: true, emoji: '🦠', minLevel: 0, name: 'SOUR TUMBLE',
-    desc: 'Every roll leaves a puddle of poison where you get up.',
+    desc: 'Every roll leaves a puddle of poison where you land.',
     stat: () => { const s = TUNING.status.tumble.half * 2 + 1; return `PUDDLE ${s}×${s} TILES FOR ${sayN(TUNING.status.poison.pool)}s · ${sayPoison()}`; },
     apply: (m) => { m.venomRoll = true; } },
   // A goat is a jumper. Rolled at a man in front of him, the tumble goes over the man's back and
@@ -1732,7 +1738,7 @@ const BOONS = [
   // never a kill — what kills is still the wall he was facing when you came down at his back.
   // With nobody in front it is the ordinary roll at the ordinary price.
   { id: 'leapfrog', skill: 'roll', active: true, emoji: '🐸', minLevel: 0, name: 'LEAPFROG',
-    desc: 'Roll at a man in front of you and you go over his back instead: he is left reeling and you land behind him.',
+    desc: 'Roll at a man and you vault over him, leaving him reeling.',
     stat: (p) => `A MAN UP TO ${sayN(p.reach)} TILES AHEAD · YOU LAND ${sayN(p.behind)} TILE${+p.behind === 1 ? '' : 'S'} PAST HIM · HE REELS ${sayN(p.daze)}s · A LEAP COSTS ×${sayN(p.cooldownMul)} COOLDOWN`,
     // `cone` radians either side of where you are running (or pointing, standing still); `time` the
     // seconds in the air; `height` how high he is drawn at the top of it, in px; `over` the share of
@@ -1740,39 +1746,39 @@ const BOONS = [
     params: { reach: 3, cone: 0.6, behind: 1, daze: 0.9, cooldownMul: 2, time: 0.36, height: 20, over: 0.45 },
     apply: (m, p) => { m.leapfrog = Object.assign({}, p); } },
   { id: 'spit', synergy: ['kindling'], skill: 'scream', active: true, emoji: '🫧', minLevel: 0, name: 'VENOM SPIT',
-    desc: 'BAAH becomes a glob of poison, spat where you point. It bursts into a puddle.',
+    desc: 'BAAH spits a glob of poison that bursts into a puddle.',
     stat: (p) => { const S = TUNING.status.spit, s = S.half * 2 + 1; return `FLIES UP TO ${sayN(S.range)} TILES · PUDDLE ${s}×${s} · ${sayN(p.cooldown)}s COOLDOWN · ${sayPoison()}`; },
     params: { cooldown: 4.5 * GOAT_CD },
     apply: (m, p) => { m.spit = true; m.screamCooldown = p.cooldown; } },
 
   // ---- passives ----
-  { id: 'hide', emoji: '❤️', minLevel: 0, name: 'THICK HIDE', desc: 'One more heart for the rest of the run, and it comes full.',
+  { id: 'hide', emoji: '❤️', minLevel: 0, name: 'THICK HIDE', get desc() { const p = this.params; return `+${p.heartsAdd} max ${sayHearts(p.heartsAdd)}, and it comes full.`; },
     stat: (p, b) => `+${p.heartsAdd} MAX HEART · +${b.heal} HEART NOW`,
     params: { heartsAdd: 1 },
     apply: (m, p) => { m.maxHp += p.heartsAdd; }, heal: 1 },
   // A card that argues with itself: every tuft is worth more and there is less goat to fill. Worth
   // it on a floor you mean to graze across, a mistake on one you mean to run through.
-  { id: 'stomachs', emoji: '🌿', minLevel: 0, name: 'FOUR STOMACHS', desc: 'Grass does you more good, but there is less of you to fill.',
+  { id: 'stomachs', emoji: '🌿', minLevel: 0, name: 'FOUR STOMACHS', get desc() { const p = this.params; return `Grass heals ${sayWord(p.gain)} ${sayHearts(p.gain)} more, but you lose ${sayWord(p.heartsLess)} max ${sayHearts(p.heartsLess)}.`; },
     stat: (p) => { const B = TUNING.prop.heal.bigGain; return `GRASS +1 → +${1 + p.gain} HEARTS · BIG GRASS +${B} → +${B + p.gain} · ${-p.heartsLess} MAX HEART · MILK UNCHANGED`; },
     params: { gain: 1, heartsLess: 1 },
     apply: (m, p) => { m.grassGain += p.gain; m.maxHp = Math.max(1, m.maxHp - p.heartsLess); } },
   // An active since 23 Sep 2026: as a passive it sat beside BOMB CHARGE or SPLASH and was simply
   // too much to have for free. Now it is what the headbutt *is*, and he wears it as a stag's antlers.
-  { id: 'horns', skill: 'butt', active: true, emoji: '🦌', minLevel: 0, name: 'LONG HORNS', desc: 'A stag’s antlers: your headbutt reaches further and throws a man harder.',
+  { id: 'horns', skill: 'butt', active: true, emoji: '🦌', minLevel: 0, name: 'LONG HORNS', desc: 'Your headbutt reaches further and throws men harder.',
     stat: (p) => { const H = TUNING.goat.headbutt; return `REACH ${sayN(H.reach / TILE)} → ${sayN(H.reach * p.reachMul / TILE)} TILES · THROW +${sayPct(p.impulseMul - 1)}`; },
     // `impulseMul` 1.25 → 1.6 with the bare impulse cut to 21: the antlers throw about where they
     // did (33.6 vs 35 tiles/s) and still clear `physics.bodyBothSpeed`, so the gap they buy is bigger.
     params: { reachMul: 1.38, impulseMul: 1.6 },
     apply: (m, p) => { m.headbuttReach *= p.reachMul; m.headbuttImpulse *= p.impulseMul; m.antlers = true; } },
-  { id: 'skull', addition: ['bomb', 'splash'], skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', desc: 'You get your head back after a headbutt in half the time, so a second man has less of a gap.',
+  { id: 'skull', addition: ['bomb', 'splash'], skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', get desc() { const p = this.params; return `You get over a headbutt ${sayTimes(1 / p.recoveryMul)} as fast.`; },
     stat: (p) => { const r = TUNING.goat.headbutt.recovery; return `RECOVERY ${sayN(r)}s → ${sayN(r * p.recoveryMul)}s`; },
     params: { recoveryMul: 0.5 },
     apply: (m, p) => { m.headbuttRecovery *= p.recoveryMul; } },
-  { id: 'jaw', addition: ['collar', 'shield'], skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'The man in your mouth is a better shield and stays there longer, and your mouth is free again sooner.',
+  { id: 'jaw', addition: ['collar', 'shield'], skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'A man in your mouth stops more bullets and stays there longer, and grab is ready sooner.',
     stat: (p) => { const G = TUNING.goat.grab; return `STOPS ${BOON_BASE.shieldBullets} → ${p.shieldBullets} BULLETS · HELD ~${sayN(BOON_BASE.holdTime)} → ${sayN(p.holdTime)}s · GRAB COOLDOWN ${sayN(G.cooldown)} → ${sayN(G.cooldown * p.cooldownMul)}s, AFTER A MAN ${sayN(G.cooldown * G.manCd)} → ${sayN(G.cooldown * G.manCd * p.cooldownMul)}s`; },
     params: { shieldBullets: 4, holdTime: 13, cooldownMul: 0.6 },
     apply: (m, p) => { m.shieldBullets = p.shieldBullets; m.holdTime = p.holdTime; m.grabCooldown *= p.cooldownMul; } },
-  { id: 'shield', synergy: ['jaw'], skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'The man in your mouth keeps fighting, for you: he swings at his own side, and a rifle keeps firing.',
+  { id: 'shield', synergy: ['jaw'], skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'The man in your mouth fights for you: he swings at his own, and a rifle keeps firing.',
     stat: (p) => `A HELD MAN SWINGS EVERY ${sayN(p.swing)}s · A HELD RIFLE RELOADS ${sayN(1 / p.reload)}× AS FAST`,
     params: { swing: 0.5, reload: 0.55 },
     apply: (m, p) => { m.livingShield = true; m.shieldSwing = p.swing; m.shieldReload = p.reload; } },
@@ -1780,32 +1786,32 @@ const BOONS = [
   // Everything slows — the goat too, so it is a moment to look, not a moment to run. It ends the
   // instant the thing leaves his mouth, and `every` keeps a pick-up-drop-pick-up from living in it.
   { id: 'coldeye', skill: 'grab', emoji: '⏳', minLevel: 0, name: 'COLD EYE',
-    desc: 'Pick anything up and the world slows around you for a moment, so the throw goes where you mean it.',
+    desc: 'Picking something up slows time until you throw it.',
     stat: (p) => `TIME AT ${sayPct(p.scale)} FOR UP TO ${sayN(p.time)}s AFTER A PICK-UP · ENDS ON THE THROW · ONCE EVERY ${sayN(p.every)}s`,
     params: { scale: 0.35, time: 2, every: 5 },
     apply: (m, p) => { m.coldEye = Object.assign({}, p); } },
-  { id: 'kindling', emoji: '🪵', minLevel: 0, name: 'KINDLING', desc: 'Fire spreads from man to man: a burning man lights the next one he bumps into.',
+  { id: 'kindling', emoji: '🪵', minLevel: 0, name: 'KINDLING', desc: 'A burning man sets alight the next man he bumps into.',
     stat: () => 'ONE MAN DEEP: THE ONE HE LIGHTS LIGHTS NOBODY',
     apply: (m) => { m.firePass = Math.max(m.firePass, 1); } },
   // `radius` is how far THE FULL THROAT reaches and nothing else: the bare call, the breath and the
   // spit each have their own reach, so the card says so rather than promising a louder voice.
-  { id: 'throat', addition: ['howl', 'breath', 'spit'], skill: 'scream', emoji: '🗣️', minLevel: 0, name: 'RAW THROAT', desc: 'BAAH comes back twice as fast, whatever your voice has become.',
+  { id: 'throat', addition: ['howl', 'breath', 'spit'], skill: 'scream', emoji: '🗣️', minLevel: 0, name: 'RAW THROAT', get desc() { const p = this.params; return `BAAH is ready again ${sayTimes(1 / p.cooldownMul)} as fast.`; },
     stat: (p) => `COOLDOWN ×${sayN(p.cooldownMul)} · THE FULL THROAT REACHES ${sayN(BOON_BASE.screamRadius)} → ${sayN(p.radius)} TILES`,
     params: { cooldownMul: 0.5, radius: 13 },
     apply: (m, p) => { m.screamCooldown *= p.cooldownMul; m.screamRadius = p.radius; } },
-  { id: 'hooves', addition: ['joints'], emoji: '💨', minLevel: 0, name: 'SURE HOOVES', desc: 'You run faster, from a standing start and flat out alike.',
+  { id: 'hooves', addition: ['joints'], emoji: '💨', minLevel: 0, name: 'SURE HOOVES', get desc() { const p = this.params; return `You run ${sayPct(p.speedMul - 1)} faster.`; },
     stat: (p) => `SPEED +${sayPct(p.speedMul - 1)}`,
     params: { speedMul: 1.13 },
     apply: (m, p) => { m.speed *= p.speedMul; } },
-  { id: 'joints', addition: ['weight', 'venomroll'], skill: 'roll', emoji: '🤸', minLevel: 0, name: 'LOOSE JOINTS', desc: 'Your roll carries you further and is ready again in half the time.',
+  { id: 'joints', addition: ['weight', 'venomroll'], skill: 'roll', emoji: '🤸', minLevel: 0, name: 'LOOSE JOINTS', desc: 'Your roll goes further and is ready again sooner.',
     stat: (p) => { const R = TUNING.goat.roll, d = R.speed * R.duration / TILE; return `ROLL ${sayN(d)} → ${sayN(d * p.distanceMul)} TILES · COOLDOWN ${sayN(R.cooldown)} → ${sayN(R.cooldown * p.cooldownMul)}s`; },
     params: { distanceMul: 1.35, cooldownMul: 0.45 },
     apply: (m, p) => { m.rollDistance *= p.distanceMul; m.rollCooldown *= p.cooldownMul; } },
-  { id: 'ember', addition: ['breath', 'kindling'], emoji: '🧯', minLevel: 0, name: 'EMBER COAT', desc: 'Ordinary fire burns you far more slowly. Violet witchfire, the mages’ kind, does not care.',
+  { id: 'ember', addition: ['breath', 'kindling'], emoji: '🧯', minLevel: 0, name: 'EMBER COAT', get desc() { const p = this.params; return `Fire burns you ${sayTimes(p.fireResist)} as slowly. Violet witchfire does not care.`; },
     stat: (p) => { const t = TUNING.goat.fireDamageInterval; return `STANDING IN FIRE: 1 HEART EVERY ${sayN(t)}s → EVERY ${sayN(t * p.fireResist)}s`; },
     params: { fireResist: 3 },
     apply: (m, p) => { m.fireResist = p.fireResist; } },
-  { id: 'oracle', emoji: '👁️', minLevel: 0, name: 'THE ORACLE', desc: 'You see through the walls close around you: the next room before you are in it. The far corners stay dark.',
+  { id: 'oracle', emoji: '👁️', minLevel: 0, name: 'THE ORACLE', desc: 'You see through the walls close around you.',
     stat: () => `SEE THROUGH STONE WITHIN ${sayN(TUNING.fog.oracle)} TILES`,
     apply: (m) => { m.oracle = true; } },
 ];
@@ -1828,20 +1834,17 @@ const BOONS = [
 // things at once. `mods.boomerang` / `mods.blink` is what Q reads; `Goat.itemCd` is its own
 // cooldown, never the grab's and never the roll's, because the thing it throws or the step it
 // takes is its own trick and not a reskin of a verb he already has.
-// Every tier's `desc` is the literal thing, in numbers: what the tier does, how far, how long, how
-// often. It used to be a line of prose a tier — "the next floor is yours", "everything on its way
-// out and on its way back" — which reads well and tells a player who has three seconds and a mouse
-// hovering over a stool precisely nothing. The 22 Sep 2026 note was "the literal meaning of what it
-// does, next to each artifact, none of this smeared bullshit".
-// It is no longer typed. Each talisman has one `say(p)` that states a tier WHOLE off that tier's own
-// params, and `desc` is a getter onto it (below the list). Two reasons. The lines used to read as a
-// diff — tier I the whole thing, II and III only what changed — but the n-th mouse of a run sells
-// tier n and nothing else, so the player who met BUTCHER'S GREASE III was told "1.3 TILES FOR 20s,
-// AND 15% DRAG" and never that men slip on it; a tier has to stand on its own. And a number typed
-// into a sentence is stale the moment the TALISMANS tab moves the param under it. `Renderer.drawWare`,
-// the HUD chip and the crow's gift all print `desc`, so what they print is now what the tier does.
+// Two lines per talisman, both built off the tier's own params and stating that tier WHOLE (the n-th
+// mouse of a run sells tier n and nothing else, so a tier cannot be a diff on tier I):
+// - `tell(p)` is what the player reads — the shelf note, the chip hover — as a tier's `desc`: one or
+//   two plain lines of what it does, a number only where it is the point (25 Sep 2026: "no story,
+//   no exact numbers"). It replaced both the old `ARTIFACT_HOW` sentence and the numbers line under
+//   it, which together were either a story or a pile of timings.
+// - `say(p)` is the tier in full numbers, as a tier's `detail`, for the TALISMANS tab only.
+// Both are getters (below the list), so the TALISMANS tab moving a param moves the words with it.
 const ARTIFACTS = [
   { id: 'firecharm', name: 'FIRE AMULET', color: '#f2a233',
+    tell: (p) => `A burning man sets alight the men he touches${p.pass === 1 ? '' : p.pass >= 5 ? ', and on through a whole crowd' : `, ${sayWord(p.pass)} men deep`}.`,
     say: (p) => `A BURNING MAN LIGHTS THE NEXT ONE HE TOUCHES, ${p.pass === 1 ? 'AND THAT ONE LIGHTS NOBODY' : `AND ON IT GOES: ${p.pass} MEN DEEP`}.`,
     tiers: [
       { params: { pass: 1 } },
@@ -1852,6 +1855,7 @@ const ARTIFACTS = [
     // What `generateLevel` does with `mods.luck`, said as it does it: every floor built while it is
     // worn (not the next one only), the multiplier on the chance of a SECOND secret wall (at 3 and
     // over, most rooms that can hold one get one), and the extra heals are grass.
+    tell: (p) => `Every floor you enter has ${p.secret >= 3 ? 'a secret wall in most rooms' : 'more secret walls'}, more weapons and big grass${p.heals ? ', and more grass to heal on' : ''}.`,
     say: (p) => `EVERY FLOOR BUILT WHILE WORN: ${p.secret >= 3 ? 'A SECRET WALL IN MOST ROOMS THAT CAN HOLD ONE' : `A SECOND SECRET WALL x${sayN(p.secret)} AS LIKELY`}, WEAPON RACKS x${sayN(p.racks)}, BIG GRASS (+${TUNING.prop.heal.bigGain} HEARTS) BEHIND A SECRET x${sayN(p.grass)}${p.heals ? `, +${p.heals} GRASS` : ''}.`,
     tiers: [
       { params: { secret: 1.6, racks: 1.5, grass: 1.5, heals: 0 } },
@@ -1861,6 +1865,7 @@ const ARTIFACTS = [
   // The three Q verbs share a tag, so one shelf never offers two of them (`stockFor`): the Q key
   // does one thing at a time, and two of them side by side are one choice offered twice.
   { id: 'boomerang', tag: 'q', name: 'BOOMERANG', color: '#efe6d0',
+    tell: (p) => `Q: throw it. It dazes ${p.pierce >= 99 ? 'every man' : p.pierce === 1 ? 'the first man' : `the first ${sayWord(p.pierce)} men`} it passes, out and back.`,
     say: (p) => `Q: THROWN ${sayN(p.range)} TILES OUT AND BACK. ${p.pierce >= 99 ? 'EVERY MAN IT PASSES, BOTH WAYS, IS' : `UP TO ${p.pierce} ${p.pierce === 1 ? 'MAN EACH WAY IS' : 'MEN EACH WAY ARE'}`} DAZED ${sayN(p.stun)}s. ${sayN(p.cooldown)}s COOLDOWN.`,
     tiers: [
       { params: { stun: 1.2, cooldown: 10 * GOAT_CD, range: 6, pierce: 1 } },
@@ -1868,6 +1873,7 @@ const ARTIFACTS = [
       { params: { stun: 2.4, cooldown: 5 * GOAT_CD, range: 9, pierce: 99 } }],
     apply: (m, p) => { m.boomerang = p; } },
   { id: 'symbols', tag: 'q', name: 'STRANGE SYMBOLS', color: '#7d5cff',
+    tell: (p) => `Q: blink ${sayN(p.dist)} tiles ahead, through men but not walls${p.stun ? '. Men where you left are dazed' : ''}.`,
     say: (p) => `Q: BLINK ${sayN(p.dist)} TILES AHEAD, THROUGH MEN BUT NOT WALLS. ${sayN(p.cooldown)}s COOLDOWN.${p.stun ? ` WHOEVER STOOD WHERE YOU LEFT IS DAZED ${sayN(p.stun)}s.` : ''}`,
     tiers: [
       { params: { dist: 3, cooldown: 6 * GOAT_CD, stun: 0 } },
@@ -1877,6 +1883,7 @@ const ARTIFACTS = [
   // ---- the seventeen from ARTIFACTS_TZ.md. Their machinery is js/talismans.js; `tag` keeps the
   // mouse from putting two of the same sort on one shelf (`stockFor`). ----
   { id: 'mason', tag: 'geo', name: "MASON'S MARK", color: '#8d8a85',
+    tell: (p) => `Men you throw die against walls from a softer throw${p.props ? '. Crates and racks count as walls' : ''}${p.bodies ? ', and so does another man' : ''}.`,
     say: (p) => `A THROWN MAN DIES ON STONE AT ${sayPct(p.splat)} OF THE USUAL SPEED${p.props ? '. A CRATE OR A RACK COUNTS AS STONE' : ''}${p.bodies ? '. A MAN THROWN INTO ANOTHER KILLS HIM AT THAT SPEED TOO' : ''}.`,
     tiers: [
       { params: { splat: 0.8, props: false, bodies: false } },
@@ -1884,6 +1891,7 @@ const ARTIFACTS = [
       { params: { splat: 0.75, props: true, bodies: true } }],
     apply: (m, p) => { m.mason = p; } },
   { id: 'domino', tag: 'geo', name: 'DOMINO BONE', color: '#efe6d0',
+    tell: (p) => `A thrown man who hits another passes the throw on${p.links === 1 ? '' : `, up to ${sayWord(p.links)} times`}.`,
     say: (p) => `A THROWN MAN WHO BOWLS ANOTHER OVER PASSES THE THROW ON ${p.links === 1 ? 'ONCE' : `UP TO ${p.links} TIMES`}, KEEPING ${sayPct(p.keep)} OF ITS SPEED${p.links === 1 ? '' : ' EACH TIME'}.`,
     tiers: [
       { params: { links: 1, keep: 0.7 } },
@@ -1892,6 +1900,7 @@ const ARTIFACTS = [
     apply: (m, p) => { m.domino = p; } },
   { id: 'echo', tag: 'butt', name: 'ECHO HORN', color: '#efe6d0',
     // The blows come `delay` apart, each after the last (`Talisman.onLunge`), not all at once.
+    tell: (p) => `A ${p.power < 1 ? 'weaker ' : ''}ghost headbutt follows each of yours${p.count > 1 ? `, then ${sayWord(p.count - 1)} more to the side` : ''}.`,
     say: (p) => `${sayN(p.delay)}s AFTER EVERY HEADBUTT A GHOST BLOW FOLLOWS${p.count > 1 ? `, AND ${p.count === 2 ? 'ANOTHER' : `${p.count - 1} MORE`} ${sayN(p.delay)}s AFTER THAT, ${Math.round(p.spread * 180 / Math.PI)}° ASIDE` : ''}: ${sayPct(p.reach)} OF THE REACH, ${sayPct(p.power)} OF THE THROW.`,
     tiers: [
       { params: { delay: 0.4, power: 0.5, count: 1, spread: 0, reach: 0.6 } },
@@ -1899,6 +1908,7 @@ const ARTIFACTS = [
       { params: { delay: 0.4, power: 1, count: 2, spread: 0.26, reach: 0.6 } }],
     apply: (m, p) => { m.echo = p; } },
   { id: 'spade', tag: 'geo', name: "GRAVEDIGGER'S SPADE", color: '#8d8a85',
+    tell: (p) => `Bodies stay, and men trip over them${p.grab ? '. Grab one to throw it' : ''}${p.lethal ? ': it kills what it hits' : ''}.`,
     say: (p) => `BODIES STAY ${sayN(p.life)}s, UP TO ${p.cap}. A MAN WHO RUNS INTO ONE IS FLOORED ${sayN(p.trip)}s${p.grab ? '. GRAB ONE AND THROW IT LIKE A CRATE' : ''}${p.lethal ? ': IT KILLS WHAT IT HITS' : ''}.`,
     tiers: [
       { params: { life: 20, trip: 0.6, grab: false, lethal: false, r: 12, cap: 6 } },
@@ -1906,6 +1916,7 @@ const ARTIFACTS = [
       { params: { life: 25, trip: 0.6, grab: true, lethal: true, r: 12, cap: 6 } }],
     apply: (m, p) => { m.spade = p; } },
   { id: 'grease', tag: 'geo', name: "BUTCHER'S GREASE", color: '#c0392b',
+    tell: (p) => `A kill on a wall leaves a slick: thrown men slide ${p.drag <= 0.25 ? 'much ' : ''}further on it${p.slip ? ', running men slip' : ''}.`,
     say: (p) => `A WALL KILL GREASES ${sayN(p.r)} ${p.r === 1 ? 'TILE' : 'TILES'} ROUND IT FOR ${sayN(p.life)}s: A THROWN MAN SLIDES ON ${sayPct(p.drag)} OF THE DRAG${p.slip ? `, A MAN CHASING ACROSS SLIPS ${sayPct(p.slip)} A SECOND` : ''}, YOU KEEP ${sayPct(p.grip)} GRIP.`,
     tiers: [
       { params: { life: 15, r: 1, drag: 0.5, slip: 0, grip: 0.7 } },
@@ -1913,6 +1924,7 @@ const ARTIFACTS = [
       { params: { life: 20, r: 1.3, drag: 0.15, slip: 0.3, grip: 0.7 } }],
     apply: (m, p) => { m.grease = p; } },
   { id: 'awl', tag: 'geo', name: "CARPENTER'S AWL", color: '#a57949',
+    tell: (p) => `A crate breaking ${p.fling ? 'throws' : 'knocks down'} everyone next to it.`,
     say: (p) => `A CRATE THAT BREAKS ${p.fling ? 'THROWS' : 'FLOORS'} EVERYONE WITHIN ${sayN(p.r)} ${p.r === 1 ? 'TILE' : 'TILES'} OF IT${p.fling ? ` CLEAR, AT ${sayN(p.fling)} TILES A SECOND` : ''}. THE BIG ONES ONLY STAGGER.`,
     tiers: [
       { params: { r: 1, fling: 0 } },
@@ -1920,6 +1932,7 @@ const ARTIFACTS = [
       { params: { r: 1.5, fling: 12 } }],
     apply: (m, p) => { m.awl = p; } },
   { id: 'mask', tag: 'ai', name: 'HORNED MASK', color: '#efe6d0',
+    tell: (p) => `Men who see another die nearby panic and run${p.drop ? ', dropping their swing' : ''}${p.blind ? ', blind to what is in the way' : ''}.`,
     say: (p) => `A MAN WHO SEES ANOTHER DIE WITHIN ${sayN(p.r)} TILES PANICS AND RUNS ${sayN(p.flee)}s${p.blind ? ', BLIND TO WHAT IS IN HIS WAY' : ''}${p.drop ? ', DROPPING ANY BLOW HE WAS WINDING UP' : ''}. EACH MAN AT MOST ONCE EVERY ${sayN(p.cd)}s.`,
     tiers: [
       { params: { r: 4, flee: 1, drop: false, blind: false, cd: 4 } },
@@ -1927,6 +1940,7 @@ const ARTIFACTS = [
       { params: { r: 5, flee: 1.5, drop: true, blind: true, cd: 4 } }],
     apply: (m, p) => { m.mask = p; } },
   { id: 'effigy', tag: 'q', name: 'STRAW EFFIGY', color: '#c9a24e',
+    tell: (p) => `Q: set down a straw goat. Men near it go for it instead of you${p.shots ? ', rifles too' : ''}${p.oops ? '. A man who clubs it hits his neighbour' : ''}.`,
     say: (p) => `Q: A STRAW GOAT STANDS ${sayN(p.life)}s. MEN WITHIN ${sayN(p.r)} TILES GO FOR IT INSTEAD OF YOU${p.shots ? ', AND RIFLES WASTE A ROUND ON IT' : ''}${p.oops ? '. A MAN WHO CLUBS IT HITS HIS NEIGHBOUR' : ''}. ${sayN(p.cd)}s COOLDOWN.`,
     tiers: [
       { params: { life: 4, r: 6, cd: 12 * GOAT_CD, shots: false, oops: false } },
@@ -1934,6 +1948,7 @@ const ARTIFACTS = [
       { params: { life: 6, r: 7, cd: 8 * GOAT_CD, shots: true, oops: true } }],
     apply: (m, p) => { m.effigy = p; } },
   { id: 'spur', tag: 'run', name: 'BRASS SPUR', color: '#c29a44',
+    tell: (p) => `You reach full speed ${sayTimes(1 / p.time)} as fast${p.keep ? ', and a hit no longer takes all of it' : ''}${p.throw > 1 ? '. At full speed your headbutt throws harder' : ''}.`,
     say: (p) => { const T = TUNING.goat.momentum.time; return `YOUR RUN-UP BUILDS IN ${sayN(T * p.time)}s, NOT ${sayN(T)}s${p.keep ? `, AND A HIT TAKES ${sayPct(1 - p.keep)} OF IT INSTEAD OF ALL` : ''}${p.throw > 1 ? `. AT A FULL RUN THE HORNS THROW x${sayN(p.throw)}` : ''}.`; },
     tiers: [
       { params: { time: 0.5, keep: 0, throw: 1 } },
@@ -1941,6 +1956,7 @@ const ARTIFACTS = [
       { params: { time: 0.5, keep: 0.5, throw: 1.6 } }],
     apply: (m, p) => { m.spur = p; } },
   { id: 'moth', tag: 'run', name: 'MOTH WOOL', color: '#b8ad97',
+    tell: (p) => `Men hear your steps from less far${p.near ? ', and not at all up close' : ''}${p.still ? '. Stand still and you are hard to spot' : ''}.`,
     say: (p) => `YOUR FOOTSTEPS CARRY ${sayPct(p.step)} AS FAR${p.near ? `, AND NOT AT ALL WITHIN ${sayN(p.near)} TILES OF A MAN WHO HAS NOT SEEN YOU` : ''}${p.still ? `. STAND STILL ${sayN(p.still)}s AND NOBODY WHO HAS NOT SEEN YOU YET CAN, PAST ${sayN(p.hide)} TILES` : ''}.`,
     tiers: [
       { params: { step: 0.5, near: 0, still: 0, hide: 4 } },
@@ -1948,6 +1964,7 @@ const ARTIFACTS = [
       { params: { step: 0.5, near: 3, still: 1.2, hide: 4 } }],
     apply: (m, p) => { m.moth = p; } },
   { id: 'bell', tag: 'run', name: "BELLWETHER'S BELL", color: '#c29a44',
+    tell: (p) => `A mark at the screen's edge points to the stairs and the vault${p.sil ? '. You see men through walls nearby' : ''}${p.mimic ? '. Hidden wraiths twitch' : ''}.`,
     say: (p) => `A MARK AT THE EDGE OF THE SCREEN POINTS TO THE STAIRS AND THE VAULT${p.sil ? `. MEN SHOW THROUGH STONE WITHIN ${sayN(p.sil)} TILES` : ''}${p.mimic ? '. A WRAITH HIDING AS A BOX OR GRASS TWITCHES' : ''}.`,
     tiers: [
       { params: { sil: 0, mimic: false } },
@@ -1955,6 +1972,7 @@ const ARTIFACTS = [
       { params: { sil: 9, mimic: true } }],
     apply: (m, p) => { m.bell = p; } },
   { id: 'sandal', tag: 'run', name: "PILGRIM'S SANDAL", color: '#8a6238',
+    tell: (p) => `Reach a new room with men on your heels and you get a burst of speed${p.reset ? ', with your roll and voice ready again' : ''}${p.shake ? '. They lose you in the doorway' : ''}.`,
     say: (p) => `INTO A NEW ROOM WITH A MAN ON YOUR HEELS (WITHIN ${sayN(p.range)} TILES): +${sayPct(p.speed)} SPEED FOR ${sayN(p.time)}s${p.reset ? ', AND YOUR ROLL AND VOICE ARE READY AGAIN' : ''}${p.shake ? '. THE MEN BEHIND LOSE YOU IN THE DOORWAY' : ''}.`,
     tiers: [
       { params: { speed: 0.2, time: 2.5, reset: false, shake: false, range: 10 } },
@@ -1962,6 +1980,7 @@ const ARTIFACTS = [
       { params: { speed: 0.25, time: 3, reset: true, shake: true, range: 10 } }],
     apply: (m, p) => { m.sandal = p; } },
   { id: 'scapegoat', tag: 'def', name: 'SCAPEGOAT', color: '#e8e0cc',
+    tell: (p) => `Once, a killing blow leaves you on ${sayWord(p.hearts)} ${sayHearts(p.hearts)}${p.stun ? ' and dazes everyone near you' : ''}. Then it is gone.`,
     say: (p) => `ONCE: A KILLING BLOW IS CANCELLED. UP WITH ${p.hearts} ${p.hearts === 1 ? 'HEART' : 'HEARTS'} AND ${sayN(p.invuln)}s UNTOUCHABLE${p.stun ? `, AND EVERYONE WITHIN ${sayN(p.r)} TILES IS DAZED ${sayN(p.stun)}s` : ''}. THEN IT IS GONE.`,
     tiers: [
       { params: { hearts: 1, invuln: 1.5, stun: 0, r: 5 } },
@@ -1969,6 +1988,7 @@ const ARTIFACTS = [
       { params: { hearts: 2, invuln: 1.5, stun: 1.5, r: 5 } }],
     apply: (m, p) => { m.scapegoat = p; } },
   { id: 'tallow', tag: 'def', name: 'TALLOW SKIN', color: '#e8dcb0',
+    tell: (p) => `A crust takes one hit for you and grows back after ${sayWord(p.rooms)} new rooms${p.soul ? ', or when you take a soul' : ''}.`,
     say: (p) => `A CRUST THAT TAKES ONE HIT FOR YOU. IT GROWS BACK AFTER ${p.rooms} NEW ROOMS${p.soul ? ', OR AT ONCE WHEN YOU TAKE A SOUL' : ''}.`,
     tiers: [
       { params: { rooms: 5, soul: false } },
@@ -1976,6 +1996,7 @@ const ARTIFACTS = [
       { params: { rooms: 3, soul: true } }],
     apply: (m, p) => { m.tallow = p; } },
   { id: 'mirror', tag: 'butt', name: 'MIRROR SHARD', color: '#bfe6ff',
+    tell: (p) => `Headbutt just as a hit lands and it goes back: bullets and bites${p.club ? ', clubs and blades' : ''}${p.heavy ? ', even the big blows' : ''}. Mistime it and you are hit.`,
     say: (p) => `FOR ${sayN(p.window)}s FROM THE START OF A HEADBUTT: BULLETS FLY BACK, AND A BITE${p.club ? ', CLUB OR BLADE' : ''} THROWS ITS MAN BACK${p.heavy ? `. SO DO THE RAT OGRE'S ARM, A CHARGE, A SLAM (REELING ${sayN(p.stun)}s) AND A RUNE WITHIN ${sayN(p.runeR)} TILES` : ''}. MISTIMED, YOU TAKE THE HIT.`,
     tiers: [
       { params: { window: 0.18, club: false, heavy: false, throw: 0.8, stun: 0.8, runeR: 6 } },
@@ -1983,6 +2004,7 @@ const ARTIFACTS = [
       { params: { window: 0.25, club: true, heavy: true, throw: 0.8, stun: 1, runeR: 6 } }],
     apply: (m, p) => { m.mirror = p; } },
   { id: 'cup', tag: 'count', name: 'BLOOD CUP', color: '#c0392b',
+    tell: (p) => `Every ${p.need} men killed by a wall, wheel, grate or drop give a heart back${p.carry ? '. The count carries to the next floor' : ''}.`,
     say: (p) => `EVERY ${p.need} MEN KILLED BY THE ROOM (WALL, WHEEL, GRATING, DROP) GIVE 1 HEART, UP TO ${p.max} A FLOOR${p.carry ? '. THE COUNT CARRIES TO THE NEXT FLOOR' : ''}.`,
     tiers: [
       { params: { need: 12, carry: false, max: 2 } },
@@ -1990,6 +2012,7 @@ const ARTIFACTS = [
       { params: { need: 8, carry: true, max: 2 } }],
     apply: (m, p) => { m.cup = p; } },
   { id: 'tally', tag: 'butt', name: 'TALLY STICK', color: '#a57949',
+    tell: (p) => `Every ${sayNth(p.every)} headbutt that lands throws ${sayTimes(p.mul)} as hard${p.stun ? ' and dazes men beside him' : ''}.`,
     say: (p) => `EVERY ${p.every}${p.every === 2 ? 'ND' : p.every === 3 ? 'RD' : 'TH'} HEADBUTT THAT LANDS THROWS x${sayN(p.mul)}${p.stun ? ` AND DAZES EVERYONE WITHIN ${sayN(p.r)} ${p.r === 1 ? 'TILE' : 'TILES'} FOR ${sayN(p.stun)}s` : ''}.`,
     tiers: [
       { params: { every: 4, stun: 0, r: 1, mul: 2 } },
@@ -1997,9 +2020,11 @@ const ARTIFACTS = [
       { params: { every: 3, stun: 1, r: 1, mul: 2 } }],
     apply: (m, p) => { m.tally = p; } },
 ];
-// A tier's `desc` is its talisman's `say` over its own params, read when it is drawn.
+// A tier's `desc` (the player's line) is its talisman's `tell`, and `detail` (the TALISMANS tab's
+// numbers) its `say`, both over the tier's own params and read when drawn.
 for (const a of ARTIFACTS) for (const tier of a.tiers) {
-  Object.defineProperty(tier, 'desc', { get() { return a.say(tier.params); }, enumerable: true });
+  Object.defineProperty(tier, 'desc', { get() { return a.tell(tier.params); }, enumerable: true });
+  Object.defineProperty(tier, 'detail', { get() { return a.say(tier.params); }, enumerable: true });
 }
 
 // The mouse's third offer, beside her two talismans: no talisman at all, a pail of milk as tall as
@@ -2010,35 +2035,7 @@ for (const a of ARTIFACTS) for (const tier of a.tiers) {
 // Shaped like an `ARTIFACTS` entry so the shelf can draw and read it out the same way; `Shop.buy` is
 // what knows it is not one.
 const MILK_OFFER = { id: 'milk', name: 'A PAIL OF MILK', color: '#efe6d0',
-  how: 'Heals you. Stand still in it to drink a heart; what you leave stays for later.',
-  tiers: [{ desc: `+${TUNING.shop.heals} HEARTS IN ALL. TAKING IT MEANS NO TALISMAN.` }] };
-
-// What a talisman IS, in one plain sentence, read on the shelf above the tier's numbers. A tier's
-// `desc` is a diff against tier I and full of terms (window, throw, depth) that only mean something
-// once you know what the thing is for; this is the line that says so. One per `ARTIFACTS` id.
-const ARTIFACT_HOW = {
-  firecharm: 'A man on fire sets alight whoever he bumps into.',
-  clover: 'Luck on every floor you walk onto wearing it: more hidden walls, more arms, more to heal on.',
-  boomerang: 'Press Q to throw it. It stuns the men it passes and comes back to you.',
-  symbols: 'Press Q to vanish and reappear a few steps ahead, through men but not walls.',
-  mason: 'Men you throw die against walls at a lower speed.',
-  domino: 'A man you throw knocks the next man on, like skittles.',
-  echo: 'Every headbutt is followed by a second, invisible one.',
-  spade: 'Bodies stay on the floor, and men trip over them.',
-  grease: 'Killing a man on a wall leaves a slick: thrown men slide further on it.',
-  awl: 'A crate breaking knocks down everyone next to it.',
-  mask: 'Men who watch another die nearby panic and run.',
-  effigy: 'Press Q to set down a straw goat. Men go for it instead of you.',
-  spur: 'You reach full running speed sooner.',
-  moth: 'Your running is quieter: men hear you from less far.',
-  bell: 'A mark at the edge of the screen points the way to the stairs and the vault.',
-  sandal: 'Get into a new room with men on your heels and you get a burst of speed.',
-  scapegoat: 'Saves your life once. Then it is gone.',
-  tallow: 'Takes one hit for you, then grows back as you go.',
-  mirror: 'Headbutt right as a hit reaches you and it goes back at them. Mistime it and you are hit.',
-  cup: 'Kill enough men and you get a heart back.',
-  tally: 'Every few headbutts that land, one throws twice as hard.',
-};
+  tiers: [{ desc: `Heals ${TUNING.shop.heals} hearts, a drink at a time. Taking it means no talisman.` }] };
 
 // What the death card says took the last heart: a kind of man (a clubman is split into the
 // ordinary one and the brute in `game.killedBy`), or the word a hazard passes to `Goat.damage`.
