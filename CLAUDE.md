@@ -327,7 +327,10 @@ directly. Samples come from `dev.sampleSeed` (`game.rulesPage`, REROLL). Other t
 one tile, deletes its door, stands him a step inside. `collideEntities` never shoves him; `chaseGoat`
 only turns him; `idleWander` / `investigate` leave him put. `lessonIndex` keeps scatter out. His room is
 `LESSON_TEMPLATE`, **four tiles deep** so every throw ends on stone, two crates in the near half,
-`noFlipX`; `sentryRoomAt` = `ordinaryRooms(levelDef, n)[0]`, so the curve is unchanged.
+`noFlipX`; `sentryRoomAt` = `ordinaryRooms(levelDef, n)[0]`, so the curve is unchanged. The corridor out
+of his gap turns in the first tile past the wall and never runs on along his row or one beside it
+(`carveCorridor`'s `turn`, 1.72), so knocked back through the gap he meets stone within
+`TUNING.sentry.wallBehind` tiles from anywhere in the room (`GEN_RULES.sentrywall`).
 
 **The ambush room.** `AMBUSH_TEMPLATE` via `levelDef.ambushAt` (room 4; in `fixedW`): 3 x 14, `noFlipX`,
 both stands **always swords** (`room.isAmbush`), nothing scattered, never trap or canon, milk placed
@@ -335,13 +338,14 @@ furthest from `room.enter`, two fixed clubmen, never introduces a kind. Block 1 
 
 **The ramp** (1.66–1.67, THE ALTAR, thirteen rooms): sentry; one loose clubman; `calmAt` — `CALM_TEMPLATE`,
 role `calm`, lit bowls in straw and nobody (off the curve, nothing scattered, `isCalm`); the wheel;
-the ambush; rest; `trapAt` + `trapTpl` `hayloft` + `trapMen` (two clubmen in straw, the one trap
+the ambush; the middle gate, its soul carried by a keeper (`gateKeeper`, see *Soul gates*); `trapAt` + `trapTpl` `hayloft` + `trapMen` (two clubmen in straw, the one trap
 room, placed not rolled); the first butcher alone (`introduce` champion at 1); three clubmen (`crowdAt`, so his two rooms are
 not back to back); his arena; rest (no gate, no soul); the ogre, who carries the second soul.
 
 **The wheel lesson.** `levelDef.millLesson`: `MILL_LESSON_TEMPLATE`, seven tall, hub one row off the top
 so only the bottom lane is clear; **two men** on the far `e` markers with `trapSense` pinned to 0 and 1
-and `noticeFor` (`TUNING.ai.millNotice`). `noFlipX`.
+and `noticeFor` (`TUNING.ai.millNotice`). `noFlipX`. Both hold their marks — no sight, noise or
+wander — until the goat is inside the room's box (`e.millOpen`, 1.72): nobody rides the arm unwatched.
 
 **Words on the floor.** `CONTROL_LINES` (`render.js`), placed by `level.controls`, never in an empty room:
 0 `WASD - MOVE` in the pen above `cagePrompt`; 1 grab/throw in the ambush; 2 the headbutt, one line,
@@ -361,7 +365,10 @@ contents by `paintStartRoom`. The ritual altar is a real `table` Prop with `isAl
 
 **Soul gates.** `levelDef.gates`: two rest rooms (`REST_TEMPLATE`, role `rest`, off the curve, out of
 `ordinaryRooms`), never the last room, a set piece, the vault's room or a teaching room. Soul on the floor
-via `placeSoul`. `gateSpot` narrows the exit and hangs a `gate: true` door with no hit points (`smash`
+via `placeSoul` — or, on a `levelDef.gateKeeper` level (THE ALTAR), in a **keeper**: a `keeper` bearer
+spawned on the soul's spot, ensouled with `soulKeeper.hp` hearts, `soulKeeper.speed`, `fireCare` /
+`trapSense` like the seer, his swing lighting witchfire where it lands (`Enemy.keeperFire`); `bossPrize`
+drops his soul tagged `e.soulGate`. Placed, off the curve; `GEN_RULES.soulgate` requires exactly him. `gateSpot` narrows the exit and hangs a `gate: true` door with no hit points (`smash`
 returns, no shouldering). Only `game.openSoulGate(room)` opens it: the soul pickup (`soul.gate`, its own
 gate only) or `Shop.buy` / `Shop.takeMilk`. `narrowExit` walls only the straight run, never the
 corridor's turn (walling the turn failed seeds). `GEN_RULES.soulgate`.
@@ -784,7 +791,9 @@ back over the dark (`Dark.readable`), and `dark.eyes` for the seer, hound and wr
 
 **Souls are a budget.** `levelDef.souls` = two; the mouse replaces one (`soulsHere`). Spent in order:
 gates, vault, then the **last** bosses; an empty vault holds big grass. `game.bossPrize`: soul, else milk.
-Seeded surprises: `soul.bossChance`, `soul.roomChance` (`game.bonusRoom`). A soul is a violet wisp
+Seeded surprises: `soul.bossChance`, `soul.roomChance` (`game.bonusRoom`). All of it is `soulPlan(level)`
+(gen.js, 1.72), which `startLevel` lays and `GEN_RULES.souls` checks: no two souls fewer than
+`soul.apart` rooms apart — a surprise that would be is not dealt. A soul is a violet wisp
 (`Renderer.soulWisp`, `game.souls`). Cards: `takeBoon` by Digit1/2/3 or down-and-up on one card
 (`boonDown`, `boonAt`, `boonRects`), `boonArm` delay; never on hover or press alone.
 

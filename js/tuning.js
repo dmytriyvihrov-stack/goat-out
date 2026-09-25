@@ -999,6 +999,23 @@ const TUNING = {
   // the soul adds `hp` more hearts and the amber haze, a headbutt moves him `flingMul` of what it
   // would, and nothing carries him out of the room. Edited on ENEMIES.
   soulBearer: { hp: 1, flingMul: 0.6 },
+  // The keeper of a gate (`levelDef.gateKeeper`, THE ALTAR's middle gate, 1.72): the soul that
+  // lifts that gate is not lying on the floor, it is in a clubman standing over where it would lie,
+  // and it comes out of him when he goes down (`game.bossPrize`). He is a soul-bearer like any
+  // other (`soulBearer.flingMul`, unliftable, lit) with `hp` hearts in all; he walks at `speed` of a
+  // clubman's pace; and where his club comes down the floor goes up in witchfire — a patch
+  // `fireR` tiles round the spot `fireAt` tiles in front of him, burning `fireFor` s, never the
+  // tile he stands on. He knows his own fire as the seer knows his (`fireCare`, `trapSense`): he
+  // steps round it, and burns like anybody if he is put into it.
+  soulKeeper: { hp: 2, speed: 1.3, fireAt: 1.1, fireR: 1, fireFor: 2.6, fireCare: 2.2, trapSense: 0.97 },
+  // The sentry's doorway (THE ALTAR's first man, `blockSpot`): the corridor out of his one-tile gap
+  // bends at once, so a straight line from anywhere in his room through where he stands meets stone
+  // within `wallBehind` tiles of him — the first swing ever tried ends on a wall and not down a
+  // corridor (`GEN_RULES.sentrywall`). The bare head's throw kills against stone within 2.86 tiles
+  // of flight (`goat.headbutt.impulse` 21 falling off at `physics.flungDrag` 3.5 to `splatSpeed` 11),
+  // and a line of `wallBehind` puts his body (a third of a tile) on the wall inside that; at the four
+  // tiles the first turn gave he reached the wall alive.
+  sentry: { wallBehind: 3 },
   noise: {
     // A coin flip every frame (`Math.random() < dt * 4`) could go a half-second without landing,
     // which is what let a run right up on somebody's back read as silent. `footstepGap` is a timer
@@ -1397,7 +1414,11 @@ const TUNING = {
   // odds that one of its bosses carries a soul of his own (he is lit like any man with one, and the
   // card counts it), and the odds that one ordinary fight room gives one up when its last man goes
   // down (nothing says which — it is found by winning). At most one of each a level.
-  soul: { r: 13, pickupR: 22, bossChance: 0.4, roomChance: 0.35,
+  // `apart` (1.72): no two souls of a level — gates, the vault, the bosses who carry one and either
+  // surprise — are fewer than `apart` rooms from each other, so a soul is never followed by another
+  // in the next room or the one after it. A surprise that would break it is not dealt
+  // (`soulPlan`, `GEN_RULES.souls`). Played, two in a row was "not ok at all" (25 Sep 2026).
+  soul: { r: 13, pickupR: 22, bossChance: 0.4, roomChance: 0.35, apart: 3,
     // Butting a soul gate lays a running trail on the floor from the goat to what opens it (the
     // soul lying in that room, or the mouse's shelf): `time` seconds, a chevron every `gap` px
     // flowing at `speed` px/s. The gate says what it wants; the trail says where it is.
@@ -2162,7 +2183,10 @@ const LEVELS = [
     // ogre's is a rest room with no gate and no soul in it (`rests`): the second soul of the run is
     // the ogre's, carried by him and paid out when he goes down (24 Sep 2026: "the second soul after
     // the ogre"), so the level ends on the fight that pays.
-    gates: [6], rests: [11],
+    // And the first soul does not lie on the floor either (1.72, `gateKeeper`): a clubman keeps it,
+    // quicker than the rest, two hearts, his club leaving witchfire where it lands, and the gate
+    // opens on the soul he drops (`TUNING.soulKeeper`). The first soul of the run is fought for.
+    gates: [6], rests: [11], gateKeeper: true,
     // The wheel is met with nobody standing in the room, and arms are not a thing you find until
     // halfway in: the first half of the run is the goat and his head and nothing else.
     // The first stand of arms in the game is not a scatter, it is this room: a long approach, the

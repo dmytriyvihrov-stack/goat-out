@@ -198,6 +198,47 @@ function generateLevel(levelDef, seed, opts) {
   throw new Error('level generation failed');
 }
 
+// Where a generated level's souls go, worked out once and read by both `game.startLevel` (which
+// lays them) and `GEN_RULES.souls` (which holds them apart). `def.souls` is the whole authored count,
+// the mouse standing in for one, spent in order: the gates (a keeper's gate puts its soul in the
+// keeper, `keeper` his spawn index), then the vault, then the LAST bosses (`ensoul`, spawn indices).
+// Then the two surprises off the level's own seed, each only where it keeps every soul
+// `TUNING.soul.apart` rooms from every other: a boss who carries one the budget did not give him
+// (`bonusBoss`), and an ordinary fight room that gives one up with its last man (`bonusRoom`) —
+// never a room teaching a kind. `rooms` is the room of every soul, in the order dealt.
+function soulPlan(L) {
+  const def = L.def, S = TUNING.soul;
+  const bosses = L.spawns.map((s, i) => ({ i, room: s.roomIndex === undefined ? 0 : s.roomIndex }))
+    .filter((b) => L.spawns[b.i].boss).sort((a, b) => a.room - b.room);
+  let count = def.souls === undefined ? bosses.length + (L.vault ? 1 : 0) : def.souls;
+  // Two upgrades a level, and the mouse is one of them: her offer stands in for a soul rather than
+  // coming on top of the level's two.
+  if (L.shop && def.souls !== undefined) count = Math.max(0, count - 1);
+  let budget = count;
+  const gates = [], rooms = [], ensoul = [];
+  for (const g of (L.gates || [])) {
+    if (g.shop || budget <= 0) continue;
+    const keeper = L.spawns.findIndex((s) => s.keeper && s.roomIndex === g.room);
+    gates.push({ gate: g, keeper }); rooms.push(g.room); budget--;
+  }
+  const vault = !!L.vault && budget > 0;
+  if (vault) { rooms.push(def.vaultAt); budget--; }
+  for (let n = bosses.length - 1; n >= 0 && budget > 0; n--) { ensoul.push(bosses[n].i); rooms.push(bosses[n].room); budget--; }
+  const apart = (r) => rooms.every((o) => Math.abs(o - r) >= S.apart);
+  const luck = new RNG(((L.seed >>> 0) ^ 0x51ed) >>> 0);
+  let bonusBoss = -1, bonusRoom = -1;
+  const spare = bosses.filter((b) => !ensoul.includes(b.i) && apart(b.room));
+  if (spare.length && luck.chance(S.bossChance)) {
+    const b = spare[luck.int(0, spare.length - 1)];
+    bonusBoss = b.i; rooms.push(b.room); count++;
+  }
+  const men = (r) => L.spawns.filter((s) => s.roomIndex === r.index).length;
+  const fights = L.rooms.filter((r) => (r.role === 'canon' || r.role === 'mix' || r.role === 'trap')
+    && !(L.plan && L.plan.introRooms.has(r.index)) && men(r) >= 2 && apart(r.index));
+  if (fights.length && luck.chance(S.roomChance)) { bonusRoom = fights[luck.int(0, fights.length - 1)].index; rooms.push(bonusRoom); }
+  return { count, gates, vault, ensoul, bonusBoss, bonusRoom, rooms };
+}
+
 function tryGenerate(levelDef, seed, opts) {
   const rng = new RNG(seed);
   const luck = (opts && opts.luck) || { secret: 1, racks: 1, grass: 1, heals: 0 };
@@ -367,7 +408,7 @@ function tryGenerate(levelDef, seed, opts) {
     rooms.push(room);
     if (i > 0) {
       const link = stacked ? carveShaft(tiles, W, rooms[i - 1], room, stacked.dir, rng, levelDef.corridorW)
-        : carveCorridor(tiles, W, rooms[i - 1], room, rng, levelDef.corridorW);
+        : carveCorridor(tiles, W, rooms[i - 1], room, rng, levelDef.corridorW, i - 1 === sentryRoomAt);
       if (!link) return null;
       if (link) {
         room.enter = link.enter;    // where you walk in, so a room can put something in your way
@@ -488,6 +529,13 @@ function tryGenerate(levelDef, seed, opts) {
     const r = rooms[g];
     gates.push({ room: g, x: at.x, y: at.y, shop: shopGate,
       soul: { x: (r.x + Math.floor(r.w / 2)) * TILE, y: (r.y + Math.floor(r.h / 2)) * TILE } });
+    // On a level that keeps its gate souls (`gateKeeper`), the soul is in a man standing where it
+    // would have lain; `startLevel` puts it in him and `bossPrize` lets it out. Placed, not bought:
+    // a rest room is off the curve, and so is he.
+    if (levelDef.gateKeeper && !shopGate) {
+      const s = gates[gates.length - 1].soul;
+      spawns.push({ x: s.x, y: s.y, kind: 'bearer', roomIndex: g, keeper: true });
+    }
   }
 
   // Sealed arenas. A second kind of gate, earned by winning rather than by a soul: both ends of the
@@ -1364,7 +1412,8 @@ function pickDoorY(room, side, rng, awayFrom, fit) {
   // afterwards threw away the whole point of choosing far, which is what THE THRESHING FLOOR's
   // five-wide corridors did on every room of the level.
   const candidates = [];
-  for (const v of raw) { const m = fit ? fit(v) : v; if (candidates.indexOf(m) < 0) candidates.push(m); }
+  // A `fit` that answers null refuses the row outright.
+  for (const v of raw) { const m = fit ? fit(v) : v; if (m !== null && candidates.indexOf(m) < 0) candidates.push(m); }
   if (!candidates.length) return -1;
   return noteFar(room, rng.pick(farthest(candidates, awayFrom)), candidates, awayFrom);
 }
@@ -1404,7 +1453,10 @@ function enterCol(room) {
 // Carves an S-shaped corridor — two tiles wide by default, wider where a level asks for it — and
 // returns a sensible spot for a door. A wide corridor eats the borders it passes through, which is
 // how the open level ends up reading as one yard rather than a row of boxes.
-function carveCorridor(tiles, W, a, b, rng, width) {
+// `turn` is the sentry's room (`blockSpot`): the corridor out of it turns in the first tile past its
+// wall, and never onto the row his gap is on, so a man knocked through that gap meets the corridor's
+// far wall a step later instead of flying the length of it and getting up (`GEN_RULES.sentrywall`).
+function carveCorridor(tiles, W, a, b, rng, width, turn) {
   const wide = Math.max(2, width || 2);
   const H = tiles.length / W;
   // A band wider than two is kept inside the height of the wall it goes through. Picked for two
@@ -1413,12 +1465,15 @@ function carveCorridor(tiles, W, a, b, rng, width) {
   // second way out that no gate, seal or clamp over its real one could shut.
   const fit = (r, y) => (y < 0 || wide <= 2 ? y : Math.max(r.y + 1, Math.min(y, r.y + r.h - 1 - wide)));
   const yA = pickDoorY(a, 'right', rng, enterRow(a), (y) => fit(a, y));
-  const yB = pickDoorY(b, 'left', rng, null, (y) => fit(b, y));
+  // With `turn`, `b`'s band may not carry on from `a`'s top row (the one row `narrowExit` leaves
+  // open) nor from either row beside it: a body leaving the gap at a shallow slope slid into a band
+  // that ran along the next row and went the length of it.
+  const yB = pickDoorY(b, 'left', rng, null, (y) => { const m = fit(b, y); return turn && m > yA - wide - 1 && m < yA + 2 ? null : m; });
   if (yA < 0 || yB < 0) return null;
   const xA = a.x + a.w - 1, xB = b.x;
   // The turn is kept clear of `b`'s own wall where there is rock enough for it: a five-wide turn
   // centred in a short gap ran down through the wall and out under the room, for the same reason.
-  const midX = clamp(Math.floor((xA + xB) / 2), xA + 1, Math.max(xA + 1, xB - wide));
+  const midX = turn ? xA + 1 : clamp(Math.floor((xA + xB) / 2), xA + 1, Math.max(xA + 1, xB - wide));
   const carve = (tx, ty) => { if (tx >= 0 && tx < W && ty >= 1 && ty < H - 1) tiles[ty * W + tx] = T.FLOOR; };
   const band = (tx, ty) => { for (let k = 0; k < wide; k++) carve(tx, ty + k); };
   for (let tx = xA; tx <= midX + wide - 1; tx++) band(tx, yA);
@@ -1762,6 +1817,14 @@ function gateSpot(tiles, W, room, props) {
 function blockSpot(tiles, W, room, props) {
   const b = narrowExit(tiles, W, room, props);
   if (!b) return null;
+  // The corridor out turned in the first tile past the wall (`carveCorridor`'s `turn`); the far
+  // column of that turn goes back to stone on his row and the rows either side, so the way on is a
+  // one-tile bend and a man knocked straight back through the gap meets a wall two tiles out — close
+  // enough that the bare head's throw still kills on it (`GEN_RULES.sentrywall`). The near column
+  // of the turn is the whole of the vertical run, so nothing past it is cut off.
+  if (b.x1 - b.wide + 1 === b.x0 + 1) {
+    for (let tx = b.x0 + 2; tx <= b.x1; tx++) for (let ty = b.y - 1; ty <= b.y + 1; ty++) tiles[ty * W + tx] = T.WALL;
+  }
   // A step inside the room from the mouth of that corridor, on the one row still open.
   for (let dx = 1; dx <= 4; dx++) {
     const tx = b.x0 - dx, ty = b.y;

@@ -395,6 +395,11 @@ open): a quiet room after a fight, its way on barred by a door no
 blow opens, and the soul lying on its floor is the bar. It is there because a soul lying on the floor of
 a room whose fight is already over is very easy to walk past, and a goat who walks past them meets the
 late floors with his buttons still shut. On the mouse's floors one of the two is her room instead.
+THE ALTAR's gate is the exception that teaches the rule: its soul is not lying there, it is in a
+man standing over the spot — a clubman with two hearts, quicker than the rest, whose club leaves
+witchfire where it lands — and it comes out of him when he goes down. The first soul of the run is
+fought for. And no two souls of a floor ever stand close together: a soul is never followed by
+another in the next room or the one after it, surprises included.
 
 ---
 
