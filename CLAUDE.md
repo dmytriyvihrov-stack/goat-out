@@ -282,8 +282,7 @@ earlier canons). `room.role`: `pen`, `calm`, `canon`, `mix`, `trap`, `arena`, `m
 `corridorW: 5` eats room borders, so it needs furniture.
 
 **The cave is third.** It has no killbox, `lonePosts`, grating (`spikes: 0`) or trap room. Ladder:
-28.3 / 39.6 / 65.8 / 96.2 / 108.2 / 141.2 / 152.5 / 163.5, and THE DARK 82.3 beside the fifth (25 Sep
-2026); `GEN_RULES.harder` and `balance.js` hold each
+26.8 / 38.9 / 64.3 / 96.0 / 104.5 / 139.0 / 146.1 / 159.8, and THE DARK 67.9 beside the fifth (1.72); `GEN_RULES.harder` and `balance.js` hold each
 level above the last. Later floors draw cave rooms via `known`, so `GEN_RULES.grass` allows grass on the
 cave and later floors that drew one — grass *before* the cave fails.
 
@@ -337,7 +336,7 @@ furthest from `room.enter`, two fixed clubmen, never introduces a kind. Block 1 
 **The ramp** (1.66–1.67, THE ALTAR, thirteen rooms): sentry; one loose clubman; `calmAt` — `CALM_TEMPLATE`,
 role `calm`, lit bowls in straw and nobody (off the curve, nothing scattered, `isCalm`); the wheel;
 the ambush; rest; `trapAt` + `trapTpl` `hayloft` + `trapMen` (two clubmen in straw, the one trap
-room, placed not rolled); the first brute alone (`introduce` champion at 1); three clubmen (`crowdAt`, so his two rooms are
+room, placed not rolled); the first butcher alone (`introduce` champion at 1); three clubmen (`crowdAt`, so his two rooms are
 not back to back); his arena; rest (no gate, no soul); the ogre, who carries the second soul.
 
 **The wheel lesson.** `levelDef.millLesson`: `MILL_LESSON_TEMPLATE`, seven tall, hub one row off the top
@@ -408,7 +407,8 @@ on level one. Prop `kind === 'secret'`, `Prop.crackWall`, `TUNING.prop.secret.hi
 ### Perception and AI
 
 **Enemies.** One `Enemy`; `kind` `bearer`, `hunter`, `dog`, `seer`, `butcher`, `wraith`, `ratogre`,
-dispatched to `updateBearer` … `updateOgre`. Shared machinery above the dispatch. Bosses: `elite`, `boss`.
+dispatched to `updateBearer` … `updateOgre`. Shared machinery above the dispatch. Bosses: `boss`
+(`elite` rides along on every boss but the ogre; nothing but old tools reads it).
 
 **Nothing simulates two rooms away.** The enemy loop skips anyone whose *current* room (`roomAt`; in a
 corridor `game.nearestRoomIdx`) is two+ from the goat's. Never use `e.room` for this — it stays "who he
@@ -458,8 +458,17 @@ New harm, pass a source.
 
 ### Enemy kinds
 
-**Two hits.** `hp > 1` (elite, Seer, soul-bearer) absorbs a killing blow in `die()`: floored, one lost,
-up again (a Seer blinks). Fire counts. `'fall'` skips it. A bomb charge is an ordinary hit; a
+**One rule for every kind** (1.72, `TUNING.boss`). Without the outline a man has one heart, whatever his
+kind (the Seer's second and the butcher's three went). A boss (`e.boss`, `Renderer.isBoss`: never the
+rat ogre) is the champion version of his kind: `boss.hp` hearts (the ogre, boss-only, his own
+`butcher.hp`), drawn × `boss.scale` on top of his kind's sheet fit (`Renderer.bodyScaleOf`, which
+THE DARK's eyes share) and outlined — `Renderer.bossOutline` lays his own body as a flat silhouette
+`outline.px` out on eight sides, yellow, over a dark `back` ring, via a canvas shadow (one exact
+colour, blur 0) so it is hard pixels, never a glow. Set in `startLevel` off the spawn's `boss`.
+A soul only ever goes into a boss. `THREAT` for seer and champion came down with it.
+
+**Two hits.** `hp > 1` (a boss, a soul-bearer, the rat ogre) absorbs a killing blow in `die()`: floored, one lost,
+up again (a boss Seer blinks). Fire counts. `'fall'` skips it. A bomb charge is an ordinary hit; a
 headbutt gives a fresh fuse and resets `exploded`.
 
 **Rifle.** `sfxCock` on aim (`hunter.cockHear`, not from fog). Inside `wildNear`, `wildChance` of shots
@@ -493,8 +502,8 @@ The pixel hound has no stride: running he bobs (`dog.gait`, `dog.bob`, `PaintedA
 **Ogre** (kind `butcher`, named OGRE in every text since 1.66). Not the rat ogre: his own body,
 `js/ogre-pixels.js` (`OGRE_PIXELS`: a cult ogre on the `PROP_PIXELS` `Grid`, five views mirrored to
 eight, a stride, fists `up` through `slamwind` / `hopwind` / `hop`), key `ogre` in `characterKey`,
-× `butcher.scale` (`Renderer.bodyScale`). `Enemy.fling` refuses him and a headbutt staggers him
-where he stands: nothing throws the ogre, which is what tells him from the brute. No swing. Seen `leap.min`..`max` tiles off, off `slamCd`: `hopwind` → `hop` → `hopland`, the rat ogre's
+× `butcher.scale` (1) × `boss.scale` (`Renderer.bodyScale`). `Enemy.fling` refuses him and a headbutt staggers him
+where he stands: nothing throws the ogre, which is what tells him from the butcher. No swing. Seen `leap.min`..`max` tiles off, off `slamCd`: `hopwind` → `hop` → `hopland`, the rat ogre's
 `hopSpot` with `leap.short` 0 (on the goat's spot) and `leap.over` (flies over drops; `Enemy.update`
 spares `state === 'hop'` from the pit, `collideEntities` skips him, the horns miss him). Within
 `slam.near`: `slamwind` → `recover`. Both land through `Enemy.quake` (ring: the goat hurt and
@@ -503,17 +512,21 @@ the goat off, no stagger; blades, fire, bombs and thrown bodies take his hearts,
 `OGRE_ARENA_TEMPLATE` (two braziers, three stands all swords; THE ALTAR's is the wide `OGRE_FIRST_TEMPLATE`),
 held by `GEN_RULES.ogre`. `daze` / `balk` break the crouch, never the leap.
 
-**Brute and soul-bearers.** `Enemy.unliftable` (Butcher, champion, soul-bearer) — TOO BIG / THE SOUL
+**Butcher and soul-bearers.** The BUTCHER is the brute renamed (1.72) — every player-facing string
+says BUTCHER; the code keeps `champion` (a `bearer` with the flag, `THREAT.champion`, `TUNING.champion`)
+and the run code's killer token `brute`, because kind `butcher` is the ogre (shown as OGRE). One heart
+off a ring, a boss in one. `Enemy.unliftable` (ogre, champion, soul-bearer) — TOO BIG / THE SOUL
 HOLDS HIM. `Enemy.atk(key)` reads `TUNING.champion` first; `knockMul()` = `cfg.flingMul` ×
 `champion.flingMul` × `soulBearer.flingMul`; `Enemy.splatLimit` scales `splatSpeed` by it (or a
-soul-brute is unkillable). The brute wears the old `butcher` sheet and has the charge (1.66,
+soul-butcher is unkillable). The butcher wears the old `butcher` sheet and has the charge (1.66,
 `Enemy.chargeStep` from `updateBearer`, never a `sentry`; `champion.charge`): `chargewind` sets the
-run, distance + `over`, capped `time`, skidding `skid`; the wall stun (`chargeStopped`) is earned by
+run, distance + `over`, capped `time`, skidding `skid`; it lands on the goat within `charge.hit` px
+past touching (1.72, was 2; the strip is drawn that wide); the wall stun (`chargeStopped`) is earned by
 standing at a wall. Aimed by `leadAim` (`lead`, `leadMax`) into `e.chargeAim`, which the strip draws.
 No clear run: `findLane` walks him aside first. Charging he smashes doors, shoves tables, topples
 lamps, lights on braziers (`collideEntities`, any `state === 'charge'`).
-`game.ensoul(e)` is the only way to set `e.soul` (`soulBearer.hp`); he is lit (amber haze, ring, red
-eyes) — a label only.
+`game.ensoul(e)` is the only way to set `e.soul` (`soulBearer.hp`), and it is only ever called on a
+boss, who already wears the outline; he is lit too (amber haze, ring, red eyes) — a label only.
 
 **Fire and blunder.** Alight, a man blunders (`burnDir`, `moveToward` without `game`).
 `immune.blunder` (Butcher, hound) keeps his AI: `ignite` must not set `state = 'burning'` for such a kind
@@ -589,7 +602,7 @@ the top of `Goat.update`). `goat.rollCdMax` is what the last roll cost, for the 
 is in his mouth. `mods.grassGain` is added to a grass heal in the graze loop, never to the pail.
 
 **The pace dials** (24 Sep 2026). `SLOW` (0.7, top of tuning.js) is in `PACE` and in every other
-travel speed — the roll, the hound's dart and hop, the brute's charge, a burning man, every animal —
+travel speed — the roll, the hound's dart and hop, the butcher's charge, a burning man, every animal —
 never in what is thrown, flung or shot. `GOAT_CD` (1.2) is written into every base cooldown of the
 goat's verbs (roll, grab, voice, breath, spit, the Q artifacts) so the cards quote the real number.
 `BOON_BASE.enemySlow` is 1.21 (two tenths on every enemy attack timing). The dev drawer's ENEMIES

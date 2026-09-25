@@ -171,9 +171,9 @@ const GEN_RULES = [
       const peak = Math.max(0, ...rs.filter((r) => ORDINARY.has(r.role)).map((r) => r.threat));
       return m.threat <= peak ? true : `${m.threat.toFixed(1)} threat, above the worst ordinary room (${peak.toFixed(1)})`;
     } },
-  // `crowdAt` / `crowdMen` (THE ALTAR's three clubmen between the lone brute and his ring): the
+  // `crowdAt` / `crowdMen` (THE ALTAR's three clubmen between the lone butcher and his ring): the
   // room holds exactly the men the level named, in an ordinary room, and it is what stands between
-  // two rooms with a brute in them — the pair met back to back read as one room twice.
+  // two rooms with a butcher in them — the pair met back to back read as one room twice.
   { id: 'crowdroom', text: 'A room the level fills by hand holds exactly the men it names.',
     check: (L) => {
       const def = L.def;
@@ -185,7 +185,7 @@ const GEN_RULES = [
       if (got !== want) return `room ${def.crowdAt} holds ${got || 'nobody'}, not ${want}`;
       const brute = (x) => x && x.spawns.some((s) => s.champion);
       const rs = roomsOf(L);
-      for (let i = 1; i < rs.length; i++) if (brute(rs[i]) && brute(rs[i - 1])) return `rooms ${i - 1} and ${i} both hold a brute`;
+      for (let i = 1; i < rs.length; i++) if (brute(rs[i]) && brute(rs[i - 1])) return `rooms ${i - 1} and ${i} both hold a butcher`;
       return true;
     } },
   // The teaching floor is the one place in the game where the generator may not surprise anybody:

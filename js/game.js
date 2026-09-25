@@ -862,7 +862,7 @@ class Game {
       return;
     }
     // The ENEMIES tab (and THE GOAT underneath it): click a number to change it. `id` is a dotted
-    // path straight into TUNING — `bearer.speed`, `champion.bossHp`, `goat.headbutt.recovery` — since
+    // path straight into TUNING — `bearer.speed`, `boss.hp`, `goat.headbutt.recovery` — since
     // every kind and the goat himself are read live off TUNING already; there is nothing here to look
     // up by id the way a BOONS entry or a LEVELS entry is, only a path to walk. Same write-through as
     // a boon: takes effect at once, and `persistTuningEdit` best-effort lands it in tuning.js itself.
@@ -1354,10 +1354,11 @@ class Game {
       // Which room he was put in. Nothing but a sealed arena reads this — it is how `updateSeals`
       // knows the fight behind a pair of doors is actually over.
       e.room = s.roomIndex === undefined ? -1 : s.roomIndex;
-      if (s.elite) { e.elite = true; e.hp = TUNING.elite.hp; e.maxHp = e.hp; }
-      // The brute: three killing blows, four if he is the one standing in the arena. Bigger frame,
-      // spiked shoulders, a spiked mask and a studded club, so you never mistake him for a clubman.
-      if (s.champion) { e.elite = true; e.champion = true; e.hp = s.boss ? TUNING.champion.bossHp : TUNING.champion.hp; e.maxHp = e.hp; }
+      // The butcher (`champion`): a clubman's heart in the old Butcher's body, with a charge.
+      if (s.champion) e.champion = true;
+      // One rule for every kind (`TUNING.boss`): without the outline, one killing blow; a boss wears
+      // it, stands bigger and takes `boss.hp` — the ogre, a boss-only kind, his own `butcher.hp`.
+      if (s.boss) { e.elite = s.kind !== 'butcher'; e.hp = s.kind === 'butcher' ? e.cfg.hp : TUNING.boss.hp; e.maxHp = e.hp; }
       // A rifle posted to watch a door has no blind side worth walking round.
       if (s.alert) e.watchful = true;
       // The wheel's two men: one who never reads a hazard and one who always does. It is the same
@@ -1896,6 +1897,8 @@ class Game {
   // because a run code that cannot tell a god-mode run from a real one skews every number it is in.
   runCode(by) {
     const d = this.level.def || {}, fk = this.firstKill;
+    // The butcher's token stays `brute` (his name until 1.72): `butcher` is the ogre's kind, and a
+    // code that said it for both could not tell the ogre from the man with the cleaver.
     const who = !by ? '-' : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind);
     const gap = by && this.lastGap !== null && this.lastGap !== undefined ? 'G' + this.lastGap.toFixed(1) : '-';
     const flags = (this.settings && this.settings.easy ? 'E' : '') + (this.dev && this.dev.god ? 'X' : '') + (this.runJumped ? 'J' : '');
@@ -1926,7 +1929,7 @@ class Game {
   killedBy(by) {
     if (!by) return null;
     if (typeof by === 'string') return KILLED_BY[by] || null;
-    const name = by.kind === 'bearer' ? (by.champion ? 'BRUTE' : 'CLUBMAN') : KILLED_BY[by.kind];
+    const name = by.kind === 'bearer' ? (by.champion ? 'BUTCHER' : 'CLUBMAN') : KILLED_BY[by.kind];
     if (!name) return null;
     return (by.boss || by.kind === 'butcher' || by.kind === 'ratogre' ? 'THE ' : /^[AEIOU]/.test(name) ? 'AN ' : 'A ') + name;
   }

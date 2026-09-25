@@ -486,7 +486,7 @@ class PaintedArt extends AltarArt {
     return this.atlas(ctx, 'soul-wisp', 0, 0, w, undefined, 0.56);
   }
 
-  // 1.66: the brute wears the Butcher's old sheet (skull, apron, cleaver) and the Butcher's kind is
+  // 1.66: the butcher (the brute until 1.72) wears the old Butcher's sheet (skull, apron, cleaver) and that kind is
   // the ogre, drawn by js/ogre-pixels.js (`butcher.scale` a size up). The red-robed `brute` sheet is
   // unused for now.
   characterKey(e) { if(e.kind==='butcher')return 'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'butcher':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }

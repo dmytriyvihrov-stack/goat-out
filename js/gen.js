@@ -73,7 +73,7 @@ function planEncounters(levelDef, rooms, rng) {
   // A trap room still buys its men off the curve, but it never introduces a kind: meeting a hound
   // and a floor full of teeth in the same room means meeting neither of them.
   // Nor does the ambush room: it teaches the throw, and the throw wants two ordinary men down the
-  // far end of it, not the first brute of the run standing there alone.
+  // far end of it, not the first butcher of the run standing there alone.
   // Nor does a room the level fills by hand (`crowdAt`): its men are named, not bought.
   const plain = ordinary.filter((r) => !r.isTrap && !r.isAmbush && !r.isCrowd);
 
@@ -83,7 +83,7 @@ function planEncounters(levelDef, rooms, rng) {
   for (const [kind, at] of (E.introduce || [])) {
     const want = Math.round(clamp(at, 0, 1) * (ordinary.length - 1));
     // If an arena on this level is built round that kind, he has to be met in the open first: the
-    // first brute you ever see should not be the one with the extra heart standing in the ring.
+    // first butcher you ever see should not be the one with the extra heart standing in the ring.
     const ring = fight.find((r) => r.arena && r.arena.boss === kind);
     const clean = plain.length ? plain : ordinary;
     const early = ring ? clean.filter((r) => r.index < ring.index) : clean;
@@ -115,7 +115,7 @@ function planEncounters(levelDef, rooms, rng) {
       const boss = room.arena.boss;
       const known = seen.has(boss);
       // `escorts` on the arena is a hard count rather than a budget: the first boss of the game is
-      // one brute and one man, whatever the threat curve would have bought him.
+      // one butcher and one man, whatever the threat curve would have bought him.
       const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss), rng, caps, room.arena.escorts || 0, weight) : [];
       out.rooms.set(room.index, { men: escorts, boss, intro: known ? null : boss, arena: true });
       if (!known) out.introRooms.add(room.index);
@@ -140,8 +140,8 @@ function planEncounters(levelDef, rooms, rng) {
     // straw room of the run is two clubmen standing in it, whatever the curve would have bought.
     if (room.isTrap && levelDef.trapMen) { out.rooms.set(room.index, { men: levelDef.trapMen.slice() }); step++; continue; }
     // A room the level fills by hand (`crowdAt`, `crowdMen`): exactly those men, whatever the curve
-    // would have bought — THE ALTAR puts three clubmen between the lone brute and his ring, so the
-    // two rooms with a brute in them are not met back to back. Above the level's own `cap.men` on
+    // would have bought — THE ALTAR puts three clubmen between the lone butcher and his ring, so the
+    // two rooms with a butcher in them are not met back to back. Above the level's own `cap.men` on
     // purpose; `GEN_RULES.crowdroom` holds it to the list and to nothing else.
     if (room.isCrowd && levelDef.crowdMen) { out.rooms.set(room.index, { men: levelDef.crowdMen.slice(), crowd: true }); step++; continue; }
     // The Mill's room is a set piece. Half a crowd, and on the level that shows you the wheel for
@@ -825,7 +825,7 @@ function tryGenerate(levelDef, seed, opts) {
     }
   });
 
-  // Some of the men in a room with grass in it are lying in the grass. Not the boss, not a brute and
+  // Some of the men in a room with grass in it are lying in the grass. Not the boss, not a butcher and
   // not the dead — a man who hides is an ordinary one — and each goes to the grass tile of his own
   // room with the most grass round it, so what shows of him is the top of him and nothing more.
   if (grass.size) {

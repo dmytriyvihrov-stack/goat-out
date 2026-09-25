@@ -88,7 +88,7 @@ const JUICE = [
     size: () => `${TUNING.juice.hitFlash}s`,
     godot: 'CanvasItem shader: uniform float flash; COLOR.rgb = mix(texture(TEXTURE, UV).rgb, vec3(1.0), flash); keep alpha. Tween flash 1 → 0. Use a per-instance uniform (instance uniform float flash) so one material serves all.' },
   { name: 'Windup tint', cat: 'BODY', status: 'new', src: 'GOAT', code: 'Renderer.windupGlow · juice.windupTint · drawEnemyBody',
-    trigger: 'Any man in a telegraph: a club or blade windup, the brute\'s charge, the ogre\'s slam and leap, the rat ogre\'s, a hound\'s plant, a seer\'s cast, a rifle\'s aim',
+    trigger: 'Any man in a telegraph: a club or blade windup, the butcher\'s charge, the ogre\'s slam and leap, the rat ogre\'s, a hound\'s plant, a seer\'s cast, a rifle\'s aim',
     look: 'His own sprite goes lighter and warmer as the blow comes, faint at first and bright at the last frame (as in Cult of the Lamb); masked to his pixels, no glow',
     size: () => { const W = TUNING.juice.windupTint; return `up to ${W.max} alpha · ease ^${W.curve} · warm ${W.warm}`; },
     godot: 'The hit-flash shader with a second uniform: COLOR.rgb = mix(tex.rgb, warm_white, windup); set windup = pow(1 - timer / wind, curve) * max from the enemy script every frame.' },

@@ -130,7 +130,7 @@ const MUSIC_PARTS = {
   dog: { family: 'small', label: 'HOUND', slots: [7,23,15,31,3,19], length: 0.32 },
   hunter: { family: 'ranged', label: 'HUNTER', slots: [1,17,9,25,5,21,13,29], length: 0.8 },
   seer: { family: 'ranged', label: 'SEER', slots: [4,20,12,28,8,24,0,16], length: 1.6 },
-  champion: { family: 'large', label: 'BRUTE', slots: [0,8,10,16,24,26,4,12,18,20,28,30,6], length: 1.4 },
+  champion: { family: 'large', label: 'BUTCHER', slots: [0,8,10,16,24,26,4,12,18,20,28,30,6], length: 1.4 },
   butcher: { family: 'large', label: 'OGRE', slots: [4,12,14,20,28,30,0,8,22,24,16,18,2], length: 1.8 },
   wraith: { family: 'mystical', label: 'WRAITH', slots: [3,19,11,27,7,23], length: 3 },
   spike: { family: 'trap', label: 'SPIKES', slots: [5,21,13,29,1,17], length: 0.45 },

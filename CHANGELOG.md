@@ -17,6 +17,24 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   keeps `say(p)`, the full numbers, as `detail` for the TALISMANS tab only. `ARTIFACT_HOW` and
   `MILK_OFFER.how` are gone: the shelf note and the chip hover are the name and that one line.
   Ids unchanged, so saves keep their souls.
+- **One rule for every kind: the outline is the boss.** Asked for on 25 Sep 2026 ("if a guy has no
+  yellow outline, all base versions are one unit with one health"). Every man without the outline
+  dies to one killing blow — the Seer lost his second heart, the brute his three. A boss (the man an
+  arena is built round, the only man who ever carries a soul) wears a hard yellow pixel outline round
+  his sprite (`Renderer.bossOutline`: his own body as a flat silhouette one px out on eight sides over
+  a dark ring, via a canvas shadow so it is exact colour, never a glow), is drawn `boss.scale` (1.14)
+  bigger and takes `boss.hp` (3) — the same for every kind; the butcher in a ring went from four to
+  three. The ogre is boss-only and keeps his four (`butcher.scale` 1.15 → 1, so the rule's 1.14 keeps
+  him the size he was); a soul still adds one and the amber haze; the rat ogre is not a boss.
+  `TUNING.elite` and `champion.hp` / `bossHp` are gone for `TUNING.boss`. `THREAT`: seer 2.8 → 2.4,
+  champion 3.2 → 2.6. Balance totals 28.3/39.6/65.8/96.3/108.2/141.2/152.5/163.7 (DARK 72.5) →
+  26.8/38.9/64.3/96.0/104.5/139.0/146.1/159.8 (DARK 67.9); every rule holds.
+- **The brute is the BUTCHER.** Every player-facing string (death card, ENEMIES tab, music tool, rule
+  messages, README, CONCEPT). The code keeps `champion`, and the run code's killer token stays `brute`
+  so it never reads the same as the ogre's kind, `butcher`.
+- **The butcher's charge lands wider.** `champion.charge.hit` (0.35 of a tile, was a literal 2 px)
+  past touching still hits the goat, so a run brushing past him is a run into the cleaver; the
+  strip on the floor is drawn that wide.
 
 ## 1.71 — the ogre is fought with the room; the dark, lit a little more
 
