@@ -687,6 +687,10 @@ class Goat {
     }
     for (const p of game.props) {
       if (p.broken || p.lastLunge === this.lungeId) continue;
+      // A door that has swung open for good (a room cleared, a man's shoulder) is folded against
+      // the wall: a blow through the doorway is not a blow on it. The clock door is still counting
+      // and can still be taken off its hinges before it shuts.
+      if (p.kind === 'door' && !p.timed && p.open >= 0.5) continue;
       let dx, dy, d, reach;
       if (p.kind === 'door') {
         // The same fix `collideEntities` already gives a door for walking into it: a slab, not a

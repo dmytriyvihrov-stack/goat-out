@@ -400,9 +400,14 @@ class Game {
       if (room.wasEmpty === undefined) room.wasEmpty = !this.enemies.some((e) => e.room === d.fromRoom && !e.scripted);
       if (room.wasEmpty) continue;   // nobody was ever in it: nothing was beaten
       if (this.enemies.some((e) => e.room === d.fromRoom && !e.dead && !e.scripted)) continue;
-      d.broken = true; d.dead = true; d.fromRoom = -1;
-      this.audio.sfxSteel(); this.flash(PALETTE.fireHi, 0.08);
-      this.particles(d.x, d.y, 14, PALETTE.ash, 220);
+      // It swings open on its hinge rather than vanishing (playtest, 25 Sep 2026: "the doors should
+      // open, not disappear by magic"). `open` above 0 is eased to 1 by `updateDoor`, and from 0.5 on
+      // it neither blocks, nor stops a round, nor an eye. A clock door stops counting; the hits it
+      // took are forgotten so the notches do not ride on an open leaf.
+      d.fromRoom = -1; d.timed = false; d.hits = 0; d.pressure = 0;
+      if (d.open <= 0) d.open = 0.01;
+      this.audio.sfxSwing(); if (d.iron) this.audio.sfxSteel();
+      this.particles(d.x, d.y, 6, PALETTE.ash, 90);
       this.floatText(d.x, d.y - 28, 'THE WAY IS OPEN', PALETTE.fireHi);
     }
   }
@@ -1386,6 +1391,15 @@ class Game {
     if (levelIndexOf(this.level.def) === 0) {   // the dark altar is still the altar
       const S = this.level.start;
       this.props.push(new Prop(S.x - 4 * TILE, S.y - 0.2 * TILE, 'table', { altar: true }));
+      // The store in the far corner: a barrel and a spill of straw standing on the floor against the
+      // wall. They used to be painted into the wall band itself (`drawRitual`) so nothing would stand
+      // in the way, and read as stuck in the stone (playtest, 25 Sep 2026). Real ones instead, added
+      // here beside the altar so the generator's rules (no barrels on level one) are not asked about
+      // a room it did not furnish: a barrel in the corner, which a blow only drives into the stone,
+      // and straw tiles a step along the wall, clear of the bowl of coals below them.
+      const R = this.level.rooms[0], W = this.world.W;
+      this.props.push(new Prop((R.x + 1.5) * TILE, (R.y + 1.5) * TILE, 'barrel'));
+      for (const x of [R.x + 3, R.x + 4]) if (this.world.tiles[(R.y + 1) * W + x] === T.FLOOR) this.world.tiles[(R.y + 1) * W + x] = T.HAY;
     }
     // A boulder is stone to the flow field until it breaks (`Prop.crackRock` clears it).
     for (const p of this.props) if (p.kind === 'rock') this.world.block[Math.floor(p.y / TILE) * this.world.W + Math.floor(p.x / TILE)] = 1;

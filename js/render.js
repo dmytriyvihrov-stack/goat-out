@@ -158,6 +158,7 @@ class Renderer {
       this.drawDust(game, cam, dt);
       this.drawUnseen(game);            // ground, fire and firelight above it; everything that stands on it below
       this.drawRunes(game);
+      this.drawBombFuse(game);
       Talisman.drawGround(this, game);   // grease, echoes, the straw goat
       this.drawDashPaths(game);
       this.drawGuide(game);
@@ -372,8 +373,7 @@ class Renderer {
         ctx.stroke();
       }
     } else if (t === T.ASH) {
-      ctx.fillStyle = PALETTE.ash; ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
-      ctx.fillStyle = '#3a3230'; ctx.fillRect(px + 8, py + 10, 6, 4); ctx.fillRect(px + 18, py + 20, 7, 4);
+      this.painted.ashTile(ctx, px, py, (tx * 73856093 ^ ty * 19349663) >>> 0);
     } else if (t === T.EXIT) {
       this.drawStairs(px, py, tx - game.level.exitTile.x0, true, def, Renderer.forkRow(game.level, ty));
     } else if (t === T.ENTRY) {
@@ -2934,7 +2934,7 @@ class Renderer {
 
     if (e.bombFuse > 0) {
       const p = 1 - e.bombFuse / TUNING.goat.bomb.fuse;
-      ctx.strokeStyle = `rgba(242,162,51,${0.5 + 0.5 * Math.sin(this.t * 40)})`; ctx.lineWidth = 3;
+      ctx.strokeStyle = `rgba(255,224,138,${0.5 + 0.5 * Math.sin(this.t * 40)})`; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 5 + p * 8, 0, Math.PI * 2); ctx.stroke();
     }
     // Health notches over anyone who takes more than one blow — a boss (the outline) and the rat ogre —
@@ -3187,6 +3187,29 @@ class Renderer {
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, reach, -B.halfAngle, B.halfAngle); ctx.closePath(); ctx.fill();
     ctx.restore();
+  }
+
+  // A lit bomb's fuse, as the ring it will reach laid on the floor in cells: the unburnt part a
+  // faint amber track, the burnt part a yellow rim (the windups' colour) closing round from the top,
+  // whole on the frame it goes off. Read off `fuseT` against the fuse it was given, clamped.
+  drawBombFuse(game) {
+    const ctx = this.ctx, B = TUNING.prop.bomb, R = B.ring, c = R.cell;
+    for (const p of game.props) {
+      if (p.kind !== 'bomb' || p.broken || !(p.fuseT >= 0) || game.hidden(p.x, p.y)) continue;
+      const f = clamp(1 - p.fuseT / B.fuse, 0, 1), r = B.blastR, n = Math.max(24, Math.ceil(Math.PI * 2 * r / c));
+      const shut = Math.ceil(f * n), cx = Math.round(p.x / c) * c, cy = Math.round(p.y / c) * c;
+      const lay = (from, to, color) => {
+        ctx.fillStyle = color; ctx.beginPath();
+        for (let i = from; i < to; i++) {
+          const a = -Math.PI / 2 + i / n * Math.PI * 2;
+          ctx.rect(cx + Math.round(Math.cos(a) * r / c) * c - c / 2, cy + Math.round(Math.sin(a) * r / c) * c - c / 2, c, c);
+        }
+        ctx.fill();
+      };
+      lay(shut, n, `rgba(242,170,48,${R.track})`);
+      const hot = f > 0.8 ? 0.75 + 0.25 * Math.sin(this.t * R.blink) : 1;
+      ctx.globalAlpha = R.rim * hot; lay(0, shut, PALETTE.fireHi); ctx.globalAlpha = 1;
+    }
   }
 
   // The Seer's rune, burning in on the floor where you were standing — or, if you are carrying him,

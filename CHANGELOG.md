@@ -35,6 +35,25 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 - **The butcher's charge lands wider.** `champion.charge.hit` (0.35 of a tile, was a literal 2 px)
   past touching still hits the goat, so a run brushing past him is a run into the cleaver; the
   strip on the floor is drawn that wide.
+- **A cleared room's door swings open** instead of vanishing (`game.updateClearDoors`): it eases to
+  `open` 1 on its hinge (`Renderer.doorSwing`), with the creak of a swing rather than steel and a
+  flash; from half open it blocks nobody, no round and no eye. A blow through the open doorway no
+  longer lands on the leaf folded against the wall (`Goat.headbuttHits`; the clock door still can).
+- **The dead sheep is bones** (`AltarArt.deadSheep`): a skeleton on its side in the other pen —
+  skull with an empty socket and a dropped jaw, spine, open ribs, legs out, a dried pool, dirty wool —
+  in world pixels with a dark rim, set north of the pen's front rail.
+- **Burnt straw leaves ash** (`AltarArt.ashTile`): a low heap in 2 px cells, charred straw ends and
+  two embers, dithered out at the rim; it was a flat translucent grey square.
+- **A lit bomb shows its fuse as the blast's reach** (`Renderer.drawBombFuse`, `prop.bomb.ring`): a
+  yellow rim of cells closing round from the top, whole the moment it goes off. BOMB CHARGE's ring
+  over a man is yellow too.
+- **The start room's barrel and straw stand on the floor**, not in the wall band: a real barrel in the
+  corner and two straw tiles along the far wall, put down with the altar in `startLevel`.
+- **The goat's horns sweep back when he runs up-right.** That view was packed with them swept forward;
+  it is now his up-left view mirrored (`PIXEL_MIRROR`, `PIXEL_ART.facing`), horns, antlers and looks
+  with it.
+
+---
 
 ## 1.71 — the ogre is fought with the room; the dark, lit a little more
 

@@ -293,7 +293,7 @@ const Dark = {
       if (dark > 0.5 && (heard || e.say)) { ctx.save(); ctx.globalAlpha = 1; r.drawOverhead(e); ctx.restore(); }
     }
     ctx.globalAlpha = 0.85;
-    r.drawDashPaths(game); r.drawRunes(game);
+    r.drawDashPaths(game); r.drawRunes(game); r.drawBombFuse(game);
     ctx.restore();
   },
 
