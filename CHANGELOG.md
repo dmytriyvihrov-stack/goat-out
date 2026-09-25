@@ -5,6 +5,40 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.72 (in progress)
+
+Asked for on 25 Sep 2026, playing THE ALTAR.
+
+- **The sentry lands on stone.** Knocked straight back he used to go out through his one-tile gap
+  and the length of the corridor behind it, and get up at the far end. The corridor out of his room
+  now turns in the first tile past the wall (`carveCorridor`'s `turn`), the far column of that turn
+  is stone on his row and the rows either side (`blockSpot`: the way on is a one-tile bend), and the
+  next room's row is never one that would carry his row, or a row beside it, straight on. Knocked
+  straight back he meets stone two and a half tiles out, inside the bare head's killing throw (about
+  2.9 tiles of flight); measured in the build, a blow from anywhere behind him that connects kills
+  him on it. A line from any floor tile of his room through where he stands meets stone within
+  `TUNING.sentry.wallBehind` (3) tiles; `GEN_RULES.sentrywall` holds it over every seed. A glancing
+  blow into a side wall can still leave him floored, as it does anybody.
+- **The wheel lesson waits for the goat.** Its two men hold their marks — no sight through the
+  doorway, no footsteps, no wander — until the goat has set foot in their room (`e.millOpen`), so
+  the careless one no longer rides the arm into the wall before anybody is there to see it. The
+  room itself is unchanged.
+- **No two souls close together.** THE ALTAR could deal its first soul in the gate room straight
+  after a surprise soul in the ambush (or the trap room straight after the gate), and a lit brute two
+  rooms before the ogre's soul. Where a level's souls go is now `soulPlan` (gen.js), read by both
+  `startLevel` and the new `GEN_RULES.souls`: every soul — gates, a keeper, the vault, bosses, and
+  either seeded surprise — stands `TUNING.soul.apart` (3) rooms or more from every other; a surprise
+  that would break it is not dealt. On THE ALTAR the room surprise can now only be the three
+  clubmen (room 9) and the brute never carries a surprise soul; later floors keep theirs at about
+  the old rates (the boss 0.41, the room 0.16–0.39 a floor).
+- **THE ALTAR's first soul is fought for** (`gateKeeper`, `TUNING.soulKeeper`). The middle gate's
+  rest room holds a keeper instead of a soul on the floor: a clubman with two hearts, 1.3 × a
+  clubman's pace, a soul-bearer (unliftable, heavy, lit), whose club sets a patch of witchfire where
+  it lands (`Enemy.keeperFire`, never his own tile) and who steps round fire as the mage does
+  (`fireCare`, `trapSense` 0.97). The soul comes out of him where he dies, tagged with his gate, and
+  swallowing it lifts the gate as before. He is placed, not bought: the rest room stays off the curve.
+  `GEN_RULES.soulgate` allows exactly him in a keeper's gate room and requires him there.
+
 ## 1.71 — the ogre is fought with the room; the dark, lit a little more
 
 Asked for on 25 Sep 2026, playing THE DARK and the ogre.

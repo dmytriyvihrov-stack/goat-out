@@ -214,6 +214,27 @@ const GEN_RULES = [
       if (amb.spawns.some((s) => s.x < midX)) return 'a man on the near side of the ambush room';
       return true;
     } },
+  // The sentry's knock-back ends on stone (`carveCorridor`'s `turn`): a line from any floor tile of
+  // his room through where he stands meets a wall within `sentry.wallBehind` tiles of him. It was a
+  // corridor he flew the length of and got up at the end of (playtest, 25 Sep 2026).
+  { id: 'sentrywall', text: 'The first man stands with stone a step behind him: knocked from anywhere in his room, he meets a wall within sentry.wallBehind tiles.',
+    check: (L) => {
+      const sp = L.spawns.find((s) => s.sentry);
+      if (!sp) return null;
+      const room = L.rooms[sp.roomIndex], far = TUNING.sentry.wallBehind * TILE, step = TILE / 8;
+      const solid = (x, y) => { const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+        return tx < 0 || ty < 0 || tx >= L.W || ty * L.W + tx >= L.tiles.length || L.tiles[ty * L.W + tx] === T.WALL; };
+      for (let ty = room.y + 1; ty < room.y + room.h - 1; ty++) for (let tx = room.x + 1; tx < room.x + room.w - 1; tx++) {
+        if (L.tiles[ty * L.W + tx] === T.WALL) continue;
+        const gx = (tx + 0.5) * TILE, gy = (ty + 0.5) * TILE, d = Math.hypot(sp.x - gx, sp.y - gy);
+        if (d < TILE * 0.9) continue;   // the goat is not standing in him
+        const ux = (sp.x - gx) / d, uy = (sp.y - gy) / d;
+        let s = 0;
+        while (s <= far && !solid(sp.x + ux * s, sp.y + uy * s)) s += step;
+        if (s > far) return `from tile ${tx - room.x},${ty - room.y} of his room he flies more than ${TUNING.sentry.wallBehind} tiles`;
+      }
+      return true;
+    } },
   { id: 'rifles', text: 'A rifle holds a post only after rifles have been met.',
     check: (L) => {
       if (!L.plan || !L.def.encounters.kinds.includes('hunter')) return null;
@@ -551,7 +572,7 @@ const GEN_RULES = [
       if (doors.length !== 2 || !doors.some((p) => p.fork)) return `${doors.length} stair doors`;
       return true;
     } },
-  { id: 'soulgate', text: 'Every level stops you twice, in the middle and before the end, in an empty rest room; a gated one leaves by a single tile barred by a door no blow opens.',
+  { id: 'soulgate', text: 'Every level stops you twice, in the middle and before the end, in a rest room empty but for its soul\'s keeper; a gated one leaves by a single tile barred by a door no blow opens.',
     check: (L) => {
       const want = L.def.gates || [];
       if (!want.length) return null;
@@ -568,7 +589,11 @@ const GEN_RULES = [
         if (!door) return `no gate door on room ${g.room}`;
         const r = L.rooms[g.room];
         if (r.role !== 'rest') return `room ${g.room} is the ${r.role}, not a rest room`;
-        if (L.spawns.some((s) => s.roomIndex === g.room)) return `somebody is put in the rest room ${g.room}`;
+        // Empty, or held by the one man carrying its soul on a level that keeps them (`gateKeeper`).
+        const inIt = L.spawns.filter((s) => s.roomIndex === g.room);
+        const kept = L.def.gateKeeper && !g.shop && inIt.length === 1 && inIt[0].keeper;
+        if (inIt.length && !kept) return `somebody is put in the rest room ${g.room}`;
+        if (L.def.gateKeeper && !g.shop && !kept) return `nobody keeps the soul of gate ${g.room}`;
         if (!r.exitBand) return `room ${g.room} has no side way out to narrow`;
         for (let k = 1; k < r.exitBand.wide; k++) if (L.tiles[(r.exitBand.y + k) * L.W + r.exitBand.x0] !== T.WALL) return `room ${g.room}'s way out is not narrowed`;
       }
@@ -581,6 +606,15 @@ const GEN_RULES = [
       const gateSouls = (L.gates || []).filter((g) => !g.shop).length;
       const places = gateSouls + (L.vault ? 1 : 0) + bosses;
       return places >= L.def.souls ? true : `${L.def.souls} souls and only ${places} places to put them`;
+    } },
+  // `soulPlan` is what `startLevel` lays, so this is the level exactly as it will be played: every
+  // soul (gate, keeper, vault, boss, and either surprise) `soul.apart` rooms or more from the next.
+  { id: 'souls', text: 'Two souls are never close: every soul of a level stands soul.apart rooms or more from every other, surprises included.',
+    check: (L) => {
+      const rs = soulPlan(L).rooms.slice().sort((a, b) => a - b);
+      if (rs.length < 2) return null;
+      for (let i = 1; i < rs.length; i++) if (rs[i] - rs[i - 1] < TUNING.soul.apart) return `souls in rooms ${rs[i - 1]} and ${rs[i]}`;
+      return true;
     } },
   { id: 'vault', text: 'The vault is sealed off an ordinary room, and never on the way to the stairs.',
     check: (L) => {

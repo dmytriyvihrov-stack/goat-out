@@ -267,7 +267,7 @@ class Enemy {
       game.ring(this.x, this.y, 2.6 * TILE, PALETTE.witchHi);
       game.audio.sfxUnmade();
       if (game.goat.holding === this) game.goat.holding = null;
-      if (this.boss) game.bossPrize(this);
+      if (this.boss || this.keeper) game.bossPrize(this);
       game.onKill(this, 'unmade');
       return;
     }
@@ -285,7 +285,7 @@ class Enemy {
     // blood does. A man over an edge has his own shout going down with him.
     if (cause !== 'fall' && !this.scripted) game.audio.sfxGroan(this.kind, game.audio.heard(this.x - game.goat.x, this.y - game.goat.y));
     if (game.goat.holding === this) game.goat.holding = null;
-    if (this.boss) game.bossPrize(this);
+    if (this.boss || this.keeper) game.bossPrize(this);
     game.onKill(this, cause);
   }
 
@@ -384,7 +384,8 @@ class Enemy {
       && Math.abs(p.x - this.x) < 9 * TILE && Math.abs(p.y - this.y) < 9 * TILE);
     // The mage lit it, and the mage is the one man in the building who knows how far it goes: he
     // reads flame and his own runes from further out. He still burns if he gets it wrong.
-    const care = this.kind === 'seer' ? TUNING.seer.fireCare : 1;
+    // So does a gate's keeper, whose club lights it.
+    const care = this.kind === 'seer' ? TUNING.seer.fireCare : this.keeper ? TUNING.soulKeeper.fireCare : 1;
     const look = this.r + (millNear ? TUNING.ai.trapLook : TUNING.fire.avoidLook) * care;
     const l = Math.hypot(dirx, diry) || 1; dirx /= l; diry /= l;
     // Only what is within a step of him can matter, and gathering that once keeps the probes cheap.
@@ -808,6 +809,14 @@ class Enemy {
       return;
     }
 
+    // The wheel lesson waits for its audience (1.72): until the goat has set foot in their room the
+    // two men hold their marks — no sight through the doorway, no footsteps, no idle wander, and so
+    // no careless one riding the arm into the wall with nobody there to see it (playtest, 25 Sep
+    // 2026). The first frame he is inside, the room plays as it always has.
+    if (this.millLesson && !this.millOpen) {
+      if (!g.dead && roomAt(game.level, g.x, g.y) === game.level.rooms[this.room]) this.millOpen = true;
+      else { this.vx = 0; this.vy = 0; return; }
+    }
     // ---- perception ----
     // The wheel lesson's two men are there to be watched doing what they do, so they know the goat
     // the moment he is inside their room, cone and sight range or no (see `startLevel`).
@@ -1037,11 +1046,31 @@ class Enemy {
     }
     if (this.state === 'swing') {
       this.timer -= dt;
-      if (!this.swingHit) { this.swingHit = true; game.meleeHit(this, reach + 6, Math.PI / 2, cfg.damage, cfg.knock); }
+      if (!this.swingHit) { this.swingHit = true; game.meleeHit(this, reach + 6, Math.PI / 2, cfg.damage, cfg.knock); if (this.keeper) this.keeperFire(game); }
       if (this.timer <= 0) { this.state = 'recover'; this.timer = this.atk('recover') * game.mods.enemySlow; }
       return;
     }
     if (this.state === 'recover') { this.vx = 0; this.vy = 0; this.timer -= dt; if (this.timer <= 0) this.state = 'chase'; }
+  }
+
+  // A gate's keeper brings his club down and the floor where it lands goes up in witchfire: a patch
+  // `soulKeeper.fireAt` tiles in front of him, `fireR` round, never the tile he stands on, so the
+  // blow is read by its windup and paid for after it by ground the goat cannot stand on. Like any
+  // blow of his it is not dealt from a room the fog is still hiding (`game.meleeHit`'s rule).
+  keeperFire(game) {
+    if (game.hidden(this.x, this.y)) return;
+    const K = TUNING.soulKeeper, w = game.world;
+    const cx = this.x + Math.cos(this.facing) * K.fireAt * TILE, cy = this.y + Math.sin(this.facing) * K.fireAt * TILE;
+    const tx0 = Math.floor(cx / TILE), ty0 = Math.floor(cy / TILE), r = Math.ceil(K.fireR);
+    const mx = Math.floor(this.x / TILE), my = Math.floor(this.y / TILE);
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const tx = tx0 + dx, ty = ty0 + dy;
+      if (Math.hypot(dx, dy) > K.fireR || (tx === mx && ty === my)) continue;
+      if (!w.los(this.x, this.y, (tx + 0.5) * TILE, (ty + 0.5) * TILE)) continue;
+      w.ignite(tx, ty, true, K.fireFor, true);
+    }
+    game.ring(cx, cy, K.fireR * TILE * 1.4, PALETTE.witchHi);
+    game.audio.sfxRune();
   }
 
   // The ogre coming down, fists on the floor (`slam`) or out of a leap (`leap`): a ring round him,

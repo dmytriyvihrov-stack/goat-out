@@ -222,8 +222,10 @@ class Game {
   // Every boss leaves something. Which one leaves the soul was decided in `startLevel` off the
   // level's own count, so a level gives up exactly what it was authored to give up. A boss's soul is
   // the bar of no gate — the gates' souls lie on the floors of their rest rooms.
+  // A gate's keeper (`soulGate`) is the one man who is not a boss and still pays: his soul is his
+  // gate's bar, and swallowing it lifts that gate like the one that used to lie on the floor.
   bossPrize(e) {
-    if (e.soul) this.dropSoul(e.x, e.y); else this.dropMilk(e.x, e.y);
+    if (e.soul) this.dropSoul(e.x, e.y, e.soulGate >= 0 ? e.soulGate : undefined); else this.dropMilk(e.x, e.y);
   }
   // A man on his way down. The kill is instant and happens at the top of `Enemy.update`, so nothing
   // here is simulated: it is the picture of a fall, held for `fall.showFor` and then gone, and it
@@ -1361,6 +1363,9 @@ class Game {
       // choose when the first fight of your life starts, which is the only way it teaches anything.
       if (s.sentry) { e.sentry = true; e.facing = s.facing || 0; }
       if (s.boss) e.boss = true;
+      // A gate's keeper (`levelDef.gateKeeper`): quicker, and as careful of fire as the mage — his
+      // club leaves witchfire behind (`Enemy.keeperFire`). His soul and hearts come further down.
+      if (s.keeper) { e.keeper = true; e.speed *= TUNING.soulKeeper.speed; e.trapSense = TUNING.soulKeeper.trapSense; }
       // Lying in the grass (THE CAVE): he is put down still and facing any way at all, and what
       // shows of him is the top of him. Nothing else about him is different.
       if (s.lurk) { e.lurk = true; e.facing = Math.random() * Math.PI * 2; }
@@ -1439,43 +1444,32 @@ class Game {
     // vault left over holds grass. Everything is laid down with `placeSoul` rather than dropped:
     // `dropSoul` asks the flow field whether a spot can be reached, the field only reaches ninety
     // tiles from the start, and asked about a room further than that it walks the soul back to the goat.
-    const bosses = this.level.spawns
-      .map((s, i) => ({ i, room: s.roomIndex === undefined ? 0 : s.roomIndex }))
-      .filter((b) => this.level.spawns[b.i].boss)
-      .sort((a, b) => a.room - b.room);
-    this.soulsHere = def.souls === undefined ? bosses.length + (this.level.vault ? 1 : 0) : def.souls;
-    // Two upgrades a level, and the mouse is one of them: her offer stands in for a soul rather than
-    // coming on top of the level's two, or a shop floor handed out three — and the vault next door to
-    // her room held a soul straight after her shelf.
-    if (this.level.shop && def.souls !== undefined) this.soulsHere = Math.max(0, this.soulsHere - 1);
-    let budget = this.soulsHere;
+    // Where they go, and the two seeded surprises on top (never within `soul.apart` rooms of another
+    // soul), is `soulPlan` in gen.js, which `GEN_RULES.souls` holds to the same answer. The mouse
+    // stands in for one of the two: a shop floor used to hand out three.
+    const plan = soulPlan(this.level);
+    this.soulsHere = plan.count;
     this.soulGates = (this.level.gates || []).map((g) => ({ room: g.room, shop: g.shop,
       prop: this.props.find((p) => p.gate && p.gateRoom === g.room) || null }));
-    for (const g of (this.level.gates || [])) {
-      if (g.shop || budget <= 0) continue;
-      if (cp && g === this.level.gates[0]) { budget--; continue; }   // swallowed at the gate he comes back to
-      this.placeSoul(g.soul.x, g.soul.y, g.room);
-      budget--;
+    for (const { gate: g, keeper } of plan.gates) {
+      const e = keeper >= 0 ? this.enemies[keeper] : null;
+      // Swallowed at the gate he comes back to, and its keeper, if it had one, with it.
+      if (cp && g === this.level.gates[0]) { if (e) e.gone = true; continue; }
+      // A keeper's gate (`levelDef.gateKeeper`): the soul is in him and comes out where he goes
+      // down (`bossPrize`), tagged with his gate so swallowing it lifts that gate.
+      if (e) { this.ensoul(e); e.hp = e.maxHp = TUNING.soulKeeper.hp; e.soulGate = g.room; }
+      else this.placeSoul(g.soul.x, g.soul.y, g.room);
     }
     if (this.level.vault) {
-      if (budget > 0) { this.placeSoul(this.level.vault.x, this.level.vault.y); budget--; }
+      if (plan.vault) this.placeSoul(this.level.vault.x, this.level.vault.y);
       else this.props.push(new Prop(this.level.vault.x, this.level.vault.y, 'heal', { big: true }));
     }
-    for (let n = bosses.length - 1; n >= 0 && budget > 0; n--) {
-      const e = this.enemies[bosses[n].i];
-      if (!e.soul) { this.ensoul(e); budget--; }
-    }
-    // The surprises, off the level's own seed so a seed is the same level: now and then a boss
-    // carries a soul the budget did not give him (lit, and on the card), and now and then an ordinary
-    // fight room gives one up once its last man is down (`onKill`) — never a room teaching a kind.
-    const luck = new RNG(((seed >>> 0) ^ 0x51ed) >>> 0), S = TUNING.soul;
-    const spare = bosses.map((b) => this.enemies[b.i]).filter((e) => !e.soul);
-    if (spare.length && luck.chance(S.bossChance)) { this.ensoul(spare[luck.int(0, spare.length - 1)]); this.soulsHere++; }
-    this.bonusRoom = -1;
-    const fights = this.level.rooms.filter((r) => (r.role === 'canon' || r.role === 'mix' || r.role === 'trap')
-      && !(this.level.plan && this.level.plan.introRooms.has(r.index))
-      && this.enemies.filter((e) => e.room === r.index).length >= 2);
-    if (fights.length && luck.chance(S.roomChance)) this.bonusRoom = fights[luck.int(0, fights.length - 1)].index;
+    for (const i of plan.ensoul) this.ensoul(this.enemies[i]);
+    // The surprises: a boss lit with a soul the budget did not give him (counted on the card), and
+    // a fight room that gives one up once its last man is down (`onKill`; nothing says which).
+    if (plan.bonusBoss >= 0) this.ensoul(this.enemies[plan.bonusBoss]);
+    this.bonusRoom = plan.bonusRoom;
+    if (cp) this.enemies = this.enemies.filter((e) => !e.gone);
     this.goatRoom = 0;
     // Arriving up the stairs: the goat rises into the room under the card.
     if (this.intro) this.audio.duck(1, 0.3);   // Backspace out of the scene must not leave the sound down
