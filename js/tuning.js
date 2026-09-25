@@ -1211,6 +1211,9 @@ const TUNING = {
   // once a bar. 1.66 took it down again, 0.85 to 0.45 (about 6 dB): "very loud" was the playtest.
   audio: { master: 0.92, drums: 1.0, sfx: 0.45, music: 0.85, crowd: { warm: 3, hot: 6 },
     hunterCue: { gain: 0.04, everyBars: 4 },
+    // A score cut off mid-note (a death, a cue, the title) dips under the stop for `cut` s: a hard
+    // stop on a sounding oscillator clicks.
+    cut: 0.03,
     layers: { maxPerFamily: 6, pursuitRadius: 8 * TILE,
       sampleSeconds: 0.1, fadeSeconds: 0.30, gain: 0.65, exploreMix: 0.6,
       fullGainVoices: 12, fireGain: 0.08,

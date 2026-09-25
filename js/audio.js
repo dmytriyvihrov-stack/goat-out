@@ -232,7 +232,8 @@ class GameAudio {
     if (!AC) return;
     this.ctx = new AC();
     const A = TUNING.audio;
-    this.master = this.ctx.createGain(); this.master.gain.value = A.master; this.master.connect(this.ctx.destination);
+    // SOUND off in SETTINGS is applied before the first gesture makes the context: start silent then.
+    this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : A.master; this.master.connect(this.ctx.destination);
     this.drumBus = this.ctx.createGain(); this.drumBus.connect(this.master);
     this.sfxBus = this.ctx.createGain(); this.sfxBus.connect(this.master);
     this.musicBus = this.ctx.createGain(); this.musicBus.connect(this.master);
@@ -254,9 +255,16 @@ class GameAudio {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.nextTime = this.ctx.currentTime + 0.1;
     setInterval(() => this.schedule(), 25);
+    // A phone suspends (or on iOS 'interrupts') the context behind a call or a switched app; ask again
+    // on the way back rather than waiting for the next tap.
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.resume(); });
     this.warm();
   }
-  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+  // Any state short of running or closed: Safari's 'interrupted' was never asked back.
+  resume() {
+    if (!this.ctx || this.ctx.state === 'running' || this.ctx.state === 'closed') return;
+    const p = this.ctx.resume(); if (p && p.catch) p.catch(() => {});
+  }
   setLayered(enabled) { this.layered = !!enabled; }
   // The two sliders in SETTINGS. 0.5 reproduces `TUNING.audio`'s own tuned levels exactly, so the
   // scale is `value / 0.5`: the room score and its drums (`musicBus`, `drumBus` — `layerBus` rides
@@ -277,7 +285,16 @@ class GameAudio {
   }
   resetScore() {
     this.cue = null; this.terminalCue = null;
-    for (const node of this.musicNodes) { try { node.stop(); } catch (_) { /* already ended */ } }
+    // Under the stop the two music buses dip to nothing and come back (`audio.cut`), or every note
+    // still sounding ends in a click.
+    const t = this.ctx ? this.ctx.currentTime : 0, cut = TUNING.audio.cut;
+    if (this.ctx && this.musicNodes.size) {
+      for (const bus of [this.musicBus, this.drumBus]) {
+        const g = bus.gain, v = (bus === this.drumBus ? TUNING.audio.drums : TUNING.audio.music) * (this.volMusic / 0.5);
+        g.cancelScheduledValues(t); g.setValueAtTime(v, t); g.linearRampToValueAtTime(0, t + cut); g.setValueAtTime(v, t + cut * 1.2);
+      }
+    }
+    for (const node of this.musicNodes) { try { node.stop(this.ctx ? t + cut : 0); } catch (_) { /* already ended */ } }
     this.musicNodes.clear(); this.musicEvents.length = 0; this.resetAmbience();
     for (const voices of Object.values(this.voices)) voices.fill(0);
     this.combatMix = this.fireMix = this.blazeMix = this.grassMix = 0;
@@ -516,9 +533,12 @@ class GameAudio {
     // Remember a brief flare or a grazed patch even if it disappears before the next beat.
     for (const key of ['blaze', 'grass']) this.ambience[key].pending = Math.max(this.ambience[key].pending, this.scene[key]);
   }
-  toggleMute() { this.muted = !this.muted; if (this.master) { this.master.gain.cancelScheduledValues(0); this.master.gain.value = this.muted ? 0 : TUNING.audio.master; } return this.muted; }
+  // Unmuted, the master comes back to where the last `duck` left it: M during the death's fade used to
+  // bring the room back at full.
+  toggleMute() { this.muted = !this.muted; if (this.master) { this.master.gain.cancelScheduledValues(0); this.master.gain.value = this.muted ? 0 : TUNING.audio.master * (this.duckLevel == null ? 1 : this.duckLevel); } return this.muted; }
   // Everything sinks to `level` of full volume over `secs`: the world going away as the goat does.
   duck(level, secs) {
+    this.duckLevel = level;   // kept while muted too, for `toggleMute`
     if (!this.ctx || this.muted) return;
     const g = this.master.gain, t = this.ctx.currentTime;
     g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
@@ -818,7 +838,9 @@ class GameAudio {
   // `key` names the bank when one recipe is rendered with different `args` (a bleat's pitch, a fuse's
   // length); `steady` keeps the pitch exact (a chain of kills climbs a scale); `at` delays it.
   foley(name, { gain = 1, rate = 1, wet = 0, pan = 0, at = 0, key = name, args = null, takes = null, steady = false } = {}) {
-    if (!this.ctx || this.muted || gain <= 0) return null;
+    // Not while the context is suspended: every source started then waits and they all go off
+    // together the moment it resumes.
+    if (!this.ctx || this.muted || gain <= 0 || this.ctx.state !== 'running') return null;
     const F = TUNING.audio.foley, ctx = this.ctx;
     const buffer = this.take(key, () => Foley.render(name, args), takes == null ? F.takes : takes, Foley.rateOf(name));
     const src = ctx.createBufferSource(), g = ctx.createGain();
@@ -839,6 +861,9 @@ class GameAudio {
     const bank = this.bank || (this.bank = {});
     const b = bank[key] || (bank[key] = { list: [], want, make, rate, last: -1 });
     if (!b.list.length) b.list.push(this.toBuffer(b.make(), b.rate));
+    // A bank first asked for mid-game (a bleat's pitch, a fuse's length) after `warm` finished would
+    // otherwise play its one take for the rest of the session.
+    if (b.list.length < b.want && !this.warming) this.warm();
     let i = Math.floor(Math.random() * b.list.length);
     if (b.list.length > 1 && i === b.last) i = (i + 1) % b.list.length;
     b.last = i;
