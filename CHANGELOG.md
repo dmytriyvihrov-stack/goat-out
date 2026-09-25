@@ -5,7 +5,18 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
-## 1.72 (in progress)
+## 1.72 — one rule for every kind; the butcher; level one rebuilt round its lessons
+
+Asked for on 25 Sep 2026, a long play of THE ALTAR and THE DARK.
+
+- **A keeper's hearts are his kind's own plus one** (`soulKeeper.hp` 1, added to the base), and he
+  wears the boss outline: the outline is the one sign a man takes more than one blow.
+- **Smaller numbers**: horse 0.88 × PACE, poison 3 s (4.5), headbutt recovery 0.46 s (0.38).
+- **A man out of the goat's sight is not drawn** (`game.inSight`); a rifle's aim line still is.
+- **Floor hints lose the key line under them**; the dev drawer's LEVEL tab lists and edits every
+  floor's hint. An animal brought back at the middle gate says its terms again.
+- **A thrown crate catches going through fire** and breaks into one burning tile; the barrel is
+  what spreads.
 
 - **Souls and talismans say what they do in a line or two** (asked 25 Sep 2026: "one or two lines
   of what it does, no story, no exact numbers ... windup speed, what the hell?"). Every `BOONS`

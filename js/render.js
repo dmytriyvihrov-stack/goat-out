@@ -2969,7 +2969,9 @@ class Renderer {
   bodyScale(e) { return Renderer.bodyScaleOf(e); }
   // Who wears the outline: a boss, of any kind. The rat ogre is the mouse's, not a boss, and his
   // `boss` flag is cleared where she calls him (`Shop.spawnOgre`), so this is the flag alone.
-  static isBoss(e) { return !!e.boss && e.kind !== 'ratogre'; }
+  // A gate's keeper (`soulKeeper`) has more than one heart, so he wears it too: the outline is the
+  // one sign that a man takes more than one blow.
+  static isBoss(e) { return !!(e.boss || e.keeper) && e.kind !== 'ratogre'; }
 
   // The boss's outline (`TUNING.boss.outline`): his own body drawn again as a flat silhouette `px`
   // out on each of eight sides, behind him — a hard ring of pixels round the sprite, never a glow.

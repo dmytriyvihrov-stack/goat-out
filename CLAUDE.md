@@ -366,7 +366,7 @@ contents by `paintStartRoom`. The ritual altar is a real `table` Prop with `isAl
 **Soul gates.** `levelDef.gates`: two rest rooms (`REST_TEMPLATE`, role `rest`, off the curve, out of
 `ordinaryRooms`), never the last room, a set piece, the vault's room or a teaching room. Soul on the floor
 via `placeSoul` — or, on a `levelDef.gateKeeper` level (THE ALTAR), in a **keeper**: a `keeper` bearer
-spawned on the soul's spot, ensouled with `soulKeeper.hp` hearts, `soulKeeper.speed`, `fireCare` /
+spawned on the soul's spot, ensouled with his kind's hearts + `soulKeeper.hp` (one), `soulKeeper.speed`, `fireCare` /
 `trapSense` like the seer, his swing lighting witchfire where it lands (`Enemy.keeperFire`); `bossPrize`
 drops his soul tagged `e.soulGate`. Placed, off the curve; `GEN_RULES.soulgate` requires exactly him. `gateSpot` narrows the exit and hangs a `gate: true` door with no hit points (`smash`
 returns, no shouldering). Only `game.openSoulGate(room)` opens it: the soul pickup (`soul.gate`, its own

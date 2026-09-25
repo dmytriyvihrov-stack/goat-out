@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.71';
+const BUILD = '1.72';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -1007,7 +1007,8 @@ const TUNING = {
   // `fireR` tiles round the spot `fireAt` tiles in front of him, burning `fireFor` s, never the
   // tile he stands on. He knows his own fire as the seer knows his (`fireCare`, `trapSense`): he
   // steps round it, and burns like anybody if he is put into it.
-  soulKeeper: { hp: 2, speed: 1.3, fireAt: 1.1, fireR: 1, fireFor: 2.6, fireCare: 2.2, trapSense: 0.97 },
+  // `hp` is added to his kind's own hearts: a keeper is the base man plus one.
+  soulKeeper: { hp: 1, speed: 1.3, fireAt: 1.1, fireR: 1, fireFor: 2.6, fireCare: 2.2, trapSense: 0.97 },
   // The sentry's doorway (THE ALTAR's first man, `blockSpot`): the corridor out of his one-tile gap
   // bends at once, so a straight line from anywhere in his room through where he stands meets stone
   // within `wallBehind` tiles of him — the first swing ever tried ends on a wall and not down a

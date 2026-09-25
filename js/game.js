@@ -1484,7 +1484,8 @@ class Game {
       if (cp && g === this.level.gates[0]) { if (e) e.gone = true; continue; }
       // A keeper's gate (`levelDef.gateKeeper`): the soul is in him and comes out where he goes
       // down (`bossPrize`), tagged with his gate so swallowing it lifts that gate.
-      if (e) { this.ensoul(e); e.hp = e.maxHp = TUNING.soulKeeper.hp; e.soulGate = g.room; }
+      // His hearts are his kind's own plus `soulKeeper.hp` (25 Sep 2026: "the base unit's health +1").
+      if (e) { const base = e.hp; this.ensoul(e); e.hp = e.maxHp = base + TUNING.soulKeeper.hp; e.soulGate = g.room; }
       else this.placeSoul(g.soul.x, g.soul.y, g.room);
     }
     if (this.level.vault) {
