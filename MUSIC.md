@@ -28,40 +28,38 @@ room (`TUNING.audio.room`).
 
 ## Enemies and traps
 
-Each type has a fixed, recognisable ranked rhythm. Adding an enemy preserves the existing hits
-and enables more, rather than merely making the same part louder. Counts refer to living enemies
+Each type has a fixed, recognisable rhythm laid over the tune. Counts refer to living enemies
 physically in the current room, plus aware visible pursuers within eight tiles. Intangible wraiths
 still count. Spawn-room IDs do not pin moving enemies to their old room.
 
-| Type | Register / character | Hits per two bars for 1 / 2 / 3 / 4 / 5 / 6 |
+**1.70 thinned the layer** ("the music itself got better, it was the layers on top"): a man is one
+hit per two bars, a big one two, and a family stops adding at three. It was six a family, two hits
+for a lone rifle and three for a lone brute, so a crowded room laid a wall of ticks over the melody.
+The figures also stopped moving: every type plays the same two bars over and over (the four
+"answers" that shifted them every four bars went), so a kind is learnt by ear. Unaware men play at
+`exploreMix` 0.45 of themselves (0.6 before), and the whole layer sits at `layers.gain` 0.55 (0.65).
+
+| Type | Register / character | Hits per two bars for 1 / 2 / 3 |
 |---|---|---|
-| Bearer | High, dry square ticks, low-passed (a reed, not a chip) | 1 / 2 / 3 / 4 / 5 / 6 |
-| Hound | Same register, shorter offbeat ticks | 1 / 2 / 3 / 4 / 5 / 6 |
-| Hunter | Middle, clipped triangle plucks | 2 / 4 / 5 / 6 / 7 / 8 |
-| Seer | Same register, shifted rhythm and softer attack | 2 / 4 / 5 / 6 / 7 / 8 |
-| Brute / Butcher | Triangle sub + octave body + short square edge, different onsets | 3 / 5 / 7 / 9 / 11 / 13 |
-| Wraith | High sine chimes | 1 / 2 / 3 / 4 / 5 / 6 |
-| Spike plate | Low-middle metallic ticks | 1 / 2 / 3 / 4 / 5 / 6 |
-| Mill | Same trap instrument, longer rotating pattern; at most two | 3 / 6 / — / — / — / — |
+| Bearer | High, dry square ticks, low-passed (a reed, not a chip) | 1 / 2 / 3 |
+| Hound | Same register, shorter offbeat ticks | 1 / 2 / 3 |
+| Hunter | Middle, clipped triangle plucks | 1 / 2 / 3 |
+| Seer | Same register, shifted rhythm and softer attack | 1 / 2 / 3 |
+| Brute / Ogre (and the rat ogre) | Triangle sub + octave body + short square edge, different onsets | 2 / 3 / 4 |
+| Wraith | High sine chimes | 1 / 2 / 3 |
+| Spike plate | Low-middle metallic ticks | 1 / 2 (cap two) |
+| Mill | Same trap instrument, longer rotating pattern | 2 / 3 (cap two) |
 
-The original cap of six enemies per family remains. Bearers/hounds, Hunters/Seers and
-Brutes/Butchers share their respective caps. Overfull mixed families are allocated round-robin,
-so both types remain represented. Spike plates cap at six; Mills cap at two, including the lab.
-One Mill already gets three accents, two get six. Intact traps count
-throughout the room, including idle spike plates; their instrument does not blink on/off with
-individual trap attacks. Each trap hit has a quiet harmonic overtone, not an extra rhythmic hit.
-
-Four phrase sections shift the onset seeds and scale notes while retaining their type identity.
-Targets update on quarter notes and note gains ease over 0.3 seconds. The gain budget follows the
-actual enabled hits, including the extra heavy/ranged hits. The current pattern sweep finds at
-most three simultaneous primary onsets across all legal enemy/trap count combinations. Base,
-environment, event accents and sustained tails are also checked together in actual WebAudio.
-Mathematical bounds protect timing and headroom; human count recognition still needs listening.
+Bearers/hounds, Hunters/Seers and Brutes/Ogres share their family's cap of three, dealt round the
+kinds in turn so a mixed room keeps both figures. The slots in `MUSIC_PARTS` are ranked: another man
+adds an accent and never moves the ones already playing. Intact traps count throughout the room,
+including idle spike plates. Each trap hit has a quiet harmonic overtone, not an extra rhythmic hit.
+Across every legal mix no more than two primary onsets fall on one sixteenth (`tools/audio-check.js`),
+and a late room the generator deals (three clubmen, two hounds, a rifle, a brute) is six hits in two
+bars where it was ten.
 
 The heavy voice retains its 41–82 Hz fundamental but adds triangle at twice the frequency and a
-short square at four times it. A single heavy therefore has audible mid-bass harmonics on smaller
-speakers; these are the same rhythmic hit, not extra count information. Global volume settings
-and the original score keep their existing controls.
+short square at four times it, so a single heavy is heard on small speakers.
 
 ## The first escape and narrative phrases
 
@@ -96,7 +94,7 @@ of overdue replies. The legacy soundtrack keeps its original behavior.
 ## Detection, chase and combat
 
 In every theme, an aware enemy in the sensed room/pursuit area begins **two bars of spotted**
-music. A suspended three-note warning leaves space before the choice. It then becomes **chase**:
+music, opened by the SPOTTED sting (below). A suspended three-note warning leaves space before the choice. It then becomes **chase**:
 an offbeat running melody and light hats. Actual accepted headbutts, throws and screams count as
 offensive intent and select **combat**, with shorter stronger lead notes, extra kicks and toms.
 Attacks during the warning are remembered for the branch at its end. Rolling and incidental kills
@@ -108,48 +106,60 @@ All changes commit on quarter notes and crossfade over 0.3 seconds without resta
 The two-bar intro, attack hold and one-bar calm grace are tunable in `TUNING.audio.layers`.
 The lab's state buttons hold a selected arrangement so it can be auditioned as long as needed.
 
-## Room fire, nearby grass and action echoes
+## Answers to situations
 
-Fire now belongs to the **whole current room**, not a radius around the goat. This includes
-standing braziers/lamps, burning floor tiles and living burning bodies. Adjacent rooms do not
-contribute. Coals give one crackle per bar. Actual burning area adds one, two or three answering
-pops at 1, 4 and 10 burning sources. A broad fire adds a low rustle and lifts the base kick slightly.
-The crackle gain is stronger than the first version, to remain audible in a fight.
+The score answers what happens, not what the player presses. Until 1.70 every headbutt, roll, throw
+and scream also got a woodblock reply a second or two later, on top of its own effect: a second copy
+of every button, late. The buttons now only tell the stage machine what he means (a headbutt, throw
+or scream is an attack; a roll is not). What is left (`MUSIC_EVENTS`):
 
-Fire density persists for two bars (about four seconds) after the fire shrinks, goes out or the
-player leaves the room, then fades. A short flare between beat boundaries is remembered. Healing
-grass within four tiles adds soft harmonic chimes, up to three patches, with a one-bar tail.
-Leaving play clears memories. Muting does not freeze their clocks.
+- **KILL**: a two-note chime on the next eighth (`layers.eventGridSteps` 2; it waited one to two
+  seconds, which read as a sound of its own). A crowd killed at once merges into one accent, at most
+  three strong.
+- **CLEARED**, the room's last man: four notes up the scale to the octave, half a beat after the kill.
+- **SPOTTED**, a fight starting (the stage machine going live): one frame-drum hit and a low plucked
+  root on the next sixteenth, then the two-bar warning's own figure.
+- **HURT**, a heart lost: the score's low-pass (`scoreTone`, `TUNING.audio.tone`) dips to 380 Hz and
+  comes back over 0.9 s. Only the score: the blow's own effect stays sharp.
+- **The last heart**: the low-pass stays at 900 Hz, the tune steps back to `layers.heartSing` of
+  itself, and his heart is heard (`GameAudio.heartbeat`, Foley's `heart`) in time with the red at
+  the screen's edge — lub as the picture's beat turns over, dub a fifth of a beat on.
 
-Direct game effects still happen immediately. A separate musical response follows a kill, an
-actual headbutt, roll, throw or scream (including upgraded screams). Responses wait for the next
-half-bar boundary at least eight sixteenths away: about 1-2 seconds. Kills make a bright two-note
-chime; player actions give a short lower woodblock response with an action-specific pitch.
-These do not alter AI noise, combat timing or game mechanics.
+The queue holds twelve at most, muted events are spent rather than kept, and leaving play clears it.
 
-Simultaneous kills merge into a bounded accent. Different and repeated player gestures each get
-their own eighth-note response slot, forming a short fill rather than discarding all but the first
-action. A burst can occupy at most a further bar after the next response boundary; surplus clicks
-are ignored instead of creating a long backlog. The queue is capped at twelve entries, muted events
-are discarded, and leaving play clears pending events. Muting does not change combat intent. A late
-browser scheduler discards overdue events instead of bursting them all out at once.
+## The room's own sound
+
+Fire and the milk grass used to be part of the score — a crackle a bar for coals, pops for a blaze, a
+chime a patch — and sat on top of the tune. They are the world's now (`GameAudio.updateAmbience`,
+`TUNING.audio.ambience`), off the music's clock and on the **effects** slider (`ambBus`):
+
+- **A bed a floor**, by canon (`ambience.beds`): still air in stone (THE ALTAR, THE YARD, THE
+  OSSUARY, THE DARK), the cave's hollow ringing on a few low notes of its own (THE CAVE, THE TRIP),
+  wind through boards with a whistle over the gusts (THE ROAD, THE THRESHING FLOOR, THE BRIDGE, THE
+  RAFTERS — loudest there, with the windows). Loops from `Foley.loop`, rendered once at a low rate
+  and crossfaded end into start, faded across a floor change.
+- **The nearest fire**: one crackle whose level is every lit bowl, lamp and lantern, burning tile and
+  burning man inside seven tiles, weighed by kind and nearness, panned to its side.
+- **Now and then**: water dripping in the cave floors, the ossuary and THE DARK; the cult drumming a
+  long way off, every 40–90 s, only while nothing is after him; the milk grass, three small glassy
+  notes, only when he has a heart to fill and it is within four tiles.
 
 ## Tools > MUSIC
 
 Open DEV TOOLS, then TOOLS, then MUSIC, or load `index.html#music` / `http://127.0.0.1:8766/#music`.
 The game is paused while the tool is open. The lab runs the same score engine as gameplay.
 
-- Choose 0-6 for enemies and spike plates, 0-2 for Mills. Clicking a count starts playback. Mix types together.
+- Choose 0-3 of each enemy type, 0-2 spike plates and mills. Clicking a count starts playback. Mix types together.
 - SOLO keeps just that row (one if it was zero); NO BASE removes the bed for isolated listening.
 - IDLE / SPOTTED / CHASE / COMBAT selects the bed; LEVEL 1 / LEVEL 2-4 / LEVEL 5+ selects its theme.
 - LEVEL CLEAR / DEATH / SOUL auditions a narrative phrase once. PLAY repeats it; a bed or part
   button returns to the room mix. These phrases also have named tracks in SCORE and JSON EXPORT.
 - The right-hand figures show effective count / hits per two bars, after the shared cap.
 - On wider screens, a 32-step strip shows the actual onset pattern and moving playhead.
-- FIRE selects burning tile count; COALS is the stationary-fixture pulse. FIRE 0 lets the tail finish.
-- GRASS selects nearby patches. Repeatedly tap KILL / BUTT / ROLL / THROW / BAAH to mix delayed
-  musical echoes. The queue below the pads shows which gestures are waiting to sound.
-- ROOM copies the paused gameplay room; CLEAR removes the mix; PLAY / STOP controls auditioning.
+- ROOM plays a floor's bed (OFF / AIR / CAVE / WIND); FIRE a crackle beside him (NONE / NEAR / BLAZE).
+  LAST HEART closes the score's low-pass, pulls the tune back and beats his heart.
+- KILL / CLEARED / SPOTTED / HURT fire the answers; the queue below the pads shows what is waiting.
+- ROOM (top row) copies the paused gameplay room; CLEAR removes the mix; PLAY / STOP controls auditioning.
 - STOP cancels queued musical notes. Closing the lab cancels previews and resumes the live score,
   preserving the user's soundtrack setting and game entities. MUTE/UNMUTE controls global sound.
 
@@ -157,7 +167,7 @@ The game is paused while the tool is open. The lab runs the same score engine as
 
 MIX shows each row's current register root as a scientific note name, MIDI number and oscillator
 abbreviation (TRI / SQ / SIN). These are register references; the scale degrees change actual notes.
-SCORE shows all twenty-three instrument/event tracks across the full sixteen bars, with a moving playhead.
+SCORE shows all nineteen instrument/event tracks across the full sixteen bars, with a moving playhead.
 Select a track and a bar to see its instrument, beat positions, exact notes, MIDI numbers and Hz.
 Heavy overtones and other harmonics appear as real notes in that inspection.
 
@@ -166,31 +176,34 @@ settled. It represents a fixed arrangement, not future live enemy changes or the
 Selecting a narrative phrase isolates its two/three bars in this view, with the remaining bars at
 rest. Lab phrases start from the selected theme's first root for repeatable listening/export;
 gameplay phrases use the current bar's root.
-Recent accepted action-pad gestures are marked at their positions in the phrase (up to 64 from the
-last phrase-length window), but are
-not automatically looped. ERASE removes action marks and pending replies; CLEAR also empties the room.
+Recent pad events (KILL, CLEARED, SPOTTED) are marked at their positions in the phrase (up to 64 from
+the last phrase-length window), but are not automatically looped. ERASE removes the marks and pending
+answers; CLEAR also empties the room.
 
 EXPORT downloads a JSON score containing every emitted note/noise, its track, onset and duration
 in sixteenth notes, waveform, gain, envelopes/filter settings where specified, and bus levels.
 For FL Studio, use **118 BPM, 4/4, sixteen steps per bar**. One score step is a sixteenth note;
 divide steps and durations by four for beats. C4 here is MIDI 60. FL Studio's octave labels may be
 different, so MIDI number and Hz are the unambiguous reference. A triangle/sine/square oscillator
-can reproduce most voices; bass uses a saw and a closing 700-to-170 Hz low-pass filter. Drum and
-woodblock sweeps are indicated as end/start frequency ratios. Noise has no pitched MIDI note.
+can reproduce most voices; bass uses a saw and a closing 700-to-170 Hz low-pass filter. Drum
+sweeps are indicated as end/start frequency ratios. Noise has no pitched MIDI note.
 The JSON is a transcription/synthesis reference, not an FL project or a native MIDI import.
 
 ## Implementation and validation
 
 `MUSIC_PARTS` supplies the per-type slots and envelopes; `ROOM_MUSIC` supplies shared registers;
-`LATE_MUSIC` supplies the later harmony. `TUNING.audio.layers.hitBudgets` holds count-to-hit curves.
-The other tuning values control caps, gain, sensing, memory and event delays.
+`LATE_MUSIC` supplies the later harmony. `TUNING.audio.layers.hitBudgets` holds count-to-hit curves
+(`musicCap` is how far a kind's count goes). The other `layers` values control caps, gain, sensing
+and event timing; `TUNING.audio.tone` is the score's low-pass, `TUNING.audio.ambience` the room's sound.
 
 Run `node tools/audio-check.js` for actual emitted-note counts, pattern separation, all legal
-family mixes, sensing, whole-room fire and traps, tails, delayed/bounded events, mute, lab isolation,
-legacy selection, state branching, repeated gestures, heavy harmonics, full-score metadata and scheduler recovery.
+family mixes, sensing, whole-room traps, the answers (kill, cleared, spotted, hurt, last heart) and
+that the buttons have none, mute, lab isolation, legacy selection, state branching, heavy harmonics,
+full-score metadata, scheduler recovery, every floor's bed, fire near him, the heartbeat's timing,
+and that every Foley recipe and loop renders (a loop without a seam).
 
 With the local server on 8766 and Playwright on Node's module path, run
 `node tools/audio-browser-check.js`. It checks settings persistence, actual game playback,
 Music Lab click controls, stop/exit cleanup, three screen sizes and offline audio renders of both
-themes, including full mixed crowds, traps, fire, grass and stacked event accents. Output and
+themes, including full mixed crowds, traps and stacked event accents. Output and
 screenshots are saved under ignored `tools/shots/audio/`.

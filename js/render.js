@@ -3595,10 +3595,9 @@ class Renderer {
       const family = ROOM_MUSIC[part.family], pitch = musicPitch(root * family.octave);
       text(part.label, pad, y + 10 * s);
       text(pitch.note + ' / ' + pitch.midi + ' ' + (part.family === 'large' ? 'TRI+SQ' : family.type.slice(0,3).toUpperCase()), pad, y + 22 * s, PALETTE.ash, 8);
-      const max = kind === 'mill' ? TUNING.audio.layers.maxMills : 6;
+      const max = musicCap(kind);
       for (let n = 0; n <= max; n++) button(pad + (77 + n * 25) * s, y, 22 * s,
         String(n), kind + '=' + n, lab.scene[kind] === n);
-      if (kind === 'mill') text('1 = 3 / 2 = 6 HITS', pad + 155 * s, y + 14 * s, PALETTE.ochre, 9);
       button(pad + 256 * s, y, 38 * s, 'SOLO', 'solo=' + kind);
       text(effective[kind] + ' / ' + hits, pad + 303 * s, y + 14 * s, PALETTE.ochre);
       const start = pad + 355 * s, cell = Math.min(11 * s, (width - 360 * s) / 32);
@@ -3610,13 +3609,14 @@ class Renderer {
       }
       if (width > 970 * s) text(MUSIC_TRACKS[kind], pad + 726 * s, y + 14 * s, PALETTE.ash, 9);
     });
+    // The room's own sound (not the score, but auditioned here): a floor's bed and a fire beside him.
     let y = top + 398 * s;
-    text('FIRE', pad, y + 14 * s);
-    [0,1,4,10,24].forEach((n,i) => button(pad + (50 + i * 36) * s, y, 32 * s, String(n), 'fire=' + n, lab.scene.fireTiles === n));
-    button(pad + 239 * s, y, 61 * s, 'COALS', 'coals', lab.scene.fire && !lab.scene.blaze);
-    y += 26 * s; text('GRASS', pad, y + 14 * s);
-    [0,1,2,3].forEach((n,i) => button(pad + (50 + i * 36) * s, y, 32 * s, String(n), 'grass=' + n, lab.scene.grass === n));
-    text('FIRE TAIL: 2 BARS', pad + 204 * s, y + 14 * s, PALETTE.ochre);
+    text('ROOM', pad, y + 14 * s);
+    [['OFF','off'], ['AIR','air'], ['CAVE','cave'], ['WIND','wind']].forEach(([label, id], i) =>
+      button(pad + (50 + i * 44) * s, y, 40 * s, label, 'amb=' + id, (lab.amb.bed || 'off') === id));
+    y += 26 * s; text('FIRE', pad, y + 14 * s);
+    [0, 0.3, 0.7].forEach((n, i) => button(pad + (50 + i * 44) * s, y, 40 * s, ['NONE','NEAR','BLAZE'][i], 'fire=' + n, lab.amb.fire === n));
+    button(pad + 186 * s, y, 84 * s, 'LAST HEART', 'heart', lab.scene.lastHeart);
     this.drawMusicPads(game, pad, top + 454 * s, s, text, button);
     text('Count / hits per 2 bars. Note = register root / MIDI.', pad, top + 508 * s, PALETTE.ash, 10);
     text('SCORE: all 16 bars, instruments, exact notes. EXPORT: JSON.', pad, top + 521 * s, PALETTE.ash, 10);
@@ -3624,9 +3624,8 @@ class Renderer {
 
   drawMusicPads(game, pad, y, s, text, button) {
     const audio = game.audio;
-    [['KILL','kill'], ...Object.entries(MUSIC_ACTIONS).map(([id,a]) => [a.label,id])]
-      .forEach(([label,id], i) => button(pad + i * 68 * s, y, 63 * s, label, 'event=' + id, false, 28 * s));
-    const queue = audio.musicEvents.map(e => e.kind === 'kill' ? 'KILL' : MUSIC_ACTIONS[e.kind].label).join(' > ');
+    Object.entries(MUSIC_EVENTS).forEach(([id, label], i) => button(pad + i * 68 * s, y, 63 * s, label, 'event=' + id, false, 28 * s));
+    const queue = audio.musicEvents.map(e => MUSIC_EVENTS[e.kind]).join(' > ');
     text('QUEUE ' + audio.musicEvents.length + ': ' + queue.slice(0,42), pad, y + 41 * s, PALETTE.ochre, 9);
   }
 
@@ -3637,7 +3636,7 @@ class Renderer {
     for (let bar = 0; bar < 16; bar++) button(x + bar * barWidth, top, barWidth - s, String(bar + 1), 'bar=' + bar, lab.bar === bar, 17 * s);
     tracks.forEach((track, row) => {
       const y = top + (22 + row * 12) * s;
-      button(pad, y, 71 * s, (MUSIC_PARTS[track]?.label || MUSIC_ACTIONS[track]?.label || track).toUpperCase(), 'track=' + track, lab.track === track, 12 * s);
+      button(pad, y, 71 * s, (MUSIC_PARTS[track]?.label || track).toUpperCase(), 'track=' + track, lab.track === track, 12 * s);
       ctx.fillStyle = 'rgba(239,230,208,0.07)'; ctx.fillRect(x, y, width, 10 * s);
       ctx.fillStyle = 'rgba(185,135,58,0.15)'; ctx.fillRect(x + lab.bar * barWidth, y, barWidth, 10 * s);
       for (const event of score.events) {

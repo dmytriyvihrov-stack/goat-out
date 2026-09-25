@@ -54,7 +54,7 @@ fs.mkdirSync(output, { recursive: true });
         const len = 60 / a.bpm / 4;
         for (let s = 0; s < (cue ? 60 : 256); s++) {
           a.step = s;
-          if (scene.blaze === 3 && s % 16 === 0) { for (let n = 0; n < 20; n++) a.musicEvent('kill'); for(const kind of ['roll','throw','headbutt','scream']) a.musicEvent(kind); }
+          if (scene.stress && s % 16 === 0) { for (let n = 0; n < 20; n++) a.musicEvent('kill'); a.musicEvent('cleared'); a.musicEvent('spotted'); }
           a.playStep(s, 0.05 + s * len, len);
         }
         const buffer = await a.ctx.startRendering(), samples = buffer.getChannelData(0);
@@ -69,14 +69,14 @@ fs.mkdirSync(output, { recursive: true });
         empty: await render(empty, true),
         oneSmall: await render({ ...empty, bearer: 1, combat: true }, true),
         threeSmall: await render({ ...empty, bearer: 3, combat: true }, true),
-        full: await render({ ...empty, bearer: 3, dog: 3, hunter: 3, seer: 3, champion: 3, butcher: 3, wraith: 6, spike: 6, mill: 6, fire: true, blaze: 3, grass: 3, combat: true }, true),
-        lateIdle: await render({ ...empty, late: true, grass: 1 }, true),
-        lateCombat: await render({ ...empty, late: true, bearer: 6, hunter: 6, butcher: 6, wraith: 6, spike: 6, mill: 6, fire: true, blaze: 3, grass: 3, combat: true }, true),
+        full: await render({ ...empty, bearer: 3, dog: 3, hunter: 3, seer: 3, champion: 3, butcher: 3, wraith: 6, spike: 6, mill: 6, stress: true, combat: true }, true),
+        lateIdle: await render({ ...empty, late: true }, true),
+        lateCombat: await render({ ...empty, late: true, bearer: 6, hunter: 6, butcher: 6, wraith: 6, spike: 6, mill: 6, stress: true, combat: true }, true),
         legacy: await render(empty, false),
       };
       for(const late of [false,true])for(const stage of MUSIC_STAGES) result[(late?'late-':'early-')+stage] = await render({...empty,late,stage,champion:2,hunter:2,mill:2},true);
       result.heavySolo = await render({...empty,champion:1,stage:'combat'},true,true);
-      result.maxVolume = await render({...empty,champion:3,butcher:3,bearer:3,dog:3,hunter:3,seer:3,wraith:6,spike:6,mill:2,grass:3,fire:true,blaze:3,stage:'combat'},true,false,1);
+      result.maxVolume = await render({...empty,champion:3,butcher:3,bearer:3,dog:3,hunter:3,seer:3,wraith:6,spike:6,mill:2,stress:true,stage:'combat'},true,false,1);
       for(const stage of MUSIC_STAGES) result['first-'+stage]=await render({...empty,first:true,stage},true);
       for(const first of [true,false])for(const cue of Object.keys(MUSIC_CUES)) result[(first?'first-':'early-')+cue]=await render({...empty,first},true,false,1,cue);
       for(const cue of Object.keys(MUSIC_CUES)) result['late-'+cue]=await render({...empty,late:true},true,false,1,cue);
@@ -107,7 +107,7 @@ fs.mkdirSync(output, { recursive: true });
     await page.waitForFunction(()=>!game.audio.cue);
     assert.equal(await page.evaluate(()=>game.audio.terminalCue),null);
     await page.evaluate(() => { game.state = 'dead'; });
-    await page.waitForFunction(() => Object.keys(MUSIC_PARTS).every((k) => game.audio.scene[k] === 0) && !game.audio.scene.fire);
+    await page.waitForFunction(() => Object.keys(MUSIC_PARTS).every((k) => game.audio.scene[k] === 0) && !game.audio.scene.combat);
     await page.evaluate(()=>{game.onGoatDied();});
     assert.equal(await page.evaluate(()=>game.audio.cue?.kind),'death');
     await page.evaluate(()=>game.levelCleared());
@@ -129,9 +129,9 @@ fs.mkdirSync(output, { recursive: true });
     }
     await clickTool('music-view=score');await page.screenshot({path:path.join(output,'music-soul-score.png')});
     await clickTool('music-view=mix');await clickTool('music-bed=combat');
-    await clickTool('music-bearer=3'); await clickTool('music-dog=2'); await clickTool('music-hunter=2');
-    await clickTool('music-fire=10'); await clickTool('music-event=kill');
-    await page.waitForFunction(() => game.audio.scene.bearer === 3 && game.audio.scene.dog === 2 && game.audio.scene.blaze === 3);
+    await clickTool('music-bearer=3'); await clickTool('music-dog=2'); await clickTool('music-hunter=2'); // the small family's cap of three is dealt round: two clubmen, one hound
+    await clickTool('music-fire=0.7'); await clickTool('music-amb=cave'); await clickTool('music-event=kill');
+    await page.waitForFunction(() => game.audio.scene.bearer === 2 && game.audio.scene.dog === 1 && game.audio.lab.amb.fire === 0.7 && game.audio.lab.amb.bed === 'cave');
     assert.equal(await page.evaluate(() => game.audio.lab.playing),true);
     await page.screenshot({path:path.join(output,'music-lab-desktop.png')});
     assert.equal(await page.evaluate(()=>game.dev.rects.some(r=>r.id==='music-mill=3')),false);
@@ -139,8 +139,8 @@ fs.mkdirSync(output, { recursive: true });
       await clickTool('music-bed='+stage);
       await page.waitForFunction(stage=>game.audio.scene.stage===stage,stage);
     }
-    for(const kind of ['headbutt','roll','throw','scream','headbutt','roll']) await clickTool('music-event='+kind);
-    assert((await page.evaluate(()=>game.audio.lab.actions.length))>=6);
+    for(const kind of ['kill','cleared','spotted','hurt']) await clickTool('music-event='+kind);
+    assert((await page.evaluate(()=>game.audio.lab.actions.length))>=3,'kill, cleared and spotted are marked; hurt is a dip, not a note');
     await clickTool('music-view=score'); await clickTool('music-track=champion');
     await page.screenshot({path:path.join(output,'music-score-desktop.png')});
     const downloadReady = page.waitForEvent('download'); await clickTool('music-export'); const download = await downloadReady;

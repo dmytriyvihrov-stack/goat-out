@@ -154,7 +154,8 @@ and what your souls have done to each of them. Hover a chip for its numbers.
 
 **Sound.** No audio files: every effect is a small physical model rendered on the spot — struck wood
 and iron, a throat through formants, shaped noise — and the score is a synthesised bone flute, bass
-gallop and drums that follow the room from idle to chase. See [MUSIC.md](MUSIC.md);
+gallop and drums that follow the room from idle to chase. Every floor has a sound of its own under
+it — still air, a cave's hollow, wind through boards, the nearest fire. See [MUSIC.md](MUSIC.md);
 `tools/sfx-board.html` plays every effect.
 
 ---

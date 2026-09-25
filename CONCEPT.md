@@ -356,7 +356,7 @@ the player to believe that a goat reads.
 
 **A level gives up an authored number of them**: two on every floor, less the one the mouse stands in for
 on THE YARD, THE ROAD and THE BRIDGE — thirteen across a run, and now and then a boss who is lit or a
-room that gives one up adds another — against twenty-five boons and a build that holds fourteen, so no
+room that gives one up adds another — against twenty-four boons and a build that holds fourteen, so no
 run gets everything and no two runs are the same goat. The level's gates are paid first (THE ALTAR has
 one, and its second soul is the ogre's); the
 vault holds grass and every boss leaves milk, unless a soul was left over for them. **A man carrying one is lit** — an amber haze that breathes, a ring at his feet, and red eyes —
@@ -432,16 +432,19 @@ Without attacks it relaxes to chase, and without threats to idle; both level the
 Level 1 has a more frightened, lost variation with hesitant semitone answers. Level completion
 adds a short rising release, death a descending lament, and taking a soul a luminous high chime.
 These phrases briefly replace the room score and are also auditionable in MUSIC.
-The room adds short synthesised parts for small, ranged, large and mystical enemies, up to six
-enemies per family, plus rhythms for fire and traps throughout the room. Everything shares one 16-bar phrase;
-parts join on the beat and fade as the room changes. Individual enemy types share their family's
-register but have different rhythms, with more accents for ranged and heavy enemies. Levels 5+
-switch to a second harmony with its own melodies for these states. Standing coals tick once per bar;
-active fire across the current room adds crackles that linger for two bars, and nearby healing
-grass adds soft chimes. Spike plates and Mills add their own patterns; kills and player actions
-get separate delayed musical replies. Large enemies have octave harmonics that reach small speakers;
-one/two Mills give three/six accents. TOOLS > MUSIC allows listening to each part and combination,
-tapping repeated action rhythms, and inspecting/exporting the sixteen-bar score with note and instrument data.
+The room adds a thin layer of short synthesised parts over the tune for small, ranged, large and
+mystical enemies — one hit a man every two bars, two for a heavy, three at most a family — plus the
+traps in the room. Everything shares one 16-bar phrase; parts join on the beat and fade as the room
+changes. Individual enemy types share their family's register but each keeps its own fixed rhythm,
+so a kind is recognised by ear. Levels 5+ switch to a second harmony with its own melodies for these
+states. The score answers situations, never buttons: a kill is a chime on the next eighth, a room's
+last man a climb to the octave, a fight starting a drum hit, a lost heart pulls the music under water
+for a moment, and the last heart keeps it there with his heart beating over it. Large enemies have
+octave harmonics that reach small speakers. TOOLS > MUSIC allows listening to each part and
+combination, firing the answers, and inspecting/exporting the sixteen-bar score with note and
+instrument data. Under all of it each floor has a sound of its own — still air, a cave's hollow, wind
+through boards — with the nearest fire crackling from its side, water dripping in the caves, the cult
+drumming far off while nothing is after him, and the milk grass heard when he is hurt.
 The original threat-driven ritual score,
 including the Hunter shaker, remains selectable in SETTINGS by switching LAYERED MUSIC off.
 No audio assets at all. `MUSIC.md` records both arrangements and how to extend the new one.

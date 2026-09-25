@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.69';
+const BUILD = '1.70';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -1281,17 +1281,43 @@ const TUNING = {
     // A score cut off mid-note (a death, a cue, the title) dips under the stop for `cut` s: a hard
     // stop on a sounding oscillator clicks.
     cut: 0.03,
-    layers: { maxPerFamily: 6, pursuitRadius: 8 * TILE,
-      sampleSeconds: 0.1, fadeSeconds: 0.30, gain: 0.65, exploreMix: 0.6,
-      fullGainVoices: 12, fireGain: 0.08,
-      hitBudgets: { small: [0,1,2,3,4,5,6], ranged: [0,2,4,5,6,7,8],
-        large: [0,3,5,7,9,11,13], mill: [0,3,6] },
-      maxMills: 2, spottedBars: 2, combatHoldBars: 2, calmBars: 1,
+    // The enemies' layer over the tune (MUSIC.md). 1.70 thinned it: a man is one hit per two bars (a
+    // big one two), a family stops at `maxPerFamily`, and `exploreMix` is how much of it plays while
+    // nobody in the room knows he is there. It was six a family, two hits for a rifle and three for a
+    // brute, at 0.65 / 0.6 — a full room was a wall of ticks laid over the melody.
+    // `eventGridSteps` is where a kill's accent lands (the next eighth; it waited one to two seconds),
+    // `heartSing` how much of the tune is left on the last heart.
+    layers: { maxPerFamily: 3, maxSpikes: 2, maxMills: 2, pursuitRadius: 8 * TILE,
+      sampleSeconds: 0.1, fadeSeconds: 0.30, gain: 0.55, exploreMix: 0.45,
+      fullGainVoices: 8,
+      hitBudgets: { small: [0,1,2,3], ranged: [0,1,2,3], large: [0,2,3,4], trap: [0,1,2], mill: [0,2,3] },
+      spottedBars: 2, combatHoldBars: 2, calmBars: 1,
       heavyBodyGain: 0.12, heavyEdgeGain: 0.045,
-      eventDelaySteps: 8, eventGridSteps: 8, eventQueueCap: 12, eventStackCap: 3,
-      killGain: 0.12, actionGain: 0.09, clearGain: 0.1,
-      lateFromLevel: 5, blazeThresholds: [1, 4, 10], blazeTailBars: 2,
-      grassRadius: 4 * TILE, grassVoices: 3, grassTailBars: 1, grassGain: 0.085 },
+      eventGridSteps: 2, eventQueueCap: 12, eventStackCap: 3,
+      killGain: 0.1, clearGain: 0.1, spottedGain: 0.07, heartSing: 0.45,
+      lateFromLevel: 5 },
+    // The score's low-pass (`GameAudio.scoreTone`): `open` Hz as a rule, `heart` on the last heart (the
+    // music under water; `glide` s to get there), and a dip to `hurt` Hz on every heart lost, back up
+    // over `back` s. The effects are not in it: the blow itself stays sharp.
+    tone: { open: 18000, heart: 900, glide: 0.35, hurt: 380, back: 0.9 },
+    // The rooms' own sound (`GameAudio.updateAmbience`), on the effects slider: `gain` over all of it.
+    // `beds` is each canon's loop (`air`, `cave`, `wind` from `Foley.loop`), its level and how often
+    // water drips (1 is every `drip.gap` s). `fire` is the crackle of whatever burns within `radius`
+    // tiles, weighed `lit` for a bowl, lamp or lantern, `tile` a burning tile and `man` a burning man.
+    // `far` is the cult drumming somewhere else in the compound, every `gap` s while nothing is after
+    // him; `grass` the milk grass calling within `radius` tiles when he has a heart to fill; `heart`
+    // his heart on the last one (`dub` the second beat's share). `lab` is a bed's level in the lab.
+    ambience: { gain: 0.075, every: 0.15, fade: 1.5, lab: 0.5,
+      beds: { stone: { loop: 'air', gain: 0.5, drips: 0 }, fire: { loop: 'air', gain: 0.4, drips: 0 },
+        hollow: { loop: 'cave', gain: 0.6, drips: 1 }, line: { loop: 'wind', gain: 0.35, drips: 0 },
+        open: { loop: 'wind', gain: 0.3, drips: 0 }, funnel: { loop: 'wind', gain: 0.4, drips: 0 },
+        drop: { loop: 'wind', gain: 0.6, drips: 0 }, niche: { loop: 'air', gain: 0.55, drips: 0.4 },
+        lamp: { loop: 'air', gain: 0.4, drips: 0.5 }, trip: { loop: 'cave', gain: 0.45, drips: 0.8 } },
+      fire: { gain: 1.8, radius: 7, lit: 0.35, tile: 0.12, man: 0.6, glide: 0.25 },
+      drip: { gap: [1.5, 5], gain: 0.7, wet: 0.25 },
+      far: { gap: [40, 90], gain: 0.9, wet: 0.2 },
+      grass: { radius: 4, gap: [2.5, 5], gain: 0.5 },
+      heart: { gain: 0.26, dub: 0.6 } },
     // The effects (js/foley.js). `takes` recordings of each are rendered and one is picked every time,
     // nudged up to `pitch` in speed and `level` in loudness: the same blow twice running is what a
     // machine sounds like. `warmGap` s between background renders where there is no idle callback.

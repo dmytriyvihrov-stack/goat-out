@@ -843,7 +843,18 @@ with `tools/escorts.js` (`ESCORT.run`), the way 1.57 measured the men.
 
 **Music.** Room-driven score (`GameAudio.updateScene`, `MUSIC_PARTS`, `TUNING.audio.layers`,
 `encounterStage`, `STAGE_MOTIFS`, `FIRST_MUSIC`, `startMusicCue` / `MUSIC_CUES`); legacy
-`playLegacyStep` with `TUNING.audio.crowd`. See `MUSIC.md`.
+`playLegacyStep` with `TUNING.audio.crowd`. See `MUSIC.md`. **The tune is the score; keep what lies
+on it thin** (1.70, "it was the layers on top"): each enemy kind has its own fixed figure, one hit a
+man, three a family (`hitBudgets`, `maxPerFamily`, `musicCap`). The score answers situations, never
+a button (`MUSIC_EVENTS`: kill, cleared, spotted, hurt); the buttons only feed `encounterStage` its
+intent. A lost heart dips the score's low-pass and the last heart holds it (`scoreTone`,
+`TUNING.audio.tone`); his heart is heard in time with `Renderer.heartbeat` (`GameAudio.heartbeat`).
+
+**The rooms' own sound.** `GameAudio.updateAmbience` (`TUNING.audio.ambience`), on the effects slider
+(`ambBus`) and off the music's clock: a looped bed per canon (`Foley.loop`: air, cave, wind), the
+nearest fire (`fireNear`, one panned crackle), drips, the far drums, the milk grass when hurt. Fire
+and grass live here, not in the score. Loops render at 8–24 kHz (`LOOP_RATE`): keep any new one
+cheap, it is rendered on the main thread.
 
 **Effects.** No oscillator goes straight to the speakers from an `sfx*`: each is `GameAudio.foley(recipe)`,
 a `Foley` recipe (`js/foley.js`) rendered into a buffer — a struck thing as its ringing `modes`, a

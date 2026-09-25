@@ -70,8 +70,11 @@ const MUSIC_STAGES = ['idle', 'spotted', 'chase', 'combat'];
 const INTRO_STAGE = { meadow: 'idle', road: 'spotted', dark: 'chase', cloth: 'chase',
   huddle: 'chase', approach: 'chase', gate: 'chase', grab: 'combat', fade: 'combat',
   black: 'idle', wake: 'idle' };
-const MUSIC_ACTIONS = { headbutt: { label: 'BUTT', degree: 0 }, roll: { label: 'ROLL', degree: 2 },
-  throw: { label: 'THROW', degree: 4 }, scream: { label: 'BAAH', degree: 5 } };
+// The score's answers to what happens (1.70). Until then every headbutt, roll, throw and scream also
+// got a woodblock reply a second or two later, on top of the effect itself: a second copy of every
+// button, late. What is left answers a situation, not a button: KILL, CLEARED (the room's last man),
+// SPOTTED (a fight starting) and HURT (a heart lost, which closes the score's low-pass for a moment).
+const MUSIC_EVENTS = { kill: 'KILL', cleared: 'CLEARED', spotted: 'SPOTTED', hurt: 'HURT' };
 // Same scale and clock, but different phrasing: suspended warning, running ostinato, hard accents.
 const STAGE_MOTIFS = {
   first: {
@@ -101,16 +104,16 @@ const MUSIC_TRACKS = {
   pad: 'Open-fifth triangle drone', bass: 'Saw bass line, low-pass closing 700 to 170 Hz', lead: 'Bone flute theme (triangle, vibrato) + plucked saw riff', drums: 'Frame-drum kick / tom (swept sine + skin slap) + rim knock',
   bearer: 'Muffled square ticks', dog: 'Short muffled square ticks', hunter: 'Triangle pluck', seer: 'Soft triangle pluck',
   champion: 'Triangle sub + octave + muffled square edge', butcher: 'Triangle sub + octave + muffled square edge', wraith: 'Sine chime',
-  spike: 'Triangle + sine octave', mill: 'Long triangle + sine octave', fire: 'Filtered noise crackles', grass: 'Sine + triangle octave',
-  kill: 'Triangle / sine chime', headbutt: 'Muffled square woodblock', roll: 'Muffled square woodblock', throw: 'Muffled square woodblock', scream: 'Muffled square woodblock',
+  spike: 'Triangle + sine octave', mill: 'Long triangle + sine octave',
+  kill: 'Triangle / sine chime', cleared: 'Plucked climb / flute', spotted: 'Frame drum + low pluck',
   clear: 'Rising triangle / major release', death: 'Falling sine / minor lament', soul: 'High sine / open fifths',
 };
 
-// Shared registers over a 16-bar clock. Each type below supplies its own ranked onsets;
-// four answers turn the two-bar seeds into a phrase without random competing harmony.
+// Shared registers over a 16-bar clock. Each type below supplies its own ranked onsets, the same
+// two bars over and over (1.70): the four answers that shifted them every four bars went, so a
+// kind's figure is one you can learn by ear.
 const ROOM_MUSIC = {
   bars: 16, stepsPerBar: 16,
-  answers: [0, 8, 0, 16],
   small: { phase: 2, octave: 8, notes: [0, 4, 2, 4, 0, 2], type: 'square', gain: 0.075, length: 0.46, lp: 1500 },
   ranged: { phase: 1, octave: 4, notes: [4, 0, 2, 4, 2, 0], type: 'triangle', gain: 0.13, length: 1.25 },
   large: { phase: 0, octave: 1, notes: [0, 0, 4, 0, 4, 0], type: 'triangle', gain: 0.20, length: 1.75 },
@@ -119,36 +122,45 @@ const ROOM_MUSIC = {
 const MUSIC_FAMILIES = ['small', 'ranged', 'large', 'mystical'];
 // Ranked onsets: enabling another enemy preserves the earlier accents. Related instruments
 // share a register, but their rhythms and envelopes remain recognisable in a mixed room.
+// Since 1.70 a man is one hit per two bars (a big one two), and a family stops adding at three
+// (`layers.maxPerFamily`): six clubmen used to be six ticks and a full room a wall of them on top
+// of the tune. The slots past the budget are simply never reached.
 const MUSIC_PARTS = {
   bearer: { family: 'small', label: 'BEARER', slots: [2,18,10,26,6,22], length: 0.46 },
   dog: { family: 'small', label: 'HOUND', slots: [7,23,15,31,3,19], length: 0.32 },
   hunter: { family: 'ranged', label: 'HUNTER', slots: [1,17,9,25,5,21,13,29], length: 0.8 },
   seer: { family: 'ranged', label: 'SEER', slots: [4,20,12,28,8,24,0,16], length: 1.6 },
   champion: { family: 'large', label: 'BRUTE', slots: [0,8,10,16,24,26,4,12,18,20,28,30,6], length: 1.4 },
-  butcher: { family: 'large', label: 'BUTCHER', slots: [4,12,14,20,28,30,0,8,22,24,16,18,2], length: 1.8 },
+  butcher: { family: 'large', label: 'OGRE', slots: [4,12,14,20,28,30,0,8,22,24,16,18,2], length: 1.8 },
   wraith: { family: 'mystical', label: 'WRAITH', slots: [3,19,11,27,7,23], length: 3 },
   spike: { family: 'trap', label: 'SPIKES', slots: [5,21,13,29,1,17], length: 0.45 },
   mill: { family: 'trap', label: 'MILLS', slots: [14,30,6,22,10,26,2], length: 1.1 },
 };
 ROOM_MUSIC.trap = { octave: 2, notes: [4,0,2,4,2,0], type: 'triangle', gain: 0.12 };
+// Fire and the milk grass were part of the score until 1.70; they are the room's sound now
+// (`GameAudio.updateAmbience`), so the scene is who is here, the stage and the goat's last heart.
 const emptyMusicScene = () => ({ ...Object.fromEntries(Object.keys(MUSIC_PARTS).map((k) => [k, 0])),
-  fire: false, blaze: 0, fireTiles: 0, grass: 0, combat: false, late: false, first: false });
+  combat: false, late: false, first: false, lastHeart: false });
+// The most of a kind the room's count can ask for (the lab's buttons run to it too).
+const musicCap = (kind) => { const L = TUNING.audio.layers; return kind === 'mill' ? L.maxMills : kind === 'spike' ? L.maxSpikes : L.maxPerFamily; };
 function musicHitCount(kind, count) {
   const P = MUSIC_PARTS[kind], budgets = TUNING.audio.layers.hitBudgets;
   const budget = budgets[kind === 'mill' ? 'mill' : P.family] || budgets.small;
   return budget[Math.max(0, Math.min(budget.length - 1, Math.floor(count || 0)))];
 }
+// A family shares its cap round the kinds in it, one each in turn, so a room of clubmen and hounds
+// keeps both figures rather than filling up with whichever was counted first.
 function capMusicScene(scene) {
   for (const family of MUSIC_FAMILIES) {
     const kinds = Object.keys(MUSIC_PARTS).filter((k) => MUSIC_PARTS[k].family === family);
     const raw = kinds.map((k) => Math.max(0, Math.floor(scene[k] || 0)));
     kinds.forEach((k) => { scene[k] = 0; });
     let left = TUNING.audio.layers.maxPerFamily;
-    for (let rank = 0; rank < 6 && left; rank++) for (let i = 0; i < kinds.length && left; i++) {
+    for (let rank = 0; left && raw.some((n) => n > rank); rank++) for (let i = 0; i < kinds.length && left; i++) {
       if (raw[i] > rank) { scene[kinds[i]]++; left--; }
     }
   }
-  for (const k of ['spike', 'mill']) scene[k] = Math.min(k === 'mill' ? TUNING.audio.layers.maxMills : 6, Math.max(0, Math.floor(scene[k] || 0)));
+  for (const k of ['spike', 'mill']) scene[k] = Math.min(musicCap(k), Math.max(0, Math.floor(scene[k] || 0)));
   return scene;
 }
 
@@ -170,10 +182,11 @@ function roomMusicScene(game) {
   const room = roomAt(game.level, g.x, g.y);
   const near = (x, y, radius) => Math.hypot(x - g.x, y - g.y) <= radius;
   const inRoom = (x, y) => room ? roomAt(game.level, x, y) === room : false;
-  let burning = g.onFire ? 1 : 0;
+  // The last heart is heard as well as seen (`juice.heartbeat`): the score goes under water.
+  const B = TUNING.juice.heartbeat;
+  scene.lastHeart = g.hp <= B.hp && g.maxHp > B.hp;
   for (const e of game.enemies) {
     if (e.dead) continue;
-    if (e.burning > 0 && inRoom(e.x, e.y)) burning++;
     const family = musicFamily(e);
     if (!family) continue;
     const pursuing = e.aware && e.state !== 'idle' && near(e.x, e.y, L.pursuitRadius)
@@ -184,27 +197,22 @@ function roomMusicScene(game) {
     scene[kind]++;
     if (e.aware && e.state !== 'idle') scene.combat = true;
   }
-  // Fixtures, traps and burning area belong to the whole current room. Grass stays a nearby cue.
+  // Traps belong to the whole current room, idle or not.
   for (const p of game.props) {
     if (p.broken || p.dead) continue;
-    if ((p.kind === 'brazier' || p.kind === 'lamp') && inRoom(p.x, p.y)) scene.fire = true;
     if ((p.kind === 'mill' || p.kind === 'spike') && inRoom(p.x, p.y)) scene[p.kind]++;
-    if (p.kind === 'heal' && near(p.x, p.y, L.grassRadius)) scene.grass = Math.min(L.grassVoices, scene.grass + 1);
   }
-  const w = game.world;
-  for (let y = room ? Math.max(0, room.y) : 0; room && y < Math.min(w.H, room.y + room.h); y++) {
-    for (let x = Math.max(0, room.x); x < Math.min(w.W, room.x + room.w); x++) {
-      if (w.fire[y * w.W + x] <= 0) continue;
-      scene.fireTiles++; burning++;
-    }
-  }
-  scene.blaze = L.blazeThresholds.filter((n) => burning >= n).length;
-  scene.fire = scene.fire || burning > 0;
   return capMusicScene(scene);
 }
 
+// A floor's bed of sound (`TUNING.audio.ambience.beds`), by its canon; THE TRIP has its own.
+function ambienceBed(def) {
+  const B = TUNING.audio.ambience.beds;
+  return (def && def.shroom ? B.trip : def && def.canon && B[def.canon.id]) || B.stone;
+}
+
 function musicPartHit(kind, hit, step) {
-  return step % 32 === (MUSIC_PARTS[kind].slots[hit] + ROOM_MUSIC.answers[Math.floor(step / 64) % 4]) % 32;
+  return step % 32 === MUSIC_PARTS[kind].slots[hit];
 }
 
 class GameAudio {
@@ -219,12 +227,14 @@ class GameAudio {
     this.layered = true; this.scene = emptyMusicScene(); this.sceneTimer = 0;
     this.voices = Object.fromEntries(Object.entries(MUSIC_PARTS).map(([k, p]) => [k, p.slots.map(() => 0)]));
     this.musicTick = 0; this.musicEvents = []; this.musicNodes = new Set(); this.preview = null;
-    this.lab = { playing: false, bed: 'combat', scene: emptyMusicScene(), view: 'mix', bar: 0, track: 'lead', actions: [], cue: null };
+    this.lab = { playing: false, bed: 'combat', scene: emptyMusicScene(), view: 'mix', bar: 0, track: 'lead', actions: [], cue: null,
+      amb: { bed: null, fire: 0 } };
     this.cue = null; this.terminalCue = null; this.firstTheme = false;
     this.stageMix = { idle: 1, spotted: 0, chase: 0, combat: 0 };
     this.resetEncounter();
-    this.combatMix = 0; this.fireMix = 0; this.blazeMix = 0; this.grassMix = 0; this.lateTheme = false;
-    this.resetAmbience();
+    this.combatMix = 0; this.heartMix = 0; this.lateTheme = false;
+    // The room's own sound (`updateAmbience`): the loops playing, and the clocks of the one-shots.
+    this.amb = { beds: {}, fire: null, next: 0, drip: 2, far: 30, grass: 2, bed: null };
   }
   init() {
     if (this.ctx) return;
@@ -234,9 +244,15 @@ class GameAudio {
     const A = TUNING.audio;
     // SOUND off in SETTINGS is applied before the first gesture makes the context: start silent then.
     this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : A.master; this.master.connect(this.ctx.destination);
-    this.drumBus = this.ctx.createGain(); this.drumBus.connect(this.master);
+    // The score and its drums reach the speakers through one low-pass (`scoreTone`), open unless the
+    // goat is on his last heart or has just lost one (`setScoreTone`, `hurtDip`).
+    this.scoreTone = this.ctx.createBiquadFilter(); this.scoreTone.type = 'lowpass';
+    this.scoreTone.frequency.value = A.tone.open; this.scoreTone.Q.value = 0.5; this.scoreTone.connect(this.master);
+    this.drumBus = this.ctx.createGain(); this.drumBus.connect(this.scoreTone);
     this.sfxBus = this.ctx.createGain(); this.sfxBus.connect(this.master);
-    this.musicBus = this.ctx.createGain(); this.musicBus.connect(this.master);
+    this.musicBus = this.ctx.createGain(); this.musicBus.connect(this.scoreTone);
+    // The rooms' own sound, on the effects slider (`setVolumes`): it is the world, not the score.
+    this.ambBus = this.ctx.createGain(); this.ambBus.connect(this.master);
     this.layerBus = this.ctx.createGain(); this.layerBus.gain.value = A.layers.gain; this.layerBus.connect(this.musicBus);
     // One small room under everything (`TUNING.audio.room`): a third of a second, a little of it.
     // Bone dry, every effect was a sound in no place at all; 1.4 s of stone (1.61-1.65) put every
@@ -277,6 +293,7 @@ class GameAudio {
     this.drumBus.gain.value = A.drums * (this.volMusic / 0.5);
     this.musicBus.gain.value = A.music * (this.volMusic / 0.5);
     this.sfxBus.gain.value = A.sfx * (this.volSfx / 0.5);
+    if (this.ambBus) this.ambBus.gain.value = A.ambience.gain * (this.volSfx / 0.5);
     if (this.sfxWet) this.sfxWet.gain.value = this.sfxBus.gain.value;
   }
   trackMusicNode(node) {
@@ -295,9 +312,9 @@ class GameAudio {
       }
     }
     for (const node of this.musicNodes) { try { node.stop(this.ctx ? t + cut : 0); } catch (_) { /* already ended */ } }
-    this.musicNodes.clear(); this.musicEvents.length = 0; this.resetAmbience();
+    this.musicNodes.clear(); this.musicEvents.length = 0;
     for (const voices of Object.values(this.voices)) voices.fill(0);
-    this.combatMix = this.fireMix = this.blazeMix = this.grassMix = 0;
+    this.combatMix = this.heartMix = 0;
     this.beatScene = null; this.sceneTimer = 0;
     this.stageMix = { idle: 1, spotted: 0, chase: 0, combat: 0 }; this.resetEncounter();
   }
@@ -340,6 +357,7 @@ class GameAudio {
       if (!e.active) {
         e.active = true; e.spottedUntil = tick + L.spottedBars * 16;
         if (e.attackUntil > tick) e.attackUntil = e.spottedUntil + L.combatHoldBars * 16;
+        this.musicEvent('spotted');
       }
       e.lastThreat = tick;
     } else if (tick - e.lastThreat >= L.calmBars * 16) {
@@ -350,25 +368,20 @@ class GameAudio {
     return tick < e.attackUntil ? 'combat' : 'chase';
   }
   musicEvent(kind) {
-    // Intent matters even with sound muted. Rolling/running and incidental kills are not attacks.
+    // Intent matters even with sound muted. Rolling/running and incidental kills are not attacks,
+    // and since 1.70 the buttons are nothing more than that: no reply of their own.
     if (['headbutt','throw','scream'].includes(kind)) this.encounter.attackUntil = Math.max(this.musicTick, this.encounter.spottedUntil) + TUNING.audio.layers.combatHoldBars * 16;
+    if (!MUSIC_EVENTS[kind]) return;
+    if (kind === 'hurt') { this.hurtDip(); return; }
     // A soul can finish while the goat is already moving again. Do not save up a burst of
-    // overdue action replies behind its phrase; offensive intent still reaches the state machine.
+    // overdue replies behind its phrase.
     if (this.cue || this.terminalCue) return;
     if ((!this.layered && !this.preview) || this.muted || (this.preview && !this.preview.playing)) return;
     const L = TUNING.audio.layers;
-    let due = Math.ceil((this.musicTick + L.eventDelaySteps) / L.eventGridSteps) * L.eventGridSteps;
-    if (MUSIC_ACTIONS[kind]) {
-      // Each accepted gesture gets an eighth-note slot; a fast mixed burst becomes a short fill.
-      // Limit the horizon as well as queue size, so frantic clicks cannot leave minutes of replies.
-      const end = due + 16;
-      while (this.musicEvents.some(e => e.due === due && MUSIC_ACTIONS[e.kind]) && due < end) due += 2;
-      if (due >= end || this.musicEvents.length >= L.eventQueueCap) return;
-      this.musicEvents.push({ kind, due, count: 1 });
-      if (this.preview) this.rememberLabAction(kind, due);
-      return;
-    }
-    if (kind !== 'kill' && kind !== 'cleared') return;
+    // On the next eighth (`eventGridSteps`), close enough to be the answer to it: the old one to two
+    // seconds late read as a sound of its own. A sting for a fight starting is on the next sixteenth.
+    const wait = kind === 'spotted' ? 1 : L.eventGridSteps;
+    const due = Math.ceil((this.musicTick + 1) / wait) * wait;
     const old = this.musicEvents.find((e) => e.kind === kind && e.due === due);
     if (old) old.count = Math.min(L.eventStackCap, old.count + 1);
     else if (this.musicEvents.length < L.eventQueueCap) this.musicEvents.push({ kind, due, count: 1 });
@@ -407,17 +420,20 @@ class GameAudio {
         this.tone(f, t + stepLen * (4 + i), stepLen * (i === 3 ? 4 : 1.4), { type: 'triangle', gain: gain * (i === 3 ? 1 : 0.8), bus: this.layerBus });
       });
     }
-    for (const action of due.filter(e => MUSIC_ACTIONS[e.kind])) {
-      this.scoreTrack = action.kind;
-      const degree = MUSIC_ACTIONS[action.kind].degree;
-      this.tone(root * 2 * Math.pow(2, theme.scale[degree] / 12), t + stepLen,
-        stepLen * 0.8, { type: 'square', gain: TUNING.audio.layers.actionGain * headroom, sweep: 0.8, bus: this.layerBus, lp: 1300 });
+    // A fight starting (`encounterStage`): the frame drum's skin and one low plucked root on the next
+    // sixteenth — the moment he is seen, before the two-bar warning's figure comes in.
+    if (due.some((e) => e.kind === 'spotted')) {
+      this.scoreTrack = 'spotted';
+      const gain = TUNING.audio.layers.spottedGain;
+      this.tone(110, t, 0.36, { gain: gain * 2.2, sweep: 0.42, bus: this.drumBus });
+      this.noise(t, 0.035, { gain: gain * 0.35, lp: 1500, bus: this.drumBus });
+      this.tone(root * 2, t, stepLen * 6, { type: 'sawtooth', gain, bus: this.musicBus, attack: 0.004, lp: 1500, lpEnd: 170 });
     }
   }
   labAction(action, game) {
     this.init(); this.resume();
     const lab = this.lab, [key, value] = action.split('=');
-    if (lab.cue && (MUSIC_PARTS[key] || ['room','solo','event','fire','coals','grass'].includes(key))) {
+    if (lab.cue && (MUSIC_PARTS[key] || ['room','solo','event','heart'].includes(key))) {
       lab.cue = null; this.resetScore();
     }
     if (key === 'play') { lab.playing = !lab.playing; if (lab.playing && lab.cue) this.startMusicCue(lab.cue); }
@@ -436,9 +452,10 @@ class GameAudio {
     else if (key === 'export') this.exportLabScore();
     else if (key === 'theme') { lab.scene.late = value === 'late'; lab.scene.first = value === 'first';
       if (lab.cue && lab.playing) { this.scene = { ...lab.scene }; this.startMusicCue(lab.cue); } }
-    else if (key === 'fire') { lab.scene.fireTiles = Number(value); lab.scene.blaze = TUNING.audio.layers.blazeThresholds.filter((n) => Number(value) >= n).length; lab.scene.fire = Number(value) > 0; }
-    else if (key === 'coals') lab.scene.fire = !lab.scene.fire;
-    else if (key === 'grass') lab.scene.grass = Number(value);
+    else if (key === 'heart') lab.scene.lastHeart = !lab.scene.lastHeart;
+    // The room's own sound is auditioned here too: a floor's bed, and a fire at arm's length.
+    else if (key === 'amb') lab.amb.bed = value === 'off' ? null : value;
+    else if (key === 'fire') lab.amb.fire = Number(value);
     else if (key === 'event') { lab.playing = true; this.musicEvent(value); }
     else if (key === 'solo') {
       const count = lab.scene[value] || 1, { late, first } = lab.scene;
@@ -447,17 +464,6 @@ class GameAudio {
     } else if (MUSIC_PARTS[key]) { lab.scene[key] = Number(value); lab.playing = true; }
     lab.scoreKey = null;
     if (!lab.playing) this.resetScore();
-  }
-  resetAmbience() {
-    this.ambience = { blaze: { value: 0, left: 0, pending: 0 }, grass: { value: 0, left: 0, pending: 0 } };
-  }
-  ambientLevel(key, current, holdSteps) {
-    const memory = this.ambience[key], value = Math.max(current, memory.pending);
-    memory.pending = 0;
-    if (value >= memory.value || memory.left <= 0) {
-      memory.value = value; memory.left = value > 0 ? holdSteps : 0;
-    } else memory.left--;
-    return memory.value;
   }
   getLabScore() {
     const lab = this.lab, key = JSON.stringify([lab.bed, lab.scene, lab.actions, lab.cue]);
@@ -471,7 +477,7 @@ class GameAudio {
     a.firstTheme = a.scene.first;
     for (const stage of MUSIC_STAGES) a.stageMix[stage] = stage === a.scene.stage ? 1 : 0;
     a.combatMix = { idle: 0, spotted: 0.35, chase: 0.65, combat: 1 }[a.scene.stage];
-    a.fireMix = a.scene.fire || a.scene.blaze ? 1 : 0; a.blazeMix = a.scene.blaze; a.grassMix = a.scene.grass;
+    a.heartMix = a.scene.lastHeart ? 1 : 0;
     for (const kind of Object.keys(MUSIC_PARTS)) a.voices[kind] = a.voices[kind].map((_, i) => i < musicHitCount(kind, a.scene[kind]) ? 1 : 0);
     a.musicEvents = lab.actions.map(e => ({ ...e }));
     if (lab.cue) a.cue = { kind: lab.cue, root: musicTheme(a.scene).roots[0], start: 0 };
@@ -489,7 +495,7 @@ class GameAudio {
     lab.score = { bpm: this.bpm, beatsPerBar: 4, stepsPerBar: 16, bars: 16, theme: lab.scene.first ? '1' : lab.scene.late ? '5+' : '2-4', stage: lab.cue || lab.bed,
       cueBars: lab.cue ? MUSIC_CUES[lab.cue].bars : null,
       noteConvention: 'C4 = MIDI 60. FL Studio octave labels may differ; use MIDI number / Hz.',
-      description: 'Settled phrase; action marks are the last auditioned gestures, not a repeating gameplay loop. Durations in sixteenth notes; gain before bus gains.',
+      description: 'Settled phrase; event marks are the last auditioned kills / clears / stings, not a repeating gameplay loop. Durations in sixteenth notes; gain before bus gains.',
       buses: { master: TUNING.audio.master, music: TUNING.audio.music, layers: TUNING.audio.layers.gain, drums: TUNING.audio.drums },
       instruments: MUSIC_TRACKS, events };
     return lab.score;
@@ -503,8 +509,11 @@ class GameAudio {
   updateScene(game, dt) {
     const preview = game.dev.rules && game.dev.tab === 'music' ? this.lab : null;
     if (this.preview !== preview) { this.resetScore(); this.preview = preview; }
+    this.updateAmbience(game, dt);
+    this.heartbeat(game);
     if (preview) {
       this.scene = capMusicScene({ ...preview.scene, combat: preview.bed === 'combat', stage: preview.bed === 'none' ? 'idle' : preview.bed });
+      this.setScoreTone(this.scene.lastHeart);
       return;
     }
     const special = this.cue?.kind || this.terminalCue;
@@ -524,14 +533,35 @@ class GameAudio {
         this.scene.stage = INTRO_STAGE[ph] || 'idle';
       }
       this.beatScene = { ...this.scene };
-      this.resetAmbience(); this.resetEncounter(); this.musicEvents.length = 0; this.sceneTimer = 0; return;
+      this.setScoreTone(false);
+      this.resetEncounter(); this.musicEvents.length = 0; this.sceneTimer = 0; return;
     }
     if (this.sceneTimer > 0) return;
     this.sceneTimer = TUNING.audio.layers.sampleSeconds;
     this.scene = roomMusicScene(game);
     this.scene.stage = this.encounterStage(this.scene.combat);
-    // Remember a brief flare or a grazed patch even if it disappears before the next beat.
-    for (const key of ['blaze', 'grass']) this.ambience[key].pending = Math.max(this.ambience[key].pending, this.scene[key]);
+    this.setScoreTone(this.scene.lastHeart);
+  }
+  // The score's low-pass (`TUNING.audio.tone`): shut down to `heart` Hz on the last heart, so the
+  // music goes under water while the heart beats over it, and open again once he has milk in him.
+  setScoreTone(low) {
+    if (!this.scoreTone || this.toneLow === !!low) return;
+    this.toneLow = !!low;
+    const T = TUNING.audio.tone, f = this.scoreTone.frequency, now = this.ctx.currentTime;
+    // A dip in progress (the blow that left him on his last heart) finishes first, then glides on.
+    if (now < (this.dipUntil || 0)) { f.setTargetAtTime(low ? T.heart : T.open, this.dipUntil, T.glide); return; }
+    f.cancelScheduledValues(now); f.setValueAtTime(f.value, now);
+    f.setTargetAtTime(low ? T.heart : T.open, now, T.glide);
+  }
+  // A heart lost: the score dips under the blow and comes back up over `tone.back` s, to wherever
+  // it belongs now (the last heart's low-pass or open).
+  hurtDip() {
+    if (!this.scoreTone) return;
+    const T = TUNING.audio.tone, f = this.scoreTone.frequency, now = this.ctx.currentTime;
+    f.cancelScheduledValues(now); f.setValueAtTime(Math.max(T.hurt, f.value), now);
+    f.exponentialRampToValueAtTime(T.hurt, now + 0.04);
+    f.exponentialRampToValueAtTime(this.toneLow ? T.heart : T.open, now + 0.04 + T.back);
+    this.dipUntil = now + 0.04 + T.back;
   }
   // Unmuted, the master comes back to where the last `duck` left it: M during the death's fade used to
   // bring the room back at full.
@@ -662,7 +692,6 @@ class GameAudio {
       this.step = (this.step + missed) % (ROOM_MUSIC.bars * ROOM_MUSIC.stepsPerBar);
       this.musicTick += missed;
       this.musicEvents = this.musicEvents.filter((e) => e.due >= this.musicTick);
-      if (missed > TUNING.audio.layers.blazeTailBars * 16) this.resetAmbience();
       this.nextTime += missed * stepLen;
     }
     while (this.nextTime < this.ctx.currentTime + 0.12) {
@@ -689,14 +718,10 @@ class GameAudio {
     const scene = this.beatScene || this.scene, ease = 1 - Math.exp(-stepLen / L.fadeSeconds);
     if (beat === 0) { this.lateTheme = scene.late; this.firstTheme = scene.first; }
     const theme = musicTheme({ first: this.firstTheme, late: this.lateTheme }), root = theme.roots[(s >> 4) & 3];
-    const blaze = this.ambientLevel('blaze', scene.blaze, L.blazeTailBars * ROOM_MUSIC.stepsPerBar);
-    const grass = this.ambientLevel('grass', scene.grass, L.grassTailBars * ROOM_MUSIC.stepsPerBar);
     const stage = scene.stage || (scene.combat ? 'combat' : 'idle');
     for (const name of MUSIC_STAGES) this.stageMix[name] += ((stage === name ? 1 : 0) - this.stageMix[name]) * ease;
     this.combatMix += ((stage === 'combat' ? 1 : stage === 'chase' ? 0.65 : stage === 'spotted' ? 0.35 : 0) - this.combatMix) * ease;
-    this.fireMix += ((scene.fire || blaze > 0 ? 1 : 0) - this.fireMix) * ease;
-    this.blazeMix += (blaze - this.blazeMix) * ease;
-    this.grassMix += (grass - this.grassMix) * ease;
+    this.heartMix += ((scene.lastHeart ? 1 : 0) - this.heartMix) * ease;
     const combat = this.combatMix;
     let density = 0;
     for (const kind of Object.keys(MUSIC_PARTS)) {
@@ -705,13 +730,12 @@ class GameAudio {
         density += voices[i];
       });
     }
-    // Silence does not freeze the ambient memory: an extinguished fire should not return
-    // when M is pressed again several bars later.
+    // Muted, the clock and the voices' easing run on, and what fell due is spent rather than kept.
     if (this.muted) { this.playMusicEvents(t, stepLen, root, theme, 1); return; }
     // Keep the original harmonic bed; leave its bus and one-shot effects at their old levels.
     if (!this.preview || this.preview.bed !== 'none') {
       this.playThemeBed(this.firstTheme ? 'first' : this.lateTheme ? 'late' : 'early', s, t, stepLen);
-      if (beat === 0 || beat === 8) this.kick(t, (this.firstTheme ? 0.12 : 0.20) + combat * 0.08 + this.blazeMix * 0.018);
+      if (beat === 0 || beat === 8) this.kick(t, (this.firstTheme ? 0.12 : 0.20) + combat * 0.08);
       for (const name of MUSIC_STAGES) {
         const mix = this.stageMix[name];
         if (mix < 0.01) continue;
@@ -752,28 +776,6 @@ class GameAudio {
       });
     }
     this.playMusicEvents(t, stepLen, root, theme, headroom);
-    this.scoreTrack = 'fire';
-    // A lamp/coals gives one dry tick per bar. Burning area adds up to three answering pops,
-    // and a broad flame gets a little low rustle; no permanent hiss over the enemy rhythm.
-    if (this.fireMix > 0.005 && beat === 7) this.fireTick(t, L.fireGain * this.fireMix * headroom);
-    [11, 3, 15].forEach((slot, i) => {
-      const amount = Math.max(0, Math.min(1, this.blazeMix - i));
-      if (beat !== slot || amount < 0.005) return;
-      this.fireTick(t, L.fireGain * amount * headroom * 0.8);
-      if (i === 2) this.noise(t, stepLen * 1.8, { gain: L.fireGain * amount * headroom * 0.5, hp: 400, lp: 2400, bus: this.layerBus });
-    });
-    this.scoreTrack = 'grass';
-    [6, 14, 10].forEach((slot, i) => {
-      const amount = Math.max(0, Math.min(1, this.grassMix - i));
-      if (beat !== slot || amount < 0.005) return;
-      const f = root * 8 * Math.pow(2, theme.scale[[4, 2, 0][i]] / 12);
-      this.tone(f, t, stepLen * 2.8, { type: 'sine', gain: L.grassGain * amount * headroom, bus: this.layerBus, attack: 0.025 });
-      this.tone(f * 2, t, stepLen * 1.1, { type: 'triangle', gain: L.grassGain * amount * headroom * 0.2, bus: this.layerBus, attack: 0.012 });
-    });
-  }
-  fireTick(t, gain) {
-    this.noise(t, 0.035, { gain, hp: 1200, lp: 5500, bus: this.layerBus });
-    this.noise(t + 0.025, 0.09, { gain: gain * 0.35, hp: 650, lp: 3000, bus: this.layerBus });
   }
   // The layered score's bed (`THEME_BED`): an open-fifth drone a bar long, the bass line, the tune
   // and the frame drum's answers. The tune sings whole while nobody knows where he is, drops almost
@@ -784,7 +786,8 @@ class GameAudio {
     const root = theme.roots[(s >> 4) & 3], base = theme.roots[0] * 8;
     if (beat === 0) this.pad(t, root * 2, stepLen * 16.4, B.pad);
     for (const [at, semi, length, gain] of B.bass) if (at === beat) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain);
-    const sing = M.idle + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55;
+    // On the last heart the tune steps back (`layers.heartSing`) and leaves the room to his heart.
+    const sing = (M.idle + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55) * (1 - (1 - TUNING.audio.layers.heartSing) * this.heartMix);
     if (sing > 0.01) for (const [at, semi, length] of B.melody) {
       if (at === pos) this.lead(t, base * Math.pow(2, semi / 12), stepLen * length * 0.95, B.gain * sing * (at % 16 === 0 ? 1 : 0.85));
     }
@@ -837,7 +840,7 @@ class GameAudio {
   now() { return this.ctx ? this.ctx.currentTime : 0; }
   // `key` names the bank when one recipe is rendered with different `args` (a bleat's pitch, a fuse's
   // length); `steady` keeps the pitch exact (a chain of kills climbs a scale); `at` delays it.
-  foley(name, { gain = 1, rate = 1, wet = 0, pan = 0, at = 0, key = name, args = null, takes = null, steady = false } = {}) {
+  foley(name, { gain = 1, rate = 1, wet = 0, pan = 0, at = 0, key = name, args = null, takes = null, steady = false, bus = null } = {}) {
     // Not while the context is suspended: every source started then waits and they all go off
     // together the moment it resumes.
     if (!this.ctx || this.muted || gain <= 0 || this.ctx.state !== 'running') return null;
@@ -850,7 +853,7 @@ class GameAudio {
     src.connect(g);
     let out = g;
     if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); g.connect(p); out = p; }
-    out.connect(this.sfxBus);
+    out.connect(bus || this.sfxBus);
     if (wet > 0 && this.sfxWet) { const w = ctx.createGain(); w.gain.value = wet; out.connect(w); w.connect(this.sfxWet); }
     src.start(this.now() + at);
     return src;
@@ -883,6 +886,8 @@ class GameAudio {
     const want = { bell: 2, hoof: 6, groan: TUNING.audio.foley.groan.takes };
     for (const name of Foley.plain) if (!bank[name]) bank[name] = { list: [], want: want[name] || F.takes, make: () => Foley.render(name), rate: Foley.rateOf(name), last: -1 };
     if (!bank.toll) bank.toll = { list: [], want: 2, make: () => Foley.render('bell', { low: true }), rate: Foley.rateOf('bell'), last: -1 };
+    // The rooms' loops, one take each, after every effect has its first.
+    for (const name of Foley.loops) if (!bank['loop:' + name]) bank['loop:' + name] = { list: [], want: 1, make: () => Foley.loop(name), rate: Foley.loopRate(name), last: -1 };
     const later = () => {
       if (typeof requestIdleCallback === 'function') requestIdleCallback(next, { timeout: 500 });
       else setTimeout(next, F.warmGap * 1000);
@@ -904,6 +909,120 @@ class GameAudio {
   heard(dx, dy) {
     const S = TUNING.audio.space, u = clamp((Math.hypot(dx, dy) / TILE - S.near) / (S.far - S.near), 0, 1);
     return { vol: 1 - (1 - S.floor) * u, pan: clamp(dx / (S.pan * TILE), -1, 1) };
+  }
+
+  // ---- the rooms' own sound (1.70) ----
+  // Under the score and the fight: the floor's bed (still air in stone, the cave's hollow, wind
+  // through boards; `TUNING.audio.ambience.beds` by canon), the fire nearest him, and now and then
+  // something else — a drip in a cave, the cult drumming a long way off while nothing is after him,
+  // the milk grass when he is hurt and near it. It used to be the score's job (a crackle a bar, a chime
+  // a patch) and it sat on top of the tune; it is the world's now, on the effects slider (`ambBus`),
+  // off the music's clock.
+  updateAmbience(game, dt) {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const A = TUNING.audio.ambience, amb = this.amb, g = game.goat;
+    amb.wait = (amb.wait || 0) + dt;
+    if (amb.wait < A.every) return;
+    const el = amb.wait, now = this.ctx.currentTime, lab = this.preview ? this.lab.amb : null;
+    amb.wait = 0;
+    const inLevel = !lab && !!(game.level && g && ['play', 'paused', 'boon', 'dead', 'climb'].includes(game.state));
+    const bed = lab ? (lab.bed ? { loop: lab.bed, gain: A.lab, drips: 0 } : null) : inLevel ? ambienceBed(game.level.def) : null;
+    // The beds: the one the floor asks for comes up, any other goes down and is let go. A loop not yet
+    // rendered is left to `warm` (a few idle moments) rather than rendered here, mid-frame.
+    const want = bed && bed.gain > 0 ? bed.loop : null;
+    if (want && !amb.beds[want] && this.loopReady(want)) amb.beds[want] = this.startLoop(want, false);
+    for (const [name, b] of Object.entries(amb.beds)) {
+      const to = name === want ? bed.gain : 0;
+      if (b.to !== to) { b.to = to; b.g.gain.setTargetAtTime(to, now, A.fade / 3); }
+      b.idle = to ? 0 : b.idle + el;
+      if (b.idle > A.fade * 2) { b.src.stop(); delete amb.beds[name]; }
+    }
+    // The fire nearest him: one crackle, as loud as the fire is near and big, from its side.
+    const fire = lab ? { level: lab.fire, pan: 0 } : inLevel && game.state !== 'dead' ? this.fireNear(game) : { level: 0, pan: 0 };
+    if (fire.level > 0.01 && !amb.fire && this.loopReady('blaze')) amb.fire = this.startLoop('blaze', true);
+    if (amb.fire) {
+      const f = amb.fire;
+      f.g.gain.setTargetAtTime(fire.level * A.fire.gain, now, A.fire.glide);
+      if (f.p) f.p.pan.setTargetAtTime(fire.pan, now, A.fire.glide);
+      f.idle = fire.level > 0.01 ? 0 : f.idle + el;
+      if (f.idle > A.fade * 2) { f.src.stop(); amb.fire = null; }
+    }
+    if (lab || !inLevel || game.state !== 'play' || g.dead) return;
+    const gap = ([a, b]) => a + Math.random() * (b - a), side = () => Math.random() * 1.4 - 0.7;
+    // Water in the rock.
+    if (bed && bed.drips > 0 && (amb.drip -= el) <= 0) {
+      amb.drip = gap(A.drip.gap) / bed.drips;
+      this.foley('drip', { bus: this.ambBus, gain: A.drip.gain * (0.35 + 0.65 * Math.random()), pan: side(), wet: A.drip.wet, takes: 5 });
+    }
+    // The rest of the compound: only while nothing is after him, so it is heard as far away.
+    if ((amb.far -= el) <= 0) {
+      amb.far = gap(A.far.gap);
+      if (!this.encounter.active) this.foley('far', { bus: this.ambBus, gain: A.far.gain, pan: side(), wet: A.far.wet, takes: 2 });
+    }
+    // The milk grass calls to a goat who needs it.
+    if (g.hp < g.maxHp && (amb.grass -= el) <= 0) {
+      amb.grass = gap(A.grass.gap);
+      let best = null, bd = A.grass.radius * TILE;
+      for (const p of game.props) {
+        if (p.kind !== 'heal' || p.broken || p.dead) continue;
+        const d = Math.hypot(p.x - g.x, p.y - g.y);
+        if (d < bd) { bd = d; best = p; }
+      }
+      if (best) this.foley('sparkle', { bus: this.ambBus, gain: A.grass.gain * (1 - 0.6 * bd / (A.grass.radius * TILE)),
+        pan: clamp((best.x - g.x) / (TUNING.audio.space.pan * TILE), -1, 1), takes: 3 });
+    }
+  }
+  loopReady(name) {
+    const b = this.bank && this.bank['loop:' + name];
+    if (b && b.list.length) return true;
+    this.warm();
+    return false;
+  }
+  // A loop from `Foley.loop`, started silent at a random point in it (two floors never open on the
+  // same second of wind), for `updateAmbience` to bring up.
+  startLoop(name, panned) {
+    const buffer = this.take('loop:' + name, () => Foley.loop(name), 1, Foley.loopRate(name));
+    const src = this.ctx.createBufferSource(), g = this.ctx.createGain();
+    src.buffer = buffer; src.loop = true; g.gain.value = 0; src.connect(g);
+    let out = g, p = null;
+    if (panned && this.ctx.createStereoPanner) { p = this.ctx.createStereoPanner(); g.connect(p); out = p; }
+    out.connect(this.ambBus);
+    src.start(this.ctx.currentTime, Math.random() * buffer.duration);
+    return { src, g, p, to: -1, idle: 0 };
+  }
+  // How much fire is near him and from which side: every lit bowl, lamp and lantern, burning tile and
+  // burning man inside `fire.radius` tiles, each weighed by its kind and by how near it is.
+  fireNear(game) {
+    const F = TUNING.audio.ambience.fire, g = game.goat, w = game.world, R = F.radius * TILE;
+    let sum = 0, px = 0;
+    const feel = (x, y, k) => { const d = Math.hypot(x - g.x, y - g.y); if (d >= R) return; k *= 1 - d / R; sum += k; px += k * (x - g.x); };
+    for (const p of game.props) {
+      if (p.broken || p.dead || p.held) continue;
+      if (p.kind === 'brazier' || p.kind === 'lamp' || p.kind === 'sconce') feel(p.x, p.y, F.lit);
+    }
+    for (const e of game.enemies) if (!e.dead && e.burning > 0) feel(e.x, e.y, F.man);
+    if (g.onFire) feel(g.x, g.y, F.man);
+    const r = F.radius, cx = Math.floor(g.x / TILE), cy = Math.floor(g.y / TILE);
+    if (w && w.fire) for (let y = Math.max(0, cy - r); y <= Math.min(w.H - 1, cy + r); y++) {
+      for (let x = Math.max(0, cx - r); x <= Math.min(w.W - 1, cx + r); x++) if (w.fire[y * w.W + x] > 0) feel((x + 0.5) * TILE, (y + 0.5) * TILE, F.tile);
+    }
+    return { level: 1 - Math.exp(-sum), pan: sum ? clamp(px / sum / (TUNING.audio.space.pan * TILE), -1, 1) : 0 };
+  }
+  // His heart on the last heart, in time with the red at the screen's edge (`Renderer.heartbeat`,
+  // `juice.heartbeat.bpm`): the lub as the beat turns over, the dub a fifth of a beat on, where the
+  // picture's second pulse is. In the Music Lab it follows the LAST HEART switch.
+  heartbeat(game) {
+    const g = game.goat, B = TUNING.juice.heartbeat, R = game.renderer;
+    const on = this.ctx && R && (this.preview ? this.lab.playing && this.lab.scene.lastHeart
+      : g && !g.dead && game.state === 'play' && g.hp <= B.hp && g.maxHp > B.hp);
+    if (!on) { this.lastBeat = null; return; }
+    const n = Math.floor(R.t * B.bpm / 60);
+    if (n === this.lastBeat) return;
+    const fresh = this.lastBeat == null; this.lastBeat = n;
+    if (fresh) return;   // wait for a beat to turn over, not half of one
+    const H = TUNING.audio.ambience.heart;
+    this.foley('heart', { gain: H.gain, takes: 4 });
+    this.foley('heart', { gain: H.gain * H.dub, rate: 1.1, at: 0.2 * 60 / B.bpm, takes: 4 });
   }
 
   // Head down: hooves scuffing, a snort, the lunge moving air.

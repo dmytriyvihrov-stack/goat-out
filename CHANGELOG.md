@@ -5,6 +5,44 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.70 — the layers over the tune thinned; the rooms have a sound of their own
+
+Asked for on 25 Sep 2026: finish the music, the background sounds and the reactions to what happens;
+the enemy counts were "piled on too densely". Then, mid-way: the tune itself got better in 1.66, it
+was the layers on top — and the enemies' rhythms stay, only simpler and fewer. The bed (flute, bass,
+drone, frame drum) is untouched. MUSIC.md has the whole of it.
+
+- **The enemies' layer, thinner** (`TUNING.audio.layers`). Each kind keeps its own figure, but a man
+  is one hit per two bars (a big one two) and a family stops at three (`maxPerFamily`; it was six, with
+  two hits for a lone rifle and three for a lone brute). A late room the generator deals — three
+  clubmen, two hounds, a rifle, a brute — is six hits in two bars where it was ten, and no sixteenth
+  carries more than two onsets across every legal mix. The figures no longer move every four bars (the
+  "answers" went), so a kind is learnt by ear. Unaware men play at 0.45 of themselves (0.6), the layer
+  at 0.55 (0.65). Spike plates cap at two.
+- **No reply to a button.** Every headbutt, roll, throw and scream got a woodblock a second or two
+  later, on top of its own effect. The buttons now only say whether he means a fight (combat or chase).
+- **Answers to situations** (`MUSIC_EVENTS`): a kill's chime on the next eighth (it waited one to two
+  seconds, which read as a sound of its own); the room's last man a climb to the octave half a beat
+  after; **a fight starting** a frame-drum hit and a low plucked root on the next sixteenth
+  (`spottedGain`); **a heart lost** dips the score (not the effects) to 380 Hz and back over 0.9 s
+  (`audio.tone`, `hurtDip`); **the last heart** keeps it at 900 Hz, pulls the tune back to 0.45 of
+  itself and beats his heart (`GameAudio.heartbeat`, Foley `heart`) in time with the red at the
+  screen's edge.
+- **The rooms' own sound** (`GameAudio.updateAmbience`, `Foley.loop`, `TUNING.audio.ambience`), on the
+  effects slider. A bed a floor by canon: still air in stone, a cave's hollow ringing on a few low
+  notes of its own, wind through boards with a whistle over the gusts (loudest in THE RAFTERS). The
+  nearest fire crackles from its side, as loud as every bowl, lamp, lantern, burning tile and burning
+  man within seven tiles makes it. Water drips in the cave floors, the ossuary and THE DARK; the cult
+  drums a long way off every 40–90 s while nothing is after him; the milk grass is three small glassy
+  notes within four tiles when he has a heart to fill. Fire and grass were the score's until now (a
+  crackle a bar, a chime a patch) and sat on the tune. Loops render at 8–24 kHz: at the effects' own
+  rate one cost a fifth of a second of main thread on a slow laptop.
+- The Music Lab: counts run 0–3 (spikes and mills 0–2), the FIRE and GRASS rows became ROOM (a bed)
+  and FIRE, LAST HEART is a switch, and the pads are KILL / CLEARED / SPOTTED / HURT. The ogre's row
+  is OGRE. `tools/audio-check.js` holds all of it, the ambience and the heartbeat's timing included.
+- Measured offline against 1.69: idle and chase are the same loudness to the fourth decimal (the bed
+  was always most of it); a crowded fight 0.045 → 0.042 RMS, peak 0.47 → 0.42.
+
 ## 1.69 — the art pass: floors that join, a hunter who hides, windups in amber
 
 Asked for on 25 Sep 2026: pixel-art theory as a checklist in the dev tool, the build audited against

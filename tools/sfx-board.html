@@ -40,6 +40,17 @@
   const stage = (name) => { wake(); audio.scene.stage = name; };
   // A pack coming: barks from all round, some near and some far, the way `heard` places them.
   const pack = () => { for (let i = 0; i < 8; i++) setTimeout(() => audio.sfxBark(audio.heard((Math.random() * 2 - 1) * 16 * TILE, (Math.random() * 2 - 1) * 10 * TILE)), i * (220 + Math.random() * 300)); };
+  // The rooms' own sound (1.70) at its in-game levels: a bed or the fire beside him toggled on and off,
+  // and the one-shots. The heart loops at the picture's own beat.
+  const bed = (name, b) => {
+    const A = TUNING.audio.ambience, on = !b.classList.contains('on');
+    if (!audio.amb.beds[name]) audio.amb.beds[name] = audio.startLoop(name, false);
+    audio.amb.beds[name].g.gain.setTargetAtTime(on ? (name === 'blaze' ? 0.6 * A.fire.gain : A.lab) : 0, audio.ctx.currentTime, 0.3);
+    b.classList.toggle('on', on);
+  };
+  const shot = (name, key) => audio.foley(name, { bus: audio.ambBus, gain: TUNING.audio.ambience[key].gain, wet: TUNING.audio.ambience[key].wet || 0 });
+  const heart = () => { const H = TUNING.audio.ambience.heart, per = 60 / TUNING.juice.heartbeat.bpm;
+    audio.foley('heart', { gain: H.gain }); audio.foley('heart', { gain: H.gain * H.dub, rate: 1.1, at: 0.2 * per }); };
   const loops = {};
   const loop = (id, fn, every) => { if (loops[id]) { clearInterval(loops[id]); delete loops[id]; return false; } fn(); loops[id] = setInterval(fn, every); return true; };
   const groups = [
@@ -61,6 +72,11 @@
     ['Animals', [['hen', () => audio.sfxCluck(false)], ['hen, alarmed', () => audio.sfxCluck(true)], ['goose', () => audio.sfxAnimal('goose')], ['crow', () => audio.sfxAnimal('crow')], ['tortoise', () => audio.sfxAnimal('tortoise')]]],
     ['Music (raise the slider)', [['theme: level 1', () => theme(true, false)], ['theme: levels 2-4', () => theme(false, false)], ['theme: level 5+', () => theme(false, true)],
       ['idle', () => stage('idle')], ['spotted', () => stage('spotted')], ['chase', () => stage('chase')], ['combat', () => stage('combat')]]],
+    ['The rooms (ambience)', [['still air', (b) => bed('air', b)], ['cave', (b) => bed('cave', b)], ['wind', (b) => bed('wind', b)], ['fire beside him', (b) => bed('blaze', b)],
+      ['drip', () => shot('drip', 'drip')], ['the cult, far off', () => shot('far', 'far')], ['milk grass', () => shot('sparkle', 'grass')]]],
+    ['Answers (raise Music)', [['heart (loop)', (b) => b.classList.toggle('on', loop('heart', heart, 60000 / TUNING.juice.heartbeat.bpm))],
+      ['last heart: under water', (b) => { const on = !b.classList.contains('on'); audio.scene.lastHeart = on; audio.setScoreTone(on); b.classList.toggle('on', on); }],
+      ['a heart lost: dip', () => audio.hurtDip()], ['kill', () => audio.musicEvent('kill')], ['room cleared', () => audio.musicEvent('cleared')]]],
     ['Prologue', [['lorry (loop)', (b) => b.classList.toggle('on', loop('engine', () => audio.sfxEngine(), 500))]]],
   ];
   const board = document.getElementById('board');

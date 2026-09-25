@@ -940,7 +940,7 @@ class Goat {
     this.vx += kx || 0; this.vy += ky || 0;
     Talisman.loseRunUp(game, this);            // whatever he had built up, the club took it (BRASS SPUR keeps some)
 
-    game.shake(TUNING.juice.shakeHit, true); game.audio.sfxHit(); game.squashGoat(TUNING.juice.squash.hurt);
+    game.shake(TUNING.juice.shakeHit, true); game.audio.sfxHit(); game.audio.musicEvent('hurt'); game.squashGoat(TUNING.juice.squash.hurt);
     // A goat that only grunts when it is hit reads as armour, not an animal — the frightened bleat
     // is what says it felt that.
     game.audio.sfxBleat(560, 0.24, 0.3);

@@ -663,7 +663,103 @@ const Foley = (() => {
         formants: [[(t) => 620 - 240 * t / d, 4, 1], [(t) => 1150 - 260 * t / d, 5, 0.5], [2500, 7, 0.16]], body: 0.35, bodyF: 300,
         env: (t) => (t < a ? t / a : t < d * 0.35 ? 1 : Math.exp(-(t - d * 0.35) / (d * 0.22))), drive: 1.3 });
     },
+    // His heart on the last heart: one soft thump under the ribs, a little body over it so a laptop
+    // plays it at all. `GameAudio.heartbeat` calls it twice a beat, in time with the red at the edge.
+    heart(sr) {
+      const x = buf(sr, 0.3);
+      modes(x, sr, rnd(56, 62), [[1, 0.07, 1], [2.1, 0.04, 0.5], [3.3, 0.025, 0.22]], { bend: 0.25, bendT: 0.02 });
+      const th = noiseBand(x.length, sr, 'lp', 320, 0.7);
+      return add(x, env(th, sr, (t) => hit(t, 0.004, 0.018)), sr, 0, 0.9);
+    },
+    // A drop off the roof of a cave: the water's bubble ringing up in pitch as it closes (that rise is
+    // what a drip is), and the smallest splash.
+    drip(sr) {
+      const x = buf(sr, 0.16), f0 = rnd(750, 1500), n = x.length; let ph = 0;
+      for (let i = 0; i < n; i++) {
+        const t = i / sr; ph += TAU * f0 * (1 + 0.7 * (1 - Math.exp(-t / 0.018))) / sr;
+        x[i] += Math.sin(ph) * hit(t, 0.0015, 0.03);
+      }
+      const sp = noiseBand(len(sr, 0.03), sr, 'hp', 3200, 0.7, white);
+      return add(x, env(sp, sr, (t) => hit(t, 0.0008, 0.006)), sr, 0, 0.25);
+    },
+    // The milk grass, heard only when he is hurt and near it: three small glassy notes, high and soft.
+    sparkle(sr) {
+      const x = buf(sr, 0.9), base = rnd(1900, 2300);
+      [0, rnd(0.07, 0.11), rnd(0.16, 0.24)].forEach((at, i) =>
+        modes(x, sr, base * [1, 1.335, 1.5][i], [[1, 0.28, 1], [2.76, 0.09, 0.25]], { at, gain: [1, 0.75, 0.6][i] }));
+      return x;
+    },
+    // The cult somewhere else in the compound: a frame drum beaten a long way off, through walls, so
+    // only its low half arrives. Now and then, never under a fight (`TUNING.audio.ambience.far`).
+    far(sr) {
+      const beats = [[0, 1], [0.42, 0.55], [0.84, 0.8], [1.68, 1], [2.1, 0.55], [2.52, 0.8], [2.94, 0.6]];
+      const x = buf(sr, 3.8), f0 = rnd(70, 80);
+      for (const [at, g] of beats) {
+        modes(x, sr, f0, [[1, 0.3, 1], [1.59, 0.14, 0.4], [2.14, 0.08, 0.25]], { at: at * rnd(0.98, 1.02), gain: g, bend: 0.1 });
+        const slap = noiseBand(len(sr, 0.05), sr, 'lp', 700, 0.7);
+        add(x, env(slap, sr, (t) => hit(t, 0.001, 0.015)), sr, at, 0.8 * g);
+      }
+      return filter(filter(x, sr, 'lp', 520, 0.7), sr, 'lp', 700, 0.5);
+    },
   };
+
+  // ---- the rooms' own sound (1.70): loops `GameAudio.updateAmbience` holds under everything ----
+  // Each is rendered once, some seconds long, and crossfaded end into start (`loop`) so it repeats
+  // without a seam; its level and which one plays are the floor's (`TUNING.audio.ambience.beds`).
+  const AMB = {
+    // Still air in stone: a low rumble that swells and settles, and the faint ring of the room in it.
+    air(sr) {
+      const d = 7, n = len(sr, d), x = filter(brown(n), sr, 'lp', 300, 0.6);
+      add(x, filter(pink(n), sr, 'bp', 230, 1.1), sr, 0, 0.45);
+      return env(x, sr, (t) => 0.72 + 0.2 * Math.sin(TAU * t * 2 / d) + 0.08 * Math.sin(TAU * t * 5 / d + 1));
+    },
+    // A cave: the same air in a hollow that rings at a few low notes of its own.
+    cave(sr) {
+      const d = 7, n = len(sr, d), x = filter(brown(n), sr, 'lp', 240, 0.6);
+      for (const [f, q, g] of [[140, 7, 0.55], [262, 8, 0.4], [415, 9, 0.22]]) add(x, filter(pink(n), sr, 'bp', f, q), sr, 0, g * 2.4);
+      return env(x, sr, (t) => 0.7 + 0.22 * Math.sin(TAU * t * 3 / d) + 0.08 * Math.sin(TAU * t * 7 / d + 2));
+    },
+    // Wind through boards and windows: a band of air that opens and closes with the gusts, and a thin
+    // whistle over the strongest of them.
+    wind(sr) {
+      const d = 9, n = len(sr, d), gust = (t) => 0.35 + 0.65 * Math.pow(0.5 + 0.5 * Math.sin(TAU * t * 3 / d - 1.2), 2);
+      const x = filter(pink(n), sr, 'bp', (t) => 420 + 380 * gust(t) + 90 * Math.sin(TAU * t * 7 / d), 0.9);
+      env(x, sr, gust);
+      const wh = filter(white(n), sr, 'bp', (t) => 980 + 260 * Math.sin(TAU * t * 2 / d), 28);
+      add(x, env(wh, sr, (t) => Math.pow(gust(t), 3)), sr, 0, 0.9);
+      return add(x, filter(brown(n), sr, 'lp', 200, 0.6), sr, 0, 0.35);
+    },
+    // A fire: the low roar of it, never quite steady, a hiss of flame over that, and the crackle —
+    // small ticks all the time and a proper pop now and then.
+    blaze(sr) {
+      const d = 3.2, n = len(sr, d), x = filter(brown(n), sr, 'lp', 260, 0.7);
+      let lvl = 1, to = 1;
+      for (let i = 0; i < n; i++) { if (i % Math.ceil(sr * 0.05) === 0) to = rnd(0.6, 1.2); lvl += (to - lvl) * 0.0008; x[i] *= lvl; }
+      add(x, filter(pink(n), sr, 'bp', 1100, 0.5), sr, 0, 0.25);
+      crackle(x, sr, 0, d, Math.round(d * 45), 1800, 6500, 0.35, 1);
+      for (let k = 0; k < Math.round(d * 3); k++) {
+        const at = rnd(0, d - 0.05);
+        click(x, sr, at, rnd(900, 1600), rnd(0.5, 1), 0.0012, 0.9);
+        modes(x, sr, rnd(380, 700), [[1, 0.012, 0.35]], { at });
+      }
+      return x;
+    },
+  };
+  // Crossfade the last `fade` seconds of a take into its first ones, so the buffer loops seamlessly:
+  // the loop point then joins what was continuous sound in the take.
+  function loopify(x, sr, fade) {
+    const m = len(sr, fade), n = x.length - m, out = x.slice(0, n);
+    for (let i = 0; i < m; i++) { const u = i / m; out[i] = x[i] * Math.sqrt(u) + x[n + i] * Math.sqrt(1 - u); }
+    return out;
+  }
+  // Rendered low: a room tone has nothing above a kilohertz or two, and a loop is seconds long, so
+  // at the effects' own rate it cost a fifth of a second of main thread on a slow laptop.
+  const LOOP_RATE = { air: 8000, cave: 8000, wind: 11025, blaze: 24000 };
+  function loop(name) {
+    const sr = LOOP_RATE[name], x = AMB[name](sr);
+    filter(x, sr, 'hp', 45, 0.707);
+    return normalize(loopify(x, sr, 0.8), 0.9);
+  }
 
   // The room everything is heard in: small and close, a cell rather than a hall (1.66 took it from
   // 1.4 s to a third of a second — the effects read as far away and huge). Two channels of noise dying away over `decay`
@@ -689,7 +785,10 @@ const Foley = (() => {
   // The rate each recipe is rendered at; the context resamples on playback. Nothing here needs the
   // top octave of a 48 kHz buffer, and the low, long ones (a blast, a lorry, a throat) have nothing
   // above 12 kHz at all, so they render at half the cost of the rest.
-  const LOW = new Set(['boom', 'engine', 'fall', 'scream', 'bleat', 'growl', 'wraith', 'unmade', 'veil', 'card', 'club', 'slow', 'cast', 'rune', 'bell', 'thud', 'roll', 'groan']);
-  const rateOf = (name) => (LOW.has(name) ? 24000 : 32000);
-  return { recipes: R, render: (name, args) => finish(R[name](rateOf(name), args || {}), rateOf(name)), rateOf, roomImpulse, plain };
+  const LOW = new Set(['boom', 'engine', 'fall', 'scream', 'bleat', 'growl', 'wraith', 'unmade', 'veil', 'card', 'club', 'slow', 'cast', 'rune', 'bell', 'thud', 'roll', 'groan', 'heart', 'far']);
+  // `far` arrives through walls with nothing above 700 Hz left in it.
+  const rateOf = (name) => (name === 'far' ? 12000 : LOW.has(name) ? 24000 : 32000);
+  const loopRate = (name) => LOOP_RATE[name];
+  return { recipes: R, render: (name, args) => finish(R[name](rateOf(name), args || {}), rateOf(name)), rateOf, roomImpulse, plain,
+    loops: Object.keys(AMB), loop, loopRate };
 })();
