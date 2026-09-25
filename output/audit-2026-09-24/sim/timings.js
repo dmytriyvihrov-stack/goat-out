@@ -1,0 +1,11 @@
+const fs = require('fs'), vm = require('vm'), path = require('path');
+const root = process.argv[2];
+const ctx = { console, Math }; vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(root, 'js/tuning.js'), 'utf8'), ctx);
+const T = vm.runInContext('TUNING', ctx), BB = vm.runInContext('BOON_BASE', ctx), EASY = vm.runInContext('EASY', ctx);
+const pat = /wind|swing|recover|aim|cast|reload|damage|^hp$|bossHp|stun|cool|dart|charge|reach|invuln|dazeMul|hop|land|spring|manifest|fade|shots|slam|rage|speed$/i;
+const flat = (o, pre = '') => { const out = {}; for (const [k, v] of Object.entries(o)) { if (v && typeof v === 'object' && !Array.isArray(v)) Object.assign(out, flat(v, pre + k + '.')); else if (typeof v === 'number' && pat.test(k)) out[pre + k] = v; } return out; };
+for (const k of ['bearer', 'champion', 'hunter', 'dog', 'seer', 'wraith', 'butcher', 'ratogre']) console.log(k.padEnd(9), JSON.stringify(flat(T[k] || {})));
+console.log('goat.headbutt', JSON.stringify(T.goat.headbutt), 'goat.invuln', T.goat.invuln, 'goat.hp', T.goat.hp);
+console.log('goat.roll', JSON.stringify(T.goat.roll));
+console.log('BOON_BASE.enemySlow', BB.enemySlow, 'EASY', JSON.stringify(EASY), 'BOON_BASE.maxHp', BB.maxHp);

@@ -1,0 +1,11 @@
+const { load } = require('./load.js');
+const L = load(process.argv[2]);
+L.run(`window.game = new Game(document.getElementById('game'));`);
+const g = L.grab('game');
+g.frame = function () {};
+const t0 = Date.now();
+g.startLevel(3, 12345, false, false);
+for (let i = 0; i < 2000 && g.state !== 'play'; i++) g.update(1 / 60);
+console.log('state', g.state, 'enemies', g.enemies.length, 'hp', g.goat.hp, 'kinds', [...new Set(g.enemies.map(e=>e.kind))]);
+for (let i = 0; i < 60 * 20; i++) g.update(1 / 60);
+console.log('after 20s: state', g.state, 'hp', g.goat.hp, 'dead enemies', g.enemies.filter(e=>e.dead).length, 'ms', Date.now()-t0);

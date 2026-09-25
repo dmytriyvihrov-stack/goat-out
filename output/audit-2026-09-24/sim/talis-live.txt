@@ -1,0 +1,24 @@
+ARTIFACTS 21 shop.levels [1,3,5] crow.giftTier 3
+- firecharm (FIRE AMULET): params pass
+- clover (LUCKY CLOVER): params secret,racks,grass,heals
+- boomerang (BOOMERANG): params stun,cooldown,range,pierce
+- symbols (STRANGE SYMBOLS): params dist,cooldown,stun
+- mason (MASON'S MARK): params splat,props,bodies
+- domino (DOMINO BONE): params links,keep
+- echo (ECHO HORN): params delay,power,count,spread,reach
+- spade (GRAVEDIGGER'S SPADE): params life,trip,grab,lethal,r,cap
+    r [12,12,12] never said
+- grease (BUTCHER'S GREASE): params life,r,drag,slip,grip
+- awl (CARPENTER'S AWL): params r,fling
+- mask (HORNED MASK): params r,flee,drop,blind,cd
+- effigy (STRAW EFFIGY): params life,r,cd,shots,oops
+- spur (BRASS SPUR): params time,keep,throw
+- moth (MOTH WOOL): params step,near,still,hide
+- bell (BELLWETHER'S BELL): params sil,mimic
+- sandal (PILGRIM'S SANDAL): params speed,time,reset,shake,range
+- scapegoat (SCAPEGOAT): params hearts,invuln,stun,r
+- tallow (TALLOW SKIN): params rooms,soul
+- mirror (MIRROR SHARD): params window,club,heavy,throw,stun,runeR
+    throw [0.8,0.8,0.8] never said
+- cup (BLOOD CUP): params need,carry,max
+- tally (TALLY STICK): params every,stun,r,mul

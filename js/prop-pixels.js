@@ -440,6 +440,28 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
+  // ---------------------------------------------------------------- sconce, 8 frames, 13 x 17 / 9 x 17
+  // THE DARK's lantern on the wall by a doorway: a small cage lantern on iron. `side` hangs it off a
+  // wall to its left on an arm with a hooked end (the drawing flips it for a wall to the right);
+  // otherwise it is fixed to the wall behind it by a plate and a short rod over its roof.
+  function sconce(k, side) {
+    const g = new Grid(side ? 13 : 9, 17), ox = side ? 5 : 2, y0 = 6;
+    if (side) {
+      g.rect(0, 1, 2, 6, P.i1); g.vl(0, 1, 6, P.i2);                                  // wall plate
+      g.hl(2, 3, 5, P.i2); g.set(2, 2, P.i3); g.set(7, 2, P.i2); g.set(8, 3, P.i2); g.vl(8, 4, 2, P.i3);  // arm, hook
+    } else {
+      g.rect(3, 0, 3, 3, P.i1); g.hl(3, 0, 3, P.i2); g.vl(4, 3, 3, P.i2);             // plate, rod
+    }
+    g.hl(ox + 1, y0, 3, P.i2); g.hl(ox, y0 + 1, 5, P.i3);                             // roof
+    g.rect(ox, y0 + 2, 5, 6, P.i1);                                                   // cage
+    g.rect(ox + 1, y0 + 2, 3, 5, [P.b2, P.b3, P.b3, P.b2, P.b2, P.b3, P.b4, P.b3][k]); // glass, lit from inside
+    const H = [2, 3, 3, 2, 2, 3, 3, 2][k], sway = [0, 0, 1, 0, 0, -1, 0, 0][k];
+    g.set(ox + 2, y0 + 6, P.f1);
+    for (let j = 1; j <= H; j++) g.set(ox + 2 + (j > 1 ? sway : 0), y0 + 6 - j, j === H ? P.f2 : P.f3);
+    g.hl(ox, y0 + 8, 5, P.i2); g.set(ox + 2, y0 + 9, P.i2);                           // base, knob
+    return g.outline();
+  }
+
   // ---------------------------------------------------------------- soul wisp, 17 x 22
   function soulWisp() {
     const g = new Grid(17, 22);
@@ -458,8 +480,12 @@ const PROP_PIXELS = (() => {
   }
 
   // ---------------------------------------------------------------- healing grass
-  function grass(big) {
+  // `gold` is the art pass's (`ART_PASS`): the same blades, their tips ripened to gold and a few more
+  // flowers in them, so the grass that heals stops being the same green as the grass that hides you,
+  // the moss and the poison. The silhouette is the plain one's, pixel for pixel.
+  function grass(big, gold) {
     const W = big ? 33 : 19, H = big ? 26 : 16, g = new Grid(W, H), r = rng(big ? 71 : 72), n = big ? 30 : 12;
+    const tip = gold ? '#ecd873' : P.g4, upper = gold ? '#a9c43e' : P.g3;
     const blades = [];
     for (let k = 0; k < n; k++) {
       const bx = W / 2 + (r() - 0.5) * (W - 8), depth = r(), len = (big ? 9 : 6) + r() * (big ? 12 : 7) * (1 - Math.abs(bx - W / 2) / W);
@@ -471,11 +497,13 @@ const PROP_PIXELS = (() => {
       const steps = Math.ceil(b.len);
       for (let s = 0; s <= steps; s++) {
         const t = s / steps, x = b.bx + (tx - b.bx) * t * t, y = b.by + (ty - b.by) * t;
-        const c = t > 0.8 ? P.g4 : t > 0.45 ? P.g3 : t > 0.15 ? P.g2 : P.g1;
+        const c = t > 0.8 ? tip : t > 0.45 ? upper : t > 0.15 ? P.g2 : P.g1;
         g.set(x, y, c); if (t < 0.35) g.set(x + 1, y, P.g1);
       }
     }
     if (big) for (const [x, y] of [[9, 9], [21, 6], [26, 12], [14, 5]]) { g.set(x, y, P.c2); g.set(x + 1, y, P.c1); g.set(x, y + 1, P.c1); }
+    // More flowers, only ever on a blade already drawn, so the outline cannot grow.
+    if (gold) for (const [x, y] of big ? [[6, 14], [17, 10], [23, 15], [12, 12]] : [[6, 7], [11, 5], [14, 9]]) if (g.get(x, y)) { g.set(x, y, '#fff6c8'); if (g.get(x + 1, y)) g.set(x + 1, y, P.c1); }
     return g.outline(P.g0);
   }
 
@@ -633,12 +661,14 @@ const PROP_PIXELS = (() => {
     'mill-hub': millHub(), 'mill-arm': millArm(), 'cage-post': cagePost(), 'cage-broken': cageBroken(),
     altar: altar(), banner: banner(), gong: gong(),
     'soul-wisp': soulWisp(), 'healing-grass': grass(true), 'grass-small': grass(false), pail: pail(),
+    'healing-grass@pass': grass(true, true), 'grass-small@pass': grass(false, true),
     'spikes-idle': grating('idle'), 'spikes-arming': grating('arming'), 'spikes-up': grating('up'),
     'sword-up': swordUp(), 'rack-back': rackBack(), 'rack-base': rackBase(),
     'coop-back': coopBack(), 'coop-front': coopFront(false), 'coop-cracked': coopFront(true),
     burrow: burrow(), stool: stool(), spire: spire(), 'roast-back': roastRing(false), 'roast-front': roastRing(true), 'roast-sticks': roastSticks(), 'roast-croc': croc(),
   };
   for (let k = 0; k < 8; k++) sprites['lantern-' + k] = lantern(k);
+  for (let k = 0; k < 8; k++) { sprites['sconce-s' + k] = sconce(k, true); sprites['sconce-f' + k] = sconce(k, false); }
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
   for (const k in sprites) if (!/^(rack|coop|roast)-/.test(k)) sprites[k] = sprites[k].trim();
   return { P, Grid, sprites, rng };
@@ -654,7 +684,10 @@ if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
 if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() => {
   const UP = 4, TX = 1.35, baked = {}, S = PROP_PIXELS.sprites, rng = PROP_PIXELS.rng;
   PROP_PIXELS.on = !/paintedprops/.test(location.hash);
+  // The art pass's version of a sprite where it has one (`name@pass`), else the sprite itself.
+  const pick = name => typeof ART_PASS !== 'undefined' && ART_PASS.on && S[name + '@pass'] ? name + '@pass' : name;
   const canvasOf = name => {
+    name = pick(name);
     if (baked[name]) return baked[name];
     const g = S[name], c = document.createElement('canvas'), x = c.getContext('2d');
     c.width = g.w * UP; c.height = g.h * UP;
@@ -663,8 +696,23 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   };
   // A sprite with its top-left at (x, y), `k` world px a texel.
   const put = (ctx, name, x, y, k = TX) => {
-    const g = S[name], smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+    const g = S[pick(name)], smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     ctx.drawImage(canvasOf(name), x, y, g.w * k, g.h * k);
+    ctx.imageSmoothingEnabled = smooth;
+  };
+  // `put` with its box landed on whole screen pixels. The camera eases its zoom whenever he starts
+  // or stops running (`camera.zoomFast`), which slid a thin sprite's texels across the pixel grid
+  // by most of a pixel a frame: the one-texel blade on a stand of arms flickered two and three
+  // pixels wide as he walked up to it (24 Sep 2026: "the swords start blinking"). Snapped, its
+  // columns only move as fast as the zoom itself. Upright draws only; anything turned is left alone.
+  const putSnap = (ctx, name, x, y, k = TX) => {
+    if (!ctx.getTransform) return put(ctx, name, x, y, k);
+    const g = S[pick(name)], m = ctx.getTransform();
+    if (m.b !== 0 || m.c !== 0 || m.a <= 0 || m.d <= 0) return put(ctx, name, x, y, k);
+    const X0 = Math.round(m.a * x + m.e), Y0 = Math.round(m.d * y + m.f);
+    const X1 = Math.round(m.a * (x + g.w * k) + m.e), Y1 = Math.round(m.d * (y + g.h * k) + m.f);
+    const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(canvasOf(name), (X0 - m.e) / m.a, (Y0 - m.f) / m.d, (X1 - X0) / m.a, (Y1 - Y0) / m.d);
     ctx.imageSmoothingEnabled = smooth;
   };
   // Where the object sits inside the 128px cell the painted atlas drew, measured off its alpha: the
@@ -685,7 +733,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     slabWoodClosed: 'door-wood', slabIronClosed: 'door-iron', slabVaultClosed: 'door-vault', slabSoulClosed: 'door-soul',
   };
   const fit = (ctx, name, X, Y, W, H) => {
-    const g = S[name], o = HOW[name] || 'center', how = o.how || o;
+    const g = S[pick(name)], o = HOW[name] || 'center', how = o.how || o;
     let s = Math.min(W / g.w, H / g.h) * (o.k || 1), dw = g.w * s, dh = g.h * s;
     if (how === 'fill') { dw = W; dh = H; }
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
@@ -731,6 +779,19 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   A.pail = function (ctx, x, y, r) { const g = S.pail, k = r * 2 / (g.w - 2); put(ctx, 'pail', x - g.w * k / 2, y - g.h * k, k); return true; };
   // The ware's stool, under the talisman (render.js `drawWare` asks).
   A.stool = function (ctx, p) { put(ctx, 'stool', p.x - S.stool.w * TX / 2, p.y + 9 - S.stool.h * TX); return true; };
+  // THE DARK's lantern on the wall (`Prop.wall`), in the prop's own upright frame (`drawProp`): off a
+  // side wall on its arm, the plate on the wall's edge a quarter tile past the prop and the lantern
+  // up at a man's shoulder; on the far wall, fixed to its face. There is no painted one to fall
+  // back to, so it is drawn whether or not the pixel props are on.
+  A.sconce = function (ctx, p, t) {
+    const W = p.wall, side = W.x !== 0, k = Math.floor(t * 9 + p.phase * 3) % 8, name = (side ? 'sconce-s' : 'sconce-f') + k, g = S[name];
+    if (side) {
+      const ex = p.x + W.x * TILE * 0.25, y = p.y - 12 - g.h * TX;
+      ctx.save(); ctx.translate(ex, 0); if (W.x > 0) ctx.scale(-1, 1);
+      put(ctx, name, 0, y); ctx.restore();
+    } else put(ctx, name, p.x - g.w * TX / 2, p.y - TILE * 0.25 * TILT - 6 - g.h * TX);
+    return true;
+  };
 
   A.drawProp = function (renderer, p) {
     if (!PROP_PIXELS.on) return drawProp.call(this, renderer, p);
@@ -738,15 +799,18 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     // The stand of arms, with what it holds standing IN it: the uprights and base behind, the arm,
     // then the front of the base over its foot.
     if (p.kind === 'weapon' && p.inStand) {
-      const gl = ctx.createRadialGradient(p.x, p.y - 12, 0, p.x, p.y - 12, 40), a = 0.14 + 0.05 * Math.sin(renderer.t * 2.6 + p.phase);
-      gl.addColorStop(0, `rgba(239,230,208,${a})`); gl.addColorStop(1, 'rgba(239,230,208,0)');
-      ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, p.y - 12, 40, 0, Math.PI * 2); ctx.fill();
+      // Its glow is not the stand: in THE DARK's silhouette pass it came out as a black cloud.
+      if (!renderer.silPass) {
+        const gl = ctx.createRadialGradient(p.x, p.y - 12, 0, p.x, p.y - 12, 40), a = 0.14 + 0.05 * Math.sin(renderer.t * 2.6 + p.phase);
+        gl.addColorStop(0, `rgba(239,230,208,${a})`); gl.addColorStop(1, 'rgba(239,230,208,0)');
+        ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, p.y - 12, 40, 0, Math.PI * 2); ctx.fill();
+      }
       renderer.shadow(p.x, p.y + 1, 14, 5);
       const x0 = p.x - 12 * TX, y0 = p.y + 5 - 23 * TX;
-      put(ctx, 'rack-back', x0, y0);
-      if (p.weapon === 'sword') put(ctx, 'sword-up', x0 + 9 * TX, y0);
-      else put(ctx, 'shield', p.x - S.shield.w * TX / 2, y0 + 19 * TX - S.shield.h * TX);
-      put(ctx, 'rack-base', x0, y0);
+      putSnap(ctx, 'rack-back', x0, y0);
+      if (p.weapon === 'sword') putSnap(ctx, 'sword-up', x0 + 9 * TX, y0);
+      else putSnap(ctx, 'shield', p.x - S.shield.w * TX / 2, y0 + 19 * TX - S.shield.h * TX);
+      putSnap(ctx, 'rack-base', x0, y0);
       return true;
     }
     // The bomb: the shell as drawn, and a fuse of cells as long as the time it has left, sparking
@@ -808,6 +872,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
         if (p.holds === 'tortoise') renderer.drawTortoise(pet);
         else if (p.holds === 'goose') renderer.drawGoose(pet);
         else if (p.holds === 'crow') renderer.drawCrow(pet);
+        else if (p.holds === 'horse') { ctx.scale(0.62, 0.62); renderer.horseSprite(ctx, Math.cos(renderer.t * 1.3 + p.phase) > 0 ? 0 : Math.PI, true, 'idle'); }
       }
       ctx.restore();
       put(ctx, (p.hits || 0) > 0 ? 'coop-cracked' : 'coop-front', -w / 2, -h / 2, k);

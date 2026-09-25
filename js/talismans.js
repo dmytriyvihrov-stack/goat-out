@@ -166,7 +166,13 @@ const Talisman = {
       if (e.dead || e.ghosted || Math.hypot(e.x - g.x, e.y - g.y) > sg.r * TILE) continue;
       e.daze(game, sg.stun);
     }
-    game.artifact = null; game.levelArtifact = null; game.applyBoons(); game.saveRun();
+    // The snapshot only if it is this talisman: one bought at the mouse on this floor, over another
+    // he walked in wearing, goes back to that other on a restart, as any talisman taken here does.
+    game.artifact = null;
+    if (game.levelArtifact && game.levelArtifact.id === 'scapegoat') game.levelArtifact = null;
+    const cp = game.checkpoint;   // nor does the middle gate hand it back (`holdGate`)
+    if (cp && cp.artifact && cp.artifact.id === 'scapegoat') cp.artifact = null;
+    game.applyBoons(); game.saveRun();
     return true;
   },
   onSoul(game) {
@@ -262,7 +268,7 @@ const Talisman = {
       if (e.dead || e.held || e.ghosted || e.state === 'flung') continue;
       const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy);
       if (d > A.r * TILE + e.r) continue;
-      if (Talisman.heavy(e) || e.kind === 'butcher') { e.state = 'stagger'; e.timer = 0.4; continue; }
+      if (Talisman.heavy(e) || e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.4; } continue; }
       if (A.fling > 0) { const l = d || 1; e.fling(dx / l * A.fling * TILE, dy / l * A.fling * TILE, false); }
       else { e.state = 'floored'; e.timer = 0.7; e.aware = true; }
     }
@@ -363,7 +369,7 @@ const Talisman = {
         if (d > g.r + e.r + 10 + extra + E.reach * TILE || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
         if (!game.reaches(ec.x, ec.y, e.x, e.y)) continue;
         if (e.tryDodge && e.tryDodge(game, ax, ay)) continue;
-        if (e.kind === 'butcher' || e.kind === 'ratogre') { e.state = 'stagger'; e.timer = 0.3; continue; }
+        if (e.kind === 'butcher' || e.kind === 'ratogre') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.3; } continue; }
         const k = imp * (e.knockMul ? e.knockMul() : 1);
         e.fling(ax * k, ay * k, false);
         game.audio.sfxThud(); game.impact(ec.x + ax * (g.r + 6), ec.y + ay * (g.r + 6), ax, ay);
@@ -622,7 +628,7 @@ const Talisman = {
       ctx.textAlign = 'left'; ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = worn ? PALETTE.fireHi : PALETTE.bone;
       ctx.fillText(a.name, pad + 36 * s, y + 14 * s);
       ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-      const q = a.tag === 'q' || a.id === 'boomerang' || a.id === 'symbols';
+      const q = a.tag === 'q';
       ctx.fillText(`${a.id} · ${a.tag || 'first four'}${q ? ' · Q' : ''}`, pad + 36 * s, y + 26 * s);
       [1, 2, 3].forEach((t) => r.devButton(d, pad + 36 * s + (t - 1) * 32 * s, y + 34 * s, 28 * s, 16 * s, 'I'.repeat(t), `tal-wear=${a.id}.${t}`, worn && art.tier === t));
       if (worn) r.devButton(d, pad + 36 * s + 96 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', 'tal-off', false);

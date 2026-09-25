@@ -19,12 +19,63 @@ what it is before starting a fresh pass.
 Anything with none of the three falls through to the canvas primitives in `js/render.js`
 (`Renderer.drawProp` and friends). Combat effects — flame loops, blasts, smoke, blood — are `js/combat-fx.js`,
 baked procedurally at start into pixel frames on the units' grain (`TUNING.effects.pixel`, `.flame`, `.blast`).
-The painted sheet they used to be drawn from (`assets/combat-fx/effects.png`) was retired in 1.56: a smoothed
+The painted sheet they used to be drawn from (`assets/combat-fx/effects.png`) was retired in 1.58: a smoothed
 painting read as a different game next to Pixel 2.5.
 
 `PaintedArt` is still the class every character goes through (`PaintedArt.character`): it owns the
 lean of a windup, the tilt of a man on the floor, the wraith's fade, the goat's collar and wounds.
 The sprite itself always comes from `PIXEL_ART.draw`.
+
+---
+
+## The art pass and the studies (25 Sep 2026) — the game's look
+
+A second look, held beside the packed one. It is on by default (the user saw every before/after and
+took it); each part switches off on the dev drawer's **ART** tab, and `#aspacked` starts the page with
+all of it off. Nothing packed is replaced; every one of these switches back exactly. Wall faces are
+sheets too (`FLOOR_SHEET.faceStrip`, drawn by `drawWall` under the `wallTile` overlay): two courses
+of bricks laid along the wall in world space, pale mortar as the packed face had, no brick stamped
+again every tile. The `art-pass` skill (`~/.claude/skills/art-pass`) is how the next pass is run.
+
+- **ART PASS** (`ART_PASS.on`): every windup (the clubman's arc, the brute's strip, the hound's run)
+  in amber cells instead of smooth blood red (`drawTelegraphCells`, `drawDashCells`); the seer's staff
+  and eyes in witchfire's own bands (`PIXEL_STUDY.mage`); the milk grass gold at the tips with more
+  flowers (`healing-grass@pass`, `grass-small@pass`); the Yard's floor as packed earth and the
+  cave's rock a step darker (each level's `artPass` colours in `LEVELS`, swapped by `ART_PASS.set`).
+- **HUNTER** (`ART_PASS.hunter`): seven colour studies of the packed hunter, each a colour-theory
+  idea — analogous (as packed), 60-30-10 cult accent, complementary, split-complementary, value,
+  monochrome faction, steel + red. **CLUBMAN** (`ART_PASS.clubman`): as packed, slim, slim + a
+  five-step red ramp. All in `PIXEL_STUDY` / `RAMP` / `STUDY_PARTS` (`js/pixel-art.js`), baked once
+  off the atlas: a part is found by colour (and, for the hat, height in the frame), recoloured onto a
+  hue-shifted ramp at the share of light it had; `slim` removes whole columns from the body.
+- **Measured** by `tools/art-study.js` (every study on every floor, with brightness contrast and
+  OKLab distance under each) and shown in `output/art-pass-2026-09-25/`: before/after frames of the
+  Yard, the cave and the Altar, and the study sheets. Findings: the packed hunter is the floor's own
+  brown (contrast 1.3–1.9, 1.0 on the Yard); steel + red holds 1.9–2.7 on every dark floor without the
+  pale duster's likeness to the goat. The Yard cannot be both dark and unlike the Road: they share
+  swatch `floors-03`, and darkened every tint of it comes out the Road's brown.
+
+**Chosen, 25 Sep 2026: the hunter is BROWN + BAND by default** (`ART_PASS.hunter` 7). The user liked
+the packed brown better than any new colour ("he tries not to be seen") and the studies' clean steps:
+his own colours cut to five steps (`'own'`: each step the mean of the packed pixels in it, lightly
+hue-shifted) and the cult's red only small — the packed dark ring round the crown taken to a red
+band (found as a valley between the crown and the brim, column by column), a quill in it on his
+left, a small triangle between the shoulders from behind (`STUDY.marks`). AS PACKED is still the
+first entry on the switch. `output/art-pass-2026-09-25/hunter-band*.png`.
+
+**Floors are sheets, on by default** (`ART_PASS.floors`, `FLOOR_SHEET` in `js/pixel-art.js`, 25 Sep
+2026). The packed swatches, stamped one a tile, repeated the same stones in every square and their
+lines stopped dead at its edge, or laid mirrored made a kaleidoscope ("the pattern came out
+illogical and did not join"). Each canon's floor is now one sheet six tiles square, seamless at its
+borders and laid in world space like the wall's cap, painted in its swatch's own mortar, stone and
+light: `sheet` on each canon in `PIXEL_ROOMS` — flags (Altar), cobble (Yard), setts (Road, so it no
+longer twins the Yard), earth with scattered straw (Threshing Floor), slabs (Bridge), boards
+(Rafters, and every store room), paving (Ossuary). Kept low in contrast on purpose. A sheet costs
+45–120 ms once, when its level first draws. The cave and the trip keep their own floors.
+`output/art-pass-2026-09-25/floors-*.png`; FLOORS on the ART tab brings the packed ones back.
+
+A study is a comparison, not an asset: whichever is chosen should be drawn properly (by hand, like
+the ogre and the horse) or packed from a re-coloured source, and the switch removed.
 
 ---
 

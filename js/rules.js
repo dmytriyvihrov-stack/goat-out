@@ -171,6 +171,23 @@ const GEN_RULES = [
       const peak = Math.max(0, ...rs.filter((r) => ORDINARY.has(r.role)).map((r) => r.threat));
       return m.threat <= peak ? true : `${m.threat.toFixed(1)} threat, above the worst ordinary room (${peak.toFixed(1)})`;
     } },
+  // `crowdAt` / `crowdMen` (THE ALTAR's three clubmen between the lone brute and his ring): the
+  // room holds exactly the men the level named, in an ordinary room, and it is what stands between
+  // two rooms with a brute in them — the pair met back to back read as one room twice.
+  { id: 'crowdroom', text: 'A room the level fills by hand holds exactly the men it names.',
+    check: (L) => {
+      const def = L.def;
+      if (def.crowdAt === undefined || !def.crowdMen) return null;
+      const r = roomsOf(L)[def.crowdAt];
+      if (!r) return `room ${def.crowdAt} is missing`;
+      if (!ORDINARY.has(r.role)) return `room ${def.crowdAt} is a ${r.role} room`;
+      const want = def.crowdMen.slice().sort().join(' '), got = r.spawns.map((s) => s.champion ? 'champion' : s.kind).sort().join(' ');
+      if (got !== want) return `room ${def.crowdAt} holds ${got || 'nobody'}, not ${want}`;
+      const brute = (x) => x && x.spawns.some((s) => s.champion);
+      const rs = roomsOf(L);
+      for (let i = 1; i < rs.length; i++) if (brute(rs[i]) && brute(rs[i - 1])) return `rooms ${i - 1} and ${i} both hold a brute`;
+      return true;
+    } },
   // The teaching floor is the one place in the game where the generator may not surprise anybody:
   // the same four rooms in the same shapes with the same things standing in them, every seed. See
   // "Words on the floor" in CLAUDE.md for where each block of text goes and why.
@@ -244,7 +261,7 @@ const GEN_RULES = [
   // never a decision about anything.
   { id: 'beasts', text: 'At most one animal a floor, shut in a coop on plain floor of an ordinary room inside the first third of the level — never in the pen, a rest room, a teaching room, a trap room or a set piece.',
     check: (L) => {
-      const kinds = ['tortoise', 'goose', 'crow', 'chicken'];
+      const kinds = ['tortoise', 'goose', 'crow', 'chicken', 'horse'];
       const found = L.props.filter((p) => kinds.indexOf(p.kind) >= 0 || p.kind === 'coop')
         .map((p) => (p.kind === 'coop' ? { x: p.x, y: p.y, kind: p.holds || 'chicken', caged: true } : p));
       if (!found.length) return (L.def.beasts && L.def.beasts.length) ? null : true;
@@ -294,19 +311,26 @@ const GEN_RULES = [
       if (L.rooms.some((r) => r.isTrap)) return 'a trap room on the trip';
       return true;
     } },
-  { id: 'dark', text: 'A dark floor is pockets of light: every arena and rest room has a flame, some rooms have none, and it is gentler than the floor it darkens, with fewer traps, no killbox and no rifle.',
+  { id: 'dark', text: 'THE DARK is lit by its lamps: one or two in every room with men and in every arena and rest room, a lantern on the wall by a doorway of every room, no killbox and no rifle.',
     check: (L) => {
       const def = L.def;
-      if (!def.dark) return null;
-      const base = LEVELS[def.darkOf];
-      const flame = (r) => L.props.some((p) => (p.kind === 'lamp' || p.kind === 'brazier') && roomAt(L, p.x, p.y) === r);
+      if (!def.dark) return L.props.some((p) => p.kind === 'sconce') ? 'a wall lantern on a lit floor' : null;
+      const LA = TUNING.dark.lamps, W = L.W;
       for (const r of L.rooms) {
-        if (r.index === 0) continue;
-        if ((r.arena || r.isRest) && !flame(r) && r.index !== shopRoomOf(def)) return `room ${r.index} (${r.role}) has no flame`;
-        if (r.unlit && flame(r)) return `room ${r.index} was left black and has a flame`;
+        if (r.index === 0 || r.index === shopRoomOf(def)) continue;
+        const own = L.props.filter((p) => (p.kind === 'lamp' || p.kind === 'brazier') && roomAt(L, p.x, p.y) === r);
+        if ((r.arena || r.isRest || L.spawns.some((sp) => sp.roomIndex === r.index)) && own.length < LA.min) return `room ${r.index} (${r.role}) has no lamp`;
+        // A template may stand more of its own; the generator never adds one past `max`.
+        if (own.length > LA.max && own.some((p) => p.darkLamp)) return `room ${r.index} was given a lamp past ${LA.max}`;
+        // The doorways in its far and side walls; one of them has a lantern by it.
+        const doors = [];
+        for (let ty = r.y; ty < r.y + r.h - 1; ty++) for (let tx = r.x; tx < r.x + r.w; tx++) {
+          const edge = tx === r.x || tx === r.x + r.w - 1 || ty === r.y;
+          if (edge && L.tiles[ty * W + tx] !== T.WALL) doors.push({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE });
+        }
+        if (doors.length && !L.props.some((p) => p.kind === 'sconce' && doors.some((d) => len(d.x - p.x, d.y - p.y) < 2.2 * TILE)))
+          return `room ${r.index} has no lantern by a door`;
       }
-      if (def.encounters.to >= base.encounters.to) return `its top (${def.encounters.to}) is not under ${base.name}'s (${base.encounters.to})`;
-      if ((def.traps || 0) > (base.traps || 0) || (def.traps || 0) > 0 && def.traps >= base.traps) return `${def.traps} trap rooms against ${base.traps}`;
       if (L.rooms.some((r) => r.isKillbox)) return 'a killbox in the dark';
       if (L.spawns.some((s) => s.kind === 'hunter')) return 'a rifle in the dark';
       return true;
@@ -336,6 +360,17 @@ const GEN_RULES = [
     check: (L) => {
       for (const sp of L.spawns) if (!sp.sentry && inFurniture(sp.x, sp.y, L.props))
         return `a ${sp.kind} inside the furniture of room ${sp.roomIndex}`;
+      return true;
+    } },
+  // `placeTables`: a table stands on the block its template drew, and never so near a bowl of coals
+  // that the way between them is a squeeze past the fire.
+  { id: 'tables', text: 'A table and a brazier stand as one lump or leave a clear way between them, never a squeeze past the coals.',
+    check: (L) => {
+      const tables = L.props.filter((p) => p.kind === 'table'), fires = L.props.filter((p) => p.kind === 'brazier');
+      if (!tables.length || !fires.length) return null;
+      for (const t of tables) for (const f of fires) {
+        if (tableSqueeze(t, f)) return `a squeeze between a table and a brazier at ${Math.floor(t.x / TILE)},${Math.floor(t.y / TILE)}`;
+      }
       return true;
     } },
   // THE CAVE's floor. A boulder is stone to everything that moves, so the only thing that keeps a
@@ -435,7 +470,7 @@ const GEN_RULES = [
       for (const r of stacked) {
         if (!ORDINARY.has(r.role) && r.role !== 'arena') return `room ${r.index} is the ${r.role}`;
         if (r.isAmbush) return `room ${r.index} is a teaching room`;
-        if ((L.def.gates || []).includes(r.index)) return `room ${r.index} is a gate room`;
+        if ((L.def.gates || []).concat(L.def.rests || []).includes(r.index)) return `room ${r.index} is a rest room`;
         for (const o of L.rooms) {
           if (o === r) continue;
           const apart = r.x + r.w <= o.x || o.x + o.w <= r.x || r.y + r.h <= o.y || o.y + o.h <= r.y;
@@ -501,14 +536,18 @@ const GEN_RULES = [
       if (doors.length !== 2 || !doors.some((p) => p.fork)) return `${doors.length} stair doors`;
       return true;
     } },
-  { id: 'soulgate', text: 'Every level stops you twice, in the middle and before the end: a single-tile way out barred by a door no blow opens, in an empty rest room.',
+  { id: 'soulgate', text: 'Every level stops you twice, in the middle and before the end, in an empty rest room; a gated one leaves by a single tile barred by a door no blow opens.',
     check: (L) => {
       const want = L.def.gates || [];
       if (!want.length) return null;
       if (!L.gates || L.gates.length !== want.length) return `${(L.gates || []).length} gates hung of ${want.length}`;
       const n = L.rooms.length;
       if (want[0] > n * 0.75) return `the first gate (room ${want[0]}) is not in the middle`;
-      if (want[want.length - 1] < n * 0.6 || want[want.length - 1] >= n - 1) return `the last gate (room ${want[want.length - 1]}) is not before the end`;
+      // A level may make its last stop a plain rest room instead (`rests`) and let its last boss
+      // carry that soul; the stop before the end is still there, only without a bar.
+      const last = Math.max(...want, ...(L.def.rests || []));
+      if (last < n * 0.6 || last >= n - 1) return `the last stop (room ${last}) is not before the end`;
+      for (const i of (L.def.rests || [])) if (!L.rooms[i] || L.rooms[i].role !== 'rest') return `room ${i} is not a rest room`;
       for (const g of L.gates) {
         const door = L.props.find((p) => p.kind === 'door' && p.gate && p.gateRoom === g.room);
         if (!door) return `no gate door on room ${g.room}`;
@@ -546,7 +585,7 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'shop', text: 'The mouse stands in the middle gate of THE YARD, THE THRESHING FLOOR and THE RAFTERS only: two talismans of that visit\'s tier, or a pail of milk.',
+  { id: 'shop', text: 'The mouse stands in the middle gate of THE YARD, THE ROAD and THE BRIDGE only: two talismans of that visit\'s tier, or a pail of milk.',
     check: (L) => {
       const li = levelIndexOf(L.def), S = TUNING.shop;
       const mice = L.props.filter((p) => p.kind === 'mouse');

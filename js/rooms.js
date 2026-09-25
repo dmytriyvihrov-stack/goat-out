@@ -1044,6 +1044,83 @@ const ROOM_TEMPLATES = [
     '##################',
   ]},
 
+  // ---- THE LAMP: THE DARK (the fork's other flight). ----
+  // Every room is built round its light (`TUNING.dark`): the lamp is where you see them and they see
+  // you, and a headbutt puts it on the floor, alight, and then out. The generator stands a lamp or two
+  // in any room with men that has fewer, and hangs a lantern on the wall by each doorway; these are
+  // the rooms where the light stands is the point.
+  // The well: one lamp in the middle, four pillars round it, and the corners black. Whoever comes
+  // into the light comes in among stone.
+  { name: 'well', canon: 'lamp', rows: [
+    '################',
+    '#..............#',
+    '#.o..........o.#',
+    '#.....P..P.....#',
+    '#..e........e..#',
+    '#.......L......#',
+    '#..e........m..#',
+    '#.....P..P.....#',
+    '#.o..........o.#',
+    '#..............#',
+    '################',
+  ]},
+  // The low vault: two rows of pillars, a lamp at each end and the middle of it dark,
+  // so the length of the room is crossed from one pool to the other.
+  { name: 'lampvault', canon: 'lamp', rows: [
+    '####################',
+    '#..................#',
+    '#.L...P....P....P..#',
+    '#.........e........#',
+    '#...e..........e...#',
+    '#..................#',
+    '#..P....P....P...L.#',
+    '#.......m..........#',
+    '####################',
+  ]},
+  // The cells: stub walls down both sides and one lamp in the aisle. Every cell is a wall to be
+  // put against and a dark to stand in, a step off the light.
+  { name: 'cellblock', canon: 'lamp', rows: [
+    '#################',
+    '#..#...#...#...o#',
+    '#..#...#...#....#',
+    '#...............#',
+    '#.e.....L.....e.#',
+    '#...............#',
+    '#..#...#...#....#',
+    '#.o#..m#...#...o#',
+    '#################',
+  ]},
+  // The chapel: an altar of tables at the far end between two lamps, stub walls down the nave, the
+  // way in dark. Everything lit is at the end you are walking toward.
+  { name: 'chapel', canon: 'lamp', rows: [
+    '################',
+    '#..............#',
+    '#..L..tttt..L..#',
+    '#.....tttt.....#',
+    '#..............#',
+    '#.PP...m....PP.#',
+    '#..............#',
+    '#....e....e....#',
+    '#.PP........PP.#',
+    '#..............#',
+    '################',
+  ]},
+  // The store: hay stacked in the corners and a lamp standing among it. Put the lamp down and the
+  // straw goes up with it; leave it standing and it is the one thing lighting who is coming.
+  { name: 'lampstore', canon: 'lamp', rows: [
+    '##################',
+    '#................#',
+    '#.hh.....o....hh.#',
+    '#.hh.L........hh.#',
+    '#.......e........#',
+    '#..o..........o..#',
+    '#.....e....L..e..#',
+    '#.hh..........hh.#',
+    '#.hh....o.....hh.#',
+    '#................#',
+    '##################',
+  ]},
+
   // ---- THE HOLLOW: THE CAVE (level eight). ----
   // Nothing here is square. The rock is rounded as it is drawn and as it collides (`TUNING.cave`), so a
   // run of steps in these grids is a curve on the screen and under the hooves, and a lone `P` is a
@@ -1211,6 +1288,22 @@ const ROOM_TEMPLATES = [
     '#..r...hh...e....#',
     '#................#',
     '##################',
+  ]},
+  // The straw room: two clubmen stood between stacks of hay, a lit bowl in the side of two of the
+  // stacks. It is the level-one room where fire is first a weapon (`trapAt`, `trapMen` on THE
+  // ALTAR): butt a bowl over and the stack it sits in goes up with whoever is standing by it. The
+  // middle row is clear, so the way through is never the thing that burns.
+  { name: 'hayloft', tag: 'trap', rows: [
+    '###############',
+    '#.............#',
+    '#.hhh.....hhh.#',
+    '#.hBh..e..hhh.#',
+    '#.............#',
+    '#.............#',
+    '#.hhh..e..hBh.#',
+    '#.hhh.....hhh.#',
+    '#.............#',
+    '###############',
   ]},
   // Two banks of teeth across the room and a clear lane between them. Only the goat arms a plate,
   // so the room is a question about which way you run: cross a bank and whoever is on your heels
@@ -1399,6 +1492,22 @@ const REST_TEMPLATE = { name: 'rest', rows: [
   '#h........h#',
   '#hh......hh#',
   '############',
+]};
+
+// The calm room (`levelDef.calmAt`, THE ALTAR): nobody in it, two lit bowls each set into the
+// side of a heap of straw, and the middle row left bare. A toy: butt a bowl and watch the straw take,
+// with nothing coming at you while you learn how fast it goes and how far.
+const CALM_TEMPLATE = { name: 'kindling', noFlipX: true, rows: [
+  '#############',
+  '#...........#',
+  '#.hhB...hh..#',
+  '#.hh....hhh.#',
+  '#...........#',
+  '#...........#',
+  '#..hhh...hh.#',
+  '#..hh...Bhh.#',
+  '#...........#',
+  '#############',
 ]};
 
 const AMBUSH_TEMPLATE = { name: 'ambush', noFlipX: true, rows: [

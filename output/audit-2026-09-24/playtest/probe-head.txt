@@ -1,0 +1,209 @@
+## A syntax
+{
+ "checked": 39,
+ "fails": []
+}
+
+## B payload
+{
+ "scripts": 28,
+ "sameListInArtifactHtml": true,
+ "caseOrMissing": [],
+ "jsNotLoaded": [],
+ "files": 29,
+ "totalMB": 6.14,
+ "largest": [
+  "js/pixel-assets.js",
+  "2.67 MB"
+ ],
+ "indexHtmlExternal": [
+  "https://fonts.gstatic.com",
+  "https://fonts.googleapis.com"
+ ],
+ "absPath": [
+  "js/painted-assets.js"
+ ],
+ "relAsset": [
+  [
+   "js/tuning.js",
+   [
+    "`tools/balance.js`"
+   ]
+  ],
+  [
+   "js/gen.js",
+   [
+    "`tools/balance.js`"
+   ]
+  ],
+  [
+   "js/rules.js",
+   [
+    "`tools/balance.js`"
+   ]
+  ],
+  [
+   "js/render.js",
+   [
+    "`tools/tuning-patch.js`"
+   ]
+  ]
+ ],
+ "external": [],
+ "fetch": [
+  [
+   "js/game.js",
+   [
+    "fetch('/tuning-edit', { method: 'POST', body: "
+   ]
+  ]
+ ],
+ "charset": true,
+ "title": "DOOMED GOAT — prototype"
+}
+
+## C generator sweep
+{
+ "L1 THE ALTAR": {
+  "fails": 0,
+  "n": 250,
+  "first": null
+ },
+ "L2 THE YARD": {
+  "fails": 0,
+  "n": 250,
+  "first": null
+ },
+ "L3 THE CAVE": {
+  "fails": 0,
+  "n": 250,
+  "first": null
+ },
+ "L4 THE ROAD": {
+  "fails": 0,
+  "n": 250,
+  "first": null
+ },
+ "L5 THE THRESHING FLOOR": {
+  "fails": 0,
+  "n": 250,
+  "first": null
+ },
+ "L6 THE BRIDGE": {
+  "fails": 0,
+  "n": 250,
+  "first": null
+ },
+ "L7 THE RAFTERS": {
+  "fails": 0,
+  "n": 250,
+  "first": null
+ },
+ "L8 THE OSSUARY": {
+  "fails": 0,
+  "n": 250,
+  "first": null
+ },
+ "T2 trip in place of THE YARD": {
+  "fails": 0,
+  "n": 60,
+  "first": null
+ },
+ "T3 trip in place of THE CAVE": {
+  "fails": 0,
+  "n": 60,
+  "first": null
+ },
+ "T4 trip in place of THE ROAD": {
+  "fails": 0,
+  "n": 60,
+  "first": null
+ },
+ "T5 trip in place of THE THRESHING FLOOR": {
+  "fails": 0,
+  "n": 60,
+  "first": null
+ },
+ "T6 trip in place of THE BRIDGE": {
+  "fails": 0,
+  "n": 60,
+  "first": null
+ },
+ "T7 trip in place of THE RAFTERS": {
+  "fails": 0,
+  "n": 60,
+  "first": null
+ },
+ "T8 trip in place of THE OSSUARY": {
+  "fails": 0,
+  "n": 60,
+  "first": null
+ },
+ "THE DARK": {
+  "fails": 0,
+  "n": 120,
+  "first": null
+ }
+}
+
+## C levels
+{
+ "count": 8,
+ "names": [
+  "THE ALTAR",
+  "THE YARD",
+  "THE CAVE",
+  "THE ROAD",
+  "THE THRESHING FLOOR",
+  "THE BRIDGE",
+  "THE RAFTERS",
+  "THE OSSUARY"
+ ],
+ "BUILD": "1.64",
+ "shroom": {
+  "chance": 0.45,
+  "from": 1
+ },
+ "darkOf": null,
+ "easy": {
+  "maxHp": 2,
+  "enemySlow": 1.4
+ }
+}
+
+## D run code
+{
+ "codes": {
+  "lit_L5": "v1.64 L5 21i3v9 D1 R6 K9 241s S3 dog G0.8 bearer/wall@14",
+  "dark_L5": "v1.64 L5 21i3v9 D1 R6 K9 241s S3 dog G0.8 bearer/wall@14",
+  "trip_L3": "v1.64 T3 21i3v9 D1 R6 K9 241s S3 dog G0.8 bearer/wall@14",
+  "easy_god_L2": "v1.64 L2 21i3v9 D1 R6 K9 241s S3 dog G0.8 bearer/wall@14",
+  "normal_L2": "v1.64 L2 21i3v9 D1 R6 K9 241s S3 dog G0.8 bearer/wall@14",
+  "clear_card_L1": "v1.64 L1 21i3v9 D0 R6 K9 241s S3 - - bearer/wall@14"
+ },
+ "darkEqualsLit": true,
+ "easyEqualsNormal": true,
+ "replayOfDarkCode": [
+  {
+   "startAtLevel": [
+    4,
+    false,
+    "undefined"
+   ]
+  },
+  {
+   "startLevel": [
+    4
+   ]
+  }
+ ],
+ "runCodeReads": {
+  "easy": false,
+  "dev": false,
+  "startedFromLevels": false
+ }
+}
+
+## E foley
+could not load: Error: ENOENT: no such file or directory, open 'C:\Users\USER\AppData\Local\Temp\claude\C--Users-USER-Google------Clod-code\1dfd4a26-a63b-4e78-ba1b-63f2fe506101\scratchpad\goat-audits\playtest\head\js\foley.js'
+

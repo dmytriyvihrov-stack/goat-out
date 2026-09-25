@@ -115,7 +115,7 @@ const GoatGrid = {
     if (!PIXEL_ENV.ready) return;
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     for (let ty = Math.floor(y0 / TILE); ty * TILE < y1; ty++) for (let tx = Math.floor(x0 / TILE); tx * TILE < x1; tx++)
-      ctx.drawImage(r.painted.floorSwatch(def, r.painted.hash(tx + 40, ty + 40, 7)), tx * TILE, ty * TILE, TILE + 0.5, TILE + 0.5);
+      ctx.drawImage(r.painted.floorSwatch(def, 0, false, tx, ty), tx * TILE, ty * TILE, TILE + 0.5, TILE + 0.5);
     ctx.imageSmoothingEnabled = smooth;
   },
   // A prop beside him with the same small pixel shadow he has; flat litter lies on its middle.

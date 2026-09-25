@@ -1,0 +1,468 @@
+{
+ "perFile": [
+  {
+   "file": "artifact.html",
+   "size": 1993,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\altar-art.js",
+   "size": 17206,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\audio.js",
+   "size": 56058,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\beasts.js",
+   "size": 31002,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\combat-fx.js",
+   "size": 28808,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\dark.js",
+   "size": 18292,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\enemies.js",
+   "size": 117168,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\entities.js",
+   "size": 135556,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\foley.js",
+   "size": 39662,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\game.js",
+   "size": 197259,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 1
+  },
+  {
+   "file": "js\\gen.js",
+   "size": 119718,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\goat-grid.js",
+   "size": 17644,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\input.js",
+   "size": 6619,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\juice.js",
+   "size": 40628,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\painted-art.js",
+   "size": 40819,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "size": 1321047,
+   "count": 15,
+   "encoded": 1319918,
+   "decoded": 989684,
+   "plain": 0
+  },
+  {
+   "file": "js\\painting.js",
+   "size": 17853,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\pixel-art.js",
+   "size": 25644,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\pixel-assets.js",
+   "size": 2803924,
+   "count": 1,
+   "encoded": 2799790,
+   "decoded": 2099826,
+   "plain": 0
+  },
+  {
+   "file": "js\\pixel-env-assets.js",
+   "size": 547538,
+   "count": 1,
+   "encoded": 546106,
+   "decoded": 409563,
+   "plain": 0
+  },
+  {
+   "file": "js\\prop-pixels.js",
+   "size": 58093,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\render.js",
+   "size": 422790,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\rng.js",
+   "size": 1024,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\rooms.js",
+   "size": 56873,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\rules.js",
+   "size": 39901,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\shop.js",
+   "size": 15388,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\status.js",
+   "size": 11353,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\talismans.js",
+   "size": 45551,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\tuning.js",
+   "size": 186005,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  },
+  {
+   "file": "js\\world.js",
+   "size": 50313,
+   "count": 0,
+   "encoded": 0,
+   "decoded": 0,
+   "plain": 0
+  }
+ ],
+ "items": [
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "altar.src",
+   "mime": "image/png",
+   "encoded": 255846,
+   "decoded": 191868,
+   "dims": [
+    384,
+    237
+   ],
+   "hash": "c4cf6d8dca45"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "banner.src",
+   "mime": "image/png",
+   "encoded": 60654,
+   "decoded": 45472,
+   "dims": [
+    135,
+    192
+   ],
+   "hash": "9cfa1d824305"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "gong.src",
+   "mime": "image/png",
+   "encoded": 102454,
+   "decoded": 76822,
+   "dims": [
+    192,
+    190
+   ],
+   "hash": "c654d802f6f2"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "lanternFire.src",
+   "mime": "image/png",
+   "encoded": 100210,
+   "decoded": 75140,
+   "dims": [
+    1024,
+    128
+   ],
+   "hash": "632e17263216"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "propsAtlas.src",
+   "mime": "image/png",
+   "encoded": 512954,
+   "decoded": 384699,
+   "dims": [
+    512,
+    512
+   ],
+   "hash": "895be803188e"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "cagePostTight.src",
+   "mime": "image/png",
+   "encoded": 8402,
+   "decoded": 6285,
+   "dims": [
+    20,
+    128
+   ],
+   "hash": "4f79a8494eab"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "cageBrokenTight.src",
+   "mime": "image/png",
+   "encoded": 10966,
+   "decoded": 8207,
+   "dims": [
+    128,
+    40
+   ],
+   "hash": "a27492aa3f96"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "slabWood.src",
+   "mime": "image/png",
+   "encoded": 54146,
+   "decoded": 40593,
+   "dims": [
+    512,
+    128
+   ],
+   "hash": "1eaf4a6d9120"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "slabWoodClosed.src",
+   "mime": "image/png",
+   "encoded": 13310,
+   "decoded": 9966,
+   "dims": [
+    26,
+    116
+   ],
+   "hash": "db5e16cae78d"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "slabIron.src",
+   "mime": "image/png",
+   "encoded": 53122,
+   "decoded": 39824,
+   "dims": [
+    512,
+    128
+   ],
+   "hash": "010092ae82c0"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "slabIronClosed.src",
+   "mime": "image/png",
+   "encoded": 12154,
+   "decoded": 9099,
+   "dims": [
+    26,
+    116
+   ],
+   "hash": "7cf73a1dfdeb"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "slabVault.src",
+   "mime": "image/png",
+   "encoded": 56602,
+   "decoded": 42435,
+   "dims": [
+    512,
+    128
+   ],
+   "hash": "50540bc4bbb0"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "slabVaultClosed.src",
+   "mime": "image/png",
+   "encoded": 11982,
+   "decoded": 8970,
+   "dims": [
+    26,
+    116
+   ],
+   "hash": "eb0078036570"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "slabSoul.src",
+   "mime": "image/png",
+   "encoded": 55046,
+   "decoded": 41268,
+   "dims": [
+    512,
+    128
+   ],
+   "hash": "a57258648551"
+  },
+  {
+   "file": "js\\painted-assets.js",
+   "line": 5,
+   "key": "slabSoulClosed.src",
+   "mime": "image/png",
+   "encoded": 12070,
+   "decoded": 9036,
+   "dims": [
+    26,
+    116
+   ],
+   "hash": "754fd16a9148"
+  },
+  {
+   "file": "js\\pixel-assets.js",
+   "line": 3,
+   "key": "src",
+   "mime": "image/png",
+   "encoded": 2799790,
+   "decoded": 2099826,
+   "dims": [
+    2048,
+    663
+   ],
+   "hash": "f240fdb73c83"
+  },
+  {
+   "file": "js\\pixel-env-assets.js",
+   "line": 3,
+   "key": "src",
+   "mime": "image/png",
+   "encoded": 546106,
+   "decoded": 409563,
+   "dims": [
+    1024,
+    348
+   ],
+   "hash": "daa79db653ce"
+  }
+ ],
+ "duplicates": []
+}

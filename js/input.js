@@ -134,14 +134,17 @@ class TouchUI {
 // Snaps an aim direction onto a nearby enemy so thumbs don't have to be precise.
 function autoAim(game, dirx, diry) {
   const g = game.goat;
-  const maxDist = 5.2 * TILE, cone = Math.cos(0.95);
+  const maxDist = TUNING.touchAim.reach * TILE, cone = Math.cos(TUNING.touchAim.cone);
   let best = null, bestScore = -Infinity;
   for (const e of game.enemies) {
-    if (e.dead || e.held || e === g.holding) continue;
+    // Only a man the goat could mean: not mist, not a box or bowl of milk, not one out of sight
+    // (behind a wall or a shut door, or in the fog), which turned the blow away from the real one.
+    if (e.dead || e.held || e === g.holding || e.ghosted || e.state === 'hidden') continue;
     const dx = e.x - g.x, dy = e.y - g.y, d = Math.hypot(dx, dy);
     if (d > maxDist || d < 1) continue;
     const dot = (dx * dirx + dy * diry) / d;
     if (dot < cone) continue;
+    if (game.hidden(e.x, e.y) || !game.sees(g.x, g.y, e.x, e.y)) continue;
     const score = dot * 2 - d / maxDist;
     if (score > bestScore) { bestScore = score; best = { x: dx / d, y: dy / d }; }
   }

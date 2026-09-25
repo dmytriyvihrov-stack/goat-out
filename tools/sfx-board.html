@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goat Out sound board</title>
+<style>
+  :root { --bg: #16110d; --panel: #221a14; --ink: #efe6d0; --dim: #a8987c; --edge: #3b2e23; --hot: #d9772b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 system-ui, sans-serif; padding: 20px 16px 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: 0.04em; }
+  p.note { color: var(--dim); margin: 0 0 18px; max-width: 70ch; }
+  section { margin: 0 0 18px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--dim); margin: 0 0 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { background: var(--panel); color: var(--ink); border: 1px solid var(--edge); border-radius: 6px; padding: 8px 12px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--hot); }
+  button.on { background: var(--hot); color: #1b120b; }
+  label { color: var(--dim); display: inline-flex; gap: 8px; align-items: center; margin-right: 16px; }
+</style>
+</head>
+<body>
+<h1>Goat Out: every sound effect</h1>
+<p class="note">Each press plays a random take of the effect through the game's own mix and its small dry room (js/foley.js, js/audio.js). Raise Music to hear the room score's bed and pick its theme and stage under Music. Press twice: no two takes are the same. Serve the project (node tools/serve.js 8766) and open /tools/sfx-board.html.</p>
+<div class="row" style="margin-bottom:18px">
+  <label>Effects <input id="vol" type="range" min="0" max="1" step="0.05" value="0.5"></label>
+  <label>Room <input id="room" type="range" min="0" max="2" step="0.05" value="1"></label>
+  <label>Music <input id="music" type="range" min="0" max="1" step="0.05" value="0"></label>
+</div>
+<div id="board"></div>
+<script src="../js/tuning.js"></script>
+<script src="../js/rng.js"></script>
+<script src="../js/foley.js"></script>
+<script src="../js/audio.js"></script>
+<script>
+  const audio = new GameAudio();
+  const wake = () => { audio.init(); audio.resume(); audio.setVolumes(+document.getElementById('music').value, +document.getElementById('vol').value); };
+  // The room score with nobody in it: the theme and the stage are set on the scene the arranger reads.
+  const theme = (first, late) => { wake(); audio.scene.first = first; audio.scene.late = late; };
+  const stage = (name) => { wake(); audio.scene.stage = name; };
+  // A pack coming: barks from all round, some near and some far, the way `heard` places them.
+  const pack = () => { for (let i = 0; i < 8; i++) setTimeout(() => audio.sfxBark(audio.heard((Math.random() * 2 - 1) * 16 * TILE, (Math.random() * 2 - 1) * 10 * TILE)), i * (220 + Math.random() * 300)); };
+  const loops = {};
+  const loop = (id, fn, every) => { if (loops[id]) { clearInterval(loops[id]); delete loops[id]; return false; } fn(); loops[id] = setInterval(fn, every); return true; };
+  const groups = [
+    ['The goat', [
+      ['BAAAH (scream)', () => audio.sfxScream()], ['hurt bleat', () => audio.sfxBleat(560, 0.24, 0.3)], ['small bleat', () => audio.sfxBleat(300, 0.09, 0.3)],
+      ['ewe bleat', () => audio.sfxBleat(470, 0.14, 0.26)], ['headbutt', () => audio.sfxHeadbutt()], ['roll', () => audio.sfxRoll()], ['hit', () => audio.sfxHit()],
+      ['club to the head', () => audio.sfxClub()], ['leapfrog', () => audio.sfxVault()], ['dragon breath', () => audio.sfxBreath()], ['cold eye', () => audio.sfxSlow()],
+      ['running hooves (loop)', (b) => b.classList.toggle('on', loop('hoof', () => audio.sfxHoof(1), 160))]]],
+    ['Hounds', [['bark', () => audio.sfxBark()], ['a pack, all round', pack], ['growl', () => audio.sfxGrowl()], ['snap', () => audio.sfxSnap()], ['hound dies (whine)', () => audio.sfxGroan('dog')]]],
+    ['The cult', [['swing', () => audio.sfxSwing()], ['thud', () => audio.sfxThud()], ['splat', () => audio.sfxSplat()], ['falls in a hole', () => audio.sfxFall()],
+      ['dies (groan)', () => audio.sfxGroan('bearer')], ['killed: splat + groan', () => { audio.sfxSplat(); audio.sfxGroan('bearer'); }], ['ogre dies', () => audio.sfxGroan('butcher')],
+      ['rifle cocked', () => audio.sfxCock(1)], ['gunshot', () => audio.sfxGunshot()], ['seer casts', () => audio.sfxCast()], ['rune', () => audio.sfxRune()], ['blink', () => audio.sfxBlink()],
+      ['wraith', () => audio.sfxWraith()], ['wraith strikes', () => audio.sfxWraithHit()], ['wraith undone', () => audio.sfxUnmade()]]],
+    ['Things', [['steel', () => audio.sfxSteel()], ['crack', () => audio.sfxCrack()], ['pot', () => audio.sfxPot()], ['barrel stave', () => audio.sfxStave(1)],
+      ['barrel slowing', () => [1, 0.8, 0.6, 0.4, 0.25].forEach((k, i) => setTimeout(() => audio.sfxStave(k), i * 180))],
+      ['cage bar', () => audio.sfxCageHit()], ['cage breaks', () => audio.sfxCage()], ['bell', () => audio.sfxBell()], ['toll', () => audio.sfxToll()], ['card', () => audio.sfxCard()],
+      ['kill chain', () => [0, 1, 2, 3, 4].forEach((n) => setTimeout(() => audio.sfxKill(n), n * 260))], ['room goes dark', () => audio.sfxVeil()]]],
+    ['Fire', [['catches', () => audio.sfxFire()], ['fuse', () => audio.sfxFuse(2)], ['bomb', () => audio.sfxBoom()]]],
+    ['Animals', [['hen', () => audio.sfxCluck(false)], ['hen, alarmed', () => audio.sfxCluck(true)], ['goose', () => audio.sfxAnimal('goose')], ['crow', () => audio.sfxAnimal('crow')], ['tortoise', () => audio.sfxAnimal('tortoise')]]],
+    ['Music (raise the slider)', [['theme: level 1', () => theme(true, false)], ['theme: levels 2-4', () => theme(false, false)], ['theme: level 5+', () => theme(false, true)],
+      ['idle', () => stage('idle')], ['spotted', () => stage('spotted')], ['chase', () => stage('chase')], ['combat', () => stage('combat')]]],
+    ['Prologue', [['lorry (loop)', (b) => b.classList.toggle('on', loop('engine', () => audio.sfxEngine(), 500))]]],
+  ];
+  const board = document.getElementById('board');
+  for (const [title, items] of groups) {
+    const s = document.createElement('section'), h = document.createElement('h2'), row = document.createElement('div');
+    h.textContent = title; row.className = 'row'; s.append(h, row); board.append(s);
+    for (const [name, fn] of items) {
+      const b = document.createElement('button'); b.textContent = name;
+      b.onclick = () => { wake(); fn(b); };
+      row.append(b);
+    }
+  }
+  const vols = () => audio.ctx && audio.setVolumes(+document.getElementById('music').value, +document.getElementById('vol').value);
+  document.getElementById('vol').oninput = vols;
+  document.getElementById('music').oninput = () => { wake(); vols(); };
+  document.getElementById('room').oninput = (e) => { if (audio.roomOut) audio.roomOut.gain.value = TUNING.audio.room.level * +e.target.value; };
+</script>
+</body>
+</html>

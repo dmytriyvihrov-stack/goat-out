@@ -1,5 +1,8 @@
 # Visual reference — pixel density and genre-fit research
 
+> Written while the art was still painted. The pixel pass it argued for has shipped (units 1.55, effects 1.58,
+> every prop 1.63–1.64); the density and genre findings still hold, the pipeline notes are history.
+
 Research done 22–23 Sep 2026, for whoever picks the painted-art pass up next. Two separate questions
 sit in this file and they do not have the same answer: how detailed should a pixel look, and which
 games is Goat Out actually a genre neighbor of. `ART_HANDOFF.md` is the pipeline and what is painted

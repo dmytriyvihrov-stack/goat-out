@@ -13,6 +13,10 @@
 //   GOOSE     leads rather than follows, and honks at every man it sees — which turns the room
 //             onto YOU, and which breaks a committed blow at any range. At the stairs: the voice.
 //   CROW      follows corpses, not you. At the stairs: a tier III talisman on the next floor.
+//   HORSE     races you to the stairs and does not wait: kicks the doors in its way down and bowls
+//             the men in it aside. At the stairs: a longer stride for the run.
+//
+// Which floors get one, and which one, is the run's (`Beast.deal`): no kind twice in a run.
 //
 // `TUNING.prop.<kind>` is every number; `TUNING.beast` is where one comes from. `GEN_RULES.beasts`
 // holds the placement to its promise.
@@ -20,14 +24,14 @@ const NO_PROPS = [];   // `bodyClear` with no furniture to ask about: a bird hop
 const Beast = {
   // Every kind this file drives. `Prop.update` and the generator both ask here rather than carrying
   // three literals about, so a fourth animal is one line in this list and one `update` branch.
-  KINDS: ['tortoise', 'goose', 'crow'],
+  KINDS: ['tortoise', 'goose', 'crow', 'horse'],
   is(kind) { return Beast.KINDS.indexOf(kind) >= 0; },
 
   // The hen is one of the animals too, for everything but how she moves (`Prop.updateBird`).
   animal(p) { return !p.broken && !p.dead && (Beast.is(p.kind) || p.kind === 'chicken'); },
-  NAME: { tortoise: 'TORTOISE', goose: 'GOOSE', crow: 'CROW', chicken: 'HEN' },
+  NAME: { tortoise: 'TORTOISE', goose: 'GOOSE', crow: 'CROW', chicken: 'HEN', horse: 'HORSE' },
   // What the top-left corner shows for every one brought to the stairs (`Renderer.drawSaved`).
-  EMOJI: { tortoise: '\u{1F422}', goose: '\u{1FABF}', crow: '\u{1F426}\u200D\u2B1B', chicken: '\u{1F414}' },
+  EMOJI: { tortoise: '\u{1F422}', goose: '\u{1FABF}', crow: '\u{1F426}\u200D\u2B1B', chicken: '\u{1F414}', horse: '\u{1F40E}' },
 
   // ---------------- being hurt ----------------
   // An animal is not furniture and not a man: the room can kill it, but not in one. `TUNING.beast.hp`
@@ -38,7 +42,8 @@ const Beast = {
     if (!Beast.animal(p) || p.held || (p.hurtCd || 0) > 0) return;
     const B = TUNING.beast;
     if (p.kind === 'tortoise' && src !== 'fire') { Beast.shellTakes(p, game); p.hurtCd = B.hurtCd; return; }
-    p.beastHp = (p.beastHp === undefined ? B.hp : p.beastHp) - 1;
+    const own = TUNING.prop[p.kind] && TUNING.prop[p.kind].hp;   // the horse is sturdier than a bird
+    p.beastHp = (p.beastHp === undefined ? own || B.hp : p.beastHp) - 1;
     p.hurtCd = B.hurtCd; p.wobble = 0.3; p.hurtFlash = 0.25;
     game.particles(p.x, p.y, 7, src === 'fire' ? PALETTE.fire : PALETTE.blood, 150);
     if (p.beastHp > 0) {
@@ -94,6 +99,7 @@ const Beast = {
     if (p.kind === 'tortoise') return Beast.updateTortoise(p, dt, game);
     if (p.kind === 'goose') return Beast.updateGoose(p, dt, game);
     if (p.kind === 'crow') return Beast.updateCrow(p, dt, game);
+    if (p.kind === 'horse') return Beast.updateHorse(p, dt, game);
   },
 
   // Where an animal may put its foot: the hen's own steering, which borrows the men's `hazardAt` so
@@ -386,6 +392,96 @@ const Beast = {
     return mine >= 0 && his >= 0 ? his - mine : 0;
   },
 
+  // ---------------- the horse ----------------
+  // It races him. Out of the coop it says so and runs for the stairs down `onward`'s field at a
+  // gallop he cannot match, and it does not wait: the goose waits `lead` tiles ahead, the horse is
+  // simply gone. What stops it is what stops everything — a bar no blow opens (a soul gate, a sealed
+  // arena), where it stands and looks back for him, which is fine — and the stairs, where it has won.
+  // A shut door in its way it rears at and kicks in; a man in its way it bowls aside and runs on.
+  updateHorse(p, dt, game) {
+    const C = TUNING.prop.horse, g = game.goat, w = game.world;
+    p.kickT = Math.max(0, (p.kickT || 0) - dt); p.slowT = Math.max(0, (p.slowT || 0) - dt);
+    // Out of the coop it stands `ready` s and says its bet to his face before it goes: a line
+    // shouted by something already a room away is a line nobody read.
+    p.age = (p.age || 0) + dt;
+    if (p.age < C.ready) { p.vx = 0; p.vy = 0; if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x); return; }
+    const f = Beast.exit(game), at = (x, y) => (f ? f.d[Math.floor(y / TILE) * w.W + Math.floor(x / TILE)] : -1);
+    const home = (x, y) => { const d = at(x, y); return d >= 0 && d <= C.homeR; };
+    // Who got there first, kept the moment each of them does, and said once they are both there.
+    if (!p.goatFirst && !p.home && home(g.x, g.y)) p.goatFirst = true;
+    if (home(p.x, p.y)) {
+      p.home = true; p.vx = 0; p.vy = 0; p.rear = 0;
+      if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x);
+      if (!p.told && Math.hypot(g.x - p.x, g.y - p.y) < C.tellR * TILE && !game.floats.some((t) => t.pact)) {
+        p.told = true; Beast.speak(game, p, C.lines[p.goatFirst ? 'lost' : 'won']);
+      }
+      return;
+    }
+    // Rearing at a door: the blow lands when the rear is done, and on iron it goes again.
+    if (p.rear > 0) {
+      p.rear -= dt; p.vx = 0; p.vy = 0;
+      if (p.rear <= 0 && p.kickDoor) {
+        const d = p.kickDoor, l = Math.hypot(d.x - p.x, d.y - p.y) || 1;
+        d.smash(game, (d.x - p.x) / l, (d.y - p.y) / l, null);
+        game.audio.sfxAnimal('horse'); p.kickT = C.kickGap; p.kickDoor = null;
+      }
+      return;
+    }
+    const door = Beast.doorAhead(p, game);
+    if (door && (door.gate || door.seal || door.vault || door.fork)) {
+      p.vx = 0; p.vy = 0; if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x);   // the bar: it waits for him
+      return;
+    }
+    if (door && p.kickT <= 0) { p.kickDoor = door; p.rear = C.kickWind; p.wobble = 0.2; return; }
+    let on = Beast.onward(p, game);
+    // Its own `unstuck`: a body this wide catches on what a goose slips past (the lip of a wall that
+    // gives, the corner of a rack), so a gallop that has not got a tile nearer the stairs in
+    // `stuckFor` s steps off to one side for `sideFor` s, the other side the next time.
+    const here = at(p.x, p.y);
+    if (here >= 0 && (p.best === undefined || here < p.best)) { p.best = here; p.stuck = 0; } else p.stuck = (p.stuck || 0) + dt;
+    if (p.stuck > C.stuckFor) { p.side = -(p.side || 1); p.sideT = C.sideFor; p.stuck = 0; p.ways = null; }
+    if (p.sideT > 0 && on) { p.sideT -= dt; on = { x: -on.y * p.side * 0.9 - on.x * 0.4, y: on.x * p.side * 0.9 - on.y * 0.4 }; }
+    if (on) Beast.step(p, game, on.x, on.y, C.speed * (p.slowT > 0 ? C.slow : 1), dt);
+    else { p.vx = 0; p.vy = 0; }
+    Beast.bowl(p, game);
+  },
+  // The shut door it has run into: blocking, and touching its front — the slab, not a disc, the way
+  // `collideEntities` holds a body against it.
+  doorAhead(p, game) {
+    const D = TUNING.prop.door, sp = Math.hypot(p.vx, p.vy);
+    for (const q of game.props) {
+      if (q.kind !== 'door' || !q.blocking) continue;
+      if (Math.abs(q.x - p.x) > D.r + p.r + TILE || Math.abs(q.y - p.y) > D.r + p.r + TILE) continue;
+      const hx = q.vertical ? D.thick / 2 : D.r, hy = q.vertical ? D.r : D.thick / 2;
+      const cx = clamp(p.x, q.x - hx, q.x + hx), cy = clamp(p.y, q.y - hy, q.y + hy);
+      if (Math.hypot(p.x - cx, p.y - cy) > p.r + 4) continue;
+      // Leaning on it, or on the way into it: a door beside the way it is going is not in its way.
+      const on = Beast.onward(p, game), ax = on ? on.x : p.vx / (sp || 1), ay = on ? on.y : p.vy / (sp || 1);
+      if ((cx - p.x) * ax + (cy - p.y) * ay > 0) return q;
+    }
+    return null;
+  },
+  // A man standing in its way goes aside at `bowl` × his own weight, dazed, and keeps what he knew
+  // about the goat and nothing more — the cult hardly minds a horse. The ogre and the rat ogre are
+  // not moved by anything, and a horse into one is only a horse slowed.
+  bowl(p, game) {
+    const C = TUNING.prop.horse, sp = Math.hypot(p.vx, p.vy);
+    if (sp < C.speed * 0.3) return;
+    const hx = p.vx / sp, hy = p.vy / sp;
+    for (const e of game.liveEnemies) {
+      if (e.dead || e.held || e.ghosted || e.scripted || e.state === 'flung' || e.state === 'floored') continue;
+      if (Math.hypot(e.x - p.x, e.y - p.y) > e.r + p.r + 2) continue;
+      p.slowT = C.slowFor;
+      if (e.kind === 'butcher' || e.kind === 'ratogre') continue;
+      const side = (e.x - p.x) * -hy + (e.y - p.y) * hx >= 0 ? 1 : -1;
+      const dx = hx * 0.45 - hy * side, dy = hy * 0.45 + hx * side, l = Math.hypot(dx, dy), k = C.bowl * e.knockMul() / l;
+      const was = e.aware;
+      e.fling(dx * k, dy * k, false); e.aware = was;
+      e.dazed = Math.max(e.dazed || 0, C.daze);
+      game.particles(e.x, e.y, 6, PALETTE.ash, 140); game.audio.sfxThud();
+    }
+  },
+
   // ---------------- the crow ----------------
   // It follows the dead. `game.crowMarks` is where bodies went down and how long ago; with one in
   // reach it goes to it and settles, and with nothing dead anywhere near it drifts after the goat at
@@ -460,7 +556,9 @@ const Beast = {
   saved(game) {
     const g = game.goat, out = [];
     for (const p of game.props) {
-      if (p.broken || !Beast.is(p.kind)) continue;
+      // The bird that brought the crow's gift came with the gift, not with the goat: banked, it paid
+      // another tier III talisman on every floor after for the rest of the run.
+      if (p.broken || p.gift || !Beast.is(p.kind)) continue;
       const C = TUNING.prop[p.kind];
       if (p.held || Math.hypot(p.x - g.x, p.y - g.y) <= C.saveR * TILE) out.push(p.kind);
     }
@@ -477,6 +575,7 @@ const Beast = {
   applyRewards(game, m) {
     const b = game.beasts || {};
     if (b.tortoise) m.shieldUses = (m.shieldUses || 0) + TUNING.prop.tortoise.saveShield * b.tortoise;
+    if (b.horse) m.speed *= Math.pow(TUNING.prop.horse.saveSpeed, b.horse);
     if (b.goose) {
       const C = TUNING.prop.goose;
       m.screamRadius *= Math.pow(C.saveScreamRange, b.goose);
@@ -508,6 +607,34 @@ const Beast = {
     game.floatText(spot.x, spot.y - 46, 'THE CROW LEFT IT', PALETTE.fireHi);
   },
 
+  // ---------------- which floors get one ----------------
+  // The run's deal, off its own seed, so a death or a CONTINUE deals the same: the first animal on
+  // a floor in `deal.first`, each after it `deal.gap` floors on, each kind off that floor's own
+  // `beasts` list and never one the run has already been dealt. A walk that lands on a floor with
+  // nothing fresh on its list is thrown away and walked again; after `tries` of those the last walk
+  // simply steps over such a floor. Index by level; null is a floor with no animal.
+  // `early` lets the first one come on the `known` floor instead (a browser that has cleared it).
+  deal(seed, early) {
+    const D = TUNING.beast.deal, rng = new RNG(((seed >>> 0) ^ 0xbea57) >>> 0), kinds = new Set();
+    const lo = early ? Math.min(D.known, D.first[0]) : D.first[0];
+    for (const L of LEVELS) for (const k of (L.beasts || [])) kinds.add(k);
+    const walk = (strict) => {
+      const plan = LEVELS.map(() => null), used = new Set();
+      let i = rng.int(lo, D.first[1]);
+      // Never the last floor: every animal pays for the rest of the run, and after the last floor's
+      // stairs there is no run left to pay it into.
+      while (i < LEVELS.length - 1 && used.size < kinds.size) {
+        const can = (LEVELS[i].beasts || []).filter((k) => !used.has(k));
+        if (can.length) { const k = can[rng.int(0, can.length - 1)]; plan[i] = k; used.add(k); i += rng.int(D.gap[0], D.gap[1]); }
+        else if (strict) return null;
+        else i++;
+      }
+      return plan;
+    };
+    for (let t = 0; t < D.tries; t++) { const plan = walk(true); if (plan) return plan; }
+    return walk(false);
+  },
+
   // ---------------- the first one of a run ----------------
   // One line, once, the way the hen and the hound get one: an animal walking after you explains
   // nothing on its own, and an escort nobody understands is left standing in the room it was in.
@@ -519,20 +646,44 @@ const Beast = {
     // (or will not) come along is the one thing a player cannot guess by watching it for a second.
     Beast.speak(game, p, Beast.PACT[p.kind]);
   },
+  // The ANIMALS tab of the dev drawer (`Renderer.drawAnimalsTab`): how each one behaves and what it
+  // pays, in a sentence each, the reward's numbers read off TUNING so the page cannot drift.
+  ABOUT: {
+    chicken: { how: 'Follows you round walls, steps round fire, teeth and drops, and keeps behind you when a man is close. Butt her and she flies at the nearest man and kills him, once.',
+      pays: () => `+${TUNING.prop.chicken.saveHearts} heart for the run` },
+    tortoise: { how: 'Slower than a walk and never catches up: you pick it up and throw it forward. Where it lands it is a shell — solid, rounds stop on it — and it takes one blow for you, then lies on its back.',
+      pays: () => `+${TUNING.prop.tortoise.saveShield} use on every shield for the run` },
+    goose: { how: `Leads rather than follows, up to ${TUNING.prop.goose.lead} tiles ahead, and honks at every man it sees: the room turns on you, and a blow already coming is broken.`,
+      pays: () => `the voice carries ×${TUNING.prop.goose.saveScreamRange} further and comes back ×${TUNING.prop.goose.saveScreamCd} sooner` },
+    crow: { how: 'Follows the dead, not you: in a room with nothing dead in it, it falls behind. It flies to a body it can see and eats a while.',
+      pays: () => `a tier ${TUNING.prop.crow.giftTier} talisman on the next floor's stairs` },
+    horse: { how: 'Races you to the stairs and never waits: kicks down the doors in its way and bowls the men in it aside without killing them. Only a soul gate or a sealed arena holds it. At the stairs it says who won.',
+      pays: () => `×${TUNING.prop.horse.saveSpeed} stride for the run` },
+  },
+  // Every line it can say, for the same tab: its terms, and whatever else it says along the way.
+  lines(kind) {
+    const P = TUNING.prop[kind] || {}, out = (Beast.PACT[kind] || []).slice();
+    if (kind === 'crow') out.push(...P.lines);
+    if (kind === 'horse') out.push(...P.lines.won, ...P.lines.lost);
+    if (kind === 'goose') out.push('IT GIVES YOU AWAY. IT ALSO BREAKS THEM');
+    return out;
+  },
   // What each of them says the first time a run meets one: its sound, then its terms.
   PACT: {
     chicken: ['CLUCK-CLUCK!', "I'LL FOLLOW YOU. BUTT ME AT A MAN"],
     tortoise: ['...?', 'THROW ME TO THE EXIT'],
     crow: ['CAW.', 'I FOLLOW THE ROAD OF BODIES'],
     goose: ['HONK-HONK!', "I'LL TELL THEM ALL", "WE'RE HERE TO KICK THEIR ASS!!!"],
+    horse: ['NEIGH!', 'BET I REACH THE LAST ROOM BEFORE YOU'],
   },
-  // Its sound, then its terms, over its head and held longer than a float, so the sentence is read
-  // and not glimpsed. The sound is bone; the terms are the hen's gold, the colour every escort talks in.
+  // Its sound, then its terms, over its head and held far longer than a float, so the sentence is
+  // read and not glimpsed (24 Sep 2026: "long enough that the player really reads it"). The lines
+  // ride on the animal (`on`, drawn by `Renderer.drawFloatTexts`) rather than where it stood. The
+  // sound is bone; the terms are the hen's gold, the colour every escort talks in.
   speak(game, p, lines) {
     if (!lines) return;
-    const life = TUNING.beast.pactFor, lift = (life - 1.2) * 24;   // a float rises 24px a second from `y`
+    const life = TUNING.beast.pactFor;
     game.audio.sfxAnimal && game.audio.sfxAnimal(p.kind);
-    const top = p.y - 40 - (lines.length - 1) * 18 - lift;
-    lines.forEach((text, k) => game.floats.push({ x: p.x, y: top + k * 18, text, color: k ? PALETTE.hen : PALETTE.bone, life, pact: true }));
+    lines.forEach((text, k) => game.floats.push({ x: p.x, y: p.y, on: p, row: k, n: lines.length, text, color: k ? PALETTE.hen : PALETTE.bone, life, pact: true }));
   },
 };

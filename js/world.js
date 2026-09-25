@@ -81,12 +81,16 @@ class World {
     const rng = new RNG(level.seed ^ 0x9e37);
     for (const room of level.rooms) {
       if (room.index === 0) continue;
-      const count = 1 + (rng.next() * 2 | 0);
+      // Small and seldom (`effects.glyphs`): two or three four-tile signs a room, in cells half a
+      // tile across, read as floor tiles of another colour rather than as something painted on
+      // them (24 Sep 2026: "tiles that should be the same are different").
+      const G = TUNING.effects.glyphs;
+      const count = rng.chance(G.chance) ? 1 : 0;
       for (let i = 0; i < count; i++) {
         const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
         if (this.tileAt(tx, ty) === T.WALL) continue;
-        this.pixelGlyph((tx + 0.5) * TILE, (ty + 0.5) * TILE, rng.float(2.4, 4.6) * TILE,
-          CULT_GLYPHS[rng.int(0, CULT_GLYPHS.length - 1)], rng.float(0.1, 0.2), PALETTE.blood);
+        this.pixelGlyph((tx + 0.5) * TILE, (ty + 0.5) * TILE, rng.float(G.size[0], G.size[1]) * TILE,
+          CULT_GLYPHS[rng.int(0, CULT_GLYPHS.length - 1)], rng.float(G.alpha[0], G.alpha[1]), PALETTE.blood);
       }
       if (rng.chance(0.5)) {
         const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
@@ -322,7 +326,7 @@ class World {
   }
   collideTiles(e) {
     let impact = 0, hit = false;
-    const r = e.r;
+    const r = e.wallR || e.r;   // a body wider than a tile squeezes through one (`ai.path.squeeze`)
     const tx0 = Math.floor((e.x - r) / TILE), tx1 = Math.floor((e.x + r) / TILE);
     const ty0 = Math.floor((e.y - r) / TILE), ty1 = Math.floor((e.y + r) / TILE);
     for (let ty = ty0; ty <= ty1; ty++) {
@@ -356,7 +360,7 @@ class World {
   // grid, which is the whole of what the cave feels like underfoot.
   collideRound(e) {
     let impact = 0, hit = false;
-    const r = e.r, R = this.round;
+    const r = e.wallR || e.r, R = this.round;
     const push = (nx, ny, depth) => {
       const vn = e.vx * nx + e.vy * ny;
       if (vn < 0) { impact = Math.max(impact, -vn); e.vx -= vn * nx; e.vy -= vn * ny; }
@@ -517,7 +521,7 @@ class World {
   // side. Only if he has somehow got his centre into a tile of stone does the plain tile push run.
   collideMid(e) {
     let impact = 0, hit = false;
-    const r = e.r, segs = [];
+    const r = e.wallR || e.r, segs = [];
     const i0 = Math.floor((e.x - r) / TILE - 0.5), i1 = Math.floor((e.x + r) / TILE - 0.5);
     const j0 = Math.floor((e.y - r) / TILE - 0.5), j1 = Math.floor((e.y + r) / TILE - 0.5);
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) this.marchCell(i, j, null, null, segs);

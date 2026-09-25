@@ -187,8 +187,8 @@ const Painting = {
     ctx.fillText(m.name, W / 2, H * P.fit.top - 6 * s);
     // The picture, fitted whole into its box, never smoothed — and never taller than leaves room for
     // the score, its line and the row with SAVE under it: on a phone held sideways (390 px tall)
-    // the line under the score sat on "tap to go on" and under the button.
-    const dy = H * P.fit.top + 10 * s, room = Math.max(H * 0.2, H - (card.code ? 137 : 119) * s - dy);
+    // the line under the score sat on the way on and under the button.
+    const dy = H * P.fit.top + 10 * s, room = Math.max(H * 0.2, H - (card.code ? 146 : 128) * s - dy);
     const cv = pic.canvas, k = Math.min(W * P.fit.w / cv.width, H * P.fit.h / cv.height, room / cv.height);
     const dw = cv.width * k, dh = cv.height * k, dx = (W - dw) / 2;
     ctx.save(); ctx.imageSmoothingEnabled = false;
@@ -215,9 +215,10 @@ const Painting = {
     if (game.stateTimer <= 0) {
       const a = clamp(-game.stateTimer / 0.4, 0, 1);
       ctx.globalAlpha = a;
-      ctx.font = `${15 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
-      const go = `${game.tapWord.toLowerCase()} to go on`, gw = ctx.measureText(go).width;
-      ctx.fillText(go, W / 2, H - 22 * s);
+      // The way on is a lit button, centred on the bottom row: the faint "click to go on" line it
+      // replaces was missed by players who sat on this card looking for what to press.
+      const goR = r.goButton(game, 'CONTINUE', W / 2, H - 22 * s - 24 * s), gw = goR.w;
+      ctx.textAlign = 'center';
       if (this.canSave) {
         const label = { saving: 'SAVING…', saved: 'SAVED', no: 'NOT SAVED' }[this.status] || 'SAVE THE PICTURE';
         ctx.font = `${16 * s}px ${FONT_SC}`;
@@ -226,7 +227,7 @@ const Painting = {
         // no room beside them: there it stands centred over the words instead.
         const bw = ctx.measureText(label).width + 28 * s, bh = 30 * s, corner = 80 * s;
         const beside = Math.max(dx + dw - bw, W / 2 + gw / 2 + 14 * s), fits = beside + bw <= W - corner;
-        const bx = fits ? beside : (W - bw) / 2, by = fits ? H - 22 * s - bh * 0.7 : H - 22 * s - 15 * s - bh - 8 * s;
+        const bx = fits ? beside : (W - bw) / 2, by = fits ? goR.y + (goR.h - bh) / 2 : goR.y - bh - 8 * s;
         const over = game.input.mouse && !game.touch.active && this.hit(game.input.mouse, { x: bx, y: by, w: bw, h: bh });
         ctx.fillStyle = over ? 'rgba(239,230,208,0.16)' : 'rgba(239,230,208,0.07)'; ctx.fillRect(bx, by, bw, bh);
         ctx.strokeStyle = this.status === 'saved' ? PALETTE.fireHi : 'rgba(239,230,208,0.5)'; ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);

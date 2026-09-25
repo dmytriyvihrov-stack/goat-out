@@ -11,9 +11,8 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { ROOT, ARTIFACT_URL, scriptsOf, jsOnDisk } = require('./script-lists');
 
-const ROOT = path.resolve(__dirname, '..');
-const ARTIFACT_URL = 'https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021';
 let failed = 0;
 
 const git = (cmd) => execSync(`git ${cmd}`, { cwd: ROOT, encoding: 'utf8' }).trim();
@@ -48,14 +47,12 @@ else for (const b of unmerged) {
 
 // --- the two HTML files ----------------------------------------------------
 head('index.html vs artifact.html');
-const scripts = (file) => (fs.readFileSync(path.join(ROOT, file), 'utf8')
-  .match(/<script src="([^"]+)"><\/script>/g) || []).map(s => s.match(/src="([^"]+)"/)[1]);
-const local = scripts('index.html'), art = scripts('artifact.html');
+const local = scriptsOf('index.html'), art = scriptsOf('artifact.html');
 local.join() === art.join()
   ? ok(`the same ${local.length} scripts, in the same order`)
   : bad('script lists differ', `index.html: ${local.join(' ')}\n        artifact.html: ${art.join(' ')}`);
 
-const onDisk = fs.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js')).map(f => `js/${f}`).sort();
+const onDisk = jsOnDisk();
 const listed = [...new Set([...local, ...art])].sort();
 const missing = onDisk.filter(f => !listed.includes(f));
 const phantom = listed.filter(f => !onDisk.includes(f));

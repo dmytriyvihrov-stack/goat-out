@@ -1,0 +1,12 @@
+BOON_SLOTS {"active":1,"passive":2,"general":4} -> max held 14 of 25
+{
+  'grab active': [ 'collar(key)', 'devour(needs grabMen)', 'venomjaw', 'charge' ],
+  'scream active': [ 'howl', 'breath', 'spit' ],
+  'butt active': [ 'bomb', 'splash', 'horns' ],
+  'roll active': [ 'weight', 'venomroll', 'leapfrog' ],
+  'body passive': [ 'hide', 'stomachs', 'kindling', 'hooves', 'ember', 'oracle' ],
+  'butt passive': [ 'skull' ],
+  'grab passive': [ 'jaw(needs grabMen)', 'shield(needs grabMen)', 'coldeye' ],
+  'scream passive': [ 'throat' ],
+  'roll passive': [ 'joints' ]
+}

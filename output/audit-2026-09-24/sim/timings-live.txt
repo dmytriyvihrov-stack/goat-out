@@ -1,0 +1,11 @@
+bearer    {"speed":200.736,"reach":25.6,"windup":0.46,"swing":0.12,"recover":0.55,"damage":1}
+champion  {"hp":3,"bossHp":4,"reach":32,"windup":0.62,"swing":0.16,"recover":0.6,"slam.wind":0.8,"slam.damage":1,"slam.recover":0.8,"rage.speed":1.4}
+hunter    {"speed":188.928,"aimTime":0.88,"reload":1.35,"bulletSpeed":608,"damage":1}
+dog       {"speed":231.4368,"reach":24.32,"windup":1,"swing":0.12,"recover":0.4,"damage":1,"dashSpeed":288,"dodgeSpeed":480,"barkDart":0.3,"dazeMul":2.6,"hop":1,"hopTime":0.18}
+seer      {"speed":129.888,"damage":1,"hp":2,"castWind":0.8,"castCooldown":2.5,"blinkCooldown":4.3}
+wraith    {"speed":190.34496000000001,"reach":34.56,"windup":0.52,"swing":0.14,"damage":1,"hp":1,"windupPull":26,"manifest":0.26,"fadeCd":1.5,"bossFade":2.2,"hide.springR":2.6,"hide.springWind":0.3}
+butcher   {"speed":141.696,"hp":4,"reach":43.2,"windup":0.88,"swing":0.2,"recover":0.62,"damage":1,"chargeMin":3,"chargeWind":0.6,"chargeSpeed":448,"chargeTime":1.1,"chargeCooldown":1.7,"stun":1.5,"chargeOver":2,"chargeSkid":0.18,"chargeLead":0.6,"rage.speed":1.5}
+ratogre   {"speed":184.2048,"hp":6,"reach":44.8,"windup":0.72,"swing":0.18,"recover":0.5,"damage":1,"flingSpeed":448,"hop.wind":0.34,"hop.land":0.36,"hop.damage":1,"hop.minHop":1}
+goat.headbutt {"windup":0.12,"active":0.15,"recovery":0.38,"lunge":425.6,"impulse":896,"reach":52.48} goat.invuln 0.9 goat.hp 4
+goat.roll {"speed":253.44,"duration":0.32,"invuln":0.24,"recover":0.26,"cooldown":1.35,"threatRange":7,"stun":0.7,"stunR":51.2}
+BOON_BASE.enemySlow 1.1 EASY {"maxHp":2,"enemySlow":1.4} BOON_BASE.maxHp 4

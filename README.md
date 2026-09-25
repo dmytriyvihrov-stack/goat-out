@@ -1,7 +1,9 @@
-# GOAT OUT
+# DOOMED GOAT
 
 You are the sacrificial goat. They were driving you to the altar, the truck fell off the bridge, and now
-the whole cult wants you back. Six levels, one life, procedurally generated every run.
+the whole cult wants you back. Eight floors, one life on each, procedurally generated every run.
+
+(The repository and its docs call it *Goat Out*; the title screen says DOOMED GOAT.)
 
 **Play it:** https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
@@ -23,152 +25,144 @@ Then open http://127.0.0.1:8766. The first screen is NEW GAME; CONTINUE, which s
 is a run to come back to; LEVELS, which puts you on any floor of the game with the souls a run would
 have banked getting there; and BEST and SETTINGS. Audio unlocks on that first input.
 
-A run is written to the browser at the head of every level and whenever a soul is taken, so CONTINUE
-puts you back at the start of the furthest level you reached with the souls you had there. Starting a
-new game throws it away, and so does escaping.
+A run is written to the browser at the head of every floor, so CONTINUE puts you back at the start of
+the furthest floor you reached with what you had when you walked onto it. Quitting a floor half played
+counts as a death, the way dying does: you come back to a new layout. Starting a new game throws the
+run away, and so does escaping; a floor started from LEVELS is practice and never touches it.
 
 ---
 
 ## Controls
 
-Music gives each enemy type a recognisable rhythm, with heavier patterns for ranged and large
-enemies. Traps and fire across the current room join in; nearby healing grass adds chimes.
-Kills and player actions get delayed musical replies, and fires leave two bars of crackles.
-Both level themes move through idle, spotted, chase and active combat; levels 5+ have a second harmony.
-Level 1 has its own frightened variation of all four states. Clearing a level, dying and collecting
-a soul each get a short musical phrase, also available for audition in MUSIC.
-Heavy enemies have a stronger audible bass body; Mills use distinct patterns for one or two.
-Audition counts, combinations and repeated actions in
-**DEV TOOLS → TOOLS → MUSIC**, or open `index.html#music`.
-Its SCORE view shows sixteen bars, instrument names, notes and MIDI numbers. EXPORT saves a JSON
-note/synth reference for recreating the arrangement in a DAW such as FL Studio.
-To restore the original soundtrack, turn **SETTINGS → LAYERED MUSIC** off. See [MUSIC.md](MUSIC.md)
-for the arrangement and tuning notes.
-
-Phones and tablets get on-screen controls automatically. In portrait the play view is letterboxed and
-the thumbs get their own deck below it. In landscape the controls overlay the bottom corners.
+Five verbs and nothing else. Souls change what a button does; they never add one.
 
 | Touch | Desktop | Action |
 |---|---|---|
 | left thumb, anywhere on the left | WASD / arrows | run — momentum, no turning on a dime |
 | aim follows your run and snaps to nearby men | mouse | aim |
-| BUTT on the bars | left click on the bars | break out of the pen you start level 1 in — seven blows the first time ever, and the third and the sixth leave you on the floor. Every run after that, two |
-| BUTT | left click | headbutt — into a wall, pillar, brazier or another man it kills; on open floor it only knocks down. A man thrown hard into a man standing next to him takes them both |
-| hold GRAB | hold right click | carry a box, a blade or a shield. A man is a soul away: until BY THE COLLAR the mouth takes objects only |
-| release GRAB | release right click | throw — a box flattens, a sword goes through, a man kills what he hits and dies on the wall |
-| ROLL | E | a clumsy sideways tumble with brief mercy frames. DEAD WEIGHT makes everything it goes through lose its head |
-| BAAH | space | a noise. Every man who hears it walks to the spot you made it at. THE FULL THROAT turns it into a stun, DRAGON BREATH into fire — you get one |
-| hold GRAB | hold right click | carry a box, a blade or a shield — and a man too, once BY THE COLLAR is in you |
-| release GRAB | release right click | throw — it kills what it hits and comes apart. Then a beat before you can grab again |
+| BUTT on the bars | left click on the bars | break out of the pen you start the run in — seven blows the first time ever, and the third and the sixth leave you on the floor. Every run after that, two |
+| BUTT | left click | headbutt — it knocks a man down. Into a wall, a pillar, a brazier or another man, he stays down for good |
+| hold GRAB | hold right click | carry a box, a blade, a shield, a bomb. A man is a soul away: until BY THE COLLAR the mouth takes objects only |
+| release GRAB | release right click | throw — a box flattens, a sword goes through, a thrown man kills what he hits |
 | ROLL | E | a clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
-| BAAH | space | a noise they walk toward, until a soul makes it a stun or a cone of fire |
-| tap after death | Backspace | new level |
+| BAAH | space | a noise every man who hears it walks toward, and a committed blow inside it falters. A soul makes it a stun or a cone of fire |
+| — | Q | only with a talisman that has a use of its own (the boomerang, the strange symbols, the straw effigy) |
+| tap after death | Backspace | the floor again, from a new seed |
+| — | Esc | pause |
 | — | M | mute |
 
-Dragging on the right half of the screen overrides auto-aim with a manual direction.
+Phones and tablets get on-screen controls automatically. In portrait the play view is letterboxed and
+the thumbs get their own deck below it. In landscape the controls overlay the bottom corners. Dragging
+on the right half of the screen overrides auto-aim with a manual direction.
 
-Four hearts, no regeneration. Death regenerates the level from a new seed in under a second. The seed is
-printed in the top right.
+Four hearts, no regeneration (six on EASY MODE). A death costs the souls you took on that floor and
+builds the floor again from a new seed in under a second. From the second floor on, the floor's middle
+gate holds your place: take what it offers, die past it, and you start again at that gate of the new
+layout with everything you had there. The seed is printed in the bottom-left corner,
+and the death card carries a RUN CODE that rebuilds the floor you died on.
 
 ---
 
 ## What is in
 
-**Eight levels.** THE ALTAR is Bearers, with one hound near the end of it. THE YARD adds Seers, late and
-one to a room. THE ROAD adds Hunters, posted on their own as well as in crowds. THE THRESHING FLOOR takes
-the walls away. THE BRIDGE mixes everything. THE OSSUARY, under the bridge, belongs to the dead. THE CAVE, under
-all of it, has no straight wall in it: round rock, tall grass that hides you and them, and boulders. Every
-level carries more hounds than the one before. Each is
-a chain of hand-authored rooms stitched together differently every run, and each one hands your hearts
-back.
+**Eight floors, each built round one idea.** THE ALTAR (the wall is the weapon), THE YARD (coals and
+straw), THE CAVE (no wall runs straight; grass that hides you and them), THE ROAD (rifles and the cover
+between them), THE THRESHING FLOOR (almost no wall: herd them into the furniture), THE BRIDGE (seven men
+are one man in a doorway), THE RAFTERS (holes in the floor, windows in the walls) and THE OSSUARY (the dead
+come from behind). Each is a chain of hand-authored rooms dealt in a new order every run: the floor's own
+rooms first, then rooms from every idea the run has already taught you.
 
-**The wraith**, and the level that is made of them. It is not there most of the time: no body, nothing to
-hit, and a wall is not a wall to it. It works its way round to your flank or your back, and only then
-becomes real — and from that instant it cannot stop, and stays real well past the blow. That window is
-the only time anything of yours can touch it, and the only time a scream can freeze it. Face one and it
-can do nothing at all. It cannot become solid inside a wall, so a wall at your back is one arc it cannot
-come from. THE OSSUARY, under the bridge, is where everything the compound ever killed was thrown.
+**THE DARK**, the other way up. THE ROAD ends on two flights of stairs: one climbs to THE THRESHING
+FLOOR, the other to the cellars under it, where nothing is lit but what burns. Every room has a standing
+lamp or two — it shows them to you and you to them, and a headbutt puts it on the floor, burning, and
+then the room is black — and a lantern on the wall by every door that nothing puts out. Out of the light
+they see you only close and hunt by what they hear; you hear them before you see them, and see the eyes
+of the hounds and the mages across a room. Fewer of them, no rifles. LEVELS has a row for it.
 
-**THE THRESHING FLOOR**, the open level: rooms half again as wide, five-tile gaps instead of doorways,
-and hardly a wall to throw anybody at. Instead there is furniture — a field of stone posts, table rows
-you can shove about to open or close a lane, an island of posts with clear ground all round it, braziers
-down both flanks, and a ring of hay that turns into a wall the moment you light it. Nothing out there
-kills for you; you have to walk them into something.
+**THE TRIP.** Some floors have a tuft of pale mushrooms on them. Eat it and the next floor is a glowing
+cave where every key is the other way round — the stick reversed, the horns and the teeth swapped, the
+tumble and the voice swapped — and the men are the first floor's.
 
 **A pen, not an altar.** The run opens on the two of you in the pen: the goat and his wife, a heart
 between you, until two men come for her and one of them puts a club across your skull. You wake in the
-same pen, beside the slab they meant to use, with the one that went before you opened up on the floor,
-their tools laid out beside it, and another cage across the room that nobody is getting out of. Three
-headbutts take the bars apart and tell the building where you are. The two rooms after it carry the
-controls painted on the floor and hold nobody. Every level ends at a flight of stairs going up, and every
-level after the first begins at the top of one.
+same pen, beside the slab they meant to use, and butt the bars until they give. The controls are painted
+on the floor where you first need them: moving in the pen, the headbutt under the first man, grab where
+the first blade stands. Every floor ends at a flight of stairs going up, and every floor after the first
+begins at the top of one.
 
-**The Great Hall.** Late on THE ROAD and again on THE BRIDGE: one room 38 by 22 tiles with two Mills,
-pillar rows, hay, tables, braziers, lamps, a bell and fifteen men between you and the far door. The
-**Gallery** on those levels is the opposite problem — pillar cover and rifles posted well apart.
+**You meet everything alone first.** The room that introduces a clubman, a brute, a hound, a mage, a
+rifle or a wraith holds that one enemy and nothing else, and a boss you have never seen stands in his
+arena without company. After that they arrive mixed, and the mix gets worse as the floor goes on and
+worse again on the floor after.
 
-**You meet everything alone first.** The room that introduces a clubman, a brute, a hound, a mage or
-a rifle holds that one enemy and nothing else, and a boss you have never seen stands in his arena without
-company. The Mill's room counts too: it never introduces a man, and on level 1 it holds nobody at all.
-After that they arrive mixed, and the mix gets worse as the level goes on and worse again on the
-level after.
-
-**Seven enemy types.** Club-swinging Bearers; Brutes, a third larger with spikes along the back, who
-take three killing blows and carry notches over their heads to say so; blinking Seers whose runes erupt into violet witchfire that no boon protects you
-from; Hunters whose bullets travel and hit their own; the Butcher, who takes three hits and cannot be
-interrupted mid-swing; the hounds; and the wraiths. They shout short lines when they see you, hear
+**Seven enemy types.** Club-swinging Bearers; Brutes in bone aprons and bull-skull masks, who take three
+killing blows and charge you from across a room; blinking Seers whose runes erupt into violet witchfire
+that no boon protects you from; Hunters whose bullets travel and hit their own; the ogre, the cult's
+half-beast, who takes four, is never knocked back, leaps onto where you stand and brings his fists down
+on the floor all round him; the hounds; and the wraiths. They shout short lines when they see you, hear
 you, swing at you or watch one of their own come apart — and they read the room: fire, lit braziers, a
 rune about to go off and the sweeping arms of the Mill. Not all of them read it correctly.
 
-**The hounds.** As quick as you are, and the only thing in the compound you cannot get hold of. A hound
-circles out past your horns, picks a moment, runs in for one bite and gets out again — and it is not
-there for a good share of the headbutts you aim at it. One hit kills it. The answer to a pack is the
-scream: a hound loses far longer to BAAH than a man does, and a dazed hound cannot dodge at all.
+**The hounds.** As quick as you are, and the only thing in the compound you cannot simply get hold of. A
+hound circles out past your horns, plants, runs in through you for one bite and breaks away round the
+ring again. One hit kills it; landing that hit is the whole problem.
 
-**A level gives up an authored number of souls** — one on the first, two after — and the boss carrying one glows. A soul offers three actives or three passives. Dragon
-Breath turns the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Devour lets you
-tear a held man open for a chance to heal. Boons last the run and die with you.
+**The wraith.** Most of the time it is not there: no body, nothing to hit, and a wall is not a wall to
+it. It works its way round to your flank or your back and only then becomes real — and from that instant
+it cannot stop. That window is the only time anything of yours can touch it. It cannot become solid
+inside a wall, so a wall at your back is one arc it cannot come from.
+
+**Souls.** Two on every floor, most of them lying in front of a gate that only the soul opens, and a boss
+who glows carries one now and then. A soul offers three cards — an active that changes what a button does, or a passive
+that bends its numbers — and the build holds one active and two passives per button. Dragon Breath turns
+the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Long Horns grows antlers.
+
+**The mouse in the wall.** On THE YARD, THE ROAD and THE BRIDGE one gate is her room instead: a
+talisman, another talisman or a pail of milk, and you take one. She takes nothing for it. Headbutting
+her stall is rude, and what comes out of the wall after the third time is not a mouse.
+
+**Talismans.** Twenty-one of them in three tiers, worn one at a time on a collar, each stated in plain
+numbers where it stands: a mirror shard that turns a blow back, a spade that leaves bodies lying to trip
+over, a boomerang on Q, and so on.
+
+**Animals.** From the second floor a coop holds an animal — a hen, a goose, a crow, a tortoise, a
+horse. Break it open and get the animal to the stairs alive, and it pays you for the rest of the run.
 
 **A room that fights back.** Braziers that spill coals when you headbutt them, spreading hay fire,
-breakable pots, a bell that calls the level, doors you smash through, tables that slide and crush, oil
-lamps that go over — under a thrown man, a thrown pot, or a Butcher on a charge — and spill fire, and
+barrels that roll and burst, doors you smash through, tables that slide and crush, oil lamps that go
+over, grating that bites whoever is on it when it comes up, drops that nobody comes back from, and
 the Mill — a ritual grinding wheel whose arms fling cultists to their deaths and take a heart off you.
 Everything that flies through a room meets the room: nothing goes through a shut door, and a man in your
-mouth burns, gets thrown by the wheel and bitten by the spikes like anybody else.
+mouth burns, gets thrown by the wheel and bitten by the grating like anybody else.
 
-**Stands of arms.** A rack with a sword or a shield in it, sometimes one or two to a room and always two
-in a boss room. Grab what is in it and throw: a thrown sword goes through the first man it finds and
-stays in him, a thrown shield flattens a row of them. Carried, a shield turns three bullets before it
-splinters. Both lie where they land, so a stand is worth crossing the floor for twice.
+**Stands of arms**, rare and worth a trip. Grab the sword or the shield out of the rack and throw it: a
+sword goes through the first man it finds, a shield flattens a row of them. Carried, a shield turns
+blows and bullets for a while and then splinters.
 
-**Level one teaches.** Anything the run has not met yet — the first Bearer, the first Seer, the first
-rifle, the Mill, a new boss — turns up on its own, in a room with nothing else in it. By the third level
-the game assumes you have seen them and stacks whatever it likes.
+**Grass** grows on every floor, a tuft every few rooms: stand over it and graze for a heart back. A big
+tuft behind a wall that gives is worth two.
 
-**Two milk bowls per level** restore a heart.
+**The killbox**, late on the floors with rifles: an empty room, two posted rifles on the far side
+watching the door, a shield by that door, and the corridor behind you if you would rather not.
 
-**Stands of arms**, rare and single-use. A thrown blade snaps in whatever it hits; a shield is worth
-three men or three bullets and then splinters. Level 1 has none until halfway in.
+**The picture.** Every cleared floor is kept as a painting — the floor plan, the blood, the line you
+ran and a skull for every body — and SAVE THE PICTURE on the clear card saves it as a PNG.
 
-**The killbox**, late on the levels with rifles: an empty room, two posted rifles on the far side
-watching the door, a shield by that door, two of their own to carry in front of you, and the corridor
-behind you if you would rather not.
+**The skill rail**, bottom right: your verbs as pixel pictures, whether each is ready, the cooldowns,
+and what your souls have done to each of them. Hover a chip for its numbers.
 
-**The skill rail**, top right: your four verbs as icons, whether each is ready, the cooldown on throw,
-roll and scream, and what your souls have done to each of them. Long Horns lengthens the horns on the
-icon and on the goat; Dragon Breath turns the scream into a cone of fire.
-
-**Presentation.** A slightly tilted camera that punches on every kill, blocky cult pictograms stamped into
-the floors, blood and gore that persist as paint for the whole level, a kill counter for bodies that land
-on top of each other, and a synthesised score — pad, bass and a phrygian motif under ritual percussion
-that escalates with how many enemies are aware of you. No audio or image assets at all.
+**Sound.** No audio files: every effect is a small physical model rendered on the spot — struck wood
+and iron, a throat through formants, shaped noise — and the score is a synthesised bone flute, bass
+gallop and drums that follow the room from idle to chase. See [MUSIC.md](MUSIC.md);
+`tools/sfx-board.html` plays every effect.
 
 ---
 
 ## Dev drawer
 
-Bottom-right corner, works with mouse or finger. God mode, spawn any enemy, drop a soul, heal, clear the
-room, new level, skip level.
+Bottom-left corner, works with mouse or finger. God mode, spawn any enemy, drop a soul, heal, clear the
+room, new level, skip level, and LEVEL TOOL: the generator's rules, the balance report and every room
+of the current floor.
 
 ---
 

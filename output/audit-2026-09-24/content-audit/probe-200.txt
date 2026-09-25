@@ -1,0 +1,175 @@
+==== LEVELS (8) over 200 seeds ====
+THE ALTAR: n=200 fails=0
+    kinds/seed: bearer 7.6, champion 2.2, butcher 1.0
+    bosses/seed: champion(elite) 1.00, butcher 1.00
+    men/seed 10.8, most in one room 2
+    coops: in 0/200 seeds, holds {}
+    heal props 3.00 (3..3), mills 1.00 (1..1), shrooms 0/200, fork 0/200
+    gates 2..2, shop gate 0/200, vault 0/200
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 77/200, room bonus 64/200, dealt avg 2.71 (2..4)
+    roles {"pen":1,"canon":2,"mill":1,"mix":1,"rest":2,"trap":1,"arena":2}
+THE YARD: n=200 fails=0
+    kinds/seed: bearer 14.1, dog 4.8, butcher 1.0, seer 2.7, champion 1.0
+    bosses/seed: butcher 1.00, seer(elite) 1.00
+    men/seed 23.5, most in one room 7
+    coops: in 200/200 seeds, holds {"chicken":104,"goose":96}
+    heal props 3.54 (3..5), mills 1.00 (1..1), shrooms 89/200, fork 0/200
+    gates 2..2, shop gate 200/200, vault 200/200
+    SOULS budget 1..1, placed 1..1 avg 1.00, lost (budget with no spot) 0.00, boss bonus 77/200, room bonus 64/200, dealt avg 1.71 (1..3)
+    roles {"pen":1,"canon":3,"mix":2,"arena":2,"rest":2,"mill":1,"trap":1}
+THE CAVE: n=200 fails=0
+    kinds/seed: dog 11.2, bearer 13.4, champion 4.1, butcher 1.0, seer 3.6
+    bosses/seed: butcher 1.00, champion(elite) 1.00
+    men/seed 33.4, most in one room 6
+    coops: in 200/200 seeds, holds {"tortoise":200}
+    heal props 3.50 (3..5), mills 1.00 (1..1), shrooms 85/200, fork 0/200
+    gates 2..2, shop gate 0/200, vault 200/200
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 77/200, room bonus 64/200, dealt avg 2.71 (2..4)
+    roles {"pen":1,"canon":4,"mix":3,"arena":2,"rest":2,"mill":1}
+THE ROAD: n=200 fails=0
+    kinds/seed: seer 3.5, bearer 21.2, dog 7.0, hunter 11.8, champion 3.0, butcher 2.0
+    bosses/seed: butcher 2.00
+    men/seed 48.5, most in one room 10
+    coops: in 200/200 seeds, holds {"goose":66,"chicken":74,"tortoise":60}
+    heal props 4.53 (4..6), mills 3.00 (3..3), shrooms 76/200, fork 200/200
+    gates 2..2, shop gate 200/200, vault 200/200
+    SOULS budget 1..1, placed 1..1 avg 1.00, lost (budget with no spot) 0.00, boss bonus 77/200, room bonus 64/200, dealt avg 1.71 (1..3)
+    roles {"pen":1,"canon":3,"trap":2,"arena":2,"gallery":1,"rest":2,"mill":1,"hall":1,"killbox":1}
+THE THRESHING FLOOR: n=200 fails=0
+    kinds/seed: champion 5.1, bearer 22.6, dog 9.6, seer 5.3, hunter 11.2, butcher 1.0
+    bosses/seed: seer(elite) 1.00, butcher 1.00, champion(elite) 1.00
+    men/seed 54.8, most in one room 9
+    coops: in 200/200 seeds, holds {"goose":95,"crow":105}
+    heal props 4.55 (4..6), mills 1.00 (1..1), shrooms 96/200, fork 0/200
+    gates 2..2, shop gate 0/200, vault 200/200
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 77/200, room bonus 64/200, dealt avg 2.71 (2..4)
+    roles {"pen":1,"canon":3,"mix":1,"arena":3,"rest":2,"mill":1,"trap":1,"killbox":1}
+THE BRIDGE: n=200 fails=0
+    kinds/seed: bearer 31.0, hunter 15.8, dog 14.0, seer 6.0, champion 4.5, butcher 2.0
+    bosses/seed: butcher 2.00, seer(elite) 1.00
+    men/seed 73.4, most in one room 18
+    coops: in 200/200 seeds, holds {"crow":96,"tortoise":104}
+    heal props 5.54 (5..7), mills 3.00 (3..3), shrooms 99/200, fork 0/200
+    gates 2..2, shop gate 200/200, vault 200/200
+    SOULS budget 1..1, placed 1..1 avg 1.00, lost (budget with no spot) 0.00, boss bonus 77/200, room bonus 64/200, dealt avg 1.71 (1..3)
+    roles {"pen":1,"canon":3,"gallery":1,"arena":3,"trap":2,"killbox":1,"mill":1,"rest":2,"hall":1}
+THE RAFTERS: n=200 fails=0
+    kinds/seed: champion 7.3, seer 7.7, dog 19.1, bearer 26.6, hunter 15.6, butcher 1.0
+    bosses/seed: seer(elite) 1.00, butcher 1.00, champion(elite) 1.00
+    men/seed 77.2, most in one room 10
+    coops: in 200/200 seeds, holds {"goose":96,"crow":104}
+    heal props 4.58 (4..6), mills 1.00 (1..1), shrooms 78/200, fork 0/200
+    gates 2..2, shop gate 0/200, vault 200/200
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 77/200, room bonus 64/200, dealt avg 2.71 (2..4)
+    roles {"pen":1,"canon":4,"mix":2,"trap":1,"arena":3,"rest":2,"mill":1,"killbox":1}
+THE OSSUARY: n=200 fails=0
+    kinds/seed: wraith 28.2, bearer 17.6, hunter 10.2, dog 8.4, champion 3.2, butcher 1.0, seer 4.5
+    bosses/seed: butcher 1.00, wraith(elite) 1.00, seer(elite) 1.00
+    men/seed 72.9, most in one room 10
+    coops: in 200/200 seeds, holds {"tortoise":106,"crow":94}
+    heal props 4.58 (4..6), mills 1.00 (1..1), shrooms 0/200, fork 0/200
+    gates 2..2, shop gate 0/200, vault 200/200
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 77/200, room bonus 64/200, dealt avg 2.71 (2..4)
+    roles {"pen":1,"canon":4,"trap":2,"arena":3,"mix":1,"mill":1,"rest":2,"killbox":1}
+THE DARK (fork): n=200 fails=0
+    kinds/seed: champion 5.0, dog 10.9, bearer 18.5, seer 6.1, butcher 1.0
+    bosses/seed: seer(elite) 1.00, butcher 1.00, champion(elite) 1.00
+    men/seed 41.5, most in one room 6
+    coops: in 200/200 seeds, holds {"crow":116,"goose":84}
+    heal props 4.58 (4..6), mills 0.00 (0..0), shrooms 96/200, fork 0/200
+    gates 2..2, shop gate 0/200, vault 200/200
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 77/200, room bonus 64/200, dealt avg 2.71 (2..4)
+    roles {"pen":1,"canon":3,"mix":3,"arena":3,"rest":2}
+TRIP for THE CAVE: n=60 fails=0
+    kinds/seed: bearer 8.3, champion 2.0, seer 1.7
+    bosses/seed: champion(elite) 2.00
+    men/seed 12.0, most in one room 2
+    coops: in 0/60 seeds, holds {}
+    heal props 4.50 (4..6), mills 0.00 (0..0), shrooms 0/60, fork 0/60
+    gates 2..2, shop gate 0/60, vault 60/60
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 21/60, room bonus 0/60, dealt avg 2.35 (2..3)
+    roles {"pen":1,"mix":8,"arena":2,"rest":2}
+TRIP for THE ROAD: n=60 fails=0
+    kinds/seed: bearer 9.5, champion 2.0, seer 1.5
+    bosses/seed: champion(elite) 2.00
+    men/seed 13.0, most in one room 2
+    coops: in 0/60 seeds, holds {}
+    heal props 3.60 (3..5), mills 0.00 (0..0), shrooms 0/60, fork 0/60
+    gates 2..2, shop gate 0/60, vault 60/60
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 21/60, room bonus 0/60, dealt avg 2.35 (2..3)
+    roles {"pen":1,"mix":9,"arena":2,"rest":2}
+TRIP for THE THRESHING FLOOR: n=60 fails=0
+    kinds/seed: bearer 8.8, champion 3.0, seer 1.1
+    bosses/seed: champion(elite) 3.00
+    men/seed 13.0, most in one room 2
+    coops: in 0/60 seeds, holds {}
+    heal props 5.40 (5..7), mills 0.00 (0..0), shrooms 0/60, fork 0/60
+    gates 2..2, shop gate 0/60, vault 60/60
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 21/60, room bonus 0/60, dealt avg 2.35 (2..3)
+    roles {"pen":1,"mix":7,"arena":3,"rest":2}
+TRIP for THE BRIDGE: n=60 fails=0
+    kinds/seed: bearer 10.2, champion 3.0, seer 1.8
+    bosses/seed: champion(elite) 3.00
+    men/seed 15.0, most in one room 2
+    coops: in 0/60 seeds, holds {}
+    heal props 4.48 (4..6), mills 0.00 (0..0), shrooms 0/60, fork 0/60
+    gates 2..2, shop gate 0/60, vault 60/60
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 21/60, room bonus 0/60, dealt avg 2.35 (2..3)
+    roles {"pen":1,"mix":9,"arena":3,"rest":2}
+TRIP for THE RAFTERS: n=60 fails=0
+    kinds/seed: bearer 9.9, champion 3.0, seer 2.0
+    bosses/seed: champion(elite) 3.00
+    men/seed 15.0, most in one room 2
+    coops: in 0/60 seeds, holds {}
+    heal props 5.47 (5..7), mills 0.00 (0..0), shrooms 0/60, fork 0/60
+    gates 2..2, shop gate 0/60, vault 60/60
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 21/60, room bonus 0/60, dealt avg 2.35 (2..3)
+    roles {"pen":1,"mix":9,"arena":3,"rest":2}
+TRIP for THE OSSUARY: n=60 fails=0
+    kinds/seed: bearer 10.3, champion 3.0, seer 1.7
+    bosses/seed: champion(elite) 3.00
+    men/seed 15.0, most in one room 2
+    coops: in 0/60 seeds, holds {}
+    heal props 5.62 (5..7), mills 0.00 (0..0), shrooms 0/60, fork 0/60
+    gates 2..2, shop gate 0/60, vault 60/60
+    SOULS budget 2..2, placed 2..2 avg 2.00, lost (budget with no spot) 0.00, boss bonus 21/60, room bonus 0/60, dealt avg 2.35 (2..3)
+    roles {"pen":1,"mix":9,"arena":3,"rest":2}
+
+==== SOULS A RUN ====
+  sum of LEVELS[].souls 16; less one per mouse level (3) = authored 13; placed avg 13.00; with seeded surprises dealt avg 18.64 (range 13..29); via THE FORK 18.64
+  mice: THE YARD, THE ROAD, THE BRIDGE (talisman instead of a soul)
+
+==== BOONS ====
+  registry 25 (actives 13, passives 12); slots {"active":1,"passive":2,"general":4}; most one build can hold 14: {"grab":"4 (actives 3, passives 3, keys 1)","scream":"2 (actives 3, passives 1, keys 0)","butt":"2 (actives 3, passives 1, keys 0)","roll":"2 (actives 3, passives 1, keys 0)","undefined":"4 (actives 0, passives 6, keys 0)"}
+  13 souls: holds 13.0 boons, 0.00 souls/run fall back to +1 heart (in 0% of runs); never offered: []; least offered (share of runs): devour 29%, breath 67%, horns 68%, splash 68%, venomroll 68%
+  19 souls: holds 14.0 boons, 5.00 souls/run fall back to +1 heart (in 100% of runs); never offered: []; least offered (share of runs): devour 26%, splash 67%, breath 67%, leapfrog 68%, bomb 68%
+  25 souls: holds 14.0 boons, 11.00 souls/run fall back to +1 heart (in 100% of runs); never offered: []; least offered (share of runs): devour 28%, horns 67%, spit 67%, venomroll 67%, bomb 68%
+  devour needs grabMen: set by [collar]
+  jaw needs grabMen: set by [collar]
+  shield needs grabMen: set by [collar]
+
+==== TALISMANS (ARTIFACTS 21) ====
+  shop levels THE YARD→tier 1, THE ROAD→tier 2, THE BRIDGE→tier 3; wares 2; crow gift tier 3
+  shelves rolled 12000; never shelved: []; each id's share of shelves: firecharm 10.1%, clover 9.7%, boomerang 10.0%, symbols 9.8%, mason 8.6%, domino 8.9%, echo 9.6%, spade 8.7%, grease 8.6%, awl 8.9%, mask 10.4%, effigy 10.2%, spur 9.4%, moth 9.3%, bell 9.4%, sandal 8.9%, scapegoat 9.6%, tallow 10.1%, mirror 9.8%, cup 10.4%, tally 9.5%
+  shelves offering two Q verbs at once (boomerang/symbols/effigy): 1.5%
+  ARTIFACTS_TZ.md ids 17; in registry 17; missing []; extra (older) [firecharm,clover,boomerang,symbols]
+  crow on levels [THE THRESHING FLOOR,THE BRIDGE,THE RAFTERS,THE OSSUARY] + THE DARK; a crow saved on the last level (THE OSSUARY) has no next stairs
+  mods written by an apply that no other js file names: none
+
+==== ESCORTS ====
+  Beast.KINDS [tortoise,goose,crow] + chicken (Prop.updateBird); BEAST_CARD [tortoise,goose,crow]
+  levelDef.beasts: {"chicken":["THE YARD","THE ROAD"],"goose":["THE YARD","THE ROAD","THE THRESHING FLOOR","THE RAFTERS"],"tortoise":["THE CAVE","THE ROAD","THE BRIDGE","THE OSSUARY"],"crow":["THE THRESHING FLOOR","THE BRIDGE","THE RAFTERS","THE OSSUARY"]}
+  THE ALTAR: coops in 0/200, {}
+  THE YARD: coops in 200/200, {"chicken":104,"goose":96}
+  THE CAVE: coops in 200/200, {"tortoise":200}
+  THE ROAD: coops in 200/200, {"goose":66,"chicken":74,"tortoise":60}
+  THE THRESHING FLOOR: coops in 200/200, {"goose":95,"crow":105}
+  THE BRIDGE: coops in 200/200, {"crow":96,"tortoise":104}
+  THE RAFTERS: coops in 200/200, {"goose":96,"crow":104}
+  THE OSSUARY: coops in 200/200, {"tortoise":106,"crow":94}
+  THE DARK (fork): coops in 200/200, {"crow":116,"goose":84}
+
+==== ROOMS ====
+  ROOM_TEMPLATES 87 (dup names: 1); per canon {"stone":9,"fire":9,"line":9,"open":9,"funnel":9,"drop":9,"niche":9,"lamp":5,"hollow":9}; minRooms 4
+  never drawn over 200 seeds x 8 levels + THE DARK + trips: [sluice[canon funnel]]
+  drawn fewer than 10 times in all: []

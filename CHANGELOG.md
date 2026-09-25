@@ -5,6 +5,364 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.69 — the art pass: floors that join, a hunter who hides, windups in amber
+
+Asked for on 25 Sep 2026: pixel-art theory as a checklist in the dev tool, the build audited against
+it, variants beside the originals to compare, before/after shown for each. Every part is on a switch
+on the new **ART** tab and `#aspacked` starts the page with all of it off; nothing packed was replaced
+(`ART_PASS`, `js/pixel-art.js`; `ART_HANDOFF.md`; frames in `output/art-pass-2026-09-25/`).
+
+- **The ART tab**: the checklist (palette, outline, dimming the inactive, character shading, level
+  palettes), ticked per session, and the switches.
+- **Floors are sheets** (`FLOOR_SHEET`): a swatch stamped once a tile repeated its stones in every
+  square and broke its lines at the edge — "the pattern came out illogical and did not join". Each
+  canon's floor is one seamless sheet six tiles square in world space, in the swatch's own colours:
+  flags, cobble (Yard), setts (Road — no longer the Yard's twin), earth and straw, slabs, boards,
+  paving. **Wall faces** the same way: two courses of brick laid along the wall.
+- **The hunter** keeps his own brown ("he tries not to be seen") on five clean hue-shifted steps, with
+  the cult's red only as a band round the hat, a quill in it and a small sign on his back. Seven
+  colour-theory studies of him are on the switch, measured on every floor (`tools/art-study.js`).
+- **The clubman** a seventh slimmer (columns taken out of the robe, no pixel scaled).
+- **Windups in amber cells** — the clubman's arc, the brute's strip, the hound's run — where they were
+  smooth blood red on red men and red blood.
+- **The seer's staff and eyes** in witchfire's own bands; **milk grass** gold at the tips, so it is not
+  the green of the grass that hides you; **the Yard** as packed earth (a clubman on the pale sand was
+  contrast 1.0 against it, now 1.9); **the cave's rock** a step darker.
+- The `art-pass` skill (`~/.claude/skills/art-pass`) is how the next pass is run.
+
+## 1.68 — the middle gate; the ogres get through doorways; a roll you pay for
+
+Asked for on 25 Sep 2026, a playtest list of eleven with four screenshots.
+
+- **THE MIDDLE GATE** (`game.holdGate`, `enterAtGate`, `TUNING.soul.hold`). From the second floor, what
+  a floor's first gate gives — its soul, or one of the mouse's three offers — also holds his place. A
+  death past it comes back to the middle gate, carrying what he had there (the soul it gave included)
+  and the kills and time so far. The floor is still cut again off the new death count (ground rule 6):
+  he stands in the new layout's own first gate, door open, soul or shelf spent, every room before it
+  behind him with nobody in it and already veiled, and an animal he had with him at the gate beside
+  him. The death card says BACK TO THE MIDDLE GATE and counts the souls he keeps from there; the save
+  carries it (`save.gate`), so quitting and CONTINUE come back to it too. The head of the floor is still
+  what the floor is saved as, so the gate's soul cannot be farmed through the title.
+- **The ogre and the rat ogre squeeze through a doorway one tile wide** (`ai.path.squeeze`, `Enemy.wallR`,
+  the three `World.collide*`): every soul gate and seal narrows its way out to one tile, and both were
+  held at its mouth pressing into the corner. Measured with the goat 3.5 tiles past a gate on three
+  floors, five seeds each: the ogre 0/15 through before, 15/15 after. The rat ogre, who only bounds, also
+  needed a bound down the flow field when pinned (`Enemy.flowHop`): 15/15.
+- **The ogre's leap no longer leaves a cross of witchfire**, soul or no soul ("a cheat"). `igniteCross`
+  and `Enemy.ownFireAt` are gone with it.
+- **The roll has a stagger you can see**: `roll.recover` 0.26 → 0.38 s at `recoverMove` 0.08 of a
+  stride (was 0.35), and landing takes the run-up. He used to run straight on out of the tumble.
+- **Carrying, he faces his aim** (`goat.carry.turn` 26 rad/s, real time, so COLD EYE's slow world does
+  not slow his neck). Since 1.63 the thing in his teeth follows the sprite's facing, and running he
+  faced the way he ran: it swung round to the pointer only once he stopped — "turning in treacle".
+  Now what he carries points where it will be thrown and where the shield covers.
+- **A poison blast is two hearts, once** (`status.blast.hits`, `guard`): whoever it hits loses two and is
+  passed by the rest of the chain for two seconds. Four blasts in a row took the ogre's four hearts.
+- **A brazier burns the goat only when he walks into it** (`Goat.intoBrazier`, `brazier.into`, `touch`):
+  brushing past one in a doorway cost a heart. The men still catch off a touch.
+- **Tables stand where their template drew them** (`placeTables`, new `GEN_RULES.tables`). A table went
+  down on any `t` whose world tile was even on both axes, so it sat a tile right and down of its drawing,
+  or not at all — in the forge, into the brazier beside it, pinching the way past the coals. Now each
+  block of `t` is a table centred on it, and none may leave a squeeze beside a brazier (the gap is a
+  lump or a clear way). Every template's table/brazier gap measured: 1.8, 11 (shut) or 34 px (clear).
+- **An open door swings on its hinge** (`Renderer.doorSwing`) and folds back along the corridor wall.
+  It turned about its middle, so the clock door standing open read as an iron beam across the doorway.
+- **A hound met on the horns does not bite** (`updateDog`, `onHorns`): his bite reaches further than the
+  goat's head, so a lunge thrown at a running hound landed a beat after the bite. A goat already in his
+  lunge and aimed at him now takes the run off him; pressed too late, the bite lands as before.
+- **The note over a ware stays on the screen** (`Renderer.keepInView`, `drawNote`): under the hearts,
+  inside the picture, under the shelf if there is no room over it, and drawn after the fog, which had
+  dimmed the half of it that stood over the wall. The animals' lines and floating words keep in too.
+
+## 1.67 — the horse; everything a third slower; a run deals its animals
+
+Asked for on 24 Sep 2026, in three batches (the ogre's soul, the horse, the pace; then a playtest
+list with screenshots; then the animals' lines and the ANIMALS tab).
+
+- **The pace.** `SLOW` 0.7 on every creature's travel (goat walk, run-up, roll; every man; the
+  hound's run, dart and hop; the brute's charge; a burning man; every animal) — never on what is
+  thrown, flung or shot. `GOAT_CD` 1.2 in every base cooldown of the goat's verbs, so the cards quote
+  the real seconds. `enemySlow` 1.1 → 1.21. The ENEMIES tab shows every kind's speed in px/s,
+  tiles/s and × the goat's walk and top speed, and has live dev sliders (0.3–5) for enemy and goat
+  speed, attack and cooldown (`game.dev.tune`, saved per browser, all ×1 by default).
+- **The horse** (`js/horse-pixels.js`, `Beast.updateHorse`). Out of its coop it says "BET I REACH THE
+  LAST ROOM BEFORE YOU", then gallops for the stairs and never waits; it kicks down every door in its
+  way, bowls men aside (dazed, never killed, and they learn nothing about the goat), waits only at a
+  soul gate or a seal, and says who won at the stairs. Reward: ×1.07 stride for the run. Measured:
+  it reaches the stairs of every level 2–8 in 40–70 s.
+- **The run deals its animals** (`Beast.deal`): none before level three (level two once this browser
+  has cleared it), one every one or two floors, never one kind twice, none on the last floor —
+  ~3.2 a run. Their lines ride over them on a plate for 6.5 s. ANIMALS dev tab.
+- **Level one:** the rest before the ogre has no gate and no soul; the ogre carries the second.
+  Thirteen rooms: three clubmen (`crowdAt`) between the lone brute and his arena. The wheel's two men
+  notice the goat on entry; the careless one runs into the arm (5/5 seeds measured). The first soul
+  always deals a headbutt active and a voice active (`BOON_FIRST`).
+- **Level two** starts gentler (curve from 1.5, ease 1.5; the ogre arena has one escort).
+- **Combat:** the bare headbutt throws a clubman 4.5 tiles, not 6.4 (LONG HORNS gives it back); a
+  shield blocks every blow from its side, the ogre's quake and the brute's charge included; a sword
+  has one use; the ogre's leap leaves a 7×7 cross of witchfire he walks out of. Hounds steer round
+  bodies (`Enemy.passBodies`, time pressed against a man about halved).
+- **Look and sound:** one floor swatch a canon, seamless cobbles, no tile grid lines; smaller, rarer
+  blood signs; a man brightens through his windup; a short groan when a man dies; quieter two-toed
+  hoof clops. The soul card is A CORRUPTED SOUL without the "none of these" line; clear, death and
+  win cards have one lit button; the death card shows who killed you. Sword stands snap to whole
+  pixels (they shimmered as the camera zoomed).
+
+### The polish pass (24–25 Sep 2026): a code review, the saves, input, sound, the docs, a lighter build
+
+Asked for: "use the whole limit on improvements" while the user was out, in a copy of the tree beside the
+session working on the horse and enemy balance, merged at the end. No new systems (the playtest freeze):
+bugs, numbers the docs and the code disagreed on, tools, weight. Eight read-only review agents went over
+every subsystem; every finding below was traced in the code and most were reproduced in a node probe
+before and after the fix.
+
+**Saves and the run**
+- **CONTINUE comes back to the head of the floor, whatever is saved when.** A soul card, a talisman at
+  the mouse and SCAPEGOAT all saved the run mid-floor with what had just been taken; CONTINUE then rebuilt
+  the same floor off the same seed with the soul lying there again — one soul could be taken over and
+  over through the title. `saveRun` always writes `levelBoons`, `levelArtifact`, `levelTripAt` and the
+  crow's gift as they were at the head of the floor.
+- **A death is saved when it happens**, and **quitting a floor half played counts as one** (`quitToTitle`,
+  the way Backspace already did): dying and quitting from the death card, or quitting with a heart left,
+  used to CONTINUE onto the very layout just walked through (ground rule 6).
+- **LEVELS is practice and touches nothing**: it no longer wipes the run under CONTINUE, never saves,
+  never writes BEST. THE TRIP no longer writes its easier score into the lit floor's BEST.
+- The build is applied before the floor is generated: a CONTINUE after a reload built the floor without
+  the LUCKY CLOVER's luck or the tortoise's shield uses. LEVELS no longer leaks the last run's talisman.
+- **The crow's gift**: its bird was banked as a new crow at the next stairs (a free tier III talisman
+  every floor after); a death on the gift's floor lost the gift for good; it was placed before the flow
+  field existed and so always on the goat. The tallow, the cup and the tally roll back with the floor.
+- **Escape during the opening scene** left the title screen blank (the scene's overlay threw every frame
+  round a goat that no longer existed). **A click on RESUME** headbutted on the next mouse move. **A press
+  during a kill's hitstop** was thrown away instead of buffered.
+- One exception inside a frame used to end the `requestAnimationFrame` chain for good; the next frame is
+  asked for first and a throw is logged once and eaten.
+
+**The cult**
+- **The bare BAAH dropped every committed man within thirteen tiles**: a clubman's windup, a solid
+  wraith's blow, the brute's charge, a mage's cast, the ogre in mid-leap (over a drop he fell in). The
+  call now moves only men who are idle, looking or chasing; `scream.balk` alone breaks a blow, as designed.
+- An ogre or brute knocked down in fire could not get up and burned to death from full hearts.
+- A cast broken by a crate, a body, a bullet or fire left the rune set: invisible, still a trap to every
+  man's hazard sense, and set off with no windup the moment he was picked up.
+- Nothing knocks the ogre out of a leap any more (a blast, a crate, a shield, a table, a heart taken in
+  the air): floored mid-leap over a drop was a fall to his death.
+- A daze or SHOCK stops the brute's charge (it only paused it; he ran on down the old line unannounced).
+  SHOCK no longer freezes the rat ogre, who is immune to stun.
+- A man alight can't be grabbed (he burned in the goat's teeth for his whole fire), and a burning man
+  butted or thrown flies into the wall instead of running on as if nothing had hit him.
+
+**The room**
+- **Nothing through a shut door**: grabbing, the blade in the teeth, the horns (with LONG HORNS a man
+  behind an iron door was thrown across the next room), and the hold point (a man held against a door sat
+  on its far side and was thrown into the next room).
+- A man in the goat's mouth is seen by the wheel, the grating and the rock teeth again (he was left off
+  `liveEnemies`, so their "out of your mouth" branches never ran). The teeth take one heart a second off
+  the same man instead of one a frame.
+- A shoved table stops on a soul gate (THE SOUL OPENS IT sixteen times over); a slow thrown blade stops
+  on furniture instead of passing through a door; a wall stops a bomb's blast; a crate, blade or bomb let
+  go of over a drop falls; a carried crate lets bullets through, as `Goat.crated` says.
+
+**The mouse and the talismans**
+- **Provoking her could end the run**: on THE YARD and THE ROAD her room seldom holds enough to kill the
+  rat ogre, and her gate waited for a ware he had locked. Her gate opens when he comes through the wall;
+  the rudeness costs the offer, and killing him wins it back — THE SHELF IS YOURS now means it (every
+  stool, not one).
+- The boomerang's way back dazed every man it passed; it counts its men each way. SCAPEGOAT no longer
+  loses the talisman walked in with. STRANGE SYMBOLS can't blink out of a lunge or a roll.
+- Five tiers said what they do not: LUCKY CLOVER ("next floor only"; the multipliers), ECHO HORN (the
+  second blow comes a beat later), MASON'S MARK III, MIRROR SHARD III (no cleaver since 1.66), and the
+  BELL (a mark at the screen's edge, not a thread on the floor). The boomerang and the strange symbols
+  share the Q tag with the effigy, so no shelf offers two.
+
+**The generator**
+- **Every room of a pool is dealt.** `draw` aimed along the whole level, so the most open third of every
+  canon was only reachable by the last room, which is always an arena: `sluice`, `flanks`, `rowhouse`
+  0 times in 200 seeds, `cross`, `pens` and `buttress` never on THE ALTAR. It ranks a room among the rooms
+  of its own pool now, with a window wide enough to cover a pool larger than its draws; every template
+  of every canon comes up 40–150 times in 200 seeds. All rules hold, threat unchanged.
+- Forty tries instead of twenty: THE TRIP's eroded rooms fail more than half their tries.
+- The dark flight beats a tuft of mushrooms eaten on THE ROAD (it used to play THE TRIP), and the lit
+  flight's floor says THE TRIP when that is where it goes.
+
+**Numbers**
+- The score: bodies multiply pace and can no longer beat it (`killMul` 0.06 → 0.02, `killCap` 2.5 → 1.5).
+- The voice never comes back faster than 2 s (`scream.minCooldown`), however many geese.
+
+**For the playtest and the build**
+- **The atlases are 1.15 MB lighter with the same pixels** (`tools/png-harden.js`, the packers' last
+  step): alpha hardened the way `PIXEL_ART.init` does on load, recompressed; checked pixel for pixel in
+  the browser (alpha identical, colour ±1 where the old round trip rounded).
+- `tools/itch-zip.js`: the itch upload as `index.html` and exactly its scripts, from a clean commit,
+  listed back — 3.1 MB zipped. The dev corner hides on an itch host unless `#dev`.
+- The run code says THE DARK (`N`) and how the run was played (`E` easy, `X` god, `J` LEVELS); the
+  picture card copies it.
+- Floor words fit the view as well as the room (an upright phone never saw a hint whole).
+- `tools/smoke.js`: a bot walks every floor, THE DARK and THE TRIP to the stairs with the cult alive and
+  frames drawn, and reports throws, NaN, frame spikes and the heap. Every floor: OK.
+- `tools/doc-numbers.js`: 57 numbers the docs state, held against the code.
+- `tools/audio-check.js` renders every foley recipe; `balance.js` counts the souls a run really deals.
+
+**Docs.** README, CONCEPT and CLAUDE read off the code (eight floors in run order, THE CAVE, THE DARK,
+THE TRIP, souls and gates, all 25 boons, the saves); the BRIDGE hint no longer thinks it is the last
+floor; GRASS where MILK was; the art docs marked as shipped.
+
+**Input and sound** (25 Sep, the morning after)
+- Space and the arrows no longer scroll the page under the game (the itch frame). **M is the SOUND
+  switch itself**: the settings row says what it did and the mute is kept.
+- **A lost window or a hidden tab pauses a fight** (`game.autoPause`; the harness and the smoke bot
+  turn it off). A resting mouse no longer takes the menu row back from W/S (Enter picked NEW GAME
+  under the pointer), and RESUME drops the key that picked it.
+- Touch: only the finger that pressed a soul card takes it, and a finger lifted over the cards is let
+  go of (the goat ran on after the pick); a thumb put down under the level card is on the stick when
+  play starts; a finger drags a volume slider; the auto-aim turns only to a man the goat can see (not
+  mist, a disguise or one behind a door); no dev corner under the stick in a fight; no key names on
+  the cards. THE TRIP keeps a grab tapped inside a hitstop.
+- SOUND off holds from the first gesture (a reload played the score while muted); a cut score dips
+  for `audio.cut` instead of clicking; nothing queues behind a suspended context to go off at once
+  on resume; a bank first asked for mid-game gets its takes; unmuting returns to where a fade left
+  the room; the context is asked back when the tab returns.
+- A hound circling long enough wound its heading past −11 rad and the unit draw threw every frame
+  (the smoke bot, THE ROAD and THE BRIDGE); the heading is wrapped and the facing index made safe.
+
+---
+
+## 1.66 — the ogre comes down; the brute charges; level one climbs slowly; a soul is a party
+
+Asked for: the brute in the Butcher's body, the Butcher as a bigger ogre that leaps after you and
+hits a ring round him, "как раньше делал громила", and the two of them balanced to be more interesting.
+Then: not the rat ogre ("крыса огр — отдельная штука") but an ogre of his own, a two-legged
+half-beast drawn in pixels, bigger and fatter, who is never knocked back, whose ring leaves his own
+men standing, and who is plainly the cult's ("имел какие-то его атрибуты красные").
+
+- **The Butcher is an ogre** (OGRE in every text; kind `butcher` inside). His own pixel body,
+  `js/ogre-pixels.js`: a hunched olive half-beast, tusks, stub horns through the cult's red hood, a
+  ragged red mantle with the cult's sign on the back, a red loincloth, a broken shackle on each
+  wrist; five views mirrored to eight, a stride, and both fists over his head through the slam and
+  the leap. `butcher.scale` 1.15, radius 22. Nothing throws him (`Enemy.fling` refuses him, the
+  horns stagger him on the spot) — the brute flies, the ogre does not. He has no swing any more. Seen 2.6–7 tiles off he crouches (0.62 s) with a ring drawn where you
+  stand, flies (0.62 s, 46 px up, over men and over a drop — never into one) and lands: a 1.6-tile
+  ring. Within 1.5 tiles he slams both fists on the floor instead (0.72 s, a 1.9-tile ring) — the
+  brute's old slam. Both end with him on his knees (1.0 s / 0.95 s): that is where his four hearts
+  come from. His own men inside a ring are left standing: it is the goat the ring is for.
+  A headbutt in the crouch or the slam's windup counts and does not stop it; a scream breaks the
+  crouch, never the leap; the horns pass under him in the air.
+- **The brute has the charge.** He wears the Butcher's old body (skull mask, apron, cleaver;
+  `champion.scale` 1.06 on that 48 px sheet ≈ the size he was), loses the slam, and takes the
+  Butcher's charge a size smaller: from 3 tiles, 0.7 s planted, 12 tiles/s for at most 0.85 s,
+  3.4 s between. Into a wall he stands stunned 1.6 s. A brute holding a post (the lesson sentry)
+  never charges. Everything the charge did to a room it still does — door, table, lamp, brazier.
+- `THREAT` is unchanged (brute 3.2, ogre 5); `tools/balance.js` holds every rule.
+- **Level one climbs a step at a time** (twelve rooms, from ten): the sentry; one clubman loose in a
+  room; a room of lit bowls set in straw and nobody in it (`calmAt`, `CALM_TEMPLATE`) to butt one
+  over and watch it burn; the wheel and its two men; the blade and its two men; the first soul; two
+  clubmen standing in straw with a bowl in it (`trapAt`, the `hayloft` trap room, `trapMen`); the first
+  brute, alone; his arena; the second soul; the ogre. The brute used to be the second room.
+- **A soul is a party** (`TUNING.fanfare`, `Renderer.drawSoulFanfare`): a flash, a turning wheel of
+  gold and violet pixel rays behind the soul, the soul springing in, A SOUL bouncing up in gold,
+  pixel confetti; then the cards spring in one after another and the rays settle to a glow the cards
+  read over. Nothing can be picked until the last card is in.
+
+### Sound: drier, shorter, quieter; a tune
+
+Asked for: effects that take less space ("especially the strange cage break"), no echo or depth,
+not so loud; a main melody that is a melody and not noise.
+
+- **The room is a cell, not a hall.** `TUNING.audio.room` 1.4 s / send 0.3 (music 0.2) / return 0.8
+  became 0.32 s / 0.07 (0.06) / 0.6; every per-effect `wet` cut to a quarter or less (gunshot 0.6 →
+  0.12, blast 0.5 → 0.12, the pen 0.3 → 0).
+- **Every recipe shorter, no sub.** `Foley.finish` high-passes at 85 Hz; the lowest bodies (38–60 Hz
+  in the blast, club, splat, card, rune, heartbeats) moved up to 70–100 Hz. Lengths: the pen breaking
+  2.1 → 0.42 s, a bar struck 1.5 → 0.22 s, gong 3.6 → 1.3 s, toll 5 → 2 s, blast 2.2 → 0.85 s,
+  club 1.3 → 0.32 s (the ringing in the ears is gone), gunshot 1.4 → 0.42 s, card 1.1 → 0.38 s,
+  steel 1.1 → 0.42 s, rune 1.3 → 0.6 s, fire 0.9 → 0.5 s, and thud, splat, hit, pot, kill,
+  breath, cast, veil and COLD EYE about halved. All recipes together: 34.8 s of tail → 17.6 s.
+- **The pen** is now a dry knock: the frame's wood cracking, two damped bars knocking loose, a thump
+  — was five free iron bars ringing for two seconds, and the loudest sound in the game by 2 dB.
+- **About 6 dB quieter.** `sfx` bus 0.85 → 0.45 and every gain re-levelled on a 300 ms loudness
+  window: average −28 → −35 dB, loudest −14.5 (the pen) → −25 (a blast); the pen itself −14.5 → −27.5.
+- **A tune.** `THEME_BED`: a four-bar bone-flute phrase per theme (A Phrygian A-C-Bb-A falling to
+  A-G-F-E; G minor upstairs; the first floor's broken up round a tritone), a five-note bass gallop a
+  bar, an open-fifth drone an octave up, plucked-saw stage riffs under the flute, rim knocks
+  instead of noise hats, layers 0.75 → 0.65 and fire ticks 0.11 → 0.08 so the line leads. See
+  `MUSIC.md`. `tools/sfx-board.html` can now play the bed per theme and stage.
+
+### Playtest, 24 Sep 2026: the HUD, bodies, walls, icons
+
+- **The skill rail sits bottom right** (top was awkward to watch a cooldown in); its notes open
+  upward and THE GONG strip rides over it. On a touch screen it stays at the top, clear of the
+  thumbs (`renderer.railLow`). The kill count stays top right.
+- **The dev drawer is bottom left**, over the seed, and opens upward from there.
+- **Bodies are the size of the man.** `CombatFX.death` drew the 96-px snapshot into 40 px, a
+  leftover of the painted sheets drawn at 80: every corpse and torn piece lay at under half size.
+  Now 1:1; the corpse turns about its middle (feet at 64), the pool is 14 / 19 px to still show.
+- **Floor words step off furniture.** `Renderer.clearFloorRow` slides a block of control words by
+  half tiles to the nearest band no table, crate or stone stands in (a table sat on E - ROLL).
+- **Walls join.** One coursed-stone cap laid over the whole map instead of a tile repeated with
+  its own borders; brick only on south faces, one height, running round an L; other open sides a
+  dark line and a lit or shaded lip; corners read the diagonals (`js/painted-art.js`).
+- **The skill chips are pixel pictures** that change with the active soul on that button
+  (`js/skill-icons.js`): SPLASH is big green dripping horns, LONG HORNS antlers, BOMB CHARGE lava
+  horns, BY THE COLLAR a man in the teeth, DRAGON BREATH a cone of fire, and so on; passives add a
+  mark. The boon card shows the same picture.
+
+## 1.65 — THE DARK, a floor of its own; hounds that run like dogs
+
+### The hounds
+
+Measured with the new `tools/hounds.js` (1, then 3 hounds round a goat standing, walking a ring and
+walking side to side, four floors × four seeds, against 1.64 in a copy of the same tree).
+
+- **A hound has legs.** He was a picture of a dog set going whichever way the ring wanted between one
+  step and the next: with three of them on a moving goat that was 3–10 reversals a second each, and
+  for a quarter to two fifths of the time he slid sideways or backwards with his face to you. He has a
+  heading and a pace now (`Enemy.stride`, `dog.turn`, `turnSlow`, `accel`, `brake`): a change of mind
+  is an arc on the floor, a wheel right round is taken slow, and his body points where he runs while
+  his eyes stay on the goat (an aware hound has no blind cone). Reversals: 0. Sliding: 0. Routes as
+  good as before (5 of 360 never reached the goat, 6 of 360 in 1.64).
+- **He circles.** The wait for the next run was counted from the plant, so it was spent on the windup
+  and the run themselves, and a lone hound went plant, run, back off, plant — 44% of his time planted,
+  6–15% circling. It is set again when the run ends, and he circles `ringHold` at least before he
+  plants again: circling 23–27% of the time, runs a minute about the same (18–19, from 19–21).
+- **The run is a lunge through you, not a hook.** It homed on the goat for its whole time, turned
+  back after a goat it had passed, and its whisker snapped off walls — the red line on the floor came
+  out as a hook with a corner in it ("как собака так планирует движение"). It homes only while you are
+  ahead, bends round a corner no faster than `whiskTurn`, and ends `overrun` (1.5) tiles past you; the
+  line on the floor is the same steps.
+- **After the run he breaks away round the ring** (`breakOut`) and slides out of it (`skid`), where he
+  used to stop dead and back off. Hysteresis on the ring's edge (`ringOut`), a slope for how hard he
+  closes on it, `sideHold` between two wheels, a packmate only counts as bunching inside `mateArc`.
+- **Running, he bobs** (`dog.gait`, `dog.bob`): the pixel hound has no stride on the sheet.
+
+### THE DARK
+
+- **Its own level** (`DARK_LEVEL`). It was any floor with the lamps out and its curve cut by a
+  factor. It is one floor now, THE FORK's other flight, played in THE THRESHING FLOOR's place: its own
+  canon, THE LAMP, with five rooms built round their light (the well, the low vault, the cellblock, the
+  chapel, the store); its own crowd — hounds and seers weighted up, the dark's own, and never a rifle;
+  six men a room at most; its own curve, doors, palette, par and best score. 82 threat to THE
+  THRESHING FLOOR's 109 (75%; `balance.js` holds it between 70% and 100% of it).
+- **A lamp or two in every room** ("1-2 торшера в комнате"): every room with men, and every arena
+  and rest room, stands one, two in a big room, counting any flame of its own — none left black on
+  purpose any more. The lamp is the choice: it shows them to you and you to them, and a headbutt puts
+  it on the floor alight and then the room is black.
+- **A lantern on the wall by every door** ("настенный — и там всегда видимость"): a small light that
+  nothing puts out, on an iron arm off a side wall or a plate on the far one, in pixels. The way in
+  and the way on can always be seen — and a goat in a doorway can be.
+- **The walls round you are drawn** ("более четкие контуры стен"): inside your hearing every face
+  where floor meets stone gets a line of cold light, strongest at your feet.
+- **The eyes carry** ("подсветить глаза"): a hound's and a seer's eyes are a bigger cell with a
+  wider glow round it.
+- **LEVELS**: THE DARK has its own row (and `#dark` starts it); the dark switch that played any floor
+  dark is gone. The floor in front of THE FORK's two flights names where each goes.
+- **A rifle aimed through the dark** ("как в темноте стрелок целится?") on a floor painted black by
+  the dev drawer's DARK: the paint left the cult seeing by daylight. The cult is in the dark wherever
+  it is drawn now (`game.inDark`), and THE DARK itself has never had a rifle (`GEN_RULES.dark`).
+- **Silhouettes**: a wall crack, a lantern and a grate are no longer flattened into black shapes
+  standing in the room, and the stand of arms' glow no longer comes out as a black cloud.
+
+---
+
 ## 1.64 — the cave's teeth and the stairs in pixels
 
 - **The cave's teeth.** A spire was the environment pack's stalagmites standing on two smooth blood

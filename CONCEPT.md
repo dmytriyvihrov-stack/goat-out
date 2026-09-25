@@ -29,11 +29,14 @@ the way.
 3. **Clunky on both sides.** Every attack telegraphs and every attack has recovery. Your defence is
    movement, geometry, a held man, and one clumsy roll.
 4. **One life, new level.** Death regenerates the level from a new seed in under a second. Nothing is
-   memorised, everything is improvised.
+   memorised, everything is improvised. From the second floor, the middle gate holds how far you got:
+   a death past it comes back to that gate of the regenerated floor, never to the layout you died in.
 5. **Noise is a system.** Every loud thing has a radius and pulls men toward it: bells, pots, gunshots,
    a door coming off its hinges. The scream is the exception — it is the one loud thing that makes no
    noise at all.
 6. **Six verbs, forever.** Upgrades bend numbers or change what a button does. They never add a button.
+   One exception was made on purpose (18 Sep 2026): a talisman with a use of its own — the boomerang,
+   the strange symbols, the straw effigy — puts it on Q, a key that does not exist until one is worn.
 
 ---
 
@@ -53,12 +56,12 @@ it out instead, and the first screen is a menu.
 
 | Input | Verb |
 |---|---|
-| WASD / left thumb | Move. Momentum-heavy: 0.15 s to top speed, 0.25 s to stop. Faster than any cultist. |
+| WASD / left thumb | Move. Momentum-heavy: 0.15 s to top speed, 0.25 s to stop. Faster than a man once he has a run-up behind him; a hound is always quicker. |
 | Mouse / auto-aim | Aim. On touch the aim follows your run and snaps onto men within about five tiles. |
 | Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.38 s recovery, no cancel. Deliberately blunt out of the pen: short reach, little throw behind it, and long enough on the end that a second man walks in on it. A man thrown into a man standing next to him kills him, and dies with him if he arrived fast enough. |
 | Hold right click / GRAB | Carry a box, a blade or a shield. **A man is a soul away** — until BY THE COLLAR is swallowed the mouth takes objects and nothing else. |
-| Release | Throw. A thrown man kills what he hits and dies on the wall. Your mouth is then empty for about 1.3 s. |
-| E / ROLL | A clumsy sideways tumble, brief mercy frames, a stagger you must eat, about 1.3 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. The one verb that is whole out of the pen; **DEAD WEIGHT** is what its soul buys, and everything the tumble goes through loses its head. |
+| Release | Throw. A thrown man kills what he hits and dies on the wall. Your mouth is then empty for about 1.6 s. |
+| E / ROLL | A clumsy sideways tumble, brief mercy frames, a stagger you must eat, about 1.6 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. The one verb that is whole out of the pen; **DEAD WEIGHT** is what its soul buys, and everything the tumble goes through loses its head. |
 | Space / BAAH | A noise. Every man who hears it walks to the spot you made it at, which empties one end of a room and fills the other. **THE FULL THROAT** turns it into a blow that dazes everyone in earshot; **DRAGON BREATH** turns it into fire. You get one of the two. |
 
 **Two of the four buttons start half-shut, and the souls open them.** A goat out of a pen can run, put
@@ -80,16 +83,14 @@ visible eye. Facing left he is mirrored rather than turned over, so the horns st
 **His wife** appears only in the opening scene: wool where he has a coat, a dark face, no horns, no
 beard, and the same marigold collar. She bleats in a higher voice than he does.
 **Cooldowns exist to stop a verb becoming a held button.** Headbutt pays with its recovery; throw and roll
-pay with a beat of about a second and a third. Nothing is on a global cooldown and nothing is queued: if a
-button is lit it fires, and the corner rail is where you read which ones are lit.
+pay with a beat of about a second and a half. Nothing is on a global cooldown. A headbutt or a roll pressed a moment too early is kept for a
+breath and spent the instant he is free — the recovery is still eaten whole — and the corner rail is
+where you read which buttons are lit.
 
-**The skill rail** in the top-right corner is the goat's sheet: four icons for four verbs, each showing
+**The skill rail** in the bottom-right corner (the top right on a touch screen) is the goat's sheet: four icons for four verbs, each showing
 whether it is ready, how long until it is, and what the souls have done to it. A boon has to change its
 icon — Long Horns lengthens the horns there and on the goat, Dragon Breath turns the mouth into a cone of
 fire — so a build reads as a shape rather than as a list of names.
-
-He is drawn a quarter turn toward the camera: the head clear of the body, horns sweeping back and out
-past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 
 ---
 
@@ -97,15 +98,18 @@ past the outline, a beard off the chin and a rectangular pupil in a visible eye.
 
 | | Behaviour |
 |---|---|
-| **Bearer** | Melee. 0.58 s windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
-| **Brute** | A clubman built twice over: three killing blows, four when he is the one in the arena. A frame a third larger, iron spikes stood up along his back, a studded club, and notches over his head counting down. He is how level 1 says "some of them take more than one" without spending a boss on it, and he is unmistakable across a room — which is the point of him. |
-| **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the Butcher he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
-| **Hunter** | Rifle. Keeps five to eight tiles away, aims for 0.8 s with a visible line, bullets travel. Friendly fire is on and he does not care. |
+| **Bearer** | Melee. About half a second of windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
+| **Brute** | A clubman built twice over: three killing blows, four when he is the one in the arena. A big shape in a bone apron with a bull's skull for a mask and a cleaver (since 1.66 — the Butcher's old body), and notches over his head counting down. Seen from three tiles or more with a clear run, he plants, roars and charges where you are going; a charge into a wall stuns him for a free hit. He is how level 1 says "some of them take more than one" without spending a boss on it, and he is unmistakable across a room — which is the point of him. |
+| **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the ogre he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
+| **Hunter** | Rifle. Keeps five to eight tiles away, aims for most of a second with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
-| **Butcher** | Heavy. Three hits, and fire only ever costs him one of them however long he burns. Cannot be interrupted mid-swing, answers a stagger with a quick retaliation, and charges in a straight line after a visible windup. A charge into a wall stuns him for a free hit. Deals one heart. |
+| **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher) — a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit, and his own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
 
-**Arena bosses** carry an elite flag: they absorb three hits, going down and getting back up, and a Seer
-blinks clear each time. Every boss drops a soul.
+| **Wraith** | THE OSSUARY's, and the one thing in the game that is not there most of the time: mist, nothing to hit, and walls are not walls to it. It works round to the side you are not facing and only there becomes a body — committed, swinging, and solid for most of a second after. A wraith can also lie in a room disguised as a box or a tuft of grass. See THE OSSUARY below. |
+
+**Arena bosses** carry an elite flag: a Seer or a wraith in the ring absorbs three hits, going down and
+getting back up (a Seer blinks clear each time); a brute in the ring takes four, and the ogre his own
+four. A boss who carries one of the level's souls glows, and pays it out when he goes down.
 
 **They talk.** Short barks over their heads: on first sight of you, when you are close and they have not
 seen you yet, when a scream pulls them somewhere, when they commit to a swing, when a man goes down in
@@ -132,7 +136,7 @@ which is why roughly one man in seven crossing the Mill still rides it into a wa
 is that the room is dangerous to both sides, and the cult is only mostly careful. Hounds read a room
 better than any of them.
 
-**Anything that takes more than one hit shows it.** Butcher, Seer and arena elites carry health notches
+**Anything that takes more than one hit shows it.** The ogre, the brute, the Seer and arena elites carry health notches
 over their heads, so what is left of a man reads off the man.
 
 ---
@@ -148,42 +152,68 @@ rooms are bought with
 threat rather than with bodies — a rifle costs more than a clubman, a mage more than a rifle — off a
 curve that runs from the level's first fighting room to its last. So a later room is both fuller and
 nastier, and a later level is harder than the one before it. Caps keep any single room readable: one
-mage, one champion, two rifles, seven men. `node tools/balance.js` prints what the numbers produce and
-fails when a rule breaks.
+mage, one champion, two rifles, seven men — raised floor by floor where a floor is built to be crowded
+(eight or nine on the late ones). `node tools/balance.js` prints what the numbers produce and fails when a
+rule breaks.
 
-Seven levels. Every level holds arena bosses, one Mill room near the middle, and milk bowls that restore
-a heart. The later ones add a Gallery of posted rifles, a Great Hall, a killbox, spike floors, one level
-built the other way round — almost no walls, and furniture instead — and one whose floor is not all
-there.
+Eight floors, and two more that stand in for one of them (THE DARK and THE TRIP, below). Every floor holds
+arena bosses, one Mill room near the middle, and a tuft of grass every few rooms that gives a heart back.
+The later ones add a Gallery of posted rifles, a Great Hall, a killbox, grating that bites, one floor built
+the other way round — almost no walls, and furniture instead — and one whose floor is not all there.
 
 **Every level is about one thing.** Each has a canon — one idea — and at least half of its ordinary
 rooms are built round it: STONE on THE ALTAR (pillars and corners; the wall is the weapon), FIRE on
-THE YARD (coals and straw in every room, before the mage brings his own), THE LINE on THE ROAD (long
+THE YARD (coals and straw in every room, before the mage brings his own), THE HOLLOW on THE CAVE (no
+wall runs straight, so a man thrown along the rock slides), THE LINE on THE ROAD (long
 sightlines and hard cover, and the strip a rifle cannot see), OPEN GROUND on THE THRESHING FLOOR, THE
 FUNNEL on THE BRIDGE (every room narrows somewhere, and seven men are one man in a doorway), THE DROP
 on THE RAFTERS, and THE NICHE on THE OSSUARY (a body cannot form inside stone, so the rooms are stone to
-put your back to with open floor between). The other half of a level's rooms is the mix: the plain
-rooms and the canons of every level before it, never an idea the run has not reached. So the first
-floor you fight on in any level is its idea, and the back half of the game is everything it has taught
-you, shuffled. The dev drawer's RULES page shows the split for any level, room by room.
+put your back to with open floor between); THE LAMP is THE DARK's. The rest of a level's ordinary rooms
+are the mix: the plain rooms and the canons of every level before it, never an idea the run has not
+reached. On the floors crowded with set pieces (THE ROAD, THE BRIDGE) the canon takes every ordinary room
+there is and no mix is left. Within a pool a floor walks from its tightest rooms to its most open ones,
+so a level opens up as it goes. The dev drawer's RULES page shows the split for any level, room by room.
 
-**The killbox**, late on the four levels that have rifles. A wide room with almost nothing in it and two
+**The killbox**, late on the five floors that have rifles. A wide room with almost nothing in it and two
 rifles posted on the far side of it, watching the door you have to come in by. A posted man sees a good
 deal further than one wandering a room and he does not leave his post: he turns on the spot and fires
 whenever he has the shot. There is a shield on a stand beside the door, two of their own on your side of
 the room to pick up and carry in front of you, two bits of cover halfway across, and the corridor behind
 you. The room asks which of those you trust.
 
+In run order (read off `LEVELS` in `js/tuning.js`; a room count includes the first room, the arenas and
+the rest rooms):
+
 | | Rooms | Canon | Regular enemies | Bosses |
 |---|---|---|---|---|
-| **THE ALTAR** | 12 | Stone | Bearers, brutes | Brute, Butcher |
-| **THE YARD** | 12 | Fire | Bearers, brutes, hounds, Seers | Butcher, elite Seer |
-| **THE ROAD** | 14 | The line | All five | Two Butchers |
-| **THE THRESHING FLOOR** | 14 | Open ground | All five, mixed | Elite Seer, Butcher, brute |
-| **THE BRIDGE** | 16 | The funnel | All five, mixed | Butcher, elite Seer, Butcher |
-| **THE RAFTERS** | 16 | The drop | All five, mixed | Elite Seer, Butcher, brute |
-| **THE OSSUARY** | 16 | The niche | Wraiths, and a garrison | Butcher, elite wraith, elite Seer |
-| **THE CAVE** | 15 | The hollow | Everything, hounds heavy | Butcher, brute, elite Seer |
+| **THE ALTAR** | 13 | Stone | Bearers, brutes | Brute, ogre |
+| **THE YARD** | 12 | Fire | Bearers, brutes, hounds, Seers | Ogre, elite Seer (sealed in) |
+| **THE CAVE** | 13 | The hollow | Bearers, brutes, hounds heavy, Seers | Ogre, brute |
+| **THE ROAD** | 14 | The line | All five, rifles new | Two ogres |
+| **THE THRESHING FLOOR** | 13 | Open ground | All five | Elite Seer, ogre, brute |
+| *or* **THE DARK** | 12 | The lamp | Bearers, brutes, hounds and Seers heavy; never a rifle | Elite Seer, ogre, brute |
+| **THE BRIDGE** | 15 | The funnel | All five | Ogre, elite Seer, ogre |
+| **THE RAFTERS** | 15 | The drop | All five | Elite Seer, ogre, brute |
+| **THE OSSUARY** | 15 | The niche | Wraiths, and a garrison | Ogre, elite wraith, elite Seer |
+
+**THE CAVE** is third: out under the compound the ground stops being built. No wall runs straight and
+no corner is square, so a man thrown along a bend slides round it and dies only on what he hits square —
+a boulder, the end of a bend. Tall grass hides whoever is in it, the goat included, and stone teeth at
+the foot of the rock kill a man and cost the goat a heart. Nothing new walks in; the ground is the new
+thing, the last floor about the ground before the rifles make it about what stands on it.
+
+**THE FORK and THE DARK.** THE ROAD's last room has two flights of stairs. The lit one climbs to THE
+THRESHING FLOOR; the cold one to THE DARK, which is played in its place: cellars where nothing is lit
+but what burns. Every room with men in it stands a lamp or two, and the lamp is the choice — it shows
+them to you and you to them, and a headbutt puts it on the floor alight and then the room is black. A
+lantern on the wall by every door is never put out. Out of the light the cult sees you only close and
+hunts by what it hears. Fewer men, no rifles, hounds and Seers oftener.
+
+**THE TRIP.** A tuft of pale mushrooms lies on some floors. Eat it and the next floor is played as THE
+TRIP: a glowing cave where every key is the other way round — the stick reversed, the horns and the
+teeth swapped, the tumble and the voice swapped — with the first floor's men and the first floor's
+curve, because what is asked of the hands is already the whole difficulty. Take THE FORK's dark flight
+after eating them and the dark wins: the trip was the lit floor's.
 
 **THE OSSUARY** is the last ground and the only one whose enemy cannot be fought on the terms the rest
 of the game taught. A wraith is mist: nothing reaches it, it reaches nothing, and it goes through the
@@ -212,15 +242,17 @@ the interesting half of one. Nobody paths into a hole, so the men take the long 
 except the one in a crowd who reads it wrong, which is the man you can lead over the edge.
 
 **The Great Hall**, late on THE ROAD and again on THE BRIDGE: a single room 38 by 22 tiles holding two
-Mills, rows of pillars, hay fields, tables, braziers, lamps, a bell and fifteen men or more. The exit is
+Mills, rows of pillars, hay fields, tables, braziers, lamps, a bell and a crowd — about seven men on THE
+ROAD, fifteen or more on THE BRIDGE. The exit is
 on the far side of all of it.
 
 **The Gallery**, on the same two levels: a long room of pillar cover with rifles posted apart from one
 another, plus lone rifle posts scattered through ordinary rooms. A rifle on its own is a different
 problem from a rifle in a pile, and both levels ask you to solve it.
 
-**Generation.** A chain of hand-authored room templates joined by two-wide corridors, always trending
-up and right, validated by flood fill. Templates are randomly flipped on both axes. Enemy budget ramps
+**Generation.** A chain of hand-authored room templates joined by two-wide corridors (five on THE
+THRESHING FLOOR), running left to right with now and then a room hung above or below the last one up a
+shaft, validated by flood fill. Templates are randomly flipped on both axes. Enemy budget ramps
 toward the exit. Nothing spawns within five tiles of the start. Death means a new seed; the seed is
 printed in the corner.
 
@@ -257,9 +289,10 @@ comes up in the dark, and the light comes back on the pen with the goat lying wh
 up again. Nothing in it touches the simulation: the level underneath is exactly the one you would have
 got. Any button after the first moment skips to the dark. A death does not replay it.
 
-**The two rooms after it** carry the controls painted on the floor, the way Ape Out does it, split over
-both and with no men in either so they can be read. There is no line about the mouse: a crosshair on a
-top-down game explains itself.
+**The controls are painted on the floor** where each verb is first needed, the way Ape Out does it: the
+pen says how to move, the floor under the first man says what the headbutt does, the room that stands a
+blade in front of you says GRAB, and ROLL is written in a room before the first arena. There is no line
+about the mouse: a pointer on a top-down game explains itself.
 
 ---
 
@@ -277,12 +310,12 @@ top-down game explains itself.
   door, a gong — and a pot into a lamp post takes the lamp over, which is how you start a fire across
   a room without crossing it.
 - **Bells** call the entire level, and ring for anything that hits them.
-- **Doors** block corridors and take three blows. The goat goes through on the third and floors whoever
-  waited behind it; cultists who pile up eventually shoulder them open from their side. Two extra beats
+- **Doors** block corridors. A plank door goes on the first blow, an iron one (from THE YARD on) takes
+  three, and the goat goes through on the last and floors whoever waited behind it; cultists who pile up eventually shoulder them open from their side. Two extra beats
   of being held still in a corridor, with whatever heard the first blow already coming, is what the
   door is for. Nothing flies through a shut one: a pot breaks on it, a blade snaps on it, a shield
-  rings off it. A table sliding at speed, or a Butcher on a charge, takes it off its hinges.
-- **Spike floors**, from the third level on. The teeth come up where you have already been: crossing a
+  rings off it. A table sliding at speed, or a brute on a charge, takes it off its hinges.
+- **Grating**, from THE ROAD on. The teeth come up where you have already been: crossing a
   plate arms it and it bites a beat later, so what it takes is the ground you have just left — which is
   the ground whoever is chasing you is standing on. A man dies on them and the goat pays a heart, and
   a man held over one as the teeth come is taken out of your mouth by them.
@@ -293,12 +326,11 @@ top-down game explains itself.
   off its hinges, and stops on anything a man would: a brazier, the wheel, another table.
 - **Oil lamps** topple into a pool of fire, and a lamp post is not a pillar: a body thrown into one
   takes it over and the oil goes down where the body is about to land. So does a pot, a thrown blade,
-  a Butcher on a charge, or fire that has burned its way up to the post.
+  a brute on a charge, or fire that has burned its way up to the post.
 - **Stands of arms** hold a sword or a shield, and they are rare: one to an arena, about one ordinary
   room in six, and nothing at all on level 1 until halfway in. Nothing you take off one survives being
-  used. A thrown blade goes into whatever it finds and snaps there, and a blade thrown at a wall is a
-  blade thrown away. A shield is worth three — men flattened, bullets turned, or any mix — and
-  splinters on the third. A carried shield covers an arc across the goat's front: rounds and clubs
+  used up. A thrown blade goes into whatever it finds, and a blade thrown at a wall is a blade thrown
+  away. A shield is worth a few — men flattened, bullets turned, or any mix — and then splinters. A carried shield covers an arc across the goat's front: rounds and clubs
   arriving anywhere he is facing are turned, each turn spends a charge, and the man who swung into it
   stands there holding the shock of it. His back is still his back. Neither blade nor shield is picked
   up twice, so a stand is a moment the room offers you rather than a tool you carry through the level.
@@ -307,7 +339,7 @@ top-down game explains itself.
   man held into the arm, and the wheel takes him out of your mouth and throws him for you. Its room is
   deliberately taller than the arms are long: there is a lane along the top and the bottom, so the room
   is crossed by reading it.
-- **The Butcher's charge** is answered by all of it. A door comes off its hinges and he keeps going; a
+- **The brute's charge** is answered by all of it. A door comes off its hinges and he keeps going; a
   table goes ahead of him at speed, into whoever was behind it; a lamp goes over and he runs into his
   own oil; a brazier lights him; and the gong, the hub of the wheel or a bar of the pen stops him the way
   a wall does, for the same free hit.
@@ -322,32 +354,40 @@ points in it — the compound's own dead, kept in a man — and it is violet bec
 colour for what should not exist: witchfire, the Seer's runes, the wraith. It was a tome, which asked
 the player to believe that a goat reads.
 
-**A level gives up an authored number of them**: one on level one, two on every level after, thirteen
-across a run against sixteen boons, so no run gets everything and no two runs are the same goat. The
-gated arena is paid first, then the vault, then the last bosses of the level; every other boss leaves
-milk. **A man carrying one is lit** — an amber haze that breathes, a ring at his feet, and red eyes —
+**A level gives up an authored number of them**: two on every floor, less the one the mouse stands in for
+on THE YARD, THE ROAD and THE BRIDGE — thirteen across a run, and now and then a boss who is lit or a
+room that gives one up adds another — against twenty-five boons and a build that holds fourteen, so no
+run gets everything and no two runs are the same goat. The level's gates are paid first (THE ALTAR has
+one, and its second soul is the ogre's); the
+vault holds grass and every boss leaves milk, unless a soul was left over for them. **A man carrying one is lit** — an amber haze that breathes, a ring at his feet, and red eyes —
 so the one man in a room worth crossing the room for says so from across it.
 
 A soul offers **three of one kind**: either three actives or three passives. The first soul of a run
-always offers the roll, and while any button is still shut the cards lean hard toward the actives.
-Boons carry across levels and a death takes none of them.
+always offers actives, and while any button is still shut the cards lean hard toward them. A build
+holds one active and two passives per button. Boons carry across levels; a death takes back only the
+ones swallowed on the floor it happened on (past the middle gate, only those swallowed after it).
 
-**Actives** change what a button does, and three of them switch one on.
+**Actives** change what a button does (`BOONS` in `js/tuning.js` is the list; the BOONS tab of the dev
+drawer shows every one with its numbers).
 
 - **By the Collar** lets you take a man in your teeth at all.
-- **The Full Throat** turns BAAH from a noise into a blow.
-- **Tuck and Roll** answers the fourth button.
-- **Dragon Breath** turns the scream into a cone of fire instead. The gauge goes red.
-- **Bomb Charge** makes anyone you headbutt detonate a moment later.
-- **Devour** lets you keep holding a man until you tear him open, with a chance to feed.
+- **The Full Throat** turns BAAH from a noise into a blow; **Dragon Breath** into a cone of fire;
+  **Venom Spit** into a glob that poisons.
+- **Long Horns**, **Bomb Charge** and **Splash** change what the horns do: antlers, a man who explodes
+  if he dies in the next moment, poison on whoever stands behind you.
+- **Devour**, **Venom Jaw** and **Charged** change what the mouth does to what it holds: tear a man open,
+  drip poison along a throw, or throw something that explodes where it stops.
+- **Dead Weight**, **Sour Tumble** and **Leapfrog** change the roll: everything it goes through loses its
+  head, leaves poison behind, or vaults a man instead of going round him.
 
-**Passives** sharpen what you already have: Thick Hide, Long Horns, Iron Skull, Strong Jaw, Living
-Shield, Raw Throat, Sure Hooves, Loose Joints, Dead Weight, Ember Coat.
+**Passives** sharpen what you already have: Thick Hide, Four Stomachs, Iron Skull, Strong Jaw, Living
+Shield, Cold Eye, Kindling, Raw Throat, Sure Hooves, Loose Joints, Ember Coat, The Oracle.
 
-**The soul gate**, on level one only: the brute's arena is shut behind a barred door that no blow
-opens, and the soul he is carrying is the bar. It is there because the first soul a run is offered lies
-on the floor of a room whose fight is already over, and it is very easy to walk past a thing like that
-and meet level two with none of the three buttons still shut.
+**The gates.** Every floor from THE YARD on stops you twice (THE ALTAR once: the rest before its ogre is
+open): a quiet room after a fight, its way on barred by a door no
+blow opens, and the soul lying on its floor is the bar. It is there because a soul lying on the floor of
+a room whose fight is already over is very easy to walk past, and a goat who walks past them meets the
+late floors with his buttons still shut. On the mouse's floors one of the two is her room instead.
 
 ---
 
@@ -357,9 +397,10 @@ and meet level two with none of the three buttons still shut.
 straight down, while creatures stand upright inside it. Roughly 14 tiles across on a phone in portrait,
 19 in landscape, 24 on desktop. The view pulls back a little when you run.
 
-**Art.** Hard silhouettes in a seven-colour palette. Every enemy type reads differently at a glance:
-Bearer is a circle with a club, Seer a tall pointed hood with a lit staff, Hunter a low hood with a long
-rifle, Butcher a big shape in a bone apron with horns on his mask, the hound a long low four-legged thing
+**Art.** Pixel 2.5: hand-pixelled sprites on one grain, eight facings, hard cut-out edges
+(`ART_HANDOFF.md`). Every enemy type reads differently at a glance: the Bearer a hooded man with a club,
+Seer a tall pointed hood with a lit staff, Hunter a low hood with a long
+rifle, the brute a big shape in a bone apron with horns on his mask, the ogre a hunched green half-beast in a red hood and mantle, the hound a long low four-legged thing
 with a lit spine and two yellow eyes. The goat reads as a goat from its snout, beard, swept horns and
 rectangular pupils — body, a short dark neck and a round head, each edged in dark so the pieces never
 merge into one blob from straight above.
@@ -370,8 +411,9 @@ The health hearts use the same language.
 **Blood is paint.** Splats, bodies and scorch marks persist for the whole level on a decal canvas. By
 the end the level is a record of the run.
 
-**Juice.** Every kill throws the camera away from the body, shoves the lens in, flashes the screen and
-sprays chunks that stain the floor where they land. Kills inside 2.4 s of each other stack: the hold gets
+**Juice.** Every kill kicks the camera a little away from the body, shoves the lens in, flashes the
+screen and sprays chunks that stain the floor where they land. The screen shakes only when the goat
+loses a heart. Kills inside 2.4 s of each other stack: the hold gets
 longer, and at three the game goes briefly slow.
 
 **Score.** Every level ends on its own: pace against the level's par, multiplied by what you killed on
@@ -399,6 +441,8 @@ tapping repeated action rhythms, and inspecting/exporting the sixteen-bar score 
 The original threat-driven ritual score,
 including the Hunter shaker, remains selectable in SETTINGS by switching LAYERED MUSIC off.
 No audio assets at all. `MUSIC.md` records both arrangements and how to extend the new one.
+Every sound effect is a small physical model rendered on the spot (`js/foley.js`) — struck wood and
+iron, a throat through formants, shaped noise — dry, short and quiet, through one small stone room.
 
 **What you can see.** A room is dark until you walk into it and then it stays open for good; on top of
 that, what is standing behind a pillar, a stub wall or the corner of a room is dark until you step round
@@ -409,8 +453,8 @@ you, comes for you, and arrives.
 
 ## Not built yet
 
-Mirrors as an environmental puzzle, pixel art proper, gamepad support, a Priest boss, and the later acts
-sketched in the original brief. Enemies are still drawn with canvas primitives rather than sprites.
+Mirrors as an environmental puzzle, gamepad support, a Priest boss, and the later acts sketched in the
+original brief.
 The opening scene takes his wife deeper into the compound and nothing after it mentions her: whether
 she is somewhere in the building to be found, and what the ending does about it, is undecided.
 

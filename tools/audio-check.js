@@ -179,3 +179,25 @@ assert.equal(silent.events.length,0);assert.equal(silent.a.cue,null,'muting cons
 console.log('PASS: per-type rhythms and exact weighted counts, shared caps, whole-room fire/traps, tails, delayed/bounded events, mute, isolated Music Lab, legacy and scheduler. Maximum simultaneous primary onsets: '+onsetMax);
 console.log('PASS: first-floor variants, clear/death/soul phrases, game-state lifecycle and score export.');
 console.log('PASS: idle / spotted / chase / combat on both themes, repeated gestures, audible heavy harmonics, two-mill limit and full score.');
+
+// The effects: every Foley recipe renders in node, finite, not empty and not silent, and every name
+// audio.js asks `foley(` for is a recipe. Without this the whole check passed while no sound effect
+// in the game was ever exercised (js/foley.js was not loaded at all).
+{
+  const fctx = vm.createContext({ console, Math, Float32Array });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', 'foley.js'), 'utf8'), fctx);
+  const F = vm.runInContext('Foley', fctx), names = Object.keys(F.recipes);
+  let secs = 0;
+  for (const n of names) {
+    const buf = F.render(n, {});
+    let peak = 0, nan = 0;
+    for (let i = 0; i < buf.length; i++) { const v = buf[i]; if (!Number.isFinite(v)) nan++; else if (Math.abs(v) > peak) peak = Math.abs(v); }
+    assert(buf.length > 0, n + ' renders nothing'); assert.equal(nan, 0, n + ' renders non-finite samples'); assert(peak > 1e-4, n + ' is silent');
+    secs += buf.length / F.rateOf(n);
+  }
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'audio.js'), 'utf8');
+  const asked = new Set([...src.matchAll(/foley\(\s*'([a-zA-Z]+)'/g)].map((m) => m[1]));
+  const missing = [...asked].filter((n) => !names.includes(n));
+  assert.equal(missing.length, 0, 'audio.js asks for recipes that do not exist: ' + missing.join(', '));
+  console.log('PASS: ' + names.length + ' foley recipes render (' + secs.toFixed(1) + ' s of tail), and all ' + asked.size + ' names audio.js asks for exist.');
+}

@@ -1,0 +1,83 @@
+CONFLICT | README.md:4 | levels in the game (intro) | Six | 8 | LEVELS.length
+ok | README.md:77 | levels in the game (What is in) | Eight | 8 | LEVELS.length
+ok | README.md:55 | pen blows, first time | seven | 7 | TUNING.prop.cage.hits
+ok | README.md:55 | pen blows, every run after | two | 2 | TUNING.prop.cage.againHits
+CONFLICT | README.md:109 | pen blows (A pen, not an altar) | Three | 7 | TUNING.prop.cage.hits
+CONFLICT | README.md:70 | hearts | Five | 4 | TUNING.goat.hp
+ok | README.md:114 | Great Hall width | 38 | 38 | GREAT_HALL_TEMPLATE
+ok | README.md:114 | Great Hall height | 22 | 22 | GREAT_HALL_TEMPLATE
+ok | README.md:124 | enemy types | Seven | 7 | THREAT keys
+ok | README.md:125 | brute blows | three | 3 | TUNING.champion.hp
+CONFLICT | README.md:126 | Butcher hits | three | 4 | TUNING.butcher.hp
+CONFLICT | README.md:136 | souls on level one | one | 2 | LEVELS[0].souls
+CONFLICT | README.md:147 | stands in a boss room | two | 1 | ARENA_TEMPLATE 'w' count
+CONFLICT | README.md:149 | carried shield turns bullets | three | 2 | TUNING.prop.weapon.uses.shield
+CONFLICT | README.md:156 | milk per level (fewest) | Two | 3 | max(heals, ceil((rooms-1)/heal.every)), fewest over levels
+CONFLICT | README.md:158 | shield worth (Stands of arms) | three | 2 | TUNING.prop.weapon.uses.shield
+ok | CONCEPT.md:56 | goat accel | 0.15 | 0.15 | TUNING.goat.accel
+ok | CONCEPT.md:56 | goat decel | 0.25 | 0.25 | TUNING.goat.decel
+ok | CONCEPT.md:58 | headbutt windup | 0.12 | 0.12 | TUNING.goat.headbutt.windup
+ok | CONCEPT.md:58 | headbutt recovery | 0.38 | 0.38 | TUNING.goat.headbutt.recovery
+ok | CONCEPT.md:60 | grab cooldown | 1.3 | 1.35 | TUNING.goat.grab.cooldown
+ok | CONCEPT.md:61 | roll cooldown | 1.3 | 1.35 | TUNING.goat.roll.cooldown
+CONFLICT | CONCEPT.md:100 | bearer windup | 0.58 | 0.46 | TUNING.bearer.windup
+ok | CONCEPT.md:101 | brute blows | three | 3 | TUNING.champion.hp
+ok | CONCEPT.md:101 | brute arena blows | four | 4 | TUNING.champion.bossHp
+ok | CONCEPT.md:102 | seer blink distance | five | 5.5 | TUNING.seer.blinkDist
+ok | CONCEPT.md:102 | seer blink trigger | three | 3.2 | TUNING.seer.blinkRange
+ok | CONCEPT.md:102 | seer hp | two | 2 | TUNING.seer.hp
+ok | CONCEPT.md:103 | hunter keep min | five | 5 | TUNING.hunter.keepMin
+ok | CONCEPT.md:103 | hunter keep max | eight | 8 | TUNING.hunter.keepMax
+CONFLICT | CONCEPT.md:103 | hunter aim | 0.8 | 0.88 | TUNING.hunter.aimTime
+CONFLICT | CONCEPT.md:105 | Butcher hits | Three | 4 | TUNING.butcher.hp
+ok | CONCEPT.md:107 | arena bosses absorb | three | 3 | TUNING.elite.hp (Butcher bosses are not elite and keep 4, gen.js:770)
+ok | CONCEPT.md:150 | cap: mages | one | 1 | ENCOUNTER.cap.seer
+ok | CONCEPT.md:151 | cap: rifles | two | 2 | ENCOUNTER.cap.hunter
+ok | CONCEPT.md:151 | cap: men | seven | 7 | ENCOUNTER.cap.men
+CONFLICT | CONCEPT.md:154 | levels (Levels section) | Seven | 8 | LEVELS.length
+CONFLICT | CONCEPT.md:170 | killbox levels | four | 5 | LEVELS with killboxAt
+CONFLICT | CONCEPT.md:179 | rooms THE ALTAR | 12 | 10 | LEVELS[THE ALTAR].rooms
+ok | CONCEPT.md:180 | rooms THE YARD | 12 | 12 | LEVELS[..].rooms
+ok | CONCEPT.md:181 | rooms THE ROAD | 14 | 14 | LEVELS[..].rooms
+CONFLICT | CONCEPT.md:182 | rooms THE THRESHING FLOOR | 14 | 13 | LEVELS[..].rooms
+CONFLICT | CONCEPT.md:183 | rooms THE BRIDGE | 16 | 15 | LEVELS[..].rooms
+CONFLICT | CONCEPT.md:184 | rooms THE RAFTERS | 16 | 15 | LEVELS[..].rooms
+CONFLICT | CONCEPT.md:185 | rooms THE OSSUARY | 16 | 15 | LEVELS[..].rooms
+CONFLICT | CONCEPT.md:186 | rooms THE CAVE | 15 | 13 | LEVELS[..].rooms
+ok | CONCEPT.md:214 | Great Hall width | 38 | 38 | GREAT_HALL_TEMPLATE
+ok | CONCEPT.md:232 | stair door blows | three | 3 | TUNING.prop.door.stairHits
+ok | CONCEPT.md:246 | pen blows | Seven | 7 | TUNING.prop.cage.hits
+ok | CONCEPT.md:271 | brazier rebuild | three | 3 | TUNING.prop.brazier.spillCd
+CONFLICT | CONCEPT.md:280 | door blows | three | 1 | TUNING.prop.door.hits (iron 3, vault 4)
+CONFLICT | CONCEPT.md:285 | spikes from level | third | 4 | first LEVELS entry with spikes > 0
+CONFLICT | CONCEPT.md:300 | shield worth | three | 2 | TUNING.prop.weapon.uses.shield
+CONFLICT | CONCEPT.md:325 | souls on level one | one | 2 | LEVELS[0].souls
+ok | CONCEPT.md:325 | souls a run (budget) | thirteen | 13 | sum(LEVELS.souls) minus one per shop level (game.js:1235)
+CONFLICT | CONCEPT.md:326 | boons in the deck | sixteen | 25 | BOONS.length
+ok | CONCEPT.md:374 | combo window | 2.4 | 2.4 | TUNING.juice.comboWindow
+ok | CLAUDE.md:689 | souls per level | two | 2 | LEVELS[*].souls
+ok | CLAUDE.md:710 | artifacts | twenty-one | 21 | ARTIFACTS.length
+ok | CLAUDE.md:89 | talismans (file map) | seventeen | 17 | ARTIFACTS.length - 4 original
+ok | CLAUDE.md:256 | canon min rooms | four | 4 | CANON.minRooms
+ok | CLAUDE.md:367 | secret hits | 2 | 2 | TUNING.prop.secret.hits
+ok | CLAUDE.md:356 | stair hits | 3 | 3 | TUNING.prop.door.stairHits
+ok | CLAUDE.md:356 | vault hits | 4 | 4 | TUNING.prop.door.vaultHits
+ok | CLAUDE.md:351 | clock door time | 9 | 9 | TUNING.score.perRoom
+ok | CLAUDE.md:590 | spike run min | 9 | 9 | TUNING.prop.spike.run[0]
+ok | CLAUDE.md:503 | boon slots active | one | 1 | BOON_SLOTS.active
+ok | CLAUDE.md:696 | shop wares | Three | 3 | TUNING.shop.wares + the pail
+ok | MUSIC.md:3 | bpm | 118 | 118 | audio.js:189 this.bpm
+ok | MUSIC.md:27 | family cap | six | 6 | TUNING.audio.layers.maxPerFamily
+ok | MUSIC.md:13 | pursuit radius (tiles) | eight | 8 | layers.pursuitRadius / TILE
+ok | MUSIC.md:35 | fade seconds | 0.3 | 0.3 | layers.fadeSeconds
+ok | MUSIC.md:113 | queue cap | twelve | 12 | layers.eventQueueCap
+ok | MUSIC.md:101 | grass radius (tiles) | four | 4 | layers.grassRadius / TILE
+ok | MUSIC.md:101 | grass voices | three | 3 | layers.grassVoices
+ok | MUSIC.md:5 | late theme from level | 5 | 5 | layers.lateFromLevel
+ok | MUSIC.md:78 | spotted bars | two | 2 | layers.spottedBars
+ok | MUSIC.md:29 | mill cap | two | 2 | layers.maxMills
+CONFLICT | tuning.js (comment over LEVELS):1896 | souls a run | fourteen | 13 | sum(LEVELS.souls) minus shop levels
+CONFLICT | tuning.js (comment over LEVELS):1896 | boons | sixteen | 25 | BOONS.length
+CONFLICT | JUICE.md:20 | rumble longest (ms) | 60 | 80 | largest vibe(n) in js/*.js (grep: 80, game.js:2272)
+CONFLICT | JUICE.md:20 | rumble shortest (ms) | 8 | 6 | smallest vibe(n) in js/*.js (grep: 6)
+claims 82, located 82, compared 82, conflicts 29

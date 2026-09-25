@@ -1,0 +1,8 @@
+THE ALTAR                24.7   24.7
+THE YARD                 42.8   42.6
+THE CAVE                 65.6   65.7
+THE ROAD                 96.6   97.4
+THE THRESHING FLOOR     109.1  108.3
+THE BRIDGE              142.0  141.8
+THE RAFTERS             153.2  152.8
+THE OSSUARY             163.8  163.3
