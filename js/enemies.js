@@ -27,7 +27,7 @@ class Enemy {
     this.scald = false;                                         // stunned when the fire caught: it hits twice
     this.gotUpFrom = null;
     this.scripted = false; this.knife = false;                  // the two in the opening scene: moved by hand, one with a knife
-    this.champion = false;                                      // the brute: three hearts and a frame that says so
+    this.champion = false;                                      // the butcher (the brute until 1.72): a charge, too heavy to carry
     this.watchful = false;                                      // posted to watch a door: no blind side, and he sees further
     this.sentry = false;                                        // the first man of a run: he holds his ground and never walks
     this.maxHp = this.hp; this.burnHearts = 0;
@@ -64,23 +64,23 @@ class Enemy {
     this.flipCd = 0; this.lane = null; this.laneT = 0;
   }
 
-  // What a kind will not answer to, with the brute reading his own list rather than the clubman's.
+  // What a kind will not answer to, with the butcher reading his own list rather than the clubman's.
   get immunity() { return this.champion ? TUNING.champion.immune : this.cfg.immune; }
   get blunderProof() { const im = this.immunity; return !!(im && im.blunder); }
-  // An attack number: the brute has his own arm, everybody else reads their own kind.
+  // An attack number: the butcher has his own arm, everybody else reads their own kind.
   atk(key) { return this.champion && TUNING.champion[key] !== undefined ? TUNING.champion[key] : this.cfg[key]; }
-  // How far a headbutt throws him: light kinds further, the brute and a man with a soul in him less.
+  // How far a headbutt throws him: light kinds further, the butcher and a man with a soul in him less.
   knockMul() {
     return (this.cfg.flingMul || 1) * (this.champion ? TUNING.champion.flingMul : 1) * (this.soul ? TUNING.soulBearer.flingMul : 1);
   }
   // How fast a wall has to be met to kill him. A heavy man is thrown `knockMul` as far, and the
-  // wall asks the same share less of him — or a brute carrying a soul (0.55 × 0.6 of a throw) left a
+  // wall asks the same share less of him — or a butcher carrying a soul (0.55 × 0.6 of a throw) left a
   // headbutt at nine tiles a second against a wall that wanted eleven, and could not be hurt at all.
   // Light men keep the full number: a hound flies further, not easier.
   splatLimit(game) {
     return TUNING.physics.splatSpeed * Talisman.splatMul(game) * Math.min(1, this.knockMul());
   }
-  // Too heavy or too much more than a man to be carried: the Butcher, the brute, a soul-bearer.
+  // Too heavy or too much more than a man to be carried: the ogre, the butcher, a soul-bearer.
   get unliftable() { return this.kind === 'butcher' || this.champion || !!this.soul; }
 
   // Mist. There is no body here to hit, hold, burn, push or knock over, and a wall is not a wall
@@ -92,7 +92,7 @@ class Enemy {
     // The rat ogre is not thrown by anything — not the horns, not the wheel, not a charge, not a
     // blast. No wall ever kills him, which is the whole of what makes him dear.
     // Nor is the ogre (the Butcher, 1.66): too heavy to go anywhere, which is what sets him apart
-    // from the brute, who does. Every heart he has is taken standing, while he is on his knees.
+    // from the butcher, who does. Every heart he has is taken standing, while he is on his knees.
     if (this.kind === 'ratogre' || this.kind === 'butcher') { this.aware = true; return; }
     this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true; this.flungBy = null; this.chain = 0;
     this.fromMouth = false;   // `Goat.throwHeld` sets it after this; anything else that throws him clears it
@@ -902,7 +902,7 @@ class Enemy {
     // Poison slows him twice over: his own clock (every windup, swing, recovery and reload runs at
     // `tempo`) and his stride. It is his time that is passed down, not the world's.
     const P = TUNING.status.poison, sick = this.poison > 0;
-    // Alight and not blundering, the Butcher and the brute come at you harder rather than running.
+    // Alight and not blundering, the ogre and the butcher come at you harder rather than running.
     const rage = this.burning > 0 && !this.ghosted ? (this.champion ? TUNING.champion.rage : this.cfg.rage) : null;
     const kdt = (sick ? dt * P.tempo : dt) * (rage ? rage.tempo : 1);
     if (this.state === 'flee' || this.state === 'decoyhit') Talisman.enemyState(this, kdt, game);
@@ -1023,7 +1023,7 @@ class Enemy {
     const g = game.goat, cfg = this.cfg, reach = this.atk('reach');
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
-    // The brute runs at you (`chargeStep`); the man holding a post never leaves it.
+    // The butcher runs at you (`chargeStep`); the man holding a post never leaves it.
     if (this.champion && !this.sentry && this.chargeStep(dt, game, sees)) return;
     if (this.state === 'chase') {
       const d = this.chaseGoat(game, this.speed, dt);
@@ -1764,7 +1764,7 @@ class Enemy {
     this.state = 'chase';
   }
 
-  // The brute's charge (the Butcher's until 1.66), run from `updateBearer`. Handles the frame and
+  // The butcher's charge (the ogre's until 1.66, when he was the Butcher), run from `updateBearer`. Handles the frame and
   // returns true while he is planting or running, or walking to a spot he means to run from; false
   // hands the frame back to the ordinary chase.
   chargeStep(dt, game, sees) {
@@ -1776,7 +1776,8 @@ class Enemy {
         if (e === this || e.dead || e.held || e.state === 'flung') continue;
         if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) e.fling(this.vx * 1.4, this.vy * 1.4, false);
       }
-      if (!g.dead && d < this.r + g.r + 2) {
+      // `hit` px past touching: running past him close is running into the cleaver (1.72).
+      if (!g.dead && d < this.r + g.r + C.hit) {
         if (Talisman.parry(game, this, 'charge')) return true;
         // Run into the shield: he stops on it and eats the parry, and the goat takes nothing.
         if (g.blockBlow(game, this)) { this.chargeCd = C.cooldown * game.mods.enemySlow; return true; }

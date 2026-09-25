@@ -1,6 +1,6 @@
 // The ogre (the Butcher's kind since 1.66): a hand-placed pixel unit in the recipe of `PROP_PIXELS`,
 // since the Pixel 2.5 atlas has no body for him. A hunched two-legged half-beast a head and a half
-// taller than the brute — olive hide, tusks, stub horns, a broken shackle on each wrist, no weapon but
+// taller than the butcher — olive hide, tusks, stub horns, a broken shackle on each wrist, no weapon but
 // his fists — and he is the cult's: its red hood with his horns through it, a ragged red mantle over
 // his shoulders with the cult's sign on the back, a red loincloth, its red bars on his chest.
 // Five views are drawn (front, front-diagonal, side, back-diagonal, back) and mirrored for the other

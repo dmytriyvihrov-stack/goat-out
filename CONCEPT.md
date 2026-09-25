@@ -99,17 +99,20 @@ fire — so a build reads as a shape rather than as a list of names.
 | | Behaviour |
 |---|---|
 | **Bearer** | Melee. About half a second of windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
-| **Brute** | A clubman built twice over: three killing blows, four when he is the one in the arena. A big shape in a bone apron with a bull's skull for a mask and a cleaver (since 1.66 — the Butcher's old body), and notches over his head counting down. Seen from three tiles or more with a clear run, he plants, roars and charges where you are going; a charge into a wall stuns him for a free hit. He is how level 1 says "some of them take more than one" without spending a boss on it, and he is unmistakable across a room — which is the point of him. |
-| **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything — two hits, two lightings, two throws — and unlike the ogre he can still be grabbed, carried and thrown. Arrives late and never two to a room. |
+| **Butcher** | (The brute until 1.72.) A clubman with a cleaver and a charge, too heavy to be carried: a big shape in a bone apron with a bull's skull for a mask (since 1.66 — the old Butcher's body, hence the name; that kind is the ogre now). One killing blow, like every man without the outline. Seen from three tiles or more with a clear run, he plants, roars and charges where you are going, and the run lands on anything close to its line, not only dead centre; a charge into a wall stuns him for a free hit. |
+| **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes one of anything, like every man without the outline, and unlike the ogre he can always be grabbed, carried and thrown. Arrives late and never two to a room. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for most of a second with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
 | **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher) — a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit — but not by the horns, which do nothing to him: a blade, the coals of a brazier, a bomb or a thrown body is what costs him a heart, and his arena always stands braziers and swords for it (on THE ALTAR a wide room with two pillars, so the idea reads). His own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
 
 | **Wraith** | THE OSSUARY's, and the one thing in the game that is not there most of the time: mist, nothing to hit, and walls are not walls to it. It works round to the side you are not facing and only there becomes a body — committed, swinging, and solid for most of a second after. A wraith can also lie in a room disguised as a box or a tuft of grass. See THE OSSUARY below. |
 
-**Arena bosses** carry an elite flag: a Seer or a wraith in the ring absorbs three hits, going down and
-getting back up (a Seer blinks clear each time); a brute in the ring takes four, and the ogre his own
-four. A boss who carries one of the level's souls glows, and pays it out when he goes down.
+**One rule for every kind (1.72).** A man without a yellow outline is one unit with one heart, whatever
+kind he is: any killing blow ends him. A **boss** — the man an arena is built round — is the champion
+version of his kind: a hard yellow pixel outline round the sprite, drawn a size bigger, and in the ring
+absorbs three hits, going down and getting back up (a Seer blinks clear each time). The ogre is only
+ever a boss and keeps his own four. Only a boss carries one of the level's souls: then he also glows
+amber, takes one more, and pays the soul out when he goes down.
 
 **They talk.** Short barks over their heads: on first sight of you, when you are close and they have not
 seen you yet, when a scream pulls them somewhere, when they commit to a swing, when a man goes down in
@@ -136,15 +139,15 @@ which is why roughly one man in seven crossing the Mill still rides it into a wa
 is that the room is dangerous to both sides, and the cult is only mostly careful. Hounds read a room
 better than any of them.
 
-**Anything that takes more than one hit shows it.** The ogre, the brute, the Seer and arena elites carry health notches
-over their heads, so what is left of a man reads off the man.
+**Anything that takes more than one hit shows it.** The outline says so before the first blow, and every boss (and the
+rat ogre) carries health notches over his head, so what is left of a man reads off the man.
 
 ---
 
 ## Levels
 
 **Difficulty is a curve, and the curve is data.** Two rules run it. First, every kind is met on its own:
-the room that first shows you a clubman, a brute, a hound, a mage or a rifle holds that one enemy and
+the room that first shows you a clubman, a butcher, a hound, a mage or a rifle holds that one enemy and
 nothing else, and a boss you have never seen stands in his arena alone. A set piece counts as a kind:
 the Mill's room never introduces a man and holds nobody at all on the level that first shows you the
 wheel, and a kind with an arena waiting for it is met in the open before it is met in the ring. Second,
@@ -186,14 +189,14 @@ the rest rooms):
 
 | | Rooms | Canon | Regular enemies | Bosses |
 |---|---|---|---|---|
-| **THE ALTAR** | 13 | Stone | Bearers, brutes | Brute, ogre |
-| **THE YARD** | 12 | Fire | Bearers, brutes, hounds, Seers | Ogre, elite Seer (sealed in) |
-| **THE CAVE** | 13 | The hollow | Bearers, brutes, hounds heavy, Seers | Ogre, brute |
+| **THE ALTAR** | 13 | Stone | Bearers, butchers | Butcher, ogre |
+| **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Ogre, elite Seer (sealed in) |
+| **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers | Ogre, butcher |
 | **THE ROAD** | 14 | The line | All five, rifles new | Two ogres |
-| **THE THRESHING FLOOR** | 13 | Open ground | All five | Elite Seer, ogre, brute |
-| *or* **THE DARK** | 12 | The lamp | Bearers, brutes, hounds and Seers heavy; never a rifle | Elite Seer, ogre, brute |
+| **THE THRESHING FLOOR** | 13 | Open ground | All five | Elite Seer, ogre, butcher |
+| *or* **THE DARK** | 12 | The lamp | Bearers, butchers, hounds and Seers heavy; never a rifle | Elite Seer, ogre, butcher |
 | **THE BRIDGE** | 15 | The funnel | All five | Ogre, elite Seer, ogre |
-| **THE RAFTERS** | 15 | The drop | All five | Elite Seer, ogre, brute |
+| **THE RAFTERS** | 15 | The drop | All five | Elite Seer, ogre, butcher |
 | **THE OSSUARY** | 15 | The niche | Wraiths, and a garrison | Ogre, elite wraith, elite Seer |
 
 **THE CAVE** is third: out under the compound the ground stops being built. No wall runs straight and
@@ -314,7 +317,7 @@ about the mouse: a pointer on a top-down game explains itself.
   three, and the goat goes through on the last and floors whoever waited behind it; cultists who pile up eventually shoulder them open from their side. Two extra beats
   of being held still in a corridor, with whatever heard the first blow already coming, is what the
   door is for. Nothing flies through a shut one: a pot breaks on it, a blade snaps on it, a shield
-  rings off it. A table sliding at speed, or a brute on a charge, takes it off its hinges.
+  rings off it. A table sliding at speed, or a butcher on a charge, takes it off its hinges.
 - **Grating**, from THE ROAD on. The teeth come up where you have already been: crossing a
   plate arms it and it bites a beat later, so what it takes is the ground you have just left — which is
   the ground whoever is chasing you is standing on. A man dies on them and the goat pays a heart, and
@@ -326,7 +329,7 @@ about the mouse: a pointer on a top-down game explains itself.
   off its hinges, and stops on anything a man would: a brazier, the wheel, another table.
 - **Oil lamps** topple into a pool of fire, and a lamp post is not a pillar: a body thrown into one
   takes it over and the oil goes down where the body is about to land. So does a pot, a thrown blade,
-  a brute on a charge, or fire that has burned its way up to the post.
+  a butcher on a charge, or fire that has burned its way up to the post.
 - **Stands of arms** hold a sword or a shield, and they are rare: one to an arena, about one ordinary
   room in six, and nothing at all on level 1 until halfway in. Nothing you take off one survives being
   used up. A thrown blade goes into whatever it finds, and a blade thrown at a wall is a blade thrown
@@ -339,7 +342,7 @@ about the mouse: a pointer on a top-down game explains itself.
   man held into the arm, and the wheel takes him out of your mouth and throws him for you. Its room is
   deliberately taller than the arms are long: there is a lane along the top and the bottom, so the room
   is crossed by reading it.
-- **The brute's charge** is answered by all of it. A door comes off its hinges and he keeps going; a
+- **The butcher's charge** is answered by all of it. A door comes off its hinges and he keeps going; a
   table goes ahead of him at speed, into whoever was behind it; a lamp goes over and he runs into his
   own oil; a brazier lights him; and the gong, the hub of the wheel or a bar of the pen stops him the way
   a wall does, for the same free hit.
@@ -404,7 +407,7 @@ straight down, while creatures stand upright inside it. Roughly 14 tiles across 
 **Art.** Pixel 2.5: hand-pixelled sprites on one grain, eight facings, hard cut-out edges
 (`ART_HANDOFF.md`). Every enemy type reads differently at a glance: the Bearer a hooded man with a club,
 Seer a tall pointed hood with a lit staff, Hunter a low hood with a long
-rifle, the brute a big shape in a bone apron with horns on his mask, the ogre a hunched green half-beast in a red hood and mantle, the hound a long low four-legged thing
+rifle, the butcher a big shape in a bone apron with horns on his mask, the ogre a hunched green half-beast in a red hood and mantle, the hound a long low four-legged thing
 with a lit spine and two yellow eyes. The goat reads as a goat from its snout, beard, swept horns and
 rectangular pupils — body, a short dark neck and a round head, each edged in dark so the pieces never
 merge into one blob from straight above.

@@ -315,7 +315,7 @@ const Dark = {
       const d = (Math.round((e.facing || 0) / (Math.PI / 4)) + 14) % 8;
       if (d >= 3 && d <= 5) continue;
       const [core, glow, h, f, half] = K;
-      const sc = e.elite ? (e.champion ? TUNING.champion.scale : 1.28) : 1;
+      const sc = Renderer.bodyScaleOf(e);
       const side = d === 2 ? -1 : d === 6 ? 1 : 0, diag = d === 1 ? -1 : d === 7 ? 1 : 0;
       const at = side ? [side * f] : diag ? [diag * f * 0.55 - half * 0.7, diag * f * 0.55 + half * 0.7] : [-half, half];
       ctx.save(); ctx.translate(e.x, e.y); ctx.scale(sc, sc / TILT);

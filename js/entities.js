@@ -660,7 +660,7 @@ class Goat {
         // Planted while he crouches or winds a slam: the hit counts but does not stop it, and you are
         // still standing in the ring. Bait it, step out, then hit him on his knees.
         if (e.state === 'slamwind' || e.state === 'hopwind') { this.vx = -ax * 5 * TILE; this.vy = -ay * 5 * TILE; }
-        // He reels where he stands: the ogre is not moved by the horns (1.66), the brute is.
+        // He reels where he stands: the ogre is not moved by the horns (1.66), the butcher is.
         else { e.state = 'stagger'; e.timer = TUNING.butcher.stagger; e.vx = 0; e.vy = 0; }
         game.hitstop(0.05); game.shake(5); game.audio.sfxThud();
         game.particles(this.x + ax * this.r, this.y + ay * this.r, 9, PALETTE.bone, 300);
@@ -794,7 +794,7 @@ class Goat {
     // until that soul is swallowed reaching for one is a thing you are told about rather than a
     // thing that silently does nothing.
     if (game.mods.grabMen) {
-      // The brute is a clubman grown too big for a goat's jaw, the same as the Butcher, and a man with
+      // The butcher is a clubman grown too big for a goat's jaw, the same as the ogre, and a man with
       // a soul in him is more than a man: all three are put down by the room, never carried out of it.
       // Nor a man alight: in the teeth he burned on for his whole fire, lighting the goat's own feet,
       // and the fire's run overrode the throw.
@@ -889,7 +889,7 @@ class Goat {
   }
 
   // A blow from `att` that finds the shield between him and the goat is a blow into the shield,
-  // whatever it was: a club, teeth, the brute's run, the ogre's fists on the floor or his landing
+  // whatever it was: a club, teeth, the butcher's run, the ogre's fists on the floor or his landing
   // (24 Sep 2026: "if the shield is between the blow and him, it protects"). Asked of the side the
   // blow comes from, not of the shield's own reach — whoever threw it has already been found in
   // range by the blow itself. A charge spent, and the man who swung eats the parry unless `stagger`

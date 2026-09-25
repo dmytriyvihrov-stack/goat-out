@@ -63,7 +63,7 @@ const PALETTE = {
 // stride (and earns it back over a run-up, see `momentum`), and the cult lost a tenth of theirs.
 // `SLOW` is the pace of the whole compound on top of that (24 Sep 2026: "everybody 30% slower"):
 // every creature's travel — the goat's walk, run-up and roll, every man's walk, the hound's run and
-// dart and hop aside, the brute's charge, a burning man's run, every animal — is multiplied by it,
+// dart and hop aside, the butcher's charge, a burning man's run, every animal — is multiplied by it,
 // so it is the one dial for how fast the game moves. What is thrown, flung or shot is not travel
 // and is not in it: the physics of a kill (a body into a wall) does not change with the pace.
 const SLOW = 0.7;
@@ -388,10 +388,11 @@ const TUNING = {
     immune: { blunder: true },
   },
   // The Seer never closes. He paints a rune where you are standing and blinks away when you get near.
-  // Two hits, like the Butcher — but unlike him he can still be grabbed, carried and thrown.
+  // One hit like any man without the outline (1.72; he took two until then); a boss Seer takes the
+  // boss's three and blinks clear after each. He can always be grabbed, carried and thrown.
   seer: {
     radius: 11, speed: 0.55 * CULT_PACE, sight: 11, cone: Math.PI * 0.62,
-    keepMin: 5, keepMax: 9, damage: 1, hp: 2,
+    keepMin: 5, keepMax: 9, damage: 1, hp: 1,
     castWind: 0.8, castCooldown: 2.5, runeRadius: 1.4, runeFire: 2.0,
     // A third fewer blinks than he used to get (3.0 → 4.3, which is 0.7 of the old rate). A mage who
     // re-sited himself every three seconds was a fight you could not close on: every approach you
@@ -442,18 +443,20 @@ const TUNING = {
     hide: { start: 0.4, again: 0.35, minDist: 5, springR: 2.6, touchR: 0.9, springWind: 0.3, milk: 0.4 },
   },
   // The Butcher (1.66): the big one, and he wears the rat ogre's body a size up (`scale`). He used
-  // to be a man with a cleaver and a charge; the charge went to the brute, and what he does now is
+  // to be a man with a cleaver and a charge; the charge went to the butcher, and what he does now is
   // come down on you. Seen `leap.min`..`leap.max` tiles off, he crouches (`wind`) with the spot he
   // will land on drawn on the floor — where you stood when he crouched — goes up `lift` px for
   // `air` s, over men and holes alike, and lands: everything inside `radius` tiles is hit. Close in
   // (`slam.near`) he has no swing at all, only the fists on the floor: a ring round him, every side
-  // at once, which the old brute used to own. Both end on a long getting-up (`leap.land`,
+  // at once, which the old butcher used to own. Both end on a long getting-up (`leap.land`,
   // `slam.recover`) and that is the whole fight: read the ring, step out of it, and put your horns
   // into him while he is still on his knees. His own men inside a ring are left standing: the ring
   // is for the goat. And nothing throws him — not the horns, not a body, not a blast (`Enemy.fling`):
-  // the brute goes flying, the ogre does not, and that is the difference you read across the room.
+  // the butcher goes flying, the ogre does not, and that is the difference you read across the room.
   butcher: {
-    radius: 22, speed: 0.55 * CULT_PACE, sight: 9, cone: Math.PI * 0.7, scale: 1.15,
+    // `scale` 1: he is only ever a boss, and `boss.scale` (1.14) is what brings him up to the size he
+    // had at 1.15 before the one rule (1.72).
+    radius: 22, speed: 0.55 * CULT_PACE, sight: 9, cone: Math.PI * 0.7, scale: 1,
     // Four hearts, and the bare horns take none of them (25 Sep 2026): a headbutt only rocks him
     // (`stagger`, never in a crouch or a slam). What costs him a heart is the room — a blade, fire
     // off the bowls, a bomb, a body thrown at killing speed — which is why his arena always stands
@@ -949,14 +952,20 @@ const TUNING = {
     hubR: 26, armLen: 2.05 * TILE, armHalfWidth: 0.2, innerR: 20,
     speed: 0.82, impulse: 30 * TILE, damage: 1, hitCooldown: 1.15, goatKnock: 0.3,
   },
-  elite: { hp: 3 },
-  // The brute: a clubman built twice over. Three separate killing blows before he stops getting up,
-  // four when he is the one in the arena. He is how the game says "some of them take more than one"
-  // without spending a boss on it, so he has to be unmistakable at a glance — since 1.66 he wears
-  // what was the Butcher's body (the bull's skull, the apron, the cleaver) — and the notches over
-  // his head count it down.
-  champion: { hp: 3, bossHp: 4, scale: 1.06, spikes: 5,   // on the Butcher's old sheet (48 px), not the brute's (38)
-    // His own arm, not the clubman's: the clubman's got shorter and quicker, the brute's did not.
+  // One rule for every kind (1.72, "a man without the yellow outline is one unit with one heart"):
+  // a man without the outline dies to one killing blow, whatever he is; a boss — the man an arena
+  // is built round, and the only man who ever carries a soul — wears a hard yellow pixel outline,
+  // stands `scale` bigger and takes `hp` killing blows (a soul adds `soulBearer.hp`). The ogre is a
+  // boss-only kind and keeps his own four (`butcher.hp`); the rat ogre is the mouse's, not a boss.
+  // `outline`: `px` world px of ring round his pixels (a texel of the unit art), in `color`, with a
+  // `back` line one more px out so it still reads on yellow straw.
+  boss: { hp: 3, scale: 1.14, outline: { px: 1, color: '#ffd23f', back: '#2a1a08', alpha: 0.95 } },
+  // The BUTCHER (the brute until 1.72; the code's flag is still `champion`): a clubman with a
+  // cleaver, a charge and too much weight to carry. Out of a ring he dies to one killing blow like
+  // anybody without the outline; in one he is a boss by the rule above. Since 1.66 he wears what
+  // was the old Butcher's body (the bull's skull, the apron, the cleaver), hence the name.
+  champion: { scale: 1.06, spikes: 5,   // on the old Butcher's sheet (48 px), not the `brute` sheet (38)
+    // His own arm, not the clubman's: the clubman's got shorter and quicker, the butcher's did not.
     reach: 1.0 * TILE, windup: 0.62, swing: 0.16, recover: 0.6,
     // Heavy: a headbutt moves him this much of what it moves a clubman, and he is never carried.
     flingMul: 0.55,
@@ -969,13 +978,17 @@ const TUNING = {
     // With furniture in the way he looks (every `laneLook` s) for a spot up to three tiles aside with a
     // clear run and walks there for up to `laneTime` s; `laneStill` s not closing on it and he drops
     // it, within `laneAt` tiles he is on it.
+    // `hit`: px past touching (his body plus the goat's) that the run still lands (1.72, was 2): a
+    // man running past at that speed with a cleaver out does not have to meet the goat dead centre,
+    // and a goat who side-stepped by a hair read as the charge passing through him.
     charge: { min: 3, wind: 0.7, speed: 12 * TILE * SLOW, time: 0.85, cooldown: 3.4, stun: 1.6, over: 1.5, skid: 0.18,
-      lead: 0.5, leadMax: 1.8, damage: 1, laneLook: 0.6, laneTime: 1.4, laneStill: 0.35, laneAt: 0.35 },
+      lead: 0.5, leadMax: 1.8, damage: 1, hit: 0.35 * TILE, laneLook: 0.6, laneTime: 1.4, laneStill: 0.35, laneAt: 0.35 },
     // Alight, he comes on like the Butcher does rather than blundering (`TUNING.butcher.rage`).
     rage: { speed: 1.4, tempo: 1.4 },
     immune: { blunder: true } },
-  // A man carrying a soul is a small boss of his own: `hp` more hearts, a headbutt moves him
-  // `flingMul` of what it would, and nothing carries him out of the room. Edited on ENEMIES.
+  // A soul only ever goes into a boss (`game.ensoul`), so a soul-bearer already wears the outline:
+  // the soul adds `hp` more hearts and the amber haze, a headbutt moves him `flingMul` of what it
+  // would, and nothing carries him out of the room. Edited on ENEMIES.
   soulBearer: { hp: 1, flingMul: 0.6 },
   noise: {
     // A coin flip every frame (`Math.random() < dt * 4`) could go a half-second without landing,
@@ -1292,7 +1305,7 @@ const TUNING = {
     // The enemies' layer over the tune (MUSIC.md). 1.70 thinned it: a man is one hit per two bars (a
     // big one two), a family stops at `maxPerFamily`, and `exploreMix` is how much of it plays while
     // nobody in the room knows he is there. It was six a family, two hits for a rifle and three for a
-    // brute, at 0.65 / 0.6 — a full room was a wall of ticks laid over the melody.
+    // butcher, at 0.65 / 0.6 — a full room was a wall of ticks laid over the melody.
     // `eventGridSteps` is where a kill's accent lands (the next eighth; it waited one to two seconds),
     // `heartSing` how much of the tune is left on the last heart.
     layers: { maxPerFamily: 3, maxSpikes: 2, maxMills: 2, pursuitRadius: 8 * TILE,
@@ -1500,7 +1513,10 @@ const BIG_ROOM = { w: 20, doorChance: 0.85 };
 // furthest row every time; a little under it keeps two seeds of a room two rooms.
 const DOORS = { far: 0.7 };
 
-const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.8, champion: 3.2, butcher: 5 };
+// The seer and the butcher came down in 1.72 (2.8 and 3.2) when the one rule (`TUNING.boss`) took
+// every man without the outline to one heart: the mage still never closes and the butcher still
+// charges, but one killing blow is all either of them now takes. A boss is priced × 1.6 on top.
+const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.4, champion: 2.6, butcher: 5 };
 
 const ENCOUNTER = {
   // How often a kind is drawn once it is available. Clubmen stay the backbone of every crowd.
@@ -2041,7 +2057,7 @@ const ARTIFACT_HOW = {
 };
 
 // What the death card says took the last heart: a kind of man (a clubman is split into the
-// ordinary one and the brute in `game.killedBy`), or the word a hazard passes to `Goat.damage`.
+// ordinary one and the butcher in `game.killedBy`), or the word a hazard passes to `Goat.damage`.
 const KILLED_BY = {
   hunter: 'RIFLEMAN', dog: 'HOUND', seer: 'MAGE', butcher: 'OGRE', wraith: 'WRAITH', ratogre: 'RAT OGRE',
   fire: 'FIRE', witchfire: 'WITCHFIRE', spike: 'THE GRATING', bomb: 'A BOMB', mill: 'THE WHEEL',
@@ -2112,7 +2128,7 @@ const LEVELS = [
     // to be kicked about until it is clear what the horns are for; a room of lit bowls and straw
     // with nobody in it (`calmAt`), to butt a bowl over and watch it take; the wheel and its two men;
     // the blade and its two men; the first soul; two men stood in the straw (`trapAt`) with the fire
-    // now a weapon; the first brute, alone; three clubmen (`crowdAt`), so the brute's two rooms are
+    // now a weapon; the first butcher, alone; three clubmen (`crowdAt`), so the butcher's two rooms are
     // not met back to back — played, that read as the same room twice, a glitch (24 Sep 2026); his
     // arena; a breather; the ogre, who carries the second and last soul. Thirteen rooms, and each
     // asks one new thing.
@@ -2128,15 +2144,15 @@ const LEVELS = [
     // under him says what the button does. Walking round him was the one thing everybody did, so now
     // there is nowhere to walk round to: the room does not open until he is down.
     sentryIntro: true,
-    // The first boss of the game is one brute and one man at his back, and `escorts` is what says
+    // The first boss of the game is one butcher and one man at his back, and `escorts` is what says
     // so: the arena's threat budget would otherwise buy two, and the first thing in the run with
-    // more than one heart in it should be read as the brute rather than as a crowd.
+    // more than one heart in it should be read as the butcher rather than as a crowd.
     arenas: [{ at: 10, boss: 'champion', escorts: 1 }, { at: 12, boss: 'butcher' }],
     // A wall that gives is not a thing to look for yet: the first arena above is what teaches a
     // soul is worth going out of your way for, so no secret is carved before it.
     secretsAfterBoss: true,
     // The one hard stop (see the note over `LEVELS`): the middle of the level. Nobody walks past the
-    // first soul of the run any more — it is the bar. The breather between the brute's ring and the
+    // first soul of the run any more — it is the bar. The breather between the butcher's ring and the
     // ogre's is a rest room with no gate and no soul in it (`rests`): the second soul of the run is
     // the ogre's, carried by him and paid out when he goes down (24 Sep 2026: "the second soul after
     // the ogre"), so the level ends on the fight that pays.
@@ -2146,7 +2162,7 @@ const LEVELS = [
     // The first stand of arms in the game is not a scatter, it is this room: a long approach, the
     // arm right inside the door, and whoever the room holds standing well down the far end of it.
     ambushAt: 5, calmAt: 3, trapAt: 7, trapTpl: 'hayloft', trapMen: ['bearer', 'bearer'],
-    // Between the lone brute (room 8) and his ring (10): three clubmen, placed rather than rolled,
+    // Between the lone butcher (room 8) and his ring (10): three clubmen, placed rather than rolled,
     // the one room on this floor past the two-a-room cap below — spacing is the lesson by now.
     crowdAt: 9, crowdMen: ['bearer', 'bearer', 'bearer'],
     // The wheel is met in a room built round it: a narrow one with a single lane past the arm, and
@@ -2166,8 +2182,8 @@ const LEVELS = [
       // a harder version of the lesson it is teaching, it is a different lesson — spacing — and it
       // arrives before the player has the verbs to answer it. The curve is untouched: what a room is
       // allowed to SPEND is the same, it simply has to spend it on better men rather than on more of
-      // them, so the level still climbs and still ends on the brute. The one exception is placed, not
-      // bought: `crowdAt`'s three clubmen, after the first brute, once there are verbs to answer them.
+      // them, so the level still climbs and still ends on the butcher. The one exception is placed, not
+      // bought: `crowdAt`'s three clubmen, after the first butcher, once there are verbs to answer them.
       cap: { men: 2 },
     },
     floor: '#2b1a26', floorAlt: '#31202c', wall: '#7c5a36', wallTop: '#9c7446',
@@ -2467,7 +2483,7 @@ const BEAST_CARD = {
 // places its arenas stand, so it sits in the run where the level it replaced would have — but every
 // key is the other way round (`game.tripInput`: the stick reversed, the horns and the teeth swapped,
 // the tumble and the voice swapped), so what is asked of the goat is far less. Clubmen only, the
-// brute in the rings, no grating, no trap rooms, no wheel, no drop, and a curve cut to `threatMul`.
+// butcher in the rings, no grating, no trap rooms, no wheel, no drop, and a curve cut to `threatMul`.
 // It is a cave (`cave: true`), and the renderer grows mushrooms over all of it (`def.shroom`).
 const TRIP_LEVELS = {};
 function tripLevel(i) {
@@ -2480,7 +2496,7 @@ function tripLevel(i) {
     decor: 'Mushrooms on every wall, caps as tall as a man to break, a glow off the ground; every key the other way round.',
     cave: true, grass: 0.6, rocks: 0.95,
     grassColor: '#2d6f6a', grassHi: '#86e8c8', grassDark: '#173a3c',
-    // Level one's own ring: one brute, one man at his back. Not the boss of the floor it replaced.
+    // Level one's own ring: one butcher, one man at his back. Not the boss of the floor it replaced.
     arenas: (base.arenas || []).map((a) => ({ at: a.at, boss: 'champion', escorts: 1 })),
     gates: base.gates, vaultAt: base.vaultAt, souls: base.souls, heals: (base.heals || 0) + 1,
     lonePosts: 0, racks: 0.25, spikes: 0, crates: 0.3, traps: 0, windows: 0,

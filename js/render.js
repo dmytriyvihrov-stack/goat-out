@@ -2462,7 +2462,7 @@ class Renderer {
     if (stunned) this.drawStars(p.x, p.y, 14, Math.min(1, p.birdT * 2));
   }
 
-  // A rank of iron spikes stood up along an arc of a body: the brute's back, and nobody else's.
+  // A rank of iron spikes stood up along an arc of a body: the butcher's back, and nobody else's.
   spikeRing(r, from, to, n, len, color) {
     const ctx = this.ctx; ctx.fillStyle = color;
     for (let k = 0; k < n; k++) {
@@ -2492,7 +2492,7 @@ class Renderer {
       ctx.lineTo(r * 0.35, r * 0.72); ctx.quadraticCurveTo(-r * 0.6, r * 1.1, -r * 1.75, 0); ctx.closePath(); ctx.fill();
       ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(0, 0, r * 0.86, 0, Math.PI * 2); ctx.fill();
     } else {
-      // The brute wears what he is: iron spikes stood up along his back and shoulders, so the man
+      // The butcher wears what he is: iron spikes stood up along his back and shoulders, so the man
       // who takes three blows never has the same outline as the man who takes one.
       if (e.champion) this.spikeRing(r * 0.94, Math.PI * 0.42, Math.PI * 1.58, TUNING.champion.spikes, r * 0.46, '#8d8a85');
       ctx.fillStyle = e.kind === 'butcher' ? PALETTE.plum : e.champion ? '#3a2f38' : PALETTE.ink;
@@ -2541,7 +2541,7 @@ class Renderer {
     } else if (e.kind === 'bearer') {
       ctx.save(); ctx.rotate(swing); ctx.lineCap = 'round';
       if (e.champion) {
-        // The brute's club is a post with iron through it, and it is thicker than his arm.
+        // The butcher's club is a post with iron through it, and it is thicker than his arm.
         ctx.strokeStyle = '#6b4a2c'; ctx.lineWidth = 7;
         ctx.beginPath(); ctx.moveTo(r * 0.3, r * 0.6); ctx.lineTo(r + 17, r * 0.6); ctx.stroke();
         ctx.fillStyle = '#9d968c';
@@ -2812,6 +2812,15 @@ class Renderer {
       else if (e.kind === 'ratogre') this.drawRatOgre(e, r);
       else this.drawCultist(e, r);
     };
+    // A boss's outline goes down first, under him: the dark `back` line one px further out, then
+    // the yellow. Not in THE DARK's silhouette pass, which cuts him to a flat shape anyway.
+    if (Renderer.isBoss(e) && !e.dead && !this.silPass) {
+      const L = TUNING.boss.outline;
+      ctx.save(); ctx.globalAlpha *= L.alpha;
+      if (L.back) this.bossOutline(body, L.px * 2, L.back);
+      this.bossOutline(body, L.px, L.color);
+      ctx.restore();
+    }
     body();
     // The windup tint: the same body again as a warm pale silhouette, rising toward the blow
     // (`TUNING.juice.windupTint`). Masked to his own pixels by the filter, so no glow leaves him.
@@ -2923,7 +2932,7 @@ class Renderer {
       ctx.strokeStyle = `rgba(242,162,51,${0.5 + 0.5 * Math.sin(this.t * 40)})`; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 5 + p * 8, 0, Math.PI * 2); ctx.stroke();
     }
-    // Health notches over anyone who takes more than one blow — the Butcher, a Seer, an arena elite —
+    // Health notches over anyone who takes more than one blow — a boss (the outline) and the rat ogre —
     // so what is left of him reads off his own head instead of off a text popup.
     // Measured off the top of the sprite he is actually drawn as: `e.r` is his footprint, and off
     // that the notches landed across a pixel mage's eyes.
@@ -2945,11 +2954,33 @@ class Renderer {
     const key = this.painted.characterKey(e), u = key && PIXEL_ART.unit(key);
     return (u ? PIXEL_EXTENT[u] : e.r * 2.3) * this.bodyScale(e) + (e.state === 'hop' && e.hopZ ? e.hopZ : 0);
   }
-  // How much bigger than his sheet a man is drawn: the brute and an elite a size up, and the
-  // Butcher, who wears the rat ogre's body, a size up on that (`butcher.scale`).
-  bodyScale(e) {
-    if (e.kind === 'butcher') return TUNING.butcher.scale;
-    return e.elite ? (e.champion ? TUNING.champion.scale : 1.28) : 1;
+  // How much bigger than his sheet a man is drawn: his kind's own fit to its sheet (the butcher on
+  // the old Butcher's 48 px sheet, the ogre on his own), times `boss.scale` for a boss — one rule
+  // for every kind (`TUNING.boss`). Static, so THE DARK's eyes (js/dark.js) sit on the same head.
+  static bodyScaleOf(e) {
+    const kind = e.kind === 'butcher' ? TUNING.butcher.scale : e.champion ? TUNING.champion.scale : 1;
+    return kind * (Renderer.isBoss(e) ? TUNING.boss.scale : 1);
+  }
+  bodyScale(e) { return Renderer.bodyScaleOf(e); }
+  // Who wears the outline: a boss, of any kind. The rat ogre is the mouse's, not a boss, and his
+  // `boss` flag is cleared where she calls him (`Shop.spawnOgre`), so this is the flag alone.
+  static isBoss(e) { return !!e.boss && e.kind !== 'ratogre'; }
+
+  // The boss's outline (`TUNING.boss.outline`): his own body drawn again as a flat silhouette `px`
+  // out on each of eight sides, behind him — a hard ring of pixels round the sprite, never a glow.
+  // Flat colour with no filter: the body is drawn far off the canvas and only its shadow lands
+  // where he stands, and a canvas shadow is one exact colour, blur 0, offset in device px (which is
+  // why each side's offset is pushed through the transform by hand).
+  bossOutline(body, px, color) {
+    const ctx = this.ctx, m = ctx.getTransform(), OFF = 20000;
+    ctx.save();
+    ctx.shadowColor = color; ctx.shadowBlur = 0; ctx.shadowOffsetX = OFF; ctx.shadowOffsetY = 0;
+    for (let i = 0; i < 8; i++) {
+      const ox = Math.round(Math.cos(i * Math.PI / 4)) * px, oy = Math.round(Math.sin(i * Math.PI / 4)) * px;
+      ctx.setTransform(m.a, m.b, m.c, m.d, m.e + m.a * ox + m.c * oy - OFF, m.f + m.b * ox + m.d * oy);
+      body();
+    }
+    ctx.restore();
   }
 
   // Enemies wind up slowly and show the ground they are about to cover.
@@ -2960,14 +2991,16 @@ class Renderer {
     if (ART_PASS.on) { this.drawTelegraphCells(e, cfg); return; }
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.rotate(e.facing);
     if (e.state === 'chargewind') {
-      // The strip is the brute's run as he will actually make it: to where he is aiming
+      // The strip is the butcher's run as he will actually make it: to where he is aiming
       // (`Enemy.leadAim`, where the goat is going) and `over` past it.
       const C = TUNING.champion.charge, g = e.chargeAim || this.game.goat, run = Math.hypot(g.x - e.x, g.y - e.y) + C.over * TILE;
       const p = clamp(1 - e.timer / C.wind, 0, 1), len = Math.min(C.speed * C.time, run);
+      // As wide as the run lands (`charge.hit` past his body), so the strip is the lane to get out of.
+      const w = e.r + C.hit;
       ctx.fillStyle = `rgba(192,57,43,${0.08 + 0.16 * p})`;
-      ctx.fillRect(0, -e.r, len * p, e.r * 2);
+      ctx.fillRect(0, -w, len * p, w * 2);
       ctx.strokeStyle = `rgba(239,230,208,${0.3 + 0.4 * p})`; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(len * p, -e.r); ctx.lineTo(len * p, e.r); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(len * p, -w); ctx.lineTo(len * p, w); ctx.stroke();
     } else {
       const p = 1 - e.timer / (e.atk ? e.atk('windup') : cfg.windup);
       const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : Math.PI * 0.55;
@@ -2993,10 +3026,10 @@ class Renderer {
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
     if (e.state === 'chargewind') {
       const C = TUNING.champion.charge, g = e.chargeAim || this.game.goat, run = Math.hypot(g.x - e.x, g.y - e.y) + C.over * TILE;
-      const p = clamp(1 - e.timer / C.wind, 0, 1), len = Math.min(C.speed * C.time, run) * p, n = Math.ceil((len + e.r) / px);
-      const along = (x, y) => x * ux + y * uy, across = (x, y) => Math.abs(-x * uy + y * ux);
-      fill((x, y) => along(x, y) >= 0 && along(x, y) <= len && across(x, y) <= e.r, n, `rgba(242,170,48,${0.12 + 0.2 * p})`);
-      fill((x, y) => along(x, y) > len - px && along(x, y) <= len && across(x, y) <= e.r, n, `rgba(255,224,138,${0.45 + 0.45 * p})`);
+      const p = clamp(1 - e.timer / C.wind, 0, 1), len = Math.min(C.speed * C.time, run) * p, n = Math.ceil((len + e.r + C.hit) / px);
+      const along = (x, y) => x * ux + y * uy, across = (x, y) => Math.abs(-x * uy + y * ux), w = e.r + C.hit;
+      fill((x, y) => along(x, y) >= 0 && along(x, y) <= len && across(x, y) <= w, n, `rgba(242,170,48,${0.12 + 0.2 * p})`);
+      fill((x, y) => along(x, y) > len - px && along(x, y) <= len && across(x, y) <= w, n, `rgba(255,224,138,${0.45 + 0.45 * p})`);
     } else {
       const p = 1 - e.timer / (e.atk ? e.atk('windup') : cfg.windup);
       const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : Math.PI * 0.55, n = Math.ceil(reach / px);
@@ -4019,17 +4052,19 @@ class Renderer {
       { kind: 'bearer', tag: 'bearer', label: 'CLUBMAN', cfg: TUNING.bearer, hp: TUNING.bearer.hp || 1,
         edit: melee('bearer'),
         note: 'Cone plus line of sight. Reads you, winds up, swings once. The wall behind you kills, not his club.' },
-      { kind: 'bearer', tag: 'champion', champion: true, label: 'BRUTE',
-        cfg: Object.assign({}, TUNING.bearer, TUNING.champion), hp: TUNING.champion.hp, boss: TUNING.champion.bossHp,
-        edit: [['REACH', ['champion', 'reach']], ['WINDUP', ['champion', 'windup']], ['HP', ['champion', 'hp']], ['BOSS HP', ['champion', 'bossHp']],
+      { kind: 'bearer', tag: 'champion', champion: true, label: 'BUTCHER',
+        cfg: Object.assign({}, TUNING.bearer, TUNING.champion), hp: 1,
+        edit: [['REACH', ['champion', 'reach']], ['WINDUP', ['champion', 'windup']], ['CHARGE HIT', ['champion', 'charge', 'hit']],
           ['KNOCK', ['champion', 'flingMul']], ['CHARGE AT', ['champion', 'charge', 'min']], ['CHARGE SPD', ['champion', 'charge', 'speed']],
           ['CHARGE CD', ['champion', 'charge', 'cooldown']], ['STUN', ['champion', 'charge', 'stun']], ['RAGE', ['champion', 'rage', 'speed']]],
         immune: ['blunder'],
-        note: `A clubman built twice over: three hits, four as an arena boss. Never carried; a headbutt moves him ${Math.round(TUNING.champion.flingMul * 100)}% as far. Seen ${TUNING.champion.charge.min}+ tiles off with a clear run he plants for ${TUNING.champion.charge.wind}s and charges where you are going; into stone he stands stunned ${TUNING.champion.charge.stun}s. On fire he comes on faster instead of running.` },
-      { kind: 'bearer', tag: 'soulBearer', soul: true, label: 'SOUL-BEARER',
-        cfg: TUNING.bearer, hp: 1 + TUNING.soulBearer.hp,
-        edit: [['HP +', ['soulBearer', 'hp']], ['KNOCK', ['soulBearer', 'flingMul']]],
-        note: `Any man with a soul in him — lit amber, eyes red. ${TUNING.soulBearer.hp} more heart${TUNING.soulBearer.hp === 1 ? '' : 's'} than he had, never carried, and a headbutt moves him ${Math.round(TUNING.soulBearer.flingMul * 100)}% as far. Rules and skills of his own per kind go here next.` },
+        note: `A clubman with a cleaver and a charge: one hit, like anyone without the outline. Never carried; a headbutt moves him ${Math.round(TUNING.champion.flingMul * 100)}% as far. Seen ${TUNING.champion.charge.min}+ tiles off with a clear run he plants for ${TUNING.champion.charge.wind}s and charges where you are going; into stone he stands stunned ${TUNING.champion.charge.stun}s. On fire he comes on faster instead of running.` },
+      // One row for the rule every kind shares (`TUNING.boss`) and the soul only a boss carries.
+      { kind: 'bearer', tag: 'boss', boss: true, label: 'BOSS',
+        cfg: TUNING.bearer, hp: TUNING.boss.hp,
+        edit: [['HP', ['boss', 'hp']], ['SIZE', ['boss', 'scale']], ['LINE', ['boss', 'outline', 'px']],
+          ['SOUL HP +', ['soulBearer', 'hp']], ['SOUL KNOCK', ['soulBearer', 'flingMul']]],
+        note: `One rule for every kind: without the yellow outline a man dies to one killing blow. The man an arena is built round wears it, stands ${Math.round((TUNING.boss.scale - 1) * 100)}% bigger and takes ${TUNING.boss.hp} (the ogre his own ${TUNING.butcher.hp}); a boss Seer blinks clear after each. Only a boss ever carries a soul: lit amber, eyes red, ${TUNING.soulBearer.hp} more heart${TUNING.soulBearer.hp === 1 ? '' : 's'}, never carried, and a headbutt moves him ${Math.round(TUNING.soulBearer.flingMul * 100)}% as far.` },
       { kind: 'butcher', tag: 'butcher', label: 'OGRE', cfg: TUNING.butcher, hp: TUNING.butcher.hp,
         edit: [['SPEED', ['butcher', 'speed']], ['HP', ['butcher', 'hp']], ['LEAP AT', ['butcher', 'leap', 'min']], ['LEAP MAX', ['butcher', 'leap', 'max']],
           ['CROUCH', ['butcher', 'leap', 'wind']], ['AIR', ['butcher', 'leap', 'air']], ['LANDED', ['butcher', 'leap', 'land']], ['LEAP R', ['butcher', 'leap', 'radius']],
@@ -4045,7 +4080,7 @@ class Renderer {
       { kind: 'seer', tag: 'seer', label: 'SEER', cfg: TUNING.seer, hp: TUNING.seer.hp,
         edit: [['SPEED', ['seer', 'speed']], ['DMG', ['seer', 'damage']], ['HP', ['seer', 'hp']],
           ['CAST', ['seer', 'castWind']], ['CAST CD', ['seer', 'castCooldown']], ['BLINK CD', ['seer', 'blinkCooldown']]],
-        note: 'Never closes. Blinks away when you get near, paints a rune under himself, near-perfect trap sense.' },
+        note: 'Never closes. Blinks away when you get near, paints a rune under himself, near-perfect trap sense. One hit; a boss Seer blinks clear after each of his.' },
       { kind: 'hunter', tag: 'hunter', label: 'HUNTER', cfg: TUNING.hunter, hp: TUNING.hunter.hp || 1,
         edit: [['SPEED', ['hunter', 'speed']], ['DMG', ['hunter', 'damage']],
           ['AIM', ['hunter', 'aimTime']], ['RELOAD', ['hunter', 'reload']],
@@ -4064,7 +4099,7 @@ class Renderer {
     ctx.fillText('read and edited live off TUNING · the portrait is the same drawEnemy call the game itself uses · click a number to change it', pad + 120 * s, top);
 
     // How fast each kind moves, read off TUNING the way the step moves him (`this.speed = cfg.speed`,
-    // a brute is a clubman's legs, idle is × `ai.wanderSpeed`, alight × `rage.speed`), in px/s,
+    // a butcher is a clubman's legs, idle is × `ai.wanderSpeed`, alight × `rage.speed`), in px/s,
     // tiles/s and against the goat: his bare walk (`goat.speed`) and the top of a full run-up
     // (× 1 + `momentum.max`). Nothing typed here, so a retune of any pace shows up at once.
     // Both sides × their SPEED slider (`game.dev.tune`), the way the step moves them; the ogre's leap
@@ -4075,7 +4110,7 @@ class Renderer {
     const paceOf = (tag) => paceRaw(tag).map(([l, v]) => [l, l === 'LEAP ≤' ? v : v * es]);
     const paceRaw = (tag) => {
       const B = TUNING.bearer, C = TUNING.champion, O = TUNING.butcher, D = TUNING.dog;
-      if (tag === 'bearer' || tag === 'soulBearer') return [['CHASE', B.speed], idle(B.speed)];
+      if (tag === 'bearer' || tag === 'boss') return [['CHASE', B.speed], idle(B.speed)];
       if (tag === 'champion') return [['CHASE', B.speed], ['CHARGE', C.charge.speed], ['ALIGHT', B.speed * C.rage.speed], idle(B.speed)];
       if (tag === 'butcher') return [['CHASE', O.speed], ['LEAP ≤', O.leap.max * TILE / O.leap.air], ['ALIGHT', O.speed * O.rage.speed], idle(O.speed)];
       if (tag === 'dog') return [['CHASE', D.speed], ['RUN', D.dashSpeed], idle(D.speed)];
@@ -4100,7 +4135,7 @@ class Renderer {
       const ry = y + i * rowH;
       if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, ry, W - pad * 2 + 8 * s, rowH); }
       const fake = { x: pad + thumb / 2, y: ry + thumb / 2 + 6 * s, r: k.cfg.radius, kind: k.kind,
-        champion: !!k.champion, elite: !!k.champion, facing: Math.PI / 2, hp: k.hp, maxHp: k.hp,
+        champion: !!k.champion, boss: !!k.boss, elite: !!k.boss, facing: Math.PI / 2, hp: k.hp, maxHp: k.hp,
         dead: false, ghosted: false, vx: 0, vy: 0, flash: 0, burning: 0, bombFuse: 0, dazed: 0,
         state: 'idle', say: null, soul: !!k.soul, witchBurn: false };
       ctx.save(); this.drawEnemy(fake, game); ctx.restore();
@@ -4679,7 +4714,7 @@ class Renderer {
       if (big && k > 9) {
         ctx.font = `700 ${7.5 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.85)';
         ctx.textAlign = 'center';
-        ctx.fillText((sp.champion ? 'brute' : sp.kind) + (sp.boss ? '*' : ''), dx, dy - k * 1.05);
+        ctx.fillText((sp.champion ? 'butcher' : sp.kind) + (sp.boss ? '*' : ''), dx, dy - k * 1.05);
         ctx.textAlign = 'left';
       }
     }
