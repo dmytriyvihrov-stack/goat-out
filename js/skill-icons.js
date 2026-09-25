@@ -345,7 +345,7 @@ const SKILL_ICONS = {
     if (id === 'grab') {
       L.push('jaw');
       if (!m.grabMen) L.push('crate');
-      else { L.push('man'); if (m.livingShield) L.push('club'); if (m.devour) L.push('gore'); }
+      else { L.push('man'); if (m.livingShield) L.push('club'); }
       if (m.shieldBullets > (typeof BOON_BASE !== 'undefined' ? BOON_BASE.shieldBullets : 2)) L.push('teeth');
       if (m.venomHold > 0) L.push('venomJaw');
       if (m.chargeHold > 0) L.push('charged');

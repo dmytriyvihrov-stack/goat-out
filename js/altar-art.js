@@ -32,6 +32,16 @@ class AltarArt {
       for (let y = room.y + 1; y < room.y + room.h - 1; y++)
         for (let x = room.x + 1; x < room.x + room.w - 1; x++) this.boards[y * W + x] = 1;
     }
+    // Every sheet this floor draws is painted now, as the level starts, rather than the first time
+    // the camera meets a store room's boards or a wall's face mid-run (`FLOOR_SHEET`, a 0.1–0.7 s
+    // hitch in the smoke run). The cave draws its own floor and needs none.
+    const def = game.level.def;
+    if (typeof ART_PASS !== 'undefined' && ART_PASS.floors && this.floorSwatch && !game.world.round) {
+      this.floorSwatch(def, 0, false, 0, 0);
+      if (this.boards.some((b) => b)) this.floorSwatch(def, 0, true, 0, 0);
+      const Wl = PIXEL_ROOMS.wall;
+      FLOOR_SHEET.faceStrip(this.swatch(Wl.face, def.wall), 'face' + def.wall, Wl.faceH, 0);
+    }
   }
 
   tile(kind, variant) {

@@ -115,7 +115,8 @@ inside a wall, so a wall at your back is one arc it cannot come from.
 **Souls.** Two on every floor, most of them lying in front of a gate that only the soul opens, and a boss
 who glows carries one now and then. A soul offers three cards — an active that changes what a button does, or a passive
 that bends its numbers — and the build holds one active and two passives per button. Dragon Breath turns
-the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Long Horns grows antlers.
+the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Long Horns grows antlers,
+Firebrand leaves a line of fire behind anything you throw.
 
 **The mouse in the wall.** On THE YARD, THE ROAD and THE BRIDGE one gate is her room instead: a
 talisman, another talisman or a pail of milk, and you take one. She takes nothing for it. Headbutting

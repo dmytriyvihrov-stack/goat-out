@@ -59,8 +59,8 @@ it out instead, and the first screen is a menu.
 | WASD / left thumb | Move. Momentum-heavy: 0.15 s to top speed, 0.25 s to stop. Faster than a man once he has a run-up behind him; a hound is always quicker. |
 | Mouse / auto-aim | Aim. On touch the aim follows your run and snaps onto men within about five tiles. |
 | Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.38 s recovery, no cancel. Deliberately blunt out of the pen: short reach, little throw behind it, and long enough on the end that a second man walks in on it. A man thrown into a man standing next to him kills him, and dies with him if he arrived fast enough. |
-| Hold right click / GRAB | Carry a box, a blade or a shield. **A man is a soul away** — until BY THE COLLAR is swallowed the mouth takes objects and nothing else. |
-| Release | Throw. A thrown man kills what he hits and dies on the wall. Your mouth is then empty for about 1.6 s. |
+| Hold right click / GRAB | Carry a box, a blade or a shield. **A man is a soul away** — until BY THE COLLAR is swallowed the mouth takes objects and nothing else. With it, a man takes a 0.18 s bite to lift (he keeps swinging through it) and is carried at 60% speed. |
+| Release | Throw. A thing goes the length of the room. A thrown man goes about four tiles, kills a man he hits hard, and dies on a wall only within about three tiles — the headbutt reaches further. Your mouth is then empty for about 1.6 s, 2.3 s after a man. |
 | E / ROLL | A clumsy sideways tumble, brief mercy frames, a stagger you must eat, about 1.6 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. The one verb that is whole out of the pen; **DEAD WEIGHT** is what its soul buys, and everything the tumble goes through loses its head. |
 | Space / BAAH | A noise. Every man who hears it walks to the spot you made it at, which empties one end of a room and fills the other. **THE FULL THROAT** turns it into a blow that dazes everyone in earshot; **DRAGON BREATH** turns it into fire. You get one of the two. |
 
@@ -370,13 +370,17 @@ ones swallowed on the floor it happened on (past the middle gate, only those swa
 **Actives** change what a button does (`BOONS` in `js/tuning.js` is the list; the BOONS tab of the dev
 drawer shows every one with its numbers).
 
-- **By the Collar** lets you take a man in your teeth at all.
+- **By the Collar** lets you take a man in your teeth at all: a short bite to get under him first,
+  a slow walk while he is in your mouth, and a longer wait before the next grab. Thrown, he is a
+  weaker blow than the headbutt: he dies on a wall only if it is close.
 - **The Full Throat** turns BAAH from a noise into a blow; **Dragon Breath** into a cone of fire;
   **Venom Spit** into a glob that poisons.
 - **Long Horns**, **Bomb Charge** and **Splash** change what the horns do: antlers, a man who explodes
   if he dies in the next moment, poison on whoever stands behind you.
-- **Devour**, **Venom Jaw** and **Charged** change what the mouth does to what it holds: tear a man open,
-  drip poison along a throw, or throw something that explodes where it stops.
+- **Venom Jaw** and **Firebrand** change what the mouth does to a throw: poison the floor, whoever it
+  hits and a puddle where it lands; or burn the line it flew over (nothing it hits catches, men walk
+  round the fire). *Devour* was cut in 1.65: a kill without a wall and a heart back nearly one time in
+  two broke the run.
 - **Dead Weight**, **Sour Tumble** and **Leapfrog** change the roll: everything it goes through loses its
   head, leaves poison behind, or vaults a man instead of going round him.
 

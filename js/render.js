@@ -1444,11 +1444,11 @@ class Renderer {
     h.facing = fa;
     try { this.drawProp(h); this.drawHoldCharge(this.game); } finally { h.x = x; h.y = y; h.facing = f; }
   }
-  // VENOM JAW / CHARGED: a ring closing round whatever is in his mouth, and once it is shut the
-  // thing pulses, green for poison and fire-yellow for a charge. The two seconds have to be seen.
+  // VENOM JAW / FIREBRAND: a ring closing round whatever is in his mouth, and once it is shut the
+  // thing pulses, green for poison and fire-yellow for fire. The two seconds have to be seen.
   drawHoldCharge(game) {
     const g = game.goat, h = g.holding, p = Status.holdCharge(game, g); if (!h || p <= 0) return;
-    const ctx = this.ctx, col = game.mods.chargeHold ? PALETTE.fireHi : PALETTE.venomHi, r = (h.r || 12) + 7;
+    const ctx = this.ctx, col = game.mods.brandHold ? PALETTE.fireHi : PALETTE.venomHi, r = (h.r || 12) + 7;
     ctx.save(); ctx.translate(h.x, h.y);
     ctx.lineWidth = 2.4; ctx.strokeStyle = 'rgba(13,10,12,0.5)';
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
@@ -4375,8 +4375,8 @@ class Renderer {
     ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText('WHERE IT COMES FROM', pad, y);
     const SRC = [
       ['💦 SPLASH (butt)', [['REACH', ['status', 'splash', 'range']], ['BEHIND PAST', ['status', 'splash', 'back']]]],
-      ['🐍 VENOM JAW (grab)', [['PUDDLE HALF', ['status', 'jaw', 'half']]]],
-      ['⚡ CHARGED (grab)', [['RADIUS', ['status', 'charge', 'radius']], ['HIT INSIDE', ['status', 'charge', 'hitR']], ['THROW', ['status', 'charge', 'impulse']]]],
+      ['🐍 VENOM JAW (grab)', [['PUDDLE HALF', ['status', 'jaw', 'half']], ['TOUCH', ['status', 'jaw', 'touch']]]],
+      ['☄️ FIREBRAND (grab)', [['BURNS', ['status', 'brand', 'burn']], ['GAP', ['status', 'brand', 'gap']]]],
       ['🦠 SOUR TUMBLE (roll)', [['PUDDLE HALF', ['status', 'tumble', 'half']]]],
       ['🫧 VENOM SPIT (scream)', [['SPEED', ['status', 'spit', 'speed']], ['RANGE', ['status', 'spit', 'range']], ['PUDDLE HALF', ['status', 'spit', 'half']]]],
     ];
@@ -4387,7 +4387,7 @@ class Renderer {
       sy = chips(list, pad + 170 * s, sy, W - pad);
     }
     ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-    ctx.fillText('the hold time of VENOM JAW and CHARGED, and the SPIT cooldown, are the boons\' own params on the BOONS tab', pad, sy + 8 * s);
+    ctx.fillText('the hold time of VENOM JAW and FIREBRAND, and the SPIT cooldown, are the boons\' own params on the BOONS tab', pad, sy + 8 * s);
   }
 
   // THE FIXTURES: every kind of Prop that stands in a room, read live off TUNING the way the
@@ -5201,7 +5201,7 @@ class Renderer {
     if (Math.cos(g.facing) < 0) ctx.scale(1, -1);
     if (g.dazed > 0 && g.state !== 'ko') ctx.rotate(Math.sin(this.t * 24) * 0.1);
     let sx = 1, sy = 1;
-    if (g.state === 'windup') { sx = 0.82; sy = 1.15; }
+    if (g.state === 'windup' || g.state === 'bite') { sx = 0.82; sy = 1.15; }
     else if (g.state === 'lunge') { sx = 1.3; sy = 0.8; }
     else if (g.state === 'roll') { sx = 0.86; sy = 0.86; }
     else if (g.state === 'rollrecover') { sx = 1.08; sy = 0.9; }
@@ -6294,18 +6294,16 @@ class Renderer {
         stat: `REACH ${sayN(H.reach * M.headbuttReach / TILE)} TILES · RECOVERY ${sayN(H.recovery * M.headbuttRecovery)}s`
           + (M.bomb ? ` · ${sayN(TUNING.goat.bomb.fuse)}s FUSE` : '') },
       { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: trip ? 'LMB' : 'RMB', cd: g.grabCd,
-        max: TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
+        max: g.grabCdMax || TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
         // COLD EYE's moment, draining the chip the way a headbutt's recovery drains its own.
         recover: M.coldEye && game.aimSlow > 0 ? clamp(game.aimSlow / M.coldEye.time, 0, 1) : 0,
-        note: (game.mods.grabMen ? 'Press near a box, a blade, a shield or a man to carry it. Let go to throw.'
+        note: (game.mods.grabMen ? 'Press near a box, a blade, a shield or a man to carry it. A man takes a moment to get your teeth under, and he is heavy. Let go to throw.'
           : 'Press near a box, a blade or a shield to carry it. Let go to throw. Men are too heavy for now.')
-          + (game.mods.chargeHold ? ` Held ${game.mods.chargeHold}s, it is charged and goes off where it lands.`
-            : game.mods.venomHold ? ` Held ${game.mods.venomHold}s, it drips poison all the way down.` : '')
-          + (M.devour ? ' Hold on to a man and you tear him open.' : '')
+          + (game.mods.brandHold ? ` Held ${game.mods.brandHold}s, it catches: the floor it flies over burns.`
+            : game.mods.venomHold ? ` Held ${game.mods.venomHold}s, it drips poison all the way down and onto whoever it hits.` : '')
           + (M.coldEye ? ' Picking something up slows the world until you throw it.' : ''),
-        stat: `REACH ${sayN(G.reach / TILE)} TILES`
-          + (M.grabMen ? ` · A MAN STOPS ${M.shieldBullets} BULLETS · WORKS LOOSE IN ~${sayN(M.holdTime)}s · ${sayN(G.cooldown * M.grabCooldown)}s BEFORE THE NEXT` : '')
-          + (M.devour ? ` · TORN OPEN AFTER ${sayN(TUNING.goat.devour.time)}s` : '')
+        stat: `REACH ${sayN(G.reach / TILE)} TILES · ${sayN(G.cooldown * M.grabCooldown)}s BEFORE THE NEXT`
+          + (M.grabMen ? ` · A MAN: ${sayN(G.bite)}s TO LIFT, ${sayPct(G.speedMul)} SPEED, STOPS ${M.shieldBullets} BULLETS, WORKS LOOSE IN ~${sayN(M.holdTime)}s, ${sayN(G.cooldown * M.grabCooldown * G.manCd)}s BEFORE THE NEXT` : '')
           + (M.coldEye ? ` · TIME AT ${sayPct(M.coldEye.scale)} FOR ${sayN(M.coldEye.time)}s, EVERY ${sayN(M.coldEye.every)}s` : '') },
       { id: 'roll', name: M.leapfrog ? 'LEAP' : 'ROLL', cap: trip ? 'SPC' : 'E', cd: g.rollCd,
         max: g.rollCdMax || R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
@@ -6467,8 +6465,8 @@ class Renderer {
     // fallback for a verb it does not draw.
     if (typeof SKILL_ICONS !== 'undefined' && SKILL_ICONS.draw(this.ctx, id, h, mods || game.mods, mods ? !!mods.breath : fire)) return;
     this.skillIconBase(id, h, game, fire);
-    // The poison souls and the charge add a mark in the corner of the verb they ride on: a green
-    // drop for poison, a yellow spark for a charge. The spit draws its own glob instead.
+    // The poison souls and the firebrand add a mark in the corner of the verb they ride on: a green
+    // drop for poison, a yellow flame for fire. The spit draws its own glob instead.
     const m = game.mods, ctx = this.ctx;
     const venom = id === 'butt' ? m.splash : id === 'grab' ? m.venomHold > 0 : id === 'roll' ? m.venomRoll : false;
     if (venom) {
@@ -6476,10 +6474,12 @@ class Renderer {
       ctx.beginPath(); ctx.moveTo(h * 0.95, h * 0.35); ctx.quadraticCurveTo(h * 1.35, h * 0.85, h * 0.95, h * 1.05);
       ctx.quadraticCurveTo(h * 0.55, h * 0.85, h * 0.95, h * 0.35); ctx.fill();
     }
-    if (id === 'grab' && m.chargeHold > 0) {
+    if (id === 'grab' && m.brandHold > 0) {                           // Firebrand: a tongue of flame
       ctx.fillStyle = PALETTE.fireHi;
-      ctx.beginPath(); ctx.moveTo(h * 1.05, h * 0.2); ctx.lineTo(h * 0.7, h * 0.72); ctx.lineTo(h * 0.95, h * 0.72);
-      ctx.lineTo(h * 0.8, h * 1.1); ctx.lineTo(h * 1.2, h * 0.55); ctx.lineTo(h * 0.95, h * 0.55); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(h * 0.95, h * 0.2); ctx.quadraticCurveTo(h * 1.3, h * 0.7, h * 0.95, h * 1.08);
+      ctx.quadraticCurveTo(h * 0.6, h * 0.7, h * 0.95, h * 0.2); ctx.fill();
+      ctx.fillStyle = PALETTE.fire;
+      ctx.beginPath(); ctx.arc(h * 0.95, h * 0.82, h * 0.14, 0, Math.PI * 2); ctx.fill();
     }
     if (id === 'grab' && m.coldEye) {                                 // Cold Eye: a small hourglass up top
       ctx.fillStyle = PALETTE.bone;
@@ -6522,14 +6522,14 @@ class Renderer {
       ctx.beginPath(); ctx.arc(0, 0, h * 0.95, -Math.PI * 0.32, Math.PI * 0.32); ctx.stroke();
       // What is between the jaws. Out of the pen it is a box — the mouth takes objects and nothing
       // else — and BY THE COLLAR turns it into a head, which is the icon changing into the thing
-      // the soul bought. Devour reddens it; a strong jaw puts teeth round it.
+      // the soul bought. A strong jaw puts teeth round it.
       if (!m.grabMen) {
         ctx.fillStyle = PALETTE.ochre;
         ctx.fillRect(-h * 0.3, -h * 0.3, h * 0.6, h * 0.6);
         ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = h * 0.1;
         ctx.beginPath(); ctx.moveTo(-h * 0.3, 0); ctx.lineTo(h * 0.3, 0); ctx.stroke();
       } else {
-        ctx.fillStyle = m.devour ? PALETTE.blood : PALETTE.ochre;
+        ctx.fillStyle = PALETTE.ochre;
         ctx.beginPath(); ctx.arc(0, 0, h * 0.3, 0, Math.PI * 2); ctx.fill();
       }
       if (m.shieldBullets > 2) {                                       // Strong Jaw: teeth
@@ -6662,7 +6662,7 @@ class Renderer {
     }
     // A throw empties your mouth for a beat, and the ring round GRAB is where you read that beat.
     if (game.goat.grabCd > 0 && !held) {
-      const b = t.buttons.grab, p = 1 - game.goat.grabCd / (TUNING.goat.grab.cooldown * game.mods.grabCooldown);
+      const b = t.buttons.grab, p = 1 - game.goat.grabCd / (game.goat.grabCdMax || TUNING.goat.grab.cooldown * game.mods.grabCooldown);
       ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3 * this.s;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
     }

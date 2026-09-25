@@ -252,7 +252,7 @@ class CombatFX {
     // sprite is already his living size there. Squeezed to 40 (a leftover of the painted sheets,
     // drawn at 80) every body lay at under half the man it was (playtest, 24 Sep 2026).
     const sprite=this.snapshot(e), big=e.kind==='butcher', size=96;
-    const torn=cause==='boom'||cause==='devour'||cause==='roll';
+    const torn=cause==='boom'||cause==='roll';
     if(cause!=='burn') {
       const k=TUNING.effects.bloodScale;
       this.blood(e.x,e.y,dx,dy,Math.round((big?18:11)*k));

@@ -155,8 +155,17 @@ const TUNING = {
     // anything, which is what makes an arm worth taking in passing rather than a thing you commit to.
     // `throwImpulse` is a fifth less than it was: a throw that crossed most of a room made the
     // grab-and-launch loop the answer to everything a headbutt was supposed to be for.
-    grab: { reach: 1.6 * TILE, speedMul: 0.7, itemSpeedMul: 0.94, holdTime: 8.0, holdVary: 0.125,
-      throwImpulse: 27.2 * TILE, manThrow: 0.7, holdDist: 22, cooldown: 1.35 * GOAT_CD },
+    // 1.65 (24 Sep 2026: "the throw is weaker than the headbutt, it really is the less active
+    // verb"): a man is not a box, and three things say so. `bite` s of getting the teeth under him
+    // before he is off his feet, slowed to `biteMove` of a stride — a windup like any other, and he
+    // keeps doing whatever he was doing through it; if he is gone or out of `biteSlack` × the reach
+    // when it closes, the mouth closes on nothing and costs `biteMiss` s. Carried, he is `speedMul`
+    // (0.6 from 0.7: under a mage's cast in your mouth you only just get clear of his own fire).
+    // And a man costs the mouth `manCd` × `cooldown` before it takes again, however he left it.
+    // Objects are none of this: a crate is still in your mouth the frame you ask.
+    grab: { reach: 1.6 * TILE, speedMul: 0.6, itemSpeedMul: 0.94, holdTime: 8.0, holdVary: 0.125,
+      throwImpulse: 27.2 * TILE, manThrow: 0.7, holdDist: 22, cooldown: 1.35 * GOAT_CD,
+      bite: 0.18, biteMove: 0.4, biteSlack: 1.2, biteMiss: 0.45, manCd: 1.4 },
     // Where a carried THING is drawn (render only; `grab.holdDist` stays the hold point a throw starts
     // from): in his teeth, at the mouth of the facing the sprite shows (`PIXEL_FACE`), `lead` px plus
     // `reach` × its radius out ahead of the muzzle. `lift` is how far above its own y each drawer puts
@@ -200,7 +209,6 @@ const TUNING = {
     // through, and anywhere between the two it is mixed.
     trail: { at: 0.55, gap: 0.028, keep: 7, life: 0.18, fastGap: 0.014, fastKeep: 16, fastLife: 0.34, fastAt: 1.18 },
     breath: { range: 5.2 * TILE, halfAngle: 0.52, fireTime: 2.2, cooldown: 5.0 * GOAT_CD },
-    devour: { time: 1.15, healChance: 0.45 },
     // `radius` is the real blast — what it flings and damages — and stays untouched by the two
     // numbers under it: `fxScale` and `fxLife` only shrink and shorten the burst graphic itself, so
     // the explosion reads without eating a third of the screen or the fight happening behind it.
@@ -540,6 +548,14 @@ const TUNING = {
     // two deaths and the bare head bought a double kill (23 Sep 2026 answers: one death, not two).
     // Over the bare headbutt's own impulse on purpose: LONG HORNS and a run-up can still reach it.
     bodyBothSpeed: 32 * TILE,
+    // A man thrown out of the mouth (BY THE COLLAR) dies on a wall, or kills a man he lands on, only
+    // arriving faster than this. It was any touch at all, glancing included, which made the throw a
+    // surer kill than the headbutt it was meant to sit behind. Out of the mouth at
+    // `grab.throwImpulse × manThrow` (19 tiles a second) and slowing `flungDrag` tiles a second for
+    // every tile flown, this is lethal out to about three tiles; the bare headbutt against
+    // `splatSpeed` is lethal to nearly five. Bombs, blasts and the rat ogre throw bodies too, and
+    // they keep killing on any touch: this is the mouth's number only (`Enemy.fromMouth`).
+    thrownKill: 8 * TILE,
   },
   fire: {
     spread: 0.48, burn: 3.0, pool: 4.5, burnRunTime: 2.0, burnRunSpeed: 6 * TILE * SLOW,   // spread was 0.4; a burning tile catching its neighbour that fast read as too eager
@@ -576,11 +592,16 @@ const TUNING = {
     // past which a man counts as behind). A puddle's `half` is tiles either side of the centre one,
     // so 1 is three by three.
     splash: { range: 1.5, back: -0.2 },
-    jaw: { half: 1 },
+    // VENOM JAW's throw poisons the floor under its flight, a `half` puddle where it stops, and
+    // whoever it passes within `touch` px of (their radii and its own aside) — once each a throw.
+    jaw: { half: 1, touch: 4 },
     tumble: { half: 1 },
     spit: { speed: 12 * TILE, range: 7.5, half: 1 },
-    // A charged throw goes off like a small bomb where it lands.
-    charge: { radius: 2.2, hitR: 1.1, impulse: 12 * TILE, goatPush: 320 },
+    // FIREBRAND (it was CHARGED, a bomb where the throw stopped, until 1.65): the floor it has
+    // flown over burns for `burn` s, a straight line and nothing else — not where it lands, not
+    // who it hits. Nothing within `gap` tiles of the mouth it left, so the goat is not standing in it.
+    // Men read burning floor as a hazard and walk round it, which is the other half of what it is for.
+    brand: { burn: 3.0, gap: 1 },
   },
   prop: {
     // A door is the one thing in a corridor that can hold you still, and holding you still in a
@@ -1535,8 +1556,8 @@ const BOON_BASE = {
   shieldSwing: 0.5, shieldReload: 1,
   // Grab lifts objects out of the pen and nothing else. A crate, a blade, a shield: things a goat
   // could plausibly get its teeth into. A man is BY THE COLLAR, and until that soul is swallowed
-  // every trick built on carrying one — the living shield, the strong jaw, devouring — is off the
-  // table, because a card that needs a verb you have not got is a wasted card.
+  // every trick built on carrying one — the living shield, the strong jaw — is off the table,
+  // because a card that needs a verb you have not got is a wasted card.
   grabMen: false,
   screamCooldown: 3.0 * GOAT_CD, screamRadius: 6.8,
   // How far the bare call carries — the lure, which is the half of the voice every goat has out of
@@ -1558,7 +1579,7 @@ const BOON_BASE = {
   // LEAPFROG's and COLD EYE's params, copied in whole by their `apply` (null is off), and what a
   // tuft of grass gives on top of its own heart (FOUR STOMACHS). The pail is milk, not grass.
   leapfrog: null, coldEye: null, grassGain: 0,
-  breath: false, bomb: false, devour: false,
+  breath: false, bomb: false,
   // Off by default: a burning man stops with the man he caught fire from, unless this soul is spent.
   // A depth, not a flag: how many men a fire may be handed down through. KINDLING is 1; the FIRE
   // AMULET's tiers go deeper (`ARTIFACTS`).
@@ -1568,9 +1589,9 @@ const BOON_BASE = {
   // floor, `boomerang` is what a press of grab on nothing throws, `blink` is what the roll turns
   // into. Null until one hangs there.
   luck: null, boomerang: null, blink: null,
-  // The poison actives, one per button, and the charge. `venomHold` / `chargeHold` are seconds a
-  // thing has to be in his mouth before the throw carries it; 0 is off.
-  splash: false, venomHold: 0, chargeHold: 0, venomRoll: false, spit: false,
+  // The poison actives, one per button, and the fire in the mouth. `venomHold` / `brandHold` are
+  // seconds a thing has to be in his mouth before the throw carries it; 0 is off.
+  splash: false, venomHold: 0, brandHold: 0, venomRoll: false, spit: false,
 };
 
 // How many souls a build can hold, so no one button gets pumped: one active on each of the four
@@ -1588,8 +1609,10 @@ const BOON_FIRST = ['butt', 'scream'];
 // numerator of the curve and this is the denominator. A heart is the unit. Anything not named is 1.
 // The key that opens half a verb (BY THE COLLAR) and the two actives that turn the voice into a
 // weapon are worth more; the passives that only shift a number at the edge of a fight, less.
-// Nothing in the game reads it — it is a guess to be argued with, not a rule.
-const BOON_POWER = { heart: 1, collar: 1.6, howl: 1.5, breath: 1.5, bomb: 1.3, devour: 1.2, hide: 1.2,
+// Nothing in the game reads it — it is a guess to be argued with, not a rule. The collar came down
+// from 1.6 in 1.65, when a man started to cost a windup, a slower stride and a longer wait, and
+// stopped dying on any wall he brushed.
+const BOON_POWER = { heart: 1, collar: 1.3, howl: 1.5, breath: 1.5, bomb: 1.3, hide: 1.2,
   oracle: 0.6, ember: 0.6, kindling: 0.8, throat: 0.8, leapfrog: 1.1, coldeye: 0.9, stomachs: 0.5 };
 
 // Every boon's tunable numbers live in its own `params`, not buried in `apply`'s body, so the
@@ -1620,9 +1643,12 @@ const sayPoison = () => `POISON: ${sayN(TUNING.status.poison.time)}s AT ${sayPct
 // than a list (asked for 16 Sep 2026, built 23 Sep).
 const BOONS = [
   // ---- actives: they change what a button does ----
+  // What it costs is on the card as plainly as what it buys (asked for 24 Sep 2026): the windup,
+  // the stride, the wait, and how near a wall the throw has to be to finish him.
   { id: 'collar', skill: 'grab', active: true, key: true, emoji: '⛓️', minLevel: 0, name: 'BY THE COLLAR',
-    desc: 'Grab picks up men, not just boxes. The man in your mouth is a shield, and a thing to throw.',
-    stat: () => `HE STOPS ${BOON_BASE.shieldBullets} BULLETS · WORKS LOOSE IN ABOUT ${sayN(BOON_BASE.holdTime)}s · THROWN, HE KILLS WHOEVER HE LANDS ON`,
+    desc: 'Grab picks up men, not just boxes, once you get your teeth under him. The man in your mouth is a shield and a thing to throw, and he is heavy.',
+    stat: () => { const G = TUNING.goat.grab, P = TUNING.physics, kill = (G.throwImpulse * G.manThrow - P.thrownKill) / P.flungDrag / TILE;
+      return `LIFTING HIM ${sayN(G.bite)}s · CARRYING, ${sayPct(G.speedMul)} SPEED · HE STOPS ${BOON_BASE.shieldBullets} BULLETS · WORKS LOOSE IN ABOUT ${sayN(BOON_BASE.holdTime)}s · THROWN, A WALL WITHIN ${sayN(kill)} TILES KILLS HIM · ${sayN(G.cooldown * G.manCd)}s BEFORE THE NEXT GRAB`; },
     apply: (m) => { m.grabMen = true; } },
   { id: 'howl', skill: 'scream', active: true, emoji: '📢', minLevel: 0, name: 'THE FULL THROAT',
     desc: 'BAAH becomes a stun: everyone near you stops dead, mid-swing or not. It no longer calls the room.',
@@ -1638,30 +1664,31 @@ const BOONS = [
     desc: 'A man you headbutt is lit for a moment: if he dies against a wall or another man in that time, he explodes.',
     stat: () => { const B = TUNING.goat.bomb; return `${sayN(B.fuse)}s FUSE · THROWS EVERYONE WITHIN ${sayN(B.radius / TILE)} TILES · YOU ARE ONLY SHOVED`; },
     apply: (m) => { m.bomb = true; } },
-  { id: 'devour', synergy: ['jaw'], skill: 'grab', active: true, needs: 'grabMen', emoji: '🍖', minLevel: 0, name: 'DEVOUR',
-    desc: 'Hold on to a man instead of throwing him and you tear him open. Sometimes that heals you.',
-    stat: () => { const D = TUNING.goat.devour; return `KILLS AFTER ${sayN(D.time)}s HELD · ${sayPct(D.healChance)} CHANCE OF +1 HEART`; },
-    apply: (m) => { m.devour = true; } },
   { id: 'weight', synergy: ['breath', 'splash'], skill: 'roll', active: true, emoji: '🪨', minLevel: 0, name: 'DEAD WEIGHT',
     desc: 'Your roll is a weapon now: everyone you tumble through is knocked senseless.',
     stat: (p) => `DAZES EVERYONE WITHIN ${sayN(TUNING.goat.roll.stunR / TILE)} TILES OF YOUR PATH FOR ${sayN(p.stun)}s · ONCE EACH PER ROLL`,
     params: { stun: TUNING.goat.roll.stun },
     apply: (m, p) => { m.rollStun = p.stun; } },
-  // Poison, one on each button, and a second grab active that is a bomb you make yourself.
+  // Poison, one on each button, and a second grab active that sets the floor behind a throw alight.
+  // DEVOUR was a third, and was cut in 1.65: a kill with no wall in it and a heart back nearly one
+  // time in two, on the most common man in the building, was the one card that broke a run.
   { id: 'splash', synergy: ['breath'], skill: 'butt', active: true, emoji: '💦', minLevel: 0, name: 'SPLASH',
     desc: 'Every headbutt also poisons whoever is right behind you, the moment you lower your head.',
     stat: () => `REACHES ${sayN(TUNING.status.splash.range)} TILES BEHIND · ${sayPoison()}`,
     apply: (m) => { m.splash = true; } },
   { id: 'venomjaw', synergy: ['kindling'], skill: 'grab', active: true, emoji: '🐍', minLevel: 0, name: 'VENOM JAW',
-    desc: 'Hold anything long enough and it leaves your mouth dripping: poison along its flight and a puddle where it stops.',
-    stat: (p) => { const s = TUNING.status.jaw.half * 2 + 1; return `HOLD ${sayN(p.holdFor)}s · PUDDLE ${s}×${s} TILES FOR ${sayN(TUNING.status.poison.pool)}s · ${sayPoison()}`; },
+    desc: 'Hold anything long enough and it leaves your mouth dripping: poison along its flight, on whoever it hits, and a puddle where it stops.',
+    stat: (p) => { const s = TUNING.status.jaw.half * 2 + 1; return `HOLD ${sayN(p.holdFor)}s · POISONS WHO IT HITS · PUDDLE ${s}×${s} TILES FOR ${sayN(TUNING.status.poison.pool)}s · ${sayPoison()}`; },
     params: { holdFor: 2 },
     apply: (m, p) => { m.venomHold = p.holdFor; } },
-  { id: 'charge', skill: 'grab', active: true, emoji: '⚡', minLevel: 0, name: 'CHARGED',
-    desc: 'Hold anything long enough and it is charged: thrown, it explodes where it stops.',
-    stat: (p) => { const C = TUNING.status.charge; return `HOLD ${sayN(p.holdFor)}s · HITS ALL WITHIN ${sayN(C.hitR)} TILES, THROWS ALL TO ${sayN(C.radius)} · YOU ARE ONLY SHOVED`; },
+  // The fire half of the mouth, against VENOM JAW's poison: poison is everywhere the throw touches
+  // (floor, the man it hits, a puddle where it stops); fire is the line it flew and nothing else.
+  // It was CHARGED, a bomb where the throw stopped; the id stays `charge` so a saved run keeps it.
+  { id: 'charge', synergy: ['kindling', 'spit'], skill: 'grab', active: true, emoji: '☄️', minLevel: 0, name: 'FIREBRAND',
+    desc: 'Hold anything long enough and it catches: thrown, it burns a line along the floor it flies over. Nothing it hits is set alight, and men walk the long way round the fire.',
+    stat: (p) => { const B = TUNING.status.brand; return `HOLD ${sayN(p.holdFor)}s · ITS PATH BURNS ${sayN(B.burn)}s, FROM ${sayN(B.gap)} TILE OUT OF YOUR MOUTH · NOT WHERE IT LANDS`; },
     params: { holdFor: 2 },
-    apply: (m, p) => { m.chargeHold = p.holdFor; } },
+    apply: (m, p) => { m.brandHold = p.holdFor; } },
   { id: 'venomroll', skill: 'roll', active: true, emoji: '🦠', minLevel: 0, name: 'SOUR TUMBLE',
     desc: 'Every roll leaves a puddle of poison where you get up.',
     stat: () => { const s = TUNING.status.tumble.half * 2 + 1; return `PUDDLE ${s}×${s} TILES FOR ${sayN(TUNING.status.poison.pool)}s · ${sayPoison()}`; },
@@ -1708,7 +1735,7 @@ const BOONS = [
     params: { recoveryMul: 0.5 },
     apply: (m, p) => { m.headbuttRecovery *= p.recoveryMul; } },
   { id: 'jaw', addition: ['collar', 'shield'], skill: 'grab', needs: 'grabMen', emoji: '🦷', minLevel: 0, name: 'STRONG JAW', desc: 'The man in your mouth is a better shield and stays there longer, and your mouth is free again sooner.',
-    stat: (p) => `STOPS ${BOON_BASE.shieldBullets} → ${p.shieldBullets} BULLETS · HELD ~${sayN(BOON_BASE.holdTime)} → ${sayN(p.holdTime)}s · GRAB COOLDOWN ${sayN(TUNING.goat.grab.cooldown)} → ${sayN(TUNING.goat.grab.cooldown * p.cooldownMul)}s`,
+    stat: (p) => { const G = TUNING.goat.grab; return `STOPS ${BOON_BASE.shieldBullets} → ${p.shieldBullets} BULLETS · HELD ~${sayN(BOON_BASE.holdTime)} → ${sayN(p.holdTime)}s · GRAB COOLDOWN ${sayN(G.cooldown)} → ${sayN(G.cooldown * p.cooldownMul)}s, AFTER A MAN ${sayN(G.cooldown * G.manCd)} → ${sayN(G.cooldown * G.manCd * p.cooldownMul)}s`; },
     params: { shieldBullets: 4, holdTime: 13, cooldownMul: 0.6 },
     apply: (m, p) => { m.shieldBullets = p.shieldBullets; m.holdTime = p.holdTime; m.grabCooldown *= p.cooldownMul; } },
   { id: 'shield', synergy: ['jaw'], skill: 'grab', needs: 'grabMen', emoji: '🛡️', minLevel: 0, name: 'LIVING SHIELD', desc: 'The man in your mouth keeps fighting, for you: he swings at his own side, and a rifle keeps firing.',

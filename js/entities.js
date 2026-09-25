@@ -11,6 +11,8 @@ class Goat {
     this.hoofTimer = 0; this.kind = 'goat';
     this.stepNoiseTimer = 0;   // running footsteps: a timer, not a coin flip — see js/tuning.js noise.footstepGap
     this.rollCd = 0; this.rollSpin = 0; this.rollDir = { x: 1, y: 0 }; this.rollHit = null; this.grabCd = 0;
+    this.grabCdMax = 0;    // what the last grab cost (a man costs more than a thing), for the rail's drain
+    this.biting = null;    // the man his teeth are going under, while `state` is 'bite'
     this.rollCdMax = 0;    // what the last roll cost, which a LEAPFROG vault doubles, for the rail's drain
     this.leap = null;      // LEAPFROG: { e, x, y, t, time, h, over } while he is in the air over a man
     this.trail = [];       // ghost positions for the speed smear
@@ -49,6 +51,8 @@ class Goat {
     this.invuln = Math.max(0, this.invuln - dt); this.dazed = Math.max(0, this.dazed - dt);
     // Anything that took him out of the tumble (a stun, the stairs, a death) took him out of the air.
     if (this.leap && this.state !== 'roll') this.leap = null;
+    // And anything that took him out of the bite (a blow, a roll, a stun) let go of the man.
+    if (this.biting && this.state !== 'bite') this.biting = null;
     // A press a beat early is kept, not dropped (`goat.buffer`): a headbutt asked for while he is
     // busy, a roll asked for while he cannot roll yet. Spent below the frame he can.
     const busy = this.state !== 'idle', canRoll = this.rollCd <= 0 && this.state !== 'lunge' && this.state !== 'roll' && this.state !== 'rollrecover';
@@ -88,7 +92,7 @@ class Goat {
       if (this.holding) {
         const h = this.holding; this.holding = null; h.held = false; this.autoHeld = false;
         if (!h.item) { h.state = 'floored'; h.timer = 0.5; }
-        this.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown;
+        this.spendGrab(game, !h.item);
       }
       game.audio.sfxRoll(); game.audio.musicEvent('roll'); world.emitNoise(this.x, this.y, TUNING.noise.swing); game.vibe(12);
       game.particles(this.x, this.y, 9, PALETTE.ash, 150);
@@ -151,6 +155,7 @@ class Goat {
     let mul = this.holding ? (this.holding.item ? g.grab.itemSpeedMul : g.grab.speedMul) : 1;
     if (this.state === 'recover') mul *= 0.55;
     else if (this.state === 'windup') mul *= 0.3;
+    else if (this.state === 'bite') mul *= g.grab.biteMove;
     else if (this.state === 'rollrecover') mul *= TUNING.goat.roll.recoverMove;
     const base = g.speed * game.mods.speed * this.runUp * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1) * Talisman.speedMul(game);
     const top = base * mul;
@@ -238,6 +243,8 @@ class Goat {
       if (this.timer <= 0) { this.state = 'recover'; this.timer = this.recoverMax = g.headbutt.recovery * game.mods.headbuttRecovery; this.vx *= 0.35; this.vy *= 0.35; }
     } else if (this.state === 'recover') {
       this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
+    } else if (this.state === 'bite') {
+      this.timer -= dt; if (this.timer <= 0) { this.state = 'idle'; this.closeBite(game); }
     }
 
 
@@ -268,21 +275,11 @@ class Goat {
         // something that came into his mouth on its own goes on the next press of that button.
         if (this.autoHeld ? rmbEdge : !inp.rmbDown) {
           this.throwHeld(game);
-        } else if (game.mods.devour && !h.item && this.holdTimer >= TUNING.goat.devour.time) {
-          // Keep holding and the goat opens him up. Sometimes that is a meal.
-          this.holding = null; h.held = false;
-          const fed = Math.random() < TUNING.goat.devour.healChance && this.hp < this.maxHp;
-          if (fed) { this.hp += 1; game.floatText(this.x, this.y - 34, 'FED', PALETTE.blood); }
-          game.world.splat(h.x, h.y, this.aim.x, this.aim.y, 20);
-          game.particles(h.x, h.y, 22, PALETTE.blood, 200);
-          h.die(game, 'devour', this.aim.x, this.aim.y);
-          this.grabCd = g.grab.cooldown * game.mods.grabCooldown;
-          game.hitstop(0.06); game.shake(7); game.vibe(30);
         } else if (!h.item && this.holdTimer >= this.holdLimit) {
           // He works his way loose. Losing him costs less than throwing him, but it still costs.
           h.held = false; this.holding = null; h.state = 'floored'; h.timer = 0.6;
           h.x += this.aim.x * 10; h.y += this.aim.y * 10;
-          this.grabCd = g.grab.cooldown * game.mods.grabCooldown * 0.7;
+          this.spendGrab(game, true, 0.7);
         }
       }
     }
@@ -723,25 +720,36 @@ class Goat {
   // Let go of whatever is in his mouth by throwing it — grab's release, and now the bash too, when
   // what he is carrying is a blade or a shield: there is no swing to spend on a weapon he cannot
   // wield, so launching it is what the button does instead.
+  // What the mouth costs before it takes again. A man costs `grab.manCd` times what a thing does,
+  // however he left it — thrown, worked loose (`mul`), burnt, or taken out of it by the room — and
+  // BY THE COLLAR's card says so. `grabCdMax` is what the rail drains against.
+  spendGrab(game, man, mul = 1) {
+    const G = TUNING.goat.grab;
+    this.grabCd = this.grabCdMax = G.cooldown * game.mods.grabCooldown * (man ? G.manCd : 1) * mul;
+  }
+
   throwHeld(game) {
     const h = this.holding, g = TUNING.goat; if (!h) return;
     game.audio.musicEvent('throw');
     h.held = false; this.holding = null; this.autoHeld = false;
-    // VENOM JAW and CHARGED: held long enough, it leaves the mouth dripping or live — an animal as
+    // VENOM JAW and FIREBRAND: held long enough, it leaves the mouth dripping or live — an animal as
     // much as a crate, and it drips down its whole flight the same way (`Status.updateCarried`).
     Status.markThrow(game, this, h);
     // A hen out of the mouth is a hen off the horns: the same kick, the same seeking flight, the
     // same man she was already good at finding. Reaching for her on purpose buys nothing new — it
     // is one more way she ends up airborne.
-    if (h.kind === 'chicken') { h.kick(game, this.aim.x, this.aim.y); this.grabCd = g.grab.cooldown * game.mods.grabCooldown; return; }
+    if (h.kind === 'chicken') { h.kick(game, this.aim.x, this.aim.y); this.spendGrab(game, false); return; }
     // A shell goes flat and hard and stops where it lands: it is how you advance the one escort that
     // cannot keep up, and it is not a crate — nothing it hits breaks and it does not break either.
-    if (h.kind === 'tortoise') { Beast.throwTortoise(h, game, this.aim.x, this.aim.y); this.grabCd = g.grab.cooldown * game.mods.grabCooldown; return; }
+    if (h.kind === 'tortoise') { Beast.throwTortoise(h, game, this.aim.x, this.aim.y); this.spendGrab(game, false); return; }
     // A goat is not a gorilla. A crate or a blade goes the length of the room; a grown man goes a
     // short way and lands, which is still every wall in it and every man standing by one.
     const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul : h.item ? 1 : g.grab.manThrow;
     h.fling(this.aim.x * g.grab.throwImpulse * mul, this.aim.y * g.grab.throwImpulse * mul, true);
-    this.grabCd = g.grab.cooldown * game.mods.grabCooldown;
+    // A man out of the mouth has to arrive at `physics.thrownKill` to die on what he meets; every
+    // other thrown body (a blast, the rat ogre's arm) still dies on any touch. `fling` clears it.
+    if (!h.item) h.fromMouth = true;
+    this.spendGrab(game, !h.item);
     if (h.kind === 'weapon') { game.audio.sfxSteel(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
     else game.audio.sfxSwing();
     game.vibe(18);
@@ -771,7 +779,7 @@ class Goat {
         if (d > this.r + p.r + g.reach || (dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) continue;
         if (d < bestD) { bestD = d; best = p; }
       }
-      if (best) { Shop.buy(game, best, this); this.grabCd = 0.3; return; }
+      if (best) { Shop.buy(game, best, this); this.grabCd = this.grabCdMax = 0.3; return; }
     }
     // Out of the pen the mouth takes objects and nothing else. A grown man is BY THE COLLAR, and
     // until that soul is swallowed reaching for one is a thing you are told about rather than a
@@ -804,7 +812,28 @@ class Goat {
     if (best.kind === 'weapon') { this.takeArm(game, best); this.autoHeld = false; return; }
     // A hound is never held, even BY THE COLLAR: it springs a tile back out of the mouth and the
     // grab is spent as if something had been thrown. Before, the reach simply closed on nothing.
-    if (best.kind === 'dog') { best.hopBack(game, this); this.grabCd = g.cooldown * game.mods.grabCooldown; return; }
+    if (best.kind === 'dog') { best.hopBack(game, this); this.spendGrab(game, false); return; }
+    // A man is not a box: the teeth have to get under him first (`grab.bite`), and he is not yours
+    // until they have. Whatever he was doing he goes on doing through it — a club already coming
+    // round still lands. `closeBite` takes him if he is still there to be taken.
+    if (!best.item) { this.state = 'bite'; this.timer = g.bite; this.biting = best; return; }
+    this.takeHold(game, best);
+  }
+
+  // The bite shuts. He is taken if nothing has happened to him in the meantime and he is still in
+  // reach (with `biteSlack`, since he was in it when the teeth went down); otherwise the mouth
+  // closes on air and that costs a beat of its own.
+  closeBite(game) {
+    const g = TUNING.goat.grab, e = this.biting; this.biting = null;
+    const ok = e && !e.dead && !e.held && !e.ghosted && e.state !== 'flung' && !e.unliftable
+      && Math.hypot(e.x - this.x, e.y - this.y) <= (this.r + e.r + g.reach * 0.6) * g.biteSlack;
+    if (ok) { this.takeHold(game, e); return; }
+    this.grabCd = this.grabCdMax = g.biteMiss;
+    game.audio.sfxSwing();
+  }
+
+  // Into the mouth: a thing the frame it was asked for, a man once the bite has closed on him.
+  takeHold(game, best) {
     best.held = true; best.flung = false; best.thrown = false; this.holding = best; this.holdTimer = 0;
     this.autoHeld = false;   // reached for on purpose: it leaves when the button does
     // High risk, high reward: the fuse starts the moment it is in your mouth, not the moment it
@@ -917,7 +946,7 @@ class Goat {
     game.audio.sfxBleat(560, 0.24, 0.3);
     game.hurtFlash(Math.atan2(-(ky || 0), -(kx || 0)));
     game.world.splat(this.x, this.y, (kx || 0) / 100, (ky || 0) / 100, 9);
-    if (this.state === 'windup') this.state = 'idle';
+    if (this.state === 'windup' || this.state === 'bite') this.state = 'idle';   // a blow takes the bite out of his mouth too
     if (this.hp <= 0 && !Talisman.scapegoat(game, this)) this.die(game);
   }
   // THE TRIP's mercy: a blow that lands may turn out never to have. He is somewhere else — away from
@@ -1310,7 +1339,7 @@ class Prop {
       bit.push(e);
       // A man in your mouth is standing on the plate like anybody else, and the teeth take him
       // out of it.
-      if (e.held) { game.goat.holding = null; e.held = false; game.goat.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
+      if (e.held) { game.goat.holding = null; e.held = false; game.goat.spendGrab(game, true); }
       e.die(game, 'spike');
     }
     const g = game.goat;
@@ -1331,7 +1360,7 @@ class Prop {
       if (len(e.x - this.x, e.y - this.y) > this.r + e.r * 0.7) continue;
       e.spireAt = game.timer;
       // A man in your mouth is over the rock like anybody else, and the rock takes him out of it.
-      if (e.held) { g.holding = null; e.held = false; g.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
+      if (e.held) { g.holding = null; e.held = false; g.spendGrab(game, true); }
       e.die(game, 'spire');
     }
     if (!g.dead && len(g.x - this.x, g.y - this.y) < this.r + g.r * 0.7) {
@@ -2181,7 +2210,7 @@ class Prop {
       else {
         // A man held out in front of you is a man held into the arm: the wheel takes him out of
         // your mouth and throws him for you, which is the wheel doing what the wheel is for.
-        if (e.held) { game.goat.holding = null; e.held = false; game.goat.grabCd = TUNING.goat.grab.cooldown * game.mods.grabCooldown; }
+        if (e.held) { game.goat.holding = null; e.held = false; game.goat.spendGrab(game, true); }
         // The rat ogre is never thrown, but the arm still lands: a heart off him, standing.
         if (e.kind === 'ratogre') { e.die(game, 'mill', dx / (d || 1), dy / (d || 1)); }
         else { e.fling(ix, iy, true); e.aware = true; game.floatText(e.x, e.y - 26, 'GROUND', PALETTE.blood); }

@@ -30,6 +30,51 @@ on the new **ART** tab and `#aspacked` starts the page with all of it off; nothi
   contrast 1.0 against it, now 1.9); **the cave's rock** a step darker.
 - The `art-pass` skill (`~/.claude/skills/art-pass`) is how the next pass is run.
 
+## 1.65c (cloud, merged into 1.69) — BY THE COLLAR costs something, DEVOUR is gone, CHARGED is FIREBRAND
+
+A balance pass on the grab button, decided 24 Sep 2026 after a read of the numbers: BY THE COLLAR was
+the strongest card in the deck (`BOON_POWER` already said 1.6), it takes no slot, and it answered the
+clubman, the commonest man in the building (half to three quarters of every floor can be lifted),
+more safely than the headbutt did. The instant grab had no windup, cancelled whatever the man was
+swinging, and a man out of the mouth died on any wall he brushed, glancing touches included. The
+direction given: "the throw is weaker than the headbutt, it really is the less active verb", and
+the headbutt stays the one tool that works on everybody.
+
+- **DEVOUR is cut** ("сильно поломанный"). Held 1.15 s a man was torn open, 45% of the time for a
+  heart back: a kill with no wall in it (pillar 3) and the best healing in the game, on the commonest
+  man. The boon, `TUNING.goat.devour`, `mods.devour`, the `'devour'` death cause and its icon tint are
+  gone. A saved run that had it loads without it (boons are saved by id).
+- **A man takes a bite to lift** (`grab.bite` 0.18 s, `biteMove` 0.4 of a stride, goat state
+  `'bite'`). He keeps doing whatever he was doing through it, so a club already coming round lands;
+  grabbing a man mid-swing is allowed ("не вижу в этом проблем"), it just is not free any more.
+  A blow on the goat cancels the bite. If the man is gone, flung or out of `biteSlack` × the reach
+  when it closes, the teeth close on air (`biteMiss` 0.45 s). Things (crate, blade, shield, bomb,
+  animals) are still instant. Drawn as the headbutt's crouch on its own clock.
+- **Carrying a man is 60% speed** (`grab.speedMul` 0.7 → 0.6). With a mage casting in your mouth
+  (0.88 s) the goat covers about 2.8 tiles against a 1.4-tile fire: out, if he moves at once.
+- **A man costs the mouth longer** (`grab.manCd` 1.4: 1.35 s → 1.89 s after a man, however he left
+  it). Every site that set `grabCd` goes through `Goat.spendGrab(game, man)` now, and the rail and the
+  touch ring drain against `goat.grabCdMax`. BY THE COLLAR's card, STRONG JAW's and the rail's hover
+  line all say the man's price.
+- **The throw is weaker than the headbutt** (`physics.thrownKill` 8 tiles/s). A man out of the mouth
+  (`Enemy.fromMouth`) now dies on a wall, or kills a man he hits, only arriving at that speed: lethal
+  to 3 tiles (measured in the page: dead at 3.0, floored at 3.5; it was ~4.4 and any touch). The bare
+  headbutt against `splatSpeed` is lethal to nearly five. Bombs, blasts and the rat ogre still throw
+  bodies that die on any touch: the number is the mouth's only. MASON'S MARK lowers it like the rest.
+- **CHARGED is FIREBRAND** (☄️; the id stays `charge` so saves keep it; `mods.brandHold`,
+  `TUNING.status.brand`). Held two seconds, a thing thrown lights the floor it flew over for 3 s,
+  a straight line, from a tile out of the mouth — not the tile it stops on, not the goat's tile, and
+  nothing it hits catches (`Status.brandTrail` only lights tiles the throw has left, so a thrown man
+  never flies into his own fire). Men read burning floor as a hazard and walk round it. It crosses a
+  poison puddle and the puddle goes off. The explosion is gone.
+- **VENOM JAW splashes** (`status.jaw.touch`): besides the drip under its flight and the puddle where
+  it stops, whoever the throw passes through is poisoned, once each a throw. Poison is floor and hit;
+  fire is the line only.
+- `BOON_POWER.collar` 1.6 → 1.3. `node tools/balance.js`: all rules hold.
+
+Built in a cloud session on 24 Sep 2026 beside the local 1.65–1.68 and merged into 1.69. Its numbers were
+written against the old pace: the grab's cooldown also carries `GOAT_CD` now (1.62 s, 2.27 s after a man).
+
 ## 1.68 — the middle gate; the ogres get through doorways; a roll you pay for
 
 Asked for on 25 Sep 2026, a playtest list of eleven with four screenshots.

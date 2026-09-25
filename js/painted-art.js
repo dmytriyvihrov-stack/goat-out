@@ -705,7 +705,8 @@ class PaintedArt extends AltarArt {
     if(g.state==='falling'){const F=TUNING.fall,d=clamp((F.time+F.back-g.timer)/F.time,0,1);ctx.translate(0,d*26);ctx.rotate(d*1.5);ctx.scale(1-0.72*d,1-0.72*d);ctx.globalAlpha=1-d;}
     // A vault is not a tumble: stretched out long at the top of it rather than spun.
     if(g.state==='roll'){if(lp){const k=Math.sin(clamp(lp.t/lp.time,0,1)*Math.PI);ctx.scale(1+0.1*k,1-0.06*k);}else{ctx.rotate(g.rollSpin);ctx.scale(0.88,0.88);}}
-    if(g.state==='windup'){const W=TUNING.goat.headbutt.windup,k=clamp(1-(g.timer||0)/W,0,1),a=g.aim||{x:0,y:0};
+    // The bite (BY THE COLLAR) is the same crouch as the headbutt's windup, on its own clock.
+    if(g.state==='windup'||g.state==='bite'){const W=g.state==='bite'?TUNING.goat.grab.bite:TUNING.goat.headbutt.windup,k=clamp(1-(g.timer||0)/W,0,1),a=g.aim||{x:0,y:0};
       ctx.translate(-a.x*FE.pull*k,-a.y*FE.pull*k*TILT);ctx.scale(0.85,1.1);}
     if(g.state==='lunge')ctx.scale(1.15,0.92);
     if(g.state==='ko'||g.state==='stunned'){ctx.rotate(0.9);ctx.scale(1.1,0.8);}
