@@ -961,6 +961,9 @@ class Game {
     const wake = () => { this.audio.init(); this.audio.resume(); };
 
     window.addEventListener('keydown', (e) => {
+      // Before the repeat check: a held arrow or Space repeats, and every repeat scrolled the page
+      // under the game (the itch frame) until this was the first thing done with it.
+      if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
       if (e.repeat) return;
       // The RULES page has no keys: Backspace under it would regenerate the level it is describing.
       if (this.dev.rules) { e.preventDefault(); return; }
@@ -990,7 +993,8 @@ class Game {
         // so leaving there went back to the head of the one just won.
         else if (this.state !== 'title' && this.state !== 'clear' && this.state !== 'climb') this.quitToTitle();
       }
-      if (e.code === 'KeyM') this.audio.toggleMute();
+      // The SOUND switch itself, so the settings row says what M did and the mute is kept.
+      if (e.code === 'KeyM') this.toggleSetting('sound');
       if (e.code === 'KeyN' && this.state === 'play' && this.dev.open) this.levelCleared();
       if (e.code === 'KeyE') this.input.rollPressed = true;
       // A fifth key that does nothing until the shop puts something on it: Q throws the boomerang
@@ -1000,8 +1004,8 @@ class Game {
         if (e.code === 'Digit1') this.takeBoon(0); if (e.code === 'Digit2') this.takeBoon(1); if (e.code === 'Digit3') this.takeBoon(2);
         if (e.code === 'Digit4') this.skipBoon();
       }
-      if (this.state === 'title') this.menuKey(e.code);
-      else if (this.state === 'paused' && e.code !== 'Escape') { if (this.menu.panel) this.menuKey(e.code); else this.pauseKey(e.code); }
+      if (this.state === 'title' && e.code !== 'KeyM') this.menuKey(e.code);
+      else if (this.state === 'paused' && e.code !== 'Escape' && e.code !== 'KeyM') { if (this.menu.panel) this.menuKey(e.code); else this.pauseKey(e.code); }
       wake();
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
@@ -1032,18 +1036,24 @@ class Game {
       }
       if (this.state === 'boon') {
         if (!isMouse(e)) this.touch.active = true;
-        this.boonDown = this.boonArm > 0 ? -1 : this.boonAt(p);
+        this.boonDown = this.boonArm > 0 ? -1 : this.boonAt(p); this.boonPointer = e.pointerId;
         return;
       }
       if (isMouse(e)) {
         this.touch.active = false; this.input.anyPressed = true; this.input.mouse = p;
         if (e.button === 0) this.input.lmbPressed = true;
-        if (e.button === 2) this.input.rmbDown = true;
+        if (e.button === 2) { this.input.rmbDown = true; this.input.rmbPressed = true; }
         this.mouseButtons = e.buttons;
         return;
       }
       this.touch.active = true; this.input.anyPressed = true;
-      if (this.state !== 'play') { this.input.lmbPressed = true; return; }
+      if (this.state !== 'play') {
+        this.input.lmbPressed = true;
+        // A thumb put down under the level card, the climb or the scene is on the stick when play
+        // starts; before, the goat stood still until it was lifted and put down again.
+        if (this.state === 'card' || this.state === 'climb' || this.state === 'intro') this.touch.down(e.pointerId, p.x, p.y, this);
+        return;
+      }
       this.touch.down(e.pointerId, p.x, p.y, this);
     }, { passive: false });
 
@@ -1058,14 +1068,16 @@ class Game {
         const was = this.mouseButtons || 0, now = e.buttons;
         if (now !== was && this.state === 'play') {
           if ((now & 1) && !(was & 1)) this.input.lmbPressed = true;
-          if ((now & 2) && !(was & 2)) this.input.rmbDown = true;
+          if ((now & 2) && !(was & 2)) { this.input.rmbDown = true; this.input.rmbPressed = true; }
         }
         if (!(now & 2)) this.input.rmbDown = false;
-        this.mouseButtons = now;
+        this.mouseButtons = now; this.mouseMoved = true;
         if ((this.state === 'title' || this.state === 'paused') && this.menu.sliderDrag != null) this.setSliderAt(this.menu.sliderDrag, p.x);
         return;
       }
       e.preventDefault(); this.touch.move(e.pointerId, p.x, p.y);
+      // A finger drags a volume slider too: only the mouse branch ever read `sliderDrag`.
+      if ((this.state === 'title' || this.state === 'paused') && this.menu.sliderDrag != null) this.setSliderAt(this.menu.sliderDrag, p.x);
     }, { passive: false });
 
     const up = (e) => {
@@ -1074,6 +1086,11 @@ class Game {
       if (e.pointerType === 'mouse') this.mouseButtons = e.buttons;
       // A card is taken here and nowhere else: the pointer has to leave the same card it arrived on.
       if (this.state === 'boon') {
+        // A finger lifted while the card is up is still let go of: the card always opens under a thumb
+        // on the stick, and kept, that dead finger ran the goat on in its direction after the pick.
+        if (!isMouse(e)) this.touch.up(e.pointerId);
+        // And only the pointer that pressed a card can take it: another finger lifting is not a pick.
+        if (this.boonPointer !== undefined && e.pointerId !== this.boonPointer) return;
         const i = this.boonDown; this.boonDown = -1;
         if (i >= 0 && this.boonAt(this.canvasPos(e)) === i) {
           if (this.boonChoice && i === this.boonChoice.length) this.skipBoon();
@@ -1088,7 +1105,11 @@ class Game {
     c.addEventListener('pointercancel', up);
     window.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false; this.boonDown = -1; this.menu.sliderDrag = null; });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
-    window.addEventListener('blur', () => { this.keys.clear(); this.input.rmbDown = false; this.touch.clear(); });
+    // Losing the window mid-fight pauses it, the way Escape does: alt-tab or a phone call used to
+    // leave the goat standing in the room on the fallback clock. `autoPause` is off for the bots.
+    const away = () => { if (this.autoPause !== false && this.state === 'play') { this.state = 'paused'; this.pause.index = 0; this.menu.panel = null; } };
+    window.addEventListener('blur', () => { this.keys.clear(); this.input.rmbDown = false; this.touch.clear(); away(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) away(); });
     window.addEventListener('resize', () => { this.renderer.resize(); this.layoutTouch(); });
     window.addEventListener('orientationchange', () => setTimeout(() => { this.renderer.resize(); this.layoutTouch(); }, 200));
   }
@@ -1127,7 +1148,7 @@ class Game {
     const dx = wx - this.goat.x, dy = wy - this.goat.y, d = Math.hypot(dx, dy);
     if (d > 4) this.input.aim = { x: dx / d, y: dy / d };
   }
-  clearEdges() { this.input.lmbPressed = false; this.input.spacePressed = false; this.input.rollPressed = false; this.input.qPressed = false; this.input.anyPressed = false; }
+  clearEdges() { this.input.rmbPressed = false; this.input.lmbPressed = false; this.input.spacePressed = false; this.input.rollPressed = false; this.input.qPressed = false; this.input.anyPressed = false; }
 
   // ---------- levels ----------
   // `withIntro` plays the opening scene in the pen instead of the level card. Only a run started
@@ -1356,7 +1377,10 @@ class Game {
     // The mouse chooses what it is over; the keyboard chooses what it was left on. While a panel is
     // up its rows are what `menu.rects` holds, so the hover lands on `sub` rather than on the menu
     // behind it — otherwise reading the settings would silently move what NEW GAME is.
-    if (!this.touch.active) {
+    // Only a mouse that moved: the resting cursor used to take the row back from W/S every step, and
+    // Enter then picked what the pointer happened to rest on (NEW GAME, wiping the run).
+    if (!this.touch.active && this.mouseMoved) {
+      this.mouseMoved = false;
       const i = this.menuAt(this.input.mouse);
       if (i >= 0) {
         if (this.menu.panel === 'settings' || this.menu.panel === 'levels') this.menu.sub = i;
@@ -1449,7 +1473,8 @@ class Game {
   pausePick(i) {
     this.pause.index = i;
     const id = (PAUSE_MENU[i] || PAUSE_MENU[0]).id;
-    if (id === 'resume') { this.state = 'play'; this.audio.sfxSwing(); return; }
+    // The Space that picked RESUME is not a scream on the first step back.
+    if (id === 'resume') { this.state = 'play'; this.clearEdges(); this.audio.sfxSwing(); return; }
     if (id === 'settings') { this.menu.panel = 'settings'; this.menu.sub = 0; this.audio.sfxCard(); return; }
     // QUIT TO TITLE is the old Escape behaviour: abandon the room rather than resume it.
     this.quitToTitle();
@@ -1932,8 +1957,10 @@ class Game {
     // mouse still gets to choose what it is hovering, the same courtesy the title menu gives it.
     if (this.state === 'paused') {
       if (!this.touch.active) {
-        if (this.menu.panel === 'settings') { const i = this.menuAt(this.input.mouse); if (i >= 0) this.menu.sub = i; }
+        if (!this.mouseMoved) { /* the keys have the row until the mouse moves (see `updateTitle`) */ }
+        else if (this.menu.panel === 'settings') { const i = this.menuAt(this.input.mouse); if (i >= 0) this.menu.sub = i; }
         else { const i = this.pauseAt(this.input.mouse); if (i >= 0) this.pause.index = i; }
+        this.mouseMoved = false;
       }
       this.clearEdges(); return;
     }
@@ -3036,7 +3063,9 @@ class Game {
     t.mx = -real.mx; t.my = -real.my;
     t.rollPressed = real.spacePressed; t.spacePressed = real.rollPressed;
     const buttHeld = this.touch.active ? this.touch.pressed.butt !== undefined : !!((this.mouseButtons || 0) & 1);
-    const grabEdge = real.rmbDown && !this.tripGrabWas;
+    // A press latched by the pointer (`rmbPressed`) counts even if the button was up again by now:
+    // a quick tap inside a kill's hitstop was lost, the one edge the frozen frames did not keep.
+    const grabEdge = (real.rmbDown && !this.tripGrabWas) || !!real.rmbPressed;
     this.tripGrabWas = real.rmbDown;
     t.lmbPressed = grabEdge; t.rmbDown = buttHeld;
     return t;

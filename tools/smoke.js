@@ -47,6 +47,8 @@ window.SMOKE = {
     g.applyBoons();
     g.startLevel(li, seed, false, false);
     g.dev.god = true;
+    // The bot runs in a pane that is often behind another window; losing focus must not pause it.
+    g.autoPause = false;
   },
   // Every position that should be a number. The first one that is not is the only one worth reading.
   nanCheck(g) {

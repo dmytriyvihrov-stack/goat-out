@@ -880,7 +880,8 @@ const s = document.createElement('script'); s.src = '/tools/harness.js'; documen
 `H` then gives you `startPlay()`, `tp(x, y)`, `aimAt`, `walkTo`, `headbutt()`, `freeze(except)`,
 `unfreeze()`, `nearest(kind)`, `waitFor(fn, ms)`, `status()` and `shot(name)` which writes to
 `tools/shots/`. `startPlay()` clicks through the title and drops the opening scene with
-`game.skipIntro(true)`; to watch the scene itself, call `game.menuPick(0)` on the title and wait for
+`game.skipIntro(true)`, and sets `game.autoPause = false` (a blur or a hidden tab pauses a fight since the
+polish pass; `tools/smoke.js` turns it off too); to watch the scene itself, call `game.menuPick(0)` on the title and wait for
 `game.state === 'intro'`. `game.startLevel(0, seed, false, true)` replays it from anywhere. A run left
 in `localStorage` by an earlier test is what CONTINUE offers — `game.clearRun()` forgets it.
 
