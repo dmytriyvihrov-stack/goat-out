@@ -172,7 +172,10 @@ class Renderer {
       // What he carries is drawn with him, in his teeth (`drawCarried`), and nowhere else.
       const carried = (p) => p === game.goat.holding;
       for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && lit(p) && !inFront(p) && !carried(p)) this.drawProp(p);
-      for (const e of game.enemies) if (!e.dead && lit(e) && (e.state === 'floored' || e.state === 'stunned')) this.drawEnemy(e, game);
+      // A man out of the goat's sight is not drawn at all, only the line of a rifle aimed at him.
+      const seen = (e) => lit(e) && game.inSight(e);
+      for (const e of game.enemies) if (!e.dead && lit(e) && !seen(e) && e.state === 'aim') this.drawAimTelegraph(e);
+      for (const e of game.enemies) if (!e.dead && seen(e) && (e.state === 'floored' || e.state === 'stunned')) this.drawEnemy(e, game);
       for (const p of game.props) if (!p.broken && p.kind === 'lamp' && lit(p)) this.drawProp(p);
       // Everyone on his feet and the goat, in order of where their feet are, so a man a step south of
       // the goat stands in front of him. The goat used to go on last, over the hood of whoever was
@@ -180,7 +183,7 @@ class Renderer {
       // floor (a windup's strip, the rifle's line, a soul's haze) goes down first, under all of
       // them; what hangs over a head (`overheads`) goes on after, over all of them.
       const g = game.goat, hld = g.holding;
-      const standing = game.enemies.filter((e) => !e.dead && lit(e) && e.state !== 'floored' && e.state !== 'stunned' && e !== hld);
+      const standing = game.enemies.filter((e) => !e.dead && seen(e) && e.state !== 'floored' && e.state !== 'stunned' && e !== hld);
       for (const e of standing) this.drawEnemyGround(e, game);
       if (hld && !hld.item) this.drawEnemyGround(hld, game);
       // In the air over a man's back (LEAPFROG) he is over everyone.
@@ -1209,7 +1212,9 @@ class Renderer {
         // and the longest of them was unreadable at both ends.
         const lines = this.wrapFloor(hn.text), wide = Math.min(viewW, (hn.w || 14 * TILE) - 3.2 * TILE);
         const size = this.fitFloorText(lines, wide, 26), lh = size * 1.34;
-        const key = hn.key ? HINT_KEYS[hn.key][game.touch.active ? 1 : 0] : null;
+        // The key line under a hint ("E, ROLL") went on 25 Sep 2026: the sentence already says what to
+        // do, and a button named under it read as a second, unrelated instruction.
+        const key = null;
         const block = (lines.length - 1) * lh + (key ? lh * 0.95 : 0);
         let y = hn.y - block / 2;
         ctx.fillStyle = 'rgba(239,230,208,0.15)';
@@ -3878,6 +3883,17 @@ class Renderer {
     editRow('HINT', 'hint');
     editRow('THEME', 'theme');
     editRow('DECOR', 'decor');
+    // Every floor's first words side by side (25 Sep 2026: the words a floor opens on, read and
+    // edited in one place rather than a tab at a time). Each line edits that level's HINT.
+    y += 4 * s;
+    ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('THE WORDS EACH FLOOR OPENS ON', pad, y); y += 11 * s;
+    LEVELS.forEach((lv, i) => {
+      ctx.font = `400 ${8.2 * s}px ${FONT}`; ctx.fillStyle = lv === def ? PALETTE.fireHi : 'rgba(239,230,208,0.7)';
+      ctx.fillText(this.clip(`${i + 1} ${lv.name} — ${lv.hint || '(none — click to add)'}`, full), pad, y);
+      d.rects.push({ x: pad, y: y - 9 * s, w: full, h: 10 * s, id: `level-edit=${lv.name}.hint` });
+      y += 10 * s;
+    });
     y += 4 * s;
     ctx.font = `400 ${8.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
     for (const f of levelFacts(def)) { ctx.fillText(this.clip(f, full), pad, y); y += 11 * s; }
@@ -4408,7 +4424,7 @@ class Renderer {
         stats: `topples above ${Math.round(P.lamp.knock)}px/s of impact, pours oil ${P.lamp.poolRadius} tiles across`,
         note: 'Not a pillar — a fast body (flung, charging, or falling past it) knocks it over, and it pours a burning pool of oil where it lands. The only way to start a fire in a room with no brazier in it.' },
       { kind: 'crate', label: 'CRATE', make: (x, y) => new Prop(x, y, 'crate'), hits: ['HEADBUTT', 'THROWN', 'FIRE'],
-        stats: `floors for ${P.crate.stun}s on a hit, bursts for ${P.crate.burstTime}s if thrown through flame`,
+        stats: `floors for ${P.crate.stun}s on a hit, catches if thrown through flame and leaves one tile burning ${P.crate.burstTime}s`,
         note: 'The one thing on the floor you pick up and throw. Breaks on a door, table, gong or man; a burning tile makes it burst into a wider, longer fire instead of just breaking. Carried, it blocks one club for free, then it is gone.' },
       { kind: 'barrel', label: 'BARREL', make: (x, y) => new Prop(x, y, 'barrel'), hits: ['HEADBUTT', 'BODY', 'FIRE'],
         stats: `rolls at ${(P.barrel.roll / TILE).toFixed(0)} tiles/s, bowls men at x${P.barrel.fling} keeping ${Math.round(P.barrel.keep * 100)}% each, breaks above ${(P.barrel.breakSpeed / TILE).toFixed(0)} tiles/s · lit, goes up ${P.barrel.burst} tiles wide ${P.barrel.fuse}s later`,

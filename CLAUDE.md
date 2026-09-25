@@ -349,7 +349,7 @@ and `noticeFor` (`TUNING.ai.millNotice`). `noFlipX`.
 on the sentry's floor (`lessonRoom`); 3 `E - ROLL` only, in the first eligible room walking back from the
 first arena (not lesson, vault, trap or ambush), with a fallback. Keyboard and touch wordings for each.
 `GEN_RULES.lessons`. A level `hint` spans its first room (`drawHints`, `wrapFloor`, `fitFloorText`);
-`hintKey` adds the button from `HINT_KEYS`.
+The `hintKey` line under it is no longer drawn (1.72); the LEVEL tab lists every floor's hint.
 
 **The pen.** `cage` props from `buildCage`. `prop.cage.hits` (7) first time a browser does it, then
 `againHits` (2); `game.penBroken` / `PEN_KEY` / `game.notePenBroken`. Blows counted by
@@ -651,8 +651,8 @@ sheep (`sfxScream`, `sfxBleat`), and the bark, growl, hen, goose, crow and a fal
 **Props.** One `Prop`; `blocking`, `stopsBullets`, `opaque`, `item` are getters; `headbutt()` per kind.
 `item` = anything lifted. No fallback draw branch: an unhandled kind does not draw.
 
-**Crates and bombs.** Crate `r` 10, floors a man `crate.stun`, bursts on fire (`Prop.burst`,
-`crate.burst`, `burstTime`). Bomb: `tryGrab` arms `fuseT` (`prop.bomb.fuse`) on pickup (`Prop.fling`
+**Crates and bombs.** Crate `r` 10, floors a man `crate.stun`, catches thrown through fire and breaks into one
+burning tile (`alight`, `Prop.burst`, `burstTime`; the barrel is what spreads). Bomb: `tryGrab` arms `fuseT` (`prop.bomb.fuse`) on pickup (`Prop.fling`
 backstop), re-throw keeps the fuse, `updateBomb` waits for rest, `explode()` two hearts inside `nearR`,
 one to `blastR`, goat included; placed in the highest-threat room (`prop.bomb.chance`).
 
@@ -981,7 +981,7 @@ in `localStorage` by an earlier test is what CONTINUE offers — `game.clearRun(
 
 **Traps that have bitten before, in this exact order:**
 
-- Testing a hound's dodge or bite without waiting out the goat's headbutt recovery (0.35s) between
+- Testing a hound's dodge or bite without waiting out the goat's headbutt recovery (0.46s) between
   swings: the input is dropped, nothing happens, and it reads as the dodge being broken. Wait, or check
   `goat.lungeId` actually moved.
 - Teleporting the goat next to a wall and then testing a mechanic that needs line of sight. `los()`

@@ -1775,17 +1775,20 @@ class Prop {
     const spd = Math.hypot(this.vx, this.vy);
     // Coming down over a hole: it goes down it, and nothing breaks.
     if (spd < 40 && game.world.isPitPx(this.x, this.y)) { this.fall(game); return; }
-    // Into a fire. A box of dry boards does not break in a flame, it goes up — and what it leaves
-    // behind is wider than what lit it and burns a good deal longer, which is a doorway closed.
-    if (game.world.isBurningPx(this.x, this.y)) { this.burst(game, game.world.isWitchPx(this.x, this.y)); return; }
-    if (impact > 2 * TILE || spd < 40) { this.shatter(game); return; }
+    // Through a fire it catches and keeps flying (25 Sep 2026): a box alight is a brand you throw,
+    // and where it breaks — on stone, on a man, on the floor — it leaves one tile burning. It used
+    // to go up where it met the flame, two tiles round; the barrel is the one that spreads.
+    if (!this.alight && game.world.isBurningPx(this.x, this.y)) this.alight = game.world.isWitchPx(this.x, this.y) ? 'witch' : 'fire';
+    if (this.alight && Math.random() < dt * 30) game.particles(this.x, this.y - 6, 1, this.alight === 'witch' ? PALETTE.witchHi : PALETTE.fireHi, 60);
+    const end = () => (this.alight ? this.burst(game, this.alight === 'witch') : this.shatter(game));
+    if (impact > 2 * TILE || spd < 40) { end(); return; }
     // A shut door, a table or a gong is not something a crate flies through. It breaks on it — and
     // on a lamp it breaks the lamp, which is how you start a fire across a room. A brazier is the
     // one prop that answers a crate the way a burning tile already does: it goes up rather than
     // just breaking, since a box that reaches the coals themselves has reached fire either way.
     const hitP = this.hitProp(game, this.vx / (spd || 1), this.vy / (spd || 1));
-    if (hitP && hitP.kind === 'brazier') { this.burst(game, false); return; }
-    if (hitP) { this.shatter(game); return; }
+    if (hitP && hitP.kind === 'brazier') { this.burst(game, this.alight === 'witch'); return; }
+    if (hitP) { end(); return; }
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
       if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) {
@@ -1804,25 +1807,22 @@ class Prop {
           Status.stunned(game, e);
         }
         game.hitstop(0.04); game.shake(4); game.kick(this.vx / 300, this.vy / 300, TUNING.juice.kick * 0.5);
-        this.shatter(game); return;
+        if (this.alight && e.ignite) e.ignite(game, this.alight === 'witch');
+        end(); return;
       }
     }
   }
 
-  // A crate that went into a fire. It is the one thing the goat carries that answers a flame with
-  // more flame: `burst` tiles of it, for `burstTime`, of whichever kind lit the box — witchfire
-  // spreads as witchfire here as it does everywhere. Everything else about it is a shatter.
+  // A burning crate breaking: one tile of flame where it comes apart, for `burstTime`, of whichever
+  // kind lit it — witchfire stays witchfire. The barrel's oil is what spreads (`oilBurst`); a box
+  // of boards is a single fire (25 Sep 2026: "the crate only one tile").
   burst(game, witch) {
     if (this.broken) return;
-    const C = TUNING.prop.crate;
-    game.fx.explosion(this.x,this.y,C.burst*TILE,witch);
-    game.world.ignitePool(this.x, this.y, C.burst, witch, C.burstTime);
-    game.audio.sfxBoom(); game.shake(7); game.hitstop(0.05); game.vibe(35);
-    game.flash(witch ? PALETTE.witch : PALETTE.fire, 0.22); game.zoomPunch(1.1);
-    game.ring(this.x, this.y, C.burst * TILE, witch ? PALETTE.witchHi : PALETTE.fireHi);
-    game.particles(this.x, this.y, 16, witch ? PALETTE.witchHi : PALETTE.fireHi, 240);
-    game.floatText(this.x, this.y - 28, 'IT GOES UP', witch ? PALETTE.witchHi : PALETTE.fireHi);
-    game.world.emitNoise(this.x, this.y, TUNING.noise.boom);
+    const C = TUNING.prop.crate, w = game.world;
+    w.ignite(Math.floor(this.x / TILE), Math.floor(this.y / TILE), true, C.burstTime, witch);
+    game.audio.sfxThud(); game.shake(3); game.vibe(15);
+    game.particles(this.x, this.y, 12, witch ? PALETTE.witchHi : PALETTE.fireHi, 200);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
     this.shatter(game);
   }
 

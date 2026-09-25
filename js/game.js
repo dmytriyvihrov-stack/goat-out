@@ -302,7 +302,9 @@ class Game {
     this.updateClamps(true);
     this.world.computeFlow(g.x, g.y);
     this.world.computeVis(g.x, g.y, TUNING.fog.radius, this.mods.oracle ? TUNING.fog.oracle : 0);
-    if (cp.pet) { const s = this.freeSpot(g.x + TILE, g.y); this.props.push(new Prop(s.x, s.y, cp.pet)); }
+    // It says its terms again, the ones it said out of the coop: a death is a gap, and what it will
+    // and will not do is what he has to be reminded of coming back (25 Sep 2026).
+    if (cp.pet) { const s = this.freeSpot(g.x + TILE, g.y), pet = new Prop(s.x, s.y, cp.pet); this.props.push(pet); if (Beast.PACT[cp.pet]) Beast.speak(this, pet, Beast.PACT[cp.pet]); }
     this.cam.x = g.x; this.cam.y = g.y; this.pathTrail = [{ x: g.x, y: g.y }]; this.stairFx = null;
   }
 
@@ -564,6 +566,16 @@ class Game {
   }
   // Is this point inside a room nobody has walked into? Everything the world draws and everything
   // that would give a room away — a man, a crate, a body on its way down a hole — asks this.
+  // Whether the goat can see a man right now: his feet or his head on a tile inside the goat's
+  // own line of sight (`world.vis`). A man in the shaded part of a seen room used to be drawn under
+  // the shade and read through it (25 Sep 2026: "an enemy in the fog I should not see at all").
+  // Render only; a dead goat's frozen sight shows everyone, as the recap wants.
+  inSight(e) {
+    const w = this.world;
+    if (!w || !w.vis || this.state === 'dead' || this.state === 'intro' || e.held) return true;
+    const tx = Math.floor(e.x / TILE), ty = Math.floor(e.y / TILE);
+    return w.seesTile(tx, ty) || w.seesTile(tx, Math.floor((e.y - TILE * 0.6) / TILE));
+  }
   hidden(x, y) {
     if (!this.level) return false;
     if (this.niches) {

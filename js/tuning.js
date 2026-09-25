@@ -140,7 +140,8 @@ const TUNING = {
     // clubman went seven tiles off it and died on a wall five tiles away, which left LONG HORNS
     // nothing to add. Now five tiles, killing against stone within three. `propImpulse` is what a
     // crate or a blade off the stand is sent with, kept at the old number: only men were asked for.
-    headbutt: { windup: 0.12, active: 0.15, recovery: 0.38, lunge: 13.3 * TILE, impulse: 21 * TILE, propImpulse: 28 * TILE, reach: 1.64 * TILE },
+    // `recovery` 0.38 until 25 Sep 2026: a fifth longer between two butts, asked for in play.
+    headbutt: { windup: 0.12, active: 0.15, recovery: 0.46, lunge: 13.3 * TILE, impulse: 21 * TILE, propImpulse: 28 * TILE, reach: 1.64 * TILE },
     // A headbutt or a roll pressed while he is still busy is kept `buffer` s and goes the frame he is
     // free, instead of being dropped for being early. Not a cancel: what he was doing still runs
     // its whole length (pillar 4). Only a press made while busy is kept.
@@ -579,7 +580,8 @@ const TUNING = {
   status: {
     // Poison blinds and slows. Blind is the ranged half of him gone: no rifle, no rune. Slow is his
     // stride (`moveMul`) and his own clock (`tempo`: windup, swing, recovery, reload all run at it).
-    poison: { time: 4.5, moveMul: 0.55, tempo: 0.6, pool: 5.0 },
+    // `time` 4.5 until 25 Sep 2026 ("poison lasts less").
+    poison: { time: 3, moveMul: 0.55, tempo: 0.6, pool: 5.0 },
     // POISON meets FIRE: it goes off. `hitR` tiles is a hit on everybody inside it (a heart off a
     // big man, the end of an ordinary one); out to `radius` it only throws, and the wall finishes it.
     // `hits` is what it costs whoever is inside: two hearts, and then nothing more from it for `guard`
@@ -693,7 +695,9 @@ const TUNING = {
     // and he lies there seeing stars long enough that you can do something about him.
     // And what a box of dry boards does when it is thrown into a fire: it goes up. Wider than the
     // flame that lit it and burning longer, so a brazier plus a crate is a room you have closed.
-    crate: { r: 10, stun: 2.8, burst: 2.1, burstTime: 6.5 },
+    // `burstTime`: how long the one tile a burning crate leaves behind burns (it lit 2.1 tiles round
+    // until 25 Sep 2026; now a thrown crate catches going through fire and breaks into one tile).
+    crate: { r: 10, stun: 2.8, burstTime: 6.5 },
     // THE BARREL. Too heavy to lift and too round to stay put: a horn tips it over and it rolls the
     // way it was hit at `roll`, losing `drag` of its speed a second, until something stops it. Every
     // man it meets above `knockSpeed` is bowled along its line at `fling` of its speed, seeing stars
@@ -886,8 +890,8 @@ const TUNING = {
     // much of its pace a man in the way costs it, for `slowFor` s.
     // `r` is its body, not its picture: a tile-wide way out (every soul gate, a one-tile corridor) has
     // to take it the way it takes a goat, so it is a goose's width under a sprite twice the size.
-    // `speed` 1.15 × PACE until 25 Sep 2026 ("a bit slower").
-    horse: { r: 13, speed: 1.02 * PACE, hp: 5, kickWind: 0.28, kickGap: 0.42, bowl: 7 * TILE, daze: 1.2,
+    // `speed` 1.15 × PACE, then 1.02, until 25 Sep 2026 ("no chance to catch it").
+    horse: { r: 13, speed: 0.88 * PACE, hp: 5, kickWind: 0.28, kickGap: 0.42, bowl: 7 * TILE, daze: 1.2,
       slow: 0.55, slowFor: 0.35, stuckFor: 0.8, sideFor: 0.45, ready: 1.8,
       // It has won when it stands within `homeR` tiles of the stairs; within `tellR` of it the goat
       // hears which of them got there first.
