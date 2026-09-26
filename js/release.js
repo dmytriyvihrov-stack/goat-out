@@ -23,10 +23,16 @@ const RELEASE = {
   },
   // index.html off the server beside the page (the dev server, or the artifact, which carries it
   // for this); failing that, the same page written out here — keep it in step with index.html.
+  // Its script tags are always the ones this page loaded, never the file's own: an index.html left
+  // behind by an older publish named an older list, and the zip would have loaded the wrong game.
   async page(scripts) {
+    const tags = scripts.map((s) => `<script src="${s}"></script>\n`).join('');
     try {
       const r = await fetch('index.html', { cache: 'no-store' });
-      if (r.ok) { const t = await r.text(); if (t.includes('<script src="js/game.js">')) return t; }
+      if (r.ok) {
+        const t = await r.text(), a = t.indexOf('<script src='), b = t.lastIndexOf('</script>');
+        if (a > 0 && b > a && t.includes('<canvas id="game"')) return t.slice(0, a) + tags + t.slice(b + 9).replace(/^\r?\n/, '');
+      }
     } catch (err) { /* no server beside the page */ }
     return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>DOOMED GOAT</title>\n'
       + '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">\n'
@@ -41,7 +47,7 @@ const RELEASE = {
       + '  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: var(--ink);\n'
       + '    touch-action: none; cursor: crosshair; }\n  #game:focus-visible { outline: none; }\n</style>\n</head>\n<body>\n'
       + '<canvas id="game" aria-label="Doomed Goat, a top-down escape game"></canvas>\n'
-      + scripts.map((s) => `<script src="${s}"></script>\n`).join('') + '</body>\n</html>\n';
+      + tags + '</body>\n</html>\n';
   },
 
   // A plain zip: one entry per file, deflated where the browser can (`CompressionStream`), stored

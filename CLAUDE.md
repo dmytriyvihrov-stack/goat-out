@@ -1020,8 +1020,9 @@ into `doomed-goat-<BUILD>-itch.zip`: index.html with `RELEASE.flag` (`window.GOA
 of the first script, and exactly the scripts the page loaded. In that build `RELEASE.on` hides the dev
 corner for good (`#dev` included) and ignores `#rules` and the other tool addresses, `#trip` and
 `#dark`; GOD MODE is in SETTINGS and says so at the top of the screen. `node tools/itch-zip.js` makes the
-same zip from a commit. The artifact carries no index.html, so there the button writes the page from
-`RELEASE.page`'s copy of it: keep that in step with index.html's head. Where the zip goes is
+same zip from a commit. The zip's page is index.html's head (fetched beside the page — publish
+`index.html` in the artifact's `files` too — else `RELEASE.page`'s copy, kept in step with it) with
+the script tags the running page actually loaded, never the file's own list. Where the zip goes is
 `RELEASE.hand`: framed as the artifact, the viewer's `downloads` (asked for on the press; the viewer
 confirms the save); served anywhere else, a plain link. Opened as a file off the disk the page may not
 read its own scripts, and the button says so instead of packing.
@@ -1158,7 +1159,7 @@ always to the existing URL. Republishing without the `url` creates a second arti
 - `file_path`: `artifact.html`
 - `url`: `https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021`
 - `root`: the project directory
-- `files`: every file in `js/`, mapped path-to-path
+- `files`: every file in `js/`, mapped path-to-path, and `index.html` (the ITCH BUILD button reads its head)
 - `capabilities`: `{ downloads: true }` — SAVE THE PICTURE (`js/painting.js`) asks for it and hides
   itself without it. A non-empty declaration replaces the stored one whole; omit it on a redeploy
   that changes nothing here and the stored one carries forward.
