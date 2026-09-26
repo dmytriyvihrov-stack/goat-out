@@ -40,7 +40,7 @@ const RELEASE = {
       + '<meta name="theme-color" content="#0d0a0c">\n<meta name="mobile-web-app-capable" content="yes">\n'
       + '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n'
       + '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
-      + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Alegreya+SC:wght@700&display=swap">\n'
+      + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Alegreya+SC:wght@700&family=Pirata+One&family=Pixelify+Sans:wght@400;700&family=Jacquard+12&family=IM+Fell+English&family=IM+Fell+English+SC&display=swap">\n'
       + '<style>\n  :root { color-scheme: dark; --ink: #0d0a0c; --bone: #efe6d0; --dim: #8c8078; --blood: #c0392b; }\n'
       + '  html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: var(--ink); color: var(--bone);\n'
       + "    font-family: 'Alegreya', Georgia, 'Times New Roman', serif; overflow: hidden; overscroll-behavior: none;\n"

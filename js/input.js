@@ -52,13 +52,16 @@ class TouchUI {
     this.splitX = w * 0.44;
   }
 
+  // The nearest button whose ring the finger is in: on a short landscape screen BUTT's and GRAB's
+  // rings overlap, and the first match made the edge of GRAB a headbutt.
   hitButton(x, y) {
+    let best = null, bestD = Infinity;
     for (const k in this.buttons) {
       if (k === 'item' && !this.itemReady) continue;
-      const b = this.buttons[k];
-      if (Math.hypot(x - b.x, y - b.y) <= b.rr * 1.18) return b;
+      const b = this.buttons[k], d = Math.hypot(x - b.x, y - b.y);
+      if (d <= b.rr * 1.18 && d < bestD) { best = b; bestD = d; }
     }
-    return null;
+    return best;
   }
 
   down(id, x, y, game) {

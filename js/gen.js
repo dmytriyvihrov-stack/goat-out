@@ -57,10 +57,20 @@ function fillRoom(budget, available, rng, caps, maxMen, weight) {
   return men;
 }
 
+// How many men a room of this template may hold, off the level's `cap.men` and the room's floor
+// (`ENCOUNTER.room`): a tight room is not given the crowd of an open one.
+function floorOf(tpl) { let n = 0; for (const r of tpl.rows) for (const c of r) if (c !== '#' && c !== 'P') n++; return n; }
+function roomMenCap(men, tpl) {
+  const R = ENCOUNTER.room;
+  if (!tpl) return men;
+  return clamp(Math.round(men * floorOf(tpl) / R.ref), Math.min(R.min, men), Math.round(men * R.grow));
+}
+
 function planEncounters(levelDef, rooms, rng) {
   const E = levelDef.encounters;
   // A level may loosen a cap: the finale is allowed rooms the earlier ones are not.
   const caps = Object.assign({}, ENCOUNTER.cap, E.cap || {});
+  const capsOf = (room) => Object.assign({}, caps, { men: roomMenCap(caps.men, room.tpl) });
   const weight = E.weight ? Object.assign({}, ENCOUNTER.weight, E.weight) : null;
   const out = { rooms: new Map(), introRooms: new Set(), hunterFrom: -1, caps };
   const fight = rooms.filter((r) => r.index > 0);
@@ -151,7 +161,7 @@ function planEncounters(levelDef, rooms, rng) {
       // and one who can. An empty room taught that the arm hurts and nothing else — what has to be
       // learned is that it hurts THEM, and that needs somebody in it to be hurt.
       out.rooms.set(room.index, { men: levelDef.millLesson ? ['bearer', 'bearer']
-        : fillRoom(curve * ENCOUNTER.millEase, mixable, rng, caps, 0, weight), mill: true,
+        : fillRoom(curve * ENCOUNTER.millEase, mixable, rng, capsOf(room), 0, weight), mill: true,
         lesson: !!levelDef.millLesson });
       continue;
     }
@@ -160,7 +170,7 @@ function planEncounters(levelDef, rooms, rng) {
     if (room.isKillbox) {
       const K = ENCOUNTER.killbox;
       if (mixable.includes('hunter')) { out.rooms.set(room.index, { men: K.men.concat(K.near), killbox: true, alert: K.men.length }); continue; }
-      out.rooms.set(room.index, { men: fillRoom(curve, mixable, rng, caps, 0, weight) });
+      out.rooms.set(room.index, { men: fillRoom(curve, mixable, rng, capsOf(room), 0, weight) });
       continue;
     }
     // The Great Hall is the exception to every cap: it is supposed to be a wall of bodies.
@@ -173,12 +183,12 @@ function planEncounters(levelDef, rooms, rng) {
       const posts = mixable.includes('hunter') ? ['hunter', 'hunter', 'hunter'] : [];
       // Posts and crowd together stay inside `caps.men + 2`, the ceiling `GEN_RULES.caps` holds every
       // room to: on a floor with a lower head count (THE DARK) three rifles and a full crowd broke it.
-      const crowd = fillRoom(curve * 0.6, mixable, rng, caps, 0, weight).slice(0, Math.max(0, caps.men + 2 - posts.length));
+      const rc = capsOf(room), crowd = fillRoom(curve * 0.6, mixable, rng, rc, 0, weight).slice(0, Math.max(0, rc.men + 2 - posts.length));
       out.rooms.set(room.index, { men: posts.concat(crowd), gallery: true });
       continue;
     }
     const budget = curve * (easeOff ? ENCOUNTER.afterIntro : 1);
-    out.rooms.set(room.index, { men: fillRoom(budget, mixable, rng, caps, 0, weight), threat: budget });
+    out.rooms.set(room.index, { men: fillRoom(budget, mixable, rng, capsOf(room), 0, weight), threat: budget });
     easeOff = false; step++;
   }
   return out;
@@ -201,18 +211,19 @@ function generateLevel(levelDef, seed, opts) {
 
 // Where a generated level's souls go, worked out once and read by both `game.startLevel` (which
 // lays them) and `GEN_RULES.souls` (which holds them apart). `def.souls` is the whole authored count,
-// the mouse standing in for one, spent in order: the gates (a keeper's gate puts its soul in the
-// keeper, `keeper` his spawn index), then the vault, then the LAST bosses (`ensoul`, spawn indices).
-// Then the two surprises off the level's own seed, each only where it keeps every soul
-// `TUNING.soul.apart` rooms from every other: a boss who carries one the budget did not give him
-// (`bonusBoss`), and an ordinary fight room that gives one up with its last man (`bonusRoom`) —
-// never a room teaching a kind. A level with `surprises: false` (THE ALTAR) deals neither: its souls
-// are exactly the ones it authors. `rooms` is the room of every soul, in the order dealt.
+// the mouse standing in for one, spent in order: the gate (a keeper's gate puts its soul in the
+// keeper, `keeper` his spawn index), then the LAST bosses (`ensoul`, spawn indices). The vault never
+// holds one (26 Sep 2026: "a soul twice a level, in the middle and at the end"); it holds big grass,
+// or is an ambush (`vaultKind`). Only a level with `surprises: true` (none today) then rolls the two
+// surprises off its own seed, each only where it keeps every soul `TUNING.soul.apart` rooms from
+// every other: a boss who carries one the budget did not give him (`bonusBoss`), and an ordinary
+// fight room that gives one up with its last man (`bonusRoom`). `rooms` is the room of every soul,
+// in the order dealt.
 function soulPlan(L) {
   const def = L.def, S = TUNING.soul;
   const bosses = L.spawns.map((s, i) => ({ i, room: s.roomIndex === undefined ? 0 : s.roomIndex }))
     .filter((b) => L.spawns[b.i].boss).sort((a, b) => a.room - b.room);
-  let count = def.souls === undefined ? bosses.length + (L.vault ? 1 : 0) : def.souls;
+  let count = def.souls === undefined ? bosses.length : def.souls;   // the vault holds no soul (26 Sep 2026)
   // Two upgrades a level, and the mouse is one of them: her offer stands in for a soul rather than
   // coming on top of the level's two.
   if (L.shop && def.souls !== undefined) count = Math.max(0, count - 1);
@@ -223,13 +234,12 @@ function soulPlan(L) {
     const keeper = L.spawns.findIndex((s) => s.keeper && s.roomIndex === g.room);
     gates.push({ gate: g, keeper }); rooms.push(g.room); budget--;
   }
-  const vault = !!L.vault && budget > 0;
-  if (vault) { rooms.push(def.vaultAt); budget--; }
+  const vault = false;
   for (let n = bosses.length - 1; n >= 0 && budget > 0; n--) { ensoul.push(bosses[n].i); rooms.push(bosses[n].room); budget--; }
   const apart = (r) => rooms.every((o) => Math.abs(o - r) >= S.apart);
   const luck = new RNG(((L.seed >>> 0) ^ 0x51ed) >>> 0);
   let bonusBoss = -1, bonusRoom = -1;
-  const surprise = def.surprises !== false;
+  const surprise = def.surprises === true;
   const spare = surprise ? bosses.filter((b) => !ensoul.includes(b.i) && apart(b.room)) : [];
   if (spare.length && luck.chance(S.bossChance)) {
     const b = spare[luck.int(0, spare.length - 1)];
@@ -504,16 +514,17 @@ function tryGenerate(levelDef, seed, opts) {
   }
 
   // The vault. A small room cut into the stone above or below one ordinary room in the middle of the
-  // level, with one tile of doorway between them and an iron door in it. Nothing walks out of it and
-  // nothing is on the way to the stairs: it is four blows, the noise of four blows, and a soul.
+  // level, with one tile of doorway between them and an iron door in it. Nothing is on the way to the
+  // stairs: it is big grass, behind four blows or behind an open door that is a trap (`vaultKindOf`).
   const vault = levelDef.vaultAt !== undefined ? carveVault(tiles, W, H, rooms[levelDef.vaultAt], props, rng) : null;
   // A level that asks for a vault gets one. About one seed in two hundred put the room hard against
-  // the top or the bottom of the world with no rock on either side to cut into, and the level went
-  // out a soul short with nothing to say about it; a fresh seed is cheaper than a missing soul.
+  // the top or the bottom of the world with no rock on either side to cut into; a fresh seed is
+  // cheaper than a promise the level quietly drops.
   if (levelDef.vaultAt !== undefined && !vault) return null;
-  // The soul is guarded, now and then, by the same floor that guards everything else once a level
-  // has taught it: on a level that already has spikes, half the time the last stretch of ground in
-  // front of the vault's own door grows teeth too, so the fourth blow is not the only price of it.
+  if (vault) vault.kind = vaultKindOf(levelDef, seed);
+  // The big grass is guarded, now and then, by the same floor that guards everything else once a
+  // level has taught it: on a level that already has spikes, half the time the last stretch of ground
+  // in front of the vault's own door grows teeth too, so the door's blows are not the only price of it.
   if (vault && levelDef.spikes && rng.chance(0.5)) {
     spikePatch(tiles, W, rooms[levelDef.vaultAt], props, rng, rng.int(4, 8), vault.doorTile);
   }
@@ -1660,7 +1671,19 @@ function pickCanonRooms(levelDef, n, trapRooms) {
 
 // Cut a sealed chamber into the stone off one side of a room and hang an iron door in the gap. It is
 // tried above the room first and then below; either way there has to be solid rock for it to go in,
-// so a room hard against the top of the world simply does not get one. Returns where the soul goes.
+// so a room hard against the top of the world simply does not get one (`carveVault`, below).
+// Which vault a level has (`TUNING.vault`): big grass behind a shut door, or the same grass behind
+// an open one that shuts on him — clubmen, or three mages once the mage has been met on an earlier
+// floor. THE TRIP's is always grass. Off its own stream, so no other roll of the level moves.
+function vaultKindOf(levelDef, seed) {
+  if (levelDef.shroom) return 'grass';
+  const V = TUNING.vault, luck = new RNG(((seed >>> 0) ^ 0x7a17) >>> 0);
+  const kinds = Object.entries(V.kinds).filter(([k]) => k !== 'mages' || (levelDef.met && levelDef.met.has('seer')));
+  let r = luck.next() * kinds.reduce((a, [, w]) => a + w, 0);
+  for (const [k, w] of kinds) { if ((r -= w) < 0) return k; }
+  return 'grass';
+}
+
 function carveVault(tiles, W, H, room, props, rng) {
   if (!room) return null;
   const vw = VAULT.w, vh = VAULT.h;
@@ -1691,7 +1714,7 @@ function carveVault(tiles, W, H, room, props, rng) {
     tiles[doorY * W + gapX] = T.FLOOR;
     // The door hangs in the room's own wall, where it can be seen from the floor you walk in on.
     props.push({ x: (gapX + 0.5) * TILE, y: (doorY + 0.5) * TILE, kind: 'door', vertical: false, iron: true, vault: true });
-    return { x: (gapX + 0.5) * TILE, y: (y0 + vh / 2) * TILE, doorTile: { tx: gapX, ty: doorY } };
+    return { x: (gapX + 0.5) * TILE, y: (y0 + vh / 2) * TILE, doorTile: { tx: gapX, ty: doorY }, box: { x: x0, y: y0, w: vw, h: vh } };
   }
   return null;
 }

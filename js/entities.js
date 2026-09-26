@@ -85,7 +85,7 @@ class Goat {
       this.rollCd = this.rollCdMax = R.cooldown * game.mods.rollCooldown * (leap ? L.cooldownMul : 1);
       this.vx = this.rollDir.x * R.speed * game.mods.rollDistance;
       this.vy = this.rollDir.y * R.speed * game.mods.rollDistance;
-      this.leap = leap ? { e: leap.e, x: leap.x, y: leap.y, t: 0, time: L.time, h: L.height, over: false, at: L.over,
+      this.leap = leap ? { e: leap.e, x: leap.x, y: leap.y, t: 0, time: L.time, h: L.height, over: false, at: L.over, daze: L.daze,
         vx: (leap.x - this.x) / L.time, vy: (leap.y - this.y) / L.time } : null;
       if (this.leap) { this.vx = this.leap.vx; this.vy = this.leap.vy; }
       this.invuln = Math.max(this.invuln, R.invuln);
@@ -112,7 +112,8 @@ class Goat {
           lp.over = true;
           const e = lp.e;
           if (!e.dead && !e.held && !e.ghosted) {
-            e.daze(game, game.mods.leapfrog.daze);
+            // The leap's own number: a soul taken mid-leap can swap LEAPFROG away under it.
+            e.daze(game, lp.daze);
             game.particles(e.x, e.y - 10, 7, PALETTE.bone, 130); game.dust(e.x, e.y, TUNING.juice.dust.land, lp.vx, lp.vy);
             game.audio.sfxVault(); game.vibe(12);
           }
@@ -839,7 +840,9 @@ class Goat {
   // closes on air and that costs a beat of its own.
   closeBite(game) {
     const g = TUNING.goat.grab, e = this.biting; this.biting = null;
-    const ok = e && !e.dead && !e.held && !e.ghosted && e.state !== 'flung' && !e.unliftable
+    // Not a man who caught fire under the teeth: `tryGrab` refuses him, and taken here he burned in
+    // the mouth for his whole fire, lighting the floor in front of the goat.
+    const ok = e && !e.dead && !e.held && !e.ghosted && e.state !== 'flung' && !e.unliftable && !(e.burning > 0)
       && Math.hypot(e.x - this.x, e.y - this.y) <= (this.r + e.r + g.reach * 0.6) * g.biteSlack;
     if (ok) { this.takeHold(game, e); return; }
     this.grabCd = this.grabCdMax = g.biteMiss;
@@ -975,6 +978,10 @@ class Goat {
         const nx = this.x + Math.cos(a) * P.dist * f * TILE, ny = this.y + Math.sin(a) * P.dist * f * TILE;
         const tx = Math.floor(nx / TILE), ty = Math.floor(ny / TILE);
         if (w.isSolid(tx, ty) || w.isPitPx(nx, ny) || w.isBurningPx(nx, ny) || !w.los(this.x, this.y, nx, ny)) continue;
+        // Never through a shut door (a soul gate, the vault, the stair door) nor onto the stairs,
+        // nor into a boulder or a table: stone alone was all `los` asked about.
+        if (w.tileAt(tx, ty) === T.EXIT || !game.sees(this.x, this.y, nx, ny)) continue;
+        if (game.props.some((p) => p.blocking && !p.broken && Math.hypot(p.x - nx, p.y - ny) < (p.r || 10) + this.r)) continue;
         game.particles(this.x, this.y, 10, PALETTE.witchHi, 160);
         this.x = nx; this.y = ny; this.vx = 0; this.vy = 0;
         this.invuln = TUNING.goat.invuln;
@@ -1332,12 +1339,13 @@ class Prop {
   // dead are the exception, because nothing under the floor reaches something that is not there.
   tripped(game) {
     const S = TUNING.prop.spike, g = game.goat;
-    if (!g.dead && len(g.x - this.x, g.y - this.y) < S.trigger * TILE) return true;
+    // A goat in the air over a man (LEAPFROG) is over the boards too, as he is over a drop.
+    if (!g.dead && !g.leap && len(g.x - this.x, g.y - this.y) < S.trigger * TILE) return true;
     // Only the men who ran this step (`game.liveEnemies`): a man frozen two rooms away is not
     // walking onto anything, and asking the level's whole cast once per grate, three times a step,
     // was the most expensive thing in the simulation on a late floor.
     for (const e of game.liveEnemies) {
-      if (e.dead || e.ghosted || e.held) continue;
+      if (e.dead || e.ghosted || e.held || e.state === 'hop') continue;   // a leaper is over the boards
       if (len(e.x - this.x, e.y - this.y) < S.trigger * TILE) return true;
     }
     return false;
@@ -1348,7 +1356,7 @@ class Prop {
     const S = TUNING.prop.spike;
     const bit = this.bit || (this.bit = []);
     for (const e of game.liveEnemies) {
-      if (e.dead || e.ghosted || bit.indexOf(e) >= 0) continue;
+      if (e.dead || e.ghosted || e.state === 'hop' || bit.indexOf(e) >= 0) continue;
       if (len(e.x - this.x, e.y - this.y) > this.r + e.r) continue;
       bit.push(e);
       // A man in your mouth is standing on the plate like anybody else, and the teeth take him
@@ -1357,7 +1365,7 @@ class Prop {
       e.die(game, 'spike');
     }
     const g = game.goat;
-    if (!g.dead && len(g.x - this.x, g.y - this.y) < this.r + g.r) g.damage(S.damage, game, 0, -40, false, 'spike');
+    if (!g.dead && !g.leap && len(g.x - this.x, g.y - this.y) < this.r + g.r) g.damage(S.damage, game, 0, -40, false, 'spike');
   }
   // The cave's stone teeth, standing at the foot of a wall. The rock everywhere else in a cave is
   // scenery; this is the rare one that is real (`TUNING.cave.spikes`), and the 22 Sep 2026 note is
@@ -1387,7 +1395,7 @@ class Prop {
       if (e.held) { g.holding = null; e.held = false; g.spendGrab(game, true); }
       e.die(game, 'spire');
     }
-    if (!g.dead && len(g.x - this.x, g.y - this.y) < this.r + g.r * 0.7) {
+    if (!g.dead && !g.leap && len(g.x - this.x, g.y - this.y) < this.r + g.r * 0.7) {
       g.damage(C.damage, game, (g.x - this.x) * 3, (g.y - this.y) * 3, false, 'spire');
     }
   }
@@ -1534,7 +1542,7 @@ class Prop {
     // The first of a kind says its own terms over its head (`Beast.PACT`); after that its name will do.
     const told = kind === 'chicken' ? game.henTold : (game.beastTold || {})[kind];
     if (told) { game.audio.sfxAnimal(kind); game.floatText(this.x, this.y - 34, 'A ' + Beast.NAME[kind], PALETTE.hen); }
-    else if (kind === 'chicken') game.henFreed(this); else Beast.met(game, pet);
+    else if (kind === 'chicken') game.henFreed(pet); else Beast.met(game, pet);   // her words ride on her, not the coop
   }
 
   // A horn under a bird. She is not thrown — there is nothing to pick up and nothing to hold — she
@@ -1849,7 +1857,8 @@ class Prop {
   snap(game) {
     if (this.broken) return;
     this.broken = true; this.dead = true; this.flung = false; this.thrown = false;
-    if (game.goat.holding === this) game.goat.holding = null;
+    // Snapped in his teeth, the mouth is spent as if he had let it go.
+    if (game.goat.holding === this) { game.goat.holding = null; game.goat.spendGrab(game, false); }
     game.audio.sfxSteel(); game.shake(3);
     game.particles(this.x, this.y, 13, this.weapon === 'sword' ? PALETTE.bone : PALETTE.ash, 220);
     for (let i = 0; i < 3; i++) game.world.dot(this.x + (Math.random() - 0.5) * 22, this.y + (Math.random() - 0.5) * 14, 2.4, '#3a3630');
@@ -1865,6 +1874,7 @@ class Prop {
     const drag = Math.exp(-W.drag * dt);
     this.vx *= drag; this.vy *= drag;
     this.x += this.vx * dt; this.y += this.vy * dt;
+    const v0x = this.vx, v0y = this.vy;   // before stone takes the part of it going into the wall
     const impact = game.world.collideCircle(this);
     // A shut door, a brazier, a table, the hub of the wheel: as much a wall to a blade as stone is.
     // A lamp goes over instead, and a gong rings.
@@ -1881,7 +1891,11 @@ class Prop {
       }
       // A shield does not stick, it rings off — and off a wall keeps enough of its speed to reach a
       // second one, which is what makes it worth throwing at a room rather than at one man in it.
-      this.vx *= -W.shieldBounce; this.vy *= -W.shieldBounce;
+      // Off stone it is a true reflection: `collideCircle` has already taken away the part going into
+      // the wall, so reversing what was left stopped it dead head-on and sent it back along the wall
+      // on a glance. Off furniture (nothing taken away) it comes straight back as before.
+      if (impact > W.stickImpact) { this.vx = (2 * this.vx - v0x) * W.shieldBounce; this.vy = (2 * this.vy - v0y) * W.shieldBounce; }
+      else { this.vx *= -W.shieldBounce; this.vy *= -W.shieldBounce; }
     } else if (!hit) {
       // Too slow to be a blow, still a thing that cannot pass through furniture: below `stickImpact`
       // nothing was asked at all, and a blade arriving at a shut door at a walk went through it and
@@ -1973,7 +1987,7 @@ class Prop {
     game.world.splat(this.x, this.y, 0, 0, 24); game.world.scorch(this.x, this.y, B.blastR * 0.5);
     game.particles(this.x, this.y, 16, PALETTE.fire, 260);
     game.ring(this.x, this.y, B.blastR, PALETTE.fireHi);
-    game.shake(9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
+    game.thud(this.x, this.y, 9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
     game.world.emitNoise(this.x, this.y, TUNING.noise.boom);
     // Stone stops a blast the way it stops `Status.blast`: a bomb against one side of a wall took a
     // heart off the goat on the other side of it.
@@ -2176,7 +2190,7 @@ class Prop {
     if (witch === undefined) witch = this.oilWitch;
     game.fx.explosion(this.x, this.y, B.burst * TILE, witch);
     game.world.ignitePool(this.x, this.y, B.burst, witch, B.burstTime);
-    game.audio.sfxBoom(); game.shake(7); game.hitstop(0.05); game.vibe(35);
+    game.audio.sfxBoom(); game.thud(this.x, this.y, 8); game.hitstop(0.05); game.vibe(35);
     game.flash(witch ? PALETTE.witch : PALETTE.fire, 0.22); game.zoomPunch(1.1);
     game.ring(this.x, this.y, B.burst * TILE, witch ? PALETTE.witchHi : PALETTE.fireHi);
     game.particles(this.x, this.y, 20, witch ? PALETTE.witchHi : PALETTE.fireHi, 260);

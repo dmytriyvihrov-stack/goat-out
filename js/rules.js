@@ -73,7 +73,8 @@ const GEN_RULES = [
       const third = Math.floor(o.length / 3) || 1;
       const avg = (a) => a.reduce((s, r) => s + r.threat, 0) / a.length;
       const early = avg(o.slice(0, third)), late = avg(o.slice(-third));
-      return late > early * 1.2 ? true : `${early.toFixed(1)} → ${late.toFixed(1)}`;
+      // One seed cannot say the curve is broken (ground rule 8): the averaged version is balance.js's.
+      return late > early * 1.2 ? true : null;
     } },
   // The floor's own half of the curve, and it is held against the rooms the DRAW chose and nothing
   // else: a set piece, the two teaching rooms and a trap room are all forced or dealt from a pool of
@@ -125,12 +126,13 @@ const GEN_RULES = [
           if (r.role === 'hall' || (r.role === 'gallery' && k === 'hunter')) continue;
           if (caps[k] && c > caps[k]) return `room ${r.index}: ${c}x ${k} (cap ${caps[k]})`;
         }
-        // +2 only where a boss stands with his escort: an ordinary room is held to the level's own
-        // count. What is laid on top of the plan is not counted against it: a lone rifle post (one
+        // +2 only where a boss stands with his escort: an ordinary room is held to what its floor
+        // holds (`roomMenCap`: the level's count at `ENCOUNTER.room.ref` tiles). What is laid on top of the plan is not counted against it: a lone rifle post (one
         // line to cross, `lonePosts`), a gallery's rifles, and the crowd room's authored head count.
         if (r.room.isCrowd) continue;
         const counted = r.spawns.filter((sp) => !sp.lone && !(r.role === 'gallery' && kindOf(sp) === 'hunter')).length;
-        const cap = r.role === 'hall' ? ENCOUNTER.hallCap : caps.men + (r.role === 'arena' || r.spawns.some((sp) => sp.boss) ? 2 : 0);
+        const boss = r.role === 'arena' || r.spawns.some((sp) => sp.boss);
+        const cap = r.role === 'hall' ? ENCOUNTER.hallCap : boss ? caps.men + 2 : roomMenCap(caps.men, r.room.tpl);
         if (counted > cap) return `room ${r.index} (${r.role} ${r.name}): ${r.men.join(' ')} (cap ${cap})`;
       }
       return true;
@@ -660,21 +662,21 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'budget', text: 'A level hands out every soul it was authored to give: its gates, then its vault, then its last bosses.',
+  { id: 'budget', text: 'A level hands out every soul it was authored to give: its gate, then its last bosses. The vault holds none.',
     check: (L) => {
       if (L.def.souls === undefined) return null;
       const bosses = L.spawns.filter((s) => s.boss).length;
       const gateSouls = (L.gates || []).filter((g) => !g.shop).length;
-      const places = gateSouls + (L.vault ? 1 : 0) + bosses;
+      const places = gateSouls + bosses;
       return places >= L.def.souls ? true : `${L.def.souls} souls and only ${places} places to put them`;
     } },
   // `soulPlan` is what `startLevel` lays, so this is the level exactly as it will be played: every
   // soul (gate, keeper, vault, boss, and either surprise) `soul.apart` rooms or more from the next.
-  { id: 'souls', text: 'Two souls are never close: every soul of a level stands soul.apart rooms or more from every other, surprises included; a level with surprises: false deals only its own.',
+  { id: 'souls', text: 'Two souls are never close: every soul of a level stands soul.apart rooms or more from every other; a level deals only its own (in the middle and at the end), unless it asks for surprises.',
     check: (L) => {
       const plan = soulPlan(L), rs = plan.rooms.slice().sort((a, b) => a - b);
-      if (L.def.surprises === false && (plan.bonusBoss >= 0 || plan.bonusRoom >= 0)) return `a surprise soul in room ${plan.bonusRoom >= 0 ? plan.bonusRoom : L.spawns[plan.bonusBoss].roomIndex}`;
-      if (L.def.surprises === false && rs.length !== (L.def.souls || 0) - (L.shop ? 1 : 0)) return `${rs.length} souls dealt, ${L.def.souls} authored`;
+      if (L.def.surprises !== true && (plan.bonusBoss >= 0 || plan.bonusRoom >= 0)) return `a surprise soul in room ${plan.bonusRoom >= 0 ? plan.bonusRoom : L.spawns[plan.bonusBoss].roomIndex}`;
+      if (L.def.surprises !== true && rs.length !== (L.def.souls || 0) - (L.shop ? 1 : 0)) return `${rs.length} souls dealt, ${L.def.souls} authored`;
       if (rs.length < 2) return null;
       for (let i = 1; i < rs.length; i++) if (rs[i] - rs[i - 1] < TUNING.soul.apart) return `souls in rooms ${rs[i - 1]} and ${rs[i]}`;
       return true;
@@ -682,7 +684,7 @@ const GEN_RULES = [
   { id: 'vault', text: 'The vault is sealed off an ordinary room, and never on the way to the stairs.',
     check: (L) => {
       if (L.def.vaultAt === undefined) return null;
-      if (!L.vault) return 'no rock to cut it into on this seed, so the level is a soul short';
+      if (!L.vault) return 'no rock to cut it into on this seed, so the level has no vault';
       const r = L.rooms[L.def.vaultAt];
       if (!ORDINARY.has(r.role)) return `off the ${r.role}`;
       // Never on the way: wall its doorway and the stairs are still reached from where he starts.
@@ -693,6 +695,17 @@ const GEN_RULES = [
       const seen = new Uint8Array(W * H), q = [from]; seen[from] = 1;
       while (q.length) { const i = q.pop(); for (const j of [i - 1, i + 1, i - W, i + W]) { if (j < 0 || j >= W * H || seen[j] || tiles[j] === T.WALL || tiles[j] === T.PIT) continue; seen[j] = 1; q.push(j); } }
       return seen[to] ? true : 'the way to the stairs runs through the vault';
+    } },
+  // `vaultKindOf` (gen.js) and `TUNING.vault`: what is behind the vault's door.
+  { id: 'vaultkind', text: 'The vault holds big grass and never a soul; it may be a trap, clubmen or three mages, but mages only once the mage has been met, and never on THE TRIP.',
+    check: (L) => {
+      if (!L.vault) return null;
+      const k = L.vault.kind;
+      if (!TUNING.vault.kinds[k]) return `a vault of kind ${k}`;
+      if (!L.vault.box) return 'the vault has no chamber box for the trap to watch';
+      if (k === 'mages' && !(L.def.met && L.def.met.has('seer'))) return 'three mages before the mage has been met';
+      if (L.def.shroom && k !== 'grass') return `a ${k} vault on THE TRIP`;
+      return true;
     } },
   { id: 'secrets', text: 'At most two walls that give a level, off ordinary rooms only (never the vault\'s, a trap, the mouse\'s), and none before the first boss where the level says so.',
     check: (L) => {

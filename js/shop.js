@@ -38,7 +38,9 @@ const Shop = {
     }
     const m = Shop.mouseOf(game, ware);
     if (m && !ware.chosen) { m.say = { text: TUNING.prop.mouse.thanks, life: 2, max: 2 }; m.wobble = 0.25; }
-    if (old) { ware.ware = { id: old.id, tier: old.tier }; ware.chosen = true; ware.free = false; }
+    // `free` is left as it was: with the rat ogre dead the whole shelf is his, and a stool made
+    // un-free here packed away every other one the moment he took his old talisman back off it.
+    if (old) { ware.ware = { id: old.id, tier: old.tier }; ware.chosen = true; }
     else { ware.broken = true; ware.dead = true; }
     game.openSoulGate(ware.shopId);
   },

@@ -563,7 +563,8 @@ const PIXEL_ART = {
 };
 PIXEL_ART.init();
 if (typeof location !== 'undefined') {
-  if (/aspacked/.test(location.hash)) Object.assign(ART_PASS, { hunter: 0, clubman: 0, floors: false });
+  // Not in the itch build, which honours no tool address (`js/release.js` loads later: read its flag).
+  if (!(typeof window !== 'undefined' && window.GOAT_RELEASE) && /aspacked/.test(location.hash)) Object.assign(ART_PASS, { hunter: 0, clubman: 0, floors: false });
   else ART_PASS.set(true);
 }
 

@@ -5,6 +5,156 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.77 — answers to the open questions: two souls a floor, the vault is a trap, rooms hold what fits — 26 Sep 2026
+
+Answered on the open-questions page (`BACKLOG.md`, 26 Sep 2026).
+
+- **A soul twice a floor, in the middle and at the end.** Every floor is now built the way THE ALTAR
+  was: one gate in the middle whose keeper carries the first soul (the mouse's room on THE YARD, THE
+  ROAD and THE BRIDGE), a plain rest room before the end (`rests`), and the second soul in the last
+  boss. No surprises: no lit boss on a lucky seed, no room that gives one up (`roomChance` 0, and
+  surprises only on a floor that asks for them — none does). Thirteen a run.
+- **A full slot deals a swap.** When a soul's three cards cannot all be new, the rest are swaps: a card
+  for a full slot, `INSTEAD OF` the boon it replaces written on it. Taking one drops the old boon.
+  The silent +1 heart is left only for a deal with nothing at all to offer.
+- **The vault is big grass, never a soul, and sometimes a trap.** Rolled per floor: the old shut door
+  (40%), or the door standing open on the grass (35%): once he is inside it slams, three clubmen come
+  through the walls and drop from above, and it opens when they are down. On floors past the mage's
+  first, one vault in four is three mages instead, and the chamber goes up in witchfire. A mage
+  shut in never blinks out of it. `GEN_RULES.vaultkind`.
+- **A room holds what fits it.** A floor's men cap is what a room of 120 floor tiles holds; a tighter
+  room holds fewer, an open one up to a quarter more (`ENCOUNTER.room`, `roomMenCap`).
+- **The late floors.** THE THRESHING FLOOR up (to 22, ten men: 112 → 115, threat over power now level
+  with THE ROAD); THE BRIDGE and THE RAFTERS a tenth man and a third rifle; THE OSSUARY an honest curve
+  (it asked 34 a room and bought 19; now 15 → 40 with ten men and a third rifle, total 163 → 176); THE
+  DARK an honest curve (19.5 → 14; its cap bought 7.6 of the 11.7 it asked). Every rule holds; THE
+  RAFTERS and THE OSSUARY still read 2–3% under the floor before them on the rough power model.
+- **Back from THE TRIP**, the next floor says YOUR HOOVES ARE YOUR OWN AGAIN, still and plain, where the
+  trip's banner was.
+- **The prologue's field and truck.** The pen stood with its centre on the horizon, so the back fence
+  ran across the sky and the sun: the horizon now clears its far posts and the pen stands on the grass
+  (on a phone too). They no longer spin on small loops slower than the walk frames — sliding unwalked,
+  the ewe bobbing all the while — but graze their own ends, walking at a stepping pace, then walk to
+  each other and the heart comes up (`prologue.walk`, `graze`, `roam`, `meetAt`, `heartIn`). On the
+  truck they ride the bed instead of bouncing twice its jolt with a shiver on top, and the wheels
+  turn at a rate the spokes can be read at (`wheelSpin`).
+- **Seven environment sprites nothing drew** are out of the atlas (`pack-pixel-env.ps1 -Skip`):
+  `js/pixel-env-assets.js` 375 → 298 KB.
+- **Docs:** the Q key's exception to rule 1 and THE TRIP's to rule 4 written into `CLAUDE.md` and
+  `CONCEPT.md`; CONCEPT's souls, gate and vault rewritten, the room cap added; what is parked is listed
+  as parked.
+
+### A polish pass over 1.72–1.77 (26 Sep 2026, evening)
+
+Four read-only reviews (the new souls and vault, the mage's gate and the doors, the cult, every line a
+player reads); each finding traced in the code and the fixes checked in the page.
+
+- **The ogre takes a heart from a body thrown into him at killing speed** (`flungHits`), as his tuning
+  and 1.71 promised — it only rocked him — and from the rat ogre's blow (`ogreHits`: he could never
+  die of it). A thrown tortoise no longer staggers him out of a leap over a drop (the pit took all four
+  hearts).
+- **Windups measured against the wrong length.** Every telegraph (the swing's rim, the charge strip,
+  the slam ring, the leap mark, the rifle's line) read its timer against the tuned length while it was
+  set × `enemySlow`: the fill sat empty for the start of every windup, the old rim swept the long way
+  round, and past 1.8× (EASY and the ENEMY ATTACK slider) the rifle's marker threw inside `draw`. One
+  `Renderer.windP`, clamped.
+- **SHOCK** breaks what a daze breaks (the charge's plant, the slam, the leap's crouch, a hound's dart),
+  and leaves alone what a daze cannot touch — the rat ogre's swing and a wraith's arrival.
+- **A man with hearts to spare floored on a shut door** stays at it, instead of sliding a tile back into
+  the room. **TAP TO SKIP** on the mage's scene is a tap on touch. `#aspacked` does nothing in the itch build.
+- **Swaps:** taking a soul mid-LEAPFROG and swapping LEAPFROG away threw; a swap card drew the icon of
+  the boon it replaces (SPLASH instead of BOMB CHARGE showed the bomb's horns); THICK HIDE taken as a
+  swap now comes full, as its card says.
+- **Words:** FIREBRAND, STRONG JAW and LIVING SHIELD back to two lines; DRAGON BREATH says it goes the
+  way you run; DEAD WEIGHT says it dazes; THE YARD's hint says MAGE; the mouse's shelf says RIGHT CLICK -
+  TAKE ONE; the awl's three tiers read differently; DOMINO BONE says "up to twice"; BLOOD CUP says
+  grating; EASY MODE's note is computed from `EASY`; CONTINUE names THE DARK or THE TRIP when that is
+  the floor it will play; the horse bets on the stairs.
+
+### A second polish pass (26 Sep 2026, night)
+
+Four more read-only reviews — the goat's verbs, props and the clamp, talismans / shop / escorts, and the
+state machine / saves / input / audio — each finding traced, the risky ones checked in the page.
+
+- **The clamp no longer walls in a gate's soul.** The keeper chased back two rooms and killed there
+  dropped the soul behind the new stone, and the gate could never open. Any soul a gate still waits
+  on, lying or carried (the keeper, the mage's man), keeps every mouth between it and the goat open.
+- **The crow's gift bird** was taken as the animal with him at the middle gate: a death past it
+  deleted the floor's real escort, brought the gift back as a real crow, and banked it for another
+  tier III talisman. It is never the pet, never walled in, never calls or pips as a stray.
+- **A rat ogre left alive** behind him no longer costs the floor its middle-gate checkpoint.
+- **A man who dies in the mouth** (shot there, most often) spends the grab like any man leaving it;
+  the held button used to take the next one that frame. A blade or shield snapped in the teeth too.
+  **The bite never closes on a man who caught fire under it.**
+- **LEAPFROG is over the grating and the cave's teeth** as it is over a drop; the ogre and the rat
+  ogre in a leap neither trip nor feel the grating; the rat ogre hit in mid-bound keeps flying
+  instead of stopping over a drop. A vault into the stairs no longer climbs frozen in the air.
+  The cave's teeth spare a torn-off ogre the tuned `clear` (2 s), not 3.
+- **Fire pools stop at stone**: coals spilled at a pillar, a lamp by a wall and a barrel's oil lit the
+  floor on its far side. **A thrown shield bounces off a wall** instead of stopping dead head-on.
+- **The shop**: with the rat ogre dead, taking a talisman back off a stool no longer packs away the
+  rest of the shelf. **The straw effigy** is never set down through a shut door.
+- **A LEVELS practice win** goes BACK TO THE TITLE; its RUN AGAIN wrote over the run under CONTINUE.
+  The win card waits a beat before it takes a press (a double click skipped it).
+- **Focus lost during a level card** starts the floor paused. **Touch**: a thumb lifted off the stick
+  no longer cancels a card another finger is taking. A settings store holding a non-number no longer
+  kills the music for the session. A mistyped run code is refused instead of loading `LEVELS[NaN]`.
+
+### A third polish pass (26 Sep 2026, late)
+
+Four more read-only reviews — the special floors (THE DARK, THE TRIP, THE FORK, the cave), the screen
+layer (HUD, cards, menus, touch), the generator and its rules, and lifecycle / robustness — each
+finding traced; every floor, THE DARK and THE TRIP started three seeds each in the page with no throw.
+
+- **Escape on a boon card** no longer throws the floor away as a death (an Escape meant as a pause in
+  the frame a boss fell). **SETTINGS and LEVELS** close only on Escape or Backspace: Left on a switch
+  row, or a stray Shift, used to shut the panel.
+- **Touch:** a pause chip at the top centre (a phone had no way to the pause, SETTINGS or QUIT); a
+  tap where BUTT's and GRAB's rings overlap is the nearer button (the edge of GRAB was a headbutt);
+  the ROLL ring after a LEAPFROG vault fills once, not twice round, and every ring is clamped.
+- **THE TRIP's dodge** never lands him through a shut door (a soul gate, the vault, the stair door),
+  onto the stairs, or inside a boulder or a table: it only asked about stone.
+- **THE DARK:** a rune going off is the cult's own noise — it no longer moves a hunt onto the fire or
+  sets the next mage painting a rune on it. A throw while the silhouettes draw no longer leaves the
+  canvas clipped for the rest of the floor.
+- **The vault trap** does not slam on a man standing in its doorway (it waits for him), and a door a
+  charge broke open beforehand is no trap at all instead of a seal that holds nothing.
+- **Between floors:** the talisman's grease, echoes and effigy of the floor before no longer draw on
+  the next one during its card; a death in the frame of a kill no longer carries the hitstop and shake
+  into the next floor; the dead cage's blow counter resets with the goat's; CONTINUE forgets the
+  lessons a LEVELS practice earlier in the page taught (the first hidden wraith is staged alone again).
+- **Robustness:** the soul plan is read against the spawn list as spawned (staging the first hidden
+  wraith could shift it onto the wrong man); a seed the generator gives up on tries one derived seed
+  instead of throwing from the death or clear card forever; a draw error that repeats every frame with
+  a different number in it is logged once.
+- **Rules:** `rises` answers `null` on a single seed instead of painting a one-seed dip red (the
+  averaged version is `balance.js`'s); `vaultkind` lost a check that could never fail; `soulPlan`'s
+  fallback count no longer counts a vault soul; stale comments on the vault and the room cap.
+
+### The companions, and whether they pay (27 Sep 2026)
+
+Every escort walked to the stairs by the bot (`tools/escorts.js`) and then stepped onto the flight for
+real, so `beginClimb` banks it: the tortoise (+1 use on every shield, 2 → 3), the goose (voice 6.8 →
+8.16 tiles, call 13 → 15.6, back in 3.6 → 2.88 s), the horse (×1.07) and the hen (+1 heart) paid every
+time, and survive a save and CONTINUE. **The crow did not, three walks in six**: only its `saveR`
+counted, the instant his hoof touched the flight, and it was still eating nine to eleven tiles back.
+
+- **What "came with you" means** (`Beast.cameWith`, the hen too): in his mouth, inside `saveR`, or
+  anywhere in the room the stairs stand in; the crow (`saveRooms` 1) a room further back as well.
+  Crow 12 of 12, hen 6 of 6; two rooms back, or dead, still does not count.
+- **The crow's gift bird** perches by the talisman it brought and flies off once it is taken or the
+  goat walks 12 tiles away (`Beast.updateGift`, `crow.giftLeave` / `giftRise` / `giftGone`). It used to
+  follow him the whole floor like an escort and pay nothing. The gift is never the talisman he wears.
+- **THE TRIP keeps the floor's animal**: `tripLevel` carries the floor's `beasts`, so the coop the run
+  dealt is still there. The kind was already spent, so it never came again that run.
+- **An animal over a hole falls** (a shell or a hen landing off a wall at a window, one set down by a
+  roll) instead of hovering there for the rest of the floor.
+- **The hen's first words ride on her**, and cluck. They sat on the broken coop, in the tortoise's voice.
+- **An animal ahead is not left behind**: the horse gone on to win its race no longer neighs a stray's
+  call every five seconds. The dev drawer's NEXT no longer repeats the last floor's animal cards.
+- **ANIMALS tab**: the goose's reward in percent (with the voice's 2 s floor), the hen flies along the
+  blow rather than at the nearest man, and every door the horse waits at.
+
 ## 1.76 — nine notes: doors kill, the ogre moves, no stutter, the itch build — 26 Sep 2026
 
 - **A shut door kills like a wall.** A man thrown or butted into one as hard as a wall would kill him

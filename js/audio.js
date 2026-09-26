@@ -286,8 +286,10 @@ class GameAudio {
   // scale is `value / 0.5`: the room score and its drums (`musicBus`, `drumBus` — `layerBus` rides
   // on `musicBus` already) against the noise of a fight (`sfxBus` — swings, hits, barks, voice).
   setVolumes(musicVol, sfxVol) {
-    this.volMusic = clamp(musicVol == null ? 0.5 : musicVol, 0, 1);
-    this.volSfx = clamp(sfxVol == null ? 0.5 : sfxVol, 0, 1);
+    // A stored value that is not a number (an old or hand-edited settings store) is "as tuned": NaN
+    // into a gain threw inside `init`, and the music never started for the session.
+    this.volMusic = clamp(Number.isFinite(+musicVol) && musicVol !== null && musicVol !== '' ? +musicVol : 0.5, 0, 1);
+    this.volSfx = clamp(Number.isFinite(+sfxVol) && sfxVol !== null && sfxVol !== '' ? +sfxVol : 0.5, 0, 1);
     if (!this.ctx) return;
     const A = TUNING.audio;
     this.drumBus.gain.value = A.drums * (this.volMusic / 0.5);

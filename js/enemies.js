@@ -240,7 +240,9 @@ class Enemy {
       // which on him would be a stun window opening off the very blow that spent the last one —
       // six horns in a row off one crate. He shrugs, roars, and comes on again: one crate, one heart.
       if (this.kind === 'ratogre') {
-        this.state = 'stagger'; this.timer = this.cfg.stagger; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false;
+        // In the air he keeps flying, as the ogre does below: stopped mid-bound over a drop, the pit
+        // check took every heart he had left.
+        if (this.state !== 'hop') { this.state = 'stagger'; this.timer = this.cfg.stagger; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false; }
         game.world.splat(this.x, this.y, dx || 0, dy || 0, 14);
         game.hitstop(0.05); game.shake(7); game.audio.sfxThud(); game.audio.sfxGrowl();
         game.floatText(this.x, this.y - 40, this.hp + ' LEFT', PALETTE.fireHi);
@@ -287,7 +289,9 @@ class Enemy {
     // His last breath, where he lies: it is what tells a dead man from a floored one before the
     // blood does. A man over an edge has his own shout going down with him.
     if (cause !== 'fall' && !this.scripted) game.audio.sfxGroan(this.kind, game.audio.heard(this.x - game.goat.x, this.y - game.goat.y));
-    if (game.goat.holding === this) game.goat.holding = null;
+    // Dead in the mouth, he still leaves it the way a man does (`spendGrab`): shot in the teeth he
+    // cost nothing, and the grab still held took the next man that frame.
+    if (game.goat.holding === this) { game.goat.holding = null; this.held = false; game.goat.spendGrab(game, true); }
     if (this.boss || this.keeper) game.bossPrize(this);
     game.onKill(this, cause);
   }
@@ -305,7 +309,7 @@ class Enemy {
     game.particles(this.x, this.y, 18, PALETTE.blood, 320);
     game.particles(this.x, this.y, 10, PALETTE.fire, 260);
     game.ring(this.x, this.y, B.radius * B.fxScale, PALETTE.fireHi);
-    game.shake(9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
+    game.thud(this.x, this.y, 9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
     w.emitNoise(this.x, this.y, TUNING.noise.boom);
     for (const o of game.enemies) {
       if (o === this || o.dead || o.held || o.ghosted) continue;
@@ -1112,7 +1116,7 @@ class Enemy {
   // it are left standing — it is the goat the ring is for — and so is anything he lands among.
   quake(game, S, R) {
     const g = game.goat;
-    game.shake(9); game.hitstop(0.05); game.audio.sfxThud(); game.audio.sfxSplat(); game.vibe(24);
+    game.thud(this.x, this.y, 9); game.hitstop(0.05); game.audio.sfxThud(); game.audio.sfxSplat(); game.vibe(24);
     game.ring(this.x, this.y, R, PALETTE.blood, 0.45, 5); game.ring(this.x, this.y, R * 0.6, PALETTE.bone, 0.35, 3);
     game.dust(this.x, this.y, 12, 0, 0);
     game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult');
@@ -1711,6 +1715,7 @@ class Enemy {
   // cult's own feet and clubs make noise too, and he knows what his side sounds like. Whatever else
   // is there when it goes off, burns.
   hearForRune(game, n) {
+    if (n.kind === 'cult') return;   // a rune going off, a swing: never paint a rune on the cult's own sound
     const A = TUNING.dark.ai, d = Math.hypot(n.x - this.x, n.y - this.y), own = A.earOwn * TILE;
     if (d < own || d > A.earCast * TILE) return;
     for (const o of game.enemies) if (o !== this && !o.dead && Math.hypot(o.x - n.x, o.y - n.y) < own) return;
@@ -1730,7 +1735,7 @@ class Enemy {
       }
       game.ring(this.rune.x, this.rune.y, cfg.runeRadius * TILE * 1.6, PALETTE.witchHi);
       game.flash(PALETTE.witch, 0.14);
-      w.emitNoise(this.rune.x, this.rune.y, TUNING.noise.rune);
+      w.emitNoise(this.rune.x, this.rune.y, TUNING.noise.rune, 'cult');   // his own fire: THE DARK's cult does not hunt it
       game.audio.sfxRune(); game.shake(5);
     }
     this.rune = null; this.castCd = cfg.castCooldown * game.mods.enemySlow;
@@ -1753,7 +1758,7 @@ class Enemy {
       const nx = g.x + Math.cos(a) * r, ny = g.y + Math.sin(a) * r;
       if (w.tileAtPx(nx, ny) === T.WALL) continue;
       if (w.flowDist(nx, ny) < 0) continue;
-      if (seal && !game.inRoom({ x: nx, y: ny }, seal.room, 1)) continue;
+      if (seal && !game.inSeal({ x: nx, y: ny }, seal)) continue;
       if (curRoom && (nx < curRoom.x * TILE || nx >= (curRoom.x + curRoom.w) * TILE
           || ny < curRoom.y * TILE || ny >= (curRoom.y + curRoom.h) * TILE)) continue;
       // Blinking out of a fight and into his own fire was the one thing that read as the rune not
@@ -2049,7 +2054,9 @@ class Enemy {
       const out = p.r + this.r * 0.7 + 2;
       if (d < out) { this.x = p.x + dx / d * out; this.y = p.y + dy / d * out; game.world.collideCircle(this); }
     }
-    this.spireAt = game.timer + I.clear;
+    // The teeth read `spireAt` as "last bitten", sparing him `again` s after it: less that, so the
+    // spare is `clear` s from here as tuned, not `clear + again`.
+    this.spireAt = game.timer + I.clear - TUNING.cave.spikes.again;
     this.state = 'stagger'; this.timer = I.free * game.mods.enemySlow; this.aware = true;
     game.floatText(this.x, this.y - 44, 'RRAAGH', PALETTE.blood); game.audio.sfxGrowl();
     game.dust(this.x, this.y, 8, 0, 0);
@@ -2060,7 +2067,7 @@ class Enemy {
   hopLand(game) {
     const H = this.cfg.hop, g = game.goat, R = H.radius * TILE;
     this.hopZ = 0; this.state = 'hopland'; this.timer = H.land * game.mods.enemySlow; this.vx = 0; this.vy = 0;
-    game.shake(8); game.hitstop(0.03); game.audio.sfxThud(); game.vibe(24);
+    game.thud(this.x, this.y, 8); game.hitstop(0.03); game.audio.sfxThud(); game.vibe(24);
     game.ring(this.x, this.y, R, PALETTE.blood, 0.4, 4); game.dust(this.x, this.y, 12, 0, 0);
     game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult');
     if (game.hidden(this.x, this.y)) return;

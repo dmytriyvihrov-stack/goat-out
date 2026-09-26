@@ -144,7 +144,8 @@ for (const l of levelThreat) console.log(`  ${l.name.padEnd(22)} total ${String(
 // Threat is only half of the curve. The other half is what he is carrying when he walks in: the
 // hearts he starts with plus the souls every level before this one hands out, each at its average
 // `BOON_POWER`: a floor's authored souls (the mouse's talisman counted as the soul it stands in for)
-// and its two seeded surprises at their odds (`soul.bossChance`, `soul.roomChance`). A build holds
+// and, on a floor that asks for them (`surprises: true`, none today), its two seeded surprises at
+// their odds (`soul.bossChance`, `soul.roomChance`). A build holds
 // only so many cards (`BOON_SLOTS` against the deck, `cap` below); past it a soul is one heart back
 // (`openBoonChoice`), which is not power, so souls past the cap count for nothing. The ratio is threat over that; it
 // should never fall from one level to the next, or a level has got easier for the goat it meets.
@@ -167,7 +168,7 @@ for (let li = 0; li < levelThreat.length; li++) {
   const mark = li && ratio < lastRatio * 0.98 ? '  ▼ easier for him than the last' : li && ratio < lastRatio * 1.02 ? '  ≈ flat' : '';
   if (mark.includes('▼')) falls.push(l.name);
   if (!QUIET) console.log(`  ${l.name.padEnd(22)} souls in ${soulsIn.toFixed(1).padStart(4)}   power ${power.toFixed(1).padStart(5)}   threat/power ${ratio.toFixed(1).padStart(5)}${mark}`);
-  soulsIn += (LEVELS[li].souls || 0) + TUNING.soul.bossChance + TUNING.soul.roomChance; lastRatio = ratio;
+  soulsIn += (LEVELS[li].souls || 0) + (LEVELS[li].surprises === true ? TUNING.soul.bossChance + TUNING.soul.roomChance : 0); lastRatio = ratio;
 }
 if (falls.length) console.log(`  (not a failure, since the weights are a guess, but ${falls.join(', ')} ${falls.length > 1 ? 'ask' : 'asks'} less of the goat than the level before)`);
 

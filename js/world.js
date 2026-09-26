@@ -836,7 +836,9 @@ class World {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), r = Math.ceil(radiusTiles);
     if (!dur) dur = witch ? TUNING.fire.witch : undefined;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-      if (Math.hypot(dx, dy) <= radiusTiles) this.ignite(cx + dx, cy + dy, true, dur, witch);
+      // Only floor the pool can reach from where it lands: coals spilled at a pillar, a lamp toppled
+      // by a wall or a barrel's oil used to light the floor on the far side of the stone.
+      if (Math.hypot(dx, dy) <= radiusTiles && this.los(x, y, (cx + dx + 0.5) * TILE, (cy + dy + 0.5) * TILE)) this.ignite(cx + dx, cy + dy, true, dur, witch);
     }
   }
   updateFire(dt) {

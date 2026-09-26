@@ -35,13 +35,17 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 1. **Never add a new input.** The whole design rests on a small verb set: move, headbutt, grab/throw,
    roll, scream. Upgrades bend the numbers behind those verbs or change what a button does. They never
    add a seventh button. If a feature seems to need a new key, find a way to fold it into an existing one.
+   One exception, made on purpose (18 Sep 2026, written in 26 Sep 2026): a talisman with a use of its own
+   (BOOMERANG, STRANGE SYMBOLS, STRAW EFFIGY) puts it on **Q**, a key that does not exist until one is
+   worn. Nothing else earns a key that way.
 2. **All numbers live in `js/tuning.js`.** Nothing gameplay-relevant should be a literal anywhere else.
    If you find yourself typing `0.35` into `enemies.js`, it belongs in `TUNING`.
 3. **Kills come from geometry.** A headbutt on its own only knocks a man down. Walls, pillars, fire,
    the mill and other bodies are what kill. Preserve that: it is the reason the game reads as Ape Out
    rather than a brawler.
 4. **Both sides are clunky.** Every attack has a windup you can read and a recovery you must eat. Do not
-   add cancels, combos, or i-frames beyond the roll's.
+   add cancels, combos, or i-frames beyond the roll's. One exception, on purpose (26 Sep 2026): on
+   THE TRIP half the blows on the goat never land (`shroom.phase`), because its controls are scrambled.
 5. **Comment the why, not the what.** The code is dense; a one-line comment above a non-obvious block
    that explains the intent is worth more than a paragraph.
 6. **Nothing may reward remembering a layout.** The game is in the regeneration camp — Ape Out,
@@ -129,6 +133,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/sfx-board.html` | Every sound effect on one page of buttons, through the game's own mix and room. Served, `/tools/sfx-board.html`. |
 | `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
 | `PLAYTEST.md` | The first itch.io playtest as a runnable plan: the three questions, the form, the observation sheet, how the numbers are counted, and the go / no-go for the build. |
+| `PLAYTEST_QUESTIONS.md` | The eight short questions sent to a tester after playing, English and Ukrainian, ready to paste. |
 | `output/audit-2026-09-24/` | The six audits behind that day's `BACKLOG.md` batch, with their probes. Reference, never loaded. |
 | `tools/backlog-questions.html` | The open backlog as a questionnaire, published as its own artifact with a db (answers under `answers/<item id>`). |
 | `ART_TODO_GPT.md` | The image-brief format (`asset-spec`). Every sheet in it shipped as hand-placed pixels in 1.63–1.64; the ominous decals went in in 1.74 (`js/decal-pixels.js`). |
@@ -247,10 +252,20 @@ facing the camera. `Renderer.artifactIcon` is the one artifact drawing (HUD chip
 
 **The camera.** `game.camLead` lerps toward `aim * camera.lead` (`leadLerp`, `leadStill`); `game.camFollow`
 moves only past `camera.deadzone`, and is pinned to the centre of a room that fits the view
-(`fitMargin`). Reset both wherever `cam.x/y` is hard-set (`startLevel`, `updateFall`).
+(`fitMargin`). Reset both wherever `cam.x/y` is hard-set (`startLevel`, `updateFall`). In a room too
+big to hold, an awake boss near him pulls the picture toward himself and backs the lens out
+(`game.fightFocus`, `camera.fight`, eased on `game.camFight`); every arena fits a desktop view, so it
+shows only when a boss follows him into a big room. `camera.leash` pulls the camera after him (`leashLerp`)
+once he is past that share of the half-view; it stands aside while a room change eases (`roomLerp` for
+`roomEase` s after the room lock switches on or off, `game.camRoomT`), which otherwise lurched the
+picture 35–45 px a frame. SCREEN SHAKE (a slider, `game.shakeMul`) scales shake, kick and lens.
 
-**Shake only on a lost heart.** `game.shake(a, hurt)`: without `hurt` it is × `TUNING.juice.shakeOther`
-(**0**). Only `Goat.damage`, `game.stunGoat` and the intro club pass `true`; `game.kick` uses `kickOther`
+**Shake on a lost heart, and a little for a thud.** `game.shake(a, hurt)`: without `hurt` it is ×
+`TUNING.juice.shakeOther` (**0**). Each shake is a swing along a random line with smooth noise over it
+(`raiseShake`, `Game.shakeNoise`, `juice.shakeFreq`), as trauma² against `juice.shakeRef`, never larger
+than the old random rattle. The one other shake is `game.thud(x, y, a)` — an ogre or rat ogre landing,
+a bomb, a barrel, a poison blast — × `juice.shakeThud`, fading from `thudNear` to nothing at `thudFar`
+tiles: weight, not alarm, always under a lost heart (26 Sep 2026). Only `Goat.damage`, `game.stunGoat` and the intro club pass `true`; `game.kick` uses `kickOther`
 (0.35). New effects leave `hurt` off.
 
 **Juice.** Master dials `TUNING.juice.screen` (shake, kick, zoomPunch, flash) and `juice.stop` (hitstop)
@@ -286,7 +301,10 @@ bodies*: budget off the curve (`from` → `to`, `ease`), capped per kind and roo
 
 **The cheapest man is not the filler.** `ENCOUNTER.cheap` caps the clubman and *tightens* as budget
 grows (`max` → `min`, never zero); rooms with their own head count (Great Hall) are exempt.
-`GEN_RULES.crowd`.
+`GEN_RULES.crowd`. **The men cap follows the room** (26 Sep 2026): `roomMenCap` scales the level's
+`cap.men` by the template's floor (`floorOf`) against `ENCOUNTER.room.ref`, between `min` and `grow` ×
+the cap; `planEncounters` buys every ordinary, mill, killbox and gallery room with it (`capsOf`) and
+`GEN_RULES.caps` holds the same number (arenas keep the level's cap + 2).
 
 **The floor axis.** `groundOf(tpl)` = fraction of floor with nothing `HARD` within a step (wall, pillar,
 brazier, lamp, table, drop — not hay, crate, rack, grate), carried as `tpl.ground`. `draw` in
@@ -390,8 +408,9 @@ contents by `paintStartRoom`. The ritual altar is a real `table` Prop with `isAl
 
 ### Rooms that lock
 
-**Soul gates.** `levelDef.gates`: two rest rooms (`REST_TEMPLATE`, role `rest`, off the curve, out of
-`ordinaryRooms`), never the last room, a set piece, the vault's room or a teaching room. Soul on the floor
+**Soul gates.** `levelDef.gates`: one rest room in the middle (`REST_TEMPLATE`, role `rest`, off the curve, out of
+`ordinaryRooms`), and `levelDef.rests` one before the end with no bar and no soul (every floor since 26 Sep
+2026: "a soul twice a level, in the middle and at the end" — the second is the last boss's). Never the last room, a set piece, the vault's room or a teaching room. Soul on the floor
 via `placeSoul` — or, on a `levelDef.gateKeeper` level (every floor since 1.73; never the mouse's gate), in a **keeper**: a `keeper` bearer
 spawned on the soul's spot, ensouled with his kind's hearts + `soulKeeper.hp` (one), `soulKeeper.speed`, his
 swing lighting witchfire where it lands (`Enemy.keeperFire`) that he reads no better than a clubman reads a
@@ -444,9 +463,14 @@ touch otherwise) dies on it and the door takes the blow too (`smash`, so a plank
 Slower, it is as before: past `door.smashSpeed` a plank door breaks and he goes on through alive.
 
 **The vault.** `levelDef.vaultAt`; `carveVault` cuts 5x5 above/below, opens **two** tiles (rock and
-wall border), hangs `prop.vault` (halo, wisp, `SOUL`; the gate says `A SOUL OPENS IT`). The soul is laid
-with **`placeSoul`, not `dropSoul`** — `dropSoul`'s rescue asks a flow field capped at ninety tiles and
-pulled a far vault's soul to the goat's feet.
+wall border), hangs an iron `vault` door (`vaultEmpty`: drawn plain) and returns the chamber's `box`.
+**Never a soul** (26 Sep 2026): big grass, always. `vaultKindOf` (gen.js, its own RNG off the seed,
+`TUNING.vault.kinds`) makes it `grass` (the door shut, `vaultHits`), `ambush` or `mages` (only once
+`met` has the seer; never on THE TRIP). A trap vault's door starts open; `game.updateVaultTrap` slams it
+(`seal`) once the goat is `shutIn` tiles inside, `vaultAmbush` puts the men down (by a wall: stone
+bursts; otherwise dropped from above, dazed `land` s), and it swings open when none of `held` is left
+in the box (the seal's rule). `sealHolding` answers a trap's men with `{ box }` so a mage never blinks
+out (`game.inSeal`). `GEN_RULES.vaultkind`.
 
 **A wall that gives.** `carveSecret`: a two-tile niche behind an ordinary room's top/bottom wall, once or
 twice (`TUNING.secret.chance2`), rack plus maybe big grass, solid rock only; `levelDef.secretsAfterBoss`
@@ -625,7 +649,11 @@ point ("You run 13% faster"), and then a getter over `this.params`, never typed 
 with the full numbers off `p` / TUNING (`sayN`, `sayPct`, `sayTimes`, `sayPoison`) for the dev drawer
 only; `skill` hangs it on a button; `needs` gates the
 deal. `synergy` / `addition` on a boon are marks for the BOONS tab only. `BOON_SLOTS` (one active + two passives per button, four body); `game.boonOpen` is the one deal
-test; `key` boons count against nothing. `drawBodySouls`.
+test; `key` boons count against nothing. `drawBodySouls`. **A full slot is a swap, not a heart** (26 Sep
+2026): `game.boonSwaps` pairs every card shut out only by its slot with one boon in that slot;
+`openBoonChoice` deals them where the open cards run short (`game.boonReplace`, parallel to
+`boonChoice`), the card says `INSTEAD OF`, and `takeBoon` drops the old one first and pays no `heal`.
+The silent +1 heart is left only for a deal with nothing at all to offer.
 
 **The skill rail.** `drawSkills` is the only report of the verbs; `skillIcon` must change when a boon
 lands — it draws `SKILL_ICONS` (`js/skill-icons.js`, pixel pictures per verb and active soul, a mark
@@ -816,7 +844,8 @@ teeth, posts), fought at `LEVELS[0]`'s curve × `shroom.threatMul`, `shroom.men`
 (`shroom.chance`, `from`, `eatR`, `eatTime`, `game.eatShrooms` → `game.tripAt`; `levelTripAt`,
 `forgetLessons`, `saveRun`). `game.tripInput(real)` reverses the stick and swaps grab/headbutt and
 roll/scream — no new keys. Lens breathing in `Renderer.worldTransform` (`shroom.cam`), never a shake.
-`Goat.tripPhase`. `GEN_RULES.shrooms`, `GEN_RULES.trip`.
+`Goat.tripPhase`. `GEN_RULES.shrooms`, `GEN_RULES.trip`. The floor after it says, plain and still, that the
+controls are his again (`game.tripBack`, `shroom.back`, `drawTripBanner(..., sober)`).
 
 **THE DARK.** A level of its own (`DARK_LEVEL`, `darkLevel()`; 1.65 — it used to be any floor with
 the lamps out and a softened copy of its curve). It is not in LEVELS: THE FORK's dark flight climbs
@@ -849,9 +878,9 @@ back over the dark (`Dark.readable`), and `dark.eyes` for the seer, hound and wr
 ### Souls, shop, talismans, escorts
 
 **Souls are a budget.** `levelDef.souls` = two; the mouse replaces one (`soulsHere`). Spent in order:
-gates, vault, then the **last** bosses; an empty vault holds big grass. `game.bossPrize`: soul, else milk.
-Seeded surprises: `soul.bossChance`, `soul.roomChance` (`game.bonusRoom`); none on a `surprises: false`
-level (THE ALTAR, 26 Sep 2026: a third soul mid-floor read as a mistake). All of it is `soulPlan(level)`
+the gate, then the **last** bosses; the vault never. `game.bossPrize`: soul, else milk.
+Seeded surprises (`soul.bossChance`, `soul.roomChance` 0, `game.bonusRoom`) only on a level with
+`surprises: true` — none since 26 Sep 2026 ("in the middle and at the end"). All of it is `soulPlan(level)`
 (gen.js, 1.72), which `startLevel` lays and `GEN_RULES.souls` checks: no two souls fewer than
 `soul.apart` rooms apart — a surprise that would be is not dealt. A soul is a violet wisp
 (`Renderer.soulWisp`, `game.souls`). Cards: `takeBoon` by Digit1/2/3 or down-and-up on one card
@@ -898,7 +927,8 @@ that floor's `levelDef.beasts` list, **never one kind twice in a run and none on
 Without `opts.beast` (balance, dev samples) the dice pick off the list; `balance.js` holds the deal
 over many run seeds. In a `coop` (`holds`) in the
 first `beast.third`; none on level one. A coop left shut stays shut (1.71): the clamp walls it in and
-`Beast.lost` says so. Coops call (`beast.callGap`, `callR`). Banked within `saveR` at
+`Beast.lost` says so. Coops call (`beast.callGap`, `callR`). Banked (`Beast.cameWith`: held, within `saveR`, or in the stairs' room; the crow a room
+further back) at
 the stairs: `beginClimb` → `Beast.bank` → `game.beasts` → `Beast.applyRewards`; `BEAST_CARD`,
 `drawSaved`. **No key, and none trots after you.** `Beast.hurt` (`beast.hp`, `hurtCd`). New escort:
 `Beast.KINDS`, `TUNING.prop`, update, draw, `applyRewards`, `BEAST_CARD`.
@@ -919,7 +949,8 @@ with `tools/escorts.js` (`ESCORT.run`), the way 1.57 measured the men.
   `slack` in between; `crow.late` rooms behind him (one: the next room walls it in) it drops the bodies
   and flies after him, as it does past `catchUp` tiles (26 Sep 2026: it was walled in on 4 of 6 bot
   walks and reached the stairs on none; now 5 of 6, the sixth half a second behind). Reward
-  `game.crowGift` → `Beast.placeGift`, a tier III ware on the next stairs.
+  `game.crowGift` → `Beast.placeGift`, a tier III ware on the next stairs, never the one he wears;
+  the bird that brings it perches by it and flies off (`Beast.updateGift`), never an escort.
 - **Horse** — `Beast.updateHorse`: stands `ready` s saying its bet, then races down `Beast.onward`
   at `speed` and never waits; waits only at a soul gate / seal / vault / fork door; any other shut
   door in its way (`Beast.doorAhead`) it rears at (`kickWind`, pose `kick`) and `smash`es; men in
@@ -1197,6 +1228,10 @@ Hooks load when a session starts.
 - Palette colours come from `PALETTE`, never as literals, except for one-off shading tints inside a
   single sprite.
 - Fonts are `FONT` and `FONT_SC` constants in `render.js` (Alegreya and Alegreya SC from Google Fonts).
+  Spoken lines (barks, floats, animals, prologue) and description text (boon card, shelf note, skill
+  note) go through `FONT_PICK.font('say' | 'text', px)` instead, which the dev drawer's SPEECH / TEXT
+  rows cycle through five families (kept in `localStorage`; the itch build always reads entry 0).
+  A new family goes into `FONT_PICK.list` and the Google Fonts link in both HTML files and `RELEASE.page`.
 - Version history and the reasoning behind each change live in `CHANGELOG.md`.
 
 ---
@@ -1205,17 +1240,14 @@ Hooks load when a session starts.
 
 - Mirrors as an environmental puzzle. The original voice note said "lizards and mirrors"; the mirror
   half was interpreted as a puzzle object and parked. The other half is still unresolved.
-- Whether one life means one life per level (current behaviour) or one per whole run.
 - Where his wife is. The opening scene's mage carries her off, and the first gate (`game.bless`, 1.75)
   shows him taking her on through it; nothing after that refers to her: no room, no ending.
-- **How many boon souls a run deals.** A souls *resource* (one per man killed, banked and spent) was
-  built once as the 1.40 mouse's prices, taken out in 1.41, and decided against on 23 Sep 2026 ("the
-  economy only distracted") — it is not open and nothing should be built toward it. What is open is
-  whether the boon souls should drop further: thirteen authored a run plus the seeded extras
-  (`soul.bossChance`, `soul.roomChance`) against a build that holds fourteen, and past a full build
-  a soul is a silent heart. The vault and the last bosses never see one (two gates spend the budget
-  first). See `BACKLOG.md`, 24 Sep 2026.
-- Gamepad support, a Priest boss, and later acts.
+- **Parked, not open** (26 Sep 2026, "later"): three lives on a run (one life stays per level until
+  then), gamepad support, a Priest boss, the later acts, the hunt, hell, heaven, and the second
+  talisman slot (for the acts). Kept in plans, not to be built without asking. Decided against:
+  hearts that grow by floor, the chain headbutt. Settled: two souls a floor, in the middle and at
+  the end; a full slot deals swaps. A souls *resource* stays decided against (23 Sep 2026).
+- Market and positioning (gore, price, publisher, a GIF export; `MARKET.md` §9): "later", not today.
 - The endless roll against a wall, reported in the 14 Sep 2026 playtest and **not reproduced** — see
   `BACKLOG.md` for what was measured and what to ask him. The soul barrier from the same batch was
   parked, for the reason pillar 1 gives; everything else in it shipped in 1.4.

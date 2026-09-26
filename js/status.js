@@ -42,7 +42,14 @@ const Status = {
     const stunProof = e.cfg && e.cfg.immune && e.cfg.immune.stun;
     if (!stunProof) e.dazed = Math.max(e.dazed, S.stun * game.mods.enemySlow * (game.dev && game.dev.tune ? game.dev.tune.enemyAttack : 1));
     e.poison = Math.max(e.poison, S.poison);
-    if (e.state === 'aim' || e.state === 'cast' || e.state === 'windup') { e.state = 'chase'; e.rune = null; }
+    // What it breaks is what `daze` breaks. Only on a man the stars take: the rat ogre's swing and a
+    // wraith's arrival ride it out (it used to cancel both, where nothing else may), and every other
+    // windup — the charge's plant, the slam, the leap's crouch, a hound's dart — froze under the stars
+    // with its strip still on the floor and went off when they cleared.
+    if (!stunProof && (e.state === 'aim' || e.state === 'cast' || e.state === 'windup' || e.state === 'chargewind'
+        || e.state === 'slamwind' || e.state === 'hopwind' || e.state === 'dart' || e.state === 'dodge' || e.state === 'retreat')) {
+      e.state = 'chase'; e.rune = null; e.dashPath = null;
+    }
     // A charge under way stops with the wait for the next one, as `daze` stops it.
     if (!stunProof && e.state === 'charge') { e.state = 'chase'; e.chargeCd = TUNING.champion.charge.cooldown * game.mods.enemySlow; }
     if ((e.shock || 0) > 0) { e.shock = Math.max(e.shock, e.dazed); return; }
@@ -68,7 +75,7 @@ const Status = {
     game.particles(x, y, 10, green ? PALETTE.venom : PALETTE.fire, 220);
     game.ring(x, y, R, green ? PALETTE.venomHi : PALETTE.fireHi);
     w.scorch(x, y, R * 0.35);
-    game.shake(8); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(30);
+    game.thud(x, y, 8); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(30);
     w.emitNoise(x, y, TUNING.noise.boom);
     if (green) game.floatText(x, y - 36, 'IT GOES OFF', PALETTE.venomHi);
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), r = Math.ceil(B.radius);

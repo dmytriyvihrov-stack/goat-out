@@ -257,7 +257,8 @@ const Dark = {
       for (const e of men) if (e.state === 'floored' || e.state === 'stunned') r.drawEnemy(e, game);
       for (const p of list) if (p.kind === 'lamp') r.drawProp(p);
       for (const e of men) if (e.state !== 'floored' && e.state !== 'stunned') r.drawEnemy(e, game);
-    } finally { r.ctx = keep; r.silPass = false; }
+    } catch (err) { a.restore(); throw err; }   // or the clip stays on A and every later frame is cut to it
+    finally { r.ctx = keep; r.silPass = false; }
     // Cut to the mask: only inside his hearing, and only what no flame is already showing.
     a.globalCompositeOperation = 'destination-in'; a.imageSmoothingEnabled = true;
     a.drawImage(sc, 0, 0, mw, mh, this.box.x0 * TILE, this.box.y0 * TILE, this.nx * TILE, this.ny * TILE);

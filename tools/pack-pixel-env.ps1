@@ -8,7 +8,12 @@ param(
   [string]$Pack = "output/pixel-environment-2026-09-23",
   [int]$Prop = 96,
   [int]$Floor = 64,
-  [int]$Width = 1024
+  [int]$Width = 1024,
+  # Items of the hand-off no code draws (asset audit of 24 Sep 2026, dropped 26 Sep 2026): the dark
+  # stone floor, the wall piece, the pot and shards, the mossy stone, the stone slab, the cave grass
+  # and the roots. They stay in the manifest (the preview still shows them); only the atlas leaves
+  # them out. Everything is looked up by id, so the rest moving up the atlas costs nothing.
+  [string[]]$Skip = @('floors-15', 'room-props-06', 'room-props-08', 'cave-props-03', 'cave-props-04', 'cave-props-07', 'cave-props-08')
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
@@ -39,6 +44,7 @@ $m = Get-Content -Raw -Encoding UTF8 (Join-Path $packDir 'manifest.json') | Conv
 
 $sources = @{}; $cuts = @()
 foreach ($it in $m.items) {
+  if ($Skip -contains $it.id) { continue }
   if (-not $sources.ContainsKey($it.file)) { $sources[$it.file] = [System.Drawing.Image]::FromFile((Join-Path $packDir $it.file)) }
   $isFloor = $it.kind -eq 'floor'
   $r = $it.rect

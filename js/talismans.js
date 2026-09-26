@@ -247,7 +247,7 @@ const Talisman = {
     return Talisman.greaseAt(game, e.x, e.y) ? gr.drag : 1;
   },
   greaseAt(game, x, y) {
-    const S = game.tal; if (!S || !S.grease.size) return false;
+    const S = game.tal; if (!S || S.level !== game.level || !S.grease.size) return false;
     return S.grease.has(Math.floor(y / TILE) * game.world.W + Math.floor(x / TILE));
   },
   updateGrease(game, dt) {
@@ -383,8 +383,9 @@ const Talisman = {
   placeEffigy(game, g) {
     const F = game.mods.effigy, S = Talisman.st(game), w = game.world;
     let x = g.x + g.aim.x * 1.2 * TILE, y = g.y + g.aim.y * 1.2 * TILE;
-    if (w.isSolid(Math.floor(x / TILE), Math.floor(y / TILE)) || w.isPitPx(x, y)) { x = g.x; y = g.y; }
-    S.effigy = { x, y, t: F.life, max: F.life, r: 11 };
+    // Nor through a shut door: pressed against a soul gate or a seal it stood on the far side.
+    if (w.isSolid(Math.floor(x / TILE), Math.floor(y / TILE)) || w.isPitPx(x, y) || !game.reaches(g.x, g.y, x, y)) { x = g.x; y = g.y; }
+    S.effigy ={ x, y, t: F.life, max: F.life, r: 11 };
     S.pulse = 0;
     game.particles(x, y, 10, PALETTE.hay || PALETTE.ochre, 120); game.audio.sfxThud();
     game.floatText(x, y - 30, 'A STRAW GOAT', PALETTE.ochre);
@@ -467,7 +468,7 @@ const Talisman = {
   // ---- drawing ----
   // Under everything that stands: grease on the boards, the effigy, echoes of the horns.
   drawGround(r, game) {
-    const S = game.tal; if (!S) return;
+    const S = game.tal; if (!S || S.level !== game.level) return;   // last floor's, until `st` rebuilds it in play
     const ctx = r.ctx, w = game.world, gr = game.mods.grease;
     if (S.grease.size) {
       const life = gr ? gr.life : 15;

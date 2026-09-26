@@ -2,6 +2,38 @@
 // on-screen touch controls and title cards. Level one uses the cached AltarArt environment.
 const FONT = "'Alegreya', Georgia, 'Times New Roman', serif";
 const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
+// Two families the dev drawer swaps while the game runs (26 Sep 2026, trying fonts on). `say` is
+// every line spoken aloud — a man's bark, an animal's terms, the floating words, the prologue's —
+// and `text` the sentence under a name: a boon card, the mouse's shelf, a skill's note. Entry 0 is
+// the build's own and the only one the itch build ever reads. `k` evens out x-heights: Pirata and
+// Jacquard set small for their size, and a bark is 9.5 px to begin with.
+const FONT_PICK = {
+  list: [
+    { name: 'ALEGREYA', k: 1, say: [700, FONT_SC], text: [400, FONT] },
+    { name: 'PIRATA', k: 1.12, say: [400, "'Pirata One', 'Alegreya SC', serif"], text: [400, "'Pirata One', 'Alegreya', serif"] },
+    { name: 'PIXELIFY', k: 1, say: [700, "'Pixelify Sans', 'Alegreya SC', sans-serif"], text: [400, "'Pixelify Sans', 'Alegreya', sans-serif"] },
+    { name: 'JACQUARD', k: 1.25, say: [400, "'Jacquard 12', 'Alegreya SC', serif"], text: [400, "'Jacquard 12', 'Alegreya', serif"] },
+    { name: 'FELL', k: 1.05, say: [400, "'IM Fell English SC', 'Alegreya SC', serif"], text: [400, "'IM Fell English', 'Alegreya', serif"] },
+  ],
+  say: 0, text: 0, KEY: 'goat-fonts',
+  font(role, px) { const f = this.list[this[role]], [w, fam] = f[role]; return `${w} ${px * f.k}px ${fam}`; },
+  nameOf(role) { return this.list[this[role]].name; },
+  // Canvas never asks for a web font itself: a family nobody has loaded draws as the fallback.
+  warm() { try { for (const r of ['say', 'text']) document.fonts.load(this.font(r, 16)); } catch (e) { /* no FontFaceSet */ } },
+  next(role) {
+    this[role] = (this[role] + 1) % this.list.length; this.warm();
+    try { localStorage.setItem(this.KEY, JSON.stringify({ say: this.say, text: this.text })); } catch (e) { /* storage blocked */ }
+  },
+  init() {
+    if (typeof window !== 'undefined' && window.GOAT_RELEASE) return;
+    try {
+      const v = JSON.parse(localStorage.getItem(this.KEY) || 'null'), n = this.list.length;
+      if (v) { this.say = (v.say >>> 0) % n; this.text = (v.text >>> 0) % n; }
+    } catch (e) { /* storage blocked */ }
+    this.warm();
+  },
+};
+FONT_PICK.init();
 
 // How big a square of cave the renderer marches and keeps at a time (`caveRockPath`). Small
 // enough that walking into fresh rock costs one chunk, big enough that a screen is a dozen of them.
@@ -230,6 +262,8 @@ class Renderer {
       if (game.dev.vision || game.dev.hearing) this.drawDevOverlay(game);
       ctx.restore();
       if (game.level && game.level.def.shroom) this.drawTrip(game);
+      // Not on the trip: the floor after it, saying the controls are his again.
+      else if (game.tripBack > 0) this.drawTripBanner(game.tripBack, TUNING.shroom.back, true);
     }
     this.drawVignette(game);
     this.drawHurt(game);
@@ -280,8 +314,9 @@ class Renderer {
   }
   // The line across the screen as the trip begins: each letter on its own slow wave and its own hue,
   // because a caption set straight would be the one thing on this floor that is not wrong.
-  drawTripBanner(left) {
-    const B = TUNING.shroom.banner, ctx = this.ctx, t = this.t, s = this.ts || 1;
+  // `sober`: the line on the floor after the trip, the same place and size, standing still in bone.
+  drawTripBanner(left, banner, sober) {
+    const B = banner || TUNING.shroom.banner, ctx = this.ctx, t = this.t, s = this.ts || 1;
     const a = Math.min(1, (B.time - left) / B.fade, left / B.fade);
     const size = Math.min(44 * s, this.vw / (B.text.length * 0.62));
     ctx.save();
@@ -292,9 +327,9 @@ class Renderer {
     // under the level card, which comes up over the same first seconds
     const y = this.vh * 0.74;
     for (let i = 0; i < B.text.length; i++) {
-      const ch = B.text[i], cw = ctx.measureText(ch).width, dy = Math.sin(t * 3 + i * 0.45) * size * 0.18;
+      const ch = B.text[i], cw = ctx.measureText(ch).width, dy = sober ? 0 : Math.sin(t * 3 + i * 0.45) * size * 0.18;
       ctx.fillStyle = 'rgba(10,4,16,0.6)'; ctx.fillText(ch, x + 3, y + dy + 3);
-      ctx.fillStyle = `hsl(${(t * 60 + i * 18) % 360},90%,72%)`; ctx.fillText(ch, x, y + dy);
+      ctx.fillStyle = sober ? PALETTE.bone : `hsl(${(t * 60 + i * 18) % 360},90%,72%)`; ctx.fillText(ch, x, y + dy);
       x += cw;
     }
     ctx.restore();
@@ -1283,7 +1318,7 @@ class Renderer {
       if (!game.props.some((q) => q.kind === 'ware' && !q.broken && q.shopId === m.shopId && !q.locked && !q.chosen)) continue;
       const cx = (room.x + room.w / 2) * TILE, cy = (room.y + room.h / 2) * TILE;
       if (Math.abs(cx - game.cam.x) > 1400) continue;
-      const label = game.touch.active ? 'GRAB - CHOOSE THE ARTIFACT' : 'RIGHT BUTTON - CHOOSE THE ARTIFACT';
+      const label = game.touch.active ? 'GRAB - TAKE ONE' : 'RIGHT CLICK - TAKE ONE';
       this.fitFloorText([label], room.w * TILE - 2.6 * TILE, 24);
       ctx.fillStyle = 'rgba(255,224,138,0.2)';
       ctx.fillText(label, cx, cy * TILT);
@@ -1831,7 +1866,7 @@ class Renderer {
     const ctx = this.ctx, cam = game.cam, v = this.view(cam), B = TUNING.beast, m = B.strayEdge * TILE;
     const hw = v.w / 2, hh = v.h / 2, ICON = { chicken: 'chicken', tortoise: 'turtle', goose: 'goose', crow: 'raven' };
     for (const p of game.props) {
-      if (!Beast.animal(p) || p.held) continue;
+      if (!Beast.animal(p) || p.held || p.gift) continue;
       const dx = p.x - cam.x, dy = p.y - cam.y;
       if (Math.abs(dx) < hw && Math.abs(dy) < hh) continue;
       const k = Math.min((hw - m) / Math.max(1, Math.abs(dx)), (hh - m) / Math.max(1, Math.abs(dy)));
@@ -1930,10 +1965,14 @@ class Renderer {
     const ctx = this.ctx, r = p.r;
     const moving = Math.hypot(p.vx || 0, p.vy || 0) > 8;
     const face = p.face || 1;   // kept from its last step (`Beast.step`), so stopping is not a turn to the right
-    const hop = moving ? Math.abs(Math.sin(p.bob * 4)) * 4 : 0;
+    // `lift`: the gift bird going up and away (`Beast.updateGift`), its shadow left on the floor and
+    // shrinking under it, the bird fading out over the last part of the flight.
+    const lift = p.lift || 0, fade = p.leaving ? clamp(1 - (p.leaving / TUNING.prop.crow.giftGone - 0.6) / 0.4, 0, 1) : 1;
+    const hop = (moving ? Math.abs(Math.sin(p.bob * 4)) * 4 : 0) + lift;
     const peck = p.feeding ? Math.max(0, Math.sin(p.bob * 3)) * 3 : 0;
-    ctx.save(); ctx.translate(p.x, p.y - hop);
-    this.shadow(0, r * 0.5 + hop, r * 0.8, r * 0.36);
+    ctx.save(); ctx.translate(p.x, p.y - hop); ctx.globalAlpha *= fade;
+    const sh = 1 / (1 + lift / 40);
+    this.shadow(0, r * 0.5 + hop, r * 0.8 * sh, r * 0.36 * sh);
     if (PIXEL_ART.ready) {
       // Pixel pass: a hop is the lift above, feeding is a dip forward onto the body.
       ctx.translate(0, r * 0.5); ctx.scale(1, 1 / TILT); ctx.rotate(face * peck * 0.06);
@@ -2944,7 +2983,7 @@ class Renderer {
       const a = Math.max(0, Math.min(1, e.say.life / 0.4, (e.say.max - e.say.life) / 0.08));
       ctx.save(); ctx.scale(1, 1 / TILT);
       let by = e.y * TILT - head - (notched ? 14 : 7);
-      ctx.font = `700 ${e.kind === 'butcher' ? 11 : 9.5}px ${FONT_SC}`;
+      ctx.font = FONT_PICK.font('say', e.kind === 'butcher' ? 11 : 9.5);
       ctx.textAlign = 'center';
       const tw = ctx.measureText(e.say.text).width;
       // Where the world pass put it (`sayLift`) is where THE DARK lays it again.
@@ -3022,6 +3061,14 @@ class Renderer {
   }
 
   // Enemies wind up slowly and show the ground they are about to cover.
+  // How far through a windup he is, 0..1. `Enemy` sets the timer to the tuned length × `enemySlow`
+  // (EASY, the ENEMY ATTACK slider), so measured against the bare length the fill sat empty for the
+  // first part of every windup and ran negative: a rim swept the long way round, and an arc radius
+  // off it threw inside `draw`. Clamped as well, because a picture may not trust a timer.
+  windP(e, dur) {
+    const slow = (this.game && this.game.mods && this.game.mods.enemySlow) || 1;
+    return clamp(1 - e.timer / Math.max(1e-3, dur * slow), 0, 1);
+  }
   drawTelegraph(e) {
     if (e.state === 'slamwind') { this.drawSlamRing(e); return; }
     if (e.kind === 'dog' || (e.state !== 'windup' && e.state !== 'chargewind')) return;
@@ -3032,7 +3079,7 @@ class Renderer {
       // The strip is the butcher's run as he will actually make it: to where he is aiming
       // (`Enemy.leadAim`, where the goat is going) and `over` past it.
       const C = TUNING.champion.charge, g = e.chargeAim || this.game.goat, run = Math.hypot(g.x - e.x, g.y - e.y) + C.over * TILE;
-      const p = clamp(1 - e.timer / C.wind, 0, 1), len = Math.min(C.speed * C.time, run);
+      const p = this.windP(e, C.wind), len = Math.min(C.speed * C.time, run);
       // As wide as the run lands (`charge.hit` past his body), so the strip is the lane to get out of.
       const w = e.r + C.hit;
       ctx.fillStyle = `rgba(192,57,43,${0.08 + 0.16 * p})`;
@@ -3040,7 +3087,7 @@ class Renderer {
       ctx.strokeStyle = `rgba(239,230,208,${0.3 + 0.4 * p})`; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(len * p, -w); ctx.lineTo(len * p, w); ctx.stroke();
     } else {
-      const p = 1 - e.timer / (e.atk ? e.atk('windup') : cfg.windup);
+      const p = this.windP(e, e.atk ? e.atk('windup') : cfg.windup);
       const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : Math.PI * 0.55;
       ctx.fillStyle = `rgba(192,57,43,${0.09 + 0.2 * p})`;
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, reach, -arc / 2, arc / 2); ctx.closePath(); ctx.fill();
@@ -3064,12 +3111,12 @@ class Renderer {
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
     if (e.state === 'chargewind') {
       const C = TUNING.champion.charge, g = e.chargeAim || this.game.goat, run = Math.hypot(g.x - e.x, g.y - e.y) + C.over * TILE;
-      const p = clamp(1 - e.timer / C.wind, 0, 1), len = Math.min(C.speed * C.time, run) * p, n = Math.ceil((len + e.r + C.hit) / px);
+      const p = this.windP(e, C.wind), len = Math.min(C.speed * C.time, run) * p, n = Math.ceil((len + e.r + C.hit) / px);
       const along = (x, y) => x * ux + y * uy, across = (x, y) => Math.abs(-x * uy + y * ux), w = e.r + C.hit;
       fill((x, y) => along(x, y) >= 0 && along(x, y) <= len && across(x, y) <= w, n, `rgba(242,170,48,${0.12 + 0.2 * p})`);
       fill((x, y) => along(x, y) > len - px && along(x, y) <= len && across(x, y) <= w, n, `rgba(255,224,138,${0.45 + 0.45 * p})`);
     } else {
-      const p = 1 - e.timer / (e.atk ? e.atk('windup') : cfg.windup);
+      const p = this.windP(e, e.atk ? e.atk('windup') : cfg.windup);
       const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : Math.PI * 0.55, n = Math.ceil(reach / px);
       const inArc = (x, y) => Math.abs(angleDiff(Math.atan2(y, x), f)) <= arc / 2;
       fill((x, y) => Math.hypot(x, y) <= reach && inArc(x, y), n, `rgba(242,170,48,${0.1 + 0.22 * p})`);
@@ -3082,7 +3129,7 @@ class Renderer {
 
   // The Butcher's slam: the ring on the floor it will fill, filling in as he raises his fists.
   drawSlamRing(e) {
-    const ctx = this.ctx, SL = TUNING.butcher.slam, R = SL.range * TILE, p = clamp(1 - e.timer / SL.wind, 0, 1);
+    const ctx = this.ctx, SL = TUNING.butcher.slam, R = SL.range * TILE, p = this.windP(e, SL.wind);
     ctx.save(); ctx.translate(e.x, e.y);
     ctx.fillStyle = `rgba(192,57,43,${0.07 + 0.2 * p})`;
     ctx.beginPath(); ctx.arc(0, 0, R * p, 0, Math.PI * 2); ctx.fill();
@@ -3175,7 +3222,7 @@ class Renderer {
   drawHopMark(e) {
     if ((e.kind !== 'ratogre' && e.kind !== 'butcher') || (e.state !== 'hopwind' && e.state !== 'hop') || !e.hopTo) return;
     const H = e.kind === 'butcher' ? TUNING.butcher.leap : TUNING.ratogre.hop, ctx = this.ctx, R = H.radius * TILE;
-    const p = e.state === 'hopwind' ? 0.25 * (1 - e.timer / H.wind) : 0.25 + 0.75 * (1 - e.timer / H.air);
+    const p = e.state === 'hopwind' ? 0.25 * this.windP(e, H.wind) : 0.25 + 0.75 * clamp(1 - e.timer / H.air, 0, 1);
     ctx.save();
     ctx.strokeStyle = `rgba(192,57,43,${0.35 + 0.5 * p})`; ctx.lineWidth = 2.2;
     ctx.beginPath(); ctx.arc(e.hopTo.x, e.hopTo.y, R, 0, Math.PI * 2); ctx.stroke();
@@ -3190,7 +3237,7 @@ class Renderer {
     // In world space and not counter-squashed like a sprite: the line lies on the floor, so it has
     // to be squashed the way the floor is or it points past the goat on every diagonal.
     ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.facing);
-    const p = e.state === 'aim' ? 1 - e.timer / TUNING.hunter.aimTime : 0.5;
+    const p = e.state === 'aim' ? this.windP(e, TUNING.hunter.aimTime) : 0.5;
     // The line comes out of the man himself, down the line the round will actually take (the bullet
     // leaves from his centre line, not from the hand the rifle is drawn in), and it reaches the goat
     // from the first frame of the aim: what grows is how sure it is, not how long. It used to start a
@@ -3350,6 +3397,8 @@ class Renderer {
           ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['showroom', 'SHOWROOM'],
           // The zip for itch.io, off this very page: no dev drawer in it, GOD in its SETTINGS (js/release.js).
           ['itch', RELEASE.busy ? 'ITCH BUILD…' : 'ITCH BUILD'],
+          // Each click steps to the next of `FONT_PICK.list`; the choice is kept in this browser.
+          ['font-say', 'SPEECH  ' + FONT_PICK.nameOf('say')], ['font-text', 'TEXT  ' + FONT_PICK.nameOf('text')],
         ] },
         { head: 'SPAWN', rows: [
           ['bearer', 'BEARER'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
@@ -5036,7 +5085,7 @@ class Renderer {
     const [p, def, title, desc] = n, ctx = this.ctx;
     ctx.save(); ctx.scale(1, 1 / TILT);
     const bw = 206, pad = 10;
-    ctx.font = `12px ${FONT}`;
+    ctx.font = FONT_PICK.font('text', 12);
     const dl = this.wrap(desc, bw - pad * 2);
     const bh = 22 + dl.length * 15 + 4;
     // High enough to clear her pail, which stands between the two stools and draws after them. Kept
@@ -5051,7 +5100,7 @@ class Renderer {
     ctx.globalAlpha = 1; ctx.textAlign = 'center';
     ctx.font = `700 12px ${FONT_SC}`; ctx.fillStyle = def.color; ctx.fillText(title, cx, by + 16);
     let y = by + 32;
-    ctx.font = `12px ${FONT}`; ctx.fillStyle = PALETTE.bone;
+    ctx.font = FONT_PICK.font('text', 12); ctx.fillStyle = PALETTE.bone;
     for (const ln of dl) { ctx.fillText(ln, cx, y); y += 15; }
     ctx.textAlign = 'left'; ctx.restore();
   }
@@ -5606,7 +5655,7 @@ class Renderer {
     }
     if (it.echo > 0) {
       ctx.save(); ctx.globalAlpha = Math.min(1, it.echo, (1.6 - it.echo) * 3) * 0.55;
-      ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'right';
+      ctx.font = FONT_PICK.font('say', 13 * s); ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'right';
       ctx.fillText('beeh...', this.w * 0.9, this.vh * 0.47); ctx.restore();
     }
     // Only once it has been watched through. The first run sits and watches. The prologue keeps its
@@ -5629,28 +5678,35 @@ class Renderer {
     const it = game.intro, pr = it.pro, ctx = this.ctx, P = TUNING.intro.prologue;
     const w = this.vw, h = this.vh, cx = this.vcx, cy = this.vcy, k = this.zoomFit * P.zoom, ph = it.phase, s = this.ts;
     if (!pr) return;
-    const scene = () => { ctx.translate(cx, cy); ctx.scale(k, k * TILT); };
+    // The field is looked down on and the sky is behind it, so the pen has to stand wholly on the
+    // grass: its centre comes down from the middle of the screen (as far as its front rail allows)
+    // and the horizon goes up to clear its far posts. With both at the middle, the back fence stood
+    // across the sky and the sun.
+    const pk = k * TILT, sy = ph === 'meadow' ? Math.min(cy + h * 0.1, h - 76 * pk) : cy;
+    const hy = clamp(sy - 86 * pk - h * 0.05, h * 0.12, h * 0.5);
+    const scene = () => { ctx.translate(cx, sy); ctx.scale(k, pk); };
     // Screen position of a scene point, for the words that float over the animals.
-    const over = (o, lift) => ({ x: cx + o.x * k, y: cy + o.y * k * TILT - lift * k });
+    const over = (o, lift) => ({ x: cx + o.x * k, y: sy + o.y * pk - lift * k });
     const word = (txt, x, y, alpha, size) => {
-      ctx.save(); ctx.globalAlpha = clamp(alpha, 0, 1); ctx.font = `700 ${size * s}px ${FONT_SC}`;
+      ctx.save(); ctx.globalAlpha = clamp(alpha, 0, 1); ctx.font = FONT_PICK.font('say', size * s);
       ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'center'; ctx.fillText(txt, x, y); ctx.restore();
     };
 
     if (ph === 'meadow') {
       // The one bright screen in the game. Sky, a low sun, a hill, and a field.
-      const sky = ctx.createLinearGradient(0, 0, 0, h * 0.5);
+      const sky = ctx.createLinearGradient(0, 0, 0, hy);
       sky.addColorStop(0, '#6f8a99'); sky.addColorStop(1, '#c9b98a');
-      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h * 0.5);
-      ctx.fillStyle = 'rgba(255,224,138,0.85)'; ctx.beginPath(); ctx.arc(w * 0.78, h * 0.3, 26 * s, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#5f7a3e'; ctx.beginPath(); ctx.moveTo(0, h * 0.5);
-      ctx.quadraticCurveTo(w * 0.3, h * 0.38, w * 0.55, h * 0.46); ctx.quadraticCurveTo(w * 0.8, h * 0.52, w, h * 0.44);
-      ctx.lineTo(w, h * 0.5); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = PALETTE.grass; ctx.fillRect(0, h * 0.5, w, h * 0.5);
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, hy);
+      ctx.fillStyle = 'rgba(255,224,138,0.85)'; ctx.beginPath(); ctx.arc(w * 0.78, hy * 0.55, 26 * s, 0, Math.PI * 2); ctx.fill();
+      const hill = Math.min(h * 0.12, hy * 0.5);
+      ctx.fillStyle = '#5f7a3e'; ctx.beginPath(); ctx.moveTo(0, hy);
+      ctx.quadraticCurveTo(w * 0.3, hy - hill, w * 0.55, hy - hill * 0.33); ctx.quadraticCurveTo(w * 0.8, hy + hill * 0.17, w, hy - hill * 0.5);
+      ctx.lineTo(w, hy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = PALETTE.grass; ctx.fillRect(0, hy, w, h - hy);
       // grass, scattered the same way every frame
       ctx.strokeStyle = PALETTE.grassHi; ctx.lineWidth = 1.6 * s; ctx.lineCap = 'round';
       for (let i = 0; i < 90; i++) {
-        const gx = ((i * 137.5) % w), gy = h * 0.5 + ((i * 89.3) % (h * 0.5)), sway = Math.sin(this.t * 1.4 + i) * 1.5 * s;
+        const gx = ((i * 137.5) % w), gy = hy + 8 * s + ((i * 89.3) % (h - hy)), sway = Math.sin(this.t * 1.4 + i) * 1.5 * s;
         ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx - 3 * s + sway, gy - 7 * s); ctx.moveTo(gx, gy); ctx.lineTo(gx + 3 * s + sway, gy - 8 * s); ctx.stroke();
       }
       ctx.save(); scene();
@@ -5704,7 +5760,7 @@ class Renderer {
       ctx.fillStyle = '#3b2f33'; ctx.fillRect(96, -34, 52, 54); ctx.fillStyle = '#6f8a99'; ctx.fillRect(104, -28, 34, 22);   // cab, window
       ctx.fillStyle = PALETTE.fireHi; ctx.fillRect(146, -4, 5, 8);                // headlamp
       const wheel = (x) => {
-        ctx.save(); ctx.translate(x, 26); ctx.rotate(pr.t * P.roadSpeed / 16);
+        ctx.save(); ctx.translate(x, 26); ctx.rotate(pr.t * P.wheelSpin);
         ctx.fillStyle = '#141013'; ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#4a4448'; ctx.lineWidth = 3;
         for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 13, Math.sin(a) * 13); ctx.stroke(); }
@@ -6059,9 +6115,11 @@ class Renderer {
     // does, and nothing else (25 Sep 2026: the numbers line under it was "windup speed, what the
     // hell?" — it lives in the dev drawer now). Every card of the three is as tall as the wordiest
     // one, so they still read as a row of equals; the minimum height keeps a one-liner a card.
-    const descFont = `${13.5 * s}px ${FONT}`, textW = cw - 24 * s;
+    const descFont = FONT_PICK.font('text', 13.5 * s), textW = cw - 24 * s;
+    // A swap (`game.boonReplace`) says under its text which boon it takes the place of.
+    const swapOf = (i) => game.boonReplace && game.boonReplace[i];
     const texts = game.boonChoice.map((b) => { ctx.font = descFont; return { desc: this.wrap(b.desc, textW) }; });
-    const tall = Math.max(...texts.map((t) => 54 + t.desc.length * 17));
+    const tall = Math.max(...texts.map((t, i) => 54 + t.desc.length * 17 + (swapOf(i) ? 20 : 0)));
     const ch = Math.max(stack ? 84 : 112, tall + 12) * s;
     const gap = 13 * s;
     const blockH = stack ? n * ch + (n - 1) * gap : ch;
@@ -6099,13 +6157,25 @@ class Renderer {
       ctx.font = descFont; ctx.fillStyle = 'rgba(239,230,208,0.75)';
       const tx = texts[i];
       tx.desc.forEach((l, k) => ctx.fillText(l, x + cw / 2, y + 54 * s + k * 17 * s));
+      if (swapOf(i)) {
+        ctx.fillStyle = PALETTE.witchHi; ctx.font = `700 ${11 * s}px ${FONT_SC}`;
+        ctx.fillText('INSTEAD OF ' + swapOf(i).name, x + cw / 2, y + 58 * s + tx.desc.length * 17 * s);
+      }
       // What it hangs off, drawn the same way the rail draws it, so the card that offers a boon
       // and the chip that later shows it are recognisably the same picture. A boon with no `skill`
       // is body work and gets neither — nothing on the rail changes for it either.
       if (b.skill) {
         ctx.save(); ctx.translate(x + cw - 20 * s, y + 17 * s);
         // Drawn as the verb will look once this soul is on it, so the card shows what it buys.
-        const pm = Object.assign({}, game.mods); b.apply(pm, b.params || {});
+        // A swap's picture is the build without the boon it replaces (`applyBoons`' order, actives
+        // first): on top of the live mods, SPLASH instead of BOMB CHARGE still drew the bomb horns.
+        let pm = Object.assign({}, game.mods);
+        if (swapOf(i)) {
+          const set = game.boons.filter((o) => o !== swapOf(i)).concat([b]);
+          pm = Object.assign({}, BOON_BASE);
+          for (const o of set) if (o.active) o.apply(pm, o.params || {});
+          for (const o of set) if (!o.active) o.apply(pm, o.params || {});
+        } else b.apply(pm, b.params || {});
         this.skillIcon(b.skill, 9 * s, game, fire, pm);
         ctx.restore();
         // A key name means nothing to a thumb: on touch the picture of the verb is the whole caption.
@@ -6254,7 +6324,7 @@ class Renderer {
 
   drawFloatTexts(game) {
     const ctx = this.ctx; ctx.save(); ctx.scale(1, 1 / TILT);
-    ctx.font = `700 14px ${FONT_SC}`; ctx.textAlign = 'center';
+    ctx.font = FONT_PICK.font('say', 14); ctx.textAlign = 'center';
     for (const f of game.floats) {
       // An animal's terms (`Beast.speak`) ride over its head and do not drift up and away: the goose
       // and the horse are off the moment they have spoken, and a line left hanging where they were
@@ -6475,7 +6545,7 @@ class Renderer {
           + (M.coldEye ? ` · TIME AT ${sayPct(M.coldEye.scale)} FOR ${sayN(M.coldEye.time)}s, EVERY ${sayN(M.coldEye.every)}s` : '') },
       { id: 'roll', name: M.leapfrog ? 'LEAP' : 'ROLL', cap: trip ? 'SPC' : 'E', cd: g.rollCd,
         max: g.rollCdMax || R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
-        note: (game.mods.rollStun > 0 ? 'Dodge. Everyone you tumble through is knocked out.'
+        note: (game.mods.rollStun > 0 ? 'Dodge. Everyone you tumble through is dazed.'
           : M.leapfrog ? 'Dodge. Roll at a man to vault over him.'
           : 'Dodge. Nothing can hit you mid-roll.')
           + (game.mods.venomRoll ? ' You leave a puddle of poison.' : ''),
@@ -6595,7 +6665,7 @@ class Renderer {
     const w = Math.min(230 * s, this.w - 28 * s), right = this.w - 14 * s;
     // Under the rail by default; the talisman's chip, on the left, asks for it under itself.
     const x = h.left !== undefined ? Math.min(h.left, right - w) : right - w;
-    ctx.font = `${11 * s}px ${FONT}`;
+    ctx.font = FONT_PICK.font('text', 11 * s);
     const lines = this.wrap(h.row.note, w - 20 * s);
     // The numbers under the sentence (what the verb does now, every soul on it counted in) are the
     // dev drawer's, not the player's: shown only while it is open (25 Sep 2026, "no exact numbers").
@@ -6612,7 +6682,7 @@ class Renderer {
     ctx.textAlign = 'left';
     ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = h.row.half ? 'rgba(239,230,208,0.7)' : PALETTE.bone;
     ctx.fillText(h.row.name, x + 10 * s, y + 15 * s);
-    ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.68)';
+    ctx.font = FONT_PICK.font('text', 11 * s); ctx.fillStyle = 'rgba(239,230,208,0.68)';
     lines.forEach((ln, i) => ctx.fillText(ln, x + 10 * s, y + 30 * s + i * 14 * s));
     if (stat.length) {
       ctx.font = `700 ${9 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(242,162,51,0.85)';
@@ -6775,6 +6845,17 @@ class Renderer {
 
   drawTouchUI(game) {
     const ctx = this.ctx, t = game.touch;
+    // A pause chip, top centre: Escape is the only other way into the pause (and SETTINGS, QUIT),
+    // and a phone has no Escape. A menu control, not a verb (ground rule 1).
+    {
+      const sz = 30 * this.s, x = this.w / 2 - sz / 2, y = 8 * this.s;
+      t.pauseRect = { x: x - 8 * this.s, y: 0, w: sz + 16 * this.s, h: sz + 16 * this.s };
+      ctx.fillStyle = 'rgba(20,14,12,0.35)'; ctx.fillRect(x, y, sz, sz);
+      ctx.strokeStyle = 'rgba(239,230,208,0.3)'; ctx.lineWidth = 1.5 * this.s; ctx.strokeRect(x, y, sz, sz);
+      ctx.fillStyle = 'rgba(239,230,208,0.55)';
+      ctx.fillRect(x + sz * 0.32, y + sz * 0.26, sz * 0.12, sz * 0.48);
+      ctx.fillRect(x + sz * 0.56, y + sz * 0.26, sz * 0.12, sz * 0.48);
+    }
     // move stick
     if (t.stick) {
       const mv = t.moveVector();
@@ -6820,23 +6901,23 @@ class Renderer {
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     }
     if (game.goat.screamCd > 0) {
-      const b = t.buttons.scream, p = 1 - game.goat.screamCd / game.mods.screamCooldown;
+      const b = t.buttons.scream, p = clamp(1 - game.goat.screamCd / game.mods.screamCooldown, 0, 1);
       ctx.strokeStyle = fire ? PALETTE.fire : PALETTE.ochre; ctx.lineWidth = 3.5 * this.s;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
     }
     if (game.goat.rollCd > 0) {
-      const b = t.buttons.roll, p = 1 - game.goat.rollCd / (TUNING.goat.roll.cooldown * game.mods.rollCooldown);
+      const b = t.buttons.roll, p = clamp(1 - game.goat.rollCd / (game.goat.rollCdMax || TUNING.goat.roll.cooldown * game.mods.rollCooldown), 0, 1);
       ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3 * this.s;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
     }
     // A throw empties your mouth for a beat, and the ring round GRAB is where you read that beat.
     if (game.goat.grabCd > 0 && !held) {
-      const b = t.buttons.grab, p = 1 - game.goat.grabCd / (game.goat.grabCdMax || TUNING.goat.grab.cooldown * game.mods.grabCooldown);
+      const b = t.buttons.grab, p = clamp(1 - game.goat.grabCd / (game.goat.grabCdMax || TUNING.goat.grab.cooldown * game.mods.grabCooldown), 0, 1);
       ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3 * this.s;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
     }
     if (itemOn && g.itemCd > 0 && g.itemCdMax > 0) {
-      const b = t.buttons.item, p = 1 - g.itemCd / g.itemCdMax;
+      const b = t.buttons.item, p = clamp(1 - g.itemCd / g.itemCdMax, 0, 1);
       ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 3 * this.s;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.rr, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
     }
@@ -6934,7 +7015,8 @@ class Renderer {
     this.titleHorns(cx, titleY, tw / 2 + size * 0.16, size);
 
     game.menu.rects.length = 0;
-    const run = game.save, def = run ? LEVELS[run.level] : null;
+    // The floor CONTINUE will play, which on a dark or trip save is not the LEVELS row (see `startLevel`).
+    const run = game.save, def = !run ? null : run.level === run.darkAt && run.level === DARK_LEVEL.darkOf ? DARK_LEVEL : run.level === run.tripAt ? tripLevel(run.level) : LEVELS[run.level];
     const souls = run && run.boons ? run.boons.length : 0;
     const board = game.best || { levels: {}, run: 0 };
     const cleared = Object.keys(board.levels || {}).length;
@@ -7024,9 +7106,10 @@ class Renderer {
     const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
     ctx.fillStyle = 'rgba(9,7,9,0.985)'; ctx.fillRect(0, 0, w, h);
     const rows = SETTINGS.length + 1;
-    const rowH = clamp(h * 0.1, 40 * s, 66 * s), gap = 10 * s;
+    // Rows shrink to fit the height (with room for the title above them) once the list outgrows it.
+    const gap = 10 * s, rowH = clamp(Math.min(h * 0.1, (h * 0.84 - 30 * s) / rows - gap), 34 * s, 66 * s);
     const bw = clamp(Math.min(w * 0.86, 460 * s), 200 * s, 520 * s), x0 = cx - bw / 2;
-    const top = h / 2 - (rows * (rowH + gap)) / 2;
+    const top = h / 2 - (rows * (rowH + gap)) / 2 + 16 * s;
     ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.ochre;
     ctx.font = `700 ${clamp(rowH * 0.42, 15 * s, 26 * s)}px ${FONT_SC}`;
     ctx.fillText('SETTINGS', cx, top - 22 * s);
@@ -7272,7 +7355,7 @@ class Renderer {
     }
     // How to leave it, as a button (`card.go`), once a press would be taken: under the words, and
     // never down on the run code.
-    if (card.go && (game.state === 'win' || game.stateTimer <= 0)) {
+    if (card.go && game.stateTimer <= 0) {
       const a = game.state === 'win' ? 1 : clamp(-game.stateTimer / 0.4, 0, 1);
       ctx.save(); ctx.globalAlpha *= a;
       this.goButton(game, card.go, this.w / 2, Math.min(y + 18 * s, this.h - (card.code ? 36 : 18) * s - 38 * s));

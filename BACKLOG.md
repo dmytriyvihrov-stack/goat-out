@@ -9,6 +9,32 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 26 September 2026 — answers to the second open-questions page
+
+Every open line in this file, `PLAYTEST.md` §8–9, `CLAUDE.md` and `MARKET.md` §9 was put on one page
+(artifact `claude.ai/artifact/19gtHuPqSppc2ZFijuRPKr`, answers in its db) and marked. What was marked
+"do" shipped in 1.77 (see `CHANGELOG.md`). The rest, as answered:
+
+- **Shipped in 1.77:** a soul twice a floor, in the middle and at the end ("Душа только два раза на
+  уровень"); a full slot offers a swap instead of a silent heart ("выдавать, но предлагать замену
+  текущих"); the vault as big grass with two trap versions, clubmen or three mages ("почти вся комната в
+  огне, кайф"); a men cap that follows the room's size ("кап людей должен тоже зависеть от размера
+  комнаты"); honest curves for THE OSSUARY and THE DARK, a tenth man on THE RAFTERS; THE THRESHING FLOOR
+  pushed; the sign on the floor after THE TRIP; the seven unused environment sprites dropped; the Q key
+  and THE TRIP written in as the two exceptions to the ground rules; CONCEPT brought up to date.
+- **Dropped, do not ask again:** writing a feature freeze into `CLAUDE.md`; drafting the playtest form
+  and the itch page; the phones line in the invite; the tester groups; a weak-laptop pass (no laptop).
+  LEAPFROG stays an active as it is.
+- **Decided against:** the chain headbutt (a struck man knocked into the one behind him); hearts that
+  grow by floor.
+- **No change:** THREAT stays priced as it is ("room danger rises and so does the goat's power"); the
+  price-by-runner tool below is closed with it.
+- **Parked, kept in plans ("позже"):** three lives on a run, gamepad, the Priest boss, the later acts, the
+  hunt, hell, heaven, the second talisman slot (for the acts). Not to be built without asking.
+- **Later, not today:** everything in `MARKET.md` §9 (gore, price, publisher, a GIF export).
+- **Still open, unanswered:** where his wife is and what the ending does about her; the "lizards" half
+  of "lizards and mirrors".
+
 ## 25 September 2026 — the ogre on the teeth, a burning crate, POWDER, the rules (1.74)
 
 Asked for in the session, all shipped in 1.74 (see `CHANGELOG.md`):
@@ -40,7 +66,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   modified, 6 new files; HEAD is 1.64). Land it, bump `BUILD` (no spaces: the run code is split on
   whitespace, `game.js:1617`), record the hash, and build the itch zip from that commit, never from a tree
   another session is editing.
-- **tool — write the freeze where every session reads it.** The 23 Sep freeze lives only at the top of this
+- ~~**tool — write the freeze where every session reads it.**~~ *Dropped, 26 Sep 2026.* The 23 Sep freeze lives only at the top of this
   file and on the questionnaire page, and was agreed in a cloud session the local one never saw. Since then
   six new systems landed or are in flight (THE DARK, its own floor, THE FORK, barrels, the saved picture,
   three cards), code outside the asset packs grew 22%, and barrels were built twice (1.56 cloud, 1.61).
@@ -54,7 +80,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   it.**~~ *Shipped 24 Sep, evening (the polish pass): `N` for THE DARK (and `replayCode` rebuilds it), a last token `E`/`X`/`J`/`-`, and leaving the picture card copies its code.* A dark floor's code equals the lit one's and `replayCode` rebuilds the lit floor. Copy happens only
   at `game.js:1876` / `:1888`. Proposed: `N` for THE DARK through `replayCode`, one flags token
   (`E`/`J`/`X`/`-`), a copy on leaving the clear card. About ten lines in `game.js`.
-- **number — what the first evening deals.** A mushroom tuft lies on THE YARD in 13 of 25 seeds and
+- ~~**number — what the first evening deals.**~~ *Done: THE TRIP from floor 4 (1.74), `roomChance` 0 (1.77).* A mushroom tuft lies on THE YARD in 13 of 25 seeds and
   `shroom.from` is 1 (`tuning.js:1084`), so THE TRIP can take a new player's third floor, inside the thirty
   minutes the plan polishes. Proposed for the playtest build: THE TRIP off floors 2–3, kept in LEVELS.
 - ~~**bug — README describes a different game, and testers will read it.**~~ *Shipped 24 Sep, evening (the polish pass): README rewritten with every number read off the code; the page title is DOOMED GOAT.* "Six levels" (:4; there are 8),
@@ -63,7 +89,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   (:156; 3–5 tufts of grass), a shield worth three (:149; 2), the Butcher at three hits (:126; 4), the seed
   "top right" (:71; bottom-left). And the page title is still `DOOMED GOAT — prototype` (`index.html:5`).
   One pass over "What is in", each number read off the code.
-- **tool — one pass on the uploaded page before anyone plays.** Private window, restricted page: no console
+- ~~**tool — one pass on the uploaded page before anyone plays.**~~ *Dropped with the playtest kit, 26 Sep 2026.* Private window, restricted page: no console
   errors, no request but itch and Google Fonts, sound after the first click, CONTINUE after a reload, the
   death card's code really lands on the clipboard inside itch's iframe (a refused copy is silent,
   `game.js:1608`), the RUN CODE line readable at 960×540, the picture saves. Every floor, THE TRIP and THE
@@ -75,11 +101,11 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 
 ### What the build deals and does not
 
-- **bug — the vault and the bosses are never paid a soul.** The two gates on every floor spend the whole
+- ~~**bug — the vault and the bosses are never paid a soul.**~~ *1.77: the vault never holds one (grass, or a trap); the last boss always does.* The two gates on every floor spend the whole
   budget first, so the vault and last-boss branches (`game.js:1238-1250`) never run: 0 of 450 vaults over 50
   seeds of every floor and THE DARK. A boss only carries a soul through the 40% bonus. Give one back to the
   vault or the boss, or delete the branches and the docs that promise it.
-- **number — a run deals about 18.6 souls into a build that holds 14.** 13 authored (2 a floor, less the
+- ~~**number — a run deals about 18.6 souls into a build that holds 14.**~~ *1.77: two a floor, no surprises, thirteen a run; a full slot deals swaps.* 13 authored (2 a floor, less the
   mouse's 3) plus about 5.6 seeded (a lit boss 77/200, a room that gives one up 64/200, per floor). Past a
   full build every one of them turns into +1 heart with no card and no word (`game.js:556`): about 5 a run
   over 2000 simulated runs. And the room one argues with pillar 1: `soul.roomChance` 0.35
@@ -100,7 +126,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 - ~~**bug — BELLWETHER'S BELL III says MILK for a thing the player sees as grass.**~~ *Shipped 24 Sep, evening (the polish pass): GRASS, and the FIXTURES label too.* `tuning.js:1754`; the
   disguise is a `heal` prop drawn as a sprout since 1.38, and FOUR STOMACHS already calls it GRASS. The
   FIXTURES label `MILK BOWL` (`render.js:4092`) wants the same word.
-- **system — THE ROAD and THE BRIDGE deal no mix room at all.** Mix rooms per floor over 80 seeds: 1, 2,
+- ~~**system — THE ROAD and THE BRIDGE deal no mix room at all.**~~ *CONCEPT says what the floors deal (answered: update the concept).* Mix rooms per floor over 80 seeds: 1, 2,
   3, 0, 1, 0, 2, 1, and THE OSSUARY's one never uses THE HOLLOW, OPEN GROUND or THE FUNNEL, while
   `CONCEPT.md:165-167` promises the back half is "everything it has taught you, shuffled". Question below.
 - ~~**bug — eat the mushrooms on THE ROAD, then take the dark stairs, and the trip wins.**~~ *Shipped 24 Sep, evening (the polish pass): The flight climbed wins; the lit flight's floor says THE TRIP when that is where it goes.* `game.js:1124`.
@@ -126,7 +152,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   geese: three men all dazed 98% of the time, no heart lost, against four hearts and eight of eight dead
   with no voice (8 seeds). Proposed `TUNING.goat.scream.minCooldown: 2`, applied after the geese: dazed
   share 31–33%.
-- **number — the late curves ask for threat their caps cannot buy.** THE OSSUARY asks 34.4 a room and gets
+- ~~**number — the late curves ask for threat their caps cannot buy.**~~ *1.77: honest curves, a tenth man, caps that follow the room.* THE OSSUARY asks 34.4 a room and gets
   18.8 (83% of rooms short); THE RAFTERS hits its ceiling from room 5 of 15; THE DARK loses 29%. Honest
   `to` values break two rules; caps of men 11 / hunter 3 add 6% and 13% with every rule holding, against
   the `ENCOUNTER.cap` comment "eight of anything is a wall of bodies". Question below.
@@ -135,7 +161,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   (`enemies.js:1378`) and the butcher's wall stun (`:883`) ignore it, and the butcher's retaliation swing
   uses literals 0.55 and 1.6 (`:771`), against ground rule 2. Measured: easy is almost all its two extra
   hearts (damage rates only 6–24% lower). Easy scores go on the same BEST board (`game.js:1505`).
-- **tool — price THREAT by what a kind takes off a goat who runs.** Hearts a minute, one man against a
+- ~~**tool — price THREAT by what a kind takes off a goat who runs.**~~ *Closed, 26 Sep 2026: no change.* Hearts a minute, one man against a
   circling goat (±20%): clubman 16.1 (THREAT 1), hound 18.4 (1.7), rifle 14.9 (2.4), butcher 15.5 (5),
   seer 5.2 (2.8). Late rooms swap clubmen for dearer kinds, so late threat likely overstates what a late
   room costs a runner. One side only: crowds and the seer's runes are not in it.
@@ -169,7 +195,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 
 ### Weight (the build is 6.47 MB; these take it to about 3.9)
 
-- **system — retire `js/painted-assets.js`: 1.32 MB the default build never draws.** With pixel props on,
+- ~~**system — retire `js/painted-assets.js`: 1.32 MB the default build never draws.**~~ *Deleted 26 Sep 2026.* With pixel props on,
   0 of its 15 images reach the screen (21 prop and door paths driven, HEAD the same). It is still a load
   gate (`painted-art.js:206`) and the source of two aspect ratios, so: gate on `PIXEL_ENV.ready`, write in
   the altar's 237/384 and the gong's 190/192, then drop it from both script lists and pass `null` in the
@@ -178,7 +204,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   the atlas at alpha 250–254, which `PIXEL_ART.init` snaps to 0/255 on every load anyway. Re-encoded:
   2,799,768 → 1,820,692 bytes, and the environment atlas 546,084 → 373,640. Never a lossy palette:
   `hornsOf` reads exact colours (`pixel-art.js:119`).
-- **system — seven environment sprites nothing draws.** `floors-15`, `room-props-06`, `room-props-08`,
+- ~~**system — seven environment sprites nothing draws.**~~ *Dropped from the atlas in 1.77. `floors-12` (gravel) is an eighth nobody draws since the 25 Sep art pass.* `floors-15`, `room-props-06`, `room-props-08`,
   `cave-props-03`, `-04`, `-07`, `-08`: 19.5% of the atlas area. Wire them in as litter or drop them
   from the manifest.
 - ~~**tool — the dead combat-art pipeline.**~~ *Deleted 25 Sep 2026 (1.74).* `tools/pack-combat-art.cjs` writes `js/combat-assets.js`,
@@ -189,6 +215,8 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   `audio.js` asks for: fold it in.
 
 ### Questions only you can answer
+
+*All answered on 26 Sep 2026 (the batch at the top of this file).*
 
 - Is 1.65 the last feature build before the playtest? *Recommended: yes, then freeze through triage.*
 - THE TRIP on floors 2–3 for a first-time tester? *Off for this round, kept in LEVELS.*
@@ -583,7 +611,7 @@ How to know which number is wrong: count in the dev drawer the deaths where the 
 went inside 1.5 s ("burst deaths") against the ones that bled out a heart at a time across rooms.
 Mostly bursts: the invulnerability is the lever. Mostly attrition: hearts are.
 
-### number — hearts that grow with the run, by level and not by card — *parked, 16 Sep 2026*
+### ~~number — hearts that grow with the run, by level and not by card~~ — *decided against, 26 Sep 2026*
 
 Four hearts is the genre's number (Spelunky four, Isaac three, Ape Out two or three) and they are
 already the budget of a **level**: `startLevel` fills them. Growing to six or seven by the end is

@@ -27,7 +27,9 @@ the way.
 2. **Geometry kills.** A headbutt alone floors a man. Walls, pillars, braziers, fire, the mill and other
    bodies are what finish him. The room is the weapon.
 3. **Clunky on both sides.** Every attack telegraphs and every attack has recovery. Your defence is
-   movement, geometry, a held man, and one clumsy roll.
+   movement, geometry, a held man, and one clumsy roll. One exception, on purpose: on THE TRIP half the
+   blows that land on him never did (he was standing somewhere else all along), because the controls are
+   scrambled there and the floor would otherwise be a wall.
 4. **One life, new level.** Death regenerates the level from a new seed in under a second. Nothing is
    memorised, everything is improvised. From the second floor, the middle gate holds how far you got:
    a death past it comes back to that gate of the regenerated floor, never to the layout you died in.
@@ -157,8 +159,10 @@ threat rather than with bodies — a rifle costs more than a clubman, a mage mor
 curve that runs from the level's first fighting room to its last. So a later room is both fuller and
 nastier, and a later level is harder than the one before it. Caps keep any single room readable: one
 mage, one champion, two rifles, seven men — raised floor by floor where a floor is built to be crowded
-(eight or nine on the late ones). `node tools/balance.js` prints what the numbers produce and fails when a
-rule breaks.
+(nine or ten on the late ones, and a third rifle on THE BRIDGE, THE RAFTERS and THE OSSUARY). And the
+head count follows the room: the floor's cap is what a room of ordinary size holds, a tight room holds
+fewer and an open one more, so a narrow room is never given the crowd of a hall. `node tools/balance.js`
+prints what the numbers produce and fails when a rule breaks.
 
 Eight floors, and two more that stand in for one of them (THE DARK and THE TRIP, below). Every floor holds
 arena bosses, one Mill room near the middle, and a tuft of grass every few rooms that gives a heart back.
@@ -366,18 +370,19 @@ points in it — the compound's own dead, kept in a man — and it is violet bec
 colour for what should not exist: witchfire, the Seer's runes, the wraith. It was a tome, which asked
 the player to believe that a goat reads.
 
-**A level gives up an authored number of them**: two on every floor, less the one the mouse stands in for
-on THE YARD, THE ROAD and THE BRIDGE — thirteen across a run, and now and then a boss who is lit or a
-room that gives one up adds another (never on THE ALTAR, which deals exactly its two) —
-against twenty-four boons and a build that holds fourteen, so no run gets everything and no two runs
-are the same goat. The level's gates are paid first (THE ALTAR has
-one, and its second soul is its last butcher's); the
-vault holds grass and every boss leaves milk, unless a soul was left over for them. **A man carrying one is lit** — an amber haze that breathes, a ring at his feet, and red eyes —
-so the one man in a room worth crossing the room for says so from across it.
+**A level gives up exactly two**, one in the middle and one at the end: the keeper of the middle gate
+carries the first, the last boss the second. On THE YARD, THE ROAD and THE BRIDGE the mouse stands in
+for the first — thirteen across a run, against twenty-four boons and a build that holds fourteen, so no
+run gets everything and no two runs are the same goat. Nothing else pays one: not a cleared room, not a
+lit boss on a lucky seed, not the vault. Every other boss leaves milk. **A man carrying one is lit** — an
+amber haze that breathes, a ring at his feet, and red eyes — so the one man in a room worth crossing the
+room for says so from across it.
 
 A soul offers **three of one kind**: either three actives or three passives. The first soul of a run
 always offers actives, and while any button is still shut the cards lean hard toward them. A build
-holds one active and two passives per button. Boons carry across levels; a death takes back only the
+holds one active and two passives per button, and four for the body. Once a slot is full a soul does not
+go to waste: the cards it cannot fill offer a swap, a boon for that slot in place of one already in it,
+and the card says which. Boons carry across levels; a death takes back only the
 ones swallowed on the floor it happened on (past the middle gate, only those swallowed after it).
 
 **Actives** change what a button does (`BOONS` in `js/tuning.js` is the list; the BOONS tab of the dev
@@ -400,17 +405,21 @@ drawer shows every one with its numbers).
 **Passives** sharpen what you already have: Thick Hide, Four Stomachs, Iron Skull, Strong Jaw, Living
 Shield, Cold Eye, Kindling, Raw Throat, Sure Hooves, Loose Joints, Ember Coat, The Oracle.
 
-**The gates.** Every floor from THE YARD on stops you twice (THE ALTAR once: the rest before its last
-butcher is open): a quiet room after a fight, its way on barred by a door no
-blow opens, and the soul lying on its floor is the bar. It is there because a soul lying on the floor of
-a room whose fight is already over is very easy to walk past, and a goat who walks past them meets the
-late floors with his buttons still shut. On the mouse's floors one of the two is her room instead.
-THE ALTAR's gate is the exception that teaches the rule: its soul is not lying there, it is in a
-man standing over the spot — a clubman with two hearts, quicker than the rest, whose club leaves
-witchfire where it lands and who is no more careful of it than anybody, so his own fire is a way to
-burn him — and it comes out of him when he goes down. The first soul of the run is
-fought for. And no two souls of a floor ever stand close together: a soul is never followed by
-another in the next room or the one after it, surprises included.
+**The gate.** Every floor stops you once, in the middle: a quiet room after a fight, its way on barred by
+a door no blow opens, and its soul is the bar. The soul is not lying on the floor, it is in a man standing
+over the spot — a keeper, a clubman a heart heavier and quicker than the rest, whose club leaves witchfire
+where it lands and who is no more careful of it than anybody, so his own fire is a way to burn him — and
+it comes out of him when he goes down. It is there because a soul lying in a room whose fight is over is
+very easy to walk past, and a goat who walks past them meets the late floors with his buttons still shut.
+On the mouse's floors the gate is her room instead. Before the end there is a second quiet room with no
+bar on it, and past it the last boss with the second soul.
+
+**The vault.** A small chamber cut off one room in the middle of a floor, behind an iron door, never on
+the way to the stairs. It holds big grass, and never a soul. Sometimes that is all: four blows on the
+door and the grass. Sometimes the door stands open on the grass, and it is a trap: once he is inside it
+slams, men come through the walls and drop from above, and it opens again when none of them is left
+standing. On the later floors the ones who come can be three mages, and then most of the chamber is
+alight.
 
 ---
 
@@ -480,7 +489,9 @@ you, comes for you, and arrives.
 ## Not built yet
 
 Mirrors as an environmental puzzle, gamepad support, a Priest boss, and the later acts sketched in the
-original brief.
+original brief. Kept for later, not scheduled (26 Sep 2026): three lives on a run; the hunt, men walking
+in from the entry once a floor runs long past its par; hell, a second act with its own curve and deck;
+heaven, a secret run that swallowed no soul; and a second talisman slot, which belongs to the later acts.
 The opening scene takes his wife deeper into the compound and the first gate shows her going on through
 it under the mage's arm; nothing after that mentions her. Whether she is somewhere in the building to be
 found, and what the ending does about it, is undecided.

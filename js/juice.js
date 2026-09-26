@@ -11,6 +11,7 @@
 //   SWINK       — Steve Swink, "Game Feel" (2008)
 //   GMTK        — Mark Brown, "Secrets of Game Feel and Juice" and "Celeste & forgiveness"
 //   HITSTOP     — Masahiro Sakurai on hitstop / hit-lag (Smash Bros.), and the fighting-game canon
+//   CAMERA2D    — Mark Brown, "How to Make a Good 2D Camera" (GMTK, 2023)
 //   GOAT        — asked for by this game's own playtests (BACKLOG.md)
 // Sizes are read off TUNING where a number exists, so the table cannot drift from the game.
 const JUICE_SRC = {
@@ -19,6 +20,7 @@ const JUICE_SRC = {
   SWINK: 'Steve Swink — Game Feel (2008)',
   GMTK: "Game Maker's Toolkit — Secrets of Game Feel / Celeste forgiveness",
   HITSTOP: 'Sakurai / fighting games — hitstop',
+  CAMERA2D: "Game Maker's Toolkit — How to Make a Good 2D Camera (2023)",
   GOAT: 'Goat Out playtests',
 };
 
@@ -29,7 +31,7 @@ const JUICE = [
     size: () => `${TUNING.juice.hitstop}s kill, +${TUNING.juice.comboHitstopMul}/combo to +${TUNING.juice.comboHitstopCap}s`,
     godot: 'Engine.time_scale = 0 then a timer that ignores time scale: await get_tree().create_timer(t, true, false, true).timeout; restore to 1. Keep UI tweens on TWEEN_PAUSE_PROCESS.' },
   { name: 'Screen shake', cat: 'CAMERA', status: 'in', src: 'SCREENSHAKE', code: 'game.shake · juice.shakeKill/shakeHit/shakeDecay',
-    trigger: 'A heart lost, and nothing else: every other call site is multiplied by juice.shakeOther, which is 0',
+    trigger: 'A heart lost; and, smaller and fading with distance, the thuds of the world (game.thud). Every other call site is × juice.shakeOther, which is 0',
     look: 'Random offset of the whole picture that decays — the one thing that says you were hit without your looking at the hearts',
     size: () => `${TUNING.juice.shakeHit}px hurt · ×${TUNING.juice.shakeOther} for anything else · decays ×${TUNING.juice.shakeDecay}/s`,
     godot: 'Trauma model: trauma += amt (clamp 0..1); Camera2D.offset = max_offset * trauma² * FastNoiseLite sample; trauma -= decay * delta. Noise, not randf, so it does not jitter.' },
@@ -49,6 +51,36 @@ const JUICE = [
     trigger: 'Standing still, or in a room that fits the screen', look: 'Small motion never re-centres the picture; a small room holds still',
     size: () => `${TUNING.camera.deadzone}px deadzone`,
     godot: 'Camera2D.drag_horizontal_enabled / drag_vertical_enabled with drag margins; a room-sized Area2D can set limit_* to lock a small room.' },
+  // From GMTK's "How to Make a Good 2D Camera" (26 Sep 2026 review). Lookahead, damping, the
+  // deadzone, the room lock, the kick and the zoom punch were already in; these are what it had that we do not.
+  { name: 'Shake off noise, not dice', cat: 'CAMERA', status: 'new', src: 'CAMERA2D', code: 'Game.shakeNoise · juice.shakeFreq/shakeRef',
+    trigger: 'The one shake there is: a heart lost', look: 'A smooth rattle that wanders instead of a new random spot every frame; strength goes as trauma² so a small hit is a nudge and a big one a jolt',
+    size: () => `${TUNING.juice.shakeFreq} Hz · trauma² against ${TUNING.juice.shakeRef}px, never above the old peak`,
+    godot: 'FastNoiseLite sampled at time * freq for x and y (different seeds); offset = max * trauma * trauma * noise.' },
+  { name: 'Frame the fight', cat: 'CAMERA', status: 'new', src: 'CAMERA2D', code: 'game.fightFocus · camera.fight',
+    trigger: 'A boss or sealed arena that does not fit the screen', look: 'The follow point is pulled part way toward the boss, and the lens backs out a little, so he and the wall behind him are both in the picture — the wall is the weapon (pillar 3)',
+    size: () => { const F = TUNING.camera.fight; return `pull ${Math.round(F.pull * 100)}% (max ${F.max / TILE} tiles) · zoom ×${F.zoom} · ease ${F.ease}/s`; },
+    godot: 'Camera target = lerp(player, boss, w); zoom tweened to fit both with a margin; drop back on the boss down.' },
+  { name: 'Threat pull', cat: 'CAMERA', status: 'backlog', src: 'CAMERA2D', code: 'game.camLead (not built)',
+    trigger: 'An aware man in the goat\'s room just outside the view (a rifle aiming, a hound winding up)', look: 'The lead leans a little toward him — the Gungeon / Nuclear Throne weighting of points of interest',
+    size: () => 'at most a third of camera.lead, only while he is winding up',
+    godot: 'Sum of attractor offsets (weight / distance) added to the aim lead before the lerp, clamped.' },
+  { name: 'Leash at speed', cat: 'CAMERA', status: 'new', src: 'CAMERA2D', code: 'game.updateCamera · camera.leash',
+    trigger: 'A roll, a leapfrog, the goat flung by a blast', look: 'Past the leash the camera closes the gap hard (leashLerp) so he never nears the screen edge; normal walking and room changes never touch it',
+    size: () => `${Math.round(TUNING.camera.leash * 100)}% of the half-view from centre`,
+    godot: 'After the lerp: if (cam - target).length() > leash, cam = target + dir * leash.' },
+  { name: 'World thud', cat: 'CAMERA', status: 'new', src: 'GOAT', code: 'game.thud · juice.shakeThud/thudNear/thudFar',
+    trigger: 'The ogre or rat ogre landing, a bomb, a barrel going up, a poison blast', look: 'A small shake that tells weight, full close by and gone off-screen; always under a lost heart',
+    size: () => `× ${TUNING.juice.shakeThud} of the call · full inside ${TUNING.juice.thudNear} tiles, none past ${TUNING.juice.thudFar}`,
+    godot: 'add_trauma(amount * clamp(inverse_lerp(far, near, distance), 0, 1)) on the camera.' },
+  { name: 'Room change damping', cat: 'CAMERA', status: 'new', src: 'CAMERA2D', code: 'game.camLock/camRoomT · camera.roomLerp/roomEase',
+    trigger: 'Walking into a room that fits the screen, or out of one', look: 'The picture glides to the middle of the room (or back onto him) instead of lurching, then firms back up',
+    size: () => `lerp ${TUNING.camera.roomLerp} for ${TUNING.camera.roomEase}s, then ${TUNING.camera.lerp} · peak step 35-44 → 14-18 px/frame`,
+    godot: 'Camera2D.position_smoothing_speed tweened down on a room Area2D enter/exit and back up over roomEase.' },
+  { name: 'Shake setting', cat: 'CAMERA', status: 'new', src: 'CAMERA2D', code: 'SETTINGS shake · game.shakeMul',
+    trigger: 'The player\'s choice on the title', look: 'A SCREEN SHAKE slider (full as tuned, down to still) over shake, kick and lens punch — an accessibility switch every camera talk asks for',
+    size: () => `0..1 × juice.screen (${TUNING.juice.screen})`,
+    godot: 'A ConfigFile value multiplied into the trauma amount.' },
   { name: 'Slow motion on a kill', cat: 'TIME', status: 'in', src: 'SCREENSHAKE', code: 'game.slowTimer · juice.killSlow/comboSlow/deathSlow',
     trigger: 'The Butcher down, a third kill in a streak, death', look: 'Time eases to a third and back',
     size: () => `${TUNING.juice.killSlow}s boss · ${TUNING.juice.comboSlow}s combo · ${TUNING.juice.deathSlow}s death`,
