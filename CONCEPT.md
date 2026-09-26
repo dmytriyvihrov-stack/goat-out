@@ -80,8 +80,9 @@ He is drawn a quarter turn toward the camera: the head clear of the body, two ta
 the crown and sweeping back clear of the outline, a beard off the chin and a rectangular pupil in a
 visible eye. Facing left he is mirrored rather than turned over, so the horns stay on top.
 
-**His wife** appears only in the opening scene: wool where he has a coat, a dark face, no horns, no
-beard, and the same marigold collar. She bleats in a higher voice than he does.
+**His wife** appears in the opening scene and once more, under the mage's arm at the first gate: wool
+where he has a coat, a dark face, no horns, no beard, and the same marigold collar. She bleats in a
+higher voice than he does.
 **Cooldowns exist to stop a verb becoming a held button.** Headbutt pays with its recovery; throw and roll
 pay with a beat of about a second and a half. Nothing is on a global cooldown. A headbutt or a roll pressed a moment too early is kept for a
 breath and spent the instant he is free — the recovery is still eaten whole — and the corner rail is
@@ -100,10 +101,10 @@ fire — so a build reads as a shape rather than as a list of names.
 |---|---|
 | **Bearer** | Melee. About half a second of windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
 | **Butcher** | (The brute until 1.72.) A clubman with a cleaver and a charge, too heavy to be carried: a big shape in a bone apron with a bull's skull for a mask (since 1.66 — the old Butcher's body, hence the name; that kind is the ogre now). Three killing blows, the one kind that is heavy without the outline; four as a boss. Seen from three tiles or more with a clear run, he plants, roars and charges where you are going, and the run lands on anything close to its line, not only dead centre; a charge into a wall stuns him for a free hit. |
-| **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes one of anything, like every man without the outline, and unlike the ogre he can always be grabbed, carried and thrown. Arrives late and never two to a room. |
+| **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything (the one man besides the Butcher who does without the outline), blinking clear after the first, and unlike the ogre he can always be grabbed, carried and thrown. Arrives late and never two to a room. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for most of a second with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
-| **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher) — a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit — but not by the horns, which do nothing to him: a blade, the coals of a brazier, a bomb or a thrown body is what costs him a heart, and his arena always stands braziers and swords for it (on THE ALTAR a wide room with two pillars, so the idea reads). His own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
+| **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher) — a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit — but not by the horns, which do nothing to him: a blade, the coals of a brazier, a bomb or a thrown body is what costs him a heart, and his arena always stands braziers and swords for it (the first time, THE YARD's last room — nowhere shows him before it — a wide room with two pillars, so the idea reads). His own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
 
 | **Wraith** | THE OSSUARY's, and the one thing in the game that is not there most of the time: mist, nothing to hit, and walls are not walls to it. It works round to the side you are not facing and only there becomes a body — committed, swinging, and solid for most of a second after. A wraith can also lie in a room disguised as a box or a tuft of grass. See THE OSSUARY below. |
 
@@ -189,8 +190,8 @@ the rest rooms):
 
 | | Rooms | Canon | Regular enemies | Bosses |
 |---|---|---|---|---|
-| **THE ALTAR** | 13 | Stone | Bearers, butchers | Butcher, ogre |
-| **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Ogre, elite Seer (sealed in) |
+| **THE ALTAR** | 13 | Stone | Bearers, butchers | Butcher, butcher with two men |
+| **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Elite Seer (sealed in), ogre (the last room, the first of him) |
 | **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers | Ogre, butcher |
 | **THE ROAD** | 14 | The line | All five, rifles new | Two ogres |
 | **THE THRESHING FLOOR** | 13 | Open ground | All five | Elite Seer, ogre, butcher |
@@ -212,7 +213,7 @@ them to you and you to them, and a headbutt puts it on the floor alight and then
 lantern on the wall by every door is never put out. Out of the light the cult sees you only close and
 hunts by what it hears. Fewer men, no rifles, hounds and Seers oftener.
 
-**THE TRIP.** A tuft of pale mushrooms lies on some floors. Eat it and the next floor is played as THE
+**THE TRIP.** From THE ROAD on, a tuft of pale mushrooms lies on some floors. Eat it and the next floor is played as THE
 TRIP: a glowing cave where every key is the other way round — the stick reversed, the horns and the
 teeth swapped, the tumble and the voice swapped — with the first floor's men and the first floor's
 curve, because what is asked of the hands is already the whole difficulty. Take THE FORK's dark flight
@@ -284,17 +285,25 @@ from under you. Stand in it for five seconds without working that out and the fl
 button opens it.
 
 **The opening scene** plays in that room, once, when a run starts from the title. The goat and his wife
-are in the pen, pressed together and trembling, a heart beating between them. Two men come round the
-other cage: one with the boning knife from beside the altar, one with a club. The knife man puts a boot
-to the gate, walks round the goat, and takes her; the goat goes for him and meets the club instead. The
+are in the pen, pressed together and trembling, a heart beating between them. Two come round the
+other cage: a mage and a man with a club. The mage puts the gate over, walks round the goat, and takes
+her; the goat goes for him and meets the club instead. The
 picture goes dark with the stars still turning, she bleats once from a long way off, the level card
 comes up in the dark, and the light comes back on the pen with the goat lying where he fell and the gate
 up again. Nothing in it touches the simulation: the level underneath is exactly the one you would have
 got. Any button after the first moment skips to the dark. A death does not replay it.
 
+**The first gate** is where he sees her again. Walking into its rest room he is held at the door for
+five seconds: the same mage is in there with her under his arm, turns at her bleat, tells the man in
+the room to keep the goat there and gives him the gate's soul — the man lights up, a heart heavier, the
+keeper now — then runs on through the gate, which swings shut behind him. The soul is seen to make a man
+stronger before the goat swallows his first one, and which way she went is not a question. Watched once,
+a click skips it; it plays on every attempt at the floor, since every attempt is a new floor.
+
 **The controls are painted on the floor** where each verb is first needed, the way Ape Out does it: the
 pen says how to move, the floor under the first man says what the headbutt does, the room that stands a
-blade in front of you says GRAB, and ROLL is written in a room before the first arena. There is no line
+blade in front of you says GRAB, and ROLL is written just inside the door of the first butcher's room,
+since his charge is the first thing worth rolling out of. There is no line
 about the mouse: a pointer on a top-down game explains itself.
 
 ---
@@ -359,9 +368,10 @@ the player to believe that a goat reads.
 
 **A level gives up an authored number of them**: two on every floor, less the one the mouse stands in for
 on THE YARD, THE ROAD and THE BRIDGE — thirteen across a run, and now and then a boss who is lit or a
-room that gives one up adds another — against twenty-four boons and a build that holds fourteen, so no
-run gets everything and no two runs are the same goat. The level's gates are paid first (THE ALTAR has
-one, and its second soul is the ogre's); the
+room that gives one up adds another (never on THE ALTAR, which deals exactly its two) —
+against twenty-four boons and a build that holds fourteen, so no run gets everything and no two runs
+are the same goat. The level's gates are paid first (THE ALTAR has
+one, and its second soul is its last butcher's); the
 vault holds grass and every boss leaves milk, unless a soul was left over for them. **A man carrying one is lit** — an amber haze that breathes, a ring at his feet, and red eyes —
 so the one man in a room worth crossing the room for says so from across it.
 
@@ -390,14 +400,15 @@ drawer shows every one with its numbers).
 **Passives** sharpen what you already have: Thick Hide, Four Stomachs, Iron Skull, Strong Jaw, Living
 Shield, Cold Eye, Kindling, Raw Throat, Sure Hooves, Loose Joints, Ember Coat, The Oracle.
 
-**The gates.** Every floor from THE YARD on stops you twice (THE ALTAR once: the rest before its ogre is
-open): a quiet room after a fight, its way on barred by a door no
+**The gates.** Every floor from THE YARD on stops you twice (THE ALTAR once: the rest before its last
+butcher is open): a quiet room after a fight, its way on barred by a door no
 blow opens, and the soul lying on its floor is the bar. It is there because a soul lying on the floor of
 a room whose fight is already over is very easy to walk past, and a goat who walks past them meets the
 late floors with his buttons still shut. On the mouse's floors one of the two is her room instead.
 THE ALTAR's gate is the exception that teaches the rule: its soul is not lying there, it is in a
 man standing over the spot — a clubman with two hearts, quicker than the rest, whose club leaves
-witchfire where it lands — and it comes out of him when he goes down. The first soul of the run is
+witchfire where it lands and who is no more careful of it than anybody, so his own fire is a way to
+burn him — and it comes out of him when he goes down. The first soul of the run is
 fought for. And no two souls of a floor ever stand close together: a soul is never followed by
 another in the next room or the one after it, surprises included.
 
@@ -470,8 +481,9 @@ you, comes for you, and arrives.
 
 Mirrors as an environmental puzzle, gamepad support, a Priest boss, and the later acts sketched in the
 original brief.
-The opening scene takes his wife deeper into the compound and nothing after it mentions her: whether
-she is somewhere in the building to be found, and what the ending does about it, is undecided.
+The opening scene takes his wife deeper into the compound and the first gate shows her going on through
+it under the mage's arm; nothing after that mentions her. Whether she is somewhere in the building to be
+found, and what the ending does about it, is undecided.
 
 `BACKLOG.md` is the rest of it: what playtesting has asked for and what is wrong with what is here,
 batch by batch and dated. Anything in it is a request, not a decision — the ones that would bend a

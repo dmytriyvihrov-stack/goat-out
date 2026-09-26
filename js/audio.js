@@ -723,6 +723,8 @@ class GameAudio {
     this.combatMix += ((stage === 'combat' ? 1 : stage === 'chase' ? 0.65 : stage === 'spotted' ? 0.35 : 0) - this.combatMix) * ease;
     this.heartMix += ((scene.lastHeart ? 1 : 0) - this.heartMix) * ease;
     const combat = this.combatMix;
+    // How far into calm the score is, past the first floor: 1 nobody after him, 0 a fight or level one.
+    const calm = this.firstTheme ? 0 : this.stageMix.idle, C = L.calm, thin = (k) => 1 - (1 - k) * calm;
     let density = 0;
     for (const kind of Object.keys(MUSIC_PARTS)) {
       this.voices[kind].forEach((v, i, voices) => {
@@ -734,8 +736,8 @@ class GameAudio {
     if (this.muted) { this.playMusicEvents(t, stepLen, root, theme, 1); return; }
     // Keep the original harmonic bed; leave its bus and one-shot effects at their old levels.
     if (!this.preview || this.preview.bed !== 'none') {
-      this.playThemeBed(this.firstTheme ? 'first' : this.lateTheme ? 'late' : 'early', s, t, stepLen);
-      if (beat === 0 || beat === 8) this.kick(t, (this.firstTheme ? 0.12 : 0.20) + combat * 0.08);
+      this.playThemeBed(this.firstTheme ? 'first' : this.lateTheme ? 'late' : 'early', s, t, stepLen, thin);
+      if (beat === 0 || beat === 8) this.kick(t, ((this.firstTheme ? 0.12 : 0.20) + combat * 0.08) * thin(C.kick));
       for (const name of MUSIC_STAGES) {
         const mix = this.stageMix[name];
         if (mix < 0.01) continue;
@@ -743,7 +745,7 @@ class GameAudio {
         // The stage's own figure is a plucked riff an octave under the flute, so the two lines are
         // told apart by their sound and not only by where they sit.
         if (degree >= 0) this.pluck(t, root * 4 * Math.pow(2, theme.scale[degree] / 12),
-          stepLen * (name === 'spotted' ? 3.4 : name === 'combat' ? 1.25 : 2), mix * (name === 'combat' ? 0.06 : 0.045));
+          stepLen * (name === 'spotted' ? 3.4 : name === 'combat' ? 1.25 : 2), mix * (name === 'combat' ? 0.06 : 0.045) * (name === 'idle' ? thin(C.motif) : 1));
         if (name === 'spotted' && beat === 12) this.tomHi(t, 0.075 * mix);
         if (name === 'chase' && [2,6,10,14].includes(beat)) this.rim(t, 0.05 * mix);
         if (name === 'combat') {
@@ -761,7 +763,7 @@ class GameAudio {
         if (v < 0.005 || !musicPartHit(kind, i, s)) return;
         const degree = part.notes[(i + Math.floor(s / 64)) % part.notes.length];
         const f = root * part.octave * Math.pow(2, theme.scale[degree] / 12);
-        const gain = part.gain * v * headroom * (L.exploreMix + (1 - L.exploreMix) * combat);
+        const gain = part.gain * v * headroom * (L.exploreMix + (1 - L.exploreMix) * combat) * thin(C.layers);
         this.tone(f, t, stepLen * instrument.length, { type: part.type,
           gain, lp: part.lp || 0,
           bus: this.layerBus, attack: kind === 'wraith' ? 0.06 : kind === 'seer' ? 0.025 : 0.004 });
@@ -780,18 +782,19 @@ class GameAudio {
   // The layered score's bed (`THEME_BED`): an open-fifth drone a bar long, the bass line, the tune
   // and the frame drum's answers. The tune sings whole while nobody knows where he is, drops almost
   // out for the two-bar warning, and comes back under the chase and the fight.
-  playThemeBed(key, s, t, stepLen) {
+  playThemeBed(key, s, t, stepLen, thin = () => 1) {
     const B = THEME_BED[key], beat = s % 16, pos = s & 63, M = this.stageMix;
     const theme = key === 'first' ? FIRST_MUSIC : key === 'late' ? LATE_MUSIC : MUSIC;
     const root = theme.roots[(s >> 4) & 3], base = theme.roots[0] * 8;
     if (beat === 0) this.pad(t, root * 2, stepLen * 16.4, B.pad);
     for (const [at, semi, length, gain] of B.bass) if (at === beat) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain);
     // On the last heart the tune steps back (`layers.heartSing`) and leaves the room to his heart.
-    const sing = (M.idle + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55) * (1 - (1 - TUNING.audio.layers.heartSing) * this.heartMix);
+    const C = TUNING.audio.layers.calm;
+    const sing = (M.idle * thin(C.tune) + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55) * (1 - (1 - TUNING.audio.layers.heartSing) * this.heartMix);
     if (sing > 0.01) for (const [at, semi, length] of B.melody) {
       if (at === pos) this.lead(t, base * Math.pow(2, semi / 12), stepLen * length * 0.95, B.gain * sing * (at % 16 === 0 ? 1 : 0.85));
     }
-    if (B.toms.includes(beat)) this.tomHi(t, 0.045);
+    if (B.toms.includes(beat)) this.tomHi(t, 0.045 * thin(C.toms));
   }
   // Preserved original arrangement, including the threat tiers, hunter cue and bell drone.
   // SETTINGS > LAYERED MUSIC off selects this; keep future room-score changes above it.

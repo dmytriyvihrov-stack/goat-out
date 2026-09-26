@@ -188,6 +188,7 @@ function planEncounters(levelDef, rooms, rng) {
 // multipliers on the odds of a second secret, of grass behind one, and of a loose rack, plus bowls
 // of milk on top of the level's own count. Nothing else the goat carries reaches the generator.
 function generateLevel(levelDef, seed, opts) {
+  if (levelDef.showroom) return showroomLevel(levelDef, seed);   // the dev floor is laid, not rolled (js/showroom.js)
   // Forty, not twenty: THE TRIP erodes every room into a cave and more than half its attempts die
   // on a room edge with no row a door can use, so twenty tries in a row failed about once in four
   // hundred floors once its whole pool could be dealt. A failed try costs a few milliseconds.
@@ -205,7 +206,8 @@ function generateLevel(levelDef, seed, opts) {
 // Then the two surprises off the level's own seed, each only where it keeps every soul
 // `TUNING.soul.apart` rooms from every other: a boss who carries one the budget did not give him
 // (`bonusBoss`), and an ordinary fight room that gives one up with its last man (`bonusRoom`) —
-// never a room teaching a kind. `rooms` is the room of every soul, in the order dealt.
+// never a room teaching a kind. A level with `surprises: false` (THE ALTAR) deals neither: its souls
+// are exactly the ones it authors. `rooms` is the room of every soul, in the order dealt.
 function soulPlan(L) {
   const def = L.def, S = TUNING.soul;
   const bosses = L.spawns.map((s, i) => ({ i, room: s.roomIndex === undefined ? 0 : s.roomIndex }))
@@ -227,13 +229,14 @@ function soulPlan(L) {
   const apart = (r) => rooms.every((o) => Math.abs(o - r) >= S.apart);
   const luck = new RNG(((L.seed >>> 0) ^ 0x51ed) >>> 0);
   let bonusBoss = -1, bonusRoom = -1;
-  const spare = bosses.filter((b) => !ensoul.includes(b.i) && apart(b.room));
+  const surprise = def.surprises !== false;
+  const spare = surprise ? bosses.filter((b) => !ensoul.includes(b.i) && apart(b.room)) : [];
   if (spare.length && luck.chance(S.bossChance)) {
     const b = spare[luck.int(0, spare.length - 1)];
     bonusBoss = b.i; rooms.push(b.room); count++;
   }
   const men = (r) => L.spawns.filter((s) => s.roomIndex === r.index).length;
-  const fights = L.rooms.filter((r) => (r.role === 'canon' || r.role === 'mix' || r.role === 'trap')
+  const fights = !surprise ? [] : L.rooms.filter((r) => (r.role === 'canon' || r.role === 'mix' || r.role === 'trap')
     && !(L.plan && L.plan.introRooms.has(r.index)) && men(r) >= 2 && apart(r.index));
   if (fights.length && luck.chance(S.roomChance)) { bonusRoom = fights[luck.int(0, fights.length - 1)].index; rooms.push(bonusRoom); }
   return { count, gates, vault, ensoul, bonusBoss, bonusRoom, rooms };
@@ -288,8 +291,10 @@ function tryGenerate(levelDef, seed, opts) {
   // Which of the set pieces still lie ahead of room `i`, by width, so a room can be given its fair
   // share of what is left rather than an average that a Great Hall then eats.
   // An arena's shape is its boss's: the ogre's carries the swords and the bowls the horns cannot
-  // stand in for, and the first one of a run (THE ALTAR's) is the wide hall that shows it.
-  const arenaTpl = (a) => a.boss !== 'butcher' ? ARENA_TEMPLATE : levelIndexOf(levelDef) === 0 ? OGRE_FIRST_TEMPLATE : OGRE_ARENA_TEMPLATE;
+  // stand in for, and the first one of a run (THE YARD's since 26 Sep 2026: whichever floor has not
+  // met him yet) is the wide hall that shows it.
+  const arenaTpl = (a) => a.boss !== 'butcher' ? ARENA_TEMPLATE
+    : levelDef.met && !levelDef.met.has('butcher') ? OGRE_FIRST_TEMPLATE : OGRE_ARENA_TEMPLATE;
   const fixedW = (j) => {
     const aj = (levelDef.arenas || []).find((a) => a.at === j);
     if (aj) return arenaTpl(aj).rows[0].length;
@@ -1276,7 +1281,20 @@ function tryGenerate(levelDef, seed, opts) {
     // happened to hold nobody, which could land the line on the far side of the level's first real
     // fight instead of before it.
     let pick = null;
-    if (firstArenaAt > 0) {
+    // A level may name the kind whose first room it goes in (`rollWith`, THE ALTAR's butcher): painted
+    // a few steps inside that room's door, so it is read walking in, before his first charge.
+    const meet = levelDef.rollWith ? [...plan.rooms].find(([, c]) => c.intro === levelDef.rollWith && !c.arena) : null;
+    const mr = meet && rooms[meet[0]];
+    if (mr && mr.enter) {
+      const ex = mr.enter.x / TILE, ey = mr.enter.y / TILE, cx = mr.x + mr.w / 2, cy = mr.y + mr.h / 2;
+      // Along the way in: a door in a side wall reads across the room, one in the top or bottom down it.
+      const side = Math.abs(ex - cx) / mr.w >= Math.abs(ey - cy) / mr.h, inset = TUNING.hints.rollInset;
+      const tx = side ? clamp(ex + Math.sign(cx - ex) * inset, mr.x + 2, mr.x + mr.w - 2) : clamp(ex, mr.x + 3, mr.x + mr.w - 3);
+      const ty = side ? clamp(ey, mr.y + 1.5, mr.y + mr.h - 1.5) : clamp(ey + Math.sign(cy - ey) * inset, mr.y + 1.5, mr.y + mr.h - 1.5);
+      controls.push({ x: tx * TILE, y: ty * TILE, w: Math.min(mr.w, 10) * TILE, part: 3 });
+      pick = 'placed';
+    }
+    if (!pick && firstArenaAt > 0) {
       for (const wantCrowd of [true, false]) {
         for (let i = firstArenaAt - 1; i >= 1 && !pick; i--) {
           const c = byIndex.get(i);
@@ -1295,7 +1313,7 @@ function tryGenerate(levelDef, seed, opts) {
         .sort((a, b) => Math.abs(a.i - mid) - Math.abs(b.i - mid));
       pick = rollCandidates[0];
     }
-    if (pick) {
+    if (pick && pick !== 'placed') {
       const r = rooms[pick.i];
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: 3 });
     }
@@ -1762,7 +1780,7 @@ function spikePatch(tiles, W, room, props, rng, want, near) {
     if (inRoom && !taken.has(key) && tiles[key] === T.FLOOR) {
       const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
       if (!props.some((p) => p.kind !== 'spike' && len(p.x - px, p.y - py) < 1.2 * TILE)) {
-        props.push({ x: px, y: py, kind: 'spike' }); taken.add(key); placed++;
+        props.push({ x: px, y: py, kind: 'spike', patch: true }); taken.add(key); placed++;   // `patch`: laid, not a template's own
       }
     }
     // Walk the band on: one step along, and now and then one step sideways, so it bends.

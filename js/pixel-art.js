@@ -293,8 +293,17 @@ const PIXEL_ART = {
       for (let i = 3; i < a.length; i += 4) a[i] = a[i] >= 128 ? 255 : 0;
       x.putImageData(d, 0, 0); c.naturalWidth = c.width; c.naturalHeight = c.height;
       this.image = c;
+      this.warm();
     };
     this.image = img; img.src = PIXEL_ASSETS.src;
+  },
+  // The studies (`ART_PASS`) baked now, one a tick, while the title is up: baked the first time a unit
+  // was drawn, they froze the frame the first clubman, mage or rifle came into view (0.06, 0.06 and
+  // 0.37 s, measured 26 Sep 2026) — the rifle's in the middle of THE ROAD.
+  warm() {
+    const ids = ['clubman', 'mage', 'hunter'];
+    const step = () => { const id = ids.shift(); if (!id) return; try { this.studyOf(id); } catch (err) { /* baked when drawn */ } setTimeout(step, 30); };
+    setTimeout(step, 120);
   },
   get ready() { return !!this.image && this.image.naturalWidth > 0; },
   // The study a unit is drawn in now (`ART_PASS`), or null for the packed atlas. A study is baked once

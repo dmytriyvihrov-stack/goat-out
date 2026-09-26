@@ -5,6 +5,129 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.76 — nine notes: doors kill, the ogre moves, no stutter, the itch build — 26 Sep 2026
+
+- **A shut door kills like a wall.** A man thrown or butted into one as hard as a wall would kill him
+  at (8 tiles/s out of the mouth, 11 off the horns) dies on it, and the door takes the blow as well — a
+  plank door breaks under him. Before, the plank broke and he flew on through the doorway alive.
+  Slower, nothing changed.
+- **The gate's keeper burns in his own witchfire.** He had the mage's fire caution and a 0.97 trap
+  sense, so he was never seen in it; he now reads it like any clubman and walks into it when he rolls
+  badly, and burns like anybody.
+- **THE ALTAR deals exactly its two souls** (`surprises: false`): the keeper's at the middle gate and
+  the last boss's. No lit boss or room giving one up in between (a third soul mid-floor read as a
+  mistake). `GEN_RULES.souls` holds it.
+- **E - ROLL is painted just inside the door of the first butcher's room** (`rollWith`,
+  `hints.rollInset` 3.5 tiles), where his charge is the first thing worth rolling out of. Held by
+  `GEN_RULES.lessons`.
+- **THE ALTAR ends on the butcher again**: a boss (four hearts, the soul makes five) with two clubmen at
+  his back.
+- **The ogre is THE YARD's last room**, and nowhere before it: alone the first time, in the wide hall
+  of bowls and swords (`OGRE_FIRST_TEMPLATE` now goes to whichever floor has not met him). Room 4, where
+  he used to come back with a man, is an ordinary room of the curve. Curve: THE ALTAR 28.4, THE YARD
+  39.3 (29.3 / 39.7 before); every rule holds.
+- **No more strange red stripes when men fly apart.** A torn piece drew a straight blood bar across
+  the whole crop box, mostly empty air; each piece is now its own small canvas whose cut is only his
+  edge pixels, tinted (`effects.goreCut`).
+- **Performance.** Measured in the page (`tools/perf.js`, new). The real stutters were first-time
+  bakes: the first clubman, mage and rifle drawn froze the frame 0.06, 0.06 and **0.37 s** (the art
+  studies), a flame size not seen yet 5–14 ms (witchfire was never pre-baked), a new floor's first
+  frame 0.15–0.45 s (its floor sheets). All of it is baked beforehand now: the studies and every flame
+  size, ordinary and witch, while the title is up; the first floor's sheets on the title and each next
+  floor's behind the clear cards. Every frame: the fog shade, the goat's wounds and a spreading blood
+  pool were repainted and re-uploaded every frame whether they changed or not; now only when they
+  change. A frame is ~2.2–4.8 ms to draw and under 1 ms to step on every floor (THE DARK heaviest).
+- **ITCH BUILD** in the dev drawer: the page zips itself into `doomed-goat-<BUILD>-itch.zip` —
+  index.html flagged as the release and exactly the scripts it loads — and downloads it (on the
+  published page through the viewer's save prompt; opened as a local file it says it cannot, since a
+  page off the disk may not read its own scripts). That build
+  has no dev drawer and ignores the tool addresses (`js/release.js`); `tools/itch-zip.js` makes the same
+  zip from a commit.
+- **GOD MODE is a setting** (SETTINGS, the last switch): the drawer's GOD kept across reloads, and the
+  one way to it in the itch build. A floor cleared with it on writes no best.
+- **The escorts, walked to the stairs** (`tools/escorts.js`, two floors, three seeds, a goat who runs
+  and stops two seconds a body): the hen, the goose, the carried tortoise and the horse got there
+  every time. **The crow never did** — it hopped after him at half his pace and ate at every body, so
+  after any fight the clamp walled it in (4 of 6). Now a room behind him it leaves the bodies and
+  flies after him, and flies rather than hops once it is 9 tiles back (`crow.late`, `catchUp`,
+  `catchFly`): 5 of 6, the sixth half a second behind him. **The tortoise says it can be carried**
+  ("CARRY ME TO THE EXIT", "THROW ME AT THEM"): "THROW ME TO THE EXIT" read as a throw a room at a
+  time with four seconds of shell between. The bot no longer counts a horse that has won its race and
+  stands at the stairs as stuck.
+
+## 1.75 — playtest notes, 26 Sep 2026
+
+- **The mage who takes her.** In the opening scene she is carried off by a mage (a seer) and the goat
+  is clubbed by a clubman — it was two clubmen, one with a knife. **And he is met again at the first
+  gate** (`blessGate`, `TUNING.bless`): walking into its rest room the goat is held at the door for
+  ~5.5 s while the mage, her under his arm, tells the man there to keep the goat, sends him the gate's
+  soul — the man lights up as its keeper, a heart heavier — and runs on through the gate, which shuts
+  behind him. Before that the man is a plain clubman holding his mark; a blow that reaches him first
+  blesses him on the spot, so the gate's soul always comes out of him. Watched once, a click skips it.
+- **An empty vault's door no longer says SOUL.** When the souls budget has nothing left for the vault
+  (big grass inside instead), its door is drawn as a plain iron door, no wisp, no word (`vaultEmpty`).
+- **No stagger after the roll** (`roll.recover` 0): he lands on his feet; the run-up is still lost.
+- **The oil barrel shows a powder heap on its lid** instead of the word POWDER (a pixel triangle), and
+  its burst is smaller (2.6 → 2.1 tiles).
+- **The bomb's fuse is longer** once picked up (1.6 → 2.1 s).
+- **The goat is 10% faster, the cult walks 5% faster** (`goat.speed`, `CULT_PACE`).
+- **The ordinary Seer takes two hits again**, blinking clear after the first; a boss Seer three.
+- **Plank doors stay shut** once a room is cleared, for the goat to break; iron, stair and clock doors
+  still swing open.
+- **A man turns at most three times a second** (`ai.turn`, `Enemy.limitTurn`): the careful man of
+  THE ALTAR's wheel lesson flipped between the goat and the arm up to ~60 times a second (measured,
+  goat across the wheel); now ≤ 5 in any second, 2.5 on average, and he still never walks into it.
+- **Less zoom**: the kill/headbutt punch halved (`juice.zoomKick` 0.05 → 0.025), the run pulls out
+  to 0.94 instead of 0.88.
+- **Dev tool**: every tab scrolls on the wheel; TALISMANS shows each tier's shelf line and a click
+  rewrites it (one `text` for all three tiers, saved into tuning.js; `tuning-patch.js` now reads
+  nested template literals, so the talismans' number edits save too); ENEMIES has SOUL / SPAWN under
+  each kind (+`soulBearer.hp` hearts, and `soulBearer.traits` per kind — `swift` so far, none on).
+- **Out of a fight, from the second floor on, the score is thinner** (`audio.layers.calm`): the kick,
+  toms, the idle plucked figure and the men's layer step back while nobody is after him; the tune stays.
+
+## 1.74 — the ogre on the teeth; a crate that burns; POWDER; the cult's signs; rules that check what they promise
+
+Asked for on 25 Sep 2026.
+
+- **The ogre is caught on the cave's teeth** (`cave.spikes.impale`). Coming down on a spire out of a
+  leap (or staggered onto one) he loses a heart and hangs there 3 s × the enemy clock — no leap, no
+  slam, no step — shivering with the tooth drawn through his feet, then tears off a step clear with a
+  roar. Walking he only treads round it. Before, he stuck on one by accident: every man steers off a
+  spire, so he could not leave it and bled a heart a second. A leaper in the air is over the teeth,
+  no longer hurt by one he flies over. The rat ogre too.
+- **FIREBRAND: a crate leaves the mouth alight**: the man it hits catches, and it breaks into one
+  burning tile. **Any crate alight** — branded, or carried through a fire — **leaves a line of fire
+  behind it** as it flies (`Status.brandTrail`, witchfire stays witchfire).
+- **Oil barrels say POWDER** across them in big capitals (the game's own type, pale with a dark
+  edge), so a barrel says it goes up before anyone lights one.
+- **Easy mode is 40% slower, as it says**: it multiplied nothing and set `enemySlow` to 1.4 over the
+  base's 1.21 (16%). The butcher's wall stun and the wraith's solid window now read the enemy clock;
+  the ogre's answering slam reads `slam.answer` / `answerReach`, not literals.
+- **Rules**: new `seal` (a sealed arena shut at both ends with a room each side); `crowd` holds each
+  rich room to its own tightened clubman cap, not the loosest; `clock` also refuses the room after a
+  kind is met; `caps` gives +2 only to a boss's room and names its exceptions (hall, gallery rifles,
+  a lone post, THE ALTAR's crowd room); `shop` checks no two talismans of one sort and drops a check
+  that could never fire; later the same day: new `grate` (a laid grating only where the level has
+  them, never in a quiet room — the vault approach aside); `teach` refuses the ambush and the crowd
+  room; `stack` holds the parent's width, `STACK.run`, gates and `noFlipX`; `bomb`, `beasts`,
+  `shrooms` skip every quiet room; `secrets` at most two, ordinary rooms only; `vault` walled shut
+  still leaves the stairs reachable. Every rule holds over every seed.
+- **THE THRESHING FLOOR** caps nine men and three hounds (was eight): threat 108.4 → 113.0.
+- **The BEST board** skips an easy or a god-mode clear (their run codes carry E / X).
+- **The cult's signs on the floors and walls** (`js/decal-pixels.js`, packed by `tools/pack-decals.js`
+  from the generated set): a cracked brand or the watcher's seal in some rooms, the torn ritual circle
+  in arenas, the watcher on a far wall; in place of the old block glyphs, which read as floor tiles of
+  another colour. Never on THE TRIP; only drawn in a room he has seen.
+- **THE TRIP only from THE ROAD on** (`shroom.from` 3): the first evening's second and third floors
+  are never the trip. LEVELS still plays it anywhere.
+- **The painted props are gone** (`js/painted-assets.js`, 1.3 MB): every prop was already a pixel
+  sprite; `PAINTED_SIZE` keeps the proportions its images lent, and `#paintedprops` went with it.
+- **Backlog odds**: the rat ogre's entrance and bounce read `TUNING.ratogre`; JUICE no longer claims
+  a shake the ogre does not make; the dead combat-art sheet and its packer are deleted (1.2 MB).
+
+---
+
 ## 1.73 — the butcher is heavy again; every gate has a keeper
 
 Asked for on 25 Sep 2026, after 1.72.

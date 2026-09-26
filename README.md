@@ -79,13 +79,15 @@ then the room is black — and a lantern on the wall by every door that nothing 
 they see you only close and hunt by what they hear; you hear them before you see them, and see the eyes
 of the hounds and the mages across a room. Fewer of them, no rifles. LEVELS has a row for it.
 
-**THE TRIP.** Some floors have a tuft of pale mushrooms on them. Eat it and the next floor is a glowing
+**THE TRIP.** From THE ROAD on, some floors have a tuft of pale mushrooms on them. Eat it and the next floor is a glowing
 cave where every key is the other way round — the stick reversed, the horns and the teeth swapped, the
 tumble and the voice swapped — and the men are the first floor's.
 
 **A pen, not an altar.** The run opens on the two of you in the pen: the goat and his wife, a heart
-between you, until two men come for her and one of them puts a club across your skull. You wake in the
-same pen, beside the slab they meant to use, and butt the bars until they give. The controls are painted
+between you, until a mage and a clubman come for her: the mage carries her off and the clubman puts a
+club across your skull. You wake in the same pen, beside the slab they meant to use, and butt the bars
+until they give. Halfway through the first floor you catch the mage up — in the room before the first
+gate, handing the man there its soul, and away through the gate with her before it shuts. The controls are painted
 on the floor where you first need them: moving in the pen, the headbutt under the first man, grab where
 the first blade stands. Every floor ends at a flight of stairs going up, and every floor after the first
 begins at the top of one.

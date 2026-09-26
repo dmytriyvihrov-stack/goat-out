@@ -71,8 +71,9 @@ window.ESCORT = {
       maxLag = Math.max(maxLag, fp(pet) - fp(g));
       const mv = Math.hypot(pet.x - lastP.x, pet.y - lastP.y); lastP = { x: pet.x, y: pet.y };
       const gap = Math.hypot(pet.x - g.x, pet.y - g.y) / TILE;
-      // A goose standing `lead` tiles ahead is waiting for him, which is not being stuck.
-      const waiting = kind === 'goose' && Beast.ahead(pet, game) >= TUNING.prop.goose.lead - 1;
+      // A goose standing `lead` tiles ahead is waiting for him, and a horse at the stairs has won its
+      // race (`home`): neither is being stuck.
+      const waiting = (kind === 'goose' && Beast.ahead(pet, game) >= TUNING.prop.goose.lead - 1) || pet.home;
       if (mv < 0.3 && gap > 3 && !pet.feeding && !pet.held && !(pet.tuckT > 0) && !waiting) {
         stuckRun += 1 / 60;
         if (stuckRun > maxStuckRun) { maxStuckRun = stuckRun; stuckAt = [pet.x | 0, pet.y | 0]; }

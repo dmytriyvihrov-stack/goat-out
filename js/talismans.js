@@ -611,8 +611,8 @@ const Talisman = {
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE TALISMANS', pad, top);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText(`${ARTIFACTS.length} on the mouse's shelves · I / II / III puts one at his neck · click a number to change it`, pad + 120 * s, top);
-    const rowH = 74 * s, listTop = top + 22 * s;
+    ctx.fillText(`${ARTIFACTS.length} on the mouse's shelves · I / II / III puts one at his neck · click a number to change it · click the shelf line to rewrite it (one line for all three tiers)`, pad + 120 * s, top);
+    const rowH = 96 * s, listTop = top + 22 * s;
     const per = Math.max(1, Math.floor((H - listTop - 34 * s) / rowH));
     const pages = Math.ceil(ARTIFACTS.length / per);
     d.talPage = clamp(d.talPage || 0, 0, pages - 1);
@@ -634,11 +634,15 @@ const Talisman = {
       if (worn) r.devButton(d, pad + 36 * s + 96 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', 'tal-off', false);
       a.tiers.forEach((tier, ti) => {
         const cx = pad + leftW + ti * colW, cw = colW - 10 * s;
-        // Three lines of the tier in full numbers (`say`, as `detail`), stated whole, not as a diff on
-        // the one before; the player's short line (`tell`, as `desc`) is on the shelf and the chip.
-        ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.72)';
-        r.wrap(tier.detail, cw).slice(0, 3).forEach((l, li) => ctx.fillText(l, cx, y + 11 * s + li * 9 * s));
-        let px = cx, py = y + 35 * s;
+        // The player's line (`desc`: the talisman's hand-written `text`, else `tell`) — what the shelf
+        // and the chip say, and a click rewrites it for all three tiers — then the tier in full
+        // numbers (`say`, as `detail`), stated whole, not as a diff on the one before.
+        ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = a.text ? PALETTE.fireHi : PALETTE.bone;
+        r.wrap(tier.desc, cw).slice(0, 2).forEach((l, li) => ctx.fillText(l, cx, y + 12 * s + li * 10 * s));
+        d.rects.push({ x: cx, y: y + 2 * s, w: cw, h: 22 * s, id: `tal-text=${a.id}` });
+        ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
+        r.wrap(tier.detail, cw).slice(0, 3).forEach((l, li) => ctx.fillText(l, cx, y + 34 * s + li * 9 * s));
+        let px = cx, py = y + 58 * s;
         for (const key of Object.keys(tier.params || {})) {
           const val = tier.params[key];
           if (val !== null && typeof val === 'object') continue;
@@ -670,6 +674,16 @@ const Talisman = {
       const def = ARTIFACTS.find((a) => a.id === aid); if (!def) return true;
       game.artifact = { id: aid, tier: Number(t) }; game.applyBoons();
       game.devToast(`${def.name} ${'I'.repeat(Number(t))}`);
+      return true;
+    }
+    // The shelf line, one for the talisman's three tiers; left empty it goes back to the generated one.
+    if (id.startsWith('tal-text=')) {
+      const def = ARTIFACTS.find((a) => a.id === id.slice(9)); if (!def) return true;
+      const raw = window.prompt(`${def.name} — the line on the shelf, all three tiers (empty: back to the generated one)`, def.text || def.tiers[0].desc);
+      if (raw === null) return true;
+      const text = raw.trim() || null;
+      if (text) def.text = text; else delete def.text;
+      game.persistTuningEdit({ root: 'ARTIFACTS', id: def.id, path: ['text'], value: text, drop: !text });
       return true;
     }
     if (id.startsWith('tal-edit=')) {

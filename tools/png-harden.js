@@ -88,6 +88,10 @@ function harden(file, hardAlpha, check) {
   if (!check && after.length < before.length) fs.writeFileSync(file, src.slice(0, from) + b64 + src.slice(to));
 }
 
-const check = process.argv.includes('--check'), root = path.join(__dirname, '..');
-harden(path.join(root, 'js', 'pixel-assets.js'), true, check);
-harden(path.join(root, 'js', 'pixel-env-assets.js'), false, check);
+// Required by another tool (`tools/pack-decals.js`), it only lends its PNG codec.
+if (require.main === module) {
+  const check = process.argv.includes('--check'), root = path.join(__dirname, '..');
+  harden(path.join(root, 'js', 'pixel-assets.js'), true, check);
+  harden(path.join(root, 'js', 'pixel-env-assets.js'), false, check);
+}
+module.exports = { decode, encode };

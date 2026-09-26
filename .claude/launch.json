@@ -272,6 +272,24 @@
       "port": 8802
     },
     {
+      "name": "goat-out-teeth",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8803"
+      ],
+      "port": 8803
+    },
+    {
+      "name": "goat-out-showroom",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8804"
+      ],
+      "port": 8804
+    },
+    {
       "name": "goat-out-artcheck",
       "runtimeExecutable": "node",
       "runtimeArgs": [
@@ -279,6 +297,24 @@
         "8800"
       ],
       "port": 8800
+    },
+    {
+      "name": "goat-out-bless",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8805"
+      ],
+      "port": 8805
+    },
+    {
+      "name": "goat-out-perf",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8806"
+      ],
+      "port": 8806
     }
   ]
 }

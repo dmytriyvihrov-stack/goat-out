@@ -7,6 +7,11 @@
 // third of the screen wide, and the reasoning behind a rule belongs in the comment over the code
 // that keeps it, not here.
 const SET_PIECE = new Set(['arena', 'mill', 'hall', 'gallery', 'killbox']);
+// The room level one paints the headbutt into (`lessonIndex` in gen.js): the floor words' block 2.
+const lessonOf = (L) => { const c = (L.controls || []).find((k) => k.part === 2); const r = c && roomAt(L, c.x, c.y); return r ? r.index : -1; };
+// A room nothing is scattered into, whatever it is: the pen, a set piece, a teaching room, a rest,
+// the calm room. The per-thing rules add their own on top.
+const quiet = (L, r) => r.index === 0 || SET_PIECE.has(r.role) || r.isAmbush || r.isRest || r.isCalm || r.index === lessonOf(L);
 const ORDINARY = new Set(['canon', 'mix', 'trap']);
 
 const kindOf = (s) => (s.champion ? 'champion' : s.kind);
@@ -94,9 +99,12 @@ const GEN_RULES = [
       const o = roomsOf(L).filter((r) => ORDINARY.has(r.role) && r.spawns.length);
       const rich = o.filter((r) => (r.cell && r.cell.threat ? r.cell.threat : r.threat) > C.none * 0.6);
       if (!rich.length) return null;
+      // The cap tightens as the room gets richer (`fillRoom`'s `cheapCap`): held to the room's own
+      // budget, not to the loosest bound, or a rich room of four clubmen passed as well as a poor one.
       for (const r of rich) {
-        const cheap = r.men.filter((m) => m === C.kind).length;
-        if (cheap > C.max) return `room ${r.index}: ${cheap} ${C.kind}s of ${r.men.length}`;
+        const cheap = r.men.filter((m) => m === C.kind).length, b = r.cell && r.cell.threat ? r.cell.threat : r.threat;
+        const cap = Math.round(lerp(C.max, C.min, clamp((b - C.full) / (C.none - C.full), 0, 1)));
+        if (cheap > cap) return `room ${r.index}: ${cheap} ${C.kind}s of ${r.men.length} (cap ${cap} at ${b.toFixed(1)})`;
       }
       return true;
     } },
@@ -107,7 +115,7 @@ const GEN_RULES = [
       const a = LEVELS[i - 1].encounters, b = L.def.encounters;
       return b.to > a.to ? true : `its top (${b.to}) is not above ${LEVELS[i - 1].name} (${a.to})`;
     } },
-  { id: 'caps', text: 'No room breaks its caps. Only the Great Hall is exempt.',
+  { id: 'caps', text: 'No room breaks its caps. Over them only: the Great Hall, a gallery\'s rifles, one lone post, and THE ALTAR\'s crowd room.',
     check: (L) => {
       const caps = Object.assign({}, ENCOUNTER.cap, L.def.encounters.cap || {});
       for (const r of roomsOf(L)) {
@@ -117,8 +125,13 @@ const GEN_RULES = [
           if (r.role === 'hall' || (r.role === 'gallery' && k === 'hunter')) continue;
           if (caps[k] && c > caps[k]) return `room ${r.index}: ${c}x ${k} (cap ${caps[k]})`;
         }
-        const cap = r.role === 'hall' ? ENCOUNTER.hallCap : caps.men + 2;   // +2: a boss and his escort
-        if (r.spawns.length > cap) return `room ${r.index}: ${r.spawns.length} men (cap ${cap})`;
+        // +2 only where a boss stands with his escort: an ordinary room is held to the level's own
+        // count. What is laid on top of the plan is not counted against it: a lone rifle post (one
+        // line to cross, `lonePosts`), a gallery's rifles, and the crowd room's authored head count.
+        if (r.room.isCrowd) continue;
+        const counted = r.spawns.filter((sp) => !sp.lone && !(r.role === 'gallery' && kindOf(sp) === 'hunter')).length;
+        const cap = r.role === 'hall' ? ENCOUNTER.hallCap : caps.men + (r.role === 'arena' || r.spawns.some((sp) => sp.boss) ? 2 : 0);
+        if (counted > cap) return `room ${r.index} (${r.role} ${r.name}): ${r.men.join(' ')} (cap ${cap})`;
       }
       return true;
     } },
@@ -154,6 +167,8 @@ const GEN_RULES = [
         if (!r.cell || !r.cell.intro) continue;
         any = true;
         if (r.role !== 'canon' && r.role !== 'mix' && r.role !== 'arena') return `${r.cell.intro} is introduced in a ${r.role} room (${r.index})`;
+        // The ambush and the crowd room are dealt the role `mix` but are authored: nothing is met there.
+        if (r.room.isAmbush || r.room.isCrowd) return `${r.cell.intro} is introduced in the ${r.room.isAmbush ? 'ambush' : 'crowd room'} (${r.index})`;
       }
       return any ? true : null;
     } },
@@ -191,12 +206,20 @@ const GEN_RULES = [
   // The teaching floor is the one place in the game where the generator may not surprise anybody:
   // the same four rooms in the same shapes with the same things standing in them, every seed. See
   // "Words on the floor" in CLAUDE.md for where each block of text goes and why.
-  { id: 'lessons', text: 'The teaching rooms are the same every run: pen, sentry, wheel, ambush.',
+  { id: 'lessons', text: 'The teaching rooms are the same every run: pen, sentry, wheel, ambush; E - ROLL at the first butcher\'s door.',
     check: (L) => {
       const def = L.def;
       if (!def.showControls) return null;
       const parts = (L.controls || []).map((c) => c.part).sort().join('');
       if (parts !== '0123') return `floor text blocks ${parts || 'none'}`;
+      // E - ROLL lies just inside the door of the room that introduces `rollWith` (THE ALTAR's butcher).
+      if (def.rollWith) {
+        const roll = L.controls.find((c) => c.part === 3), cell = L.plan && [...L.plan.rooms].find(([, c]) => c.intro === def.rollWith && !c.arena);
+        const room = cell && L.rooms[cell[0]];
+        if (!room) return `no room introduces the ${def.rollWith}`;
+        if (roomAt(L, roll.x, roll.y) !== room) return `E - ROLL is not in the first ${def.rollWith}'s room (${room.index})`;
+        if (!room.enter || Math.hypot(roll.x - room.enter.x, roll.y - room.enter.y) > (TUNING.hints.rollInset + 1.5) * TILE) return `E - ROLL is not by the door of room ${room.index}`;
+      }
       const rs = roomsOf(L);
       const sentry = rs.find((r) => r.spawns.some((s) => s.sentry));
       if (!sentry) return 'nobody holds the first room';
@@ -273,7 +296,7 @@ const GEN_RULES = [
       if (!bombs.length) return null;
       const r = roomAt(L, bombs[0].x, bombs[0].y);
       if (!r) return 'a bomb outside any room';
-      if (SET_PIECE.has(r.role) || r.isTrap || r.isAmbush) return `a bomb in the ${r.role || 'set piece'}`;
+      if (quiet(L, r) || r.isTrap) return `a bomb in the ${r.role || 'set piece'} (room ${r.index})`;
       return true;
     } },
   // THE ESCORTS (js/beasts.js). One a floor, found early, and found in a room that is not already
@@ -293,7 +316,7 @@ const GEN_RULES = [
       if (L.def.beasts.indexOf(p.kind) < 0) return `a ${p.kind} on a floor that does not hold one`;
       const r = roomAt(L, p.x, p.y);
       if (!r) return 'an escort outside any room';
-      if (SET_PIECE.has(r.role) || r.role === 'pen' || r.isAmbush || r.isRest || r.isTrap) return `an escort in the ${r.role}`;
+      if (quiet(L, r) || r.isTrap || r.index === L.def.vaultAt) return `an escort in the ${r.role} (room ${r.index})`;
       const cut = Math.max(2, Math.ceil(L.rooms.length * TUNING.beast.third));
       if (r.index > cut) return `an escort in room ${r.index} of ${L.rooms.length}, past the first third`;
       if (L.tiles[Math.floor(p.y / TILE) * L.W + Math.floor(p.x / TILE)] !== T.FLOOR) return 'an escort off the floor';
@@ -308,7 +331,8 @@ const GEN_RULES = [
       if (L.def.shroom || li < 0 || li >= LEVELS.length - 1) return 'a tuft on a level with no level after it';
       const r = roomAt(L, t[0].x, t[0].y);
       if (!r) return 'a tuft outside any room';
-      if (SET_PIECE.has(r.role) || r.role === 'pen' || r.isAmbush || r.isRest) return `a tuft in the ${r.role}`;
+      if (li < TUNING.shroom.from) return `a tuft on level ${li + 1}, before shroom.from`;
+      if (SET_PIECE.has(r.role) || r.role === 'pen' || r.isAmbush || r.isRest || r.index === lessonOf(L) || r.index === L.def.vaultAt) return `a tuft in the ${r.role} (room ${r.index})`;
       if (L.tiles[Math.floor(t[0].y / TILE) * L.W + Math.floor(t[0].x / TILE)] !== T.FLOOR) return 'a tuft off the floor';
       return true;
     } },
@@ -440,6 +464,22 @@ const GEN_RULES = [
     } },
   // The cave's stone teeth. They kill on contact and they never rest, so where they are allowed to
   // stand is the whole of what keeps them a thing to use rather than a thing to be caught by.
+  // The grating (`spikePatch`): a laid band, only on a level that asks for one, and never in a room
+  // that is teaching, resting, a set piece or a trap (a trap template lays its own, unmarked).
+  { id: 'grate', text: 'A grating is laid only on a level that has them, and never in the pen, a set piece, a trap, a rest or a teaching room (the vault approach aside).',
+    check: (L) => {
+      const laid = L.props.filter((p) => p.kind === 'spike' && p.patch);
+      if (!laid.length) return L.def.spikes ? null : true;
+      if (!L.def.spikes) return `${laid.length} grates on a level with none`;
+      for (const p of laid) {
+        const r = roomAt(L, p.x, p.y);
+        if (!r) return 'a grate outside any room';
+        // The vault's own approach is the exception: half the time its last stretch grows teeth.
+        if (r.index === L.def.vaultAt) continue;
+        if (quiet(L, r) || r.isTrap) return `a grate in the ${r.role} (room ${r.index})`;
+      }
+      return true;
+    } },
   { id: 'spikes', text: 'Stone teeth stand at the foot of a cave wall, one to a room at most, clear of the way in and the furniture; never on the trip and never in a room that is teaching something.',
     check: (L) => {
       const sp = L.props.filter((p) => p.kind === 'spire');
@@ -484,14 +524,19 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'stack', text: 'A room hung above or below the last one never overlaps another, and is never a set piece or a teaching room.',
+  { id: 'stack', text: 'A room hung above or below the last one never overlaps another, stands under or over its whole parent to the right, never follows a gate or another hung room, and is no set piece but an arena, no teaching room.',
     check: (L) => {
       const stacked = L.rooms.filter((r) => r.stacked);
       if (!stacked.length) return L.def.stack ? null : true;
+      const gates = (L.def.gates || []).concat(L.def.rests || []), lesson = lessonOf(L);
       for (const r of stacked) {
+        const parent = L.rooms[r.index - 1];
         if (!ORDINARY.has(r.role) && r.role !== 'arena') return `room ${r.index} is the ${r.role}`;
-        if (r.isAmbush) return `room ${r.index} is a teaching room`;
-        if ((L.def.gates || []).concat(L.def.rests || []).includes(r.index)) return `room ${r.index} is a rest room`;
+        if (r.isAmbush || r.isCalm || r.index === lesson || r.index - 1 === lesson) return `room ${r.index} is or follows a teaching room`;
+        if (gates.includes(r.index) || gates.includes(r.index - 1)) return `room ${r.index} is or follows a rest room`;
+        if (r.tpl.noFlipX) return `room ${r.index} is a room whose sides mean something`;
+        if (parent.stacked && STACK.run < 2) return `room ${r.index} is the second hung room in a row`;
+        if (r.x < parent.x || r.x + r.w < parent.x + parent.w) return `room ${r.index} reaches left of room ${parent.index} or stops short of its right wall`;
         for (const o of L.rooms) {
           if (o === r) continue;
           const apart = r.x + r.w <= o.x || o.x + o.w <= r.x || r.y + r.h <= o.y || o.y + o.h <= r.y;
@@ -547,6 +592,7 @@ const GEN_RULES = [
         const cell = L.plan && L.plan.rooms.get(p.clockRoom);
         if (!cell) return `room ${p.clockRoom} has no plan behind it`;
         if (L.plan.introRooms.has(p.clockRoom)) return `room ${p.clockRoom} is where a kind is met`;
+        if (L.plan.introRooms.has(p.clockRoom - 1)) return `room ${p.clockRoom} follows the room where a kind is met`;
         if ((cell.men || []).length < 2) return `room ${p.clockRoom} holds ${(cell.men || []).length}`;
       }
       return true;
@@ -570,6 +616,21 @@ const GEN_RULES = [
       for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) if (L.tiles[(f.y0 + dy) * L.W + f.x0 + dx] !== T.EXIT) return 'the second flight is not stairs';
       const doors = L.props.filter((p) => p.kind === 'door' && p.stair);
       if (doors.length !== 2 || !doors.some((p) => p.fork)) return `${doors.length} stair doors`;
+      return true;
+    } },
+  // The sealed arena (`sealedArenas` in gen.js, `game.updateSeals`): both ends barred by a seal door
+  // that only an empty room opens. It needs a room on each side for its two cuts.
+  { id: 'seal', text: 'A sealed arena is shut at both ends, and has a room before and after it.',
+    check: (L) => {
+      const want = (L.def.arenas || []).filter((a) => a.sealed);
+      const seals = L.props.filter((p) => p.kind === 'door' && p.seal);
+      if (!want.length) return seals.length ? `${seals.length} seal doors on a level with no sealed arena` : null;
+      for (const a of want) {
+        if (a.at <= 0 || a.at >= L.rooms.length - 1) return `the sealed arena is room ${a.at}, with nothing on one side`;
+        const two = seals.filter((p) => p.sealRoom === a.at);
+        if (two.length !== 2) return `room ${a.at} has ${two.length} seal doors, not two`;
+        if (two.some((p) => !p.iron)) return `a seal on room ${a.at} is not iron`;
+      }
       return true;
     } },
   { id: 'soulgate', text: 'Every level stops you twice, in the middle and before the end, in a rest room empty but for its soul\'s keeper; a gated one leaves by a single tile barred by a door no blow opens.',
@@ -609,9 +670,11 @@ const GEN_RULES = [
     } },
   // `soulPlan` is what `startLevel` lays, so this is the level exactly as it will be played: every
   // soul (gate, keeper, vault, boss, and either surprise) `soul.apart` rooms or more from the next.
-  { id: 'souls', text: 'Two souls are never close: every soul of a level stands soul.apart rooms or more from every other, surprises included.',
+  { id: 'souls', text: 'Two souls are never close: every soul of a level stands soul.apart rooms or more from every other, surprises included; a level with surprises: false deals only its own.',
     check: (L) => {
-      const rs = soulPlan(L).rooms.slice().sort((a, b) => a - b);
+      const plan = soulPlan(L), rs = plan.rooms.slice().sort((a, b) => a - b);
+      if (L.def.surprises === false && (plan.bonusBoss >= 0 || plan.bonusRoom >= 0)) return `a surprise soul in room ${plan.bonusRoom >= 0 ? plan.bonusRoom : L.spawns[plan.bonusBoss].roomIndex}`;
+      if (L.def.surprises === false && rs.length !== (L.def.souls || 0) - (L.shop ? 1 : 0)) return `${rs.length} souls dealt, ${L.def.souls} authored`;
       if (rs.length < 2) return null;
       for (let i = 1; i < rs.length; i++) if (rs[i] - rs[i - 1] < TUNING.soul.apart) return `souls in rooms ${rs[i - 1]} and ${rs[i]}`;
       return true;
@@ -621,18 +684,34 @@ const GEN_RULES = [
       if (L.def.vaultAt === undefined) return null;
       if (!L.vault) return 'no rock to cut it into on this seed, so the level is a soul short';
       const r = L.rooms[L.def.vaultAt];
-      return ORDINARY.has(r.role) ? true : `off the ${r.role}`;
+      if (!ORDINARY.has(r.role)) return `off the ${r.role}`;
+      // Never on the way: wall its doorway and the stairs are still reached from where he starts.
+      const { W, H } = L, tiles = L.tiles.slice(), d = L.vault.doorTile;
+      if (!d) return 'the vault has no doorway';
+      tiles[d.ty * W + d.tx] = T.WALL;
+      const from = Math.floor(L.start.y / TILE) * W + Math.floor(L.start.x / TILE), to = L.exitTile.y0 * W + L.exitTile.x0;
+      const seen = new Uint8Array(W * H), q = [from]; seen[from] = 1;
+      while (q.length) { const i = q.pop(); for (const j of [i - 1, i + 1, i - W, i + W]) { if (j < 0 || j >= W * H || seen[j] || tiles[j] === T.WALL || tiles[j] === T.PIT) continue; seen[j] = 1; q.push(j); } }
+      return seen[to] ? true : 'the way to the stairs runs through the vault';
     } },
-  { id: 'secrets', text: 'A level that gates its secrets behind its first boss carves none of them before it.',
+  { id: 'secrets', text: 'At most two walls that give a level, off ordinary rooms only (never the vault\'s, a trap, the mouse\'s), and none before the first boss where the level says so.',
     check: (L) => {
-      if (!L.def.secretsAfterBoss) return null;
-      const at = L.def.arenas && L.def.arenas[0] ? L.def.arenas[0].at : -1;
-      for (const p of L.props) {
-        if (p.kind !== 'secret') continue;
-        const r = roomAt(L, p.x, p.y);
-        if (r && r.index <= at) return `one in room ${r.index}, at or before the first arena (room ${at})`;
+      const at = L.def.secretsAfterBoss && L.def.arenas && L.def.arenas[0] ? L.def.arenas[0].at : -1;
+      const walls = L.props.filter((p) => p.kind === 'secret');
+      if (walls.length > 2) return `${walls.length} walls that give`;
+      // The crack is in the room's own wall, so it may sit a hair outside the room's box: the nearest room.
+      const near = (p) => L.rooms.reduce((b, o) => {
+        const d = (o) => Math.max(0, o.x * TILE - p.x, p.x - (o.x + o.w) * TILE) + Math.max(0, o.y * TILE - p.y, p.y - (o.y + o.h) * TILE);
+        return d(o) < d(b) ? o : b;
+      });
+      for (const p of walls) {
+        const r = near(p);
+        if (r.index <= at) return `one in room ${r.index}, at or before the first arena (room ${at})`;
+        if (!ORDINARY.has(r.role) || r.isTrap) return `one in the ${r.role} (room ${r.index})`;
+        if (r.index === L.def.vaultAt) return `one in the vault's room ${r.index}`;
+        if (L.shop && r.index === L.shop.room) return `one in the mouse's room ${r.index}`;
       }
-      return true;
+      return walls.length ? true : null;
     } },
   { id: 'shop', text: 'The mouse stands in the middle gate of THE YARD, THE ROAD and THE BRIDGE only: two talismans of that visit\'s tier, or a pail of milk.',
     check: (L) => {
@@ -644,7 +723,7 @@ const GEN_RULES = [
       const offer = all.find((p) => p.ware && p.ware.id === 'milk'), wares = all.filter((p) => p !== offer);
       if (wares.length !== S.wares) return `${wares.length} talismans on her shelf`;
       if (!offer) return 'no milk among her offers';
-      // One pail now, not three bowls: the room has to have somewhere to stand it, and that is all.
+      // One pail on the shelf, drunk a heart at a time: the room has to have somewhere to stand it.
       if (!offer.milkSpots || !offer.milkSpots.length) return 'nowhere to stand her pail of milk';
       if (!L.shop || L.shop.room !== m.shopId) return 'the shop is not on the level';
       const gate = (L.gates || [])[0];
@@ -652,12 +731,14 @@ const GEN_RULES = [
       const room = L.rooms[m.shopId];
       if (!room || room.role !== 'rest') return `her room ${m.shopId} is ${room ? room.role : 'nowhere'}`;
       if (room.isAmbush || m.shopId === L.def.vaultAt) return `her room ${m.shopId} is a teaching room or the vault's`;
-      for (const i of m.nicheTiles) if (L.tiles[i] !== 0) return 'her hole is not cut';
       const gr = roomAt(L, m.gap.x, m.gap.y);
       if (!gr || gr.index !== m.shopId) return 'her hole does not open into her room';
       const tier = S.levels.indexOf(li) + 1;
       if (wares.some((w) => !w.ware || !ARTIFACTS.some((a) => a.id === w.ware.id) || w.ware.tier !== tier)) return `a ware that is not a tier-${tier} talisman`;
       if (wares[0].ware.id === wares[1].ware.id) return 'the same talisman twice';
+      // `stockFor`: never two of one sort (`tag`) on a shelf — two that bend the headbutt are one choice.
+      const tagOf = (w) => (ARTIFACTS.find((a) => a.id === w.ware.id) || {}).tag;
+      if (tagOf(wares[0]) && tagOf(wares[0]) === tagOf(wares[1])) return `two ${tagOf(wares[0])} talismans on one shelf`;
       return true;
     } },
   { id: 'clamp', text: 'A room left behind can be shut: stoning up the mouth of its way out cuts it off from every room after it.',

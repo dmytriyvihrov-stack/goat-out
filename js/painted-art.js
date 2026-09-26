@@ -1,7 +1,7 @@
 // The art layer over the primitive renderer: room floors and walls out of the pixel swatches, every
 // unit through `character()` (a pixel sprite in a frame of leans, collar and wounds), and the few
 // painted props no pixel sprite exists for yet. Collision radii never read any of it.
-// `propsAtlas` in js/painted-assets.js — four columns, four rows, 128px cells.
+// `ATLAS_CELL` is the old painted atlas's layout (four by four, 128px cells), kept because the pixel props are fitted to it.
 const ATLAS_CELL = {
   'cage-bars': [0, 0], 'cage-broken': [128, 0], 'mill-hub': [256, 0], 'mill-arm': [384, 0],
   'spikes-idle': [0, 128], 'spikes-arming': [128, 128], 'spikes-up': [256, 128], 'weapon-stand': [384, 128],
@@ -11,18 +11,19 @@ const ATLAS_CELL = {
 // How far below a tile's centre a thing standing on that tile puts its feet: the middle of the tile
 // in a camera tilted this little, not its bottom or top edge.
 const PROP_FOOT = 3;
+// The painted props' own sizes, kept after their images went (1.74, `js/painted-assets.js` retired):
+// the pixel sprites that replaced them are fitted into the box the painting filled, and a caller
+// that gives only a width takes its height off these proportions.
+const PAINTED_SIZE = {
+  altar: [384, 237], banner: [135, 192], gong: [192, 190], cagePostTight: [20, 128], cageBrokenTight: [128, 40],
+  slabWoodClosed: [26, 116], slabIronClosed: [26, 116], slabVaultClosed: [26, 116], slabSoulClosed: [26, 116],
+};
 
 class PaintedArt extends AltarArt {
+  // Nothing to load since 1.74: every prop is a pixel sprite (`js/prop-pixels.js`), and the painted
+  // images these methods once drew are gone. `images` stays empty for the few that still ask it.
   constructor() {
-    super(); this.images = {}; this.loaded = 0; this.failed = [];
-    const entries = Object.entries(PAINTED_ASSETS);
-    this.ready = false;
-    for (const [key, asset] of entries) {
-      const image = new Image(); this.images[key] = image;
-      image.onload = () => { this.loaded++; this.ready = this.loaded === entries.length; };
-      image.onerror = () => { this.failed.push(key); console.error('Art asset failed:', key); };
-      image.src = asset.src;
-    }
+    super(); this.images = {}; this.failed = []; this.ready = true;
   }
 
   stamp(ctx, key, x, y, w, h, anchor = 0.5) {
@@ -102,6 +103,20 @@ class PaintedArt extends AltarArt {
     x.translate(flip & 1 ? c.width : 0, flip & 2 ? c.height : 0); x.scale(flip & 1 ? -1 : 1, flip & 2 ? -1 : 1);
     x.drawImage(base, 0, 0);
     this.flips.set(key, c); return c;
+  }
+
+  // Every sheet a floor will draw, painted before the floor is entered: its floor, its boards, its
+  // wall's cap and brick face. `prepare` does the same on a floor's first frame, and there it froze
+  // that frame for 0.15–0.45 s (measured 26 Sep 2026); this runs it while the title or the cards
+  // after a floor are up instead (`Game`), so the floor opens on a frame that is already paid for.
+  // The cave and the trip draw their own ground and need none. Returns false while the atlas loads.
+  warmLevel(def) {
+    if (!def || def.cave || def.shroom || !PIXEL_ENV.ready) return !!(def && (def.cave || def.shroom));
+    this.floorSwatch(def, 0, false, 0, 0); this.floorSwatch(def, 0, true, 0, 0);
+    const W = PIXEL_ROOMS.wall;
+    if (ART_PASS.floors) FLOOR_SHEET.faceStrip(this.swatch(W.face, def.wall), 'face' + def.wall, W.faceH, 0);
+    this.wallCap(def);
+    return true;
   }
 
   // The cap of every wall is one sheet of coursed stone, `sheet` tiles square and seamless at its
@@ -208,7 +223,10 @@ class PaintedArt extends AltarArt {
 
   drawTiles(renderer, game, cam) {
     this.prepare(game);
-    const ctx = renderer.ctx, wd = game.world, b = renderer.visibleTiles(cam), def = game.level.def;
+    const ctx = renderer.ctx, wd = game.world, b = renderer.visibleTiles(cam), lvDef = game.level.def;
+    // THE SHOWROOM lays each floor's stone in its own stretch of the world (`level.zones`).
+    const zones = game.level.zones, zoneDefs = game.level.zoneDefs;
+    let def = lvDef;
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     // A wall that gives (`carveSecret`) stands on a floor tile until it is broken, and is drawn as a
     // prop; to its neighbours it is stone, or the niche behind it showed a face of its own over it.
@@ -217,6 +235,7 @@ class PaintedArt extends AltarArt {
     const stone = (x, y) => wd.isSolid(x, y) || (shut.size > 0 && shut.has(y * wd.W + x));
     for (let y=b.y0; y<=b.y1; y++) for (let x=b.x0; x<=b.x1; x++) {
       const t=wd.tileAt(x,y), px=x*TILE, py=y*TILE, h=this.hash(x,y,game.level.seed);
+      if (zones) def = zoneDefs[zones[y*wd.W+x]] || lvDef;
       // (the wall that gives is drawn here as well as by its prop, so its smoothed edges fall on stone)
       if (t===T.WALL||(shut.size>0&&shut.has(y*wd.W+x))) {
         const n=!stone(x,y-1),s=!stone(x,y+1),w=!stone(x-1,y),e=!stone(x+1,y);
@@ -325,6 +344,17 @@ class PaintedArt extends AltarArt {
     // square. Lit, one small flame sits on it for the whole fuse and the barrel shivers as it runs out.
     if(p.kind==='barrel'&&PIXEL_ENV.ready){
       const B=TUNING.prop.barrel,w=B.draw,lit=p.oilT>=0;
+      // A heap of powder on the lid, a pixel triangle (26 Sep 2026: "don't write POWDER, just a simple
+      // picture of powder on the lid, a triangle"): what says this one goes up. Cells on the
+      // sprite's grid, bone edged in ink. Not in THE DARK's silhouettes.
+      const mark=!renderer.silPass;
+      const word=(x,y)=>{
+        const c=B.markCell,n=B.markRows,x0=Math.round(x/c)*c,y0=Math.round((y-n*c/2)/c)*c;
+        ctx.fillStyle=PALETTE.ink;
+        for(let i=0;i<n;i++)ctx.fillRect(x0-(i+1.5)*c,y0+(i-1)*c,(2*i+3)*c,c*2);
+        ctx.fillStyle=PALETTE.bone;
+        for(let i=0;i<n;i++)ctx.fillRect(x0-(i+0.5)*c,y0+i*c,(2*i+1)*c,c);
+      };
       ctx.save();ctx.translate(p.x,p.y);
       let top;
       if(p.lying){
@@ -333,19 +363,22 @@ class PaintedArt extends AltarArt {
         ctx.rotate(Math.floor(p.spinD/(B.spinEvery*TILE))%2?-Math.PI/2:Math.PI/2);
         PIXEL_ENV.draw(ctx,'barrel',0,0,w,0.5);
         ctx.restore();top=-w*0.35;
+        if(mark)word(0,p.r*0.15);
       }else{
         renderer.shadow(0,p.r*0.6,w*0.44,6);
         const shiver=lit?Math.sin(renderer.t*60)*(1-p.oilT/B.fuse)*1.2:p.wobble>0?Math.sin(renderer.t*50)*p.wobble*4:0;
-        top=p.r*0.8-PIXEL_ENV.draw(ctx,'barrel',shiver,p.r*0.8,w);
+        const h=PIXEL_ENV.draw(ctx,'barrel',shiver,p.r*0.8,w);
+        top=p.r*0.8-h;
+        if(mark)word(shiver,top+h*B.markAt);
       }
       if(lit&&!renderer.silPass&&!renderer.baking)renderer.flame(0,top+2,B.fuseDraw,p.phase*10,p.oilWitch);
       ctx.restore();return true;
     }
     if(p.kind==='bell'){
-      const w=p.r*2.7,img=this.images.gong;
+      const w=p.r*2.7,sz=PAINTED_SIZE.gong;
       ctx.save();ctx.translate(p.x,p.y);
       if(p.rung>0)ctx.rotate(Math.sin(renderer.t*28)*0.035);
-      const h=w*img.naturalHeight/img.naturalWidth;
+      const h=w*sz[1]/sz[0];
       renderer.shadow(0,3,w*0.44,Math.min(9,h*0.15));
       this.stamp(ctx,'gong',0,0,w,h,0.68);
       ctx.restore();return true;
@@ -358,7 +391,7 @@ class PaintedArt extends AltarArt {
       ctx.restore();
       return drew?true:super.drawProp(renderer,p);
     }
-    if(p.kind==='cage'&&this.images.cagePostTight?.naturalWidth){
+    if(p.kind==='cage'){
       const h=TUNING.prop.cage.height,sgn=Math.round(p.x/7)%2?1:-1;
       const lean=(p.hits||0)*0.05*sgn+(p.wobble>0?Math.sin(renderer.t*62)*0.06:0)+(p.gate||0)*1.5;
       renderer.shadow(p.x,p.y,5,3);
@@ -378,7 +411,6 @@ class PaintedArt extends AltarArt {
       if(stunned)renderer.drawStars(p.x,p.y,14,Math.min(1,p.birdT*2));return true;
     }
     if(p.kind==='weapon'){
-      if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
       const up=p.inStand;
       if(up){
         const gl=ctx.createRadialGradient(p.x,p.y-12,0,p.x,p.y-12,40);
@@ -410,7 +442,7 @@ class PaintedArt extends AltarArt {
       // Only the rarer, bigger patch — the one a secret sometimes gives up — is painted; the
       // ordinary sprout a level's own rhythm hands out has no atlas art of its own yet and falls
       // back to the smaller primitive tuft `Renderer.drawProp` draws.
-      if(!p.big||!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
+      if(!p.big)return super.drawProp(renderer,p);
       // v2's tighter, static 23px patch (brief item F) tested as too quiet to read as a heal spot in
       // a moving crowd — reverted to the original atlas stamp: bigger, with its own shadow and a slow
       // bob, so it still finds the eye the way the wisp or a lamp's firelight does.
@@ -425,7 +457,6 @@ class PaintedArt extends AltarArt {
       return true;
     }
     if(p.kind==='spike'){
-      if(!this.images.propsAtlas||!this.images.propsAtlas.naturalWidth)return super.drawProp(renderer,p);
       const S=TUNING.prop.spike,r=p.r,state=p.spikeState,arming=state==='armed';
       const shud=arming?Math.sin(renderer.t*70)*1.1*clamp(1-p.spikeT/S.arm,0,1):0;
       // Down still shows teeth (it is retracting, not safe yet); idle and rest share the flat plate.
@@ -491,20 +522,18 @@ class PaintedArt extends AltarArt {
 
   // The art is a top-down slab at the collision footprint, with no frame or square padding.
   doorSlab(ctx,p,wdt,hgt) {
-    const type=p.gate?'Soul':p.vault?'Vault':p.iron?'Iron':'Wood',key='slab'+type+'Closed';
-    if(!this.images[key]?.naturalWidth)return false;
+    const type=p.gate?'Soul':p.vault&&!p.vaultEmpty?'Vault':p.iron?'Iron':'Wood',key='slab'+type+'Closed';
     ctx.save();if(!p.vertical)ctx.rotate(Math.PI/2);
     this.stamp(ctx,key,0,0,13,58);ctx.restore();return true;
   }
 
   brokenPost(game,p) {
-    if(!this.images.cageBrokenTight?.naturalWidth)return;
     const ctx=game.world.dctx;ctx.save();ctx.globalAlpha=0.8;
     this.stamp(ctx,'cageBrokenTight',p.x,p.y,22,7,0.5);ctx.restore();
   }
 
   brokenDoor(game,p) {
-    const type=p.gate?'Soul':p.vault?'Vault':p.iron?'Iron':'Wood',image=this.images['slab'+type];
+    const type=p.gate?'Soul':p.vault&&!p.vaultEmpty?'Vault':p.iron?'Iron':'Wood',image=this.images['slab'+type];
     if(!image?.naturalWidth)return;
     const ctx=game.world.dctx;ctx.save();ctx.translate(p.x,p.y);if(!p.vertical)ctx.rotate(Math.PI/2);
     ctx.globalAlpha=0.75;this.drawFrame(ctx,image,384,0,128,128,0,0,64,64);ctx.restore();
@@ -595,24 +624,31 @@ class PaintedArt extends AltarArt {
   // scratch canvas, then cut by the same frame with `destination-in` — so blood is only ever on him.
   wounds(renderer,g,miss) {
     const ctx=renderer.ctx,W=TUNING.goat.wounds,n=Math.min(miss,W.spots.length);
-    // Smaller the more he faces the camera (`W.front`): +y is toward it.
-    const face=1-(1-W.front)*Math.max(0,Math.sin(g.facing||0));
+    // Smaller the more he faces the camera (`W.front`): +y is toward it. In twentieths, so the baked
+    // blots below can be kept per frame of him.
+    const face=Math.round((1-(1-W.front)*Math.max(0,Math.sin(g.facing||0)))*20)/20;
     const blot=(c,k)=>{const[x,y]=W.spots[k],r=(W.r+k*W.grow)*face;
       c.fillStyle=PALETTE.bloodDark;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.arc(x+r*0.7,y+r*0.35,r*0.6,0,Math.PI*2);c.fill();
       c.fillStyle=PALETTE.blood;c.beginPath();c.arc(x-r*0.2,y-r*0.2,r*0.45,0,Math.PI*2);c.fill();};
     const unit=PIXEL_ART.unit('sheep');
     if(!unit){ctx.save();ctx.globalAlpha*=0.8;for(let k=0;k<n;k++)blot(ctx,k);ctx.restore();return;}
-    // 48 world px square round the foot at 2x, which holds the whole goat on every facing.
-    const S=2,B=48,ox=24,oy=40;
-    const cv=this.woundCanvas||(this.woundCanvas=document.createElement('canvas'));
-    if(cv.width!==B*S){cv.width=B*S;cv.height=B*S;}
-    const c=cv.getContext('2d');
-    c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.clearRect(0,0,cv.width,cv.height);
-    c.setTransform(S,0,0,S,ox*S,oy*S);
-    for(let k=0;k<n;k++)blot(c,k);
-    c.globalCompositeOperation='destination-in';
-    PIXEL_ART.draw(c,unit,g.facing||0,Math.hypot(g.vx||0,g.vy||0)>30,renderer.t,g.x);
-    c.globalCompositeOperation='source-over';
+    // 48 world px square round the foot at 2x, which holds the whole goat on every facing. Baked once
+    // per frame of him (facing, step, blots) and kept: repainted and redrawn every frame, the scratch
+    // canvas cost an upload a frame for as long as he was hurt.
+    const S=2,B=48,ox=24,oy=40,moving=Math.hypot(g.vx||0,g.vy||0)>30,u=PIXEL_ASSETS.units[unit];
+    const [dir,flip]=PIXEL_ART.facing(unit,g.facing||0),step=moving&&u&&u.walk?Math.floor(renderer.t*8+(g.x||0)*0.05)%4:-1;
+    const cache=this.woundCache||(this.woundCache=new Map()),key=n+'|'+dir+'|'+flip+'|'+step+'|'+face;
+    let cv=cache.get(key);
+    if(!cv){
+      if(cache.size>=W.cache)cache.clear();
+      cv=document.createElement('canvas');cv.width=cv.height=B*S;
+      const c=cv.getContext('2d');
+      c.setTransform(S,0,0,S,ox*S,oy*S);
+      for(let k=0;k<n;k++)blot(c,k);
+      c.globalCompositeOperation='destination-in';
+      PIXEL_ART.draw(c,unit,g.facing||0,moving,renderer.t,g.x);
+      cache.set(key,cv);
+    }
     ctx.save();ctx.globalAlpha*=W.alpha;
     // The same lean `character()` gives a windup or a swing, or the blots slide off him mid-blow.
     const a=g.facing||0;

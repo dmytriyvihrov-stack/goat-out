@@ -499,7 +499,12 @@ const Beast = {
       if (away.d) Beast.step(p, game, away.x, away.y, C.flySpeed * TUNING.beast.shyFly, dt); else { p.vx = 0; p.vy = 0; }
       return;
     }
-    const mark = Beast.nearestMark(game, p);
+    // A room behind him — the next room he walks into walls this one in (`game.updateClamps`) — it
+    // leaves whatever it was eating and flies after him. It used to sit on a room of bodies until
+    // the clamp took it, which after any real fight was every time (26 Sep 2026: "reach the end with
+    // them"). The road of bodies still bends its way; it no longer ends it.
+    const late = (p.behind || 0) >= C.late;
+    const mark = late ? null : Beast.nearestMark(game, p);
     if (mark) {
       const dx = mark.x - p.x, dy = mark.y - p.y, d = Math.hypot(dx, dy) || 1;
       if (d < C.perch * TILE) {
@@ -524,7 +529,10 @@ const Beast = {
     p.feeding = false;
     const to = Beast.toGoat(p, game);
     if (to.d < C.followAt * TILE) { p.vx = 0; p.vy = 0; return; }
-    Beast.step(p, game, to.x, to.y, C.speed * C.slack, dt);
+    // Near him it hops after him at `slack` of its pace and falls behind; past `catchUp` tiles, or a
+    // room behind, it is a bird again and flies (`catchFly` of its flight) until it has him.
+    const fly = late || to.d > C.catchUp * TILE;
+    Beast.step(p, game, to.x, to.y, fly ? C.flySpeed * C.catchFly : C.speed * C.slack, dt);
   },
   // The body it goes for: one it has sight of, inside `markR` tiles, that has not aged out after
   // `markFor` seconds or been eaten (`feedFor`) — and of those, the one nearest the stairs (`onward`'s field), so a crow in a
@@ -652,11 +660,11 @@ const Beast = {
   ABOUT: {
     chicken: { how: 'Follows you round walls, steps round fire, teeth and drops, and keeps behind you when a man is close. Butt her and she flies at the nearest man and kills him, once.',
       pays: () => `+${TUNING.prop.chicken.saveHearts} heart for the run` },
-    tortoise: { how: 'Slower than a walk and never catches up: you pick it up and throw it forward. Where it lands it is a shell — solid, rounds stop on it — and it takes one blow for you, then lies on its back.',
+    tortoise: { how: 'Slower than a walk and never catches up: you carry it in your teeth, or throw it forward. Where it lands it is a shell — solid, rounds stop on it, a man it hits is floored — and it takes one blow for you, then lies on its back.',
       pays: () => `+${TUNING.prop.tortoise.saveShield} use on every shield for the run` },
     goose: { how: `Leads rather than follows, up to ${TUNING.prop.goose.lead} tiles ahead, and honks at every man it sees: the room turns on you, and a blow already coming is broken.`,
       pays: () => `the voice carries ×${TUNING.prop.goose.saveScreamRange} further and comes back ×${TUNING.prop.goose.saveScreamCd} sooner` },
-    crow: { how: 'Follows the dead, not you: in a room with nothing dead in it, it falls behind. It flies to a body it can see and eats a while.',
+    crow: { how: 'Follows the dead, not you: it flies to a body it can see and eats a while, and hops after you slowly in between. A room behind you, or far off, it leaves the bodies and flies after you.',
       pays: () => `a tier ${TUNING.prop.crow.giftTier} talisman on the next floor's stairs` },
     horse: { how: 'Races you to the stairs and never waits: kicks down the doors in its way and bowls the men in it aside without killing them. Only a soul gate or a sealed arena holds it. At the stairs it says who won.',
       pays: () => `×${TUNING.prop.horse.saveSpeed} stride for the run` },
@@ -672,7 +680,9 @@ const Beast = {
   // What each of them says the first time a run meets one: its sound, then its terms.
   PACT: {
     chicken: ['CLUCK-CLUCK!', "I'LL FOLLOW YOU. BUTT ME AT A MAN"],
-    tortoise: ['...?', 'THROW ME TO THE EXIT'],
+    // Carried is how it gets there (RMB, nearly his full pace); thrown is what it is for in a fight.
+    // "THROW ME TO THE EXIT" alone read as a throw a room at a time, four seconds of shell between.
+    tortoise: ['...?', 'CARRY ME TO THE EXIT', 'THROW ME AT THEM'],
     crow: ['CAW.', 'I FOLLOW THE ROAD OF BODIES'],
     goose: ['HONK-HONK!', "I'LL TELL THEM ALL", "WE'RE HERE TO KICK THEIR ASS!!!"],
     horse: ['NEIGH!', 'BET I REACH THE LAST ROOM BEFORE YOU'],

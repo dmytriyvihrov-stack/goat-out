@@ -680,10 +680,11 @@ if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
 // footprint, anchor and collision are untouched, and the painted art stays the fallback. The props
 // that never had a painted image (coop, burrow, stool, bomb, pail, the small sprout, the roast) are
 // drawn here outright at `TX` world px a texel, the grain of the crate and barrel beside them.
-// `PROP_PIXELS.on = false` (or `#paintedprops`) brings the old ones back for a side-by-side.
+// There is nothing painted to fall back to any more (1.74): `PROP_PIXELS.on` is always true.
 if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() => {
   const UP = 4, TX = 1.35, baked = {}, S = PROP_PIXELS.sprites, rng = PROP_PIXELS.rng;
-  PROP_PIXELS.on = !/paintedprops/.test(location.hash);
+  // Always on since 1.74: the painted props they were drawn beside are gone (`#paintedprops` with them).
+  PROP_PIXELS.on = true;
   // The art pass's version of a sprite where it has one (`name@pass`), else the sprite itself.
   const pick = name => typeof ART_PASS !== 'undefined' && ART_PASS.on && S[name + '@pass'] ? name + '@pass' : name;
   const canvasOf = name => {
@@ -746,9 +747,9 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   // Asked by render.js wherever a primitive draw sits inline with no painted image to swap.
   Object.defineProperty(A, 'pixelProps', { get: () => PROP_PIXELS.on });
   A.stamp = function (ctx, key, x, y, w, h, anchor = 0.5) {
-    const name = PROP_PIXELS.on && STAMP[key], image = this.images[key];
+    const name = PROP_PIXELS.on && STAMP[key], sz = PAINTED_SIZE[key];
     if (!name) return stamp.call(this, ctx, key, x, y, w, h, anchor);
-    if (h === undefined) h = image && image.naturalWidth ? w * image.naturalHeight / image.naturalWidth : w * S[name].h / S[name].w;
+    if (h === undefined) h = sz ? w * sz[1] / sz[0] : w * S[name].h / S[name].w;
     fit(ctx, name, x - w / 2, y - h * anchor, w, h);
   };
   A.atlas = function (ctx, name, x, y, w, h, anchor = 0.5) {
@@ -771,7 +772,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   A.millHub = function (ctx, r) { return fit(ctx, 'mill-hub', -r * 1.1, -r * 1.1, r * 2.2, r * 2.2); };
   A.brokenDoor = function (game, p) {
     if (!PROP_PIXELS.on) return brokenDoor.call(this, game, p);
-    const name = 'broken-' + (p.gate ? 'soul' : p.vault ? 'vault' : p.iron ? 'iron' : 'wood'), ctx = game.world.dctx;
+    const name = 'broken-' + (p.gate ? 'soul' : p.vault && !p.vaultEmpty ? 'vault' : p.iron ? 'iron' : 'wood'), ctx = game.world.dctx;
     ctx.save(); ctx.translate(p.x, p.y); if (!p.vertical) ctx.rotate(Math.PI / 2);
     ctx.globalAlpha = 0.85; fit(ctx, name, -12, -29, 24, 58); ctx.restore();
   };

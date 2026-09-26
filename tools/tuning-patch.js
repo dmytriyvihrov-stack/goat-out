@@ -5,12 +5,25 @@
 // rule would then be lying about. Used only by tools/serve.js; the game itself never requires this.
 'use strict';
 
+// Index of the closing quote of the string opening at `i`. A template literal's `${...}` is code,
+// and may hold strings and templates of its own (the talismans' `tell` lines do), so it is walked
+// as code up to its matching brace.
 function skipString(text, i) {
   const q = text[i];
   let j = i + 1;
   while (j < text.length) {
     if (text[j] === '\\') { j += 2; continue; }
     if (text[j] === q) return j;
+    if (q === '`' && text[j] === '$' && text[j + 1] === '{') {
+      let depth = 1; j += 2;
+      while (j < text.length && depth) {
+        const c = text[j];
+        if (c === '"' || c === "'" || c === '`') { j = skipString(text, j) + 1; continue; }
+        if (c === '{') depth++; else if (c === '}') depth--;
+        j++;
+      }
+      continue;
+    }
     j++;
   }
   return j;
@@ -162,8 +175,30 @@ function applyEdit(text, edit) {
   }
   const props = topLevelProps(text, block.start, block.end);
   const leaf = props.get(path[path.length - 1]);
-  if (!leaf) throw new Error('missing key ' + path.join('.'));
-  return text.slice(0, leaf.valueStart) + formatValue(value) + text.slice(leaf.valueEnd);
+  if (!leaf) {
+    // A key the literal does not have yet (a talisman tier's `text`, first time it is written): it is
+    // added as the object's last property. Clearing a key that is not there changes nothing.
+    if (value === null) return text;
+    const key = path[path.length - 1];
+    if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)) throw new Error('bad key ' + key);
+    let at = block.end;
+    while (at > block.start + 1 && /\s/.test(text[at - 1])) at--;
+    const empty = at === block.start + 1;
+    return text.slice(0, at) + (empty ? ' ' : ', ') + key + ': ' + formatValue(value) + (empty ? ' ' : '') + text.slice(at);
+  }
+  // Clearing a talisman's hand-written `text` takes the key out again rather than leaving a null.
+  if (value === null && edit.drop) {
+    let from = leaf.valueStart;
+    while (from > block.start && text[from - 1] !== ',' && text[from - 1] !== '{') from--;
+    const cut = text[from - 1] === ',' ? from - 1 : from;
+    let to = leaf.valueEnd;
+    while (to < block.end && /[ 	]/.test(text[to])) to++;
+    if (text[from - 1] === '{' && text[to] === ',') to++;
+    return text.slice(0, cut) + (text[from - 1] === ',' ? ' ' : '') + text.slice(to).replace(/^ (?=})/, '');
+  }
+  let end = leaf.valueEnd;
+  while (end > leaf.valueStart && /\s/.test(text[end - 1])) end--;   // keep the space before a closing brace
+  return text.slice(0, leaf.valueStart) + formatValue(value) + text.slice(end);
 }
 
 module.exports = { applyEdit, findConst, topLevelProps, arrayElements, matchBracket };

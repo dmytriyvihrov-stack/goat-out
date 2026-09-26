@@ -119,10 +119,10 @@ const Shop = {
     game.world.emitNoise(e.x, e.y, TUNING.noise.boom);
     game.particles(m.gap.x, m.gap.y, 26, PALETTE.ash, 280); game.particles(e.x, e.y, 10, PALETTE.blood, 120);
     game.ring(e.x, e.y, 2.4 * TILE, PALETTE.blood);
-    game.shake(12); game.hitstop(0.08); game.zoomPunch(1.6); game.kick(0, dir, TUNING.juice.kick); game.vibe(60);
+    game.shake(12); game.hitstop(cfg.emergeFx.hitstop); game.zoomPunch(cfg.emergeFx.zoom); game.kick(0, dir, TUNING.juice.kick); game.vibe(60);
     game.audio.sfxGrowl(); game.audio.sfxSplat(); game.audio.musicEvent('kill');
     game.floatText(e.x, e.y - 40, 'RAT OGRE', PALETTE.blood);
-    game.slowTimer = Math.max(game.slowTimer, 0.35);
+    game.slowTimer = Math.max(game.slowTimer, cfg.emergeFx.slow);
     e.say = { text: 'YOU WERE ASKED', life: 2.4, max: 2.4 };
   },
   // He is down: whatever is still on the shelf is yours for nothing.

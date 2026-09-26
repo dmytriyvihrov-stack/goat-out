@@ -9,6 +9,22 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 25 September 2026 — the ogre on the teeth, a burning crate, POWDER, the rules (1.74)
+
+Asked for in the session, all shipped in 1.74 (see `CHANGELOG.md`):
+
+- ~~**system — the ogre stuck on a cave spire, as a mechanic.**~~ *Shipped: `cave.spikes.impale`.*
+- ~~**feel — a FIREBRAND crate lights the man it hits, and a burning crate leaves a fire line.**~~ *Shipped.*
+- ~~**feel — POWDER on the barrels that go up, in big letters.**~~ *Shipped (POW / DER, the game's type).*
+- ~~**tool — every generator promise has its rule.**~~ *Shipped: new `seal`, `grate`; `crowd`, `caps`,
+  `clock`, `shop`, `teach`, `stack`, `bomb`, `beasts`, `shrooms`, `secrets`, `vault` check what gen.js
+  promises. Milk in THE ALTAR's calm room is fine (answered "okay").*
+- ~~**number — THE TRIP off floors 2–3.**~~ *Shipped 26 Sep 2026: `shroom.from` 3.*
+- ~~**tool — retire `js/painted-assets.js`.**~~ *Shipped 26 Sep 2026: deleted, 1.3 MB off the build.*
+- ~~**feel — the ominous decals.**~~ *Wired 26 Sep 2026 (`js/decal-pixels.js`).*
+- ~~**tool — JUICE sizes typed by hand.**~~ *The rat ogre's entrance and bounce read `TUNING.ratogre`;
+  the ogre's slam and landing no longer claim a shake they do not make.*
+
 ## 24 September 2026 — six audits, not a playtest
 
 Nobody played this. These came out of the new personal skills in `~/.claude/skills` (adapted from
@@ -20,7 +36,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 
 ### Before the playtest (`PLAYTEST.md` §8 is the full go / no-go, 31 rows)
 
-- **tool — land 1.65 and cut the playtest build from a commit.** 1.65 exists only in the working tree (22
+- ~~**tool — land 1.65 and cut the playtest build from a commit.**~~ *Done: HEAD is 1.74 (checked 25 Sep 2026).* 1.65 exists only in the working tree (22
   modified, 6 new files; HEAD is 1.64). Land it, bump `BUILD` (no spaces: the run code is split on
   whitespace, `game.js:1617`), record the hash, and build the itch zip from that commit, never from a tree
   another session is editing.
@@ -76,7 +92,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   reaches a canon's most open room on the last room, which is always an arena: `sluice` (`rooms.js:717`)
   0 times in 200 seeds, windowrow 12, vise 17, gallery2 18, flanks 22, against 100–500 for their
   neighbours. The same at HEAD.
-- **bug — an escort on the last floor pays nothing, and the crow's card says it will.** THE OSSUARY has a
+- ~~**bug — an escort on the last floor pays nothing, and the crow's card says it will.**~~ *Done before 25 Sep 2026: `Beast.deal` never deals the last floor.* THE OSSUARY has a
   coop on 200 of 200 seeds; the run ends in the win before the gift is placed, while the card says "IT WILL
   BE ON THE NEXT STAIRS, FREE" (`tuning.js:2214`). No coop on the last floor, or pay it on the win card.
 - ~~**bug — THE BRIDGE's hint still thinks it is the last floor.**~~ *Shipped 24 Sep, evening (the polish pass): MORE OF THEM THAN EVER. MEET THEM IN THE DOORWAY.* "EVERYTHING THEY HAVE LEFT IS HERE"
@@ -97,7 +113,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   runs, two pick seeds, noise under 2%), power at each level's head is 4.0 / 6.94 / 8.92 / 11.74 / 13.31 /
   15.75 / 16.92 / 17.85, and THE RAFTERS and THE OSSUARY stop being "easier than the last": they rise.
   Report "flat within 2%" apart from "falls".
-- **number — THE THRESHING FLOOR is no harder for the goat than THE ROAD.** Flat in every power model
+- ~~**number — THE THRESHING FLOOR is no harder for the goat than THE ROAD.**~~ *Shipped 25 Sep 2026 (1.74): `cap: { men: 9, dog: 3 }`, threat 108.4 → 113.0, every rule holds. Threat over power 7.2 → 7.5 against THE ROAD's 7.9: still flagged, and a higher `to` buys almost nothing against the caps.* Flat in every power model
   (−0.2% to −6%), and its `cap: { men: 8 }` starves 43% of its rooms. Proposed `cap: { men: 9, dog: 3 }`
   (`tuning.js:2112`): threat 109.1 → 113.0, +3.3% over THE ROAD, every rule holds (measured). The same
   direction as the 23 Sep "eighth man", and likely the "overpowered by level five" note.
@@ -114,7 +130,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   18.8 (83% of rooms short); THE RAFTERS hits its ceiling from room 5 of 15; THE DARK loses 29%. Honest
   `to` values break two rules; caps of men 11 / hunter 3 add 6% and 13% with every rule holding, against
   the `ENCOUNTER.cap` comment "eight of anything is a wall of bodies". Question below.
-- **bug — easy mode's numbers are not what its comments say.** `tuning.js:1289` says a normal run has
+- ~~**bug — easy mode's numbers are not what its comments say.**~~ *Shipped 25 Sep 2026 (1.74): easy multiplies `enemySlow` (1.4 × the base, the 40% its card says); the wall stun, the wraith's solid window and the ogre's answering slam read the enemy clock and `tuning.js`; easy and god-mode clears no longer write BEST (`game.offBoard`).* `tuning.js:1289` says a normal run has
   `enemySlow` 1; `BOON_BASE.enemySlow` is 1.1, so easy is 1.27×, not 1.4×. The wraith's `solidAfter`
   (`enemies.js:1378`) and the butcher's wall stun (`:883`) ignore it, and the butcher's retaliation swing
   uses literals 0.55 and 1.6 (`:771`), against ground rule 2. Measured: easy is almost all its two extra
@@ -145,7 +161,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   in it shipped as pixels in 1.63–1.64, it calls the deleted `js/combat-assets.js` "уже в игре", and two
   briefs contradict the 1.63 designs. A DONE header, keeping it as the brief template; the one live line is
   wiring the ominous decals. `ART_HANDOFF.md:22` says 1.56 for 1.58.
-- ~~**tool — a numbers check for the docs, the way `balance.js` checks the generator.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/doc-numbers.js`, 57 claims, exits 1 on a wrong one. The three hand-typed sizes in `js/juice.js` are still open.* A throwaway regex
+- ~~**tool — a numbers check for the docs, the way `balance.js` checks the generator.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/doc-numbers.js`, 57 claims, exits 1 on a wrong one. The hand-typed sizes in `js/juice.js` went on 25 Sep 2026 (1.74).* A throwaway regex
   runner (doc sentence → the `TUNING` / `LEVELS` value it names) found 28 conflicts in 82 numbers, some
   unnoticed for eight releases, and code comments too ("a third heart" over `hp: 4`, `tuning.js:412`; "a
   shield is three" against 2). As `tools/doc-numbers.js`, exiting non-zero. `js/juice.js` also carries
@@ -165,7 +181,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 - **system — seven environment sprites nothing draws.** `floors-15`, `room-props-06`, `room-props-08`,
   `cave-props-03`, `-04`, `-07`, `-08`: 19.5% of the atlas area. Wire them in as litter or drop them
   from the manifest.
-- **tool — the dead combat-art pipeline.** `tools/pack-combat-art.cjs` writes `js/combat-assets.js`,
+- ~~**tool — the dead combat-art pipeline.**~~ *Deleted 25 Sep 2026 (1.74).* `tools/pack-combat-art.cjs` writes `js/combat-assets.js`,
   deleted in `12f00b1`; running it would make a 1.6 MB script no page loads that the publish rule would
   ship. Its source `assets/combat-fx/effects.png` (1.2 MB) has no loader. Delete both, trim the README.
 - ~~**tool — `audio-check.js` never loads `foley.js`.**~~ *Shipped 24 Sep, evening (the polish pass): It renders every recipe and checks every name `audio.js` asks for.* It passes while all 47 foley calls go unexercised.
@@ -239,7 +255,7 @@ the BOONS tab (the tab itself already existed). The rest, as answered:
   - *Later:* phone controls vanishing, whether THE TRIP's scramble carries into the next floor, the
     second talisman slot.
   - *Passives:* of the three candidates, **grass heals two but the max is a heart lower** is the one
-    wanted. Not built.
+    wanted. *Built: FOUR STOMACHS.*
   - *Actives:* the pounce and the chain headbutt are wanted **as upgrades to passives**, not as
     actives of their own. Not built.
   - *A souls resource (one per man):* **decided against for now.** "Not spending them. Make them fewer

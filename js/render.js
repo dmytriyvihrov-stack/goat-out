@@ -145,6 +145,7 @@ class Renderer {
       ctx.beginPath(); ctx.rect(0, 0, this.vw, this.vh); ctx.clip();
       this.worldTransform(game);
       this.drawTiles(game, cam);
+      this.drawOmens(game, cam);
       this.drawDecals(game, cam);
       game.fx.drawGround(this,game);
       this.drawPits(game, cam);
@@ -205,6 +206,7 @@ class Renderer {
       for (const b of game.globs) this.drawGlob(b);
       this.drawBoomerang(game);
       if (game.intro) this.drawIntroWorld(game);
+      if (game.bless && game.bless.on) this.drawBlessWorld(game);
       for (const p of game.props) if (!p.broken && lit(p) && inFront(p) && !carried(p)) this.drawProp(p);
       // Nearest the camera first, so a plate that has to step aside is the one behind.
       const heads = this.overheads.sort((a, b) => b.e.y - a.e.y), plates = []; this.overheads = null;
@@ -240,6 +242,7 @@ class Renderer {
     }
     if (game.intro && game.inPrologue()) this.drawPrologue(game);
     if (game.intro) this.drawIntroOverlay(game);
+    if (game.bless && game.bless.on) this.drawBlessOverlay(game);
     this.drawUI(game);
     if (game.state === 'paused') this.drawPause(game);
     this.drawTitle(game, dt);
@@ -1042,6 +1045,34 @@ class Renderer {
     }
   }
 
+  // The cult's signs (`World.placeOmens`), under the blood: each baked once from `DECAL_PIXELS` at
+  // four texels a pixel and drawn smoothed, the way the props are.
+  drawOmens(game, cam) {
+    const list = game.world.omens;
+    if (!list || !list.length || typeof DECAL_PIXELS === 'undefined') return;
+    const ctx = this.ctx, view = this.viewRect ? this.viewRect(game) : null, bake = this.omenBake ||= {};
+    const canvasOf = (id) => {
+      if (bake[id]) return bake[id];
+      const D = DECAL_PIXELS[id], UP = 4, c = document.createElement('canvas'), x = c.getContext('2d');
+      c.width = D.w * UP; c.height = D.h * UP;
+      D.rows.forEach((row, j) => { for (let i = 0; i < row.length; i++) { const k = 'abcdefgh'.indexOf(row[i]); if (k < 0) continue; x.fillStyle = D.pal[k]; x.fillRect(i * UP, j * UP, UP, UP); } });
+      return bake[id] = c;
+    };
+    const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+    for (const o of list) {
+      if (view && (o.x > view.x1 || o.x + o.w < view.x0 || o.y > view.y1 || o.y + o.h < view.y0)) continue;
+      // Only in a room he has seen and that is not shut behind him: the wall sign stands above the
+      // room's box, where the veil over an unseen or clamped room does not reach.
+      const r = game.level.rooms[o.room];
+      if (!r || !r.seen || r.clamped) continue;
+      ctx.save(); ctx.globalAlpha = o.alpha;
+      if (o.flip) { ctx.translate(o.x + o.w, o.y); ctx.scale(-1, 1); ctx.drawImage(canvasOf(o.id), 0, 0, o.w, o.h); }
+      else ctx.drawImage(canvasOf(o.id), o.x, o.y, o.w, o.h);
+      ctx.restore();
+    }
+    ctx.imageSmoothingEnabled = smooth;
+  }
+
   drawDecals(game, cam) {
     const ctx = this.ctx, wd = game.world, v = this.view(cam);
     if (this.altar && this.painted.ready) this.painted.drawRitual(this,game);
@@ -1211,13 +1242,13 @@ class Renderer {
         // fitted to what is left of the floor. It used to be painted at one size whatever it said,
         // and the longest of them was unreadable at both ends.
         const lines = this.wrapFloor(hn.text), wide = Math.min(viewW, (hn.w || 14 * TILE) - 3.2 * TILE);
-        const size = this.fitFloorText(lines, wide, 26), lh = size * 1.34;
+        const size = this.fitFloorText(lines, wide, hn.size || 26), lh = size * 1.34;
         // The key line under a hint ("E, ROLL") went on 25 Sep 2026: the sentence already says what to
         // do, and a button named under it read as a second, unrelated instruction.
         const key = null;
         const block = (lines.length - 1) * lh + (key ? lh * 0.95 : 0);
         let y = hn.y - block / 2;
-        ctx.fillStyle = 'rgba(239,230,208,0.15)';
+        ctx.fillStyle = `rgba(239,230,208,${hn.a || 0.15})`;   // the showroom's names read brighter
         for (const l of lines) { ctx.fillText(l, hn.x, y * TILT); y += lh; }
         // The button the line is about, under it and warmer, so a hint about a verb says which verb.
         if (key) {
@@ -2143,7 +2174,7 @@ class Renderer {
           ctx.stroke();
         }
       }
-      if (p.vault || p.gate) {
+      if ((p.vault && !p.vaultEmpty) || p.gate) {
         // The wisp itself, painted small on the face: the door says what is behind it — or what
         // opens it — in the language of the thing itself, which is the only wording nobody has to
         // be taught. The gate's is violet and breathing; the vault's is the same shape, quieter.
@@ -2164,7 +2195,7 @@ class Renderer {
       ctx.restore();
       // ...and a word over the top of it. The vault says what is behind it; the gate says what it
       // wants, which is the only instruction in the game that is also a reward.
-      if (p.vault || p.gate) {
+      if ((p.vault && !p.vaultEmpty) || p.gate) {
         ctx.save(); ctx.scale(1, 1 / TILT);
         ctx.font = `700 ${11}px ${FONT_SC}`; ctx.textAlign = 'center';
         ctx.fillStyle = p.gate ? `rgba(191,230,255,${0.55 + 0.3 * Math.sin(this.t * 3)})`
@@ -2535,15 +2566,7 @@ class Renderer {
     let swing = 0;
     if (e.state === 'windup' || e.state === 'slamwind') swing = -1.3; else if (e.state === 'swing') swing = 1.1 - e.timer * 6; else if (e.state === 'recover') swing = 0.6;
     if (e.flail > 0) swing = Math.sin(this.t * 26) * 1.5;
-    if (e.kind === 'bearer' && e.knife) {
-      // The one who comes for her carries the boning knife from beside the altar, not a club.
-      ctx.save(); ctx.translate(r * 0.35, r * 0.62); ctx.rotate(swing * 0.5);
-      ctx.fillStyle = '#4a3420'; ctx.fillRect(-3, -2.6, 9, 5.2);
-      ctx.fillStyle = '#c9c2b5';
-      ctx.beginPath(); ctx.moveTo(6, -2.6); ctx.lineTo(19, -3); ctx.lineTo(25, 0); ctx.lineTo(19, 2.4); ctx.lineTo(6, 2.2); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = PALETTE.bloodDark; ctx.fillRect(12, -0.5, 11, 2.2);
-      ctx.restore();
-    } else if (e.kind === 'bearer') {
+    if (e.kind === 'bearer') {
       ctx.save(); ctx.rotate(swing); ctx.lineCap = 'round';
       if (e.champion) {
         // The butcher's club is a post with iron through it, and it is thicker than his arm.
@@ -2749,6 +2772,14 @@ class Renderer {
     // The world pass has laid everyone's floor marks already, under every body (`groundDone`).
     if (!this.groundDone) this.drawEnemyGround(e, game, true);
     if (!e.ghosted) this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
+    // Caught on the cave's teeth (`Enemy.impale`): he strains against them, and the tooth is drawn
+    // again over his feet so it reads as through him, not beside him.
+    if (e.impaled > 0) {
+      ctx.save(); ctx.translate(Math.round(Math.sin(this.t * 38) * TUNING.cave.spikes.impale.shiver), 0);
+      this.drawEnemyBody(e, game, lying); ctx.restore();
+      if (e.impaleOn) this.drawProp(e.impaleOn);
+      return;
+    }
     this.drawEnemyBody(e, game, lying);
   }
 
@@ -3289,7 +3320,11 @@ class Renderer {
     const ctx = this.ctx, s = this.ts, d = game.dev;
     d.rects = [];
     if (d.rules) { this.drawTool(game); return; }
-    if (d.hidden) return;   // served from itch without `#dev` (`Game` constructor)
+    if (d.hidden) {   // served from itch without `#dev`, or the itch build itself (`Game` constructor)
+      // GOD MODE thrown in SETTINGS still says so, where the drawer would have.
+      if (d.god && game.state !== 'title') { ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.blood; ctx.textAlign = 'center'; ctx.fillText('GOD MODE', this.w / 2, 16 * s); ctx.textAlign = 'left'; }
+      return;
+    }
     // In a fight on touch the corner is under the stick's thumb: a brush of it opened the drawer.
     // It is still there on the pause screen, and the open drawer keeps its close.
     if (game.touch.active && game.state === 'play' && !d.open) return;
@@ -3312,7 +3347,9 @@ class Renderer {
           ['hearing', d.hearing ? 'HEARING  ON' : 'HEARING  OFF'],
           ['dark', d.dark ? 'DARK  ON' : 'DARK  OFF'],
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
-          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'],
+          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['showroom', 'SHOWROOM'],
+          // The zip for itch.io, off this very page: no dev drawer in it, GOD in its SETTINGS (js/release.js).
+          ['itch', RELEASE.busy ? 'ITCH BUILD…' : 'ITCH BUILD'],
         ] },
         { head: 'SPAWN', rows: [
           ['bearer', 'BEARER'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
@@ -3436,6 +3473,11 @@ class Renderer {
       pad + Math.floor(i / cols) * 24 * s, 76 * s, 20 * s, label, 'tab-' + id, d.tab === id));
     const top = pad + Math.ceil(tabs.length / cols) * 24 * s + 6 * s;
     this.devButton(d, W - pad - 64 * s, pad, 64 * s, 20 * s, 'CLOSE', 'rules', false);
+    // A page longer than the screen scrolls on the wheel (`game.dev.scroll`, one offset per tab): the
+    // page is drawn shifted and clipped under the tab row, and every button it laid down is moved to
+    // where it was actually drawn. How far it may go is off the lowest of those buttons.
+    const scroll = d.scroll || (d.scroll = {}), off = d.room ? 0 : Math.min(scroll[d.tab] || 0, d.scrollMax || 0), n0 = d.rects.length;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, top - 9 * s, W, H - top + 9 * s); ctx.clip(); ctx.translate(0, -off);
     if (d.tab === 'balance') this.drawBalance(game, pad, top);
     else if (d.tab === 'levels') this.drawLevelTab(game, pad, top);
     else if (d.tab === 'enemies') this.drawEnemiesTab(game, pad, top);
@@ -3449,6 +3491,20 @@ class Renderer {
     else if (d.tab === 'goats') GoatGrid.drawToolTab(this, game, pad, top);
     else if (d.tab === 'art') this.drawArtTab(game, pad, top);
     else this.drawRuleTab(game, pad, top);
+    ctx.restore();
+    let bottom = 0;
+    for (const r of d.rects.splice(n0)) {
+      bottom = Math.max(bottom, r.y + r.h);
+      r.y -= off;
+      if (r.y + r.h > top - 9 * s && r.y < H) d.rects.push(r);
+    }
+    d.scrollMax = Math.max(0, bottom + pad - H);
+    if (off > 0 || d.scrollMax > 0) {
+      // Where the page is along its length: a thin bar at the right edge.
+      const track = H - top, len = track + d.scrollMax, barH = Math.max(20 * s, track * track / len);
+      ctx.fillStyle = 'rgba(239,230,208,0.08)'; ctx.fillRect(W - 5 * s, top, 3 * s, track);
+      ctx.fillStyle = 'rgba(242,162,51,0.6)'; ctx.fillRect(W - 5 * s, top + (track - barH) * (off / Math.max(1, d.scrollMax)), 3 * s, barH);
+    }
     // A room opened from either of the other two covers them: it is the deepest the tool goes.
     if (d.room) this.drawRoomSheet(game, pad);
   }
@@ -4099,7 +4155,7 @@ class Renderer {
           ['KNOCK', ['champion', 'flingMul']], ['CHARGE AT', ['champion', 'charge', 'min']], ['CHARGE SPD', ['champion', 'charge', 'speed']],
           ['CHARGE CD', ['champion', 'charge', 'cooldown']], ['STUN', ['champion', 'charge', 'stun']], ['RAGE', ['champion', 'rage', 'speed']]],
         immune: ['blunder'],
-        note: `A clubman with a cleaver and a charge: one hit, like anyone without the outline. Never carried; a headbutt moves him ${Math.round(TUNING.champion.flingMul * 100)}% as far. Seen ${TUNING.champion.charge.min}+ tiles off with a clear run he plants for ${TUNING.champion.charge.wind}s and charges where you are going; into stone he stands stunned ${TUNING.champion.charge.stun}s. On fire he comes on faster instead of running.` },
+        note: `A clubman with a cleaver and a charge: ${TUNING.champion.hp} hits, the heavy one without the outline. Never carried; a headbutt moves him ${Math.round(TUNING.champion.flingMul * 100)}% as far. Seen ${TUNING.champion.charge.min}+ tiles off with a clear run he plants for ${TUNING.champion.charge.wind}s and charges where you are going; into stone he stands stunned ${TUNING.champion.charge.stun}s. On fire he comes on faster instead of running.` },
       // One row for the rule every kind shares (`TUNING.boss`) and the soul only a boss carries.
       { kind: 'bearer', tag: 'boss', boss: true, label: 'BOSS',
         cfg: TUNING.bearer, hp: TUNING.boss.hp,
@@ -4121,7 +4177,7 @@ class Renderer {
       { kind: 'seer', tag: 'seer', label: 'SEER', cfg: TUNING.seer, hp: TUNING.seer.hp,
         edit: [['SPEED', ['seer', 'speed']], ['DMG', ['seer', 'damage']], ['HP', ['seer', 'hp']],
           ['CAST', ['seer', 'castWind']], ['CAST CD', ['seer', 'castCooldown']], ['BLINK CD', ['seer', 'blinkCooldown']]],
-        note: 'Never closes. Blinks away when you get near, paints a rune under himself, near-perfect trap sense. One hit; a boss Seer blinks clear after each of his.' },
+        note: 'Never closes. Blinks away when you get near, paints a rune under himself, near-perfect trap sense. ' + `${TUNING.seer.hp} hits, blinking clear after each; a boss Seer takes ${Math.max(TUNING.boss.hp, TUNING.seer.hp + 1)}.` },
       { kind: 'hunter', tag: 'hunter', label: 'HUNTER', cfg: TUNING.hunter, hp: TUNING.hunter.hp || 1,
         edit: [['SPEED', ['hunter', 'speed']], ['DMG', ['hunter', 'damage']],
           ['AIM', ['hunter', 'aimTime']], ['RELOAD', ['hunter', 'reload']],
@@ -4163,7 +4219,8 @@ class Renderer {
     // THE SLIDERS, above the table: six live multipliers for trying combinations (`DEV_TUNE`).
     const band = 36 * s;
     this.drawTuneSliders(game, pad, top + 8 * s, W - pad * 2);
-    const rowH = Math.min(84 * s, Math.max(58 * s, (H - top - band - 24 * s - 150 * s - pad) / KINDS.length));
+    // Tall enough for the SOUL row under each kind; the page scrolls (`drawTool`).
+    const rowH = 92 * s;
     const thumb = Math.min(rowH - 6 * s, 52 * s);
     // 340 wide: at 230 the OGRE's sixteen chips wrapped to six rows and spilled over the HOUND's.
     const nameX = pad + thumb + 12 * s, statsX = nameX + 150 * s, statsW = 340 * s,
@@ -4178,7 +4235,7 @@ class Renderer {
       const fake = { x: pad + thumb / 2, y: ry + thumb / 2 + 6 * s, r: k.cfg.radius, kind: k.kind,
         champion: !!k.champion, boss: !!k.boss, elite: !!k.boss, facing: Math.PI / 2, hp: k.hp, maxHp: k.hp,
         dead: false, ghosted: false, vx: 0, vy: 0, flash: 0, burning: 0, bombFuse: 0, dazed: 0,
-        state: 'idle', say: null, soul: !!k.soul, witchBurn: false };
+        state: 'idle', say: null, soul: !!(d.soulView && d.soulView[k.tag]), witchBurn: false };
       ctx.save(); this.drawEnemy(fake, game); ctx.restore();
       ctx.textAlign = 'left';
       ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
@@ -4215,6 +4272,24 @@ class Renderer {
           const fw = ctx.measureText(label).width + 10 * s;
           this.devButton(d, fx, ry + 40 * s, fw, 13 * s, label, `enemy-flag=${k.tag}.immune.${flag}`, on);
           fx += fw + 4 * s;
+        }
+      }
+      // WITH A SOUL: the row's portrait lit, his hearts with the soul's added, and which of the soul's
+      // traits (`soulBearer.traits`) his kind gets — each a switch. SPAWN drops one by the goat.
+      {
+        const on = !!(d.soulView && d.soulView[k.tag]), S = TUNING.soulBearer, traits = S.traits[k.tag] || [];
+        this.devButton(d, nameX, ry + 58 * s, 40 * s, 13 * s, 'SOUL', `enemy-soul=${k.tag}`, on);
+        this.devButton(d, nameX + 44 * s, ry + 58 * s, 44 * s, 13 * s, 'SPAWN', `enemy-spawn=${k.tag}`, false);
+        if (on) {
+          let tx = nameX + 92 * s;
+          for (const trait of ['swift']) {
+            ctx.font = `700 ${7.5 * s}px ${FONT_SC}`;
+            const tw = ctx.measureText(trait.toUpperCase()).width + 10 * s;
+            this.devButton(d, tx, ry + 58 * s, tw, 13 * s, trait.toUpperCase(), `enemy-trait=${k.tag}.${trait}`, traits.includes(trait));
+            tx += tw + 4 * s;
+          }
+          ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.fireHi;
+          ctx.fillText(`with a soul: ${k.hp + S.hp} hearts (+${S.hp}) · knocked ${Math.round(S.flingMul * 100)}% as far · never carried${traits.length ? ' · ' + traits.join(', ') : ' · no traits yet'}`, nameX, ry + 82 * s);
         }
       }
       // SPEED: the pace he hunts you at first and brightest, what that is against the goat's walk
@@ -5501,6 +5576,26 @@ class Renderer {
     if (it.heart && (!it.heart.broken || it.heart.broken < 1)) this.drawHeart(it.heart);
   }
 
+  // The mage at the first gate (`game.bless`): her under his arm while he is in sight, and the soul
+  // on its way from him to his man. He is an ordinary enemy and draws as one.
+  drawBlessWorld(game) {
+    const b = game.bless;
+    if (!b.ewe.gone && game.inSight(b.mage)) this.drawSheep(b.ewe);
+    if (b.wisp) this.soulWisp(b.wisp.x, b.wisp.y, 0.85, b.t * 3);
+  }
+  // Two bars in from the top and bottom while it plays, so it reads as the game showing him
+  // something rather than as the goat being stuck; and once it has been watched, how to get past it.
+  drawBlessOverlay(game) {
+    const b = game.bless, ctx = this.ctx, s = this.ts, T = TUNING.bless;
+    const h = Math.round(this.vh * T.bars * clamp(b.bars, 0, 1));
+    if (h > 0) { ctx.fillStyle = PALETTE.ink; ctx.fillRect(0, 0, this.vw, h); ctx.fillRect(0, this.vh - h, this.vw, h); }
+    // In the top bar, in the middle: the bottom-left corner is the seed's in play.
+    if (game.blessSeen && b.t > T.skipAfter) {
+      ctx.save(); ctx.globalAlpha = 0.45 * clamp(b.bars, 0, 1); ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'center';
+      ctx.fillText(`${game.tapWord} TO SKIP`, this.vw / 2, this.vh * T.bars * 0.6 + 4 * s); ctx.restore();
+    }
+  }
+
   // Over the picture: the fade to black, the stars that stay lit in the dark, a bleat from a long way
   // off, and a line about skipping it.
   drawIntroOverlay(game) {
@@ -5792,20 +5887,34 @@ class Renderer {
     if (!this.shade || this.shade.width < nx * R || this.shade.height < ny * R) {
       this.shade = document.createElement('canvas');
       this.shade.width = Math.max(nx * R, 128 * R); this.shade.height = Math.max(ny * R, 96 * R);
-      this.shadeCtx = this.shade.getContext('2d');
+      this.shadeCtx = this.shade.getContext('2d'); this.shadeWin = null;
+    }
+    // Repainted only when what it shows changed: the tile window, or a tile of it going in or out of
+    // sight. A small canvas changed and drawn again costs an upload of it every frame (a millisecond
+    // or two of the main thread, measured 26 Sep 2026), and standing still, or running the length of
+    // a lit room, nothing in it moves.
+    const fog = game.level.def.fog, win = this.shadeWin, n = nx * ny;
+    let same = !!win && win.x0 === x0 && win.y0 === y0 && win.nx === nx && win.ny === ny && win.fog === fog;
+    const bits = same ? win.bits : new Uint8Array(n);
+    for (let ty = y0, k = 0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++, k++) {
+      const s = wd.seesTile(tx, ty) ? 1 : 0;
+      if (bits[k] !== s) { bits[k] = s; same = false; }
     }
     const sc = this.shadeCtx;
-    sc.clearRect(0, 0, nx * R, ny * R);
-    sc.fillStyle = game.level.def.fog;
-    // One run of dark tiles at a time: a row of a room is usually all one thing or the other.
-    for (let ty = y0; ty <= y1; ty++) {
-      let run = -1;
-      for (let tx = x0; tx <= x1; tx++) {
-        const dark = !wd.seesTile(tx, ty);
-        if (dark && run < 0) run = tx;
-        else if (!dark && run >= 0) { sc.fillRect((run - x0) * R, (ty - y0) * R, (tx - run) * R, R); run = -1; }
+    if (!same) {
+      this.shadeWin = { x0, y0, nx, ny, fog, bits };
+      sc.clearRect(0, 0, nx * R, ny * R);
+      sc.fillStyle = fog;
+      // One run of dark tiles at a time: a row of a room is usually all one thing or the other.
+      for (let ty = y0, k = 0; ty <= y1; ty++) {
+        let run = -1;
+        for (let tx = x0; tx <= x1; tx++, k++) {
+          const dark = !bits[k];
+          if (dark && run < 0) run = tx;
+          else if (!dark && run >= 0) { sc.fillRect((run - x0) * R, (ty - y0) * R, (tx - run) * R, R); run = -1; }
+        }
+        if (run >= 0) sc.fillRect((run - x0) * R, (ty - y0) * R, (x1 + 1 - run) * R, R);
       }
-      if (run >= 0) sc.fillRect((run - x0) * R, (ty - y0) * R, (x1 + 1 - run) * R, R);
     }
     const ctx = this.ctx;
     ctx.save();

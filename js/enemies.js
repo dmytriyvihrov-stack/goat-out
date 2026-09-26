@@ -26,7 +26,7 @@ class Enemy {
     this.poison = 0;                                            // seconds of being blind and slow (js/status.js)
     this.scald = false;                                         // stunned when the fire caught: it hits twice
     this.gotUpFrom = null;
-    this.scripted = false; this.knife = false;                  // the two in the opening scene: moved by hand, one with a knife
+    this.scripted = false;   // moved by hand: the opening scene's two, and the mage at the first gate
     this.champion = false;                                      // the butcher (the brute until 1.72): a charge, too heavy to carry
     this.watchful = false;                                      // posted to watch a door: no blind side, and he sees further
     this.sentry = false;                                        // the first man of a run: he holds his ground and never walks
@@ -213,6 +213,9 @@ class Enemy {
 
   die(game, cause, dx, dy) {
     if (this.dead || this.ghosted) return;
+    // A blow that lands on the mage's man before the scene has given him the first gate's soul finds
+    // it in him all the same (`game.blessNow`): that gate opens on nothing else.
+    if (this.blessing) game.blessNow(this);
     // A fused man only goes off if a collision is what kills him — flung into a wall, into another
     // body, or thrown into one. A blade, fire, a bullet, a trap: those just kill him same as anybody,
     // and the fuse that was counting down under it goes nowhere.
@@ -384,8 +387,8 @@ class Enemy {
       && Math.abs(p.x - this.x) < 9 * TILE && Math.abs(p.y - this.y) < 9 * TILE);
     // The mage lit it, and the mage is the one man in the building who knows how far it goes: he
     // reads flame and his own runes from further out. He still burns if he gets it wrong.
-    // So does a gate's keeper, whose club lights it.
-    const care = this.kind === 'seer' ? TUNING.seer.fireCare : this.keeper ? TUNING.soulKeeper.fireCare : 1;
+    // A gate's keeper, whose club lights it, does not (`TUNING.soulKeeper`): his fire is his undoing.
+    const care = this.kind === 'seer' ? TUNING.seer.fireCare : 1;
     const look = this.r + (millNear ? TUNING.ai.trapLook : TUNING.fire.avoidLook) * care;
     const l = Math.hypot(dirx, diry) || 1; dirx /= l; diry /= l;
     // Only what is within a step of him can matter, and gathering that once keeps the probes cheap.
@@ -438,7 +441,7 @@ class Enemy {
         const sl = Math.hypot(sx, sy) || 1; sx /= sl; sy /= sl;
         if (walkable(sx, sy)) return { x: sx, y: sy };
       }
-      if (walkable(ox, oy)) { if (this.aware) game.bark(this, here.kind, 0.12); return { x: ox, y: oy }; }
+      if (walkable(ox, oy)) { if (this.aware) game.bark(this, here.kind, 0.12); return { x: ox, y: oy, flee: true }; }
     }
     if (!ahead) return { x: dirx, y: diry };     // only where he stood was wrong, and he cannot leave it
     const base = Math.atan2(diry, dirx);
@@ -458,11 +461,36 @@ class Enemy {
       const safe = this.avoidHazard(dirx, diry, game);
       if (!safe) { this.vx = 0; this.vy = 0; this.facing = Math.atan2(diry, dirx); return; }
       dirx = safe.x; diry = safe.y;
+      // No more than `ai.turn.perSec` turns a second (26 Sep 2026: a man at the wheel's edge flipped
+      // between "at the goat" and "out of the arc" every frame, his sprite flickering fifteen times
+      // a second). A turn wider than `turn.angle` inside the gap keeps him on the way he was going if
+      // that way is still clear, else stands him for the rest of it. Getting out of a hazard he is
+      // standing in is never held back.
+      if (this.kind !== 'dog' && !this.scripted && speed > 0 && this.limitTurn(dirx, diry, speed, !!safe.flee, game)) return;
     }
     if (this.kind === 'dog' && game) { this.stride(dirx, diry, speed, dt, game); return; }
     const l = Math.hypot(dirx, diry) || 1;
     this.vx = dirx / l * speed; this.vy = diry / l * speed;
     if (speed > 0) this.facing = Math.atan2(this.vy, this.vx);
+  }
+  // The turn limit's bookkeeping for `moveToward`: returns true when it has set this step's
+  // velocity itself (held on the old heading, or stood still). A man who has not walked for a
+  // moment (`turn.fresh` s: a swing, a daze) sets off whichever way he likes.
+  limitTurn(dirx, diry, speed, flee, game) {
+    const T = TUNING.ai.turn, now = game.timer, want = Math.atan2(diry, dirx);
+    const fresh = this.headAng === undefined || now - (this.headSeen || -9) > T.fresh;
+    this.headSeen = now;
+    if (fresh || flee || Math.abs(angleDiff(want, this.headAng)) <= T.angle) {
+      if (!fresh && Math.abs(angleDiff(want, this.headAng)) > T.angle) this.turnAt = now;
+      this.headAng = want; return false;
+    }
+    if (now - (this.turnAt || -9) >= 1 / T.perSec) { this.turnAt = now; this.headAng = want; return false; }
+    const hx = Math.cos(this.headAng), hy = Math.sin(this.headAng), keep = this.avoidHazard(hx, hy, game);
+    const w = game.world, ahead = this.r + 6;
+    if (keep && keep.x * hx + keep.y * hy > 0.98 && !w.isSolid(Math.floor((this.x + hx * ahead) / TILE), Math.floor((this.y + hy * ahead) / TILE))) {
+      this.vx = hx * speed; this.vy = hy * speed; this.facing = this.headAng;
+    } else { this.vx = 0; this.vy = 0; this.facing = this.headAng; }
+    return true;
   }
   // A hound's legs. Every other kind is set going the way he wants between one step and the next;
   // on a hound that was a statue sliding sideways round the goat and reversing in a frame whenever
@@ -722,6 +750,9 @@ class Enemy {
       if (blunders) return;
       // Not blundering: fall through into the ordinary state machine below, still on fire.
     }
+    // Caught on the cave's teeth: nothing he has works until he tears free. Whatever set his state
+    // meanwhile (a stagger off the horns, a crate) is left for when he is off them.
+    if (this.impaled > 0) { this.impaledStep(dt, game); return; }
     if (this.state === 'held') {
       // A held Hunter keeps shooting where he is pointed — for two or three rounds, and then he is
       // out and you are carrying a man. With Living Shield a held Bearer keeps swinging too, and
@@ -804,7 +835,7 @@ class Enemy {
       if (this.timer <= 0) {
         this.aware = true; this.state = 'chase';
         // The Butcher answers a stagger with a quick slam if you stayed close: the same ring, sooner.
-        if (this.kind === 'butcher' && !g.dead && Math.hypot(g.x - this.x, g.y - this.y) < cfg.slam.near * TILE * 1.3 + g.r) { this.state = 'slamwind'; this.timer = cfg.slam.wind * 0.6 * game.mods.enemySlow; }
+        if (this.kind === 'butcher' && !g.dead && Math.hypot(g.x - this.x, g.y - this.y) < cfg.slam.near * TILE * cfg.slam.answerReach + g.r) { this.state = 'slamwind'; this.timer = cfg.slam.wind * cfg.slam.answer * game.mods.enemySlow; }
       }
       return;
     }
@@ -817,6 +848,9 @@ class Enemy {
       if (!g.dead && roomAt(game.level, g.x, g.y) === game.level.rooms[this.room]) this.millOpen = true;
       else { this.vx = 0; this.vy = 0; return; }
     }
+    // The mage's man at the first gate (`game.bless`) holds his mark until he has been given its soul
+    // in front of the goat: nothing he sees or hears moves him before that.
+    if (this.blessing) { this.vx = 0; this.vy = 0; return; }
     // ---- perception ----
     // The wheel lesson's two men are there to be watched doing what they do, so they know the goat
     // the moment he is inside their room, cone and sight range or no (see `startLevel`).
@@ -973,7 +1007,7 @@ class Enemy {
   // is the one who stops. That beat is the free hit the charge exists to offer.
   chargeStopped(game) {
     const C = TUNING.champion.charge;
-    this.state = 'stunned'; this.timer = C.stun; this.vx = 0; this.vy = 0; this.chargeCd = C.cooldown * game.mods.enemySlow;
+    this.state = 'stunned'; this.timer = C.stun * game.mods.enemySlow; this.vx = 0; this.vy = 0; this.chargeCd = C.cooldown * game.mods.enemySlow;
     game.shake(6); game.audio.sfxSplat(); game.hitstop(0.04); game.floatText(this.x, this.y - 34, 'STUNNED', PALETTE.fireHi);
     game.world.emitNoise(this.x, this.y, TUNING.noise.splat);
   }
@@ -1541,7 +1575,7 @@ class Enemy {
           game.shake(4);
         }
       } else if (this.state === 'swing') {
-        if (this.timer <= 0) { this.state = 'solid'; this.timer = cfg.solidAfter; }
+        if (this.timer <= 0) { this.state = 'solid'; this.timer = cfg.solidAfter * game.mods.enemySlow; }
       } else if (this.timer <= 0) this.unmanifest(game);
       return;
     }
@@ -1986,6 +2020,41 @@ class Enemy {
     }
     return pts[0] || null;
   }
+  // THE TEETH (25 Sep 2026). The ogre is too big to die on a cave spire the way a man does, so he
+  // is caught on it: a heart for the rock, then `impale.time` s stuck where he stands — no leap, no
+  // slam, no step — for whatever the room holds (a blade, fire, a thrown body). Before this he was
+  // stuck by accident: every man steers off a spire, so standing on one he could not walk off it,
+  // and it took a heart a second until he died. Now it is a window with an end.
+  impale(game, p) {
+    const I = TUNING.cave.spikes.impale;
+    this.vx = 0; this.vy = 0; this.hopZ = 0;
+    game.world.splat(this.x, this.y, 0, 0, 14);
+    game.particles(this.x, this.y, 14, PALETTE.blood, 170);
+    game.hitstop(0.05); game.audio.sfxThud(); game.audio.sfxGrowl();
+    if (this.hp <= 1) { this.die(game, 'spire'); return; }
+    this.hp -= 1; this.flash = 0.3; this.aware = true;
+    this.impaled = I.time * game.mods.enemySlow; this.impaleOn = p;
+    game.floatText(this.x, this.y - 44, 'STUCK · ' + this.hp + ' LEFT', PALETTE.fireHi);
+  }
+  impaledStep(dt, game) {
+    const I = TUNING.cave.spikes.impale, p = this.impaleOn;
+    this.impaled -= dt; this.vx = 0; this.vy = 0;
+    if (Math.random() < dt * 4) game.particles(this.x, this.y + this.r * 0.3, 1, PALETTE.blood, 50);
+    if (this.impaled > 0) return;
+    // He tears himself off: a step clear of the teeth, spared them while he walks away.
+    this.impaled = 0; this.impaleOn = null;
+    if (p) {
+      let dx = this.x - p.x, dy = this.y - p.y, d = Math.hypot(dx, dy);
+      if (d < 1) { dx = game.goat.x - p.x; dy = game.goat.y - p.y; d = Math.hypot(dx, dy) || 1; }
+      const out = p.r + this.r * 0.7 + 2;
+      if (d < out) { this.x = p.x + dx / d * out; this.y = p.y + dy / d * out; game.world.collideCircle(this); }
+    }
+    this.spireAt = game.timer + I.clear;
+    this.state = 'stagger'; this.timer = I.free * game.mods.enemySlow; this.aware = true;
+    game.floatText(this.x, this.y - 44, 'RRAAGH', PALETTE.blood); game.audio.sfxGrowl();
+    game.dust(this.x, this.y, 8, 0, 0);
+  }
+
   // He comes down. Everything in the ring is struck the way his arm strikes: the goat hurt and
   // thrown clear, a man of the cult hurt and flung.
   hopLand(game) {

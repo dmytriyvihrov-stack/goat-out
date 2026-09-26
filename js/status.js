@@ -166,6 +166,9 @@ const Status = {
     if (m.venomHold > 0 && g.holdTimer >= m.venomHold) { h.venom = true; h.venomHit = null; }
     if (m.brandHold > 0 && g.holdTimer >= m.brandHold) {
       h.brand = { ox: g.x, oy: g.y, lx: h.x, ly: h.y };
+      // A crate goes out of his mouth alight (25 Sep 2026): whoever it lands on catches, and it
+      // breaks into its one burning tile — the brand a crate carried through fire already was.
+      if (h.kind === 'crate' && !h.alight) h.alight = 'fire';
       game.audio.sfxFire();
     }
   },
@@ -176,8 +179,8 @@ const Status = {
   },
 
   // A thing thrown dripping poisons the floor under its whole flight, whoever it passes through,
-  // and a puddle where it stops. A thing thrown burning lights the floor it has flown over and
-  // nothing else. "Stops" is the same test for a man and a crate: no longer flying, or no longer
+  // and a puddle where it stops. A thing thrown burning lights the floor it has flown over; a crate
+  // is alight as well, so the man it meets catches (`Prop.update`). "Stops" is the same test for a man and a crate: no longer flying, or no longer
   // there at all.
   updateCarried(game) {
     const w = game.world, J = TUNING.status.jaw;
@@ -222,7 +225,7 @@ const Status = {
     for (let k = 0; k < n; k++) {
       const x = b.lx + (o.x - b.lx) * k / n, y = b.ly + (o.y - b.ly) * k / n, t = tile(x, y);
       if (t === here || t === goat || Math.hypot(x - b.ox, y - b.oy) < B.gap * TILE) continue;
-      w.ignite(Math.floor(x / TILE), Math.floor(y / TILE), true, B.burn);
+      w.ignite(Math.floor(x / TILE), Math.floor(y / TILE), true, B.burn, b.witch);
     }
     b.lx = o.x; b.ly = o.y;
   },

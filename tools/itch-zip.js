@@ -1,5 +1,7 @@
-// The itch.io upload: `index.html` at the root of a zip and exactly the scripts it loads, nothing
-// else. Zipping the folder instead ships 500-odd files and the 175 MB of `tools/shots/`. Refuses a
+// The itch.io upload: `index.html` at the root of a zip, flagged as the release (no dev drawer), and
+// exactly the scripts it loads, nothing else. The dev drawer's ITCH BUILD button makes the same zip
+// from the running page (js/release.js). Zipping the folder instead ships 500-odd files and the
+// 175 MB of `tools/shots/`. Refuses a
 // dirty tree unless told otherwise (a playtest build is cut from a commit, never from a tree another
 // session is editing), names the zip after `BUILD` and the commit, and lists it back from the zip
 // itself so what was checked is what will be uploaded.
@@ -53,7 +55,13 @@ const commit = execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().
 const build = (fs.readFileSync(path.join(ROOT, 'js', 'tuning.js'), 'utf8').match(/const BUILD = '([^']+)'/) || [, 'x'])[1];
 const scripts = scriptsOf('index.html');
 for (const s of scripts) if (!fs.existsSync(path.join(ROOT, s))) { console.error('index.html loads a missing script: ' + s); process.exit(1); }
-const entries = [{ name: 'index.html', data: fs.readFileSync(path.join(ROOT, 'index.html')) }]
+// The itch build is the release: its index.html sets `window.GOAT_RELEASE` ahead of every script, so
+// there is no dev drawer in it and GOD MODE is a switch in SETTINGS (js/release.js, whose `flag` this
+// reads, so the button in the dev drawer and this script make the same page).
+const flag = (fs.readFileSync(path.join(ROOT, 'js', 'release.js'), 'utf8').match(/flag: '([^']+)'/) || [])[1];
+const page = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), at = page.indexOf('<script src=');
+if (!flag || at < 0) { console.error('no release flag to put in index.html'); process.exit(1); }
+const entries = [{ name: 'index.html', data: Buffer.from(page.slice(0, at) + flag + '\n' + page.slice(at), 'utf8') }]
   .concat(scripts.map((s) => ({ name: s, data: fs.readFileSync(path.join(ROOT, s)) })));
 const out = path.join(ROOT, 'dist', `doomed-goat-${build}-${commit}${dirty ? '-dirty' : ''}.zip`);
 fs.mkdirSync(path.dirname(out), { recursive: true });

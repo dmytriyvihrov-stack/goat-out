@@ -130,7 +130,8 @@ class Goat {
       }
       if (this.timer <= 0) {
         // He lands and has to get up: the stride he had built is gone with the tumble (pillar 4).
-        this.state = 'rollrecover'; this.timer = R.recover; this.vx *= 0.22; this.vy *= 0.22; this.runT = 0;
+        // `recover` 0 (26 Sep 2026: "remove the recover after the roll") lands him straight on his feet.
+        this.state = R.recover > 0 ? 'rollrecover' : 'idle'; this.timer = R.recover; this.vx *= 0.22; this.vy *= 0.22; this.runT = 0;
         if (this.leap) { this.leap = null; this.vx *= 0.5; this.vy *= 0.5; }   // a vault lands on four feet, not in a slide
         game.dust(this.x, this.y, TUNING.juice.dust.land, 0, 0); game.squashGoat(TUNING.juice.squash.land);
         // SOUR TUMBLE: he gets up out of a spray of it.
@@ -630,7 +631,7 @@ class Goat {
         // The horns do nothing to him standing. Down — a crate or a shield in the face — and every
         // blow is a heart; up, the goat bounces off him and is told, once, what would work.
         const open = e.state === 'floored' || e.state === 'stunned';
-        this.vx = -ax * 4 * TILE; this.vy = -ay * 4 * TILE;
+        this.vx = -ax * TUNING.ratogre.bounce * TILE; this.vy = -ay * TUNING.ratogre.bounce * TILE;
         game.audio.sfxThud(); game.squashGoat(TUNING.juice.squash.hit);
         if (open) {
           game.hitstop(0.05); game.shake(6); game.kick(-ax, -ay, TUNING.juice.kick); game.zoomPunch(0.8);
@@ -1369,8 +1370,18 @@ class Prop {
     if (this.broken) return;
     const C = TUNING.cave.spikes, g = game.goat;
     for (const e of game.liveEnemies) {
-      if (e.dead || e.ghosted || (e.spireAt !== undefined && e.spireAt > game.timer - C.again)) continue;
-      if (len(e.x - this.x, e.y - this.y) > this.r + e.r * 0.7) continue;
+      // A leaper in the air is over the teeth, not on them; one already caught on them is theirs.
+      if (e.dead || e.ghosted || e.state === 'hop' || e.impaled > 0 || (e.spireAt !== undefined && e.spireAt > game.timer - C.again)) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, d = len(dx, dy), reach = this.r + e.r * 0.7;
+      if (d > reach) continue;
+      // Too big to die on them: the ogre coming down on the teeth — out of a leap, knocked back onto
+      // them — hangs there (`Enemy.impale`). Walking, he only treads round them: a stroll into a
+      // tooth was the old accident that pinned him until he died.
+      if (C.impale.kinds.includes(e.kind)) {
+        if (C.impale.from.includes(e.state)) { e.spireAt = game.timer; e.impale(game, this); }
+        else if (d > 0.5) { e.x = this.x + dx / d * (reach + 0.5); e.y = this.y + dy / d * (reach + 0.5); }
+        continue;
+      }
       e.spireAt = game.timer;
       // A man in your mouth is over the rock like anybody else, and the rock takes him out of it.
       if (e.held) { g.holding = null; e.held = false; g.spendGrab(game, true); }
@@ -1783,6 +1794,9 @@ class Prop {
     // and where it breaks — on stone, on a man, on the floor — it leaves one tile burning. It used
     // to go up where it met the flame, two tiles round; the barrel is the one that spreads.
     if (!this.alight && game.world.isBurningPx(this.x, this.y)) this.alight = game.world.isWitchPx(this.x, this.y) ? 'witch' : 'fire';
+    // Alight, it drags its fire behind it: the floor it has flown over since it caught burns, the
+    // FIREBRAND line (`Status.brandTrail`), in its own kind of flame.
+    if (this.alight && !this.brand) this.brand = { ox: this.x, oy: this.y, lx: this.x, ly: this.y, witch: this.alight === 'witch' };
     if (this.alight && Math.random() < dt * 30) game.particles(this.x, this.y - 6, 1, this.alight === 'witch' ? PALETTE.witchHi : PALETTE.fireHi, 60);
     const end = () => (this.alight ? this.burst(game, this.alight === 'witch') : this.shatter(game));
     if (impact > 2 * TILE || spd < 40) { end(); return; }

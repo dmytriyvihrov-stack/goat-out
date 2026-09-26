@@ -81,17 +81,8 @@ class World {
     const rng = new RNG(level.seed ^ 0x9e37);
     for (const room of level.rooms) {
       if (room.index === 0) continue;
-      // Small and seldom (`effects.glyphs`): two or three four-tile signs a room, in cells half a
-      // tile across, read as floor tiles of another colour rather than as something painted on
-      // them (24 Sep 2026: "tiles that should be the same are different").
-      const G = TUNING.effects.glyphs;
-      const count = rng.chance(G.chance) ? 1 : 0;
-      for (let i = 0; i < count; i++) {
-        const tx = rng.int(room.x + 2, room.x + room.w - 3), ty = rng.int(room.y + 2, room.y + room.h - 3);
-        if (this.tileAt(tx, ty) === T.WALL) continue;
-        this.pixelGlyph((tx + 0.5) * TILE, (ty + 0.5) * TILE, rng.float(G.size[0], G.size[1]) * TILE,
-          CULT_GLYPHS[rng.int(0, CULT_GLYPHS.length - 1)], rng.float(G.alpha[0], G.alpha[1]), PALETTE.blood);
-      }
+      // The signs themselves are sprites now (`placeOmens`); what stays on the decal canvas is the
+      // old blood a room was cleaned of.
       if (rng.chance(0.5)) {
         const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
         if (this.tileAt(tx, ty) !== T.WALL) {
@@ -102,6 +93,48 @@ class World {
       }
     }
     this.paintStartRoom(level, rng);
+    this.placeOmens(level);
+  }
+
+  // Where the cult's signs are painted (`TUNING.effects.omens`, `DECAL_PIXELS`): a list the renderer
+  // draws between the floor and the blood. Its own dice off the level's seed, so the simulation's
+  // RNG is untouched and a replayed code paints the same signs. A floor sign lies wholly on floor
+  // (no wall, hole or stairs under any of it); the watcher hangs on a far wall two tiles wide with
+  // rock above it.
+  placeOmens(level) {
+    this.omens = [];
+    if (typeof DECAL_PIXELS === 'undefined' || level.def.shroom) return;
+    const O = TUNING.effects.omens, rng = new RNG(level.seed ^ 0x51a7e), T0 = [T.FLOOR, T.HAY, T.ASH];
+    const onFloor = (x0, y0, w, h) => {
+      for (let ty = Math.floor(y0 / TILE); ty <= Math.floor((y0 + h) / TILE); ty++)
+        for (let tx = Math.floor(x0 / TILE); tx <= Math.floor((x0 + w) / TILE); tx++) if (!T0.includes(this.tileAt(tx, ty))) return false;
+      return true;
+    };
+    for (const room of level.rooms) {
+      if (room.index === 0) continue;
+      const big = room.arena && rng.chance(O.large);
+      if (big || rng.chance(O.chance)) {
+        const id = big ? 'floor-large' : rng.chance(0.5) ? 'floor-small' : 'floor-medium', D = DECAL_PIXELS[id], k = O.texel[id];
+        const w = D.w * k, h = D.h * k;
+        for (let a = 0; a < 20; a++) {
+          const x = rng.float((room.x + 1) * TILE, (room.x + room.w - 1) * TILE - w), y = rng.float((room.y + 1) * TILE, (room.y + room.h - 1) * TILE - h);
+          if (!onFloor(x, y, w, h)) continue;
+          this.omens.push({ room: room.index, id, x, y, w, h, alpha: rng.float(O.alpha[0], O.alpha[1]), flip: rng.chance(0.5) });
+          break;
+        }
+      }
+      if (rng.chance(O.wall)) {
+        const D = DECAL_PIXELS['wall-watcher'], k = O.texel['wall-watcher'], w = D.w * k, h = D.h * k;
+        const wall = (tx, ty) => this.tileAt(tx, ty) === T.WALL;
+        for (let a = 0; a < 12; a++) {
+          const tx = rng.int(room.x + 1, room.x + room.w - 3), ty = room.y;
+          if (!wall(tx, ty) || !wall(tx + 1, ty) || !wall(tx, ty - 1) || !wall(tx + 1, ty - 1)) continue;
+          if (!T0.includes(this.tileAt(tx, ty + 1)) || !T0.includes(this.tileAt(tx + 1, ty + 1))) continue;
+          this.omens.push({ room: room.index, id: 'wall-watcher', x: (tx + 1) * TILE - w / 2, y: (ty + 1) * TILE - h, w, h, alpha: O.wallAlpha, wall: true });
+          break;
+        }
+      }
+    }
   }
 
   // Grid pictogram: every cell is a hard square, no curves. Quasimorph reads this way.

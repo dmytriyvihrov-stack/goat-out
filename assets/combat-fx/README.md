@@ -1,7 +1,8 @@
 # Combat effects — 16 September 2026
 
 **Retired 23 Sep 2026 (1.56).** Nothing loads this sheet any more: `js/combat-fx.js` bakes its fire,
-blasts, smoke and blood as pixel frames at start, and `js/combat-assets.js` was deleted. Kept for history.
+blasts, smoke and blood as pixel frames at start, and `js/combat-assets.js` was deleted. The sheet and its packer
+(`tools/pack-combat-art.cjs`) were deleted on 25 Sep 2026 and live in git history (1.73 and before).
 
 `effects.png` was generated with the built-in imagegen tool, then copied into this
 project without removing its alpha. Actual dimensions: 1774 × 887. Eight columns,

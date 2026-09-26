@@ -177,8 +177,15 @@ class CombatFX {
     const booms=[P.blastR,G.radius*G.fxScale],dusts=[[17,false],[23,false],[19,false],[19,true],[35,true]];
     const sets=[...booms.map(r=>['boom',r*E.blast.scale,false]),...booms.map(r=>['soot',r*E.blast.soot*E.blast.dustScale,false]),
       ...dusts.map(([r,w])=>['dust',r*E.blast.dustScale,w]),['blood',30*k,false],['blood',46*k,false]];
-    for(const [kind,r,w] of sets){const set=CombatFX.burstFrames(kind,r,w);for(let i=0;i<set.n;i++)jobs.push(()=>set.frame(i));}
-    for(let s=5;s<=20;s+=1)jobs.push(()=>CombatFX.flameFrames(s,false));
+    // What the first floor meets first goes first: a kill's spray, then the flames.
+    sets.sort((a,b)=>(b[0]==='blood')-(a[0]==='blood'));
+    const late=[];
+    for(const [kind,r,w] of sets){const set=CombatFX.burstFrames(kind,r,w);for(let i=0;i<set.n;i++)(kind==='blood'?jobs:late).push(()=>set.frame(i));}
+    // Every size a flame is asked for (a knocked bowl's embers at 3 to a burning tile's 18 and a
+    // bomb's 20), witchfire as well: its sets were baked the first time a keeper or a mage lit one,
+    // 5–14 ms each in the middle of the fight (26 Sep 2026).
+    for(let s=3;s<=20;s+=1)for(const w of [false,true])jobs.push(()=>CombatFX.flameFrames(s,w));
+    jobs.push(...late);
     let i=0;const step=()=>{if(i>=jobs.length)return;try{jobs[i++]();}catch(e){i=jobs.length;}setTimeout(step,16);};
     setTimeout(step,300);
   }
@@ -213,7 +220,8 @@ class CombatFX {
   // What seeps out from under a body: cells, a darker rim, a glint near the middle. The edge is
   // off noise fixed to the spot, so a growing pool keeps its shape and only gets bigger. Cells on
   // stone are skipped — blood runs on the floor, not up a wall.
-  static pool(c,x,y,r,seed,w) {
+  static pool(c,x,y,r,seed,w) { CombatFX.fillPool(c,CombatFX.poolPaths(x,y,r,seed,w)); }
+  static poolPaths(x,y,r,seed,w) {
     const px=TUNING.effects.pixel,x0=Math.round(x/px)*px,y0=Math.round(y/px)*px,span=Math.ceil(r*1.45/px)*px;
     const rim=new Path2D(),mid=new Path2D(),hi=new Path2D();
     for(let oy=-span;oy<=span;oy+=px)for(let ox=-span;ox<=span;ox+=px){
@@ -221,12 +229,15 @@ class CombatFX {
       if(d>=lim||(w&&w.isSolid(Math.floor((x0+ox)/TILE),Math.floor((y0+oy)/TILE))))continue;
       (d>lim-0.13?rim:d<0.4&&CombatFX.bayer(ox/px,oy/px)<0.14?hi:mid).rect(x0+ox,y0+oy,px,px);
     }
+    return {rim,mid,hi};
+  }
+  static fillPool(c,{rim,mid,hi}) {
     const [cr,cm,ch]=TUNING.effects.corpse.colors;c.fillStyle=cr;c.fill(rim);c.fillStyle=cm;c.fill(mid);c.fillStyle=ch;c.fill(hi);
   }
   poolR(p) { const C=TUNING.effects.corpse,k=clamp(((p.lay||0)-C.delay)/C.time,0,1); return p.pool*(1-(1-k)*(1-k)); }
   // A pool that has finished spreading goes into the floor for good.
   stampPool(p) {
-    if(!p.pool||p.pooled)return;p.pooled=true;
+    if(!p.pool||p.pooled)return;p.pooled=true;p.poolAt=null;
     const w=this.game.world,r=p.pool;
     w.paintStain(p.x,p.y,r*2,(c)=>CombatFX.pool(c,p.x,p.y,r,p.seed,w));
   }
@@ -265,9 +276,17 @@ class CombatFX {
       c.fillStyle='rgba(19,13,16,0.8)';c.fillRect(0,0,96,96);
     }
     if (torn) {
-      // Head, torso and limbs retain the actual victim's coat and facing.
+      // Head, torso and limbs retain the actual victim's coat and facing. Each piece is its own small
+      // canvas with the cut in blood: the pixels of him along the crop's edges, and only those. It was
+      // a bar laid straight across the top of the whole crop box, most of which is empty air, so a
+      // blast left long red sticks crossing the floor (26 Sep 2026: "strange stripes").
+      const cut=TUNING.effects.goreCut;
       for (const crop of [[20,0,56,35],[15,35,33,30],[48,35,33,30],[15,65,33,31],[48,65,33,31]]) {
-        this.fragment(e.x,e.y,sprite,crop,size*crop[2]/96,size*crop[3]/96,dx,dy,'gore');
+        const pc=CombatFX.canvas(crop[2],crop[3]),g=pc.getContext('2d');
+        g.drawImage(sprite,crop[0],crop[1],crop[2],crop[3],0,0,crop[2],crop[3]);
+        g.globalCompositeOperation='source-atop';g.fillStyle=PALETTE.bloodDark;
+        g.fillRect(0,0,crop[2],cut);g.fillRect(0,crop[3]-cut,crop[2],cut);g.fillRect(0,0,cut,crop[3]);g.fillRect(crop[2]-cut,0,cut,crop[3]);
+        this.fragment(e.x,e.y,pc,[0,0,crop[2],crop[3]],size*crop[2]/96,size*crop[3]/96,dx,dy,'gore');
       }
     } else if (!e.corpsed) {   // a body the spade kept is a prop in the room, not a piece of fx
       // He goes down in profile and ends on his side, a quarter turn, head the way the blow sent
@@ -398,8 +417,7 @@ class CombatFX {
     if(p.image) {
       // Solid: a body at nine-tenths let the floor show through it and read as a ghost.
       c.globalAlpha*=p.material==='char'?0.85:p.material==='body'?1:0.95;c.imageSmoothingEnabled=false;
-      c.drawImage(p.image,...p.crop,-p.width/2,-p.height/2,p.width,p.height);
-      if(p.material==='gore'){c.fillStyle=PALETTE.bloodDark;c.fillRect(-p.width/2,-p.height/2,p.width,2);}
+      c.drawImage(p.image,...p.crop,-p.width/2,-p.height/2,p.width,p.height);   // a gore piece carries its own cut (`death`)
     } else if(p.material==='blood') {
       // A drop is a cell or two along its flight, not a smooth lozenge.
       c.rotate(-p.angle);const px=TUNING.effects.pixel,n=Math.max(1,Math.round(p.width/px));
@@ -416,8 +434,14 @@ class CombatFX {
 
   drawGround(renderer,game) {
     const c=renderer.ctx,w=game.world;
-    // Pools still spreading are drawn live, under every body; a finished one is in the stains.
-    for(const p of this.ground)if(p.pool&&!p.pooled&&p.lay!==undefined&&!game.hidden(p.x,p.y)){const r=this.poolR(p);if(r>=1)CombatFX.pool(c,p.x,p.y,r,p.seed,w);}
+    // Pools still spreading are drawn live, under every body; a finished one is in the stains. Its cells
+    // are worked out again only when it has grown a whole pixel (or the body moved): noise per cell
+    // per pool per frame was a millisecond a body on a floor full of them.
+    for(const p of this.ground)if(p.pool&&!p.pooled&&p.lay!==undefined&&!game.hidden(p.x,p.y)){
+      const r=Math.round(this.poolR(p));if(r<1)continue;
+      const k=p.poolAt;if(!k||k.r!==r||k.x!==p.x||k.y!==p.y)p.poolAt={r,x:p.x,y:p.y,paths:CombatFX.poolPaths(p.x,p.y,r,p.seed,w)};
+      CombatFX.fillPool(c,p.poolAt.paths);
+    }
     for(const p of this.ground)if(!game.hidden(p.x,p.y))this.drawPiece(c,p,false);
   }
 
