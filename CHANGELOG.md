@@ -5,6 +5,12 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.78 — the Discord — 28 Sep 2026
+
+- **JOIN THE DISCORD** is the title menu's last row, in Discord's own blue so it is found without
+  being looked for. It opens the Doomed Goat server (`DISCORD_URL` in `tuning.js`, an invite that
+  never expires) in a new tab, falling back to a plain link click where the artifact frame refuses a popup.
+
 ## 1.77 — answers to the open questions: two souls a floor, the vault is a trap, rooms hold what fits — 26 Sep 2026
 
 Answered on the open-questions page (`BACKLOG.md`, 26 Sep 2026).

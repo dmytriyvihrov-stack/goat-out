@@ -7029,6 +7029,8 @@ class Renderer {
       // "best run 0" read as a run scored nothing; until one is finished the board is levels only
       best: { label: 'BEST', note: board.run ? `(best run ${board.run})` : cleared ? `(${cleared} level${cleared === 1 ? '' : 's'} on the board)` : '(nothing on the board yet)' },
       settings: { label: 'SETTINGS', note: `(clock ${game.settings.timer ? 'on' : 'off'} · sound ${game.settings.sound ? 'on' : 'off'} · easy ${game.settings.easy ? 'on' : 'off'})` },
+      // the one row in someone else's colour, so it is found without being looked for
+      discord: { label: 'JOIN THE DISCORD', note: '(the herd gathers here · opens a new tab)', tint: '#5865f2' },
     };
     const items = MENU.map((id) => rowFor[id]);
     for (let i = 0; i < items.length; i++) {
@@ -7038,16 +7040,16 @@ class Renderer {
       const x = cx - bw / 2 + shake, y = btnTop + i * (bh + gap);
       game.menu.rects.push({ x: cx - bw / 2, y, w: bw, h: bh });
       ctx.globalAlpha = it.locked ? 0.42 : 1;
-      ctx.fillStyle = sel ? '#4a2428' : '#190f16';
+      ctx.fillStyle = it.tint ? (sel ? '#3b3f9e' : '#23265e') : sel ? '#4a2428' : '#190f16';
       ctx.fillRect(x, y, bw, bh);
-      ctx.fillStyle = sel && !it.locked ? PALETTE.blood : PALETTE.ochre;
+      ctx.fillStyle = it.tint || (sel && !it.locked ? PALETTE.blood : PALETTE.ochre);
       ctx.fillRect(x, y, bw, 3 * s);
-      ctx.strokeStyle = sel ? (it.locked ? 'rgba(239,230,208,0.3)' : PALETTE.blood) : 'rgba(239,230,208,0.2)';
+      ctx.strokeStyle = it.tint ? (sel ? '#8a93ff' : it.tint) : sel ? (it.locked ? 'rgba(239,230,208,0.3)' : PALETTE.blood) : 'rgba(239,230,208,0.2)';
       ctx.lineWidth = 2 * s; ctx.strokeRect(x, y, bw, bh);
       // the mark of what is chosen: a horn tip pointing into it, breathing
       if (sel) {
         const pulse = 0.55 + 0.45 * Math.sin(this.t * 3.4);
-        ctx.globalAlpha *= pulse; ctx.fillStyle = it.locked ? PALETTE.bone : PALETTE.blood;
+        ctx.globalAlpha *= pulse; ctx.fillStyle = it.locked ? PALETTE.bone : it.tint ? '#c9cdff' : PALETTE.blood;
         ctx.beginPath(); ctx.moveTo(x + 13 * s, y + bh / 2 - 7 * s); ctx.lineTo(x + 22 * s, y + bh / 2); ctx.lineTo(x + 13 * s, y + bh / 2 + 7 * s);
         ctx.closePath(); ctx.fill();
         ctx.globalAlpha = it.locked ? 0.42 : 1;

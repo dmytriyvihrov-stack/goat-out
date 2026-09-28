@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.77';
+const BUILD = '1.78';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -1591,7 +1591,9 @@ const TUNING = {
 // The first screen, top to bottom. The renderer draws a row per id and `menuPick` acts on one, so
 // the order of the menu lives here and in one place. LEVELS is a way onto any floor of the game
 // without playing up to it: it is a prototype, and the fifth level is worth looking at on a Tuesday.
-const MENU = ['new', 'continue', 'levels', 'best', 'settings'];
+const MENU = ['new', 'continue', 'levels', 'best', 'settings', 'discord'];
+// Where the players gather (28 Sep 2026): the DISCORD row opens it. The invite never expires.
+const DISCORD_URL = 'https://discord.gg/BAFCR32mF7';
 // The LEVELS sheet's switches above its floors: THE TRIP, THE DARK (`Game.menuPick`, `drawLevelPick`).
 const LEVEL_TOGGLES = 2;
 

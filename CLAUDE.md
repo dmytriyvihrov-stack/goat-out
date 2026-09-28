@@ -1038,7 +1038,7 @@ Boons saved by `id` — renaming drops them.
 **Score.** `scoreFor(kills, time, levelIndex, def)`: pace vs par (`score.perRoom`, `fastCap`) × `killMul`
 (`killCap`). `noteBest` / `noteRunBest` under `BEST_KEY`, which `clearRun` never touches.
 
-**Menus.** State `title`, `drawTitle`, `MENU`, `game.menu` (`menuAt`, `menuPick`, `menuKey`). A raised
+**Menus.** State `title`, `drawTitle`, `MENU`, `game.menu` (`menuAt`, `menuPick`, `menuKey`). The last row, JOIN THE DISCORD, opens `DISCORD_URL` (`game.openDiscord`). A raised
 `menu.panel` owns `menu.rects`. LEVELS (`drawLevelPick`, `game.startAtLevel`) deals the souls a run would
 have, touches no save; its first `LEVEL_TOGGLES` rows come before the floors — the `menu.tripPick`
 switch (plays `tripLevel(li)`) and THE DARK's own row. `SETTINGS` / `game.settings` /

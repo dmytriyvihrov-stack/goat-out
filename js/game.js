@@ -1845,6 +1845,7 @@ class Game {
     if (id === 'best') { m.panel = 'best'; return; }
     if (id === 'settings') { m.panel = 'settings'; m.sub = 0; return; }
     if (id === 'continue') { this.resumeRun(); return; }
+    if (id === 'discord') { this.openDiscord(); return; }
     if (this.askedShowroom && !this.dev.hidden) { this.startShowroom(); return; }
     this.clearRun(); this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0;
     this.beasts = {}; this.crowGift = false;
@@ -1852,6 +1853,15 @@ class Game {
     this.runSeed = this.askedSeed || ((Math.random() * 1e9) | 0);
     this.askedSeed = 0;   // a seed off the address is spent on the run it was asked for and no other
     this.startLevel(0, this.levelSeed(0), false, true);
+  }
+  // A new tab, never this one: the run on the title stays where it was. Framed as the artifact a
+  // popup can be refused, so a plain link click is the fallback.
+  openDiscord() {
+    let w = null;
+    // no 'noopener' feature: with it window.open returns null even when the tab opened
+    try { w = window.open(DISCORD_URL, '_blank'); } catch (e) { w = null; }
+    if (w) { try { w.opener = null; } catch (e) { /* cross-origin already */ } return; }
+    try { const a = document.createElement('a'); a.href = DISCORD_URL; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); } catch (e) { /* nothing else to try */ }
   }
   // The pause overlay's own three rows — RESUME, SETTINGS, QUIT TO TITLE — kept apart from the
   // title's own `menu` so pausing mid-level can never disturb what row the title was last left on.
