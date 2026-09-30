@@ -251,6 +251,12 @@ facing the camera. `Renderer.artifactIcon` is the one artifact drawing (HUD chip
   size ordinary and witch (`CombatFX.warm`), a floor's sheets (`Game.warmFloor` → `PaintedArt.warmLevel`:
   the first floor on the title, the next behind the clear cards; `prepare` froze a new floor's first
   frame 0.15–0.45 s). Measure with `tools/perf.js`, which yields between frames.
+- **The rooms are baked** (30 Sep 2026, ~10.5 → ~7 ms a draw on THE ALTAR): `Renderer.drawRoomsBaked` paints
+  `PaintedArt.drawTiles` once per `CAVE_BAKE` tiles into a bitmap (a tile of margin, `ROOM_BAKE_SEAM` px of lap),
+  rebakes a chunk when `roomBakeSig` (its tiles, the secret walls) changes, `ROOM_BAKE_MAX` a frame, and paints
+  one still waiting live. **Anything animated on the tile layer must skip itself while `renderer.baking`** and be
+  laid on live (the stairs' glow, `stairGlow`). Windup cells test only the cells a row of the shape can hold
+  (`drawTelegraphCells`' `span`: a charge strip was 120 000 tests, 12 ms).
 - **A thrown exception inside `draw` costs the rest of the frame.** `drawRunes` once measured against
   raw `castWind` while the timer was `castWind * mods.enemySlow`; the negative radius threw
   `IndexSizeError`. Clamp radii; measure a timer against the duration it was given.

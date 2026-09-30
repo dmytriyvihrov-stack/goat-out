@@ -1209,10 +1209,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     const ctx = this.ctx, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     ctx.drawImage(stairTile(def, k, up, !!cold, (py / TILE | 0) % 3), px, py, TILE, TILE);
     ctx.imageSmoothingEnabled = smooth;
-    if (up && k === 2 && !cold) {
-      const pulse = 0.55 + 0.25 * Math.sin(this.t * 3.4);
-      ctx.fillStyle = `rgba(255,224,138,${pulse * 0.45})`; ctx.fillRect(px + TILE * 0.5, py - 8, TILE * 0.7, TILE + 16);
-    }
+    if (up && k === 2 && !cold && !this.baking) this.stairGlow(px, py);
   };
   // The mouse's pail as tall as the goat, a pip on its hoop for every heart still in it.
   R.drawPail = function (p) {

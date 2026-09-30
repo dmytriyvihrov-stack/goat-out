@@ -44,6 +44,9 @@ const CAVE_BAKE = 8, CAVE_BAKE_MAX = 6, CAVE_BAKE_PX = 24e6;
 // Painted ahead in idle time (`Renderer.warmCave`): chunks round the view, and the idle time a chunk
 // needs left before one is started (one is 2–10 ms).
 const CAVE_AHEAD = 1, CAVE_WARM_MS = 6;
+// The rooms' baked ground (`Renderer.drawRoomsBaked`): chunks painted a frame (one is 1–3 ms; the
+// rest wait a frame painted live), and how far past its box a chunk's bitmap runs, in world px.
+const ROOM_BAKE_MAX = 2, ROOM_BAKE_SEAM = 1;
 
 // The controls, painted on the floor. Nothing about the mouse: a crosshair on a top-down game
 // explains itself, and the floor has room for what it does not. Every block lies in the room that
@@ -408,9 +411,81 @@ class Renderer {
     };
   }
 
+  // THE ROOMS, baked (30 Sep 2026 perf pass: "make a performance improvement"). The square-walled
+  // floors were every visible tile's swatch, wall cap, face strip, outline and litter sixty times a
+  // second — 250 smoothed `drawImage`s, 4.6 of a 10.5 ms draw on THE ALTAR — and none of it moves.
+  // So, as in the cave, it is painted once into a bitmap per `CAVE_BAKE` tiles and the frame is a
+  // dozen `drawImage`s. A chunk is painted from a region a tile wider than itself (a pillar and the
+  // straw run up over the row behind them) onto a bitmap `ROOM_BAKE_SEAM` px wider than its box, so
+  // the next chunk laps over the seam instead of leaving a hairline of the dark at it. It is rebaked
+  // when its tiles change (`roomBakeSig`: a clamp, a niche, ash), `ROOM_BAKE_MAX` a frame; one not
+  // painted yet is painted live as before, so the picture is never wrong, only slower for a frame.
+  // What still moves on this layer, the glow at the top of the stairs, is laid over it live.
+  drawRoomsBaked(game, cam) {
+    const ctx = this.ctx, wd = game.world, K = CAVE_BAKE, S = K * TILE, z = cam.zoom;
+    const B = z > 3 ? 4 : this.caveBakeScale(z), look = (ART_PASS.floors ? 1 : 0) + (ART_PASS.on ? 2 : 0);
+    if (!this.roomBake || this.roomBake.world !== wd || this.roomBake.look !== look) this.roomBake = { world: wd, look, map: new Map(), px: 0, tick: 0 };
+    const bk = this.roomBake; bk.tick++;
+    const v = this.visibleTiles(cam), secret = this.caveRock(game).secret;
+    let budget = ROOM_BAKE_MAX;
+    const c0 = Math.floor(v.x0 / K), c1 = Math.floor(v.x1 / K), r0 = Math.floor(v.y0 / K), r1 = Math.floor(v.y1 / K);
+    for (let cj = r0; cj <= r1; cj++) for (let ci = c0; ci <= c1; ci++) {
+      const key = cj * 65536 + ci, sig = this.roomBakeSig(wd, ci * K, cj * K, secret);
+      let e = bk.map.get(key);
+      if (!e || e.sig !== sig || e.B !== B) {
+        if (budget <= 0) {
+          // its turn has not come: this chunk painted the old way, a tile round so its seams join
+          this.painted.drawTiles(this, game, cam, { x0: Math.max(v.x0, ci * K - 1), y0: Math.max(v.y0, cj * K - 1),
+            x1: Math.min(v.x1, ci * K + K), y1: Math.min(v.y1, cj * K + K) });
+          continue;
+        }
+        budget--; e = this.bakeRoomChunk(game, cam, ci, cj, B, sig, e); bk.map.set(key, e);
+      }
+      e.used = bk.tick;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(e.cv, 0, 0, e.cv.width, e.cv.height, ci * S, cj * S, S + ROOM_BAKE_SEAM, S + ROOM_BAKE_SEAM);
+      ctx.imageSmoothingEnabled = false;
+    }
+    // the light at the top of the way out breathes; it is the one thing here that does
+    const ex = game.level.exitTile;
+    if (ex) for (let ty = v.y0; ty <= v.y1; ty++) {
+      const tx = ex.x0 + 2;
+      if (tx >= v.x0 && tx <= v.x1 && wd.tileAt(tx, ty) === T.EXIT && !Renderer.forkRow(game.level, ty)) this.stairGlow(tx * TILE, ty * TILE);
+    }
+    if (bk.px > CAVE_BAKE_PX) {
+      const old = [...bk.map.entries()].filter(([, e]) => e.used !== bk.tick).sort((a, b) => a[1].used - b[1].used);
+      for (const [k, e] of old) { if (bk.px <= CAVE_BAKE_PX * 0.8) break; bk.px -= e.px || 0; bk.map.delete(k); }
+    }
+  }
+  // A chunk's tiles and the secret walls standing a tile round it, as one number. Not the grass: a
+  // burning field changes it every frame and it is drawn in a pass of its own.
+  roomBakeSig(wd, i0, j0, secret) {
+    const W = wd.W; let h = 23;
+    for (let j = Math.max(0, j0 - 2); j < Math.min(wd.H, j0 + CAVE_BAKE + 2); j++)
+      for (let i = Math.max(0, i0 - 2); i < Math.min(W, i0 + CAVE_BAKE + 2); i++) {
+        const k = j * W + i;
+        h = (Math.imul(h, 31) + wd.tiles[k] * 3 + (secret.has(k) ? 11 : 0)) | 0;
+      }
+    return h;
+  }
+  bakeRoomChunk(game, cam, ci, cj, B, sig, prev) {
+    const K = CAVE_BAKE, bk = this.roomBake, S = K * TILE, size = Math.max(1, Math.round((S + ROOM_BAKE_SEAM) * B));
+    let cv = prev && prev.cv && prev.cv.width === size ? prev.cv : null;
+    if (!cv) { cv = document.createElement('canvas'); cv.width = cv.height = size; }
+    if (prev && prev.px) bk.px -= prev.px;
+    const cx = cv.getContext('2d'), real = this.ctx;
+    cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, size, size);
+    cx.setTransform(B, 0, 0, B, -ci * S * B, -cj * S * B);
+    this.ctx = cx; this.baking = true;
+    try { this.painted.drawTiles(this, game, cam, { x0: ci * K - 1, y0: cj * K - 1, x1: ci * K + K, y1: cj * K + K }); }
+    finally { this.ctx = real; this.baking = false; }
+    bk.px += size * size;
+    return { cv, B, sig, px: size * size, used: bk.tick };
+  }
+
   drawTiles(game, cam) {
     if (game.world.round) { this.drawCaveTiles(game, cam); return; }
-    if (PIXEL_ENV.ready) { this.painted.drawTiles(this, game, cam); return; }
+    if (PIXEL_ENV.ready) { this.drawRoomsBaked(game, cam); return; }
     if (this.altar) { this.altar.drawTiles(this, game, cam); return; }
     const ctx = this.ctx, wd = game.world, def = game.level.def;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
@@ -1171,10 +1246,12 @@ class Renderer {
       // the riser: each step throws a shadow down onto the one below it
       ctx.fillStyle = up ? 'rgba(0,0,0,0.42)' : 'rgba(0,0,0,0.5)'; ctx.fillRect(x, py, 2, TILE);
     }
-    if (up && k === 2 && !cold) {
-      const pulse = 0.55 + 0.25 * Math.sin(this.t * 3.4);
-      ctx.fillStyle = `rgba(255,224,138,${pulse * 0.45})`; ctx.fillRect(px + TILE * 0.5, py - 8, TILE * 0.7, TILE + 16);
-    }
+    if (up && k === 2 && !cold && !this.baking) this.stairGlow(px, py);
+  }
+  // The light at the top of the way out, breathing. Baked rooms lay it on live (`drawRoomsBaked`).
+  stairGlow(px, py) {
+    const pulse = 0.55 + 0.25 * Math.sin(this.t * 3.4);
+    this.ctx.fillStyle = `rgba(255,224,138,${pulse * 0.45})`; this.ctx.fillRect(px + TILE * 0.5, py - 8, TILE * 0.7, TILE + 16);
   }
 
   // The cult's signs (`World.placeOmens`), under the blood: each baked once from `DECAL_PIXELS` at
@@ -3268,21 +3345,41 @@ class Renderer {
   drawTelegraphCells(e, cfg) {
     const ctx = this.ctx, px = TUNING.effects.pixel * 2, f = e.facing;
     const ux = Math.cos(f), uy = Math.sin(f);
-    const fill = (test, n, color) => {
+    // `span(y)`, where given, is the stretch of x a row at world y can hold, so a long charge strip
+    // tests the cells along it and not a square as wide as it is long (30 Sep 2026: 120 thousand
+    // tests a frame, 12 ms, while a butcher wound up a charge).
+    const fill = (test, n, color, span) => {
       ctx.fillStyle = color; ctx.beginPath();
       // Cells sit in counter-squashed space (square on screen), but what they test is the floor: a
       // cell's world y is its local y / TILT. Tested in local space, a diagonal charge strip pointed
       // 4° off and ran long, and a goat half a tile outside it was still run down.
-      for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) if (test((i + 0.5) * px, (j + 0.5) * px / TILT)) ctx.rect(i * px, j * px, px, px);
+      for (let j = -n; j <= n; j++) {
+        const y = (j + 0.5) * px / TILT, sp = span ? span(y) : null;
+        if (span && !sp) continue;
+        const i0 = sp ? Math.max(-n, Math.floor(sp[0] / px) - 1) : -n, i1 = sp ? Math.min(n, Math.ceil(sp[1] / px) + 1) : n;
+        for (let i = i0; i <= i1; i++) if (test((i + 0.5) * px, y)) ctx.rect(i * px, j * px, px, px);
+      }
       ctx.fill();
+    };
+    // the x a row at `y` keeps lo <= a·x + b·y <= hi for each [a, b, lo, hi] of `slabs`, or null
+    const slabSpan = (slabs) => (y) => {
+      let x0 = -Infinity, x1 = Infinity;
+      for (const [a, b, lo, hi] of slabs) {
+        const c = b * y;
+        if (Math.abs(a) < 1e-9) { if (c < lo || c > hi) return null; continue; }
+        const p0 = (lo - c) / a, p1 = (hi - c) / a;
+        x0 = Math.max(x0, Math.min(p0, p1)); x1 = Math.min(x1, Math.max(p0, p1));
+      }
+      return x0 <= x1 ? [x0, x1] : null;
     };
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
     if (e.state === 'chargewind') {
       const C = TUNING.champion.charge, g = e.chargeAim || this.game.goat, run = Math.hypot(g.x - e.x, g.y - e.y) + C.over * TILE;
       const p = this.windP(e, C.wind), len = Math.min(C.speed * C.time, run) * p, n = Math.ceil((len + e.r + C.hit) / px);
       const along = (x, y) => x * ux + y * uy, across = (x, y) => Math.abs(-x * uy + y * ux), w = e.r + C.hit;
-      fill((x, y) => along(x, y) >= 0 && along(x, y) <= len && across(x, y) <= w, n, `rgba(242,170,48,${0.12 + 0.2 * p})`);
-      fill((x, y) => along(x, y) > len - px && along(x, y) <= len && across(x, y) <= w, n, `rgba(255,224,138,${0.45 + 0.45 * p})`);
+      const strip = (a0) => slabSpan([[ux, uy, a0, len], [-uy, ux, -w, w]]);
+      fill((x, y) => along(x, y) >= 0 && along(x, y) <= len && across(x, y) <= w, n, `rgba(242,170,48,${0.12 + 0.2 * p})`, strip(0));
+      fill((x, y) => along(x, y) > len - px && along(x, y) <= len && across(x, y) <= w, n, `rgba(255,224,138,${0.45 + 0.45 * p})`, strip(len - px));
     } else {
       const p = this.windP(e, e.atk ? e.atk('windup') : cfg.windup);
       const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : Math.PI * 0.55, n = Math.ceil(reach / px);
@@ -3359,16 +3456,20 @@ class Renderer {
   // along its middle as lit cells, and a head of cells at the far end so the line still has a direction.
   drawDashCells(e, pts, p) {
     const ctx = this.ctx, px = TUNING.effects.pixel * 2, band = new Set(), mid = [], wr = Math.max(1, Math.round(e.r * 0.8 / px));
+    // The disc's cells once, and the band keyed by a number: string keys split back apart were 2 ms
+    // a frame for one hound's run (30 Sep 2026).
+    const disc = []; for (let j = -wr; j <= wr; j++) for (let i = -wr; i <= wr; i++) if (i * i + j * j <= wr * wr + 0.5) disc.push(i, j);
+    const Z = 32768;
     let run = 0;
     for (let s = 1; s < pts.length; s++) {
       const a = pts[s - 1], b = pts[s], L = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.ceil(L / px));
       for (let k = 0; k < n; k++) {
         const x = a.x + (b.x - a.x) * k / n, y = a.y + (b.y - a.y) * k / n, cx = Math.round(x / px), cy = Math.round(y / px);
-        for (let j = -wr; j <= wr; j++) for (let i = -wr; i <= wr; i++) if (i * i + j * j <= wr * wr + 0.5) band.add((cx + i) + ',' + (cy + j));
+        for (let q = 0; q < disc.length; q += 2) band.add((cy + disc[q + 1] + Z) * 65536 + cx + disc[q] + Z);
         mid.push([cx, cy, run]); run += L / n;
       }
     }
-    const cells = (list, color) => { ctx.fillStyle = color; ctx.beginPath(); for (const c of list) { const [i, j] = typeof c === 'string' ? c.split(',').map(Number) : c; ctx.rect(i * px - px / 2, j * px - px / 2, px, px); } ctx.fill(); };
+    const cells = (list, color) => { ctx.fillStyle = color; ctx.beginPath(); for (const c of list) { const i = typeof c === 'number' ? c % 65536 - Z : c[0], j = typeof c === 'number' ? Math.floor(c / 65536) - Z : c[1]; ctx.rect(i * px - px / 2, j * px - px / 2, px, px); } ctx.fill(); };
     cells(band, `rgba(242,170,48,${0.12 + 0.2 * p})`);
     const off = this.t * 60;
     cells(mid.filter((m) => ((m[2] + off) % 14) < 8), `rgba(255,224,138,${0.4 + 0.5 * p})`);
@@ -3592,7 +3693,15 @@ class Renderer {
           ['coop', 'HEN'], ['tortoise', 'TORTOISE'], ['goose', 'GOOSE'], ['crow', 'CROW'], ['horse', 'HORSE'],
         ] },
       ];
-      const rw = 132 * s, rh = 24 * s, gap = 3 * s, n = Math.max(...cols.map((c) => c.rows.length));
+      // A column taller than the screen above the corner word runs on into another column beside it
+      // (30 Sep 2026: at `dev.uiScale` the drawer's top rows, GOD among them, were off the screen).
+      const rw = 132 * s, rh = 24 * s, gap = 3 * s;
+      const fit = Math.max(4, Math.floor((cy - 22 * s - 20 * s - 8 * s) / (rh + gap)));
+      for (let ci = 0; ci < cols.length; ci++) {
+        if (cols[ci].rows.length <= fit) continue;
+        cols.splice(ci + 1, 0, { head: '', rows: cols[ci].rows.splice(fit) });
+      }
+      const n = Math.max(...cols.map((c) => c.rows.length));
       const boxW = rw * cols.length + 6 * s, boxH = n * (rh + gap) + 38 * s;
       const px0 = pad, py = cy - 22 * s - (n * (rh + gap));
       toastY = py - 30 * s;

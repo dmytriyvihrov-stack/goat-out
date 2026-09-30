@@ -221,9 +221,11 @@ class PaintedArt extends AltarArt {
     ctx.drawImage(this.wallTile(def, mask), x, y, TILE, TILE);
   }
 
-  drawTiles(renderer, game, cam) {
+  // `box` is a region of tiles to paint instead of the view: a chunk being baked, or one painted live
+  // while it waits its turn (`Renderer.drawRoomsBaked`).
+  drawTiles(renderer, game, cam, box) {
     this.prepare(game);
-    const ctx = renderer.ctx, wd = game.world, b = renderer.visibleTiles(cam), lvDef = game.level.def;
+    const ctx = renderer.ctx, wd = game.world, b = box || renderer.visibleTiles(cam), lvDef = game.level.def;
     // THE SHOWROOM lays each floor's stone in its own stretch of the world (`level.zones`).
     const zones = game.level.zones, zoneDefs = game.level.zoneDefs;
     let def = lvDef;
