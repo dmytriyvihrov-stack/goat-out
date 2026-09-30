@@ -5,6 +5,32 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.81 — suits of armour, a stag's head, the horse's stall and its race, the rite below heaven, a faster frame — 30 Sep 2026
+
+One message (30 Sep 2026), with two screenshots.
+
+- **Suits of armour** (Enter the Gungeon's) stand by some walls, and three in THE ARMORY. A body flung
+  into one, or landing beside it, a charge, a thrown crate or barrel, a blast: it comes apart — helm,
+  breastplate, gauntlets, greaves flying off as `js/scatter.js` bits, left lying to be kicked — and the
+  empty stand stays. It kills nobody (pillar 3); a headbutt only rattles it. `TUNING.prop.armor`,
+  `GEN_RULES.armor`.
+- **A stag's head on the far wall**, now and then. A man thrown into its antlers hangs there even if he
+  was too slow to die on the stone beside it; a two-hit man loses a heart and is pinned a few seconds.
+  One body a head. `TUNING.prop.trophy`, `GEN_RULES.trophies`. At most one of the two in a room, two of
+  each a floor, never with a chandelier ("don't overload the room").
+- **The horse has a stall**: 3x2 tiles of heavy slats, two blows to open, before the first soul gate.
+- **The horse's race runs in legs** to the soul rooms: it waits at the gate until the soul is taken, then
+  runs on. Beat it into at least one soul room and it pays (banked at the stairs as before). Its speed is
+  unchanged ("its speed is top").
+- **Below heaven, the rite.** Through the drop the cult no longer walks the yard: a ring of candles, a fire,
+  the ewe bound on an altar, eight robed men walking, bowing and raising their arms round her, the mage at
+  her head. `TUNING.heaven.ritual`.
+- **A faster frame.** The rooms' floors and walls are baked in chunks instead of 250 tile draws a frame
+  (`Renderer.drawRoomsBaked`: 4.6 → 0.3 ms on THE ALTAR); a butcher's charge strip tests only the cells
+  along it (12 → 1 ms a windup); a hound's run line keys its cells by number.
+- **The dev drawer fits the screen**: a column too tall for the window runs on into another beside it
+  (its top rows, GOD among them, were off the top).
+
 ## 1.80 — the road between floors, chandeliers, tables that go over, souls banked in heaven — 29 Sep 2026
 
 Twelve notes in one message (29 Sep 2026), with screenshots.
