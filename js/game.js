@@ -1070,7 +1070,11 @@ class Game {
     // The JUICE tab: a filter, a page, a row opened out, and the table handed over as Markdown.
     if (id.startsWith('juice-filter=')) { this.dev.juiceFilter = id.slice(13); this.dev.juicePage = 0; return; }
     if (id.startsWith('juice-page=')) { this.dev.juicePage = (this.dev.juicePage || 0) + Number(id.slice(11)); return; }
-    if (id.startsWith('juice-row=')) { const n = id.slice(10); this.dev.juiceSel = this.dev.juiceSel === n ? null : n; return; }
+    // The live preview (js/juice-preview.js): ▶ PLAY on a row, and the chips of its box. With the box
+    // open, a click on another row plays that one in it too.
+    if (id.startsWith('juice-play=') || id.startsWith('juice-pv=')) { JuicePreview.action(this, id); return; }
+    if (id.startsWith('juice-row=')) { const n = id.slice(10); this.dev.juiceSel = this.dev.juiceSel === n ? null : n;
+      if (JuicePreview.row && JuicePreview.kind(n) && JuicePreview.row !== n) JuicePreview.open(this, n); return; }
     // The ART tab: a per-session tick, never saved — the checklist is worked through once per art
     // pass, not tracked as a record.
     if (id.startsWith('art-check=')) { this.dev.artChecked = this.dev.artChecked || {}; const k = id.slice(10); this.dev.artChecked[k] = !this.dev.artChecked[k]; return; }

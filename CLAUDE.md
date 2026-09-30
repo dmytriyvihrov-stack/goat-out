@@ -83,6 +83,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/showroom.js` | THE SHOWROOM (dev only: SHOWROOM in the dev drawer, or `#showroom` + NEW GAME): `showroomLevel`, a laid (not rolled) floor — a hall with every prop named on the floor, a door of every kind in blind alcoves, a wall that gives — then one room per floor in its own stone and canon furniture (`level.zones` / `zoneDefs`, read per tile by `PaintedArt.drawTiles`). `game.showroomOn` holds it through a death; the stairs, the title or any other start let it go. |
 | `js/rules.js` | `GEN_RULES`, the generator's promises with a `check(level)` each; `checkRules`, `roomsOf`, `levelFacts`. Read by the dev drawer's RULES page and by `tools/balance.js`. |
 | `js/juice.js` | `JUICE`, the game-feel catalogue: every effect with trigger, look, size (read off `TUNING`), code pointer, source and a Godot 4 recipe. Read by the JUICE tab and `tools/juice-md.js`. |
+| `js/juice-preview.js` | `JuicePreview`: the JUICE tab's live preview — `JUICE_PLAY` (row → staged scene, what EFFECT OFF turns down), `JUICE_SCENES` (a room laid by hand, what is pressed when), `JUICE_NOPLAY` (why a row has none); the stage is `Object.create(game)` stepped by `Game.update` and drawn by its own `Renderer`. Dev only; loads after `goat-grid.js`. |
 | `js/foley.js` | `Foley`: every sound effect as a physical model rendered into a buffer (struck modes, a throat through formants, shaped noise), plus the short room's impulse. Pure JS, renders in node too. |
 | `js/skill-icons.js` | `SKILL_ICONS`: the skill rail's chips as pixel sprites, one per verb and active soul, with passive marks; used by `Renderer.skillIcon` and the boon card. |
 | `js/audio.js` | WebAudio. Buses, the room, the drum machine, the music bed (`MUSIC`), and `sfx*`: every one-shot effect as a `foley` call. |
@@ -277,7 +278,12 @@ tiles: weight, not alarm, always under a lost heart (26 Sep 2026). Only `Goat.da
 `squashGoat` (`goat.sqLeft`), `game.flares`, `enemy.flash`, `drawHeartbeat`, `effects.bloodScale`,
 `goat.bleed` (last heart only), `game.killMarks` on the death pull-back. The **JUICE tab**
 (`drawJuiceTab`, `#juice`) is `JUICE`; add an effect, add its row; `node tools/juice-md.js` writes
-`JUICE.md`.
+`JUICE.md`. ▶ PLAY on a row is the live preview (`JuicePreview`, `js/juice-preview.js`): the effect
+looping in a staged room beside the table, stepped by the real `Game.update` on `Object.create(game)`
+(its own lists and state, everything that saves stubbed, sound through a stand-in) and drawn by a second
+`Renderer` offscreen, so the run under the tab is never touched; EFFECT OFF turns the row's dial down
+round the preview's own frame only. A new row gets a scene in `JUICE_PLAY` / `JUICE_SCENES` (or a reason
+in `JUICE_NOPLAY`); one staged by setting a thing by hand says `approx`.
 
 **Effects are pixels too.** Fire, blasts, dust and blood sprays are frames `CombatFX` bakes itself
 (`flameFrames`, `burstFrames`, lazily per frame, pre-warmed by `CombatFX.warm`) at `effects.pixel`
