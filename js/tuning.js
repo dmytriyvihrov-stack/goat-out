@@ -1781,7 +1781,7 @@ const PAUSE_MENU = [
 // generator always sent it (its canon, the mix of known canons, its tag). Written from the dev
 // drawer's ROOMS tab (`drawRoomsTab`); read by `roomAllowed` in gen.js for every pool.
 const ROOM_LEVELS = {
-  armory: '0111111110',
+  armory: '0111111100',
 };
 
 const SETTINGS = [

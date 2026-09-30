@@ -394,7 +394,7 @@ the habit with no string (canon's floor and the floors that know it, untagged ev
 traps are laid). The ROOMS tab (`drawRoomsTab`, `#roomlist`) ticks it and writes it through
 `/tuning-edit`. **THE ARMORY** (`ARMORY_TEMPLATE`, `tag: 'armory'`, `TUNING.rooms.armory`): set into one
 ordinary room (`armoryAt`, its own RNG) at `chance` on floors its string allows, from room `from`, a mix
-room or a canon room the canon can spare; role `mix`. `GEN_RULES.armory`.
+room or a canon room the canon can spare; role `mix`; never THE DARK (its lamps need the walls). `GEN_RULES.armory`.
 **Things that go off** (`TUNING.prop.clutter`, `activeIn`): brazier, lamp, barrel, chandelier, bomb;
 barrels, the chandelier and the bomb are only added to a room under `max`, barrels in the `edge` band.
 `GEN_RULES.clutter`.

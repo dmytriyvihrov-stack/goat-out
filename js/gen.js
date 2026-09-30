@@ -297,7 +297,9 @@ function tryGenerate(levelDef, seed, opts) {
   let armoryAt = -1;
   {
     const AR = TUNING.rooms.armory, arng = new RNG(((seed ^ 0x0a4a0e1) >>> 0));
-    if (roomAllowed(ARMORY_TEMPLATE, levelDef) && arng.chance(AR.chance)) {
+    // Never THE DARK, whatever its string says: its walls are all arms, and THE DARK stands its lamps
+    // against a room's walls (`GEN_RULES.dark`).
+    if (!levelDef.dark && roomAllowed(ARMORY_TEMPLATE, levelDef) && arng.chance(AR.chance)) {
       // A mix room if there is one; a canon room only while the canon keeps its share without it.
       // (it counts as a mix room, so the canon must keep its share without it)
       const spareCanon = canonRooms.size - 1 >= Math.ceil(CANON.share * ordinaryRooms(levelDef, n).length);

@@ -123,7 +123,7 @@ Twelve notes in one message (29 Sep 2026), with screenshots.
   and barrels stand in a band two tiles in from the walls, not mid-floor. `GEN_RULES.clutter`.
 - **THE ARMORY**, a room of several floors: tight, a stand of arms every other step round its walls,
   ordinary men; set into one ordinary room on half of the floors it is allowed on (THE YARD to THE
-  OSSUARY and THE DARK by default; THE ROAD and THE BRIDGE are so full of set pieces that no mix room
+  OSSUARY by default, never THE DARK, whose lamps need its walls; THE ROAD and THE BRIDGE are so full of set pieces that no mix room
   is left for it). `GEN_RULES.armory`.
 - **Where each room may stand** (`ROOM_LEVELS`, tuning.js) and the dev drawer's **ROOMS** tab: every
   room template a tick a floor (the eight, THE DARK, THE TRIP); dim ticks are the generator's own habit,
