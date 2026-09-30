@@ -47,7 +47,8 @@ Five verbs and nothing else. Souls change what a button does; they never add one
 | ROLL | E | a clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
 | BAAH | space | a noise every man who hears it walks toward, and a committed blow inside it falters. A soul makes it a stun or a cone of fire |
 | — | Q | only with a talisman that has a use of its own (the boomerang, the strange symbols, the straw effigy) |
-| tap after death | Backspace | the floor again, from a new seed |
+| tap after death | click after death | up to the pasture above; walk off its edge for the floor again, from a new seed |
+| — | Backspace | the floor again at once, from a new seed (from the death card, or from the pasture) |
 | — | Esc | pause |
 | — | M | mute |
 
@@ -131,7 +132,16 @@ numbers where it stands: a mirror shard that turns a blow back, a spade that lea
 over, a boomerang on Q, and so on.
 
 **Animals.** From the second floor a coop holds an animal — a hen, a goose, a crow, a tortoise, a
-horse. Break it open and get the animal to the stairs alive, and it pays you for the rest of the run.
+horse. Break it open and get the animal to the stairs alive, and it pays you for the rest of the run,
+and takes its seat in the pasture above for good.
+
+**The pasture above.** A death goes up before it comes back down: two rooms of cloud where the goat god
+sits in his light and has a great deal to say about it (GRAB to listen, BAAH to argue), a blind shepherd
+combs you if you stand by him and GRAB, five bells play a tune if you butt the right ones, and a feast
+waits to be knocked off its table. Every man the cult loses is a sacrifice to the god, and every floor
+you climb out of is ten; **the mirror** trades them for things that stay with you from run to run —
+more hearts, hearts of light, quicker grazing, a quicker roll, longer mercy after a blow. Walk off the
+edge of the second room and you fall back into the floor, built again from a new seed.
 
 **A room that fights back.** Braziers that spill coals when you headbutt them, spreading hay fire,
 barrels that roll and burst, doors you smash through, tables that slide and crush, oil lamps that go

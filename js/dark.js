@@ -26,6 +26,9 @@ const Dark = {
       if (p.kind === 'brazier') add(p.x, p.y, L.brazier);
       else if (p.kind === 'lamp') add(p.x, p.y, L.lamp);
       else if (p.kind === 'sconce') add(p.x, p.y, L.sconce);
+      // A door on a clock lights itself while it counts (see `game.update`'s fog pass): in the dark
+      // that is a light, or nine in ten of them counted down where nobody could see them.
+      else if (p.kind === 'door' && p.timed) { const r = game.level.rooms[p.clockRoom]; if (r && r.seen) add(p.x, p.y, L.sconce); }
       else if (p.kind === 'barrel' && p.oilT >= 0) add(p.x, p.y, L.burning);   // lit oil, as bright as a man alight
     }
     // Fire on the floor is cast a two-by-two block at a time, from the middle of what burns in it

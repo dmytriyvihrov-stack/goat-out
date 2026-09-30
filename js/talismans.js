@@ -84,9 +84,12 @@ const Talisman = {
         g.sandalT = sd.time;
         if (sd.reset) { g.rollCd = 0; g.screamCd = 0; }
         game.dust(g.x, g.y, 6, 0, 0); game.ring(g.x, g.y, 1.2 * TILE, PALETTE.fireHi, 0.35, 2);
-        if (sd.shake) {
-          for (const e of behind) { e.aware = false; e.target = { x: g.x, y: g.y }; e.state = 'investigate'; e.lostTimer = 0; e.decoyT = 1.2; }
-          game.floatText(behind[0].x, behind[0].y - 30, 'SHAKEN OFF', PALETTE.bone);
+        // Shaken off means a man on your heels loses the scent — never one in flight, down, mid-leap
+        // or mid-blow: resetting those stopped a thrown body short of its wall and an ogre over a drop.
+        const heels = sd.shake ? behind.filter((e) => (e.state === 'chase' || e.state === 'investigate') && !Talisman.decoyProof(e)) : [];
+        if (heels.length) {
+          for (const e of heels) { e.aware = false; e.target = { x: g.x, y: g.y }; e.state = 'investigate'; e.lostTimer = 0; e.decoyT = 1.2; }
+          game.floatText(heels[0].x, heels[0].y - 30, 'SHAKEN OFF', PALETTE.bone);
         }
       }
     }
@@ -297,7 +300,7 @@ const Talisman = {
       if (o.state === 'flung' || o.state === 'floored' || o.state === 'stunned' || o.state === 'burning') continue;
       const busy = o.state === 'windup' || o.state === 'swing' || o.state === 'aim' || o.state === 'cast' || o.state === 'slamwind' || o.state === 'dart' || o.state === 'chargewind';
       if (busy && !MK.drop) continue;
-      if (busy && o.kind === 'hunter') o.reload = o.cfg.reload;
+      if (busy && o.kind === 'hunter') o.reload = o.cfg.reload * m.enemySlow;
       o.rune = null; o.dashPath = null;
       o.state = 'flee'; o.timer = MK.flee; o.fleeFrom = { x: e.x, y: e.y }; o.panicCd = MK.cd;
       if (MK.blind) o.hazardBlind = MK.flee;
@@ -420,7 +423,7 @@ const Talisman = {
       if (e.kind === 'hunter' && F.shots) {
         e.vx = 0; e.vy = 0; e.facing = Math.atan2(f.y - e.y, f.x - e.x);
         if (e.reload <= 0 && d < e.cfg.sight * TILE && w.los(e.x, e.y, f.x, f.y)) {
-          game.fireBullet(e, (f.x - e.x) / (d || 1), (f.y - e.y) / (d || 1)); e.reload = e.cfg.reload;
+          game.fireBullet(e, (f.x - e.x) / (d || 1), (f.y - e.y) / (d || 1)); e.reload = e.cfg.reload * game.mods.enemySlow;
         }
         continue;
       }
@@ -593,9 +596,10 @@ const Talisman = {
       for (const [wx, wy, col] of targets) {
         const sx = r.vcx + (wx - cam.x) * z, sy = r.vcy + (wy - cam.y) * z * TILT;
         const pad = 26 * s;
-        if (sx > pad && sx < r.w - pad && sy > pad && sy < r.h - pad) continue;
+        // Against the play view (`vh`), not the whole canvas: on a portrait phone the arrow sat in the touch band.
+        if (sx > pad && sx < r.w - pad && sy > pad && sy < r.vh - pad) continue;
         const a = Math.atan2(sy - r.vcy, sx - r.vcx);
-        const ex = clamp(r.vcx + Math.cos(a) * r.w, pad, r.w - pad), ey = clamp(r.vcy + Math.sin(a) * r.h, pad, r.h - pad);
+        const ex = clamp(r.vcx + Math.cos(a) * r.w, pad, r.w - pad), ey = clamp(r.vcy + Math.sin(a) * r.vh, pad, r.vh - pad);
         ctx.save(); ctx.translate(ex, ey); ctx.rotate(a); ctx.globalAlpha = 0.75;
         ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(10 * s, 0); ctx.lineTo(-6 * s, -6 * s); ctx.lineTo(-3 * s, 0); ctx.lineTo(-6 * s, 6 * s); ctx.closePath(); ctx.fill();
         ctx.restore();

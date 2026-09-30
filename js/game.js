@@ -7,6 +7,9 @@ const DEATH_KEY = 'goatout.deaths.v1';   // dev: burst deaths against bleeds, th
 // Whether this browser has watched the opening scene through once. The first time is not skippable:
 // everything the run means is in it, and a key pressed to start the game should not also end it.
 const SEEN_KEY = 'goatout.intro.v1';
+// The cult's two cards over a cleared floor ("Do you want sacrifices?" / "You will get sacrifices!"),
+// once in a browser's life: every floor was too many (29 Sep 2026, "said once it is fine").
+const SACRIFICE_KEY = 'goatout.sacrifices.v1';
 // The same for the mage at the first gate (`TUNING.bless`): watched once, a press gets you past it.
 const BLESS_KEY = 'goatout.bless.v1';
 // What the player turned on. Two switches, and the game runs the same without either of them.
@@ -123,6 +126,7 @@ class Game {
     try { this.blessSeen = localStorage.getItem(BLESS_KEY) === '1'; } catch (e) { /* storage refused */ }
     try { this.penBroken = localStorage.getItem(PEN_KEY) === '1'; } catch (e) { /* storage refused */ }
     this.settings = this.loadSettings();
+    Heaven.load();   // what stays across deaths and runs: the sacrifices, the mirror, the seats (js/heaven.js)
     this.dev.god = !!this.settings.god;   // GOD MODE, thrown in SETTINGS or the drawer, outlives a reload
     this.audio.setLayered(this.settings.layeredMusic);
     if (!this.settings.sound) this.audio.toggleMute();
@@ -159,6 +163,7 @@ class Game {
     this.showTitle();
     // The floor NEW GAME or CONTINUE opens on, its sheets baked while the title is up (`warmFloor`).
     this.warmFloor(LEVELS[this.save && LEVELS[this.save.level] ? this.save.level : 0], 1200);
+    setTimeout(() => Heaven.warm(), 4000);   // heaven's picture, before the first death needs it
     this.last = performance.now(); this.acc = 0; this.lastRaf = this.last;
     // The next frame is asked for before this one runs, and a throw inside one is logged and eaten:
     // one bad frame used to end the rAF chain for good, and the rest of the session limped on the
@@ -170,6 +175,10 @@ class Game {
         // every frame with a different radius was a new key (and a new line) every frame.
         const k = String(e && e.name) + '@' + String(e && e.stack || e).split('\n')[1];
         if (!this.frameErrs.has(k) && this.frameErrs.size < 200) { this.frameErrs.add(k); console.error(e); }
+        // Unwind the canvas: a throw between a save() and its restore() left that frame's clip, alpha
+        // or filter at the bottom of the stack, and every frame after drew through it until a reload.
+        const c = this.renderer && this.renderer.ctx;
+        if (c && !this.renderer.baking) { if (c.reset) c.reset(); else c.canvas.width = c.canvas.width; c.imageSmoothingEnabled = false; }
       }
     };
     const raf = (t) => { this.lastRaf = t; requestAnimationFrame(raf); safeFrame(t); };
@@ -187,6 +196,7 @@ class Game {
     for (const b of this.boons) if (b.active) b.apply(this.mods, b.params || {});
     for (const b of this.boons) if (!b.active) b.apply(this.mods, b.params || {});
     if (this.artifact) Shop.applyArtifact(this.mods, this.artifact);
+    Heaven.applyMeta(this.mods);   // what THE MIRROR has bought, under every run (js/heaven.js)
     if (this.settings.easy) { this.mods.maxHp += EASY.maxHp; this.mods.enemySlow *= EASY.enemySlow; }
     this.mods.maxHp += this.henHearts || 0;   // the hens he brought out with him, one heart a level
     Beast.applyRewards(this, this.mods);      // and the escorts he walked to the stairs (js/beasts.js)
@@ -271,7 +281,7 @@ class Game {
     sg.prop.broken = true; sg.prop.dead = true;
     // The middle gate holds his place (`holdGate`) from `soul.hold.from` on, once what opened it
     // is settled: the soul's card taken, the rat ogre she turned into down.
-    if (sg === this.soulGates[0] && this.levelIndex >= TUNING.soul.hold.from && !this.checkpoint) this.holdAt = room;
+    if (TUNING.soul.hold.on && sg === this.soulGates[0] && this.levelIndex >= TUNING.soul.hold.from && !this.checkpoint) this.holdAt = room;
     this.audio.sfxSteel(); this.audio.sfxBell(); this.shake(6); this.flash(PALETTE.witchHi, 0.18);
     this.ring(sg.prop.x, sg.prop.y, 3.4 * TILE, PALETTE.witch);
     this.particles(sg.prop.x, sg.prop.y, 22, PALETTE.witch, 230);
@@ -286,6 +296,10 @@ class Game {
     // Not in the middle of a fight with the rat ogre; but one left alive behind him (run past, not
     // killed) no longer costs the whole floor its checkpoint.
     const near = (e) => { const r = roomAt(this.level, e.x, e.y); return Math.abs((r ? r.index : this.nearestRoomIdx(e.x, e.y, this.goatRoom || 0)) - (this.goatRoom || 0)) <= 1; };
+    // Held off that long, the gate is no longer where he is: a snapshot taken rooms later carried
+    // souls and kills from past it (the last boss's soul, dealt again on the rebuilt floor). A fight
+    // with her ogre that runs on past the next room costs the floor its checkpoint instead.
+    if ((this.goatRoom || 0) > this.holdAt + 1) { this.holdAt = -1; return; }
     if (g.dead || this.enemies.some((e) => e.kind === 'ratogre' && !e.dead && near(e))) return;
     // The animal with him — in his mouth, at his side, or ahead of him — comes back with him.
     // Never the crow's gift bird (`Beast.placeGift`): kept as the pet, it came back a real crow and
@@ -689,6 +703,39 @@ class Game {
     const tx = Math.floor(e.x / TILE), ty = Math.floor(e.y / TILE);
     return w.seesTile(tx, ty) || w.seesTile(tx, Math.floor((e.y - TILE * 0.6) / TILE));
   }
+  // A table butted off the edge above (`Prop.fall` in heaven) comes down here on a man the goat can
+  // see: its shadow finds him and follows him until it is `lock` s from landing, so a man who moves
+  // in that last beat walks out from under it. Whoever is under it then is crushed; the goat never.
+  // It lands on its side and stays, a table like any other (`TUNING.heaven.tables`).
+  updateSkyTables(dt) {
+    const S = this.skyTables, C = TUNING.heaven.tables, roll = (r) => r[0] + Math.random() * (r[1] - r[0]);
+    for (const d of S.drops) {
+      d.vz += C.grav * dt; d.z -= d.vz * dt;
+      const lockZ = d.vz * C.lock + 0.5 * C.grav * C.lock * C.lock;
+      if (d.z > lockZ && d.e && !d.e.dead && !d.e.held) { d.x = d.e.x; d.y = d.e.y; }
+      if (d.z > 0) continue;
+      d.done = true;
+      for (const e of this.enemies) {
+        if (e.dead || e.held || e.ghosted || e.state === 'hop' || e.state === 'hidden') continue;
+        if (Math.hypot(e.x - d.x, e.y - d.y) <= C.killR + e.r * 0.5) e.die(this, 'splat', 0, 1);
+      }
+      const t = new Prop(d.x, d.y, 'table'); this.props.push(t); t.flipTable(this, Math.cos(d.spin), Math.sin(d.spin));
+      this.thud(d.x, d.y, 6); this.audio.sfxThud(); this.audio.sfxCrack();
+      this.dust(d.x, d.y, 8, 0, 0); this.particles(d.x, d.y, 16, PALETTE.wood, 190);
+      this.world.emitNoise(d.x, d.y, TUNING.noise.smash);
+    }
+    S.drops = S.drops.filter((d) => !d.done);
+    if (S.n <= 0) { if (!S.drops.length) this.skyTables = null; return; }
+    if ((S.t -= dt) > 0) return;
+    const g = this.goat, v = this.renderer.view(this.cam);
+    const pool = this.liveEnemies.filter((e) => !e.dead && !e.held && !e.ghosted && !e.scripted && e.state !== 'hidden' && e.state !== 'hop'
+      && Math.abs(e.x - this.cam.x) < v.w / 2 && Math.abs(e.y - this.cam.y) < v.h / 2 && !this.hidden(e.x, e.y) && this.sees(g.x, g.y, e.x, e.y));
+    if (!pool.length) { S.t = C.retry; return; }
+    const e = pool[Math.floor(Math.random() * pool.length)];
+    S.drops.push({ e, x: e.x, y: e.y, z: C.z, vz: 0, spin: Math.random() * Math.PI * 2, table: new Prop(e.x, e.y, 'table') });
+    S.n--; S.t = roll(C.gap);
+    this.audio.sfxSwing();
+  }
   hidden(x, y) {
     if (!this.level) return false;
     if (this.niches) {
@@ -950,6 +997,11 @@ class Game {
     if (id === 'hearing') { this.dev.hearing = !this.dev.hearing; return; }
     if (id === 'dark') { this.dev.dark = !this.dev.dark; return; }
     if (id === 'showroom') { this.dev.open = false; this.startShowroom(); return; }
+    // Straight up to heaven from a floor under way, as a death would send him (js/heaven.js), and a
+    // heap of sacrifices to try the mirror with.
+    if (id === 'godtalk') { try { window.open('tools/god-talk.html', '_blank'); } catch (e) { /* no window */ } return; }
+    if (id === 'heaven') { if (this.level && !this.level.def.heaven && this.goat && (this.state === 'play' || this.state === 'paused')) { this.dev.open = false; this.deaths++; this.saveRun(); Heaven.enter(this); } return; }
+    if (id === 'sacrifices') { Heaven.meta.sacrifices += 100; Heaven.meta.souls = (Heaven.meta.souls || 0) + 5; Heaven.save(); this.devToast(`${Heaven.meta.sacrifices} SACRIFICES · ${Heaven.meta.souls} SOULS`); return; }
     if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) { this.dev.page = this.level ? this.levelIndex : 0; this.dev.room = null; } return; }
     if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); this.dev.room = null; return; }
     if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; this.dev.samples = {}; this.dev.matrix = null; this.dev.room = null; return; }
@@ -975,7 +1027,7 @@ class Game {
     if (id === 'art-reset') { this.dev.artChecked = {}; return; }
     // The looks under comparison (`ART_PASS`). The cave's rock is baked in chunks off its colour, so a
     // switch of the pass asks for them again.
-    if (id === 'art-pass') { ART_PASS.set(!ART_PASS.on); if (this.world && this.world.caveDirty) this.world.caveDirty(); return; }
+    if (id === 'art-pass') { ART_PASS.set(!ART_PASS.on); if (this.world && this.world.caveDirty) this.world.caveDirty(); this.renderer.bake = null; return; }
     if (id === 'art-hunter') { ART_PASS.hunter = (ART_PASS.hunter + 1) % PIXEL_STUDY.hunter.length; return; }
     if (id === 'art-floors') { ART_PASS.floors = !ART_PASS.floors; return; }
     if (id === 'art-clubman') { ART_PASS.clubman = (ART_PASS.clubman + 1) % PIXEL_STUDY.clubman.length; return; }
@@ -993,6 +1045,20 @@ class Game {
     // through the dev server started for this session — see tools/tuning-patch.js. Off the dev
     // server (the published artifact, or index.html opened as a bare file) the write simply has
     // nowhere to land and the edit stays session-only, which is why the fetch is best-effort.
+    // BOONS tab, HAVE: give the goat that one upgrade now, or take it back — no card, no slot rule,
+    // and the head of the floor with it, so a death keeps what was set here (29 Sep 2026, "let me
+    // edit single upgrades in the dev tools").
+    if (id.startsWith('boon-have=')) {
+      const b = BOONS.find((x) => x.id === id.slice(10));
+      if (!b || !this.goat || !this.boons) return;
+      const k = this.boons.indexOf(b);
+      if (k >= 0) this.boons.splice(k, 1); else this.boons.push(b);
+      this.levelBoons = this.boons.slice();
+      this.applyBoons();
+      if (this.goat.hp > this.goat.maxHp) this.goat.hp = this.goat.maxHp;
+      this.devToast((k >= 0 ? 'TAKEN: ' : 'GIVEN: ') + b.name);
+      return;
+    }
     if (id.startsWith('boon-edit=')) {
       const [boonId, ...pathParts] = id.slice(10).split('.');
       const b = BOONS.find((x) => x.id === boonId);
@@ -1300,7 +1366,10 @@ class Game {
       // whenever somebody turned the sound down.
       if (KEYBOARD_KEY.test(e.code)) this.touch.active = false;
       if (e.code === 'Space') { this.input.spacePressed = true; e.preventDefault(); }
-      if (e.code === 'Backspace') { e.preventDefault(); this.restartLevel(); }
+      // The mirror, open, takes its own keys (js/heaven.js): its rows, a buy, looking away.
+      if (this.state === 'heaven' && this.heaven && this.heaven.panel && Heaven.panelKey(this, e.code)) { e.preventDefault(); wake(); return; }
+      // Backspace up in heaven is the jump, at once: a death is still a restart under a second away.
+      if (e.code === 'Backspace') { e.preventDefault(); if (this.state === 'heaven' && this.heaven) Heaven.leave(this); else this.restartLevel(); }
       // Escape out of actual play pauses in place rather than dropping to the title — the room
       // stays exactly as it is and RESUME is the only way this function runs again. Escape out of
       // the pause overlay's own settings panel backs out one step, the way it always has from the
@@ -1310,10 +1379,10 @@ class Game {
       // same keypress cannot pause and immediately unpause itself in one event.
       if (e.code === 'Escape' && !this.dev.rules) {
         e.preventDefault();
-        if (this.state === 'play') { this.state = 'paused'; this.pause.index = 0; this.menu.panel = null; this.audio.sfxCard(); }
+        if (this.state === 'play' || this.state === 'heaven') { this.pauseFrom = this.state; this.state = 'paused'; this.pause.index = 0; this.menu.panel = null; this.audio.sfxCard(); }
         else if (this.state === 'paused') {
           if (this.menu.panel) { this.menu.panel = null; this.audio.sfxSwing(); }
-          else { this.state = 'play'; this.audio.sfxSwing(); }
+          else { this.state = this.pausedIn(); this.audio.sfxSwing(); }
         }
         // Not off the clear card or the climb: the run is only saved at the head of the next level,
         // so leaving there went back to the head of the one just won.
@@ -1353,6 +1422,9 @@ class Game {
       if (this.state === 'clear') this.input.mouse = p;   // a finger on SAVE is where the press was, too
       if (this.state === 'title') {
         this.touch.active = !isMouse(e); this.input.mouse = p;
+        // A finger's press is not a gesture a browser opens a tab for (only its lift is), so on a
+        // phone the Discord row did nothing at all: it is taken on the lift instead, below.
+        if (e.pointerType !== 'mouse' && !this.menu.panel && MENU[this.menuAt(p)] === 'discord') { this.discordPointer = e.pointerId; return; }
         this.menuPanelClick(p);
         return;
       }
@@ -1368,6 +1440,11 @@ class Game {
         this.boonDown = this.boonArm > 0 ? -1 : this.boonAt(p); this.boonPointer = e.pointerId;
         return;
       }
+      // The mirror, open (js/heaven.js): a row is a buy, the right button looks away.
+      if (this.state === 'heaven' && this.heaven && this.heaven.panel) {
+        this.touch.active = !isMouse(e); this.input.mouse = p;
+        Heaven.panelClick(this, p, isMouse(e) && e.button === 2); return;
+      }
       if (isMouse(e)) {
         this.touch.active = false; this.input.anyPressed = true; this.input.mouse = p;
         if (e.button === 0) this.input.lmbPressed = true;
@@ -1378,17 +1455,20 @@ class Game {
       this.touch.active = true; this.input.anyPressed = true;
       // The mage's scene at the first gate says TAP TO SKIP and runs in `play`: a tap is the skip,
       // not a thumb on the stick that walks him off the moment it ends.
-      if (this.state === 'play' && this.bless && this.bless.on) { this.input.lmbPressed = true; return; }
-      if (this.state !== 'play') {
+      // The pause chip is still drawn over it, and is still the pause: it used to be a skip tap.
+      const pr = this.touch.pauseRect, onPause = pr && p.x >= pr.x && p.x <= pr.x + pr.w && p.y >= pr.y && p.y <= pr.y + pr.h;
+      if (this.state === 'play' && this.bless && this.bless.on && !onPause) { this.input.lmbPressed = true; return; }
+      // Up in heaven the thumbs play as below, but a tap turns the god's page.
+      const walking = this.state === 'play' || (this.state === 'heaven' && this.heaven && !this.heaven.talk);
+      if (!walking) {
         this.input.lmbPressed = true;
         // A thumb put down under the level card, the climb or the scene is on the stick when play
         // starts; before, the goat stood still until it was lifted and put down again.
         if (this.state === 'card' || this.state === 'climb' || this.state === 'intro') this.touch.down(e.pointerId, p.x, p.y, this);
         return;
       }
-      const pr = this.touch.pauseRect;
-      if (pr && p.x >= pr.x && p.x <= pr.x + pr.w && p.y >= pr.y && p.y <= pr.y + pr.h) {
-        this.state = 'paused'; this.pause.index = 0; this.menu.panel = null; this.audio.sfxCard(); return;
+      if (onPause) {
+        this.pauseFrom = this.state; this.state = 'paused'; this.pause.index = 0; this.menu.panel = null; this.audio.sfxCard(); return;
       }
       this.touch.down(e.pointerId, p.x, p.y, this);
     }, { passive: false });
@@ -1403,7 +1483,7 @@ class Game {
         // that chord, and it used to be swallowed whole; so did letting go of grab while the other
         // button was held, which left him clamped onto whatever he had.
         const was = this.mouseButtons || 0, now = e.buttons;
-        if (now !== was && this.state === 'play') {
+        if (now !== was && (this.state === 'play' || this.state === 'heaven')) {
           if ((now & 1) && !(was & 1)) this.input.lmbPressed = true;
           if ((now & 2) && !(was & 2)) { this.input.rmbDown = true; this.input.rmbPressed = true; }
         }
@@ -1419,6 +1499,10 @@ class Game {
 
     const up = (e) => {
       this.menu.sliderDrag = null; this.dev.slide = null;
+      if (this.discordPointer === e.pointerId) {
+        this.discordPointer = undefined;
+        if (e.type === 'pointerup' && this.state === 'title' && !this.menu.panel && MENU[this.menuAt(this.canvasPos(e))] === 'discord') this.menuPick(this.menuAt(this.canvasPos(e)));
+      }
       if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false;
       if (e.pointerType === 'mouse') this.mouseButtons = e.buttons;
       // A card is taken here and nowhere else: the pointer has to leave the same card it arrived on.
@@ -1461,6 +1545,13 @@ class Game {
     window.addEventListener('blur', () => { this.keys.clear(); this.input.rmbDown = false; this.touch.clear(); away(); });
     window.addEventListener('focus', () => { this.awayNow = false; });
     document.addEventListener('visibilitychange', () => { if (document.hidden) away(); else if (document.hasFocus()) this.awayNow = false; });
+    // Rule 6: a reload or a closed tab mid-floor is a quit to the title, a death. Without it the save
+    // kept the floor's death count and CONTINUE rebuilt the very layout he had just walked through.
+    // Not a page only put aside in the back/forward cache (`persisted`): it comes back as it was.
+    window.addEventListener('pagehide', (e) => {
+      if (e.persisted || this.showroomOn) return;
+      if (this.level && !this.level.def.heaven && (this.state === 'play' || this.state === 'paused' || this.state === 'boon')) { this.deaths++; this.saveRun(); }
+    });
     window.addEventListener('resize', () => { this.renderer.resize(); this.layoutTouch(); });
     window.addEventListener('orientationchange', () => setTimeout(() => { this.renderer.resize(); this.layoutTouch(); }, 200));
   }
@@ -1581,6 +1672,8 @@ class Game {
     const bySpawn = this.enemies.slice();
     this.stageFirstHide();
     this.props = this.level.props.map((p) => new Prop(p.x, p.y, p.kind, p));
+    // Each chandelier and the cleat its rope is tied off at (`cid`, js/gen.js).
+    for (const c of this.props) if (c.kind === 'cleat') { const ring = this.props.find((q) => q.kind === 'chandelier' && q.cid === c.cid); if (ring) { c.hangs = ring; ring.cleat = c; } }
     // The ritual altar: real furniture rather than scenery, so it blocks the way and takes a blow
     // like any other table. Its position matches where the decal layer has always drawn it.
     if (levelIndexOf(this.level.def) === 0) {   // the dark altar is still the altar
@@ -1625,8 +1718,11 @@ class Game {
     });
     this.runes = []; this.henSaved = false; this.beastSaved = [];
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.puffs = []; this.flares = []; this.hurt = null; this.hurtVignette = null; this.fallers = []; this.globs = [];
-    this.fx = new CombatFX(this);
+    this.fx = new CombatFX(this); this.scatter = new Scatter(this);
     this.souls = []; this.boonChoice = null; this.breathFx = null; this.bless = null; this.applyBoons(); this.goat.hp = this.goat.maxHp;
+    // THE MIRROR's HALO: hearts of light over his own at the head of every floor, and GOOD GRAZER's
+    // first bowl, not yet drunk.
+    this.goat.light = this.mods.lightHearts || 0; this.milkFullUsed = false;
     // What he walked in with. A death rolls him back to exactly this list — and to the talisman he
     // walked in wearing: one taken inside the level goes back on the shelf with the level.
     this.levelBoons = this.boons.slice(); this.levelArtifact = this.artifact;
@@ -1704,7 +1800,23 @@ class Game {
     this.goatRoom = 0;
     // Arriving up the stairs: the goat rises into the room under the card.
     if (this.intro) this.audio.duck(1, 0.3);   // Backspace out of the scene must not leave the sound down
-    this.intro = null; this.stairFx = this.level.entry ? { t: -0.45, dir: -1 } : null;
+    // Sent down from heaven (`Heaven.leave`), he falls into the floor out of the light instead of
+    // coming up its stairs — into the pen, on the first floor.
+    this.dropIn = this.fromHeaven ? { t: 0 } : null;   // held back below, until the card is nearly gone
+    // Tables he butted off heaven's edge come down on this floor, and only this one (`updateSkyTables`).
+    { const C = TUNING.heaven.tables, n = this.fromHeaven ? this.heavenTables || 0 : 0;
+      this.skyTables = n > 0 ? { n, t: C.first[0] + Math.random() * (C.first[1] - C.first[0]), drops: [] } : null;
+      this.heavenTables = 0; }
+    this.intro = null; this.stairFx = this.level.entry && !this.fromHeaven ? { t: -0.45, dir: -1 } : null;
+    if (this.fromHeaven) this.flash('#fffcf0', 0.9);
+    // Not back into the pen (29 Sep 2026: "you don't fall into the cage, you wake up after the blow"):
+    // on a floor that has one, he comes down a step past its bars, and it stands open behind him.
+    if (this.fromHeaven && def.startCage && !cp) {
+      const s0 = this.level.start, at = this.freeSpot(s0.x + (TUNING.prop.cage.halfW + TUNING.heaven.drop.besidePen) * TILE, s0.y);
+      this.goat.x = at.x; this.goat.y = at.y; this.cageOpen = true;
+      this.cam.x = at.x; this.cam.y = at.y; this.pathTrail = [{ x: at.x, y: at.y }];
+    }
+    this.fromHeaven = false;
     if (cp) this.enterAtGate(cp);
     // Every level starts by writing the run down: that head is what CONTINUE comes back to.
     this.saveRun();
@@ -1721,6 +1833,8 @@ class Game {
     if (this.level.shop && !cp) tail.push('a mouse in the wall');
     if (tail.length) lines.push('', tail.join(' \u00b7 '));
     this.card = { lines, dim: 0.6, size: 40, small: 2 }; this.stateTimer = 1.3;
+    // Down from heaven, he lands as the card clears: the fall starts `drop.lead` s before it goes.
+    if (this.dropIn) this.dropIn.t = -Math.max(0, this.stateTimer - TUNING.heaven.drop.lead) / TUNING.heaven.drop.time;
     this.audio.sfxCard();
   }
   // A death costs the level, not the learning. You come back with everything you walked in carrying
@@ -1728,13 +1842,15 @@ class Game {
   // seven levels of one life read as a run rather than seven separate walls. What a death still
   // takes is the soul you found INSIDE the level — the room is generated again and it is back where
   // it was, guarded by whoever was guarding it — so dying is never a way to farm one.
-  restartLevel() {
+  // `fromHeaven`: off the edge above (`Heaven.leave`), where the death that sent him up is already
+  // counted.
+  restartLevel(fromHeaven) {
     // Only out of a level being played or lost. From the clear card or the climb it replayed a
     // level whose kills and score were already banked, and banked them a second time.
-    if (this.state !== 'play' && this.state !== 'paused' && this.state !== 'dead') return;
+    if (!fromHeaven && this.state !== 'play' && this.state !== 'paused' && this.state !== 'dead') return;
     // A restart you ask for is a death you chose, and it counts as one: `deaths` is in the seed, and
     // without this Backspace brought back the very layout you had just walked through.
-    if (this.state !== 'dead') this.deaths++;
+    if (this.state !== 'dead' && !fromHeaven) this.deaths++;
     this.boons = (this.levelBoons || []).slice(); this.artifact = this.levelArtifact || null;
     this.crowGift = !!this.levelCrowGift; this.talRun = this.levelTalRun ? Object.assign({}, this.levelTalRun) : null;
     // Mushrooms eaten on a level you then died on go back on the floor with everything else in it.
@@ -1742,7 +1858,7 @@ class Game {
     // `deaths` has already gone up by the time this runs, and it is in the mix, so the level comes
     // back generated again — the same promise it always made, now made by arithmetic. Past the
     // middle gate, it comes back to that gate (`enterAtGate`).
-    const cp = this.checkpoint && this.checkpoint.level === this.levelIndex ? this.checkpoint : null;
+    const cp = TUNING.soul.hold.on && this.checkpoint && this.checkpoint.level === this.levelIndex ? this.checkpoint : null;
     this.startLevel(this.levelIndex, this.levelSeed(this.levelIndex), true, false, cp);
   }
 
@@ -1751,7 +1867,7 @@ class Game {
   // story and the floor of level 1 carries the controls, so the menu only has to be a way in.
   showTitle() {
     this.state = 'title'; this.card = null; this.level = null; this.world = null; this.goat = null;
-    this.guide = null;
+    this.guide = null; this.heaven = null; this.dropIn = null; this.audio.heavenMusic = false;
     // Escape out of the opening scene lands here with the scene still set: its overlay then drew
     // stars round a goat that no longer exists, threw every frame, and the title never drew (nor
     // came back up out of the scene's duck).
@@ -1876,11 +1992,14 @@ class Game {
     else if (code === 'KeyS' || code === 'ArrowDown') { this.pause.index = (this.pause.index + 1) % n; this.audio.sfxSwing(); }
     else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.pausePick(this.pause.index);
   }
+  // What RESUME goes back to: heaven, if that is where the pause was taken and he is still up there
+  // (`pauseFrom` is only ever set by a pause taken there), else the floor.
+  pausedIn() { return this.pauseFrom === 'heaven' && this.heaven ? 'heaven' : 'play'; }
   pausePick(i) {
     this.pause.index = i;
     const id = (PAUSE_MENU[i] || PAUSE_MENU[0]).id;
     // The Space that picked RESUME is not a scream on the first step back.
-    if (id === 'resume') { this.state = 'play'; this.clearEdges(); this.audio.sfxSwing(); return; }
+    if (id === 'resume') { this.state = this.pausedIn(); this.clearEdges(); this.audio.sfxSwing(); return; }
     if (id === 'settings') { this.menu.panel = 'settings'; this.menu.sub = 0; this.audio.sfxCard(); return; }
     // QUIT TO TITLE is the old Escape behaviour: abandon the room rather than resume it.
     this.quitToTitle();
@@ -1890,7 +2009,8 @@ class Game {
   // heart left (ground rule 6). The level card and the opening scene are not half played.
   quitToTitle() {
     this.showroomOn = false;
-    if (this.level && (this.state === 'play' || this.state === 'paused' || this.state === 'boon')) { this.deaths++; this.saveRun(); }
+    // Up in heaven the death that sent him there is already counted and saved: leaving is not another.
+    if (this.level && !this.level.def.heaven && (this.state === 'play' || this.state === 'paused' || this.state === 'boon')) { this.deaths++; this.saveRun(); }
     this.showTitle();
   }
   // Shared by the title menu and the pause overlay's own settings panel: a slider takes the click
@@ -1978,7 +2098,7 @@ class Game {
     const li = clamp(s.level | 0, 0, LEVELS.length - 1);
     // Saved past the middle gate: back at it, with what he had there (the tallow and the cup are
     // not in the save, as they are not for the head of the floor).
-    const G = s.gate && s.gate.level === li ? s.gate : null;
+    const G = TUNING.soul.hold.on && s.gate && s.gate.level === li ? s.gate : null;
     const cp = G ? { level: li, room: G.room, boons: (G.boons || []).map((id) => BOONS.find((b) => b.id === id)).filter(Boolean),
       artifact: G.artifact && ARTIFACTS.some((a) => a.id === G.artifact.id) ? { id: G.artifact.id, tier: Math.max(1, Math.min(3, G.artifact.tier | 0)) } : null,
       talRun: null, crowGift: !!G.crowGift, tripAt: G.tripAt === undefined ? this.tripAt : G.tripAt,
@@ -2123,7 +2243,11 @@ class Game {
     this.card = { code: this.lastCode, lines: ['DIED', `${this.kills} sacrificed`, `LEVEL ${this.levelIndex + 1} · ${lv.name || ''}`,
       by ? `${kept} · KILLED BY ${by}` : kept], dim: 0.55, size: 40, small: 2, color: PALETTE.blood,
       // who (or what) it was, drawn over that line, and the button that starts the level again
-      killer: by ? this.goat.hurtBy : null, go: gate ? 'BACK TO THE MIDDLE GATE' : 'TRY AGAIN' };
+      killer: by ? this.goat.hurtBy : null, go: this.showroomOn ? 'TRY AGAIN' : 'ASCEND', map: true };
+    // The floor as far as he got, painted like the clear card's (`Painting.drawDeath`); with no
+    // picture the card is the old words over the pull-back.
+    this.deathPainting = null;
+    try { this.deathPainting = Painting.bake(this); } catch (err) { console.error(err); }
     this.shake(12, true); this.vibe(70);
   }
   // One line a playtester can paste into a form: enough to stand on the same floor again
@@ -2174,6 +2298,7 @@ class Game {
     return (by.boss || by.kind === 'butcher' || by.kind === 'ratogre' ? 'THE ' : /^[AEIOU]/.test(name) ? 'AN ' : 'A ') + name;
   }
   levelCleared() {
+    if (!this.showroomOn) { Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1); }
     this.showroomOn = false;
     this.state = 'clear'; this.totalKills += this.kills;
     const score = this.scoreFor(this.kills, this.timer, this.levelIndex, this.level.def);
@@ -2187,9 +2312,11 @@ class Game {
     const best = key === null || this.runJumped || this.offBoard() ? false : this.noteBest(key, score, this.timer);
     this.audio.intensity = 0; this.audio.hunterAware = false; this.audio.sfxCard();
     this.audio.startMusicCue('clear', this.levelIndex);
+    let told = false;
+    try { told = localStorage.getItem(SACRIFICE_KEY) === '1'; localStorage.setItem(SACRIFICE_KEY, '1'); } catch (e) { /* storage refused */ }
     this.cardQueue = [
-      { lines: ['Do you want sacrifices?'], dim: 0.75, size: 34, time: 1.4 },
-      { lines: ['You will get sacrifices!'], dim: 0.85, size: 40, time: 1.6, color: PALETTE.blood },
+      ...(told ? [] : [{ lines: ['Do you want sacrifices?'], dim: 0.75, size: 34, time: 1.4 },
+        { lines: ['You will get sacrifices!'], dim: 0.85, size: 40, time: 1.6, color: PALETTE.blood }]),
       ...(this.henSaved ? [{ lines: ['THE HEN CAME WITH YOU', '', `+${TUNING.prop.chicken.saveHearts} HEART FOR THE REST OF THE RUN`],
         dim: 0.8, size: 34, small: 2, time: 1.8, color: PALETTE.hen }] : []),
       // And each escort that walked out with him (js/beasts.js). One card each, because what one is
@@ -2260,6 +2387,10 @@ class Game {
     const col = room.x + room.w - 1; let doorTy = room.y + (room.h >> 1);
     for (let ty = room.y + 1; ty < room.y + room.h - 1; ty++) if (lv.tiles[ty * lv.W + col] !== T.WALL) { doorTy = ty; break; }
     const door = { x: (col + 1.5) * TILE, y: (doorTy + 1) * TILE };
+    // They came in this way: a plank door hung in the pen's corridor stands open behind them, rather
+    // than shut with the mage, her and the clubman walked through it (1 seed in 15 put one there).
+    for (const p of this.props) if (p.kind === 'door' && !p.gate && !p.seal && !p.stair && !p.vault
+      && p.x > col * TILE && p.x < door.x + 6 * TILE && Math.abs(p.y - door.y) < 2 * TILE) p.open = 1;
     const man = (x, y, kind) => {
       // One heart each, so the mage (two as a kind) wears no notches in a scene.
       const e = new Enemy(x, y, kind); e.scripted = true; e.aware = true; e.state = 'chase'; e.facing = Math.PI; e.hp = e.maxHp = 1;
@@ -2458,12 +2589,15 @@ class Game {
     this.readMoveInput();
     if (this.state === 'title') { this.updateTitle(dt); this.clearEdges(); return; }
     if (this.state === 'intro') { this.updateIntro(dt); this.clearEdges(); return; }
+    if (this.state === 'heaven') { Heaven.update(this, dt); this.clearEdges(); return; }   // js/heaven.js
     if (this.state === 'climb') { this.updateClimb(dt); this.clearEdges(); return; }
     if (this.state === 'card') { this.stateTimer -= dt; this.updateEffects(dt); if (this.stateTimer <= 0) { this.card = null; this.state = this.awayNow && this.autoPause !== false ? 'paused' : 'play'; if (this.state === 'paused') { this.pause.index = 0; this.menu.panel = null; } } }
     if (this.state === 'dead') {
       this.stateTimer -= dt; this.updateEffects(dt);
       if (this.deathCam) this.updateDeathCam(dt);
-      if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) { this.copyCode(); this.restartLevel(); }
+      // Up to the pasture above (js/heaven.js); its edge is the way back down. THE SHOWROOM, a dev
+      // floor, goes straight round again.
+      if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) { this.copyCode(); if (this.showroomOn) this.restartLevel(); else Heaven.enter(this); }
       this.clearEdges(); return;
     }
     if (this.state === 'clear') {
@@ -2596,6 +2730,7 @@ class Game {
     this.updateClearDoors();
     this.updateClamps();
     if (this.holdAt >= 0) this.holdGate();
+    if (this.skyTables) this.updateSkyTables(dt);
     w.updateFire(dt);
     Status.update(this, dt);
     Talisman.update(this, dt);   // the mouse's talismans (js/talismans.js)
@@ -2608,7 +2743,7 @@ class Game {
       if (this.goat.dead || tm.taken) continue;
       if (Math.hypot(tm.x - this.goat.x, tm.y - this.goat.y) < TUNING.soul.pickupR + this.goat.r) {
         tm.taken = true; this.particles(tm.x, tm.y, 18, PALETTE.witchHi, 180); this.ring(tm.x, tm.y, 3 * TILE, PALETTE.witch);
-        this.openSoulGate(tm.gate); Talisman.onSoul(this);
+        this.openSoulGate(tm.gate); Talisman.onSoul(this); Heaven.earnSoul(this);
         this.audio.startMusicCue('soul', this.levelIndex);
         this.openBoonChoice(); this.clearEdges(); return;
       }
@@ -2633,7 +2768,7 @@ class Game {
       // moving — bleeds the count back down rather than snapping it to zero, so a stray jostle from
       // a passing man does not cost the whole graze.
       p.graze = near ? p.graze + dt : Math.max(0, p.graze - dt * 2);
-      if (p.graze < H.grazeTime) continue;
+      if (p.graze < H.grazeTime * this.mods.grazeMul) continue;   // GOOD GRAZER (THE MIRROR) shortens it
       // The mouse's pail holds several hearts and pays them out a drink at a time, so it stays where
       // it is until it is empty: a goat who took it at full health has something to come back to
       // while he is still in her room rather than three quarters of an offer poured away.
@@ -2642,7 +2777,9 @@ class Game {
       // up, and worth twice what the milk does — the risk of going looking for it is what pays for
       // the extra heart, not the room it happens to be standing in.
       // FOUR STOMACHS: grass is worth more to him; the pail (`p.pail`, still >= 1 on its last drink) is milk.
-      const gain = (p.big ? TUNING.prop.heal.bigGain : 1) + (p.pail > 0 ? 0 : this.mods.grassGain);
+      let gain = (p.big ? TUNING.prop.heal.bigGain : 1) + (p.pail > 0 ? 0 : this.mods.grassGain);
+      // GOOD GRAZER's second rank: the first bowl of a floor fills him up.
+      if (this.mods.milkFull && !this.milkFullUsed && !(p.pail > 0)) { this.milkFullUsed = true; gain = Math.max(gain, this.goat.maxHp - this.goat.hp); }
       this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + gain);
       this.particles(p.x, p.y, 18, PALETTE.bone, 170); this.ring(p.x, p.y, 2 * TILE, PALETTE.bone);
       this.floatText(p.x, p.y - 24, gain > 1 ? `+${gain} HEARTS` : '+1 HEART', PALETTE.bone); this.audio.sfxBell(); this.vibe(20);
@@ -3245,6 +3382,9 @@ class Game {
     // not a number, so it is remembered and stood on the next floor's own stairs instead.
     this.beastSaved = Beast.saved(this);
     Beast.bank(this, this.beastSaved);
+    // and each one takes its seat in heaven for good (js/heaven.js)
+    for (const k of this.beastSaved) Heaven.saved(k);
+    if (this.henSaved) Heaven.saved('chicken');
     // The hen's reward is her own (`henHearts`), but she is counted with the rest so the corner that
     // lists everyone brought out (`Renderer.drawSaved`) lists her too.
     if (this.henSaved) Beast.bank(this, ['chicken']);
@@ -3262,10 +3402,12 @@ class Game {
 
   updateEffects(dt) {
     this.fx.update(dt);
+    if (this.scatter) this.scatter.update(dt);
     if (this.guide) { const G = this.guide, r = G.ref; G.t -= dt;
       if (G.t <= 0 || r.taken || r.broken || (r.gate !== undefined && !this.souls.includes(r))) this.guide = null; }
     const J = TUNING.juice;
     if (this.stairFx && this.stairFx.dir < 0) { this.stairFx.t += dt / TUNING.stairs.arrive; if (this.stairFx.t >= 1) this.stairFx = null; }
+    if (this.dropIn) Heaven.updateDrop(this, dt);   // down out of heaven onto the floor (js/heaven.js)
     this.shakeAmt = Math.max(0, this.shakeAmt - J.shakeDecay * dt * Math.max(1, this.shakeAmt * 0.3));
     // Smooth noise, not dice: a fresh random spot every frame read as a rattle. And trauma², so the
     // biggest shake is what it always was and a smaller one is smaller still (`shakeRef`).
@@ -3413,6 +3555,8 @@ class Game {
             if (p.broken) continue;
             e.chargeStopped(this); continue;
           }
+          // A table on its side is not sent sliding: the charge goes through it, in planks.
+          if (p.kind === 'table' && p.flipped) { p.smashTable(this, -nx, -ny); continue; }
           if (p.kind === 'table' && !p.flung) { p.shove(this, -nx, -ny, e); continue; }
           if (p.kind === 'barrel') { p.roll(this, -nx, -ny, TUNING.prop.barrel.roll, e); continue; }
           if (p.kind === 'lamp') { p.topple(this, -nx, -ny); continue; }
@@ -3448,8 +3592,10 @@ class Game {
         if (e.state === 'flung' && e !== g && p.kind === 'rock' && -vn > ph.knockHitSpeed) p.crackRock(this);
         // A body thrown into a barrel sends it on rolling, and still meets it as hard as a wall.
         if (e.state === 'flung' && e !== g && p.kind === 'barrel' && -vn > TUNING.prop.barrel.knock) p.roll(this, -nx, -ny, -vn * TUNING.prop.barrel.pass, e);
+        // A body landing on a table knocks the supper off it (js/scatter.js).
+        if (e.state === 'flung' && p.kind === 'table' && -vn > ph.knockHitSpeed && this.scatter) this.scatter.fromTable(p, -nx, -ny, 0.8);
         if (e.state === 'flung' && e !== g && -vn > e.splatLimit(this)) { e.die(this, 'splat', -nx, -ny); continue; }
-        if (e === g && p.kind === 'table' && !p.flung) {
+        if (e === g && p.kind === 'table' && !p.flung && !p.flipped) {
           // the goat can shoulder a table along slowly
           const shove = Math.min(min - d, TUNING.prop.table.pushSpeed * dt);
           p.x -= nx * shove; p.y -= ny * shove; this.world.collideCircle(p);
@@ -3470,8 +3616,10 @@ class Game {
     if (!depth) return;
     const lit = a.burning > 0 ? a : b, cold = a.burning > 0 ? b : a;
     if (cold.burning > 0 || cold.dead || cold.ghosted || lit.passedFire || (lit.fireDepth || 0) >= depth) return;
-    lit.passedFire = true;
     cold.ignite(this, lit.witchBurn, true);
+    // What does not catch (the rat ogre, a solid wraith against ordinary flame) spends no hand-off.
+    if (!(cold.burning > 0)) return;
+    lit.passedFire = true;
     cold.fireDepth = (lit.fireDepth || 0) + 1;
     this.floatText(cold.x, cold.y - 30, 'IT SPREADS', lit.witchBurn ? PALETTE.witch : PALETTE.fire);
   }
@@ -3491,14 +3639,15 @@ class Game {
     // a wall to it, and a wall is what a thrown man dies on. Slower, he is barely moved.
     if (other.kind === 'ratogre') {
       if (f.flungBy === other) { const push = f.r + other.r; f.x = other.x - nx * push; f.y = other.y - ny * push; return; }
-      if (kills(1)) { other.die(this, 'splat', nx, ny); f.die(this, 'splat', -nx, -ny); }
+      // A fused man goes off on him instead, as on anyone (below): the body and then his blast took two.
+      if (kills(1)) { if (f.bombFuse > 0 && !f.exploded) { f.explode(this); return; } other.die(this, 'splat', nx, ny); f.die(this, 'splat', -nx, -ny); }
       else { f.vx *= -0.3; f.vy *= -0.3; }
       return;
     }
     // The ogre the same way: a body at killing speed is one of the answers to him (`TUNING.butcher`),
     // a heart off him and the body spent on him; slower, it only rocks him.
     if (other.kind === 'butcher') {
-      if (kills(Talisman.bodyMul(this))) { other.die(this, 'splat', nx, ny); f.die(this, 'splat', -nx, -ny); return; }
+      if (kills(Talisman.bodyMul(this))) { if (f.bombFuse > 0 && !f.exploded) { f.explode(this); return; } other.die(this, 'splat', nx, ny); f.die(this, 'splat', -nx, -ny); return; }
       if (other.state !== 'hop') { other.state = 'stagger'; other.timer = 0.3; }
       f.vx *= -0.3; f.vy *= -0.3; return;
     }
@@ -3646,7 +3795,9 @@ class Game {
       else if (inArc(g)) g.damage(damage, this, dirx * knock * 4, diry * knock * 4, false, att);
     }
     // The animals on our side are in the room too: a club that finds one hurts it (`Beast.hurt`).
-    for (const p of this.props) if (Beast.animal(p) && !p.held && p.birdState !== 'flying' && inArc(p)) Beast.hurt(p, this, 'blow');
+    // Not a LIVING SHIELD's flail: the man in his mouth swings at what is in front of the goat, and
+    // his own hen or goose walking beside him lost a heart every half second of it.
+    if (!att.held) for (const p of this.props) if (Beast.animal(p) && !p.held && p.birdState !== 'flying' && inArc(p)) Beast.hurt(p, this, 'blow');
     // A hound bites what it was sent for. It does not floor its own handlers on the way past — a pack
     // of them doing that filled half the screen with OOPS.
     if (att.kind === 'dog') return;
@@ -3709,6 +3860,7 @@ class Game {
     if (this.state === 'play' && !this.goat.dead && e.room >= 0 && !e.scripted &&
       !this.enemies.some((o) => o !== e && !o.dead && !o.scripted && o.room === e.room)) this.audio.musicEvent('cleared');
     this.kills++;
+    Heaven.earn(this, TUNING.heaven.pay.kill);   // a sacrifice for the god above (js/heaven.js)
     const J = TUNING.juice, big = e.kind === 'butcher' || e.kind === 'ratogre';
     if (e.kind === 'ratogre') Shop.ogreDown(this, e);
     // The room that was holding a soul back gives it up with its last man.
@@ -3896,6 +4048,9 @@ class Game {
   // One man speaks at a time: a crowd all shouting at once reads as noise, not as a cult.
   bark(e, kind, chance) {
     if (!e || e.dead || e.held || e.kind === 'dog' || this.state !== 'play') return;
+    // The dead and the mouse's ogre have no words: they used to fall back on the clubman's, and a
+    // wraith said BLESSED MEAT and the rat ogre begged MERCY over a man he had just killed.
+    if (e.kind === 'wraith' || e.kind === 'ratogre') return;
     if (chance !== undefined && Math.random() > chance) return;
     if (this.barkCd > 0 || e.barkCd > 0) return;
     const pool = BARKS[kind]; if (!pool) return;

@@ -42,7 +42,7 @@ const Beast = {
     if (!Beast.animal(p) || p.held || (p.hurtCd || 0) > 0) return;
     const B = TUNING.beast;
     if (p.kind === 'tortoise' && src !== 'fire') { Beast.shellTakes(p, game); p.hurtCd = B.hurtCd; return; }
-    const own = TUNING.prop[p.kind] && TUNING.prop[p.kind].hp;   // the horse is sturdier than a bird
+    const own = TUNING.prop[p.kind] && TUNING.prop[p.kind].hp;   // the horse and the hen are sturdier than the rest
     p.beastHp = (p.beastHp === undefined ? own || B.hp : p.beastHp) - 1;
     p.hurtCd = B.hurtCd; p.wobble = 0.3; p.hurtFlash = 0.25;
     game.particles(p.x, p.y, 7, src === 'fire' ? PALETTE.fire : PALETTE.blood, 150);
@@ -206,10 +206,10 @@ const Beast = {
   // the arc before, and the room's blows killed more escorts than anything the room was built to do.
   // Null when nobody is that close. The goose is exempt: it walks up to men to shout at them.
   shy(p, game) {
-    const B = TUNING.beast, g = game.goat;
-    let man = null, md = B.shyR * TILE;
+    const B = TUNING.beast, g = game.goat, own = TUNING.prop[p.kind] || {};
+    let man = null, md = B.shyR * (own.shyMul || 1) * TILE;
     for (const e of game.liveEnemies) {
-      if (e.dead || e.held || e.ghosted || e.scripted || !e.aware) continue;
+      if (e.dead || e.held || e.ghosted || e.scripted || (!e.aware && !own.shyAll)) continue;
       if (e.state === 'floored' || e.state === 'stunned' || e.state === 'flung') continue;
       const d = Math.hypot(e.x - p.x, e.y - p.y);
       if (d < md) { md = d; man = e; }
@@ -443,6 +443,25 @@ const Beast = {
       return;
     }
     if (door && p.kickT <= 0) { p.kickDoor = door; p.rear = C.kickWind; p.wobble = 0.2; return; }
+    // Now and then, well ahead of him, it pulls up, turns and mocks him, then goes on: the race is a
+    // horse that could win and cannot help showing off, not one that simply leaves.
+    const Tn = C.taunt, rollGap = () => Tn.gap[0] + Math.random() * (Tn.gap[1] - Tn.gap[0]);
+    if (p.tauntT > 0) {
+      p.tauntT -= dt; p.vx = 0; p.vy = 0; if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x);
+      return;
+    }
+    if (p.tauntIn === undefined) p.tauntIn = rollGap();
+    if ((p.tauntIn -= dt) <= 0) {
+      p.tauntIn = rollGap();
+      const mine = at(p.x, p.y), his = at(g.x, g.y);
+      if (mine >= 0 && his >= 0 && his - mine >= Tn.ahead && !game.floats.some((t) => t.pact)) {
+        p.tauntT = Tn.hold; p.vx = 0; p.vy = 0;
+        const L = C.lines.taunt, text = L[Math.floor(Math.random() * L.length)];
+        game.audio.sfxAnimal && game.audio.sfxAnimal('horse');
+        game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text, color: PALETTE.bone, life: Tn.say, pact: true });
+        return;
+      }
+    }
     let on = Beast.onward(p, game);
     // Its own `unstuck`: a body this wide catches on what a goose slips past (the lip of a wall that
     // gives, the corner of a rack), so a gallop that has not got a tile nearer the stairs in

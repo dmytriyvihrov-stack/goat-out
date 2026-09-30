@@ -349,6 +349,54 @@ const Foley = (() => {
       click(x, sr, 0, 3200, 0.5, 0.001);
       return modes(x, sr, rnd(700, 900), [[1, 0.015, 0.3], [2.4, 0.008, 0.2]]);
     },
+    // Small things off a table landing (js/scatter.js): an apple's knock with a body in it, bread's
+    // dull pat, a clay cup's tick, a goblet ringing, and a jug or a plate going to pieces.
+    clatter(sr, { kind = 'fruit' } = {}) {
+      if (kind === 'break') {
+        const x = buf(sr, 0.3);
+        for (let k = 0; k < 5; k++) ping(x, sr, rnd(0, 0.06), rnd(1800, 4200), rnd(0.02, 0.05), rnd(0.3, 0.8));
+        return crackle(x, sr, 0, 0.1, 14, 3000, 7000, 0.4);
+      }
+      const x = buf(sr, kind === 'metal' ? 0.35 : 0.12);
+      if (kind === 'metal') { ping(x, sr, 0, rnd(1900, 2600), 0.09, 0.8); return ping(x, sr, 0.004, rnd(3200, 4100), 0.05, 0.3); }
+      if (kind === 'clay') { ping(x, sr, 0, rnd(1300, 2100), 0.018, 0.8); return click(x, sr, 0, 3500, 0.4, 0.0006); }
+      if (kind === 'soft') { modes(x, sr, rnd(150, 210), [[1, 0.018, 0.7], [2.3, 0.01, 0.3]], { bend: 0.2 }); return click(x, sr, 0, 1400, 0.25, 0.001); }
+      modes(x, sr, rnd(230, 330), [[1, 0.03, 0.8], [2.6, 0.012, 0.3]], { bend: 0.25 });
+      return click(x, sr, 0, 2000, 0.3, 0.0008);
+    },
+    // ---- above the clouds (js/heaven.js) ----
+    // A handbell of the chime: a bright struck cup of brass, its partials beating a little, rung at `f`.
+    chime(sr, { f = 523 } = {}) {
+      const x = buf(sr, 1.6);
+      modes(x, sr, f, [[1, 0.8, 1], [2.01, 0.5, 0.45], [2.76, 0.36, 0.3], [4.07, 0.2, 0.18], [5.43, 0.12, 0.1]], { spread: 0.002 });
+      modes(x, sr, f * 1.003, [[1, 0.8, 0.45]], { spread: 0.001 });
+      return click(x, sr, 0, Math.min(8000, f * 5), 0.3, 0.0006);
+    },
+    // The god: a slow deep BEH through a mouth held open on the vowel, shaken like a goat's.
+    godVoice(sr) {
+      const d = 0.95;
+      return voice(sr, d, { f: (t) => 92 * (1 + 0.05 * Math.sin(t * 7)) * (t < 0.1 ? 0.92 + t * 0.8 : 1),
+        trem: { hz: 11, amp: 0.35, pitch: 0.03 }, jit: 0.01, shim: 0.06, breath: 0.12, tilt: 2400,
+        formants: [[520, 5, 1], [1700, 7, 0.45], [2500, 9, 0.2], [260, 3, 0.4]], body: 0.5, bodyF: 300,
+        env: (t) => (t < 0.06 ? t / 0.06 : t < d * 0.6 ? 1 : Math.exp(-(t - d * 0.6) / (d * 0.15))), drive: 1.5 });
+    },
+    // Rising into heaven: five bells up a major chord over a breath of air going up with them.
+    ascend(sr) {
+      const x = buf(sr, 2.2);
+      [523, 659, 784, 1047, 1319].forEach((f, i) => modes(x, sr, f, [[1, 0.7, 0.6], [2.01, 0.35, 0.25]], { at: i * 0.11 }));
+      return whoosh(x, sr, 0, 1.2, 400, 3000, 0.4, 0.6, 0.8);
+    },
+    // A comb through wool: a soft drawn hiss with the teeth ticking through it.
+    comb(sr) {
+      const x = buf(sr, 0.32);
+      whoosh(x, sr, 0, 0.3, 2200, 5200, 0.5, 0.35, 1.3);
+      return crackle(x, sr, 0.02, 0.24, 26, 3500, 7500, 0.12, 1);
+    },
+    // Off the edge: air rushing past and away below.
+    leap(sr) {
+      const x = buf(sr, 1.1);
+      return whoosh(x, sr, 0, 1.05, 1400, 260, 1, 0.25, 0.9);
+    },
     // A blast: the crack of it, the shove of air, a roar closing down as it spends itself, and the
     // stones and grit coming back down.
     boom(sr) {
@@ -745,6 +793,15 @@ const Foley = (() => {
       return x;
     },
   };
+  // Heaven's (js/heaven.js): a choir far off, breathing one chord on an open 'ah', never quite still.
+  AMB.choir = (sr) => {
+    const d = 8, x = new Float32Array(len(sr, d));
+    for (const [f, g] of [[220, 0.5], [277.2, 0.34], [329.6, 0.4], [440, 0.22]]) {
+      add(x, voice(sr, d, { f: (t) => f * (1 + 0.004 * Math.sin(t * 1.3 + f)), trem: { hz: 5, amp: 0.1, pitch: 0.004 }, jit: 0.002, shim: 0.02,
+        breath: 0.35, tilt: 1800, formants: [[800, 4, 1], [1150, 5, 0.6], [2900, 8, 0.15]], body: 0.2 }), sr, 0, g);
+    }
+    return env(x, sr, (t) => 0.7 + 0.3 * Math.pow(Math.sin(TAU * t / d), 2));
+  };
   // Crossfade the last `fade` seconds of a take into its first ones, so the buffer loops seamlessly:
   // the loop point then joins what was continuous sound in the take.
   function loopify(x, sr, fade) {
@@ -754,7 +811,7 @@ const Foley = (() => {
   }
   // Rendered low: a room tone has nothing above a kilohertz or two, and a loop is seconds long, so
   // at the effects' own rate it cost a fifth of a second of main thread on a slow laptop.
-  const LOOP_RATE = { air: 8000, cave: 8000, wind: 11025, blaze: 24000 };
+  const LOOP_RATE = { air: 8000, cave: 8000, wind: 11025, blaze: 24000, choir: 11025 };
   function loop(name) {
     const sr = LOOP_RATE[name], x = AMB[name](sr);
     filter(x, sr, 'hp', 45, 0.707);
@@ -785,7 +842,7 @@ const Foley = (() => {
   // The rate each recipe is rendered at; the context resamples on playback. Nothing here needs the
   // top octave of a 48 kHz buffer, and the low, long ones (a blast, a lorry, a throat) have nothing
   // above 12 kHz at all, so they render at half the cost of the rest.
-  const LOW = new Set(['boom', 'engine', 'fall', 'scream', 'bleat', 'growl', 'wraith', 'unmade', 'veil', 'card', 'club', 'slow', 'cast', 'rune', 'bell', 'thud', 'roll', 'groan', 'heart', 'far']);
+  const LOW = new Set(['boom', 'engine', 'fall', 'scream', 'bleat', 'growl', 'wraith', 'unmade', 'veil', 'card', 'club', 'slow', 'cast', 'rune', 'bell', 'thud', 'roll', 'groan', 'heart', 'far', 'godVoice', 'leap']);
   // `far` arrives through walls with nothing above 700 Hz left in it.
   const rateOf = (name) => (name === 'far' ? 12000 : LOW.has(name) ? 24000 : 32000);
   const loopRate = (name) => LOOP_RATE[name];

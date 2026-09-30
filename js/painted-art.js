@@ -233,6 +233,10 @@ class PaintedArt extends AltarArt {
     const shut = this.shutWalls ||= new Set(); shut.clear();
     for (const p of game.props) if (p.kind === 'secret' && !p.broken) shut.add(Math.floor(p.y / TILE) * wd.W + Math.floor(p.x / TILE));
     const stone = (x, y) => wd.isSolid(x, y) || (shut.size > 0 && shut.has(y * wd.W + x));
+    // Litter is for bare floor: a brazier or a table stood on a scatter of pebbles read as a bug
+    // (29 Sep 2026, "the brazier on stones"). The tiles under standing furniture get none.
+    const under = this.underFurniture ||= new Set(); under.clear();
+    for (const p of game.props) if (p.blocking && !p.item && p.kind !== 'door') under.add(Math.floor(p.y / TILE) * wd.W + Math.floor(p.x / TILE));
     for (let y=b.y0; y<=b.y1; y++) for (let x=b.x0; x<=b.x1; x++) {
       const t=wd.tileAt(x,y), px=x*TILE, py=y*TILE, h=this.hash(x,y,game.level.seed);
       if (zones) def = zoneDefs[zones[y*wd.W+x]] || lvDef;
@@ -270,7 +274,7 @@ class PaintedArt extends AltarArt {
       if(stone(x,y-1)&&!post(x,y-1))ctx.fillRect(px,py,32,5);
       if(stone(x-1,y)&&!post(x-1,y))ctx.fillRect(px,py,3,32);
       if(t===T.HAY)PIXEL_ENV.draw(ctx,'hay',px+16,py+29,33);
-      else if(t===T.FLOOR&&!wood&&!wd.isSolid(x,y-1))PIXEL_ENV.litter(ctx,'room',x,y);
+      else if(t===T.FLOOR&&!wood&&!wd.isSolid(x,y-1)&&!under.has(y*wd.W+x))PIXEL_ENV.litter(ctx,'room',x,y);
       else if(t===T.ASH)this.ashTile(ctx,px,py,h);
       else if(t===T.EXIT)renderer.drawStairs(px,py,x-game.level.exitTile.x0,true,game.level.def,Renderer.forkRow(game.level,y));
       else if(t===T.ENTRY)renderer.drawStairs(px,py,x-game.level.entry.x0,false,game.level.def);
@@ -339,41 +343,8 @@ class PaintedArt extends AltarArt {
       PIXEL_ENV.draw(ctx,'crate',0,p.r*0.9,w);
       ctx.restore();return true;
     }
-    // A barrel of lamp oil. Standing, the sprite as drawn; knocked over, it lies on its side, and
-    // rolling it goes end for end off how far it has come — whole quarter turns, so its pixels stay
-    // square. Lit, one small flame sits on it for the whole fuse and the barrel shivers as it runs out.
-    if(p.kind==='barrel'&&PIXEL_ENV.ready){
-      const B=TUNING.prop.barrel,w=B.draw,lit=p.oilT>=0;
-      // A heap of powder on the lid, a pixel triangle (26 Sep 2026: "don't write POWDER, just a simple
-      // picture of powder on the lid, a triangle"): what says this one goes up. Cells on the
-      // sprite's grid, bone edged in ink. Not in THE DARK's silhouettes.
-      const mark=!renderer.silPass;
-      const word=(x,y)=>{
-        const c=B.markCell,n=B.markRows,x0=Math.round(x/c)*c,y0=Math.round((y-n*c/2)/c)*c;
-        ctx.fillStyle=PALETTE.ink;
-        for(let i=0;i<n;i++)ctx.fillRect(x0-(i+1.5)*c,y0+(i-1)*c,(2*i+3)*c,c*2);
-        ctx.fillStyle=PALETTE.bone;
-        for(let i=0;i<n;i++)ctx.fillRect(x0-(i+0.5)*c,y0+i*c,(2*i+1)*c,c);
-      };
-      ctx.save();ctx.translate(p.x,p.y);
-      let top;
-      if(p.lying){
-        renderer.shadow(0,p.r*0.55,w*0.62,5);
-        ctx.save();ctx.translate(0,p.r*0.15);
-        ctx.rotate(Math.floor(p.spinD/(B.spinEvery*TILE))%2?-Math.PI/2:Math.PI/2);
-        PIXEL_ENV.draw(ctx,'barrel',0,0,w,0.5);
-        ctx.restore();top=-w*0.35;
-        if(mark)word(0,p.r*0.15);
-      }else{
-        renderer.shadow(0,p.r*0.6,w*0.44,6);
-        const shiver=lit?Math.sin(renderer.t*60)*(1-p.oilT/B.fuse)*1.2:p.wobble>0?Math.sin(renderer.t*50)*p.wobble*4:0;
-        const h=PIXEL_ENV.draw(ctx,'barrel',shiver,p.r*0.8,w);
-        top=p.r*0.8-h;
-        if(mark)word(shiver,top+h*B.markAt);
-      }
-      if(lit&&!renderer.silPass&&!renderer.baking)renderer.flame(0,top+2,B.fuseDraw,p.phase*10,p.oilWitch);
-      ctx.restore();return true;
-    }
+    // The barrel is Enter the Gungeon's since 1.79, a pixel sprite of its own with the powder heap on its
+    // lid and a skull on its staves: js/prop-pixels.js draws it, standing, lying and rolling.
     if(p.kind==='bell'){
       const w=p.r*2.7,sz=PAINTED_SIZE.gong;
       ctx.save();ctx.translate(p.x,p.y);
@@ -664,9 +635,12 @@ class PaintedArt extends AltarArt {
   // of mid-run falls where it was let go of, not after him. Cosmetic: nothing reads it back.
   goatFx(renderer,g,game) {
     const ctx=renderer.ctx,F=TUNING.goat.face,m=game.mods||{},t=renderer.t,fx=this.fx||(this.fx=[]);
-    const dt=clamp(t-(this.fxT??t),0,0.1);this.fxT=t;
+    // A new floor starts clean (the old one's splats hung at its coordinates), and nothing drips or
+    // drifts under the pause (the GOAT GRID's stub state is 'grid' and runs).
+    if(this.fxLevel!==game.level){this.fxLevel=game.level;fx.length=0;}
+    const run=game.state!=='paused',dt=run?clamp(t-(this.fxT??t),0,0.1):0;this.fxT=t;
     const d=(Math.round((g.facing||0)/(Math.PI/4))+14)%8,P=PIXEL_FACE[d],fa=(d+2)*Math.PI/4,ux=Math.cos(fa),uy=Math.sin(fa);
-    const live=PIXEL_ART.unit('sheep')&&!['roll','falling','ko'].includes(g.state)&&!game.stairFx;
+    const live=run&&PIXEL_ART.unit('sheep')&&!['roll','falling','ko'].includes(g.state)&&!game.stairFx;
     const at=([x,y])=>({x:g.x+x,y:g.y+1,z:-y});
     if(live&&m.spit&&P.mouth){
       const V=F.foam;if(this.dripAt===undefined||this.dripAt>t+V.drip+V.dripVary)this.dripAt=t+V.drip*Math.random();
@@ -736,6 +710,9 @@ class PaintedArt extends AltarArt {
     }
     const fx=game.stairFx,climb=fx?clamp(fx.dir>0?fx.t:1-fx.t,0,1):0;
     if(climb>0){ctx.translate(0,-TUNING.stairs.rise*climb);ctx.scale(1-0.22*climb,1-0.22*climb);ctx.globalAlpha=1-climb*0.55;}
+    // Heaven's own moments (js/heaven.js): out of the light, over the edge, down onto a floor.
+    const hv=typeof Heaven!=='undefined'&&(game.heaven||game.dropIn)?Heaven.goatLook(game):null;
+    if(hv){ctx.translate(0,hv.dy);if(hv.spin)ctx.rotate(hv.spin);ctx.scale(hv.s*(hv.sx||1),hv.s);ctx.globalAlpha*=hv.a;}
     if(g.state==='falling'){const F=TUNING.fall,d=clamp((F.time+F.back-g.timer)/F.time,0,1);ctx.translate(0,d*26);ctx.rotate(d*1.5);ctx.scale(1-0.72*d,1-0.72*d);ctx.globalAlpha=1-d;}
     // A vault is not a tumble: stretched out long at the top of it rather than spun.
     if(g.state==='roll'){if(lp){const k=Math.sin(clamp(lp.t/lp.time,0,1)*Math.PI);ctx.scale(1+0.1*k,1-0.06*k);}else{ctx.rotate(g.rollSpin);ctx.scale(0.88,0.88);}}

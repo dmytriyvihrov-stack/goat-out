@@ -654,6 +654,192 @@ const PROP_PIXELS = (() => {
     return pool.blit(back, 0, 0).blit(front, 0, 0);
   }
 
+  // ---------------------------------------------------------------- the powder barrel
+  // Enter the Gungeon's red barrel (29 Sep 2026: "I like the barrels as in Enter the Gungeon"): red
+  // staves lit from the upper left round the cylinder, iron hoops curving toward you the way the
+  // lid's near edge does, a pale wooden head in an iron rim with a heap of black powder on it (the
+  // 26 Sep sign that it goes up), and the skull on the front that says it in one glance.
+  const BR = ['#3d0f0e', '#6e1a17', '#9c2720', '#c63a2d', '#e4584a', '#ff9d85'];
+  const BH = { s: '#f4e6d4', sh: '#cdb7a0', e: '#26100e' }, SKULL7 = ['.#####.', '#######', '#ee#ee#', '#ee#ee#', '###e###', '.#####.', '.#.#.#.'];
+  const within = (v, lo, hi) => Math.max(lo, Math.min(hi, v));   // node has no rng.js to lend clamp
+  const barrelShade = (b) => (b > 0.995 ? 5 : b > 0.86 ? 4 : b > 0.42 ? 3 : b > 0.05 ? 2 : 1);
+  const IRN = [P.i0, P.i1, P.i2, P.i3, P.i4];
+  function barrelStand() {
+    const W = 20, H = 27, g = new Grid(W, H), cx = 10, lidY = 4, top = 4, bot = 21;
+    const hwOf = (y) => y < top ? 7 : 7 + Math.round(3 * Math.sin(Math.PI * within((y - top) / (bot - top), 0, 1))) / 2;
+    const sh = (u) => barrelShade(Math.cos(Math.asin(within(u, -1, 1)) + 0.75));
+    for (let y = top; y <= bot + 3; y++) {
+      const hw = hwOf(Math.min(y, bot));
+      for (let x = 0; x < W; x++) {
+        const u = (x + 0.5 - cx) / hw; if (Math.abs(u) > 1) continue;
+        if (y > bot) { const v = (y + 0.5 - bot) / 3; if (u * u + v * v > 1) continue; }
+        g.set(x, y, BR[sh(u)]);
+      }
+    }
+    // the seams between the staves, a shade darker every sixth of the way round
+    for (const th of [-1.0, -0.5, 0, 0.5, 1.0]) for (let y = top + 3; y <= bot + 1; y++) {
+      const x = Math.round(cx - 0.5 + Math.sin(th) * hwOf(Math.min(y, bot))), i = BR.indexOf(g.get(x, y));
+      if (i > 0) g.set(x, y, BR[Math.max(1, i - 1)]);
+    }
+    const hoop = (y0) => { for (let x = 0; x < W; x++) {
+      const u = (x + 0.5 - cx) / hwOf(y0 + 2); if (Math.abs(u) > 1) continue;
+      const y = Math.round(y0 + 2.4 * Math.sqrt(1 - u * u)), k = sh(u);
+      g.set(x, y, IRN[Math.min(4, k)]); g.set(x, y + 1, IRN[Math.max(1, k - 2)]);
+    } };
+    hoop(5); hoop(16.5);
+    g.ell(cx, lidY, 7.2, 3.1, P.i2); g.ell(cx, lidY + 0.3, 5.8, 2.2, P.w4);
+    for (let y = 0; y < 8; y++) for (let x = 0; x < W; x++) {
+      const c = g.get(x, y);
+      if (c === P.i2) g.set(x, y, y < lidY ? P.i4 : x > cx + 3 ? P.i1 : P.i3);
+      else if (c === P.w4) g.set(x, y, x + y < cx - 1 ? '#e2c07f' : x > cx + 3 ? P.w3 : P.w4);
+    }
+    g.hl(6, 4, 9, P.w3, true); g.set(8, 4, P.w4); g.set(12, 4, P.w4);
+    for (const [x, y, c] of [[10, 2, '#5d5460'], [9, 3, '#5d5460'], [10, 3, '#2a2328'], [11, 3, '#2a2328'], [8, 4, '#2a2328'], [9, 4, '#2a2328'], [10, 4, '#2a2328'], [11, 4, '#2a2328'], [12, 4, '#2a2328']]) g.set(x, y, c);
+    SKULL7.forEach((row, j) => [...row].forEach((ch, i) => { const x = 6 + i, y = 9 + j;
+      if (ch === '#') g.set(x, y, i >= 5 || j >= 5 ? BH.sh : BH.s); else if (ch === 'e') g.set(x, y, BH.e); }));
+    return g.outline();
+  }
+  // On its side, the axis across the picture and the near head at the right. `phase` 0..7 is how far
+  // round it has rolled (45° a step): the seams slide over it and the skull comes over the top and
+  // goes under, cut off by the barrel's own outline.
+  function barrelLie(phase) {
+    const W = 27, H = 18, g = new Grid(W, H), cy = 8.5, x0 = 2, x1 = 22, a = phase * Math.PI / 4;
+    const hhOf = (x) => 6 + Math.round(3 * Math.sin(Math.PI * within((x - x0) / (x1 - x0), 0, 1))) / 2;
+    const sh = (v) => barrelShade(Math.cos(Math.asin(within(v, -1, 1)) + 0.6));
+    for (let x = x0 - 1; x <= x1; x++) {
+      const hh = hhOf(Math.max(x0, x));
+      for (let y = 0; y < H; y++) {
+        const v = (y + 0.5 - cy) / hh; if (Math.abs(v) > 1) continue;
+        if (x < x0) { const u = (x0 - x - 0.5) / 2; if (u * u + v * v > 1) continue; }
+        g.set(x, y, BR[sh(v)]);
+      }
+    }
+    for (let k = -6; k <= 6; k++) {
+      const th = k * Math.PI / 6 + a; if (Math.cos(th) < 0.15) continue;
+      for (let x = x0 + 1; x < x1; x++) { const y = Math.round(cy - 0.5 + Math.sin(th) * hhOf(x)), i = BR.indexOf(g.get(x, y)); if (i > 0) g.set(x, y, BR[Math.max(1, i - 1)]); }
+    }
+    if (Math.cos(a) > 0.3) SKULL7.forEach((row, j) => [...row].forEach((ch, i) => {
+      const x = 9 + i, y = Math.round(cy - 3.5 + Math.sin(a) * 6.5 + j); if (BR.indexOf(g.get(x, y)) < 0) return;
+      if (ch === '#') g.set(x, y, i >= 5 || j >= 5 ? BH.sh : BH.s); else if (ch === 'e') g.set(x, y, BH.e);
+    }));
+    for (const hx of [x0 + 3, x1 - 4]) for (let y = 0; y < H; y++) {
+      const v = (y + 0.5 - cy) / hhOf(hx); if (Math.abs(v) > 1) continue;
+      const k = sh(v), x = Math.round(hx + 1.2 * Math.sqrt(1 - v * v));
+      g.set(x, y, IRN[Math.min(4, k)]); g.set(x + 1, y, IRN[Math.max(1, k - 2)]);
+    }
+    g.ell(x1 + 0.2, cy, 3, hhOf(x1) + 0.2, P.i2); g.ell(x1 + 0.6, cy, 2, hhOf(x1) - 1.2, P.w4);
+    for (let y = 0; y < H; y++) for (let x = x1 - 4; x < W; x++) {
+      const c = g.get(x, y);
+      if (c === P.i2) g.set(x, y, y < cy - 3 ? P.i4 : y > cy + 3 ? P.i1 : P.i3);
+      else if (c === P.w4) g.set(x, y, y < cy - 1 ? '#e2c07f' : y > cy + 2 ? P.w3 : P.w4);
+    }
+    g.vl(x1 + 1, Math.round(cy - 3), 6, P.w3, true);
+    return g.outline();
+  }
+  // The same barrel lying the other way (its axis down the picture), mirrored across the diagonal so
+  // the light still comes from the left and the near head is at the bottom, facing you.
+  const transpose = (h) => { const g = new Grid(h.h, h.w); for (let y = 0; y < h.h; y++) for (let x = 0; x < h.w; x++) g.p[x * g.w + y] = h.get(x, y); return g; };
+
+
+  // ---------------------------------------------------------------- a table on its side
+  // Knocked over (29 Sep 2026, Enter the Gungeon's flipped tables): its top stood up toward where it
+  // went. Three views: the top toward the camera with the legs' ends showing over it ('s'), the
+  // underside toward the camera with the near legs coming at you ('n'), and edge-on with the legs
+  // out to one side ('e'; 'w' is its mirror). Boards run the long way, lit from the upper left.
+  function tableTop() {
+    const W = 46, g = new Grid(W, 26);
+    for (const x of [5, 38]) { g.rect(x, 0, 3, 7, P.w1); g.vl(x, 0, 7, P.w2); }            // far legs, pointing away
+    g.rect(1, 6, W - 2, 3, P.w3); g.hl(1, 6, W - 2, P.w4);                                  // the edge, seen from above
+    g.rect(1, 9, W - 2, 15, P.w2);                                                          // the top, standing
+    for (let y = 9; y < 24; y += 5) { g.hl(1, y, W - 2, P.w3); g.hl(1, y + 4, W - 2, P.w1); }
+    for (const [x, y] of [[9, 11], [30, 16], [17, 21], [40, 12]]) g.hl(x, y, 3, P.w1);       // grain
+    g.vl(1, 9, 15, P.w4); g.hl(1, 23, W - 2, P.w0);
+    for (const x of [4, 41]) { g.set(x, 11, P.i2); g.set(x, 20, P.i2); }                    // nails
+    return g.outline();
+  }
+  function tableUnder() {
+    const W = 46, g = new Grid(W, 26);
+    g.rect(1, 0, W - 2, 15, P.w1); g.hl(1, 0, W - 2, P.w3);                                 // the underside
+    g.rect(3, 2, W - 6, 11, P.w2, true); g.rect(5, 4, W - 10, 7, P.w1, true);               // the apron round it
+    g.line(6, 5, W - 7, 10, P.w0); g.line(6, 10, W - 7, 5, P.w0);                           // a cross brace
+    for (const x of [4, 38]) {                                                              // the near legs, coming at you
+      g.rect(x, 12, 4, 13, P.w3); g.vl(x, 12, 13, P.w4); g.vl(x + 3, 12, 13, P.w1); g.hl(x, 24, 4, P.w0);
+    }
+    return g.outline();
+  }
+  function tableSide() {
+    const H = 36, g = new Grid(28, H);
+    for (const y of [4, 28]) { g.rect(3, y, 17, 3, P.w2); g.hl(3, y, 17, P.w3); g.hl(3, y + 2, 17, P.w1); }   // legs, out to the west
+    g.rect(1, 3, 3, 3, P.w1); g.rect(1, 27, 3, 3, P.w1);                                     // their feet
+    g.rect(19, 0, 7, H, P.w2); g.vl(19, 0, H, P.w3); g.vl(20, 0, H, P.w4);                  // the top, edge-on
+    g.vl(25, 0, H, P.w1); g.hl(19, H - 1, 7, P.w0);
+    for (let y = 5; y < H; y += 9) g.hl(21, y, 3, P.w1);
+    return g.outline();
+  }
+  const mirror = (h) => { const g = new Grid(h.w, h.h); for (let y = 0; y < h.h; y++) for (let x = 0; x < h.w; x++) g.p[y * g.w + (h.w - 1 - x)] = h.get(x, y); return g; };
+
+
+  // ---------------------------------------------------------------- the chandelier, 34 x 30
+  // Enter the Gungeon's (29 Sep 2026): a brass ring of candles on three chains from a hub, hung over
+  // a room; `k` is which of two flickers the flames are in. Down, it lies bent on the floor with its
+  // candles out and scattered. Its rope is tied off at a cleat on the far wall.
+  const CANDLES = [0.12, 0.5, 0.88, 1.3, 1.7].map((t) => t * Math.PI);
+  function chandelier(k) {
+    const g = new Grid(34, 31), cx = 17, cy = 23, rx = 13, ry = 5;
+    for (const [x, y] of [[4, cy], [30, cy], [cx, cy - ry]]) { g.line(cx, 3, x, y, P.i2); for (let i = 2; i < 12; i += 3) g.set(Math.round(cx + (x - cx) * i / 12), Math.round(3 + (y - 3) * i / 12), P.i4); }
+    g.rect(cx - 1, 1, 3, 3, P.b2); g.set(cx - 1, 1, P.b4); g.set(cx, 0, P.b3);                    // the hub
+    g.ring(cx, cy, rx + 0.5, ry + 0.5, 2, P.b2);                                                    // the ring
+    g.tone((x, y) => y < cy - 1, P.b4, [P.b2]); g.tone((x, y) => y > cy + 2, P.b1, [P.b2]);
+    const stand = CANDLES.map((a) => ({ x: Math.round(cx + (rx - 0.5) * Math.cos(a)), y: Math.round(cy + (ry - 0.5) * Math.sin(a)) })).sort((a, b) => a.y - b.y);
+    stand.forEach((c, i) => {
+      g.rect(c.x, c.y - 6, 2, 6, P.c1); g.vl(c.x, c.y - 6, 6, P.c2); g.set(c.x + 1, c.y - 2, P.c0);   // the candle, a drip down it
+      const f = (k + i) % 2;                                                                         // its flame, in one of two leans
+      g.rect(c.x, c.y - 8, 2, 2, P.f2); g.set(c.x + f, c.y - 8, P.f3); g.set(c.x + f, c.y - 9, P.f2); g.set(c.x + 1 - f, c.y - 10, P.f1);
+    });
+    return g.outline();
+  }
+  function chandelierDown() {
+    const g = new Grid(38, 16), r = rng(29), cx = 19, cy = 9;
+    g.ring(cx, cy, 15, 5, 2, P.b2); g.tone((x, y) => y < cy - 1, P.b3, [P.b2]); g.tone((x, y) => y > cy + 1, P.b1, [P.b2]);
+    g.rect(cx + 7, cy + 3, 5, 2, null);                                                             // bent where it hit
+    for (const [x, y, w] of [[3, 3, 5], [26, 1, 4], [30, 12, 5], [9, 13, 4], [18, 4, 3]]) { g.rect(x, y, w, 2, P.c1); g.hl(x, y, w, P.c2); }
+    for (let i = 0; i < 7; i++) g.set(Math.floor(r() * 36) + 1, Math.floor(r() * 14) + 1, P.c0);   // wax on the floor
+    g.set(cx, 2, P.b3); g.set(cx + 1, 2, P.b2); g.set(cx - 1, 1, P.i3);                             // the hub and a link of chain
+    return g.outline();
+  }
+  // The cleat the rope is tied off at, on the far wall; `cut` the rope is gone, a frayed end left.
+  function cleat(cut) {
+    const g = new Grid(10, 15);
+    g.rect(2, 3, 6, 10, P.i1); g.vl(2, 3, 10, P.i2); g.vl(7, 3, 10, P.d1);
+    for (const [x, y] of [[3, 4], [6, 4], [3, 11], [6, 11]]) g.set(x, y, P.i3);
+    g.rect(1, 7, 8, 2, P.i3); g.hl(1, 7, 8, P.i4);                                                  // the horn of it
+    if (!cut) { g.ell(5, 8, 3.2, 2.4, P.b2); g.hl(2, 8, 6, P.b1); g.hl(3, 7, 4, P.b3); g.vl(4, 0, 6, P.b3); g.vl(5, 0, 6, P.b2); }
+    else { g.set(3, 9, P.b2); g.set(2, 10, P.b3); g.set(4, 10, P.b2); }
+    return g.outline();
+  }
+
+  // ---------------------------------------------------------------- what lies on a table
+  // The feast the cult sat down to, a thing a texel a colour off a letter grid (29 Sep 2026: "put
+  // food on the tables that scatters when you hit them"). The golden apple, the milk and the
+  // honeycomb are the table above the clouds (js/heaven.js).
+  const art = (rows, pal) => { const g = new Grid(rows[0].length + 2, rows.length + 2);
+    rows.forEach((r, j) => [...r].forEach((ch, i) => { if (pal[ch]) g.set(i + 1, j + 1, pal[ch]); })); return g.outline(); };
+  const FOOD = {
+    apple: art(['..gl.', '.rRr.', 'rRWrr', 'rRrrd', 'rrrdd', '.ddd.'], { g: P.b0, l: P.g3, r: '#c63a2d', R: '#e4584a', W: '#ffc2b0', d: '#7e211c' }),
+    gapple: art(['..gl.', '.aAa.', 'aAWaa', 'aAaab', 'aaabb', '.bbb.'], { g: P.b0, l: P.g4, a: '#e0b040', A: '#f5d46a', W: '#fff6c8', b: P.b2 }),
+    pear: art(['..g..', '..pp.', '.pPp.', 'pPWpp', 'pppqq', '.qqq.'], { g: P.b0, p: '#a8bd4c', P: '#c8d86c', W: '#f0f6b0', q: '#6f8a30' }),
+    bread: art(['..bbbbb..', '.bBcBcBb.', 'bBBBBBBBb', 'bbbbbbbbd', '.ddddddd.'], { b: '#c08a48', B: '#dcaa60', c: '#f0d090', d: '#8a5a2a' }),
+    cheese: art(['....yy.', '..yyYy.', 'yyYYyoy', 'yoyyyyk', 'kkkkkkk'], { y: '#e8c23a', Y: '#f6de70', o: '#b8901c', k: '#a8801e' }),
+    jug: art(['.nn...', '.nN.h.', 'cCccch', 'cWccch', 'ccccc.', '.kkk..'], { n: '#b0643a', N: '#d08450', c: '#b0643a', C: '#d08450', W: '#f0b080', h: '#8a4a28', k: '#6a3620' }),
+    milk: art(['.nn...', '.nN.h.', 'wWwwwh', 'wMwwwh', 'wwwws.', '.sss..'], { n: '#d8d0c0', N: '#fffaf0', w: '#e6e0d2', W: '#fffaf0', M: '#ffffff', h: '#b8b0a0', s: '#a8a090' }),
+    goblet: art(['gGGgg', '.gGg.', '..g..', '..g..', '.ggg.'], { g: P.b2, G: P.b4 }),
+    fish: art(['.bbbb..t', 'bBBeBbtt', 'bbbbbbtt', '.ssss..t'], { b: '#4e7ab0', B: '#86b0dc', e: P.ol, t: '#3a5a88', s: '#2c4a70' }),
+    leg: art(['.mmm...', 'mMMmm..', 'mMmmmwW', 'mmmmm.W', '.ddd...'], { m: '#9a5a2a', M: '#c07a3a', d: '#6a3a1a', w: '#e8dcc0', W: '#f8f0e0' }),
+    grapes: art(['..g..', '.vVv.', 'vVvVv', '.vvvq', '..vq.'], { g: P.b0, v: '#6a3a8a', V: '#9a6ac0', q: '#48245e' }),
+    honey: art(['.hHh.', 'hHhHh', 'HhHhH', 'hHhHd', '.ddd.'], { h: '#e0a020', H: '#f8cc50', d: '#a86a10' }),
+    plate: art(['.eeeee.', 'eEEEEEe', '.eeeee.'], { e: '#d6cfbc', E: '#f4efe2' }),
+  };
+
   const sprites = {
     'door-wood': doorWood(), 'door-iron': doorIron(), 'door-vault': doorVault(), 'door-soul': doorSoul(),
     'broken-wood': debris('wood'), 'broken-iron': debris('iron'), 'broken-vault': debris('vault'), 'broken-soul': debris('soul'),
@@ -669,6 +855,12 @@ const PROP_PIXELS = (() => {
   };
   for (let k = 0; k < 8; k++) sprites['lantern-' + k] = lantern(k);
   for (let k = 0; k < 8; k++) { sprites['sconce-s' + k] = sconce(k, true); sprites['sconce-f' + k] = sconce(k, false); }
+  sprites.barrel = barrelStand();
+  for (let k = 0; k < 8; k++) { const lie = barrelLie(k); sprites['barrel-lie' + k] = lie; sprites['barrel-up' + k] = transpose(lie); }
+  for (const k in FOOD) sprites['food-' + k] = FOOD[k];
+  sprites['chand0'] = chandelier(0); sprites['chand1'] = chandelier(1); sprites['chand-down'] = chandelierDown();
+  sprites.cleat = cleat(false); sprites['cleat-cut'] = cleat(true);
+  sprites['table-s'] = tableTop(); sprites['table-n'] = tableUnder(); sprites['table-e'] = tableSide(); sprites['table-w'] = mirror(sprites['table-e']);
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
   for (const k in sprites) if (!/^(rack|coop|roast)-/.test(k)) sprites[k] = sprites[k].trim();
   return { P, Grid, sprites, rng };
@@ -715,6 +907,15 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     ctx.drawImage(canvasOf(name), (X0 - m.e) / m.a, (Y0 - m.f) / m.d, (X1 - X0) / m.a, (Y1 - Y0) / m.d);
     ctx.imageSmoothingEnabled = smooth;
+  };
+  // A sprite with its top-left at (x, y), turned `q` quarter turns about its middle — whole turns only,
+  // so its pixels stay square (the barrel's rule). What js/scatter.js throws about is drawn with it.
+  PROP_PIXELS.draw = (ctx, name, x, y, k = TX, q = 0) => {
+    const g = S[pick(name)]; if (!g) return;
+    if (!(q & 3)) return put(ctx, name, x, y, k);
+    const w = g.w * k, h = g.h * k, W = q & 1 ? h : w, H = q & 1 ? w : h;
+    ctx.save(); ctx.translate(x + W / 2, y + H / 2); ctx.rotate((q & 3) * Math.PI / 2);
+    put(ctx, name, -w / 2, -h / 2, k); ctx.restore();
   };
   // Where the object sits inside the 128px cell the painted atlas drew, measured off its alpha: the
   // pixel sprite is fitted into that box, not the whole cell, or it would come out a size larger.
@@ -794,6 +995,45 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     return true;
   };
 
+  // The rope's cleat on the far wall, drawn like the far-wall lantern: fixed to the face above its tile.
+  // `cleatHook` is where the rope leaves it, in the prop's own upright frame (the chandelier asks).
+  const cleatTop = (p) => p.y - TILE * 0.25 * TILT - 4 - S.cleat.h * TUNING.chandelier.texel;
+  A.cleat = function (renderer, p) {
+    const name = p.cut ? 'cleat-cut' : 'cleat', g = S[name], k = TUNING.chandelier.texel;
+    put(renderer.ctx, name, p.x - g.w * k / 2, cleatTop(p)); return true;
+  };
+  // The chandelier, in two passes (`Renderer.drawProp` for the floor, `drawChandelierAir` over
+  // everyone): on the floor its shadow, which says where it will land and darkens as it comes, or
+  // the wreck once it has; in the air the ring `p.z` px up, swaying a little, and its rope to the
+  // cleat — or, cut, a frayed end trailing after it. Both in the prop's own upright frame.
+  A.chandelier = function (renderer, p, pass) {
+    const ctx = renderer.ctx, C = TUNING.chandelier;
+    if (p.drop === 'down') {
+      if (pass !== 'air') { const g = S['chand-down'], k = C.texel; renderer.shadow(p.x, p.y + 3, g.w * k * 0.46, 6); put(ctx, 'chand-down', p.x - g.w * k / 2, p.y + 8 - g.h * k, k); }
+      return true;
+    }
+    if (pass !== 'air') {
+      const k = 1 - clamp(p.z / C.z, 0, 1);
+      ctx.save(); ctx.globalAlpha *= 0.55 + 0.4 * k; renderer.shadow(p.x, p.y + 2, C.killR * (1 - 0.25 * k), C.killR * 0.42 * (1 - 0.25 * k)); ctx.restore();
+      return true;
+    }
+    const sway = p.drop === 'hang' ? Math.sin(renderer.t * 1.3 + p.phase) * C.sway * 40 : 0;
+    const name = 'chand' + (Math.floor(renderer.t * 7 + p.phase * 3) % 2), g = S[name], w = g.w * C.texel, h = g.h * C.texel;
+    const x0 = Math.round(p.x + sway - w / 2), y0 = Math.round(p.y - p.z * TILT - h), hx = x0 + w / 2, hy = y0 + C.texel;
+    // the rope, a cell at a time: up to the cleat while it holds, a frayed tail once it is cut
+    const c = p.cleat, cell = Math.max(1.5, TX * 1.1), PP = PROP_PIXELS.P;
+    let ex = hx, ey = hy - 14;
+    if (c && !c.cut) { ex = c.x; ey = p.y + (c.y + (cleatTop(c) + C.texel - c.y) / TILT - p.y) * TILT; }
+    const n = Math.max(2, Math.ceil(Math.hypot(ex - hx, ey - hy) / cell));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, x = Math.round(hx + (ex - hx) * t), y = Math.round(hy + (ey - hy) * t + (c && !c.cut ? Math.sin(t * Math.PI) * 6 : 0));
+      ctx.fillStyle = PP.ol; ctx.fillRect(x - cell / 2 - 0.5, y - cell / 2 - 0.5, cell + 1, cell + 1);
+      ctx.fillStyle = i % 3 ? PP.b2 : PP.b1; ctx.fillRect(x - cell / 2, y - cell / 2, cell, cell);
+    }
+    put(ctx, name, x0, y0, C.texel);
+    return true;
+  };
+
   A.drawProp = function (renderer, p) {
     if (!PROP_PIXELS.on) return drawProp.call(this, renderer, p);
     const ctx = renderer.ctx;
@@ -843,13 +1083,15 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     // The ordinary sprout: the big patch's grass, smaller, with the same glow and graze ring.
     if (p.kind === 'heal' && !p.big && !p.pail) {
       const bob = Math.sin(renderer.t * 2.4 + p.phase) * 2, g = S['grass-small'];
-      const glow = ctx.createRadialGradient(p.x, p.y + bob, 0, p.x, p.y + bob, 34);
-      glow.addColorStop(0, 'rgba(168,189,108,0.22)'); glow.addColorStop(1, 'rgba(168,189,108,0)');
-      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y + bob, 34, 0, Math.PI * 2); ctx.fill();
+      if (!renderer.silPass) {   // a glow flattened by THE DARK's silhouettes is a solid disc
+        const glow = ctx.createRadialGradient(p.x, p.y + bob, 0, p.x, p.y + bob, 34);
+        glow.addColorStop(0, 'rgba(168,189,108,0.22)'); glow.addColorStop(1, 'rgba(168,189,108,0)');
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y + bob, 34, 0, Math.PI * 2); ctx.fill();
+      }
       renderer.shadow(p.x, p.y + 4, 11, 5);
       put(ctx, 'grass-small', p.x - g.w * TX / 2, p.y + 6 + bob - g.h * TX);
       if (p.graze > 0) {
-        const frac = clamp(p.graze / TUNING.prop.heal.grazeTime, 0, 1);
+        const frac = renderer.grazeOf(p);
         ctx.strokeStyle = 'rgba(168,189,108,0.85)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.arc(p.x, p.y + bob, 17, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
       }
@@ -878,6 +1120,44 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
       ctx.restore();
       put(ctx, (p.hits || 0) > 0 ? 'coop-cracked' : 'coop-front', -w / 2, -h / 2, k);
       ctx.restore(); return true;
+    }
+    // The powder barrel (29 Sep 2026, Enter the Gungeon's): standing, on its feet, shivering while a
+    // lit fuse runs out or a blow still rings in it; knocked over, lying across the way it rolls, a
+    // frame for every eighth of a turn of how far it has rolled (`rollD`), so the seams and the skull
+    // go round with it and come back the other way when it bounces back.
+    if (p.kind === 'barrel') {
+      const B = TUNING.prop.barrel, lit = p.oilT >= 0, k = B.draw / S.barrel.w;
+      ctx.save(); ctx.translate(p.x, p.y);
+      let top;
+      if (p.lying) {
+        const up = p.rollAxis === 'v', step = Math.PI * B.draw * 0.85 / 8;
+        const f = ((Math.floor((p.rollD || 0) / step) % 8) + 8) % 8, name = (up ? 'barrel-up' : 'barrel-lie') + f, g = S[name];
+        renderer.shadow(0, p.r * 0.55, g.w * k * 0.46, 5);
+        top = p.r * 0.15 - g.h * k / 2;
+        put(ctx, name, -g.w * k / 2, top, k);
+      } else {
+        const g = S.barrel, shiver = lit ? Math.sin(renderer.t * 60) * (1 - p.oilT / B.fuse) * 1.2 : p.wobble > 0 ? Math.sin(renderer.t * 50) * p.wobble * 4 : 0;
+        renderer.shadow(0, p.r * 0.6, B.draw * 0.44, 6);
+        top = p.r * 0.8 - g.h * k;
+        put(ctx, 'barrel', shiver - g.w * k / 2, top, k);
+      }
+      if (lit && !renderer.silPass && !renderer.baking) renderer.flame(0, top + 3, B.fuseDraw, p.phase * 10, p.oilWitch);
+      ctx.restore(); return true;
+    }
+    // A table on its side (`Prop.flipTable`): its top toward where it was going, rocking while a
+    // headbutt still rings in it.
+    if (p.kind === 'table' && p.flipped && !p.isAltar) {
+      const name = 'table-' + p.flipped, g = S[name], wob = p.wobble > 0 ? Math.sin(renderer.t * 60) * p.wobble * 5 : 0;
+      ctx.save(); ctx.translate(p.x + wob, p.y);
+      renderer.shadow(0, p.r * 0.35, g.w * TX * 0.52, 7);
+      put(ctx, name, -g.w * TX / 2, p.r * 0.5 - g.h * TX);
+      ctx.restore(); return true;
+    }
+    // A table, and the supper on it (js/scatter.js). The ritual altar keeps its own drawing.
+    if (p.kind === 'table' && !p.isAltar) {
+      const drew = drawProp.call(this, renderer, p);
+      if (typeof Scatter !== 'undefined') Scatter.drawOnTable(renderer, p);
+      return drew;
     }
     return drawProp.call(this, renderer, p);
   };
@@ -943,7 +1223,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     ctx.fillStyle = PALETTE.bone;
     for (let q = 0; q < p.pail; q++) ctx.fillRect(Math.round(p.x - (p.pail * 5 - 2) / 2 + q * 5), Math.round(y0 - g.h * k + 8 * k), 3, 3);
     if (p.graze > 0) {
-      const frac = clamp(p.graze / TUNING.prop.heal.grazeTime, 0, 1);
+      const frac = this.grazeOf(p);
       ctx.strokeStyle = 'rgba(239,230,208,0.85)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.arc(p.x, p.y, R * 1.05, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
     }

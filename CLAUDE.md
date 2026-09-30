@@ -106,6 +106,9 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/render.js` | Everything drawn. Roughly half the codebase. |
 | `js/dark.js` | `Dark`: THE DARK's picture — light cast from every flame through the tiles, the goat's hearing as silhouettes, the wall faces round him, windups and eyes over the dark. Render only. |
 | `js/combat-fx.js` | `CombatFX`: cosmetic fragments and bursts (deaths, body pieces), and every flame, blast, smoke puff and blood spray as pixel frames it bakes itself (`flameFrames`, `burstFrames`, `pixelRing`, `cellDisc`); never enters collision, damage, noise or AI. |
+| `js/scatter.js` | `Scatter` (`game.scatter`): the supper on the tables (`Scatter.foodOf`, off a hash of the table's tile; `TUNING.scatter`) and everything thrown off one — arcs, quarter turns, bounces, rolls, clay breaking into shards and a spill — left lying to be kicked. Cosmetic: never in collision, damage, noise or AI. Sprites `food-*` in `js/prop-pixels.js`. |
+| `js/heaven-pixels.js` | `HEAVEN_PIXELS`: heaven's sprites on `PROP_PIXELS.Grid` — the god (`god`, `god-speak`, `god-blink`), the blind shepherd's three arms, the mirror (its glass one flat colour, `GLASS`), the five bells and their beam (`BELL_GAP`), a seat, gold grass, the gold skull the HUD counts sacrifices in. Loads after `horse-pixels.js`; node-requirable for a sheet. |
+| `js/heaven.js` | `Heaven`: THE PASTURE ABOVE, where a death's card leads (see *Heaven* below): the store that outlives runs (`HEAVEN_KEY`, `meta`: sacrifices, `MIRROR` ranks, the seats), the hand-laid two-room level (`level`), its step (`update`: GRAB answers, the comb, the talk, the mirror panel, the bells, the edge), what the god says (`HEAVEN_TALK`, `pickTalk`) and all of its picture (`bake*`, `draw*`, `drawHud`). |
 | `js/goat-grid.js` | `GoatGrid`: the GOAT GRID tab of the dev tool (`#goats`). The build's own goat (`PaintedArt.drawGoat` with a stub `game`) on a grid whose axes are picked from horns, voice, talisman, third eye, facing, wounds, floor (a canon's own swatches) and decor (a prop off the environment atlas); zoom, framing, pixel shadow, SAVE as PNG or JPG. Touches no run state. |
 | `js/painting.js` | `Painting`: the picture of a cleared floor — floor plan, the decal canvas's paint, the line he ran, a skull per kill — baked once at the stairs (`Painting.bake`, `TUNING.painting`), shown as the clear screen's last card, saved as a PNG (through the viewer's `downloads` capability when framed as an artifact, a plain link locally). Render and export only. |
 | `js/release.js` | `RELEASE`: the itch build. `RELEASE.on` (the zip's index.html sets `window.GOAT_RELEASE` first) means no dev drawer and no tool addresses; `RELEASE.build(game)` is the dev drawer's ITCH BUILD button — the page zips itself (flagged index.html + exactly the scripts it loaded, CRC'd, deflated by `CompressionStream`) and downloads it (through `Painting.dl` when framed as an artifact). Loads just before `game.js`. |
@@ -130,6 +133,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/script-lists.js` | The one reader of which scripts the two HTML files load. `check-sync.js` and the guard both ask it. |
 | `tools/hooks/guard.js` | Claude Code hook: refuses a publish or a push that would put a broken build live. See *Publishing*. |
 | `tools/hooks/compact.js` | Claude Code hooks: saves the user's own words before a context compaction and hands them back after it. |
+| `tools/god-talk.html` | GOD TALK (dev drawer): every line of `HEAVEN_TALK` and `SHEPHERD_TALK`, read out of js/heaven.js, to edit and cut into parts with `|` (each part its own plate, `Heaven.parts`); SAVE writes both back through `tools/serve.js` (POST /talk-edit). Served only. |
 | `tools/sfx-board.html` | Every sound effect on one page of buttons, through the game's own mix and room. Served, `/tools/sfx-board.html`. |
 | `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
 | `PLAYTEST.md` | The first itch.io playtest as a runnable plan: the three questions, the form, the observation sheet, how the numbers are counted, and the go / no-go for the build. |
@@ -340,10 +344,19 @@ tiles get no door. "Behind him" means an earlier room index, not "to the left". 
 single `t` is one table centred on it) — never off world-tile parity, which put tables a tile off their
 drawing, into braziers. `tableSqueeze` refuses a table that leaves a goat-width squeeze beside a
 brazier (`table.squeeze`; a lump or a clear way is fine). `GEN_RULES.tables`.
+**The supper on them** (1.79, `js/scatter.js`) is render data, never the generator's: `Scatter.foodOf(p)`
+lays it off a hash of the table's tile (`TUNING.scatter.chance`, `count`, `menu`) the first time it is
+asked, the ritual altar never. `Prop.shove`, a flung body landing on a table (`collideEntities`), a
+barrel or a crate hitting one and a blast (`Prop.explode`, `oilBurst` → `Scatter.burst`) call
+`game.scatter.fromTable`; the bits live in `game.scatter.bits` (capped at `scatter.keep`), update in
+`updateEffects`, draw in the ground and air passes, and a body walking through one kicks it.
 
 **Spawns.** `take` in `tryGenerate` keeps the best of a few dozen rolls (clear of men, props,
 `room.enter`; `GEN_RULES.spacing`). Afterwards anyone `inFurniture` is walked to clear floor
-(`GEN_RULES.furniture`); the sentry is exempt.
+(`GEN_RULES.furniture`); the sentry is exempt. Every man, milk, crate, rack, bomb and coop, the vault door
+and every wall that gives can be walked to from the start (`GEN_RULES.reach`, `vault`, `secrets`; `walkedFrom`
+in rules.js): cave erosion (`erodeCave`) leaves a corner square rather than cut a cell off, and a vault
+or niche opens only onto the room's own floor. Nothing that can be picked up, and no milk, stands in grass.
 
 **Milk.** Count is `max(levelDef.heals, ceil((rooms - 1) / TUNING.prop.heal.every))`, one per band of
 rooms (worst gap five). The tile is scored clear of furniture and flame (`GEN_RULES.milk`). Grazed, not
@@ -351,7 +364,7 @@ touched: `Prop.graze`, `heal.grazeSpeed`, `heal.grazeTime`. `kind === 'heal'` wi
 +1 HEART; `big: true` (set only by `carveSecret`, `TUNING.secret.healChance`) is +2 HEARTS.
 
 **Trap rooms.** `tag: 'trap'` pool; `levelDef.traps` count, `pickTrapRooms` (never pen, set piece,
-ambush, first two ordinary rooms), `isTrap`; never introduces a kind; no spike scatter. `needs: 'spikes'`
+ambush, first two ordinary rooms, the last room), `isTrap`; never introduces a kind; no spike scatter. `needs: 'spikes'`
 templates only on `levelDef.spikes` levels. `'S'` plate, `'B'` coals.
 
 **The level tool.** `LEVEL TOOL` in the dev drawer; `dev.rules` pauses the sim, `hitDev` swallows input.
@@ -376,14 +389,15 @@ of his gap turns in the first tile past the wall and never runs on along his row
 both stands **always swords** (`room.isAmbush`), nothing scattered, never trap or canon, milk placed
 furthest from `room.enter`, two fixed clubmen, never introduces a kind. Block 1 of the floor text.
 
-**The ramp** (1.66–1.67, THE ALTAR, thirteen rooms): sentry; one loose clubman; `calmAt` — `CALM_TEMPLATE`,
+**The ramp** (1.66–1.67, THE ALTAR, twelve rooms since 1.80): sentry; one loose clubman; `calmAt` — `CALM_TEMPLATE`,
 role `calm`, lit bowls in straw and nobody (off the curve, nothing scattered, `isCalm`; the milk's
 rhythm may lay a bowl there, and that is fine); the wheel;
 the ambush; the middle gate, its soul carried by a keeper (`gateKeeper`, see *Soul gates*); `trapAt` + `trapTpl` `hayloft` + `trapMen` (two clubmen in straw, the one trap
-room, placed not rolled); the first butcher alone (`introduce` champion at 1); three clubmen (`crowdAt`, so his two rooms are
-not back to back); his arena; rest (no gate, no soul); the butcher again as a boss with two clubmen at his
+room, placed not rolled); the first butcher alone, plain, no outline (`introduce` champion at 1); three clubmen (`crowdAt`, so his two rooms are
+not back to back); rest (no gate, no soul); the butcher again as a boss with two clubmen at his
 back, who carries the second soul (26 Sep 2026: the ogre is THE YARD's last room now, and nowhere before
-it). `surprises: false`: THE ALTAR deals exactly those two souls.
+it). His ring in the middle (room 10) went in 1.80: two lit butchers a floor was "too much", so the
+only outlined one is the last. `surprises: false`: THE ALTAR deals exactly those two souls.
 
 **The wheel lesson.** `levelDef.millLesson`: `MILL_LESSON_TEMPLATE`, seven tall, hub one row off the top
 so only the bottom lane is clear; **two men** on the far `e` markers with `trapSense` pinned to 0 and 1
@@ -450,7 +464,8 @@ room's men are dead (`game.updateClearDoors`; not gates, seals, vault); a plank 
 it (`game.guideTo`, `drawGuide`, `TUNING.soul.guide`). The **clock door** (`prop.door.clockFor`,
 `levelDef.clockDoors`, level three on) stands open (`open` 1), shuts on `clockEase` at 9 s =
 `score.perRoom`, never on a body, lights itself while counting, and `gen.js` removes it from rooms with
-fewer than two men or that introduce a kind or follow one. `game.clockTold`, `GEN_RULES.clock`.
+fewer than two men, that introduce a kind or follow one, or whose door is more than `clockReach` tiles'
+walk from the way in (`walkTiles`). In THE DARK a counting door is a light (`Dark.sources`). `game.clockTold`, `GEN_RULES.clock`.
 
 **Door kinds.** An open door (`open` > 0) is drawn swung on its hinge and folded along the corridor
 wall (`Renderer.doorSwing`, asked of the tiles once), never turned about its middle. `prop.door.hits` 1 (plank), `ironHits` 3 (`prop.iron`, `levelDef.ironDoors`, none on
@@ -473,7 +488,7 @@ in the box (the seal's rule). `sealHolding` answers a trap's men with `{ box }` 
 out (`game.inSeal`). `GEN_RULES.vaultkind`.
 
 **A wall that gives.** `carveSecret`: a two-tile niche behind an ordinary room's top/bottom wall, once or
-twice (`TUNING.secret.chance2`), rack plus maybe big grass, solid rock only; `levelDef.secretsAfterBoss`
+twice (`TUNING.secret.chance2`), rack plus maybe big grass, solid rock only; `levelDef.secretsAfter` (a room index)
 on level one. Prop `kind === 'secret'`, `Prop.crackWall`, `TUNING.prop.secret.hits` (2), room
 `wallColor`. **Until broken the niche is `T.WALL`** in `World.tiles` (a copy of `level.tiles`) and hidden
 (`game.niches`); broken, `nicheTiles` stay lit. `Renderer.wallCrack` is the one crack. `GEN_RULES.secrets`.
@@ -758,18 +773,39 @@ burning tile (`alight`, `Prop.burst`, `burstTime`; the barrel is what spreads). 
 backstop), re-throw keeps the fuse, `updateBomb` waits for rest, `explode()` two hearts inside `nearR`,
 one to `blastR`, goat included; placed in the highest-threat room (`prop.bomb.chance`).
 
+**Tables go over** (1.80, `TUNING.prop.table.flip`). A table sent sliding (`shove`) goes over onto its
+side when it stops (`flip.chance`) and always when it meets stone faster than `flip.wall`
+(`Prop.flipTable`): `p.flipped` is the way its top faces ('n', 's', 'e', 'w', sprites `table-<dir>`),
+`r` grows to `flip.r`, the supper goes flying, and it is no longer shouldered (`collideEntities`) or
+sent sliding. A headbutt only rocks it (`knockFlipped`) until the `flip.hits`-th breaks it into planks
+(`smashTable`); a butcher's charge goes straight through it. Never a wall for good.
+
+**The chandelier** (1.80, Enter the Gungeon's; `TUNING.chandelier`, `TUNING.prop.cleat`). `gen.js` hangs
+up to `perLevel` a floor (`chance` a room, its own RNG stream) over a 3x3 of floor, and ties its rope off
+at a `cleat` on the far wall straight above (`cid` joins them; `startLevel` sets `ring.cleat` /
+`cleat.hangs`). Never in a cave, the trip, THE DARK, or a teaching, resting, trap, wheel, gallery or
+killbox room; `GEN_RULES.chandeliers`. A headbutt on the cleat, a flung body or thrown thing arriving at
+it past `cleat.hit`, or `cleat.burn` s of flame on its tile cuts the rope (`Prop.cutRope`, `cleat.cut`);
+the ring falls from `z` (`updateChandelier`) and lands on everything within `killR`: a man `die`s
+('splat'; the two-hit kinds lose a heart), the goat loses a heart (killer `chandelier`), a table under it
+goes to planks, the candles light `fireR` tiles. The wreck stays, harmless. Neither prop blocks. Drawn in
+two passes: its shadow (the landing spot, darkening as it comes) or the wreck with the props,
+`Renderer.drawChandelierAir` (ring, rope to the cleat) over everybody.
+
 **Barrels.** `kind === 'barrel'` (`TUNING.prop.barrel`): not `item`, blocking, stops bullets. A headbutt,
 a flung body over `knock`, a charge or another barrel (`pass`) calls `Prop.roll`; `lying` is for good.
 `updateBarrel` bowls men (`e.fling` × `fling` × `knockMul`, `daze`, `keep` a man; Butcher staggers,
 ogre unmoved) and breaks above `breakSpeed` (`smashBarrel`). Oil: `oilT` is the fuse, lit by a burning
 tile or man; `oilBurst` is `Prop.burst` wider; a brazier bursts it at once. Lit, it is a fire hazard to
 `hazardAt` (`game.hazards` holds barrels, `unHazard` drops a broken one). Placed off its own `RNG`
-stream where `rockFits`, `levelDef.barrels` a room; `GEN_RULES.barrels`. Drawn in `PaintedArt.drawProp`
-in whole quarter turns off `spinD`, a pixel powder heap on its lid
-(`barrel.markAt` / `markRows` / `markCell`) so it says it goes up. It never kills by itself (pillar 3): the wall behind the man does.
+stream where `rockFits`, `levelDef.barrels` a room; `GEN_RULES.barrels`. Drawn as Enter the Gungeon's
+red barrel (1.79, `js/prop-pixels.js` `barrel`): iron hoops, a wooden head with its powder heap, a skull
+on the staves. On its side it lies across the way it was sent (`p.rollAxis`, set in `roll`: 'v' going
+left or right) and turns a frame (`barrel-lie0..7`, `barrel-up0..7`) every eighth of its girth off the
+signed `p.rollD`, so it rolls back the other way off a wall. It never kills by itself (pillar 3): the wall behind the man does.
 
 **Grating.** `kind === 'spike'`, `updateSpike` `idle → armed → up → down → rest`; `Prop.tripped` by the
-goat (`spike.trigger`) or any living unheld non-mist man; `bite`, `this.bit`, `spikeThreat()`.
+goat or any living unheld non-mist man standing on that grate's own tile (never beside it); `bite`, `this.bit`, `spikeThreat()`.
 `spikePatch` lays one bending band of `spike.run` (9–15 per room), never a scatter; its grates carry
 `patch: true` so `GEN_RULES.grate` can tell them from a trap template's own `S`.
 
@@ -781,7 +817,8 @@ touching one in a state in `impale.from` (landed from a leap, staggered, floored
 else runs — then tears off a step clear, staggered, spared the teeth for `clear` s. Walking, he is
 only put round it (the old accident: every man steers off a spire, so one standing on it could not
 leave and bled a heart a second). Drawn shivering with the tooth redrawn over his feet (`drawEnemy`). At a wall, clear of entrance, furniture, grass; never in trap,
-set-piece, teaching, ambush rooms or the trip. `GEN_RULES.spikes`.
+set-piece, teaching, ambush rooms or the trip — except the cave ogre's own ring, which always stands
+`cave.spikes.ring` of them, so he is fought among them. `GEN_RULES.spikes`.
 
 **Boulders.** `kind === 'rock'`: blocking, not opaque, not item; `crackRock`; `world.block` keeps it out
 of the flow field; bodies die on it at `splatSpeed`, crack it past `knockHitSpeed`. `rockFits`: plain
@@ -826,7 +863,9 @@ Anything that reads `exitTile` still means the lit flight (compass, escorts, the
 
 **Drawing it cheaply.** `World.buildCaveBand` (`caveNear`, `cave.band` 2) limits what is marched.
 `Renderer.drawCaveBaked` bakes chunks (`CAVE_BAKE`, `caveBakeSig`, `CAVE_BAKE_MAX`); **anything animated
-on cave ground must skip itself while `renderer.baking`**. `Renderer.caveRockPath` caches `Path2D` per
+on cave ground must skip itself while `renderer.baking`**. A chunk's sig is its own tiles four round,
+**never `caveEpoch`** (every clamp bumps it, and in the sig it rebaked the whole screen at each door);
+`Renderer.warmCave` paints the view and `CAVE_AHEAD` chunks round it in idle time, nearest his heading first. `Renderer.caveRockPath` caches `Path2D` per
 `CAVE_CHUNK` keyed on `world.caveEpoch`; **every stone↔floor tile change must call `World.caveDirty`**
 (`updateClamps`, niche walling, `crackWall`, `Shop.breakWall`). Decor: `drawCaveDecor` (upward spires,
 gems on the face band, mushroom fur), `Renderer.dripstone` on top walls, sharp teeth (`northOpen`)
@@ -841,7 +880,7 @@ outright — "they were beautiful". Leave the trip's look, glow and colours alon
 **THE TRIP.** `tripLevel(i)` replaces `LEVELS[i]` (`shroom`, `cave`; no traps, wheel, drop, killbox,
 teeth, posts), fought at `LEVELS[0]`'s curve × `shroom.threatMul`, `shroom.men` per room of
 `shroom.kinds`. `LEVELS.indexOf(def)` is -1 — ask `this.level.def`. Entered by grazing a `shrooms` prop
-(`shroom.chance`, `from`, `eatR`, `eatTime`, `game.eatShrooms` → `game.tripAt`; `levelTripAt`,
+(never on the last two floors: the last floor is never the trip; `shroom.chance`, `from`, `eatR`, `eatTime`, `game.eatShrooms` → `game.tripAt`; `levelTripAt`,
 `forgetLessons`, `saveRun`). `game.tripInput(real)` reverses the stick and swaps grab/headbutt and
 roll/scream — no new keys. Lens breathing in `Renderer.worldTransform` (`shroom.cam`), never a shake.
 `Goat.tripPhase`. `GEN_RULES.shrooms`, `GEN_RULES.trip`. The floor after it says, plain and still, that the
@@ -852,7 +891,7 @@ the lamps out and a softened copy of its curve). It is not in LEVELS: THE FORK's
 to it and it is played in THE THRESHING FLOOR's place (`darkOf`, via `game.darkAt`, which is only
 ever that index; `startLevel` refuses any other). Unlike the trip it stays that floor to whatever asks
 which floor it is: **ask `levelIndexOf(def)`, not `LEVELS.indexOf`** (mouse, milk rhythm, shrooms).
-Its own canon THE LAMP (five `canon: 'lamp'` templates: well, lampvault, cellblock, chapel, store),
+Its own canon THE LAMP (five `canon: 'lamp'` templates: well, lampvault, cellblock, chapel, lampstore),
 its own crowd (hounds and seers weighted up, no rifle ever, a cap of six), curve, doors and palette;
 its own par (`scoreFor(..., def)`) and best (`noteBest('dark')`); its own LEVELS row (row 1; with
 `#dark` any row starts it). **The lamps are the level** (`gen.js`, `TUNING.dark.lamps`): every room
@@ -860,7 +899,9 @@ with men, and every arena and rest room, stands `min`..`max` lamps (two past `bi
 template's own flames counted, against a wall and spread; a headbutt tips one, it burns where it
 falls, then the room is black. **A lantern on the wall** (`kind: 'sconce'`, `Prop.wall`, not
 blocking, never goes out, `lights.sconce`) hangs by each doorway in a far or side wall (straw under
-it is fine); drawn by `PaintedArt.sconce` (`js/prop-pixels.js`). `GEN_RULES.dark` holds both, and
+it is fine; never by a wall that gives or the vault's door); drawn by `PaintedArt.sconce` (`js/prop-pixels.js`). A doorway in
+the near wall gets a standing lamp beside it instead (`doorLamp`, `lamps.doorLit`), or the seed is rerolled. A pool that
+lands inside stone starts from the nearest open tile (`World.ignitePool`). `GEN_RULES.dark` holds both, and
 that no killbox or rifle is in it. **The cult is in the dark too**, on THE DARK and on any floor
 `dev.dark` paints (`game.inDark`): `game.goatLit` (`game.litAt`, once a step) — out of the light
 `canSeeGoat` stops at `dark.ai.sight` (a hound a little further), a hunt (never a blow under way) goes
@@ -1010,10 +1051,20 @@ level's seed was cut with), room, kills, time, souls, killer, `G` gap between th
 win card or the clear card's picture copies it (`copyCode`). `game.replayCode(code)` rebuilds the floor. Burst vs bleed deaths are
 counted per browser under `DEATH_KEY` (`TUNING.dev.burstGap`) and shown in the dev drawer.
 
+**The road between floors** (1.80, `Painting.drawRoute`, `TUNING.painting.route`). The clear card is the
+floor's picture with no score, seconds or code under it (leaving it still copies the code): under it a
+road of a node a floor and OUT after the last, and the build's own goat trotting from this floor's node
+to the next (Nuclear Throne's map between areas); THE DARK / THE TRIP name their node where the run put
+them (`Painting.floorName`). The death card (`card.map`, `game.deathPainting` baked at death,
+`Painting.drawDeath`) fades in over the pull-back: the floor painted the same way, the road with his skull
+on this floor, the killer's plate, what he keeps, ASCEND, the run code.
+
 **Death and restart.** `restartLevel` only from `play` / `paused` / `dead`, and counts as a death. It
 restores **exactly** `game.levelBoons` (`keepBoons`), `levelArtifact`, `levelTalRun` (the tallow, the
 cup, the tally) and `levelCrowGift`; only in-level souls are lost. **THE MIDDLE GATE** (1.68,
-`TUNING.soul.hold.from` = floor index 1 on): opening a floor's first gate (`openSoulGate` on
+`TUNING.soul.hold.from` = floor index 1 on; **switched off** since 29 Sep 2026 by `hold.on` false —
+"for now start at the very beginning", a roguelite shape once the balance settles — so every death,
+heaven included, and any old save's `gate` comes back to the head of the floor): opening a floor's first gate (`openSoulGate` on
 `soulGates[0]`: its soul, a ware, the milk) arms `game.holdAt`; `holdGate` snapshots `game.checkpoint`
 (boons, artifact, talRun, crowGift, tripAt, kills, time, the animal with him) once the card is taken and
 no rat ogre is up. A death past it passes the checkpoint to `startLevel(..., cp)`: a **new** layout off
@@ -1024,6 +1075,46 @@ stay the head of the floor (saves, death card via `gate`); `save.gate` carries t
 CONTINUE. Any `startLevel` without `cp` forgets it. `quitToTitle` from a floor under way
 (`play`, `paused`, `boon`) is a death too (rule 6: CONTINUE never replays a layout). `forgetLessons` resets
 once-a-run lines at run start. N needs the dev drawer.
+
+**Heaven** (1.79, `js/heaven.js`, `js/heaven-pixels.js`, `TUNING.heaven`). The death card's button is
+ASCEND, and its press is `Heaven.enter(game)` (THE SHOWROOM goes straight round): `game.level`, `world`,
+`goat`, `props`, `fx`, `scatter` are replaced with the hand-laid two rooms (`Heaven.level`, def
+`HEAVEN_LEVEL` with `heaven: true`), `game.heaven` holds the visit, `state = 'heaven'`, and
+`game.mods` is a copy with the souls' fire, poison, bombs and Q verbs off. Everything about the run
+(`levelIndex`, `boons`, `levelBoons`, `checkpoint`, `deaths`) is untouched, so `Heaven.leave` — the goat
+walking into the drop (`T.PIT`, the edge room's south side), or Backspace — is `restartLevel(true)`
+(no guard, no second death) with `game.fromHeaven` set: `startLevel` then drops him in from above
+(`game.dropIn`, `Heaven.goatLook` / `updateDrop`, timed to land as the level card clears) instead of up
+the stairs. In the air he tumbles at a steady rate (`jump.turns` / `drop.turns`) and rolls over on his
+long axis (`flips`, `Heaven.flip`), comes down on his side into the stunned pose, lies `drop.ko` s — a
+real `stunned`, no verbs — and gets up over `drop.getup` (1.80). On a `startCage` floor he never lands in
+the pen: `besidePen` tiles past its bars, `game.cageOpen` set. `quitToTitle` and `pagehide` from heaven are not deaths. Escape pauses it (`pauseFrom`,
+`pausedIn`). `Heaven.update` is its own step: GRAB (`rmbDown`'s edge) on `nearest` — the god (`talk`,
+`pickTalk` off `meta.told`), the shepherd (`startComb`), the mirror (`openMirror`: `panelKey`,
+`panelClick`, `buy`), a filled seat — then `goat.update`, props, `collideEntities`, `updateEffects`,
+gold grass (`level.tufts`), the edge. Headbutts on heaven props (`p.heaven`) go to `Heaven.butt` (the
+chime: one bell a butt, `HEAVEN_SONG`; the mirror butts back; the old man). `Renderer.draw` hands the
+whole picture to `Heaven.draw` and `drawUI` to `Heaven.drawHud`; its bakes (`bakeIsland` — billows
+`puffInto` round every floor edge, one outline `outlineInto`; `bakeSea`, `bakeSky`, `bakeWisps`,
+`bakeEarth`) are cached in `Heaven.baked`, warmed in idle time from the title (`Heaven.warm`).
+**Its tables** (30 Sep 2026, `TUNING.heaven.tables`): 0–2 a visit off `odds`, `noFlip` up there. One
+butted into the drop is seen falling (`Prop.fall` → a prop faller, `drawFallers`) and counted in
+`game.heavenTables`; `startLevel` from heaven turns that into `game.skyTables`, and `updateSkyTables`
+drops each on a man the goat can see (shadow tracks him until `lock` s out, crushes within `killR`,
+never the goat), where it lies on its side (`drawSkyTables` ground and air passes). Only that floor.
+**What outlives runs** is `Heaven.meta` under `HEAVEN_KEY` (never cleared by NEW GAME): `sacrifices`
+(`Heaven.earn`: `heaven.pay.kill` a man in `onKill`, `pay.floor` a floor in `levelCleared`; not in GOD
+MODE or THE SHOWROOM), `ranks` of `MIRROR` (`Heaven.applyMeta` in `applyBoons`: `mods.maxHp`,
+`lightHearts` — `goat.light`, set in `startLevel`, spent first in `Goat.damage`, drawn after the hearts —
+`grazeMul`, `milkFull`, `rollCooldown`, `invulnAdd`), `saved` (the seats: `Heaven.saved` in
+`beginClimb`), and what the god has said (`told`). The dev drawer's HEAVEN goes up from a floor as a
+death would; `+100 SACR · +5 SOULS` feeds the mirror.
+**Corrupted souls are banked up there too** (1.80): every soul he swallows (the pickup in `Game.update`)
+calls `Heaven.earnSoul` → `meta.souls`, and a `MIRROR` entry's `souls[r]` is what rank `r + 1` asks on top
+of its sacrifices (`Heaven.soulCost`; only the top ranks of THICK FLEECE, HALO, GOOD GRAZER). **The
+purse** (`Renderer.drawPurse`, top right under the rail's corner) is heaven's own look in the play HUD:
+the gold skull and `meta.sacrifices`, the wisp and `meta.souls`; heaven's corner (`drawHud`) and the
+mirror panel show the souls beside the heap.
 
 **Seeds and saves.** `game.runSeed`; `game.levelSeed(i)` hashes it with level and `deaths`; base 36 in the
 corner; **`#seed=k3j9a`** feeds `askedSeed`. `saveRun` → `{ v, level, boons: [id], totalKills, deaths,
@@ -1243,8 +1334,9 @@ Hooks load when a session starts.
 - Where his wife is. The opening scene's mage carries her off, and the first gate (`game.bless`, 1.75)
   shows him taking her on through it; nothing after that refers to her: no room, no ending.
 - **Parked, not open** (26 Sep 2026, "later"): three lives on a run (one life stays per level until
-  then), gamepad support, a Priest boss, the later acts, the hunt, hell, heaven, and the second
-  talisman slot (for the acts). Kept in plans, not to be built without asking. Decided against:
+  then), gamepad support, a Priest boss, the later acts, the hunt, hell, heaven as a secret ending (a
+  run that swallowed no soul; the pasture between deaths is built, 1.79), and the second talisman
+  slot (for the acts). Kept in plans, not to be built without asking. Decided against:
   hearts that grow by floor, the chain headbutt. Settled: two souls a floor, in the middle and at
   the end; a full slot deals swaps. A souls *resource* stays decided against (23 Sep 2026).
 - Market and positioning (gore, price, publisher, a GIF export; `MARKET.md` §9): "later", not today.

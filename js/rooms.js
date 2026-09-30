@@ -1147,7 +1147,7 @@ const ROOM_TEMPLATES = [
     '#.gg.........k.....#',
     '#.ggg..PP.......e..#',
     '#..g...PPP...gg....#',
-    '#.....k.....ggg.k..#',
+    '#....k......ggg.k..#',
     '##..r......##....m.#',
     '####.....#####.....#',
     '####################',
@@ -1162,7 +1162,7 @@ const ROOM_TEMPLATES = [
     '#..e..g...PPPP.r.#',
     '#....ggg...PP....#',
     '#.....gg.........#',
-    '##...........k..##',
+    '##........k.....##',
     '###..e......gg.###',
     '#####......ggg####',
     '##################',
@@ -1201,8 +1201,8 @@ const ROOM_TEMPLATES = [
     '#..gg............#',
     '#..g.............#',
     '#.....e.....e....#',
-    '#.......k........#',
-    '#........P.......#',
+    '#................#',
+    '#.....k..P.......#',
     '#...o.........g..#',
     '#........r...gg..#',
     '#................#',
@@ -1243,7 +1243,7 @@ const ROOM_TEMPLATES = [
     '#.................#',
     '#...gg............#',
     '#...g..........e..#',
-    '#........k........#',
+    '#.....k...........#',
     '#........P........#',
     '#..e..........g...#',
     '#.....o..r...gg...#',
@@ -1405,7 +1405,7 @@ const OGRE_ARENA_TEMPLATE = { name: 'ogre ring', rows: [
   '##############',
 ]};
 
-// The first ogre of a run, on THE ALTAR: wide, two pillars and nothing else standing in the way,
+// The first ogre of a run, THE YARD's last room since 26 Sep 2026: wide, two pillars and nothing else standing in the way,
 // so what the room hands you — the swords, the bowls — is the first thing you see in it.
 const OGRE_FIRST_TEMPLATE = { name: 'ogre hall', rows: [
   '####################',

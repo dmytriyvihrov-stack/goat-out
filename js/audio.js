@@ -706,11 +706,24 @@ class GameAudio {
     this.scoring = true;
     try {
       if (this.preview && !this.preview.playing) return;
+      // Above the clouds (js/heaven.js) there is no fight to score: heaven's own harp instead.
+      if (this.heavenMusic && !this.preview) { if (!this.muted) this.playHeavenStep(s, t, stepLen); return; }
       if ((this.layered || this.preview) && this.cue) { this.playCueStep(t, stepLen); return; }
       if ((this.layered || this.preview) && this.terminalCue) return;
       if (this.layered || this.preview) this.playLayeredStep(s, t, stepLen);
       else if (!this.muted) this.playLegacyStep(s % 64, t, stepLen);
     } finally { this.scoring = false; this.musicTick++; }
+  }
+  // THE PASTURE ABOVE: a harp walking up and down a slow major progression (I, vi, IV, V, a bar
+  // each) over a soft pad, and the choir of the ambience bed singing under it.
+  playHeavenStep(s, t, stepLen) {
+    const bar = Math.floor(s / 16) % 4, beat = s % 16;
+    const C = [[261.63, 329.63, 392.0], [220.0, 261.63, 329.63], [174.61, 220.0, 261.63], [196.0, 246.94, 293.66]][bar];
+    if (beat === 0) this.pad(t, C[0] / 2, stepLen * 16.4, 0.05);
+    if (beat % 2 === 0) {
+      const i = [0, 1, 2, 3, 2, 1, 0, 1][(beat / 2) % 8];
+      this.pluck(t, (i === 3 ? C[0] * 2 : C[i]) * 2, stepLen * 6, 0.035 * (beat === 0 ? 1.3 : 1));
+    }
   }
   playLayeredStep(s, t, stepLen) {
     const L = TUNING.audio.layers, beat = s % 16;
@@ -930,8 +943,8 @@ class GameAudio {
     if (amb.wait < A.every) return;
     const el = amb.wait, now = this.ctx.currentTime, lab = this.preview ? this.lab.amb : null;
     amb.wait = 0;
-    const inLevel = !lab && !!(game.level && g && ['play', 'paused', 'boon', 'dead', 'climb'].includes(game.state));
-    const bed = lab ? (lab.bed ? { loop: lab.bed, gain: A.lab, drips: 0 } : null) : inLevel ? ambienceBed(game.level.def) : null;
+    const inLevel = !lab && !!(game.level && g && ['play', 'paused', 'boon', 'dead', 'climb', 'heaven'].includes(game.state));
+    const bed = lab ? (lab.bed ? { loop: lab.bed, gain: A.lab, drips: 0 } : null) : inLevel ? (game.level.def.heaven ? A.beds.heaven : ambienceBed(game.level.def)) : null;
     // The beds: the one the floor asks for comes up, any other goes down and is let go. A loop not yet
     // rendered is left to `warm` (a few idle moments) rather than rendered here, mid-frame.
     const want = bed && bed.gain > 0 ? bed.loop : null;
@@ -1075,6 +1088,19 @@ class GameAudio {
   // Somebody going over an edge: a man's shout running away downward.
   sfxFall() { this.foley('fall', { gain: 0.2, wet: 0.1 }); }
   sfxRoll() { this.foley('roll', { gain: 0.17 }); }
+  // A small thing off a table landing (js/scatter.js): `kind` fruit, soft, clay, metal or break.
+  sfxClatter(kind, vol = 1, pan = 0) { if (vol > 0.02) this.foley('clatter', { key: 'clatter:' + kind, args: { kind }, takes: 3, gain: 0.16 * vol, pan }); }
+  // ---- above the clouds (js/heaven.js) ----
+  // A bell of the chime, `f` Hz, exact (a tune is a tune): a small bright handbell.
+  sfxChime(f, vol = 1, at = 0) { this.foley('chime', { key: 'chime:' + Math.round(f), args: { f }, takes: 1, gain: 0.2 * vol, steady: true, at, wet: 0.12 }); }
+  // The god: a deep, slow BEH, as grand as a goat can make it.
+  sfxGodVoice(vol = 1) { this.foley('godVoice', { gain: 0.34 * vol, takes: 3, wet: 0.18 }); }
+  // Up out of the dark and into the light: a rising run of bells over a breath of air.
+  sfxAscend() { this.foley('ascend', { gain: 0.26, takes: 1, wet: 0.15, steady: true }); }
+  // The old man's comb through wool: one stroke.
+  sfxComb() { this.foley('comb', { gain: 0.14, takes: 4 }); }
+  // Off the edge: the air going past, falling away.
+  sfxLeap() { this.foley('leap', { gain: 0.3, takes: 2 }); }
   // A barrel on its side, a knock a turn, lower and quieter as it slows (`k` 1 → 0).
   sfxStave(k = 1) { this.foley('stave', { gain: 0.036 + 0.088 * k, rate: 0.82 + 0.22 * k }); }
   // A rifle cocked: the one tell a rifle gives, so it is bright and dry and sits above the mix.

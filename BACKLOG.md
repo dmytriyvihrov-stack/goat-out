@@ -9,6 +9,25 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 29 September 2026 — heaven between deaths, Gungeon's barrels, a supper that scatters (1.79)
+
+Asked for in the session, all shipped in 1.79 (see `CHANGELOG.md`): barrels drawn the way *Enter the
+Gungeon* draws them; food on the tables that scatters when the table is hit; and a hub in the sky
+between deaths, *Hades*-style — the goat god in light with pompous, silly lines, empty seats for the
+animal gods, a blind man who combs the goat on GRAB, something pleasant to do, and a mirror of
+permanent upgrades ("in Gungeon I spent four or five hours on the first boss, the heals were too
+hard"). Two rooms, one ending at an edge over the earth with the compound far below; jumping off it
+restarts in the pen. Read as: the jump is the floor restart a death always was (the pen on floor one,
+the middle gate past it), not a whole new run. Left open from it:
+
+- **tool** — `balance.js`'s threat-over-power column does not weigh the mirror. A goat with every rank
+  bought has two more hearts, two of light and a quicker roll; if the floors are ever tuned against a
+  player who has been up there often, the power column needs a `MIRROR` row.
+- **system** — the animal gods only sit and speak. What a saved animal *does* up there (a gift, a
+  line that changes with the run) is unwritten.
+- **feel** — how long the pasture holds a player between deaths wants a playtest: the edge is one
+  room away and Backspace skips it, but nobody but the builder has walked it yet.
+
 ## 26 September 2026 — answers to the second open-questions page
 
 Every open line in this file, `PLAYTEST.md` §8–9, `CLAUDE.md` and `MARKET.md` §9 was put on one page
@@ -30,7 +49,8 @@ Every open line in this file, `PLAYTEST.md` §8–9, `CLAUDE.md` and `MARKET.md`
 - **No change:** THREAT stays priced as it is ("room danger rises and so does the goat's power"); the
   price-by-runner tool below is closed with it.
 - **Parked, kept in plans ("позже"):** three lives on a run, gamepad, the Priest boss, the later acts, the
-  hunt, hell, heaven, the second talisman slot (for the acts). Not to be built without asking.
+  hunt, hell, heaven (the secret ending; the hub between deaths was asked for and built on 29 Sep 2026),
+  the second talisman slot (for the acts). Not to be built without asking.
 - **Later, not today:** everything in `MARKET.md` §9 (gore, price, publisher, a GIF export).
 - **Still open, unanswered:** where his wife is and what the ending does about her; the "lizards" half
   of "lizards and mirrors".

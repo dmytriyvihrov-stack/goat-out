@@ -380,6 +380,15 @@
       "port": 8813
     },
     {
+      "name": "goat-out-levels",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8815"
+      ],
+      "port": 8815
+    },
+    {
       "name": "goat-out-fonts",
       "runtimeExecutable": "node",
       "runtimeArgs": [
@@ -387,6 +396,33 @@
         "8814"
       ],
       "port": 8814
+    },
+    {
+      "name": "goat-out-heaven",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8816"
+      ],
+      "port": 8816
+    },
+    {
+      "name": "goat-out-cave",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8818"
+      ],
+      "port": 8818
+    },
+    {
+      "name": "goat-out-chandelier",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8817"
+      ],
+      "port": 8817
     }
   ]
 }

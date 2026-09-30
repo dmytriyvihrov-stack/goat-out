@@ -5,11 +5,217 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.80 — the road between floors, chandeliers, tables that go over, souls banked in heaven — 29 Sep 2026
+
+Twelve notes in one message (29 Sep 2026), with screenshots.
+
+- **The clear card is the picture and the road.** No score, seconds or run code under the floor's
+  picture any more ("next to a cleared floor you don't need the score, the seconds, the code"): under it,
+  a road of a node a floor and OUT after the last, and the goat himself trotting from this floor to the
+  next, Nuclear Throne-fashion (`Painting.drawRoute`). SAVE THE PICTURE stays ("keep the run map, testers
+  will send photos"); leaving still copies the code.
+- **The death card shows the floor.** It fades in over the pull-back: the floor painted as the clear card
+  paints it, the road with a skull on the floor he fell on, what took him, what he keeps, ASCEND.
+- **Chandeliers** (Enter the Gungeon's). A brass ring of candles hung over a room by a rope tied off at a
+  cleat on the far wall. Butt the cleat, throw a man into it, or let fire reach it: the ring comes down
+  on whoever stands in its shadow — a man is crushed, the goat loses a heart — and the candles light the
+  floor. Up to two a floor, from THE ALTAR on; never in the cave, the trip or THE DARK. `GEN_RULES.chandeliers`.
+- **Tables go over.** A table knocked sliding goes over onto its side when it stops (half the time) or
+  when it hits stone hard: wider, not to be shouldered along, three headbutts (or a butcher's charge) to
+  break into planks.
+- **THE ALTAR is twelve rooms**: the butcher's ring in the middle is gone, so the only outlined butcher is
+  the last one ("two upgraded butchers on the first floor is too much"). The lone one before it is plain.
+- **Heaven's purse in the play HUD**: the gold skull and the heap instead of "N SACRIFICED", and beside it
+  the corrupted souls — every soul he swallows is banked up there now, and the mirror's top ranks
+  (THICK FLEECE II, HALO II, GOOD GRAZER II) ask souls as well as sacrifices.
+- **Down from heaven**: a real tumble in the air (a steady spin and a roll over the long axis), and on
+  THE ALTAR he no longer drops into the pen — he lands beside it on his side, lies stunned a beat and
+  gets up.
+- **Two more tables of food** in heaven's edge room.
+- **GOD TALK** in the dev drawer (`tools/god-talk.html`): every line the god and the shepherd say, to edit
+  and cut into parts with `|` (each part its own plate) and write back into js/heaven.js.
+- **A goat on fire loses a heart every 1.2 s** (was 0.7).
+- **A man carrying a soul does not catch from witchfire** (`soulBearer.witchProof`): the keeper is no
+  longer undone by his own club's fire. Ordinary flame still takes him.
+- **Fixes**: the cult's floor signs no longer lie across hay bales or under furniture; floor litter (the
+  pebbles) no longer lies under a brazier or a table.
+- **Back from heaven at the head of the floor.** THE MIDDLE GATE is switched off for now
+  (`TUNING.soul.hold.on`): a death always comes back to the start of the floor, a save made past a gate
+  included ("for now start from the very beginning; a more roguelite shape once the balance settles").
+- **The cave no longer loads in squares.** Every room the clamp walled up threw away every baked chunk
+  of cave on screen (`caveEpoch` was in the chunk's signature), so each door meant a screen of flat floor
+  refilling over three 30 ms frames. The signature is the chunk's own tiles now, and the chunks round
+  the view are painted ahead in idle time (`Renderer.warmCave`). Measured walking five rooms: chunks
+  painted inside a frame 60–67 → 7–15, and none of them a whole screen.
+- **The death card no longer crawls.** Under the picture of the floor, the level pulled back to hold all
+  of it was still drawn every frame (30–640 ms); once the picture comes in, the frame is kept as it
+  stood and only that is drawn (~0.6 ms).
+- **Heaven's corner**: the heap and the souls top right on a dark plate, where the play HUD keeps them;
+  "BACK TO <floor>" small on the left (it said THE MIDDLE GATE and ran off its panel). No lettering
+  under the seats.
+- **"You will get sacrifices!"** and its question come once in a browser's life, not over every floor.
+- **Grates go off only under a foot on their own tile** — the goat's or anybody's — never from beside
+  the patch (a 1.3-tile reach did).
+- **VENOM JAW and FIREBRAND** take 1.5 s in the mouth, not 2.
+- **Crates in the cave and the trip**: half the rooms, not a quarter (~21 a floor, was ~13).
+- **The horse** gallops at 0.62 of the pace (was 0.88), and every 5–8 s, well ahead of him, pulls up
+  and mocks him ("HOW SLOW YOU ARE").
+- **The hen** takes five blows (was three), looks further ahead for fire and grates, and keeps clear of
+  any man near, whether he has seen the goat or not.
+- **Heaven's tables** (30 Sep 2026): one a visit as often as not, sometimes two, sometimes none, and
+  they never go over up there. One butted off the edge is seen falling, and on the floor below it comes
+  down out of the sky on a man in sight: its shadow follows him until the last 0.3 s, whoever is under
+  it then is crushed, and it lies there on its side. The goat is never hit by one. Anything that goes
+  down a hole — a crate, a barrel, a blade, a table — is now seen falling, as a man is.
+- **Dev drawer, BOONS**: ON GOAT — GIVE / HAVE puts any single upgrade on the goat or takes it off,
+  the head of the floor with it.
+
+---
+
+## 1.79 — the pasture above: heaven between deaths, the mirror, Gungeon's barrel, a supper that scatters — 29 Sep 2026
+
+Asked for in one message (29 Sep 2026): "the barrels as in Enter the Gungeon; something on the tables —
+food — that scatters beautifully when hit, to test the scatter on something small; and a heaven, two
+rooms, the Hades way: between deaths you land in a hub in the sky, a goat god on a big cloud, all light,
+the way God is drawn; empty places where the gods of the animals you save will sit; a blind man who combs
+you when you go up to him and press grab; the god talks grand and silly — 'bah-bah, I send you back, I
+cannot make you new, but you will be there from that moment'; something pleasant to do up there; a
+mirror, or something, that buys upgrades that stay". And a second one: "two real rooms — in one you walk
+to the edge and see the earth, and far off the cult's room, and you jump, and the run starts again in
+the pen".
+
+- **THE PASTURE ABOVE** (`js/heaven.js`, `js/heaven-pixels.js`). A death's card now says ASCEND and goes
+  up instead of straight round: out of white into a pool of light, the place's name over the top
+  Hades-fashion, the last life's sacrifices counted into the heap. Two rooms joined by a bridge of cloud,
+  laid by hand and the same every visit (rule 6): **the god's**, with THE GOAT ABOVE on his cloud at the
+  head of three gold-edged steps — a ram's gold horns, a long white beard, a warm white mantle, a gold
+  collar with a bell for a crown, a halo and slow rays behind him — and five seats round the room; and
+  **the edge's**, whose south side is open: through the gap in the clouds the earth a long way down,
+  fields, woods, a river, and the cult's compound with torches in its yard, red hoods walking it, and the
+  empty pen with a shaft of light on it. Walk off the edge and the floor is rebuilt exactly as a death
+  always rebuilt it (a new layout, the middle gate if he had reached it), and he falls into it out of the
+  light — into the pen on THE ALTAR — as the level card clears. **Backspace up there jumps at once**, so a
+  retry is still under a second away (pillar 4).
+- **The god talks the Hades way**: the picture dims, he slides in on the left big in his own light, his
+  name on a plate, his words typing into a box across the bottom. The first visit he calls you over and
+  says the whole of it; after that GRAB beside him gets what is new — a line for each thing that ever took
+  the last heart (the clubman, the butcher, the ogre, the mage, a rifle, a hound, the mist, fire, the
+  grating, the teeth, a bomb, the wheel, a fall), the tally of deaths (Gerald), a floor reached further
+  than ever, an animal walked out, the mirror, the comb, the bells — and a line of plain wisdom when
+  nothing is new. He answers a BAAH with a BEH, and has something to say about being butted.
+- **The blind shepherd** combs him: GRAB beside the old man and the goat stands for it, strokes of the
+  comb with wool in the air, a heart or two, and the old man, who takes him for a ewe, talking to him.
+- **Something pleasant to do**: a chime of five gold bells to butt, tuned so any order is a tune (and
+  one tune the god knows the words to); a feast on two tables to knock across the floor; gold grass to
+  graze for the taste; a mirror that butts back.
+- **THE MIRROR**: GRAB at it and it opens (W/S or the pointer, a click or Space buys, RMB or Escape looks
+  away). What it sells is paid in **SACRIFICES** — every man the compound loses to the goat, and ten for
+  each floor climbed out of, kept by this browser across deaths and runs (`goatout.heaven.v1`, never
+  touched by NEW GAME) — and stays: THICK FLEECE (a heart on every floor, two), HALO (a heart of light over
+  his own at the head of each floor that takes a blow and goes out; two), GOOD GRAZER (half the time to
+  graze; then the first bowl of a floor fills him up), QUICK TUMBLE (the roll back 15%, then 30%, sooner),
+  LONG MERCY (longer untouchable after a blow). All numbers bent, no new button (pillar 1). `MIRROR` in
+  `tuning.js`; `Heaven.applyMeta` lays it under every run in `applyBoons`. GOD MODE earns nothing.
+- **The seats of the saved**: each animal the run walks out to the stairs takes its seat for good — the
+  tortoise, the goose, the hen, the crow, the horse, each its own sprite lit gold with a halo, with a
+  word for you on GRAB. Until then the seat is a cushion of cloud under an unlit halo.
+- **Heaven sounds of its own**: a harp walking a slow major progression instead of the room score, a
+  far choir for the bed (`Foley` loop `choir`), a handbell for each bell of the chime (`chime`), the god's
+  deep BEH (`godVoice`), a rising run into the light (`ascend`), the comb (`comb`), the jump (`leap`).
+- **The barrel is Enter the Gungeon's**: red staves lit round the cylinder, iron hoops curving toward
+  you, a pale wooden head in an iron rim with the heap of powder on it, and a skull on the front. On its
+  side it lies across the way it rolls, a frame an eighth of a turn, so the seams and the skull roll with
+  it and come back the other way off a wall (`barrel`, `barrel-lie*`, `barrel-up*` in `js/prop-pixels.js`).
+- **A supper on the tables** (`js/scatter.js`): three or four of apples, a pear, bread, cheese, a clay jug,
+  a goblet, a fish, a leg of something, grapes, a plate — three tables in four laid, off a hash of where
+  each stands. A shove (the horns, a butcher's charge), a body landing on it, a barrel or a crate hitting
+  it, a blast near it: everything on it goes, in arcs, turning in whole quarter turns, bouncing, apples
+  rolling on, clay breaking into shards and a spill, each landing knocking; and on the floor it is kicked
+  about by whoever walks through it. Cosmetic like the gore: never in collision, damage, noise or the AI.
+
 ## 1.78 — the Discord — 28 Sep 2026
 
 - **JOIN THE DISCORD** is the title menu's last row, in Discord's own blue so it is found without
   being looked for. It opens the Doomed Goat server (`DISCORD_URL` in `tuning.js`, an invite that
   never expires) in a new tab, falling back to a plain link click where the artifact frame refuses a popup.
+
+### A fourth polish pass (28 Sep 2026)
+
+Four read-only reviews on ground the first three did not cover — combat resolution, the draw path,
+the newest code (companions, the itch build, the title, the gate's scene), and how upgrades combine —
+each finding traced; the risky ones checked in the page (every floor, THE DARK and THE TRIP run with
+no throw; 64 of 64 bodies thrown at LONG HORNS + TALLY speed died on a one-tile pillar).
+
+- **A body thrown fast enough went through a pillar alive.** LONG HORNS with a charged TALLY blow
+  moves a man ~34 px a frame; landing past the middle of a one-tile pillar, he was pushed out of its
+  far side. The flight is now stepped no longer than his body.
+- **Fire-proof kinds froze on a burning tile**: the rat ogre on burning floor (in the air, mid-bound),
+  a solid wraith on ordinary flame, anyone floored there — the fire check returned whether or not he caught.
+- **The hound's bite threw away a parry**: MIRROR SHARD's fling became a skid, a shield's stagger a recover.
+- **Bombs and the ogre.** A prop bomb only hurt him almost under him (his body is wider than the near
+  ring); a fused body into him or the rat ogre cost two hearts, not the one blast.
+- **"Lost the trail" on a lit floor** reset a man whatever he was doing: the rat ogre's swing and bound,
+  a hidden wraith out of its disguise, a HORNED MASK flight. It now cools only a hunt, as in THE DARK.
+- **The horns are held to `reaches`**, as the club is: they went through a table or a brazier.
+- **Talismans:** PILGRIM'S SANDAL III shook off men in flight, floored or mid-leap (a thrown man stopped
+  short of his wall, an ogre dropped out of a leap into the pit); GRAVEDIGGER'S SPADE I's bodies were
+  walls nobody could trip on; a LIVING SHIELD's flail hurt his own animals; KINDLING spent its hand-off
+  on the rat ogre, who does not burn; HORNED MASK and the STRAW EFFIGY reset a rifle's reload without
+  the enemy pace (EASY included). RAW THROAT's card no longer promises "twice as fast" past the 2 s floor.
+- **The picture:** one throw inside a draw left its alpha, clip or filter on the canvas for the rest
+  of the session — the canvas is unwound after one now. The charge strip and the swing wedge are laid on
+  the floor, not in counter-squashed space (a diagonal charge pointed 4° off, half a tile at its end).
+  A hidden wraith's disguise stays drawn out of sight like the real crates. Rings, sparks and words from
+  a room the fog still covers no longer show through it. THE DARK's silhouettes no longer turn a gate's
+  halo or a sprout's glow into solid discs. A floored boss's notches go over whoever stands on him. The
+  hound's line fills against its real windup. Firelight only for bowls near the view. The goat's froth
+  and steam start clean on a new floor and stop under the pause. The bell's arrows keep out of the touch band.
+- **Runs:** a reload or a closed tab mid-floor counts as the quit it is (rule 6: CONTINUE rebuilt the
+  very layout). The middle-gate checkpoint, held off by her rat ogre, is dropped once he is two rooms on,
+  instead of being taken there with the last boss's soul in it. On a phone the Discord row opens on the
+  lift of the finger (a press is not a gesture a browser opens a tab for), and the pause chip works
+  during the mage's scene. The wraith and the rat ogre no longer speak the clubman's lines.
+
+### A fifth polish pass, floor by floor (28 Sep 2026)
+
+Four read-only reviews, one per band of floors (THE ALTAR; THE YARD and THE CAVE; THE ROAD, THE
+THRESHING FLOOR and THE DARK; THE BRIDGE to THE OSSUARY, THE TRIP and the win), each finding measured
+over hundreds of generated floors; every rule then held over 200 seeds of every floor, THE DARK and
+four trips, and every floor ran in the page with no throw.
+
+- **THE DARK's lamps burn again.** A lamp stands against a wall, so butting it from the room put its
+  pool inside the stone, and the fire's own sight line stopped it there: 360 of 360 straight blows lit
+  nothing, and "KNOCK IT DOWN: IT BURNS" was false. A pool that lands in stone now starts from the
+  nearest open tile (every fire pool, coals and oil too).
+- **The way down in THE DARK is lit.** A doorway in the near wall (a shaft to a room hung below) had
+  no lantern, since that wall shows no face to hang one on; a lamp stands beside it now. Lanterns are
+  no longer hung by a wall that gives or the vault's door, where they gave the secret away. A clock
+  door counting in THE DARK is a light: nine in ten counted down unseen.
+- **A clock door that could not be beaten** is not dealt: the Great Hall's was 45–65 tiles from its
+  way in, against 43 flat out. A clock door is kept only within `clockReach` (30) tiles' walk.
+- **Nothing is sealed in.** On the cave a third of vaults and walls that give opened onto an eroded
+  bump of rock; a rounded corner could shut a cell with men and crates in it (on a trip over THE
+  OSSUARY). Both now open onto the room's floor, and a new rule (`reach`) walks from the start to every
+  man, bowl, crate, rack, bomb and coop.
+- **Grass no longer hides the furniture**: bowls of milk, racks, crates and braziers stood under blades
+  on 900 of 6,300 cave props; none now, and the grass rule holds it.
+- **The ogre is caught on the teeth.** The cave's only ogre is fought in his ring, and teeth never
+  stood in an arena, so the 1.74 impaling never happened in play. His ring on the cave stands two.
+- **THE OSSUARY ends on its last boss.** Room 14 came after him — the floor's heaviest crowd, a trap
+  one run in three — fought after the last soul had been paid. The rest room and the ring swapped
+  places; the threat is unchanged. The last room of any floor is never a trap room (THE ROAD's fork
+  room was one two runs in three, straw in front of both flights).
+- **The last floor is never THE TRIP.** Mushrooms on THE RAFTERS made the run end on a trip at the first
+  floor's curve with the wraith never met; they grow from THE ROAD to THE BRIDGE now.
+- **A wraith no longer dies forming over a hole**, nor is its windup pulled over a lip.
+- **THE ALTAR:** it never had a wall that gives ("after the first arena" left no room at all); now
+  one, after the first butcher. No crate in the wheel lesson's one clear lane, no third stand of arms
+  among the ambush's men, the bomb not in with the first butcher, and a plank door in the pen's corridor
+  stands open behind the opening scene's men instead of being walked through shut.
+- **Smaller:** milk kept off a drop's lip (one bowl in seven on THE RAFTERS); the animal's coop tries a
+  room where a kind is met alone last (four in ten on THE YARD were there); four cave boulders the
+  templates drew but could never place moved clear; a template's hole in its far wall is drawn as a
+  window; THE THRESHING FLOOR's door chances, which its five-wide corridors never dealt, set to 0.
 
 ## 1.77 — answers to the open questions: two souls a floor, the vault is a trap, rooms hold what fits — 26 Sep 2026
 

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>God Talk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Alegreya+SC:wght@700&display=swap" rel="stylesheet">
+<style>
+  /* Every line the goat above (and the blind shepherd) says, read out of js/heaven.js, to edit and
+     cut into parts. A `|` in a line is a cut: in the game each part is its own plate, in turn
+     (`Heaven.parts`). SAVE writes both objects back through tools/serve.js (POST /talk-edit). */
+  :root { --bg: #16121c; --panel: #221b2c; --ink: #efe6d0; --dim: rgba(239,230,208,0.55); --gold: #f7d774; --warn: #e0703e; --plate: #3a2c4e; --line: rgba(239,230,208,0.14); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 Alegreya, Georgia, serif; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 2px solid #e0ac3e; padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  h1 { font: 700 22px 'Alegreya SC', serif; color: var(--gold); margin: 0 12px 0 0; }
+  button { font: 700 13px 'Alegreya SC', serif; background: rgba(247,215,116,0.12); color: var(--ink); border: 1px solid #e0ac3e; padding: 6px 12px; cursor: pointer; }
+  button:hover { background: rgba(247,215,116,0.26); }
+  button.small { font-size: 11px; padding: 3px 8px; border-color: var(--line); }
+  #status { color: var(--dim); font-size: 13px; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  .help { color: var(--dim); font-size: 13px; margin: 0 0 16px; }
+  section { background: var(--panel); margin: 0 0 14px; padding: 12px 14px; border-left: 3px solid #e0ac3e; }
+  section h2 { font: 700 15px 'Alegreya SC', serif; margin: 0 0 8px; color: var(--gold); display: flex; justify-content: space-between; align-items: center; }
+  .row { border-top: 1px solid var(--line); padding: 8px 0; }
+  .row:first-of-type { border-top: 0; }
+  textarea { width: 100%; background: #110e16; color: var(--ink); border: 1px solid var(--line); font: 14px/1.4 ui-monospace, Consolas, monospace; padding: 6px 8px; resize: vertical; min-height: 38px; }
+  .tools { display: flex; gap: 6px; margin: 4px 0; align-items: center; flex-wrap: wrap; }
+  .parts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .part { background: var(--plate); padding: 4px 8px; font: 700 12px 'Alegreya SC', serif; max-width: 320px; }
+  .part .n { color: var(--gold); margin-right: 6px; }
+  .part.long { outline: 1px solid var(--warn); }
+  .count { color: var(--dim); font-size: 12px; margin-left: auto; }
+  .count.long { color: var(--warn); }
+  @media (max-width: 600px) { header { position: static; } .part { max-width: 100%; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>GOD TALK</h1>
+  <button id="save">SAVE TO heaven.js</button>
+  <button id="copy">COPY AS JS</button>
+  <button id="reload">RELOAD</button>
+  <span id="status">loading…</span>
+</header>
+<main>
+  <p class="help">Every line is one talk; <b>|</b> cuts it into parts, each shown as its own plate in turn.
+  "CUT HERE" puts a cut where the cursor is. <code>{floor}</code> and <code>{animal}</code> are filled in by the game.
+  A part over <span id="lim"></span> characters is marked: it wraps to more than three lines on the god's panel.
+  SAVE needs the dev server (<code>node tools/serve.js</code>); away from it, COPY and paste over the two objects in js/heaven.js.</p>
+  <div id="groups"></div>
+</main>
+<script>
+const LONG = 150;
+document.getElementById('lim').textContent = LONG;
+// Which top-level keys carry a comment in heaven.js, kept when the object is written back.
+const NOTES = { munch: "what the goat's mouth thinks of the gold grass" };
+let data = null;
+const status = (t) => { document.getElementById('status').textContent = t; };
+
+// The object literal after `const NAME = ` in the file, bracket-matched past strings and comments.
+function literal(src, name) {
+  const head = `const ${name} = `, a = src.indexOf(head); if (a < 0) throw new Error(name + ' not in heaven.js');
+  let i = a + head.length, depth = 0, q = null;
+  for (; i < src.length; i++) {
+    const c = src[i];
+    if (q) { if (c === '\\') i++; else if (c === q) q = null; continue; }
+    if (c === "'" || c === '"' || c === '`') { q = c; continue; }
+    if (c === '/' && src[i + 1] === '/') { i = src.indexOf('\n', i); continue; }
+    if (c === '{' || c === '[') depth++;
+    else if (c === '}' || c === ']') { depth--; if (depth === 0) break; }
+  }
+  return new Function('return ' + src.slice(a + head.length, i + 1))();
+}
+
+async function load() {
+  status('loading…');
+  try {
+    const src = await (await fetch('../js/heaven.js', { cache: 'no-store' })).text();
+    data = { HEAVEN_TALK: literal(src, 'HEAVEN_TALK'), SHEPHERD_TALK: literal(src, 'SHEPHERD_TALK') };
+    render(); status('read from js/heaven.js');
+  } catch (e) { status('could not read js/heaven.js: ' + e.message); }
+}
+
+// Every array of lines in both objects, with the path that reaches it.
+function groups() {
+  const out = [];
+  const walk = (obj, path) => {
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      if (Array.isArray(v)) out.push({ path: path.concat(k), list: v });
+      else if (v && typeof v === 'object') walk(v, path.concat(k));
+    }
+  };
+  walk(data.HEAVEN_TALK, ['HEAVEN_TALK']); walk(data.SHEPHERD_TALK, ['SHEPHERD_TALK']);
+  return out;
+}
+
+function render() {
+  const root = document.getElementById('groups'); root.innerHTML = '';
+  for (const g of groups()) {
+    const sec = document.createElement('section');
+    const h = document.createElement('h2');
+    h.textContent = g.path.slice(1).join(' · ') + (g.path[0] === 'SHEPHERD_TALK' ? '  (shepherd)' : '');
+    const add = document.createElement('button'); add.className = 'small'; add.textContent = '+ LINE';
+    add.onclick = () => { g.list.push('NEW LINE.'); render(); };
+    h.appendChild(add); sec.appendChild(h);
+    g.list.forEach((line, i) => sec.appendChild(rowFor(g, i)));
+    root.appendChild(sec);
+  }
+}
+
+function rowFor(g, i) {
+  const row = document.createElement('div'); row.className = 'row';
+  const ta = document.createElement('textarea'); ta.value = g.list[i]; ta.rows = Math.max(1, Math.ceil(g.list[i].length / 95));
+  const tools = document.createElement('div'); tools.className = 'tools';
+  const cut = document.createElement('button'); cut.className = 'small'; cut.textContent = 'CUT HERE';
+  const up = document.createElement('button'); up.className = 'small'; up.textContent = '↑';
+  const del = document.createElement('button'); del.className = 'small'; del.textContent = 'DELETE';
+  const count = document.createElement('span'); count.className = 'count';
+  const parts = document.createElement('div'); parts.className = 'parts';
+  const show = () => {
+    const ps = ta.value.split('|').map((p) => p.trim()).filter(Boolean);
+    parts.innerHTML = '';
+    ps.forEach((p, k) => {
+      const d = document.createElement('div'); d.className = 'part' + (p.length > LONG ? ' long' : '');
+      d.innerHTML = `<span class="n">${k + 1}/${ps.length}</span>`; d.appendChild(document.createTextNode(p)); parts.appendChild(d);
+    });
+    const most = Math.max(0, ...ps.map((p) => p.length));
+    count.textContent = `${ps.length} part${ps.length === 1 ? '' : 's'} · longest ${most}`;
+    count.className = 'count' + (most > LONG ? ' long' : '');
+  };
+  ta.oninput = () => { g.list[i] = ta.value; show(); };
+  cut.onclick = () => {
+    const at = ta.selectionStart, v = ta.value;
+    ta.value = v.slice(0, at).trimEnd() + ' | ' + v.slice(at).trimStart();
+    g.list[i] = ta.value; show(); ta.focus();
+  };
+  up.onclick = () => { if (i > 0) { [g.list[i - 1], g.list[i]] = [g.list[i], g.list[i - 1]]; render(); } };
+  del.onclick = () => { if (confirm('Delete this line?')) { g.list.splice(i, 1); render(); } };
+  tools.append(cut, up, del, count);
+  row.append(ta, tools, parts); show();
+  return row;
+}
+
+// Written back the way heaven.js lays them out: two-space indent, single quotes, a line an entry.
+function js(v, ind) {
+  const pad = '  '.repeat(ind), q = (s) => "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+  if (Array.isArray(v)) {
+    const one = '[' + v.map(q).join(', ') + ']';
+    if (one.length + pad.length < 110) return one;
+    return '[\n' + v.map((s) => pad + '  ' + q(s) + ',').join('\n') + '\n' + pad + ']';
+  }
+  const keys = Object.keys(v);
+  return '{\n' + keys.map((k) => (ind === 0 && NOTES[k] ? pad + '  // ' + NOTES[k] + '\n' : '') + pad + '  ' + (/^[A-Za-z_]\w*$/.test(k) ? k : k) + ': ' + js(v[k], ind + 1) + ',').join('\n') + '\n' + pad + '}';
+}
+const out = () => ({ HEAVEN_TALK: js(data.HEAVEN_TALK, 0), SHEPHERD_TALK: js(data.SHEPHERD_TALK, 0) });
+
+document.getElementById('save').onclick = async () => {
+  if (!data) return;
+  status('saving…');
+  try {
+    const r = await (await fetch('/talk-edit', { method: 'POST', body: JSON.stringify(out()) })).json();
+    status(r.ok ? 'saved to js/heaven.js — reload the game to hear it' : 'not saved: ' + r.error);
+  } catch (e) { status('not saved (is tools/serve.js running?): ' + e.message); }
+};
+document.getElementById('copy').onclick = async () => {
+  if (!data) return;
+  const o = out(), text = `const HEAVEN_TALK = ${o.HEAVEN_TALK};\n\nconst SHEPHERD_TALK = ${o.SHEPHERD_TALK};\n`;
+  try { await navigator.clipboard.writeText(text); status('copied both objects'); } catch (e) { status('copy refused by the browser'); }
+};
+document.getElementById('reload').onclick = load;
+load();
+</script>
+</body>
+</html>

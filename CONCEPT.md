@@ -33,6 +33,7 @@ the way.
 4. **One life, new level.** Death regenerates the level from a new seed in under a second. Nothing is
    memorised, everything is improvised. From the second floor, the middle gate holds how far you got:
    a death past it comes back to that gate of the regenerated floor, never to the layout you died in.
+   Between the death and the floor, for as long as you like, is the pasture above.
 5. **Noise is a system.** Every loud thing has a radius and pulls men toward it: bells, pots, gunshots,
    a door coming off its hinges. The scream is the exception — it is the one loud thing that makes no
    noise at all.
@@ -194,7 +195,7 @@ the rest rooms):
 
 | | Rooms | Canon | Regular enemies | Bosses |
 |---|---|---|---|---|
-| **THE ALTAR** | 13 | Stone | Bearers, butchers | Butcher, butcher with two men |
+| **THE ALTAR** | 12 | Stone | Bearers, butchers | Butcher with two men |
 | **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Elite Seer (sealed in), ogre (the last room, the first of him) |
 | **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers | Ogre, butcher |
 | **THE ROAD** | 14 | The line | All five, rifles new | Two ogres |
@@ -217,7 +218,7 @@ them to you and you to them, and a headbutt puts it on the floor alight and then
 lantern on the wall by every door is never put out. Out of the light the cult sees you only close and
 hunts by what it hears. Fewer men, no rifles, hounds and Seers oftener.
 
-**THE TRIP.** From THE ROAD on, a tuft of pale mushrooms lies on some floors. Eat it and the next floor is played as THE
+**THE TRIP.** From THE ROAD to THE BRIDGE, a tuft of pale mushrooms lies on some floors (never where it would turn the last floor into the trip). Eat it and the next floor is played as THE
 TRIP: a glowing cave where every key is the other way round — the stick reversed, the horns and the
 teeth swapped, the tumble and the voice swapped — with the first floor's men and the first floor's
 curve, because what is asked of the hands is already the whole difficulty. Take THE FORK's dark flight
@@ -423,6 +424,45 @@ alight.
 
 ---
 
+## Between deaths: the pasture above
+
+A death is not a menu. The card says what killed him, and a click takes him **up**: two rooms of cloud
+laid by hand, the same every visit. Pillar 6 has nothing to catch here, because nothing up here is
+worth knowing the layout of — it is where you stand between runs, not a level.
+
+- **The goat god** sits on the biggest cloud: a ram made of light, gold horns, a white beard, a bell at
+  his throat. He talks the way the gods in *Hades* talk, every line a proclamation, and every line is
+  a goat's: he cannot undo a death, only put you back at the moment the floor began ("from that moment
+  you shall be there. BEH."). What he says follows what happened: who killed you, how many times you
+  have died, a floor you got further on than ever, an animal you brought out. GRAB talks to him; BAAH
+  at him and he answers.
+- **The seats.** Five empty clouds round him, one for each animal the compound keeps: tortoise, goose,
+  hen, crow, horse. Bring one up the stairs alive and its seat has a god on it from then on, and it has
+  something to say.
+- **The shepherd.** A blind old man on a stool with a comb. GRAB beside him and he combs the goat —
+  he takes you for a ewe. It does nothing, and that is the point of it.
+- **The mirror** is where the dead goat gets better for good. Every man the compound loses is a
+  sacrifice to the god, one each, and every floor climbed out of is ten more; the mirror trades them
+  for five things of two ranks each: THICK FLEECE (more hearts), HALO (hearts of light over yours,
+  which take the blows first), GOOD GRAZER (milk and grass grazed faster; at the second rank the first
+  bowl of a floor fills you), QUICK TUMBLE (the roll back sooner) and LONG MERCY (longer untouchable
+  after a blow). None of them adds a button, and none of them kills anything. Butt the mirror and the
+  goat in it butts back, harder.
+- **Things to do that do nothing**: five bells to butt into a tune (the god knows one of them), a table
+  laid with a feast to knock flying, gold grass to graze.
+- **The edge.** The second room ends in nothing, and far below it is the earth — fields, a river, the
+  compound, and the pen in a shaft of light. Walk off and he falls, and drops into the floor built
+  again from a new seed exactly as a death always built it: into the pen on the first floor, and past
+  the middle gate, at that gate. Backspace on the death card skips the pasture for whoever wants the
+  old second back.
+
+Why it is here: a run is long, and a player stuck on one floor needs something that grows while his
+skill does — the thing that brings people back to *Hades* and *Enter the Gungeon* for one more. It is
+kept small on purpose: a few hearts and a few seconds, never a button, never a kill without geometry,
+so it is still the skill that gets him out.
+
+---
+
 ## Presentation
 
 **Camera.** Top-down with the ground plane squashed by `TILT` so it reads as slightly tilted off
@@ -491,7 +531,8 @@ you, comes for you, and arrives.
 Mirrors as an environmental puzzle, gamepad support, a Priest boss, and the later acts sketched in the
 original brief. Kept for later, not scheduled (26 Sep 2026): three lives on a run; the hunt, men walking
 in from the entry once a floor runs long past its par; hell, a second act with its own curve and deck;
-heaven, a secret run that swallowed no soul; and a second talisman slot, which belongs to the later acts.
+heaven as a secret ending, a run that swallowed no soul going up alive (the pasture the dead go up to
+is built, above); and a second talisman slot, which belongs to the later acts.
 The opening scene takes his wife deeper into the compound and the first gate shows her going on through
 it under the mage's arm; nothing after that mentions her. Whether she is somewhere in the building to be
 found, and what the ending does about it, is undecided.

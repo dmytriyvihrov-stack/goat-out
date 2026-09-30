@@ -13,6 +13,7 @@
 //   HITSTOP     — Masahiro Sakurai on hitstop / hit-lag (Smash Bros.), and the fighting-game canon
 //   CAMERA2D    — Mark Brown, "How to Make a Good 2D Camera" (GMTK, 2023)
 //   GOAT        — asked for by this game's own playtests (BACKLOG.md)
+//   HADES       — Supergiant Games, Hades (2020): how a god talks to you between runs
 // Sizes are read off TUNING where a number exists, so the table cannot drift from the game.
 const JUICE_SRC = {
   SCREENSHAKE: 'Vlambeer — The Art of Screenshake (2013)',
@@ -22,6 +23,9 @@ const JUICE_SRC = {
   HITSTOP: 'Sakurai / fighting games — hitstop',
   CAMERA2D: "Game Maker's Toolkit — How to Make a Good 2D Camera (2023)",
   GOAT: 'Goat Out playtests',
+  HADES: 'Supergiant Games — Hades (2020): the dialogue screen, the gods in their light',
+  'MAX PAYNE / HOTLINE': 'Max Payne (2001) bullet time; Hotline Miami (2012) — slow motion on the aim',
+  SPELUNKY: 'Spelunky (2008) — jumping on a man’s head to get over him',
 };
 
 const JUICE = [
@@ -384,6 +388,43 @@ const JUICE = [
     trigger: 'Standing still over the tuft until the ring fills', look: 'A violet flash, a zoom punch, a ring and a puff of pale spores, a low bleat and two lines of warning',
     size: () => `grazed ${TUNING.shroom.eatTime}s inside ${TUNING.shroom.eatR} tiles`,
     godot: 'An Area2D on the tuft; on body_entered a screen flash (CanvasModulate tween), a camera zoom tween and a one-shot particle burst.' },
+  // 1.79: the supper on the tables, and the pasture above.
+  { name: 'The supper scatters', cat: 'WORLD', status: 'new', src: 'GOAT', code: 'Scatter.fromTable / burst · TUNING.scatter',
+    trigger: 'A headbutt on a laid table; a body, a crate or a barrel into one; a blast near one', look: 'The food flies off in arcs, a shadow under each piece, each bounce lower, rolling to rest on a quarter turn; a jug, milk or a plate breaks into pixel shards and leaves a spill; what lies on the floor is kicked by whoever walks through it',
+    size: () => `${TUNING.scatter.count[0]}–${TUNING.scatter.count[1]} things a table · ${TUNING.scatter.speed[0]}–${TUNING.scatter.speed[1]} px/s, lift ${TUNING.scatter.lift[0]}–${TUNING.scatter.lift[1]} · gravity ${TUNING.scatter.gravity} · bounce ×${TUNING.scatter.bounce} · breaks past ${TUNING.scatter.breakAt[0]}–${TUNING.scatter.breakAt[1]} px/s`,
+    godot: 'Each piece a Node2D with a fake height: vz -= g * delta, the sprite drawn at y - z over a shadow at y; at z <= 0 bounce with restitution and skid the xy velocity; a brittle one frees itself into a one-shot GPUParticles2D of shards and a decal.' },
+  { name: 'Rising into the pasture', cat: 'SCREEN', status: 'new', src: 'HADES', code: 'Heaven.enter · Heaven.drawScreen · heaven.arrive',
+    trigger: 'Clicking through a death card', look: 'The picture comes out of white, the goat rises in a pool of light, THE PASTURE ABOVE is lettered over the top with a gold rule, and the last life’s sacrifices are counted into the heap under it',
+    size: () => `white ${TUNING.heaven.arrive.flash}s · rise ${TUNING.heaven.arrive.rise}s · title ${TUNING.heaven.arrive.title}s · tally from ${TUNING.heaven.arrive.tallyAfter}s over ${TUNING.heaven.arrive.tallyTime}s`,
+    godot: 'A CanvasLayer ColorRect tweened out of white; a Label faded in and out on modulate.a; the goat’s sprite offset tweened up over its shadow; the tally a Label driven by tween_method.' },
+  { name: 'The god speaks', cat: 'UI', status: 'new', src: 'HADES', code: 'Heaven.drawTalk · heaven.type/talkArm/talkOut',
+    trigger: 'GRAB by the god, or his call on the first visit', look: 'The picture dims; he comes in big from the left on a turning star of light inside a gold pixel ring; a dark box with gold corners under his name types his words out while his mouth moves; a gold arrow bobs when a line is done',
+    size: () => `${TUNING.heaven.type} letters/s · a press ignored ${TUNING.heaven.talkArm}s · out over ${TUNING.heaven.talkOut}s`,
+    godot: 'A CanvasLayer: a ColorRect dim, a TextureRect portrait tweened in, a RichTextLabel whose visible_characters steps per letter, and an additive ray Sprite2D turned in _process.' },
+  { name: 'The god’s light', cat: 'WORLD', status: 'new', src: 'HADES', code: 'Heaven.drawGodLight',
+    trigger: 'Always, round the god on his cloud', look: 'Nine soft rays turning slowly round him, each breathing on its own, over a warm pool of light, all laid on added',
+    size: () => '9 rays · 420 px · a turn every 140 s',
+    godot: 'A Sprite2D of a ray fan with an additive CanvasItemMaterial rotated in _process; a PointLight2D for the warm pool.' },
+  { name: 'Off the edge', cat: 'SCREEN', status: 'new', src: 'GOAT', code: 'Heaven.update (jump) · Heaven.goatLook · game.dropIn · heaven.jump/drop',
+    trigger: 'Walking off the pasture’s edge (or Backspace)', look: 'He drops away into the cloud and the picture goes white over the last of it; on the floor below he falls in from above, landing as the level card clears',
+    size: () => `${TUNING.heaven.jump.time}s at ${TUNING.heaven.jump.speed}px/s, white over the last ${Math.round(TUNING.heaven.jump.fade * 100)}% · dropped ${TUNING.heaven.drop.height}px over ${TUNING.heaven.drop.time}s`,
+    godot: 'A tween on the goat sprite’s offset and scale with a white ColorRect tweened in; on the next scene a tween from a negative y offset timed off the level card’s own tween.' },
+  { name: 'Tumble and wake', cat: 'BODY', status: 'new', src: 'GOAT', code: 'Heaven.goatLook · Heaven.flip · Heaven.updateDrop · heaven.drop.ko/getup',
+    trigger: 'Falling off the edge, and down onto the floor below', look: 'A steady spin with a roll over his long axis (he thins edge-on and widens flat); he lands on his side, lies stunned, then gets up with a wobble',
+    size: () => `${TUNING.heaven.drop.turns} turns, ${TUNING.heaven.drop.flips} rolls on the way down · ${TUNING.heaven.drop.ko}s down · ${TUNING.heaven.drop.getup}s up`,
+    godot: 'An AnimationPlayer track on rotation and scale.x (|cos| of the roll); the goat’s state machine holds a STUNNED state for the lie.' },
+  { name: 'Chandelier comes down', cat: 'WORLD', status: 'new', src: 'Enter the Gungeon', code: 'Prop.cutRope · Prop.updateChandelier · Renderer.drawChandelierAir · TUNING.chandelier',
+    trigger: 'The rope cut at its cleat: a headbutt, a thrown body, fire', look: 'Its shadow on the floor darkens as the ring falls; it lands with a thud, dust, sparks and a ring of fire from the candles, and lies bent where it fell',
+    size: () => `${TUNING.chandelier.z}px up, ${TUNING.chandelier.gravity}px/s² · crushes within ${TUNING.chandelier.killR}px · fire ${TUNING.chandelier.fireR} tile for ${TUNING.chandelier.fireFor}s`,
+    godot: 'A RigidBody2D-free fall: a tween on the sprite’s y offset with an ease-in, an Area2D checked on landing, GPUParticles2D for sparks and dust, a shadow Sprite2D scaled by height.' },
+  { name: 'Table goes over', cat: 'WORLD', status: 'new', src: 'Enter the Gungeon', code: 'Prop.flipTable · Prop.knockFlipped · Prop.smashTable · prop.table.flip',
+    trigger: 'A table knocked sliding coming to rest, or slamming into stone', look: 'It tips onto its side, top toward where it went, the supper flying; butted it rocks, and the last blow breaks it into planks',
+    size: () => `${Math.round(TUNING.prop.table.flip.chance * 100)}% on stopping · always past ${TUNING.prop.table.flip.wall / TILE} tiles/s into stone · ${TUNING.prop.table.flip.hits} blows to break`,
+    godot: 'Swap the table’s sprite frame and CollisionShape2D on a signal; an AnimationPlayer shake for the rock; GPUParticles2D planks.' },
+  { name: 'A table from heaven', cat: 'WORLD', status: 'new', src: 'Goat Out', code: 'Prop.fall · Game.updateSkyTables · Renderer.drawSkyTables · heaven.tables',
+    trigger: 'A table butted off heaven’s edge; on the floor below, a man in sight', look: 'Up there it drops away off the lip, turning and shrinking; below, a shadow finds a man and follows him, the table tumbles in from above the screen, crushes whoever is under it and lies on its side',
+    size: () => `${TUNING.heaven.tables.z}px up, ${TUNING.heaven.tables.grav}px/s² · follows him until ${TUNING.heaven.tables.lock}s out · crushes within ${TUNING.heaven.tables.killR}px`,
+    godot: 'A tween on the sprite’s y offset with an ease-in over a shadow Sprite2D that tracks a target until a timer locks it, an Area2D checked on landing.' },
 ];
 
 // The whole table as Markdown: the EXPORT button on the JUICE tab downloads it, and

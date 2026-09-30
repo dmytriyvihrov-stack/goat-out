@@ -618,7 +618,8 @@ class Goat {
       if (d > this.r + e.r + 10 + extra || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
       // Held to the same line as everything else that reaches (ECHO HORN already was): with LONG
       // HORNS a man on the far side of a shut iron door was thrown across the room behind it.
-      if (!game.sees(this.x, this.y, e.x, e.y)) continue;
+      // `reaches`, as the club is: `sees` let the horns through a table or a brazier his club stops at.
+      if (!game.reaches(this.x, this.y, e.x, e.y)) continue;
       e.lastLunge = this.lungeId;
       // Caught while it is a body. Horn through a thing that has just made itself real undoes it —
       // no wall needed, because the window was the hard part.
@@ -952,7 +953,16 @@ class Goat {
     if (game.dev.god) { game.particles(this.x, this.y, 4, PALETTE.fireHi, 90); return; }
     if (by !== 'fall' && this.tripPhase(game, kx, ky)) return;
     if (Talisman.absorb(game, this)) return;   // TALLOW SKIN took it
-    this.hp -= n; this.invuln = TUNING.goat.invuln; this.hurtBy = by || null;
+    // THE MIRROR's HALO: a heart of light over his own takes the whole blow and goes out.
+    if (this.light > 0) {
+      this.light--; this.invuln = TUNING.goat.invuln + (game.mods.invulnAdd || 0);
+      this.vx += (kx || 0) * 0.5; this.vy += (ky || 0) * 0.5;
+      game.audio.sfxChime(TUNING.heaven.bells[4], 0.8); game.flash('#fff4c2', 0.25);
+      game.particles(this.x, this.y - 10, 14, '#fff4c2', 180); game.ring(this.x, this.y, 2 * TILE, '#f7d774');
+      game.floatText(this.x, this.y - 34, 'THE HALO TOOK IT', '#fff4c2');
+      return;
+    }
+    this.hp -= n; this.invuln = TUNING.goat.invuln + (game.mods.invulnAdd || 0); this.hurtBy = by || null;
     if (game.heartLog) for (let k = 0; k < n; k++) game.heartLog.push(game.timer);
     this.vx += kx || 0; this.vy += ky || 0;
     Talisman.loseRunUp(game, this);            // whatever he had built up, the club took it (BRASS SPUR keeps some)
@@ -1015,7 +1025,7 @@ class Prop {
       : kind === 'tortoise' ? P.tortoise.r : kind === 'goose' ? P.goose.r : kind === 'crow' ? P.crow.r : kind === 'horse' ? P.horse.r
       : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r
       : kind === 'bomb' ? P.bomb.r : kind === 'rock' ? P.rock.r : kind === 'spire' ? P.spire.r
-      : kind === 'barrel' ? P.barrel.r
+      : kind === 'barrel' ? P.barrel.r : kind === 'cleat' ? P.cleat.r
       : kind === 'mouse' ? P.mouse.r : kind === 'ware' ? P.ware.r : 13;
     // The shop (js/shop.js). A mouse carries which room's shelf is hers (`shopId`), where the gap
     // in the wall is (`gap`, which is where the ogre comes out), how many blows she has taken and
@@ -1037,6 +1047,10 @@ class Prop {
     this.roast = !!(opts && opts.roast);      // a brazier drawn as a campfire with a crocodile on a spit
     // A lantern on the wall (THE DARK): which way the wall it hangs on is, one tile's step.
     this.wall = kind === 'sconce' ? { x: (opts && opts.wx) || 0, y: opts && opts.wy !== undefined ? opts.wy : -1 } : null;
+    // A chandelier and the cleat its rope is tied off at share `cid` (`startLevel` joins them as
+    // `cleat` / `hangs`). The ring hangs `z` px up; `drop` is 'hang', 'fall' or 'down'.
+    this.cid = opts && opts.cid !== undefined ? opts.cid : -1; this.cleat = null; this.hangs = null;
+    this.z = kind === 'chandelier' ? TUNING.chandelier.z : 0; this.vz = 0; this.drop = kind === 'chandelier' ? 'hang' : null; this.burnT = 0;
     this.gate = 0;                            // 1 while the opening scene has this bar laid flat
     this.angle = (opts && opts.phase) || 0;
     this.held = false; this.flung = false; this.thrown = false; this.broken = false; this.dead = false;
@@ -1129,8 +1143,11 @@ class Prop {
     if (this.kind === 'tortoise') return !this.flying && this.tuckT > 0 && !this.held && !(this.coolT > 0);
     if (this.kind === 'goose' || this.kind === 'crow' || this.kind === 'horse') return false;
     // A lantern on the wall is up on the stone, out of anybody's way.
-    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce') return false;
+    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce' || this.kind === 'cleat' || this.kind === 'chandelier') return false;
     if (this.kind === 'door') return this.open < 0.5;
+    // A SPADE body you cannot lift is still something men trip on, never a wall: pushed out to
+    // touching, nobody ever got close enough to trip, and the thrown died on it as on stone.
+    if (this.corpse) return false;
     return true;
   }
   get stopsBullets() { return !this.broken && ((this.kind === 'tortoise' && !this.flying && !this.held && !(this.coolT > 0)) || this.kind === 'table' || this.kind === 'barrel' || this.kind === 'rock' || this.kind === 'brazier' || this.kind === 'bell' || this.kind === 'secret' || (this.kind === 'door' && this.open < 0.5)); }
@@ -1154,6 +1171,7 @@ class Prop {
   }
 
   headbutt(game, ax, ay) {
+    if (this.heaven) { Heaven.butt(game, this, ax, ay); return; }   // the bells, the mirror, the old man (js/heaven.js)
     switch (this.kind) {
       case 'crate': if (!this.held) this.fling(ax * TUNING.goat.headbutt.propImpulse * 0.75, ay * TUNING.goat.headbutt.propImpulse * 0.75, true); break;
       // You do not have to carry it. A horn under the stand sends the blade across the room too.
@@ -1165,7 +1183,8 @@ class Prop {
       case 'bell': this.ring(game); break;
       case 'door': case 'secret': this.smash(game, ax, ay); break;
       case 'rock': this.crackRock(game); break;
-      case 'table': this.shove(game, ax, ay); break;
+      case 'cleat': this.cutRope(game); break;
+      case 'table': if (this.flipped) this.knockFlipped(game, ax, ay); else this.shove(game, ax, ay); break;
       case 'barrel': this.roll(game, ax, ay, TUNING.prop.barrel.roll); break;
       case 'lamp': this.topple(game, ax, ay); break;
       case 'brazier': this.spill(game, ax, ay); break;
@@ -1205,6 +1224,18 @@ class Prop {
   // is: no shards, no splinters, nothing on the floor to say it was there.
   fall(game) {
     if (this.broken) return;
+    // Seen going down (30 Sep 2026: "show how it falls"): the picture of it, as a man's is
+    // (`game.fallers`), carrying the way it was going.
+    if (game.fallers && (this.kind === 'table' || this.kind === 'crate' || this.kind === 'barrel' || this.kind === 'bomb' || this.kind === 'weapon')) {
+      const pic = Object.assign(Object.create(Object.getPrototypeOf(this)), this, { broken: false, dead: false, flung: false, held: false });
+      game.fallers.push({ prop: pic, x: this.x, y: this.y, t: 0, life: TUNING.fall.showFor * 1.6,
+        spin: (Math.random() < 0.5 ? -1 : 1) * (0.8 + Math.random()), dx: this.vx * 0.2, dy: this.vy * 0.2 });
+    }
+    // A table butted off heaven's edge lands on the floor below, on a man (`Game.updateSkyTables`).
+    if (this.kind === 'table' && game.state === 'heaven') {
+      game.heavenTables = (game.heavenTables || 0) + 1;
+      game.floatText(this.x, this.y - 30, 'IT FALLS TO THE FLOOR BELOW', PALETTE.bone);
+    }
     this.broken = true; this.dead = true; this.flung = false; this.thrown = false; this.vx = 0; this.vy = 0;
     if (game.goat.holding === this) game.goat.holding = null;
     if (this.kind === 'barrel') this.unHazard(game);
@@ -1337,16 +1368,20 @@ class Prop {
   // Who sets one off. The goat, and now anybody chasing him: a grate that only answered to the goat
   // was a tool with a switch on it, and a man could stand on the boards over the teeth all day. The
   // dead are the exception, because nothing under the floor reaches something that is not there.
+  // Only a foot on this grate's own tile sets it off (29 Sep 2026: "only once you, or anyone, stood
+  // right on that tile — not beside it"); a reach of 1.3 tiles went off under whoever passed next to
+  // the patch, and a man walking round its edge read as walking over it untouched.
   tripped(game) {
-    const S = TUNING.prop.spike, g = game.goat;
+    const g = game.goat, tx = Math.floor(this.x / TILE), ty = Math.floor(this.y / TILE);
+    const on = (b) => Math.floor(b.x / TILE) === tx && Math.floor(b.y / TILE) === ty;
     // A goat in the air over a man (LEAPFROG) is over the boards too, as he is over a drop.
-    if (!g.dead && !g.leap && len(g.x - this.x, g.y - this.y) < S.trigger * TILE) return true;
+    if (!g.dead && !g.leap && on(g)) return true;
     // Only the men who ran this step (`game.liveEnemies`): a man frozen two rooms away is not
     // walking onto anything, and asking the level's whole cast once per grate, three times a step,
     // was the most expensive thing in the simulation on a late floor.
     for (const e of game.liveEnemies) {
       if (e.dead || e.ghosted || e.held || e.state === 'hop') continue;   // a leaper is over the boards
-      if (len(e.x - this.x, e.y - this.y) < S.trigger * TILE) return true;
+      if (on(e)) return true;
     }
     return false;
   }
@@ -1740,6 +1775,81 @@ class Prop {
   shove(game, ax, ay, by) {
     this.flung = true; this.vx = ax * 21 * TILE; this.vy = ay * 21 * TILE; this.by = by || null;
     game.world.emitNoise(this.x, this.y, TUNING.noise.table); game.audio.sfxThud(); game.shake(3);
+    if (game.scatter) game.scatter.fromTable(this, ax, ay, 1);   // the supper on it goes first (js/scatter.js)
+  }
+
+  // A table goes over onto its side, its top toward where it was going (`flipped`: 'n', 's', 'e',
+  // 'w'): a wider thing that stops men and rounds, and that nobody shoulders along any more.
+  flipTable(game, ax, ay) {
+    if (this.broken || this.flipped || this.isAltar || this.noFlip) return;
+    const F = TUNING.prop.table.flip;
+    this.flipped = Math.abs(ax) > Math.abs(ay) ? (ax > 0 ? 'e' : 'w') : (ay > 0 ? 's' : 'n');
+    this.flung = false; this.vx = 0; this.vy = 0; this.by = null; this.r = F.r; this.flipHits = F.hits;
+    game.world.collideCircle(this);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.table); game.audio.sfxThud(); game.shake(2);
+    game.dust(this.x, this.y, 5, ax, ay); game.particles(this.x, this.y, 6, PALETTE.wood, 110);
+    if (game.scatter) game.scatter.fromTable(this, ax, ay, 1);
+  }
+  // A headbutt on a table on its side only rocks it; the last of `flip.hits` breaks it into planks.
+  knockFlipped(game, ax, ay) {
+    this.wobble = 0.25; this.flipHits = (this.flipHits || 1) - 1;
+    game.audio.sfxThud(); game.particles(this.x, this.y, 5, PALETTE.wood, 120);
+    if (this.flipHits <= 0) this.smashTable(game, ax, ay);
+  }
+  smashTable(game, ax, ay) {
+    if (this.broken) return;
+    this.broken = true; this.dead = true;
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash); game.audio.sfxThud(); game.shake(3);
+    game.particles(this.x, this.y, 16, PALETTE.wood, 190); game.dust(this.x, this.y, 6, ax || 0, ay || 0);
+  }
+
+  // The rope's cleat on the far wall (`TUNING.prop.cleat`): a headbutt cuts it (`headbutt`), and so
+  // does a body or a thrown thing arriving at it hard enough, or fire on its tile for `burn` s.
+  updateCleat(dt, game) {
+    if (this.cut) return;
+    const C = TUNING.prop.cleat;
+    if (game.world.isBurningPx(this.x, this.y)) { this.burnT += dt; if (this.burnT >= C.burn) { this.cutRope(game); return; } } else this.burnT = 0;
+    for (const e of game.liveEnemies || game.enemies) {
+      if (e.dead || e.state !== 'flung' || Math.hypot(e.vx, e.vy) < C.hit) continue;
+      if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r + 4) { this.cutRope(game); return; }
+    }
+    for (const p of game.props) {
+      if (p === this || !p.flung || Math.hypot(p.vx, p.vy) < C.hit) continue;
+      if (Math.hypot(p.x - this.x, p.y - this.y) < p.r + this.r + 4) { this.cutRope(game); return; }
+    }
+  }
+  cutRope(game) {
+    if (this.cut) return;
+    this.cut = true; this.wobble = 0.3;
+    game.audio.sfxSteel(); game.particles(this.x, this.y - 12, 6, PALETTE.wood, 90);
+    const c = this.hangs;
+    if (c && c.drop === 'hang') { c.drop = 'fall'; c.vz = 0; game.world.emitNoise(c.x, c.y, TUNING.noise.table); }
+  }
+  // Hanging, it does nothing; cut, it falls, and where it lands (`TUNING.chandelier`) a man is
+  // crushed — a two-hit kind loses a heart, his `die` decides — the goat loses a heart, a table
+  // under it goes to planks and the candles light the floor round it. Then it lies there.
+  updateChandelier(dt, game) {
+    if (this.drop !== 'fall') return;
+    const C = TUNING.chandelier;
+    this.vz += C.gravity * dt; this.z -= this.vz * dt;
+    if (this.z > 0) return;
+    this.z = 0; this.drop = 'down';
+    const R = C.killR, g = game.goat, w = game.world;
+    for (const e of game.enemies) {
+      if (e.dead || e.held || e.ghosted || e.state === 'hop' || e.state === 'hidden') continue;
+      if (Math.hypot(e.x - this.x, e.y - this.y) > R + e.r * 0.5) continue;
+      e.die(game, 'splat', 0, 1);
+    }
+    if (!g.dead && !(g.leap) && Math.hypot(g.x - this.x, g.y - this.y) < R + g.r * 0.5) {
+      const d = Math.hypot(g.x - this.x, g.y - this.y) || 1;
+      g.damage(1, game, (g.x - this.x) / d * 160, (g.y - this.y) / d * 160, false, 'chandelier');
+    }
+    for (const p of game.props) if (p.kind === 'table' && !p.broken && !p.isAltar && Math.hypot(p.x - this.x, p.y - this.y) < R + p.r) p.smashTable(game, 0, 1);
+    const tx0 = Math.floor(this.x / TILE), ty0 = Math.floor(this.y / TILE), fr = Math.ceil(C.fireR);
+    for (let dy = -fr; dy <= fr; dy++) for (let dx = -fr; dx <= fr; dx++) if (Math.hypot(dx, dy) <= C.fireR) w.ignite(tx0 + dx, ty0 + dy, true, C.fireFor);
+    game.thud(this.x, this.y, 6); game.audio.sfxThud(); game.audio.sfxSteel(); game.audio.sfxFire();
+    game.dust(this.x, this.y, 8, 0, 0); game.particles(this.x, this.y, 14, PALETTE.fire, 170); game.particles(this.x, this.y, 8, PALETTE.bone, 120);
+    w.emitNoise(this.x, this.y, TUNING.noise.smash);
   }
 
   topple(game, ax, ay) {
@@ -1759,6 +1869,8 @@ class Prop {
     if ((this.kind === 'crate' || this.kind === 'weapon' || this.kind === 'bomb') && !this.held && !this.broken && !this.flung
       && !this.inStand && game.world.isPitPx(this.x, this.y)) { this.fall(game); return; }
     if (this.kind === 'mill') { this.updateMill(dt, game); return; }
+    if (this.kind === 'chandelier') { this.updateChandelier(dt, game); return; }
+    if (this.kind === 'cleat') { this.updateCleat(dt, game); return; }
     if (this.kind === 'spike') { this.updateSpike(dt, game); return; }
     if (this.kind === 'spire') { this.updateSpire(dt, game); return; }
     if (this.kind === 'chicken') { this.updateBird(dt, game); return; }
@@ -1814,6 +1926,7 @@ class Prop {
     // just breaking, since a box that reaches the coals themselves has reached fire either way.
     const hitP = this.hitProp(game, this.vx / (spd || 1), this.vy / (spd || 1));
     if (hitP && hitP.kind === 'brazier') { this.burst(game, this.alight === 'witch'); return; }
+    if (hitP && hitP.kind === 'table' && game.scatter) game.scatter.fromTable(hitP, this.vx, this.vy, 0.7);
     if (hitP) { end(); return; }
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
@@ -1989,6 +2102,7 @@ class Prop {
     game.ring(this.x, this.y, B.blastR, PALETTE.fireHi);
     game.thud(this.x, this.y, 9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
     game.world.emitNoise(this.x, this.y, TUNING.noise.boom);
+    if (game.scatter) game.scatter.burst(this.x, this.y, B.blastR * 2);
     // Stone stops a blast the way it stops `Status.blast`: a bomb against one side of a wall took a
     // heart off the goat on the other side of it.
     const w = game.world;
@@ -1997,8 +2111,9 @@ class Prop {
       const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
       if (d > B.blastR + e.r || !w.los(this.x, this.y, e.x, e.y)) continue;
       const nx = dx / (d || 1), ny = dy / (d || 1);
-      // The rat ogre is never flung, so the whole of the blast is the one heart it takes off him.
-      if (d <= B.nearR || e.kind === 'ratogre') e.die(game, 'splat', nx, ny);
+      // The rat ogre and the ogre are never flung, so the whole of the blast is the one heart it takes
+      // off them (the ogre was only hurt by a bomb all but under him: his body is wider than `nearR`).
+      if (d <= B.nearR || e.kind === 'ratogre' || e.kind === 'butcher') e.die(game, 'splat', nx, ny);
       else e.fling(nx * B.impulse, ny * B.impulse, true);
     }
     const g = game.goat, gd = Math.hypot(g.x - this.x, g.y - this.y);
@@ -2058,9 +2173,11 @@ class Prop {
     const drag = Math.exp(-cfg.drag * dt);
     this.vx *= drag; this.vy *= drag;
     this.x += this.vx * dt; this.y += this.vy * dt;
-    const spd = Math.hypot(this.vx, this.vy);
+    const spd = Math.hypot(this.vx, this.vy), sx = this.vx, sy = this.vy;
     const impact = game.world.collideCircle(this);
     if (impact > 3 * TILE) { game.shake(3); game.audio.sfxThud(); game.particles(this.x, this.y, 6, PALETTE.wood, 120); }
+    // Slammed into stone, it goes over there (`table.flip.wall`).
+    if (impact > cfg.flip.wall && !this.isAltar) { this.flipTable(game, sx / (spd || 1), sy / (spd || 1)); return; }
     // A sliding table is heavy enough to take a shut door off its hinges, and stops on anything
     // else in the room that a man would: a brazier, the wheel, another table.
     if (spd > 1) {
@@ -2083,7 +2200,12 @@ class Prop {
       }
       if (game.world.isBurningPx(this.x, this.y)) game.world.ignitePx(this.x, this.y, true);
     }
-    if (spd < 30) { this.flung = false; this.vx = 0; this.vy = 0; this.by = null; }
+    if (spd < 30) {
+      // Come to rest, it goes over onto its side `flip.chance` of the time, the way it was going.
+      const over = !this.isAltar && Math.random() < cfg.flip.chance, lx = this.lastVx || 1, ly = this.lastVy || 0;
+      this.flung = false; this.vx = 0; this.vy = 0; this.by = null;
+      if (over) this.flipTable(game, lx, ly);
+    } else { this.lastVx = this.vx; this.lastVy = this.vy; }
   }
 
   // A barrel set rolling: by a horn, by a body thrown into it, by another barrel or by a charging
@@ -2093,6 +2215,9 @@ class Prop {
     if (this.broken) return;
     const l = Math.hypot(ax, ay) || 1;
     this.vx = ax / l * speed; this.vy = ay / l * speed;
+    // It lies across the way it is sent, so it can roll that way: its axis down the picture ('v')
+    // when it is going left or right. Only the drawing reads it.
+    this.rollAxis = Math.abs(ax) > Math.abs(ay) ? 'v' : 'h';
     this.flung = true; this.lying = true; this.by = by || null; this.passed.length = 0;
     const B = TUNING.prop.barrel; this.staveN = Math.floor(this.spinD / (B.spinEvery * B.staveEvery * TILE));
     game.world.emitNoise(this.x, this.y, TUNING.noise.table);
@@ -2124,6 +2249,8 @@ class Prop {
     this.vx *= drag; this.vy *= drag;
     this.x += this.vx * dt; this.y += this.vy * dt;
     this.spinD += Math.hypot(this.vx, this.vy) * dt;
+    // How far round it has turned, signed, for the frame it is drawn in: back off a wall, it turns back.
+    this.rollD = (this.rollD || 0) + (this.rollAxis === 'v' ? this.vx : this.vy) * dt;
     // A clatter that slows as the barrel does, and says from out of sight that it is still coming.
     const turn = Math.floor(this.spinD / (B.spinEvery * B.staveEvery * TILE));
     if (turn !== this.staveN) { this.staveN = turn; game.audio.sfxStave(Math.min(1, Math.hypot(this.vx, this.vy) / B.roll)); }
@@ -2140,6 +2267,7 @@ class Prop {
     if (hit && hit.kind === 'brazier') { this.oilBurst(game, false); return; }
     if (hit && hit.kind === 'barrel') { hit.roll(game, nx, ny, spd * B.pass, this.by); this.vx *= 0.15; this.vy *= 0.15; }
     else if (hit && hit.kind !== 'lamp') {
+      if (hit.kind === 'table' && game.scatter) game.scatter.fromTable(hit, nx, ny, 0.8);
       if (spd > B.breakSpeed) {
         if (hit.kind === 'door') hit.smash(game, nx, ny, null); else if (hit.kind === 'rock') hit.crackRock(game);
         this.smashBarrel(game); return;
@@ -2196,6 +2324,7 @@ class Prop {
     game.particles(this.x, this.y, 20, witch ? PALETTE.witchHi : PALETTE.fireHi, 260);
     game.floatText(this.x, this.y - 28, 'IT GOES UP', witch ? PALETTE.witchHi : PALETTE.fireHi);
     game.world.emitNoise(this.x, this.y, TUNING.noise.boom);
+    if (game.scatter) game.scatter.burst(this.x, this.y, B.burst * TILE * 1.5);
     this.oilT = -1; this.shatter(game);
   }
 

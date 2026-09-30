@@ -78,6 +78,7 @@ class World {
 
   // Cult sign painted straight onto the floor, as blocky pixel pictograms.
   paintGlyphs(level) {
+    if (level.def && level.def.heaven) { this.omens = []; return; }   // no blood and no signs above the clouds (js/heaven.js)
     const rng = new RNG(level.seed ^ 0x9e37);
     for (const room of level.rooms) {
       if (room.index === 0) continue;
@@ -104,11 +105,15 @@ class World {
   placeOmens(level) {
     this.omens = [];
     if (typeof DECAL_PIXELS === 'undefined' || level.def.shroom) return;
-    const O = TUNING.effects.omens, rng = new RNG(level.seed ^ 0x51a7e), T0 = [T.FLOOR, T.HAY, T.ASH];
+    // Bare floor only (29 Sep 2026: a sign painted across the bales read as a bug): not straw, which
+    // is drawn as bales under it, and clear of every piece of furniture the level stands.
+    const O = TUNING.effects.omens, rng = new RNG(level.seed ^ 0x51a7e), T0 = [T.FLOOR, T.ASH];
+    const stands = (level.props || []).filter((p) => p.kind !== 'door' && p.kind !== 'heal');
     const onFloor = (x0, y0, w, h) => {
       for (let ty = Math.floor(y0 / TILE); ty <= Math.floor((y0 + h) / TILE); ty++)
         for (let tx = Math.floor(x0 / TILE); tx <= Math.floor((x0 + w) / TILE); tx++) if (!T0.includes(this.tileAt(tx, ty))) return false;
-      return true;
+      const pad = TILE * 0.6;
+      return !stands.some((p) => p.x > x0 - pad && p.x < x0 + w + pad && p.y > y0 - pad && p.y < y0 + h + pad);
     };
     for (const room of level.rooms) {
       if (room.index === 0) continue;
@@ -833,6 +838,20 @@ class World {
   // A round pool of flame: a smashed oil lamp, a Seer's rune, or coals knocked out of a brazier.
   // `dur` overrides how long it burns; without it a pool lasts `fire.pool`, witchfire `fire.witch`.
   ignitePool(x, y, radiusTiles, witch, dur) {
+    // A pool that lands inside stone — a lamp stood against a wall and butted into it, coals spilled
+    // at one — starts from the nearest open tile beside it: every sight line out of the stone failed,
+    // so THE DARK's lamps went out without lighting a thing (28 Sep 2026).
+    if (this.isSolid(Math.floor(x / TILE), Math.floor(y / TILE))) {
+      let best = null, bd = Infinity;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const tx = Math.floor(x / TILE) + dx, ty = Math.floor(y / TILE) + dy;
+        if (this.isSolid(tx, ty) || this.tileAt(tx, ty) === T.PIT) continue;
+        const d = Math.hypot((tx + 0.5) * TILE - x, (ty + 0.5) * TILE - y);
+        if (d < bd) { bd = d; best = [(tx + 0.5) * TILE, (ty + 0.5) * TILE]; }
+      }
+      if (!best) return;
+      [x, y] = best;
+    }
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), r = Math.ceil(radiusTiles);
     if (!dur) dur = witch ? TUNING.fire.witch : undefined;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {

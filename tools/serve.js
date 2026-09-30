@@ -26,6 +26,30 @@ http.createServer((req, res) => {
     });
     return;
   }
+  // The GOD TALK page (tools/god-talk.html) writes the god's and the shepherd's lines back into
+  // js/heaven.js: each object literal is swapped whole for the one the page sends, nothing else moves.
+  if (req.method === 'POST' && req.url.startsWith('/talk-edit')) {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      try {
+        const edit = JSON.parse(body), file = path.join(root, 'js', 'heaven.js');
+        let src = fs.readFileSync(file, 'utf8');
+        for (const name of ['HEAVEN_TALK', 'SHEPHERD_TALK']) {
+          if (typeof edit[name] !== 'string') continue;
+          const head = `const ${name} = `, a = src.indexOf(head), b = src.indexOf('\n};', a);
+          if (a < 0 || b < 0) throw new Error(name + ' not found');
+          src = src.slice(0, a) + head + edit[name].trim().replace(/;$/, '') + ';' + src.slice(b + 3);
+        }
+        fs.writeFileSync(file, src);
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.end(JSON.stringify({ ok: false, error: String(e.message || e) }));
+      }
+    });
+    return;
+  }
   if (req.method === 'POST' && req.url.startsWith('/tuning-edit')) {
     let body = '';
     req.on('data', (c) => (body += c));

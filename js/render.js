@@ -41,6 +41,9 @@ const CAVE_CHUNK = 16;
 // The cave's baked ground (`Renderer.drawCaveBaked`): tiles a bitmap, bitmaps painted a frame, and
 // the pixels all of them may hold between them before the least recently seen go.
 const CAVE_BAKE = 8, CAVE_BAKE_MAX = 6, CAVE_BAKE_PX = 24e6;
+// Painted ahead in idle time (`Renderer.warmCave`): chunks round the view, and the idle time a chunk
+// needs left before one is started (one is 2–10 ms).
+const CAVE_AHEAD = 1, CAVE_WARM_MS = 6;
 
 // The controls, painted on the floor. Nothing about the mouse: a crosshair on a top-down game
 // explains itself, and the floor has room for what it does not. Every block lies in the room that
@@ -161,6 +164,8 @@ class Renderer {
   // `TUNING.hud`, so the corner of the screen can be made to read without touching the cards, the
   // menu or the floor text, all of which are sized for their own jobs.
   get hs() { return this.ts * TUNING.hud.scale; }
+  // How far a graze has got, 0..1: THE MIRROR's GOOD GRAZER (`mods.grazeMul`) shortens the whole of it.
+  grazeOf(p) { const m = this.game && this.game.mods; return clamp(p.graze / (TUNING.prop.heal.grazeTime * ((m && m.grazeMul) || 1)), 0, 1); }
 
   draw(game, dt) {
     this.t += dt; this.game = game;   // the shelf reads the goat off it mid-draw
@@ -170,8 +175,18 @@ class Renderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = game.level ? game.level.def.fog : '#0d0a0c';
     ctx.fillRect(0, 0, w, h);
+    // Under the death card's picture of the floor, the level pulled back far enough to hold all of it
+    // cost 30–600 ms a frame to draw (29 Sep 2026, "this part is very slow"), for a picture 60–95%
+    // under the card's dark. Once the painting starts to come in, the frame is kept as it stood
+    // (`deathShot`, taken once below) and only that is drawn under the card.
+    const deathA = game.state === 'dead' && game.card && game.card.map && game.deathPainting ? Painting.deathFade(game) : 0;
+    if (!deathA) this.deathShot = null;
+    const shot = deathA > 0 && this.deathShot && this.deathShot.width === this.c.width && this.deathShot.height === this.c.height ? this.deathShot : null;
+    if (shot) ctx.drawImage(shot, 0, 0);
+    // Above the clouds (js/heaven.js) the whole picture is heaven's own.
+    else if (game.heaven && game.level && game.level.def.heaven) Heaven.draw(this, game, dt);
     // The picture of the floor covers the whole screen: nothing behind it is worth a frame.
-    if (game.world && !(game.card && game.card.painting && game.painting)) {
+    else if (game.world && !(game.card && game.card.painting && game.painting)) {
       const cam = game.cam;
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, this.vw, this.vh); ctx.clip();
@@ -180,8 +195,10 @@ class Renderer {
       this.drawOmens(game, cam);
       this.drawDecals(game, cam);
       game.fx.drawGround(this,game);
+      if (game.scatter) game.scatter.drawGround(this);   // a table's supper, where it came to rest
       this.drawPits(game, cam);
       this.drawFallers(game);
+      this.drawSkyTables(game, 'ground');
       const dark = Dark.on(game);
       if (!dark) this.drawHints(game);   // in THE DARK the floor words go on over it (below)
       this.drawFire(game, cam);
@@ -207,8 +224,12 @@ class Renderer {
       const carried = (p) => p === game.goat.holding;
       for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && lit(p) && !inFront(p) && !carried(p)) this.drawProp(p);
       // A man out of the goat's sight is not drawn at all, only the line of a rifle aimed at him.
-      const seen = (e) => lit(e) && game.inSight(e);
+      // A hidden wraith is a crate or a milk sprout, and stays drawn under the shade as the real ones
+      // do: out of his sight it used to blink out while the crates beside it stayed, and gave it away.
+      const seen = (e) => lit(e) && (e.state === 'hidden' || game.inSight(e));
       for (const e of game.enemies) if (!e.dead && lit(e) && !seen(e) && e.state === 'aim') this.drawAimTelegraph(e);
+      // Collected from the men lying down too, so a floored boss's notches go on over whoever stands on him.
+      this.overheads = [];
       for (const e of game.enemies) if (!e.dead && seen(e) && (e.state === 'floored' || e.state === 'stunned')) this.drawEnemy(e, game);
       for (const p of game.props) if (!p.broken && p.kind === 'lamp' && lit(p)) this.drawProp(p);
       // Everyone on his feet and the goat, in order of where their feet are, so a man a step south of
@@ -223,7 +244,7 @@ class Renderer {
       // In the air over a man's back (LEAPFROG) he is over everyone.
       const foot = (o) => (o === g && g.leap ? Infinity : o.y);
       const cast = standing.concat([g]).sort((a, b) => foot(a) - foot(b));
-      this.groundDone = true; this.overheads = [];
+      this.groundDone = true;
       try {
         for (const o of cast) {
           if (o !== g) { this.drawEnemy(o, game); continue; }
@@ -234,6 +255,8 @@ class Renderer {
         }
       } finally { this.groundDone = false; }
       for (const b of game.bullets) if (lit(b)) this.drawBullet(b);
+      for (const p of game.props) if (p.kind === 'chandelier' && lit(p)) this.drawChandelierAir(p);
+      this.drawSkyTables(game, 'air');
       this.drawFlares(game);
       for (const b of game.globs) this.drawGlob(b);
       this.drawBoomerang(game);
@@ -249,6 +272,7 @@ class Renderer {
       this.drawRings(game);
       this.drawParticles(game);
       game.fx.draw(this,game);
+      if (game.scatter) game.scatter.drawAir(this);
       // THE DARK: over the world, under the floor words and the fog. The words were under it too, and
       // the one line that says what this floor is ("THE LAMPS ARE OUT") sat in 98% black.
       if (dark) { Dark.draw(this, game, cam); this.drawHints(game); }
@@ -265,10 +289,16 @@ class Renderer {
       // Not on the trip: the floor after it, saying the controls are his again.
       else if (game.tripBack > 0) this.drawTripBanner(game.tripBack, TUNING.shroom.back, true);
     }
-    this.drawVignette(game);
-    this.drawHurt(game);
-    this.drawHurtVignette(game);
-    this.drawFlash(game);
+    if (!shot) {
+      this.drawVignette(game);
+      this.drawHurt(game);
+      this.drawHurtVignette(game);
+      this.drawFlash(game);
+      if (deathA > 0) {
+        const c = this.deathShot = document.createElement('canvas'); c.width = this.c.width; c.height = this.c.height;
+        c.getContext('2d').drawImage(this.c, 0, 0);
+      }
+    }
     if (game.state === 'climb' && game.stairFx) {
       // the light at the top of the stairs takes the picture
       const p = clamp(game.stairFx.t, 0, 1);
@@ -280,7 +310,7 @@ class Renderer {
     this.drawUI(game);
     if (game.state === 'paused') this.drawPause(game);
     this.drawTitle(game, dt);
-    if (game.touch.active && game.state === 'play') this.drawTouchUI(game);
+    if (game.touch.active && (game.state === 'play' || (game.state === 'heaven' && game.heaven && !game.heaven.talk && !game.heaven.panel))) this.drawTouchUI(game);
     this.drawBoonChoice(game);
     this.drawCard(game);
     this.drawDev(game);
@@ -432,12 +462,59 @@ class Renderer {
   // since the march leaves the corners of a lone stone bare; then the rock is one path, filled as a
   // shadow, as its face and — clipped to itself and lifted — as its top, the way the round cave is.
   drawCaveMid(game, cam) {
-    const wd = game.world, W = wd.W;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
-    const secret = new Set();
-    for (const p of game.props) if (p.kind === 'secret' && !p.broken) secret.add(Math.floor(p.y / TILE) * W + Math.floor(p.x / TILE));
-    const solid = (tx, ty) => wd.isSolid(tx, ty) || secret.has(ty * W + tx);
+    const { secret, solid } = this.caveRock(game);
     this.drawCaveBaked(game, cam, x0, y0, x1, y1, secret, solid);
+    this.askCaveWarm(game);
+  }
+  // Which tiles are rock to the cave's picture: stone, and every secret wall still standing.
+  caveRock(game) {
+    const wd = game.world, W = wd.W, secret = new Set();
+    for (const p of game.props) if (p.kind === 'secret' && !p.broken) secret.add(Math.floor(p.y / TILE) * W + Math.floor(p.x / TILE));
+    return { secret, solid: (tx, ty) => wd.isSolid(tx, ty) || secret.has(ty * W + tx) };
+  }
+  caveBakeScale(z) { return z > 2 ? 3 : z > 1 ? 2 : z > 0.5 ? 1 : z > 0.25 ? 0.5 : 0.25; }
+
+  // The chunks the camera is about to need, painted in the browser's idle time rather than inside a
+  // frame. `drawCaveBaked` paints at most `CAVE_BAKE_MAX` a frame at 2–10 ms each and shows flat
+  // floor until then, so walking into the cave — its first frames most of all — was squares of bare
+  // colour filling in over 30 ms frames (29 Sep 2026: "the cave still loads slowly"). This bakes the
+  // view and a ring `CAVE_AHEAD` chunks round it, nearest to where he is heading first, while the
+  // browser says it has time to spare, and stops short of the pixel budget so it never evicts what
+  // it has just painted. One idle callback at a time, asked for by every cave frame; a browser that
+  // never goes idle (or has no idle callback) still gets one chunk each time it runs out of patience.
+  askCaveWarm(game) {
+    if (this.caveWarmId) return;
+    const ric = typeof requestIdleCallback === 'function' ? requestIdleCallback
+      : (f) => setTimeout(() => f({ didTimeout: true, timeRemaining: () => 0 }), 30);
+    this.caveWarmId = ric((dl) => { this.caveWarmId = 0; try { this.warmCave(game, dl); } catch (err) { /* baked in the frame instead */ } }, { timeout: 250 });
+  }
+  warmCave(game, dl) {
+    const wd = game.world, cam = game.cam;
+    if (!wd || !wd.caveF || !game.level || !cam || !cam.zoom || game.state === 'title' || game.state === 'heaven') return;
+    if (!this.bake || this.bake.world !== wd) this.bake = { world: wd, map: new Map(), px: 0, tick: 0 };
+    const bk = this.bake, K = CAVE_BAKE, B = this.caveBakeScale(cam.zoom), A = CAVE_AHEAD;
+    const { x0, y0, x1, y1 } = this.visibleTiles(cam);
+    const c0 = Math.max(0, Math.floor(x0 / K) - A), c1 = Math.min(Math.ceil(wd.W / K), Math.floor(x1 / K) + A);
+    const r0 = Math.max(0, Math.floor(y0 / K) - A), r1 = Math.min(Math.ceil(wd.H / K), Math.floor(y1 / K) + A);
+    // a little ahead of him along the way he is going, so the chunks he runs into come first
+    const g = game.goat, fx = (g ? g.x + (g.vx || 0) * 0.6 : cam.x) / TILE, fy = (g ? g.y + (g.vy || 0) * 0.6 : cam.y) / TILE;
+    const rock = this.caveRock(game), want = [];
+    for (let cj = r0; cj <= r1; cj++) for (let ci = c0; ci <= c1; ci++) {
+      const e = bk.map.get(cj * 65536 + ci), sig = this.caveBakeSig(wd, ci * K, cj * K, rock.secret);
+      if (e && e.B === B && e.sig === sig) continue;
+      want.push([Math.hypot((ci + 0.5) * K - fx, (cj + 0.5) * K - fy), ci, cj, sig]);
+    }
+    if (!want.length) return;
+    want.sort((a, b) => a[0] - b[0]);
+    let one = !!dl.didTimeout;
+    for (const [, ci, cj, sig] of want) {
+      if ((!one && dl.timeRemaining() < CAVE_WARM_MS) || bk.px > CAVE_BAKE_PX * 0.7) break;
+      one = false;
+      const key = cj * 65536 + ci, e = this.bakeCaveChunk(game, ci, cj, B, sig, rock.secret, rock.solid, bk.map.get(key));
+      e.used = bk.tick; bk.map.set(key, e);
+    }
+    if (want.length && bk.px <= CAVE_BAKE_PX * 0.7) this.askCaveWarm(game);
   }
 
   // THE CAVE, baked. Everything `drawCaveRegion` paints is the same every frame — the floor, its
@@ -453,7 +530,7 @@ class Renderer {
   // not at all once the camera is pulled back far enough that nobody could see it breathe.
   drawCaveBaked(game, cam, x0, y0, x1, y1, secret, solid) {
     const ctx = this.ctx, wd = game.world, def = game.level.def, K = CAVE_BAKE;
-    const z = cam.zoom, B = z > 2 ? 3 : z > 1 ? 2 : z > 0.5 ? 1 : z > 0.25 ? 0.5 : 0.25;
+    const z = cam.zoom, B = this.caveBakeScale(z);
     if (!this.bake || this.bake.world !== wd) this.bake = { world: wd, map: new Map(), px: 0, tick: 0 };
     const bk = this.bake; bk.tick++;
     let budget = CAVE_BAKE_MAX;
@@ -492,13 +569,16 @@ class Renderer {
       for (const [k, e] of old) { if (bk.px <= CAVE_BAKE_PX * 0.8) break; bk.px -= e.px || 0; bk.map.delete(k); }
     }
   }
-  // What a chunk is painted from, as one number: its tiles and grass two tiles round, the rock's own
-  // epoch and which secret walls still stand. Any change and the bitmap is stale.
+  // What a chunk is painted from, as one number: its tiles and grass four tiles round (it is painted
+  // from two round, and the rock band there reads two further) and which secret walls still stand.
+  // Any change and the bitmap is stale. Never the world's `caveEpoch`: every room the clamp walls up
+  // bumps it, and in the sig it threw away every chunk on screen at once — a screen of flat floor
+  // refilling over three 30 ms frames each time he went through a door (29 Sep 2026).
   caveBakeSig(wd, i0, j0, secret) {
-    const W = wd.W; let h = (wd.caveEpoch || 0) * 7919 + 17;
-    for (let j = j0 - 2; j < j0 + CAVE_BAKE + 2; j++) {
+    const W = wd.W, M = 4; let h = 17;
+    for (let j = j0 - M; j < j0 + CAVE_BAKE + M; j++) {
       if (j < 0 || j >= wd.H) continue;
-      for (let i = i0 - 2; i < i0 + CAVE_BAKE + 2; i++) {
+      for (let i = i0 - M; i < i0 + CAVE_BAKE + M; i++) {
         if (i < 0 || i >= W) continue;
         const k = j * W + i;
         h = (Math.imul(h, 31) + wd.tiles[k] * 3 + (wd.grass[k] ? 1 : 0) + (secret.has(k) ? 11 : 0)) | 0;
@@ -1251,6 +1331,13 @@ class Renderer {
     const ctx = this.ctx;
     for (const f of game.fallers) {
       const k = clamp(f.t / f.life, 0, 1), sc = 1 - 0.8 * k;
+      if (f.prop) {
+        // a thing going down a hole: it drops away from the lip, turning, smaller and gone
+        ctx.save(); ctx.globalAlpha = 1 - k * k;
+        ctx.translate(f.x + f.dx * k, f.y + f.dy * k + k * k * 60); ctx.rotate(f.spin * k); ctx.scale(sc, sc);
+        ctx.translate(-f.prop.x, -f.prop.y); this.drawProp(f.prop);
+        ctx.restore(); continue;
+      }
       ctx.save();
       ctx.globalAlpha = 1 - k * k;
       ctx.translate(f.x + f.dx * k, f.y + f.dy * k + k * 14);
@@ -1534,7 +1621,10 @@ class Renderer {
     const ctx = this.ctx, wd = game.world;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
     const spots = [];
-    for (const p of game.props) if (!p.broken && (p.kind === 'brazier' || p.kind === 'lamp')) spots.push([p.x, p.y, 96]);
+    // Only the flames whose pool can reach the view: every bowl on the floor (up to 37) was a gradient
+    // a frame, and they ate into the 60 the burning tiles are allowed.
+    const vx0 = (x0 - 3) * TILE, vx1 = (x1 + 4) * TILE, vy0 = (y0 - 3) * TILE, vy1 = (y1 + 4) * TILE;
+    for (const p of game.props) if (!p.broken && (p.kind === 'brazier' || p.kind === 'lamp') && p.x > vx0 && p.x < vx1 && p.y > vy0 && p.y < vy1) spots.push([p.x, p.y, 96]);
     for (let ty = Math.max(0, y0); ty <= Math.min(wd.H - 1, y1) && spots.length < 60; ty++) {
       for (let tx = Math.max(0, x0); tx <= Math.min(wd.W - 1, x1) && spots.length < 60; tx++) {
         if (wd.fire[ty * wd.W + tx] > 0) spots.push([tx * TILE + 16, ty * TILE + 16, 80, wd.fireKind[ty * wd.W + tx] === 1]);
@@ -1623,7 +1713,7 @@ class Renderer {
   // shadow (playtest, 23 Sep 2026). Now the front feet sit in the lower half and the back ones in it.
   shadow(x, y, rx, ry) {
     if (this.silPass) return;   // THE DARK's silhouettes are the body alone
-    const ctx = this.ctx; ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    const ctx = this.ctx; ctx.fillStyle = this.shadeColor || 'rgba(0,0,0,0.32)';   // blue on a cloud (js/heaven.js)
     ctx.beginPath(); ctx.ellipse(x, y - ry * 0.15, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
   }
 
@@ -1779,6 +1869,29 @@ class Renderer {
     return (p.swing = b >= a ? 1 : -1);
   }
 
+  // A chandelier's ring and rope, over everybody (it hangs in the air): the floor pass drew its shadow.
+  // A table sent down from heaven (`Game.updateSkyTables`): on the ground its shadow, darkening and
+  // tightening as it comes; in the air the table itself, `z` px up, turning slowly.
+  drawSkyTables(game, pass) {
+    const S = game.skyTables; if (!S || !S.drops.length) return;
+    const ctx = this.ctx, C = TUNING.heaven.tables;
+    for (const d of S.drops) {
+      const k = 1 - clamp(d.z / C.z, 0, 1);
+      ctx.save();
+      if (pass === 'ground') {
+        ctx.translate(d.x, d.y); ctx.scale(1, 1 / TILT); ctx.translate(-d.x, -d.y);
+        ctx.globalAlpha *= 0.25 + 0.6 * k; this.shadow(d.x, d.y + 2, C.killR * (1.4 - 0.4 * k), C.killR * 0.5 * (1.4 - 0.4 * k));
+      } else { ctx.translate(d.x, d.y - d.z); ctx.rotate(d.spin * (1 - k)); ctx.translate(-d.x, -d.y); this.drawProp(d.table); }
+      ctx.restore();
+    }
+  }
+  drawChandelierAir(p) {
+    if (!this.painted.chandelier || p.drop === 'down') return;
+    const ctx = this.ctx;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, 1 / TILT); ctx.translate(-p.x, -p.y);
+    this.painted.chandelier(this, p, 'air');
+    ctx.restore();
+  }
   drawProp(p) {
     const ctx = this.ctx;
     if (p.corpse) { Talisman.drawCorpse(this, p); return; }   // GRAVEDIGGER'S SPADE
@@ -2130,7 +2243,7 @@ class Renderer {
     }
     ctx.restore();
     if (p.graze > 0) {
-      const frac = clamp(p.graze / TUNING.prop.heal.grazeTime, 0, 1);
+      const frac = this.grazeOf(p);
       ctx.strokeStyle = 'rgba(239,230,208,0.85)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.arc(p.x, p.y, R * 1.05, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
     }
@@ -2142,6 +2255,8 @@ class Renderer {
     if (p.kind === 'rock') { if (this.game && this.game.level && this.game.level.def.shroom) this.drawBigShroom(p); else this.drawRock(p); return; }
     if (p.kind === 'shrooms') { this.drawShroomTuft(p); return; }
     if (p.kind === 'sconce') { if (this.painted.sconce) this.painted.sconce(this.ctx, p, this.t); return; }
+    if (p.kind === 'cleat') { if (this.painted.cleat) this.painted.cleat(this, p); return; }
+    if (p.kind === 'chandelier') { if (this.painted.chandelier) this.painted.chandelier(this, p, 'ground'); return; }
     // In the cave the rock under a secret wall is drawn with the rest of the rock (`drawCaveTiles`):
     // a square patch of wall in a round cave would give it away. Only the crack is its own.
     if (p.kind === 'secret' && this.game && this.game.world && this.game.world.round) { this.wallCrack(p.x, p.y, p.hits || 0); return; }
@@ -2168,7 +2283,8 @@ class Renderer {
       // hit marks, pressure tell and soul wording above it: artwork must not hide its state.
       // The soul door carries the soul's own halo. An iron door in a corridor and the one with a
       // soul behind it used to be the same grey slab, which is why nobody went to the second one.
-      if (p.vault || p.gate) {
+      // Not in THE DARK's silhouette pass: flattened to the body colour, the halo was a disc 3 tiles wide.
+      if ((p.vault || p.gate) && !this.silPass) {
         const violet = p.gate;
         const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 56);
         halo.addColorStop(0, violet ? `rgba(125,92,255,${0.2 + 0.1 * Math.sin(this.t * 2.4)})`
@@ -2481,7 +2597,7 @@ class Renderer {
         }
       }
       if (p.graze > 0) {
-        const frac = clamp(p.graze / TUNING.prop.heal.grazeTime, 0, 1);
+        const frac = this.grazeOf(p);
         ctx.strokeStyle = 'rgba(168,189,108,0.85)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.arc(p.x, p.y + bob, 17, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
       }
@@ -3074,7 +3190,9 @@ class Renderer {
     if (e.kind === 'dog' || (e.state !== 'windup' && e.state !== 'chargewind')) return;
     const ctx = this.ctx, cfg = TUNING[e.kind];
     if (ART_PASS.on) { this.drawTelegraphCells(e, cfg); return; }
-    ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT); ctx.rotate(e.facing);
+    // Ground laid on the floor, so in world space, squashed with it: rotated in counter-squashed
+    // space the lane pointed off its real line on every diagonal.
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.facing);
     if (e.state === 'chargewind') {
       // The strip is the butcher's run as he will actually make it: to where he is aiming
       // (`Enemy.leadAim`, where the goat is going) and `over` past it.
@@ -3105,7 +3223,10 @@ class Renderer {
     const ux = Math.cos(f), uy = Math.sin(f);
     const fill = (test, n, color) => {
       ctx.fillStyle = color; ctx.beginPath();
-      for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) if (test((i + 0.5) * px, (j + 0.5) * px)) ctx.rect(i * px, j * px, px, px);
+      // Cells sit in counter-squashed space (square on screen), but what they test is the floor: a
+      // cell's world y is its local y / TILT. Tested in local space, a diagonal charge strip pointed
+      // 4° off and ran long, and a goat half a tile outside it was still run down.
+      for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) if (test((i + 0.5) * px, (j + 0.5) * px / TILT)) ctx.rect(i * px, j * px, px, px);
       ctx.fill();
     };
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
@@ -3168,7 +3289,7 @@ class Renderer {
     for (const e of game.enemies) {
       if (e.dead || e.kind !== 'dog' || !e.dashPath || e.dashPath.length < 2 || game.hidden(e.x, e.y)) continue;
       if (e.state !== 'windup' && e.state !== 'dart') continue;
-      const p = e.state === 'dart' ? 1 : clamp(1 - e.timer / TUNING.dog.windup, 0, 1), pts = e.dashPath;
+      const p = e.state === 'dart' ? 1 : this.windP(e, TUNING.dog.windup), pts = e.dashPath;
       if (ART_PASS.on) { this.drawDashCells(e, pts, p); continue; }
       ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.strokeStyle = `rgba(192,57,43,${0.18 + 0.3 * p})`; ctx.lineWidth = e.r * 1.6;
@@ -3395,6 +3516,10 @@ class Renderer {
           ['dark', d.dark ? 'DARK  ON' : 'DARK  OFF'],
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
           ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['showroom', 'SHOWROOM'],
+          // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
+          ['heaven', 'HEAVEN'], ['sacrifices', '+100 SACR · +5 SOULS'],
+          // The god's lines on a page of their own, to edit and cut into parts (tools/god-talk.html).
+          ['godtalk', 'GOD TALK'],
           // The zip for itch.io, off this very page: no dev drawer in it, GOD in its SETTINGS (js/release.js).
           ['itch', RELEASE.busy ? 'ITCH BUILD…' : 'ITCH BUILD'],
           // Each click steps to the next of `FONT_PICK.list`; the choice is kept in this browser.
@@ -4400,11 +4525,11 @@ class Renderer {
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE UPGRADES', pad, top);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText('click a number to change it: takes effect now, saved to js/tuning.js if the dev server is running', pad + 120 * s, top);
+    ctx.fillText('click a number to change it: takes effect now, saved to js/tuning.js if the dev server is running · GIVE / HAVE puts one on the goat or takes it off', pad + 120 * s, top);
 
     const rowH = Math.min(48 * s, Math.max(36 * s, (H - top - 24 * s - pad) / BOONS.length));
     const iconW = 30 * s, nameX = pad + iconW + 10 * s, nameW = Math.min(230 * s, W * 0.28),
-      levelX = nameX + nameW + 8 * s, paramsX = levelX + 62 * s;
+      levelX = nameX + nameW + 8 * s, haveX = levelX + 52 * s, paramsX = haveX + 58 * s;
     let y = top + 20 * s;
     BOONS.forEach((b, i) => {
       const ry = y + i * rowH;
@@ -4447,6 +4572,14 @@ class Renderer {
       ctx.fillText(lvlLabel, levelX + 23 * s, ry + 27.5 * s);
       ctx.textAlign = 'left';
       d.rects.push({ x: levelX, y: ry + 16 * s, w: 46 * s, h: 16 * s, id: `boon-edit=${b.id}.minLevel` });
+      // HAVE: whether the goat carries it now; a click gives or takes it (`boon-have=`)
+      const has = !!(game.boons && game.boons.includes(b)), hy = ry + 16 * s;
+      ctx.font = `700 ${8 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.55)'; ctx.fillText('ON GOAT', haveX, ry + 13 * s);
+      ctx.fillStyle = has ? 'rgba(125,92,255,0.45)' : 'rgba(185,135,58,0.12)'; ctx.fillRect(haveX, hy, 50 * s, 16 * s);
+      ctx.strokeStyle = has ? PALETTE.witchHi : 'rgba(242,162,51,0.35)'; ctx.strokeRect(haveX, hy, 50 * s, 16 * s);
+      ctx.fillStyle = has ? '#ffffff' : 'rgba(239,230,208,0.5)'; ctx.textAlign = 'center';
+      ctx.fillText(game.goat ? (has ? 'HAVE ✓' : 'GIVE') : '—', haveX + 25 * s, hy + 11.5 * s); ctx.textAlign = 'left';
+      if (game.goat) d.rects.push({ x: haveX, y: hy, w: 50 * s, h: 16 * s, id: `boon-have=${b.id}` });
 
       // every numeric knob `apply` actually reads — none at all for a boon that only flips a flag
       let px = paramsX, py = ry + rowH / 2 - 9 * s;
@@ -5870,6 +6003,30 @@ class Renderer {
     }
   }
 
+  // The two things heaven counts, right-aligned at `right` from `top`: the gold skull and the heap of
+  // sacrifices (`Heaven.meta.sacrifices`, which every kill pays into as it lands), then the violet
+  // wisp and the corrupted souls banked up there (`Heaven.meta.souls`). Pixels both, no words.
+  // `heap`: the number to show for the sacrifices, when heaven is counting a death's into it.
+  drawPurse(game, right, top, s, heap) {
+    const ctx = this.ctx, M = Heaven.meta; if (!M) return;
+    ctx.save(); ctx.textAlign = 'right'; ctx.font = `700 ${19 * s}px ${FONT}`;
+    const souls = String(M.souls || 0); heap = String(heap === undefined ? M.sacrifices : heap);
+    let x = right;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(souls, x + 1 * s, top + 17 * s);
+    ctx.fillStyle = '#d9ccff'; ctx.fillText(souls, x, top + 16 * s);
+    x -= ctx.measureText(souls).width + 12 * s;
+    if (this.painted.ready) {
+      ctx.save(); ctx.translate(x, top + 10 * s); this.painted.soulWispBody(ctx, 17 * s); ctx.restore();
+    } else { ctx.fillStyle = PALETTE.witch; ctx.fillRect(x - 4 * s, top + 3 * s, 8 * s, 12 * s); }
+    x -= 22 * s;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(heap, x + 1 * s, top + 17 * s);
+    ctx.fillStyle = '#fff4c2'; ctx.fillText(heap, x, top + 16 * s);
+    x -= ctx.measureText(heap).width + 6 * s;
+    const sk = HEAVEN_PIXELS.sprites.skull, c = 1.9 * s;
+    Heaven.skull(ctx, x - sk.w * c, top + 8.5 * s - sk.h * c / 2, c);
+    ctx.restore();
+  }
+
   soulWisp(x, y, scale, phase, alpha, flat) {
     const ctx = this.ctx, k = scale;
     const flick = 0.85 + 0.15 * Math.sin(this.t * 9 + phase * 3);
@@ -6213,7 +6370,10 @@ class Renderer {
   drawRings(game) {
     const ctx = this.ctx;
     // Cells on the world grid rather than a stroked arc: a smooth ring over pixel art reads as UI.
+    // Nothing from a room the fog still paints out: its fire's sparks, a kill's ring and a man's
+    // AAAAH showed through the solid fill while his body and his blood (CombatFX) stayed hidden.
     for (const r of game.rings) {
+      if (game.hidden(r.x, r.y)) continue;
       const p = 1 - r.life / r.max;
       ctx.globalAlpha = (1 - p) * (r.width > 3 ? 0.7 : 0.35);
       CombatFX.pixelRing(ctx, r.x, r.y, r.r * p, (r.width || 3) * (1 - p * 0.6), r.color);
@@ -6254,6 +6414,7 @@ class Renderer {
     // Every bit is whole world pixels on the grid the sprites are drawn at.
     const px = TUNING.effects.pixel;
     for (const p of game.parts) {
+      if (game.hidden(p.x, p.y)) continue;
       ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillStyle = p.color;
       const s = Math.max(px, Math.round(p.size / px) * px), x = Math.round(p.x / px) * px, y = Math.round(p.y / px) * px;
       if (p.streak) {
@@ -6326,6 +6487,7 @@ class Renderer {
     const ctx = this.ctx; ctx.save(); ctx.scale(1, 1 / TILT);
     ctx.font = FONT_PICK.font('say', 14); ctx.textAlign = 'center';
     for (const f of game.floats) {
+      if (f.on ? game.hidden(f.on.x, f.on.y) : game.hidden(f.x, f.y)) continue;
       // An animal's terms (`Beast.speak`) ride over its head and do not drift up and away: the goose
       // and the horse are off the moment they have spoken, and a line left hanging where they were
       // was a line nobody read. On a dark plate, so it reads over any floor.
@@ -6414,6 +6576,7 @@ class Renderer {
 
   drawUI(game) {
     const ctx = this.ctx; if (!game.world || game.state === 'intro') return;
+    if (game.heaven && game.level && game.level.def.heaven) { Heaven.drawHud(this, game); return; }   // js/heaven.js
     const g = game.goat, s = this.hs, top = 3 * s + (this.portrait ? 12 * s : 0);
     ctx.textAlign = 'left';
     // The level's name used to stand over the hearts. The card at the head of every level has
@@ -6433,6 +6596,14 @@ class Renderer {
         ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
       }
       if (on) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(Math.round(ox + px), Math.round(oy + px), Math.ceil(px), Math.ceil(px)); }
+    }
+    // THE MIRROR's HALO: hearts of light after his own, each gone with the blow it took (js/heaven.js).
+    for (let i = 0; i < (g.light || 0); i++) {
+      const ox = 14 * s + (g.maxHp + i) * 22 * s, oy = top + 14 * s, glow = 0.55 + 0.25 * Math.sin(this.t * 3 + i);
+      ctx.fillStyle = `rgba(255,236,160,${glow * 0.5})`;
+      for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) if (HEART[r][q] === '#') ctx.fillRect(Math.round(ox + q * px - px * 0.5), Math.round(oy + r * px - px * 0.5), Math.ceil(px * 2), Math.ceil(px * 2));
+      ctx.fillStyle = '#fff4c2';
+      for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) if (HEART[r][q] === '#') ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
     }
     // Everyone brought out to the stairs this run, one animal each, under the hearts: what an escort
     // is worth is a number buried in `mods`, and a row of the animals themselves is the way to see
@@ -6458,14 +6629,14 @@ class Renderer {
     // The talisman, right of the hearts: one slot, and the shop is the only thing that fills it.
     // After the rail, because the rail clears the hover it shares with this.
     // Centred on the row of hearts, a gap past the last one.
-    this.drawArtifactChip(game, 14 * s + g.maxHp * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
-    ctx.textAlign = 'right';
-    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.82)';
-    ctx.fillText(`${game.kills} SACRIFICED`, right, below + 13 * s);
+    this.drawArtifactChip(game, 14 * s + (g.maxHp + (g.light || 0)) * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
+    // What the god is paid in, the way heaven counts it (29 Sep 2026: "the same look as up there"):
+    // the gold skull and the heap, and beside it the corrupted souls heaven keeps (`Heaven.meta`).
+    this.drawPurse(game, right, below + 2 * s, s);
     // The clock is a setting and it is off by default. A number climbing in the corner of a game
     // about running turns the run into the number, and the run is timed whether it is shown or not:
     // the card at the end of a level says what it took, which is where a time is worth reading.
-    let line = below + 13 * s;
+    let line = below + 22 * s;
     if (game.settings.timer) {
       ctx.font = `${13 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
       ctx.fillText(`${game.timer.toFixed(1)}s`, right, line + 17 * s); line += 17 * s;
@@ -7029,8 +7200,9 @@ class Renderer {
       // "best run 0" read as a run scored nothing; until one is finished the board is levels only
       best: { label: 'BEST', note: board.run ? `(best run ${board.run})` : cleared ? `(${cleared} level${cleared === 1 ? '' : 's'} on the board)` : '(nothing on the board yet)' },
       settings: { label: 'SETTINGS', note: `(clock ${game.settings.timer ? 'on' : 'off'} · sound ${game.settings.sound ? 'on' : 'off'} · easy ${game.settings.easy ? 'on' : 'off'})` },
-      // the one row in someone else's colour, so it is found without being looked for
-      discord: { label: 'JOIN THE DISCORD', note: '(the herd gathers here · opens a new tab)', tint: '#5865f2' },
+      // the one row in someone else's colour, so it is found without being looked for. It says what it
+      // is FOR, not where it goes: "join the discord" read as an ad, "send feedback" reads as a door.
+      discord: { label: 'SEND FEEDBACK', note: '(bugs, ideas, what hooked you · discord, new tab)', tint: '#5865f2' },
     };
     const items = MENU.map((id) => rowFor[id]);
     for (let i = 0; i < items.length; i++) {
@@ -7323,6 +7495,7 @@ class Renderer {
   drawCard(game) {
     const card = game.card; if (!card) return;
     if (card.painting) { Painting.draw(this, game, card); return; }
+    if (card.map && game.deathPainting && game.state === 'dead') { Painting.drawDeath(this, game, card); return; }
     const ctx = this.ctx, s = this.ts;
     ctx.fillStyle = `rgba(13,10,12,${card.dim})`; ctx.fillRect(0, 0, this.w, this.h);
     ctx.textAlign = 'center';

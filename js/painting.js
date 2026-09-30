@@ -186,9 +186,9 @@ const Painting = {
     ctx.font = `700 ${34 * s}px ${FONT}`; ctx.fillStyle = PALETTE.bone;
     ctx.fillText(m.name, W / 2, H * P.fit.top - 6 * s);
     // The picture, fitted whole into its box, never smoothed — and never taller than leaves room for
-    // the score, its line and the row with SAVE under it: on a phone held sideways (390 px tall)
-    // the line under the score sat on the way on and under the button.
-    const dy = H * P.fit.top + 10 * s, room = Math.max(H * 0.2, H - (card.code ? 146 : 128) * s - dy);
+    // the road under it and the row with SAVE: on a phone held sideways (390 px tall) the line under
+    // the old score sat on the way on and under the button.
+    const dy = H * P.fit.top + 10 * s, room = Math.max(H * 0.2, H - 150 * s - dy);
     const cv = pic.canvas, k = Math.min(W * P.fit.w / cv.width, H * P.fit.h / cv.height, room / cv.height);
     const dw = cv.width * k, dh = cv.height * k, dx = (W - dw) / 2;
     ctx.save(); ctx.imageSmoothingEnabled = false;
@@ -202,14 +202,11 @@ const Painting = {
     ctx.restore();
     ctx.strokeStyle = 'rgba(239,230,208,0.22)'; ctx.lineWidth = Math.max(1, s);
     ctx.strokeRect(Math.round(dx) - 0.5, Math.round(dy) - 0.5, Math.round(dw) + 1, Math.round(dh) + 1);
-    // The score, where the old score card said it.
-    let y = dy + dh + 40 * s;
-    ctx.font = `700 ${34 * s}px ${FONT}`; ctx.fillStyle = card.best ? PALETTE.fireHi : PALETTE.bone;
-    ctx.fillText(`SCORE ${card.score}`, W / 2, y);
-    y += 26 * s; ctx.font = `${15 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.62)';
-    ctx.fillText(`${m.kills} sacrificed in ${m.time.toFixed(1)}s · ${card.best ? 'A NEW BEST' : `run so far ${card.run}`}`, W / 2, y);
-    // The run code, quiet, for whoever is asked to paste it (as on the death and win cards).
-    if (card.code) { y += 18 * s; ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, y); }
+    // No score, no seconds, no code under it any more (29 Sep 2026: "next to a cleared floor there is
+    // no need for the score, the seconds, the code"): the road through the compound instead, and the
+    // goat's head walking on to the next floor, the way Nuclear Throne shows it between areas.
+    // (Leaving the card still copies the code for whoever is asked to paste it.)
+    this.drawRoute(r, game, W / 2, dy + dh + 44 * s, 'clear', t);
     // Once it can be left: how to leave, and SAVE for whoever wants the picture.
     this.saveRect = null;
     if (game.stateTimer <= 0) {
@@ -240,6 +237,125 @@ const Painting = {
     ctx.textAlign = 'left';
   },
 
+  // The name a floor goes by on the road: THE DARK or THE TRIP where this run put one in its place.
+  floorName(game, i) {
+    if (i >= LEVELS.length) return 'OUT';
+    if (i === game.darkAt) return 'THE DARK';
+    if (i === game.tripAt) return 'THE TRIP';
+    return LEVELS[i].name;
+  },
+
+  // The road through the compound, centred on `cx` with its nodes on `y`: one square a floor, the
+  // floors behind him filled, his own lit, the ones ahead hollow, and after the last a doorway, OUT.
+  // `mode` 'clear' walks his head from this floor to the next once `route.after` s of the card's
+  // `t` have passed; 'dead' leaves a skull on this floor, the road on ahead of it dotted. Cells,
+  // never strokes: the road is drawn on the same grid as the picture over it.
+  drawRoute(r, game, cx, y, mode, t) {
+    const R = TUNING.painting.route, ctx = r.ctx, s = r.ts, n = LEVELS.length;
+    const cur = clamp(game.levelIndex, 0, n - 1), dead = mode === 'dead';
+    const width = Math.min(r.w * R.w, R.max * s), step = width / n, x0 = cx - width / 2;
+    const c = Math.max(2, Math.round(R.cell * s)), X = (i) => Math.round(x0 + i * step), Y = Math.round(y);
+    const bone = PALETTE.bone, dim = 'rgba(239,230,208,0.28)', lit = dead ? PALETTE.blood : PALETTE.fireHi;
+    ctx.save();
+    // the road: solid behind him, dotted ahead
+    for (let i = 0; i < n; i++) {
+      const a = X(i) + 5 * c, b = X(i + 1) - 5 * c, walked = i < cur;
+      ctx.fillStyle = walked ? bone : dim;
+      for (let x = a; x < b; x += walked ? c : 3 * c) ctx.fillRect(x, Y - (c >> 1), c, c);
+    }
+    // the floors, and the way out after the last
+    ctx.textAlign = 'center';
+    const h = 3 * c;
+    for (let i = 0; i <= n; i++) {
+      const x = X(i), done = i < cur, here = i === cur;
+      if (i === n) {
+        ctx.fillStyle = cur >= n - 1 && !dead ? bone : dim;
+        ctx.fillRect(x - h, Y - h - c, 2 * h, c); ctx.fillRect(x - h, Y - h, c, 2 * h); ctx.fillRect(x + h - c, Y - h, c, 2 * h);
+        continue;
+      }
+      ctx.fillStyle = PALETTE.ink; ctx.fillRect(x - h - c, Y - h - c, 2 * h + 2 * c, 2 * h + 2 * c);
+      ctx.fillStyle = here ? lit : done ? bone : dim;
+      if (here || done) ctx.fillRect(x - h, Y - h, 2 * h, 2 * h);
+      else { ctx.fillRect(x - h, Y - h, 2 * h, c); ctx.fillRect(x - h, Y + h - c, 2 * h, c); ctx.fillRect(x - h, Y - h, c, 2 * h); ctx.fillRect(x + h - c, Y - h, c, 2 * h); }
+    }
+    // his head, walking on to the next (or his skull, where it ended)
+    const e = dead ? 0 : clamp((t - R.after) / R.move, 0, 1), ease = e * e * (3 - 2 * e);
+    const to = Math.min(cur + 1, n), hx = X(cur) + (X(to) - X(cur)) * ease;
+    const bob = !dead && e > 0 && e < 1 ? -Math.round(Math.abs(Math.sin(e * Math.PI * 5)) * 2) * c : 0;
+    // The goat himself, the build's own sprite, trotting along the road (his skull where he fell).
+    let drew = false;
+    if (!dead && r.painted && r.painted.ready) {
+      try {
+        ctx.save(); ctx.translate(Math.round(hx), Math.round(Y - h - c + bob)); ctx.scale(0.9 * s, 0.9 * s);
+        r.painted.character(r, { facing: 0, state: 'idle', x: 0, y: 0, vx: e > 0 && e < 1 ? 120 : 0, vy: 0 }, 'sheep', 40);
+        ctx.restore(); drew = true;
+      } catch (err) { ctx.restore(); }
+    }
+    if (!drew) this.glyph(ctx, dead ? PAINT_GLYPHS.skull : PAINT_GLYPHS.head, { x: Math.round(hx), y: Math.round(Y - h - 6 * c + bob) }, 2 * c, dead ? PALETTE.blood : bone);
+    // the names that matter: where he is (or fell), and where the road goes next
+    ctx.font = `${13 * s}px ${FONT_SC}`;
+    const next = !dead && game.climbDark && cur + 1 < n ? 'THE DARK' : this.floorName(game, to);
+    const name = (i, label, col, al) => {
+      ctx.save(); ctx.globalAlpha *= al; ctx.fillStyle = col;
+      ctx.fillText(label, clamp(X(i), x0 + ctx.measureText(label).width / 2, x0 + width + 10 * s - ctx.measureText(label).width / 2), Y + h + 20 * s);
+      ctx.restore();
+    };
+    if (dead) name(cur, this.floorName(game, cur), PALETTE.blood, 1);
+    else {
+      name(cur, this.floorName(game, cur), 'rgba(239,230,208,0.6)', 1 - ease);
+      name(to, next, PALETTE.fireHi, ease);
+    }
+    ctx.restore();
+  },
+
+  // The death card with the floor on it (29 Sep 2026: "if you died, show the current level's map
+  // from above, and that road"): the floor painted the way the clear card paints it, whole, the road
+  // under it with a skull where he fell, what took him and what he keeps, ASCEND. It comes in over the
+  // pull-back (`painting.death`), so the camera leaving him turns into the picture of how far he got.
+  // How far the death card's picture has come in, 0..1 (also what `Renderer.draw` freezes the level on).
+  deathFade(game) {
+    const DC = TUNING.deathCam, D = TUNING.painting.death, since = DC.delay + DC.zoomTime - game.stateTimer;
+    return clamp((since - DC.delay - D.at) / D.fade, 0, 1);
+  },
+  drawDeath(r, game, card) {
+    const pic = game.deathPainting, P = TUNING.painting, D = P.death, ctx = r.ctx, s = r.ts, W = r.w, H = r.h;
+    const a = this.deathFade(game), m = pic.meta;
+    ctx.save();
+    ctx.fillStyle = `rgba(13,10,12,${0.35 + 0.6 * a})`; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.font = `700 ${40 * s}px ${FONT}`; ctx.fillStyle = PALETTE.blood;
+    ctx.fillText('DIED', W / 2, H * 0.1 + 18 * s);
+    ctx.globalAlpha = a;
+    ctx.font = `${17 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.62)';
+    ctx.fillText(`LEVEL ${m.level} · ${m.name}${m.dark ? ' · THE DARK' : m.trip ? ' · THE TRIP' : ''}`, W / 2, H * 0.1 + 44 * s);
+    // the picture, whole, room left under it for the road, the words and the button
+    const cv = pic.canvas, top = H * D.top, room = Math.max(H * 0.18, H - 210 * s - top);
+    const k = Math.min(W * P.fit.w / cv.width, H * D.h / cv.height, room / cv.height);
+    const dw = cv.width * k, dh = cv.height * k, dx = (W - dw) / 2;
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, dx, top, dw, dh); ctx.restore();
+    ctx.strokeStyle = 'rgba(239,230,208,0.22)'; ctx.lineWidth = Math.max(1, s);
+    ctx.strokeRect(Math.round(dx) - 0.5, Math.round(top) - 0.5, Math.round(dw) + 1, Math.round(dh) + 1);
+    let y = top + dh + 44 * s;
+    this.drawRoute(r, game, W / 2, y, 'dead', 0);
+    y += 66 * s;
+    // what took him, on its plate, beside the lines that name it and say what he keeps
+    const words = card.lines.slice(1).filter((l) => l && !/^LEVEL /.test(l));
+    const plate = card.killer && card.killer !== 'fall' ? Math.round(46 * s) : 0;
+    ctx.font = `${15 * s}px ${FONT}`;
+    const lw = words.length ? Math.max(...words.map((w) => ctx.measureText(w).width)) : 0;
+    const lx = W / 2 + (plate ? (plate + 14 * s) / 2 : 0);
+    if (plate) r.drawKiller(card.killer, lx - lw / 2 - 14 * s - plate / 2, y - 17 * s, plate);
+    ctx.textAlign = 'center';
+    words.forEach((w, i) => { ctx.font = `${15 * s}px ${FONT}`; ctx.fillStyle = i === words.length - 1 ? PALETTE.blood : 'rgba(239,230,208,0.62)'; ctx.fillText(w, lx, y + i * 22 * s); });
+    ctx.globalAlpha = 1;
+    if (card.code) { ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, H - 18 * s); }
+    if (card.go && game.stateTimer <= 0) {
+      ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1);
+      r.goButton(game, card.go, W / 2, Math.min(y + Math.max(words.length * 22 * s, plate) + 4 * s, H - 36 * s - 38 * s));
+    }
+    ctx.restore();
+  },
+
   hit(p, rc) { return !!(p && rc && p.x >= rc.x && p.x <= rc.x + rc.w && p.y >= rc.y && p.y <= rc.y + rc.h); },
   onSave(p) { return this.canSave && this.hit(p, this.saveRect); },
 
@@ -258,8 +374,6 @@ const Painting = {
     ctx.textBaseline = 'alphabetic';
     ctx.font = `700 ${big}px ${FONT}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'left';
     ctx.fillText(m.name, pad, y1);
-    ctx.textAlign = 'right'; ctx.fillStyle = card.best ? PALETTE.fireHi : PALETTE.bone;
-    ctx.fillText(`SCORE ${card.score}`, W - pad, y1);
     ctx.font = `${small}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.62)'; ctx.textAlign = 'left';
     ctx.fillText(`LEVEL ${m.level}${m.canon ? ' · ' + m.canon : ''}${m.dark ? ' · THE DARK' : m.trip ? ' · THE TRIP' : ''} · ${m.kills} sacrificed in ${m.time.toFixed(1)}s`, pad, y2);
     ctx.textAlign = 'right'; ctx.font = `${small}px ${FONT_SC}`;

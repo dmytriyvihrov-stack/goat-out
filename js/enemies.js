@@ -171,6 +171,10 @@ class Enemy {
     if (!witch && this.cfg.immune && this.cfg.immune.fire) return;
     // The rat ogre does not burn at all, a Seer's fire included: `immune.witch` is his alone.
     if (witch && this.cfg.immune && this.cfg.immune.witch) return;
+    // A man carrying a soul is carrying the same thing witchfire is made of (29 Sep 2026: "the soul
+    // bosses do not catch from their own magic fire"): the keeper's club lights it and he walks in it.
+    // Ordinary flame, a brazier, a burning man still take him like anybody.
+    if (witch && this.soul && TUNING.soulBearer.witchProof) return;
     this.litByMan = !!fromMan;
     // How far down a line of men this fire has been handed (the FIRE AMULET reads it): a man lit by
     // the ground is the head of a fresh line.
@@ -806,9 +810,16 @@ class Enemy {
       this.millRun = null;                     // the wheel lesson's run ends at the first blow
       const drag =Math.exp(-TUNING.physics.flungDrag * Talisman.dragMul(game, this) * dt);
       this.vx *= drag; this.vy *= drag;
-      this.x += this.vx * dt; this.y += this.vy * dt;
       const preSpeed = Math.hypot(this.vx, this.vy);
-      const impact = w.collideCircle(this);
+      // In steps no longer than his body: LONG HORNS with a charged TALLY blow moves a man ~34 px a
+      // frame, and a centre landing past the middle of a one-tile pillar was pushed out of its far
+      // side — through the stone, alive, where the wall was supposed to be what killed him.
+      const steps = Math.max(1, Math.ceil(preSpeed * dt / ((this.wallR || this.r) * 0.9)));
+      let impact = 0;
+      for (let i = 0; i < steps; i++) {
+        this.x += this.vx * dt / steps; this.y += this.vy * dt / steps;
+        impact = Math.max(impact, w.collideCircle(this));
+      }
       if (impact > this.splatLimit(game)) {
         this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1)); return;
       }
@@ -816,7 +827,7 @@ class Enemy {
       // arrive at `physics.thrownKill` (MASON'S MARK lowers it the way it lowers `splatSpeed`).
       const needs = this.fromMouth ? TUNING.physics.thrownKill * Talisman.splatMul(game) : 0;
       if (impact > needs && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }
-      if (this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+      if (this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); if (this.burning > 0) return; }
       // A body arriving at speed knocks the coals out of the bowl as well as catching from it, so
       // a man thrown into a brazier lights the floor on the far side of it too.
       const bz = game.touchingBrazier(this);
@@ -835,7 +846,7 @@ class Enemy {
       // Not while already alight, the same guard as below: a kind that does not blunder stays in this
       // state when `ignite` no-ops, and the return skipped the timer — an ogre knocked down in a pool
       // of oil never got up and burned to death from full hearts.
-      if (this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+      if (this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); if (this.burning > 0) return; }
       if (this.timer <= 0) {
         this.aware = true; this.state = 'chase';
         // The Butcher answers a stagger with a quick slam if you stayed close: the same ring, sooner.
@@ -871,7 +882,9 @@ class Enemy {
       // A blow already under way is finished, not dropped: the dark cools a hunt, never a swing or a
       // charge in mid-run (pillar 4 — his windup and recovery are the goat's to read and eat).
       const hunting = this.state === 'chase' || this.state === 'noticed' || this.state === 'investigate';
-      const cold = game.inDark ? this.lostTimer > TUNING.dark.ai.lose && hunting : this.lostTimer > 6 && w.flowDist(this.x, this.y) > 14;
+      // On a lit floor too: without `hunting` it cut the rat ogre's swing and bound, a hidden wraith
+      // out of its disguise and a HORNED MASK flight short, every six seconds out of sight.
+      const cold = hunting && (game.inDark ? this.lostTimer > TUNING.dark.ai.lose : this.lostTimer > 6 && w.flowDist(this.x, this.y) > 14);
       if (cold && this.state !== 'held') {
         this.aware = false; this.lostTimer = 0; this.target = this.lastSeen; this.state = 'investigate';
       }
@@ -932,7 +945,7 @@ class Enemy {
       // `this.burning <= 0` is what keeps this from re-triggering on a kind that is already alight
       // and standing over the ground it is itself lighting: `ignite` no-ops while burning, but the
       // `return` here does not, and blunder-immune kinds fall through to this point still on fire.
-      if (!this.ghosted && this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+      if (!this.ghosted && this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); if (this.burning > 0) return; }
       this.timer -= dt;
       // The careful one of the wheel's pair stays planted while his partner runs at the arm (up to
       // `ai.millRun.watch` s): walking beside him he was the man the flung body landed on, and the
@@ -941,7 +954,7 @@ class Enemy {
           && game.enemies.some((o) => o.millRun && !o.dead && o.room === this.room)) return;
       if (this.timer <= 0) this.state = 'chase'; else return;
     }
-    if (!this.ghosted && this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
+    if (!this.ghosted && this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); if (this.burning > 0) return; }
 
     // The scream took the sense out of him: he is still standing, and can do nothing with it.
     if (this.dazed > 0) { this.vx = 0; this.vy = 0; return; }
@@ -1303,7 +1316,10 @@ class Enemy {
       if (!g.dead && !onHorns && d < cfg.reach + this.r + g.r && Math.abs(angleDiff(this.dashAng, Math.atan2(dy, dx))) < 1.1) {
         game.meleeHit(this, cfg.reach + this.r, Math.PI * 0.8, cfg.damage, cfg.knock);
         game.audio.sfxSnap();
-        this.dashEnd(game); return;
+        // Only if the bite left him on the run: a MIRROR SHARD parry flings him and a shield staggers
+        // him, and ending the dash over that turned the throw into a 30% skid and the stagger into `recover`.
+        if (this.state === 'dart') this.dashEnd(game);
+        return;
       }
       if (this.timer <= 0) this.dashEnd(game);
       return;
@@ -1569,9 +1585,10 @@ class Enemy {
         this.facing = Math.atan2(g.y - this.y, g.x - this.x);
         // It has committed, not frozen: stepping back during the windup only buys a little, since
         // whatever is materializing keeps closing the last short stretch while it comes on.
+        // Never over a lip, though: solid over a drop it would fall the next frame.
         const wd = Math.hypot(g.x - this.x, g.y - this.y) || 1;
-        this.x += (g.x - this.x) / wd * cfg.windupPull * dt;
-        this.y += (g.y - this.y) / wd * cfg.windupPull * dt;
+        const nx = this.x + (g.x - this.x) / wd * cfg.windupPull * dt, ny = this.y + (g.y - this.y) / wd * cfg.windupPull * dt;
+        if (!game.world.isPitPx(nx, ny)) { this.x = nx; this.y = ny; }
         if (this.timer <= 0) {
           this.state = 'swing'; this.timer = cfg.swing * game.mods.enemySlow;
           game.meleeHit(this, cfg.reach, Math.PI * 0.9, cfg.damage, cfg.knock);
@@ -1608,7 +1625,9 @@ class Enemy {
     // the ground still does for you here: a wall at your back is an arc it cannot arrive from.
     const behind = Math.abs(angleDiff(look, Math.atan2(this.y - g.y, this.x - g.x)));
     const reach = Math.hypot(g.x - this.x, g.y - this.y) < cfg.reach + g.r + this.r * 0.5;
-    const room = !game.world.isSolid(Math.floor(this.x / TILE), Math.floor(this.y / TILE));
+    // Nor over a drop: a body formed over a hole falls through it, and a goat with his back to one
+    // killed every wraith that came for him there for nothing (28 Sep 2026).
+    const room = !game.world.isSolid(Math.floor(this.x / TILE), Math.floor(this.y / TILE)) && !game.world.isPitPx(this.x, this.y);
     // It has to hold the blind side, not merely cross it: a head turned in time takes the moment away
     // even when the thing is faster round you than you are round yourself.
     this.lurkT = (reach && room && behind > cfg.behind) ? this.lurkT + dt : 0;
