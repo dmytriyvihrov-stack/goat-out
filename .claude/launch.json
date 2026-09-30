@@ -416,6 +416,24 @@
       "port": 8818
     },
     {
+      "name": "goat-out-grid",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8819"
+      ],
+      "port": 8819
+    },
+    {
+      "name": "goat-out-juicepv",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8820"
+      ],
+      "port": 8820
+    },
+    {
       "name": "goat-out-chandelier",
       "runtimeExecutable": "node",
       "runtimeArgs": [
