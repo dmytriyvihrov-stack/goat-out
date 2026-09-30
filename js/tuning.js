@@ -197,6 +197,20 @@ const TUNING = {
     drop: { time: 0.75, height: 230, lead: 0.45, turns: 1.25, flips: 2, ko: 1.3, getup: 0.35, besidePen: 1.4 },
     bodyR: { hseat: 16, hshep: 15, hmirror: 17, hbell: 8 },
     godTexel: 1.55, seaDepth: 0.55, seaDrift: 5, earthDepth: 0.2, wispDepth: 0.45,
+    // The rite far below, through the drop (30 Sep 2026: "the cultists down there perform a strange
+    // ritual with fire and your ewe"), in the earth's own pixels (`Heaven.bakeEarth` / `drawRite`).
+    // `at`: the altar in the yard; `ring` (rx, ry) the path the `men` walk; `candleRing` the painted
+    // ring `candles` stand on, none within `candleGap` rad of the altar's head or foot. The men walk
+    // `walk` s at `pace` rad/s (a step every 1 / `step` s), stop and bow round the ring one after
+    // another (`bow` s, each `wave` s after the last, down for `bowFor` s), then all raise their arms
+    // (`raise` s, swaying a pixel at `sway` Hz). The mage at the head (`mageAt` px above the altar's
+    // middle) changes pose every `mageBeat` s. The fire is the game's own baked flame of `fireSize`,
+    // `fireAt` px below the altar's middle; its light reaches `glowR` px at `glow` [least, swing] of
+    // alpha, re-rolled `flickerFps` a second; each candle's `candleR` px at `candleGlow`, its flame
+    // re-rolled `candleFps` a second. `dusk` darkens the yard toward night so the light reads.
+    ritual: { men: 8, at: [27, 27], ring: [20, 14], candleRing: [11, 8], candles: 10, candleGap: 0.55,
+      walk: 9, pace: 0.09, step: 2.2, bow: 5, wave: 0.3, bowFor: 1.6, raise: 4, sway: 0.5, mageAt: 5, mageBeat: 1.6,
+      fireSize: 3, fireAt: 9, glowR: 22, glow: [0.18, 0.1], flickerFps: 7, candleR: 4, candleGlow: 0.14, candleFps: 9, dusk: 0.75 },
   },
   goat: {
     radius: 12,
