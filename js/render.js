@@ -59,12 +59,14 @@ const CONTROL_LINES = {
     ['RIGHT CLICK - GRAB', 'RELEASE - THROW'],
     ['LEFT CLICK - HEADBUTT'],
     ['E - ROLL'],
+    ['SPACE - BAAH', 'IT BREAKS A SWING'],
   ],
   touch: [
     ['LEFT THUMB - MOVE'],
     ['GRAB - HOLD TO CARRY', 'RELEASE - THROW'],
     ['BUTT - HEADBUTT'],
     ['ROLL'],
+    ['BAAH', 'IT BREAKS A SWING'],
   ],
 };
 
@@ -3629,6 +3631,42 @@ class Renderer {
   // browser's rank there and then (`Heaven.meta.ranks`, applied through `applyBoons`) — what each rank
   // costs in sacrifices and souls, and what the rank in force does; the purse over it, fed by the
   // same +100 / +5 as the drawer's button.
+  // ROOMS: every room template a floor can be built from (and THE ARMORY, which stands on several), a
+  // tick a floor for where it may be dealt (`ROOM_LEVELS`, `roomAllowed`). Dim ticks are the
+  // generator's own habit (`roomDefault`: a canon's floor and the floors that know it, untagged
+  // everywhere); bright ones are a string written here, which a click writes to js/tuning.js through
+  // the dev server; RESET gives the row back to the habit.
+  drawRoomsTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, d = game.dev;
+    const slots = LEVELS.map((L, i) => ({ def: L, label: 'L' + (i + 1), sub: L.name.replace(/^THE /, '').split(' ')[0] }))
+      .concat([{ def: darkLevel(), label: 'DARK', sub: 'lamp' }, { def: tripLevel(2), label: 'TRIP', sub: 'shroom' }]);
+    const list = [ARMORY_TEMPLATE, ...ROOM_TEMPLATES.filter((t, i, a) => a.findIndex((o) => o.name === t.name) === i)];
+    ctx.textAlign = 'left'; ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('ROOMS — WHERE EACH MAY STAND', pad, top);
+    ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText('dim tick: where the generator deals it by itself · bright: set here (saved to js/tuning.js ROOM_LEVELS) · RESET gives it back', pad, top + 16 * s);
+    const nameW = 150 * s, tagW = 90 * s, cw = 44 * s, x0 = pad + nameW + tagW, rh = 22 * s;
+    let y = top + 44 * s;
+    ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.textAlign = 'center';
+    slots.forEach((sl, k) => { ctx.fillStyle = PALETTE.bone; ctx.fillText(sl.label, x0 + k * cw + cw / 2, y - 12 * s); ctx.fillStyle = 'rgba(239,230,208,0.45)'; ctx.fillText(sl.sub.slice(0, 6), x0 + k * cw + cw / 2, y); });
+    y += 10 * s;
+    list.forEach((t, row) => {
+      const ry = y + row * rh, mask = ROOM_LEVELS[t.name];
+      if (row % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, ry, x0 + slots.length * cw + 70 * s - pad, rh); }
+      ctx.textAlign = 'left'; ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = mask ? PALETTE.fireHi : PALETTE.bone;
+      ctx.fillText(t.name.toUpperCase(), pad, ry + 15 * s);
+      ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
+      ctx.fillText(t.tag || t.canon || 'mix', pad + nameW, ry + 15 * s);
+      slots.forEach((sl, k) => {
+        const on = mask ? mask[k] === '1' : roomDefault(t, sl.def), cx = x0 + k * cw + (cw - 18 * s) / 2, cy = ry + 2 * s;
+        ctx.strokeStyle = mask ? 'rgba(242,162,51,0.8)' : 'rgba(239,230,208,0.25)'; ctx.lineWidth = Math.max(1, s);
+        ctx.strokeRect(cx, cy, 18 * s, 18 * s);
+        if (on) { ctx.fillStyle = mask ? PALETTE.fireHi : 'rgba(239,230,208,0.35)'; ctx.fillRect(cx + 4 * s, cy + 4 * s, 10 * s, 10 * s); }
+        d.rects.push({ x: cx, y: cy, w: 18 * s, h: 18 * s, id: `room-lvl=${t.name}|${k}` });
+      });
+      if (mask) this.devButton(d, x0 + slots.length * cw + 8 * s, ry + 1 * s, 60 * s, 19 * s, 'RESET', `room-lvl-reset=${t.name}`, false);
+    });
+  }
   drawMirrorTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, W = this.w, d = game.dev, M = Heaven.meta || Heaven.load();
     ctx.textAlign = 'left';
@@ -3713,7 +3751,7 @@ class Renderer {
     const pad = 14 * s;
     ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE'], ['talismans','TALISMANS'], ['animals','ANIMALS'], ['mirror','HEAVEN'], ['goats','GOAT GRID'], ['art','ART']];
+    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE'], ['talismans','TALISMANS'], ['animals','ANIMALS'], ['mirror','HEAVEN'], ['roomlist','ROOMS'], ['goats','GOAT GRID'], ['art','ART']];
     const cols = Math.max(1, Math.floor((W - pad * 2 - 72 * s) / (80 * s)));
     tabs.forEach(([id, label], i) => this.devButton(d, pad + i % cols * 80 * s,
       pad + Math.floor(i / cols) * 24 * s, 76 * s, 20 * s, label, 'tab-' + id, d.tab === id));
@@ -3732,6 +3770,7 @@ class Renderer {
     else if (d.tab === 'props') this.drawPropsTab(game, pad, top);
     else if (d.tab === 'animals') this.drawAnimalsTab(game, pad, top);
     else if (d.tab === 'mirror') this.drawMirrorTab(game, pad, top);
+    else if (d.tab === 'roomlist') this.drawRoomsTab(game, pad, top);
     else if (d.tab === 'music') this.drawMusicTab(game, pad, top);
     else if (d.tab === 'juice') this.drawJuiceTab(game, pad, top);
     else if (d.tab === 'talismans') Talisman.drawToolTab(this, game, pad, top);

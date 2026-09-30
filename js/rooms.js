@@ -1546,6 +1546,22 @@ const CALM_TEMPLATE = { name: 'kindling', noFlipX: true, rows: [
   '#############',
 ]};
 
+// THE ARMORY (30 Sep 2026: "a cramped room with a lot of weapons along the walls — ordinary men in
+// it, but a huge choice of what to kill them with"). Tight, a stand of arms every other step round
+// its walls with the corners of each wall left clear for a door, crates between; the men are bought
+// like any ordinary room's. Not drawn from a pool: `gen.js` sets it into one ordinary room of a floor
+// `ROOM_LEVELS.armory` allows (`TUNING.rooms.armory`), and `GEN_RULES.armory` holds it.
+const ARMORY_TEMPLATE = { name: 'armory', tag: 'armory', rows: [
+  '############',
+  '#.w.w..w.w.#',
+  '#..........#',
+  '#w..e..e..w#',
+  '#....oo....#',
+  '#w..r..e..w#',
+  '#..........#',
+  '#.w.w..w.w.#',
+  '############',
+]};
 const AMBUSH_TEMPLATE = { name: 'ambush', noFlipX: true, rows: [
   '################',
   '#..............#',

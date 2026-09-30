@@ -217,6 +217,35 @@ const GEN_RULES = [
   // The teaching floor is the one place in the game where the generator may not surprise anybody:
   // the same four rooms in the same shapes with the same things standing in them, every seed. See
   // "Words on the floor" in CLAUDE.md for where each block of text goes and why.
+  { id: 'armory', text: 'THE ARMORY stands at most once a floor, only where ROOM_LEVELS lets it, and never in the first two rooms.',
+    check: (L) => {
+      const a = L.rooms.filter((r) => r.tpl && r.tpl.name === 'armory');
+      if (a.length > 1) return `${a.length} armories`;
+      if (!a.length) return true;
+      if (!roomAllowed(ARMORY_TEMPLATE, L.def)) return 'an armory on a floor ROOM_LEVELS keeps it off';
+      return a[0].index >= TUNING.rooms.armory.from || `the armory is room ${a[0].index}`;
+    } },
+  { id: 'clutter', text: 'No barrel or chandelier is added to a room already holding its share of things that burn or blow.',
+    check: (L) => {
+      const max = TUNING.prop.clutter.max;
+      for (const r of L.rooms) {
+        const inside = L.props.filter((p) => p.x >= r.x * TILE && p.x < (r.x + r.w) * TILE && p.y >= r.y * TILE && p.y < (r.y + r.h) * TILE);
+        const added = inside.filter((p) => p.kind === 'barrel' || p.kind === 'chandelier').length;
+        const active = inside.filter((p) => ACTIVE_KINDS.has(p.kind) && !p.darkLamp && !p.doorLamp).length;
+        if (added && active > max) return `room ${r.index}: ${active} things that burn or blow`;
+      }
+      return true;
+    } },
+  { id: 'screamlesson', text: 'SPACE - BAAH is painted once, in the first room of THE YARD with two men or more.',
+    check: (L) => {
+      if (!L.def.teachScream) return null;
+      const c = (L.controls || []).filter((q) => q.part === 4);
+      if (c.length !== 1) return `${c.length} BAAH lines`;
+      const room = roomAt(L, c[0].x, c[0].y), rs = roomsOf(L);
+      if (!room) return 'the BAAH line is in no room';
+      const men = (rs[room.index] || { spawns: [] }).spawns.length;
+      return men >= 2 || `the BAAH line lies in room ${room.index} with ${men} men`;
+    } },
   { id: 'lessons', text: 'The teaching rooms are the same every run: pen, sentry, wheel, ambush; E - ROLL at the first butcher\'s door.',
     check: (L) => {
       const def = L.def;

@@ -271,7 +271,7 @@ function tryGenerate(levelDef, seed, opts) {
   // of the levels before this one — and never an idea it has not been shown yet. A template that
   // `needs` something the level does not have — teeth on a level whose floor has none — is in
   // neither, so no room is ever built out of a thing this level cannot show you.
-  const fits = (t) => !t.needs || levelDef[t.needs];
+  const fits = (t) => (!t.needs || levelDef[t.needs]) && roomAllowed(t, levelDef);
   const canonId = levelDef.canon ? levelDef.canon.id : null;
   // Both pools are ordered by how much open ground each template gives (`groundOf`), tight first,
   // so the draw below can walk a level along that axis the way the curve walks it along threat.
@@ -281,13 +281,31 @@ function tryGenerate(levelDef, seed, opts) {
   const known = levelDef.known || new Set();
   let mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && (!t.canon || known.has(t.canon)) && fits(t))).sort(byGround);
   if (!mixPool.length) mixPool = canonPool;
+  if (!mixPool.length) mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && !t.canon && (!t.needs || levelDef[t.needs]))).sort(byGround);
   // Which entries of each pool this level has already spent. A pool smaller than the level's share
   // of rooms simply starts again once it is empty.
   const canonUsed = new Set(), mixUsed = new Set();
   // Rooms whose point is the floor rather than the men on it.
-  const trapPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.tag === 'trap' && fits(t)));
+  let trapPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.tag === 'trap' && fits(t)));
+  // A `ROOM_LEVELS` that takes every template of a pool off this floor would leave nothing to build
+  // with: that pool then ignores the mask rather than the floor failing.
+  if (!trapPool.length) trapPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.tag === 'trap' && (!t.needs || levelDef[t.needs])));
   const trapRooms = pickTrapRooms(levelDef, n, trapPool.length, rng);
   const canonRooms = canonPool.length ? pickCanonRooms(levelDef, n, trapRooms) : new Set();
+  // THE ARMORY: one ordinary mix room of a floor it is allowed on, its own RNG stream so nothing else
+  // is reshuffled by it (`TUNING.rooms.armory`, `ROOM_LEVELS.armory`).
+  let armoryAt = -1;
+  {
+    const AR = TUNING.rooms.armory, arng = new RNG(((seed ^ 0x0a4a0e1) >>> 0));
+    if (roomAllowed(ARMORY_TEMPLATE, levelDef) && arng.chance(AR.chance)) {
+      // A mix room if there is one; a canon room only while the canon keeps its share without it.
+      // (it counts as a mix room, so the canon must keep its share without it)
+      const spareCanon = canonRooms.size - 1 >= Math.ceil(CANON.share * ordinaryRooms(levelDef, n).length);
+      const cand = ordinaryRooms(levelDef, n).filter((i) => i >= AR.from && !trapRooms.has(i) && (!canonRooms.has(i) || spareCanon)
+        && i !== levelDef.ambushAt && i !== levelDef.vaultAt && i !== shopRoomOf(levelDef) && i !== levelDef.calmAt);
+      if (cand.length) armoryAt = cand[arng.int(0, cand.length - 1)];
+    }
+  }
   let trapIdx = 0;
   // The sentry's room is the first ordinary room of the level — `introduce: [['bearer', 0]]` always
   // resolves to it — and it is the one room whose template is not left to the canon/mix draw: it is
@@ -315,6 +333,7 @@ function tryGenerate(levelDef, seed, opts) {
     if (j === levelDef.ambushAt) return AMBUSH_TEMPLATE.rows[0].length;
     if (j === levelDef.calmAt) return CALM_TEMPLATE.rows[0].length;
     if (restsOf(levelDef).includes(j)) return REST_TEMPLATE.rows[0].length;
+    if (j === armoryAt) return ARMORY_TEMPLATE.rows[0].length;
     return 0;
   };
   // A room may not take more than its share of the width that is left: a template too wide for what
@@ -332,7 +351,7 @@ function tryGenerate(levelDef, seed, opts) {
   // rooms needs a wider window than three, or its middle is never anybody's nearest.
   const forced = (j) => j === 0 || (levelDef.arenas || []).some((a) => a.at === j) || j === levelDef.millAt
     || j === levelDef.hallAt || j === levelDef.galleryAt || j === levelDef.killboxAt || j === sentryRoomAt
-    || j === levelDef.ambushAt || j === levelDef.calmAt || restsOf(levelDef).includes(j) || trapRooms.has(j);
+    || j === levelDef.ambushAt || j === levelDef.calmAt || restsOf(levelDef).includes(j) || trapRooms.has(j) || j === armoryAt;
   const drawOrder = { canon: [], mix: [] };
   for (let j = 1; j < n; j++) if (!forced(j)) drawOrder[canonRooms.has(j) ? 'canon' : 'mix'].push(j);
   const draw = (pool, used, i, order) => {
@@ -371,6 +390,7 @@ function tryGenerate(levelDef, seed, opts) {
     else if (i === levelDef.ambushAt) tpl = AMBUSH_TEMPLATE;
     else if (i === levelDef.calmAt) tpl = CALM_TEMPLATE;
     else if (restsOf(levelDef).includes(i)) tpl = REST_TEMPLATE;
+    else if (i === armoryAt) tpl = ARMORY_TEMPLATE;
     else if (trapRooms.has(i)) tpl = (i === levelDef.trapAt && trapPool.find((t) => t.name === levelDef.trapTpl)) || trapPool[trapIdx++ % trapPool.length];
     else if (canonRooms.has(i)) { tpl = draw(canonPool, canonUsed, i, drawOrder.canon); drawn = true; }
     else { tpl = draw(mixPool, mixUsed, i, drawOrder.mix); drawn = true; }
@@ -400,7 +420,7 @@ function tryGenerate(levelDef, seed, opts) {
     const role = i === 0 ? 'pen' : arena ? 'arena' : i === levelDef.millAt ? 'mill' : i === levelDef.hallAt ? 'hall'
       : i === levelDef.galleryAt ? 'gallery' : i === levelDef.killboxAt ? 'killbox'
       : restsOf(levelDef).includes(i) ? 'rest' : i === levelDef.calmAt ? 'calm'
-      : trapRooms.has(i) ? 'trap' : canonRooms.has(i) ? 'canon' : 'mix';
+      : i === armoryAt ? 'mix' : trapRooms.has(i) ? 'trap' : canonRooms.has(i) ? 'canon' : 'mix';
     // `seen` is the fog: a room is dark until the goat is standing in it. The first one is not.
     const room = { x, y, w, h, tpl, index: i, markers: [], arena, role, seen: i === 0, drawn,
       stacked: stacked ? stacked.dir : null,
@@ -764,12 +784,15 @@ function tryGenerate(levelDef, seed, opts) {
     // first thing a room does is not put one under his horns. Never in a room that is teaching,
     // resting or a set piece built narrow on purpose; a trap room keeps the shape it was drawn in.
     // Rolled off a stream of their own, so adding them did not reshuffle every roll that follows.
-    const brng = new RNG(((seed ^ 0x0ba77e1) + room.index * 7919) >>> 0);
+    const brng = new RNG(((seed ^ 0x0ba77e1) + room.index * 7919) >>> 0), CL = TUNING.prop.clutter;
     if (levelDef.barrels && room.index > 0 && !room.isAmbush && !room.isRest && !room.isCalm && !room.isTrap && !room.isMill && !room.isHall
         && !room.isGallery && !room.isKillbox && room.index !== lessonIndex && brng.chance(levelDef.barrels)) {
-      const want = brng.int(1, 2);
-      for (let a = 0, placed = 0; a < 40 && placed < want; a++) {
-        const tx = brng.int(room.x + 2, room.x + room.w - 3), ty = brng.int(room.y + 2, room.y + room.h - 3);
+      // no more than the room has room for (`prop.clutter.max`), and along its walls, not mid-floor
+      const want = Math.min(brng.int(1, 2), CL.max - activeIn(props, room));
+      for (let a = 0, placed = 0; a < 60 && placed < want; a++) {
+        let tx = brng.int(room.x + 2, room.x + room.w - 3), ty = brng.int(room.y + 2, room.y + room.h - 3);
+        if (brng.chance(0.5)) tx = brng.chance(0.5) ? room.x + CL.edge : room.x + room.w - 1 - CL.edge;
+        else ty = brng.chance(0.5) ? room.y + CL.edge : room.y + room.h - 1 - CL.edge;
         if (!rockFits(tiles, W, tx, ty, grass)) continue;
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
         if (props.some((p) => len(p.x - px, p.y - py) < 2 * TILE)) continue;
@@ -786,7 +809,8 @@ function tryGenerate(levelDef, seed, opts) {
     // in a cave or on the trip (no far wall to tie off to), never in THE DARK. Its own RNG stream.
     const CH = TUNING.chandelier, crng = new RNG(((seed ^ 0x0c4a9d3) + room.index * 6151) >>> 0);
     if (!levelDef.cave && !levelDef.shroom && !levelDef.dark && room.index > 0 && chandeliers < CH.perLevel && !room.isAmbush && !room.isRest
-        && !room.isCalm && !room.isTrap && !room.isMill && !room.isGallery && !room.isKillbox && room.index !== lessonIndex && crng.chance(CH.chance)) {
+        && !room.isCalm && !room.isTrap && !room.isMill && !room.isGallery && !room.isKillbox && room.index !== lessonIndex
+        && activeIn(props, room) < TUNING.prop.clutter.max && crng.chance(CH.chance)) {
       for (let a = 0; a < 40; a++) {
         const tx = crng.int(room.x + 2, room.x + room.w - 3), ty = crng.int(room.y + CH.fromWall, room.y + room.h - 3);
         let open = true;
@@ -983,6 +1007,7 @@ function tryGenerate(levelDef, seed, opts) {
       && !plan.introRooms.has(r.index));
     let best = null, bestScore = -1;
     for (const room of eligible) {
+      if (activeIn(props, room) >= TUNING.prop.clutter.max) continue;   // a room already full of things that go off
       const score = spawns.filter((s) => s.roomIndex === room.index).reduce((a, s) => a + scoreOf(s), 0);
       if (score > bestScore) { best = room; bestScore = score; }
     }
@@ -1390,6 +1415,18 @@ function tryGenerate(levelDef, seed, opts) {
     if (pick && pick !== 'placed') {
       const r = rooms[pick.i];
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: 3 });
+    }
+  }
+  // Block 4, the voice (`levelDef.teachScream`, THE YARD): in the first ordinary room with two men or
+  // more — a blow worth breaking — never a trap, the vault's, a gate or an arena.
+  if (levelDef.teachScream) {
+    const skip = new Set([lessonIndex, levelDef.vaultAt, levelDef.ambushAt, ...(levelDef.arenas || []).map((a) => a.at)]);
+    for (const i of ordinaryRooms(levelDef, rooms.length)) {
+      const c = plan.rooms.get(i);
+      if (i < 1 || skip.has(i) || trapRooms.has(i) || !c || c.arena || (c.men || []).length < 2) continue;
+      const r = rooms[i];
+      controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: Math.min(r.w, 12) * TILE, part: 4 });
+      break;
     }
   }
   return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, forkTile, entry, seed, def: levelDef,
@@ -2100,6 +2137,37 @@ function erodeCave(rows, rng) {
 // A boulder only goes where the floor is open all round it: the eight tiles about it plain floor and
 // not grass. That is the whole of what keeps a scatter of them from ever closing a way through, and
 // `GEN_RULES.rocks` holds it.
+// Which slot of a `ROOM_LEVELS` string a level is: its place in LEVELS, then THE DARK, then THE TRIP.
+function roomSlot(def) {
+  if (!def) return -1;
+  if (def.shroom) return LEVELS.length + 1;
+  if (def.dark) return LEVELS.length;
+  return LEVELS.indexOf(def);
+}
+// May this template be dealt on this floor (`ROOM_LEVELS`)? No entry, or a floor the string does not
+// reach (a hand-laid one), is yes.
+function roomAllowed(t, def) {
+  const m = typeof ROOM_LEVELS !== 'undefined' && ROOM_LEVELS[t.name], k = roomSlot(def);
+  return !m || k < 0 || k >= m.length || m[k] === '1';
+}
+// Where the generator deals a template when `ROOM_LEVELS` says nothing: its canon's floor and every
+// floor that knows that canon, an untagged room everywhere, a trap room where the floor lays traps,
+// the armory nowhere (it only ever stands where its string says). `needs` must be met. For the ROOMS tab.
+function roomDefault(t, def) {
+  if (!def || (t.needs && !def[t.needs])) return false;
+  if (t.tag === 'armory') return false;
+  if (t.tag === 'trap') return (def.traps || 0) > 0;
+  if (t.tag) return false;
+  if (!t.canon) return true;
+  return (def.canon && def.canon.id === t.canon) || !!(def.known && def.known.has(t.canon));
+}
+// What in a room goes off — burns or blows — for `prop.clutter` (`GEN_RULES.clutter`).
+const ACTIVE_KINDS = new Set(['brazier', 'lamp', 'barrel', 'chandelier', 'bomb']);
+function activeIn(props, room) {
+  let n = 0;
+  for (const p of props) if (ACTIVE_KINDS.has(p.kind) && p.x >= room.x * TILE && p.x < (room.x + room.w) * TILE && p.y >= room.y * TILE && p.y < (room.y + room.h) * TILE) n++;
+  return n;
+}
 function rockFits(tiles, W, tx, ty, grass) {
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const i = (ty + dy) * W + tx + dx;

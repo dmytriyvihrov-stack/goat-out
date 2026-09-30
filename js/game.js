@@ -142,7 +142,7 @@ class Game {
       // The itch build itself (`RELEASE.on`, the dev drawer's ITCH BUILD) has no dev corner at all,
       // `#dev` or not, and none of the tool's addresses below: its GOD MODE is a switch in SETTINGS.
       this.dev.hidden = RELEASE.on || (/(^|\.)(itch\.io|itch\.zone|hwcdn\.net)$/i.test(location.hostname || '') && h !== 'dev');
-      if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'mirror' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats' || h === 'animals')) {
+      if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'mirror' || h === 'roomlist' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats' || h === 'animals')) {
         this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
       }
       // `#seed=k3j9a` is the whole of sharing a run: NEW GAME takes it instead of rolling one, so a
@@ -1044,6 +1044,23 @@ class Game {
     // heap of sacrifices to try the mirror with.
     if (id === 'godtalk') { try { window.open('tools/god-talk.html', '_blank'); } catch (e) { /* no window */ } return; }
     if (id === 'heaven') { if (this.level && !this.level.def.heaven && this.goat && (this.state === 'play' || this.state === 'paused')) { this.dev.open = false; this.deaths++; this.saveRun(); Heaven.enter(this); } return; }
+    // ROOMS tab: a tick toggles where a template may be dealt (`ROOM_LEVELS`); the row's string is
+    // written whole, starting from the generator's own habit the first time (`roomDefault`).
+    if (id.startsWith('room-lvl=')) {
+      const [name, k] = id.slice(9).split('|'), t = [ARMORY_TEMPLATE, ...ROOM_TEMPLATES].find((q) => q.name === name);
+      if (!t) return;
+      const defs = [...LEVELS, darkLevel(), tripLevel(2)];
+      const cur = ROOM_LEVELS[name] || defs.map((def) => (roomDefault(t, def) ? '1' : '0')).join('');
+      const bits = cur.padEnd(defs.length, '1').split(''); bits[+k] = bits[+k] === '1' ? '0' : '1';
+      ROOM_LEVELS[name] = bits.join('');
+      this.persistTuningEdit({ root: 'ROOM_LEVELS', path: [name], value: ROOM_LEVELS[name] });
+      return;
+    }
+    if (id.startsWith('room-lvl-reset=')) {
+      const name = id.slice(15); delete ROOM_LEVELS[name];
+      this.persistTuningEdit({ root: 'ROOM_LEVELS', path: [name], value: null });
+      return;
+    }
     // HEAVEN tab: set a mirror rank outright (`drawMirrorTab`), or all of them back to nothing.
     if (id.startsWith('mirror-rank=')) {
       const [u, r] = id.slice(12).split('.'), M = Heaven.meta || Heaven.load();

@@ -832,6 +832,12 @@ const TUNING = {
     // the ones round it (`Game.spillPowder`). Fire on one, or a man alight on it, lights it; `fuse` s
     // later it blows inside `r` tiles — a man there dies ('splat'), the goat loses `damage` — lights
     // its tile, and lights the next powder tile over, which goes `chain` s after.
+    // How much a room may hold that goes off (30 Sep 2026: "this room has too much stuff — a chandelier,
+    // powder, braziers — cap the active things in a room, or push them into the corners, fire most of
+    // all"): `max` things that burn or blow — brazier, lamp, barrel, chandelier, bomb — counting what
+    // the template stood; a barrel or a chandelier is only added under it (`activeIn`, gen.js), and a
+    // barrel stands in the band `edge` tiles in from a wall, never mid-floor. `GEN_RULES.clutter`.
+    clutter: { max: 4, edge: 2 },
     powder: { tiles: 4, fuse: 0.45, chain: 0.14, r: 1.1, damage: 1, grains: 30, cell: 3 },
     barrel: { r: 12, roll: 16 * TILE, drag: 0.55, fling: 1.35, keep: 0.8, knockSpeed: 3 * TILE,
       breakSpeed: 6 * TILE, stopSpeed: 0.6 * TILE, knock: 5 * TILE, pass: 0.8, daze: 1.8, fuse: 1.6, burst: 2.1,
@@ -1643,6 +1649,9 @@ const TUNING = {
   // The dev drawer's tool pages are drawn `uiScale` × the HUD's text scale, and no text on them is
   // smaller than `minText` CSS px (30 Sep 2026: "the fonts in the dev tools are tiny everywhere —
   // make it readable"; the rule is in CLAUDE.md, *Conventions*).
+  // Rooms that stand on more than one floor, set into an ordinary room rather than drawn: THE ARMORY on
+  // `chance` of the floors `ROOM_LEVELS.armory` allows, never before room `from`.
+  rooms: { armory: { chance: 0.5, from: 2 } },
   dev: { burstGap: 1.5, uiScale: 1.3, minText: 12 },
   // `killCap` stays under `fastCap`, or bodies beat pace: at 2.5 a clear at par with 25 kills scored
   // 2500 against the fastest run with none at 2000, the one ordering this score exists to prevent.
@@ -1750,6 +1759,17 @@ const PAUSE_MENU = [
 // toggle would take Space. 0.5 is the middle both start at, which reproduces today's tuned mix
 // exactly (`game.applyVolumeSettings` scales each bus by `value / 0.5`), so a browser that never
 // touches the row sounds exactly as it always has.
+// WHERE A ROOM MAY STAND (30 Sep 2026: "which rooms can be on which floors is its own tick in the
+// list of rooms: some are only for one block — the cave, the mushrooms — some only for the first half,
+// they are easy, some only for the second — little cover and rifles at the far end"). One string a
+// room template (by `name`), a character a slot: the floors of LEVELS in order, then THE DARK, then
+// THE TRIP; '1' it may be dealt there, '0' it may not. A template not named here goes where the
+// generator always sent it (its canon, the mix of known canons, its tag). Written from the dev
+// drawer's ROOMS tab (`drawRoomsTab`); read by `roomAllowed` in gen.js for every pool.
+const ROOM_LEVELS = {
+  armory: '0111111110',
+};
+
 const SETTINGS = [
   { key: 'timer', name: 'SHOW THE CLOCK', note: 'A time counting up in the corner. The level card tells you at the end either way.' },
   { key: 'sound', name: 'SOUND', note: 'Everything at once. M does the same thing mid-run.' },
@@ -2547,6 +2567,9 @@ const LEVELS = [
     // of the way in. The hound is here rather than on level one because level one is about a man
     // standing still and what a head does to him.
     name: 'THE YARD', sub: 'Level 2', rooms: 12,
+    // SPACE - BAAH on the floor of its first room with a crowd in it (30 Sep 2026, "write the space
+    // lesson somewhere from the second floor"): the voice is the one verb THE ALTAR never names.
+    teachScream: true,
     // The mage brings fire; the rooms already have it. Coals, straw and ovens, so the thing the Seer
     // does to the floor is a thing you have been doing to the floor yourself since the second room.
     canon: { id: 'fire', name: 'FIRE', idea: 'Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself.' },
