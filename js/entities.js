@@ -964,6 +964,8 @@ class Goat {
     }
     this.hp -= n; this.invuln = TUNING.goat.invuln + (game.mods.invulnAdd || 0); this.hurtBy = by || null;
     if (game.heartLog) for (let k = 0; k < n; k++) game.heartLog.push(game.timer);
+    // and the room each was lost in, for the table from heaven's dramatic beat (`updateSkyTables`)
+    if (game.hurtRooms) for (let k = 0; k < n; k++) game.hurtRooms.push(game.goatRoom || 0);
     this.vx += kx || 0; this.vy += ky || 0;
     Talisman.loseRunUp(game, this);            // whatever he had built up, the club took it (BRASS SPUR keeps some)
 
@@ -2325,7 +2327,7 @@ class Prop {
     game.floatText(this.x, this.y - 28, 'IT GOES UP', witch ? PALETTE.witchHi : PALETTE.fireHi);
     game.world.emitNoise(this.x, this.y, TUNING.noise.boom);
     if (game.scatter) game.scatter.burst(this.x, this.y, B.burst * TILE * 1.5);
-    this.oilT = -1; this.shatter(game);
+    this.oilT = -1; this.wentUp = true; this.shatter(game);
   }
 
   // Is this spot under an arm now, or about to be as the wheel comes round? This is what lets a man
@@ -2386,6 +2388,8 @@ class Prop {
     if (this.kind === 'crate') Talisman.splinters(game, this);   // CARPENTER'S AWL
     this.broken = true; this.dead = true;
     if (this.kind === 'barrel') this.unHazard(game);
+    // A barrel that breaks without going up spills its powder (`Game.spillPowder`).
+    if (this.kind === 'barrel' && !this.wentUp && game.spillPowder) game.spillPowder(this.x, this.y);
     game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
     game.audio.sfxCrack(); game.audio.sfxThud(); game.shake(3);
     game.fx.debris(this,this.vx,this.vy);

@@ -171,13 +171,23 @@ const TUNING = {
     // in, the next `gap` s after, `retry` s later if nobody is in sight; from `z` px up at `grav` px/s²,
     // its shadow following him until it is `lock` s from landing; everyone within `killR` px of where
     // it lands is crushed ('splat'), the goat never.
-    tables: { odds: [0.25, 0.5, 0.25], first: [6, 14], gap: [8, 16], retry: 1.5, z: 700, grav: 1100, lock: 0.3, killR: 30 },
+    // It waits for the moment (30 Sep 2026, "so it is at a dramatic moment"): more than `crowd` men
+    // up in his room, and `hurt` hearts lost in this room and the one before; `gap` s between two.
+    tables: { odds: [0.25, 0.5, 0.25], gap: [8, 16], crowd: 2, hurt: 2, z: 700, grav: 1100, lock: 0.3, killR: 30 },
     arrive: { flash: 0.9, rise: 1.1, title: 3.4, tallyAfter: 1.3, tallyTime: 1.6 },
     pay: { kill: 1, floor: 10 },
     talkR: 2.3, hearR: 7, answer: 0.6, callAfter: 1.5, type: 44, talkArm: 0.3, talkOut: 0.28, plate: 3.2,
     comb: { snap: 26, walk: 110, stroke: 0.42, time: 3.6 }, graze: { r: 22, time: 1.1 },
     mirrorFlash: 0.35, mirrorBack: 7, mirrorDaze: 0.7, panelArm: 0.25,
-    bells: [262, 294, 330, 392, 440], bellSwing: 0.55, bellDamp: 3.5, bellGlow: 0.8,
+    // Eight bells since 30 Sep 2026 ("more bells, something tall up there"): C major pentatonic over an
+    // octave and a third, on a taller beam; the god's tune (E D C D E E E) still lies on the first three.
+    bells: [262, 294, 330, 392, 440, 523, 587, 659], bellSwing: 0.55, bellDamp: 3.5, bellGlow: 0.8,
+    // The blind shepherd hears the chime: after every `every` rings, `chance` of a word, never two
+    // within `gap` s (`Heaven.butt`, `SHEPHERD_TALK.bells`).
+    shepBells: { every: 3, chance: 0.6, gap: 7 },
+    // Heaven's harp (`GameAudio.playHeavenStep`), calmer since 30 Sep 2026: a note every `every`
+    // steps, `octave` × the chord's own pitch, at `pluck` and the pad at `pad`.
+    music: { every: 4, octave: 1, pluck: 0.024, pad: 0.038 },
     // In the air he tumbles (29 Sep 2026: "a more real spin in flight"): a body in the air turns at a
     // steady rate and does not speed up, `turns` whole turns over the flight, and rolls over on his
     // long axis `flips` times (the picture thins and widens). Down on a floor he lands on his side
@@ -817,6 +827,12 @@ const TUNING = {
     // and it comes back off him at `rebound` of its speed; `side` is how far to his own side a bowled
     // man goes, against the barrel's line.
     // `burst` came down from 2.6 (26 Sep 2026: "a little smaller blast radius").
+    // What a barrel broken without going up leaves (30 Sep 2026: "the powder barrel spilt leaves powder
+    // on four tiles by it, which can catch and blow up later"): `tiles` tiles of powder, its own and
+    // the ones round it (`Game.spillPowder`). Fire on one, or a man alight on it, lights it; `fuse` s
+    // later it blows inside `r` tiles — a man there dies ('splat'), the goat loses `damage` — lights
+    // its tile, and lights the next powder tile over, which goes `chain` s after.
+    powder: { tiles: 4, fuse: 0.45, chain: 0.14, r: 1.1, damage: 1, grains: 30, cell: 3 },
     barrel: { r: 12, roll: 16 * TILE, drag: 0.55, fling: 1.35, keep: 0.8, knockSpeed: 3 * TILE,
       breakSpeed: 6 * TILE, stopSpeed: 0.6 * TILE, knock: 5 * TILE, pass: 0.8, daze: 1.8, fuse: 1.6, burst: 2.1,
       burstTime: 7, fuseDraw: 8, spinEvery: 0.55, staveEvery: 2, draw: 26, stagger: 0.3, rebound: 0.2, side: 0.35 },
@@ -1624,7 +1640,10 @@ const TUNING = {
   // `texel` is world px a pixel of its sprite (and of the cleat's): bigger than the props' own grain,
   // it is the one thing in a room that hangs over everybody.
   chandelier: { chance: 0.3, perLevel: 2, fromWall: 3, z: 84, texel: 2, gravity: 1500, killR: 34, fireR: 1, fireFor: 2.4, sway: 0.05 },
-  dev: { burstGap: 1.5 },
+  // The dev drawer's tool pages are drawn `uiScale` × the HUD's text scale, and no text on them is
+  // smaller than `minText` CSS px (30 Sep 2026: "the fonts in the dev tools are tiny everywhere —
+  // make it readable"; the rule is in CLAUDE.md, *Conventions*).
+  dev: { burstGap: 1.5, uiScale: 1.3, minText: 12 },
   // `killCap` stays under `fastCap`, or bodies beat pace: at 2.5 a clear at par with 25 kills scored
   // 2500 against the fastest run with none at 2000, the one ordering this score exists to prevent.
   // Now a clear at par with every body in it scores 1500, the fastest pacifist 2000, and the fastest
@@ -1697,7 +1716,7 @@ const TUNING = {
     route: { w: 0.74, max: 780, cell: 2, move: 1.3, after: 0.9 },
     // The death card's picture of the floor (`Painting.drawDeath`) comes in over the pull-back:
     // `fade` s long, starting `at` s into the zoom.
-    death: { at: 0.6, fade: 0.9, h: 0.46, top: 0.2 },
+    death: { at: 0.6, fade: 0.9, h: 0.56, top: 0.07 },   // top 0.2 until DIED left the top (30 Sep 2026)
   },
 };
 

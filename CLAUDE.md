@@ -372,7 +372,8 @@ RULES (`drawRuleTab`, `game.ruleMatrix`), LEVEL (`drawLevelTab`, `roomPlan` off 
 BALANCE (`drawBalance`, `game.balanceReport` over `dev.balanceSeeds`; the averaged rules live here and in
 the report only). A room tile or bar opens `drawRoomSheet` (`dev.room`). `#rules` / `#balance` open it
 directly. Every tab scrolls on the wheel (`dev.scroll`, `dev.scrollMax`, in `drawTool`). Samples come from `dev.sampleSeed` (`game.rulesPage`, REROLL). Other tabs: ENEMIES, STATUS
-(`drawStatusTab`), TALISMANS, FIXTURES, JUICE, MUSIC, GOAT GRID (`js/goat-grid.js`).
+(`drawStatusTab`), TALISMANS, FIXTURES, JUICE, MUSIC, HEAVEN (`drawMirrorTab`, `#mirror`: every
+`MIRROR` rank as a button that sets it, costs, what each rank does), GOAT GRID (`js/goat-grid.js`).
 
 ### Teaching rooms (level one)
 
@@ -792,6 +793,11 @@ goes to planks, the candles light `fireR` tiles. The wreck stays, harmless. Neit
 two passes: its shadow (the landing spot, darkening as it comes) or the wreck with the props,
 `Renderer.drawChandelierAir` (ring, rope to the cleat) over everybody.
 
+**Spilt powder** (30 Sep 2026, `TUNING.prop.powder`). A barrel that breaks without going up
+(`shatter` without `wentUp`) lays `game.powder` on `tiles` tiles, its own first (`Game.spillPowder`);
+fire on one or a man alight on it lights it, `fuse` s later it blows inside `r` tiles (a man dies, the
+goat loses `damage`, its tile burns) and lights the powder next door (`chain`); `updatePowder`,
+`Renderer.drawPowder` (grains in cells after the decals).
 **Barrels.** `kind === 'barrel'` (`TUNING.prop.barrel`): not `item`, blocking, stops bullets. A headbutt,
 a flung body over `knock`, a charge or another barrel (`pass`) calls `Prop.roll`; `lying` is for good.
 `updateBarrel` bowls men (`e.fling` × `fling` × `knockMul`, `daze`, `keep` a man; Butcher staggers,
@@ -1057,7 +1063,8 @@ road of a node a floor and OUT after the last, and the build's own goat trotting
 to the next (Nuclear Throne's map between areas); THE DARK / THE TRIP name their node where the run put
 them (`Painting.floorName`). The death card (`card.map`, `game.deathPainting` baked at death,
 `Painting.drawDeath`) fades in over the pull-back: the floor painted the same way, the road with his skull
-on this floor, the killer's plate, what he keeps, ASCEND, the run code.
+on this floor, the killer's plate, what he keeps, ASCEND, the run code. No DIED and no floor name
+over the picture (30 Sep 2026): the node's label under the skull is `LEVEL n · NAME`.
 
 **Death and restart.** `restartLevel` only from `play` / `paused` / `dead`, and counts as a death. It
 restores **exactly** `game.levelBoons` (`keepBoons`), `levelArtifact`, `levelTalRun` (the tallow, the
@@ -1100,8 +1107,14 @@ whole picture to `Heaven.draw` and `drawUI` to `Heaven.drawHud`; its bakes (`bak
 **Its tables** (30 Sep 2026, `TUNING.heaven.tables`): 0–2 a visit off `odds`, `noFlip` up there. One
 butted into the drop is seen falling (`Prop.fall` → a prop faller, `drawFallers`) and counted in
 `game.heavenTables`; `startLevel` from heaven turns that into `game.skyTables`, and `updateSkyTables`
-drops each on a man the goat can see (shadow tracks him until `lock` s out, crushes within `killR`,
-never the goat), where it lies on its side (`drawSkyTables` ground and air passes). Only that floor.
+drops each on a man the goat can see, only at the dramatic beat — more than `crowd` men up in his
+room and `hurt` hearts lost in this room and the one before (`game.hurtRooms`, pushed by
+`Goat.damage`) — shadow tracking him until `lock` s out, crushing within `killR`, never the goat; it
+lies on its side (`drawSkyTables` ground and air passes). Only that floor.
+**CONTINUE comes up here first** (`resumeRun` → `Heaven.enter(game, { visit: true })`: no death
+counted, no killer), and the edge drops him into the saved floor. **The belfry**: eight bells
+(`heaven.bells`, pentatonic, the god's tune on the first three) on a 52-texel beam; the blind shepherd
+answers the chime (`heaven.shepBells`, `SHEPHERD_TALK.bells`). Heaven's harp is `heaven.music`.
 **What outlives runs** is `Heaven.meta` under `HEAVEN_KEY` (never cleared by NEW GAME): `sacrifices`
 (`Heaven.earn`: `heaven.pay.kill` a man in `onKill`, `pay.floor` a floor in `levelCleared`; not in GOD
 MODE or THE SHOWROOM), `ranks` of `MIRROR` (`Heaven.applyMeta` in `applyBoons`: `mods.maxHp`,
@@ -1324,6 +1337,12 @@ Hooks load when a session starts.
   rows cycle through five families (kept in `localStorage`; the itch build always reads entry 0).
   A new family goes into `FONT_PICK.list` and the Google Fonts link in both HTML files and `RELEASE.page`.
 - Version history and the reasoning behind each change live in `CHANGELOG.md`.
+- **Text must be readable** (30 Sep 2026: "the dev tools' fonts are tiny everywhere — make it readable,
+  make it a rule"). Screen-space text is never under 12 CSS px (canvas px = CSS px × `renderer.s`):
+  size fonts off `renderer.hs` / `ts` with that floor in mind. The dev drawer enforces it itself —
+  `Renderer.drawDev` draws at `dev.uiScale` × and floors every `ctx.font` it is handed at
+  `dev.minText` — so a new tool tab gets it for free; world-space text (floor words, barks) is exempt,
+  it scales with the camera.
 
 ---
 

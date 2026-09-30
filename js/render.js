@@ -198,6 +198,7 @@ class Renderer {
       if (game.scatter) game.scatter.drawGround(this);   // a table's supper, where it came to rest
       this.drawPits(game, cam);
       this.drawFallers(game);
+      this.drawPowder(game);
       this.drawSkyTables(game, 'ground');
       const dark = Dark.on(game);
       if (!dark) this.drawHints(game);   // in THE DARK the floor words go on over it (below)
@@ -1870,6 +1871,25 @@ class Renderer {
   }
 
   // A chandelier's ring and rope, over everybody (it hangs in the air): the floor pass drew its shadow.
+  // Spilt powder (`Game.spillPowder`): dark grains in cells on the tile, a heap to the middle; lit, a
+  // few of them spit orange-white and the heap glows.
+  drawPowder(game) {
+    if (!game.powder || !game.powder.size) return;
+    const ctx = this.ctx, W = game.world.W, P = TUNING.prop.powder, c = P.cell;
+    for (const [i, q] of game.powder) {
+      const x0 = (i % W) * TILE, y0 = Math.floor(i / W) * TILE;
+      if (game.hidden(x0 + TILE / 2, y0 + TILE / 2)) continue;
+      let h = q.seed;
+      for (let k = 0; k < P.grains; k++) {
+        h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
+        const u = (h & 1023) / 1023, v = ((h >>> 10) & 1023) / 1023, r = 0.42 * Math.sqrt(k / P.grains);
+        const gx = x0 + TILE / 2 + Math.cos(u * 6.283) * r * TILE, gy = y0 + TILE / 2 + Math.sin(u * 6.283) * r * TILE * 0.8;
+        const spark = q.lit >= 0 && ((h >>> 20) + Math.floor(this.t * 20)) % 5 === 0;
+        ctx.fillStyle = spark ? (k % 2 ? PALETTE.fireHi : '#fff4c2') : v < 0.4 ? '#141010' : v < 0.8 ? '#2e2824' : '#5a5048';
+        ctx.fillRect(Math.round(gx / c) * c, Math.round(gy / c) * c, c, c);
+      }
+    }
+  }
   // A table sent down from heaven (`Game.updateSkyTables`): on the ground its shadow, darkening and
   // tightening as it comes; in the air the table itself, `z` px up, turning slowly.
   drawSkyTables(game, pass) {
@@ -3483,8 +3503,21 @@ class Renderer {
     }
   }
 
-  // A dev drawer in the bottom-right: god mode and spawns, for poking at the game.
+  // The drawer and every tool page are drawn bigger than the HUD (`dev.uiScale`), and whatever font
+  // a page asks for, it gets no less than `dev.minText` CSS px: the font is floored as it is set, so
+  // no tab can slip back under it however small a size it names.
   drawDev(game) {
+    const ctx = this.ctx, s0 = this.ts, D = TUNING.dev, min = D.minText * this.s;
+    const font = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'font');
+    this.ts = s0 * D.uiScale;
+    try {
+      Object.defineProperty(ctx, 'font', { configurable: true, get() { return font.get.call(this); },
+        set(v) { font.set.call(this, String(v).replace(/(\d+(?:\.\d+)?)px/, (m, n) => Math.max(+n, min) + 'px')); } });
+    } catch (err) { /* a context that will not take it keeps its own sizes */ }
+    try { this.drawDevPage(game); } finally { this.ts = s0; delete ctx.font; }
+  }
+  // A dev drawer in the bottom-right: god mode and spawns, for poking at the game.
+  drawDevPage(game) {
     const ctx = this.ctx, s = this.ts, d = game.dev;
     d.rects = [];
     if (d.rules) { this.drawTool(game); return; }
@@ -3580,6 +3613,33 @@ class Renderer {
   }
 
   // A button in the drawer's own style, and its rect.
+  // HEAVEN: what the mirror sells (`MIRROR`), each with its ranks as buttons — a click sets this
+  // browser's rank there and then (`Heaven.meta.ranks`, applied through `applyBoons`) — what each rank
+  // costs in sacrifices and souls, and what the rank in force does; the purse over it, fed by the
+  // same +100 / +5 as the drawer's button.
+  drawMirrorTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, W = this.w, d = game.dev, M = Heaven.meta || Heaven.load();
+    ctx.textAlign = 'left';
+    ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText('THE MIRROR — WHAT HEAVEN SELLS', pad, top);
+    ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText(`${M.sacrifices} sacrifices · ${M.souls || 0} souls in the heap · a rank button sets it now, free · saved in this browser`, pad, top + 18 * s);
+    this.devButton(d, pad, top + 28 * s, 170 * s, 20 * s, '+100 SACR · +5 SOULS', 'sacrifices', false);
+    this.devButton(d, pad + 178 * s, top + 28 * s, 120 * s, 20 * s, 'ALL RANKS 0', 'mirror-reset', false);
+    let y = top + 70 * s;
+    for (const u of MIRROR) {
+      const r = (M.ranks && M.ranks[u.id]) || 0, max = u.costs.length;
+      ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = r ? PALETTE.fireHi : PALETTE.bone; ctx.fillText(u.name, pad, y);
+      for (let k = 0; k <= max; k++) this.devButton(d, pad + 220 * s + k * 44 * s, y - 14 * s, 40 * s, 20 * s, k ? 'R' + k : 'OFF', `mirror-rank=${u.id}.${k}`, r === k);
+      ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)';
+      const costs = u.costs.map((c, k) => `R${k + 1}: ${c} sacr${Heaven.soulCost(u, k) ? ' + ' + Heaven.soulCost(u, k) + ' souls' : ''}`).join('   ');
+      ctx.fillText(costs, pad + 220 * s + (max + 1) * 44 * s + 10 * s, y);
+      ctx.fillStyle = 'rgba(239,230,208,0.8)';
+      const says = [];
+      for (let k = 1; k <= max; k++) { try { says.push(`R${k}: ${u.tell(u.params, k)}`); } catch (err) { /* a rank with no words */ } }
+      says.forEach((t, i) => ctx.fillText(this.clip(t, W - pad * 2 - 20 * s), pad + 14 * s, y + (18 + i * 16) * s));
+      y += (30 + says.length * 16) * s;
+    }
+  }
   devButton(d, x, y, w, h, label, id, on) {
     const ctx = this.ctx, s = this.ts;
     ctx.fillStyle = on ? 'rgba(185,135,58,0.55)' : 'rgba(59,34,51,0.75)';
@@ -3641,7 +3701,7 @@ class Renderer {
     const pad = 14 * s;
     ctx.fillStyle = 'rgba(13,10,12,0.965)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE'], ['talismans','TALISMANS'], ['animals','ANIMALS'], ['goats','GOAT GRID'], ['art','ART']];
+    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE'], ['talismans','TALISMANS'], ['animals','ANIMALS'], ['mirror','HEAVEN'], ['goats','GOAT GRID'], ['art','ART']];
     const cols = Math.max(1, Math.floor((W - pad * 2 - 72 * s) / (80 * s)));
     tabs.forEach(([id, label], i) => this.devButton(d, pad + i % cols * 80 * s,
       pad + Math.floor(i / cols) * 24 * s, 76 * s, 20 * s, label, 'tab-' + id, d.tab === id));
@@ -3659,6 +3719,7 @@ class Renderer {
     else if (d.tab === 'status') this.drawStatusTab(game, pad, top);
     else if (d.tab === 'props') this.drawPropsTab(game, pad, top);
     else if (d.tab === 'animals') this.drawAnimalsTab(game, pad, top);
+    else if (d.tab === 'mirror') this.drawMirrorTab(game, pad, top);
     else if (d.tab === 'music') this.drawMusicTab(game, pad, top);
     else if (d.tab === 'juice') this.drawJuiceTab(game, pad, top);
     else if (d.tab === 'talismans') Talisman.drawToolTab(this, game, pad, top);

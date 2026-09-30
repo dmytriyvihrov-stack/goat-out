@@ -107,6 +107,9 @@ const SHEPHERD_TALK = {
   hello: ['WHO IS THAT? A LITTLE EWE. COME HERE, LET ME COMB YOU.', 'AH, THE LITTLE EWE AGAIN. COME, COME.'],
   comb: ['THERE. THERE.', 'SUCH KNOTS. WHERE HAVE YOU BEEN, LITTLE EWE?', 'YOU SMELL OF SMOKE AND MEN.', 'YOUR HORNS HAVE GROWN. ODD, FOR A EWE.', 'SOFT AS A CLOUD NOW. SOFTER.'],
   butted: ['OH! STILL SOME SPIRIT IN YOU.', 'GENTLY, LITTLE EWE. GENTLY.'],
+  // He cannot see the chime, only hear who is at it (`Heaven.butt`, `heaven.shepBells`).
+  bells: ['WHO IS AT THE BELLS? THE LITTLE EWE?', 'NOT SO HARD. THEY ARE OLDER THAN I AM.', 'THAT ONE IS FLAT. IT ALWAYS WAS.',
+    'AH, I KNOW THAT ONE. HOW DOES IT GO ON?', 'MY WIFE RANG THEM LIKE THAT.', 'SOFTLY. THE GOD IS DOZING.', 'EWES DO NOT RING BELLS. WHAT ARE YOU?'],
 };
 // The five bells of the chime, and the one tune the god knows the words to (E D C D E E E).
 const HEAVEN_SONG = [2, 1, 0, 1, 2, 2, 2];
@@ -189,7 +192,7 @@ const Heaven = {
     HEAVEN_SEATS.forEach((s, i) => put('hseat', px(i < 3 ? 6.5 : 24.5) - 16, px([9.5, 14, 18.5, 9.5, 18.5][i]), { seat: s.kind }));
     put('hshep', px(38), px(9.6));
     put('hmirror', px(51.5), px(7.4));
-    for (let k = 0; k < 5; k++) put('hbell', px(42.3) + k * HEAVEN_PIXELS.BELL_GAP * 1.35, px(10.2), { note: k });
+    for (let k = 0; k < TUNING.heaven.bells.length; k++) put('hbell', px(41.6) + k * HEAVEN_PIXELS.BELL_GAP * 1.35, px(10.2), { note: k });
     // the supper above the clouds (js/scatter.js)
     // one table a visit, as often as not; now and then two, now and then none (`heaven.tables.odds`)
     const odds = TUNING.heaven.tables.odds, roll = Math.random();
@@ -215,11 +218,13 @@ const Heaven = {
 
   // A death's card is clicked: up he goes. The floor he died on waits, exactly as a death leaves it
   // (`game.deaths` has counted it, the save has it); `leave` rebuilds it.
-  enter(game) {
+  // `opts.visit`: come up by CONTINUE, not by dying (`Game.resumeRun`) — no death counted, nothing killed him.
+  enter(game, opts) {
     if (!this.meta) this.load();
-    const M = this.meta, L = this.level(), by = game.goat && game.goat.hurtBy;
+    const visit = !!(opts && opts.visit);
+    const M = this.meta, L = this.level(), by = !visit && game.goat && game.goat.hurtBy;
     const kind = !by ? null : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind);
-    M.visits++; M.deaths++;
+    M.visits++; if (!visit) M.deaths++;
     if (game.levelIndex !== undefined) this.reached(levelIndexOf(game.level && game.level.def) >= 0 ? levelIndexOf(game.level.def) : game.levelIndex);
     const floorName = (game.level && game.level.def && game.level.def.name) || '';
     const gate = game.checkpoint && game.checkpoint.level === game.levelIndex;
@@ -336,7 +341,7 @@ const Heaven = {
       q.eaten = true;
       game.particles(q.x, q.y - 6, 14, '#f7d774', 150); game.ring(q.x, q.y, 1.5 * TILE, '#fff4c2');
       game.floatText(q.x, q.y - 26, HEAVEN_TALK.munch[Math.floor(Math.random() * HEAVEN_TALK.munch.length)], '#fff4c2');
-      game.audio.sfxBleat(320, 0.07, 0.4); game.audio.sfxChime(T0.bells[Math.floor(Math.random() * 5)], 0.35);
+      game.audio.sfxBleat(320, 0.07, 0.4); game.audio.sfxChime(T0.bells[Math.floor(Math.random() * T0.bells.length)], 0.35);
     }
     // Over the edge.
     if (!g.dead && game.world.isPitPx(g.x, g.y)) { this.jump(game); return; }
@@ -382,6 +387,13 @@ const Heaven = {
       game.audio.sfxChime(T0.bells[p.note]);
       game.particles(p.x, p.y - 18, 6, PALETTE.fireHi, 120);
       H.notes.push(p.note); if (H.notes.length > HEAVEN_SONG.length) H.notes.shift();
+      // the blind old man hears it
+      const SB = T0.shepBells, shep = game.props.find((q) => q.kind === 'hshep');
+      H.rung = (H.rung || 0) + 1;
+      if (shep && H.rung % SB.every === 0 && H.t >= (H.shepAt || 0) && Math.random() < SB.chance) {
+        H.shepAt = H.t + SB.gap;
+        H.plates.push({ x: shep.x, y: shep.y - 52, text: SHEPHERD_TALK.bells[Math.floor(Math.random() * SHEPHERD_TALK.bells.length)], life: T0.plate });
+      }
       if (H.notes.join() === HEAVEN_SONG.join() && !H.sung) {
         H.sung = true; this.meta.sung = true; this.save();
         game.ring(p.x, p.y, 5 * TILE, PALETTE.fireHi); game.particles(p.x, p.y - 20, 30, '#fff4c2', 220);
@@ -1156,9 +1168,11 @@ Object.assign(Heaven, {
   drawChime(R, game) {
     const ctx = R.ctx, k = 1.35, bells = game.props.filter((p) => p.kind === 'hbell'), S = HEAVEN_PIXELS.sprites.beam;
     if (!bells.length) return;
-    const b0 = bells[0], x0 = b0.x - 7 * k, y0 = b0.y - 26;
+    // A taller beam (`beam`'s 52 texels, the old one 30) stands on the same ground: its top, and the
+    // bells with it, go up by the difference.
+    const b0 = bells[0], x0 = b0.x - 7 * k, y0 = b0.y - 26 - (S.h - 30) * k * TILT;
     ctx.save(); ctx.translate(x0, y0); ctx.scale(1, 1 / TILT);
-    R.shadow(S.w * k / 2, 30 * TILT, S.w * k * 0.5, 5);
+    R.shadow(S.w * k / 2, S.h * TILT, S.w * k * 0.5, 5);
     HEAVEN_PIXELS.draw(ctx, 'beam', 0, -6, k);
     for (const p of bells) {
       const n = p.note, B = HEAVEN_PIXELS.sprites['bell-' + n], hx = (p.x - x0), sw = p.swing || 0;

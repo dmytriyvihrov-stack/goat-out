@@ -142,7 +142,7 @@ class Game {
       // The itch build itself (`RELEASE.on`, the dev drawer's ITCH BUILD) has no dev corner at all,
       // `#dev` or not, and none of the tool's addresses below: its GOD MODE is a switch in SETTINGS.
       this.dev.hidden = RELEASE.on || (/(^|\.)(itch\.io|itch\.zone|hwcdn\.net)$/i.test(location.hostname || '') && h !== 'dev');
-      if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats' || h === 'animals')) {
+      if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'mirror' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats' || h === 'animals')) {
         this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
       }
       // `#seed=k3j9a` is the whole of sharing a run: NEW GAME takes it instead of rolling one, so a
@@ -704,9 +704,10 @@ class Game {
     return w.seesTile(tx, ty) || w.seesTile(tx, Math.floor((e.y - TILE * 0.6) / TILE));
   }
   // A table butted off the edge above (`Prop.fall` in heaven) comes down here on a man the goat can
-  // see: its shadow finds him and follows him until it is `lock` s from landing, so a man who moves
-  // in that last beat walks out from under it. Whoever is under it then is crushed; the goat never.
-  // It lands on its side and stays, a table like any other (`TUNING.heaven.tables`).
+  // see, at the worst moment: more than `crowd` men up in his room and `hurt` hearts gone in this room
+  // and the last. Its shadow finds one and follows him until it is `lock` s from landing, so a man who
+  // moves in that last beat walks out from under it. Whoever is under it then is crushed; the goat
+  // never. It lands on its side and stays, a table like any other (`TUNING.heaven.tables`).
   updateSkyTables(dt) {
     const S = this.skyTables, C = TUNING.heaven.tables, roll = (r) => r[0] + Math.random() * (r[1] - r[0]);
     for (const d of S.drops) {
@@ -727,14 +728,56 @@ class Game {
     S.drops = S.drops.filter((d) => !d.done);
     if (S.n <= 0) { if (!S.drops.length) this.skyTables = null; return; }
     if ((S.t -= dt) > 0) return;
-    const g = this.goat, v = this.renderer.view(this.cam);
-    const pool = this.liveEnemies.filter((e) => !e.dead && !e.held && !e.ghosted && !e.scripted && e.state !== 'hidden' && e.state !== 'hop'
+    const g = this.goat, v = this.renderer.view(this.cam), here = this.goatRoom || 0;
+    const hurt = (this.hurtRooms || []).filter((r) => r === here || r === here - 1).length;
+    if (hurt < C.hurt) return;
+    const inRoom = (e) => { const r = roomAt(this.level, e.x, e.y); return r && r.index === here; };
+    const up = (e) => !e.dead && !e.held && !e.ghosted && !e.scripted && e.state !== 'hidden' && e.state !== 'hop';
+    if (this.liveEnemies.filter((e) => up(e) && inRoom(e)).length <= C.crowd) return;
+    const pool = this.liveEnemies.filter((e) => up(e) && inRoom(e)
       && Math.abs(e.x - this.cam.x) < v.w / 2 && Math.abs(e.y - this.cam.y) < v.h / 2 && !this.hidden(e.x, e.y) && this.sees(g.x, g.y, e.x, e.y));
-    if (!pool.length) { S.t = C.retry; return; }
+    if (!pool.length) return;
     const e = pool[Math.floor(Math.random() * pool.length)];
     S.drops.push({ e, x: e.x, y: e.y, z: C.z, vz: 0, spin: Math.random() * Math.PI * 2, table: new Prop(e.x, e.y, 'table') });
     S.n--; S.t = roll(C.gap);
     this.audio.sfxSwing();
+  }
+  // A barrel broken without going up leaves its powder on `powder.tiles` tiles: its own first, then the
+  // floor round it. Nothing happens until fire finds it (`updatePowder`).
+  spillPowder(x, y) {
+    const P = TUNING.prop.powder, w = this.world, W = w.W, tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    const near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+    let laid = 0;
+    for (const [dx, dy] of near) {
+      if (laid >= P.tiles) break;
+      const i = (ty + dy) * W + tx + dx;
+      if (!w.walkableAt(tx + dx, ty + dy) || w.tiles[i] === T.PIT || this.powder.has(i)) continue;
+      this.powder.set(i, { lit: -1, seed: (i * 2654435761) >>> 0 }); laid++;
+    }
+  }
+  // Fire on a powder tile, or a man alight standing on one, lights it; it spits for `fuse` s and
+  // blows, and the blast lights the powder next door, so a trail goes off down its length.
+  updatePowder(dt) {
+    const P = TUNING.prop.powder, w = this.world, W = w.W, R = P.r * TILE;
+    const lit = (i) => { const q = this.powder.get(i); if (q && q.lit < 0) q.lit = P.fuse; };
+    for (const e of this.liveEnemies) if (!e.dead && e.burning > 0) lit(Math.floor(e.y / TILE) * W + Math.floor(e.x / TILE));
+    for (const [i, q] of this.powder) {
+      const x = (i % W + 0.5) * TILE, y = (Math.floor(i / W) + 0.5) * TILE;
+      if (q.lit < 0) { if (w.isBurningPx(x, y)) q.lit = P.fuse; continue; }
+      if ((q.lit -= dt) > 0) continue;
+      this.powder.delete(i);
+      this.fx.explosion(x, y, R, false); w.scorch(x, y, R * 0.6); w.ignitePool(x, y, 0.6);
+      this.audio.sfxBoom(); this.thud(x, y, 5); this.ring(x, y, R, PALETTE.fireHi); this.particles(x, y, 12, PALETTE.fire, 220);
+      w.emitNoise(x, y, TUNING.noise.boom);
+      for (const e of this.enemies) {
+        if (e.dead || e.held || e.ghosted) continue;
+        const d = Math.hypot(e.x - x, e.y - y);
+        if (d <= R + e.r * 0.5 && w.los(x, y, e.x, e.y)) e.die(this, 'splat', (e.x - x) / (d || 1), (e.y - y) / (d || 1));
+      }
+      const g = this.goat, gd = Math.hypot(g.x - x, g.y - y);
+      if (!g.dead && gd <= R + g.r * 0.5 && w.los(x, y, g.x, g.y)) g.damage(P.damage, this, (g.x - x) / (gd || 1) * 220, (g.y - y) / (gd || 1) * 220, false, 'bomb');
+      for (const n of [i + 1, i - 1, i + W, i - W]) { const o = this.powder.get(n); if (o && o.lit < 0) o.lit = P.chain; }
+    }
   }
   hidden(x, y) {
     if (!this.level) return false;
@@ -1001,6 +1044,13 @@ class Game {
     // heap of sacrifices to try the mirror with.
     if (id === 'godtalk') { try { window.open('tools/god-talk.html', '_blank'); } catch (e) { /* no window */ } return; }
     if (id === 'heaven') { if (this.level && !this.level.def.heaven && this.goat && (this.state === 'play' || this.state === 'paused')) { this.dev.open = false; this.deaths++; this.saveRun(); Heaven.enter(this); } return; }
+    // HEAVEN tab: set a mirror rank outright (`drawMirrorTab`), or all of them back to nothing.
+    if (id.startsWith('mirror-rank=')) {
+      const [u, r] = id.slice(12).split('.'), M = Heaven.meta || Heaven.load();
+      M.ranks = M.ranks || {}; if (+r > 0) M.ranks[u] = +r; else delete M.ranks[u];
+      Heaven.save(); this.applyBoons(); this.devToast(`${u.toUpperCase()} RANK ${r}`); return;
+    }
+    if (id === 'mirror-reset') { const M = Heaven.meta || Heaven.load(); M.ranks = {}; Heaven.save(); this.applyBoons(); this.devToast('MIRROR RANKS CLEARED'); return; }
     if (id === 'sacrifices') { Heaven.meta.sacrifices += 100; Heaven.meta.souls = (Heaven.meta.souls || 0) + 5; Heaven.save(); this.devToast(`${Heaven.meta.sacrifices} SACRIFICES · ${Heaven.meta.souls} SOULS`); return; }
     if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) { this.dev.page = this.level ? this.levelIndex : 0; this.dev.room = null; } return; }
     if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); this.dev.room = null; return; }
@@ -1735,6 +1785,8 @@ class Game {
     // level does not grow an enormous array. It is what the death screen's pull-back draws as a line.
     this.pathTrail = [{ x: this.goat.x, y: this.goat.y }]; this.pathTimer = 0; this.deathCam = null; this.painting = null;
     this.heartLog = [];   // the clock at every heart lost this level: the last two say burst or bleed
+    this.hurtRooms = [];  // the room of every heart lost this level (`updateSkyTables`)
+    this.powder = new Map();   // spilt powder by tile: { lit: fuse s left, or -1 } (`spillPowder`)
     this.seedDeaths = this.deaths || 0;   // the death count this level's seed was cut with, for the run code
     this.firstKill = null;   // the level's first body, for the run code: a kill nobody saw has a cause on it
     this.killMarks = [];   // where each man of this level went down — skulls on the death screen's map
@@ -1805,7 +1857,7 @@ class Game {
     this.dropIn = this.fromHeaven ? { t: 0 } : null;   // held back below, until the card is nearly gone
     // Tables he butted off heaven's edge come down on this floor, and only this one (`updateSkyTables`).
     { const C = TUNING.heaven.tables, n = this.fromHeaven ? this.heavenTables || 0 : 0;
-      this.skyTables = n > 0 ? { n, t: C.first[0] + Math.random() * (C.first[1] - C.first[0]), drops: [] } : null;
+      this.skyTables = n > 0 ? { n, t: 0, drops: [] } : null;
       this.heavenTables = 0; }
     this.intro = null; this.stairFx = this.level.entry && !this.fromHeaven ? { t: -0.45, dir: -1 } : null;
     if (this.fromHeaven) this.flash('#fffcf0', 0.9);
@@ -2105,6 +2157,10 @@ class Game {
       kills: G.kills || 0, time: G.time || 0, pet: Beast.is(G.pet) || G.pet === 'chicken' ? G.pet : null } : null;
     this.checkpoint = cp;
     this.startLevel(li, this.levelSeed(li), true, false, cp);
+    // A run picked up again starts above the clouds (30 Sep 2026: "CONTINUE can land you in heaven
+    // too — it is a real level, a block of the game"): the floor is laid, and the edge drops him
+    // into it as a death's visit does. Not a death, and nothing is counted up there for it.
+    Heaven.enter(this, { visit: true });
   }
   // Time first, bodies second. Pace against the level's par is the whole of a score and kills only
   // multiply it, so running is never the wrong answer and the best run is a fast one with bodies in
@@ -2731,6 +2787,7 @@ class Game {
     this.updateClamps();
     if (this.holdAt >= 0) this.holdGate();
     if (this.skyTables) this.updateSkyTables(dt);
+    if (this.powder && this.powder.size) this.updatePowder(dt);
     w.updateFire(dt);
     Status.update(this, dt);
     Talisman.update(this, dt);   // the mouse's talismans (js/talismans.js)

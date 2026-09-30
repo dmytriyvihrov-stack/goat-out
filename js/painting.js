@@ -300,7 +300,7 @@ const Painting = {
       ctx.fillText(label, clamp(X(i), x0 + ctx.measureText(label).width / 2, x0 + width + 10 * s - ctx.measureText(label).width / 2), Y + h + 20 * s);
       ctx.restore();
     };
-    if (dead) name(cur, this.floorName(game, cur), PALETTE.blood, 1);
+    if (dead) name(cur, `LEVEL ${cur + 1} · ${this.floorName(game, cur)}`, PALETTE.blood, 1);
     else {
       name(cur, this.floorName(game, cur), 'rgba(239,230,208,0.6)', 1 - ease);
       name(to, next, PALETTE.fireHi, ease);
@@ -323,11 +323,9 @@ const Painting = {
     ctx.save();
     ctx.fillStyle = `rgba(13,10,12,${0.35 + 0.6 * a})`; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center';
-    ctx.font = `700 ${40 * s}px ${FONT}`; ctx.fillStyle = PALETTE.blood;
-    ctx.fillText('DIED', W / 2, H * 0.1 + 18 * s);
+    // No DIED and no floor's name over the picture (30 Sep 2026: "not that important up top"): the
+    // skull on the road says it, with the floor's number and name under it (`drawRoute`).
     ctx.globalAlpha = a;
-    ctx.font = `${17 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.62)';
-    ctx.fillText(`LEVEL ${m.level} · ${m.name}${m.dark ? ' · THE DARK' : m.trip ? ' · THE TRIP' : ''}`, W / 2, H * 0.1 + 44 * s);
     // the picture, whole, room left under it for the road, the words and the button
     const cv = pic.canvas, top = H * D.top, room = Math.max(H * 0.18, H - 210 * s - top);
     const k = Math.min(W * P.fit.w / cv.width, H * D.h / cv.height, room / cv.height);

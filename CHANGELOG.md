@@ -67,6 +67,18 @@ Twelve notes in one message (29 Sep 2026), with screenshots.
   down out of the sky on a man in sight: its shadow follows him until the last 0.3 s, whoever is under
   it then is crushed, and it lies there on its side. The goat is never hit by one. Anything that goes
   down a hole — a crate, a barrel, a blade, a table — is now seen falling, as a man is.
+- **The table from heaven waits for the moment** (30 Sep 2026): it comes down only when more than two
+  men are up in his room and he has lost two hearts in this room and the one before.
+- **CONTINUE comes up to heaven first** — a real part of the game, not only a death's — and the edge
+  drops him into the saved floor. It counts no death.
+- **A taller belfry of eight bells**, and heaven's harp calmer (a note every four steps, an octave
+  lower, quieter). The blind shepherd answers the chime now and then.
+- **Spilt powder**: a barrel broken without going up leaves powder on four tiles. Fire (or a man
+  alight) lights it; it spits, blows, and lights the next tile over — a trail goes off down its length.
+- **The death card** has no DIED and no floor name over the picture; the skull's node reads
+  LEVEL n · NAME.
+- **Dev tools readable**: the drawer and every tab at 1.3×, no text under 12 px (a rule in CLAUDE.md).
+  A new HEAVEN tab lists the mirror's upgrades with a button per rank.
 - **Dev drawer, BOONS**: ON GOAT — GIVE / HAVE puts any single upgrade on the goat or takes it off,
   the head of the floor with it.
 

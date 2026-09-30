@@ -422,9 +422,13 @@ const JUICE = [
     size: () => `${Math.round(TUNING.prop.table.flip.chance * 100)}% on stopping · always past ${TUNING.prop.table.flip.wall / TILE} tiles/s into stone · ${TUNING.prop.table.flip.hits} blows to break`,
     godot: 'Swap the table’s sprite frame and CollisionShape2D on a signal; an AnimationPlayer shake for the rock; GPUParticles2D planks.' },
   { name: 'A table from heaven', cat: 'WORLD', status: 'new', src: 'Goat Out', code: 'Prop.fall · Game.updateSkyTables · Renderer.drawSkyTables · heaven.tables',
-    trigger: 'A table butted off heaven’s edge; on the floor below, a man in sight', look: 'Up there it drops away off the lip, turning and shrinking; below, a shadow finds a man and follows him, the table tumbles in from above the screen, crushes whoever is under it and lies on its side',
+    trigger: 'A table butted off heaven’s edge; on the floor below, more than two men in his room and two hearts lost in it and the last', look: 'Up there it drops away off the lip, turning and shrinking; below, a shadow finds a man and follows him, the table tumbles in from above the screen, crushes whoever is under it and lies on its side',
     size: () => `${TUNING.heaven.tables.z}px up, ${TUNING.heaven.tables.grav}px/s² · follows him until ${TUNING.heaven.tables.lock}s out · crushes within ${TUNING.heaven.tables.killR}px`,
     godot: 'A tween on the sprite’s y offset with an ease-in over a shadow Sprite2D that tracks a target until a timer locks it, an Area2D checked on landing.' },
+  { name: 'Powder trail', cat: 'WORLD', status: 'new', src: 'Goat Out', code: 'Game.spillPowder · Game.updatePowder · Renderer.drawPowder · prop.powder',
+    trigger: 'A barrel broken without going up; then fire, or a man alight, on the powder', look: 'Dark grains on four tiles; lit, some spit white and orange, then each tile blows in turn with a small fireball, a ring and a scorch, the next one a beat later',
+    size: () => `${TUNING.prop.powder.tiles} tiles · fuse ${TUNING.prop.powder.fuse}s, chain ${TUNING.prop.powder.chain}s · blast ${TUNING.prop.powder.r} tile`,
+    godot: 'A TileMap layer of powder cells; a Timer per lit cell that spawns the blast scene and lights its neighbours.' },
 ];
 
 // The whole table as Markdown: the EXPORT button on the JUICE tab downloads it, and

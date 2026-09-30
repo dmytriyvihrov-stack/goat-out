@@ -129,7 +129,7 @@ const HEAVEN_PIXELS = (() => {
 
   // ---------------------------------------------------------------- the chime: five bells, 0 the biggest
   function bell(n) {
-    const r = 7 - n * 0.8, W = Math.ceil(r * 2) + 4, H = Math.ceil(r * 2.2) + 5, g = new Grid(W, H), cx = W / 2 - 0.5;
+    const r = 7.6 - n * 0.55, W = Math.ceil(r * 2) + 4, H = Math.ceil(r * 2.2) + 5, g = new Grid(W, H), cx = W / 2 - 0.5;
     g.rect(Math.round(cx) - 1, 0, 2, 2, G3);
     g.poly([[cx - r * 0.55, 2], [cx + r * 0.55 + 1, 2], [cx + r + 1, H - 4], [cx - r, H - 4]], G1);
     g.hl(Math.round(cx - r) - 1, H - 4, Math.round(r * 2) + 3, G2); g.hl(Math.round(cx - r) - 1, H - 3, Math.round(r * 2) + 3, G3);
@@ -140,9 +140,10 @@ const HEAVEN_PIXELS = (() => {
   // The beam the bells hang from: a gold rail on two posts, `n` bells `gap` texels apart. The chime
   // stands its bells `BELL_GAP` apart, far enough that one butt rings one bell (js/heaven.js).
   const BELL_GAP = 20;
-  function beam(n, gap) {
-    const W = (n - 1) * gap + 14, H = 30, g = new Grid(W, H);
-    for (const x of [1, W - 4]) { g.rect(x, 3, 3, 26, G2); g.vl(x, 3, 26, G1); g.vl(x + 2, 3, 26, G3); g.rect(x - 1, 27, 5, 2, G3); }
+  // `H` texels tall: the belfry up there is the tallest thing in heaven after the god's own cloud.
+  function beam(n, gap, H = 30) {
+    const W = (n - 1) * gap + 14, g = new Grid(W, H);
+    for (const x of [1, W - 4]) { g.rect(x, 3, 3, H - 4, G2); g.vl(x, 3, H - 4, G1); g.vl(x + 2, 3, H - 4, G3); g.rect(x - 1, H - 3, 5, 2, G3); }
     g.rect(0, 1, W, 3, G2); g.hl(0, 1, W, G0); g.hl(0, 3, W, G3);
     for (let k = 0; k < n; k++) g.set(7 + k * gap, 4, G4);
     return g.outline(OL);
@@ -194,9 +195,9 @@ const HEAVEN_PIXELS = (() => {
   const sprites = {
     god: god(false, false), 'god-speak': god(true, false), 'god-blink': god(false, true),
     'shepherd-0': shepherd(0), 'shepherd-1': shepherd(1), 'shepherd-2': shepherd(2),
-    mirror: mirror(), plinth: plinth(), skull: skull(), beam: beam(5, BELL_GAP), 'grass-gold': goldGrass(false), 'grass-gold-big': goldGrass(true),
+    mirror: mirror(), plinth: plinth(), skull: skull(), beam: beam(8, BELL_GAP, 52), 'grass-gold': goldGrass(false), 'grass-gold-big': goldGrass(true),
   };
-  for (let n = 0; n < 5; n++) sprites['bell-' + n] = bell(n);
+  for (let n = 0; n < 8; n++) sprites['bell-' + n] = bell(n);
   return { sprites, GLASS, BELL_GAP, G: [G0, G1, G2, G3, G4], W: [W0, W1, W2, W3, W4], OL };
 })();
 if (typeof module !== 'undefined') module.exports = HEAVEN_PIXELS;

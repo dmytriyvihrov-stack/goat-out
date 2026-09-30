@@ -719,10 +719,11 @@ class GameAudio {
   playHeavenStep(s, t, stepLen) {
     const bar = Math.floor(s / 16) % 4, beat = s % 16;
     const C = [[261.63, 329.63, 392.0], [220.0, 261.63, 329.63], [174.61, 220.0, 261.63], [196.0, 246.94, 293.66]][bar];
-    if (beat === 0) this.pad(t, C[0] / 2, stepLen * 16.4, 0.05);
-    if (beat % 2 === 0) {
-      const i = [0, 1, 2, 3, 2, 1, 0, 1][(beat / 2) % 8];
-      this.pluck(t, (i === 3 ? C[0] * 2 : C[i]) * 2, stepLen * 6, 0.035 * (beat === 0 ? 1.3 : 1));
+    const M = TUNING.heaven.music;
+    if (beat === 0) this.pad(t, C[0] / 2, stepLen * 16.4, M.pad);
+    if (beat % M.every === 0) {
+      const i = [0, 1, 2, 3, 2, 1, 0, 1][(beat / M.every) % 8];
+      this.pluck(t, (i === 3 ? C[0] * 2 : C[i]) * M.octave, stepLen * 2.5 * M.every, M.pluck * (beat === 0 ? 1.3 : 1));
     }
   }
   playLayeredStep(s, t, stepLen) {
