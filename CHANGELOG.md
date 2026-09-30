@@ -81,6 +81,13 @@ Twelve notes in one message (29 Sep 2026), with screenshots.
   A new HEAVEN tab lists the mirror's upgrades with a button per rank.
 - **Dev drawer, BOONS**: ON GOAT — GIVE / HAVE puts any single upgrade on the goat or takes it off,
   the head of the floor with it.
+- **Dev drawer, GOAT GRID: SCENE** (30 Sep 2026, "construct a frame, with enemies, effects, choosing the room").
+  Beside the grid, one frame built by hand: a room of any floor's stone (size, far wall or the whole ring),
+  the goat as the grid dresses him in any pose, men of every kind — boss outline, facing, a bark — in
+  idle, walk, windup, swing, floored, flung, burning, dazed, poisoned or dead, fire and witchfire, blood,
+  blasts, smoke, dust, a soul, and every prop and piece of floor litter; placed by clicking the floor,
+  framed on the room or on what is in it, zoomed, and saved as PNG or JPG at a whole number of px a
+  world px. All of it the game's own draw calls on stubs; nothing of a run is touched.
 
 ---
 
