@@ -68,12 +68,24 @@ const CONTROL_LINES = {
     ['ROLL'],
     ['BAAH', 'IT BREAKS A SWING'],
   ],
+  // A gamepad (`PadInput`): the same four lessons on the buttons `PAD_KEYS` names.
+  pad: [
+    ['LEFT STICK - MOVE'],
+    ['HOLD LT - GRAB', 'RELEASE - THROW'],
+    ['RT - HEADBUTT'],
+    ['A - ROLL'],
+  ],
 };
 
 // The key that throws each skill, read by the soul card so a new boon shows what activates it
 // next to what it does, not just a name to remember. Kept in step with the `cap` on each row of
-// `drawSkills`.
-const SKILL_KEYS = { butt: 'LMB', grab: 'RMB', roll: 'E', scream: 'SPC' };
+// `drawSkills`. `PAD_KEYS` is the same for a gamepad (Xbox names, which the standard mapping
+// follows), and `keysOf(game)` is whichever the player is holding; `item` is Q, when worn.
+const SKILL_KEYS = { butt: 'LMB', grab: 'RMB', roll: 'E', scream: 'SPC', item: 'Q', go: 'SPACE', back: 'BACKSPACE' };
+const PAD_KEYS = { butt: 'RT', grab: 'LT', roll: 'A', scream: 'B', item: 'Y', go: 'A', back: 'BACK' };
+// Asked of a `game` that may be a tool's stub (the GOAT GRID lends one with no pad).
+const padOn = (game) => !!(game && game.pad && game.pad.active);
+const keysOf = (game) => (padOn(game) ? PAD_KEYS : SKILL_KEYS);
 
 // A level's hint says what the room is about; this says which button it is about. `hintKey` on a
 // level definition picks one, and the keyboard or the touch wording follows what is in the player's
@@ -1385,7 +1397,7 @@ class Renderer {
       }
     }
     if (lv.controls) {
-      const sets = game.touch.active ? CONTROL_LINES.touch : CONTROL_LINES.key;
+      const sets = game.touch.active ? CONTROL_LINES.touch : padOn(game) ? CONTROL_LINES.pad : CONTROL_LINES.key;
       ctx.fillStyle = 'rgba(239,230,208,0.19)';
       for (const c of lv.controls) {
         // Block 0 (WASD) waits on the cage: while it is shut the only line worth reading is the
@@ -1409,7 +1421,7 @@ class Renderer {
       if (!game.props.some((q) => q.kind === 'ware' && !q.broken && q.shopId === m.shopId && !q.locked && !q.chosen)) continue;
       const cx = (room.x + room.w / 2) * TILE, cy = (room.y + room.h / 2) * TILE;
       if (Math.abs(cx - game.cam.x) > 1400) continue;
-      const label = game.touch.active ? 'GRAB - TAKE ONE' : 'RIGHT CLICK - TAKE ONE';
+      const label = game.touch.active ? 'GRAB - TAKE ONE' : padOn(game) ? `${PAD_KEYS.grab} - TAKE ONE` : 'RIGHT CLICK - TAKE ONE';
       this.fitFloorText([label], room.w * TILE - 2.6 * TILE, 24);
       ctx.fillStyle = 'rgba(255,224,138,0.2)';
       ctx.fillText(label, cx, cy * TILT);
@@ -1439,7 +1451,7 @@ class Renderer {
       const C = TUNING.cagePrompt, a = clamp((game.timer - C.delay) / C.fade, 0, 1);
       if (a > 0) {
         const p = lv.cagePrompt, pulse = 0.3 + 0.12 * Math.sin(this.t * 3.2);
-        const label = game.touch.active ? 'BUTT - HEADBUTT' : 'LEFT CLICK - HEADBUTT';
+        const label = game.touch.active ? 'BUTT - HEADBUTT' : padOn(game) ? `${PAD_KEYS.butt} - HEADBUTT` : 'LEFT CLICK - HEADBUTT';
         this.fitFloorText([label], 15 * TILE, 27);
         ctx.fillStyle = `rgba(255,224,138,${a * pulse})`;
         ctx.fillText(label, p.x, p.y * TILT);
@@ -5542,10 +5554,10 @@ class Renderer {
     if (isItem && !game.touch.active) {
       ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.textAlign = 'center';
       ctx.fillStyle = g.itemCd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.55)';
-      ctx.fillText('Q', cx, y + box + 9 * s);
+      ctx.fillText(keysOf(game).item, cx, y + box + 9 * s);
       ctx.textAlign = 'left';
     }
-    if (!game.touch.active && m.x >= x && m.x <= x + box && m.y >= y && m.y <= y + box) {
+    if (!game.touch.active && !padOn(game) && m.x >= x && m.x <= x + box && m.y >= y && m.y <= y + box) {
       const noteY = y + box + (isItem ? 22 : 12) * s;
       this.skillHover = def
         ? { row: { name: `${def.name} ${'I'.repeat(art.tier)}`, note: tier.desc }, x, left: x, y: noteY, hot: false, boons: [] }
@@ -5785,7 +5797,7 @@ class Renderer {
     // Stars: the club is still ringing in his skull.
     if (g.dazed > 0 && !(game.intro && game.intro.fade > 0)) this.drawStars(g.x, g.y, 30, Math.min(1, g.dazed * 1.5));
     // aim pip: where the headbutt will go
-    if (game.touch.active && game.state === 'play') {
+    if ((game.touch.active || padOn(game)) && game.state === 'play') {
       const a = game.input.aim;
       ctx.fillStyle = 'rgba(239,230,208,0.5)';
       ctx.beginPath(); ctx.arc(g.x + a.x * 34, g.y + a.y * 34, 3.4, 0, Math.PI * 2); ctx.fill();
@@ -6400,7 +6412,8 @@ class Renderer {
     // all: `game.boonAt` is the same hit-test the click itself goes through, against last frame's
     // rects — they never move while the choice is up, so the one-frame lag is not felt.
     // Not on touch: a lifted finger leaves the pointer where it was, and that card stayed lit.
-    const hoverI = game.boonDown < 0 && !game.touch.active ? game.boonAt(game.input.mouse) : -1;
+    // A pad lights the card its stick is on (`game.boonPad`), the one A takes.
+    const hoverI = padOn(game) ? (game.boonPad || 0) : game.boonDown < 0 && !game.touch.active ? game.boonAt(game.input.mouse) : -1;
     game.boonRects = [];
     const ctx = this.ctx, s = this.ts, n = game.boonChoice.length, fire = !!game.mods.breath;
     const F = TUNING.fanfare, bt = game.boonT === undefined ? 9 : game.boonT;
@@ -6478,7 +6491,7 @@ class Renderer {
         // A key name means nothing to a thumb: on touch the picture of the verb is the whole caption.
         if (!game.touch.active) {
           ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
-          ctx.fillText(SKILL_KEYS[b.skill], x + cw - 20 * s, y + 34 * s);
+          ctx.fillText(keysOf(game)[b.skill], x + cw - 20 * s, y + 34 * s);
         }
       } else {
         ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
@@ -6824,7 +6837,7 @@ class Renderer {
     // One line each, and the line says what the button does — not what it means. It is read while a
     // room is walking toward you, so it is a caption and not a paragraph.
     // On THE TRIP every verb is on another key (`game.tripInput`), and the caption says which.
-    const trip = !!(game.level && game.level.def.shroom);
+    const trip = !!(game.level && game.level.def.shroom), K = keysOf(game);
     // Each note also carries `stat`, the verb in numbers as it stands now — every soul and talisman
     // already folded into `game.mods` — shown only while the dev drawer is open (`drawSkillNote`).
     // The `note` is the player's: a line or two, no numbers (25 Sep 2026).
@@ -6834,7 +6847,7 @@ class Renderer {
       // with nothing to see was a button that looked free between swings. `recover` drains the same
       // chip in the opposite direction, in fire rather than blood, since it is a vulnerability window
       // and not a lockout: the button is simply not what threw it a moment ago.
-      { id: 'butt', name: 'BUTT', cap: trip ? 'RMB' : 'LMB', cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
+      { id: 'butt', name: 'BUTT', cap: trip ? K.grab : K.butt, cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
         recover: g.state === 'recover' && g.recoverMax > 0 ? clamp(g.timer / g.recoverMax, 0, 1) : 0,
         note: (game.mods.bomb ? 'Ram him. If he dies against something right after, he explodes.'
           : game.mods.antlers ? 'Ram him further and harder. A wall, a fire or another man finishes him.'
@@ -6842,7 +6855,7 @@ class Renderer {
           + (game.mods.splash ? ' It poisons whoever is behind you.' : ''),
         stat: `REACH ${sayN(H.reach * M.headbuttReach / TILE)} TILES · RECOVERY ${sayN(H.recovery * M.headbuttRecovery)}s`
           + (M.bomb ? ` · ${sayN(TUNING.goat.bomb.fuse)}s FUSE` : '') },
-      { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: trip ? 'LMB' : 'RMB', cd: g.grabCd,
+      { id: 'grab', name: g.holding ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS', cap: trip ? K.butt : K.grab, cd: g.grabCd,
         max: g.grabCdMax || TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
         // COLD EYE's moment, draining the chip the way a headbutt's recovery drains its own.
         recover: M.coldEye && game.aimSlow > 0 ? clamp(game.aimSlow / M.coldEye.time, 0, 1) : 0,
@@ -6854,7 +6867,7 @@ class Renderer {
         stat: `REACH ${sayN(G.reach / TILE)} TILES · ${sayN(G.cooldown * M.grabCooldown)}s BEFORE THE NEXT`
           + (M.grabMen ? ` · A MAN: ${sayN(G.bite)}s TO LIFT, ${sayPct(G.speedMul)} SPEED, STOPS ${M.shieldBullets} BULLETS, WORKS LOOSE IN ~${sayN(M.holdTime)}s, ${sayN(G.cooldown * M.grabCooldown * G.manCd)}s BEFORE THE NEXT` : '')
           + (M.coldEye ? ` · TIME AT ${sayPct(M.coldEye.scale)} FOR ${sayN(M.coldEye.time)}s, EVERY ${sayN(M.coldEye.every)}s` : '') },
-      { id: 'roll', name: M.leapfrog ? 'LEAP' : 'ROLL', cap: trip ? 'SPC' : 'E', cd: g.rollCd,
+      { id: 'roll', name: M.leapfrog ? 'LEAP' : 'ROLL', cap: trip ? K.scream : K.roll, cd: g.rollCd,
         max: g.rollCdMax || R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
         note: (game.mods.rollStun > 0 ? 'Dodge. Everyone you tumble through is dazed.'
           : M.leapfrog ? 'Dodge. Roll at a man to vault over him.'
@@ -6863,7 +6876,7 @@ class Renderer {
         stat: `${sayN(R.speed * R.duration * M.rollDistance / TILE)} TILES · UNTOUCHABLE ${sayN(R.invuln)}s · ${sayN(R.cooldown * M.rollCooldown)}s COOLDOWN`
           + (M.rollStun > 0 ? ` · DAZES ${sayN(M.rollStun)}s` : '')
           + (M.leapfrog ? ` · LEAP: A MAN UP TO ${sayN(M.leapfrog.reach)} TILES AHEAD, ${sayN(R.cooldown * M.rollCooldown * M.leapfrog.cooldownMul)}s COOLDOWN` : '') },
-      { id: 'scream', name: game.mods.spit ? 'SPIT' : fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: trip ? 'E' : 'SPC',
+      { id: 'scream', name: game.mods.spit ? 'SPIT' : fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: trip ? K.roll : K.scream,
         cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0,
         half: !fire && !game.mods.screamStun && !game.mods.spit,
         note: game.mods.spit ? 'Spit a glob of poison where you point.'
@@ -6915,7 +6928,8 @@ class Renderer {
       // on the note, which comes up when the pointer is on the chip.
       if (!game.touch.active) {
         const m = game.input.mouse;
-        if (m.x >= x - 3 * s && m.x <= x + box + 3 * s && m.y >= y - 3 * s && m.y <= y + box + 31 * s) {
+        // A pointer left resting on the rail says nothing while a pad has the controls.
+        if (!padOn(game) && m.x >= x - 3 * s && m.x <= x + box + 3 * s && m.y >= y - 3 * s && m.y <= y + box + 31 * s) {
           this.skillHover = { row, x, y: y + box + 35 * s, above: this.railLow ? y - 8 * s : undefined, hot, boons };
         }
         ctx.font = `700 ${10 * s}px ${FONT_SC}`;
@@ -6960,7 +6974,7 @@ class Renderer {
       if (!b) continue;
       ctx.textAlign = 'center'; ctx.font = `${cell * 0.76}px ${FONT}`; ctx.fillStyle = PALETTE.bone;
       ctx.fillText(b.emoji || '•', cx + cell / 2, cy + cell * 0.8);
-      if (!game.touch.active && m.x >= cx && m.x <= cx + cell && m.y >= cy && m.y <= cy + cell)
+      if (!game.touch.active && !padOn(game) && m.x >= cx && m.x <= cx + cell && m.y >= cy && m.y <= cy + cell)
         this.skillHover = { row: { name: b.name, note: b.desc, stat: this.boonStat(b) }, x: cx, y: y + box + 35 * s, above: this.railLow ? y - 8 * s : undefined, hot: false, boons: [] };
     }
     ctx.textAlign = 'left';
@@ -7686,7 +7700,7 @@ class Renderer {
     const ctx = this.ctx, s = this.ts, touch = game.touch && game.touch.active;
     const bh = 36 * s, lf = `700 ${18 * s}px ${FONT_SC}`, kf = `700 ${10 * s}px ${FONT_SC}`;
     ctx.font = lf; const lw = ctx.measureText(label).width;
-    ctx.font = kf; const key = touch ? '' : 'SPACE', kw = key ? ctx.measureText(key).width + 12 * s : 0;
+    ctx.font = kf; const key = touch ? '' : keysOf(game).go, kw = key ? ctx.measureText(key).width + 12 * s : 0;
     const tri = 9 * s, bw = Math.round(lw + tri + 12 * s + (kw ? kw + 12 * s : 0) + 40 * s), bx = Math.round(cx - bw / 2), by = Math.round(top);
     const over = game.input.mouse && !touch && game.input.mouse.x >= bx && game.input.mouse.x <= bx + bw && game.input.mouse.y >= by && game.input.mouse.y <= by + bh;
     const pulse = 0.5 + 0.5 * Math.sin(this.t * 4);

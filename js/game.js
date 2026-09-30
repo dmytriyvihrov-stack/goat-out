@@ -55,7 +55,8 @@ class Game {
     this.touch = new TouchUI();
     this.coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches);
     this.touch.active = this.coarse;
-    this.tapWord = this.coarse ? 'TAP' : 'CLICK';
+    this.pad = new PadInput();
+    this.padAim = { x: 1, y: 0 };
     this.input = { mx: 0, my: 0, aim: { x: 1, y: 0 }, lmbPressed: false, rmbDown: false, spacePressed: false, rollPressed: false, qPressed: false, mouse: { x: 0, y: 0 }, anyPressed: false };
     this.breathFx = null;
     this.keys = new Set();
@@ -905,6 +906,7 @@ class Game {
     // The party (`TUNING.fanfare`): the cards land after the soul does, and only then take a click.
     const F = TUNING.fanfare;
     this.boonDown = -1; this.boonArm = TUNING.boonArm + F.intro + F.stagger * (pick.length - 1) + F.pop; this.boonT = 0;
+    this.boonPad = 0;   // the card a pad has lit: the first, every time
     this.state = 'boon'; this.card = null; this.audio.sfxCard(); this.vibe(30);
   }
   // Whether a card may be dealt at all: not already taken, its `needs` met, past its `minLevel`,
@@ -1419,6 +1421,114 @@ class Game {
     return { x: (e.clientX - r.left) * this.canvas.width / r.width, y: (e.clientY - r.top) * this.canvas.height / r.height };
   }
 
+  // What a key does, whoever pressed it: the keyboard, or a pad button standing in for one on a screen
+  // the keys already walk (`pollPad`: the menus, the pause, the mirror, Escape, Backspace). `e` is the
+  // key event when there is one, so its default can be stopped.
+  keyPress(code, e) {
+    const stop = () => { if (e) e.preventDefault(); };
+    // anyPressed skips the opening scene; muting should not
+    if (code !== 'KeyM') this.input.anyPressed = true;
+    if (code === 'Space') { this.input.spacePressed = true; stop(); }
+    // The mirror, open, takes its own keys (js/heaven.js): its rows, a buy, looking away.
+    if (this.state === 'heaven' && this.heaven && this.heaven.panel && Heaven.panelKey(this, code)) { stop(); this.wakeAudio(); return; }
+    // Backspace up in heaven is the jump, at once: a death is still a restart under a second away.
+    if (code === 'Backspace') { stop(); if (this.state === 'heaven' && this.heaven) Heaven.leave(this); else this.restartLevel(); }
+    // Escape out of actual play pauses in place rather than dropping to the title — the room
+    // stays exactly as it is and RESUME is the only way this function runs again. Escape out of
+    // the pause overlay's own settings panel backs out one step, the way it always has from the
+    // title; out of the bare pause overlay it resumes. Everywhere else it still goes to the
+    // title, since those screens (dead, win, a boon) are not a thing "resume" means anything for.
+    // Fully self-contained: the state === 'paused' dispatch below skips Escape on purpose so the
+    // same keypress cannot pause and immediately unpause itself in one event.
+    if (code === 'Escape' && !this.dev.rules) {
+      stop();
+      if (this.state === 'play' || this.state === 'heaven') { this.pauseFrom = this.state; this.state = 'paused'; this.pause.index = 0; this.menu.panel = null; this.audio.sfxCard(); }
+      else if (this.state === 'paused') {
+        if (this.menu.panel) { this.menu.panel = null; this.audio.sfxSwing(); }
+        else { this.state = this.pausedIn(); this.audio.sfxSwing(); }
+      }
+      // Not off the clear card or the climb: the run is only saved at the head of the next level,
+      // so leaving there went back to the head of the one just won.
+      // Nor off a boon card: an Escape meant as a pause in the frame a boss fell landed here and
+      // threw the floor away as a death, soul and all.
+      else if (this.state !== 'title' && this.state !== 'clear' && this.state !== 'climb' && this.state !== 'boon') this.quitToTitle();
+    }
+    // The SOUND switch itself, so the settings row says what M did and the mute is kept.
+    if (code === 'KeyM') this.toggleSetting('sound');
+    if (code === 'KeyN' && this.state === 'play' && this.dev.open) this.levelCleared();
+    if (code === 'KeyE') this.input.rollPressed = true;
+    // A fifth key that does nothing until the shop puts something on it: Q throws the boomerang
+    // or steps through STRANGE SYMBOLS, whichever is at his neck.
+    if (code === 'KeyQ') this.input.qPressed = true;
+    if (this.state === 'boon') {
+      if (code === 'Digit1') this.takeBoon(0); if (code === 'Digit2') this.takeBoon(1); if (code === 'Digit3') this.takeBoon(2);
+      if (code === 'Digit4') this.skipBoon();
+    }
+    if (this.state === 'title' && code !== 'KeyM') this.menuKey(code);
+    else if (this.state === 'paused' && code !== 'Escape' && code !== 'KeyM') { if (this.menu.panel) this.menuKey(code); else this.pauseKey(code); }
+    this.wakeAudio();
+  }
+  wakeAudio() { this.audio.init(); this.audio.resume(); }
+
+  // ---------- the pad ----------
+  // Once a frame, before the steps. The pad sets the very flags the mouse and keys set, so every
+  // system downstream (the goat, heaven, THE TRIP's swap, the cards) reads it without knowing it is
+  // there. On a screen the keys walk, a button is handed to `keyPress` as the key it stands for.
+  pollPad(dt) {
+    const P = this.pad;
+    if (!P.poll(dt)) { if (P.active) { P.active = false; } return; }
+    if (P.touched && !P.active) { P.active = true; this.touch.active = false; this.touch.clear(); }
+    if (!P.active || this.dev.rules) return;
+    const B = PAD_BTN, inp = this.input, st = this.state;
+    if (P.any()) { inp.anyPressed = true; this.wakeAudio(); }
+    // A screen the keys walk as a list: the title and its panels, the pause, the mirror up in heaven.
+    const mirror = st === 'heaven' && this.heaven && this.heaven.panel;
+    const arrows = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+    if (st === 'title' || st === 'paused' || mirror) {
+      if (P.step) this.keyPress(arrows[P.step]);
+      if (P.pressed(B.a)) this.keyPress('Enter');
+      // B backs out: a panel shut, the pause resumed, the mirror looked away from.
+      if (P.pressed(B.b)) this.keyPress('Escape');
+      // START is the pause's own button both ways; on the title it picks, the way Enter does.
+      if (P.pressed(B.start)) this.keyPress(st === 'title' ? 'Enter' : 'Escape');
+      if (P.pressed(B.back) && st === 'paused') this.keyPress('Backspace');
+      return;
+    }
+    // The three cards and the fourth: the stick walks them (`boonPad`, drawn lit), A takes one.
+    if (st === 'boon') {
+      const n = this.boonChoice ? this.boonChoice.length : 0;
+      if (P.step === 'left' || P.step === 'up') { this.boonPad = (this.boonPad + n) % (n + 1); this.audio.sfxSwing(); }
+      if (P.step === 'right' || P.step === 'down') { this.boonPad = (this.boonPad + 1) % (n + 1); this.audio.sfxSwing(); }
+      if (P.pressed(B.a)) { if (this.boonPad >= n) this.skipBoon(); else this.takeBoon(this.boonPad); }
+      return;
+    }
+    // Play, and walking about up in heaven: the verbs, on the flags the mouse and keys use.
+    const walking = st === 'play' || st === 'heaven';
+    if (walking) {
+      if (P.buttPressed()) inp.lmbPressed = true;
+      if (P.grabPressed()) { inp.rmbDown = true; inp.rmbPressed = true; }
+      if (P.pressed(B.a)) inp.rollPressed = true;
+      if (P.pressed(B.b)) inp.spacePressed = true;
+      if (P.pressed(B.y)) inp.qPressed = true;
+      // The mage's scene says PRESS A TO SKIP; A is otherwise the roll, which it does not read.
+      if (P.pressed(B.a) && this.bless && this.bless.on) inp.spacePressed = true;
+      if (P.pressed(B.start)) this.keyPress('Escape');
+      if (P.pressed(B.back)) this.keyPress('Backspace');
+      return;
+    }
+    // Every other card (the death card's ASCEND, the clear card, the win) goes on with A or START,
+    // as Space does. BACK on the death card is Backspace's restart.
+    if (P.pressed(B.a) || P.pressed(B.start)) inp.spacePressed = true;
+    if (P.pressed(B.back) && st === 'dead') this.keyPress('Backspace');
+  }
+  // What the floor's words and the prompts call a press, for whatever is in his hands.
+  get tapWord() { return this.pad && this.pad.active ? 'PRESS A' : this.coarse ? 'TAP' : 'CLICK'; }
+  // `game.vibe` asks for a buzz of `ms`: a phone's motor, or the pad's.
+  vibe(ms) {
+    if (this.pad && this.pad.active) { this.pad.rumble(ms); return; }
+    if (this.coarse && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+  }
+
   bindInput() {
     const c = this.canvas;
     const wake = () => { this.audio.init(); this.audio.resume(); };
@@ -1430,51 +1540,16 @@ class Game {
       if (e.repeat) return;
       // The RULES page has no keys: Backspace under it would regenerate the level it is describing.
       if (this.dev.rules) { e.preventDefault(); return; }
-      // anyPressed skips the opening scene; muting should not
-      this.keys.add(e.code); if (e.code !== 'KeyM') this.input.anyPressed = true;
+      this.keys.add(e.code);
       // Only a key that plays the game hands it to the keyboard. A phone's volume rocker is a keydown
       // too, and it used to put the touch controls away for good a few seconds into the first level —
-      // whenever somebody turned the sound down.
-      if (KEYBOARD_KEY.test(e.code)) this.touch.active = false;
-      if (e.code === 'Space') { this.input.spacePressed = true; e.preventDefault(); }
-      // The mirror, open, takes its own keys (js/heaven.js): its rows, a buy, looking away.
-      if (this.state === 'heaven' && this.heaven && this.heaven.panel && Heaven.panelKey(this, e.code)) { e.preventDefault(); wake(); return; }
-      // Backspace up in heaven is the jump, at once: a death is still a restart under a second away.
-      if (e.code === 'Backspace') { e.preventDefault(); if (this.state === 'heaven' && this.heaven) Heaven.leave(this); else this.restartLevel(); }
-      // Escape out of actual play pauses in place rather than dropping to the title — the room
-      // stays exactly as it is and RESUME is the only way this function runs again. Escape out of
-      // the pause overlay's own settings panel backs out one step, the way it always has from the
-      // title; out of the bare pause overlay it resumes. Everywhere else it still goes to the
-      // title, since those screens (dead, win, a boon) are not a thing "resume" means anything for.
-      // Fully self-contained: the state === 'paused' dispatch below skips Escape on purpose so the
-      // same keypress cannot pause and immediately unpause itself in one event.
-      if (e.code === 'Escape' && !this.dev.rules) {
-        e.preventDefault();
-        if (this.state === 'play' || this.state === 'heaven') { this.pauseFrom = this.state; this.state = 'paused'; this.pause.index = 0; this.menu.panel = null; this.audio.sfxCard(); }
-        else if (this.state === 'paused') {
-          if (this.menu.panel) { this.menu.panel = null; this.audio.sfxSwing(); }
-          else { this.state = this.pausedIn(); this.audio.sfxSwing(); }
-        }
-        // Not off the clear card or the climb: the run is only saved at the head of the next level,
-        // so leaving there went back to the head of the one just won.
-        // Nor off a boon card: an Escape meant as a pause in the frame a boss fell landed here and
-        // threw the floor away as a death, soul and all.
-        else if (this.state !== 'title' && this.state !== 'clear' && this.state !== 'climb' && this.state !== 'boon') this.quitToTitle();
+      // whenever somebody turned the sound down. A real key takes the controls off a pad the same way.
+      if (KEYBOARD_KEY.test(e.code)) {
+        this.touch.active = false;
+        // A trigger held as the keyboard took over must not leave the grab clamped shut.
+        if (this.pad.active) { this.pad.active = false; this.input.rmbDown = false; }
       }
-      // The SOUND switch itself, so the settings row says what M did and the mute is kept.
-      if (e.code === 'KeyM') this.toggleSetting('sound');
-      if (e.code === 'KeyN' && this.state === 'play' && this.dev.open) this.levelCleared();
-      if (e.code === 'KeyE') this.input.rollPressed = true;
-      // A fifth key that does nothing until the shop puts something on it: Q throws the boomerang
-      // or steps through STRANGE SYMBOLS, whichever is at his neck.
-      if (e.code === 'KeyQ') this.input.qPressed = true;
-      if (this.state === 'boon') {
-        if (e.code === 'Digit1') this.takeBoon(0); if (e.code === 'Digit2') this.takeBoon(1); if (e.code === 'Digit3') this.takeBoon(2);
-        if (e.code === 'Digit4') this.skipBoon();
-      }
-      if (this.state === 'title' && e.code !== 'KeyM') this.menuKey(e.code);
-      else if (this.state === 'paused' && e.code !== 'Escape' && e.code !== 'KeyM') { if (this.menu.panel) this.menuKey(e.code); else this.pauseKey(e.code); }
-      wake();
+      this.keyPress(e.code, e);
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
 
@@ -1485,6 +1560,7 @@ class Game {
     c.addEventListener('pointerdown', (e) => {
       wake(); e.preventDefault();
       try { c.setPointerCapture(e.pointerId); } catch (err) { /* not fatal */ }
+      this.pad.active = false;   // a click or a finger takes the controls back off the pad
       const p = this.canvasPos(e);
       // Every mouse press is counted, whatever screen it lands on: the click on RESUME came back as
       // a fresh left button on the next move in play, and headbutted.
@@ -1549,6 +1625,9 @@ class Game {
       if (this.dev.slide) { this.devSlide(this.dev.slide, p.x); return; }   // a dev slider held
       if (isMouse(e)) {
         this.input.mouse = p; if (this.touch.active) this.touch.active = false;
+        // Only a mouse that really moved takes the aim back from a pad: a browser also sends a
+        // move when the page shifts under a resting cursor.
+        if (this.pad.active && (e.movementX || e.movementY)) { this.pad.active = false; this.input.rmbDown = false; }
         // A second button pressed while the first is still down is not a pointerdown — the browser
         // reports it as a move with a changed `buttons`. Holding grab and clicking to throw is exactly
         // that chord, and it used to be swallowed whole; so did letting go of grab while the other
@@ -1631,11 +1710,28 @@ class Game {
     const k = this.keys;
     let mx = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
     let my = (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0) - (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0);
-    const touching = this.touch.active;
+    const touching = this.touch.active, padding = this.pad.active;
     if (touching) { const mv = this.touch.moveVector(); if (mv.x || mv.y) { mx = mv.x; my = mv.y; } }
+    if (padding) { const mv = this.pad.moveVector(); if (mv.x || mv.y) { mx = mv.x; my = mv.y; } }
     const l = Math.hypot(mx, my); if (l > 1) { mx /= l; my /= l; }
     this.input.mx = mx; this.input.my = my;
     if (!this.goat) return;
+
+    if (padding) {
+      // The right stick aims, with a light snap onto the man it is nearly pointed at. Let go of it
+      // and the aim is the thumb's: where he runs (or where the stick was last), snapped the way
+      // `autoAim` snaps a thumb. Every system that reads the aim reads `input.aim` (→ `goat.aim`):
+      // the headbutt, the throw, the shield's cover, his head turned while he carries.
+      const A = TUNING.pad.assist, manual = this.pad.aimVector();
+      if (manual) { this.padAim = manual; this.input.aim = autoAim(this, manual.x, manual.y, A.cone, A.reach); }
+      else {
+        if (mx || my) { const d = Math.hypot(mx, my); this.padAim = { x: mx / d, y: my / d }; }
+        this.input.aim = autoAim(this, this.padAim.x, this.padAim.y);
+      }
+      // Grab is a held button, as the right mouse button is.
+      this.input.rmbDown = this.pad.grabHeld();
+      return;
+    }
 
     if (touching) {
       // Thumb aiming: a manual drag wins, otherwise aim where you run, with a snap onto nearby men.
@@ -2634,6 +2730,9 @@ class Game {
     this.timeScale += ((wantSlow ? 0.32 : this.aimSlow > 0 ? eye.scale : 1) - this.timeScale) * (1 - Math.exp(-7 * dtReal));
     this.acc += dtReal * this.timeScale;
     const step = 1 / 60;
+    // The pad has no events: it is read here, once, and what it pressed waits in `input` for the
+    // next step the way a key's press does.
+    this.pollPad(dtReal);
     let n = 0;
     while (this.acc >= step && n < 5) { this.update(step); this.acc -= step; n++; }
     if (n === 5) this.acc = 0;
@@ -2651,7 +2750,8 @@ class Game {
   // skull into. A plain `crosshair` was the one cursor in the whole game regardless of what he was
   // carrying; `CURSOR_GOAT` still falls back to it if the browser can't render the inline SVG.
   updateCursor() {
-    const want = this.state === 'play' && this.goat && this.goat.holding ? 'grabbing' : CURSOR_GOAT;
+    // With a pad in hand the pointer means nothing and would sit wherever the mouse was left.
+    const want = this.pad.active ? 'none' : this.state === 'play' && this.goat && this.goat.holding ? 'grabbing' : CURSOR_GOAT;
     if (this.canvas.style.cursor !== want) this.canvas.style.cursor = want;
   }
 
@@ -4058,7 +4158,8 @@ class Game {
     const t = Object.assign({}, real);
     t.mx = -real.mx; t.my = -real.my;
     t.rollPressed = real.spacePressed; t.spacePressed = real.rollPressed;
-    const buttHeld = this.touch.active ? this.touch.pressed.butt !== undefined : !!((this.mouseButtons || 0) & 1);
+    const buttHeld = this.touch.active ? this.touch.pressed.butt !== undefined
+      : this.pad.active ? this.pad.buttHeld() : !!((this.mouseButtons || 0) & 1);
     // A press latched by the pointer (`rmbPressed`) counts even if the button was up again by now:
     // a quick tap inside a kill's hitstop was lost, the one edge the frozen frames did not keep.
     const grabEdge = (real.rmbDown && !this.tripGrabWas) || !!real.rmbPressed;
@@ -4143,7 +4244,6 @@ class Game {
     e.say = { text: list[(Math.random() * list.length) | 0], life: TUNING.bark.life, max: TUNING.bark.life };
     this.barkCd = TUNING.bark.gap; e.barkCd = TUNING.bark.perEnemy;
   }
-  vibe(ms) { if (this.coarse && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { /* ignore */ } } }
   // `hurt` is the arc pointing back at what just hit you; `hurtVignette` is a plainer, non-directional
   // cue on top of it — the corners of the screen going red for a beat — because an arc on one edge of
   // the screen is easy to miss at a glance and a hit landing is the one thing a player must never be

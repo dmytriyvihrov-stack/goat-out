@@ -1018,7 +1018,7 @@ Object.assign(Heaven, {
     ctx.font = `700 22px ${FONT_SC}`; ctx.fillStyle = 'rgba(176,122,34,0.5)';
     ctx.fillText('THE EDGE', 45 * TILE, 18.1 * TILE * TILT);
     ctx.font = `700 13px ${FONT_SC}`; ctx.fillStyle = 'rgba(176,122,34,0.42)';
-    ctx.fillText(game.touch && game.touch.active ? 'WALK OFF IT TO GO BACK DOWN' : 'WALK OFF IT TO GO BACK DOWN  ·  BACKSPACE', 45 * TILE, 18.7 * TILE * TILT);
+    ctx.fillText(game.touch && game.touch.active ? 'WALK OFF IT TO GO BACK DOWN' : `WALK OFF IT TO GO BACK DOWN  ·  ${keysOf(game).back}`, 45 * TILE, 18.7 * TILE * TILT);
     // (THE SEATS OF THE SAVED was lettered under the seats until 29 Sep 2026: "no words needed here")
     ctx.restore();
   },
@@ -1278,7 +1278,7 @@ Object.assign(Heaven, {
     const word = { god: 'TALK', shepherd: 'BE COMBED', mirror: 'LOOK INTO IT', seat: 'LISTEN' }[n.kind];
     const lift = { god: 150, shepherd: 70, mirror: 90, seat: 80 }[n.kind];
     const x = R.vcx + (n.x - cam.x) * z, y = R.vcy + (n.y - cam.y) * z * TILT - lift * z;
-    const key = game.touch && game.touch.active ? 'GRAB' : SKILL_KEYS.grab;
+    const key = game.touch && game.touch.active ? 'GRAB' : keysOf(game).grab;
     ctx.save(); ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.textAlign = 'left';
     const kw = ctx.measureText(key).width + 10 * s, ww = ctx.measureText(word).width, w = kw + ww + 18 * s, h = 22 * s;
     const bx = Math.round(clamp(x - w / 2, 8, R.vw - w - 8)), by = Math.round(clamp(y - h, 8, R.vh - h - 8));
@@ -1386,7 +1386,7 @@ Object.assign(Heaven, {
     P.rects = [];
     MIRROR.forEach((u, i) => {
       const r = this.rank(u.id), max = u.costs.length, cost = u.costs[r], y = y0 + 96 * s + i * rh;
-      const over = !game.touch.active && game.input.mouse && game.input.mouse.x >= rx && game.input.mouse.x <= rx + rw && game.input.mouse.y >= y && game.input.mouse.y <= y + rh - 8 * s;
+      const over = !game.touch.active && !padOn(game) && game.input.mouse && game.input.mouse.x >= rx && game.input.mouse.x <= rx + rw && game.input.mouse.y >= y && game.input.mouse.y <= y + rh - 8 * s;
       if (over && game.mouseMoved !== false) P.i = i;
       const sc = this.soulCost(u, r), sel = P.i === i, afford = cost !== undefined && M.sacrifices >= cost && (M.souls || 0) >= sc;
       const shake = P.shakeRow === i && P.shake > 0 ? Math.sin(P.shake * 60) * 6 * s * P.shake : 0;
@@ -1417,7 +1417,7 @@ Object.assign(Heaven, {
     ctx.strokeStyle = '#e0ac3e'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx2, cy2, bw2, 30 * s);
     ctx.textAlign = 'center'; ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = '#fff4c2'; ctx.fillText('LOOK AWAY', bx2 + bw2 / 2, cy2 + 20 * s);
     ctx.textAlign = 'left'; ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.5)';
-    ctx.fillText(game.touch.active ? 'tap a row to buy it' : 'click or SPACE buys  ·  RMB or ESC looks away', rx, cy2 + 20 * s);
+    ctx.fillText(game.touch.active ? 'tap a row to buy it' : padOn(game) ? 'A buys  ·  B looks away' : 'click or SPACE buys  ·  RMB or ESC looks away', rx, cy2 + 20 * s);
     ctx.restore();
   },
   // The corrupted soul as a counter's mark: the wisp's own pixel body, `w` px wide, centred at (x, y).

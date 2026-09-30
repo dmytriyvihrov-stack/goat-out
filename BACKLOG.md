@@ -48,7 +48,7 @@ Every open line in this file, `PLAYTEST.md` §8–9, `CLAUDE.md` and `MARKET.md`
   grow by floor.
 - **No change:** THREAT stays priced as it is ("room danger rises and so does the goat's power"); the
   price-by-runner tool below is closed with it.
-- **Parked, kept in plans ("позже"):** three lives on a run, gamepad, the Priest boss, the later acts, the
+- **Parked, kept in plans ("позже"):** three lives on a run, gamepad (asked for and built on 30 Sep 2026), the Priest boss, the later acts, the
   hunt, hell, heaven (the secret ending; the hub between deaths was asked for and built on 29 Sep 2026),
   the second talisman slot (for the acts). Not to be built without asking.
 - **Later, not today:** everything in `MARKET.md` §9 (gore, price, publisher, a GIF export).

@@ -528,7 +528,7 @@ you, comes for you, and arrives.
 
 ## Not built yet
 
-Mirrors as an environmental puzzle, gamepad support, a Priest boss, and the later acts sketched in the
+Mirrors as an environmental puzzle, a Priest boss, and the later acts sketched in the
 original brief. Kept for later, not scheduled (26 Sep 2026): three lives on a run; the hunt, men walking
 in from the entry once a floor runs long past its par; hell, a second act with its own curve and deck;
 heaven as a secret ending, a run that swallowed no soul going up alive (the pasture the dead go up to

@@ -1262,6 +1262,20 @@ const TUNING = {
   // On touch the headbutt turns toward the likeliest man ahead of the stick: within `reach` tiles and
   // `cone` radians of it, and only one the goat can see (never a mist, a disguise or a man in the fog).
   touchAim: { reach: 5.2, cone: 0.95 },
+  // A gamepad (`PadInput`, js/input.js). `dead` is the left stick's radial dead zone, `aimDead` the
+  // right stick's (inside it the aim follows the run, snapped like a thumb's by `touchAim`); `wake`
+  // how far a stick must be pushed to take the controls off the keyboard (a pad on the desk drifts);
+  // `trigger` how far a trigger goes down to count as pressed. A right stick that is held aims with
+  // a lighter snap than the thumb's (`assist`: radians and tiles). `navAt` is a stick push that walks
+  // a menu, one row on the push and then one every `repeatEvery` s after `repeatAfter`. `rumble`
+  // turns `game.vibe(ms)` into the motors: magnitude `ms / full` (floored at `min`) × `strong` / `weak`,
+  // lasting `ms × stretch`.
+  pad: {
+    dead: 0.2, aimDead: 0.35, wake: 0.5, trigger: 0.35,
+    assist: { cone: 0.3, reach: 5.2 },
+    navAt: 0.6, repeatAfter: 0.36, repeatEvery: 0.12,
+    rumble: { full: 80, min: 0.25, strong: 0.8, weak: 0.5, stretch: 1.6 },
+  },
   // THE FOG. A room is opened by walking into it and never closes again — that is `room.seen`. This
   // is the other half: what a partition hides from where he is standing right now. `shade` is how
   // far down anything out of his line of sight goes, and `radius` how far the line is cast at all

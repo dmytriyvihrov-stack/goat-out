@@ -101,6 +101,18 @@ Twelve notes in one message (29 Sep 2026), with screenshots.
   and stubs for everything that saves. Found with it: at `juice.screen` 0.6 a kill's screen flash
   (and the hurt one) is spent inside the step that sets it and never reaches a drawn frame. The table's
   text is 12 CSS px or more.
+- **A gamepad** (30 Sep 2026, "add support if a person uses a gamepad on PC, bind the buttons as you
+  see fit"; it was parked). The browser's standard mapping, read once a frame (`PadInput` in
+  js/input.js, `Game.pollPad`, `TUNING.pad`). No verb is added: the pad presses the flags the mouse and
+  keys press, so THE TRIP scrambles it the same way. Left stick (or d-pad) runs; right stick aims, with a
+  light snap onto the man it nearly points at, and at rest the aim follows the run and snaps like a
+  thumb's. RT / RB / X headbutt, LT / LB grab (held) and throw (released), A roll, B BAAH, Y the Q
+  talisman, START pause, BACK the restart (and the jump from heaven). Menus, pause, settings, LEVELS,
+  the mirror: d-pad or stick and A, B backs out. The soul cards: left / right lights a card, A takes it.
+  The death card's ASCEND, the clear card and the win go on with A. The rail, the soul cards, the floor
+  lessons, the prompts in heaven and the cards' key box say RT / LT / A / B / Y / BACK while the pad has
+  the controls; a key or a moved mouse gives them back (the pointer hides while the pad has them). A
+  headbutt's or a blow's buzz (`game.vibe`) runs the pad's motors.
 
 ---
 
