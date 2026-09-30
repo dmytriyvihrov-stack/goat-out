@@ -65,7 +65,7 @@ class Game {
     this.enemies = []; this.props = []; this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.puffs = []; this.flares = [];
     // What the men have to read in the room: standing fire and the Mill (fixed for the level), and
     // whatever rune is being painted right now (rebuilt each step).
-    this.hazards = []; this.sightBlockers = []; this.runes = []; this.houndTold = false; this.henTold = false;
+    this.hazards = []; this.wallArt = []; this.sightBlockers = []; this.runes = []; this.houndTold = false; this.henTold = false;
     // Who actually ran this step. Everything that asks "is anybody standing here" — a grate's
     // trigger, the wheel's arm, a stone tooth, a body arriving on a body — used to walk the level's
     // whole cast, and a late floor carries eighty men; nineteen grates asking all of them three
@@ -1862,6 +1862,8 @@ class Game {
     // done here rather than in `Prop`'s constructor because a prop has no game to ask.
     if (this.mods.shieldUses) for (const p of this.props) if (p.kind === 'weapon' && p.weapon === 'shield') p.uses += this.mods.shieldUses;
     this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike' || p.kind === 'spire' || p.kind === 'barrel');
+    // The wall's dressing a flung body asks about every step (`Enemy.wallDressing`): kept off the prop loop.
+    this.wallArt = this.props.filter((p) => p.kind === 'armor' || p.kind === 'trophy');
     this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill' || p.kind === 'secret');
     // A niche is rock until its wall gives. It was floor from the first frame, lying one row outside
     // the room's own box where the room fog never reaches, so the rack and the grass in it sat there
@@ -3744,6 +3746,7 @@ class Game {
           if (p.kind === 'table' && p.flipped) { p.smashTable(this, -nx, -ny); continue; }
           if (p.kind === 'table' && !p.flung) { p.shove(this, -nx, -ny, e); continue; }
           if (p.kind === 'barrel') { p.roll(this, -nx, -ny, TUNING.prop.barrel.roll, e); continue; }
+          if (p.kind === 'armor') { p.burstArmor(this, -nx, -ny, 1.2); continue; }
           if (p.kind === 'lamp') { p.topple(this, -nx, -ny); continue; }
           if (p.kind === 'brazier') { p.spill(this, -nx, -ny); e.ignite(this); continue; }
           if (p.kind === 'bell') p.ring(this);
@@ -3779,6 +3782,11 @@ class Game {
         if (e.state === 'flung' && e !== g && p.kind === 'barrel' && -vn > TUNING.prop.barrel.knock) p.roll(this, -nx, -ny, -vn * TUNING.prop.barrel.pass, e);
         // A body landing on a table knocks the supper off it (js/scatter.js).
         if (e.state === 'flung' && p.kind === 'table' && -vn > ph.knockHitSpeed && this.scatter) this.scatter.fromTable(p, -nx, -ny, 0.8);
+        // A suit of armour is not stone: a body into it takes it apart and goes on (pillar 3 — it kills
+        // nobody; the wall behind it may).
+        if (e.state === 'flung' && p.kind === 'armor' && -vn > TUNING.prop.armor.hit) {
+          p.burstArmor(this, -nx, -ny, 1); e.vx *= TUNING.prop.armor.slow; e.vy *= TUNING.prop.armor.slow; continue;
+        }
         if (e.state === 'flung' && e !== g && -vn > e.splatLimit(this)) { e.die(this, 'splat', -nx, -ny); continue; }
         if (e === g && p.kind === 'table' && !p.flung && !p.flipped) {
           // the goat can shoulder a table along slowly

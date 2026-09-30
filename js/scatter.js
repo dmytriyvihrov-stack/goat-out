@@ -62,9 +62,23 @@ class Scatter {
     p.food = [];
     this.game.audio.sfxClatter('clay', 0.8);
   }
-  // A blast: every laid table inside `r` px of it throws its supper away from the middle.
+  // A suit of armour coming apart (`Prop.burstArmor`): each piece off the height it hung at on the
+  // stand (`prop.armor.pieces`), along (dx, dy) and spread either side, the way a table's supper goes.
+  fromArmor(p, dx, dy, power = 1) {
+    const S = TUNING.scatter, l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+    for (const [id, h] of TUNING.prop.armor.pieces) {
+      const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 2 * S.spread;
+      const sp = (S.speed[0] + Math.random() * (S.speed[1] - S.speed[0])) * power;
+      this.add('armor-' + id, p.x + (Math.random() - 0.5) * 8, p.y + 1, h, Math.cos(a) * sp, Math.sin(a) * sp,
+        (S.lift[0] + Math.random() * (S.lift[1] - S.lift[0])) * Math.min(1.4, power) * 0.8);
+    }
+    this.game.audio.sfxClatter('metal', 1);
+  }
+  // A blast: every laid table inside `r` px of it throws its supper away from the middle, and every
+  // suit of armour in it comes apart.
   burst(x, y, r, power = 1.4) {
     for (const p of this.game.props) {
+      if (p.kind === 'armor' && !p.spilled) { const d = Math.hypot(p.x - x, p.y - y); if (d <= r) p.burstArmor(this.game, p.x - x || 1, p.y - y, power); continue; }
       if (p.kind !== 'table' || p.broken || !Scatter.foodOf(p).length) continue;
       const d = Math.hypot(p.x - x, p.y - y); if (d > r) continue;
       this.fromTable(p, p.x - x || 1, p.y - y, power * (1 - 0.5 * d / r));
@@ -180,7 +194,7 @@ class Scatter {
   // (`scale(1, 1 / TILT)`), `z` px up.
   drawBit(ctx, b, air) {
     const k = TUNING.scatter.texel, q = Math.round(b.turn / (Math.PI / 2)) & 3;
-    const name = 'food-' + b.id, g = PROP_PIXELS.sprites[name]; if (!g && b.id !== 'shard') return;
+    const name = b.K.sprite || 'food-' + b.id, g = PROP_PIXELS.sprites[name]; if (!g && b.id !== 'shard') return;
     const w = g ? (q & 1 ? g.h : g.w) * k : 3, h = g ? (q & 1 ? g.w : g.h) * k : 3;
     if (air) {
       // a few cells, smaller the higher it is
@@ -210,4 +224,9 @@ Scatter.KINDS = {
   milk: { brittle: true, bouncy: 0.6, sound: 'clay', color: '#e6e0d2', spill: ['#f2ecdc', '#c9c0ad'] },
   plate: { brittle: true, bouncy: 0.7, sound: 'clay', color: '#d6cfbc' },
   shard: { bouncy: 0.4, sound: 'clay' },
+  // A suit of armour's pieces (`fromArmor`): steel rings where it lands, and the helm rolls.
+  'armor-helm': { round: true, bouncy: 0.8, sound: 'metal', sprite: 'armor-helm' },
+  'armor-plate': { bouncy: 0.45, sound: 'metal', sprite: 'armor-plate' },
+  'armor-gaunt': { bouncy: 0.7, sound: 'metal', sprite: 'armor-gaunt' },
+  'armor-greave': { bouncy: 0.55, sound: 'metal', sprite: 'armor-greave' },
 };

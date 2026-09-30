@@ -239,7 +239,7 @@ const Dark = {
     const reach = (D.near + 0.2) * TILE;
     // Only what stands: a crack in the wall, a lantern up on it, a grate in the floor are the room,
     // and flattened into a shape they read as something standing where nothing is.
-    const list = [], flat = new Set(['secret', 'sconce', 'spike', 'clamp']);
+    const list = [], flat = new Set(['secret', 'sconce', 'spike', 'clamp', 'trophy']);
     for (const p of game.props) if (!p.broken && p !== hold && !flat.has(p.kind) && Math.hypot(p.x - g.x, p.y - g.y) < reach + (p.r || 0) && !game.hidden(p.x, p.y)) list.push(p);
     const men = [];
     for (const e of game.enemies) if (!e.dead && e !== hold && Math.hypot(e.x - g.x, e.y - g.y) < reach + e.r && !game.hidden(e.x, e.y)) men.push(e);

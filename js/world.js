@@ -135,6 +135,8 @@ class World {
           const tx = rng.int(room.x + 1, room.x + room.w - 3), ty = room.y;
           if (!wall(tx, ty) || !wall(tx + 1, ty) || !wall(tx, ty - 1) || !wall(tx + 1, ty - 1)) continue;
           if (!T0.includes(this.tileAt(tx, ty + 1)) || !T0.includes(this.tileAt(tx + 1, ty + 1))) continue;
+          // Not behind what hangs on or stands against that stretch of wall (a cleat, a stag's head, a suit of armour).
+          if (stands.some((p) => Math.abs(p.x - (tx + 1) * TILE) < 1.6 * TILE && p.y > (ty + 1) * TILE && p.y < (ty + 2) * TILE)) continue;
           this.omens.push({ room: room.index, id: 'wall-watcher', x: (tx + 1) * TILE - w / 2, y: (ty + 1) * TILE - h, w, h, alpha: O.wallAlpha, wall: true });
           break;
         }

@@ -24,6 +24,28 @@ const walkedFrom = (L, tiles = L.tiles) => {
   return seen;
 };
 
+// The wall's dressing of one `kind` held to `dressWall`'s promises (`GEN_RULES.armor` / `trophies`):
+// true, or why not. Its wall is read back off where it stands (`dressPoint`), then asked `wallFits`.
+const dressedRight = (L, list, kind) => {
+  const D = TUNING.prop[kind], def = L.def, name = kind === 'armor' ? 'suit of armour' : "stag's head";
+  if (def.cave || def.shroom || def.dark) return `a ${name} on a floor with no square walls for it`;
+  const grass = new Set(L.grass || []);
+  let loose = 0;
+  for (const p of list) {
+    const r = roomAt(L, p.x, p.y);
+    if (!r) return `a ${name} outside any room`;
+    const armory = r.tpl && r.tpl.name === 'armory';
+    if (!armory) loose++;
+    if (quiet(L, r) || r.isTrap || r.index < D.from && !armory) return `a ${name} in room ${r.index} (${r.isTrap ? 'trap' : r.role})`;
+    const side = p.side || 'n', tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE), at = dressPoint(kind, tx, ty, side);
+    if (kind === 'trophy' && side !== 'n') return `a stag's head on a side wall in room ${r.index}`;
+    if (Math.abs(at.x - p.x) > 0.5 || Math.abs(at.y - p.y) > 0.5 || !wallFits(L.tiles, L.W, r, tx, ty, side, grass)) return `a ${name} off its wall or by an opening at ${tx},${ty}`;
+    const mates = L.props.filter((q) => q !== p && inBox(r, q) && (q.kind === 'armor' || q.kind === 'trophy' || q.kind === 'chandelier'));
+    if (armory ? mates.some((q) => q.kind !== 'armor') || mates.length >= D.armory : mates.length) return `room ${r.index} is dressed with ${mates.length + 1} things`;
+  }
+  return loose <= D.perLevel || `${loose} of them (${name}) on one floor`;
+};
+
 // One level reduced to what the player meets: every room with its role, its men, what the plan said
 // about it, and its threat — a boss counting 1.6 of his kind, as the balance report always has.
 function roomsOf(L) {
@@ -538,6 +560,22 @@ const GEN_RULES = [
           return `a chandelier in the ${r.isAmbush ? 'ambush' : r.isTrap ? 'trap room' : r.isCalm ? 'calm room' : r.role}`;
       }
       return true;
+    } },
+  // The wall's dressing (gen.js `dressWall`) answers a thrown body and is no weapon of its own, so its
+  // promise is to be rare and out of the way: against a wall with plain stone either side of it (never
+  // a doorway), the floor round it open, in an ordinary room — THE ARMORY's own suits aside — and
+  // never beside another piece of it or under a chandelier's rope.
+  { id: 'armor', text: 'A suit of armour stands with its back to a far or side wall of an ordinary room, clear of every opening; a couple a floor, THE ARMORY\'s own aside.',
+    check: (L) => {
+      const suits = L.props.filter((p) => p.kind === 'armor');
+      if (!suits.length) return null;
+      return dressedRight(L, suits, 'armor');
+    } },
+  { id: 'trophies', text: 'A stag\'s head hangs on the far wall of an ordinary room, clear of every opening, a couple a floor at most, alone on its walls.',
+    check: (L) => {
+      const heads = L.props.filter((p) => p.kind === 'trophy');
+      if (!heads.length) return null;
+      return dressedRight(L, heads, 'trophy');
     } },
   // The cave's stone teeth. They kill on contact and they never rest, so where they are allowed to
   // stand is the whole of what keeps them a thing to use rather than a thing to be caught by.

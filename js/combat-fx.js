@@ -288,7 +288,7 @@ class CombatFX {
         g.fillRect(0,0,crop[2],cut);g.fillRect(0,crop[3]-cut,crop[2],cut);g.fillRect(0,0,cut,crop[3]);g.fillRect(crop[2]-cut,0,cut,crop[3]);
         this.fragment(e.x,e.y,pc,[0,0,crop[2],crop[3]],size*crop[2]/96,size*crop[3]/96,dx,dy,'gore');
       }
-    } else if (!e.corpsed) {   // a body the spade kept is a prop in the room, not a piece of fx
+    } else if (!e.corpsed && !e.hung) {   // a body the spade kept is a prop in the room, and one on the antlers hangs on the wall
       // He goes down in profile and ends on his side, a quarter turn, head the way the blow sent
       // him (`effects.corpse`): a man left standing at a random tilt read as a cut-out.
       const C=TUNING.effects.corpse,side=Math.abs(dx)>0.2?Math.sign(dx):(Math.random()<0.5?-1:1);

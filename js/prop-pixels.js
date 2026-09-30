@@ -818,6 +818,74 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
+  // ---------------------------------------------------------------- a suit of armour, 20 x 38
+  // Enter the Gungeon's (30 Sep 2026): a knight's harness on a wooden stand with its back to the wall,
+  // facing the room, lit from the upper left, one red crest the only colour on it. `empty` is what a
+  // body leaves: the plinth, the post the helm sat on and the crossbar the shoulders hung from.
+  function armor(empty) {
+    const g = new Grid(20, 38);
+    g.rect(3, 34, 14, 3, P.w1); g.hl(3, 34, 14, P.w3); g.hl(3, 36, 14, P.w0);                       // the plinth
+    if (empty) {
+      g.rect(9, 5, 2, 29, P.w2); g.vl(9, 5, 29, P.w3);                                              // the post
+      g.rect(4, 12, 12, 2, P.w2); g.hl(4, 12, 12, P.w3); g.set(4, 13, P.w1); g.set(15, 13, P.w1);   // the crossbar
+      g.rect(8, 3, 4, 3, P.w1); g.hl(8, 3, 4, P.w2);                                                // the knob
+      return g.outline();
+    }
+    for (const x of [6, 11]) {                                                                      // greaves, knees, sabatons
+      g.rect(x, 22, 3, 10, P.i2); g.vl(x, 22, 10, P.i3); g.rect(x, 25, 3, 2, P.i3); g.set(x, 25, P.i4);
+      g.rect(x - (x < 9 ? 1 : 0), 32, 4, 2, P.i1); g.hl(x - (x < 9 ? 1 : 0), 32, 4, P.i2);
+    }
+    g.rect(5, 19, 10, 4, P.i2); g.hl(5, 19, 10, P.i3); g.hl(5, 21, 10, P.i1);                        // the skirt of plates
+    g.rect(2, 13, 2, 7, P.i2); g.vl(2, 13, 7, P.i3); g.rect(16, 13, 2, 7, P.i1);                    // the arms,
+    g.rect(2, 20, 2, 2, P.i1); g.rect(16, 20, 2, 2, P.i1);                                          // the gauntlets
+    g.rect(5, 11, 10, 8, P.i3); g.rect(10, 11, 5, 8, P.i2); g.vl(9, 12, 6, P.i4); g.hl(6, 11, 4, P.i4);   // the breastplate
+    g.hl(5, 18, 10, P.w1); g.set(9, 18, P.b3);                                                      // belt, buckle
+    g.ell(4, 12, 2.6, 2.2, P.i3); g.ell(16, 12, 2.6, 2.2, P.i2); g.set(3, 11, P.i4);                  // the shoulders
+    g.rect(8, 10, 4, 1, P.i1);                                                                      // the gorget
+    g.ell(10, 6, 3.2, 3.6, P.i3); g.tone((x, y) => x >= 10 && y > 2, P.i2, [P.i3]);                   // the helm,
+    g.hl(7, 6, 6, P.d0); g.set(8, 4, P.i4); g.set(11, 8, P.i1); g.set(12, 8, P.i1);                 // its slit, its breaths
+    g.vl(9, 0, 3, P.r3); g.vl(10, 1, 2, P.r2);                                                      // the crest
+    return g.outline();
+  }
+  // What flies off it (js/scatter.js `fromArmor`), each a few texels of the same steel.
+  function armorPiece(kind) {
+    const g = new Grid(12, 12);
+    if (kind === 'helm') { g.ell(5, 5, 3.2, 3.6, P.i3); g.tone((x, y) => x >= 5 && y > 1, P.i2, [P.i3]); g.hl(2, 5, 6, P.d0); g.set(3, 3, P.i4); g.vl(4, 0, 2, P.r3); }
+    else if (kind === 'plate') { g.rect(1, 1, 8, 7, P.i3); g.rect(5, 1, 4, 7, P.i2); g.vl(4, 2, 5, P.i4); g.hl(1, 7, 8, P.w1); }
+    else if (kind === 'gaunt') { g.rect(1, 1, 3, 3, P.i2); g.hl(1, 1, 3, P.i3); g.set(4, 2, P.i1); }
+    else { g.rect(1, 1, 3, 7, P.i2); g.vl(1, 1, 7, P.i3); g.hl(1, 3, 3, P.i3); g.hl(0, 8, 4, P.i1); }
+    return g.outline();
+  }
+
+  // ---------------------------------------------------------------- a stag's head, 24 x 23
+  // Mounted on a wooden shield on the far wall (30 Sep 2026: "stuffed trophies — deer heads to begin
+  // with"). The antlers are the point, so they are the palest thing on it. `blood`: its tines have
+  // had a man on them. `tips`: the tines alone, drawn over a man pinned there so they come through him.
+  function trophy(blood, tips) {
+    const g = new Grid(24, 23), FUR = ['#5c3a22', '#8a5a34', '#b07a48'], X = (x, m) => (m ? 23 - x : x);
+    if (!tips) {
+      g.rect(7, 12, 10, 7, P.w1); g.hl(8, 19, 8, P.w1); g.hl(9, 20, 6, P.w1); g.hl(10, 21, 4, P.w1);   // the shield, darker than him
+      g.vl(7, 12, 7, P.w2); g.hl(7, 12, 10, P.w2); g.vl(16, 13, 6, P.w0); g.set(15, 19, P.w0); g.set(14, 20, P.w0); g.set(13, 21, P.w0);
+      for (const m of [0, 1]) {                                                                    // the ears, out and up
+        const f = m ? FUR[0] : FUR[1];
+        g.hl(X(6, m) - (m ? 2 : 0), 8, 3, f); g.hl(X(5, m) - (m ? 1 : 0), 7, 2, f); g.set(X(8, m), 9, f); g.set(X(7, m), 8, FUR[0]);
+      }
+      g.rect(10, 7, 4, 7, FUR[1]); g.hl(9, 9, 6, FUR[1]); g.hl(9, 10, 6, FUR[1]);                 // the head,
+      g.rect(10, 14, 4, 2, FUR[1]); g.hl(11, 16, 2, FUR[1]);                                       // the long muzzle
+      g.vl(10, 7, 7, FUR[2]); g.set(9, 9, FUR[2]); g.tone((x, y) => x >= 13, FUR[0], [FUR[1]]);
+      g.hl(10, 15, 4, '#c2a07e'); g.hl(11, 16, 2, '#2a1a14');                                      // the pale lip, the nose
+      g.set(9, 10, P.ol); g.set(14, 10, P.ol);                                                     // the eyes
+    }
+    for (const m of [0, 1]) {                                                                      // the antlers
+      const c = m ? P.c0 : P.c1;
+      g.line(X(10, m), 7, X(7, m), 4, c); g.line(X(7, m), 4, X(3, m), 2, c); g.line(X(3, m), 2, X(1, m), 0, c);
+      g.line(X(7, m), 4, X(7, m), 0, c); g.line(X(5, m), 3, X(4, m), 0, c);
+      g.set(X(9, m), 6, P.c2); g.set(X(7, m), 1, P.c2);
+      if (blood) for (const [x, y] of [[1, 0], [7, 0], [4, 0], [7, 1]]) g.set(X(x, m), y, y ? P.bl : '#9c2a22');
+    }
+    return g.outline();
+  }
+
   // ---------------------------------------------------------------- what lies on a table
   // The feast the cult sat down to, a thing a texel a colour off a letter grid (29 Sep 2026: "put
   // food on the tables that scatters when you hit them"). The golden apple, the milk and the
@@ -860,6 +928,9 @@ const PROP_PIXELS = (() => {
   for (const k in FOOD) sprites['food-' + k] = FOOD[k];
   sprites['chand0'] = chandelier(0); sprites['chand1'] = chandelier(1); sprites['chand-down'] = chandelierDown();
   sprites.cleat = cleat(false); sprites['cleat-cut'] = cleat(true);
+  sprites.armor = armor(false); sprites['armor-stand'] = armor(true);
+  for (const k of ['helm', 'plate', 'gaunt', 'greave']) sprites['armor-' + k] = armorPiece(k);
+  sprites.trophy = trophy(false, false); sprites['trophy-blood'] = trophy(true, false); sprites['trophy-tips'] = trophy(true, true);
   sprites['table-s'] = tableTop(); sprites['table-n'] = tableUnder(); sprites['table-e'] = tableSide(); sprites['table-w'] = mirror(sprites['table-e']);
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
   for (const k in sprites) if (!/^(rack|coop|roast)-/.test(k)) sprites[k] = sprites[k].trim();
@@ -1002,6 +1073,37 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     const name = p.cut ? 'cleat-cut' : 'cleat', g = S[name], k = TUNING.chandelier.texel;
     put(renderer.ctx, name, p.x - g.w * k / 2, cleatTop(p)); return true;
   };
+  // A suit of armour on its stand, feet on its point, rattling while a headbutt still rings in it; once
+  // a body has brought it down, the empty stand (`spilled`). In the prop's own upright frame.
+  A.armor = function (renderer, p) {
+    const k = TUNING.prop.armor.texel, name = p.spilled ? 'armor-stand' : 'armor', g = S[name];
+    const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 3) : 0;
+    renderer.shadow(p.x, p.y + 2, g.w * k * 0.42, 5);
+    putSnap(renderer.ctx, name, p.x + wob - g.w * k / 2, p.y + 4 - g.h * k, k);
+    return true;
+  };
+  // The stag's head on the far wall, fixed to its face the way the cleat is. A man dead on it hangs
+  // under its tines (`bodyImg`, baked by `Enemy.die`, his feet `bodyFoot` - `lift` world px from the
+  // prop), the tines are drawn again over him so they come through him, and his blood runs off his
+  // feet down to the floor, a cell at a time (`drip` px a second). `pass` 'tips' is the tines alone,
+  // for a live man pinned there (`Renderer.drawEnemy`).
+  A.trophy = function (renderer, p, pass) {
+    const ctx = renderer.ctx, Tr = TUNING.prop.trophy, k = Tr.texel, name = p.spent ? 'trophy-blood' : 'trophy', g = S[name];
+    const x0 = p.x - g.w * k / 2, y0 = p.y - TILE * 0.25 * TILT - 2 - g.h * k;
+    if (pass === 'tips') { putSnap(ctx, 'trophy-tips', x0, y0, k); return true; }
+    putSnap(ctx, name, x0, y0, k);
+    if (!p.body || !p.bodyImg) return true;
+    const foot = Math.round(p.y + (p.bodyFoot - Tr.lift) * TILT), floor = p.y + 3;
+    const run = Math.min(floor - foot + 12, p.bleedT * Tr.drip), c = 1.5;
+    if (!renderer.silPass) for (const [dx, lag] of [[-3, 0], [2, 0.8], [5, 2.1]]) {
+      const n = Math.floor(Math.max(0, run - lag * Tr.drip) / c);
+      for (let i = 0; i < n; i++) { ctx.fillStyle = i % 4 === 3 ? PALETTE.bloodDark : PALETTE.blood; ctx.fillRect(Math.round(p.x + dx), foot - 12 + i * c, c, c); }
+    }
+    ctx.drawImage(p.bodyImg, Math.round(p.x - 48), foot - 64);
+    putSnap(ctx, 'trophy-tips', x0, y0, k);
+    return true;
+  };
+
   // The chandelier, in two passes (`Renderer.drawProp` for the floor, `drawChandelierAir` over
   // everyone): on the floor its shadow, which says where it will land and darkens as it comes, or
   // the wreck once it has; in the air the ring `p.z` px up, swaying a little, and its rope to the

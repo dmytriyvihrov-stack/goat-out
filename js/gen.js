@@ -671,6 +671,7 @@ function tryGenerate(levelDef, seed, opts) {
   }
   let roasted = false;
   let chandeliers = 0;   // hung so far this floor, and the id that ties each to its cleat
+  let armors = 0, trophies = 0;   // the wall's dressing so far this floor, THE ARMORY's own not counted
   let clusterId = 0;  // one id per boulder formation (`placeRockCluster`), so `GEN_RULES.rocks` can
                        // tell a formation's own cells apart from two unrelated boulders standing close
   rooms.forEach((room) => {
@@ -825,6 +826,23 @@ function tryGenerate(levelDef, seed, opts) {
         chandeliers++;
         break;
       }
+    }
+    // The wall's dressing (30 Sep 2026, Enter the Gungeon's): a suit of armour with its back to the
+    // stone, or a stag's head on the far wall. Both answer a thrown body (`Enemy.wallDressing`) and
+    // neither is a weapon of its own, so they are few: one of the two in a room that rolls for it, a
+    // couple of each a floor, never where a room is teaching, resting, a set piece or a trap, never
+    // under a chandelier's rope, and none in a cave, on the trip or in THE DARK (whose lamps stand
+    // against the same walls). THE ARMORY is the armour's home and always stands `armor.armory`.
+    // Its own RNG stream, so no roll anywhere else moved when they came in. `GEN_RULES.armor` / `trophies`.
+    const AR = TUNING.prop.armor, TR = TUNING.prop.trophy, drng = new RNG(((seed ^ 0x0a3d0f7) + room.index * 4099) >>> 0);
+    const armory = room.tpl && room.tpl.name === 'armory';
+    if (!levelDef.cave && !levelDef.shroom && !levelDef.dark && room.index > 0 && !room.arena && !room.isAmbush && !room.isRest
+        && !room.isCalm && !room.isTrap && !room.isMill && !room.isHall && !room.isGallery && !room.isKillbox && room.index !== lessonIndex
+        && !props.some((p) => p.kind === 'chandelier' && inBox(room, p))) {
+      const rollA = drng.float(0, 1), rollT = drng.float(0, 1);
+      if (armory) { for (let k = 0; k < AR.armory; k++) dressWall(tiles, W, room, props, grass, drng, 'armor', true); }
+      else if (room.index >= AR.from && armors < AR.perLevel && rollA < AR.chance) { if (dressWall(tiles, W, room, props, grass, drng, 'armor')) armors++; }
+      else if (room.index >= TR.from && trophies < TR.perLevel && rollT < TR.chance) { if (dressWall(tiles, W, room, props, grass, drng, 'trophy')) trophies++; }
     }
     // THE SPIKES. Most of the rock a cave grows is paint (`Renderer.drawCaveDecor`); this is the rare
     // spire that is real, and everything about where it may stand follows from what it is for. It has
@@ -2169,6 +2187,49 @@ function activeIn(props, room) {
   let n = 0;
   for (const p of props) if (ACTIVE_KINDS.has(p.kind) && p.x >= room.x * TILE && p.x < (room.x + room.w) * TILE && p.y >= room.y * TILE && p.y < (room.y + room.h) * TILE) n++;
   return n;
+}
+const inBox = (room, p) => p.x >= room.x * TILE && p.x < (room.x + room.w) * TILE && p.y >= room.y * TILE && p.y < (room.y + room.h) * TILE;
+// Where the wall's dressing may go on a room's walls: a floor tile against the far wall ('n') — or,
+// for a suit of armour, the left or right wall ('w', 'e'; the near wall shows only its back) — with
+// `DRESS.run` tiles of plain stone either side of it along that wall, so it never stands in a doorway,
+// a shaft, a vault's mouth or a wall that gives, and the three floor tiles beside and in front of it
+// open, so a thing standing there can never be what closes a way through. Shared with
+// `GEN_RULES.armor` / `trophies`, which ask the same question of what was placed.
+const DRESS = { run: 2 };
+function wallFits(tiles, W, room, tx, ty, side, grass) {
+  const at = (x, y) => tiles[y * W + x], F = (x, y) => at(x, y) === T.FLOOR && !(grass && grass.has(y * W + x));
+  for (let k = -DRESS.run; k <= DRESS.run; k++) {
+    const stone = side === 'n' ? at(tx + k, ty - 1) : side === 'w' ? at(tx - 1, ty + k) : at(tx + 1, ty + k);
+    if (stone !== T.WALL) return false;
+  }
+  if (side === 'n') return F(tx - 1, ty) && F(tx, ty) && F(tx + 1, ty) && F(tx - 1, ty + 1) && F(tx, ty + 1) && F(tx + 1, ty + 1);
+  const ix = side === 'w' ? 1 : -1;
+  return F(tx, ty - 1) && F(tx, ty) && F(tx, ty + 1) && F(tx + ix, ty - 1) && F(tx + ix, ty) && F(tx + ix, ty + 1);
+}
+// The world point a piece of dressing stands at on tile (tx, ty) of wall `side`: a suit of armour its
+// own width off the stone, a stag's head where the cleat hangs (a quarter tile down from the face).
+function dressPoint(kind, tx, ty, side) {
+  const P = TUNING.prop, back = kind === 'armor' ? P.armor.r + P.armor.gap : 0.25 * TILE;
+  if (side === 'w') return { x: tx * TILE + back, y: (ty + 0.5) * TILE };
+  if (side === 'e') return { x: (tx + 1) * TILE - back, y: (ty + 0.5) * TILE };
+  return { x: (tx + 0.5) * TILE, y: ty * TILE + back };
+}
+// One piece of dressing in `room` off `rng`: a spot on a wall that fits, clear of every prop (THE
+// ARMORY's own racks only a step, `packed`), of the way in and of every door. False where none fits.
+function dressWall(tiles, W, room, props, grass, rng, kind, packed) {
+  const spots = [];
+  for (let tx = room.x + 1 + DRESS.run; tx <= room.x + room.w - 2 - DRESS.run; tx++) spots.push([tx, room.y + 1, 'n']);
+  if (kind === 'armor') for (let ty = room.y + 1 + DRESS.run; ty <= room.y + room.h - 2 - DRESS.run; ty++) spots.push([room.x + 1, ty, 'w'], [room.x + room.w - 2, ty, 'e']);
+  rng.shuffle(spots);
+  for (const [tx, ty, side] of spots) {
+    if (!wallFits(tiles, W, room, tx, ty, side, grass)) continue;
+    const at = dressPoint(kind, tx, ty, side);
+    if (props.some((p) => len(p.x - at.x, p.y - at.y) < (p.kind === 'door' ? 2.5 * TILE : packed && p.kind === 'weapon' ? 0.9 * TILE : 1.6 * TILE))) continue;
+    if (room.enter && len(room.enter.x - at.x, room.enter.y - at.y) < 2.5 * TILE) continue;
+    props.push({ x: at.x, y: at.y, kind, side });
+    return true;
+  }
+  return false;
 }
 function rockFits(tiles, W, tx, ty, grass) {
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {

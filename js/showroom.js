@@ -71,6 +71,11 @@ function showroomLevel(def, seed) {
     props.push(Object.assign({ x: (x + 1) * TILE, y: (wy + 0.5) * TILE, kind: 'door', vertical: false }, o));
     label(name, x + 0.5, wy + 1.4, 5);
   });
+  // The wall's dressing, between the alcoves: a suit of armour and a stag's head (gen.js `dressWall`).
+  for (const [kind, tx, name] of [['armor', hx + 6, 'ARMOUR'], ['trophy', hx + 14, 'STAG\'S HEAD']]) {
+    props.push(Object.assign(dressPoint(kind, tx, hy, 'n'), { kind, side: 'n' }));
+    label(name, tx, hy + 1.6, 5);
+  }
   // A wall that gives, in the near wall, with its niche behind it (walled up again by `startLevel`).
   {
     const tx = hx + 36, wr = hall.y + hall.h - 1;
