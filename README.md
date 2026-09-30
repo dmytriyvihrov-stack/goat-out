@@ -149,7 +149,8 @@ over, a boomerang on Q, and so on.
 
 **Animals.** From the second floor a coop holds an animal — a hen, a goose, a crow, a tortoise, a
 horse. Break it open and get the animal to the stairs alive, and it pays you for the rest of the run,
-and takes its seat in the pasture above for good.
+and takes its seat in the pasture above for good. The horse, in a stall of its own, races you to the
+locked rooms with a soul and waits in each for the soul to be taken: it pays only if you beat it to one.
 
 **The pasture above.** A death goes up before it comes back down: two rooms of cloud where the goat god
 sits in his light and has a great deal to say about it (GRAB to listen, BAAH to argue), a blind shepherd

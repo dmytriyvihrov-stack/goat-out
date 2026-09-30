@@ -932,6 +932,13 @@ const TUNING = {
     // stores. One blow — two read as a second cage to break before the one ally in the game gets
     // to do anything, and the coop is not the lesson here, she is.
     coop: { r: 26, hits: 1 },
+    // The horse's own coop (30 Sep 2026: "a bigger cage for the horse"): a stall `w` x `h` tiles of
+    // heavy slats, a box and not a disc (`stallHalf`, gen.js) — the horse stands in it at its full
+    // size. `hits` blows open it, the second the one that frees it. It stands where its room stays
+    // one piece round it (`stallKeepsRoomOpen`: against a wall, never across a lane), with `clear`
+    // tiles of open floor before its front, where it is butted, and `mouth` tiles off the way in and
+    // the way out. `pace` is how far the horse shifts about in it, in px, either way (drawn only).
+    stall: { w: 3, h: 2, hits: 2, clear: 1, mouth: 2.5, pace: 10 },
     // The mouse: a trader in a three-tile hole in the wall of a level's middle gate room, on the
     // levels in `shop.levels`. Her language is the game's own — grab is take, a headbutt is rude — and
     // rudeness costs: `lines` are what she says on the first two blows, and the third is the rat
@@ -1022,10 +1029,13 @@ const TUNING = {
       // walked `giftLeave` tiles away from it (`Beast.updateGift`): rising `giftRise` px/s, gone in
       // `giftGone` s. It used to follow him the whole floor like an escort and pay nothing.
       giftLeave: 12, giftRise: 90, giftGone: 1.3 },
-    // The horse (24 Sep 2026) races you. Out of the coop it says so and gallops for the stairs down
-    // the goose's field, at `speed` — well over the goat's run-up, so it is always ahead — and it
-    // does not wait for him: it stops only at a bar no kick opens (a soul gate, a sealed arena),
-    // which is fine, and at the stairs, where it stands and says who won (`lines`). A shut door in
+    // The horse (24 Sep 2026) races you. Out of its stall it says so and gallops down the goose's
+    // field at `speed`, and the race is run in legs (30 Sep 2026): to each locked room with a soul
+    // ahead of it (a soul gate's room, the mouse's included: `Beast.horseLegs`), where it waits
+    // until the gate gives, then on to the next and at last to the stairs. A leg is his if he is in
+    // its room before the horse is; win one soul room and it pays at the stairs (`won`, `Beast.saved`).
+    // The stairs leg is said (`lines.won` / `lost`) and pays nothing. It stops besides only at a
+    // bar no kick opens (a sealed arena, the vault, the dark flight). A shut door in
     // its way it kicks (`kickWind` s rearing, then the blow, `kickGap` s between two on iron), and
     // a man in its way it bowls aside at `bowl` px/s (× his own weight), dazed `daze` s — well under
     // `physics.splatSpeed`, so it scatters a room and never kills in it: the wall is still the only
@@ -1043,11 +1053,15 @@ const TUNING = {
       taunt: { gap: [5, 8], ahead: 5, hold: 1.8, say: 2.4 }, kickWind: 0.28, kickGap: 0.42, bowl: 7 * TILE, daze: 1.2,
       slow: 0.55, slowFor: 0.35, stuckFor: 0.8, sideFor: 0.45, ready: 1.8,
       // It has won when it stands within `homeR` tiles of the stairs; within `tellR` of it the goat
-      // hears which of them got there first.
+      // hears which of them got there first. At a soul room it has won the leg the moment it is in
+      // the room first, and says so once they are both in it: `won` or `lost`, then `mine` (it
+      // waits there for the soul) or `yours`. At the stairs the second line is whether it pays.
       homeR: 2.5, tellR: 5,
-      lines: { won: ['TOO SLOW, GOAT!', 'I WON. PAY UP'], lost: ['YOU CHEATED', 'FINE. NEXT TIME'],
+      lines: { won: 'TOO SLOW, GOAT!', lost: 'YOU CHEATED', mine: 'TAKE THE SOUL. I WAIT', yours: 'FINE. MY LEGS ARE YOURS',
+        pay: 'A BET IS A BET. RUN ON MY LEGS', none: 'NOT ONE SOUL ROOM. NO PAY',
         taunt: ['HOW SLOW YOU ARE', 'IS THAT A GALLOP?', 'I COULD GRAZE HERE', 'KEEP UP, GOAT', 'ARE YOU WALKING?'] },
-      // At the stairs: he runs on its legs for the rest of the run — `saveSpeed` on his stride.
+      // At the stairs, if he beat it to one soul room: he runs on its legs for the rest of the run —
+      // `saveSpeed` on his stride.
       saveR: 8, saveSpeed: 1.07 },
   },
   // Where an escort comes from, and how many. `levelDef.beasts` is which of them a floor may hold;
@@ -2863,7 +2877,7 @@ const BEAST_CARD = {
   tortoise: ['THE TORTOISE CAME WITH YOU', `EVERY SHIELD TAKES ${TUNING.prop.tortoise.saveShield} MORE BLOW, FOR THE REST OF THE RUN`],
   goose: ['THE GOOSE CAME WITH YOU', `YOUR VOICE REACHES ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% FURTHER AND COMES BACK ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% SOONER`],
   crow: ['THE CROW CAME WITH YOU', `IT HAS FOUND A TALISMAN, TIER ${'I'.repeat(TUNING.prop.crow.giftTier)}. IT WILL BE ON THE NEXT STAIRS, FREE`],
-  horse: ['THE HORSE CAME WITH YOU', `YOU RUN ${Math.round((TUNING.prop.horse.saveSpeed - 1) * 100)}% FASTER, FOR THE REST OF THE RUN`],
+  horse: ['YOU BEAT THE HORSE TO A SOUL', `YOU RUN ${Math.round((TUNING.prop.horse.saveSpeed - 1) * 100)}% FASTER, FOR THE REST OF THE RUN`],
 };
 
 // What the player has already been shown by the time each level starts: every kind an earlier level

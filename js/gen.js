@@ -1047,7 +1047,36 @@ function tryGenerate(levelDef, seed, opts) {
     // your head through (and which calls out as he comes near, `Prop.updateCoop`), so meeting one is
     // a decision to stop rather than something that happened to be standing in the room.
     let done = false;
-    for (const room of eligible) {
+    // The horse is a race to the locked rooms with a soul (`Beast.horseLegs`), so it is found
+    // before the first of them: freed past the middle gate it had nothing left to race for. Its
+    // stall is three tiles by two (`TUNING.prop.stall`): every tile of it plain floor, standing
+    // where the room's floor is still one piece without it (`stallKeepsRoomOpen`) — against a wall
+    // like a stall should, never across a lane — and well off the way in and the way out.
+    const firstGate = gates.length ? Math.min(...gates.map((g) => g.room)) : Infinity;
+    if (kind === 'horse') {
+      const S = TUNING.prop.stall;
+      for (const room of eligible) {
+        if (room.index >= firstGate || room.w - 2 < S.w || room.h - 2 < S.h) continue;
+        for (let a = 0; a < 80 && !done; a++) {
+          const tx = rng.int(room.x + 1, room.x + room.w - 1 - S.w), ty = rng.int(room.y + 1, room.y + room.h - 1 - S.h);
+          let ok = true;
+          for (let y = ty; y < ty + S.h && ok; y++) for (let x = tx; x < tx + S.w && ok; x++) {
+            if (tiles[y * W + x] !== T.FLOOR || grass.has(y * W + x)) ok = false;
+          }
+          if (!ok || !stallKeepsRoomOpen(tiles, W, room, tx, ty, S)) continue;
+          const st = { x: (tx + S.w / 2) * TILE, y: (ty + S.h / 2) * TILE, kind: 'coop', holds: kind, beastRoom: room.index };
+          if (props.some((p) => footGap(st, p.x, p.y) < BT.clear * TILE)) continue;
+          if (room.enter && footGap(st, room.enter.x, room.enter.y) < S.mouth * TILE) continue;
+          if (room.exitMouth && footGap(st, room.exitMouth.x, room.exitMouth.y) < S.mouth * TILE) continue;
+          props.push(st); done = true;
+        }
+        if (done) break;
+      }
+    }
+    // No room before the gate with a stall's worth of floor (two floors in a hundred): the run dealt
+    // this floor its horse, so the floor is cut again rather than handed over without one.
+    if (kind === 'horse' && !done && opts.beast === 'horse') return null;
+    for (const room of kind === 'horse' ? [] : eligible) {
       for (let a = 0; a < 60 && !done; a++) {
         const tx = rng.int(room.x + 1, room.x + room.w - 3), ty = rng.int(room.y + 1, room.y + room.h - 2);
         if (tiles[ty * W + tx] !== T.FLOOR || tiles[ty * W + tx + 1] !== T.FLOOR) continue;
@@ -1076,7 +1105,7 @@ function tryGenerate(levelDef, seed, opts) {
         const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
         if (tiles[ty * W + tx] !== T.FLOOR || grass.has(ty * W + tx)) continue;
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
-        if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
+        if (props.some((p) => footGap(p, px, py) < 1.6 * TILE)) continue;
         if (room.enter && len(room.enter.x - px, room.enter.y - py) < 2 * TILE) continue;
         props.push({ x: px, y: py, kind: 'shrooms' }); done = true;
       }
@@ -1170,7 +1199,7 @@ function tryGenerate(levelDef, seed, opts) {
           if (grass.has(ty * W + tx)) continue;
           const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
           if (doors.some((d) => len(d.x - px, d.y - py) < LA.door * TILE)) continue;
-          if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
+          if (props.some((p) => footGap(p, px, py) < 1.6 * TILE)) continue;
           if (spawns.some((sp) => len(sp.x - px, sp.y - py) < 1.5 * TILE)) continue;
           // Against a wall, with floor across from it and to either side: a lamp in a lane would be
           // a plug in it. A room with no such spot takes one standing on open floor instead.
@@ -1229,7 +1258,7 @@ function tryGenerate(levelDef, seed, opts) {
           for (const [tx, ty] of [1, 2, 3].flatMap((k) => [[r.a[0] - k, r.a[1] - 1], [r.b[0] + k, r.a[1] - 1]])) {
             if ((tileAt(tx, ty) !== T.FLOOR && tileAt(tx, ty) !== T.HAY) || tileAt(tx, ty + 1) !== T.WALL || grass.has(ty * W + tx)) continue;
             const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
-            if (props.some((p) => len(p.x - px, p.y - py) < (p.kind === 'crate' || p.kind === 'spike' ? 0.9 : 1.2) * TILE) || spawns.some((sp) => len(sp.x - px, sp.y - py) < 0.9 * TILE)) continue;
+            if (props.some((p) => footGap(p, px, py) < (p.kind === 'crate' || p.kind === 'spike' ? 0.9 : 1.2) * TILE) || spawns.some((sp) => len(sp.x - px, sp.y - py) < 0.9 * TILE)) continue;
             props.push({ x: px, y: py, kind: 'lamp', doorLamp: true });
             lampedDown = true;
             break;
@@ -1248,7 +1277,8 @@ function tryGenerate(levelDef, seed, opts) {
         if (tiles[ty * W + tx] !== T.FLOOR) continue;
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
         let fire = Infinity, near = Infinity, hole = Infinity;
-        for (const p of props) { const d = len(p.x - px, p.y - py); if (alight(p)) fire = Math.min(fire, d); else near = Math.min(near, d); }
+        for (const p of props) { const d = footGap(p, px, py); if (alight(p)) fire = Math.min(fire, d); else near = Math.min(near, d); }
+        if (props.some((p) => stallHalf(p) && footGap(p, px, py) < 0.8 * TILE)) continue;   // never in the horse's stall, however narrow the room
         for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (tiles[(ty + dy) * W + tx + dx] === T.PIT) hole = Math.min(hole, Math.hypot(dx, dy) * TILE);
         // `good`: out of the grass that would hide it and off a drop's lip, where grazing — standing
         // still, head down — was one knock from the fall (one bowl in seven on THE RAFTERS).
@@ -2077,10 +2107,47 @@ function placeTables(cells, W, props) {
 function inFurniture(x, y, props) {
   for (const p of props) {
     if (p.kind === 'heal' || p.kind === 'spike' || p.kind === 'door' || p.kind === 'secret') continue;
+    if (stallHalf(p)) { if (footGap(p, x, y) < 0.6 * TILE) return true; continue; }
     const clear = p.kind === 'mill' ? 1.2 * TILE : p.kind === 'coop' ? 1.1 * TILE : 0.8 * TILE;
     if (len(p.x - x, p.y - y) < clear) return true;
   }
   return false;
+}
+// Whether the room's floor is still one piece with a stall on (tx, ty): every open tile of the room
+// reached from any other round it, and at least `clear` open tiles in front of its near side, where
+// it is butted open. A stall across the only lane of a room was a wall with a horse in it.
+function stallKeepsRoomOpen(tiles, W, room, tx, ty, S) {
+  const under = (x, y) => x >= tx && x < tx + S.w && y >= ty && y < ty + S.h;
+  const open = (x, y) => x > room.x && y > room.y && x < room.x + room.w - 1 && y < room.y + room.h - 1
+    && !under(x, y) && tiles[y * W + x] !== T.WALL && tiles[y * W + x] !== T.PIT;
+  for (let x = tx; x < tx + S.w; x++) for (let k = 1; k <= S.clear; k++) if (!open(x, ty + S.h - 1 + k)) return false;
+  let total = 0, start = -1;
+  for (let y = room.y + 1; y < room.y + room.h - 1; y++) for (let x = room.x + 1; x < room.x + room.w - 1; x++) if (open(x, y)) { total++; if (start < 0) start = y * W + x; }
+  if (start < 0) return false;
+  const seen = new Set([start]), stack = [start];
+  while (stack.length) {
+    const i = stack.pop(), x = i % W, y = (i / W) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const j = (y + dy) * W + x + dx;
+      if (!seen.has(j) && open(x + dx, y + dy)) { seen.add(j); stack.push(j); }
+    }
+  }
+  return seen.size === total;
+}
+// The horse's stall is the one piece of furniture that is a box and not a disc (`TUNING.prop.stall`):
+// its half-extents, or null for anything else. A generator prop and a live `Prop` both answer it.
+function stallHalf(p) {
+  if (p.kind !== 'coop' || p.holds !== 'horse') return null;
+  const S = TUNING.prop.stall;
+  return { hx: S.w * TILE / 2, hy: S.h * TILE / 2 };
+}
+// How far (x, y) is from what stands at `p`: from the stall's sides (0 inside it), from anything
+// else's middle. Every clearance laid after the stall asks this, so nothing is put down inside a box
+// three tiles long that a centre-to-centre distance of a tile and a half still calls clear of it.
+function footGap(p, x, y) {
+  const b = stallHalf(p);
+  if (!b) return len(p.x - x, p.y - y);
+  return len(Math.max(0, Math.abs(x - p.x) - b.hx), Math.max(0, Math.abs(y - p.y) - b.hy));
 }
 
 // THE CAVE. A room's corners filled back in with rock — a diagonal of `TUNING.cave.erode` tiles, which

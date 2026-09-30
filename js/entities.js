@@ -704,6 +704,10 @@ class Goat {
         const hx = p.vertical ? D.thick / 2 : p.r, hy = p.vertical ? p.r : D.thick / 2;
         const cx = clamp(this.x, p.x - hx, p.x + hx), cy = clamp(this.y, p.y - hy, p.y + hy);
         dx = cx - this.x; dy = cy - this.y; d = Math.hypot(dx, dy); reach = this.r + 8 + extra + D.reachSlack;
+      } else if (p.box) {
+        // The horse's stall the same way: three tiles of slats, and the nearest of them is the one butted.
+        const b = p.box, cx = clamp(this.x, p.x - b.hx, p.x + b.hx), cy = clamp(this.y, p.y - b.hy, p.y + b.hy);
+        dx = cx - this.x; dy = cy - this.y; d = Math.hypot(dx, dy); reach = this.r + 8 + extra;
       } else {
         dx = p.x - this.x; dy = p.y - this.y; d = Math.hypot(dx, dy); reach = this.r + p.r + 8 + extra;
       }
@@ -712,7 +716,7 @@ class Goat {
       // gives a body landing dead centre.
       // A door is a slab two tiles long: standing at one end of it, the nearest point is off to the
       // side of the nose, so it takes a blow from anywhere in front of the shoulders, not the cone.
-      const cone = p.kind === 'door' ? -0.25 : 0.15;
+      const cone = p.kind === 'door' || p.box ? -0.25 : 0.15;
       if (d > reach || (d > 1 && (dx * ax + dy * ay) / d < cone)) continue;
       p.lastLunge = this.lungeId;
       p.headbutt(game, ax, ay);
@@ -1080,6 +1084,10 @@ class Prop {
     this.span = (opts && opts.span) || 2;
     // A coop: which animal is inside it. Every animal on our side starts shut in one (`Beast`).
     this.holds = (opts && opts.holds) || 'chicken';
+    // The horse's is a stall, not a coop: a box (`box`, half-extents) that everything which meets
+    // furniture asks before it asks `r` (`Prop.boxPush`), and `r` the half-length for the rest.
+    this.box = stallHalf(this);
+    if (this.box) this.r = Math.max(this.box.hx, this.box.hy);
     this.slam = kind === 'clamp' ? TUNING.clamp.slam : 0;
     // A sealed arena's pair of doors: no hit points either, the same as the soul gate, but lifted by
     // clearing the room rather than by a soul. `sealRoom` names which room's fight has to end first.
@@ -1123,6 +1131,15 @@ class Prop {
     // she picked at the kick and is steering at; `flap` and `bob` are hers alone and are drawn.
     this.birdState = 'loose'; this.target = null; this.flap = 0; this.bob = Math.random() * 6;
     this.birdT = 0; this.wanderA = Math.random() * Math.PI * 2;
+  }
+  // Where a body at (x, y) stands against a box (`box`, the horse's stall): `d` from the nearest
+  // side, negative when its middle is inside, and the way out along the side it is nearest.
+  boxPush(x, y) {
+    const b = this.box, cx = clamp(x, this.x - b.hx, this.x + b.hx), cy = clamp(y, this.y - b.hy, this.y + b.hy);
+    const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
+    if (d > 0.001) return { d, nx: dx / d, ny: dy / d };
+    const ex = b.hx - Math.abs(x - this.x), ey = b.hy - Math.abs(y - this.y);
+    return ex < ey ? { d: -ex, nx: x >= this.x ? 1 : -1, ny: 0 } : { d: -ey, nx: 0, ny: y >= this.y ? 1 : -1 };
   }
   // What the goat can pick up and throw: it is carried, not held down, and it blocks nothing. A
   // loose hen counts too — the same mouth that takes a crate takes her — but not mid-flight or
@@ -1250,7 +1267,8 @@ class Prop {
   hitProp(game, nx, ny) {
     for (const p of game.props) {
       if (p === this || !p.blocking) continue;
-      const dx = this.x - p.x, dy = this.y - p.y, d = Math.hypot(dx, dy), pen = p.r + this.r - d;
+      let dx = this.x - p.x, dy = this.y - p.y, d = Math.hypot(dx, dy), pen = p.r + this.r - d;
+      if (p.box) { const o = p.boxPush(this.x, this.y); pen = this.r - o.d; dx = o.nx; dy = o.ny; d = 1; }
       if (pen <= 0) continue;
       if (p.kind === 'lamp') { p.topple(game, nx, ny); return p; }
       if (p.kind === 'bell') p.ring(game);
@@ -1559,7 +1577,8 @@ class Prop {
   // goat's side, so the break is worth a beat of noise and a line on the floor.
   breakCoop(game) {
     if (this.broken) return;
-    const need = TUNING.prop.coop.hits;
+    // The horse's stall is heavier timber: the first blow splits a rail, the second lets it out.
+    const need = this.box ? TUNING.prop.stall.hits : TUNING.prop.coop.hits;
     this.hits = (this.hits || 0) + 1;
     if (this.hits < need) {
       this.wobble = 0.35; game.world.emitNoise(this.x, this.y, TUNING.noise.smash * 0.6);
@@ -2018,7 +2037,8 @@ class Prop {
       // with no blow spent and nothing knocked over.
       for (const p of game.props) {
         if (p === this || !p.blocking || p.kind === 'lamp' || p.kind === 'bell') continue;
-        const dx = this.x - p.x, dy = this.y - p.y, d = Math.hypot(dx, dy), pen = p.r + this.r - d;
+        let dx = this.x - p.x, dy = this.y - p.y, d = Math.hypot(dx, dy), pen = p.r + this.r - d;
+        if (p.box) { const o = p.boxPush(this.x, this.y); pen = this.r - o.d; dx = o.nx; dy = o.ny; d = 1; }
         if (pen <= 0) continue;
         this.x += dx / (d || 1) * pen; this.y += dy / (d || 1) * pen;
         if (this.weapon === 'sword') { this.vx = 0; this.vy = 0; this.flung = false; this.thrown = false; return; }

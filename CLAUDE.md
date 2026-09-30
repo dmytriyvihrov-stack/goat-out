@@ -1034,13 +1034,31 @@ with `tools/escorts.js` (`ESCORT.run`), the way 1.57 measured the men.
   walks and reached the stairs on none; now 5 of 6, the sixth half a second behind). Reward
   `game.crowGift` → `Beast.placeGift`, a tier III ware on the next stairs, never the one he wears;
   the bird that brings it perches by it and flies off (`Beast.updateGift`), never an escort.
-- **Horse** — `Beast.updateHorse`: stands `ready` s saying its bet, then races down `Beast.onward`
-  at `speed` and never waits; waits only at a soul gate / seal / vault / fork door; any other shut
-  door in its way (`Beast.doorAhead`) it rears at (`kickWind`, pose `kick`) and `smash`es; men in
-  its way are bowled aside (`Beast.bowl`, `bowl` × `knockMul`, dazed, `aware` left as it was — the
-  cult hardly minds it), never killed; ogre and rat ogre unmoved. Body `r` 13 so tile-wide ways
-  take it; its own `unstuck` (`stuckFor`/`sideFor`). At the stairs (`homeR`) it says who won
-  (`lines.won`/`lost`). Reward `mods.speed *= saveSpeed`.
+- **Horse** — shut in a **stall**, not a coop (30 Sep 2026, `TUNING.prop.stall`): a `coop` with
+  `holds: 'horse'` is a 3 x 2 tile box (`stallHalf` / `footGap` in gen.js, `p.box` on the Prop,
+  `Prop.boxPush`), and everything that meets furniture asks the box, not `r` (`collideEntities`,
+  `headbuttHits`, `hitProp`, the blade's stop, `World.setFurniture`, `Enemy.bodyClear`); `stall.hits`
+  (2) blows, the front split after one (`stall-back` / `stall-front` / `stall-cracked`, drawn upright
+  with the horse at its own size inside). The generator stands it only in a room **before the first
+  soul gate**, on plain floor, where the room stays one piece round it (`stallKeepsRoomOpen`), off
+  both mouths; a dealt horse with no such room reseeds the floor; later placements keep off it
+  (`footGap`); `GEN_RULES.beasts` holds all of it. `Beast.updateHorse`: stands `ready` s saying its
+  bet, then **races in legs** (`Beast.horseLegs`, `horseRace`): to each locked room with a soul ahead
+  of where it was let out — a soul gate's room, the mouse's too; nothing else on a floor is both
+  locked and holding a soul (the last boss's arena is open, and `soulPlan` never gives a sealed
+  arena one) — then the stairs. A leg is the goat's if he is in its room before the horse (a tie is
+  his; "in it" = that room or any past it, `goatBest` / `horseBest`), and is paid on the spot into
+  `p.won`; once both are in it the horse says who won (`lines.won` + `mine`, or `lost` + `yours`),
+  waits at the bar until the gate gives, and the leg ends when it is in the room with the bar up
+  (so a soul taken while it was on its way, a gate the mouse lifted, a gate he opened and ran on
+  from, never leave it standing). At the stairs (`homeR`) it says who got there first and whether
+  it pays (`pay` / `none`). `Beast.saved` banks it only with `p.won > 0` (the reward still paid at
+  the stairs, like every escort's, so a death before them keeps nothing); the middle-gate checkpoint
+  carries `petWon`. Any other shut door in its way (`Beast.doorAhead`) it rears at (`kickWind`, pose
+  `kick`) and `smash`es; a seal / vault / fork door holds it; men in its way are bowled aside
+  (`Beast.bowl`, `bowl` × `knockMul`, dazed, `aware` left as it was — the cult hardly minds it),
+  never killed; ogre and rat ogre unmoved. Body `r` 13 so tile-wide ways take it; its own `unstuck`
+  (`stuckFor`/`sideFor`). Reward `mods.speed *= saveSpeed`.
 - **Hen** — `Prop.updateBird`: loose follows `flowDir` (`henSteer`, `detourFor`); kicked by headbutt
   (`launchSpeed`, `pickTarget`, `turn`); `Prop.strike` kills a man and spends her (a deliberate direct
   kill, kept rare). `game.henFreed`. Saved → `game.henHearts` (`saveHearts`).

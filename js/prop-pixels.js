@@ -571,6 +571,46 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
+  // ---------------------------------------------------------------- the horse's stall, in two layers
+  // Three tiles by two (`TUNING.prop.stall`), drawn upright on its near edge: a back wall of boards
+  // and a hay rack, straw on a dark floor, then the horse (drawn by the game), then the heavy front
+  // rails on three posts and the side rails over it. 72 x 60; row 59 is the near edge.
+  function stallBack() {
+    const g = new Grid(72, 60), r = rng(83);
+    g.rect(3, 12, 66, 46, '#2b1d14');                                             // the dark inside
+    for (let k = 0; k < 120; k++) {                                               // straw, thicker to the front
+      const y = 22 + Math.floor(Math.pow(r(), 0.6) * 35), x = 4 + Math.floor(r() * 64);
+      g.set(x, y, r() < 0.5 ? '#6e5a2c' : '#8a7236'); if (r() < 0.4) g.set(x + 1, y, '#a08642');
+    }
+    for (let y = 1; y < 15; y += 4) { g.rect(2, y, 68, 4, P.w2); g.hl(2, y, 68, P.w3); g.hl(2, y + 3, 68, P.w1); }   // the back boards
+    g.rect(2, 15, 68, 2, P.w0);                                                   // its foot, in shadow
+    for (const x of [2, 35, 66]) { g.rect(x, 0, 4, 17, P.w1); g.vl(x, 0, 17, P.w3); g.hl(x, 0, 4, P.w4); }
+    // the hay rack on the back wall, hay spilling out of its bars
+    g.rect(44, 5, 16, 7, '#b89a4a'); for (let x = 44; x < 60; x += 3) g.vl(x, 5, 7, P.w0); g.hl(43, 4, 18, P.w1); g.hl(43, 12, 18, P.w1);
+    for (let k = 0; k < 10; k++) g.set(44 + Math.floor(r() * 16), 13 + Math.floor(r() * 3), '#b89a4a');
+    // the side walls: boards seen along their tops, running from the back posts to the front ones
+    for (const x of [1, 67]) { g.rect(x, 12, 4, 34, P.w1); g.vl(x + 1, 12, 34, P.w2); g.vl(x + 3, 12, 34, P.w0); }
+    return g.outline();
+  }
+  function stallFront(cracked) {
+    const g = new Grid(72, 60);
+    // two heavy rails, lit on top, dark under, iron-banded where they meet the posts
+    for (const [y, h] of [[36, 5], [49, 6]]) { g.rect(1, y, 70, h, P.w2); g.hl(1, y, 70, P.w4); g.hl(1, y + 1, 70, P.w3); g.hl(1, y + h - 1, 70, P.w0); }
+    for (const x of [0, 34, 67]) {
+      g.rect(x, 31, 5, 29, P.w1); g.vl(x + 1, 31, 29, P.w3); g.vl(x + 4, 31, 29, P.w0); g.rect(x, 31, 5, 2, P.w4);   // a post, capped
+      for (const y of [37, 51]) { g.hl(x, y, 5, P.i2); g.hl(x, y + 2, 5, P.i1); g.set(x + 2, y + 1, P.i4); }
+    }
+    g.rect(43, 42, 6, 6, P.i2); g.hl(43, 42, 6, P.i3); g.set(46, 45, P.i4); g.vl(45, 48, 2, P.i1);   // the latch, a bolt through both rails
+    if (cracked) {
+      // one blow in: the top rail split across and sagging, the post beside it knocked out of true
+      for (const [x, y] of [[20, 36], [21, 37], [21, 38], [22, 39], [22, 40]]) g.set(x, y, null);
+      g.line(14, 37, 20, 41, P.w0); g.line(23, 36, 29, 39, P.w0);
+      g.rect(15, 41, 5, 1, P.w1); g.set(24, 41, P.w1);
+      g.line(35, 32, 36, 36, P.w0);
+    }
+    return g.outline();
+  }
+
   // ---------------------------------------------------------------- the shop
   // The mouse's hole at the foot of the wall: a black mouth in a rim of dug-out dirt, bedding in it.
   function burrow() {
@@ -851,6 +891,7 @@ const PROP_PIXELS = (() => {
     'spikes-idle': grating('idle'), 'spikes-arming': grating('arming'), 'spikes-up': grating('up'),
     'sword-up': swordUp(), 'rack-back': rackBack(), 'rack-base': rackBase(),
     'coop-back': coopBack(), 'coop-front': coopFront(false), 'coop-cracked': coopFront(true),
+    'stall-back': stallBack(), 'stall-front': stallFront(false), 'stall-cracked': stallFront(true),
     burrow: burrow(), stool: stool(), spire: spire(), 'roast-back': roastRing(false), 'roast-front': roastRing(true), 'roast-sticks': roastSticks(), 'roast-croc': croc(),
   };
   for (let k = 0; k < 8; k++) sprites['lantern-' + k] = lantern(k);
@@ -862,7 +903,7 @@ const PROP_PIXELS = (() => {
   sprites.cleat = cleat(false); sprites['cleat-cut'] = cleat(true);
   sprites['table-s'] = tableTop(); sprites['table-n'] = tableUnder(); sprites['table-e'] = tableSide(); sprites['table-w'] = mirror(sprites['table-e']);
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
-  for (const k in sprites) if (!/^(rack|coop|roast)-/.test(k)) sprites[k] = sprites[k].trim();
+  for (const k in sprites) if (!/^(rack|coop|stall|roast)-/.test(k)) sprites[k] = sprites[k].trim();
   return { P, Grid, sprites, rng };
 })();
 if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
@@ -1096,6 +1137,23 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
         ctx.beginPath(); ctx.arc(p.x, p.y + bob, 17, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
       }
       return true;
+    }
+    // The horse's stall: upright on its near edge, square pixels, the horse at its own size pacing
+    // behind the rails (`TUNING.prop.stall.pace` px either way), the front split after one blow.
+    if (p.kind === 'coop' && p.box) {
+      const b = p.box, g = S['stall-back'], k = b.hx * 2 / (g.w - 2), w = g.w * k, h = g.h * k;
+      const shake = p.wobble > 0 ? Math.sin(renderer.t * 55) * p.wobble * 3 : 0;
+      ctx.save(); ctx.translate(p.x + shake, p.y + b.hy);
+      renderer.shadow(0, -b.hy * 0.5, b.hx * 1.05, b.hy * 0.62);
+      ctx.scale(1, 1 / TILT);
+      put(ctx, 'stall-back', -w / 2, -h, k);
+      const bx = Math.sin(renderer.t * 0.9 + p.phase) * TUNING.prop.stall.pace;
+      ctx.save(); ctx.translate(bx, -h * 0.1);   // its hooves in the straw between the two rails
+      // Standing, turned the way it shifts: a gallop at a walker's pace read as a horse on a treadmill.
+      renderer.horseSprite(ctx, Math.cos(renderer.t * 0.9 + p.phase) > 0 ? 0 : Math.PI, false, 'idle', p.phase);
+      ctx.restore();
+      put(ctx, (p.hits || 0) > 0 ? 'stall-cracked' : 'stall-front', -w / 2, -h, k);
+      ctx.restore(); return true;
     }
     // The coop: its dark inside, the animal pacing in it, the slats over it (split after one blow).
     if (p.kind === 'coop') {

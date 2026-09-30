@@ -309,7 +309,9 @@ class Game {
     this.checkpoint = { level: this.levelIndex, room: this.holdAt, boons: this.boons.slice(),
       artifact: this.artifact ? { id: this.artifact.id, tier: this.artifact.tier } : null,
       talRun: this.talRun ? Object.assign({}, this.talRun) : null, crowGift: !!this.crowGift, tripAt: this.tripAt,
-      kills: this.kills, time: this.timer, firstKill: this.firstKill, pet: pet ? pet.kind : null };
+      kills: this.kills, time: this.timer, firstKill: this.firstKill, pet: pet ? pet.kind : null,
+      // The horse's race is half run by the gate: a soul room already beaten to it is kept.
+      petWon: pet && pet.kind === 'horse' ? pet.won || 0 : 0 };
     this.holdAt = -1;
     this.floatText(g.x, g.y - 44, 'A DEATH COMES BACK HERE', PALETTE.witchHi);
     this.saveRun();
@@ -341,7 +343,7 @@ class Game {
     this.world.computeVis(g.x, g.y, TUNING.fog.radius, this.mods.oracle ? TUNING.fog.oracle : 0);
     // It says its terms again, the ones it said out of the coop: a death is a gap, and what it will
     // and will not do is what he has to be reminded of coming back (25 Sep 2026).
-    if (cp.pet) { const s = this.freeSpot(g.x + TILE, g.y), pet = new Prop(s.x, s.y, cp.pet); this.props.push(pet); if (Beast.PACT[cp.pet]) Beast.speak(this, pet, Beast.PACT[cp.pet]); }
+    if (cp.pet) { const s = this.freeSpot(g.x + TILE, g.y), pet = new Prop(s.x, s.y, cp.pet); pet.won = cp.petWon || 0; this.props.push(pet); if (Beast.PACT[cp.pet]) Beast.speak(this, pet, Beast.PACT[cp.pet]); }
     this.cam.x = g.x; this.cam.y = g.y; this.pathTrail = [{ x: g.x, y: g.y }]; this.stairFx = null;
   }
 
@@ -3719,6 +3721,10 @@ class Game {
             if (p.vertical) { nx = e.x >= p.x ? 1 : -1; ny = 0; } else { nx = 0; ny = e.y >= p.y ? 1 : -1; }
             d = 0;
           } else { nx = dx / d; ny = dy / d; }
+        } else if (p.box) {
+          // The horse's stall is a box three tiles long: as a disc it stood a body off its long
+          // sides by half a tile of air, and let him walk into its corners.
+          const o = p.boxPush(e.x, e.y); d = o.d; nx = o.nx; ny = o.ny; min = e.r;
         } else {
           const dx = e.x - p.x, dy = e.y - p.y; d = Math.hypot(dx, dy); min = e.r + p.r;
           if (d === 0) continue;
