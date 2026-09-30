@@ -183,8 +183,8 @@ function applyEdit(text, edit) {
     if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)) throw new Error('bad key ' + key);
     let at = block.end;
     while (at > block.start + 1 && /\s/.test(text[at - 1])) at--;
-    const empty = at === block.start + 1;
-    return text.slice(0, at) + (empty ? ' ' : ', ') + key + ': ' + formatValue(value) + (empty ? ' ' : '') + text.slice(at);
+    const empty = at === block.start + 1, trailing = text[at - 1] === ',';   // a literal written with a trailing comma
+    return text.slice(0, at) + (empty || trailing ? ' ' : ', ') + key + ': ' + formatValue(value) + (empty ? ' ' : '') + text.slice(at);
   }
   // Clearing a talisman's hand-written `text` takes the key out again rather than leaving a null.
   if (value === null && edit.drop) {

@@ -387,6 +387,17 @@ rooms (worst gap five). The tile is scored clear of furniture and flame (`GEN_RU
 touched: `Prop.graze`, `heal.grazeSpeed`, `heal.grazeTime`. `kind === 'heal'` with `p.big` false is
 +1 HEART; `big: true` (set only by `carveSecret`, `TUNING.secret.healChance`) is +2 HEARTS.
 
+**Where a room may stand** (30 Sep 2026). `ROOM_LEVELS` (tuning.js): a template's `name` → one
+character a slot (LEVELS in order, then THE DARK, then THE TRIP), '1' may, '0' may not; `roomAllowed`
+(gen.js) filters every pool with it (a pool emptied by it falls back to ignoring it), `roomDefault` is
+the habit with no string (canon's floor and the floors that know it, untagged everywhere, traps where
+traps are laid). The ROOMS tab (`drawRoomsTab`, `#roomlist`) ticks it and writes it through
+`/tuning-edit`. **THE ARMORY** (`ARMORY_TEMPLATE`, `tag: 'armory'`, `TUNING.rooms.armory`): set into one
+ordinary room (`armoryAt`, its own RNG) at `chance` on floors its string allows, from room `from`, a mix
+room or a canon room the canon can spare; role `mix`. `GEN_RULES.armory`.
+**Things that go off** (`TUNING.prop.clutter`, `activeIn`): brazier, lamp, barrel, chandelier, bomb;
+barrels, the chandelier and the bomb are only added to a room under `max`, barrels in the `edge` band.
+`GEN_RULES.clutter`.
 **Trap rooms.** `tag: 'trap'` pool; `levelDef.traps` count, `pickTrapRooms` (never pen, set piece,
 ambush, first two ordinary rooms, the last room), `isTrap`; never introduces a kind; no spike scatter. `needs: 'spikes'`
 templates only on `levelDef.spikes` levels. `'S'` plate, `'B'` coals.
@@ -431,7 +442,8 @@ wander — until the goat is inside the room's box (`e.millOpen`, 1.72): nobody 
 
 **Words on the floor.** `CONTROL_LINES` (`render.js`), placed by `level.controls`, never in an empty room:
 0 `WASD - MOVE` in the pen above `cagePrompt`; 1 grab/throw in the ambush; 2 the headbutt, one line,
-on the sentry's floor (`lessonRoom`); 3 `E - ROLL` only: `hints.rollInset` tiles inside the door of the
+on the sentry's floor (`lessonRoom`); 4 `SPACE - BAAH` on THE YARD (`levelDef.teachScream`: its first
+ordinary room with two men or more, `GEN_RULES.screamlesson`); 3 `E - ROLL` only: `hints.rollInset` tiles inside the door of the
 room that introduces `levelDef.rollWith` (THE ALTAR: the first butcher, whose charge is the first thing
 worth rolling out of; 26 Sep 2026), else the first eligible room walking back from the
 first arena (not lesson, vault, trap or ambush), with a fallback. Keyboard and touch wordings for each.
@@ -1170,7 +1182,7 @@ Boons saved by `id` — renaming drops them.
 `menu.panel` owns `menu.rects`. LEVELS (`drawLevelPick`, `game.startAtLevel`) deals the souls a run would
 have, touches no save; its first `LEVEL_TOGGLES` rows come before the floors — the `menu.tripPick`
 switch (plays `tripLevel(li)`) and THE DARK's own row. `SETTINGS` / `game.settings` /
-`SET_KEY`: SHOW THE CLOCK (off), SOUND (`M`), GOD MODE — the dev drawer's GOD kept as a setting
+`SET_KEY`: SHOW THE CLOCK (off), SHOW FPS (off; `Game.frame` counts `fps`, `Renderer.drawFps`), SOUND (`M`), GOD MODE — the dev drawer's GOD kept as a setting
 (`toggleSetting('god')` sets `dev.god`; the drawer's GOD throws the same switch), so the itch build,
 which has no drawer, still has it; on, a floor writes no best and the run code carries `X`.
 

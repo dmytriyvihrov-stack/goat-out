@@ -1060,7 +1060,7 @@ class Game {
     }
     if (id.startsWith('room-lvl-reset=')) {
       const name = id.slice(15); delete ROOM_LEVELS[name];
-      this.persistTuningEdit({ root: 'ROOM_LEVELS', path: [name], value: null });
+      this.persistTuningEdit({ root: 'ROOM_LEVELS', path: [name], value: null, drop: true });
       return;
     }
     // HEAVEN tab: set a mirror rank outright (`drawMirrorTab`), or all of them back to nothing.

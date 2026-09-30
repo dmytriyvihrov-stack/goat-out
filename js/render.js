@@ -74,6 +74,7 @@ const CONTROL_LINES = {
     ['HOLD LT - GRAB', 'RELEASE - THROW'],
     ['RT - HEADBUTT'],
     ['A - ROLL'],
+    ['B - BAAH', 'IT BREAKS A SWING'],
   ],
 };
 
@@ -1886,13 +1887,13 @@ class Renderer {
   }
 
   // A chandelier's ring and rope, over everybody (it hangs in the air): the floor pass drew its shadow.
-  // SHOW FPS: the rate, the slowest frame and the game's own ms, top-left over everything; the rate
+  // SHOW FPS: the rate, the slowest frame and the game's own ms, under the hearts over everything; the rate
   // turns amber under 55 and red under 40, so a hitch is seen without reading the number.
   drawFps(game) {
     const ctx = this.ctx, s = this.hs || this.ts, f = game.fps;
     const text = `${Math.round(f.rate)} FPS · worst ${f.worst.toFixed(0)} ms · game ${f.work.toFixed(1)} ms`;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = `700 ${Math.max(12 * this.s, 11 * s)}px ${FONT}`; ctx.textAlign = 'left';
-    const w = ctx.measureText(text).width, x = 10 * this.s, y = this.h - 64 * this.s;
+    const w = ctx.measureText(text).width, x = 14 * this.s, y = 82 * this.s;   // under the hearts, clear of the dev corner
     ctx.fillStyle = 'rgba(13,10,12,0.7)'; ctx.fillRect(x - 5 * this.s, y - 16 * this.s, w + 10 * this.s, 22 * this.s);
     ctx.fillStyle = f.rate < 40 ? PALETTE.blood : f.rate < 55 ? PALETTE.fireHi : PALETTE.bone;
     ctx.fillText(text, x, y); ctx.restore();

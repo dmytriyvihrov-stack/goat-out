@@ -114,6 +114,21 @@ Twelve notes in one message (29 Sep 2026), with screenshots.
   the controls; a key or a moved mouse gives them back (the pointer hides while the pad has them). A
   headbutt's or a blow's buzz (`game.vibe`) runs the pad's motors.
 
+- **SPACE - BAAH on the floor of THE YARD** (30 Sep 2026): the voice is the one verb THE ALTAR never
+  names; it is painted in THE YARD's first room with two men or more ("IT BREAKS A SWING"), pad and
+  touch wordings too. `GEN_RULES.screamlesson`.
+- **SHOW FPS** in SETTINGS: frames a second, the slowest frame and the game's own ms, under the hearts.
+- **Fewer things that go off in one room**: a room holds at most four of brazier, lamp, barrel,
+  chandelier and bomb, the template's own counted; a barrel or a chandelier is only added under that,
+  and barrels stand in a band two tiles in from the walls, not mid-floor. `GEN_RULES.clutter`.
+- **THE ARMORY**, a room of several floors: tight, a stand of arms every other step round its walls,
+  ordinary men; set into one ordinary room on half of the floors it is allowed on (THE YARD to THE
+  OSSUARY and THE DARK by default; THE ROAD and THE BRIDGE are so full of set pieces that no mix room
+  is left for it). `GEN_RULES.armory`.
+- **Where each room may stand** (`ROOM_LEVELS`, tuning.js) and the dev drawer's **ROOMS** tab: every
+  room template a tick a floor (the eight, THE DARK, THE TRIP); dim ticks are the generator's own habit,
+  a click writes the row's string to tuning.js through the dev server, RESET gives the row back.
+
 ---
 
 ## 1.79 — the pasture above: heaven between deaths, the mirror, Gungeon's barrel, a supper that scatters — 29 Sep 2026
