@@ -646,6 +646,21 @@ const Foley = (() => {
         jit: 0.03, shim: 0.2, rough: 0.25, breath: 0.35, tilt: 4200,
         formants: [[850, 5, 1], [1700, 7, 0.55], [2900, 9, 0.3]], env: (t) => hit(t, 0.03, d * 0.5), drive: 2 });
     },
+    // A pig: two short grunts low in the nose, rough and snorty ('oink' is a grunt with the nose
+    // closed); hurt, one squeal, high and falling.
+    pig(sr, { hurt } = {}) {
+      if (hurt) {
+        const d = 0.4, f = rnd(900, 1000);
+        return voice(sr, d, { f: (t) => f * (1 + 0.25 * Math.sin(Math.PI * Math.min(1, t / (d * 0.25)) * 0.5) - 0.4 * t / d), jit: 0.05, shim: 0.3, rough: 0.4, breath: 0.3, tilt: 4500,
+          formants: [[1100, 5, 1], [2400, 7, 0.6], [3300, 9, 0.3]], env: (t) => hit(t, 0.015, d * 0.4), drive: 3 });
+      }
+      const x = buf(sr, 0.42), f = rnd(95, 120);
+      for (const [at, m] of [[0, 1], [0.2, 0.92]]) {
+        add(x, voice(sr, 0.15, { f: (t) => f * m * (1 + 0.12 * Math.sin(Math.PI * t / 0.15)), jit: 0.08, shim: 0.35, rough: 0.7, breath: 0.4, tilt: 2400,
+          formants: [[320, 4, 1], [900, 6, 0.55], [2200, 8, 0.2]], env: (t) => hit(t, 0.01, 0.06), drive: 3.5 }), sr, at, m === 1 ? 1 : 0.8);
+      }
+      return x;
+    },
     // The tortoise has no voice: it knocks its shell on the slats, twice.
     tortoise(sr) {
       const x = buf(sr, 0.3);

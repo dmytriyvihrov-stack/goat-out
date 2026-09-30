@@ -201,7 +201,7 @@ const Shop = {
       e.daze(game, B.stun); e.flash = Math.max(e.flash, TUNING.juice.hitFlash); e.aware = true;
       game.audio.sfxThud(); game.shake(2); game.hitstop(0.02);
       game.particles(e.x, e.y - 6, 6, PALETTE.bone, 120);
-      game.floatText(e.x, e.y - 30, e.kind === 'ratogre' ? 'SWING BROKEN' : 'REELS', PALETTE.fireHi);
+      if (e.kind === 'ratogre') game.floatText(e.x, e.y - 30, 'SWING BROKEN', PALETTE.fireHi);
       // On the way out it stops at its count of men and turns for home.
       if (f.out && f.outN >= B.pierce) f.out = false;
     }

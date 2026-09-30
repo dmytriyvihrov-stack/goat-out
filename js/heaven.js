@@ -29,13 +29,16 @@ const HEAVEN_LEVEL = {
   fog: '#bcd5f3', floor: '#e8eefb', floorAlt: '#dde6f8', wall: '#f4f8ff', wallTop: '#ffffff',
 };
 
-// Who sits on which seat once it has been walked out of the compound (`Beast.bank`).
+// Who sits on which seat once its bargain has been kept (`Beast.bank`, `Heaven.saved`). Listened
+// to (GRAB), a seat says its `sound` and its `line` once the animal has been saved; saved twice or
+// more, `more` as well (30 Sep 2026: "after the first, the sound and a line; after two, one more").
 const HEAVEN_SEATS = [
-  { kind: 'tortoise', name: 'THE TORTOISE', line: 'SLOWLY. EVERYTHING, SLOWLY. ESPECIALLY DYING.' },
-  { kind: 'goose', name: 'THE GOOSE', line: 'HONK. (IT MEANS: I LED YOU. YOU ARE WELCOME.)' },
-  { kind: 'chicken', name: 'THE HEN', line: 'BUK. BUK-BUK. (SHE IS PROUD OF YOU.)' },
-  { kind: 'crow', name: 'THE CROW', line: 'I ATE VERY WELL ON YOUR FLOORS. VERY WELL.' },
-  { kind: 'horse', name: 'THE HORSE', line: 'I WON. OBVIOUSLY I WON. I ALWAYS WIN.' },
+  { kind: 'tortoise', name: 'THE TORTOISE', sound: '...', line: 'SLOWLY. EVERYTHING, SLOWLY. ESPECIALLY DYING.', more: 'YOU CARRIED ME TWICE NOW. MY SHELL REMEMBERS YOUR TEETH.' },
+  { kind: 'goose', name: 'THE GOOSE', sound: 'HONK!', line: 'I LED YOU. YOU ARE WELCOME.', more: 'AGAIN I TOLD THEM ALL WHERE YOU WERE. AGAIN YOU LIVED. WE MAKE A TEAM.' },
+  { kind: 'chicken', name: 'THE HEN', sound: 'BUK. BUK-BUK.', line: 'SHE IS PROUD OF YOU.', more: 'SHE HAS STOPPED COUNTING THE MEN SHE FLEW AT. SHE HAS NOT STOPPED BEING PROUD.' },
+  { kind: 'crow', name: 'THE CROW', sound: 'CAW.', line: 'I ATE VERY WELL ON YOUR FLOORS. VERY WELL.', more: 'KEEP THE BODIES COMING, GOAT. I FIND YOU THE SHINY THINGS.' },
+  { kind: 'horse', name: 'THE HORSE', sound: 'NEIGH!', line: 'YOU BEAT ME. ONCE. IT WILL NOT HAPPEN AGAIN.', more: 'IT HAPPENED AGAIN. I DEMAND A REMATCH. UP HERE THERE ARE NO DOORS TO KICK.' },
+  { kind: 'pig', name: 'THE PIG', sound: 'OINK.', line: 'THE GRASS UP HERE IS GOLD. I HAVE EATEN SOME. I WILL EAT MORE.', more: 'YOU FED ME AGAIN. I LEFT YOU TUFTS ALL THE WAY DOWN. DID YOU FIND THEM?' },
 ];
 
 // ---------------------------------------------------------------- what the god says
@@ -102,14 +105,15 @@ const HEAVEN_TALK = {
   // what the goat's mouth thinks of the gold grass
   munch: ['SWEET', 'HEAVENLY', 'MMM', 'TASTES OF SUNDAY', 'GOLDEN'],
 };
-// The shepherd cannot see him, and takes him for a ewe; the goat cannot tell him otherwise.
+// The shepherd cannot see him, and takes him for a little kid; the goat cannot tell him how big he
+// has grown. (A ewe until 30 Sep 2026: "little ewe? the game is about a goat.")
 const SHEPHERD_TALK = {
-  hello: ['WHO IS THAT? A LITTLE EWE. COME HERE, LET ME COMB YOU.', 'AH, THE LITTLE EWE AGAIN. COME, COME.'],
-  comb: ['THERE. THERE.', 'SUCH KNOTS. WHERE HAVE YOU BEEN, LITTLE EWE?', 'YOU SMELL OF SMOKE AND MEN.', 'YOUR HORNS HAVE GROWN. ODD, FOR A EWE.', 'SOFT AS A CLOUD NOW. SOFTER.'],
-  butted: ['OH! STILL SOME SPIRIT IN YOU.', 'GENTLY, LITTLE EWE. GENTLY.'],
+  hello: ['WHO IS THAT? A LITTLE KID. COME HERE, LET ME COMB YOU.', 'AH, THE LITTLE KID AGAIN. COME, COME.'],
+  comb: ['THERE. THERE.', 'SUCH KNOTS. WHERE HAVE YOU BEEN, LITTLE GOAT?', 'YOU SMELL OF SMOKE AND MEN.', 'YOUR HORNS HAVE GROWN. NOT SO LITTLE NOW.', 'SOFT AS A CLOUD NOW. SOFTER.'],
+  butted: ['OH! STILL SOME SPIRIT IN YOU.', 'GENTLY, LITTLE GOAT. GENTLY.'],
   // He cannot see the chime, only hear who is at it (`Heaven.butt`, `heaven.shepBells`).
-  bells: ['WHO IS AT THE BELLS? THE LITTLE EWE?', 'NOT SO HARD. THEY ARE OLDER THAN I AM.', 'THAT ONE IS FLAT. IT ALWAYS WAS.',
-    'AH, I KNOW THAT ONE. HOW DOES IT GO ON?', 'MY WIFE RANG THEM LIKE THAT.', 'SOFTLY. THE GOD IS DOZING.', 'EWES DO NOT RING BELLS. WHAT ARE YOU?'],
+  bells: ['WHO IS AT THE BELLS? THE LITTLE KID?', 'NOT SO HARD. THEY ARE OLDER THAN I AM.', 'THAT ONE IS FLAT. IT ALWAYS WAS.',
+    'AH, I KNOW THAT ONE. HOW DOES IT GO ON?', 'MY WIFE RANG THEM LIKE THAT.', 'SOFTLY. THE GOD IS DOZING.', 'GOATS DO NOT RING BELLS. OR DO THEY NOW?'],
 };
 // The five bells of the chime, and the one tune the god knows the words to (E D C D E E E).
 const HEAVEN_SONG = [2, 1, 0, 1, 2, 2, 2];
@@ -161,7 +165,14 @@ const Heaven = {
   // The furthest floor this browser has reached (`levelIndexOf`), for the god to notice.
   reached(li) { if (this.meta && li > this.meta.best) { this.meta.best = li; this.saveSoon(); } },
   // An animal walked out of the compound (`Beast.bank`): its seat up here is taken for good.
-  saved(kind) { if (!this.meta || this.meta.saved[kind]) return; this.meta.saved[kind] = Date.now(); this.meta.freshSeat = kind; this.saveSoon(); },
+  // `savedN` counts every time, which is how much the seat has to say (`HEAVEN_SEATS`).
+  saved(kind) {
+    if (!this.meta) return;
+    this.meta.savedN = this.meta.savedN || {};
+    this.meta.savedN[kind] = Math.max(1, (this.meta.savedN[kind] || 0)) + (this.meta.saved[kind] ? 1 : 0);
+    if (this.meta.saved[kind]) { this.saveSoon(); return; }
+    this.meta.saved[kind] = Date.now(); this.meta.freshSeat = kind; this.saveSoon();
+  },
   // What the mirror has bought, laid into `mods` under every run (`Game.applyBoons`).
   applyMeta(m) {
     if (!this.meta) this.load();
@@ -189,7 +200,7 @@ const Heaven = {
     fill(34, 19, 55, 19, T.FLOOR);
     const props = [];
     const put = (kind, x, y, o) => props.push(Object.assign({ x, y, kind, heaven: true }, o || {}));
-    HEAVEN_SEATS.forEach((s, i) => put('hseat', px(i < 3 ? 6.5 : 24.5) - 16, px([9.5, 14, 18.5, 9.5, 18.5][i]), { seat: s.kind }));
+    HEAVEN_SEATS.forEach((s, i) => put('hseat', px(i < 3 ? 6.5 : 24.5) - 16, px([9.5, 14, 18.5, 9.5, 18.5, 14][i]), { seat: s.kind }));
     put('hshep', px(38), px(9.6));
     put('hmirror', px(51.5), px(7.4));
     for (let k = 0; k < TUNING.heaven.bells.length; k++) put('hbell', px(41.6) + k * HEAVEN_PIXELS.BELL_GAP * 1.35, px(10.2), { note: k });
@@ -369,7 +380,12 @@ const Heaven = {
     else if (n.kind === 'mirror') this.openMirror(game);
     else if (n.kind === 'seat') {
       const s = HEAVEN_SEATS.find((q) => q.kind === n.thing.seat);
-      if (s) { H.plates.push({ x: n.x, y: n.y - 46, text: s.line, life: TUNING.heaven.plate }); game.audio.sfxAnimal(s.kind); }
+      if (s) {
+        const times = (this.meta.savedN && this.meta.savedN[s.kind]) || 1, text = s.sound + ' ' + s.line + (times >= 2 ? ' ' + s.more : '');
+        const lift = s.kind === 'horse' ? 76 : 46;
+        H.plates.push({ x: n.x, y: n.y - lift, text, life: TUNING.heaven.plate * (times >= 2 ? 1.8 : 1.2) });
+        game.audio.sfxAnimal(s.kind);
+      }
     }
   },
 
@@ -1102,8 +1118,13 @@ Object.assign(Heaven, {
       if (q.graze > 0) CombatFX.pixelRing(ctx, q.x, q.y, 16, 2, 'rgba(247,215,116,0.35)');
       if (q.graze > 0) { ctx.strokeStyle = 'rgba(247,215,116,0.9)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(q.x, q.y, 16, -Math.PI / 2, -Math.PI / 2 + clamp(q.graze / TUNING.heaven.graze.time, 0, 1) * Math.PI * 2); ctx.stroke(); }
     }
-    // the words by the edge, the game's floor lettering
-    ctx.save(); ctx.scale(1, 1 / TILT); ctx.textAlign = 'center';
+    // the words by the edge, the game's floor lettering: only once he is near them, or has been up
+    // here long enough to be lost (`heaven.edgeWords`); the rest of the time heaven says nothing
+    const E = TUNING.heaven.edgeWords, g = game.goat, wx = 45 * TILE, wy = 18.4 * TILE;
+    const want = Math.hypot(g.x - wx, g.y - wy) < E.near * TILE || H.t > E.lost ? 1 : 0;
+    H.edgeK = clamp((H.edgeK || 0) + (want ? 1 : -1) / 60 / E.fade, 0, 1);
+    if (H.edgeK <= 0) return;
+    ctx.save(); ctx.scale(1, 1 / TILT); ctx.textAlign = 'center'; ctx.globalAlpha = H.edgeK;
     ctx.font = `700 22px ${FONT_SC}`; ctx.fillStyle = 'rgba(176,122,34,0.5)';
     ctx.fillText('THE EDGE', 45 * TILE, 18.1 * TILE * TILT);
     ctx.font = `700 13px ${FONT_SC}`; ctx.fillStyle = 'rgba(176,122,34,0.42)';
@@ -1176,8 +1197,10 @@ Object.assign(Heaven, {
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       const gl = ctx.createRadialGradient(0, top - 14, 0, 0, top - 14, 40); gl.addColorStop(0, 'rgba(255,238,170,0.4)'); gl.addColorStop(1, 'rgba(255,238,170,0)');
       ctx.fillStyle = gl; ctx.fillRect(-40, top - 54, 80, 80); ctx.restore();
-      if (img) { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(img, -img.width / 2, top - img.height + 10 + bob); ctx.imageSmoothingEnabled = sm; }
-      CombatFX.pixelRing(ctx, 0, top - 38 + bob, 8, 2, '#f7d774');
+      const y0 = img ? top - img.height + 10 + bob : top - 46 + bob;
+      if (img) { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(img, -img.width / 2, y0); ctx.imageSmoothingEnabled = sm; }
+      // the halo over its own head, whatever height that is
+      CombatFX.pixelRing(ctx, 0, y0 + (img && img.headY !== undefined ? img.headY : 30) - 8, 8, 2, '#f7d774');
     } else {
       ctx.globalAlpha = 0.35; CombatFX.pixelRing(ctx, 0, top - 22, 8, 2, '#b8b4c8'); ctx.globalAlpha = 1;
     }
@@ -1187,12 +1210,16 @@ Object.assign(Heaven, {
   animalGod(R, kind) {
     const cache = this.gods || (this.gods = {});
     if (cache[kind] !== undefined) return cache[kind];
-    const c = document.createElement('canvas'); c.width = 64; c.height = 56;
+    // At its own size down there (30 Sep 2026: "the animal in heaven at its real size"): the horse
+    // and the pig are the sprites the floor draws, unscaled, so the canvas is as big as the horse.
+    const CW = 96, CH = 80;
+    const c = document.createElement('canvas'); c.width = CW; c.height = CH;
     const x = c.getContext('2d'), keep = R.ctx;
     try {
-      R.ctx = x; x.translate(32, 44);
+      R.ctx = x; x.translate(CW / 2, CH - 12);
       if (kind === 'chicken') R.painted.character(R, { facing: Math.PI / 4 }, 'chicken', 28);
-      else if (kind === 'horse') { x.scale(0.62, 0.62); R.horseSprite(x, Math.PI / 4, false, 'idle'); }
+      else if (kind === 'horse') R.horseSprite(x, Math.PI / 4, false, 'idle');
+      else if (kind === 'pig') R.pigSprite(x, Math.PI / 4, false, 'idle');
       else {
         const pet = { x: 0, y: 0, kind, r: TUNING.prop[kind].r, vx: 12, vy: 4, bob: 0, phase: 0, tuckT: 0, honkT: 0 };
         x.scale(1, 1 / TILT);
@@ -1202,17 +1229,20 @@ Object.assign(Heaven, {
     R.ctx = keep;
     // light: its own shapes, washed toward warm white; then a rim of gold round it
     x.setTransform(1, 0, 0, 1, 0, 0);
-    x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(255,244,214,0.34)'; x.fillRect(0, 0, 64, 56);
+    x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(255,244,214,0.34)'; x.fillRect(0, 0, CW, CH);
     // a rim of gold two pixels out, pale gold one pixel in: lit from inside and outlined in light
-    const rim = document.createElement('canvas'); rim.width = 64; rim.height = 56;
+    const rim = document.createElement('canvas'); rim.width = CW; rim.height = CH;
     const r = rim.getContext('2d');
     for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, -1], [-1, 1], [1, 1]]) r.drawImage(c, dx, dy);
-    r.globalCompositeOperation = 'source-in'; r.fillStyle = '#f7d774'; r.fillRect(0, 0, 64, 56);
+    r.globalCompositeOperation = 'source-in'; r.fillStyle = '#f7d774'; r.fillRect(0, 0, CW, CH);
     r.globalCompositeOperation = 'source-over';
-    const inner = document.createElement('canvas'); inner.width = 64; inner.height = 56; const ig = inner.getContext('2d');
+    const inner = document.createElement('canvas'); inner.width = CW; inner.height = CH; const ig = inner.getContext('2d');
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) ig.drawImage(c, dx, dy);
-    ig.globalCompositeOperation = 'source-in'; ig.fillStyle = '#b07a22'; ig.fillRect(0, 0, 64, 56);
+    ig.globalCompositeOperation = 'source-in'; ig.fillStyle = '#b07a22'; ig.fillRect(0, 0, CW, CH);
     r.drawImage(inner, 0, 0); r.drawImage(c, 0, 0);
+    // its topmost lit row, where the halo goes
+    const a = r.getImageData(0, 0, CW, CH).data; rim.headY = 0;
+    for (let yy = 0, hit = false; yy < CH && !hit; yy++) for (let xx = 0; xx < CW; xx++) if (a[(yy * CW + xx) * 4 + 3] > 40) { rim.headY = yy; hit = true; break; }
     return (cache[kind] = rim);
   },
 

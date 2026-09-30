@@ -655,22 +655,44 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
   function croc() {
-    // tail tip on the left, snout on the right; the spit runs through him on row 7
-    const W = 70, g = new Grid(W, 16), r = rng(95);
-    const top = x => x < 26 ? 7 - (x / 26) * 3 : x < 48 ? 4 - Math.sin((x - 26) / 22 * Math.PI) * 1.2 : x < 55 ? 4 : 5 + (x - 55) * 0.08;
-    const bot = x => x < 26 ? 8 + (x / 26) * 2 : x < 48 ? 10 + Math.sin((x - 26) / 22 * Math.PI) * 1.5 : x < 55 ? 10 : 9 - (x - 55) * 0.12;
-    const hide = ['#2c3018', '#434a26', '#5a6232', '#77683c', '#8f7c4a'];
-    for (let x = 1; x < W - 1; x++) {
-      const t = Math.round(top(x)), b = Math.round(bot(x));
-      for (let y = t; y <= b; y++) g.set(x, y, y === t ? hide[0] : y < t + 2 ? hide[2] : y > b - 2 ? hide[4] : hide[3]);
-      if (x < 26 && x % 3 === 0) g.set(x, t - 1, hide[0]);                       // the crest on the tail
-      if (x > 26 && x < 48) g.set(x, t + 1 + (x % 2), hide[1]);                    // armour rows
+    // Side on, tail tip left, snout right; the spit runs through his middle on row 7 (the game turns him
+    // about that row). Scutes down the back, a pale belly, four legs hanging as he turns, an open jaw
+    // with teeth, a ridge over the eye — and the char and the grease of a beast that has been on the fire.
+    const W = 72, g = new Grid(W, 20), r = rng(95);
+    const H = ['#20240f', '#343a1a', '#4c5628', '#6a7236', '#8a9046'];      // dark scute, back, flank, lit flank, lit edge
+    const B = ['#8a6a34', '#b48c48', '#d8b466', '#f0d68a'];                  // roasting belly: char, gold, fat, glint
+    // one profile the whole length: tail (0..22), body (22..50), neck and head (50..70)
+    const mid = x => x < 22 ? 7 + (22 - x) * 0.13 : 7;
+    const half = x => x < 22 ? 0.6 + 3.7 * Math.pow(x / 22, 1.15)
+      : x < 50 ? 4.3 + Math.sin((x - 22) / 28 * Math.PI) * 0.9
+      : x < 56 ? 4.2 - (x - 50) * 0.18 : 3.1 - (x - 56) * 0.06;
+    for (let x = 1; x < 70; x++) {
+      const c = mid(x), h = half(x), t = Math.round(c - h), b = Math.round(c + h);
+      for (let y = t; y <= b; y++) {
+        const f = (y - t) / Math.max(1, b - t);
+        g.set(x, y, f < 0.18 ? H[1] : f < 0.5 ? H[2] : f < 0.76 ? H[3] : y === b ? B[0] : x > 22 && x < 56 ? B[1] : H[4]);
+      }
     }
-    for (const lx of [30, 43]) { g.vl(lx, 11, 3, hide[1]); g.set(lx + 1, 13, hide[1]); g.vl(lx - 2, 11, 2, hide[2]); }
-    g.speckle(r, 70, '#1e1a10', hide.slice(1, 4));                                 // char
-    g.hl(55, 8, 13, '#151208'); for (const x of [58, 61, 64]) g.set(x, 9, P.c1);   // jaw and teeth
-    g.set(51, 5, '#1c1a10'); g.set(52, 5, '#9a9468');                              // the eye
-    for (let x = 0; x < W; x++) if (!g.get(x, 7)) g.set(x, 7, '#d9c078');         // the spit, either side of him
+    for (let x = 4; x < 50; x += 3) { const t = Math.round(mid(x) - half(x)); g.set(x, t - 1, H[0]); g.set(x + 1, t, H[0]); }   // scutes
+    for (let x = 24; x < 48; x += 4) for (let y = 4; y < 7; y++) if (g.get(x, y)) g.set(x, y, H[1]);                         // armour plates
+    // the head: a flat upper jaw, a lower one hanging open, teeth between, the eye under its ridge
+    g.rect(56, 4, 13, 3, H[2]); g.hl(56, 4, 13, H[1]); g.hl(58, 6, 10, H[3]);
+    g.rect(58, 9, 10, 2, H[3]); g.hl(58, 10, 10, B[1]);
+    g.hl(56, 7, 12, '#1a0a08'); g.hl(57, 8, 11, '#5a1a14');
+    for (let x = 58; x < 68; x += 2) { g.set(x, 7, '#f2ecd4'); g.set(x + 1, 9, '#f2ecd4'); }
+    g.set(68, 3, H[3]); g.set(67, 3, H[2]);                                                                                    // the nostril bump
+    g.rect(52, 3, 4, 2, H[3]); g.set(54, 4, '#e8c24a'); g.set(54, 3, H[0]);                                                    // eye and brow
+    // four legs, drawn as they hang while he turns, each ending in three claws
+    for (const [lx, d] of [[27, 1], [32, 0], [43, 1], [48, 0]]) {
+      const base = Math.round(mid(lx) + half(lx)) - 1, col = d ? H[1] : H[2];
+      for (let y = base; y < base + 5; y++) { g.set(lx + (y > base + 2 ? 1 : 0), y, col); g.set(lx + 1 + (y > base + 2 ? 1 : 0), y, d ? H[2] : H[3]); }
+      g.hl(lx - 1, base + 5, 4, H[0]); g.set(lx - 1, base + 6, H[0]); g.set(lx + 2, base + 6, H[0]);
+    }
+    g.speckle(rng(97), 60, B[1], [H[2], H[3]]);                                                                                // the fire browning the hide
+    g.speckle(r, 90, '#15130a', [H[2], H[3], B[1], B[2]]);                                                                     // char
+    g.speckle(rng(96), 26, B[3], [B[1], B[2]]);                                                                                // glinting fat
+    for (let x = 0; x < W; x++) if (!g.get(x, 7)) g.set(x, 7, '#d9c078');                                                     // the spit, either side of him
+    g.hl(58, 7, 3, '#d9c078', true);                                                                                           // ... and through the mouth
     return g.outline();
   }
 
@@ -700,11 +722,14 @@ const PROP_PIXELS = (() => {
   // lid's near edge does, a pale wooden head in an iron rim with a heap of black powder on it (the
   // 26 Sep sign that it goes up), and the skull on the front that says it in one glance.
   const BR = ['#3d0f0e', '#6e1a17', '#9c2720', '#c63a2d', '#e4584a', '#ff9d85'];
+  // The barrel of poison (30 Sep 2026): the same barrel in the venom's greens, the skull kept, and the
+  // head wet with poison where the red one carries its powder.
+  const BV = ['#0f2610', '#1c4719', '#2e6b22', '#4a962e', '#74c046', '#bdf08a'], VLID = ['#9be65c', '#3f8a26'];
   const BH = { s: '#f4e6d4', sh: '#cdb7a0', e: '#26100e' }, SKULL7 = ['.#####.', '#######', '#ee#ee#', '#ee#ee#', '###e###', '.#####.', '.#.#.#.'];
   const within = (v, lo, hi) => Math.max(lo, Math.min(hi, v));   // node has no rng.js to lend clamp
   const barrelShade = (b) => (b > 0.995 ? 5 : b > 0.86 ? 4 : b > 0.42 ? 3 : b > 0.05 ? 2 : 1);
   const IRN = [P.i0, P.i1, P.i2, P.i3, P.i4];
-  function barrelStand() {
+  function barrelStand(BR, lid) {
     const W = 20, H = 27, g = new Grid(W, H), cx = 10, lidY = 4, top = 4, bot = 21;
     const hwOf = (y) => y < top ? 7 : 7 + Math.round(3 * Math.sin(Math.PI * within((y - top) / (bot - top), 0, 1))) / 2;
     const sh = (u) => barrelShade(Math.cos(Math.asin(within(u, -1, 1)) + 0.75));
@@ -734,7 +759,8 @@ const PROP_PIXELS = (() => {
       else if (c === P.w4) g.set(x, y, x + y < cx - 1 ? '#e2c07f' : x > cx + 3 ? P.w3 : P.w4);
     }
     g.hl(6, 4, 9, P.w3, true); g.set(8, 4, P.w4); g.set(12, 4, P.w4);
-    for (const [x, y, c] of [[10, 2, '#5d5460'], [9, 3, '#5d5460'], [10, 3, '#2a2328'], [11, 3, '#2a2328'], [8, 4, '#2a2328'], [9, 4, '#2a2328'], [10, 4, '#2a2328'], [11, 4, '#2a2328'], [12, 4, '#2a2328']]) g.set(x, y, c);
+    const [hi, lo] = lid || ['#5d5460', '#2a2328'];   // the heap on the head: black powder, or the poison welling up
+    for (const [x, y, c] of [[10, 2, hi], [9, 3, hi], [10, 3, lo], [11, 3, lo], [8, 4, lo], [9, 4, lo], [10, 4, lo], [11, 4, lo], [12, 4, lo]]) g.set(x, y, c);
     SKULL7.forEach((row, j) => [...row].forEach((ch, i) => { const x = 6 + i, y = 9 + j;
       if (ch === '#') g.set(x, y, i >= 5 || j >= 5 ? BH.sh : BH.s); else if (ch === 'e') g.set(x, y, BH.e); }));
     return g.outline();
@@ -742,7 +768,7 @@ const PROP_PIXELS = (() => {
   // On its side, the axis across the picture and the near head at the right. `phase` 0..7 is how far
   // round it has rolled (45° a step): the seams slide over it and the skull comes over the top and
   // goes under, cut off by the barrel's own outline.
-  function barrelLie(phase) {
+  function barrelLie(phase, BR) {
     const W = 27, H = 18, g = new Grid(W, H), cy = 8.5, x0 = 2, x1 = 22, a = phase * Math.PI / 4;
     const hhOf = (x) => 6 + Math.round(3 * Math.sin(Math.PI * within((x - x0) / (x1 - x0), 0, 1))) / 2;
     const sh = (v) => barrelShade(Math.cos(Math.asin(within(v, -1, 1)) + 0.6));
@@ -858,42 +884,65 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
-  // ---------------------------------------------------------------- a suit of armour, 20 x 38
-  // Enter the Gungeon's (30 Sep 2026): a knight's harness on a wooden stand with its back to the wall,
-  // facing the room, lit from the upper left, one red crest the only colour on it. `empty` is what a
-  // body leaves: the plinth, the post the helm sat on and the crossbar the shoulders hung from.
+  // ---------------------------------------------------------------- a suit of armour on the wall, 28 x 29
+  // Enter the Gungeon's (30 Sep 2026), hung on the far wall's face (30 Sep 2026: "more attached to the
+  // wall, less detailed, a decoration that falls apart in a fun way"): two halberds crossed on the
+  // stone, an iron plate between them, and on it the helm, the pauldrons and the breastplate — no
+  // stand, no legs, nothing on the floor. Three steps of steel, lit from the left, a red plume the one
+  // colour. `empty` is what a body leaves: the halberds and the bare plate. The pieces that fly off
+  // (`armorPiece`) are the same drawings, so what lands is plainly what hung there.
+  // The suit that stands on the floor (1 Oct 2026): the wall suit's iron on a wooden stand, upright, a
+  // halberd at its side. `bare` is what is left when it has been brought down: the stand, its post and
+  // crossbar, and the halberd still standing. 28 x 42, its feet on the stand's last row.
+  function suit(bare) {
+    const g = new Grid(28, 42), cx = 12;
+    g.rect(3, 38, 20, 3, P.w2); g.hl(3, 38, 20, P.w3); g.hl(3, 40, 20, P.w0); g.rect(3, 41, 3, 1, P.w0); g.rect(20, 41, 3, 1, P.w0);   // the stand
+    g.vl(24, 4, 34, P.w2); g.vl(25, 4, 34, P.w3);                                                     // the halberd's shaft
+    g.vl(24, 0, 4, P.i4); g.poly([[25, 3], [28, 4], [28, 10], [25, 9]], P.i3); g.vl(27, 4, 6, P.i4); g.poly([[23, 4], [20, 5], [23, 8]], P.i2);   // its head
+    if (bare) {
+      g.vl(cx, 12, 26, P.w1); g.vl(cx + 1, 12, 26, P.w2); g.hl(cx - 6, 15, 14, P.w2); g.hl(cx - 6, 16, 14, P.w0); g.set(cx - 7, 15, P.w1); g.set(cx + 8, 15, P.w1);   // post and crossbar
+      return g.outline();
+    }
+    g.vl(cx, 30, 8, P.w1);
+    for (const [x, c] of [[8, P.i2], [14, P.i3]]) { g.rect(x, 29, 4, 8, c); g.rect(x - 1, 36, 5, 2, P.i1); g.ell(x + 1.5, 30, 2.4, 1.8, P.i4); }   // greaves, boots, knee cops
+    g.rect(7, 25, 11, 5, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]); g.hl(7, 27, 11, P.i2); g.hl(7, 29, 11, P.i1);                       // the tassets
+    g.rect(4, 17, 3, 8, P.i2); g.rect(17, 17, 3, 8, P.i2); g.rect(4, 25, 3, 2, P.i1); g.rect(17, 25, 3, 2, P.i1);                          // the arms and gauntlets
+    g.poly([[cx - 4, 14], [cx + 4, 14], [cx + 5, 20], [cx + 3, 25], [cx - 3, 25], [cx - 5, 20]], P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]);
+    g.vl(cx - 1, 15, 9, P.i4); g.hl(cx - 4, 24, 8, P.i1);                                             // the breastplate, its ridge, its belt
+    g.ell(cx - 7, 15.5, 3.6, 2.8, P.i3); g.ell(cx + 7, 15.5, 3.6, 2.8, P.i2); g.hl(cx - 9, 14, 3, P.i4);   // the pauldrons
+    g.hl(cx - 3, 13, 6, P.i1);                                                                         // the gorget
+    g.ell(cx, 8.5, 3.8, 4.6, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]); g.hl(cx - 3, 9, 6, P.d0); g.set(cx - 2, 6, P.i4);   // the helm, its slit
+    g.set(cx, 3, P.r3); g.set(cx, 2, P.r3); g.set(cx - 1, 3, P.r2); g.set(cx + 1, 3, P.r2); g.set(cx, 1, P.r2);                            // its plume
+    return g.outline();
+  }
   function armor(empty) {
-    const g = new Grid(20, 38);
-    g.rect(3, 34, 14, 3, P.w1); g.hl(3, 34, 14, P.w3); g.hl(3, 36, 14, P.w0);                       // the plinth
-    if (empty) {
-      g.rect(9, 5, 2, 29, P.w2); g.vl(9, 5, 29, P.w3);                                              // the post
-      g.rect(4, 12, 12, 2, P.w2); g.hl(4, 12, 12, P.w3); g.set(4, 13, P.w1); g.set(15, 13, P.w1);   // the crossbar
-      g.rect(8, 3, 4, 3, P.w1); g.hl(8, 3, 4, P.w2);                                                // the knob
-      return g.outline();
+    const g = new Grid(28, 29), cx = 14, top = 5;
+    for (const m of [0, 1]) {                                                                      // the halberds, crossed
+      const s = m ? -1 : 1, x0 = m ? 25 : 2, x1 = m ? 2 : 25, hx = x1 + (m ? 0 : 1), hy = 5;
+      g.line(x0, 28, x1, 5, P.w2); g.line(x0 + s, 28, x1 + s, 5, m ? P.w1 : P.w3);
+      g.vl(hx, hy - 5, 4, P.i3);                                                                   // the spike
+      g.rect(hx + s, hy - 3, 1, 5, P.i3); g.rect(hx + 2 * s, hy - 3, 1, 5, P.i3); g.rect(hx + 3 * s, hy - 2, 1, 3, P.i3);
+      g.vl(hx + 3 * s, hy - 2, 3, m ? P.i2 : P.i4); g.set(hx - s, hy - 1, P.i2);                    // the blade's edge, the hook
     }
-    for (const x of [6, 11]) {                                                                      // greaves, knees, sabatons
-      g.rect(x, 22, 3, 10, P.i2); g.vl(x, 22, 10, P.i3); g.rect(x, 25, 3, 2, P.i3); g.set(x, 25, P.i4);
-      g.rect(x - (x < 9 ? 1 : 0), 32, 4, 2, P.i1); g.hl(x - (x < 9 ? 1 : 0), 32, 4, P.i2);
-    }
-    g.rect(5, 19, 10, 4, P.i2); g.hl(5, 19, 10, P.i3); g.hl(5, 21, 10, P.i1);                        // the skirt of plates
-    g.rect(2, 13, 2, 7, P.i2); g.vl(2, 13, 7, P.i3); g.rect(16, 13, 2, 7, P.i1);                    // the arms,
-    g.rect(2, 20, 2, 2, P.i1); g.rect(16, 20, 2, 2, P.i1);                                          // the gauntlets
-    g.rect(5, 11, 10, 8, P.i3); g.rect(10, 11, 5, 8, P.i2); g.vl(9, 12, 6, P.i4); g.hl(6, 11, 4, P.i4);   // the breastplate
-    g.hl(5, 18, 10, P.w1); g.set(9, 18, P.b3);                                                      // belt, buckle
-    g.ell(4, 12, 2.6, 2.2, P.i3); g.ell(16, 12, 2.6, 2.2, P.i2); g.set(3, 11, P.i4);                  // the shoulders
-    g.rect(8, 10, 4, 1, P.i1);                                                                      // the gorget
-    g.ell(10, 6, 3.2, 3.6, P.i3); g.tone((x, y) => x >= 10 && y > 2, P.i2, [P.i3]);                   // the helm,
-    g.hl(7, 6, 6, P.d0); g.set(8, 4, P.i4); g.set(11, 8, P.i1); g.set(12, 8, P.i1);                 // its slit, its breaths
-    g.vl(9, 0, 3, P.r3); g.vl(10, 1, 2, P.r2);                                                      // the crest
+    g.rect(cx - 2, top + 5, 4, 5, P.i1); g.hl(cx - 2, top + 5, 4, P.i2); g.set(cx - 1, top + 7, P.i3); g.set(cx, top + 7, P.i3);   // the plate, its rivets
+    if (empty) return g.outline();
+    g.ell(cx - 6, top + 11.5, 3.6, 2.6, P.i3); g.ell(cx + 6, top + 11.5, 3.6, 2.6, P.i2); g.hl(cx - 8, top + 10, 3, P.i4);   // the pauldrons
+    g.poly([[cx - 4.5, top + 10], [cx + 4.5, top + 10], [cx + 4.5, top + 16], [cx + 2.5, top + 19], [cx - 2.5, top + 19], [cx - 4.5, top + 16]], P.i3);
+    g.tone((x) => x >= cx, P.i2, [P.i3]); g.vl(cx - 1, top + 11, 6, P.i4);                          // the breastplate, its ridge
+    g.rect(cx - 3, top + 19, 6, 2, P.i2); g.hl(cx - 3, top + 20, 6, P.i1); g.hl(cx - 2, top + 9, 4, P.i1);   // the fauld, the gorget
+    g.ell(cx, top + 4.5, 3.6, 4.4, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]);                      // the helm,
+    g.hl(cx - 3, top + 5, 6, P.d0); g.set(cx - 2, top + 2, P.i4);                                  // its slit,
+    g.set(cx, top - 1, P.r3); g.set(cx - 1, top - 1, P.r3); g.set(cx, top - 2, P.r2);              // its plume
     return g.outline();
   }
-  // What flies off it (js/scatter.js `fromArmor`), each a few texels of the same steel.
+  // What flies off it (js/scatter.js `fromArmor`): the helm, the breastplate, a pauldron.
   function armorPiece(kind) {
-    const g = new Grid(12, 12);
-    if (kind === 'helm') { g.ell(5, 5, 3.2, 3.6, P.i3); g.tone((x, y) => x >= 5 && y > 1, P.i2, [P.i3]); g.hl(2, 5, 6, P.d0); g.set(3, 3, P.i4); g.vl(4, 0, 2, P.r3); }
-    else if (kind === 'plate') { g.rect(1, 1, 8, 7, P.i3); g.rect(5, 1, 4, 7, P.i2); g.vl(4, 2, 5, P.i4); g.hl(1, 7, 8, P.w1); }
-    else if (kind === 'gaunt') { g.rect(1, 1, 3, 3, P.i2); g.hl(1, 1, 3, P.i3); g.set(4, 2, P.i1); }
-    else { g.rect(1, 1, 3, 7, P.i2); g.vl(1, 1, 7, P.i3); g.hl(1, 3, 3, P.i3); g.hl(0, 8, 4, P.i1); }
+    const g = new Grid(12, 13);
+    if (kind === 'helm') { g.ell(5, 6, 3.6, 4.4, P.i3); g.tone((x) => x >= 5, P.i2, [P.i3]); g.hl(2, 6, 6, P.d0); g.set(3, 3, P.i4); g.set(5, 1, P.r3); g.set(4, 1, P.r3); g.set(5, 0, P.r2); }
+    else if (kind === 'plate') {
+      g.poly([[1, 1], [10, 1], [10, 7], [8, 10], [3, 10], [1, 7]], P.i3); g.tone((x) => x >= 5.5, P.i2, [P.i3]);
+      g.hl(4, 1, 3, null); g.vl(4, 2, 6, P.i4); g.rect(3, 10, 6, 2, P.i2); g.hl(3, 11, 6, P.i1);
+    } else { g.ell(4, 3, 3.6, 2.6, P.i3); g.tone((x, y) => y >= 3, P.i2, [P.i3]); g.hl(2, 1, 3, P.i4); }
     return g.outline();
   }
 
@@ -964,13 +1013,14 @@ const PROP_PIXELS = (() => {
   };
   for (let k = 0; k < 8; k++) sprites['lantern-' + k] = lantern(k);
   for (let k = 0; k < 8; k++) { sprites['sconce-s' + k] = sconce(k, true); sprites['sconce-f' + k] = sconce(k, false); }
-  sprites.barrel = barrelStand();
-  for (let k = 0; k < 8; k++) { const lie = barrelLie(k); sprites['barrel-lie' + k] = lie; sprites['barrel-up' + k] = transpose(lie); }
+  sprites.barrel = barrelStand(BR); sprites.vbarrel = barrelStand(BV, VLID);
+  for (let k = 0; k < 8; k++) { const lie = barrelLie(k, BR); sprites['barrel-lie' + k] = lie; sprites['barrel-up' + k] = transpose(lie); }
+  for (let k = 0; k < 8; k++) { const lie = barrelLie(k, BV); sprites['vbarrel-lie' + k] = lie; sprites['vbarrel-up' + k] = transpose(lie); }
   for (const k in FOOD) sprites['food-' + k] = FOOD[k];
   sprites['chand0'] = chandelier(0); sprites['chand1'] = chandelier(1); sprites['chand-down'] = chandelierDown();
   sprites.cleat = cleat(false); sprites['cleat-cut'] = cleat(true);
-  sprites.armor = armor(false); sprites['armor-stand'] = armor(true);
-  for (const k of ['helm', 'plate', 'gaunt', 'greave']) sprites['armor-' + k] = armorPiece(k);
+  sprites.armor = armor(false); sprites['armor-stand'] = armor(true); sprites.suit = suit(false); sprites['suit-bare'] = suit(true);
+  for (const k of ['helm', 'plate', 'pauldron']) sprites['armor-' + k] = armorPiece(k);
   sprites.trophy = trophy(false, false); sprites['trophy-blood'] = trophy(true, false); sprites['trophy-tips'] = trophy(true, true);
   sprites['table-s'] = tableTop(); sprites['table-n'] = tableUnder(); sprites['table-e'] = tableSide(); sprites['table-w'] = mirror(sprites['table-e']);
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
@@ -1114,13 +1164,22 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     const name = p.cut ? 'cleat-cut' : 'cleat', g = S[name], k = TUNING.chandelier.texel;
     put(renderer.ctx, name, p.x - g.w * k / 2, cleatTop(p)); return true;
   };
-  // A suit of armour on its stand, feet on its point, rattling while a headbutt still rings in it; once
-  // a body has brought it down, the empty stand (`spilled`). In the prop's own upright frame.
+  // A suit of armour hung on the far wall, fixed to its face the way the stag's head is — its foot
+  // `armor.foot` px over the face's own foot, so it is the stone it is on, not the floor — rattling
+  // while a headbutt still rings in it; once a body has brought it down, the halberds and the bare
+  // plate (`spilled`). No shadow on the floor: nothing of it stands there. In the prop's own upright frame.
   A.armor = function (renderer, p) {
-    const k = TUNING.prop.armor.texel, name = p.spilled ? 'armor-stand' : 'armor', g = S[name];
+    const D = TUNING.prop.armor, k = D.texel, name = p.spilled ? 'armor-stand' : 'armor', g = S[name];
     const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 3) : 0;
-    renderer.shadow(p.x, p.y + 2, g.w * k * 0.42, 5);
-    putSnap(renderer.ctx, name, p.x + wob - g.w * k / 2, p.y + 4 - g.h * k, k);
+    putSnap(renderer.ctx, name, p.x + wob - g.w * k / 2, p.y - TILE * 0.25 * TILT - D.foot - g.h * k, k);
+    return true;
+  };
+  // The suit on its stand, upright on the floor with a shadow under it; the bare stand once it is down.
+  A.suit = function (renderer, p) {
+    const D = TUNING.prop.suit, k = D.texel, name = p.spilled ? 'suit-bare' : 'suit', g = S[name];
+    if (!renderer.silPass) renderer.shadow(p.x, p.y + 6, 15, 5);
+    const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 3) : 0;
+    putSnap(renderer.ctx, name, p.x + wob - g.w * k / 2, p.y + 9 - g.h * k, k);
     return true;
   };
   // The stag's head on the far wall, fixed to its face the way the cleat is. A man dead on it hangs
@@ -1276,6 +1335,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
         else if (p.holds === 'goose') renderer.drawGoose(pet);
         else if (p.holds === 'crow') renderer.drawCrow(pet);
         else if (p.holds === 'horse') { ctx.scale(0.62, 0.62); renderer.horseSprite(ctx, Math.cos(renderer.t * 1.3 + p.phase) > 0 ? 0 : Math.PI, true, 'idle'); }
+        else if (p.holds === 'pig') { ctx.translate(0, 7); ctx.scale(0.85, 0.85); renderer.pigSprite(ctx, Math.cos(renderer.t * 1.3 + p.phase) > 0 ? 0 : Math.PI, true, 'idle', p.phase); }
       }
       ctx.restore();
       put(ctx, (p.hits || 0) > 0 ? 'coop-cracked' : 'coop-front', -w / 2, -h / 2, k);
@@ -1291,7 +1351,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
       let top;
       if (p.lying) {
         const up = p.rollAxis === 'v', step = Math.PI * B.draw * 0.85 / 8;
-        const f = ((Math.floor((p.rollD || 0) / step) % 8) + 8) % 8, name = (up ? 'barrel-up' : 'barrel-lie') + f, g = S[name];
+        const f = ((Math.floor((p.rollD || 0) / step) % 8) + 8) % 8, name = (p.toxic ? 'v' : '') + (up ? 'barrel-up' : 'barrel-lie') + f, g = S[name];
         renderer.shadow(0, p.r * 0.55, g.w * k * 0.46, 5);
         top = p.r * 0.15 - g.h * k / 2;
         put(ctx, name, -g.w * k / 2, top, k);
@@ -1299,7 +1359,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
         const g = S.barrel, shiver = lit ? Math.sin(renderer.t * 60) * (1 - p.oilT / B.fuse) * 1.2 : p.wobble > 0 ? Math.sin(renderer.t * 50) * p.wobble * 4 : 0;
         renderer.shadow(0, p.r * 0.6, B.draw * 0.44, 6);
         top = p.r * 0.8 - g.h * k;
-        put(ctx, 'barrel', shiver - g.w * k / 2, top, k);
+        put(ctx, p.toxic ? 'vbarrel' : 'barrel', shiver - g.w * k / 2, top, k);
       }
       if (lit && !renderer.silPass && !renderer.baking) renderer.flame(0, top + 3, B.fuseDraw, p.phase * 10, p.oilWitch);
       ctx.restore(); return true;

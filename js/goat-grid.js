@@ -432,14 +432,14 @@ const GoatGrid = {
     sc.stubs.set('m' + it.id, e); return e;
   },
   // Where he looks and what he is in the middle of, every frame. Each kind's own windup: the club's
-  // swing, the butcher's charge, the rifle's aim, the hound's run, the seer's rune, the ogre's slam.
+  // swing, the butcher's hook, the rifle's aim, the hound's run, the seer's rune, the ogre's slam.
   poseMan(e, it, aim, t) {
     const S = this.SCENE, k = e.kind, f = S.faces.indexOf(it.face);
     e.x = it.x; e.y = it.y;
     e.facing = f >= 2 ? f * Math.PI / 4 : aim ? Math.atan2(aim.y - it.y, aim.x - it.x) + (f === 1 ? Math.PI : 0) : (f === 1 ? -1 : 1) * Math.PI / 2;
     const c = Math.cos(e.facing), s = Math.sin(e.facing), at = aim || { x: it.x + c * 4 * TILE, y: it.y + s * 4 * TILE };
     Object.assign(e, { state: 'idle', timer: 0, vx: 0, vy: 0, burning: 0, dazed: 0, poison: 0, ghosted: k === 'wraith', hopZ: 0, hopTo: null,
-      chargeAim: null, rune: null, dashPath: null });
+      hookAim: null, hook: null, rune: null, dashPath: null });
     const wind = (dur) => { e.timer = dur * (1 - Math.min(1, (t % (dur * S.loop)) / dur)); };
     const run = () => { e.dashPath = [{ x: it.x, y: it.y }, { x: at.x, y: at.y }]; };
     const p = it.pose;
@@ -448,14 +448,14 @@ const GoatGrid = {
       if (k === 'hunter') { e.state = 'aim'; wind(TUNING.hunter.aimTime); }
       else if (k === 'seer') { e.state = 'cast'; wind(TUNING.seer.castWind); e.rune = { x: at.x, y: at.y }; }
       else if (k === 'butcher') { e.state = 'slamwind'; wind(TUNING.butcher.slam.wind); }
-      else if (e.champion) { e.state = 'chargewind'; wind(TUNING.champion.charge.wind); e.chargeAim = at; }
+      else if (e.champion) { e.state = 'hookwind'; wind(TUNING.champion.hook.wind); e.hookAim = at; }
       else if (k === 'dog') { e.state = 'windup'; wind(TUNING.dog.windup); run(); }
       else { e.state = 'windup'; wind(e.cfg.windup); e.ghosted = false; }
     } else if (p === 'swing') {
       if (k === 'hunter') e.state = 'aim';
       else if (k === 'seer') { e.state = 'cast'; e.rune = { x: at.x, y: at.y }; }
       else if (k === 'butcher') { e.state = 'hop'; e.hopZ = 18; e.hopTo = { x: at.x, y: at.y }; e.timer = TUNING.butcher.leap.air * 0.5; }
-      else if (e.champion) { e.state = 'charge'; e.vx = c * 200; e.vy = s * 200; }
+      else if (e.champion) { e.state = 'hookthrow'; const d = Math.hypot(at.x - it.x, at.y - it.y) * 0.6; e.hook = { x: it.x + c * d, y: it.y + s * d, ux: c, uy: s, left: d, caught: null }; }
       else if (k === 'dog') { e.state = 'dart'; e.vx = c * 200; e.vy = s * 200; run(); }
       else { e.state = 'swing'; e.ghosted = false; }
     } else if (p === 'floored') e.state = 'floored';
@@ -581,6 +581,7 @@ const GoatGrid = {
       r.groundDone = true;
       for (const o of lay.stand.sort((a, b) => a.y - b.y)) safe(o.what, o.draw);
       r.groundDone = false;
+      safe('hooks', () => r.drawHooks({ enemies: lay.up }));   // a butcher posed mid-throw has his rope out
       const heads = r.overheads.sort((a, b) => b.e.y - a.e.y), plates = []; r.overheads = null;
       for (const hd of heads) safe('overhead', () => { ctx.globalAlpha = hd.a; r.drawOverhead(hd.e, plates); });
       const q = this.SCENE.bursts[sc.burst][1];

@@ -38,7 +38,7 @@ const dressedRight = (L, list, kind) => {
     if (!armory) loose++;
     if (quiet(L, r) || r.isTrap || r.index < D.from && !armory) return `a ${name} in room ${r.index} (${r.isTrap ? 'trap' : r.role})`;
     const side = p.side || 'n', tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE), at = dressPoint(kind, tx, ty, side);
-    if (kind === 'trophy' && side !== 'n') return `a stag's head on a side wall in room ${r.index}`;
+    if (side !== 'n') return `a ${name} on a side wall in room ${r.index}`;
     if (Math.abs(at.x - p.x) > 0.5 || Math.abs(at.y - p.y) > 0.5 || !wallFits(L.tiles, L.W, r, tx, ty, side, grass)) return `a ${name} off its wall or by an opening at ${tx},${ty}`;
     const mates = L.props.filter((q) => q !== p && inBox(r, q) && (q.kind === 'armor' || q.kind === 'trophy' || q.kind === 'chandelier'));
     if (armory ? mates.some((q) => q.kind !== 'armor') || mates.length >= D.armory : mates.length) return `room ${r.index} is dressed with ${mates.length + 1} things`;
@@ -369,7 +369,7 @@ const GEN_RULES = [
   // never a decision about anything.
   { id: 'beasts', text: 'At most one animal a floor, shut in a coop on plain floor of an ordinary room inside the first third of the level — never in the pen, a rest room, a teaching room, a trap room or a set piece. The horse stands before the first soul gate, in a stall of plain floor that leaves its room one piece.',
     check: (L) => {
-      const kinds = ['tortoise', 'goose', 'crow', 'chicken', 'horse'];
+      const kinds = ['tortoise', 'goose', 'crow', 'chicken', 'horse', 'pig'];
       const found = L.props.filter((p) => kinds.indexOf(p.kind) >= 0 || p.kind === 'coop')
         .map((p) => (p.kind === 'coop' ? { x: p.x, y: p.y, kind: p.holds || 'chicken', caged: true } : p));
       if (!found.length) return (L.def.beasts && L.def.beasts.length) ? null : true;
@@ -504,6 +504,19 @@ const GEN_RULES = [
       }
       return true;
     } },
+  // `shiftOffTables`, `onTable`: a table's top is two tiles square whatever block it was drawn as, and
+  // nothing loose stands under it (30 Sep 2026: a template's crate drawn half into a one-row table).
+  { id: 'ontable', text: 'Nothing loose — a crate, a bomb, a barrel, a stand of arms, a coop, a bowl of milk, a boulder — stands on a table\'s top.',
+    check: (L) => {
+      const tables = L.props.filter((p) => p.kind === 'table');
+      if (!tables.length) return null;
+      for (const p of L.props) {
+        if (!TABLE_LOOSE.includes(p.kind)) continue;
+        const b = stallHalf(p), hx = b ? b.hx : 0, hy = b ? b.hy : 0;
+        if (onTable(p.x, p.y, b ? 1 : looseR(p), tables, hx, hy)) return `a ${p.kind} on a table at ${Math.floor(p.x / TILE)},${Math.floor(p.y / TILE)}`;
+      }
+      return true;
+    } },
   // THE CAVE's floor. A boulder is stone to everything that moves, so the only thing that keeps a
   // scatter of them from shutting a way through is where they are allowed to stand. `placeRockCluster`
   // grows a formation of three to six of them on purpose, and every cell of one carries the same
@@ -578,7 +591,7 @@ const GEN_RULES = [
   // promise is to be rare and out of the way: against a wall with plain stone either side of it (never
   // a doorway), the floor round it open, in an ordinary room — THE ARMORY's own suits aside — and
   // never beside another piece of it or under a chandelier's rope.
-  { id: 'armor', text: 'A suit of armour stands with its back to a far or side wall of an ordinary room, clear of every opening; a couple a floor, THE ARMORY\'s own aside.',
+  { id: 'armor', text: 'A suit of armour hangs on the far wall of an ordinary room, clear of every opening; a couple a floor, THE ARMORY\'s own aside.',
     check: (L) => {
       const suits = L.props.filter((p) => p.kind === 'armor');
       if (!suits.length) return null;
@@ -605,6 +618,21 @@ const GEN_RULES = [
         // The vault's own approach is the exception: half the time its last stretch grows teeth.
         if (r.index === L.def.vaultAt) continue;
         if (quiet(L, r) || r.isTrap) return `a grate in the ${r.role} (room ${r.index})`;
+      }
+      return true;
+    } },
+  { id: 'hidden', text: 'A grate with something on it lies under a crate, a barrel or a stand of arms — on a level that lays grates (THE ARMORY too), never in a room that is teaching or resting.',
+    check: (L) => {
+      const hid = L.props.filter((p) => p.kind === 'spike' && p.hidden);
+      if (!hid.length) return null;
+      for (const g of hid) {
+        const r = roomAt(L, g.x, g.y);
+        if (r && r.tpl && r.tpl.name === 'armory' && hid.filter((o) => roomAt(L, o.x, o.y) === r).length > TUNING.prop.spike.hidden.armoryMax) return `more than ${TUNING.prop.spike.hidden.armoryMax} hidden grates in THE ARMORY`;
+        if (!r) return 'a hidden grate outside any room';
+        const armory = r.tpl && r.tpl.name === 'armory';
+        if (!L.def.spikes) return `a hidden grate on a level with none (room ${r.index})`;
+        if (!armory && (quiet(L, r) || r.isTrap)) return `a hidden grate in the ${r.role} (room ${r.index})`;
+        if (!L.props.some((q) => (q.kind === 'crate' || q.kind === 'barrel' || q.kind === 'weapon') && len(q.x - g.x, q.y - g.y) < 4)) return `a hidden grate with nothing on it (room ${r.index})`;
       }
       return true;
     } },

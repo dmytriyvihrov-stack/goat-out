@@ -60,7 +60,7 @@ function showroomLevel(def, seed) {
     ['DROP', (x, y) => fill(x, y - 1, x + 1, y, T.PIT)],
     ['CAGE', (x, y) => props.push(...buildCage((x + 0.5) * TILE, (y - 0.3) * TILE, 0.8, 0.7, true))],
   ]);
-  row(hy + 21, 'COOPS', ['chicken', 'tortoise', 'goose', 'crow', 'horse'].map((k) =>
+  row(hy + 21, 'COOPS', ['chicken', 'tortoise', 'goose', 'crow', 'horse', 'pig'].map((k) =>
     [k === 'chicken' ? 'HEN' : k.toUpperCase(), (x, y) => put('coop', x, y, { holds: k, beastRoom: 0 })]));
   // The doors, each at the mouth of a blind alcove in the hall's far wall, so none of them is in the way.
   const doors = [['PLANK', {}], ['IRON', { iron: true }], ['STAIRS', { iron: true, stair: true }],
@@ -76,6 +76,8 @@ function showroomLevel(def, seed) {
     props.push(Object.assign(dressPoint(kind, tx, hy, 'n'), { kind, side: 'n' }));
     label(name, tx, hy + 1.6, 5);
   }
+  // The suit on its stand, out in the hall, a step off the wall's dressing.
+  put('suit', hx + 13, hy + 8); label('STANDING SUIT', hx + 13, hy + 9.8, 5);
   // A wall that gives, in the near wall, with its niche behind it (walled up again by `startLevel`).
   {
     const tx = hx + 36, wr = hall.y + hall.h - 1;

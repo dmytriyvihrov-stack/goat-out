@@ -22,8 +22,8 @@ node tools/serve.js 8766
 ```
 
 Then open http://127.0.0.1:8766. The first screen is NEW GAME; CONTINUE, which stays dark until there
-is a run to come back to; LEVELS, which puts you on any floor of the game with the souls a run would
-have banked getting there; and BEST and SETTINGS. Audio unlocks on that first input.
+is a run to come back to; BEST and SETTINGS. With the dev tools open (bottom left) a LEVELS row
+appears too, which puts you on any floor of the game with the souls a run would have banked getting there. Audio unlocks on that first input.
 
 A run is written to the browser at the head of every floor, so CONTINUE puts you back at the start of
 the furthest floor you reached with what you had when you walked onto it. Quitting a floor half played
@@ -94,7 +94,7 @@ FLOOR, the other to the cellars under it, where nothing is lit but what burns. E
 lamp or two — it shows them to you and you to them, and a headbutt puts it on the floor, burning, and
 then the room is black — and a lantern on the wall by every door that nothing puts out. Out of the light
 they see you only close and hunt by what they hear; you hear them before you see them, and see the eyes
-of the hounds and the mages across a room. Fewer of them, no rifles. LEVELS has a row for it.
+of the hounds and the mages across a room. Fewer of them, no rifles. LEVELS (dev tools) has a row for it.
 
 **THE TRIP.** From THE ROAD on, some floors have a tuft of pale mushrooms on them. Eat it and the next floor is a glowing
 cave where every key is the other way round — the stick reversed, the horns and the teeth swapped, the
@@ -115,11 +115,11 @@ arena without company. After that they arrive mixed, and the mix gets worse as t
 worse again on the floor after.
 
 **Seven enemy types.** Club-swinging Bearers; Butchers in bone aprons and bull-skull masks, too heavy
-to carry, who charge you from across a room; blinking Seers whose runes erupt into violet witchfire
+to carry, who hook you from across a room and drag you to the cleaver; blinking Seers whose runes erupt into violet witchfire
 that no boon protects you from; Hunters whose bullets travel and hit their own; the ogre, the cult's
 half-beast, who takes four, is never knocked back, leaps onto where you stand and brings his fists down
 on the floor all round him; the hounds; and the wraiths. One rule for all of them: a man without a
-yellow outline dies to one killing blow (the Butcher takes three); a boss wears the outline, stands a size bigger and takes three. They shout short lines when they see you, hear
+yellow outline dies to one killing blow (the Butcher takes three, the Seer two); a boss wears the outline, stands a size bigger and takes three. They shout short lines when they see you, hear
 you, swing at you or watch one of their own come apart — and they read the room: fire, lit braziers, a
 rune about to go off and the sweeping arms of the Mill. Not all of them read it correctly.
 
@@ -133,9 +133,13 @@ it cannot stop. That window is the only time anything of yours can touch it. It 
 inside a wall, so a wall at your back is one arc it cannot come from.
 
 **Souls.** Two on every floor and no more: one in the middle, carried by the man who keeps the gate it
-opens, and one at the end, in the last boss. A soul offers three cards — an active that changes what a button does, or a passive
+opens, and one at the end, in the last boss. A soul offers two cards — an active that changes what a button does, or a passive
 that bends its numbers — and the build holds one active and two passives per button. Once a slot is full,
-a card for it offers to swap one you have. Dragon Breath turns
+a card for it offers to swap one you have. A third card has to be earned: the Hungry Soul deals one on
+every soul after it, and the mouse's Knucklebone every third, second or every soul by its tier. Souls of one
+element add up: each fire soul buys you longer in flame before it hurts and all four make you proof
+against it and your fire burn twice as long; each poison soul, longer in a puddle before it slows you, and
+all four make you proof against it and your poison take a heart as it takes a man. Dragon Breath turns
 the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Long Horns grows antlers,
 Firebrand leaves a line of fire behind anything you throw.
 
@@ -143,9 +147,9 @@ Firebrand leaves a line of fire behind anything you throw.
 talisman, another talisman or a pail of milk, and you take one. She takes nothing for it. Headbutting
 her stall is rude, and what comes out of the wall after the third time is not a mouse.
 
-**Talismans.** Twenty-one of them in three tiers, worn one at a time on a collar, each stated in plain
+**Talismans.** Twenty-two of them in three tiers, worn one at a time on a collar, each stated in plain
 numbers where it stands: a mirror shard that turns a blow back, a spade that leaves bodies lying to trip
-over, a boomerang on Q, and so on.
+over, a boomerang on Q, a knucklebone that deals a soul's third card, and so on.
 
 **Animals.** From the second floor a coop holds an animal — a hen, a goose, a crow, a tortoise, a
 horse. Break it open and get the animal to the stairs alive, and it pays you for the rest of the run,

@@ -1068,6 +1068,7 @@ class GameAudio {
     if (kind === 'chicken') return this.sfxCluck(!!hurt);
     if (kind === 'goose' || kind === 'crow') return this.foley(kind, { key: kind + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: kind === 'goose' ? 0.11 : 0.08 });
     if (kind === 'horse') return this.foley('horse', { key: 'horse' + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: 0.1 });
+    if (kind === 'pig') return this.foley('pig', { key: 'pig' + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: hurt ? 0.09 : 0.12 });
     this.foley('tortoise', { gain: 0.115 });
   }
   // The lorry under them: half a second of diesel knock, called every half second while the road

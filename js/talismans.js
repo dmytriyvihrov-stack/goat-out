@@ -184,8 +184,8 @@ const Talisman = {
   },
 
   // ---- MIRROR SHARD: the parry window ----
-  // `kind`: 'bullet' and 'bite' at every tier, 'melee' from II, 'heavy' (a cleaver, a charge, a
-  // slam, the ogre) at III. Returns true when the blow went back where it came from.
+  // `kind`: 'bullet' and 'bite' at every tier, 'melee' from II, 'heavy' (the ogre's and the rat
+  // ogre's blows, a slam; `parry` below decides) at III. Returns true when the blow went back where it came from.
   canParry(game, kind) {
     const M = game.mods.mirror, g = game.goat;
     if (!M || !(g.parryT > 0) || g.dead) return false;
@@ -198,11 +198,10 @@ const Talisman = {
     game.audio.sfxSteel(); game.hitstop(0.06); game.shake(4); game.vibe(20);
   },
   parry(game, att, kind) {
-    const heavy = att.kind === 'butcher' || att.kind === 'ratogre' || kind === 'charge' || kind === 'slam';
+    const heavy = att.kind === 'butcher' || att.kind === 'ratogre' || kind === 'slam';
     if (!Talisman.canParry(game, heavy ? 'heavy' : kind)) return false;
     const g = game.goat, dx = att.x - g.x, dy = att.y - g.y, l = Math.hypot(dx, dy) || 1;
     Talisman.parryFx(game, att.x, att.y);
-    if (kind === 'charge') { att.chargeStopped(game); return true; }
     if (kind === 'slam') { att.state = 'stunned'; att.timer = game.mods.mirror.stun; att.vx = 0; att.vy = 0; return true; }
     if (att.kind === 'ratogre') { att.breakSwing(game); att.state = 'stagger'; att.timer = att.cfg.stagger; return true; }
     if (att.kind === 'butcher') {
@@ -298,7 +297,7 @@ const Talisman = {
       if (o === e || o.dead || o.held || o.ghosted || o.kind === 'wraith' || Talisman.heavy(o) || o.kind === 'butcher') continue;
       if (o.panicCd > 0 || Math.hypot(o.x - e.x, o.y - e.y) > MK.r * TILE || !game.world.los(o.x, o.y, e.x, e.y)) continue;
       if (o.state === 'flung' || o.state === 'floored' || o.state === 'stunned' || o.state === 'burning') continue;
-      const busy = o.state === 'windup' || o.state === 'swing' || o.state === 'aim' || o.state === 'cast' || o.state === 'slamwind' || o.state === 'dart' || o.state === 'chargewind';
+      const busy = o.state === 'windup' || o.state === 'swing' || o.state === 'aim' || o.state === 'cast' || o.state === 'slamwind' || o.state === 'dart' || o.state === 'hookwind';
       if (busy && !MK.drop) continue;
       if (busy && o.kind === 'hunter') o.reload = o.cfg.reload * m.enemySlow;
       o.rune = null; o.dashPath = null;
@@ -586,6 +585,14 @@ const Talisman = {
       }
       if (R.tallyCharged) { ctx.fillStyle = PALETTE.fireHi; ctx.font = `700 ${8 * s}px ${FONT_SC}`; ctx.fillText('x2', bx + n * 5 * s + 3 * s, by + 7 * s); }
     }
+    // THE KNUCKLEBONE: a pip for each soul counted toward the next third card.
+    if (game.artifact && game.artifact.id === 'knuckle' && m.thirdEvery > 1) {
+      const n = m.thirdEvery - 1;
+      for (let k = 0; k < n; k++) {
+        ctx.fillStyle = k < (R.third || 0) ? PALETTE.witchHi : 'rgba(239,230,208,0.2)';
+        ctx.fillRect(bx + k * 6 * s, by, 4 * s, 4 * s);
+      }
+    }
     // The bell's thread: a small mark on the edge of the screen toward the stairs, and the vault.
     const B = m.bell;
     if (B && game.level && !game.goat.dead && game.state === 'play') {
@@ -729,6 +736,8 @@ const Talisman = {
     else if (id === 'tallow') { ctx.fillStyle = '#e8dcb0'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.fillRect(-h * 0.35, -h * 0.4, h * 0.7, h * 1.3); ctx.strokeRect(-h * 0.35, -h * 0.4, h * 0.7, h * 1.3); ctx.fillStyle = PALETTE.fire; ctx.beginPath(); ctx.moveTo(0, -h * 1.0); ctx.quadraticCurveTo(h * 0.25, -h * 0.6, 0, -h * 0.45); ctx.quadraticCurveTo(-h * 0.25, -h * 0.6, 0, -h * 1.0); ctx.fill(); }
     else if (id === 'mirror') { ctx.fillStyle = '#bfe6ff'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(0, -h); ctx.lineTo(h * 0.6, 0); ctx.lineTo(0, h); ctx.lineTo(-h * 0.6, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); line('rgba(255,255,255,0.85)', 0.1); ctx.beginPath(); ctx.moveTo(-h * 0.2, -h * 0.4); ctx.lineTo(h * 0.15, -h * 0.05); ctx.stroke(); }
     else if (id === 'cup') { ctx.fillStyle = '#8d8a85'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.7, -h * 0.6); ctx.lineTo(h * 0.7, -h * 0.6); ctx.quadraticCurveTo(h * 0.6, h * 0.3, 0, h * 0.35); ctx.quadraticCurveTo(-h * 0.6, h * 0.3, -h * 0.7, -h * 0.6); ctx.fill(); ctx.stroke(); ctx.fillStyle = PALETTE.blood; ctx.beginPath(); ctx.ellipse(0, -h * 0.55, h * 0.6, h * 0.15, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#8d8a85'; ctx.fillRect(-h * 0.1, h * 0.35, h * 0.2, h * 0.4); ctx.fillRect(-h * 0.4, h * 0.72, h * 0.8, h * 0.18); }
+    // An astragalus: a goat's ankle bone, knuckled at both ends and waisted in the middle, one pit on its face.
+    else if (id === 'knuckle') { ctx.rotate(-0.25); ctx.fillStyle = '#e8dcc0'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.85, -h * 0.45); ctx.quadraticCurveTo(-h * 0.95, -h * 0.9, -h * 0.4, -h * 0.75); ctx.quadraticCurveTo(0, -h * 0.45, h * 0.4, -h * 0.75); ctx.quadraticCurveTo(h * 0.95, -h * 0.9, h * 0.85, -h * 0.45); ctx.lineTo(h * 0.85, h * 0.45); ctx.quadraticCurveTo(h * 0.95, h * 0.9, h * 0.4, h * 0.75); ctx.quadraticCurveTo(0, h * 0.45, -h * 0.4, h * 0.75); ctx.quadraticCurveTo(-h * 0.95, h * 0.9, -h * 0.85, h * 0.45); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#a8977a'; ctx.beginPath(); ctx.ellipse(0, 0, h * 0.28, h * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(-h * 0.6, -h * 0.55, h * 0.3, h * 0.12); }
     else if (id === 'tally') { ctx.rotate(-0.3); ctx.fillStyle = '#a57949'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.08; ctx.fillRect(-h * 0.2, -h, h * 0.4, h * 2); ctx.strokeRect(-h * 0.2, -h, h * 0.4, h * 2); line('#3b2a1a', 0.1); for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-h * 0.2, -h * 0.7 + k * h * 0.4); ctx.lineTo(h * 0.1, -h * 0.7 + k * h * 0.4); ctx.stroke(); } }
     else return false;
     return true;

@@ -813,15 +813,17 @@ class World {
   // ---- fire ----
   // Hay catches on its own and spreads. `force` lights any walkable tile (a spilled oil pool)
   // which burns out without spreading and leaves a scorch mark.
+  // `burnMul` is the whole fire set's (`BOON_SETS.fire`, set by `Game.applyBoons`): ordinary fire
+  // lasts that many times as long while he carries all four. Witchfire is the Seer's and keeps its own.
   ignite(tx, ty, force, dur, witch) {
     if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return false;
     const i = this.idx(tx, ty);
     if (this.fire[i] > 0) return false;
-    const t = this.tiles[i];
-    if (t === T.HAY) { this.fire[i] = TUNING.fire.burn; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
+    const t = this.tiles[i], k = witch ? 1 : this.burnMul || 1;
+    if (t === T.HAY) { this.fire[i] = TUNING.fire.burn * k; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
     // Tall grass is fuel the way hay is: it catches from anything and it carries the fire on.
-    if (this.grass[i]) { this.fire[i] = TUNING.grass.burn; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
-    if (force && t !== T.WALL && t !== T.PIT) { this.fire[i] = dur || TUNING.fire.pool; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
+    if (this.grass[i]) { this.fire[i] = TUNING.grass.burn * k; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
+    if (force && t !== T.WALL && t !== T.PIT) { this.fire[i] = (dur || TUNING.fire.pool) * k; this.fireKind[i] = witch ? 1 : 0; this.spread[i] = 0; return true; }
     return false;
   }
   // A breathed cone of flame: short-lived on bare floor, but it sets hay going properly.

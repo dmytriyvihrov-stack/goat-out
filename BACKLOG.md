@@ -9,6 +9,23 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 30 September 2026 — the souls: two cards, element sets, the goat's own poison (1.82)
+
+Asked for in one message, shipped in 1.82 (see `CHANGELOG.md`) except the line below: two cards a soul
+instead of three, a third from a special perk (HUNGRY SOUL) or a special item (THE KNUCKLEBONE, a mouse
+talisman: "tier I once in three choices, tier II once in two, tier III every choice"); the goat poisoned
+by a puddle after a ring fills round him, slowed only; fire and poison sets that add up (½ s, 1 s, 2 s
+of grace, then immunity plus the set's own bonus); the base breath a tile shorter, THE FULL THROAT's
+daze at half the radius, VENOM SPIT's puddle six tiles.
+
+- **system** — **the stun set.** Asked for with the other two: each stun soul carried buys grace against
+  being stunned (½ s, 1 s, 2 s off `stunGoat`'s time, the way fire and poison do) and lengthens every stun
+  he deals; all four, and a man coming out of a stun has forgotten where he last saw the goat (`lastSeen`
+  cleared, `aware` dropped back to searching). Parked on purpose ("don't bother with it for now"):
+  only three souls stun — THE FULL THROAT, DEAD WEIGHT, LEAPFROG — and the last two are both roll actives,
+  so no build can hold more than two. It needs one or two new stun souls (a headbutt or grab passive, or
+  a special perk that counts toward the set) before four is reachable.
+
 ## 29 September 2026 — heaven between deaths, Gungeon's barrels, a supper that scatters (1.79)
 
 Asked for in the session, all shipped in 1.79 (see `CHANGELOG.md`): barrels drawn the way *Enter the

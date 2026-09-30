@@ -102,8 +102,9 @@ const JUICE_PLAY = {
 
 // Why a row has no preview. Anything not listed falls back on its category or status.
 const JUICE_NOPLAY = {
-  'Armour flies apart': 'a suit of armour stands against a wall of a room — THE SHOWROOM has one: throw a man at it',
+  'Armour flies apart': 'a suit of armour hangs on a far wall — THE SHOWROOM has one: throw a man at it',
   'Hung on the antlers': 'a stag’s head hangs on a far wall — THE SHOWROOM has one: throw a man at it',
+  'Butcher hook line': 'a butcher a few tiles off with a clear line to the goat — play THE ALTAR or spawn one from the dev drawer',
   'Camera lead': 'a camera following him across a floor — play a floor',
   'Deadzone camera': 'a camera following him across a floor — play a floor',
   'Frame the fight': 'a boss in a room too big for the screen — play a floor',
@@ -222,8 +223,8 @@ const JUICE_SCENES = {
     at: [[0.3, (S) => S.dazed.daze(S.game, 2.2)]] },
   words: { period: 2.6, approx: 'the words are set off by hand (`game.floatText`)', what: 'Words stamped over the goat and a door.',
     setup(S) { S.goatAt(6, 5.5); },
-    at: [[0.3, (S) => S.game.floatText(S.game.goat.x, S.game.goat.y - 30, 'OOPS', PALETTE.fireHi)],
-      [0.9, (S) => S.game.floatText(10 * TILE, 4 * TILE, '2 LEFT', PALETTE.fireHi)]] },
+    at: [[0.3, (S) => S.game.floatText(S.game.goat.x, S.game.goat.y - 30, 'COALS', PALETTE.fire)],
+      [0.9, (S) => S.game.floatText(10 * TILE, 4 * TILE, 'x3', PALETTE.fireHi)]] },
   barks: { period: 3.4, what: 'Two men speak (`game.bark`): one seeing him, one scared.',
     setup(S) { S.goatAt(4, 5.5); S.men = [S.man(9, 4), S.man(10.5, 6.5)]; },
     at: [[0.3, (S) => { S.game.barkCd = 0; S.men[0].barkCd = 0; S.game.bark(S.men[0], 'spot'); }],
@@ -413,7 +414,7 @@ const JuicePreview = {
     // As `startLevel` does it: the chandelier and its cleat, and the lists the men read.
     for (const c of pg.props) if (c.kind === 'cleat') { const ring = pg.props.find((q) => q.kind === 'chandelier' && q.cid === c.cid); if (ring) { c.hangs = ring; ring.cleat = c; } }
     pg.hazards = pg.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike' || p.kind === 'spire' || p.kind === 'barrel');
-    pg.wallArt = pg.props.filter((p) => p.kind === 'armor' || p.kind === 'trophy');
+    pg.wallArt = pg.props.filter((p) => p.kind === 'armor' || p.kind === 'trophy' || p.kind === 'suit');
     pg.sightBlockers = pg.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill' || p.kind === 'secret');
     pg.world.computeFlow(pg.goat.x, pg.goat.y);
     pg.revealRooms();

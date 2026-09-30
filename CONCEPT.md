@@ -103,7 +103,7 @@ fire — so a build reads as a shape rather than as a list of names.
 | | Behaviour |
 |---|---|
 | **Bearer** | Melee. About half a second of windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
-| **Butcher** | (The brute until 1.72.) A clubman with a cleaver and a charge, too heavy to be carried: a big shape in a bone apron with a bull's skull for a mask (since 1.66 — the old Butcher's body, hence the name; that kind is the ogre now). Three killing blows, the one kind that is heavy without the outline; four as a boss. Seen from three tiles or more with a clear run, he plants, roars and charges where you are going, and the run lands on anything close to its line, not only dead centre; a charge into a wall stuns him for a free hit. |
+| **Butcher** | (The brute until 1.72.) A clubman with a cleaver and a hook on a rope, too heavy to be carried: a big shape in a bone apron with a bull's skull for a mask (since 1.66 — the old Butcher's body, hence the name; that kind is the ogre now). Three killing blows, the one kind that is heavy without the outline; four as a boss. Seen from three to seven tiles off with a clear line, he plants and swings the hook round, a thin line on the floor to where it will land, and throws it where you are going, past his own men: run straight on and it catches you, and only a real turn after it leaves his hand, or a roll, slips it. Caught, you are dragged to his cleaver. The hook itself hurts nothing — the swing at the end of the rope does, and whatever the rope drags you across. A table, a barrel, a brazier or a shut door in its line stops it, a carried shield turns it, and a miss is reeled in while he stands. (Until 30 Sep 2026 he charged instead; furniture kept stopping it.) |
 | **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything (the one man besides the Butcher who does without the outline), blinking clear after the first, and unlike the ogre he can always be grabbed, carried and thrown. Arrives late and never two to a room. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for most of a second with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run — flattened, streaking, eyes lit, which is the one tell you get — bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it — but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
@@ -308,7 +308,7 @@ a click skips it; it plays on every attempt at the floor, since every attempt is
 **The controls are painted on the floor** where each verb is first needed, the way Ape Out does it: the
 pen says how to move, the floor under the first man says what the headbutt does, the room that stands a
 blade in front of you says GRAB, and ROLL is written just inside the door of the first butcher's room,
-since his charge is the first thing worth rolling out of. There is no line
+since his hook is the first thing worth rolling out of. There is no line
 about the mouse: a pointer on a top-down game explains itself.
 
 ---
@@ -331,7 +331,7 @@ about the mouse: a pointer on a top-down game explains itself.
   three, and the goat goes through on the last and floors whoever waited behind it; cultists who pile up eventually shoulder them open from their side. Two extra beats
   of being held still in a corridor, with whatever heard the first blow already coming, is what the
   door is for. Nothing flies through a shut one: a pot breaks on it, a blade snaps on it, a shield
-  rings off it. A table sliding at speed, or a butcher on a charge, takes it off its hinges.
+  rings off it. A table sliding at speed takes it off its hinges.
 - **Grating**, from THE ROAD on. The teeth come up where you have already been: crossing a
   plate arms it and it bites a beat later, so what it takes is the ground you have just left — which is
   the ground whoever is chasing you is standing on. A man dies on them and the goat pays a heart, and
@@ -343,7 +343,7 @@ about the mouse: a pointer on a top-down game explains itself.
   off its hinges, and stops on anything a man would: a brazier, the wheel, another table.
 - **Oil lamps** topple into a pool of fire, and a lamp post is not a pillar: a body thrown into one
   takes it over and the oil goes down where the body is about to land. So does a pot, a thrown blade,
-  a butcher on a charge, or fire that has burned its way up to the post.
+  or fire that has burned its way up to the post.
 - **Stands of arms** hold a sword or a shield, and they are rare: one to an arena, about one ordinary
   room in six, and nothing at all on level 1 until halfway in. Nothing you take off one survives being
   used up. A thrown blade goes into whatever it finds, and a blade thrown at a wall is a blade thrown
@@ -356,10 +356,10 @@ about the mouse: a pointer on a top-down game explains itself.
   man held into the arm, and the wheel takes him out of your mouth and throws him for you. Its room is
   deliberately taller than the arms are long: there is a lane along the top and the bottom, so the room
   is crossed by reading it.
-- **The butcher's charge** is answered by all of it. A door comes off its hinges and he keeps going; a
-  table goes ahead of him at speed, into whoever was behind it; a lamp goes over and he runs into his
-  own oil; a brazier lights him; and the gong, the hub of the wheel or a bar of the pen stops him the way
-  a wall does, for the same free hit.
+- **The butcher's hook** answers to it too. Anything that stops a round stops the hook in flight — a
+  table, a barrel, a brazier, the gong, a shut door — so furniture between you and him is cover. The
+  hook hurts nothing itself: what the rope costs is his cleaver at the end of it, and whatever it drags
+  you across on the way there, coals or a drop.
 - **The pen** in the first room takes seven blows, and two of them put the goat on the floor.
 
 ---
@@ -373,13 +373,16 @@ the player to believe that a goat reads.
 
 **A level gives up exactly two**, one in the middle and one at the end: the keeper of the middle gate
 carries the first, the last boss the second. On THE YARD, THE ROAD and THE BRIDGE the mouse stands in
-for the first — thirteen across a run, against twenty-four boons and a build that holds fourteen, so no
+for the first — thirteen across a run, against twenty-five boons and a build that holds fourteen, so no
 run gets everything and no two runs are the same goat. Nothing else pays one: not a cleared room, not a
 lit boss on a lucky seed, not the vault. Every other boss leaves milk. **A man carrying one is lit** — an
 amber haze that breathes, a ring at his feet, and red eyes — so the one man in a room worth crossing the
 room for says so from across it.
 
-A soul offers **three of one kind**: either three actives or three passives. The first soul of a run
+A soul offers **two of one kind**: either two actives or two passives (three until 30 Sep 2026). A
+third card is bought, not given: **Hungry Soul**, a body soul, deals one on every soul after it, and the
+mouse's **Knucklebone** on every third, second or every soul by its tier — a wider choice later is what
+either of them costs you now. The first soul of a run
 always offers actives, and while any button is still shut the cards lean hard toward them. A build
 holds one active and two passives per button, and four for the body. Once a slot is full a soul does not
 go to waste: the cards it cannot fill offer a swap, a boon for that slot in place of one already in it,
@@ -404,7 +407,20 @@ drawer shows every one with its numbers).
   head, leaves poison behind, or vaults a man instead of going round him.
 
 **Passives** sharpen what you already have: Thick Hide, Four Stomachs, Iron Skull, Strong Jaw, Living
-Shield, Cold Eye, Kindling, Raw Throat, Sure Hooves, Loose Joints, Ember Coat, The Oracle.
+Shield, Cold Eye, Kindling, Raw Throat, Sure Hooves, Loose Joints, Ember Coat, The Oracle, Hungry Soul.
+
+**Elements add up** (30 Sep 2026). Four souls are fire — Dragon Breath, Firebrand, Kindling, Ember
+Coat — and four are poison — Splash, Venom Jaw, Sour Tumble, Venom Spit. Each one of a set carried
+buys grace against it, and the shares grow and add up: the first half a second, the second a second
+more, the third two more — three and a half with three — before a tick of ordinary fire lands, or
+before a puddle's ring fills. A card says only what it adds itself, never a count. All four make the goat proof against it outright; the
+whole fire set makes his fire burn twice as long, the whole poison set makes poison a blow (a heart,
+as it takes a man). Witchfire is the Seer's and no set turns it. A stun set (The Full Throat, Dead
+Weight, Leapfrog) was asked for and is parked: two of its three share the roll.
+
+**He is poisoned too.** Every puddle is one of his own souls', and standing in one fills a ring round
+his feet; full, it slows him for a few seconds after he leaves it. Nothing else — no heart, no
+blindness. The ring is the price of standing in his own work, and the poison set is what pays it off.
 
 **The gate.** Every floor stops you once, in the middle: a quiet room after a fight, its way on barred by
 a door no blow opens, and its soul is the bar. The soul is not lying on the floor, it is in a man standing

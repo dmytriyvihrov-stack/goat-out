@@ -9,21 +9,28 @@
 //   POISON + STUN  shock: both run much longer, no hit (`sting`)
 //   STUN   + FIRE  the fire does two hits, not one (`Enemy.scald`)
 //
-// The goat is never poisoned. Every source of it is one of his own souls, and a soul that could
-// hurt the animal that swallowed it would be a soul nobody takes twice.
+// The goat is poisoned too (30 Sep 2026: "the player is affected by poison, like the enemies — only
+// for him a certain time has to pass, as in fire"). A man has it the moment he stands in a puddle; the
+// goat fills a ring round his feet first (`Status.goat`, `TUNING.goat.poison.build` seconds, longer for
+// every poison soul he carries, never at all with all four: `BOON_SETS`), and all it does to him is slow
+// him. Every puddle is still one of his own souls': the ring is the price of standing in his own work.
 const Status = {
   // Poison a man. Where it lands on something already wrong with him it reacts instead of stacking.
   poison(game, e, t) {
     if (e.dead || e.ghosted) return;
     if (e.burning > 0) { Status.blast(game, e.x, e.y, TUNING.status.blast, e); return; }
     if (e.dazed > 0) { Status.sting(game, e); return; }
-    if (e.poison <= 0) {
+    const fresh = e.poison <= 0;
+    if (fresh) {
       game.floatText(e.x, e.y - 30, 'POISONED', PALETTE.venomHi);
       game.particles(e.x, e.y - 8, 6, PALETTE.venom, 90);
       // A rifle mid-aim or a mage mid-cast loses it: blind is blind now, not at the next shot.
       if (e.state === 'aim' || e.state === 'cast') { e.state = 'chase'; e.rune = null; }
     }
     e.poison = Math.max(e.poison, t || TUNING.status.poison.time);
+    // All four poison souls (`BOON_SETS.poison`): the poison itself is a blow, once as it takes him —
+    // never again while it is topped up by the puddle he stands in.
+    if (fresh && game.mods.poisonHurts) e.die(game, 'poison', 0, 0);
   },
 
   // He has just been stunned. Poison already in him turns it into shock.
@@ -44,14 +51,15 @@ const Status = {
     e.poison = Math.max(e.poison, S.poison);
     // What it breaks is what `daze` breaks. Only on a man the stars take: the rat ogre's swing and a
     // wraith's arrival ride it out (it used to cancel both, where nothing else may), and every other
-    // windup — the charge's plant, the slam, the leap's crouch, a hound's dart — froze under the stars
+    // windup — the butcher's hook, the slam, the leap's crouch, a hound's dart — froze under the stars
     // with its strip still on the floor and went off when they cleared.
-    if (!stunProof && (e.state === 'aim' || e.state === 'cast' || e.state === 'windup' || e.state === 'chargewind'
+    if (!stunProof && e.state === 'hookwind') e.hookCd = TUNING.champion.hook.cooldown * game.mods.enemySlow;
+    if (!stunProof && (e.state === 'aim' || e.state === 'cast' || e.state === 'windup' || e.state === 'hookwind'
         || e.state === 'slamwind' || e.state === 'hopwind' || e.state === 'dart' || e.state === 'dodge' || e.state === 'retreat')) {
       e.state = 'chase'; e.rune = null; e.dashPath = null;
     }
-    // A charge under way stops with the wait for the next one, as `daze` stops it.
-    if (!stunProof && e.state === 'charge') { e.state = 'chase'; e.chargeCd = TUNING.champion.charge.cooldown * game.mods.enemySlow; }
+    // A hook out of his hand is let go of, with the wait for the next one, as `daze` lets it go.
+    if (!stunProof && e.hook) e.dropHook(game);
     if ((e.shock || 0) > 0) { e.shock = Math.max(e.shock, e.dazed); return; }
     e.shock = e.dazed;
     game.floatText(e.x, e.y - 40, 'SHOCK', PALETTE.venomHi);
@@ -118,6 +126,26 @@ const Status = {
     Status.soak(game);
   },
 
+  // A splash of `n` tiles: the one the point is in and `n - 1` of the eight round it, at random —
+  // the glob lands ragged, not as a square.
+  spatter(game, x, y, n) {
+    const w = game.world, cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), t = TUNING.status.poison.pool;
+    const ring = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const k = w.tileAt(cx + dx, cy + dy);
+      if ((dx || dy) && k !== T.WALL && k !== T.PIT) ring.push([cx + dx, cy + dy]);
+    }
+    // A centre that cannot hold poison (a pillar the point sits on) hands its share to the ring.
+    const c = w.tileAt(cx, cy), mid = c !== T.WALL && c !== T.PIT;
+    if (mid) w.poisonTile(cx, cy, t);
+    for (let k = 0; k < n - (mid ? 1 : 0) && ring.length; k++) { const [tx, ty] = ring.splice((Math.random() * ring.length) | 0, 1)[0]; w.poisonTile(tx, ty, t); }
+    game.particles(x, y, 14, PALETTE.venom, 140);
+    game.particles(x, y, 6, PALETTE.venomHi, 90);
+    w.emitNoise(x, y, TUNING.noise.splat);
+    game.audio.sfxSplat();
+    Status.soak(game);
+  },
+
   // Everybody standing in poison has it.
   soak(game) {
     const w = game.world; if (!w.poisonOn.size) return;
@@ -146,6 +174,25 @@ const Status = {
   },
 
   // ---- the goat's side of it ----
+
+  // The goat in a puddle, once a step from `Goat.update`. The ring round his feet (`g.venomFill`,
+  // 0..1) fills over `build` s plus the poison souls' grace (`mods.poisonGuard`) while he stands in
+  // one and drains at `drain` a second out of it; full, he is poisoned `time` s (`g.poisoned`) and
+  // runs at `moveMul`, topped up for as long as he stays in it. Nothing else: no heart, no blindness.
+  // In the air (a leap, a fall) his hooves are not in it.
+  goat(game, g, dt) {
+    const P = TUNING.goat.poison, m = game.mods;
+    const inIt = !m.poisonImmune && !g.leap && g.state !== 'falling' && game.world.isPoisonPx(g.x, g.y);
+    if (g.poisoned > 0) g.poisoned = Math.max(0, g.poisoned - dt);
+    if (inIt && g.poisoned > 0) { g.poisoned = P.time; g.venomFill = 1; return; }
+    if (!inIt) { g.venomFill = Math.max(0, (g.venomFill || 0) - dt * P.drain); return; }
+    g.venomFill = (g.venomFill || 0) + dt / (P.build + (m.poisonGuard || 0));
+    if (g.venomFill < 1) return;
+    g.venomFill = 1; g.poisoned = P.time;
+    game.floatText(g.x, g.y - 34, 'POISONED', PALETTE.venomHi);
+    game.particles(g.x, g.y - 8, 8, PALETTE.venom, 100);
+    game.audio.sfxSplat();
+  },
 
   // SPLASH: the head goes down and whatever is at his back gets it.
   splash(game, g) {
@@ -262,7 +309,7 @@ const Status = {
         if (p.broken || !p.blocking) continue;
         if (Math.hypot(p.x - nx, p.y - ny) < (p.r || 12) + 4) { burst = true; break; }
       }
-      if (burst) { b.dead = true; Status.puddle(game, b.x, b.y, TUNING.status.spit.half); continue; }
+      if (burst) { b.dead = true; Status.spatter(game, b.x, b.y, TUNING.status.spit.tiles); continue; }
       b.x = nx; b.y = ny;
       if (Math.random() < 0.7) game.parts.push({ x: b.x, y: b.y, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30,
         life: 0.25, color: PALETTE.venom, size: 2 + Math.random() * 2 });

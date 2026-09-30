@@ -62,15 +62,19 @@ class Scatter {
     p.food = [];
     this.game.audio.sfxClatter('clay', 0.8);
   }
-  // A suit of armour coming apart (`Prop.burstArmor`): each piece off the height it hung at on the
-  // stand (`prop.armor.pieces`), along (dx, dy) and spread either side, the way a table's supper goes.
+  // A suit of armour coming off the wall (`Prop.burstArmor`): each piece from where it hung
+  // (`prop.armor.pieces`: its height and its place across), along (dx, dy) spread either side the way
+  // a table's supper goes — but a blow aimed at the wall glances off it, so nothing is sent into the
+  // stone to die there, and every piece leaves the wall at `armor.out` on top: it hops off the
+  // face, clatters down and rolls (the helm is round), never sinks back into the brick.
   fromArmor(p, dx, dy, power = 1) {
-    const S = TUNING.scatter, l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
-    for (const [id, h] of TUNING.prop.armor.pieces) {
-      const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 2 * S.spread;
+    // One that stood on the floor (`kind` 'suit') is not against a wall: the blow's own way, all round, no hop off the stone.
+    const floor = p.kind === 'suit', S = TUNING.scatter, A = floor ? TUNING.prop.suit : TUNING.prop.armor, l = Math.hypot(dx, dy) || 1; dx /= l; dy = floor ? dy / l : Math.abs(dy / l);
+    for (const [id, h, ox] of A.pieces) {
+      const a = Math.atan2(dy, dx + ox / 40) + (Math.random() - 0.5) * 2 * S.spread;
       const sp = (S.speed[0] + Math.random() * (S.speed[1] - S.speed[0])) * power;
-      this.add('armor-' + id, p.x + (Math.random() - 0.5) * 8, p.y + 1, h, Math.cos(a) * sp, Math.sin(a) * sp,
-        (S.lift[0] + Math.random() * (S.lift[1] - S.lift[0])) * Math.min(1.4, power) * 0.8);
+      this.add('armor-' + id, p.x + ox + (Math.random() - 0.5) * 3, p.y + 1, h, Math.cos(a) * sp, Math.sin(a) * sp + (floor ? 0 : A.out),
+        (S.lift[0] + Math.random() * (S.lift[1] - S.lift[0])) * Math.min(1.4, power) * 0.7);
     }
     this.game.audio.sfxClatter('metal', 1);
   }
@@ -78,7 +82,7 @@ class Scatter {
   // suit of armour in it comes apart.
   burst(x, y, r, power = 1.4) {
     for (const p of this.game.props) {
-      if (p.kind === 'armor' && !p.spilled) { const d = Math.hypot(p.x - x, p.y - y); if (d <= r) p.burstArmor(this.game, p.x - x || 1, p.y - y, power); continue; }
+      if ((p.kind === 'armor' || p.kind === 'suit') && !p.spilled) { const d = Math.hypot(p.x - x, p.y - y); if (d <= r) p.burstArmor(this.game, p.x - x || 1, p.y - y, power); continue; }
       if (p.kind !== 'table' || p.broken || !Scatter.foodOf(p).length) continue;
       const d = Math.hypot(p.x - x, p.y - y); if (d > r) continue;
       this.fromTable(p, p.x - x || 1, p.y - y, power * (1 - 0.5 * d / r));
@@ -225,8 +229,7 @@ Scatter.KINDS = {
   plate: { brittle: true, bouncy: 0.7, sound: 'clay', color: '#d6cfbc' },
   shard: { bouncy: 0.4, sound: 'clay' },
   // A suit of armour's pieces (`fromArmor`): steel rings where it lands, and the helm rolls.
-  'armor-helm': { round: true, bouncy: 0.8, sound: 'metal', sprite: 'armor-helm' },
-  'armor-plate': { bouncy: 0.45, sound: 'metal', sprite: 'armor-plate' },
-  'armor-gaunt': { bouncy: 0.7, sound: 'metal', sprite: 'armor-gaunt' },
-  'armor-greave': { bouncy: 0.55, sound: 'metal', sprite: 'armor-greave' },
+  'armor-helm': { round: true, bouncy: 1, sound: 'metal', sprite: 'armor-helm' },
+  'armor-plate': { bouncy: 0.5, sound: 'metal', sprite: 'armor-plate' },
+  'armor-pauldron': { bouncy: 0.85, sound: 'metal', sprite: 'armor-pauldron' },
 };

@@ -169,6 +169,13 @@ class CombatFX {
     for(let i=0;i<n;i++){const a=i/n*Math.PI*2;c.rect(Math.round((x+Math.cos(a)*r)/cell)*cell-wd/2,Math.round((y+Math.sin(a)*r)/cell)*cell-wd/2,wd,wd);}
     c.fill();
   }
+  // `pixelRing` only as far round as `frac` (0..1), clockwise from the top: a meter drawn in cells.
+  static pixelArc(c,x,y,r,width,color,frac) {
+    if(r<=0.5||frac<=0)return;const cell=TUNING.effects.pixel,wd=Math.max(1,Math.round(width/cell))*cell,n=Math.max(12,Math.ceil(Math.PI*2*r/cell)),m=Math.ceil(n*Math.min(1,frac));
+    c.fillStyle=color;c.beginPath();
+    for(let i=0;i<m;i++){const a=-Math.PI/2+i/n*Math.PI*2;c.rect(Math.round((x+Math.cos(a)*r)/cell)*cell-wd/2,Math.round((y+Math.sin(a)*r)/cell)*cell-wd/2,wd,wd);}
+    c.fill();
+  }
   // Prebakes the sizes a level actually asks for, one a tick, so the first bomb of a run does not
   // pay for its own frames in the middle of the frame it goes off in.
   static warm() {

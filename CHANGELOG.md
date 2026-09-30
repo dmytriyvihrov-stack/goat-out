@@ -5,6 +5,72 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.83 — armour on a stand, quieter words, a longer stun on the hook — 1 Oct 2026
+
+Playtest notes of 1 Oct 2026, in one message.
+
+- **Standing armour** (`kind: 'suit'`, `TUNING.prop.suit`): the wall suit's iron on a wooden stand with a
+  halberd, out on the floor of a room. A post until a headbutt, a body flung by it or a blast brings it down
+  (`Prop.burstArmor`, pieces `Scatter.fromArmor` the way the blow went); the bare stand is left. THE ARMORY
+  stands two, elsewhere one a floor on `chance`. `GEN_RULES.suits`; on THE SHOWROOM's floor.
+- **A headbutt brings a wall suit down** too (it only rattled before).
+- **The butcher's hook** leaves the goat stunned `hook.daze` 0.3 s after the pull (was 0.2).
+- **No words over a man** for what his body already says: no `N LEFT` after a blow on a many-hearted man,
+  no SNAPPED / SPLINTERED when a blade breaks, no STUNNED, OOPS or REELS.
+- **THE ARMORY's hidden grates** only on floors that lay grates (`levelDef.spikes`).
+- **The roast** (campfire with a crocodile): a new crocodile — scutes, open jaw, four legs hanging — and a
+  collision circle the ring's own size (`brazier.roastR`), which stood out past the stones.
+- **Dev drawer: PREV LEVEL / NEXT LEVEL** jump to the floor before or after this one (`startAtLevel`).
+
+---
+
+## 1.82 — two cards a soul, a third earned, fire and poison sets, the goat's own poison — 30 Sep 2026
+
+One message (30 Sep 2026): "a big update to the skill systems".
+
+- **A soul deals two cards**, not three (`BOON_CARDS`). The first soul of a run is still one headbutt
+  skill and one voice skill.
+- **A third card is earned.** HUNGRY SOUL, a new body soul, deals one on every soul after it. THE
+  KNUCKLEBONE, a new talisman on the mouse's shelf (a goat's ankle bone, the oldest die there is), deals one
+  every third soul at tier I, every second at II, every soul at III; its chip counts the souls in pips.
+  The third card says whose it is. `mods.thirdEvery`, `talRun.third`.
+- **Elements add up** (`BOON_SETS`). Fire: DRAGON BREATH, FIREBRAND, KINDLING, EMBER COAT. Poison: SPLASH,
+  VENOM JAW, SOUR TUMBLE, VENOM SPIT. The first, second and third of a set add ½, 1 and 2 seconds of
+  grace, summed (3.5 s with three), before a tick of fire lands or before a puddle's ring fills. All
+  four: proof against it — and his fire burns twice as long, or his poison takes a heart as it takes a
+  man. A card says only what it adds itself ("+1s BEFORE FIRE HURTS YOU"), never a count. Witchfire is
+  still the Seer's: no set turns it.
+- **The goat is poisoned by his own puddles.** Standing in one fills a ring of cells round his feet in
+  1.2 s (plus the set's grace); full, he runs at 65% for 3 s after he leaves it. Nothing else — no heart,
+  no blindness. `TUNING.goat.poison`, `Status.goat`, `Renderer.drawGoatPoison`.
+- **Numbers.** DRAGON BREATH's cone 5.2 → 4.2 tiles. THE FULL THROAT dazes within 3.4 tiles, not 6.8
+  (RAW THROAT's 13 → 6.5 with it). VENOM SPIT's glob lays six tiles — where it burst and five of the eight
+  round it at random — not a three-by-three.
+- **Parked:** the stun set (BACKLOG, 30 Sep): only three souls stun and two of them share the roll.
+
+Then, the same day, a second message with a screenshot of the RULES page:
+
+- **LEVELS is dev-only.** The title menu shows it only while the dev drawer is open.
+- **The set line on a card says only what that card adds** ("+1s BEFORE FIRE HURTS YOU"), never a count
+  — and the shares add up: ½ + 1 + 2 = 3.5 s with three.
+- **Pale talismans are crisper**: bone, tallow, glass and the knucklebone get a hard dark rim round their
+  whole shape, on the shelf, the HUD chip and the collar (`Renderer.outlinedIcon`).
+- **A barrel of poison**: a green barrel among the barrels (30%), no oil in it; broken, it spills six
+  tiles of poison round where it stood.
+- **Hidden grates.** On floors with grating a crate — or now and then a barrel — may stand on one grate of
+  a room's patch, and the grate is not drawn until it is moved. THE ARMORY hides grates under some of its
+  crates and stands of arms, and has fewer loose crates (its own two and at most one more).
+- **RULES is readable again**: rows at a fixed height that scroll, the reason a rule broke on its own
+  line with the level named, and an × on every row to take it off the page (↺ to put it back).
+
+Also in this build, from the session before it (30 Sep 2026): the butcher's charge is gone and he
+throws **a hook** that drags the goat to his cleaver (no damage of its own); a hound slips a headbutt
+for sure once every ten seconds instead of a 38% coin; a thrown lit bomb goes off on what it hits; a
+table on its side creeps when leaned on; armour hangs on the far wall's face; **the pig**, an escort that
+eats the milk grass she sees and, fed full and brought out, adds milk to every later floor; the horse's
+race has two tries (the soul rooms, then the stairs). Stale mentions of the charge are gone from the
+comments, README and CONCEPT.
+
 ## 1.81 — suits of armour, a stag's head, the horse's stall and its race, the rite below heaven, a faster frame — 30 Sep 2026
 
 One message (30 Sep 2026), with two screenshots.

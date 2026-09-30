@@ -671,7 +671,7 @@ function tryGenerate(levelDef, seed, opts) {
   }
   let roasted = false;
   let chandeliers = 0;   // hung so far this floor, and the id that ties each to its cleat
-  let armors = 0, trophies = 0;   // the wall's dressing so far this floor, THE ARMORY's own not counted
+  let armors = 0, trophies = 0, suits = 0;   // the wall's dressing so far this floor (and the suits that stand), THE ARMORY's own not counted
   let clusterId = 0;  // one id per boulder formation (`placeRockCluster`), so `GEN_RULES.rocks` can
                        // tell a formation's own cells apart from two unrelated boulders standing close
   rooms.forEach((room) => {
@@ -714,6 +714,7 @@ function tryGenerate(levelDef, seed, opts) {
       else spots.push(m);
     });
     placeTables(tableTiles, W, props);
+    shiftOffTables(room, props, tiles, W, grass);
     // Now and then a single stand of arms, anywhere a man might have left one. Never two, never
     // before the level says arms exist, and never in an arena — an arena carries its own pair.
     // Nor the ambush: its two swords are the lesson, and a third stand (often a shield) among its men was noise.
@@ -745,14 +746,41 @@ function tryGenerate(levelDef, seed, opts) {
     // Not in the wheel's lesson either: a crate in its one clear lane shut the way past the arm.
     if (room.index > 0 && !room.isAmbush && !room.isRest && !room.isCalm && room.index !== lessonIndex
       && !(room.isMill && levelDef.millLesson) && rng.chance(levelDef.crates || 0)) {
-      const want = rng.int(2, 4);
+      const want = room.tpl && room.tpl.name === 'armory' ? rng.int(0, TUNING.rooms.armory.crates) : rng.int(2, 4);
       for (let a = 0, placed = 0; a < 40 && placed < want; a++) {
         const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
         if (tiles[ty * W + tx] !== T.FLOOR || grass.has(ty * W + tx)) continue;   // grass is drawn over what stands in it
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
-        if (props.some((p) => len(p.x - px, p.y - py) < 1.4 * TILE)) continue;
+        if (props.some((p) => len(p.x - px, p.y - py) < 1.4 * TILE) || onTable(px, py, TUNING.prop.crate.r, props)) continue;
         props.push({ x: px, y: py, kind: 'crate' });
         placed++;
+      }
+    }
+    // Grates with something on them (30 Sep 2026): a trap you find by moving what stands on it. In
+    // THE ARMORY a grate may lie under any of its crates or stands of arms; elsewhere, on a floor that
+    // lays grates, a room's patch may have a crate (or a barrel, where one fits) set down on one of
+    // them. The grate is `hidden` and is not drawn while its cover stands there. Off its own stream.
+    {
+      const HG = TUNING.prop.spike.hidden, hrng = new RNG(((seed ^ 0x41dd3e5) + room.index * 104729) >>> 0);
+      const inside = (p) => p.x >= room.x * TILE && p.x < (room.x + room.w) * TILE && p.y >= room.y * TILE && p.y < (room.y + room.h) * TILE;
+      if (room.tpl && room.tpl.name === 'armory') {
+        // Only where the floor lays grates at all (1 Oct 2026: "not from level two, only where traps are available").
+        let n = 0;
+        for (const p of levelDef.spikes ? hrng.shuffle(props.filter((q) => (q.kind === 'crate' || q.kind === 'weapon') && inside(q))) : []) {
+          if (n < HG.armoryMax && hrng.chance(p.kind === 'weapon' ? HG.armoryStand : HG.armoryCrate)) { props.push({ x: p.x, y: p.y, kind: 'spike', hidden: true }); n++; }
+        }
+      } else if (levelDef.spikes && room.enter && !room.isTrap && !room.isAmbush && !room.isRest && !room.isCalm && !room.isMill && !room.arena
+        && !room.isHall && !room.isGallery && !room.isKillbox && room.index !== lessonIndex) {
+        const grates = props.filter((q) => q.kind === 'spike' && q.patch && inside(q));
+        if (grates.length && hrng.chance(HG.cover)) {
+          const g = grates[hrng.int(0, grates.length - 1)], tx = Math.floor(g.x / TILE), ty = Math.floor(g.y / TILE);
+          if (!props.some((q) => q.kind !== 'spike' && len(q.x - g.x, q.y - g.y) < 1.2 * TILE) && len(room.enter.x - g.x, room.enter.y - g.y) >= 3 * TILE
+            && !onTable(g.x, g.y, TUNING.prop.crate.r, props)) {
+            const barrel = levelDef.barrels && activeIn(props, room) < TUNING.prop.clutter.max && hrng.chance(HG.barrel) && rockFits(tiles, W, tx, ty, grass);
+            props.push(barrel ? { x: g.x, y: g.y, kind: 'barrel', toxic: hrng.chance(TUNING.prop.barrel.venom.chance) } : { x: g.x, y: g.y, kind: 'crate' });
+            g.hidden = true;
+          }
+        }
       }
     }
     // The cave's floor: a patch or three of tall grass, and a scatter of boulders. Neither in the pen
@@ -800,7 +828,7 @@ function tryGenerate(levelDef, seed, opts) {
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
         if (props.some((p) => len(p.x - px, p.y - py) < 2 * TILE)) continue;
         if (room.enter && len(room.enter.x - px, room.enter.y - py) < 3 * TILE) continue;
-        props.push({ x: px, y: py, kind: 'barrel' });
+        props.push({ x: px, y: py, kind: 'barrel', toxic: brng.chance(TUNING.prop.barrel.venom.chance) });
         placed++;
       }
     }
@@ -827,8 +855,8 @@ function tryGenerate(levelDef, seed, opts) {
         break;
       }
     }
-    // The wall's dressing (30 Sep 2026, Enter the Gungeon's): a suit of armour with its back to the
-    // stone, or a stag's head on the far wall. Both answer a thrown body (`Enemy.wallDressing`) and
+    // The wall's dressing (30 Sep 2026, Enter the Gungeon's): a suit of armour or a stag's head hung
+    // on the far wall. Both answer a thrown body (`Enemy.wallDressing`) and
     // neither is a weapon of its own, so they are few: one of the two in a room that rolls for it, a
     // couple of each a floor, never where a room is teaching, resting, a set piece or a trap, never
     // under a chandelier's rope, and none in a cave, on the trip or in THE DARK (whose lamps stand
@@ -843,6 +871,20 @@ function tryGenerate(levelDef, seed, opts) {
       if (armory) { for (let k = 0; k < AR.armory; k++) dressWall(tiles, W, room, props, grass, drng, 'armor', true); }
       else if (room.index >= AR.from && armors < AR.perLevel && rollA < AR.chance) { if (dressWall(tiles, W, room, props, grass, drng, 'armor')) armors++; }
       else if (room.index >= TR.from && trophies < TR.perLevel && rollT < TR.chance) { if (dressWall(tiles, W, room, props, grass, drng, 'trophy')) trophies++; }
+      // The suit that stands on the floor (1 Oct 2026): a post in the room on plain floor, where the
+      // room stays open round it (`rockFits`), off the way in and clear of anything else that stands.
+      // THE ARMORY has `suit.armory` of them; elsewhere it rolls like the wall's dressing. Own stream.
+      const SU = TUNING.prop.suit, srng = new RNG(((seed ^ 0x05b17e3) + room.index * 7907) >>> 0);
+      const wantSuit = armory ? SU.armory : room.index >= SU.from && suits < SU.perLevel && srng.chance(SU.chance) ? 1 : 0;
+      for (let a = 0, placed = 0; a < 80 && placed < wantSuit; a++) {
+        const tx = srng.int(room.x + 2, room.x + room.w - 3), ty = srng.int(room.y + 2, room.y + room.h - 3);
+        if (!rockFits(tiles, W, tx, ty, grass)) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+        if (props.some((p) => len(p.x - px, p.y - py) < 2 * TILE) || onTable(px, py, SU.r, props)) continue;
+        if (room.enter && len(room.enter.x - px, room.enter.y - py) < 3 * TILE) continue;
+        props.push({ x: px, y: py, kind: 'suit' });
+        placed++; if (!armory) suits++;
+      }
     }
     // THE SPIKES. Most of the rock a cave grows is paint (`Renderer.drawCaveDecor`); this is the rare
     // spire that is real, and everything about where it may stand follows from what it is for. It has
@@ -1086,6 +1128,7 @@ function tryGenerate(levelDef, seed, opts) {
           if (!ok || !stallKeepsRoomOpen(tiles, W, room, tx, ty, S)) continue;
           const st = { x: (tx + S.w / 2) * TILE, y: (ty + S.h / 2) * TILE, kind: 'coop', holds: kind, beastRoom: room.index };
           if (props.some((p) => footGap(st, p.x, p.y) < BT.clear * TILE)) continue;
+          if (onTable(st.x, st.y, 1, props, S.w * TILE / 2, S.h * TILE / 2)) continue;   // a table's top reaches a tile from its middle
           if (room.enter && footGap(st, room.enter.x, room.enter.y) < S.mouth * TILE) continue;
           if (room.exitMouth && footGap(st, room.exitMouth.x, room.exitMouth.y) < S.mouth * TILE) continue;
           props.push(st); done = true;
@@ -1102,7 +1145,7 @@ function tryGenerate(levelDef, seed, opts) {
         if (tiles[ty * W + tx] !== T.FLOOR || tiles[ty * W + tx + 1] !== T.FLOOR) continue;
         if (grass.has(ty * W + tx) || grass.has(ty * W + tx + 1)) continue;
         const px = (tx + 1) * TILE, py = (ty + 0.5) * TILE;
-        if (props.some((p) => len(p.x - px, p.y - py) < Math.max(BT.clear, 2.2) * TILE)) continue;
+        if (props.some((p) => len(p.x - px, p.y - py) < Math.max(BT.clear, 2.2) * TILE) || onTable(px, py, TUNING.prop.coop.r, props)) continue;
         if (room.enter && len(room.enter.x - px, room.enter.y - py) < 2.5 * TILE) continue;
         props.push({ x: px, y: py, kind: 'coop', holds: kind, beastRoom: room.index }); done = true;
       }
@@ -1299,6 +1342,7 @@ function tryGenerate(levelDef, seed, opts) {
         let fire = Infinity, near = Infinity, hole = Infinity;
         for (const p of props) { const d = footGap(p, px, py); if (alight(p)) fire = Math.min(fire, d); else near = Math.min(near, d); }
         if (props.some((p) => stallHalf(p) && footGap(p, px, py) < 0.8 * TILE)) continue;   // never in the horse's stall, however narrow the room
+        if (onTable(px, py, TUNING.prop.heal.r, props)) continue;   // nor under a table's top, which the fallbacks below do not weigh
         for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (tiles[(ty + dy) * W + tx + dx] === T.PIT) hole = Math.min(hole, Math.hypot(dx, dy) * TILE);
         // `good`: out of the grass that would hide it and off a drop's lip, where grazing — standing
         // still, head down — was one knock from the fall (one bowl in seven on THE RAFTERS).
@@ -1431,7 +1475,7 @@ function tryGenerate(levelDef, seed, opts) {
     // fight instead of before it.
     let pick = null;
     // A level may name the kind whose first room it goes in (`rollWith`, THE ALTAR's butcher): painted
-    // a few steps inside that room's door, so it is read walking in, before his first charge.
+    // a few steps inside that room's door, so it is read walking in, before his first hook.
     const meet = levelDef.rollWith ? [...plan.rooms].find(([, c]) => c.intro === levelDef.rollWith && !c.arena) : null;
     const mr = meet && rooms[meet[0]];
     if (mr && mr.enter) {
@@ -2120,6 +2164,42 @@ function placeTables(cells, W, props) {
     }
   }
 }
+// A table's top is two tiles square round its middle whatever block it was drawn as, so a one-row or
+// one-tile `t` still stands a whole table half a tile over the row beside it — where a template's own
+// crate sat, drawn half under the top (playtest, 30 Sep 2026: "the crate and the table on one spot").
+// How far (x, y) is from the nearest table's top (0 on it); `onTable` asks it for a thing of radius r.
+// Shared by every loose thing the generator lays and by `GEN_RULES.ontable`.
+const TABLE_LOOSE = ['crate', 'bomb', 'barrel', 'weapon', 'coop', 'heal', 'rock', 'shrooms'];
+function tableGap(t, x, y, hx = 0, hy = 0) {
+  return len(Math.max(0, Math.abs(x - t.x) - TILE - hx), Math.max(0, Math.abs(y - t.y) - TILE - hy));
+}
+function looseR(p) {
+  const P = TUNING.prop;
+  return p.kind === 'heal' ? P.heal.r : p.kind === 'weapon' ? P.weapon.standR : p.kind === 'shrooms' ? 12
+    : (P[p.kind] && P[p.kind].r) || 12;
+}
+function onTable(x, y, r, props, hx = 0, hy = 0) {
+  return props.some((t) => t.kind === 'table' && tableGap(t, x, y, hx, hy) < r);
+}
+// A loose thing a template drew beside a one-row table is stepped to the nearest clear tile of its
+// room rather than left under the top; with nowhere to go it is not put down at all.
+function shiftOffTables(room, props, tiles, W, grass) {
+  for (let i = props.length - 1; i >= 0; i--) {
+    const p = props[i];
+    if (!['crate', 'weapon', 'bomb'].includes(p.kind) || !onTable(p.x, p.y, looseR(p), props)) continue;
+    const tx0 = Math.floor(p.x / TILE), ty0 = Math.floor(p.y / TILE);
+    if (tx0 < room.x || tx0 >= room.x + room.w || ty0 < room.y || ty0 >= room.y + room.h) continue;
+    let best = null, bestD = Infinity;
+    for (let ty = room.y + 1; ty < room.y + room.h - 1; ty++) for (let tx = room.x + 1; tx < room.x + room.w - 1; tx++) {
+      const d = Math.hypot(tx - tx0, ty - ty0);
+      if (d >= bestD || d > 3 || tiles[ty * W + tx] !== T.FLOOR || grass.has(ty * W + tx)) continue;
+      const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+      if (onTable(px, py, looseR(p), props) || props.some((q) => q !== p && q.kind !== 'table' && footGap(q, px, py) < 0.9 * TILE)) continue;
+      best = { x: px, y: py }; bestD = d;
+    }
+    if (best) { p.x = best.x; p.y = best.y; } else props.splice(i, 1);
+  }
+}
 
 // Is a point inside something a man cannot stand in? Everything a room puts on the floor except what
 // is floor itself — a bowl of milk, a grating — or a door, which stands in a corridor and not a room.
@@ -2256,8 +2336,8 @@ function activeIn(props, room) {
   return n;
 }
 const inBox = (room, p) => p.x >= room.x * TILE && p.x < (room.x + room.w) * TILE && p.y >= room.y * TILE && p.y < (room.y + room.h) * TILE;
-// Where the wall's dressing may go on a room's walls: a floor tile against the far wall ('n') — or,
-// for a suit of armour, the left or right wall ('w', 'e'; the near wall shows only its back) — with
+// Where the wall's dressing may go on a room's walls: a floor tile against the far wall ('n'; the
+// side branches are kept for asking, though nothing hangs there since 30 Sep 2026) — with
 // `DRESS.run` tiles of plain stone either side of it along that wall, so it never stands in a doorway,
 // a shaft, a vault's mouth or a wall that gives, and the three floor tiles beside and in front of it
 // open, so a thing standing there can never be what closes a way through. Shared with
@@ -2273,10 +2353,11 @@ function wallFits(tiles, W, room, tx, ty, side, grass) {
   const ix = side === 'w' ? 1 : -1;
   return F(tx, ty - 1) && F(tx, ty) && F(tx, ty + 1) && F(tx + ix, ty - 1) && F(tx + ix, ty) && F(tx + ix, ty + 1);
 }
-// The world point a piece of dressing stands at on tile (tx, ty) of wall `side`: a suit of armour its
-// own width off the stone, a stag's head where the cleat hangs (a quarter tile down from the face).
+// The world point a piece of dressing hangs at on tile (tx, ty) of wall `side`: where the cleat
+// hangs, a quarter tile down from the face — the suit of armour and the stag's head both hang on the
+// stone (30 Sep 2026: the armour stood on the floor before, and read as a man on a plinth).
 function dressPoint(kind, tx, ty, side) {
-  const P = TUNING.prop, back = kind === 'armor' ? P.armor.r + P.armor.gap : 0.25 * TILE;
+  const back = 0.25 * TILE;
   if (side === 'w') return { x: tx * TILE + back, y: (ty + 0.5) * TILE };
   if (side === 'e') return { x: (tx + 1) * TILE - back, y: (ty + 0.5) * TILE };
   return { x: (tx + 0.5) * TILE, y: ty * TILE + back };
@@ -2285,8 +2366,8 @@ function dressPoint(kind, tx, ty, side) {
 // ARMORY's own racks only a step, `packed`), of the way in and of every door. False where none fits.
 function dressWall(tiles, W, room, props, grass, rng, kind, packed) {
   const spots = [];
+  // The far wall only: it is the one wall that shows a face to hang a thing on.
   for (let tx = room.x + 1 + DRESS.run; tx <= room.x + room.w - 2 - DRESS.run; tx++) spots.push([tx, room.y + 1, 'n']);
-  if (kind === 'armor') for (let ty = room.y + 1 + DRESS.run; ty <= room.y + room.h - 2 - DRESS.run; ty++) spots.push([room.x + 1, ty, 'w'], [room.x + room.w - 2, ty, 'e']);
   rng.shuffle(spots);
   for (const [tx, ty, side] of spots) {
     if (!wallFits(tiles, W, room, tx, ty, side, grass)) continue;
@@ -2359,6 +2440,14 @@ function placeRockCluster(tiles, W, room, grass, props, rng, id) {
       if (!perimeterOk) break;
     }
     if (!perimeterOk) continue;
+    // Nor grown over the furniture: the tiles stay floor under a table or a crate too, and a formation
+    // that asked only after boulders stood one on a table's top (`GEN_RULES.ontable`).
+    let clear = true;
+    for (const i of cellSet) {
+      const cpx = (i % W + 0.5) * TILE, cpy = (Math.floor(i / W) + 0.5) * TILE;
+      if (onTable(cpx, cpy, looseR({ kind: 'rock' }), props) || props.some((p) => p.kind !== 'rock' && p.kind !== 'table' && footGap(p, cpx, cpy) < 0.9 * TILE)) { clear = false; break; }
+    }
+    if (!clear) continue;
     if (!clusterKeepsRoomOpen(tiles, W, room, cellSet)) continue;
     for (const i of cellSet) {
       const cx = i % W, cy = Math.floor(i / W);

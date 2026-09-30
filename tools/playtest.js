@@ -79,7 +79,7 @@ window.PT = {
     const g = game.goat, e = PT.seen()[0];
     if (e) {
       const dx = e.x - g.x, dy = e.y - g.y, d = Math.hypot(dx, dy);
-      if (['windup', 'slamwind', 'swing', 'aim', 'chargewind', 'charge', 'dart'].includes(e.state) && d < 3.2 * TILE)
+      if ((['windup', 'slamwind', 'swing', 'aim', 'dart'].includes(e.state) && d < 3.2 * TILE) || (e.state === 'hookwind' && d < 8 * TILE))
         return (await PT.act({ keys: [dx > 0 ? 'KeyA' : 'KeyD', dy > 0 ? 'KeyW' : 'KeyS'], roll: true, t: 0.5 }), 'roll');
       if (d < 2.2 * TILE && g.state === 'idle') { PT.aim = e; await PT.act({ lmb: true, t: 0.4 }); PT.aim = null; return 'butt'; }
       if (d < 6 * TILE) return (await PT.act({ t: 0.1 }), 'wait');

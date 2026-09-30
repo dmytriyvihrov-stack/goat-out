@@ -12,7 +12,7 @@ class Enemy {
     this.state = 'idle'; this.timer = 0; this.facing = Math.random() * Math.PI * 2;
     this.aware = false; this.target = null; this.lastSeen = null;
     this.flung = false; this.thrown = false; this.held = false; this.dead = false;
-    this.burning = 0; this.burnDir = 0; this.burnTick = 0; this.chargeCd = 0; this.reload = 0; this.flash = 0;
+    this.burning = 0; this.burnDir = 0; this.burnTick = 0; this.hookCd = 0; this.reload = 0; this.flash = 0;
     this.litByMan = false; this.passedFire = false;   // who may hand fire on, and who has already
     this.lastLunge = -1; this.shieldHits = 0; this.wander = Math.random() * 3; this.lostTimer = 0;
     this.bombFuse = 0; this.exploded = false; this.flail = 0; this.heldSwing = 0;
@@ -27,7 +27,7 @@ class Enemy {
     this.scald = false;                                         // stunned when the fire caught: it hits twice
     this.gotUpFrom = null;
     this.scripted = false;   // moved by hand: the opening scene's two, and the mage at the first gate
-    this.champion = false;                                      // the butcher (the brute until 1.72): a charge, too heavy to carry
+    this.champion = false;                                      // the butcher (the brute until 1.72): a hook on a rope, too heavy to carry
     this.watchful = false;                                      // posted to watch a door: no blind side, and he sees further
     this.sentry = false;                                        // the first man of a run: he holds his ground and never walks
     this.maxHp = this.hp; this.burnHearts = 0;
@@ -61,7 +61,8 @@ class Enemy {
     // again, and the watch on whether he is actually getting anywhere (`unstuck`).
     this.wp = null; this.pathT = 0; this.pathProps = null;
     this.stuckT = 0; this.stuckX = x; this.stuckY = y; this.unstick = 0; this.unstickAng = 0; this.chaseAt = -1;
-    this.flipCd = 0; this.lane = null; this.laneT = 0;
+    this.flipCd = 0;
+    this.hook = null; this.hookAim = null;   // the butcher's hook out of his hand, and where the windup is aiming it
   }
 
   // What a kind will not answer to, with the butcher reading his own list rather than the clubman's.
@@ -89,7 +90,7 @@ class Enemy {
 
   fling(vx, vy, thrown) {
     if (this.dead || this.ghosted) return;
-    // The rat ogre is not thrown by anything — not the horns, not the wheel, not a charge, not a
+    // The rat ogre is not thrown by anything — not the horns, not the wheel, not a barrel, not a
     // blast. No wall ever kills him, which is the whole of what makes him dear.
     // Nor is the ogre (the Butcher, 1.66): too heavy to go anywhere, which is what sets him apart
     // from the butcher, who does. Every heart he has is taken standing, while he is on his knees.
@@ -126,11 +127,12 @@ class Enemy {
     if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return;
     this.dazed = Math.max(this.dazed, t);
     this.vx = 0; this.vy = 0;
-    // A charge under way is called off too, with the wait for the next one: dazed, it only froze,
-    // and when the stars cleared he ran on down the old line with no plant to read first.
-    if (this.state === 'charge') { this.state = 'chase'; this.chargeCd = TUNING.champion.charge.cooldown * game.mods.enemySlow; }
+    // A hook out of his hand is let go of, with the wait for the next one: the goat on the end of it
+    // is free the moment the pull stops (`Goat.update`'s stunned branch asks).
+    if (this.hook) this.dropHook(game);
+    if (this.state === 'hookwind') this.hookCd = TUNING.champion.hook.cooldown * game.mods.enemySlow;
     // Whatever he was winding up, aiming or painting is gone.
-    if (this.state === 'windup' || this.state === 'aim' || this.state === 'cast' || this.state === 'chargewind'
+    if (this.state === 'windup' || this.state === 'aim' || this.state === 'cast' || this.state === 'hookwind'
         || this.state === 'dodge' || this.state === 'retreat' || this.state === 'dart' || this.state === 'slamwind'
         || this.state === 'hopwind') {
       this.dashPath = null;
@@ -152,8 +154,9 @@ class Enemy {
     if (this.kind === 'ratogre') return this.breakSwing(game);
     if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return false;
     if (this.kind === 'butcher' && this.state === 'hop') return false;
-    if (this.state !== 'windup' && this.state !== 'aim' && this.state !== 'cast' && this.state !== 'chargewind'
+    if (this.state !== 'windup' && this.state !== 'aim' && this.state !== 'cast' && this.state !== 'hookwind'
         && this.state !== 'dart' && this.state !== 'slamwind' && this.state !== 'hopwind') return false;
+    if (this.state === 'hookwind') this.hookCd = TUNING.champion.hook.cooldown * game.mods.enemySlow;
     this.state = 'chase'; this.rune = null; this.dashPath = null;
     this.dazed = Math.max(this.dazed, t);
     this.vx = 0; this.vy = 0;
@@ -237,7 +240,6 @@ class Enemy {
         this.unmanifest(game, this.cfg.bossFade);
         game.particles(this.x, this.y, 18, PALETTE.witchHi, 190); game.ring(this.x, this.y, 2.2 * TILE, PALETTE.witch);
         game.hitstop(0.05); game.shake(6); game.audio.sfxUnmade();
-        game.floatText(this.x, this.y - 34, this.hp + ' LEFT', PALETTE.witchHi);
         return;
       }
       // The rat ogre takes it standing. Every other multi-heart man goes down floored for a beat,
@@ -249,12 +251,11 @@ class Enemy {
         if (this.state !== 'hop') { this.state = 'stagger'; this.timer = this.cfg.stagger; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false; }
         game.world.splat(this.x, this.y, dx || 0, dy || 0, 14);
         game.hitstop(0.05); game.shake(7); game.audio.sfxThud(); game.audio.sfxGrowl();
-        game.floatText(this.x, this.y - 40, this.hp + ' LEFT', PALETTE.fireHi);
         return;
       }
       // In the air he keeps flying: the heart is gone and the leap is not. Floored mid-leap over a
       // drop, the pit check had him the next step, three hearts and all.
-      if (this.state === 'hop') { game.floatText(this.x, this.y - 40, this.hp + ' LEFT', PALETTE.fireHi); game.audio.sfxThud(); return; }
+      if (this.state === 'hop') { game.audio.sfxThud(); return; }
       this.state = 'floored'; this.timer = 0.75; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false;
       // A man knocked down is not in your mouth any more. Left there, he got up with his own AI back
       // while still pinned in front of the goat — a mage painting at his feet, a clubman swinging.
@@ -264,7 +265,6 @@ class Enemy {
       }
       game.world.splat(this.x, this.y, dx || 0, dy || 0, 13);
       game.hitstop(0.05); game.shake(7); game.audio.sfxThud();
-      game.floatText(this.x, this.y - 34, this.hp + ' LEFT', PALETTE.fireHi);
       if (this.kind === 'seer') this.blinkCd = 0;
       return;
     }
@@ -727,7 +727,10 @@ class Enemy {
     // mist is the one thing that can cross one.
     // A Butcher in the middle of a leap is over the hole, not in it: he never lands in one (`hopSpot`).
     if (!this.ghosted && !this.held && this.state !== 'hop' && w.isPitPx(this.x, this.y)) { this.die(game, 'fall'); return; }
-    this.chargeCd = Math.max(0, this.chargeCd - dt); this.reload = Math.max(0, this.reload - dt);
+    this.hookCd = Math.max(0, this.hookCd - dt); this.reload = Math.max(0, this.reload - dt);
+    // A hook out of his hand lives only while he is throwing, pulling or reeling it: whatever else
+    // took him (a body, a crate, fire, a blast, the floor) took the rope out of his hand.
+    if (this.hook && this.state !== 'hookthrow' && this.state !== 'hookpull' && this.state !== 'hookreel') this.dropHook(game);
     this.barkCd = Math.max(0, this.barkCd - dt);
     this.dazed = Math.max(0, this.dazed - dt);
     this.poison = Math.max(0, this.poison - dt);
@@ -904,8 +907,8 @@ class Enemy {
       // Lose the trail: no sight for a while and far away by path, go check the last place you were seen.
       // In THE DARK it goes cold in `dark.ai.lose` seconds wherever he is: he goes to the last place
       // he saw you, or the last thing he heard since, and hunts from there by ear.
-      // A blow already under way is finished, not dropped: the dark cools a hunt, never a swing or a
-      // charge in mid-run (pillar 4 — his windup and recovery are the goat's to read and eat).
+      // A blow already under way is finished, not dropped: the dark cools a hunt, never a swing, a
+      // hound's run or a hook in flight (pillar 4 — his windup and recovery are the goat's to read and eat).
       const hunting = this.state === 'chase' || this.state === 'noticed' || this.state === 'investigate';
       // On a lit floor too: without `hunting` it cut the rat ogre's swing and bound, a hidden wraith
       // out of its disguise and a HORNED MASK flight short, every six seconds out of sight.
@@ -925,7 +928,7 @@ class Enemy {
       if (n.kind === 'lure') {
         // A scream pulls everyone who hears it to the spot, even men already hunting you.
         // Stand still and they find you; move and they search where you were.
-        // Not a man already committed to something: a windup, a charge, a cast, a leap, a wraith
+        // Not a man already committed to something: a windup, a hook, a cast, a leap, a wraith
         // that has become a body. The call reaches thirteen tiles and it used to drop every one of
         // those where it stood (an ogre mid-leap over a drop fell in); only `scream.balk`, two tiles
         // round the goat, is allowed to break a committed blow (`Enemy.balk`), and it has exceptions.
@@ -1003,14 +1006,13 @@ class Enemy {
     if (rage && this.state === 'chase') { this.vx *= rage.speed; this.vy *= rage.speed; }
 
     // The dev drawer's ENEMY SPEED slider (`game.dev.tune`) bends the step, not the velocity: every
-    // gait that ends here (walk, chase, stride, dart, charge, drift) is covered and nothing that reads
+    // gait that ends here (walk, chase, stride, dart, drift) is covered and nothing that reads
     // his speed as an impact (a splat, a door) is changed. At 1 it is `dt` exactly.
     const mv = game.dev && game.dev.tune ? dt * game.dev.tune.enemySpeed : dt;
     this.x += this.vx * mv; this.y += this.vy * mv;
     // Mist goes through the wall. That is the point of it, and it is why there is no safe corner
     // on the Ossuary: the only cover on that ground is which way you are facing.
     const impact = this.ghosted ? 0 : w.collideCircle(this);
-    if (this.state === 'charge' && impact > 3 * TILE) this.chargeStopped(game);
     // A hound that runs his line into stone has run it.
     if (this.kind === 'dog' && this.state === 'dart' && impact > 0) this.dashEnd(game);
   }
@@ -1043,15 +1045,6 @@ class Enemy {
     this.moveToward(bx - this.x, by - this.y, this.speed, dt);
     this.facing = Math.atan2(this.vy, this.vx);
     return true;
-  }
-
-  // The charge meets something that does not move — stone, a gong, the hub of the wheel — and he
-  // is the one who stops. That beat is the free hit the charge exists to offer.
-  chargeStopped(game) {
-    const C = TUNING.champion.charge;
-    this.state = 'stunned'; this.timer = C.stun * game.mods.enemySlow; this.vx = 0; this.vy = 0; this.chargeCd = C.cooldown * game.mods.enemySlow;
-    game.shake(6); game.audio.sfxSplat(); game.hitstop(0.04); game.floatText(this.x, this.y - 34, 'STUNNED', PALETTE.fireHi);
-    game.world.emitNoise(this.x, this.y, TUNING.noise.splat);
   }
 
   idleWander(dt, game) {
@@ -1108,8 +1101,8 @@ class Enemy {
     const g = game.goat, cfg = this.cfg, reach = this.atk('reach');
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
-    // The butcher runs at you (`chargeStep`); the man holding a post never leaves it.
-    if (this.champion && !this.sentry && this.chargeStep(dt, game, sees)) return;
+    // The butcher hooks you from across the room (`hookStep`); the man holding a post never throws.
+    if (this.champion && !this.sentry && this.hookStep(dt, game, sees)) return;
     if (this.state === 'chase') {
       const d = this.chaseGoat(game, this.speed, dt);
       if (d < reach + g.r && !g.dead) { this.state = 'windup'; this.timer = this.atk('windup') * game.mods.enemySlow; this.vx = 0; this.vy = 0; game.bark(this, 'attack', 0.25); }
@@ -1550,8 +1543,9 @@ class Enemy {
     return false;
   }
 
-  // The headbutt that does not land. A share of them he is simply not there for — and that share is
-  // the whole reason a hound reads as unpredictable. A dazed hound cannot move, so he eats all of it.
+  // The headbutt that does not land. Once every `dodgeCd` s he is simply not there for one (30 Sep
+  // 2026; it was a 38% coin) and it costs him his next run (`dodgeRest`). A dazed hound cannot move,
+  // so he eats all of it.
   // Out of the goat's mouth: straight back, away from him, one tile over `hopTime`. It rides the
   // dodge state, which already carries a body on whatever velocity it was given and hands him back
   // to the chase when it runs out.
@@ -1572,6 +1566,8 @@ class Enemy {
     const side = Math.random() < 0.5 ? 1 : -1;
     this.vx = -ay * side * cfg.dodgeSpeed; this.vy = ax * side * cfg.dodgeSpeed;
     this.state = 'dodge'; this.timer = cfg.dodgeTime; this.dodgeCd = cfg.dodgeCd; this.dodgeFx = 0.28;
+    // The slip is paid for out of his run (30 Sep 2026): his clock to the next plant starts again.
+    this.lungeCd = Math.max(this.lungeCd, cfg.dodgeRest);
     this.aware = true;
     game.floatText(this.x, this.y - 24, 'MISS', PALETTE.bone);
     game.particles(this.x, this.y, 5, PALETTE.ash, 160);
@@ -1876,104 +1872,167 @@ class Enemy {
     this.state = 'chase';
   }
 
-  // The butcher's charge (the ogre's until 1.66, when he was the Butcher), run from `updateBearer`. Handles the frame and
-  // returns true while he is planting or running, or walking to a spot he means to run from; false
-  // hands the frame back to the ordinary chase.
-  chargeStep(dt, game, sees) {
-    const g = game.goat, C = TUNING.champion.charge;
-    const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
-    if (this.state === 'charge') {
-      this.timer -= dt;
-      for (const e of game.enemies) {
-        if (e === this || e.dead || e.held || e.state === 'flung') continue;
-        if (Math.hypot(e.x - this.x, e.y - this.y) < e.r + this.r) e.fling(this.vx * 1.4, this.vy * 1.4, false);
-      }
-      // `hit` px past touching: running past him close is running into the cleaver (1.72).
-      if (!g.dead && d < this.r + g.r + C.hit) {
-        if (Talisman.parry(game, this, 'charge')) return true;
-        // Run into the shield: he stops on it and eats the parry, and the goat takes nothing.
-        if (g.blockBlow(game, this)) { this.chargeCd = C.cooldown * game.mods.enemySlow; return true; }
-        g.damage(C.damage, game, this.vx * 0.6, this.vy * 0.6, false, this);
-        this.state = 'recover'; this.timer = this.atk('recover') * game.mods.enemySlow; this.vx = 0; this.vy = 0; this.chargeCd = C.cooldown * game.mods.enemySlow; return true;
-      }
-      if (this.timer <= 0) { this.state = 'chase'; this.chargeCd = C.cooldown * game.mods.enemySlow; this.vx = 0; this.vy = 0; return true; }
-      // The skid: the last of the run bleeds off, so what ends the charge is his own feet and not the
-      // wall — a body slowing past `3 * TILE` of impact is not stopped by stone, only held by it.
-      const k = clamp(this.timer / C.skid, 0.2, 1);
-      this.vx = Math.cos(this.facing) * C.speed * k; this.vy = Math.sin(this.facing) * C.speed * k;
-      return true;
-    }
-    if (this.state === 'chargewind') {
-      // He plants his feet, faces where you are going to be and roars; the strip on the floor swings
-      // with it. Running on across his line is running into it: break off after he has left his feet.
+  // The butcher's hook (30 Sep 2026, in place of his charge, which a pillar or a table stopped more
+  // often than the goat did), run from `updateBearer`: the windup, the throw, the pull and the reel
+  // home. Returns true while any of it has the frame; false hands it back to the chase and the swing.
+  // He walks, he swings close, and at mid range he hooks: `TUNING.champion.hook`.
+  hookStep(dt, game, sees) {
+    const g = game.goat, H = TUNING.champion.hook, slow = game.mods.enemySlow;
+    if (this.state === 'hookwind') {
+      // Planted, the hook swinging round: the line on the floor follows where the goat is going, and
+      // where it points when the timer runs out is where the hook goes. From then on it is a thing in
+      // the air on a straight line, and only a goat who turns off that line is not on the end of it.
       this.vx = 0; this.vy = 0; this.timer -= dt;
-      const aim = this.chargeAim = this.leadAim(game);
+      const aim = this.hookAim = this.hookLead(game);
       this.facing = Math.atan2(aim.y - this.y, aim.x - this.x);
-      if (this.timer <= 0) {
-        const ad = len(aim.x - this.x, aim.y - this.y);
-        this.state = 'charge'; this.timer = Math.min(C.time, (ad + C.over * TILE) / C.speed);
-        this.vx = Math.cos(this.facing) * C.speed; this.vy = Math.sin(this.facing) * C.speed;
-        game.audio.sfxSwing();
-      }
+      if (this.timer <= 0) this.throwHook(game, aim);
       return true;
     }
-    if (this.state !== 'chase') return false;
-    // A charge that starts at a pillar he was never going to clear read as him crashing into the
-    // furniture rather than choosing a line. `runClear` is the clearance a body that wide needs,
-    // checked only as far as the goat's own spot; `game.props` only, never `enemies` — a room full
-    // of his own kind is a reason to charge, not a reason not to.
-    this.laneT = Math.max(0, this.laneT - dt);
-    if (sees && d >= C.min * TILE && this.chargeCd <= 0 && !g.dead) {
-      if (game.runClear(this.x, this.y, g.x, g.y, this.r)) {
-        this.state = 'chargewind'; this.timer = C.wind * game.mods.enemySlow; this.facing = Math.atan2(dy, dx);
-        this.lane = null; this.vx = 0; this.vy = 0;
-        game.floatText(this.x, this.y - 40, 'RAAAGH', PALETTE.blood); game.audio.sfxThud(); return true;
-      }
-      // A pillar or a table between him and you is a reason to step round it, not to trudge up to it.
-      if (!this.lane && this.laneT <= 0) { this.laneT = C.laneLook; this.lane = this.findLane(game); }
+    if (this.state === 'hookthrow') { this.vx = 0; this.vy = 0; this.flyHook(dt, game); return true; }
+    if (this.state === 'hookpull') { this.vx = 0; this.vy = 0; this.pullHook(dt, game); return true; }
+    if (this.state === 'hookreel') {
+      // A miss is reeled home at `reel` before he can do anything else: the recovery he eats.
+      this.vx = 0; this.vy = 0;
+      const h = this.hook;
+      const hx = h ? this.x - h.x : 0, hy = h ? this.y - h.y : 0, hd = Math.hypot(hx, hy), step = H.reel * dt;
+      if (!h || hd <= step + this.r) { this.hook = null; this.state = 'recover'; this.timer = H.recover * slow; }
+      else { h.x += hx / hd * step; h.y += hy / hd * step; }
+      return true;
     }
-    if (!this.lane) return false;
-    const P = this.lane, lx = P.x - this.x, ly = P.y - this.y, ld = len(lx, ly);
-    P.t -= dt;
-    // A walk that is not closing on the spot is a spot he cannot get to: drop it, and do not look
-    // for another straight away, or he picks the same one and walks into the same corner.
-    if (ld < P.best - 4) { P.best = ld; P.still = 0; } else P.still += dt;
-    if (P.still > C.laneStill) { this.lane = null; this.laneT = C.laneLook * 3; return false; }
-    if (ld < C.laneAt * TILE || P.t <= 0 || !sees || d < C.min * TILE || this.chargeCd > 0) { this.lane = null; return false; }
-    this.moveToward(lx, ly, this.speed, dt, game);
+    if (this.state !== 'chase' || !sees || g.dead || this.hookCd > 0 || this.poison > 0) return false;
+    const d = Math.hypot(g.x - this.x, g.y - this.y);
+    if (d < H.min * TILE || d > H.max * TILE || game.hidden(this.x, this.y)) return false;
+    // A goat already on his back (the pen, another hook) or going over an edge is left to it.
+    if (!Enemy.hookable(g) || !this.hookLine(game, g.x, g.y)) return false;
+    this.state = 'hookwind'; this.timer = H.wind * slow; this.vx = 0; this.vy = 0;
+    this.hookAim = this.hookLead(game); this.facing = Math.atan2(this.hookAim.y - this.y, this.hookAim.x - this.x);
+    const at = game.audio.heard(this.x - g.x, this.y - g.y);
+    game.audio.sfxClatter('metal', 0.6 * at.vol, at.pan);
+    game.bark(this, 'attack', 0.3);
     return true;
   }
-
-  // Where the charge is aimed: where the goat will be when he arrives, `lead` of the way there and
-  // never more than `leadMax` tiles ahead of him — and only a lead he could actually run.
-  leadAim(game) {
-    const g = game.goat, C = TUNING.champion.charge, d = len(g.x - this.x, g.y - this.y);
-    const t = Math.min(C.time, d / C.speed) * C.lead;
-    let lx = g.vx * t, ly = g.vy * t;
-    const l = Math.hypot(lx, ly), cap = C.leadMax * TILE;
-    if (l > cap) { lx *= cap / l; ly *= cap / l; }
-    const x = g.x + lx, y = g.y + ly;
-    if (l > 1 && game.world.walkableAt(Math.floor(x / TILE), Math.floor(y / TILE)) && game.runClear(this.x, this.y, x, y, this.r * 0.6)) return { x, y };
+  // Whether the goat is in a state a hook can take: on his feet and not tumbling (the roll's own
+  // i-frames, and any other moment he cannot be hurt, go through the rope).
+  static hookable(g) {
+    if (g.dead || g.leap || g.invuln > 0) return false;
+    return g.state !== 'roll' && g.state !== 'stunned' && g.state !== 'falling' && g.state !== 'ko';
+  }
+  // Stone and whatever stops a round stop the hook; his own men do not — it goes past them.
+  hookLine(game, x, y) { return game.clearLine(this.x, this.y, x, y, game.props, 'stopsBullets', 2); }
+  // Where the hook is aimed: where the goat will be when it gets there, off his own velocity and the
+  // hook's flight time, the whole of it (`lead`), never more than `leadMax` tiles ahead, walked back
+  // toward him until it is floor. At his own pace, so running on is running onto it.
+  hookLead(game) {
+    const g = game.goat, H = TUNING.champion.hook, w = game.world, cap = H.leadMax * TILE;
+    let lx = 0, ly = 0;
+    for (let k = 0; k < 3; k++) {
+      const t = Math.max(0, len(g.x + lx - this.x, g.y + ly - this.y) - this.r) / H.speed * H.lead;
+      lx = g.vx * t; ly = g.vy * t;
+      const l = Math.hypot(lx, ly); if (l > cap) { lx *= cap / l; ly *= cap / l; }
+    }
+    for (let s = 1; s > 0; s -= 0.25) {
+      const x = g.x + lx * s, y = g.y + ly * s;
+      if (w.walkableAt(Math.floor(x / TILE), Math.floor(y / TILE))) return { x, y };
+    }
     return { x: g.x, y: g.y };
   }
-  // A spot to charge from: one, two or three tiles either side of the line to the goat (and a tile
-  // back), reachable on foot, with a clear run from it to him. The nearest such spot, or null.
-  findLane(game) {
-    const g = game.goat, C = TUNING.champion.charge, w = game.world;
-    const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
-    const props = this.nearBlockers(game, this.x, this.y, d + 3 * TILE);
-    let best = null, bd = Infinity;
-    for (const back of [0, -1]) for (const side of [1, -1, 2, -2, 3, -3]) {
-      const x = this.x + (-uy * side + ux * back) * TILE, y = this.y + (ux * side + uy * back) * TILE;
-      if (!w.walkableAt(Math.floor(x / TILE), Math.floor(y / TILE))) continue;
-      if (len(g.x - x, g.y - y) < C.min * TILE) continue;
-      const walk = Math.abs(side) + Math.abs(back);
-      if (walk >= bd) continue;
-      if (!this.bodyClear(game, x, y, this.r * 0.9, props, true)) continue;
-      if (!game.runClear(x, y, g.x, g.y, this.r)) continue;
-      best = { x, y, t: C.laneTime, best: Infinity, still: 0 }; bd = walk;
+  throwHook(game, aim) {
+    const H = TUNING.champion.hook, dx = aim.x - this.x, dy = aim.y - this.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+    this.state = 'hookthrow'; this.hookAim = null; this.hookCd = H.cooldown * game.mods.enemySlow;
+    // `over` tiles past the aim point, so a goat a step slower than he was is still on the line.
+    this.hook = { x: this.x + ux * this.r, y: this.y + uy * this.r, ux, uy, left: Math.min(d + H.over * TILE, (H.max + H.over) * TILE) - this.r, caught: null };
+    game.audio.sfxSwing(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult');
+  }
+  // The hook in the air, in steps no longer than a few px: stone and furniture stop it, a loose crate
+  // or bomb is caught, the goat is caught, and his own men are passed.
+  flyHook(dt, game) {
+    const H = TUNING.champion.hook, h = this.hook, g = game.goat, w = game.world;
+    if (!h) { this.state = 'chase'; return; }
+    const total = H.speed * dt, steps = Math.max(1, Math.ceil(total / 6)), st = total / steps;
+    for (let s = 0; s < steps; s++) {
+      h.x += h.ux * st; h.y += h.uy * st; h.left -= st;
+      if (w.isSolid(Math.floor(h.x / TILE), Math.floor(h.y / TILE))) { h.x -= h.ux * st; h.y -= h.uy * st; this.hookMiss(game, true); return; }
+      if (Math.hypot(g.x - h.x, g.y - h.y) < g.r + H.catchR && Enemy.hookable(g)) {
+        // A shield facing him turns it like a round (a use spent); he is too far off to be staggered.
+        if (g.shielded(this.x, this.y, true)) { g.blockBlow(game, this, false); this.hookMiss(game, false); return; }
+        // A crate held toward him takes the hook instead and is torn out of his mouth.
+        const c = g.holding;
+        if (c && c.kind === 'crate' && !c.broken && g.covers(this.x, this.y, true)) { this.hookProp(game, c); return; }
+        this.hookGoat(game); return;
+      }
+      for (const p of game.props) {
+        if (p.broken || p.held || Math.abs(p.x - h.x) > p.r + 4 || Math.abs(p.y - h.y) > p.r + 4) continue;
+        if (Math.hypot(p.x - h.x, p.y - h.y) > p.r + 3) continue;
+        if ((p.kind === 'crate' && !p.noGrab) || p.kind === 'bomb') { this.hookProp(game, p); return; }
+        if (p.stopsBullets) { this.hookMiss(game, true); return; }
+      }
+      if (h.left <= 0) { this.hookMiss(game, false); return; }
     }
-    return best;
+  }
+  hookMiss(game, clank) {
+    const h = this.hook;
+    if (clank && h) {
+      const at = game.audio.heard(h.x - game.goat.x, h.y - game.goat.y);
+      game.particles(h.x, h.y, 4, PALETTE.ochre, 90); game.audio.sfxClatter('metal', 0.8 * at.vol, at.pan);
+    }
+    this.state = 'hookreel';
+  }
+  // Caught: whatever was in his mouth is dropped (as the pen's stun drops it), he is off his feet
+  // and the rope has him (`goat.hooked`, which `Goat.update`'s stunned branch pulls along).
+  hookGoat(game) {
+    const g = game.goat, H = TUNING.champion.hook, h = this.hook;
+    if (g.holding) { const o = g.holding; g.holding = null; o.held = false; g.autoHeld = false; if (!o.item) { o.state = 'floored'; o.timer = 0.5; } }
+    g.state = 'stunned'; g.timer = H.pullMax + H.daze; g.hooked = this; g.vx = 0; g.vy = 0; g.runT = 0; g.runUp = 1;
+    h.caught = g; h.x = g.x; h.y = g.y;
+    this.state = 'hookpull'; this.timer = H.pullMax;
+    game.audio.sfxSteel(); game.audio.sfxThud(); game.hitstop(0.05); game.vibe(30);
+    game.particles(g.x, g.y - 6, 6, PALETTE.bone, 120);
+    game.floatText(g.x, g.y - 30, 'HOOKED', PALETTE.fireHi);
+    game.bark(this, 'attack', 0.5);
+  }
+  hookProp(game, p) {
+    const g = game.goat, h = this.hook;
+    if (p === g.holding) { g.holding = null; p.held = false; g.autoHeld = false; g.spendGrab(game, false); game.floatText(g.x, g.y - 30, 'TORN AWAY', PALETTE.bone); }
+    p.vx = 0; p.vy = 0;
+    h.caught = p; h.x = p.x; h.y = p.y;
+    this.state = 'hookpull'; this.timer = TUNING.champion.hook.pullMax;
+    game.audio.sfxClatter('metal', 0.8);
+  }
+  // Reeling in what the hook took. The goat is dragged by his own step (`Goat.update`); a thing is
+  // drawn in here, down the line the hook flew, which was clear of stone.
+  pullHook(dt, game) {
+    const H = TUNING.champion.hook, h = this.hook, g = game.goat, c = h && h.caught, slow = game.mods.enemySlow;
+    this.timer -= dt;
+    if (!c) { this.endPull(game); return; }
+    if (c === g) {
+      if (g.dead || g.hooked !== this || g.state !== 'stunned') { this.endPull(game); return; }
+      h.x = g.x; h.y = g.y; this.facing = Math.atan2(g.y - this.y, g.x - this.x);
+      const close = Math.hypot(g.x - this.x, g.y - this.y) <= this.atk('reach') + g.r - H.stopAt;
+      if (!close && this.timer > 0) return;
+      this.endPull(game);
+      // Into his reach: the cleaver comes round on the ordinary windup, and the goat is on his feet
+      // for most of it — the rope brings him to the blow, it does not land it.
+      if (close) { this.state = 'windup'; this.timer = this.atk('windup') * slow; game.bark(this, 'attack', 0.25); }
+      return;
+    }
+    if (c.broken || c.held) { this.endPull(game); return; }
+    const px = this.x - c.x, py = this.y - c.y, pd = Math.hypot(px, py) || 1, step = H.pull * dt;
+    if (pd - step <= this.r + c.r + 4 || this.timer <= 0) { c.vx = 0; c.vy = 0; this.endPull(game); return; }
+    c.x += px / pd * step; c.y += py / pd * step; c.vx = 0; c.vy = 0; h.x = c.x; h.y = c.y;
+  }
+  endPull(game) {
+    const g = game.goat;
+    if (g.hooked === this) { g.hooked = null; if (g.state === 'stunned') g.timer = Math.min(g.timer, TUNING.champion.hook.daze); g.vx *= 0.2; g.vy *= 0.2; }
+    this.hook = null; this.state = 'recover'; this.timer = TUNING.champion.hook.recover * game.mods.enemySlow;
+  }
+  // The rope out of his hand for whatever reason that is not his own (a daze, a body, a blast, fire):
+  // the goat on the end of it is let go, and the next throw waits its cooldown.
+  dropHook(game) {
+    const g = game.goat;
+    if (g.hooked === this) { g.hooked = null; if (g.state === 'stunned') g.timer = Math.min(g.timer, TUNING.champion.hook.daze); }
+    this.hook = null; this.hookAim = null;
+    this.hookCd = Math.max(this.hookCd, TUNING.champion.hook.cooldown * game.mods.enemySlow);
+    if (this.state === 'hookthrow' || this.state === 'hookpull' || this.state === 'hookreel') this.state = 'chase';
   }
 
   // The one thing a scream, a boomerang or a tumble does to the rat ogre: the swing he was winding
@@ -2083,7 +2142,7 @@ class Enemy {
     if (this.hp <= 1) { this.die(game, 'spire'); return; }
     this.hp -= 1; this.flash = 0.3; this.aware = true;
     this.impaled = I.time * game.mods.enemySlow; this.impaleOn = p;
-    game.floatText(this.x, this.y - 44, 'STUCK · ' + this.hp + ' LEFT', PALETTE.fireHi);
+    game.floatText(this.x, this.y - 44, 'STUCK', PALETTE.fireHi);
   }
   // What a flung body finds on the wall it flies at (gen.js `dressWall`, `game.wallArt`). A suit of
   // armour he flies into or lands by — any flung body within `near` px past touching it, however slow
@@ -2093,7 +2152,7 @@ class Enemy {
   wallDressing(game, vx, vy, speed) {
     const A = TUNING.prop.armor, Tr = TUNING.prop.trophy;
     for (const p of game.wallArt) {
-      if (p.kind === 'armor') {
+      if (p.kind === 'armor' || p.kind === 'suit') {
         if (!p.spilled && Math.hypot(this.x - p.x, this.y - p.y) < this.r + p.r + A.near) {
           p.burstArmor(game, vx, vy, clamp(speed / (8 * TILE), 0.5, 1.4));
           this.vx *= A.slow; this.vy *= A.slow;
@@ -2124,7 +2183,7 @@ class Enemy {
     if (this.hp > 1) {
       this.hp -= 1; this.flash = 0.3; this.aware = true; this.state = 'stagger'; this.timer = 0;
       this.impaled = Tr.time * game.mods.enemySlow; this.impaleOn = p; this.pin = { x: this.x, y: this.y };
-      game.floatText(this.x, this.y - 44 - Tr.lift, 'STUCK · ' + this.hp + ' LEFT', PALETTE.fireHi);
+      game.floatText(this.x, this.y - 44 - Tr.lift, 'STUCK', PALETTE.fireHi);
       game.audio.sfxGrowl();
       return;
     }
