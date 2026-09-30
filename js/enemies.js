@@ -270,6 +270,14 @@ class Enemy {
     }
     this.dead = true; this.state = 'dead';
     const w = game.world;
+    // Killed while pinned on a stag's antlers, or dead on them outright (`antlers`): he stays up on the
+    // wall — the trophy draws him from here on (`bodyImg`) and no body falls (`CombatFX.death`).
+    if (this.impaleOn && this.impaleOn.kind === 'trophy' && cause !== 'boom' && cause !== 'roll' && cause !== 'fall') this.hung = this.impaleOn;
+    if (this.hung) {
+      const p = this.hung;
+      p.body = this; p.bodyFoot = this.y - p.y; this.impaled = 0; this.impaleOn = null; this.pin = null;
+      if (game.fx && game.fx.corpseSprite && game.renderer) p.bodyImg = game.fx.corpseSprite(this, Math.PI / 2, cause === 'burn').image;
+    }
     if (this.kind === 'wraith') {
       game.particles(this.x, this.y, 26, PALETTE.witchHi, 240);
       game.particles(this.x, this.y, 12, PALETTE.witch, 150);
@@ -315,6 +323,7 @@ class Enemy {
     game.ring(this.x, this.y, B.radius * B.fxScale, PALETTE.fireHi);
     game.thud(this.x, this.y, 9); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(35);
     w.emitNoise(this.x, this.y, TUNING.noise.boom);
+    if (game.scatter) game.scatter.burst(this.x, this.y, B.radius);   // suppers and suits of armour
     for (const o of game.enemies) {
       if (o === this || o.dead || o.held || o.ghosted) continue;
       const dx = o.x - this.x, dy = o.y - this.y, d = Math.hypot(dx, dy);
@@ -827,11 +836,15 @@ class Enemy {
       // frame, and a centre landing past the middle of a one-tile pillar was pushed out of its far
       // side — through the stone, alive, where the wall was supposed to be what killed him.
       const steps = Math.max(1, Math.ceil(preSpeed * dt / ((this.wallR || this.r) * 0.9)));
+      const v0x = this.vx, v0y = this.vy;   // before the stone takes what went into it
       let impact = 0;
       for (let i = 0; i < steps; i++) {
         this.x += this.vx * dt / steps; this.y += this.vy * dt / steps;
         impact = Math.max(impact, w.collideCircle(this));
       }
+      // The wall's dressing answers him before the wall does: a suit of armour he lands by comes
+      // apart, and a stag's antlers he meets catch him at a speed the stone alone would not kill at.
+      if (game.wallArt && game.wallArt.length && this.wallDressing(game, v0x, v0y, preSpeed)) return;
       if (impact > this.splatLimit(game)) {
         this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1)); return;
       }
@@ -2072,8 +2085,69 @@ class Enemy {
     this.impaled = I.time * game.mods.enemySlow; this.impaleOn = p;
     game.floatText(this.x, this.y - 44, 'STUCK · ' + this.hp + ' LEFT', PALETTE.fireHi);
   }
+  // What a flung body finds on the wall it flies at (gen.js `dressWall`, `game.wallArt`). A suit of
+  // armour he flies into or lands by — any flung body within `near` px past touching it, however slow
+  // (a body only stays flung while it is still travelling) — comes apart and he flies on. A stag's
+  // head he meets, flying at its wall past `trophy.hit` within `hitR` of it, takes him on its tines
+  // (`antlers`): true, and his step is over. A wraith has nothing to catch.
+  wallDressing(game, vx, vy, speed) {
+    const A = TUNING.prop.armor, Tr = TUNING.prop.trophy;
+    for (const p of game.wallArt) {
+      if (p.kind === 'armor') {
+        if (!p.spilled && Math.hypot(this.x - p.x, this.y - p.y) < this.r + p.r + A.near) {
+          p.burstArmor(game, vx, vy, clamp(speed / (8 * TILE), 0.5, 1.4));
+          this.vx *= A.slow; this.vy *= A.slow;
+        }
+        continue;
+      }
+      if (p.kind !== 'trophy' || p.spent || this.kind === 'wraith') continue;
+      const foot = Math.floor(p.y / TILE) * TILE;
+      if (-vy < Tr.hit || Math.abs(this.x - p.x) > Tr.hitR || this.y - foot > this.r + Tr.reach || this.y < foot) continue;
+      this.antlers(game, p);
+      return true;
+    }
+    return false;
+  }
+  // Caught on the antlers (`TUNING.prop.trophy`), whatever speed the wall alone would have wanted: a
+  // one-heart man dies there and hangs on the wall (`die` sees `hung`, the trophy draws him); a man
+  // with hearts to spare loses one and is pinned `time` s (`impaledStep`), then tears free. A fused
+  // man is the bomb he was always going to be. The trophy is spent either way.
+  antlers(game, p) {
+    const Tr = TUNING.prop.trophy, foot = Math.floor(p.y / TILE) * TILE;
+    p.spent = true; p.bleedT = 0;
+    this.x = p.x; this.y = foot + this.r + 1; this.vx = 0; this.vy = 0;
+    this.flung = false; this.thrown = false; this.fromMouth = false;
+    if (this.bombFuse > 0 && !this.exploded) { this.explode(game); return; }
+    game.world.splat(this.x, this.y + 3, 0, 1, 10);
+    game.particles(this.x, this.y - Tr.lift, 12, PALETTE.blood, 150);
+    game.hitstop(0.06); game.audio.sfxThud(); game.kick(0, -1, TUNING.juice.kick * 0.5);
+    if (this.hp > 1) {
+      this.hp -= 1; this.flash = 0.3; this.aware = true; this.state = 'stagger'; this.timer = 0;
+      this.impaled = Tr.time * game.mods.enemySlow; this.impaleOn = p; this.pin = { x: this.x, y: this.y };
+      game.floatText(this.x, this.y - 44 - Tr.lift, 'STUCK · ' + this.hp + ' LEFT', PALETTE.fireHi);
+      game.audio.sfxGrowl();
+      return;
+    }
+    this.hung = p;
+    this.die(game, 'splat', 0, -1);
+  }
   impaledStep(dt, game) {
     const I = TUNING.cave.spikes.impale, p = this.impaleOn;
+    // Pinned to a stag's head: held up on the wall where he struck it, and pulled off it by the goat's
+    // teeth (BY THE COLLAR) as surely as by his own strength.
+    if (p && p.kind === 'trophy') {
+      this.impaled -= dt; this.vx = 0; this.vy = 0;
+      if (this.pin && !this.held) { this.x = this.pin.x; this.y = this.pin.y; }
+      if (Math.random() < dt * 5) game.particles(this.x, this.y - TUNING.prop.trophy.lift, 1, PALETTE.blood, 40);
+      if (this.impaled > 0 && !this.held) return;
+      this.impaled = 0; this.impaleOn = null; this.pin = null;
+      if (this.held) return;
+      this.y += p.r + 4; game.world.collideCircle(this);
+      this.state = 'stagger'; this.timer = TUNING.prop.trophy.free * game.mods.enemySlow; this.aware = true;
+      game.floatText(this.x, this.y - 44, 'RRAAGH', PALETTE.blood); game.audio.sfxGrowl();
+      game.dust(this.x, this.y, 6, 0, 1);
+      return;
+    }
     this.impaled -= dt; this.vx = 0; this.vy = 0;
     if (Math.random() < dt * 4) game.particles(this.x, this.y + this.r * 0.3, 1, PALETTE.blood, 50);
     if (this.impaled > 0) return;

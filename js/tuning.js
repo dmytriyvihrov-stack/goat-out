@@ -773,6 +773,26 @@ const TUNING = {
     // The rope's cleat on the far wall (`kind: 'cleat'`): a headbutt within reach of it, a body or a
     // thrown thing arriving at it faster than `hit`, or `burn` s of flame on its tile cuts the rope.
     cleat: { r: 9, hit: 3 * TILE, burn: 0.5 },
+    // A suit of armour on its stand, back to the stone (30 Sep 2026, Enter the Gungeon's: "armour
+    // standing by some walls — a guy lands next to them or into them, they fly apart"). It kills
+    // nobody (pillar 3): any flung body that flies into it or lands within `near` px past touching it,
+    // a charging butcher, a barrel, crate or blade arriving faster than `hit`, or a blast sends the
+    // pieces flying (js/scatter.js; `pieces`: id and how high on him it hung, px) and the body flies
+    // on at `slow` of its speed; the empty stand is left. Placed (gen.js `dressWall`, its own RNG) on
+    // `chance` of the rooms that may take one, from room `from`, never more than `perLevel` a floor
+    // outside THE ARMORY, which stands up to `armory` of them wherever its walls leave room.
+    // `gap`: px between its back and the stone. `texel`: world px a pixel of its sprite.
+    armor: { r: 10, gap: 2, chance: 0.25, perLevel: 2, armory: 3, from: 1, hit: 4 * TILE, near: 12, slow: 0.75, texel: 1.35,
+      pieces: [['helm', 34], ['plate', 24], ['gaunt', 17], ['gaunt', 17], ['greave', 7], ['greave', 7]] },
+    // A stag's head on the far wall (30 Sep 2026: "throw a guy into the antlers and he sticks, even if
+    // he did not have the force to die"). A flung body moving at the wall faster than `hit` (well under
+    // what the stone kills at) that meets it within `hitR` px of the head is caught on the tines: a
+    // one-heart man dies there and hangs on the wall; a two-hit kind loses a heart and is pinned `time`
+    // s (× `enemySlow`), then tears free and staggers `free` s. One body and it is spent. Drawn
+    // `lift` world px up the wall; blood runs `drip` px a second down the face below it. `chance` of
+    // the rooms that may take one, from room `from`, at most `perLevel` a floor. The goat never sticks.
+    trophy: { r: 8, chance: 0.25, perLevel: 2, from: 1, hit: 4 * TILE, hitR: 13, reach: 5, time: 2.6, free: 0.5,
+      lift: 20, texel: 1.4, drip: 9 },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE, squeeze: 8,
       flip: { chance: 0.5, wall: 3 * TILE, r: 26, hits: 3 } },
     // A lamp post is not a pillar: a body arriving at `knock` goes through it and it goes over,

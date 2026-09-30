@@ -102,6 +102,8 @@ const JUICE_PLAY = {
 
 // Why a row has no preview. Anything not listed falls back on its category or status.
 const JUICE_NOPLAY = {
+  'Armour flies apart': 'a suit of armour stands against a wall of a room — THE SHOWROOM has one: throw a man at it',
+  'Hung on the antlers': 'a stag’s head hangs on a far wall — THE SHOWROOM has one: throw a man at it',
   'Camera lead': 'a camera following him across a floor — play a floor',
   'Deadzone camera': 'a camera following him across a floor — play a floor',
   'Frame the fight': 'a boss in a room too big for the screen — play a floor',
@@ -321,7 +323,7 @@ const JuicePreview = {
       // What `startLevel` lays and the title never has: named here, so a preview opened from the
       // title reads empty lists of its own rather than nothing.
       enemies: [], props: [], bullets: [], parts: [], floats: [], rings: [], puffs: [], flares: [], souls: [], globs: [], fallers: [],
-      hazards: [], sightBlockers: [], runes: [], niches: [], sealedRooms: [], soulGates: [], liveEnemies: [], beastSaved: [],
+      hazards: [], sightBlockers: [], runes: [], niches: [], sealedRooms: [], soulGates: [], liveEnemies: [], beastSaved: [], wallArt: [],
       pathTrail: [], heartLog: [], killMarks: [], crowMarks: [],
       fx: null, scatter: null, audio: this.audioFor(game),
     });
@@ -411,6 +413,7 @@ const JuicePreview = {
     // As `startLevel` does it: the chandelier and its cleat, and the lists the men read.
     for (const c of pg.props) if (c.kind === 'cleat') { const ring = pg.props.find((q) => q.kind === 'chandelier' && q.cid === c.cid); if (ring) { c.hangs = ring; ring.cleat = c; } }
     pg.hazards = pg.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike' || p.kind === 'spire' || p.kind === 'barrel');
+    pg.wallArt = pg.props.filter((p) => p.kind === 'armor' || p.kind === 'trophy');
     pg.sightBlockers = pg.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill' || p.kind === 'secret');
     pg.world.computeFlow(pg.goat.x, pg.goat.y);
     pg.revealRooms();

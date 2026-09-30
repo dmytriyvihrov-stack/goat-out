@@ -1032,6 +1032,7 @@ class Prop {
       : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r
       : kind === 'bomb' ? P.bomb.r : kind === 'rock' ? P.rock.r : kind === 'spire' ? P.spire.r
       : kind === 'barrel' ? P.barrel.r : kind === 'cleat' ? P.cleat.r
+      : kind === 'armor' ? P.armor.r : kind === 'trophy' ? P.trophy.r
       : kind === 'mouse' ? P.mouse.r : kind === 'ware' ? P.ware.r : 13;
     // The shop (js/shop.js). A mouse carries which room's shelf is hers (`shopId`), where the gap
     // in the wall is (`gap`, which is where the ogre comes out), how many blows she has taken and
@@ -1057,6 +1058,12 @@ class Prop {
     // `cleat` / `hangs`). The ring hangs `z` px up; `drop` is 'hang', 'fall' or 'down'.
     this.cid = opts && opts.cid !== undefined ? opts.cid : -1; this.cleat = null; this.hangs = null;
     this.z = kind === 'chandelier' ? TUNING.chandelier.z : 0; this.vz = 0; this.drop = kind === 'chandelier' ? 'hang' : null; this.burnT = 0;
+    // The wall's dressing (gen.js `dressWall`): which wall a suit of armour has its back to ('n', 'w',
+    // 'e'), whether it has come apart (`spilled`: the empty stand is left); a stag's head that has
+    // taken its one body (`spent`), the man on it (`body`, his picture `bodyImg`, his feet `bodyFoot`
+    // world px under the prop) and how long it has been bleeding down the wall (`bleedT`).
+    this.side = (opts && opts.side) || 'n'; this.spilled = false;
+    this.spent = false; this.body = null; this.bodyImg = null; this.bodyFoot = 0; this.bleedT = 0;
     this.gate = 0;                            // 1 while the opening scene has this bar laid flat
     this.angle = (opts && opts.phase) || 0;
     this.held = false; this.flung = false; this.thrown = false; this.broken = false; this.dead = false;
@@ -1162,7 +1169,9 @@ class Prop {
     if (this.kind === 'tortoise') return !this.flying && this.tuckT > 0 && !this.held && !(this.coolT > 0);
     if (this.kind === 'goose' || this.kind === 'crow' || this.kind === 'horse') return false;
     // A lantern on the wall is up on the stone, out of anybody's way.
-    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce' || this.kind === 'cleat' || this.kind === 'chandelier') return false;
+    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce' || this.kind === 'cleat' || this.kind === 'chandelier' || this.kind === 'trophy') return false;
+    // A suit of armour stands in the way until it has come apart; the stand it leaves is stepped over.
+    if (this.kind === 'armor') return !this.spilled;
     if (this.kind === 'door') return this.open < 0.5;
     // A SPADE body you cannot lift is still something men trip on, never a wall: pushed out to
     // touching, nobody ever got close enough to trip, and the thrown died on it as on stone.
@@ -1203,6 +1212,8 @@ class Prop {
       case 'door': case 'secret': this.smash(game, ax, ay); break;
       case 'rock': this.crackRock(game); break;
       case 'cleat': this.cutRope(game); break;
+      // The horns only rattle it: it is a body landing by it that brings it down (`burstArmor`).
+      case 'armor': if (!this.spilled) { this.wobble = 0.35; game.audio.sfxSteel(); } break;
       case 'table': if (this.flipped) this.knockFlipped(game, ax, ay); else this.shove(game, ax, ay); break;
       case 'barrel': this.roll(game, ax, ay, TUNING.prop.barrel.roll); break;
       case 'lamp': this.topple(game, ax, ay); break;
@@ -1271,6 +1282,10 @@ class Prop {
       if (p.box) { const o = p.boxPush(this.x, this.y); pen = this.r - o.d; dx = o.nx; dy = o.ny; d = 1; }
       if (pen <= 0) continue;
       if (p.kind === 'lamp') { p.topple(game, nx, ny); return p; }
+      // A suit of armour comes apart under a thing arriving at it, which flies on through the pieces.
+      if (p.kind === 'armor' && Math.hypot(this.vx, this.vy) > TUNING.prop.armor.hit) {
+        p.burstArmor(game, nx, ny, 0.8); this.vx *= TUNING.prop.armor.slow; this.vy *= TUNING.prop.armor.slow; continue;
+      }
       if (p.kind === 'bell') p.ring(game);
       // Out of the thing it hit, so a bounce does not spend the next frame inside it.
       this.x += dx / (d || 1) * pen; this.y += dy / (d || 1) * pen;
@@ -1846,6 +1861,16 @@ class Prop {
     const c = this.hangs;
     if (c && c.drop === 'hang') { c.drop = 'fall'; c.vz = 0; game.world.emitNoise(c.x, c.y, TUNING.noise.table); }
   }
+  // A suit of armour coming apart (`TUNING.prop.armor`): helm, breastplate, gauntlets and greaves
+  // thrown along (dx, dy) off the heights they hung at (js/scatter.js), the empty stand left behind.
+  // Nothing in it hurts anybody — it is the room answering a body, not a weapon (pillar 3).
+  burstArmor(game, dx, dy, power = 1) {
+    if (this.kind !== 'armor' || this.spilled) return;
+    this.spilled = true; this.wobble = 0.3;
+    if (game.scatter) game.scatter.fromArmor(this, dx, dy, power);
+    game.audio.sfxSteel(); game.dust(this.x, this.y, 5, dx, dy);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.steel);
+  }
   // Hanging, it does nothing; cut, it falls, and where it lands (`TUNING.chandelier`) a man is
   // crushed — a two-hit kind loses a heart, his `die` decides — the goat loses a heart, a table
   // under it goes to planks and the candles light the floor round it. Then it lies there.
@@ -1892,6 +1917,9 @@ class Prop {
     if (this.kind === 'mill') { this.updateMill(dt, game); return; }
     if (this.kind === 'chandelier') { this.updateChandelier(dt, game); return; }
     if (this.kind === 'cleat') { this.updateCleat(dt, game); return; }
+    // What comes to it is found by what arrives (`Enemy.wallDressing`, `hitProp`, `collideEntities`,
+    // `Scatter.burst`); a spent stag's head only goes on bleeding down the wall.
+    if (this.kind === 'armor' || this.kind === 'trophy') { if (this.spent) this.bleedT += dt; return; }
     if (this.kind === 'spike') { this.updateSpike(dt, game); return; }
     if (this.kind === 'spire') { this.updateSpire(dt, game); return; }
     if (this.kind === 'chicken') { this.updateBird(dt, game); return; }

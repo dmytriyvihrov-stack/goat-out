@@ -107,7 +107,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/render.js` | Everything drawn. Roughly half the codebase. |
 | `js/dark.js` | `Dark`: THE DARK's picture — light cast from every flame through the tiles, the goat's hearing as silhouettes, the wall faces round him, windups and eyes over the dark. Render only. |
 | `js/combat-fx.js` | `CombatFX`: cosmetic fragments and bursts (deaths, body pieces), and every flame, blast, smoke puff and blood spray as pixel frames it bakes itself (`flameFrames`, `burstFrames`, `pixelRing`, `cellDisc`); never enters collision, damage, noise or AI. |
-| `js/scatter.js` | `Scatter` (`game.scatter`): the supper on the tables (`Scatter.foodOf`, off a hash of the table's tile; `TUNING.scatter`) and everything thrown off one — arcs, quarter turns, bounces, rolls, clay breaking into shards and a spill — left lying to be kicked. Cosmetic: never in collision, damage, noise or AI. Sprites `food-*` in `js/prop-pixels.js`. |
+| `js/scatter.js` | `Scatter` (`game.scatter`): a suit of armour's pieces (`fromArmor`, `armor-*`), and the supper on the tables (`Scatter.foodOf`, off a hash of the table's tile; `TUNING.scatter`) and everything thrown off one — arcs, quarter turns, bounces, rolls, clay breaking into shards and a spill — left lying to be kicked. Cosmetic: never in collision, damage, noise or AI. Sprites `food-*` in `js/prop-pixels.js`. |
 | `js/heaven-pixels.js` | `HEAVEN_PIXELS`: heaven's sprites on `PROP_PIXELS.Grid` — the god (`god`, `god-speak`, `god-blink`), the blind shepherd's three arms, the mirror (its glass one flat colour, `GLASS`), the five bells and their beam (`BELL_GAP`), a seat, gold grass, the gold skull the HUD counts sacrifices in. Loads after `horse-pixels.js`; node-requirable for a sheet. |
 | `js/heaven.js` | `Heaven`: THE PASTURE ABOVE, where a death's card leads (see *Heaven* below): the store that outlives runs (`HEAVEN_KEY`, `meta`: sacrifices, `MIRROR` ranks, the seats), the hand-laid two-room level (`level`), its step (`update`: GRAB answers, the comb, the talk, the mirror panel, the bells, the edge), what the god says (`HEAVEN_TALK`, `pickTalk`) and all of its picture (`bake*`, `draw*`, `drawHud`). |
 | `js/goat-grid.js` | `GoatGrid`: the GOAT GRID tab of the dev tool (`#goats`). The build's own goat (`PaintedArt.drawGoat` with a stub `game`) on a grid whose axes are picked from horns, voice, talisman, third eye, facing, wounds, floor (a canon's own swatches) and decor (a prop off the environment atlas); zoom, framing, pixel shadow, SAVE as PNG or JPG. Its SCENE mode (`drawSceneTab`, `G.scene`) composes one frame by hand: a floor's room (`sceneTiles`, `drawWall`/`floorSwatch` on its own tile grid), men as plain stubs in a pose (`manStub`, `poseMan` → `drawEnemy`), props as fresh `Prop`s, `CombatFX` fire, pools, corpses and bursts, placed by clicking the floor (`grid-at=` rects, half a tile), saved by `exportScene`. The renderer's `game` is lent a stub for the draw only. Touches no run state. |
@@ -834,6 +834,28 @@ the ring falls from `z` (`updateChandelier`) and lands on everything within `kil
 goes to planks, the candles light `fireR` tiles. The wreck stays, harmless. Neither prop blocks. Drawn in
 two passes: its shadow (the landing spot, darkening as it comes) or the wreck with the props,
 `Renderer.drawChandelierAir` (ring, rope to the cleat) over everybody.
+
+**The wall's dressing** (30 Sep 2026, Enter the Gungeon's; `TUNING.prop.armor`, `TUNING.prop.trophy`).
+`gen.js` `dressWall` (its own RNG stream, after the chandelier) stands a **suit of armour** (`kind:
+'armor'`, back to the far or a side wall, `side` 'n'/'w'/'e') or hangs a **stag's head** (`kind:
+'trophy'`, far wall only, where a cleat would hang) in a room that rolls `chance`, at most one of the
+two a room and `perLevel` of each a floor, never in the pen, a set piece, a teaching, resting, calm or
+trap room, under a chandelier, a cave, the trip or THE DARK; THE ARMORY always tries for `armor.armory`
+suits (not counted). `wallFits` (shared with `GEN_RULES.armor` / `trophies`) wants plain stone
+`DRESS.run` tiles either side along the wall (never a doorway, shaft, window, vault mouth or wall that
+gives) and open floor beside and in front; `dressPoint` is where each stands. Flung bodies ask
+`game.wallArt` every step (`Enemy.wallDressing`, before the wall's own splat): **armour** comes apart
+(`Prop.burstArmor` → `Scatter.fromArmor`, pieces `armor-*` as scatter bits, the empty `armor-stand`
+left, `spilled`, no longer blocking) for any flung body into it or landing within `near`, a charge, a
+thing thrown past `hit` (`hitProp`) or a blast (`Scatter.burst`, which `Enemy.explode` now calls too);
+a headbutt only rattles it; it never kills (pillar 3). A **stag's head** takes a body flying at its
+wall past `trophy.hit` within `hitR` (`Enemy.antlers`) — below what the stone kills at, which is the
+point: a one-heart man dies there (`e.hung`: no corpse, `Enemy.die` bakes `p.bodyImg`, and
+`PaintedArt.trophy` draws him `lift` up the wall under the tines with blood dripping to the floor), a
+two-hit one loses a heart and is pinned `time` s (`impaled` / `impaleOn` / `pin`, `impaledStep`'s
+trophy branch; drawn lifted with `trophy-tips` over him, the goat's teeth pull him off), then tears
+free. One body, then `spent` (`trophy-blood`). A fused man goes off instead; the goat never sticks.
+Sprites in `js/prop-pixels.js`; one of each on THE SHOWROOM's far wall.
 
 **Spilt powder** (30 Sep 2026, `TUNING.prop.powder`). A barrel that breaks without going up
 (`shatter` without `wentUp`) lays `game.powder` on `tiles` tiles, its own first (`Game.spillPowder`);

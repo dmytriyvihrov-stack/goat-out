@@ -238,7 +238,8 @@ class Renderer {
       // fine for a wall-hugging crate or a bowl of coals. A cage bar always needed the exception; a
       // sword or shield lying on the floor is the same problem at the same scale, and drawing it
       // flat underneath him whenever he had walked past it read as the weapon sinking into the floor.
-      const inFront = (p) => (p.kind === 'cage' && !p.deco || p.kind === 'weapon' && !p.inStand) && p.y > game.goat.y;
+      // A suit of armour against a side wall is as tall as a man, and he can walk behind it.
+      const inFront = (p) => (p.kind === 'cage' && !p.deco || p.kind === 'weapon' && !p.inStand || p.kind === 'armor' && !p.spilled) && p.y > game.goat.y;
       // What he carries is drawn with him, in his teeth (`drawCarried`), and nowhere else.
       const carried = (p) => p === game.goat.holding;
       for (const p of game.props) if (!p.broken && p.kind !== 'lamp' && lit(p) && !inFront(p) && !carried(p)) this.drawProp(p);
@@ -2380,6 +2381,8 @@ class Renderer {
     if (p.kind === 'shrooms') { this.drawShroomTuft(p); return; }
     if (p.kind === 'sconce') { if (this.painted.sconce) this.painted.sconce(this.ctx, p, this.t); return; }
     if (p.kind === 'cleat') { if (this.painted.cleat) this.painted.cleat(this, p); return; }
+    if (p.kind === 'armor') { if (this.painted.armor) this.painted.armor(this, p); return; }
+    if (p.kind === 'trophy') { if (this.painted.trophy) this.painted.trophy(this, p); return; }
     if (p.kind === 'chandelier') { if (this.painted.chandelier) this.painted.chandelier(this, p, 'ground'); return; }
     // In the cave the rock under a secret wall is drawn with the rest of the rock (`drawCaveTiles`):
     // a square patch of wall in a round cave would give it away. Only the crack is its own.
@@ -3050,7 +3053,17 @@ class Renderer {
     const lying = e.state === 'floored' || e.state === 'stunned';
     // The world pass has laid everyone's floor marks already, under every body (`groundDone`).
     if (!this.groundDone) this.drawEnemyGround(e, game, true);
-    if (!e.ghosted) this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
+    // Pinned on a stag's antlers (`Enemy.antlers`): up on the wall with no shadow under him, straining,
+    // and the tines drawn again over him so they come through him.
+    const onWall = e.impaled > 0 && e.impaleOn && e.impaleOn.kind === 'trophy';
+    if (!e.ghosted && !onWall) this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
+    if (onWall) {
+      const p = e.impaleOn;
+      ctx.save(); ctx.translate(Math.round(Math.sin(this.t * 38) * TUNING.cave.spikes.impale.shiver), -TUNING.prop.trophy.lift);
+      this.drawEnemyBody(e, game, false); ctx.restore();
+      if (this.painted.trophy) { ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, 1 / TILT); ctx.translate(-p.x, -p.y); this.painted.trophy(this, p, 'tips'); ctx.restore(); }
+      return;
+    }
     // Caught on the cave's teeth (`Enemy.impale`): he strains against them, and the tooth is drawn
     // again over his feet so it reads as through him, not beside him.
     if (e.impaled > 0) {
