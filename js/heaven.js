@@ -769,8 +769,9 @@ Object.assign(Heaven, {
 Object.assign(Heaven, {
   // The earth, a long way down: fields and hedges, a river with the broken bridge the truck went off
   // (the prologue's), a road to the compound, and the compound itself — dark roofs round a yard with
-  // the altar and the empty pen in it. Hazed toward the sky, as far things are. The torches and the
-  // men walking the yard are drawn over it live (`drawEarth`).
+  // the altar with the ewe bound on it and the empty pen. Hazed toward the sky, as far things are. The
+  // torches and the rite round the altar — men, candles, fire, their light — are drawn over it live
+  // (`drawEarth`, `drawRite`).
   bakeEarth() {
     const W = 820, H = 560, c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d'), img = g.createImageData(W, H), px = img.data, rng = new RNG(77);
@@ -837,8 +838,38 @@ Object.assign(Heaven, {
     const yard = { x: x0 + 52, y: y0 + 38, w: 94, h: 54 };
     rect(yard.x, yard.y, yard.w, yard.h, '#857364');
     for (let k = 0; k < 90; k++) set(yard.x + rng.int(0, yard.w - 1), yard.y + rng.int(0, yard.h - 1), '#77665a');
-    for (let k = 0; k < 360; k += 3) { const a = k / 180 * Math.PI; set(yard.x + 58 + Math.cos(a) * 14, yard.y + 28 + Math.sin(a) * 10, '#8a2a22'); }   // the ring painted in the yard
-    rect(yard.x + 10, yard.y + 8, 16, 7, '#cfc7b6'); rect(yard.x + 10, yard.y + 8, 16, 1, '#f0e8d8'); rect(yard.x + 16, yard.y + 8, 4, 7, '#9c2a22');   // the altar, its red runner
+    // The rite (`TUNING.heaven.ritual`): left of the pen, the path the men wear walking round, the red
+    // ring the candles stand on, a scorch where the fire burns at the altar's foot, the yard gone to
+    // dusk so the light reads, and on it the altar with her bound on it. Only what stands still is
+    // baked; the men, the flames and their light are `drawRite`'s.
+    const Q = TUNING.heaven.ritual, rc = { x: yard.x + Q.at[0], y: yard.y + Q.at[1] }, bay = CombatFX.bayer;
+    for (let k = 0; k < 900; k++) { const a = k / 450 * Math.PI; for (const w of [-0.5, 0.5]) set(rc.x + Math.cos(a) * (Q.ring[0] + w), rc.y + Math.sin(a) * (Q.ring[1] + w * 0.7), '#6a5a50'); }
+    for (let k = 0; k < 600; k++) { const a = k / 300 * Math.PI; set(rc.x + Math.cos(a) * Q.candleRing[0], rc.y + Math.sin(a) * Q.candleRing[1], '#8a2a22'); }
+    const fire = { x: rc.x, y: rc.y + Q.fireAt };
+    for (let y = -3; y <= 3; y++) for (let x = -5; x <= 5; x++) { const d = (x / 5.5) ** 2 + (y / 3.2) ** 2; if (d < 1 && bay(x + 8, y + 8) < 1.3 - d) set(fire.x + x, fire.y + y, d < 0.45 && bay(x, y) < 0.3 ? '#6a605a' : '#2e2426'); }
+    { const d = hx('#241c2c'); for (let y = yard.y; y < yard.y + yard.h; y++) for (let x = yard.x; x < yard.x + yard.w; x++) { const i = (y * W + x) * 4; for (let c = 0; c < 3; c++) px[i + c] += (d[c] - px[i + c]) * Q.dusk; } }
+    rect(fire.x - 3, fire.y, 7, 1, '#3a2618'); set(fire.x - 2, fire.y - 1, '#4a3020'); set(fire.x + 2, fire.y - 1, '#4a3020');   // the logs
+    // The altar: a slab, its top and its face (the yard is seen from above and a little to the south,
+    // as the floors are), outlined; a red cloth down the middle of the face.
+    const ax0 = rc.x - 6, ay0 = rc.y - 3;
+    rect(ax0 - 1, ay0 - 1, 15, 9, '#1c1620'); rect(ax0, ay0, 13, 4, '#6a625c'); rect(ax0, ay0, 13, 1, '#827a72');
+    rect(ax0, ay0 + 4, 13, 3, '#443e3c'); rect(ax0, ay0 + 6, 13, 1, '#332e2e'); for (const j of [3, 9]) set(ax0 + j, ay0 + 5, '#383232');
+    rect(rc.x - 2, ay0 + 3, 5, 4, '#7e2420'); rect(rc.x - 2, ay0 + 3, 5, 1, '#9c3028'); for (const j of [-2, 0, 2]) set(rc.x + j, ay0 + 7, '#5a1a18');
+    // Her, on it, on her side and bound: the one pale thing down there, head to the left.
+    const EWE = ['..WWWW...', 'hhwwwwwll', '.hsssssr.'], EC = { W: '#fbf7ec', w: '#eee7d8', s: '#cfc4ae', h: '#c4b092', l: '#b8aa94', r: '#7a3222' };
+    // Outlined as the game's sprites are, or she melted into the lit stone under her.
+    const eweAt = (i, j) => !!EC[(EWE[j] || '')[i]];
+    EWE.forEach((row, j) => [...row].forEach((ch, i) => { if (!EC[ch]) return; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!eweAt(i + di, j + dj)) set(rc.x - 4 + i + di, ay0 - 1 + j + dj, '#2a2026'); }));
+    EWE.forEach((row, j) => [...row].forEach((ch, i) => { if (EC[ch]) set(rc.x - 4 + i, ay0 - 1 + j, EC[ch]); }));
+    // The candles: on the red ring, round both sides of the altar, none at its head or foot; and a fat
+    // one at each far corner of the slab. Sticks baked, flames lit in `drawRite`.
+    const candles = [], side = Math.floor(Q.candles / 2), span = Math.PI - 2 * Q.candleGap;
+    for (let s = 0; s < 2; s++) for (let k = 0; k < (s ? Q.candles - side : side); k++) {
+      const a = -Math.PI / 2 + Q.candleGap + (k + 0.5) / (s ? Q.candles - side : side) * span + s * Math.PI;
+      candles.push([Math.round(rc.x + Math.cos(a) * Q.candleRing[0]), Math.round(rc.y + Math.sin(a) * Q.candleRing[1])]);
+    }
+    for (const [x, y] of candles) { set(x, y, '#efe6cc'); set(x, y + 1, '#b3a88f'); }
+    for (const x of [ax0, ax0 + 12]) { rect(x, ay0, 1, 2, '#efe6cc'); candles.push([x, ay0, true]); }   // no glow: it washed her out
     const pen = { x: yard.x + 52, y: yard.y + 22, s: 12 };                                                                                              // the pen, empty
     for (let k = 0; k <= pen.s; k += 2) rect(pen.x + k, pen.y, 1, pen.s + 1, '#2a2024');
     rect(pen.x, pen.y, pen.s + 1, 1, '#2a2024'); rect(pen.x, pen.y + pen.s, pen.s + 1, 1, '#2a2024');
@@ -848,7 +879,28 @@ Object.assign(Heaven, {
     for (let i = 0; i < W * H; i++) if (px[i * 4 + 3]) { px[i * 4] += (haze[0] - px[i * 4]) * 0.26; px[i * 4 + 1] += (haze[1] - px[i * 4 + 1]) * 0.26; px[i * 4 + 2] += (haze[2] - px[i * 4 + 2]) * 0.26; }
     g.putImageData(img, 0, 0);
     const t = (x, y) => [x, y];
-    return { canvas: c, W, H, yard, pen, K: 1,
+    // The rite's men as tiny sprites, a pixel of the earth each and hazed as the earth is, so they
+    // sit in it: dark robes and hoods, silhouettes against the fire. The mage in the seer's violet
+    // with a pale mask. Feet on the bottom row, drawn centred on the middle column.
+    const hz = (col) => { const v = hx(col); return `rgb(${[0, 1, 2].map((i) => Math.round(v[i] + (haze[i] - v[i]) * 0.26)).join(',')})`; };
+    const MP = { h: hz('#160e12'), r: hz('#4a1a20'), s: hz('#2e1016'), m: hz('#3e2458'), n: hz('#28163c'), k: hz('#e8dcc0') };
+    const sprite = (rows) => { const s = document.createElement('canvas'); s.width = rows[0].length; s.height = rows.length; const q = s.getContext('2d');
+      rows.forEach((row, y) => [...row].forEach((ch, x) => { if (MP[ch]) { q.fillStyle = MP[ch]; q.fillRect(x, y, 1, 1); } })); return s; };
+    // Tall and narrow, a hood over a robe to the ground: at three pixels wide the shape is the figure.
+    const men = {
+      stand: sprite(['..h..', '.hhh.', '.rrs.', '.rrs.', '.rrs.', '.rrs.']),
+      step: sprite(['..h..', '.hhh.', '.rrs.', '.rrs.', '.rrs.', '.r.s.']),
+      bow: sprite(['.....', '..h..', '.hhh.', '.rrs.', '.rrs.', '.rrs.']),
+      low: sprite(['.....', '.....', '.....', '.hhs.', 'hrrrs', '.rrrs']),
+      raise: sprite(['r...r', 'r.h.r', '.rhr.', '.rrs.', '.rrs.', '.rrs.']),
+      mageUp: sprite(['m...m', 'm.h.m', '.mkm.', '.mmn.', '.mmn.', '.mmn.', '.mmn.', 'mmmnn']),
+      mageWide: sprite(['.....', '..h..', 'mmkmm', '.mmn.', '.mmn.', '.mmn.', '.mmn.', 'mmmnn']),
+    };
+    // Their light: soft, the one smooth thing (as a blast's flash is), baked once and laid additively.
+    const glow = (r, col) => { const s = document.createElement('canvas'); s.width = s.height = r * 2; const q = s.getContext('2d'), gr = q.createRadialGradient(r, r, 0, r, r, r);
+      gr.addColorStop(0, `rgba(${col},1)`); gr.addColorStop(0.45, `rgba(${col},0.45)`); gr.addColorStop(1, `rgba(${col},0)`); q.fillStyle = gr; q.fillRect(0, 0, r * 2, r * 2); return s; };
+    const rite = { x: rc.x, y: rc.y, fire, candles, men, glow: glow(Q.glowR, '255,150,60'), candleGlow: glow(Q.candleR, '255,196,110') };
+    return { canvas: c, W, H, yard, pen, rite, K: 1,
       torches: [t(yard.x + 1, yard.y + 1), t(yard.x + yard.w - 3, yard.y + 1), t(yard.x + 1, yard.y + yard.h - 3), t(yard.x + yard.w - 3, yard.y + yard.h - 3), t(cx - 12, y0 + oh + 3), t(cx + 10, y0 + oh + 3)] };
   },
 
@@ -938,17 +990,12 @@ Object.assign(Heaven, {
     const ox = ax + (cam.x - refX) * (1 - k) - (E.pen.x + E.pen.s / 2) * K, oy = ay + (cam.y - refY) * (1 - k) - (E.pen.y + E.pen.s / 2) * K;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(E.canvas, Math.round(ox), Math.round(oy), E.W * K, E.H * K);
-    // torches in the yard, flickering; the cult's men walking round it
+    // torches in the yard, flickering; the cult at its rite round the altar
     for (const [i, [tx, ty]] of E.torches.entries()) {
       ctx.fillStyle = Math.sin(t * (9 + i) + i * 2) > 0 ? '#ffe08a' : '#f2a233'; ctx.fillRect(Math.round(ox + tx * K), Math.round(oy + ty * K), 2 * K, 2 * K);
       ctx.fillStyle = 'rgba(242,162,51,0.25)'; ctx.fillRect(Math.round(ox + (tx - 2) * K), Math.round(oy + (ty - 2) * K), 6 * K, 6 * K);
     }
-    for (let m = 0; m < 6; m++) {
-      const u = (t * (0.035 + m * 0.009) + m * 0.19) % 1, Y = E.yard, w = Y.w - 8, h = Y.h - 8;
-      const p = u * 2 * (w + h), x = p < w ? p : p < w + h ? w : p < 2 * w + h ? 2 * w + h - p : 0, y = p < w ? 0 : p < w + h ? p - w : p < 2 * w + h ? h : 2 * (w + h) - p;
-      const X = Math.round(ox + (Y.x + 4 + x) * K), Yy = Math.round(oy + (Y.y + 4 + y) * K);
-      ctx.fillStyle = '#9c2a22'; ctx.fillRect(X - K, Yy - K, 3 * K, 2 * K); ctx.fillStyle = '#1a1016'; ctx.fillRect(X, Yy + K, K, K);
-    }
+    this.drawRite(ctx, E, ox, oy, K, t);
     // a shaft of light from here down onto the empty pen: where the edge sends him
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const lx = Math.round(ox + (E.pen.x + E.pen.s / 2) * K), ly = Math.round(oy + (E.pen.y + E.pen.s / 2) * K), pulse = 0.75 + 0.25 * Math.sin(t * 1.8);
@@ -973,6 +1020,48 @@ Object.assign(Heaven, {
     fog.addColorStop(0, 'rgba(206,226,248,0.6)'); fog.addColorStop(1, 'rgba(206,226,248,0)');
     ctx.fillStyle = fog; ctx.fillRect(px0, py0, px1 - px0, 64);
     ctx.restore();
+  },
+  // The rite, live, over the baked altar (`TUNING.heaven.ritual`): the light first, laid on the
+  // ground under everyone; then the flames; then the men round the ring and the mage at the altar's
+  // head, by their feet. All of it steps by whole earth pixels and whole frames — the flicker is a
+  // roll per frame, never a size eased per frame — and nothing is repainted: a dozen small draws.
+  drawRite(ctx, E, ox, oy, K, t) {
+    const Q = TUNING.heaven.ritual, R = E.rite, S = R.men, at = (x, y) => [Math.round(ox + x * K), Math.round(oy + y * K)];
+    const put = (img, x, y) => { const [X, Y] = at(x - (img.width >> 1), y - img.height + 1); ctx.drawImage(img, X, Y, img.width * K, img.height * K); };
+    const hash = CombatFX.hash, ff = Math.floor(t * Q.flickerFps), cf = t * Q.candleFps;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Q.glow[0] + Q.glow[1] * hash(ff, 1, 41);
+    put(R.glow, R.fire.x, R.fire.y - 3 + Q.glowR);
+    R.candles.forEach(([x, y, dim], j) => { if (dim) return; ctx.globalAlpha =Q.candleGlow * (0.7 + 0.3 * hash(j, Math.floor(cf + j * 0.37), 43)); put(R.candleGlow, x, y - 1 + Q.candleR); });
+    ctx.restore();
+    // candle flames: a cell, and a tip over it most frames, leaning now and then
+    R.candles.forEach(([x, y], j) => {
+      const f = Math.floor(cf + j * 0.37), h = hash(j, f, 43), l = hash(j, f, 47);
+      ctx.fillStyle = h < 0.3 ? '#f2a233' : '#ffe08a'; ctx.fillRect(...at(x, y - 1), K, K);
+      if (h > 0.3) { ctx.fillStyle = h > 0.8 ? '#fff8e2' : '#ffe08a'; ctx.fillRect(...at(x + (l < 0.15 ? -1 : l > 0.85 ? 1 : 0), y - 2), K, K); }
+    });
+    // the fire: the game's own flame, the size a brazier's is in the room below, a pixel of earth a texel
+    const F = CombatFX.flameFrames(Q.fireSize, false), fi = Math.floor(t * TUNING.effects.fireFps) % F.frames.length;
+    put(F.frames[fi], R.fire.x, R.fire.y);
+    // The men: they walk the ring `walk` s, stop and bow round it one after another, raise their arms
+    // together and sway; then walk on. Where each stands is the ground walked so far, so the ring
+    // never jumps between rounds.
+    const cyc = Q.walk + Q.bow + Q.raise, n = Math.floor(t / cyc), u = t - n * cyc, walked = n * Q.walk + Math.min(u, Q.walk);
+    const list = [];
+    for (let i = 0; i < Q.men; i++) {
+      const a = -Math.PI / 2 + (i + 0.5) / Q.men * Math.PI * 2 + walked * Q.pace;
+      let x = R.x + Math.cos(a) * Q.ring[0], y = R.y + Math.sin(a) * Q.ring[1], img;
+      if (u < Q.walk) img = (Math.floor(t * Q.step + i * 0.5) & 1) ? S.step : S.stand;
+      else if (u < Q.walk + Q.bow) {
+        const v = u - Q.walk - i * Q.wave;
+        img = v < 0 || v > Q.bowFor ? S.stand : v < 0.3 || v > Q.bowFor - 0.3 ? S.bow : S.low;
+      } else { img = S.raise; x += Math.round(Math.sin((t * Q.sway + i * 0.25) * Math.PI * 2)); }
+      list.push({ img, x: Math.round(x), y: Math.round(y) });
+    }
+    const mage = u < Q.walk ? (Math.floor(t / Q.mageBeat) & 1 ? S.mageUp : S.mageWide) : u < Q.walk + Q.bow ? S.mageWide : S.mageUp;
+    list.push({ img: mage, x: R.x, y: R.y - Q.mageAt });
+    list.sort((p, q) => p.y - q.y);
+    for (const p of list) put(p.img, p.x, p.y);
   },
   // A soft blob of cloud as cells: stacked squares, no curve.
   puff(ctx, x, y, r, col, K) {
