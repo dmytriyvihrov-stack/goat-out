@@ -654,6 +654,18 @@ class Enemy {
     const L2 = L * L;
     for (const p of props || game.props) {
       if (!p.blocking) continue;
+      if (p.box) {
+        // The stall is a box: the line against it grown by his width (a slab test), not a disc.
+        const hx = p.box.hx + r, hy = p.box.hy + r;
+        let t0 = 0, t1 = 1;
+        for (const [o, dd, h] of [[ax - p.x, dx, hx], [ay - p.y, dy, hy]]) {
+          if (Math.abs(dd) < 1e-6) { if (Math.abs(o) >= h) { t0 = 2; break; } continue; }
+          const a = (-h - o) / dd, b = (h - o) / dd;
+          t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b));
+        }
+        if (t0 < t1) return false;
+        continue;
+      }
       const t = clamp(((p.x - ax) * dx + (p.y - ay) * dy) / L2, 0, 1);
       if (Math.hypot(ax + dx * t - p.x, ay + dy * t - p.y) < p.r + r) return false;
     }

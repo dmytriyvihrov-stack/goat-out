@@ -13,8 +13,9 @@
 //   GOOSE     leads rather than follows, and honks at every man it sees — which turns the room
 //             onto YOU, and which breaks a committed blow at any range. At the stairs: the voice.
 //   CROW      follows corpses, not you. At the stairs: a tier III talisman on the next floor.
-//   HORSE     races you to the stairs and does not wait: kicks the doors in its way down and bowls
-//             the men in it aside. At the stairs: a longer stride for the run.
+//   HORSE     races you to each locked room with a soul, waits there for the soul, then on to the
+//             stairs: kicks the doors in its way down and bowls the men in it aside. Beat it to one
+//             soul room and, at the stairs: a longer stride for the run.
 //
 // Which floors get one, and which one, is the run's (`Beast.deal`): no kind twice in a run.
 //
@@ -403,27 +404,32 @@ const Beast = {
   },
 
   // ---------------- the horse ----------------
-  // It races him. Out of the coop it says so and runs for the stairs down `onward`'s field at a
-  // gallop he cannot match, and it does not wait: the goose waits `lead` tiles ahead, the horse is
-  // simply gone. What stops it is what stops everything — a bar no blow opens (a soul gate, a sealed
-  // arena), where it stands and looks back for him, which is fine — and the stairs, where it has won.
-  // A shut door in its way it rears at and kicks in; a man in its way it bowls aside and runs on.
+  // It races him, in legs (30 Sep 2026: "a race to the locked rooms"). Out of its stall it says so
+  // and gallops down `onward`'s field at a pace he can beat, into each locked room with a soul ahead
+  // of it (`horseLegs`), where it waits at the bar until the soul is taken and the gate gives, then
+  // on to the next, and at last to the stairs. A leg is his if he is in its room before the horse is
+  // (`horseRace`); one soul room won and it pays at the stairs (`won`, `saved`). It does not wait for
+  // him anywhere else: what else stops it is what stops everything — a bar no kick opens (a sealed
+  // arena, the vault, the dark flight). A shut door in its way it rears at and kicks in; a man in its
+  // way it bowls aside and runs on.
   updateHorse(p, dt, game) {
     const C = TUNING.prop.horse, g = game.goat, w = game.world;
     p.kickT = Math.max(0, (p.kickT || 0) - dt); p.slowT = Math.max(0, (p.slowT || 0) - dt);
-    // Out of the coop it stands `ready` s and says its bet to his face before it goes: a line
+    // Out of the stall it stands `ready` s and says its bet to his face before it goes: a line
     // shouted by something already a room away is a line nobody read.
     p.age = (p.age || 0) + dt;
     if (p.age < C.ready) { p.vx = 0; p.vy = 0; if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x); return; }
+    Beast.horseRace(p, game);
     const f = Beast.exit(game), at = (x, y) => (f ? f.d[Math.floor(y / TILE) * w.W + Math.floor(x / TILE)] : -1);
     const home = (x, y) => { const d = at(x, y); return d >= 0 && d <= C.homeR; };
-    // Who got there first, kept the moment each of them does, and said once they are both there.
+    // The last leg, the stairs: who got there first, kept the moment each of them does, and said
+    // once they are both there — with whether it pays, which the soul rooms have already settled.
     if (!p.goatFirst && !p.home && home(g.x, g.y)) p.goatFirst = true;
     if (home(p.x, p.y)) {
       p.home = true; p.vx = 0; p.vy = 0; p.rear = 0;
       if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x);
       if (!p.told && Math.hypot(g.x - p.x, g.y - p.y) < C.tellR * TILE && !game.floats.some((t) => t.pact)) {
-        p.told = true; Beast.speak(game, p, C.lines[p.goatFirst ? 'lost' : 'won']);
+        p.told = true; Beast.speak(game, p, [C.lines[p.goatFirst ? 'lost' : 'won'], C.lines[p.won > 0 ? 'pay' : 'none']]);
       }
       return;
     }
@@ -437,9 +443,11 @@ const Beast = {
       }
       return;
     }
+    // The bar: it waits for him. A soul gate is the end of a leg (`horseRace`), and the soul room
+    // it stands in is where it waits for the soul to be taken; the rest are only in its way.
     const door = Beast.doorAhead(p, game);
     if (door && (door.gate || door.seal || door.vault || door.fork)) {
-      p.vx = 0; p.vy = 0; if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x);   // the bar: it waits for him
+      p.vx = 0; p.vy = 0; if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x);
       return;
     }
     if (door && p.kickT <= 0) { p.kickDoor = door; p.rear = C.kickWind; p.wobble = 0.2; return; }
@@ -473,6 +481,41 @@ const Beast = {
     if (on) Beast.step(p, game, on.x, on.y, C.speed * (p.slowT > 0 ? C.slow : 1), dt);
     else { p.vx = 0; p.vy = 0; }
     Beast.bowl(p, game);
+  },
+  // The legs of its race: every locked room with a soul ahead of the room it was let out in, in the
+  // order he meets them — a soul gate's room (`game.soulGates`: the keeper's gate, or the mouse's,
+  // whose offer stands in for the soul), barred until its soul is swallowed or her shelf chosen from
+  // (`game.openSoulGate`) — and then the stairs, which are not a leg of their own here. Nothing else
+  // on a floor is both locked and holding a soul: the last boss's soul is in an arena with an open
+  // door, and a sealed arena is never given one (`soulPlan` deals the gate, then the LAST bosses).
+  horseLegs(p, game) {
+    const r = roomAt(game.level, p.x, p.y), from = r ? r.index : game.nearestRoomIdx(p.x, p.y, game.goatRoom || 0);
+    return (game.soulGates || []).filter((sg) => sg.room > from && sg.prop && !sg.prop.broken)
+      .sort((a, b) => a.room - b.room).map((sg) => ({ room: sg.room, sg, first: null, told: false }));
+  },
+  // Who is winning the leg under way. Each of them has reached a room once he has stood in it or
+  // any room past it (the floor is one chain, and the gate lets nobody by), so a leg is decided the
+  // step the first of them is in its room — him on a tie — and paid there and then (`won`), however
+  // the rest of the floor goes. It says who won once they are both in the room, and the leg is over
+  // once the horse is in it and the bar is up: the soul swallowed on its way, a gate the mouse
+  // lifted, one he opened and ran on from before it came — none of them leaves it standing there.
+  horseRace(p, game) {
+    const C = TUNING.prop.horse, g = game.goat, L = game.level;
+    if (!p.legs) { p.legs = Beast.horseLegs(p, game); p.leg = 0; p.won = p.won || 0; }
+    const idx = (x, y) => { const r = roomAt(L, x, y); return r ? r.index : -1; };
+    p.goatBest = Math.max(p.goatBest === undefined ? -1 : p.goatBest, idx(g.x, g.y));
+    p.horseBest = Math.max(p.horseBest === undefined ? -1 : p.horseBest, idx(p.x, p.y));
+    const leg = p.legs[p.leg];
+    if (!leg) return;
+    if (!leg.first && p.goatBest >= leg.room) { leg.first = 'goat'; p.won++; }
+    else if (!leg.first && p.horseBest >= leg.room) leg.first = 'horse';
+    const both = p.goatBest >= leg.room && p.horseBest >= leg.room;
+    if (both && !leg.told && !game.floats.some((t) => t.pact && t.on === p)) {
+      leg.told = true;
+      Beast.speak(game, p, leg.first === 'goat' ? [C.lines.lost, C.lines.yours] : [C.lines.won, C.lines.mine]);
+    }
+    const open = !leg.sg.prop || leg.sg.prop.broken;
+    if (p.horseBest >= leg.room && open && (leg.told || p.goatBest > leg.room)) p.leg++;
   },
   // The shut door it has run into: blocking, and touching its front — the slab, not a disc, the way
   // `collideEntities` holds a body against it.
@@ -596,6 +639,8 @@ const Beast = {
       // The bird that brought the crow's gift came with the gift, not with the goat: banked, it paid
       // another tier III talisman on every floor after for the rest of the run.
       if (p.gift || !Beast.is(p.kind)) continue;
+      // The horse pays only for a race he won: one soul room he was in before it (`horseRace`).
+      if (p.kind === 'horse' && !(p.won > 0)) continue;
       if (Beast.cameWith(p, game)) out.push(p.kind);
     }
     return out;
@@ -729,14 +774,14 @@ const Beast = {
       pays: () => `the voice carries ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further and comes back ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% sooner (never under ${TUNING.goat.scream.minCooldown} s)` },
     crow: { how: 'Follows the dead, not you: it flies to a body it can see and eats a while, and hops after you slowly in between. A room behind you, or far off, it leaves the bodies and flies after you. At the stairs it counts from the room before the last; the bird that brings its gift sits by it, then flies off.',
       pays: () => `a tier ${TUNING.prop.crow.giftTier} talisman on the next floor's stairs` },
-    horse: { how: 'Races you to the stairs and never waits: kicks down the doors in its way and bowls the men in it aside without killing them. Only a soul gate, a sealed arena, the vault door or the door to the dark flight holds it. At the stairs it says who won.',
-      pays: () => `×${TUNING.prop.horse.saveSpeed} stride for the run` },
+    horse: { how: `Shut in a stall of ${TUNING.prop.stall.w} x ${TUNING.prop.stall.h} tiles before the first soul gate (${TUNING.prop.stall.hits} blows). Races you in legs: to each locked room with a soul ahead of it (a soul gate's room, the mouse's too), where it waits at the bar until the gate gives, then on, and last to the stairs. A leg is yours if you are in its room before it; it says who won each. Kicks down the doors in its way and bowls the men in it aside without killing them; a sealed arena, the vault door or the dark flight's door holds it too.`,
+      pays: () => `×${TUNING.prop.horse.saveSpeed} stride for the run, at the stairs, if you won at least one soul room` },
   },
   // Every line it can say, for the same tab: its terms, and whatever else it says along the way.
   lines(kind) {
     const P = TUNING.prop[kind] || {}, out = (Beast.PACT[kind] || []).slice();
     if (kind === 'crow') out.push(...P.lines);
-    if (kind === 'horse') out.push(...P.lines.won, ...P.lines.lost);
+    if (kind === 'horse') out.push(P.lines.won, P.lines.mine, P.lines.lost, P.lines.yours, P.lines.pay, P.lines.none, ...P.lines.taunt);
     if (kind === 'goose') out.push('IT GIVES YOU AWAY. IT ALSO BREAKS THEM');
     return out;
   },
@@ -748,7 +793,8 @@ const Beast = {
     tortoise: ['...?', 'CARRY ME TO THE EXIT', 'THROW ME AT THEM'],
     crow: ['CAW.', 'I FOLLOW THE ROAD OF BODIES'],
     goose: ['HONK-HONK!', "I'LL TELL THEM ALL", "WE'RE HERE TO KICK THEIR ASS!!!"],
-    horse: ['NEIGH!', 'BET I REACH THE STAIRS FIRST'],
+    // The race is to the soul rooms now (30 Sep 2026), and the one rule that pays is said up front.
+    horse: ['NEIGH!', 'BET I REACH THE SOUL FIRST', 'BEAT ME TO ONE AND I PAY'],
   },
   // Its sound, then its terms, over its head and held far longer than a float, so the sentence is
   // read and not glimpsed (24 Sep 2026: "long enough that the player really reads it"). The lines

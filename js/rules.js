@@ -345,7 +345,7 @@ const GEN_RULES = [
   // busy saying something else. The first third is the promise that matters: the whole of an escort
   // is the walk from where you found it to the stairs, and one handed over in the last room was
   // never a decision about anything.
-  { id: 'beasts', text: 'At most one animal a floor, shut in a coop on plain floor of an ordinary room inside the first third of the level — never in the pen, a rest room, a teaching room, a trap room or a set piece.',
+  { id: 'beasts', text: 'At most one animal a floor, shut in a coop on plain floor of an ordinary room inside the first third of the level — never in the pen, a rest room, a teaching room, a trap room or a set piece. The horse stands before the first soul gate, in a stall of plain floor that leaves its room one piece.',
     check: (L) => {
       const kinds = ['tortoise', 'goose', 'crow', 'chicken', 'horse'];
       const found = L.props.filter((p) => kinds.indexOf(p.kind) >= 0 || p.kind === 'coop')
@@ -362,6 +362,19 @@ const GEN_RULES = [
       const cut = Math.max(2, Math.ceil(L.rooms.length * TUNING.beast.third));
       if (r.index > cut) return `an escort in room ${r.index} of ${L.rooms.length}, past the first third`;
       if (L.tiles[Math.floor(p.y / TILE) * L.W + Math.floor(p.x / TILE)] !== T.FLOOR) return 'an escort off the floor';
+      // The horse races to the locked rooms with a soul, so it is found before the first of them,
+      // in a stall of plain floor with open floor all round it (`TUNING.prop.stall`).
+      if (p.kind === 'horse') {
+        const S = TUNING.prop.stall, gates = (L.gates || []).map((g) => g.room);
+        if (gates.length && r.index >= Math.min(...gates)) return `the horse in room ${r.index}, not before the first soul gate (room ${Math.min(...gates)})`;
+        const x0 = Math.round(p.x / TILE - S.w / 2), y0 = Math.round(p.y / TILE - S.h / 2), grass = new Set(L.grass || []);
+        for (let y = y0; y < y0 + S.h; y++) for (let x = x0; x < x0 + S.w; x++) {
+          if (L.tiles[y * L.W + x] !== T.FLOOR || grass.has(y * L.W + x)) return `the horse's stall over ${x},${y}, which is not plain floor`;
+        }
+        if (!stallKeepsRoomOpen(L.tiles, L.W, r, x0, y0, S)) return `the horse's stall cuts room ${r.index} in two, or stands with its front to a wall`;
+        const inside = L.props.find((q) => q.kind !== 'coop' && q.kind !== 'door' && footGap({ x: p.x, y: p.y, kind: 'coop', holds: 'horse' }, q.x, q.y) < 0.5 * TILE);
+        if (inside) return `a ${inside.kind} inside the horse's stall`;
+      }
       return true;
     } },
   { id: 'shrooms', text: 'At most one tuft of mushrooms, on plain floor of an ordinary room; never on the trip, and never where the trip would be the last floor.',

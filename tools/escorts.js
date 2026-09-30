@@ -38,7 +38,7 @@ window.ESCORT = {
     }
     const at = game.freeSpot(coop.x + TILE * 1.2, coop.y);
     g.x = at.x; g.y = at.y; game.cam.x = g.x; game.cam.y = g.y;
-    coop.hits = TUNING.prop.coop.hits - 1; coop.breakCoop(game);
+    coop.hits = (coop.box ? TUNING.prop.stall.hits : TUNING.prop.coop.hits) - 1; coop.breakCoop(game);   // the horse's stall takes two
     const pet = game.props.find((p) => p.kind === kind && !p.broken);
     if (kind === 'tortoise' && o.carry !== false) { g.holding = pet; pet.held = true; g.autoHeld = true; }   // held without a button down
     const orig = game.readMoveInput.bind(game);

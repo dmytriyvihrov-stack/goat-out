@@ -742,7 +742,8 @@ class World {
       const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE), k = Math.ceil(p.r / TILE);
       for (let y = ty - k; y <= ty + k; y++) for (let x = tx - k; x <= tx + k; x++) {
         if (x < 0 || y < 0 || x >= this.W || y >= this.H) continue;
-        if (Math.hypot((x + 0.5) * TILE - p.x, (y + 0.5) * TILE - p.y) >= p.r + 2) continue;
+        // The horse's stall is a box: the tiles it stands on, not a disc round its middle.
+        if (p.box ? p.boxPush((x + 0.5) * TILE, (y + 0.5) * TILE).d >= 2 : Math.hypot((x + 0.5) * TILE - p.x, (y + 0.5) * TILE - p.y) >= p.r + 2) continue;
         const i = y * this.W + x;
         if (!this.furn[i]) { this.furn[i] = 1; list.push(i); }
       }
