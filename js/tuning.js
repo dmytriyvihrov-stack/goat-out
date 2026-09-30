@@ -1763,6 +1763,9 @@ const SETTINGS = [
   // the slider only takes away.
   { key: 'shake', name: 'SCREEN SHAKE', note: 'How hard the picture jolts when you are hit. Left: never.', type: 'slider' },
   { key: 'god', name: 'GOD MODE', note: 'Nothing can hurt the goat. For looking round; no best is kept while it is on.' },
+  // 30 Sep 2026 ("frame rate decides the clutch moments"): frames a second over the last half second,
+  // the slowest frame in it, and what the game itself spent on the frame (`Game.frame`).
+  { key: 'fps', name: 'SHOW FPS', note: 'Frames a second in the top-left corner, the slowest frame and what the game spent on it.' },
 ];
 
 // What EASY MODE bends: a bigger cushion of hearts and a slower cult. `applyBoons` adds `maxHp` to

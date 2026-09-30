@@ -797,7 +797,7 @@ class Game {
   // default: a number counting up in the corner of a game about running is a game about the number,
   // and the run is timed either way — the card at the end of a level is where the time belongs.
   loadSettings() {
-    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: 0.5, sfxVolume: 0.5, shake: 1 };
+    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: 0.5, sfxVolume: 0.5, shake: 1, fps: false };
     try { return Object.assign(d, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (err) { return d; }
   }
   saveSettings() {
@@ -2596,7 +2596,13 @@ class Game {
 
   // ---------- loop ----------
   frame(t) {
-    const dtReal = Math.min(0.1, (t - this.last) / 1000); this.last = t;
+    const work0 = performance.now(), gap = (t - this.last) / 1000;
+    const dtReal = Math.min(0.1, gap); this.last = t;
+    // SHOW FPS (`settings.fps`): counted over half a second — frames, the longest gap between two,
+    // and the most the game's own update and draw took (`this.fps`, drawn by `Renderer.drawFps`).
+    const F = this.fpsCount || (this.fpsCount = { n: 0, t: 0, worst: 0, work: 0 });
+    F.n++; F.t += gap; F.worst = Math.max(F.worst, gap);
+    if (F.t >= 0.5) { this.fps = { rate: F.n / F.t, worst: F.worst * 1000, work: F.work }; F.n = 0; F.t = 0; F.worst = 0; F.work = 0; }
     this.slowTimer = Math.max(0, this.slowTimer - dtReal);
     const wantSlow = this.slowTimer > 0 || this.state === 'dead';
     // COLD EYE: real seconds, so the moment to aim is the same length however slow it makes the
@@ -2614,6 +2620,7 @@ class Game {
     this.renderer.configure(this.touch.active);
     this.layoutTouch();
     this.renderer.draw(this, dtReal);
+    F.work = Math.max(F.work, performance.now() - work0);
     if (this.hurt) this.hurt.life -= dtReal;
     if (this.hurtVignette) this.hurtVignette.life -= dtReal;
     this.updateCursor();
