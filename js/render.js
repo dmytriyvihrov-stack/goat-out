@@ -3771,24 +3771,34 @@ class Renderer {
   // game, new, or still in the backlog, with its trigger, its look, its size read live off TUNING
   // and how to build it in Godot 4. Filter chips along the top, pages when it does not fit, a click
   // on a row opens it out to its full text, and EXPORT hands the same table over as Markdown.
+  // ▶ PLAY on a row opens the live preview beside the table (`JuicePreview`, js/juice-preview.js):
+  // the effect looping in a staged room of its own, by the game's own code. While it is open the
+  // table gives it the right-hand side and drops its GODOT 4 column (the row's full text still has it).
+  // No text here is under 12 CSS px, whatever the tool's scale (`F`).
   drawJuiceTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
+    const F = (n) => Math.max(12 * this.s, n * s);
     const filter = d.juiceFilter || 'all';
     const rows = JUICE.filter((j) => filter === 'all' || j.status === filter);
     const count = (st) => JUICE.filter((j) => j.status === st).length;
-    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+    ctx.font = `700 ${F(11)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE JUICE', pad, top + 10 * s);
-    ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText(`${JUICE.length} effects · ${count('in')} in game · ${count('new')} new · ${count('backlog')} backlog · sizes read live off TUNING · click a row to open it`, pad + 90 * s, top + 10 * s);
+    const titleW = ctx.measureText('THE JUICE').width + 14 * s;
+    ctx.font = `400 ${F(8.5)}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText(this.clip(`${JUICE.length} effects · ${count('in')} in game · ${count('new')} new · ${count('backlog')} backlog · sizes read live off TUNING · click a row to open it · ▶ PLAY to watch it`, W - pad * 2 - titleW), pad + titleW, top + 10 * s);
     [['all', 'ALL'], ['in', 'IN GAME'], ['new', 'NEW'], ['backlog', 'BACKLOG']].forEach(([id, label], i) =>
       this.devButton(d, pad + i * 74 * s, top + 18 * s, 70 * s, 18 * s, label, 'juice-filter=' + id, filter === id));
     this.devButton(d, W - pad - 90 * s, top + 18 * s, 90 * s, 18 * s, 'EXPORT .MD', 'juice-export', false);
 
-    const cols = [['EFFECT', 0.15], ['TRIGGER', 0.17], ['HOW IT LOOKS', 0.22], ['SIZE · TIME', 0.13], ['GODOT 4', 0.33]];
-    const tableW = W - pad * 2, gap = 8 * s, font = 8.8 * s, lineH = 11 * s;
+    // The preview takes the right of the page; the table what is left of it.
+    const pvW = JuicePreview.row ? clamp(W * 0.42, 360 * this.s, 660 * this.s) : 0;
+    const cols = pvW
+      ? [['EFFECT', 0.22, null], ['TRIGGER', 0.24, 'trigger'], ['HOW IT LOOKS', 0.34, 'look'], ['SIZE · TIME', 0.2, 'size']]
+      : [['EFFECT', 0.15, null], ['TRIGGER', 0.17, 'trigger'], ['HOW IT LOOKS', 0.22, 'look'], ['SIZE · TIME', 0.13, 'size'], ['GODOT 4', 0.33, 'godot']];
+    const tableW = W - pad * 2 - (pvW ? pvW + 14 * this.s : 0), gap = 8 * s, font = F(8.8), lineH = Math.max(11 * s, font * 1.25);
     let x = pad; const colX = cols.map(([, f]) => { const at = x; x += tableW * f; return at; });
     const y0 = top + 44 * s;
-    ctx.font = `700 ${9 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.font = `700 ${F(9)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
     cols.forEach(([label], i) => ctx.fillText(label, colX[i], y0 + 9 * s));
     ctx.fillStyle = 'rgba(239,230,208,0.15)'; ctx.fillRect(pad, y0 + 13 * s, tableW, s);
 
@@ -3804,14 +3814,18 @@ class Renderer {
       if (lines.length > max) { lines.length = max; lines[max - 1] = lines[max - 1].replace(/\s*\S*$/, '') + ' …'; }
       return lines;
     };
-    const cellsOf = (j, max) => [j.trigger, j.look, j.size(), j.godot].map((t, i) => wrap(t, tableW * cols[i + 1][1] - gap, max));
+    const cellsOf = (j, max) => cols.slice(1).map(([, f, k], i) => wrap(k === 'size' ? j.size() : j[k], tableW * f - gap, max));
+    // The name column: the name, its status chip, and ▶ PLAY where the row has a preview.
+    const chipH = F(7.5) + 5 * s;
+    const nameH = (j) => { ctx.font = `700 ${F(10)}px ${FONT_SC}`; const n = wrap(j.name.toUpperCase(), tableW * cols[0][1] - gap, 2).length; ctx.font = `400 ${font}px ${FONT}`;
+      return 12 * s + n * lineH + chipH * 2 + 4 * s; };
     // Pages are cut by height, so a page break always falls between rows: walk the list once and
     // start a new page whenever the next row would run off the bottom of the screen.
     const bottom = H - pad - 22 * s, pages = [[]];
     let h = 0;
     rows.forEach((j, i) => {
       const open = d.juiceSel === j.name;
-      const rh = Math.max(34 * s, Math.max(...cellsOf(j, open ? 99 : 3).map((c) => c.length)) * lineH + 10 * s);
+      const rh = Math.max(34 * s, nameH(j), Math.max(...cellsOf(j, open ? 99 : 3).map((c) => c.length)) * lineH + 10 * s + (open ? lineH : 0));
       if (h + rh > bottom - y0 - 18 * s && pages[pages.length - 1].length) { pages.push([]); h = 0; }
       pages[pages.length - 1].push([j, rh]); h += rh;
     });
@@ -3825,22 +3839,34 @@ class Renderer {
       if (open) { ctx.fillStyle = 'rgba(185,135,58,0.12)'; ctx.fillRect(pad - 4 * s, y, tableW + 8 * s, rh); }
       else if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, y, tableW + 8 * s, rh); }
       d.rects.push({ x: pad - 4 * s, y, w: tableW + 8 * s, h: rh, id: 'juice-row=' + j.name });
-      ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+      ctx.font = `700 ${F(10)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
       const nameLines = wrap(j.name.toUpperCase(), tableW * cols[0][1] - gap, 2);
       nameLines.forEach((l, k) => ctx.fillText(l, colX[0], y + 12 * s + k * lineH));
       const [fg, bg] = tint[j.status];
-      ctx.font = `700 ${7.5 * s}px ${FONT_SC}`;
-      const chip = word[j.status] + ' · ' + j.cat, cw = ctx.measureText(chip).width + 8 * s, cy = y + 12 * s + nameLines.length * lineH - 6 * s;
-      ctx.fillStyle = bg; ctx.fillRect(colX[0], cy, cw, 11 * s);
-      ctx.fillStyle = fg; ctx.fillText(chip, colX[0] + 4 * s, cy + 8.5 * s);
+      ctx.font = `700 ${F(7.5)}px ${FONT_SC}`;
+      const chip = word[j.status] + ' · ' + j.cat, cw = ctx.measureText(chip).width + 8 * s, cy = y + 12 * s + nameLines.length * lineH - lineH * 0.55;
+      ctx.fillStyle = bg; ctx.fillRect(colX[0], cy, cw, chipH);
+      ctx.fillStyle = fg; ctx.fillText(chip, colX[0] + 4 * s, cy + chipH - 3.5 * s);
+      // ▶ PLAY (the game's own code) or ≈ PLAY (one thing set by hand); a row with none says why
+      // when it is opened. The chip's rect goes in before the row's, so a click on it is the play.
+      const kind = JuicePreview.kind(j.name), py = cy + chipH + 3 * s;
+      if (kind) {
+        const on = JuicePreview.row === j.name, label = (on ? '■ ' : kind === 'live' ? '▶ ' : '≈ ') + (on ? 'PLAYING' : 'PLAY');
+        const pw = ctx.measureText(label).width + 10 * s;
+        ctx.fillStyle = on ? 'rgba(185,135,58,0.6)' : kind === 'live' ? 'rgba(242,162,51,0.22)' : 'rgba(185,135,58,0.14)'; ctx.fillRect(colX[0], py, pw, chipH);
+        ctx.strokeStyle = kind === 'live' ? PALETTE.fireHi : PALETTE.ochre; ctx.lineWidth = Math.max(1, this.s); ctx.strokeRect(colX[0], py, pw, chipH);
+        ctx.fillStyle = kind === 'live' || on ? PALETTE.fireHi : PALETTE.ochre; ctx.fillText(label, colX[0] + 5 * s, py + chipH - 3.5 * s);
+        d.rects.splice(d.rects.length - 1, 0, { x: colX[0], y: py, w: pw, h: chipH, id: 'juice-play=' + j.name });
+      }
       ctx.font = `400 ${font}px ${FONT}`;
       cellsOf(j, open ? 99 : 3).forEach((lines, c) => {
-        ctx.fillStyle = c === 3 ? '#b9d7c0' : c === 2 ? PALETTE.fireHi : PALETTE.bone;
+        ctx.fillStyle = cols[c + 1][2] === 'godot' ? '#b9d7c0' : cols[c + 1][2] === 'size' ? PALETTE.fireHi : PALETTE.bone;
         lines.forEach((l, k) => ctx.fillText(l, colX[c + 1], y + 12 * s + k * lineH));
       });
       if (open) {
-        ctx.fillStyle = PALETTE.ash; ctx.font = `400 ${8 * s}px ${FONT}`;
-        ctx.fillText(`source: ${JUICE_SRC[j.src]}${j.code ? '   ·   code: ' + j.code : ''}`, colX[1], y + rh - 3 * s);
+        ctx.fillStyle = PALETTE.ash; ctx.font = `400 ${F(8)}px ${FONT}`;
+        const preview = kind ? '' : '   ·   no preview: ' + JuicePreview.why(j);
+        ctx.fillText(this.clip(`source: ${JUICE_SRC[j.src]}${j.code ? '   ·   code: ' + j.code : ''}${preview}`, tableW - (colX[1] - pad)), colX[1], y + rh - 5 * s);
       }
       y += rh;
     });
@@ -3848,9 +3874,11 @@ class Renderer {
       const by = H - pad - 18 * s;
       this.devButton(d, pad, by, 60 * s, 18 * s, '‹ PREV', 'juice-page=-1', false);
       this.devButton(d, pad + 66 * s, by, 60 * s, 18 * s, 'NEXT ›', 'juice-page=1', false);
-      ctx.font = `700 ${9 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ash; ctx.textAlign = 'left';
+      ctx.font = `700 ${F(9)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ash; ctx.textAlign = 'left';
       ctx.fillText(`PAGE ${page + 1} / ${pages.length}`, pad + 136 * s, by + 12.5 * s);
     }
+    // The preview, beside the table.
+    if (pvW) JuicePreview.panel(this, game, W - pad - pvW, y0, pvW);
   }
 
   drawMusicTab(game, pad, top) {

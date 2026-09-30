@@ -69,6 +69,19 @@ Twelve notes in one message (29 Sep 2026), with screenshots.
   down a hole — a crate, a barrel, a blade, a table — is now seen falling, as a man is.
 - **Dev drawer, BOONS**: ON GOAT — GIVE / HAVE puts any single upgrade on the goat or takes it off,
   the head of the floor with it.
+- **Dev drawer, JUICE: a live preview** (30 Sep 2026, "I also need to actually SEE how it looks in the
+  game"; `js/juice-preview.js`). ▶ PLAY on a row plays the effect looping in a small room of its own
+  beside the table, by the game's own code — a real world, goat, men and props stepped by `Game.update`
+  and drawn by a second `Renderer` — set off the way the game sets it off (a headbutt pressed, a man
+  thrown into stone, a blow from `meleeHit`, a bomb, the chandelier's rope cut, a live rifle, hound or
+  ogre left to its own head). REPLAY, EFFECT ON / OFF where the row has a dial to turn down, SPEED
+  1× / ½× / ¼×, SOUND, CLOSE. 65 of the 96 rows play (55 as the game does it, 10 marked APPROXIMATE
+  with what was set by hand); the rest say why not (a camera across a floor, a sound, heaven's own
+  screens, backlog).
+  The run under the tab is never touched: the stage is `Object.create(game)` with its own lists, state
+  and stubs for everything that saves. Found with it: at `juice.screen` 0.6 a kill's screen flash
+  (and the hurt one) is spent inside the step that sets it and never reaches a drawn frame. The table's
+  text is 12 CSS px or more.
 
 ---
 
