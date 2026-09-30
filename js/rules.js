@@ -772,6 +772,18 @@ const GEN_RULES = [
       const inLast = d.x >= last.x * TILE && d.x < (last.x + last.w) * TILE;
       return inLast ? true : 'it is not in the last room';
     } },
+  // The way out is a soul gate (`TUNING.soul.exitGate`, gen.js): both stair doors of a level whose last room
+  // holds a boss with a soul are barred by it, and only such a level has it.
+  { id: 'exitgate', text: 'The way out is barred by a soul gate whenever the last boss carries a soul: every stair door is a gate for that room, and only then.',
+    check: (L) => {
+      if (!TUNING.soul.exitGate || L.def.shroom) return L.exitGate ? 'an exit gate on a floor that has none' : null;
+      const doors = L.props.filter((p) => p.kind === 'door' && p.stair), last = L.rooms.length - 1;
+      const plan = soulPlan(L), carried = plan.ensoul.some((i) => L.spawns[i] && L.spawns[i].roomIndex === last);
+      if (!carried) return L.exitGate ? 'an exit gate with no soul in the last room' : null;
+      if (!L.exitGate) return 'the last boss carries a soul and the way out is not barred';
+      if (doors.some((d) => !d.gate || !d.exitGate || d.gateRoom !== last)) return 'a stair door that is not the exit gate';
+      return true;
+    } },
   { id: 'fork', text: 'THE FORK: the fork floor ends on two flights in the one far wall, apart, each behind its own iron door; the second climbs into the dark.',
     check: (L) => {
       const F = TUNING.dark.fork, here = F && F.at >= 0 && levelIndexOf(L.def) === F.at && F.at + 1 < LEVELS.length;

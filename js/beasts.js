@@ -501,7 +501,7 @@ const Beast = {
   // door, and a sealed arena is never given one (`soulPlan` deals the gate, then the LAST bosses).
   horseLegs(p, game) {
     const r = roomAt(game.level, p.x, p.y), from = r ? r.index : game.nearestRoomIdx(p.x, p.y, game.goatRoom || 0);
-    return (game.soulGates || []).filter((sg) => sg.room > from && sg.prop && !sg.prop.broken)
+    return (game.soulGates || []).filter((sg) => !sg.exit && sg.room > from && sg.prop && !sg.prop.broken)
       .sort((a, b) => a.room - b.room).map((sg) => ({ room: sg.room, sg, first: null, told: false }));
   },
   // Who is winning the leg under way. Each of them has reached a room once he has stood in it or

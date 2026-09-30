@@ -5,6 +5,20 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.84 — the way out is a soul gate, photo mode, the dip log — 1 Oct 2026
+
+- **The way out is a soul gate** (`TUNING.soul.exitGate`, `level.exitGate`, `GEN_RULES.exitgate`): on a floor
+  whose last room holds a boss carrying a soul, the iron door in front of the stairs (both, on THE FORK's
+  floor) is barred like a gate and lifts only when that soul is swallowed. A floor with no soul there
+  keeps its ordinary door; a gate whose soul is gone (nobody carries it, none on the floor) lifts by itself.
+- **PHOTO MODE** (SETTINGS, `js/photo.js`): a picture of the canvas at its own size on P, or every 3 s of
+  play; up to 60 held until PAUSE → PHOTOS, a page of thumbnails to choose from (click, or move and
+  Enter; the one under the pointer shown large), the chosen saved as a PNG or a zip of them.
+- **DIP LOG** (dev drawer, DIP LOG / SAVE DIPS): a frame over 40 ms writes down the level, seed, room,
+  what was alive, every list's length and a small picture; SAVE DIPS writes them to one JSON.
+
+---
+
 ## 1.83 — armour on a stand, quieter words, a longer stun on the hook — 1 Oct 2026
 
 Playtest notes of 1 Oct 2026, in one message.

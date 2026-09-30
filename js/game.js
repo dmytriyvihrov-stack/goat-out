@@ -108,7 +108,7 @@ class Game {
     // the three it is showing — the rules that hold everywhere, one level in full, or the curve of
     // all seven — `page` the level the middle one is looking at, and `room` the one room the page
     // has been asked to open, which is reachable from either of the other two.
-    this.dev = { open: false, god: false, rects: [], toast: null, rules: false, tab: 'rules',
+    this.dev = { open: false, god: false, dips: false, rects: [], toast: null, rules: false, tab: 'rules',
       page: 0, sample: null, sampleSeed: 1, samples: {}, matrix: null,
       ruleHide: (() => { try { return new Set(JSON.parse(localStorage.getItem(RULE_HIDE_KEY) || '[]')); } catch (e) { return new Set(); } })(),
       ruleShowHidden: false,
@@ -299,6 +299,8 @@ class Game {
     const sg = (this.soulGates || []).find((g) => g.room === room);
     if (!sg || !sg.prop || sg.prop.broken) return;
     sg.prop.broken = true; sg.prop.dead = true;
+    // The way out may have two doors (THE FORK's flights): one soul lifts both.
+    if (sg.exit) for (const q of this.props) if (q.exitGate && !q.broken) { q.broken = true; q.dead = true; }
     // The middle gate holds his place (`holdGate`) from `soul.hold.from` on, once what opened it
     // is settled: the soul's card taken, the rat ogre she turned into down.
     if (TUNING.soul.hold.on && sg === this.soulGates[0] && this.levelIndex >= TUNING.soul.hold.from && !this.checkpoint) this.holdAt = room;
@@ -459,6 +461,11 @@ class Game {
   // are not on this list and keep their own rules.
   updateClearDoors() {
     const L = this.level; if (!L) return;
+    // The way-out gate must never outlive its bar: with no soul on the floor for it and nobody alive
+    // carrying one (a boss that fell down a hole, a soul swept off), it lifts rather than shut the floor.
+    const xg = (this.soulGates || []).find((s) => s.exit);
+    if (xg && xg.prop && !xg.prop.broken && this.state === 'play'
+      && !this.souls.some((t) => t.gate === xg.room && !t.taken) && !this.enemies.some((e) => !e.dead && e.soulGate === xg.room)) this.openSoulGate(xg.room);
     for (const d of this.props) {
       if (d.kind !== 'door' || d.broken || d.fromRoom < 0 || d.gate || d.seal || d.vault) continue;
       // A plank door stays shut for the goat to break (26 Sep 2026: "it's fun to smash them"); only
@@ -819,7 +826,7 @@ class Game {
   // default: a number counting up in the corner of a game about running is a game about the number,
   // and the run is timed either way — the card at the end of a level is where the time belongs.
   loadSettings() {
-    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: 0.5, sfxVolume: 0.5, shake: 1, fps: false };
+    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: 0.5, sfxVolume: 0.5, shake: 1, fps: false, photoKey: false, photoAuto: false };
     try { return Object.assign(d, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (err) { return d; }
   }
   saveSettings() {
@@ -1076,6 +1083,8 @@ class Game {
     if (id === 'toggle') { this.dev.open = !this.dev.open; return; }
     if (id === 'god') { this.toggleSetting('god'); this.devToast(this.dev.god ? 'GOD MODE ON' : 'GOD MODE OFF'); return; }
     if (id === 'itch') { RELEASE.build(this); return; }
+    if (id === 'dips') { this.dev.dips = !this.dev.dips; this.devToast(this.dev.dips ? `DIP LOG ON: A FRAME OVER ${TUNING.photo.dip.ms} MS IS WRITTEN DOWN` : 'DIP LOG OFF'); return; }
+    if (id === 'dipsave') { Photo.saveDips(this); return; }
     if (id === 'font-say' || id === 'font-text') { const r = id.slice(5); FONT_PICK.next(r); this.devToast(`${r === 'say' ? 'SPEECH' : 'TEXT'}: ${FONT_PICK.nameOf(r)}`); return; }
     if (id === 'tune-reset') { for (const [k] of DEV_TUNE) this.setDevTune(k, 1); this.devToast('SLIDERS AT 1'); return; }
     if (id === 'vision') { this.dev.vision = !this.dev.vision; return; }
@@ -1514,6 +1523,7 @@ class Game {
     }
     // The SOUND switch itself, so the settings row says what M did and the mute is kept.
     if (code === 'KeyM') this.toggleSetting('sound');
+    Photo.onKey(this, code);
     if (code === 'KeyN' && this.state === 'play' && this.dev.open) this.levelCleared();
     if (code === 'KeyE') this.input.rollPressed = true;
     // A fifth key that does nothing until the shop puts something on it: Q throws the boomerang
@@ -1740,6 +1750,7 @@ class Game {
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     // The dev tool's pages scroll on the wheel (`Renderer.drawTool` clamps and draws it).
     c.addEventListener('wheel', (e) => {
+      if (this.state === 'paused' && this.menu.panel === 'photos') { e.preventDefault(); Photo.wheel(this, e.deltaY); return; }
       const d = this.dev; if (!d.rules || d.room) return;
       e.preventDefault();
       const px = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? this.renderer.h : 1;
@@ -2003,7 +2014,11 @@ class Game {
     const plan = soulPlan(this.level);
     this.soulsHere = plan.count;
     this.soulGates = (this.level.gates || []).map((g) => ({ room: g.room, shop: g.shop,
-      prop: this.props.find((p) => p.gate && p.gateRoom === g.room) || null }));
+      prop: this.props.find((p) => p.gate && p.gateRoom === g.room && !p.exitGate) || null }));
+    // The way out (`level.exitGate`): last in the list, so `soulGates[0]` stays the middle gate. Its bar
+    // is the soul the last boss carries, tagged below.
+    const EG = this.level.exitGate;
+    if (EG) this.soulGates.push({ room: EG.room, exit: true, shop: false, prop: this.props.find((p) => p.exitGate) || null });
     for (const { gate: g, keeper } of plan.gates) {
       const e = keeper >= 0 ? bySpawn[keeper] : null;
       // Swallowed at the gate he comes back to, and its keeper, if it had one, with it.
@@ -2030,6 +2045,8 @@ class Game {
       }
     }
     for (const i of plan.ensoul) if (bySpawn[i]) this.ensoul(bySpawn[i]);
+    // His soul is the bar of the door in front of the stairs (`bossPrize` tags it with the gate).
+    if (EG) for (const i of plan.ensoul) if (bySpawn[i] && this.level.spawns[i].roomIndex === EG.room) bySpawn[i].soulGate = EG.room;
     // The surprises: a boss lit with a soul the budget did not give him (counted on the card), and
     // a fight room that gives one up once its last man is down (`onKill`; nothing says which).
     if (plan.bonusBoss >= 0 && bySpawn[plan.bonusBoss]) this.ensoul(bySpawn[plan.bonusBoss]);
@@ -2150,6 +2167,7 @@ class Game {
   // The menu answers the keys the game already uses: run up and down it, headbutt to choose.
   menuKey(code) {
     const m = this.menu;
+    if (m.panel === 'photos') { Photo.key(this, code); return; }
     if (m.panel === 'best') { m.panel = null; this.audio.sfxSwing(); return; }
     if (m.panel === 'settings' || m.panel === 'levels') {
       // the rows of whatever is up, and the way out at the bottom of them. LEVELS carries two rows
@@ -2245,6 +2263,7 @@ class Game {
     // The Space that picked RESUME is not a scream on the first step back.
     if (id === 'resume') { this.state = this.pausedIn(); this.clearEdges(); this.audio.sfxSwing(); return; }
     if (id === 'settings') { this.menu.panel = 'settings'; this.menu.sub = 0; this.audio.sfxCard(); return; }
+    if (id === 'photos') { this.menu.panel = 'photos'; Photo.open(); this.audio.sfxCard(); return; }
     // QUIT TO TITLE is the old Escape behaviour: abandon the room rather than resume it.
     this.quitToTitle();
   }
@@ -2260,6 +2279,7 @@ class Game {
   // Shared by the title menu and the pause overlay's own settings panel: a slider takes the click
   // position, anything else is an ordinary row pick.
   menuPanelClick(p) {
+    if (this.menu.panel === 'photos') { Photo.click(this, p); return; }
     const i = this.menuAt(p); if (i < 0) return;
     const row = this.menu.panel === 'settings' ? SETTINGS[i] : null;
     if (row && row.type === 'slider') { this.setSliderAt(i, p.x); this.menu.sliderDrag = i; }
@@ -2809,13 +2829,19 @@ class Game {
     // next step the way a key's press does.
     this.pollPad(dtReal);
     let n = 0;
+    const t1 = performance.now();
     while (this.acc >= step && n < 5) { this.update(step); this.acc -= step; n++; }
     if (n === 5) this.acc = 0;
+    const t2 = performance.now();
     this.audio.updateScene(this, dtReal);
     this.renderer.configure(this.touch.active);
     this.layoutTouch();
     this.renderer.draw(this, dtReal);
-    F.work = Math.max(F.work, performance.now() - work0);
+    const t3 = performance.now();
+    F.work = Math.max(F.work, t3 - work0);
+    // Straight after the picture: photo mode reads the canvas, the dip log writes down a long frame (js/photo.js).
+    Photo.after(this, dtReal);
+    Photo.dipCheck(this, gap * 1000, t3 - work0, t2 - t1, t3 - t2, dtReal);
     if (this.hurt) this.hurt.life -= dtReal;
     if (this.hurtVignette) this.hurtVignette.life -= dtReal;
     this.updateCursor();

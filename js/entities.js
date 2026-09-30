@@ -1108,6 +1108,7 @@ class Prop {
     // Which room's soul lifts a gate: a level has two of them (`gates` on the level).
     this.gateRoom = (opts && opts.gateRoom !== undefined) ? opts.gateRoom : -1;
     this.shopGate = !!(opts && opts.shopGate);   // the mouse's gate: a talisman lifts it, not a soul
+    this.exitGate = !!(opts && opts.exitGate);   // the door in front of the stairs, barred by the last boss's soul
     // A clamp (`game.updateClamps`): the plate bolted over the mouth of a room left behind. `span`
     // is how many tiles of mouth it covers and `slam` the beat it takes to drive home.
     this.span = (opts && opts.span) || 2;

@@ -3758,6 +3758,8 @@ class Renderer {
           ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['showroom', 'SHOWROOM'],
           // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
           ['heaven', 'HEAVEN'], ['sacrifices', '+100 SACR · +5 SOULS'],
+          // Every frame over `photo.dip.ms` writes down where it was, with a small picture (js/photo.js).
+          ['dips', d.dips ? 'DIP LOG  ON' : 'DIP LOG  OFF'], ['dipsave', 'SAVE DIPS  (' + Photo.dips.length + ')'],
           // The god's lines on a page of their own, to edit and cut into parts (tools/god-talk.html).
           ['godtalk', 'GOD TALK'],
           // The zip for itch.io, off this very page: no dev drawer in it, GOD in its SETTINGS (js/release.js).
@@ -7685,6 +7687,7 @@ class Renderer {
   // that function reads and it does not care whether the title or the pause overlay opened it.
   drawPause(game) {
     if (game.menu.panel === 'settings') { this.drawSettings(game); return; }
+    if (game.menu.panel === 'photos') { Photo.draw(game, this); return; }
     const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
     ctx.fillStyle = 'rgba(9,7,9,0.72)'; ctx.fillRect(0, 0, w, h);
     const rows = PAUSE_MENU.length;
@@ -7702,7 +7705,7 @@ class Renderer {
       ctx.strokeStyle = sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s;
       ctx.strokeRect(x0, y, bw, rowH);
       ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${16 * s}px ${FONT_SC}`;
-      ctx.fillText(PAUSE_MENU[i].name, cx, y + rowH * 0.62);
+      ctx.fillText(PAUSE_MENU[i].id === 'photos' && Photo.shots.length ? `PHOTOS (${Photo.shots.length})` : PAUSE_MENU[i].name, cx, y + rowH * 0.62);
     }
     ctx.textAlign = 'left';
   }

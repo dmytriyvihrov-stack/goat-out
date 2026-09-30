@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else — bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.83';
+const BUILD = '1.84';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -1817,6 +1817,9 @@ const TUNING = {
   // in the next room or the one after it. A surprise that would break it is not dealt
   // (`soulPlan`, `GEN_RULES.souls`). Played, two in a row was "not ok at all" (25 Sep 2026).
   soul: { r: 13, pickupR: 22, bossChance: 0.4, roomChance: 0, apart: 3,
+    // The way out of a level is a soul gate too (1 Oct 2026): the stair door is barred until the soul the
+    // last boss carries is swallowed (`level.exitGate`, gen.js `tryGenerate`, `GEN_RULES.exitgate`).
+    exitGate: true,
     // Butting a soul gate lays a running trail on the floor from the goat to what opens it (the
     // soul lying in that room, or the mouse's shelf): `time` seconds, a chevron every `gap` px
     // flowing at `speed` px/s. The gate says what it wants; the trail says where it is.
@@ -1828,6 +1831,11 @@ const TUNING = {
     // more roguelite shape once the balance settles"): no gate holds his place, a death always
     // comes back to the head of the floor, and a save made past a gate before is read the same way.
     hold: { on: false, from: 1 } },
+  // PHOTO MODE (js/photo.js, 1 Oct 2026): a picture of the canvas on `key`, or every `every` s of play,
+  // `keep` of them held in the page, `thumbW` px wide on the page of choosing. `dip` is the dev drawer's
+  // FPS DIP LOG: a frame longer than `ms` writes down where it was (one a `cooldown` s, `keep` at most,
+  // its small picture `shotW` px wide).
+  photo: { key: 'KeyP', every: 3, keep: 60, thumbW: 320, dip: { ms: 40, cooldown: 2.5, keep: 30, shotW: 640 } },
   // How long a soul's cards refuse every input after they appear, so the click that killed the
   // boss cannot also spend what he dropped.
   boonArm: 0.4,
@@ -1894,6 +1902,7 @@ const LEVEL_TOGGLES = 2;
 const PAUSE_MENU = [
   { id: 'resume', name: 'RESUME' },
   { id: 'settings', name: 'SETTINGS' },
+  { id: 'photos', name: 'PHOTOS' },
   { id: 'quit', name: 'QUIT TO TITLE' },
 ];
 
@@ -1932,6 +1941,9 @@ const SETTINGS = [
   // 30 Sep 2026 ("frame rate decides the clutch moments"): frames a second over the last half second,
   // the slowest frame in it, and what the game itself spent on the frame (`Game.frame`).
   { key: 'fps', name: 'SHOW FPS', note: 'Frames a second in the top-left corner, the slowest frame and what the game spent on it.' },
+  // 1 Oct 2026: pictures of the canvas at its own size, kept until PAUSE → PHOTOS lets you choose which to save.
+  { key: 'photoKey', name: 'PHOTO MODE: ON A KEY', note: 'P takes a picture at the size of the screen. Choose which to keep under PAUSE, PHOTOS.' },
+  { key: 'photoAuto', name: 'PHOTO MODE: EVERY 3 SECONDS', note: 'A picture every three seconds of play, so you can just run. Choose which to keep under PAUSE, PHOTOS.' },
 ];
 
 // What EASY MODE bends: a bigger cushion of hearts and a slower cult. `applyBoons` adds `maxHp` to

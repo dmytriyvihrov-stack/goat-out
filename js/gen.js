@@ -1523,10 +1523,24 @@ function tryGenerate(levelDef, seed, opts) {
       break;
     }
   }
-  return { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, forkTile, entry, seed, def: levelDef,
+  const level = { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, forkTile, entry, seed, def: levelDef,
     hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop,
     // Grass lying under a wall that went back up is not grass: only what is still on floor.
-    grass: [...grass].filter((i) => tiles[i] === T.FLOOR) };
+    grass: [...grass].filter((i) => tiles[i] === T.FLOOR), exitGate: null };
+  // THE EXIT GATE (1 Oct 2026: "a soul gate before the way out of every level"): the iron door in front
+  // of the stairs is barred like a soul gate, and what lifts it is the soul the last boss carries
+  // (`soulPlan` deals the last bosses their souls; `startLevel` tags his with this gate). Only where that
+  // soul is really in the last room — a floor with no soul there keeps its ordinary door. THE FORK's
+  // second flight is barred by the same soul. `GEN_RULES.exitgate`.
+  if (TUNING.soul.exitGate && !levelDef.shroom) {
+    const lastIdx = rooms.length - 1, plan2 = soulPlan(level);
+    const doors = cleanProps.filter((p) => p.kind === 'door' && p.stair), door = doors.find((p) => !p.fork);
+    if (door && plan2.ensoul.some((i) => filtered[i] && filtered[i].roomIndex === lastIdx)) {
+      for (const d of doors) { d.gate = true; d.gateRoom = lastIdx; d.exitGate = true; }
+      level.exitGate = { room: lastIdx, x: door.x, y: door.y };
+    }
+  }
+  return level;
 }
 
 // The mouse's hole: a spot at the foot of the room's own top or bottom wall with solid rock behind
