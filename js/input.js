@@ -1,5 +1,6 @@
 // Touch controls: a floating move stick on the left, action buttons on the right,
 // plus a drag-anywhere-on-the-right manual aim. Sizes are in CSS pixels, scaled by the backing-store ratio.
+// The gamepad (`PadInput`) is at the bottom of the file.
 class TouchUI {
   constructor() {
     this.active = false;          // true once any touch/pen input is seen
@@ -135,9 +136,10 @@ class TouchUI {
 }
 
 // Snaps an aim direction onto a nearby enemy so thumbs don't have to be precise.
-function autoAim(game, dirx, diry) {
+// `coneRad` and `reach` default to the thumb's; a pad's right stick passes its own, narrower pair.
+function autoAim(game, dirx, diry, coneRad, reach) {
   const g = game.goat;
-  const maxDist = TUNING.touchAim.reach * TILE, cone = Math.cos(TUNING.touchAim.cone);
+  const maxDist = (reach || TUNING.touchAim.reach) * TILE, cone = Math.cos(coneRad || TUNING.touchAim.cone);
   let best = null, bestScore = -Infinity;
   for (const e of game.enemies) {
     // Only a man the goat could mean: not mist, not a box or bowl of milk, not one out of sight
@@ -152,4 +154,89 @@ function autoAim(game, dirx, diry) {
     if (score > bestScore) { bestScore = score; best = { x: dx / d, y: dy / d }; }
   }
   return best || { x: dirx, y: diry };
+}
+
+// A gamepad on the browser's standard mapping. It adds no verb (ground rule 1): every button is one
+// the keyboard or the mouse already has, and the game reads it through the same `game.input` flags,
+// so THE TRIP's swap (`tripInput`) scrambles a pad exactly as it scrambles a mouse. Polled once a
+// frame (`Game.pollPad`); `active` says the pad has the controls, switched the way `touch.active` is.
+const PAD_BTN = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 };
+class PadInput {
+  constructor() {
+    this.active = false;          // the pad was the last thing touched
+    this.pad = null;              // the Gamepad read this frame
+    this.now = [];                // held, per button index
+    this.was = [];
+    this.ls = { x: 0, y: 0 };     // left stick after its dead zone, length 0..1
+    this.rs = { x: 0, y: 0 };     // right stick raw
+    this.nav = null;              // the menu direction held, and its repeat clock
+    this.navT = 0;
+    this.step = null;             // a menu step this frame: 'up' | 'down' | 'left' | 'right' | null
+    this.touched = false;         // anything pressed or pushed this frame
+  }
+
+  // The first connected pad. False when there is none, so the frame can skip the rest.
+  poll(dt) {
+    let list = null;
+    try { list = navigator.getGamepads ? navigator.getGamepads() : null; } catch (e) { list = null; }
+    let p = null;
+    if (list) for (const g of list) if (g && g.connected !== false) { p = g; break; }
+    this.pad = p; this.was = this.now; this.step = null; this.touched = false;
+    if (!p) { this.now = []; this.ls = { x: 0, y: 0 }; this.rs = { x: 0, y: 0 }; this.nav = null; return false; }
+    const P = TUNING.pad;
+    // A trigger is an axis on some pads and a half-pressed button on others: past `trigger` it is down.
+    this.now = Array.from(p.buttons || [], (b) => !!b && (b.pressed || (b.value || 0) > P.trigger));
+    const ax = (i) => (p.axes && Number.isFinite(p.axes[i]) ? p.axes[i] : 0);
+    // A radial dead zone, then rescaled so the throw past it still runs 0..1: a walk, not a jump.
+    const lx = ax(0), ly = ax(1), ll = Math.hypot(lx, ly);
+    if (ll <= P.dead) this.ls = { x: 0, y: 0 };
+    else { const k = Math.min(1, (ll - P.dead) / (1 - P.dead)) / ll; this.ls = { x: lx * k, y: ly * k }; }
+    this.rs = { x: ax(2), y: ax(3) };
+    // A resting pad on the desk drifts a little; only a real push takes the controls off the keyboard.
+    this.touched = this.any() || ll > P.wake || Math.hypot(this.rs.x, this.rs.y) > P.wake;
+    // The menu direction: the d-pad, or the left stick pushed well over. One step on the push, then
+    // a repeat while it is held, the way a held arrow key walks a list.
+    const d = this.held(PAD_BTN.up) || ly < -P.navAt ? 'up' : this.held(PAD_BTN.down) || ly > P.navAt ? 'down'
+      : this.held(PAD_BTN.left) || lx < -P.navAt ? 'left' : this.held(PAD_BTN.right) || lx > P.navAt ? 'right' : null;
+    if (d !== this.nav) { this.nav = d; this.navT = P.repeatAfter; this.step = d; }
+    else if (d) { this.navT -= dt; if (this.navT <= 0) { this.navT = P.repeatEvery; this.step = d; } }
+    return true;
+  }
+
+  held(i) { return !!this.now[i]; }
+  pressed(i) { return !!this.now[i] && !this.was[i]; }
+  any() { return this.now.some((v, i) => v && !this.was[i]); }
+
+  // Movement: the left stick, or the d-pad for a thumb that prefers it.
+  moveVector() {
+    if (this.ls.x || this.ls.y) return this.ls;
+    const x = (this.held(PAD_BTN.right) ? 1 : 0) - (this.held(PAD_BTN.left) ? 1 : 0);
+    const y = (this.held(PAD_BTN.down) ? 1 : 0) - (this.held(PAD_BTN.up) ? 1 : 0);
+    const l = Math.hypot(x, y) || 1;
+    return { x: x / l, y: y / l };
+  }
+
+  // The right stick as a direction, or null while it rests inside its dead zone.
+  aimVector() {
+    const d = Math.hypot(this.rs.x, this.rs.y);
+    return d > TUNING.pad.aimDead ? { x: this.rs.x / d, y: this.rs.y / d } : null;
+  }
+
+  // Where each verb lives. The two held verbs sit on the shoulders, a trigger and a bumper each, so
+  // either finger has it; the headbutt is also on X for a player who keeps a thumb on the face.
+  buttHeld() { return this.held(PAD_BTN.rt) || this.held(PAD_BTN.rb) || this.held(PAD_BTN.x); }
+  buttPressed() { return this.pressed(PAD_BTN.rt) || this.pressed(PAD_BTN.rb) || this.pressed(PAD_BTN.x); }
+  grabHeld() { return this.held(PAD_BTN.lt) || this.held(PAD_BTN.lb); }
+  grabPressed() { return this.pressed(PAD_BTN.lt) || this.pressed(PAD_BTN.lb); }
+
+  // `game.vibe` on a pad: its motors, when the browser lets us at them. Silent otherwise.
+  rumble(ms) {
+    const a = this.pad && this.pad.vibrationActuator, R = TUNING.pad.rumble;
+    if (!a || !a.playEffect) return;
+    const k = Math.max(R.min, Math.min(1, ms / R.full));
+    try {
+      const r = a.playEffect('dual-rumble', { startDelay: 0, duration: Math.round(ms * R.stretch), strongMagnitude: R.strong * k, weakMagnitude: R.weak * k });
+      if (r && r.catch) r.catch(() => {});
+    } catch (e) { /* a pad without the effect */ }
+  }
 }

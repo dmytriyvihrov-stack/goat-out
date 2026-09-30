@@ -7,7 +7,7 @@ the whole cult wants you back. Eight floors, one life on each, procedurally gene
 
 **Play it:** https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
-Works on desktop with keyboard and mouse, and on phones with on-screen controls.
+Works on desktop with keyboard and mouse or a gamepad, and on phones with on-screen controls.
 
 ---
 
@@ -55,6 +55,22 @@ Five verbs and nothing else. Souls change what a button does; they never add one
 Phones and tablets get on-screen controls automatically. In portrait the play view is letterboxed and
 the thumbs get their own deck below it. In landscape the controls overlay the bottom corners. Dragging
 on the right half of the screen overrides auto-aim with a manual direction.
+
+A gamepad (Xbox layout names; any pad the browser reads with the standard mapping) takes over the
+moment a stick or button is touched, and a key or the mouse takes it back:
+
+| Gamepad | Action |
+|---|---|
+| left stick / d-pad | run |
+| right stick | aim (let go and the aim follows your run, snapping to nearby men) |
+| RT, RB or X | headbutt |
+| hold LT or LB, release | carry, throw |
+| A | roll |
+| B | BAAH |
+| Y | the talisman's own use (the Q key) |
+| START | pause |
+| BACK | the floor again at once (as Backspace) |
+| d-pad + A, B | every menu and card: A picks, B backs out; left / right chooses a soul |
 
 Four hearts, no regeneration (six on EASY MODE). A death costs the souls you took on that floor and
 builds the floor again from a new seed in under a second. From the second floor on, the floor's middle

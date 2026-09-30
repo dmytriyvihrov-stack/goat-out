@@ -87,7 +87,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/skill-icons.js` | `SKILL_ICONS`: the skill rail's chips as pixel sprites, one per verb and active soul, with passive marks; used by `Renderer.skillIcon` and the boon card. |
 | `js/audio.js` | WebAudio. Buses, the room, the drum machine, the music bed (`MUSIC`), and `sfx*`: every one-shot effect as a `foley` call. |
 | `js/world.js` | Tile grid, collision, line of sight, flow field, fire (ordinary and witchfire), noise events, the persistent decal canvas, cult pictograms, the ritual start room, the cave fields. |
-| `js/input.js` | `TouchUI` (on-screen controls) and `autoAim`. |
+| `js/input.js` | `TouchUI` (on-screen controls), `autoAim`, and `PadInput` / `PAD_BTN` (the gamepad, polled by `Game.pollPad`). |
 | `js/entities.js` | `Goat`, `Prop` (every world object), `Bullet`. |
 | `js/enemies.js` | `Enemy` — one class, behaviour branches on `kind`. |
 | `js/status.js` | `Status`: poison, the three reactions between poison / stun / fire, puddles, the spit glob, thrown things that drip poison (VENOM JAW) or burn a line (FIREBRAND, `brandTrail`). |
@@ -294,6 +294,24 @@ shapes; the loop is the motion. A new effect is cells on that grid, never a smoo
 `trail.fastAt` (only visible sign of SURE HOOVES). The pointer: `game.updateCursor`, horns
 (`CURSOR_GOAT`) or `grabbing`; `crosshair` fallback in both HTML files. Touch: `touch.active`; only a
 `keydown` matching `KEYBOARD_KEY` turns it off, and on a `coarse` device every pointer is a finger.
+
+**The gamepad** (30 Sep 2026, un-parked on request). `PadInput` (js/input.js) reads the first
+standard-mapping pad once a frame in `game.frame` → `Game.pollPad`; `pad.active` is who has the
+controls, set by a press or a stick past `TUNING.pad.wake`, cleared by a `KEYBOARD_KEY` keydown, any
+pointerdown, or a mouse move with real `movementX/Y` (the pointer is hidden while it holds them). **It
+adds no verb** (rule 1): in play and heaven it sets the same `input` flags the mouse and keys set —
+RT / RB / X `lmbPressed`, LT / LB `rmbDown` (in `readMoveInput`, like touch), A `rollPressed`, B
+`spacePressed`, Y `qPressed` — so `tripInput` swaps it like any other hand (its `buttHeld` asks
+`pad.buttHeld()`). The left stick (or d-pad) is `mx/my`; the right stick past `pad.aimDead` is the aim,
+snapped by `autoAim` with the narrower `pad.assist`, and at rest the aim follows the run with the thumb's
+snap (`game.padAim`). On a screen the keys walk (title and its panels, pause, the mirror) a button is
+handed to `game.keyPress(code)` — the keydown body, shared — as `Arrow*` (d-pad or `navAt` push,
+repeating), `Enter` (A), `Escape` (B; START too, which is `Enter` on the title); START in play is
+Escape, BACK is Backspace. The soul cards: `game.boonPad` (drawn as the hover), A takes or releases.
+Other cards (death, clear, win) take A / START as `spacePressed`. Labels: `keysOf(game)` → `PAD_KEYS`
+or `SKILL_KEYS` (the rail's caps, trip-swapped, the card's key box, the item chip, heaven's prompts),
+`CONTROL_LINES.pad`, `padOn(game)` for a tool's stub `game`, `game.tapWord` (a getter: PRESS A).
+`game.vibe` runs the pad's `dual-rumble` (`pad.rumble`) instead of a phone's motor.
 
 ### Level generation
 
@@ -1353,7 +1371,7 @@ Hooks load when a session starts.
 - Where his wife is. The opening scene's mage carries her off, and the first gate (`game.bless`, 1.75)
   shows him taking her on through it; nothing after that refers to her: no room, no ending.
 - **Parked, not open** (26 Sep 2026, "later"): three lives on a run (one life stays per level until
-  then), gamepad support, a Priest boss, the later acts, the hunt, hell, heaven as a secret ending (a
+  then), a Priest boss, the later acts, the hunt, hell, heaven as a secret ending (a
   run that swallowed no soul; the pasture between deaths is built, 1.79), and the second talisman
   slot (for the acts). Kept in plans, not to be built without asking. Decided against:
   hearts that grow by floor, the chain headbutt. Settled: two souls a floor, in the middle and at
