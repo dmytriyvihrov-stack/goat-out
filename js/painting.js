@@ -112,7 +112,7 @@ const Painting = {
       let c = null;
       if (t === T.WALL) {
         // Only the rim of the rock is drawn; deep rock is the background. A wall with open floor
-        // straight under it shows its face colour, as it does in play — one row of depth, no more.
+        // straight under it shows its face colour, as it does in play, one row of depth, no more.
         let rim = false;
         for (let dy = -1; dy <= 1 && !rim; dy++) for (let dx = -1; dx <= 1; dx++) if (!solid(tx + dx, ty + dy)) { rim = true; break; }
         if (rim) c = solid(tx, ty + 1) ? def.wallTop : def.wall;
@@ -185,7 +185,7 @@ const Painting = {
     ctx.fillText(`LEVEL ${m.level}${m.dark ? ' · THE DARK' : m.trip ? ' · THE TRIP' : ''}`, W / 2, H * P.fit.top - 34 * s);
     ctx.font = `700 ${34 * s}px ${FONT}`; ctx.fillStyle = PALETTE.bone;
     ctx.fillText(m.name, W / 2, H * P.fit.top - 6 * s);
-    // The picture, fitted whole into its box, never smoothed — and never taller than leaves room for
+    // The picture, fitted whole into its box, never smoothed, and never taller than leaves room for
     // the road under it and the row with SAVE: on a phone held sideways (390 px tall) the line under
     // the old score sat on the way on and under the button.
     const dy = H * P.fit.top + 10 * s, room = Math.max(H * 0.2, H - 150 * s - dy);
@@ -346,7 +346,7 @@ const Painting = {
     ctx.textAlign = 'center';
     words.forEach((w, i) => { ctx.font = `${15 * s}px ${FONT}`; ctx.fillStyle = i === words.length - 1 ? PALETTE.blood : 'rgba(239,230,208,0.62)'; ctx.fillText(w, lx, y + i * 22 * s); });
     ctx.globalAlpha = 1;
-    if (card.code) { ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, H - 18 * s); }
+    if (card.code) { ctx.font = `${Math.max(12 * r.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, H - 18 * s); }
     if (card.go && game.stateTimer <= 0) {
       ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1);
       r.goButton(game, card.go, W / 2, Math.min(y + Math.max(words.length * 22 * s, plate) + 4 * s, H - 36 * s - 38 * s));

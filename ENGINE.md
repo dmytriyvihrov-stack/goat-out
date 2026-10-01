@@ -1,4 +1,4 @@
-# Engine notes — for the port, later
+# Engine notes, for the port, later
 
 Written 23 Sep 2026. **Nothing here is scheduled.** The JavaScript build is the game and stays the design
 truth until the design stops moving; this file is so whoever starts the port does not start from zero.
@@ -7,12 +7,12 @@ Goat Out's own systems map onto it. Part 2 opens with a list of tips the user co
 and corrected where the research or this project disagrees.
 
 Checked against: Godot **4.7** (stable since 18 Jun 2026, 4.7.2 maintenance release 18 Aug 2026).
-Re-check version-specific lines before acting on them — Godot 3 → 4 renamed so much that most old
+Re-check version-specific lines before acting on them, Godot 3 → 4 renamed so much that most old
 tutorials quietly produce broken code, and that is the single biggest trap for anyone learning it.
 
 ---
 
-## Part 1 — which engine, and whether to port at all
+## Part 1, which engine, and whether to port at all
 
 ### The recommendation
 
@@ -43,7 +43,7 @@ tutorials quietly produce broken code, and that is the single biggest trap for a
 
 ---
 
-## Part 2 — working rules for Godot
+## Part 2, working rules for Godot
 
 ### 2.1 Tips the user collected, annotated
 
@@ -199,7 +199,7 @@ The art is "Pixel 2.5": 16 art-px a 32 px tile, nearest-neighbour, drawn into a 
 
 ---
 
-## Part 3 — Goat Out's systems, mapped
+## Part 3, Goat Out's systems, mapped
 
 | Now (JS) | In Godot | Watch out |
 |---|---|---|

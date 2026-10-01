@@ -1,6 +1,6 @@
 // A small source-preserving patcher for js/tuning.js. The dev tool's BOONS tab edits a boon's
 // `params` or `minLevel` live in the running game (see Game.applyBoons) and also asks the dev
-// server to write the same number into the source file — so an edit lands where CLAUDE.md says
+// server to write the same number into the source file, so an edit lands where CLAUDE.md says
 // every number has to live, comments and formatting untouched, rather than in a second place that
 // rule would then be lying about. Used only by tools/serve.js; the game itself never requires this.
 'use strict';
@@ -37,7 +37,7 @@ function skipComment(text, i, limit) {
 
 // Index of the matching close bracket for the open bracket at `openIdx`. JS brackets of different
 // kinds always nest properly with respect to each other, so counting just the one bracket
-// character being matched is enough — strings, templates and comments are skipped so a stray
+// character being matched is enough, strings, templates and comments are skipped so a stray
 // `{`/`}`/`:` inside a quoted line never confuses the depth count.
 function matchBracket(text, openIdx) {
   const openChar = text[openIdx], closeChar = openChar === '{' ? '}' : openChar === '[' ? ']' : ')';
@@ -137,12 +137,12 @@ function formatValue(value) {
 
 // Apply one edit to the full text of js/tuning.js and return the patched text.
 //   { root: 'BOONS', id: 'horns', path: ['params', 'reachMul'], value: 1.6 }
-//     — a field inside one BOONS entry, found by its `id`, descending through nested object
+//     - a field inside one BOONS entry, found by its `id`, descending through nested object
 //       literals named in `path` (all but the last segment) to the last segment's leaf value.
 //   { root: 'BOON_BASE', path: ['maxHp'], value: 5 }
-//     — a field of a plain nested object; no `id` since there is only one of it.
+//     - a field of a plain nested object; no `id` since there is only one of it.
 //   { root: 'LEVELS', id: 'THE ALTAR', path: ['hint'], value: 'WATCH THE ARM' }
-//     — LEVELS entries carry no `id` field of their own, so the lookup falls back to `name`.
+//     - LEVELS entries carry no `id` field of their own, so the lookup falls back to `name`.
 function applyEdit(text, edit) {
   const { root, id, path, value } = edit;
   if (!Array.isArray(path) || !path.length) throw new Error('empty path');

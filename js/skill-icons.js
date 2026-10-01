@@ -1,6 +1,6 @@
 'use strict';
 // The skill rail's icons as hand-placed pixels (24 Sep 2026). A chip used to be a few vector strokes
-// that a soul nudged — a tine here, a green drop in the corner — and a player could not tell at a
+// that a soul nudged, a tine here, a green drop in the corner, and a player could not tell at a
 // glance what his headbutt had become. Here each verb is a small picture of the goat doing it, and
 // the ACTIVE soul on that button redraws the picture: SPLASH is big green horns dripping, BOMB
 // CHARGE is horns of lava, LONG HORNS is a stag's antlers. Passives lay a small mark over it.
@@ -260,7 +260,7 @@ const SKILL_ART = {
     '.....swwWmm.....',
     '......swwWw.....',
     '.......ss.......'], ramp: 'horn' },
-  // The bare call: two faint rings, no edge — a noise, not yet a blow.
+  // The bare call: two faint rings, no edge, a noise, not yet a blow.
   call: { bare: true, rows: [
     '', '', '', '', '',
     '..............s.',

@@ -393,7 +393,7 @@ function asText() {
     for (const it of rows) {
       const a = state[it.id], st = STATUS.find(s => s[0] === a.status);
       const bits = [st ? st[1] : null, [].concat(a.pick || []).join(', ') || null].filter(Boolean).join(' · ');
-      out.push(`- [${it.id}] ${it.title}${bits ? ' — ' + bits : ''}${a.note && a.note.trim() ? '\n  ' + a.note.trim() : ''}`);
+      out.push(`- [${it.id}] ${it.title}${bits ? ', ' + bits : ''}${a.note && a.note.trim() ? '\n  ' + a.note.trim() : ''}`);
     }
   }
   if (state._new && state._new.note && state._new.note.trim()) out.push('## Новое\n' + state._new.note.trim());

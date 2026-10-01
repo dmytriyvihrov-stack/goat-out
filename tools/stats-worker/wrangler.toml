@@ -1,0 +1,12 @@
+name = "goat-stats"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# The D1 database. `database_id` is printed by `npx wrangler d1 create goat-stats`; paste it here.
+[[d1_databases]]
+binding = "DB"
+database_name = "goat-stats"
+database_id = "e9b22095-c05e-4b31-a94b-fbbcdfd914ee"
+
+# READ_KEY (what tools/stats.html sends to read reports) and SALT (for the rate limit's address
+# hash) are secrets, set once with `npx wrangler secret put READ_KEY` / `SALT`, never written here.

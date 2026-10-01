@@ -1,4 +1,4 @@
-# Combat effects — 16 September 2026
+# Combat effects, 16 September 2026
 
 **Retired 23 Sep 2026 (1.56).** Nothing loads this sheet any more: `js/combat-fx.js` bakes its fire,
 blasts, smoke and blood as pixel frames at start, and `js/combat-assets.js` was deleted. The sheet and its packer

@@ -3,3 +3,5 @@ tools/shots/
 *.log
 .claude/session-state/
 dist/
+tools/stats-worker/.read-key
+tools/stats-worker/.wrangler/

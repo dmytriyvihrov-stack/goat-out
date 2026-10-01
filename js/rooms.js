@@ -10,7 +10,7 @@
 //
 // HOW MUCH WEAPON A ROOM HANDS YOU. Pillar 3 says the wall is the weapon: a headbutt on its own only
 // knocks a man down, and it is what he lands against that kills him. `groundOf` is that, as one
-// number — the fraction of a template's floor with nothing solid within a step of it. 0 is a room
+// number, the fraction of a template's floor with nothing solid within a step of it. 0 is a room
 // where he can be put into something from anywhere you are standing; 1 is a yard where a headbutt is
 // a shove. `HARD` is everything a body dies against, is stopped by or falls into: wall, pillar,
 // brazier, lamp post, table, drop. Hay is not in it (a man lands in straw and gets up) and neither
@@ -41,7 +41,7 @@ function groundOf(tpl) {
   return tpl.ground;
 }
 // A template with a `canon` belongs to the level whose `canon.id` matches it: at least half of that
-// level's ordinary rooms are drawn from its canon, and the rest from the mix — the untagged rooms
+// level's ordinary rooms are drawn from its canon, and the rest from the mix, the untagged rooms
 // here plus the canons of every level before it, so a room never shows an idea the run has not
 // reached. `tag: 'trap'` is the one pool that is neither: a trap room is dropped into a level's
 // ordinary rooms by count (`levelDef.traps`) rather than drawn as one.
@@ -320,7 +320,7 @@ const ROOM_TEMPLATES = [
     '#..............#',
     '################',
   ]},
-  // The forge: six bowls of coals in two rows, and the anvil between them. Nothing here is straw —
+  // The forge: six bowls of coals in two rows, and the anvil between them. Nothing here is straw,
   // the fire is wherever you knock it, and a spilled bowl is a wall for as long as it burns.
   { name: 'forge', canon: 'fire', rows: [
     '################',
@@ -482,7 +482,7 @@ const ROOM_TEMPLATES = [
   // ---- THE THRESHING FLOOR: open ground, its canon, so only that level and the ones after draw them. ----
   // Out here the walls are nearly gone and the structure is furniture: posts, tables, braziers and
   // hay. A headbutt on bare floor still only knocks a man down, so the level is about herding him
-  // into something that finishes the job — and about deciding which half of the room is yours.
+  // into something that finishes the job, and about deciding which half of the room is yours.
   // Props in the middle and open ground all round it: the fight happens on your side of the island.
   { name: 'island', canon: 'open', rows: [
     '############################',
@@ -650,7 +650,7 @@ const ROOM_TEMPLATES = [
     '##################',
   ]},
   // Tables narrowing to a throat of two pillars. The tables can be shoved, so the throat is only as
-  // narrow as you have left it — and a table shoved into it with a crowd behind it is a kill.
+  // narrow as you have left it, and a table shoved into it with a crowd behind it is a kill.
   { name: 'throat', canon: 'funnel', rows: [
     '####################',
     '#..................#',
@@ -770,7 +770,7 @@ const ROOM_TEMPLATES = [
     '###################',
   ]},
   // THE BRIDGE ITSELF (30 Sep 2026 playtest: "where the bridge is, one or two rooms shaped like a
-  // bridge — holes at its side edges and between"). `bridge: true` keeps them out of every draw:
+  // bridge, holes at its side edges and between"). `bridge: true` keeps them out of every draw:
   // `levelDef.bridges` deals them to one or two of the floor's canon rooms (`tryGenerate`). The ends
   // are whole floor wall to wall, so a door on any side opens onto a landing, never onto the drop.
   // A deck four planks wide over the ravine, posts at its rails and two planks gone: the funnel is
@@ -946,8 +946,8 @@ const ROOM_TEMPLATES = [
   ]},
   // ---- THE NICHE: THE OSSUARY's canon. A body cannot form inside stone. ----
   // The dead come from the side you are not looking at, and the only thing the ground does for you
-  // is refuse them a place to stand. Every room here is stone to put your back to — niches, cells,
-  // alcoves — with open floor between that you have to cross with nothing at your back at all.
+  // is refuse them a place to stand. Every room here is stone to put your back to, niches, cells,
+  // alcoves, with open floor between that you have to cross with nothing at your back at all.
   // A crypt: a row of niches down each long wall, two tiles wide and one deep. Stand in one and half
   // the room's arcs are gone; the middle of the room has every one of them.
   { name: 'crypt', canon: 'niche', rows: [
@@ -1442,7 +1442,7 @@ const OGRE_ARENA_TEMPLATE = { name: 'ogre ring', rows: [
 ]};
 
 // The first ogre of a run, THE YARD's last room since 26 Sep 2026: wide, two pillars and nothing else standing in the way,
-// so what the room hands you — the swords, the bowls — is the first thing you see in it.
+// so what the room hands you, the swords, the bowls, is the first thing you see in it.
 const OGRE_FIRST_TEMPLATE = { name: 'ogre hall', rows: [
   '####################',
   '#..................#',
@@ -1460,11 +1460,11 @@ const OGRE_FIRST_TEMPLATE = { name: 'ogre hall', rows: [
 ]};
 
 // The Mill: a ritual grinding wheel with a shorter reach now, in a room built tighter around it.
-// 'M' is the hub. The room is still taller than the arms are long — there is a lane along the top
-// and the bottom that the sweep never reaches — but the whole footprint shrank with the arm, so a
+// 'M' is the hub. The room is still taller than the arms are long, there is a lane along the top
+// and the bottom that the sweep never reaches, but the whole footprint shrank with the arm, so a
 // shorter reach reads as a tighter room rather than as the same floor with less of it dangerous.
 // The room the wheel is MET in, on the level that first shows it. Narrow enough that the arm's own
-// sweep — the hub plus `mill.armLen`, a shade under three tiles — reaches the top wall and leaves
+// sweep, the hub plus `mill.armLen`, a shade under three tiles, reaches the top wall and leaves
 // exactly one lane of clear floor along the bottom: the way through is a decision about the arm
 // rather than a walk round it. The two men stand well past it, out of the sweep, and `millLesson`
 // in `gen.js` is what makes one of them careless and the other careful.
@@ -1472,7 +1472,7 @@ const OGRE_FIRST_TEMPLATE = { name: 'ogre hall', rows: [
 // the arm's own sweep (`mill.armLen` plus a man's own radius, a shade under 2.5 tiles) reaches that
 // wall outright rather than leaving a second safe lane nobody needed. Below the hub the three rows
 // that are left put the same math the other way: the first two sit inside that reach and the last
-// one does not, so exactly one lane of clear floor survives at the very bottom — the one the room
+// one does not, so exactly one lane of clear floor survives at the very bottom, the one the room
 // is built to make you decide about.
 const MILL_LESSON_TEMPLATE = { name: 'millroom', noFlipX: true, rows: [
   '##############',
@@ -1516,7 +1516,7 @@ const GALLERY_TEMPLATE = { name: 'gallery', rows: [
 // door you have to come in by, and they see you the moment you are through it. There is no route
 // that is not in their line: the answers are a shield off the stand by the door, one of the two men
 // on your own side carried in front of you, the two pillars if you time them, or going back out.
-// It never flips on X — the rifles are the far wall, and the door is the near one.
+// It never flips on X, the rifles are the far wall, and the door is the near one.
 const KILLBOX_TEMPLATE = { name: 'killbox', noFlipX: true, rows: [
   '######################',
   '#....................#',
@@ -1538,21 +1538,21 @@ const KILLBOX_TEMPLATE = { name: 'killbox', noFlipX: true, rows: [
 // headbutt on somebody," and a floor full of pillars and furniture between the door and him argued
 // with that. `blockSpot` in `gen.js` stands him a step inside whichever wall the corridor onward
 // left him, so the room itself carries nothing to break the line back to whichever wall the goat
-// came in by — open floor, and nothing else.
+// came in by, open floor, and nothing else.
 // A long, narrow room built round a single idea: a stand of arms right inside the door, a crate a
-// step past it, and whoever the room holds standing well down the far end of it — far enough that
+// step past it, and whoever the room holds standing well down the far end of it, far enough that
 // grabbing the arm and throwing it is the answer that is actually in front of you before anyone
 // has closed the distance. `levelDef.ambushAt` forces it the same way `millAt` and the rest of the
 // set pieces do; the room otherwise fills off the ordinary threat curve like any other.
 // Three tiles of floor and nothing to the sides: a corridor rather than a room, so a blade thrown
-// down it cannot miss and a man walking up it cannot go round. `noFlipX` is load-bearing — rooms
+// down it cannot miss and a man walking up it cannot go round. `noFlipX` is load-bearing, rooms
 // chain left to right, so the door is always in the left wall, and the arm has to be the thing
 // just inside it with the men at the far end. Flipped, the men stood in the doorway you walked in
 // through and the rack was behind them, which is the opposite of what the room is for.
 // Two racks side by side rather than one: a miss on the first throw is not the end of the lesson,
 // and the men at the far end have both of them to watch rather than one.
 // The room behind a soul gate: somewhere to stop. Nobody is put in it and nothing is scattered into
-// it — the fight was the room before — only straw in the corners, the soul in the middle (or the mouse
+// it, the fight was the room before, only straw in the corners, the soul in the middle (or the mouse
 // in the top or bottom wall, which is why both walls are left long and plain), and the barred way on.
 // One shape for every level: that a gate room is a quiet room is a thing a run is meant to learn.
 const REST_TEMPLATE = { name: 'rest', rows: [
@@ -1582,7 +1582,7 @@ const CALM_TEMPLATE = { name: 'kindling', noFlipX: true, rows: [
   '#############',
 ]};
 
-// THE ARMORY (30 Sep 2026: "a cramped room with a lot of weapons along the walls — ordinary men in
+// THE ARMORY (30 Sep 2026: "a cramped room with a lot of weapons along the walls, ordinary men in
 // it, but a huge choice of what to kill them with"). Tight, a stand of arms every other step round
 // its walls with the corners of each wall left clear for a door, crates between; the men are bought
 // like any ordinary room's. Not drawn from a pool: `gen.js` sets it into one ordinary room of a floor
@@ -1608,7 +1608,7 @@ const AMBUSH_TEMPLATE = { name: 'ambush', noFlipX: true, rows: [
 
 // The room the first man of the run stands in. Four tiles of floor and no deeper, so wherever he is
 // standing there is stone a tile away and every direction a headbutt can throw him ends against it
-// — the level's whole idea, on the one man it is safe to learn it on. It was six tiles deep and
+// - the level's whole idea, on the one man it is safe to learn it on. It was six tiles deep and
 // packed with hay: half the swings put him down on open floor where he got back up again, and the
 // bales were the loudest thing in a room whose entire point is the man. Two crates on the near half
 // instead, against the top and the bottom wall: something for the eye to measure the room by, well

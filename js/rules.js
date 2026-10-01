@@ -47,7 +47,7 @@ const dressedRight = (L, list, kind) => {
 };
 
 // One level reduced to what the player meets: every room with its role, its men, what the plan said
-// about it, and its threat — a boss counting 1.6 of his kind, as the balance report always has.
+// about it, and its threat, a boss counting 1.6 of his kind, as the balance report always has.
 function roomsOf(L) {
   const by = new Map();
   for (const s of L.spawns) {
@@ -62,7 +62,7 @@ function roomsOf(L) {
     const cell = L.plan ? L.plan.rooms.get(room.index) || null : null;
     // The second axis, beside the crowd: how much of this room is floor with nothing solid within a
     // step of it, and so how little of it the goat can use as a weapon. `pressure` is the two put
-    // together — what the room actually asks — and it is the number the balance report ranks by.
+    // together, what the room actually asks, and it is the number the balance report ranks by.
     const ground = room.tpl.ground === undefined ? 0 : room.tpl.ground;
     return { index: room.index, name: room.tpl.name, role: room.role, men, spawns, threat, cell, room,
       ground, drawn: !!room.drawn, pressure: threat * (1 + ground * GROUND.weight) };
@@ -108,15 +108,15 @@ const GEN_RULES = [
   // The floor's own half of the curve, and it is held against the rooms the DRAW chose and nothing
   // else: a set piece, the two teaching rooms and a trap room are all forced or dealt from a pool of
   // their own, so none of them is the generator keeping this promise or breaking it. Like `rises` it
-  // is really an averaged rule — the draw takes at random inside a window of the pool, so one seed
-  // running the other way is noise — and `tools/balance.js` judges it over many seeds instead.
+  // is really an averaged rule, the draw takes at random inside a window of the pool, so one seed
+  // running the other way is noise, and `tools/balance.js` judges it over many seeds instead.
   { id: 'ground', text: 'The floor opens up across a level. One seed may run the other way; BALANCE judges the average.',
     check: (L) => {
       const o = roomsOf(L).filter((r) => ORDINARY.has(r.role) && r.drawn);
       if (o.length < 4) return null;
       const third = Math.floor(o.length / 3) || 1;
       const avg = (a) => a.reduce((s, r) => s + r.ground, 0) / a.length;
-      // True where this seed shows the trend, ash where it does not — never blood. A pool of five
+      // True where this seed shows the trend, ash where it does not, never blood. A pool of five
       // templates drawn through a window of three swaps two ranks often enough that one level
       // running flat is noise, and a page that paints noise as a broken promise teaches nobody.
       return avg(o.slice(-third)) > avg(o.slice(0, third)) ? true : null;
@@ -221,7 +221,7 @@ const GEN_RULES = [
     } },
   // `crowdAt` / `crowdMen` (THE ALTAR's three clubmen between the lone butcher and his ring): the
   // room holds exactly the men the level named, in an ordinary room, and it is what stands between
-  // two rooms with a butcher in them — the pair met back to back read as one room twice.
+  // two rooms with a butcher in them, the pair met back to back read as one room twice.
   { id: 'crowdroom', text: 'A room the level fills by hand holds exactly the men it names.',
     check: (L) => {
       const def = L.def;
@@ -245,7 +245,11 @@ const GEN_RULES = [
       if (a.length > 1) return `${a.length} armories`;
       if (!a.length) return true;
       if (!roomAllowed(ARMORY_TEMPLATE, L.def)) return 'an armory on a floor ROOM_LEVELS keeps it off';
-      return a[0].index >= TUNING.rooms.armory.from || `the armory is room ${a[0].index}`;
+      if (a[0].index < TUNING.rooms.armory.from) return `the armory is room ${a[0].index}`;
+      // Its crates: the template's own plus at most `armory.crates` loose ones (a grate's cover is not one).
+      const crates = L.props.filter((p) => p.kind === 'crate' && !p.hidden && inBox(a[0], p)).length;
+      const own = (a[0].tpl.rows || a[0].tpl.grid || []).join('').split('o').length - 1;
+      return crates <= own + TUNING.rooms.armory.crates || `${crates} crates in the armory (${own} + ${TUNING.rooms.armory.crates})`;
     } },
   { id: 'bridges', text: 'THE BRIDGE builds one or two of its canon rooms as the bridge itself (levelDef.bridges), and no other floor ever builds one.',
     check: (L) => {
@@ -254,6 +258,8 @@ const GEN_RULES = [
       if (!want) return !b.length || `${b.length} bridge room${b.length > 1 ? 's' : ''} on a floor without bridges`;
       if (b.some((r) => r.role !== 'canon')) return 'a bridge room outside the canon';
       if (b.some((r) => r.index === L.def.vaultAt)) return 'the bridge under the vault';
+      // ROOM_LEVELS may switch every bridge template off for this floor: then none is owed, and no seed can answer.
+      if (!b.length && !ROOM_TEMPLATES.some((t) => t.bridge && L.def.canon && t.canon === L.def.canon.id && roomAllowed(t, L.def))) return null;
       return (b.length >= want[0] && b.length <= want[1]) || `${b.length} bridge rooms (${want[0]}-${want[1]})`;
     } },
   { id: 'clutter', text: 'No barrel or chandelier is added to a room already holding its share of things that burn or blow.',
@@ -376,7 +382,7 @@ const GEN_RULES = [
   // busy saying something else. The first third is the promise that matters: the whole of an escort
   // is the walk from where you found it to the stairs, and one handed over in the last room was
   // never a decision about anything.
-  { id: 'beasts', text: 'At most one animal a floor, shut in a coop on plain floor of an ordinary room inside the first third of the level — never in the pen, a rest room, a teaching room, a trap room or a set piece. The horse stands before the first soul gate, in a stall of plain floor that leaves its room one piece.',
+  { id: 'beasts', text: 'At most one animal a floor, shut in a coop on plain floor of an ordinary room inside the first third of the level, never in the pen, a rest room, a teaching room, a trap room or a set piece. The horse stands before the first soul gate, in a stall of plain floor that leaves its room one piece.',
     check: (L) => {
       const kinds = ['tortoise', 'goose', 'crow', 'chicken', 'horse', 'pig', 'rabbit', 'husky'];
       const found = L.props.filter((p) => kinds.indexOf(p.kind) >= 0 || p.kind === 'coop')
@@ -477,8 +483,8 @@ const GEN_RULES = [
     } },
   // The way out of a room is at the far end of it. `room.exitFar` is what the generator recorded when
   // it chose: how far from the door the goat walks in by the corridor actually left, against the
-  // furthest any row (or column) of that wall could have been. A room with no choice to make — one
-  // candidate, or the way in and the way out on the same axis — records nothing.
+  // furthest any row (or column) of that wall could have been. A room with no choice to make, one
+  // candidate, or the way in and the way out on the same axis, records nothing.
   { id: 'farexit', text: 'A room is left by its far end: the corridor out makes at least DOORS.far of the greatest distance available from the way in.',
     check: (L) => {
       let said = null, any = false;
@@ -515,7 +521,7 @@ const GEN_RULES = [
     } },
   // `shiftOffTables`, `onTable`: a table's top is two tiles square whatever block it was drawn as, and
   // nothing loose stands under it (30 Sep 2026: a template's crate drawn half into a one-row table).
-  { id: 'ontable', text: 'Nothing loose — a crate, a bomb, a barrel, a stand of arms, a coop, a bowl of milk, a boulder — stands on a table\'s top.',
+  { id: 'ontable', text: 'Nothing loose, a crate, a bomb, a barrel, a stand of arms, a coop, a bowl of milk, a boulder, stands on a table\'s top.',
     check: (L) => {
       const tables = L.props.filter((p) => p.kind === 'table');
       if (!tables.length) return null;
@@ -529,7 +535,7 @@ const GEN_RULES = [
   // THE CAVE's floor. A boulder is stone to everything that moves, so the only thing that keeps a
   // scatter of them from shutting a way through is where they are allowed to stand. `placeRockCluster`
   // grows a formation of three to six of them on purpose, and every cell of one carries the same
-  // `cluster` id — two of those may stand shoulder to shoulder; anything else still may not.
+  // `cluster` id, two of those may stand shoulder to shoulder; anything else still may not.
   { id: 'rocks', text: 'A boulder stands on open floor: plain floor all round it, no grass, never another boulder beside it unless the two belong to the same formation.',
     check: (L) => {
       const rocks = L.props.filter((p) => p.kind === 'rock');
@@ -598,13 +604,39 @@ const GEN_RULES = [
     } },
   // The wall's dressing (gen.js `dressWall`) answers a thrown body and is no weapon of its own, so its
   // promise is to be rare and out of the way: against a wall with plain stone either side of it (never
-  // a doorway), the floor round it open, in an ordinary room — THE ARMORY's own suits aside — and
+  // a doorway), the floor round it open, in an ordinary room, THE ARMORY's own suits aside, and
   // never beside another piece of it or under a chandelier's rope.
   { id: 'armor', text: 'A suit of armour hangs on the far wall of an ordinary room, clear of every opening; a couple a floor, THE ARMORY\'s own aside.',
     check: (L) => {
       const suits = L.props.filter((p) => p.kind === 'armor');
       if (!suits.length) return null;
       return dressedRight(L, suits, 'armor');
+    } },
+  // The suit on a stand (gen.js, 1 Oct 2026): on plain floor where the room stays open round it, off the
+  // way in and clear of whatever else stands, in a room that is not teaching, resting, a set piece or a
+  // trap; a couple a floor at most, THE ARMORY's own aside.
+  { id: 'suits', text: 'A suit of armour stands on plain floor in an ordinary room, clear of the way in and of every other thing; one a floor, THE ARMORY stands two of its own aside.',
+    check: (L) => {
+      const suits = L.props.filter((p) => p.kind === 'suit');
+      if (!suits.length) return null;
+      const SU = TUNING.prop.suit, def = L.def, grass = new Set(L.grass || []);
+      if (def.cave || def.shroom || def.dark) return 'a standing suit on a floor with no square walls for it';
+      const per = new Map(); let loose = 0;
+      for (const p of suits) {
+        const r = roomAt(L, p.x, p.y);
+        if (!r) return 'a standing suit outside any room';
+        const armory = r.tpl && r.tpl.name === 'armory', tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+        if (!armory) loose++;
+        per.set(r.index, (per.get(r.index) || 0) + 1);
+        if (quiet(L, r) || r.isTrap || r.index < SU.from && !armory) return `a standing suit in room ${r.index} (${r.isTrap ? 'trap' : r.role})`;
+        if (!rockFits(L.tiles, L.W, tx, ty, grass)) return `a standing suit with no clear floor round it at ${tx},${ty}`;
+        if (r.enter && len(r.enter.x - p.x, r.enter.y - p.y) < 3 * TILE) return `a standing suit within three tiles of the way in (room ${r.index})`;
+        // Clear of what stands: milk is a tuft on the floor, laid after the suit, and grazing beside one is fine.
+        if (L.props.some((q) => q !== p && q.kind !== 'suit' && q.kind !== 'heal' && inBox(r, q) && len(q.x - p.x, q.y - p.y) < 2 * TILE)) return `a standing suit hard by another thing at ${tx},${ty}`;
+        if (L.props.some((q) => q.kind === 'chandelier' && inBox(r, q))) return `a standing suit under a chandelier's rope (room ${r.index})`;
+      }
+      for (const [i, n] of per) { const r = L.rooms[i]; if (n > (r.tpl && r.tpl.name === 'armory' ? SU.armory : 1)) return `${n} standing suits in room ${i}`; }
+      return loose <= SU.perLevel || `${loose} standing suits on one floor`;
     } },
   { id: 'trophies', text: 'A stag\'s head hangs on the far wall of an ordinary room, clear of every opening, a couple a floor at most, alone on its walls.',
     check: (L) => {
@@ -630,7 +662,7 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'hidden', text: 'A grate with something on it lies under a crate, a barrel or a stand of arms — on a level that lays grates (THE ARMORY too), never in a room that is teaching or resting.',
+  { id: 'hidden', text: 'A grate with something on it lies under a crate, a barrel or a stand of arms, on a level that lays grates (THE ARMORY too), never in a room that is teaching or resting.',
     check: (L) => {
       const hid = L.props.filter((p) => p.kind === 'spike' && p.hidden);
       if (!hid.length) return null;
@@ -677,10 +709,10 @@ const GEN_RULES = [
       return true;
     } },
   // The cave is the third floor now, so five levels after it draw cave rooms into their mix
-  // (`levelDef.known`), and a cave room brings its grass with it — which is right, and is what
+  // (`levelDef.known`), and a cave room brings its grass with it, which is right, and is what
   // `known` is for: the run keeps what it has been taught, and the grass is half of what THE HOLLOW
   // is about. What is still forbidden is grass BEFORE the cave, and grass on anything but floor.
-  { id: 'grass', text: 'Tall grass grows on the cave\'s floor, and on any later floor that drew a cave room into its mix — never before the cave, never on stone, a drop or the stairs, and never over milk or a thing to pick up.',
+  { id: 'grass', text: 'Tall grass grows on the cave\'s floor, and on any later floor that drew a cave room into its mix, never before the cave, never on stone, a drop or the stairs, and never over milk or a thing to pick up.',
     check: (L) => {
       if (!L.grass || !L.grass.length) return L.def.cave ? 'a cave with no grass in it' : null;
       if (!L.def.cave && !(L.def.known && L.def.known.has('hollow'))) return 'grass before the cave';
@@ -882,7 +914,7 @@ const GEN_RULES = [
       return walkedFrom(L, tiles)[L.exitTile.y0 * W + L.exitTile.x0] ? true : 'the way to the stairs runs through the vault';
     } },
   // `vaultKindOf` (gen.js) and `TUNING.vault`: what is behind the vault's door.
-  { id: 'vaultkind', text: 'The vault holds big grass and never a soul; it may be a trap, clubmen, three mages or the ogre behind three blows of iron, but mages only once the mage has been met, the ogre once the ogre has, and never on THE TRIP.',
+  { id: 'vaultkind', text: 'The vault holds big grass and never a soul; it may be a trap, clubmen, three mages or the ogre behind three blows of iron, but mages only once the mage has been met, the ogre once the ogre has, and never on THE TRIP; the ogre only off a room with fire, a blade or a blast in it.',
     check: (L) => {
       if (!L.vault) return null;
       const k = L.vault.kind;
@@ -890,6 +922,7 @@ const GEN_RULES = [
       if (!L.vault.box) return 'the vault has no chamber box for the trap to watch';
       if (k === 'mages' && !(L.def.met && L.def.met.has('seer'))) return 'three mages before the mage has been met';
       if (k === 'ogre' && !(L.def.met && L.def.met.has('butcher'))) return 'an ogre in the vault before the ogre has been met';
+      if (k === 'ogre' && !ogreArmed(L.rooms[L.def.vaultAt], L.props)) return 'the ogre wakes into a room with nothing that hurts him';
       if (L.def.shroom && k !== 'grass') return `a ${k} vault on THE TRIP`;
       return true;
     } },
@@ -937,7 +970,7 @@ const GEN_RULES = [
       const tier = S.levels.indexOf(li) + 1;
       if (wares.some((w) => !w.ware || !ARTIFACTS.some((a) => a.id === w.ware.id) || w.ware.tier !== tier)) return `a ware that is not a tier-${tier} talisman`;
       if (wares[0].ware.id === wares[1].ware.id) return 'the same talisman twice';
-      // `stockFor`: never two of one sort (`tag`) on a shelf — two that bend the headbutt are one choice.
+      // `stockFor`: never two of one sort (`tag`) on a shelf, two that bend the headbutt are one choice.
       const tagOf = (w) => (ARTIFACTS.find((a) => a.id === w.ware.id) || {}).tag;
       if (tagOf(wares[0]) && tagOf(wares[0]) === tagOf(wares[1])) return `two ${tagOf(wares[0])} talismans on one shelf`;
       return true;
@@ -985,7 +1018,7 @@ const GEN_RULES = [
 ];
 
 // Every rule held against one level. `ok` is true, false or null; `why` is the rule's own words for
-// a failure. A check that throws is a failure too — a rule the code cannot ask is a rule it cannot keep.
+// a failure. A check that throws is a failure too, a rule the code cannot ask is a rule it cannot keep.
 function checkRules(L) {
   return GEN_RULES.map((rule) => {
     let r = null;

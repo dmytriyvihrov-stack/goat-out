@@ -9,11 +9,11 @@
 // rooms, every man in the level is taken off, `n` hounds are dropped aware round him (the dev
 // spawner's own spot) and the goat stands (`still`), walks a ring (`circle`) or walks side to side
 // (`shuttle`) for `secs` seconds. God mode is on; the real frame loop is off while it runs. Per hound:
-//   flips  — reversals a second: his run turning more than 92° between one step and the next
-//   slide  — share of the time he moves with his body more than 90° off the way he is going
-//   stuck  — seconds in the chase moving less than a third of his own pace
-//   plant  — share of the time in the windup; ring — share circling (in the chase, near the ring)
-//   runs   — runs a minute; dist — mean tiles from the goat
+//   flips , reversals a second: his run turning more than 92° between one step and the next
+//   slide , share of the time he moves with his body more than 90° off the way he is going
+//   stuck , seconds in the chase moving less than a third of his own pace
+//   plant , share of the time in the windup; ring, share circling (in the chase, near the ring)
+//   runs  , runs a minute; dist, mean tiles from the goat
 // `arrive` is 1.57's measure for the routes: a hound and a goat in random spots of every room, and
 // who never gets onto the ring round him in `secs` seconds.
 window.HOUNDS = {
@@ -143,11 +143,11 @@ window.HOUNDS = {
   },
   // `crowd` is the same question with bodies in the way (24 Sep 2026, "he cannot get round his
   // own"): a hound and a goat `min`+ tiles apart in one room, and `men` of the cult stood on the
-  // tiles of the plain field between them — a clubman and a packmate by turns. `mode` 'post': they
+  // tiles of the plain field between them, a clubman and a packmate by turns. `mode` 'post': they
   // hold their spot whatever leans on them (a man mid-swing, a back in a doorway); 'stand': they
   // stand, but a shove moves them; 'chase': they are awake and after the goat too. Per scene:
   // whether he got onto the ring (`never` counts the misses, `died` those of them he did not live
-  // through — a grating, a drop), how long it took, `lean` — seconds pressed against one of them —
+  // through, a grating, a drop), how long it took, `lean`, seconds pressed against one of them,
   // and `stuck` as `measure` counts it. Math.random is seeded while it runs, so a before and an
   // after see the same rolls.
   crowd(levels, seeds, { men = 2, mode = 'post', secs = 15, min = 6 } = {}) {

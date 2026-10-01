@@ -5,7 +5,7 @@
 //   node tools/itch-push.js             zip from a clean commit and push it
 //   node tools/itch-push.js --dirty     the same from a dirty tree
 //   node tools/itch-push.js --dry       zip and print the butler command, push nothing
-// Once per machine, by the user (never by a session — the key is theirs):
+// Once per machine, by the user (never by a session, the key is theirs):
 //   butler from https://itch.io/docs/butler/installing.html, then `butler login` in a terminal.
 // The page itself must already exist on itch (Kind of project: HTML), whatever its visibility:
 // restricted stays restricted.
@@ -14,7 +14,7 @@ const path = require('path'), { execFileSync, spawnSync } = require('child_proce
 const { ROOT } = require('./script-lists.js');
 
 // <user>/<game> as in the page's URL (user.itch.io/game), and the channel the browser build lives on.
-const TARGET = process.env.ITCH_TARGET || '';
+const TARGET = process.env.ITCH_TARGET || 'dimache/doomed-goat';
 const CHANNEL = 'html5';
 
 if (!/^[\w-]+\/[\w-]+$/.test(TARGET)) { console.error('Set ITCH_TARGET to <user>/<game> (the itch page must exist, Kind: HTML).'); process.exit(1); }

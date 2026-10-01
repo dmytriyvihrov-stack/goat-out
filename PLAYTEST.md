@@ -1,4 +1,4 @@
-# PLAYTEST — the first round, 30 September to 6 October 2026
+# PLAYTEST, the first round, 30 September to 6 October 2026
 
 The plan agreed on 23 September (`tools/backlog-questions.html:142-164`, summarised at `BACKLOG.md:38-40`)
 turned into something a person can run: what we are asking, what build, what the testers fill in, what the
@@ -103,7 +103,7 @@ Google Forms (the plan: "Google Forms хватит"). One form, two sections. No
 field. The testers are mostly Russian speakers and the game is in English, so every question carries both.
 *(proposal: bilingual, tag instead of name, no required fields)*
 
-**Section A — before you press play** (the plan's "ещё до игры" line and the positioning test)
+**Section A - before you press play** (the plan's "ещё до игры" line and the positioning test)
 
 | # | English | Русский |
 |---|---|---|
@@ -114,7 +114,7 @@ field. The testers are mostly Russian speakers and the game is in English, so ev
 
 A3 is *(proposal)*: the plan is silent, and a phone run is a different test (§8, B12).
 
-**Section B — after you stop** (the plan's six, in its order)
+**Section B, after you stop** (the plan's six, in its order)
 
 | # | English | Русский |
 |---|---|---|
@@ -123,7 +123,7 @@ A3 is *(proposal)*: the plan is silent, and a phone run is a different test (§8
 | B3 | How do the men die in this game? When did you work that out? | Отчего в этой игре умирают люди? В какой момент ты это понял? |
 | B4 | One thing that stuck with you. | Одна вещь, которая запомнилась. |
 | B5 | One thing that annoyed you. | Одна вещь, которая бесила. |
-| B6 | How much do you want another run right now? **1** not at all … **5** I'm going back in. Why? — And if it were on Steam: no / at $8 / at $15 | Насколько хочется ещё забег прямо сейчас? **1** совсем нет … **5** уже иду обратно. Почему? — А если бы она была в Steam: нет / за $8 / за $15 |
+| B6 | How much do you want another run right now? **1** not at all … **5** I'm going back in. Why? - And if it were on Steam: no / at $8 / at $15 | Насколько хочется ещё забег прямо сейчас? **1** совсем нет … **5** уже иду обратно. Почему? - А если бы она была в Steam: нет / за $8 / за $15 |
 
 - B1 comes first on purpose: the code is on the clipboard until something else is copied.
 - B3 departs from the page's wording ("В какой момент понял, что убивают стены"), which gives the answer
@@ -155,7 +155,7 @@ For the 3–5 watched sessions. Silent, all of it; tied to the question it answe
 ```
 Tester: <tag>   Games loved: <A1>   Genre: none / some / veteran   Device + input: <>
 Build: <>   Run code(s): <>   Watched by: <>   Recording: yes, with consent / no
-Before play — A2 verbatim: "<>"
+Before play, A2 verbatim: "<>"
 
 Q1  first death at __:__ of ____ · played on after it: yes / no
 Q2  first wall kill by his own blow at __:__ · before 10:00: yes / no · any intervention before it: yes / no
@@ -235,15 +235,15 @@ facilitator says nothing for 30–40 minutes, the recording is kept.
 **The page text** *(proposal)*:
 
 ```
-GOAT OUT — playtest build <BUILD>
+GOAT OUT, playtest build <BUILD>
 
 Before you press play: open the form <link>, answer the first part, and keep the tab open.
 Then play here, on a computer with a mouse, the way you would at home. Stop when you would stop.
 When you stop, paste your RUN CODE into the form (clicking a death card copies it; it is also
 written at the foot of every card) and answer the six questions. Five minutes.
 
-WASD — run · mouse — aim · left click — headbutt · hold right click — grab, let go — throw
-E — roll · Space — bleat · Esc — pause · M — mute
+WASD, run · mouse, aim · left click, headbutt · hold right click, grab, let go, throw
+E, roll · Space, bleat · Esc, pause · M, mute
 
 Your run is kept in this browser. Nothing is collected here; the page loads one font from Google.
 ```
@@ -253,7 +253,7 @@ Your run is kept in this browser. Nothing is collected here; the page loads one 
 ```
 Нужен один вечер, минут 30–40, на мою игру: <ссылка>, пароль <пароль>.
 Сначала открой форму (она наверху страницы) и ответь на первые вопросы, потом играй, как играл бы дома,
-и бросай, когда захочется бросить. В конце — код забега и шесть вопросов. До понедельника, 5 октября.
+и бросай, когда захочется бросить. В конце - код забега и шесть вопросов. До понедельника, 5 октября.
 ```
 
 The password stays out of the repo.
@@ -273,11 +273,11 @@ The password stays out of the repo.
 4. **Into `BACKLOG.md`**, one batch at the top, in its own voice:
 
    ```
-   ## 7 October 2026 — the first playtest, <N> new players on <BUILD>
+   ## 7 October 2026, the first playtest, <N> new players on <BUILD>
 
    <one paragraph: the three numbers with their denominators, the positioning count, how many answered>
 
-   - **feel — <the ask, in the testers' words>.** <what was seen, k of N, observed or self-report,
+   - **feel, <the ask, in the testers' words>.** <what was seen, k of N, observed or self-report,
      the run codes it came from>
    ```
 
@@ -297,7 +297,7 @@ The password stays out of the repo.
 
 ```
 Release: itch.io restricted playtest page, BUILD 1.65 (uncommitted) on HEAD 9afe0d3 (1.64), checked 24 Sep 2026
-Overall: NO-GO today — expected five days before the freeze date.
+Overall: NO-GO today, expected five days before the freeze date.
 Blocking: fail 6 (B1 B1a F4 F5 F6 F7), not assessed 3 (B3 B5 B13). B4, B9, F2, G4 passed on 24 Sep (evening). Conditional: B12, F8.
 ```
 
@@ -336,9 +336,9 @@ browser, which this audit could not use), or **later** (a public-launch row, not
 | F8 | Anything a tester might read is true | `README.md` against the build | pass | README.md rewritten on 24 Sep (evening) with every number read off the code: eight floors, the pen, souls, the mouse, talismans, animals, THE DARK, THE TRIP | Claude | only if README is linked |
 | F9 | The game's name is one name | `<title>` and the canvas label against README and MARKET | pass | `DOOMED GOAT` in both page titles, the canvas label, the title screen and README (which says the repository calls it Goat Out) | Claude | no |
 | L1 | Fonts licensed; the one outbound call named | `@font-face` list | pass | Alegreya and Alegreya SC (OFL) from Google Fonts, `CLAUDE.md` Conventions; one line on the page | Claude | no |
-| L2 | Audio assets licensed | files shipped | pass | 0 audio files; all of it synthesised (`asset-audit.md`) | — | no |
+| L2 | Audio assets licensed | files shipped | pass | 0 audio files; all of it synthesised (`asset-audit.md`) | - | no |
 | L3 | SAVE THE PICTURE works in the iframe | save once on the itch page | **?** | off claude.ai it saves through a plain link (`painting.js:22-29`); a sandboxed frame may refuse downloads. Not part of the plan | Claude | no |
-| — | Cover, screenshots, GIF, tags, genre, price, public visibility, AI-art disclosure, privacy policy, credits page, press kit, devlog, trailer, Steam | — | later | a restricted playtest page needs none of them; the positioning test needs the page bare | user | no |
+| - | Cover, screenshots, GIF, tags, genre, price, public visibility, AI-art disclosure, privacy policy, credits page, press kit, devlog, trailer, Steam | - | later | a restricted playtest page needs none of them; the positioning test needs the page bare | user | no |
 
 ---
 

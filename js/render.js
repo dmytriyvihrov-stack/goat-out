@@ -3,7 +3,7 @@
 const FONT = "'Alegreya', Georgia, 'Times New Roman', serif";
 const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
 // Two families the dev drawer swaps while the game runs (26 Sep 2026, trying fonts on). `say` is
-// every line spoken aloud — a man's bark, an animal's terms, the floating words, the prologue's —
+// every line spoken aloud, a man's bark, an animal's terms, the floating words, the prologue's,
 // and `text` the sentence under a name: a boon card, the mouse's shelf, a skill's note. Entry 0 is
 // the build's own and the only one the itch build ever reads. `k` evens out x-heights: Pirata and
 // Jacquard set small for their size, and a bark is 9.5 px to begin with.
@@ -52,10 +52,10 @@ const ROOM_BAKE_MAX = 2, ROOM_BAKE_SEAM = 1;
 // explains itself, and the floor has room for what it does not. Every block lies in the room that
 // hands you the thing it is about, and none of them lies in an empty one:
 //   0  the pen, under the bars, over the prompt that says which button opens them
-//   1  the ambush room — a blade inside the door, a crate a step past it, the men down the far end
+//   1  the ambush room, a blade inside the door, a crate a step past it, the men down the far end
 //   2  the floor the first man of the run is standing on. One line: he can be hit. What a wall does
 //      to him is the whole of level one and it is learned by doing it, not by reading it here.
-//   3  the roll, in the first crowded room past the lesson — see `rollCandidates` in `gen.js`.
+//   3  the roll, in the first crowded room past the lesson, see `rollCandidates` in `gen.js`.
 const CONTROL_LINES = {
   key: [
     ['WASD - MOVE'],
@@ -109,7 +109,7 @@ const HINT_KEYS = {
 const DEPTH = { below: 0.42, night: 0.1 };
 
 // A stable value in 0..1 for one cell of the far layer. The landscape has to be the same landscape
-// every frame — generated from the cell rather than from `Math.random` — or it boils.
+// every frame, generated from the cell rather than from `Math.random`, or it boils.
 function farHash(i, j) {
   const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
   return v - Math.floor(v);
@@ -178,7 +178,7 @@ class Renderer {
       y: clamp(y, top, Math.max(top, cy + hh - m - h)) };
   }
 
-  // The scale of the top band — hearts, rail, count, clock. It is the UI scale times one number in
+  // The scale of the top band, hearts, rail, count, clock. It is the UI scale times one number in
   // `TUNING.hud`, so the corner of the screen can be made to read without touching the cards, the
   // menu or the floor text, all of which are sized for their own jobs.
   get hs() { return this.ts * TUNING.hud.scale; }
@@ -234,7 +234,7 @@ class Renderer {
       this.drawSouls(game);
       this.drawPuffs(game);
       const lit = (o) => !game.hidden(o.x, o.y);
-      // Props do not Y-sort against the goat (the men do, below) — their draw order is fixed, which is
+      // Props do not Y-sort against the goat (the men do, below), their draw order is fixed, which is
       // fine for a wall-hugging crate or a bowl of coals. A cage bar always needed the exception; a
       // sword or shield lying on the floor is the same problem at the same scale, and drawing it
       // flat underneath him whenever he had walked past it read as the weapon sinking into the floor.
@@ -264,7 +264,8 @@ class Renderer {
       // In the air over a man's back (LEAPFROG) he is over everyone.
       const foot = (o) => (o === g && g.leap ? Infinity : o.y);
       // What THE MAGNET carries round him stands in the same order (js/talismans.js).
-      const orbs = Talisman.orbiters(game).map((o) => o.p);
+      // Not over a dead goat: the talisman's step stops with him, and they hung frozen round an empty spot.
+      const orbs = g.dead ? [] : Talisman.orbiters(game).map((o) => o.p);
       const cast = standing.concat([g], orbs).sort((a, b) => foot(a) - foot(b));
       this.groundDone = true;
       try {
@@ -396,7 +397,7 @@ class Renderer {
 
   // Screen to world: the camera, the tilt, and whatever kick and zoom punch the frame is carrying.
   // On THE TRIP the lens also breathes and leans (`TUNING.shroom.cam`): slow, out of step with
-  // itself on the two axes, and never a shake — a shake in this game means a lost heart and nothing
+  // itself on the two axes, and never a shake, a shake in this game means a lost heart and nothing
   // else. It is a render term like the zoom punch rather than anything the simulation knows about,
   // so nothing it does can be walked into or killed by; the pointer-to-world conversion reads
   // `cam.zoom` alone, the same as it already does through a shake.
@@ -422,7 +423,7 @@ class Renderer {
 
   // THE ROOMS, baked (30 Sep 2026 perf pass: "make a performance improvement"). The square-walled
   // floors were every visible tile's swatch, wall cap, face strip, outline and litter sixty times a
-  // second — 250 smoothed `drawImage`s, 4.6 of a 10.5 ms draw on THE ALTAR — and none of it moves.
+  // second, 250 smoothed `drawImage`s, 4.6 of a 10.5 ms draw on THE ALTAR, and none of it moves.
   // So, as in the cave, it is painted once into a bitmap per `CAVE_BAKE` tiles and the frame is a
   // dozen `drawImage`s. A chunk is painted from a region a tile wider than itself (a pillar and the
   // straw run up over the row behind them) onto a bitmap `ROOM_BAKE_SEAM` px wider than its box, so
@@ -511,7 +512,7 @@ class Renderer {
           ctx.fillStyle = def.wallTop;
           // No cap on a room's bottom wall: what faces you there is the inside of it, and a pale
           // band along that edge reads as a stripe painted on the floor. Same call as the painted
-          // walls make — see `drawTiles` in `painted-art.js`.
+          // walls make, see `drawTiles` in `painted-art.js`.
           if (openW) ctx.fillRect(px, py, 4, TILE);
           if (openE) { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(px + TILE - 4, py, 4, TILE); }
           if (openS) { ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.fillRect(px, py + TILE - 6, TILE, 6); }
@@ -553,7 +554,7 @@ class Renderer {
 
   // THE CAVE. The rock is one shape rather than a grid of squares: every wall tile next to the floor
   // is added to a single path with its outside corners rounded to `world.round`, and every inside
-  // corner of the floor gets the fillet that fills it — the same shape `World.collideRound` pushes
+  // corner of the floor gets the fillet that fills it, the same shape `World.collideRound` pushes
   // bodies out of, so what you see is what you slide along. It is filled three times: a shadow a few
   // pixels down onto the floor, the rock's face in `wall`, and its top in `wallTop` lifted off every
   // edge that faces the camera, which leaves the face showing as a band along the bottom of the rock.
@@ -561,7 +562,7 @@ class Renderer {
   // The cave cut through the middle of its tiles (`World.marchCell`, the same shape the collision
   // pushes against). The floor goes down under every tile that touches the open, stone included,
   // since the march leaves the corners of a lone stone bare; then the rock is one path, filled as a
-  // shadow, as its face and — clipped to itself and lifted — as its top, the way the round cave is.
+  // shadow, as its face and, clipped to itself and lifted, as its top, the way the round cave is.
   drawCaveMid(game, cam) {
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
     const { secret, solid } = this.caveRock(game);
@@ -578,7 +579,7 @@ class Renderer {
 
   // The chunks the camera is about to need, painted in the browser's idle time rather than inside a
   // frame. `drawCaveBaked` paints at most `CAVE_BAKE_MAX` a frame at 2–10 ms each and shows flat
-  // floor until then, so walking into the cave — its first frames most of all — was squares of bare
+  // floor until then, so walking into the cave, its first frames most of all, was squares of bare
   // colour filling in over 30 ms frames (29 Sep 2026: "the cave still loads slowly"). This bakes the
   // view and a ring `CAVE_AHEAD` chunks round it, nearest to where he is heading first, while the
   // browser says it has time to spare, and stops short of the pixel budget so it never evicts what
@@ -618,16 +619,16 @@ class Renderer {
     if (want.length && bk.px <= CAVE_BAKE_PX * 0.7) this.askCaveWarm(game);
   }
 
-  // THE CAVE, baked. Everything `drawCaveRegion` paints is the same every frame — the floor, its
-  // litter and mushrooms, the rock and what grows on it — so it is painted once into a bitmap per
+  // THE CAVE, baked. Everything `drawCaveRegion` paints is the same every frame, the floor, its
+  // litter and mushrooms, the rock and what grows on it, so it is painted once into a bitmap per
   // `CAVE_BAKE` tiles and the frame is a handful of `drawImage`s. Painting it live was every tile's
   // floor, every mushroom's cap and every stalactite's curve sixty times a second, and pulled back to
   // the whole level (the death screen) it was thousands of them: THE TRIP ran at a few frames a
   // second there (playtest, 23 Sep 2026). A chunk is painted from a region two tiles wider than
-  // itself and clipped to its own box, so nothing that spills across a seam — a spire, the rock's
-  // drop shadow — is lost at it. It is rebaked when anything under it changes (`caveBakeSig`), at a
+  // itself and clipped to its own box, so nothing that spills across a seam, a spire, the rock's
+  // drop shadow, is lost at it. It is rebaked when anything under it changes (`caveBakeSig`), at a
   // resolution picked off the zoom, and at most `CAVE_BAKE_MAX` a frame, a flat floor standing in for
-  // one not painted yet. What moves — the glow round each mushroom — is stamped live over it, and
+  // one not painted yet. What moves, the glow round each mushroom, is stamped live over it, and
   // not at all once the camera is pulled back far enough that nobody could see it breathe.
   drawCaveBaked(game, cam, x0, y0, x1, y1, secret, solid) {
     const ctx = this.ctx, wd = game.world, def = game.level.def, K = CAVE_BAKE;
@@ -673,7 +674,7 @@ class Renderer {
   // What a chunk is painted from, as one number: its tiles and grass four tiles round (it is painted
   // from two round, and the rock band there reads two further) and which secret walls still stand.
   // Any change and the bitmap is stale. Never the world's `caveEpoch`: every room the clamp walls up
-  // bumps it, and in the sig it threw away every chunk on screen at once — a screen of flat floor
+  // bumps it, and in the sig it threw away every chunk on screen at once, a screen of flat floor
   // refilling over three 30 ms frames each time he went through a door (29 Sep 2026).
   caveBakeSig(wd, i0, j0, secret) {
     const W = wd.W, M = 4; let h = 17;
@@ -711,7 +712,7 @@ class Renderer {
     return { cv, B, sig, glows, px: size * size, used: bk.tick };
   }
 
-  // One region of the cave, painted into whatever `this.ctx` is — the chunk being baked.
+  // One region of the cave, painted into whatever `this.ctx` is, the chunk being baked.
   drawCaveRegion(game, x0, y0, x1, y1, secret, solid) {
     const ctx = this.ctx, wd = game.world, def = game.level.def, W = wd.W;
     const LIFT = 7, edge = [];
@@ -749,7 +750,7 @@ class Renderer {
 
   // The rock as one path, cut into chunks of `CAVE_CHUNK` tiles and kept between frames. Marching
   // the window and pushing two thousand points into a fresh Path2D every frame was, measured, the
-  // single most expensive thing in the cave — more than every body and every prop on the floor put
+  // single most expensive thing in the cave, more than every body and every prop on the floor put
   // together. The shape only changes when a wall does, and `World.caveDirty` is what says so.
   caveRockPath(wd, x0, y0, x1, y1, secret) {
     const K = CAVE_CHUNK, epoch = wd.caveEpoch || 0;
@@ -767,8 +768,8 @@ class Renderer {
     }
     return out;
   }
-  // One chunk of it. A cell every one of whose corners is deep rock — out past `cave.band` from any
-  // open floor — is skipped outright: that is the inside of the hill, and drawing it was showing a
+  // One chunk of it. A cell every one of whose corners is deep rock, out past `cave.band` from any
+  // open floor, is skipped outright: that is the inside of the hill, and drawing it was showing a
   // huge piece of the level that has nothing in it and cannot be walked into.
   caveChunkPath(wd, i0, j0, secret) {
     const K = CAVE_CHUNK, polys = [];
@@ -787,9 +788,9 @@ class Renderer {
   }
 
   // What grows on the rock. In any cave: stone spires that RISE at the foot of the rock's own face,
-  // spires standing up off its top, and seams of gems along the face — the band of rock the camera
-  // can actually see. All of it sits on stone tiles only — nothing here stands on floor you can walk
-  // on, so none of it can be mistaken for something in the way — and all of it is off a hash of the
+  // spires standing up off its top, and seams of gems along the face, the band of rock the camera
+  // can actually see. All of it sits on stone tiles only, nothing here stands on floor you can walk
+  // on, so none of it can be mistaken for something in the way, and all of it is off a hash of the
   // tile, so it is the same rock every frame. On the trip the rock is furred with mushrooms too.
   //
   // Two things changed after the 22 Sep 2026 playtest. The spires used to HANG: triangles pointing
@@ -808,11 +809,11 @@ class Renderer {
       const tx = edge[j], ty = edge[j + 1], px = tx * TILE, py = ty * TILE;
       const h = farHash(tx * 13 + 5, ty * 17 + 3), h2 = farHash(tx * 5 - 9, ty * 11 + 1), h3 = farHash(tx + 31, ty * 3 - 7);
       const southOpen = !solid(tx, ty + 1), northOpen = !solid(tx, ty - 1);
-      // Dripstone on the far wall of the room — what hangs from a cave's ceiling, which from here
+      // Dripstone on the far wall of the room, what hangs from a cave's ceiling, which from here
       // is the rock above the floor. It used to be the same shape as the stone teeth below: a row
       // of even, needle-pointed triangles all along the top of every room, which reads as a mouth
       // rather than as a cave. Stalactites are grown, not broken: blunt tips, fluted sides, banded
-      // where the water left its rings, and wildly uneven in length — a couple of long ones and a
+      // where the water left its rings, and wildly uneven in length, a couple of long ones and a
       // lot of short stubs. Fewer of them, too, so what is left is a feature and not a fringe.
       if (southOpen && h < LK.drips) {
         const n = 1 + Math.floor(h2 * 2), base = py + TILE;
@@ -843,8 +844,8 @@ class Renderer {
         }
       }
       // A seam of gems, and only along the face: the band of rock at the bottom of the tile is the
-      // part of it the camera is looking at, and a seam on the top surface — the part you are looking
-      // over rather than at — was paint nobody ever saw. Faceted, each catching the light on its own
+      // part of it the camera is looking at, and a seam on the top surface, the part you are looking
+      // over rather than at, was paint nobody ever saw. Faceted, each catching the light on its own
       // beat. The count is down with the room it has left to stand in.
       if (southOpen && h3 < LK.crystals && PIXEL_ENV.ready) {
         PIXEL_ENV.draw(ctx, 'crystals', px + 8 + h * 16, py + TILE + 1, 11 + h2 * 5);
@@ -858,8 +859,8 @@ class Renderer {
         }
       }
       // Small crystals among the mushrooms on top of the rock (`gems` of the edges): a stone in the
-      // seam's own colours with, as often as not, a smaller one leaning on it — a little cluster
-      // rather than a lone speck — and a little of its own light, like the caps beside it.
+      // seam's own colours with, as often as not, a smaller one leaning on it, a little cluster
+      // rather than a lone speck, and a little of its own light, like the caps beside it.
       if (farHash(tx * 17 + 3, ty * 29 - 11) < LK.gems) {
         const gx = px + 6 + farHash(tx * 5, ty + 13) * (TILE - 12), gy = py + 7 - LIFT + farHash(tx + 19, ty * 11) * (TILE - 10);
         const c = GEMS[Math.floor(farHash(tx - 5, ty + 7) * GEMS.length)], sz = 2.2 + farHash(tx, ty * 9) * 1.6;
@@ -974,7 +975,7 @@ class Renderer {
   }
   // The trip's floor: a little ring of glowing caps on some tiles, which is most of the light there is.
   // Never on a tile something was put down on, and never on the stairs.
-  // `look.trip.floor` of the tiles get one, and they are the rock's own mushrooms — the same caps,
+  // `look.trip.floor` of the tiles get one, and they are the rock's own mushrooms, the same caps,
   // colours, sizes and glow as `drawCaveDecor`'s fur. They were the painted magenta clump, which is
   // also the big mushroom you can break (`drawBigShroom`), so the floor was full of little copies of
   // the one thing on it that matters (24 Sep 2026).
@@ -993,7 +994,7 @@ class Renderer {
     }
   }
   // THE TRIP's boulder: a cap as tall as a man on a thick stalk. It is the same boulder in every other
-  // respect — it blocks, it kills a thrown body, it takes `rock.hits` blows — and a crack runs across
+  // respect, it blocks, it kills a thrown body, it takes `rock.hits` blows, and a crack runs across
   // the cap once it has taken the first.
   drawBigShroom(p) {
     const ctx = this.ctx, t = this.t;
@@ -1128,7 +1129,7 @@ class Renderer {
   }
 
   // Tall grass, over everything that stands in it. Each tile is a handful of blades rooted at fixed
-  // spots off a hash, swaying, and parted by any body within a stride of them — laid right down under
+  // spots off a hash, swaying, and parted by any body within a stride of them, laid right down under
   // the goat so he is never lost in it himself. What it covers of a man is the lower half of him.
   drawGrass(game, cam) {
     const wd = game.world; if (!game.level.grass || !game.level.grass.length) return;
@@ -1141,8 +1142,8 @@ class Renderer {
     if (!game.goat.dead) bodies.push({ x: game.goat.x, y: game.goat.y, goat: true });
     for (const e of game.enemies) if (!e.dead && !e.ghosted && onView(e)) bodies.push({ x: e.x, y: e.y });
     const dark = def.grassColor || '#3d5a2a', hi = def.grassHi || '#6f8f45';
-    // Every blade goes into one of two paths and each path is filled once. It was a fill a blade —
-    // seven a tile, several hundred a frame on a cave floor — and that was the cave's slowness: each
+    // Every blade goes into one of two paths and each path is filled once. It was a fill a blade,
+    // seven a tile, several hundred a frame on a cave floor, and that was the cave's slowness: each
     // fill is its own trip through the rasteriser, however small the blade.
     const pDark = new Path2D(), pHi = new Path2D();
     for (let ty = Math.max(0, y0); ty <= Math.min(wd.H - 1, y1); ty++) for (let tx = Math.max(0, x0); tx <= Math.min(W - 1, x1); tx++) {
@@ -1330,10 +1331,10 @@ class Renderer {
     if (!holes.length && !windows.length) return;
     // The ground first, through every hole of a kind at once: one clip and one pass rather than one
     // of each per tile. A flat black square was the whole of this, and a flat black square is what a
-    // pillar looks like from above — which is exactly the two things people were mixing up.
+    // pillar looks like from above, which is exactly the two things people were mixing up.
     this.throughHoles(holes, cam, false);
     this.throughHoles(windows, cam, true);
-    // 30 Sep 2026 playtest: "holes must be far easier to read — contrasting; inside a building there
+    // 30 Sep 2026 playtest: "holes must be far easier to read, contrasting; inside a building there
     // can be spikes". Hard bands now, not soft shade: the far side shows its own wall going down (the
     // lip, then the face in three steps darker), the near and the side edges are broken board ends
     // caught in the light, a ragged lighter line the eye cannot take for a pillar's top. The spikes
@@ -1395,7 +1396,7 @@ class Renderer {
     ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
     const k = night ? DEPTH.night : DEPTH.below;
     const ox = cam.x * (1 - k), oy = cam.y * (1 - k), cell = night ? 32 : 72;
-    // A hole in a floor has a floor of stakes under it (30 Sep 2026: "inside a building — spikes"):
+    // A hole in a floor has a floor of stakes under it (30 Sep 2026: "inside a building, spikes"):
     // one baked sheet laid as a pattern. Pale points on the dark are what say "this kills" before the
     // eye has worked out it is a hole. Fixed to the world since 1 Oct 2026 ("sharper, and without
     // movement"): sliding under the lip they shimmered; the window's sky keeps its parallax.
@@ -1496,7 +1497,7 @@ class Renderer {
 
   // Somebody going down. He turns over as he goes, gets smaller, and the dark takes him. It is the
   // one death in the game with nothing left on the floor afterwards, so the fall has to be the whole
-  // of it — before this he simply stopped existing, which reads as a bug and not as a drop.
+  // of it, before this he simply stopped existing, which reads as a bug and not as a drop.
   drawFallers(game) {
     const ctx = this.ctx;
     for (const f of game.fallers) {
@@ -1568,7 +1569,7 @@ class Renderer {
       }
     }
     // The mouse's room says on its floor which button takes one of hers, for as long as the offer
-    // stands — a stool with a thing on it reads as a display, not as a choice you are being handed.
+    // stands, a stool with a thing on it reads as a display, not as a choice you are being handed.
     for (const m of game.props) {
       if (m.kind !== 'mouse' || m.broken) continue;
       const room = lv.rooms[m.shopId]; if (!room || !room.seen) continue;
@@ -1580,8 +1581,8 @@ class Renderer {
       ctx.fillStyle = 'rgba(255,224,138,0.2)';
       ctx.fillText(label, cx, cy * TILT);
     }
-    // THE FORK: the floor in front of each flight says where it goes — the floor it climbs to, and
-    // under it what that floor is — so the one choice of road in a run is read, not found out on
+    // THE FORK: the floor in front of each flight says where it goes, the floor it climbs to, and
+    // under it what that floor is, so the one choice of road in a run is read, not found out on
     // the card.
     const fk = lv.forkTile, last = lv.rooms[lv.rooms.length - 1];
     if (fk && last && last.seen && Math.abs(fk.x0 * TILE - game.cam.x) < 1400) {
@@ -1847,14 +1848,24 @@ class Renderer {
   flame(x, y, size, seed, witch) {
     CombatFX.flame(this,x,y,size,seed,witch);
   }
+  // The fire on the goat, grown as far as the tick toward his next lost heart (`goat.fireK`,
+  // `TUNING.goat.burnLook`): a small flame on his body the moment he steps in, his whole back alight
+  // the moment it costs. Stepped through baked sizes, never scaled per frame. The last two steps
+  // take his flanks too, so "nearly" reads from across a room.
+  goatFlame(g) {
+    const B = TUNING.goat.burnLook, n = B.sizes.length, i = Math.min(n - 1, Math.floor((g.fireK || 0) * n));
+    const y = B.low + (B.high - B.low) * i / (n - 1), s = B.sizes[i];
+    if (i >= n - 2) { this.flame(-7, y + 4, s - 5, 3, g.witchFire); this.flame(7, y + 4, s - 5, 5, g.witchFire); }
+    this.flame(0, y, s, 1, g.witchFire);
+  }
 
   // The fissure in a wall that gives. It was one four-point zigzag drawn straight down the middle of
   // the tile, which reads as a bolt of lightning painted on the stonework rather than as damage: a
   // crack is a hairline that wanders, forks, and ends where it runs out of energy. Drawn from the
   // tile's own position so it is the same crack every frame, dark with a chipped highlight under it,
-  // and the blow count widens it and adds a fork — `hits` is what the player is reading.
+  // and the blow count widens it and adds a fork, `hits` is what the player is reading.
   // A wall that gives (`carveSecret`): a crack of hard pixels down the stone with a pale lip, and a
-  // little rubble at its foot. 1 Oct 2026, playtest ("the little secret rooms are gone — or I cannot
+  // little rubble at its foot. 1 Oct 2026, playtest ("the little secret rooms are gone, or I cannot
   // see them in the walls any more"): the hairline it was drew under the brick sheets at a pixel wide
   // and 40% dark, and was lost. Now it reads from across the room, and wider once it has taken a blow.
   wallCrack(x, y, hits) {
@@ -2112,7 +2123,7 @@ class Renderer {
   // THE ESCORTS (js/beasts.js). Three animals drawn the way everything else in this game is drawn:
   // a handful of shapes that have to read across a room at a glance and say what the thing does.
   //
-  // The tortoise is a dome first and an animal second — it is cover as much as it is company, so the
+  // The tortoise is a dome first and an animal second, it is cover as much as it is company, so the
   // shell is most of the drawing and the head and legs come and go. Pulled in (`tuckT`) it is nothing
   // but shell, which is the state in which it blocks and stops rounds; out, four stubby legs and a
   // small head say it is walking again and can be picked up.
@@ -2212,7 +2223,7 @@ class Renderer {
     }
   }
 
-  // The goose: bone-white like the hen so the two read as the same side of the fight, but tall — the
+  // The goose: bone-white like the hen so the two read as the same side of the fight, but tall, the
   // neck is the whole silhouette and the whole of what it says about itself. It is up and open when
   // the honk is fresh, down and forward when it is walking.
   drawGoose(p) {
@@ -2301,7 +2312,7 @@ class Renderer {
 
   // The crow: near-black with a cold blue sheen on it, so it reads against plum and timber without
   // being another pale animal. A wing out and a hop when it is travelling, head down when it is on
-  // a body — which is the one thing it is ever doing, and the whole of what it asks of the player.
+  // a body, which is the one thing it is ever doing, and the whole of what it asks of the player.
   drawCrow(p) {
     const ctx = this.ctx, r = p.r;
     const moving = Math.hypot(p.vx || 0, p.vy || 0) > 8;
@@ -2391,7 +2402,7 @@ class Renderer {
 
   // The cave's stone teeth: three spikes of rock standing up out of the floor at the foot of a wall,
   // the tallest in the middle, wet at the tips. It is drawn in the room's own rock colours because it
-  // IS the room's rock — nothing about it is a warning sign painted on the ground — and what has to
+  // IS the room's rock, nothing about it is a warning sign painted on the ground, and what has to
   // read from across the room is the shape: narrow, tall, pointed, and the light running along the
   // edge of each point. The glint is the only thing here that moves, and it is on `cave.spikes.glint`.
   drawSpire(p) {
@@ -2435,7 +2446,7 @@ class Renderer {
   // twice, brimming and slopping over the lip, with a pip on the band for every heart still in it.
   // It is deliberately enormous. The offer used to be three bowls of milk with the words THREE BOWLS
   // OF MILK written under them, and the 22 Sep 2026 note was that the caption should be a bucket
-  // instead — a thing that size, full of that, needs nothing said about it.
+  // instead, a thing that size, full of that, needs nothing said about it.
   drawPail(p) {
     const ctx = this.ctx, t = this.t, R = p.r * 1.7, H = R * 2.2;
     const y0 = p.y + 4, wob = Math.sin(t * 1.4 + p.x * 0.03) * 0.8;
@@ -2524,7 +2535,7 @@ class Renderer {
         ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(p.x, p.y, 56, 0, Math.PI * 2); ctx.fill();
       }
       ctx.save(); ctx.translate(p.x, p.y);
-      // Open, it swings on its hinge — one end, against the jamb — and folds back along the wall of
+      // Open, it swings on its hinge, one end, against the jamb, and folds back along the wall of
       // the corridor it opens into. Turned about its own middle, a door standing open (the clock door
       // before it shuts, one a man shouldered) lay across the doorway like a beam, half in the stone
       // and half through the goat (playtest, 25 Sep 2026).
@@ -2561,8 +2572,8 @@ class Renderer {
         }
       }
       if ((p.vault && !p.vaultEmpty) || p.gate) {
-        // The wisp itself, painted small on the face: the door says what is behind it — or what
-        // opens it — in the language of the thing itself, which is the only wording nobody has to
+        // The wisp itself, painted small on the face: the door says what is behind it, or what
+        // opens it, in the language of the thing itself, which is the only wording nobody has to
         // be taught. The gate's is violet and breathing; the vault's is the same shape, quieter.
         const a = p.gate ? 0.75 + 0.25 * Math.sin(this.t * 4) : 0.6;
         ctx.save(); ctx.rotate(tall ? Math.PI / 2 : 0); ctx.globalAlpha = a;
@@ -2596,15 +2607,15 @@ class Renderer {
     } else if (p.kind === 'ware') {
       this.drawWare(p);
     } else if (p.kind === 'secret') {
-      // This tile is already floor — `carveSecret` cut it that way so what is behind it is real
-      // ground rather than a curtain — and the wall is the only lie. Full tile, the room's own wall
+      // This tile is already floor, `carveSecret` cut it that way so what is behind it is real
+      // ground rather than a curtain, and the wall is the only lie. Full tile, the room's own wall
       // colour, so nothing under it gives it away before the crack does.
       const h = TILE / 2;
       ctx.fillStyle = p.wallColor; ctx.fillRect(p.x - h, p.y - h, TILE, TILE);
       // The level's wallTop as it is now, not as it was when the wall was cut: `ART_PASS` can change it.
       const def = this.game && this.game.level && this.game.level.def;
       ctx.fillStyle = (def && def.wallTop) || p.wallTop; ctx.fillRect(p.x - h, p.y - h, TILE, 6);
-      // A hairline until it takes a blow, and a gap with chips out of it after — what "IT CRACKS"
+      // A hairline until it takes a blow, and a gap with chips out of it after, what "IT CRACKS"
       // said, on the wall itself.
       this.wallCrack(p.x, p.y, p.hits || 0);
     } else if (p.kind === 'table') {
@@ -2625,7 +2636,7 @@ class Renderer {
       this.flame(p.x, p.y - 20, 8 + (p.phase * 2 % 2), p.phase);
     } else if (p.kind === 'spike') {
       // Not a thing standing in the room: a tile of the floor that is not floor. Iron grating laid
-      // into the boards, with dark slots in it that the teeth come up through — so a stretch of them
+      // into the boards, with dark slots in it that the teeth come up through, so a stretch of them
       // reads as a piece of ground with an opinion rather than as furniture somebody left out.
       const S = TUNING.prop.spike, r = p.r;
       const state = p.spikeState, arming = state === 'armed';
@@ -2648,7 +2659,7 @@ class Renderer {
         ctx.fillStyle = arming ? `rgba(255,224,138,${0.22 + 0.18 * Math.sin(this.t * 26 + k)})` : 'rgba(239,230,208,0.16)';
         ctx.fillRect(sx, -d + 3.5, sw * 0.55, 1.4);
       }
-      // the rail along the near lip, so the grate has a thickness — brighter metal against the dark
+      // the rail along the near lip, so the grate has a thickness, brighter metal against the dark
       // frame is what keeps reading as iron rather than shadow the further it sits from the goat.
       ctx.fillStyle = arming ? PALETTE.ochre : '#948a7d'; ctx.fillRect(-w + 1.5, d - 3, w * 2 - 3, 1.6);
       if (out > 0) {
@@ -2666,7 +2677,7 @@ class Renderer {
     } else if (p.kind === 'crate') {
       // A small wooden box, and that is the whole drawing: an outline, a face, a lit top edge and one
       // band across it. It was bigger and had planks, bands and a stud on it, which is detail spent
-      // saying nothing — a box has to read as *liftable* from across a room and nothing else, and
+      // saying nothing, a box has to read as *liftable* from across a room and nothing else, and
       // four shapes do that better than nine. It is the only thing on this floor you can pick up.
       const r = p.r;
       const lift = p.held ? 4 : 0, spin = p.flung ? Math.atan2(p.vy, p.vx) * 0.4 : 0;
@@ -2693,7 +2704,7 @@ class Renderer {
         ctx.beginPath(); ctx.ellipse(bx, 1, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = PALETTE.comb; ctx.fillRect(bx - 1.5, -7, 3, 2.5);
       } else {
-        // Any other animal is drawn by its own drawer, small, pacing behind the slats — a stand-in
+        // Any other animal is drawn by its own drawer, small, pacing behind the slats, a stand-in
         // object rather than the real prop, which does not exist until the coop is broken.
         ctx.save(); ctx.beginPath(); ctx.rect(-r, -h * 0.5, w, h); ctx.clip();
         ctx.translate(bx, 2); ctx.scale(0.8, 0.8);
@@ -2809,7 +2820,7 @@ class Renderer {
         // The rare one, worth twice the milk: a patch of real dirt under it, since grass sprouting
         // straight out of the boards read as a decal laid over the floor rather than ground of its
         // own, then a few blades pushed up through it leaning together like something breathes on
-        // them. Grazed, not grabbed — see the pickup in game.js.
+        // them. Grazed, not grabbed, see the pickup in game.js.
         ctx.fillStyle = PALETTE.dirt; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6, 16, 7, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = PALETTE.dirtHi; ctx.beginPath(); ctx.ellipse(p.x, p.y + 4.5, 12.5, 5.4, 0, 0, Math.PI * 2); ctx.fill();
         for (let k = -3; k <= 3; k++) {
@@ -2846,7 +2857,7 @@ class Renderer {
   // The hen, in her three states. She has to read as an ally at a glance and as a projectile at a
   // glance, and those are two different silhouettes: walking she is upright and round with her head
   // up, flying she is stretched out along her own velocity with her wings back. The counter-squash
-  // is the usual one — she stands on a tilted floor like everything else that stands.
+  // is the usual one, she stands on a tilted floor like everything else that stands.
   drawHen(p) {
     const ctx = this.ctx;
     const flying = p.birdState === 'flying', stunned = p.birdState === 'stunned';
@@ -2854,7 +2865,7 @@ class Renderer {
     const bob = flying ? 0 : Math.sin(p.bob) * 1.6;
     this.shadow(p.x, p.y + 6, flying ? 6 : 8, flying ? 3 : 4.5);
     // World space is already squashed on Y here, so the translate is plain world coordinates and
-    // the counter-scale after it is what stands her upright — the same pair every creature uses.
+    // the counter-scale after it is what stands her upright, the same pair every creature uses.
     ctx.save(); ctx.translate(p.x, p.y + bob); ctx.scale(1, 1 / TILT);
     if (flying) ctx.rotate(a);
     if (stunned) ctx.rotate(Math.PI * 0.4);           // over on her side, legs out
@@ -3001,10 +3012,10 @@ class Renderer {
     }
   }
 
-  // The hound: low, long and all snout, and the only thing on the level with four legs —
+  // The hound: low, long and all snout, and the only thing on the level with four legs,
   // which is the whole reason it reads as something else at a glance.
   // The wraith. As mist it is a pale hooded shape with a streaming tail, a soft rim and no shadow
-  // under it; the instant it commits it gathers in, hardens — dark edge, dark hood, a shadow — and
+  // under it; the instant it commits it gathers in, hardens, dark edge, dark hood, a shadow, and
   // that hardening is the only warning the goat gets. It has to be legible as mist or the level is
   // unfair: you cannot choose which way to face if you cannot see what is circling you.
   drawWraith(e, r) {
@@ -3196,8 +3207,8 @@ class Renderer {
     this.drawTelegraph(e); this.drawAimTelegraph(e); this.drawHopMark(e);
     // The man with a soul in him. Which boss is carrying one is decided before the level starts and
     // was, until now, something you found out by killing him: two Butchers in a run looked the same
-    // and one of them was worth a verb. He glows — a low amber haze that breathes, the colour of the
-    // thing he will drop — and his eyes come up red. Neither costs him anything in a fight; both are
+    // and one of them was worth a verb. He glows, a low amber haze that breathes, the colour of the
+    // thing he will drop, and his eyes come up red. Neither costs him anything in a fight; both are
     // readable across a room, which is the whole job. `drawCultist` and `drawHound` read `e.soul`
     // for the eyes, and this is the haze under him.
     if (e.soul && !e.dead && !e.ghosted && !this.silPass) {
@@ -3217,7 +3228,7 @@ class Renderer {
 
   // How far into a telegraph he is, 0..1, eased by `windupTint.curve`. Every windup counts its
   // `timer` down from whatever it was given (slowed by COLD EYE and the like), so the full length is
-  // read off the timer the frame the state began — or began again with a fresh timer — rather than
+  // read off the timer the frame the state began, or began again with a fresh timer, rather than
   // asked of every kind's own TUNING key. Render only: `windState` / `windFull` are the picture's.
   windupGlow(e) {
     const W = TUNING.juice.windupTint;
@@ -3230,7 +3241,7 @@ class Renderer {
     const ctx = this.ctx;
     const paintedKey = PIXEL_ART.ready && this.painted.characterKey(e);
     // `character()` already anchors each sheet at its own measured foot line (walk-cycle and static
-    // "Facing" art sit at different heights in their 128px cell) — nothing needs nudging again here.
+    // "Facing" art sit at different heights in their 128px cell), nothing needs nudging again here.
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
     if (e.state === 'flung') ctx.rotate(this.t * 14); else if (!paintedKey) ctx.rotate(e.facing);
     if (e.state === 'stagger') ctx.translate(Math.sin(this.t * 60) * 2, 0);
@@ -3276,7 +3287,7 @@ class Renderer {
       ctx.save(); ctx.globalAlpha = Math.min(0.9, e.flash * 10); ctx.filter = 'brightness(0) invert(1)';
       body(); ctx.restore();
     }
-    // Shock: poison and stun at once, one mark for both — a green-and-gold spiral over his head,
+    // Shock: poison and stun at once, one mark for both, a green-and-gold spiral over his head,
     // turning, in place of the stars and the bubbles, so the pair reads as one state.
     if (e.shock > 0) {
       // Half the size it was: at 16 px across it covered the man it was a label on.
@@ -3321,7 +3332,7 @@ class Renderer {
   }
 
   // What hangs over a man's head: the search mark, his bark, a bomb's fuse, his notches. Its own
-  // method so THE DARK can lay it back over the dark (`Dark.readable`) — a shout is heard, not seen.
+  // method so THE DARK can lay it back over the dark (`Dark.readable`), a shout is heard, not seen.
   // `placed` is the plates already drawn this frame: two men a step apart shouting at once had their
   // words printed over each other, and a later plate steps up clear of an earlier one.
   drawOverhead(e, placed) {
@@ -3371,7 +3382,7 @@ class Renderer {
       ctx.strokeStyle = `rgba(255,224,138,${0.5 + 0.5 * Math.sin(this.t * 40)})`; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 5 + p * 8, 0, Math.PI * 2); ctx.stroke();
     }
-    // Health notches over anyone who takes more than one blow — a boss (the outline) and the rat ogre —
+    // Health notches over anyone who takes more than one blow, a boss (the outline) and the rat ogre,
     // so what is left of him reads off his own head instead of off a text popup.
     // Measured off the top of the sprite he is actually drawn as: `e.r` is his footprint, and off
     // that the notches landed across a pixel mage's eyes.
@@ -3394,7 +3405,7 @@ class Renderer {
     return (u ? PIXEL_EXTENT[u] : e.r * 2.3) * this.bodyScale(e) + (e.state === 'hop' && e.hopZ ? e.hopZ : 0);
   }
   // How much bigger than his sheet a man is drawn: his kind's own fit to its sheet (the butcher on
-  // the old Butcher's 48 px sheet, the ogre on his own), times `boss.scale` for a boss — one rule
+  // the old Butcher's 48 px sheet, the ogre on his own), times `boss.scale` for a boss, one rule
   // for every kind (`TUNING.boss`). Static, so THE DARK's eyes (js/dark.js) sit on the same head.
   static bodyScaleOf(e) {
     const kind = e.kind === 'butcher' ? TUNING.butcher.scale : e.champion ? TUNING.champion.scale : 1;
@@ -3408,7 +3419,7 @@ class Renderer {
   static isBoss(e) { return !!(e.boss || e.keeper) && e.kind !== 'ratogre'; }
 
   // The boss's outline (`TUNING.boss.outline`): his own body drawn again as a flat silhouette `px`
-  // out on each of eight sides, behind him — a hard ring of pixels round the sprite, never a glow.
+  // out on each of eight sides, behind him, a hard ring of pixels round the sprite, never a glow.
   // Flat colour with no filter: the body is drawn far off the canvas and only its shadow lands
   // where he stands, and a canvas shadow is one exact colour, blur 0, offset in device px (which is
   // why each side's offset is pushed through the transform by hand).
@@ -3452,7 +3463,7 @@ class Renderer {
   }
 
   // The butcher's hook, wound up (`hookwind`): a thin line on the floor from him to where it will
-  // land (`e.hookAim`, where the goat is going — `Enemy.hookLead`), amber like every windup, dashed
+  // land (`e.hookAim`, where the goat is going, `Enemy.hookLead`), amber like every windup, dashed
   // and crawling outward, surer as the throw comes; a square of cells marks the landing. Only a line:
   // the hook is thin, and the lane to step out of is that thin too.
   drawHookLine(e) {
@@ -3462,7 +3473,12 @@ class Renderer {
     const ux = dx / d, uy = dy / d, w = this.game && this.game.world;
     // As far as it will fly: `over` past the aim, cut at the first stone it would clank on.
     let run = d + H.over * TILE;
-    if (w) for (let s = e.r; s < run; s += 6) if (w.isSolid(Math.floor((e.x + ux * s) / TILE), Math.floor((e.y + uy * s) / TILE))) { run = s; break; }
+    // The hook stops on a shut door, a table or a barrel as well as stone (`hookLine` asks `stopsBullets`), so the line does too.
+    const stops = this.game ? this.game.props.filter((q) => q.stopsBullets && q !== e) : [];
+    if (w) for (let s = e.r; s < run; s += 6) {
+      const sx = e.x + ux * s, sy = e.y + uy * s;
+      if (w.isSolid(Math.floor(sx / TILE), Math.floor(sy / TILE)) || stops.some((q) => Math.hypot(q.x - sx, q.y - sy) < (q.r || 10))) { run = s; break; }
+    }
     ctx.save();
     ctx.strokeStyle = `rgba(242,170,48,${0.3 + 0.55 * p})`; ctx.lineWidth = 1 + p;
     ctx.setLineDash([6, 5]); ctx.lineDashOffset = -this.t * 50;
@@ -3504,7 +3520,7 @@ class Renderer {
   }
 
   // The art pass's windups (`ART_PASS`): the same ground as `drawTelegraph`, laid as cells of the effect
-  // grid in amber — the colour a floor never has and a cultist never wears, where blood red sat on
+  // grid in amber, the colour a floor never has and a cultist never wears, where blood red sat on
   // red robes and on red blood. Cells are counted off the man, unrotated, so they stay square on screen.
   drawTelegraphCells(e, cfg) {
     const ctx = this.ctx, px = TUNING.effects.pixel * 2, f = e.facing;
@@ -3630,7 +3646,7 @@ class Renderer {
 
   // A hunter's shot is the one thing in the game you cannot see coming without this: the dashed
   // line grows and brightens across `hunter.aimTime` before he fires. It used to live inside
-  // `drawCultist` and only a hunter drawn by that primitive fallback ever showed it — once the
+  // `drawCultist` and only a hunter drawn by that primitive fallback ever showed it, once the
   // painted sprite took over his body (`characterKey` returns 'hunter'), the tell silently went
   // dark and a rifle became a hitscan nobody could read. Drawn here, once, for either body.
   // Where the rat ogre or the Butcher is coming down: a ring on the floor from the moment he
@@ -3708,19 +3724,19 @@ class Renderer {
     }
   }
 
-  // The Seer's rune, burning in on the floor where you were standing — or, if you are carrying him,
+  // The Seer's rune, burning in on the floor where you were standing, or, if you are carrying him,
   // on the floor under his own feet, which is the floor under yours.
   drawRunes(game) {
     const ctx = this.ctx;
     for (const e of game.enemies) {
       if (e.dead || !e.rune || (e.state !== 'cast' && e.state !== 'held')) continue;
-      // How far into the cast he is. It is measured against the windup he was actually given —
-      // `castWind * mods.enemySlow`, which is 1.1 of it by default and 1.4 in EASY MODE — and not
+      // How far into the cast he is. It is measured against the windup he was actually given,
+      // `castWind * mods.enemySlow`, which is 1.1 of it by default and 1.4 in EASY MODE, and not
       // against the raw TUNING number. Against the raw one this starts NEGATIVE (a tenth under
       // zero, four tenths on easy) for the first fraction of every rune, and the filled disc below
       // is `arc(0, 0, R * p)`: a negative radius, which Canvas throws IndexSizeError on. That
       // exception came out of the middle of `draw`, so every frame at the start of every cast threw
-      // the whole rest of the picture away — the floor, the men, the goat, the HUD. Clamped as well
+      // the whole rest of the picture away, the floor, the men, the goat, the HUD. Clamped as well
       // as measured properly, because a render path may not depend on a timer never overrunning.
       const cfg = TUNING.seer, wind = cfg.castWind * (game.mods.enemySlow || 1);
       const p = clamp(1 - e.timer / wind, 0, 1);
@@ -3743,8 +3759,8 @@ class Renderer {
   }
 
   // Two read-only overlays for the dev drawer, drawn in world space so they sit against the room
-  // they are answering for. VISION is what `canSeeGoat` actually asks each man for — his sight
-  // radius and his cone, or the wide blind-spot-free arc a watchful post gets — so a spot that
+  // they are answering for. VISION is what `canSeeGoat` actually asks each man for, his sight
+  // radius and his cone, or the wide blind-spot-free arc a watchful post gets, so a spot that
   // reads as safe on screen can be checked against what the AI is actually allowed to see. HEARING
   // answers a different question, and it is not per-man: every noise in the game carries a fixed
   // radius set by what made it (`TUNING.noise`), so the two rings are centred on the goat and show
@@ -3828,6 +3844,8 @@ class Renderer {
           ['heaven', 'HEAVEN'], ['sacrifices', '+100 SACR · +5 SOULS'],
           // Every frame over `photo.dip.ms` writes down where it was, with a small picture (js/photo.js).
           ['dips', d.dips ? 'DIP LOG  ON' : 'DIP LOG  OFF'], ['dipsave', 'SAVE DIPS  (' + Photo.dips.length + ')'],
+          // Every life's report this browser holds (js/stats.js), and the page that reads them.
+          ['statsave', 'SAVE STATS  (' + Stats.load().log.length + ')'], ['statview', 'STATS PAGE'],
           // The god's lines on a page of their own, to edit and cut into parts (tools/god-talk.html).
           ['godtalk', 'GOD TALK · TIPS'],
           // The zip for itch.io, off this very page: no dev drawer in it, GOD in its SETTINGS (js/release.js).
@@ -3899,8 +3917,8 @@ class Renderer {
   }
 
   // A button in the drawer's own style, and its rect.
-  // HEAVEN: what the mirror sells (`MIRROR`), each with its ranks as buttons — a click sets this
-  // browser's rank there and then (`Heaven.meta.ranks`, applied through `applyBoons`) — what each rank
+  // HEAVEN: what the mirror sells (`MIRROR`), each with its ranks as buttons, a click sets this
+  // browser's rank there and then (`Heaven.meta.ranks`, applied through `applyBoons`), what each rank
   // costs in sacrifices and souls, and what the rank in force does; the purse over it, fed by the
   // same +100 / +5 as the drawer's button.
   // ROOMS: every room template a floor can be built from (and THE ARMORY, which stands on several), a
@@ -3914,7 +3932,7 @@ class Renderer {
       .concat([{ def: darkLevel(), label: 'DARK', sub: 'lamp' }, { def: tripLevel(2), label: 'TRIP', sub: 'shroom' }]);
     const list = [ARMORY_TEMPLATE, ...ROOM_TEMPLATES.filter((t, i, a) => a.findIndex((o) => o.name === t.name) === i)];
     ctx.textAlign = 'left'; ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-    ctx.fillText('ROOMS — WHERE EACH MAY STAND', pad, top);
+    ctx.fillText('ROOMS, WHERE EACH MAY STAND', pad, top);
     ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
     ctx.fillText('dim tick: where the generator deals it by itself · bright: set here (saved to js/tuning.js ROOM_LEVELS) · RESET gives it back', pad, top + 16 * s);
     const nameW = 150 * s, tagW = 90 * s, cw = 44 * s, x0 = pad + nameW + tagW, rh = 22 * s;
@@ -3942,7 +3960,7 @@ class Renderer {
   drawMirrorTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, W = this.w, d = game.dev, M = Heaven.meta || Heaven.load();
     ctx.textAlign = 'left';
-    ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText('THE MIRROR — WHAT HEAVEN SELLS', pad, top);
+    ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText('THE MIRROR, WHAT HEAVEN SELLS', pad, top);
     ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
     ctx.fillText(`${M.sacrifices} sacrifices · ${M.souls || 0} souls in the heap · a rank button sets it now, free · saved in this browser`, pad, top + 18 * s);
     this.devButton(d, pad, top + 28 * s, 170 * s, 20 * s, '+100 SACR · +5 SOULS', 'sacrifices', false);
@@ -3975,7 +3993,7 @@ class Renderer {
     d.rects.push({ x, y, w, h, id });
   }
 
-  // One editable number, the same small box the BOONS tab always edited its params in — reused by
+  // One editable number, the same small box the BOONS tab always edited its params in, reused by
   // the ENEMIES tab (and THE GOAT underneath it) so every dial in the tool looks and clicks the same
   // way instead of each page inventing its own widget. `id` is what `Game.devAction` reads to know
   // which TUNING leaf to write; returns the width drawn, for callers laying out several in a row.
@@ -3984,7 +4002,7 @@ class Renderer {
     // Display only: a raw TUNING float (`CULT_PACE` multiplied through) prints as
     // 190.344960000000001, which is unreadable and is never what anyone meant to type. The prompt
     // this chip opens still reads the real value straight off TUNING, so nothing here can round away
-    // precision that matters — it only keeps the chip itself legible.
+    // precision that matters, it only keeps the chip itself legible.
     const shown = typeof value === 'number' && !Number.isInteger(value) ? Math.round(value * 100) / 100 : value;
     const text = `${label} ${shown}`;
     ctx.font = `700 ${8 * s}px ${FONT_SC}`;
@@ -4008,8 +4026,8 @@ class Renderer {
   }
 
   // The RULES page of the dev drawer: what the generator promises, held against a level. The left
-  // column is every rule in GEN_RULES with its answer painted beside it — fire for a rule that holds,
-  // blood for one that does not, ash for one with nothing to say about this level — and the right
+  // column is every rule in GEN_RULES with its answer painted beside it, fire for a rule that holds,
+  // blood for one that does not, ash for one with nothing to say about this level, and the right
   // column is the level: its canon, its definition read out, and the rooms it actually built, with
   // the canon rooms lit. The level in play is checked as it stands; any other level is a sample the
   // drawer generates for the page and can reroll, so every level's rules can be read without
@@ -4069,41 +4087,41 @@ class Renderer {
   }
 
   // THE ART tab: pixel-art theory held against this project's own conventions, as a checklist rather
-  // than a wall of prose — palette discipline, outline weight, dimming whatever is not the thing to
+  // than a wall of prose, palette discipline, outline weight, dimming whatever is not the thing to
   // look at, how a unit is shaded, and how a level's canon owns its own tint. Every line names the
   // project's own mechanism where one already exists (PALETTE, PIXEL_ROOMS, fog.shade, Dark's
   // silhouette pass) so this reads as "is the art honouring what the engine already does" rather than
-  // generic advice. A tick is a mark for whoever is doing the pass this session only — `dev.artChecked`
+  // generic advice. A tick is a mark for whoever is doing the pass this session only, `dev.artChecked`
   // is never saved, on purpose: this is a working checklist, not a record of who did what.
   drawArtTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
     const ART_CHECKLIST = [
       { section: 'PALETTE', items: [
-        { id: 'pal-src', text: 'Every colour in a sprite comes off a ramp — PALETTE, a sprite file\'s own ramps (`P` in prop-pixels.js, `RAMP` in pixel-art.js) or a canon multiply — never a one-off hex picked by eye.' },
+        { id: 'pal-src', text: 'Every colour in a sprite comes off a ramp, PALETTE, a sprite file\'s own ramps (`P` in prop-pixels.js, `RAMP` in pixel-art.js) or a canon multiply, never a one-off hex picked by eye.' },
         { id: 'pal-steps', text: '3–5 values per material: shadow, base, light, maybe one highlight. More steps than that and it stops reading at goat-sprite size.' },
-        { id: 'pal-hue', text: 'Shade by shifting hue, not just value — darker leans toward ink/plum, lighter leans toward ochre/fireHi. A flat black-to-white ramp on one hue reads plastic, not painted.' },
+        { id: 'pal-hue', text: 'Shade by shifting hue, not just value, darker leans toward ink/plum, lighter leans toward ochre/fireHi. A flat black-to-white ramp on one hue reads plastic, not painted.' },
         { id: 'pal-meaning', text: 'One colour, one meaning: blood red is damage, fire orange is heat, venom green is poison, witch violet is witchfire. Never spend a hazard colour on plain decoration.' },
       ] },
       { section: 'OUTLINE', items: [
-        { id: 'out-weight', text: 'Outer silhouette: 1px, unbroken, dark but not pure black — tint it toward ink so it sits in the same light as the fill instead of cutting a hole in it.' },
-        { id: 'out-inner', text: 'Inner seams — limb joins, where one prop part meets another — are lighter than the outer line, so the whole silhouette still reads before any internal detail does.' },
+        { id: 'out-weight', text: 'Outer silhouette: 1px, unbroken, dark but not pure black, tint it toward ink so it sits in the same light as the fill instead of cutting a hole in it.' },
+        { id: 'out-inner', text: 'Inner seams, limb joins, where one prop part meets another, are lighter than the outer line, so the whole silhouette still reads before any internal detail does.' },
         { id: 'out-afford', text: 'Floor and background swatches (`PIXEL_FLOORS`, wall tops) carry no outline at all. An outline is reserved for anything with a hitbox, so its presence alone tells you it can be touched.' },
       ] },
       { section: 'DIM THE INACTIVE', items: [
-        { id: 'dim-value', text: 'An idle, unlit or unarmed state reads through value and saturation dropping, never a new hue — an unlit lamp is a dimmer lamp, not a grey one.' },
-        { id: 'dim-bg', text: 'Background swatches stay lower-contrast and lower-saturation than characters and props by construction — the same job `fog.shade` and Dark\'s silhouette pass already do at runtime; a loud hand-painted floor fights both.' },
+        { id: 'dim-value', text: 'An idle, unlit or unarmed state reads through value and saturation dropping, never a new hue, an unlit lamp is a dimmer lamp, not a grey one.' },
+        { id: 'dim-bg', text: 'Background swatches stay lower-contrast and lower-saturation than characters and props by construction, the same job `fog.shade` and Dark\'s silhouette pass already do at runtime; a loud hand-painted floor fights both.' },
         { id: 'dim-focus', text: 'Before adding detail anywhere, name the one thing in that room the eye should land on first. Everything else earns less contrast, never more detail, to make room for it.' },
       ] },
       { section: 'CHARACTER SHADING', items: [
-        { id: 'char-flat', text: 'No smooth gradients, ever — a shade change is a hard-edged band or a dither pattern: pixels on the grid, same as every overlay `PIXEL_ART.face` puts on the goat.' },
-        { id: 'char-spec', text: 'A highlight is 1–2px, placed by hand, never a filled patch — it is a mark that says "here is the light", not a light source rendered in.' },
+        { id: 'char-flat', text: 'No smooth gradients, ever, a shade change is a hard-edged band or a dither pattern: pixels on the grid, same as every overlay `PIXEL_ART.face` puts on the goat.' },
+        { id: 'char-spec', text: 'A highlight is 1–2px, placed by hand, never a filled patch, it is a mark that says "here is the light", not a light source rendered in.' },
         { id: 'char-rim', text: 'Rim light, if used at all, goes only on the edge that separates a silhouette from the background behind it. It is a readability tool for that edge, not a style pass over the whole body.' },
-        { id: 'char-count', text: 'Count the colours actually on screen for one unit at its drawn size, not in the source grid — a hand-authored sprite hides extra values a packed atlas would have forced flat.' },
+        { id: 'char-count', text: 'Count the colours actually on screen for one unit at its drawn size, not in the source grid, a hand-authored sprite hides extra values a packed atlas would have forced flat.' },
       ] },
       { section: 'LEVEL / CANON PALETTE', items: [
-        { id: 'canon-key', text: 'A canon owns exactly one tint key (`PIXEL_ROOMS` floor / floorAlt / wallTop / wall) — every floor and prop swatch in its rooms multiplies through that key, nothing hand-recoloured room by room.' },
-        { id: 'canon-distinct', text: 'Two canons a single run visits back to back should read apart from the floor colour alone — check `LEVELS` entries side by side, not only each canon in isolation.' },
-        { id: 'canon-hazard', text: 'A canon tint must never wash out the hazard palette — fire, witchfire, venom and blood stay their own colour no matter which room\'s multiply they sit inside.' },
+        { id: 'canon-key', text: 'A canon owns exactly one tint key (`PIXEL_ROOMS` floor / floorAlt / wallTop / wall), every floor and prop swatch in its rooms multiplies through that key, nothing hand-recoloured room by room.' },
+        { id: 'canon-distinct', text: 'Two canons a single run visits back to back should read apart from the floor colour alone, check `LEVELS` entries side by side, not only each canon in isolation.' },
+        { id: 'canon-hazard', text: 'A canon tint must never wash out the hazard palette, fire, witchfire, venom and blood stay their own colour no matter which room\'s multiply they sit inside.' },
       ] },
     ];
     d.artChecked = d.artChecked || {};
@@ -4120,8 +4138,8 @@ class Renderer {
     this.devButton(d, pad + 332 * s, top + 18 * s, 190 * s, 18 * s, 'CLUBMAN: ' + C2.name, 'art-clubman', ART_PASS.clubman > 0);
     this.devButton(d, pad + 528 * s, top + 18 * s, 150 * s, 18 * s, ART_PASS.floors ? 'FLOORS: SHEETS' : 'FLOORS: AS PACKED', 'art-floors', ART_PASS.floors);
     ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)'; ctx.textAlign = 'left';
-    ctx.fillText(this.clip('hunter — ' + H2.rule, W - pad * 2), pad, top + 48 * s);
-    ctx.fillText(this.clip('clubman — ' + C2.rule, W - pad * 2), pad, top + 58 * s);
+    ctx.fillText(this.clip('hunter, ' + H2.rule, W - pad * 2), pad, top + 48 * s);
+    ctx.fillText(this.clip('clubman, ' + C2.rule, W - pad * 2), pad, top + 58 * s);
 
     const colGap = 24 * s, colW = (W - pad * 2 - colGap) / 2;
     const cols = [[], []];
@@ -4152,7 +4170,7 @@ class Renderer {
     });
   }
 
-  // THE JUICE tab: `JUICE` (js/juice.js) as a table — every piece of game feel, whether it is in the
+  // THE JUICE tab: `JUICE` (js/juice.js) as a table, every piece of game feel, whether it is in the
   // game, new, or still in the backlog, with its trigger, its look, its size read live off TUNING
   // and how to build it in Godot 4. Filter chips along the top, pages when it does not fit, a click
   // on a row opens it out to its full text, and EXPORT hands the same table over as Markdown.
@@ -4365,7 +4383,7 @@ class Renderer {
 
   // The rules that hold everywhere, as a matrix: one row a rule, one column a level, one mark per
   // answer. The rules used to live down the side of the level page, where they were checked against
-  // one level at a time and took half the screen doing it — but a rule is a promise about the whole
+  // one level at a time and took half the screen doing it, but a rule is a promise about the whole
   // generator, and what you want to see is the row: six levels keeping it and one not.
   drawRuleTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, W = this.w, H = this.h, d = game.dev;
@@ -4430,8 +4448,8 @@ class Renderer {
   }
 
   // The curve, level by level and room by room, averaged over `dev.balanceSeeds` seeds: the same
-  // thing `node tools/balance.js` prints. A level is a row of bars — one bar a room, its height its
-  // threat, its colour its role — so the shape of a level and the shape of the whole game are one
+  // thing `node tools/balance.js` prints. A level is a row of bars, one bar a room, its height its
+  // threat, its colour its role, so the shape of a level and the shape of the whole game are one
   // picture. Under them, whatever rule is broken, or the line saying none is.
   drawBalance(game, pad, top) {
     const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
@@ -4496,7 +4514,7 @@ class Renderer {
       // and the rooms
       // The rooms, laid out where they actually are: a bar starts at the room's own x in the world
       // and is as wide as the room is, so the axis is the level's ground rather than a room count.
-      // That answers the size question — the threshing floor is visibly a wider level made of wider
+      // That answers the size question, the threshing floor is visibly a wider level made of wider
       // rooms, and a level running out of world would show as one running off the end. Height is
       // still threat, the count of men rides on the bar, and clicking one opens that room.
       const WORLD = 420;
@@ -4541,7 +4559,7 @@ class Renderer {
 
   // One level, on the whole screen. It used to share the page with the rules, which took half of it
   // to say things that are true of every level; the rules have a tab of their own now and what is
-  // left here is this level and nothing else — its idea, its numbers, the rules that are about it in
+  // left here is this level and nothing else, its idea, its numbers, the rules that are about it in
   // particular, and every room it built, big enough to read. A room opens when you click it.
   drawLevelTab(game, pad, headTop) {
     const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
@@ -4564,8 +4582,8 @@ class Renderer {
     ctx.fillText(page.live ? 'the level in play' : `a sample, seed ${page.seed}`, pad + 260 * s, y);
     this.devButton(d, W - pad - 70 * s, y - 13 * s, 70 * s, 18 * s, 'REROLL', 'rules-roll', false);
     // Opening a level as a picture is most of what the page is for, but sometimes the picture raises
-    // a question only walking it answers. PLAY drops the goat straight into this level — this seed if
-    // it is the one in play, a fresh one otherwise, the same door LEVELS on the title screen uses — so
+    // a question only walking it answers. PLAY drops the goat straight into this level, this seed if
+    // it is the one in play, a fresh one otherwise, the same door LEVELS on the title screen uses, so
     // inspecting a room and standing in it are one tool rather than two.
     this.devButton(d, W - pad - 152 * s, y - 13 * s, 76 * s, 18 * s, 'PLAY LEVEL', 'rules-play', false);
     y += 16 * s;
@@ -4577,18 +4595,18 @@ class Renderer {
       y += 14 * s;
     }
     // HINT / THEME / DECOR: free text on the level definition, painted on the floor (HINT only) or
-    // read nowhere else in the game — this page is the only place to see them and to change them.
+    // read nowhere else in the game, this page is the only place to see them and to change them.
     // Each line is a click target: `game.devAction` prompts for the new text and, off the dev
     // server, writes it straight back into js/tuning.js the same way a BOONS number is edited.
     ctx.font = `400 ${7.3 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.35)';
-    ctx.fillText('click a line below to edit it — saved to js/tuning.js if the dev server is running', pad, y);
+    ctx.fillText('click a line below to edit it, saved to js/tuning.js if the dev server is running', pad, y);
     y += 10 * s;
     const editRow = (label, field) => {
       const has = !!def[field];
       ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
       ctx.fillText(label, pad, y);
       ctx.font = `400 ${8.8 * s}px ${FONT}`; ctx.fillStyle = has ? 'rgba(239,230,208,0.85)' : 'rgba(239,230,208,0.32)';
-      ctx.fillText(has ? this.clip(def[field], full - 56 * s) : '(none — click to add)', pad + 56 * s, y);
+      ctx.fillText(has ? this.clip(def[field], full - 56 * s) : '(none, click to add)', pad + 56 * s, y);
       d.rects.push({ x: pad, y: y - 9 * s, w: full, h: 11 * s, id: `level-edit=${def.name}.${field}` });
       y += 12 * s;
     };
@@ -4602,7 +4620,7 @@ class Renderer {
     ctx.fillText('THE WORDS EACH FLOOR OPENS ON', pad, y); y += 11 * s;
     LEVELS.forEach((lv, i) => {
       ctx.font = `400 ${8.2 * s}px ${FONT}`; ctx.fillStyle = lv === def ? PALETTE.fireHi : 'rgba(239,230,208,0.7)';
-      ctx.fillText(this.clip(`${i + 1} ${lv.name} — ${lv.hint || '(none — click to add)'}`, full), pad, y);
+      ctx.fillText(this.clip(`${i + 1} ${lv.name}, ${lv.hint || '(none, click to add)'}`, full), pad, y);
       d.rects.push({ x: pad, y: y - 9 * s, w: full, h: 10 * s, id: `level-edit=${lv.name}.hint` });
       y += 10 * s;
     });
@@ -4610,7 +4628,7 @@ class Renderer {
     ctx.font = `400 ${8.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
     for (const f of levelFacts(def)) { ctx.fillText(this.clip(f, full), pad, y); y += 11 * s; }
 
-    // What this level in particular is held to: only the rules that have something to say about it —
+    // What this level in particular is held to: only the rules that have something to say about it,
     // the whole matrix lives on the RULES tab, but the rules unique to one level (the sentry's room,
     // the wheel's own lesson, a soul gate) are exactly the level's own scripted promises, and reading
     // them off a column of dots there meant knowing the matrix by heart first. Named here instead, as
@@ -4681,8 +4699,8 @@ class Renderer {
       ctx.font = `400 ${7 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)';
       const foot = r.cell && r.cell.intro ? 'meets ' + r.cell.intro : `${r.room.w}×${r.room.h}  ${r.name}`;
       ctx.fillText(this.clip(foot, cellW - 6 * s), cx + 3 * s, cy + cellH - 4 * s);
-      // A canon or mix room forced to one hand-authored template — the sentry's four tiles, the
-      // ambush corridor — reads as an ordinary room right up until you notice it never changes
+      // A canon or mix room forced to one hand-authored template, the sentry's four tiles, the
+      // ambush corridor, reads as an ordinary room right up until you notice it never changes
       // shape. `r.drawn` is false for exactly those, so the tag is off the same data the ROOMS page
       // and BALANCE's hollow bars already read, not a second guess about which rooms are special.
       if (!r.drawn && ORDINARY.has(r.role)) {
@@ -4695,13 +4713,13 @@ class Renderer {
   }
 
   // THE BESTIARY: every kind that can stand in front of the goat, read live off TUNING so the page
-  // cannot say something the game does not. The portrait in each row is not a separate drawing —
+  // cannot say something the game does not. The portrait in each row is not a separate drawing,
   // it is `drawEnemy` itself, called against a stand-in enemy object the way the game calls it
   // against a real one every frame, so a change to a sprite shows up here for free. `edit` on a
   // KINDS entry is every real knob `apply`/`update` actually reads for that kind, each an
   // `[LABEL, [path...]]` pair into TUNING; it is drawn with the same `numChip` BOONS edits its own
   // params in and clicking one goes through `enemy-edit=` in `Game.devAction`, which is nothing more
-  // than `persistTuningEdit` under a different root — one editor, one write-through, for every dial
+  // than `persistTuningEdit` under a different root, one editor, one write-through, for every dial
   // in the tool. A stat with no real field behind it (a bearer's own hp, defaulted to 1 in `Enemy`
   // rather than written anywhere) is left as plain text: showing a knob that turns nothing would be
   // lying about what the number does, same as BOONS never lists a param `apply` does not read.
@@ -4766,12 +4784,12 @@ class Renderer {
           ['LEAP CD', ['butcher', 'leap', 'cd']], ['SLAM AT', ['butcher', 'slam', 'near']], ['SLAM R', ['butcher', 'slam', 'range']], ['SLAM WIND', ['butcher', 'slam', 'wind']],
           ['SLAM REC', ['butcher', 'slam', 'recover']], ['SIZE', ['butcher', 'scale']], ['RAGE SPD', ['butcher', 'rage', 'speed']], ['RAGE TEMPO', ['butcher', 'rage', 'tempo']]],
         immune: ['blunder'],
-        note: `Four hits, never thrown by anything, and the bare horns take none of them: blades, fire, bombs, thrown bodies. Seen ${TUNING.butcher.leap.min}-${TUNING.butcher.leap.max} tiles off he crouches ${TUNING.butcher.leap.wind}s and leaps onto where you stood — over men and holes — and the landing is a ${TUNING.butcher.leap.radius}-tile ring. Within ${TUNING.butcher.slam.near} tiles his fists hit the floor: a ${TUNING.butcher.slam.range}-tile ring after ${TUNING.butcher.slam.wind}s. Both leave him on his knees (${TUNING.butcher.leap.land}s, ${TUNING.butcher.slam.recover}s); his own men in a ring are left standing. Alight he comes at you ${TUNING.butcher.rage.speed}x as fast.` },
+        note: `Four hits, never thrown by anything, and the bare horns take none of them: blades, fire, bombs, thrown bodies. Seen ${TUNING.butcher.leap.min}-${TUNING.butcher.leap.max} tiles off he crouches ${TUNING.butcher.leap.wind}s and leaps onto where you stood, over men and holes, and the landing is a ${TUNING.butcher.leap.radius}-tile ring. Within ${TUNING.butcher.slam.near} tiles his fists hit the floor: a ${TUNING.butcher.slam.range}-tile ring after ${TUNING.butcher.slam.wind}s. Both leave him on his knees (${TUNING.butcher.leap.land}s, ${TUNING.butcher.slam.recover}s); his own men in a ring are left standing. Alight he comes at you ${TUNING.butcher.rage.speed}x as fast.` },
       { kind: 'dog', tag: 'dog', label: 'HOUND', cfg: TUNING.dog, hp: TUNING.dog.hp || 1,
         edit: [['SPEED', ['dog', 'speed']], ['DMG', ['dog', 'damage']], ['CHARGE', ['dog', 'windup']], ['RUN AT', ['dog', 'dashRange']],
           ['RUN SPD', ['dog', 'dashSpeed']], ['RUN TIME', ['dog', 'dashTime']], ['TURN', ['dog', 'dashTurn']], ['BEND', ['dog', 'dashSkew']], ['DODGE', ['dog', 'dodge']], ['DODGE CD', ['dog', 'dodgeCd']]],
         immune: ['blunder'],
-        note: `Circles, then inside ${TUNING.dog.dashRange} tiles plants for ${TUNING.dog.windup}s with its run drawn on the floor in red — bent, homing — and runs it barking, biting what is in front. Sidesteps a headbutt outside the run once every ${TUNING.dog.dodgeCd}s (${Math.round(TUNING.dog.dodge * 100)}% when ready), which puts its next run back ${TUNING.dog.dodgeRest}s. One at a time per pack.` },
+        note: `Circles, then inside ${TUNING.dog.dashRange} tiles plants for ${TUNING.dog.windup}s with its run drawn on the floor in red, bent, homing, and runs it barking, biting what is in front. Sidesteps a headbutt outside the run once every ${TUNING.dog.dodgeCd}s (${Math.round(TUNING.dog.dodge * 100)}% when ready), which puts its next run back ${TUNING.dog.dodgeRest}s. One at a time per pack.` },
       { kind: 'seer', tag: 'seer', label: 'SEER', cfg: TUNING.seer, hp: TUNING.seer.hp,
         edit: [['SPEED', ['seer', 'speed']], ['DMG', ['seer', 'damage']], ['HP', ['seer', 'hp']],
           ['CAST', ['seer', 'castWind']], ['CAST CD', ['seer', 'castCooldown']], ['BLINK CD', ['seer', 'blinkCooldown']]],
@@ -4781,12 +4799,12 @@ class Renderer {
           ['AIM', ['hunter', 'aimTime']], ['RELOAD', ['hunter', 'reload']],
           ['WILD INSIDE', ['hunter', 'wildNear']], ['WILD', ['hunter', 'wildChance']], ['COCK HEARD', ['hunter', 'cockHear']]],
         sound: 'cock',
-        note: `Keeps ${TUNING.hunter.keepMin}-${TUNING.hunter.keepMax} tiles off, fires on a reload timer. Cocks the rifle as he starts to aim — that click is the tell. Inside ${TUNING.hunter.wildNear} tiles ${Math.round(TUNING.hunter.wildChance * 100)}% of his shots go wild. Empties a fixed mag once grabbed, never reloads again.` },
+        note: `Keeps ${TUNING.hunter.keepMin}-${TUNING.hunter.keepMax} tiles off, fires on a reload timer. Cocks the rifle as he starts to aim, that click is the tell. Inside ${TUNING.hunter.wildNear} tiles ${Math.round(TUNING.hunter.wildChance * 100)}% of his shots go wild. Empties a fixed mag once grabbed, never reloads again.` },
       { kind: 'wraith', tag: 'wraith', label: 'WRAITH', cfg: TUNING.wraith, hp: TUNING.wraith.hp,
         edit: [['SPEED', ['wraith', 'speed']], ['DMG', ['wraith', 'damage']], ['HP', ['wraith', 'hp']],
           ['WINDUP', ['wraith', 'windup']], ['MANIFEST', ['wraith', 'manifest']], ['SOLID', ['wraith', 'solidAfter']], ['FADE', ['wraith', 'fadeCd']], ['HIDE', ['wraith', 'hide', 'start']], ['HIDE AGAIN', ['wraith', 'hide', 'again']], ['SPRING R', ['wraith', 'hide', 'springR']]],
         immune: ['fire', 'stun', 'grab'],
-        note: 'Can lie in a room as a box or a bowl of milk; headbutt or reach near it, or step on it, and it strikes from any side. No body, no collision, until it commits. Drifts to your flank or back, manifests, swings once, fades. Dies only in that window. Dead already: an ordinary flame, a scream and BY THE COLLAR all find nothing to take hold of — witchfire still burns it.' },
+        note: 'Can lie in a room as a box or a bowl of milk; headbutt or reach near it, or step on it, and it strikes from any side. No body, no collision, until it commits. Drifts to your flank or back, manifests, swings once, fades. Dies only in that window. Dead already: an ordinary flame, a scream and BY THE COLLAR all find nothing to take hold of, witchfire still burns it.' },
     ];
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE BESTIARY', pad, top);
@@ -4843,7 +4861,7 @@ class Renderer {
       ctx.fillText(`threat ${THREAT[k.tag] === undefined ? '-' : THREAT[k.tag]} · levels ${lv.length ? lv.join(',') : '-'}`, nameX, ry + 24 * s);
       ctx.fillStyle = 'rgba(239,230,208,0.35)';
       ctx.fillText(`cycle ${cycle(k.tag, k.cfg).toFixed(2)}s`, nameX, ry + 35 * s);
-      // Every real knob for this kind, as chips wrapped into the stats column — the same box and the
+      // Every real knob for this kind, as chips wrapped into the stats column, the same box and the
       // same click BOONS already uses, so the bestiary is not a second kind of editor.
       let px = statsX, py = ry + 2 * s;
       for (const [label, path] of k.edit) {
@@ -4859,7 +4877,7 @@ class Renderer {
       // A kind with a sound of its own gets a button to hear it, off the same call the game makes.
       if (k.sound) this.devButton(d, nameX, ry + 40 * s, 58 * s, 13 * s, 'HEAR ' + k.sound.toUpperCase(), `enemy-sound=${k.sound}`, false);
       // Immunity checkboxes: `TUNING.<kind>.immune.<flag>`, on where the flag is true. A kind with
-      // none of these listed has no immune object at all and nothing to click — fire, stun, a grab
+      // none of these listed has no immune object at all and nothing to click, fire, stun, a grab
       // and the burning-blunder all read the same as every other man's.
       if (k.immune) {
         let fx = nameX;
@@ -4873,7 +4891,7 @@ class Renderer {
         }
       }
       // WITH A SOUL: the row's portrait lit, his hearts with the soul's added, and which of the soul's
-      // traits (`soulBearer.traits`) his kind gets — each a switch. SPAWN drops one by the goat.
+      // traits (`soulBearer.traits`) his kind gets, each a switch. SPAWN drops one by the goat.
       {
         const on = !!(d.soulView && d.soulView[k.tag]), S = TUNING.soulBearer, traits = S.traits[k.tag] || [];
         this.devButton(d, nameX, ry + 58 * s, 40 * s, 13 * s, 'SOUL', `enemy-soul=${k.tag}`, on);
@@ -4905,7 +4923,7 @@ class Renderer {
       lines.forEach((l, li) => ctx.fillText(l, noteX, ry + 12 * s + li * 10 * s));
     });
 
-    // THE GOAT, underneath: the numbers everything above is measured against, and just as editable —
+    // THE GOAT, underneath: the numbers everything above is measured against, and just as editable,
     // every chip here is a real path into `TUNING.goat`, so a change lands exactly where the goat's
     // own `update` reads it from.
     const gy = y + KINDS.length * rowH + 18 * s;
@@ -4939,11 +4957,11 @@ class Renderer {
   }
 
   // THE UPGRADES: every boon in BOONS, off the same table the game deals cards from. Click a number
-  // to change it — `params` is the only place a boon's `apply` reads a multiplier from, so nothing
+  // to change it, `params` is the only place a boon's `apply` reads a multiplier from, so nothing
   // here can show a knob the game does not actually turn. It takes effect at once (`applyBoons`
   // re-reads `params` off the live BOONS entries) and is asked to land in js/tuning.js itself
   // through the dev server (`tools/tuning-patch.js`); off the server the edit stays session-only.
-  // MIN LVL is the dev tool's own gate on a card ever being dealt — 0 (ANY) until somebody sets one.
+  // MIN LVL is the dev tool's own gate on a card ever being dealt, 0 (ANY) until somebody sets one.
   drawBoonsTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, W = this.w, H = this.h, d = game.dev;
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
@@ -5002,10 +5020,10 @@ class Renderer {
       ctx.fillStyle = has ? 'rgba(125,92,255,0.45)' : 'rgba(185,135,58,0.12)'; ctx.fillRect(haveX, hy, 50 * s, 16 * s);
       ctx.strokeStyle = has ? PALETTE.witchHi : 'rgba(242,162,51,0.35)'; ctx.strokeRect(haveX, hy, 50 * s, 16 * s);
       ctx.fillStyle = has ? '#ffffff' : 'rgba(239,230,208,0.5)'; ctx.textAlign = 'center';
-      ctx.fillText(game.goat ? (has ? 'HAVE ✓' : 'GIVE') : '—', haveX + 25 * s, hy + 11.5 * s); ctx.textAlign = 'left';
+      ctx.fillText(game.goat ? (has ? 'HAVE ✓' : 'GIVE') : '-', haveX + 25 * s, hy + 11.5 * s); ctx.textAlign = 'left';
       if (game.goat) d.rects.push({ x: haveX, y: hy, w: 50 * s, h: 16 * s, id: `boon-have=${b.id}` });
 
-      // every numeric knob `apply` actually reads — none at all for a boon that only flips a flag
+      // every numeric knob `apply` actually reads, none at all for a boon that only flips a flag
       let px = paramsX, py = ry + rowH / 2 - 9 * s;
       const entries = Object.entries(b.params || {});
       if (!entries.length) {
@@ -5025,7 +5043,7 @@ class Renderer {
   // STATUS: the three things that can be wrong with a man, the three reactions where two of them
   // meet, and the goat's own poison, all off `TUNING.status` (and the few older numbers stun and
   // fire already had). Every number is a chip and a click edits it through `enemy-edit=`, which is
-  // a plain path into TUNING — one editor for the whole tool. The matrix in the middle is the
+  // a plain path into TUNING, one editor for the whole tool. The matrix in the middle is the
   // picture to remember: a cell is what happens when the row meets the column, in either order.
   drawStatusTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, W = this.w, d = game.dev;
@@ -5110,7 +5128,7 @@ class Renderer {
       const key = REACT[a + '|' + b] ? a + '|' + b : REACT[b + '|' + a] ? b + '|' + a : null;
       ctx.fillStyle = key ? 'rgba(185,135,58,0.14)' : 'rgba(239,230,208,0.03)'; ctx.fillRect(cx + 2 * s, cy + 2 * s, cw - 4 * s, chH - 4 * s);
       ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = key ? PALETTE.fireHi : 'rgba(239,230,208,0.2)';
-      ctx.textAlign = 'center'; ctx.fillText(key ? REACT[key].name : '—', cx + cw / 2, cy + chH / 2 + 3 * s); ctx.textAlign = 'left';
+      ctx.textAlign = 'center'; ctx.fillText(key ? REACT[key].name : '-', cx + cw / 2, cy + chH / 2 + 3 * s); ctx.textAlign = 'left';
     }));
     // what each reaction does, beside the matrix
     const lx = mx + cw * 4 + 18 * s;
@@ -5118,7 +5136,7 @@ class Renderer {
     for (const key of Object.keys(REACT)) {
       const R = REACT[key], [a, b] = key.split('|');
       ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-      ctx.fillText(`${NAMES[a]} + ${NAMES[b]} — ${R.name}`, lx, ly + 9 * s);
+      ctx.fillText(`${NAMES[a]} + ${NAMES[b]}, ${R.name}`, lx, ly + 9 * s);
       const after = chips(R.edit, lx, ly + 14 * s, W - pad);
       ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)';
       const lines = this.wrap(R.note, W - pad - lx).slice(0, 3);
@@ -5147,10 +5165,10 @@ class Renderer {
   }
 
   // THE FIXTURES: every kind of Prop that stands in a room, read live off TUNING the way the
-  // bestiary reads enemies. The thumbnail is a real `Prop`, drawn with the game's own `drawProp` —
+  // bestiary reads enemies. The thumbnail is a real `Prop`, drawn with the game's own `drawProp`,
   // a brazier or a stand of arms shown here is the same call the game makes against it, so a change
   // to a sprite shows up here for free. `hits` on an entry is every way something in the game meets
-  // this prop — a headbutt, something thrown at it, fire, a body arriving — as badges rather than
+  // this prop, a headbutt, something thrown at it, fire, a body arriving, as badges rather than
   // buried in the prose: the note still says what happens, the badges say who can make it happen.
   drawPropsTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, W = this.w, H = this.h, P = TUNING.prop;
@@ -5160,10 +5178,10 @@ class Renderer {
         note: 'A headbutt, or a body arriving fast enough, knocks a pool of coals out its far side. A crate or a weapon that reaches it goes up too, and a man already burning lights the next one he touches once KINDLING is taken.' },
       { kind: 'brazier', label: 'THE ROAST', make: (x, y) => new Prop(x, y, 'brazier', { roast: true }), hits: ['HEADBUTT', 'BODY', 'THROWN', 'FIRE'],
         stats: `${Math.round(P.brazier.roast * 100)}% of braziers, one a level at most · turns every ${(Math.PI * 2 / P.brazier.roastTurn).toFixed(1)}s`,
-        note: 'A brazier in every way that matters — lights, spills, burns — drawn as a campfire with a crocodile turning on a spit over it. Which ones roast is picked off the tile, so no seed changes for it.' },
+        note: 'A brazier in every way that matters, lights, spills, burns, drawn as a campfire with a crocodile turning on a spit over it. Which ones roast is picked off the tile, so no seed changes for it.' },
       { kind: 'lamp', label: 'LAMP POST', make: (x, y) => new Prop(x, y, 'lamp'), hits: ['BODY', 'FIRE'],
         stats: `topples above ${Math.round(P.lamp.knock)}px/s of impact, pours oil ${P.lamp.poolRadius} tiles across`,
-        note: 'Not a pillar — a fast body (flung, or falling past it) knocks it over, and it pours a burning pool of oil where it lands. The only way to start a fire in a room with no brazier in it.' },
+        note: 'Not a pillar, a fast body (flung, or falling past it) knocks it over, and it pours a burning pool of oil where it lands. The only way to start a fire in a room with no brazier in it.' },
       { kind: 'crate', label: 'CRATE', make: (x, y) => new Prop(x, y, 'crate'), hits: ['HEADBUTT', 'THROWN', 'FIRE'],
         stats: `floors for ${P.crate.stun}s on a hit, catches if thrown through flame and leaves one tile burning ${P.crate.burstTime}s`,
         note: 'The one thing on the floor you pick up and throw. Breaks on a door, table, gong or man; a burning tile makes it burst into a wider, longer fire instead of just breaking. Carried, it blocks one club for free, then it is gone.' },
@@ -5184,22 +5202,22 @@ class Renderer {
         note: 'Iron refuses to be shouldered open: it is broken or it stays shut, so every blow on one is noise with whatever heard the first already coming. A table above killSpeed smashes through instead of counting blows.' },
       { kind: 'mill', label: 'THE MILL', make: (x, y) => new Prop(x, y, 'mill'), hits: ['BODY'],
         stats: `arm ${(TUNING.mill.armLen / TILE).toFixed(1)} tiles, ${TUNING.mill.damage} dmg, ${TUNING.mill.hitCooldown}s between passes`,
-        note: 'A sweeping arm that does not care whose side you are on. Trap sense is what lets a man dodge it or ride it into a wall — it only ever knocks down, so what it kills against is whatever the room put behind him.' },
+        note: 'A sweeping arm that does not care whose side you are on. Trap sense is what lets a man dodge it or ride it into a wall, it only ever knocks down, so what it kills against is whatever the room put behind him.' },
       { kind: 'spike', label: 'SPIKE GRATE', make: (x, y) => new Prop(x, y, 'spike'), hits: ['BODY'],
         stats: `arms ${P.spike.arm}s after a step, up ${P.spike.up}s, laid ${P.spike.run[0]}–${P.spike.run[1]} tiles at a time`,
         note: 'Floor, not furniture: crossing a plate arms it and the teeth come up a beat later, behind whoever tripped it. Anything alive trips one but a wraith in mist; trap sense is what lets a man in a crowd walk round it instead.' },
       { kind: 'spire', label: 'STONE TEETH', make: (x, y) => new Prop(x, y, 'spire'), hits: ['BODY'],
         stats: `${Math.round(TUNING.cave.spikes.chance * 100)}% of the cave's ordinary rooms, ${TUNING.cave.spikes.perRoom} at most · ${TUNING.cave.spikes.damage} heart`,
-        note: 'Rock standing up at the foot of a cave wall, and the one thing growing on the rock that is real. It never arms and never rests: anything that touches it pays. A man dies on it, the goat pays a heart, and everyone with eyes steers round it — so it is a thing to throw men into, on the wall that was already the weapon. Never on the trip.' },
+        note: 'Rock standing up at the foot of a cave wall, and the one thing growing on the rock that is real. It never arms and never rests: anything that touches it pays. A man dies on it, the goat pays a heart, and everyone with eyes steers round it, so it is a thing to throw men into, on the wall that was already the weapon. Never on the trip.' },
       { kind: 'secret', label: 'SECRET WALL', make: (x, y) => new Prop(x, y, 'secret'), hits: ['HEADBUTT'],
         stats: `${P.secret.hits} hits to open, the niche behind it stays lit after`,
-        note: 'Ordinary wall until the second blow: blocks sight and bullets like stone right up to the crack. Behind it is always a stand of arms, and — secret.healChance of the time — the rarer patch of grass, never a room or a corridor.' },
+        note: 'Ordinary wall until the second blow: blocks sight and bullets like stone right up to the crack. Behind it is always a stand of arms, and, secret.healChance of the time, the rarer patch of grass, never a room or a corridor.' },
       { kind: 'heal', label: 'GRASS', make: (x, y) => new Prop(x, y, 'heal'), hits: ['BODY'],
         stats: `graze ${P.heal.grazeTime}s under ${P.heal.grazeSpeed}px/s for +1 heart`,
-        note: 'Grazed, not grabbed: hold still (or nearly) inside it and it pays out once. Running through it on the way past does nothing — the point is that it costs a beat of standing in the open. What a level hands out on its own rhythm, every few rooms.' },
+        note: 'Grazed, not grabbed: hold still (or nearly) inside it and it pays out once. Running through it on the way past does nothing, the point is that it costs a beat of standing in the open. What a level hands out on its own rhythm, every few rooms.' },
       { kind: 'heal', label: 'GRASS PATCH', make: (x, y) => new Prop(x, y, 'heal', { big: true }), hits: ['BODY'],
         stats: `graze ${P.heal.grazeTime}s under ${P.heal.grazeSpeed}px/s for +2 hearts`,
-        note: 'The rare one: worth twice the milk, and only ever behind a secret wall — never on the level’s own rhythm.' },
+        note: 'The rare one: worth twice the milk, and only ever behind a secret wall, never on the level’s own rhythm.' },
       { kind: 'bell', label: 'BELL', make: (x, y) => new Prop(x, y, 'bell'), hits: ['HEADBUTT', 'BODY'],
         stats: `${P.bell.buff}s of ×${P.bell.speedMul} speed, ×${P.bell.cooldownMul} faster cooldowns`,
         note: 'Rung, it buys a stretch of speed and quick hands for a noise the whole floor hears at once. A terrible trade in an empty room; the best one you get in a full one.' },
@@ -5208,16 +5226,16 @@ class Renderer {
         note: 'The one thing in the compound on your side. Loose, she follows you round walls and steps round fire, teeth and drops; walk past her coop and it breaks on its own as it leaves the screen. Kicked, she homes onto a man and kills on contact. Bring her to the stairs for a heart for the rest of the run.' },
       { kind: 'tortoise', label: 'TORTOISE', make: (x, y) => new Prop(x, y, 'tortoise'), hits: ['THROWN', 'BODY'],
         stats: `walks at ${P.tortoise.speed}px/s · thrown at ${P.tortoise.throwSpeed}px/s, floors a man ${P.crate.stun}s · a shell for ${P.tortoise.tuck}s where it lands · +${P.tortoise.saveShield} use on every shield if it reaches the stairs`,
-        note: 'Slower than a walk and it never catches up: the one escort you advance by picking it up and throwing it forward. Where it lands it pulls its head in and is a piece of the room — solid, and rounds stop on it — and cannot be picked up again until it comes out.' },
+        note: 'Slower than a walk and it never catches up: the one escort you advance by picking it up and throwing it forward. Where it lands it pulls its head in and is a piece of the room, solid, and rounds stop on it, and cannot be picked up again until it comes out.' },
       { kind: 'goose', label: 'GOOSE', make: (x, y) => new Prop(x, y, 'goose'), hits: [],
         stats: `runs ahead at ${P.goose.speed}px/s (×${P.goose.hurry} when overtaken), waits ${P.goose.lead} tiles ahead ·honks at anyone inside ${P.goose.seeR}, every ${P.goose.honkGap}s · breaks a swing for ${P.goose.balkStun}s at any range`,
-        note: 'It does not follow and it does not wait: it runs for the stairs on its own, room after room — and it honks at every man it sees, which is a noise, so the room turns and comes for YOU. The same honk breaks a blow a man has already committed to, at any range at all. A permanent alarm you have to live with. At the stairs: the voice carries further and comes back sooner.' },
+        note: 'It does not follow and it does not wait: it runs for the stairs on its own, room after room, and it honks at every man it sees, which is a noise, so the room turns and comes for YOU. The same honk breaks a blow a man has already committed to, at any range at all. A permanent alarm you have to live with. At the stairs: the voice carries further and comes back sooner.' },
       { kind: 'crow', label: 'CROW', make: (x, y) => new Prop(x, y, 'crow'), hits: [],
         stats: `answers a body inside ${P.crow.markR} tiles for ${P.crow.markFor}s · sits with no body in reach, flies after the goat a room behind or ${P.crow.catchUp} tiles off · a tier ${P.crow.giftTier} talisman if it reaches the stairs`,
-        note: 'It follows corpses, not you: every room with nothing dead in it, it falls behind. The one escort that argues with run, don\'t fight, and that is the price of what it carries out — a tier III talisman standing on the next floor\'s stairs, free.' },
+        note: 'It follows corpses, not you: every room with nothing dead in it, it falls behind. The one escort that argues with run, don\'t fight, and that is the price of what it carries out, a tier III talisman standing on the next floor\'s stairs, free.' },
       { kind: 'horse', label: 'HORSE', make: (x, y) => new Prop(x, y, 'horse'), hits: [],
         stats: `a ${P.stall.w}x${P.stall.h}-tile stall, ${P.stall.hits} hits · gallops at ${Math.round(P.horse.speed)}px/s · kicks a shut door in ${P.horse.kickWind}s · bowls a man aside at ${Math.round(P.horse.bowl)}px/s, dazed ${P.horse.daze}s · ${P.horse.hp} wounds · ×${P.horse.saveSpeed} stride for the run if you beat it to one soul room`,
-        note: 'It races you, in legs. Out of its stall it says so and runs for the next locked room with a soul (a soul gate room, or the mouse room), kicking every door in its way down and bowling the men in it aside without killing them — the cult hardly minds it. There it waits at the bar until the soul is taken, then runs on to the next, and last to the stairs. Be in a soul room before it once and it pays at the stairs; it tells you who won every leg.' },
+        note: 'It races you, in legs. Out of its stall it says so and runs for the next locked room with a soul (a soul gate room, or the mouse room), kicking every door in its way down and bowling the men in it aside without killing them, the cult hardly minds it. There it waits at the bar until the soul is taken, then runs on to the next, and last to the stairs. Be in a soul room before it once and it pays at the stairs; it tells you who won every leg.' },
       { kind: 'cage', label: 'THE PEN', make: (x, y) => new Prop(x, y, 'cage'), hits: ['HEADBUTT'],
         stats: `${P.cage.hits} hits the first time a browser ever does it, ${P.cage.againHits} every time after`,
         note: 'The one object that is a lesson rather than a fixture: what it costs the first time is remembered (`penBroken`), so a run that has already learned the verb only pays the toll.' },
@@ -5241,7 +5259,7 @@ class Renderer {
       const ry = y + i * rowH;
       if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, ry, W - pad * 2 + 8 * s, rowH); }
       // The thumbnail is a real Prop at the row's own centre, clipped to the cell: a stand of arms
-      // reads at a glance and a wheel is not asked to fit inside one — its arms simply run off the
+      // reads at a glance and a wheel is not asked to fit inside one, its arms simply run off the
       // edge of the box the way they would run off the edge of a small window onto the room.
       ctx.save();
       ctx.beginPath(); ctx.rect(pad, ry, thumb, rowH); ctx.clip();
@@ -5252,7 +5270,7 @@ class Renderer {
       ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
       ctx.fillText(f.label, nameX, ry + rowH / 2 - 12 * s);
       // What can reach it: a small badge per interaction, coloured by kind so the same colour always
-      // means the same verb across every row — never a second guess about which prop does what.
+      // means the same verb across every row, never a second guess about which prop does what.
       let bx = nameX;
       ctx.font = `700 ${6.2 * s}px ${FONT_SC}`;
       for (const hit of f.hits) {
@@ -5274,7 +5292,7 @@ class Renderer {
     });
   }
 
-  // THE ANIMALS: every escort on one page — its picture, which floors may hold it, where this run
+  // THE ANIMALS: every escort on one page, its picture, which floors may hold it, where this run
   // dealt it, how it behaves, what it pays at the stairs, and every line it can say. All of it read
   // off `Beast` and TUNING, so what the page says is what the game does.
   drawAnimalsTab(game, pad, top) {
@@ -5326,7 +5344,7 @@ class Renderer {
 
   // One room, as deep as the tool goes: the plan at whatever size the screen allows, what the tiles
   // under it are, everything standing in it and everyone standing on it. This is what going deeper
-  // means — the strip of plans is a map of a level, and this is one square of it opened up.
+  // means, the strip of plans is a map of a level, and this is one square of it opened up.
   drawRoomSheet(game, pad) {
     const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
     const li = clamp(d.room.li, 0, LEVELS.length - 1);
@@ -5400,7 +5418,7 @@ class Renderer {
 
   // One room's floor plan, fitted into a box: stone, floor, hay and holes off the tile grid, then a
   // dot for every prop and a dot for every man. It is drawn from the generated level rather than
-  // from the template, so what it shows is what was actually built — corridors cut through it, the
+  // from the template, so what it shows is what was actually built, corridors cut through it, the
   // grating laid into it, the vault's door hung in its wall.
   // `big` is the opened room: the same plan with a grid over the tiles, names against the men and a
   // ruler along two sides, because at that size the picture can afford to say what it is made of.
@@ -5455,12 +5473,12 @@ class Renderer {
   }
 
   // The mouse in the wall. Small, grey, sat up on her haunches with her paws together, ears up,
-  // one bead of an eye and a tail curling out behind her — a trader, not a threat, until she has
+  // one bead of an eye and a tail curling out behind her, a trader, not a threat, until she has
   // been hit twice, when the eye goes red and she shakes. What she says is a bubble over her head
   // in the same plate the cult's barks use, so a line from her reads as a line from anybody.
   // The burrow itself: a low, dirt-rimmed hole cut into the base of the wall, flush with the floor
   // and squashed to it the way a spike plate or a crack is (this is a hole, not a doorway a body
-  // stands in). `p.gap` is the wall tile it opens through — one row from where she actually sits.
+  // stands in). `p.gap` is the wall tile it opens through, one row from where she actually sits.
   drawBurrow(p) {
     const ctx = this.ctx, gx = p.gap.x, gy = p.gap.y, w = 13, h = 8 * TILT;
     ctx.fillStyle = PALETTE.dirt;
@@ -5486,7 +5504,7 @@ class Renderer {
     const bob = Math.sin(t * 3.2 + p.phase) * 0.8, shake = p.wobble > 0 ? Math.sin(t * 60) * 1.6 : 0;
     const angry = (p.angry || 0) > 0 || (p.strikes || 0) >= 2;
     if (p.gap && !p.dead) this.drawBurrow(p);
-    // She sits to one side of her own hole rather than blocking it — a real mousehole shows the
+    // She sits to one side of her own hole rather than blocking it, a real mousehole shows the
     // dark opening itself, with whatever lives there peeking out beside it, not centred over it.
     const sx = p.x - 9, sy = p.y;
     this.shadow(sx, sy + 2, 8, 3.5);
@@ -5589,7 +5607,7 @@ class Renderer {
   }
 
   // A ware on her shelf: a stool with the talisman hanging over it and a word under it. She takes
-  // nothing for it — TAKE, and the gate says it is one of hers — dark and barred while the ogre is
+  // nothing for it, TAKE, and the gate says it is one of hers, dark and barred while the ogre is
   // out, and the old talisman put back on the stool says YOURS, since reaching for it is a swap.
   // Two stools sit a tile apart: anything longer than a word under each ran into its neighbour.
   drawWare(p) {
@@ -5635,7 +5653,7 @@ class Renderer {
     ctx.textAlign = 'left'; ctx.restore();
     // What it does, read off the thing itself rather than off a HUD tooltip: nobody stops running
     // to hover a corner of the screen, but a line hanging over the ware as you walk up to it is
-    // read on the way past. On approach, not on the pointer — the touch player gets it too.
+    // read on the way past. On approach, not on the pointer, the touch player gets it too.
     // Only the nearest one: two stools a tile apart both in reach put two boxes over each other.
     this.wareNote(p, def, `${def.name} · ${rarityOf(w.tier).name}`, Shop.tierOf(w).desc, rarityOf(w.tier).color);
   }
@@ -5686,7 +5704,7 @@ class Renderer {
     return best;
   }
   // The pail on her shelf, and the one word on it. It reads out its own worth in hearts rather than
-  // in a sentence — it is the same literal line every ware carries now, it is just short enough to
+  // in a sentence, it is the same literal line every ware carries now, it is just short enough to
   // live under the TAKE.
   drawMilkOffer(p, ctx) {
     const t = this.t, R = 12, H = 28, y0 = p.y + 5, top = y0 - H;
@@ -5827,7 +5845,7 @@ class Renderer {
   }
 
   // The slot right of the hearts: the talisman he wears, its tier, and for the boomerang the wait
-  // until it is back in the holster. Empty, it is a faint cord with nothing on it — a slot that
+  // until it is back in the holster. Empty, it is a faint cord with nothing on it, a slot that
   // exists before there is anything to put in it is how a player finds out there is a shop.
   // The saved animals as a row of emoji (`Beast.EMOJI`), in the order they came out. Returns whether
   // it drew anything, so what sits under it can make room.
@@ -5870,7 +5888,7 @@ class Renderer {
       ctx.fillStyle = rarityOf(art.tier).color;
       const pw = 3 * s, gap = 2 * s, tot = art.tier * pw + (art.tier - 1) * gap;
       for (let k = 0; k < art.tier; k++) ctx.fillRect(Math.round(cx - tot / 2 + k * (pw + gap)), Math.round(y + box - 5 * s), pw, 2.2 * s);
-      // Q's own wait, as a strip draining under the chip the way the gong's does under the rail —
+      // Q's own wait, as a strip draining under the chip the way the gong's does under the rail,
       // one clock for both verb artifacts, since only one is ever worn at once.
       if (isItem && g.itemCdMax > 0 && g.itemCd > 0) {
         const frac = game.boom.fly ? 1 : g.itemCd / g.itemCdMax;
@@ -5882,7 +5900,7 @@ class Renderer {
       ctx.strokeStyle = 'rgba(239,230,208,0.22)'; ctx.lineWidth = 1.4 * s;
       ctx.beginPath(); ctx.moveTo(cx - box * 0.28, cy - box * 0.1); ctx.quadraticCurveTo(cx, cy + box * 0.32, cx + box * 0.28, cy - box * 0.1); ctx.stroke();
     }
-    // The key, under the chip, exactly the way the rail prints one under each of the four verbs —
+    // The key, under the chip, exactly the way the rail prints one under each of the four verbs,
     // and only once there is a fifth verb to name at all.
     if (isItem && !game.touch.active) {
       ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.textAlign = 'center';
@@ -5914,7 +5932,7 @@ class Renderer {
   }
 
   // The rat ogre: what the mouse in the wall becomes. Twice a man's width, hunched, grey-brown and
-  // matted, a rat's head on it — long snout, round ears, whiskers, red eyes, two teeth — and a
+  // matted, a rat's head on it, long snout, round ears, whiskers, red eyes, two teeth, and a
   // naked pink tail longer than he is. Nothing else in the compound is an animal that walks on
   // two legs, which is the point: he is the one thing here that is not the cult's and not yours.
   drawRatOgre(e, r) {
@@ -6023,7 +6041,7 @@ class Renderer {
     // He is drawn a quarter turn toward the camera, and built in three pieces that never merge into
     // one blob: body, then a short dark neck out of the shoulder, then a round head sitting on top of
     // it. The seam down the shoulder and the shadow under the jaw are what make the head legible from
-    // straight above — without them a white shape 30 px long is just a shape.
+    // straight above, without them a white shape 30 px long is just a shape.
     const step = Math.sin(this.t * 22) * (Math.hypot(g.vx, g.vy) > 40 ? 3.5 : 0);
     const horn = clamp(game.mods ? game.mods.headbuttReach : 1, 1, 1.5);   // Long Horns shows on him
     // far side first: the legs and the ear away from the camera
@@ -6055,7 +6073,7 @@ class Renderer {
     ctx.fillStyle = PALETTE.blood;
     for (let k = 0; k < dmg * 2; k++) { ctx.beginPath(); ctx.ellipse(-11 + k * 4.5, (k % 2 ? 4 : -3.5), 4.2, 3, 0.5 * k, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
-    // neck: a narrow darker band out of the shoulder. It is short on purpose — the gap it leaves
+    // neck: a narrow darker band out of the shoulder. It is short on purpose, the gap it leaves
     // between the two big masses is what tells you which end is the head.
     ctx.fillStyle = '#c9bd9d'; ctx.strokeStyle = edge; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(5, -3.5); ctx.quadraticCurveTo(10, -3.5, 12, 1);
@@ -6082,7 +6100,7 @@ class Renderer {
     ctx.fillStyle = '#e7dcc2';                                                     // the muzzle, a shade duller
     ctx.beginPath(); ctx.ellipse(24, 5.6, 3.1, 2.6, 0.24, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#8d7c63'; ctx.beginPath(); ctx.ellipse(26.2, 5.2, 1.4, 1.1, 0, 0, Math.PI * 2); ctx.fill();
-    // the beard: a soft tuft hanging straight off the chin. Pointed, it reads as a tusk — and a goat
+    // the beard: a soft tuft hanging straight off the chin. Pointed, it reads as a tusk, and a goat
     // with a tusk is a boar, which is not the animal we are selling.
     ctx.fillStyle = '#e2d7bb'; ctx.strokeStyle = edge; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(20, 8.4); ctx.quadraticCurveTo(22.6, 11, 20.8, 15.2);
@@ -6105,7 +6123,7 @@ class Renderer {
       const [rx, ry] = hornAt(k / 4.4);
       ctx.beginPath(); ctx.moveTo(rx - 1.3, ry - 2); ctx.lineTo(rx + 1.3, ry + 2); ctx.stroke();
     }
-    // two eyes, with the rectangular pupils a goat actually has — shut when he has been clubbed
+    // two eyes, with the rectangular pupils a goat actually has, shut when he has been clubbed
     if (g.state === 'ko') {
       ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(17.2, 7.4); ctx.lineTo(20.8, 7.8);
@@ -6124,7 +6142,7 @@ class Renderer {
     // tail
     ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(-17.5, 0.5); ctx.lineTo(-23, -3 + Math.sin(this.t * 9) * 2); ctx.stroke();
-    if (g.onFire) this.flame(0, -6, 12, 1, g.witchFire);
+    if (g.onFire) this.goatFlame(g);
     ctx.globalAlpha = 1;
     ctx.restore();
     // Stars: the club is still ringing in his skull.
@@ -6288,7 +6306,7 @@ class Renderer {
   // The three screens before the pen, and the sacking coming off it. Flat scenes in screen space:
   // a sky, a ground, and the two of them drawn with the same `drawGoat` / `drawSheep` the pen uses,
   // inside a transform that squashes Y by TILT so their own counter-squash stands them up. Nothing
-  // here is simulated — the positions come from `updatePrologue` — and everything is deliberately
+  // here is simulated, the positions come from `updatePrologue`, and everything is deliberately
   // plain: a fence is two rails and some posts, a truck is three boxes and two circles. It is the
   // first version, drawn to be replaced, and what it has to carry is the shape of the story rather
   // than the finish.
@@ -6418,7 +6436,7 @@ class Renderer {
   }
 
   // A corrupted soul, hanging where the man it was in fell. It was a book, which asked the player to
-  // believe that a goat reads; it is a wisp now — a violet flame with nothing burning under it, a
+  // believe that a goat reads; it is a wisp now, a violet flame with nothing burning under it, a
   // pale core, and a ring of sparks going round it the wrong way. Violet is the game's colour for
   // things that are not supposed to exist (witchfire, the Seer's runes, the wraith), and the whole
   // point of the thing is that swallowing it is not a good idea and you are going to do it anyway.
@@ -6445,7 +6463,11 @@ class Renderer {
     // laid three times, shorter and brighter toward the middle, so it fades out in hard steps and
     // never reaches the edge of its canvas.
     const grow = Math.min(1.05, B(t / (F.intro * 0.9))), turn = t * F.spin * Math.PI * 2;
-    const loud = lerp(1, F.settle, clamp((t - F.intro) / 0.8, 0, 1));
+    // With `sink`, the soul hangs where he will stand until a card is reached for (`game.boonMorph`),
+    // then is swallowed into his middle (`fanfare.morph`), and the rays flare once as he stands up.
+    const M = F.morph, mu = sink && game.boonMorph != null ? clamp((t - game.boonMorph) / M.time, 0, 1) : 0;
+    const flare = mu > 0 ? M.flare * Math.max(0, 1 - Math.abs(mu - M.ring) / 0.3) : 0;
+    const loud = Math.min(1, lerp(1, F.settle, clamp((t - F.intro) / 0.8, 0, 1)) + flare);
     for (let k = 0; k < F.rays; k++) {
       const a = turn + k / F.rays * Math.PI * 2, w = Math.PI / F.rays * 0.5, gold = k % 2 === 0;
       for (const f of [0.9, 0.62, 0.38]) {
@@ -6475,9 +6497,10 @@ class Renderer {
     }
     ctx.globalAlpha = 1;
     // the soul, springing in and then breathing
-    const into = sink ? clamp((t - 0.55) / 0.45, 0, 1) : 0;
-    if (into < 1) this.soulWisp(cx, cy + into * 20 * s, 2.4 * s * (0.3 + 0.7 * B(t / 0.35)) * (1 + 0.05 * Math.sin(t * 5)) * (1 - 0.6 * into), t * 2, 1 - into, true);
-    // A CORRUPTED SOUL, bouncing up over it — squeezed to the screen's width on a narrow one
+    // Swallowed, not faded: it shrinks faster the further in it is, turning as it goes.
+    const into = Math.pow(clamp(mu / M.soulOut, 0, 1), 2), bob = sink ? Math.sin(t * 2.2) * M.bob * s * (1 - into) : 0;
+    if (into < 1) this.soulWisp(cx, cy + bob, 2.4 * s * (0.3 + 0.7 * B(t / 0.35)) * (1 + 0.05 * Math.sin(t * 5)) * (1 - 0.85 * into), t * 2 + into * 6, 1 - into * into, true);
+    // A CORRUPTED SOUL, bouncing up over it, squeezed to the screen's width on a narrow one
     const tp = B((t - 0.1) / 0.32);
     if (tp > 0) {
       const ty = titleY !== undefined ? Math.max(30 * s, titleY) : Math.max(30 * s, cy - 52 * s), word = 'A CORRUPTED SOUL';
@@ -6520,7 +6543,7 @@ class Renderer {
       // The god's two hundred, under the heap until they are brought.
       if (Heaven.gifted() && !Heaven.questDone()) {
         const q = TUNING.heaven.gift.quest, b = Math.min(q, M.brought || 0);
-        ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.font = `700 ${Math.max(12 * this.s, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillText(`FOR THE GOD ${b} / ${q}`, hx + 1 * s, top + 33 * s);
         ctx.fillStyle = 'rgba(255,244,194,0.8)'; ctx.fillText(`FOR THE GOD ${b} / ${q}`, hx, top + 32 * s);
       }
@@ -6581,10 +6604,10 @@ class Renderer {
 
   // The rooms nobody has walked into, painted out. It goes down after the floor, the blood and the
   // holes and before anything standing on them, and everything that stands on them is filtered by
-  // `game.hidden` in the draw order above — so an unopened room is a wall-coloured rectangle with a
+  // `game.hidden` in the draw order above, so an unopened room is a wall-coloured rectangle with a
   // doorway in it, and the doorway is the only thing the room tells you about itself.
-  // The moving half of the fog. `world.vis` is one byte a tile — set by the shadowcast in `World`
-  // from wherever the goat is standing — and this paints everything outside it down. The mask is
+  // The moving half of the fog. `world.vis` is one byte a tile, set by the shadowcast in `World`
+  // from wherever the goat is standing, and this paints everything outside it down. The mask is
   // built at one pixel a tile on a small offscreen canvas and blown up over the world with
   // smoothing on, so the edge of a partition's shadow is a gradient and not a staircase of squares.
   // It goes on after everything else in world space, so a man standing behind a pillar is as dark
@@ -6619,7 +6642,7 @@ class Renderer {
       this.shadeWin = { x0, y0, nx, ny, fog, bits };
       // Soft (1 Oct 2026, playtest: "the dark squares of the fog were a bit aggressive"): each tile's
       // dark is the mean of the 3x3 round it, neighbours weighed `soft`, corners `soft`², laid one
-      // texel a tile and stretched with smoothing — a lone unlit tile is a faint smudge, a shadow's
+      // texel a tile and stretched with smoothing, a lone unlit tile is a faint smudge, a shadow's
       // edge a slope over a tile and a half, and only a shadow's heart is the full `shade`.
       const img = this.shadeImg && this.shadeImg.width === nx && this.shadeImg.height === ny ? this.shadeImg : (this.shadeImg = sc.createImageData(nx, ny));
       const d = img.data, rgb = parseInt(fog.slice(1, 7), 16), r = rgb >> 16 & 255, gg = rgb >> 8 & 255, b = rgb & 255;
@@ -6653,7 +6676,7 @@ class Renderer {
     ctx.fillStyle = def.fog;
     // The death screen wants the opposite of what play does: a room nobody opened is still part of
     // the level and the point of showing it is that it was there, so it is only lightly tinted
-    // rather than painted out solid — a corridor between two rooms is never hidden at all (see
+    // rather than painted out solid, a corridor between two rooms is never hidden at all (see
     // CLAUDE.md), and a heavy fill here left every unopened room unreadable next to the ones the run
     // actually walked through, which is the opposite of what a recap of the level is for. In play
     // the same rectangle stays the flat wall it always was: the fog is there to keep a room unseen,
@@ -6681,7 +6704,7 @@ class Renderer {
 
   // The veil across the mouth of a room left behind: a curtain of dark that breathes, with a few
   // violet threads drifting down it, fading out into the corridor on the near side. It sits over the
-  // stone `updateClamps` put back, so the wall under it is never seen — what shuts the room is magic,
+  // stone `updateClamps` put back, so the wall under it is never seen, what shuts the room is magic,
   // and it looks like nothing you could put your head through.
   drawVeil(m, k) {
     const ctx = this.ctx, t = this.t, long = m.span * TILE;
@@ -6769,7 +6792,7 @@ class Renderer {
     if (game.state !== 'boon' || !game.boonChoice) { game.boonRects = []; return; }
     // The pointer's own card, so a hover reads as pointing at something rather than as nothing at
     // all: `game.boonAt` is the same hit-test the click itself goes through, against last frame's
-    // rects — they never move while the choice is up, so the one-frame lag is not felt.
+    // rects, they never move while the choice is up, so the one-frame lag is not felt.
     // Not on touch: a lifted finger leaves the pointer where it was, and that card stayed lit.
     // A pad lights the card its stick is on (`game.boonPad`), the one A takes.
     const hoverI = padOn(game) ? (game.boonPad || 0) : game.boonDown < 0 && !game.touch.active ? game.boonAt(game.input.mouse) : -1;
@@ -6779,16 +6802,17 @@ class Renderer {
     ctx.fillStyle = `rgba(13,10,12,${0.86 * Math.min(1, bt / 0.2)})`; ctx.fillRect(0, 0, this.w, this.h);
     ctx.textAlign = 'center';
     const stack = this.portrait || this.vw < 760 * s;
+    this.boonStack = stack;   // no goat to swallow the soul: `Game.watchBoonMorph` plays nothing then
     const cw = stack ? Math.min(this.w * 0.88, 440 * s) : Math.min(this.w * 0.29, 280 * s);
     // What each card says, wrapped before anything is drawn: one or two short lines of what the soul
     // does, and nothing else (25 Sep 2026: the numbers line under it was "windup speed, what the
-    // hell?" — it lives in the dev drawer now). Every card of the deal is as tall as the wordiest
+    // hell?", it lives in the dev drawer now). Every card of the deal is as tall as the wordiest
     // one, so they still read as a row of equals; the minimum height keeps a one-liner a card.
     const descFont = FONT_PICK.font('text', 13.5 * s), textW = cw - 24 * s;
     // A swap (`game.boonReplace`) says under its text which boon it takes the place of.
     const swapOf = (i) => game.boonReplace && game.boonReplace[i];
-    // Under the text, a card may carry up to two footnotes: what it adds to its element's set — only
-    // its own share, never a count (30 Sep 2026: "write only what this one gives"; `BOON_SETS`) — and,
+    // Under the text, a card may carry up to two footnotes: what it adds to its element's set, only
+    // its own share, never a count (30 Sep 2026: "write only what this one gives"; `BOON_SETS`), and,
     // on a third card, whose it is (`game.boonThird`).
     const foot = (b, i) => {
       const out = [];
@@ -6807,15 +6831,15 @@ class Renderer {
     const gap = 13 * s;
     const blockH = stack ? n * ch + (n - 1) * gap : ch;
     // Him, large, over the cards (1 Oct 2026, playtest: "a close-up of the goat at the top, looking down
-    // and right; on a card that changes how he looks, show it"): the soul lands in him and he stands in
-    // its light (`Codex.drawBoonGoat`). Not on a narrow screen, where the cards stack and need the height.
+    // and right; on a card that changes how he looks, show it"): the soul hangs where he will stand and
+    // goes into him the first time a card is pointed at, and he stays (`Codex.drawBoonGoat`). Not on a narrow screen, where the cards stack and need the height.
     const gh = stack ? 0 : clamp(this.h * 0.2, 80 * s, 168 * s);
     const whole = gh ? 44 * s + gh + 30 * s + blockH + 18 * s + 30 * s : blockH;
     const topY = gh ? Math.max(this.h / 2 - whole / 2 + 44 * s + gh + 30 * s, 44 * s + gh + 30 * s) : this.h / 2 - blockH / 2;
     const goatFoot = topY - 30 * s;
     if (gh) this.drawSoulFanfare(game, this.w / 2, goatFoot - gh * 0.42, s, goatFoot - gh - 14 * s, true);
     else this.drawSoulFanfare(game, this.w / 2, topY - 44 * s, s);
-    if (gh) Codex.drawBoonGoat(this, game, this.w / 2, goatFoot, gh, hoverI < n ? hoverI : -1, clamp((bt - 0.55) / 0.4, 0, 1));
+    if (gh) Codex.drawBoonGoat(this, game, this.w / 2, goatFoot, gh, hoverI < n ? hoverI : -1);
     const rowW = n * cw + (n - 1) * gap;
     for (let i = 0; i < n; i++) {
       const x = stack ? (this.w - cw) / 2 : (this.w - rowW) / 2 + i * (cw + gap);
@@ -6838,7 +6862,7 @@ class Renderer {
       ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${16 * s}px ${FONT_SC}`;
       ctx.fillText(b.name, x + cw / 2, y + 30 * s);
       // The glyph that stands for the boon everywhere it is named, bigger here than anywhere
-      // else — this is the one place a player is deciding, so it is the one place it earns the size.
+      // else, this is the one place a player is deciding, so it is the one place it earns the size.
       if (b.emoji) {
         const half = ctx.measureText(b.name).width / 2;
         ctx.font = `${20 * s}px ${FONT}`; ctx.textAlign = 'right';
@@ -6857,7 +6881,7 @@ class Renderer {
       tx.foot.forEach(([line, col], k) => { ctx.fillStyle = col; ctx.fillText(line, x + cw / 2, y + ch - 10 * s - (tx.foot.length - 1 - k) * 16 * s); });
       // What it hangs off, drawn the same way the rail draws it, so the card that offers a boon
       // and the chip that later shows it are recognisably the same picture. A boon with no `skill`
-      // is body work and gets neither — nothing on the rail changes for it either.
+      // is body work and gets neither, nothing on the rail changes for it either.
       if (b.skill) {
         ctx.save(); ctx.translate(x + cw - 20 * s, y + 17 * s);
         // Drawn as the verb will look once this soul is on it, so the card shows what it buys.
@@ -6874,17 +6898,17 @@ class Renderer {
         ctx.restore();
         // A key name means nothing to a thumb: on touch the picture of the verb is the whole caption.
         if (!game.touch.active) {
-          ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
+          ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${Math.max(12 * this.s, 9 * s)}px ${FONT_SC}`;
           ctx.fillText(keysOf(game)[b.skill], x + cw - 20 * s, y + 34 * s);
         }
       } else {
-        ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${9 * s}px ${FONT_SC}`;
+        ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${Math.max(12 * this.s, 9 * s)}px ${FONT_SC}`;
         ctx.fillText('BODY', x + cw - 20 * s, y + 20 * s);
       }
       ctx.restore();
     }
-    // The last choice: none of the cards. Set apart from the cards — no border colour a card
-    // uses, no emoji, just the soul's own violet — so it reads as declining rather than as a
+    // The last choice: none of the cards. Set apart from the cards, no border colour a card
+    // uses, no emoji, just the soul's own violet, so it reads as declining rather than as a
     // fourth thing on offer.
     const skipW = stack ? cw : Math.min(rowW, 260 * s), skipH = 30 * s;
     const skipX = (this.w - skipW) / 2;
@@ -6964,7 +6988,7 @@ class Renderer {
   }
 
   // The moment the pen gives, before the room needs looking at: a small comic-panel thought over
-  // his head with her in it, in miniature — the same shape the sheep is built from — and gone in a
+  // his head with her in it, in miniature, the same shape the sheep is built from, and gone in a
   // couple of seconds. It says what the three flat prologue screens already carry the weight of:
   // who this run is actually for, at the one moment control has just come back and there is
   // otherwise nothing on screen asking to be looked at.
@@ -7085,7 +7109,7 @@ class Renderer {
   }
 
   // The plain half of a hit taken: every corner reddens, not just the one the arc points from, so a
-  // hit landing is never a thing you have to notice — it is a thing you cannot miss.
+  // hit landing is never a thing you have to notice, it is a thing you cannot miss.
   drawHurtVignette(game) {
     this.drawHeartbeat(game);
     if (!game.hurtVignette || game.hurtVignette.life <= 0) return;
@@ -7181,7 +7205,7 @@ class Renderer {
       ctx.fillText(`${game.timer.toFixed(1)}s`, right, line + 17 * s); line += 17 * s;
     }
     if (game.audio.muted) {
-      ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
+      ctx.font = `${Math.max(12 * this.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
       ctx.fillText('muted', right, line + 15 * s); line += 15 * s;
     }
     ctx.textAlign = 'left';
@@ -7194,14 +7218,14 @@ class Renderer {
     }
     this.drawSkillNote(game);
 
-    // The seed, bottom-left — out of the way of the corner everything else reports through — and
+    // The seed, bottom-left, out of the way of the corner everything else reports through, and
     // the build under it, so a report of something odd can name the version it happened on.
     // The run's seed is the one worth reading out: the level's own is derived from it, so this is
     // the whole run in five characters and `#seed=` takes it back. In base 36 because a player is
     // going to have to type or paste it, and nine digits is not something anybody passes on.
-    ctx.textAlign = 'left'; ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
+    ctx.textAlign = 'left'; ctx.font = `${Math.max(12 * this.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
     ctx.fillText(`seed ${(game.runSeed >>> 0).toString(36)}`, 14 * s, this.h - 23 * s);
-    ctx.font = `${9.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
+    ctx.font = `${Math.max(12 * this.s, 9.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
     ctx.fillText(`v${BUILD}`, 14 * s, this.h - 12 * s);
     // exit compass, pinned just inside the bottom of the play view
     if (game.state === 'play' && !g.dead) {
@@ -7224,19 +7248,19 @@ class Renderer {
     const R = TUNING.goat.roll;
     // Two of the four buttons start half-shut and the souls open them, so the rail has to say which
     // half you have got: GRAB carries THINGS until BY THE COLLAR, and BAAH is a CALL until it is a
-    // blow or a fire. What is written under a chip is the key that throws it — the word for the verb
+    // blow or a fire. What is written under a chip is the key that throws it, the word for the verb
     // and what it does are on the note the pointer brings up, because a caption you have read a
     // hundred times is a caption that has stopped saying anything, and the key never stops.
-    // One line each, and the line says what the button does — not what it means. It is read while a
+    // One line each, and the line says what the button does, not what it means. It is read while a
     // room is walking toward you, so it is a caption and not a paragraph.
     // On THE TRIP every verb is on another key (`game.tripInput`), and the caption says which.
     const trip = !!(game.level && game.level.def.shroom), K = keysOf(game);
-    // Each note also carries `stat`, the verb in numbers as it stands now — every soul and talisman
-    // already folded into `game.mods` — shown only while the dev drawer is open (`drawSkillNote`).
+    // Each note also carries `stat`, the verb in numbers as it stands now, every soul and talisman
+    // already folded into `game.mods`, shown only while the dev drawer is open (`drawSkillNote`).
     // The `note` is the player's: a line or two, no numbers (25 Sep 2026).
     const M = game.mods, H = TUNING.goat.headbutt, G = TUNING.goat.grab, V = TUNING.goat.scream;
     const rows = [
-      // Headbutt carries no cooldown ring — its recovery is the cost, per CLAUDE.md — but a cost
+      // Headbutt carries no cooldown ring, its recovery is the cost, per CLAUDE.md, but a cost
       // with nothing to see was a button that looked free between swings. `recover` drains the same
       // chip in the opposite direction, in fire rather than blood, since it is a vulnerability window
       // and not a lockout: the button is simply not what threw it a moment ago.
@@ -7254,8 +7278,8 @@ class Renderer {
         recover: M.coldEye && game.aimSlow > 0 ? clamp(game.aimSlow / M.coldEye.time, 0, 1) : 0,
         note: (game.mods.grabMen ? 'Carry a box, a blade, a shield or a man. Let go to throw.'
           : 'Carry a box, a blade or a shield. Let go to throw. Men are too heavy for now.')
-          + (game.mods.brandHold ? ' Held a moment, it sets the floor it flies over alight.'
-            : game.mods.venomHold ? ' Held a moment, it spreads poison wherever it goes.' : '')
+          + (game.mods.brandHold ? ' Held a moment, the floor it crosses burns.'
+            : game.mods.venomHold ? ' Held a moment, it drips poison where it flies.' : '')
           + (M.coldEye ? ' Picking up slows time.' : ''),
         stat: `REACH ${sayN(G.reach / TILE)} TILES · ${sayN(G.cooldown * M.grabCooldown)}s BEFORE THE NEXT`
           + (M.grabMen ? ` · A MAN: ${sayN(G.bite)}s TO LIFT, ${sayPct(G.speedMul)} SPEED, STOPS ${M.shieldBullets} BULLETS, WORKS LOOSE IN ~${sayN(M.holdTime)}s, ${sayN(G.cooldown * M.grabCooldown * G.manCd)}s BEFORE THE NEXT` : '')
@@ -7273,7 +7297,7 @@ class Renderer {
         cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0,
         half: !fire && !game.mods.screamStun && !game.mods.spit,
         note: game.mods.spit ? 'Spit a glob of poison where you point.'
-          : fire ? 'Breathe fire the way you are running.'
+          : fire ? 'Breathe fire where you run.'
           : game.mods.screamStun ? 'Stun everyone near you, even mid-swing.'
             : 'A shout. It breaks the swing of anyone on top of you and calls the rest to you.',
         stat: (M.spit ? `FLIES UP TO ${sayN(TUNING.status.spit.range)} TILES`
@@ -7306,10 +7330,10 @@ class Renderer {
       this.skillIcon(row.id, box * 0.33, game, fire);
       ctx.globalAlpha = 1; ctx.restore();
       // one small glyph per soul hanging off this button, the same emoji that names it everywhere
-      // else — a diamond pip only ever said "something is here", the emoji says what.
+      // else, a diamond pip only ever said "something is here", the emoji says what.
       boons.forEach((b, k) => {
         const px = x + 6 * s + k * 9 * s, py = y + box + 12 * s;
-        if (b.emoji) { ctx.textAlign = 'center'; ctx.font = `${9 * s}px ${FONT}`; ctx.fillText(b.emoji, px, py); ctx.textAlign = 'left'; }
+        if (b.emoji) { ctx.textAlign = 'center'; ctx.font = `${Math.max(12 * this.s, 9 * s)}px ${FONT}`; ctx.fillText(b.emoji, px, py); ctx.textAlign = 'left'; }
         else {
           ctx.fillStyle = b.active ? PALETTE.blood : PALETTE.ochre;
           ctx.beginPath(); ctx.moveTo(px, py - 8 * s); ctx.lineTo(px + 2.4 * s, py - 5.2 * s);
@@ -7325,7 +7349,7 @@ class Renderer {
         if (!padOn(game) && m.x >= x - 3 * s && m.x <= x + box + 3 * s && m.y >= y - 3 * s && m.y <= y + box + 31 * s) {
           this.skillHover = { row, x, y: y + box + 35 * s, above: this.railLow ? y - 8 * s : undefined, hot, boons };
         }
-        ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+        ctx.font = `700 ${Math.max(12 * this.s, 10 * s)}px ${FONT_SC}`;
         ctx.fillStyle = hot ? PALETTE.fireHi : row.half ? 'rgba(239,230,208,0.38)'
           : row.cd > 0 ? 'rgba(192,57,43,0.95)' : 'rgba(239,230,208,0.55)';
         // A little clear of the box itself: flush under it read as part of the icon rather than a
@@ -7342,7 +7366,7 @@ class Renderer {
       const bw = right - x0, by = this.railLow ? top - 10 * s : end + 2 * s;
       ctx.fillStyle = 'rgba(13,10,12,0.5)'; ctx.fillRect(x0, by, bw, 4 * s);
       ctx.fillStyle = PALETTE.fireHi; ctx.fillRect(x0, by, bw * gong, 4 * s);
-      ctx.textAlign = 'center'; ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi;
+      ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(12 * this.s, 8.5 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi;
       ctx.fillText('THE GONG', x0 + bw / 2, this.railLow ? by - 5 * s : by + 14 * s);
       if (!this.railLow) end = by + 24 * s;
     }
@@ -7350,7 +7374,7 @@ class Renderer {
     return end;
   }
 
-  // The souls that belong to no button — THE ORACLE, SURE HOOVES, THICK HIDE and the rest — in a
+  // The souls that belong to no button, THE ORACLE, SURE HOOVES, THICK HIDE and the rest, in a
   // square of four just left of the rail, one cell a slot. An empty cell is drawn too: the square
   // says how many a build can hold (`BOON_SLOTS.general`) as well as what is in it. The pointer on
   // a cell brings up the same note a verb's chip does.
@@ -7374,7 +7398,7 @@ class Renderer {
   }
 
   // What the chip under the pointer does, in words. The rail says which key throws a verb and the
-  // note says what the verb is — so the sentence is there when it is wanted and out of the way the
+  // note says what the verb is, so the sentence is there when it is wanted and out of the way the
   // rest of the time, which is the opposite of a caption that lives on the screen for ten minutes.
   // It carries the souls hanging off that button too, because that is where a run's build is felt.
   drawSkillNote(game) {
@@ -7383,11 +7407,11 @@ class Renderer {
     const w = Math.min(230 * s, this.w - 28 * s), right = this.w - 14 * s;
     // Under the rail by default; the talisman's chip, on the left, asks for it under itself.
     const x = h.left !== undefined ? Math.min(h.left, right - w) : right - w;
-    ctx.font = FONT_PICK.font('text', 11 * s);
+    ctx.font = FONT_PICK.font('text', Math.max(12 * this.s, 11 * s));
     const lines = this.wrap(h.row.note, w - 20 * s);
     // The numbers under the sentence (what the verb does now, every soul on it counted in) are the
     // dev drawer's, not the player's: shown only while it is open (25 Sep 2026, "no exact numbers").
-    ctx.font = `700 ${9 * s}px ${FONT_SC}`;
+    ctx.font = `700 ${Math.max(12 * this.s, 9 * s)}px ${FONT_SC}`;
     const stat = h.row.stat && game.dev && game.dev.open ? this.wrapFacts(h.row.stat, w - 20 * s) : [];
     const statH = stat.length ? 4 * s + stat.length * 12 * s : 0;
     const names = h.boons.map((b) => (b.active ? '◆ ' : '❖ ') + (b.emoji ? b.emoji + ' ' : '') + b.name);
@@ -7400,13 +7424,13 @@ class Renderer {
     ctx.textAlign = 'left';
     ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = h.row.half ? 'rgba(239,230,208,0.7)' : PALETTE.bone;
     ctx.fillText(h.row.name, x + 10 * s, y + 15 * s);
-    ctx.font = FONT_PICK.font('text', 11 * s); ctx.fillStyle = 'rgba(239,230,208,0.68)';
+    ctx.font = FONT_PICK.font('text', Math.max(12 * this.s, 11 * s)); ctx.fillStyle = 'rgba(239,230,208,0.68)';
     lines.forEach((ln, i) => ctx.fillText(ln, x + 10 * s, y + 30 * s + i * 14 * s));
     if (stat.length) {
-      ctx.font = `700 ${9 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(242,162,51,0.85)';
+      ctx.font = `700 ${Math.max(12 * this.s, 9 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(242,162,51,0.85)';
       stat.forEach((ln, i) => ctx.fillText(ln, x + 10 * s, y + 32 * s + lines.length * 14 * s + i * 12 * s));
     }
-    ctx.font = `700 ${10 * s}px ${FONT_SC}`;
+    ctx.font = `700 ${Math.max(12 * this.s, 10 * s)}px ${FONT_SC}`;
     names.forEach((n, i) => {
       ctx.fillStyle = h.boons[i].active ? PALETTE.blood : PALETTE.ochre;
       ctx.fillText(n, x + 10 * s, y + 32 * s + lines.length * 14 * s + statH + i * 13 * s);
@@ -7477,8 +7501,8 @@ class Renderer {
       ctx.arc(0, 0, h * 0.95, Math.PI * 0.68, Math.PI * 1.32);
       ctx.stroke();
       ctx.beginPath(); ctx.arc(0, 0, h * 0.95, -Math.PI * 0.32, Math.PI * 0.32); ctx.stroke();
-      // What is between the jaws. Out of the pen it is a box — the mouth takes objects and nothing
-      // else — and BY THE COLLAR turns it into a head, which is the icon changing into the thing
+      // What is between the jaws. Out of the pen it is a box, the mouth takes objects and nothing
+      // else, and BY THE COLLAR turns it into a head, which is the icon changing into the thing
       // the soul bought. A strong jaw puts teeth round it.
       if (!m.grabMen) {
         ctx.fillStyle = PALETTE.ochre;
@@ -7598,7 +7622,7 @@ class Renderer {
       item: game.mods.boomerang ? 'THROW' : 'BLINK' };
     const ready = { butt: game.goat.state === 'idle' && !held, grab: held || game.goat.grabCd <= 0,
       scream: game.goat.screamCd <= 0, roll: game.goat.rollCd <= 0, item: g.itemCd <= 0 };
-    // The fifth key is drawn last of the five and only once the shop has put something on it —
+    // The fifth key is drawn last of the five and only once the shop has put something on it,
     // undrawn and untouchable before that, per `TouchUI.hitButton`.
     for (const k of itemOn ? ['butt', 'grab', 'scream', 'roll', 'item'] : ['butt', 'grab', 'scream', 'roll']) {
       const b = t.buttons[k], down = t.pressed[k] !== undefined;
@@ -7677,7 +7701,7 @@ class Renderer {
   // The name, a pair of horns round it, and the two ways in. Nothing is explained here: the opening
   // scene carries the story and the floor of level 1 carries the controls.
   drawTitle(game, dt) {
-    // Cleared here so stale click zones do not linger once the title is gone — except while paused,
+    // Cleared here so stale click zones do not linger once the title is gone, except while paused,
     // where `drawPause` (called earlier in the same `draw()`) may have just filled `menu.rects` with
     // its own settings panel and this would wipe it before a click ever got to read it.
     if (game.state !== 'title') { if (game.menu && game.state !== 'paused') game.menu.rects.length = 0; return; }
@@ -7716,7 +7740,7 @@ class Renderer {
     const bw = clamp(Math.min(w * 0.76, 330 * s), 170 * s, 400 * s);
     // The rows are sized to the screen they were given. The block used to be measured as two rows
     // however many there were, so five of them ran off the bottom of the window and took SETTINGS
-    // with them — and a row you cannot see is a row that does not work. They are smaller as well:
+    // with them, and a row you cannot see is a row that does not work. They are smaller as well:
     // a menu of five is a list to read down, not five slabs stacked up the height of the screen.
     const n = game.menuItems().length, lead = 40 * s, above = size * 1.2, below = size * 0.3;
     let bh = 46 * s, gap = 10 * s;
@@ -7743,7 +7767,7 @@ class Renderer {
       new: { label: 'NEW GAME' },
       continue: { label: 'CONTINUE', locked: !run,
         note: def ? `(${def.sub.toLowerCase()} · ${def.name.toLowerCase()}${souls ? ` · ${souls} soul${souls === 1 ? '' : 's'}` : ''})` : '(nothing to come back to)' },
-      levels: { label: 'LEVELS', note: `(any of the ${LEVELS.length} with its souls — straight, tripping or dark)` },
+      levels: { label: 'LEVELS', note: `(any of the ${LEVELS.length} with its souls, straight, tripping or dark)` },
       // "best run 0" read as a run scored nothing; until one is finished the board is levels only
       best: { label: 'BEST', note: board.run ? `(best run ${board.run})` : cleared ? `(${cleared} level${cleared === 1 ? '' : 's'} on the board)` : '(nothing on the board yet)' },
       settings: { label: 'SETTINGS', note: `(clock ${game.settings.timer ? 'on' : 'off'} · sound ${game.settings.sound ? 'on' : 'off'} · easy ${game.settings.easy ? 'on' : 'off'})` },
@@ -7789,10 +7813,11 @@ class Renderer {
     if (game.menu.panel === 'best') this.drawBoard(game, board);
     if (game.menu.panel === 'settings') this.drawSettings(game);
     if (game.menu.panel === 'levels') this.drawLevelPick(game, board);
+    if (game.menu.panel === 'consent') Stats.drawConsent(this, game);
   }
 
-  // Escape mid-level. The world behind it is drawn exactly as `draw` always draws it — nothing
-  // about pausing skips a line of that — so this is only ever the panel on top of it, dimmer than
+  // Escape mid-level. The world behind it is drawn exactly as `draw` always draws it, nothing
+  // about pausing skips a line of that, so this is only ever the panel on top of it, dimmer than
   // the settings panel's own near-black because there is a frozen room worth still being able to
   // read behind it. Its own settings sub-panel is `drawSettings` itself: `game.menu.panel` is what
   // that function reads and it does not care whether the title or the pause overlay opened it.
@@ -7856,7 +7881,7 @@ class Renderer {
       ctx.font = `${11.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
       ctx.fillText(this.clip(it.note, bw - 110 * s), x0 + 16 * s, y + rowH * 0.74);
       if (it.type === 'slider') {
-        // A bar with a lit fill up to the value and a knob at the edge of it — the value itself
+        // A bar with a lit fill up to the value and a knob at the edge of it, the value itself
         // never printed as a number, the same way nothing else in this panel prints one.
         const v = clamp(game.settings[it.key] ?? 0.5, 0, 1);
         const sw = 92 * s, sh = 8 * s, sx = x0 + bw - sw - 16 * s, sy = y + rowH / 2 - sh / 2;
@@ -7883,7 +7908,7 @@ class Renderer {
   }
 
   // The level sheet. Every floor of the game, its canon and what it is about, and a row is a way
-  // straight onto it — with the souls a run would have banked getting there, dealt at random. It is
+  // straight onto it, with the souls a run would have banked getting there, dealt at random. It is
   // built like the switches: while it is up it owns `menu.rects` entirely, and only BACK leaves.
   drawLevelPick(game, board) {
     const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
@@ -8074,7 +8099,7 @@ class Renderer {
     });
     // The run code sits at the foot of the card, quiet, for whoever is asked to paste it.
     if (card.code) {
-      ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
+      ctx.font = `${Math.max(12 * this.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
       ctx.fillText(`RUN CODE  ${card.code}`, this.w / 2, this.h - 18 * s);
     }
     // How to leave it, as a button (`card.go`), once a press would be taken: under the words, and

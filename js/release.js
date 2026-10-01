@@ -3,15 +3,15 @@
 // and none of the tool's addresses (`#rules`, `#trip`, `#dark`, `#showroom`, `#dev`); GOD MODE is a
 // switch in SETTINGS instead, for anybody who only wants to look round.
 // `RELEASE.build(game)` is the dev drawer's ITCH BUILD button (26 Sep 2026: "a button in dev mode
-// that makes the current version for itch, without dev mode"): the page zips itself — index.html
-// with the flag in it and exactly the scripts it loads, minified, nothing else — and hands the zip over as a
+// that makes the current version for itch, without dev mode"): the page zips itself, index.html
+// with the flag in it and exactly the scripts it loads, minified, nothing else, and hands the zip over as a
 // download. `node tools/itch-zip.js` writes the same zip from a commit on the command line.
 const RELEASE = {
   on: typeof window !== 'undefined' && !!window.GOAT_RELEASE,
   flag: '<script>window.GOAT_RELEASE = true;</script>',
   busy: false,
   // The itch build ships its scripts minified (1 Oct 2026: "so it is not so easy to pull out with
-  // Claude"): no comments, local names cut short. A nuisance, not protection — the code still runs in
+  // Claude"): no comments, local names cut short. A nuisance, not protection, the code still runs in
   // the open. Top-level names are kept, because the scripts share them as globals; property names
   // and strings are never touched. `tools/itch-zip.js` reads these same options.
   terserUrl: 'https://cdn.jsdelivr.net/npm/terser@5/dist/bundle.min.js',
@@ -37,8 +37,8 @@ const RELEASE = {
     return [...document.querySelectorAll('script[src]')].map((s) => s.getAttribute('src'))
       .filter((s) => /^js\/[\w.-]+\.js$/.test(s));
   },
-  // index.html off the server beside the page (the dev server); anywhere else — the published
-  // artifact, whose `index.html` is artifact.html's own head, with no charset or viewport in it —
+  // index.html off the server beside the page (the dev server); anywhere else, the published
+  // artifact, whose `index.html` is artifact.html's own head, with no charset or viewport in it,
   // the same page written out here: keep it in step with index.html. Its script tags are always the
   // ones this page loaded, never the file's own, so an older list can never reach the zip.
   async page(scripts) {

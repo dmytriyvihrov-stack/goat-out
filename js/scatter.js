@@ -1,7 +1,7 @@
-// Scatter: small things that fly off what they stood on — the cult's supper off a table knocked
+// Scatter: small things that fly off what they stood on, the cult's supper off a table knocked
 // across the room (29 Sep 2026: "put food on the tables that scatters beautifully when you hit them;
 // for now we test the scatter on something that small"). Cosmetic, the way CombatFX is: nothing here
-// is in collision, damage, noise or the AI, and none of it draws from the level's seeded RNG — a
+// is in collision, damage, noise or the AI, and none of it draws from the level's seeded RNG, a
 // table's supper is picked off a hash of where it stands, so a replayed code lays the same table.
 // Each bit flies in an arc (`z` over its floor point), turns in whole quarter turns so its pixels
 // stay square, bounces, rolls if it is round, breaks if it is clay, and stays on the floor to be
@@ -36,7 +36,7 @@ class Scatter {
   }
 
   // What is on a table, drawn on it: the table's own frame, whatever turned it. Nothing on a table
-  // sliding across the floor — its supper left it on the first blow.
+  // sliding across the floor, its supper left it on the first blow.
   static drawOnTable(renderer, p) {
     const food = Scatter.foodOf(p); if (!food.length || p.flung || renderer.silPass) return;
     const ctx = renderer.ctx, k = TUNING.scatter.texel;
@@ -64,7 +64,7 @@ class Scatter {
   }
   // A suit of armour coming off the wall (`Prop.burstArmor`): each piece from where it hung
   // (`prop.armor.pieces`: its height and its place across), along (dx, dy) spread either side the way
-  // a table's supper goes — but a blow aimed at the wall glances off it, so nothing is sent into the
+  // a table's supper goes, but a blow aimed at the wall glances off it, so nothing is sent into the
   // stone to die there, and every piece leaves the wall at `armor.out` on top: it hops off the
   // face, clatters down and rolls (the helm is round), never sinks back into the brick.
   fromArmor(p, dx, dy, power = 1) {
@@ -161,6 +161,7 @@ class Scatter {
       this.bits.push({ id: 'shard', x: b.x, y: b.y, z: 1, vx: b.vx * 0.4 + Math.cos(a) * sp, vy: b.vy * 0.4 + Math.sin(a) * sp, vz: 60 + Math.random() * 70,
         spin: (Math.random() - 0.5) * 20, turn: 0, rest: false, squash: 0, bounces: 1, K: Scatter.KINDS.shard, color: K.color || PALETTE.bone, age: 0 });
     }
+    while (this.bits.length > S.keep) this.bits.shift();   // `add` is the only other place the cap is kept
     if (K.spill) Scatter.spill(this.game.world, b.x, b.y, S.spill, K.spill, b.vx, b.vy);
     this.game.audio.sfxClatter('break', 1);
   }

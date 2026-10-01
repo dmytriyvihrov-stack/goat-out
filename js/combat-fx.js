@@ -7,8 +7,8 @@ class CombatFX {
   }
 
   // ---- Pixel fire, blasts, smoke and blood ----
-  // The painted sheet this used to be — a photograph of a flame shrunk onto a pixel game, with a red
-  // fringe round it — was the one thing on screen from another game (playtest 23 Sep 2026). All of it
+  // The painted sheet this used to be, a photograph of a flame shrunk onto a pixel game, with a red
+  // fringe round it, was the one thing on screen from another game (playtest 23 Sep 2026). All of it
   // is now baked once into small canvases at one texel a world pixel (`TUNING.effects.pixel`, the
   // grain the units are drawn at), from a handful of flat colour bands, and drawn with smoothing off.
   static hash(x,y,s) {
@@ -226,7 +226,7 @@ class CombatFX {
 
   // What seeps out from under a body: cells, a darker rim, a glint near the middle. The edge is
   // off noise fixed to the spot, so a growing pool keeps its shape and only gets bigger. Cells on
-  // stone are skipped — blood runs on the floor, not up a wall.
+  // stone are skipped, blood runs on the floor, not up a wall.
   static pool(c,x,y,r,seed,w) { CombatFX.fillPool(c,CombatFX.poolPaths(x,y,r,seed,w)); }
   static poolPaths(x,y,r,seed,w) {
     const px=TUNING.effects.pixel,x0=Math.round(x/px)*px,y0=Math.round(y/px)*px,span=Math.ceil(r*1.45/px)*px;
@@ -334,7 +334,7 @@ class CombatFX {
     this.explosion(p.x,p.y,p.kind==='door'?23:17,false,true);
   }
 
-  // `life` overrides the shared `burstLife` for this one burst — Bomb Charge asks for a smaller,
+  // `life` overrides the shared `burstLife` for this one burst, Bomb Charge asks for a smaller,
   // quicker flash than a door or a crate breaking so the fight behind it stays readable.
   explosion(x,y,r,witch=false,smokeOnly=false,life) {
     if(this.bursts.length>=TUNING.effects.maxBursts)this.bursts.shift();

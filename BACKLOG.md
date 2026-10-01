@@ -1,15 +1,29 @@
-# BACKLOG — asked for, not built
+# BACKLOG, asked for, not built
 
 `CONCEPT.md` is what the game is. This file is what the last person to play it said afterwards, kept in
 his order and written out far enough that a session can take any line off it and build the thing without
-asking him again. Nothing here is in the build. An item leaves this file when it ships — the reasoning
-then goes to `CHANGELOG.md` — or when it is decided against, and the reason goes in its place.
+asking him again. Nothing here is in the build. An item leaves this file when it ships, the reasoning
+then goes to `CHANGELOG.md`, or when it is decided against, and the reason goes in its place.
 
 Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and does not read; **number**,
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
-## 1 October 2026 — the magnet, the camera, the fog, the husky's practice (1.87)
+## 1 October 2026, the soul into the goat and a sixth polish pass (1.89)
+
+The ask shipped in 1.89 (the soul hangs until a card is pointed at, then goes into him and he stays), with every
+finding of the pass that was a plain bug (see `CHANGELOG.md`). Found and left for a decision, all five then shipped in
+1.90 (the ogre's vault: kept off a room with nothing that hurts him):
+
+| # | tag | note |
+|---|---|---|
+| 1 | bug | A heavy body (ogre, rat ogre, sentry) shoving out of an overlap can push the goat over a lip during his windup or recovery, though the lip holds him like a wall then. A `Game.nudge`-style per-axis keep for the goat in those states (`collideEntities`). |
+| 2 | system | THE OGRE'S VAULT promises nothing that hurts him in the room he wakes into: the horns do nothing to him and he no longer walks into a hole. Either a rule that its room holds a brazier or a stand of swords, or keep the ogre vault off rooms without one (`vaultKindOf`, `GEN_RULES.vaultkind`). |
+| 3 | feel | The camera's room hold counts a vault's mouth and a broken niche as ways out (`Game.roomMouthDist`), so walking up to them slides the picture off the room's middle. |
+| 4 | tool | Literals left in the hook (`Enemy.hookStep`: flight step `/ 6`, catch slack `+4`, `+3`), the vault ogre's offset (`TILE * 0.6`) and the goat's smoulder cap (`0.6` of a tick, `Goat.burnStep`). |
+| 5 | feel | Pad: the first card is lit from the start, so on a pad the soul goes into him the moment the cards can be taken. |
+
+## 1 October 2026, the magnet, the camera, the fog, the husky's practice (1.87)
 
 Two messages, all shipped in 1.87 (see `CHANGELOG.md`):
 
@@ -19,34 +33,34 @@ Two messages, all shipped in 1.87 (see `CHANGELOG.md`):
 | 2 | feel | the dark squares of the fog were a bit aggressive | `fog.soft` 3x3 soft mask, shade 0.72 |
 | 3 | system | the husky: practise the mini-game first in a room with only her, then run to the room with people | `husky.practice` |
 | 4 | feel | polish the new systems and arrivals | answer plates, the practice's words over the staves, the crow, a pass over the box, the book, the rabbit |
-| 5 | bug | the camera: many complaints; between rooms it jumps from room one to room two — show the state between, a smooth follow | the room hold is a blend by distance to the doorway |
+| 5 | bug | the camera: many complaints; between rooms it jumps from room one to room two, show the state between, a smooth follow | the room hold is a blend by distance to the doorway |
 | 6 | tool | show the husky's portrait | sent from the box |
-| 7 | tool | the husky is not in the dev tools; add everything there and to the showroom — a rule | SPAWN rows, the coops, a talisman shelf; ground rule 9 |
+| 7 | tool | the husky is not in the dev tools; add everything there and to the showroom, a rule | SPAWN rows, the coops, a talisman shelf; ground rule 9 |
 | 8 | feel | the landscape through a window with parallax is great; the stakes sharper and without movement | needles, fixed to the floor; the sky keeps its parallax |
 | 9 | bug | the crow should go after the bodies, not after you | it sits with no body near; flies after only when left |
 | 10 | bug | in the crow's box the text ran over the answers; the buttons bigger and nicer | the box grows; plates with key caps |
 
 Decided in the build, worth asking him about:
 
-- **number** — **the magnet's tier I** (not described): one sword or shield, from 5 tiles instead of 8. And
+- **number**: **the magnet's tier I** (not described): one sword or shield, from 5 tiles instead of 8. And
   **LEGENDARY** (the rat ogre's shelf) carries three.
-- **feel** — **a blow is always taken** by the nearest thing in the orbit, wherever it is on its way round; only a
+- **feel**: **a blow is always taken** by the nearest thing in the orbit, wherever it is on its way round; only a
   bullet has to meet one. If blows should also have to meet it, `magnetBlock` asks the angle.
-- **system** — **crates count as "any"**; a bomb, a barrel and an animal never go into the orbit.
+- **system**: **crates count as "any"**; a bomb, a barrel and an animal never go into the orbit.
 
-## 1 October 2026 — souls, the mirror, the mouse, the book (1.86)
+## 1 October 2026, souls, the mirror, the mouse, the book (1.86)
 
 Nine playtest notes in one message, all shipped in 1.86 (see `CHANGELOG.md`):
 
 | # | tag | note | 1.86 |
 |---|---|---|---|
 | 1 | system | a dead man's soul rises as a small white dot and follows you out of the room, as in Enter the Gungeon | `js/motes.js`: banked into heaven's heap as each reaches him |
-| 2 | system | after the first death the goat god grants the power to gather souls — his quest — and asks for 200 | his first talk gives it; FOR THE GOD n / 200 under the purse |
+| 2 | system | after the first death the goat god grants the power to gather souls, his quest, and asks for 200 | his first talk gives it; FOR THE GOD n / 200 under the purse |
 | 3 | system | one upgrade, SECOND CHANCE: back where you died on two hearts, 250 and 3 corrupted souls | a mirror rank shown once the 200 are brought; once a floor |
 | 4 | feel | a death animation: summoned to heaven, your see-through soul flies off | a beam and his washed-white ghost rising, before the pull-back |
 | 5 | feel | on a soul upgrade, the goat large at the top looking down-right; on a skill that changes him, show how | `Codex.drawBoonGoat` |
 | 6 | system | the mouse's shop the same way: walking up, she shows it all as a dialog, with how he would look | `Codex.watchShop` / `drawShop` |
-| 7 | system | talisman rarity and colour — common, rare, epic, legendary — and legendary only after her ogre | `RARITY`, a fourth tier on every talisman |
+| 7 | system | talisman rarity and colour, common, rare, epic, legendary, and legendary only after her ogre | `RARITY`, a fourth tier on every talisman |
 | 8 | system | I opens a short menu like Enter the Gungeon's: actives, passives, items, animals | the book, `Codex.drawBook`; PAUSE → INVENTORY too |
 | 9 | feel | a trait or game word in a description (poison, fire, stun) explains itself on the pointer, like Slay the Spire | `KEYWORDS`, `Codex.line` |
 
@@ -70,24 +84,24 @@ And thirteen more in the next message, all in 1.86 too:
 
 Decided in the build, worth asking him about:
 
-- **number** — **once a floor, not once a run**, for SECOND CHANCE: a death already restarts the floor, so a
+- **number**: **once a floor, not once a run**, for SECOND CHANCE: a death already restarts the floor, so a
   once-a-run revive would barely be felt. If it should be once a run, `game.secondUsed` moves from `startLevel`
   to the run's start (and the save).
-- **system** — **what the 200 buy.** The quest unlocks SECOND CHANCE on the glass; the souls brought are also the
+- **system**: **what the 200 buy.** The quest unlocks SECOND CHANCE on the glass; the souls brought are also the
   mirror's pay as before. If the god should give something on the spot, say what.
-- **feel** — **a soul left in the room he dies in is lost.** Collected only by leaving (or clearing the floor);
+- **feel**: **a soul left in the room he dies in is lost.** Collected only by leaving (or clearing the floor);
   dying in the fight forfeits that room's. If that stings, they could rise with his own soul instead.
-- **system** — **a legendary tier is the third tier pushed further** (hand-set per talisman in `ARTIFACTS`);
+- **system**: **a legendary tier is the third tier pushed further** (hand-set per talisman in `ARTIFACTS`);
   THE KNUCKLEBONE's legendary is the same as its epic (a third card every soul is already the most).
-- **system** — **the husky's extra men** come in through the room's way in when her song starts (`husky.extra` 2):
+- **system**: **the husky's extra men** come in through the room's way in when her song starts (`husky.extra` 2):
   "make the next room dense" done at the moment of the song rather than by the generator. And her song wants your
-  BAAH of any kind — a fire breath or a spit on the beat counts.
-- **feel** — **refusing an animal sends it away** for the floor; the hen and the tortoise included.
-- **number** — **DOUBLE SPEED** doubles his stride, not the clock: the cult and the fire move as ever.
-- **feel** — keyword tooltips are on the cards and the book only: the rail's hover note closes as the
+  BAAH of any kind, a fire breath or a spit on the beat counts.
+- **feel**: **refusing an animal sends it away** for the floor; the hen and the tortoise included.
+- **number**: **DOUBLE SPEED** doubles his stride, not the clock: the cult and the fire move as ever.
+- **feel**: keyword tooltips are on the cards and the book only: the rail's hover note closes as the
   pointer leaves its chip, so a word in it cannot be pointed at.
 
-## 30 September 2026 — a tester's hour and a half on 1.84 (1.85)
+## 30 September 2026, a tester's hour and a half on 1.84 (1.85)
 
 A friend played 1.84 for an hour and a half and gave another fifteen minutes of notes with his dinner going
 cold; he got out on his third or fourth run ("though for now a death starts the level, it is not a
@@ -99,7 +113,7 @@ roguelite yet"). Fourteen notes, all shipped in 1.85 (see `CHANGELOG.md`):
 | 2 | bug | the camera shook hard in some rooms on his 1920×1200 screen, "as if it could not focus" | the fit test flipped with the zoom; asked of the lens at rest |
 | 3 | bug | hounds fall into holes, even following him | nobody walks over a lip; shoves never push over one |
 | 4 | bug | traps are not set off by the men walking over them | a man coming for him trips a grate in 0.1 s |
-| 5 | bug | sometimes the controls went — maybe near the hover notes, not sure | one cause fixed (a parked pad axis); see below |
+| 5 | bug | sometimes the controls went, maybe near the hover notes, not sure | one cause fixed (a parked pad axis); see below |
 | 6 | feel | any animal let out should talk in the box, like the horse, so it registers as an event | hen, tortoise, goose, crow in the box |
 | 7 | number | the goose should run further ahead and call the men harder | lead 10, sees 12, honk 1.5 s, heard 16 |
 | 8 | feel | holes must be clearly readable, contrasting; spikes inside a building, a clear background through walls | wall face, lit edges, stakes, a brighter sky |
@@ -112,17 +126,17 @@ roguelite yet"). Fourteen notes, all shipped in 1.85 (see `CHANGELOG.md`):
 
 Still open:
 
-- **bug** — **controls going missing** (#5). Not reproduced. 1.85 fixes the one cause found in the code: a
+- **bug**: **controls going missing** (#5). Not reproduced. 1.85 fixes the one cause found in the code: a
   second input device whose axis rests at the end of its travel (a wheel, a flight stick, some pads) took the
   aim and the grab off the mouse every frame. If it happens again, ask him: was anything else plugged in
   (a pad, a wheel, a drawing tablet)? Was the goat still, or moving but not turning to the pointer? Did it
   happen right after a box (an animal, the god) or a soul card? Did Escape bring it back? The run code off
   the next death card says which floor and room.
-- **tool** — **#10 only if it was the mage.** "A man teleported behind the fence" reads as the boss mage's
+- **tool**: **#10 only if it was the mage.** "A man teleported behind the fence" reads as the boss mage's
   blink onto the stairs' gate, which 1.85 closes. If it was the goat himself, ask where he had come from
   (a roll, a blink talisman, a body shoved into him at the gate).
 
-## 30 September 2026 — the souls: two cards, element sets, the goat's own poison (1.82)
+## 30 September 2026, the souls: two cards, element sets, the goat's own poison (1.82)
 
 Asked for in one message, shipped in 1.82 (see `CHANGELOG.md`) except the line below: two cards a soul
 instead of three, a third from a special perk (HUNGRY SOUL) or a special item (THE KNUCKLEBONE, a mouse
@@ -131,34 +145,34 @@ by a puddle after a ring fills round him, slowed only; fire and poison sets that
 of grace, then immunity plus the set's own bonus); the base breath a tile shorter, THE FULL THROAT's
 daze at half the radius, VENOM SPIT's puddle six tiles.
 
-- **system** — **the stun set.** Asked for with the other two: each stun soul carried buys grace against
+- **system**: **the stun set.** Asked for with the other two: each stun soul carried buys grace against
   being stunned (½ s, 1 s, 2 s off `stunGoat`'s time, the way fire and poison do) and lengthens every stun
   he deals; all four, and a man coming out of a stun has forgotten where he last saw the goat (`lastSeen`
   cleared, `aware` dropped back to searching). Parked on purpose ("don't bother with it for now"):
-  only three souls stun — THE FULL THROAT, DEAD WEIGHT, LEAPFROG — and the last two are both roll actives,
+  only three souls stun, THE FULL THROAT, DEAD WEIGHT, LEAPFROG, and the last two are both roll actives,
   so no build can hold more than two. It needs one or two new stun souls (a headbutt or grab passive, or
   a special perk that counts toward the set) before four is reachable.
 
-## 29 September 2026 — heaven between deaths, Gungeon's barrels, a supper that scatters (1.79)
+## 29 September 2026, heaven between deaths, Gungeon's barrels, a supper that scatters (1.79)
 
 Asked for in the session, all shipped in 1.79 (see `CHANGELOG.md`): barrels drawn the way *Enter the
 Gungeon* draws them; food on the tables that scatters when the table is hit; and a hub in the sky
-between deaths, *Hades*-style — the goat god in light with pompous, silly lines, empty seats for the
+between deaths, *Hades*-style, the goat god in light with pompous, silly lines, empty seats for the
 animal gods, a blind man who combs the goat on GRAB, something pleasant to do, and a mirror of
 permanent upgrades ("in Gungeon I spent four or five hours on the first boss, the heals were too
 hard"). Two rooms, one ending at an edge over the earth with the compound far below; jumping off it
 restarts in the pen. Read as: the jump is the floor restart a death always was (the pen on floor one,
 the middle gate past it), not a whole new run. Left open from it:
 
-- **tool** — `balance.js`'s threat-over-power column does not weigh the mirror. A goat with every rank
+- **tool**: `balance.js`'s threat-over-power column does not weigh the mirror. A goat with every rank
   bought has two more hearts, two of light and a quicker roll; if the floors are ever tuned against a
   player who has been up there often, the power column needs a `MIRROR` row.
-- **system** — the animal gods only sit and speak. What a saved animal *does* up there (a gift, a
+- **system**: the animal gods only sit and speak. What a saved animal *does* up there (a gift, a
   line that changes with the run) is unwritten.
-- **feel** — how long the pasture holds a player between deaths wants a playtest: the edge is one
+- **feel**: how long the pasture holds a player between deaths wants a playtest: the edge is one
   room away and Backspace skips it, but nobody but the builder has walked it yet.
 
-## 26 September 2026 — answers to the second open-questions page
+## 26 September 2026, answers to the second open-questions page
 
 Every open line in this file, `PLAYTEST.md` §8–9, `CLAUDE.md` and `MARKET.md` §9 was put on one page
 (artifact `claude.ai/artifact/19gtHuPqSppc2ZFijuRPKr`, answers in its db) and marked. What was marked
@@ -185,23 +199,23 @@ Every open line in this file, `PLAYTEST.md` §8–9, `CLAUDE.md` and `MARKET.md`
 - **Still open, unanswered:** where his wife is and what the ending does about her; the "lizards" half
   of "lizards and mirrors".
 
-## 25 September 2026 — the ogre on the teeth, a burning crate, POWDER, the rules (1.74)
+## 25 September 2026, the ogre on the teeth, a burning crate, POWDER, the rules (1.74)
 
 Asked for in the session, all shipped in 1.74 (see `CHANGELOG.md`):
 
-- ~~**system — the ogre stuck on a cave spire, as a mechanic.**~~ *Shipped: `cave.spikes.impale`.*
-- ~~**feel — a FIREBRAND crate lights the man it hits, and a burning crate leaves a fire line.**~~ *Shipped.*
-- ~~**feel — POWDER on the barrels that go up, in big letters.**~~ *Shipped (POW / DER, the game's type).*
-- ~~**tool — every generator promise has its rule.**~~ *Shipped: new `seal`, `grate`; `crowd`, `caps`,
+- ~~**system, the ogre stuck on a cave spire, as a mechanic.**~~ *Shipped: `cave.spikes.impale`.*
+- ~~**feel, a FIREBRAND crate lights the man it hits, and a burning crate leaves a fire line.**~~ *Shipped.*
+- ~~**feel, POWDER on the barrels that go up, in big letters.**~~ *Shipped (POW / DER, the game's type).*
+- ~~**tool, every generator promise has its rule.**~~ *Shipped: new `seal`, `grate`; `crowd`, `caps`,
   `clock`, `shop`, `teach`, `stack`, `bomb`, `beasts`, `shrooms`, `secrets`, `vault` check what gen.js
   promises. Milk in THE ALTAR's calm room is fine (answered "okay").*
-- ~~**number — THE TRIP off floors 2–3.**~~ *Shipped 26 Sep 2026: `shroom.from` 3.*
-- ~~**tool — retire `js/painted-assets.js`.**~~ *Shipped 26 Sep 2026: deleted, 1.3 MB off the build.*
-- ~~**feel — the ominous decals.**~~ *Wired 26 Sep 2026 (`js/decal-pixels.js`).*
-- ~~**tool — JUICE sizes typed by hand.**~~ *The rat ogre's entrance and bounce read `TUNING.ratogre`;
+- ~~**number, THE TRIP off floors 2–3.**~~ *Shipped 26 Sep 2026: `shroom.from` 3.*
+- ~~**tool, retire `js/painted-assets.js`.**~~ *Shipped 26 Sep 2026: deleted, 1.3 MB off the build.*
+- ~~**feel, the ominous decals.**~~ *Wired 26 Sep 2026 (`js/decal-pixels.js`).*
+- ~~**tool, JUICE sizes typed by hand.**~~ *The rat ogre's entrance and bounce read `TUNING.ratogre`;
   the ogre's slam and landing no longer claim a shake they do not make.*
 
-## 24 September 2026 — six audits, not a playtest
+## 24 September 2026, six audits, not a playtest
 
 Nobody played this. These came out of the new personal skills in `~/.claude/skills` (adapted from
 Claude-Code-Game-Studios; see *Skills* in `CLAUDE.md`), each run read-only over the working tree while
@@ -212,50 +226,50 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 
 ### Before the playtest (`PLAYTEST.md` §8 is the full go / no-go, 31 rows)
 
-- ~~**tool — land 1.65 and cut the playtest build from a commit.**~~ *Done: HEAD is 1.74 (checked 25 Sep 2026).* 1.65 exists only in the working tree (22
+- ~~**tool, land 1.65 and cut the playtest build from a commit.**~~ *Done: HEAD is 1.74 (checked 25 Sep 2026).* 1.65 exists only in the working tree (22
   modified, 6 new files; HEAD is 1.64). Land it, bump `BUILD` (no spaces: the run code is split on
   whitespace, `game.js:1617`), record the hash, and build the itch zip from that commit, never from a tree
   another session is editing.
-- ~~**tool — write the freeze where every session reads it.**~~ *Dropped, 26 Sep 2026.* The 23 Sep freeze lives only at the top of this
+- ~~**tool, write the freeze where every session reads it.**~~ *Dropped, 26 Sep 2026.* The 23 Sep freeze lives only at the top of this
   file and on the questionnaire page, and was agreed in a cloud session the local one never saw. Since then
   six new systems landed or are in flight (THE DARK, its own floor, THE FORK, barrels, the saved picture,
   three cards), code outside the asset packs grew 22%, and barrels were built twice (1.56 cloud, 1.61).
   One line at the top of `CLAUDE.md` would hold it: until triage, only **bug** / **feel** / **number** on
   floors 1–3.
-- ~~**bug — the dev corner is live in the build testers get.**~~ *Shipped 24 Sep, evening (the polish pass): Hidden on an itch host (itch.io, itch.zone, hwcdn.net) unless the page is opened with `#dev`; everywhere else as before. A code also says `X` for god mode.* Drawn on every screen (`render.js:229`,
+- ~~**bug, the dev corner is live in the build testers get.**~~ *Shipped 24 Sep, evening (the polish pass): Hidden on an itch host (itch.io, itch.zone, hwcdn.net) unless the page is opened with `#dev`; everywhere else as before. A code also says `X` for god mode.* Drawn on every screen (`render.js:229`,
   `:3048`), one click from GOD, SPAWN and skip level; `#rules`, `#seed=`, `#trip`, `#dark` work too
   (`game.js:117-131`). A god-mode or easy-mode run code is identical to a normal one, so one curious tester
   skews all three numbers without a trace. Show the corner only when served locally or with `#dev`.
-- ~~**tool — the run code cannot tell THE DARK, easy, god or a LEVELS start, and the clear card never copies
+- ~~**tool, the run code cannot tell THE DARK, easy, god or a LEVELS start, and the clear card never copies
   it.**~~ *Shipped 24 Sep, evening (the polish pass): `N` for THE DARK (and `replayCode` rebuilds it), a last token `E`/`X`/`J`/`-`, and leaving the picture card copies its code.* A dark floor's code equals the lit one's and `replayCode` rebuilds the lit floor. Copy happens only
   at `game.js:1876` / `:1888`. Proposed: `N` for THE DARK through `replayCode`, one flags token
   (`E`/`J`/`X`/`-`), a copy on leaving the clear card. About ten lines in `game.js`.
-- ~~**number — what the first evening deals.**~~ *Done: THE TRIP from floor 4 (1.74), `roomChance` 0 (1.77).* A mushroom tuft lies on THE YARD in 13 of 25 seeds and
+- ~~**number, what the first evening deals.**~~ *Done: THE TRIP from floor 4 (1.74), `roomChance` 0 (1.77).* A mushroom tuft lies on THE YARD in 13 of 25 seeds and
   `shroom.from` is 1 (`tuning.js:1084`), so THE TRIP can take a new player's third floor, inside the thirty
   minutes the plan polishes. Proposed for the playtest build: THE TRIP off floors 2–3, kept in LEVELS.
-- ~~**bug — README describes a different game, and testers will read it.**~~ *Shipped 24 Sep, evening (the polish pass): README rewritten with every number read off the code; the page title is DOOMED GOAT.* "Six levels" (:4; there are 8),
+- ~~**bug, README describes a different game, and testers will read it.**~~ *Shipped 24 Sep, evening (the polish pass): README rewritten with every number read off the code; the page title is DOOMED GOAT.* "Six levels" (:4; there are 8),
   a pen of "three headbutts" (:109; 7), "one [soul] on the first" (:136; 2), "Boons ... die with you"
   (:138; a death takes that floor's only), one hound on THE ALTAR (:77; 0 in 200 seeds), "two milk bowls"
   (:156; 3–5 tufts of grass), a shield worth three (:149; 2), the Butcher at three hits (:126; 4), the seed
-  "top right" (:71; bottom-left). And the page title is still `DOOMED GOAT — prototype` (`index.html:5`).
+  "top right" (:71; bottom-left). And the page title is still `DOOMED GOAT, prototype` (`index.html:5`).
   One pass over "What is in", each number read off the code.
-- ~~**tool — one pass on the uploaded page before anyone plays.**~~ *Dropped with the playtest kit, 26 Sep 2026.* Private window, restricted page: no console
+- ~~**tool, one pass on the uploaded page before anyone plays.**~~ *Dropped with the playtest kit, 26 Sep 2026.* Private window, restricted page: no console
   errors, no request but itch and Google Fonts, sound after the first click, CONTINUE after a reload, the
   death card's code really lands on the clipboard inside itch's iframe (a refused copy is silent,
   `game.js:1608`), the RUN CODE line readable at 960×540, the picture saves. Every floor, THE TRIP and THE
   DARK through LEVELS; one weak laptop for the new `foley.js`; a phone only if phones are invited (the
   vanishing phone buttons were never checked on one). *Lead: needs a browser.*
-- ~~**tool — an itch zip that holds only the game.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/itch-zip.js`: `index.html` and exactly its scripts, from a clean commit, listed back CRC-checked (3.1 MB zipped after the atlases were recompressed).* `index.html` + `js/` is 30 files, about 6.2 MiB (≈4 MB
+- ~~**tool, an itch zip that holds only the game.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/itch-zip.js`: `index.html` and exactly its scripts, from a clean commit, listed back CRC-checked (3.1 MB zipped after the atlases were recompressed).* `index.html` + `js/` is 30 files, about 6.2 MiB (≈4 MB
   zipped). Zipping the folder instead is 517 files and 207 MB, 175 MB of it the gitignored `tools/shots/`.
   A script that zips the two and lists the zip back.
 
 ### What the build deals and does not
 
-- ~~**bug — the vault and the bosses are never paid a soul.**~~ *1.77: the vault never holds one (grass, or a trap); the last boss always does.* The two gates on every floor spend the whole
+- ~~**bug, the vault and the bosses are never paid a soul.**~~ *1.77: the vault never holds one (grass, or a trap); the last boss always does.* The two gates on every floor spend the whole
   budget first, so the vault and last-boss branches (`game.js:1238-1250`) never run: 0 of 450 vaults over 50
   seeds of every floor and THE DARK. A boss only carries a soul through the 40% bonus. Give one back to the
   vault or the boss, or delete the branches and the docs that promise it.
-- ~~**number — a run deals about 18.6 souls into a build that holds 14.**~~ *1.77: two a floor, no surprises, thirteen a run; a full slot deals swaps.* 13 authored (2 a floor, less the
+- ~~**number, a run deals about 18.6 souls into a build that holds 14.**~~ *1.77: two a floor, no surprises, thirteen a run; a full slot deals swaps.* 13 authored (2 a floor, less the
   mouse's 3) plus about 5.6 seeded (a lit boss 77/200, a room that gives one up 64/200, per floor). Past a
   full build every one of them turns into +1 heart with no card and no word (`game.js:556`): about 5 a run
   over 2000 simulated runs. And the room one argues with pillar 1: `soul.roomChance` 0.35
@@ -264,80 +278,80 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
   OSSUARY's threat over power by 4.6%, because the cap stops soaking up the extras; with THE RAFTERS and
   THE OSSUARY cut to one authored soul each as well, the late floors stay flat within noise and the souls
   that open no card fall from 4.4 to 0.5 a run (measured).
-- ~~**bug — `sluice` is never dealt, and the top of every canon is starved.**~~ *Shipped 24 Sep, evening (the polish pass): `draw` ranks a room among the rooms of its own pool, with a window that covers a pool larger than its draws: every template of every canon 40–150 times in 200 seeds.* `draw` (`gen.js:256`) only
+- ~~**bug, `sluice` is never dealt, and the top of every canon is starved.**~~ *Shipped 24 Sep, evening (the polish pass): `draw` ranks a room among the rooms of its own pool, with a window that covers a pool larger than its draws: every template of every canon 40–150 times in 200 seeds.* `draw` (`gen.js:256`) only
   reaches a canon's most open room on the last room, which is always an arena: `sluice` (`rooms.js:717`)
   0 times in 200 seeds, windowrow 12, vise 17, gallery2 18, flanks 22, against 100–500 for their
   neighbours. The same at HEAD.
-- ~~**bug — an escort on the last floor pays nothing, and the crow's card says it will.**~~ *Done before 25 Sep 2026: `Beast.deal` never deals the last floor.* THE OSSUARY has a
+- ~~**bug, an escort on the last floor pays nothing, and the crow's card says it will.**~~ *Done before 25 Sep 2026: `Beast.deal` never deals the last floor.* THE OSSUARY has a
   coop on 200 of 200 seeds; the run ends in the win before the gift is placed, while the card says "IT WILL
   BE ON THE NEXT STAIRS, FREE" (`tuning.js:2214`). No coop on the last floor, or pay it on the win card.
-- ~~**bug — THE BRIDGE's hint still thinks it is the last floor.**~~ *Shipped 24 Sep, evening (the polish pass): MORE OF THEM THAN EVER. MEET THEM IN THE DOORWAY.* "EVERYTHING THEY HAVE LEFT IS HERE"
+- ~~**bug, THE BRIDGE's hint still thinks it is the last floor.**~~ *Shipped 24 Sep, evening (the polish pass): MORE OF THEM THAN EVER. MEET THEM IN THE DOORWAY.* "EVERYTHING THEY HAVE LEFT IS HERE"
   (`tuning.js:2144`) is from 0.8, when it was fourth of four. It is sixth of eight now.
-- ~~**bug — BELLWETHER'S BELL III says MILK for a thing the player sees as grass.**~~ *Shipped 24 Sep, evening (the polish pass): GRASS, and the FIXTURES label too.* `tuning.js:1754`; the
+- ~~**bug, BELLWETHER'S BELL III says MILK for a thing the player sees as grass.**~~ *Shipped 24 Sep, evening (the polish pass): GRASS, and the FIXTURES label too.* `tuning.js:1754`; the
   disguise is a `heal` prop drawn as a sprout since 1.38, and FOUR STOMACHS already calls it GRASS. The
   FIXTURES label `MILK BOWL` (`render.js:4092`) wants the same word.
-- ~~**system — THE ROAD and THE BRIDGE deal no mix room at all.**~~ *CONCEPT says what the floors deal (answered: update the concept).* Mix rooms per floor over 80 seeds: 1, 2,
+- ~~**system, THE ROAD and THE BRIDGE deal no mix room at all.**~~ *CONCEPT says what the floors deal (answered: update the concept).* Mix rooms per floor over 80 seeds: 1, 2,
   3, 0, 1, 0, 2, 1, and THE OSSUARY's one never uses THE HOLLOW, OPEN GROUND or THE FUNNEL, while
   `CONCEPT.md:165-167` promises the back half is "everything it has taught you, shuffled". Question below.
-- ~~**bug — eat the mushrooms on THE ROAD, then take the dark stairs, and the trip wins.**~~ *Shipped 24 Sep, evening (the polish pass): The flight climbed wins; the lit flight's floor says THE TRIP when that is where it goes.* `game.js:1124`.
+- ~~**bug, eat the mushrooms on THE ROAD, then take the dark stairs, and the trip wins.**~~ *Shipped 24 Sep, evening (the polish pass): The flight climbed wins; the lit flight's floor says THE TRIP when that is where it goes.* `game.js:1124`.
   *Lead: static only.*
 
 ### Balance
 
-- ~~**tool — `balance.js`'s power column counts souls the game does not deal.**~~ *Shipped 24 Sep, evening (the polish pass): It counts the floor's souls, the mouse's talisman and the two surprises at their odds, up to the fourteen a build holds; within 2% is "flat". Only THE THRESHING FLOOR still falls.* Two a floor forever
+- ~~**tool, `balance.js`'s power column counts souls the game does not deal.**~~ *Shipped 24 Sep, evening (the polish pass): It counts the floor's souls, the mouse's talisman and the two surprises at their odds, up to the fourteen a build holds; within 2% is "flat". Only THE THRESHING FLOOR still falls.* Two a floor forever
   (`tools/balance.js:152-160`): no mouse, no chance souls, no 14-card cap. Rebuilt from the real deal (40
   runs, two pick seeds, noise under 2%), power at each level's head is 4.0 / 6.94 / 8.92 / 11.74 / 13.31 /
   15.75 / 16.92 / 17.85, and THE RAFTERS and THE OSSUARY stop being "easier than the last": they rise.
   Report "flat within 2%" apart from "falls".
-- ~~**number — THE THRESHING FLOOR is no harder for the goat than THE ROAD.**~~ *Shipped 25 Sep 2026 (1.74): `cap: { men: 9, dog: 3 }`, threat 108.4 → 113.0, every rule holds. Threat over power 7.2 → 7.5 against THE ROAD's 7.9: still flagged, and a higher `to` buys almost nothing against the caps.* Flat in every power model
+- ~~**number, THE THRESHING FLOOR is no harder for the goat than THE ROAD.**~~ *Shipped 25 Sep 2026 (1.74): `cap: { men: 9, dog: 3 }`, threat 108.4 → 113.0, every rule holds. Threat over power 7.2 → 7.5 against THE ROAD's 7.9: still flagged, and a higher `to` buys almost nothing against the caps.* Flat in every power model
   (−0.2% to −6%), and its `cap: { men: 8 }` starves 43% of its rooms. Proposed `cap: { men: 9, dog: 3 }`
   (`tuning.js:2112`): threat 109.1 → 113.0, +3.3% over THE ROAD, every rule holds (measured). The same
   direction as the 23 Sep "eighth man", and likely the "overpowered by level five" note.
-- ~~**number — the score lets bodies beat pace.**~~ *Shipped 24 Sep, evening (the polish pass): `killMul` 0.02, `killCap` 1.5, as proposed.* `killCap` 2.5 is above `fastCap` 2 (`tuning.js:1204`), so
+- ~~**number, the score lets bodies beat pace.**~~ *Shipped 24 Sep, evening (the polish pass): `killMul` 0.02, `killCap` 1.5, as proposed.* `killCap` 2.5 is above `fastCap` 2 (`tuning.js:1204`), so
   at par a run of 25+ kills outscores the fastest run with none (2500 against 2000), against
   `CONCEPT.md:377-379`. Proposed `killMul 0.02, killCap 1.5`: a clear at par scores 1500, under the fastest
   pacifist's 2000. Measured on the real `scoreFor`.
-- ~~**system — saved geese make the scream a permanent lock.**~~ *Shipped 24 Sep, evening (the polish pass): `TUNING.goat.scream.minCooldown` 2, applied after the geese in `applyBoons`.* `beasts.js:484` multiplies the cooldown by 0.8
+- ~~**system, saved geese make the scream a permanent lock.**~~ *Shipped 24 Sep, evening (the polish pass): `TUNING.goat.scream.minCooldown` 2, applied after the geese in `applyBoons`.* `beasts.js:484` multiplies the cooldown by 0.8
   a goose with no floor: 0.82 s with four geese, under the 0.99 s daze. FULL THROAT + RAW THROAT + four
   geese: three men all dazed 98% of the time, no heart lost, against four hearts and eight of eight dead
   with no voice (8 seeds). Proposed `TUNING.goat.scream.minCooldown: 2`, applied after the geese: dazed
   share 31–33%.
-- ~~**number — the late curves ask for threat their caps cannot buy.**~~ *1.77: honest curves, a tenth man, caps that follow the room.* THE OSSUARY asks 34.4 a room and gets
+- ~~**number, the late curves ask for threat their caps cannot buy.**~~ *1.77: honest curves, a tenth man, caps that follow the room.* THE OSSUARY asks 34.4 a room and gets
   18.8 (83% of rooms short); THE RAFTERS hits its ceiling from room 5 of 15; THE DARK loses 29%. Honest
   `to` values break two rules; caps of men 11 / hunter 3 add 6% and 13% with every rule holding, against
   the `ENCOUNTER.cap` comment "eight of anything is a wall of bodies". Question below.
-- ~~**bug — easy mode's numbers are not what its comments say.**~~ *Shipped 25 Sep 2026 (1.74): easy multiplies `enemySlow` (1.4 × the base, the 40% its card says); the wall stun, the wraith's solid window and the ogre's answering slam read the enemy clock and `tuning.js`; easy and god-mode clears no longer write BEST (`game.offBoard`).* `tuning.js:1289` says a normal run has
+- ~~**bug, easy mode's numbers are not what its comments say.**~~ *Shipped 25 Sep 2026 (1.74): easy multiplies `enemySlow` (1.4 × the base, the 40% its card says); the wall stun, the wraith's solid window and the ogre's answering slam read the enemy clock and `tuning.js`; easy and god-mode clears no longer write BEST (`game.offBoard`).* `tuning.js:1289` says a normal run has
   `enemySlow` 1; `BOON_BASE.enemySlow` is 1.1, so easy is 1.27×, not 1.4×. The wraith's `solidAfter`
   (`enemies.js:1378`) and the butcher's wall stun (`:883`) ignore it, and the butcher's retaliation swing
   uses literals 0.55 and 1.6 (`:771`), against ground rule 2. Measured: easy is almost all its two extra
   hearts (damage rates only 6–24% lower). Easy scores go on the same BEST board (`game.js:1505`).
-- ~~**tool — price THREAT by what a kind takes off a goat who runs.**~~ *Closed, 26 Sep 2026: no change.* Hearts a minute, one man against a
+- ~~**tool, price THREAT by what a kind takes off a goat who runs.**~~ *Closed, 26 Sep 2026: no change.* Hearts a minute, one man against a
   circling goat (±20%): clubman 16.1 (THREAT 1), hound 18.4 (1.7), rifle 14.9 (2.4), butcher 15.5 (5),
   seer 5.2 (2.8). Late rooms swap clubmen for dearer kinds, so late threat likely overstates what a late
   room costs a runner. One side only: crowds and the seer's runes are not in it.
 
 ### Docs that teach the wrong game
 
-- ~~**bug — CONCEPT's level table and souls section describe an older build.**~~ *Shipped 24 Sep, evening (the polish pass): CONCEPT read off the code by hand, and `tools/doc-numbers.js` now holds its numbers (and README's and CLAUDE's) against the code.* "Seven levels" (8); six of
+- ~~**bug, CONCEPT's level table and souls section describe an older build.**~~ *Shipped 24 Sep, evening (the polish pass): CONCEPT read off the code by hand, and `tools/doc-numbers.js` now holds its numbers (and README's and CLAUDE's) against the code.* "Seven levels" (8); six of
   eight room counts wrong (:179-186); THE CAVE listed last with rifles and an elite Seer (it is third, no
   hunters, a Butcher and a brute); "thirteen across a run against sixteen boons" (:325; 25 boons);
   TUCK AND ROLL (:339, cut); "the soul gate, on level one only" (two gates on every floor); killbox on
   "four" levels (5); doors "three blows" (planks 1, iron 3); spikes "from the third level" (fourth);
   bearer windup 0.58 s (0.46); hunter aim 0.8 s (0.88); "pixel art proper" still under not built (:412).
   Generate the table from `LEVELS`, the way `juice-md.js` writes `JUICE.md`.
-- ~~**bug — `CLAUDE.md` teaches the dropped souls design and the old painted pack.**~~ *Shipped 24 Sep, evening (the polish pass): The open question is now the boon souls' count; the painted pack is described as the `#paintedprops` fallback.* Its open questions
+- ~~**bug, `CLAUDE.md` teaches the dropped souls design and the old painted pack.**~~ *Shipped 24 Sep, evening (the polish pass): The open question is now the boon souls' count; the painted pack is described as the `#paintedprops` fallback.* Its open questions
   still carry the souls resource as unsettled and suggest a soul door that opens for souls; the question
   that is actually open ("whether the existing soul count should drop further") is not there. The file map
   says `painted-assets.js` holds props with "no pixel sprite yet", which its own open question contradicts.
-- ~~**bug — this file's 1.40 shop item still says she sells for souls of the killed.**~~ *Shipped 24 Sep, evening (the polish pass): A note under that heading says 1.41 took the prices out.* 1.41 took the prices
+- ~~**bug, this file's 1.40 shop item still says she sells for souls of the killed.**~~ *Shipped 24 Sep, evening (the polish pass): A note under that heading says 1.41 took the prices out.* 1.41 took the prices
   out ("No more prices in the dead"). Also: the grass passive and the pounce are "Not built" in the
   23 Sep answers (above) but shipped in 1.61, and LEAPFROG shipped as an **active** where the answer asked
   for upgrades to passives (question below).
-- ~~**tool — `ART_TODO_GPT.md` would waste an image-generation round.**~~ *Shipped 24 Sep, evening (the polish pass): A DONE header; kept as the brief format. `ART_HANDOFF.md` says 1.58.* It is the state at 1.53: every sheet
+- ~~**tool, `ART_TODO_GPT.md` would waste an image-generation round.**~~ *Shipped 24 Sep, evening (the polish pass): A DONE header; kept as the brief format. `ART_HANDOFF.md` says 1.58.* It is the state at 1.53: every sheet
   in it shipped as pixels in 1.63–1.64, it calls the deleted `js/combat-assets.js` "уже в игре", and two
   briefs contradict the 1.63 designs. A DONE header, keeping it as the brief template; the one live line is
   wiring the ominous decals. `ART_HANDOFF.md:22` says 1.56 for 1.58.
-- ~~**tool — a numbers check for the docs, the way `balance.js` checks the generator.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/doc-numbers.js`, 57 claims, exits 1 on a wrong one. The hand-typed sizes in `js/juice.js` went on 25 Sep 2026 (1.74).* A throwaway regex
+- ~~**tool, a numbers check for the docs, the way `balance.js` checks the generator.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/doc-numbers.js`, 57 claims, exits 1 on a wrong one. The hand-typed sizes in `js/juice.js` went on 25 Sep 2026 (1.74).* A throwaway regex
   runner (doc sentence → the `TUNING` / `LEVELS` value it names) found 28 conflicts in 82 numbers, some
   unnoticed for eight releases, and code comments too ("a third heart" over `hp: 4`, `tuning.js:412`; "a
   shield is three" against 2). As `tools/doc-numbers.js`, exiting non-zero. `js/juice.js` also carries
@@ -345,22 +359,22 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 
 ### Weight (the build is 6.47 MB; these take it to about 3.9)
 
-- ~~**system — retire `js/painted-assets.js`: 1.32 MB the default build never draws.**~~ *Deleted 26 Sep 2026.* With pixel props on,
+- ~~**system, retire `js/painted-assets.js`: 1.32 MB the default build never draws.**~~ *Deleted 26 Sep 2026.* With pixel props on,
   0 of its 15 images reach the screen (21 prop and door paths driven, HEAD the same). It is still a load
   gate (`painted-art.js:206`) and the source of two aspect ratios, so: gate on `PIXEL_ENV.ready`, write in
   the altar's 237/384 and the gong's 190/192, then drop it from both script lists and pass `null` in the
   files map. Answers the open question in `CLAUDE.md`.
-- ~~**tool — harden alpha and recompress in both packers: 1.15 MB.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/png-harden.js`, the packers' last step; checked pixel for pixel in the browser.* `pack-pixel.ps1` leaves about 48% of
+- ~~**tool, harden alpha and recompress in both packers: 1.15 MB.**~~ *Shipped 24 Sep, evening (the polish pass): `tools/png-harden.js`, the packers' last step; checked pixel for pixel in the browser.* `pack-pixel.ps1` leaves about 48% of
   the atlas at alpha 250–254, which `PIXEL_ART.init` snaps to 0/255 on every load anyway. Re-encoded:
   2,799,768 → 1,820,692 bytes, and the environment atlas 546,084 → 373,640. Never a lossy palette:
   `hornsOf` reads exact colours (`pixel-art.js:119`).
-- ~~**system — seven environment sprites nothing draws.**~~ *Dropped from the atlas in 1.77. `floors-12` (gravel) is an eighth nobody draws since the 25 Sep art pass.* `floors-15`, `room-props-06`, `room-props-08`,
+- ~~**system, seven environment sprites nothing draws.**~~ *Dropped from the atlas in 1.77. `floors-12` (gravel) is an eighth nobody draws since the 25 Sep art pass.* `floors-15`, `room-props-06`, `room-props-08`,
   `cave-props-03`, `-04`, `-07`, `-08`: 19.5% of the atlas area. Wire them in as litter or drop them
   from the manifest.
-- ~~**tool — the dead combat-art pipeline.**~~ *Deleted 25 Sep 2026 (1.74).* `tools/pack-combat-art.cjs` writes `js/combat-assets.js`,
+- ~~**tool, the dead combat-art pipeline.**~~ *Deleted 25 Sep 2026 (1.74).* `tools/pack-combat-art.cjs` writes `js/combat-assets.js`,
   deleted in `12f00b1`; running it would make a 1.6 MB script no page loads that the publish rule would
   ship. Its source `assets/combat-fx/effects.png` (1.2 MB) has no loader. Delete both, trim the README.
-- ~~**tool — `audio-check.js` never loads `foley.js`.**~~ *Shipped 24 Sep, evening (the polish pass): It renders every recipe and checks every name `audio.js` asks for.* It passes while all 47 foley calls go unexercised.
+- ~~**tool, `audio-check.js` never loads `foley.js`.**~~ *Shipped 24 Sep, evening (the polish pass): It renders every recipe and checks every name `audio.js` asks for.* It passes while all 47 foley calls go unexercised.
   A scratch probe rendered all 43 recipes in node (no throws, no NaN, none silent) and checked every name
   `audio.js` asks for: fold it in.
 
@@ -389,7 +403,7 @@ reports, with every probe and its output, are in `output/audit-2026-09-24/`; the
 - Should THREAT price the danger to a goat who runs, or how hard a kind is to kill? *The danger to a
   runner: that is pillar 1.*
 
-## 24 September 2026 — the grab button's balance (decided, shipped in 1.65)
+## 24 September 2026, the grab button's balance (decided, shipped in 1.65)
 
 Asked after a read of BY THE COLLAR against the rest of the deck. Everything below **shipped in
 1.65** (numbers and reasoning in `CHANGELOG.md`); it is written down here because these are the
@@ -398,7 +412,7 @@ user's decisions, and a later pass must not quietly undo them:
 - **DEVOUR stays deleted.** "Сильно поломанный": a kill with no wall and a heart back nearly one time
   in two. Do not bring it back as a boon, a talisman tier or a passive without asking.
 - **Lifting a man has a windup** (`grab.bite`), "because you get your teeth under him". Grabbing a man
-  mid-swing is **allowed on purpose** — the windup is the price, not a rule against it.
+  mid-swing is **allowed on purpose**: the windup is the price, not a rule against it.
 - **The throw is weaker than the headbutt.** The headbutt is the universal verb and reaches further
   (`physics.thrownKill` vs `splatSpeed`); the collar is a choice with its own pluses and minuses (a
   shield, a throw, a slow walk), not a better headbutt. Keep the throw's lethal range under the
@@ -412,7 +426,7 @@ user's decisions, and a later pass must not quietly undo them:
   preparation" or as lag; whether 3 s of FIREBRAND's line is long enough to split a room; whether
   BY THE COLLAR still out-picks the scream actives with `BOON_POWER` 1.3.
 
-## 23 September 2026 — answers to the open-questions page
+## 23 September 2026, answers to the open-questions page
 
 Every open line in this file was put on one page (`tools/backlog-questions.html`) and marked. What
 was marked "do" shipped in 1.56 (reasoning in `CHANGELOG.md`): the run code, barrels, one death
@@ -443,172 +457,172 @@ the BOONS tab (the tab itself already existed). The rest, as answered:
   itch.io, 10–15 new players, 3–5 watched, a six-question form, the positioning question, three
   numbers) was agreed as written on the page.
 
-## 23 September 2026 — first word on THE TRIP
+## 23 September 2026, first word on THE TRIP
 
-- **feel — THE TRIP reads okay.** Needs a minute to adjust, then it is fun, like an exercise for the
+- **feel, THE TRIP reads okay.** Needs a minute to adjust, then it is fun, like an exercise for the
   brain rather than a fight against the controls. The one thing that stuck afterward: coming back to
   the normal layout on the next floor feels strange for a beat, the same way the scramble itself did
-  going in. Not a complaint — worth knowing whether that carries over into how the next floor plays,
+  going in. Not a complaint, worth knowing whether that carries over into how the next floor plays,
   or fades in a room or two. First playtest word on it; wider testing not run yet.
 
-## 22 September 2026 — nine items, mostly "tell me less, show me more"
+## 22 September 2026, nine items, mostly "tell me less, show me more"
 
 All shipped in 1.49; the reasoning is in `CHANGELOG.md`.
 
-- ~~**feel — the cave's stalactites do not stick out of walls, they rise upward.**~~ They used to hang
+- ~~**feel, the cave's stalactites do not stick out of walls, they rise upward.**~~ They used to hang
   down out of the rock's face onto the floor. Rooted on the floor at the foot of the cliff now and
   drawn up over the face and past the top of the rock.
-- ~~**system — if something spiky (rarely) sticks out of a wall, let it damage.**~~ `kind === 'spire'`,
+- ~~**system, if something spiky (rarely) sticks out of a wall, let it damage.**~~ `kind === 'spire'`,
   `TUNING.cave.spikes`: stone teeth at the foot of a cave wall, in three rooms in ten and one to a
   room. Not blocking, so it can be walked into; a man dies on it, the goat pays a heart, and the cult
   steers round it, so it is a thing to throw men into. Old blood at its foot is the tell.
-- ~~**feel — the gem seams should only be on the cave edges you can actually see; you are not looking
+- ~~**feel, the gem seams should only be on the cave edges you can actually see; you are not looking
   inside the rock, so do not draw it there.**~~ On the visible face band only, and fewer of them.
-- ~~**number — on the mushroom level the enemies should be first-level strength whatever floor it
+- ~~**number, on the mushroom level the enemies should be first-level strength whatever floor it
   replaces: nothing that shoots, mages allowed, one man a room. It is very hard with those
   controls.**~~ `TUNING.shroom` now carries the curve, the cap and the roster.
-- ~~**feel — a little more camera on the mushroom level.**~~ The lens breathes and leans
+- ~~**feel, a little more camera on the mushroom level.**~~ The lens breathes and leans
   (`TUNING.shroom.cam`), out of step with itself on the two axes. Not a shake.
-- ~~**system — a door or a passage should only ever be at the far end of a room, never the near end,
+- ~~**system, a door or a passage should only ever be at the far end of a room, never the near end,
   so you are automatically given a reason to run there and to think about what to do with the men on
   the way.**~~ `DOORS.far` and `GEN_RULES.farexit`.
-- ~~**feel — stop shaking the screen on effects. A little shake, and only when you took damage.**~~
+- ~~**feel, stop shaking the screen on effects. A little shake, and only when you took damage.**~~
   `game.shake(a, hurt)`; everything else is multiplied by `juice.shakeOther`, which is 0.
-- ~~**feel — instead of the caption THREE BOWLS OF MILK, just make it a huge bucket of milk.**~~ One
+- ~~**feel, instead of the caption THREE BOWLS OF MILK, just make it a huge bucket of milk.**~~ One
   pail as tall as the goat, three hearts in it, drunk a heart at a time where it stands.
-- ~~**feel — next to each artifact, the literal meaning of what it does. None of this smeared
+- ~~**feel, next to each artifact, the literal meaning of what it does. None of this smeared
   bullshit.**~~ All sixty-three tiers rewritten from prose into numbers.
 
-## 18 September 2026 — a second pass, ten items
+## 18 September 2026, a second pass, ten items
 
 Shipped in 1.36; the reasoning is in `CHANGELOG.md`.
 
-- ~~**bug — enemies do not always react to footstep noise; a run right up on somebody's back
+- ~~**bug, enemies do not always react to footstep noise; a run right up on somebody's back
   sometimes goes unnoticed.**~~ The emission was a coin flip every frame and could go a half-second
   without landing; it is a timer now, and the hearing radius came up with it.
-- ~~**number — the Butcher is weak. More HP, a bigger reach on his own swing, and charges that
+- ~~**number, the Butcher is weak. More HP, a bigger reach on his own swing, and charges that
   actually happen.**~~ Three hearts to four, reach up a fifth, asks for less ground to charge on and
   gets back to it sooner.
-- ~~**feel — the milk prop looks wrong; bring back the earlier grass look.**~~ Reverted the ordinary
+- ~~**feel, the milk prop looks wrong; bring back the earlier grass look.**~~ Reverted the ordinary
   heal's paint from a wooden bowl back to a smaller sprout of the same grass the rare, bigger patch
   already is; the reward split (`+1` vs `+2` hearts) is untouched.
-- ~~**feel — the opening scene's music should have an arc: happier in the meadow, more tense through
+- ~~**feel, the opening scene's music should have an arc: happier in the meadow, more tense through
   the truck and the dark, and most tense of all when she is taken.**~~ `roomMusicScene` returned
   empty for the whole intro, which is why nothing was moving; it now reads `game.intro.phase`.
-- ~~**feel — the first screen should open on black and say something, so it reads as a flashback and
+- ~~**feel, the first screen should open on black and say something, so it reads as a flashback and
   not as the game starting somewhere strange: "Some time ago."**~~
-- ~~**system — the wraith should be immune to an ordinary flame and to the scream's stun (and it
+- ~~**system, the wraith should be immune to an ordinary flame and to the scream's stun (and it
   already was to BY THE COLLAR); exposed as checkboxes in the tool.**~~
-- ~~**system — the Butcher and the hound should keep coming at you while they burn instead of losing
+- ~~**system, the Butcher and the hound should keep coming at you while they burn instead of losing
   their AI to it; a per-kind immunity checkbox in the tool rather than a hardcoded exception.**~~
 
-## 18 September 2026 — eleven items after a death screen
+## 18 September 2026, eleven items after a death screen
 
 All shipped in 1.34; the reasoning is in `CHANGELOG.md`.
 
-- ~~**feel — the death card should say DIED, not THE GOAT DIED, and always name the level.**~~
-- ~~**feel — the shield should be bigger, on the stand and in the mouth, so blocking is more fun.**~~
-- ~~**system — a rifle inside 1–2 tiles misses half the time, wildly; in the bestiary and the tool.**~~
-- ~~**system — reaching for a hound with BY THE COLLAR makes it hop back a tile and spends the grab.**~~
-- ~~**bug — enemies should only come alive once they are near the screen, to stop deaths from
+- ~~**feel, the death card should say DIED, not THE GOAT DIED, and always name the level.**~~
+- ~~**feel, the shield should be bigger, on the stand and in the mouth, so blocking is more fun.**~~
+- ~~**system, a rifle inside 1–2 tiles misses half the time, wildly; in the bestiary and the tool.**~~
+- ~~**system, reaching for a hound with BY THE COLLAR makes it hop back a tile and spends the grab.**~~
+- ~~**bug, enemies should only come alive once they are near the screen, to stop deaths from
   nowhere.**~~
-- ~~**bug — on phones the controls disappear a few seconds into play.**~~ Not reproduced on a phone:
+- ~~**bug, on phones the controls disappear a few seconds into play.**~~ Not reproduced on a phone:
   the fix covers the two causes found in the code (a volume-key `keydown`, and a tap reported as a
   `mouse` pointer). If it still happens, ask which browser and whether it follows a volume press.
-- ~~**bug — enemies spawn inside crates and cannot move.**~~
-- ~~**system — a sword has two lives like the shield, cuts on contact even in the teeth, and is
+- ~~**bug, enemies spawn inside crates and cannot move.**~~
+- ~~**system, a sword has two lives like the shield, cuts on contact even in the teeth, and is
   rarer.**~~
-- ~~**system — a rifle cocks audibly before it fires; in the game and the tool.**~~
-- ~~**system — the hen: pathfinds after you and avoids traps; a coop you pass breaks itself at the
+- ~~**system, a rifle cocks audibly before it fires; in the game and the tool.**~~
+- ~~**system, the hen: pathfinds after you and avoids traps; a coop you pass breaks itself at the
   edge of the screen; bringing her to the end of a level says so and is worth +1 heart.**~~
-- ~~**number — THE ORACLE sees too much: a big radius, but the far corners should stay unknown.**~~
+- ~~**number, THE ORACLE sees too much: a big radius, but the far corners should stay unknown.**~~
 
-## 16 September 2026, a correction and two more — right after the eleven-item batch shipped
+## 16 September 2026, a correction and two more, right after the eleven-item batch shipped
 
 A look at the build the eleven-item batch produced, three lines.
 
-- ~~**bug — the bottom-wall fix still read as wrong: a pillar or a boxed-in block showed the same
+- ~~**bug, the bottom-wall fix still read as wrong: a pillar or a boxed-in block showed the same
   deep brick band a straight run now gets, which is not what a "closed corner" should look
   like.**~~ `nearFaceDepth` (`painted-art.js`) now only widens for a near face that is the *only*
-  thing exposed on that tile — an E or W bit still set on the same mask falls back to the plain
+  thing exposed on that tile, an E or W bit still set on the same mask falls back to the plain
   `lip` it always used, so a corner or a pillar keeps its old, shallow look and a plain run of wall
   keeps the new, deep one. See the correction in `ART_HANDOFF.md`.
-- ~~**feel — a room nobody opened should still show on the death screen, not read as a gap between
+- ~~**feel, a room nobody opened should still show on the death screen, not read as a gap between
   corridor stubs.**~~ `drawUnseen` painted an unopened room fully opaque, in the level's own near-
-  black `fog` colour — since a corridor is never hidden at all (see `CLAUDE.md`'s fog section), the
+  black `fog` colour, since a corridor is never hidden at all (see `CLAUDE.md`'s fog section), the
   practical effect on the death screen was corridor fragments floating in black voids where the
   actual rooms were. It now dims the same fog to 0.6 alpha whenever `game.state === 'dead'`, and
-  stays fully opaque for ordinary play — the fog is there to keep a room unseen, not to be looked
+  stays fully opaque for ordinary play, the fog is there to keep a room unseen, not to be looked
   at, so nothing about how it plays changed.
-- ~~**system — the rare pickable bomb (asked for 14/16 Sep, never built) genuinely does not exist
+- ~~**system, the rare pickable bomb (asked for 14/16 Sep, never built) genuinely does not exist
   anywhere in the game.**~~ Built: `kind === 'bomb'`, an `item` like a crate, grabbed and thrown the
   same way, armed the first time it is thrown (`Prop.fling`) and detonating wherever it comes to
-  rest once its fuse runs out — two hearts inside `nearR`, one heart out to `blastR`, the goat pays
+  rest once its fuse runs out, two hearts inside `nearR`, one heart out to `blastR`, the goat pays
   it too if he is standing in it, and anything past `nearR` that survives is flung rather than
   killed outright. Placed by `carveSecret` in the niche a stand of arms would otherwise go
   (`TUNING.secret.bombChance`), which is what keeps it to the one-or-two-a-level the original ask
   wanted without a count of its own. No painted asset exists for it, so it draws as a plain dark
   shell with a shortening, sparking fuse. See `CLAUDE.md`'s "The bomb."
 
-## 16 September 2026, another sitting — eleven items, one burst
+## 16 September 2026, another sitting, eleven items, one burst
 
 Most of it shipped same sitting; the reasoning behind each is in `CHANGELOG.md` under 1.29.
 
-- ~~**bug — the death screen's level map read as a scatter of disconnected rooms with black gaps
+- ~~**bug, the death screen's level map read as a scatter of disconnected rooms with black gaps
   between them, and did not fill the width of the screen.**~~ Both were the same bug: the death
-  camera fit itself to `lvl.W`/`lvl.H` — the fixed 420×78-tile world **buffer** — rather than to
+  camera fit itself to `lvl.W`/`lvl.H`, the fixed 420×78-tile world **buffer**: rather than to
   the rooms the level actually carved into it. A ten-room level barely dents that buffer, so the
   run's own rooms rendered as a small huddle off to one side with the rest of the (unused, solid)
   buffer read as empty black gaps. `onGoatDied` now fits to the bounding box of `lvl.rooms`
-  instead. Confirmed against both a short death (pen) and a long one (last room) — the map now
+  instead. Confirmed against both a short death (pen) and a long one (last room), the map now
   runs edge to edge either way.
-- ~~**feel — the death screen should say how many were killed.**~~ Added as its own line on the
+- ~~**feel, the death screen should say how many were killed.**~~ Added as its own line on the
   card, the same wording the level-clear and run-end cards already use (`N sacrificed`).
-- ~~**bug — couldn't get close to a door; a big, unexplained gap stood between the goat and it.**~~
+- ~~**bug, couldn't get close to a door; a big, unexplained gap stood between the goat and it.**~~
   `Prop.r` (29, tuned to cover the door's span across a two-tile gap) was being used as a plain
   circle for the goat/enemy-vs-door push-out too, which stops anyone 29px from the door's **centre
-  in every direction** — including straight at its 13px-thick face, a whole extra tile short of
+  in every direction**: including straight at its 13px-thick face, a whole extra tile short of
   where the (much thinner) painted slab actually is. `collideEntities` now finds the closest point
   on the door's actual rectangle (`TUNING.prop.door.thick`, new) instead of treating it as a disc;
   the span (`r`) it was tuned to fully cover is untouched. A tunnelling fallback (centre landing
   inside the thin slab in one step) mirrors the one `world.js`'s wall collision already has.
-- ~~**feel — a room's bottom (near) wall did not read as bricked; a flat panel where the coursing
-  should be.**~~ Flagged before and apparently lost — see `ART_HANDOFF.md`'s "still open" note,
+- ~~**feel, a room's bottom (near) wall did not read as bricked; a flat panel where the coursing
+  should be.**~~ Flagged before and apparently lost, see `ART_HANDOFF.md`'s "still open" note,
   now closed. `PaintedArt.wallTile`'s near face (`bit:1`) tied its own depth to its own presence
-  bit, so it was capped at the 40px junction lip on *every* tile, corner or not — the other three
+  bit, so it was capped at the 40px junction lip on *every* tile, corner or not, the other three
   faces get that same cap only where a perpendicular wall actually needs the room. A straight run
   of near wall (the common case) now gets a much deeper face (`nearDepth`, 76px of the 128px
   tile) since there is no corner to leave room for; a real corner still narrows the same as ever.
   Checked against both a straight run and a corner.
-- ~~**feel — the skill-rail captions (LMB/RMB/E/SPC) still read as crowding `N SACRIFICED`, after
+- ~~**feel, the skill-rail captions (LMB/RMB/E/SPC) still read as crowding `N SACRIFICED`, after
   the last 4px nudge.**~~ Nudged again, another 5px (`drawSkills`, `render.js`).
-- ~~**feel — inconsistent punctuation: `LEFT CLICK, HEADBUTT` still used a comma where the ambush
+- ~~**feel, inconsistent punctuation: `LEFT CLICK, HEADBUTT` still used a comma where the ambush
   room's lines were already moved to a hyphen.**~~ Every place that exact string is drawn (the
   keyboard control line, its touch equivalent, the pen's own cage prompt, and the hint-key table)
   now reads `LEFT CLICK - HEADBUTT` / `BUTT - HEADBUTT`.
-- ~~**system — secret walls (the cracked-wall niches) show up before they mean anything on level
+- ~~**system, secret walls (the cracked-wall niches) show up before they mean anything on level
   one; not needed until after the first miniboss.**~~ `levelDef.secretsAfterBoss` (set only on THE
-  ALTAR) keeps the secret pool to rooms past `arenas[0].at` — no wall gives before the champion.
+  ALTAR) keeps the secret pool to rooms past `arenas[0].at`, no wall gives before the champion.
   Every other level is untouched; they already assume the mechanic is known.
-- ~~**system — the roll (E) should be called out at the entrance to the first miniboss, not just
+- ~~**system, the roll (E) should be called out at the entrance to the first miniboss, not just
   "somewhere past the middle of the level".**~~ Block 3's room pick now prefers the ordinary room
   right before a level's first arena, when that room is itself a valid candidate (has men, isn't
   the lesson/ambush/vault/trap room); falls back to the old "closest to the middle" pick otherwise.
-- ~~**system — an option to decline a soul: take none of the three cards offered.**~~ A fourth
+- ~~**system, an option to decline a soul: take none of the three cards offered.**~~ A fourth
   choice, `RELEASE THE SOUL`, on the boon-choice screen (violet, apart from the three cards rather
-  than styled as a fourth one) — click, tap, or `4`. There is no bank to put a released soul back
+  than styled as a fourth one), click, tap, or `4`. There is no bank to put a released soul back
   in yet (see the open "a souls resource" question at the bottom of this file), so it is simply not
   taken; nothing is owed back for it.
-- **bug — reported: the near bearer in the Mill lesson room ran past the wheel on level one without
+- **bug, reported: the near bearer in the Mill lesson room ran past the wheel on level one without
   it touching him.** Not reproduced. Tried the room fresh three times (three seeds), goat entering
   at the room's own `enter` point each time and left standing there while the room played out in
   real time: the `trapSense: 0` bearer took the arm and died on all three. If it comes back, the
-  thing worth knowing is *how* the room was approached — from a dead stop at the door like these
+  thing worth knowing is *how* the room was approached, from a dead stop at the door like these
   tries, or moving fast/at an angle through it (a boon-heavy or mid-roll goat could reach the far
   side quickly enough that the bearer's own path to him never crosses the arm's sweep at all, which
   would be a real gap in the room rather than a re-roll of the same test).
 
-## 16 September 2026, later still — six screenshots, sent in small bursts
+## 16 September 2026, later still, six screenshots, sent in small bursts
 
 All of it shipped same sitting, once the first pass at two of these turned out to be a real look
 rather than a full build; the reasoning behind each is in `CHANGELOG.md` under 1.27.
@@ -627,7 +641,7 @@ rather than a full build; the reasoning behind each is in `CHANGELOG.md` under 1
   **number.** `MILL_LESSON_TEMPLATE` in `rooms.js` cut from ten rows to seven. Checked against
   `mill.armLen` rather than by eye first: the hub now sits one row off the top wall (inside the
   arm's own reach, so it hits that wall outright) with three rows below it, of which only the
-  last sits outside that reach — exactly the one lane of clear floor the room was always meant to
+  last sits outside that reach, exactly the one lane of clear floor the room was always meant to
   leave. `node tools/balance.js` and the generator sweep both hold across every level and seed.
 - ~~**A patrolling man can end up facing a wall for no reason.**~~ **feel.** `idleWander` now
   resamples a chosen facing up to five times against a look-ahead probe (`TUNING.ai.wanderClear`)
@@ -637,98 +651,98 @@ rather than a full build; the reasoning behind each is in `CHANGELOG.md` under 1
   grew a separate `fxScale` and `fxLife` that only shrink and shorten the burst graphic itself.
 - ~~**A goat-head cursor.**~~ **system.** Asked before (ninth sitting, 15 Sep 2026) and parked as
   an art-pipeline item; an inline SVG wrapping the 🐐 emoji turned out to need no art pipeline at
-  all — `CURSOR_GOAT` in `game.js`, `encodeURIComponent`-built rather than hand-escaped.
+  all, `CURSOR_GOAT` in `game.js`, `encodeURIComponent`-built rather than hand-escaped.
 - ~~**The spike-grate band is hard to read where it runs into the unlit part of a room.**~~
   **feel.** The grate's metal rail and slot highlight are a shade brighter now, so a band still
   reads as iron rather than floor shadow under the fog's own shading pass.
 - ~~**Bomb Charge should cost a real hit, not skip the two-hit rule.**~~ **number/system.**
   `die()`'s absorb no longer excludes `'boom'`: a multi-hit target takes one off and goes down
   floored on a first charge, and only a second charge (or any other blow) landed while he is
-  already at his last heart actually finishes him. `CLAUDE.md`'s "Two hits" note updated with it —
+  already at his last heart actually finishes him. `CLAUDE.md`'s "Two hits" note updated with it,
   this was a documented rule changed on purpose, not a bug quietly patched.
-- **feel — patrolling (not yet aware) men should never die to a trap they are only walking past.**
+- **feel, patrolling (not yet aware) men should never die to a trap they are only walking past.**
   Confirmed already true rather than changed: `avoidHazard` in `enemies.js` only ever rolls the
-  trap-blunder chance `if (this.aware && ...)` — an idle patrol steers clear of a hazard every
+  trap-blunder chance `if (this.aware && ...)`, an idle patrol steers clear of a hazard every
   time, on purpose. If this comes back, ask which room: it is probably the Mill lesson's own
   scripted `trapSense: 0`, not a hole in ordinary patrol behaviour.
 - ~~**Freeze whatever is at least a room away from the goat.**~~ **system.** The enemy update loop
   now skips anyone whose home room is two or more rooms off by index from wherever the goat is
-  standing — never the room he is in or its immediate neighbour, which stays wider than any noise
+  standing, never the room he is in or its immediate neighbour, which stays wider than any noise
   radius in the game, so "a man still hears you through stone" is never something this quietly
   breaks. See the new note on it in `CLAUDE.md`, right after the patrol leash.
 
-## 16 September 2026, night — one screenshot and a second pass at the deck
+## 16 September 2026, night, one screenshot and a second pass at the deck
 
 A screenshot of the live 1.26 build with three things marked on it, plus a chunk of talking
 through the boon system again. The three marked bugs are fixed same sitting (reasoning in
 `CHANGELOG.md` and `ART_HANDOFF.md` under 1.26); everything else here is unbuilt.
 
-- ~~**bug — a dying butcher/elite bearer tore into plain clubman gore.**~~ `CombatFX.snapshot`
+- ~~**bug, a dying butcher/elite bearer tore into plain clubman gore.**~~ `CombatFX.snapshot`
   kept its own kind map instead of `PaintedArt.characterKey`; one map now.
-- ~~**feel — the near wall of a room read as bare rock, no bricks.**~~ Its face-shade overlay
-  (0.27) was crushing its own coursing next to the far wall's (0) — down to 0.1.
-- ~~**feel — a hunter's aim tell had gone dark.**~~ It only ever lived inside the primitive
+- ~~**feel, the near wall of a room read as bare rock, no bricks.**~~ Its face-shade overlay
+  (0.27) was crushing its own coursing next to the far wall's (0), down to 0.1.
+- ~~**feel, a hunter's aim tell had gone dark.**~~ It only ever lived inside the primitive
   fallback body; once his painted sprite took over it silently stopped drawing. Its own method
   now, called for either body.
-- **feel — the far side of a wall did not read as "pulled" for the tilt.** Open. `wallTile`'s four
+- **feel, the far side of a wall did not read as "pulled" for the tilt.** Open. `wallTile`'s four
   faces are geometrically symmetric, so this is a different complaint from the one above and not
-  fixed by the shade change — see the note in `ART_HANDOFF.md` for where to look next (`lip`, or a
+  fixed by the shade change, see the note in `ART_HANDOFF.md` for where to look next (`lip`, or a
   second wall row through a corridor mouth) once it has been played against the fix that did ship.
-- **system — a rare pickable bomb, mostly found in secrets.** One to two a level, an item like a
+- **system, a rare pickable bomb, mostly found in secrets.** One to two a level, an item like a
   crate or a weapon (grab, carry, thrown by the same button that throws anything else). Explodes
   in a 4×4 area; the goat takes damage from his own blast too if he is in it. Two hearts at the
-  centre, tapering to one at the outer edge of the area — a radius-scored hit rather than a flat
+  centre, tapering to one at the outer edge of the area, a radius-scored hit rather than a flat
   cost, the same shape `flungHits`' two speed thresholds already use for a body. Rare enough that
   it reads as a find, not a tool: the number to hold it to is per-level count, not per-room chance.
-- **feel — return the hunter's shot to being readable before it lands, further than the tell
+- **feel, return the hunter's shot to being readable before it lands, further than the tell
   above.** Distinct from the aim-tell bug: that one is about the tell existing at all; this is
   about how far ahead of the shot it gives you, and was asked for as "how it read in a build
   before this one" rather than as a fresh idea. Needs which build, or a description of what read
-  better about it — realism is explicitly not the ask ("we'll work on realism later").
+  better about it, realism is explicitly not the ask ("we'll work on realism later").
 
-### system — the deck at 36, restated with new candidates
+### system, the deck at 36, restated with new candidates
 
 This is the already-parked **"the deck at 36: a grid of four verbs by three archetypes, dealt in
 turns"** further down this file (16 Sep, evening sitting; it was "dealt in turns" alone until the
 archetype grid was added to it): two actives a verb (three eventually), two passives a verb (three eventually),
 eight general passives, dealt active/passive/active/passive until every verb has one, then one
 active-as-replacement plus two passives. Two pieces of that plan were re-described tonight,
-word for word, without having been shown the file — worth treating as confirmation rather than
+word for word, without having been shown the file, worth treating as confirmation rather than
 as a new ask: the replacement card names what it gives up (`replaces`, "instead of DRAGON
 BREATH" on the card itself, not just a rail icon changing after the fact), and once every verb is
 full the deal shifts to one active plus two passives instead of the usual alternation.
 
 New tonight, to fold into the same system rather than build alongside it:
 
-- **A card can be refused.** A fourth option under the three — RELEASE THE SOUL, or similar — that
+- **A card can be refused.** A fourth option under the three, RELEASE THE SOUL, or similar, that
   spends nothing and takes nothing. `openBoonChoice` has no such exit today; a soul taken is a
   card taken.
 - *Built 23 Sep 2026 as ordinary cards (see `CHANGELOG.md`, "Three souls off the backlog"): the
   pounce is LEAPFROG, the throw's slow time is COLD EYE, the grass trade is FOUR STOMACHS. The
-  invulnerability bubble was left out — ground rule 4 allows no i-frames beyond the roll's. The
+  invulnerability bubble was left out, ground rule 4 allows no i-frames beyond the roll's. The
   line-of-two headbutt stays an open question, for the reason given with it.*
 - **Three candidate passives**, as concrete examples for the twelve-general-passives count: a
   three-second bubble of invulnerability after taking a hit (distinct from `goat.invuln`'s
   half-second flinch, above); holding an object or a man slows time for two seconds so a throw can
   actually be aimed (reads as the grab-and-throw verb's own passive, not a general one); grass
   heals two hearts instead of one but the run's own max is one heart lower (a trade, not a
-  straight upgrade — the kind of passive that argues with itself, which the file's shop item
+  straight upgrade, the kind of passive that argues with itself, which the file's shop item
   section already flags as the interesting kind).
-- **Two candidate actives:** the roll becomes a pounce — jump onto the man in front of you and
-  land behind him — at double the cooldown; and a headbutt active that throws the struck man's
+- **Two candidate actives:** the roll becomes a pounce, jump onto the man in front of you and
+  land behind him, at double the cooldown; and a headbutt active that throws the struck man's
   own knock-on into whoever is standing behind him, so one blow can end two men in a line. That
   second one is offered with a flag on it, not a decision: the headbutt is pillar 3 in `CLAUDE.md`
   by itself, so what an "active" version of it should mean was asked as an open question rather
-  than settled — a headbutt with more teeth risks arguing with "a headbutt only ever knocks a man
+  than settled, a headbutt with more teeth risks arguing with "a headbutt only ever knocks a man
   down; walls kill."
 - **A `synergy` / `addition` mark on a boon, visible in the dev tool wherever the list of them is
   read.** `addition`: this boon makes another one modestly better in passing. `synergy`: this boon
   is built to be read together with a named other one. Nothing today lists `BOONS` anywhere in the
-  dev drawer for a mark like this to attach to — closest is the skill rail's own hover note, which
+  dev drawer for a mark like this to attach to, closest is the skill rail's own hover note, which
   is player-facing and per-card, not a design-time table. Wants a page or a tab before it wants
   the mark itself.
 
-## 16 September 2026, evening — a design sitting, not a playtest
+## 16 September 2026, evening, a design sitting, not a playtest
 
 No screenshots this time: an hour of talking about why the game has no pressure in it, why a
 run is over in an hour and a half, and what an act two and a secret ending would have to be.
@@ -747,7 +761,7 @@ runs-to-win is currently one because a level restarts for free. **Power** by lev
 too high, but nothing measures it: `tools/balance.js` knows threat and ground and has no idea
 what the goat is carrying by then.
 
-### ~~number — a hit should buy more than half a second~~ — done, found 22 Sep 2026
+### ~~number, a hit should buy more than half a second~~, done, found 22 Sep 2026
 
 Already in the build: `TUNING.goat.invuln` is 0.9 s, inside the 0.8–1.0 range asked for below. The
 burst-death counter was never added; it is only worth building if deaths still read as one bad moment.
@@ -761,7 +775,7 @@ How to know which number is wrong: count in the dev drawer the deaths where the 
 went inside 1.5 s ("burst deaths") against the ones that bled out a heart at a time across rooms.
 Mostly bursts: the invulnerability is the lever. Mostly attrition: hearts are.
 
-### ~~number — hearts that grow with the run, by level and not by card~~ — *decided against, 26 Sep 2026*
+### ~~number, hearts that grow with the run, by level and not by card~~, *decided against, 26 Sep 2026*
 
 Four hearts is the genre's number (Spelunky four, Isaac three, Ape Out two or three) and they are
 already the budget of a **level**: `startLevel` fills them. Growing to six or seven by the end is
@@ -772,7 +786,7 @@ is, with the new heart arriving full as THICK HIDE's does. THICK HIDE on top mak
 MODE still adds two. `drawUI` has to fit nine hearts on the band without shrinking the rail.
 Hell (below) takes them back to four, which is the "reset for your crimes" in numbers.
 
-### ~~tool — a third column in the balance: what the goat is by then~~ — shipped in 1.44
+### ~~tool, a third column in the balance: what the goat is by then~~, shipped in 1.44
 
 `BOON_POWER` in `tuning.js` and a `threat over power` table at the end of `node tools/balance.js`.
 It reports rather than fails, because the weights are a guess. Its first reading: THE THRESHING
@@ -788,7 +802,7 @@ already uses), and print threat, power and the ratio per level in `tools/balance
 BALANCE tab. Add a `GEN_RULES`-style averaged check that the ratio never falls from one level to
 the next. Until this exists "overpowered by level five" is a feeling and cannot be tuned.
 
-### system — one life per run — *parked, 16 Sep 2026*
+### system, one life per run, *parked, 16 Sep 2026*
 
 Three lives on the run (`TUNING.run.lives`, and in `saveRun`). Losing one restarts the level
 exactly as a death does now, boons kept. Losing the last one ends the run: back to the title,
@@ -803,7 +817,7 @@ still), the vault (a detour), the secret wall (two blows on a hunch) and the sou
 pause); and a death late in a timed run is a certain loss, which sends the player to the menu
 instead of the retry. Lives make death cost more without touching any of that.
 
-### system — the hunt: pressure from behind, once a level runs past par — *parked, 16 Sep 2026*
+### system, the hunt: pressure from behind, once a level runs past par, *parked, 16 Sep 2026*
 
 The generalisation of the closing door. Par is `rooms * score.perRoom`; once the level has run
 `TUNING.hunt.after` times par (try 1.5), the compound wakes: every `hunt.every` seconds a man
@@ -817,7 +831,7 @@ costs time, and time now costs men, who die on the same walls, so run-or-fight s
 with a price on each side. A `GEN_RULES` line cannot check a timer, but `balance.js` can print
 the par it will run against per level so a level whose par is wrong is caught there.
 
-### system — act two, hell: a second run inside the run — *parked, 16 Sep 2026*
+### system, act two, hell: a second run inside the run, *parked, 16 Sep 2026*
 
 Longer levels, more souls, harder men, more hazards, and the boons taken back. This works only
 as a **second curve with a second deck**, not as the compound's curve continued: a goat with no
@@ -846,7 +860,7 @@ souls put on the fifth level's threat is the "much worse game" `CLAUDE.md` alrea
   the stairs on every level, currently worth nothing but the soul. Earned scales the length of
   the game with skill and makes the vault matter.
 
-### system — heaven, the secret: a run that swallowed no soul — *parked, 16 Sep 2026*
+### system, heaven, the secret: a run that swallowed no soul, *parked, 16 Sep 2026*
 
 Beat all seven levels without taking a single soul and go up instead of down. Nothing to teach,
 readable from the world, and the one run where *run, don't fight* is literal. Pillar 6 is
@@ -864,7 +878,7 @@ newcomer. What heaven is once reached is unwritten and is not this item.
 
 ---
 
-### system — the deck at 36: a grid of four verbs by three archetypes, dealt in turns — *parked, 16 Sep 2026*
+### system, the deck at 36: a grid of four verbs by three archetypes, dealt in turns, *parked, 16 Sep 2026*
 
 Thirteen souls against seventeen cards is three quarters of the deck every run, so two runs are
 one build in a different order. The shape: every verb a **slot with three mutually exclusive
@@ -907,7 +921,7 @@ unreadable is not: every cell changes its icon and the note under the chip, or t
 collected is invisible. Order: the generation batch first, this second, blind playtests after
 both. `balance.js` measures none of the crossings; they are tested by hand, one at a time.
 
-### system — the shop: a mouse, a rat ogre, souls of the killed, a talisman — *shipped in 1.40, 18 Sep 2026*
+### system, the shop: a mouse, a rat ogre, souls of the killed, a talisman, *shipped in 1.40, 18 Sep 2026*
 
 > 1.41 took the prices out ("No more prices in the dead"): she gives, one choice of three, and takes
 > nothing. What follows is the 1.40 design as it was asked for, kept for the record.
@@ -917,7 +931,7 @@ the middle stretch; two wares, the second a tier cheaper; three strikes (two lin
 rather than a run; the ogre at six hearts, hurt only floored (a crate, a shield), by blades,
 bullets, bodies at speed, the wheel and the bomb. The note's own "Q" is exactly what shipped: the
 boomerang and STRANGE SYMBOLS both hang off a fifth key, made honest against ground rule 1 by not
-existing at all until one of them is worn — an early pass had tried folding them into grab-on-
+existing at all until one of them is worn, an early pass had tried folding them into grab-on-
 nothing and the roll instead, on the theory that a fifth key is a fifth key; overruled the same
 day ("мои правила моя игра"), on the sounder theory that one active item earns its own button once
 there is something to press it for. What is still open: the second slot for the later acts, and
@@ -960,20 +974,20 @@ Why the shop and not items on the floor: the depth is in the decision in front o
 
 ---
 
-## 16 September 2026 — the tenth sitting
+## 16 September 2026, the tenth sitting
 
 Twenty lines, sent one and two at a time rather than in a single note, with screenshots on most
 of them. Nineteen shipped in 1.25 and one is open; the reasoning behind each shipped line is in
 `CHANGELOG.md`.
 
-- ~~**WASD — TO MOVE showed before the cage broke.**~~ **bug.** It now waits on `game.cageOpen`
+- ~~**WASD, TO MOVE showed before the cage broke.**~~ **bug.** It now waits on `game.cageOpen`
   and takes over the exact spot the headbutt prompt was painting.
 - ~~**An idle man wandered into the next room and picked a fight he wasn't placed for.**~~ **bug.**
-  `Enemy.home` plus a leash on `idleWander` — see the new note in `CLAUDE.md`.
+  `Enemy.home` plus a leash on `idleWander`, see the new note in `CLAUDE.md`.
 - ~~**Wall tiles: flip the brick to face into the room.**~~ **feel.** Left and right walls mirror
   the same stamp across their own centre now.
 - ~~**The bottom of that same wall crop wasn't bricked.**~~ Turned out to be the secret wall's own
-  mismatched art, not an ordinary wall — see the next line.
+  mismatched art, not an ordinary wall, see the next line.
 - ~~**The crack reads as being in the floor, not the wall.**~~ **bug.** Same cause: the secret
   prop drew a different, flatter stone-block texture tinted to the room's colour instead of the
   room's actual brick stamp. It draws the real one now.
@@ -996,9 +1010,9 @@ of them. Nineteen shipped in 1.25 and one is open; the reasoning behind each shi
   walking toward the player while on patrol.**~~ Both: `AMBUSH_TEMPLATE` racks two now, and the
   patrol leash keeps them at the far end until the goat is actually seen or heard.
 - ~~**Same thing in the first trap room: let them wait at the far end.**~~ Same leash fix.
-- ~~**The lesson room's far wall is a walk away rather than a step — a headbutt doesn't reliably
+- ~~**The lesson room's far wall is a walk away rather than a step, a headbutt doesn't reliably
   kill the first man.**~~ **number.** Ten tiles of width cut to nine. **Watch on the next play:**
-  a headbutt thrown dead straight down the room's own exit corridor still doesn't kill — nothing
+  a headbutt thrown dead straight down the room's own exit corridor still doesn't kill, nothing
   stands in that direction for a body to hit, since the corridor is the only way through and has
   to stay open. Approaching from anywhere off that exact line lands the kill; a player rarely
   walks it dead straight (the room's own entrance sits a tile off that line already), but a seed
@@ -1019,23 +1033,23 @@ of them. Nineteen shipped in 1.25 and one is open; the reasoning behind each shi
 
 ---
 
-## 15 September 2026, later — the ninth sitting
+## 15 September 2026, later, the ninth sitting
 
 Twenty-seven lines in one long voice note. Most of it shipped; a handful were already true and are
 noted rather than touched, and four are open.
 
 - ~~**Shield down to two before it snaps, and it should ring off a wall or a man rather than just
   stopping.**~~ `uses.shield` 3→2, and a wall bounce keeps 60% of its speed instead of losing 70%.
-- ~~**Melee reach on the cult, down a fifth.**~~ Bearer, hound, Butcher and wraith together — a club
+- ~~**Melee reach on the cult, down a fifth.**~~ Bearer, hound, Butcher and wraith together, a club
   or a bite landing from most of a body-length off read as the wall behind him not mattering.
 - ~~**A weapon on its stand should be the same size as one in his mouth.**~~ It drew bigger racked
   than anywhere else it is ever seen; one size now.
 - ~~**Throw distance, down a fifth.**~~ `throwImpulse` 34 → 27.2 tiles' worth.
-- **A rifle should be able to kill his own man.** Already true — `Bullet.update` hits whoever it
+- **A rifle should be able to kill his own man.** Already true, `Bullet.update` hits whoever it
   reaches first, ally or not, and says FRIENDLY FIRE when it does. Nothing changed here.
 - ~~**Coop in one blow, and the hen goes in the mouth like a crate too.**~~ Grab-then-throw now runs
   through the same kick-and-seek she already had off a headbutt, rather than a straight throw.
-- **The Butcher should not be liftable.** Already true — `tryGrab` excludes him by kind, the same as
+- **The Butcher should not be liftable.** Already true, `tryGrab` excludes him by kind, the same as
   the hound and the wraith. Nothing changed here.
 - ~~**Delete the floor line on THE THRESHING FLOOR.**~~ `hint: null`.
 - **THE THRESHING FLOOR reads too sparse at this density; make it smaller, or only for the
@@ -1043,20 +1057,20 @@ noted rather than touched, and four are open.
   (`corridorW: 5`, "reads as one yard"), so the fix is a number on `encounters.from`/`to` or the room
   count rather than a line of code, and it wants a second playtest before either is touched.
 - ~~**A different cursor: headbutt by default, something else once he is carrying something.**~~
-  `crosshair` / `grabbing` — the OS cursor rather than a drawn one. A custom goat-head cursor is an
+  `crosshair` / `grabbing`, the OS cursor rather than a drawn one. A custom goat-head cursor is an
   art asset, not code, and belongs with the next `ART_HANDOFF.md` pass.
-- **"What is this — delete the bird."** Not reproduced. Nothing in the hen's own code path draws a
+- **"What is this, delete the bird."** Not reproduced. Nothing in the hen's own code path draws a
   `?` or any other stray mark over her; that belongs to `investigate` state on an `Enemy`, which she
   is not. Needs the screenshot again, or which build it was on.
 - ~~**Build number under the seed.**~~ `BUILD` in `tuning.js`, bumped by hand alongside a CHANGELOG
   entry from here on.
 - ~~**Scream stun radius, down a fifth.**~~ `goat.scream.radius` 8.5 → 6.8 tiles.
-- ~~**Strange spikes near the Mill — remove them.**~~ The per-room grate scatter could land in the
+- ~~**Strange spikes near the Mill, remove them.**~~ The per-room grate scatter could land in the
   Mill's own room (and the arena, the Hall, the Gallery, the killbox), stacking one hazard system on
   top of another that was already built narrow on purpose. Excluded now.
 - ~~**Idle men should shift around the room a little, if they are not scripted.**~~ `idleWander` only
   ever turned on the spot; about half of every wander beat is now a few slow steps.
-- **A spinner drawn over the traps.** Not reproduced — the screenshot didn't say which overlay it
+- **A spinner drawn over the traps.** Not reproduced, the screenshot didn't say which overlay it
   was. Needs a name for the element (the trap-sense mark, a hazard's bark bubble, something else) or
   the screenshot again.
 - ~~**Traps sometimes in front of the soul door.**~~ On a level that already has spikes, half the
@@ -1065,22 +1079,22 @@ noted rather than touched, and four are open.
   `BIG_ROOM`: 20-plus tiles of width forces the roll, so running a wide room the length of it is no
   longer free.
 - **Enemies react to noise, especially a fight or an explosion, and walking should be quieter than
-  fighting.** Already true — `TUNING.noise` gives every event its own radius (`footstep` 2, `headbutt`
+  fighting.** Already true, `TUNING.noise` gives every event its own radius (`footstep` 2, `headbutt`
   5, `boom` 16, and so on) and every man checks `world.noises` for one in range. Nothing changed here;
   see the new HEARING toggle below if it needs to be seen rather than taken on faith.
 - ~~**A dev-tool toggle for a man's sight cone, and one for what the goat's own noise reaches.**~~
-  VISION and HEARING, next to GOD in the drawer — a cone per man, two rings on the goat for a
+  VISION and HEARING, next to GOD in the drawer, a cone per man, two rings on the goat for a
   footstep and a fight.
 - ~~**"Too quick" for a hound shouldn't repeat a thousand times.**~~ It fired every single frame the
   button was held down; gated to once every 0.8s.
-- **Enemies should go round pits even while retreating — a mage blinking included.** Already true for
+- **Enemies should go round pits even while retreating, a mage blinking included.** Already true for
   ordinary movement and for a blink's own landing spot (`hazardAt`/`isPitPx` both refuse one). Nothing
   changed here.
 - **A level's hint should say what new hazard is on this floor.** Partly open. THE RAFTERS already
   does this for the drop (*"THE FLOOR ENDS. THEY FALL FURTHER THAN YOU."*); THE ROAD, where the grate
-  first appears, did not — it does now: *"...WATCH YOUR STEP."* Level one's Mill and pen are taught
+  first appears, did not, it does now: *"...WATCH YOUR STEP."* Level one's Mill and pen are taught
   in-room rather than on the floor and were left alone.
-- ~~**Minimal camera shake and slowdown on a multi-kill — it breaks the pace right now.**~~
+- ~~**Minimal camera shake and slowdown on a multi-kill, it breaks the pace right now.**~~
   `comboSlow` 0.26 → 0.12s, and the extra hitstop a streak buys came down by more than half.
 - ~~**A mage should never blink into a room you have already cleared, if the fight is in the next
   one.**~~ `blink` used to only mind a sealed room's own walls; it now keeps every blink inside
@@ -1095,7 +1109,7 @@ noted rather than touched, and four are open.
 
 ---
 
-## 15 September 2026 — the eighth sitting
+## 15 September 2026, the eighth sitting
 
 Twenty lines against 1.20, sent in five bursts with screenshots. Everything here shipped in 1.21
 except the two notes at the end; the reasoning is in `CHANGELOG.md`.
@@ -1104,60 +1118,60 @@ except the two notes at the end; the reasoning is in `CHANGELOG.md`.
   a blink asked the tiles and the flow field about its landing spot and nothing about a door, so the
   mage could leave a room whose doors only open when it is empty.
 - ~~**Put a tuft of hay in the starting pen.**~~ Two tiles of it, inside the bars.
-- ~~**`WASD — TO MOVE` on the first screen, where you break the cage, with the headbutt line under
-  it — and then the second room can go, it has no controls left.**~~ Both empty rooms went; level one
+- ~~**`WASD, TO MOVE` on the first screen, where you break the cage, with the headbutt line under
+  it, and then the second room can go, it has no controls left.**~~ Both empty rooms went; level one
   is ten rooms.
-- ~~**On the screen with the man, keep only the top of the text.**~~ One line: `LEFT CLICK —
-  HEADBUTT`. **The wall line and `BUTT HIM` are gone with it** — see the note below.
+- ~~**On the screen with the man, keep only the top of the text.**~~ One line: `LEFT CLICK,
+  HEADBUTT`. **The wall line and `BUTT HIM` are gone with it**: see the note below.
 - ~~**And for the look of that room: barrels down the sides or a small crate in the corner. Hay
   makes it hard to read.**~~ Two crates on the near half.
 - ~~**In that corridor, less distance to the wall, so the man definitely hits it.**~~ Four tiles of
   floor rather than six.
 - ~~**The teaching elements should be clear and well scripted, without too many options, so the
-  player definitely learns — and random generation should not break it.**~~ `GEN_RULES.lessons`,
+  player definitely learns, and random generation should not break it.**~~ `GEN_RULES.lessons`,
   checked over every seed by `tools/balance.js` and live on the RULES page.
 - ~~**The wheel in a narrower room with one way through, and two men: one runs at you and is thrown
   by it, the other walks round it safely and comes on.**~~ `millLesson`, and the two men's
   `trapSense` pinned to the two ends of the roll.
 - ~~**The throwing room: add the grab instruction, a sword rather than a shield, narrower and lower
-  — a three-tile corridor — crates not in the way, and the grass only in the far corner.**~~
+  - a three-tile corridor, crates not in the way, and the grass only in the far corner.**~~
 - ~~**And the men always on the far side of that room, not like this.**~~ `noFlipX`.
 - ~~**The crack in the wall should be a crack, not who-knows-what.**~~ One shared `wallCrack`.
-- ~~**In the walls that tile should face outward — except the bottom wall, where it should not be
+- ~~**In the walls that tile should face outward, except the bottom wall, where it should not be
   visible at all.**~~ `wallTop` is skipped where the room is above.
 - ~~**What is going on with the lamp and its shadow? They should be next to each other.**~~
 - ~~**In the first boss's room: one mini-boss and one helper.**~~ `escorts: 1`.
 - ~~**If that is hay on level two, make it look like hay.**~~ The painted bale draws on every level
   now; only levels 2–7's floors and walls are still the procedural fallback (see `ART_HANDOFF.md`).
 - ~~**The men should talk a little less often.**~~
-- ~~**At the start of level three, this can go.**~~ The `HOLD RIGHT CLICK — CARRY` line under the
+- ~~**At the start of level three, this can go.**~~ The `HOLD RIGHT CLICK, CARRY` line under the
   hint.
 - ~~**If you are holding a crate and it is between you and an enemy's blow, the crate breaks like a
   shield and the damage does not reach you.**~~
-- ~~**Objects should stand closer to their shadows — the distance is large right now.**~~ The
+- ~~**Objects should stand closer to their shadows, the distance is large right now.**~~ The
   lantern and the brazier; every other prop was already within a pixel or two of its own feet.
 - ~~**Enemies trigger the spike traps when they cross them (except the ghosts).**~~
 - ~~**When you are holding an object, both mouse buttons let go of it.**~~
 
 **Two lines from this batch are still open.**
 
-- **Which single line belongs on the floor at the first man.** It is `LEFT CLICK — HEADBUTT` now,
-  which is what the screenshot boxed — but the pen says exactly that two rooms earlier, so the line
+- **Which single line belongs on the floor at the first man.** It is `LEFT CLICK, HEADBUTT` now,
+  which is what the screenshot boxed, but the pen says exactly that two rooms earlier, so the line
   at the man repeats rather than adds. The alternative is `INTO A WALL KILLS`, which is the whole of
   level one's canon and the thing players did not work out on their own. One word settles it.
 - ~~**Barrels.**~~ Built after 1.60: a real `barrel` that rolls, bowls a row of men and burns (see
   `CHANGELOG.md`, "Barrels"). A second, wall-standing barrel built in parallel in the cloud 1.56
   (stave it in, fire opens it into oil) was folded into this one when the two met in 1.61. The ask was "barrels down the sides or a small crate in the corner" and it shipped as
-  crates, because there is no barrel `Prop` — only a painted barrel in the ritual room's decal
+  crates, because there is no barrel `Prop`, only a painted barrel in the ritual room's decal
   layer. A real barrel kind (blocks, burns, is not liftable) is a small piece of work and would give
   the storage rooms something to read that is not a crate.
 
 ---
 
-## 14 September 2026, late — the seventh sitting
+## 14 September 2026, late, the seventh sitting
 
 Twelve lines off an annotated screenshot, plus four sent after it, plus the rule under all of them:
-*"and take into account in the new balance — the new division of powers — that you start underpowered."*
+*"and take into account in the new balance, the new division of powers, that you start underpowered."*
 All of it shipped in 1.12; the reasoning is in `CHANGELOG.md`.
 
 - ~~**Fog behind a partition, from the place it is seen from.**~~ A shadowcast from the goat's own tile
@@ -1181,7 +1195,7 @@ All of it shipped in 1.12; the reasoning is in `CHANGELOG.md`.
 
 **Watch on the next play.** Two of these are worth a second opinion rather than a number:
 - The shadow is at `TUNING.fog.shade` (0.8) with `fog.res` (2) deciding how hard its edge is. A man
-  standing behind a partition is now very nearly invisible while he can still hear you perfectly — if
+  standing behind a partition is now very nearly invisible while he can still hear you perfectly, if
   that reads as unfair rather than as tense, the alpha is the dial, not the shadowcast.
 - Two men who stand together now die together to one headbutt, which is a real jump in what the bare
   head is worth. `physics.bodyKillSpeed` is the bar for the man who is struck and `physics.splatSpeed`
@@ -1189,7 +1203,7 @@ All of it shipped in 1.12; the reasoning is in `CHANGELOG.md`.
 
 ---
 
-## 14 September 2026, night — the sixth sitting
+## 14 September 2026, night, the sixth sitting
 
 Nine lines in one message, plus the rule under them: *"I want to build a power fantasy where you start
 weak."* All of it shipped in 1.11; the reasoning is in `CHANGELOG.md`.
@@ -1214,18 +1228,18 @@ weak."* All of it shipped in 1.11; the reasoning is in `CHANGELOG.md`.
   Shipped: one page, and `#rules` / `#balance` as addresses for it.
 - ~~**See the actual rooms and the men in them on both tabs. Understand size on the balance tab, and
   go deeper by zooming in. Put the general rules on a tab of their own and the particular ones
-  inside each level, so a level has more room to show its space.**~~ Shipped as three tabs — RULES
+  inside each level, so a level has more room to show its space.**~~ Shipped as three tabs, RULES
   as a rule-by-level matrix, LEVEL as one level on the whole screen, BALANCE with a bar per room at
-  its real width and place in the world — and a room sheet both of the last two open.
+  its real width and place in the world, and a room sheet both of the last two open.
 
 ---
 
-## 14 September 2026, evening — the fifth sitting
+## 14 September 2026, evening, the fifth sitting
 
 Asked for in one message and built in the same sitting; kept here so the file stays a record of what
 was asked. The reasoning is in `CHANGELOG.md` under 1.10.
 
-- ~~**A tab in the dev tool — the level generation rules — with the rules per room and the enemies
+- ~~**A tab in the dev tool, the level generation rules, with the rules per room and the enemies
   per level lit up; the general rules apart from each level's own.**~~ Shipped as RULES in the dev
   drawer, with `js/rules.js` as the one list the drawer and `tools/balance.js` both read.
 - ~~**Every level gets a sub-idea of its own, a canon, with many rooms written for it: at least half
@@ -1234,14 +1248,14 @@ was asked. The reasoning is in `CHANGELOG.md` under 1.10.
 
 ---
 
-## 14 September 2026 — the fourth sitting, with 1.8
+## 14 September 2026, the fourth sitting, with 1.8
 
 **Where this batch went: everything but the last line shipped in 1.9.** The rule under this batch is
 *let the run get stronger*: he was dying, losing what he had just earned, and meeting a wall at level
 three, so nothing about the game read as progress.
 
 - ~~**Nothing is taken away on a restart.**~~ Shipped. A death used to take the newest tome.
-- ~~**A ticket of tomes per level: one, one, then two.**~~ Shipped as `levelDef.tomes` — one on level
+- ~~**A ticket of tomes per level: one, one, then two.**~~ Shipped as `levelDef.tomes`, one on level
   one, two after, thirteen across a run, the vault holding one of each level's two and the level's last
   boss the other. Every other boss drops milk. Asked for as "меж левелами зберігаються".
 - ~~**Difficulty should rise evenly.**~~ Shipped. It went 27 → 50 → **115** → 123 → 167 → 181 → 199 and
@@ -1263,10 +1277,10 @@ three, so nothing about the game read as progress.
 - ~~**Running without stopping builds up to +50% speed.**~~ Shipped as `goat.momentum`: four seconds
   to the whole of it, three times as fast to lose it, and all of it gone on a hit.
 
-### ~~system — a souls resource, one soul per man~~ — decided against for now, 23 Sep 2026 (see the top of this file)
+### ~~system, a souls resource, one soul per man~~, decided against for now, 23 Sep 2026 (see the top of this file)
 
 **Asked as a question, not built.** "А что если мы добавим ресурс душ? Но тут 1 душа = 1 человек. И его
-потом можно будет тратить." The counting half is free — `game.kills` is already exactly this number and
+потом можно будет тратить." The counting half is free - `game.kills` is already exactly this number and
 `levelCleared` already carries it across levels as `totalKills`. The whole question is what a soul
 *buys*, and there is one rule it must not break: `scoreFor` deliberately makes pace the axis and kills
 only a multiplier, so *run, don't fight* survives. A soul price that rewards clearing a room turns the
@@ -1275,14 +1289,14 @@ game into a brawler, which is the one thing pillar 3 in `CLAUDE.md` exists to pr
 Three shapes that do not break it, cheapest first:
 
 1. **The soul door opens for souls.** The vault's door already reads as a soul door and already costs
-   four blows. Give it a price in souls as well — say eight — shown on the face the way the blows are.
+   four blows. Give it a price in souls as well, say eight, shown on the face the way the blows are.
    You pay it with men you were going to have to kill anyway on the way there, and skipping every fight
    in the level means the tome behind it stays shut. Nothing else in the game changes, and the resource
    has exactly one sink, which is the version worth trying first.
 2. **A soul price on the tome cards.** A third card that costs souls and offers a boon out of the pool
    the other two did not. Same sink shape, but it touches `openBoonChoice`, which is the part of the
    game with the fewest moving parts and the most weight.
-3. **Souls bank across a run and buy a head start.** The version he may actually mean by "потом" — a
+3. **Souls bank across a run and buy a head start.** The version he may actually mean by "потом" - a
    meta-currency spent on the title screen, which is a new screen, a new save key and a decision about
    whether a run is still one life. Biggest of the three by a distance, and it should not be first.
 
@@ -1290,7 +1304,7 @@ Ask him which sink before building any of it. The counter is an afternoon; the s
 
 ---
 
-## 14 September 2026 — the third sitting, with 1.7
+## 14 September 2026, the third sitting, with 1.7
 
 **Where this batch went: all of it shipped in 1.8.** Seven notes again, and the rule under this batch
 is different from the last one's: it is not *say what a thing is*, it is **make me use it**.
@@ -1307,14 +1321,14 @@ is different from the last one's: it is not *say what a thing is*, it is **make 
 
 ---
 
-## 14 September 2026 — the second sitting, with 1.6
+## 14 September 2026, the second sitting, with 1.6
 
 **Where this batch went: all of it shipped in 1.7.** Seven notes, and every one of them the same
 complaint underneath: *the game is not telling me what this is*. `CHANGELOG.md` carries what each one
 turned into. Two of them are worth keeping as rules rather than as fixes:
 
 - **A trap has to look like an object.** The spike plate was drawn flush with the boards and read as
-  floor decoration, so nobody could tell what it was — not what it did, *what it was*. It is a crate
+  floor decoration, so nobody could tell what it was, not what it did, *what it was*. It is a crate
   now. Anything else that lies flat in the floor will land the same way.
 - **A line that names a verb has to name the button.** The floor hints were written as instructions and
   read as atmosphere. They carry the key now. The general form: **anywhere the game tells you to do
@@ -1322,13 +1336,13 @@ turned into. Two of them are worth keeping as rules rather than as fixes:
 
 ---
 
-## 14 September 2026 — Max's first sitting, with 1.5
+## 14 September 2026, Max's first sitting, with 1.5
 
 **Where this batch went: all of it shipped in 1.6 except the scream, which was already done.**
 Somebody playing it for the first time, watched. `CHANGELOG.md` carries what each one turned into; the
 entries stay here because what a first-time player did not work out is worth keeping.
 
-### feel — he did not work out that the men could be hit
+### feel, he did not work out that the men could be hit
 
 Read both rooms of writing on the floor, walked past the first clubman without trying anything, and got
 a long way in still treating the men as terrain. Shipped as two changes at once: the first man of the run
@@ -1337,32 +1351,32 @@ painted on the floor of that same room. **The general lesson: a control room wit
 the button and not the verb.** Anything else the game wants to teach wants a thing in the room to use it
 on, in the same room as the words.
 
-### number — the brute arrived second
+### number, the brute arrived second
 
 Met the man with three hearts as the second enemy of the run. Level one is twelve rooms now and he comes
 four ordinary rooms after the first clubman, which is the rule the introduction order was supposed to
 have all along: `planEncounters` will honour any `introduce` fraction, so this is a `tuning.js` number
 and not a mechanism.
 
-### bug — seen through a wall
+### bug, seen through a wall
 
 A shut door was see-through to a man and a wall to the goat. Fixed in 1.6. **Not fixed, and deliberately
 so: a man still hears you through stone.** If that comes back as a complaint the answer is probably to
-attenuate `emitNoise` by path rather than by line — but the noise system is the entire counterplay to the
+attenuate `emitNoise` by path rather than by line, but the noise system is the entire counterplay to the
 sight cone, and taking it out would make walking up behind a man free.
 
-### number — the Butcher's damage radius
+### number, the Butcher's damage radius
 
 Halved, to the square foot. Left alone: the charge, which is the thing that is supposed to cover ground.
 
-### number — the scream's stun radius — already done, not cut again
+### number, the scream's stun radius, already done, not cut again
 
 Asked for with "if it was cut before, no need to cut it twice". It was: twelve tiles to eight and a half
 in 1.2. Left at 8.5. If it comes back a third time the number to look at is probably the stun *duration*
 (`goat.scream.stun`, 0.9s) rather than the radius, because what reads as "too big" in a room of four men
 is usually how long they all stand there.
 
-### system — rooms built round their traps
+### system, rooms built round their traps
 
 **The rest shipped in 1.44:** `ring` for THE THRESHING FLOOR (`needs: 'corridorW'`) and `chasm` for THE
 RAFTERS (`needs: 'windows'`), the first trap room built round a drop. Both levels now carry `traps: 1`.
@@ -1375,10 +1389,10 @@ drop, because drops only exist in the `high` pool.
 
 ---
 
-## 14 September 2026 — a long sitting with 1.3
+## 14 September 2026, a long sitting with 1.3
 
 **Where this batch went: all of it shipped in 1.4 except two.** The soul barrier was asked for and
-parked the same day (below, with the reason), and the endless roll against a wall did not reproduce —
+parked the same day (below, with the reason), and the endless roll against a wall did not reproduce,
 pressed against a wall with the key mashed the cooldown holds, three rolls in three seconds, exactly as
 on open floor. Everything else is in the build; `CHANGELOG.md` carries what each one turned into. The
 entries stay here because the reasoning behind them is worth keeping.
@@ -1386,11 +1400,11 @@ entries stay here because the reasoning behind them is worth keeping.
 ### Kept, and worth protecting
 
 **The wraith goes through the walls.** Called out unprompted as the best thing in the build. It is the
-one enemy whose rule the ground does not cover, and the cost of that rule — that it can only become a
-body behind you, and cannot form inside stone — is what makes it readable. Anything that later wants to
+one enemy whose rule the ground does not cover, and the cost of that rule, that it can only become a
+body behind you, and cannot form inside stone, is what makes it readable. Anything that later wants to
 give mist a wall to respect is arguing with this line.
 
-### bug — a thrown man ends up inside the wall
+### bug, a thrown man ends up inside the wall
 
 Hold a man, walk up to a wall, throw: he finishes in the stone instead of dying against it. The cause is
 the hold and not the throw. `Goat.update` puts the held man at `goat + aim * (holdDist + r * 0.4)` every
@@ -1398,9 +1412,9 @@ frame and never asks the world whether that point is floor (`js/entities.js`, th
 Face a wall from close and he is already standing inside it before you let go, so the throw starts inside
 it. Fix at the hold: sweep the hold point back toward the goat until it is on floor, and let the throw
 keep starting from wherever the man actually is. A throw that has a wall in it is supposed to be the best
-throw in the game — this is the one place it silently is not.
+throw in the game, this is the one place it silently is not.
 
-### bug — an endless roll against a wall — not reproduced, 14 Sep 2026
+### bug, an endless roll against a wall, not reproduced, 14 Sep 2026
 
 Pressed up against a wall, the roll is said to come back with no cooldown. **Measured and it does not.**
 Driven from the harness with `rollPressed` set every frame for three seconds, hard against a wall and
@@ -1408,29 +1422,29 @@ then on open floor: three rolls both times, `rollCd` 1.05 s at the end of each, 
 cooldown. `rollCd` is written in exactly one place and nothing clears it.
 
 So it is something the measurement did not have: a tome (LOOSE JOINTS takes the cooldown to 0.61 s), the
-gong on top of it (another ×1.5 off every cooldown as it ticks, so 0.4 s — which is fast enough to read
+gong on top of it (another ×1.5 off every cooldown as it ticks, so 0.4 s, which is fast enough to read
 as endless), or a different meaning of *pressed against a wall*. Worth asking him which, before
 changing a number that is behaving.
 
-### number — the door between rooms should take three blows, not one
+### number, the door between rooms should take three blows, not one
 
 He called it the wooden section between levels: the door in a corridor. `Prop.smash` breaks it on the
 first hit and floors whoever waited behind it. Three blows instead. The door is the one thing in a
 corridor that can hold you still, and holding you still in a corridor for two more beats is worth more
-than the shortcut is. The men who shoulder doors open from their side are unaffected — that is
+than the shortcut is. The men who shoulder doors open from their side are unaffected, that is
 `openPressure` and a different clock.
 
-### number — the second cage should break too, and faster
+### number, the second cage should break too, and faster
 
 The small shut cage across the first room is scenery: `deco` bars that wobble when hit and never open.
-Make them break — fewer blows than the pen's seven, and no stun on the way. The pen teaches the verb the
+Make them break, fewer blows than the pen's seven, and no stun on the way. The pen teaches the verb the
 hard way; a second cage that gives in quickly is the reward for having learned it, and it is the only
 thing in that room the goat can do for the sheep in it. It needs its own `hits` under
 `TUNING.prop.deadCage` and its own break path: `deco` also keeps those bars out of the gate and out of
 the in-front-of-the-goat draw pass, so the flag stays and `breakCage` learns about a second cage rather
 than losing its exclusion.
 
-### feel — the speed tome has to look fast
+### feel, the speed tome has to look fast
 
 SURE HOOVES multiplies top speed by 1.18 and nothing on the screen changes, so the best passive in the
 game reads as nothing at all. The smear is already there and already spent: `Goat.trail` keeps seven
@@ -1438,37 +1452,37 @@ ghosts at one every 0.028 s while he is over 55% of top speed, and `drawGoat` dr
 its rate and its opacity off `game.mods.speed`, so the tome lengthens the smear rather than only the
 number. It is body work with no button, which means the trail is the whole of its feedback.
 
-### feel — the hound's bite is too quick to read
+### feel, the hound's bite is too quick to read
 
 `TUNING.dog.windup` is 0.3 s and the bite lands before the eye has the tell. Slow the windup and leave
 everything else alone: the dart is what you are supposed to read, and the bite should be the beat after
-it rather than part of it. Watch what it does to the pack — `packBusy` already lets one hound commit at
+it rather than part of it. Watch what it does to the pack, `packBusy` already lets one hound commit at
 a time, so a longer windup makes a ring of three noticeably kinder. `tools/balance.js` will not catch
 that, because it counts threat and not timing, so `THREAT.dog` may want to come down with it.
 
-### feel — the camera swings too hard when the run changes direction
+### feel, the camera swings too hard when the run changes direction
 
 Enough of a swing to make him queasy. `updateCamera` leads the camera `camera.lead` (2.4 tiles) toward
 the aim at `camera.lerp` 7. On a mouse the aim flips the instant the pointer crosses the goat, so the
-lead point teleports across him and the whole picture follows it. Damp the lead itself — carry a second,
-slower-lerped lead vector rather than reading `input.aim` raw — or scale the lead by run speed so a turn
+lead point teleports across him and the whole picture follows it. Damp the lead itself, carry a second,
+slower-lerped lead vector rather than reading `input.aim` raw, or scale the lead by run speed so a turn
 on the spot moves the camera nothing. The pull-back at speed is not the problem and should survive.
 
-### system — spike floors, from level 3
+### system, spike floors, from level 3
 
 Prince of Persia: spikes that come up out of the floor, in ordinary parts of the map and in rooms that
-have men in them, and specifically **where you have already walked** — the trap is behind you rather
+have men in them, and specifically **where you have already walked**: the trap is behind you rather
 than in front of you. Men read them and walk round them while they are up, and a man can sometimes still
 be baited onto them. That last clause is the feature: it is another way for the room to do the killing.
-The AI half is mostly built — `hazardAt` already answers what will kill whoever stands at a point,
+The AI half is mostly built, `hazardAt` already answers what will kill whoever stands at a point,
 `avoidHazard` already handles both walking into it and standing in it, and the once-per-encounter
 `trapSense` roll already produces the one man in a crowd who blunders in anyway. A spike tile joins that
 list. Open: whether they are on a cycle like the Mill, or armed by the goat's own path.
 
-### system — a new sixth level, and the floor opens
+### system, a new sixth level, and the floor opens
 
 **A new level, and it goes in at six.** It reads as being up high: windows in the walls and holes in the
-floor, men thrown out through both, and the goat able to go through them too. Falling is not death — you
+floor, men thrown out through both, and the goat able to go through them too. Falling is not death, you
 come back at the point you went in and it costs a heart, the same price the Mill charges. That price is
 what makes a hole something you can use rather than something you edge around, and it is the first thing
 in the building that kills men without touching the ground.
@@ -1480,7 +1494,7 @@ you for. The run becomes seven levels long.
 What it costs to build: a `LEVELS` entry between THE BRIDGE and THE OSSUARY, its own room pool (holes
 want hand-authored rooms), a tile kind the flow field and `collideCircle` treat as a wall for men and as
 a fall for the goat, a throw that carries a man over the edge, and `tools/balance.js` agreeing it is
-harder than THE BRIDGE and easier than what now follows it — inserting a level in the middle of the
+harder than THE BRIDGE and easier than what now follows it, inserting a level in the middle of the
 curve is the part most likely to fail, and it fails loudly, which is the point of that script. `met` is
 computed in `LEVELS` order, so the new level inherits everything the first five introduced and must
 introduce nothing the Ossuary was relying on being new. `CONCEPT.md` then says seven levels, and its
@@ -1489,28 +1503,28 @@ table gains a row.
 The level has to say plainly that the floor can open before it asks you to use that, which is a
 rendering problem as much as a design one.
 
-### system — fire jumps once between men
+### system, fire jumps once between men
 
 A man who is alight sets fire to the first man he touches, and that man sets fire to nobody. One hop,
-never a chain. Burning men already blunder — fire takes the wheel and they walk through whatever is in
-front of them — so the contact happens on its own; what is missing is the pass and the stop. A man lit by
+never a chain. Burning men already blunder, fire takes the wheel and they walk through whatever is in
+front of them, so the contact happens on its own; what is missing is the pass and the stop. A man lit by
 a man carries a flag that `ignite` refuses to pass on again. A whole room going up in one brazier is the
 thing this is deliberately not.
 
-### ~~system — the soul barrier, from level 3~~ — parked, 14 Sep 2026
+### ~~system, the soul barrier, from level 3~~, parked, 14 Sep 2026
 
 Asked for: a barrier that only opens if you took 80% of the souls in the rooms behind it. **Decided
 against the same day.** Gating the way out makes some levels no fun to run through, which is the same
-objection pillar 1 makes — *skipping a room is valid and sometimes correct*. A gate that counts bodies
+objection pillar 1 makes, *skipping a room is valid and sometimes correct*. A gate that counts bodies
 turns every run into a clearing job.
 
 Kept here so it is not re-proposed. If something like it ever comes back, it comes back on a door that
-guards something optional — a tome, a bowl, a shortcut — and never on the exit.
+guards something optional, a tome, a bowl, a shortcut, and never on the exit.
 
-### system — a score at the end of every level, and a total at the end of the run
+### system, a score at the end of every level, and a total at the end of the run
 
 Settled: **both.** Each level ends on its own score, and the run ends on the sum of them. The level-clear
-card already carries the raw material — `N sacrificed in X s` — and becomes a score card; the win card
+card already carries the raw material, `N sacrificed in X s`, and becomes a score card; the win card
 stops being `totalKills` and deaths and becomes the run's total.
 
 What a score is made of is time and kills, and **the weighting is the whole design of it**: a score that
@@ -1519,59 +1533,59 @@ room. Time has to be the axis and kills the multiplier, so that going faster is 
 killing on the way is what makes a fast run a good one. A proposal to argue with: time scores against a
 par for the level, kills raise the multiplier, and a clean fast run beats a slow massacre.
 
-### system — BEST, on the title screen
+### system, BEST, on the title screen
 
 A third thing on the menu next to NEW GAME and CONTINUE, holding the best score and the best time for
 each level. `drawTitle` refills `menu.rects` every frame and `menuAt` / `menuPick` are the only ways in,
 so a third entry is cheap; the page behind it is a table of levels against two numbers, drawn by the same
 hand as the title and leaving the same way.
 
-It needs a record of its own in `localStorage` beside `SAVE_KEY` — per level, the best score and the best
-time — written at `levelCleared` and wrapped like every other storage call, so a browser that refuses
+It needs a record of its own in `localStorage` beside `SAVE_KEY`, per level, the best score and the best
+time, written at `levelCleared` and wrapped like every other storage call, so a browser that refuses
 storage shows a BEST with nothing in it rather than breaking the menu. A level never played shows a dash.
-Deciding needed: whether NEW GAME wipes it along with the run (it should not — a record survives the
+Deciding needed: whether NEW GAME wipes it along with the run (it should not, a record survives the
 runs that set it).
 
 ---
 
-## 14 September 2026, later — while 1.4 was being built
+## 14 September 2026, later, while 1.4 was being built
 
 Sent one at a time while the work was going on. All of it shipped in 1.4.
 
-### bug — a man in your mouth was safe from everything
+### bug, a man in your mouth was safe from everything
 
 Two of them, and they were the same hole: the branch that runs a held man sits above every other state
 in `Enemy.update` and returned before anything else could touch him. So **a mage standing in his own
 witchfire did not burn**, and neither did anyone else you carried through a fire. The branch ends with
-the fire check now, and whatever catches comes straight out of the mouth — which is the counter to
+the fire check now, and whatever catches comes straight out of the mouth, which is the counter to
 carrying a mage at all.
 
-### bug — the held mage's fire followed the goat
+### bug, the held mage's fire followed the goat
 
 The rune was dragged along under him every frame, so it went off under the goat wherever the goat had
 run to. It is planted where he started painting it now. Keep moving and you leave a trail of it behind
 you; stand still and you are standing in it. That is the difference between a mage being a death
 sentence and a mage being a thing to be handled.
 
-### feel — enemies had no back
+### feel, enemies had no back
 
 Inside two and a half tiles a man saw you wherever you stood, which took away the one thing his cone was
-for. The cone holds at every range now, and what gives you away behind a man is noise — which the noise
+for. The cone holds at every range now, and what gives you away behind a man is noise, which the noise
 system already turns him toward. Stealth is never the plan and is always available.
 
-### bug — clubs came through walls
+### bug, clubs came through walls
 
 `meleeHit` asked only for reach and an arc. It asks `game.reaches` now: line of sight plus every
-blocking prop against the segment. The goat's horns are held to it too — a man behind a table is behind
+blocking prop against the segment. The goat's horns are held to it too, a man behind a table is behind
 it, both ways round.
 
-### bug — a carried shield did not stop anything (with a screenshot of it not stopping anything)
+### bug, a carried shield did not stop anything (with a screenshot of it not stopping anything)
 
 It was a disc the size of the shield, hung 26 px in front of the goat, so almost everything aimed at him
-went past its edge. It is an arc across his front now — `weapon.coverR` / `coverArc` — every turn spends
+went past its edge. It is an arc across his front now, `weapon.coverR` / `coverArc`, every turn spends
 a charge, and a club that lands on it staggers the man who swung. His back is still his back.
 
-### system — a death costs one tome, not the run
+### system, a death costs one tome, not the run
 
 Asked for as "минус один том, как было в начале уровня". `startLevel` snapshots what he walked in with
 and `restartLevel` returns that list minus its newest entry, so a tome picked up in the level that

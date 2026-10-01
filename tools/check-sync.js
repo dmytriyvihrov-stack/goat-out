@@ -42,7 +42,7 @@ if (!unmerged.length) ok('every remote branch is merged into main');
 else for (const b of unmerged) {
   const [a, be] = git(`rev-list --left-right --count main...${b}`).split(/\s+/).map(Number);
   bad(`${b} is not in main (${be} commit${be === 1 ? '' : 's'} it has, ${a} it lacks)`,
-      `git log --oneline main..${b}  — then merge it or delete the branch`);
+      `git log --oneline main..${b} , then merge it or delete the branch`);
 }
 
 // --- the two HTML files ----------------------------------------------------

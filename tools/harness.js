@@ -22,6 +22,9 @@ window.H = {
   async startPlay() {
     // A test pane is usually behind another window: losing focus would pause the game under the test.
     game.autoPause = false;
+    // A fresh browser opens on RUN STATS' question, and menuPick(0) would answer it YES for the
+    // tester. Put it away unanswered, so the title's own NEW GAME is what gets picked.
+    if (game.menu && game.menu.panel === 'consent') game.menu.panel = null;
     if (game.state === 'title') game.menuPick(0);
     await H.waitFor(() => game.state === 'intro' || game.state === 'play', 6000);
     if (game.state === 'intro') game.skipIntro(true);

@@ -35,7 +35,7 @@ class PaintedArt extends AltarArt {
     ctx.imageSmoothingEnabled = smooth;
   }
 
-  // Crops one cell out of a sprite sheet — the shared primitive under every animated stamp below,
+  // Crops one cell out of a sprite sheet, the shared primitive under every animated stamp below,
   // used for the expansion pack's walk cycles, fire loops, door states and props atlas.
   drawFrame(ctx, image, sx, sy, sw, sh, x, y, w, h, anchor = 0.5) {
     if (!image || !image.naturalWidth) return false;
@@ -46,7 +46,7 @@ class PaintedArt extends AltarArt {
     return true;
   }
 
-  // objects/atlas.png: one 128px cell per named prop. `h` defaults to `w` — every cell is square.
+  // objects/atlas.png: one 128px cell per named prop. `h` defaults to `w`, every cell is square.
   atlas(ctx, name, x, y, w, h, anchor = 0.5) {
     const cell = ATLAS_CELL[name]; if (!cell) return false;
     return this.drawFrame(ctx, this.images.propsAtlas, cell[0], cell[1], 128, 128, x, y, w, h === undefined ? w : h, anchor);
@@ -61,7 +61,7 @@ class PaintedArt extends AltarArt {
 
   // The mill arm's source art is one fixed-proportion beam, not a tileable strip, so it is stretched
   // to the tuned arm length rather than repeated. `x` is the inner edge (by the hub), `len` the span
-  // out to the iron tip; height is cosmetic only — collision stays on `TUNING.mill`, untouched.
+  // out to the iron tip; height is cosmetic only, collision stays on `TUNING.mill`, untouched.
   millArm(ctx, x, len) {
     const image = this.images.propsAtlas; if (!image || !image.naturalWidth) return false;
     const cell = ATLAS_CELL['mill-arm'];
@@ -161,7 +161,7 @@ class PaintedArt extends AltarArt {
   }
 
   // Bits name the exposed sides, not the room edge: N=1, E=2, S=4, W=8; then an open diagonal whose
-  // two sides are both stone, NE=16, SE=32, SW=64, NW=128 — the inside corners, where an edge turns
+  // two sides are both stone, NE=16, SE=32, SW=64, NW=128, the inside corners, where an edge turns
   // with neither tile open on that side.
   // The camera looks north and down, so a wall shows its brick face on ONE side only: the south one,
   // facing the lens. That is the far wall of a room and the front of every block, one height for all
@@ -288,7 +288,7 @@ class PaintedArt extends AltarArt {
   drawRitual(renderer, game) {
     const ctx=renderer.ctx, wd=game.world;
     // The stone base, candles and the two earlier sacrifices' bones are the procedural layer
-    // underneath. Bones, not ghost sheep. The altar itself is a real Prop now — see drawProp — and
+    // underneath. Bones, not ghost sheep. The altar itself is a real Prop now, see drawProp, and
     // draws in its own turn through the ordinary prop pass, not here.
     if (wd.ritualArt) ctx.drawImage(wd.ritualArt.canvas, wd.ritualArt.x, wd.ritualArt.y);
     // The corner store (a barrel, straw) is real furniture on the floor now, put down with the
@@ -412,12 +412,12 @@ class PaintedArt extends AltarArt {
       return true;
     }
     if(p.kind==='heal'){
-      // Only the rarer, bigger patch — the one a secret sometimes gives up — is painted; the
+      // Only the rarer, bigger patch, the one a secret sometimes gives up, is painted; the
       // ordinary sprout a level's own rhythm hands out has no atlas art of its own yet and falls
       // back to the smaller primitive tuft `Renderer.drawProp` draws.
       if(!p.big)return super.drawProp(renderer,p);
       // v2's tighter, static 23px patch (brief item F) tested as too quiet to read as a heal spot in
-      // a moving crowd — reverted to the original atlas stamp: bigger, with its own shadow and a slow
+      // a moving crowd, reverted to the original atlas stamp: bigger, with its own shadow and a slow
       // bob, so it still finds the eye the way the wisp or a lamp's firelight does.
       const bob=Math.sin(renderer.t*2.4+p.phase)*2;
       renderer.shadow(p.x,p.y+4,11,5);
@@ -435,13 +435,13 @@ class PaintedArt extends AltarArt {
       // Down still shows teeth (it is retracting, not safe yet); idle and rest share the flat plate.
       const name=state==='up'||state==='down'?'spikes-up':arming?'spikes-arming':'spikes-idle';
       ctx.save();ctx.translate(p.x+shud,p.y);
-      // A whole tile, squashed like the floor — see the spike branch in AltarArt/Renderer for why.
+      // A whole tile, squashed like the floor, see the spike branch in AltarArt/Renderer for why.
       this.atlas(ctx,name,0,0,r*2.2,r*2.2*TILT,0.5);
       ctx.restore();
       return true;
     }
     if(p.kind==='bomb'){
-      // No painted asset for this one — a rare find drawn plainly, primitive on purpose: a dark
+      // No painted asset for this one, a rare find drawn plainly, primitive on purpose: a dark
       // shell and a fuse that shortens and sparks faster the closer it is to going off, which is
       // the whole of how a player who has never seen one before reads "this is about to go off."
       const armed=p.fuseT>=0, pct=armed?clamp(p.fuseT/TUNING.prop.bomb.fuse,0,1):1;
@@ -483,7 +483,7 @@ class PaintedArt extends AltarArt {
   }
 
   // The wisp's painted body: `Renderer.soulWisp` keeps its own halo (before) and orbiting sparks
-  // (after) procedural — those are what read as motion, and the art has no frames to animate them.
+  // (after) procedural, those are what read as motion, and the art has no frames to animate them.
   soulWispBody(ctx, w) {
     return this.atlas(ctx, 'soul-wisp', 0, 0, w, undefined, 0.56);
   }
@@ -542,7 +542,7 @@ class PaintedArt extends AltarArt {
   // eight-way sheep sits a little way toward the head from the cell's centre, and the pendant hangs
   // toward the camera from there. One drawing per artifact (`Renderer.artifactIcon`), small.
   // A charm knotted into the wool at the back of his neck, not a pendant at his throat: the sheep
-  // sheet already paints a bell there (the one he was born with — see `CLAUDE.md`), and stacking a
+  // sheet already paints a bell there (the one he was born with, see `CLAUDE.md`), and stacking a
   // second small ornament on the exact same few pixels buried the talisman under it rather than
   // beside it. `-cx` puts the charm behind him the same way `+cx` is his own nose: opposite
   // whichever of the eight painted facings is on screen, which is the one spot this sprite was
@@ -554,7 +554,7 @@ class PaintedArt extends AltarArt {
       // One collar for every talisman, turned with him; only the pendant changes. It is a ring round
       // the neck seen from the camera: an ellipse whose short axis lies along the way he faces
       // (squashed to a band on a side view, opened to a curve under the chin from the front), and
-      // only its near half is drawn — the half toward the camera — because the rest is behind his
+      // only its near half is drawn, the half toward the camera, because the rest is behind his
       // neck. It was one fixed smile of cord at every facing, which lay across the neck like a
       // mouth on the side views. Its front sits on the throat point `PIXEL_NECK` measured.
       const d=(Math.round(a/(Math.PI/4))+14)%8,[nx,ny]=PIXEL_NECK[d],back=d>=3&&d<=5,C=TUNING.goat.collar;
@@ -593,8 +593,8 @@ class PaintedArt extends AltarArt {
 
   // One blot of blood in his wool per heart he has lost, big enough to count from across a room.
   // They used to be small dark drops about his hooves, which read as something spilt on the floor
-  // rather than as him. On the pixel goat they are masked to the sprite itself — painted into a
-  // scratch canvas, then cut by the same frame with `destination-in` — so blood is only ever on him.
+  // rather than as him. On the pixel goat they are masked to the sprite itself, painted into a
+  // scratch canvas, then cut by the same frame with `destination-in`, so blood is only ever on him.
   wounds(renderer,g,miss) {
     const ctx=renderer.ctx,W=TUNING.goat.wounds,n=Math.min(miss,W.spots.length);
     // Smaller the more he faces the camera (`W.front`): +y is toward it. In twentieths, so the baked
@@ -728,8 +728,8 @@ class PaintedArt extends AltarArt {
     if(g.invuln>0&&Math.floor(renderer.t*30)%2===0)ctx.globalAlpha*=0.5;
     // Standing still he breathes: taller and a touch narrower from the hooves up, then back.
     if(g.state==='idle'&&Math.hypot(g.vx||0,g.vy||0)<=30){const B=TUNING.goat.breathe,b=(1-Math.cos(renderer.t*Math.PI*2/B.period))/2;ctx.scale(1-B.wide*b,1+B.amp*b);}
-    // Grazing (`goat.grazeK`): head down over the front hooves — a lean toward the way he faces on a
-    // side view, a squash from the hooves up on every view — and a nibble in it.
+    // Grazing (`goat.grazeK`): head down over the front hooves, a lean toward the way he faces on a
+    // side view, a squash from the hooves up on every view, and a nibble in it.
     if(g.grazeK>0){const P=TUNING.goat.grazePose,k=g.grazeK*g.grazeK*(3-2*g.grazeK),n=1+P.nibble*Math.max(0,Math.sin(renderer.t*P.rate*Math.PI*2));
       ctx.rotate(Math.cos(g.facing)*P.lean*k*n);ctx.scale(1+P.wide*k,1-P.squash*k*n);}
     // A glance is one facing aside and back; the facing is lent for the drawing and handed back.
@@ -740,9 +740,8 @@ class PaintedArt extends AltarArt {
       // The blood is in his wool; the collar is over it, since a talisman has to read at any health.
       if(g.maxHp-g.hp>0)this.wounds(renderer,g,g.maxHp-g.hp);
       if(game.artifact)this.collar(renderer,g,game.artifact);
-      if(g.onFire)renderer.flame(0,-6,12,1,g.witchFire);
-    }finally{g.facing=f0;this.hornMods=null;}   // a throw mid-glance must not leave the simulation's goat turned
-    ctx.restore();
+      if(g.onFire)renderer.goatFlame(g);
+    }finally{g.facing=f0;this.hornMods=null;ctx.restore();}   // a throw mid-glance must not leave the goat turned, nor the transform on the stack
     this.goatFx(renderer,g,game);
     if(g.dazed>0&&!(game.intro&&game.intro.fade>0))renderer.drawStars(g.x,g.y,30,Math.min(1,g.dazed*1.5));
     if((game.touch.active||(game.pad&&game.pad.active))&&game.state==='play'){const a=game.input.aim;ctx.fillStyle=PALETTE.bone;ctx.beginPath();ctx.arc(g.x+a.x*34,g.y+a.y*34,2,0,Math.PI*2);ctx.fill();}

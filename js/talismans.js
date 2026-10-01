@@ -1,7 +1,7 @@
 // The talismans the mouse gives that are body work or a Q verb of their own (ARTIFACTS_TZ.md).
 // FIRE AMULET, LUCKY CLOVER, BOOMERANG and STRANGE SYMBOLS keep their own homes (gen.js, shop.js);
 // everything the seventeen later ones do lives here, and the rest of the game only calls in at a
-// handful of hooks — the same shape `Status` has for poison. Every number is on the talisman's
+// handful of hooks, the same shape `Status` has for poison. Every number is on the talisman's
 // tier in `ARTIFACTS` (js/tuning.js) and reaches here through `game.mods.<id>`, never a literal.
 //
 // State that belongs to one level (rooms entered, grease on the floor, echoes waiting, bodies,
@@ -56,7 +56,7 @@ const Talisman = {
           const l = Math.hypot(e.vx, e.vy);
           if (p.kind === 'crate') p.shatter(game);
           Talisman.chips(game, e.x, e.y);
-          e.die(game, 'splat', e.vx / l, e.vy / l); break;
+          e.die(game, 'splat', e.vx / l, e.vy / l, p.kind); break;
         }
       }
     }
@@ -85,7 +85,7 @@ const Talisman = {
         g.sandalT = sd.time;
         if (sd.reset) { g.rollCd = 0; g.screamCd = 0; }
         game.dust(g.x, g.y, 6, 0, 0); game.ring(g.x, g.y, 1.2 * TILE, PALETTE.fireHi, 0.35, 2);
-        // Shaken off means a man on your heels loses the scent — never one in flight, down, mid-leap
+        // Shaken off means a man on your heels loses the scent, never one in flight, down, mid-leap
         // or mid-blow: resetting those stopped a thrown body short of its wall and an ogre over a drop.
         const heels = sd.shake ? behind.filter((e) => (e.state === 'chase' || e.state === 'investigate') && !Talisman.decoyProof(e)) : [];
         if (heels.length) {
@@ -156,7 +156,7 @@ const Talisman = {
     game.particles(g.x, g.y, 14, '#e8dcb0', 160); game.audio.sfxThud(); game.shake(4); game.hitstop(0.04);
     return true;
   },
-  // SCAPEGOAT: somebody else dies. Spent on use — the slot empties and the level's snapshot of it
+  // SCAPEGOAT: somebody else dies. Spent on use, the slot empties and the level's snapshot of it
   // goes too, or a real death afterwards would hand it straight back on the restart.
   scapegoat(game, g) {
     const sg = game.mods.scapegoat; if (!sg) return false;
@@ -231,11 +231,14 @@ const Talisman = {
   },
 
   // ---- THE MAGNET ----
-  // What it carries is taken out of `game.props` for as long as it circles — no collision, no physics,
-  // nothing else can pick it up — and drawn in the cast beside him (`Renderer`, `orbiters`).
+  // What it carries is taken out of `game.props` for as long as it circles, no collision, no physics,
+  // nothing else can pick it up, and drawn in the cast beside him (`Renderer`, `orbiters`).
   orbiters(game) { const S = game.tal; return S && S.level === game.level && S.orbit ? S.orbit : []; },
   updateMagnet(game, dt) {
     const S = Talisman.st(game), M = game.mods.magnet, g = game.goat, C = TUNING.magnet, orb = S.orbit;
+    // The talisman gone (swapped at the mouse, SCAPEGOAT), the pull lets go: what it held falls and breaks,
+    // rather than circling and taking blows for the rest of the floor.
+    if (!M) { for (const o of orb.slice()) Talisman.breakOrbit(game, o, o.p.x, o.p.y); return; }
     S.spin += dt * C.spin;
     orb.forEach((o, i) => {
       const a = S.spin + i / orb.length * Math.PI * 2;
@@ -266,15 +269,18 @@ const Talisman = {
   // The thing nearest the blow takes it and breaks. Asked by `meleeHit` (clubs, blades, bites).
   magnetBlock(game, att) {
     const orb = Talisman.orbiters(game).filter((o) => o.t >= 1);
-    if (!orb.length || game.goat.dead) return false;
+    if (!orb.length || game.goat.dead || Talisman.unhurt(game)) return false;
     const o = orb.sort((a, b) => Math.hypot(a.p.x - att.x, a.p.y - att.y) - Math.hypot(b.p.x - att.x, b.p.y - att.y))[0];
     Talisman.breakOrbit(game, o, att.x, att.y);
     if (att.daze && att.kind !== 'ratogre') att.daze(game, TUNING.magnet.daze);
     return true;
   },
   // A round meeting one on its way round him, Enter the Gungeon's way: it has to be in the line of it.
+  // A blow that could not have cost him a heart (mercy frames, a roll, GOD) spends nothing in the orbit.
+  unhurt(game) { return game.goat.invuln > 0 || !!(game.dev && game.dev.god); },
   magnetBullet(game, b) {
     const C = TUNING.magnet;
+    if (Talisman.unhurt(game)) return false;
     for (const o of Talisman.orbiters(game)) {
       if (o.t < 1 || Math.hypot(o.p.x - b.x, o.p.y - b.y) > C.hitR) continue;
       Talisman.breakOrbit(game, o, b.x, b.y);
@@ -419,14 +425,14 @@ const Talisman = {
   corpseHit(game, p, e, spd) {
     const SP = game.mods.spade;
     if (!SP || !SP.lethal || spd < TUNING.physics.bodyKillSpeed || e.kind === 'wraith') return false;
-    const l = spd || 1; e.die(game, 'splat', p.vx / l, p.vy / l);
+    const l = spd || 1; e.die(game, 'splat', p.vx / l, p.vy / l, 'corpse');
     return true;
   },
   // A body done with: it goes back to being a stain on the floor.
   corpseGone(game, p) {
     if (p.broken) return;
     p.broken = true; p.dead = true;
-    if (game.goat.holding === p) game.goat.holding = null;
+    if (game.goat.holding === p) { game.goat.holding = null; game.goat.autoHeld = false; game.goat.spendGrab(game, false); }
     game.world.body(p.x, p.y, 11, p.angle || 0, '#2a1d20');
     game.world.splat(p.x, p.y, p.vx / 400 || 0, p.vy / 400 || 0, 8);
   },
@@ -640,7 +646,7 @@ const Talisman = {
       ctx.fillText('!', 0, -e.r * 2.6); ctx.restore();
     }
   },
-  // Screen space, beside the talisman chip: the crust, the cup, the notches — and the bell's thread.
+  // Screen space, beside the talisman chip: the crust, the cup, the notches, and the bell's thread.
   drawHud(r, game, x, y, box) {
     const ctx = r.ctx, s = r.hs, m = game.mods, R = Talisman.run(game);
     const bx = x, by = y + box + 14 * s;
@@ -695,7 +701,7 @@ const Talisman = {
   },
   // ---- the TALISMANS tab of the level tool ----
   // Every entry in `ARTIFACTS` as a row: its drawing, its name and sort, which tier (if any) is at
-  // his neck with buttons to put one on, and the three tiers side by side — each its line and its
+  // his neck with buttons to put one on, and the three tiers side by side, each its line and its
   // params as chips. A chip is the same editor the BOONS tab uses: a number opens a prompt, a
   // yes/no flips, and both are written back into tuning.js through `persistTuningEdit`.
   drawToolTab(r, game, pad, top) {
@@ -726,8 +732,8 @@ const Talisman = {
       if (worn) r.devButton(d, pad + 36 * s + 104 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', 'tal-off', false);
       a.tiers.forEach((tier, ti) => {
         const cx = pad + leftW + ti * colW, cw = colW - 10 * s;
-        // The player's line (`desc`: the talisman's hand-written `text`, else `tell`) — what the shelf
-        // and the chip say, and a click rewrites it for all three tiers — then the tier in full
+        // The player's line (`desc`: the talisman's hand-written `text`, else `tell`), what the shelf
+        // and the chip say, and a click rewrites it for all three tiers, then the tier in full
         // numbers (`say`, as `detail`), stated whole, not as a diff on the one before.
         ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = a.text ? PALETTE.fireHi : PALETTE.bone;
         r.wrap(tier.desc, cw).slice(0, 2).forEach((l, li) => ctx.fillText(l, cx, y + 12 * s + li * 10 * s));
@@ -771,7 +777,7 @@ const Talisman = {
     // The shelf line, one for the talisman's three tiers; left empty it goes back to the generated one.
     if (id.startsWith('tal-text=')) {
       const def = ARTIFACTS.find((a) => a.id === id.slice(9)); if (!def) return true;
-      const raw = window.prompt(`${def.name} — the line on the shelf, all three tiers (empty: back to the generated one)`, def.text || def.tiers[0].desc);
+      const raw = window.prompt(`${def.name}, the line on the shelf, all three tiers (empty: back to the generated one)`, def.text || def.tiers[0].desc);
       if (raw === null) return true;
       const text = raw.trim() || null;
       if (text) def.text = text; else delete def.text;
@@ -785,7 +791,7 @@ const Talisman = {
       let value;
       if (typeof cur === 'boolean') value = !cur;
       else {
-        const raw = window.prompt(`${def.name} ${'I'.repeat(Number(ti) + 1)} — ${key}`, String(cur));
+        const raw = window.prompt(`${def.name} ${'I'.repeat(Number(ti) + 1)}, ${key}`, String(cur));
         if (raw === null) return true;
         value = Number(raw); if (!Number.isFinite(value)) return true;
       }

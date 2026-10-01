@@ -1,5 +1,5 @@
 // The escort walk: does an animal get to the stairs with a goat who does not wait for it? Load it in
-// the page (no harness needed — it drives the simulation itself, off the clock):
+// the page (no harness needed, it drives the simulation itself, off the clock):
 //   const s = document.createElement('script'); s.src = '/tools/escorts.js'; document.body.appendChild(s);
 //   ESCORT.run(['chicken', 'goose', 'crow', 'tortoise'], [1, 2, 3, 4, 5, 6, 7], 3, { pause: 2 }, 'now');
 //   ...then read ESCORT.res.now (it fills in the background, a second's worth of walks a tick).

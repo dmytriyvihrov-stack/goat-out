@@ -9,7 +9,7 @@
 //   POISON + STUN  shock: both run much longer, no hit (`sting`)
 //   STUN   + FIRE  the fire does two hits, not one (`Enemy.scald`)
 //
-// The goat is poisoned too (30 Sep 2026: "the player is affected by poison, like the enemies — only
+// The goat is poisoned too (30 Sep 2026: "the player is affected by poison, like the enemies, only
 // for him a certain time has to pass, as in fire"). A man has it the moment he stands in a puddle; the
 // goat fills a ring round his feet first (`Status.goat`, `TUNING.goat.poison.build` seconds, longer for
 // every poison soul he carries, never at all with all four: `BOON_SETS`), and all it does to him is slow
@@ -28,7 +28,7 @@ const Status = {
       if (e.state === 'aim' || e.state === 'cast') { e.state = 'chase'; e.rune = null; }
     }
     e.poison = Math.max(e.poison, t || TUNING.status.poison.time);
-    // All four poison souls (`BOON_SETS.poison`): the poison itself is a blow, once as it takes him —
+    // All four poison souls (`BOON_SETS.poison`): the poison itself is a blow, once as it takes him,
     // never again while it is topped up by the puddle he stands in.
     if (fresh && game.mods.poisonHurts) e.die(game, 'poison', 0, 0);
   },
@@ -39,7 +39,7 @@ const Status = {
   },
 
   // SHOCK. Both statuses stretched long and no hit: `e.shock` is what the renderer reads to put one
-  // mark over his head instead of stars and bubbles. Already in shock, it only tops the clocks up —
+  // mark over his head instead of stars and bubbles. Already in shock, it only tops the clocks up,
   // a puddle under a dazed man would otherwise announce it every frame.
   sting(game, e) {
     const S = TUNING.status.sting;
@@ -51,7 +51,7 @@ const Status = {
     e.poison = Math.max(e.poison, S.poison);
     // What it breaks is what `daze` breaks. Only on a man the stars take: the rat ogre's swing and a
     // wraith's arrival ride it out (it used to cancel both, where nothing else may), and every other
-    // windup — the butcher's hook, the slam, the leap's crouch, a hound's dart — froze under the stars
+    // windup, the butcher's hook, the slam, the leap's crouch, a hound's dart, froze under the stars
     // with its strip still on the floor and went off when they cleared.
     if (!stunProof && e.state === 'hookwind') e.hookCd = TUNING.champion.hook.cooldown * game.mods.enemySlow;
     if (!stunProof && (e.state === 'aim' || e.state === 'cast' || e.state === 'windup' || e.state === 'hookwind'
@@ -83,6 +83,7 @@ const Status = {
     game.particles(x, y, 10, green ? PALETTE.venom : PALETTE.fire, 220);
     game.ring(x, y, R, green ? PALETTE.venomHi : PALETTE.fireHi);
     w.scorch(x, y, R * 0.35);
+    if (game.scatter) game.scatter.burst(x, y, R);   // a suit of armour and a supper go over in it, as in any blast
     game.thud(x, y, 8); game.hitstop(0.05); game.audio.sfxBoom(); game.vibe(30);
     w.emitNoise(x, y, TUNING.noise.boom);
     if (green) game.floatText(x, y - 36, 'IT GOES OFF', PALETTE.venomHi);
@@ -106,7 +107,7 @@ const Status = {
         if (B.guard && game.timer - (o.blastAt === undefined ? -Infinity : o.blastAt) < B.guard) continue;
         if (B.guard) o.blastAt = game.timer;
         // Hearts, but never out of the air: a leap over a drop knocked down is a fall to his death.
-        if (o.kind === 'butcher') { o.hp -= hits; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = 0.4; } if (o.hp <= 0) o.die(game, 'boom', nx, ny); }
+        if (o.kind === 'butcher') { o.hp -= hits; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = 0.4; } if (o.hp <= 0) o.die(game, 'boom', nx, ny); else Stats.blow(game, o, 'boom'); }
         else for (let k = 0; k < hits && !o.dead; k++) o.die(game, 'boom', nx, ny);
       } else if (o.kind !== 'butcher') o.fling(nx * B.impulse, ny * B.impulse, true);
     }
@@ -126,7 +127,7 @@ const Status = {
     Status.soak(game);
   },
 
-  // A splash of `n` tiles: the one the point is in and `n - 1` of the eight round it, at random —
+  // A splash of `n` tiles: the one the point is in and `n - 1` of the eight round it, at random,
   // the glob lands ragged, not as a square.
   spatter(game, x, y, n) {
     const w = game.world, cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), t = TUNING.status.poison.pool;
@@ -227,7 +228,7 @@ const Status = {
     if (m.brandHold > 0 && g.holdTimer >= m.brandHold) {
       h.brand = { ox: g.x, oy: g.y, lx: h.x, ly: h.y };
       // A crate goes out of his mouth alight (25 Sep 2026): whoever it lands on catches, and it
-      // breaks into its one burning tile — the brand a crate carried through fire already was.
+      // breaks into its one burning tile, the brand a crate carried through fire already was.
       if (h.kind === 'crate' && !h.alight) h.alight = 'fire';
       game.audio.sfxFire();
     }
@@ -246,7 +247,7 @@ const Status = {
     const w = game.world, J = TUNING.status.jaw;
     const each = (o, isMan) => {
       if (!o.venom && !o.brand) return;
-      // An animal flies on its own flag — a shell's `flying`, a kicked hen's `birdState` — not `flung`.
+      // An animal flies on its own flag, a shell's `flying`, a kicked hen's `birdState`, not `flung`.
       const up = o.flung || o.flying || o.birdState === 'flying';
       const flying = isMan ? o.state === 'flung' && !o.dead : up && !o.broken && !o.held;
       if (flying) {
@@ -272,7 +273,7 @@ const Status = {
     for (const p of game.props) each(p, false);
   },
 
-  // FIREBRAND: the floor it has crossed since the last step catches — a line, and nothing else. Only
+  // FIREBRAND: the floor it has crossed since the last step catches, a line, and nothing else. Only
   // tiles it has already left are lit, never the one it is over, so what it is (a man most of all)
   // does not fly into its own trail and catch; nothing within `brand.gap` tiles of where the goat
   // stood when it left his mouth, and never the tile he is on now. Walked in half-tile steps, so a

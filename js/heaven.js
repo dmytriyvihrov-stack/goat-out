@@ -2,9 +2,9 @@
 // the way Hades has its House ("between deaths you land in a hub in the sky; a goat god on a big
 // cloud, all light, the way God is usually drawn; empty seats that the gods of the animals you save
 // will sit in; a blind man who combs you if you go up to him and press grab; the god talks the way
-// Hades does, grand and silly — 'bah-bah, I send you back, I cannot make you new, but you will be
+// Hades does, grand and silly, 'bah-bah, I send you back, I cannot make you new, but you will be
 // there from that moment'; something nice to do up there; a mirror, or something like it, that buys
-// upgrades that stay"). Two rooms: the god's, and the edge — "you walk up to the edge and you see the
+// upgrades that stay"). Two rooms: the god's, and the edge, "you walk up to the edge and you see the
 // earth, and a long way down the cult's rooms, and you jump, and the run starts again in the pen".
 //
 // A death's card now leads here (`Heaven.enter`) and the edge leads back (`Heaven.leave`, which is the
@@ -134,7 +134,7 @@ const SHEPHERD_TALK = {
     'AH, I KNOW THAT ONE. HOW DOES IT GO ON?', 'MY WIFE RANG THEM LIKE THAT.', 'SOFTLY. THE GOD IS DOZING.', 'GOATS DO NOT RING BELLS. OR DO THEY NOW?'],
 };
 // What a floor tried again after a death says at its foot for a few seconds (1 Oct 2026, playtest:
-// "after the first death on a level, show tips — who killed you, or one off a general list, made in
+// "after the first death on a level, show tips, who killed you, or one off a general list, made in
 // the dev tools; add one or two yourself, the rest by hand"): a line off `killer[<what killed him>]`
 // (the run code's token: bearer, brute, butcher, seer, hunter, dog, wraith, ratogre, fire, witchfire,
 // spike, spire, bomb, chandelier, mill, fall, rifle) if there is one, else off `any`. Edited and written
@@ -153,7 +153,7 @@ const HEAVEN_SONG = [2, 1, 0, 1, 2, 2, 2];
 const HEAVEN_FEAST = [
   [{ id: 'grapes', x: -4, y: -9 }, { id: 'milk', x: 14, y: -7 }, { id: 'gapple', x: -14, y: -5 }, { id: 'bread', x: 5, y: -3 }],
   [{ id: 'cheese', x: -3, y: -9 }, { id: 'goblet', x: 14, y: -8 }, { id: 'honey', x: -13, y: -5 }, { id: 'gapple', x: 6, y: -3 }],
-  // 29 Sep 2026: "more food in this room" — the empty floor right of the two became two more tables.
+  // 29 Sep 2026: "more food in this room", the empty floor right of the two became two more tables.
   [{ id: 'bread', x: -12, y: -8 }, { id: 'pear', x: 2, y: -9 }, { id: 'grapes', x: 14, y: -6 }, { id: 'milk', x: -4, y: -3 }, { id: 'gapple', x: 9, y: -2 }],
   [{ id: 'honey', x: -14, y: -7 }, { id: 'gapple', x: -3, y: -9 }, { id: 'goblet', x: 12, y: -8 }, { id: 'cheese', x: 3, y: -3 }, { id: 'pear', x: -10, y: -2 }],
 ];
@@ -275,9 +275,14 @@ const Heaven = {
 
   // A death's card is clicked: up he goes. The floor he died on waits, exactly as a death leaves it
   // (`game.deaths` has counted it, the save has it); `leave` rebuilds it.
-  // `opts.visit`: come up by CONTINUE, not by dying (`Game.resumeRun`) — no death counted, nothing killed him.
+  // `opts.visit`: come up by CONTINUE, not by dying (`Game.resumeRun`), no death counted, nothing killed him.
   enter(game, opts) {
     if (!this.meta) this.load();
+    game.calmFast = false;   // DOUBLE SPEED OUT OF A FIGHT is the floor's, never the pasture's
+    // The rabbit's bargain and the husky's song are the floor's too: left tied, the first step up here
+    // saw the rabbit missing and rebuilt `mods`, switching the souls' fire and the Q verbs back on.
+    if (game.legsTied) { game.legsTied = null; game.applyBoons(); }
+    game.song = null; game.shopDlg = null;
     const visit = !!(opts && opts.visit);
     const M = this.meta, L = this.level(), by = !visit && game.goat && game.goat.hurtBy;
     const kind = !by ? null : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind);
@@ -314,7 +319,7 @@ const Heaven = {
     game.card = null; game.state = 'heaven';
     game.audio.duck(1, 0.4); game.audio.heavenMusic = true; game.audio.sfxAscend();
     // The god's first line is over his head, not in your way: what he has to say at length waits for
-    // GRAB — except the very first time, when he calls you over himself.
+    // GRAB, except the very first time, when he calls you over himself.
     game.heaven.plate = { text: this.greeting(game), life: TUNING.heaven.plate };
     if (!M.told.intro) game.heaven.callAt = TUNING.heaven.callAfter;
     this.save();
@@ -637,7 +642,7 @@ const Heaven = {
   updateDrop(game, dt) {
     const D = game.dropIn; if (!D) return;
     const P = TUNING.heaven.drop, g = game.goat;
-    // Down: he lies where he fell for `ko` s — a real stun, no verbs — then gets up.
+    // Down: he lies where he fell for `ko` s, a real stun, no verbs, then gets up.
     if (D.up !== undefined) { D.up += dt; if (D.up >= P.getup) game.dropIn = null; return; }
     if (D.ko !== undefined) {
       D.ko += dt;
@@ -657,8 +662,8 @@ const Heaven = {
 // ================================================================ the picture
 // Everything up here is baked once into pixels `K` world px across (chunkier than the units, the way
 // a cloud is a big soft shape): the islands (cloud floor, banks, the lip over the drop), the sea of
-// cloud below them and the earth a long way under the drop. What moves — light, motes, the god, the
-// bells, the goat — is drawn over them every frame. Light is the one smooth thing, as below.
+// cloud below them and the earth a long way under the drop. What moves, light, motes, the god, the
+// bells, the goat, is drawn over them every frame. Light is the one smooth thing, as below.
 const HEAVEN_ART = {
   K: 2,
   // the floor he walks on: warm white, the faintest wisps, blue where a bank's foot shades it
@@ -699,7 +704,7 @@ Object.assign(Heaven, {
     return d;
   },
   hex(c) { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; },
-  // One billow into an RGBA buffer: a disc of cells lit from the upper left — a bright crescent, the
+  // One billow into an RGBA buffer: a disc of cells lit from the upper left, a bright crescent, the
   // body, shade toward the lower right, a soft outline on the rim away from the light. `dark` steps
   // it one shade down (a billow lower down the bank). Laid back to front, they stack into a cloud.
   puffInto(px, w, h, p, pal, dark) {
@@ -845,9 +850,9 @@ Object.assign(Heaven, {
 
 Object.assign(Heaven, {
   // The earth, a long way down: fields and hedges, a river with the broken bridge the truck went off
-  // (the prologue's), a road to the compound, and the compound itself — dark roofs round a yard with
+  // (the prologue's), a road to the compound, and the compound itself, dark roofs round a yard with
   // the altar with the ewe bound on it and the empty pen. Hazed toward the sky, as far things are. The
-  // torches and the rite round the altar — men, candles, fire, their light — are drawn over it live
+  // torches and the rite round the altar, men, candles, fire, their light, are drawn over it live
   // (`drawEarth`, `drawRite`).
   bakeEarth() {
     const W = 820, H = 560, c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -1100,8 +1105,8 @@ Object.assign(Heaven, {
   },
   // The rite, live, over the baked altar (`TUNING.heaven.ritual`): the light first, laid on the
   // ground under everyone; then the flames; then the men round the ring and the mage at the altar's
-  // head, by their feet. All of it steps by whole earth pixels and whole frames — the flicker is a
-  // roll per frame, never a size eased per frame — and nothing is repainted: a dozen small draws.
+  // head, by their feet. All of it steps by whole earth pixels and whole frames, the flicker is a
+  // roll per frame, never a size eased per frame, and nothing is repainted: a dozen small draws.
   drawRite(ctx, E, ox, oy, K, t) {
     const Q = TUNING.heaven.ritual, R = E.rite, S = R.men, at = (x, y) => [Math.round(ox + x * K), Math.round(oy + y * K)];
     const put = (img, x, y) => { const [X, Y] = at(x - (img.width >> 1), y - img.height + 1); ctx.drawImage(img, X, Y, img.width * K, img.height * K); };
@@ -1233,7 +1238,7 @@ Object.assign(Heaven, {
     }
   },
 
-  // A seat: its cloud, and on it, if it ever came out of the compound, the animal as a god — its own
+  // A seat: its cloud, and on it, if it ever came out of the compound, the animal as a god, its own
   // sprite all light, with a halo; if not, nothing, and a halo waiting unlit over the empty cushion.
   drawSeat(R, game, p) {
     const ctx = R.ctx, t = R.t, k = 1.4, S = HEAVEN_PIXELS.sprites.plinth, saved = this.meta.saved[p.seat];
@@ -1307,7 +1312,7 @@ Object.assign(Heaven, {
     ctx.restore();
   },
 
-  // The mirror, and in its glass the goat — him turned toward you, or a flash when he has butted it.
+  // The mirror, and in its glass the goat, him turned toward you, or a flash when he has butted it.
   drawMirror(R, game, p) {
     const ctx = R.ctx, H = game.heaven, g = game.goat, k = 1.5, S = HEAVEN_PIXELS.sprites.mirror, t = R.t;
     ctx.save(); ctx.translate(p.x, p.y + 10); ctx.scale(1, 1 / TILT);
@@ -1486,17 +1491,22 @@ Object.assign(Heaven, {
     ctx.drawImage(HEAVEN_PIXELS.canvas(name), 0, 0, S.w * 4, 60 * 4, Math.round(px), Math.round(py), Math.round(pw), Math.round(60 * kx));
     ctx.imageSmoothingEnabled = sm;
     // the box
-    const bw = Math.min(W - 40 * s, 820 * s), bh = Math.max(118 * s, Hh * 0.2), bx = Math.round((W - bw) / 2 + Math.min(80 * s, W * 0.06)), by = Math.round(Hh - bh - 18 * s + (1 - vis) * 30 * s);
+    // nudged right of centre, clear of his portrait, but never past the screen's right edge (an
+    // upright phone, where the box is the screen's width, lost its right side and the page mark)
+    const bw = Math.min(W - 40 * s, 820 * s), bh = Math.max(118 * s, Hh * 0.2), bx = Math.round(Math.min((W - bw) / 2 + Math.min(80 * s, W * 0.06), W - bw - 20 * s)), by = Math.round(Hh - bh - 18 * s + (1 - vis) * 30 * s);
     ctx.fillStyle = 'rgba(30,20,44,0.92)'; ctx.fillRect(bx, by, bw, bh);
     ctx.fillStyle = '#e0ac3e'; ctx.fillRect(bx, by, bw, 3 * s); ctx.fillRect(bx, by + bh - 2 * s, bw, 2 * s);
     ctx.strokeStyle = 'rgba(247,215,116,0.45)'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx + 6 * s, by + 9 * s, bw - 12 * s, bh - 17 * s);
     for (const [x, y] of [[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]]) { ctx.fillStyle = '#f7d774'; ctx.fillRect(Math.round(x - 4 * s), Math.round(y - 4 * s), Math.round(8 * s), Math.round(8 * s)); }
     // the name plate
-    ctx.font = `700 ${17 * s}px ${FONT_SC}`; const nw = ctx.measureText('THE GOAT ABOVE').width + 30 * s;
+    // The epithet rides on the plate: out on heaven's pale floor, gold at 11 px, it could not be read.
+    const subFont = `${Math.round(Math.max(12 * R.s, 13 * s))}px ${FONT}`;
+    ctx.font = subFont; const subW = ctx.measureText('father of horns').width;
+    ctx.font = `700 ${17 * s}px ${FONT_SC}`; const nameW = ctx.measureText('THE GOAT ABOVE').width, nw = nameW + subW + 44 * s;
     ctx.fillStyle = 'rgba(30,20,44,0.95)'; ctx.fillRect(bx + 22 * s, by - 26 * s, nw, 28 * s);
     ctx.fillStyle = '#e0ac3e'; ctx.fillRect(bx + 22 * s, by - 26 * s, nw, 2 * s);
     ctx.fillStyle = '#f7d774'; ctx.textAlign = 'left'; ctx.fillText('THE GOAT ABOVE', bx + 37 * s, by - 6 * s);
-    ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.6)'; ctx.fillText('father of horns', bx + 44 * s + nw, by - 8 * s);
+    ctx.font = subFont; ctx.fillStyle = 'rgba(247,215,116,0.72)'; ctx.fillText('father of horns', bx + 51 * s + nameW, by - 7 * s);
     // the words, typing
     const size = Math.round(19 * s); ctx.font = FONT_PICK.font('text', size);
     const full = K.lines[K.i], shown = full.slice(0, Math.floor(K.shown));
@@ -1509,7 +1519,7 @@ Object.assign(Heaven, {
       ctx.fillStyle = '#f7d774';
       for (let k = 0; k < 4; k++) ctx.fillRect(Math.round(bx + bw - 34 * s + k * c), Math.round(by + bh - 26 * s + b + k * c), Math.round((8 - 2 * k) * c), c);
     }
-    ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.45)'; ctx.textAlign = 'right';
+    ctx.font = `${Math.max(12 * R.s, 10 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.45)'; ctx.textAlign = 'right';
     ctx.fillText(`${K.i + 1} / ${K.lines.length}`, bx + bw - 16 * s, by + 22 * s);
     ctx.restore();
   },
@@ -1536,7 +1546,7 @@ Object.assign(Heaven, {
     const sl = String(M.souls || 0), sx = x0 + pw - 34 * s - hw - 44 * s;
     ctx.fillStyle = '#d9ccff'; ctx.fillText(sl, sx, y0 + 44 * s);
     this.soulIcon(R, sx - ctx.measureText(sl).width - 12 * s, y0 + 36 * s, 20 * s);
-    ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.6)'; ctx.fillText('souls  ·  sacrifices', x0 + pw - 26 * s, y0 + 62 * s);
+    ctx.font = `${Math.max(12 * R.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.6)'; ctx.fillText('souls  ·  sacrifices', x0 + pw - 26 * s, y0 + 62 * s);
     // the goat in the glass
     const gw = Math.min(pw * 0.3, 260 * s), gcx = x0 + 26 * s + gw / 2, gcy = y0 + ph * 0.56;
     const S = HEAVEN_PIXELS.sprites.mirror, mk = Math.min(gw / S.w, (ph * 0.7) / S.h);
@@ -1585,7 +1595,7 @@ Object.assign(Heaven, {
     ctx.fillStyle = selC ? 'rgba(247,215,116,0.2)' : 'rgba(255,255,255,0.04)'; ctx.fillRect(bx2, cy2, bw2, 30 * s);
     ctx.strokeStyle = '#e0ac3e'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx2, cy2, bw2, 30 * s);
     ctx.textAlign = 'center'; ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = '#fff4c2'; ctx.fillText('LOOK AWAY', bx2 + bw2 / 2, cy2 + 20 * s);
-    ctx.textAlign = 'left'; ctx.font = `${11 * s}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.5)';
+    ctx.textAlign = 'left'; ctx.font = `${Math.max(12 * R.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.5)';
     ctx.fillText(game.touch.active ? 'tap a row to buy it' : padOn(game) ? 'A buys  ·  B looks away' : 'click or SPACE buys  ·  RMB or ESC looks away', rx, cy2 + 20 * s);
     ctx.restore();
   },
@@ -1612,8 +1622,17 @@ Object.assign(Heaven, {
     const shown = counting ? M.sacrifices - Math.round(H.tally * (1 - clamp((H.tallyT - A.tallyAfter) / A.tallyTime, 0, 1))) : M.sacrifices;
     // on a dark plate: the purse's pale figures are drawn for the dark of a floor, not a sky
     ctx.save(); ctx.font = `700 ${19 * s}px ${FONT}`;
-    const pw = ctx.measureText(String(M.souls || 0)).width + ctx.measureText(String(shown)).width + 40 * s + HEAVEN_PIXELS.sprites.skull.w * 1.9 * s + 22 * s;
-    ctx.fillStyle = 'rgba(58,44,78,0.82)'; ctx.fillRect(R.w - 16 * s - pw, 8 * s, pw + 10 * s, 28 * s);
+    // as wide as what `drawPurse` lays on it: the heap and its skull only once the god has given the gathering
+    const heap = Heaven.gifted() || M.sacrifices > 0;
+    const soulsW = ctx.measureText(String(M.souls || 0)).width;
+    let pw = soulsW + 40 * s + (heap ? ctx.measureText(String(shown)).width + HEAVEN_PIXELS.sprites.skull.w * 1.9 * s + 22 * s : 0), ph = 28 * s;
+    // and the god's two hundred under the heap, which on heaven's pale sky could not be read off the plate
+    if (Heaven.gifted() && !Heaven.questDone()) {
+      const q = TUNING.heaven.gift.quest;
+      ctx.font = `700 ${Math.max(12 * R.s, 12 * s)}px ${FONT_SC}`;
+      pw = Math.max(pw, ctx.measureText(`FOR THE GOD ${q} / ${q}`).width + soulsW + 44 * s); ph = 42 * s;
+    }
+    ctx.fillStyle = 'rgba(58,44,78,0.82)'; ctx.fillRect(R.w - 16 * s - pw, 8 * s, pw + 10 * s, ph);
     ctx.fillStyle = '#e0ac3e'; ctx.fillRect(R.w - 16 * s - pw, 8 * s, pw + 10 * s, 2 * s);
     ctx.restore();
     R.drawPurse(game, R.w - 16 * s, 12 * s, s, shown);
@@ -1624,7 +1643,7 @@ Object.assign(Heaven, {
       ctx.fillStyle = 'rgba(58,44,78,0.5)'; ctx.fillText(where, 17 * s, 27 * s);
       ctx.fillStyle = 'rgba(58,44,78,0.9)'; ctx.fillText(where, 16 * s, 26 * s);
     }
-    ctx.font = `${9.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(58,44,78,0.45)'; ctx.fillText(`v${BUILD}`, 14 * s, R.h - 12 * s);
+    ctx.font = `${Math.max(12 * R.s, 9.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(58,44,78,0.45)'; ctx.fillText(`v${BUILD}`, 14 * s, R.h - 12 * s);
     ctx.restore();
   },
 });

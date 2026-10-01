@@ -1,6 +1,6 @@
 // Dev server: serves the game, accepts POST /shot (a data URL) to save canvas frames for review,
 // and POST /tuning-edit (JSON) to write one number the BOONS tab of the in-game tool changed back
-// into js/tuning.js itself — see tools/tuning-patch.js for how that lands without disturbing
+// into js/tuning.js itself, see tools/tuning-patch.js for how that lands without disturbing
 // anything else in the file.
 const http = require('http');
 const fs = require('fs');

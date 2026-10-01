@@ -1,7 +1,7 @@
 // PHOTO MODE and the FPS DIP LOG. Neither is part of the game: both read the picture the game has
 // just drawn and never touch a run.
 //
-// PHOTO MODE (1 Oct 2026: "when I take screenshots the quality is bad — a photo mode in the settings:
+// PHOTO MODE (1 Oct 2026: "when I take screenshots the quality is bad, a photo mode in the settings:
 // on a key, or every 3 seconds, so I run about at random and it clicks, and then let me choose what to
 // keep"). `settings.photoKey` takes a picture of the canvas at its own size when P is pressed;
 // `settings.photoAuto` takes one every `TUNING.photo.every` seconds of play. Pictures are kept in this
@@ -10,7 +10,7 @@
 // the itch zip is saved, so it works framed as an artifact and served alike.
 //
 // THE DIP LOG (dev drawer, `dev.dips`): a frame that took longer than `photo.dip.ms` writes down where
-// it was — level, seed, room, what was alive and how much of everything was in the air — with a small
+// it was, level, seed, room, what was alive and how much of everything was in the air, with a small
 // picture of the frame; SAVE DIPS writes them to one JSON file.
 const Photo = {
   shots: [], ask: false, autoT: 0, n: 0, status: '', scroll: 0, cur: 0, rects: [], busy: false,
@@ -52,9 +52,9 @@ const Photo = {
     const r = game.renderer, ctx = r.ctx, s = r.hs || r.s || 1, S = game.settings;
     if (game.state === 'title') return;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const x = r.w - 22 * s, y = r.h - 60 * s;
+    const x = r.w - 22 * s, y = r.h - (r.railLow ? 95 : 60) * s;   // the skill rail sits bottom right on a desktop: above it, not on it
     const t = S.photoAuto ? 1 - this.autoT / TUNING.photo.every : 0;
-    ctx.globalAlpha = 0.75; ctx.fillStyle = '#efe6d0'; ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.textAlign = 'right';
+    ctx.globalAlpha = 0.75; ctx.fillStyle = '#efe6d0'; ctx.font = `700 ${Math.max(12 * r.s, 11 * s)}px ${FONT_SC}`; ctx.textAlign = 'right';
     ctx.fillText(`${this.shots.length}`, x - 16 * s, y + 4 * s);
     ctx.beginPath(); ctx.arc(x, y, 7 * s, 0, Math.PI * 2); ctx.strokeStyle = '#efe6d0'; ctx.lineWidth = 2 * s; ctx.stroke();
     ctx.beginPath(); ctx.arc(x, y, 3 * s, 0, Math.PI * 2); ctx.fillStyle = S.photoAuto && t < 0.12 ? '#ff5a4a' : '#efe6d0'; ctx.fill();
@@ -151,7 +151,7 @@ const Photo = {
       ctx.strokeStyle = sh.sel ? PALETTE.fireHi : k === this.cur ? PALETTE.bone : 'rgba(239,230,208,0.22)';
       ctx.strokeRect(x, y, iw, ih);
       if (sh.sel) { ctx.fillStyle = 'rgba(242,162,51,0.16)'; ctx.fillRect(x, y, iw, ih); }
-      ctx.textAlign = 'left'; ctx.font = `700 ${10.5 * s}px ${FONT_SC}`; ctx.fillStyle = sh.sel ? PALETTE.fireHi : 'rgba(239,230,208,0.55)';
+      ctx.textAlign = 'left'; ctx.font = `700 ${Math.max(12 * r.s, 10.5 * s)}px ${FONT_SC}`; ctx.fillStyle = sh.sel ? PALETTE.fireHi : 'rgba(239,230,208,0.55)';
       ctx.fillText((sh.sel ? '✓ ' : '') + '#' + sh.id + (sh.saved ? ' · SAVED' : '') + ' · ' + sh.label, x + 2 * s, y + ih + 13 * s);
     }
     // buttons

@@ -1,32 +1,32 @@
 // THE JUICE CATALOGUE. Every piece of game feel the game has, has just got, or has been asked for,
 // in one list: what sets it off, what it looks like, how big and how long, where it lives in this
-// code, and how the same thing is built in Godot 4 — because the list is for whoever builds the
+// code, and how the same thing is built in Godot 4, because the list is for whoever builds the
 // next version as much as for this one. Read by the JUICE tab of the level tool (`drawJuiceTab`)
 // and by `node tools/juice-md.js`, which writes JUICE.md from it, so it is written once.
 //
 // `status`: 'in' was already in the game, 'new' landed with this tab, 'backlog' is not built yet.
 // `src` is where the idea comes from:
-//   SCREENSHAKE — Jan Willem Nijman (Vlambeer), "The Art of Screenshake", INDIGO 2013
-//   JUICE       — Martin Jonasson & Petri Purho, "Juice it or lose it", GDC Europe 2012
-//   SWINK       — Steve Swink, "Game Feel" (2008)
-//   GMTK        — Mark Brown, "Secrets of Game Feel and Juice" and "Celeste & forgiveness"
-//   HITSTOP     — Masahiro Sakurai on hitstop / hit-lag (Smash Bros.), and the fighting-game canon
-//   CAMERA2D    — Mark Brown, "How to Make a Good 2D Camera" (GMTK, 2023)
-//   GOAT        — asked for by this game's own playtests (BACKLOG.md)
-//   HADES       — Supergiant Games, Hades (2020): how a god talks to you between runs
+//   SCREENSHAKE, Jan Willem Nijman (Vlambeer), "The Art of Screenshake", INDIGO 2013
+//   JUICE      , Martin Jonasson & Petri Purho, "Juice it or lose it", GDC Europe 2012
+//   SWINK      , Steve Swink, "Game Feel" (2008)
+//   GMTK       , Mark Brown, "Secrets of Game Feel and Juice" and "Celeste & forgiveness"
+//   HITSTOP    , Masahiro Sakurai on hitstop / hit-lag (Smash Bros.), and the fighting-game canon
+//   CAMERA2D   , Mark Brown, "How to Make a Good 2D Camera" (GMTK, 2023)
+//   GOAT       , asked for by this game's own playtests (BACKLOG.md)
+//   HADES      , Supergiant Games, Hades (2020): how a god talks to you between runs
 // Sizes are read off TUNING where a number exists, so the table cannot drift from the game.
 const JUICE_SRC = {
-  SCREENSHAKE: 'Vlambeer — The Art of Screenshake (2013)',
-  JUICE: 'Jonasson & Purho — Juice it or lose it (2012)',
-  SWINK: 'Steve Swink — Game Feel (2008)',
-  GMTK: "Game Maker's Toolkit — Secrets of Game Feel / Celeste forgiveness",
-  HITSTOP: 'Sakurai / fighting games — hitstop',
-  CAMERA2D: "Game Maker's Toolkit — How to Make a Good 2D Camera (2023)",
+  SCREENSHAKE: 'Vlambeer, The Art of Screenshake (2013)',
+  JUICE: 'Jonasson & Purho, Juice it or lose it (2012)',
+  SWINK: 'Steve Swink, Game Feel (2008)',
+  GMTK: "Game Maker's Toolkit, Secrets of Game Feel / Celeste forgiveness",
+  HITSTOP: 'Sakurai / fighting games, hitstop',
+  CAMERA2D: "Game Maker's Toolkit, How to Make a Good 2D Camera (2023)",
   GOAT: 'Goat Out playtests',
-  HADES: 'Supergiant Games — Hades (2020): the dialogue screen, the gods in their light',
-  'MAX PAYNE / HOTLINE': 'Max Payne (2001) bullet time; Hotline Miami (2012) — slow motion on the aim',
-  SPELUNKY: 'Spelunky (2008) — jumping on a man’s head to get over him',
-  'Enter the Gungeon': 'Enter the Gungeon (2016) — rooms whose furniture is a weapon: chandeliers, tables, armour, barrels',
+  HADES: 'Supergiant Games, Hades (2020): the dialogue screen, the gods in their light',
+  'MAX PAYNE / HOTLINE': 'Max Payne (2001) bullet time; Hotline Miami (2012), slow motion on the aim',
+  SPELUNKY: 'Spelunky (2008), jumping on a man’s head to get over him',
+  'Enter the Gungeon': 'Enter the Gungeon (2016), rooms whose furniture is a weapon: chandeliers, tables, armour, barrels',
 };
 
 const JUICE = [
@@ -37,11 +37,11 @@ const JUICE = [
     godot: 'Engine.time_scale = 0 then a timer that ignores time scale: await get_tree().create_timer(t, true, false, true).timeout; restore to 1. Keep UI tweens on TWEEN_PAUSE_PROCESS.' },
   { name: 'Screen shake', cat: 'CAMERA', status: 'in', src: 'SCREENSHAKE', code: 'game.shake · juice.shakeKill/shakeHit/shakeDecay',
     trigger: 'A heart lost; and, smaller and fading with distance, the thuds of the world (game.thud). Every other call site is × juice.shakeOther, which is 0',
-    look: 'Random offset of the whole picture that decays — the one thing that says you were hit without your looking at the hearts',
+    look: 'Random offset of the whole picture that decays, the one thing that says you were hit without your looking at the hearts',
     size: () => `${TUNING.juice.shakeHit}px hurt · ×${TUNING.juice.shakeOther} for anything else · decays ×${TUNING.juice.shakeDecay}/s`,
     godot: 'Trauma model: trauma += amt (clamp 0..1); Camera2D.offset = max_offset * trauma² * FastNoiseLite sample; trauma -= decay * delta. Noise, not randf, so it does not jitter.' },
   { name: 'Directional kick', cat: 'CAMERA', status: 'in', src: 'SCREENSHAKE', code: 'game.kick · juice.kick/kickMax/kickDecay',
-    trigger: 'Headbutt landing, kills, clubs taken', look: 'The picture is shoved along the blow and springs back — a punch, not a rattle',
+    trigger: 'Headbutt landing, kills, clubs taken', look: 'The picture is shoved along the blow and springs back, a punch, not a rattle',
     size: () => `${TUNING.juice.kick}px, capped ${TUNING.juice.kickMax}px, ×${TUNING.juice.kickOther} unless the goat was hit, decay ×${TUNING.juice.kickDecay}/s`,
     godot: 'A second Camera2D.offset term: kick_vec += dir * amt; kick_vec = kick_vec.lerp(Vector2.ZERO, 1 - exp(-decay * delta)). Add to the shake offset.' },
   { name: 'Zoom punch', cat: 'CAMERA', status: 'in', src: 'JUICE', code: 'game.zoomPunch · juice.zoomKick/zoomDecay',
@@ -63,11 +63,11 @@ const JUICE = [
     size: () => `${TUNING.juice.shakeFreq} Hz · trauma² against ${TUNING.juice.shakeRef}px, never above the old peak`,
     godot: 'FastNoiseLite sampled at time * freq for x and y (different seeds); offset = max * trauma * trauma * noise.' },
   { name: 'Frame the fight', cat: 'CAMERA', status: 'new', src: 'CAMERA2D', code: 'game.fightFocus · camera.fight',
-    trigger: 'A boss or sealed arena that does not fit the screen', look: 'The follow point is pulled part way toward the boss, and the lens backs out a little, so he and the wall behind him are both in the picture — the wall is the weapon (pillar 3)',
+    trigger: 'A boss or sealed arena that does not fit the screen', look: 'The follow point is pulled part way toward the boss, and the lens backs out a little, so he and the wall behind him are both in the picture, the wall is the weapon (pillar 3)',
     size: () => { const F = TUNING.camera.fight; return `pull ${Math.round(F.pull * 100)}% (max ${F.max / TILE} tiles) · zoom ×${F.zoom} · ease ${F.ease}/s`; },
     godot: 'Camera target = lerp(player, boss, w); zoom tweened to fit both with a margin; drop back on the boss down.' },
   { name: 'Threat pull', cat: 'CAMERA', status: 'backlog', src: 'CAMERA2D', code: 'game.camLead (not built)',
-    trigger: 'An aware man in the goat\'s room just outside the view (a rifle aiming, a hound winding up)', look: 'The lead leans a little toward him — the Gungeon / Nuclear Throne weighting of points of interest',
+    trigger: 'An aware man in the goat\'s room just outside the view (a rifle aiming, a hound winding up)', look: 'The lead leans a little toward him, the Gungeon / Nuclear Throne weighting of points of interest',
     size: () => 'at most a third of camera.lead, only while he is winding up',
     godot: 'Sum of attractor offsets (weight / distance) added to the aim lead before the lerp, clamped.' },
   { name: 'Leash at speed', cat: 'CAMERA', status: 'new', src: 'CAMERA2D', code: 'game.updateCamera · camera.leash',
@@ -79,11 +79,11 @@ const JUICE = [
     size: () => `× ${TUNING.juice.shakeThud} of the call · full inside ${TUNING.juice.thudNear} tiles, none past ${TUNING.juice.thudFar}`,
     godot: 'add_trauma(amount * clamp(inverse_lerp(far, near, distance), 0, 1)) on the camera.' },
   { name: 'Room blend', cat: 'CAMERA', status: 'new', src: 'CAMERA2D', code: 'game.camHold/camTrack/camRoomMid · Game.roomMouthDist · camera.blend/blendIn/holdLerp',
-    trigger: 'Walking into a room that fits the screen, or toward its way out', look: 'No switch: in a doorway the picture is on him as in the corridor, and it slides to the middle of the room as he walks in — never a jump between room one and room two',
+    trigger: 'Walking into a room that fits the screen, or toward its way out', look: 'No switch: in a doorway the picture is on him as in the corridor, and it slides to the middle of the room as he walks in, never a jump between room one and room two',
     size: () => `held from ${(TUNING.camera.blendIn / TILE).toFixed(1)} to ${(TUNING.camera.blendIn / TILE + TUNING.camera.blend).toFixed(1)} tiles in from the nearest doorway, smoothstepped, eased at ${TUNING.camera.holdLerp}/s`,
     godot: 'Camera2D target = lerp(player_follow, room_center, smoothstep(dist_to_nearest_door / blend)); no Area2D toggle.' },
   { name: 'Shake setting', cat: 'CAMERA', status: 'new', src: 'CAMERA2D', code: 'SETTINGS shake · game.shakeMul',
-    trigger: 'The player\'s choice on the title', look: 'A SCREEN SHAKE slider (full as tuned, down to still) over shake, kick and lens punch — an accessibility switch every camera talk asks for',
+    trigger: 'The player\'s choice on the title', look: 'A SCREEN SHAKE slider (full as tuned, down to still) over shake, kick and lens punch, an accessibility switch every camera talk asks for',
     size: () => `0..1 × juice.screen (${TUNING.juice.screen})`,
     godot: 'A ConfigFile value multiplied into the trauma amount.' },
   { name: 'Slow motion on a kill', cat: 'TIME', status: 'in', src: 'SCREENSHAKE', code: 'game.slowTimer · juice.killSlow/comboSlow/deathSlow',
@@ -120,7 +120,7 @@ const JUICE = [
     size: () => `${TUNING.juice.heartbeat.bpm} bpm · ${TUNING.juice.heartbeat.alpha} alpha · heart ±${Math.round(TUNING.juice.heartbeat.throb * 100)}%`,
     godot: 'Same vignette shader; drive intensity from an AnimationPlayer loop (two keys close together, then a rest). Pair with a low-pass on the music bus.' },
   { name: 'Rumble', cat: 'SCREEN', status: 'in', src: 'SWINK', code: 'game.vibe',
-    trigger: 'Hits, kills, throws — touch devices only', look: 'The phone buzzes, scaled to the blow',
+    trigger: 'Hits, kills, throws, touch devices only', look: 'The phone buzzes, scaled to the blow',
     size: () => '6–80 ms',
     godot: 'Input.start_joy_vibration(0, weak, strong, dur) for pads; Input.vibrate_handheld(ms) on mobile.' },
   // ---- bodies ----
@@ -142,7 +142,7 @@ const JUICE = [
     size: () => `hit ${TUNING.juice.squash.hit} · hurt ${TUNING.juice.squash.hurt} · ${TUNING.juice.squash.freq} rad/s, decay ${TUNING.juice.squash.decay}`,
     godot: 'create_tween().tween_property(sprite, "scale", Vector2(1+a, 1-a), 0.05) then back to Vector2.ONE over 0.3s with TRANS_ELASTIC / EASE_OUT.' },
   { name: 'Knockback', cat: 'BODY', status: 'in', src: 'SCREENSHAKE', code: 'enemy.fling · goat.headbutt.impulse',
-    trigger: 'Every headbutt, every body arriving', look: 'The man flies along the blow, spinning — the fling is the attack',
+    trigger: 'Every headbutt, every body arriving', look: 'The man flies along the blow, spinning, the fling is the attack',
     size: () => `impulse ${Math.round(TUNING.goat.headbutt.impulse)}px/s`,
     godot: 'CharacterBody2D: velocity = dir * impulse, then friction in _physics_process; spin the sprite while velocity > threshold.' },
   { name: 'Player recoil', cat: 'BODY', status: 'in', src: 'SCREENSHAKE', code: 'damage(kx, ky) · Butcher planted bounce',
@@ -161,6 +161,11 @@ const JUICE = [
     trigger: 'The scream, the pen, a stun', look: 'Three stars orbit the head, the body sways',
     size: () => 'as long as the daze',
     godot: 'Three Sprite2Ds on a Node2D child rotated each frame; an ellipse via scale.y = 0.5.' },
+  { name: 'Fire that grows on him', cat: 'BODY', status: 'new', src: 'GOAT', code: 'Goat.update (fireK) · Renderer.goatFlame · goat.burnLook',
+    trigger: 'The goat standing in flame (a burning tile, a brazier he walked into, witchfire)',
+    look: 'A small flame on his body the moment he steps in, stepping up in size as the tick runs; full grown over his back and flanks is the moment a heart goes',
+    size: () => { const B = TUNING.goat.burnLook; return `${B.sizes.length} sizes ${B.sizes.join('/')} over ${TUNING.goat.fireDamageInterval}s · cools ${B.cool}s/s off it`; },
+    godot: 'An AnimatedSprite2D on the goat whose frame set is picked from burn_timer / interval (a few discrete sizes), its position lerped a little up the body.' },
   // ---- the world ----
   { name: 'Impact ring + sparks', cat: 'WORLD', status: 'new', src: 'SCREENSHAKE', code: 'game.impact · juice.impact',
     trigger: 'A headbutt landing', look: 'A tight bright ring at the point of contact and a star of spark streaks thrown along the blow',
@@ -171,7 +176,7 @@ const JUICE = [
     size: () => `${TUNING.juice.impact.killRing} tiles · ${TUNING.juice.impact.killLife}s`,
     godot: 'Screen-space distortion shader (SCREEN_TEXTURE offset by a ring function) for the fancy version, or a ring Sprite2D.' },
   { name: 'Hoof dust', cat: 'WORLD', status: 'new', src: 'JUICE', code: 'game.dust · juice.dust',
-    trigger: 'Lunge, roll start, roll landing — never plain running', look: 'Soft pale puffs kicked out behind him that swell and fade',
+    trigger: 'Lunge, roll start, roll landing, never plain running', look: 'Soft pale puffs kicked out behind him that swell and fade',
     size: () => `${TUNING.juice.dust.life}s · ${TUNING.juice.dust.size}→${TUNING.juice.dust.size + TUNING.juice.dust.grow}px`,
     godot: 'CPUParticles2D at the feet, one-shot burst on lunge/roll/land; scale_amount_curve rising, color_ramp alpha falling.' },
   { name: 'Muzzle flash', cat: 'WORLD', status: 'new', src: 'SCREENSHAKE', code: 'fireBullet · juice.muzzle · drawFlares',
@@ -187,7 +192,7 @@ const JUICE = [
     size: () => '0.3–0.8s',
     godot: 'GPUParticles2D one_shot, pooled; ParticleProcessMaterial with initial_velocity range and damping.' },
   { name: 'Gore and debris', cat: 'WORLD', status: 'in', src: 'SCREENSHAKE', code: 'game.gore · CombatFX.fragment/debris',
-    trigger: 'Kills, broken doors and crates', look: 'Chunks with height that fly, bounce and settle — the body tears into its own sprite, each piece\'s cut its own edge pixels in blood (`effects.goreCut`)',
+    trigger: 'Kills, broken doors and crates', look: 'Chunks with height that fly, bounce and settle, the body tears into its own sprite, each piece\'s cut its own edge pixels in blood (`effects.goreCut`)',
     size: () => `≤${TUNING.effects.maxAir} in the air`,
     godot: 'RigidBody2D pieces are too heavy; fake height with a z value per piece in one script, draw with _draw() or MultiMeshInstance2D.' },
   { name: 'Permanence (blood, bodies)', cat: 'WORLD', status: 'in', src: 'SCREENSHAKE', code: 'world.decal · DECAL_SCALE',
@@ -199,11 +204,11 @@ const JUICE = [
     size: () => `pool ${TUNING.effects.corpse.pool}px (${TUNING.effects.corpse.big} Butcher) over ${TUNING.effects.corpse.time}s · ${TUNING.effects.corpse.twitches} twitches`,
     godot: 'A Sprite2D rotated to ±90° on landing via tween; a pool Sprite2D under it scaling up with an ease-out, baked into the decal viewport when done.' },
   { name: 'Pixel fire', cat: 'WORLD', status: 'new', src: 'GOAT', code: 'CombatFX.flameFrames / flame · effects.flame',
-    trigger: 'Every flame: a burning tile, a brazier, a lamp, a man alight, witchfire', look: 'A looping teardrop of five flat bands (ember red to white core) whose tongues are eaten from the top by noise scrolling up through it, sparks climbing off the tip — baked once per whole-pixel size, drawn with smoothing off',
+    trigger: 'Every flame: a burning tile, a brazier, a lamp, a man alight, witchfire', look: 'A looping teardrop of five flat bands (ember red to white core) whose tongues are eaten from the top by noise scrolling up through it, sparks climbing off the tip, baked once per whole-pixel size, drawn with smoothing off',
     size: () => `${TUNING.effects.flame.frames} frames at ${TUNING.effects.fireFps} fps · ${TUNING.effects.flame.wide}×${TUNING.effects.flame.tall} of its size · ${TUNING.effects.pixel}px texel`,
     godot: 'Bake the frames offline (or in a tool script) into a SpriteFrames sheet; AnimatedSprite2D with texture_filter NEAREST, frame offset per tile so neighbours never flicker in step.' },
   { name: 'Pixel blast', cat: 'WORLD', status: 'new', src: 'GOAT', code: 'CombatFX.burstFrames / explosion · effects.blast',
-    trigger: 'A bomb, a bomb charge; dust for a door, a crate, a man burnt out; a spray of blood on a kill', look: 'White flash and a star of rays, a fireball of puffs cooling through the bands into soot lit from above, rising and ordered-dithered away; a pixel shock ring on the floor, embers streaking out, the room lit for an instant and a lens punch — no shake',
+    trigger: 'A bomb, a bomb charge; dust for a door, a crate, a man burnt out; a spray of blood on a kill', look: 'White flash and a star of rays, a fireball of puffs cooling through the bands into soot lit from above, rising and ordered-dithered away; a pixel shock ring on the floor, embers streaking out, the room lit for an instant and a lens punch, no shake',
     size: () => `${TUNING.effects.blast.frames} frames over ${TUNING.effects.burstLife}s · light ×${TUNING.effects.blast.light} r for ${TUNING.effects.blast.lightFor}s · ${TUNING.effects.blast.embers} embers`,
     godot: 'A pre-baked SpriteFrames explosion (NEAREST), a PointLight2D energy tween for the flash, a one_shot CPUParticles2D of embers, and a ring Sprite2D on the floor layer.' },
   { name: 'Soot column', cat: 'WORLD', status: 'new', src: 'GOAT', code: 'CombatFX.explosion · effects.blast.soot',
@@ -229,7 +234,7 @@ const JUICE = [
   // ---- sound ----
   { name: 'Layered sound per hit', cat: 'SOUND', status: 'in', src: 'SCREENSHAKE', code: 'GameAudio sfx*',
     trigger: 'Every verb', look: 'Thud + bleat + steel stacked per event',
-    size: () => '—',
+    size: () => '-',
     godot: 'AudioStreamRandomizer with random_pitch and random_volume_offset_db; several AudioStreamPlayer2Ds per event.' },
   { name: 'No two takes alike', cat: 'SOUND', status: 'in', src: 'GOAT', code: 'GameAudio.foley · js/foley.js',
     trigger: 'Every effect', look: 'Physical models rendered in a few takes; one picked, nudged in pitch and level',
@@ -260,18 +265,28 @@ const JUICE = [
     size: () => `${TUNING.juice.heartbeat.bpm} bpm · dub ${TUNING.audio.ambience.heart.dub} of the lub`,
     godot: 'AudioStreamPlayer fired from the same AnimationPlayer track that pulses the vignette.' },
   { name: 'The room\'s own sound', cat: 'SOUND', status: 'in', src: 'GOAT', code: 'GameAudio.updateAmbience · Foley.loop · audio.ambience',
-    trigger: 'Always, on a floor', look: 'Still air, a cave\'s hollow or wind by canon; the nearest fire crackling from its side; drips; the cult drumming far off; the milk grass when hurt',
-    size: () => `bed ${TUNING.audio.ambience.gain} · fire within ${TUNING.audio.ambience.fire.radius} tiles`,
-    godot: 'A looping AudioStreamPlayer per bed crossfaded on level load; AudioStreamPlayer2D crackle on each brazier (max_distance ~7 tiles).' },
+    trigger: 'Always, on a floor', look: 'Still air, a cave\'s hollow or wind by canon; the nearest fire crackling from its side; drips; the cult drumming far off; the milk grass when hurt. Under a fight all of it steps back and the drips stop',
+    size: () => `bed ${TUNING.audio.ambience.gain} · fire within ${TUNING.audio.ambience.fire.radius} tiles · ${TUNING.audio.ambience.fight} of it in a fight`,
+    godot: 'A looping AudioStreamPlayer per bed crossfaded on level load; AudioStreamPlayer2D crackle on each brazier (max_distance ~7 tiles). The fight duck is a tween on the Ambience bus volume.' },
+  { name: 'A death above everything', cat: 'SOUND', status: 'new', src: 'GOAT', code: 'GameAudio.sfxDeath / spotlight · keyBus · Foley death · audio.spotlight',
+    trigger: 'A man killed (not over an edge; the wraith gets only the quiet round it)',
+    look: 'His own sound, bone, the wet, then his weight hitting the floor, then his last breath, on a bus nothing ducks, while the score, the other effects and the room dip for a beat. An ogre or a chain dips deeper and longer',
+    size: () => { const S = TUNING.audio.spotlight; return `score ${S.duck.score} · sfx ${S.duck.sfx} · room ${S.duck.amb} · ${S.attack}s in, ${S.hold}s held, ${S.release}s out`; },
+    godot: 'A Kills bus outside a Duck group; on a kill tween the Music/SFX/Ambience buses down and back (or an AudioEffectCompressor sidechained to Kills on each).' },
+  { name: 'One sound, not a wall of it', cat: 'SOUND', status: 'new', src: 'GOAT', code: 'GameAudio.foley · audio.foley.stack',
+    trigger: 'The same sound fired several times in one moment (a bomb\'s splats, a supper landing, three doors)',
+    look: 'Each copy after the first is quieter, and past a few it is not played',
+    size: () => { const S = TUNING.audio.foley.stack; return `within ${S.window}s · ×${S.mul} a copy · at most ${S.max}`; },
+    godot: 'max_polyphony on the AudioStreamPlayer, plus volume_db lowered by the number of voices already playing.' },
   // ---- the backlog ----
   { name: 'Input buffer', cat: 'FEEL', status: 'new', src: 'GMTK', code: 'Goat.update · buttBuf / rollBuf · goat.buffer',
-    trigger: 'Pressing headbutt while busy, or roll before it is back', look: 'Nothing visible — the press is remembered and fires the frame he is free',
+    trigger: 'Pressing headbutt while busy, or roll before it is back', look: 'Nothing visible, the press is remembered and fires the frame he is free',
     size: () => `${TUNING.goat.buffer}s window`,
     godot: 'Store the press time; in the state machine, on entering idle, consume it if Time.get_ticks_msec() - pressed < window. Not a cancel: the recovery is still eaten in full (pillar 4).' },
   { name: 'Door-hit forgiveness', cat: 'FEEL', status: 'new', src: 'GMTK', code: 'headbuttHits · door.reachSlack',
     trigger: 'A headbutt at a door', look: 'A door takes the blow from its ends and from flush in a wall',
     size: () => `+${TUNING.prop.door.reachSlack}px reach, cone widened for doors`,
-    godot: 'Give the hurtbox a margin bigger than the collision shape (a second Area2D) — the "coyote" of melee.' },
+    godot: 'Give the hurtbox a margin bigger than the collision shape (a second Area2D), the "coyote" of melee.' },
   { name: 'Hit direction on the body', cat: 'BODY', status: 'backlog', src: 'SCREENSHAKE',
     trigger: 'A man taking a blow', look: 'His sprite leans away from the blow for a few frames before the fling',
     size: () => '0.1s',
@@ -341,6 +356,10 @@ const JUICE = [
     trigger: 'A soul picked up: the cards come up', look: 'A pale flash, a wheel of gold and violet pixel rays turning behind the soul, the soul springing in, A SOUL bouncing up in gold, pixel confetti bursting and falling; then the cards spring in one after another and the rays settle to a glow',
     size: () => `${TUNING.fanfare.intro}s before the cards · ${TUNING.fanfare.rays} rays · ${TUNING.fanfare.sparks} sparks · cards ${TUNING.fanfare.stagger}s apart`,
     godot: 'A CanvasLayer: a rotating Polygon2D fan with a nearest-filtered low-res SubViewport, a CPUParticles2D burst with gravity, a Label tweened with TRANS_BACK, card Controls tweened in with a stagger.' },
+  { name: 'Soul into the goat', cat: 'UI', status: 'new', src: 'GOAT', code: 'Game.watchBoonMorph · Codex.drawBoonGoat / drawPull / drawMorphRing · fanfare.morph',
+    trigger: 'The soul cards up and a card first pointed at (mouse over it, a finger on it, a pad\'s lit card)', look: 'The soul, hanging and bobbing where he will stand, is swallowed: it shrinks and turns into his middle while violet cells spiral in from round him; he springs up out of it as a pale violet shape, steps through violet to his own colours, a ring of cells goes out and the rays flare once. He stays after that',
+    size: () => `${TUNING.fanfare.morph.time}s · ${TUNING.fanfare.morph.cells} cells · springs from ${TUNING.fanfare.morph.pop} of his height`,
+    godot: 'An AnimationPlayer on the card screen: the wisp scaled down along an ease-in curve, GPUParticles2D with an attractor at the goat, the goat TextureRect with a flat-colour shader whose mix steps 1, 0.75, 0.5, 0.25, 0, and a ring of particles.' },
   { name: 'Ogre slam ring', cat: 'WORLD', status: 'new', src: 'GOAT', code: 'Renderer.drawSlamRing · Enemy.quake · butcher.slam',
     trigger: 'The ogre, close in, raises both fists to bring them down on the floor', look: 'A bone ring on the floor at the reach of the slam, filling red from the middle; on the blow two rings and dust; the picture shakes only if it cost the goat a heart',
     size: () => `${TUNING.butcher.slam.range} tiles · ${TUNING.butcher.slam.wind}s`,
@@ -358,7 +377,7 @@ const JUICE = [
     size: () => `${ARTIFACTS.find((a) => a.id === 'echo').tiers[0].params.delay}s after`,
     godot: 'Delayed ghost Sprite2D with additive blend at the lunge end point, a shape cast for the hit.' },
   { name: 'Talisman: bell shapes', cat: 'UI', status: 'new', src: 'GOAT', code: 'Talisman.drawWorld · bell.sil',
-    trigger: "BELLWETHER'S BELL II+, men out of sight within range", look: 'Men behind stone drawn as flat shapes over the shade — ash if they have not seen you, red if they have — and screen-edge marks to the stairs and the vault',
+    trigger: "BELLWETHER'S BELL II+, men out of sight within range", look: 'Men behind stone drawn as flat shapes over the shade, ash if they have not seen you, red if they have, and screen-edge marks to the stairs and the vault',
     size: () => `${ARTIFACTS.find((a) => a.id === 'bell').tiers[1].params.sil} tiles at II`,
     godot: 'Second CanvasItem pass of enemy sprites with a flat-colour shader above the fog layer; edge arrows on a CanvasLayer.' },
   { name: 'Death-map skulls', cat: 'UI', status: 'new', src: 'GOAT', code: 'game.killMarks · Renderer.skullMark · deathCam.skull',
@@ -370,7 +389,7 @@ const JUICE = [
     size: () => `every ${TUNING.goat.bleed.gap}s ±${Math.round(TUNING.goat.bleed.jitter * 100)}%`,
     godot: 'Timer with randomised wait_time spawning a decal Sprite2D while hp == 1 and velocity above a threshold.' },
   { name: 'Blood in the wool', cat: 'BODY', status: 'new', src: 'GOAT', code: 'PaintedArt.wounds · goat.wounds',
-    trigger: 'Every heart he has lost', look: 'One dark blot of blood on his body per missing heart, masked to the sprite so it is only ever on him — health read off the goat at a glance',
+    trigger: 'Every heart he has lost', look: 'One dark blot of blood on his body per missing heart, masked to the sprite so it is only ever on him, health read off the goat at a glance',
     size: () => `${TUNING.goat.wounds.r}px, +${TUNING.goat.wounds.grow} each, up to ${TUNING.goat.wounds.spots.length}`,
     godot: 'A child Sprite2D per lost heart using the goat frame as a clip mask (CanvasGroup / clip_children), shown by hp.' },
   { name: 'Ogre landing ring', cat: 'WORLD', status: 'new', src: 'GOAT', code: 'Renderer.drawHopMark · Enemy.hopLand / quake · ratogre.hop, butcher.leap',
@@ -451,7 +470,7 @@ const JUICE = [
     size: () => `${TUNING.heaven.ascent.rise}px over ${TUNING.heaven.ascent.time}s from ${TUNING.heaven.ascent.lift}s · beam ${TUNING.heaven.ascent.beam}px · the pull-back waits ${TUNING.deathCam.delay}s`,
     godot: 'The goat’s AnimatedSprite2D duplicated with a modulate of white at 0.8 alpha (or a flat-colour shader), a tween up with EASE_IN; a ColorRect beam in three bands with additive blend.' },
   { name: 'Second chance', cat: 'DEATH', status: 'new', src: 'GOAT', code: 'Motes.second · Motes.updateRevive · Motes.drawRevive · heaven.second',
-    trigger: 'A killing blow with SECOND CHANCE bought in the mirror, once a floor', look: 'He goes down; the beam comes, his ghost lifts a little way, hangs, and drops back into him — a white flash, a ring, the men round him thrown back dazed, NOT YET',
+    trigger: 'A killing blow with SECOND CHANCE bought in the mirror, once a floor', look: 'He goes down; the beam comes, his ghost lifts a little way, hangs, and drops back into him, a white flash, a ring, the men round him thrown back dazed, NOT YET',
     size: () => `${TUNING.heaven.second.time}s · up on ${TUNING.heaven.second.hearts} hearts · untouchable ${TUNING.heaven.second.invuln}s · ${TUNING.heaven.second.push} tiles pushed`,
     godot: 'Pause the tree but the revive node (process_mode ALWAYS); the same ghost tween out and back; a Shockwave Area2D on landing that applies an impulse and a stun.' },
 ];
@@ -462,11 +481,11 @@ const JUICE = [
 function juiceMarkdown() {
   const cell = (s) => String(s).replace(/\|/g, '\|');
   const status = { in: 'in game', new: 'new', backlog: 'backlog' };
-  const out = ['# Goat Out — juice catalogue', '',
+  const out = ['# Goat Out, juice catalogue', '',
     'Generated from `js/juice.js` (the JUICE tab of the level tool). Status: **in game** was already there, **new** landed with the tab, **backlog** is not built yet.', '',
     '| Effect | Status | Trigger | How it looks | Size / time | Godot 4 | Source | Code |',
     '|---|---|---|---|---|---|---|---|'];
-  for (const j of JUICE) out.push('| ' + [j.name, status[j.status], j.trigger, j.look, j.size(), j.godot, JUICE_SRC[j.src], j.code ? '`' + j.code + '`' : '—'].map(cell).join(' | ') + ' |');
+  for (const j of JUICE) out.push('| ' + [j.name, status[j.status], j.trigger, j.look, j.size(), j.godot, JUICE_SRC[j.src], j.code ? '`' + j.code + '`' : '-'].map(cell).join(' | ') + ' |');
   out.push('', '## Sources', '', ...Object.values(JUICE_SRC).map((s) => '- ' + s));
   return out.join('\n') + '\n';
 }

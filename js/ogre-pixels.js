@@ -1,10 +1,10 @@
 // The ogre (the Butcher's kind since 1.66): a hand-placed pixel unit in the recipe of `PROP_PIXELS`,
 // since the Pixel 2.5 atlas has no body for him. A hunched two-legged half-beast a head and a half
-// taller than the butcher — olive hide, tusks, stub horns, a broken shackle on each wrist, no weapon but
-// his fists — and he is the cult's: its red hood with his horns through it, a ragged red mantle over
+// taller than the butcher, olive hide, tusks, stub horns, a broken shackle on each wrist, no weapon but
+// his fists, and he is the cult's: its red hood with his horns through it, a ragged red mantle over
 // his shoulders with the cult's sign on the back, a red loincloth, its red bars on his chest.
 // Five views are drawn (front, front-diagonal, side, back-diagonal, back) and mirrored for the other
-// three; each in three stances (standing, a stride either way) and two poses (`idle`, and `up` — both
+// three; each in three stances (standing, a stride either way) and two poses (`idle`, and `up`, both
 // fists over his head, which is his slam and his crouch, so the blow reads on the body and not only
 // on the floor). Render only: nothing in the simulation reads any of this.
 const OGRE_PIXELS = (() => {
@@ -196,7 +196,7 @@ const OGRE_PIXELS = (() => {
 if (typeof module !== 'undefined') module.exports = OGRE_PIXELS;
 
 // In the page: each sprite baked once to a canvas, `UP` px a texel, and drawn smoothed at `TX` world
-// px a texel with his soles on the origin — inside the frame `PaintedArt.character` has already leaned.
+// px a texel with his soles on the origin, inside the frame `PaintedArt.character` has already leaned.
 if (typeof document !== 'undefined') {
   const UP = 4, baked = new Map();
   OGRE_PIXELS.TX = 1.4;

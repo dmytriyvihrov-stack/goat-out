@@ -17,8 +17,8 @@ class AltarArt {
     return c;
   }
 
-  // What a burnt-out tile of straw leaves (`T.ASH`): a low heap of ash in 2px cells — grey on top,
-  // charred black straw ends through it, a couple of embers still red in it — thinning to single
+  // What a burnt-out tile of straw leaves (`T.ASH`): a low heap of ash in 2px cells, grey on top,
+  // charred black straw ends through it, a couple of embers still red in it, thinning to single
   // dithered cells at its rim so it sits in the floor. It used to be a flat translucent grey square
   // that read as nothing (playtest, 25 Sep 2026: "unclear what it is"). A few baked variants, picked
   // off the tile hash; the heap reaches the tile's edges so a burnt row of hay stays one row of ash.
@@ -311,8 +311,8 @@ class AltarArt {
     }
   }
 
-  // What is left of the sheep in the other pen: a skeleton on its side, head to the right — skull
-  // with an empty socket and a dropped jaw, a spine, the ribs standing open, the legs out straight —
+  // What is left of the sheep in the other pen: a skeleton on its side, head to the right, skull
+  // with an empty socket and a dropped jaw, a spine, the ribs standing open, the legs out straight,
   // lying in a dried pool with a few tufts of dirty wool, in world pixels with a dark rim round every
   // bone. It used to be a beige block with legs that read as a sheep asleep (playtest, 25 Sep 2026:
   // "show more clearly that she is dead").

@@ -513,6 +513,60 @@
         "8836"
       ],
       "port": 8836
+    },
+    {
+      "name": "goat-out-stats",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8841"
+      ],
+      "port": 8841
+    },
+    {
+      "name": "goat-out-deathsound",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8842"
+      ],
+      "port": 8842
+    },
+    {
+      "name": "goat-out-audit",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8840"
+      ],
+      "port": 8840
+    },
+    {
+      "name": "goat-out-polish4",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8843"
+      ],
+      "port": 8843
+    },
+    {
+      "name": "goat-out-build",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8855"
+      ],
+      "port": 8855
+    },
+    {
+      "name": "goat-out-absorb",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8851"
+      ],
+      "port": 8851
     }
   ]
 }

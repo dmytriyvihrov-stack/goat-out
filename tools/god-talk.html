@@ -168,7 +168,7 @@ document.getElementById('save').onclick = async () => {
   status('saving…');
   try {
     const r = await (await fetch('/talk-edit', { method: 'POST', body: JSON.stringify(out()) })).json();
-    status(r.ok ? 'saved to js/heaven.js — reload the game to hear it' : 'not saved: ' + r.error);
+    status(r.ok ? 'saved to js/heaven.js, reload the game to hear it' : 'not saved: ' + r.error);
   } catch (e) { status('not saved (is tools/serve.js running?): ' + e.message); }
 };
 document.getElementById('copy').onclick = async () => {

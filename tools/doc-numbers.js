@@ -1,4 +1,4 @@
-// The docs' numbers, held against the numbers the code pays — the way `balance.js` holds the
+// The docs' numbers, held against the numbers the code pays, the way `balance.js` holds the
 // generator to its promises. A document read by a player or by the next session that says "six
 // levels" or "three blows" while the build deals eight and seven teaches the wrong game; on 24 Sep
 // 2026 a one-off scan found 28 such sentences, some wrong for eight releases.
@@ -74,8 +74,8 @@ const CLAIMS = [
   ['CONCEPT.md', 'iron door blows', `an iron one \\(from THE YARD on\\) takes\\s+${N}`, () => T.prop.door.ironHits],
   ['CONCEPT.md', 'pen blows', `The pen\\*\\* in the first room takes ${N} blows`, () => T.prop.cage.hits],
   ['CONCEPT.md', 'pen blows (first room)', `${N} blows anywhere on your`, () => T.prop.cage.hits],
-  ['CONCEPT.md', 'dead cage blows', `cage with a sheep in it that stopped waiting a while ago — ${N} blows`, () => T.prop.deadCage.hits],
-  ['CONCEPT.md', 'souls a run', `— ${N} across a run`, () => LEVELS.reduce((a, d, i) => a + (d.souls || 0) - (T.shop.levels.includes(i) ? 1 : 0), 0)],
+  ['CONCEPT.md', 'dead cage blows', `cage with a sheep in it that stopped waiting a while ago, ${N} blows`, () => T.prop.deadCage.hits],
+  ['CONCEPT.md', 'souls a run', `, ${N} across a run`, () => LEVELS.reduce((a, d, i) => a + (d.souls || 0) - (T.shop.levels.includes(i) ? 1 : 0), 0)],
   ['CONCEPT.md', 'boons', `against ${N} boons`, () => g('BOONS').length],
   ['CONCEPT.md', 'cards a build holds', `a build that holds ${N}`, slots],
   ['CONCEPT.md', 'kill streak window', `Kills inside ${N} s of each other stack`, () => T.juice.comboWindow || T.combo && T.combo.window, 0.05],
@@ -89,12 +89,12 @@ const text = {};
 for (const [file, what, pat, truth, tol = 0] of CLAIMS) {
   const src = text[file] || (text[file] = fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n'));
   const re = new RegExp(pat, 'im'), m = src.match(re);
-  if (!m) { gone++; console.log(`GONE   ${file}: ${what} — the sentence it reads is not there any more`); continue; }
+  if (!m) { gone++; console.log(`GONE   ${file}: ${what}, the sentence it reads is not there any more`); continue; }
   const said = m.slice(1).find((x) => x !== undefined), want = truth();
   if (said === undefined) { ok++; continue; }   // an alternative with no number in it matched
-  if (want === undefined || want === null || Number.isNaN(want)) { gone++; console.log(`GONE   ${file}: ${what} — the code no longer has the value it names`); continue; }
+  if (want === undefined || want === null || Number.isNaN(want)) { gone++; console.log(`GONE   ${file}: ${what}, the code no longer has the value it names`); continue; }
   const n = num(said), line = src.slice(0, m.index).split('\n').length;
-  if (Math.abs(n - want) > Math.abs(want) * tol + 1e-9) { wrong++; console.log(`WRONG  ${file}:${line}: ${what} — says ${said}, the code pays ${+(+want).toFixed(3)}`); }
+  if (Math.abs(n - want) > Math.abs(want) * tol + 1e-9) { wrong++; console.log(`WRONG  ${file}:${line}: ${what}, says ${said}, the code pays ${+(+want).toFixed(3)}`); }
   else ok++;
 }
 console.log(`${ok} right, ${wrong} wrong, ${gone} gone, of ${CLAIMS.length}`);

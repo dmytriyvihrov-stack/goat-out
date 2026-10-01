@@ -1,7 +1,7 @@
 // The pig: a hand-placed pixel unit in the recipe of `HORSE_PIXELS`, an escort the cult kept fat for
-// the knife and never quite fed. A pink farm pig gone grubby: a round barrel of a body on short legs
-// with dark trotters, floppy ears hanging forward over small dark eyes, a flat snout with two
-// nostrils, a tail in a tight curl, mud up the legs and under the belly. Every round part is its own
+// the knife and never quite fed. Since 1 Oct 2026 ("make them much cuter") a sweet one: a big round
+// head on a short bean of a body, perky pink-lined ears, big glinting eyes over pink cheeks, a stub
+// of a snout, a tail in a tight curl, a little mud on the trotters only. Every round part is its own
 // lit volume (a ball or a tapered capsule) lit from the upper left like the atlas lights every unit,
 // and the legs are two short bones solved to where each trotter has to be, so a frame is a list of
 // trotter spots and not a drawing. Five views are drawn (front, front diagonal, side, back diagonal,
@@ -12,21 +12,26 @@
 const PIG_PIXELS = (() => {
   const { Grid } = typeof PROP_PIXELS !== 'undefined' ? PROP_PIXELS : require('./prop-pixels.js');
   const P = {
-    ol: '#1f1315',
-    k0: '#5c3033', k1: '#8a4d4a', k2: '#b46d62', k3: '#d08c7a', k4: '#e9ae97',
-    s0: '#a8645c', s1: '#dc9c89', s2: '#f2c2ad',
-    u0: '#3b2b1e', u1: '#5a432b', u2: '#7a5e3e',
-    f0: '#241a18', f1: '#382a25', f2: '#56443b',
-    n: '#3a1a1e', e: '#0e0808',
+    ol: '#2a1420',
+    // 1 Oct 2026, "much cuter": a clean candy pink, not the grubby farm pink it was.
+    k0: '#8c3f58', k1: '#c4687f', k2: '#ec93a3', k3: '#fbb5bd', k4: '#ffd6d6',
+    s0: '#cf6f86', s1: '#f6a2b1', s2: '#ffcad1',
+    u0: '#4a3424', u1: '#6a4c34', u2: '#8a6a4a',
+    f0: '#3a2228', f1: '#5a3640', f2: '#7a5058',
+    n: '#7a2a40', e: '#1a0c14', w: '#ffffff', bl: '#ff7f9c',
   };
   const W = 36, H = 26, FOOT = 24, GROUND = FOOT - 1;   // the grid, the row his soles stand on, their last row
   const HIDE = [P.k0, P.k1, P.k2, P.k3, P.k4], DIM = [P.k0, P.k0, P.k1, P.k2, P.k2];
   // The ears a step darker than the hide round them, so a flap reads against the face it hangs over.
-  const EAR = [P.k0, P.k0, P.k1, P.k1, P.k3];
+  const EAR = [P.k0, P.k1, P.k2, P.k3, P.k3];
   // A flap seen face on is thin: fewer steps across it, or the light stripes it.
   const FLAP = [P.k1, P.k1, P.k2, P.k3, P.k3];
   const SNOUT = [P.k1, P.s0, P.s1, P.s2, P.s2], HOOF = [P.f0, P.f0, P.f1, P.f2, P.f2];
 
+  // A big round eye, two by two with a glint where the light is, and a blush under it: what makes a
+  // pig at this size read as sweet rather than as pork.
+  const eye = (g, x, y) => { x = Math.round(x); y = Math.round(y); g.rect(x, y, 2, 2, P.e); g.set(x, y, P.w); };
+  const blush = (g, x, y, n) => g.hl(Math.round(x), Math.round(y), n || 2, P.bl, true);
   // The horse's light: a lit cap toward the upper left, a dark rim away from it.
   const lit = (T, dx, dy, n) => {
     const l = -(dx * 0.55 + dy * 0.83);
@@ -76,7 +81,7 @@ const PIG_PIXELS = (() => {
   function mud(g, from) {
     for (let y = from; y < H; y++) for (let x = 0; x < W; x++) {
       const v = g.get(x, y); if (!v || !HIDE.includes(v) || (g.keep && g.keep[y * W + x])) continue;
-      const h = hash(x, y), p = 8 + (y - from) * 11;
+      const h = hash(x, y), p = 4 + (y - from) * 7;
       if (h < p) g.set(x, y, h < p * 0.35 ? P.u1 : v === P.k0 ? P.u0 : P.u2);
     }
     return g;
@@ -108,31 +113,33 @@ const PIG_PIXELS = (() => {
   // snout and jaw a pixel. The ears flop forward off the crown over the eyes.
   function head(g, hx, hy, o) {
     const dn = o.down ? 1 : 0, ch = o.chew ? 1 : 0;
-    if (o.face !== -1) cap(g, hx + 2.2, hy - 2.8, hx + 0.6, hy - 4.2 + dn, 1.4, 0.8, EAR);   // the far ear, a flop behind the near one
-    ball(g, hx + 1.4, hy + 1.8 - dn * 0.4, 3.4, 2.8, HIDE);           // the jowl
-    ball(g, hx, hy, 3.9, 3.6, HIDE);                                  // the crown
+    // the far ear: up and a little back, behind the crown
+    if (o.face !== -1) cap(g, hx + 2.2, hy - 3, hx + 2 - dn, hy - 6.2 + dn * 2, 1.7, 1, EAR);
+    ball(g, hx + 1.6, hy + 2 - dn * 0.4, 4, 3.2, HIDE);              // the jowl, round
+    ball(g, hx, hy, 4.8, 4.4, HIDE);                                  // the crown: big, the head is most of a sweet thing
     if (o.face !== -1) {
-      // the snout: a short thick cylinder, then the flat disc at its end with the nostrils in it
-      const sx = dn ? hx - 2 : hx - 3.2, sy = dn ? hy + 3 : hy + 1.4;
-      const ex = dn ? sx - 0.6 - ch : sx - 2.2 - ch, ey = dn ? sy + 2 : sy + 0.4;
-      cap(g, sx, sy, ex, ey, 2.3, 2, HIDE);
+      // the snout: a stub of a cylinder and its round disc
+      const sx = dn ? hx - 2 : hx - 4, sy = dn ? hy + 3.6 : hy + 1.6;
+      const ex = dn ? sx - 0.4 - ch : sx - 1.2 - ch, ey = dn ? sy + 2 : sy + 0.2;
+      cap(g, sx, sy, ex, ey, 2.2, 2.1, HIDE);
       const rx = Math.round(ex), ry = Math.round(ey);
       if (o.face === 1) {                                             // the disc turned toward the camera
-        ball(g, ex - 0.6, ey + 0.4, 1.8, 2.1, SNOUT);
+        ball(g, ex - 0.6, ey + 0.4, 2, 2.2, SNOUT);
         if (dn) { g.set(rx - 2, ry + 1, P.n); g.set(rx, ry + 1, P.n); } else { g.set(rx - 1, ry - 1, P.n); g.set(rx - 1, ry + 1, P.n); }
       } else if (dn) {                                                // the disc on the floor, seen edge on
         g.hl(rx - 2, ry + 1, 4, P.s1, true); g.hl(rx - 2, ry + 2, 4, P.s2, true); g.set(rx - 2, ry + 1, P.n);
       } else {                                                        // the disc end on, a pale rim
         g.vl(rx - 2, ry - 1, 3, P.s2, true); g.vl(rx - 1, ry - 1, 3, P.s1, true); g.set(rx - 2, ry, P.n);
       }
-      if (!dn) g.hl(Math.round(sx) - 1, Math.round(sy) + 2 + ch, 3, P.k0, true);   // the mouth under it
-      g.set(hx - 1.2, hy - 0.8 + dn, P.e);                            // the eye
-      if (o.face === 1) g.set(hx + 1.4, hy - 1 + dn, P.e);
+      if (!dn) { const mx = Math.round(sx), my = Math.round(sy) + 2 + ch; g.set(mx + 1, my, P.k0); g.set(mx + 2, my + 1, P.k0); g.set(mx + 3, my, P.k0); }   // a small smile
+      eye(g, hx - 2.4, hy - 1.6 + dn);
+      blush(g, hx - 1.2, hy + 1.2 + dn);
+      if (o.face === 1) { eye(g, hx + 1.2, hy - 1.8 + dn); blush(g, hx + 2.4, hy + 1 + dn, 1); }
     }
-    // the near ear: a flap off the crown hanging forward and down, over the eye's brow
-    const ax = hx + 1.2, ay = hy - 3, bx = hx - 3 - ch * 0.5, by = hy - 0.6 + dn * 2;
-    cap(g, ax, ay, bx, by, 1.9, 0.8, EAR);
-    if (o.face === -1) cap(g, hx + 3, hy - 2.6, hx + 5.4, hy - 1.2, 1.6, 0.8, EAR);   // from behind both ears show
+    // the near ear: perky, up off the crown and tipping forward, its inside pink
+    cap(g, hx + 0.4, hy - 3.2, hx - 2.2 - ch * 0.5, hy - 6 + dn * 2.4, 2, 1.1, EAR);   // round, its tip folding forward: a pig's, not a cat's
+    g.set(hx - 0.6, hy - 4.4 + dn * 1.6, P.s1);
+    if (o.face === -1) cap(g, hx + 3, hy - 3, hx + 4.4, hy - 7, 1.6, 0.6, EAR);   // from behind both ears show
   }
 
   // Trotter spots per frame, as [ahead of the leg's top (negative is toward the head), lift off the
@@ -168,22 +175,22 @@ const PIG_PIXELS = (() => {
       leg(g, X(lx) + ox, Yb(ly, lx) + oy, X(gx) + ox, Yg(GROUND - foot[1], gx) + oy, 3.4, 3.8, hind ? 1 : -1,
         { r0: hind ? 2.3 : 2, far: isFar });
     };
-    const tail = () => curl(g, Math.round(X(28.6)), Math.round(Yb(8.6, 28.6)), TAIL);
+    const tail = () => curl(g, Math.round(X(27.4)), Math.round(Yb(9.2, 27.4)), TAIL);
     const face = turn === -1 ? -1 : turn === 1 ? 1 : 0;
-    const hx = X(turn === -1 ? 7.5 : 6.5);
-    const top = () => track(g, true, () => head(g, hx, eat ? Yb(15.4, 7) : Yb(11.2, 7), { down: eat, chew, face }));
+    const hx = X(turn === -1 ? 9 : 8.4);
+    const top = () => track(g, true, () => head(g, hx, eat ? Yb(15.2, 8) : Yb(10.4, 8), { down: eat, chew, face }));
     if (turn === -1) top();
-    limb(12, 16, f.ff, false, true);
-    limb(23.5, 16, f.hf, true, true);
+    limb(13.6, 17, f.ff, false, true);
+    limb(22.6, 17, f.hf, true, true);
     const rs = turn === -1 ? 1.12 : 1, cs = turn === 1 ? 1.1 : 1;
-    ball(g, X(18), Yb(12.4, 18), 10.2 * sx, 5.6, HIDE);            // the barrel
-    ball(g, X(24), Yb(12, 24), 5.4 * rs, 5.8, HIDE);               // the ham
-    ball(g, X(12.2), Yb(12.4, 12.2), 5 * cs, 5.2, HIDE);           // the shoulder
+    ball(g, X(18.4), Yb(13.2, 18.4), 8.4 * sx, 6.2, HIDE);         // the barrel: short and round, a bean on legs
+    ball(g, X(23.4), Yb(13, 23.4), 5.2 * rs, 6, HIDE);             // the ham
+    ball(g, X(13.4), Yb(13.4, 13.4), 5 * cs, 5.4, HIDE);           // the shoulder
     if (turn !== -1) tail();
     if (turn !== -1) top();
-    track(g, false, () => { limb(12, 16, f.fn, false, false); limb(23.5, 16, f.hn, true, false); });
+    track(g, false, () => { limb(13.6, 17, f.fn, false, false); limb(22.6, 17, f.hn, true, false); });
     if (turn === -1) tail();
-    return mud(g, 17);
+    return mud(g, 20);
   }
 
   // A leg seen end on (front and back): straight down; lifted, it is shorter and the trotter turns
@@ -206,14 +213,18 @@ const PIG_PIXELS = (() => {
     for (const k of [-1, 1]) post(g, cx + k * 3.2, 18 + by, s === k ? 2 : 0, { r0: 2 });   // from under the chest, or the bones stripe the belly
     const hy = by + (eat ? 5 : 0);
     track(g, true, () => {
-      ball(g, cx, 14.2 + hy, 5.4, 2.8, HIDE);                        // the jowls
-      ball(g, cx, 11.6 + hy, 4.9, 4.2, HIDE);                        // the face
-      for (const k of [-1, 1]) flap(g, cx + k * 3.6, 8.2 + hy, cx + k * 7, (eat ? 12 : 11) + hy, 1.5, 1);   // the ears, out past the cheeks
-      ball(g, cx + ch * 0.6, 14.8 + hy, 2.5, 1.9, SNOUT);             // the snout's disc
-      g.set(cx - 2 + ch, 14.8 + hy, P.n); g.set(cx + 1 + ch, 14.8 + hy, P.n);
-      g.set(cx - 3, 11.6 + hy, P.e); g.set(cx + 2, 11.6 + hy, P.e);   // the eyes, clear of the ears
+      ball(g, cx, 14 + hy, 6, 3.2, HIDE);                            // the jowls
+      ball(g, cx, 11 + hy, 5.8, 5, HIDE);                            // the face, big and round
+      for (const k of [-1, 1]) {                                     // the ears, up and out, pink inside
+        cap(g, cx + k * 3.4, 7.2 + hy, cx + k * 6.6, (eat ? 7 : 5) + hy, 2, 1.1, EAR);
+        g.set(cx + k * 4.8, 6.4 + hy, P.s1);
+      }
+      ball(g, cx + ch * 0.6, 14.4 + hy, 2.8, 2, SNOUT);               // the snout's disc
+      g.set(cx - 2 + ch, 14.4 + hy, P.n); g.set(cx + 1 + ch, 14.4 + hy, P.n);
+      eye(g, cx - 4, 10 + hy); eye(g, cx + 2, 10 + hy);               // the eyes, big, wide set
+      blush(g, cx - 5.4, 12.6 + hy); blush(g, cx + 3.6, 12.6 + hy);
     });
-    return mud(g, 19);
+    return mud(g, 21);
   }
 
   // From behind: the round rump and the tail curled on top of it, the hinds planted either side, the
@@ -231,7 +242,7 @@ const PIG_PIXELS = (() => {
     g.vl(cx, 14 + by, 5, P.k1, true);                                 // the cleft between them
     for (const k of [-1, 1]) post(g, cx + k * 4.2, 16.5 + by, s === k ? 2 : 0, { r0: 2.2 });
     curl(g, cx + ch, Math.round(12 + by), BACK_TAIL, ch === 1);   // right of the middle, on the half in shade, where a pale curl shows
-    return mud(g, 18);
+    return mud(g, 21);
   }
 
   const finish = (g) => g.outline(P.ol).clean(P.ol);
@@ -264,7 +275,7 @@ const PIG_PIXELS = (() => {
 if (typeof module !== 'undefined') module.exports = PIG_PIXELS;
 
 // In the page: each sprite baked once to a canvas, `UP` px a texel, and drawn smoothed at `TX` world
-// px a texel with his trotters on the origin — the ctx is already at his foot point and counter-squashed.
+// px a texel with his trotters on the origin, the ctx is already at his foot point and counter-squashed.
 if (typeof document !== 'undefined') {
   const UP = 4, baked = new Map();
   PIG_PIXELS.canvas = (sp) => {

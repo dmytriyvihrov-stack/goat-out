@@ -10,8 +10,8 @@
 // `js/rules.js`, where the dev drawer's RULES page reads the same list: every kind met alone, the run
 // opening on one man, the caps, at least half of a level's ordinary rooms on its canon, the mix never
 // ahead of the run, set pieces teaching nothing, milk on a rhythm, and the rest. This runs that list
-// over many seeds of every level, adds the two things a single level cannot know about itself —
-// that threat rises on average, and that every level is harder than the one before — and exits
+// over many seeds of every level, adds the two things a single level cannot know about itself,
+// that threat rises on average, and that every level is harder than the one before, and exits
 // non-zero when anything is broken, so it can run as a test.
 const fs = require('fs');
 const vm = require('vm');
@@ -67,7 +67,7 @@ function study(def) {
     }
     for (const r of checkRules(L)) {
       if (r.ok !== false || r.rule.id === 'rises' || r.rule.id === 'ground') continue;
-      const msg = `${def.name}: ${r.rule.id} — ${r.why}`;
+      const msg = `${def.name}: ${r.rule.id}, ${r.why}`;
       if (!seen.has(msg)) { seen.add(msg); fail(msg); }
     }
     const o = rooms.filter((r) => ORDINARY.has(r.role)), c = o.filter((r) => r.role === 'canon').length;
@@ -115,10 +115,10 @@ function study(def) {
     const intro = (def.encounters.introduce || []).map(([k, at]) => `${k}@${at}`).join(' ');
     console.log(`  introduces: ${intro || '(nothing new)'}   pool: ${def.encounters.kinds.join(', ')}`);
     if (def.canon) {
-      console.log(`  canon: ${def.canon.name} — ${(canonSum / SEEDS).toFixed(1)} of ${(ordSum / SEEDS).toFixed(1)} ordinary rooms, worst seed ${Math.round(canonMin * 100)}% (needs ${Math.round(CANON.share * 100)}%)`);
+      console.log(`  canon: ${def.canon.name}, ${(canonSum / SEEDS).toFixed(1)} of ${(ordSum / SEEDS).toFixed(1)} ordinary rooms, worst seed ${Math.round(canonMin * 100)}% (needs ${Math.round(CANON.share * 100)}%)`);
     }
     for (const c of avg) {
-      if (!c.men && (c.role === 'pen' || c.role === 'calm' || c.role === 'rest')) { console.log(`  ${String(c.index).padStart(2)}  —        ${c.role.toUpperCase().padEnd(7)} ${c.tpl}`); continue; }
+      if (!c.men && (c.role === 'pen' || c.role === 'calm' || c.role === 'rest')) { console.log(`  ${String(c.index).padStart(2)} ,        ${c.role.toUpperCase().padEnd(7)} ${c.tpl}`); continue; }
       const bar = '#'.repeat(Math.round(c.threat));
       console.log(`  ${String(c.index).padStart(2)}  ${c.threat.toFixed(1).padStart(5)}  ${bar.padEnd(20)} ${c.men.toFixed(1)} men  gr ${c.ground.toFixed(2)}  ${c.role.toUpperCase().padEnd(7)} ${c.tpl.padEnd(10)} ${c.sample}`);
     }
@@ -183,12 +183,12 @@ for (let li = TUNING.shroom.from + 1; li < LEVELS.length; li++) {
   let total = 0, men = 0;
   for (let s = 1; s <= SEEDS; s++) {
     let L;
-    try { L = generateLevel(def, s * 7717); } catch (e) { fail(`THE TRIP (for ${LEVELS[li].name}): does not generate — ${e.message}`); break; }
+    try { L = generateLevel(def, s * 7717); } catch (e) { fail(`THE TRIP (for ${LEVELS[li].name}): does not generate, ${e.message}`); break; }
     const rooms = roomsOf(L);
     total += rooms.reduce((a, r) => a + r.threat, 0); men += L.spawns.length;
     for (const r of checkRules(L)) {
       if (r.ok !== false || r.rule.id === 'rises' || r.rule.id === 'ground') continue;
-      const msg = `THE TRIP (for ${LEVELS[li].name}): ${r.rule.id} — ${r.why}`;
+      const msg = `THE TRIP (for ${LEVELS[li].name}): ${r.rule.id}, ${r.why}`;
       if (!seen.has(msg)) { seen.add(msg); fail(msg); }
     }
   }
@@ -198,8 +198,8 @@ for (let li = TUNING.shroom.from + 1; li < LEVELS.length; li++) {
 // ---- THE DARK ----
 // Not in LEVELS either: THE FORK's other flight climbs to it, and it is played in the run in place
 // of the floor after the fork. It is a level of its own, so it gets a level's report and a level's
-// rules; and it is held beside the lit floor it stands in for — under it, since a room you cannot
-// see all of is a harder room, and no lower than `fork.band` of it — and above the floor before it.
+// rules; and it is held beside the lit floor it stands in for, under it, since a room you cannot
+// see all of is a harder room, and no lower than `fork.band` of it, and above the floor before it.
 const darkDef = grab('darkLevel')(), FK = TUNING.dark.fork;
 {
   const d = study(darkDef);

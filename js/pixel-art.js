@@ -1,10 +1,10 @@
-// Pixel 2.5 — the art of the game (output/pixel-mid-2026-09-23, packed by tools/pack-pixel.ps1 into
+// Pixel 2.5, the art of the game (output/pixel-mid-2026-09-23, packed by tools/pack-pixel.ps1 into
 // js/pixel-assets.js). Every unit is drawn off this atlas; `PaintedArt` is only the frame round it
 // (shadows, leans, the collar, the wounds) plus the handful of props no pixel sprite exists for yet.
 // Nothing in the simulation reads any of this.
 //
 // A frame is [x, y, w, h, footX, footY] in atlas px, and a unit's whole `sourceExtent` (its largest
-// frame) is PIXEL_ASSETS.target px — so `EXTENT` below is simply how many world px that is. The foot
+// frame) is PIXEL_ASSETS.target px, so `EXTENT` below is simply how many world px that is. The foot
 // point is drawn at the origin, which is where every caller has already put the shadow.
 const PIXEL_EXTENT = {
   goat: 34, clubman: 36, brute: 38, mage: 38, hound: 40, hunter: 38, butcher: 48, wraith: 38,
@@ -64,8 +64,8 @@ const PIXEL_FACE_ART = {
 
 // A second look, held beside the first so the two can be compared in the running game (the ART tab,
 // or `#aspacked` for all of it off): nothing of the packed art or the tuned palettes is replaced. `on` is the art pass as
-// a whole — the seer's staff in witchfire's own colours, windups in amber cells, the Yard's floor and
-// the cave's rock a step darker, the milk grass gold at the tips — and `hunter` / `clubman` pick a
+// a whole, the seer's staff in witchfire's own colours, windups in amber cells, the Yard's floor and
+// the cave's rock a step darker, the milk grass gold at the tips, and `hunter` / `clubman` pick a
 // study off `PIXEL_STUDY`, 0 being the art as packed. All of it is the game's look since 25 Sep 2026
 // (the user saw each before/after and took it): the pass on, the hunter in BROWN + BAND (his own
 // brown, the cult's red only on the band, the quill and the sign), the clubman SLIM, the floors and
@@ -109,7 +109,7 @@ const PIXEL_STUDY = {
     { name: 'VALUE', rule: 'value contrast: a pale duster on dark floors under a black hat, and too near the goat\'s own cream', parts: { hat: RAMP.pitch, coat: RAMP.pale } },
     { name: 'ONE FAMILY', rule: 'monochrome faction: the clubman\'s red taken down to crimson under a black hat, every cultist red and told apart by shape', parts: { hat: RAMP.pitch, coat: RAMP.crimson } },
     { name: 'STEEL + RED', rule: 'both at once: a steel-blue coat light enough to stand off the dark floors by value and far enough from brown to stand off them by hue, under the cult\'s red hat', parts: { hat: RAMP.cult, coat: RAMP.steel } },
-    { name: 'BROWN + BAND', rule: 'the hunter\'s own brown on clean hue-shifted steps, and the cult\'s red kept small: a band round the hat, a quill in it, a sign between the shoulders — a man who means not to be seen', parts: { hat: 'own', coat: 'own' }, marks: ['hatband', 'feather', 'sigil'] },
+    { name: 'BROWN + BAND', rule: 'the hunter\'s own brown on clean hue-shifted steps, and the cult\'s red kept small: a band round the hat, a quill in it, a sign between the shoulders, a man who means not to be seen', parts: { hat: 'own', coat: 'own' }, marks: ['hatband', 'feather', 'sigil'] },
   ],
   clubman: [
     { name: 'AS PACKED', rule: 'the packed red robe, as wide as the atlas drew him' },
@@ -166,8 +166,8 @@ const STUDY = (() => {
       mine.forEach((q, i) => { const c = ramp[bin[i]]; A[q[0]] = c[0]; A[q[0] + 1] = c[1]; A[q[0] + 2] = c[2]; });
     }
   }
-  // `'own'` in place of a ramp: the part's own colours, cut to five steps — each step the mean of the
-  // packed pixels that fall in it — and then hue-shifted, the shadow a little toward red-violet and
+  // `'own'` in place of a ramp: the part's own colours, cut to five steps, each step the mean of the
+  // packed pixels that fall in it, and then hue-shifted, the shadow a little toward red-violet and
   // the light a little toward yellow. The packed colour stays; the mush of in-between shades goes.
   const SHIFT = [[-7, 1.1], [-3, 1.05], [0, 1], [3, 0.98], [5, 0.95]];   // [hue degrees, saturation x] per step
   function ownRamp(A, mine, bin) {
@@ -183,8 +183,8 @@ const STUDY = (() => {
     const [r, g, b] = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][k];
     return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
   };
-  // Takes `share` of a frame's silhouette width out as whole columns — the ones whose two neighbours
-  // are most alike, so the seam cannot be seen — none within two of another, and only from the middle
+  // Takes `share` of a frame's silhouette width out as whole columns, the ones whose two neighbours
+  // are most alike, so the seam cannot be seen, none within two of another, and only from the middle
   // of the body, the edges being where the outline is. Every pixel left is a packed pixel, unscaled;
   // the column under his feet stays where it was.
   function slim(A, W, f, x0, y0, share) {
@@ -227,7 +227,7 @@ const STUDY = (() => {
       let hy0 = h, hy1 = 0; const hat = [];
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (part(i, j) === 'hat') { hat.push([i, j]); hy0 = Math.min(hy0, j); hy1 = Math.max(hy1, j); }
       // The band follows the packed ring column by column. The ring is a valley: a dark run with the
-      // light crown above it and the light brim below, both still hat — the brim's own dark edge has
+      // light crown above it and the light brim below, both still hat, the brim's own dark edge has
       // nothing of the hat under it and is passed over. In each column the darkest such spot (averaged
       // a texel round) is taken, with the whole dark run round it, and the line is evened out over
       // five columns so it runs as one ribbon.
@@ -299,7 +299,7 @@ const PIXEL_ART = {
   },
   // The studies (`ART_PASS`) baked now, one a tick, while the title is up: baked the first time a unit
   // was drawn, they froze the frame the first clubman, mage or rifle came into view (0.06, 0.06 and
-  // 0.37 s, measured 26 Sep 2026) — the rifle's in the middle of THE ROAD.
+  // 0.37 s, measured 26 Sep 2026), the rifle's in the middle of THE ROAD.
   warm() {
     const ids = ['clubman', 'mage', 'hunter'];
     const step = () => { const id = ids.shift(); if (!id) return; try { this.studyOf(id); } catch (err) { /* baked when drawn */ } setTimeout(step, 30); };
@@ -355,7 +355,7 @@ const PIXEL_ART = {
     return true;
   },
   // Which packed facing a heading draws, and whether mirrored. The goat's up-right view was packed
-  // with both horns swept forward over his nose — every other view sweeps them back — which caught
+  // with both horns swept forward over his nose, every other view sweeps them back, which caught
   // the eye on every run toward the top right (playtest, 25 Sep 2026). His up-left view mirrored is
   // that view drawn right: the back views carry no mark on one side, and `PIXEL_FACE` / `PIXEL_NECK`
   // were measured mirror-true between the two, so nothing hung on him moves.
@@ -367,7 +367,7 @@ const PIXEL_ART = {
   // The horns of whichever goat frame `draw` just put down, found off the atlas rather than
   // measured by hand: dark warm pixels in the top of the frame, kept only in blobs of `minBlob` or
   // more (the outline round his nose passes the colour test and fails the size one). Each blob is
-  // one horn, with its own base — the centroid of its lowest rows, where it grows out of the head —
+  // one horn, with its own base, the centroid of its lowest rows, where it grows out of the head,
   // so a horn is scaled from its root and not from the middle of the frame. Cached per frame.
   hornsOf(f) {
     this.hornCache = this.hornCache || new Map();
@@ -423,8 +423,8 @@ const PIXEL_ART = {
   },
   // A stag's antler grown out of one horn blob, on the art's own pixel grid (`antler.cell` atlas
   // px) so it reads as drawn with the goat and not pasted over him. The beam leaves the root along
-  // the horn and bends outward — away from the other horn, or back over his body when both horns
-  // are one behind the other on a side view — and each tine turns off it toward the sky. Shaded off
+  // the horn and bends outward, away from the other horn, or back over his body when both horns
+  // are one behind the other on a side view, and each tine turns off it toward the sky. Shaded off
   // `ramp` (a look's ramp if he has one: lava antlers, venom antlers), dark root to pale tip, lit
   // on its upper edge and outlined like the sprite. Cached per horn per ramp; `pad` is how far past
   // the frame the canvas reaches, since an antler is bigger than the frame's own headroom.
@@ -521,7 +521,7 @@ const PIXEL_ART = {
   // His face as the scream souls and THE ORACLE have made it, over the frame just drawn, in world px
   // off the foot (`PIXEL_FACE`). Drawn by hand, pixel by pixel (`PIXEL_FACE_ART`), on the sprite's
   // own grid: at this size a shape computed from an ellipse comes out as noise. Only what stays on
-  // him is here; what leaves him — the drip, the steam, the flame — is `PaintedArt.goatFx`.
+  // him is here; what leaves him, the drip, the steam, the flame, is `PaintedArt.goatFx`.
   face(ctx, angle, t, mods, g) {
     const d = (Math.round(angle / (Math.PI / 4)) % 8 + 14) % 8, P = PIXEL_FACE[d], F = TUNING.goat.face, A = PIXEL_FACE_ART;
     const view = d === 0 ? 'front' : d === 2 || d === 6 ? 'side' : 'diag', flip = d === 1 || d === 2;
@@ -602,8 +602,8 @@ const PIXEL_FLOOR_LIFT = 1.25;
 // THE FLOORS AS SHEETS (25 Sep 2026, `ART_PASS.floors`, on by default). A swatch stamped once a tile
 // repeated the same stones in every square, and its lines stopped dead at the square's edge (or, laid
 // mirrored, made a kaleidoscope): "the pattern is strange". Like the wall's cap (`wallCap`), a
-// floor is now one sheet `N` tiles square, seamless at its borders, laid in world space — each tile
-// shows its part of it — painted in the swatch's own colours (its mortar, its stone, its light) and
+// floor is now one sheet `N` tiles square, seamless at its borders, laid in world space, each tile
+// shows its part of it, painted in the swatch's own colours (its mortar, its stone, its light) and
 // in the kind of floor that swatch was: `sheet` on each canon in `PIXEL_ROOMS`. Render only.
 const FLOOR_SHEET = (() => {
   const N = 6, T = 64, S = N * T;
@@ -796,7 +796,7 @@ const PIXEL_ENV = {
   },
   get ready() { return !!this.image && this.image.naturalWidth > 0; },
   // `w` world px wide, height off the sprite's own proportions; (x, y) is where `ay` of its height
-  // lands — 1 is its foot, 0.5 its middle. Smoothing on: the atlas is two to three texels a screen
+  // lands, 1 is its foot, 0.5 its middle. Smoothing on: the atlas is two to three texels a screen
   // pixel here, and point-sampled at that ratio the outline crawls every time the camera moves.
   draw(ctx, name, x, y, w, ay = 1) {
     const f = PIXEL_ENV_ASSETS.items[PIXEL_ENV_ID[name] || name]; if (!f) return 0;

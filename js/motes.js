@@ -1,6 +1,6 @@
 // THE WHITE SOULS, and the goat's own (1 Oct 2026, playtest).
 //
-// "When an ordinary man dies a soul rises over him — a small white dot — and when you leave the room
+// "When an ordinary man dies a soul rises over him, a small white dot, and when you leave the room
 // those souls fly after you on their own, the way Enter the Gungeon's do." They are heaven's pay
 // (`Heaven.earn`), seen: nothing is counted until one reaches him, and one still hanging in the room he
 // died in is lost with him. None before the god has given him the gift of gathering them
@@ -179,7 +179,9 @@ const Motes = {
     g.vx = g.vy = 0; g.state = 'ko';
     if (V.t < S.time) return;
     game.revive = null;
-    g.hp = Math.min(g.maxHp, S.hearts); g.state = 'idle'; g.timer = 0; g.invuln = S.invuln; g.dazed = 0;
+    // the mirror's rank says how many hearts, and its card quotes it
+    g.hp = Math.min(g.maxHp, game.mods.secondChance || S.hearts);
+    g.state = 'idle'; g.timer = 0; g.invuln = S.invuln; g.dazed = 0;
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted || e.scripted) continue;
       const dx = e.x - g.x, dy = e.y - g.y, d = Math.hypot(dx, dy) || 1;

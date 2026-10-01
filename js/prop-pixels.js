@@ -527,7 +527,7 @@ const PROP_PIXELS = (() => {
     g.rect(1, 4, 22, 18, P.i1);
     g.hl(1, 4, 22, P.i3); g.vl(1, 4, 18, P.i2); g.hl(1, 21, 22, P.i0); g.vl(22, 4, 18, P.i0);
     for (const [x, y] of [[2, 5], [21, 5], [2, 20], [21, 20]]) g.set(x, y, arming ? P.f3 : P.i4);
-    // armed, the slots light up from below: the one colour on the floor that means "not yet — now"
+    // armed, the slots light up from below: the one colour on the floor that means "not yet, now"
     for (const x of slots) { g.rect(x, 7, 3, 12, arming ? '#5c3a08' : P.d0); g.hl(x, 19, 3, P.i2); g.vl(x + 3, 7, 12, P.i2); }
     g.outline();
     if (arming) for (const x of slots) {
@@ -657,7 +657,7 @@ const PROP_PIXELS = (() => {
   function croc() {
     // Side on, tail tip left, snout right; the spit runs through his middle on row 7 (the game turns him
     // about that row). Scutes down the back, a pale belly, four legs hanging as he turns, an open jaw
-    // with teeth, a ridge over the eye — and the char and the grease of a beast that has been on the fire.
+    // with teeth, a ridge over the eye, and the char and the grease of a beast that has been on the fire.
     const W = 72, g = new Grid(W, 20), r = rng(95);
     const H = ['#20240f', '#343a1a', '#4c5628', '#6a7236', '#8a9046'];      // dark scute, back, flank, lit flank, lit edge
     const B = ['#8a6a34', '#b48c48', '#d8b466', '#f0d68a'];                  // roasting belly: char, gold, fat, glint
@@ -887,7 +887,7 @@ const PROP_PIXELS = (() => {
   // ---------------------------------------------------------------- a suit of armour on the wall, 28 x 29
   // Enter the Gungeon's (30 Sep 2026), hung on the far wall's face (30 Sep 2026: "more attached to the
   // wall, less detailed, a decoration that falls apart in a fun way"): two halberds crossed on the
-  // stone, an iron plate between them, and on it the helm, the pauldrons and the breastplate — no
+  // stone, an iron plate between them, and on it the helm, the pauldrons and the breastplate, no
   // stand, no legs, nothing on the floor. Three steps of steel, lit from the left, a red plume the one
   // colour. `empty` is what a body leaves: the halberds and the bare plate. The pieces that fly off
   // (`armorPiece`) are the same drawings, so what lands is plainly what hung there.
@@ -947,7 +947,7 @@ const PROP_PIXELS = (() => {
   }
 
   // ---------------------------------------------------------------- a stag's head, 24 x 23
-  // Mounted on a wooden shield on the far wall (30 Sep 2026: "stuffed trophies — deer heads to begin
+  // Mounted on a wooden shield on the far wall (30 Sep 2026: "stuffed trophies, deer heads to begin
   // with"). The antlers are the point, so they are the palest thing on it. `blood`: its tines have
   // had a man on them. `tips`: the tines alone, drawn over a man pinned there so they come through him.
   function trophy(blood, tips) {
@@ -1030,7 +1030,7 @@ const PROP_PIXELS = (() => {
 if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
 
 // In the page: every sprite is baked once to a canvas at `UP` texels a side and handed to PaintedArt
-// in place of the painted image it asked for, inside the exact rect the painted one filled — its
+// in place of the painted image it asked for, inside the exact rect the painted one filled, its
 // footprint, anchor and collision are untouched, and the painted art stays the fallback. The props
 // that never had a painted image (coop, burrow, stool, bomb, pail, the small sprout, the roast) are
 // drawn here outright at `TX` world px a texel, the grain of the crate and barrel beside them.
@@ -1070,7 +1070,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     ctx.drawImage(canvasOf(name), (X0 - m.e) / m.a, (Y0 - m.f) / m.d, (X1 - X0) / m.a, (Y1 - Y0) / m.d);
     ctx.imageSmoothingEnabled = smooth;
   };
-  // A sprite with its top-left at (x, y), turned `q` quarter turns about its middle — whole turns only,
+  // A sprite with its top-left at (x, y), turned `q` quarter turns about its middle, whole turns only,
   // so its pixels stay square (the barrel's rule). What js/scatter.js throws about is drawn with it.
   PROP_PIXELS.draw = (ctx, name, x, y, k = TX, q = 0) => {
     const g = S[pick(name)]; if (!g) return;
@@ -1164,8 +1164,8 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     const name = p.cut ? 'cleat-cut' : 'cleat', g = S[name], k = TUNING.chandelier.texel;
     put(renderer.ctx, name, p.x - g.w * k / 2, cleatTop(p)); return true;
   };
-  // A suit of armour hung on the far wall, fixed to its face the way the stag's head is — its foot
-  // `armor.foot` px over the face's own foot, so it is the stone it is on, not the floor — rattling
+  // A suit of armour hung on the far wall, fixed to its face the way the stag's head is, its foot
+  // `armor.foot` px over the face's own foot, so it is the stone it is on, not the floor, rattling
   // while a headbutt still rings in it; once a body has brought it down, the halberds and the bare
   // plate (`spilled`). No shadow on the floor: nothing of it stands there. In the prop's own upright frame.
   A.armor = function (renderer, p) {
@@ -1207,7 +1207,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   // The chandelier, in two passes (`Renderer.drawProp` for the floor, `drawChandelierAir` over
   // everyone): on the floor its shadow, which says where it will land and darkens as it comes, or
   // the wreck once it has; in the air the ring `p.z` px up, swaying a little, and its rope to the
-  // cleat — or, cut, a frayed end trailing after it. Both in the prop's own upright frame.
+  // cleat, or, cut, a frayed end trailing after it. Both in the prop's own upright frame.
   A.chandelier = function (renderer, p, pass) {
     const ctx = renderer.ctx, C = TUNING.chandelier;
     if (p.drop === 'down') {
@@ -1451,7 +1451,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     put(this.ctx, 'burrow', p.gap.x - g.w * TX / 2, p.gap.y - g.h * TX / 2);
   };
   // The roast: stones behind, the fire (the game's own pixel flames), stones in front, the forked
-  // sticks, and the crocodile on the spit, which turns — seen side on, the turn squashes him.
+  // sticks, and the crocodile on the spit, which turns, seen side on, the turn squashes him.
   R.drawRoast = function (p) {
     if (!PROP_PIXELS.on) return drawRoast.call(this, p);
     const ctx = this.ctx, t = this.t, B = TUNING.prop.brazier;

@@ -8,8 +8,8 @@
 // Isolation. The run under the tab is never touched. The staged game is `Object.create(game)`: every
 // method and every read falls through to the real game, but every write lands on the stage. Before
 // anything runs, each array the real game holds is replaced on the stage with an empty one, each
-// plain object with a copy, each Set / Map with its own, and everything a step reaches for — level,
-// world, goat, cast, props, fx, scatter, camera, input, the dev drawer, the souls' `mods` — is built
+// plain object with a copy, each Set / Map with its own, and everything a step reaches for, level,
+// world, goat, cast, props, fx, scatter, camera, input, the dev drawer, the souls' `mods`, is built
 // fresh. What would write to this browser (the save, BEST, heaven's sacrifices, the pen) is stubbed
 // out on the stage, and the sound goes to a stand-in that swallows it unless SOUND is switched on.
 // It is drawn by a second `Renderer` on its own offscreen canvas, so no cache of the real one moves.
@@ -30,7 +30,7 @@ const JUICE_STAGE = { W: 15, H: 10 };
 // for the length of the preview's own step and draw, `game` the stage's methods replaced (a noop
 // unless a function is given), `draw` the preview renderer's methods replaced by a noop.
 const JUICE_PLAY = {
-  'Hitstop': { scene: 'buttKill', off: { tune: { 'juice.stop': 0 } }, tip: 'the frame holds on the contact — try ¼×' },
+  'Hitstop': { scene: 'buttKill', off: { tune: { 'juice.stop': 0 } }, tip: 'the frame holds on the contact, try ¼×' },
   'Screen shake': { scene: 'hurt', off: { tune: { 'juice.shakeHit': 0 } } },
   'Directional kick': { scene: 'buttKill', off: { tune: { 'juice.kick': 0 } }, tip: 'a kill keeps juice.kickOther of it: a small shove' },
   'Zoom punch': { scene: 'buttKill', off: { tune: { 'juice.zoomKick': 0 } } },
@@ -48,9 +48,9 @@ const JUICE_PLAY = {
   'Hurt direction arc': { scene: 'hurt', off: { draw: ['drawHurt'] } },
   'Hurt vignette': { scene: 'hurt', off: { draw: ['drawHurtVignette'] } },
   'Last-heart heartbeat': { scene: 'heartbeat', off: { draw: ['drawHeartbeat'] } },
-  'Hit flash (white)': { scene: 'buttKnock', off: { tune: { 'juice.hitFlash': 0 } }, tip: 'a few frames — try ¼×' },
+  'Hit flash (white)': { scene: 'buttKnock', off: { tune: { 'juice.hitFlash': 0 } }, tip: 'a few frames, try ¼×' },
   'Windup tint': { scene: 'club', off: { tune: { 'juice.windupTint.max': 0 } } },
-  'Squash & stretch (poses)': { scene: 'buttKnock', tip: 'crouch, stretch — try ¼×' },
+  'Squash & stretch (poses)': { scene: 'buttKnock', tip: 'crouch, stretch, try ¼×' },
   'Squash spring': { scene: 'buttKnock', off: { game: { squashGoat: null } } },
   'Knockback': { scene: 'buttKnock' },
   'Player recoil': { scene: 'hurt' },
@@ -74,7 +74,7 @@ const JUICE_PLAY = {
   'Combo counter': { scene: 'combo' },
   'Barks': { scene: 'barks' },
   'Shell casings': { scene: 'hunter' },
-  'Anticipation on the goat': { scene: 'buttKnock', tip: 'a pull-back over the windup — try ¼×' },
+  'Anticipation on the goat': { scene: 'buttKnock', tip: 'a pull-back over the windup, try ¼×' },
   'Idle life': { scene: 'idle' },
   'Weight in the stride': { scene: 'run' },
   'Kick-off, settle and skid': { scene: 'run' },
@@ -103,23 +103,25 @@ const JUICE_PLAY = {
 // Why a row has no preview. Anything not listed falls back on its category or status.
 const JUICE_NOPLAY = {
   'White souls': 'a run past the god’s gift: kill a man and walk out of his room',
-  'The soul goes up': 'the goat dying on a floor — die on any floor',
+  'The soul goes up': 'the goat dying on a floor, die on any floor',
   'Second chance': 'SECOND CHANCE bought in the mirror (dev drawer HEAVEN) and a death on a floor',
-  'Armour flies apart': 'a suit of armour hangs on a far wall — THE SHOWROOM has one: throw a man at it',
-  'Hung on the antlers': 'a stag’s head hangs on a far wall — THE SHOWROOM has one: throw a man at it',
-  'Butcher hook line': 'a butcher a few tiles off with a clear line to the goat — play THE ALTAR or spawn one from the dev drawer',
-  'Camera lead': 'a camera following him across a floor — play a floor',
-  'Deadzone camera': 'a camera following him across a floor — play a floor',
-  'Frame the fight': 'a boss in a room too big for the screen — play a floor',
-  'Leash at speed': 'a camera following him across a floor — play a floor',
-  'Room change damping': 'walking from room to room — play a floor',
+  'Armour flies apart': 'a suit of armour hangs on a far wall, THE SHOWROOM has one: throw a man at it',
+  'Hung on the antlers': 'a stag’s head hangs on a far wall, THE SHOWROOM has one: throw a man at it',
+  'Butcher hook line': 'a butcher a few tiles off with a clear line to the goat, play THE ALTAR or spawn one from the dev drawer',
+  'Camera lead': 'a camera following him across a floor, play a floor',
+  'Deadzone camera': 'a camera following him across a floor, play a floor',
+  'Frame the fight': 'a boss in a room too big for the screen, play a floor',
+  'Leash at speed': 'a camera following him across a floor, play a floor',
+  'Room change damping': 'walking from room to room, play a floor',
   'Rumble': 'a phone buzzing: nothing to see',
+  'Fire that grows on him': 'the goat standing in flame, walk into a burning tile on THE YARD, or a lit bowl in THE SHOWROOM',
   'Input buffer': 'nothing visible: a press remembered',
   'Door-hit forgiveness': 'a reach, not a look',
   'The rat ogre comes out': 'needs the mouse\'s wall and her shop',
   'Taking from the mouse': 'needs the mouse\'s shop',
   'The veil': 'needs rooms behind him to close',
   'Soul fanfare': 'the soul\'s card screen',
+  'Soul into the goat': 'the soul\'s card screen',
   'Talisman: bell shapes': 'needs men behind stone out of his sight',
   'Death-map skulls': 'the death screen',
   'Rising into the pasture': 'heaven\'s own screen',
@@ -141,7 +143,7 @@ const JUICE_SCENES = {
   grease: { period: 3, what: 'BUTCHER\'S GREASE worn: a headbutt into a man with the wall behind him.',
     setup(S) { S.wear('grease', 1); S.goatAt(9.3, 5); S.aimAt(S.man(11.4, 5)); },
     at: [[0.45, (S) => S.butt()]] },
-  charge: { period: 3.2, what: 'BOMB CHARGE: a headbutt lights a man\'s fuse and the wall behind him sets it off — he comes apart, and the man beside him is thrown.',
+  charge: { period: 3.2, what: 'BOMB CHARGE: a headbutt lights a man\'s fuse and the wall behind him sets it off, he comes apart, and the man beside him is thrown.',
     setup(S) { S.boon('bomb'); S.goatAt(9.3, 5); S.aimAt(S.man(11.4, 5)); S.man(12.4, 3.2); },
     at: [[0.45, (S) => S.butt()]] },
   echo: { period: 2.8, what: 'ECHO HORN worn: a headbutt on a man, and the horn lunging again after it.',
@@ -282,7 +284,7 @@ const JuicePreview = {
   why(j) {
     if (JUICE_NOPLAY[j.name]) return JUICE_NOPLAY[j.name];
     if (j.status === 'backlog') return 'not built yet';
-    if (j.cat === 'SOUND') return 'a sound — tools/sfx-board.html';
+    if (j.cat === 'SOUND') return 'a sound, tools/sfx-board.html';
     return 'not staged';
   },
   open(game, name) {
@@ -384,7 +386,7 @@ const JuicePreview = {
     S.boon = (id) => { const b = BOONS.find((o) => o.id === id); if (b) { pg.boons.push(b); pg.applyBoons(); pg.goat.hp = pg.goat.maxHp; } };
     S.wear = (id, tier) => { pg.artifact = { id, tier }; pg.applyBoons(); pg.goat.hp = pg.goat.maxHp; };
     S.burn = (x, y, dur) => pg.world.ignite(x, y, true, dur);
-    // A man: held on his mark (the wheel lesson's own hold, `millLesson` before `millOpen` — every
+    // A man: held on his mark (the wheel lesson's own hold, `millLesson` before `millOpen`, every
     // blow, fling, fall and flame still plays on him), or `live`, awake and after the goat.
     S.man = (x, y, kind = 'bearer', o = {}) => {
       const e = new Enemy(px(x), px(y), kind);
@@ -509,7 +511,7 @@ const JuicePreview = {
     ctx.font = `700 ${F(11)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
     ctx.fillText(r.clip(this.row.toUpperCase(), cw - 90 * css), x + pad, y + pad + F(11));
     ctx.font = `700 ${F(9)}px ${FONT_SC}`; ctx.fillStyle = approx ? PALETTE.ochre : PALETTE.fireHi;
-    ctx.fillText(approx ? '≈ APPROXIMATE — THE GAME\'S OWN CODE, ONE THING SET BY HAND' : '▶ LIVE — THE GAME\'S OWN CODE IN A STAGED ROOM', x + pad, y + pad + F(11) + lineH);
+    ctx.fillText(approx ? '≈ APPROXIMATE, THE GAME\'S OWN CODE, ONE THING SET BY HAND' : '▶ LIVE, THE GAME\'S OWN CODE IN A STAGED ROOM', x + pad, y + pad + F(11) + lineH);
     // The picture.
     const bx = x + pad, by = y + head;
     this.hud = !!sc.hud;
@@ -528,7 +530,7 @@ const JuicePreview = {
       this.err = e;
       ctx.fillStyle = '#0d0a0c'; ctx.fillRect(bx, by, cw, ch);
       ctx.font = `400 ${F(9)}px ${FONT}`; ctx.fillStyle = PALETTE.blood;
-      r.wrap('The preview threw: ' + (e && e.message) + ' — REPLAY tries again.', cw - pad * 2).forEach((l, i) => ctx.fillText(l, bx + pad, by + pad + F(9) + i * lineH));
+      r.wrap('The preview threw: ' + (e && e.message) + ', REPLAY tries again.', cw - pad * 2).forEach((l, i) => ctx.fillText(l, bx + pad, by + pad + F(9) + i * lineH));
     }
     this.last = now;
     // The chips.

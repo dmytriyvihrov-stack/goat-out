@@ -26,7 +26,7 @@ const musicTheme = (scene) => scene.first ? FIRST_MUSIC : scene.late ? LATE_MUSI
 // length in sixteenths]. The ordinary theme's hook is A-C-Bb-A and every phrase ends on the Phrygian
 // fall A-G-F-E over the E; the upper floors answer it in G minor; the first floor's is the same fall
 // broken up, with rests and a tritone at the end of it. `bass` is one bar's line over each root:
-// [sixteenth, semitones above the root, length, gain] — a folk gallop, not one long note. `toms` are
+// [sixteenth, semitones above the root, length, gain], a folk gallop, not one long note. `toms` are
 // the frame drum's answers between the kicks.
 const THEME_BED = {
   early: { gain: 0.085, pad: 0.03, toms: [6, 14],
@@ -218,12 +218,12 @@ function musicPartHit(kind, hit, step) {
 class GameAudio {
   constructor() {
     this.ctx = null; this.muted = false;
-    // 0.5 is "as tuned" for both — `setVolumes` is called with whatever the settings panel holds
+    // 0.5 is "as tuned" for both, `setVolumes` is called with whatever the settings panel holds
     // before the context necessarily exists yet (a browser will not open one before a gesture), so
     // `init()` reads these back rather than always starting the two buses at TUNING's own values.
     this.volMusic = 0.5; this.volSfx = 0.5;
     this.intensity = 0; this.hunterAware = false; this.droneUntil = 0;
-    this.step = 0; this.nextTime = 0; this.bpm = 118;
+    this.step = 0; this.nextTime = 0; this.bpm = TUNING.audio.bpm;
     this.layered = true; this.scene = emptyMusicScene(); this.sceneTimer = 0;
     this.voices = Object.fromEntries(Object.entries(MUSIC_PARTS).map(([k, p]) => [k, p.slots.map(() => 0)]));
     this.musicTick = 0; this.musicEvents = []; this.musicNodes = new Set(); this.preview = null;
@@ -247,12 +247,22 @@ class GameAudio {
     // The score and its drums reach the speakers through one low-pass (`scoreTone`), open unless the
     // goat is on his last heart or has just lost one (`setScoreTone`, `hurtDip`).
     this.scoreTone = this.ctx.createBiquadFilter(); this.scoreTone.type = 'lowpass';
-    this.scoreTone.frequency.value = A.tone.open; this.scoreTone.Q.value = 0.5; this.scoreTone.connect(this.master);
+    // Each bed reaches the master through a duck of its own (`spotlight`): a man's death pulls the
+    // score, the other effects and the room down for a moment so the death is the one thing heard.
+    const unity = () => this.ctx.createGain();
+    this.scoreDuck = unity(); this.scoreDuck.connect(this.master);
+    this.sfxDuck = unity(); this.sfxDuck.connect(this.master);
+    this.ambDuck = unity(); this.ambDuck.connect(this.master);
+    // `ambCalm` is the room's sound sinking under a fight (`ambience.fight`), eased in `updateAmbience`.
+    this.ambCalm = unity(); this.ambCalm.connect(this.ambDuck);
+    this.scoreTone.frequency.value = A.tone.open; this.scoreTone.Q.value = 0.5; this.scoreTone.connect(this.scoreDuck);
     this.drumBus = this.ctx.createGain(); this.drumBus.connect(this.scoreTone);
-    this.sfxBus = this.ctx.createGain(); this.sfxBus.connect(this.master);
+    this.sfxBus = this.ctx.createGain(); this.sfxBus.connect(this.sfxDuck);
+    // What must never be ducked (`TUNING.audio.spotlight`): a death, his last breath, a chain's bone bar.
+    this.keyBus = this.ctx.createGain(); this.keyBus.connect(this.master);
     this.musicBus = this.ctx.createGain(); this.musicBus.connect(this.scoreTone);
     // The rooms' own sound, on the effects slider (`setVolumes`): it is the world, not the score.
-    this.ambBus = this.ctx.createGain(); this.ambBus.connect(this.master);
+    this.ambBus = this.ctx.createGain(); this.ambBus.connect(this.ambCalm);
     this.layerBus = this.ctx.createGain(); this.layerBus.gain.value = A.layers.gain; this.layerBus.connect(this.musicBus);
     // One small room under everything (`TUNING.audio.room`): a third of a second, a little of it.
     // Bone dry, every effect was a sound in no place at all; 1.4 s of stone (1.61-1.65) put every
@@ -260,7 +270,7 @@ class GameAudio {
     const R = A.room, gain = (v) => { const g = this.ctx.createGain(); g.gain.value = v; return g; };
     this.roomIn = this.ctx.createConvolver(); this.roomIn.buffer = Foley.roomImpulse(this.ctx, R.decay, R.damp);
     this.roomOut = gain(R.level); this.roomIn.connect(this.roomOut); this.roomOut.connect(this.master);
-    this.sfxRoom = gain(R.sfx); this.sfxBus.connect(this.sfxRoom); this.sfxRoom.connect(this.roomIn);
+    this.sfxRoom = gain(R.sfx); this.sfxBus.connect(this.sfxRoom); this.keyBus.connect(this.sfxRoom); this.sfxRoom.connect(this.roomIn);
     this.musicRoom = gain(R.music); this.musicBus.connect(this.musicRoom); this.drumBus.connect(this.musicRoom); this.musicRoom.connect(this.roomIn);
     // A loud effect's extra share of the room (`foley`'s `wet`), kept at the SFX slider's level.
     this.sfxWet = gain(0); this.sfxWet.connect(this.roomIn);
@@ -283,8 +293,8 @@ class GameAudio {
   }
   setLayered(enabled) { this.layered = !!enabled; }
   // The two sliders in SETTINGS. 0.5 reproduces `TUNING.audio`'s own tuned levels exactly, so the
-  // scale is `value / 0.5`: the room score and its drums (`musicBus`, `drumBus` — `layerBus` rides
-  // on `musicBus` already) against the noise of a fight (`sfxBus` — swings, hits, barks, voice).
+  // scale is `value / 0.5`: the room score and its drums (`musicBus`, `drumBus`, `layerBus` rides
+  // on `musicBus` already) against the noise of a fight (`sfxBus`, swings, hits, barks, voice).
   setVolumes(musicVol, sfxVol) {
     // A stored value that is not a number (an old or hand-edited settings store) is "as tuned": NaN
     // into a gain threw inside `init`, and the music never started for the session.
@@ -295,6 +305,7 @@ class GameAudio {
     this.drumBus.gain.value = A.drums * (this.volMusic / 0.5);
     this.musicBus.gain.value = A.music * (this.volMusic / 0.5);
     this.sfxBus.gain.value = A.sfx * (this.volSfx / 0.5);
+    if (this.keyBus) this.keyBus.gain.value = this.sfxBus.gain.value * A.spotlight.key;
     if (this.ambBus) this.ambBus.gain.value = A.ambience.gain * (this.volSfx / 0.5);
     if (this.sfxWet) this.sfxWet.gain.value = this.sfxBus.gain.value;
   }
@@ -423,7 +434,7 @@ class GameAudio {
       });
     }
     // A fight starting (`encounterStage`): the frame drum's skin and one low plucked root on the next
-    // sixteenth — the moment he is seen, before the two-bar warning's figure comes in.
+    // sixteenth, the moment he is seen, before the two-bar warning's figure comes in.
     if (due.some((e) => e.kind === 'spotted')) {
       this.scoreTrack = 'spotted';
       const gain = TUNING.audio.layers.spottedGain;
@@ -528,7 +539,7 @@ class GameAudio {
       this.scene = roomMusicScene(game);
       // `roomMusicScene` returns empty (no threat, no room) the moment state is not 'play', so the
       // opening scene otherwise sits flat on 'idle' from the first frame to the last. It has its own
-      // beat instead — see `INTRO_STAGE`.
+      // beat instead, see `INTRO_STAGE`.
       if (game.state === 'intro' && game.intro) {
         const ph = game.intro.phase;
         this.scene.first = ph !== 'meadow';
@@ -575,6 +586,21 @@ class GameAudio {
     const g = this.master.gain, t = this.ctx.currentTime;
     g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
     g.linearRampToValueAtTime(TUNING.audio.master * level, t + secs);
+  }
+  // A moment that has to be heard over everything (`TUNING.audio.spotlight`; a death): the score, the
+  // other effects and the room's sound sink to their `duck` share in `attack` s, stay down `hold` s
+  // and come back over `release` s, while `keyBus` plays on untouched. `k` deepens and lengthens it
+  // (a big man, a chain). A second one inside the first restarts from wherever the level is.
+  spotlight(k = 1) {
+    if (!this.ctx || this.muted || !this.sfxDuck) return;
+    const S = TUNING.audio.spotlight, t = this.ctx.currentTime, hold = S.hold * k;
+    for (const [node, share] of [[this.scoreDuck, S.duck.score], [this.sfxDuck, S.duck.sfx], [this.ambDuck, S.duck.amb]]) {
+      const p = node.gain, to = Math.max(S.floor, 1 - (1 - share) * Math.min(S.deepest, k));
+      p.cancelScheduledValues(t); p.setValueAtTime(p.value, t);
+      p.linearRampToValueAtTime(Math.min(p.value, to), t + S.attack);
+      p.setValueAtTime(Math.min(p.value, to), t + S.attack + hold);
+      p.setTargetAtTime(1, t + S.attack + hold, S.release * Math.sqrt(k) / 3);
+    }
   }
 
   // ---- synth primitives ----
@@ -752,15 +778,16 @@ class GameAudio {
     if (this.muted) { this.playMusicEvents(t, stepLen, root, theme, 1); return; }
     // Keep the original harmonic bed; leave its bus and one-shot effects at their old levels.
     if (!this.preview || this.preview.bed !== 'none') {
-      this.playThemeBed(this.firstTheme ? 'first' : this.lateTheme ? 'late' : 'early', s, t, stepLen, thin);
-      if (beat === 0 || beat === 8) this.kick(t, ((this.firstTheme ? 0.12 : 0.20) + combat * 0.08) * thin(C.kick));
+      this.playThemeBed(this.firstTheme ? 'first' : this.lateTheme ? 'late' : 'early', s, t, stepLen, thin, calm);
+      // A part thinned to nothing is not played at all (`layers.calm`): calm is fewer parts.
+      if ((beat === 0 || beat === 8) && thin(C.kick) > 0.01) this.kick(t, ((this.firstTheme ? 0.12 : 0.20) + combat * 0.08) * thin(C.kick));
       for (const name of MUSIC_STAGES) {
         const mix = this.stageMix[name];
         if (mix < 0.01) continue;
         const degree = STAGE_MOTIFS[this.firstTheme ? 'first' : this.lateTheme ? 'late' : 'early'][name][beat];
         // The stage's own figure is a plucked riff an octave under the flute, so the two lines are
         // told apart by their sound and not only by where they sit.
-        if (degree >= 0) this.pluck(t, root * 4 * Math.pow(2, theme.scale[degree] / 12),
+        if (degree >= 0 && (name !== 'idle' || thin(C.motif) > 0.01)) this.pluck(t, root * 4 * Math.pow(2, theme.scale[degree] / 12),
           stepLen * (name === 'spotted' ? 3.4 : name === 'combat' ? 1.25 : 2), mix * (name === 'combat' ? 0.06 : 0.045) * (name === 'idle' ? thin(C.motif) : 1));
         if (name === 'spotted' && beat === 12) this.tomHi(t, 0.075 * mix);
         const F = L.fight;
@@ -781,7 +808,7 @@ class GameAudio {
       const instrument = MUSIC_PARTS[kind], part = ROOM_MUSIC[instrument.family];
       this.scoreTrack = kind;
       this.voices[kind].forEach((v, i) => {
-        if (v < 0.005 || !musicPartHit(kind, i, s)) return;
+        if (v < 0.005 || thin(C.layers) < 0.01 || !musicPartHit(kind, i, s)) return;
         const degree = part.notes[(i + Math.floor(s / 64)) % part.notes.length];
         const f = root * part.octave * Math.pow(2, theme.scale[degree] / 12);
         const gain = part.gain * v * headroom * (L.exploreMix + (1 - L.exploreMix) * combat) * thin(C.layers);
@@ -803,19 +830,21 @@ class GameAudio {
   // The layered score's bed (`THEME_BED`): an open-fifth drone a bar long, the bass line, the tune
   // and the frame drum's answers. The tune sings whole while nobody knows where he is, drops almost
   // out for the two-bar warning, and comes back under the chase and the fight.
-  playThemeBed(key, s, t, stepLen, thin = () => 1) {
+  playThemeBed(key, s, t, stepLen, thin = () => 1, calm = 0) {
     const B = THEME_BED[key], beat = s % 16, pos = s & 63, M = this.stageMix;
     const theme = key === 'first' ? FIRST_MUSIC : key === 'late' ? LATE_MUSIC : MUSIC;
     const root = theme.roots[(s >> 4) & 3], base = theme.roots[0] * 8;
     const C = TUNING.audio.layers.calm;
     if (beat === 0) this.pad(t, root * 2, stepLen * 16.4, B.pad * thin(C.pad));
-    for (const [at, semi, length, gain] of B.bass) if (at === beat) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain * thin(C.bass));
+    // Calm is fewer notes, not quieter ones: past `calm.sparse` the bass keeps only its `bassBeats`.
+    const sparse = calm > C.sparse;
+    for (const [at, semi, length, gain] of B.bass) if (at === beat && (!sparse || C.bassBeats.includes(at))) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain * thin(C.bass));
     // On the last heart the tune steps back (`layers.heartSing`) and leaves the room to his heart.
     const sing = (M.idle * thin(C.tune) + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55) * (1 - (1 - TUNING.audio.layers.heartSing) * this.heartMix);
     if (sing > 0.01) for (const [at, semi, length] of B.melody) {
       if (at === pos) this.lead(t, base * Math.pow(2, semi / 12), stepLen * length * 0.95, B.gain * sing * (at % 16 === 0 ? 1 : 0.85));
     }
-    if (B.toms.includes(beat)) this.tomHi(t, 0.045 * thin(C.toms));
+    if (B.toms.includes(beat) && thin(C.toms) > 0.01) this.tomHi(t, 0.045 * thin(C.toms));
   }
   // Preserved original arrangement, including the threat tiers, hunter cue and bell drone.
   // SETTINGS > LAYERED MUSIC off selects this; keep future room-score changes above it.
@@ -838,8 +867,8 @@ class GameAudio {
       if (bar % 2 === 1) this.hat(t);
       if (bar === 7 || bar === 15) this.tomHi(t, 0.5);
     }
-    // The top of the kit. It used to fill every gap — a hat on every step, four more toms, a crash
-    // and the chant — which turned a busy room into a wall of percussion you stopped hearing. What
+    // The top of the kit. It used to fill every gap, a hat on every step, four more toms, a crash
+    // and the chant, which turned a busy room into a wall of percussion you stopped hearing. What
     // is left is the two toms that answer the backbeat, a quieter crash, and the chant under it all.
     if (lvl >= 3) {
       if ([5, 13].includes(bar)) this.tomLo(t, 0.4);
@@ -869,6 +898,14 @@ class GameAudio {
     // together the moment it resumes.
     if (!this.ctx || this.muted || gain <= 0 || this.ctx.state !== 'running') return null;
     const F = TUNING.audio.foley, ctx = this.ctx;
+    // The same sound stacked on itself in one moment (a bomb's five splats, a table's supper landing,
+    // three doors) is a wall, not a louder event: every copy inside `stack.window` s of the first is
+    // `stack.mul` quieter than the one before it, and past `stack.max` it is not played at all.
+    const S = F.stack, t0 = ctx.currentTime + at, st = (this.stacks || (this.stacks = {}))[key];
+    if (st && t0 - st.t < S.window) {
+      if (++st.n > S.max) return null;
+      gain *= Math.pow(S.mul, st.n - 1);
+    } else this.stacks[key] = { t: t0, n: 1 };
     const buffer = this.take(key, () => Foley.render(name, args), takes == null ? F.takes : takes, Foley.rateOf(name));
     const src = ctx.createBufferSource(), g = ctx.createGain();
     src.buffer = buffer;
@@ -938,7 +975,7 @@ class GameAudio {
   // ---- the rooms' own sound (1.70) ----
   // Under the score and the fight: the floor's bed (still air in stone, the cave's hollow, wind
   // through boards; `TUNING.audio.ambience.beds` by canon), the fire nearest him, and now and then
-  // something else — a drip in a cave, the cult drumming a long way off while nothing is after him,
+  // something else, a drip in a cave, the cult drumming a long way off while nothing is after him,
   // the milk grass when he is hurt and near it. It used to be the score's job (a crackle a bar, a chime
   // a patch) and it sat on top of the tune; it is the world's now, on the effects slider (`ambBus`),
   // off the music's clock.
@@ -950,6 +987,12 @@ class GameAudio {
     const el = amb.wait, now = this.ctx.currentTime, lab = this.preview ? this.lab.amb : null;
     amb.wait = 0;
     const inLevel = !lab && !!(game.level && g && ['play', 'paused', 'boon', 'dead', 'climb', 'heaven'].includes(game.state));
+    // Under a fight the room's sound steps back (1 Oct 2026, "at moments there is too much of the
+    // surroundings"): the bed, the fire and the drips sink to `fight` of themselves while anybody is
+    // after him, and come back over `fade` once nobody is.
+    const fighting = inLevel && game.state === 'play' && this.encounter.active;
+    const calm = fighting ? A.fight : 1;
+    if (this.ambCalm && amb.calm !== calm) { amb.calm = calm; this.ambCalm.gain.setTargetAtTime(calm, now, (fighting ? A.fightIn : A.fade) / 3); }
     const bed = lab ? (lab.bed ? { loop: lab.bed, gain: A.lab, drips: 0 } : null) : inLevel ? (game.level.def.heaven ? A.beds.heaven : ambienceBed(game.level.def)) : null;
     // The beds: the one the floor asks for comes up, any other goes down and is let go. A loop not yet
     // rendered is left to `warm` (a few idle moments) rather than rendered here, mid-frame.
@@ -976,7 +1019,7 @@ class GameAudio {
     // Water in the rock.
     if (bed && bed.drips > 0 && (amb.drip -= el) <= 0) {
       amb.drip = gap(A.drip.gap) / bed.drips;
-      this.foley('drip', { bus: this.ambBus, gain: A.drip.gain * (0.35 + 0.65 * Math.random()), pan: side(), wet: A.drip.wet, takes: 5 });
+      if (!fighting) this.foley('drip', { bus: this.ambBus, gain: A.drip.gain * (0.35 + 0.65 * Math.random()), pan: side(), wet: A.drip.wet, takes: 5 });
     }
     // The rest of the compound: only while nothing is after him, so it is heard as far away.
     if ((amb.far -= el) <= 0) {
@@ -1055,6 +1098,14 @@ class GameAudio {
   sfxThud() { this.foley('thud', { gain: 0.3 }); }
   // A man broken on stone.
   sfxSplat() { this.foley('splat', { gain: 0.78, wet: 0.04 }); }
+  // A man killed (`Game.onKill`): his own sound (`Foley` `death`: bone, the wet, the drop) on the
+  // bus nothing ducks, from where he fell, and the rest of the mix stepping back round it
+  // (`spotlight`). `k` is how big a death it is: an ogre, a chain. `where` is `heard(dx, dy)`.
+  sfxDeath(where, k = 1) {
+    const S = TUNING.audio.spotlight, vol = where ? Math.max(S.near, where.vol) : 1;
+    this.foley('death', { bus: this.keyBus, gain: S.gain * vol * Math.min(S.gainMax, k), pan: where ? where.pan * 0.6 : 0, wet: 0.05, takes: 4 });
+    this.spotlight(k);
+  }
   sfxGunshot() { this.foley('gunshot', { gain: 1.1, wet: 0.12 }); }
   sfxPot() { this.foley('pot', { gain: 0.4 }); }
   // BAAAH. The goat's own voice, loud and ragged, and the one sound in the game that is his.
@@ -1083,7 +1134,7 @@ class GameAudio {
   sfxClub() { this.foley('club', { gain: 0.82 }); }
   // Something wooden giving way.
   sfxCrack() { this.foley('crack', { gain: 0.26 }); }
-  sfxBell() { if (!this.ctx || this.muted) return; this.foley('bell', { gain: 0.78, takes: 2, wet: 0.1 }); this.droneUntil = this.now() + 8; }
+  sfxBell(key) { if (!this.ctx || this.muted) return; this.foley('bell', { bus: key ? this.keyBus : null, gain: 0.78, takes: 2, wet: 0.1 }); this.droneUntil = this.now() + 8; }
   sfxToll() { this.foley('bell', { key: 'toll', args: { low: true }, takes: 2, gain: 0.62, at: 0.15, wet: 0.12 }); }
   // A blow landing on the goat.
   sfxHit() { this.foley('hit', { gain: 0.61 }); }
@@ -1147,9 +1198,12 @@ class GameAudio {
   // The pen giving way: the frame cracks, two bars knock loose. Short and dry, not a collapse.
   sfxCage() { this.foley('cage', { gain: 0.53 }); }
   // Stacked kills: the same struck bone, a step higher every time.
-  sfxKill(n) { this.foley('kill', { gain: 0.25, rate: Math.pow(1.14, Math.min(8, n)), steady: true }); }
+  sfxKill(n) { this.foley('kill', { bus: this.keyBus, gain: 0.25, rate: Math.pow(1.14, Math.min(8, n)), steady: true }); }
   // A card turning: one big frame drum in the hall.
   sfxCard() { this.foley('card', { gain: 0.56, wet: 0.04 }); }
+  // The soul over the cards going into him (`Game.watchBoonMorph`): a breath drawn in, and one low
+  // bell as he stands up out of it.
+  sfxAbsorb() { this.foley('veil', { key: 'absorb', gain: 0.26, wet: 0.1 }); this.sfxChime(196, 0.8, 0.36); }
   // COLD EYE: the world winding down: his heart, twice, and a breath of air falling away.
   sfxSlow() { this.foley('slow', { gain: 0.12 }); }
   // LEAPFROG: hooves off a man's back.
@@ -1167,7 +1221,7 @@ class GameAudio {
     const G = TUNING.audio.foley.groan, t = this.now(), vol = where ? where.vol : 1, dog = kind === 'dog';
     if (t - (this.lastGroan || -1) < G.gap || vol <= 0.02) return;
     this.lastGroan = t;
-    this.foley('groan', { key: dog ? 'groan:dog' : 'groan', args: { dog }, takes: G.takes, gain: G.gain * vol * (dog ? G.dog : 1),
+    this.foley('groan', { bus: this.keyBus, key: dog ? 'groan:dog' : 'groan', args: { dog }, takes: G.takes, gain: G.gain * vol * (dog ? G.dog : 1),
       rate: G.rate[kind] || 1, pan: where ? where.pan : 0, at: G.delay, wet: G.wet });
   }
 }

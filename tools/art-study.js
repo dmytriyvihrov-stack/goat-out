@@ -1,6 +1,6 @@
 // In-page sheets for the art studies (`ART_PASS`, `PIXEL_STUDY` in js/pixel-art.js): every study of a
-// unit on the floor of every canon, with two numbers under each — how far apart the man and the floor
-// are in brightness (a contrast ratio, the same one WCAG uses) and in colour (OKLab distance x100) —
+// unit on the floor of every canon, with two numbers under each, how far apart the man and the floor
+// are in brightness (a contrast ratio, the same one WCAG uses) and in colour (OKLab distance x100),
 // and the before/after sheets of the art pass. Load it into the served page like the harness:
 //   const s = document.createElement('script'); s.src = '/tools/art-study.js'; document.body.appendChild(s);
 // then `await ART_STUDY.all('art-pass-2026-09-25')`, which writes PNGs to tools/shots/.
@@ -108,8 +108,8 @@ window.ART_STUDY = (() => {
   }
 
   // A scene for `pair`: level `li` (as LEVELS picks it), the goat in the middle of room `ri` (moved
-  // `ox`, `oy` tiles), the men round him cleared away and `cast` stood there instead — `{ kind, dx,
-  // dy, state }`, `state: 'windup'` for a blow or a run under way — and everything frozen. Needs the
+  // `ox`, `oy` tiles), the men round him cleared away and `cast` stood there instead, `{ kind, dx,
+  // dy, state }`, `state: 'windup'` for a blow or a run under way, and everything frozen. Needs the
   // harness (`H`).
   async function stage(li, ri, cast, o = {}) {
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -159,7 +159,7 @@ window.ART_STUDY = (() => {
       before.hunter !== after.hunter && 'hunter ' + PIXEL_STUDY.hunter[s.hunter].name, before.clubman !== after.clubman && 'clubman ' + PIXEL_STUDY.clubman[s.clubman].name].filter(Boolean).join(' · ');
     // sized to fit its own half, however many differences it names
     const fit = (str, maxW, px) => { x.font = `700 ${px}px ${FONT}`; while (px > 10 && x.measureText(str).width > maxW) { px--; x.font = `700 ${px}px ${FONT}`; } return px; };
-    const L = 'BEFORE — ' + tag(before), Rt = 'AFTER — ' + tag(after);
+    const L = 'BEFORE, ' + tag(before), Rt = 'AFTER, ' + tag(after);
     say(x, L, 10, 30, fit(L, w - 10, 20), INK, 700);
     say(x, Rt, w + 20, 30, fit(Rt, w - 10, 20), '#ffe08a', 700);
     if (note) say(x, note, 10, 50, 13, ASH);
@@ -169,12 +169,12 @@ window.ART_STUDY = (() => {
   async function all(dir) {
     const out = [];
     const save = async (cv, n) => out.push(await post(cv, (dir ? dir + '-' : '') + n));
-    await save(await onFloors('hunter', 'clubman', 'THE HUNTER — his colour studies on every floor (a clubman beside him, as packed)'), 'hunter-floors');
-    await save(await facings('hunter', 'THE HUNTER — the studies, all eight facings'), 'hunter-facings');
-    await save(await onFloors('clubman', 'hunter', 'THE CLUBMAN — slim and red studies on every floor (a hunter beside him, as packed)'), 'clubman-floors');
-    await save(await facings('clubman', 'THE CLUBMAN — the studies, all eight facings'), 'clubman-facings');
-    await save(await facings('mage', 'THE SEER — his staff as packed, and in witchfire\'s own colours (art pass)'), 'seer-facings');
-    await save(await props('THE MILK GRASS — as packed and under the art pass'), 'milk-grass');
+    await save(await onFloors('hunter', 'clubman', 'THE HUNTER, his colour studies on every floor (a clubman beside him, as packed)'), 'hunter-floors');
+    await save(await facings('hunter', 'THE HUNTER, the studies, all eight facings'), 'hunter-facings');
+    await save(await onFloors('clubman', 'hunter', 'THE CLUBMAN, slim and red studies on every floor (a hunter beside him, as packed)'), 'clubman-floors');
+    await save(await facings('clubman', 'THE CLUBMAN, the studies, all eight facings'), 'clubman-facings');
+    await save(await facings('mage', 'THE SEER, his staff as packed, and in witchfire\'s own colours (art pass)'), 'seer-facings');
+    await save(await props('THE MILK GRASS, as packed and under the art pass'), 'milk-grass');
     return out;
   }
   return { onFloors, facings, props, stage, pair, all, ratio, dE, mean, post };

@@ -1,5 +1,5 @@
 // Foley: every sound effect in the game as a small physical model rendered into a buffer. No assets,
-// and no oscillator straight to the speakers any more — a square wave reads as a beep however it is
+// and no oscillator straight to the speakers any more, a square wave reads as a beep however it is
 // shaped, and the same call making the same sound every time is the other half of why the effects
 // read as a chip. A struck thing is its ringing modes, a throat is a buzz through the formants of its
 // mouth, air is shaped noise. `GameAudio.foley` renders a few takes of a recipe the first times it is
@@ -86,7 +86,7 @@ const Foley = (() => {
   const noiseBand = (n, sr, type, f, q, kind = pink) => filter(kind(n), sr, type, f, q);
 
   // A struck body ringing: each mode is [ratio to `f0`, seconds to fall by e, level]. `bend` starts
-  // every mode that much sharp and lets it settle over `bendT` — a skin or a body hit hard goes up in
+  // every mode that much sharp and lets it settle over `bendT`, a skin or a body hit hard goes up in
   // pitch at the strike and falls back, which is most of what makes a thump sound heavy.
   function modes(x, sr, f0, list, { at = 0, gain = 1, spread = 0.01, bend = 0, bendT = 0.03 } = {}) {
     const s0 = Math.max(0, Math.floor(at * sr));
@@ -257,7 +257,7 @@ const Foley = (() => {
       return click(x, sr, 0.003, rnd(2500, 3500), 0.6, 0.0008);
     },
     // A club on the skull: the knock of the head, the wood of the club, the crunch between them. The
-    // ringing in the ears it used to leave went in 1.66 — a second of whine under every blow.
+    // ringing in the ears it used to leave went in 1.66, a second of whine under every blow.
     club(sr) {
       const x = buf(sr, 0.32);
       modes(x, sr, rnd(85, 100), [[1, 0.06, 0.9], [1.6, 0.03, 0.4]], { bend: 0.6, bendT: 0.02 });
@@ -303,7 +303,7 @@ const Foley = (() => {
       const tear = noiseBand(len(sr, 0.14), sr, 'bp', 2300, 0.8, white);
       return add(x, env(tear, sr, (t) => hit(t, 0.004, 0.035) * (0.4 + 0.6 * Math.random())), sr, 0, 0.35);
     },
-    // A clay pot: the knock of it going, then shards — many small bright rings, thinning out.
+    // A clay pot: the knock of it going, then shards, many small bright rings, thinning out.
     pot(sr) {
       const x = buf(sr, 0.4);
       modes(x, sr, rnd(520, 720), [[1, 0.028, 0.6], [1.9, 0.024, 0.5], [3.1, 0.018, 0.4], [4.4, 0.013, 0.3]]);
@@ -325,7 +325,7 @@ const Foley = (() => {
       return click(x, sr, 0, 3200, 0.8, 0.0008);
     },
     // The pen giving way: the wood of the frame cracking, two bars knocking loose, a thump as it goes
-    // over. Under half a second, dry — a crack, not a collapse.
+    // over. Under half a second, dry, a crack, not a collapse.
     cage(sr) {
       const x = buf(sr, 0.42);
       click(x, sr, 0, rnd(1800, 2500), 1.2, 0.0009);
@@ -425,7 +425,7 @@ const Foley = (() => {
       const tail = noiseBand(n, sr, 'lp', 1500, 0.7);
       return add(x, env(tail, sr, (t) => (t < 0.02 ? 0 : Math.exp(-(t - 0.02) / 0.07))), sr, 0, 0.3);
     },
-    // A rifle cocked: back — a click and the bolt sliding — and home, the heavier clack. The one tell
+    // A rifle cocked: back, a click and the bolt sliding, and home, the heavier clack. The one tell
     // a rifle gives, so it is bright and dry.
     cock(sr) {
       const x = buf(sr, 0.28);
@@ -475,7 +475,7 @@ const Foley = (() => {
       const grit = noiseBand(len(sr, 0.05), sr, 'bp', 2500, 0.8, white);
       return add(x, env(grit, sr, (t) => hit(t, 0.001, 0.01)), sr, 0, 0.25);
     },
-    // LEAPFROG: hooves off a man's back — a short hollow knock of his back and the hoof on it.
+    // LEAPFROG: hooves off a man's back, a short hollow knock of his back and the hoof on it.
     vault(sr) {
       const x = buf(sr, 0.25);
       modes(x, sr, rnd(120, 150), [[1, 0.04, 0.8], [2.1, 0.02, 0.3]], { bend: 0.4 });
@@ -509,7 +509,7 @@ const Foley = (() => {
       add(x, env(roar, sr, (t) => hit(t, 0.01, 0.14)), sr, 0, 1.8);
       return crackle(x, sr, 0.03, 0.5, 12, 2500, 6500, 0.6, 1.3);
     },
-    // A seer gone: air rushing into where he was — a swell cut off short — and the pop of it closing.
+    // A seer gone: air rushing into where he was, a swell cut off short, and the pop of it closing.
     blink(sr) {
       const x = buf(sr, 0.36), g = 0.12;
       const rush = pink(len(sr, g)); filter(rush, sr, 'bp', (t) => 600 + 3600 * t / g, 1.3);
@@ -530,7 +530,7 @@ const Foley = (() => {
       for (const f of [2210, 2290, 2420, 2560]) drone(x, sr, 0.05, d - 0.05, f * rnd(0.98, 1.02), 0.025, 0.5);
       return x;
     },
-    // Its blow: no weight behind it, all cold — a thin cut of air and a hiss of breath.
+    // Its blow: no weight behind it, all cold, a thin cut of air and a hiss of breath.
     wraithHit(sr) {
       const x = buf(sr, 0.35);
       whoosh(x, sr, 0, 0.2, 1500, 5200, 1, 0.3, 1.4);
@@ -559,7 +559,7 @@ const Foley = (() => {
       add(x, env(inhale, sr, (t) => swell(t, d * 0.8, 0.8, 2)), sr, 0, 1.4);
       return crackle(x, sr, d * 0.78, 0.1, 4, 600, 1600, 0.25, 1);
     },
-    // COLD EYE: the world winding down — his own heart, twice, and a breath of air falling away.
+    // COLD EYE: the world winding down, his own heart, twice, and a breath of air falling away.
     slow(sr) {
       const x = buf(sr, 0.6);
       modes(x, sr, rnd(95, 105), [[1, 0.05, 1], [1.7, 0.025, 0.3]], { bend: 0.3 });
@@ -567,13 +567,34 @@ const Foley = (() => {
       const air = pink(x.length); filter(air, sr, 'bp', (t) => 2200 * Math.pow(0.15, t / 0.6), 1);
       return add(x, env(air, sr, (t) => swell(t, 0.6, 0.15, 1.5)), sr, 0, 0.5);
     },
-    // A card: a frame drum struck once, close — its skin's modes, bent down at the strike, choked.
+    // A card: a frame drum struck once, close, its skin's modes, bent down at the strike, choked.
     card(sr) {
       const x = buf(sr, 0.38), f0 = rnd(92, 102);
       modes(x, sr, f0, [[1, 0.1, 1], [1.59, 0.065, 0.5], [2.14, 0.05, 0.35], [2.3, 0.045, 0.3], [2.65, 0.035, 0.22], [2.92, 0.03, 0.18], [3.16, 0.025, 0.14]],
         { bend: 0.3, bendT: 0.03, spread: 0.008 });
       const skin = noiseBand(len(sr, 0.1), sr, 'lp', 1100, 0.8);
       return add(x, env(skin, sr, (t) => hit(t, 0.001, 0.018)), sr, 0, 0.8);
+    },
+    // A man killed (1 Oct 2026, "the death of an enemy should stand out"): until then it was `splat`,
+    // the same sound as a plank door going or a table breaking. Now it has a shape of its own that no
+    // other blow makes: bone going first (a dry crunch, two or three snaps), the wet of it, and then,
+    // a beat later, the whole weight of him meeting the floor, the drop is what says "down for good".
+    death(sr) {
+      const x = buf(sr, 0.62), drop = rnd(0.12, 0.16);
+      for (let k = 0, n = rint(2, 3); k < n; k++) click(x, sr, rnd(0, 0.022), rnd(1800, 3400), rnd(0.6, 1), 0.0009, 1.6);
+      const crunch = noiseBand(len(sr, 0.09), sr, 'bp', rnd(1100, 1600), 1.2);
+      add(x, env(crunch, sr, (t) => hit(t, 0.001, 0.022)), sr, 0, 1.5);
+      modes(x, sr, rnd(110, 135), [[1, 0.05, 0.7], [1.7, 0.03, 0.35]], { bend: 0.6, bendT: 0.012 });
+      for (let k = 0; k < 3; k++) {
+        const at = rnd(0.01, 0.08), d = rnd(0.035, 0.06), f0 = rnd(600, 1200), s = pink(len(sr, d));
+        filter(s, sr, 'bp', (t) => f0 * (1 - 0.6 * t / d), rnd(4, 7));
+        add(x, env(s, sr, (t) => hit(t, 0.003, d * 0.3)), sr, at, rnd(0.5, 0.9));
+      }
+      modes(x, sr, rnd(78, 92), [[1, 0.09, 1.1], [1.55, 0.05, 0.5], [2.3, 0.03, 0.3]], { at: drop, bend: 0.35, bendT: 0.02 });
+      const slap = noiseBand(len(sr, 0.12), sr, 'lp', rnd(900, 1300), 0.8);
+      add(x, env(slap, sr, (t) => hit(t, 0.002, 0.03)), sr, drop, 1.1);
+      const grit = noiseBand(len(sr, 0.06), sr, 'bp', rnd(2400, 3200), 0.9, white);
+      return add(x, env(grit, sr, (t) => hit(t, 0.001, 0.012)), sr, drop, 0.3);
     },
     // A kill in a chain: a struck bone bar, one step higher each time (`GameAudio.sfxKill` sets the rate).
     kill(sr) {
@@ -603,7 +624,7 @@ const Foley = (() => {
       add(x, v, sr, 0, 1);
       return whoosh(x, sr, 0.06, d - 0.06, 300, 1100, 0.3, 0.4, 0.6);
     },
-    // BAAAH: the goat's own voice, loud and ragged — two throats a fifth apart, one goat with weight.
+    // BAAAH: the goat's own voice, loud and ragged, two throats a fifth apart, one goat with weight.
     scream(sr) {
       const x = buf(sr, 0.72);
       add(x, bleat(sr, { f: 330, dur: 0.64, wob: 26, depth: 0.13, open: 1.8, breath: 0.22, rough: 0.12, drive: 2.2 }), sr, 0, 1);
@@ -694,7 +715,7 @@ const Foley = (() => {
       const huff = noiseBand(len(sr, 0.15), sr, 'bp', 900, 0.7, white);
       return add(x, env(huff, sr, (t) => hit(t, 0.004, 0.045)), sr, 0, 0.5);
     },
-    // One of the goat's hooves, running. A goat's hoof is cloven — two toes — so it lands as two
+    // One of the goat's hooves, running. A goat's hoof is cloven, two toes, so it lands as two
     // hard ticks a few milliseconds apart (horn on stone, small and bright), the hollow knock of the
     // hoof wall under them, only a little of the leg's weight, and a grain of grit scuffed. A tap,
     // not a click and not a thud (24 Sep 2026: "quieter, and like a real clop"). The shared `hoof`
@@ -711,7 +732,7 @@ const Foley = (() => {
       return add(x, env(grit, sr, (t) => hit(t, 0.001, 0.006)), sr, toe * 0.5, 0.05);
     },
     // A man dying: a short low 'uhh' let out as he goes, falling in pitch and closing toward an 'm'
-    // as the breath runs out — the last air, not a shout, so a kill is heard apart from a knockdown
+    // as the breath runs out, the last air, not a shout, so a kill is heard apart from a knockdown
     // before the blood says so. `dog` is a hound's: a short whine that drops away.
     groan(sr, { dog } = {}) {
       if (dog) {
@@ -792,7 +813,7 @@ const Foley = (() => {
       add(x, env(wh, sr, (t) => Math.pow(gust(t), 3)), sr, 0, 0.9);
       return add(x, filter(brown(n), sr, 'lp', 200, 0.6), sr, 0, 0.35);
     },
-    // A fire: the low roar of it, never quite steady, a hiss of flame over that, and the crackle —
+    // A fire: the low roar of it, never quite steady, a hiss of flame over that, and the crackle,
     // small ticks all the time and a proper pop now and then.
     blaze(sr) {
       const d = 3.2, n = len(sr, d), x = filter(brown(n), sr, 'lp', 260, 0.7);
@@ -834,7 +855,7 @@ const Foley = (() => {
   }
 
   // The room everything is heard in: small and close, a cell rather than a hall (1.66 took it from
-  // 1.4 s to a third of a second — the effects read as far away and huge). Two channels of noise dying away over `decay`
+  // 1.4 s to a third of a second, the effects read as far away and huge). Two channels of noise dying away over `decay`
   // seconds and darker as they die (stone holds the low end longest, `damp` how much), with the
   // nearest walls as a few distinct early reflections in front.
   function roomImpulse(ctx, decay, damp) {

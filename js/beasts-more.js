@@ -1,11 +1,11 @@
 // THE RABBIT AND THE HUSKY (1 Oct 2026, playtest), and the answer every animal now waits for.
 //
-//   RABBIT  "he offers to tie your legs — no running, only the headbutt, the skills and the items —
+//   RABBIT  "he offers to tie your legs, no running, only the headbutt, the skills and the items,
 //           so you try it his way, in jumps". Said yes: `game.legsTied`. No stride at all; the roll
 //           is the hop, where you point and back far sooner (`TUNING.prop.rabbit.tied`). Up the stairs
 //           with him so: the roll comes back sooner for the run.
 //   HUSKY   "she runs into the next room where the men are and they leave her be; you follow, she
-//           sings WAF WOOO and you answer with your BAAH, like Guitar Hero — her stave and yours;
+//           sings WAF WOOO and you answer with your BAAH, like Guitar Hero, her stave and yours;
 //           the cooldown is what makes it hard, in a fight". Said yes: a practice first, the two of
 //           them in an empty room (`game.song.practice`), then she leads to the fullest room ahead,
 //           the song starts as he comes in (`game.song`), and his voice, on the beat, answers.
@@ -18,7 +18,7 @@
 const BEAST_MORE = (() => {
   const G = PROP_PIXELS.Grid, P = PROP_PIXELS.P;
   const RB = { f0: '#6e5a48', f1: '#8f7860', f2: '#b29a7e', f3: '#d3c0a2', w: '#efe6d6', pk: '#d98f9a', ey: '#1a1012' };
-  const HK = { g0: '#3e4652', g1: '#5c6673', g2: '#808b98', w0: '#c9ced6', w1: '#eef1f5', ey: '#5aa7ff', ns: '#16171c' };
+  const HK = { g0: '#465063', g1: '#6b7689', g2: '#8f9aab', w0: '#d6dbe3', w1: '#f4f6fa', ey: '#4fb2ff', ns: '#1a1b22', pk: '#f2a0b4' };
   // The rabbit, sitting (`up` false) or mid-hop, stretched long.
   const rabbit = (hop) => {
     const g = new G(18, 16);
@@ -38,19 +38,41 @@ const BEAST_MORE = (() => {
     g.ell(hop ? 8 : 7, hop ? 11 : 12.4, 2.6, 0.9, RB.f3, true);
     return g.outline(P.ol).trim();
   };
-  // The husky, standing, and with her muzzle up to sing.
+  // The husky, standing, and with her muzzle up to sing. Drawn sweet (1 Oct 2026, "much cuter"): a big
+  // round head in the husky's mask, grey cap, white face, a white blaze up the brow, big blue eyes
+  // with a glint, pink-lined ears, a fluffy curl of tail over the back, a chunky body on short paws.
+  // Singing she points her muzzle up, eyes shut in two happy arcs, her mouth a round O.
   const husky = (sing) => {
-    const g = new G(26, 22);
-    g.ell(11, 12, 7.5, 4.2, HK.g1).ell(11, 13.6, 6, 2.4, HK.w0, true).ell(10, 10.4, 6, 1.6, HK.g0, true);
-    for (const x of [5, 8, 13, 16]) g.rect(x, 15, 2, 5, HK.g1).hl(x, 19, 2, HK.w1);
-    // the tail, curled up over her back
-    g.ring(4, 8.5, 3, 3, 1.4, HK.g1).set(2, 8, HK.w1).set(3, 6, HK.w1);
-    const hx = sing ? 19 : 19.5, hy = sing ? 6 : 8;
-    g.ell(hx, hy, 3.6, 3.1, HK.g1).ell(hx + 0.5, hy + 1.2, 2.6, 1.8, HK.w1, true);
-    if (sing) { g.rect(hx + 2, hy - 3, 3, 2, HK.w1).set(hx + 4, hy - 3, HK.ns).hl(hx + 2, hy - 1, 2, HK.ns); }
-    else { g.rect(hx + 2, hy, 4, 2, HK.w1).set(hx + 5, hy, HK.ns); }
-    g.poly([[hx - 3, hy - 2], [hx - 2, hy - 6], [hx - 0.5, hy - 2]], HK.g0).poly([[hx - 0.5, hy - 2], [hx + 0.8, hy - 6], [hx + 2, hy - 2]], HK.g0);
-    g.set(hx + 1, hy - 0.5, HK.ey);
+    const g = new G(28, 24);
+    // the far legs first, a step darker, then the body over them
+    for (const x of [8, 17]) g.rect(x, 18, 2, 4, HK.g0).hl(x, 21, 2, HK.w0);
+    g.ell(12, 15, 7.2, 4.4, HK.g1).ell(11.4, 12.4, 6.2, 1.8, HK.g0, true).ell(12.6, 17.2, 5.8, 2.2, HK.w0, true);
+    for (const x of [6, 15]) g.rect(x, 18, 3, 4, HK.g1).hl(x, 21, 3, HK.w1);
+    // the tail: a fat curl up over the rump, its tip white, no hole in it
+    g.ell(5, 9.6, 3.4, 3, HK.g1).ell(4.4, 8.6, 2.2, 1.4, HK.g2, true).ell(5.8, 10.8, 1.6, 1.3, HK.g0, true).ell(7.6, 8.2, 1.5, 1.2, HK.w1);
+    const hx = 20, hy = sing ? 8 : 9.4;
+    // the chest ruff, white, under the head
+    g.ell(hx - 1.8, hy + 4.4, 2.6, 2.2, HK.w0);
+    // the ears: two triangles off the crown, pink inside
+    const ear = (x0, x1, top) => { g.poly([[x0, hy - 2.6], [(x0 + x1) / 2, top], [x1, hy - 2.6]], HK.g0); g.vl(Math.round((x0 + x1) / 2), Math.round(top) + 2, 2, HK.pk); };
+    ear(hx - 3.8, hx - 0.4, hy - 8); ear(hx + 0.2, hx + 3.6, hy - 8.2);
+    // the head, big and round, grey on top and white below
+    g.ell(hx, hy, 5.4, 5, HK.g1).ell(hx - 0.4, hy - 2.4, 4.6, 2.4, HK.g0, true);
+    g.line(hx - 5, hy + 1, hx - 3, hy + 4, P.ol);   // the jaw's line over the neck, so the head reads as a head
+    g.ell(hx + 1.6, hy + 2.4, 3.6, 2.2, HK.w1, true).vl(hx + 1, hy - 4, 3, HK.w1);   // the mask: white cheeks, a blaze up the brow
+    if (sing) {
+      // the muzzle up, a round O for a mouth, the eyes shut happy
+      g.ell(hx + 4.4, hy - 0.2, 2.2, 1.8, HK.w1).set(hx + 6, hy - 1.6, HK.ns);
+      g.rect(hx + 4, hy + 0.6, 2, 2, HK.ns).set(hx + 4, hy + 1.6, HK.pk);
+      g.hl(hx - 1, hy - 0.4, 3, HK.ns).set(hx, hy - 1.2, HK.ns);
+    } else {
+      // a short muzzle, the black button of a nose, a small smile
+      g.ell(hx + 4.6, hy + 1.6, 2.2, 1.7, HK.w1).hl(hx + 5, hy + 0.4, 2, HK.ns);
+      g.set(hx + 4.6, hy + 2.8, HK.g0).set(hx + 5.4, hy + 3.2, HK.g0);
+      // the eye: two by two, ice blue, a glint toward the light
+      g.rect(hx, hy - 1.4, 2, 3, HK.ey).set(hx, hy - 1.4, HK.w1).set(hx + 1, hy + 0.6, HK.ns);
+    }
+    g.hl(hx + 1.6, hy + 2.2, 2, HK.pk);   // the cheek
     return g.outline(P.ol).trim();
   };
   const S = PROP_PIXELS.sprites;
@@ -67,8 +89,8 @@ Object.assign(Beast, {
     let name, lift = 0;
     if (p.kind === 'rabbit') {
       const ph = ((p.bob || 0) / 3 / C.hop) % 1, moving = Math.hypot(p.vx || 0, p.vy || 0) > 8;
-      name = moving && ph < 0.6 ? 'rabbit-hop' : 'rabbit-sit';
-      if (moving && ph < 0.6) lift = Math.sin(ph / 0.6 * Math.PI) * C.hopH;
+      name = moving && ph < C.hopShare ? 'rabbit-hop' : 'rabbit-sit';
+      if (moving && ph < C.hopShare) lift = Math.sin(ph / C.hopShare * Math.PI) * C.hopH;
     } else name = p.singing > 0 ? 'husky-sing' : 'husky-stand';
     const g = PROP_PIXELS.sprites[name], w = g.w * T, h = g.h * T;
     R.shadow(p.x, p.y + 2, w * 0.38, w * 0.16);
@@ -82,14 +104,14 @@ Object.assign(Beast, {
   // ---------------------------------------------------------------- the answer
   // The last page of a first meeting waits for one: `Beast.talk(..., ask)`.
   answer(game, p, yes) {
-    p.agreed = !!yes;
+    p.agreed = !!yes; Stats.beast(game, p.kind, yes ? 'yes' : 'no');
     if (!yes) { Beast.refuse(game, p); return; }
     if (p.kind === 'rabbit') { game.legsTied = { p }; game.applyBoons(); game.floatText(game.goat.x, game.goat.y - 40, 'LEGS TIED', PALETTE.hen); }
     if (p.kind === 'husky') { p.task = 'practice'; p.leadAt = 0; }
   },
   // Refused: it says so and goes off, out of the run (`saved` passes over it, and it is gone a moment later).
   refuse(game, p) {
-    p.refused = 1.6; p.task = null;
+    p.refused = TUNING.beast.refuseFor; p.task = null;
     const L = BEAST_ANSWER.refused;
     game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: L[(Math.random() * L.length) | 0], color: PALETTE.hen, life: 1.6, pact: true });
     if (p.kind === 'chicken' || p.kind === 'tortoise') { p.wander = true; }
@@ -110,8 +132,8 @@ Object.assign(Beast, {
     const to = Beast.toGoat(p, game);
     // in hops: it moves only through the first part of each, and sits the rest
     const ph = ((p.bob || 0) / 3 / C.hop) % 1;
-    if (to.d < C.followAt * TILE || ph >= 0.6) { p.vx = 0; p.vy = 0; if (Math.abs(game.goat.x - p.x) > 6) p.face = Math.sign(game.goat.x - p.x); return; }
-    Beast.step(p, game, to.x, to.y, C.speed * 1.6 * (to.d > C.catchFar * TILE ? C.catchUp : 1), dt);
+    if (to.d < C.followAt * TILE || ph >= C.hopShare) { p.vx = 0; p.vy = 0; if (Math.abs(game.goat.x - p.x) > C.faceDead) p.face = Math.sign(game.goat.x - p.x); return; }
+    Beast.step(p, game, to.x, to.y, C.speed * C.hopSpeed * (to.d > C.catchFar * TILE ? C.catchUp : 1), dt);
   },
 
   // ---------------------------------------------------------------- the husky
@@ -131,7 +153,9 @@ Object.assign(Beast, {
     }
     if (p.task === 'lead' || p.task === 'wait') {
       if (p.target === undefined || (p.leadAt -= dt) <= 0) {
-        p.leadAt = 1;
+        p.leadAt = C.leadEvery;
+        // He ran through the room she was waiting in: she leads on, never sits behind him.
+        if (p.task === 'wait' && (game.goatRoom || 0) > p.target) p.task = 'lead';
         if (p.task === 'lead') {
           const here = game.goatRoom || 0;
           let best = -1, most = 0;
@@ -167,7 +191,7 @@ Object.assign(Beast, {
   startSong(game, p, room, practice) {
     const C = TUNING.prop.husky;
     p.task = 'sing';
-    game.song = { p, room: room.index, t: -1.2, hits: 0, cycle: -1, answered: false, done: null, cleared: -1, flash: 0, miss: 0, practice: !!practice };
+    game.song = { p, room: room.index, t: -C.leadIn, hits: 0, cycle: -1, answered: false, done: null, cleared: -1, flash: 0, miss: 0, practice: !!practice };
     if (practice) {
       // Just the two of them: no cult called in, no howl the house hears.
       game.audio.sfxAnimal('husky');   // what to do is written over the staves (`drawSong`), not over her head
@@ -188,7 +212,7 @@ Object.assign(Beast, {
     const S = game.song, C = TUNING.prop.husky; if (!S || S.done) return;
     const ph = S.t - S.cycle * C.cycle;
     if (S.cycle >= 0 && !S.answered && Math.abs(ph - C.you) <= C.window) {
-      S.answered = true; S.hits++; S.flash = 0.5;
+      S.answered = true; S.hits++; S.flash = C.flash;
       game.particles(game.goat.x, game.goat.y - 16, 10, '#9fd0ff', 160);
       game.floats.push({ x: S.p.x, y: S.p.y, on: S.p, row: 0, n: 1, text: S.hits >= Beast.songNeed(S) ? 'AWOOOOO!' : 'WOO!', color: '#9fd0ff', life: 1.2, pact: true });
     }
@@ -201,7 +225,7 @@ Object.assign(Beast, {
     S.t += dt; S.flash = Math.max(0, S.flash - dt); S.miss = Math.max(0, S.miss - dt);
     const c = Math.floor(S.t / C.cycle);
     if (S.t >= 0 && c !== S.cycle) {
-      if (S.cycle >= 0 && !S.answered) S.miss = 0.6;
+      if (S.cycle >= 0 && !S.answered) S.miss = C.miss;
       S.cycle = c; S.answered = false;
       if (S.cleared >= 0 && c - S.cleared >= C.after) return Beast.endSong(game, false);
     }
@@ -213,7 +237,7 @@ Object.assign(Beast, {
     }
     if (S.practice) {
       // The practice cannot be lost: it ends sung, or when he walks out of the room, or men come in,
-      // or `practice.time` runs out — and every way it ends, she goes on to the real one.
+      // or `practice.time` runs out, and every way it ends, she goes on to the real one.
       const room = L.rooms[S.room], g = game.goat;
       const gone = roomAt(L, g.x, g.y) !== room || S.t > C.practice.time
         || game.enemies.some((e) => !e.dead && !e.scripted && e.aware && roomAt(L, e.x, e.y) === room);
@@ -227,34 +251,34 @@ Object.assign(Beast, {
   songNeed(S) { const C = TUNING.prop.husky; return S.practice ? C.practice.need : C.need; },
   endPractice(game, sung) {
     const S = game.song, p = S.p, C = TUNING.prop.husky;
-    S.done = sung ? 'practised' : 'skipped'; S.end = 1.4;
+    S.done = sung ? 'practised' : 'skipped'; S.end = C.endShow;
     p.task = 'lead'; p.leadAt = 0; p.target = undefined;
     game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: sung ? C.practice.good : C.practice.go, color: PALETTE.hen, life: 2.4, pact: true });
   },
   endSong(game, won) {
-    const S = game.song, p = S.p;
-    S.done = won ? 'won' : 'lost'; S.end = 2;
+    const S = game.song, p = S.p, C = TUNING.prop.husky;   // without it every song's end threw, every frame
+    S.done = won ? 'won' : 'lost'; S.end = C.endLost;
     if (won) { p.sang = true; p.task = null; Beast.talk(game, p, ['AWOOOOOOO!', 'WE SANG! NOW TAKE ME TO THE STAIRS, AND YOUR VOICE COMES BACK SOONER FOR THE REST OF THE RUN.']); }
-    else { p.task = null; game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: 'awoo...', color: PALETTE.ashHi, life: 1.6, pact: true }); p.refused = 1.8; }
+    else { p.task = null; game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: 'awoo...', color: PALETTE.ashHi, life: 1.6, pact: true }); p.refused = C.giveUp; }
   },
   // The two staves at the foot of the screen: her notes, then his, sliding left to the line.
   drawSong(R, game) {
     const S = game.song; if (!S || game.state !== 'play') return;
     const C = TUNING.prop.husky, ctx = R.ctx, s = R.ts, W = Math.min(R.vw - 40 * s, 520 * s), x0 = (R.vw - W) / 2;
     const y0 = R.vh - (game.touch.active ? 230 * R.s : 150 * s), lane = 30 * s, hitX = x0 + 70 * s, speed = (W - 90 * s) / C.lead;
-    const a = S.done ? clamp(S.end / 0.6, 0, 1) : clamp((S.t + 1.2) / 0.4, 0, 1);
+    const a = S.done ? clamp(S.end / 0.6, 0, 1) : clamp((S.t + C.leadIn) / 0.4, 0, 1);
     ctx.save(); ctx.globalAlpha = a;
     ctx.fillStyle = 'rgba(13,10,12,0.78)'; ctx.fillRect(x0, y0, W, lane * 2 + 26 * s);
     // The practice says what it wants, over the staves, where the eye already is.
     if (S.practice && !S.done) {
-      let fs = Math.max(12, Math.round(14 * s)); ctx.font = FONT_PICK.font('text', fs);
-      const tw = ctx.measureText(C.practice.say).width; if (tw > W - 20 * s) { fs = Math.max(12, Math.floor(fs * (W - 20 * s) / tw)); ctx.font = FONT_PICK.font('text', fs); }
+      let fs = Math.max(Math.ceil(12 * R.s), Math.round(14 * s)); ctx.font = FONT_PICK.font('text', fs);
+      const tw = ctx.measureText(C.practice.say).width; if (tw > W - 20 * s) { fs = Math.max(Math.ceil(12 * R.s), Math.floor(fs * (W - 20 * s) / tw)); ctx.font = FONT_PICK.font('text', fs); }
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(13,10,12,0.78)'; ctx.fillRect(x0, y0 - 26 * s, W, 26 * s);
       ctx.fillStyle = PALETTE.hen; ctx.fillText(C.practice.say, x0 + W / 2, y0 - 8 * s);
     }
     ctx.fillStyle = '#9fd0ff'; ctx.fillRect(x0, y0, W, 2 * s);
-    ctx.font = `700 ${Math.max(12, 12 * s)}px ${FONT_SC}`; ctx.textAlign = 'left';
+    ctx.font = `700 ${Math.max(12 * R.s, 12 * s)}px ${FONT_SC}`; ctx.textAlign = 'left';
     ctx.fillStyle = PALETTE.hen; ctx.fillText('HER', x0 + 10 * s, y0 + 8 * s + lane * 0.62);
     ctx.fillStyle = PALETTE.bone; ctx.fillText('YOU · ' + keysOf(game).scream, x0 + 10 * s, y0 + 8 * s + lane * 1.62);
     for (const k of [0, 1]) { ctx.fillStyle = 'rgba(239,230,208,0.12)'; ctx.fillRect(hitX, y0 + 8 * s + k * lane + lane * 0.5 - 1, W - (hitX - x0) - 10 * s, 2); }

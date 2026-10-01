@@ -24,7 +24,7 @@ const HEAVEN_PIXELS = (() => {
   // ---------------------------------------------------------------- the goat above, 76 x 80
   // Seated in his cloud, facing you: a ram's gold horns round into a curl by each ear, gold eyes with a
   // goat's bar pupil, a long white beard in strands over a warm white mantle hemmed in gold, and a gold
-  // collar with a bell under the beard — the compound puts a collar on a goat to lead him to the knife;
+  // collar with a bell under the beard, the compound puts a collar on a goat to lead him to the knife;
   // up here the collar is the crown. `speak` opens his mouth, `blink` shuts his eyes.
   function god(speak, blink) {
     const W = 76, H = 80, g = new Grid(W, H), cx = 38;
@@ -203,7 +203,7 @@ const HEAVEN_PIXELS = (() => {
 if (typeof module !== 'undefined') module.exports = HEAVEN_PIXELS;
 
 // In the page: baked once each, `UP` px a texel, and drawn smoothed with their top-left at (x, y), `k`
-// world px a texel — the props' way (js/prop-pixels.js).
+// world px a texel, the props' way (js/prop-pixels.js).
 if (typeof document !== 'undefined') {
   const UP = 4, baked = {};
   HEAVEN_PIXELS.canvas = (name) => {

@@ -1,5 +1,5 @@
 // The frame profiler: where a frame's milliseconds go, method by method. Load it in the page on the
-// dev server (no harness needed — it drives the simulation itself, off the clock):
+// dev server (no harness needed, it drives the simulation itself, off the clock):
 //   const s = document.createElement('script'); s.src = '/tools/perf.js'; document.body.appendChild(s);
 //   await PERF.frames('L1', 11, 200)      -> avg / p95 / max ms of update and draw, a busy room, men dying
 //   await PERF.top('L1', 11, 200)         -> the same run with every method timed (inclusive), heaviest first
@@ -7,14 +7,14 @@
 // A floor is `L<i>`, `N` (THE DARK) or `T<i>` (THE TRIP in LEVELS[i]'s place), as in tools/smoke.js.
 // Times are the main thread's: on a GPU canvas a draw call is only recorded here and rastered later,
 // so what this sees is recording, CPU-side canvases and the upload of any small canvas that was
-// changed since it was last drawn (about a millisecond each) — which is exactly what stutters.
+// changed since it was last drawn (about a millisecond each), which is exactly what stutters.
 // Every frame is its own task (`tick`, a message, which a hidden pane does not throttle the way it
 // does a timer): drawn back to back in one task, a few hundred frames of GPU commands pile up and
 // land as 100–470 ms stalls inside whatever `drawImage` happens to flush them, which no player sees.
 // The first run of a floor in a fresh page includes every first-time bake; run it twice to see both.
 window.PERF = {
   acc: {}, cnt: {}, on: false, wrapped: false,
-  // Every method of the classes and objects the frame runs through, timed while `on` — all but the
+  // Every method of the classes and objects the frame runs through, timed while `on`, all but the
   // tiny ones called thousands of times a frame (`hot`), whose two clock reads a call would outweigh
   // them and inflate everything above them (a flame bake read as 440 ms that costs 14).
   hot: new Set(['hash', 'noise', 'bayer', 'isSolid', 'tileAt', 'walkable', 'walkableAt', 'seesTile', 'idx', 'isPitPx',

@@ -1,10 +1,10 @@
 // THE SHOWROOM (dev only, `#showroom` or SHOWROOM in the dev drawer). Not a level of the run: one
 // hand-laid floor with every object the game stands on a floor, each under its own name, and then a
-// room in each floor's own stone — its floor sheet, its walls, its colours and the furniture its canon
-// is built out of — one after another, THE ALTAR to THE DARK. It is for looking at the art and the
+// room in each floor's own stone, its floor sheet, its walls, its colours and the furniture its canon
+// is built out of, one after another, THE ALTAR to THE DARK. It is for looking at the art and the
 // props side by side, so nothing here is rolled, nobody is spawned (the drawer's SPAWN column is for
 // that) and no rule in `GEN_RULES` is asked of it.
-// THE RULE (1 Oct 2026): anything new the game stands on a floor — a prop, an animal, a talisman — goes
+// THE RULE (1 Oct 2026): anything new the game stands on a floor, a prop, an animal, a talisman, goes
 // in here the day it is added. Every animal has a coop in the COOPS row, every talisman a stool on the
 // shelf along the near wall (tier III, free: grab one to wear it, grab another to swap). Floors read their stone per tile off `zones`
 // (`PaintedArt.drawTiles`); the round cave and the dark's lighting are level-wide and are not here.
@@ -63,6 +63,8 @@ function showroomLevel(def, seed) {
   put('barrel', hx + 42, hy + 10, { toxic: true }); label('POISON BARREL', hx + 42, hy + 11.3, 5);
   row(hy + 15, 'FLOOR', [
     ['GRATING', (x, y) => { put('spike', x, y); put('spike', x + 1, y); }], ['SPIRE', (x, y) => put('spire', x, y)],
+    // A grate with a crate set on it (30 Sep 2026): startLevel pairs the cover by its tile.
+    ['HIDDEN GRATE', (x, y) => { put('spike', x, y, { hidden: true }); put('crate', x, y); }],
     ['STRAW', (x, y) => fill(x, y, x + 1, y, T.HAY)], ['ASH', (x, y) => fill(x, y, x + 1, y, T.ASH)],
     ['GRASS', (x, y) => { for (let dx = 0; dx < 3; dx++) for (let dy = -1; dy <= 0; dy++) grass.push(at(x + dx - 1, y + dy)); }],
     ['DROP', (x, y) => fill(x, y - 1, x + 1, y, T.PIT)],
@@ -79,20 +81,25 @@ function showroomLevel(def, seed) {
   });
   // The doors, each at the mouth of a blind alcove in the hall's far wall, so none of them is in the way.
   const doors = [['PLANK', {}], ['IRON', { iron: true }], ['STAIRS', { iron: true, stair: true }],
-    ['VAULT', { iron: true, vault: true }], ['SOUL GATE', { iron: true, gate: true }], ['SEAL', { iron: true, seal: true }]];
+    ['VAULT', { iron: true, vault: true }], ['SOUL GATE', { iron: true, gate: true }], ['SEAL', { iron: true, seal: true }],
+    ['EXIT GATE', { iron: true, stair: true, gate: true, exitGate: true }]];   // the stairs' own bar, lifted by the last boss's soul on a real floor
   doors.forEach(([name, o], i) => {
-    const x = hx + 3 + i * 7, wy = hall.y;
+    const x = hx + 2 + i * 6, wy = hall.y;
     fill(x, wy - 3, x + 1, wy, T.FLOOR); zone(x - 1, wy - 4, x + 2, wy, 0);
     props.push(Object.assign({ x: (x + 1) * TILE, y: (wy + 0.5) * TILE, kind: 'door', vertical: false }, o));
     label(name, x + 0.5, wy + 1.4, 5);
   });
   // The wall's dressing, between the alcoves: a suit of armour and a stag's head (gen.js `dressWall`).
-  for (const [kind, tx, name] of [['armor', hx + 6, 'ARMOUR'], ['trophy', hx + 14, 'STAG\'S HEAD']]) {
+  for (const [kind, tx, name] of [['armor', hx + 6, 'ARMOUR'], ['trophy', hx + 11, 'STAG\'S HEAD']]) {
     props.push(Object.assign(dressPoint(kind, tx, hy, 'n'), { kind, side: 'n' }));
     label(name, tx, hy + 1.6, 5);
   }
   // The suit on its stand, out in the hall, a step off the wall's dressing.
   put('suit', hx + 13, hy + 8); label('STANDING SUIT', hx + 13, hy + 9.8, 5);
+  // The mouse and her pail (gen.js: she sits in a hole at a gate room's wall; the dev drawer's `spawnShop` lays one on the floor
+  // the same way): a shelf of one offer, the pail, with a shopId of its own so the talismans' free shelf is left alone.
+  put('mouse', hx + 42, hy + 18, { shopId: -10, gap: { x: (hx + 42.5) * TILE, y: (hy + 18.5) * TILE - 18 }, wallSide: 'up' }); label('THE MOUSE', hx + 42, hy + 16.8, 5);
+  put('ware', hx + 42, hy + 20, { shopId: -10, ware: { id: 'milk', tier: 1 } }); label('HER PAIL', hx + 42, hy + 21.3, 5);
   // A wall that gives, in the near wall, with its niche behind it (walled up again by `startLevel`).
   {
     const tx = hx + 36, wr = hall.y + hall.h - 1;   // the near wall, under the shelf
@@ -106,34 +113,34 @@ function showroomLevel(def, seed) {
   const RW = 24, RH = 16, ry = 28, mid = ry + RH / 2 - 1;
   let prev = hall;
   const dress = [
-    // THE ALTAR — stone: bowls of coals, tables, straw and the altar.
+    // THE ALTAR, stone: bowls of coals, tables, straw and the altar.
     (x, y) => { put('brazier', x + 4, y + 3); put('brazier', x + 17, y + 11); put('table', x + 8, y + 10); put('table', x + 10, y + 10);
       put('table', x + 15, y + 3, { altar: true }); fill(x + 1, y + 11, x + 4, y + 12, T.HAY); put('weapon', x + 19, y + 3, { weapon: 'sword' }); },
-    // THE YARD — fire: bowls, powder, crates and the gong.
+    // THE YARD, fire: bowls, powder, crates and the gong.
     (x, y) => { put('brazier', x + 5, y + 3, { roast: true }); put('brazier', x + 16, y + 11); put('brazier', x + 11, y + 3);
       put('barrel', x + 3, y + 10); put('barrel', x + 4, y + 11); put('barrel', x + 18, y + 4);
       put('crate', x + 8, y + 11); put('crate', x + 9, y + 11); put('crate', x + 14, y + 4); put('bell', x + 19, y + 8); },
-    // THE CAVE — the hollow: grass, boulders, teeth at the wall, the mushrooms.
+    // THE CAVE, the hollow: grass, boulders, teeth at the wall, the mushrooms.
     (x, y) => { for (let dx = 2; dx < 9; dx++) for (let dy = 8; dy < 12; dy++) grass.push(at(x + dx, y + dy));
       put('rock', x + 14, y + 3); put('rock', x + 16, y + 4); put('rock', x + 13, y + 5);
       for (const dx of [4, 8, 18]) put('spire', x + dx, y); put('shrooms', x + 18, y + 10); put('heal', x + 11, y + 11); },
-    // THE ROAD — the line: two rows of pillars, lamps, a band of grating.
+    // THE ROAD, the line: two rows of pillars, lamps, a band of grating.
     (x, y) => { for (let dx = 3; dx < 20; dx += 4) { tiles[at(x + dx, y + 3)] = T.WALL; tiles[at(x + dx, y + 10)] = T.WALL; }
       put('lamp', x + 1, y + 1); put('lamp', x + 20, y + 12); for (let dx = 7; dx < 15; dx++) put('spike', x + dx, y + 12); put('crate', x + 16, y + 1); },
-    // THE THRESHING FLOOR — open ground: the wheel in the middle of nothing, straw, powder.
+    // THE THRESHING FLOOR, open ground: the wheel in the middle of nothing, straw, powder.
     (x, y) => { put('mill', x + 11, y + 4, { phase: 1 }); fill(x + 2, y + 10, x + 6, y + 12, T.HAY); fill(x + 16, y + 1, x + 20, y + 2, T.HAY);
       put('barrel', x + 18, y + 11); put('crate', x + 3, y + 2); },
-    // THE BRIDGE — the funnel: a drop the width of the room and one way over it.
+    // THE BRIDGE, the funnel: a drop the width of the room and one way over it.
     (x, y) => { fill(x + 8, y, x + 13, y + RH - 3, T.PIT); fill(x + 8, mid, x + 13, mid + 2, T.FLOOR);
       put('lamp', x + 6, mid - 2); put('lamp', x + 15, mid + 2); put('weapon', x + 3, y + 2, { weapon: 'shield' }); },
-    // THE RAFTERS — the drop: holes in the boards and windows in the far wall.
+    // THE RAFTERS, the drop: holes in the boards and windows in the far wall.
     (x, y) => { fill(x + 4, y + 2, x + 5, y + 3, T.PIT); fill(x + 15, y + 10, x + 17, y + 11, T.PIT); fill(x + 10, y + 11, x + 11, y + 12, T.PIT);
       for (const wx of [x + 3, x + 12]) for (let k = 0; k < 4; k++) { tiles[at(wx + k, y - 1)] = T.PIT; windows.add(at(wx + k, y - 1)); }
       put('crate', x + 19, y + 2); put('barrel', x + 2, y + 11); },
-    // THE OSSUARY — the niche: the walls stepped into alcoves, stands of arms in them.
+    // THE OSSUARY, the niche: the walls stepped into alcoves, stands of arms in them.
     (x, y) => { for (let dx = 1; dx < 22; dx += 4) { fill(x + dx, y, x + dx, y + 1, T.WALL); fill(x + dx, y + RH - 4, x + dx, y + RH - 3, T.WALL); }
       put('weapon', x + 3, y, { weapon: 'sword' }); put('weapon', x + 11, y + RH - 3, { weapon: 'shield' }); put('heal', x + 19, y); put('brazier', x + 11, y + 5); },
-    // THE DARK — the lamp: standing lamps, lanterns on the wall, straw.
+    // THE DARK, the lamp: standing lamps, lanterns on the wall, straw.
     (x, y) => { put('lamp', x + 4, y + 3); put('lamp', x + 17, y + 10); put('lamp', x + 11, y + 11);
       put('sconce', x + 6, y, { wx: 0, wy: -1 }); put('sconce', x + 16, y, { wx: 0, wy: -1 }); fill(x + 1, y + 1, x + 3, y + 2, T.HAY); },
   ];

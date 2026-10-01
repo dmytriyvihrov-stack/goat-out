@@ -1,6 +1,6 @@
 // The smoke run: a bot walks every floor to its stairs with the cult alive round him, and whatever
 // throws, goes NaN or stops a floor from being finished is written down. Load it in the page on the
-// dev server (no harness needed — it drives the simulation itself, off the clock):
+// dev server (no harness needed, it drives the simulation itself, off the clock):
 //   const s = document.createElement('script'); s.src = '/tools/smoke.js'; document.body.appendChild(s);
 //   SMOKE.run(['L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'N', 'T3'], [11, 22], 'now');
 //   ...then SMOKE.report('now') once SMOKE.res.now.done is true (it fills in the background).
@@ -112,6 +112,12 @@ window.SMOKE = {
       const gt = g.goat;
       if (g.state === 'boon') { if (g.boonArm <= 0) { g.takeBoon((Math.random() * 3) | 0); r.souls++; } return; }
       if (g.state !== 'play') { dir.x = dir.y = 0; return; }
+      // The mouse's gate has no soul to swallow and nobody to kill: it opens only for a take (`Shop.takeMilk`).
+      // The bot would otherwise stand at that rest room's bar until the clock ran out (1 Oct 2026 audit).
+      for (const q of g.props) {
+        if (q.kind !== 'ware' || q.broken || q.dead || !q.ware || q.ware.id !== 'milk' || Math.hypot(q.x - gt.x, q.y - gt.y) > 5 * TILE) continue;
+        Shop.takeMilk(g, q, gt); break;   // packs her shelf (every ware broken), so it happens once
+      }
       fieldT += 1 / 60; if (fieldT > 4) { fieldT = 0; D = SMOKE.field(g); }
       const here = dAt(gt.x, gt.y);
       if (here >= 0 && here < best - 0.5) { best = here; stall = 0; } else stall += 1 / 60;

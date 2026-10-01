@@ -4,7 +4,7 @@ class Enemy {
   constructor(x, y, kind) {
     const cfg = TUNING[kind];
     this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.kind = kind; this.cfg = cfg;
-    // Where he was put. Idle, he does not wander past a leash of this — a patrol keeps to its own
+    // Where he was put. Idle, he does not wander past a leash of this, a patrol keeps to its own
     // room until it has a reason not to, rather than drifting out through whatever doorway is handy.
     this.home = { x, y };
     this.r = cfg.radius; this.hp = cfg.hp || 1; this.speed = cfg.speed;
@@ -48,7 +48,7 @@ class Enemy {
     this.lurkT = 0;
     // The line it comes in on, rolled once and kept: anywhere from your shoulder round to your back,
     // left or right, and never your front. Each one rolls its own, so three of them do not queue up
-    // behind you — they arrive from three sides at once and you cannot face all of them.
+    // behind you, they arrive from three sides at once and you cannot face all of them.
     if (kind === 'wraith') {
       const lo = cfg.behind + cfg.flank;
       this.approach = (lo + Math.random() * (Math.PI - lo)) * (Math.random() < 0.5 ? -1 : 1);
@@ -75,7 +75,7 @@ class Enemy {
     return (this.cfg.flingMul || 1) * (this.champion ? TUNING.champion.flingMul : 1) * (this.soul ? TUNING.soulBearer.flingMul : 1);
   }
   // How fast a wall has to be met to kill him. A heavy man is thrown `knockMul` as far, and the
-  // wall asks the same share less of him — or a butcher carrying a soul (0.55 × 0.6 of a throw) left a
+  // wall asks the same share less of him, or a butcher carrying a soul (0.55 × 0.6 of a throw) left a
   // headbutt at nine tiles a second against a wall that wanted eleven, and could not be hurt at all.
   // Light men keep the full number: a hound flies further, not easier.
   splatLimit(game) {
@@ -93,7 +93,7 @@ class Enemy {
 
   fling(vx, vy, thrown) {
     if (this.dead || this.ghosted) return;
-    // The rat ogre is not thrown by anything — not the horns, not the wheel, not a barrel, not a
+    // The rat ogre is not thrown by anything, not the horns, not the wheel, not a barrel, not a
     // blast. No wall ever kills him, which is the whole of what makes him dear.
     // Nor is the ogre (the Butcher, 1.66): too heavy to go anywhere, which is what sets him apart
     // from the butcher, who does. Every heart he has is taken standing, while he is on his knees.
@@ -190,7 +190,7 @@ class Enemy {
     if (this.kind === 'butcher') this.burnHearts = this.cfg.burnHearts;
     this.witchBurn = !!witch; this.scald = false;
     this.burnDir = Math.random() * Math.PI * 2; this.burnTick = 0;
-    // A blunder-immune kind (`TUNING.<kind>.immune.blunder` — the Butcher, the hound) keeps whatever
+    // A blunder-immune kind (`TUNING.<kind>.immune.blunder`, the Butcher, the hound) keeps whatever
     // it was doing rather than losing it to 'burning': the per-kind update has no branch for that
     // state, so forcing him into it would silently freeze him instead of leaving him fighting.
     if (!this.blunderProof) this.state = 'burning';
@@ -201,7 +201,7 @@ class Enemy {
     this.aware = true;
     // Caught from the ground rather than handed on by another burning man: that ground is only ever
     // witchfire, which is only ever a Seer's doing. Whichever one is close enough to have watched it
-    // happen has something to say about it — the same courtesy the shooter of a friendly-fire bullet
+    // happen has something to say about it, the same courtesy the shooter of a friendly-fire bullet
     // already gets.
     if (witch && !fromMan) {
       const mage = game.enemies.find((o) => o.kind === 'seer' && o !== this && !o.dead && !o.held
@@ -221,18 +221,19 @@ class Enemy {
     game.particles(this.x, this.y - 6, 8, PALETTE.fireHi, 150);
   }
 
-  die(game, cause, dx, dy) {
+  die(game, cause, dx, dy, how) {
     if (this.dead || this.ghosted) return;
+    Stats.blow(game, this, cause, how);   // what reached him, for the run's report (js/stats.js)
     // A blow that lands on the mage's man before the scene has given him the first gate's soul finds
     // it in him all the same (`game.blessNow`): that gate opens on nothing else.
     if (this.blessing) game.blessNow(this);
-    // A fused man only goes off if a collision is what kills him — flung into a wall, into another
+    // A fused man only goes off if a collision is what kills him, flung into a wall, into another
     // body, or thrown into one. A blade, fire, a bullet, a trap: those just kill him same as anybody,
     // and the fuse that was counting down under it goes nowhere.
     if (this.bombFuse > 0 && !this.exploded && cause === 'splat') { this.explode(game); return; }
-    // Anyone carrying more than one hit — an arena elite, or any Seer — eats it, goes down and gets
+    // Anyone carrying more than one hit, an arena elite, or any Seer, eats it, goes down and gets
     // back up; a Seer blinks clear as he does. Fire counts, so a mage has to be lit twice. Being torn
-    // open does not: there is nothing left to get up. A bomb charge no longer skips this either — it
+    // open does not: there is nothing left to get up. A bomb charge no longer skips this either, it
     // is a hit like any other, so a two-heart target takes one off and goes down floored, and only a
     // second charge (or any other killing blow) landed while he is already at his last heart actually
     // finishes him.
@@ -246,7 +247,7 @@ class Enemy {
         return;
       }
       // The rat ogre takes it standing. Every other multi-heart man goes down floored for a beat,
-      // which on him would be a stun window opening off the very blow that spent the last one —
+      // which on him would be a stun window opening off the very blow that spent the last one,
       // six horns in a row off one crate. He shrugs, roars, and comes on again: one crate, one heart.
       if (this.kind === 'ratogre') {
         // In the air he keeps flying, as the ogre does below: stopped mid-bound over a drop, the pit
@@ -261,7 +262,7 @@ class Enemy {
       if (this.state === 'hop') { game.audio.sfxThud(); return; }
       this.state = 'floored'; this.timer = 0.75; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false;
       // A man knocked down is not in your mouth any more. Left there, he got up with his own AI back
-      // while still pinned in front of the goat — a mage painting at his feet, a clubman swinging.
+      // while still pinned in front of the goat, a mage painting at his feet, a clubman swinging.
       if (this.held) {
         this.held = false;
         if (game.goat.holding === this) { game.goat.holding = null; game.goat.spendGrab(game, true); }
@@ -274,7 +275,7 @@ class Enemy {
     this.dead = true; this.state = 'dead';
     const w = game.world;
     // Killed while pinned on a stag's antlers, or dead on them outright (`antlers`): he stays up on the
-    // wall — the trophy draws him from here on (`bodyImg`) and no body falls (`CombatFX.death`).
+    // wall, the trophy draws him from here on (`bodyImg`) and no body falls (`CombatFX.death`).
     if (this.impaleOn && this.impaleOn.kind === 'trophy' && cause !== 'boom' && cause !== 'roll' && cause !== 'fall') this.hung = this.impaleOn;
     if (this.hung) {
       const p = this.hung;
@@ -333,8 +334,8 @@ class Enemy {
       if (d > B.radius) continue;
       const nx = dx / (d || 1), ny = dy / (d || 1);
       // A heart, but never out of the air (`Status.blast` the same).
-      if (o.kind === 'butcher') { o.hp -= 1; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = 0.4; } if (o.hp <= 0) o.die(game, 'splat', nx, ny); }
-      else if (o.kind === 'ratogre') o.die(game, 'splat', nx, ny);
+      if (o.kind === 'butcher') { o.hp -= 1; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = 0.4; } if (o.hp <= 0) o.die(game, 'splat', nx, ny, 'blast'); else Stats.blow(game, o, 'splat', 'blast'); }
+      else if (o.kind === 'ratogre') o.die(game, 'splat', nx, ny, 'blast');
       else o.fling(nx * B.impulse, ny * B.impulse, true);
     }
     const g = game.goat, gd = Math.hypot(g.x - this.x, g.y - this.y);
@@ -347,8 +348,8 @@ class Enemy {
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
     // A man posted to watch a door is not idling: he covers the whole room and he sees further.
     if (d > (this.cfg.sight + (this.watchful ? (this.cfg.watchSight || 4) : 0)) * TILE) return false;
-    // THE DARK: out of the light a goat is a shape at `dark.ai.sight` tiles and nothing further — the
-    // same few tiles his own ears give him — and a hound's a little more. Past it, noise is all anyone
+    // THE DARK: out of the light a goat is a shape at `dark.ai.sight` tiles and nothing further, the
+    // same few tiles his own ears give him, and a hound's a little more. Past it, noise is all anyone
     // has, on either side.
     if (game.goatLit === false) { const S = TUNING.dark.ai.sight; if (d > (S[this.kind] || S.all) * TILE) return false; }
     // Straw holding his eye, or a goat standing still in moth's wool (js/talismans.js).
@@ -397,7 +398,7 @@ class Enemy {
   }
 
   // Steer around it; standing under the arms, get out from under them; with no way round at all, stop
-  // at the edge. A man who fails his trap check walks in anyway for a moment — which is what keeps the
+  // at the edge. A man who fails his trap check walks in anyway for a moment, which is what keeps the
   // Mill a trap rather than a fence.
   avoidHazard(dirx, diry, game) {
     const w = game.world;
@@ -432,12 +433,12 @@ class Enemy {
     this.hazardSeen = true;
     // A drop is the one hazard nobody blunders into on his own. Everything else in the building is
     // a wound and the trap roll lets a man walk into one now and then; a hole is gone for good, so
-    // the roll does not apply to it at all — he falls only when something throws him in.
+    // the roll does not apply to it at all, he falls only when something throws him in.
     const overPit = (ahead && ahead.pit) || (here && here.pit);
     if (!overPit) {
       if (this.hazardRoll <= 0) {
         this.hazardRoll = TUNING.ai.rollGap;
-        // The blunder is for a man already coming for you, rattled and in a hurry — a patrol who
+        // The blunder is for a man already coming for you, rattled and in a hurry, a patrol who
         // has not even noticed the goat has no reason to misread the ground under his own feet.
         // Without `aware` here a bored guard would eventually wander into every plate in his room
         // simply from pacing past it enough times, which reads as broken rather than as a mistake.
@@ -517,7 +518,7 @@ class Enemy {
   // the ring changed its mind (1.65: three to six reversals a second with three of them on a moving
   // goat). He carries a heading and a pace (`runAng`, `runSp`), turns at `dog.turn`, checks his
   // stride through a sharp turn, and his body points where he runs. Whatever set him going some
-  // other way — a run, a hop, a blow — is picked up as his heading the first step he is back on
+  // other way, a run, a hop, a blow, is picked up as his heading the first step he is back on
   // his legs.
   stride(dirx, diry, speed, dt, game) {
     const cfg = this.cfg, want = Math.atan2(diry, dirx);
@@ -543,7 +544,7 @@ class Enemy {
     const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
     // A man on a post does not come and get you. He turns to face you and waits to be walked into,
     // which is what makes him something you can practise a headbutt on instead of something that
-    // happens to you. Everything else about him — the windup, the swing, the recovery — is normal.
+    // happens to you. Everything else about him, the windup, the swing, the recovery, is normal.
     if (this.sentry) { this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); return d; }
     // A hunt in full cry is not quiet: a man running you down is heard the same as one running from
     // you, which is what lets a third man standing off to the side join a chase that never came
@@ -583,7 +584,7 @@ class Enemy {
     const d = len(g.x - this.x, g.y - this.y);
     if (d < (P.ahead - 1) * TILE && this.bodyClear(game, g.x, g.y, r, props)) return { goat: true };
     // The field that steps round the furniture, and for a body wider than a tile the one with no
-    // one-tile gaps in it either — each only where it reaches him at all. Furniture that walls a
+    // one-tile gaps in it either, each only where it reaches him at all. Furniture that walls a
     // passage off entirely leaves him on the plain field, pushing at it, which is what he did before.
     // Standing with a shoulder against a table puts his middle on a tile the furniture claims, which
     // no route field numbers: he joins it at the best tile next to him instead.
@@ -684,7 +685,7 @@ class Enemy {
     return true;
   }
   // The watch on whether a chase is getting anywhere. Every `stuckCheck` s he has covered less than
-  // `stuckMove` tiles and is not already at the goat, he is pinned — a corner, a boulder, two tables —
+  // `stuckMove` tiles and is not already at the goat, he is pinned, a corner, a boulder, two tables,
   // and for `unstick` s he walks the most open heading that still points somewhere near the goat.
   // Returns true while he is doing that, so the chase leaves him to it.
   unstuck(game, dt, d, speed) {
@@ -723,7 +724,7 @@ class Enemy {
     if (this.dead || this.scripted) return;
     const w = game.world, g = game.goat, cfg = this.cfg;
     // The ogre in the vault (`TUNING.vault.ogre`): shut in on the grass, he waits for the iron to
-    // give and does nothing else — no leap over it, no noise heard through it. The blow that breaks
+    // give and does nothing else, no leap over it, no noise heard through it. The blow that breaks
     // it wakes him, on the goat, at once.
     if (this.caged) {
       if (!this.caged.broken) { this.vx = 0; this.vy = 0; return; }
@@ -757,15 +758,15 @@ class Enemy {
     this.flail = Math.max(0, this.flail - dt);
     // The fuse used to be the trigger as well as the clock: whoever was still ticking when it hit
     // zero went off wherever he stood, mid-air or not. Now only a collision sets him off, so a fuse
-    // that runs out with no wall or body to answer it just fizzles — `die()`'s own check reads
+    // that runs out with no wall or body to answer it just fizzles, `die()`'s own check reads
     // `bombFuse > 0`, so clamping it to exactly zero here is what closes the window.
     if (this.bombFuse > 0) { this.bombFuse = Math.max(0, this.bombFuse - dt); }
 
     // ---- burning ----
-    // Nobody on fire is steering — a man alight who keeps walking his line at you is the one thing
+    // Nobody on fire is steering, a man alight who keeps walking his line at you is the one thing
     // that reads as the fire not counting, so everything that catches blunders. `immune.blunder`
     // (the Butcher, the hound) is the one exception the tool can turn on a kind: it still catches,
-    // still bleeds hearts for it, but does not lose the room to it — it keeps whatever it was doing.
+    // still bleeds hearts for it, but does not lose the room to it, it keeps whatever it was doing.
     if (this.burning > 0) {
       // A burning man thrown or butted still flies: the blunder's run is his own legs, and it used to
       // overwrite the throw every frame, so a man alight could not be put into a wall at all.
@@ -799,7 +800,7 @@ class Enemy {
     // meanwhile (a stagger off the horns, a crate) is left for when he is off them.
     if (this.impaled > 0) { this.impaledStep(dt, game); return; }
     if (this.state === 'held') {
-      // A held Hunter keeps shooting where he is pointed — for two or three rounds, and then he is
+      // A held Hunter keeps shooting where he is pointed, for two or three rounds, and then he is
       // out and you are carrying a man. With Living Shield a held Bearer keeps swinging too, and
       // everything he hits is on his own side.
       if (this.kind === 'hunter' && this.reload <= 0 && this.heldShots > 0 && this.poison <= 0) {
@@ -809,13 +810,13 @@ class Enemy {
         if (this.heldShots <= 0) game.floatText(this.x, this.y - 28, 'CLICK', PALETTE.ashHi);
       }
       // A mage goes on painting the ground while you carry him, and the ground he can reach is the
-      // ground under his own feet — which is the ground under yours. That is the joke, and it is
+      // ground under his own feet, which is the ground under yours. That is the joke, and it is
       // the reason a Seer is the one man in the building you should think twice about picking up.
       if (this.kind === 'seer') {
         this.castCd = Math.max(0, this.castCd - dt);
         if (this.rune) {
           // The mark goes where he started painting it and stays there. It used to be dragged along
-          // under him, which meant it went off under the goat wherever the goat had run to — so
+          // under him, which meant it went off under the goat wherever the goat had run to, so
           // carrying a mage was a death sentence rather than a thing to be handled. Now the fire
           // comes up where you were: keep moving and you are leaving a trail of it behind you.
           this.timer -= dt;
@@ -850,7 +851,7 @@ class Enemy {
       const preSpeed = Math.hypot(this.vx, this.vy);
       // In steps no longer than his body: LONG HORNS with a charged TALLY blow moves a man ~34 px a
       // frame, and a centre landing past the middle of a one-tile pillar was pushed out of its far
-      // side — through the stone, alive, where the wall was supposed to be what killed him.
+      // side, through the stone, alive, where the wall was supposed to be what killed him.
       const steps = Math.max(1, Math.ceil(preSpeed * dt / ((this.wallR || this.r) * 0.9)));
       const v0x = this.vx, v0y = this.vy;   // before the stone takes what went into it
       let impact = 0;
@@ -862,12 +863,12 @@ class Enemy {
       // apart, and a stag's antlers he meets catch him at a speed the stone alone would not kill at.
       if (game.wallArt && game.wallArt.length && this.wallDressing(game, v0x, v0y, preSpeed)) return;
       if (impact > this.splatLimit(game)) {
-        this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1)); return;
+        this.die(game, 'splat', this.vx / (preSpeed || 1), this.vy / (preSpeed || 1), 'wall'); return;
       }
-      // A thrown body dies on any wall it touches — except a man out of the goat's mouth, who has to
+      // A thrown body dies on any wall it touches, except a man out of the goat's mouth, who has to
       // arrive at `physics.thrownKill` (MASON'S MARK lowers it the way it lowers `splatSpeed`).
       const needs = this.fromMouth ? TUNING.physics.thrownKill * Talisman.splatMul(game) * this.weakMul() : 0;
-      if (impact > needs && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }
+      if (impact > needs && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0, 'wall'); return; }
       if (this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); if (this.burning > 0) return; }
       // A body arriving at speed knocks the coals out of the bowl as well as catching from it, so
       // a man thrown into a brazier lights the floor on the far side of it too.
@@ -885,7 +886,7 @@ class Enemy {
       this.timer -= dt; this.vx *= 0.85; this.vy *= 0.85;
       this.x += this.vx * dt; this.y += this.vy * dt; w.collideCircle(this);
       // Not while already alight, the same guard as below: a kind that does not blunder stays in this
-      // state when `ignite` no-ops, and the return skipped the timer — an ogre knocked down in a pool
+      // state when `ignite` no-ops, and the return skipped the timer, an ogre knocked down in a pool
       // of oil never got up and burned to death from full hearts.
       if (this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); if (this.burning > 0) return; }
       if (this.timer <= 0) {
@@ -897,7 +898,7 @@ class Enemy {
     }
 
     // The wheel lesson waits for its audience (1.72): until the goat has set foot in their room the
-    // two men hold their marks — no sight through the doorway, no footsteps, no idle wander, and so
+    // two men hold their marks, no sight through the doorway, no footsteps, no idle wander, and so
     // no careless one riding the arm into the wall with nobody there to see it (playtest, 25 Sep
     // 2026). The first frame he is inside, the room plays as it always has.
     if (this.millLesson && !this.millOpen) {
@@ -921,7 +922,7 @@ class Enemy {
       // In THE DARK it goes cold in `dark.ai.lose` seconds wherever he is: he goes to the last place
       // he saw you, or the last thing he heard since, and hunts from there by ear.
       // A blow already under way is finished, not dropped: the dark cools a hunt, never a swing, a
-      // hound's run or a hook in flight (pillar 4 — his windup and recovery are the goat's to read and eat).
+      // hound's run or a hook in flight (pillar 4, his windup and recovery are the goat's to read and eat).
       const hunting = this.state === 'chase' || this.state === 'noticed' || this.state === 'investigate';
       // On a lit floor too: without `hunting` it cut the rat ogre's swing and bound, a hidden wraith
       // out of its disguise and a HORNED MASK flight short, every six seconds out of sight.
@@ -966,7 +967,7 @@ class Enemy {
     }
     // Most men close the instant they see you, but not with nothing in between: at any real
     // distance a shape in the dark is a beat of doubt before it is a threat, and only being spotted
-    // close up — inside `ai.noticeNear` — leaves no room for one. `noticeFor` (set only by
+    // close up, inside `ai.noticeNear`, leaves no room for one. `noticeFor` (set only by
     // `startLevel`, on the Mill lesson's two men) still wins outright where it is set, because that
     // beat is a fixed, authored one and not a function of range. Everyone else gets a distance-scaled
     // version of the same freeze: `ai.noticeMin` seconds up close, out to `ai.noticeMax` at
@@ -1085,7 +1086,7 @@ class Enemy {
       let f = out ? Math.atan2(this.home.y - this.y, this.home.x - this.x) : this.facing + (Math.random() - 0.5) * 2;
       // A pure random turn can point him straight at the wall behind him, and nothing about idling
       // ever checked: he'd just stand there looking at stone until the next wander beat. Resample a
-      // few times against a look-ahead probe rather than leave him facing it — this only ever
+      // few times against a look-ahead probe rather than leave him facing it, this only ever
       // touches the direction he is about to face, never whether he walks.
       if (!out) {
         const w = game.world, look = TUNING.ai.wanderClear * TILE;
@@ -1109,7 +1110,7 @@ class Enemy {
     if (!this.target) { this.state = 'idle'; return; }
     const dx = this.target.x - this.x, dy = this.target.y - this.y, d = Math.hypot(dx, dy);
     // A noise on the far side of a wall used to be walked at in a straight line, into the wall, and
-    // given up on there — so the one thing the goat could not do was be heard round a corner. The
+    // given up on there, so the one thing the goat could not do was be heard round a corner. The
     // route field runs to the goat, so for a noise near him (a footstep, a scream, a crate) it runs
     // to the noise as well: he walks it round, and only a noise far from anything goes in a line.
     const g = game.goat, routed = !game.world.los(this.x, this.y, this.target.x, this.target.y)
@@ -1167,7 +1168,7 @@ class Enemy {
 
   // The ogre coming down, fists on the floor (`slam`) or out of a leap (`leap`): a ring round him,
   // every way at once. The goat inside it is hurt and thrown straight out from him. His own men in
-  // it are left standing — it is the goat the ring is for — and so is anything he lands among.
+  // it are left standing, it is the goat the ring is for, and so is anything he lands among.
   quake(game, S, R) {
     const g = game.goat;
     game.thud(this.x, this.y, 9); game.hitstop(0.05); game.audio.sfxThud(); game.audio.sfxSplat(); game.vibe(24);
@@ -1197,7 +1198,7 @@ class Enemy {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
       if (!sees || this.poison > 0) { this.state = 'chase'; return; }
       // A man of his own standing right in front of the muzzle: he lowers it and steps off the line
-      // instead of putting a round through him. Only close — past `friendClear` tiles he is looking
+      // instead of putting a round through him. Only close, past `friendClear` tiles he is looking
       // at the goat and not at who is in between, which is the friendly fire the room is built on.
       if (this.friendInLine(game, Math.atan2(dy, dx))) { this.state = 'chase'; this.stepOff(); return; }
       if (this.timer <= 0) {
@@ -1263,7 +1264,7 @@ class Enemy {
 
   // The hound: hit and run. He closes, then circles just outside his own reach until he is near
   // enough to run at you. Then he stops, and for a second the line he is about to run is drawn on the
-  // floor in red — bent, because it starts off the side he was circling and turns onto you — and he
+  // floor in red, bent, because it starts off the side he was circling and turns onto you, and he
   // runs it barking, turning after you as he goes, and bites whatever is in front of him. The charge
   // is the window: he is standing still and telling you exactly where he is going to be.
   updateDog(dt, game, sees) {
@@ -1275,7 +1276,7 @@ class Enemy {
     if (this.circleTimer <= 0) {
       this.circleTimer = cfg.circleFlip * (0.6 + Math.random());
       // A pack spreads round you rather than bunching on one side: with another hound on the ring
-      // near him, he circles away from it. Alone, it is the coin it always was — rarer, and never
+      // near him, he circles away from it. Alone, it is the coin it always was, rarer, and never
       // inside `sideHold` of the last time he wheeled: with a heading that has to come round, every
       // flip is a turn on the floor, and a coin every second was a dog who could not decide.
       // A mate well round the ring from him (`mateArc`) is not bunching and leaves him be: the sign
@@ -1306,7 +1307,7 @@ class Enemy {
     if (this.state === 'retreat') {
       this.timer -= dt;
       // The break: out past you and wheeling off the side he was circling, round and away onto the
-      // ring — mostly round, a little out. He used to back straight off with his face to you, which
+      // ring, mostly round, a little out. He used to back straight off with his face to you, which
       // on a sprite with no legs was a dog sliding backwards; and straight out is a turn right round
       // off a run that was pointed at the goat. Run round what is in the way, the same whisker as the
       // ring: straight back he put his rump into the first wall and stood there.
@@ -1377,7 +1378,7 @@ class Enemy {
     if (!sees && (d > cfg.circle * TILE || !game.sees(this.x, this.y, g.x, g.y))) { this.ringing = false; this.chaseGoat(game, this.speed, dt); return; }
     // Seen from well outside the ring, the ring's own steering was a straight line at you with a
     // sideways lean and a whisker, which across a room of pillars is a dog bouncing between them.
-    // He runs the route in, and only starts to circle once he is nearly on the ring — and once on
+    // He runs the route in, and only starts to circle once he is nearly on the ring, and once on
     // it, keeps to it until the goat is clear of `ringOut` more: one edge for both ways was a goat
     // walking past it and a dog switching between the route and the ring every other step.
     const ringFar = cfg.circle * TILE * cfg.ringIn * (this.ringing ? cfg.ringOut : 1);
@@ -1402,7 +1403,7 @@ class Enemy {
     }
     const nx = dx / (d || 1), ny = dy / (d || 1);
     const tx = -ny * this.circleSign, ty = nx * this.circleSign;
-    // Closing, holding the ring, or easing out again, depending on how near he already is — on a
+    // Closing, holding the ring, or easing out again, depending on how near he already is, on a
     // slope, not in three steps: each step was a 40° kink in his line wherever the goat's own
     // walking moved the edge across him.
     const ring = cfg.circle * TILE;
@@ -1420,8 +1421,8 @@ class Enemy {
     this.moveToward(Math.cos(ang), Math.sin(ang), this.speed * (this.lungeCd > 0 ? 0.92 : 1), dt, game);
   }
 
-  // The nearest heading to `ang` with `look` px of floor in front of it — stone, a drop and blocking
-  // furniture all count — swept out either side in widening steps. The hound's whisker: it is what
+  // The nearest heading to `ang` with `look` px of floor in front of it, stone, a drop and blocking
+  // furniture all count, swept out either side in widening steps. The hound's whisker: it is what
   // makes him go round a pillar rather than into it, orbiting and running alike. With nothing open
   // it hands back `none` (the heading asked for, unless the caller would rather hear so).
   clearAng(game, ang, look, x = this.x, y = this.y, props, none = ang) {
@@ -1452,11 +1453,11 @@ class Enemy {
     return true;
   }
   // The hound's eye for his own (24 Sep 2026: "he cannot get round his own"). Nothing else he
-  // steers by knows a body is there — the fields are stone, the whisker stone and furniture — so a
+  // steers by knows a body is there, the fields are stone, the whisker stone and furniture, so a
   // clubman on his route or a packmate on the ring was run into and leaned on, the two of them
   // shoved along at half his pace, and in a doorway not at all. With one ahead of him inside
   // `pass.look` tiles (and nearer than the goat), he takes the nearest heading that clears it on
-  // the side away from it — kept `pass.hold` s, or a man square in front flipped him every step —
+  // the side away from it, kept `pass.hold` s, or a man square in front flipped him every step,
   // that stone, drops, furniture, flame and the other bodies allow, no more than `pass.arc` off
   // where he meant to go. Hemmed in on both sides he leans on as before, which is still how a
   // one-tile corridor gets opened.
@@ -1508,10 +1509,10 @@ class Enemy {
   }
 
   // One step of the run's heading, shared by the run and the line drawn for it so the two cannot
-  // disagree. He homes onto the goat at `dashTurn` only while the goat is still in front of him —
+  // disagree. He homes onto the goat at `dashTurn` only while the goat is still in front of him,
   // homing on a goat he had passed turned the run back on itself. A corner in the way is run round,
   // not into: the same whisker the orbit uses bends it, never past the goat himself (a goat with his
-  // back to a wall is not a wall to steer off), and never faster than `whiskTurn` — let the whisker
+  // back to a wall is not a wall to steer off), and never faster than `whiskTurn`, let the whisker
   // snap and a run meeting a wall past the goat drew a kink of a right angle and more.
   runStep(game, x, y, ang, dt, near) {
     const cfg = this.cfg, g = game.goat, gd = Math.hypot(g.x - x, g.y - y), toG = Math.atan2(g.y - y, g.x - x);
@@ -1600,14 +1601,14 @@ class Enemy {
 
   // The Seer paints a rune under your feet and blinks away when you close. Frail as anyone else.
   // Mist most of the time: it slides toward your blind side, through whatever is in the way, and
-  // does nothing at all until it is there. Then it becomes a body — and from that instant it is
+  // does nothing at all until it is there. Then it becomes a body, and from that instant it is
   // committed, and stays a body well past the blow, which is the window you get to unmake it in.
   updateWraith(dt, game) {
     const cfg = this.cfg, g = game.goat, H = cfg.hide;
     this.fadeCd = Math.max(0, this.fadeCd - dt);
     this.driftPhase += dt;
     // Lying in the room as a box or a bowl. It does nothing until the goat does something within
-    // reach of it — a headbutt, a reach for anything, a step onto it — and then it is on him from
+    // reach of it, a headbutt, a reach for anything, a step onto it, and then it is on him from
     // whichever side he is standing on, blind side or not: the disguise is its way round your face.
     if (this.state === 'hidden') {
       this.vx = 0; this.vy = 0;
@@ -1651,7 +1652,7 @@ class Enemy {
     // is offering. The sprite turns toward the same angle, so what you see is still what it reads.
     const look = Math.atan2(g.aim.y, g.aim.x);
     const back = look + this.approach;
-    // It wanders as it closes, so a drift does not read as a missile — but never far enough to
+    // It wanders as it closes, so a drift does not read as a missile, but never far enough to
     // wander back into the cone it cannot arrive from. A shoulder approach gets almost no slack;
     // one coming straight up your back gets all of it.
     const slack = Math.min(cfg.driftWobble, Math.abs(this.approach) - cfg.behind);
@@ -1664,7 +1665,7 @@ class Enemy {
     this.vx = d > 1 ? dx / d * cfg.speed : 0;
     this.vy = d > 1 ? dy / d * cfg.speed : 0;
     this.facing = Math.atan2(g.y - this.y, g.x - this.x);
-    // It only becomes real on your blind side, close enough to reach you, and not straight away —
+    // It only becomes real on your blind side, close enough to reach you, and not straight away,
     // and never inside a wall. Mist goes through stone; a body cannot be in it. That is the one thing
     // the ground still does for you here: a wall at your back is an arc it cannot arrive from.
     const behind = Math.abs(angleDiff(look, Math.atan2(this.y - g.y, this.x - g.x)));
@@ -1774,7 +1775,7 @@ class Enemy {
   }
 
   // THE DARK: the seer paints his rune where he heard something rather than where he saw it. Not his
-  // own noise, not one past `dark.ai.earCast` tiles, and not one a man of his is standing in — the
+  // own noise, not one past `dark.ai.earCast` tiles, and not one a man of his is standing in, the
   // cult's own feet and clubs make noise too, and he knows what his side sounds like. Whatever else
   // is there when it goes off, burns.
   hearForRune(game, n) {
@@ -1812,7 +1813,7 @@ class Enemy {
     const seal = game.sealHolding(this);
     // And short of a seal, he still may not land somewhere the fight has already left behind: a
     // blink close to a doorway could put him a room back the way the goat came, alive in ground
-    // that reads as cleared. `curRoom` is whatever room the goat is standing in right now — a
+    // that reads as cleared. `curRoom` is whatever room the goat is standing in right now, a
     // corridor answers with nothing, and nothing here restricts a blink from one.
     const curRoom = roomAt(game.level, g.x, g.y);
     let best = null;
@@ -1847,7 +1848,7 @@ class Enemy {
   // The Butcher (1.66). He walks at you slowly, and he does not swing: out of reach and in sight he
   // leaps, close in he brings both fists down on the floor. Each is a ring you can read on the
   // floor before it lands (`Renderer.drawHopMark`, `drawSlamRing`), and each ends with him on his
-  // knees for long enough to be hit — which is where every heart he has comes from.
+  // knees for long enough to be hit, which is where every heart he has comes from.
   updateButcher(dt, game, sees) {
     const g = game.goat, cfg = this.cfg, L = cfg.leap, S = cfg.slam;
     this.slamCd = Math.max(0, this.slamCd - dt);
@@ -1945,7 +1946,7 @@ class Enemy {
     if (g.dead || g.leap || g.invuln > 0) return false;
     return g.state !== 'roll' && g.state !== 'stunned' && g.state !== 'falling' && g.state !== 'ko';
   }
-  // Stone and whatever stops a round stop the hook; his own men do not — it goes past them.
+  // Stone and whatever stops a round stop the hook; his own men do not, it goes past them.
   hookLine(game, x, y) { return game.clearLine(this.x, this.y, x, y, game.props, 'stopsBullets', 2); }
   // Where the hook is aimed: where the goat will be when it gets there, off his own velocity and the
   // hook's flight time, the whole of it (`lead`), never more than `leadMax` tiles ahead, walked back
@@ -1976,7 +1977,7 @@ class Enemy {
   flyHook(dt, game) {
     const H = TUNING.champion.hook, h = this.hook, g = game.goat, w = game.world;
     if (!h) { this.state = 'chase'; return; }
-    const total = H.speed * dt, steps = Math.max(1, Math.ceil(total / 6)), st = total / steps;
+    const total = H.speed * dt, steps = Math.max(1, Math.ceil(total / H.step)), st = total / steps;
     for (let s = 0; s < steps; s++) {
       h.x += h.ux * st; h.y += h.uy * st; h.left -= st;
       if (w.isSolid(Math.floor(h.x / TILE), Math.floor(h.y / TILE))) { h.x -= h.ux * st; h.y -= h.uy * st; this.hookMiss(game, true); return; }
@@ -1989,8 +1990,8 @@ class Enemy {
         this.hookGoat(game); return;
       }
       for (const p of game.props) {
-        if (p.broken || p.held || Math.abs(p.x - h.x) > p.r + 4 || Math.abs(p.y - h.y) > p.r + 4) continue;
-        if (Math.hypot(p.x - h.x, p.y - h.y) > p.r + 3) continue;
+        if (p.broken || p.held || Math.abs(p.x - h.x) > p.r + H.propR || Math.abs(p.y - h.y) > p.r + H.propR) continue;
+        if (Math.hypot(p.x - h.x, p.y - h.y) > p.r + H.propR) continue;
         if ((p.kind === 'crate' && !p.noGrab) || p.kind === 'bomb') { this.hookProp(game, p); return; }
         if (p.stopsBullets) { this.hookMiss(game, true); return; }
       }
@@ -2009,7 +2010,7 @@ class Enemy {
   // and the rope has him (`goat.hooked`, which `Goat.update`'s stunned branch pulls along).
   hookGoat(game) {
     const g = game.goat, H = TUNING.champion.hook, h = this.hook;
-    if (g.holding) { const o = g.holding; g.holding = null; o.held = false; g.autoHeld = false; if (!o.item) { o.state = 'floored'; o.timer = 0.5; } }
+    if (g.holding) { const o = g.holding; g.holding = null; o.held = false; g.autoHeld = false; g.spendGrab(game, !o.item); if (!o.item) { o.fromMouth = false; o.state = 'floored'; o.timer = TUNING.champion.hook.dropFloor; } }
     g.state = 'stunned'; g.timer = H.pullMax + H.daze; g.hooked = this; g.vx = 0; g.vy = 0; g.runT = 0; g.runUp = 1;
     h.caught = g; h.x = g.x; h.y = g.y;
     this.state = 'hookpull'; this.timer = H.pullMax;
@@ -2039,13 +2040,13 @@ class Enemy {
       if (!close && this.timer > 0) return;
       this.endPull(game);
       // Into his reach: the cleaver comes round on the ordinary windup, and the goat is on his feet
-      // for most of it — the rope brings him to the blow, it does not land it.
+      // for most of it, the rope brings him to the blow, it does not land it.
       if (close) { this.state = 'windup'; this.timer = this.atk('windup') * slow; game.bark(this, 'attack', 0.25); }
       return;
     }
     if (c.broken || c.held) { this.endPull(game); return; }
     const px = this.x - c.x, py = this.y - c.y, pd = Math.hypot(px, py) || 1, step = H.pull * dt;
-    if (pd - step <= this.r + c.r + 4 || this.timer <= 0) { c.vx = 0; c.vy = 0; this.endPull(game); return; }
+    if (pd - step <= this.r + c.r + H.propGap || this.timer <= 0) { c.vx = 0; c.vy = 0; this.endPull(game); return; }
     c.x += px / pd * step; c.y += py / pd * step; c.vx = 0; c.vy = 0; h.x = c.x; h.y = c.y;
   }
   endPull(game) {
@@ -2073,17 +2074,17 @@ class Enemy {
   }
 
   // The rat ogre. He comes out of the hole (`emerge`), and from then on he goes for whatever is
-  // nearest him that he can see — the goat, or any man of the cult — and swings at it. He is never
+  // nearest him that he can see, the goat, or any man of the cult, and swings at it. He is never
   // idle and never investigates: he was made by being struck three times and he knows who did it,
   // so with nothing in sight he walks the flow field to the goat like a man in full pursuit. The
-  // cult does not go for him; they go for you, which is the whole trick of him — walk him into a
+  // cult does not go for him; they go for you, which is the whole trick of him, walk him into a
   // room that is already full and let the room spend itself on him.
   // Where the next leap comes down: `hop.dist` tiles toward his prey if he can see it (short of it
   // if it is closer than that), down the flow field to the goat if not, walked back until the spot
-  // and the line to it are floor — never into stone, never over a drop.
+  // and the line to it are floor, never into stone, never over a drop.
   hopSpot(game, target, td) {
     // The rat ogre's `hop` or the Butcher's `leap`: he comes down `short` tiles short of his prey
-    // (on it, at 0), and with `over` a drop under the line is flown over — only the spot must be floor.
+    // (on it, at 0), and with `over` a drop under the line is flown over, only the spot must be floor.
     const w = game.world, H = this.cfg.hop || this.cfg.leap, short = H.short != null ? H.short * TILE : this.cfg.reach * 0.6;
     let ax, ay, want = H.dist * TILE;
     if (target && td < Infinity) {
@@ -2095,8 +2096,8 @@ class Enemy {
     }
     const l = Math.hypot(ax, ay) || 1; ax /= l; ay /= l;
     // A shade inside what of him the stone pushes on (`wallR`): wall collision parks him exactly that
-    // far off it, and probing at the full width read the wall he was leaning on — or the two sides of
-    // a doorway one tile wide, which he squeezes through (`ai.path.squeeze`) — as in the way of every leap.
+    // far off it, and probing at the full width read the wall he was leaning on, or the two sides of
+    // a doorway one tile wide, which he squeezes through (`ai.path.squeeze`), as in the way of every leap.
     const pr = this.wallR * 0.85;
     const ok = (x, y, pits) => {
       for (const [ox, oy] of [[0, 0], [pr, 0], [-pr, 0], [0, pr], [0, -pr]]) {
@@ -2114,7 +2115,7 @@ class Enemy {
       return b;
     };
     let best = reach(ax, ay, want), bx = ax, by = ay;
-    // Pinned — a corner, or a wall across the line to his prey: he used to crouch and leap on the
+    // Pinned, a corner, or a wall across the line to his prey: he used to crouch and leap on the
     // spot for ever. Fan out round the line (and down the flow field, which knows the way round) and
     // take the leap that gains the most ground toward it, so a corner costs him one sideways bound.
     // Only the rat ogre: the Butcher leaps at you or not at all, and walks when he cannot.
@@ -2157,8 +2158,8 @@ class Enemy {
     return pts[0] || null;
   }
   // THE TEETH (25 Sep 2026). The ogre is too big to die on a cave spire the way a man does, so he
-  // is caught on it: a heart for the rock, then `impale.time` s stuck where he stands — no leap, no
-  // slam, no step — for whatever the room holds (a blade, fire, a thrown body). Before this he was
+  // is caught on it: a heart for the rock, then `impale.time` s stuck where he stands, no leap, no
+  // slam, no step, for whatever the room holds (a blade, fire, a thrown body). Before this he was
   // stuck by accident: every man steers off a spire, so standing on one he could not walk off it,
   // and it took a heart a second until he died. Now it is a window with an end.
   impale(game, p) {
@@ -2173,8 +2174,8 @@ class Enemy {
     game.floatText(this.x, this.y - 44, 'STUCK', PALETTE.fireHi);
   }
   // What a flung body finds on the wall it flies at (gen.js `dressWall`, `game.wallArt`). A suit of
-  // armour he flies into or lands by — any flung body within `near` px past touching it, however slow
-  // (a body only stays flung while it is still travelling) — comes apart and he flies on. A stag's
+  // armour he flies into or lands by, any flung body within `near` px past touching it, however slow
+  // (a body only stays flung while it is still travelling), comes apart and he flies on. A stag's
   // head he meets, flying at its wall past `trophy.hit` within `hitR` of it, takes him on its tines
   // (`antlers`): true, and his step is over. A wraith has nothing to catch.
   wallDressing(game, vx, vy, speed) {
@@ -2216,7 +2217,7 @@ class Enemy {
       return;
     }
     this.hung = p;
-    this.die(game, 'splat', 0, -1);
+    this.die(game, 'splat', 0, -1, 'antlers');
   }
   impaledStep(dt, game) {
     const I = TUNING.cave.spikes.impale, p = this.impaleOn;

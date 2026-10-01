@@ -1,6 +1,6 @@
 # Room music and the Music Lab
 
-The layered score uses one 118 BPM clock, a 16-bar phrase (256 sixteenth notes), and compatible
+The layered score uses one clock at 118 BPM everywhere (`TUNING.audio.bpm`; a per-floor tempo that slowed the calm was tried and dropped on 1 Oct 2026, out of a fight the score is fewer parts, `layers.calm`, never a slower one), a 16-bar phrase (256 sixteenth notes), and compatible
 pitches over a shared harmony. Level 1 has a frightened, lost variation; levels 2-4 keep the
 Phrygian walking bed; levels 5+ have a second progression. All three have idle, spotted, chase and
 combat arrangements. The original score remains available under
@@ -71,7 +71,7 @@ even as the rhythm becomes urgent. Level 2 restores the established walking bed.
 **The opening scene has its own arc.** `roomMusicScene` returns an empty scene the instant
 `game.state !== 'play'`, which otherwise left the whole prologue and the pen sitting flat on
 `idle`. `INTRO_STAGE` (`js/audio.js`) maps `game.intro.phase` onto the same idle/spotted/chase/
-combat ladder a run's own encounters climb — the meadow stays idle and is the one phase that
+combat ladder a run's own encounters climb, the meadow stays idle and is the one phase that
 borrows the ordinary theme instead of `FIRST_MUSIC` (nothing has gone wrong yet), the truck is
 spotted, the dark is chase, and the men closing in and taking her hold chase through to combat on
 the blow itself. `black`/`wake` ease back to idle since the beat is over by then.
@@ -123,20 +123,20 @@ or scream is an attack; a roll is not). What is left (`MUSIC_EVENTS`):
   comes back over 0.9 s. Only the score: the blow's own effect stays sharp.
 - **The last heart**: the low-pass stays at 900 Hz, the tune steps back to `layers.heartSing` of
   itself, and his heart is heard (`GameAudio.heartbeat`, Foley's `heart`) in time with the red at
-  the screen's edge — lub as the picture's beat turns over, dub a fifth of a beat on.
+  the screen's edge, lub as the picture's beat turns over, dub a fifth of a beat on.
 
 The queue holds twelve at most, muted events are spent rather than kept, and leaving play clears it.
 
 ## The room's own sound
 
-Fire and the milk grass used to be part of the score — a crackle a bar for coals, pops for a blaze, a
-chime a patch — and sat on top of the tune. They are the world's now (`GameAudio.updateAmbience`,
+Fire and the milk grass used to be part of the score, a crackle a bar for coals, pops for a blaze, a
+chime a patch, and sat on top of the tune. They are the world's now (`GameAudio.updateAmbience`,
 `TUNING.audio.ambience`), off the music's clock and on the **effects** slider (`ambBus`):
 
 - **A bed a floor**, by canon (`ambience.beds`): still air in stone (THE ALTAR, THE YARD, THE
   OSSUARY, THE DARK), the cave's hollow ringing on a few low notes of its own (THE CAVE, THE TRIP),
   wind through boards with a whistle over the gusts (THE ROAD, THE THRESHING FLOOR, THE BRIDGE, THE
-  RAFTERS — loudest there, with the windows). Loops from `Foley.loop`, rendered once at a low rate
+  RAFTERS, loudest there, with the windows). Loops from `Foley.loop`, rendered once at a low rate
   and crossfaded end into start, faded across a floor change.
 - **The nearest fire**: one crackle whose level is every lit bowl, lamp and lantern, burning tile and
   burning man inside seven tiles, weighed by kind and nearness, panned to its side.

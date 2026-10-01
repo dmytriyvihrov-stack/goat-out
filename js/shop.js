@@ -1,6 +1,6 @@
 // The shop: the mouse in the wall, her shelf, what she turns into, and the two artifacts that are
-// verbs (the boomerang and the blink). Everything here is reached from the goat's own buttons —
-// grab is buy, a headbutt is rude, grab on nothing throws the boomerang, roll is the blink — so
+// verbs (the boomerang and the blink). Everything here is reached from the goat's own buttons,
+// grab is buy, a headbutt is rude, grab on nothing throws the boomerang, roll is the blink, so
 // nothing in it adds a key. Data lives in `ARTIFACTS` and `TUNING.shop` (js/tuning.js); this is
 // what happens when the goat reaches for it.
 const Shop = {
@@ -15,14 +15,15 @@ const Shop = {
   // The mouse a ware belongs to, or null once she has turned or gone.
   mouseOf(game, p) { return game.props.find((o) => o.kind === 'mouse' && o.shopId === p.shopId && !o.broken) || null; },
 
-  // Grab on a ware. She takes nothing for it: the offer is a choice of three — either talisman, or
-  // the milk (`takeMilk`) — and reaching for one talisman hangs it at his neck and packs the rest away. One slot: taking onto a full one puts the old
+  // Grab on a ware. She takes nothing for it: the offer is a choice of three, either talisman, or
+  // the milk (`takeMilk`), and reaching for one talisman hangs it at his neck and packs the rest away. One slot: taking onto a full one puts the old
   // talisman back on the stool you took from, so a change of mind is a second reach and not a loss.
-  // The first reach in her room is what lifts its gate — she is the bar of it, not a soul.
+  // The first reach in her room is what lifts its gate, she is the bar of it, not a soul.
   buy(game, ware, goat) {
     if (ware.broken) return;
     if (ware.locked) { game.floatText(ware.x, ware.y - 26, 'KILL HIM FIRST', PALETTE.blood); game.audio.sfxThud(); return; }
     if (ware.ware.id === 'milk') { Shop.takeMilk(game, ware, goat); return; }
+    Stats.shop(game, ware, ware.ware.id + ':' + ware.ware.tier);
     const old = game.artifact, def = Shop.def(ware.ware.id);
     game.artifact = { id: ware.ware.id, tier: ware.ware.tier };
     game.applyBoons(); game.saveRun();
@@ -30,7 +31,7 @@ const Shop = {
     game.ring(ware.x, ware.y, 1.6 * TILE, def.color); game.particles(ware.x, ware.y, 14, def.color, 150);
     game.audio.sfxBell(); game.vibe(20);
     if (!game.shopTold) { game.shopTold = true; game.floatText(goat.x, goat.y - 54, 'IT HANGS AT YOUR NECK', PALETTE.bone); }
-    // The others go back into the wall: one of the three, never two — unless the rat ogre is dead
+    // The others go back into the wall: one of the three, never two, unless the rat ogre is dead
     // on her floor (`ogreDown`), which is what THE SHELF IS YOURS says: every stool is his then.
     if (!ware.free) for (const o of game.props) {
       if (o === ware || o.kind !== 'ware' || o.shopId !== ware.shopId || o.broken || o.chosen) continue;
@@ -46,10 +47,11 @@ const Shop = {
   },
 
   // The third offer: no talisman, one pail of milk set down where the generator found room for it,
-  // holding `TUNING.shop.heals` hearts — a drink a heart, so a goat at full health can come back to
+  // holding `TUNING.shop.heals` hearts, a drink a heart, so a goat at full health can come back to
   // it while he is still in her room instead of pouring two of the three away. The other two offers
   // go back into the wall exactly as they do when a talisman is taken, and the gate gives.
   takeMilk(game, ware, goat) {
+    Stats.shop(game, ware, 'milk');
     const spots = ware.milkSpots && ware.milkSpots.length ? ware.milkSpots
       : [game.freeSpot(ware.x, ware.y + TILE)];
     const s = spots[0] || { x: ware.x, y: ware.y + TILE };
@@ -82,7 +84,7 @@ const Shop = {
       if (m.strikes >= 2) { game.shake(5); game.particles(m.x, m.y - 6, 6, PALETTE.blood, 90); }
       return;
     }
-    Shop.spawnOgre(game, m);
+    Stats.provoked(game); Shop.spawnOgre(game, m);
   },
 
   // A body twice a man's width does not come out of a mouse hole: it comes through the wall. The
@@ -100,7 +102,7 @@ const Shop = {
     for (let k = 0; k < 6; k++) w.dot(m.gap.x + (Math.random() - 0.5) * 56, m.gap.y + (Math.random() - 0.5) * 18, 2 + Math.random() * 2.6, '#3a3630');
   },
   // She comes out of the hole, and she is not a mouse any more. The wares stay on the shelf and
-  // lock until he is down; kill him and they are free — the Spelunky deal, honest only because the
+  // lock until he is down; kill him and they are free, the Spelunky deal, honest only because the
   // fight is dear (see `TUNING.ratogre`).
   spawnOgre(game, m) {
     const cfg = TUNING.ratogre;
@@ -108,7 +110,7 @@ const Shop = {
     Shop.breakWall(game, m);
     for (const w of game.props) if (w.kind === 'ware' && w.shopId === m.shopId && !w.broken) w.locked = true;
     // She was the bar of her room's gate, and she is gone: the way on opens with her. It used to
-    // wait for a ware, and the wares wait for him — on THE YARD and THE ROAD her room and the one
+    // wait for a ware, and the wares wait for him, on THE YARD and THE ROAD her room and the one
     // before it seldom hold enough to put six hearts' worth into him, so a goat who could not kill
     // him could not leave the floor. Now the rudeness costs the offer, and killing him wins it back.
     game.openSoulGate(m.shopId);
@@ -127,7 +129,7 @@ const Shop = {
     game.slowTimer = Math.max(game.slowTimer, cfg.emergeFx.slow);
     e.say = { text: 'YOU WERE ASKED', life: 2.4, max: 2.4 };
   },
-  // He is down: whatever is still on the shelf is yours for nothing — and LEGENDARY (1 Oct 2026,
+  // He is down: whatever is still on the shelf is yours for nothing, and LEGENDARY (1 Oct 2026,
   // playtest: "legendary only once you have beaten the mouse's ogre"): every talisman she had out that
   // is not his own old one put back goes up to the fourth tier (`RARITY`), the only way to one.
   ogreDown(game, e) {
@@ -155,8 +157,8 @@ const Shop = {
   },
 
   // ---- the boomerang ----
-  // Q throws it. Out along the aim to `range` tiles, into a wall or into `pierce` men — whoever it
-  // touches loses his head for `stun` — and then home, through anything, until it is back in the
+  // Q throws it. Out along the aim to `range` tiles, into a wall or into `pierce` men, whoever it
+  // touches loses his head for `stun`, and then home, through anything, until it is back in the
   // holster. The wait after that is `Goat.itemCd`, set by the press that threw it: this is a verb
   // of its own and never reads `grabCd`. A rat ogre only has his swing broken by it.
   throwBoomerang(game, goat) {
@@ -219,12 +221,12 @@ const Shop = {
   // Q, not the roll: no tumble, no travel, the goat is simply `dist` tiles further along the way
   // he was going. Stone and a drop stop it short; a shut door or a table stops it short; a man
   // does not. A held man is dropped the way the roll drops him, and the mercy frames it opens are
-  // the roll's own — but its wait is `Goat.itemCd`, set by the press that used it, never `rollCd`.
+  // the roll's own, but its wait is `Goat.itemCd`, set by the press that used it, never `rollCd`.
   blink(game, goat, inx, iny) {
     const B = game.mods.blink, R = TUNING.goat.roll, w = game.world;
     let dx = inx, dy = iny;
-    if (Math.hypot(dx, dy) < 0.2) { dx = goat.vx; dy = goat.vy; }
-    if (Math.hypot(dx, dy) < 20) { dx = Math.cos(goat.facing); dy = Math.sin(goat.facing); }
+    // The stick first; with none, where he is going; standing, where he faces.
+    if (Math.hypot(dx, dy) < 0.2) { dx = goat.vx; dy = goat.vy; if (Math.hypot(dx, dy) < 20) { dx = Math.cos(goat.facing); dy = Math.sin(goat.facing); } }
     const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
     const dist = B.dist * TILE;
     const solidAt = (px, py) => {

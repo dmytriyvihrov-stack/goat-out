@@ -1,0 +1,286 @@
+'use strict';
+// RUN STATS (1 Oct 2026: "a question in the menu whether we may send, then the run's report after each
+// session, who hurt the goat, who killed him, how the cult was hurt (elements, walls…), which choices
+// were dealt and taken, which companions and what became of them, and all of it can be saved").
+//
+// One report a LIFE: it opens on the first floor a goat walks onto and closes when he dies (the
+// game's loop, so that is the send), escapes, is quit to the title, or the tab closes. Every report
+// is kept in this browser (`STATS_KEY`, the last `TUNING.stats.keep`) whatever the answer, so the
+// dev drawer's SAVE STATS and `tools/stats.html` can read them; sent only once the player said yes
+// (`game.settings.stats`), only with the worker's `TUNING.stats.url` set, never a god-mode, LEVELS or SHOWROOM
+// life, and off the itch build only with `sendDev`. What did not go out (offline, a closed tab) is
+// tried again the next time the page loads. Nothing personal: a random id made here, and the run.
+// Pure bookkeeping: never touches the simulation, and every hook is wrapped so a throw here can
+// never cost a frame.
+const STATS_KEY = 'goatout.stats.v1';
+
+const Stats = {
+  life: null,
+  db: null,
+
+  load() {
+    if (Stats.db) return Stats.db;
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(STATS_KEY) || 'null'); } catch (e) { d = null; }
+    if (!d || typeof d !== 'object' || !Array.isArray(d.log)) d = { log: [] };
+    d.log = d.log.filter((L) => L && typeof L === 'object' && Array.isArray(L.floors));
+    for (const L of d.log) delete L.sending;   // a send cut off by a closed tab is tried again
+    // A life the tab was killed in (a phone throwing a backgrounded tab away, a bfcache eviction) was
+    // parked on the way out (`park`); it is closed now as `closed`, answered as it was then.
+    if (d.open && typeof d.open === 'object' && Array.isArray(d.open.floors) && !Stats.life) {
+      const L = d.open, F = L.floors[L.floors.length - 1];
+      if (L.floors.some((x) => x.time || x.kills)) {
+        L.end = L.end || { how: 'closed', f: F ? F.f : null, room: F ? F.room : 0, t: F ? F.time : 0, by: null, code: null,
+          kills: L.floors.reduce((n, x) => n + (x.kills || 0), 0) };
+        L.done = L.done || L.parked || L.at; L.sent = false; d.log.push(L);
+      }
+    }
+    delete d.open;
+    if (!d.player) d.player = 'p-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+    return (Stats.db = d);
+  },
+  store() {
+    const d = Stats.load(), keep = TUNING.stats.keep;
+    if (d.log.length > keep) d.log.splice(0, d.log.length - keep);
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(d)); } catch (e) { /* storage full or refused: this tab only */ }
+  },
+  // Wrapped: a hook that throws must never take the frame with it.
+  safe(fn) { try { fn(); } catch (e) { console.warn('stats:', e); } },
+
+  // ---------- who and where ----------
+  floorTok(game) {
+    const d = game.level && game.level.def || {};
+    return (d.shroom ? 'T' : d.dark ? 'N' : 'L') + (game.levelIndex + 1);
+  },
+  // A man as the reports name him: the butcher is a clubman with the flag, the ogre is kind `butcher`.
+  who(e) {
+    if (!e) return '?';
+    if (typeof e === 'string') return e;
+    const k = e.kind === 'bearer' ? (e.champion ? 'butcher' : 'clubman') : e.kind === 'butcher' ? 'ogre' : e.kind;
+    return e.boss ? k + '*' : k;
+  },
+  // Only the run itself: the JUICE tab's stage is `Object.create(game)`, the tools lend stubs.
+  off(game) { return game !== window.game || !game.level || game.level.def.heaven || game.showroomOn; },
+  floor(game) { const L = Stats.life; return L && L.floors[L.floors.length - 1]; },
+  t(game) { return Math.round((game.timer || 0) * 10) / 10; },
+
+  // ---------- the life ----------
+  // From the end of `startLevel`: a new life if none is open, and a floor entry either way.
+  enter(game) {
+    Stats.safe(() => {
+      if (Stats.off(game)) return;
+      const d = Stats.load();
+      if (!Stats.life) {
+        Stats.life = { v: 1, id: 'r-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), player: d.player,
+          build: BUILD, at: Date.now(), runSeed: (game.runSeed >>> 0).toString(36), deaths: game.deaths || 0,
+          runs: (game.best && game.best.runs) || 0, flags: Stats.flags(game), release: !!(typeof RELEASE !== 'undefined' && RELEASE.on),
+          touch: !!(game.touch && game.touch.active), pad: !!(game.pad && game.pad.active), floors: [], end: null };
+      }
+      const def = game.level.def, fl = Stats.life.floors, last = fl[fl.length - 1];
+      // A floor entered and never played (CONTINUE goes up to heaven first, and its edge enters the floor again) is one entry, not two.
+      if (last && last.f === Stats.floorTok(game) && !last.time && !last.kills) fl.pop();
+      Stats.life.floors.push({ f: Stats.floorTok(game), name: def.name || '', rooms: game.level.rooms.length,
+        hp: game.goat.maxHp, boons: game.boons.map((b) => b.id), artifact: game.artifact ? game.artifact.id + ':' + game.artifact.tier : null,
+        beastsBanked: Object.assign({}, game.beasts || {}), hurt: [], blows: {}, souls: [], shop: [], beasts: [], kills: 0, time: 0, room: 0, cleared: false });
+      // The animals this floor has to offer, in their coops and stalls.
+      for (const p of game.props) if (p.kind === 'coop') Stats.beast(game, p.holds || 'chicken', 'here');
+    });
+  },
+  flags(game) {
+    return (game.settings && game.settings.easy ? 'E' : '') + (game.dev && game.dev.god ? 'X' : '') + (game.runJumped ? 'J' : '');
+  },
+  // Every letter the open life has worn at any moment, not only the last: GOD MODE thrown on and off
+  // again before a death left a report with no X, and it was sent. Called at a switch and at the close.
+  mark(game) {
+    const L = Stats.life; if (!L) return;
+    for (const c of Stats.flags(game)) if (!(L.flags || '').includes(c)) L.flags = (L.flags || '') + c;
+  },
+  // Where the floor stands when it ends, for whichever way it ends.
+  stamp(game) {
+    const F = Stats.floor(game); if (!F) return;
+    F.time = Stats.t(game); F.kills = game.kills || 0; F.room = game.goatRoom || 0;
+  },
+  cleared(game) { Stats.safe(() => { const F = Stats.floor(game); if (!F || Stats.off(game)) return; Stats.stamp(game); F.cleared = true; }); },
+  // `how`: 'death' (the loop: the send), 'win', 'quit', 'closed'.
+  close(game, how) {
+    Stats.safe(() => {
+      const L = Stats.life; if (!L) return;
+      Stats.stamp(game);
+      // Nothing played (Escape in the opening scene, a quit from heaven after CONTINUE): no report at all.
+      if (how !== 'death' && L.floors.every((f) => !f.time && !f.kills)) { Stats.life = null; return; }
+      const F = Stats.floor(game);
+      L.end = { how, f: F ? F.f : null, room: game.goatRoom || 0, t: Stats.t(game), by: how === 'death' && game.goat ? Stats.who(game.goat.hurtBy) : null,
+        code: Stats.code(game, how), kills: L.floors.reduce((n, f) => n + f.kills, 0) };
+      Stats.mark(game);
+      L.done = Date.now();
+      // The answer as it stood when this life ended: a life played after NO THANKS stays unsent even
+      // if SETTINGS is switched on later.
+      L.ok = !!(game.settings && game.settings.stats);
+      Stats.life = null;
+      const d = Stats.load();
+      L.sent = false; delete L.parked;
+      d.log.push(L); delete d.open; Stats.store();
+      Stats.flush(game);
+    });
+  },
+
+  // The run code of this moment, not the last card's: a quit, a closed tab or a Backspace restart has
+  // no card of its own, and `lastCode` was still the one before.
+  code(game, how) {
+    if (how === 'death' && game.lastCode) return game.lastCode;
+    try { return game.level && game.runCode ? game.runCode(null) : null; } catch (e) { return null; }
+  },
+  // The open life written down as it is, for a tab that may never come back to close it (`load`).
+  park(game) {
+    Stats.safe(() => {
+      const d = Stats.load(), L = Stats.life;
+      if (L && game) { Stats.stamp(game); L.parked = Date.now(); L.ok = !!(game.settings && game.settings.stats); d.open = L; }
+      else delete d.open;
+      Stats.store();
+    });
+  },
+
+  // ---------- what happens on a floor ----------
+  // `Goat.damage`, after the blow has landed: a heart (or more) gone, and what took it.
+  hurt(game, by, n) {
+    Stats.safe(() => {
+      const F = Stats.floor(game); if (!F || Stats.off(game)) return;
+      F.hurt.push({ by: Stats.who(by), n, hp: game.goat.hp, room: game.goatRoom || 0, t: Stats.t(game) });
+    });
+  },
+  // `Enemy.die`, top: a blow that may or may not finish him. `cause` is the game's word ('splat',
+  // 'burn', 'boom'…), `how` what the splat was (a wall, a door, a body, a blade, a bomb…).
+  blow(game, e, cause, how) {
+    Stats.safe(() => {
+      const F = Stats.floor(game); if (!F || Stats.off(game) || e.scripted) return;
+      e.statHow = how || (cause === 'splat' ? 'hit' : cause);
+      const k = Stats.who(e) + '|' + e.statHow;
+      (F.blows[k] = F.blows[k] || [0, 0])[0]++;
+    });
+  },
+  // `game.onKill`: the blow before it was the one that finished him.
+  kill(game, e, cause) {
+    Stats.safe(() => {
+      const F = Stats.floor(game); if (!F || Stats.off(game) || e.scripted) return;
+      const k = Stats.who(e) + '|' + (e.statHow || cause || '?');
+      (F.blows[k] = F.blows[k] || [1, 0])[1]++;
+    });
+  },
+  // A soul's cards, as dealt (`openBoonChoice`), and what came of them (`takeBoon`, `skipBoon`).
+  offer(game, pick, replace, third) {
+    Stats.safe(() => {
+      const F = Stats.floor(game); if (!F || Stats.off(game)) return;
+      F.souls.push({ offer: pick.map((b) => b.id), swap: (replace || []).map((o) => o ? o.id : null), third: third || null,
+        took: undefined, room: game.goatRoom || 0, t: Stats.t(game), n: game.boons.length });
+    });
+  },
+  took(game, id) {
+    Stats.safe(() => {
+      const F = Stats.floor(game); if (!F) return;
+      const s = F.souls[F.souls.length - 1]; if (s && s.took === undefined) s.took = id;
+    });
+  },
+  // The mouse: what was on the shelf, what he reached for ('milk' for the pail), or the rat ogre.
+  shop(game, ware, what) {
+    Stats.safe(() => {
+      const F = Stats.floor(game); if (!F || Stats.off(game)) return;
+      const shelf = game.props.filter((o) => o.kind === 'ware' && o.shopId === ware.shopId && !o.broken).map((o) => o.ware.id === 'milk' ? 'milk' : o.ware.id + ':' + o.ware.tier);
+      F.shop.push({ offer: shelf, took: what, had: game.artifact ? game.artifact.id : null, t: Stats.t(game) });
+    });
+  },
+  provoked(game) {
+    Stats.safe(() => { const F = Stats.floor(game); if (!F || Stats.off(game)) return; F.shop.push({ took: 'ratogre', t: Stats.t(game) }); });
+  },
+  // An animal: 'here' (in a coop on the floor), 'freed', 'yes' / 'no' (its terms), 'paid' (the horse,
+  // before the stairs), 'dead', 'lost' (walled in behind him; `coop` if never let out), 'saved'.
+  beast(game, kind, ev) {
+    Stats.safe(() => {
+      const F = Stats.floor(game); if (!F || Stats.off(game)) return;
+      F.beasts.push({ kind, ev, t: Stats.t(game), room: game.goatRoom || 0 });
+    });
+  },
+
+  // ---------- out ----------
+  sendable(game, L) {
+    const C = TUNING.stats;
+    if (!C.url || !game.settings || !game.settings.stats || !L.ok) return false;
+    if (!(typeof RELEASE !== 'undefined' && RELEASE.on) && !C.sendDev) return false;
+    return !/[XJ]/.test(L.flags || '') && L.floors.length > 0;
+  },
+  // Every report not yet out, each as itself: one POST to our own worker (tools/stats-worker), whose
+  // address no blocker lists. `text/plain` keeps it a simple request, so no preflight and an iframe on
+  // itch.zone sends it as readily as the page itself; the worker stores a report by its id once.
+  flush(game) {
+    const d = Stats.load(), url = (TUNING.stats.url || '').replace(/\/$/, '') + '/report';
+    for (const L of d.log) {
+      if (L.sent || L.sending || !Stats.sendable(game, L)) continue;
+      L.sending = true;
+      const body = JSON.stringify(Stats.clean(L));
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, keepalive: body.length < 60000 })
+        .then((r) => { L.sending = false; if (r.ok || r.status === 400 || r.status === 413) { L.sent = true; Stats.store(); } })
+        .catch(() => { L.sending = false; });
+    }
+  },
+  // The report as it goes out: without this browser's own bookkeeping.
+  clean(L) { const o = Object.assign({}, L); delete o.sent; delete o.sending; return o; },
+  // The dev drawer's SAVE STATS: every report this browser holds, as one file `tools/stats.html` reads.
+  async save(game) {
+    const d = Stats.load();
+    if (!d.log.length) { game.devToast('NO RUN REPORTS YET'); return; }
+    try {
+      const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+      await RELEASE.hand(new Blob([JSON.stringify(d.log)], { type: 'application/json' }), `goat-stats-${stamp}.json`);
+      game.devToast(`SAVED ${d.log.length} REPORTS`);
+    } catch (err) { game.devToast('NOT SAVED: ' + String(err && err.message || err).slice(0, 60).toUpperCase(), 5); }
+  },
+
+  // ---------- the question ----------
+  // Asked once, on the title, before anything else is picked; the answer is SETTINGS' switch after.
+  ask(game) {
+    if (!game.settings || game.settings.statsAsked || (typeof RELEASE !== 'undefined' && !RELEASE.on && !TUNING.stats.askDev)) return;
+    // Nothing lit to begin with: a first Enter, Space or pad A must not answer for the player.
+    if (game.menu && !game.menu.panel) { game.menu.panel = 'consent'; game.menu.sub = -1; }
+  },
+  answer(game, yes) {
+    game.settings.stats = !!yes; game.settings.statsAsked = true; game.saveSettings();
+    game.menu.panel = null; game.audio.sfxCard();
+    if (yes) Stats.flush(game);
+  },
+  consentKey(game, code) {
+    const m = game.menu;
+    if (code === 'KeyW' || code === 'ArrowUp' || code === 'KeyS' || code === 'ArrowDown' || code === 'KeyA' || code === 'ArrowLeft' || code === 'KeyD' || code === 'ArrowRight') { m.sub = m.sub === 0 ? 1 : 0; game.audio.sfxSwing(); }
+    else if ((code === 'Space' || code === 'Enter' || code === 'NumpadEnter') && m.sub >= 0) Stats.answer(game, m.sub === 0);
+    else if (code === 'Escape' || code === 'Backspace') Stats.answer(game, false);
+  },
+  drawConsent(R, game) {
+    const ctx = R.ctx, s = R.ts, w = R.w, h = R.h, cx = w / 2;
+    ctx.fillStyle = 'rgba(9,7,9,0.94)'; ctx.fillRect(0, 0, w, h);
+    const bw = clamp(Math.min(w * 0.9, 560 * s), 260 * s, 600 * s), x0 = cx - bw / 2;
+    const lines = TUNING.stats.ask;
+    let y = h * 0.5 - (lines.length * 22 + 150) * s / 2;
+    ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.ochre;
+    ctx.font = `700 ${24 * s}px ${FONT_SC}`; ctx.fillText(TUNING.stats.title, cx, y); y += 34 * s;
+    ctx.fillStyle = PALETTE.bone; ctx.font = FONT_PICK.font('text', 15 * s);
+    for (const l of lines) { for (const part of R.wrap(l, bw)) { ctx.fillText(part, cx, y); y += 21 * s; } }
+    y += 18 * s;
+    const bh = 52 * s, gap = 14 * s, half = (bw - gap) / 2;
+    game.menu.rects.length = 0;
+    ['YES, SEND IT', 'NO THANKS'].forEach((label, i) => {
+      const x = x0 + i * (half + gap), sel = game.menu.sub === i;
+      game.menu.rects.push({ x, y, w: half, h: bh });
+      ctx.fillStyle = sel ? '#4a2428' : '#190f16'; ctx.fillRect(x, y, half, bh);
+      ctx.strokeStyle = sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s; ctx.strokeRect(x, y, half, bh);
+      ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${16 * s}px ${FONT_SC}`; ctx.fillText(label, x + half / 2, y + bh * 0.62);
+    });
+    ctx.fillStyle = 'rgba(239,230,208,0.5)'; ctx.font = FONT_PICK.font('text', 12.5 * s);
+    ctx.fillText(TUNING.stats.later, cx, y + bh + 26 * s);
+    ctx.textAlign = 'left';
+  },
+};
+
+// A tab put away (a phone's home button, another tab) may be killed without another word, and a page
+// kept in the back/forward cache may be evicted from it: the open life is written down each time.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => { if (document.hidden && window.game) Stats.park(window.game); });
+  window.addEventListener('pagehide', () => { if (window.game) Stats.park(window.game); });
+}

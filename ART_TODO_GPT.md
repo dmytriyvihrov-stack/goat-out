@@ -1,8 +1,8 @@
-# GOAT OUT — что ещё в старом стиле: бриф на перерисовку в пиксель
+# GOAT OUT - что ещё в старом стиле: бриф на перерисовку в пиксель
 
-> **СДЕЛАНО (24.09.2026).** Каждый лист ниже уже в игре — нарисован от руки пикселями в `js/prop-pixels.js` (1.63–1.64),
+> **СДЕЛАНО (24.09.2026).** Каждый лист ниже уже в игре - нарисован от руки пикселями в `js/prop-pixels.js` (1.63–1.64),
 > а `js/combat-assets.js` удалён в 1.58: эффекты печёт `CombatFX`. Две позиции здесь спорят с тем, что сделано
-> (пустая стойка с оружием — теперь оружие стоит в ней; жаровня с тушей — теперь кольцо камней и вертел). Файл
+> (пустая стойка с оружием - теперь оружие стоит в ней; жаровня с тушей - теперь кольцо камней и вертел). Файл
 > оставлен как образец формата брифа (скилл `asset-spec`). Живая строка одна: зловещие декали на пол.
 
 Для генерации в GPT (image_gen). Состояние на 23.09.2026, билд 1.53.
@@ -43,7 +43,7 @@ Pixel 2.5. Ниже всё, что ещё нарисовано старыми «
 
 ### Лист A. Двери (4 × 2)
 
-Двери стоят на каждом уровне между комнатами, это самое заметное старое в игре. В игре дверь — тонкая плита поперёк
+Двери стоят на каждом уровне между комнатами, это самое заметное старое в игре. В игре дверь - тонкая плита поперёк
 проёма в два тайла: **58 × 13 px**. Рисуется сверху, вертикально; горизонтальную игра получает поворотом.
 Разбитая дверь остаётся на полу пятном щепок/обломков, **64 × 64 px**.
 
@@ -87,7 +87,7 @@ Use reference images ONLY for chunky pixel-art density, palette and camera; do n
 | 4 | Сломанный столб | 22 × 7 px, лежит на полу. |
 | 5–6 | Ритуальный алтарь | **108 px** в ширину, самый большой предмет первой комнаты. Каменный стол с резьбой, свечи, тёмные пятна. Рисовать на две ячейки. |
 | 7 | Знамя культа на стене | 13 × 17 px, висит на кирпичной стене. Тёмная ткань с простым символом культа. |
-| 8 | Гонг на раме | ~38 px. В него бьют — даёт бафф. Рама из дерева, бронзовый диск. |
+| 8 | Гонг на раме | ~38 px. В него бьют - даёт бафф. Рама из дерева, бронзовый диск. |
 
 ```
 Use reference images ONLY for chunky pixel-art density, palette and camera; do not draw any character. Asset: GOAT OUT RITUAL AND MACHINE sprite sheet, EXACT 4 columns 2 rows, isolated sprites, wide transparent gutters. Top-down camera with slight tilt, tops visible, shallow front faces, axes horizontal/vertical, NOT isometric. Chunky square pixels, nearest-neighbor enlarged, 4-6 muted colors each, no smooth shading. Row 1: (1) MILL HUB seen from above, a thick round wooden axle block with iron straps and a central iron pin, roughly circular, authored ~48 logical px; (2) MILL ARM, one long straight heavy wooden beam with iron bands, HORIZONTAL, spanning the full cell width, the inner end on the LEFT flat and plain, the outer end on the right slightly worn, authored ~64x12 logical px; (3) one single vertical wooden CAGE POST, thin tall rough pole with a rope lashing near the top, authored ~7x30 logical px, standing; (4) the SAME cage post BROKEN and lying flat on the floor, splintered in two, horizontal, ~22x7 logical px. Row 2: (5+6) one wide RITUAL ALTAR spanning TWO cells, a low long slab of pale carved limestone on two stone legs, top clearly visible, a few melted candles and dark old stains on top, grim folk-cult mood but not gory, authored ~100 logical px wide; (7) a small CULT BANNER hanging flat against a wall, dark red-brown cloth with a simple pale horned-circle symbol, ragged bottom edge, ~13x17 logical px; (8) a GONG: a round dull-bronze disc hanging in a simple wooden frame, top of the frame visible, ~38 logical px wide. Muted palette: warm wood, pale limestone, dark iron, dull bronze, dark red cloth. No text, no labels, no UI, no floor, no baked cast shadows. Genuine transparent alpha background.
@@ -123,7 +123,7 @@ Use reference images ONLY for chunky pixel-art density, palette and camera. Asse
 
 | # | Что | В игре |
 |---|---|---|
-| 1–3 | Решётка-ловушка: покой / взводится / шипы вверх | Целый тайл на полу, 32 × 28 px. С третьего уровня. Покой — плоская железная решётка; «взводится» — те же прорези, из которых едва видны кончики; «вверх» — торчат шипы. |
+| 1–3 | Решётка-ловушка: покой / взводится / шипы вверх | Целый тайл на полу, 32 × 28 px. С третьего уровня. Покой - плоская железная решётка; «взводится» - те же прорези, из которых едва видны кончики; «вверх» - торчат шипы. |
 | 4 | Каменный зуб у стены пещеры | ~24 px. Острый каменный шип, растёт из пола у стены, у основания старая кровь. Сейчас кодом. |
 | 5 | Жаровня с вертелом | ~36 px. Та же жаровня, что уже в пиксель-арте, плюс вертел с тушкой над углями. Одна на уровень. Сейчас кодом. |
 | 6 | Курятник | 2 тайла, ~52 × 32 px. Решётчатый ящик из реек с тёмным нутром; зверя внутри рисует игра. Сейчас кодом. |
@@ -142,7 +142,7 @@ Use reference images ONLY for chunky pixel-art density, palette and camera; no c
   подключить.
 - **Лестница** на выходе и входе сейчас рисуется градиентом по тайлу. Когда поставлю новые двери, посмотрю, выпадает
   ли она из стиля; если да, закажу отдельно.
-- **Огонь, кровь и эффекты** — отдельный пак (`js/combat-assets.js`), уже в игре.
+- **Огонь, кровь и эффекты**: отдельный пак (`js/combat-assets.js`), уже в игре.
 
 ## Порядок, если делать не всё сразу
 

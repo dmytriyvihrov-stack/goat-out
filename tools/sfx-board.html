@@ -61,7 +61,7 @@
       ['running hooves (loop)', (b) => b.classList.toggle('on', loop('hoof', () => audio.sfxHoof(1), 160))]]],
     ['Hounds', [['bark', () => audio.sfxBark()], ['a pack, all round', pack], ['growl', () => audio.sfxGrowl()], ['snap', () => audio.sfxSnap()], ['hound dies (whine)', () => audio.sfxGroan('dog')]]],
     ['The cult', [['swing', () => audio.sfxSwing()], ['thud', () => audio.sfxThud()], ['splat', () => audio.sfxSplat()], ['falls in a hole', () => audio.sfxFall()],
-      ['dies (groan)', () => audio.sfxGroan('bearer')], ['killed: splat + groan', () => { audio.sfxSplat(); audio.sfxGroan('bearer'); }], ['ogre dies', () => audio.sfxGroan('butcher')],
+      ['dies (groan)', () => audio.sfxGroan('bearer')], ['killed: death + groan', () => { audio.sfxDeath(null, 1); audio.sfxGroan('bearer'); }], ['ogre killed: death + bell', () => { audio.sfxDeath(null, 1.4); audio.sfxBell(true); audio.sfxGroan('butcher'); }], ['ogre dies', () => audio.sfxGroan('butcher')],
       ['rifle cocked', () => audio.sfxCock(1)], ['gunshot', () => audio.sfxGunshot()], ['seer casts', () => audio.sfxCast()], ['rune', () => audio.sfxRune()], ['blink', () => audio.sfxBlink()],
       ['wraith', () => audio.sfxWraith()], ['wraith strikes', () => audio.sfxWraithHit()], ['wraith undone', () => audio.sfxUnmade()]]],
     ['Things', [['steel', () => audio.sfxSteel()], ['crack', () => audio.sfxCrack()], ['pot', () => audio.sfxPot()], ['barrel stave', () => audio.sfxStave(1)],

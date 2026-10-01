@@ -5,7 +5,7 @@
 //   1. the dark itself, a mask at `res` cells a tile, cleared by light cast from every flame through
 //      the tiles (a brazier never lights the far side of a wall) and by the goat's hearing round him;
 //   2. inside that hearing, everything standing that no flame reaches, redrawn as one flat shape with
-//      a cold rim — a silhouette, never a face or a colour;
+//      a cold rim, a silhouette, never a face or a colour;
 //   3. what must still read in the dark: every windup (pillar 4 does not switch off with the
 //      lamps), and the eyes of the kinds whose eyes catch light (`dark.eyes`), from across a room.
 const Dark = {
@@ -186,7 +186,7 @@ const Dark = {
   },
 
   // The stone round him (`dark.edge`): every face where floor he can see meets wall, inside his
-  // hearing, drawn as one world pixel of the silhouettes' cold rim — whole out to `from` of `near`,
+  // hearing, drawn as one world pixel of the silhouettes' cold rim, whole out to `from` of `near`,
   // gone at `near`. The dark is there to hide the men, not the room: a goat who cannot tell where
   // the wall is cannot put anybody into it (pillar 3). Only floor in his own sight, so nothing shows
   // through a wall; not in a cave, whose rock is not cut on the tile grid.
@@ -292,12 +292,14 @@ const Dark = {
       ctx.globalAlpha = dark;
       r.drawTelegraph(e); r.drawAimTelegraph(e); r.drawHopMark(e);
       // What is over his head sets its own alpha and is opaque, so only where the one under the dark
-      // is mostly gone — and only for a man he can hear, or one shouting: the shout carries.
+      // is mostly gone, and only for a man he can hear, or one shouting: the shout carries.
       const heard = Math.hypot(e.x - game.goat.x, e.y - game.goat.y) < (TUNING.dark.near + 0.5) * TILE;
       if (dark > 0.5 && (heard || e.say)) { ctx.save(); ctx.globalAlpha = 1; r.drawOverhead(e); ctx.restore(); }
     }
     ctx.globalAlpha = 0.85;
     r.drawDashPaths(game); r.drawRunes(game); r.drawBombFuse(game);
+    // The butcher's hook in flight and the rope dragging him: drawn in the cast, and the dark hid them.
+    r.drawHooks(game, (o) => !game.hidden(o.x, o.y));
     ctx.restore();
   },
 

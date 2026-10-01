@@ -1,5 +1,5 @@
 // GOAT GRID, a tab of the dev tool: the goat as the build draws him (`PaintedArt.drawGoat`), laid
-// out on a grid whose two axes are picked from the things the souls and the mouse put on him —
+// out on a grid whose two axes are picked from the things the souls and the mouse put on him,
 // horns, voice, talisman, the third eye, the facing, the hearts lost. Every cell is the real draw
 // call with a stub `game` carrying the mods that cell stands for, so the grid can never show a look
 // the game does not have. Each cell keeps its own copy of the painter's particle state (steam,
@@ -249,8 +249,8 @@ const GoatGrid = {
   // ---- THE SCENE ----
   // One frame built by hand: a slice of a room in a floor's own stone, and on it the goat as the grid
   // dresses him, men of any kind in a pose, fire, blood and blasts, and the room's furniture. Every
-  // piece is the game's own draw call — `drawTiles`' wall and floor, `drawProp`, `drawEnemy`,
-  // `drawGoat`, `CombatFX`'s baked frames — handed stubs, never the run's lists: nothing here enters
+  // piece is the game's own draw call, `drawTiles`' wall and floor, `drawProp`, `drawEnemy`,
+  // `drawGoat`, `CombatFX`'s baked frames, handed stubs, never the run's lists: nothing here enters
   // `game.enemies`, `game.props` or the world, and the renderer's `game` is lent a stub for the length
   // of the draw only.
   SCENE: {
@@ -357,7 +357,7 @@ const GoatGrid = {
     sc.items.push({ id: ++sc.seq, tool: sc.tool, x, y, pose: sc.pose, boss: sc.boss, face: sc.face, shout: sc.shout });
   },
 
-  // The room as tiles: floor inside cols x rows, stone by WALLS — none, the far wall, or the whole ring.
+  // The room as tiles: floor inside cols x rows, stone by WALLS, none, the far wall, or the whole ring.
   sceneStone(sc, x, y) {
     const [cols, rows] = this.SCENE.sizes[sc.size], w = this.SCENE.walls[sc.walls];
     return w === 'room' ? x < 0 || y < 0 || x >= cols || y >= rows : w === 'far' ? y < 0 : false;
@@ -385,8 +385,8 @@ const GoatGrid = {
     return { S, ox: x + w / 2 - (b.x0 + bw / 2) * S, oy: y + h / 2 - (b.y0 * TILT + bh / 2) * S };
   },
 
-  // The floor and the walls the way `PaintedArt.drawTiles` lays them — the same masks, sheets, shadow
-  // strips, litter, straw at the wall's foot and banners — off a small grid of its own. Tile indices
+  // The floor and the walls the way `PaintedArt.drawTiles` lays them, the same masks, sheets, shadow
+  // strips, litter, straw at the wall's foot and banners, off a small grid of its own. Tile indices
   // are pushed `offset` along so the sheets and hashes never see a negative tile.
   sceneTiles(r, ctx, sc, def, view, busy) {
     const P = r.painted, T = TILE, O = this.SCENE.offset, stone = (x, y) => this.sceneStone(sc, x, y);

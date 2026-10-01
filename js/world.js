@@ -29,13 +29,13 @@ class World {
     this.fire = new Float32Array(n);      // seconds of burning left
     this.fireKind = new Uint8Array(n);    // 0 ordinary flame, 1 the Seer's witchfire
     this.spread = new Float32Array(n);    // spread accumulator
-    // Poison lying on the floor, seconds left a tile, and the tiles that have any — a puddle is a
+    // Poison lying on the floor, seconds left a tile, and the tiles that have any, a puddle is a
     // handful of tiles in a world of thirty thousand, so `js/status.js` walks the set, not the grid.
     this.poison = new Float32Array(n);
     this.poisonOn = new Set();
     this.flow = new Int16Array(n).fill(-1);
     // The field a chasing man actually walks (`Enemy.pickWaypoint`). `flow` is the one everything
-    // else asks — is this floor reachable, how far is it — and stays stone-and-holes only; `route`
+    // else asks, is this floor reachable, how far is it, and stays stone-and-holes only; `route`
     // also steps round the tiles standing furniture is in (`furn`, laid by the game each time the
     // fields are rebuilt), and `routeW` is the same for a body wider than a tile (the Butcher, the rat
     // ogre): only floor that sits in some two-by-two of open floor, so no route takes him at a gap he
@@ -60,7 +60,7 @@ class World {
     this.visBox = null;
     // Things that are not stone but are as good as it to an eye: a shut door, the gong, the hub of
     // the wheel. The cone the cult sees down already stops at them (`game.sees`), and now so does
-    // the goat's own — standing at a shut door and seeing the room behind it was the one place the
+    // the goat's own, standing at a shut door and seeing the room behind it was the one place the
     // two disagreed. The list is a handful long, so it is cleared by what was last in it.
     this.visBlock = new Uint8Array(n);
     this.visBlockList = [];
@@ -451,7 +451,7 @@ class World {
 
   // ---------- the cave cut the second way ----------
   // `TUNING.cave.shape === 'mid'`: the rock's edge is not tied to the edges of the tiles. Every tile
-  // has a value — stone 1, floor `caveF` (0 to `cave.midMax`) — sampled at its centre, and the edge
+  // has a value, stone 1, floor `caveF` (0 to `cave.midMax`), sampled at its centre, and the edge
   // of the rock is where that field crosses one half, marched square by square between the centres
   // of four tiles. Floor at nought puts the edge on the tile's own border; floor near one half pulls
   // it almost to the middle of the tile. The field only ever grows the rock into the floor, never
@@ -489,27 +489,28 @@ class World {
   // ---------- how much of the rock is worth drawing ----------
   // A cave used to be painted everywhere the camera could reach: every tile of solid rock in the
   // window went into the path and was filled, so a room read as a small dark hole in a great pale
-  // field of stone nobody can walk into — a huge piece of the level shown for nothing. That is not
+  // field of stone nobody can walk into, a huge piece of the level shown for nothing. That is not
   // what the square-walled floors do: there a wall tile is drawn only if something open stands next
-  // to it and everything behind it is fog. `caveNear` is the same rule with a cave's thickness —
-  // rock within `TUNING.cave.band` tiles of open floor — and `drawCaveMid` marches nothing else.
+  // to it and everything behind it is fog. `caveNear` is the same rule with a cave's thickness,
+  // rock within `TUNING.cave.band` tiles of open floor, and `drawCaveMid` marches nothing else.
   buildCaveBand() {
-    const W = this.W, H = this.H, band = TUNING.cave.band, n = new Uint8Array(W * H);
+    const W = this.W, H = this.H, C = TUNING.cave, n = new Uint8Array(W * H);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!this.isSolid(x, y)) n[y * W + x] = 1;
-    // grown one ring a pass, so the cost is the world and not the world times the square of the band
-    for (let k = 0; k < band; k++) {
-      const p = n.slice();
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        if (p[y * W + x]) continue;
-        let near = false;
-        for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) {
-          const ax = x + dx, ay = y + dy;
-          if (ax < 0 || ay < 0 || ax >= W || ay >= H) continue;
-          if (p[ay * W + ax]) { near = true; break; }
+    // A box round the floor, `bandSide` tiles across and `band` up and down (the far wall's face and
+    // the near wall want more rock than the sides do), grown one ring a pass along one axis at a time,
+    // so the cost is the world and not the world times the square of the band.
+    const grow = (k, dx, dy) => {
+      for (let r = 0; r < k; r++) {
+        const p = n.slice();
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+          if (p[y * W + x]) continue;
+          const ax = x - dx, ay = y - dy, bx = x + dx, by = y + dy;
+          if ((ax >= 0 && ay >= 0 && p[ay * W + ax]) || (bx < W && by < H && p[by * W + bx])) n[y * W + x] = 1;
         }
-        if (near) n[y * W + x] = 1;
       }
-    }
+    };
+    grow(C.bandSide == null ? C.band : C.bandSide, 1, 0);
+    grow(C.band, 0, 1);
     this.caveNear = n;
   }
   caveNearAt(tx, ty) {
@@ -593,16 +594,16 @@ class World {
 
   // ---------- what can be seen from where he is standing ----------
   // Symmetric recursive shadowcasting over the eight octants. A room is opened by walking into it
-  // and never closes again — that is `room.seen`, and it is the other half of the fog. This is the
+  // and never closes again, that is `room.seen`, and it is the other half of the fog. This is the
   // half that moves: a partition, a pillar or the corner of a stub wall keeps what is behind it dark
   // until he steps round to where it can be seen from. `vis` is one byte a tile and the renderer
   // paints everything outside it down; nothing else in the game reads it, so the cult's own eyes are
-  // untouched — a man behind a pillar can still hear you.
+  // untouched, a man behind a pillar can still hear you.
   // `throughWalls` is THE ORACLE, as a radius in tiles: inside it nothing stays dark, wall or no
   // wall; past it the ordinary cast still decides. It used to be the whole of `radius` through
   // stone, which lit every corner of every room in reach and took the not-knowing out of the fog
-  // entirely. It is the only thing in the game that reads `game.mods` — everything else about the
-  // fog is blind to boons on purpose — because it is a different sense, not a sharper eye.
+  // entirely. It is the only thing in the game that reads `game.mods`, everything else about the
+  // fog is blind to boons on purpose, because it is a different sense, not a sharper eye.
   computeVis(px, py, radius, throughWalls) {
     const v = this.vis, W = this.W, H = this.H;
     // Clear only what the last pass lit: the world is 420 by 78 tiles and this runs every step.
@@ -843,8 +844,8 @@ class World {
   // A round pool of flame: a smashed oil lamp, a Seer's rune, or coals knocked out of a brazier.
   // `dur` overrides how long it burns; without it a pool lasts `fire.pool`, witchfire `fire.witch`.
   ignitePool(x, y, radiusTiles, witch, dur) {
-    // A pool that lands inside stone — a lamp stood against a wall and butted into it, coals spilled
-    // at one — starts from the nearest open tile beside it: every sight line out of the stone failed,
+    // A pool that lands inside stone, a lamp stood against a wall and butted into it, coals spilled
+    // at one, starts from the nearest open tile beside it: every sight line out of the stone failed,
     // so THE DARK's lamps went out without lighting a thing (28 Sep 2026).
     if (this.isSolid(Math.floor(x / TILE), Math.floor(y / TILE))) {
       let best = null, bd = Infinity;

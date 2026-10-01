@@ -265,7 +265,7 @@ const HORSE_PIXELS = (() => {
 if (typeof module !== 'undefined') module.exports = HORSE_PIXELS;
 
 // In the page: each sprite baked once to a canvas, `UP` px a texel, and drawn smoothed at `TX` world
-// px a texel with his hooves on the origin — the ctx is already at his foot point and counter-squashed.
+// px a texel with his hooves on the origin, the ctx is already at his foot point and counter-squashed.
 if (typeof document !== 'undefined') {
   const UP = 4, baked = new Map();
   HORSE_PIXELS.canvas = (sp) => {
