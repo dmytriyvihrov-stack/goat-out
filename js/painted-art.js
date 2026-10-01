@@ -728,6 +728,10 @@ class PaintedArt extends AltarArt {
     if(g.invuln>0&&Math.floor(renderer.t*30)%2===0)ctx.globalAlpha*=0.5;
     // Standing still he breathes: taller and a touch narrower from the hooves up, then back.
     if(g.state==='idle'&&Math.hypot(g.vx||0,g.vy||0)<=30){const B=TUNING.goat.breathe,b=(1-Math.cos(renderer.t*Math.PI*2/B.period))/2;ctx.scale(1-B.wide*b,1+B.amp*b);}
+    // Grazing (`goat.grazeK`): head down over the front hooves — a lean toward the way he faces on a
+    // side view, a squash from the hooves up on every view — and a nibble in it.
+    if(g.grazeK>0){const P=TUNING.goat.grazePose,k=g.grazeK*g.grazeK*(3-2*g.grazeK),n=1+P.nibble*Math.max(0,Math.sin(renderer.t*P.rate*Math.PI*2));
+      ctx.rotate(Math.cos(g.facing)*P.lean*k*n);ctx.scale(1+P.wide*k,1-P.squash*k*n);}
     // A glance is one facing aside and back; the facing is lent for the drawing and handed back.
     const f0=g.facing,look=fid&&fid.kind==='look'&&fk>0.12&&fk<0.88;
     if(look)g.facing=f0+fid.dir*Math.PI/4;

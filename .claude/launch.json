@@ -434,6 +434,51 @@
       "port": 8820
     },
     {
+      "name": "goat-out-props",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8778"
+      ],
+      "port": 8778
+    },
+    {
+      "name": "goat-out-pig",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8825"
+      ],
+      "port": 8825
+    },
+    {
+      "name": "goat-out-hook",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8779"
+      ],
+      "port": 8779
+    },
+    {
+      "name": "goat-out-doorbug",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8777"
+      ],
+      "port": 8777
+    },
+    {
+      "name": "goat-out-armor",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8826"
+      ],
+      "port": 8826
+    },
+    {
       "name": "goat-out-chandelier",
       "runtimeExecutable": "node",
       "runtimeArgs": [
@@ -441,6 +486,33 @@
         "8817"
       ],
       "port": 8817
+    },
+    {
+      "name": "goat-out-souls",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8835"
+      ],
+      "port": 8835
+    },
+    {
+      "name": "goat-out-playtest30",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8834"
+      ],
+      "port": 8834
+    },
+    {
+      "name": "goat-out-minify",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8836"
+      ],
+      "port": 8836
     }
   ]
 }

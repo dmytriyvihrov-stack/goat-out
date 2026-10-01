@@ -769,6 +769,42 @@ const ROOM_TEMPLATES = [
     '#.................#',
     '###################',
   ]},
+  // THE BRIDGE ITSELF (30 Sep 2026 playtest: "where the bridge is, one or two rooms shaped like a
+  // bridge — holes at its side edges and between"). `bridge: true` keeps them out of every draw:
+  // `levelDef.bridges` deals them to one or two of the floor's canon rooms (`tryGenerate`). The ends
+  // are whole floor wall to wall, so a door on any side opens onto a landing, never onto the drop.
+  // A deck four planks wide over the ravine, posts at its rails and two planks gone: the funnel is
+  // the whole room, and everything flung off the side of it is gone.
+  { name: 'bridge', canon: 'funnel', bridge: true, rows: [
+    '########################',
+    '#...OOOOOOOOOOOOOOOO...#',
+    '#...OOOOOOOOOOOOOOOO...#',
+    '#.e.OOOOOOOOOOOOOOOO.e.#',
+    '#......P........P......#',
+    '#.o.....O.....r........#',
+    '#........e.....O.....m.#',
+    '#......P........P......#',
+    '#...OOOOOOOOOOOOOOOO...#',
+    '#.e.OOOOOOOOOOOOOOOO...#',
+    '#...OOOOOOOOOOOOOOOO.o.#',
+    '########################',
+  ]},
+  // Two narrow spans side by side, the ravine between them and one plank across it in the middle:
+  // whoever is on the other span has to come the long way or over that plank, one at a time.
+  { name: 'twinspan', canon: 'funnel', bridge: true, rows: [
+    '######################',
+    '#...OOOOOOOOOOOOOO...#',
+    '#.e.OOOOOOOOOOOOOO...#',
+    '#..................e.#',
+    '#........r...........#',
+    '#.o.OOOOOO..OOOOOO...#',
+    '#...OOOOOO..OOOOOO.o.#',
+    '#....................#',
+    '#.e.........m........#',
+    '#...OOOOOOOOOOOOOO.e.#',
+    '#...OOOOOOOOOOOOOO...#',
+    '######################',
+  ]},
 
   // ---- THE DROP: the rafters' canon, for the level whose floor is not all there ----
   // 'O' is a drop. In the floor it is a hole in the boards; in a wall run it is a window. Men will

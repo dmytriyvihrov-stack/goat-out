@@ -102,6 +102,9 @@ const JUICE_PLAY = {
 
 // Why a row has no preview. Anything not listed falls back on its category or status.
 const JUICE_NOPLAY = {
+  'White souls': 'a run past the god’s gift: kill a man and walk out of his room',
+  'The soul goes up': 'the goat dying on a floor — die on any floor',
+  'Second chance': 'SECOND CHANCE bought in the mirror (dev drawer HEAVEN) and a death on a floor',
   'Armour flies apart': 'a suit of armour hangs on a far wall — THE SHOWROOM has one: throw a man at it',
   'Hung on the antlers': 'a stag’s head hangs on a far wall — THE SHOWROOM has one: throw a man at it',
   'Butcher hook line': 'a butcher a few tiles off with a clear line to the goat — play THE ALTAR or spawn one from the dev drawer',
@@ -312,7 +315,7 @@ const JuicePreview = {
       state: 'play', levelIndex: 1, showroomOn: true, autoPause: false, awayNow: false,
       boons: [], artifact: null, tal: null, talRun: null, henHearts: 0, beasts: {}, crowGift: false, levelCrowGift: false,
       input: { mx: 0, my: 0, aim: { x: 1, y: 0 }, lmbPressed: false, rmbDown: false, rmbPressed: false, spacePressed: false, rollPressed: false, qPressed: false, mouse: { x: 0, y: 0 }, anyPressed: false },
-      keys: new Set(), cam: { x: 0, y: 0, zoom: 1 }, camLead: { x: 0, y: 0 }, camFollow: null, camLock: undefined, camFight: 0, camRoomT: 0, camBoss: null,
+      keys: new Set(), cam: { x: 0, y: 0, zoom: 1 }, camLead: { x: 0, y: 0 }, camFollow: null, camTrack: null, camHold: undefined, camRoomMid: null, camFight: 0, camBoss: null,
       dev: { open: false, rules: false, hidden: true, god: true, rects: [], toast: null, tab: 'juice', vision: false, hearing: false, dark: false, tune: game.dev.tune, scroll: {} },
       boom: { fly: null }, kills: 0, timer: 0, acc: 0, timeScale: 1, slowTimer: 0, aimSlow: 0, aimSlowCd: 0,
       kickX: 0, kickY: 0, zoomKick: 0, flashAmt: 0, hitstopTimer: 0, shakeAmt: 0, shakeX: 0, shakeY: 0, shakeT: 0, shakeAge: 0,

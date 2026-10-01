@@ -12,7 +12,7 @@ const Talisman = {
   st(game) {
     if (!game.tal || game.tal.level !== game.level) {
       game.tal = { level: game.level, visited: new Set([game.goatRoom || 0]), room: game.goatRoom || 0,
-        grease: new Map(), echoes: [], effigy: null, pulse: 0, cupHearts: 0 };
+        grease: new Map(), echoes: [], effigy: null, pulse: 0, cupHearts: 0, orbit: [], magnetRooms: new Set(), spin: 0 };
       const R = Talisman.run(game), cup = game.mods.cup;
       if (!(cup && cup.carry)) R.cup = 0;
     }
@@ -44,6 +44,7 @@ const Talisman = {
     if (S.grease.size) Talisman.updateGrease(game, dt);
     Talisman.updateCorpses(game, dt);
     if (S.effigy) Talisman.updateEffigy(game, dt);
+    if (m.magnet || S.orbit.length) Talisman.updateMagnet(game, dt);
     // MASON'S MARK II: a crate or a rack is stone to a body arriving fast enough.
     if (m.mason && m.mason.props) {
       const lim = TUNING.physics.splatSpeed * m.mason.splat;
@@ -227,6 +228,85 @@ const Talisman = {
     if (Math.hypot(mage.rune.x - g.x, mage.rune.y - g.y) > TUNING.seer.runeRadius * TILE + g.r) return;
     mage.rune = { x: mage.x, y: mage.y };
     Talisman.parryFx(game, mage.x, mage.y);
+  },
+
+  // ---- THE MAGNET ----
+  // What it carries is taken out of `game.props` for as long as it circles — no collision, no physics,
+  // nothing else can pick it up — and drawn in the cast beside him (`Renderer`, `orbiters`).
+  orbiters(game) { const S = game.tal; return S && S.level === game.level && S.orbit ? S.orbit : []; },
+  updateMagnet(game, dt) {
+    const S = Talisman.st(game), M = game.mods.magnet, g = game.goat, C = TUNING.magnet, orb = S.orbit;
+    S.spin += dt * C.spin;
+    orb.forEach((o, i) => {
+      const a = S.spin + i / orb.length * Math.PI * 2;
+      o.t = Math.min(1, o.t + dt / C.pull);
+      const k = o.t * o.t * (3 - 2 * o.t);
+      o.p.x = lerp(o.fx, g.x + Math.cos(a) * C.orbitR, k); o.p.y = lerp(o.fy, g.y + Math.sin(a) * C.orbitR, k);
+      o.p.bob = (o.p.bob || 0) + dt;
+    });
+    if (!M || g.dead || orb.length >= M.count || !game.level) return;
+    // Once a room: the first time he stands in it with a free place in the orbit and something to take.
+    const room = roomAt(game.level, g.x, g.y);
+    if (!room || S.magnetRooms.has(room.index)) return;
+    const ok = (p) => !p.broken && !p.held && !p.flung && !p.thrown && !p.corpse && !p.alight
+      && (p.kind === 'weapon' || (M.any && p.kind === 'crate'))
+      && Math.hypot(p.x - g.x, p.y - g.y) < M.reach * TILE && roomAt(game.level, p.x, p.y) === room && game.world.los(g.x, g.y, p.x, p.y);
+    const near = game.props.filter(ok).sort((a, b) => Math.hypot(a.x - g.x, a.y - g.y) - Math.hypot(b.x - g.x, b.y - g.y));
+    if (!near.length) return;
+    S.magnetRooms.add(room.index);
+    for (const p of near.slice(0, M.count - orb.length)) {
+      if (p.inStand) { p.inStand = false; game.world.dot(p.x - 4, p.y + 7, 4.5, '#3a2c20'); game.world.dot(p.x + 5, p.y + 9, 3.5, '#3a2c20'); }
+      const i = game.props.indexOf(p); if (i >= 0) game.props.splice(i, 1);
+      p.orbiting = true; p.vx = 0; p.vy = 0;
+      orb.push({ p, fx: p.x, fy: p.y, t: 0 });
+      game.particles(p.x, p.y, 8, '#c0392b', 120);
+    }
+    game.audio.sfxSteel(); game.vibe(10);
+  },
+  // The thing nearest the blow takes it and breaks. Asked by `meleeHit` (clubs, blades, bites).
+  magnetBlock(game, att) {
+    const orb = Talisman.orbiters(game).filter((o) => o.t >= 1);
+    if (!orb.length || game.goat.dead) return false;
+    const o = orb.sort((a, b) => Math.hypot(a.p.x - att.x, a.p.y - att.y) - Math.hypot(b.p.x - att.x, b.p.y - att.y))[0];
+    Talisman.breakOrbit(game, o, att.x, att.y);
+    if (att.daze && att.kind !== 'ratogre') att.daze(game, TUNING.magnet.daze);
+    return true;
+  },
+  // A round meeting one on its way round him, Enter the Gungeon's way: it has to be in the line of it.
+  magnetBullet(game, b) {
+    const C = TUNING.magnet;
+    for (const o of Talisman.orbiters(game)) {
+      if (o.t < 1 || Math.hypot(o.p.x - b.x, o.p.y - b.y) > C.hitR) continue;
+      Talisman.breakOrbit(game, o, b.x, b.y);
+      return true;
+    }
+    return false;
+  },
+  breakOrbit(game, o, x, y) {
+    const S = Talisman.st(game), p = o.p, i = S.orbit.indexOf(o);
+    if (i >= 0) S.orbit.splice(i, 1);
+    p.broken = true; p.dead = true; p.orbiting = false;
+    const wood = p.kind === 'crate';
+    game.particles(p.x, p.y, 14, wood ? '#8a6238' : p.weapon === 'sword' ? PALETTE.bone : PALETTE.ash, 220);
+    game.particles((p.x + x) / 2, (p.y + y) / 2, 6, '#c0392b', 160);
+    for (let k = 0; k < 3; k++) game.world.dot(p.x + (Math.random() - 0.5) * 22, p.y + (Math.random() - 0.5) * 14, 2.4, wood ? '#4a3626' : '#3a3630');
+    if (wood) game.audio.sfxCrack(); else game.audio.sfxSteel();
+    game.hitstop(0.04); game.shake(3); game.vibe(16);
+  },
+  // In the cast with him, off the floor by `lift`; its shadow on the floor where it is; while it is
+  // still coming, a dotted pull from it to him in the magnet's red.
+  drawOrbiter(r, game, p) {
+    const ctx = r.ctx, C = TUNING.magnet, o = Talisman.orbiters(game).find((q) => q.p === p);
+    const lift = C.lift * (o ? o.t : 1) + Math.round(Math.sin((p.bob || 0) * 5) * 1.5);
+    r.shadow(p.x, p.y + 4, 9, 4);
+    if (o && o.t < 1) {
+      const g = game.goat, n = 6;
+      ctx.fillStyle = 'rgba(192,57,43,0.7)';
+      for (let k = 1; k < n; k++) ctx.fillRect(Math.round(lerp(p.x, g.x, k / n)) - 1, Math.round(lerp(p.y - lift, g.y - 10, k / n)) - 1, 3, 3);
+    }
+    ctx.save(); ctx.translate(0, -lift);
+    r.drawProp(p);
+    ctx.restore();
   },
 
   // ---- the geometry ----
@@ -628,9 +708,9 @@ const Talisman = {
     const per = Math.max(1, Math.floor((H - listTop - 34 * s) / rowH));
     const pages = Math.ceil(ARTIFACTS.length / per);
     d.talPage = clamp(d.talPage || 0, 0, pages - 1);
-    const leftW = 200 * s, colW = (W - pad * 2 - leftW) / 3;
+    const leftW = 200 * s, colW = (W - pad * 2 - leftW) / RARITY.length;
     ctx.font = `700 ${7.5 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
-    ['TIER I', 'TIER II', 'TIER III'].forEach((t, i) => ctx.fillText(t, pad + leftW + i * colW, listTop - 4 * s));
+    RARITY.forEach((rr, i) => ctx.fillText('TIER ' + 'I'.repeat(i + 1) + ' · ' + rr.name, pad + leftW + i * colW, listTop - 4 * s));
     const art = game.artifact;
     ARTIFACTS.slice(d.talPage * per, d.talPage * per + per).forEach((a, i) => {
       const y = listTop + i * rowH;
@@ -642,8 +722,8 @@ const Talisman = {
       ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
       const q = a.tag === 'q';
       ctx.fillText(`${a.id} · ${a.tag || 'first four'}${q ? ' · Q' : ''}`, pad + 36 * s, y + 26 * s);
-      [1, 2, 3].forEach((t) => r.devButton(d, pad + 36 * s + (t - 1) * 32 * s, y + 34 * s, 28 * s, 16 * s, 'I'.repeat(t), `tal-wear=${a.id}.${t}`, worn && art.tier === t));
-      if (worn) r.devButton(d, pad + 36 * s + 96 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', 'tal-off', false);
+      [1, 2, 3, 4].forEach((t) => r.devButton(d, pad + 36 * s + (t - 1) * 26 * s, y + 34 * s, 24 * s, 16 * s, 'I'.repeat(t), `tal-wear=${a.id}.${t}`, worn && art.tier === t));
+      if (worn) r.devButton(d, pad + 36 * s + 104 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', 'tal-off', false);
       a.tiers.forEach((tier, ti) => {
         const cx = pad + leftW + ti * colW, cw = colW - 10 * s;
         // The player's line (`desc`: the talisman's hand-written `text`, else `tell`) — what the shelf
@@ -738,6 +818,8 @@ const Talisman = {
     else if (id === 'cup') { ctx.fillStyle = '#8d8a85'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.7, -h * 0.6); ctx.lineTo(h * 0.7, -h * 0.6); ctx.quadraticCurveTo(h * 0.6, h * 0.3, 0, h * 0.35); ctx.quadraticCurveTo(-h * 0.6, h * 0.3, -h * 0.7, -h * 0.6); ctx.fill(); ctx.stroke(); ctx.fillStyle = PALETTE.blood; ctx.beginPath(); ctx.ellipse(0, -h * 0.55, h * 0.6, h * 0.15, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#8d8a85'; ctx.fillRect(-h * 0.1, h * 0.35, h * 0.2, h * 0.4); ctx.fillRect(-h * 0.4, h * 0.72, h * 0.8, h * 0.18); }
     // An astragalus: a goat's ankle bone, knuckled at both ends and waisted in the middle, one pit on its face.
     else if (id === 'knuckle') { ctx.rotate(-0.25); ctx.fillStyle = '#e8dcc0'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.85, -h * 0.45); ctx.quadraticCurveTo(-h * 0.95, -h * 0.9, -h * 0.4, -h * 0.75); ctx.quadraticCurveTo(0, -h * 0.45, h * 0.4, -h * 0.75); ctx.quadraticCurveTo(h * 0.95, -h * 0.9, h * 0.85, -h * 0.45); ctx.lineTo(h * 0.85, h * 0.45); ctx.quadraticCurveTo(h * 0.95, h * 0.9, h * 0.4, h * 0.75); ctx.quadraticCurveTo(0, h * 0.45, -h * 0.4, h * 0.75); ctx.quadraticCurveTo(-h * 0.95, h * 0.9, -h * 0.85, h * 0.45); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#a8977a'; ctx.beginPath(); ctx.ellipse(0, 0, h * 0.28, h * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(-h * 0.6, -h * 0.55, h * 0.3, h * 0.12); }
+    // A horseshoe magnet: red, its two pole tips iron grey.
+    else if (id === 'magnet') { ctx.lineCap = 'butt'; line(edge, 0.62); ctx.beginPath(); ctx.arc(0, -h * 0.15, h * 0.52, Math.PI, 0); ctx.lineTo(h * 0.52, h * 0.75); ctx.moveTo(-h * 0.52, -h * 0.15); ctx.lineTo(-h * 0.52, h * 0.75); ctx.stroke(); line('#c0392b', 0.42); ctx.beginPath(); ctx.arc(0, -h * 0.15, h * 0.52, Math.PI, 0); ctx.lineTo(h * 0.52, h * 0.4); ctx.moveTo(-h * 0.52, -h * 0.15); ctx.lineTo(-h * 0.52, h * 0.4); ctx.stroke(); ctx.fillStyle = '#b8b4ac'; ctx.fillRect(-h * 0.73, h * 0.4, h * 0.42, h * 0.38); ctx.fillRect(h * 0.31, h * 0.4, h * 0.42, h * 0.38); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(-h * 0.62, -h * 0.35, h * 0.12, h * 0.4); }
     else if (id === 'tally') { ctx.rotate(-0.3); ctx.fillStyle = '#a57949'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.08; ctx.fillRect(-h * 0.2, -h, h * 0.4, h * 2); ctx.strokeRect(-h * 0.2, -h, h * 0.4, h * 2); line('#3b2a1a', 0.1); for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-h * 0.2, -h * 0.7 + k * h * 0.4); ctx.lineTo(h * 0.1, -h * 0.7 + k * h * 0.4); ctx.stroke(); } }
     else return false;
     return true;

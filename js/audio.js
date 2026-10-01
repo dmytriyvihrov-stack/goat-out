@@ -740,7 +740,7 @@ class GameAudio {
     this.heartMix += ((scene.lastHeart ? 1 : 0) - this.heartMix) * ease;
     const combat = this.combatMix;
     // How far into calm the score is, past the first floor: 1 nobody after him, 0 a fight or level one.
-    const calm = this.firstTheme ? 0 : this.stageMix.idle, C = L.calm, thin = (k) => 1 - (1 - k) * calm;
+    const calm = this.stageMix.idle * (this.firstTheme ? L.calm.first : 1), C = L.calm, thin = (k) => 1 - (1 - k) * calm;
     let density = 0;
     for (const kind of Object.keys(MUSIC_PARTS)) {
       this.voices[kind].forEach((v, i, voices) => {
@@ -763,11 +763,16 @@ class GameAudio {
         if (degree >= 0) this.pluck(t, root * 4 * Math.pow(2, theme.scale[degree] / 12),
           stepLen * (name === 'spotted' ? 3.4 : name === 'combat' ? 1.25 : 2), mix * (name === 'combat' ? 0.06 : 0.045) * (name === 'idle' ? thin(C.motif) : 1));
         if (name === 'spotted' && beat === 12) this.tomHi(t, 0.075 * mix);
-        if (name === 'chase' && [2,6,10,14].includes(beat)) this.rim(t, 0.05 * mix);
+        const F = L.fight;
+        if (name === 'chase') {
+          if ([2,6,10,14].includes(beat)) this.rim(t, 0.05 * mix);
+          if (beat % 2 === 1) this.hat(t, F.chaseHat * mix);
+        }
         if (name === 'combat') {
-          if ([4,12].includes(beat)) this.tomHi(t, 0.22 * mix);
-          if ([6,14].includes(beat)) this.kick(t, 0.17 * mix);
-          if ([3,11].includes(beat)) this.rim(t, 0.055 * mix);
+          if ([4,12].includes(beat)) this.tomHi(t, F.tom * mix);
+          if ([6,14].includes(beat)) this.kick(t, F.kick * mix);
+          if ([3,11].includes(beat)) this.rim(t, F.rim * mix);
+          if (beat % 2 === 1) this.hat(t, F.hat * mix);
         }
       }
     }
@@ -802,10 +807,10 @@ class GameAudio {
     const B = THEME_BED[key], beat = s % 16, pos = s & 63, M = this.stageMix;
     const theme = key === 'first' ? FIRST_MUSIC : key === 'late' ? LATE_MUSIC : MUSIC;
     const root = theme.roots[(s >> 4) & 3], base = theme.roots[0] * 8;
-    if (beat === 0) this.pad(t, root * 2, stepLen * 16.4, B.pad);
-    for (const [at, semi, length, gain] of B.bass) if (at === beat) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain);
-    // On the last heart the tune steps back (`layers.heartSing`) and leaves the room to his heart.
     const C = TUNING.audio.layers.calm;
+    if (beat === 0) this.pad(t, root * 2, stepLen * 16.4, B.pad * thin(C.pad));
+    for (const [at, semi, length, gain] of B.bass) if (at === beat) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain * thin(C.bass));
+    // On the last heart the tune steps back (`layers.heartSing`) and leaves the room to his heart.
     const sing = (M.idle * thin(C.tune) + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55) * (1 - (1 - TUNING.audio.layers.heartSing) * this.heartMix);
     if (sing > 0.01) for (const [at, semi, length] of B.melody) {
       if (at === pos) this.lead(t, base * Math.pow(2, semi / 12), stepLen * length * 0.95, B.gain * sing * (at % 16 === 0 ? 1 : 0.85));

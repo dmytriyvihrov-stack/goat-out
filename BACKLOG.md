@@ -9,6 +9,119 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 1 October 2026 — the magnet, the camera, the fog, the husky's practice (1.87)
+
+Two messages, all shipped in 1.87 (see `CHANGELOG.md`):
+
+| # | tag | note | 1.87 |
+|---|---|---|---|
+| 1 | system | a talisman, the magnet: picks up a thing and spins it round you, blocking blows and breaking; middle rarity only a sword or a shield, once a room; top rarity any two, like Enter the Gungeon | THE MAGNET: I one sword/shield, II farther, III any two, IV any three; blows, bites, bullets |
+| 2 | feel | the dark squares of the fog were a bit aggressive | `fog.soft` 3x3 soft mask, shade 0.72 |
+| 3 | system | the husky: practise the mini-game first in a room with only her, then run to the room with people | `husky.practice` |
+| 4 | feel | polish the new systems and arrivals | answer plates, the practice's words over the staves, the crow, a pass over the box, the book, the rabbit |
+| 5 | bug | the camera: many complaints; between rooms it jumps from room one to room two — show the state between, a smooth follow | the room hold is a blend by distance to the doorway |
+| 6 | tool | show the husky's portrait | sent from the box |
+| 7 | tool | the husky is not in the dev tools; add everything there and to the showroom — a rule | SPAWN rows, the coops, a talisman shelf; ground rule 9 |
+| 8 | feel | the landscape through a window with parallax is great; the stakes sharper and without movement | needles, fixed to the floor; the sky keeps its parallax |
+| 9 | bug | the crow should go after the bodies, not after you | it sits with no body near; flies after only when left |
+| 10 | bug | in the crow's box the text ran over the answers; the buttons bigger and nicer | the box grows; plates with key caps |
+
+Decided in the build, worth asking him about:
+
+- **number** — **the magnet's tier I** (not described): one sword or shield, from 5 tiles instead of 8. And
+  **LEGENDARY** (the rat ogre's shelf) carries three.
+- **feel** — **a blow is always taken** by the nearest thing in the orbit, wherever it is on its way round; only a
+  bullet has to meet one. If blows should also have to meet it, `magnetBlock` asks the angle.
+- **system** — **crates count as "any"**; a bomb, a barrel and an animal never go into the orbit.
+
+## 1 October 2026 — souls, the mirror, the mouse, the book (1.86)
+
+Nine playtest notes in one message, all shipped in 1.86 (see `CHANGELOG.md`):
+
+| # | tag | note | 1.86 |
+|---|---|---|---|
+| 1 | system | a dead man's soul rises as a small white dot and follows you out of the room, as in Enter the Gungeon | `js/motes.js`: banked into heaven's heap as each reaches him |
+| 2 | system | after the first death the goat god grants the power to gather souls — his quest — and asks for 200 | his first talk gives it; FOR THE GOD n / 200 under the purse |
+| 3 | system | one upgrade, SECOND CHANCE: back where you died on two hearts, 250 and 3 corrupted souls | a mirror rank shown once the 200 are brought; once a floor |
+| 4 | feel | a death animation: summoned to heaven, your see-through soul flies off | a beam and his washed-white ghost rising, before the pull-back |
+| 5 | feel | on a soul upgrade, the goat large at the top looking down-right; on a skill that changes him, show how | `Codex.drawBoonGoat` |
+| 6 | system | the mouse's shop the same way: walking up, she shows it all as a dialog, with how he would look | `Codex.watchShop` / `drawShop` |
+| 7 | system | talisman rarity and colour — common, rare, epic, legendary — and legendary only after her ogre | `RARITY`, a fourth tier on every talisman |
+| 8 | system | I opens a short menu like Enter the Gungeon's: actives, passives, items, animals | the book, `Codex.drawBook`; PAUSE → INVENTORY too |
+| 9 | feel | a trait or game word in a description (poison, fire, stun) explains itself on the pointer, like Slay the Spire | `KEYWORDS`, `Codex.line` |
+
+And thirteen more in the next message, all in 1.86 too:
+
+| # | tag | note | 1.86 |
+|---|---|---|---|
+| 10 | feel | effects are overloaded with words nobody needs (COALS, AAAAH, IT GOES OFF, GO ROUND over one blast) | `effects.quiet`: caption words dropped, crowded words and barks dropped |
+| 11 | number | a friend saw very few animals over his runs; a deathless run should meet 3–4, odd floors too | from floor two, every one or two floors: 3–6 a run, mean 3.9 |
+| 12 | system | a husky who sings: she runs ahead into a full room, you answer her WAF-WOOO with your BAAH, two staves like Guitar Hero | `js/beasts-more.js`, `game.song` |
+| 13 | system | a rabbit who ties your legs: only the headbutt, skills and items, moving in jumps | `game.legsTied`, the roll as the hop |
+| 14 | system | any animal: agree or refuse after its rules, BAAAH (yes) / bah (no) | `BEAST_ANSWER`, `Beast.answer` |
+| 15 | system | a setting: double speed out of a fight | DOUBLE SPEED OUT OF A FIGHT |
+| 16 | number | two active skills on one deal: different elements and different buttons | `openBoonChoice` `clash` |
+| 17 | number | the first run's first soul always offers the fire breath | `firstRun` in `openBoonChoice` |
+| 18 | bug | the acid horns should poison the man you hit too | `headbuttHits` |
+| 19 | number | poisoned or stunned, a lower speed should kill on a wall | `status.weak` 0.7 |
+| 20 | feel | the gong longer, STRONGER over him; after a first death on a floor, a tip (who killed you, or one off a list made in the dev tools) | `bell.buff` 12; `DEATH_TIPS`, GOD TALK · TIPS |
+| 21 | bug | the little secret rooms seem gone | they were there, unreadable: a pixel crack and rubble now |
+| 22 | bug | witchfire should light barrels and acid; acid on an open brazier should explode | `Prop.toxicBurst`, puddle under a brazier |
+
+Decided in the build, worth asking him about:
+
+- **number** — **once a floor, not once a run**, for SECOND CHANCE: a death already restarts the floor, so a
+  once-a-run revive would barely be felt. If it should be once a run, `game.secondUsed` moves from `startLevel`
+  to the run's start (and the save).
+- **system** — **what the 200 buy.** The quest unlocks SECOND CHANCE on the glass; the souls brought are also the
+  mirror's pay as before. If the god should give something on the spot, say what.
+- **feel** — **a soul left in the room he dies in is lost.** Collected only by leaving (or clearing the floor);
+  dying in the fight forfeits that room's. If that stings, they could rise with his own soul instead.
+- **system** — **a legendary tier is the third tier pushed further** (hand-set per talisman in `ARTIFACTS`);
+  THE KNUCKLEBONE's legendary is the same as its epic (a third card every soul is already the most).
+- **system** — **the husky's extra men** come in through the room's way in when her song starts (`husky.extra` 2):
+  "make the next room dense" done at the moment of the song rather than by the generator. And her song wants your
+  BAAH of any kind — a fire breath or a spit on the beat counts.
+- **feel** — **refusing an animal sends it away** for the floor; the hen and the tortoise included.
+- **number** — **DOUBLE SPEED** doubles his stride, not the clock: the cult and the fire move as ever.
+- **feel** — keyword tooltips are on the cards and the book only: the rail's hover note closes as the
+  pointer leaves its chip, so a word in it cannot be pointed at.
+
+## 30 September 2026 — a tester's hour and a half on 1.84 (1.85)
+
+A friend played 1.84 for an hour and a half and gave another fifteen minutes of notes with his dinner going
+cold; he got out on his third or fourth run ("though for now a death starts the level, it is not a
+roguelite yet"). Fourteen notes, all shipped in 1.85 (see `CHANGELOG.md`):
+
+| # | tag | note | 1.85 |
+|---|---|---|---|
+| 1 | feel | the music out of a fight should be far less intense, so a fight or a chase is felt | calm thinned deeper, on level one too; the fight's drums up |
+| 2 | bug | the camera shook hard in some rooms on his 1920×1200 screen, "as if it could not focus" | the fit test flipped with the zoom; asked of the lens at rest |
+| 3 | bug | hounds fall into holes, even following him | nobody walks over a lip; shoves never push over one |
+| 4 | bug | traps are not set off by the men walking over them | a man coming for him trips a grate in 0.1 s |
+| 5 | bug | sometimes the controls went — maybe near the hover notes, not sure | one cause fixed (a parked pad axis); see below |
+| 6 | feel | any animal let out should talk in the box, like the horse, so it registers as an event | hen, tortoise, goose, crow in the box |
+| 7 | number | the goose should run further ahead and call the men harder | lead 10, sees 12, honk 1.5 s, heard 16 |
+| 8 | feel | holes must be clearly readable, contrasting; spikes inside a building, a clear background through walls | wall face, lit edges, stakes, a brighter sky |
+| 9 | system | THE BRIDGE: one or two rooms shaped like a bridge, holes at its sides and between | `bridge`, `twinspan`, `levelDef.bridges` |
+| 10 | bug | a man teleported behind the fence at the end of the level | the mage's blink kept in sight and off doorways |
+| 11 | system | at the end show the number of runs instead of the score | ON RUN N, deaths, times out |
+| 12 | system | a trap: a huge ogre in the little room, shut behind an iron door of three blows | the ogre's vault |
+| 13 | number | 15% longer between blows | headbutt recovery 0.53 s |
+| 14 | feel | a simple head-down when he eats grass, the sprite just stretched a bit | `goat.grazePose` |
+
+Still open:
+
+- **bug** — **controls going missing** (#5). Not reproduced. 1.85 fixes the one cause found in the code: a
+  second input device whose axis rests at the end of its travel (a wheel, a flight stick, some pads) took the
+  aim and the grab off the mouse every frame. If it happens again, ask him: was anything else plugged in
+  (a pad, a wheel, a drawing tablet)? Was the goat still, or moving but not turning to the pointer? Did it
+  happen right after a box (an animal, the god) or a soul card? Did Escape bring it back? The run code off
+  the next death card says which floor and room.
+- **tool** — **#10 only if it was the mage.** "A man teleported behind the fence" reads as the boss mage's
+  blink onto the stairs' gate, which 1.85 closes. If it was the goat himself, ask where he had come from
+  (a roll, a blink talisman, a body shoved into him at the gate).
+
 ## 30 September 2026 — the souls: two cards, element sets, the goat's own poison (1.82)
 
 Asked for in one message, shipped in 1.82 (see `CHANGELOG.md`) except the line below: two cards a soul

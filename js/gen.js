@@ -277,11 +277,12 @@ function tryGenerate(levelDef, seed, opts) {
   // so the draw below can walk a level along that axis the way the curve walks it along threat.
   // Shuffled first, so templates that measure the same come out in a different order every seed.
   const byGround = (a, b) => groundOf(a) - groundOf(b);
-  const canonPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.canon && t.canon === canonId && fits(t))).sort(byGround);
+  // A template marked `bridge` is never drawn: `levelDef.bridges` deals it (below).
+  const canonPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.canon && t.canon === canonId && !t.bridge && fits(t))).sort(byGround);
   const known = levelDef.known || new Set();
-  let mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && (!t.canon || known.has(t.canon)) && fits(t))).sort(byGround);
+  let mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && !t.bridge && (!t.canon || known.has(t.canon)) && fits(t))).sort(byGround);
   if (!mixPool.length) mixPool = canonPool;
-  if (!mixPool.length) mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && !t.canon && (!t.needs || levelDef[t.needs]))).sort(byGround);
+  if (!mixPool.length) mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && !t.bridge && !t.canon && (!t.needs || levelDef[t.needs]))).sort(byGround);
   // Which entries of each pool this level has already spent. A pool smaller than the level's share
   // of rooms simply starts again once it is empty.
   const canonUsed = new Set(), mixUsed = new Set();
@@ -306,6 +307,22 @@ function tryGenerate(levelDef, seed, opts) {
       const cand = ordinaryRooms(levelDef, n).filter((i) => i >= AR.from && !trapRooms.has(i) && (!canonRooms.has(i) || spareCanon)
         && i !== levelDef.ambushAt && i !== levelDef.vaultAt && i !== shopRoomOf(levelDef) && i !== levelDef.calmAt);
       if (cand.length) armoryAt = cand[arng.int(0, cand.length - 1)];
+    }
+  }
+  // THE BRIDGE's own rooms (30 Sep 2026 playtest: "one or two rooms shaped like the bridge, with
+  // holes at its sides and between"): `levelDef.bridges` [lo, hi] of the canon's rooms, spread down
+  // the floor, are built as a template marked `bridge` — on their own stream, so no other roll moves.
+  // Never the vault's room: its door would open onto the drop.
+  const bridgeAt = new Map();
+  if (levelDef.bridges && canonId) {
+    const pool = ROOM_TEMPLATES.filter((t) => t.bridge && t.canon === canonId && fits(t));
+    const brng = new RNG(((seed ^ 0x0b41d6e) >>> 0));
+    const cand = [...canonRooms].filter((i) => i >= 2 && i !== armoryAt && i !== levelDef.vaultAt).sort((a, b) => a - b);
+    const want = pool.length ? Math.min(cand.length, brng.int(levelDef.bridges[0], levelDef.bridges[1])) : 0;
+    const first = brng.int(0, pool.length - 1);
+    for (let k = 0; k < want; k++) {
+      const i = cand[want === 1 ? brng.int(0, cand.length - 1) : Math.round(k * (cand.length - 1) / (want - 1))];
+      bridgeAt.set(i, pool[(first + k) % pool.length]);
     }
   }
   let trapIdx = 0;
@@ -336,6 +353,7 @@ function tryGenerate(levelDef, seed, opts) {
     if (j === levelDef.calmAt) return CALM_TEMPLATE.rows[0].length;
     if (restsOf(levelDef).includes(j)) return REST_TEMPLATE.rows[0].length;
     if (j === armoryAt) return ARMORY_TEMPLATE.rows[0].length;
+    if (bridgeAt.has(j)) return bridgeAt.get(j).rows[0].length;
     return 0;
   };
   // A room may not take more than its share of the width that is left: a template too wide for what
@@ -353,7 +371,7 @@ function tryGenerate(levelDef, seed, opts) {
   // rooms needs a wider window than three, or its middle is never anybody's nearest.
   const forced = (j) => j === 0 || (levelDef.arenas || []).some((a) => a.at === j) || j === levelDef.millAt
     || j === levelDef.hallAt || j === levelDef.galleryAt || j === levelDef.killboxAt || j === sentryRoomAt
-    || j === levelDef.ambushAt || j === levelDef.calmAt || restsOf(levelDef).includes(j) || trapRooms.has(j) || j === armoryAt;
+    || j === levelDef.ambushAt || j === levelDef.calmAt || restsOf(levelDef).includes(j) || trapRooms.has(j) || j === armoryAt || bridgeAt.has(j);
   const drawOrder = { canon: [], mix: [] };
   for (let j = 1; j < n; j++) if (!forced(j)) drawOrder[canonRooms.has(j) ? 'canon' : 'mix'].push(j);
   const draw = (pool, used, i, order) => {
@@ -393,6 +411,7 @@ function tryGenerate(levelDef, seed, opts) {
     else if (i === levelDef.calmAt) tpl = CALM_TEMPLATE;
     else if (restsOf(levelDef).includes(i)) tpl = REST_TEMPLATE;
     else if (i === armoryAt) tpl = ARMORY_TEMPLATE;
+    else if (bridgeAt.has(i)) tpl = bridgeAt.get(i);
     else if (trapRooms.has(i)) tpl = (i === levelDef.trapAt && trapPool.find((t) => t.name === levelDef.trapTpl)) || trapPool[trapIdx++ % trapPool.length];
     else if (canonRooms.has(i)) { tpl = draw(canonPool, canonUsed, i, drawOrder.canon); drawn = true; }
     else { tpl = draw(mixPool, mixUsed, i, drawOrder.mix); drawn = true; }
@@ -1888,7 +1907,8 @@ function pickCanonRooms(levelDef, n, trapRooms) {
 function vaultKindOf(levelDef, seed) {
   if (levelDef.shroom) return 'grass';
   const V = TUNING.vault, luck = new RNG(((seed >>> 0) ^ 0x7a17) >>> 0);
-  const kinds = Object.entries(V.kinds).filter(([k]) => k !== 'mages' || (levelDef.met && levelDef.met.has('seer')));
+  const kinds = Object.entries(V.kinds).filter(([k]) => (k !== 'mages' || (levelDef.met && levelDef.met.has('seer')))
+    && (k !== 'ogre' || (levelDef.met && levelDef.met.has('butcher'))));
   let r = luck.next() * kinds.reduce((a, [, w]) => a + w, 0);
   for (const [k, w] of kinds) { if ((r -= w) < 0) return k; }
   return 'grass';
@@ -2337,6 +2357,7 @@ function roomAllowed(t, def) {
 function roomDefault(t, def) {
   if (!def || (t.needs && !def[t.needs])) return false;
   if (t.tag === 'armory') return false;
+  if (t.bridge) return !!(def.bridges && def.canon && def.canon.id === t.canon);
   if (t.tag === 'trap') return (def.traps || 0) > 0;
   if (t.tag) return false;
   if (!t.canon) return true;

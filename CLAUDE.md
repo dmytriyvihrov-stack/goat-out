@@ -69,6 +69,10 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
    already quietly broken on some seed nobody has played. If one seed genuinely cannot answer it
    (`rises`, `ground`), the per-seed check says so by returning `true` or `null` and never blood, and
    the averaged version lives in the report.
+9. **Everything new is in THE SHOWROOM the day it is added** (1 Oct 2026, the user's rule: "if we add
+   something new, it has to appear in the showroom"). A prop, an animal, a talisman, a door, a floor's
+   furniture: `showroomLevel` (js/showroom.js) lays one of it under its name, and an animal or a man the
+   dev drawer can drop also gets a SPAWN row. A feature nobody can walk up to on that floor is not done.
 
 ---
 
@@ -111,6 +115,9 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/pig-pixels.js` | `PIG_PIXELS`: the pig as a hand-built pixel unit, the horse's recipe a size down (five views mirrored to eight, a trot, the `eat` pose head-down); `PIG_PIXELS.draw(ctx, angle, moving, t, pose)`, called by `Renderer.pigSprite`. Loads after `horse-pixels.js`. `output/pig-2026-09-30/render.cjs` renders a sheet. |
 | `js/heaven-pixels.js` | `HEAVEN_PIXELS`: heaven's sprites on `PROP_PIXELS.Grid` — the god (`god`, `god-speak`, `god-blink`), the blind shepherd's three arms, the mirror (its glass one flat colour, `GLASS`), the five bells and their beam (`BELL_GAP`), a seat, gold grass, the gold skull the HUD counts sacrifices in. Loads after `horse-pixels.js`; node-requirable for a sheet. |
 | `js/heaven.js` | `Heaven`: THE PASTURE ABOVE, where a death's card leads (see *Heaven* below): the store that outlives runs (`HEAVEN_KEY`, `meta`: sacrifices, `MIRROR` ranks, the seats), the hand-laid two-room level (`level`), its step (`update`: GRAB answers, the comb, the talk, the mirror panel, the bells, the edge), what the god says (`HEAVEN_TALK`, `pickTalk`) and all of its picture (`bake*`, `draw*`, `drawHud`). |
+| `js/motes.js` | `Motes`: the white souls (1.86) — `spawn` over a man put down once `Heaven.gifted()`, `update` (they follow him out of their room), `bank` (`Heaven.earn`), `flush` at the stairs, `draw`; his own soul: `drawAscent` on a death, `second` / `updateRevive` / `drawRevive` for SECOND CHANCE, `ghost` (his picture washed white, baked per facing). Loads after `heaven.js`. |
+| `js/beasts-more.js` | The rabbit and the husky (1.86) on `Beast`: `drawMore` (their `PROP_PIXELS` sprites `rabbit-sit/-hop`, `husky-stand/-sing`), `answer` / `refuse` / `updateRefused` (BAAAH yes / bah no after every animal's terms, `BEAST_ANSWER`), `updateRabbit` and `game.legsTied`, `updateHusky` / `startSong` / `heard` / `updateSong` / `drawSong` (`game.song`). Loads after `pig-pixels.js`. |
+| `js/codex.js` | `Codex` (1.86): `KEYWORDS` marked in descriptions (`line`, `lines`) and explained on the pointer (`drawTip`, last thing drawn; `R.tips`); `portrait` (the goat large, facing SE, any mods and talisman), `drawBoonGoat` over the soul cards; the book on I / PAUSE → INVENTORY (`menu.panel === 'book'`, `drawBook`, `bookKey`, `bookClick`); the mouse's offer as cards (`watchShop`, `game.shopDlg`, `updateShop`, `shopKey`, `drawShop`). Loads after `motes.js`. |
 | `js/goat-grid.js` | `GoatGrid`: the GOAT GRID tab of the dev tool (`#goats`). The build's own goat (`PaintedArt.drawGoat` with a stub `game`) on a grid whose axes are picked from horns, voice, talisman, third eye, facing, wounds, floor (a canon's own swatches) and decor (a prop off the environment atlas); zoom, framing, pixel shadow, SAVE as PNG or JPG. Its SCENE mode (`drawSceneTab`, `G.scene`) composes one frame by hand: a floor's room (`sceneTiles`, `drawWall`/`floorSwatch` on its own tile grid), men as plain stubs in a pose (`manStub`, `poseMan` → `drawEnemy`), props as fresh `Prop`s, `CombatFX` fire, pools, corpses and bursts, placed by clicking the floor (`grid-at=` rects, half a tile), saved by `exportScene`. The renderer's `game` is lent a stub for the draw only. Touches no run state. |
 | `js/painting.js` | `Painting`: the picture of a cleared floor — floor plan, the decal canvas's paint, the line he ran, a skull per kill — baked once at the stairs (`Painting.bake`, `TUNING.painting`), shown as the clear screen's last card, saved as a PNG (through the viewer's `downloads` capability when framed as an artifact, a plain link locally). Render and export only. |
 | `js/release.js` | `RELEASE`: the itch build. `RELEASE.on` (the zip's index.html sets `window.GOAT_RELEASE` first) means no dev drawer and no tool addresses; `RELEASE.build(game)` is the dev drawer's ITCH BUILD button — the page zips itself (flagged index.html + exactly the scripts it loaded, CRC'd, deflated by `CompressionStream`) and downloads it (through `Painting.dl` when framed as an artifact). Loads just before `game.js`. |
@@ -127,7 +134,8 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/balance.js` | Prints the difficulty curve and canon/mix split of every level, runs every rule over many seeds, fails on a broken one. |
 | `tools/juice-md.js` | Writes `JUICE.md` from `js/juice.js`. |
 | `tools/doc-numbers.js` | Every number README, CONCEPT and CLAUDE state (floors, blows, hearts, hits, caps, rooms, souls, timings) held against the value the code pays; exits 1 on a wrong one, warns when a sentence it reads has moved. |
-| `tools/itch-zip.js` | The itch.io upload: `dist/doomed-goat-<BUILD>-<commit>.zip` holding `index.html` (flagged as the release with `RELEASE.flag`, read off `js/release.js`) and exactly the scripts it loads; refuses a dirty tree (`--dirty` overrides), lists the zip back CRC-checked. The dev drawer's ITCH BUILD makes the same zip from the running page. |
+| `tools/itch-zip.js` | The itch.io upload: `dist/doomed-goat-<BUILD>-<commit>.zip` holding `index.html` (flagged as the release with `RELEASE.flag`, read off `js/release.js`) and exactly the scripts it loads; refuses a dirty tree (`--dirty` overrides), lists the zip back CRC-checked; every script minified (terser, `RELEASE.minifyOpts`; `--plain` skips it, never for itch). The dev drawer's ITCH BUILD makes the same zip from the running page. |
+| `tools/itch-push.js` | The itch half of a deploy: cuts that zip and `butler push`es it to `ITCH_TARGET` (`<user>/<game>`), channel `html5`, `--userversion` BUILD; a channel holds one build, so the old one is replaced. `--dry` prints the command. butler and `butler login` are the user's, once per machine. |
 | `tools/perf.js` | In-page frame profiler: `await PERF.frames(floor, seed, n)` (update/draw avg, p95, max), `PERF.top` (every method timed, hot helpers skipped), `PERF.spikes` (frames over a budget and what they spent). Each frame is its own task (`PERF.tick`): back-to-back frames pile up GPU work into fake 100–470 ms stalls. |
 | `tools/pack-decals.js` | Writes `js/decal-pixels.js`: finds each generated sign's pixel grid (or cuts it to `CELLS` across), one colour a cell, a few colours a sign. |
 | `tools/png-harden.js` | Both pixel packers' last step: the embedded atlas PNG hardened the way `PIXEL_ART.init` does it and re-encoded (adaptive filters, zlib 9), proved to decode to the same pixels before it is written. `--check` reports only. |
@@ -231,7 +239,9 @@ as hand-drawn pixel sprites (`PIXEL_FACE_ART`) at per-facing points (`PIXEL_FACE
 **Everything added to him is pixels on the sprite's grid** (`TUNING.goat.face.cell`), never a smooth
 shape. Standing still he breathes (`TUNING.goat.breathe`, a stretch from the hooves in `drawGoat`),
 and after `idle.after` s fidgets (`goat.fidget`, ticked in `Goat.update`, drawn only: glance, pronk,
-shake, paw; a glance lends `g.facing` to the draw and hands it back). Running, `goat.feel`: `g.lean`
+shake, paw; a glance lends `g.facing` to the draw and hands it back). Grazing he bends to the tuft
+(`goat.grazeAt` stamped by the milk loop and the mushrooms, eased into `goat.grazeK`; `goat.grazePose`: a
+lean toward his facing, a squash from the hooves, a nibble; 1.85), and does not fidget. Running, `goat.feel`: `g.lean`
 and a step bob are drawn; `turnGrip` on a reversal is the only part the simulation feels. The worn talisman hangs from
 one collar for every talisman, a half-ellipse round the throat (`TUNING.goat.collar`, per-facing
 `PIXEL_NECK`; back facings show only the nape). Lost hearts are blots (`PaintedArt.wounds`,
@@ -264,14 +274,17 @@ facing the camera. `Renderer.artifactIcon` is the one artifact drawing (HUD chip
   `IndexSizeError`. Clamp radii; measure a timer against the duration it was given.
 
 **The camera.** `game.camLead` lerps toward `aim * camera.lead` (`leadLerp`, `leadStill`); `game.camFollow`
-moves only past `camera.deadzone`, and is pinned to the centre of a room that fits the view
-(`fitMargin`). Reset both wherever `cam.x/y` is hard-set (`startLevel`, `updateFall`). In a room too
+moves only past `camera.deadzone` (`game.camTrack`), and a room that fits the view (`fitMargin`) is
+**held by a blend, never a switch** (1 Oct 2026): `game.camHold` is how far he is from the room's nearest
+way out (`Game.roomMouthDist`, the open tiles of its border), none within `camera.blendIn` of a doorway,
+all of it `blend` tiles further in, so a doorway frames him exactly as the corridor does and walking in
+slides the picture to the room's middle (`game.camRoomMid`, eased too) — **fits is asked of the lens at rest** (`zoomFit * zoomRest`), never the live one: the run
+and the fight zoom it out, and a room that fit only zoomed out flipped pinned/tracked several times a
+second (1.85, a 16:10 playtest). Reset `camFollow`, `camTrack`, `camHold`, `camRoomMid` wherever `cam.x/y` is hard-set (`startLevel`, `updateFall`, heaven). In a room too
 big to hold, an awake boss near him pulls the picture toward himself and backs the lens out
 (`game.fightFocus`, `camera.fight`, eased on `game.camFight`); every arena fits a desktop view, so it
 shows only when a boss follows him into a big room. `camera.leash` pulls the camera after him (`leashLerp`)
-once he is past that share of the half-view; it stands aside while a room change eases (`roomLerp` for
-`roomEase` s after the room lock switches on or off, `game.camRoomT`), which otherwise lurched the
-picture 35–45 px a frame. SCREEN SHAKE (a slider, `game.shakeMul`) scales shake, kick and lens.
+once he is past that share of the half-view, weakened by the hold (a held room keeps him in view). SCREEN SHAKE (a slider, `game.shakeMul`) scales shake, kick and lens.
 
 **Shake on a lost heart, and a little for a thud.** `game.shake(a, hurt)`: without `hurt` it is ×
 `TUNING.juice.shakeOther` (**0**). Each shake is a swing along a random line with smooth noise over it
@@ -311,7 +324,9 @@ shapes; the loop is the motion. A new effect is cells on that grid, never a smoo
 
 **The gamepad** (30 Sep 2026, un-parked on request). `PadInput` (js/input.js) reads the first
 standard-mapping pad once a frame in `game.frame` → `Game.pollPad`; `pad.active` is who has the
-controls, set by a press or a stick past `TUNING.pad.wake`, cleared by a `KEYBOARD_KEY` keydown, any
+controls, set by a press or a stick past `TUNING.pad.wake` **that is moving** (`pad.wakeMove`, 1.85: an axis
+parked at the end of its travel — a wheel, a throttle — took the mouse's aim and grab every frame; a
+standard-mapping pad is preferred over any other), cleared by a `KEYBOARD_KEY` keydown, any
 pointerdown, or a mouse move with real `movementX/Y` (the pointer is hidden while it holds them). **It
 adds no verb** (rule 1): in play and heaven it sets the same `input` flags the mouse and keys set —
 RT / RB / X `lmbPressed`, LT / LB `rmbDown` (in `readMoveInput`, like touch), A `rollPressed`, B
@@ -355,6 +370,10 @@ templates tagged `canon: '<id>'`, starting with the first; the rest is the mix (
 earlier canons). `room.role`: `pen`, `calm`, `canon`, `mix`, `trap`, `arena`, `mill`, `hall`, `gallery`,
 `killbox`, `rest`, `lesson`. A canon needs `CANON.minRooms` (four) templates. THE THRESHING FLOOR's
 `corridorW: 5` eats room borders, so it needs furniture.
+**The bridge itself** (1.85): templates marked `bridge: true` (`bridge`, `twinspan`: a deck over the drop,
+whole-floor landings at both ends so a door never opens onto a hole) are in no draw; `levelDef.bridges`
+[lo, hi] (THE BRIDGE: 1-2) deals them to canon rooms spread down the floor (`bridgeAt` in `tryGenerate`, its
+own stream, never the vault's room). `GEN_RULES.bridges`.
 
 **The cave is third.** It has no killbox, `lonePosts`, grating (`spikes: 0`) or trap room. Ladder:
 29.3 / 39.7 / 67.5 / 97.3 / 113.0 / 141.1 / 151.7 / 163.8, and THE DARK 72.5 beside the fifth (1.74); `GEN_RULES.harder` and `balance.js` hold each
@@ -532,8 +551,11 @@ Slower, it is as before: past `door.smashSpeed` a plank door breaks and he goes 
 **The vault.** `levelDef.vaultAt`; `carveVault` cuts 5x5 above/below, opens **two** tiles (rock and
 wall border), hangs an iron `vault` door (`vaultEmpty`: drawn plain) and returns the chamber's `box`.
 **Never a soul** (26 Sep 2026): big grass, always. `vaultKindOf` (gen.js, its own RNG off the seed,
-`TUNING.vault.kinds`) makes it `grass` (the door shut, `vaultHits`), `ambush` or `mages` (only once
-`met` has the seer; never on THE TRIP). A trap vault's door starts open; `game.updateVaultTrap` slams it
+`TUNING.vault.kinds`) makes it `grass` (the door shut, `vaultHits`), `ambush`, `mages` (only once
+`met` has the seer) or `ogre` (only once it has the ogre); never on THE TRIP. **The ogre's vault** (1.85,
+`TUNING.vault.ogre`): the door stays shut and gives in `hits` (`door.needHits`); `startLevel` sits a boss ogre
+on the grass (`e.caged` = the door: `Enemy.update` holds him until it breaks, then he wakes on the goat) and
+`updateVaultOgre` leans on the door now and then while the goat is near, the one tell. A trap vault's door starts open; `game.updateVaultTrap` slams it
 (`seal`) once the goat is `shutIn` tiles inside, `vaultAmbush` puts the men down (by a wall: stone
 bursts; otherwise dropped from above, dazed `land` s), and it swings open when none of `held` is left
 in the box (the seal's rule). `sealHolding` answers a trap's men with `{ box }` so a mage never blinks
@@ -643,7 +665,8 @@ packmate nearer than `mateArc`; a hazard under his windup cancels it. Measure ch
 The pixel hound has no stride: running he bobs (`dog.gait`, `dog.bob`, `PaintedArt.character`).
 
 **Seer.** Witchfire burns him (deliberate); he gets near-perfect `trapSense`, `seer.fireCare`, and
-`blink` refuses burning, pit, hazard or out-of-seal spots.
+`blink` refuses burning, pit, hazard or out-of-seal spots, anywhere within a tile and a half of a door, and
+anywhere the goat cannot see (1.85: a blink onto the stairs' gate tile put him behind the bars).
 
 **Ogre** (kind `butcher`, named OGRE in every text since 1.66). Not the rat ogre: his own body,
 `js/ogre-pixels.js` (`OGRE_PIXELS`: a cult ogre on the `PROP_PIXELS` `Grid`, five views mirrored to
@@ -919,7 +942,8 @@ same stream; green sprites (`vbarrel*`, the head wet where the red one has powde
 brazier only smashes it, and broken it lays `tiles` (6) of poison with `Status.spatter` instead of powder.
 
 **Grating.** `kind === 'spike'`, `updateSpike` `idle → armed → up → down → rest`; `Prop.tripped` by the
-goat or any living unheld non-mist man standing on that grate's own tile (never beside it); `bite`, `this.bit`, `spikeThreat()`.
+goat or any living unheld non-mist man **coming for him** (`aware`, or flung) standing on that grate's own
+tile (never beside it) — a man's foot arms it at `spike.armMan` (0.1 s), the goat's at `arm`; `bite`, `this.bit`, `spikeThreat()`.
 `spikePatch` lays one bending band of `spike.run` (9–15 per room), never a scatter; its grates carry
 `patch: true` so `GEN_RULES.grate` can tell them from a trap template's own `S`. **A grate with something
 on it** (30 Sep 2026, `spike.hidden`, `p.hidden`): a room's patch may get a crate (or a barrel) set on one
@@ -947,14 +971,18 @@ id, `clusterKeepsRoomOpen`. `GEN_RULES.rocks`.
 fails past `grass.hideR` (smaller = more hiding). `Goat.cutGrass`; burns (`grass.burn`, `spread`,
 `drawBurningGrass`); `drawGrass`. `grass.lurk` men wait in it (`lurk`, `lurkAlpha`). `GEN_RULES.grass`.
 
-**The drop.** `T.PIT`: not solid; `walkable` / `walkableAt` and `hazardAt` keep men off. `Enemy.update`
+**The drop.** `T.PIT`: not solid; `walkable` / `walkableAt` and `hazardAt` keep men off, and **nothing walks
+over one**: the step at the foot of `Enemy.update` slides a man's own movement along the lip (a hound's
+run ends on it), `Game.nudge` keeps a shove between bodies from pushing him over (1.85). `Enemy.update`
 kills anything over one first thing (`'fall'`, no absorb, no remains; `game.spawnFaller` →
 `game.fallers`, `drawFallers`, `sfxFall`). The lip holds the goat from windup to recovery end.
 `goatFalls` / `updateFall` / `'falling'`, `fall.damage`. Return point from `goat.safeTrail`
 (`fall.setback`, `fall.invuln`): **every candidate is tested against the floor**, `Game.groundNear` last,
 and landing is latched on `goat.landed` — otherwise he fell forever or stood in the hole. `drawPits`
-after decals; `throughHoles` paints a parallax landscape below (`DEPTH.below`, `farHash`, `rimShade`) so
-a hole does not read as a pillar. Windows (`levelDef.windows`, RAFTERS): `carveWindow` → `level.windows`,
+after decals, in hard bands (`TUNING.effects.pit`): the far side's lip and wall face going down, lit board
+ends on the near and side edges; `throughHoles` lays a baked sheet of stakes under a hole in a building
+(`bakePitFloor`, a pattern lagging at `DEPTH.below`) and a night sky with cloud through a window, so a
+hole never reads as a pillar (1.85). Windows (`levelDef.windows`, RAFTERS): `carveWindow` → `level.windows`,
 the only way `drawPits` knows one.
 
 **Stairs.** `T.EXIT` / `T.ENTRY`, `drawStairs`, `level.exitTile` / `level.entry`; `beginClimb` /
@@ -1063,7 +1091,7 @@ tier whole off its own params, never as a diff on tier I, because the n-th mouse
 nothing else. `desc` shows on the shelf and the chip hover; a new tier needs no text, a new param
 needs `tell` and `say` to read it.
 
-**Artifacts.** `ARTIFACTS`: twenty-two, three tiers, `apply(m, p)` via `applyBoons`; `game.artifact`
+**Artifacts.** `ARTIFACTS`: twenty-three, three tiers, `apply(m, p)` via `applyBoons`; `game.artifact`
 `{ id, tier }`, saved, `resumeRun`. FIRE AMULET: `mods.firePass` depth. LUCKY CLOVER: `mods.luck` →
 `generateLevel(def, seed, { luck })` for the next floor (`balance.js` runs without). BOOMERANG, STRANGE
 SYMBOLS, STRAW EFFIGY live on **Q**, which does not exist until worn (`TouchUI.itemReady`); own clock
@@ -1077,6 +1105,10 @@ SYMBOLS, STRAW EFFIGY live on **Q**, which does not exist until worn (`TouchUI.i
 `game.tal` per level, `game.talRun` per run. MIRROR SHARD: `goat.parryT` from windup start. SCAPEGOAT nulls
 `game.artifact` **and** `game.levelArtifact`. GRAVEDIGGER'S SPADE: `crate` props with `corpse`; `e.corpsed`.
 TALISMANS tab edits live via `tools/tuning-patch.js`.
+THE MAGNET (`magnet`, `TUNING.magnet`, 1.87): once a room (`tal.magnetRooms`) up to `count` swords and shields
+(`any`: crates too) within `reach` are taken OUT of `game.props` into `tal.orbit` and circle him
+(`updateMagnet`, drawn in the cast by `drawOrbiter`); `meleeHit` asks `magnetBlock` (the nearest takes any
+blow), a `Bullet` asks `magnetBullet` (only one it meets); either breaks it (`breakOrbit`).
 
 **Escorts.** `js/beasts.js`, `TUNING.prop.tortoise / .goose / .crow / .horse`, `TUNING.beast`,
 `GEN_RULES.beasts`. **Which floor gets which is the run's** (`Beast.deal(runSeed, early)` via
@@ -1104,7 +1136,7 @@ with `tools/escorts.js` (`ESCORT.run`), the way 1.57 measured the men.
   not `item`; blocks one blow (`Beast.guards`, `shellTakes`) then `tortoise.cool` on its back. Reward
   `mods.shieldUses`.
 - **Goose** — leads down `Beast.onward` (`game.exitField`), ≤ `goose.lead` ahead, held by doors; honks
-  within `seeR` (noise + `Enemy.balk`). Reward: scream range and cooldown.
+  within `seeR` (a noise heard `callR` tiles off + `Enemy.balk`). Reward: scream range and cooldown.
 - **Crow** — follows corpses (`game.crowMarks`), eating `feedFor` s at each, and hops after him at
   `slack` in between; `crow.late` rooms behind him (one: the next room walls it in) it drops the bodies
   and flies after him, as it does past `catchUp` tiles (26 Sep 2026: it was walled in on 4 of 6 bot
@@ -1153,10 +1185,12 @@ with `tools/escorts.js` (`ESCORT.run`), the way 1.57 measured the men.
   ANIMALS dev tab (`drawAnimalsTab`, `#animals`) lists every escort, its floors, this run's deal,
   how it behaves, what it pays and every line; `+ BONUS` / `TAKE` bank one's reward as if its bargain
   were kept (and seat it in heaven) or take it back (`Game.devBeast`).
-- **The box** (`Beast.talk` / `updateTalk` / `drawTalk`, `game.beastTalk`, `TUNING.beast.talk`): the
-  horse's and the pig's terms, the horse beaten and the pig full are said in the god's box over the
-  paused floor (`Game.update` runs nothing else while it is up; any verb turns the page). `Beast.met`
-  opens it for those two instead of the floats.
+- **The box** (`Beast.talk` / `updateTalk` / `drawTalk`, `game.beastTalk`, `TUNING.beast.talk`): every
+  animal's terms the first time a run lets one out (the horse's race, the pig's meal, and since 1.85
+  `BEAST_HELLO` for the hen, tortoise, goose and crow), the horse beaten and the pig full are said in the
+  god's box over the paused floor (`Game.update` runs nothing else while it is up; any verb turns the
+  page). `Beast.met` and `game.henFreed` open it; `Beast.portrait` draws the small ones off `drawProp` at
+  `talk.size`.
 - **The HUD row** (`Renderer.drawSaved`, `savedHover`): one icon per animal banked or already paid
   this floor (`Beast.counts`), and the pointer on one shows what it gives (`Beast.GIVES`).
 - **Their seats in heaven** (`HEAVEN_SEATS`, drawn at the animal's own size by `Heaven.animalGod`):
@@ -1172,6 +1206,10 @@ man, three a family (`hitBudgets`, `maxPerFamily`, `musicCap`). The score answer
 a button (`MUSIC_EVENTS`: kill, cleared, spotted, hurt); the buttons only feed `encounterStage` its
 intent. A lost heart dips the score's low-pass and the last heart holds it (`scoreTone`,
 `TUNING.audio.tone`); his heart is heard in time with `Renderer.heartbeat` (`GameAudio.heartbeat`).
+**Calm is quiet, a fight is loud** (1.85, "so that when a fight starts you feel it"): while nobody is after
+him `layers.calm` thins the kick, toms, figure, the men's layer, the tune, the bass line and the drone (on
+level one too, at `calm.first`); a chase adds hats and a fight a heavier kick, toms, rim and hats
+(`layers.fight`).
 
 **The rooms' own sound.** `GameAudio.updateAmbience` (`TUNING.audio.ambience`), on the effects slider
 (`ambBus`) and off the music's clock: a looped bed per canon (`Foley.loop`: air, cave, wind), the
@@ -1196,7 +1234,7 @@ footstep timer (`foley.hooves`). New effect: a recipe in `Foley`, an `sfx*` with
 **The fog.** Rooms: `room.seen` via `game.revealRooms` (box + 1, or `World.anyFloorSeen`), never
 re-hidden; `drawUnseen` paints the rest; everything standing filters through `game.hidden`; corridors
 never hidden. Sight: `World.computeVis` shadowcast (`castVis`, `VIS_OCTANTS`, `fog.radius`) →
-`world.vis` → `Renderer.drawShade` (`fog.res`, `fog.shade`), last in world space; blocked by stone +
+`world.vis` → `Renderer.drawShade` (`fog.soft` a 3x3 soft mask a texel a tile, `fog.shade`), last in world space; blocked by stone +
 `world.visBlock`. Only the renderer reads `vis`. THE ORACLE: `fog.oracle`.
 
 **Run code.** `game.runCode(by)`: build, level (T = trip, N = THE DARK), run seed, `seedDeaths` (the count the
@@ -1265,7 +1303,7 @@ counted, no killer), and the edge drops him into the saved floor. **The belfry**
 (`heaven.bells`, pentatonic, the god's tune on the first three) on a 52-texel beam; the blind shepherd
 answers the chime (`heaven.shepBells`, `SHEPHERD_TALK.bells`). Heaven's harp is `heaven.music`.
 **What outlives runs** is `Heaven.meta` under `HEAVEN_KEY` (never cleared by NEW GAME): `sacrifices`
-(`Heaven.earn`: `heaven.pay.kill` a man in `onKill`, `pay.floor` a floor in `levelCleared`; not in GOD
+(`Heaven.earn`: `heaven.pay.kill` a man as his white soul reaches the goat — `js/motes.js`, nothing before the god's gift, `meta.brought` toward his 200 — `pay.floor` a floor in `levelCleared`; not in GOD
 MODE or THE SHOWROOM), `ranks` of `MIRROR` (`Heaven.applyMeta` in `applyBoons`: `mods.maxHp`,
 `lightHearts` — `goat.light`, set in `startLevel`, spent first in `Goat.damage`, drawn after the hearts —
 `grazeMul`, `milkFull`, `rollCooldown`, `invulnAdd`), `saved` (the seats: `Heaven.saved` in
@@ -1289,7 +1327,9 @@ writes BEST; THE TRIP writes no BEST either.
 Boons saved by `id` — renaming drops them.
 
 **Score.** `scoreFor(kills, time, levelIndex, def)`: pace vs par (`score.perRoom`, `fastCap`) × `killMul`
-(`killCap`). `noteBest` / `noteRunBest` under `BEST_KEY`, which `clearRun` never touches.
+(`killCap`). `noteBest` / `noteRunBest` under `BEST_KEY`, which `clearRun` never touches. **The win card
+shows the run, not the score** (1.85): `noteRunStart` (NEW GAME, RUN AGAIN; never a LEVELS start) counts
+`best.runs`, `noteEscape` `best.escapes`; the card says ON RUN N, the deaths on the way and the bodies.
 
 **Menus.** State `title`, `drawTitle`, `MENU`, `game.menu` (`menuAt`, `menuPick`, `menuKey`). The last row, JOIN THE DISCORD, opens `DISCORD_URL` (`game.openDiscord`). A raised
 `menu.panel` owns `menu.rects`. The rows are `game.menuItems()`: MENU less LEVELS unless the dev drawer is
@@ -1302,7 +1342,11 @@ which has no drawer, still has it; on, a floor writes no best and the run code c
 
 **The itch build** (`js/release.js`, 26 Sep 2026). The dev drawer's ITCH BUILD zips the running page
 into `doomed-goat-<BUILD>-itch.zip`: index.html with `RELEASE.flag` (`window.GOAT_RELEASE = true`) ahead
-of the first script, and exactly the scripts the page loaded. In that build `RELEASE.on` hides the dev
+of the first script, and exactly the scripts the page loaded, **minified** (1 Oct 2026: terser with
+`RELEASE.minifyOpts` — no comments, local names cut, top-level names kept because the scripts share them
+as globals; the button loads terser off `RELEASE.terserUrl`, the node script off a local
+`npm i --no-save --no-package-lock terser`; no minifier, no zip, and `--plain` is the only way round it,
+never for itch). A nuisance to anyone pulling the code, not protection. In that build `RELEASE.on` hides the dev
 corner for good (`#dev` included) and ignores `#rules` and the other tool addresses, `#trip` and
 `#dark`; GOD MODE is in SETTINGS and says so at the top of the screen. `node tools/itch-zip.js` makes the
 same zip from a commit. The zip's page is index.html's head — fetched beside the page on the dev
@@ -1374,7 +1418,7 @@ in `localStorage` by an earlier test is what CONTINUE offers — `game.clearRun(
 
 **Traps that have bitten before, in this exact order:**
 
-- Testing a hound's dodge or bite without waiting out the goat's headbutt recovery (0.46s) between
+- Testing a hound's dodge or bite without waiting out the goat's headbutt recovery (0.53s) between
   swings: the input is dropped, nothing happens, and it reads as the dodge being broken. Wait, or check
   `goat.lungeId` actually moved.
 - Teleporting the goat next to a wall and then testing a mechanic that needs line of sight. `los()`
@@ -1438,6 +1482,9 @@ publish the artifact.** The user says "deploy" to mean "put it live", and a bran
 the remote is not live. Never stop at the feature branch and never leave `main` behind — if a session
 was developing on `claude/<something>`, merge that branch into `main` and push `main` as part of the
 deploy, then publish. Opening a pull request instead is only right when the user asks for one.
+**Fourth, once the itch page exists** (1 Oct 2026): `ITCH_TARGET=<user>/<game> node tools/itch-push.js`
+from the pushed commit — the minified zip replaces the build on the page; its visibility is the page's.
+If butler is missing or not logged in, say so and leave it to the user; never handle the itch key.
 
 The artifact is published from `artifact.html` with every script passed as supporting files, and
 always to the existing URL. Republishing without the `url` creates a second artifact.

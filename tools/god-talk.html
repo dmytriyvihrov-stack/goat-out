@@ -38,7 +38,7 @@
 </head>
 <body>
 <header>
-  <h1>GOD TALK</h1>
+  <h1>GOD TALK · TIPS</h1>
   <button id="save">SAVE TO heaven.js</button>
   <button id="copy">COPY AS JS</button>
   <button id="reload">RELOAD</button>
@@ -56,6 +56,8 @@ const LONG = 150;
 document.getElementById('lim').textContent = LONG;
 // Which top-level keys carry a comment in heaven.js, kept when the object is written back.
 const NOTES = { munch: "what the goat's mouth thinks of the gold grass" };
+// What can take his last heart (the run code's token), each a list of tips (`DEATH_TIPS.killer`).
+const TIP_KILLERS = ['bearer', 'brute', 'butcher', 'seer', 'hunter', 'dog', 'wraith', 'ratogre', 'fire', 'witchfire', 'spike', 'spire', 'bomb', 'chandelier', 'mill', 'fall', 'rifle'];
 let data = null;
 const status = (t) => { document.getElementById('status').textContent = t; };
 
@@ -78,7 +80,9 @@ async function load() {
   status('loading…');
   try {
     const src = await (await fetch('../js/heaven.js', { cache: 'no-store' })).text();
-    data = { HEAVEN_TALK: literal(src, 'HEAVEN_TALK'), SHEPHERD_TALK: literal(src, 'SHEPHERD_TALK') };
+    data = { HEAVEN_TALK: literal(src, 'HEAVEN_TALK'), SHEPHERD_TALK: literal(src, 'SHEPHERD_TALK'), DEATH_TIPS: literal(src, 'DEATH_TIPS') };
+    // a killer with no tips yet still gets its own list to add to
+    for (const k of TIP_KILLERS) if (!data.DEATH_TIPS.killer[k]) data.DEATH_TIPS.killer[k] = [];
     render(); status('read from js/heaven.js');
   } catch (e) { status('could not read js/heaven.js: ' + e.message); }
 }
@@ -93,7 +97,7 @@ function groups() {
       else if (v && typeof v === 'object') walk(v, path.concat(k));
     }
   };
-  walk(data.HEAVEN_TALK, ['HEAVEN_TALK']); walk(data.SHEPHERD_TALK, ['SHEPHERD_TALK']);
+  walk(data.HEAVEN_TALK, ['HEAVEN_TALK']); walk(data.SHEPHERD_TALK, ['SHEPHERD_TALK']); walk(data.DEATH_TIPS, ['DEATH_TIPS']);
   return out;
 }
 
@@ -102,7 +106,7 @@ function render() {
   for (const g of groups()) {
     const sec = document.createElement('section');
     const h = document.createElement('h2');
-    h.textContent = g.path.slice(1).join(' · ') + (g.path[0] === 'SHEPHERD_TALK' ? '  (shepherd)' : '');
+    h.textContent = g.path.slice(1).join(' · ') + (g.path[0] === 'SHEPHERD_TALK' ? '  (shepherd)' : g.path[0] === 'DEATH_TIPS' ? '  (tip after a death)' : '');
     const add = document.createElement('button'); add.className = 'small'; add.textContent = '+ LINE';
     add.onclick = () => { g.list.push('NEW LINE.'); render(); };
     h.appendChild(add); sec.appendChild(h);
@@ -155,7 +159,9 @@ function js(v, ind) {
   const keys = Object.keys(v);
   return '{\n' + keys.map((k) => (ind === 0 && NOTES[k] ? pad + '  // ' + NOTES[k] + '\n' : '') + pad + '  ' + (/^[A-Za-z_]\w*$/.test(k) ? k : k) + ': ' + js(v[k], ind + 1) + ',').join('\n') + '\n' + pad + '}';
 }
-const out = () => ({ HEAVEN_TALK: js(data.HEAVEN_TALK, 0), SHEPHERD_TALK: js(data.SHEPHERD_TALK, 0) });
+// empty killer lists are not written back
+const tipsOut = () => { const k = {}; for (const [n, l] of Object.entries(data.DEATH_TIPS.killer)) if (l.length) k[n] = l; return Object.assign({}, data.DEATH_TIPS, { killer: k }); };
+const out = () => ({ HEAVEN_TALK: js(data.HEAVEN_TALK, 0), SHEPHERD_TALK: js(data.SHEPHERD_TALK, 0), DEATH_TIPS: js(tipsOut(), 0) });
 
 document.getElementById('save').onclick = async () => {
   if (!data) return;
@@ -167,7 +173,7 @@ document.getElementById('save').onclick = async () => {
 };
 document.getElementById('copy').onclick = async () => {
   if (!data) return;
-  const o = out(), text = `const HEAVEN_TALK = ${o.HEAVEN_TALK};\n\nconst SHEPHERD_TALK = ${o.SHEPHERD_TALK};\n`;
+  const o = out(), text = `const HEAVEN_TALK = ${o.HEAVEN_TALK};\n\nconst SHEPHERD_TALK = ${o.SHEPHERD_TALK};\n\nconst DEATH_TIPS = ${o.DEATH_TIPS};\n`;
   try { await navigator.clipboard.writeText(text); status('copied both objects'); } catch (e) { status('copy refused by the browser'); }
 };
 document.getElementById('reload').onclick = load;

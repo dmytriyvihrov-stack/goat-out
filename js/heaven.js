@@ -39,6 +39,9 @@ const HEAVEN_SEATS = [
   { kind: 'crow', name: 'THE CROW', sound: 'CAW.', line: 'I ATE VERY WELL ON YOUR FLOORS. VERY WELL.', more: 'KEEP THE BODIES COMING, GOAT. I FIND YOU THE SHINY THINGS.' },
   { kind: 'horse', name: 'THE HORSE', sound: 'NEIGH!', line: 'YOU BEAT ME. ONCE. IT WILL NOT HAPPEN AGAIN.', more: 'IT HAPPENED AGAIN. I DEMAND A REMATCH. UP HERE THERE ARE NO DOORS TO KICK.' },
   { kind: 'pig', name: 'THE PIG', sound: 'OINK.', line: 'THE GRASS UP HERE IS GOLD. I HAVE EATEN SOME. I WILL EAT MORE.', more: 'YOU FED ME AGAIN. I LEFT YOU TUFTS ALL THE WAY DOWN. DID YOU FIND THEM?' },
+  // 1 Oct 2026 (js/beasts-more.js): the two new ones sit at the foot of the god's room.
+  { kind: 'rabbit', name: 'THE RABBIT', sound: 'THUMP.', line: 'YOU HOPPED ALL THE WAY. I DID NOT THINK A GOAT COULD.', more: 'AGAIN, ON TIED LEGS. YOU ARE HALF RABBIT NOW. THE BETTER HALF.' },
+  { kind: 'husky', name: 'THE HUSKY', sound: 'AWOO!', line: 'WE SANG IN THE MIDDLE OF A FIGHT. NOBODY ELSE EVER SANG WITH ME.', more: 'SING IT AGAIN! WAF-WOOO... YOUR TURN. NO? LATER, THEN.' },
 ];
 
 // ---------------------------------------------------------------- what the god says
@@ -52,8 +55,23 @@ const HEAVEN_TALK = {
     'BEHOLD. A GOAT. DEAD, BUT STILL VERY MUCH A GOAT.',
     'I AM THE GOAT ABOVE. FATHER OF HORNS, KEEPER OF CLOUDS, EATER OF THE GOOD GRASS.',
     'I CANNOT MAKE YOU NEW. I AM A GOD, NOT A MIRACLE. BUT I CAN SEND YOU BACK TO WHERE YOU FELL. MORE OR LESS.',
-    'EVERY MAN YOU PUT INTO A WALL DOWN THERE IS A SACRIFICE UP HERE. MY MIRROR KNOWS WHAT TO DO WITH THEM.',
+    // The gift and the quest (1 Oct 2026): from the end of this talk every man he puts down leaves
+    // a white soul (`js/motes.js`), and the god wants `heaven.gift.quest` of them.
+    'BUT FIRST, A GIFT. HOLD STILL. ...THERE. A LITTLE OF MY LIGHT, IN YOUR HORNS.',
+    'NOW EVERY MAN YOU PUT DOWN LEAVES A SMALL WHITE SOUL. WALK OUT OF THE ROOM AND THEY FOLLOW YOU. THEY ARE MINE. BRING THEM.',
+    'TWO HUNDRED. BRING ME TWO HUNDRED, AND I WILL SHOW YOU WHAT MY MIRROR KEEPS AT THE BACK. WHAT YOU BRING, THE MIRROR TAKES AS PAY.',
     'THE EDGE IS THROUGH THERE. JUMP. AND THIS TIME, BUTT FIRST. BEH.',
+  ],
+  // For a goat who met him before the gift existed: the same gift, said on its own.
+  gift: [
+    'WAIT. I FORGOT SOMETHING. HOLD STILL. ...THERE. A LITTLE OF MY LIGHT, IN YOUR HORNS.',
+    'NOW EVERY MAN YOU PUT DOWN LEAVES A SMALL WHITE SOUL. WALK OUT OF THE ROOM AND THEY FOLLOW YOU. BRING THEM.',
+    'TWO HUNDRED. BRING ME TWO HUNDRED, AND I WILL SHOW YOU WHAT MY MIRROR KEEPS AT THE BACK.',
+  ],
+  // The two hundred brought: SECOND CHANCE is on the glass from now on (`MIRROR`, `needs: 'quest'`).
+  quest: [
+    'TWO HUNDRED. I COUNTED THEM. TWICE. ONE OF THEM WAS A DUCK, BUT I WILL ALLOW IT.',
+    'LOOK AT THE BACK OF MY MIRROR NOW. THERE IS SOMETHING THERE FOR A GOAT WHO KEEPS DYING. IT IS NOT CHEAP. NOTHING GOOD IS.',
   ],
   killer: {
     bearer: ['A MAN WITH A STICK. YOU HAVE TWO HORNS AND FOUR LEGS. DO THE ARITHMETIC.'],
@@ -115,6 +133,19 @@ const SHEPHERD_TALK = {
   bells: ['WHO IS AT THE BELLS? THE LITTLE KID?', 'NOT SO HARD. THEY ARE OLDER THAN I AM.', 'THAT ONE IS FLAT. IT ALWAYS WAS.',
     'AH, I KNOW THAT ONE. HOW DOES IT GO ON?', 'MY WIFE RANG THEM LIKE THAT.', 'SOFTLY. THE GOD IS DOZING.', 'GOATS DO NOT RING BELLS. OR DO THEY NOW?'],
 };
+// What a floor tried again after a death says at its foot for a few seconds (1 Oct 2026, playtest:
+// "after the first death on a level, show tips — who killed you, or one off a general list, made in
+// the dev tools; add one or two yourself, the rest by hand"): a line off `killer[<what killed him>]`
+// (the run code's token: bearer, brute, butcher, seer, hunter, dog, wraith, ratogre, fire, witchfire,
+// spike, spire, bomb, chandelier, mill, fall, rifle) if there is one, else off `any`. Edited and written
+// back from tools/god-talk.html with the god's lines (`Codex.deathTip`).
+const DEATH_TIPS = {
+  killer: {},
+  any: [
+    'YOUR HORNS ONLY KNOCK A MAN DOWN. WHAT KILLS HIM IS THE WALL YOU AIM HIM AT.',
+    'A MAN IN POISON OR DAZED BREAKS ON STONE FROM A SOFTER BLOW.',
+  ],
+};
 // The five bells of the chime, and the one tune the god knows the words to (E D C D E E E).
 const HEAVEN_SONG = [2, 1, 0, 1, 2, 2, 2];
 // The two tables of the feast, laid the same every visit (js/scatter.js throws it about): what stands
@@ -136,8 +167,22 @@ const Heaven = {
     try { m = JSON.parse(localStorage.getItem(HEAVEN_KEY) || 'null'); } catch (e) { m = null; }
     if (!m || m.v !== 1) m = { v: 1 };
     this.meta = Object.assign({ sacrifices: 0, souls: 0, soulsEarned: 0, earned: 0, pending: 0, ranks: {}, saved: {}, visits: 0, deaths: 0,
-      combed: 0, heard: {}, killers: {}, best: -1, lastBest: -1, bought: 0, sung: false, told: {} }, m);
+      combed: 0, heard: {}, killers: {}, best: -1, lastBest: -1, bought: 0, sung: false, told: {}, gift: false, brought: 0 }, m);
     return this.meta;
+  },
+  // The god's gift (`heaven.gift`): until his first talk ends no man pays anything; `brought` is what
+  // has been counted in since, toward his two hundred.
+  gifted() { return !!(this.meta && this.meta.gift); },
+  questDone() { return !!(this.meta && this.meta.gift && this.meta.brought >= TUNING.heaven.gift.quest); },
+  // What the mirror shows: every rank but the ones still waiting on the quest.
+  shelf() { return MIRROR.filter((u) => u.needs !== 'quest' || this.questDone()); },
+  // The gift lands: said at the end of the talk that gives it.
+  giveGift(game) {
+    const M = this.meta; if (M.gift) return;
+    M.gift = true; this.save();
+    const g = game.goat;
+    if (g) { game.ring(g.x, g.y, 2.5 * TILE, '#fff4c2'); game.particles(g.x, g.y - 12, 26, '#ffffff', 180); game.floatText(g.x, g.y - 44, 'YOU GATHER SOULS NOW', '#fff4c2'); }
+    game.audio.sfxChime(TUNING.heaven.bells[2]); game.audio.sfxChime(TUNING.heaven.bells[5], 0.6, 0.14);
   },
   save() {
     if (!this.meta) return;
@@ -150,9 +195,10 @@ const Heaven = {
   // A sacrifice for the god: every man the compound loses while the goat lives (`Game.onKill`), and
   // `pay.floor` more for every floor he climbs out of. Not in GOD MODE (a dev walking round), not in
   // THE SHOWROOM.
+  // Nothing before the god's gift (`gifted`); after it, what is paid counts toward his two hundred.
   earn(game, n) {
-    if (!this.meta || !n || (game.dev && game.dev.god) || game.showroomOn) return;
-    this.meta.sacrifices += n; this.meta.earned += n; this.meta.pending += n; this.saveSoon();
+    if (!this.meta || !n || !this.meta.gift || (game.dev && game.dev.god) || game.showroomOn) return;
+    this.meta.sacrifices += n; this.meta.earned += n; this.meta.pending += n; this.meta.brought = (this.meta.brought || 0) + n; this.saveSoon();
   },
   // A corrupted soul swallowed down there (the pickup in `Game.update`) is banked up here as well:
   // the mirror's top ranks ask for them (`MIRROR[].souls`). Same exceptions as a sacrifice.
@@ -200,7 +246,7 @@ const Heaven = {
     fill(34, 19, 55, 19, T.FLOOR);
     const props = [];
     const put = (kind, x, y, o) => props.push(Object.assign({ x, y, kind, heaven: true }, o || {}));
-    HEAVEN_SEATS.forEach((s, i) => put('hseat', px(i < 3 ? 6.5 : 24.5) - 16, px([9.5, 14, 18.5, 9.5, 18.5, 14][i]), { seat: s.kind }));
+    HEAVEN_SEATS.forEach((s, i) => put('hseat', px(i < 6 ? (i < 3 ? 6.5 : 24.5) : (i === 6 ? 10.5 : 20.5)) - 16, px([9.5, 14, 18.5, 9.5, 18.5, 14, 20.6, 20.6][i]), { seat: s.kind }));
     put('hshep', px(38), px(9.6));
     put('hmirror', px(51.5), px(7.4));
     for (let k = 0; k < TUNING.heaven.bells.length; k++) put('hbell', px(41.6) + k * HEAVEN_PIXELS.BELL_GAP * 1.35, px(10.2), { note: k });
@@ -244,7 +290,7 @@ const Heaven = {
     M.pending = 0;
     game.level = L; game.world = new World(L);
     game.goat = new Goat(L.start.x, L.start.y); game.goat.facing = -Math.PI / 2; game.goat.invuln = 0;
-    game.enemies = []; game.liveEnemies.length = 0; game.bullets = []; game.souls = []; game.globs = []; game.fallers = [];
+    game.enemies = []; game.liveEnemies.length = 0; game.bullets = []; game.souls = []; game.globs = []; game.fallers = []; game.motes = []; game.revive = null;
     game.props = L.props.map((p) => { const o = new Prop(p.x, p.y, p.kind, p); o.heaven = !!p.heaven; if (p.menu) o.menu = p.menu;
       if (p.seat) o.seat = p.seat; if (p.note !== undefined) o.note = p.note; return o; });
     for (const p of game.props) if (p.kind === 'hseat' || p.kind === 'hshep' || p.kind === 'hmirror') p.r = TUNING.heaven.bodyR[p.kind];
@@ -264,7 +310,7 @@ const Heaven = {
       venomRoll: false, rollStun: 0, leapfrog: null, boomerang: null, blink: null, effigy: null, venomHold: 0, brandHold: 0 });
     game.goat.maxHp = game.goat.hp = game.mods.maxHp;
     game.cam.x = L.start.x; game.cam.y = L.start.y - 2 * TILE; game.cam.zoom = game.renderer.zoomFit;
-    game.camLead.x = game.camLead.y = 0; game.camFollow = null; game.camLock = undefined; game.camRoomT = 0; game.camFight = 0;
+    game.camLead.x = game.camLead.y = 0; game.camFollow = null; game.camTrack = null; game.camHold = undefined; game.camRoomMid = null; game.camFight = 0;
     game.card = null; game.state = 'heaven';
     game.audio.duck(1, 0.4); game.audio.heavenMusic = true; game.audio.sfxAscend();
     // The god's first line is over his head, not in your way: what he has to say at length waits for
@@ -294,6 +340,8 @@ const Heaven = {
     const H = game.heaven, M = this.meta, K = HEAVEN_TALK, told = M.told;
     const fresh = (key, list) => { const i = list.findIndex((l, j) => !told[key + j]); return i < 0 ? null : { key: key + i, lines: [list[i]] }; };
     if (!told.intro) return { key: 'intro', lines: K.intro };
+    if (!M.gift) return { key: 'gift', lines: K.gift };
+    if (this.questDone() && !told.quest0) return { key: 'quest0', lines: K.quest };
     if (M.sung && !told.song0) return { key: 'song0', lines: K.song };
     if (M.freshSeat) {
       const seat = HEAVEN_SEATS.find((s) => s.kind === M.freshSeat), t = { key: 'seat-' + M.freshSeat, lines: [K.saved[0].replace('{animal}', seat ? seat.name : 'AN ANIMAL')] };
@@ -466,6 +514,7 @@ const Heaven = {
     if (K.key) M.told[K.key] = 1;
     if (K.best !== undefined) M.lastBest = K.best;
     if (K.key && K.key.startsWith('seat-')) M.freshSeat = null;
+    if (K.key === 'intro' || K.key === 'gift') this.giveGift(game);
     this.save();
     K.out = 0.0001;
   },
@@ -515,7 +564,7 @@ const Heaven = {
   closeMirror(game) { if (game.heaven) game.heaven.panel = null; game.audio.sfxSwing(); },
   // A rank of `u` bought with sacrifices, if there are enough and there is a rank left.
   buy(game, i) {
-    const H = game.heaven, P = H && H.panel, u = MIRROR[i]; if (!P || !u) return;
+    const H = game.heaven, P = H && H.panel, u = this.shelf()[i]; if (!P || !u) return;
     const r = this.rank(u.id), cost = u.costs[r];
     if (cost === undefined) { game.audio.sfxThud(); return; }
     const sc = this.soulCost(u, r);
@@ -526,9 +575,9 @@ const Heaven = {
   },
   panelKey(game, code) {
     const P = game.heaven && game.heaven.panel; if (!P) return false;
-    if (code === 'KeyW' || code === 'ArrowUp') { P.i = (P.i + MIRROR.length) % (MIRROR.length + 1); game.audio.sfxSwing(); }
-    else if (code === 'KeyS' || code === 'ArrowDown') { P.i = (P.i + 1) % (MIRROR.length + 1); game.audio.sfxSwing(); }
-    else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') { if (P.i >= MIRROR.length) this.closeMirror(game); else this.buy(game, P.i); }
+    if (code === 'KeyW' || code === 'ArrowUp') { P.i = (P.i + this.shelf().length) % (this.shelf().length + 1); game.audio.sfxSwing(); }
+    else if (code === 'KeyS' || code === 'ArrowDown') { P.i = (P.i + 1) % (this.shelf().length + 1); game.audio.sfxSwing(); }
+    else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') { if (P.i >= this.shelf().length) this.closeMirror(game); else this.buy(game, P.i); }
     else if (code === 'Escape' || code === 'KeyE' || code === 'Backspace') this.closeMirror(game);
     return true;
   },
@@ -543,7 +592,7 @@ const Heaven = {
     const i = this.panelAt(game, p);
     if (i < 0) return true;
     P.i = i;
-    if (i >= MIRROR.length) this.closeMirror(game); else this.buy(game, i);
+    if (i >= this.shelf().length) this.closeMirror(game); else this.buy(game, i);
     return true;
   },
 
@@ -1220,6 +1269,7 @@ Object.assign(Heaven, {
       if (kind === 'chicken') R.painted.character(R, { facing: Math.PI / 4 }, 'chicken', 28);
       else if (kind === 'horse') R.horseSprite(x, Math.PI / 4, false, 'idle');
       else if (kind === 'pig') R.pigSprite(x, Math.PI / 4, false, 'idle');
+      else if (kind === 'rabbit' || kind === 'husky') Beast.drawMore(R, { x: 0, y: 0, kind, face: 1, bob: 0, vx: 0, vy: 0, r: TUNING.prop[kind].r });
       else {
         const pet = { x: 0, y: 0, kind, r: TUNING.prop[kind].r, vx: 12, vy: 4, bob: 0, phase: 0, tuckT: 0, honkT: 0 };
         x.scale(1, 1 / TILT);
@@ -1501,9 +1551,9 @@ Object.assign(Heaven, {
     R.painted.character(R, { facing: Math.PI / 2 + Math.sin(t * 0.7) * 0.4, state: 'idle', x: 0, vx: 0, vy: 0 }, 'sheep', 40);
     ctx.restore();
     // what it offers
-    const rx = x0 + 60 * s + gw, rw = x0 + pw - 26 * s - rx, rh = Math.min(74 * s, (ph - 150 * s) / (MIRROR.length + 0.8));
+    const rx = x0 + 60 * s + gw, rw = x0 + pw - 26 * s - rx, rh = Math.min(74 * s, (ph - 150 * s) / (this.shelf().length + 0.8));
     P.rects = [];
-    MIRROR.forEach((u, i) => {
+    this.shelf().forEach((u, i) => {
       const r = this.rank(u.id), max = u.costs.length, cost = u.costs[r], y = y0 + 96 * s + i * rh;
       const over = !game.touch.active && !padOn(game) && game.input.mouse && game.input.mouse.x >= rx && game.input.mouse.x <= rx + rw && game.input.mouse.y >= y && game.input.mouse.y <= y + rh - 8 * s;
       if (over && game.mouseMoved !== false) P.i = i;
@@ -1531,7 +1581,7 @@ Object.assign(Heaven, {
     // the way out
     const cy2 = y0 + ph - 46 * s, bw2 = 170 * s, bx2 = rx + rw - bw2;
     P.rects.push({ x: bx2, y: cy2, w: bw2, h: 30 * s });
-    const selC = P.i === MIRROR.length;
+    const selC = P.i === this.shelf().length;
     ctx.fillStyle = selC ? 'rgba(247,215,116,0.2)' : 'rgba(255,255,255,0.04)'; ctx.fillRect(bx2, cy2, bw2, 30 * s);
     ctx.strokeStyle = '#e0ac3e'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx2, cy2, bw2, 30 * s);
     ctx.textAlign = 'center'; ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = '#fff4c2'; ctx.fillText('LOOK AWAY', bx2 + bw2 / 2, cy2 + 20 * s);

@@ -7,8 +7,11 @@
 // itself so what was checked is what will be uploaded.
 //   node tools/itch-zip.js            -> dist/doomed-goat-<BUILD>-<commit>.zip
 //   node tools/itch-zip.js --dirty    the same from a dirty tree (the name says so)
+//   node tools/itch-zip.js --plain    scripts as they are, unminified (the name says so; never for itch)
+// Every script is minified with terser, `RELEASE.minifyOpts` (js/release.js), so this and the button
+// make the same page. terser is a tool, not a dependency of the game: `npm i --no-save --no-package-lock terser`.
 'use strict';
-const fs = require('fs'), path = require('path'), zlib = require('zlib'), { execSync } = require('child_process');
+const fs = require('fs'), path = require('path'), zlib = require('zlib'), vm = require('vm'), { execSync } = require('child_process');
 const { ROOT, scriptsOf } = require('./script-lists.js');
 
 const CRC = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -61,11 +64,28 @@ for (const s of scripts) if (!fs.existsSync(path.join(ROOT, s))) { console.error
 const flag = (fs.readFileSync(path.join(ROOT, 'js', 'release.js'), 'utf8').match(/flag: '([^']+)'/) || [])[1];
 const page = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), at = page.indexOf('<script src=');
 if (!flag || at < 0) { console.error('no release flag to put in index.html'); process.exit(1); }
-const entries = [{ name: 'index.html', data: Buffer.from(page.slice(0, at) + flag + '\n' + page.slice(at), 'utf8') }]
-  .concat(scripts.map((s) => ({ name: s, data: fs.readFileSync(path.join(ROOT, s)) })));
-const out = path.join(ROOT, 'dist', `doomed-goat-${build}-${commit}${dirty ? '-dirty' : ''}.zip`);
-fs.mkdirSync(path.dirname(out), { recursive: true });
-const buf = zip(entries); fs.writeFileSync(out, buf);
-const back = list(fs.readFileSync(out)), raw = back.reduce((a, e) => a + e.size, 0);
-for (const e of back) console.log(`${String(e.size).padStart(9)} ${String(e.csize).padStart(9)}  ${e.name}`);
-console.log(`${back.length} files, ${(raw / 1048576).toFixed(2)} MiB unpacked, ${(buf.length / 1048576).toFixed(2)} MiB zipped -> ${path.relative(ROOT, out)}`);
+const plain = process.argv.includes('--plain');
+let terser = null;
+if (!plain) {
+  try { terser = require('terser'); } catch (err) { console.error('terser is not installed: npm i --no-save --no-package-lock terser (or --plain for an unminified zip, never for itch)'); process.exit(1); }
+}
+// The options live in js/release.js, read by running it with no window.
+const ctx = { console }; vm.createContext(ctx);
+const opts = vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'release.js'), 'utf8') + '\n;RELEASE.minifyOpts', ctx);
+
+(async () => {
+  const entries = [{ name: 'index.html', data: Buffer.from(page.slice(0, at) + flag + '\n' + page.slice(at), 'utf8') }];
+  for (const s of scripts) {
+    const src = fs.readFileSync(path.join(ROOT, s), 'utf8');
+    if (plain) { entries.push({ name: s, data: Buffer.from(src, 'utf8') }); continue; }
+    const min = await terser.minify(src, JSON.parse(JSON.stringify(opts)));
+    if (!min || typeof min.code !== 'string') { console.error(s + ' did not minify'); process.exit(1); }
+    entries.push({ name: s, data: Buffer.from(min.code, 'utf8') });
+  }
+  const out = path.join(ROOT, 'dist', `doomed-goat-${build}-${commit}${dirty ? '-dirty' : ''}${plain ? '-plain' : ''}.zip`);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  const buf = zip(entries); fs.writeFileSync(out, buf);
+  const back = list(fs.readFileSync(out)), raw = back.reduce((a, e) => a + e.size, 0);
+  for (const e of back) console.log(`${String(e.size).padStart(9)} ${String(e.csize).padStart(9)}  ${e.name}`);
+  console.log(`${back.length} files, ${(raw / 1048576).toFixed(2)} MiB unpacked, ${(buf.length / 1048576).toFixed(2)} MiB zipped${plain ? ', NOT minified' : ', minified'} -> ${path.relative(ROOT, out)}`);
+})().catch((err) => { console.error(err && err.message || err); process.exit(1); });

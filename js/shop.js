@@ -26,7 +26,7 @@ const Shop = {
     const old = game.artifact, def = Shop.def(ware.ware.id);
     game.artifact = { id: ware.ware.id, tier: ware.ware.tier };
     game.applyBoons(); game.saveRun();
-    game.floatText(goat.x, goat.y - 36, `${def.name} ${'I'.repeat(ware.ware.tier)}`, PALETTE.fireHi);
+    game.floatText(goat.x, goat.y - 36, `${def.name} · ${rarityOf(ware.ware.tier).name}`, rarityOf(ware.ware.tier).color);
     game.ring(ware.x, ware.y, 1.6 * TILE, def.color); game.particles(ware.x, ware.y, 14, def.color, 150);
     game.audio.sfxBell(); game.vibe(20);
     if (!game.shopTold) { game.shopTold = true; game.floatText(goat.x, goat.y - 54, 'IT HANGS AT YOUR NECK', PALETTE.bone); }
@@ -127,11 +127,19 @@ const Shop = {
     game.slowTimer = Math.max(game.slowTimer, cfg.emergeFx.slow);
     e.say = { text: 'YOU WERE ASKED', life: 2.4, max: 2.4 };
   },
-  // He is down: whatever is still on the shelf is yours for nothing.
+  // He is down: whatever is still on the shelf is yours for nothing — and LEGENDARY (1 Oct 2026,
+  // playtest: "legendary only once you have beaten the mouse's ogre"): every talisman she had out that
+  // is not his own old one put back goes up to the fourth tier (`RARITY`), the only way to one.
   ogreDown(game, e) {
-    let any = false;
-    for (const w of game.props) if (w.kind === 'ware' && w.shopId === e.shopId && !w.broken) { w.locked = false; w.free = true; any = true; }
-    if (any) game.floatText(e.x, e.y - 58, 'THE SHELF IS YOURS', PALETTE.fireHi);
+    let any = false, legend = false;
+    for (const w of game.props) if (w.kind === 'ware' && w.shopId === e.shopId && !w.broken) {
+      w.locked = false; w.free = true; any = true;
+      if (w.ware && w.ware.id !== 'milk' && !w.chosen) { w.ware = { id: w.ware.id, tier: RARITY.length }; legend = true;
+        game.ring(w.x, w.y, 1.4 * TILE, RARITY[RARITY.length - 1].color); game.particles(w.x, w.y - 12, 16, RARITY[RARITY.length - 1].color, 150); }
+    }
+    if (any) game.floatText(e.x, e.y - 58, legend ? 'THE SHELF IS YOURS · LEGENDARY' : 'THE SHELF IS YOURS', legend ? RARITY[RARITY.length - 1].color : PALETTE.fireHi);
+    // her offer comes up again as cards the next time he is by it (js/codex.js)
+    if (game.shopShut) delete game.shopShut[e.shopId];
   },
   // The horns on him standing: nothing, said once a run.
   ogreShrug(game, e) {

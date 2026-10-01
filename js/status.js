@@ -165,6 +165,12 @@ const Status = {
       if (w.poison[i] <= 0) { w.poison[i] = 0; w.poisonOn.delete(i); continue; }
       if (w.fire[i] > 0 && lit === null) lit = i;
     }
+    // poison run under a burning brazier goes off as if the floor were alight (1 Oct 2026, playtest)
+    if (lit === null && w.poisonOn.size) for (const p of game.hazards) {
+      if (p.kind !== 'brazier' || p.broken) continue;
+      const i = w.idx(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
+      if (w.poison[i] > 0) { lit = i; break; }
+    }
     // One blast a step at most, and it burns off the puddle round it: a big puddle lit at one
     // corner goes off in a short chain rather than all at once, which reads as it catching.
     if (lit !== null) Status.blast(game, (lit % w.W + 0.5) * TILE, (((lit / w.W) | 0) + 0.5) * TILE, TUNING.status.blast, null);

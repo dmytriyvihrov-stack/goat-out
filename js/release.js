@@ -4,12 +4,28 @@
 // switch in SETTINGS instead, for anybody who only wants to look round.
 // `RELEASE.build(game)` is the dev drawer's ITCH BUILD button (26 Sep 2026: "a button in dev mode
 // that makes the current version for itch, without dev mode"): the page zips itself — index.html
-// with the flag in it and exactly the scripts it loads, nothing else — and hands the zip over as a
+// with the flag in it and exactly the scripts it loads, minified, nothing else — and hands the zip over as a
 // download. `node tools/itch-zip.js` writes the same zip from a commit on the command line.
 const RELEASE = {
   on: typeof window !== 'undefined' && !!window.GOAT_RELEASE,
   flag: '<script>window.GOAT_RELEASE = true;</script>',
   busy: false,
+  // The itch build ships its scripts minified (1 Oct 2026: "so it is not so easy to pull out with
+  // Claude"): no comments, local names cut short. A nuisance, not protection — the code still runs in
+  // the open. Top-level names are kept, because the scripts share them as globals; property names
+  // and strings are never touched. `tools/itch-zip.js` reads these same options.
+  terserUrl: 'https://cdn.jsdelivr.net/npm/terser@5/dist/bundle.min.js',
+  minifyOpts: { ecma: 2020, toplevel: false, compress: { passes: 2 }, mangle: true, format: { comments: false } },
+  async terser() {
+    if (typeof Terser !== 'undefined') return Terser;
+    await new Promise((ok, no) => {
+      const s = document.createElement('script'); s.src = RELEASE.terserUrl;
+      s.onload = ok; s.onerror = () => no(new Error('the minifier did not load'));
+      document.head.appendChild(s);
+    });
+    if (typeof Terser === 'undefined') throw new Error('the minifier did not load');
+    return Terser;
+  },
 
   // The page with the flag in it, ahead of every script so `tuning.js` onward all see it.
   flagged(html) {
@@ -117,10 +133,15 @@ const RELEASE = {
       const scripts = RELEASE.scripts(), html = RELEASE.flagged(await RELEASE.page(scripts));
       if (!html || !scripts.includes('js/game.js')) throw new Error('no page to pack');
       const enc = new TextEncoder(), entries = [{ name: 'index.html', data: enc.encode(html) }];
+      // Never a plain zip by accident: no minifier, no build.
+      const T = await RELEASE.terser();
       for (const s of scripts) {
         const r = await fetch(s, { cache: 'no-store' });
         if (!r.ok) throw new Error(s + ' did not load (' + r.status + ')');
-        entries.push({ name: s, data: new Uint8Array(await r.arrayBuffer()) });
+        say('ITCH BUILD: MINIFYING ' + s.toUpperCase(), 30);
+        const min = await T.minify(await r.text(), RELEASE.minifyOpts);
+        if (!min || typeof min.code !== 'string') throw new Error(s + ' did not minify');
+        entries.push({ name: s, data: enc.encode(min.code) });
       }
       const blob = await RELEASE.zip(entries), name = `doomed-goat-${BUILD}-itch.zip`;
       await RELEASE.hand(blob, name);

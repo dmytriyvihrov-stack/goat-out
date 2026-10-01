@@ -3,7 +3,10 @@
 // room in each floor's own stone — its floor sheet, its walls, its colours and the furniture its canon
 // is built out of — one after another, THE ALTAR to THE DARK. It is for looking at the art and the
 // props side by side, so nothing here is rolled, nobody is spawned (the drawer's SPAWN column is for
-// that) and no rule in `GEN_RULES` is asked of it. Floors read their stone per tile off `zones`
+// that) and no rule in `GEN_RULES` is asked of it.
+// THE RULE (1 Oct 2026): anything new the game stands on a floor — a prop, an animal, a talisman — goes
+// in here the day it is added. Every animal has a coop in the COOPS row, every talisman a stool on the
+// shelf along the near wall (tier III, free: grab one to wear it, grab another to swap). Floors read their stone per tile off `zones`
 // (`PaintedArt.drawTiles`); the round cave and the dark's lighting are level-wide and are not here.
 const SHOWROOM_LEVEL = {
   name: 'THE SHOWROOM', sub: 'Dev', rooms: 10, showroom: true,
@@ -34,7 +37,7 @@ function showroomLevel(def, seed) {
   };
 
   // The hall: everything the game stands on a floor, in rows by what it is to the goat.
-  const hall = room(2, 22, 46, 28, 'showroom hall', 0);
+  const hall = room(2, 22, 46, 33, 'showroom hall', 0);
   const hx = hall.x + 1, hy = hall.y + 1;
   label('THE SHOWROOM', hx + 22, hy + 2.4, 30, true);
   const row = (y, head, list) => {
@@ -53,6 +56,11 @@ function showroomLevel(def, seed) {
     ['MILK', (x, y) => put('heal', x, y)], ['BIG GRASS', (x, y) => put('heal', x, y, { big: true })],
     ['SHROOMS', (x, y) => put('shrooms', x, y)], ['WHEEL', (x, y) => put('mill', x + 1, y, { phase: 0 })],
   ]);
+  // The chandelier, its rope tied off at a cleat on the far wall straight above it (gen.js), and a
+  // barrel of poison beside the red one's row.
+  put('chandelier', hx + 42, hy + 3, { cid: 0 }); props.push({ x: (hx + 42.5) * TILE, y: (hall.y + 1.25) * TILE, kind: 'cleat', cid: 0 });
+  label('CHANDELIER', hx + 42, hy + 4.6, 5);
+  put('barrel', hx + 42, hy + 10, { toxic: true }); label('POISON BARREL', hx + 42, hy + 11.3, 5);
   row(hy + 15, 'FLOOR', [
     ['GRATING', (x, y) => { put('spike', x, y); put('spike', x + 1, y); }], ['SPIRE', (x, y) => put('spire', x, y)],
     ['STRAW', (x, y) => fill(x, y, x + 1, y, T.HAY)], ['ASH', (x, y) => fill(x, y, x + 1, y, T.ASH)],
@@ -60,8 +68,15 @@ function showroomLevel(def, seed) {
     ['DROP', (x, y) => fill(x, y - 1, x + 1, y, T.PIT)],
     ['CAGE', (x, y) => props.push(...buildCage((x + 0.5) * TILE, (y - 0.3) * TILE, 0.8, 0.7, true))],
   ]);
-  row(hy + 21, 'COOPS', ['chicken', 'tortoise', 'goose', 'crow', 'horse', 'pig'].map((k) =>
+  row(hy + 21, 'COOPS', ['chicken', 'tortoise', 'goose', 'crow', 'horse', 'pig', 'rabbit', 'husky'].map((k) =>
     [k === 'chicken' ? 'HEN' : k.toUpperCase(), (x, y) => put('coop', x, y, { holds: k, beastRoom: 0 })]));
+  // Every talisman on a stool, tier III, two rows along the near wall: a shelf of no shop (`shopId` < 0,
+  // so no dialog opens) where every stool is his (`free`): grab one to wear it, another to swap.
+  label('TALISMANS · GRAB TO WEAR', hx + 22, hy + 24.6, 14);
+  ARTIFACTS.forEach((a, i) => {
+    const per = Math.ceil(ARTIFACTS.length / 2), r = Math.floor(i / per), c = i % per;
+    put('ware', hx + 2 + Math.round(c * 40 / (per - 1)), hy + 26 + r * 3, { shopId: -9, free: true, ware: { id: a.id, tier: 3 } });
+  });
   // The doors, each at the mouth of a blind alcove in the hall's far wall, so none of them is in the way.
   const doors = [['PLANK', {}], ['IRON', { iron: true }], ['STAIRS', { iron: true, stair: true }],
     ['VAULT', { iron: true, vault: true }], ['SOUL GATE', { iron: true, gate: true }], ['SEAL', { iron: true, seal: true }]];
@@ -80,7 +95,7 @@ function showroomLevel(def, seed) {
   put('suit', hx + 13, hy + 8); label('STANDING SUIT', hx + 13, hy + 9.8, 5);
   // A wall that gives, in the near wall, with its niche behind it (walled up again by `startLevel`).
   {
-    const tx = hx + 36, wr = hall.y + hall.h - 1;
+    const tx = hx + 36, wr = hall.y + hall.h - 1;   // the near wall, under the shelf
     fill(tx, wr, tx, wr, T.FLOOR); fill(tx, wr + 1, tx + 1, wr + 1, T.FLOOR); zone(tx - 1, wr, tx + 2, wr + 2, 0);
     put('secret', tx, wr, { wallColor: def.wall, wallTop: def.wallTop, wallSide: 'down', nicheTiles: [at(tx, wr), at(tx, wr + 1), at(tx + 1, wr + 1)] });
     put('heal', tx, wr + 1, { big: true }); put('weapon', tx + 1, wr + 1, { weapon: 'sword' });

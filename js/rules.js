@@ -247,6 +247,15 @@ const GEN_RULES = [
       if (!roomAllowed(ARMORY_TEMPLATE, L.def)) return 'an armory on a floor ROOM_LEVELS keeps it off';
       return a[0].index >= TUNING.rooms.armory.from || `the armory is room ${a[0].index}`;
     } },
+  { id: 'bridges', text: 'THE BRIDGE builds one or two of its canon rooms as the bridge itself (levelDef.bridges), and no other floor ever builds one.',
+    check: (L) => {
+      const b = L.rooms.filter((r) => r.tpl && ROOM_TEMPLATES.some((t) => t.bridge && t.name === r.tpl.name));
+      const want = L.def.bridges;
+      if (!want) return !b.length || `${b.length} bridge room${b.length > 1 ? 's' : ''} on a floor without bridges`;
+      if (b.some((r) => r.role !== 'canon')) return 'a bridge room outside the canon';
+      if (b.some((r) => r.index === L.def.vaultAt)) return 'the bridge under the vault';
+      return (b.length >= want[0] && b.length <= want[1]) || `${b.length} bridge rooms (${want[0]}-${want[1]})`;
+    } },
   { id: 'clutter', text: 'No barrel or chandelier is added to a room already holding its share of things that burn or blow.',
     check: (L) => {
       const max = TUNING.prop.clutter.max;
@@ -369,7 +378,7 @@ const GEN_RULES = [
   // never a decision about anything.
   { id: 'beasts', text: 'At most one animal a floor, shut in a coop on plain floor of an ordinary room inside the first third of the level — never in the pen, a rest room, a teaching room, a trap room or a set piece. The horse stands before the first soul gate, in a stall of plain floor that leaves its room one piece.',
     check: (L) => {
-      const kinds = ['tortoise', 'goose', 'crow', 'chicken', 'horse', 'pig'];
+      const kinds = ['tortoise', 'goose', 'crow', 'chicken', 'horse', 'pig', 'rabbit', 'husky'];
       const found = L.props.filter((p) => kinds.indexOf(p.kind) >= 0 || p.kind === 'coop')
         .map((p) => (p.kind === 'coop' ? { x: p.x, y: p.y, kind: p.holds || 'chicken', caged: true } : p));
       if (!found.length) return (L.def.beasts && L.def.beasts.length) ? null : true;
@@ -873,13 +882,14 @@ const GEN_RULES = [
       return walkedFrom(L, tiles)[L.exitTile.y0 * W + L.exitTile.x0] ? true : 'the way to the stairs runs through the vault';
     } },
   // `vaultKindOf` (gen.js) and `TUNING.vault`: what is behind the vault's door.
-  { id: 'vaultkind', text: 'The vault holds big grass and never a soul; it may be a trap, clubmen or three mages, but mages only once the mage has been met, and never on THE TRIP.',
+  { id: 'vaultkind', text: 'The vault holds big grass and never a soul; it may be a trap, clubmen, three mages or the ogre behind three blows of iron, but mages only once the mage has been met, the ogre once the ogre has, and never on THE TRIP.',
     check: (L) => {
       if (!L.vault) return null;
       const k = L.vault.kind;
       if (!TUNING.vault.kinds[k]) return `a vault of kind ${k}`;
       if (!L.vault.box) return 'the vault has no chamber box for the trap to watch';
       if (k === 'mages' && !(L.def.met && L.def.met.has('seer'))) return 'three mages before the mage has been met';
+      if (k === 'ogre' && !(L.def.met && L.def.met.has('butcher'))) return 'an ogre in the vault before the ogre has been met';
       if (L.def.shroom && k !== 'grass') return `a ${k} vault on THE TRIP`;
       return true;
     } },

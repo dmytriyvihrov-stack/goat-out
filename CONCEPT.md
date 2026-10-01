@@ -11,9 +11,10 @@ genre guideline. Background reading, not itself a design decision.
 
 ## The pitch
 
-They were driving the goat to the altar. The truck fell off the bridge. Four men died. The goat
-survived. So did his wife. They were caught, penned together, and she was taken first. Now the whole
-cult wants its other sacrifice back, and the goat is loose in the building.
+A goat and his wife on a meadow. Then a cage on the back of a truck at night, the dark, and a pen in
+the cult's compound. A mage comes for her, a club comes for him, and he wakes alone. He butts the bars
+until they give, and goes after the mage who carried her off — through a building where every man
+wants its sacrifice back. (The prologue and the opening scene are this story, told without a word.)
 
 A top-down, one-life, procedurally generated escape. You do not fight. You run. People happen to be in
 the way.
@@ -61,7 +62,7 @@ it out instead, and the first screen is a menu.
 |---|---|
 | WASD / left thumb | Move. Momentum-heavy: 0.15 s to top speed, 0.25 s to stop. Faster than a man once he has a run-up behind him; a hound is always quicker. |
 | Mouse / auto-aim | Aim. On touch the aim follows your run and snaps onto men within about five tiles. |
-| Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.46 s recovery, no cancel. Deliberately blunt out of the pen: short reach, little throw behind it, and long enough on the end that a second man walks in on it. A man thrown into a man standing next to him kills him, and dies with him if he arrived fast enough. |
+| Left click / BUTT | Headbutt. Short committed lunge, 0.12 s windup, 0.53 s recovery, no cancel. Deliberately blunt out of the pen: short reach, little throw behind it, and long enough on the end that a second man walks in on it. A man thrown into a man standing next to him kills him, and dies with him if he arrived fast enough. |
 | Hold right click / GRAB | Carry a box, a blade or a shield. **A man is a soul away** — until BY THE COLLAR is swallowed the mouth takes objects and nothing else. With it, a man takes a 0.18 s bite to lift (he keeps swinging through it) and is carried at 60% speed. |
 | Release | Throw. A thing goes the length of the room. A thrown man goes about four tiles, kills a man he hits hard, and dies on a wall only within about three tiles — the headbutt reaches further. Your mouth is then empty for about 1.6 s, 2.3 s after a man. |
 | E / ROLL | A clumsy sideways tumble, brief mercy frames, a stagger you must eat, about 1.6 s before the next one. With no direction asked for it throws you away from whoever is about to hit you, never into a wall or a fire. The one verb that is whole out of the pen; **DEAD WEIGHT** is what its soul buys, and everything the tumble goes through loses its head. |
@@ -242,8 +243,8 @@ braziers down the flanks, and a ring of hay that becomes a wall the moment you l
 becomes floor again. Rifles hold the long lines and hounds own the middle, so the level is one long
 argument about which half of a room is yours.
 
-**THE RAFTERS** is up in the roof of the hall, and it is the first ground in the compound that is not
-all there. Holes in the boards, windows in the walls, and the same drop under both. A man who goes over
+**THE RAFTERS** is up in the roof of the hall, and it is the first floor built on ground that is not
+all there (THE BRIDGE before it crosses its ravine on a room or two of open deck; here the holes are everywhere). Holes in the boards, windows in the walls, and the same drop under both. A man who goes over
 an edge is gone — no body, no blood, nothing left on the floor — and the goat is only rented to it: he
 comes back up on the last boards he stood on a heart lighter, the same price the Mill charges. That
 price is the whole design of the level. Free, and every room is a shortcut; fatal, and nobody goes near
@@ -436,7 +437,8 @@ the way to the stairs. It holds big grass, and never a soul. Sometimes that is a
 door and the grass. Sometimes the door stands open on the grass, and it is a trap: once he is inside it
 slams, men come through the walls and drop from above, and it opens again when none of them is left
 standing. On the later floors the ones who come can be three mages, and then most of the chamber is
-alight.
+alight. And once the ogre has been met, the shut door can be three blows of iron with the ogre sitting
+on the grass behind it: the only tell is something heavy leaning on the door from inside as you come near.
 
 ---
 

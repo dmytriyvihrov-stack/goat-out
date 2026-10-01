@@ -79,8 +79,11 @@ class Enemy {
   // headbutt at nine tiles a second against a wall that wanted eleven, and could not be hurt at all.
   // Light men keep the full number: a hound flies further, not easier.
   splatLimit(game) {
-    return TUNING.physics.splatSpeed * Talisman.splatMul(game) * Math.min(1, this.knockMul());
+    return TUNING.physics.splatSpeed * Talisman.splatMul(game) * Math.min(1, this.knockMul()) * this.weakMul();
   }
+  // Poisoned or dazed, a man breaks on stone from a softer blow (1 Oct 2026, playtest: "if he is
+  // poisoned or stunned, a lower speed should hurt him"): `status.weak` on every kill speed against a wall.
+  weakMul() { return this.poison > 0 || this.dazed > 0 || this.state === 'stunned' ? TUNING.status.weak : 1; }
   // Too heavy or too much more than a man to be carried: the ogre, the butcher, a soul-bearer.
   get unliftable() { return this.kind === 'butcher' || this.champion || !!this.soul; }
 
@@ -719,6 +722,16 @@ class Enemy {
   update(dt, game) {
     if (this.dead || this.scripted) return;
     const w = game.world, g = game.goat, cfg = this.cfg;
+    // The ogre in the vault (`TUNING.vault.ogre`): shut in on the grass, he waits for the iron to
+    // give and does nothing else — no leap over it, no noise heard through it. The blow that breaks
+    // it wakes him, on the goat, at once.
+    if (this.caged) {
+      if (!this.caged.broken) { this.vx = 0; this.vy = 0; return; }
+      this.caged = null; this.aware = true; this.woke = true; this.state = 'chase';
+      this.facing = Math.atan2(g.y - this.y, g.x - this.x);
+      game.floatText(this.x, this.y - 56, 'A TRAP', PALETTE.bone); game.audio.sfxGroan && game.audio.sfxGroan('butcher');
+      game.thud(this.x, this.y, 6);
+    }
     // A rune lives only while he is painting it, standing or in the goat's mouth. A cast broken by
     // a crate, a body, a bullet or fire left it set: not drawn, still a trap to every man's
     // `hazardAt`, and picked up later he set it off on the first frame with no windup at all.
@@ -853,7 +866,7 @@ class Enemy {
       }
       // A thrown body dies on any wall it touches — except a man out of the goat's mouth, who has to
       // arrive at `physics.thrownKill` (MASON'S MARK lowers it the way it lowers `splatSpeed`).
-      const needs = this.fromMouth ? TUNING.physics.thrownKill * Talisman.splatMul(game) : 0;
+      const needs = this.fromMouth ? TUNING.physics.thrownKill * Talisman.splatMul(game) * this.weakMul() : 0;
       if (impact > needs && this.thrown && this.kind !== 'butcher') { this.die(game, 'splat', 0, 0); return; }
       if (this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); if (this.burning > 0) return; }
       // A body arriving at speed knocks the coals out of the bowl as well as catching from it, so
@@ -1009,7 +1022,17 @@ class Enemy {
     // gait that ends here (walk, chase, stride, dart, drift) is covered and nothing that reads
     // his speed as an impact (a splat, a door) is changed. At 1 it is `dt` exactly.
     const mv = game.dev && game.dev.tune ? dt * game.dev.tune.enemySpeed : dt;
-    this.x += this.vx * mv; this.y += this.vy * mv;
+    // The lip. Everything that moves him here is his own legs (a blow, a throw and a fall are handled
+    // above), and nobody walks off a drop: a hound circling the goat or running at his heels went
+    // over the edge of a hole mid-stride (playtest, 30 Sep 2026). Slide along it instead, an axis at
+    // a time; a hound whose run meets it has run it, as against stone.
+    const nx = this.x + this.vx * mv, ny = this.y + this.vy * mv;
+    if (!this.ghosted && this.state !== 'hop' && w.isPitPx(nx, ny) && !w.isPitPx(this.x, this.y)) {
+      if (!w.isPitPx(nx, this.y)) { this.x = nx; this.vy = 0; }
+      else if (!w.isPitPx(this.x, ny)) { this.y = ny; this.vx = 0; }
+      else { this.vx = 0; this.vy = 0; }
+      if (this.kind === 'dog' && this.state === 'dart') this.dashEnd(game);
+    } else { this.x = nx; this.y = ny; }
     // Mist goes through the wall. That is the point of it, and it is why there is no safe corner
     // on the Ossuary: the only cover on that ground is which way you are facing.
     const impact = this.ghosted ? 0 : w.collideCircle(this);
@@ -1805,6 +1828,11 @@ class Enemy {
       // counting for him. He lands on ground that is neither alight nor about to be, or not at all.
       if (w.isBurningPx(nx, ny) || w.isPitPx(nx, ny)) continue;
       if (this.hazardAt(game, nx, ny)) continue;
+      // Never in a doorway, and never anywhere the goat cannot see from where he stands: a blink onto
+      // the tile of the stairs' gate had the door push him out on its far side, alive behind the bars
+      // with the soul that lifts them (playtest, 30 Sep 2026: "he teleported behind the fence").
+      if (game.props.some((p) => p.kind === 'door' && !p.broken && Math.abs(p.x - nx) < TILE * 1.5 && Math.abs(p.y - ny) < TILE * 1.5)) continue;
+      if (!game.sees(g.x, g.y, nx, ny)) continue;
       best = { x: nx, y: ny }; break;
     }
     if (!best) { this.blinkCd = 1; return; }

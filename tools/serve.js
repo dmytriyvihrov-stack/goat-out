@@ -36,7 +36,7 @@ http.createServer((req, res) => {
       try {
         const edit = JSON.parse(body), file = path.join(root, 'js', 'heaven.js');
         let src = fs.readFileSync(file, 'utf8');
-        for (const name of ['HEAVEN_TALK', 'SHEPHERD_TALK']) {
+        for (const name of ['HEAVEN_TALK', 'SHEPHERD_TALK', 'DEATH_TIPS']) {
           if (typeof edit[name] !== 'string') continue;
           const head = `const ${name} = `, a = src.indexOf(head), b = src.indexOf('\n};', a);
           if (a < 0 || b < 0) throw new Error(name + ' not found');

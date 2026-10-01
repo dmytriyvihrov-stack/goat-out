@@ -5,6 +5,158 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.87 — the magnet, a camera that blends, a softer fog, the husky's practice — 1 Oct 2026
+
+Two playtest messages of 1 Oct 2026; every note is in. See `BACKLOG.md` (1 Oct 2026, 1.87).
+
+- **THE MAGNET** (a talisman, `ARTIFACTS` `magnet`, `TUNING.magnet`, js/talismans.js): once a room it pulls
+  what lies near him up into an orbit round him, Enter the Gungeon's way. A club, a blade, a bite or a bullet
+  meeting a thing in the orbit is stopped (the man dazed 0.6 s) and the thing breaks. COMMON: one sword or
+  shield within 5 tiles; RARE: one sword or shield within 8; EPIC: any two (swords, shields, crates) within 8;
+  LEGENDARY: any three within 10. A bullet is stopped only where it meets one on its way round; a blow is
+  always taken by the nearest. No new key (pillar 1).
+- **The camera between rooms is a blend, not a switch** (`camera.blend` / `blendIn` / `holdLerp`,
+  `Game.roomMouthDist`): a room that fits the screen is held by how far he is from its nearest way out, so a
+  doorway frames him exactly as the corridor does and walking in slides the picture to the room's middle.
+  Room to corridor to room is one move: a scripted walk through ten doorways on two floors peaks at 4–7 px a
+  frame with no step in it (it was a 0.6 s softened lurch each time the target jumped). `roomLerp` /
+  `roomEase` are gone; walking along a side wall keeps the room held.
+- **A softer fog** (`fog.soft`, `fog.shade` 0.8 → 0.72): every tile's shade is the mean of the 3x3 round it,
+  laid a texel a tile and stretched smooth, so a lone unlit tile is a smudge and a shadow's edge a slope.
+- **The husky practises first** (`husky.practice`): said yes, she sings it once with him in the first room with
+  nobody alive in it — no cult called in, no clock, no way to lose, what to do written over the staves — and
+  then runs for the full room. It ends sung, or when he walks out, or the cult comes in.
+- **The crow goes after the bodies, not after you** (`crow.waitAt`): with no body in reach it sits where it is
+  and pecks; a room behind him or nine tiles off it flies after him and lands five tiles short.
+- **The animals' answer buttons** are plates in a row of their own under the words, the key on a cap; the box
+  grows to hold the text (on the crow's last page it ran under them).
+- **The stakes under a hole** are needles now (`pit.stakeW`, `stakeTaper`, a lit `stakeTip`) and fixed to the
+  floor; only the sky through a window keeps its parallax.
+- **THE SHOWROOM has everything new** (a rule now, `CLAUDE.md` ground rule 9): the rabbit's and the husky's
+  coops, the chandelier on its cleat, the barrel of poison, and every talisman on a free shelf along the near
+  wall (tier III: grab one to wear it). The dev drawer's SPAWN has PIG, RABBIT and HUSKY; spawned again an
+  animal says its terms again.
+
+---
+
+## 1.86 — white souls, the god's two hundred, a second chance, the book on I, the husky and the rabbit — 1 Oct 2026
+
+Playtest notes of 1 Oct 2026, nine in one message and thirteen in the next; every one is in. See `BACKLOG.md` (1 Oct 2026).
+
+- **White souls** (`js/motes.js`, `TUNING.heaven.motes`): every man the goat puts down leaves a small white
+  soul hanging over his body; walk out of the room (or clear the floor) and they all come after him,
+  Enter the Gungeon's way, and each one that reaches him is a sacrifice in the heap, with a note that
+  climbs over a quick run of them. One still hanging in the room he dies in is lost. A kill no longer pays
+  the moment it lands.
+- **The god's gift and his two hundred** (`TUNING.heaven.gift`, `HEAVEN_TALK.intro` / `gift` / `quest`): until
+  the god's first talk nothing pays; at its end he lights the goat's horns ("YOU GATHER SOULS NOW") and asks
+  for two hundred. The purse shows FOR THE GOD n / 200 under the heap; brought, he says so on the next visit
+  and SECOND CHANCE is on his mirror. A goat who met him before this hears the gift on his next visit.
+- **SECOND CHANCE** (`MIRROR` id `second`, 250 sacrifices and 3 corrupted souls, after the quest;
+  `TUNING.heaven.second`): once a floor, a killing blow sends the soul up out of him in a beam and back down
+  into him: he stands where he fell on two hearts, untouchable a moment, every man round him thrown back
+  and dazed (`Motes.second`, after SCAPEGOAT).
+- **The soul goes up** (`Motes.drawAscent`, `TUNING.heaven.ascent`): dying, a column of pale light comes down
+  on him and his own picture, washed white, lifts out of the body and away before the pull-back to the floor
+  (`deathCam.delay` 0.5 → 1.9 s).
+- **The goat, large, over the soul cards** (`Codex.drawBoonGoat`): the soul lands in him and he stands in its
+  light, facing down and right; the pointer on a card that changes how he looks shows him with it and names
+  it (HOW HE WILL LOOK · LONG HORNS).
+- **The mouse's offer as cards** (`Codex.watchShop` / `drawShop`, `TUNING.shop.dlg`): walking up to her opens her
+  shelf like a soul's deal — her line, him with the pointed-at talisman at his neck, one card a ware with its
+  rarity and what it does; 1 / 2 / 3, a click or A takes, NOT NOW / Esc / RMB walks away (it opens again once
+  he has stepped off). The stools and the grab still work.
+- **Rarity** (`RARITY`, `rarityOf`): a talisman's tier is its rarity, in colour everywhere it is shown — COMMON
+  grey, RARE blue, EPIC violet, LEGENDARY orange (the shelf pips, the note over a ware, the chip by the hearts,
+  her cards, the book). LEGENDARY is a fourth tier of every talisman, on no shelf: killing her rat ogre turns
+  what is left on it legendary (`Shop.ogreDown`).
+- **The book on I** (`Codex.drawBook`; also PAUSE → INVENTORY, so a pad and a phone reach it): what the run
+  carries in sections — ACTIVE, PASSIVE, TALISMAN, ANIMALS, FROM THE MIRROR — and the one pointed at in full
+  on the right-hand page, with him as he stands at its foot. A page, like the pause: no verb (pillar 1).
+- **Second message of the day, thirteen more:**
+  - **Fewer words over the play** (`TUNING.effects.quiet`, `Game.floatText`): COALS, AAAAH, IT GOES OFF, OIL, CLANG and the
+    other captions of what the picture already shows are not written; a word landing within a short reach of one
+    just written is dropped, and so is a man's bark there.
+  - **More animals** (`beast.deal` first [1, 2], gap [1, 2]): from the second floor; 1000 run seeds deal 3–6, mean 3.9.
+  - **THE HUSKY** (`js/beasts-more.js`, `TUNING.prop.husky`): said yes, she runs to the fullest room with men ahead and
+    the cult leaves her be; as you come in two more of them follow you in and she sings — two staves at the foot of
+    the screen, hers and yours, and your BAAH on the beat answers. Two answers and she is glad; she gives up after a
+    minute, or two cycles after the room is empty. Up the stairs with her: the voice back 15% sooner.
+  - **THE RABBIT** (`TUNING.prop.rabbit`): offers to tie your legs. Said yes, no stride at all (`game.legsTied`): the
+    headbutt, the voice, what you carry, and the roll as the hop — where you point, back in 45% of the time. Up the
+    stairs so: the roll back 15% sooner for the run.
+  - **Every animal waits for an answer** after its terms (`BEAST_ANSWER`, `Beast.answer`): BAAAH! (yes) on the voice
+    key or a click, bah. (no) on the roll key or the right button; refused, it goes off and pays nothing.
+  - **DOUBLE SPEED OUT OF A FIGHT** (SETTINGS, `TUNING.calmRun`): nobody awake and after him within 14 tiles, he runs twice as fast.
+  - **Two skills on one deal never share a button or an element** (`openBoonChoice`'s `clash`), and **the first soul of
+    the first run always offers DRAGON BREATH**.
+  - **SPLASH poisons the man on the horns** as well as whoever is behind.
+  - **Poisoned or dazed, a man breaks on stone from 70% of the speed** (`status.weak`, `Enemy.weakMul`).
+  - **The gong lasts 12 s** (8), and says STRONGER over him.
+  - **A tip on a floor tried again after a death** (`DEATH_TIPS` in js/heaven.js, `Codex.deathTip`): LAST TIME: what
+    killed you, and a line for that killer or one off the general list, edited in the dev drawer's GOD TALK · TIPS.
+    Two general tips to start; the rest by hand.
+  - **The walls that give read again** (`Renderer.wallCrack`): a crack of hard pixels with a pale lip and rubble at its
+    foot. They were always generated (1–1.5 a floor); the hairline was lost under the brick sheets.
+  - **Witchfire lights the poison barrel, and a poison barrel or poison under a lit brazier goes off**
+    (`Prop.toxicBurst`, `Status.update`): the barrel of poison no longer refuses a flame — it blows, then spatters.
+- **The game's words explain themselves** (`KEYWORDS`, `Codex.line` / `drawTip`): in a soul card, her cards and
+  the book, POISON, FIRE, WITCHFIRE, STUN, BLAST, THROW, WALL, SOUL, RUN-UP, GRATING, RUNE, HEARTS, ROLL,
+  SECRET WALL and Q: are marked in their colour with a dotted line, and the pointer on one brings up what it is.
+
+---
+
+## 1.85 — a tester's hour and a half: the camera, the lip, the bridge, the ogre's vault — 30 Sep 2026
+
+A playtester played 1.84 for an hour and a half (out on his third or fourth run) and sent fourteen notes;
+every one is answered here. See `BACKLOG.md` (30 Sep 2026) for what is still to ask him.
+
+- **The camera shook in some rooms on a 16:10 screen.** Whether a room fits the view was asked of the live
+  lens, which the run and the boss fight both back out: an arena 13 tiles tall missed "fits" at rest in a
+  ~1920×1000 browser window, fit once the fight zoomed out, dropped the fight, zoomed in, missed again —
+  the picture jumped between the room's middle and the boss seven times in 2.5 s. It is asked of the lens
+  at rest now (`updateCamera`): 0 toggles in the same test.
+- **The music out of a fight is far quieter** (`TUNING.audio.layers.calm`, now on level one too at
+  `calm.first`): the kick, toms, plucked figure, the men's layer, the tune, and now the bass line and the
+  drone thin while nobody is after him; a chase adds hats, a fight a heavier kick, toms, rim and hats
+  (`layers.fight`), and the "you were seen" sting is louder (`spottedGain` 0.12).
+- **Hounds walk round holes.** Nothing moved by its own legs steps over a drop any more (`Enemy.update`'s
+  step slides along the lip; a hound's run meeting it ends there), and a shove between bodies never puts a
+  man over one (`Game.nudge`). Three hounds round a goat circling a hole: all three fell in on 1.84, none now.
+- **The grates go off under the cult.** A man coming for the goat sets one off at `spike.armMan` (0.1 s)
+  instead of the goat's `arm` (0.5 s, when he had always walked clear); a patrol who has not seen him does
+  not set them off at all. An aware clubman chased across a grate now dies on it.
+- **Controls going missing** (not reproduced; one real cause fixed): a device that parks an axis at the end
+  of its travel (a wheel, a throttle, a pad with its triggers on axes) woke the pad every frame and took the
+  mouse's aim and grab away for as long as it was plugged in. A stick wakes the pad only while it moves
+  (`pad.wakeMove`), and a pad of the standard mapping is preferred.
+- **Every animal talks in the box**, as the horse and the pig did: the hen, the tortoise, the goose and the
+  crow say their sound, how they come along and what they pay (`BEAST_HELLO`), over the paused floor, the
+  first time a run lets one out.
+- **The goose** runs ten tiles ahead (six), sees men twelve off (nine), honks every 1.5 s (2.2) and is heard
+  sixteen tiles away (`goose.callR`).
+- **Holes read.** The far side of a hole shows its own wall going down, the near and side edges are lit
+  board ends, and under every hole in a building lie stakes (`Renderer.bakePitFloor`, `TUNING.effects.pit`);
+  through a window, a brighter night with cloud.
+- **THE BRIDGE is a bridge in one or two rooms** (`levelDef.bridges`, templates `bridge` and `twinspan`,
+  `GEN_RULES.bridges`): a deck four planks wide over the ravine with posts and two planks gone, or two narrow
+  spans with the drop between them and one plank across. 250 seeds: one bridge room 171 times, two 79.
+- **The mage no longer blinks behind the bars.** A blink lands where the goat can see it and never within a
+  tile and a half of a door: onto the stairs' gate tile, the door pushed him out on its far side, alive with
+  the soul that lifts it.
+- **The ogre's vault** (`TUNING.vault.ogre`, a fourth kind once the ogre has been met): the shut door is three
+  blows of iron (`door.needHits`) and the ogre, a boss off the curve, sits on the big grass behind it
+  (`Enemy.caged`) until it gives; now and then something heavy leans on the door as he comes near
+  (`updateVaultOgre`).
+- **The win card says the run it took, not a score**: ON RUN N (runs this browser has begun,
+  `best.runs`), the deaths on the way and the bodies, and how many times he has got out (`best.escapes`).
+  The score is still kept on the BEST board.
+- **15% more between two headbutts**: `headbutt.recovery` 0.46 → 0.53 s.
+- **He bends to eat.** Grazing milk or mushrooms leans his head down over the tuft, squashed a little, with
+  a nibble in it (`goat.grazePose`, `goat.grazeK`).
+
+---
+
 ## 1.84 — the way out is a soul gate, photo mode, the dip log — 1 Oct 2026
 
 - **The way out is a soul gate** (`TUNING.soul.exitGate`, `level.exitGate`, `GEN_RULES.exitgate`): on a floor

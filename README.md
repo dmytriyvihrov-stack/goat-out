@@ -1,7 +1,8 @@
 # DOOMED GOAT
 
-You are the sacrificial goat. They were driving you to the altar, the truck fell off the bridge, and now
-the whole cult wants you back. Eight floors, one life on each, procedurally generated every run.
+You are the sacrificial goat. The cult took you and your wife off a meadow, penned you in its compound,
+and a mage carried her off while a club put you down. Break out of the pen and go after them. Eight
+floors, one life on each, procedurally generated every run.
 
 (The repository and its docs call it *Goat Out*; the title screen says DOOMED GOAT.)
 
@@ -50,6 +51,8 @@ Five verbs and nothing else. Souls change what a button does; they never add one
 | tap after death | click after death | up to the pasture above; walk off its edge for the floor again, from a new seed |
 | — | Backspace | the floor again at once, from a new seed (from the death card, or from the pasture) |
 | — | Esc | pause |
+| SETTINGS | — | DOUBLE SPEED OUT OF A FIGHT: with nobody after you, the goat runs twice as fast |
+| PAUSE → INVENTORY | I | the book of what you carry: your souls, the talisman, the animals, what the mirror bought — point at one to read it |
 | — | M | mute |
 
 Phones and tablets get on-screen controls automatically. In portrait the play view is letterboxed and
@@ -68,7 +71,7 @@ moment a stick or button is touched, and a key or the mouse takes it back:
 | A | roll |
 | B | BAAH |
 | Y | the talisman's own use (the Q key) |
-| START | pause |
+| START | pause (INVENTORY is on it) |
 | BACK | the floor again at once (as Backspace) |
 | d-pad + A, B | every menu and card: A picks, B backs out; left / right chooses a soul |
 
@@ -147,13 +150,14 @@ Firebrand leaves a line of fire behind anything you throw.
 talisman, another talisman or a pail of milk, and you take one. She takes nothing for it. Headbutting
 her stall is rude, and what comes out of the wall after the third time is not a mouse.
 
-**Talismans.** Twenty-two of them in three tiers, worn one at a time on a collar, each stated in plain
+**Talismans.** Twenty-three of them in three tiers, worn one at a time on a collar, each stated in plain
 numbers where it stands: a mirror shard that turns a blow back, a spade that leaves bodies lying to trip
-over, a boomerang on Q, a knucklebone that deals a soul's third card, and so on.
+over, a boomerang on Q, a knucklebone that deals a soul's third card, a magnet that spins a sword or a crate round you to take a
+blow, and so on.
 
 **Animals.** From the second floor a coop holds an animal — a hen, a goose, a crow, a tortoise, a
 horse. Break it open and get the animal to the stairs alive, and it pays you for the rest of the run,
-and takes its seat in the pasture above for good. The horse, in a stall of its own, races you to the
+and takes its seat in the pasture above for good. Let one out and it stops you to say its terms. The horse, in a stall of its own, races you to the
 locked rooms with a soul and waits in each for the soul to be taken: it pays only if you beat it to one.
 
 **The pasture above.** A death goes up before it comes back down: two rooms of cloud where the goat god

@@ -180,7 +180,8 @@ class PadInput {
     let list = null;
     try { list = navigator.getGamepads ? navigator.getGamepads() : null; } catch (e) { list = null; }
     let p = null;
-    if (list) for (const g of list) if (g && g.connected !== false) { p = g; break; }
+    // The first pad of the standard mapping; any other only if there is none (its axes are a guess).
+    if (list) for (const g of list) if (g && g.connected !== false && (!p || (g.mapping === 'standard' && p.mapping !== 'standard'))) p = g;
     this.pad = p; this.was = this.now; this.step = null; this.touched = false;
     if (!p) { this.now = []; this.ls = { x: 0, y: 0 }; this.rs = { x: 0, y: 0 }; this.nav = null; return false; }
     const P = TUNING.pad;
@@ -193,7 +194,12 @@ class PadInput {
     else { const k = Math.min(1, (ll - P.dead) / (1 - P.dead)) / ll; this.ls = { x: lx * k, y: ly * k }; }
     this.rs = { x: ax(2), y: ax(3) };
     // A resting pad on the desk drifts a little; only a real push takes the controls off the keyboard.
-    this.touched = this.any() || ll > P.wake || Math.hypot(this.rs.x, this.rs.y) > P.wake;
+    // A push is a stick past `wake` that is moving (`wakeMove`): an axis parked at the end of its
+    // travel is not a thumb, and it used to take the controls back every frame they were given up.
+    const was = this.raw || [lx, ly, this.rs.x, this.rs.y], raw = [lx, ly, this.rs.x, this.rs.y];
+    const moving = raw.some((v, i) => Math.abs(v - was[i]) > P.wakeMove);
+    this.raw = raw;
+    this.touched = this.any() || (moving && (ll > P.wake || Math.hypot(this.rs.x, this.rs.y) > P.wake));
     // The menu direction: the d-pad, or the left stick pushed well over. One step on the push, then
     // a repeat while it is held, the way a held arrow key walks a list.
     const d = this.held(PAD_BTN.up) || ly < -P.navAt ? 'up' : this.held(PAD_BTN.down) || ly > P.navAt ? 'down'
