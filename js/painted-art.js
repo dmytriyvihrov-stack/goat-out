@@ -8,6 +8,20 @@ const ATLAS_CELL = {
   sword: [0, 256], shield: [128, 256], 'healing-grass': [256, 256], 'soul-wisp': [384, 256],
   'secret-wall': [0, 384], 'crate-debris': [128, 384], 'brazier-unlit': [256, 384], worktable: [384, 384],
 };
+// The carpets' grain (`PaintedArt.carpet`): `CARPET_N` texels a tile (1.6 world px, the props' size),
+// baked at `CARPET_UP` canvas px a texel. Each weave is a palette: the edge, the border band and its
+// motif, the pale guard lines, the field and its lattice, the medallion and the head in it, the
+// fringe, the dust it wears toward, and the stain. Colours of one sprite each, so not in PALETTE.
+const CARPET_N = 20, CARPET_UP = 4;
+const CARPET_STYLES = [
+  // Soft and dark (2 Oct 2026: "much softer colors, less bright, dark green and dark blue"): two greens
+  // and two blues, each with its border in the other, the motif only a step off the band it sits in.
+  { edge: '#0f1712', border: '#1e2b22', motif: '#34463a', guard: '#425244', field: '#24342a', lattice: '#203026', medal: '#19251d', emblem: '#4c5c4e', fringe: '#6a6a5e', fringeDk: '#4e4e46', dust: '#3a3e38', blood: '#24100f', bloodRim: '#2c1413' },
+  { edge: '#0d121a', border: '#1c2430', motif: '#363f4c', guard: '#414955', field: '#222a35', lattice: '#1e2530', medal: '#171d26', emblem: '#4c5462', fringe: '#68686c', fringeDk: '#4c4c52', dust: '#36383e', blood: '#22100f', bloodRim: '#2a1414' },
+  { edge: '#0e1416', border: '#1c252e', motif: '#38424c', guard: '#425050', field: '#223228', lattice: '#1e2c24', medal: '#192433', emblem: '#4c5c58', fringe: '#6a6a62', fringeDk: '#4e4e48', dust: '#383c3a', blood: '#24100f', bloodRim: '#2c1413' },
+  { edge: '#0e1512', border: '#1e2c24', motif: '#36483c', guard: '#405050', field: '#212a34', lattice: '#1d252f', medal: '#1b2922', emblem: '#4c5c56', fringe: '#686a66', fringeDk: '#4c4e4a', dust: '#36393c', blood: '#22100f', bloodRim: '#2a1414' },
+];
+const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 // How far below a tile's centre a thing standing on that tile puts its feet: the middle of the tile
 // in a camera tilted this little, not its bottom or top edge.
 const PROP_FOOT = 3;
@@ -296,7 +310,87 @@ class PaintedArt extends AltarArt {
       else if(t===T.ENTRY)renderer.drawStairs(px,py,x-game.level.entry.x0,false,game.level.def);
       else if(wd.isSolid(x,y-1)&&h%5===0)this.straw(ctx,px+16,py+6,h,false);
     }
+    // The carpets (`layCarpets`, gen.js) over the floor they lie on, whole, after every tile: each has a
+    // tile of plain floor round it, so nothing standing up out of the next row is painted over.
+    const cps = game.level.carpets;
+    if (cps) for (const c of cps) {
+      if (c.x + c.w < b.x0 || c.x > b.x1 || c.y + c.h < b.y0 || c.y > b.y1) continue;
+      ctx.drawImage(this.carpet(c), c.x * TILE, c.y * TILE, c.w * TILE, c.h * TILE);
+    }
     ctx.imageSmoothingEnabled = smooth;
+  }
+
+  // One carpet as pixels, `CARPET_N` texels a tile, baked once at `CARPET_UP` a texel and drawn smoothed
+  // like a prop. A long rug: fringe on its two short ends, a dark edge, a border band of the cult's
+  // horns and lozenges between two pale guard lines, a field with a lattice in it and a lozenge
+  // medallion with the horned head in the middle, worn pale where feet go, and now and then a stain
+  // nobody got out (`c.blood`). Its own hash off `c.seed`: the same carpet every time it is baked.
+  carpet(c) {
+    const cache = this.carpetCache ||= new WeakMap();
+    if (cache.has(c)) return cache.get(c);
+    const N = CARPET_N, long = c.w >= c.h, LW = (long ? c.w : c.h) * N, SW = (long ? c.h : c.w) * N;
+    const P = CARPET_STYLES[c.style % CARPET_STYLES.length], px = new Map();
+    let s = c.seed >>> 0; const r = () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    // u runs along the rug, v across it; the canvas is turned to fit the way the rug lies.
+    const set = (u, v, col) => { if (u >= 0 && v >= 0 && u < LW && v < SW && col) px.set(long ? v * LW + u : u * SW + v, col); };
+    const FR = 3, u0 = FR, u1 = LW - FR - 1, v0 = 1, v1 = SW - 3;   // the woven part; v1 + 1 is its shadow
+    for (let u = u0; u <= u1; u++) for (let v = v0; v <= v1; v++) {
+      const eu = Math.min(u - u0, u1 - u), ev = Math.min(v - v0, v1 - v), e = Math.min(eu, ev);
+      let col;
+      if (e === 0) col = P.edge;
+      else if (e === 1 || e === 6) col = P.guard;
+      else if (e < 6) {
+        // The border: a horn (a V) and a lozenge in turn, along whichever side this is.
+        const along = ev <= eu ? u - u0 : v - v0, k = ((along % 10) + 10) % 10, d = e - 3.5;
+        const horn = k < 5 && Math.abs(Math.abs(k - 2) - (d + 1.5)) < 0.6;
+        const loz = k >= 5 && Math.abs(k - 7.5) + Math.abs(d) <= 1.6;
+        col = horn || loz ? P.motif : P.border;
+      } else {
+        // The field: a lattice of diamonds, a lozenge medallion in the middle with the horned head.
+        const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2, du = Math.abs(u - cu), dv = Math.abs(v - cv);
+        const mR = Math.min(((u1 - u0) / 2 - 8) / 1.6, (v1 - v0) / 2 - 8), m = du / 1.6 + dv;
+        if (mR > 5 && m <= mR) col = m >= mR - 1 ? P.guard : P.medal;
+        else col = ((u + v) % 9 === 0 || ((u - v) % 9 + 9) % 9 === 0) ? P.lattice : P.field;
+        if (mR > 5 && m <= mR - 3) {
+          // The head: two horns sweeping up and out, a long face, two eyes; 9 x 9 about the middle.
+          const x = Math.round(long ? u - cu : v - cv), y = Math.round(long ? v - cv : u - cu), ax = Math.abs(x);
+          if ((y === -4 && (ax === 4 || ax === 3)) || (y === -3 && (ax === 3 || ax === 2)) || (y === -2 && ax <= 2 && ax >= 1)
+            || (y >= -1 && y <= 2 && ax <= 1 && !(y === 0 && ax === 1)) || (y === 3 && ax === 0)) col = P.emblem;
+        }
+      }
+      set(u, v, col);
+    }
+    // Wear: a few pale patches where the cult walks it, and a speckle of thread gone.
+    const wear = (col, k) => { const a = hexRgb(col), b = hexRgb(P.dust); return `rgb(${a.map((x, i) => Math.round(x + (b[i] - x) * k)).join(',')})`; };
+    const worn = new Map();
+    for (let n = 0; n < 2 + Math.floor(r() * 3); n++) {
+      const wu = u0 + 4 + r() * (u1 - u0 - 8), wv = v0 + 3 + r() * (v1 - v0 - 6), wr = 3 + r() * 4;
+      for (let u = Math.floor(wu - wr); u <= wu + wr; u++) for (let v = Math.floor(wv - wr); v <= wv + wr; v++) {
+        const d = Math.hypot((u - wu) / 1.4, v - wv) / wr; if (d < 1 && r() < 1 - d * 0.7) worn.set(long ? v * LW + u : u * SW + v, 0.22 + 0.18 * (1 - d));
+      }
+    }
+    for (let n = 0; n < LW * SW * 0.02; n++) { const u = u0 + Math.floor(r() * (u1 - u0)), v = v0 + Math.floor(r() * (v1 - v0)); worn.set(long ? v * LW + u : u * SW + v, 0.3); }
+    for (const [i, k] of worn) if (px.has(i)) px.set(i, wear(px.get(i), k));
+    // A stain: a blot of old blood, ragged at its rim.
+    if (c.blood) {
+      const bu = u0 + 8 + r() * (u1 - u0 - 16), bv = v0 + 5 + r() * (v1 - v0 - 10), br = 3 + r() * 4;
+      for (let u = Math.floor(bu - br - 2); u <= bu + br + 2; u++) for (let v = Math.floor(bv - br); v <= bv + br; v++) {
+        const d = Math.hypot((u - bu) / 1.3, v - bv) / br + (r() - 0.5) * 0.35;
+        if (d < 1) set(u, v, d < 0.6 ? P.blood : P.bloodRim);
+      }
+    }
+    // The fringe: threads off both short ends, a few short or gone; and the rug's own shadow under its near edge.
+    for (const end of [0, 1]) for (let v = v0 + 1; v < v1; v += 2) {
+      const n = r() < 0.12 ? 0 : 1 + Math.floor(r() * 3);
+      for (let k = 1; k <= n; k++) set(end ? u1 + k : u0 - k, v, k === n ? P.fringeDk : P.fringe);
+    }
+    for (let u = u0 + 1; u <= u1; u++) set(u, v1 + 1, 'rgba(10,6,8,0.38)');
+    const W = long ? LW : SW, H = long ? SW : LW;
+    const cv = document.createElement('canvas'); cv.width = W * CARPET_UP; cv.height = H * CARPET_UP;
+    const g = cv.getContext('2d');
+    for (const [i, col] of px) { g.fillStyle = col; g.fillRect((i % W) * CARPET_UP, Math.floor(i / W) * CARPET_UP, CARPET_UP, CARPET_UP); }
+    cache.set(c, cv);
+    return cv;
   }
 
   drawRitual(renderer, game) {

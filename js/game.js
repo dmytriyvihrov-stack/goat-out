@@ -52,6 +52,9 @@ const CURSOR_GOAT = `url("data:image/svg+xml,${encodeURIComponent(
 const KEYBOARD_KEY = /^(Key[A-Z]|Digit\d|Arrow|Space|Enter|Escape|Backspace|Tab|Shift|Control)/;
 
 class Game {
+  // What `keepIf` keeps of a list each step (one function each, made once, never one a frame).
+  static falling = (f) => f.t < f.life;
+  static untaken = (tm) => !tm.taken;
   constructor(canvas) {
     this.canvas = canvas; this.renderer = new Renderer(canvas); this.audio = new GameAudio();
     this.fx = new CombatFX(this);
@@ -657,7 +660,10 @@ class Game {
     // to `sees`, which is what the cult looks down; the goat's own line went straight through one.
     // Every tile the thing actually covers, not the one its centre is in: a door hangs across both
     // lanes of a two-tile corridor, and blocking half of it left a clear line down the other half.
-    const blocks = [];
+    // Two lists taken in turn, never a new one a step: `setVisBlocks` keeps the list it is handed until the next.
+    // Own, not inherited: the JUICE preview's stage is Object.create(game), and a shared buffer would be refilled under the real world's feet.
+    const bufs = Object.hasOwn(this, 'visBufs') ? this.visBufs : (this.visBufs = [[], []]), blocks = bufs[this.visFlip = 1 - (this.visFlip || 0)];
+    blocks.length = 0;
     for (const p of this.sightBlockers) {
       if (!p.opaque) continue;
       const rr = p.r * 0.8;
@@ -694,7 +700,8 @@ class Game {
     // as a hard black edge rather than as a wall.
     // The mouse's hole is lit the same way, from the moment her room is open: an offer you cannot
     // see across a dark room is not an offer. The wares stay lit after she has turned, too.
-    const lit = this.sightBlockers.filter((p) => p.kind === 'secret' && p.broken && p.nicheTiles);
+    const lit = this.litNiches || (this.litNiches = []); lit.length = 0;
+    for (const p of this.sightBlockers) if (p.kind === 'secret' && p.broken && p.nicheTiles) lit.push(p);
     for (const p of this.props) if (p.kind === 'mouse' && p.nicheTiles) { const r = this.level.rooms[p.shopId]; if (r && r.seen) lit.push(p); }
     for (const p of lit) {
       for (const i of p.nicheTiles) {
@@ -1988,6 +1995,8 @@ class Game {
     const bySpawn = this.enemies.slice();
     this.stageFirstHide();
     this.props = this.level.props.map((p) => new Prop(p.x, p.y, p.kind, p));
+    // A table laid by hand (THE SHOWROOM's SUPPER row) brings its own dishes; every other one is rolled off its tile.
+    this.level.props.forEach((p, i) => { if (p.dishes) { const t = this.props[i]; t.food = Scatter.lay(p.dishes, (k) => farHash(i * 13 + k * 7, k * 3)); } });
     // A hidden grate knows what stands on it (the crate, barrel or stand set down on its tile).
     for (const g of this.props) if (g.kind === 'spike' && g.hidden) g.cover = this.props.find((q) => q !== g && (q.kind === 'crate' || q.kind === 'barrel' || q.kind === 'weapon') && hyp(q.x - g.x, q.y - g.y) < 4) || null;
     // Each chandelier and the cleat its rope is tied off at (`cid`, js/gen.js).
@@ -3192,7 +3201,7 @@ class Game {
     Status.update(this, dt);
     Talisman.update(this, dt);   // the mouse's talismans (js/talismans.js)
     w.noises.splice(0, heardUpTo);
-    this.bullets = this.bullets.filter((b) => !b.dead);
+    keepIf(this.bullets, notDead);
     this.updateEffects(dt);
 
     for (const tm of this.souls) {
@@ -3205,7 +3214,7 @@ class Game {
         this.openBoonChoice(); this.clearEdges(); return;
       }
     }
-    this.souls = this.souls.filter((tm) => !tm.taken);
+    keepIf(this.souls, Game.untaken);
     for (const p of this.props) {
       if (p.kind !== 'heal' || p.broken) continue;
       const H = TUNING.prop.heal;
@@ -3954,24 +3963,24 @@ class Game {
       // A chunk that comes to rest marks the floor for the rest of the level.
       if (p.chunk && p.life <= 0 && this.world) this.world.dot(p.x, p.y, 1.6 + Math.random() * 2.4, PALETTE.bloodDark);
     }
-    this.parts = this.parts.filter((p) => p.life > 0);
+    keepIf(this.parts, alive);
     for (const f of this.floats) f.life -= dt;
-    this.floats = this.floats.filter((f) => f.life > 0);
+    keepIf(this.floats, alive);
     if (this.tripBanner > 0) this.tripBanner = Math.max(0, this.tripBanner - dt);
     if (this.tripBack > 0) this.tripBack = Math.max(0, this.tripBack - dt);
     for (const p of this.puffs) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.9; p.vy *= 0.9; }
-    this.puffs = this.puffs.filter((p) => p.life > 0);
+    keepIf(this.puffs, alive);
     for (const f of this.flares) f.life -= dt;
-    this.flares = this.flares.filter((f) => f.life > 0);
+    keepIf(this.flares, alive);
     if (this.goat && this.goat.sq) {
       const Q = TUNING.juice.squash; this.goat.sqT += dt;
       this.goat.sqLeft = this.goat.sq * Math.exp(-Q.decay * this.goat.sqT);
       if (Math.abs(this.goat.sqLeft) < 0.004) { this.goat.sq = 0; this.goat.sqLeft = 0; }
     }
     for (const r of this.rings) r.life -= dt;
-    this.rings = this.rings.filter((r) => r.life > 0);
+    keepIf(this.rings, alive);
     for (const f of this.fallers) f.t += dt;
-    this.fallers = this.fallers.filter((f) => f.t < f.life);
+    keepIf(this.fallers, Game.falling);
     if (this.breathFx) { this.breathFx.life -= dt; if (this.breathFx.life <= 0) this.breathFx = null; }
     if (this.dev.toast) { this.dev.toast.life -= dt; if (this.dev.toast.life <= 0) this.dev.toast = null; }
   }

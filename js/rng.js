@@ -27,6 +27,10 @@ const lerp = (a, b, t) => a + (b - a) * t;
 // inline and keep unboxed. Every two-argument distance in the runtime files goes through it.
 const hyp = (x, y) => Math.sqrt(x * x + y * y);
 const len = hyp;
+// `a.filter(keep)` without the new array: the lists that are thinned every frame (sparks, puffs, rounds,
+// floating words) were a fresh array each, every frame, for the collector to sweep. Keeps order.
+const keepIf = (a, keep) => { let j = 0; for (let i = 0; i < a.length; i++) { const x = a[i]; if (keep(x)) a[j++] = x; } a.length = j; return a; };
+const alive = (x) => x.life > 0, notDead = (x) => !x.dead;
 const angleDiff = (a, b) => {
   let d = b - a;
   while (d > Math.PI) d -= Math.PI * 2;

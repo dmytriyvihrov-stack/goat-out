@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.95';
+const BUILD = '1.96';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -158,13 +158,18 @@ const TUNING = {
   // `soundGap` s between two of their knocks.
   scatter: {
     chance: 0.75, count: [3, 4], texel: 1.45, top: { x0: -19, x1: 19, y0: -10, y1: -1, jitter: 4 },
-    menu: { cult: ['apple', 'apple', 'pear', 'bread', 'bread', 'cheese', 'jug', 'goblet', 'fish', 'leg', 'grapes', 'plate'],
+    menu: { cult: ['apple', 'bread', 'bread', 'cheese', 'jug', 'goblet', 'grapes', 'leg', 'leg', 'roast', 'roast', 'ribs', 'haunch', 'sausage', 'boarhead', 'stew', 'stew'],
       heaven: ['gapple', 'gapple', 'grapes', 'bread', 'milk', 'honey', 'cheese', 'goblet', 'pear'] },
     height: 13, speed: [110, 250], spread: 0.95, lift: [90, 190], gravity: 560,
     bounce: 0.36, bounceMin: 50, skid: 0.62, breakAt: [170, 270], shards: 4, spill: 7, squash: 0.09, spin: 16,
     roll: 1.6, slide: 7, still: 6, wall: 0.4,
     kick: { r: 5, keep: 0.8, min: 70, lift: 70 }, keep: 160, soundGap: 0.035,
   },
+  // Carpets (2 Oct 2026, "so the floor looks more interesting"): a room lays one at `chance` (`tables`
+  // where it has a table to lay it under), at most `perLevel` a floor, `long` x `short` tiles (turned
+  // across the room one time in `across`), with a tile of floor round it; `tries` spots a room, the
+  // best kept. `styles`: how many weaves `PaintedArt.carpet` knows. Never in a cave or on the trip.
+  carpet: { chance: 0.3, tables: 0.75, perLevel: 4, long: [3, 7], short: [2, 4], across: 0.3, tries: 40, styles: 4, blood: 0.3 },
   // THE PASTURE ABOVE (js/heaven.js), where a death's card leads. Arriving: out of `arrive.flash` s of
   // white, rising in the pool of light over `rise`, the place's name up for `title`, and the last
   // life's sacrifices counted into the heap from `tallyAfter` over `tallyTime`. `pay`: what each man

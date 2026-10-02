@@ -511,6 +511,17 @@ const GEN_RULES = [
       }
       return any ? true : null;
     } },
+  // `layCarpets` (gen.js): a rug is laid where nothing it would hide is, and only so many.
+  { id: 'carpets', text: 'A carpet lies whole on plain floor with floor round it, over no grate, fire, milk, grass or barrel, at most TUNING.carpet.perLevel a floor, none in a cave or on the trip.',
+    check: (L) => {
+      const cs = L.carpets || [];
+      if (!cs.length) return null;
+      if (L.def.cave || L.def.shroom) return 'a carpet in a cave';
+      if (cs.length > TUNING.carpet.perLevel) return `${cs.length} carpets on one floor`;
+      const grass = new Set(L.grass);
+      for (const c of cs) if (!carpetFits(L.tiles, L.W, grass, L.props, c)) return `the carpet at ${c.x},${c.y} is not on clear floor`;
+      return true;
+    } },
   { id: 'pen', text: 'Nothing spawns by the pen, and the pen holds nobody.',
     check: (L) => {
       for (const s of L.spawns) if (Math.hypot(s.x - L.start.x, s.y - L.start.y) <= 5 * TILE) return 'a man beside the pen';

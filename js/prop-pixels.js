@@ -922,30 +922,30 @@ const PROP_PIXELS = (() => {
   // stand, no legs, nothing on the floor. Three steps of steel, lit from the left, a red plume the one
   // colour. `empty` is what a body leaves: the halberds and the bare plate. The pieces that fly off
   // (`armorPiece`) are the same drawings, so what lands is plainly what hung there.
-  // The suit that stands on the floor (1 Oct 2026): the wall suit's iron on a wooden stand, upright, a
-  // halberd at its side. `bare` is what is left when it has been brought down: the stand, its post and
-  // crossbar, and the halberd still standing. 28 x 42, its feet on the stand's last row.
-  function suit(bare) {
-    const g = new Grid(28, 42), cx = 12;
-    g.rect(3, 38, 20, 3, P.w2); g.hl(3, 38, 20, P.w3); g.hl(3, 40, 20, P.w0); g.rect(3, 41, 3, 1, P.w0); g.rect(20, 41, 3, 1, P.w0);   // the stand
-    g.vl(24, 4, 34, P.w2); g.vl(25, 4, 34, P.w3);                                                     // the halberd's shaft
-    g.vl(24, 0, 4, P.i4); g.poly([[25, 3], [28, 4], [28, 10], [25, 9]], P.i3); g.vl(27, 4, 6, P.i4); g.poly([[23, 4], [20, 5], [23, 8]], P.i2);   // its head
-    if (bare) {
-      g.vl(cx, 12, 26, P.w1); g.vl(cx + 1, 12, 26, P.w2); g.hl(cx - 6, 15, 14, P.w2); g.hl(cx - 6, 16, 14, P.w0); g.set(cx - 7, 15, P.w1); g.set(cx + 8, 15, P.w1);   // post and crossbar
-      return g.outline();
-    }
-    g.vl(cx, 30, 8, P.w1);
-    for (const [x, c] of [[8, P.i2], [14, P.i3]]) { g.rect(x, 29, 4, 8, c); g.rect(x - 1, 36, 5, 2, P.i1); g.ell(x + 1.5, 30, 2.4, 1.8, P.i4); }   // greaves, boots, knee cops
-    g.rect(7, 25, 11, 5, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]); g.hl(7, 27, 11, P.i2); g.hl(7, 29, 11, P.i1);                       // the tassets
-    g.rect(4, 17, 3, 8, P.i2); g.rect(17, 17, 3, 8, P.i2); g.rect(4, 25, 3, 2, P.i1); g.rect(17, 25, 3, 2, P.i1);                          // the arms and gauntlets
-    g.poly([[cx - 4, 14], [cx + 4, 14], [cx + 5, 20], [cx + 3, 25], [cx - 3, 25], [cx - 5, 20]], P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]);
-    g.vl(cx - 1, 15, 9, P.i4); g.hl(cx - 4, 24, 8, P.i1);                                             // the breastplate, its ridge, its belt
-    g.ell(cx - 7, 15.5, 3.6, 2.8, P.i3); g.ell(cx + 7, 15.5, 3.6, 2.8, P.i2); g.hl(cx - 9, 14, 3, P.i4);   // the pauldrons
-    g.hl(cx - 3, 13, 6, P.i1);                                                                         // the gorget
-    g.ell(cx, 8.5, 3.8, 4.6, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]); g.hl(cx - 3, 9, 6, P.d0); g.set(cx - 2, 6, P.i4);   // the helm, its slit
-    g.set(cx, 3, P.r3); g.set(cx, 2, P.r3); g.set(cx - 1, 3, P.r2); g.set(cx + 1, 3, P.r2); g.set(cx, 1, P.r2);                            // its plume
-    return g.outline();
-  }
+  // The suit that stands on the floor (1 Oct 2026): the wall suit's iron on a wooden stand, upright, a
+  // halberd at its side. `bare` is what is left when it has been brought down: the stand, its post and
+  // crossbar, and the halberd still standing. 28 x 42, its feet on the stand's last row.
+  function suit(bare) {
+    const g = new Grid(28, 42), cx = 12;
+    g.rect(3, 38, 20, 3, P.w2); g.hl(3, 38, 20, P.w3); g.hl(3, 40, 20, P.w0); g.rect(3, 41, 3, 1, P.w0); g.rect(20, 41, 3, 1, P.w0);   // the stand
+    g.vl(24, 4, 34, P.w2); g.vl(25, 4, 34, P.w3);                                                     // the halberd's shaft
+    g.vl(24, 0, 4, P.i4); g.poly([[25, 3], [28, 4], [28, 10], [25, 9]], P.i3); g.vl(27, 4, 6, P.i4); g.poly([[23, 4], [20, 5], [23, 8]], P.i2);   // its head
+    if (bare) {
+      g.vl(cx, 12, 26, P.w1); g.vl(cx + 1, 12, 26, P.w2); g.hl(cx - 6, 15, 14, P.w2); g.hl(cx - 6, 16, 14, P.w0); g.set(cx - 7, 15, P.w1); g.set(cx + 8, 15, P.w1);   // post and crossbar
+      return g.outline();
+    }
+    g.vl(cx, 30, 8, P.w1);
+    for (const [x, c] of [[8, P.i2], [14, P.i3]]) { g.rect(x, 29, 4, 8, c); g.rect(x - 1, 36, 5, 2, P.i1); g.ell(x + 1.5, 30, 2.4, 1.8, P.i4); }   // greaves, boots, knee cops
+    g.rect(7, 25, 11, 5, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]); g.hl(7, 27, 11, P.i2); g.hl(7, 29, 11, P.i1);                       // the tassets
+    g.rect(4, 17, 3, 8, P.i2); g.rect(17, 17, 3, 8, P.i2); g.rect(4, 25, 3, 2, P.i1); g.rect(17, 25, 3, 2, P.i1);                          // the arms and gauntlets
+    g.poly([[cx - 4, 14], [cx + 4, 14], [cx + 5, 20], [cx + 3, 25], [cx - 3, 25], [cx - 5, 20]], P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]);
+    g.vl(cx - 1, 15, 9, P.i4); g.hl(cx - 4, 24, 8, P.i1);                                             // the breastplate, its ridge, its belt
+    g.ell(cx - 7, 15.5, 3.6, 2.8, P.i3); g.ell(cx + 7, 15.5, 3.6, 2.8, P.i2); g.hl(cx - 9, 14, 3, P.i4);   // the pauldrons
+    g.hl(cx - 3, 13, 6, P.i1);                                                                         // the gorget
+    g.ell(cx, 8.5, 3.8, 4.6, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]); g.hl(cx - 3, 9, 6, P.d0); g.set(cx - 2, 6, P.i4);   // the helm, its slit
+    g.set(cx, 3, P.r3); g.set(cx, 2, P.r3); g.set(cx - 1, 3, P.r2); g.set(cx + 1, 3, P.r2); g.set(cx, 1, P.r2);                            // its plume
+    return g.outline();
+  }
   function armor(empty) {
     const g = new Grid(28, 29), cx = 14, top = 5;
     for (const m of [0, 1]) {                                                                      // the halberds, crossed
@@ -1026,6 +1026,20 @@ const PROP_PIXELS = (() => {
     grapes: art(['..g..', '.vVv.', 'vVvVv', '.vvvq', '..vq.'], { g: P.b0, v: '#6a3a8a', V: '#9a6ac0', q: '#48245e' }),
     honey: art(['.hHh.', 'hHhHh', 'HhHhH', 'hHhHd', '.ddd.'], { h: '#e0a020', H: '#f8cc50', d: '#a86a10' }),
     plate: art(['.eeeee.', 'eEEEEEe', '.eeeee.'], { e: '#d6cfbc', E: '#f4efe2' }),
+    // The cult eats meat (2 Oct 2026, "they are meat cultists"): a joint on a pewter platter, a rack of
+    // ribs on its board, a ham hock, links on a plate, a boar's head with the apple in its mouth, a bowl of stew.
+    roast: art(['....mMMm.....', '..mMHHMmm....', '.mMHMMmmmmww.', '.mMMmmmmmkkwW', '..kmmmmmkk...', '.pPPPPPPPPPp.', '..ppppppppp..'],
+      { m: '#9a4a22', M: '#c46a30', H: '#eaa050', k: '#5e2812', w: '#efe6d0', W: '#c4b598', p: '#76757f', P: '#a4a3ab' }),
+    ribs: art(['.w.w.w.w..', 'mMmMmMmMm.', 'mHmHmHmHmk', 'kmkmkmkmkk', 'bBBBBBBBBb', '.bbbbbbbb.'],
+      { m: '#8a3a1c', M: '#b85a2c', H: '#e08a48', k: '#4e200e', w: '#efe6d0', b: P.w2, B: P.w3 }),
+    haunch: art(['..kmmm...', '.mMHMmm..', 'kmMMMmmww', 'kmmmmmkWw', '.kkkkk...'],
+      { m: '#a0502a', M: '#c87038', H: '#eeaa60', k: '#5a2410', w: '#efe6d0', W: '#c4b598' }),
+    sausage: art(['.sSSSs.sSSSs.', 'sSHSSsgsSHSSs', 'kssssk.kssssk', 'eEEEEEEEEEEEe', '.eeeeeeeeeee.'],
+      { s: '#9a3a24', S: '#c25a38', H: '#ec9a6a', k: '#6a2414', g: '#5a2a14', e: '#d6cfbc', E: '#f4efe2' }),
+    boarhead: art(['..ee........', '.eEe........', '.hHHHHhh....', 'hHHhhhhhhn..', 'hhhxhhhhnNaa', 'hhhhhhhwnaRa', 'khhhhhkkk.a.', '.kkkkkk.....', 'pPPPPPPPPPPp', '.pppppppppp.'],
+      { h: '#b0603a', H: '#d88a5a', e: '#7a3a22', E: '#b0603a', n: '#d27a5c', N: '#7a3a28', x: P.ol, w: '#efe6d0', k: '#6a3018', a: '#c63a2d', R: '#e4584a', p: '#76757f', P: '#a4a3ab' }),
+    stew: art(['.cCCCCCCc.', 'cfmffyfmfc', 'cffmfffmfc', '.cCcccccc.', '..ccccch..', '...kkkk...'],
+      { f: '#3e1408', m: '#d8884c', y: '#ecd09a', c: '#a0603a', C: '#cc8a52', h: '#6a3418', k: '#4a2414' }),
   };
 
   const sprites = {

@@ -419,6 +419,18 @@ asked, the ritual altar never. `Prop.shove`, a flung body landing on a table (`c
 barrel or a crate hitting one and a blast (`Prop.explode`, `oilBurst` → `Scatter.burst`) call
 `game.scatter.fromTable`; the bits live in `game.scatter.bits` (capped at `scatter.keep`), update in
 `updateEffects`, draw in the ground and air passes, and a body walking through one kicks it.
+Most of the cult's menu is meat (1.96: `roast`, `ribs`, `haunch`, `sausage`, `boarhead`, `stew` beside the old `leg`);
+`Scatter.lay` sets dishes side by side by their sprite's width and leaves off what does not fit, and a
+table spec with `dishes` (THE SHOWROOM's SUPPER row) is laid as given in `startLevel`.
+
+**Carpets** (1.96, `layCarpets` in gen.js, `TUNING.carpet`): rugs laid in rooms, render only, on their
+own RNG stream after everything else. Wholly on plain floor inside a room with a tile of floor round
+them, never over grass, a grate, a fire, the milk or a barrel (`carpetFits`, `CARPET_SKIP`), under the
+tables where a room has them; none in a cave or on the trip. `level.carpets` is `{ x, y, w, h, style,
+seed, blood }` in tiles; `PaintedArt.carpet(c)` paints one in pixels (`CARPET_N` texels a tile,
+`CARPET_STYLES`: soft dark greens and blues, which is what he asked for, 2 Oct 2026, "much softer, less
+bright"), cached per carpet, and `drawTiles` lays it after the floor, so it is inside the rooms' bake and
+costs no frame. `GEN_RULES.carpets`.
 
 **Spawns.** `take` in `tryGenerate` keeps the best of a few dozen rolls (clear of men, props,
 `room.enter`; `GEN_RULES.spacing`). Afterwards anyone `inFurniture` is walked to clear floor

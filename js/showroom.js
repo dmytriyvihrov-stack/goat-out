@@ -70,6 +70,18 @@ function showroomLevel(def, seed) {
     ['DROP', (x, y) => fill(x, y - 1, x + 1, y, T.PIT)],
     ['CAGE', (x, y) => props.push(...buildCage((x + 0.5) * TILE, (y - 0.3) * TILE, 0.8, 0.7, true))],
   ]);
+  // The supper (2 Oct 2026, the meat): tables laid by hand (`dishes`, laid by `Scatter.lay` in startLevel)
+  // along a runner with a stain on it, and a rug of each of the other weaves (`layCarpets`, `PaintedArt.carpet`).
+  const carpets = [{ x: hx + 5, y: hy + 17, w: 17, h: 3, style: 0, seed: 11, blood: true },
+    { x: hx + 25, y: hy + 17, w: 4, h: 3, style: 1, seed: 22 }, { x: hx + 30, y: hy + 17, w: 4, h: 3, style: 2, seed: 33, blood: true },
+    { x: hx + 35, y: hy + 17, w: 2, h: 3, style: 3, seed: 44 }];
+  row(hy + 18, 'SUPPER', [
+    ['ROAST · STEW', (x, y) => put('table', x, y, { dishes: ['roast', 'stew'] })],
+    ['BOAR · LINKS', (x, y) => put('table', x, y, { dishes: ['boarhead', 'sausage'] })],
+    ['RIBS · HOCK', (x, y) => put('table', x, y, { dishes: ['ribs', 'haunch'] })],
+    ['THE REST', (x, y) => put('table', x, y, { dishes: ['leg', 'bread', 'cheese', 'jug'] })],
+  ]);
+  label('CARPETS', hx + 31, hy + 20.3, 8);
   row(hy + 21, 'COOPS', ['chicken', 'tortoise', 'goose', 'crow', 'horse', 'pig', 'rabbit', 'husky'].map((k) =>
     [k === 'chicken' ? 'HEN' : k.toUpperCase(), (x, y) => put('coop', x, y, { holds: k, beastRoom: 0 })]));
   // Every talisman on a stool, tier III, two rows along the near wall: a shelf of no shop (`shopId` < 0,
@@ -168,5 +180,5 @@ function showroomLevel(def, seed) {
   return { W, H, tiles, rooms, spawns: [], props, start: P(hx + 2, hy + 13), exit: { x: (last.x + last.w) * TILE, y: (ey + 1) * TILE },
     exitTile: { x0: last.x + last.w - 1, y0: ey }, forkTile: null, entry: null, seed, def,
     hints, controls: [], cagePrompt: null, vault: null, windows, plan: null, gates: [], sealedArenas: [], shop: null,
-    grass: grass.filter((i) => tiles[i] === T.FLOOR), zones, zoneDefs: floors };
+    grass: grass.filter((i) => tiles[i] === T.FLOOR), zones, zoneDefs: floors, carpets };
 }

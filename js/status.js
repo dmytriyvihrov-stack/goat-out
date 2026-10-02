@@ -332,6 +332,6 @@ const Status = {
       if (Math.random() < 0.7) game.parts.push({ x: b.x, y: b.y, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30,
         life: 0.25, color: PALETTE.venom, size: 2 + Math.random() * 2 });
     }
-    game.globs = game.globs.filter((b) => !b.dead);
+    keepIf(game.globs, notDead);
   },
 };

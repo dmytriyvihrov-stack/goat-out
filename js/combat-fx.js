@@ -1,6 +1,9 @@
 const BAYER4=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>v/16);
 // Cosmetic physics only: fragments never enter collision, damage, noise or AI lists.
 class CombatFX {
+  // What `keepIf` keeps each frame: a piece still in the air, a burst still going.
+  static flying = (p) => !p.done;
+  static burning = (b) => { const F = TUNING.effects; return b.t < (b.blood ? F.bloodLife : (b.life || F.burstLife)); };
   constructor(game) {
     this.game = game; this.air = []; this.ground = []; this.bursts = [];
     if(!CombatFX.warmed){CombatFX.warmed=true;CombatFX.warm();}
@@ -405,10 +408,10 @@ class CombatFX {
       }
       if(p.age>F.maxFlight&&!p.done){this.settle(p);p.done=true;}
     }
-    this.air=this.air.filter(p=>!p.done);
+    keepIf(this.air,CombatFX.flying);
     this.updateGround(dt);
     for(const b of this.bursts)b.t+=dt;
-    this.bursts=this.bursts.filter(b=>b.t<(b.blood?F.bloodLife:(b.life||F.burstLife)));
+    keepIf(this.bursts,CombatFX.burning);
   }
 
   drawPiece(c,p,airborne) {

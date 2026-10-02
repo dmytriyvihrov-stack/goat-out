@@ -1581,6 +1581,7 @@ function tryGenerate(levelDef, seed, opts) {
     hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop,
     // Grass lying under a wall that went back up is not grass: only what is still on floor.
     grass: [...grass].filter((i) => tiles[i] === T.FLOOR), exitGate: null };
+  level.carpets = layCarpets(level);
   // THE EXIT GATE (1 Oct 2026: "a soul gate before the way out of every level"): the iron door in front
   // of the stairs is barred like a soul gate, and what lifts it is the soul the last boss carries
   // (`soulPlan` deals the last bosses their souls; `startLevel` tags his with this gate). Only where that
@@ -2429,6 +2430,47 @@ function activeIn(props, room) {
   for (const p of props) if (ACTIVE_KINDS.has(p.kind) && p.x >= room.x * TILE && p.x < (room.x + room.w) * TILE && p.y >= room.y * TILE && p.y < (room.y + room.h) * TILE) n++;
   return n;
 }
+// THE CARPETS (2 Oct 2026): a rug laid in a room, render only (`PaintedArt.carpet` paints it into the
+// floor's bake, so it costs no frame). Wholly on plain floor inside the room with floor all round it,
+// never over grass, a grate, a fire, the milk or anything else a carpet would hide or cover up, and
+// laid under the tables where a room has them. Its own RNG stream, laid after everything else, so no
+// other roll moved when it came in. `GEN_RULES.carpets`.
+const CARPET_SKIP = new Set(['brazier', 'lamp', 'spike', 'heal', 'spire', 'rock', 'mill', 'coop', 'cage', 'shrooms', 'secret', 'mouse', 'ware', 'door', 'bell', 'barrel']);
+function carpetFits(tiles, W, grass, props, c) {
+  for (let y = c.y - 1; y <= c.y + c.h; y++) for (let x = c.x - 1; x <= c.x + c.w; x++) {
+    const i = y * W + x, t = tiles[i], inside = x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h;
+    if (inside ? t !== T.FLOOR || grass.has(i) : t === T.WALL || t === T.PIT) return false;
+  }
+  const x0 = c.x * TILE, y0 = c.y * TILE, x1 = (c.x + c.w) * TILE, y1 = (c.y + c.h) * TILE;
+  for (const p of props) if (CARPET_SKIP.has(p.kind) && p.x >= x0 - 8 && p.x < x1 + 8 && p.y >= y0 - 8 && p.y < y1 + 8) return false;
+  return true;
+}
+function layCarpets(level) {
+  const C = TUNING.carpet, def = level.def, out = [];
+  if (def.cave || def.shroom) return out;
+  const tiles = level.tiles, W = level.W, grass = new Set(level.grass), rng = new RNG((level.seed ^ 0x0ca7e75) >>> 0);
+  for (const room of level.rooms) {
+    if (out.length >= C.perLevel) break;
+    if (room.index === 0 || room.isTrap || room.isMill || room.isKillbox || room.isAmbush) continue;
+    const tables = level.props.filter((p) => p.kind === 'table' && !p.isAltar && inBox(room, p));
+    if (!rng.chance(tables.length ? C.tables : C.chance)) continue;
+    let best = null, bestS = -Infinity;
+    for (let a = 0; a < C.tries; a++) {
+      const L = rng.int(C.long[0], C.long[1]), S = rng.int(C.short[0], C.short[1]), across = rng.chance(C.across);
+      const w = across ? S : L, h = across ? L : S;
+      if (room.w - 4 < w || room.h - 4 < h) continue;
+      const c = { x: rng.int(room.x + 2, room.x + room.w - 2 - w), y: rng.int(room.y + 2, room.y + room.h - 2 - h), w, h };
+      if (!carpetFits(tiles, W, grass, level.props, c)) continue;
+      // Under the tables first, then bigger, then nearer the middle of the room.
+      const under = tables.filter((t) => t.x >= c.x * TILE && t.x < (c.x + w) * TILE && t.y >= c.y * TILE && t.y < (c.y + h) * TILE).length;
+      const s = under * 6 + w * h * 0.15 - Math.hypot(c.x + w / 2 - room.x - room.w / 2, c.y + h / 2 - room.y - room.h / 2) * 0.4;
+      if (s > bestS) { bestS = s; best = c; }
+    }
+    if (best) out.push(Object.assign(best, { room: room.index, style: rng.int(0, C.styles - 1), seed: rng.int(1, 1e9), blood: rng.chance(C.blood) }));
+  }
+  return out;
+}
+
 const inBox = (room, p) => p.x >= room.x * TILE && p.x < (room.x + room.w) * TILE && p.y >= room.y * TILE && p.y < (room.y + room.h) * TILE;
 // Where the wall's dressing may go on a room's walls: a floor tile against the far wall ('n'; the
 // side branches are kept for asking, though nothing hangs there since 30 Sep 2026), with

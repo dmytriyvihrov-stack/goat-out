@@ -421,7 +421,7 @@ class Goat {
       if (this.trail.length > Math.round(lerp(TR.keep, TR.fastKeep, quick))) this.trail.shift();
     }
     for (const t of this.trail) t.life -= dt;
-    this.trail = this.trail.filter((t) => t.life > 0);
+    keepIf(this.trail, alive);
     // ---- standing about (drawn only) ----
     // A goat left alone does not stand like a statue: after a moment he glances aside, pronks,
     // shakes his head or paws the floor. Any move, any verb, cuts the fidget off where it is.

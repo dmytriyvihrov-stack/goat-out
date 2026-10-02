@@ -24,15 +24,27 @@ class Scatter {
     const S = TUNING.scatter, tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
     const h = (k) => farHash(tx * 13 + k * 7, ty * 17 - k * 3);
     if (p.isAltar || h(0) > S.chance) return (p.food = []);
-    const menu = S.menu[p.menu || 'cult'], n = S.count[0] + Math.floor(h(1) * (S.count[1] - S.count[0] + 1)), out = [];
-    const T = S.top, slots = [];
-    for (let i = 0; i < n; i++) slots.push(T.x0 + (T.x1 - T.x0) * (i + 0.5) / n);
-    for (let i = 0; i < n; i++) {
-      const id = menu[Math.floor(h(2 + i) * menu.length) % menu.length];
-      out.push({ id, x: Math.round(slots[i] + (h(9 + i) - 0.5) * T.jitter), y: Math.round(T.y0 + (T.y1 - T.y0) * h(20 + i)), turn: h(30 + i) < 0.25 ? 2 : 0 });
-    }
+    const menu = S.menu[p.menu || 'cult'], n = S.count[0] + Math.floor(h(1) * (S.count[1] - S.count[0] + 1)), ids = [];
+    for (let i = 0; i < n; i++) ids.push(menu[Math.floor(h(2 + i) * menu.length) % menu.length]);
+    return (p.food = Scatter.lay(ids, h));
+  }
+  // Dishes side by side across the top, each as wide as its sprite: a platter is two apples wide, and
+  // laid in even slots the roast and the boar's head sat on top of each other. What does not fit is
+  // left off. `h(k)` is the table's own hash, so the same table lays the same supper.
+  static lay(ids, h) {
+    const S = TUNING.scatter, T = S.top, span = T.x1 - T.x0, out = [];
+    const wOf = (id) => { const g = typeof PROP_PIXELS !== 'undefined' && PROP_PIXELS.sprites['food-' + id]; return g ? g.w * S.texel : 9; };
+    ids = ids.slice();
+    while (ids.length > 1 && ids.reduce((a, id) => a + wOf(id), 0) > span + T.jitter) ids.pop();
+    const gap = (span - ids.reduce((a, id) => a + wOf(id), 0)) / ids.length;
+    let x = T.x0 + gap / 2;
+    ids.forEach((id, i) => {
+      const w = wOf(id);
+      out.push({ id, x: Math.round(x + w / 2 + (h(9 + i) - 0.5) * Math.max(0, Math.min(T.jitter, gap))), y: Math.round(T.y0 + (T.y1 - T.y0) * h(20 + i)), turn: h(30 + i) < 0.25 ? 2 : 0 });
+      x += w + gap;
+    });
     out.sort((a, b) => a.y - b.y);
-    return (p.food = out);
+    return out;
   }
 
   // What is on a table, drawn on it: the table's own frame, whatever turned it. Nothing on a table
@@ -229,6 +241,10 @@ Scatter.KINDS = {
   milk: { brittle: true, bouncy: 0.6, sound: 'clay', color: '#e6e0d2', spill: ['#f2ecdc', '#c9c0ad'] },
   plate: { brittle: true, bouncy: 0.7, sound: 'clay', color: '#d6cfbc' },
   shard: { bouncy: 0.4, sound: 'clay' },
+  // The meat (2 Oct 2026): a joint or a head lands like a sack, the stew's bowl breaks and spills.
+  roast: { bouncy: 0.45, sound: 'soft' }, ribs: { bouncy: 0.5, sound: 'soft' }, haunch: { bouncy: 0.6, sound: 'soft' },
+  sausage: { bouncy: 0.7, sound: 'soft' }, boarhead: { bouncy: 0.4, sound: 'soft' },
+  stew: { brittle: true, bouncy: 0.5, sound: 'clay', color: '#8a4a28', spill: ['#6a3018', '#3e1a0c'] },
   // A suit of armour's pieces (`fromArmor`): steel rings where it lands, and the helm rolls.
   'armor-helm': { round: true, bouncy: 1, sound: 'metal', sprite: 'armor-helm' },
   'armor-plate': { bouncy: 0.5, sound: 'metal', sprite: 'armor-plate' },

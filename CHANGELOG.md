@@ -5,6 +5,24 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.96, meat on the tables, carpets on the floors, 2 Oct 2026
+
+- **The cult eats meat** ("they are meat cultists"): six new dishes as pixel sprites, a roast joint on a pewter
+  platter, a rack of ribs on its board, a ham hock, sausage links on a plate, a boar's head with the apple in its
+  mouth and a bowl of stew, and most of the menu is meat now. `Scatter.lay` sets dishes side by side by their own
+  width (the platters sat on top of each other in even slots) and leaves off what does not fit. Knocked off, the
+  stew's bowl breaks and spills; the rest lands like the bread.
+- **Carpets** (`layCarpets`, `PaintedArt.carpet`, `TUNING.carpet`): about two rugs a floor, under the tables where a
+  room has them, on plain floor with floor round them, never over a grate, fire, milk, grass or barrel, none in a
+  cave or on the trip. Fringe on the short ends, a border of horns and lozenges, a lattice field, a lozenge
+  medallion with the horned head, worn patches, now and then an old stain. Soft dark greens and blues (the first,
+  brighter weaves were too loud). Painted into the floor's bake: no cost a frame. `GEN_RULES.carpets`.
+- THE SHOWROOM has a SUPPER row of set tables on a runner, and a rug of each weave.
+- **Fewer arrays a frame**: the lists thinned every frame (sparks, puffs, rings, rounds, floating words, the goat's
+  trail, gore pieces in the air, bursts, spit globs, souls) are compacted in place (`keepIf`, js/rng.js) instead of
+  a new array each, and revealRooms reuses its two lists. The measurement of what still reaches the old heap is
+  under way; this build does not claim the full collection's pause is gone.
+
 ## 1.95, the three things 1.94 left, 2 Oct 2026
 
 - **The stats worker checks who is talking** (`tools/stats-worker/worker.js`): a player id is `p-` and base 36, a
