@@ -5,7 +5,7 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
-## Next, the improvement loop, 2 Oct 2026 (published 2 Oct 2026)
+## 1.97, the improvement loop, 2 Oct 2026
 
 Worked alone while he was away (log: `output/loop-2026-10-02/LOG.md`).
 
