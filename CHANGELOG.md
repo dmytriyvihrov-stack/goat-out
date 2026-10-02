@@ -5,6 +5,15 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.97, canvases that go round again, 2 Oct 2026
+
+- **A kill makes no canvas it throws away**: a body's or a torn man's canvases go back to a pool once he is stamped
+  into the floor (`CombatFX.pieceCanvas` / `release`, `effects.spareCanvases`), the snapshot every death is cut from
+  is one scratch canvas, and a blood stain tile evicted from the map hands its canvas to the next one.
+- A windup's cells reuse one stretch a row instead of a new pair, and walk the wedge's two edges by index.
+- What was measured and what was not won is in `BACKLOG.md` (the collector): the full collection every few seconds
+  is the steady per-frame garbage, not the kills, and no local edit moved it.
+
 ## 1.96, meat on the tables, carpets on the floors, 2 Oct 2026
 
 - **The cult eats meat** ("they are meat cultists"): six new dishes as pixel sprites, a roast joint on a pewter

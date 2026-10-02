@@ -908,11 +908,14 @@ class World {
         if(tx<0||ty<0||tx*size>=this.W*TILE||ty*size>=this.H*TILE)continue;
         const key=tx+','+ty;let tile=this.stains.get(key);
         if(!tile) {
+          let canvas=null;
           if(this.stains.size>=TUNING.effects.maxStainTiles) {
             const [oldKey,old]=this.stains.entries().next().value;
             this.dctx.drawImage(old.canvas,old.x,old.y);this.stains.delete(oldKey);
+            // Its canvas is the new tile's: one tile in, one out, and no canvas made a splat once the map is full.
+            canvas=old.canvas;canvas.getContext('2d').clearRect(0,0,size,size);
           }
-          const canvas=document.createElement('canvas');canvas.width=canvas.height=size;
+          if(!canvas){canvas=document.createElement('canvas');canvas.width=canvas.height=size;}
           tile={canvas,x:tx*size,y:ty*size};this.stains.set(key,tile);
         }
         const c=tile.canvas.getContext('2d');c.save();c.translate(-tile.x,-tile.y);paint(c);c.restore();

@@ -3766,16 +3766,21 @@ class Renderer {
       // every swing is under a half turn wide. The square round it was 2 401 cells tested twice for a
       // clubman, a millisecond each, and 15 ms in a frame when a room wound up together (1 Oct 2026).
       const edges = [[Math.cos(f - arc / 2), Math.sin(f - arc / 2), 1], [Math.cos(f + arc / 2), Math.sin(f + arc / 2), -1]];
+      // One scratch stretch for every row (`fill` reads it before asking the next), and the edges walked
+      // by index: a destructured `for of` and a new pair a row were most of a windup's garbage.
+      const sp1 = [0, 0], sp2 = [];
       const span = arc < Math.PI ? (y) => {
         if (Math.abs(y) > reach) return null;
         const c = Math.sqrt(reach * reach - y * y); let lo = -c, hi = c;
-        for (const [ex, ey, s] of edges) {
+        for (let k = 0; k < 2; k++) {
+          const E = edges[k], ex = E[0], ey = E[1], s = E[2];
           // on the sector's side of this edge: a * x >= b
           const a = -s * ey, b = -s * ex * y;
           if (Math.abs(a) < 1e-9) { if (b > 1e-9) return null; continue; }
           if (a > 0) lo = Math.max(lo, b / a); else hi = Math.min(hi, b / a);
         }
-        return lo <= hi ? [lo, hi] : null;
+        if (lo > hi) return null;
+        sp1[0] = lo; sp1[1] = hi; return sp1;
       } : null;
       fill((x, y) => hyp(x, y) <= reach && inArc(x, y), n, `rgba(242,170,48,${0.1 + 0.22 * p})`, span, !!span);   // a half turn or wider is no one stretch a row
       // the rim fills round from one side as the blow comes, as the stroke did; a row of it is the
@@ -3783,7 +3788,7 @@ class Renderer {
       const rimIn = reach - px * 1.2;
       const rimSpan = span ? (y) => {
         const sp = span(y); if (!sp || Math.abs(y) >= rimIn) return sp;
-        const ci = Math.sqrt(rimIn * rimIn - y * y), out = [];
+        const ci = Math.sqrt(rimIn * rimIn - y * y), out = sp2; out.length = 0;
         if (sp[0] <= -ci) out.push(sp[0], Math.min(sp[1], -ci));
         if (sp[1] >= ci) out.push(Math.max(sp[0], ci), sp[1]);
         return out.length ? out : null;

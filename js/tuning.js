@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.96';
+const BUILD = '1.97';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -96,7 +96,7 @@ const TUNING = {
     pit: { lip: 4, face: 12, rim: 4, edge: 'rgba(236,214,170,0.55)', sheet: 144, spikeGap: 12, spikeSkip: 0.22, spikeH: 12,
       stakeW: 4, stakeTaper: 1.7, stakeTip: '#f4ead2',
       dirt: '#1a1512', stake: '#cdbd9c', stakeShade: '#6f604c', blood: '#6e1414', sky: '#1d3160', cloud: 'rgba(150,170,214,0.3)' },
-    maxAir: 220, maxGround: 180, maxBursts: 24,
+    maxAir: 220, maxGround: 180, maxBursts: 24, spareCanvases: 48,
     stainTile: 256, maxStainTiles: 96,
     gravity: 460, drag: 2.8, lift: 145, fragmentSpeed: 145, bloodSpeed: 210,
     maxFlight: 2, burstLife: 0.7, bloodLife: 0.32, fireFps: 12, doorPieces: 15, cratePieces: 11,

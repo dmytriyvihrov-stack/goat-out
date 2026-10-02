@@ -37,8 +37,16 @@ Found and left, worth a word from him:
 - **feel**: the collector (1.95 measured it, see `CHANGELOG.md`): at real speed a minor collection 2 a second at 1-4 ms
   and a full one every few seconds at 15-30 ms, one dropped frame each. The big per-call sources are fixed; what is left
   is a flat tail of boxed numbers in the engine's middle tier (no one function over about 20 KB a frame of 250-290).
-  Cutting it further means reworking the hot loops (revealRooms' lists, `Array.filter` in `updateEffects`, `for of` in
-  `update` / `draw`), a risky edit for a gain nobody has measured on a player's machine yet.
+  **Tried and measured, 2 Oct 2026 (1.96-1.97)**: lists compacted in place (`keepIf`), revealRooms' buffers reused,
+  every `for of` in the hot methods turned into an index loop (84 of them). The total did not move (254 → 267 KB a
+  frame, same seed): the garbage moved from function to function as the compiler inlined differently, which is what
+  boxed numbers do. The loops were put back. Calm play with nobody dying still gets a full collection every 4-5 s
+  (17-50 ms on a busy machine), so it is the steady per-frame garbage reaching the old heap (about 22 KB a frame of
+  it, `HeapProfiler` sampling with minor-GC garbage left out), not the kills. What would end it is structural, not a
+  patch: the hot loops' numbers kept in typed arrays (positions, velocities, particles as struct-of-arrays) instead of
+  object fields and call arguments, a rewrite of the simulation's core, or the engine port (`ENGINE.md`). His call.
+  Tools for the next try: headless Chrome over the debugging protocol (sampling heap profile with
+  `includeObjectsCollectedByMinorGC: false` for what is promoted; a `v8.gc` trace for the pauses), seeded `Math.random`.
 - **feel**: text left as it was: BAAH and milk grass have no keyword, P and I are typed into notes (not in `KEY_FACE`),
   the Q shelf says Q on a pad, `sayTimes` says "2.86x as fast", PILGRIM'S SANDAL III and MIRROR SHARD III run long.
 - **tool**: the shieldman review did not finish; nothing from it is in.

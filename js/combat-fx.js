@@ -3,6 +3,7 @@ const BAYER4=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>v/16);
 class CombatFX {
   // What `keepIf` keeps each frame: a piece still in the air, a burst still going.
   static flying = (p) => !p.done;
+  static spare = new Map();   // `pieceCanvas` / `release`: canvases of bodies already in the floor, by size
   static burning = (b) => { const F = TUNING.effects; return b.t < (b.blood ? F.bloodLife : (b.life || F.burstLife)); };
   constructor(game) {
     this.game = game; this.air = []; this.ground = []; this.bursts = [];
@@ -30,6 +31,21 @@ class CombatFX {
     return witch?['#2a1d5c','#4b35b8','#7d5cff','#bfe6ff','#f6fcff']:['#6e1d14','#c8472a','#f2a233','#ffe08a','#fff8e2'];
   }
   static canvas(w,h) { const c=document.createElement('canvas');c.width=Math.max(1,w);c.height=Math.max(1,h);return c; }
+  // A piece's canvas, from the ones bodies already stamped into the floor gave back (`release`), else new.
+  // Every kill made five to eight canvases and dropped them once the floor took the body: canvas memory
+  // counts against the collector, so a long fight's bodies now go round again instead (`effects.spareCanvases`).
+  static pieceCanvas(w,h) {
+    const k=w+'x'+h,list=CombatFX.spare.get(k),c=list&&list.pop();
+    if(!c)return CombatFX.canvas(w,h);
+    const g=c.getContext('2d');g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.clearRect(0,0,c.width,c.height);
+    return c;
+  }
+  static release(c) {
+    if(!c)return;
+    const k=c.width+'x'+c.height;let list=CombatFX.spare.get(k);
+    if(!list)CombatFX.spare.set(k,list=[]);
+    if(list.length<TUNING.effects.spareCanvases)list.push(c);
+  }
   // Paint a heat field into ImageData through the bands: a field of 0..1 per cell becomes 1 of 5 flat
   // colours or nothing. `fn(x,y)` returns a colour, or nothing for empty; only cells inside `box`
   // ([x0, y0, x1, y1]) are asked, which is most of the cost of a blast that has not grown yet.
@@ -203,8 +219,9 @@ class CombatFX {
   snapshot(e) {
     const art = this.game.renderer.painted;
     if (!PIXEL_ART.ready) return null;
-    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 96;
-    const c = canvas.getContext('2d'); c.translate(48,74);
+    // One scratch canvas for every death: the pieces are cut out of it at once and it is never kept.
+    const canvas = CombatFX.snap || (CombatFX.snap = CombatFX.canvas(96,96));
+    const c = canvas.getContext('2d'); c.setTransform(1,0,0,1,0,0); c.globalCompositeOperation = 'source-over'; c.clearRect(0,0,96,96); c.translate(48,74);
     // The same key `drawEnemy` uses, kept in one place: a dying butcher or elite bearer used to
     // tear into plain clubman gore because this snapshot kept its own, shorter map that never
     // learned about `brute` or `butcher` at all.
@@ -216,13 +233,13 @@ class CombatFX {
   // The whole body at a set facing, duller than the living (`corpse.dark`, charred if burnt), and
   // its silhouette, which is the shadow it lies on.
   corpseSprite(e,facing,burnt) {
-    const art=this.game.renderer.painted,image=CombatFX.canvas(96,96),c=image.getContext('2d');
+    const art=this.game.renderer.painted,image=CombatFX.pieceCanvas(96,96),c=image.getContext('2d');
     // Feet at 64, not 74: the body turns about the canvas centre, and at full size a man hung off
     // his feet rolled over a good way off the spot he died on.
     c.translate(48,64);art.character({ctx:c,t:0},{facing},art.characterKey(e)||'sheep',80);
     c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-atop';
     c.fillStyle=burnt?'rgba(19,13,16,0.8)':`rgba(24,12,16,${TUNING.effects.corpse.dark})`;c.fillRect(0,0,96,96);
-    const shade=CombatFX.canvas(96,96),s=shade.getContext('2d');s.drawImage(image,0,0);
+    const shade=CombatFX.pieceCanvas(96,96),s=shade.getContext('2d');s.drawImage(image,0,0);
     s.globalCompositeOperation='source-in';s.fillStyle='#0b0709';s.fillRect(0,0,96,96);
     return {image,shade};
   }
@@ -292,7 +309,7 @@ class CombatFX {
       // blast left long red sticks crossing the floor (26 Sep 2026: "strange stripes").
       const cut=TUNING.effects.goreCut;
       for (const crop of [[20,0,56,35],[15,35,33,30],[48,35,33,30],[15,65,33,31],[48,65,33,31]]) {
-        const pc=CombatFX.canvas(crop[2],crop[3]),g=pc.getContext('2d');
+        const pc=CombatFX.pieceCanvas(crop[2],crop[3]),g=pc.getContext('2d');
         g.drawImage(sprite,crop[0],crop[1],crop[2],crop[3],0,0,crop[2],crop[3]);
         g.globalCompositeOperation='source-atop';g.fillStyle=PALETTE.bloodDark;
         g.fillRect(0,0,crop[2],cut);g.fillRect(0,crop[3]-cut,crop[2],cut);g.fillRect(0,0,cut,crop[3]);g.fillRect(crop[2]-cut,0,cut,crop[3]);
@@ -369,6 +386,7 @@ class CombatFX {
     this.ground.push(p);
     if(this.ground.length>TUNING.effects.maxGround) {
       const old=this.ground.shift(); this.stampPool(old); old.angle=old.rest??old.angle; this.drawPiece(w.dctx,old,false);
+      CombatFX.release(old.image); CombatFX.release(old.shade); old.image=old.shade=null;   // in the floor now: its canvases go round again
     }
   }
 
