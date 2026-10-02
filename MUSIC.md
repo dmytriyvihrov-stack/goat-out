@@ -24,8 +24,9 @@ step deeper), played by the bone flute (`lead`: triangle with a
 The tune sings whole at idle, drops to a third for the two-bar warning, and comes back under chase
 (0.8) and combat (0.55). Under a fight the drums fill in by count (`TUNING.audio.layers.fight`, 2 Oct
 2026, "a bigger difference between fight and peace"): the kick on every quarter and its pickups, a low
-tom, a louder rim and hats, and the chase gets a kick of its own on the backbeats so it sits between
-calm (flute, drone, two bass notes a bar) and the fight. The stage figures (`STAGE_MOTIFS`) are now a plucked saw riff an octave
+tom, a louder rim, and the chase gets a kick of its own on the backbeats so it sits between
+calm (flute, drone, two bass notes a bar) and the fight. The off-eighth hats are out since the same
+night (`layers.fight.hat`, `chaseHat` 0): their hiss was the "high, frequent crackle near an enemy". The stage figures (`STAGE_MOTIFS`) are now a plucked saw riff an octave
 under the flute, so the two lines are told apart by sound. The drone is an open fifth an octave up
 (it was the bare root at 55 Hz), the frame drum answers the kicks with two soft toms, and the chase
 and combat off-beats are a rim knock instead of a noise hat. The room send is 0.06 into a 0.32 s

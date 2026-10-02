@@ -1812,8 +1812,12 @@ class Renderer {
     // Never wider than the view either: a phone held upright sees about fourteen tiles, and a line
     // fitted to a wider room ran off both sides of it and could never be read whole.
     const viewW = this.view(game.cam).w - 2 * TILE;
+    // After a death the tip is written where the level's own hint was (2 Oct 2026 playtest: the hint is
+    // read already, the tip is the new thing), so the first room says one thing, not two.
+    const T = game.tip, r0 = T && lv.rooms && lv.rooms[0], swap = r0 && T.text && lv.hints && lv.hints[0] && !lv.def.showroom ? lv.hints[0] : null;
     if (lv.hints) {
       for (const hn of lv.hints) {
+        if (hn === swap) continue;
         if (Math.abs(hn.x - game.cam.x) > 1100 || Math.abs(hn.y - game.cam.y) > 800) continue;
         // A sentence long enough to run off both ends of the room is broken over two lines and then
         // fitted to what is left of the floor. It used to be painted at one size whatever it said,
@@ -1837,14 +1841,14 @@ class Renderer {
     }
     // The tip after a death is written on the floor of the room he starts in, like any other floor
     // words (2 Oct 2026 playtest: a box over the screen "breaks the emergence"): what killed him last
-    // time, warmer, and the line under it. It stays for the floor (`game.tip`, `Codex.deathTip`).
-    const T = game.tip, r0 = T && lv.rooms && lv.rooms[0];
-    if (r0 && Math.abs((r0.x + r0.w / 2) * TILE - game.cam.x) < 1400) {
-      const lines = T.text ? this.wrapFloor(T.text) : [], wide = Math.min(viewW, r0.w * TILE - 2.6 * TILE);
-      const head = T.by ? 'LAST TIME: ' + T.by : null, all = head ? [head, ...lines] : lines;
-      const size = this.fitFloorText(all, wide, 22), lh = size * 1.34;
-      let y = (r0.y + r0.h * 0.72) * TILE - (all.length - 1) * lh / 2;
-      all.forEach((l, i) => { ctx.fillStyle = i === 0 && head ? 'rgba(192,57,43,0.32)' : 'rgba(239,230,208,0.2)'; ctx.fillText(l, (r0.x + r0.w / 2) * TILE, y * TILT); y += lh; });
+    // time no longer (2 Oct 2026 playtest: "don't write what it was last time"), only the line. It stays
+    // for the floor (`game.tip`, `Codex.deathTip`), in the level hint's place when the floor has one.
+    if (r0 && T.text && Math.abs((r0.x + r0.w / 2) * TILE - game.cam.x) < 1400) {
+      const all = this.wrapFloor(T.text), wide = Math.min(viewW, (swap ? swap.w : r0.w * TILE) - (swap ? 3.2 : 2.6) * TILE);
+      const size = this.fitFloorText(all, wide, swap ? swap.size || 26 : 22), lh = size * 1.34;
+      let y = (swap ? swap.y : (r0.y + r0.h * 0.72) * TILE) - (all.length - 1) * lh / 2;
+      ctx.fillStyle = 'rgba(239,230,208,0.18)';
+      for (const l of all) { ctx.fillText(l, swap ? swap.x : (r0.x + r0.w / 2) * TILE, y * TILT); y += lh; }
     }
     if (lv.controls) {
       const sets = game.touch.active ? CONTROL_LINES.touch : padOn(game) ? CONTROL_LINES.pad : CONTROL_LINES.key;
@@ -7260,8 +7264,13 @@ class Renderer {
     // actually walked through, which is the opposite of what a recap of the level is for. In play
     // the same rectangle stays the flat wall it always was: the fog is there to keep a room unseen,
     // not to be looked at.
+    // In a cave a room is not a box (2 Oct 2026 playtest: square black holes cut out of the rock "wtf,
+    // make it properly, if it is not discovered, complete fog of war"): everything he has not opened,
+    // the rock round it too, goes under one soft fog (`caveFog`). Not on THE TRIP, whose look is kept.
+    const caveFog = def.cave && !def.shroom && game.state !== 'dead' && TUNING.cave.fog.on;
+    if (caveFog) this.drawCaveFog(game);
     ctx.globalAlpha = game.state === 'dead' ? TUNING.deathCam.fogAlpha : 1;
-    for (const r of game.level.rooms) {
+    if (!caveFog) for (const r of game.level.rooms) {
       if (r.seen) continue;
       ctx.fillRect(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE);
     }
@@ -7275,10 +7284,68 @@ class Renderer {
       const k = clamp((game.timer - (r.clampAt || 0)) / (TUNING.clamp.slam * 3), 0, 1);
       ctx.globalAlpha = (dead ? TUNING.deathCam.fogAlpha : 1) * k;
       ctx.fillStyle = '#050308';
-      ctx.fillRect(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE);
+      if (!caveFog) ctx.fillRect(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE);
       ctx.globalAlpha = 1;
       if (r.exitMouth && !dead) this.drawVeil(r.exitMouth, k);
     }
+  }
+
+  // The cave's fog of war: a canvas a pixel a tile, the floor's fog colour over every tile he has not
+  // opened, drawn smoothed up to the world so its edge is soft and follows the rock, never a box.
+  // Opened: a seen room that is not shut behind him, the corridors that run out of one (flooded through
+  // floor outside every room), and `cave.fog.margin` tiles of rock round both, never into a room not yet
+  // seen. Rebuilt only when a room is seen or shut (`sig`), so the canvas is uploaded once a change.
+  drawCaveFog(game) {
+    const L = game.level, W = L.W, H = L.H, F = TUNING.cave.fog;
+    const sig = L.rooms.map((r) => (r.seen ? 1 : 0) + (r.clamped ? 2 : 0)).join('');
+    let C = this.caveFogC;
+    if (!C || C.level !== L || C.sig !== sig) {
+      if (!C || C.level !== L) {
+        const own = new Int16Array(W * H).fill(-1);
+        for (const r of L.rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) own[y * W + x] = r.index;
+        const canvas = (C && C.canvas) || document.createElement('canvas'); canvas.width = W; canvas.height = H;
+        C = this.caveFogC = { level: L, own, canvas, sig: '' };
+      }
+      C.sig = sig;
+      const own = C.own, w = game.world, open = new Uint8Array(W * H), q = [];
+      const lit = (i) => own[i] >= 0 && L.rooms[own[i]].seen && !L.rooms[own[i]].clamped;
+      // the floor of the rooms, not their boxes: a cave room's box is mostly rock
+      for (let i = 0; i < W * H; i++) if (lit(i) && !w.isSolid(i % W, (i / W) | 0)) { open[i] = 1; q.push(i); }
+      // through the corridors: floor that belongs to no room
+      for (let k = 0; k < q.length; k++) {
+        const i = q[k], x = i % W, y = (i / W) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          const j = ny * W + nx;
+          if (open[j] || (own[j] >= 0 && !lit(j)) || w.isSolid(nx, ny)) continue;
+          open[j] = 1; q.push(j);
+        }
+      }
+      // and a margin of rock round it, never into a room he has not opened
+      const shown = open.slice(), m = F.margin;
+      for (let i = 0; i < W * H; i++) {
+        if (!open[i]) continue;
+        const x = i % W, y = (i / W) | 0;
+        for (let dy = -m; dy <= m; dy++) for (let dx = -m; dx <= m; dx++) {
+          const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          const j = ny * W + nx; if (own[j] >= 0 && !lit(j)) continue;
+          shown[j] = 1;
+        }
+      }
+      const x = C.canvas.getContext('2d'), img = x.createImageData(W, H), d = img.data;
+      const hex = L.def.fog || '#0d0a0c', R = parseInt(hex.slice(1, 3), 16), G = parseInt(hex.slice(3, 5), 16), B = parseInt(hex.slice(5, 7), 16);
+      for (let i = 0; i < W * H; i++) if (!shown[i]) { d[i * 4] = R; d[i * 4 + 1] = G; d[i * 4 + 2] = B; d[i * 4 + 3] = 255; }
+      x.putImageData(img, 0, 0);
+      // blurred up to `soft` px a tile, so the edge rounds off the way the rock does instead of stepping by tiles
+      const K = F.soft, sc = C.soft || (C.soft = document.createElement('canvas'));
+      if (sc.width !== W * K || sc.height !== H * K) { sc.width = W * K; sc.height = H * K; }
+      const sx = sc.getContext('2d'); sx.clearRect(0, 0, W * K, H * K); sx.imageSmoothingEnabled = true;
+      sx.filter = `blur(${F.blur * K}px)`; sx.drawImage(C.canvas, 0, 0, W * K, H * K); sx.filter = 'none';
+    }
+    const ctx = this.ctx, was = ctx.imageSmoothingEnabled, K = F.soft;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(C.soft, 0, 0, W * K, H * K, 0, 0, W * TILE, H * TILE);
+    ctx.imageSmoothingEnabled = was;
   }
 
   // The veil across the mouth of a room left behind: a curtain of dark that breathes, with a few
@@ -7819,7 +7886,9 @@ class Renderer {
     // the whole run in five characters and `#seed=` takes it back. In base 36 because a player is
     // going to have to type or paste it, and nine digits is not something anybody passes on.
     ctx.textAlign = 'left'; ctx.font = `${Math.max(12 * this.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
-    ctx.fillText(`seed ${(game.runSeed >>> 0).toString(36)}`, 14 * s, this.h - 23 * s);
+    // And the floor's own layout after it (2 Oct 2026 playtest: the run seed alone, the same after a death,
+    // read as the same layout, though every death cuts a new one off `deaths`).
+    ctx.fillText(`seed ${(game.runSeed >>> 0).toString(36)}${game.level && game.level.seed ? ' · ' + ((game.level.seed >>> 0).toString(36).slice(-4)) : ''}`, 14 * s, this.h - 23 * s);
     ctx.font = `${Math.max(12 * this.s, 9.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
     ctx.fillText(`v${BUILD}`, 14 * s, this.h - 12 * s);
     // exit compass, pinned just inside the bottom of the play view
@@ -8202,7 +8271,7 @@ class Renderer {
       const hm = t.stickHome;
       ctx.strokeStyle = 'rgba(239,230,208,0.14)'; ctx.lineWidth = 2 * this.s;
       ctx.beginPath(); ctx.arc(hm.x, hm.y, t.stickR * 0.8, 0, Math.PI * 2); ctx.stroke();
-      ctx.font = `700 ${10 * this.s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.32)';
+      ctx.font = `700 ${TUNING.hud.minText * this.s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.32)';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('MOVE', hm.x, hm.y); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     }
@@ -8229,7 +8298,7 @@ class Renderer {
         : hot ? (ready[k] ? 'rgba(242,162,51,0.9)' : 'rgba(192,57,43,0.4)')
         : ready[k] ? 'rgba(239,230,208,0.42)' : 'rgba(239,230,208,0.18)';
       ctx.lineWidth = 2.5 * this.s; ctx.stroke();
-      ctx.font = `700 ${Math.round(b.r * 0.34) * this.s}px ${FONT_SC}`;
+      ctx.font = `700 ${Math.max(Math.round(b.r * 0.34), TUNING.hud.minText) * this.s}px ${FONT_SC}`;
       ctx.fillStyle = ready[k] ? (hot ? PALETTE.fireHi : PALETTE.bone) : 'rgba(239,230,208,0.35)';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(labels[k], b.x, b.y);
@@ -8405,7 +8474,7 @@ class Renderer {
       }
       if (spaced) ctx.letterSpacing = '0px';
       if (it.note) {
-        ctx.font = `${Math.min(12.5 * s, bh * 0.26)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
+        ctx.font = `${Math.max(Math.min(12.5 * s, bh * 0.26), TUNING.hud.minText * this.s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
         ctx.fillText(this.clip(it.note, bw - 20 * s), cx, y + bh * 0.78);
       }
       ctx.globalAlpha = 1;

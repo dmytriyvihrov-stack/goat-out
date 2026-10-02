@@ -9,6 +9,47 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 2 October 2026, late, his notes on the book, the souls and the first two floors (shipped the same night)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | number | DRAGON BREATH, a bit more fire | cone wider (`halfAngle` 0.52 → 0.64), floor burns longer (`fireTime` 3.4 → 4.4), more flame out of the mouth (`parts` 40); reach unchanged |
+| 2 | feel | the soul card's "HOW HE WILL LOOK" line is not needed | gone; the picture shows it |
+| 3 | feel | the book: the read-out at the foot only while pointing at something | shown only for the tile under the pointer (or one picked by keys, pad or a tap); nothing when nothing is picked |
+| 4 | feel | the book: no "point at a picture / I or ESC closes" line | gone; the × closes |
+| 5 | feel | the book: the level higher, not under the goat | LEVEL n · NAME under THE GOAT head, the goat below it |
+| 6 | number | a corrupted clubman, three hearts | `soulKeeper.hp` 1 → 2 (keepers), and THE ALTAR's last boss is set to 3 (`arenas[].hp`) |
+| 7 | feel | the book: names either all on top or all under (on top) | every name sits just over its own row with clear floor above it (`rowGap`) |
+| 8 | feel | the book: WHAT HE CARRIES and SOULS are useless | both gone |
+| 9 | feel | a high, frequent crackle near an enemy, gets on the nerves | the hats on every off-eighth of the chase and fight music are out (`layers.fight.hat`, `chaseHat` 0; and the legacy kit's). If it was something else (a fire's crackle?) say so |
+| 10 | feel | E - ROLL at the entrance of the first butcher's room | `hints.rollInset` 3.5 → 2.2: its first letter at the doorway |
+| 11 | feel | dead and floored look alike | a dead body is greyed toward ash (`effects.corpse.grey` 0.8) |
+| 12 | feel | a soul should be seen rising off them | the white soul rises off every dead man; before the god's gift (and in GOD or THE SHOWROOM) it rises and goes out over him (`ghost`) |
+| 13 | number | the corrupted butcher is too hard on level 1: to level 2, a heart less, one man | THE ALTAR ends on a soul clubman with two men; THE YARD's room 4 is the butcher's ring, 4 hearts (was 5), one man, no soul (the floor's two stay the mouse's and the ogre's) |
+| 14 | feel | after a death, no "LAST TIME: X", a tip instead, up top | the floor tip lost its LAST TIME line and is written where the level's hint was |
+| 15 | feel | the soul leaves the body at once and flies in too fast | out a beat after the death (`motes.delay` 0.55), up slowly (`riseT` 1.3), hangs (`wait` 1.5), comes only from right by it (`near` 1 tile) or once he leaves the room |
+| 16 | system | the cleat and the chandelier in different places, near a way in or out | the cleat on the far wall within 2 columns of a door, the ring within 5 of one, the rope across the room, `reach` 9 columns at most (`GEN_RULES.chandeliers` holds it) |
+
+The second half of the same night:
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | the vault's ambush springs after the grass is eaten, not on the step in | `updateVaultTrap` waits for the vault's grass to go (`t.grass.broken`); walked in at full hearts and out, nothing happens |
+| 2 | feel | don't animate the white soul, it should draw less attention | still: no twinkle, no licking tip, no bob, fainter (`motes.alpha` 0.7, halo halved) |
+| 3 | feel | the cave shows too much outside the room | in a cave only what he has opened shows, with `cave.fog.margin` 1 tile of rock round it (see 8) |
+| 4 | feel | yes on the right, no on the left, coloured green / red | bah. (no, red) left, BAAAH! (yes, green) right (`beast.talk.answer`) |
+| 5 | system | the pig, told no, eats your grass anyway; only killing her stops it | refused, she says so and walks on ahead to every tuft she can see (`prop.pig.spite`), never full, never banked; a headbutt hurts her (four kill her) |
+| 6 | note | in heaven he looks like his upgraded self, in the mirror like the real one: liked | kept as it is |
+| 7 | system | after a death, a new layout (no memorising), and a new animal if the floor had one | the layout already re-rolled off the death count (the corner showed only the run's seed, which never changes: it now shows the floor's layout code too); the animal is now re-dealt off the floor's own list after a death (`Game.beastFor`), never one another floor of the run has |
+| 8 | bug | black boxes cut out of the cave's rock: undiscovered should be full fog | in a cave the unopened rooms are no longer boxes: one soft fog over everything he has not opened, rock included (`Renderer.drawCaveFog`, `cave.fog`); not on THE TRIP |
+| 9 | feel | the death card's run code is not needed | shown only with the dev drawer open; leaving the card still copies it |
+| 10 | feel | the husky slower: each of her notes heard, my part long enough between my cooldowns | a bar is 6 s (was 4.8) and never shorter than his voice's cooldown + 1.4 s; her notes 1 s apart and louder, on the unducked bus |
+| 11 | feel | the husky should say whether I made it, and how well I sang | every answer: PERFECT! / GOOD! / A BIT EARLY / A BIT LATE, OFF THE BEAT, YOU MISSED; the song's end says how it went (`husky.judge`, `grade`) |
+
+Still open: **NEW GAME keeps the mirror and the souls in heaven.** That is how it is built (heaven outlives runs,
+`HEAVEN_KEY` is never cleared by NEW GAME), so it was left. Ask: should NEW GAME wipe heaven too, or should there be
+a separate "forget heaven" (in SETTINGS, or only in the dev drawer for testing)?
+
 ## 2 October 2026, evening, two words on the music (shipped the same evening)
 
 | # | tag | note | what shipped |

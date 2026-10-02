@@ -111,6 +111,15 @@ Object.assign(Beast, {
   },
   // Refused: it says so and goes off, out of the run (`saved` passes over it, and it is gone a moment later).
   refuse(game, p) {
+    // The pig does not go (2 Oct 2026 playtest, "one of the hardest, you are short of grass"): she says
+    // she will eat it anyway and walks on ahead of him to every tuft she can find (`Beast.updatePig`'s
+    // `spite`). Only a horn stops her for good (`Prop.headbutt`).
+    if (p.kind === 'pig') {
+      const L = TUNING.prop.pig.spite.say;
+      p.spite = true; p.task = null;
+      game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: L[(Math.random() * L.length) | 0], color: PALETTE.hen, life: 2.4, pact: true });
+      return;
+    }
     p.refused = TUNING.beast.refuseFor; p.task = null;
     const L = BEAST_ANSWER.refused;
     game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: L[(Math.random() * L.length) | 0], color: PALETTE.hen, life: 1.6, pact: true });
@@ -206,7 +215,10 @@ Object.assign(Beast, {
   startSong(game, p, room, practice) {
     const C = TUNING.prop.husky;
     p.task = 'sing';
-    game.song = { p, room: room.index, t: -C.leadIn, hits: 0, cycle: -1, answered: false, done: null, cleared: -1, flash: 0, miss: 0, practice: !!practice };
+    // A bar is never shorter than his voice takes to come back plus `cdGap` (2 Oct 2026 playtest: "my part
+    // between my cooldowns, so I can really perform"): with DRAGON BREATH's long cooldown it stretches.
+    const len = Math.max(C.cycle, (game.mods.screamCooldown || 0) + C.cdGap);
+    game.song = { p, room: room.index, t: -C.leadIn, len, hits: 0, perfect: 0, cycle: -1, answered: false, done: null, cleared: -1, flash: 0, miss: 0, practice: !!practice };
     if (practice) {
       // Just the two of them: no cult called in, no howl the house hears.
       game.audio.sfxHusky('woo');   // what to do is written over the staves (`drawSong`), not over her head
@@ -232,11 +244,19 @@ Object.assign(Beast, {
       const g = game.goat; game.audio.sfxBleat(C.beh[0], C.beh[1], C.beh[2]);
       game.floats.push({ x: g.x, y: g.y - 26, text: 'BEH!', color: PALETTE.bone, life: 0.8 });
     }
-    const ph = S.t - S.cycle * C.cycle;
-    if (S.cycle >= 0 && !S.answered && Math.abs(ph - C.you) <= C.window) {
+    const ph = S.t - S.cycle * S.len, err = ph - C.you, J = C.judge;
+    // She says how it went, every time (2 Oct 2026 playtest: "she should say whether it worked, and
+    // how well"): PERFECT, GOOD, a little EARLY or LATE inside the window; a voice nowhere near her
+    // beat is OFF THE BEAT.
+    if (S.cycle >= 0 && !S.answered && Math.abs(err) <= C.window) {
       S.answered = true; S.hits++; S.flash = C.flash;
-      game.particles(game.goat.x, game.goat.y - 16, 10, '#9fd0ff', 160);
-      game.floats.push({ x: S.p.x, y: S.p.y, on: S.p, row: 0, n: 1, text: S.hits >= Beast.songNeed(S) ? 'AWOOOOO!' : 'WOO!', color: '#9fd0ff', life: 1.2, pact: true });
+      const perfect = Math.abs(err) <= J.perfect; if (perfect) S.perfect++;
+      const word = perfect ? J.words.perfect : Math.abs(err) <= J.good ? J.words.good : err < 0 ? J.words.early : J.words.late;
+      game.particles(game.goat.x, game.goat.y - 16, perfect ? 16 : 10, '#9fd0ff', 160);
+      game.ring(game.goat.x, game.goat.y, (perfect ? 1.3 : 0.9) * TILE, '#9fd0ff', 0.4, 2);
+      game.floats.push({ x: S.p.x, y: S.p.y, on: S.p, row: 0, n: 1, text: word, color: perfect ? '#cfe8ff' : '#9fd0ff', life: 1.3, pact: true });
+    } else if (S.cycle >= 0 && !S.answered && Math.abs(err) <= J.off) {
+      game.floats.push({ x: S.p.x, y: S.p.y, on: S.p, row: 0, n: 1, text: J.words.off, color: PALETTE.blood, life: 1.1, pact: true });
     }
   },
   updateSong(game, dt) {
@@ -245,18 +265,21 @@ Object.assign(Beast, {
     if (S.done) { S.end -= dt; if (S.end <= 0) game.song = null; return; }
     if (p.broken || p.dead) { game.song = null; return; }
     S.t += dt; S.flash = Math.max(0, S.flash - dt); S.miss = Math.max(0, S.miss - dt);
-    const c = Math.floor(S.t / C.cycle);
+    const c = Math.floor(S.t / S.len);
     if (S.t >= 0 && c !== S.cycle) {
-      if (S.cycle >= 0 && !S.answered) S.miss = C.miss;
+      if (S.cycle >= 0 && !S.answered) {
+        S.miss = C.miss;
+        game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: C.judge.words.miss, color: PALETTE.blood, life: 1.1, pact: true });
+      }
       S.cycle = c; S.answered = false;
       if (S.cleared >= 0 && c - S.cleared >= C.after) return Beast.endSong(game, false);
     }
-    const ph = S.t - S.cycle * C.cycle;
+    const ph = S.t - S.cycle * S.len;
     // her two notes, sung as they cross the line
     // (a bark on the first, the howl on the second, both heard: they used to be the tortoise's knock)
     for (const h of C.her) if (S.cycle >= 0 && ph >= h && ph - dt < h) {
       const woo = h !== C.her[0];
-      p.singing = woo ? 0.9 : 0.4; game.audio.sfxHusky(woo ? 'woo' : 'waf');
+      p.singing = woo ? 0.9 : 0.4; game.audio.sfxHusky(woo ? 'woo' : 'waf', 1, true);
       if (woo) game.ring(p.x, p.y, C.wooRing * TILE, '#9fd0ff', 0.5, 2);
       game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: woo ? 'WOOO' : 'WAF', color: PALETTE.hen, life: 0.7, pact: true });
     }
@@ -287,15 +310,18 @@ Object.assign(Beast, {
     // in the middle of a fight that must not stop for it (2 Oct 2026).
     if (won) {
       p.sang = true; p.task = null;
-      C.won.forEach((text, row) => game.floats.push({ x: p.x, y: p.y, on: p, row, n: C.won.length, text, color: PALETTE.hen, life: C.wonFor, pact: true }));
+      // the first line is how it was sung: every answer PERFECT, most of them, or got through
+      const G = C.grade, first = S.perfect >= S.hits ? G.perfect : S.perfect * 2 >= S.hits ? G.good : G.rough;
+      const lines = [first, ...C.won.slice(1)];
+      lines.forEach((text, row) => game.floats.push({ x: p.x, y: p.y, on: p, row, n: lines.length, text, color: PALETTE.hen, life: C.wonFor, pact: true }));
     }
-    else { p.task = null; game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: 'awoo...', color: PALETTE.ashHi, life: 1.6, pact: true }); p.refused = C.giveUp; }
+    else { p.task = null; game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: C.grade.lost, color: PALETTE.ashHi, life: 2, pact: true }); p.refused = C.giveUp; }
   },
   // The two staves at the foot of the screen: her notes, then his, sliding left to the line.
   drawSong(R, game) {
     const S = game.song; if (!S || game.state !== 'play') return;
     const C = TUNING.prop.husky, ctx = R.ctx, s = R.ts, W = Math.min(R.vw - 40 * s, 520 * s), x0 = (R.vw - W) / 2;
-    const y0 = R.vh - (game.touch.active ? 230 * R.s : 150 * s), lane = 30 * s, hitX = x0 + 70 * s, speed = (W - 90 * s) / C.lead;
+    const y0 = R.vh - (game.touch.active ? 230 * R.s : 150 * s), lane = 30 * s, hitX = x0 + 70 * s, speed = (W - 90 * s) / C.lead, len = S.len || C.cycle;
     const a = S.done ? clamp(S.end / 0.6, 0, 1) : clamp((S.t + C.leadIn) / 0.4, 0, 1);
     ctx.save(); ctx.globalAlpha = a;
     ctx.fillStyle = 'rgba(13,10,12,0.78)'; ctx.fillRect(x0, y0, W, lane * 2 + 26 * s);
@@ -327,7 +353,7 @@ Object.assign(Beast, {
       ctx.globalAlpha = a;
     };
     for (let c = Math.max(0, S.cycle - 1); c <= S.cycle + 1; c++) {
-      const base = c * C.cycle;
+      const base = c * len;
       C.her.forEach((h, i) => note(base + h, 0, PALETTE.hen, i === 1, false));
       note(base + C.you, 1, '#9fd0ff', true, c === S.cycle && S.answered);
     }

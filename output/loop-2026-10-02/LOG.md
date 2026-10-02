@@ -57,3 +57,23 @@ sessions share the tree); no commit, push or publish. Dev server: `goat-out-loop
   kick on [4,12] at 0.2. Counted over 8 bars with the audio-check recorder: idle = pad 8, bass 16, lead 51; chase
   adds kick 32, rim 32, hat 64, pluck 48; combat kick 48, tomHi 32, tomLo 8, hat 64, pluck 64.
 - `tools/audio-check.js` passes all four sections. MUSIC.md updated. Nothing deployed.
+
+## Iteration 6
+
+- The 12 px text rule, measured: a `fillText` hook on the prototype (an own `font` property on the context is
+  deleted every frame by `drawDev`'s floor, so the first try saw one frame of the title and nothing else) reading
+  `ctx.font` / `renderer.s` on every draw of the title, play, pause, the book, settings and the death card.
+  1280×800: 9086 draws, none under 12 CSS px. 960×600: 8583, none. 375×812 (touch): four spots, all sized off
+  `ts` (the UI scale, under 1 on a phone) with no floor: the road's floor name on the death card (`Painting.drawRoute`,
+  10.6), MOVE / ROLL / CALL on the touch controls (`drawTouchUI`, 10), the title rows' notes (`drawTitle`, 9.8),
+  RUN STATS' question (`Stats.drawConsent`, 10.2). Floored at `TUNING.hud.minText` (12) × `renderer.s`.
+  Rerun on the phone: 7653 draws, none under 12, no errors.
+
+## Iteration 7
+
+- A new backlog batch from another session (his late notes: the book, the souls, the first two floors), all shipped
+  there; the one open line (NEW GAME wiping heaven or not) is his to decide. Its item 9 turned the off-eighth hats
+  off (`layers.fight.hat` / `chaseHat` 0) over my music pass, which had nudged them up: the code is consistent (the
+  other session kept the beat lists and guarded the hat calls); my changelog bullet, MUSIC.md and the counts above
+  said "hats up / hats 64" and are corrected. The fight's contrast now rests on the kick, the toms, the rim and the riff.
+- Script lists: index.html == artifact.html, every js/ file loaded, nothing loaded that is not on disk.

@@ -335,7 +335,7 @@ const Stats = {
       ctx.strokeStyle = sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s; ctx.strokeRect(x, y, half, bh);
       ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${16 * s}px ${FONT_SC}`; ctx.fillText(label, x + half / 2, y + bh * 0.62);
     });
-    ctx.fillStyle = 'rgba(239,230,208,0.5)'; ctx.font = FONT_PICK.font('text', 12.5 * s);
+    ctx.fillStyle = 'rgba(239,230,208,0.5)'; ctx.font = FONT_PICK.font('text', Math.max(12.5 * s, TUNING.hud.minText * R.s));
     ctx.fillText(TUNING.stats.later, cx, y + bh + 26 * s);
     ctx.textAlign = 'left';
   },

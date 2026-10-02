@@ -511,10 +511,10 @@ role `calm`, lit bowls in straw and nobody (off the curve, nothing scattered, `i
 rhythm may lay a bowl there, and that is fine); the wheel;
 the ambush; the middle gate, its soul carried by a keeper (`gateKeeper`, see *Soul gates*); `trapAt` + `trapTpl` `hayloft` + `trapMen` (two clubmen in straw, the one trap
 room, placed not rolled); the first butcher alone, plain, no outline (`introduce` champion at 1); three clubmen (`crowdAt`, so his two rooms are
-not back to back); rest (no gate, no soul); the butcher again as a boss with two clubmen at his
-back, who carries the second soul (26 Sep 2026: the ogre is THE YARD's last room now, and nowhere before
-it). His ring in the middle (room 10) went in 1.80: two lit butchers a floor was "too much", so the
-only outlined one is the last. `surprises: false`: THE ALTAR deals exactly those two souls.
+not back to back); rest (no gate, no soul); a clubman as a boss with two clubmen at his back, who
+carries the second soul, three hearts (`arenas[].hp`; 2 Oct 2026: the boss butcher who ended the floor
+was "a bit hard", his ring is THE YARD's room 4 now, `hp` 4, one man, no soul; the ogre is THE YARD's
+last room). `surprises: false`: THE ALTAR deals exactly those two souls.
 
 **The wheel lesson.** `levelDef.millLesson`: `MILL_LESSON_TEMPLATE`, seven tall, hub one row off the top
 so only the bottom lane is clear; **two men** on the far `e` markers with `trapSense` pinned to 0 and 1
@@ -544,7 +544,7 @@ contents by `paintStartRoom`. The ritual altar is a real `table` Prop with `isAl
 `ordinaryRooms`), and `levelDef.rests` one before the end with no bar and no soul (every floor since 26 Sep
 2026: "a soul twice a level, in the middle and at the end", the second is the last boss's). Never the last room, a set piece, the vault's room or a teaching room. Soul on the floor
 via `placeSoul`, or, on a `levelDef.gateKeeper` level (every floor since 1.73; never the mouse's gate), in a **keeper**: a `keeper` bearer
-spawned on the soul's spot, ensouled with his kind's hearts + `soulKeeper.hp` (one), `soulKeeper.speed`, his
+spawned on the soul's spot, ensouled with his kind's hearts + `soulKeeper.hp` (two, 2 Oct 2026: a corrupted clubman has three), `soulKeeper.speed`, his
 swing lighting witchfire where it lands (`Enemy.keeperFire`) that he reads no better than a clubman reads a
 brazier, no `fireCare`, his own rolled `trapSense`, so he walks into it and burns (26 Sep 2026); `bossPrize`
 drops his soul tagged `e.soulGate`. Placed, off the curve; `GEN_RULES.soulgate` requires exactly him. `gateSpot` narrows the exit and hangs a `gate: true` door with no hit points (`smash`
@@ -605,7 +605,7 @@ wall border), hangs an iron `vault` door (`vaultEmpty`: drawn plain) and returns
 `TUNING.vault.ogre`): the door stays shut and gives in `hits` (`door.needHits`); `startLevel` sits a boss ogre
 on the grass (`e.caged` = the door: `Enemy.update` holds him until it breaks, then he wakes on the goat) and
 `updateVaultOgre` leans on the door now and then while the goat is near, the one tell. A trap vault's door starts open; `game.updateVaultTrap` slams it
-(`seal`) once the goat is `shutIn` tiles inside, `vaultAmbush` puts the men down (by a wall: stone
+(`seal`) once the goat is `shutIn` tiles inside and has eaten the grass (2 Oct 2026), `vaultAmbush` puts the men down (by a wall: stone
 bursts; otherwise dropped from above, dazed `land` s), and it swings open when none of `held` is left
 in the box (the seal's rule). `sealHolding` answers a trap's men with `{ box }` so a mage never blinks
 out (`game.inSeal`). `GEN_RULES.vaultkind`.
@@ -976,7 +976,8 @@ sent sliding: the goat leaning on it creeps it at `flip.push` and is held to tha
 
 **The chandelier** (1.80, Enter the Gungeon's; `TUNING.chandelier`, `TUNING.prop.cleat`). `gen.js` hangs
 up to `perLevel` a floor (`chance` a room, its own RNG stream) over a 3x3 of floor, and ties its rope off
-at a `cleat` on the far wall straight above (`cid` joins them; `startLevel` sets `ring.cleat` /
+at a `cleat` on the far wall within `reach` columns (2 Oct 2026: the cleat within `byDoor` of a way in or
+out, the ring within `nearDoor` of one, the rope across the room, so it drops behind him or ahead; `cid` joins them; `startLevel` sets `ring.cleat` /
 `cleat.hangs`). Never in a cave, the trip, THE DARK, or a teaching, resting, trap, wheel, gallery or
 killbox room; `GEN_RULES.chandeliers`. A headbutt on the cleat, a flung body or thrown thing arriving at
 it past `cleat.hit`, or `cleat.burn` s of flame on its tile cuts the rope (`Prop.cutRope`, `cleat.cut`);
@@ -1129,6 +1130,11 @@ vector caps (`shroom`), never the painted `shrooms` sprite: that one is the brea
 **Counts only**: on 24 Sep 2026 mushrooms and crystals were cut by a third and a pass that also
 redrew the caves on the pixel grid, narrowed the trip's colours and dimmed its glow was rejected
 outright, "they were beautiful". Leave the trip's look, glow and colours alone.
+
+**The cave's fog** (2 Oct 2026, `TUNING.cave.fog`): in a cave (never THE TRIP) an unopened room is not a box
+painted over the rock: `Renderer.drawCaveFog` lays the floor's fog over every tile he has not opened (a seen room's
+floor, the corridors flooded out of it, `margin` tiles of rock round both), a pixel a tile, blurred up `soft` ×,
+rebuilt only when a room is seen or clamped.
 
 **THE TRIP.** `tripLevel(i)` replaces `LEVELS[i]` (`shroom`, `cave`; no traps, wheel, drop, killbox,
 teeth, posts), fought at `LEVELS[0]`'s curve × `shroom.threatMul`, `shroom.men` per room of

@@ -131,8 +131,10 @@ function planEncounters(levelDef, rooms, rng) {
       const known = seen.has(boss);
       // `escorts` on the arena is a hard count rather than a budget: the first boss of the game is
       // one butcher and one man, whatever the threat curve would have bought him.
-      const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss), rng, caps, room.arena.escorts || 0, weight) : [];
-      out.rooms.set(room.index, { men: escorts, boss, intro: known ? null : boss, arena: true });
+      // A clubman boss (THE ALTAR's last room since 2 Oct 2026) is backed by clubmen: with his own kind
+      // left out, the floor's only other kind was the butcher, and he came with two of them.
+      const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss || boss === 'bearer'), rng, caps, room.arena.escorts || 0, weight) : [];
+      out.rooms.set(room.index, { men: escorts, boss, intro: known ? null : boss, arena: true, hp: room.arena.hp });
       if (!known) out.introRooms.add(room.index);
       seen.add(boss);
       continue;
@@ -872,12 +874,22 @@ function tryGenerate(levelDef, seed, opts) {
     if (!levelDef.cave && !levelDef.shroom && !levelDef.dark && room.index > 0 && chandeliers < CH.perLevel && !room.isAmbush && !room.isRest
         && !room.isCalm && !room.isTrap && !room.isMill && !room.isGallery && !room.isKillbox && room.index !== lessonIndex && !room.isChand
         && activeIn(props, room) < TUNING.prop.clutter.max && crng.chance(CH.chance)) {
-      for (let a = 0; a < 40; a++) {
-        const tx = crng.int(room.x + 2, room.x + room.w - 3), ty = crng.int(room.y + CH.fromWall, room.y + room.h - 3);
+      // 2 Oct 2026 playtest: the cleat and the ring need not be one over the other. The cleat goes on
+      // the far wall by a way in or out (`CH.byDoor` columns of it) and the ring near a way in or out,
+      // the rope run across the room between them: cut it walking out and it lands behind you on the
+      // men following, or cut it coming in and it lands ahead. `CH.reach` columns at most apart.
+      const ends = [room.enter, room.exitMouth].filter(Boolean), colOf = (pt) => Math.floor(pt.x / TILE);
+      const inRoom = (x, m) => clamp(x, room.x + m, room.x + room.w - 1 - m);
+      for (let a = 0; a < 60; a++) {
+        const near = ends.length && a < 45;
+        const tx = near ? inRoom(colOf(crng.pick(ends)) + crng.int(-CH.nearDoor, CH.nearDoor), 2) : crng.int(room.x + 2, room.x + room.w - 3);
+        const ty = crng.int(room.y + CH.fromWall, room.y + room.h - 3);
+        const kx = near ? inRoom(colOf(crng.pick(ends)) + crng.int(-CH.byDoor, CH.byDoor), 1) : tx;
+        if (Math.abs(kx - tx) > CH.reach) continue;
         let open = true;
         for (let dy = -1; dy <= 1 && open; dy++) for (let dx = -1; dx <= 1; dx++) if (tiles[(ty + dy) * W + tx + dx] !== T.FLOOR) { open = false; break; }
-        if (!open || tiles[room.y * W + tx] !== T.WALL || tiles[(room.y + 1) * W + tx] !== T.FLOOR) continue;
-        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE, cx = px, cy = (room.y + 1.25) * TILE;
+        if (!open || tiles[room.y * W + kx] !== T.WALL || tiles[(room.y + 1) * W + kx] !== T.FLOOR) continue;
+        const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE, cx = (kx + 0.5) * TILE, cy = (room.y + 1.25) * TILE;
         if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE || len(p.x - cx, p.y - cy) < 1.2 * TILE)) continue;
         if (room.enter && (len(room.enter.x - px, room.enter.y - py) < 3 * TILE || len(room.enter.x - cx, room.enter.y - cy) < 1.5 * TILE)) continue;
         props.push({ x: px, y: py, kind: 'chandelier', cid: chandeliers }, { x: cx, y: cy, kind: 'cleat', cid: chandeliers });
@@ -1042,7 +1054,7 @@ function tryGenerate(levelDef, seed, opts) {
     if (cell.boss) {
       const at = room.bossSpot || take(cell.boss);
       if (at) spawns.push(Object.assign({ x: at.x, y: at.y }, spawnKind(cell.boss),
-        { elite: cell.boss !== 'butcher', boss: true, roomIndex: room.index }));
+        { elite: cell.boss !== 'butcher', boss: true, roomIndex: room.index }, cell.hp ? { hp: cell.hp } : null));
     }
     let slot = 0;
     for (const kind of cell.men) {
@@ -1588,12 +1600,17 @@ function tryGenerate(levelDef, seed, opts) {
   // more, a blow worth breaking, never a trap, the vault's, a gate or an arena.
   if (levelDef.teachScream) {
     const skip = new Set([lessonIndex, levelDef.vaultAt, levelDef.ambushAt, ...(levelDef.arenas || []).map((a) => a.at)]);
-    for (const i of ordinaryRooms(levelDef, rooms.length)) {
+    // Failing that, the first trap room or arena with two in it, the boss counted (since 2 Oct 2026 THE
+    // YARD's room 4, the plain room that most often held the pair, is the butcher's ring).
+    const pick = (loose) => ordinaryRooms(levelDef, rooms.length).concat(loose ? (levelDef.arenas || []).map((a) => a.at) : []).sort((a, b) => a - b).find((i) => {
       const c = plan.rooms.get(i);
-      if (i < 1 || skip.has(i) || trapRooms.has(i) || !c || c.arena || (c.men || []).length < 2) continue;
-      const r = rooms[i];
+      if (i < 1 || !c || (c.men || []).length + (c.boss ? 1 : 0) < 2) return false;
+      return loose ? i !== lessonIndex && i !== levelDef.vaultAt : !skip.has(i) && !trapRooms.has(i) && !c.arena && (c.men || []).length >= 2;
+    });
+    const at = pick(false) !== undefined ? pick(false) : pick(true);
+    if (at !== undefined) {
+      const r = rooms[at];
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: Math.min(r.w, 12) * TILE, part: 4 });
-      break;
     }
   }
   // The ogre's vault wakes him into its room, where the horns do nothing to him: a room with nothing

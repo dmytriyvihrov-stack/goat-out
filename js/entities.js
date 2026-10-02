@@ -590,7 +590,7 @@ class Goat {
       if (!game.world.los(this.x, this.y, e.x, e.y)) continue;
       e.ignite(game);
     }
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < B.parts; i++) {
       const a = Math.atan2(ay, ax) + (Math.random() - 0.5) * B.halfAngle * 2;
       const sp = 260 + Math.random() * 420;
       game.parts.push({ x: this.x + ax * 14, y: this.y + ay * 14, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
@@ -1324,6 +1324,8 @@ class Prop {
       case 'cage': if (this.deco) this.breakDeadCage(game); else this.breakCage(game); break;
       case 'coop': this.breakCoop(game); break;
       case 'chicken': this.kick(game, ax, ay); break;
+      // The pig he said no to, eating his grass out of spite: the horns are the one way to stop her.
+      case 'pig': if (this.spite) Beast.hurt(this, game, 'blow'); else { this.wobble = 0.3; game.audio.sfxThud(); } break;
       // The trader and her shelf: rough is a strike against her, and the third one is the rat ogre.
       case 'mouse': case 'ware': Shop.provoke(game, this); break;
       default: this.wobble = 0.3; game.audio.sfxThud(); break;

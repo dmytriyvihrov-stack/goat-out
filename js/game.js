@@ -554,7 +554,9 @@ class Game {
     const t = this.vaultTrap, g = this.goat;
     if (!t || t.done) return;
     if (!t.armed) {
-      if (g.dead || !this.inBox(g, t.box, TUNING.vault.shutIn)) return;
+      // It springs on the mouthful, not the step in (2 Oct 2026 playtest: "the ambush after you ate the
+      // grass, not before"): walked in at full hearts and out again, nothing happens.
+      if (g.dead || !this.inBox(g, t.box, TUNING.vault.shutIn) || (t.grass && !t.grass.broken)) return;
       // Broken open beforehand (a body or a table sent through it) there is nothing to slam: no trap. And never
       // shut on a body standing in the doorway, it waits a step for him to come in or go.
       if (t.door.broken) { t.done = true; return; }
@@ -1964,7 +1966,7 @@ class Game {
     const pigs = (this.beasts && this.beasts.pig) || 0, PH = TUNING.prop.pig.saveHeals;
     const luck = pigs ? Object.assign({ secret: 1, racks: 1, grass: 1, heals: 0 }, this.mods.luck || {}) : this.mods.luck;
     if (pigs) luck.heals = (luck.heals || 0) + pigs * (PH[0] + ((seed >>> 5) % (PH[1] - PH[0] + 1)));
-    const genOpts = { luck, beast: this.beastPlanFor()[index] || null };
+    const genOpts = { luck, beast: this.beastFor(index) };
     try { this.level = generateLevel(def, seed >>> 0, genOpts); }
     catch (err) { console.error(err); this.level = generateLevel(def, (seed ^ 0x5bd1e995) >>> 0, genOpts); }
     this.world = new World(this.level);
@@ -2142,12 +2144,13 @@ class Game {
     this.vaultTrap = null; this.vaultOgre = null;
     const V = this.level.vault;
     if (V) {
-      this.props.push(new Prop(V.x, V.y, 'heal', { big: true }));
+      const grass = new Prop(V.x, V.y, 'heal', { big: true });
+      this.props.push(grass);
       const door = this.props.find((d) => d.kind === 'door' && d.vault);
       if (door) door.vaultEmpty = true;
       if (door && V.box && (V.kind === 'ambush' || V.kind === 'mages')) {
         door.open = 1;
-        this.vaultTrap = { kind: V.kind, box: V.box, door, armed: false, done: false, held: null };
+        this.vaultTrap = { kind: V.kind, box: V.box, door, grass, armed: false, done: false, held: null };
       }
       // The ogre's vault (`TUNING.vault.ogre`): the door shut, three blows of iron, and him on the
       // grass behind it, a boss off the curve and carrying nothing, held until the door gives.
@@ -2162,6 +2165,8 @@ class Game {
       }
     }
     for (const i of plan.ensoul) if (bySpawn[i]) this.ensoul(bySpawn[i]);
+    // An arena that names its boss's hearts (`arenas[].hp`, 2 Oct 2026) has the last word on them, soul or not.
+    this.level.spawns.forEach((s, i) => { if (s.hp && bySpawn[i]) bySpawn[i].hp = bySpawn[i].maxHp = s.hp; });
     // His soul is the bar of the door in front of the stairs (`bossPrize` tags it with the gate).
     if (EG) for (const i of plan.ensoul) if (bySpawn[i] && this.level.spawns[i].roomIndex === EG.room) bySpawn[i].soulGate = EG.room;
     // The surprises: a boss lit with a soul the budget did not give him (counted on the card), and
@@ -2533,6 +2538,17 @@ class Game {
   // The run's animals (`Beast.deal`), dealt once per run seed. Whether the first may come on level
   // two is fixed when the run is dealt, has this browser cleared level two before, and saved with
   // the run, so clearing it mid-run does not deal the rest of the run again.
+  // The animal this floor deals now: the run's plan, and after a death a different one off the floor's own
+  // list (2 Oct 2026 playtest: "after a death, a new layout, and change the animal if there was one"),
+  // stepped round by the death count, never a kind the plan gives another floor.
+  beastFor(index) {
+    const plan = this.beastPlanFor(), k = plan[index] || null, def = LEVELS[index];
+    if (!k || !this.deaths || !def) return k;
+    const others = new Set(plan.filter((x, i) => x && i !== index));
+    const pool = (def.beasts || []).filter((x) => !others.has(x));
+    if (pool.length < 2) return k;
+    return pool[(Math.max(0, pool.indexOf(k)) + this.deaths) % pool.length];
+  }
   beastPlanFor() {
     if (!this.beastPlan || this.beastPlan.seed !== this.runSeed) {
       if (this.beastEarlyFor !== this.runSeed) {

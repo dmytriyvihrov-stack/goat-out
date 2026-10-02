@@ -165,13 +165,7 @@ const Codex = {
       ctx.restore();
     }
     if (mu > M.ring && mu < 1) this.drawMorphRing(R, cx, mid, gh, (mu - M.ring) / (1 - M.ring), P);
-    if (fresh.length && mu >= M.clear) {
-      ctx.save(); ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(12 * R.s, 12.5 * s)}px ${FONT_SC}`;
-      const txt = 'HOW HE WILL LOOK · ' + fresh.join(' · ');
-      ctx.fillStyle = 'rgba(13,10,12,0.7)'; ctx.fillText(txt, cx + 1, foot + 17 * s + 1);
-      ctx.fillStyle = PALETTE.fireHi; ctx.fillText(txt, cx, foot + 17 * s);
-      ctx.restore();
-    }
+    // The picture says it: no "HOW HE WILL LOOK" line under him (2 Oct 2026 playtest, struck out).
   },
   // The soul being drawn into him: `fanfare.morph.cells` cells from a ring round his middle, each
   // starting a little after the last, spiralling in faster the closer they get, a fainter cell a step
@@ -286,15 +280,15 @@ const Codex = {
     const B = game.book || (game.book = { i: 0, mx: -1, my: -1 }), n = this.entries(game).length;
     if (code === 'Escape' || code === 'KeyI' || code === 'Backspace') { this.close(game); return; }
     if (!n) return;
-    if (code === 'ArrowRight' || code === 'KeyD' || code === 'ArrowDown' || code === 'KeyS') { B.i = (B.i + 1) % n; game.audio.sfxSwing(); }
-    if (code === 'ArrowLeft' || code === 'KeyA' || code === 'ArrowUp' || code === 'KeyW') { B.i = (B.i + n - 1) % n; game.audio.sfxSwing(); }
+    if (code === 'ArrowRight' || code === 'KeyD' || code === 'ArrowDown' || code === 'KeyS') { B.i = B.keyed ? (B.i + 1) % n : B.i; B.keyed = true; game.audio.sfxSwing(); }
+    if (code === 'ArrowLeft' || code === 'KeyA' || code === 'ArrowUp' || code === 'KeyW') { B.i = B.keyed ? (B.i + n - 1) % n : B.i; B.keyed = true; game.audio.sfxSwing(); }
   },
   bookClick(game, p) {
     const B = game.book; if (!B || !B.rects) return;
     const on = (r) => r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
     if (on(B.closeRect) || on(B.xRect)) { this.close(game); return; }
     const i = B.rects.findIndex((r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
-    if (i >= 0) { B.i = i; game.audio.sfxSwing(); }
+    if (i >= 0) { B.i = i; B.keyed = true; game.audio.sfxSwing(); }
   },
   // The book itself (2 Oct 2026, playtest: "the goat on the left, his build on the right, laid out as a
   // book, like Enter the Gungeon's ammonomicon"): a leather cover with brass corners, two pages and a
@@ -399,6 +393,12 @@ const Codex = {
     const list = this.entries(game); if (B.i >= list.length) B.i = Math.max(0, list.length - 1);
     // the pointer, once it moves, picks what it is on
     const m = game.input.mouse, moved = m && (m.x !== B.mx || m.y !== B.my); if (m) { B.mx = m.x; B.my = m.y; }
+    // What is read out at the foot (2 Oct 2026 playtest: "only when I point at something; empty, not at
+    // all"): the tile under the pointer (hit against last frame's tiles), or the one the keys, the pad
+    // or a tap last picked, until the pointer moves off every tile.
+    const hov = m && !padOn(game) && B.rects ? B.rects.findIndex((r) => r && m.x >= r.x && m.x <= r.x + r.w && m.y >= r.y && m.y <= r.y + r.h) : -1;
+    if (hov >= 0) B.i = hov; else if (moved) B.keyed = false;
+    const show = hov >= 0 || !!B.keyed;
     ctx.save();
     ctx.fillStyle = 'rgba(9,7,9,0.82)'; ctx.fillRect(0, 0, W, Hh);
     const P = Math.max(2, Math.round(3 * s0)), q = (v) => Math.round(v / P) * P;
@@ -421,12 +421,13 @@ const Codex = {
     // ---- the left page: him, as he stands now
     head('THE GOAT', lc, LY + 44 * s, Math.min(lw, 260 * s), 'center');
     const g = game.goat, li = game.levelIndex | 0;
-    const gh = Math.min(LH * (stack ? 0.34 : 0.5), lw * 0.62, 330 * s), gf = LY + 64 * s + gh * 1.18;
+    // Where he is goes under the page's head, not under him (2 Oct 2026 playtest: "the level higher").
+    ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(13 * R.s, 15 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText(game.heaven ? 'THE PASTURE ABOVE' : `LEVEL ${li + 1} · ${Painting.floorName(game, li)}`, lc, LY + 76 * s);
+    const gh = Math.min(LH * (stack ? 0.3 : 0.48), lw * 0.62, 330 * s), gf = LY + 92 * s + gh * 1.18;
     this.pool(R, lc, gf - gh * 0.3, gh * 0.6, PALETTE.bone, 1.2);
     this.portrait(R, game, lc, gf, gh, game.mods, game.heaven && game.levelArtifact !== undefined ? game.levelArtifact : game.artifact, 'book');
-    let ly = gf + 40 * s;
-    ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(13 * R.s, 15 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-    ctx.fillText(game.heaven ? 'THE PASTURE ABOVE' : `LEVEL ${li + 1} · ${Painting.floorName(game, li)}`, lc, ly);
+    let ly = gf + 14 * s;
     // His hearts as the play HUD draws them (2 Oct 2026, "pictures, not words"): `HEART_GLYPH` in cells,
     // full in blood with the HUD's glint, lost ones faint, THE MIRROR's light hearts after his own.
     if (g && g.maxHp) {
@@ -449,11 +450,8 @@ const Codex = {
       ctx.font = `700 ${Math.max(12 * R.s, 12.5 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi;
       R.wrap(looks.join(' · '), lw).forEach((l) => { ly += 20 * s; ctx.fillText(l, lc, ly); });
     }
-    // the way out, at the foot of his page
-    ctx.font = `${Math.max(12 * R.s, 12.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
-    const hint = game.touch.active ? 'tap a picture to read it · tap here to close' : padOn(game) ? 'the stick turns the page · B closes' : `point at a picture to read it · ${KEY_FACE.KeyI} or ESC closes`;
-    const hy = LY + LH - 22 * s; ctx.fillText(hint, lc, hy);
-    const hw = textW(ctx, hint); B.closeRect = { x: lc - hw / 2, y: hy - 16 * s, w: hw, h: 22 * s };
+    // No line at the foot saying how to read or close it (2 Oct 2026 playtest, struck out): the × closes.
+    B.closeRect = null;
     // A cross in the book's top right corner (2 Oct 2026, "a clear × at the top right"): an ink plate on
     // the page with a brass rim, the X in cells of `xc` px, lit under the pointer; a click or a tap is I / ESC.
     {
@@ -469,7 +467,7 @@ const Codex = {
     }
 
     // ---- the right page: his build, a tile a thing, and the one picked read out at the foot
-    head('WHAT HE CARRIES', rx, RY + 44 * s, rw, 'left');
+    // No page head and no SOULS label (2 Oct 2026 playtest: "useless and obvious"): the parts say it.
     const cell = Math.round(48 * s), gap = Math.round(10 * s);
     B.rects = [];
     const lay = (items, x, y, w, c = cell, gp = gap) => {
@@ -477,15 +475,14 @@ const Codex = {
       items.forEach((e, k) => {
         const i = list.indexOf(e), tx = x + (k % n) * (c + gp), ty = y + Math.floor(k / n) * (c + gp);
         B.rects[i] = { x: tx, y: ty, w: c, h: c };
-        if (moved && m.x >= tx && m.x <= tx + c && m.y >= ty && m.y <= ty + c) B.i = i;
-        this.tile(R, game, e, tx, ty, c, B.i === i, s);
+        this.tile(R, game, e, tx, ty, c, show && B.i === i, s);
       });
       return Math.max(1, Math.ceil(items.length / n)) * (c + gp) - gp;
     };
     const label = (txt, x, y) => { ctx.textAlign = 'left'; ctx.font = `700 ${Math.max(12 * R.s, 13 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText(txt, x, y); return textW(ctx, txt); };
     const none = (txt, x, y) => { ctx.textAlign = 'left'; ctx.font = FONT_PICK.font('text', Math.max(12 * R.s, 13 * s)); ctx.fillStyle = 'rgba(239,230,208,0.4)'; ctx.fillText(txt, x, y + cell / 2 + 5 * s); return cell; };
     const of = (sec) => list.filter((e) => e.sec === sec);
-    let y = RY + 76 * s;
+    let y = RY + 36 * s;
     // The souls by the part of him they change (2 Oct 2026: "by the skills", then "a gradation by
     // upgrades, tied to a part of the body"): HORNS the headbutt, TEETH the grab, LEGS the roll, THROAT
     // the BAAH, BODY the rest. A row is the part's chip (the verb as the rail draws it over the whole
@@ -526,8 +523,7 @@ const Codex = {
     const put = (e, tx, ty, c) => {
       const i = list.indexOf(e);
       B.rects[i] = { x: tx, y: ty, w: c, h: c };
-      if (moved && m.x >= tx && m.x <= tx + c && m.y >= ty && m.y <= ty + c) B.i = i;
-      this.tile(R, game, e, tx, ty, c, B.i === i, s);
+      this.tile(R, game, e, tx, ty, c, show && B.i === i, s);
     };
     // one part: its name and key above, the chip, the slots filled in step order, then any key soul
     const partRow = (x, yy, w, id) => {
@@ -544,29 +540,32 @@ const Codex = {
       for (const e of keys) { put(e, tx, ty, cell); tx += cell + vg; }
       return partH + cell;
     };
-    label('SOULS', rx, y); y += 10 * s;
+    // Every name sits right on top of its own row with clear floor above it (2 Oct 2026 playtest: a name
+    // halfway between two rows read as a caption under the one above): `rowGap` from a row to the next
+    // name, `partH` from a name's top to its row.
+    const rowGap = narrow ? Math.round(12 * s) : Math.round(18 * s);
     for (let i = 0; i < VERBS.length; i += two ? 2 : 1) {
       let h = partRow(rx, y, colW, VERBS[i]);
       if (two && VERBS[i + 1]) h = Math.max(h, partRow(rx + colW + colG, y, colW, VERBS[i + 1]));
-      y += h + (narrow ? vg : 8 * s);
+      y += h + rowGap;
     }
-    y += partRow(rx, y, rw, 'body') + 20 * s;
+    y += partRow(rx, y, rw, 'body') + rowGap;
     // the talisman and the animals share a band: one thing at his neck, a few at most brought out
-    const tw = Math.max(cell, label('TALISMAN', rx, y)), ax = rx + tw + 34 * s;
-    label('ANIMALS', ax, y); y += 10 * s;
+    const tw = Math.max(cell, label('TALISMAN', rx, y + partH - 6 * s)), ax = rx + tw + 34 * s;
+    label('ANIMALS', ax, y + partH - 6 * s); y += partH;
     const ti = of('TALISMAN'), bi = of('ANIMALS');
     const th = ti.length ? lay(ti, rx, y, cell) : none('none yet', rx + 2 * s, y);
     const bh = bi.length ? lay(bi, ax, y, rx + rw - ax) : none('none brought out yet', ax + 2 * s, y);
-    y += Math.max(th, bh) + 20 * s;
+    y += Math.max(th, bh) + rowGap;
     const mi = of('FROM THE MIRROR');
-    if (mi.length) { label('FROM THE MIRROR', rx, y); y += 10 * s; y += lay(mi, rx, y, rw) + 20 * s; }
+    if (mi.length) { label('FROM THE MIRROR', rx, y + partH - 6 * s); y += partH; y += lay(mi, rx, y, rw) + rowGap; }
 
     // the one picked, in full: its picture large, its name and kind, and what it does
-    const e = list[B.i];
-    const dy = Math.max(y + 2 * s, RY + RH - 196 * s);
-    ctx.fillStyle = 'rgba(185,135,58,0.4)'; ctx.fillRect(Math.round(rx), Math.round(dy), Math.round(rw), Math.max(1, Math.round(s)));
+    const e = show ? list[B.i] : null;
+    const dy = Math.max(y, RY + RH - 186 * s);
     if (e) {
-      const a = this.about(game, e), big = Math.round(84 * s), by = dy + 18 * s;
+      ctx.fillStyle = 'rgba(185,135,58,0.4)'; ctx.fillRect(Math.round(rx), Math.round(dy), Math.round(rw), Math.max(1, Math.round(s)));
+      const a = this.about(game, e), big = Math.round(84 * s), by = dy + 14 * s;
       this.tile(R, game, e, rx, by, big, false, s);
       const nx = rx + big + 18 * s;
       ctx.textAlign = 'left'; ctx.font = `700 ${Math.max(17 * R.s, 20 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
@@ -575,8 +574,8 @@ const Codex = {
       ctx.font = `700 ${Math.max(12 * R.s, 12.5 * s)}px ${FONT_SC}`; ctx.fillStyle = a.color;
       ctx.fillText(a.tag + (e.kind === 'boon' && e.b.skill && !game.touch.active ? ' · ' + keysOf(game)[e.b.skill] : ''), nx, by + 52 * s);
       ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 15 * s));
-      this.lines(R, a.text, rx, by + big + 30 * s, rw, 21 * s, 'left', 'rgba(239,230,208,0.88)');
-    } else {
+      this.lines(R, a.text, rx, by + big + 26 * s, rw, 21 * s, 'left', 'rgba(239,230,208,0.88)');
+    } else if (!list.length) {
       ctx.textAlign = 'left'; ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 15 * s)); ctx.fillStyle = 'rgba(239,230,208,0.5)';
       R.wrap('Nothing yet. A soul, the mouse or an animal will change that.', rw).forEach((l, k) => ctx.fillText(l, rx, dy + 40 * s + k * 21 * s));
     }

@@ -648,6 +648,15 @@
         "8894"
       ],
       "port": 8894
+    },
+    {
+      "name": "goat-out-batch-1002",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8895"
+      ],
+      "port": 8895
     }
   ]
 }

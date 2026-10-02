@@ -606,7 +606,7 @@ const GEN_RULES = [
   // stone with floor at its foot that the goat can walk to, and the ring hangs over open floor it
   // can fall on, in a room that is not teaching, resting or a narrow set piece; never in a cave, on
   // the trip or in THE DARK.
-  { id: 'chandeliers', text: 'A chandelier hangs over open floor of an ordinary room, tied off to a cleat on the far wall above it that the goat can walk to.',
+  { id: 'chandeliers', text: 'A chandelier hangs over open floor of an ordinary room, tied off to a cleat on the far wall within reach of it that the goat can walk to.',
     check: (L) => {
       const rings = L.props.filter((p) => p.kind === 'chandelier' && !p.lesson);   // the lesson's ring is `chandlesson`'s
       if (!rings.length) return null;
@@ -619,7 +619,7 @@ const GEN_RULES = [
         const c = L.props.find((q) => q.kind === 'cleat' && q.cid === p.cid);
         if (!c) return `a chandelier at ${tx},${ty} tied to nothing`;
         const cx = Math.floor(c.x / TILE), cy = Math.floor(c.y / TILE);
-        if (cx !== tx || L.tiles[(cy - 1) * L.W + cx] !== T.WALL) return `the cleat of the chandelier at ${tx},${ty} is not on the wall above it`;
+        if (Math.abs(cx - tx) > TUNING.chandelier.reach || L.tiles[(cy - 1) * L.W + cx] !== T.WALL) return `the cleat of the chandelier at ${tx},${ty} is not on the far wall within reach of it`;
         if (!seen[cy * L.W + cx]) return `nobody can walk to the cleat at ${cx},${cy}`;
         const r = roomAt(L, p.x, p.y);
         if (!r) return 'a chandelier outside any room';

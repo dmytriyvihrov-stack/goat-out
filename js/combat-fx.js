@@ -239,6 +239,12 @@ class CombatFX {
     c.translate(48,64);art.character({ctx:c,t:0},{facing},art.characterKey(e)||'sheep',80);
     c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-atop';
     c.fillStyle=burnt?'rgba(19,13,16,0.8)':`rgba(24,12,16,${TUNING.effects.corpse.dark})`;c.fillRect(0,0,96,96);
+    // Greyed toward ash (`corpse.grey`, 2 Oct 2026 playtest: a dead man and a floored one read alike),
+    // once a death, so a body on the floor never reads as a man about to get up.
+    const G=TUNING.effects.corpse.grey;
+    if(G>0&&!burnt){c.setTransform(1,0,0,1,0,0);const d=c.getImageData(0,0,96,96),a=d.data;
+      for(let i=0;i<a.length;i+=4){if(!a[i+3])continue;const l=0.3*a[i]+0.59*a[i+1]+0.11*a[i+2];a[i]+=(l-a[i])*G;a[i+1]+=(l-a[i+1])*G;a[i+2]+=(l*1.06-a[i+2])*G;}
+      c.putImageData(d,0,0);}
     const shade=CombatFX.pieceCanvas(96,96),s=shade.getContext('2d');s.drawImage(image,0,0);
     s.globalCompositeOperation='source-in';s.fillStyle='#0b0709';s.fillRect(0,0,96,96);
     return {image,shade};

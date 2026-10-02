@@ -15,26 +15,33 @@ const WISP = ['..o..', '..wo.', '.owwo', 'owwwo', 'oeweo', 'owwwo', '.owo.'];
 const Motes = {
   // ---------------------------------------------------------------- the white souls
   // A man down: a soul over his body, belonging to the room he fell in.
+  // Before the god's gift (or where nothing is paid: THE SHOWROOM, GOD) it still rises, as a sign he is
+  // dead and not floored (2 Oct 2026 playtest), and goes out over him (`ghost`): nothing comes to the goat.
   spawn(game, e) {
-    if (!Heaven.gifted() || game.showroomOn || (game.dev && game.dev.god) || e.scripted || !game.level || game.level.def.heaven) return;
+    if (e.scripted || !game.level || game.level.def.heaven) return;
+    const ghost = !Heaven.gifted() || game.showroomOn || (game.dev && game.dev.god);
     const L = game.level, r = roomAt(L, e.x, e.y), room = r ? r.index : game.nearestRoomIdx(e.x, e.y, game.goatRoom || 0);
     if (!game.motes) game.motes = [];
     const n = game.motes.length;
-    game.motes.push({ x: e.x, y: e.y, ox: e.x, oy: e.y, room, t: -(n % 4) * TUNING.heaven.motes.stagger, fly: false, vx: 0, vy: 0, sp: 0, ph: Math.random() * 6.28, trail: [] });
+    const M = TUNING.heaven.motes;
+    game.motes.push({ x: e.x, y: e.y, ox: e.x, oy: e.y, room, ghost, t: -M.delay - (n % 4) * M.stagger, fly: false, vx: 0, vy: 0, sp: 0, ph: Math.random() * 6.28, trail: [] });
   },
-  // They wait over the body until he is out of their room (or the floor is cleared), then come.
+  // Out of the body a beat after he dies (`delay`), it rises slowly (`riseT`) and hangs there; after `wait` s
+  // it comes once the goat has left its room or stands right by it (`near` tiles) (2 Oct 2026 playtest: it
+  // flew in the moment a man went down, "too fast").
   update(game, dt) {
     const list = game.motes; if (!list || !list.length) return;
     const M = TUNING.heaven.motes, g = game.goat, L = game.level;
     const here = roomAt(L, g.x, g.y), gi = here ? here.index : -1;
     for (const m of list) {
       m.t += dt;
+      if (m.ghost) { if (m.t > M.ghostFor) m.done = true; }
       if (!m.fly) {
         // risen over the body, breathing
         const k = clamp(m.t / M.riseT, 0, 1), e = 1 - Math.pow(1 - k, 3);
         m.x = m.ox; m.y = m.oy - M.rise * e - Math.sin(m.t * 2.4 + m.ph) * M.bob * k;
         // Out of their room, or walked up to (2 Oct 2026 playtest: "it should also fly to you when you just come up to it").
-        if (m.t > M.wait && (gi !== m.room || hyp(g.x - m.ox, g.y - m.oy) < M.near * TILE) && !g.dead) { m.fly = true; m.vx = 0; m.vy = -M.speed * 0.6; m.sp = M.speed; }
+        if (!m.ghost && m.t > M.wait && (gi !== m.room || hyp(g.x - m.ox, g.y - m.oy) < M.near * TILE) && !g.dead) { m.fly = true; m.vx = 0; m.vy = -M.speed * 0.6; m.sp = M.speed; }
         continue;
       }
       // homing, faster the longer it flies, with a little curl so a flock does not arrive as a line
@@ -72,7 +79,7 @@ const Motes = {
   // The floor is done: whatever is still hanging is his.
   flush(game) {
     if (!game.motes) return;
-    for (const m of game.motes) this.bank(game, m);
+    for (const m of game.motes) if (!m.ghost) this.bank(game, m);
     game.motes = [];
   },
 
@@ -87,17 +94,20 @@ const Motes = {
     const cell = (x, y, n, c, a) => { ctx.globalAlpha = a * fade; ctx.fillStyle = c; ctx.fillRect(Math.round(x / C) * C - n * C / 2, Math.round(y / C) * C - n * C / 2, n * C, n * C); };
     for (const m of list) {
       if (game.hidden(m.ox, m.oy) && !m.fly) continue;
-      const tw = 0.75 + 0.25 * Math.sin(t * 7 + m.ph);
+      // Still (2 Oct 2026 playtest: "don't animate the soul, it should draw less attention"): no twinkle,
+      // no licking tip, a fainter halo; only the flight moves it.
+      const tw = 1, A = TUNING.heaven.motes.alpha;
       if (m.fly) for (let i = 0; i < m.trail.length; i += 2) cell(m.trail[i], m.trail[i + 1], 1, '#e8f0ff', 0.25 + 0.4 * i / m.trail.length);
-      const born = clamp((m.t + 0.2) / 0.25, 0, 1);
-      cell(m.x, m.y, 7, '#dfe9ff', 0.1 * tw * born);
+      if (m.t < 0) continue;
+      const born = clamp(m.t / 0.3, 0, 1) * (m.ghost ? clamp((TUNING.heaven.motes.ghostFor - m.t) / 0.6, 0, 1) : 1);
+      cell(m.x, m.y, 7, '#dfe9ff', 0.05 * born * A);
       // A little wisp, not one white pixel (2 Oct 2026 playtest): a flame of cells, its tip licking
       // side to side, pale rim, white heart and two dark eyes, so it reads as a soul at a glance.
-      const lick = Math.round(Math.sin(t * 6 + m.ph) * 0.8);
+      const lick = 0;
       for (let r = 0; r < WISP.length; r++) for (let c = 0; c < WISP[r].length; c++) {
         const k = WISP[r][c]; if (k === '.') continue;
         const x = m.x + (c - 2 + (r < 2 ? lick : 0)) * C, y = m.y + (r - 4) * C;
-        cell(x, y, 1, k === 'o' ? '#b9cdf5' : k === 'e' ? '#2a2440' : '#ffffff', (k === 'o' ? 0.75 * tw : 0.95) * born);
+        cell(x, y, 1, k === 'o' ? '#b9cdf5' : k === 'e' ? '#2a2440' : '#ffffff', (k === 'o' ? 0.75 * tw : 0.95) * born * A);
       }
     }
     ctx.globalAlpha = 1;

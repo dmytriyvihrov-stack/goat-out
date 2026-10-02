@@ -199,8 +199,8 @@ the rest rooms):
 
 | | Rooms | Canon | Regular enemies | Bosses |
 |---|---|---|---|---|
-| **THE ALTAR** | 12 | Stone | Bearers, butchers | Butcher with two men |
-| **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Elite Seer (sealed in), ogre (the last room, the first of him) |
+| **THE ALTAR** | 12 | Stone | Bearers, butchers | A clubman with the soul in him, three hearts, two men |
+| **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Butcher with one man (room 4, four hearts), elite Seer (sealed in), ogre (the last room, the first of him) |
 | **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers | Ogre, butcher |
 | **THE ROAD** | 14 | The line | All five, rifles new | Two ogres |
 | **THE THRESHING FLOOR** | 13 | Open ground | All five, shieldmen new | Elite Seer, ogre, butcher |
@@ -431,7 +431,7 @@ blindness. The ring is the price of standing in his own work, and the poison set
 
 **The gate.** Every floor stops you once, in the middle: a quiet room after a fight, its way on barred by
 a door no blow opens, and its soul is the bar. The soul is not lying on the floor, it is in a man standing
-over the spot, a keeper, a clubman a heart heavier and quicker than the rest, whose club leaves witchfire
+over the spot, a keeper, a clubman two hearts heavier (three in all) and quicker than the rest, whose club leaves witchfire
 where it lands and who is no more careful of it than anybody, so his own fire is a way to burn him, and
 it comes out of him when he goes down. It is there because a soul lying in a room whose fight is over is
 very easy to walk past, and a goat who walks past them meets the late floors with his buttons still shut.

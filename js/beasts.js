@@ -104,7 +104,7 @@ const Beast = {
     // The crow's gift bird (`placeGift`) is not an escort and is never left behind.
     // Only one behind him calls: the horse gone on ahead to win its race, or the goose leading, is
     // not left anywhere, and neighed every five seconds as if it were.
-    if (!p.gift && p.behind >= 0 && p.strayT <= 0 && d > B.strayR && d < B.strayFar && game.state === 'play') {
+    if (!p.gift && !p.spite && p.behind >= 0 && p.strayT <= 0 && d > B.strayR && d < B.strayFar && game.state === 'play') {
       p.strayT = B.strayGap * (1 + (Math.random() * 2 - 1) * B.strayJitter) * (p.behind >= 1 ? B.strayUrgent : 1);
       p.calledAt = game.timer;
       game.audio.sfxAnimal(p.kind);
@@ -919,6 +919,7 @@ const Beast = {
   // tuft or two more on every floor after this one (`Game.startLevel`). Once full she eats no more.
   updatePig(p, dt, game) {
     const C = TUNING.prop.pig, g = game.goat;
+    if (p.spite) return Beast.updateSpite(p, dt, game);
     const away = Beast.shy(p, game);
     if (away) { p.eating = null; if (away.d) Beast.step(p, game, away.x, away.y, C.speed * TUNING.beast.shySpeed, dt); else { p.vx = 0; p.vy = 0; } return; }
     const full = (p.fed || 0) >= C.full;
@@ -945,6 +946,32 @@ const Beast = {
     if (to.d < C.followAt * TILE) { p.vx = 0; p.vy = 0; if (Math.abs(g.x - p.x) > C.faceDead) p.face = Math.sign(g.x - p.x); return; }
     Beast.step(p, game, to.x, to.y, C.speed * (to.d > C.catchFar * TILE ? C.catchUp : 1), dt);
   },
+  // Told no, she eats out of spite: the nearest tuft she can see within `spite.smell` tiles, else on
+  // down the floor toward the stairs (`Beast.onward`) to find the next, never full, never banked. She
+  // is slow; he can get there first, or put her down (`Prop.headbutt` → `Beast.hurt`).
+  updateSpite(p, dt, game) {
+    const C = TUNING.prop.pig, S = C.spite;
+    let q = p.eating && !p.eating.broken ? p.eating : null;
+    if (!q) {
+      let bd = S.smell * TILE;
+      for (const h of game.props) {
+        if (h.kind !== 'heal' || h.broken || h.pail > 0) continue;
+        const d = hyp(h.x - p.x, h.y - p.y);
+        if (d < bd && game.world.los(p.x, p.y, h.x, h.y)) { bd = d; q = h; }
+      }
+    }
+    if (q) {
+      const dx = q.x - p.x, dy = q.y - p.y, d = hyp(dx, dy) || 1;
+      if (d > C.eatR * TILE) { p.eating = q; p.chew = 0; Beast.step(p, game, dx / d, dy / d, S.speed, dt); return; }
+      p.vx = 0; p.vy = 0; p.eating = q; if (Math.abs(dx) > 2) p.face = Math.sign(dx);
+      p.chew = (p.chew || 0) + dt;
+      if (p.chew >= C.eatTime) Beast.pigEats(p, q, game);
+      return;
+    }
+    p.eating = null; p.chew = 0;
+    const on = Beast.onward(p, game);
+    if (on) Beast.step(p, game, on.x, on.y, S.speed, dt); else { p.vx = 0; p.vy = 0; }
+  },
   // A tuft down her: gone the way his graze takes one, a word of how many more, and the thanks in
   // the box on the last.
   pigEats(p, q, game) {
@@ -953,6 +980,11 @@ const Beast = {
     p.fed = (p.fed || 0) + 1; p.eating = null; p.chew = 0; p.wobble = 0.3;
     game.particles(q.x, q.y, 14, PALETTE.hen, 150);
     game.audio.sfxAnimal && game.audio.sfxAnimal('pig');
+    if (p.spite) {
+      const M = C.spite.munch;
+      game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: M[Math.floor(Math.random() * M.length)], color: PALETTE.hen, life: 2, pact: true });
+      return;
+    }
     if (p.fed >= C.full) {
       const n = C.saveHeals;
       Beast.talk(game, p, C.talk.full.map((l) => l.replace('{a}', n[0]).replace('{b}', n[1])));
@@ -992,7 +1024,7 @@ const Beast = {
       let yes = null;
       if (inp.spacePressed) yes = true;
       else if (inp.rollPressed || inp.rmbPressed) yes = false;
-      else if (inp.lmbPressed && inp.mouse) { const i = K.rects.findIndex((r) => inp.mouse.x >= r.x && inp.mouse.x <= r.x + r.w && inp.mouse.y >= r.y && inp.mouse.y <= r.y + r.h); if (i >= 0) yes = i === 0; }
+      else if (inp.lmbPressed && inp.mouse) { const i = K.rects.findIndex((r) => inp.mouse.x >= r.x && inp.mouse.x <= r.x + r.w && inp.mouse.y >= r.y && inp.mouse.y <= r.y + r.h); if (i >= 0) yes = i === 1; }
       if (yes === null) return;
       if (yes) game.audio.sfxBleat(300, 0.2, 0.5); else game.audio.sfxBleat(520, 0.06, 0.25);
       K.out = 0.0001; Beast.answer(game, K.p, yes);
@@ -1064,22 +1096,24 @@ const Beast = {
     let left = Math.floor(K.shown), y = by + 22 * s + size;
     ctx.fillStyle = PALETTE.bone;
     for (const l of lines) { if (left <= 0) break; ctx.fillText(l.slice(0, left), tx, y); left -= l.length + 1; y += size * 1.4; }
-    // The answer, once the last page is said (`ask`): BAAAH! (yes) and bah. (no), each a plate with its
-    // key on a cap, in a row of their own under the words. They fade in as the typing ends.
+    // The answer, once the last page is said (`ask`): bah. (no) on the left and BAAAH! (yes) on the right
+    // (2 Oct 2026 playtest: "yes right, no left", and coloured, green for yes, red for no), each a plate
+    // with its key on a cap, in a row of their own under the words. They fade in as the typing ends.
     K.rects = [];
     if (asking) {
-      const kk = keysOf(game), opts = [[BEAST_ANSWER.yes, BEAST_ANSWER.yesSay, kk.scream], [BEAST_ANSWER.no, BEAST_ANSWER.noSay, kk.roll]];
+      const kk = keysOf(game), opts = [[BEAST_ANSWER.no, BEAST_ANSWER.noSay, kk.roll], [BEAST_ANSWER.yes, BEAST_ANSWER.yesSay, kk.scream]];
+      const A = TUNING.beast.talk.answer;
       const bw2 = Math.min(250 * s, (bw - tx0 * 2 - ansGap) / 2), bh2 = ansH, x2 = bx + bw - tx0 - bw2 * 2 - ansGap, y2 = by + bh - bh2 - 16 * s, m = game.input.mouse;
       ctx.save(); ctx.globalAlpha *= typing ? 0.35 : 1;
       opts.forEach(([word, say, key], i) => {
         const x = Math.round(x2 + i * (bw2 + ansGap)), y = Math.round(y2), on = !typing && m && !game.touch.active && m.x >= x && m.x <= x + bw2 && m.y >= y && m.y <= y + bh2;
-        const lift = on ? Math.round(2 * s) : 0, col = i ? PALETTE.bone : PALETTE.hen;
+        const yes = i === 1, C = yes ? A.yes : A.no, lift = on ? Math.round(2 * s) : 0, col = C.word;
         K.rects.push({ x, y, w: bw2, h: bh2 });
         // a plate: a dark drop under it, a fill, a hard two-pixel rim and a lit top edge
         ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x + 3 * s, y + 4 * s, bw2, bh2);
-        ctx.fillStyle = i ? (on ? '#3a2e36' : '#2a2128') : (on ? '#5a4220' : '#41301a'); ctx.fillRect(x, y - lift, bw2, bh2);
-        ctx.fillStyle = i ? 'rgba(239,230,208,0.08)' : 'rgba(242,201,104,0.16)'; ctx.fillRect(x, y - lift, bw2, Math.round(bh2 * 0.45));
-        ctx.strokeStyle = i ? 'rgba(239,230,208,0.45)' : col; ctx.lineWidth = Math.max(2, Math.round(2 * s));
+        ctx.fillStyle = on ? C.hot : C.fill; ctx.fillRect(x, y - lift, bw2, bh2);
+        ctx.fillStyle = C.lit; ctx.fillRect(x, y - lift, bw2, Math.round(bh2 * 0.45));
+        ctx.strokeStyle = C.rim; ctx.lineWidth = Math.max(2, Math.round(2 * s));
         ctx.strokeRect(x + 1, y - lift + 1, bw2 - 2, bh2 - 2);
         // the key on a cap at the left, the word, the plain meaning after it
         const cap = Math.round(30 * s), cy = y - lift + (bh2 - cap) / 2;
@@ -1093,7 +1127,7 @@ const Beast = {
           ctx.fillStyle = '#1a1214'; ctx.textAlign = 'center'; ctx.fillText(key, wx + cw / 2, cy + cap * 0.62);
           wx += cw + 12 * s;
         }
-        ctx.textAlign = 'left'; ctx.font = `700 ${Math.round((i ? 19 : 22) * s)}px ${FONT_SC}`; ctx.fillStyle = col;
+        ctx.textAlign = 'left'; ctx.font = `700 ${Math.round((yes ? 22 : 19) * s)}px ${FONT_SC}`; ctx.fillStyle = col;
         ctx.fillText(word, wx, y - lift + bh2 * 0.64);
         const ww = textW(ctx, word);
         ctx.font = `${Math.round(14 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(232,221,200,0.65)'; ctx.fillText(say, wx + ww + 8 * s, y - lift + bh2 * 0.64);

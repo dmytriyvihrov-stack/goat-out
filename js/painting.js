@@ -294,7 +294,7 @@ const Painting = {
     }
     if (!drew) this.glyph(ctx, dead ? PAINT_GLYPHS.skull : PAINT_GLYPHS.head, { x: Math.round(hx), y: Math.round(Y - h - 6 * c + bob) }, 2 * c, dead ? PALETTE.blood : bone);
     // the names that matter: where he is (or fell), and where the road goes next
-    ctx.font = `${13 * s}px ${FONT_SC}`;
+    ctx.font = `${Math.max(13 * s, TUNING.hud.minText * r.s)}px ${FONT_SC}`;
     const next = !dead && game.climbDark && cur + 1 < n ? 'THE DARK' : this.floorName(game, to);
     const name = (i, label, col, al) => {
       ctx.save(); ctx.globalAlpha *= al; ctx.fillStyle = col;
@@ -362,7 +362,9 @@ const Painting = {
     ctx.textAlign = 'center';
     words.forEach((w, i) => { ctx.font = `${15 * s}px ${FONT}`; ctx.fillStyle = i === words.length - 1 ? PALETTE.blood : 'rgba(239,230,208,0.62)'; ctx.fillText(w, lx, y + i * 22 * s); });
     ctx.globalAlpha = 1;
-    if (card.code) { ctx.font = `${Math.max(12 * r.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, H - 18 * s); }
+    // The run code only with the dev drawer open (2 Oct 2026 playtest: "not sure the death screen needs
+    // this"); leaving the card still copies it (`copyCode`) for whoever is asked to paste it.
+    if (card.code && game.dev && game.dev.open) { ctx.font = `${Math.max(12 * r.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, H - 18 * s); }
     if (card.go && game.stateTimer <= 0) {
       ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1);
       r.goButton(game, card.go, W / 2, Math.min(y + Math.max(words.length * 22 * s, plate) + 4 * s, H - 36 * s - 38 * s));

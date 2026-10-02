@@ -28,9 +28,14 @@ Worked alone while he was away (log: `output/loop-2026-10-02/LOG.md`).
   phrase where there were 23 / 24 / 18.
 - **A bigger gap between a fight and peace** (his ask, same day): peace was already down to three parts (the drone,
   two bass notes a bar, the flute), so the fight filled in by count (`TUNING.audio.layers.fight`): the kick on every
-  quarter and its pickups (6 a bar, was 4), a low tom, rim and hats a little up; the chase gets a kick of its own on
-  the backbeats, so it sits between the two. Counted over 8 bars: idle 3 parts; chase adds kick 32, rim 32, hats 64,
-  the riff; combat kick 48, toms 40, hats 64, rim, the riff. No tempo change, nothing merely quieter (1 Oct rule).
+  quarter and its pickups (6 a bar, was 4), a low tom, the rim a little up; the chase gets a kick of its own on
+  the backbeats, so it sits between the two. Counted over 8 bars: idle 3 parts; chase adds kick 32, rim 32, the
+  riff; combat kick 48, toms 40, rim, the riff. No tempo change, nothing merely quieter (1 Oct rule). The off-eighth
+  hats went out the same night (his "high, frequent crackle", `layers.fight.hat` / `chaseHat` 0).
+- **No screen text under 12 CSS px on a phone either** (the 30 Sep rule, measured on every `fillText` of the title,
+  play, pause, the book, settings and the death card at 1280×800, 960×600 and 375×812): four spots shrank with the
+  card on a phone, the road's floor name on the death card (10.6 px), the touch controls' MOVE / ROLL / CALL (10),
+  the title rows' notes (9.8) and RUN STATS' question (10.2). Each is floored at `TUNING.hud.minText` × `renderer.s`.
 
 ## Next, the shieldman: a fat Spartan with a pile of skulls, 2 Oct 2026 (not yet published)
 

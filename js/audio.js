@@ -813,14 +813,14 @@ class GameAudio {
         if (name === 'chase') {
           if ([2,6,10,14].includes(beat)) this.rim(t, 0.05 * mix);
           if (F.chaseKickBeats.includes(beat)) this.kick(t, F.chaseKick * mix);
-          if (beat % 2 === 1) this.hat(t, F.chaseHat * mix);
+          if (F.chaseHat && beat % 2 === 1) this.hat(t, F.chaseHat * mix);
         }
         if (name === 'combat') {
           if ([4,12].includes(beat)) this.tomHi(t, F.tom * mix);
           if (F.lowBeats.includes(beat)) this.tomLo(t, F.low * mix);
           if (F.kickBeats.includes(beat)) this.kick(t, F.kick * mix);
           if ([3,11].includes(beat)) this.rim(t, F.rim * mix);
-          if (beat % 2 === 1) this.hat(t, F.hat * mix);
+          if (F.hat && beat % 2 === 1) this.hat(t, F.hat * mix);
         }
       }
     }
@@ -885,7 +885,6 @@ class GameAudio {
     }
     if (lvl >= 2) {
       if (bar % 4 === 0) this.kick(t, 0.72);
-      if (bar % 2 === 1) this.hat(t);
       if (bar === 7 || bar === 15) this.tomHi(t, 0.5);
     }
     // The top of the kit. It used to fill every gap, a hat on every step, four more toms, a crash
@@ -1151,8 +1150,9 @@ class GameAudio {
   }
   // The husky's voice (js/beasts-more.js): `woo` the howl she sings on the beat, `waf` the bark before
   // it, `hurt` a yelp. The howl is the beat the goat answers, so it sits a little over the fight.
-  sfxHusky(note = 'woo', vol = 1) {
-    this.foley('husky', { key: 'husky:' + note, args: { note }, takes: 3, gain: (note === 'woo' ? 0.17 : note === 'waf' ? 0.12 : 0.1) * vol, wet: 0.06 });
+  // `song`: a note of her song goes round the ducks (`keyBus`), so a fight's drums never cover the beat.
+  sfxHusky(note = 'woo', vol = 1, song = false) {
+    this.foley('husky', { key: 'husky:' + note, args: { note }, takes: 3, gain: (note === 'woo' ? 0.17 : note === 'waf' ? 0.12 : 0.1) * vol * (song ? 1.3 : 1), wet: 0.06, bus: song ? this.keyBus : null });
   }
   // The lorry under them: half a second of diesel knock, called every half second while the road
   // goes past, each faded at its ends so they run on without a seam.
