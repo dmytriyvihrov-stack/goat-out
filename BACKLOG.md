@@ -37,16 +37,19 @@ Found and left, worth a word from him:
 - **feel**: the collector (1.95 measured it, see `CHANGELOG.md`): at real speed a minor collection 2 a second at 1-4 ms
   and a full one every few seconds at 15-30 ms, one dropped frame each. The big per-call sources are fixed; what is left
   is a flat tail of boxed numbers in the engine's middle tier (no one function over about 20 KB a frame of 250-290).
-  **Tried and measured, 2 Oct 2026 (1.96-1.97)**: lists compacted in place (`keepIf`), revealRooms' buffers reused,
-  every `for of` in the hot methods turned into an index loop (84 of them). The total did not move (254 → 267 KB a
-  frame, same seed): the garbage moved from function to function as the compiler inlined differently, which is what
-  boxed numbers do. The loops were put back. Calm play with nobody dying still gets a full collection every 4-5 s
-  (17-50 ms on a busy machine), so it is the steady per-frame garbage reaching the old heap (about 22 KB a frame of
-  it, `HeapProfiler` sampling with minor-GC garbage left out), not the kills. What would end it is structural, not a
-  patch: the hot loops' numbers kept in typed arrays (positions, velocities, particles as struct-of-arrays) instead of
-  object fields and call arguments, a rewrite of the simulation's core, or the engine port (`ENGINE.md`). His call.
-  Tools for the next try: headless Chrome over the debugging protocol (sampling heap profile with
-  `includeObjectsCollectedByMinorGC: false` for what is promoted; a `v8.gc` trace for the pauses), seeded `Math.random`.
+  **Found and mostly fixed, 2 Oct 2026 (1.97)**: it was never the script's garbage. A `v8.gc` trace with the `cppgc`
+  phases showed the pause was the browser's own heap (weak processing and sweeping), and `GCIncrementalMarkingStart`'s
+  reason was "approaching global allocation limit" while the script heap sat at 11 of its 27 MB. The browser's heap was
+  filling with objects the canvas API makes: `save()` a copy of the whole state (170 a frame), `getTransform()` a
+  DOMMatrix (32), `measureText()` (12), gradients (9). All gone (render.js `CANVAS_STATE`, `xform`, `textW`; see
+  CLAUDE.md). Two 60 s fights: 20 full collections → 5, and 18 → 10, a quarter of the time frozen (815 → 209 ms; a loaded machine).
+  Ruled out on the way, measured: compacting lists and index loops (the script's garbage only moves between
+  functions, it is boxed numbers), a 48 MB ballast (the trigger was not the script heap), the rooms' bake (no thrash).
+  **Left**: the remaining collections come from the browser's `drawImage` (~160 a frame, a little each), font sets and
+  the script heap's own promotion; minor collections stay at 1-2 a second. A frame still going over budget at one of
+  them is worth a look on a real machine with DevTools' Performance panel before more surgery.
+  Careful with the tooling: a sampling heap profile "without minor-GC garbage" still counts everything alive when it
+  stops (the last second's allocations), so it cannot say what is promoted. The trace's GC reasons can.
 - **feel**: text left as it was: BAAH and milk grass have no keyword, P and I are typed into notes (not in `KEY_FACE`),
   the Q shelf says Q on a pad, `sayTimes` says "2.86x as fast", PILGRIM'S SANDAL III and MIRROR SHARD III run long.
 - **tool**: the shieldman review did not finish; nothing from it is in.

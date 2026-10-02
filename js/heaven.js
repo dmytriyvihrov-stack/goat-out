@@ -1394,7 +1394,7 @@ Object.assign(Heaven, {
       }
       ctx.font = FONT_PICK.font('say', p.god ? 15 : 13);
       const lines = this.wrap(ctx, String(p.text).replace(/\s*\|\s*/g, ' '), p.god ? 250 : 200), lh = p.god ? 18 : 16;
-      const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16, h = lines.length * lh + 8;
+      const w = Math.max(...lines.map((l) => textW(ctx, l))) + 16, h = lines.length * lh + 8;
       const box = R.keepInView(p.x - w / 2, p.y * TILT - h, w, h, p.x, p.y * TILT);
       ctx.globalAlpha = Math.min(1, p.life * 2);
       ctx.fillStyle = 'rgba(58,44,78,0.84)'; ctx.fillRect(Math.round(box.x), Math.round(box.y), Math.round(w), Math.round(h));
@@ -1406,7 +1406,7 @@ Object.assign(Heaven, {
   },
   wrap(ctx, text, maxW) {
     const out = []; let line = '';
-    for (const word of String(text).split(' ')) { const t2 = line ? line + ' ' + word : word; if (ctx.measureText(t2).width > maxW && line) { out.push(line); line = word; } else line = t2; }
+    for (const word of String(text).split(' ')) { const t2 = line ? line + ' ' + word : word; if (textW(ctx, t2) > maxW && line) { out.push(line); line = word; } else line = t2; }
     if (line) out.push(line); return out;
   },
 });
@@ -1456,7 +1456,7 @@ Object.assign(Heaven, {
     const x = R.vcx + (n.x - cam.x) * z, y = R.vcy + (n.y - cam.y) * z * TILT - lift * z;
     const key = game.touch && game.touch.active ? 'GRAB' : keysOf(game).grab;
     ctx.save(); ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.textAlign = 'left';
-    const kw = ctx.measureText(key).width + 10 * s, ww = ctx.measureText(word).width, w = kw + ww + 18 * s, h = 22 * s;
+    const kw = textW(ctx, key) + 10 * s, ww = textW(ctx, word), w = kw + ww + 18 * s, h = 22 * s;
     const bx = Math.round(clamp(x - w / 2, 8, R.vw - w - 8)), by = Math.round(clamp(y - h, 8, R.vh - h - 8));
     ctx.fillStyle = 'rgba(58,44,78,0.86)'; ctx.fillRect(bx, by, w, h);
     ctx.fillStyle = '#f7d774'; ctx.fillRect(bx, by, w, 2 * s);
@@ -1503,8 +1503,8 @@ Object.assign(Heaven, {
     // the name plate
     // The epithet rides on the plate: out on heaven's pale floor, gold at 11 px, it could not be read.
     const subFont = `${Math.round(Math.max(12 * R.s, 13 * s))}px ${FONT}`;
-    ctx.font = subFont; const subW = ctx.measureText('father of horns').width;
-    ctx.font = `700 ${17 * s}px ${FONT_SC}`; const nameW = ctx.measureText('THE GOAT ABOVE').width, nw = nameW + subW + 44 * s;
+    ctx.font = subFont; const subW = textW(ctx, 'father of horns');
+    ctx.font = `700 ${17 * s}px ${FONT_SC}`; const nameW = textW(ctx, 'THE GOAT ABOVE'), nw = nameW + subW + 44 * s;
     ctx.fillStyle = 'rgba(30,20,44,0.95)'; ctx.fillRect(bx + 22 * s, by - 26 * s, nw, 28 * s);
     ctx.fillStyle = '#e0ac3e'; ctx.fillRect(bx + 22 * s, by - 26 * s, nw, 2 * s);
     ctx.fillStyle = '#f7d774'; ctx.textAlign = 'left'; ctx.fillText('THE GOAT ABOVE', bx + 37 * s, by - 6 * s);
@@ -1541,13 +1541,13 @@ Object.assign(Heaven, {
     ctx.font = `${13 * s}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.6)'; ctx.fillText('what the sacrifices buy, for good', x0 + 28 * s, y0 + 64 * s);
     // the heap
     ctx.textAlign = 'right'; ctx.font = `700 ${24 * s}px ${FONT_SC}`; ctx.fillStyle = '#fff4c2';
-    const heap = String(M.sacrifices), hw = ctx.measureText(heap).width;
+    const heap = String(M.sacrifices), hw = textW(ctx, heap);
     ctx.fillText(heap, x0 + pw - 26 * s, y0 + 44 * s);
     this.skull(ctx, x0 + pw - 34 * s - hw - 20 * s, y0 + 24 * s, 2.4 * s);
     // and the souls banked beside it
     const sl = String(M.souls || 0), sx = x0 + pw - 34 * s - hw - 44 * s;
     ctx.fillStyle = '#d9ccff'; ctx.fillText(sl, sx, y0 + 44 * s);
-    this.soulIcon(R, sx - ctx.measureText(sl).width - 12 * s, y0 + 36 * s, 20 * s);
+    this.soulIcon(R, sx - textW(ctx, sl) - 12 * s, y0 + 36 * s, 20 * s);
     ctx.font = `${Math.max(12 * R.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.6)'; ctx.fillText('souls  ·  sacrifices', x0 + pw - 26 * s, y0 + 62 * s);
     // the goat in the glass
     const gw = Math.min(pw * 0.3, 260 * s), gcx = x0 + 26 * s + gw / 2, gcy = y0 + ph * 0.56;
@@ -1584,11 +1584,11 @@ Object.assign(Heaven, {
       ctx.textAlign = 'right'; ctx.font = `700 ${16 * s}px ${FONT_SC}`;
       if (cost === undefined) { ctx.fillStyle = '#f7d774'; ctx.fillText('WHOLE', rx + rw - 14 * s, y + 24 * s); }
       else { ctx.fillStyle = afford ? '#fff4c2' : 'rgba(255,244,194,0.35)'; ctx.fillText(String(cost), rx + rw - 14 * s, y + 24 * s);
-        const cx2 = rx + rw - 22 * s - ctx.measureText(String(cost)).width - 16 * s;
+        const cx2 = rx + rw - 22 * s - textW(ctx, String(cost)) - 16 * s;
         this.skull(ctx, cx2, y + 8 * s, 1.8 * s, !afford);
         // a top rank's price in souls, left of the skull
         if (sc) { ctx.fillStyle = (M.souls || 0) >= sc ? '#d9ccff' : 'rgba(217,204,255,0.35)'; ctx.fillText(String(sc), cx2 - 10 * s, y + 24 * s);
-          this.soulIcon(R, cx2 - 22 * s - ctx.measureText(String(sc)).width, y + 17 * s, 16 * s, (M.souls || 0) < sc); } }
+          this.soulIcon(R, cx2 - 22 * s - textW(ctx, String(sc)), y + 17 * s, 16 * s, (M.souls || 0) < sc); } }
     });
     // the way out
     const cy2 = y0 + ph - 46 * s, bw2 = 170 * s, bx2 = rx + rw - bw2;
@@ -1626,13 +1626,13 @@ Object.assign(Heaven, {
     ctx.save(); ctx.font = `700 ${19 * s}px ${FONT}`;
     // as wide as what `drawPurse` lays on it: the heap and its skull only once the god has given the gathering
     const heap = Heaven.gifted() || M.sacrifices > 0;
-    const soulsW = ctx.measureText(String(M.souls || 0)).width;
-    let pw = soulsW + 40 * s + (heap ? ctx.measureText(String(shown)).width + HEAVEN_PIXELS.sprites.skull.w * 1.9 * s + 22 * s : 0), ph = 28 * s;
+    const soulsW = textW(ctx, String(M.souls || 0));
+    let pw = soulsW + 40 * s + (heap ? textW(ctx, String(shown)) + HEAVEN_PIXELS.sprites.skull.w * 1.9 * s + 22 * s : 0), ph = 28 * s;
     // and the god's two hundred under the heap, which on heaven's pale sky could not be read off the plate
     if (Heaven.gifted() && !Heaven.questDone()) {
       const q = TUNING.heaven.gift.quest;
       ctx.font = `700 ${Math.max(12 * R.s, 12 * s)}px ${FONT_SC}`;
-      pw = Math.max(pw, ctx.measureText(`FOR THE GOD ${q} / ${q}`).width + soulsW + 44 * s); ph = 42 * s;
+      pw = Math.max(pw, textW(ctx, `FOR THE GOD ${q} / ${q}`) + soulsW + 44 * s); ph = 42 * s;
     }
     ctx.fillStyle = 'rgba(58,44,78,0.82)'; ctx.fillRect(R.w - 16 * s - pw, 8 * s, pw + 10 * s, ph);
     ctx.fillStyle = '#e0ac3e'; ctx.fillRect(R.w - 16 * s - pw, 8 * s, pw + 10 * s, 2 * s);

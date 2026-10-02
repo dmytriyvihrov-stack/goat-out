@@ -272,7 +272,7 @@ Object.assign(Beast, {
     // The practice says what it wants, over the staves, where the eye already is.
     if (S.practice && !S.done) {
       let fs = Math.max(Math.ceil(12 * R.s), Math.round(14 * s)); ctx.font = FONT_PICK.font('text', fs);
-      const tw = ctx.measureText(C.practice.say).width; if (tw > W - 20 * s) { fs = Math.max(Math.ceil(12 * R.s), Math.floor(fs * (W - 20 * s) / tw)); ctx.font = FONT_PICK.font('text', fs); }
+      const tw = textW(ctx, C.practice.say); if (tw > W - 20 * s) { fs = Math.max(Math.ceil(12 * R.s), Math.floor(fs * (W - 20 * s) / tw)); ctx.font = FONT_PICK.font('text', fs); }
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(13,10,12,0.78)'; ctx.fillRect(x0, y0 - 26 * s, W, 26 * s);
       ctx.fillStyle = PALETTE.hen; ctx.fillText(C.practice.say, x0 + W / 2, y0 - 8 * s);

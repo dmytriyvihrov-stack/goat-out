@@ -222,7 +222,7 @@ const Painting = {
         // Flush with the picture's right edge, but never over the words beside it (a narrow picture
         // would put it there), nor over the dev drawer's word in the corner. A phone held upright has
         // no room beside them: there it stands centred over the words instead.
-        const bw = ctx.measureText(label).width + 28 * s, bh = 30 * s, corner = 80 * s;
+        const bw = textW(ctx, label) + 28 * s, bh = 30 * s, corner = 80 * s;
         const beside = Math.max(dx + dw - bw, W / 2 + gw / 2 + 14 * s), fits = beside + bw <= W - corner;
         const bx = fits ? beside : (W - bw) / 2, by = fits ? goR.y + (goR.h - bh) / 2 : goR.y - bh - 8 * s;
         const over = game.input.mouse && !game.touch.active && this.hit(game.input.mouse, { x: bx, y: by, w: bw, h: bh });
@@ -297,7 +297,7 @@ const Painting = {
     const next = !dead && game.climbDark && cur + 1 < n ? 'THE DARK' : this.floorName(game, to);
     const name = (i, label, col, al) => {
       ctx.save(); ctx.globalAlpha *= al; ctx.fillStyle = col;
-      ctx.fillText(label, clamp(X(i), x0 + ctx.measureText(label).width / 2, x0 + width + 10 * s - ctx.measureText(label).width / 2), Y + h + 20 * s);
+      ctx.fillText(label, clamp(X(i), x0 + textW(ctx, label) / 2, x0 + width + 10 * s - textW(ctx, label) / 2), Y + h + 20 * s);
       ctx.restore();
     };
     if (dead) name(cur, `LEVEL ${cur + 1} · ${this.floorName(game, cur)}`, PALETTE.blood, 1);
@@ -340,7 +340,7 @@ const Painting = {
     const words = card.lines.slice(1).filter((l) => l && !/^LEVEL /.test(l));
     const plate = card.killer && card.killer !== 'fall' ? Math.round(46 * s) : 0;
     ctx.font = `${15 * s}px ${FONT}`;
-    const lw = words.length ? Math.max(...words.map((w) => ctx.measureText(w).width)) : 0;
+    const lw = words.length ? Math.max(...words.map((w) => textW(ctx, w))) : 0;
     const lx = W / 2 + (plate ? (plate + 14 * s) / 2 : 0);
     if (plate) r.drawKiller(card.killer, lx - lw / 2 - 14 * s - plate / 2, y - 17 * s, plate);
     ctx.textAlign = 'center';

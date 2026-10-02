@@ -1031,7 +1031,7 @@ const Beast = {
     ctx.strokeStyle = 'rgba(232,221,200,0.25)'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx + 6 * s, by + 9 * s, bw - 12 * s, bh - 17 * s);
     // the name plate
     const name = 'THE ' + (Beast.NAME[K.kind] || 'ANIMAL');
-    ctx.font = `700 ${17 * s}px ${FONT_SC}`; const nw = ctx.measureText(name).width + 30 * s;
+    ctx.font = `700 ${17 * s}px ${FONT_SC}`; const nw = textW(ctx, name) + 30 * s;
     const nx = bx + 30 * s + half * 2;   // beside the animal, which stands on the box's edge
     ctx.fillStyle = 'rgba(22,15,20,0.96)'; ctx.fillRect(nx, by - 26 * s, nw, 28 * s);
     ctx.fillStyle = PALETTE.ochre; ctx.fillRect(nx, by - 26 * s, nw, 2 * s);
@@ -1065,7 +1065,7 @@ const Beast = {
         let wx = x + 14 * s;
         if (!game.touch.active) {
           ctx.font = `700 ${Math.round(12 * s)}px ${FONT_SC}`;
-          const cw = Math.max(cap, ctx.measureText(key).width + 14 * s);
+          const cw = Math.max(cap, textW(ctx, key) + 14 * s);
           ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(wx, cy + 3 * s, cw, cap);
           ctx.fillStyle = '#efe6d0'; ctx.fillRect(wx, cy, cw, cap - 3 * s);
           ctx.fillStyle = '#b9ad94'; ctx.fillRect(wx, cy + cap - 3 * s, cw, 3 * s);
@@ -1074,7 +1074,7 @@ const Beast = {
         }
         ctx.textAlign = 'left'; ctx.font = `700 ${Math.round((i ? 19 : 22) * s)}px ${FONT_SC}`; ctx.fillStyle = col;
         ctx.fillText(word, wx, y - lift + bh2 * 0.64);
-        const ww = ctx.measureText(word).width;
+        const ww = textW(ctx, word);
         ctx.font = `${Math.round(14 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(232,221,200,0.65)'; ctx.fillText(say, wx + ww + 8 * s, y - lift + bh2 * 0.64);
       });
       ctx.restore();

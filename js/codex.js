@@ -41,12 +41,12 @@ const Codex = {
   // already set: plain words in `color`, the game's own words in theirs with a dotted line under them,
   // each one a box the pointer can rest on (`R.tips`, read by `drawTip` at the end of the frame).
   line(R, text, x, y, align, color) {
-    const ctx = R.ctx, segs = this.segments(text), w = ctx.measureText(text).width;
+    const ctx = R.ctx, segs = this.segments(text), w = textW(ctx, text);
     const fs = parseFloat((/(\d+(?:\.\d+)?)px/.exec(ctx.font) || [0, 12])[1]);
     let cx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
     const keep = ctx.textAlign; ctx.textAlign = 'left';
     for (const sg of segs) {
-      const sw = ctx.measureText(sg.t).width;
+      const sw = textW(ctx, sg.t);
       if (sg.kw) {
         ctx.fillStyle = PALETTE[sg.kw.color] || PALETTE.bone; ctx.fillText(sg.t, cx, y);
         const u = Math.max(1, Math.round(fs / 13));
@@ -89,7 +89,7 @@ const Codex = {
       const ty = y + pad + 20 * s + q.y + 0.8 * lh, m2 = /^(\+ ([A-Z]+):)/.exec(q.l), o = m2 && KEYWORDS.find((k) => k.title === m2[2]);
       if (!o) { ctx.fillText(q.l, x + pad, ty); return; }
       ctx.fillStyle = PALETTE[o.color] || PALETTE.bone; ctx.fillText(m2[1], x + pad, ty);
-      const wPre = ctx.measureText(m2[1]).width; ctx.fillStyle = 'rgba(239,230,208,0.88)'; ctx.fillText(q.l.slice(m2[1].length), x + pad + wPre, ty);
+      const wPre = textW(ctx, m2[1]); ctx.fillStyle = 'rgba(239,230,208,0.88)'; ctx.fillText(q.l.slice(m2[1].length), x + pad + wPre, ty);
     });
     ctx.restore();
   },
@@ -303,7 +303,7 @@ const Codex = {
       const items = list.filter((e) => e.sec === sec);
       if (!items.length && !always.includes(sec)) continue;
       ctx.font = `700 ${Math.max(12 * R.s, 13 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText(sec, lx, y + 12 * s);
-      const tw = ctx.measureText(sec).width; ctx.fillStyle = 'rgba(185,135,58,0.3)'; ctx.fillRect(lx + tw + 10 * s, y + 7 * s, half - 50 * s - tw, Math.max(1, s));
+      const tw = textW(ctx, sec); ctx.fillStyle = 'rgba(185,135,58,0.3)'; ctx.fillRect(lx + tw + 10 * s, y + 7 * s, half - 50 * s - tw, Math.max(1, s));
       y += 22 * s;
       if (!items.length) {
         ctx.font = FONT_PICK.font('text', Math.max(12 * R.s, 12.5 * s)); ctx.fillStyle = 'rgba(239,230,208,0.35)';
@@ -346,7 +346,7 @@ const Codex = {
     ctx.textAlign = 'left'; ctx.font = `${Math.max(12 * R.s, 12 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
     const hint = game.touch.active ? 'tap a box to read it · tap here to close' : padOn(game) ? 'the stick picks · B closes' : 'point at a box to read it · I or ESC closes';
     ctx.fillText(hint, lx, y0 + ph - 16 * s);
-    const hw = ctx.measureText(hint).width; B.closeRect = { x: lx, y: y0 + ph - 32 * s, w: hw, h: 22 * s };
+    const hw = textW(ctx, hint); B.closeRect = { x: lx, y: y0 + ph - 32 * s, w: hw, h: 22 * s };
     ctx.restore();
   },
 

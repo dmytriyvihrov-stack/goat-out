@@ -748,7 +748,7 @@ const Talisman = {
           if (val !== null && typeof val === 'object') continue;
           ctx.font = `700 ${8 * s}px ${FONT_SC}`;
           const shown = typeof val === 'number' && !Number.isInteger(val) ? Math.round(val * 100) / 100 : val;
-          const w = ctx.measureText(`${key} ${shown}`).width + 10 * s;
+          const w = textW(ctx, `${key} ${shown}`) + 10 * s;
           if (px + w > cx + cw) { px = cx; py += 19 * s; }
           if (py > y + rowH - 16 * s) break;
           r.numChip(d, px, py, key, val, `tal-edit=${a.id}.${ti}.${key}`);

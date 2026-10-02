@@ -244,9 +244,10 @@ const Dark = {
     const men = [];
     for (const e of game.enemies) if (!e.dead && e !== hold && hyp(e.x - g.x, e.y - g.y) < reach + e.r && !game.hidden(e.x, e.y)) men.push(e);
     if (!list.length && !men.length) return;
-    const m = ctx.getTransform(), W = r.w, H = r.h;
+    const M = xform(ctx), m = { a: M.a, b: M.b, c: M.c, d: M.d, e: M.e, f: M.f }, W = r.w, H = r.h;
     // The screen box round his hearing, with a tile and a half over the top for whatever is tall.
-    const pts = [[g.x - reach - TILE, g.y - reach - TILE * 2], [g.x + reach + TILE, g.y + reach + TILE]].map(([x, y]) => m.transformPoint(new DOMPoint(x, y)));
+    const at = (x, y) => ({ x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f });
+    const pts = [at(g.x - reach - TILE, g.y - reach - TILE * 2), at(g.x + reach + TILE, g.y + reach + TILE)];
     const bx = Math.max(0, Math.floor(Math.min(pts[0].x, pts[1].x))), by = Math.max(0, Math.floor(Math.min(pts[0].y, pts[1].y)));
     const bw = Math.min(W, Math.ceil(Math.max(pts[0].x, pts[1].x))) - bx, bh = Math.min(H, Math.ceil(Math.max(pts[0].y, pts[1].y))) - by;
     if (bw < 2 || bh < 2) return;

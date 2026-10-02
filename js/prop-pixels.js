@@ -1107,7 +1107,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   // columns only move as fast as the zoom itself. Upright draws only; anything turned is left alone.
   const putSnap = (ctx, name, x, y, k = TX) => {
     if (!ctx.getTransform) return put(ctx, name, x, y, k);
-    const g = S[pick(name)], m = ctx.getTransform();
+    const g = S[pick(name)], m = typeof xform === 'function' ? xform(ctx) : ctx.getTransform();
     if (m.b !== 0 || m.c !== 0 || m.a <= 0 || m.d <= 0) return put(ctx, name, x, y, k);
     const X0 = Math.round(m.a * x + m.e), Y0 = Math.round(m.d * y + m.f);
     const X1 = Math.round(m.a * (x + g.w * k) + m.e), Y1 = Math.round(m.d * (y + g.h * k) + m.f);

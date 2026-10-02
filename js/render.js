@@ -148,6 +148,158 @@ function farHash(i, j) {
   return v - Math.floor(v);
 }
 
+// THE CANVAS'S STATE, KEPT BY HAND (2 Oct 2026). The full collection that came round every few seconds,
+// a dropped frame each time, was the browser's own heap more than the script's: every `ctx.save()` is a
+// new copy of the whole canvas state there (about 700 bytes; 170 a frame, ten thousand a second) and
+// every `getTransform()` a new DOMMatrix, and that heap filling up is what started each collection. So
+// every 2D context keeps its state in plain numbers and values here instead (`ctx.__m`):
+// - the transform (a..f), which `xform(ctx)` reads (live: copy it before changing the transform);
+// - `save` records the transform only, and a property set inside a saved level records its old value
+//   the first time it changes there; `restore` puts back what changed, and the transform;
+// - `clip()` cannot be undone by hand, so the browser's own save is made when a clip is, and undone
+//   with the level it was made in;
+// - a property set to the value it already holds is not passed on at all.
+// Nothing drawn changes: `CANVAS_STATE.on = false` (or `#nativestate`) hands it all back to the browser,
+// between two frames, for comparing one frame pixel for pixel. A canvas resized loses its state, and this copy with it.
+const CANVAS_STATE = { on: typeof location === 'undefined' || !/nativestate/.test(location.hash), fresh: null, epoch: 0,
+  set(on) { CANVAS_STATE.on = on; CANVAS_STATE.epoch++; } };
+(() => {
+  if (typeof CanvasRenderingContext2D === 'undefined') return;
+  const P = CanvasRenderingContext2D.prototype, o = {};
+  for (const k of ['save', 'restore', 'translate', 'scale', 'rotate', 'transform', 'setTransform', 'resetTransform', 'reset', 'clip', 'setLineDash']) o[k] = P[k];
+  const PROPS = ['fillStyle', 'strokeStyle', 'globalAlpha', 'globalCompositeOperation', 'lineWidth', 'lineCap', 'lineJoin', 'miterLimit', 'lineDashOffset',
+    'shadowOffsetX', 'shadowOffsetY', 'shadowBlur', 'shadowColor', 'font', 'textAlign', 'textBaseline', 'direction', 'imageSmoothingEnabled',
+    'imageSmoothingQuality', 'filter', 'letterSpacing', 'wordSpacing', 'fontKerning', 'textRendering', 'fontStretch', 'fontVariantCaps']
+    .filter((k) => Object.getOwnPropertyDescriptor(P, k));
+  const D = PROPS.map((k) => Object.getOwnPropertyDescriptor(P, k)), NP = PROPS.length;
+  // What each property holds, as far as is known: `kt` 0 not known, 1 a number (in `kn`), 2 anything else (in `k`).
+  // Numbers live in a Float64Array: kept in a plain array each one was a boxed number that outlived its frame
+  // and was promoted, which was itself a fifth of what reached the old heap.
+  const fresh = CANVAS_STATE.fresh = () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0, s: [], st: [], depth: 0,
+    k: new Array(NP).fill(undefined), kn: new Float64Array(NP), kt: new Uint8Array(NP), ep: 0 });
+  const st = (c) => c.__m || (c.__m = fresh());
+  const ident = (m) => { m.a = 1; m.b = 0; m.c = 0; m.d = 1; m.e = 0; m.f = 0; };
+  const unknow = (m) => { m.kt.fill(0); m.k.fill(undefined); };
+  const forget = (m) => { ident(m); m.s.length = 0; m.depth = 0; unknow(m); };
+  {
+    P.save = function () {
+      const m = st(this);
+      if (!CANVAS_STATE.on) { m.s.push(m.a, m.b, m.c, m.d, m.e, m.f); return o.save.call(this); }
+      let r = m.st[m.depth];
+      if (!r) r = m.st[m.depth] = { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0, n: 0, mask: 0, v: new Array(NP).fill(undefined), vn: new Float64Array(NP), vt: new Uint8Array(NP), dash: null };
+      r.a = m.a; r.b = m.b; r.c = m.c; r.d = m.d; r.e = m.e; r.f = m.f; r.n = 0; r.mask = 0; r.dash = null;
+      m.depth++;
+    };
+    P.restore = function () {
+      const m = st(this);
+      if (!CANVAS_STATE.on) {
+        const s = m.s; if (s.length) { m.f = s.pop(); m.e = s.pop(); m.d = s.pop(); m.c = s.pop(); m.b = s.pop(); m.a = s.pop(); }
+        return o.restore.call(this);
+      }
+      if (!m.depth) return;
+      const r = m.st[--m.depth];
+      // A clip made at this level: the browser's own restore takes it off (and every property with it).
+      if (r.n) { while (r.n > 0) { o.restore.call(this); r.n--; } unknow(m); }
+      if (r.mask) {
+        for (let i = 0; i < NP; i++) if (r.mask & (1 << i)) {
+          if (r.vt[i] === 1) { D[i].set.call(this, r.vn[i]); m.kn[i] = r.vn[i]; m.kt[i] = 1; m.k[i] = undefined; }
+          else { D[i].set.call(this, r.v[i]); m.k[i] = r.v[i]; m.kt[i] = 2; r.v[i] = undefined; }
+        }
+        r.mask = 0;
+      }
+      if (r.dash) { o.setLineDash.call(this, r.dash); r.dash = null; }
+      m.a = r.a; m.b = r.b; m.c = r.c; m.d = r.d; m.e = r.e; m.f = r.f;
+      o.setTransform.call(this, r.a, r.b, r.c, r.d, r.e, r.f);
+    };
+    // A value the browser may refuse (an alpha out of 0..1, a width that is not over 0, a colour worked out
+    // to NaN) is not remembered: what it holds then is asked of it. Asking always cost a string a time.
+    const AL = PROPS.indexOf('globalAlpha'), POS = new Set([PROPS.indexOf('lineWidth'), PROPS.indexOf('miterLimit')]), NONNEG = PROPS.indexOf('shadowBlur');
+    // Strings are not kept, but for the font (a font set costs the browser an object; a colour does not): a
+    // colour worked out in a template is a string that, kept here for as long as the colour held, outlived its
+    // frame and was promoted. A string is passed straight on, and asked back only if a saved level needs it.
+    const FONT = PROPS.indexOf('font');
+    const trust = (i, v) => typeof v === 'number' ? Number.isFinite(v) && (i === AL ? v >= 0 && v <= 1 : POS.has(i) ? v > 0 : i === NONNEG ? v >= 0 : true)
+      : typeof v === 'string' ? i === FONT && !/NaN|undefined|Infinity/.test(v) : v !== undefined && v !== null;
+    PROPS.forEach((k, i) => {
+      const d = D[i], bit = 1 << i;
+      Object.defineProperty(P, k, { get: d.get, configurable: true, enumerable: d.enumerable, set(v) {
+        if (!CANVAS_STATE.on) return d.set.call(this, v);
+        const m = st(this);
+        // Values remembered while it was handed back are not trusted (`epoch` moves on every switch).
+        if (m.ep !== CANVAS_STATE.epoch) { unknow(m); m.ep = CANVAS_STATE.epoch; }
+        const num = typeof v === 'number', kt = m.kt[i];
+        if (num ? kt === 1 && m.kn[i] === v : kt === 2 && m.k[i] === v) return;
+        if (m.depth) {
+          const r = m.st[m.depth - 1];
+          if (!(r.mask & bit)) {
+            r.mask |= bit;
+            if (kt === 1) { r.vn[i] = m.kn[i]; r.vt[i] = 1; }
+            else { const old = kt === 2 ? m.k[i] : d.get.call(this); if (typeof old === 'number') { r.vn[i] = old; r.vt[i] = 1; } else { r.v[i] = old; r.vt[i] = 2; } }
+          }
+        }
+        d.set.call(this, v);
+        if (!trust(i, v)) { m.kt[i] = 0; m.k[i] = undefined; }
+        else if (num) { m.kn[i] = v; m.kt[i] = 1; m.k[i] = undefined; }
+        else { m.k[i] = v; m.kt[i] = 2; }
+      } });
+    });
+    P.clip = function (a, b) {
+      const m = st(this);
+      if (CANVAS_STATE.on && m.depth) { o.save.call(this); m.st[m.depth - 1].n++; }
+      return a === undefined ? o.clip.call(this) : b === undefined ? o.clip.call(this, a) : o.clip.call(this, a, b);
+    };
+    P.setLineDash = function (seg) {
+      const m = st(this);
+      if (CANVAS_STATE.on && m.depth) { const r = m.st[m.depth - 1]; if (!r.dash) r.dash = this.getLineDash(); }
+      o.setLineDash.call(this, seg);
+    };
+  }
+  P.translate = function (x, y) { const m = st(this); m.e += m.a * x + m.c * y; m.f += m.b * x + m.d * y; o.translate.call(this, x, y); };
+  P.scale = function (x, y) { const m = st(this); m.a *= x; m.b *= x; m.c *= y; m.d *= y; o.scale.call(this, x, y); };
+  P.rotate = function (t) {
+    const m = st(this), cs = Math.cos(t), sn = Math.sin(t), a = m.a, b = m.b, c = m.c, d = m.d;
+    m.a = a * cs + c * sn; m.b = b * cs + d * sn; m.c = c * cs - a * sn; m.d = d * cs - b * sn;
+    o.rotate.call(this, t);
+  };
+  P.transform = function (a2, b2, c2, d2, e2, f2) {
+    const m = st(this), a = m.a, b = m.b, c = m.c, d = m.d;
+    m.a = a * a2 + c * b2; m.b = b * a2 + d * b2; m.c = a * c2 + c * d2; m.d = b * c2 + d * d2;
+    m.e += a * e2 + c * f2; m.f += b * e2 + d * f2;
+    o.transform.call(this, a2, b2, c2, d2, e2, f2);
+  };
+  P.setTransform = function (a, b, c, d, e, f) {
+    const m = st(this);
+    if (a === undefined || typeof a === 'object') {
+      const t = a || {};
+      a = t.a ?? t.m11 ?? 1; b = t.b ?? t.m12 ?? 0; c = t.c ?? t.m21 ?? 0; d = t.d ?? t.m22 ?? 1; e = t.e ?? t.m41 ?? 0; f = t.f ?? t.m42 ?? 0;
+    }
+    m.a = a; m.b = b; m.c = c; m.d = d; m.e = e; m.f = f;
+    o.setTransform.call(this, a, b, c, d, e, f);
+  };
+  P.resetTransform = function () { ident(st(this)); o.resetTransform.call(this); };
+  if (o.reset) P.reset = function () { forget(st(this)); o.reset.call(this); };
+  // Resizing a canvas resets its context, state and stack with it.
+  const C = HTMLCanvasElement.prototype, gc = C.getContext;
+  C.getContext = function (kind, opts) { const x = gc.call(this, kind, opts); if (x && kind === '2d') this.__c2d = x; return x; };
+  for (const k of ['width', 'height']) {
+    const dsc = Object.getOwnPropertyDescriptor(C, k);
+    Object.defineProperty(C, k, { get: dsc.get, configurable: true, set(v) { dsc.set.call(this, v); const x = this.__c2d; if (x && x.__m) forget(x.__m); } });
+  }
+})();
+function xform(ctx) {
+  if (ctx.__m) return ctx.__m;
+  if (CANVAS_STATE.fresh && ctx instanceof CanvasRenderingContext2D) return (ctx.__m = CANVAS_STATE.fresh());
+  return ctx.getTransform();   // any other kind of context (an OffscreenCanvas's) is asked the slow way
+}
+// `textW(ctx, s)`, remembered by font and string: each call is a TextMetrics in the browser's
+// heap, and the HUD's wrapping and the floating words asked for a dozen a frame of the same few lines.
+const TEXT_W = new Map();
+function textW(ctx, s) {
+  const k = ctx.font + '\n' + s; let w = TEXT_W.get(k);
+  if (w === undefined) { if (TEXT_W.size > 4000) TEXT_W.clear(); TEXT_W.set(k, (w = ctx.measureText(s).width)); }
+  return w;
+}
+
 // The pixel heart: the HUD hearts, and the one that hangs between the two of them in the pen.
 const HEART_GLYPH = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
 
@@ -415,12 +567,12 @@ class Renderer {
     ctx.save();
     ctx.globalAlpha = clamp(a, 0, 1);
     ctx.font = `700 ${size}px ${FONT_SC}`; ctx.textBaseline = 'middle';
-    const w = ctx.measureText(B.text).width;
+    const w = textW(ctx, B.text);
     let x = (this.vw - w) / 2;
     // under the level card, which comes up over the same first seconds
     const y = this.vh * 0.74;
     for (let i = 0; i < B.text.length; i++) {
-      const ch = B.text[i], cw = ctx.measureText(ch).width, dy = sober ? 0 : Math.sin(t * 3 + i * 0.45) * size * 0.18;
+      const ch = B.text[i], cw = textW(ctx, ch), dy = sober ? 0 : Math.sin(t * 3 + i * 0.45) * size * 0.18;
       ctx.fillStyle = 'rgba(10,4,16,0.6)'; ctx.fillText(ch, x + 3, y + dy + 3);
       ctx.fillStyle = sober ? PALETTE.bone : `hsl(${(t * 60 + i * 18) % 360},90%,72%)`; ctx.fillText(ch, x, y + dy);
       x += cw;
@@ -1750,7 +1902,7 @@ class Renderer {
   // it later does not move the words.
   clearFloorRow(game, c, lines, lh) {
     const ctx = this.ctx, world = game.world;
-    let tw = 0; for (const l of lines) tw = Math.max(tw, ctx.measureText(l).width);
+    let tw = 0; for (const l of lines) tw = Math.max(tw, textW(ctx, l));
     const half = tw / 2 + TILE * 0.3, bandH = (lines.length * lh) / 2 + TILE * 0.35;
     const cost = (y) => {
       let n = 0;
@@ -1775,7 +1927,7 @@ class Renderer {
     const ctx = this.ctx;
     ctx.font = `700 ${size}px ${FONT_SC}`;
     let longest = 0;
-    for (const l of lines) longest = Math.max(longest, ctx.measureText(l).width);
+    for (const l of lines) longest = Math.max(longest, textW(ctx, l));
     if (longest > maxW && longest > 0) {
       size = Math.max(11, size * maxW / longest);
       ctx.font = `700 ${size}px ${FONT_SC}`;
@@ -1914,27 +2066,33 @@ class Renderer {
   drawLight(game, cam) {
     const ctx = this.ctx, wd = game.world;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
-    const spots = [];
     // Only the flames whose pool can reach the view: every bowl on the floor (up to 37) was a gradient
-    // a frame, and they ate into the 60 the burning tiles are allowed.
-    const vx0 = (x0 - 3) * TILE, vx1 = (x1 + 4) * TILE, vy0 = (y0 - 3) * TILE, vy1 = (y1 + 4) * TILE;
-    for (const p of game.props) if (!p.broken && (p.kind === 'brazier' || p.kind === 'lamp') && p.x > vx0 && p.x < vx1 && p.y > vy0 && p.y < vy1) spots.push([p.x, p.y, 96]);
-    for (let ty = Math.max(0, y0); ty <= Math.min(wd.H - 1, y1) && spots.length < 60; ty++) {
-      for (let tx = Math.max(0, x0); tx <= Math.min(wd.W - 1, x1) && spots.length < 60; tx++) {
-        if (wd.fire[ty * wd.W + tx] > 0) spots.push([tx * TILE + 16, ty * TILE + 16, 80, wd.fireKind[ty * wd.W + tx] === 1]);
-      }
-    }
-    if (!spots.length) return;
-    ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    for (const [x, y, r, witch] of spots) {
-      const rr = r * (0.9 + 0.1 * Math.sin(this.t * 9 + x * 0.05));
-      const g = ctx.createRadialGradient(x, y, 0, x, y, rr);
+    // a frame, and they ate into the 60 the burning tiles are allowed. Each pool is one gradient of
+    // radius 1 per colour, made once and scaled into place: a new gradient a flame a frame was an
+    // object in the browser's heap every time, for the collector to sweep.
+    const L = this.lightGrad || (this.lightGrad = [false, true].map((witch) => {
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
       if (witch) { g.addColorStop(0, 'rgba(125,92,255,0.34)'); g.addColorStop(0.5, 'rgba(91,74,138,0.13)'); }
       else { g.addColorStop(0, 'rgba(242,162,51,0.34)'); g.addColorStop(0.5, 'rgba(192,57,43,0.11)'); }
       g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+      return g;
+    }));
+    const vx0 = (x0 - 3) * TILE, vx1 = (x1 + 4) * TILE, vy0 = (y0 - 3) * TILE, vy1 = (y1 + 4) * TILE;
+    let n = 0, open = false;
+    const pool = (x, y, r, witch) => {
+      if (!open) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; open = true; }
+      const rr = r * (0.9 + 0.1 * Math.sin(this.t * 9 + x * 0.05));
+      ctx.save(); ctx.translate(x, y); ctx.scale(rr, rr);
+      ctx.fillStyle = L[witch ? 1 : 0]; ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.fill();
+      ctx.restore(); n++;
+    };
+    for (const p of game.props) if (!p.broken && (p.kind === 'brazier' || p.kind === 'lamp') && p.x > vx0 && p.x < vx1 && p.y > vy0 && p.y < vy1) pool(p.x, p.y, 96, false);
+    for (let ty = Math.max(0, y0); ty <= Math.min(wd.H - 1, y1) && n < 60; ty++) {
+      for (let tx = Math.max(0, x0); tx <= Math.min(wd.W - 1, x1) && n < 60; tx++) {
+        if (wd.fire[ty * wd.W + tx] > 0) pool(tx * TILE + 16, ty * TILE + 16, 80, wd.fireKind[ty * wd.W + tx] === 1);
+      }
     }
-    ctx.restore();
+    if (open) ctx.restore();
   }
 
   // Dust drifting toward the exit: the brief's direction cue.
@@ -2020,7 +2178,7 @@ class Renderer {
   // 2026). In the floor's squashed space the cells come out a little flat, so where the transform is
   // the world's they are laid counter-squashed, square on screen, the ellipse the same size as before.
   pixelShadow(x, y, rx, ry, col) {
-    const ctx = this.ctx, C = TUNING.effects.pixel, m = ctx.getTransform();
+    const ctx = this.ctx, C = TUNING.effects.pixel, m = xform(ctx);
     const flat = Math.abs(m.b) < 1e-6 && Math.abs(m.c) < 1e-6 && Math.abs(m.d / m.a - TILT) < 0.02, ky = flat ? TILT : 1;
     const nx = Math.max(1, Math.round(rx / C)), ny = Math.max(1, Math.round(ry * ky / C));
     this.shadowCells ||= new Map();
@@ -2199,7 +2357,7 @@ class Renderer {
     const ctx = this.ctx, s = this.hs || this.ts, f = game.fps;
     const text = `${Math.round(f.rate)} FPS · worst ${f.worst.toFixed(0)} ms · game ${f.work.toFixed(1)} ms`;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = `700 ${Math.max(12 * this.s, 11 * s)}px ${FONT}`; ctx.textAlign = 'left';
-    const w = ctx.measureText(text).width, x = 14 * this.s, y = 82 * this.s;   // under the hearts, clear of the dev corner
+    const w = textW(ctx, text), x = 14 * this.s, y = 82 * this.s;   // under the hearts, clear of the dev corner
     ctx.fillStyle = 'rgba(13,10,12,0.7)'; ctx.fillRect(x - 5 * this.s, y - 16 * this.s, w + 10 * this.s, 22 * this.s);
     ctx.fillStyle = f.rate < 40 ? PALETTE.blood : f.rate < 55 ? PALETTE.fireHi : PALETTE.bone;
     ctx.fillText(text, x, y); ctx.restore();
@@ -3503,7 +3661,7 @@ class Renderer {
       let by = e.y * TILT - head - (notched ? 14 : 7);
       ctx.font = FONT_PICK.font('say', e.kind === 'butcher' ? 11 : 9.5);
       ctx.textAlign = 'center';
-      const tw = ctx.measureText(e.say.text).width;
+      const tw = textW(ctx, e.say.text);
       // Where the world pass put it (`sayLift`) is where THE DARK lays it again.
       if (placed) {
         const hits = (p) => Math.abs(p.x - e.x) < (p.w + tw + 8) / 2 + 1 && Math.abs(p.y - by) < 13;
@@ -3567,7 +3725,7 @@ class Renderer {
   // where he stands, and a canvas shadow is one exact colour, blur 0, offset in device px (which is
   // why each side's offset is pushed through the transform by hand).
   bossOutline(body, px, color) {
-    const ctx = this.ctx, m = ctx.getTransform(), OFF = 20000;
+    const ctx = this.ctx, T = xform(ctx), OFF = 20000, m = { a: T.a, b: T.b, c: T.c, d: T.d, e: T.e, f: T.f };   // a copy: the loop sets the transform
     ctx.save();
     ctx.shadowColor = color; ctx.shadowBlur = 0; ctx.shadowOffsetX = OFF; ctx.shadowOffsetY = 0;
     for (let i = 0; i < 8; i++) {
@@ -4159,7 +4317,7 @@ class Renderer {
     // the game and this is not part of the game: it is a door for whoever is building it.
     const pad = 8 * s, label = d.open ? 'close dev' : 'dev tools';
     ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
-    const cw = ctx.measureText(label).width + 16 * s, chH = 17 * s;
+    const cw = textW(ctx, label) + 16 * s, chH = 17 * s;
     // Bottom left, over the seed and the build: the bottom-right corner is the skill rail's now.
     const cx = pad, cy = this.h - 38 * this.hs - chH;
     let toastY = cy - 10 * s;
@@ -4341,7 +4499,7 @@ class Renderer {
     const shown = typeof value === 'number' && !Number.isInteger(value) ? Math.round(value * 100) / 100 : value;
     const text = `${label} ${shown}`;
     ctx.font = `700 ${8 * s}px ${FONT_SC}`;
-    const w = ctx.measureText(text).width + 10 * s;
+    const w = textW(ctx, text) + 10 * s;
     ctx.fillStyle = 'rgba(185,135,58,0.22)'; ctx.fillRect(x, y, w, 16 * s);
     ctx.strokeStyle = 'rgba(242,162,51,0.5)'; ctx.lineWidth = 1 * s; ctx.strokeRect(x, y, w, 16 * s);
     ctx.fillStyle = PALETTE.fireHi; ctx.textAlign = 'center';
@@ -4354,9 +4512,9 @@ class Renderer {
   // Cut a line to a width with an ellipsis, in whatever font is set.
   clip(text, maxW) {
     const ctx = this.ctx;
-    if (ctx.measureText(text).width <= maxW) return text;
+    if (textW(ctx, text) <= maxW) return text;
     let t = text;
-    while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+    while (t.length > 1 && textW(ctx, t + '…') > maxW) t = t.slice(0, -1);
     return t + '…';
   }
 
@@ -4524,7 +4682,7 @@ class Renderer {
     const count = (st) => JUICE.filter((j) => j.status === st).length;
     ctx.font = `700 ${F(11)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE JUICE', pad, top + 10 * s);
-    const titleW = ctx.measureText('THE JUICE').width + 14 * s;
+    const titleW = textW(ctx, 'THE JUICE') + 14 * s;
     ctx.font = `400 ${F(8.5)}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
     ctx.fillText(this.clip(`${JUICE.length} effects · ${count('in')} in game · ${count('new')} new · ${count('backlog')} backlog · sizes read live off TUNING · click a row to open it · ▶ PLAY to watch it`, W - pad * 2 - titleW), pad + titleW, top + 10 * s);
     [['all', 'ALL'], ['in', 'IN GAME'], ['new', 'NEW'], ['backlog', 'BACKLOG']].forEach(([id, label], i) =>
@@ -4549,7 +4707,7 @@ class Renderer {
       let line = '';
       for (const word of words) {
         const next = line ? line + ' ' + word : word;
-        if (ctx.measureText(next).width > w && line) { lines.push(line); line = word; } else line = next;
+        if (textW(ctx, next) > w && line) { lines.push(line); line = word; } else line = next;
       }
       if (line) lines.push(line);
       if (lines.length > max) { lines.length = max; lines[max - 1] = lines[max - 1].replace(/\s*\S*$/, '') + ' …'; }
@@ -4585,7 +4743,7 @@ class Renderer {
       nameLines.forEach((l, k) => ctx.fillText(l, colX[0], y + 12 * s + k * lineH));
       const [fg, bg] = tint[j.status];
       ctx.font = `700 ${F(7.5)}px ${FONT_SC}`;
-      const chip = word[j.status] + ' · ' + j.cat, cw = ctx.measureText(chip).width + 8 * s, cy = y + 12 * s + nameLines.length * lineH - lineH * 0.55;
+      const chip = word[j.status] + ' · ' + j.cat, cw = textW(ctx, chip) + 8 * s, cy = y + 12 * s + nameLines.length * lineH - lineH * 0.55;
       ctx.fillStyle = bg; ctx.fillRect(colX[0], cy, cw, chipH);
       ctx.fillStyle = fg; ctx.fillText(chip, colX[0] + 4 * s, cy + chipH - 3.5 * s);
       // ▶ PLAY (the game's own code) or ≈ PLAY (one thing set by hand); a row with none says why
@@ -4593,7 +4751,7 @@ class Renderer {
       const kind = JuicePreview.kind(j.name), py = cy + chipH + 3 * s;
       if (kind) {
         const on = JuicePreview.row === j.name, label = (on ? '■ ' : kind === 'live' ? '▶ ' : '≈ ') + (on ? 'PLAYING' : 'PLAY');
-        const pw = ctx.measureText(label).width + 10 * s;
+        const pw = textW(ctx, label) + 10 * s;
         ctx.fillStyle = on ? 'rgba(185,135,58,0.6)' : kind === 'live' ? 'rgba(242,162,51,0.22)' : 'rgba(185,135,58,0.14)'; ctx.fillRect(colX[0], py, pw, chipH);
         ctx.strokeStyle = kind === 'live' ? PALETTE.fireHi : PALETTE.ochre; ctx.lineWidth = Math.max(1, this.s); ctx.strokeRect(colX[0], py, pw, chipH);
         ctx.fillStyle = kind === 'live' || on ? PALETTE.fireHi : PALETTE.ochre; ctx.fillText(label, colX[0] + 5 * s, py + chipH - 3.5 * s);
@@ -4810,7 +4968,7 @@ class Renderer {
     legend.forEach(([label, color]) => {
       ctx.fillStyle = color; ctx.fillRect(lx, ly - 7 * s, 8 * s, 8 * s);
       ctx.fillStyle = 'rgba(239,230,208,0.65)'; ctx.fillText(label, lx + 11 * s, ly);
-      lx += 11 * s + ctx.measureText(label).width + 14 * s;
+      lx += 11 * s + textW(ctx, label) + 14 * s;
     });
     // The ground overlay is not a colour, it is an absence, so it gets its own small sample rather
     // than a swatch: a short bar with the same dark cap knocked into its top that a real one gets.
@@ -4908,7 +5066,7 @@ class Renderer {
     LEVELS.forEach((lv, i) => {
       const label = `${i + 1} ${lv.name}${game.level && game.levelIndex === i ? ' •' : ''}`;
       ctx.font = `700 ${10 * s}px ${FONT_SC}`;
-      const w = ctx.measureText(label).width + 14 * s;
+      const w = textW(ctx, label) + 14 * s;
       this.devButton(d, tx, ty, w, th, label, 'rules-L' + i, page.index === i);
       tx += w + 4 * s;
     });
@@ -4981,7 +5139,7 @@ class Renderer {
     let cx2 = pad;
     ctx.font = `700 ${7.6 * s}px ${FONT_SC}`;
     for (const r of results) {
-      const w = ctx.measureText(r.rule.id).width + 10 * s;
+      const w = textW(ctx, r.rule.id) + 10 * s;
       if (cx2 + w > pad + full) { cx2 = pad; y += 13 * s; }
       ctx.fillStyle = r.ok ? 'rgba(133,209,151,0.16)' : 'rgba(192,57,43,0.22)';
       ctx.fillRect(cx2, y - 9 * s, w, 12 * s);
@@ -5213,7 +5371,7 @@ class Renderer {
         const val = obj[path[path.length - 1]];
         ctx.font = `700 ${8 * s}px ${FONT_SC}`;
         const shown = typeof val === 'number' && !Number.isInteger(val) ? Math.round(val * 100) / 100 : val;
-        const w = ctx.measureText(`${label} ${shown}`).width + 10 * s;
+        const w = textW(ctx, `${label} ${shown}`) + 10 * s;
         if (px + w > statsX + statsW) { px = statsX; py += 19 * s; }
         this.numChip(d, px, py, label, val, `enemy-edit=${path.join('.')}`);
         px += w + 5 * s;
@@ -5229,7 +5387,7 @@ class Renderer {
           const on = !!(k.cfg.immune && k.cfg.immune[flag]);
           const label = flag.toUpperCase();
           ctx.font = `700 ${7.5 * s}px ${FONT_SC}`;
-          const fw = ctx.measureText(label).width + 10 * s;
+          const fw = textW(ctx, label) + 10 * s;
           this.devButton(d, fx, ry + 40 * s, fw, 13 * s, label, `enemy-flag=${k.tag}.immune.${flag}`, on);
           fx += fw + 4 * s;
         }
@@ -5244,7 +5402,7 @@ class Renderer {
           let tx = nameX + 92 * s;
           for (const trait of ['swift']) {
             ctx.font = `700 ${7.5 * s}px ${FONT_SC}`;
-            const tw = ctx.measureText(trait.toUpperCase()).width + 10 * s;
+            const tw = textW(ctx, trait.toUpperCase()) + 10 * s;
             this.devButton(d, tx, ry + 58 * s, tw, 13 * s, trait.toUpperCase(), `enemy-trait=${k.tag}.${trait}`, traits.includes(trait));
             tx += tw + 4 * s;
           }
@@ -5293,7 +5451,7 @@ class Renderer {
       ctx.font = `700 ${8 * s}px ${FONT_SC}`;
       // Measured as numChip prints it (rounded), or a raw PACE float leaves a gap after the chip.
       const shownG = typeof val === 'number' && !Number.isInteger(val) ? Math.round(val * 100) / 100 : val;
-      const w = ctx.measureText(`${label} ${shownG}`).width + 10 * s;
+      const w = textW(ctx, `${label} ${shownG}`) + 10 * s;
       if (gx + w > W - pad) { gx = pad; gyy += 19 * s; }
       this.numChip(d, gx, gyy, label, val, `enemy-edit=${path.join('.')}`);
       gx += w + 5 * s;
@@ -5334,14 +5492,14 @@ class Renderer {
       // it quietly helps. Violet for a synergy, the dim ochre for an addition.
       const nameOf = (id) => (BOONS.find((o) => o.id === id) || { name: id }).name;
       const withIds = [...new Set([...(b.synergy || []), ...BOONS.filter((o) => (o.synergy || []).includes(b.id)).map((o) => o.id)])];
-      let mx = nameX + ctx.measureText(tags).width + 10 * s;
+      let mx = nameX + textW(ctx, tags) + 10 * s;
       ctx.font = `700 ${7 * s}px ${FONT_SC}`;
       // Both stop short of MIN LVL: the params column wraps down into this row.
       const markEnd = levelX - 6 * s;
       if (withIds.length && mx < markEnd) {
         const t = this.clip('WITH ' + withIds.map(nameOf).join(', '), markEnd - mx);
         ctx.fillStyle = PALETTE.witchHi; ctx.fillText(t, mx, ry + rowH - 5 * s);
-        mx += ctx.measureText(t).width + 10 * s;
+        mx += textW(ctx, t) + 10 * s;
       }
       if (b.addition && b.addition.length && mx < markEnd - 30 * s) {
         ctx.fillStyle = 'rgba(242,162,51,0.75)';
@@ -5376,7 +5534,7 @@ class Renderer {
       }
       entries.forEach(([key, val]) => {
         ctx.font = `700 ${8 * s}px ${FONT_SC}`;
-        const w = ctx.measureText(`${key} ${val}`).width + 10 * s;
+        const w = textW(ctx, `${key} ${val}`) + 10 * s;
         if (px + w > W - pad) { px = paramsX; py += 20 * s; }
         this.numChip(d, px, py, key, val, `boon-edit=${b.id}.params.${key}`);
         px += w + 6 * s;
@@ -5398,7 +5556,7 @@ class Renderer {
         const val = obj[path[path.length - 1]];
         const shown = typeof val === 'number' && !Number.isInteger(val) ? Math.round(val * 100) / 100 : val;
         ctx.font = `700 ${8 * s}px ${FONT_SC}`;
-        const w = ctx.measureText(`${label} ${shown}`).width + 10 * s;
+        const w = textW(ctx, `${label} ${shown}`) + 10 * s;
         if (px + w > maxX) { px = x; py += 19 * s; }
         this.numChip(d, px, py, label, val, `enemy-edit=${path.join('.')}`);
         px += w + 5 * s;
@@ -5619,7 +5777,7 @@ class Renderer {
       ctx.font = `700 ${6.2 * s}px ${FONT_SC}`;
       for (const hit of f.hits) {
         const tint = hitTint[hit];
-        const w = ctx.measureText(hit).width + 8 * s;
+        const w = textW(ctx, hit) + 8 * s;
         ctx.fillStyle = tint.bg; ctx.fillRect(bx, ry + rowH / 2 - 4 * s, w, 11 * s);
         ctx.fillStyle = tint.fg; ctx.textAlign = 'center';
         ctx.fillText(hit, bx + w / 2, ry + rowH / 2 + 4 * s);
@@ -5915,7 +6073,7 @@ class Renderer {
       ctx.save(); ctx.scale(1, 1 / TILT);
       const by = (sy - 24) * TILT;
       ctx.font = `700 12px ${FONT_SC}`; ctx.textAlign = 'center';
-      const tw = ctx.measureText(p.say.text).width;
+      const tw = textW(ctx, p.say.text);
       ctx.globalAlpha = a * 0.78; ctx.fillStyle = PALETTE.ink;
       ctx.fillRect(sx - tw / 2 - 6, by - 11, tw + 12, 15);
       ctx.beginPath(); ctx.moveTo(sx - 4, by + 4); ctx.lineTo(sx + 4, by + 4); ctx.lineTo(sx, by + 8); ctx.fill();
@@ -6114,7 +6272,7 @@ class Renderer {
     return L[id];
   }
   outlinedIcon(id, x, y, h, tier) {
-    const ctx = this.ctx, T = ctx.getTransform(), k = hyp(T.a, T.b) || 1, px = h * k;
+    const ctx = this.ctx, T = xform(ctx), k = hyp(T.a, T.b) || 1, px = h * k;
     const C = this.iconCache || (this.iconCache = new Map());
     const key = `${id}|${tier}|${Math.round(px * 2)}`;
     let img = C.get(key);
@@ -6850,7 +7008,7 @@ class Renderer {
       const ty = titleY !== undefined ? Math.max(30 * s, titleY) : Math.max(30 * s, cy - 52 * s), word = 'A CORRUPTED SOUL';
       ctx.save(); ctx.translate(cx, ty);
       ctx.textAlign = 'center'; ctx.font = `700 ${30 * s}px ${FONT_SC}`;
-      const fit = Math.min(1, (this.w * 0.92) / (ctx.measureText(word).width + 12 * s));
+      const fit = Math.min(1, (this.w * 0.92) / (textW(ctx, word) + 12 * s));
       ctx.scale(tp * fit, tp * fit);
       ctx.lineWidth = 6 * s; ctx.strokeStyle = '#2a1244'; ctx.lineJoin = 'round'; ctx.strokeText(word, 0, 0);
       ctx.fillStyle = PALETTE.fireHi; ctx.fillText(word, 0, 0);
@@ -6869,7 +7027,7 @@ class Renderer {
     let x = right;
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(souls, x + 1 * s, top + 17 * s);
     ctx.fillStyle = '#d9ccff'; ctx.fillText(souls, x, top + 16 * s);
-    x -= ctx.measureText(souls).width + 12 * s;
+    x -= textW(ctx, souls) + 12 * s;
     if (this.painted.ready) {
       ctx.save(); ctx.translate(x, top + 10 * s); this.painted.soulWispBody(ctx, 17 * s); ctx.restore();
     } else { ctx.fillStyle = PALETTE.witch; ctx.fillRect(x - 4 * s, top + 3 * s, 8 * s, 12 * s); }
@@ -6881,7 +7039,7 @@ class Renderer {
       ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(heap, x + 1 * s, top + 17 * s);
       ctx.fillStyle = fl > 0 ? '#ffffff' : '#fff4c2'; ctx.fillText(heap, x, top + 16 * s - fl * 2 * s);
       const hx = x;
-      x -= ctx.measureText(heap).width + 6 * s;
+      x -= textW(ctx, heap) + 6 * s;
       const sk = HEAVEN_PIXELS.sprites.skull, c = 1.9 * s;
       Heaven.skull(ctx, x - sk.w * c, top + 8.5 * s - sk.h * c / 2, c);
       // The god's two hundred, under the heap until they are brought.
@@ -7054,10 +7212,13 @@ class Renderer {
     const ctx = this.ctx, t = this.t, long = m.span * TILE;
     const w = m.vertical ? TILE * 2 : long + TILE * 0.6, h = m.vertical ? long + TILE * 0.6 : TILE * 2;
     ctx.save(); ctx.translate(m.x, m.y); ctx.globalAlpha = k;
-    const g = m.vertical ? ctx.createLinearGradient(-w / 2, 0, w / 2, 0) : ctx.createLinearGradient(0, -h / 2, 0, h / 2);
-    g.addColorStop(0, 'rgba(5,3,8,0)'); g.addColorStop(0.3, 'rgba(5,3,8,0.97)');
-    g.addColorStop(0.7, 'rgba(5,3,8,0.97)'); g.addColorStop(1, 'rgba(5,3,8,0)');
-    ctx.fillStyle = g; ctx.fillRect(-w / 2, -h / 2, w, h);
+    // One gradient 0..1, made once and stretched across the veil: a new one a frame was an object in the browser's heap.
+    const g = this.veilGrad || (this.veilGrad = (() => { const v = ctx.createLinearGradient(0, 0, 1, 0);
+      v.addColorStop(0, 'rgba(5,3,8,0)'); v.addColorStop(0.3, 'rgba(5,3,8,0.97)'); v.addColorStop(0.7, 'rgba(5,3,8,0.97)'); v.addColorStop(1, 'rgba(5,3,8,0)'); return v; })());
+    ctx.save(); ctx.translate(-w / 2, -h / 2);
+    if (m.vertical) { ctx.scale(w, 1); ctx.fillStyle = g; ctx.fillRect(0, 0, 1, h); }
+    else { ctx.transform(0, h, 1, 0, 0, 0); ctx.fillStyle = g; ctx.fillRect(0, 0, 1, w); }   // the gradient's x runs down the veil's height
+    ctx.restore();
     // a faint cold glow on the face of it, breathing, so it reads as something put there
     ctx.fillStyle = `rgba(125,92,255,${0.07 + 0.05 * Math.sin(t * 1.7)})`;
     ctx.fillRect(m.vertical ? -6 : -long / 2, m.vertical ? -long / 2 : -6, m.vertical ? 12 : long, m.vertical ? long : 12);
@@ -7208,7 +7369,7 @@ class Renderer {
       // The glyph that stands for the boon everywhere it is named, bigger here than anywhere
       // else, this is the one place a player is deciding, so it is the one place it earns the size.
       if (b.emoji) {
-        const half = ctx.measureText(b.name).width / 2;
+        const half = textW(ctx, b.name) / 2;
         ctx.font = `${20 * s}px ${FONT}`; ctx.textAlign = 'right';
         ctx.fillText(b.emoji, x + cw / 2 - half - 8 * s, y + 32 * s);
         ctx.textAlign = 'center';
@@ -7397,7 +7558,7 @@ class Renderer {
       // and the horse are off the moment they have spoken, and a line left hanging where they were
       // was a line nobody read. On a dark plate, so it reads over any floor.
       if (f.on) {
-        const w = ctx.measureText(f.text).width + 10;
+        const w = textW(ctx, f.text) + 10;
         const box = this.keepInView(f.on.x - w / 2, (f.on.y - 44 - (f.n - 1 - f.row) * 18) * TILT - 13, w, 17, f.on.x, f.on.y * TILT);
         const x = box.x + w / 2, y = box.y + 13;
         ctx.globalAlpha = Math.min(1, f.life * 2);
@@ -7405,7 +7566,7 @@ class Renderer {
         ctx.fillStyle = f.color; ctx.fillText(f.text, x, y);
         continue;
       }
-      const w = ctx.measureText(f.text).width;
+      const w = textW(ctx, f.text);
       const box = this.keepInView(f.x - w / 2, (f.y - (1.2 - f.life) * 24) * TILT - 12, w, 16, f.x, f.y * TILT);
       const x = box.x + w / 2, y = box.y + 12;
       ctx.globalAlpha = Math.min(1, f.life);
@@ -8012,11 +8173,11 @@ class Renderer {
   // Break a line on its spaces to fit a width, in whatever font is set.
   wrap(text, maxW) {
     const ctx = this.ctx;
-    if (ctx.measureText(text).width <= maxW) return [text];
+    if (textW(ctx, text) <= maxW) return [text];
     const words = text.split(' '); const out = []; let line = '';
     for (const wd of words) {
       const test = line ? line + ' ' + wd : wd;
-      if (ctx.measureText(test).width > maxW && line) { out.push(line); line = wd; } else line = test;
+      if (textW(ctx, test) > maxW && line) { out.push(line); line = wd; } else line = test;
     }
     if (line) out.push(line);
     return out;
@@ -8029,9 +8190,9 @@ class Renderer {
     let line = '';
     for (const fact of text.split(' · ')) {
       const test = line ? line + ' · ' + fact : fact;
-      if (ctx.measureText(test).width <= maxW) { line = test; continue; }
+      if (textW(ctx, test) <= maxW) { line = test; continue; }
       if (line) out.push(line);
-      if (ctx.measureText(fact).width <= maxW) { line = fact; continue; }
+      if (textW(ctx, fact) <= maxW) { line = fact; continue; }
       const parts = this.wrap(fact, maxW);
       line = parts.pop(); out.push(...parts);
     }
@@ -8077,7 +8238,7 @@ class Renderer {
     const measure = () => {
       if (spaced) ctx.letterSpacing = `${(size * 0.09).toFixed(1)}px`;
       ctx.font = `700 ${size}px ${FONT_SC}`;
-      return ctx.measureText('DOOMED GOAT').width;
+      return textW(ctx, 'DOOMED GOAT');
     };
     let tw = measure();
     if (tw + size * 2.2 > w * 0.92) { size *= (w * 0.92) / (tw + size * 2.2); tw = measure(); }
@@ -8481,8 +8642,8 @@ class Renderer {
   goButton(game, label, cx, top) {
     const ctx = this.ctx, s = this.ts, touch = game.touch && game.touch.active;
     const bh = 36 * s, lf = `700 ${18 * s}px ${FONT_SC}`, kf = `700 ${10 * s}px ${FONT_SC}`;
-    ctx.font = lf; const lw = ctx.measureText(label).width;
-    ctx.font = kf; const key = touch ? '' : keysOf(game).go, kw = key ? ctx.measureText(key).width + 12 * s : 0;
+    ctx.font = lf; const lw = textW(ctx, label);
+    ctx.font = kf; const key = touch ? '' : keysOf(game).go, kw = key ? textW(ctx, key) + 12 * s : 0;
     const tri = 9 * s, bw = Math.round(lw + tri + 12 * s + (kw ? kw + 12 * s : 0) + 40 * s), bx = Math.round(cx - bw / 2), by = Math.round(top);
     const over = game.input.mouse && !touch && game.input.mouse.x >= bx && game.input.mouse.x <= bx + bw && game.input.mouse.y >= by && game.input.mouse.y <= by + bh;
     const pulse = 0.5 + 0.5 * Math.sin(this.t * 4);

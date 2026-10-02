@@ -256,6 +256,22 @@ one collar for every talisman, a half-ellipse round the throat (`TUNING.goat.col
 `TUNING.goat.wounds`) under the collar, masked to the frame; `wounds.front` is how much blot size is left
 facing the camera. `Renderer.artifactIcon` is the one artifact drawing (HUD chip, stool, collar).
 
+**The canvas keeps no state of its own** (1.97, 2 Oct 2026; render.js `CANVAS_STATE`). The full collection
+every few seconds (a dropped frame each) was the **browser's** heap filling, not the script's: every
+`ctx.save()` was a new copy of the canvas state there (~700 bytes, 170 a frame), every `getTransform()` a
+DOMMatrix, every `measureText()` a TextMetrics, every `create*Gradient` an object. So, on every 2D context:
+`save`/`restore` are a stack kept in JS (the transform, and each property's old value the first time it
+changes in a level; `clip()` alone makes the browser's own save, undone with its level); a property set
+to the value it already holds is not passed on; the transform is tracked in plain numbers. **Rules:**
+read the transform with `xform(ctx)` (live: copy before changing it), never `ctx.getTransform()`; a text
+width is `textW(ctx, s)`, never `ctx.measureText(s).width`; a gradient is made once and scaled into place
+(`lightGrad`, `veilGrad`), never one a frame. `CANVAS_STATE.set(false)` hands it all back to the browser
+between frames, for an A/B or a pixel comparison: a frame matches the browser's to within a texel
+boundary or two (the browser rounds `setTransform` to 32-bit floats, so a restored matrix is ~1/1000 px
+off its own). Measured in two 60 s fights: 20 full collections → 5, and 18 → 10, about a quarter of the time frozen (815 → 209 ms). How it was found
+(a `v8.gc` trace with `cppgc` phases, `GCIncrementalMarkingStart`'s reason: "approaching global allocation
+limit") is in `BACKLOG.md`.
+
 **What the step is allowed to ask** (23 Sep 2026 perf pass, ~18 → ~3.5 ms on a late floor):
 - `game.liveEnemies` is who ran this step, **a man in the goat's mouth included** (the wheel, the grating and
   the teeth take him out of it; every other reader skips `held`). **"Anybody near here?" reads it, not `game.enemies`**

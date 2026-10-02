@@ -5,14 +5,21 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
-## 1.97, canvases that go round again, 2 Oct 2026
+## 1.97, the canvas keeps no state of its own, 2 Oct 2026
 
+- **The hitch every few seconds is mostly gone.** It was a full collection, and the trace said why: the browser's own
+  heap (not the script's) filling with objects the canvas API makes. Every `ctx.save()` copied the whole canvas state
+  there (170 a frame), every `getTransform()` was a DOMMatrix, every `measureText()` a TextMetrics, every light pool
+  and veil a new gradient. Now the 2D context's save/restore is a stack kept in the script (the transform, and a
+  property's old value the first time it changes in a level; a `clip()` alone uses the browser's own), a property set
+  to what it already holds is not passed on, the transform is read with `xform(ctx)`, text widths are remembered
+  (`textW`), and each gradient is made once and scaled into place (render.js `CANVAS_STATE`; CLAUDE.md has the rules).
+  Two 60 s fights in headless Chrome: 20 full collections (28-93 ms) became 5 (19-48 ms), and 18 (25-90 ms) became 10 (14-32 ms), about a quarter of the time frozen (815 → 209 ms). A frame drawn both ways
+  differs by a texel boundary here and there (the browser rounds its own transform to 32-bit floats), nothing more.
 - **A kill makes no canvas it throws away**: a body's or a torn man's canvases go back to a pool once he is stamped
   into the floor (`CombatFX.pieceCanvas` / `release`, `effects.spareCanvases`), the snapshot every death is cut from
   is one scratch canvas, and a blood stain tile evicted from the map hands its canvas to the next one.
 - A windup's cells reuse one stretch a row instead of a new pair, and walk the wedge's two edges by index.
-- What was measured and what was not won is in `BACKLOG.md` (the collector): the full collection every few seconds
-  is the steady per-frame garbage, not the kills, and no local edit moved it.
 
 ## 1.96, meat on the tables, carpets on the floors, 2 Oct 2026
 
