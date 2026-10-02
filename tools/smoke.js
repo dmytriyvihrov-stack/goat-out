@@ -112,6 +112,10 @@ window.SMOKE = {
       const gt = g.goat;
       if (g.state === 'boon') { if (g.boonArm <= 0) { g.takeBoon((Math.random() * 3) | 0); r.souls++; } return; }
       if (g.state !== 'play') { dir.x = dir.y = 0; return; }
+      // An animal's box (`game.beastTalk`) holds the floor until its question is answered, and a butt only
+      // turns its pages: say yes with BAAH most of the time, no with the roll now and then, or the bot stood
+      // at a crow's question until the clock ran out (L4 seed 31, 1 Oct 2026).
+      if (g.beastTalk) { dir.x = dir.y = 0; g.input[Math.random() < 0.75 ? 'spacePressed' : 'rollPressed'] = true; return; }
       // The mouse's gate has no soul to swallow and nobody to kill: it opens only for a take (`Shop.takeMilk`).
       // The bot would otherwise stand at that rest room's bar until the clock ran out (1 Oct 2026 audit).
       for (const q of g.props) {

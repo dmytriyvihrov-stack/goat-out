@@ -171,7 +171,9 @@ for(const late of [false,true])for(const stage of ['idle','spotted','chase','com
   assert(score.events.every(e=>e.track&&e.duration>0&&Number.isFinite(e.step)));
   assert(score.events.every(e=>score.instruments[e.track]),'every track has a name in the export');
   const heavies=score.events.filter(e=>e.track==='champion');
-  assert.equal(heavies.length,musicHitCount('champion',1)*8*3);assert(heavies.some(e=>e.hz>=160&&e.type==='square'),'heavy notes have an audible upper body');
+  // Calm leaves the men's layer out (`layers.calm.layers` 0, 1.85): an idle sheet has no heavy voice in it.
+  if (stage === 'idle' && !L.calm.layers) { assert.equal(heavies.length,0,'calm is fewer parts'); }
+  else { assert.equal(heavies.length,musicHitCount('champion',1)*8*3);assert(heavies.some(e=>e.hz>=160&&e.type==='square'),'heavy notes have an audible upper body'); }
   assert(score.events.some(e=>e.track==='kill'));assert(score.events.some(e=>e.track==='spotted'));
   assert(score.events.some(e=>e.track==='bass'));
   assert.equal(sheet.getLabScore(),score,'score rendering is cached between frames');

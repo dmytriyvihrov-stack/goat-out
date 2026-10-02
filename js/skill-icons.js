@@ -95,6 +95,14 @@ const SKILL_ART = {
     '....43..',
     '....432.',
     '.....32.'] },
+  // BULL NECK: breath snorted out either side of the muzzle, a run's worth of steam.
+  steam: { half: true, bare: true, rows: [
+    '........', '........', '........', '........', '........', '........', '........', '........',
+    '........', '........', '........', '........',
+    '.s......',
+    's.w.....',
+    '.ws.....',
+    '..s.....'] },
   // IRON SKULL: a plate riveted over the brow.
   skull: { half: true, rows: [
     '........', '........', '........', '........', '........', '........', '........', '........',
@@ -219,6 +227,14 @@ const SKILL_ART = {
     '.l.............l',
     '..............g.',
     '.g..............'] },
+  // SPRING HOCKS: a fast-forward mark ahead of the tumble, it lands running.
+  spring: { bare: true, rows: [
+    '', '', '', '', '', '', '', '', '', '',
+    '..........W..W..',
+    '...........W..W.',
+    '............W..W',
+    '...........W..W.',
+    '..........W..W..'] },
   // LEAPFROG: the ball at the top of its arc over a man's head.
   leapBall: { rows: [
     '......www3......',
@@ -340,6 +356,7 @@ const SKILL_ICONS = {
       else if (m.antlers) L.push('antlers');
       else L.push('horns');
       if (m.headbuttRecovery < 1) L.push('skull');
+      if (m.runButt > 0) L.push('steam');
       return L;
     }
     if (id === 'grab') {
@@ -348,17 +365,20 @@ const SKILL_ICONS = {
       else { L.push('man'); if (m.livingShield) L.push('club'); }
       if (m.shieldBullets > (typeof BOON_BASE !== 'undefined' ? BOON_BASE.shieldBullets : 2)) L.push('teeth');
       if (m.venomHold > 0) L.push('venomJaw');
-      if (m.chargeHold > 0) L.push('charged');
+      // FIREBRAND's mod is `brandHold` (the soul's id stayed `charge`): asking `chargeHold`, its flame
+      // never once reached the chip.
+      if (m.brandHold > 0) L.push('charged');
       if (m.coldEye) L.push('hourglass');
       return L;
     }
     if (id === 'roll') {
-      if (m.leapfrog) return ['arc', 'leapMan', 'leapBall'].concat(m.rollCooldown < 1 ? ['streaks'] : []);
+      if (m.leapfrog) return ['arc', 'leapMan', 'leapBall'].concat(m.rollCooldown < 1 ? ['streaks'] : [], m.rollKeep > 0 ? ['spring'] : []);
       L.push(m.rollCooldown < 1 ? 'streaksLong' : 'streaks');
       if (m.venomRoll) L.push('puddle');
       L.push('ball');
       if (m.venomRoll) L.push('bubbles');
       if (m.rollStun > 0) L.push('stars');
+      if (m.rollKeep > 0) L.push('spring');
       return L;
     }
     if (id === 'scream') {
@@ -367,6 +387,8 @@ const SKILL_ICONS = {
       else if (fire || m.breath) L.push('breath');
       else if (m.screamStun) { L.push('bell', 'rings'); if (m.screamRadius > (typeof BOON_BASE !== 'undefined' ? BOON_BASE.screamRadius : 1e9)) L.push('ringsWide'); }
       else L.push('call');
+      // BIG LUNGS: the outer rings, whatever the voice is now.
+      if (m.screamReach > 1 && L.indexOf('ringsWide') < 0) L.push('ringsWide');
       return L;
     }
     return null;

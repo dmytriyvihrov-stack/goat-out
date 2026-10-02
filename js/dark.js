@@ -219,7 +219,7 @@ const Dark = {
     ctx.save(); ctx.fillStyle = D.rim;
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       if (wd.isSolid(tx, ty) || !wd.seesTile(tx, ty)) continue;
-      const a = E.alpha * clamp((R - Math.hypot(tx + 0.5 - gx, ty + 0.5 - gy)) / (R * (1 - E.from)), 0, 1);
+      const a = E.alpha * clamp((R - hyp(tx + 0.5 - gx, ty + 0.5 - gy)) / (R * (1 - E.from)), 0, 1);
       if (a <= 0.02) continue;
       ctx.globalAlpha = a;
       const X = tx * TILE, Y = ty * TILE;
@@ -240,9 +240,9 @@ const Dark = {
     // Only what stands: a crack in the wall, a lantern up on it, a grate in the floor are the room,
     // and flattened into a shape they read as something standing where nothing is.
     const list = [], flat = new Set(['secret', 'sconce', 'spike', 'clamp', 'trophy']);
-    for (const p of game.props) if (!p.broken && p !== hold && !flat.has(p.kind) && Math.hypot(p.x - g.x, p.y - g.y) < reach + (p.r || 0) && !game.hidden(p.x, p.y)) list.push(p);
+    for (const p of game.props) if (!p.broken && p !== hold && !flat.has(p.kind) && hyp(p.x - g.x, p.y - g.y) < reach + (p.r || 0) && !game.hidden(p.x, p.y)) list.push(p);
     const men = [];
-    for (const e of game.enemies) if (!e.dead && e !== hold && Math.hypot(e.x - g.x, e.y - g.y) < reach + e.r && !game.hidden(e.x, e.y)) men.push(e);
+    for (const e of game.enemies) if (!e.dead && e !== hold && hyp(e.x - g.x, e.y - g.y) < reach + e.r && !game.hidden(e.x, e.y)) men.push(e);
     if (!list.length && !men.length) return;
     const m = ctx.getTransform(), W = r.w, H = r.h;
     // The screen box round his hearing, with a tile and a half over the top for whatever is tall.
@@ -293,7 +293,7 @@ const Dark = {
       r.drawTelegraph(e); r.drawAimTelegraph(e); r.drawHopMark(e);
       // What is over his head sets its own alpha and is opaque, so only where the one under the dark
       // is mostly gone, and only for a man he can hear, or one shouting: the shout carries.
-      const heard = Math.hypot(e.x - game.goat.x, e.y - game.goat.y) < (TUNING.dark.near + 0.5) * TILE;
+      const heard = hyp(e.x - game.goat.x, e.y - game.goat.y) < (TUNING.dark.near + 0.5) * TILE;
       if (dark > 0.5 && (heard || e.say)) { ctx.save(); ctx.globalAlpha = 1; r.drawOverhead(e); ctx.restore(); }
     }
     ctx.globalAlpha = 0.85;
@@ -311,7 +311,7 @@ const Dark = {
     for (const e of game.enemies) {
       const K = E.kinds[e.kind];
       if (!K || e.dead || e.state === 'hidden' || e.state === 'floored' || e.state === 'stunned' || e.state === 'flung' || e.state === 'emerge') continue;
-      if (Math.hypot(e.x - g.x, e.y - g.y) > E.range * TILE || game.hidden(e.x, e.y)) continue;
+      if (hyp(e.x - g.x, e.y - g.y) > E.range * TILE || game.hidden(e.x, e.y)) continue;
       if (!wd.seesTile(Math.floor(e.x / TILE), Math.floor(e.y / TILE))) continue;
       const k = clamp(1 - this.lightAt(e.x, e.y) * 1.3, 0, 1) * (e.aware ? 1 : 0.7);
       if (k < 0.05) continue;

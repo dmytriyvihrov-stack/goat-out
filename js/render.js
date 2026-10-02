@@ -47,6 +47,9 @@ const CAVE_AHEAD = 1, CAVE_WARM_MS = 6;
 // The rooms' baked ground (`Renderer.drawRoomsBaked`): chunks painted a frame (one is 1–3 ms; the
 // rest wait a frame painted live), and how far past its box a chunk's bitmap runs, in world px.
 const ROOM_BAKE_MAX = 2, ROOM_BAKE_SEAM = 1;
+// How far clear of a step of the bake's resolution the zoom has to be before the bitmaps follow it
+// (`Renderer.bakeScale`), and the idle time a room chunk needs left before one is started (1–3 ms).
+const BAKE_HOLD = 1.15, ROOM_WARM_MS = 4;
 
 // The controls, painted on the floor. Nothing about the mouse: a crosshair on a top-down game
 // explains itself, and the floor has room for what it does not. Every block lies in the room that
@@ -87,6 +90,36 @@ const CONTROL_LINES = {
 // follows), and `keysOf(game)` is whichever the player is holding; `item` is Q, when worn.
 const SKILL_KEYS = { butt: 'LMB', grab: 'RMB', roll: 'E', scream: 'SPC', item: 'Q', go: 'SPACE', back: 'BACKSPACE' };
 const PAD_KEYS = { butt: 'RT', grab: 'LT', roll: 'A', scream: 'B', item: 'Y', go: 'A', back: 'BACK' };
+// What the keys the game reads say on the player's own keyboard (1 Oct 2026). The game reads a key's
+// place (`e.code`), never its letter, so on an AZERTY board W A S D are Z Q S D and Q is A: the place
+// works, and the words on the floor and on the caps named keys he does not have. Chromium can say what is
+// printed there (`navigator.keyboard.getLayoutMap`); refused (an iframe without `keyboard-map`) or not
+// there at all, the words stay QWERTY's.
+const KEY_FACE = { KeyW: 'W', KeyA: 'A', KeyS: 'S', KeyD: 'D', KeyE: 'E', KeyQ: 'Q', KeyM: 'M' };
+(() => {
+  try {
+    const kb = typeof navigator !== 'undefined' && navigator.keyboard;
+    if (!kb || !kb.getLayoutMap) return;
+    kb.getLayoutMap().then((m) => { for (const k of Object.keys(KEY_FACE)) keyFaceSet(k, m.get(k)); }).catch(() => {});
+  } catch (e) { /* no keyboard map: QWERTY words until a key is pressed (`keyFaceSet` off keydown) */ }
+})();
+// What one key prints, taken in, and every word that quotes it laid again. Any one printable character
+// counts, a mark too (Dvorak's W prints a comma, AZERTY's M a comma): a letter-only test kept the QWERTY
+// letter for those keys beside the real ones of their neighbours, so the words named the wrong key. A
+// letter outside Latin is refused (a Russian board prints Latin on its caps too, and the font has none).
+// The keyboard map is often refused inside a cross-origin frame (itch, the artifact), so the keydown
+// handler feeds this as well, and the words follow the player's board from the first key he presses.
+function keyFaceSet(code, v) {
+  if (!(code in KEY_FACE) || typeof v !== 'string' || !/^[\x21-\x7e]$/.test(v)) return;
+  v = v.toUpperCase();
+  if (KEY_FACE[code] === v) return;
+  KEY_FACE[code] = v;
+  const F = KEY_FACE;
+  SKILL_KEYS.roll = F.KeyE; SKILL_KEYS.item = F.KeyQ;
+  CONTROL_LINES.key[0][0] = F.KeyW + F.KeyA + F.KeyS + F.KeyD + ' - MOVE';
+  CONTROL_LINES.key[3][0] = F.KeyE + ' - ROLL';
+  HINT_KEYS.roll[0] = F.KeyE + ', ROLL';
+}
 // Asked of a `game` that may be a tool's stub (the GOAT GRID lends one with no pad).
 const padOn = (game) => !!(game && game.pad && game.pad.active);
 const keysOf = (game) => (padOn(game) ? PAD_KEYS : SKILL_KEYS);
@@ -433,24 +466,28 @@ class Renderer {
   // What still moves on this layer, the glow at the top of the stairs, is laid over it live.
   drawRoomsBaked(game, cam) {
     const ctx = this.ctx, wd = game.world, K = CAVE_BAKE, S = K * TILE, z = cam.zoom;
-    const B = z > 3 ? 4 : this.caveBakeScale(z), look = (ART_PASS.floors ? 1 : 0) + (ART_PASS.on ? 2 : 0);
-    if (!this.roomBake || this.roomBake.world !== wd || this.roomBake.look !== look) this.roomBake = { world: wd, look, map: new Map(), px: 0, tick: 0 };
-    const bk = this.roomBake; bk.tick++;
+    const B = this.bakeScale(z, 4), look = (ART_PASS.floors ? 1 : 0) + (ART_PASS.on ? 2 : 0) + (ART_PASS.hay ? 4 : 0);
+    if (!this.roomBake || this.roomBake.world !== wd || this.roomBake.look !== look) {
+      this.dropBake(this.roomBake); this.roomBake = { world: wd, look, map: new Map(), px: 0, tick: 0 };
+      if (this.bake && this.bake.world !== wd) { this.dropBake(this.bake); this.bake = null; }
+    }
+    const bk = this.roomBake; bk.tick++; bk.B = B;
     const v = this.visibleTiles(cam), secret = this.caveRock(game).secret;
     let budget = ROOM_BAKE_MAX;
     const c0 = Math.floor(v.x0 / K), c1 = Math.floor(v.x1 / K), r0 = Math.floor(v.y0 / K), r1 = Math.floor(v.y1 / K);
     for (let cj = r0; cj <= r1; cj++) for (let ci = c0; ci <= c1; ci++) {
       const key = cj * 65536 + ci, sig = this.roomBakeSig(wd, ci * K, cj * K, secret);
       let e = bk.map.get(key);
-      if (!e || e.sig !== sig || e.B !== B) {
-        if (budget <= 0) {
-          // its turn has not come: this chunk painted the old way, a tile round so its seams join
-          this.painted.drawTiles(this, game, cam, { x0: Math.max(v.x0, ci * K - 1), y0: Math.max(v.y0, cj * K - 1),
-            x1: Math.min(v.x1, ci * K + K), y1: Math.min(v.y1, cj * K + K) });
-          continue;
-        }
-        budget--; e = this.bakeRoomChunk(game, cam, ci, cj, B, sig, e); bk.map.set(key, e);
+      const stale = !e || e.sig !== sig;
+      if (stale && budget <= 0) {
+        // its turn has not come: this chunk painted the old way, a tile round so its seams join
+        this.painted.drawTiles(this, game, cam, { x0: Math.max(v.x0, ci * K - 1), y0: Math.max(v.y0, cj * K - 1),
+          x1: Math.min(v.x1, ci * K + K), y1: Math.min(v.y1, cj * K + K) });
+        continue;
       }
+      if (stale) { budget--; e = this.bakeRoomChunk(game, cam, ci, cj, B, sig, e); bk.map.set(key, e); }
+      // Only its resolution behind the zoom's: every tile on it is still right, so it is drawn as it is and
+      // repainted in idle time (`warmRooms`), never inside a frame.
       e.used = bk.tick;
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(e.cv, 0, 0, e.cv.width, e.cv.height, ci * S, cj * S, S + ROOM_BAKE_SEAM, S + ROOM_BAKE_SEAM);
@@ -462,10 +499,74 @@ class Renderer {
       const tx = ex.x0 + 2;
       if (tx >= v.x0 && tx <= v.x1 && wd.tileAt(tx, ty) === T.EXIT && !Renderer.forkRow(game.level, ty)) this.stairGlow(tx * TILE, ty * TILE);
     }
-    if (bk.px > CAVE_BAKE_PX) {
-      const old = [...bk.map.entries()].filter(([, e]) => e.used !== bk.tick).sort((a, b) => a[1].used - b[1].used);
-      for (const [k, e] of old) { if (bk.px <= CAVE_BAKE_PX * 0.8) break; bk.px -= e.px || 0; bk.map.delete(k); }
+    if (bk.px > CAVE_BAKE_PX) this.trimBake(bk, CAVE_BAKE_PX * 0.8);
+    this.askRoomWarm(game);
+  }
+  // The least recently seen chunks of a bake let go until it holds `to` px, never one drawn this frame nor
+  // one in `keep` (the idle painters' own ring). The idle painters trim for themselves: they used to stop
+  // short at 0.7 of the budget while the frame only trimmed back to 0.8, so once a floor had filled it they
+  // never ran again and the doorway frames and the half-sharp floor after a resize came back (2 Oct 2026).
+  // A canvas let go is emptied, which gives its memory back at once (Safari caps what all canvases hold).
+  trimBake(bk, to, keep) {
+    if (bk.px <= to) return;
+    const old = [...bk.map.entries()].filter(([k, e]) => e.used !== bk.tick && !(keep && keep.has(k))).sort((a, b) => a[1].used - b[1].used);
+    for (const [k, e] of old) { if (bk.px <= to) break; bk.px -= e.px || 0; if (e.cv) e.cv.width = 0; bk.map.delete(k); }
+  }
+  // A bake of a world no longer drawn, emptied: a cave floor kept the last room floor's chunks and the
+  // other way round, up to the whole budget each.
+  dropBake(bk) {
+    if (bk) for (const e of bk.map.values()) if (e.cv) e.cv.width = 0;
+  }
+  // The bitmaps' resolution off the zoom (`caveBakeScale`; the rooms go to 4 past a zoom of 3), held
+  // against the small swings of the lens: the run pulls it back a few percent and a stop lets it in again,
+  // and on a screen whose resting zoom sat just over a step (2.08 at 1600x900 on a 1.95 screen) every
+  // chunk in view was repainted at each start and stop of a run, 13-20 ms frames against 3 (1 Oct 2026).
+  // It steps down only once the zoom is `BAKE_HOLD` under the step, and up only once it is that far over.
+  bakeScale(z, top) {
+    const step = (k) => (top > 3 && k > 3 ? 4 : this.caveBakeScale(k));
+    const want = step(z), held = this.bakeHeld;
+    if (held == null || held === want || held > top) return (this.bakeHeld = want);
+    if (want < held ? step(z * BAKE_HOLD) < held : step(z / BAKE_HOLD) > held) this.bakeHeld = want;
+    return this.bakeHeld;
+  }
+  // The rooms the camera is about to need, painted in idle time the way the cave's are (`warmCave`): the
+  // view and a ring of chunks round it, nearest the way he is heading first, and any whose resolution the
+  // zoom has left behind. Without it each new stretch of a floor came into view two chunks baked a frame
+  // and the rest painted live: 10-26 ms frames at a doorway or a stair (1 Oct 2026, `tools/perf.js`).
+  askRoomWarm(game) {
+    if (this.roomWarmId) return;
+    const ric = typeof requestIdleCallback === 'function' ? requestIdleCallback
+      : (f) => setTimeout(() => f({ didTimeout: true, timeRemaining: () => 0 }), 30);
+    this.roomWarmId = ric((dl) => { this.roomWarmId = 0; try { this.warmRooms(game, dl); } catch (err) { /* baked in the frame instead */ } }, { timeout: 250 });
+  }
+  warmRooms(game, dl) {
+    const wd = game.world, cam = game.cam, bk = this.roomBake;
+    if (!wd || wd.round || !bk || bk.world !== wd || !bk.B || !game.level || !cam || !cam.zoom || game.state === 'title' || game.state === 'heaven') return;
+    const K = CAVE_BAKE, B = bk.B, A = CAVE_AHEAD;
+    const { x0, y0, x1, y1 } = this.visibleTiles(cam);
+    const c0 = Math.max(0, Math.floor(x0 / K) - A), c1 = Math.min(Math.ceil(wd.W / K), Math.floor(x1 / K) + A);
+    const r0 = Math.max(0, Math.floor(y0 / K) - A), r1 = Math.min(Math.ceil(wd.H / K), Math.floor(y1 / K) + A);
+    const g = game.goat, fx = (g ? g.x + (g.vx || 0) * 0.6 : cam.x) / TILE, fy = (g ? g.y + (g.vy || 0) * 0.6 : cam.y) / TILE;
+    const secret = this.caveRock(game).secret, want = [];
+    for (let cj = r0; cj <= r1; cj++) for (let ci = c0; ci <= c1; ci++) {
+      const e = bk.map.get(cj * 65536 + ci), sig = this.roomBakeSig(wd, ci * K, cj * K, secret);
+      if (e && e.B === B && e.sig === sig) continue;
+      want.push([hyp((ci + 0.5) * K - fx, (cj + 0.5) * K - fy), ci, cj, sig]);
     }
+    if (!want.length) return;
+    want.sort((a, b) => a[0] - b[0]);
+    // Room is made by letting go of chunks outside this ring; with nothing left to let go of, it stops.
+    const ring = new Set();
+    for (let cj = r0; cj <= r1; cj++) for (let ci = c0; ci <= c1; ci++) ring.add(cj * 65536 + ci);
+    let one = !!dl.didTimeout;
+    for (const [, ci, cj, sig] of want) {
+      if (bk.px > CAVE_BAKE_PX * 0.9) this.trimBake(bk, CAVE_BAKE_PX * 0.7, ring);
+      if ((!one && dl.timeRemaining() < ROOM_WARM_MS) || bk.px > CAVE_BAKE_PX * 0.9) break;
+      one = false;
+      const key = cj * 65536 + ci, e = this.bakeRoomChunk(game, cam, ci, cj, B, sig, bk.map.get(key));
+      e.used = bk.tick; bk.map.set(key, e);
+    }
+    if (bk.px <= CAVE_BAKE_PX * 0.9) this.askRoomWarm(game);
   }
   // A chunk's tiles and the secret walls standing a tile round it, as one number. Not the grass: a
   // burning field changes it every frame and it is drawn in a pass of its own.
@@ -594,8 +695,9 @@ class Renderer {
   warmCave(game, dl) {
     const wd = game.world, cam = game.cam;
     if (!wd || !wd.caveF || !game.level || !cam || !cam.zoom || game.state === 'title' || game.state === 'heaven') return;
-    if (!this.bake || this.bake.world !== wd) this.bake = { world: wd, map: new Map(), px: 0, tick: 0 };
-    const bk = this.bake, K = CAVE_BAKE, B = this.caveBakeScale(cam.zoom), A = CAVE_AHEAD;
+    // the look's switches are the frame's to notice (`drawCaveBaked`): a bitmap warmed in another look is thrown away there
+    if (!this.bake || this.bake.world !== wd) { this.dropBake(this.bake); this.bake = { world: wd, look: (ART_PASS.hay ? 1 : 0) + (ART_PASS.cave ? 2 : 0), map: new Map(), px: 0, tick: 0 }; }
+    const bk = this.bake, K = CAVE_BAKE, B = bk.B || this.bakeScale(cam.zoom, 3), A = CAVE_AHEAD;   // the frame's own, held scale
     const { x0, y0, x1, y1 } = this.visibleTiles(cam);
     const c0 = Math.max(0, Math.floor(x0 / K) - A), c1 = Math.min(Math.ceil(wd.W / K), Math.floor(x1 / K) + A);
     const r0 = Math.max(0, Math.floor(y0 / K) - A), r1 = Math.min(Math.ceil(wd.H / K), Math.floor(y1 / K) + A);
@@ -605,18 +707,22 @@ class Renderer {
     for (let cj = r0; cj <= r1; cj++) for (let ci = c0; ci <= c1; ci++) {
       const e = bk.map.get(cj * 65536 + ci), sig = this.caveBakeSig(wd, ci * K, cj * K, rock.secret);
       if (e && e.B === B && e.sig === sig) continue;
-      want.push([Math.hypot((ci + 0.5) * K - fx, (cj + 0.5) * K - fy), ci, cj, sig]);
+      want.push([hyp((ci + 0.5) * K - fx, (cj + 0.5) * K - fy), ci, cj, sig]);
     }
     if (!want.length) return;
     want.sort((a, b) => a[0] - b[0]);
+    // as the rooms' (`warmRooms`): room made outside this ring, never inside it
+    const ring = new Set();
+    for (let cj = r0; cj <= r1; cj++) for (let ci = c0; ci <= c1; ci++) ring.add(cj * 65536 + ci);
     let one = !!dl.didTimeout;
     for (const [, ci, cj, sig] of want) {
-      if ((!one && dl.timeRemaining() < CAVE_WARM_MS) || bk.px > CAVE_BAKE_PX * 0.7) break;
+      if (bk.px > CAVE_BAKE_PX * 0.9) this.trimBake(bk, CAVE_BAKE_PX * 0.7, ring);
+      if ((!one && dl.timeRemaining() < CAVE_WARM_MS) || bk.px > CAVE_BAKE_PX * 0.9) break;
       one = false;
       const key = cj * 65536 + ci, e = this.bakeCaveChunk(game, ci, cj, B, sig, rock.secret, rock.solid, bk.map.get(key));
       e.used = bk.tick; bk.map.set(key, e);
     }
-    if (want.length && bk.px <= CAVE_BAKE_PX * 0.7) this.askCaveWarm(game);
+    if (want.length && bk.px <= CAVE_BAKE_PX * 0.9) this.askCaveWarm(game);
   }
 
   // THE CAVE, baked. Everything `drawCaveRegion` paints is the same every frame, the floor, its
@@ -632,9 +738,12 @@ class Renderer {
   // not at all once the camera is pulled back far enough that nobody could see it breathe.
   drawCaveBaked(game, cam, x0, y0, x1, y1, secret, solid) {
     const ctx = this.ctx, wd = game.world, def = game.level.def, K = CAVE_BAKE;
-    const z = cam.zoom, B = this.caveBakeScale(z);
-    if (!this.bake || this.bake.world !== wd) this.bake = { world: wd, map: new Map(), px: 0, tick: 0 };
-    const bk = this.bake; bk.tick++;
+    const z = cam.zoom, B = this.bakeScale(z, 3), look = (ART_PASS.hay ? 1 : 0) + (ART_PASS.cave ? 2 : 0);
+    if (!this.bake || this.bake.world !== wd || this.bake.look !== look) {
+      this.dropBake(this.bake); this.bake = { world: wd, look, map: new Map(), px: 0, tick: 0 };
+      if (this.roomBake && this.roomBake.world !== wd) { this.dropBake(this.roomBake); this.roomBake = null; }
+    }
+    const bk = this.bake; bk.tick++; bk.B = B;
     let budget = CAVE_BAKE_MAX;
     const glow = z > 0.9 && def.shroom, glows = [];
     const c0 = Math.floor(x0 / K), c1 = Math.floor(x1 / K), r0 = Math.floor(y0 / K), r1 = Math.floor(y1 / K);
@@ -644,9 +753,11 @@ class Renderer {
       // Pulled far back there are hundreds of chunks and none of them is being looked at closely: a
       // tenth of them are asked whether they have changed each frame rather than all of them.
       const sig = e && e.B === B && B <= 0.5 && (bk.tick + ci + cj) % 10 ? e.sig : this.caveBakeSig(wd, ci * K, cj * K, secret);
-      if (!e || e.sig !== sig || e.B !== B) {
+      // A chunk whose only fault is its resolution is drawn as it is and repainted in idle time (`warmCave`):
+      // spending the frame's budget on it put up to six 2-10 ms bakes in one frame every time the zoom moved.
+      if (!e || e.sig !== sig) {
         if (budget > 0) { budget--; e = this.bakeCaveChunk(game, ci, cj, B, sig, secret, solid, e); bk.map.set(key, e); }
-        else if (!e || e.sig !== sig) {
+        else {
           // not painted yet: the floor's own colour, so it reads as ground rather than a hole
           ctx.fillStyle = def.floor; ctx.fillRect(ci * K * TILE, cj * K * TILE, K * TILE, K * TILE);
           continue;
@@ -666,10 +777,7 @@ class Renderer {
       ctx.restore(); ctx.imageSmoothingEnabled = false;
     }
     // Keep the bitmaps to a budget of pixels, dropping whatever has gone longest unseen.
-    if (bk.px > CAVE_BAKE_PX) {
-      const old = [...bk.map.entries()].filter(([, e]) => e.used !== bk.tick).sort((a, b) => a[1].used - b[1].used);
-      for (const [k, e] of old) { if (bk.px <= CAVE_BAKE_PX * 0.8) break; bk.px -= e.px || 0; bk.map.delete(k); }
-    }
+    if (bk.px > CAVE_BAKE_PX) this.trimBake(bk, CAVE_BAKE_PX * 0.8);
   }
   // What a chunk is painted from, as one number: its tiles and grass four tiles round (it is painted
   // from two round, and the rock band there reads two further) and which secret walls still stand.
@@ -1038,7 +1146,7 @@ class Renderer {
   // them that is not quite floor is a slow shimmer, and only up close.
   drawShroomTuft(p) {
     const g = this.game && this.game.goat;
-    const near = g ? clamp(1 - Math.hypot(g.x - p.x, g.y - p.y) / (4 * TILE), 0, 1) : 0;
+    const near = g ? clamp(1 - hyp(g.x - p.x, g.y - p.y) / (4 * TILE), 0, 1) : 0;
     const pulse = 0.5 + 0.5 * Math.sin(this.t * 1.3 + p.x);
     this.shroom(p.x - 5, p.y + 4, 3.4, '#cdb8a0', pulse, near > 0.2);
     this.shroom(p.x + 4, p.y + 6, 2.6, '#c4a98f', pulse, false);
@@ -1161,7 +1269,7 @@ class Renderer {
         let len = 17 + farHash(tx + k, ty - k) * 9;
         let lean = Math.sin(this.t * G.sway + h1 * 6.3 + tx * 0.7) * 0.18 + (h2 - 0.5) * 0.3;
         for (const b of near) {
-          const dx = bx - b.x, dy = by - b.y, d = Math.hypot(dx, dy);
+          const dx = bx - b.x, dy = by - b.y, d = hyp(dx, dy);
           const reach = b.goat ? 22 : 16;
           if (d > reach) continue;
           const f = 1 - d / reach;
@@ -1598,7 +1706,7 @@ class Renderer {
       ctx.font = `700 ${Math.round(size * 0.62)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(255,224,138,0.16)';
       ctx.fillText(tripped ? 'EVERYTHING THE OTHER WAY ROUND' : 'THE LAMPS ARE LIT', x, (lv.exitTile.y0 + 1.2) * TILE * TILT + size * 0.95);
       ctx.fillStyle = 'rgba(170,178,230,0.24)';
-      ctx.fillText('FEWER OF THEM. A LAMP TO A ROOM.', x, (fk.y0 + 1.2) * TILE * TILT + size * 0.95);
+      ctx.fillText('FEWER OF THEM. A LAMP OR TWO TO A ROOM.', x, (fk.y0 + 1.2) * TILE * TILT + size * 0.95);
       ctx.textAlign = 'center';
     }
     // The pen. After five seconds of standing in it, the floor says which button opens it.
@@ -1874,7 +1982,7 @@ class Renderer {
     const cells = (pts, col, w, dx = 0, dy = 0) => {
       ctx.fillStyle = col;
       for (let i = 1; i < pts.length; i++) {
-        const [ax, ay] = pts[i - 1], [bx, by] = pts[i], n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / C));
+        const [ax, ay] = pts[i - 1], [bx, by] = pts[i], n = Math.max(1, Math.round(hyp(bx - ax, by - ay) / C));
         for (let k = 0; k <= n; k++) ctx.fillRect(Math.round((x + ax + (bx - ax) * k / n) / C) * C + dx, Math.round((y + ay + (by - ay) * k / n) / C) * C + dy, C * w, C);
       }
     };
@@ -1901,8 +2009,35 @@ class Renderer {
   // shadow (playtest, 23 Sep 2026). Now the front feet sit in the lower half and the back ones in it.
   shadow(x, y, rx, ry) {
     if (this.silPass) return;   // THE DARK's silhouettes are the body alone
-    const ctx = this.ctx; ctx.fillStyle = this.shadeColor || 'rgba(0,0,0,0.32)';   // blue on a cloud (js/heaven.js)
+    const ctx = this.ctx, col = this.shadeColor || 'rgba(0,0,0,0.32)';   // blue on a cloud (js/heaven.js)
+    if (ART_PASS.shadows && rx > 0.5 && ry > 0.5) { this.pixelShadow(x, y - ry * 0.15, rx, ry, col); return; }
+    ctx.fillStyle = col;
     ctx.beginPath(); ctx.ellipse(x, y - ry * 0.15, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // The same ellipse as stepped cells of the sprites' own grain (`effects.pixel` world px, about one
+  // pixel of the packed art), baked once a size and colour and drawn point-sampled. The smooth one was
+  // the last soft edge under every unit: a vector shadow under a pixel body reads as a sticker (2 Oct
+  // 2026). In the floor's squashed space the cells come out a little flat, so where the transform is
+  // the world's they are laid counter-squashed, square on screen, the ellipse the same size as before.
+  pixelShadow(x, y, rx, ry, col) {
+    const ctx = this.ctx, C = TUNING.effects.pixel, m = ctx.getTransform();
+    const flat = Math.abs(m.b) < 1e-6 && Math.abs(m.c) < 1e-6 && Math.abs(m.d / m.a - TILT) < 0.02, ky = flat ? TILT : 1;
+    const nx = Math.max(1, Math.round(rx / C)), ny = Math.max(1, Math.round(ry * ky / C));
+    this.shadowCells ||= new Map();
+    const key = nx * 4096 + ny + col; let cv = this.shadowCells.get(key);
+    if (!cv) {
+      cv = document.createElement('canvas'); cv.width = nx * 2; cv.height = ny * 2;
+      const g = cv.getContext('2d'); g.fillStyle = col; g.beginPath();
+      // a row's half width off the ellipse at the row's middle, so the steps are even on all four sides
+      for (let j = 0; j < ny * 2; j++) { const v = (j + 0.5 - ny) / ny, w = Math.round(nx * Math.sqrt(Math.max(0, 1 - v * v))); if (w > 0) g.rect(nx - w, j, w * 2, 1); }
+      g.fill();
+      if (this.shadowCells.size > 400) this.shadowCells.clear();
+      this.shadowCells.set(key, cv);
+    }
+    const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    if (flat) { ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT); ctx.drawImage(cv, -nx * C, -ny * C, nx * 2 * C, ny * 2 * C); ctx.restore(); }
+    else ctx.drawImage(cv, x - nx * C, y - ny * C, nx * 2 * C, ny * 2 * C);
+    ctx.imageSmoothingEnabled = smooth;
   }
 
   // The roast: a campfire in a ring of stones, two forked sticks, and a crocodile turning on the
@@ -2208,7 +2343,7 @@ class Renderer {
       ctx.globalAlpha = 0.72 + 0.28 * called;
       ctx.fillStyle = 'rgba(13,10,12,0.72)'; CombatFX.cellDisc(ctx, 0, 0, 15 + called * 2);
       // The point: three rows of cells stepping out toward it, off the rim of the pip.
-      const sl = Math.hypot(dx, dy * TILT) || 1, ux = dx / sl, uy = dy * TILT / sl;
+      const sl = hyp(dx, dy * TILT) || 1, ux = dx / sl, uy = dy * TILT / sl;
       // Red when one more room walls it in (`p.behind`, from `Beast.tick`).
       ctx.fillStyle = p.behind >= 1 ? PALETTE.blood : called > 0 ? PALETTE.fireHi : PALETTE.hen;
       for (let s = 0; s < 3; s++) for (let w = -(2 - s); w <= 2 - s; w++) {
@@ -2274,7 +2409,7 @@ class Renderer {
   // The horse (js/horse-pixels.js): its own hand-built pixel body, the way the ogre has one, turned
   // to where it runs, and to the goat when it stands. Rearing at a door is its `kick` pose.
   drawHorse(p) {
-    const ctx = this.ctx, r = p.r, moving = Math.hypot(p.vx || 0, p.vy || 0) > 12;
+    const ctx = this.ctx, r = p.r, moving = hyp(p.vx || 0, p.vy || 0) > 12;
     if (moving) p.heading = Math.atan2(p.vy, p.vx);
     else if (p.face && (p.heading === undefined || Math.cos(p.heading) * p.face < 0)) p.heading = p.face > 0 ? 0 : Math.PI;
     ctx.save(); ctx.translate(p.x, p.y);
@@ -2294,7 +2429,7 @@ class Renderer {
   // The pig (js/pig-pixels.js), the horse's recipe a size down: turned to where she ambles, and
   // head down at a tuft while she eats it (`p.eating`, `Beast.updatePig`).
   drawPig(p) {
-    const ctx = this.ctx, moving = Math.hypot(p.vx || 0, p.vy || 0) > 10;
+    const ctx = this.ctx, moving = hyp(p.vx || 0, p.vy || 0) > 10;
     if (moving) p.heading = Math.atan2(p.vy, p.vx);
     else if (p.eating) p.heading = Math.atan2(p.eating.y - p.y, p.eating.x - p.x);
     else if (p.face && (p.heading === undefined || Math.cos(p.heading) * p.face < 0)) p.heading = p.face > 0 ? 0 : Math.PI;
@@ -2315,7 +2450,7 @@ class Renderer {
   // a body, which is the one thing it is ever doing, and the whole of what it asks of the player.
   drawCrow(p) {
     const ctx = this.ctx, r = p.r;
-    const moving = Math.hypot(p.vx || 0, p.vy || 0) > 8;
+    const moving = hyp(p.vx || 0, p.vy || 0) > 8;
     const face = p.face || 1;   // kept from its last step (`Beast.step`), so stopping is not a turn to the right
     // `lift`: the gift bird going up and away (`Beast.updateGift`), its shadow left on the floor and
     // shrinking under it, the bird fading out over the last part of the flight.
@@ -3075,7 +3210,7 @@ class Renderer {
 
   drawHound(e) {
     const ctx = this.ctx, r = e.r;
-    const run = Math.hypot(e.vx, e.vy) > 40 ? Math.sin(this.t * 26) * (r * 0.42) : 0;
+    const run = hyp(e.vx, e.vy) > 40 ? Math.sin(this.t * 26) * (r * 0.42) : 0;
     const thrust = e.state === 'windup' ? -0.18 : e.state === 'swing' ? 0.22 : 0;
     // The run in is the one thing about a hound you have to read across a room, and until now it
     // looked exactly like the circling did: he flattens out, streaks, and his eyes come up.
@@ -3220,8 +3355,16 @@ class Renderer {
       halo.addColorStop(1, 'rgba(242,162,51,0)');
       ctx.fillStyle = halo; ctx.beginPath(); ctx.ellipse(e.x, e.y, R, R * TILT, 0, 0, Math.PI * 2); ctx.fill();
       // and a thin ring at his feet, which is what survives being seen across a lit room
-      ctx.strokeStyle = `rgba(255,224,138,${0.3 + 0.25 * pulse})`; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.ellipse(e.x, e.y + e.r * 0.5, e.r * 1.25, e.r * 1.25 * TILT, 0, 0, Math.PI * 2); ctx.stroke();
+      if (ART_PASS.tells) {
+        // as cells of the sprites' grain, round the same ellipse
+        const C = TUNING.effects.pixel, rx = e.r * 1.25, ry = rx * TILT, cx = e.x, cy = e.y + e.r * 0.5, n = Math.max(16, Math.ceil(Math.PI * 2 * rx / C));
+        ctx.fillStyle = `rgba(255,224,138,${0.3 + 0.25 * pulse})`; ctx.beginPath();
+        for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; ctx.rect(Math.round((cx + Math.cos(a) * rx) / C) * C - C, Math.round((cy + Math.sin(a) * ry) / C) * C - C / 2, C * 2, C * 1.5); }
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = `rgba(255,224,138,${0.3 + 0.25 * pulse})`; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.ellipse(e.x, e.y + e.r * 0.5, e.r * 1.25, e.r * 1.25 * TILT, 0, 0, Math.PI * 2); ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -3444,6 +3587,52 @@ class Renderer {
     const slow = (this.game && this.game.mods && this.game.mods.enemySlow) || 1;
     return clamp(1 - e.timer / Math.max(1e-3, dur * slow), 0, 1);
   }
+  // The tells' cells (`ART_PASS.tells`), laid on the floor in world space, squashed with it, `px` world px
+  // on the world grid so a mark that stands still never crawls. Each adds rects to the current path.
+  // A disc of radius R round (x, y), or a ring of it with a hole `r0`, a row at a time: a row is the
+  // disc's chord, less the hole's, and never thinner than a cell, so a ring has no gap at its sides.
+  floorRing(x, y, R, r0, px) {
+    const ctx = this.ctx, j0 = Math.floor((y - R) / px), j1 = Math.floor((y + R) / px);
+    for (let j = j0; j <= j1; j++) {
+      const dy = (j + 0.5) * px - y; if (Math.abs(dy) > R) continue;
+      const h = Math.sqrt(R * R - dy * dy), a = Math.round((x - h) / px), b = Math.round((x + h) / px);
+      if (b <= a) continue;
+      if (r0 > 0 && Math.abs(dy) < r0) {
+        const k = Math.sqrt(r0 * r0 - dy * dy), c = Math.max(a + 1, Math.round((x - k) / px)), d = Math.min(b - 1, Math.round((x + k) / px));
+        if (d > c) { ctx.rect(a * px, j * px, (c - a) * px, px); ctx.rect(d * px, j * px, (b - d) * px, px); }
+        else ctx.rect(a * px, j * px, (b - a) * px, px);
+      } else ctx.rect(a * px, j * px, (b - a) * px, px);
+    }
+  }
+  // The ring's cells whose angle lies `from` .. `from + sweep` (clockwise on screen): a meter going round.
+  floorArc(x, y, R, r0, px, from, sweep) {
+    if (sweep <= 0) return;
+    if (sweep >= Math.PI * 2) { this.floorRing(x, y, R, r0, px); return; }
+    const ctx = this.ctx, j0 = Math.floor((y - R) / px), j1 = Math.floor((y + R) / px), i0 = Math.floor((x - R) / px), i1 = Math.floor((x + R) / px);
+    const inside = (cx, cy) => { const d = hyp(cx, cy); if (d > R || d < r0) return false; let a = Math.atan2(cy, cx) - from; a = ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2); return a <= sweep; };
+    for (let j = j0; j <= j1; j++) {
+      let run = null;
+      for (let i = i0; i <= i1 + 1; i++) {
+        if (i <= i1 && inside((i + 0.5) * px - x, (j + 0.5) * px - y)) { if (run === null) run = i; }
+        else if (run !== null) { ctx.rect(run * px, j * px, (i - run) * px, px); run = null; }
+      }
+    }
+  }
+  // A line of cells from (x0, y0) to (x1, y1), dashed `on` / `off` world px and crawling `off0` along it.
+  floorLine(x0, y0, x1, y1, px, on, off, off0 = 0) {
+    const ctx = this.ctx, L = hyp(x1 - x0, y1 - y0); if (L < 1) return;
+    const ux = (x1 - x0) / L, uy = (y1 - y0) / L, per = on + off; let last = '';
+    for (let s = 0; s <= L; s += px * 0.5) {
+      if (off > 0 && ((((s - off0) % per) + per) % per) >= on) continue;
+      const i = Math.round((x0 + ux * s) / px - 0.5), j = Math.round((y0 + uy * s) / px - 0.5), k = i + ',' + j;
+      if (k !== last) { ctx.rect(i * px, j * px, px, px); last = k; }
+    }
+  }
+  // A small cross of cells round (x, y), a landing or a mark at the end of a line.
+  floorMark(x, y, px, arm = 1) {
+    const ctx = this.ctx, i = Math.round(x / px - 0.5), j = Math.round(y / px - 0.5);
+    ctx.rect((i - arm) * px, j * px, (arm * 2 + 1) * px, px); ctx.rect(i * px, (j - arm) * px, px, (arm * 2 + 1) * px);
+  }
   drawTelegraph(e) {
     if (e.state === 'slamwind') { this.drawSlamRing(e); return; }
     if (e.state === 'hookwind') { this.drawHookLine(e); return; }
@@ -3469,7 +3658,7 @@ class Renderer {
   drawHookLine(e) {
     const ctx = this.ctx, H = TUNING.champion.hook, a = e.hookAim || (this.game && this.game.goat);
     if (!a) return;
-    const p = this.windP(e, H.wind), dx = a.x - e.x, dy = a.y - e.y, d = Math.hypot(dx, dy) || 1;
+    const p = this.windP(e, H.wind), dx = a.x - e.x, dy = a.y - e.y, d = hyp(dx, dy) || 1;
     const ux = dx / d, uy = dy / d, w = this.game && this.game.world;
     // As far as it will fly: `over` past the aim, cut at the first stone it would clank on.
     let run = d + H.over * TILE;
@@ -3477,13 +3666,20 @@ class Renderer {
     const stops = this.game ? this.game.props.filter((q) => q.stopsBullets && q !== e) : [];
     if (w) for (let s = e.r; s < run; s += 6) {
       const sx = e.x + ux * s, sy = e.y + uy * s;
-      if (w.isSolid(Math.floor(sx / TILE), Math.floor(sy / TILE)) || stops.some((q) => Math.hypot(q.x - sx, q.y - sy) < (q.r || 10))) { run = s; break; }
+      if (w.isSolid(Math.floor(sx / TILE), Math.floor(sy / TILE)) || stops.some((q) => hyp(q.x - sx, q.y - sy) < (q.r || 10))) { run = s; break; }
     }
     ctx.save();
-    ctx.strokeStyle = `rgba(242,170,48,${0.3 + 0.55 * p})`; ctx.lineWidth = 1 + p;
-    ctx.setLineDash([6, 5]); ctx.lineDashOffset = -this.t * 50;
-    ctx.beginPath(); ctx.moveTo(e.x + ux * e.r, e.y + uy * e.r); ctx.lineTo(e.x + ux * run, e.y + uy * run); ctx.stroke();
-    ctx.setLineDash([]);
+    if (ART_PASS.tells) {
+      // the line as cells of the floor's grid, the same dash marching out
+      ctx.fillStyle = `rgba(242,170,48,${0.3 + 0.55 * p})`; ctx.beginPath();
+      this.floorLine(e.x + ux * e.r, e.y + uy * e.r, e.x + ux * run, e.y + uy * run, TUNING.effects.pixel * 2, 6, 5, this.t * 50);
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = `rgba(242,170,48,${0.3 + 0.55 * p})`; ctx.lineWidth = 1 + p;
+      ctx.setLineDash([6, 5]); ctx.lineDashOffset = -this.t * 50;
+      ctx.beginPath(); ctx.moveTo(e.x + ux * e.r, e.y + uy * e.r); ctx.lineTo(e.x + ux * run, e.y + uy * run); ctx.stroke();
+      ctx.setLineDash([]);
+    }
     // The landing, as cells of the effect grid counter-squashed so they stay square on screen.
     const px = TUNING.effects.pixel * 2;
     ctx.translate(a.x, a.y); ctx.scale(1, 1 / TILT);
@@ -3525,10 +3721,12 @@ class Renderer {
   drawTelegraphCells(e, cfg) {
     const ctx = this.ctx, px = TUNING.effects.pixel * 2, f = e.facing;
     const ux = Math.cos(f), uy = Math.sin(f);
-    // `span(y)`, where given, is the stretch of x a row at world y can hold, so a long charge strip
-    // tests the cells along it and not a square as wide as it is long (30 Sep 2026: 120 thousand
-    // tests a frame, 12 ms, while a butcher wound up a charge).
-    const fill = (test, n, color, span) => {
+    // `span(y)`, where given, is the stretch of x a row at world y can hold (or two, as a flat list), so
+    // a long charge strip tests the cells along it and not a square as wide as it is long (30 Sep 2026:
+    // 120 thousand tests a frame, 12 ms, while a butcher wound up a charge). `walk`, for a shape with
+    // one stretch a row and nothing missing inside it, walks in from both ends to the first cell that
+    // holds and lays everything between as one rect (1 Oct 2026).
+    const fill = (test, n, color, span, walk) => {
       ctx.fillStyle = color; ctx.beginPath();
       // Cells sit in counter-squashed space (square on screen), but what they test is the floor: a
       // cell's world y is its local y / TILT. Tested in local space, a diagonal charge strip pointed
@@ -3536,21 +3734,62 @@ class Renderer {
       for (let j = -n; j <= n; j++) {
         const y = (j + 0.5) * px / TILT, sp = span ? span(y) : null;
         if (span && !sp) continue;
-        const i0 = sp ? Math.max(-n, Math.floor(sp[0] / px) - 1) : -n, i1 = sp ? Math.min(n, Math.ceil(sp[1] / px) + 1) : n;
-        for (let i = i0; i <= i1; i++) if (test((i + 0.5) * px, y)) ctx.rect(i * px, j * px, px, px);
+        let done = -n - 1;   // two stretches widened into each other lay no cell twice
+        for (let s = 0; s < (sp ? sp.length : 2); s += 2) {
+          const i0 = Math.max(done + 1, sp ? Math.floor(sp[s] / px) - 1 : -n, -n), i1 = sp ? Math.min(n, Math.ceil(sp[s + 1] / px) + 1) : n;
+          if (walk) {
+            let a = i0, b = i1;
+            while (a <= b && !test((a + 0.5) * px, y)) a++;
+            while (b > a && !test((b + 0.5) * px, y)) b--;
+            if (a <= b) ctx.rect(a * px, j * px, (b + 1 - a) * px, px);
+          } else {
+            // every cell asked, and a run of them laid as one rect: the same cells, a tenth of the path
+            let run = null;
+            for (let i = i0; i <= i1; i++) {
+              if (test((i + 0.5) * px, y)) { if (run === null) run = i; }
+              else if (run !== null) { ctx.rect(run * px, j * px, (i - run) * px, px); run = null; }
+            }
+            if (run !== null) ctx.rect(run * px, j * px, (i1 + 1 - run) * px, px);
+          }
+          done = Math.max(done, i1);
+        }
       }
       ctx.fill();
     };
-    // (The butcher's charge strip was the one `span` user; the hook's line is `drawHookLine`.)
+    // (The butcher's charge strip was the first `span` user; the hook's line is `drawHookLine`.)
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
     {
       const p = this.windP(e, e.atk ? e.atk('windup') : cfg.windup);
       const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : Math.PI * 0.55, n = Math.ceil(reach / px);
       const inArc = (x, y) => Math.abs(angleDiff(Math.atan2(y, x), f)) <= arc / 2;
-      fill((x, y) => Math.hypot(x, y) <= reach && inArc(x, y), n, `rgba(242,170,48,${0.1 + 0.22 * p})`);
-      // the rim fills round from one side as the blow comes, as the stroke did
-      fill((x, y) => { const d = Math.hypot(x, y); if (d > reach || d < reach - px * 1.2 || !inArc(x, y)) return false;
-        const a = angleDiff(f - arc / 2, Math.atan2(y, x)); return a >= 0 && a <= arc * p; }, n, `rgba(255,224,138,${0.35 + 0.6 * p})`);
+      // A row's stretch of the sector: the disc's chord cut by the wedge's two edges, one stretch since
+      // every swing is under a half turn wide. The square round it was 2 401 cells tested twice for a
+      // clubman, a millisecond each, and 15 ms in a frame when a room wound up together (1 Oct 2026).
+      const edges = [[Math.cos(f - arc / 2), Math.sin(f - arc / 2), 1], [Math.cos(f + arc / 2), Math.sin(f + arc / 2), -1]];
+      const span = arc < Math.PI ? (y) => {
+        if (Math.abs(y) > reach) return null;
+        const c = Math.sqrt(reach * reach - y * y); let lo = -c, hi = c;
+        for (const [ex, ey, s] of edges) {
+          // on the sector's side of this edge: a * x >= b
+          const a = -s * ey, b = -s * ex * y;
+          if (Math.abs(a) < 1e-9) { if (b > 1e-9) return null; continue; }
+          if (a > 0) lo = Math.max(lo, b / a); else hi = Math.min(hi, b / a);
+        }
+        return lo <= hi ? [lo, hi] : null;
+      } : null;
+      fill((x, y) => hyp(x, y) <= reach && inArc(x, y), n, `rgba(242,170,48,${0.1 + 0.22 * p})`, span, !!span);   // a half turn or wider is no one stretch a row
+      // the rim fills round from one side as the blow comes, as the stroke did; a row of it is the
+      // sector's stretch less the inner circle's chord, so two stretches where that chord falls inside
+      const rimIn = reach - px * 1.2;
+      const rimSpan = span ? (y) => {
+        const sp = span(y); if (!sp || Math.abs(y) >= rimIn) return sp;
+        const ci = Math.sqrt(rimIn * rimIn - y * y), out = [];
+        if (sp[0] <= -ci) out.push(sp[0], Math.min(sp[1], -ci));
+        if (sp[1] >= ci) out.push(Math.max(sp[0], ci), sp[1]);
+        return out.length ? out : null;
+      } : null;
+      fill((x, y) => { const d = hyp(x, y); if (d > reach || d < rimIn || !inArc(x, y)) return false;
+        const a = angleDiff(f - arc / 2, Math.atan2(y, x)); return a >= 0 && a <= arc * p; }, n, `rgba(255,224,138,${0.35 + 0.6 * p})`, rimSpan);
     }
     ctx.restore();
   }
@@ -3558,6 +3797,7 @@ class Renderer {
   // The Butcher's slam: the ring on the floor it will fill, filling in as he raises his fists.
   drawSlamRing(e) {
     const ctx = this.ctx, SL = TUNING.butcher.slam, R = SL.range * TILE, p = this.windP(e, SL.wind);
+    if (ART_PASS.tells) { this.drawLandCells(e.x, e.y, R, p); return; }
     ctx.save(); ctx.translate(e.x, e.y);
     ctx.fillStyle = `rgba(192,57,43,${0.07 + 0.2 * p})`;
     ctx.beginPath(); ctx.arc(0, 0, R * p, 0, Math.PI * 2); ctx.fill();
@@ -3572,10 +3812,25 @@ class Renderer {
   // thing fading over its last second. The Hades way of saying "that, over there".
   drawGuide(game) {
     const G = game.guide; if (!G) return;
-    const C = TUNING.soul.guide, g = game.goat, dx = G.ref.x - g.x, dy = G.ref.y - g.y, d = Math.hypot(dx, dy);
+    const C = TUNING.soul.guide, g = game.goat, dx = G.ref.x - g.x, dy = G.ref.y - g.y, d = hyp(dx, dy);
     if (d < C.gap * 1.5) return;
     const ux = dx / d, uy = dy / d, fade = Math.min(1, G.t) * Math.min(1, (C.time - G.t) * 4);
     const ctx = this.ctx, S = C.size, off = (this.t * C.speed) % C.gap;
+    if (ART_PASS.tells) {
+      // each chevron as cells, a dark cell round every lit one so it reads on any floor
+      const px = TUNING.effects.pixel * 2, arms = [];
+      for (let s = off + C.gap * 0.8; s < d - C.gap * 0.6; s += C.gap) {
+        const a = fade * Math.min(1, s / (C.gap * 2)) * Math.min(1, (d - s) / (C.gap * 2)), x = g.x + ux * s, y = g.y + uy * s;
+        arms.push([a, x - ux * S - uy * S, y - uy * S + ux * S, x, y, x - ux * S + uy * S, y - uy * S - ux * S]);
+      }
+      for (const [a, ax, ay, x, y, bx, by] of arms) {
+        ctx.fillStyle = `rgba(20,10,30,${0.5 * a})`; ctx.beginPath();
+        for (const [ox, oy] of [[-px, 0], [px, 0], [0, -px], [0, px]]) { this.floorLine(ax + ox, ay + oy, x + ox, y + oy, px, 1, 0); this.floorLine(bx + ox, by + oy, x + ox, y + oy, px, 1, 0); }
+        ctx.fill();
+        ctx.globalAlpha = a; ctx.fillStyle = PALETTE.witchHi; ctx.beginPath(); this.floorLine(ax, ay, x, y, px, 1, 0); this.floorLine(bx, by, x, y, px, 1, 0); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      return;
+    }
     ctx.save(); ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (let s = off + C.gap * 0.8; s < d - C.gap * 0.6; s += C.gap) {
       const a = fade * Math.min(1, s / (C.gap * 2)) * Math.min(1, (d - s) / (C.gap * 2));
@@ -3618,22 +3873,41 @@ class Renderer {
   // The hound's run under the art pass: its band as amber cells on the world grid, the dashes marching
   // along its middle as lit cells, and a head of cells at the far end so the line still has a direction.
   drawDashCells(e, pts, p) {
-    const ctx = this.ctx, px = TUNING.effects.pixel * 2, band = new Set(), mid = [], wr = Math.max(1, Math.round(e.r * 0.8 / px));
-    // The disc's cells once, and the band keyed by a number: string keys split back apart were 2 ms
-    // a frame for one hound's run (30 Sep 2026).
-    const disc = []; for (let j = -wr; j <= wr; j++) for (let i = -wr; i <= wr; i++) if (i * i + j * j <= wr * wr + 0.5) disc.push(i, j);
-    const Z = 32768;
-    let run = 0;
+    const ctx = this.ctx, px = TUNING.effects.pixel * 2, mid = [], steps = [], wr = Math.max(1, Math.round(e.r * 0.8 / px));
+    // The band is a disc of cells stamped at every step of the run: stamped into a bitmap over the
+    // run's box a row of the disc at a time, and read back as one rect a row's stretch. A Set of
+    // cells and a rect each cost a hound 1 to 1.5 ms a frame while it wound up (1 Oct 2026).
+    const half = []; for (let j = -wr; j <= wr; j++) half.push(Math.floor(Math.sqrt(wr * wr + 0.5 - j * j)));
+    let run = 0, x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     for (let s = 1; s < pts.length; s++) {
-      const a = pts[s - 1], b = pts[s], L = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.ceil(L / px));
+      const a = pts[s - 1], b = pts[s], L = hyp(b.x - a.x, b.y - a.y), n = Math.max(1, Math.ceil(L / px));
       for (let k = 0; k < n; k++) {
         const x = a.x + (b.x - a.x) * k / n, y = a.y + (b.y - a.y) * k / n, cx = Math.round(x / px), cy = Math.round(y / px);
-        for (let q = 0; q < disc.length; q += 2) band.add((cy + disc[q + 1] + Z) * 65536 + cx + disc[q] + Z);
-        mid.push([cx, cy, run]); run += L / n;
+        steps.push(cx, cy); mid.push([cx, cy, run]); run += L / n;
+        if (cx < x0) x0 = cx; if (cx > x1) x1 = cx; if (cy < y0) y0 = cy; if (cy > y1) y1 = cy;
       }
     }
-    const cells = (list, color) => { ctx.fillStyle = color; ctx.beginPath(); for (const c of list) { const i = typeof c === 'number' ? c % 65536 - Z : c[0], j = typeof c === 'number' ? Math.floor(c / 65536) - Z : c[1]; ctx.rect(i * px - px / 2, j * px - px / 2, px, px); } ctx.fill(); };
-    cells(band, `rgba(242,170,48,${0.12 + 0.2 * p})`);
+    if (!steps.length) return;
+    x0 -= wr; x1 += wr; y0 -= wr; y1 += wr;
+    const W = x1 - x0 + 1, H = y1 - y0 + 1;
+    if (!this.dashBits || this.dashBits.length < W * H) this.dashBits = new Uint8Array(W * H * 2);
+    const B = this.dashBits; B.fill(0, 0, W * H);
+    for (let q = 0; q < steps.length; q += 2) {
+      const cx = steps[q] - x0, cy = steps[q + 1] - y0;
+      for (let j = -wr; j <= wr; j++) { const h = half[j + wr], o = (cy + j) * W + cx; B.fill(1, o - h, o + h + 1); }
+    }
+    ctx.fillStyle = `rgba(242,170,48,${0.12 + 0.2 * p})`; ctx.beginPath();
+    for (let j = 0; j < H; j++) {
+      const o = j * W;
+      for (let i = 0; i < W;) {
+        if (!B[o + i]) { i++; continue; }
+        let k = i + 1; while (k < W && B[o + k]) k++;
+        ctx.rect((x0 + i) * px - px / 2, (y0 + j) * px - px / 2, (k - i) * px, px);
+        i = k;
+      }
+    }
+    ctx.fill();
+    const cells = (list, color) => { ctx.fillStyle = color; ctx.beginPath(); for (const c of list) ctx.rect(c[0] * px - px / 2, c[1] * px - px / 2, px, px); ctx.fill(); };
     const off = this.t * 60;
     cells(mid.filter((m) => ((m[2] + off) % 14) < 8), `rgba(255,224,138,${0.4 + 0.5 * p})`);
     const a = pts[pts.length - 1], b = pts[pts.length - 2], ang = Math.atan2(a.y - b.y, a.x - b.x), head = [];
@@ -3655,6 +3929,7 @@ class Renderer {
     if ((e.kind !== 'ratogre' && e.kind !== 'butcher') || (e.state !== 'hopwind' && e.state !== 'hop') || !e.hopTo) return;
     const H = e.kind === 'butcher' ? TUNING.butcher.leap : TUNING.ratogre.hop, ctx = this.ctx, R = H.radius * TILE;
     const p = e.state === 'hopwind' ? 0.25 * this.windP(e, H.wind) : 0.25 + 0.75 * clamp(1 - e.timer / H.air, 0, 1);
+    if (ART_PASS.tells) { this.drawLandCells(e.hopTo.x, e.hopTo.y, R, p); return; }
     ctx.save();
     ctx.strokeStyle = `rgba(192,57,43,${0.35 + 0.5 * p})`; ctx.lineWidth = 2.2;
     ctx.beginPath(); ctx.arc(e.hopTo.x, e.hopTo.y, R, 0, Math.PI * 2); ctx.stroke();
@@ -3663,9 +3938,32 @@ class Renderer {
     ctx.restore();
   }
 
+  // Where a quake lands (`ART_PASS.tells`), the ogre's slam round him and a leaper's landing: the windup's
+  // own amber, a disc of faint cells filling out to the ring as `p` comes up and the ring bright at the
+  // rim. They were a smooth red disc under a bone or red stroke: the one windup left in blood's colour
+  // and off the grid, where every swing and run had gone amber and into cells.
+  drawLandCells(x, y, R, p) {
+    const ctx = this.ctx, px = TUNING.effects.pixel * 2;
+    ctx.fillStyle = `rgba(242,170,48,${0.1 + 0.22 * p})`; ctx.beginPath(); this.floorRing(x, y, R * clamp(p, 0, 1), 0, px); ctx.fill();
+    ctx.fillStyle = `rgba(255,224,138,${0.35 + 0.6 * p})`; ctx.beginPath(); this.floorRing(x, y, R, R - px * 1.2, px); ctx.fill();
+  }
+
   drawAimTelegraph(e) {
     if (e.kind !== 'hunter' || (e.state !== 'aim' && !e.held)) return;
     const ctx = this.ctx, r = e.r;
+    if (ART_PASS.tells) {
+      // The line in cells, the windups' amber where it was red on the cult's own red floors (the
+      // Altar's plum ate it at the start of the aim), dashed and marching toward the goat, surer as he
+      // aims: the cells brighten and the gaps close. A cross of bright cells where the round will land.
+      const p = e.state === 'aim' ? this.windP(e, TUNING.hunter.aimTime) : 0.5, g = this.game && this.game.goat;
+      const reach = g ? Math.min(hyp(g.x - e.x, g.y - e.y), TUNING.hunter.sight * TILE * 1.6) : 10 * TILE;
+      const ux = Math.cos(e.facing), uy = Math.sin(e.facing), px = TUNING.effects.pixel * 2;
+      ctx.fillStyle = `rgba(242,170,48,${0.3 + p * 0.6})`; ctx.beginPath();
+      this.floorLine(e.x + ux * r * 0.7, e.y + uy * r * 0.7, e.x + ux * reach, e.y + uy * reach, px, 7 + p * 4, 6 - p * 4, this.t * 40);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255,224,138,${0.35 + p * 0.6})`; ctx.beginPath(); this.floorMark(e.x + ux * reach, e.y + uy * reach, px, p > 0.5 ? 2 : 1); ctx.fill();
+      return;
+    }
     // In world space and not counter-squashed like a sprite: the line lies on the floor, so it has
     // to be squashed the way the floor is or it points past the goat on every diagonal.
     ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.facing);
@@ -3676,7 +3974,7 @@ class Renderer {
     // tile out in front of him and crawl outward, so it read as a thing floating in the room rather
     // than as a man pointing a rifle.
     const g = this.game && this.game.goat;
-    const reach = g ? Math.min(Math.hypot(g.x - e.x, g.y - e.y), TUNING.hunter.sight * TILE * 1.6) : 10 * TILE;
+    const reach = g ? Math.min(hyp(g.x - e.x, g.y - e.y), TUNING.hunter.sight * TILE * 1.6) : 10 * TILE;
     ctx.strokeStyle = `rgba(192,57,43,${0.25 + p * 0.65})`; ctx.lineWidth = 1.2 + p * 1.2;
     ctx.setLineDash([7, 6]); ctx.lineDashOffset = -this.t * 40;
     ctx.beginPath(); ctx.moveTo(r * 0.7, 0); ctx.lineTo(reach, 0); ctx.stroke();
@@ -3691,7 +3989,25 @@ class Renderer {
     const ctx = this.ctx, B = TUNING.goat.breath;
     const p = 1 - fx.life / fx.max, a = Math.atan2(fx.ax, 1) * 0 + Math.atan2(fx.ay, fx.ax);
     ctx.save(); ctx.translate(fx.x, fx.y); ctx.scale(1, 1 / TILT); ctx.rotate(a);
-    const reach = B.range * (0.45 + p * 0.75);
+    const reach = (fx.range || B.range) * (0.45 + p * 0.75);   // BIG LUNGS' longer cone rides on the fx
+    if (ART_PASS.tells) {
+      // The cone as cells in three hard bands, the flames' own colours, hot at the mouth and ember at
+      // the end, where it was a smooth gradient: the fire every other flame is drawn as.
+      ctx.rotate(-a);   // cells square to the screen; the cone's turn is in the test
+      const px = TUNING.effects.pixel * 2, n = Math.ceil(reach / px), k = 1 - p, half = B.halfAngle;
+      // each band at what the gradient averaged across it, out as far as it could be seen: it ran out to
+      // nothing at the rim; a cell's width either side of a step is dithered, the one blend pixels allow
+      const bands = [[`rgba(255,224,138,${0.72 * k})`, 0.4], [`rgba(242,162,51,${0.4 * k})`, 0.74], [`rgba(192,57,43,${0.14 * k})`, 0.92]].map(([c, to]) => ({ c, to, rects: [] }));
+      for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
+        const cx = (i + 0.5) * px, cy = (j + 0.5) * px, dd = hyp(cx, cy);
+        if (dd < 6 || Math.abs(angleDiff(Math.atan2(cy, cx), a)) > half) continue;
+        const f = (dd + ((i + j) & 1 ? px * 0.5 : -px * 0.5)) / reach, b = bands.findIndex((q) => f < q.to);
+        if (b >= 0) bands[b].rects.push(i * px, j * px);
+      }
+      for (const b of bands) { ctx.fillStyle = b.c; ctx.beginPath(); for (let q = 0; q < b.rects.length; q += 2) ctx.rect(b.rects[q], b.rects[q + 1], px, px); ctx.fill(); }
+      ctx.restore();
+      return;
+    }
     const g = ctx.createRadialGradient(0, 0, 6, 0, 0, reach);
     g.addColorStop(0, `rgba(255,224,138,${0.85 * (1 - p)})`);
     g.addColorStop(0.45, `rgba(242,162,51,${0.55 * (1 - p)})`);
@@ -3741,6 +4057,20 @@ class Renderer {
       const cfg = TUNING.seer, wind = cfg.castWind * (game.mods.enemySlow || 1);
       const p = clamp(1 - e.timer / wind, 0, 1);
       const R = cfg.runeRadius * TILE;
+      if (ART_PASS.tells) {
+        // The same rune in cells: the circle and its spokes in the violet of the witchfire it will light,
+        // turning (laid again each frame, so it turns the way a pixel sprite would), the amber meter
+        // going round inside it and the amber filling in, as every other windup. It was the one telegraph
+        // in a fight still drawn in smooth strokes.
+        const x = e.rune.x, y = e.rune.y, px = TUNING.effects.pixel * 2, spin = this.t * 0.7;
+        ctx.fillStyle = `rgba(242,162,51,${0.10 + 0.3 * p})`; ctx.beginPath(); this.floorRing(x, y, R * p, 0, px); ctx.fill();
+        ctx.fillStyle = `rgba(160,130,240,${0.25 + 0.5 * p})`; ctx.beginPath();
+        this.floorRing(x, y, R, R - px * 1.2, px); this.floorRing(x, y, R * 0.62, R * 0.62 - px * 1.2, px);
+        for (let k = 0; k < 6; k++) { const a = spin + k / 6 * Math.PI * 2, c = Math.cos(a), s = Math.sin(a); this.floorLine(x + c * R * 0.62, y + s * R * 0.62, x + c * R, y + s * R, px, 1, 0); }
+        ctx.fill();
+        ctx.fillStyle = `rgba(242,162,51,${0.35 + 0.6 * p})`; ctx.beginPath(); this.floorArc(x, y, R * 0.85 + px, R * 0.85 - px, px, -Math.PI / 2 + spin, p * Math.PI * 2); ctx.fill();
+        continue;
+      }
       ctx.save(); ctx.translate(e.rune.x, e.rune.y); ctx.rotate(this.t * 0.7);
       ctx.strokeStyle = `rgba(160,130,240,${0.25 + 0.5 * p})`; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
@@ -3854,7 +4184,7 @@ class Renderer {
           ['font-say', 'SPEECH  ' + FONT_PICK.nameOf('say')], ['font-text', 'TEXT  ' + FONT_PICK.nameOf('text')],
         ] },
         { head: 'SPAWN', rows: [
-          ['bearer', 'BEARER'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
+          ['bearer', 'BEARER'], ['enemy-spawn=shield', 'SHIELDMAN'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
           ['wraith', 'WRAITH'], ['butcher', 'OGRE'], ['ratogre', 'RAT OGRE'],
           ['mouse', 'MOUSE'], ['artifact', 'ARTIFACT'], ['soul', 'SOUL'],
           ['coop', 'HEN'], ['tortoise', 'TORTOISE'], ['goose', 'GOOSE'], ['crow', 'CROW'], ['horse', 'HORSE'],
@@ -4137,9 +4467,12 @@ class Renderer {
     this.devButton(d, pad + 136 * s, top + 18 * s, 190 * s, 18 * s, 'HUNTER: ' + H2.name, 'art-hunter', ART_PASS.hunter > 0);
     this.devButton(d, pad + 332 * s, top + 18 * s, 190 * s, 18 * s, 'CLUBMAN: ' + C2.name, 'art-clubman', ART_PASS.clubman > 0);
     this.devButton(d, pad + 528 * s, top + 18 * s, 150 * s, 18 * s, ART_PASS.floors ? 'FLOORS: SHEETS' : 'FLOORS: AS PACKED', 'art-floors', ART_PASS.floors);
+    // The second pass (2 Oct 2026): what was still smooth on the floor, on the grid.
+    [['shadows', 'SHADOWS', 'PIXEL', 'SMOOTH'], ['tells', 'TELLS', 'CELLS', 'STROKES'], ['hay', 'HAY', 'A STEP DOWN', 'AS PACKED'], ['cave', 'CAVE FLOOR', 'SHEET', 'AS PACKED']].forEach(([k, name, yes, no], i) =>
+      this.devButton(d, pad + i * 170 * s, top + 40 * s, 164 * s, 18 * s, `${name}: ${ART_PASS[k] ? yes : no}`, 'art-' + k, ART_PASS[k]));
     ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)'; ctx.textAlign = 'left';
-    ctx.fillText(this.clip('hunter, ' + H2.rule, W - pad * 2), pad, top + 48 * s);
-    ctx.fillText(this.clip('clubman, ' + C2.rule, W - pad * 2), pad, top + 58 * s);
+    ctx.fillText(this.clip('hunter, ' + H2.rule, W - pad * 2), pad, top + 70 * s);
+    ctx.fillText(this.clip('clubman, ' + C2.rule, W - pad * 2), pad, top + 80 * s);
 
     const colGap = 24 * s, colW = (W - pad * 2 - colGap) / 2;
     const cols = [[], []];
@@ -4148,7 +4481,7 @@ class Renderer {
 
     cols.forEach((sections, ci) => {
       const x = pad + ci * (colW + colGap);
-      let y = top + 76 * s;
+      let y = top + 98 * s;
       sections.forEach((sec) => {
         ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi; ctx.textAlign = 'left';
         ctx.fillText(sec.section, x, y);
@@ -4772,6 +5105,10 @@ class Renderer {
           ['HOOK CD', ['champion', 'hook', 'cooldown']], ['HOOK WIND', ['champion', 'hook', 'wind']], ['RAGE', ['champion', 'rage', 'speed']]],
         immune: ['blunder'],
         note: `A clubman with a cleaver and a hook on a rope: ${TUNING.champion.hp} hits, the heavy one without the outline. Never carried; a headbutt moves him ${Math.round(TUNING.champion.flingMul * 100)}% as far. Seen ${TUNING.champion.hook.min}-${TUNING.champion.hook.max} tiles off he swings the hook ${TUNING.champion.hook.wind}s and throws it where you are going, past his own men; caught, you are dragged to his cleaver. Turn or roll to slip it. On fire he comes on faster instead of running.` },
+      { kind: 'bearer', tag: 'shield', label: 'SHIELDMAN', cfg: TUNING.bearer, hp: 1,
+        edit: [['USES', ['shieldman', 'uses']], ['ARC', ['shieldman', 'arc']], ['TURN', ['shieldman', 'turn']], ['SPEED ×', ['shieldman', 'speedMul']],
+          ['BRACE', ['shieldman', 'brace']], ['PUSH', ['shieldman', 'push']], ['BOUNCE', ['shieldman', 'bounce']]],
+        note: `A clubman behind a board of planks. Inside ${Math.round(TUNING.shieldman.arc * 180 / Math.PI)}° of his front a headbutt, a crate, a blade, a bite or a round meets the board: it takes ${TUNING.shieldman.uses} and splinters, and a body thrown into it dies as on a wall. He turns no faster than ${TUNING.shieldman.turn} rad/s and walks at ${Math.round(TUNING.shieldman.speedMul * 100)}%: go round him, roll past, vault him, or shout him dizzy (the board drops while he reels). Dead with the board whole, he leaves it to pick up.` },
       // One row for the rule every kind shares (`TUNING.boss`) and the soul only a boss carries.
       { kind: 'bearer', tag: 'boss', boss: true, label: 'BOSS',
         cfg: TUNING.bearer, hp: TUNING.boss.hp,
@@ -4825,6 +5162,7 @@ class Renderer {
       const B = TUNING.bearer, C = TUNING.champion, O = TUNING.butcher, D = TUNING.dog;
       if (tag === 'bearer' || tag === 'boss') return [['CHASE', B.speed], idle(B.speed)];
       if (tag === 'champion') return [['CHASE', B.speed], ['ALIGHT', B.speed * C.rage.speed], idle(B.speed)];
+      if (tag === 'shield') return [['CHASE', B.speed * TUNING.shieldman.speedMul], idle(B.speed * TUNING.shieldman.speedMul)];
       if (tag === 'butcher') return [['CHASE', O.speed], ['LEAP ≤', O.leap.max * TILE / O.leap.air], ['ALIGHT', O.speed * O.rage.speed], idle(O.speed)];
       if (tag === 'dog') return [['CHASE', D.speed], ['RUN', D.dashSpeed], idle(D.speed)];
       if (tag === 'wraith') return [['DRIFT', TUNING.wraith.speed]];
@@ -4851,7 +5189,8 @@ class Renderer {
       const fake = { x: pad + thumb / 2, y: ry + thumb / 2 + 6 * s, r: k.cfg.radius, kind: k.kind,
         champion: !!k.champion, boss: !!k.boss, elite: !!k.boss, facing: Math.PI / 2, hp: k.hp, maxHp: k.hp,
         dead: false, ghosted: false, vx: 0, vy: 0, flash: 0, burning: 0, bombFuse: 0, dazed: 0,
-        state: 'idle', say: null, soul: !!(d.soulView && d.soulView[k.tag]), witchBurn: false };
+        state: 'idle', say: null, soul: !!(d.soulView && d.soulView[k.tag]), witchBurn: false,
+        shield: k.tag === 'shield' ? { uses: TUNING.shieldman.uses, jolt: 0, ang: Math.PI / 2 } : null };
       ctx.save(); this.drawEnemy(fake, game); ctx.restore();
       ctx.textAlign = 'left';
       ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
@@ -5520,7 +5859,7 @@ class Renderer {
       // And up: there is one drawing of her, three-quarters to the front, so with him above her she
       // leans back on her heels toward him, nose up, rather than staring on past him at the floor.
       if (g) {
-        const dx = g.x - sx, dy = g.y - sy, d = Math.hypot(dx, dy) || 1;
+        const dx = g.x - sx, dy = g.y - sy, d = hyp(dx, dy) || 1;
         const want = clamp(-dy / d, 0, 1) * M.lookUp;
         p.lean = lerp(p.lean || 0, want, 0.12);
         ctx.rotate(p.faceLeft ? p.lean : -p.lean);
@@ -5664,7 +6003,7 @@ class Renderer {
   // wall behind the shelf dimmed the half of it that stood over the stone.
   wareNote(p, def, title, desc, color) {
     const game = this.game, g = game && game.goat;
-    if (!g || p.locked || Math.hypot(g.x - p.x, g.y - p.y) >= TUNING.prop.ware.readR + p.r || this.nearestWare(game) !== p) return;
+    if (!g || p.locked || hyp(g.x - p.x, g.y - p.y) >= TUNING.prop.ware.readR + p.r || this.nearestWare(game) !== p) return;
     this.note = [p, def, title, desc, color];
   }
   drawNote() {
@@ -5698,7 +6037,7 @@ class Renderer {
     const g = game.goat; let best = null, bd = Infinity;
     for (const q of game.props) {
       if (q.kind !== 'ware' || q.broken || q.locked || !q.ware) continue;
-      const d = Math.hypot(g.x - q.x, g.y - q.y); if (d < bd) { bd = d; best = q; }
+      const d = hyp(g.x - q.x, g.y - q.y); if (d < bd) { bd = d; best = q; }
     }
     this.wareAt = this.t; this.wareNear = best;
     return best;
@@ -5770,7 +6109,7 @@ class Renderer {
     return L[id];
   }
   outlinedIcon(id, x, y, h, tier) {
-    const ctx = this.ctx, T = ctx.getTransform(), k = Math.hypot(T.a, T.b) || 1, px = h * k;
+    const ctx = this.ctx, T = ctx.getTransform(), k = hyp(T.a, T.b) || 1, px = h * k;
     const C = this.iconCache || (this.iconCache = new Map());
     const key = `${id}|${tier}|${Math.round(px * 2)}`;
     let img = C.get(key);
@@ -5923,7 +6262,7 @@ class Renderer {
     const ctx = this.ctx;
     ctx.save(); ctx.translate(f.x, f.y); ctx.scale(1, 1 / TILT);
     ctx.globalAlpha = 0.25; ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = 3;
-    const l = Math.hypot(f.vx, f.vy) || 1;
+    const l = hyp(f.vx, f.vy) || 1;
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-f.vx / l * 22, -f.vy / l * 22); ctx.stroke();
     ctx.globalAlpha = 1; ctx.rotate(f.spin);
     this.artifactIcon('boomerang', 0, 0, 8, 1);
@@ -5940,7 +6279,7 @@ class Renderer {
     const emerging = e.state === 'emerge' ? 1 - Math.max(0, e.timer) / TUNING.ratogre.emerge : 1;
     ctx.save();
     if (emerging < 1) { ctx.scale(0.4 + 0.6 * emerging, 0.4 + 0.6 * emerging); ctx.globalAlpha *= 0.5 + 0.5 * emerging; }
-    const step = Math.hypot(e.vx, e.vy) > 30 ? Math.sin(t * 13 + e.x * 0.02) : 0;
+    const step = hyp(e.vx, e.vy) > 30 ? Math.sin(t * 13 + e.x * 0.02) : 0;
     // tail: long, naked, sweeping behind him
     ctx.strokeStyle = '#c98f98'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-r * 0.8, 0);
@@ -5990,7 +6329,7 @@ class Renderer {
 
   drawBullet(b) {
     const ctx = this.ctx; ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
-    const l = 13 / (Math.hypot(b.vx, b.vy) || 1);
+    const l = 13 / (hyp(b.vx, b.vy) || 1);
     ctx.beginPath(); ctx.moveTo(b.x - b.vx * l, b.y - b.vy * l); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
 
@@ -6042,7 +6381,7 @@ class Renderer {
     // one blob: body, then a short dark neck out of the shoulder, then a round head sitting on top of
     // it. The seam down the shoulder and the shadow under the jaw are what make the head legible from
     // straight above, without them a white shape 30 px long is just a shape.
-    const step = Math.sin(this.t * 22) * (Math.hypot(g.vx, g.vy) > 40 ? 3.5 : 0);
+    const step = Math.sin(this.t * 22) * (hyp(g.vx, g.vy) > 40 ? 3.5 : 0);
     const horn = clamp(game.mods ? game.mods.headbuttReach : 1, 1, 1.5);   // Long Horns shows on him
     // far side first: the legs and the ear away from the camera
     ctx.strokeStyle = '#b3a78e'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
@@ -6158,7 +6497,7 @@ class Renderer {
   // A tapered horn: thick at the base, curving through a control point to a point, with a few growth
   // ridges across it. Shared by the goat's two horns.
   horn(bx, by, cx, cy, tx, ty, w, color, ridge) {
-    const ctx = this.ctx, dx = tx - bx, dy = ty - by, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+    const ctx = this.ctx, dx = tx - bx, dy = ty - by, d = hyp(dx, dy) || 1, nx = -dy / d, ny = dx / d;
     ctx.fillStyle = color; ctx.beginPath();
     ctx.moveTo(bx + nx * w, by + ny * w);
     ctx.quadraticCurveTo(cx + nx * w * 0.55, cy + ny * w * 0.55, tx, ty);
@@ -6192,7 +6531,7 @@ class Renderer {
       // She is the pixel pass's pet sheep. There is no walk cycle for her, so a stride is a bob.
       ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, 1 / TILT);
       if (s.jitter) ctx.translate(s.jitter.x, s.jitter.y);
-      if (s.kick || Math.hypot(s.vx || 0, s.vy || 0) > 40) ctx.translate(0, -Math.abs(Math.sin(this.t * 11)) * 1.6);
+      if (s.kick || hyp(s.vx || 0, s.vy || 0) > 40) ctx.translate(0, -Math.abs(Math.sin(this.t * 11)) * 1.6);
       if (s.bleating > 0) ctx.scale(1.04, 0.96);
       PIXEL_ART.draw(ctx, 'sheep-pet', s.facing || 0, false, this.t, s.x);
       ctx.restore(); return;
@@ -6202,7 +6541,7 @@ class Renderer {
     ctx.rotate(s.facing);
     if (Math.cos(s.facing) < 0) ctx.scale(1, -1);
     ctx.scale(0.94, 0.94);
-    const step = s.kick !== undefined && s.kick !== 0 ? s.kick : (Math.hypot(s.vx || 0, s.vy || 0) > 40 ? Math.sin(this.t * 22) * 3.5 : 0);
+    const step = s.kick !== undefined && s.kick !== 0 ? s.kick : (hyp(s.vx || 0, s.vy || 0) > 40 ? Math.sin(this.t * 22) * 3.5 : 0);
     // far legs and the far ear
     ctx.strokeStyle = '#3a322f'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(3, -4); ctx.lineTo(4.5 + step, -11); ctx.moveTo(-8, -4); ctx.lineTo(-9.5 - step, -11); ctx.stroke();
@@ -6980,7 +7319,7 @@ class Renderer {
       const s = Math.max(px, Math.round(p.size / px) * px), x = Math.round(p.x / px) * px, y = Math.round(p.y / px) * px;
       if (p.streak) {
         // A spark is a run of cells along its own flight, not a square: fast things read as streaks.
-        const tx = -p.vx * 0.03, ty = -p.vy * 0.03, n = Math.max(1, Math.round(Math.hypot(tx, ty) / px));
+        const tx = -p.vx * 0.03, ty = -p.vy * 0.03, n = Math.max(1, Math.round(hyp(tx, ty) / px));
         for (let k = 0; k <= n; k++) ctx.fillRect(Math.round((x + tx * k / n) / px) * px - s / 2, Math.round((y + ty * k / n) / px) * px - s / 2, s, s);
       } else ctx.fillRect(x - s / 2, y - s / 2, s, s);
     }
@@ -7229,7 +7568,7 @@ class Renderer {
     ctx.fillText(`v${BUILD}`, 14 * s, this.h - 12 * s);
     // exit compass, pinned just inside the bottom of the play view
     if (game.state === 'play' && !g.dead) {
-      const dx = game.level.exit.x - g.x, dy = game.level.exit.y - g.y, d = Math.hypot(dx, dy);
+      const dx = game.level.exit.x - g.x, dy = game.level.exit.y - g.y, d = hyp(dx, dy);
       if (d > 6 * TILE) {
         const a = Math.atan2(dy, dx), cx = this.vcx;
         const cy = this.vh - (this.bandH > 0 ? 26 * s : (game.touch.active ? 150 * this.s : 40 * s));
@@ -7276,8 +7615,8 @@ class Renderer {
         max: g.grabCdMax || TUNING.goat.grab.cooldown * game.mods.grabCooldown, ready: g.grabCd <= 0, half: !game.mods.grabMen,
         // COLD EYE's moment, draining the chip the way a headbutt's recovery drains its own.
         recover: M.coldEye && game.aimSlow > 0 ? clamp(game.aimSlow / M.coldEye.time, 0, 1) : 0,
-        note: (game.mods.grabMen ? 'Carry a box, a blade, a shield or a man. Let go to throw.'
-          : 'Carry a box, a blade or a shield. Let go to throw. Men are too heavy for now.')
+        note: (game.mods.grabMen ? 'Carry a crate, a blade, a shield or a man. Let go to throw.'
+          : 'Carry a crate, a blade or a shield. Let go to throw. Men are too heavy for now.')
           + (game.mods.brandHold ? ' Held a moment, the floor it crosses burns.'
             : game.mods.venomHold ? ' Held a moment, it drips poison where it flies.' : '')
           + (M.coldEye ? ' Picking up slows time.' : ''),
@@ -7300,10 +7639,10 @@ class Renderer {
           : fire ? 'Breathe fire where you run.'
           : game.mods.screamStun ? 'Stun everyone near you, even mid-swing.'
             : 'A shout. It breaks the swing of anyone on top of you and calls the rest to you.',
-        stat: (M.spit ? `FLIES UP TO ${sayN(TUNING.status.spit.range)} TILES`
-          : fire ? `CONE ${sayN(TUNING.goat.breath.range / TILE)} TILES`
-          : M.screamStun ? `DAZES WITHIN ${sayN(M.screamRadius)} TILES FOR ${sayN(V.stun)}s`
-          : `BREAKS SWINGS WITHIN ${sayN(V.balk)} TILES · CALLS MEN FROM ${sayN(M.screamCall)} TILES`)
+        stat: (M.spit ? `FLIES UP TO ${sayN(TUNING.status.spit.range * (M.screamReach || 1))} TILES`
+          : fire ? `CONE ${sayN(TUNING.goat.breath.range * (M.screamReach || 1) / TILE)} TILES`
+          : M.screamStun ? `DAZES WITHIN ${sayN(M.screamRadius * (M.screamReach || 1))} TILES FOR ${sayN(V.stun)}s`
+          : `BREAKS SWINGS WITHIN ${sayN(V.balk * (M.screamReach || 1))} TILES · CALLS MEN FROM ${sayN(M.screamCall * (M.screamReach || 1))} TILES`)
           + ` · ${sayN(M.screamCooldown)}s COOLDOWN` },
     ];
     this.skillHover = null;
@@ -7854,14 +8193,16 @@ class Renderer {
     const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
     ctx.fillStyle = 'rgba(9,7,9,0.985)'; ctx.fillRect(0, 0, w, h);
     const rows = SETTINGS.length + 1;
-    // Rows shrink to fit the height (with room for the title above them) once the list outgrows it.
-    const gap = 10 * s, rowH = clamp(Math.min(h * 0.1, (h * 0.84 - 30 * s) / rows - gap), 34 * s, 66 * s);
+    // Rows shrink to fit the height (with room for the title above them, and for the chosen row's note
+    // under them) once the list outgrows it.
+    const gap = 10 * s, rowH = clamp(Math.min(h * 0.1, (h * 0.84 - 80 * s) / rows - gap), 34 * s, 66 * s);
     const bw = clamp(Math.min(w * 0.86, 460 * s), 200 * s, 520 * s), x0 = cx - bw / 2;
     const top = h / 2 - (rows * (rowH + gap)) / 2 + 16 * s;
     ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.ochre;
     ctx.font = `700 ${clamp(rowH * 0.42, 15 * s, 26 * s)}px ${FONT_SC}`;
     ctx.fillText('SETTINGS', cx, top - 22 * s);
     game.menu.rects.length = 0;
+    let cut = null;   // the chosen row's note, when the row had to cut it short
     for (let i = 0; i < rows; i++) {
       const y = top + i * (rowH + gap), last = i === SETTINGS.length;
       const sel = game.menu.sub === i;
@@ -7878,8 +8219,10 @@ class Renderer {
       ctx.textAlign = 'left';
       ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${15 * s}px ${FONT_SC}`;
       ctx.fillText(it.name, x0 + 16 * s, y + rowH * 0.42);
-      ctx.font = `${11.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
-      ctx.fillText(this.clip(it.note, bw - 110 * s), x0 + 16 * s, y + rowH * 0.74);
+      ctx.font = `${Math.max(11.5 * s, 12 * this.s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
+      const shown = this.clip(it.note, bw - 110 * s);
+      ctx.fillText(shown, x0 + 16 * s, y + rowH * 0.74);
+      if (sel && shown !== it.note) cut = it.note;
       if (it.type === 'slider') {
         // A bar with a lit fill up to the value and a knob at the edge of it, the value itself
         // never printed as a number, the same way nothing else in this panel prints one.
@@ -7903,6 +8246,20 @@ class Renderer {
         ctx.fillRect(on ? tx + tw - th + 2 * s : tx + 2 * s, ty + 2 * s, th - 4 * s, th - 4 * s);
       }
       ctx.textAlign = 'center';
+    }
+    // The chosen row's note in full under the list (1 Oct 2026): a row is one line tall, and four of the
+    // notes were cut off mid-sentence (EASY MODE's never said how much slower the compound gets).
+    // Never under 12 CSS px, and on a dark plate of its own: on a short screen the list fills the height and
+    // the note is lifted over the last rows rather than run off the foot of it.
+    if (cut) {
+      const fpx = Math.max(12.5 * s, 12 * this.s), lh = fpx * 1.3;
+      ctx.font = `${fpx}px ${FONT}`;
+      const lines = this.wrap(cut, bw - 16 * s), bh = lines.length * lh + 10 * s;
+      const y0 = Math.min(top + rows * (rowH + gap) + 2 * s, h - bh - 4 * s);
+      ctx.fillStyle = 'rgba(9,7,9,0.96)'; ctx.fillRect(x0, y0, bw, bh);
+      ctx.strokeStyle = 'rgba(239,230,208,0.2)'; ctx.lineWidth = 1.4 * s; ctx.strokeRect(x0, y0, bw, bh);
+      ctx.fillStyle = 'rgba(239,230,208,0.82)';
+      lines.forEach((ln, k) => ctx.fillText(ln, cx, y0 + 5 * s + (k + 0.78) * lh));
     }
     ctx.textAlign = 'left';
   }

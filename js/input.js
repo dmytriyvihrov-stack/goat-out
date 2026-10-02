@@ -59,7 +59,7 @@ class TouchUI {
     let best = null, bestD = Infinity;
     for (const k in this.buttons) {
       if (k === 'item' && !this.itemReady) continue;
-      const b = this.buttons[k], d = Math.hypot(x - b.x, y - b.y);
+      const b = this.buttons[k], d = hyp(x - b.x, y - b.y);
       if (d <= b.rr * 1.18 && d < bestD) { best = b; bestD = d; }
     }
     return best;
@@ -89,7 +89,7 @@ class TouchUI {
       if (this.pressed[k] !== id) continue;
       const b = this.buttons[k];
       // Dragging off a held button steers the aim (standard mobile shooter pattern).
-      if (k === 'grab') { const dx = x - b.x, dy = y - b.y; if (Math.hypot(dx, dy) > b.rr * 0.6) this.buttonAim = { x: dx, y: dy }; }
+      if (k === 'grab') { const dx = x - b.x, dy = y - b.y; if (hyp(dx, dy) > b.rr * 0.6) this.buttonAim = { x: dx, y: dy }; }
     }
   }
 
@@ -109,7 +109,7 @@ class TouchUI {
   moveVector() {
     if (!this.stick) return { x: 0, y: 0 };
     let dx = this.stick.x - this.stick.ox, dy = this.stick.y - this.stick.oy;
-    const d = Math.hypot(dx, dy);
+    const d = hyp(dx, dy);
     if (d < 6 * this.s) return { x: 0, y: 0 };
     const m = Math.min(1, d / this.stickR);
     return { x: (dx / d) * m, y: (dy / d) * m };
@@ -119,11 +119,11 @@ class TouchUI {
   aimVector() {
     if (this.aimDrag) {
       const dx = this.aimDrag.x - this.aimDrag.ox, dy = this.aimDrag.y - this.aimDrag.oy;
-      const d = Math.hypot(dx, dy);
+      const d = hyp(dx, dy);
       if (d > 14 * this.s) return { x: dx / d, y: dy / d };
     }
     if (this.buttonAim) {
-      const d = Math.hypot(this.buttonAim.x, this.buttonAim.y) || 1;
+      const d = hyp(this.buttonAim.x, this.buttonAim.y) || 1;
       return { x: this.buttonAim.x / d, y: this.buttonAim.y / d };
     }
     return null;
@@ -145,7 +145,7 @@ function autoAim(game, dirx, diry, coneRad, reach) {
     // Only a man the goat could mean: not mist, not a box or bowl of milk, not one out of sight
     // (behind a wall or a shut door, or in the fog), which turned the blow away from the real one.
     if (e.dead || e.held || e === g.holding || e.ghosted || e.state === 'hidden') continue;
-    const dx = e.x - g.x, dy = e.y - g.y, d = Math.hypot(dx, dy);
+    const dx = e.x - g.x, dy = e.y - g.y, d = hyp(dx, dy);
     if (d > maxDist || d < 1) continue;
     const dot = (dx * dirx + dy * diry) / d;
     if (dot < cone) continue;
@@ -189,7 +189,7 @@ class PadInput {
     this.now = Array.from(p.buttons || [], (b) => !!b && (b.pressed || (b.value || 0) > P.trigger));
     const ax = (i) => (p.axes && Number.isFinite(p.axes[i]) ? p.axes[i] : 0);
     // A radial dead zone, then rescaled so the throw past it still runs 0..1: a walk, not a jump.
-    const lx = ax(0), ly = ax(1), ll = Math.hypot(lx, ly);
+    const lx = ax(0), ly = ax(1), ll = hyp(lx, ly);
     if (ll <= P.dead) this.ls = { x: 0, y: 0 };
     else { const k = Math.min(1, (ll - P.dead) / (1 - P.dead)) / ll; this.ls = { x: lx * k, y: ly * k }; }
     this.rs = { x: ax(2), y: ax(3) };
@@ -199,7 +199,7 @@ class PadInput {
     const was = this.raw || [lx, ly, this.rs.x, this.rs.y], raw = [lx, ly, this.rs.x, this.rs.y];
     const moving = raw.some((v, i) => Math.abs(v - was[i]) > P.wakeMove);
     this.raw = raw;
-    this.touched = this.any() || (moving && (ll > P.wake || Math.hypot(this.rs.x, this.rs.y) > P.wake));
+    this.touched = this.any() || (moving && (ll > P.wake || hyp(this.rs.x, this.rs.y) > P.wake));
     // The menu direction: the d-pad, or the left stick pushed well over. One step on the push, then
     // a repeat while it is held, the way a held arrow key walks a list.
     const d = this.held(PAD_BTN.up) || ly < -P.navAt ? 'up' : this.held(PAD_BTN.down) || ly > P.navAt ? 'down'
@@ -218,13 +218,13 @@ class PadInput {
     if (this.ls.x || this.ls.y) return this.ls;
     const x = (this.held(PAD_BTN.right) ? 1 : 0) - (this.held(PAD_BTN.left) ? 1 : 0);
     const y = (this.held(PAD_BTN.down) ? 1 : 0) - (this.held(PAD_BTN.up) ? 1 : 0);
-    const l = Math.hypot(x, y) || 1;
+    const l = hyp(x, y) || 1;
     return { x: x / l, y: y / l };
   }
 
   // The right stick as a direction, or null while it rests inside its dead zone.
   aimVector() {
-    const d = Math.hypot(this.rs.x, this.rs.y);
+    const d = hyp(this.rs.x, this.rs.y);
     return d > TUNING.pad.aimDead ? { x: this.rs.x / d, y: this.rs.y / d } : null;
   }
 

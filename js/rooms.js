@@ -155,6 +155,50 @@ const ROOM_TEMPLATES = [
     '#........#',
     '##########',
   ]},
+  // Three more of the mix (1 Oct 2026): until then the first floors drew their mix rooms from four
+  // templates, and the first floor is the one a run plays oftenest. Each is about one plain thing.
+  // The cowshed: a row of stall posts down one long wall, a trough in the middle to put a man into.
+  { name: 'byre', rows: [
+    '################',
+    '#..............#',
+    '#.P..P..P..P...#',
+    '#.P..P..P..P...#',
+    '#..............#',
+    '#..e....tt..e..#',
+    '#.......tt.....#',
+    '#.L..........L.#',
+    '#.hh..o.....r..#',
+    '#.hh...........#',
+    '################',
+  ]},
+  // The refectory: two rows of tables with a fire at the head of the hall, lanes to put a man down.
+  { name: 'refectory', rows: [
+    '################',
+    '#..............#',
+    '#..tt..tt..tt..#',
+    '#..tt..tt..tt..#',
+    '#..............#',
+    '#.e....B.....e.#',
+    '#..............#',
+    '#..tt..tt..tt..#',
+    '#..tt..tt..tt..#',
+    '#.....o..r.....#',
+    '################',
+  ]},
+  // The larder: shelving in short runs along the walls, crates to hand, one lamp.
+  { name: 'larder', rows: [
+    '##############',
+    '#............#',
+    '#.PP..PP..PP.#',
+    '#............#',
+    '#..o..e....o.#',
+    '#......L.....#',
+    '#..e.....r...#',
+    '#............#',
+    '#.PP..PP..PP.#',
+    '#............#',
+    '##############',
+  ]},
 
   // A yard with almost nothing in it. Two braziers, one pillar block, and a great deal of floor:
   // out here a rifle or a mage owns the room and you have to cross it anyway.
@@ -1153,6 +1197,50 @@ const ROOM_TEMPLATES = [
     '#.....e....L..e..#',
     '#.hh..........hh.#',
     '#.hh....o.....hh.#',
+    '#................#',
+    '##################',
+  ]},
+  // The crossing: a wall across the room with two ways through, a lamp at the corner of each. Every
+  // way from one half to the other is lit, the halves are dark, and the wall is stone to be put into.
+  { name: 'crossing', canon: 'lamp', rows: [
+    '##################',
+    '#................#',
+    '#..e.........o...#',
+    '#....L...........#',
+    '######..####..####',
+    '#..............L.#',
+    '#...m........e...#',
+    '#.o..............#',
+    '#................#',
+    '##################',
+  ]},
+  // The scriptorium: two rows of desks with one lamp between them. The aisle is the light; a man
+  // between the desks is seen, a man behind them is a shape. `lamps: 1`: its floor is big enough that
+  // THE DARK would stand a second lamp in a corner, which lit the desks the room is for hiding behind.
+  { name: 'scriptorium', canon: 'lamp', lamps: 1, rows: [
+    '################',
+    '#..............#',
+    '#..tt..tt..tt..#',
+    '#..............#',
+    '#.e....L.....e.#',
+    '#..............#',
+    '#..tt..tt..tt..#',
+    '#..............#',
+    '#......m.......#',
+    '################',
+  ]},
+  // The cistern: a block of stone in the middle with a lamp at two of its corners, so going round it
+  // is half light and half dark, and whoever follows him round it is lit on one side only. Two rows
+  // thick, never three: in the dark a stone with no face open draws black, and read as a hole.
+  { name: 'cistern', canon: 'lamp', rows: [
+    '##################',
+    '#................#',
+    '#..o.........e...#',
+    '#.....L..........#',
+    '#......PPPPPP....#',
+    '#..e...PPPPPP..m.#',
+    '#............L...#',
+    '#...e........o...#',
     '#................#',
     '##################',
   ]},

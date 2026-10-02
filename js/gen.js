@@ -11,7 +11,7 @@ function flipTemplate(tpl, rng) {
   let rows = tpl.rows.slice();
   if (rng.chance(0.5)) rows = rows.slice().reverse();
   if (!tpl.noFlipX && rng.chance(0.5)) rows = rows.map((r) => r.split('').reverse().join(''));
-  return { name: tpl.name, rows };
+  return { name: tpl.name, rows, lamps: tpl.lamps };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -65,6 +65,11 @@ function roomMenCap(men, tpl) {
   if (!tpl) return men;
   return clamp(Math.round(men * floorOf(tpl) / R.ref), Math.min(R.min, men), Math.round(men * R.grow));
 }
+
+// The encounter tables' pseudo-kinds are clubmen with something about them: 'champion' the butcher, 'shield'
+// the shieldman (`TUNING.shieldman`). A spawn carries the real kind and the flag; `threatKind` reads one back.
+function spawnKind(k) { return { kind: k === 'champion' || k === 'shield' ? 'bearer' : k, champion: k === 'champion', shield: k === 'shield' }; }
+function threatKind(s) { return s.champion ? 'champion' : s.shield ? 'shield' : s.kind; }
 
 function planEncounters(levelDef, rooms, rng) {
   const E = levelDef.encounters;
@@ -980,9 +985,8 @@ function tryGenerate(levelDef, seed, opts) {
       // goes down and not before.
       const at = levelDef.sentryIntro ? blockSpot(tiles, W, room, props) : null;
       if (at) {
-        spawns.push({ x: at.x, y: at.y, kind: cell.intro === 'champion' ? 'bearer' : cell.intro,
-          champion: cell.intro === 'champion', roomIndex: room.index, intro: true, sentry: true,
-          facing: Math.PI });                                   // back to the door, facing the room
+        spawns.push(Object.assign({ x: at.x, y: at.y }, spawnKind(cell.intro), { roomIndex: room.index, intro: true, sentry: true,
+          facing: Math.PI }));                                  // back to the door, facing the room
         return;
       }
     }
@@ -1015,17 +1019,16 @@ function tryGenerate(levelDef, seed, opts) {
     };
     if (cell.boss) {
       const at = room.bossSpot || take(cell.boss);
-      if (at) spawns.push({ x: at.x, y: at.y, kind: cell.boss === 'champion' ? 'bearer' : cell.boss,
-        elite: cell.boss !== 'butcher', champion: cell.boss === 'champion', boss: true, roomIndex: room.index });
+      if (at) spawns.push(Object.assign({ x: at.x, y: at.y }, spawnKind(cell.boss),
+        { elite: cell.boss !== 'butcher', boss: true, roomIndex: room.index }));
     }
     let slot = 0;
     for (const kind of cell.men) {
       const at = take(kind); const i = slot++;
       if (!at) continue;
-      spawns.push({ x: at.x, y: at.y, kind: kind === 'champion' ? 'bearer' : kind,
-        champion: kind === 'champion', roomIndex: room.index, intro: cell.intro === kind,
+      spawns.push(Object.assign({ x: at.x, y: at.y }, spawnKind(kind), { roomIndex: room.index, intro: cell.intro === kind,
         // The first few men of a killbox are its rifles, and they are already watching the door.
-        alert: cell.alert !== undefined && i < cell.alert });
+        alert: cell.alert !== undefined && i < cell.alert }));
     }
   });
 
@@ -1035,7 +1038,7 @@ function tryGenerate(levelDef, seed, opts) {
   if (grass.size) {
     const taken = new Set();
     for (const sp of spawns) {
-      if (sp.boss || sp.champion || sp.sentry || sp.alert || !['bearer', 'dog', 'hunter', 'seer'].includes(sp.kind)) continue;
+      if (sp.boss || sp.champion || sp.shield || sp.sentry || sp.alert || !['bearer', 'dog', 'hunter', 'seer'].includes(sp.kind)) continue;
       const room = rooms[sp.roomIndex];
       if (!room || !rng.chance(TUNING.grass.lurk)) continue;
       let best = -1, bestN = 0;
@@ -1082,7 +1085,7 @@ function tryGenerate(levelDef, seed, opts) {
   // wall had nothing near it worth throwing it at, which is the whole reason a rare find sat
   // unused. `spawns` is final by now, so the score is the room's real men, boss included.
   if (rng.chance(TUNING.prop.bomb.chance)) {
-    const scoreOf = (s) => THREAT[s.champion ? 'champion' : s.kind] || 0;
+    const scoreOf = (s) => THREAT[threatKind(s)] || 0;
     const eligible = rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.isHall
       && !r.isGallery && !r.isKillbox && !r.isTrap && !r.isAmbush && !r.isRest && !r.isCalm && r.index !== lessonIndex
       // nor a room where a kind is met: THE ALTAR's always went in with the first butcher, alone
@@ -1295,7 +1298,7 @@ function tryGenerate(levelDef, seed, opts) {
           }
           if (wall) cand.push({ x: px, y: py }); else if (open) loose.push({ x: px, y: py });
         }
-        const want = floor >= LA.big ? LA.max : LA.min;
+        const want = room.tpl && room.tpl.lamps ? room.tpl.lamps : floor >= LA.big ? LA.max : LA.min;   // a template may say how many
         const lit = props.filter((p) => alight(p) && inside(room, p.x, p.y));
         for (const pool of [cand, loose]) {
           while (lit.length < want) {
@@ -1315,23 +1318,51 @@ function tryGenerate(levelDef, seed, opts) {
         // Beside the opening, on the wall it is cut in: the tile just inside at either end of it, or
         // one further along. Straw under it is fine (a rest room has it in every corner); a lantern
         // on the wall is out of reach of it.
-        const spots = [];
+        // Each end walked out from the opening (`e`), and an end stops at the first tile that is not floor:
+        // past a wall across the room (THE DARK's crossing) the lantern lit the far side of the wall and
+        // left the doorway in the dark (2 Oct 2026).
+        const spots = [], stopped = new Set();
         for (const k of [1, 2]) {
-          if (r.dir === 'w') spots.push([room.x + 1, r.a[1] - k, -1, 0], [room.x + 1, r.b[1] + k, -1, 0]);
-          else if (r.dir === 'e') spots.push([room.x + room.w - 2, r.a[1] - k, 1, 0], [room.x + room.w - 2, r.b[1] + k, 1, 0]);
-          else if (r.dir === 'n') spots.push([r.a[0] - k, room.y + 1, 0, -1], [r.b[0] + k, room.y + 1, 0, -1]);
+          if (r.dir === 'w') spots.push([room.x + 1, r.a[1] - k, -1, 0, 0], [room.x + 1, r.b[1] + k, -1, 0, 1]);
+          else if (r.dir === 'e') spots.push([room.x + room.w - 2, r.a[1] - k, 1, 0, 0], [room.x + room.w - 2, r.b[1] + k, 1, 0, 1]);
+          else if (r.dir === 'n') spots.push([r.a[0] - k, room.y + 1, 0, -1, 0], [r.b[0] + k, room.y + 1, 0, -1, 1]);
         }
-        for (const [tx, ty, wx, wy] of spots) {
+        let hung = false;
+        for (const [tx, ty, wx, wy, e] of spots) {
+          if (stopped.has(e)) continue;
           const under = tileAt(tx, ty);
-          if ((under !== T.FLOOR && under !== T.HAY) || tileAt(tx + wx, ty + wy) !== T.WALL) continue;
+          if (under !== T.FLOOR && under !== T.HAY) { stopped.add(e); continue; }
+          if (tileAt(tx + wx, ty + wy) !== T.WALL) continue;
           // On a side wall the lantern hangs at a man's shoulder, which on the screen is the tile
           // above its own: that stretch of wall has to be stone too, or the plate is bolted to the
           // air of the doorway (25 Sep 2026, a lantern hanging off nothing beside the opening).
           if (wx && tileAt(tx + wx, ty - 1) !== T.WALL) continue;
           const px = (tx + 0.5 + wx * 0.25) * TILE, py = (ty + 0.5 + wy * 0.25) * TILE;
+          hung = true;
           if (props.some((p) => p.kind === 'sconce' && len(p.x - px, p.y - py) < 1.5 * TILE)) break;
           props.push({ x: px, y: py, kind: 'sconce', wx, wy });
           break;
+        }
+        // No wall to hang one on beside a side doorway (an opening in the corner of the room, or one the
+        // crossing's wall runs up to): a lamp stands beside it on the floor, as by a doorway in the near wall.
+        if (!hung && r.dir !== 's' && !props.some((p) => (alight(p) || p.kind === 'sconce') && len(p.x - (r.a[0] + r.b[0] + 1) / 2 * TILE, p.y - (r.a[1] + r.b[1] + 1) / 2 * TILE) < LA.doorLit * TILE)) {
+          const ends = [];
+          for (const k of [1, 2, 3]) {
+            if (r.dir === 'w') ends.push([room.x + 1, r.a[1] - k, 0], [room.x + 1, r.b[1] + k, 1]);
+            else if (r.dir === 'e') ends.push([room.x + room.w - 2, r.a[1] - k, 0], [room.x + room.w - 2, r.b[1] + k, 1]);
+            else ends.push([r.a[0] - k, room.y + 1, 0], [r.b[0] + k, room.y + 1, 1]);
+          }
+          const gone = new Set(); let stood = false;
+          for (const [tx, ty, e] of ends) {
+            if (gone.has(e)) continue;
+            if ((tileAt(tx, ty) !== T.FLOOR && tileAt(tx, ty) !== T.HAY)) { gone.add(e); continue; }
+            if (grass.has(ty * W + tx)) continue;
+            const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+            if (props.some((p) => footGap(p, px, py) < (p.kind === 'crate' || p.kind === 'spike' ? 0.9 : 1.2) * TILE) || spawns.some((sp) => len(sp.x - px, sp.y - py) < 0.9 * TILE)) continue;
+            props.push({ x: px, y: py, kind: 'lamp', doorLamp: true });
+            stood = true; break;
+          }
+          if (!stood) return null;   // a fresh seed, not a way on in the dark
         }
         // A doorway in the near wall (a shaft down to a room hung below) takes no lantern, that wall
         // shows no face to hang one on, so a lamp stands beside it instead, unless a flame already
@@ -1660,7 +1691,7 @@ function buildCage(cx, cy, halfW, halfH, deco) {
 // which now and then put the exit a tile from the entrance, you came in at the top of the room and
 // left at the top of it, and the room's men, its pillars and its wheel were something you ran past
 // rather than something between you and the door. Far is the whole of the motivation to cross a room.
-function pickDoorY(room, side, rng, awayFrom, fit) {
+function pickDoorY(room, side, rng, awayFrom, fit, wide) {
   const col = side === 'right' ? room.w - 2 : 1;
   const raw = [];
   for (let ty = 1; ty < room.h - 2; ty++) {
@@ -1675,7 +1706,21 @@ function pickDoorY(room, side, rng, awayFrom, fit) {
   // A `fit` that answers null refuses the row outright.
   for (const v of raw) { const m = fit ? fit(v) : v; if (m !== null && candidates.indexOf(m) < 0) candidates.push(m); }
   if (!candidates.length) return -1;
-  return noteFar(room, rng.pick(farthest(candidates, awayFrom)), candidates, awayFrom);
+  // A doorway opens onto a clear step, never onto a shelf or a post one tile in that leaves a
+  // goat-width squeeze to come through (`pickDoorX` asks the same of a shaft; the larder's and the
+  // byre's side doors did not). A wall with no such row keeps them all: the template's own shape.
+  const stepClear = (m) => {
+    const next = side === 'right' ? col - 1 : col + 1;
+    for (let k = 0; k < Math.max(2, wide || 2); k++) {
+      const c = (room.tpl.rows[m - room.y + k] || '')[next];
+      if (c && HARD.includes(c)) return false;
+    }
+    return true;
+  };
+  const clear = candidates.filter(stepClear);
+  const pick = noteFar(room, rng.pick(farthest(clear.length ? clear : candidates, awayFrom)), clear.length ? clear : candidates, awayFrom);
+  (room.mouths = room.mouths || {})[side] = { y: pick, clear: stepClear(pick), could: clear.length > 0 };
+  return pick;
 }
 
 // What the room could have done and what it did, so `GEN_RULES.farexit` can hold the generator to its
@@ -1724,11 +1769,11 @@ function carveCorridor(tiles, W, a, b, rng, width, turn) {
   // shaft out of a room hung below that one also runs, the two corridors met, and the room had a
   // second way out that no gate, seal or clamp over its real one could shut.
   const fit = (r, y) => (y < 0 || wide <= 2 ? y : Math.max(r.y + 1, Math.min(y, r.y + r.h - 1 - wide)));
-  const yA = pickDoorY(a, 'right', rng, enterRow(a), (y) => fit(a, y));
+  const yA = pickDoorY(a, 'right', rng, enterRow(a), (y) => fit(a, y), wide);
   // With `turn`, `b`'s band may not carry on from `a`'s top row (the one row `narrowExit` leaves
   // open) nor from either row beside it: a body leaving the gap at a shallow slope slid into a band
   // that ran along the next row and went the length of it.
-  const yB = pickDoorY(b, 'left', rng, null, (y) => { const m = fit(b, y); return turn && m > yA - wide - 1 && m < yA + 2 ? null : m; });
+  const yB = pickDoorY(b, 'left', rng, null, (y) => { const m = fit(b, y); return turn && m > yA - wide - 1 && m < yA + 2 ? null : m; }, wide);
   if (yA < 0 || yB < 0) return null;
   const xA = a.x + a.w - 1, xB = b.x;
   // The turn is kept clear of `b`'s own wall where there is rock enough for it: a five-wide turn

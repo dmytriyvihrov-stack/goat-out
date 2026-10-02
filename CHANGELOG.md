@@ -5,6 +5,146 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.95, the three things 1.94 left, 2 Oct 2026
+
+- **The stats worker checks who is talking** (`tools/stats-worker/worker.js`): a player id is `p-` and base 36, a
+  run id `r-` and base 36, as `js/stats.js` writes them; anything else is refused (400), so a made-up id is no longer a
+  made-up person in the funnel. `/reports` answers newest first and pages back (`?before=<got>`, the next page's
+  cursor in `X-Oldest-Got`), and `tools/stats.html` walks the pages (up to 40 of 5 000) instead of stopping at the
+  oldest 5 000. `/steps` is newest first too. Needs a `wrangler deploy`.
+- **A side door opens onto a clear step** (`pickDoorY`): the larder's and the byre's doors (and every other
+  template's) no longer open a tile from a shelf, post, table or lamp that leaves a goat-width squeeze; a wall with no
+  such row keeps them all. Every seed's rooms are laid out differently as a result. `GEN_RULES.doorstep` holds it
+  (`room.mouths` records each door cut).
+- **The collector**, measured with a sampling allocation profile and Chrome's own GC trace (headless Chrome over the
+  debugging protocol, a late cave floor with a man dying every 40 frames): about 250-290 KB of garbage a frame, a minor
+  collection twice a second (1-4 ms) and a full one every few seconds (15-30 ms, the dropped frame). What was a single
+  fat source is fixed: the flow field's 128 KB queue was a fresh typed array every 0.15 s (now kept, `World.flowQueue`),
+  a gore piece spread its crop array into every `drawImage`, and `Math.hypot` (a call that boxes its answer) is now
+  `hyp` (js/rng.js) in the runtime files. The rest is a flat tail (see `BACKLOG.md`); no change here is claimed to
+  remove the pause.
+
+## 1.94, reviews of 1.93, blasts that doors stop, a steadier score, 2 Oct 2026
+
+Asked on 1 Oct 2026: "go through the game and improve it, spend whatever it takes". Six read-only reviews of the
+code nobody had looked at yet (the shieldman, the blast through the room and the three new passives, the drawing
+changes, the six new rooms, every line of text, RUN STATS' funnel and what survives a change of state), and the smoke
+bot over every floor on new seeds with a random talisman each (20 of 20 to the stairs, no throw, no NaN). Then this:
+
+- **The floors' idle painters stopped for good early in every floor.** They refused to paint past 0.7 of the bake's
+  budget while the frame only trimmed it back to 0.8, so once a floor had filled it neither ran again: the doorway
+  frames 1.93 took away came back for most of a floor, and after a resize or a phone turned the floor stayed a
+  patchwork of sharp and blurry squares. They now let go of chunks outside their own ring to make room
+  (`Renderer.trimBake`), a chunk let go is emptied at once, and a cave floor no longer keeps the last room floor's
+  bitmaps (or the other way round), up to the whole budget each (`dropBake`).
+- **The score skipped notes whenever the page stalled.** It was laid 0.12 s ahead of the ear, so any stall longer than
+  a tenth of a second (a busy machine, the collector) dropped the steps that fell due in it: notes cut off and the
+  men's ticks out of time (the playtest of 2 Oct, on a machine running other work). It is laid `audio.ahead` (0.25 s)
+  ahead now.
+- **A shut door stops a blast** (`Game.blastClear`): a bomb, BOMB CHARGE, the poison blast and spilt powder reached
+  through an iron door, a soul gate and the vault's door, lighting barrels and cracking walls on the far side. BOMB
+  CHARGE's man also blew through stone.
+- **A chain of blasts is two hearts at most** (`Status.spared`): a bomb beside a poison barrel took three hearts off a
+  boss in one frame. The gong rings once a chain, not once a link of it.
+- **Spilt powder** goes through the room like any other blast, kills with its own name (SPILT POWDER, and the god has
+  a line for it), where it said A BOMB and asked why he held on to it.
+- A shieldman killed by a bomb or a powder blast no longer leaves his board lying; a burning crate caught in a blast
+  goes up in fire instead of a clean shatter; SPRING HOCKS no longer puts the slide back into a LEAPFROG vault.
+- **The keys say what is printed on the player's board** from the first key he presses, inside itch's frame too,
+  where the browser refuses the keyboard map; a key that prints a mark (Dvorak's comma) is named by it, instead of
+  keeping its QWERTY letter beside its neighbours' real ones.
+- **SETTINGS' note** is at least 12 px and sits on a plate of its own: on a short screen it was printed over BACK.
+- **THE DARK**: a side doorway of the crossing had no lantern, or one hung on the far side of the room's cross wall;
+  a doorway with no wall to hang one on gets a standing lamp beside it. The scriptorium keeps its one lamp (it was
+  given a second in a corner, which lit the desks the room is for hiding behind), and its man no longer stands under a desk.
+- **RUN STATS**: a quit's report carries its run code, a Backspace restart's carries its own and not the last card's;
+  STARTED and PLAYED AGAIN are taken once a life is played (CONTINUE built the floor under heaven and counted a
+  return before he dropped in); a step taken after NO is never sent; a step taken while another was going out goes
+  when it comes back, and a tab closing sends what is owed. `tools/stats.html` keys every map without a prototype:
+  one report naming a player `__proto__` blanked the page for good. SHIELDMAN and SPILT POWDER have their labels.
+- **Words**: the run-up keyword says a quarter (it said a fifth), the blast keyword says what BOMB CHARGE does, FIRE
+  AMULET says the next man, the fire set says ordinary fire, GOOD GRAZER and THE FORK's floor match what they do,
+  the god's line for the butcher is about the hook, the crow's gift is AN EPIC TALISMAN, the saved picture says DOOMED
+  GOAT, and a few small ones.
+- A soul gate's trail no longer outlives the layout it was laid in.
+
+## 1.93, the shieldman, three second passives, a blast that goes through the room, 1 Oct 2026
+
+Asked on 1 Oct 2026, with nobody watching: "improve the game; the audits can be simple, spend whatever it takes".
+The audits were the smoke bot over every floor on fresh seeds with a random talisman on each, frame timings, and
+a look round the menus and the rail; the rest is new.
+
+- **THE SHIELDMAN**, a man for the late floors (`TUNING.shieldman`). A clubman behind a board of door planks, met
+  alone on THE THRESHING FLOOR (or THE DARK in its place) and three to five a floor after it. From within `arc` of his
+  front the board takes whatever comes: a headbutt only rocks him back a step behind it and throws the goat off, a
+  crate breaks on it, a blade sticks in it, a round stops, BY THE COLLAR's teeth meet wood (GO ROUND THE SHIELD), a
+  LIVING SHIELD club is turned, and a man thrown into it dies on it by the wall's own rule. Two blows split it. It is
+  heavy: he walks at 86% and turns no faster than `turn` rad/s, so circling him, a roll past him or LEAPFROG over him
+  finds his back, and a swing he wound up facing one way goes that way. A daze drops it. Butting the board while he
+  winds up does not break his blow: the goat is in his recovery under it. The first time the board takes a headbutt
+  it says HIS SHIELD TAKES IT. GO ROUND HIM., and he has his own taunts (`BARKS.block`); ECHO HORN's ghost meets it
+  too. Dead with the board whole, he leaves it lying, a shield to pick up. Drawn as a pixel board on his off arm from
+  three views (`mshield-f/-s/-b`, `PaintedArt.board`, `BOARD_POSE`), under him when he faces away. On the ENEMIES
+  tab, the dev drawer's SPAWN and the JUICE tab (▶ PLAY), SHIELDMAN on the death card, the god has a line for him.
+  The intro room cost THE THRESHING FLOOR a room of its curve: 10 → 22 became 14 → 23, THE DARK 5 → 14 became
+  7 → 16, THE RAFTERS' top 34 → 37; every balance rule holds.
+- **Three second passives** (28 souls; a build now holds 17). The headbutt, the roll and BAAH each had one passive
+  and room for two. **BULL NECK**: the run-up he had when the head went down goes into the man, up to ×1.6 the
+  throw after four seconds of running. **SPRING HOCKS**: he comes out of a roll at 75% of the tumble's speed with his
+  run-up kept, where he used to get up at 22% and lose it. **BIG LUNGS**: BAAH reaches ×1.3 further whatever it is, the
+  call and the swing it breaks, THE FULL THROAT, the breath's cone, the spit's flight (`mods.screamReach`, one
+  multiplier read at each). Each has its mark on the rail's chip.
+- **A blast goes through the room** (`Prop.blastRoom`, Enter the Gungeon's): a bomb, BOMB CHARGE's man, a barrel going
+  up or a poison blast lights every barrel in reach a beat short (`barrel.chain`), so a row of them goes up one after
+  another; a poison barrel meets the flame and goes off, a lamp goes over away from it, a crate breaks, a bomb lying
+  there is lit short, a brazier spills its coals, the gong rings, a cracked wall opens outright, a boulder cracks and a
+  chandelier's rope is cut. **A rifleman's round into a barrel** lights its powder (it says OIL first) and breaks a
+  poison one open: a rifle firing at a goat behind a barrel lights it for him. ▶ PLAY on the JUICE tab shows a bomb
+  setting off a row of three.
+- **No stutter at the start and stop of a run.** On a screen whose resting zoom sat just over a step of the floors'
+  bake (2.08 here), the run's few-percent pull-back flipped the resolution and every chunk in view was repainted, 13 to
+  20 ms frames against 3. The scale is held now (`Renderer.bakeScale`, `BAKE_HOLD`), a chunk whose only fault is its
+  resolution is drawn as it is and repainted in idle time, never in a frame (rooms and caves), and the rooms paint
+  their chunks round the view ahead of him in idle time as the cave does (`warmRooms`). Running back and forth across
+  THE ALTAR's first room: draw 3.0 → 1.7 ms on average, frames over 12 ms 5 → 1.
+- **A fight that winds up together no longer stutters.** The late floors' worst frames were the windups: every man
+  winding up tested the whole square round his swing, cell by cell (2 401 cells twice for a clubman, a millisecond
+  each), so a room winding up at once spent 15 ms on its amber. A row of the swing is now the disc's chord cut by
+  the wedge, walked in from both ends and laid as one rect: 0.55 → 0.1 ms a clubman, 1.4 → 0.2 a rat ogre. A hound's
+  run line was a Set of cells and a rect each, 1 to 2.3 ms a hound; it is stamped into a bitmap and read back a row
+  at a time, 0.3 to 0.5. Both draw exactly the cells they drew before (checked over 4 600 random swings and runs).
+- **Three more mix rooms**, so the first floors stop drawing from four: **the byre** (stall posts, a trough, lamps),
+  **the refectory** (two rows of tables, a fire at the head), **the larder** (short runs of shelving, crates, a lamp).
+- **Three more rooms for THE DARK**, whose canon had five where every other has nine or more: **the crossing** (a wall
+  across the room, a lamp at each of its two ways through), **the scriptorium** (two rows of desks, one lamp in the
+  aisle), **the cistern** (a block of stone with a lamp at two of its corners: going round it is half light, half
+  dark). The shieldman's board sounds like wood now (it rang like steel) and splits like the pen's frame.
+- **FIREBRAND's chip** never showed its flame: the icon asked for a mod that does not exist.
+- **The keys say what is printed on yours**: the game reads a key's place, so an AZERTY board always worked, but the
+  floor said WASD and the caps said Q. Where the browser says what the keys are (`KEY_FACE`), the move line, the roll
+  (on the floor and in a level's hint), the Q verbs' cards and SOUND's M follow it; anywhere else it stays QWERTY.
+- **SETTINGS** prints the chosen row's note whole under the list: four of them were cut off mid-sentence.
+- Tools: the MUSIC lab heard none of the men's parts with no bed under them (calm left them out since 1.85), and
+  `tools/audio-check.js` had failed since then; both mended. The smoke bot answers an animal's question instead of
+  standing at it. `tools/doc-numbers.js` counts to thirty. JUICE rows for the board and the blast.
+
+## 1.92, the funnel, 1 Oct 2026
+
+Asked on 1 Oct 2026: "finish the analytics, and a separate funnel: opened the game, started, restarted after a
+death, cleared the first floor, reached the fourth, reached the eighth".
+
+- **The funnel** (`Stats.step`, js/stats.js): a report only leaves when a life ends, and a player who closes the tab
+  for good never ends one, so each step is now its own small note, the first time this browser takes it, sent the
+  moment it is taken: opened the game (the title), started a run, died, played again after a death, cleared floor 1,
+  reached floor 4 and floor 8 (`TUNING.stats.reach`), escaped. Never off a god-mode or LEVELS life. Kept until the
+  title's question is answered yes, so the opening goes out with the yes; nobody who said no is counted.
+- **The worker** (tools/stats-worker) takes them at `POST /steps`, a player's step kept once (`steps` table), and gives
+  them back at `GET /steps` with the read key. Deployed.
+- **tools/stats.html** opens on THE FUNNEL: players at each step, the share of everyone who opened, and of the row
+  above. Older players are filled in from their lives, so the funnel is not empty before the new steps arrive; the
+  build picker keeps the players who came in on that build. SAVE STATS files carry the steps too.
+- The question on the title and the SETTINGS note now say *how far you got* as well.
+
 ## 1.91, a seventh polish pass, 1 Oct 2026
 
 Asked on 1 Oct 2026: "go through the build, improve it". Three read-only reviews (the 1.89 and 1.90 code, RUN

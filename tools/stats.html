@@ -9,7 +9,8 @@
 <style>
   /* RUN STATS: every life's report (js/stats.js), read out of this browser (served from the game's own
      origin), out of files (the dev drawer's SAVE STATS), or off our own worker (tools/stats-worker):
-     SERVER asks its address and the READ_KEY once and keeps them in this browser only. No dependencies: the bars are SVG drawn here. */
+     SERVER asks its address and the READ_KEY once and keeps them in this browser only. No dependencies: the bars are SVG drawn here.
+     THE FUNNEL is the players, not the lives: each step's first time (`Stats.step`), plus what the lives say. */
   :root { --bg: #16121c; --panel: #221b2c; --ink: #efe6d0; --dim: rgba(239,230,208,0.6); --gold: #f7d774; --line: rgba(239,230,208,0.14); }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 Alegreya, Georgia, serif; }
@@ -24,6 +25,11 @@
   .tile { background: var(--panel); padding: 10px 14px; }
   .tile b { display: block; font: 700 28px 'Alegreya SC', serif; color: var(--gold); }
   .tile span { color: var(--dim); font-size: 13px; }
+  .funnel { margin-bottom: 14px; }
+  .funnel table td { padding: 5px 6px; }
+  .funnel .fb { height: 18px; background: #e0ac3e; display: block; min-width: 2px; }
+  .funnel td.lab { width: 32%; } .funnel td.track { width: 40%; }
+  .funnel td.drop { color: var(--dim); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr)); gap: 14px; }
   section { background: var(--panel); padding: 12px 14px; border-left: 3px solid #e0ac3e; min-width: 0; }
   section h2 { font: 700 15px 'Alegreya SC', serif; margin: 0 0 4px; color: var(--gold); }
@@ -64,8 +70,8 @@ const nameOf = (() => {
   try { for (const a of ARTIFACTS) m[a.id] = a.name; } catch (e) {}
   return (id) => id == null ? '-' : m[String(id).split(':')[0]] ? m[String(id).split(':')[0]] + (String(id).includes(':') ? ' ' + 'I'.repeat(+String(id).split(':')[1]) : '') : String(id);
 })();
-const WHO = { clubman: 'Clubman', butcher: 'Butcher', ogre: 'Ogre', hunter: 'Rifleman', dog: 'Hound', seer: 'Mage', wraith: 'Wraith', ratogre: 'Rat ogre',
-  fire: 'Fire', witchfire: 'Witchfire', spike: 'Grating', bomb: 'Bomb', mill: 'Wheel', fall: 'Drop', rifle: 'Stray bullet', spire: 'Rock spire', chandelier: 'Chandelier', poison: 'Poison' };
+const WHO = { clubman: 'Clubman', shieldman: 'Shieldman', butcher: 'Butcher', ogre: 'Ogre', hunter: 'Rifleman', dog: 'Hound', seer: 'Mage', wraith: 'Wraith', ratogre: 'Rat ogre',
+  fire: 'Fire', witchfire: 'Witchfire', spike: 'Grating', bomb: 'Bomb', mill: 'Wheel', fall: 'Drop', rifle: 'Stray bullet', spire: 'Rock spire', chandelier: 'Chandelier', poison: 'Poison', powder: 'Spilt powder' };
 const HOW = { wall: 'Wall', body: 'Another body', blade: 'Sword swing', sword: 'Thrown sword', door: 'Door', bomb: 'Bomb', blast: 'Ogre blast', chandelier: 'Chandelier', powder: 'Powder',
   hen: 'Hen', antlers: 'Stag antlers', burn: 'Fire', boom: 'Explosion', poison: 'Poison', fall: 'Drop', mill: 'Wheel', spike: 'Grating', spire: 'Rock spire', headbutt: 'Headbutt',
   club: 'Friendly club', shot: 'Bullet', unmade: 'Unmade', hit: 'Other blow', rock: 'Boulder', barrel: 'Barrel', table: 'Table', crate: 'Crate', weapon: 'Stand of arms', corpse: 'Thrown corpse', dev: 'Dev' };
@@ -75,6 +81,9 @@ const COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300'
 const FLOOR_ORDER = (f) => (f[0] === 'L' ? 0 : 0.5) + parseInt(f.slice(1), 10) * 1 + (f[0] === 'N' ? 0.4 : f[0] === 'T' ? 0.3 : 0);
 
 let REPORTS = [];
+// The funnel's steps, by player: { step: { at, build } }, the earliest of every source kept.
+const STEPS = Object.create(null);   // every map keyed by what came off the wire has no prototype: a player or key named __proto__ blanked the page
+const STEP_NAMES = /^(open|start|death|restart|clear1|win|reach\d{1,2})$/;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -115,6 +124,25 @@ function sanitize(r) {
   return { id, player, build, at, done: N(r.done) || at, flags: S(r.flags, 8) || '', release: !!r.release, floors,
     end: { how: S(E.how, 8) || '?', f: S(E.f, 4), by: S(E.by, 24), kills: N(E.kills), t: N(E.t), room: N(E.room), code: S(E.code, 120) } };
 }
+// Steps in any shape they come: the worker's rows, this browser's store, a SAVE STATS file.
+function stepsOf(x) {
+  if (!x || typeof x !== 'object') return [];
+  if (Array.isArray(x)) return x.flatMap(stepsOf);
+  if (typeof x.step === 'string') return [{ player: x.player, step: x.step, at: x.at, build: x.build }];
+  if (x.steps && typeof x.steps === 'object' && !Array.isArray(x.steps))
+    return Object.entries(x.steps).map(([k, v]) => ({ player: x.player, step: k, at: v && v.at, build: v && v.build }));
+  return [];
+}
+function addSteps(list) {
+  let n = 0;
+  for (const raw of list) {
+    const player = S(raw.player), step = S(raw.step, 12), at = N(raw.at), build = S(raw.build, 16) || '?';
+    if (!player || !step || !STEP_NAMES.test(step) || at < 1e12 || at > 4e12) continue;
+    const P = STEPS[player] = STEPS[player] || Object.create(null);
+    if (!P[step] || P[step].at > at) { P[step] = { at, build }; n++; }
+  }
+  return n;
+}
 function add(list, label) {
   const seen = new Set(REPORTS.map((r) => r.id));
   let n = 0, bad = 0;
@@ -127,7 +155,7 @@ function add(list, label) {
   builds(); draw();
 }
 function fromLocal() {
-  try { add(reportsOf(JSON.parse(localStorage.getItem('goatout.stats.v1') || 'null')), 'this browser'); }
+  try { const d = JSON.parse(localStorage.getItem('goatout.stats.v1') || 'null'); addSteps(stepsOf(d)); add(reportsOf(d), 'this browser'); }
   catch (e) { $('status').textContent = 'this browser holds none'; }
 }
 $('local').onclick = fromLocal;
@@ -146,28 +174,42 @@ async function fromServer(ask) {
   }
   $('status').textContent = 'asking the server…';
   try {
-    const r = await fetch(srv.url + '/reports', { headers: { Authorization: 'Bearer ' + srv.key } });
-    if (r.status === 401) { $('status').textContent = 'the server refused the key'; return fromServer(true); }
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    add(reportsOf(await r.json()), 'the server');
+    // Newest first, a page of 5000 at a time, walked back until a short page (a worker from before
+    // the paging has no X-Oldest-Got and gives its one page as it always did).
+    const head = { Authorization: 'Bearer ' + srv.key };
+    let got = [], before = 0;
+    for (let page = 0; page < 40; page++) {
+      const r = await fetch(srv.url + '/reports' + (before ? '?before=' + before : ''), { headers: head });
+      if (r.status === 401) { $('status').textContent = 'the server refused the key'; return fromServer(true); }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const part = await r.json(), oldest = +r.headers.get('X-Oldest-Got') || 0;
+      got = got.concat(part);
+      $('status').textContent = 'asking the server… ' + got.length;
+      if (part.length < 5000 || !oldest || oldest === before) break;
+      before = oldest;
+    }
+    // The steps are their own table; a worker from before them answers 404, and the funnel is then the lives' alone.
+    try { const s = await fetch(srv.url + '/steps', { headers: head }); if (s.ok) addSteps(stepsOf(await s.json())); } catch (e) {}
+    add(reportsOf(got), 'the server');
   } catch (e) { $('status').textContent = 'server: ' + e.message; }
 }
 $('server').onclick = (e) => fromServer(e.shiftKey);
-$('files').onchange = async (e) => { for (const f of e.target.files) { try { add(reportsOf(JSON.parse(await f.text())), f.name); } catch (err) { $('status').textContent = f.name + ': not a stats file'; } } };
+$('files').onchange = async (e) => { for (const f of e.target.files) { try { const x = JSON.parse(await f.text()); addSteps(stepsOf(x)); add(reportsOf(x), f.name); } catch (err) { $('status').textContent = f.name + ': not a stats file'; } } };
 document.addEventListener('dragover', (e) => e.preventDefault());
-document.addEventListener('drop', async (e) => { e.preventDefault(); for (const f of e.dataTransfer.files) { try { add(reportsOf(JSON.parse(await f.text())), f.name); } catch (err) {} } });
+document.addEventListener('drop', async (e) => { e.preventDefault(); for (const f of e.dataTransfer.files) { try { const x = JSON.parse(await f.text()); addSteps(stepsOf(x)); add(reportsOf(x), f.name); } catch (err) {} } });
 $('build').onchange = draw; $('easy').onchange = draw;
 function builds() {
-  const cur = $('build').value, bs = [...new Set(REPORTS.map((r) => r.build))].sort();
+  const cur = $('build').value;
+  const bs = [...new Set(REPORTS.map((r) => r.build).concat(Object.values(STEPS).flatMap((o) => Object.values(o).map((v) => v.build))))].sort();
   $('build').innerHTML = '<option value="">ALL BUILDS</option>' + bs.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
   $('build').value = bs.includes(cur) ? cur : '';
 }
 
 // ---------- the counting ----------
-const inc = (o, a, b, n = 1) => { (o[a] = o[a] || {})[b] = (o[a][b] || 0) + n; };
+const inc = (o, a, b, n = 1) => { (o[a] = o[a] || Object.create(null))[b] = (o[a][b] || 0) + n; };
 function count(R) {
-  const C = { lives: R.length, players: new Set(R.map((r) => r.player)).size, deaths: {}, hurt: {}, kills: {}, blows: {}, wins: 0,
-    souls: {}, soulFloor: {}, released: 0, shop: {}, milk: 0, ogre: 0, beasts: {}, floorsReached: {}, cleared: {}, lifeTime: 0 };
+  const C = { lives: R.length, players: new Set(R.map((r) => r.player)).size, deaths: Object.create(null), hurt: Object.create(null), kills: Object.create(null), blows: Object.create(null), wins: 0,
+    souls: Object.create(null), soulFloor: Object.create(null), released: 0, shop: Object.create(null), milk: 0, ogre: 0, beasts: Object.create(null), floorsReached: Object.create(null), cleared: Object.create(null), lifeTime: 0 };
   for (const r of R) {
     const E = r.end || {};
     if (E.how === 'win') C.wins++;
@@ -181,7 +223,7 @@ function count(R) {
         const [enemy, hw] = k.split('|');
         if (hw === 'dev') continue;
         if (kills) inc(C.kills, F.f, hw, kills);
-        const b = C.blows[hw] = C.blows[hw] || { blows: 0, kills: 0, by: {} };
+        const b = C.blows[hw] = C.blows[hw] || { blows: 0, kills: 0, by: Object.create(null) };
         b.blows += n; b.kills += kills; b.by[enemy.replace('*', '')] = (b.by[enemy.replace('*', '')] || 0) + kills;
       }
       for (const s of F.souls || []) {
@@ -194,7 +236,7 @@ function count(R) {
         if (s.took === 'milk') C.milk++;
         for (const id of s.offer || []) { if (id === 'milk') continue; const k = id.split(':')[0]; const o = C.shop[k] = C.shop[k] || { offered: 0, taken: 0 }; o.offered++; if (s.took === id) o.taken++; }
       }
-      for (const b of F.beasts || []) { const o = C.beasts[b.kind] = C.beasts[b.kind] || {}; o[b.ev] = (o[b.ev] || 0) + 1; }
+      for (const b of F.beasts || []) { const o = C.beasts[b.kind] = C.beasts[b.kind] || Object.create(null); o[b.ev] = (o[b.ev] || 0) + 1; }
     }
   }
   return C;
@@ -205,7 +247,7 @@ function count(R) {
 function stacked(byFloor, opts = {}) {
   const floors = Object.keys(byFloor).sort(opts.order || ((a, b) => FLOOR_ORDER(a) - FLOOR_ORDER(b)));
   if (!floors.length) return '<div class="empty">Nothing yet.</div>';
-  const totals = {};
+  const totals = Object.create(null);
   for (const f of floors) for (const [k, n] of Object.entries(byFloor[f])) totals[k] = (totals[k] || 0) + n;
   const keys = Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
   const keep = keys.slice(0, 8), other = keys.slice(8);
@@ -238,7 +280,7 @@ function rateTable(rows, head) {
 }
 // A player's first day is the day of his first life here; any later day he plays he came back.
 function byDay(R) {
-  const day = (t) => new Date(t).toISOString().slice(5, 10), first = {}, seen = {}, out = {};
+  const day = (t) => new Date(t).toISOString().slice(5, 10), first = Object.create(null), seen = Object.create(null), out = Object.create(null);
   for (const r of R.slice().sort((a, b) => a.at - b.at)) { if (!(r.player in first)) first[r.player] = day(r.at); }
   for (const r of R) {
     const d = day(r.at), k = r.player + d; if (seen[k]) continue; seen[k] = 1;
@@ -246,27 +288,83 @@ function byDay(R) {
   }
   return out;
 }
+// ---------- the funnel ----------
+const REACH = (typeof TUNING !== 'undefined' && TUNING.stats && TUNING.stats.reach) || [4, 8];
+const FUNNEL = [['open', 'Opened the game'], ['start', 'Started a run'], ['death', 'Died for the first time'], ['restart', 'Played again after a death'],
+  ['clear1', 'Cleared floor 1']].concat(REACH.map((n) => ['reach' + n, 'Reached floor ' + n]), [['win', 'Escaped']]);
+// Each player's steps: what the game sent (`STEPS`), filled in from the lives wherever it sent nothing
+// (lives from before the steps existed, a step lost on the way). Anyone with a step opened the game, and
+// anyone past it started a run. `R` is every life of every build; `build` keeps the players who came in
+// on it (the build of their first step).
+function funnelOf(R, build) {
+  const P = Object.create(null);
+  const put = (pl, k, at, b) => { const o = P[pl] = P[pl] || Object.create(null); if (!o[k] || o[k].at > at) o[k] = { at, build: b }; };
+  for (const [pl, o] of Object.entries(STEPS)) for (const [k, v] of Object.entries(o)) put(pl, k, v.at, v.build);
+  const lives = Object.create(null);
+  for (const r of R) (lives[r.player] = lives[r.player] || []).push(r);
+  for (const [pl, L] of Object.entries(lives)) {
+    let died = false;
+    for (const r of L.sort((a, b) => a.at - b.at)) {
+      const end = r.done || r.at;
+      put(pl, 'start', r.at, r.build);
+      if (died) put(pl, 'restart', r.at, r.build);
+      for (const F of r.floors) {
+        const n = parseInt(F.f.slice(1), 10);
+        if (n === 1 && F.cleared) put(pl, 'clear1', end, r.build);
+        for (const m of REACH) if (n >= m) put(pl, 'reach' + m, r.at, r.build);
+      }
+      if (r.end.how === 'death') { died = true; put(pl, 'death', end, r.build); }
+      if (r.end.how === 'win') put(pl, 'win', end, r.build);
+    }
+  }
+  const out = Object.create(null); let players = 0;
+  for (const o of Object.values(P)) {
+    const first = Object.values(o).sort((a, b) => a.at - b.at)[0];
+    if (!first || (build && first.build !== build)) continue;
+    players++;
+    const keys = new Set(Object.keys(o).concat('open'));
+    if (Object.keys(o).some((k) => k !== 'open')) keys.add('start');
+    for (const k of keys) out[k] = (out[k] || 0) + 1;
+  }
+  return { n: out, players };
+}
+function funnelTable(F) {
+  const top = Math.max(1, F.n.open || 0);
+  return '<table>' + FUNNEL.map(([k, label], i) => {
+    const v = F.n[k] || 0, prev = i ? F.n[FUNNEL[i - 1][0]] || 0 : 0;
+    const step = i && prev ? `${Math.round(100 * v / prev)}% of the row above` : '';
+    return `<tr><td class="lab">${esc(label)}</td><td class="track"><span class="fb" style="width:${100 * v / top}%"></span></td>` +
+      `<td class="n"><b>${v}</b></td><td class="n">${Math.round(100 * v / top)}%</td><td class="drop">${step}</td></tr>`;
+  }).join('') + '</table>';
+}
+
 const sec = (title, sub, body) => `<section><h2>${title}</h2><p class="sub">${sub}</p>${body}</section>`;
 
 function draw() {
   const b = $('build').value, easy = $('easy').checked;
-  const R = REPORTS.filter((r) => (!b || r.build === b) && (easy || !/E/.test(r.flags || '')) && !/[XJ]/.test(r.flags || ''));
+  const clean = REPORTS.filter((r) => (easy || !/E/.test(r.flags || '')) && !/[XJ]/.test(r.flags || ''));
+  const R = clean.filter((r) => !b || r.build === b);
+  const FN = funnelOf(clean, b);
+  const funnel = `<section class="funnel"><h2>The funnel</h2><p class="sub">${FN.players} players${b ? ' who came in on ' + esc(b) : ''}, each counted once at every step taken.
+    Only players who said yes to the title's question are counted (itch.io's own page counts everyone who opened it).
+    Dying and clearing floor 1 can come in either order.</p>${funnelTable(FN)}</section>`;
+  if (!R.length && FN.players) { $('main').innerHTML = funnel; return; }
   if (!R.length) { $('main').innerHTML = '<div class="empty">No lives here yet. Play one, press THIS BROWSER, or open a file the dev drawer\'s SAVE STATS wrote, or press SERVER.</div>'; return; }
   const C = count(R);
   const deaths = R.filter((r) => r.end && r.end.how === 'death').length;
-  const furthest = {}; for (const r of R) for (const F of r.floors || []) furthest[r.id] = F.f;
-  const days = {}; for (const r of R) (days[r.player] = days[r.player] || new Set()).add(new Date(r.at).toISOString().slice(0, 10));
+  const furthest = Object.create(null); for (const r of R) for (const F of r.floors || []) furthest[r.id] = F.f;
+  const days = Object.create(null); for (const r of R) (days[r.player] = days[r.player] || new Set()).add(new Date(r.at).toISOString().slice(0, 10));
   const back = Object.values(days).filter((s) => s.size > 1).length;
   const tiles = [[C.lives, 'lives'], [C.players, 'players'], [back, 'players who came back another day'], [deaths, 'deaths'], [C.wins, 'escapes'],
     [Math.round(C.lifeTime / Math.max(1, C.lives)) + 's', 'seconds into the last floor, on average'], [C.released, 'souls released unspent']];
   const souls = Object.entries(C.souls).map(([id, o]) => ({ id, ...o })).sort((a, b) => b.taken / b.offered - a.taken / a.offered || b.offered - a.offered);
   const shop = Object.entries(C.shop).map(([id, o]) => ({ id, ...o })).sort((a, b) => b.taken / b.offered - a.taken / a.offered);
-  const reach = {}; for (const [f, n] of Object.entries(C.floorsReached)) reach[f] = { cleared: C.cleared[f] || 0, died: n - (C.cleared[f] || 0) };
+  const reach = Object.create(null); for (const [f, n] of Object.entries(C.floorsReached)) reach[f] = { cleared: C.cleared[f] || 0, died: n - (C.cleared[f] || 0) };
   const blows = Object.entries(C.blows).sort((a, b) => b[1].kills - a[1].kills);
   const EV = ['here', 'freed', 'yes', 'no', 'paid', 'saved', 'dead', 'lost', 'coop'];
   const EVN = { here: 'On the floor', freed: 'Let out', yes: 'Said yes', no: 'Said no', paid: 'Paid early', saved: 'Saved at stairs', dead: 'Died', lost: 'Left behind', coop: 'Never let out' };
   $('main').innerHTML =
-    '<div class="tiles">' + tiles.map(([v, l]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('') + '</div><div class="grid">' +
+    funnel + '<div class="tiles">' + tiles.map(([v, l]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('') + '</div><div class="grid">' +
     sec('Where the goat dies', 'Deaths on each floor, by what took the last heart.', stacked(C.deaths)) +
     sec('What hurts him', 'Hearts lost on each floor, by what took them.', stacked(C.hurt)) +
     sec('How the cult dies', 'Kills on each floor, by what finished the man.', stacked(C.kills, { name: how })) +

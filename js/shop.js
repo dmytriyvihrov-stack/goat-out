@@ -177,20 +177,20 @@ const Shop = {
     const B = game.mods.boomerang || { stun: 1, range: 5, pierce: 1 }, T0 = TUNING.shop.boomerang, g = game.goat, w = game.world;
     f.spin += dt * 22;
     if (f.out) {
-      f.x += f.vx * dt; f.y += f.vy * dt; f.gone += Math.hypot(f.vx, f.vy) * dt;
+      f.x += f.vx * dt; f.y += f.vy * dt; f.gone += hyp(f.vx, f.vy) * dt;
       const impact = w.collideCircle(f);
       if (impact > 0) { f.out = false; game.audio.sfxThud(); game.particles(f.x, f.y, 4, PALETTE.ash, 90); }
       else if (f.gone >= B.range * TILE) f.out = false;
       // The furniture stops it the way stone does: it comes home off a table or a shut door.
       for (const p of game.props) {
         if (!p.blocking || p.kind === 'cage') continue;
-        if (Math.hypot(p.x - f.x, p.y - f.y) < p.r + f.r) { f.out = false; if (p.kind === 'bell') p.ring(game); game.audio.sfxThud(); break; }
+        if (hyp(p.x - f.x, p.y - f.y) < p.r + f.r) { f.out = false; if (p.kind === 'bell') p.ring(game); game.audio.sfxThud(); break; }
       }
     } else {
       // Home. It curves back through anything: a boomerang that got stuck behind a pillar would be a
       // talisman lost to the room, and `homeMax` is the belt to that brace.
       f.home += dt;
-      const dx = g.x - f.x, dy = g.y - f.y, d = Math.hypot(dx, dy) || 1;
+      const dx = g.x - f.x, dy = g.y - f.y, d = hyp(dx, dy) || 1;
       const sp = T0.speed * 1.15;
       f.vx = dx / d * sp; f.vy = dy / d * sp;
       f.x += f.vx * dt; f.y += f.vy * dt;
@@ -206,7 +206,7 @@ const Shop = {
     for (const e of game.enemies) {
       if ((f.out ? f.outN : f.backN) >= B.pierce) break;
       if (e.dead || e.held || e.ghosted || f.hit.includes(e)) continue;
-      if (Math.hypot(e.x - f.x, e.y - f.y) > e.r + f.r) continue;
+      if (hyp(e.x - f.x, e.y - f.y) > e.r + f.r) continue;
       f.hit.push(e); if (f.out) f.outN++; else f.backN++;
       e.daze(game, B.stun); e.flash = Math.max(e.flash, TUNING.juice.hitFlash); e.aware = true;
       game.audio.sfxThud(); game.shake(2); game.hitstop(0.02);
@@ -226,12 +226,12 @@ const Shop = {
     const B = game.mods.blink, R = TUNING.goat.roll, w = game.world;
     let dx = inx, dy = iny;
     // The stick first; with none, where he is going; standing, where he faces.
-    if (Math.hypot(dx, dy) < 0.2) { dx = goat.vx; dy = goat.vy; if (Math.hypot(dx, dy) < 20) { dx = Math.cos(goat.facing); dy = Math.sin(goat.facing); } }
-    const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+    if (hyp(dx, dy) < 0.2) { dx = goat.vx; dy = goat.vy; if (hyp(dx, dy) < 20) { dx = Math.cos(goat.facing); dy = Math.sin(goat.facing); } }
+    const l = hyp(dx, dy) || 1; dx /= l; dy /= l;
     const dist = B.dist * TILE;
     const solidAt = (px, py) => {
       if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE)) || w.isPitPx(px, py)) return true;
-      for (const p of game.props) if (p.blocking && Math.hypot(p.x - px, p.y - py) < p.r + goat.r * 0.6) return true;
+      for (const p of game.props) if (p.blocking && hyp(p.x - px, p.y - py) < p.r + goat.r * 0.6) return true;
       return false;
     };
     let bx = goat.x, by = goat.y;
@@ -242,7 +242,7 @@ const Shop = {
       if (solidAt(px, py) || solidAt(px + dy * goat.r * 0.7, py - dx * goat.r * 0.7) || solidAt(px - dy * goat.r * 0.7, py + dx * goat.r * 0.7)) break;
       bx = px; by = py;
     }
-    if (Math.hypot(bx - goat.x, by - goat.y) < TILE * 0.6) { game.floatText(goat.x, goat.y - 30, 'NO ROOM', PALETTE.ashHi); game.audio.sfxThud(); return false; }
+    if (hyp(bx - goat.x, by - goat.y) < TILE * 0.6) { game.floatText(goat.x, goat.y - 30, 'NO ROOM', PALETTE.ashHi); game.audio.sfxThud(); return false; }
     const ox = goat.x, oy = goat.y;
     if (goat.holding) {
       const h = goat.holding; goat.holding = null; h.held = false; goat.autoHeld = false;
@@ -252,7 +252,7 @@ const Shop = {
     // Whoever stood where he left: the third tier leaves them reeling.
     if (B.stun > 0) for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
-      if (Math.hypot(e.x - ox, e.y - oy) <= R.stunR + e.r) { e.daze(game, B.stun); game.particles(e.x, e.y - 6, 5, PALETTE.witchHi, 120); }
+      if (hyp(e.x - ox, e.y - oy) <= R.stunR + e.r) { e.daze(game, B.stun); game.particles(e.x, e.y - 6, 5, PALETTE.witchHi, 120); }
     }
     // The ghosts along the line are the only picture of the travel there is.
     const n = 5, life = TUNING.goat.trail.fastLife;

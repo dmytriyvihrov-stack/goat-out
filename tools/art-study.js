@@ -140,11 +140,15 @@ window.ART_STUDY = (() => {
 
   // The frame on screen twice, side by side: everything as packed, then under `after` (the art pass
   // and the studies it names). The scene should be frozen (`H.freeze()`) so the two are one moment.
+  // The second pass's switches (2 Oct 2026): a side that does not name one keeps it as it is now.
+  const PASS2 = ['shadows', 'tells', 'hay', 'cave'];
   async function pair(name, after = { on: true, hunter: 7, clubman: 1, floors: true }, note = '', before = { on: false, hunter: 0, clubman: 0, floors: false }) {
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const grab = () => { const c = canvas(game.canvas.width, game.canvas.height); c.getContext('2d').drawImage(game.canvas, 0, 0); return c; };
     const was = { on: ART_PASS.on, hunter: ART_PASS.hunter, clubman: ART_PASS.clubman, floors: ART_PASS.floors };
-    const setTo = (s) => { ART_PASS.set(s.on); ART_PASS.hunter = s.hunter; ART_PASS.clubman = s.clubman; ART_PASS.floors = s.floors !== false; if (game.world && game.world.caveDirty) game.world.caveDirty(); };
+    for (const k of PASS2) was[k] = ART_PASS[k];
+    for (const s of [before, after]) for (const k of PASS2) if (s[k] === undefined) s[k] = was[k];
+    const setTo = (s) => { ART_PASS.set(s.on); ART_PASS.hunter = s.hunter; ART_PASS.clubman = s.clubman; ART_PASS.floors = s.floors !== false; for (const k of PASS2) ART_PASS[k] = !!s[k]; if (game.world && game.world.caveDirty) game.world.caveDirty(); };
     // the cave's rock is rebaked a few chunks a frame, so each side is given time to finish
     setTo(before); await wait(1800); const A = grab();
     setTo(after); await wait(1800); const B = grab();
@@ -156,7 +160,8 @@ window.ART_STUDY = (() => {
     x.drawImage(A, sx, sy, cw, ch, 10, 60, w, h); x.drawImage(B, sx, sy, cw, ch, w + 20, 60, w, h);
     // only what differs between the two sides is named
     const tag = (s) => [before.on !== after.on && (s.on ? 'art pass' : 'no art pass'), before.floors !== after.floors && (s.floors !== false ? 'floor sheets' : 'packed floors'),
-      before.hunter !== after.hunter && 'hunter ' + PIXEL_STUDY.hunter[s.hunter].name, before.clubman !== after.clubman && 'clubman ' + PIXEL_STUDY.clubman[s.clubman].name].filter(Boolean).join(' · ');
+      before.hunter !== after.hunter && 'hunter ' + PIXEL_STUDY.hunter[s.hunter].name, before.clubman !== after.clubman && 'clubman ' + PIXEL_STUDY.clubman[s.clubman].name,
+      ...PASS2.map((k) => before[k] !== after[k] && ({ shadows: s.shadows ? 'pixel shadows' : 'smooth shadows', tells: s.tells ? 'tells in cells' : 'tells in strokes', hay: s.hay ? 'hay a step down' : 'hay as packed', cave: s.cave ? 'cave floor sheet' : 'cave floor as packed' })[k])].filter(Boolean).join(' · ');
     // sized to fit its own half, however many differences it names
     const fit = (str, maxW, px) => { x.font = `700 ${px}px ${FONT}`; while (px > 10 && x.measureText(str).width > maxW) { px--; x.font = `700 ${px}px ${FONT}`; } return px; };
     const L = 'BEFORE, ' + tag(before), Rt = 'AFTER, ' + tag(after);

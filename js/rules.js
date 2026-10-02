@@ -14,7 +14,7 @@ const lessonOf = (L) => { const c = (L.controls || []).find((k) => k.part === 2)
 const quiet = (L, r) => r.index === 0 || SET_PIECE.has(r.role) || r.isAmbush || r.isRest || r.isCalm || r.index === lessonOf(L);
 const ORDINARY = new Set(['canon', 'mix', 'trap']);
 
-const kindOf = (s) => (s.champion ? 'champion' : s.kind);
+const kindOf = (s) => (s.champion ? 'champion' : s.shield ? 'shield' : s.kind);   // the tables' pseudo-kinds back (gen.js `threatKind`)
 const roomAt = (L, x, y) => L.rooms.find((r) => x >= r.x * TILE && x < (r.x + r.w) * TILE && y >= r.y * TILE && y < (r.y + r.h) * TILE);
 // Every tile he can walk to from where he starts (stone and holes stop him), as flags by tile index.
 const walkedFrom = (L, tiles = L.tiles) => {
@@ -229,7 +229,7 @@ const GEN_RULES = [
       const r = roomsOf(L)[def.crowdAt];
       if (!r) return `room ${def.crowdAt} is missing`;
       if (!ORDINARY.has(r.role)) return `room ${def.crowdAt} is a ${r.role} room`;
-      const want = def.crowdMen.slice().sort().join(' '), got = r.spawns.map((s) => s.champion ? 'champion' : s.kind).sort().join(' ');
+      const want = def.crowdMen.slice().sort().join(' '), got = r.spawns.map(kindOf).sort().join(' ');
       if (got !== want) return `room ${def.crowdAt} holds ${got || 'nobody'}, not ${want}`;
       const brute = (x) => x && x.spawns.some((s) => s.champion);
       const rs = roomsOf(L);
@@ -449,7 +449,7 @@ const GEN_RULES = [
       if (L.rooms.some((r) => r.isTrap)) return 'a trap room on the trip';
       return true;
     } },
-  { id: 'dark', text: 'THE DARK is lit by its lamps: one or two in every room with men and in every arena and rest room, a lantern on the wall by a doorway of every room, no killbox and no rifle.',
+  { id: 'dark', text: 'THE DARK is lit by its lamps: one or two in every room with men and in every arena and rest room, a lantern on the wall (or a lamp standing) by a doorway of every room, no killbox and no rifle.',
     check: (L) => {
       const def = L.def;
       if (!def.dark) return L.props.some((p) => p.kind === 'sconce') ? 'a wall lantern on a lit floor' : null;
@@ -467,7 +467,8 @@ const GEN_RULES = [
           const edge = tx === r.x || tx === r.x + r.w - 1 || ty === r.y;
           if (edge && L.tiles[ty * W + tx] !== T.WALL && !hidden(tx, ty)) doors.push({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE });
         }
-        if (doors.length && !L.props.some((p) => p.kind === 'sconce' && doors.some((d) => len(d.x - p.x, d.y - p.y) < 2.2 * TILE)))
+        // A lamp stood beside a doorway with no wall to hang a lantern on (`doorLamp`, 2 Oct 2026) counts as one.
+        if (doors.length && !L.props.some((p) => (p.kind === 'sconce' || p.doorLamp) && doors.some((d) => len(d.x - p.x, d.y - p.y) < 2.2 * TILE)))
           return `room ${r.index} has no lantern by a door`;
         // A doorway in the near wall has a flame by it: a lantern, a lamp, a bowl.
         for (let tx = r.x + 1; tx < r.x + r.w - 1; tx++) {
@@ -495,6 +496,20 @@ const GEN_RULES = [
         if (f.d < f.max * DOORS.far - 0.001 && !said) said = `room ${r.index} leaves ${f.d} off the way in of ${f.max} it could have`;
       }
       return !any ? null : (said || true);
+    } },
+  // `pickDoorY` records each side door it cut (`room.mouths`): whether the rows beside the doorway are
+  // clear one tile in, and whether any row of that wall could have been. A wall with none says nothing.
+  { id: 'doorstep', text: 'A side door opens onto a clear step, never a shelf or a post one tile in, wherever the wall has a row that does.',
+    check: (L) => {
+      let any = false;
+      for (const r of L.rooms) {
+        for (const [side, m] of Object.entries(r.mouths || {})) {
+          if (!m.could) continue;
+          any = true;
+          if (!m.clear) return `room ${r.index}'s ${side} door opens a step from furniture`;
+        }
+      }
+      return any ? true : null;
     } },
   { id: 'pen', text: 'Nothing spawns by the pen, and the pen holds nobody.',
     check: (L) => {

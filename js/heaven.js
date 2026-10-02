@@ -75,7 +75,8 @@ const HEAVEN_TALK = {
   ],
   killer: {
     bearer: ['A MAN WITH A STICK. YOU HAVE TWO HORNS AND FOUR LEGS. DO THE ARITHMETIC.'],
-    brute: ['THE BUTCHER RUNS IN STRAIGHT LINES, LITTLE HORNS. STRAIGHT LINES END IN WALLS. LET HIM FIND ONE.'],
+    brute: ['THE BUTCHER THROWS HIS HOOK WHERE YOU ARE GOING, LITTLE HORNS. TURN AFTER IT LEAVES HIS HAND.'],
+    shield: ['A MAN BEHIND A DOOR. HE TURNS LIKE A DOOR, TOO. SLOWLY. GO ROUND HIM, LITTLE HORNS.'],
     butcher: ['THE OGRE. YOUR HORNS DO NOTHING TO HIM. FIRE DOES. BLADES DO.', 'YOUR HORNS DO NOTHING TO HIM. I SAY IT TWICE BECAUSE YOU FORGOT IT ONCE.'],
     seer: ['THE MAGE AND HIS PURPLE FIRE. WHEN THE FLOOR UNDER YOU GLOWS, THE FLOOR IS NOT YOUR FRIEND.'],
     hunter: ['A RIFLE. HE TAKES A MOMENT TO AIM. A GOAT TAKES A MOMENT TO LEAVE. RACE HIM.'],
@@ -88,6 +89,7 @@ const HEAVEN_TALK = {
     spike: ['THE FLOOR BIT YOU. THE FLOOR IN THAT PLACE BITES. STEP OFF IT WHILE IT THINKS ABOUT IT.'],
     spire: ['THE STONE TEETH WERE THERE BEFORE YOU AND WILL BE THERE AFTER. WALK ROUND.'],
     bomb: ['THE ROUND BLACK THING WITH THE SPARK. YOU HELD ON TO IT. WHY DID YOU HOLD ON TO IT.'],
+    powder: ['BLACK POWDER ON THE FLOOR AND A FLAME NEARBY. YOU DID THE ARITHMETIC TOO LATE.'],
     chandelier: ['A CHANDELIER. YOU PULLED THE ROPE AND STOOD UNDER IT. I HAVE SEEN THAT JOKE BEFORE. IT WAS NOT FUNNY THEN EITHER.'],
     mill: ['THE WHEEL GOES ROUND. THAT IS ALL IT DOES, AND IT IS VERY GOOD AT IT.'],
     fall: ['YOU FELL. GOATS ARE SUPPOSED TO BE GOOD AT HEIGHTS. I AM DISAPPOINTED ON BEHALF OF ALL GOATS.'],
@@ -136,7 +138,7 @@ const SHEPHERD_TALK = {
 // What a floor tried again after a death says at its foot for a few seconds (1 Oct 2026, playtest:
 // "after the first death on a level, show tips, who killed you, or one off a general list, made in
 // the dev tools; add one or two yourself, the rest by hand"): a line off `killer[<what killed him>]`
-// (the run code's token: bearer, brute, butcher, seer, hunter, dog, wraith, ratogre, fire, witchfire,
+// (the run code's token: bearer, brute, shield, butcher, seer, hunter, dog, wraith, ratogre, fire, witchfire,
 // spike, spire, bomb, chandelier, mill, fall, rifle) if there is one, else off `any`. Edited and written
 // back from tools/god-talk.html with the god's lines (`Codex.deathTip`).
 const DEATH_TIPS = {
@@ -258,13 +260,13 @@ const Heaven = {
     const start = { x: px(15.5), y: px(16.2) };
     // Gold grass here and there, to be grazed for nothing but the taste (`Heaven.update`): never on
     // the god's steps, the bridge, by the lip, or under anything that stands.
-    const tufts = [], rng = new RNG(5), clearOf = (x, y) => props.every((p) => Math.hypot(p.x - x, p.y - y) > 60 && Math.hypot(p.x - x, p.y - 36 - y) > 60) && Math.hypot(start.x - x, start.y - y) > 70;
+    const tufts = [], rng = new RNG(5), clearOf = (x, y) => props.every((p) => hyp(p.x - x, p.y - y) > 60 && hyp(p.x - x, p.y - 36 - y) > 60) && hyp(start.x - x, start.y - y) > 70;
     for (let a = 0; a < 400 && tufts.length < 16; a++) {
       const tx = rng.int(4, 55), ty = rng.int(6, 21);
       if (tiles[at(tx, ty)] !== T.FLOOR || tiles[at(tx, ty + 1)] === T.PIT || (tx >= 12 && tx <= 19 && ty <= 12) || (tx >= 27 && tx <= 34)) continue;
       let wallNear = false; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (tiles[at(tx + dx, ty + dy)] === T.WALL) wallNear = true;
       const x = px(tx) + rng.float(-8, 8), y = px(ty) + rng.float(-8, 8);
-      if (wallNear || !clearOf(x, y) || tufts.some((q) => Math.hypot(q.x - x, q.y - y) < 80)) continue;
+      if (wallNear || !clearOf(x, y) || tufts.some((q) => hyp(q.x - x, q.y - y) < 80)) continue;
       tufts.push({ x, y, graze: 0, eaten: false, big: rng.chance(0.3) });
     }
     return { W, H, tiles, rooms, spawns: [], props, start, tufts, exit: { x: px(45), y: px(22) }, exitTile: { x0: 45, y0: 22 },
@@ -285,7 +287,7 @@ const Heaven = {
     game.song = null; game.shopDlg = null;
     const visit = !!(opts && opts.visit);
     const M = this.meta, L = this.level(), by = !visit && game.goat && game.goat.hurtBy;
-    const kind = !by ? null : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind);
+    const kind = !by ? null : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind === 'bearer' && by.shieldman ? 'shield' : by.kind);
     M.visits++; if (!visit) M.deaths++;
     if (game.levelIndex !== undefined) this.reached(levelIndexOf(game.level && game.level.def) >= 0 ? levelIndexOf(game.level.def) : game.levelIndex);
     const floorName = (game.level && game.level.def && game.level.def.name) || '';
@@ -389,17 +391,17 @@ const Heaven = {
     const near = this.nearest(game); H.near = near;
     const press = inp.rmbDown && !H.rmbWas; H.rmbWas = inp.rmbDown;
     if (press && near && g.state === 'idle' && !g.holding) { inp.rmbDown = false; this.interact(game, near); game.clearEdges(); return; }
-    if (inp.spacePressed && g.screamCd <= 0 && Math.hypot(g.x - game.level.god.x, g.y - game.level.god.y) < T0.hearR * TILE) H.answerT = T0.answer;
+    if (inp.spacePressed && g.screamCd <= 0 && hyp(g.x - game.level.god.x, g.y - game.level.god.y) < T0.hearR * TILE) H.answerT = T0.answer;
     g.update(dt, game);
     // The horns on the god's own cloud: he has a word to say about it.
-    if (g.state === 'recover' && g.lungeId !== H.lastLunge && Math.hypot(g.x - game.level.god.x, g.y - game.level.god.y - TILE * 0.6) < TILE * 2) { H.lastLunge = g.lungeId; this.buttGod(game); }
+    if (g.state === 'recover' && g.lungeId !== H.lastLunge && hyp(g.x - game.level.god.x, g.y - game.level.god.y - TILE * 0.6) < TILE * 2) { H.lastLunge = g.lungeId; this.buttGod(game); }
     for (const p of game.props) p.update(dt, game);
     game.collideEntities(dt);
     game.updateEffects(dt);
     // The gold grass: stood in, still, it is eaten, for nothing but the taste of it.
     for (const q of game.level.tufts) {
       if (q.eaten) continue;
-      const near = Math.hypot(q.x - g.x, q.y - g.y) < T0.graze.r && Math.hypot(g.vx, g.vy) < TUNING.prop.heal.grazeSpeed;
+      const near = hyp(q.x - g.x, q.y - g.y) < T0.graze.r && hyp(g.vx, g.vy) < TUNING.prop.heal.grazeSpeed;
       q.graze = near ? q.graze + dt : Math.max(0, q.graze - dt * 2);
       if (q.graze < T0.graze.time) continue;
       q.eaten = true;
@@ -417,7 +419,7 @@ const Heaven = {
   nearest(game) {
     const g = game.goat, R = TUNING.heaven.talkR * TILE, L = game.level;
     let best = null, bd = R;
-    const consider = (kind, x, y, thing) => { const d = Math.hypot(g.x - x, g.y - y); if (d < bd) { bd = d; best = { kind, x, y, thing }; } };
+    const consider = (kind, x, y, thing) => { const d = hyp(g.x - x, g.y - y); if (d < bd) { bd = d; best = { kind, x, y, thing }; } };
     consider('god', L.god.x, L.god.y + TILE * 0.8);
     for (const p of game.props) {
       if (p.kind === 'hshep') consider('shepherd', p.x, p.y, p);
@@ -450,7 +452,7 @@ const Heaven = {
       // One butt, one bell: the one nearest his nose, whichever others the horns reached.
       const nx = g.x + ax * 22, ny = g.y + ay * 22;
       let near = null, nd = Infinity;
-      for (const b of game.props) if (b.kind === 'hbell') { const d = Math.hypot(b.x - nx, b.y - ny); if (d < nd) { nd = d; near = b; } }
+      for (const b of game.props) if (b.kind === 'hbell') { const d = hyp(b.x - nx, b.y - ny); if (d < nd) { nd = d; near = b; } }
       if (near !== p) return;
       p.swing = (ax >= 0 ? 1 : -1) * T0.bellSwing; p.ringT = T0.bellGlow;
       game.audio.sfxChime(T0.bells[p.note]);
@@ -537,7 +539,7 @@ const Heaven = {
     const H = game.heaven, K = H.comb, g = game.goat, C = TUNING.heaven.comb, inp = game.input;
     K.t += dt;
     // He walks up to the comb, then stands for it.
-    const dx = K.x - g.x, dy = K.y - g.y, d = Math.hypot(dx, dy);
+    const dx = K.x - g.x, dy = K.y - g.y, d = hyp(dx, dy);
     if (d > 3) { const s = Math.min(d, C.walk * dt); g.x += dx / d * s; g.y += dy / d * s; g.facing = Math.atan2(dy, dx); }
     else g.facing = Math.PI;
     // Any move, any verb, and he steps out from under it.
@@ -603,7 +605,7 @@ const Heaven = {
 
   // ---------------------------------------------------------------- the edge
   jump(game) {
-    const H = game.heaven, g = game.goat, sp = Math.hypot(g.vx, g.vy);
+    const H = game.heaven, g = game.goat, sp = hyp(g.vx, g.vy);
     H.jump = { t: 0, vx: sp > 20 ? g.vx / sp : 0, vy: sp > 20 ? g.vy / sp : 1 };
     game.audio.sfxLeap(); game.audio.sfxBleat(380, 0.1, 0.45);
   },
@@ -773,7 +775,7 @@ Object.assign(Heaven, {
       if (k === 1) {
         if (!wn && !qn) continue;
         taken[slot] = 1;
-        const ax = wn ? wx : qx, ay = wn ? wy : qy, l = Math.hypot(ax, ay) || 1, nx = ax / l, ny = ay / l;
+        const ax = wn ? wx : qx, ay = wn ? wy : qy, l = hyp(ax, ay) || 1, nx = ax / l, ny = ay / l;
         if (wn) {
           const r = 7 + 8 * noise(x, y, 0.09, 3) + 3 * hs, r2 = r * (1.05 + 0.4 * hs);
           puffs.push({ x: x + nx * (r + r2 * 0.55), y: y + ny * (r + r2 * 0.55), r: r2, dark: true });
@@ -783,7 +785,7 @@ Object.assign(Heaven, {
         // stone next to the drop: the rim of the hole in the clouds
         if (!qn) continue;
         taken[slot] = 1;
-        const l = Math.hypot(qx, qy) || 1;
+        const l = hyp(qx, qy) || 1;
         puffs.push({ x: x + qx / l * 2, y: y + qy / l * 2, r: 5 + 6 * noise(x, y, 0.1, 6) + 2 * hs, dark: true });
       }
     }
@@ -1175,7 +1177,7 @@ Object.assign(Heaven, {
     // the words by the edge, the game's floor lettering: only once he is near them, or has been up
     // here long enough to be lost (`heaven.edgeWords`); the rest of the time heaven says nothing
     const E = TUNING.heaven.edgeWords, g = game.goat, wx = 45 * TILE, wy = 18.4 * TILE;
-    const want = Math.hypot(g.x - wx, g.y - wy) < E.near * TILE || H.t > E.lost ? 1 : 0;
+    const want = hyp(g.x - wx, g.y - wy) < E.near * TILE || H.t > E.lost ? 1 : 0;
     H.edgeK = clamp((H.edgeK || 0) + (want ? 1 : -1) / 60 / E.fade, 0, 1);
     if (H.edgeK <= 0) return;
     ctx.save(); ctx.scale(1, 1 / TILT); ctx.textAlign = 'center'; ctx.globalAlpha = H.edgeK;

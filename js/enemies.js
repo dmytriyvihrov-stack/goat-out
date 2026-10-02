@@ -205,7 +205,7 @@ class Enemy {
     // already gets.
     if (witch && !fromMan) {
       const mage = game.enemies.find((o) => o.kind === 'seer' && o !== this && !o.dead && !o.held
-        && Math.hypot(o.x - this.x, o.y - this.y) < TUNING.bark.witnessDist * TILE && game.world.los(o.x, o.y, this.x, this.y));
+        && hyp(o.x - this.x, o.y - this.y) < TUNING.bark.witnessDist * TILE && game.world.los(o.x, o.y, this.x, this.y));
       if (mage) game.bark(mage, 'friendlyFire', 1);
     }
     // Where the fire meets what was already wrong with him (js/status.js).
@@ -274,6 +274,9 @@ class Enemy {
     }
     this.dead = true; this.state = 'dead';
     const w = game.world;
+    // A shieldman's board outlives him, unless the drop, the fire or a blast went with it.
+    // A bomb, BOMB CHARGE and spilt powder kill with 'splat' and say so in `how`.
+    if (this.shield) { if (cause === 'fall' || cause === 'burn' || cause === 'boom' || how === 'bomb' || how === 'blast' || how === 'powder') this.shield = null; else this.dropShield(game); }
     // Killed while pinned on a stag's antlers, or dead on them outright (`antlers`): he stays up on the
     // wall, the trophy draws him from here on (`bodyImg`) and no body falls (`CombatFX.death`).
     if (this.impaleOn && this.impaleOn.kind === 'trophy' && cause !== 'boom' && cause !== 'roll' && cause !== 'fall') this.hung = this.impaleOn;
@@ -330,22 +333,24 @@ class Enemy {
     if (game.scatter) game.scatter.burst(this.x, this.y, B.radius);   // suppers and suits of armour
     for (const o of game.enemies) {
       if (o === this || o.dead || o.held || o.ghosted) continue;
-      const dx = o.x - this.x, dy = o.y - this.y, d = Math.hypot(dx, dy);
-      if (d > B.radius) continue;
+      const dx = o.x - this.x, dy = o.y - this.y, d = hyp(dx, dy);
+      if (d > B.radius || !game.blastClear(this.x, this.y, o.x, o.y)) continue;   // stone and a shut door stop it
       const nx = dx / (d || 1), ny = dy / (d || 1);
-      // A heart, but never out of the air (`Status.blast` the same).
+      // A heart, but never out of the air (`Status.blast` the same), and once a chain (`Status.spared`).
+      if ((o.kind === 'butcher' || o.kind === 'ratogre') && Status.spared(game, o)) continue;
       if (o.kind === 'butcher') { o.hp -= 1; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = 0.4; } if (o.hp <= 0) o.die(game, 'splat', nx, ny, 'blast'); else Stats.blow(game, o, 'splat', 'blast'); }
       else if (o.kind === 'ratogre') o.die(game, 'splat', nx, ny, 'blast');
       else o.fling(nx * B.impulse, ny * B.impulse, true);
     }
-    const g = game.goat, gd = Math.hypot(g.x - this.x, g.y - this.y);
+    const g = game.goat, gd = hyp(g.x - this.x, g.y - this.y);
     if (gd < B.radius && !g.dead) { const nx = (g.x - this.x) / (gd || 1), ny = (g.y - this.y) / (gd || 1); g.vx += nx * 320; g.vy += ny * 320; }
+    Prop.blastRoom(game, this.x, this.y, B.radius, false);   // the barrels, lamps and crates round him too
     this.die(game, 'boom', 0, 0);
   }
 
   canSeeGoat(game) {
     const g = game.goat; if (g.dead) return false;
-    const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
+    const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
     // A man posted to watch a door is not idling: he covers the whole room and he sees further.
     if (d > (this.cfg.sight + (this.watchful ? (this.cfg.watchSight || 4) : 0)) * TILE) return false;
     // THE DARK: out of the light a goat is a shape at `dark.ai.sight` tiles and nothing further, the
@@ -411,7 +416,7 @@ class Enemy {
     // A gate's keeper, whose club lights it, does not (`TUNING.soulKeeper`): his fire is his undoing.
     const care = this.kind === 'seer' ? TUNING.seer.fireCare : 1;
     const look = this.r + (millNear ? TUNING.ai.trapLook : TUNING.fire.avoidLook) * care;
-    const l = Math.hypot(dirx, diry) || 1; dirx /= l; diry /= l;
+    const l = hyp(dirx, diry) || 1; dirx /= l; diry /= l;
     // Only what is within a step of him can matter, and gathering that once keeps the probes cheap.
     const near = [];
     for (const p of game.hazards) {
@@ -450,7 +455,7 @@ class Enemy {
     const walkable = (ax, ay) => !w.isSolid(Math.floor((this.x + ax * look) / TILE), Math.floor((this.y + ay * look) / TILE));
     if (here && here.p) {
       // Already inside it: straight out from the hub, which is the shortest way to not being there.
-      const ol = Math.hypot(this.x - here.p.x, this.y - here.p.y) || 1, ox = (this.x - here.p.x) / ol, oy = (this.y - here.p.y) / ol;
+      const ol = hyp(this.x - here.p.x, this.y - here.p.y) || 1, ox = (this.x - here.p.x) / ol, oy = (this.y - here.p.y) / ol;
       // Round anything that stays put, though, not away from it: straight out from a brazier and
       // straight back in on the next step had a man rocking at the edge of its heat forever, with a
       // body's width of floor to walk past it by. Whatever of his way does not lead into it, plus a
@@ -459,7 +464,7 @@ class Enemy {
       if (here.p.kind !== 'mill' && here.p.kind !== 'barrel') {
         const into = dirx * ox + diry * oy, out = TUNING.ai.roundOut;
         let sx = dirx - Math.min(0, into) * ox + ox * out, sy = diry - Math.min(0, into) * oy + oy * out;
-        const sl = Math.hypot(sx, sy) || 1; sx /= sl; sy /= sl;
+        const sl = hyp(sx, sy) || 1; sx /= sl; sy /= sl;
         if (walkable(sx, sy)) return { x: sx, y: sy };
       }
       if (walkable(ox, oy)) { if (this.aware) game.bark(this, here.kind, 0.12); return { x: ox, y: oy, flee: true }; }
@@ -490,7 +495,7 @@ class Enemy {
       if (this.kind !== 'dog' && !this.scripted && speed > 0 && this.limitTurn(dirx, diry, speed, !!safe.flee, game)) return;
     }
     if (this.kind === 'dog' && game) { this.stride(dirx, diry, speed, dt, game); return; }
-    const l = Math.hypot(dirx, diry) || 1;
+    const l = hyp(dirx, diry) || 1;
     this.vx = dirx / l * speed; this.vy = diry / l * speed;
     if (speed > 0) this.facing = Math.atan2(this.vy, this.vx);
   }
@@ -523,7 +528,7 @@ class Enemy {
   stride(dirx, diry, speed, dt, game) {
     const cfg = this.cfg, want = Math.atan2(diry, dirx);
     if (!(game.timer - this.strideAt < 0.05)) {
-      this.runSp = Math.hypot(this.vx, this.vy);
+      this.runSp = hyp(this.vx, this.vy);
       this.runAng = this.runSp > 20 ? Math.atan2(this.vy, this.vx) : this.facing;
     }
     this.strideAt = game.timer;
@@ -541,7 +546,7 @@ class Enemy {
   // Steer toward the goat using the flow field, or directly when close with line of sight.
   chaseGoat(game, speed, dt) {
     const g = game.goat, w = game.world;
-    const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
+    const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
     // A man on a post does not come and get you. He turns to face you and waits to be walked into,
     // which is what makes him something you can practise a headbutt on instead of something that
     // happens to you. Everything else about him, the windup, the swing, the recovery, is normal.
@@ -576,7 +581,7 @@ class Enemy {
     if (!this.wp) return null;
     // The goat moves between looks; a waypoint that is the goat follows him.
     const tx = this.wp.goat ? g.x : this.wp.x, ty = this.wp.goat ? g.y : this.wp.y;
-    const dx = tx - this.x, dy = ty - this.y, l = Math.hypot(dx, dy) || 1;
+    const dx = tx - this.x, dy = ty - this.y, l = hyp(dx, dy) || 1;
     return { x: dx / l, y: dy / l };
   }
   pickWaypoint(game) {
@@ -651,7 +656,7 @@ class Enemy {
   // Whether a body of radius `r` walks from where he stands to (bx, by) in a straight line: the
   // middle and both shoulders against stone and a drop, the whole width against the furniture.
   bodyClear(game, bx, by, r, props, whole) {
-    const w = game.world, ax = this.x, ay = this.y, dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+    const w = game.world, ax = this.x, ay = this.y, dx = bx - ax, dy = by - ay, L = hyp(dx, dy);
     if (L < 1) return true;
     const ux = dx / L, uy = dy / L, sx = -uy * r, sy = ux * r;
     for (let s = 0; s <= L; s += 8) {
@@ -680,7 +685,7 @@ class Enemy {
         continue;
       }
       const t = clamp(((p.x - ax) * dx + (p.y - ay) * dy) / L2, 0, 1);
-      if (Math.hypot(ax + dx * t - p.x, ay + dy * t - p.y) < p.r + r) return false;
+      if (hyp(ax + dx * t - p.x, ay + dy * t - p.y) < p.r + r) return false;
     }
     return true;
   }
@@ -720,7 +725,71 @@ class Enemy {
     return true;
   }
 
+  // A step of him: `act`, then the one thing every state of a shieldman shares, the weight of the board.
+  // Whichever way this step wanted him to face, he turns there no faster than `shieldman.turn`, so a goat
+  // who circles, rolls or vaults round him reaches his back, and a swing he wound up facing one way goes
+  // that way (`meleeHit` reads `facing`). Thrown, carried or dead, the board has no say.
   update(dt, game) {
+    const sh = this.shield;
+    this.act(dt, game);
+    if (!sh) return;
+    if (this.shield === sh && !this.dead && this.state !== 'flung' && this.state !== 'held') {
+      const k = TUNING.shieldman.turn * dt;
+      this.facing = sh.ang + clamp(angleDiff(sh.ang, this.facing), -k, k);
+    }
+    sh.ang = this.facing; sh.jolt = Math.max(0, sh.jolt - dt);
+  }
+
+  // ---- the shieldman (`TUNING.shieldman`, 1 Oct 2026) ----
+  // A clubman behind a board: `uses` blows it takes, `jolt` the shudder drawn after one, `ang` the way it
+  // faces (the turn the board's weight allows, `update`). Slower on his feet for carrying it.
+  giveShield() {
+    this.shieldman = true;   // what he is, for the death card and the run's report, board or no board
+    this.shield = { uses: TUNING.shieldman.uses, jolt: 0, ang: this.facing };
+    this.speed = this.cfg.speed * TUNING.shieldman.speedMul;
+  }
+  // The board up at all: not on a man dazed, knocked about, in the goat's mouth or blundering alight.
+  shieldUp() {
+    const s = this.shield;
+    return !!(s && s.uses > 0 && !this.dead && !this.held && !(this.dazed > 0) && !(this.burning > 0)
+      && this.state !== 'floored' && this.state !== 'stagger' && this.state !== 'stunned' && this.state !== 'flung' && this.state !== 'dead');
+  }
+  // The board between him and (x, y): up, and the point within `arc` of the way he faces.
+  shieldCovers(x, y) {
+    return this.shieldUp() && Math.abs(angleDiff(this.facing, Math.atan2(y - this.y, x - this.x))) <= TUNING.shieldman.arc;
+  }
+  // A blow on the board, arriving along (dx, dy): a use gone, and he is rocked back `push` along it for
+  // `brace` s with the board still up (`braced`, never a stagger: the board is the point). The last use
+  // splinters it, and from then on he is a clubman like any other.
+  shieldTakes(game, dx, dy) {
+    const S = TUNING.shieldman, sh = this.shield;
+    if (!sh) return;
+    sh.uses--; sh.jolt = S.jolt; this.aware = true;
+    const l = hyp(dx, dy) || 1, fx = this.x + Math.cos(this.facing) * this.r, fy = this.y + Math.sin(this.facing) * this.r;
+    // A man already winding up or swinging goes on with it behind the board: butting it then is a goat in
+    // his recovery under a club (pillar 4), never a way of breaking the blow.
+    if (this.state !== 'flung' && this.state !== 'windup' && this.state !== 'swing') { this.state = 'braced'; this.timer = S.brace * game.mods.enemySlow; this.vx = dx / l * S.push; this.vy = dy / l * S.push; }
+    // wood, struck: the pen's bar knock (it was steel, on a board of door planks)
+    game.audio.sfxCageHit(); game.audio.sfxThud(); game.vibe(10);
+    game.particles(fx, fy, 6, PALETTE.wood, 150);
+    if (sh.uses > 0) { game.bark(this, 'block', 0.6); return; }
+    this.shield = null; this.speed = this.cfg.speed;
+    game.audio.sfxCage();   // and split: the pen's frame going
+    game.particles(fx, fy, 14, PALETTE.wood, 230); game.particles(fx, fy, 5, PALETTE.ashHi, 160);
+    game.floatText(this.x, this.y - 30, 'SPLINTERS', PALETTE.bone);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
+  }
+  // Dead with uses left on it, the board is left lying where he fell: a shield like one off a stand
+  // (`weapon`), its uses what he left on it. Not over a hole or out of a fire (nothing to leave).
+  dropShield(game) {
+    const sh = this.shield; this.shield = null;
+    if (!sh || sh.uses <= 0) return;
+    const p = new Prop(this.x + Math.cos(this.facing) * this.r, this.y + Math.sin(this.facing) * this.r, 'weapon', { weapon: 'shield' });
+    p.inStand = false; p.uses = Math.min(sh.uses, p.uses);
+    game.props.push(p);
+  }
+
+  act(dt, game) {
     if (this.dead || this.scripted) return;
     const w = game.world, g = game.goat, cfg = this.cfg;
     // The ogre in the vault (`TUNING.vault.ogre`): shut in on the grass, he waits for the iron to
@@ -848,7 +917,7 @@ class Enemy {
       this.millRun = null;                     // the wheel lesson's run ends at the first blow
       const drag =Math.exp(-TUNING.physics.flungDrag * Talisman.dragMul(game, this) * dt);
       this.vx *= drag; this.vy *= drag;
-      const preSpeed = Math.hypot(this.vx, this.vy);
+      const preSpeed = hyp(this.vx, this.vy);
       // In steps no longer than his body: LONG HORNS with a charged TALLY blow moves a man ~34 px a
       // frame, and a centre landing past the middle of a one-tile pillar was pushed out of its far
       // side, through the stone, alive, where the wall was supposed to be what killed him.
@@ -874,14 +943,15 @@ class Enemy {
       // a man thrown into a brazier lights the floor on the far side of it too.
       const bz = game.touchingBrazier(this);
       if (bz) { if (preSpeed > TUNING.physics.knockHitSpeed) bz.spill(game, this.vx, this.vy); this.ignite(game); return; }
-      if (Math.hypot(this.vx, this.vy) < TUNING.physics.flungFloorSpeed) {
+      if (hyp(this.vx, this.vy) < TUNING.physics.flungFloorSpeed) {
         // Off the rat ogre's arm with nothing left in him: he does not get up from it.
         if (this.doomed) { this.die(game, 'club', this.vx, this.vy); return; }
         this.state = 'floored'; this.timer = TUNING.bearer.flooredTime; this.flung = false; this.thrown = false;
       }
       return;
     }
-    if (this.state === 'floored' || this.state === 'stagger' || this.state === 'stunned') {
+    // `braced`: a shieldman rocked back behind his board (`shieldTakes`), the board still up.
+    if (this.state === 'floored' || this.state === 'stagger' || this.state === 'stunned' || this.state === 'braced') {
       this.millRun = null;
       this.timer -= dt; this.vx *= 0.85; this.vy *= 0.85;
       this.x += this.vx * dt; this.y += this.vy * dt; w.collideCircle(this);
@@ -892,7 +962,7 @@ class Enemy {
       if (this.timer <= 0) {
         this.aware = true; this.state = 'chase';
         // The Butcher answers a stagger with a quick slam if you stayed close: the same ring, sooner.
-        if (this.kind === 'butcher' && !g.dead && Math.hypot(g.x - this.x, g.y - this.y) < cfg.slam.near * TILE * cfg.slam.answerReach + g.r) { this.state = 'slamwind'; this.timer = cfg.slam.wind * cfg.slam.answer * game.mods.enemySlow; }
+        if (this.kind === 'butcher' && !g.dead && hyp(g.x - this.x, g.y - this.y) < cfg.slam.near * TILE * cfg.slam.answerReach + g.r) { this.state = 'slamwind'; this.timer = cfg.slam.wind * cfg.slam.answer * game.mods.enemySlow; }
       }
       return;
     }
@@ -933,11 +1003,11 @@ class Enemy {
     }
     // Close, and he has not seen you yet: what he mutters is the only warning you get.
     if (!sees && !this.aware && this.state !== 'investigate' && Math.random() < dt * TUNING.bark.nearChance
-        && Math.hypot(g.x - this.x, g.y - this.y) < TUNING.bark.nearDist * TILE) game.bark(this, 'near');
+        && hyp(g.x - this.x, g.y - this.y) < TUNING.bark.nearDist * TILE) game.bark(this, 'near');
     for (const n of w.noises) {
       // The rat ogre has his own mind: nothing lures him and nothing turns his head but what he sees.
       if (this.kind === 'ratogre' || this.state === 'hidden') break;
-      if (Math.hypot(n.x - this.x, n.y - this.y) > n.r) continue;
+      if (hyp(n.x - this.x, n.y - this.y) > n.r) continue;
       if (this.kind === 'seer' && game.inDark) this.hearForRune(game, n);
       if (n.kind === 'lure') {
         // A scream pulls everyone who hears it to the spot, even men already hunting you.
@@ -959,7 +1029,7 @@ class Enemy {
       } else if (!this.aware) {
         // Never his own shout or swing: a trail that went cold this step still has his last chase
         // shout in the list, and he went to investigate his own feet.
-        if (n.kind === 'cult' && Math.hypot(n.x - this.x, n.y - this.y) < TUNING.ai.ownNoise * TILE) continue;
+        if (n.kind === 'cult' && hyp(n.x - this.x, n.y - this.y) < TUNING.ai.ownNoise * TILE) continue;
         this.target = { x: n.x, y: n.y };
         if (this.state === 'idle') { this.state = 'investigate'; game.bark(this, 'search', 0.3); }
         this.facing = Math.atan2(n.y - this.y, n.x - this.x);
@@ -975,7 +1045,7 @@ class Enemy {
     if (this.aware && (this.state === 'idle' || this.state === 'investigate')) {
       let notice = this.noticeFor;
       if (!notice) {
-        const distTiles = Math.hypot(g.x - this.x, g.y - this.y) / TILE, A = TUNING.ai;
+        const distTiles = hyp(g.x - this.x, g.y - this.y) / TILE, A = TUNING.ai;
         const t = clamp((distTiles - A.noticeNear) / (A.noticeFar - A.noticeNear), 0, 1);
         notice = t > 0 ? lerp(A.noticeMin, A.noticeMax, t) : 0;
       }
@@ -1061,9 +1131,9 @@ class Enemy {
       for (let k = 0; k < 3; k++) {
         const a = a0 + M.speed * t;
         px = m.x + Math.cos(a) * rad; py = m.y + Math.sin(a) * rad;
-        t = Math.hypot(px - this.x, py - this.y) / (this.speed || 1);
+        t = hyp(px - this.x, py - this.y) / (this.speed || 1);
       }
-      const d = Math.hypot(px - this.x, py - this.y);
+      const d = hyp(px - this.x, py - this.y);
       if (d < bd) { bd = d; bx = px; by = py; }
     }
     this.moveToward(bx - this.x, by - this.y, this.speed, dt);
@@ -1108,7 +1178,7 @@ class Enemy {
   investigate(dt, game) {
     if (this.sentry) { this.target = null; this.state = 'idle'; this.vx = 0; this.vy = 0; return; }
     if (!this.target) { this.state = 'idle'; return; }
-    const dx = this.target.x - this.x, dy = this.target.y - this.y, d = Math.hypot(dx, dy);
+    const dx = this.target.x - this.x, dy = this.target.y - this.y, d = hyp(dx, dy);
     // A noise on the far side of a wall used to be walked at in a straight line, into the wall, and
     // given up on there, so the one thing the goat could not do was be heard round a corner. The
     // route field runs to the goat, so for a noise near him (a footstep, a scream, a crate) it runs
@@ -1158,7 +1228,7 @@ class Enemy {
     const mx = Math.floor(this.x / TILE), my = Math.floor(this.y / TILE);
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const tx = tx0 + dx, ty = ty0 + dy;
-      if (Math.hypot(dx, dy) > K.fireR || (tx === mx && ty === my)) continue;
+      if (hyp(dx, dy) > K.fireR || (tx === mx && ty === my)) continue;
       if (!w.los(this.x, this.y, (tx + 0.5) * TILE, (ty + 0.5) * TILE)) continue;
       w.ignite(tx, ty, true, K.fireFor, true);
     }
@@ -1177,7 +1247,7 @@ class Enemy {
     game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult');
     if (game.hidden(this.x, this.y)) return;
     if (!g.dead) {
-      const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
+      const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
       // The shield between him and the goat takes the ring as it takes a club (`Goat.blockBlow`); he
       // is on his knees already, so no parry on top of it.
       if (d < R + g.r && game.reaches(this.x, this.y, g.x, g.y) && !Talisman.parry(game, this, 'slam') && !g.blockBlow(game, this, false)) {
@@ -1186,14 +1256,14 @@ class Enemy {
       }
     }
     for (const p of game.props) {
-      if (Beast.animal(p) && !p.held && p.birdState !== 'flying' && Math.hypot(p.x - this.x, p.y - this.y) < R + (p.r || 0)) Beast.hurt(p, game, 'blow');
+      if (Beast.animal(p) && !p.held && p.birdState !== 'flying' && hyp(p.x - this.x, p.y - this.y) < R + (p.r || 0)) Beast.hurt(p, game, 'blow');
     }
   }
   updateHunter(dt, game, sees) {
     const g = game.goat, cfg = this.cfg;
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
-    const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
+    const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
     if (this.state === 'aim') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
       if (!sees || this.poison > 0) { this.state = 'chase'; return; }
@@ -1301,7 +1371,7 @@ class Enemy {
         game.audio.sfxBark(game.audio.heard(this.x - g.x, this.y - g.y));
       }
     }
-    const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
+    const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
     // The sidestep carries him: the burst was set the moment he slipped the headbutt.
     if (this.state === 'dodge') { this.timer -= dt; if (this.timer <= 0) { this.state = 'chase'; this.vx *= 0.25; this.vy *= 0.25; } return; }
     if (this.state === 'retreat') {
@@ -1445,10 +1515,10 @@ class Enemy {
       if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE)) || w.isPitPx(px, py)) return false;
       if (w.isSolid(Math.floor((px - cy * r) / TILE), Math.floor((py + cx * r) / TILE))) return false;
       if (w.isSolid(Math.floor((px + cy * r) / TILE), Math.floor((py - cx * r) / TILE))) return false;
-      for (const p of props) if (Math.hypot(p.x - px, p.y - py) < p.r + r * 0.8) return false;
+      for (const p of props) if (hyp(p.x - px, p.y - py) < p.r + r * 0.8) return false;
       // Past a body is along its edge, and a body stood at a lip must not be passed over the drop.
       if (bodies && (w.isPitPx(px - cy * r, py + cx * r) || w.isPitPx(px + cy * r, py - cx * r))) return false;
-      if (bodies) for (const o of bodies) if (Math.hypot(o.x - px, o.y - py) < o.r + r) return false;
+      if (bodies) for (const o of bodies) if (hyp(o.x - px, o.y - py) < o.r + r) return false;
     }
     return true;
   }
@@ -1515,7 +1585,7 @@ class Enemy {
   // back to a wall is not a wall to steer off), and never faster than `whiskTurn`, let the whisker
   // snap and a run meeting a wall past the goat drew a kink of a right angle and more.
   runStep(game, x, y, ang, dt, near) {
-    const cfg = this.cfg, g = game.goat, gd = Math.hypot(g.x - x, g.y - y), toG = Math.atan2(g.y - y, g.x - x);
+    const cfg = this.cfg, g = game.goat, gd = hyp(g.x - x, g.y - y), toG = Math.atan2(g.y - y, g.x - x);
     if (!g.dead && gd > g.r && Math.abs(angleDiff(ang, toG)) < Math.PI / 2) ang += clamp(angleDiff(ang, toG), -cfg.dashTurn * dt, cfg.dashTurn * dt);
     const want = this.clearAng(game, ang, Math.min(cfg.dashLook * TILE, Math.max(0, gd - g.r - this.r)), x, y, near);
     return ang + clamp(angleDiff(ang, want), -cfg.whiskTurn * dt, cfg.whiskTurn * dt);
@@ -1526,7 +1596,7 @@ class Enemy {
     const cfg = this.cfg, g = game.goat, w = game.world, pts = [{ x, y }], step = 1 / 30;
     const near = this.nearBlockers(game, x, y, cfg.dashSpeed * time + 2 * TILE);
     for (let t = 0; t < time; t += step) {
-      if (Math.abs(angleDiff(ang, Math.atan2(g.y - y, g.x - x))) >= Math.PI / 2 && Math.hypot(g.x - x, g.y - y) > cfg.overrun * TILE) break;
+      if (Math.abs(angleDiff(ang, Math.atan2(g.y - y, g.x - x))) >= Math.PI / 2 && hyp(g.x - x, g.y - y) > cfg.overrun * TILE) break;
       ang = this.runStep(game, x, y, ang, step, near);
       const sp = this.dashSpeedAt((t0 || 0) + t);
       const nx = x + Math.cos(ang) * sp * step, ny = y + Math.sin(ang) * sp * step;
@@ -1574,7 +1644,7 @@ class Enemy {
   // dodge state, which already carries a body on whatever velocity it was given and hands him back
   // to the chase when it runs out.
   hopBack(game, goat) {
-    const cfg = this.cfg, dx = this.x - goat.x, dy = this.y - goat.y, l = Math.hypot(dx, dy) || 1;
+    const cfg = this.cfg, dx = this.x - goat.x, dy = this.y - goat.y, l = hyp(dx, dy) || 1;
     const spd = cfg.hop * TILE / cfg.hopTime;
     this.vx = dx / l * spd; this.vy = dy / l * spd; this.facing = Math.atan2(-dy, -dx);
     this.state = 'dodge'; this.timer = cfg.hopTime; this.dodgeFx = 0.28; this.aware = true;
@@ -1613,7 +1683,7 @@ class Enemy {
     if (this.state === 'hidden') {
       this.vx = 0; this.vy = 0;
       if (g.dead) return;
-      const d = Math.hypot(g.x - this.x, g.y - this.y);
+      const d = hyp(g.x - this.x, g.y - this.y);
       // The press is what gives it away, not the blow landing: counted where the windup starts.
       if (this.grabSeen === -1) { this.grabSeen = g.grabTries || 0; this.lungeSeen = g.buttTries || 0; }
       const acted = (g.buttTries || 0) !== this.lungeSeen || (g.grabTries || 0) !== this.grabSeen;
@@ -1631,7 +1701,7 @@ class Enemy {
         // It has committed, not frozen: stepping back during the windup only buys a little, since
         // whatever is materializing keeps closing the last short stretch while it comes on.
         // Never over a lip, though: solid over a drop it would fall the next frame.
-        const wd = Math.hypot(g.x - this.x, g.y - this.y) || 1;
+        const wd = hyp(g.x - this.x, g.y - this.y) || 1;
         const nx = this.x + (g.x - this.x) / wd * cfg.windupPull * dt, ny = this.y + (g.y - this.y) / wd * cfg.windupPull * dt;
         if (!game.world.isPitPx(nx, ny)) { this.x = nx; this.y = ny; }
         if (this.timer <= 0) {
@@ -1659,9 +1729,9 @@ class Enemy {
     const wobble = Math.sin(this.driftPhase * 0.9) * slack;
     const tx = g.x + Math.cos(back + wobble) * cfg.standoff * TILE;
     const ty = g.y + Math.sin(back + wobble) * cfg.standoff * TILE;
-    const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy);
+    const dx = tx - this.x, dy = ty - this.y, d = hyp(dx, dy);
     // Left behind after a blow, it may settle into the room as something else and wait again.
-    if (this.hideWant && Math.hypot(g.x - this.x, g.y - this.y) > H.minDist * TILE && this.hide(game)) return;
+    if (this.hideWant && hyp(g.x - this.x, g.y - this.y) > H.minDist * TILE && this.hide(game)) return;
     this.vx = d > 1 ? dx / d * cfg.speed : 0;
     this.vy = d > 1 ? dy / d * cfg.speed : 0;
     this.facing = Math.atan2(g.y - this.y, g.x - this.x);
@@ -1669,7 +1739,7 @@ class Enemy {
     // and never inside a wall. Mist goes through stone; a body cannot be in it. That is the one thing
     // the ground still does for you here: a wall at your back is an arc it cannot arrive from.
     const behind = Math.abs(angleDiff(look, Math.atan2(this.y - g.y, this.x - g.x)));
-    const reach = Math.hypot(g.x - this.x, g.y - this.y) < cfg.reach + g.r + this.r * 0.5;
+    const reach = hyp(g.x - this.x, g.y - this.y) < cfg.reach + g.r + this.r * 0.5;
     // Nor over a drop: a body formed over a hole falls through it, and a goat with his back to one
     // killed every wraith that came for him there for nothing (28 Sep 2026).
     const room = !game.world.isSolid(Math.floor(this.x / TILE), Math.floor(this.y / TILE)) && !game.world.isPitPx(this.x, this.y);
@@ -1688,7 +1758,7 @@ class Enemy {
     // Whoever is standing near it has an opinion about their own dead getting up.
     for (const o of game.enemies) {
       if (o === this || o.dead || o.kind === 'wraith' || o.kind === 'dog') continue;
-      if (Math.hypot(o.x - this.x, o.y - this.y) > 6 * TILE) continue;
+      if (hyp(o.x - this.x, o.y - this.y) > 6 * TILE) continue;
       game.bark(o, 'wraith', 0.3); break;
     }
   }
@@ -1738,7 +1808,7 @@ class Enemy {
     }
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
-    const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
+    const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
 
     if (this.state === 'cast') {
       if (this.poison > 0) { this.state = 'chase'; this.rune = null; return; }
@@ -1780,9 +1850,9 @@ class Enemy {
   // is there when it goes off, burns.
   hearForRune(game, n) {
     if (n.kind === 'cult') return;   // a rune going off, a swing: never paint a rune on the cult's own sound
-    const A = TUNING.dark.ai, d = Math.hypot(n.x - this.x, n.y - this.y), own = A.earOwn * TILE;
+    const A = TUNING.dark.ai, d = hyp(n.x - this.x, n.y - this.y), own = A.earOwn * TILE;
     if (d < own || d > A.earCast * TILE) return;
-    for (const o of game.enemies) if (o !== this && !o.dead && Math.hypot(o.x - n.x, o.y - n.y) < own) return;
+    for (const o of game.enemies) if (o !== this && !o.dead && hyp(o.x - n.x, o.y - n.y) < own) return;
     this.earRune = { x: n.x, y: n.y, at: game.timer };
   }
 
@@ -1854,7 +1924,7 @@ class Enemy {
     this.slamCd = Math.max(0, this.slamCd - dt);
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
-    const d = Math.hypot(g.x - this.x, g.y - this.y);
+    const d = hyp(g.x - this.x, g.y - this.y);
     if (this.state === 'chase') {
       if (!g.dead && d < S.near * TILE + g.r && game.reaches(this.x, this.y, g.x, g.y)) {
         this.state = 'slamwind'; this.timer = S.wind * game.mods.enemySlow; this.vx = 0; this.vy = 0;
@@ -1923,13 +1993,13 @@ class Enemy {
       // A miss is reeled home at `reel` before he can do anything else: the recovery he eats.
       this.vx = 0; this.vy = 0;
       const h = this.hook;
-      const hx = h ? this.x - h.x : 0, hy = h ? this.y - h.y : 0, hd = Math.hypot(hx, hy), step = H.reel * dt;
+      const hx = h ? this.x - h.x : 0, hy = h ? this.y - h.y : 0, hd = hyp(hx, hy), step = H.reel * dt;
       if (!h || hd <= step + this.r) { this.hook = null; this.state = 'recover'; this.timer = H.recover * slow; }
       else { h.x += hx / hd * step; h.y += hy / hd * step; }
       return true;
     }
     if (this.state !== 'chase' || !sees || g.dead || this.hookCd > 0 || this.poison > 0) return false;
-    const d = Math.hypot(g.x - this.x, g.y - this.y);
+    const d = hyp(g.x - this.x, g.y - this.y);
     if (d < H.min * TILE || d > H.max * TILE || game.hidden(this.x, this.y)) return false;
     // A goat already on his back (the pen, another hook) or going over an edge is left to it.
     if (!Enemy.hookable(g) || !this.hookLine(game, g.x, g.y)) return false;
@@ -1957,7 +2027,7 @@ class Enemy {
     for (let k = 0; k < 3; k++) {
       const t = Math.max(0, len(g.x + lx - this.x, g.y + ly - this.y) - this.r) / H.speed * H.lead;
       lx = g.vx * t; ly = g.vy * t;
-      const l = Math.hypot(lx, ly); if (l > cap) { lx *= cap / l; ly *= cap / l; }
+      const l = hyp(lx, ly); if (l > cap) { lx *= cap / l; ly *= cap / l; }
     }
     for (let s = 1; s > 0; s -= 0.25) {
       const x = g.x + lx * s, y = g.y + ly * s;
@@ -1966,7 +2036,7 @@ class Enemy {
     return { x: g.x, y: g.y };
   }
   throwHook(game, aim) {
-    const H = TUNING.champion.hook, dx = aim.x - this.x, dy = aim.y - this.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+    const H = TUNING.champion.hook, dx = aim.x - this.x, dy = aim.y - this.y, d = hyp(dx, dy) || 1, ux = dx / d, uy = dy / d;
     this.state = 'hookthrow'; this.hookAim = null; this.hookCd = H.cooldown * game.mods.enemySlow;
     // `over` tiles past the aim point, so a goat a step slower than he was is still on the line.
     this.hook = { x: this.x + ux * this.r, y: this.y + uy * this.r, ux, uy, left: Math.min(d + H.over * TILE, (H.max + H.over) * TILE) - this.r, caught: null };
@@ -1981,7 +2051,7 @@ class Enemy {
     for (let s = 0; s < steps; s++) {
       h.x += h.ux * st; h.y += h.uy * st; h.left -= st;
       if (w.isSolid(Math.floor(h.x / TILE), Math.floor(h.y / TILE))) { h.x -= h.ux * st; h.y -= h.uy * st; this.hookMiss(game, true); return; }
-      if (Math.hypot(g.x - h.x, g.y - h.y) < g.r + H.catchR && Enemy.hookable(g)) {
+      if (hyp(g.x - h.x, g.y - h.y) < g.r + H.catchR && Enemy.hookable(g)) {
         // A shield facing him turns it like a round (a use spent); he is too far off to be staggered.
         if (g.shielded(this.x, this.y, true)) { g.blockBlow(game, this, false); this.hookMiss(game, false); return; }
         // A crate held toward him takes the hook instead and is torn out of his mouth.
@@ -1991,7 +2061,7 @@ class Enemy {
       }
       for (const p of game.props) {
         if (p.broken || p.held || Math.abs(p.x - h.x) > p.r + H.propR || Math.abs(p.y - h.y) > p.r + H.propR) continue;
-        if (Math.hypot(p.x - h.x, p.y - h.y) > p.r + H.propR) continue;
+        if (hyp(p.x - h.x, p.y - h.y) > p.r + H.propR) continue;
         if ((p.kind === 'crate' && !p.noGrab) || p.kind === 'bomb') { this.hookProp(game, p); return; }
         if (p.stopsBullets) { this.hookMiss(game, true); return; }
       }
@@ -2036,7 +2106,7 @@ class Enemy {
     if (c === g) {
       if (g.dead || g.hooked !== this || g.state !== 'stunned') { this.endPull(game); return; }
       h.x = g.x; h.y = g.y; this.facing = Math.atan2(g.y - this.y, g.x - this.x);
-      const close = Math.hypot(g.x - this.x, g.y - this.y) <= this.atk('reach') + g.r - H.stopAt;
+      const close = hyp(g.x - this.x, g.y - this.y) <= this.atk('reach') + g.r - H.stopAt;
       if (!close && this.timer > 0) return;
       this.endPull(game);
       // Into his reach: the cleaver comes round on the ordinary windup, and the goat is on his feet
@@ -2045,7 +2115,7 @@ class Enemy {
       return;
     }
     if (c.broken || c.held) { this.endPull(game); return; }
-    const px = this.x - c.x, py = this.y - c.y, pd = Math.hypot(px, py) || 1, step = H.pull * dt;
+    const px = this.x - c.x, py = this.y - c.y, pd = hyp(px, py) || 1, step = H.pull * dt;
     if (pd - step <= this.r + c.r + H.propGap || this.timer <= 0) { c.vx = 0; c.vy = 0; this.endPull(game); return; }
     c.x += px / pd * step; c.y += py / pd * step; c.vx = 0; c.vy = 0; h.x = c.x; h.y = c.y;
   }
@@ -2094,7 +2164,7 @@ class Enemy {
       const f = w.flowDir(this.x, this.y);
       if (f) { ax = f.x; ay = f.y; } else { ax = game.goat.x - this.x; ay = game.goat.y - this.y; }
     }
-    const l = Math.hypot(ax, ay) || 1; ax /= l; ay /= l;
+    const l = hyp(ax, ay) || 1; ax /= l; ay /= l;
     // A shade inside what of him the stone pushes on (`wallR`): wall collision parks him exactly that
     // far off it, and probing at the full width read the wall he was leaning on, or the two sides of
     // a doorway one tile wide, which he squeezes through (`ai.path.squeeze`), as in the way of every leap.
@@ -2182,7 +2252,7 @@ class Enemy {
     const A = TUNING.prop.armor, Tr = TUNING.prop.trophy;
     for (const p of game.wallArt) {
       if (p.kind === 'armor' || p.kind === 'suit') {
-        if (!p.spilled && Math.hypot(this.x - p.x, this.y - p.y) < this.r + p.r + A.near) {
+        if (!p.spilled && hyp(this.x - p.x, this.y - p.y) < this.r + p.r + A.near) {
           p.burstArmor(game, vx, vy, clamp(speed / (8 * TILE), 0.5, 1.4));
           this.vx *= A.slow; this.vy *= A.slow;
         }
@@ -2242,8 +2312,8 @@ class Enemy {
     // He tears himself off: a step clear of the teeth, spared them while he walks away.
     this.impaled = 0; this.impaleOn = null;
     if (p) {
-      let dx = this.x - p.x, dy = this.y - p.y, d = Math.hypot(dx, dy);
-      if (d < 1) { dx = game.goat.x - p.x; dy = game.goat.y - p.y; d = Math.hypot(dx, dy) || 1; }
+      let dx = this.x - p.x, dy = this.y - p.y, d = hyp(dx, dy);
+      if (d < 1) { dx = game.goat.x - p.x; dy = game.goat.y - p.y; d = hyp(dx, dy) || 1; }
       const out = p.r + this.r * 0.7 + 2;
       if (d < out) { this.x = p.x + dx / d * out; this.y = p.y + dy / d * out; game.world.collideCircle(this); }
     }
@@ -2265,12 +2335,12 @@ class Enemy {
     game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult');
     if (game.hidden(this.x, this.y)) return;
     if (!g.dead) {
-      const dx = g.x - this.x, dy = g.y - this.y, d = Math.hypot(dx, dy);
+      const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
       if (d < R + g.r && !g.blockBlow(game, this, false)) g.damage(H.damage, game, dx / (d || 1) * H.knock * 4, dy / (d || 1) * H.knock * 4, false, this);
     }
     for (const e of game.enemies) {
       if (e === this || e.dead || e.held || e.ghosted || e.state === 'flung' || e.kind === 'ratogre') continue;
-      const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
+      const dx = e.x - this.x, dy = e.y - this.y, d = hyp(dx, dy);
       if (d < R + e.r) game.ogreHits(e, dx / (d || 1), dy / (d || 1), this);
     }
   }
@@ -2279,10 +2349,10 @@ class Enemy {
     if (this.state === 'emerge') { this.vx = 0; this.vy = 0; this.timer -= dt; if (this.timer <= 0) { this.state = 'chase'; this.aware = true; } return; }
     if (this.state === 'idle' || this.state === 'investigate' || this.state === 'noticed') { this.state = 'chase'; this.aware = true; }
     let target = null, td = Infinity;
-    if (!g.dead) { target = g; td = Math.hypot(g.x - this.x, g.y - this.y); if (!sees && !w.los(this.x, this.y, g.x, g.y)) td = Infinity; }
+    if (!g.dead) { target = g; td = hyp(g.x - this.x, g.y - this.y); if (!sees && !w.los(this.x, this.y, g.x, g.y)) td = Infinity; }
     for (const e of game.enemies) {
       if (e === this || e.dead || e.held || e.ghosted || e.scripted || e.kind === 'ratogre') continue;
-      const d = Math.hypot(e.x - this.x, e.y - this.y);
+      const d = hyp(e.x - this.x, e.y - this.y);
       if (d >= td || d > cfg.sight * TILE) continue;
       if (!w.los(this.x, this.y, e.x, e.y)) continue;
       target = e; td = d;

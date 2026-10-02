@@ -390,7 +390,7 @@ const Codex = {
     for (const p of game.props) {
       // not the crow's gift on the stairs (a ware of no shop, `shopId` < 0): that one is a grab
       if ((p.kind !== 'mouse' && p.kind !== 'ware') || p.broken || p.shopId === undefined || p.shopId < 0) continue;
-      const d = Math.hypot(p.x - g.x, p.y - g.y);
+      const d = hyp(p.x - g.x, p.y - g.y);
       near[p.shopId] = Math.min(near[p.shopId] === undefined ? Infinity : near[p.shopId], d);
     }
     game.shopShut = game.shopShut || {};

@@ -35,7 +35,7 @@ const Motes = {
         continue;
       }
       // homing, faster the longer it flies, with a little curl so a flock does not arrive as a line
-      const tx = g.x, ty = g.y - 14, dx = tx - m.x, dy = ty - m.y, d = Math.hypot(dx, dy) || 1;
+      const tx = g.x, ty = g.y - 14, dx = tx - m.x, dy = ty - m.y, d = hyp(dx, dy) || 1;
       m.sp = Math.min(M.max, m.sp + M.accel * dt);
       const curl = Math.sin(m.t * 5 + m.ph) * 0.35;
       const ax = dx / d * Math.cos(curl) - dy / d * Math.sin(curl), ay = dy / d * Math.cos(curl) + dx / d * Math.sin(curl);
@@ -43,7 +43,7 @@ const Motes = {
       m.vx += (ax * m.sp - m.vx) * turn; m.vy += (ay * m.sp - m.vy) * turn;
       m.trail.push(m.x, m.y); if (m.trail.length > 8) m.trail.splice(0, 2);
       m.x += m.vx * dt; m.y += m.vy * dt;
-      if (d < M.catchR || Math.hypot(tx - m.x, ty - m.y) < M.catchR) { m.done = true; this.bank(game, m); }
+      if (d < M.catchR || hyp(tx - m.x, ty - m.y) < M.catchR) { m.done = true; this.bank(game, m); }
     }
     game.motes = list.filter((m) => !m.done);
   },
@@ -184,7 +184,7 @@ const Motes = {
     g.state = 'idle'; g.timer = 0; g.invuln = S.invuln; g.dazed = 0;
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted || e.scripted) continue;
-      const dx = e.x - g.x, dy = e.y - g.y, d = Math.hypot(dx, dy) || 1;
+      const dx = e.x - g.x, dy = e.y - g.y, d = hyp(dx, dy) || 1;
       if (d > S.push * TILE) continue;
       const was = e.aware;
       e.fling(dx / d * S.fling * TILE * e.knockMul(), dy / d * S.fling * TILE * e.knockMul(), false); e.aware = was;

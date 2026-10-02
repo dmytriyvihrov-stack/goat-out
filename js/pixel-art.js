@@ -70,8 +70,15 @@ const PIXEL_FACE_ART = {
 // (the user saw each before/after and took it): the pass on, the hunter in BROWN + BAND (his own
 // brown, the cult's red only on the band, the quill and the sign), the clubman SLIM, the floors and
 // wall faces as sheets. `#aspacked` starts the page with every one of them off.
+// The second pass (2 Oct 2026, "go through the game and improve the pixel art"): what was still a
+// smooth vector shape on the floor put on the grid. `shadows` every shadow a stepped ellipse of the
+// sprites' own grain; `tells` the seer's rune, the ogre's slam and landing rings, the rifle's line, the
+// hook's line, the soul trail and ring, DRAGON BREATH, in cells, every blow-to-come in amber; `hay` the
+// straw a step down, since it out-shone the goat; `cave` the cave's floor a seamless sheet (`FLOOR_SHEET`
+// 'rock') where it was one swatch stamped a tile at a time. The trip's floor is never touched.
 const ART_PASS = {
   on: false, hunter: 7, clubman: 1, floors: true,
+  shadows: true, tells: true, hay: true, cave: true,
   // A level's `artPass` colours in place of its own, and back: the tuned ones are kept on the level
   // the first time it is switched, so switching off is exact.
   set(on) {
@@ -433,7 +440,7 @@ const PIXEL_ART = {
     hn.skins = hn.skins || {};
     if (hn.skins[key]) return hn.skins[key];
     const A = TUNING.goat.hornLooks.antler, C = A.cell, [bx, by] = hn.base, [tx, ty] = hn.tip;
-    const L = Math.max(6, Math.hypot(tx - bx, ty - by)), ux = (tx - bx) / L, uy = (ty - by) / L;
+    const L = Math.max(6, hyp(tx - bx, ty - by)), ux = (tx - bx) / L, uy = (ty - by) / L;
     const s = back || spread || 1;
     let nx = -uy, ny = ux; if (nx * s < 0) { nx = -nx; ny = -ny; }
     const B = L * A.len, pad = Math.ceil(B + A.w0) + C;
@@ -451,7 +458,7 @@ const PIXEL_ART = {
     const p1x = bx + ux * B * 0.55, p1y = by + uy * B * 0.55;
     const p2x = bx + (ux * (1 - A.bend) + nx * A.bend) * B, p2y = by + (uy * (1 - A.bend) + ny * A.bend) * B;
     const at = (q) => [(1 - q) ** 2 * bx + 2 * (1 - q) * q * p1x + q * q * p2x, (1 - q) ** 2 * by + 2 * (1 - q) * q * p1y + q * q * p2y];
-    const tan = (q) => { const dx = 2 * (1 - q) * (p1x - bx) + 2 * q * (p2x - p1x), dy = 2 * (1 - q) * (p1y - by) + 2 * q * (p2y - p1y), l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
+    const tan = (q) => { const dx = 2 * (1 - q) * (p1x - bx) + 2 * q * (p2x - p1x), dy = 2 * (1 - q) * (p1y - by) + 2 * q * (p2y - p1y), l = hyp(dx, dy) || 1; return [dx / l, dy / l]; };
     const line = (x0, y0, dx, dy, len, r0, r1, v0, v1) => {
       const n = Math.ceil(len / (C * 0.4));
       for (let i = 0; i <= n; i++) { const q = i / n; stamp(x0 + dx * len * q, y0 + dy * len * q, (r0 + (r1 - r0) * q) / 2, v0 + (v1 - v0) * q); } };
@@ -564,7 +571,7 @@ const PIXEL_ART = {
 PIXEL_ART.init();
 if (typeof location !== 'undefined') {
   // Not in the itch build, which honours no tool address (`js/release.js` loads later: read its flag).
-  if (!(typeof window !== 'undefined' && window.GOAT_RELEASE) && /aspacked/.test(location.hash)) Object.assign(ART_PASS, { hunter: 0, clubman: 0, floors: false });
+  if (!(typeof window !== 'undefined' && window.GOAT_RELEASE) && /aspacked/.test(location.hash)) Object.assign(ART_PASS, { hunter: 0, clubman: 0, floors: false, shadows: false, tells: false, hay: false, cave: false });
   else ART_PASS.set(true);
 }
 
@@ -698,7 +705,7 @@ const FLOOR_SHEET = (() => {
       const ci = Math.floor(x / C), cj = Math.floor(y / C); let d1 = 1e9, d2 = 1e9, id = 0, vx = 0, vy = 0;
       for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) {
         const ii = ((ci + u) % n + n) % n, jj = ((cj + v) % n + n) % n, p = pts[jj * n + ii];
-        const px = p[0] + (ci + u - ii) * C, py = p[1] + (cj + v - jj) * C, dx = x + 0.5 - px, dy = y + 0.5 - py, d = Math.hypot(dx, dy);
+        const px = p[0] + (ci + u - ii) * C, py = p[1] + (cj + v - jj) * C, dx = x + 0.5 - px, dy = y + 0.5 - py, d = hyp(dx, dy);
         if (d < d1) { d2 = d1; d1 = d; id = jj * n + ii; vx = dx; vy = dy; } else if (d < d2) d2 = d;
       }
       const edge = d2 - d1;
@@ -708,7 +715,49 @@ const FLOOR_SHEET = (() => {
     }
     for (let k = 0; k < S * S / 160; k++) { const x = Math.floor(r() * S), y = Math.floor(r() * S); s.set(x, y, mix(P.base, P.dark, 0.3)); }
   }
+  // The cave's floor (`ART_PASS.cave`): bare rock in broad, close tones, a damp patch here and there
+  // with a dithered edge, and the packed swatch's own kind of crack, a short thick split that forks,
+  // scattered over the sheet at its own places instead of the same fork in the middle of every tile.
+  // Grit and a few pebbles over it. As low in contrast as the swatches it replaces: the cave is dark,
+  // and the rock walls are what must read.
+  function rock(s, P, r) {
+    const G = 48, n = S / G, grid = Array.from({ length: n * n }, () => r()), G2 = 128, n2 = S / G2, damp = Array.from({ length: n2 * n2 }, () => r());
+    const sm = (t) => t * t * (3 - 2 * t);
+    const noise = (g, N, Gs, x, y) => {
+      const at = (i, j) => g[(((j % N) + N) % N) * N + (((i % N) + N) % N)];
+      const gx = x / Gs, gy = y / Gs, i = Math.floor(gx), j = Math.floor(gy), fx = sm(gx - i), fy = sm(gy - j);
+      return (at(i, j) * (1 - fx) + at(i + 1, j) * fx) * (1 - fy) + (at(i, j + 1) * (1 - fx) + at(i + 1, j + 1) * fx) * fy;
+    };
+    const tones = [mul(P.base, 0.96), P.base, mul(P.base, 1.03)], wet = mul(P.base, 0.91);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const q = noise(grid, n, G, x, y) + ((x * 7 + y * 13) % 5 - 2) * 0.012, w = noise(damp, n2, G2, x, y);
+      s.set(x, y, w < 0.2 || (w < 0.23 && (x + y) % 2) ? wet : tones[q < 0.36 ? 0 : q < 0.68 ? 1 : 2]);
+    }
+    // the cracks: a walk of a two-pixel brush (one pixel of the tile as it is drawn), bending a little as
+    // it goes, thinning to a single pixel for its last stretch, a fork off its middle
+    const crack = mix(P.base, P.dark, 0.6), lip = mix(P.base, P.light, 0.25), cracked = new Set();
+    const dab = (u, v) => { s.set(u, v, crack); cracked.add((((v % S) + S) % S) * S + (((u % S) + S) % S)); };
+    const walk = (x, y, a, L, fork) => {
+      const at = fork ? Math.floor(L * (0.35 + r() * 0.25)) : -1;
+      for (let t = 0; t < L; t++) {
+        const ix = Math.round(x), iy = Math.round(y);
+        dab(ix, iy); if (t < L * 0.72) { dab(ix + 1, iy); dab(ix, iy + 1); dab(ix + 1, iy + 1); }
+        if (t === at) walk(x, y, a + (r() < 0.5 ? -1 : 1) * (0.7 + r() * 0.5), Math.floor(L * 0.55), false);
+        if (t % 3 === 2) a += (r() - 0.5) * 0.8;
+        x += Math.cos(a); y += Math.sin(a);
+      }
+    };
+    for (let k = 0; k < S * S / 3200; k++) walk(r() * S, r() * S, r() * Math.PI * 2, 18 + Math.floor(r() * 18), r() < 0.8);
+    // light caught on the near lip of each crack, where it is not crack too
+    for (const k of cracked) { const x = k % S, y = (k / S) | 0; if (!cracked.has((((y - 1) % S + S) % S) * S + x) && r() < 0.6) s.set(x, y - 1, lip); }
+    for (let k = 0; k < S * S / 140; k++) { const x = Math.floor(r() * S), y = Math.floor(r() * S); s.set(x, y, r() < 0.6 ? mix(P.base, P.dark, 0.35) : mix(P.base, P.light, 0.2)); }
+    for (let k = 0; k < S * S / 2600; k++) {
+      const x = Math.floor(r() * S), y = Math.floor(r() * S), c = mul(P.base, 1.1 + r() * 0.12);
+      s.rect(x, y, 2, 2, c); s.set(x, y, mix(c, P.light, 0.35)); s.set(x + 1, y + 2, mix(P.base, P.dark, 0.5)); s.set(x, y + 2, mix(P.base, P.dark, 0.4));
+    }
+  }
   const KINDS = {
+    rock,
     flags: (s, P, r) => courses(s, P, r, [24, 32, 40, 48], [28, 60], 2, 1),
     cobble: (s, P, r) => courses(s, P, r, [20, 22, 24], [18, 28], 2, 3, 0.6),
     setts: (s, P, r) => courses(s, P, r, [26], [36, 50], 2, 1, 0.8),
@@ -782,6 +831,14 @@ const PIXEL_ROOMS = {
   niche: { floor: 'floors-02', boards: 'floors-06', sheet: 'paving' },
   hollow: { floor: 'floors-09', boards: 'floors-06', sheet: 'paving' },
 };
+// Packed items drawn recoloured while `ART_PASS[name]` is on (`PIXEL_ENV.study`): `v` scales the value,
+// `s` the saturation. The straw was the brightest thing in any room, a fifth over the goat himself
+// (relative luminance 0.247 against his 0.214, a clubman 0.09) and as saturated as a cultist's robe, so
+// the eye went to the bedding first. A step down it is still straw, and under him: 0.156 (measured 2 Oct
+// 2026; v 0.8 / s 0.82 came out khaki at 0.166, v 0.78 / s 0.92 olive in the room at 0.150).
+const ENV_STUDY = {
+  hay: { v: 0.8, s: 0.96 },
+};
 // Litter is a few tiles in a hundred: at more than that a floor stops being a floor.
 const PIXEL_LITTER = {
   room: { rate: 0.022, ids: ['planks', 'rubble', 'straw', 'straw', 'rubble', 'rug'], size: 24 },
@@ -802,11 +859,39 @@ const PIXEL_ENV = {
     const f = PIXEL_ENV_ASSETS.items[PIXEL_ENV_ID[name] || name]; if (!f) return 0;
     const h = w * f[3] / f[2];
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(this.image, f[0], f[1], f[2], f[3], x - w / 2, y - h * ay, w, h);
+    const st = ENV_STUDY[name] && ART_PASS[name] && this.ready ? this.study(name, f) : null;   // never baked off an atlas still loading
+    if (st) ctx.drawImage(st, 0, 0, f[2], f[3], x - w / 2, y - h * ay, w, h);
+    else ctx.drawImage(this.image, f[0], f[1], f[2], f[3], x - w / 2, y - h * ay, w, h);
     ctx.imageSmoothingEnabled = smooth;
     return h;
   },
+  // A packed item recoloured by its `ENV_STUDY` recipe, baked once off the atlas into a canvas of its
+  // own: every pixel keeps its place and its hue, only its value and saturation move.
+  study(name, f) {
+    this.studies ||= new Map();
+    let c = this.studies.get(name); if (c) return c;
+    const R = ENV_STUDY[name];
+    c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
+    const x = c.getContext('2d'); x.drawImage(this.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
+    const d = x.getImageData(0, 0, f[2], f[3]), a = d.data;
+    for (let i = 0; i < a.length; i += 4) {
+      if (!a[i + 3]) continue;
+      // saturation pulled toward the pixel's own value, then the whole of it scaled down
+      const grey = Math.max(a[i], a[i + 1], a[i + 2]) * (1 - R.s);
+      for (let k = 0; k < 3; k++) a[i + k] = Math.round((a[i + k] * R.s + grey) * R.v);
+    }
+    x.putImageData(d, 0, 0);
+    this.studies.set(name, c); return c;
+  },
   floor(ctx, list, tx, ty, tint) {
+    // The cave's floor as one seamless sheet in world space (`ART_PASS.cave`), painted in the colours of
+    // its plain swatch already multiplied by the level's floor, so the cave keeps the dark it was tuned in.
+    if (list === 'cave' && tint && ART_PASS.cave && typeof document !== 'undefined') {
+      const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(this.caveTile(tint, tx, ty), tx * TILE, ty * TILE, TILE, TILE);
+      ctx.imageSmoothingEnabled = smooth;
+      return;
+    }
     const ids = PIXEL_FLOORS[list], f = PIXEL_ENV_ASSETS.items[ids[Math.floor(farHash(tx * 7 + 3, ty * 5 - 1) * ids.length)]];
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     ctx.drawImage(this.image, f[0], f[1], f[2], f[3], tx * TILE, ty * TILE, TILE, TILE);
@@ -816,6 +901,19 @@ const PIXEL_ENV = {
       ctx.fillStyle = this.lift(tint); ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE);
       ctx.globalCompositeOperation = op;
     }
+  },
+  // A tile of the cave's rock sheet in the floor colour `tint`; the first call paints the sheet
+  // (`PaintedArt.warmLevel` makes it before the cave is entered).
+  caveTile(tint, tx, ty) {
+    this.tinted ||= new Map();
+    let src = this.tinted.get(tint);
+    if (!src) {
+      const f = PIXEL_ENV_ASSETS.items[PIXEL_FLOORS.cave[0]]; src = document.createElement('canvas'); src.width = f[2]; src.height = f[3];
+      const x = src.getContext('2d'); x.drawImage(this.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
+      x.globalCompositeOperation = 'multiply'; x.fillStyle = this.lift(tint); x.fillRect(0, 0, f[2], f[3]);
+      this.tinted.set(tint, src);
+    }
+    return FLOOR_SHEET.tile(src, 'rock', 'cave-rock' + tint, tx, ty);
   },
   lift(c, by = PIXEL_FLOOR_LIFT) {
     const cache = this.lifted || (this.lifted = {}), key = c + by;

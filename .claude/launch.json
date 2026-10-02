@@ -560,6 +560,15 @@
       "port": 8855
     },
     {
+      "name": "goat-out-improve",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/USER/AppData/Local/Temp/claude/C--Users-USER-Google------Clod-code-Goat-out/25d57143-d0b6-4220-ac41-ffb6d61d83cd/scratchpad/wt/tools/serve.js",
+        "8860"
+      ],
+      "port": 8860
+    },
+    {
       "name": "goat-out-absorb",
       "runtimeExecutable": "node",
       "runtimeArgs": [
@@ -567,6 +576,33 @@
         "8851"
       ],
       "port": 8851
+    },
+    {
+      "name": "goat-out-artpass2",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8870"
+      ],
+      "port": 8870
+    },
+    {
+      "name": "goat-out-funnel",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8862"
+      ],
+      "port": 8862
+    },
+    {
+      "name": "goat-out-improve8",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8880"
+      ],
+      "port": 8880
     }
   ]
 }

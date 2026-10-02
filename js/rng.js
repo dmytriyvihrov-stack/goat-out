@@ -22,7 +22,11 @@ class RNG {
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
-const len = (x, y) => Math.hypot(x, y);
+// Math.hypot is a builtin call that hands back a freshly boxed number every time (a profile of the frame
+// put it at 8-14 KB a frame of garbage); this is the same distance, small enough for the optimiser to
+// inline and keep unboxed. Every two-argument distance in the runtime files goes through it.
+const hyp = (x, y) => Math.sqrt(x * x + y * y);
+const len = hyp;
 const angleDiff = (a, b) => {
   let d = b - a;
   while (d > Math.PI) d -= Math.PI * 2;

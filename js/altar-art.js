@@ -32,7 +32,7 @@ class AltarArt {
         const ox = (rnd(1, 2, 3) - 0.5) * 3, oy = (rnd(4, 5, 6) - 0.5) * 2 + 1;
         for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
           const dx = (i + 0.5 - n / 2 - ox) / (n * 0.56), dy = (j + 0.5 - n / 2 - oy) / (n * 0.46);
-          const d = Math.hypot(dx, dy) + (rnd(i, j, 0) - 0.5) * 0.45, r = rnd(i, j, 1);
+          const d = hyp(dx, dy) + (rnd(i, j, 0) - 0.5) * 0.45, r = rnd(i, j, 1);
           if (d > 1.05 || (d > 0.8 && r < (d - 0.8) * 3.2)) continue;
           // top-lit heap: lighter grey on the crown, darker toward the rim and its south foot
           const col = d < 0.35 && r > 0.45 ? '#6a6062' : d < 0.7 ? (r > 0.3 ? P.ash : '#3d3538') : (r > 0.5 ? '#3d3538' : P.coal);
@@ -236,7 +236,7 @@ class AltarArt {
       } else if (kind === 'mill') {
         // A stone wheel with an iron axle, rasterized once on the world-pixel grid.
         for (let y = -rr; y <= rr; y++) for (let x = -rr; x <= rr; x++) {
-          const d = Math.hypot(x, y);
+          const d = hyp(x, y);
           if (d > rr) continue;
           let color = d > rr - 2 ? P.outline : d > rr - 5 ? (y < 0 ? P.stoneLight : P.stoneShade)
             : P.stones[this.hash(Math.floor(x / 5), Math.floor(y / 4)) % 4];
@@ -326,7 +326,7 @@ class AltarArt {
     const r = (c, x, y, w, h) => this.rect(ctx, c, cx + x, cy + y, w, h);
     // the floor under her: rotten bedding, and a pool long since dried black at the edge
     for (let y = -7; y <= 13; y++) for (let x = -27; x <= 29; x++) {
-      const d = Math.hypot(x / 27, (y - 3) / 10), h = this.hash(x, y, 57) % 100;
+      const d = hyp(x / 27, (y - 3) / 10), h = this.hash(x, y, 57) % 100;
       if (d < 0.75 && h < 70) r(d < 0.5 ? '#4a1c1c' : '#2e1719', x, y, 1, 1);
       else if (d < 1 && h < 22) r(P.clothDark, x, y, 1, 1);
     }

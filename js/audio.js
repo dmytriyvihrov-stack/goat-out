@@ -180,7 +180,7 @@ function roomMusicScene(game) {
   scene.first = game.state !== 'title' && game.levelIndex === 0;
   if (game.state !== 'play' || !g || g.dead || game.dev.rules) return scene;
   const room = roomAt(game.level, g.x, g.y);
-  const near = (x, y, radius) => Math.hypot(x - g.x, y - g.y) <= radius;
+  const near = (x, y, radius) => hyp(x - g.x, y - g.y) <= radius;
   const inRoom = (x, y) => room ? roomAt(game.level, x, y) === room : false;
   // The last heart is heard as well as seen (`juice.heartbeat`): the score goes under water.
   const B = TUNING.juice.heartbeat;
@@ -722,7 +722,7 @@ class GameAudio {
       this.musicEvents = this.musicEvents.filter((e) => e.due >= this.musicTick);
       this.nextTime += missed * stepLen;
     }
-    while (this.nextTime < this.ctx.currentTime + 0.12) {
+    while (this.nextTime < this.ctx.currentTime + TUNING.audio.ahead) {
       this.playStep(this.step, this.nextTime, stepLen);
       this.step = (this.step + 1) % (ROOM_MUSIC.bars * ROOM_MUSIC.stepsPerBar);
       this.nextTime += stepLen;
@@ -766,7 +766,10 @@ class GameAudio {
     this.heartMix += ((scene.lastHeart ? 1 : 0) - this.heartMix) * ease;
     const combat = this.combatMix;
     // How far into calm the score is, past the first floor: 1 nobody after him, 0 a fight or level one.
-    const calm = this.stageMix.idle * (this.firstTheme ? L.calm.first : 1), C = L.calm, thin = (k) => 1 - (1 - k) * calm;
+    // Not in the MUSIC lab with no bed under it: that is how a part is heard on its own, and calm leaving the
+    // men's layer out (1.85) made the lab's men silent there.
+    const calm = this.preview && this.preview.bed === 'none' ? 0 : this.stageMix.idle * (this.firstTheme ? L.calm.first : 1),
+      C = L.calm, thin = (k) => 1 - (1 - k) * calm;
     let density = 0;
     for (const kind of Object.keys(MUSIC_PARTS)) {
       this.voices[kind].forEach((v, i, voices) => {
@@ -968,7 +971,7 @@ class GameAudio {
   // Where a sound is, as the goat hears it: whole inside `space.near` tiles, falling to `space.floor`
   // of itself at `far`, and swung across the speakers `pan` tiles to either side.
   heard(dx, dy) {
-    const S = TUNING.audio.space, u = clamp((Math.hypot(dx, dy) / TILE - S.near) / (S.far - S.near), 0, 1);
+    const S = TUNING.audio.space, u = clamp((hyp(dx, dy) / TILE - S.near) / (S.far - S.near), 0, 1);
     return { vol: 1 - (1 - S.floor) * u, pan: clamp(dx / (S.pan * TILE), -1, 1) };
   }
 
@@ -1032,7 +1035,7 @@ class GameAudio {
       let best = null, bd = A.grass.radius * TILE;
       for (const p of game.props) {
         if (p.kind !== 'heal' || p.broken || p.dead) continue;
-        const d = Math.hypot(p.x - g.x, p.y - g.y);
+        const d = hyp(p.x - g.x, p.y - g.y);
         if (d < bd) { bd = d; best = p; }
       }
       if (best) this.foley('sparkle', { bus: this.ambBus, gain: A.grass.gain * (1 - 0.6 * bd / (A.grass.radius * TILE)),
@@ -1062,7 +1065,7 @@ class GameAudio {
   fireNear(game) {
     const F = TUNING.audio.ambience.fire, g = game.goat, w = game.world, R = F.radius * TILE;
     let sum = 0, px = 0;
-    const feel = (x, y, k) => { const d = Math.hypot(x - g.x, y - g.y); if (d >= R) return; k *= 1 - d / R; sum += k; px += k * (x - g.x); };
+    const feel = (x, y, k) => { const d = hyp(x - g.x, y - g.y); if (d >= R) return; k *= 1 - d / R; sum += k; px += k * (x - g.x); };
     for (const p of game.props) {
       if (p.broken || p.dead || p.held) continue;
       if (p.kind === 'brazier' || p.kind === 'lamp' || p.kind === 'sconce') feel(p.x, p.y, F.lit);

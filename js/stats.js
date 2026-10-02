@@ -56,7 +56,7 @@ const Stats = {
   who(e) {
     if (!e) return '?';
     if (typeof e === 'string') return e;
-    const k = e.kind === 'bearer' ? (e.champion ? 'butcher' : 'clubman') : e.kind === 'butcher' ? 'ogre' : e.kind;
+    const k = e.kind === 'bearer' ? (e.champion ? 'butcher' : e.shieldman ? 'shieldman' : 'clubman') : e.kind === 'butcher' ? 'ogre' : e.kind;
     return e.boss ? k + '*' : k;
   },
   // Only the run itself: the JUICE tab's stage is `Object.create(game)`, the tools lend stubs.
@@ -75,7 +75,11 @@ const Stats = {
           build: BUILD, at: Date.now(), runSeed: (game.runSeed >>> 0).toString(36), deaths: game.deaths || 0,
           runs: (game.best && game.best.runs) || 0, flags: Stats.flags(game), release: !!(typeof RELEASE !== 'undefined' && RELEASE.on),
           touch: !!(game.touch && game.touch.active), pad: !!(game.pad && game.pad.active), floors: [], end: null };
-      }
+        // Taken once the life has been played (`played`), not here: CONTINUE builds the floor under heaven and
+        // Escape out of the opening scene opens a life too, and both counted as a start or a return to play.
+        Stats.life.pend = ['start'].concat(d.steps && d.steps.death ? ['restart'] : []);
+      } else Stats.played(game);
+      for (const n of TUNING.stats.reach) if (game.levelIndex + 1 >= n) Stats.step(game, 'reach' + n);
       const def = game.level.def, fl = Stats.life.floors, last = fl[fl.length - 1];
       // A floor entered and never played (CONTINUE goes up to heaven first, and its edge enters the floor again) is one entry, not two.
       if (last && last.f === Stats.floorTok(game) && !last.time && !last.kills) fl.pop();
@@ -95,23 +99,36 @@ const Stats = {
     const L = Stats.life; if (!L) return;
     for (const c of Stats.flags(game)) if (!(L.flags || '').includes(c)) L.flags = (L.flags || '') + c;
   },
+  // The steps a life owes once it has been played at all (`pend`): a second of play or a kill.
+  played(game) {
+    const L = Stats.life; if (!L || !L.pend) return;
+    if (!L.floors.some((f) => f.time > 0 || f.kills > 0)) return;
+    const p = L.pend; delete L.pend;
+    for (const s of p) Stats.step(game, s);
+  },
   // Where the floor stands when it ends, for whichever way it ends.
   stamp(game) {
     const F = Stats.floor(game); if (!F) return;
     F.time = Stats.t(game); F.kills = game.kills || 0; F.room = game.goatRoom || 0;
   },
-  cleared(game) { Stats.safe(() => { const F = Stats.floor(game); if (!F || Stats.off(game)) return; Stats.stamp(game); F.cleared = true; }); },
+  cleared(game) {
+    Stats.safe(() => {
+      const F = Stats.floor(game); if (!F || Stats.off(game)) return; Stats.stamp(game); F.cleared = true; Stats.played(game);
+      if (game.levelIndex === 0) Stats.step(game, 'clear1');
+    });
+  },
   // `how`: 'death' (the loop: the send), 'win', 'quit', 'closed'.
   close(game, how) {
     Stats.safe(() => {
       const L = Stats.life; if (!L) return;
-      Stats.stamp(game);
+      Stats.stamp(game); Stats.played(game);
       // Nothing played (Escape in the opening scene, a quit from heaven after CONTINUE): no report at all.
       if (how !== 'death' && L.floors.every((f) => !f.time && !f.kills)) { Stats.life = null; return; }
       const F = Stats.floor(game);
       L.end = { how, f: F ? F.f : null, room: game.goatRoom || 0, t: Stats.t(game), by: how === 'death' && game.goat ? Stats.who(game.goat.hurtBy) : null,
         code: Stats.code(game, how), kills: L.floors.reduce((n, f) => n + f.kills, 0) };
       Stats.mark(game);
+      if (how === 'death' || how === 'win') Stats.step(game, how);
       L.done = Date.now();
       // The answer as it stood when this life ended: a life played after NO THANKS stays unsent even
       // if SETTINGS is switched on later.
@@ -137,6 +154,8 @@ const Stats = {
       if (L && game) { Stats.stamp(game); L.parked = Date.now(); L.ok = !!(game.settings && game.settings.stats); d.open = L; }
       else delete d.open;
       Stats.store();
+      // A tab going away is where the funnel loses people: what this life owes goes out now (`keepalive`).
+      if (L && game) { Stats.played(game); Stats.flushSteps(game); }
     });
   },
 
@@ -200,6 +219,48 @@ const Stats = {
     });
   },
 
+  // ---------- the funnel ----------
+  // (1 Oct 2026: "a separate funnel: opened the game, started, restarted after a death, cleared the
+  // first floor, reached the fourth, reached the eighth".) A report only goes out when a life ends, and
+  // the player who closes the tab for good never ends one, so each step is its own small note, the
+  // first time this browser takes it, and goes out the moment it is taken: `open` (the title), `start`
+  // (the first life), `death`, `restart` (a life begun after one), `clear1`, `reach<n>` (each of
+  // `TUNING.stats.reach`), `win`. Never off a god-mode or LEVELS life (the open life's flags). Kept in
+  // `d.steps` until the answer is yes, so `open` goes out with the yes; `d.stepsOut` is what went.
+  step(game, name) {
+    Stats.safe(() => {
+      // The first title is shown from inside `new Game`, while `window.game` is still the canvas of that id.
+      if ((window.game instanceof Game && game !== window.game) || (Stats.life && /[XJ]/.test(Stats.life.flags || ''))) return;
+      const d = Stats.load(), S = d.steps = d.steps || {};
+      if (S[name]) return;
+      // Taken under an answered NO it is never sent, as a life played under one never is; taken before the
+      // question was answered it waits for the answer (the title's opening is taken before it is asked).
+      S[name] = { at: Date.now(), build: BUILD, no: !!(game.settings && game.settings.statsAsked && !game.settings.stats) };
+      Stats.store(); Stats.flushSteps(game);
+    });
+  },
+  // Everything not yet out in one POST; the worker keeps a player's step once, so a resend is harmless.
+  flushSteps(game) {
+    const C = TUNING.stats, d = Stats.load(), S = d.steps || {}, out = d.stepsOut = d.stepsOut || {};
+    if (!C.url || !game || !game.settings || !game.settings.stats) return;
+    // One POST at a time; a step taken while one is out goes when it comes back, not at the next step.
+    if (Stats.stepsGoing) { Stats.stepsAgain = true; return; }
+    const release = typeof RELEASE !== 'undefined' && RELEASE.on;
+    if (!release && !C.sendDev) return;
+    const todo = Object.keys(S).filter((k) => !out[k] && !S[k].no);
+    if (!todo.length) return;
+    const steps = {}; for (const k of todo) steps[k] = { at: S[k].at, build: S[k].build };
+    Stats.stepsGoing = true;
+    fetch(C.url.replace(/\/$/, '') + '/steps', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, keepalive: true,
+      body: JSON.stringify({ player: d.player, release: !!release, steps }) })
+      .then((r) => { Stats.stepsGoing = false; if (r.ok || r.status === 400) { for (const k of todo) out[k] = true; Stats.store(); } Stats.again(game); })
+      .catch(() => { Stats.stepsGoing = false; Stats.stepsAgain = false; });
+  },
+  again(game) {
+    if (!Stats.stepsAgain) return;
+    Stats.stepsAgain = false; Stats.flushSteps(game);
+  },
+
   // ---------- out ----------
   sendable(game, L) {
     const C = TUNING.stats;
@@ -211,6 +272,7 @@ const Stats = {
   // address no blocker lists. `text/plain` keeps it a simple request, so no preflight and an iframe on
   // itch.zone sends it as readily as the page itself; the worker stores a report by its id once.
   flush(game) {
+    Stats.flushSteps(game);
     const d = Stats.load(), url = (TUNING.stats.url || '').replace(/\/$/, '') + '/report';
     for (const L of d.log) {
       if (L.sent || L.sending || !Stats.sendable(game, L)) continue;
@@ -222,14 +284,15 @@ const Stats = {
     }
   },
   // The report as it goes out: without this browser's own bookkeeping.
-  clean(L) { const o = Object.assign({}, L); delete o.sent; delete o.sending; return o; },
+  clean(L) { const o = Object.assign({}, L); delete o.sent; delete o.sending; delete o.pend; return o; },
   // The dev drawer's SAVE STATS: every report this browser holds, as one file `tools/stats.html` reads.
   async save(game) {
     const d = Stats.load();
     if (!d.log.length) { game.devToast('NO RUN REPORTS YET'); return; }
     try {
       const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
-      await RELEASE.hand(new Blob([JSON.stringify(d.log)], { type: 'application/json' }), `goat-stats-${stamp}.json`);
+      // The funnel's steps ride along (`tools/stats.html` reads `log` and `steps` both).
+      await RELEASE.hand(new Blob([JSON.stringify({ player: d.player, steps: d.steps || {}, log: d.log })], { type: 'application/json' }), `goat-stats-${stamp}.json`);
       game.devToast(`SAVED ${d.log.length} REPORTS`);
     } catch (err) { game.devToast('NOT SAVED: ' + String(err && err.message || err).slice(0, 60).toUpperCase(), 5); }
   },

@@ -9,6 +9,78 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 2 October 2026, six reviews of 1.93 and a slow cave (1.94)
+
+Asked on 1 Oct 2026: "go through the game and improve it, spend whatever it takes"; mid-way, from a run on THE CAVE:
+"FPS dropped (20 FPS, game 61 ms), a strange clock ticking started, and notes in the music cut off in places; either
+the computer is overloaded or a glitch". Shipped in 1.94 (see `CHANGELOG.md`):
+
+| # | tag | what | 1.94 |
+|---|---|---|---|
+| 1 | bug | notes cut off, the men's ticks out of time | the score is laid 0.25 s ahead (`audio.ahead`), not 0.12: a stall no longer skips the steps due in it |
+| 2 | feel | 20 FPS in a cave room on fire | measured here at 3 ms update + 8 ms draw with 45 tiles alight; the machine was also running this session's checks. The rooms' idle painters, which had stopped for good early in every floor, paint again |
+| 3 | bug | a blast went through shut doors, iron ones and soul gates too | `Game.blastClear` |
+| 4 | bug | bomb + poison barrel took three hearts in one frame | `Status.spared`: two at most a chain |
+| 5 | bug | spilt powder killed as A BOMB, lit nothing round it | its own killer and line, `blastRoom` |
+| 6 | bug | the funnel counted starts that were never played, sent steps after NO, lost the run code of a quit | `Stats.played`, `no`, `showTitle` closes first |
+| 7 | bug | a forged report blanked `tools/stats.html` | maps without a prototype |
+| 8 | bug | THE DARK's crossing left side doorways dark | the lantern walk stops at stone; a standing lamp where no wall takes one |
+| 9 | feel | key labels kept QWERTY letters inside itch's frame and for keys that print marks | learnt off keydown too |
+| 10 | feel | wrong numbers and old behaviour in a dozen descriptions | fixed (see the changelog) |
+
+Found and left, worth a word from him:
+
+- **number**: a blast that rings the gong hands the goat its rush wherever he stands (1.93's own question, still open). It
+  now rings once a chain.
+- **system**: ECHO HORN's ghost blow ignores BULL NECK; a wraith hiding as a crate survives the blast that breaks every
+  real crate; FIRE AMULET tier I is now the same as KINDLING.
+- **feel**: the collector (1.95 measured it, see `CHANGELOG.md`): at real speed a minor collection 2 a second at 1-4 ms
+  and a full one every few seconds at 15-30 ms, one dropped frame each. The big per-call sources are fixed; what is left
+  is a flat tail of boxed numbers in the engine's middle tier (no one function over about 20 KB a frame of 250-290).
+  Cutting it further means reworking the hot loops (revealRooms' lists, `Array.filter` in `updateEffects`, `for of` in
+  `update` / `draw`), a risky edit for a gain nobody has measured on a player's machine yet.
+- **feel**: text left as it was: BAAH and milk grass have no keyword, P and I are typed into notes (not in `KEY_FACE`),
+  the Q shelf says Q on a pad, `sayTimes` says "2.86x as fast", PILGRIM'S SANDAL III and MIRROR SHARD III run long.
+- **tool**: the shieldman review did not finish; nothing from it is in.
+
+## 1 October 2026, "improve the game", worked through alone (1.93)
+
+Asked on 1 Oct 2026, with nobody watching: "improve the game; the audits can be simple; spend whatever it takes".
+Simple audits only (the smoke bot over every floor on new seeds with a random talisman each, frame timings, a
+look at the menus and the rail, the build's own checks), then the work. All of it is in 1.93 (see `CHANGELOG.md`):
+
+| # | tag | what | 1.93 |
+|---|---|---|---|
+| 1 | bug | FIREBRAND's flame never reached its chip on the rail | the icon asked for a mod that does not exist (`chargeHold`; it is `brandHold`) |
+| 2 | system | three buttons had one passive each and a slot for two | BULL NECK (headbutt), SPRING HOCKS (roll), BIG LUNGS (BAAH): 28 souls, a build holds 17 |
+| 3 | system | a rifleman's round into a barrel did nothing; a blast moved men and nothing else | a round lights the powder, a blast goes through the room: barrels in a row go up one by one |
+| 4 | system | a new man for the late floors | THE SHIELDMAN: a board that takes anything from in front, slow to turn, a wall to a thrown body |
+| 5 | feel | stutter whenever he started or stopped running on some screens | the floors' bake no longer flips resolution with the run's zoom; rooms paint ahead in idle time |
+| 6 | system | the first floors drew their mix rooms from four templates | three more: the byre, the refectory, the larder |
+| 7 | feel | on an AZERTY keyboard the floor said WASD and the caps said Q | the words follow the player's own keyboard where the browser says what is printed on it |
+| 8 | feel | four SETTINGS notes were cut off mid-sentence | the chosen row's note is printed whole under the list |
+| 9 | tool | the MUSIC lab's men were silent with no bed under them; `audio-check.js` failed since 1.85 | the lab hears them again; the check's idle sheet expects calm's thinner score; it passes |
+| 10 | tool | the smoke bot stood at an animal's question until the clock ran out | it answers BAAAH (or bah) |
+| 11 | feel | the late floors' worst frames (15 ms and up) came when a room wound up together | a swing's amber and a hound's line draw the same cells 4 to 8 times faster |
+| 12 | system | THE DARK drew its canon rooms from five templates | three more: the crossing, the scriptorium, the cistern |
+| 13 | feel | the shieldman's board rang like steel | it knocks like wood and splits like the pen's frame |
+
+Decided in the build, worth asking him about:
+
+- **system**: **the shieldman** is the one big addition nobody asked for. Met alone on THE THRESHING FLOOR (THE DARK
+  in its place), three to five a floor after that, never a boss. To take him out of the game: drop `'shield'` from the
+  `kinds` and `introduce` lists in `LEVELS` and `DARK_LEVEL`. His numbers are on the ENEMIES tab.
+- **number**: **the floors around him**: the intro room cost THE THRESHING FLOOR a room of its curve, so its curve went
+  10 → 22 to 14 → 23 (108.7 against 114 before), THE DARK's 5 → 14 to 7 → 16 (it has to stay over 60% of the lit
+  floor), and THE RAFTERS' top 34 → 37 so its worst room stays over THE BRIDGE's. Every balance rule holds.
+- **number**: **BIG LUNGS on THE FULL THROAT**: × 1.3 on its daze too, so FULL THROAT + RAW THROAT + BIG LUNGS dazes
+  everything within 8.45 tiles (6.5 without), still well under the 13 before 30 Sep. If the halving should hold, give
+  `lungs` a separate smaller share for the stun.
+- **system**: **a blast opens a cracked wall outright** (two headbutts otherwise), and **rings the gong**, which hands
+  the goat its rush wherever he stands. Both follow "the room answers a blast"; say if either is too generous.
+- **feel**: **the shieldman's board** is drawn from three views (face, edge, back) on his off arm; the face carries the
+  cult's horned sign in red. Worth a look at the sprite (`mshield-*`, js/prop-pixels.js) before it is final.
+
 ## 1 October 2026, the soul into the goat and a sixth polish pass (1.89)
 
 The ask shipped in 1.89 (the soul hangs until a card is pointed at, then goes into him and he stays), with every

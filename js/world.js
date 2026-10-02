@@ -164,7 +164,7 @@ class World {
 
   // A tapered horn on the decal canvas: base, a control point for the sweep, and the tip.
   hornDecal(bx, by, cx, cy, tx, ty, w, color) {
-    const c = this.dctx, dx = tx - bx, dy = ty - by, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+    const c = this.dctx, dx = tx - bx, dy = ty - by, d = hyp(dx, dy) || 1, nx = -dy / d, ny = dx / d;
     c.fillStyle = color; c.beginPath();
     c.moveTo(bx + nx * w, by + ny * w);
     c.quadraticCurveTo(cx + nx * w * 0.55, cy + ny * w * 0.55, tx, ty);
@@ -374,7 +374,7 @@ class World {
         if (!this.isSolid(tx, ty)) continue;
         const cx = clamp(e.x, tx * TILE, (tx + 1) * TILE), cy = clamp(e.y, ty * TILE, (ty + 1) * TILE);
         let dx = e.x - cx, dy = e.y - cy;
-        let d = Math.hypot(dx, dy);
+        let d = hyp(dx, dy);
         if (d >= r) continue;
         let nx, ny;
         if (d < 0.001) {
@@ -420,7 +420,7 @@ class World {
             if (!this.isSolid(tx + sx, ty) || !this.isSolid(tx, ty + sy)) continue;
             const cx = sx < 0 ? x0 + R : x1 - R, cy = sy < 0 ? y0 + R : y1 - R;
             if ((e.x - cx) * sx <= 0 || (e.y - cy) * sy <= 0) continue;
-            const dx = e.x - cx, dy = e.y - cy, d = Math.hypot(dx, dy);
+            const dx = e.x - cx, dy = e.y - cy, d = hyp(dx, dy);
             if (d <= R - r) continue;
             push(-dx / d, -dy / d, d - (R - r));
           }
@@ -431,13 +431,13 @@ class World {
         const sy = e.y < y0 + R ? -1 : e.y > y1 - R ? 1 : 0;
         if (sx && sy && !this.isSolid(tx + sx, ty) && !this.isSolid(tx, ty + sy)) {
           const cx = sx < 0 ? x0 + R : x1 - R, cy = sy < 0 ? y0 + R : y1 - R;
-          const dx = e.x - cx, dy = e.y - cy, d = Math.hypot(dx, dy) || 0.001;
+          const dx = e.x - cx, dy = e.y - cy, d = hyp(dx, dy) || 0.001;
           if (d - R >= r) continue;
           push(dx / d, dy / d, r - (d - R));
           continue;
         }
         const cx = clamp(e.x, x0, x1), cy = clamp(e.y, y0, y1);
-        const dx = e.x - cx, dy = e.y - cy, d = Math.hypot(dx, dy);
+        const dx = e.x - cx, dy = e.y - cy, d = hyp(dx, dy);
         if (d >= r) continue;
         if (d < 0.001) {
           const px = e.x - (tx + 0.5) * TILE, py = e.y - (ty + 0.5) * TILE;
@@ -572,7 +572,7 @@ class World {
         if (l2 < 1e-6) continue;
         const t = clamp(((e.x - ax) * dx + (e.y - ay) * dy) / l2, 0, 1);
         const px = ax + dx * t, py = ay + dy * t, ll = Math.sqrt(l2), onx = dy / ll, ony = -dx / ll;
-        const vx = e.x - px, vy = e.y - py, d = Math.hypot(vx, vy), side = vx * onx + vy * ony;
+        const vx = e.x - px, vy = e.y - py, d = hyp(vx, vy), side = vx * onx + vy * ony;
         let nx, ny, depth;
         if (side >= 0) {
           if (d >= r) continue;
@@ -682,7 +682,7 @@ class World {
   }
 
   los(x0, y0, x1, y1) {
-    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+    const dx = x1 - x0, dy = y1 - y0, d = hyp(dx, dy);
     const steps = Math.ceil(d / 6);
     for (let i = 1; i < steps; i++) {
       const t = i / steps;
@@ -700,7 +700,9 @@ class World {
     const W = this.W, H = this.H, flow = this.flow;
     flow.fill(-1);
     const sx = clamp(Math.floor(px / TILE), 0, W - 1), sy = clamp(Math.floor(py / TILE), 0, H - 1);
-    const q = new Int32Array(W * H); let head = 0, tail = 0;
+    // One queue for every rebuild (it runs every 0.15 s): a fresh 128 KB array each time was external memory the
+    // collector had to be told about, a major collection to every few seconds of play.
+    const q = this.flowQueue || (this.flowQueue = new Int32Array(W * H)); let head = 0, tail = 0;
     const s = sy * W + sx; flow[s] = 0; q[tail++] = s;
     while (head < tail) {
       const i = q[head++]; const d = flow[i];
@@ -746,7 +748,7 @@ class World {
       for (let y = ty - k; y <= ty + k; y++) for (let x = tx - k; x <= tx + k; x++) {
         if (x < 0 || y < 0 || x >= this.W || y >= this.H) continue;
         // The horse's stall is a box: the tiles it stands on, not a disc round its middle.
-        if (p.box ? p.boxPush((x + 0.5) * TILE, (y + 0.5) * TILE).d >= 2 : Math.hypot((x + 0.5) * TILE - p.x, (y + 0.5) * TILE - p.y) >= p.r + 2) continue;
+        if (p.box ? p.boxPush((x + 0.5) * TILE, (y + 0.5) * TILE).d >= 2 : hyp((x + 0.5) * TILE - p.x, (y + 0.5) * TILE - p.y) >= p.r + 2) continue;
         const i = y * this.W + x;
         if (!this.furn[i]) { this.furn[i] = 1; list.push(i); }
       }
@@ -807,7 +809,7 @@ class World {
     }
     if (best === here) return null;
     const cx = (tx + bx + 0.5) * TILE, cy = (ty + by + 0.5) * TILE;
-    const vx = cx - x, vy = cy - y, l = Math.hypot(vx, vy) || 1;
+    const vx = cx - x, vy = cy - y, l = hyp(vx, vy) || 1;
     return { x: vx / l, y: vy / l };
   }
 
@@ -833,7 +835,7 @@ class World {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE);
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const wx = (cx + dx + 0.5) * TILE - x, wy = (cy + dy + 0.5) * TILE - y;
-      const d = Math.hypot(wx, wy);
+      const d = hyp(wx, wy);
       if (d > range || d < 1) continue;
       if ((wx * dirx + wy * diry) / d < Math.cos(halfAngle)) continue;
       if (!this.los(x, y, (cx + dx + 0.5) * TILE, (cy + dy + 0.5) * TILE)) continue;
@@ -852,7 +854,7 @@ class World {
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const tx = Math.floor(x / TILE) + dx, ty = Math.floor(y / TILE) + dy;
         if (this.isSolid(tx, ty) || this.tileAt(tx, ty) === T.PIT) continue;
-        const d = Math.hypot((tx + 0.5) * TILE - x, (ty + 0.5) * TILE - y);
+        const d = hyp((tx + 0.5) * TILE - x, (ty + 0.5) * TILE - y);
         if (d < bd) { bd = d; best = [(tx + 0.5) * TILE, (ty + 0.5) * TILE]; }
       }
       if (!best) return;
@@ -863,7 +865,7 @@ class World {
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       // Only floor the pool can reach from where it lands: coals spilled at a pillar, a lamp toppled
       // by a wall or a barrel's oil used to light the floor on the far side of the stone.
-      if (Math.hypot(dx, dy) <= radiusTiles && this.los(x, y, (cx + dx + 0.5) * TILE, (cy + dy + 0.5) * TILE)) this.ignite(cx + dx, cy + dy, true, dur, witch);
+      if (hyp(dx, dy) <= radiusTiles && this.los(x, y, (cx + dx + 0.5) * TILE, (cy + dy + 0.5) * TILE)) this.ignite(cx + dx, cy + dy, true, dur, witch);
     }
   }
   updateFire(dt) {
@@ -920,7 +922,7 @@ class World {
   splat(x, y, dirx, diry, size, color) {
     // No direction (a body dropped straight down, a piece of gore landing) is a round pool: with a
     // zero vector every cell measured zero from the centre and the stain came out a hard square.
-    const d=Math.hypot(dirx,diry);if(d){dirx/=d;diry/=d;}else{const a=Math.random()*Math.PI*2;dirx=Math.cos(a);diry=Math.sin(a);}
+    const d=hyp(dirx,diry);if(d){dirx/=d;diry/=d;}else{const a=Math.random()*Math.PI*2;dirx=Math.cos(a);diry=Math.sin(a);}
     const droplets=[];
     for(let i=0;i<12;i++) {
       const t = Math.random();
@@ -934,7 +936,7 @@ class World {
       c.save();c.globalAlpha=0.85;
       const x0=Math.round(x/px)*px,y0=Math.round(y/px)*px,span=Math.ceil(R*1.5/px)*px;
       for(let oy=-span;oy<=span;oy+=px)for(let ox=-span;ox<=span;ox+=px){
-        const al=ox*dirx+oy*diry,ac=-ox*diry+oy*dirx,dd=Math.hypot(al/(R*1.2),ac/(R*0.85));
+        const al=ox*dirx+oy*diry,ac=-ox*diry+oy*dirx,dd=hyp(al/(R*1.2),ac/(R*0.85));
         const lim=0.72+CombatFX.noise((x0+ox)*0.2,(y0+oy)*0.2,seed)*0.5;if(dd>=lim)continue;
         c.fillStyle=dd>lim-0.14?'#4f140f':dd<0.3&&CombatFX.bayer(ox/px,oy/px)<0.2?PALETTE.blood:body;
         c.fillRect(x0+ox,y0+oy,px,px);
@@ -961,7 +963,7 @@ class World {
       const x0=Math.round(x/px)*px,y0=Math.round(y/px)*px,span=Math.ceil(r/px)*px;
       c.fillStyle=witch?'rgba(38,26,64,0.8)':'rgba(20,14,12,0.8)';c.beginPath();
       for(let oy=-span;oy<=span;oy+=px)for(let ox=-span;ox<=span;ox+=px){
-        const d=Math.hypot(ox,oy)/r+(CombatFX.noise((x0+ox)*0.15,(y0+oy)*0.15,seed)-0.5)*0.35;
+        const d=hyp(ox,oy)/r+(CombatFX.noise((x0+ox)*0.15,(y0+oy)*0.15,seed)-0.5)*0.35;
         if(d<1&&CombatFX.bayer(ox/px,oy/px)<1.35-d*1.4)c.rect(x0+ox,y0+oy,px,px);
       }
       c.fill();

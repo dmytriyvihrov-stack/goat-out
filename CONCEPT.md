@@ -106,6 +106,7 @@ fire, so a build reads as a shape rather than as a list of names.
 | **Bearer** | Melee. About half a second of windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
 | **Butcher** | (The brute until 1.72.) A clubman with a cleaver and a hook on a rope, too heavy to be carried: a big shape in a bone apron with a bull's skull for a mask (since 1.66, the old Butcher's body, hence the name; that kind is the ogre now). Three killing blows, the one kind that is heavy without the outline; four as a boss. Seen from three to seven tiles off with a clear line, he plants and swings the hook round, a thin line on the floor to where it will land, and throws it where you are going, past his own men: run straight on and it catches you, and only a real turn after it leaves his hand, or a roll, slips it. Caught, you are dragged to his cleaver. The hook itself hurts nothing, the swing at the end of the rope does, and whatever the rope drags you across. A table, a barrel, a brazier or a shut door in its line stops it, a carried shield turns it, and a miss is reeled in while he stands. (Until 30 Sep 2026 he charged instead; furniture kept stopping it.) |
 | **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything (the one man besides the Butcher who does without the outline), blinking clear after the first, and unlike the ogre he can always be grabbed, carried and thrown. Arrives late and never two to a room. |
+| **Shieldman** | (1 Oct 2026) A clubman behind a board of door planks, met alone on THE THRESHING FLOOR (or THE DARK) and from then on a few a floor. From in front the board takes whatever comes: a headbutt only rocks him back a step and throws the goat off it, a crate breaks on it, a blade sticks in it, a round stops, the teeth meet wood, and a man thrown into it dies on it as on a wall. Two blows split it. It is heavy: he walks slower than a clubman and turns slowly, so a goat who circles him, rolls past him or vaults him has his back, and a scream that sets him reeling drops it. Dead with the board whole, he leaves it lying, a shield to pick up. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for most of a second with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run, flattened, streaking, eyes lit, which is the one tell you get, bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it, but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
 | **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher), a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit, but not by the horns, which do nothing to him: a blade, the coals of a brazier, a bomb or a thrown body is what costs him a heart, and his arena always stands braziers and swords for it (the first time, THE YARD's last room, nowhere shows him before it, a wide room with two pillars, so the idea reads). His own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
@@ -200,10 +201,10 @@ the rest rooms):
 | **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Elite Seer (sealed in), ogre (the last room, the first of him) |
 | **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers | Ogre, butcher |
 | **THE ROAD** | 14 | The line | All five, rifles new | Two ogres |
-| **THE THRESHING FLOOR** | 13 | Open ground | All five | Elite Seer, ogre, butcher |
-| *or* **THE DARK** | 12 | The lamp | Bearers, butchers, hounds and Seers heavy; never a rifle | Elite Seer, ogre, butcher |
-| **THE BRIDGE** | 15 | The funnel | All five | Ogre, elite Seer, ogre |
-| **THE RAFTERS** | 15 | The drop | All five | Elite Seer, ogre, butcher |
+| **THE THRESHING FLOOR** | 13 | Open ground | All five, shieldmen new | Elite Seer, ogre, butcher |
+| *or* **THE DARK** | 12 | The lamp | Bearers, butchers, hounds and Seers heavy, shieldmen new; never a rifle | Elite Seer, ogre, butcher |
+| **THE BRIDGE** | 15 | The funnel | All six | Ogre, elite Seer, ogre |
+| **THE RAFTERS** | 15 | The drop | All six | Elite Seer, ogre, butcher |
 | **THE OSSUARY** | 15 | The niche | Wraiths, and a garrison | Ogre, elite wraith, elite Seer |
 
 **THE CAVE** is third: out under the compound the ground stops being built. No wall runs straight and
@@ -374,7 +375,7 @@ the player to believe that a goat reads.
 
 **A level gives up exactly two**, one in the middle and one at the end: the keeper of the middle gate
 carries the first, the last boss the second. On THE YARD, THE ROAD and THE BRIDGE the mouse stands in
-for the first, thirteen across a run, against twenty-five boons and a build that holds fourteen, so no
+for the first, thirteen across a run, against twenty-eight boons and a build that holds seventeen, so no
 run gets everything and no two runs are the same goat. Nothing else pays one: not a cleared room, not a
 lit boss on a lucky seed, not the vault. Every other boss leaves milk. **A man carrying one is lit**: an
 amber haze that breathes, a ring at his feet, and red eyes, so the one man in a room worth crossing the
@@ -407,8 +408,11 @@ drawer shows every one with its numbers).
 - **Dead Weight**, **Sour Tumble** and **Leapfrog** change the roll: everything it goes through loses its
   head, leaves poison behind, or vaults a man instead of going round him.
 
-**Passives** sharpen what you already have: Thick Hide, Four Stomachs, Iron Skull, Strong Jaw, Living
-Shield, Cold Eye, Kindling, Raw Throat, Sure Hooves, Loose Joints, Ember Coat, The Oracle, Hungry Soul.
+**Passives** sharpen what you already have: Thick Hide, Four Stomachs, Iron Skull, Bull Neck, Strong Jaw,
+Living Shield, Cold Eye, Kindling, Raw Throat, Big Lungs, Sure Hooves, Loose Joints, Spring Hocks, Ember
+Coat, The Oracle, Hungry Soul. Every button has two of its own (1 Oct 2026), so a build can fill both of its
+passive places: **Bull Neck** throws the run-up into the headbutt, **Spring Hocks** lands a roll still
+running, **Big Lungs** carries every form of BAAH further.
 
 **Elements add up** (30 Sep 2026). Four souls are fire, Dragon Breath, Firebrand, Kindling, Ember
 Coat, and four are poison, Splash, Venom Jaw, Sour Tumble, Venom Spit. Each one of a set carried

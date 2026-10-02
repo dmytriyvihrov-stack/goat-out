@@ -11,6 +11,19 @@ const ATLAS_CELL = {
 // How far below a tile's centre a thing standing on that tile puts its feet: the middle of the tile
 // in a camera tilted this little, not its bottom or top edge.
 const PROP_FOOT = 3;
+// Where the shieldman's board sits on him at each of the eight facings (0 east, 2 toward the camera, 6 away
+// from it): its middle in px off his feet, which view of it (`mshield-f` face, `-s` edge, `-b` back), whether
+// it goes under him, and mirrored (`PaintedArt.board`). `k`: world px a texel, the props' own grain.
+const BOARD_POSE = Object.assign([
+  { v: 's', x: 9, y: -15, under: false },
+  { v: 'f', x: 7, y: -14, under: false },
+  { v: 'f', x: -4, y: -13, under: false },
+  { v: 'f', x: -7, y: -14, under: false, flip: true },
+  { v: 's', x: -9, y: -15, under: false, flip: true },
+  { v: 'b', x: -6, y: -17, under: true, flip: true },
+  { v: 'b', x: 3, y: -17, under: true },
+  { v: 'b', x: 6, y: -17, under: true },
+], { k: 1.35 });
 // The painted props' own sizes, kept after their images went (1.74, `js/painted-assets.js` retired):
 // the pixel sprites that replaced them are fitted into the box the painting filled, and a caller
 // that gives only a width takes its height off these proportions.
@@ -111,6 +124,7 @@ class PaintedArt extends AltarArt {
   // after a floor are up instead (`Game`), so the floor opens on a frame that is already paid for.
   // The cave and the trip draw their own ground and need none. Returns false while the atlas loads.
   warmLevel(def) {
+    if (def && def.cave && !def.shroom && PIXEL_ENV.ready && ART_PASS.cave && def.floor) PIXEL_ENV.caveTile(def.floor, 0, 0);
     if (!def || def.cave || def.shroom || !PIXEL_ENV.ready) return !!(def && (def.cave || def.shroom));
     this.floorSwatch(def, 0, false, 0, 0); this.floorSwatch(def, 0, true, 0, 0);
     const W = PIXEL_ROOMS.wall;
@@ -375,7 +389,7 @@ class PaintedArt extends AltarArt {
     }
     if(p.kind==='chicken'&&PIXEL_ART.ready){
       const flying=p.birdState==='flying',stunned=p.birdState==='stunned';
-      if(Math.hypot(p.vx||0,p.vy||0)>2)p.artFacing=Math.atan2(p.vy,p.vx);
+      if(hyp(p.vx||0,p.vy||0)>2)p.artFacing=Math.atan2(p.vy,p.vx);
       const angle=p.artFacing??Math.PI/4;
       renderer.shadow(p.x,p.y,8,3.5);ctx.save();ctx.translate(p.x,p.y);
       if(stunned)ctx.rotate(Math.PI*0.4);
@@ -515,7 +529,7 @@ class PaintedArt extends AltarArt {
   // Every unit is a pixel sprite now (`PIXEL_ART`); what is left here is the lean of a windup or a
   // swing, the tip of a man on the floor, the wraith's fade and the rat ogre's grow-in.
   character(renderer,e,key,width) {
-    const ctx=renderer.ctx, angle=e.facing||0, moving=Math.hypot(e.vx||0,e.vy||0)>30;
+    const ctx=renderer.ctx, angle=e.facing||0, moving=hyp(e.vx||0,e.vy||0)>30;
     const pixel=PIXEL_ART.unit(key); if(!pixel)return;
     ctx.save();
     if(key==='ratogre'&&e.state==='emerge'){const k=1-Math.max(0,e.timer)/TUNING.ratogre.emerge;ctx.scale(0.4+0.6*k,0.4+0.6*k);ctx.globalAlpha*=0.5+0.5*k;}
@@ -531,10 +545,29 @@ class PaintedArt extends AltarArt {
     // picture of a dog sliding round the floor.
     if(key==='hound'&&moving){const G=TUNING.dog;ctx.translate(0,-Math.abs(Math.sin(renderer.t*G.gait*Math.PI+e.x*0.02))*G.bob);}
     // The ogre has no atlas body: his own hand-drawn one (js/ogre-pixels.js), fists up through a slam or a leap.
+    // The shieldman's board, under him when it is seen past him from behind and over him otherwise (`board`).
+    if(e.shield)this.board(renderer,e,false);
     if(key==='ogre'&&typeof OGRE_PIXELS!=='undefined'&&OGRE_PIXELS.draw)OGRE_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e.state==='slamwind'||e.state==='hopwind'||e.state==='hop'?'up':'idle');
     else PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
+    if(e.shield)this.board(renderer,e,true);
     // His horns as the butt souls have made them, in the same lean as the frame (`drawGoat` sets it).
     if(key==='sheep'&&this.hornMods){PIXEL_ART.horns(ctx,pixel,angle,moving,renderer.t,e.x,this.hornMods);PIXEL_ART.face(ctx,angle,renderer.t,this.hornMods,e);}
+    ctx.restore();
+  }
+
+  // The shieldman's board on his off arm (`Enemy.giveShield`, the sprites `mshield-*` in js/prop-pixels.js):
+  // its face toward the camera, edge on from the side, its back seen past him from behind, which is the one
+  // view drawn under him (`front` false). Off his facing as one of eight (`BOARD_POSE`), mirrored on the
+  // left of the picture; a blow on it (`jolt`) shudders it. Inside `character`'s own frame, so it leans
+  // with his windup and his swing and goes down with him.
+  board(renderer,e,front) {
+    const sh=e.shield;if(!sh||typeof PROP_PIXELS==='undefined'||!PROP_PIXELS.draw)return;
+    const o=((Math.round((e.facing||0)/(Math.PI/4))%8)+8)%8,B=BOARD_POSE[o];
+    if(B.under===front)return;
+    const g=PROP_PIXELS.sprites['mshield-'+B.v];if(!g)return;
+    const k=BOARD_POSE.k,w=g.w*k,h=g.h*k,shake=sh.jolt>0?Math.round(Math.sin(renderer.t*70)*1.5):0;
+    const ctx=renderer.ctx;ctx.save();ctx.translate(B.x+shake,B.y);if(B.flip)ctx.scale(-1,1);
+    PROP_PIXELS.draw(ctx,'mshield-'+B.v,-w/2,-h/2,k);
     ctx.restore();
   }
 
@@ -563,7 +596,7 @@ class PaintedArt extends AltarArt {
       // A diagonal frame shows the head nearly side-on, so the ring turns further toward a side view
       // than the world angle says (`C.flat` on the vertical part of the facing).
       let vx=Math.cos(fa),vy=Math.sin(fa)*(Math.abs(Math.cos(fa))>0.1?C.flat:1);
-      const vl=Math.hypot(vx,vy)||1;vx/=vl;vy/=vl;
+      const vl=hyp(vx,vy)||1;vx/=vl;vy/=vl;
       if(vy<-0.1){vx=-vx;vy=-vy;}                    // the near side of the ring
       // On the two front diagonals the ring rises toward the nape, behind the jaw, and dips at the
       // throat under the chin; turned the plain way it rose toward his face and sat on it like a hook.
@@ -608,7 +641,7 @@ class PaintedArt extends AltarArt {
     // 48 world px square round the foot at 2x, which holds the whole goat on every facing. Baked once
     // per frame of him (facing, step, blots) and kept: repainted and redrawn every frame, the scratch
     // canvas cost an upload a frame for as long as he was hurt.
-    const S=2,B=48,ox=24,oy=40,moving=Math.hypot(g.vx||0,g.vy||0)>30,u=PIXEL_ASSETS.units[unit];
+    const S=2,B=48,ox=24,oy=40,moving=hyp(g.vx||0,g.vy||0)>30,u=PIXEL_ASSETS.units[unit];
     const [dir,flip]=PIXEL_ART.facing(unit,g.facing||0),step=moving&&u&&u.walk?Math.floor(renderer.t*8+(g.x||0)*0.05)%4:-1;
     const cache=this.woundCache||(this.woundCache=new Map()),key=n+'|'+dir+'|'+flip+'|'+step+'|'+face;
     let cv=cache.get(key);
@@ -701,7 +734,7 @@ class PaintedArt extends AltarArt {
     if(g.jitter)ctx.translate(g.jitter.x,g.jitter.y);
     // Weight in the stride: a hop per hoof-fall in step with the walk frames, in whole pixels, and
     // the lean `Goat.update` smooths into a change of pace. Turned about the hooves.
-    const FE=TUNING.goat.feel,spd=Math.hypot(g.vx||0,g.vy||0);
+    const FE=TUNING.goat.feel,spd=hyp(g.vx||0,g.vy||0);
     if(g.state==='idle'&&spd>30){const k=Math.min(1,spd/(TUNING.goat.speed||1));ctx.translate(0,-Math.round(Math.abs(Math.sin((renderer.t*8+(g.x||0)*0.05)*Math.PI/2))*FE.bob*k));}
     if(g.lean)ctx.rotate(g.lean);
     if(hop)ctx.translate(0,-Math.round(hop));
@@ -727,7 +760,7 @@ class PaintedArt extends AltarArt {
     if(g.sqLeft){const a=g.sqLeft*Math.cos(TUNING.juice.squash.freq*g.sqT);ctx.scale(1+a,1-a);}
     if(g.invuln>0&&Math.floor(renderer.t*30)%2===0)ctx.globalAlpha*=0.5;
     // Standing still he breathes: taller and a touch narrower from the hooves up, then back.
-    if(g.state==='idle'&&Math.hypot(g.vx||0,g.vy||0)<=30){const B=TUNING.goat.breathe,b=(1-Math.cos(renderer.t*Math.PI*2/B.period))/2;ctx.scale(1-B.wide*b,1+B.amp*b);}
+    if(g.state==='idle'&&hyp(g.vx||0,g.vy||0)<=30){const B=TUNING.goat.breathe,b=(1-Math.cos(renderer.t*Math.PI*2/B.period))/2;ctx.scale(1-B.wide*b,1+B.amp*b);}
     // Grazing (`goat.grazeK`): head down over the front hooves, a lean toward the way he faces on a
     // side view, a squash from the hooves up on every view, and a nibble in it.
     if(g.grazeK>0){const P=TUNING.goat.grazePose,k=g.grazeK*g.grazeK*(3-2*g.grazeK),n=1+P.nibble*Math.max(0,Math.sin(renderer.t*P.rate*Math.PI*2));

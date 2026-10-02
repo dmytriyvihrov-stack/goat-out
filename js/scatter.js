@@ -50,7 +50,7 @@ class Scatter {
   // headbutt's worth (a body arriving is less, a blast more). A table already bare does nothing.
   fromTable(p, dx, dy, power = 1) {
     const food = Scatter.foodOf(p); if (!food.length) return;
-    const S = TUNING.scatter, l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+    const S = TUNING.scatter, l = hyp(dx, dy) || 1; dx /= l; dy /= l;
     for (const f of food) {
       const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 2 * S.spread;
       const sp = (S.speed[0] + Math.random() * (S.speed[1] - S.speed[0])) * power;
@@ -69,7 +69,7 @@ class Scatter {
   // face, clatters down and rolls (the helm is round), never sinks back into the brick.
   fromArmor(p, dx, dy, power = 1) {
     // One that stood on the floor (`kind` 'suit') is not against a wall: the blow's own way, all round, no hop off the stone.
-    const floor = p.kind === 'suit', S = TUNING.scatter, A = floor ? TUNING.prop.suit : TUNING.prop.armor, l = Math.hypot(dx, dy) || 1; dx /= l; dy = floor ? dy / l : Math.abs(dy / l);
+    const floor = p.kind === 'suit', S = TUNING.scatter, A = floor ? TUNING.prop.suit : TUNING.prop.armor, l = hyp(dx, dy) || 1; dx /= l; dy = floor ? dy / l : Math.abs(dy / l);
     for (const [id, h, ox] of A.pieces) {
       const a = Math.atan2(dy, dx + ox / 40) + (Math.random() - 0.5) * 2 * S.spread;
       const sp = (S.speed[0] + Math.random() * (S.speed[1] - S.speed[0])) * power;
@@ -82,9 +82,9 @@ class Scatter {
   // suit of armour in it comes apart.
   burst(x, y, r, power = 1.4) {
     for (const p of this.game.props) {
-      if ((p.kind === 'armor' || p.kind === 'suit') && !p.spilled) { const d = Math.hypot(p.x - x, p.y - y); if (d <= r) p.burstArmor(this.game, p.x - x || 1, p.y - y, power); continue; }
+      if ((p.kind === 'armor' || p.kind === 'suit') && !p.spilled) { const d = hyp(p.x - x, p.y - y); if (d <= r) p.burstArmor(this.game, p.x - x || 1, p.y - y, power); continue; }
       if (p.kind !== 'table' || p.broken || !Scatter.foodOf(p).length) continue;
-      const d = Math.hypot(p.x - x, p.y - y); if (d > r) continue;
+      const d = hyp(p.x - x, p.y - y); if (d > r) continue;
       this.fromTable(p, p.x - x || 1, p.y - y, power * (1 - 0.5 * d / r));
     }
   }
@@ -111,7 +111,7 @@ class Scatter {
         for (const m of movers) {
           const dx = b.x - m.x, dy = b.y - m.y, rr = (m.r || 12) + S.kick.r;
           if (dx * dx + dy * dy > rr * rr) continue;
-          const d = Math.hypot(dx, dy) || 1, sp = Math.max(S.kick.min, Math.hypot(m.vx || 0, m.vy || 0) * S.kick.keep);
+          const d = hyp(dx, dy) || 1, sp = Math.max(S.kick.min, hyp(m.vx || 0, m.vy || 0) * S.kick.keep);
           b.vx = dx / d * sp + (m.vx || 0) * 0.3; b.vy = dy / d * sp + (m.vy || 0) * 0.3; b.vz = S.kick.lift * (0.6 + Math.random() * 0.6);
           b.rest = false; b.spin = (Math.random() < 0.5 ? -1 : 1) * S.spin * 0.5; b.bounces = Math.max(0, b.bounces - 1);
           if (Math.random() < 0.5) this.sound(b, 0.35);
@@ -139,8 +139,8 @@ class Scatter {
       } else {
         // On the floor: a round thing rolls on, turning; anything else slides to a stop.
         const k = Math.exp(-(b.K.round ? S.roll : S.slide) * dt); b.vx *= k; b.vy *= k;
-        if (b.K.round) b.turn += Math.hypot(b.vx, b.vy) * dt / 4 * Math.sign(b.spin || 1);
-        if (Math.hypot(b.vx, b.vy) < S.still) {
+        if (b.K.round) b.turn += hyp(b.vx, b.vy) * dt / 4 * Math.sign(b.spin || 1);
+        if (hyp(b.vx, b.vy) < S.still) {
           b.vx = b.vy = 0; b.rest = true;
           // It comes to rest square to the floor, in whole quarter turns.
           b.turn = Math.round(b.turn / (Math.PI / 2)) * Math.PI / 2;
@@ -167,11 +167,11 @@ class Scatter {
   }
   // A small wet patch in cells on the floor, stretched the way it was going, with a darker rim.
   static spill(w, x, y, r, [body, rim], dx, dy) {
-    const px = TUNING.effects.pixel, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, seed = (x * 5 + y * 11) | 0;
+    const px = TUNING.effects.pixel, d = hyp(dx, dy) || 1, ux = dx / d, uy = dy / d, seed = (x * 5 + y * 11) | 0;
     w.paintStain(x, y, r * 2, (c) => {
       const x0 = Math.round(x / px) * px, y0 = Math.round(y / px) * px, span = Math.ceil(r * 1.6 / px) * px;
       for (let oy = -span; oy <= span; oy += px) for (let ox = -span; ox <= span; ox += px) {
-        const al = ox * ux + oy * uy, ac = -ox * uy + oy * ux, dd = Math.hypot(al / (r * 1.3), ac / (r * 0.8));
+        const al = ox * ux + oy * uy, ac = -ox * uy + oy * ux, dd = hyp(al / (r * 1.3), ac / (r * 0.8));
         const lim = 0.7 + CombatFX.noise((x0 + ox) * 0.25, (y0 + oy) * 0.25, seed) * 0.5;
         if (dd >= lim || w.isSolid(Math.floor((x0 + ox) / TILE), Math.floor((y0 + oy) / TILE))) continue;
         c.fillStyle = dd > lim - 0.16 ? rim : body; c.fillRect(x0 + ox, y0 + oy, px, px);

@@ -249,6 +249,37 @@ const PROP_PIXELS = (() => {
     g.ell(c + 0.5, c + 0.5, 2.6, 2.6, P.i2); g.set(8, 8, P.i4); g.set(9, 8, P.i3); g.set(8, 9, P.i3); g.set(10, 10, P.i1); g.set(9, 10, P.i1); g.set(10, 9, P.i1);
     return g.outline();
   }
+  // The shieldman's board (1 Oct 2026): a shield of three door planks, iron at its rim and the cult's horned
+  // sign painted on its face, carried on his off arm (`PaintedArt.board`). Three views: its face (`f`, toward
+  // the camera), edge on (`s`, the side views) and its back (`b`, two braces and the grip, seen past him).
+  function manShield(view) {
+    if (view === 's') {
+      const g = new Grid(4, 16);
+      g.rect(0, 0, 4, 16, P.i2); g.vl(0, 0, 16, P.i3); g.vl(3, 0, 16, P.i1);
+      g.rect(1, 1, 2, 14, P.w1); g.vl(1, 1, 14, P.w2);
+      return g.outline();
+    }
+    const g = new Grid(12, 16), r = rng(view === 'f' ? 917 : 919);
+    if (view === 'f') {
+      g.rect(0, 0, 12, 16, P.w2);
+      for (const x of [4, 8]) g.vl(x, 0, 16, P.w0);
+      for (const x of [1, 5, 9]) g.vl(x, 0, 16, P.w3);
+      for (let k = 0; k < 6; k++) { const x = [2, 3, 6, 7, 10][Math.floor(r() * 5)], y = 2 + Math.floor(r() * 11); g.vl(x, y, 2, P.w1); }
+      g.tone((x, y) => x + y > 17, P.w1, [P.w2, P.w3]);
+      // the horned sign, in the cult's red: two horns over a stem
+      for (const [x, y] of [[3, 3], [4, 4], [5, 5], [8, 3], [7, 4], [6, 5], [5, 6], [6, 6], [5, 7], [6, 7], [5, 8], [6, 8], [5, 9], [6, 9], [4, 10], [5, 10], [6, 10], [7, 10]]) g.set(x, y, P.r2);
+      for (const [x, y] of [[6, 7], [6, 8], [6, 9], [7, 10]]) g.set(x, y, P.r1);
+      g.hl(0, 0, 12, P.i3); g.hl(0, 15, 12, P.i1); g.vl(0, 0, 16, P.i3); g.vl(11, 0, 16, P.i1);
+      for (const [x, y] of [[2, 1], [9, 1], [2, 14], [9, 14]]) g.set(x, y, P.i4);
+      return g.outline();
+    }
+    g.rect(0, 0, 12, 16, P.w1);
+    for (const x of [4, 8]) g.vl(x, 0, 16, P.w0);
+    g.rect(0, 3, 12, 2, P.w2); g.hl(0, 3, 12, P.w3); g.rect(0, 11, 12, 2, P.w2); g.hl(0, 11, 12, P.w3);
+    g.rect(5, 6, 2, 4, P.lt); g.vl(5, 6, 4, P.b1);
+    g.hl(0, 0, 12, P.i2); g.hl(0, 15, 12, P.i0); g.vl(0, 0, 16, P.i2); g.vl(11, 0, 16, P.i0);
+    return g.outline();
+  }
   // The stand of arms in two layers on one 24 x 24 frame, the arm drawn between them: the uprights
   // and the bar it leans on behind it, the base over its foot. A sword stands point down in the
   // base's slot with its hilt up over the bar, a shield stands on its rim with the base over its lower edge.
@@ -1000,7 +1031,7 @@ const PROP_PIXELS = (() => {
   const sprites = {
     'door-wood': doorWood(), 'door-iron': doorIron(), 'door-vault': doorVault(), 'door-soul': doorSoul(),
     'broken-wood': debris('wood'), 'broken-iron': debris('iron'), 'broken-vault': debris('vault'), 'broken-soul': debris('soul'),
-    sword: sword(), shield: shield(), bomb: bomb(),
+    sword: sword(), shield: shield(), bomb: bomb(), 'mshield-f': manShield('f'), 'mshield-s': manShield('s'), 'mshield-b': manShield('b'),
     'mill-hub': millHub(), 'mill-arm': millArm(), 'cage-post': cagePost(), 'cage-broken': cageBroken(),
     altar: altar(), banner: banner(), gong: gong(),
     'soul-wisp': soulWisp(), 'healing-grass': grass(true), 'grass-small': grass(false), pail: pail(),

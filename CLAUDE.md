@@ -122,7 +122,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/painting.js` | `Painting`: the picture of a cleared floor, floor plan, the decal canvas's paint, the line he ran, a skull per kill, baked once at the stairs (`Painting.bake`, `TUNING.painting`), shown as the clear screen's last card, saved as a PNG (through the viewer's `downloads` capability when framed as an artifact, a plain link locally). Render and export only. |
 | `js/release.js` | `RELEASE`: the itch build. `RELEASE.on` (the zip's index.html sets `window.GOAT_RELEASE` first) means no dev drawer and no tool addresses; `RELEASE.build(game)` is the dev drawer's ITCH BUILD button, the page zips itself (flagged index.html + exactly the scripts it loaded, CRC'd, deflated by `CompressionStream`) and downloads it (through `Painting.dl` when framed as an artifact). Loads just before `game.js`. |
 | `js/photo.js` | `Photo`: PHOTO MODE (SETTINGS `photoKey` on P / `photoAuto` every `photo.every` s: the canvas read straight after the draw, kept in `Photo.shots`; PAUSE → PHOTOS is `menu.panel === 'photos'`, a page of thumbnails to choose from, saved through `RELEASE.hand` / `RELEASE.zip`) and the dev drawer's DIP LOG (`Photo.dipCheck`, a frame over `photo.dip.ms` written down with its room, counts and a small picture; `dipsave` writes JSON). Reads the picture; never touches a run. Loads just before `game.js`. |
-| `js/stats.js` | `Stats`: RUN STATS (1 Oct 2026). One report a life (opened at `startLevel`, closed by a death, the send, an escape, a quit or a closed tab): hearts lost and to what (`Goat.damage`), every blow on the cult and what landed it (`Enemy.die`'s fifth arg `how`: wall, body, door, blade, bomb…, pass one at a new kill site), soul cards dealt and taken, the mouse's shelf, every animal's fate. Kept in `STATS_KEY`; sent to our own Cloudflare Worker (`TUNING.stats.url`, `tools/stats-worker/`) only after the title's once-asked question (`menu.panel === 'consent'`, SETTINGS `stats`), only off the itch build, never god/LEVELS. Loads just before `game.js`. |
+| `js/stats.js` | `Stats`: RUN STATS (1 Oct 2026). One report a life (opened at `startLevel`, closed by a death, the send, an escape, a quit or a closed tab): hearts lost and to what (`Goat.damage`), every blow on the cult and what landed it (`Enemy.die`'s fifth arg `how`: wall, body, door, blade, bomb…, pass one at a new kill site), soul cards dealt and taken, the mouse's shelf, every animal's fate. **THE FUNNEL** (`Stats.step`): the first time this browser takes each step (`open` the title, `start`, `death`, `restart` a life after one, `clear1`, `reach<n>` for `TUNING.stats.reach`, `win`), never off a god/LEVELS life, sent at once to `/steps`. Kept in `STATS_KEY`; sent to our own Cloudflare Worker (`TUNING.stats.url`, `tools/stats-worker/`) only after the title's once-asked question (`menu.panel === 'consent'`, SETTINGS `stats`), only off the itch build, never god/LEVELS. Loads just before `game.js`. |
 | `js/game.js` | State machine, fixed-step loop, input plumbing, entity-vs-entity collision, boons, dev drawer. |
 | `index.html` | Local build. |
 | `artifact.html` | Published build. Same scripts, artifact-shaped head. **Keep the two script lists in sync.** |
@@ -146,8 +146,8 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/hooks/guard.js` | Claude Code hook: refuses a publish or a push that would put a broken build live. See *Publishing*. |
 | `tools/hooks/compact.js` | Claude Code hooks: saves the user's own words before a context compaction and hands them back after it. |
 | `tools/god-talk.html` | GOD TALK (dev drawer): every line of `HEAVEN_TALK` and `SHEPHERD_TALK`, read out of js/heaven.js, to edit and cut into parts with `|` (each part its own plate, `Heaven.parts`); SAVE writes both back through `tools/serve.js` (POST /talk-edit). Served only. |
-| `tools/stats.html` | The reports read back as charts: deaths, hearts lost and cult kills by floor and cause, how far lives get, soul cards and talismans offered vs taken, companions. Reads this browser (served), files (the dev drawer's SAVE STATS), or the worker (SERVER: its address and READ_KEY, kept in that browser). Also players by day, first vs came back. |
-| `tools/stats-worker/` | RUN STATS' receiver: a Cloudflare Worker (`worker.js`) over D1 (`schema.sql`). POST `/report` (shape and size checked, a rate limit per hashed address, stored once by id), GET `/reports` with the `READ_KEY` secret. `README.md` there is how to deploy it; `wrangler.toml` holds the database id. |
+| `tools/stats.html` | THE FUNNEL on top (players, not lives: opened, started, died, played again, cleared floor 1, reached 4, reached 8, escaped; the steps the game sent, filled in from the lives; the build picker keeps the players who came in on it), then the reports read back as charts: deaths, hearts lost and cult kills by floor and cause, how far lives get, soul cards and talismans offered vs taken, companions. Reads this browser (served), files (the dev drawer's SAVE STATS), or the worker (SERVER: its address and READ_KEY, kept in that browser). Also players by day, first vs came back. |
+| `tools/stats-worker/` | RUN STATS' receiver: a Cloudflare Worker (`worker.js`) over D1 (`schema.sql`). POST `/report` (shape, size and the id patterns checked, a rate limit per hashed address, stored once by id) and `/steps` (the funnel, a player's step stored once), GET `/reports` (newest first, `?before=` pages back, `X-Oldest-Got`) and `/steps` with the `READ_KEY` secret. `README.md` there is how to deploy it; `wrangler.toml` holds the database id. |
 | `tools/sfx-board.html` | Every sound effect on one page of buttons, through the game's own mix and room. Served, `/tools/sfx-board.html`. |
 | `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
 | `PLAYTEST.md` | The first itch.io playtest as a runnable plan: the three questions, the form, the observation sheet, how the numbers are counted, and the go / no-go for the build. |
@@ -190,7 +190,11 @@ windup cells, the seer in witchfire, gold milk grass, levels' `artPass` colours 
 hunter in BROWN + BAND and the clubman SLIM (`PIXEL_STUDY`, baked off the atlas by
 `PIXEL_ART.studyOf`), floors and wall faces as sheets. Nothing packed is replaced: the ART tab
 switches each part, `#aspacked` starts with all of them off. See `ART_HANDOFF.md`; the `art-pass`
-skill is how the next pass is run.
+skill is how the next pass is run. **The second pass** (2 Oct 2026, ART tab's second row): `ART_PASS.shadows`
+(`Renderer.pixelShadow`, stepped shadows), `tells` (rune, slam and landing rings, rifle and hook lines,
+soul trail and ring, DRAGON BREATH in cells via `floorRing` / `floorArc` / `floorLine`; every blow-to-come
+amber), `hay` (`ENV_STUDY`, the straw a step under the goat), `cave` (`FLOOR_SHEET` 'rock', never the trip).
+The room and cave bakes key on `hay` / `cave` (`look`); anything new they change must join that key.
 
 **Props are pixels too** (1.63). `js/prop-pixels.js` draws every prop the painted pack or a primitive
 used to: doors and their debris, sword, shield and the stand of arms (layered: the arm stands IN it),
@@ -272,7 +276,17 @@ facing the camera. `Renderer.artifactIcon` is the one artifact drawing (HUD chip
   rebakes a chunk when `roomBakeSig` (its tiles, the secret walls) changes, `ROOM_BAKE_MAX` a frame, and paints
   one still waiting live. **Anything animated on the tile layer must skip itself while `renderer.baking`** and be
   laid on live (the stairs' glow, `stairGlow`). Windup cells test only the cells a row of the shape can hold
-  (`drawTelegraphCells`' `span`: a charge strip was 120 000 tests, 12 ms).
+  (`drawTelegraphCells`' `span`: a charge strip was 120 000 tests, 12 ms): a swing's row is the disc's chord cut
+  by the wedge, walked in from both ends and laid as one rect (`walk`; 1 Oct 2026, a clubman's windup 0.55 →
+  0.1 ms), and a hound's band is stamped into a bitmap and read back a row's stretch at a time (`dashBits`,
+  1–2.3 → 0.3–0.5 ms). Both draw exactly the cells they did.
+- **The bake's resolution is held, and the rooms warm ahead** (1 Oct 2026): `Renderer.bakeScale` picks it off the
+  zoom with `BAKE_HOLD` of slack, so the run's few-percent pull-back no longer repaints every chunk at each start and
+  stop (a resting zoom of 2.08 sat on the step: 13-20 ms frames against 3); a chunk whose only fault is its
+  resolution is drawn as it is and repainted in idle time, never in a frame (rooms and cave both), and
+  `warmRooms` / `askRoomWarm` paint the rooms' chunks round the view ahead of him in idle time, as `warmCave` does. The idle
+  painters make their own room (`trimBake` with their ring kept, 2 Oct 2026): capped below the frame's own trim, they
+  stopped for good once a floor had filled the budget. A chunk let go is emptied; a bake of a world no longer drawn is dropped.
 - **A thrown exception inside `draw` costs the rest of the frame.** `drawRunes` once measured against
   raw `castWind` while the timer was `castWind * mods.enemySlow`; the negative radius threw
   `IndexSizeError`. Clamp radii; measure a timer against the duration it was given.
@@ -386,7 +400,7 @@ cave and later floors that drew one, grass *before* the cave fails.
 
 **Exits are at the far end.** `pickDoorY` / `pickDoorX` take `enterRow` / `enterCol`; `farthest` drops
 candidates under `DOORS.far` (0.7) of the best distance *before* rolling. Wide-corridor clamping (`fit`)
-applies to the **candidates**, or THE THRESHING FLOOR undoes it. `noteFar` → `room.exitFar` →
+applies to the **candidates**, or THE THRESHING FLOOR undoes it. A side door also prefers rows with a clear tile one step in (`stepClear`, `room.mouths`, `GEN_RULES.doorstep`). `noteFar` → `room.exitFar` →
 `GEN_RULES.farexit`.
 
 **Stacked rooms.** Still one chain. `levelDef.stack` (level two on): `stackSpot` + `carveShaft`. A
@@ -711,6 +725,21 @@ top of `Enemy.update`; `daze` and STUN+POISON call it). The rope is `Renderer.dr
 `game.ensoul(e)` is the only way to set `e.soul` (`soulBearer.hp`), and it is only ever called on a
 boss, who already wears the outline; he is lit too (amber haze, ring, red eyes), a label only.
 
+**Shieldman** (1 Oct 2026, `TUNING.shieldman`). A clubman behind a board: the pseudo-kind `shield` in `THREAT`,
+`ENCOUNTER` (weight 1, cap 1 a room) and `LEVELS` (introduced alone on THE THRESHING FLOOR and THE DARK, then in
+every later pool), spawned by `spawnKind` (gen.js; `threatKind` and rules.js `kindOf` read it back) as a bearer with
+`s.shield`, and `Enemy.giveShield` (`e.shield = { uses, jolt, ang }`, `e.shieldman` for good, `speedMul`).
+`Enemy.update` is now `act` plus the board's weight: whatever way a step wanted him to face, he turns there at
+`turn` rad/s, so circling, a roll or LEAPFROG reach his back and a swing wound up one way goes that way.
+`shieldUp` (not dazed, floored, staggered, stunned, flung, held or alight) and `shieldCovers(x, y)` (within `arc` of
+his facing) are what every reach asks: the horns (`headbuttHits`: the board takes it, the goat bounces off), a round,
+a thrown crate or arm (`hitMan`), the carried sword (`cutWith`), BY THE COLLAR's teeth (`tryGrab`, `closeBite`: GO
+ROUND THE SHIELD), a LIVING SHIELD club (`meleeHit`), and a flung body (`Game.flungHits`: the board is a wall to it,
+the wall's own kill rule). `shieldTakes` spends a use and rocks him back into `braced` (the board still up; it
+shares the floored branch's countdown), and the last use splinters it. Dead with uses left he drops it as a `weapon`
+shield (`dropShield`), not off a fall, a fire or a blast. Drawn by `PaintedArt.board` inside `character` (sprites
+`mshield-f/-s/-b`, `BOARD_POSE` per facing, under him on the back views). Killer token `shield`, SHIELDMAN.
+
 **Fire and blunder.** Alight, a man blunders (`burnDir`, `moveToward` without `game`).
 `immune.blunder` (Butcher, hound) keeps his AI: `ignite` must not set `state = 'burning'` for such a kind
 (no branch → frozen). `immune.fire` refuses ordinary flame (wraith, rat ogre); witchfire is exempt.
@@ -791,7 +820,8 @@ free, the recovery is still eaten whole; a headbutt pressed while idle is never 
 **Roll.** Born in full (`BOON_BASE.roll`); DEAD WEIGHT = `mods.rollStun`. `Goat.rollDirection` scores 24
 angles. Distance is `roll.speed` × `roll.duration`; tune speed, not mercy frames. The stagger after it
 (`rollrecover`) is `roll.recover` s at `roll.recoverMove` of a stride, 0 since 26 Sep 2026, he lands on
-his feet, and landing zeroes `goat.runT`. LEAPFROG
+his feet at `roll.land` of the tumble's speed, and landing zeroes `goat.runT`, unless SPRING HOCKS (`mods.rollKeep`,
+1 Oct 2026) lands him at `keep` of it with the run-up kept. LEAPFROG
 (`mods.leapfrog`): `Goat.leapTarget` / `leapLands` turn a roll at a man into a vault (`goat.leap`,
 still state `roll`, the roll's own i-frames only); while `goat.leap` is set `collideEntities` skips
 the goat and no hole takes him, so **anything that ends the roll must end the leap** (the guard at
@@ -810,6 +840,10 @@ tab has live sliders over all of it (`game.dev.tune`, dev-only).
 
 **Run-up.** `goat.runT` / `goat.runUp`: 1 → `1 + momentum.max` over `momentum.time`, drains at
 `momentum.lose`, a hit takes it all. `momentum.max` is the fifth taken off `goat.speed`; keep them in step.
+BULL NECK (`mods.runButt`, 1 Oct 2026) throws the share of it he had when the head went down (`goat.buttRun`, set at
+the windup) into a man: × `1 + runButt × share` on the impulse, men only. BIG LUNGS (`mods.screamReach`) is one
+multiplier read at every reach of the voice (the call and its balk, THE FULL THROAT, the breath's cone and its fx,
+the spit's flight), never folded into `screamRadius`, which RAW THROAT sets outright.
 
 **Holding a man.** BY THE COLLAR takes a man through a windup: `tryGrab` puts the goat in state
 `'bite'` (`grab.bite`, `biteMove`) with `goat.biting`; `closeBite` takes him only if he is still
@@ -944,6 +978,14 @@ red barrel (1.79, `js/prop-pixels.js` `barrel`): iron hoops, a wooden head with 
 on the staves. On its side it lies across the way it was sent (`p.rollAxis`, set in `roll`: 'v' going
 left or right) and turns a frame (`barrel-lie0..7`, `barrel-up0..7`) every eighth of its girth off the
 signed `p.rollD`, so it rolls back the other way off a wall. It never kills by itself (pillar 3): the wall behind the man does.
+**A round into a barrel** (1 Oct 2026, `Bullet.update`) lights its oil on the ordinary `fuse` (it says OIL), and breaks a
+poison one open. **A blast goes through the room** (`Prop.blastRoom`, called by a bomb, BOMB CHARGE's man, a
+barrel's `oilBurst` and `Status.blast`): within its radius and line of sight a barrel is lit `barrel.chain` short (a
+poison one meets the flame: `toxicBurst`, guarded by `bursting`), a lamp topples away from it, a crate shatters, a
+bomb lying there is lit `bomb.chain` short, a brazier spills, the gong rings, a cracked wall opens outright, a
+boulder cracks and a cleat's rope is cut. So a row of barrels goes up one after another.
+**What a blast reaches** (2 Oct 2026): stone and a shut door stop every blast (`Game.blastClear`, `Prop.blastStop`), and its
+hearts are once a chain: `Status.spared` (`status.blast.guard`) is asked by the bomb, BOMB CHARGE and the poison blast.
 **A barrel of poison** (30 Sep 2026, `p.toxic`, never `venom`, VENOM JAW's drip mark, `barrel.venom`): `chance` of the barrels placed, off the
 same stream; green sprites (`vbarrel*`, the head wet where the red one has powder); `light` refuses it, a
 brazier only smashes it, and broken it lays `tiles` (6) of poison with `Status.spatter` instead of powder.
@@ -1044,7 +1086,8 @@ the lamps out and a softened copy of its curve). It is not in LEVELS: THE FORK's
 to it and it is played in THE THRESHING FLOOR's place (`darkOf`, via `game.darkAt`, which is only
 ever that index; `startLevel` refuses any other). Unlike the trip it stays that floor to whatever asks
 which floor it is: **ask `levelIndexOf(def)`, not `LEVELS.indexOf`** (mouse, milk rhythm, shrooms).
-Its own canon THE LAMP (five `canon: 'lamp'` templates: well, lampvault, cellblock, chapel, lampstore),
+Its own canon THE LAMP (eight `canon: 'lamp'` templates: well, lampvault, cellblock, chapel, lampstore,
+crossing, scriptorium, cistern; a block of stone in one is never three tiles thick, its unlit middle reads as a hole),
 its own crowd (hounds and seers weighted up, no rifle ever, a cap of six), curve, doors and palette;
 its own par (`scoreFor(..., def)`) and best (`noteBest('dark')`); its own LEVELS row (row 1; with
 `#dark` any row starts it). **The lamps are the level** (`gen.js`, `TUNING.dark.lamps`): every room
@@ -1233,6 +1276,9 @@ a duck of its own (`scoreDuck`, `sfxDuck`, `ambDuck`); `keyBus` goes round them.
 beat; the groan, a chain's `sfxKill` and an ogre's `sfxBell(true)` are on `keyBus` too. Keep `keyBus` for the
 few moments that must win: if everything is on it, nothing is. `foley.stack` thins one key fired again within
 `window` s (× `mul` a copy, none past `max`).
+
+**The score is laid `audio.ahead` s ahead** (0.25) of the ear by a 25 ms timer on the main thread: a stall longer than
+that skips the steps due in it (notes cut off). Keep it over the longest stall a weak machine has.
 
 **Effects.** No oscillator goes straight to the speakers from an `sfx*`: each is `GameAudio.foley(recipe)`,
 a `Foley` recipe (`js/foley.js`) rendered into a buffer, a struck thing as its ringing `modes`, a

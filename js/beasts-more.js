@@ -88,7 +88,7 @@ Object.assign(Beast, {
     const ctx = R.ctx, T = 1.35 * (k || 1), C = TUNING.prop[p.kind];
     let name, lift = 0;
     if (p.kind === 'rabbit') {
-      const ph = ((p.bob || 0) / 3 / C.hop) % 1, moving = Math.hypot(p.vx || 0, p.vy || 0) > 8;
+      const ph = ((p.bob || 0) / 3 / C.hop) % 1, moving = hyp(p.vx || 0, p.vy || 0) > 8;
       name = moving && ph < C.hopShare ? 'rabbit-hop' : 'rabbit-sit';
       if (moving && ph < C.hopShare) lift = Math.sin(ph / C.hopShare * Math.PI) * C.hopH;
     } else name = p.singing > 0 ? 'husky-sing' : 'husky-stand';
@@ -96,7 +96,7 @@ Object.assign(Beast, {
     R.shadow(p.x, p.y + 2, w * 0.38, w * 0.16);
     ctx.save(); ctx.translate(p.x, p.y + 3); ctx.scale((p.face || 1) < 0 ? -1 : 1, 1 / TILT);
     if (p.hurtFlash > 0) ctx.filter = 'brightness(2)';
-    const bob = p.kind === 'husky' && Math.hypot(p.vx || 0, p.vy || 0) > 8 ? Math.round(Math.abs(Math.sin((p.bob || 0) * 3)) * 1.5) : 0;
+    const bob = p.kind === 'husky' && hyp(p.vx || 0, p.vy || 0) > 8 ? Math.round(Math.abs(Math.sin((p.bob || 0) * 3)) * 1.5) : 0;
     PROP_PIXELS.draw(ctx, name, -w / 2, -h - lift - bob, T);
     ctx.restore();
   },
@@ -119,7 +119,7 @@ Object.assign(Beast, {
   // Going: away from him and out of the picture.
   updateRefused(p, dt, game) {
     p.refused -= dt;
-    const g = game.goat, dx = p.x - g.x, dy = p.y - g.y, d = Math.hypot(dx, dy) || 1;
+    const g = game.goat, dx = p.x - g.x, dy = p.y - g.y, d = hyp(dx, dy) || 1;
     Beast.step(p, game, dx / d, dy / d, (TUNING.prop[p.kind] && TUNING.prop[p.kind].speed) || 60, dt);
     if (p.refused <= 0) { p.broken = true; p.dead = true; game.particles(p.x, p.y, 10, PALETTE.ash, 90); }
   },
@@ -148,7 +148,7 @@ Object.assign(Beast, {
     if (p.task === 'practice') {
       const room = roomAt(L, g.x, g.y);
       const empty = room && !game.enemies.some((e) => !e.dead && !e.scripted && roomAt(L, e.x, e.y) === room);
-      if (!game.song && empty && roomAt(L, p.x, p.y) === room && Math.hypot(g.x - p.x, g.y - p.y) < C.practice.near * TILE) return Beast.startSong(game, p, room, true);
+      if (!game.song && empty && roomAt(L, p.x, p.y) === room && hyp(g.x - p.x, g.y - p.y) < C.practice.near * TILE) return Beast.startSong(game, p, room, true);
       return Beast.follow(p, dt, game, C);
     }
     if (p.task === 'lead' || p.task === 'wait') {
@@ -172,7 +172,7 @@ Object.assign(Beast, {
       if (!inside) { const on = Beast.onward(p, game); if (on) Beast.step(p, game, on.x, on.y, C.speed, dt); else { p.vx = 0; p.vy = 0; } }
       else {
         p.task = 'wait';
-        const dx = cx - p.x, dy = cy - p.y, d = Math.hypot(dx, dy);
+        const dx = cx - p.x, dy = cy - p.y, d = hyp(dx, dy);
         if (d > TILE) Beast.step(p, game, dx / d, dy / d, C.speed, dt); else { p.vx = 0; p.vy = 0; p.face = Math.sign(g.x - p.x) || 1; }
         if (!game.song && roomAt(L, g.x, g.y) === room) Beast.startSong(game, p, room);
       }

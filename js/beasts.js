@@ -98,7 +98,7 @@ const Beast = {
     // `behind` is how many rooms back it is; at one, the next room he walks into walls it in
     // (the clamp takes rooms two behind), and it calls twice as often and its pip goes red.
     p.strayT = (p.strayT || 0) - dt;
-    const B = TUNING.beast, d = Math.hypot(p.x - game.goat.x, p.y - game.goat.y) / TILE;
+    const B = TUNING.beast, d = hyp(p.x - game.goat.x, p.y - game.goat.y) / TILE;
     const r = game.level && roomAt(game.level, p.x, p.y);
     p.behind = (game.goatRoom || 0) - (r ? r.index : game.nearestRoomIdx(p.x, p.y, game.goatRoom || 0));
     // The crow's gift bird (`placeGift`) is not an escort and is never left behind.
@@ -120,7 +120,7 @@ const Beast = {
     // the hen and the hound do. An animal walking about explains nothing on its own.
     if (p.gift) return Beast.updateGift(p, dt, game);
     if (p.refused > 0) return Beast.updateRefused(p, dt, game);   // said no to: it goes its way (js/beasts-more.js)
-    if (Math.hypot(p.x - game.goat.x, p.y - game.goat.y) < TUNING.beast.tellFor * TILE) Beast.met(game, p);
+    if (hyp(p.x - game.goat.x, p.y - game.goat.y) < TUNING.beast.tellFor * TILE) Beast.met(game, p);
     if (p.kind === 'tortoise') return Beast.updateTortoise(p, dt, game);
     if (p.kind === 'goose') return Beast.updateGoose(p, dt, game);
     if (p.kind === 'crow') return Beast.updateCrow(p, dt, game);
@@ -156,7 +156,7 @@ const Beast = {
   // round rather than a nose against it. Past the ninety tiles the goat's field reaches, an animal
   // left that far behind heads down the way out instead, he is somewhere along it, ahead.
   toGoat(p, game) {
-    const g = game.goat, w = game.world, dx = g.x - p.x, dy = g.y - p.y, d = Math.hypot(dx, dy) || 1;
+    const g = game.goat, w = game.world, dx = g.x - p.x, dy = g.y - p.y, d = hyp(dx, dy) || 1;
     if (d < 3 * TILE && w.los(p.x, p.y, g.x, g.y)) return { x: dx / d, y: dy / d, d };
     const f = Beast.way(p, game, w.route, w.flow, 'goat') || (Beast.ahead(p, game) < 0 ? Beast.onward(p, game) : null);
     return f ? { x: f.x, y: f.y, d } : { x: dx / d, y: dy / d, d };
@@ -177,8 +177,8 @@ const Beast = {
     c.t -= 1 / 60;
     if (c.t > 0) {
       if (c.none) return null;
-      if (c.wp && Math.hypot(c.wp.x - p.x, c.wp.y - p.y) > P.reach * TILE) {
-        const l = Math.hypot(c.wp.x - p.x, c.wp.y - p.y) || 1;
+      if (c.wp && hyp(c.wp.x - p.x, c.wp.y - p.y) > P.reach * TILE) {
+        const l = hyp(c.wp.x - p.x, c.wp.y - p.y) || 1;
         return { x: (c.wp.x - p.x) / l, y: (c.wp.y - p.y) / l };
       }
     }
@@ -213,7 +213,7 @@ const Beast = {
     const props = game.props.filter((q) => q !== p && !q.broken && q.blocking && Math.abs(q.x - p.x) < R && Math.abs(q.y - p.y) < R);
     c.wp = pts[0]; c.none = false;
     for (let k = pts.length - 1; k > 0; k--) if (Enemy.prototype.bodyClear.call(p, game, pts[k].x, pts[k].y, r, props)) { c.wp = pts[k]; break; }
-    const l = Math.hypot(c.wp.x - p.x, c.wp.y - p.y) || 1;
+    const l = hyp(c.wp.x - p.x, c.wp.y - p.y) || 1;
     return { x: (c.wp.x - p.x) / l, y: (c.wp.y - p.y) / l };
   },
 
@@ -230,16 +230,16 @@ const Beast = {
     for (const e of game.liveEnemies) {
       if (e.dead || e.held || e.ghosted || e.scripted || (!e.aware && !own.shyAll)) continue;
       if (e.state === 'floored' || e.state === 'stunned' || e.state === 'flung') continue;
-      const d = Math.hypot(e.x - p.x, e.y - p.y);
+      const d = hyp(e.x - p.x, e.y - p.y);
       if (d < md) { md = d; man = e; }
     }
     if (!man) return null;
-    let ax = g.x - man.x, ay = g.y - man.y, al = Math.hypot(ax, ay);
+    let ax = g.x - man.x, ay = g.y - man.y, al = hyp(ax, ay);
     // With the goat not between them at all, the man is nearer to him than the animal is, or the
     // goat is nowhere near, the only way to be out of reach is simply away from the man.
-    if (al < 1 || Math.hypot(g.x - p.x, g.y - p.y) > B.shyR * B.shyFar * TILE) { ax = p.x - man.x; ay = p.y - man.y; al = Math.hypot(ax, ay) || 1; }
+    if (al < 1 || hyp(g.x - p.x, g.y - p.y) > B.shyR * B.shyFar * TILE) { ax = p.x - man.x; ay = p.y - man.y; al = hyp(ax, ay) || 1; }
     const tx = g.x + (ax / al) * B.shyBack * TILE, ty = g.y + (ay / al) * B.shyBack * TILE;
-    const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+    const dx = tx - p.x, dy = ty - p.y, d = hyp(dx, dy);
     if (d < TILE * B.shyArrive) return { x: 0, y: 0, d: 0 };
     return { x: dx / d, y: dy / d, d };
   },
@@ -256,7 +256,7 @@ const Beast = {
       const drag = Math.exp(-C.drag * dt);
       p.vx *= drag; p.vy *= drag;
       p.x += p.vx * dt; p.y += p.vy * dt;
-      const spd = Math.hypot(p.vx, p.vy) || 1;
+      const spd = hyp(p.vx, p.vy) || 1;
       const impact = game.world.collideCircle(p);
       // A shell is not a crate: nothing it hits breaks, and it does not break either. It stops.
       if (impact > 2 || p.hitProp(game, p.vx / spd, p.vy / spd) || spd < 90) Beast.land(p, game);
@@ -265,7 +265,7 @@ const Beast = {
         // And a man is not a wall: a shell in the face floors him for `crate.stun` exactly the way a
         // crate does, the one difference being that the shell is still there afterwards.
         for (const e of game.enemies) {
-          if (e.dead || e.held || e.ghosted || Math.hypot(e.x - p.x, e.y - p.y) > e.r + p.r) continue;
+          if (e.dead || e.held || e.ghosted || hyp(e.x - p.x, e.y - p.y) > e.r + p.r) continue;
           // Never out of a leap: staggered mid-air over a drop, the pit check took all his hearts.
           if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.45; } }
           else {
@@ -290,7 +290,7 @@ const Beast = {
   // Out of the mouth, flat and hard. `Goat.throwHeld` sends it the same way it sends a crate; this
   // is only what it does in the air, and `flying` is what keeps it off its own legs while it is up.
   throwTortoise(p, game, ax, ay) {
-    const C = TUNING.prop.tortoise, l = Math.hypot(ax, ay) || 1;
+    const C = TUNING.prop.tortoise, l = hyp(ax, ay) || 1;
     p.flying = true; p.vx = (ax / l) * C.throwSpeed; p.vy = (ay / l) * C.throwSpeed;
     if (Math.abs(ax) > 0.1) p.face = Math.sign(ax);
     game.world.emitNoise(p.x, p.y, TUNING.noise.smash * 0.4);
@@ -314,7 +314,7 @@ const Beast = {
     for (const p of game.props) {
       if (p.kind !== 'tortoise' || p.broken || p.flying || p.held || p.coolT > 0) continue;
       const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2; if (t <= 0 || t >= 1) continue;
-      if (Math.hypot(a.x + dx * t - p.x, a.y + dy * t - p.y) < p.r + R) return p;
+      if (hyp(a.x + dx * t - p.x, a.y + dy * t - p.y) < p.r + R) return p;
     }
     return null;
   },
@@ -347,7 +347,7 @@ const Beast = {
     // mid-swing loses the swing. That second half is the only parry in the game with no range on it.
     for (const e of game.liveEnemies) {
       if (e.dead || e.held || e.ghosted) continue;
-      if (Math.hypot(e.x - p.x, e.y - p.y) > C.seeR * TILE) continue;
+      if (hyp(e.x - p.x, e.y - p.y) > C.seeR * TILE) continue;
       if (!game.sees(p.x, p.y, e.x, e.y)) continue;
       Beast.honk(p, game, e);
       return;
@@ -364,7 +364,7 @@ const Beast = {
     game.world.emitNoise(p.x, p.y, C.callR);
     for (const e of game.liveEnemies) {
       if (e.dead || e.held || e.ghosted) continue;
-      if (Math.hypot(e.x - p.x, e.y - p.y) > C.seeR * TILE) continue;
+      if (hyp(e.x - p.x, e.y - p.y) > C.seeR * TILE) continue;
       e.aware = true;
       if (e.balk) e.balk(game, C.balkStun);
     }
@@ -445,7 +445,7 @@ const Beast = {
     if (home(p.x, p.y)) {
       p.home = true; p.vx = 0; p.vy = 0; p.rear = 0;
       if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x);
-      if (!p.told && Math.hypot(g.x - p.x, g.y - p.y) < C.tellR * TILE && !game.floats.some((t) => t.pact)) {
+      if (!p.told && hyp(g.x - p.x, g.y - p.y) < C.tellR * TILE && !game.floats.some((t) => t.pact)) {
         p.told = true; Beast.speak(game, p, [C.lines[p.goatFirst ? 'lost' : 'won'], C.lines[p.won > 0 ? 'pay' : 'none']]);
       }
       return;
@@ -454,7 +454,7 @@ const Beast = {
     if (p.rear > 0) {
       p.rear -= dt; p.vx = 0; p.vy = 0;
       if (p.rear <= 0 && p.kickDoor) {
-        const d = p.kickDoor, l = Math.hypot(d.x - p.x, d.y - p.y) || 1;
+        const d = p.kickDoor, l = hyp(d.x - p.x, d.y - p.y) || 1;
         d.smash(game, (d.x - p.x) / l, (d.y - p.y) / l, null);
         game.audio.sfxAnimal('horse'); p.kickT = C.kickGap; p.kickDoor = null;
       }
@@ -540,13 +540,13 @@ const Beast = {
   // The shut door it has run into: blocking, and touching its front, the slab, not a disc, the way
   // `collideEntities` holds a body against it.
   doorAhead(p, game) {
-    const D = TUNING.prop.door, sp = Math.hypot(p.vx, p.vy);
+    const D = TUNING.prop.door, sp = hyp(p.vx, p.vy);
     for (const q of game.props) {
       if (q.kind !== 'door' || !q.blocking) continue;
       if (Math.abs(q.x - p.x) > D.r + p.r + TILE || Math.abs(q.y - p.y) > D.r + p.r + TILE) continue;
       const hx = q.vertical ? D.thick / 2 : D.r, hy = q.vertical ? D.r : D.thick / 2;
       const cx = clamp(p.x, q.x - hx, q.x + hx), cy = clamp(p.y, q.y - hy, q.y + hy);
-      if (Math.hypot(p.x - cx, p.y - cy) > p.r + 4) continue;
+      if (hyp(p.x - cx, p.y - cy) > p.r + 4) continue;
       // Leaning on it, or on the way into it: a door beside the way it is going is not in its way.
       const on = Beast.onward(p, game), ax = on ? on.x : p.vx / (sp || 1), ay = on ? on.y : p.vy / (sp || 1);
       if ((cx - p.x) * ax + (cy - p.y) * ay > 0) return q;
@@ -557,16 +557,16 @@ const Beast = {
   // about the goat and nothing more, the cult hardly minds a horse. The ogre and the rat ogre are
   // not moved by anything, and a horse into one is only a horse slowed.
   bowl(p, game) {
-    const C = TUNING.prop.horse, sp = Math.hypot(p.vx, p.vy);
+    const C = TUNING.prop.horse, sp = hyp(p.vx, p.vy);
     if (sp < C.speed * 0.3) return;
     const hx = p.vx / sp, hy = p.vy / sp;
     for (const e of game.liveEnemies) {
       if (e.dead || e.held || e.ghosted || e.scripted || e.state === 'flung' || e.state === 'floored') continue;
-      if (Math.hypot(e.x - p.x, e.y - p.y) > e.r + p.r + 2) continue;
+      if (hyp(e.x - p.x, e.y - p.y) > e.r + p.r + 2) continue;
       p.slowT = C.slowFor;
       if (e.kind === 'butcher' || e.kind === 'ratogre') continue;
       const side = (e.x - p.x) * -hy + (e.y - p.y) * hx >= 0 ? 1 : -1;
-      const dx = hx * 0.45 - hy * side, dy = hy * 0.45 + hx * side, l = Math.hypot(dx, dy), k = C.bowl * e.knockMul() / l;
+      const dx = hx * 0.45 - hy * side, dy = hy * 0.45 + hx * side, l = hyp(dx, dy), k = C.bowl * e.knockMul() / l;
       const was = e.aware;
       e.fling(dx * k, dy * k, false); e.aware = was;
       e.dazed = Math.max(e.dazed || 0, C.daze);
@@ -597,7 +597,7 @@ const Beast = {
     const late = (p.behind || 0) >= C.late;
     const mark = late ? null : Beast.nearestMark(game, p);
     if (mark) {
-      const dx = mark.x - p.x, dy = mark.y - p.y, d = Math.hypot(dx, dy) || 1;
+      const dx = mark.x - p.x, dy = mark.y - p.y, d = hyp(dx, dy) || 1;
       if (d < C.perch * TILE) {
         p.vx = 0; p.vy = 0; p.feeding = true;
         // A few mouthfuls and it is done with that one (`feedFor`) and on to the next body down the
@@ -642,7 +642,7 @@ const Beast = {
     let best = null, bs = Infinity;
     for (const m of list) {
       if (m.done || game.timer - m.t > C.markFor) continue;
-      const d = Math.hypot(m.x - p.x, m.y - p.y);
+      const d = hyp(m.x - p.x, m.y - p.y);
       if (d > C.markR * TILE) continue;
       // A straight run to it over floor, not only a line of sight: a body across a drop is in sight,
       // and on the rafters the crow stood at the lip of the hole for good, trying to walk to it.
@@ -700,7 +700,7 @@ const Beast = {
   cameWith(p, game) {
     if (p.broken || p.dead) return false;
     const g = game.goat, C = TUNING.prop[p.kind] || {};
-    if (p.held || Math.hypot(p.x - g.x, p.y - g.y) <= (C.saveR || 8) * TILE) return true;
+    if (p.held || hyp(p.x - g.x, p.y - g.y) <= (C.saveR || 8) * TILE) return true;
     if (!game.level) return false;
     const top = game.goatRoom || 0, r = roomAt(game.level, p.x, p.y);
     return (r ? r.index : game.nearestRoomIdx(p.x, p.y, top)) >= top - (C.saveRooms || 0);
@@ -762,7 +762,7 @@ const Beast = {
       p.vx = 0; p.vy = 0;
       if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x);
       const done = !w || w.broken || w.chosen;
-      if (!done && Math.hypot(g.x - p.x, g.y - p.y) < C.giftLeave * TILE) return;
+      if (!done && hyp(g.x - p.x, g.y - p.y) < C.giftLeave * TILE) return;
       p.leaving = 0; p.face = g.x > p.x ? -1 : 1;
       game.audio.sfxAnimal && game.audio.sfxAnimal('crow');
       game.particles(p.x, p.y, 5, PALETTE.ink, 110);
@@ -907,12 +907,12 @@ const Beast = {
       let bd = C.smell * TILE;
       for (const h of game.props) {
         if (h.kind !== 'heal' || h.broken || h.pail > 0) continue;
-        const d = Math.hypot(h.x - p.x, h.y - p.y);
+        const d = hyp(h.x - p.x, h.y - p.y);
         if (d < bd && game.world.los(p.x, p.y, h.x, h.y)) { bd = d; q = h; }
       }
     }
     if (q) {
-      const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
+      const dx = q.x - p.x, dy = q.y - p.y, d = hyp(dx, dy) || 1;
       if (d > C.eatR * TILE) { p.eating = q; p.chew = 0; Beast.step(p, game, dx / d, dy / d, C.speed, dt); return; }
       p.vx = 0; p.vy = 0; p.eating = q; if (Math.abs(dx) > 2) p.face = Math.sign(dx);
       p.chew = (p.chew || 0) + dt;

@@ -1,6 +1,6 @@
 // RUN STATS' receiver (1 Oct 2026): a Cloudflare Worker over a D1 database. The game (js/stats.js)
-// POSTs one life's report to /report; tools/stats.html GETs them back from /reports with the secret
-// READ_KEY. Nothing else is served. Deployed with wrangler (see README.md beside this file).
+// POSTs one life's report to /report and the funnel's steps (`Stats.step`) to /steps; tools/stats.html
+// GETs them back from /reports and /steps with the secret READ_KEY. Nothing else is served. Deployed with wrangler (see README.md beside this file).
 //
 // The address is in the game's code, so anyone can post to it: everything that arrives is checked
 // for shape and size, one address may post `RATE` reports a minute, and a report is stored by its
@@ -10,15 +10,23 @@
 const MAX_BODY = 60000;      // bytes: a long life's report is ~10 KB
 const RATE = 20;             // reports a minute from one address
 const MAX_FLOORS = 20;
+// The funnel's step names (js/stats.js `step`); anything else is refused.
+const STEP = /^(open|start|death|restart|clear1|win|reach\d{1,2})$/;
+// The ids the game writes (js/stats.js): 'p-' and 'r-' then base 36 (a random run and a clock tail).
+// Anything else is a forger's, and a player id is what the funnel counts people by, so a made-up one
+// is a made-up person.
+const PLAYER = /^p-[a-z0-9]{4,24}$/;
+const RUNID = /^r-[a-z0-9]{6,28}$/;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
+  'Access-Control-Expose-Headers': 'X-Oldest-Got',
 };
-const reply = (status, body, type = 'application/json') =>
-  new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': type } });
+const reply = (status, body, type = 'application/json', extra = {}) =>
+  new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': type, ...extra } });
 
 const str = (v, n) => typeof v === 'string' && v.length > 0 && v.length <= n;
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -47,7 +55,7 @@ function floorOk(f) {
 }
 function check(r) {
   if (!obj(r)) return null;
-  if (!str(r.id, 40) || !str(r.player, 40) || !str(r.build, 16)) return null;
+  if (!str(r.id, 40) || !RUNID.test(r.id) || !str(r.player, 40) || !PLAYER.test(r.player) || !str(r.build, 16)) return null;
   if (!num(r.at) || r.at < 1e12 || r.at > 4e12) return null;
   if (!Array.isArray(r.floors) || r.floors.length < 1 || r.floors.length > MAX_FLOORS || !r.floors.every(floorOk)) return null;
   const e = r.end;
@@ -65,9 +73,31 @@ async function sameKey(a, b) {
   return diff === 0;
 }
 
+// `{ player, release, steps: { name: { at, build } } }` as `Stats.flushSteps` writes it, or null.
+function checkSteps(b) {
+  if (!obj(b) || !str(b.player, 40) || !PLAYER.test(b.player) || !obj(b.steps)) return null;
+  const e = Object.entries(b.steps);
+  if (!e.length || e.length > 16) return null;
+  for (const [k, v] of e) if (!STEP.test(k) || !obj(v) || !num(v.at) || v.at < 1e12 || v.at > 4e12 || !str(v.build, 16)) return null;
+  return b;
+}
+
 async function hash(text) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(d)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function keyed(req, env) {
+  return !!env.READ_KEY && sameKey(req.headers.get('Authorization') || '', 'Bearer ' + env.READ_KEY);
+}
+
+// One address may post `RATE` times a minute, reports and steps together. The hit is written first
+// and then counted, so posts sent at once all see each other.
+async function tooFast(req, env, now) {
+  const ip = await hash((req.headers.get('CF-Connecting-IP') || '?') + (env.SALT || ''));
+  await env.DB.prepare('INSERT INTO hits (ip, at) VALUES (?, ?)').bind(ip, now).run();
+  const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM hits WHERE ip = ? AND at > ?').bind(ip, now - 60000).first();
+  return !!(recent && recent.n > RATE);
 }
 
 export default {
@@ -85,11 +115,7 @@ export default {
       if (!r) return reply(400, { error: 'not a report' });
 
       const now = Date.now();
-      const ip = await hash((req.headers.get('CF-Connecting-IP') || '?') + (env.SALT || ''));
-      // The hit is written first and then counted, so posts sent at once all see each other.
-      await env.DB.prepare('INSERT INTO hits (ip, at) VALUES (?, ?)').bind(ip, now).run();
-      const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM hits WHERE ip = ? AND at > ?').bind(ip, now - 60000).first();
-      if (recent && recent.n > RATE) return reply(429, { error: 'slow down' });
+      if (await tooFast(req, env, now)) return reply(429, { error: 'slow down' });
 
       const e = r.end;
       await env.DB.batch([
@@ -102,18 +128,43 @@ export default {
       return reply(200, { ok: true });
     }
 
-    if (req.method === 'GET' && url.pathname === '/reports') {
-      const auth = req.headers.get('Authorization') || '';
-      if (!env.READ_KEY || !(await sameKey(auth, 'Bearer ' + env.READ_KEY))) return reply(401, { error: 'key' });
+    // A player's step is kept once, the first time it arrives: a resend is not a second player.
+    if (req.method === 'POST' && url.pathname === '/steps') {
+      const text = await req.text();
+      if (text.length > 4000) return reply(413, { error: 'too big' });
+      let b = null;
+      try { b = checkSteps(JSON.parse(text)); } catch (e) { b = null; }
+      if (!b) return reply(400, { error: 'not steps' });
+      const now = Date.now();
+      if (await tooFast(req, env, now)) return reply(429, { error: 'slow down' });
+      await env.DB.batch(Object.entries(b.steps).map(([k, v]) =>
+        env.DB.prepare('INSERT OR IGNORE INTO steps (player, step, at, build, release, got) VALUES (?, ?, ?, ?, ?, ?)')
+          .bind(b.player, k, Math.round(v.at), v.build, b.release ? 1 : 0, now)));
+      return reply(200, { ok: true });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/steps') {
+      if (!(await keyed(req, env))) return reply(401, { error: 'key' });
       const since = +url.searchParams.get('since') || 0;
+      const { results } = await env.DB.prepare('SELECT player, step, at, build, release FROM steps WHERE got > ? ORDER BY got DESC LIMIT 50000').bind(since).all();
+      return reply(200, results);
+    }
+
+    // Newest first: the dashboard asked for the oldest `limit` before and so never saw the latest
+    // lives once a few thousand had come in. `before` pages back (a got), `X-Oldest-Got` is the next one.
+    if (req.method === 'GET' && url.pathname === '/reports') {
+      if (!(await keyed(req, env))) return reply(401, { error: 'key' });
+      const since = +url.searchParams.get('since') || 0;
+      const before = +url.searchParams.get('before') || 0;
       const build = url.searchParams.get('build');
       const asked = Math.floor(+url.searchParams.get('limit'));
       const limit = asked >= 1 && asked <= 5000 ? asked : 5000;
-      const q = build
-        ? env.DB.prepare('SELECT report FROM reports WHERE got > ? AND build = ? ORDER BY got LIMIT ?').bind(since, build, limit)
-        : env.DB.prepare('SELECT report FROM reports WHERE got > ? ORDER BY got LIMIT ?').bind(since, limit);
-      const { results } = await q.all();
-      return reply(200, '[' + results.map((x) => x.report).join(',') + ']');
+      const where = ['got > ?'], args = [since];
+      if (before) { where.push('got <= ?'); args.push(before); }
+      if (build) { where.push('build = ?'); args.push(build); }
+      const { results } = await env.DB.prepare(`SELECT report, got FROM reports WHERE ${where.join(' AND ')} ORDER BY got DESC LIMIT ?`).bind(...args, limit).all();
+      const oldest = results.length ? results[results.length - 1].got : 0;
+      return reply(200, '[' + results.map((x) => x.report).join(',') + ']', 'application/json', { 'X-Oldest-Got': String(oldest) });
     }
 
     if (url.pathname === '/') return reply(200, 'goat stats: alive', 'text/plain');

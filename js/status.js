@@ -76,6 +76,16 @@ const Status = {
   // A small bomb: the poison meeting a flame. Everybody inside `hitR`
   // takes a hit, everybody out to `radius` is thrown, the goat is shoved and never hurt, and any
   // poison on the floor inside it is burnt off so one puddle cannot go off twice.
+  // A blast's hearts are once a chain: true while `o` is still spared by the last blast that hurt him
+  // (`blast.guard` s), and otherwise he is marked hurt now. The poison blast, the bomb and BOMB CHARGE all
+  // ask it, so a bomb by a poison barrel is two hearts at most, not three in one frame (2 Oct 2026).
+  spared(game, o) {
+    const G = TUNING.status.blast.guard;
+    if (!G) return false;
+    if (o.blastAt !== undefined && game.timer - o.blastAt < G) return true;
+    o.blastAt = game.timer; return false;
+  },
+
   blast(game, x, y, B, source, green = true) {
     const R = B.radius * TILE, w = game.world;
     game.fx.explosion(x, y, R * 0.8, false);
@@ -95,24 +105,24 @@ const Status = {
     }
     for (const o of game.enemies) {
       if (o.dead || o.held || o.ghosted) continue;
-      const ddx = o.x - x, ddy = o.y - y, d = Math.hypot(ddx, ddy);
+      const ddx = o.x - x, ddy = o.y - y, d = hyp(ddx, ddy);
       if (d > R + o.r) continue;
-      if (o !== source && !w.los(x, y, o.x, o.y)) continue;
+      if (o !== source && !game.blastClear(x, y, o.x, o.y)) continue;
       const nx = ddx / (d || 1), ny = ddy / (d || 1);
       o.poison = 0;
       if (d <= B.hitR * TILE + o.r || o === source) {
         // `hits` hearts once, not once a blast: the rest of the chain it set off passes him by for
         // `guard` s (`TUNING.status.blast`).
         const hits = B.hits || 1;
-        if (B.guard && game.timer - (o.blastAt === undefined ? -Infinity : o.blastAt) < B.guard) continue;
-        if (B.guard) o.blastAt = game.timer;
+        if (Status.spared(game, o)) continue;
         // Hearts, but never out of the air: a leap over a drop knocked down is a fall to his death.
         if (o.kind === 'butcher') { o.hp -= hits; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = 0.4; } if (o.hp <= 0) o.die(game, 'boom', nx, ny); else Stats.blow(game, o, 'boom'); }
         else for (let k = 0; k < hits && !o.dead; k++) o.die(game, 'boom', nx, ny);
       } else if (o.kind !== 'butcher') o.fling(nx * B.impulse, ny * B.impulse, true);
     }
-    const g = game.goat, gd = Math.hypot(g.x - x, g.y - y);
+    const g = game.goat, gd = hyp(g.x - x, g.y - y);
     if (!g.dead && gd < R + g.r) { g.vx += (g.x - x) / (gd || 1) * B.goatPush; g.vy += (g.y - y) / (gd || 1) * B.goatPush; }
+    Prop.blastRoom(game, x, y, R, false);   // the barrels, lamps and crates round it too
   },
 
   // A square of poison: `half` tiles either side of the tile the point is in. Whoever is standing
@@ -207,7 +217,7 @@ const Status = {
     let n = 0;
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
-      const dx = e.x - g.x, dy = e.y - g.y, d = Math.hypot(dx, dy);
+      const dx = e.x - g.x, dy = e.y - g.y, d = hyp(dx, dy);
       if (d > R + e.r || (dx * g.aim.x + dy * g.aim.y) / (d || 1) > S.back) continue;
       Status.poison(game, e); n++;
     }
@@ -256,7 +266,7 @@ const Status = {
           // Poison splashes: whoever it meets on the way has it, not only whoever stands in it after.
           for (const e of game.enemies) {
             if (e === o || e.dead || e.held || e.ghosted || (o.venomHit && o.venomHit.has(e))) continue;
-            if (Math.hypot(e.x - o.x, e.y - o.y) > e.r + (o.r || 0) + J.touch) continue;
+            if (hyp(e.x - o.x, e.y - o.y) > e.r + (o.r || 0) + J.touch) continue;
             (o.venomHit || (o.venomHit = new Set())).add(e);
             Status.poison(game, e);
           }
@@ -282,10 +292,10 @@ const Status = {
     const w = game.world, B = TUNING.status.brand, b = o.brand, g = game.goat;
     const tile = (x, y) => Math.floor(y / TILE) * w.W + Math.floor(x / TILE);
     const here = tile(o.x, o.y), goat = tile(g.x, g.y);
-    const n = Math.max(1, Math.ceil(Math.hypot(o.x - b.lx, o.y - b.ly) / (TILE * 0.5)));
+    const n = Math.max(1, Math.ceil(hyp(o.x - b.lx, o.y - b.ly) / (TILE * 0.5)));
     for (let k = 0; k < n; k++) {
       const x = b.lx + (o.x - b.lx) * k / n, y = b.ly + (o.y - b.ly) * k / n, t = tile(x, y);
-      if (t === here || t === goat || Math.hypot(x - b.ox, y - b.oy) < B.gap * TILE) continue;
+      if (t === here || t === goat || hyp(x - b.ox, y - b.oy) < B.gap * TILE) continue;
       w.ignite(Math.floor(x / TILE), Math.floor(y / TILE), true, B.burn, b.witch);
     }
     b.lx = o.x; b.ly = o.y;
@@ -296,8 +306,9 @@ const Status = {
   spit(game, g) {
     const S = TUNING.status.spit;
     g.screamCd = game.mods.screamCooldown; g.screaming = 0.3;
+    // BIG LUNGS: the glob flies further (`mods.screamReach`), at the same speed.
     game.globs.push({ x: g.x + g.aim.x * 14, y: g.y + g.aim.y * 14, vx: g.aim.x * S.speed, vy: g.aim.y * S.speed,
-      life: S.range * TILE / S.speed });
+      life: S.range * (game.mods.screamReach || 1) * TILE / S.speed });
     game.audio.sfxSwing(); game.audio.sfxBleat(380, 0.14, 0.18); game.vibe(12);
     game.world.emitNoise(g.x, g.y, TUNING.noise.swing);
   },
@@ -310,11 +321,11 @@ const Status = {
       if (w.isSolid(Math.floor(nx / TILE), Math.floor(ny / TILE))) burst = true;
       if (!burst) for (const e of game.enemies) {
         if (e.dead || e.held || e.ghosted) continue;
-        if (Math.hypot(e.x - nx, e.y - ny) < e.r + 6) { burst = true; break; }
+        if (hyp(e.x - nx, e.y - ny) < e.r + 6) { burst = true; break; }
       }
       if (!burst) for (const p of game.props) {
         if (p.broken || !p.blocking) continue;
-        if (Math.hypot(p.x - nx, p.y - ny) < (p.r || 12) + 4) { burst = true; break; }
+        if (hyp(p.x - nx, p.y - ny) < (p.r || 12) + 4) { burst = true; break; }
       }
       if (burst) { b.dead = true; Status.spatter(game, b.x, b.y, TUNING.status.spit.tiles); continue; }
       b.x = nx; b.y = ny;

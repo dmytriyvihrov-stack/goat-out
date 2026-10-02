@@ -375,13 +375,13 @@ const Painting = {
     ctx.font = `${small}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.62)'; ctx.textAlign = 'left';
     ctx.fillText(`LEVEL ${m.level}${m.canon ? ' · ' + m.canon : ''}${m.dark ? ' · THE DARK' : m.trip ? ' · THE TRIP' : ''} · ${m.kills} sacrificed in ${m.time.toFixed(1)}s`, pad, y2);
     ctx.textAlign = 'right'; ctx.font = `${small}px ${FONT_SC}`;
-    ctx.fillText(`GOAT OUT · seed ${m.seed}`, W - pad, y2);
+    ctx.fillText(`DOOMED GOAT · seed ${m.seed}`, W - pad, y2);
     return out;
   },
 
   save(game) {
     if (!game.painting || this.status === 'saving') return;
-    const m = game.painting.meta, name = `goat-out-${m.seed}-level-${m.level}-${m.name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '')}.png`;
+    const m = game.painting.meta, name = `doomed-goat-${m.seed}-level-${m.level}-${m.name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '')}.png`;
     this.status = 'saving';
     this.exportCanvas(game, game.card).toBlob((blob) => {
       if (!blob) { this.status = 'no'; return; }

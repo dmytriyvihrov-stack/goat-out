@@ -232,7 +232,7 @@ class CombatFX {
     const px=TUNING.effects.pixel,x0=Math.round(x/px)*px,y0=Math.round(y/px)*px,span=Math.ceil(r*1.45/px)*px;
     const rim=new Path2D(),mid=new Path2D(),hi=new Path2D();
     for(let oy=-span;oy<=span;oy+=px)for(let ox=-span;ox<=span;ox+=px){
-      const d=Math.hypot(ox/1.3,oy)/r,lim=0.78+CombatFX.noise((x0+ox)*0.16,(y0+oy)*0.16,seed)*0.44;
+      const d=hyp(ox/1.3,oy)/r,lim=0.78+CombatFX.noise((x0+ox)*0.16,(y0+oy)*0.16,seed)*0.44;
       if(d>=lim||(w&&w.isSolid(Math.floor((x0+ox)/TILE),Math.floor((y0+oy)/TILE))))continue;
       (d>lim-0.13?rim:d<0.4&&CombatFX.bayer(ox/px,oy/px)<0.14?hi:mid).rect(x0+ox,y0+oy,px,px);
     }
@@ -309,7 +309,7 @@ class CombatFX {
   }
 
   blood(x,y,dx,dy,count) {
-    const d=Math.hypot(dx,dy)||1;
+    const d=hyp(dx,dy)||1;
     for(let i=0;i<count;i++) {
       const a=Math.atan2(dy,dx)+(Math.random()-0.5)*2.8;
       const s=TUNING.effects.bloodSpeed*(0.35+Math.random());
@@ -323,7 +323,7 @@ class CombatFX {
     // Splinters are cut out of the pixel crate itself, so what flies off is the box that broke.
     const metal=!!p.iron, f=PIXEL_ENV_ASSETS.items[PIXEL_ENV_ID[p.kind==='barrel'?'barrel':'crate']], img=PIXEL_ENV.ready?PIXEL_ENV.image:null;
     const count=p.kind==='door'?TUNING.effects.doorPieces:TUNING.effects.cratePieces;
-    const speed=Math.hypot(dx,dy); if(speed){dx/=speed;dy/=speed;}
+    const speed=hyp(dx,dy); if(speed){dx/=speed;dy/=speed;}
     for(let i=0;i<count;i++) {
       const plank=i<Math.ceil(count*0.6);
       this.fragment(p.x,p.y,img,[f[0]+f[2]*(0.15+(i%3)*0.24),f[1]+f[3]*(0.15+(i%4)*0.17),f[2]*0.18,f[3]*0.4],
@@ -375,7 +375,7 @@ class CombatFX {
     for(const p of this.ground) {
       if(p.lay===undefined||p.still)continue;
       p.lay+=dt;
-      const sp=Math.hypot(p.vx,p.vy);
+      const sp=hyp(p.vx,p.vy);
       if(sp>1) {
         const nx=p.x+p.vx*dt,ny=p.y+p.vy*dt;
         if(w.isSolid(Math.floor(nx/TILE),Math.floor(p.y/TILE))||w.isPitPx(nx,p.y))p.vx=0;else p.x=nx;
@@ -418,13 +418,13 @@ class CombatFX {
     }
     // A body on the floor lies on its own silhouette, a pixel toward the camera: contact, not a halo.
     if(!airborne&&p.shade){c.save();c.translate(0,1.5);c.rotate(p.angle);c.globalAlpha*=TUNING.effects.corpse.shade;c.imageSmoothingEnabled=false;
-      c.drawImage(p.shade,...p.crop,-p.width/2,-p.height/2,p.width,p.height);c.restore();}
+      c.drawImage(p.shade,p.crop[0],p.crop[1],p.crop[2],p.crop[3],-p.width/2,-p.height/2,p.width,p.height);c.restore();}
     c.translate(0,-(p.z||0));c.rotate(p.angle+(p.jerk?0.06:0));
     if(p.jerk)c.scale(1.04,0.95);
     if(p.image) {
       // Solid: a body at nine-tenths let the floor show through it and read as a ghost.
       c.globalAlpha*=p.material==='char'?0.85:p.material==='body'?1:0.95;c.imageSmoothingEnabled=false;
-      c.drawImage(p.image,...p.crop,-p.width/2,-p.height/2,p.width,p.height);   // a gore piece carries its own cut (`death`)
+      c.drawImage(p.image,p.crop[0],p.crop[1],p.crop[2],p.crop[3],-p.width/2,-p.height/2,p.width,p.height);   // a gore piece carries its own cut (`death`)
     } else if(p.material==='blood') {
       // A drop is a cell or two along its flight, not a smooth lozenge.
       c.rotate(-p.angle);const px=TUNING.effects.pixel,n=Math.max(1,Math.round(p.width/px));

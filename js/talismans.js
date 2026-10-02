@@ -34,7 +34,7 @@ const Talisman = {
     }
     g.parryT = Math.max(0, (g.parryT || 0) - dt);
     g.sandalT = Math.max(0, (g.sandalT || 0) - dt);
-    g.stillT = Math.hypot(g.vx, g.vy) < 20 ? (g.stillT || 0) + dt : 0;
+    g.stillT = hyp(g.vx, g.vy) < 20 ? (g.stillT || 0) + dt : 0;
     for (const e of game.enemies) {
       if (e.dead) continue;
       if (e.panicCd > 0) e.panicCd -= dt;
@@ -49,11 +49,11 @@ const Talisman = {
     if (m.mason && m.mason.props) {
       const lim = TUNING.physics.splatSpeed * m.mason.splat;
       for (const e of game.enemies) {
-        if (e.dead || e.state !== 'flung' || Math.hypot(e.vx, e.vy) < lim) continue;
+        if (e.dead || e.state !== 'flung' || hyp(e.vx, e.vy) < lim) continue;
         for (const p of game.props) {
           if (p.broken || p.held || p.corpse || !(p.kind === 'crate' || (p.kind === 'weapon' && p.inStand))) continue;
-          if (Math.hypot(p.x - e.x, p.y - e.y) > p.r + e.r) continue;
-          const l = Math.hypot(e.vx, e.vy);
+          if (hyp(p.x - e.x, p.y - e.y) > p.r + e.r) continue;
+          const l = hyp(e.vx, e.vy);
           if (p.kind === 'crate') p.shatter(game);
           Talisman.chips(game, e.x, e.y);
           e.die(game, 'splat', e.vx / l, e.vy / l, p.kind); break;
@@ -80,7 +80,7 @@ const Talisman = {
     const sd = m.sandal;
     if (sd) {
       const behind = game.enemies.filter((e) => !e.dead && !e.held && !e.ghosted && e.aware && e.state !== 'hidden'
-        && Math.hypot(e.x - g.x, e.y - g.y) < sd.range * TILE && (() => { const r = roomAt(game.level, e.x, e.y); return !r || r.index !== idx; })());
+        && hyp(e.x - g.x, e.y - g.y) < sd.range * TILE && (() => { const r = roomAt(game.level, e.x, e.y); return !r || r.index !== idx; })());
       if (behind.length) {
         g.sandalT = sd.time;
         if (sd.reset) { g.rollCd = 0; g.screamCd = 0; }
@@ -111,7 +111,7 @@ const Talisman = {
     if (mo.near > 0) {
       for (const e of game.enemies) {
         if (e.dead || e.aware || e.ghosted) continue;
-        if (Math.hypot(e.x - g.x, e.y - g.y) < mo.near * TILE) return 0;
+        if (hyp(e.x - g.x, e.y - g.y) < mo.near * TILE) return 0;
       }
     }
     return mo.step;
@@ -138,7 +138,7 @@ const Talisman = {
         if (g.tallyThis) {
           game.floatText(e.x, e.y - 34, 'TALLY', PALETTE.fireHi); game.shake(4);
           if (T.stun > 0) for (const o of game.enemies) {
-            if (o === e || o.dead || o.ghosted || Math.hypot(o.x - e.x, o.y - e.y) > T.r * TILE + o.r) continue;
+            if (o === e || o.dead || o.ghosted || hyp(o.x - e.x, o.y - e.y) > T.r * TILE + o.r) continue;
             o.daze(game, T.stun);
           }
         }
@@ -167,7 +167,7 @@ const Talisman = {
     game.floatText(g.x, g.y - 40, 'SOMEBODY ELSE DIED', PALETTE.bone);
     game.hitstop(0.1); game.shake(10); game.flash(PALETTE.bone, 0.3);
     if (sg.stun > 0) for (const e of game.enemies) {
-      if (e.dead || e.ghosted || Math.hypot(e.x - g.x, e.y - g.y) > sg.r * TILE) continue;
+      if (e.dead || e.ghosted || hyp(e.x - g.x, e.y - g.y) > sg.r * TILE) continue;
       e.daze(game, sg.stun);
     }
     // The snapshot only if it is this talisman: one bought at the mouse on this floor, over another
@@ -201,7 +201,7 @@ const Talisman = {
   parry(game, att, kind) {
     const heavy = att.kind === 'butcher' || att.kind === 'ratogre' || kind === 'slam';
     if (!Talisman.canParry(game, heavy ? 'heavy' : kind)) return false;
-    const g = game.goat, dx = att.x - g.x, dy = att.y - g.y, l = Math.hypot(dx, dy) || 1;
+    const g = game.goat, dx = att.x - g.x, dy = att.y - g.y, l = hyp(dx, dy) || 1;
     Talisman.parryFx(game, att.x, att.y);
     if (kind === 'slam') { att.state = 'stunned'; att.timer = game.mods.mirror.stun; att.vx = 0; att.vy = 0; return true; }
     if (att.kind === 'ratogre') { att.breakSwing(game); att.state = 'stagger'; att.timer = att.cfg.stagger; return true; }
@@ -224,8 +224,8 @@ const Talisman = {
   redirectRune(game, mage) {
     const M = game.mods.mirror, g = game.goat;
     if (!M || !M.heavy || !mage.rune || !(g.parryT > 0)) return;
-    if (Math.hypot(mage.x - g.x, mage.y - g.y) > M.runeR * TILE) return;
-    if (Math.hypot(mage.rune.x - g.x, mage.rune.y - g.y) > TUNING.seer.runeRadius * TILE + g.r) return;
+    if (hyp(mage.x - g.x, mage.y - g.y) > M.runeR * TILE) return;
+    if (hyp(mage.rune.x - g.x, mage.rune.y - g.y) > TUNING.seer.runeRadius * TILE + g.r) return;
     mage.rune = { x: mage.x, y: mage.y };
     Talisman.parryFx(game, mage.x, mage.y);
   },
@@ -253,8 +253,8 @@ const Talisman = {
     if (!room || S.magnetRooms.has(room.index)) return;
     const ok = (p) => !p.broken && !p.held && !p.flung && !p.thrown && !p.corpse && !p.alight
       && (p.kind === 'weapon' || (M.any && p.kind === 'crate'))
-      && Math.hypot(p.x - g.x, p.y - g.y) < M.reach * TILE && roomAt(game.level, p.x, p.y) === room && game.world.los(g.x, g.y, p.x, p.y);
-    const near = game.props.filter(ok).sort((a, b) => Math.hypot(a.x - g.x, a.y - g.y) - Math.hypot(b.x - g.x, b.y - g.y));
+      && hyp(p.x - g.x, p.y - g.y) < M.reach * TILE && roomAt(game.level, p.x, p.y) === room && game.world.los(g.x, g.y, p.x, p.y);
+    const near = game.props.filter(ok).sort((a, b) => hyp(a.x - g.x, a.y - g.y) - hyp(b.x - g.x, b.y - g.y));
     if (!near.length) return;
     S.magnetRooms.add(room.index);
     for (const p of near.slice(0, M.count - orb.length)) {
@@ -270,7 +270,7 @@ const Talisman = {
   magnetBlock(game, att) {
     const orb = Talisman.orbiters(game).filter((o) => o.t >= 1);
     if (!orb.length || game.goat.dead || Talisman.unhurt(game)) return false;
-    const o = orb.sort((a, b) => Math.hypot(a.p.x - att.x, a.p.y - att.y) - Math.hypot(b.p.x - att.x, b.p.y - att.y))[0];
+    const o = orb.sort((a, b) => hyp(a.p.x - att.x, a.p.y - att.y) - hyp(b.p.x - att.x, b.p.y - att.y))[0];
     Talisman.breakOrbit(game, o, att.x, att.y);
     if (att.daze && att.kind !== 'ratogre') att.daze(game, TUNING.magnet.daze);
     return true;
@@ -282,7 +282,7 @@ const Talisman = {
     const C = TUNING.magnet;
     if (Talisman.unhurt(game)) return false;
     for (const o of Talisman.orbiters(game)) {
-      if (o.t < 1 || Math.hypot(o.p.x - b.x, o.p.y - b.y) > C.hitR) continue;
+      if (o.t < 1 || hyp(o.p.x - b.x, o.p.y - b.y) > C.hitR) continue;
       Talisman.breakOrbit(game, o, b.x, b.y);
       return true;
     }
@@ -322,7 +322,7 @@ const Talisman = {
   // DOMINO BONE: a body below killing speed hands the throw on instead of simply bowling a man over.
   domino(game, f, o) {
     const D = game.mods.domino; if (!D || Talisman.heavy(o) || o.kind === 'butcher') return false;
-    const chain = (f.chain || 0) + 1, spd = Math.hypot(f.vx, f.vy);
+    const chain = (f.chain || 0) + 1, spd = hyp(f.vx, f.vy);
     if (chain > D.links || spd * D.keep < TUNING.physics.flungFloorSpeed) return false;
     o.fling(f.vx * D.keep, f.vy * D.keep, false); o.chain = chain;
     f.vx *= 0.15; f.vy *= 0.15;
@@ -344,7 +344,7 @@ const Talisman = {
     if (!gr || !gr.slip) return;
     for (const e of game.enemies) {
       if (e.dead || e.ghosted || e.held || Talisman.heavy(e) || e.kind === 'butcher') continue;
-      if (e.state !== 'chase' || Math.hypot(e.vx, e.vy) < e.speed * 0.5 || !Talisman.greaseAt(game, e.x, e.y)) continue;
+      if (e.state !== 'chase' || hyp(e.vx, e.vy) < e.speed * 0.5 || !Talisman.greaseAt(game, e.x, e.y)) continue;
       if (Math.random() < gr.slip * dt) { e.state = 'floored'; e.timer = 0.6; e.vx *= 1.4; e.vy *= 1.4; game.floatText(e.x, e.y - 26, 'SLIP', PALETTE.blood); }
     }
   },
@@ -354,7 +354,7 @@ const Talisman = {
     game.particles(p.x, p.y, 10, PALETTE.wood, 260);
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted || e.state === 'flung') continue;
-      const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy);
+      const dx = e.x - p.x, dy = e.y - p.y, d = hyp(dx, dy);
       if (d > A.r * TILE + e.r) continue;
       if (Talisman.heavy(e) || e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.4; } continue; }
       if (A.fling > 0) { const l = d || 1; e.fling(dx / l * A.fling * TILE, dy / l * A.fling * TILE, false); }
@@ -373,7 +373,7 @@ const Talisman = {
     if (m.grease && cause === 'splat' && !e.byBlade) {
       const r = m.grease.r, w = game.world, tx = Math.floor(e.x / TILE), ty = Math.floor(e.y / TILE), n = Math.ceil(r);
       for (let y = ty - n; y <= ty + n; y++) for (let x = tx - n; x <= tx + n; x++) {
-        if (Math.hypot(x - tx, y - ty) > r + 0.2 || w.isSolid(x, y)) continue;
+        if (hyp(x - tx, y - ty) > r + 0.2 || w.isSolid(x, y)) continue;
         S.grease.set(y * w.W + x, m.grease.life);
       }
     }
@@ -381,7 +381,7 @@ const Talisman = {
     const MK = m.mask;
     if (MK) for (const o of game.enemies) {
       if (o === e || o.dead || o.held || o.ghosted || o.kind === 'wraith' || Talisman.heavy(o) || o.kind === 'butcher') continue;
-      if (o.panicCd > 0 || Math.hypot(o.x - e.x, o.y - e.y) > MK.r * TILE || !game.world.los(o.x, o.y, e.x, e.y)) continue;
+      if (o.panicCd > 0 || hyp(o.x - e.x, o.y - e.y) > MK.r * TILE || !game.world.los(o.x, o.y, e.x, e.y)) continue;
       if (o.state === 'flung' || o.state === 'floored' || o.state === 'stunned' || o.state === 'burning') continue;
       const busy = o.state === 'windup' || o.state === 'swing' || o.state === 'aim' || o.state === 'cast' || o.state === 'slamwind' || o.state === 'dart' || o.state === 'hookwind';
       if (busy && !MK.drop) continue;
@@ -415,7 +415,7 @@ const Talisman = {
       for (const e of game.enemies) {
         if (e.dead || e.ghosted || e.held || e.tripOn === p || Talisman.heavy(e) || e.kind === 'butcher') continue;
         if (e.state !== 'chase' && e.state !== 'investigate' && e.state !== 'flee') continue;
-        if (Math.hypot(e.vx, e.vy) < e.speed * 0.5 || Math.hypot(e.x - p.x, e.y - p.y) > p.r + e.r * 0.6) continue;
+        if (hyp(e.vx, e.vy) < e.speed * 0.5 || hyp(e.x - p.x, e.y - p.y) > p.r + e.r * 0.6) continue;
         e.tripOn = p; e.state = 'floored'; e.timer = SP ? SP.trip : 0.6; e.aware = true;
         game.floatText(e.x, e.y - 26, 'TRIPPED', PALETTE.bone); game.audio.sfxThud();
       }
@@ -452,12 +452,14 @@ const Talisman = {
       game.particles(ec.x + ax * 16, ec.y + ay * 16, 5, PALETTE.bone, 140);
       for (const e of game.enemies) {
         if (e.dead || e.held || e.ghosted || e.state === 'flung') continue;
-        const dx = e.x - ec.x, dy = e.y - ec.y, d = Math.hypot(dx, dy);
+        const dx = e.x - ec.x, dy = e.y - ec.y, d = hyp(dx, dy);
         // `reach` is the lunge the ghost does not make: it stands where the blow landed and reaches past it.
         if (d > g.r + e.r + 10 + extra + E.reach * TILE || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
         if (!game.reaches(ec.x, ec.y, e.x, e.y)) continue;
         if (e.tryDodge && e.tryDodge(game, ax, ay)) continue;
         if (e.kind === 'butcher' || e.kind === 'ratogre') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.3; } continue; }
+        // The ghost meets a shieldman's board as the real horns do (`Enemy.shieldTakes`).
+        if (e.shield && e.shieldCovers(ec.x, ec.y)) { e.shieldTakes(game, ax, ay); continue; }
         const k = imp * (e.knockMul ? e.knockMul() : 1);
         e.fling(ax * k, ay * k, false);
         game.audio.sfxThud(); game.impact(ec.x + ax * (g.r + 6), ec.y + ay * (g.r + 6), ax, ay);
@@ -496,14 +498,14 @@ const Talisman = {
       for (const e of game.enemies) {
         if (e.dead || e.held || e.ghosted || Talisman.decoyProof(e) || !e.woke) continue;
         if (e.state === 'flung' || e.state === 'floored' || e.state === 'stunned' || e.state === 'burning' || e.state === 'decoyhit' || e.state === 'flee') continue;
-        if (Math.hypot(e.x - f.x, e.y - f.y) > F.r * TILE || !w.los(e.x, e.y, f.x, f.y)) continue;
+        if (hyp(e.x - f.x, e.y - f.y) > F.r * TILE || !w.los(e.x, e.y, f.x, f.y)) continue;
         e.decoyT = 0.7; e.target = { x: f.x, y: f.y };
         if (e.kind !== 'hunter' || !F.shots) { e.aware = false; e.state = 'investigate'; }
       }
     }
     for (const e of game.enemies) {
       if (e.dead || !(e.decoyT > 0)) continue;
-      const d = Math.hypot(e.x - f.x, e.y - f.y);
+      const d = hyp(e.x - f.x, e.y - f.y);
       // A rifle puts a round in it. The round goes where rounds go.
       if (e.kind === 'hunter' && F.shots) {
         e.vx = 0; e.vy = 0; e.facing = Math.atan2(f.y - e.y, f.x - e.x);
@@ -517,7 +519,7 @@ const Talisman = {
       }
     }
     for (const b of game.bullets) {
-      if (b.dead || Math.hypot(b.x - f.x, b.y - f.y) > f.r + 3) continue;
+      if (b.dead || hyp(b.x - f.x, b.y - f.y) > f.r + 3) continue;
       b.dead = true; Talisman.effigyDown(game); return;
     }
   },
@@ -537,7 +539,7 @@ const Talisman = {
       if (f) e.facing = Math.atan2(f.y - e.y, f.x - e.x);
       if (e.timer > 0) return;
       game.audio.sfxSwing();
-      if (f && Math.hypot(f.x - e.x, f.y - e.y) < (e.cfg.reach || 0.8 * TILE) + e.r + f.r + 8) {
+      if (f && hyp(f.x - e.x, f.y - e.y) < (e.cfg.reach || 0.8 * TILE) + e.r + f.r + 8) {
         Talisman.effigyDown(game);
         if (game.mods.effigy && game.mods.effigy.oops) game.meleeHit(e, (e.cfg.reach || 0.8 * TILE) + 10, Math.PI * 0.9, 0, 0, true);
       }
@@ -621,7 +623,7 @@ const Talisman = {
     if (B && B.sil > 0 && !g.dead) {
       for (const e of game.enemies) {
         if (e.dead || e.state === 'hidden' || (e.ghosted && e.kind === 'wraith')) continue;
-        if (Math.hypot(e.x - g.x, e.y - g.y) > B.sil * TILE) continue;
+        if (hyp(e.x - g.x, e.y - g.y) > B.sil * TILE) continue;
         const tx = Math.floor(e.x / TILE), ty = Math.floor(e.y / TILE);
         const lit = !game.hidden(e.x, e.y) && w.vis && w.vis[ty * w.W + tx];
         if (lit) continue;
@@ -633,7 +635,7 @@ const Talisman = {
     }
     if (B && B.mimic && !g.dead) {
       for (const e of game.enemies) {
-        if (e.dead || e.state !== 'hidden' || Math.hypot(e.x - g.x, e.y - g.y) > 4 * TILE) continue;
+        if (e.dead || e.state !== 'hidden' || hyp(e.x - g.x, e.y - g.y) > 4 * TILE) continue;
         const a = 0.25 + 0.25 * Math.sin(r.t * 9 + e.x);
         ctx.strokeStyle = `rgba(191,230,255,${a})`; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.ellipse(e.x + Math.sin(r.t * 31) * 1.2, e.y, 16, 12, 0, 0, Math.PI * 2); ctx.stroke();
