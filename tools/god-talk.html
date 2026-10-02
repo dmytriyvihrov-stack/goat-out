@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>God Talk</title>
+<title>Talk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Alegreya+SC:wght@700&display=swap" rel="stylesheet">
 <style>
@@ -38,7 +38,7 @@
 </head>
 <body>
 <header>
-  <h1>GOD TALK · TIPS</h1>
+  <h1>TALK · GOD, ANIMALS, TIPS</h1>
   <button id="save">SAVE TO heaven.js</button>
   <button id="copy">COPY AS JS</button>
   <button id="reload">RELOAD</button>
@@ -50,6 +50,11 @@
   A part over <span id="lim"></span> characters is marked: it wraps to more than three lines on the god's panel.
   SAVE needs the dev server (<code>node tools/serve.js</code>); away from it, COPY and paste over the two objects in js/heaven.js.</p>
   <div id="groups"></div>
+  <h1 style="margin:28px 0 6px">THE ANIMALS · THE MOUSE</h1>
+  <p class="help">Every line an animal (and the mouse) says, read out of js/tuning.js and js/beasts.js. Each line is saved on its own:
+  SAVE rewrites it where it stands in the source, DELETE takes it out of its list (a line that stands alone, like the horse's
+  <code>won</code>, is emptied instead, so nothing that reads it breaks). Needs the dev server; reload the game to hear it.</p>
+  <div id="animals"></div>
 </main>
 <script>
 const LONG = 150;
@@ -62,8 +67,8 @@ let data = null;
 const status = (t) => { document.getElementById('status').textContent = t; };
 
 // The object literal after `const NAME = ` in the file, bracket-matched past strings and comments.
-function literal(src, name) {
-  const head = `const ${name} = `, a = src.indexOf(head); if (a < 0) throw new Error(name + ' not in heaven.js');
+function literal(src, name, at) {
+  const head = at || `const ${name} = `, a = src.indexOf(head); if (a < 0) throw new Error(name + ' not in heaven.js');
   let i = a + head.length, depth = 0, q = null;
   for (; i < src.length; i++) {
     const c = src[i];
@@ -84,6 +89,7 @@ async function load() {
     // a killer with no tips yet still gets its own list to add to
     for (const k of TIP_KILLERS) if (!data.DEATH_TIPS.killer[k]) data.DEATH_TIPS.killer[k] = [];
     render(); status('read from js/heaven.js');
+    loadAnimals();
   } catch (e) { status('could not read js/heaven.js: ' + e.message); }
 }
 
@@ -177,6 +183,61 @@ document.getElementById('copy').onclick = async () => {
   try { await navigator.clipboard.writeText(text); status('copied both objects'); } catch (e) { status('copy refused by the browser'); }
 };
 document.getElementById('reload').onclick = load;
+
+// ---- the animals: each line edited in place in its own file (POST /line-edit, tools/text-patch.js)
+async function loadAnimals() {
+  const root = document.getElementById('animals'); root.innerHTML = '';
+  try {
+    const tsrc = await (await fetch('../js/tuning.js', { cache: 'no-store' })).text();
+    const T = new Function(tsrc + ';return { TUNING, BEAST_HELLO, BEAST_ANSWER };')();
+    const bsrc = await (await fetch('../js/beasts.js', { cache: 'no-store' })).text();
+    let PACT = {}; try { PACT = literal(bsrc, 'PACT', 'PACT: '); } catch (e) { /* none */ }
+    const groups = [];
+    const strings = (v, path, file, out) => {
+      if (typeof v === 'string') out.push({ path, value: v, file });
+      else if (Array.isArray(v)) v.forEach((x, i) => strings(x, path + '[' + i + ']', file, out));
+      else if (v && typeof v === 'object') for (const k of Object.keys(v)) strings(v[k], path + '.' + k, file, out);
+    };
+    const add = (title, note, list) => { if (list.length) groups.push({ title, note, list }); };
+    const kinds = [...new Set([...Object.keys(T.BEAST_HELLO), 'horse', 'pig', 'crow', 'mouse'])];
+    for (const k of kinds) {
+      const out = [];
+      if (T.BEAST_HELLO[k]) strings(T.BEAST_HELLO[k], 'BEAST_HELLO.' + k, 'js/tuning.js', out);
+      const P = T.TUNING.prop[k] || {};
+      for (const key of ['talk', 'lines', 'thanks']) if (P[key] !== undefined) strings(P[key], 'TUNING.prop.' + k + '.' + key, 'js/tuning.js', out);
+      if (PACT[k]) strings(PACT[k], 'Beast.PACT.' + k, 'js/beasts.js', out);
+      add(k.toUpperCase(), k === 'mouse' ? 'lines: a headbutt on her, one a strike' : '', out);
+    }
+    const ans = []; strings(T.BEAST_ANSWER, 'BEAST_ANSWER', 'js/tuning.js', ans);
+    add('THE ANSWER', "yes / no after every animal's terms, and what one says refused", ans);
+    for (const g of groups) {
+      const sec = document.createElement('section');
+      const h = document.createElement('h2'); h.textContent = g.title + (g.note ? '  (' + g.note + ')' : ''); sec.appendChild(h);
+      for (const l of g.list) sec.appendChild(animalRow(l));
+      root.appendChild(sec);
+    }
+  } catch (e) { root.textContent = 'could not read the animals: ' + e.message; }
+}
+function animalRow(l) {
+  const row = document.createElement('div'); row.className = 'row';
+  const ta = document.createElement('textarea'); ta.value = l.value; ta.rows = Math.max(1, Math.ceil(l.value.length / 95));
+  const tools = document.createElement('div'); tools.className = 'tools';
+  const where = document.createElement('span'); where.className = 'count'; where.textContent = l.path + ' · ' + l.file;
+  const save = document.createElement('button'); save.className = 'small'; save.textContent = 'SAVE';
+  const del = document.createElement('button'); del.className = 'small'; del.textContent = 'DELETE';
+  const send = async (body) => {
+    status('saving…');
+    try {
+      const r = await (await fetch('/line-edit', { method: 'POST', body: JSON.stringify(Object.assign({ file: l.file, from: l.value }, body)) })).json();
+      status(r.ok ? 'saved to ' + l.file + ', reload the game to hear it' : 'not saved: ' + r.error);
+      if (r.ok) loadAnimals();
+    } catch (e) { status('not saved (is tools/serve.js running?): ' + e.message); }
+  };
+  save.onclick = () => send({ to: ta.value });
+  del.onclick = () => { if (confirm('Delete this line?')) send({ del: true }); };
+  tools.append(save, del, where); row.append(ta, tools);
+  return row;
+}
 load();
 </script>
 </body>

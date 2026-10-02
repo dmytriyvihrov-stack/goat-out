@@ -123,7 +123,7 @@ thrown into it like a wall, but who turn slowly and have a back; blinking Seers 
 that no boon protects you from; Hunters whose bullets travel and hit their own; the ogre, the cult's
 half-beast, who takes four, is never knocked back, leaps onto where you stand and brings his fists down
 on the floor all round him; the hounds; and the wraiths. One rule for all of them: a man without a
-yellow outline dies to one killing blow (the Butcher takes three, the Seer two); a boss wears the outline, stands a size bigger and takes three. They shout short lines when they see you, hear
+outline dies to one killing blow (the Butcher takes three, the Seer two); a champion wears a yellow outline, stands a size bigger and takes one more than his kind, and a man carrying a corrupted soul wears a violet one, glows violet and takes 3 and 1 more for the soul. They shout short lines when they see you, hear
 you, swing at you or watch one of their own come apart, and they read the room: fire, lit braziers, a
 rune about to go off and the sweeping arms of the Mill. Not all of them read it correctly.
 

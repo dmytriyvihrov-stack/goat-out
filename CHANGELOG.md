@@ -5,8 +5,115 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## Next, the improvement loop, 2 Oct 2026 (published 2 Oct 2026)
+
+Worked alone while he was away (log: `output/loop-2026-10-02/LOG.md`).
+
+- **The club's numbers are in `TUNING.club`** (pillar rule 2): the goat's knockback × 4, a neighbour floored 70% of
+  the time for 0.6 s, an ogre's arm throwing a man at 14 tiles/s were literals in `Game.meleeHit`. Same values.
+- **The shieldman, checked live** (the 1.94 review that never finished): the horns on the board cost a heart and
+  leave it unworn, he braces; a butt from behind flings him. Nothing to fix.
+- **A dead shieldman's board is never left in the wall**: it was dropped a body's width ahead of him, so a man
+  thrown face first into stone left it inside the stone, out of reach. `dropShield` asks `game.freeSpot`.
+- **How long the ogre reels is in `TUNING.butcher.rocked`**: a blast 0.4 s, a door broken onto him 0.35, a crate
+  0.45, a thrown shield 0.5, a sliding table 0.3, a body short of killing speed 0.3, were six literals in four
+  files. Same values.
+- **A man out of the mouth without a throw** lies `TUNING.goat.grab.letGo` (0.5 s: a roll, a blink, the pen's
+  stun) or `loose` (0.6 s: he works free, or is left at the stairs); five literals in three files. Same values.
+- **A man who absorbs a killing blow** lies `TUNING.boss.downFor` (0.75 s), a literal in `Enemy.die` before.
+- **The tune is eight bars** (his ask, 2 Oct 2026: "a bit longer melody itself"): every theme's four-bar phrase got
+  an answering second half over the same roots (`THEME_BED[].bars`, `melody`): floors 2-4 the hook climbs straight
+  through to F and the Phrygian fall lands a step deeper on D; floors 5+ go up to the Eb and F over the G and come
+  home on a held G; the first floor hesitates a step lower and ends on its tritone again. 51 / 52 / 36 flute notes a
+  phrase where there were 23 / 24 / 18.
+- **A bigger gap between a fight and peace** (his ask, same day): peace was already down to three parts (the drone,
+  two bass notes a bar, the flute), so the fight filled in by count (`TUNING.audio.layers.fight`): the kick on every
+  quarter and its pickups (6 a bar, was 4), a low tom, rim and hats a little up; the chase gets a kick of its own on
+  the backbeats, so it sits between the two. Counted over 8 bars: idle 3 parts; chase adds kick 32, rim 32, hats 64,
+  the riff; combat kick 48, toms 40, hats 64, rim, the riff. No tempo change, nothing merely quieter (1 Oct rule).
+
+## Next, the shieldman: a fat Spartan with a pile of skulls, 2 Oct 2026 (not yet published)
+
+- **His own body** (`js/spartan-pixels.js`, `SPARTAN_PIXELS`, key `spartan`), the man you want to punch: fat
+  and square, his belly out, a bronze helmet a size too small perched on a big round head with a red crest, his
+  face out under it with a week of stubble, a red cape and loincloth, hairy bare legs and bare feet, no club. Five
+  views mirrored to eight, a waddle.
+- **His board is the skulls of different beasts riveted together** (`SK`: goat, bull, ram, boar, stag), horns,
+  tusks and antlers standing out of it every way as its points, bone white so he stands off every floor, a red
+  glint in the sockets, on his right arm so his belly shows. Three designs on the ART tab's SHIELD button
+  (`ART_PASS.shield`; every piece outlined on its own, `piece`, so white on white never merges): MENAGERIE (a bull before a ram and a boar, a man's skull and
+  crossed bones under them, bone stakes out of it every way, blood on the points), STAG AND BULL, RIVETED (a goat and a boar
+  upside down, nose to nose, an iron band across) (`boneShield`, `mshield<look>-f/s/b`).
+- **The horns bite**: the goat's horns into the front of his board cost a heart and throw him off
+  (`shieldman.spikes`); the bone is not worn by it. A thrown thing, a blade or a round still wears it, and the
+  last breaks it (SHATTERED).
+- **He leaps at you** (`Enemy.bashStep`, `shieldman.bash`): chasing behind the board, a few tiles off and facing
+  you, he crouches (the strip he will cover laid amber, `Renderer.drawBashLine`) and throws himself along it board
+  first: a heart and a shove if it meets the goat, one of his own bowled over if he is in the way, a daze if it
+  meets stone. After it he is planted and cannot turn (`bashPlant`): the moment to go round him. A scream or a
+  stun breaks the crouch.
+- **His skulls outlive him**: dead with uses left on them, they lie where he fell (`p.skulls`), a shield to carry,
+  and thrown the horns kill the first man they meet (GORED, `hitMan`).
+- **The dangerous one**: two hearts (`shieldman.hp`), drawn 1.15× a clubman (`shieldman.scale`, `Renderer.bodyScaleOf`),
+  and `THREAT.shield` 1.9 → 2.6 so a room buys fewer of him. The skull pile's edge is twelve stakes in a ring, long and
+  short in turn, floor between every two, blood on every point.
+- **He talks**: `BARKS` bash, sorry (NOT ME), bonk, back (NOT FAIR!), spiked, shattered (MY SKULLS!).
+- **Up or down, the picture says**: up, the board is between him and where he faces; dazed, floored or alight it
+  hangs at his knees a quarter turned, points to the floor (`sh.low`, `shieldman.low` / `side` / `ease`).
+- **Poisoned he barely turns** (`shieldman.poisonTurn`, 0.15 of his turn): that is when he is walked round.
+
+## Next, the book by parts of the body, TEXT EDIT, every line editable, 2 Oct 2026 (not yet published)
+
+- **The book** (I): the souls stand under the part of him they change, HORNS, TEETH, LEGS, THROAT, BODY, each a chip
+  and its slots in step order (I the active, II and III the passives, I to IV for the body), an empty slot drawn
+  empty, BY THE COLLAR after them; the hearts under him are hearts, not words; a pixel × closes it; the pages a step
+  lighter (`PALETTE.dirtHi`). **I opens it over a soul's cards too**, and YOUR BUILD under the cards is a button for a
+  thumb (`game.boonBookRect`); closed, the cards are back as they were (`pausedIn`).
+- **The rail**: the small soul marks round every chip and the body souls' square are gone, the chips are 1.25× (`hud.rail`).
+- **The mouse**: one bump of the head shut her offer for the floor, and her wares are with her, so the shop was a dead
+  end. She is cross while she says so, then offers again.
+- **The god's first talk** is four plates, not seven.
+- **Two outlines** ("bosses with corrupted souls violet, ordinary units with +1 heart yellow, champions"). A boss
+  with no soul in him is a CHAMPION: his kind's hearts plus one (`boss.champHp`), nothing else, outlined yellow
+  (a champion clubman went 3 → 2, a seer stays 3, the butcher 4). A man carrying a soul (a boss `ensoul` lit,
+  every gate's keeper, the last boss whose soul lifts the stairs' gate) is outlined and lit violet, the wisp's
+  colours, in place of the amber haze, and takes `boss.hp` or his own if more, plus the soul's heart (as before).
+  So the room in front of a soul door is always violet. The ENEMIES tab's BOSS row says both.
+- **An audit of the above.** TEXT EDIT: a text already rewritten in the source is edited (or put back) against
+  what the source now says, not parked in `TEXT_EDITS` under words nothing draws; the click that opens the box no
+  longer turns into a headbutt when the mouse moves; a server that refuses says why instead of "no dev server";
+  `xform` / `textW` in place of `getTransform` / `measureText`. The server only rewrites a short text where it is a
+  whole literal (CHAMPION was found inside the ENEMIES note). `glowDisc` keys its cache by the stops array, not a
+  string joined every call.
+- **Tools.** BOONS reads everything off the BOONS entries (the verb as the soul makes it, slot, set, `desc` whole and
+  `stat`); TALISMANS is one page that scrolls; TEXT EDIT in the dev drawer rewrites or deletes any text on the screen
+  (`js/text-edit.js`, `tools/text-patch.js`: into its literal when it stands whole once, else `TEXT_EDITS`); the TALK
+  page (was GOD TALK) also lists every animal's and the mouse's lines, each saved or deleted where it stands.
+
 ## 1.97, the canvas keeps no state of its own, 2 Oct 2026
 
+- **A second audit pass** (`BACKLOG.md`, "run it again and improve"). The floor's card no longer lies across the open
+  book and the pause menu. Her hidden wares can no longer be headbutted (three butts at bare floor woke the rat ogre),
+  and a shop gate's violet trail leads to her. HUNGRY SOUL is forced into the first run's first passive deal only,
+  not every one. The goose no longer honks on a loop at a wraith's windup, which a honk cannot break. A shelf she has
+  left after the rat ogre opens as cards again. A brazier's shade and the glows of a stand of arms and a milk sprout
+  are one gradient each, made once (`glowDisc`): no gradient is made a frame on an ordinary floor now.
+- **A UI pass across screen sizes** (1280x800, 1920x1080, 960x600, a 375x812 phone). SETTINGS goes to two columns,
+  BACK across both, when one column cannot hold the rows (960x600 ran the list off both ends, BACK with it), and the
+  chosen row's note plate is opaque and stands beside its row when it cannot fit under the list (it hid BACK at
+  1280x800). The book (I) stacks its pages, his over his build, on a screen taller than wide (`drawCoverStacked`): side
+  by side on a phone every heading and line ran over the next. The death card leaves 266 px under the picture, not
+  210 (ASCEND was clamped up onto the killer's plate at 1280x800). The touch pause chip steps left of the skill rail
+  (`renderer.railLeft`) instead of sitting on the body souls' squares; the clear card's CONTINUE is lifted off a
+  phone's home bar; the mouse's card names squeeze to the card (STRANGE SYMBOLS spilled out of it on a phone); the
+  title's Discord mark is centred on its row's name instead of rising through the row's top edge.
+- **Four things the 1.93 reviews left.** ECHO HORN's ghost blow carries BULL NECK's run-up as the real one does
+  (`Talisman.onLunge` stores `steam` off `goat.buttRun`; a full run at tier I: 336 → 538 px/s on the man, was 336). A
+  wraith lying as a crate is found out by a blast that reaches it (`Prop.blastRoom` → `Enemy.unmask`: the box is
+  splinters, it stands as a body for the `solidAfter` beat a headbutt unmakes it in; milk stays milk). FIRE AMULET's
+  tiers pass the fire 2 / 3 / 6 / all deep (were 1 / 2 / 6 / all: tier I was KINDLING). Words: BAAH and MILK GRASS
+  are keywords, `sayTimes` speaks from two up ("almost three times", not "2.86×"), PILGRIM'S SANDAL and MIRROR SHARD
+  say their tiers in two short lines.
 - **The hitch every few seconds is mostly gone.** It was a full collection, and the trace said why: the browser's own
   heap (not the script's) filling with objects the canvas API makes. Every `ctx.save()` copied the whole canvas state
   there (170 a frame), every `getTransform()` was a DOMMatrix, every `measureText()` a TextMetrics, every light pool
@@ -20,6 +127,36 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   into the floor (`CombatFX.pieceCanvas` / `release`, `effects.spareCanvases`), the snapshot every death is cut from
   is one scratch canvas, and a blood stain tile evicted from the map hands its canvas to the next one.
 - A windup's cells reuse one stretch a row instead of a new pair, and walk the wedge's two edges by index.
+- **The book (I) is a book** (playtest: "the goat on the left, the stats on the right, like the ammonomicon"): a
+  leather cover with brass corners, a spine and a ribbon in pixel cells (`Codex.drawCover`); him large on the left
+  page with his floor, hearts and looks; on the right his souls, talisman and animals as tiles wearing the picture
+  they were offered with (the soul card's verb chip, the mouse's card, the animal from its terms), the picked one read
+  out under them. No emoji where the card had a picture.
+- **THE YARD teaches the chandelier** (room 3, `CHAND_LESSON_TEMPLATE`, `GEN_RULES.chandlesson`): the way out is one
+  tile, one clubman holds it the way the first sentry does, and a chandelier hangs over him, tied to a cleat on the
+  wall above. Butt the cleat and it comes down on him. The seer is met at 0.4 of the floor now (at 0.5 the lesson
+  pushed him into the room before his own ring).
+- **The chandelier says less**: a smaller ring hung lower and further off its wall, so it never hides its own cleat;
+  it thins while it covers the goat or a man; the rope is a faint thread. Near the cleat the cleat beats amber, the
+  rope goes amber and the floor shows where the ring lands as an amber ring of cells, which fills as it falls.
+- **His own run, twenty notes** (`BACKLOG.md`, 2 Oct 2026): the fire set's grace cut; the deal alternates active and
+  passive strictly; HUNGRY SOUL on the first run's first passive deal; no "Do you want sacrifices?"; fruit and cheese
+  back on the tables; the goat stretches, sniffs and scratches and a standing man breathes; the mouse keeps her wares
+  and is walked up to; the animals hint at what they give, and the goose's honk breaks a swing; floor fire burns
+  half again as long; the husky sings with no box, a howl of her own, a beat a little slower and a "beh" off breath
+  or spit; the tip after a death is floor words; the white soul is a wisp with eyes and comes when walked up to; the
+  boss camera is eased and thuds shake less; the camera is much softer as he moves (measured: its acceleration
+  a frame 0.119 → 0.047, turning back on itself 31 → 4 times over the same walks); the death card counts with the purse's skull and wisp; BEST hidden;
+  Discord's mark on its row.
+- **The mirror before the edge**: the first time in heaven the god will not let him jump until he has looked in the
+  mirror (NOT YET, LITTLE GOAT. THE MIRROR FIRST.), and the edge's floor words say so.
+- **A frame-cost sweep** (`tools/perf.js`, seed 11, 200 frames a floor, 1280x800): every floor draws in 2.5-4.5 ms
+  and steps in 0.7-1.7 ms, THE YARD with ten men, four barrels going up and fire 3.4-4.5 / 0.8-1.3, no hotspot left
+  over a fifth of a millisecond outside the bakes. Three cuts, the picture unchanged: a carpet is baked into an image
+  a texel a pixel and scaled once (`PaintedArt.carpet`, ~5 → ~2 ms a rug warm, up to 9 cold, inside the frame that
+  bakes its room; every rug of three floors hashed identical); props far off the picture are not drawn
+  (`effects.propCull`, THE ALTAR 3.18 → 2.62 ms a draw with the pen behind him, other floors 0.1-0.4); the skill
+  rail's numbers line is a getter, read only on a hovered chip with the drawer open (`drawSkills` 0.33 → 0.17 ms).
 
 ## 1.96, meat on the tables, carpets on the floors, 2 Oct 2026
 

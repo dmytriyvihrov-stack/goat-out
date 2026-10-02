@@ -214,7 +214,8 @@ const Painting = {
       ctx.globalAlpha = a;
       // The way on is a lit button, centred on the bottom row: the faint "click to go on" line it
       // replaces was missed by players who sat on this card looking for what to press.
-      const goR = r.goButton(game, 'CONTINUE', W / 2, H - 22 * s - 24 * s), gw = goR.w;
+      // a phone's foot is its home bar: lifted clear of it there (it sat 8 px off the edge, 2 Oct 2026)
+      const goR = r.goButton(game, 'CONTINUE', W / 2, H - 22 * s - 24 * s - (game.touch.active ? 24 * r.s : 0)), gw = goR.w;
       ctx.textAlign = 'center';
       if (this.canSave) {
         const label = { saving: 'SAVING…', saved: 'SAVED', no: 'NOT SAVED' }[this.status] || 'SAVE THE PICTURE';
@@ -327,7 +328,9 @@ const Painting = {
     // skull on the road says it, with the floor's number and name under it (`drawRoute`).
     ctx.globalAlpha = a;
     // the picture, whole, room left under it for the road, the words and the button
-    const cv = pic.canvas, top = H * D.top, room = Math.max(H * 0.18, H - 210 * s - top);
+    // 266 is what goes under it: road 110, tally 34, the killer's plate 50, the button 36, the run code 36.
+    // At 210 a short screen (1280x800) clamped the button up onto the plate (2 Oct 2026).
+    const cv = pic.canvas, top = H * D.top, room = Math.max(H * 0.18, H - 266 * s - top);
     const k = Math.min(W * P.fit.w / cv.width, H * D.h / cv.height, room / cv.height);
     const dw = cv.width * k, dh = cv.height * k, dx = (W - dw) / 2;
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, dx, top, dw, dh); ctx.restore();
@@ -337,7 +340,20 @@ const Painting = {
     this.drawRoute(r, game, W / 2, y, 'dead', 0);
     y += 66 * s;
     // what took him, on its plate, beside the lines that name it and say what he keeps
-    const words = card.lines.slice(1).filter((l) => l && !/^LEVEL /.test(l));
+    // The tally as the purse draws it (`Renderer.drawPurse`): the gold skull and the bodies, the wisp and
+    // the souls he keeps; under it only what was lost and who did it.
+    const T = card.tally, words = T ? [T.said].filter(Boolean) : card.lines.slice(1).filter((l) => l && !/^LEVEL /.test(l));
+    if (T) {
+      const sk = HEAVEN_PIXELS.sprites.skull, c = 1.9 * s, gap = 34 * s;
+      ctx.save(); ctx.font = `700 ${19 * s}px ${FONT}`; ctx.textAlign = 'left';
+      const a = String(T.kills), b = String(T.kept), wa = sk.w * c + 6 * s + textW(ctx, a), wb = 18 * s + textW(ctx, b);
+      let x = W / 2 - (wa + gap + wb) / 2; const yy = y;
+      Heaven.skull(ctx, x, yy - sk.h * c / 2 - 6 * s, c); x += sk.w * c + 6 * s;
+      ctx.fillStyle = '#fff4c2'; ctx.fillText(a, x, yy); x += textW(ctx, a) + gap;
+      if (r.painted.ready) { ctx.save(); ctx.translate(x + 4 * s, yy - 6 * s); r.painted.soulWispBody(ctx, 17 * s); ctx.restore(); }
+      x += 18 * s; ctx.fillStyle = '#d9ccff'; ctx.fillText(b, x, yy);
+      ctx.restore(); y += 34 * s;
+    }
     const plate = card.killer && card.killer !== 'fall' ? Math.round(46 * s) : 0;
     ctx.font = `${15 * s}px ${FONT}`;
     const lw = words.length ? Math.max(...words.map((w) => textW(ctx, w))) : 0;

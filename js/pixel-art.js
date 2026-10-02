@@ -8,12 +8,13 @@
 // point is drawn at the origin, which is where every caller has already put the shadow.
 const PIXEL_EXTENT = {
   goat: 34, clubman: 36, brute: 38, mage: 38, hound: 40, hunter: 38, butcher: 48, wraith: 38,
-  chicken: 22, ratogre: 70, ogre: 66, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
+  chicken: 22, ratogre: 70, ogre: 66, spartan: 36, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
 };
 // The painted slot names this pass fills. `sheep` is the goat's old slot name, not a sheep.
 const PIXEL_UNIT = {
   sheep: 'goat', clubman: 'clubman', brute: 'brute', mage: 'mage', hound: 'hound', hunter: 'hunter',
   butcher: 'butcher', wraith: 'wraith', chicken: 'chicken', ratogre: 'ratogre', ogre: 'ogre',   // the ogre draws off js/ogre-pixels.js, not the atlas
+  spartan: 'spartan',   // the shieldman, off js/spartan-pixels.js
 };
 
 // The throat of the pixel goat in each of his eight idle facings, world px from the foot (the same
@@ -78,6 +79,8 @@ const PIXEL_FACE_ART = {
 // 'rock') where it was one swatch stamped a tile at a time. The trip's floor is never touched.
 const ART_PASS = {
   on: false, hunter: 7, clubman: 1, floors: true,
+  // the shieldman's board, one of `PROP_PIXELS.SHIELD_LOOKS` (2 Oct 2026: ASPIS, THORNS, RAM)
+  shield: 0,
   shadows: true, tells: true, hay: true, cave: true,
   // A level's `artPass` colours in place of its own, and back: the tuned ones are kept on the level
   // the first time it is switched, so switching off is exact.

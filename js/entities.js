@@ -104,7 +104,7 @@ class Goat {
       this.invuln = Math.max(this.invuln, R.invuln);
       if (this.holding) {
         const h = this.holding; this.holding = null; h.held = false; this.autoHeld = false;
-        if (!h.item) { h.state = 'floored'; h.timer = 0.5; }
+        if (!h.item) { h.state = 'floored'; h.timer = TUNING.goat.grab.letGo; }
         this.spendGrab(game, !h.item);
       }
       game.audio.sfxRoll(); game.audio.musicEvent('roll'); world.emitNoise(this.x, this.y, TUNING.noise.swing); game.vibe(12);
@@ -300,7 +300,7 @@ class Goat {
           this.throwHeld(game);
         } else if (!h.item && this.holdTimer >= this.holdLimit) {
           // He works his way loose. Losing him costs less than throwing him, but it still costs.
-          h.held = false; this.holding = null; h.state = 'floored'; h.timer = 0.6;
+          h.held = false; this.holding = null; h.state = 'floored'; h.timer = TUNING.goat.grab.loose;
           h.x += this.aim.x * 10; h.y += this.aim.y * 10;
           this.spendGrab(game, true, 0.7);
         }
@@ -692,17 +692,25 @@ class Goat {
       } else {
         // A hound is not always there for it: that is what makes him a hound and not a man.
         if (e.tryDodge && e.tryDodge(game, ax, ay)) continue;
-        // The shieldman's board, met head on: it takes the blow, he is rocked back behind it and the goat
-        // comes off it the way he comes off the ogre. Round its edge he is a clubman (pillar 2: the angle).
+        // The shieldman's board, met head on: its spikes take the horns (2 Oct 2026, `shieldman.spikes`).
+        // The goat loses a heart and is thrown off it, he is rocked back behind it, and the bone is not
+        // worn by it. Round its edge, or with it down (dazed, poisoned and slow to turn, alight), he is a
+        // clubman (pillar 2: the angle).
         if (e.shield && e.shieldCovers(this.x, this.y)) {
-          e.shieldTakes(game, ax, ay);
+          const SP = TUNING.shieldman.spikes;
+          e.shieldTakes(game, ax, ay, SP.wear);
           // Said once a run, where it happened, like the ogre's horns: the only lesson the board gets.
-          if (!game.boardTold) { game.boardTold = true; game.floatText(e.x, e.y - 50, 'HIS SHIELD TAKES IT. GO ROUND HIM.', PALETTE.ashHi); }
-          this.vx = -ax * TUNING.shieldman.bounce; this.vy = -ay * TUNING.shieldman.bounce;
-          game.hitstop(0.03); game.shake(2); game.squashGoat(TUNING.juice.squash.hit);
+          if (!game.boardTold) { game.boardTold = true; game.floatText(e.x, e.y - 50, 'SPIKES. GO ROUND HIM.', PALETTE.ashHi); }
+          this.vx = -ax * SP.bounce; this.vy = -ay * SP.bounce;
+          this.damage(SP.hurt, game, -ax * SP.bounce * 0.3, -ay * SP.bounce * 0.3, false, e);
+          game.bark(e, 'spiked', 0.7);
+          game.hitstop(0.05); game.squashGoat(TUNING.juice.squash.hit);
+          game.particles(this.x + ax * this.r, this.y + ay * this.r, 8, PALETTE.blood, 220);
           game.impact(this.x + ax * (this.r + 6), this.y + ay * (this.r + 6), ax, ay);
           continue;
         }
+        // butted round his board: he takes it personally
+        if (e.shield) game.bark(e, 'back', 0.7);
         const imp = Talisman.buttImpulse(game, this, e, impulse * (e.knockMul ? e.knockMul() : 1));
         // SPLASH poisons the man on the horns as well as whoever is behind (1 Oct 2026, playtest),
         // before the throw: with the whole poison set the onset is a blow, whose floor wiped the fling.
@@ -722,6 +730,9 @@ class Goat {
     }
     for (const p of game.props) {
       if (p.broken || p.lastLunge === this.lungeId) continue;
+      // Her wares are with her while she is there (`Shop.shelved`): a stool nobody can see is not
+      // a rudeness, and three butts at empty floor woke the rat ogre.
+      if (p.kind === 'ware' && Shop.shelved(game, p)) continue;
       // A door that has swung open for good (a room cleared, a man's shoulder) is folded against
       // the wall: a blow through the doorway is not a blow on it. The clock door is still counting
       // and can still be taken off its hinges before it shuts.
@@ -826,7 +837,7 @@ class Goat {
       // The full reach rather than the crate's six tenths of it: a stool is reached up to from the
       // gap in the wall, not stood over.
       for (const p of game.props) {
-        if (p.kind !== 'ware' || p.broken) continue;
+        if (p.kind !== 'ware' || p.broken || Shop.shelved(game, p)) continue;
         const dx = p.x - this.x, dy = p.y - this.y, d = hyp(dx, dy);
         if (d > this.r + p.r + g.reach || (dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) continue;
         if (d < bestD) { bestD = d; best = p; }
@@ -1651,7 +1662,7 @@ class Prop {
       const dx = e.x - this.x, dy = e.y - this.y;
       if (hyp(dx, dy) > 2.1 * TILE) continue;
       if ((dx * ax + dy * ay) < -4) continue;
-      if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.35; } }
+      if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = TUNING.butcher.rocked.door; } }
       else e.fling(ax * 17 * TILE, ay * 17 * TILE, false);
     }
   }
@@ -2104,7 +2115,7 @@ class Prop {
         if (this.corpse && Talisman.corpseHit(game, this, e, spd)) { this.shatter(game); return; }
         // A crate in the face is not a trip. He goes down properly, and he stays down seeing stars.
         // Never out of the air: an ogre knocked down mid-leap over a drop fell into it.
-        if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.45; } }
+        if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = TUNING.butcher.rocked.crate; } }
         else {
           const stun = TUNING.prop.crate.stun;
           e.state = 'floored'; e.timer = stun; e.dazed = Math.max(e.dazed, stun);
@@ -2219,6 +2230,16 @@ class Prop {
       else { this.vx *= -W.shieldBounce; this.vy *= -W.shieldBounce; if (--this.uses <= 0) this.snap(game); }
       return;
     }
+    // The shieldman's skulls (`Enemy.dropShield`): the horns go into the first man they meet, and on.
+    if (this.skulls) {
+      e.die(game, 'splat', nx, ny, 'horns');
+      game.gore(this.x, this.y, 6, nx, ny); game.audio.sfxSplat(); game.audio.sfxCrack();
+      game.shake(5); game.hitstop(0.05); game.kick(nx, ny, TUNING.juice.kick);
+      game.floatText(e.x, e.y - 28, 'GORED', PALETTE.fireHi);
+      this.vx *= 0.5; this.vy *= 0.5;
+      if (--this.uses <= 0) this.snap(game);
+      return;
+    }
     if (this.weapon === 'sword') {
       e.byBlade = true;   // the cup and the grease count the room's kills, not the blade's
       e.die(game, 'splat', nx, ny, 'sword');
@@ -2229,7 +2250,7 @@ class Prop {
       if (--this.uses <= 0) this.snap(game);                               // and it stays in him
       return;
     }
-    if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.5; } e.aware = true; this.vx *= -0.25; this.vy *= -0.25; }
+    if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = TUNING.butcher.rocked.shield; } e.aware = true; this.vx *= -0.25; this.vy *= -0.25; }
     else {
       e.state = 'floored'; e.timer = W.shieldStun; e.dazed = Math.max(e.dazed, W.shieldStun); e.aware = true;
       e.vx = nx * 4 * TILE; e.vy = ny * 4 * TILE;
@@ -2297,6 +2318,13 @@ class Prop {
       else if (p.kind === 'secret') { p.hits = Math.max(p.hits || 0, TUNING.prop.secret.hits - 1); p.crackWall(game); }   // a blast opens it outright
       else if (p.kind === 'rock') p.crackRock(game);
       else if (p.kind === 'cleat') p.cutRope(game);
+    }
+    // A wraith lying as a crate is no prop (`Enemy.hide`), so the loop above never saw it: it survived
+    // the blast that broke every real crate round it and gave itself away by being the one left.
+    for (const e of game.enemies) {
+      if (e.dead || e.state !== 'hidden' || !e.disguise || e.disguise.kind !== 'crate') continue;
+      if (hyp(e.x - x, e.y - y) > r + (e.disguise.r || 12) || !game.blastClear(x, y, e.x, e.y)) continue;
+      e.unmask(game);
     }
   }
 
@@ -2418,7 +2446,7 @@ class Prop {
       for (const e of game.enemies) {
         if (e.dead || e.held || e.ghosted || e.state === 'flung' || e === this.by) continue;
         if (hyp(e.x - this.x, e.y - this.y) > e.r + this.r + 2) continue;
-        if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.3; } this.vx *= -0.2; this.vy *= -0.2; }
+        if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = TUNING.butcher.rocked.table; } this.vx *= -0.2; this.vy *= -0.2; }
         else { e.fling(nx * spd * 1.25, ny * spd * 1.25, false); this.vx *= 0.75; this.vy *= 0.75; }
       }
       if (game.world.isBurningPx(this.x, this.y)) game.world.ignitePx(this.x, this.y, true);

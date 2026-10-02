@@ -10,6 +10,8 @@
 // bought in heaven it goes up and comes back down into him once a floor (`second`, `updateRevive`).
 //
 // Render-side and bookkeeping only: a mote never touches collision, noise or the AI.
+// A white soul in cells (`Motes.draw`), top row first: `o` the pale rim, `w` white, `e` an eye.
+const WISP = ['..o..', '..wo.', '.owwo', 'owwwo', 'oeweo', 'owwwo', '.owo.'];
 const Motes = {
   // ---------------------------------------------------------------- the white souls
   // A man down: a soul over his body, belonging to the room he fell in.
@@ -31,7 +33,8 @@ const Motes = {
         // risen over the body, breathing
         const k = clamp(m.t / M.riseT, 0, 1), e = 1 - Math.pow(1 - k, 3);
         m.x = m.ox; m.y = m.oy - M.rise * e - Math.sin(m.t * 2.4 + m.ph) * M.bob * k;
-        if (m.t > M.wait && gi !== m.room && !g.dead) { m.fly = true; m.vx = 0; m.vy = -M.speed * 0.6; m.sp = M.speed; }
+        // Out of their room, or walked up to (2 Oct 2026 playtest: "it should also fly to you when you just come up to it").
+        if (m.t > M.wait && (gi !== m.room || hyp(g.x - m.ox, g.y - m.oy) < M.near * TILE) && !g.dead) { m.fly = true; m.vx = 0; m.vy = -M.speed * 0.6; m.sp = M.speed; }
         continue;
       }
       // homing, faster the longer it flies, with a little curl so a flock does not arrive as a line
@@ -87,9 +90,15 @@ const Motes = {
       const tw = 0.75 + 0.25 * Math.sin(t * 7 + m.ph);
       if (m.fly) for (let i = 0; i < m.trail.length; i += 2) cell(m.trail[i], m.trail[i + 1], 1, '#e8f0ff', 0.25 + 0.4 * i / m.trail.length);
       const born = clamp((m.t + 0.2) / 0.25, 0, 1);
-      cell(m.x, m.y, 4, '#dfe9ff', 0.16 * tw * born);
-      cell(m.x, m.y, 3, '#eef4ff', 0.35 * tw * born);
-      cell(m.x, m.y, 2, '#ffffff', 0.95 * born);
+      cell(m.x, m.y, 7, '#dfe9ff', 0.1 * tw * born);
+      // A little wisp, not one white pixel (2 Oct 2026 playtest): a flame of cells, its tip licking
+      // side to side, pale rim, white heart and two dark eyes, so it reads as a soul at a glance.
+      const lick = Math.round(Math.sin(t * 6 + m.ph) * 0.8);
+      for (let r = 0; r < WISP.length; r++) for (let c = 0; c < WISP[r].length; c++) {
+        const k = WISP[r][c]; if (k === '.') continue;
+        const x = m.x + (c - 2 + (r < 2 ? lick : 0)) * C, y = m.y + (r - 4) * C;
+        cell(x, y, 1, k === 'o' ? '#b9cdf5' : k === 'e' ? '#2a2440' : '#ffffff', (k === 'o' ? 0.75 * tw : 0.95) * born);
+      }
     }
     ctx.globalAlpha = 1;
   },

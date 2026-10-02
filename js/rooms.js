@@ -1704,6 +1704,23 @@ const AMBUSH_TEMPLATE = { name: 'ambush', noFlipX: true, rows: [
 // Narrower than it was, too: ten tiles of walk from the door to the far wall put enough ground
 // behind him that a headbutt did not always reach it. Nine tiles of width closes that gap without
 // touching the depth, so the first swing a player ever tries is one that reliably kills.
+// THE YARD's chandelier lesson (2 Oct 2026, `levelDef.chandAt`): the way out is a one-tile notch
+// in the right wall (the `P` pier is only there so the one row `pickDoorY` can take is row five,
+// far enough down that the ring hung over him never covers its cleat; gen.js turns it back to floor
+// once the door is cut), one clubman holds it (`post`, a sentry's feet) and a chandelier hangs over
+// him, its rope straight up to a cleat on the far wall. Butt the cleat and the ring comes down on him.
+// `noFlipX` and `noFlipY`: the notch and the cleat only work the way round they are written.
+const CHAND_LESSON_TEMPLATE = { name: 'chandlesson', noFlipX: true, noFlipY: true, rows: [
+  '##########',
+  '#........#',
+  '#.......P#',
+  '#.......P#',
+  '#.......P#',
+  '#........#',
+  '#........#',
+  '##########',
+]};
+
 const LESSON_TEMPLATE = { name: 'lesson', canon: 'stone', noFlipX: true, rows: [
   '#########',
   '#..o....#',

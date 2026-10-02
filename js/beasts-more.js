@@ -178,7 +178,22 @@ Object.assign(Beast, {
       }
       return;
     }
-    if (p.task === 'sing') { p.vx = 0; p.vy = 0; p.face = Math.sign(g.x - p.x) || p.face || 1; return; }
+    if (p.task === 'sing') {
+      // His fire burns her like anyone (`Beast.tick` → `hurt`), but she does not stand in it and
+      // sing: off a burning tile she steps to the nearest one that is not, and sings on from there.
+      const w = game.world;
+      if (w.isBurningPx(p.x, p.y)) {
+        const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+        let best = null, bd = Infinity;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          const x = (tx + dx + 0.5) * TILE, y = (ty + dy + 0.5) * TILE, d = dx * dx + dy * dy;
+          if (!d || d >= bd || w.isSolid(tx + dx, ty + dy) || w.isBurningPx(x, y) || w.isPitPx(x, y)) continue;
+          best = { x, y }; bd = d;
+        }
+        if (best) { const dx = best.x - p.x, dy = best.y - p.y, d = hyp(dx, dy) || 1; Beast.step(p, game, dx / d, dy / d, C.speed, dt); return; }
+      }
+      p.vx = 0; p.vy = 0; p.face = Math.sign(g.x - p.x) || p.face || 1; return;
+    }
     Beast.follow(p, dt, game, C);
   },
   // After him, the pig's way.
@@ -194,7 +209,7 @@ Object.assign(Beast, {
     game.song = { p, room: room.index, t: -C.leadIn, hits: 0, cycle: -1, answered: false, done: null, cleared: -1, flash: 0, miss: 0, practice: !!practice };
     if (practice) {
       // Just the two of them: no cult called in, no howl the house hears.
-      game.audio.sfxAnimal('husky');   // what to do is written over the staves (`drawSong`), not over her head
+      game.audio.sfxHusky('woo');   // what to do is written over the staves (`drawSong`), not over her head
       return;
     }
     const at = room.enter || { x: (room.x + 1.5) * TILE, y: (room.y + room.h / 2) * TILE };
@@ -205,11 +220,18 @@ Object.assign(Beast, {
     }
     game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: 'AWOOOO!', color: PALETTE.hen, life: 1.6, pact: true });
     game.world.emitNoise(p.x, p.y, TUNING.noise.boom);
-    game.audio.sfxAnimal('husky');
+    game.audio.sfxHusky('woo');
   },
   // His voice, from `Goat.update`'s BAAH (any of its souls): on the beat, an answer.
   heard(game) {
     const S = game.song, C = TUNING.prop.husky; if (!S || S.done) return;
+    // In a song his voice is a goat's whatever a soul made of it: DRAGON BREATH and VENOM SPIT still
+    // burn and spit (`Goat.update` goes on to them), but he bleats as he does it, so he is heard
+    // singing back (2 Oct 2026). The plain voice and THE FULL THROAT are a BAAAH already.
+    if (game.mods.spit || game.mods.breath) {
+      const g = game.goat; game.audio.sfxBleat(C.beh[0], C.beh[1], C.beh[2]);
+      game.floats.push({ x: g.x, y: g.y - 26, text: 'BEH!', color: PALETTE.bone, life: 0.8 });
+    }
     const ph = S.t - S.cycle * C.cycle;
     if (S.cycle >= 0 && !S.answered && Math.abs(ph - C.you) <= C.window) {
       S.answered = true; S.hits++; S.flash = C.flash;
@@ -231,9 +253,12 @@ Object.assign(Beast, {
     }
     const ph = S.t - S.cycle * C.cycle;
     // her two notes, sung as they cross the line
+    // (a bark on the first, the howl on the second, both heard: they used to be the tortoise's knock)
     for (const h of C.her) if (S.cycle >= 0 && ph >= h && ph - dt < h) {
-      p.singing = 0.4; game.audio.sfxAnimal('husky');
-      game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: h === C.her[0] ? 'WAF' : 'WOOO', color: PALETTE.hen, life: 0.7, pact: true });
+      const woo = h !== C.her[0];
+      p.singing = woo ? 0.9 : 0.4; game.audio.sfxHusky(woo ? 'woo' : 'waf');
+      if (woo) game.ring(p.x, p.y, C.wooRing * TILE, '#9fd0ff', 0.5, 2);
+      game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: woo ? 'WOOO' : 'WAF', color: PALETTE.hen, life: 0.7, pact: true });
     }
     if (S.practice) {
       // The practice cannot be lost: it ends sung, or when he walks out of the room, or men come in,
@@ -258,7 +283,12 @@ Object.assign(Beast, {
   endSong(game, won) {
     const S = game.song, p = S.p, C = TUNING.prop.husky;   // without it every song's end threw, every frame
     S.done = won ? 'won' : 'lost'; S.end = C.endLost;
-    if (won) { p.sang = true; p.task = null; Beast.talk(game, p, ['AWOOOOOOO!', 'WE SANG! NOW TAKE ME TO THE STAIRS, AND YOUR VOICE COMES BACK SOONER FOR THE REST OF THE RUN.']); }
+    // Won, she says so over her head, never in the box: the box holds the floor, and a song is sung
+    // in the middle of a fight that must not stop for it (2 Oct 2026).
+    if (won) {
+      p.sang = true; p.task = null;
+      C.won.forEach((text, row) => game.floats.push({ x: p.x, y: p.y, on: p, row, n: C.won.length, text, color: PALETTE.hen, life: C.wonFor, pact: true }));
+    }
     else { p.task = null; game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: 'awoo...', color: PALETTE.ashHi, life: 1.6, pact: true }); p.refused = C.giveUp; }
   },
   // The two staves at the foot of the screen: her notes, then his, sliding left to the line.

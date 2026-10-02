@@ -81,6 +81,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | File | Holds |
 |---|---|
 | `js/tuning.js` | `TILE`, `TILT`, `PALETTE`, `TUNING`, `BOON_BASE`, `BOONS`, `BARKS`, `SETTINGS`, `MENU`, `LEVELS`, `ARTIFACTS`. Every tunable number, every line the cult shouts, the title screen rows and the level definitions. |
+| `js/text-edit.js` | `TextEdit`, the dev drawer's TEXT EDIT switch (2 Oct 2026): `fillText` on every canvas is wrapped, while it is on the main canvas's strings are written down with their screen boxes, a click on one opens a box to rewrite or delete it (a click on a dev button still presses it); `TEXT_EDITS` (drawn over the original in every build, the itch one too) and `TEXT_EDIT_KEY` (this browser only, off the server). Saved through POST /text-edit (`tools/text-patch.js`): a text found whole in one literal of js/*.js is rewritten there, anything built out of pieces goes into `TEXT_EDITS`. Loads right after `tuning.js`. |
 | `js/rng.js` | Seeded RNG (mulberry32) plus `clamp` / `lerp` / `len` / `angleDiff`. |
 | `js/rooms.js` | Hand-authored room templates as character grids, legend at the top (`'w'` a stand of arms, `'O'` a drop). Also the start room, arena, Mill room, Great Hall, Gallery. Templates carrying a `tag` belong to one level's pool. `groundOf`. |
 | `js/gen.js` | Level generation: chains rooms, carves corridors, places props, spawns, heals, validates reachability. Defines the tile enum `T`. |
@@ -112,6 +113,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/dark.js` | `Dark`: THE DARK's picture, light cast from every flame through the tiles, the goat's hearing as silhouettes, the wall faces round him, windups and eyes over the dark. Render only. |
 | `js/combat-fx.js` | `CombatFX`: cosmetic fragments and bursts (deaths, body pieces), and every flame, blast, smoke puff and blood spray as pixel frames it bakes itself (`flameFrames`, `burstFrames`, `pixelRing`, `cellDisc`); never enters collision, damage, noise or AI. |
 | `js/scatter.js` | `Scatter` (`game.scatter`): a suit of armour's pieces (`fromArmor`, `armor-*`), and the supper on the tables (`Scatter.foodOf`, off a hash of the table's tile; `TUNING.scatter`) and everything thrown off one, arcs, quarter turns, bounces, rolls, clay breaking into shards and a spill, left lying to be kicked. Cosmetic: never in collision, damage, noise or AI. Sprites `food-*` in `js/prop-pixels.js`. |
+| `js/spartan-pixels.js` | `SPARTAN_PIXELS`: the shieldman, a fat Spartan, a hand-built pixel unit in the ogre's recipe (belly out, a small helmet and crest, stubble, red cape, hairy legs, no club), five views mirrored to eight and a stride; `SPARTAN_PIXELS.draw(ctx, angle, moving, t, x)`, called by `PaintedArt.character` for key `spartan`. Loads after `ogre-pixels.js`; node-requirable. |
 | `js/pig-pixels.js` | `PIG_PIXELS`: the pig as a hand-built pixel unit, the horse's recipe a size down (five views mirrored to eight, a trot, the `eat` pose head-down); `PIG_PIXELS.draw(ctx, angle, moving, t, pose)`, called by `Renderer.pigSprite`. Loads after `horse-pixels.js`. `output/pig-2026-09-30/render.cjs` renders a sheet. |
 | `js/heaven-pixels.js` | `HEAVEN_PIXELS`: heaven's sprites on `PROP_PIXELS.Grid`, the god (`god`, `god-speak`, `god-blink`), the blind shepherd's three arms, the mirror (its glass one flat colour, `GLASS`), the five bells and their beam (`BELL_GAP`), a seat, gold grass, the gold skull the HUD counts sacrifices in. Loads after `horse-pixels.js`; node-requirable for a sheet. |
 | `js/heaven.js` | `Heaven`: THE PASTURE ABOVE, where a death's card leads (see *Heaven* below): the store that outlives runs (`HEAVEN_KEY`, `meta`: sacrifices, `MIRROR` ranks, the seats), the hand-laid two-room level (`level`), its step (`update`: GRAB answers, the comb, the talk, the mirror panel, the bells, the edge), what the god says (`HEAVEN_TALK`, `pickTalk`) and all of its picture (`bake*`, `draw*`, `drawHud`). |
@@ -140,12 +142,13 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/perf.js` | In-page frame profiler: `await PERF.frames(floor, seed, n)` (update/draw avg, p95, max), `PERF.top` (every method timed, hot helpers skipped), `PERF.spikes` (frames over a budget and what they spent). Each frame is its own task (`PERF.tick`): back-to-back frames pile up GPU work into fake 100–470 ms stalls. |
 | `tools/pack-decals.js` | Writes `js/decal-pixels.js`: finds each generated sign's pixel grid (or cuts it to `CELLS` across), one colour a cell, a few colours a sign. |
 | `tools/png-harden.js` | Both pixel packers' last step: the embedded atlas PNG hardened the way `PIXEL_ART.init` does it and re-encoded (adaptive filters, zlib 9), proved to decode to the same pixels before it is written. `--check` reports only. |
+| `tools/text-patch.js` | TEXT EDIT's server half (`applyText`: the literal, else `TEXT_EDITS`) and the TALK page's (`editLine`: one spoken line rewritten or taken out of its list where it stands; a single value is emptied). |
 | `tools/tuning-patch.js` | Writes tool-tab edits back into `tuning.js` (steps into arrays by index). |
 | `tools/check-sync.js` | Checks the working tree, `origin/main` and the published artifact are one build. See *Publishing*. |
 | `tools/script-lists.js` | The one reader of which scripts the two HTML files load. `check-sync.js` and the guard both ask it. |
 | `tools/hooks/guard.js` | Claude Code hook: refuses a publish or a push that would put a broken build live. See *Publishing*. |
 | `tools/hooks/compact.js` | Claude Code hooks: saves the user's own words before a context compaction and hands them back after it. |
-| `tools/god-talk.html` | GOD TALK (dev drawer): every line of `HEAVEN_TALK` and `SHEPHERD_TALK`, read out of js/heaven.js, to edit and cut into parts with `|` (each part its own plate, `Heaven.parts`); SAVE writes both back through `tools/serve.js` (POST /talk-edit). Served only. |
+| `tools/god-talk.html` | TALK (dev drawer's TALK · GOD, ANIMALS, TIPS): every line of `HEAVEN_TALK`, `SHEPHERD_TALK` and `DEATH_TIPS`, read out of js/heaven.js, to edit, delete and cut into parts with `|` (each part its own plate, `Heaven.parts`); SAVE writes them back through `tools/serve.js` (POST /talk-edit). Below, every animal's and the mouse's line (`BEAST_HELLO`, `BEAST_ANSWER`, `TUNING.prop.<kind>.talk / lines / thanks`, `Beast.PACT`), each saved or deleted on its own (POST /line-edit). Served only. |
 | `tools/stats.html` | THE FUNNEL on top (players, not lives: opened, started, died, played again, cleared floor 1, reached 4, reached 8, escaped; the steps the game sent, filled in from the lives; the build picker keeps the players who came in on it), then the reports read back as charts: deaths, hearts lost and cult kills by floor and cause, how far lives get, soul cards and talismans offered vs taken, companions. Reads this browser (served), files (the dev drawer's SAVE STATS), or the worker (SERVER: its address and READ_KEY, kept in that browser). Also players by day, first vs came back. |
 | `tools/stats-worker/` | RUN STATS' receiver: a Cloudflare Worker (`worker.js`) over D1 (`schema.sql`). POST `/report` (shape, size and the id patterns checked, a rate limit per hashed address, stored once by id) and `/steps` (the funnel, a player's step stored once), GET `/reports` (newest first, `?before=` pages back, `X-Oldest-Got`) and `/steps` with the `READ_KEY` secret. `README.md` there is how to deploy it; `wrangler.toml` holds the database id. |
 | `tools/sfx-board.html` | Every sound effect on one page of buttons, through the game's own mix and room. Served, `/tools/sfx-board.html`. |
@@ -265,7 +268,7 @@ changes in a level; `clip()` alone makes the browser's own save, undone with its
 to the value it already holds is not passed on; the transform is tracked in plain numbers. **Rules:**
 read the transform with `xform(ctx)` (live: copy before changing it), never `ctx.getTransform()`; a text
 width is `textW(ctx, s)`, never `ctx.measureText(s).width`; a gradient is made once and scaled into place
-(`lightGrad`, `veilGrad`), never one a frame. `CANVAS_STATE.set(false)` hands it all back to the browser
+(`lightGrad`, `veilGrad`; a soft disc is `glowDisc(ctx, x, y, r, stops)`), never one a frame. `CANVAS_STATE.set(false)` hands it all back to the browser
 between frames, for an A/B or a pixel comparison: a frame matches the browser's to within a texel
 boundary or two (the browser rounds `setTransform` to 32-bit floats, so a restored matrix is ~1/1000 px
 off its own). Measured in two 60 s fights: 20 full collections → 5, and 18 → 10, about a quarter of the time frozen (815 → 209 ms). How it was found
@@ -410,7 +413,7 @@ whole-floor landings at both ends so a door never opens onto a hole) are in no d
 own stream, never the vault's room). `GEN_RULES.bridges`.
 
 **The cave is third.** It has no killbox, `lonePosts`, grating (`spikes: 0`) or trap room. Ladder:
-29.3 / 39.7 / 67.5 / 97.3 / 113.0 / 141.1 / 151.7 / 163.8, and THE DARK 72.5 beside the fifth (1.74); `GEN_RULES.harder` and `balance.js` hold each
+22.3 / 37.0 / 65.3 / 97.4 / 108.5 / 145.5 / 166.7 / 174.1, and THE DARK 68 beside the fifth (1.97); `GEN_RULES.harder` and `balance.js` hold each
 level above the last. Later floors draw cave rooms via `known`, so `GEN_RULES.grass` allows grass on the
 cave and later floors that drew one, grass *before* the cave fails.
 
@@ -671,13 +674,16 @@ New harm, pass a source.
 ### Enemy kinds
 
 **One rule for every kind** (1.72, `TUNING.boss`). Without the outline a man has one heart, whatever his
-kind, except the butcher, `champion.hp` (3), and the Seer, `seer.hp` (2, back since 26 Sep 2026). A boss (`e.boss`, `Renderer.isBoss`: never the
-rat ogre) is the champion version of his kind: `boss.hp` hearts, or his kind's own plus one where
-that is more (the butcher 4; the ogre, boss-only, his own `butcher.hp`), drawn × `boss.scale` on top of his kind's sheet fit (`Renderer.bodyScaleOf`, which
-THE DARK's eyes share) and outlined, `Renderer.bossOutline` lays his own body as a flat silhouette
-`outline.px` out on eight sides, yellow, over a dark `back` ring, via a canvas shadow (one exact
-colour, blur 0) so it is hard pixels, never a glow. Set in `startLevel` off the spawn's `boss`.
-A soul only ever goes into a boss. `THREAT` for seer and champion came down with it.
+kind, except the butcher, `champion.hp` (3), the Seer, `seer.hp` (2, back since 26 Sep 2026), and the shieldman, `shieldman.hp` (2, 2 Oct 2026; drawn × `shieldman.scale`). A boss (`e.boss`, `Renderer.isBoss`: never the
+rat ogre) comes in two (2 Oct 2026): with no soul he is a **champion**, his kind's own hearts plus
+`boss.champHp` (1) and nothing else, outlined yellow (`outline.color` over `back`); with a soul in him
+(`e.soul`: `game.ensoul`, every gate's keeper, the last boss whose soul is the stairs' gate) he is the
+strong one, `boss.hp` or his own if more (`ensoul` raises it) plus `soulBearer.hp`, outlined violet
+(`outline.soul` over `soulBack`) and lit violet (`SOUL_HAZE`), so the room before a soul door is always
+violet. The ogre, boss-only, keeps his own `butcher.hp`. Drawn × `boss.scale` on top of his kind's sheet fit (`Renderer.bodyScaleOf`, which
+THE DARK's eyes share); `Renderer.bossOutline` lays his own body as a flat silhouette
+`outline.px` out on eight sides via a canvas shadow (one exact colour, blur 0) so it is hard pixels,
+never a glow. Set in `startLevel` off the spawn's `boss`. A soul only ever goes into a boss.
 
 **Two hits.** `hp > 1` (a boss, a soul-bearer, the rat ogre) absorbs a killing blow in `die()`: floored, one lost,
 up again (a boss Seer blinks). Fire counts. `'fall'` skips it. A bomb charge is an ordinary hit; a
@@ -758,15 +764,25 @@ boss, who already wears the outline; he is lit too (amber haze, ring, red eyes),
 every later pool), spawned by `spawnKind` (gen.js; `threatKind` and rules.js `kindOf` read it back) as a bearer with
 `s.shield`, and `Enemy.giveShield` (`e.shield = { uses, jolt, ang }`, `e.shieldman` for good, `speedMul`).
 `Enemy.update` is now `act` plus the board's weight: whatever way a step wanted him to face, he turns there at
-`turn` rad/s, so circling, a roll or LEAPFROG reach his back and a swing wound up one way goes that way.
+`turn` rad/s (× `poisonTurn`, 0.15, poisoned: that is when he is walked round), so circling, a roll or LEAPFROG
+reach his back and a swing wound up one way goes that way.
 `shieldUp` (not dazed, floored, staggered, stunned, flung, held or alight) and `shieldCovers(x, y)` (within `arc` of
-his facing) are what every reach asks: the horns (`headbuttHits`: the board takes it, the goat bounces off), a round,
+his facing) are what every reach asks: the horns (`headbuttHits`: **the spikes**, 2 Oct 2026, `shieldman.spikes`: the
+goat loses `hurt` hearts and is thrown off at `bounce`, the bone wears `wear` (0) uses), a round,
 a thrown crate or arm (`hitMan`), the carried sword (`cutWith`), BY THE COLLAR's teeth (`tryGrab`, `closeBite`: GO
 ROUND THE SHIELD), a LIVING SHIELD club (`meleeHit`), and a flung body (`Game.flungHits`: the board is a wall to it,
 the wall's own kill rule). `shieldTakes` spends a use and rocks him back into `braced` (the board still up; it
-shares the floored branch's countdown), and the last use splinters it. Dead with uses left he drops it as a `weapon`
+shares the floored branch's countdown), and the last use breaks it (SHATTERED). Dead with uses left he drops it as a `weapon`
 shield (`dropShield`), not off a fall, a fire or a blast. Drawn by `PaintedArt.board` inside `character` (sprites
-`mshield-f/-s/-b`, `BOARD_POSE` per facing, under him on the back views). Killer token `shield`, SHIELDMAN.
+`mshield<look>-f/-s/-b`, `BOARD_POSE` per facing, under him on the back views); down (`!shieldUp`, eased on `sh.low`)
+it hangs `low` px lower at his knees a quarter turned. **He is a fat Spartan** (2 Oct 2026): his own body, `characterKey`
+`spartan` → `SPARTAN_PIXELS` (js/spartan-pixels.js: belly out, a small helmet and crest, stubble, red cape, hairy
+legs, no club), the board on his right arm the skulls of different beasts riveted together (`SK` in js/prop-pixels.js: goat,
+bull, ram, boar, stag), one of three designs, `ART_PASS.shield` (MENAGERIE, STAG AND BULL, RIVETED; the ART tab's
+SHIELD button). **His leap** (`bashStep`,
+`shieldman.bash`): `bashwind` (amber strip, `drawBashLine`; `daze`/`balk` break it) → `bash` along his facing (the
+goat met: `damage` and a shove through `blockBlow`; his own men bowled; stone dazes him) → `recover` with `bashPlant`
+(no turning). Dead, his skulls are a `weapon` shield with `p.skulls`: carried as a shield, thrown they kill (`hitMan`). Killer token `shield`, SHIELDMAN.
 
 **Fire and blunder.** Alight, a man blunders (`burnDir`, `moveToward` without `game`).
 `immune.blunder` (Butcher, hound) keeps his AI: `ignite` must not set `state = 'burning'` for such a kind
@@ -801,7 +817,7 @@ the fan of bounds round the line. `game.ogreHits`, `doomed`, `flungBy`.
 `tryGrab` ignores men (`game.reachedForAMan`). No `mods.screamStun` / `breath`: the scream is a `lure`
 to `scream.call` and inside `scream.balk` breaks a committed blow (`Enemy.balk`, `balkStun`) except a
 Butcher in the air or a manifesting wraith. The bare headbutt is blunt until LONG HORNS / IRON SKULL.
-`openBoonChoice` deals actives at 0.75 while either is half-shut.
+`openBoonChoice` deals active and passive strictly in turn after the first soul (1.97; the 0.75 lean toward actives while a button was half-shut dealt two skills running), and a browser's first run finds HUNGRY SOUL on its first passive deal.
 
 **Boons.** `applyBoons()` rebuilds `game.mods` from `game.boons`, **actives first, then passives**
 (an active that sets a cooldown outright used to wipe a passive's halving taken before it); use sites
@@ -811,7 +827,7 @@ point ("You run 13% faster"), and then a getter over `this.params`, never typed,
 with the full numbers off `p` / TUNING (`sayN`, `sayPct`, `sayTimes`, `sayPoison`) for the dev drawer
 only; `skill` hangs it on a button; `needs` gates the
 deal. `synergy` / `addition` on a boon are marks for the BOONS tab only. `BOON_SLOTS` (one active + two passives per button, four body); `game.boonOpen` is the one deal
-test; `key` boons count against nothing. `drawBodySouls`. **A full slot is a swap, not a heart** (26 Sep
+test; `key` boons count against nothing. The body souls are shown in the book's BODY row only (2 Oct 2026; `drawBodySouls` is no longer called). **A full slot is a swap, not a heart** (26 Sep
 2026): `game.boonSwaps` pairs every card shut out only by its slot with one boon in that slot;
 `openBoonChoice` deals them where the open cards run short (`game.boonReplace`, parallel to
 `boonChoice`), the card says `INSTEAD OF`, and `takeBoon` drops the old one first and pays no `heal`.
@@ -832,11 +848,15 @@ onset is a `die(game, 'poison')`, once, `Status.poison`). The card's footnote sa
 **The skill rail.** `drawSkills` is the only report of the verbs; `skillIcon` must change when a boon
 lands, it draws `SKILL_ICONS` (`js/skill-icons.js`, pixel pictures per verb and active soul, a mark
 per passive) and falls back to the old strokes. The rail is bottom right (`renderer.railLow`; top
-right on touch), its notes open upward; the dev drawer is bottom left. Chips show the key; `drawSkillNote` (`renderer.skillHover`) the name and a
+right on touch), its notes open upward; the dev drawer is bottom left. Chips are `32 × TUNING.hud.rail` and
+carry nothing else round them (2 Oct 2026: the small soul marks under each chip went, the picture says it; the
+book lays every soul under the part of him it changes, HORNS, TEETH, LEGS, THROAT, BODY, in its slots I, II, III with the empty ones drawn, `Codex.drawBook`; I opens the book over the soul's cards too, `pausedIn` hands them back). Chips show the key; `drawSkillNote` (`renderer.skillHover`) the name and a
 mod-aware `note`, plus, only while the dev drawer is open, a `stat` line of the verb's numbers as
 `game.mods` has them now (`wrapFacts` breaks it between facts). The card (`drawBoonChoice`) shows the
 name and `desc` (and its footnotes: the set, the third card) only, and grows to fit the wordiest card. HUD
 size: `renderer.hs` = `ts` × `TUNING.hud.scale`.
+The dev tool's BOONS tab (`drawBoonsTab`) is read off the same BOONS entries and nothing else: the
+verb's picture with the soul applied, the slot it takes, its set, `desc` whole and `stat(p, b)`.
 
 **Timing.** Headbutt has no cooldown (recovery is the cost); `goat.grabCd` on every release, set only
 through `Goat.spendGrab(game, man)`, a man costs `grab.manCd` × a thing, however he left the mouth,
@@ -963,8 +983,18 @@ it past `cleat.hit`, or `cleat.burn` s of flame on its tile cuts the rope (`Prop
 the ring falls from `z` (`updateChandelier`) and lands on everything within `killR`: a man `die`s
 ('splat'; the two-hit kinds lose a heart), the goat loses a heart (killer `chandelier`), a table under it
 goes to planks, the candles light `fireR` tiles. The wreck stays, harmless. Neither prop blocks. Drawn in
-two passes: its shadow (the landing spot, darkening as it comes) or the wreck with the props,
-`Renderer.drawChandelierAir` (ring, rope to the cleat) over everybody.
+two passes: its shadow or the wreck with the props, `Renderer.drawChandelierAir` (ring, rope to the cleat)
+over everybody. **It says little until it matters** (2 Oct 2026, `chandelier.look`, "less on the screen"):
+the ring at `look.ring` world px a texel, `z` 64 and `fromWall` 4 so it never covers its own cleat, thinned to
+`fade` while it covers the goat or a man (`p.airFade`), the rope thin and faint; within `warnR` of the cleat
+(`chandWarn`, js/prop-pixels.js) the cleat gets a beating amber frame, the rope goes amber and the landing
+spot is an amber ring of cells (`drawLandCells`), which fills while it falls. A man under a chandelier is
+not "in the furniture" (`inFurniture`). **THE YARD teaches it** (`levelDef.chandAt` 3, `CHAND_LESSON_TEMPLATE`,
+`room.isChand`, role `mix`, `noFlipX` / `noFlipY`): bought as one clubman (`chand`), the way out narrowed to
+one tile (`narrowExit`; the template's `P` pier only fixes the door's row and goes back to floor after),
+the man (`post`: `e.sentry`'s feet, never walked out of furniture) holding it under a ring whose cleat is on
+the far wall straight above him. Nothing else is put in that room, it is never a trap, canon, armory or
+secret room, and the room after it never stacks. `GEN_RULES.chandlesson`.
 
 **The wall's dressing** (30 Sep 2026, Enter the Gungeon's; `TUNING.prop.armor`, `TUNING.prop.trophy`).
 `gen.js` `dressWall` (its own RNG stream, after the chandelier) hangs a **suit of armour** (`kind:
@@ -1162,7 +1192,9 @@ nothing (`gap` is a mark; no spot → reseed). Three `ware`s `shop.spread` apart
 `shop.strikes` the rat ogre, wares `locked` until `Shop.ogreDown`. Death returns the level's take
 (`levelArtifact`). `drawBurrow`, `drawMouse`; `Shop.breakWall` opens three wall tiles when she turns.
 
-**Read the ware.** `Renderer.drawWare` within `prop.ware.readR`: name, tier and the tier's `desc`
+**She keeps her wares** (1.97, `Shop.shelved`): while her mouse is there a shop's wares are neither drawn nor
+grabbed; walking within `shop.dlg.r` of HER opens the offer (`Codex.watchShop`), and her room's floor says WALK UP
+TO HER and the book's key. **Read the ware.** `Renderer.drawWare` within `prop.ware.readR`: name, tier and the tier's `desc`
 (`wareNote` → `drawNote`, drawn after the fog and kept in the picture under the hearts by
 `Renderer.keepInView`, which the animals' plates and floating words share). **A tier's `desc` is a
 getter onto its talisman's `tell(p)`**: one or two plain lines, a number only where it is the point
@@ -1267,7 +1299,8 @@ with `tools/escorts.js` (`ESCORT.run`), the way 1.57 measured the men.
   were kept (and seat it in heaven) or take it back (`Game.devBeast`).
 - **The box** (`Beast.talk` / `updateTalk` / `drawTalk`, `game.beastTalk`, `TUNING.beast.talk`): every
   animal's terms the first time a run lets one out (the horse's race, the pig's meal, and since 1.85
-  `BEAST_HELLO` for the hen, tortoise, goose and crow), the horse beaten and the pig full are said in the
+  `BEAST_HELLO` for the hen, tortoise, goose and crow; since 1.97 a hint at the reward in the animal's own voice, never
+  a readout: the numbers are on the clear card and `Beast.GIVES`), the horse beaten and the pig full are said in the
   god's box over the paused floor (`Game.update` runs nothing else while it is up; any verb turns the
   page). `Beast.met` and `game.henFreed` open it; `Beast.portrait` draws the small ones off `drawProp` at
   `talk.size`.
@@ -1389,6 +1422,10 @@ drops each on a man the goat can see, only at the dramatic beat, more than `crow
 room and `hurt` hearts lost in this room and the one before (`game.hurtRooms`, pushed by
 `Goat.damage`), shadow tracking him until `lock` s out, crushing within `killR`, never the goat; it
 lies on its side (`drawSkyTables` ground and air passes). Only that floor.
+**The mirror before the edge** (2 Oct 2026): until he has once opened the mirror (`meta.mirror`, set in
+`openMirror`; any rank bought counts, `Heaven.mirrorKnown`) the god will not let him jump: `holdEdge` puts
+him back a step off the lip, says `HEAVEN_TALK.notYet` in the god's plate over the goat (every `holdGap` s) and
+rings the mirror, and the edge's floor words say THE MIRROR FIRST. Backspace still leaves.
 **CONTINUE comes up here first** (`resumeRun` → `Heaven.enter(game, { visit: true })`: no death
 counted, no killer), and the edge drops him into the saved floor. **The belfry**: eight bells
 (`heaven.bells`, pentatonic, the god's tune on the first three) on a 52-texel beam; the blind shepherd

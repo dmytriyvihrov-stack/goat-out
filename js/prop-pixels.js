@@ -16,6 +16,13 @@ const PROP_PIXELS = (() => {
     c0: '#a8997a', c1: '#d6c9a6', c2: '#f1e9d3',
     f0: '#b43e1a', f1: '#e27826', f2: '#f5b43a', f3: '#fde58a',
     lt: '#2e1c14', bl: '#4a1c18',
+    // the cult's bright red: a glint in a skull's socket, the stripe on the bull's brow
+    h0: '#4a0d14', h1: '#7c1620', h2: '#b02a2c', h3: '#de503c',
+    // bone, white enough to stand off every floor, and horn, a step darker with ridges (the bone shields)
+    n0: '#5e5240', n1: '#9a8c6c', n2: '#cbbf9e', n3: '#e6dcc0', n4: '#f8f3e2',
+    k0: '#241e1a', k1: '#463c33', k2: '#6a5c4c',
+    // blood on the bone shield's points, fresh and dried
+    x1: '#7c1612', x2: '#b3241b',
   };
 
   // A tiny deterministic generator so every build draws the same grain and the same debris.
@@ -249,35 +256,198 @@ const PROP_PIXELS = (() => {
     g.ell(c + 0.5, c + 0.5, 2.6, 2.6, P.i2); g.set(8, 8, P.i4); g.set(9, 8, P.i3); g.set(8, 9, P.i3); g.set(10, 10, P.i1); g.set(9, 10, P.i1); g.set(10, 9, P.i1);
     return g.outline();
   }
-  // The shieldman's board (1 Oct 2026): a shield of three door planks, iron at its rim and the cult's horned
-  // sign painted on its face, carried on his off arm (`PaintedArt.board`). Three views: its face (`f`, toward
-  // the camera), edge on (`s`, the side views) and its back (`b`, two braces and the grip, seen past him).
-  function manShield(view) {
+  // The shieldman's board (2 Oct 2026, the user's: "a shield of bones, of animals' heads, horns outward,
+  // white so he stands out, the spikes are the horns", then "skulls of different animals, riveted
+  // together"): the skulls of beasts the cult has eaten, riveted to a frame of sticks on his right arm
+  // (`PaintedArt.board`). The horns stand out of it as its points, which is
+  // why the horns of the goat into its front cost him a heart (`TUNING.shieldman.spikes`). Three designs
+  // (`SHIELD_LOOKS`, the ART tab's SHIELD button), each in three views: the face (`f`, toward the
+  // camera), edge on (`s`, the side views, its front to the right) and the back (`b`, the frame of
+  // sticks and the strap, the horns still standing past it). Bone white with a red glint in the sockets.
+  const HORN = [P.k0, P.k1, P.k2];
+  // a horn as a run of 2-wide steps, dark ridges every other one, its point the brightest pixel
+  const horn = (g, pts) => {
+    pts.forEach(([x, y], i) => { const c = i % 2 ? HORN[1] : HORN[2]; g.set(x, y, c); if (i < pts.length - 3) g.set(x, y + 1, HORN[0]); });
+    const [x, y] = pts[pts.length - 1]; g.set(x, y, P.c2);
+  };
+  // The beasts the cult has eaten (2 Oct 2026, the user's: "skulls of different animals, riveted together"),
+  // each a skull drawn at (cx, cy) and size `k`, back to front: horns and tusks first, then the bone, then
+  // the holes. `hornT` lays a horn, tusk or antler as a tapering run of discs along `pts`, ridged every
+  // step and to a bright point, so every point the shield has is a thing that grew on an animal.
+  const hornT = (g, pts, w0, w1, ramp) => {
+    const R = ramp || HORN; let L = 0; const seg = [];
+    for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(l); L += l; }
+    let at = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], n = Math.max(1, Math.ceil(seg[i - 1] * 2));
+      for (let s = 0; s <= n; s++) {
+        const q = s / n, x = x0 + (x1 - x0) * q, y = y0 + (y1 - y0) * q, t = (at + seg[i - 1] * q) / (L || 1), r = (w0 + (w1 - w0) * t) / 2;
+        const c = t > 0.9 ? P.c2 : Math.floor((at + seg[i - 1] * q) / 1.4) % 2 ? R[1] : R[2];
+        for (let yy = Math.floor(y - r); yy <= y + r; yy++) for (let xx = Math.floor(x - r); xx <= x + r; xx++)
+          if ((xx + 0.5 - x) ** 2 + (yy + 0.5 - y) ** 2 <= r * r + 0.2) g.set(xx, yy, (xx + 0.5 - x) + (yy + 0.5 - y) > r * 0.6 && t <= 0.9 ? R[0] : c);
+        if (r < 0.75) g.set(Math.round(x - 0.5), Math.round(y - 0.5), c);
+      }
+      at += seg[i - 1];
+    }
+  };
+  const TUSK = [P.n0, P.n3, P.n4];
+  // bone lit from the upper left, the holes dark, `glint` a red point deep in each socket
+  const sockets = (g, xs, y, s, glint) => { for (const x of xs) { g.rect(Math.round(x), Math.round(y), s, s, P.d); if (glint) g.set(Math.round(x) + s - 1, Math.round(y) + s - 1, P.h3); } };
+  const boneLight = (g, x0, y0, x1, y1) => {
+    for (let y = Math.floor(y0); y <= y1; y++) for (let x = Math.floor(x0); x <= x1; x++) {
+      const v = g.get(x, y); if (v !== P.n2) continue;
+      const u = (x - x0) / Math.max(1, x1 - x0) + (y - y0) / Math.max(1, y1 - y0);
+      g.set(x, y, u < 0.45 ? P.n3 : u > 1.45 ? P.n1 : P.n2);
+    }
+  };
+  const SK = {
+    // the goat's: a narrow face, the horns sweeping back and up
+    goat(g, cx, cy, k, glint) {
+      for (const m of [-1, 1]) hornT(g, [[cx + m * 2 * k, cy - 2.6 * k], [cx + m * 3.8 * k, cy - 4.2 * k], [cx + m * 4.8 * k, cy - 6.4 * k], [cx + m * 6.4 * k, cy - 7.4 * k], [cx + m * 7.6 * k, cy - 7 * k]], 2.4 * k, 0.8);
+      g.ell(cx, cy - 1.2 * k, 3.4 * k, 2.6 * k, P.n2);
+      g.poly([[cx - 2.4 * k, cy - 0.5 * k], [cx + 2.4 * k, cy - 0.5 * k], [cx + 1 * k, cy + 5.6 * k], [cx - 1 * k, cy + 5.6 * k]], P.n2);
+      boneLight(g, cx - 3.4 * k, cy - 3.8 * k, cx + 3.4 * k, cy + 5.6 * k);
+      sockets(g, [cx - 2.2 * k, cx + 2.2 * k - (k >= 1.2 ? 1 : 0)], cy - 0.9 * k, k >= 1.2 ? 2 : 1, glint);
+      g.set(Math.round(cx - 1), Math.round(cy + 4.3 * k), P.n0); g.set(Math.round(cx), Math.round(cy + 4.3 * k), P.n0);
+    },
+    // the bull's: a wide flat brow, a long face, the horns straight out and hooked up
+    bull(g, cx, cy, k, glint) {
+      for (const m of [-1, 1]) hornT(g, [[cx + m * 3 * k, cy - 2 * k], [cx + m * 6 * k, cy - 2.4 * k], [cx + m * 8 * k, cy - 4.2 * k], [cx + m * 8.6 * k, cy - 6.8 * k]], 2.6 * k, 0.8);
+      g.ell(cx, cy - 1.6 * k, 4 * k, 2.3 * k, P.n2);
+      g.poly([[cx - 3.2 * k, cy - 1 * k], [cx + 3.2 * k, cy - 1 * k], [cx + 1.9 * k, cy + 7 * k], [cx - 1.9 * k, cy + 7 * k]], P.n2);
+      boneLight(g, cx - 4 * k, cy - 3.9 * k, cx + 4 * k, cy + 7 * k);
+      sockets(g, [cx - 2.6 * k, cx + 1.6 * k], cy - 0.4 * k, 2, glint);
+      g.vl(Math.round(cx - 0.5), Math.round(cy + 1.5 * k), Math.round(3 * k), P.n1);
+      g.set(Math.round(cx - 1.4), Math.round(cy + 5.6 * k), P.n0); g.set(Math.round(cx + 0.4), Math.round(cy + 5.6 * k), P.n0);
+    },
+    // the ram's: a round crown, a short face, the horns curled into a spiral either side
+    ram(g, cx, cy, k, glint) {
+      for (const m of [-1, 1]) {
+        const ox = cx + m * 3.8 * k, oy = cy + 0.6 * k, pts = [];
+        for (let i = 0; i <= 14; i++) { const a = -Math.PI / 2 + m * i * 0.48, r = (3.2 - i * 0.16) * k; pts.push([ox + Math.cos(a) * r, oy + Math.sin(a) * r]); }
+        hornT(g, pts, 2.4 * k, 1);
+      }
+      g.ell(cx, cy - 0.6 * k, 3 * k, 2.8 * k, P.n2);
+      g.poly([[cx - 2 * k, cy + 0.5 * k], [cx + 2 * k, cy + 0.5 * k], [cx + 0.9 * k, cy + 4.2 * k], [cx - 0.9 * k, cy + 4.2 * k]], P.n2);
+      boneLight(g, cx - 3 * k, cy - 3.4 * k, cx + 3 * k, cy + 4.2 * k);
+      sockets(g, [cx - 2 * k, cx + 2 * k - 1], cy - 0.2 * k, 1, glint);
+    },
+    // the boar's: a long low snout and the tusks curling up out of it, the meanest points on him
+    boar(g, cx, cy, k, glint) {
+      g.ell(cx, cy - 1 * k, 3 * k, 2.4 * k, P.n2);
+      g.poly([[cx - 2.2 * k, cy], [cx + 2.2 * k, cy], [cx + 1.5 * k, cy + 6 * k], [cx - 1.5 * k, cy + 6 * k]], P.n2);
+      boneLight(g, cx - 3 * k, cy - 3.4 * k, cx + 3 * k, cy + 6 * k);
+      for (const m of [-1, 1]) hornT(g, [[cx + m * 1.4 * k, cy + 5 * k], [cx + m * 3.2 * k, cy + 4.6 * k], [cx + m * 4.4 * k, cy + 2.8 * k], [cx + m * 4.8 * k, cy + 0.2 * k], [cx + m * 4.4 * k, cy - 1.6 * k]], 2.2 * k, 0.8, TUSK);
+      sockets(g, [cx - 2 * k, cx + 2 * k - 1], cy - 0.8 * k, 1, glint);
+      g.hl(Math.round(cx - 1), Math.round(cy + 5.4 * k), 2, P.n0);
+    },
+    // the stag's: a small skull under a wide rack of antlers, a point at every tine
+    stag(g, cx, cy, k, glint) {
+      for (const m of [-1, 1]) {
+        const b = (t) => [cx + m * (1.8 + 4.4 * t) * k, cy - (2.4 + 7.2 * t) * k];
+        hornT(g, [b(0), b(0.35), b(0.7), b(1)], 1.8 * k, 0.8, TUSK);
+        for (const [t, dx, dy] of [[0.3, 2.4, -0.4], [0.62, 2.2, -1.4], [0.55, -1.6, -2]]) { const [x, y] = b(t); hornT(g, [[x, y], [x + m * dx * k, y + dy * k]], 1.3 * k, 0.8, TUSK); }
+      }
+      g.ell(cx, cy - 0.6 * k, 2.6 * k, 2.2 * k, P.n2);
+      g.poly([[cx - 1.8 * k, cy + 0.4 * k], [cx + 1.8 * k, cy + 0.4 * k], [cx + 0.8 * k, cy + 4.8 * k], [cx - 0.8 * k, cy + 4.8 * k]], P.n2);
+      boneLight(g, cx - 2.6 * k, cy - 2.8 * k, cx + 2.6 * k, cy + 4.8 * k);
+      sockets(g, [cx - 1.7 * k, cx + 1.7 * k - 1], cy - 0.4 * k, 1, glint);
+    },
+  };
+  // a man's skull, among the beasts': round, the sockets big, a nose and a row of teeth
+  const human = (g, cx, cy) => {
+    g.ell(cx, cy - 0.6, 3, 2.7, P.n2); g.rect(Math.round(cx - 2), Math.round(cy + 1), 4, 2, P.n2);
+    boneLight(g, cx - 3, cy - 3.3, cx + 3, cy + 3);
+    sockets(g, [cx - 2, cx + 0.5], cy - 0.6, 2, false);
+    g.set(Math.round(cx - 0.5), Math.round(cy + 1.2), P.d);
+    for (let x = Math.round(cx - 2); x < Math.round(cx + 2); x++) g.set(x, Math.round(cy + 2.4), x % 2 ? P.n4 : P.n0);
+  };
+  // a long bone, knobbed at both ends
+  const longBone = (g, x0, y0, x1, y1) => {
+    g.bar(x0, y0, x1, y1, 1.7, P.n2, P.n3, P.n1);
+    for (const [x, y] of [[x0, y0], [x1, y1]]) { g.ell(x, y, 1.4, 1.4, P.n3); g.set(Math.round(x - 1), Math.round(y - 1), P.n4); }
+  };
+  // a sharpened bone driven through the pile, standing out past it: what makes the board read as spikes
+  const stake = (g, x0, y0, x1, y1) => hornT(g, [[x0, y0], [x1, y1]], 2.6, 0.9, TUSK);
+  // blood: the pixel behind each point wet, a smear here and there on the bone, and drops hanging off the low points
+  const bloody = (g, cells, drips) => {
+    for (const [x, y, c] of cells) if (g.get(x, y)) g.set(x, y, c ? P.x1 : P.x2);
+    for (const [x, y, n] of drips) for (let i = 0; i < n; i++) g.set(x, y + i, i === n - 1 ? P.x1 : P.x2);
+  };
+  // Each piece of the pile drawn on its own scratch grid, outlined there and laid on, back to front: the
+  // dark line round every skull, bone and stake is what keeps white on white from merging into one blot.
+  const piece = (g, draw, flip) => {
+    const t = new Grid(g.w, g.h); draw(t); t.outline(P.ol);
+    for (let y = 0; y < t.h; y++) for (let x = 0; x < t.w; x++) { const v = t.get(x, y); if (v) g.set(x, flip ? t.h - 1 - y : y, v); }
+  };
+  // what holds them: iron straps with rivets through them, and twine where a strap would not sit
+  const strap = (g, x0, y0, x1, y1) => {
+    g.bar(x0, y0, x1, y1, 2.2, P.i2, P.i3, P.i1);
+    const L = Math.hypot(x1 - x0, y1 - y0), n = Math.max(2, Math.round(L / 4));
+    for (let i = 0; i <= n; i++) g.set(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), P.i4);
+  };
+  // a square of iron where two skulls meet, a rivet at each corner
+  const plate = (g, x, y) => { g.rect(x, y, 3, 3, P.i2); g.hl(x, y, 3, P.i3); for (const [i, j] of [[0, 0], [2, 0], [0, 2], [2, 2]]) g.set(x + i, y + j, P.i4); };
+  const SHIELD_LOOKS = ['MENAGERIE', 'STAG AND BULL', 'RIVETED'];
+  function boneFace(look) {
+    const S = look === 0 ? 33 : 29, c = S / 2, g = new Grid(S, S);
+    if (look === 0) {
+      // MENAGERIE: a ram and a goat behind, a boar under, the bull in front of all three, iron round them
+      // (2 Oct 2026, "more spikes so it reads; a man's skull and bones in the bottom corners; a little blood"):
+      // bone stakes out of it every way first, so they stand behind the skulls and past them
+      // (2 Oct 2026, "a few more spikes so I see it"): twelve stakes in a ring, long and short in turn, with
+      // floor showing between every two, so the edge reads as a starburst of points and not a lump
+      const N = 12, tips = [];
+      for (let i = 0; i < N; i++) tips.push([-Math.PI / 2 + i * Math.PI * 2 / N, i % 2 ? 13 : 15.5]);
+      piece(g, (t) => { for (const [a, r] of tips) stake(t, c + Math.cos(a) * 8, c + Math.sin(a) * 8, c + Math.cos(a) * r, c + Math.sin(a) * r); });
+      piece(g, (t) => { longBone(t, 20, 20, 28, 27); longBone(t, 28, 20, 20, 27); });
+      piece(g, (t) => human(t, 8.5, 23));
+      piece(g, (t) => SK.ram(t, 10, 12, 0.95, false));
+      piece(g, (t) => SK.boar(t, 23, 11.5, 0.95, false));
+      piece(g, (t) => SK.bull(t, c, 16, 1.2, true));
+      plate(g, 10, 17); plate(g, 20, 17); plate(g, 15, 24);
+      // blood a step down from every point, and hanging off the ones that point at the floor
+      const at = (a, r) => [Math.round(c - 0.5 + Math.cos(a) * r), Math.round(c - 0.5 + Math.sin(a) * r)];
+      bloody(g, tips.map(([a, r], i) => [...at(a, r - 1.6), i % 2]),
+        tips.filter(([a]) => Math.sin(a) > 0.4).map(([a, r], i) => { const [x, y] = at(a, r); return [x, y + 1, 1 + (i % 2)]; }));
+    } else if (look === 1) {
+      // STAG AND BULL: a stag's rack spread behind a bull's skull, a goat's riveted on under them
+      piece(g, (t) => SK.stag(t, c, 11, 1.25, false));
+      piece(g, (t) => SK.goat(t, c, 5, 0.9, false), true);
+      piece(g, (t) => SK.bull(t, c, 12, 1.1, true));
+      plate(g, 8, 17); plate(g, 18, 17);
+    } else {
+      // RIVETED: a goat the right way up and a boar upside down under it, nose to nose, a band of iron
+      // riveted across where they meet; the goat's horns up and out, the boar's tusks down like fangs
+      piece(g, (t) => SK.goat(t, c, 9.5, 1.2, true));
+      piece(g, (t) => SK.boar(t, c, 8.5, 1.3, true), true);
+      strap(g, 6, 14.5, 23, 14.5);
+      for (const m of [-1, 1]) hornT(g, [[c + m * 8, 14.5], [c + m * 11.5, 14], [c + m * 13.5, 12.5]], 1.8, 0.8);
+    }
+    return g;
+  }
+  function boneShield(look, view) {
     if (view === 's') {
-      const g = new Grid(4, 16);
-      g.rect(0, 0, 4, 16, P.i2); g.vl(0, 0, 16, P.i3); g.vl(3, 0, 16, P.i1);
-      g.rect(1, 1, 2, 14, P.w1); g.vl(1, 1, 14, P.w2);
+      // edge on: the skull's brow and face bulging toward his front, the frame behind, horns pointing on
+      const g = new Grid(9, 23);
+      g.rect(0, 4, 2, 15, P.w1); g.vl(0, 4, 15, P.w2);
+      g.ell(3, 11.5, 3, 7.5, P.n2); g.rect(0, 4, 1, 15, P.w1);
+      g.tone((x, y) => y < 7, P.n3, [P.n2]); g.tone((x, y) => y > 14, P.n1, [P.n2]); g.vl(4, 6, 3, P.n4, true);
+      g.set(4, 10, P.d); g.set(4, 11, P.h3);
+      const fwd = (y, n, up) => { const pts = []; for (let t = 0; t < n; t++) pts.push([5 + t, y - (up && t > 1 ? t - 1 : 0)]); horn(g, pts); };
+      if (look === 0) { horn(g, [[2, 4], [3, 3], [4, 2], [5, 1], [6, 0]]); horn(g, [[2, 19], [3, 20], [4, 21], [5, 22]]); for (const y of [6, 9, 12, 15, 18]) fwd(y, 4, false); }
+      if (look === 1) { horn(g, [[2, 4], [3, 3], [4, 3], [5, 3], [6, 2], [7, 1]]); fwd(9, 3, false); fwd(16, 4, false); }
+      if (look === 2) { horn(g, [[2, 4], [3, 3], [4, 2], [5, 1], [6, 0]]); horn(g, [[2, 18], [3, 19], [4, 20], [5, 21], [6, 22]]); g.rect(1, 10, 4, 3, P.i2); g.set(3, 11, P.i4); fwd(11, 4, false); }
       return g.outline();
     }
-    const g = new Grid(12, 16), r = rng(view === 'f' ? 917 : 919);
-    if (view === 'f') {
-      g.rect(0, 0, 12, 16, P.w2);
-      for (const x of [4, 8]) g.vl(x, 0, 16, P.w0);
-      for (const x of [1, 5, 9]) g.vl(x, 0, 16, P.w3);
-      for (let k = 0; k < 6; k++) { const x = [2, 3, 6, 7, 10][Math.floor(r() * 5)], y = 2 + Math.floor(r() * 11); g.vl(x, y, 2, P.w1); }
-      g.tone((x, y) => x + y > 17, P.w1, [P.w2, P.w3]);
-      // the horned sign, in the cult's red: two horns over a stem
-      for (const [x, y] of [[3, 3], [4, 4], [5, 5], [8, 3], [7, 4], [6, 5], [5, 6], [6, 6], [5, 7], [6, 7], [5, 8], [6, 8], [5, 9], [6, 9], [4, 10], [5, 10], [6, 10], [7, 10]]) g.set(x, y, P.r2);
-      for (const [x, y] of [[6, 7], [6, 8], [6, 9], [7, 10]]) g.set(x, y, P.r1);
-      g.hl(0, 0, 12, P.i3); g.hl(0, 15, 12, P.i1); g.vl(0, 0, 16, P.i3); g.vl(11, 0, 16, P.i1);
-      for (const [x, y] of [[2, 1], [9, 1], [2, 14], [9, 14]]) g.set(x, y, P.i4);
-      return g.outline();
+    const g = boneFace(look);
+    if (view === 'b') {
+      // from behind: everything but the horns is the frame they are lashed to, two crossed sticks and a strap
+      const keep = new Set([P.k0, P.k1, P.k2, P.c2]);
+      for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) { const v = g.get(x, y); if (v && !keep.has(v)) g.set(x, y, (x + y) % 5 ? P.lt : P.n1); }
+      g.line(4, 6, 18, 18, P.w2, true); g.line(18, 6, 4, 18, P.w2, true);
+      g.rect(8, 10, 7, 2, P.w1); g.hl(8, 10, 7, P.w3);
     }
-    g.rect(0, 0, 12, 16, P.w1);
-    for (const x of [4, 8]) g.vl(x, 0, 16, P.w0);
-    g.rect(0, 3, 12, 2, P.w2); g.hl(0, 3, 12, P.w3); g.rect(0, 11, 12, 2, P.w2); g.hl(0, 11, 12, P.w3);
-    g.rect(5, 6, 2, 4, P.lt); g.vl(5, 6, 4, P.b1);
-    g.hl(0, 0, 12, P.i2); g.hl(0, 15, 12, P.i0); g.vl(0, 0, 16, P.i2); g.vl(11, 0, 16, P.i0);
     return g.outline();
   }
   // The stand of arms in two layers on one 24 x 24 frame, the arm drawn between them: the uprights
@@ -1045,7 +1215,7 @@ const PROP_PIXELS = (() => {
   const sprites = {
     'door-wood': doorWood(), 'door-iron': doorIron(), 'door-vault': doorVault(), 'door-soul': doorSoul(),
     'broken-wood': debris('wood'), 'broken-iron': debris('iron'), 'broken-vault': debris('vault'), 'broken-soul': debris('soul'),
-    sword: sword(), shield: shield(), bomb: bomb(), 'mshield-f': manShield('f'), 'mshield-s': manShield('s'), 'mshield-b': manShield('b'),
+    sword: sword(), shield: shield(), bomb: bomb(), 
     'mill-hub': millHub(), 'mill-arm': millArm(), 'cage-post': cagePost(), 'cage-broken': cageBroken(),
     altar: altar(), banner: banner(), gong: gong(),
     'soul-wisp': soulWisp(), 'healing-grass': grass(true), 'grass-small': grass(false), pail: pail(),
@@ -1056,6 +1226,7 @@ const PROP_PIXELS = (() => {
     'stall-back': stallBack(), 'stall-front': stallFront(false), 'stall-cracked': stallFront(true),
     burrow: burrow(), stool: stool(), spire: spire(), 'roast-back': roastRing(false), 'roast-front': roastRing(true), 'roast-sticks': roastSticks(), 'roast-croc': croc(),
   };
+  for (let l = 0; l < SHIELD_LOOKS.length; l++) for (const v of 'fsb') sprites['mshield' + l + '-' + v] = boneShield(l, v);
   for (let k = 0; k < 8; k++) sprites['lantern-' + k] = lantern(k);
   for (let k = 0; k < 8; k++) { sprites['sconce-s' + k] = sconce(k, true); sprites['sconce-f' + k] = sconce(k, false); }
   sprites.barrel = barrelStand(BR); sprites.vbarrel = barrelStand(BV, VLID);
@@ -1070,7 +1241,7 @@ const PROP_PIXELS = (() => {
   sprites['table-s'] = tableTop(); sprites['table-n'] = tableUnder(); sprites['table-e'] = tableSide(); sprites['table-w'] = mirror(sprites['table-e']);
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
   for (const k in sprites) if (!/^(rack|coop|stall|roast)-/.test(k)) sprites[k] = sprites[k].trim();
-  return { P, Grid, sprites, rng };
+  return { P, Grid, sprites, rng, SHIELD_LOOKS };
 })();
 if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
 
@@ -1205,9 +1376,27 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   // The rope's cleat on the far wall, drawn like the far-wall lantern: fixed to the face above its tile.
   // `cleatHook` is where the rope leaves it, in the prop's own upright frame (the chandelier asks).
   const cleatTop = (p) => p.y - TILE * 0.25 * TILT - 4 - S.cleat.h * TUNING.chandelier.texel;
+  // How near the goat is to springing a ring, 0..1: inside `look.warnR` of its cleat, eased in over
+  // the last third of it. Read by the cleat, the rope and the landing ring.
+  const chandWarn = (renderer, ring) => {
+    const g = renderer.game && renderer.game.goat, c = ring && ring.cleat, L = TUNING.chandelier.look;
+    if (!g || !c || c.cut || renderer.silPass || ring.drop === 'down') return 0;
+    return clamp((L.warnR - Math.hypot(g.x - c.x, g.y - c.y)) / (L.warnR / 3), 0, 1);
+  };
   A.cleat = function (renderer, p) {
-    const name = p.cut ? 'cleat-cut' : 'cleat', g = S[name], k = TUNING.chandelier.texel;
-    put(renderer.ctx, name, p.x - g.w * k / 2, cleatTop(p)); return true;
+    const name = p.cut ? 'cleat-cut' : 'cleat', g = S[name], k = TUNING.chandelier.texel, x0 = Math.round(p.x - g.w * k / 2), y0 = Math.round(cleatTop(p));
+    put(renderer.ctx, name, x0, y0);
+    // Within reach it is the button: a frame of amber cells round it, beating.
+    const w = chandWarn(renderer, p.hangs);
+    if (w > 0) {
+      const ctx = renderer.ctx; ctx.save();
+      ctx.globalAlpha *= w * (0.45 + 0.35 * Math.sin(renderer.t * 7)); ctx.fillStyle = PALETTE.fireHi;
+      const W = g.w * k, H = g.h * k;
+      ctx.fillRect(x0 - k, y0 - k, W + 2 * k, k); ctx.fillRect(x0 - k, y0 + H, W + 2 * k, k);
+      ctx.fillRect(x0 - k, y0, k, H); ctx.fillRect(x0 + W, y0, k, H);
+      ctx.restore();
+    }
+    return true;
   };
   // A suit of armour hung on the far wall, fixed to its face the way the stag's head is, its foot
   // `armor.foot` px over the face's own foot, so it is the stone it is on, not the floor, rattling
@@ -1254,33 +1443,52 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   // the wreck once it has; in the air the ring `p.z` px up, swaying a little, and its rope to the
   // cleat, or, cut, a frayed end trailing after it. Both in the prop's own upright frame.
   A.chandelier = function (renderer, p, pass) {
-    const ctx = renderer.ctx, C = TUNING.chandelier;
+    const ctx = renderer.ctx, C = TUNING.chandelier, L = C.look;
     if (p.drop === 'down') {
       if (pass !== 'air') { const g = S['chand-down'], k = C.texel; renderer.shadow(p.x, p.y + 3, g.w * k * 0.46, 6); put(ctx, 'chand-down', p.x - g.w * k / 2, p.y + 8 - g.h * k, k); }
       return true;
     }
+    const warn = chandWarn(renderer, p);
     if (pass !== 'air') {
-      const k = 1 - clamp(p.z / C.z, 0, 1);
-      ctx.save(); ctx.globalAlpha *= 0.55 + 0.4 * k; renderer.shadow(p.x, p.y + 2, C.killR * (1 - 0.25 * k), C.killR * 0.42 * (1 - 0.25 * k)); ctx.restore();
+      // On the floor: a small shadow while it hangs, the whole of where it lands only when it matters,
+      // an amber ring of cells (the tells' own) as the goat comes to the cleat, filling while it falls.
+      const k = 1 - clamp(p.z / C.z, 0, 1), falling = p.drop !== 'hang';
+      ctx.save(); ctx.globalAlpha *= falling ? 0.45 + 0.45 * k : 0.35; renderer.shadow(p.x, p.y + 2, C.killR * (falling ? 0.9 : 0.55), C.killR * (falling ? 0.38 : 0.24)); ctx.restore();
+      if (!renderer.silPass && (falling || warn > 0)) {
+        ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, TILT); ctx.translate(-p.x, -p.y);   // back onto the floor's own squash
+        if (falling) renderer.drawLandCells(p.x, p.y, C.killR, Math.max(k, 0.3));
+        else { ctx.globalAlpha *= warn; renderer.drawLandCells(p.x, p.y, C.killR, 0); }
+        ctx.restore();
+      }
       return true;
     }
     const sway = p.drop === 'hang' ? Math.sin(renderer.t * 1.3 + p.phase) * C.sway * 40 : 0;
-    const name = 'chand' + (Math.floor(renderer.t * 7 + p.phase * 3) % 2), g = S[name], w = g.w * C.texel, h = g.h * C.texel;
-    const x0 = Math.round(p.x + sway - w / 2), y0 = Math.round(p.y - p.z * TILT - h), hx = x0 + w / 2, hy = y0 + C.texel;
-    // the rope, a cell at a time: up to the cleat while it holds, a frayed tail once it is cut
-    const c = p.cleat, cell = Math.max(1.5, TX * 1.1), PP = PROP_PIXELS.P;
+    const name = 'chand' + (Math.floor(renderer.t * 7 + p.phase * 3) % 2), g = S[name], k = L.ring, w = g.w * k, h = g.h * k;
+    const x0 = Math.round(p.x + sway - w / 2), y0 = Math.round(p.y - p.z * TILT - h), hx = x0 + w / 2, hy = y0 + k;
+    // It hangs over everybody, so where it covers the goat or a man it thins (`look.fade`), eased.
+    // A world point's feet are at p.y + (y - p.y) * TILT in this upright frame, the body ~44 px over them.
+    const game = renderer.game, covers = (u) => u && Math.abs(u.x - hx) < w / 2 + 8 && (() => { const fy = p.y + (u.y - p.y) * TILT; return fy > y0 && fy - 44 < y0 + h; })();
+    let under = !renderer.silPass && game && (covers(game.goat) || (game.enemies || []).some((e) => !e.dead && Math.abs(e.x - hx) < w && covers(e)));
+    p.airFade = lerp(p.airFade === undefined ? 1 : p.airFade, under ? L.fade : 1, 0.2);
+    // the rope, a cell at a time: thin and faint up to the cleat while it holds, full as the goat
+    // comes to the cleat; a frayed tail once it is cut
+    const c = p.cleat, cell = Math.max(1, TX * L.rope), PP = PROP_PIXELS.P;
     let ex = hx, ey = hy - 14;
     if (c && !c.cut) { ex = c.x; ey = p.y + (c.y + (cleatTop(c) + C.texel - c.y) / TILT - p.y) * TILT; }
     const n = Math.max(2, Math.ceil(Math.hypot(ex - hx, ey - hy) / cell));
+    ctx.save(); ctx.globalAlpha *= (c && !c.cut ? L.ropeA + (1 - L.ropeA) * warn : 1) * Math.max(p.airFade, 0.6);
     for (let i = 0; i <= n; i++) {
-      const t = i / n, x = Math.round(hx + (ex - hx) * t), y = Math.round(hy + (ey - hy) * t + (c && !c.cut ? Math.sin(t * Math.PI) * 6 : 0));
-      ctx.fillStyle = PP.ol; ctx.fillRect(x - cell / 2 - 0.5, y - cell / 2 - 0.5, cell + 1, cell + 1);
-      ctx.fillStyle = i % 3 ? PP.b2 : PP.b1; ctx.fillRect(x - cell / 2, y - cell / 2, cell, cell);
+      const t = i / n, x = Math.round(hx + (ex - hx) * t), y = Math.round(hy + (ey - hy) * t + (c && !c.cut ? Math.sin(t * Math.PI) * 4 : 0));
+      ctx.fillStyle = warn > 0.5 && i % 3 === 0 ? PALETTE.fireHi : i % 3 ? PP.b2 : PP.b1; ctx.fillRect(x - cell / 2, y - cell / 2, cell, cell);
     }
-    put(ctx, name, x0, y0, C.texel);
+    ctx.restore();
+    ctx.save(); ctx.globalAlpha *= p.airFade; put(ctx, name, x0, y0, k); ctx.restore();
     return true;
   };
 
+  // The stand of arms' breathing glow and the milk sprout's, for `glowDisc` (js/render.js).
+  const STAND_GLOW = [[0, 'rgba(239,230,208,1)'], [1, 'rgba(239,230,208,0)']];
+  const SPROUT_GLOW = [[0, 'rgba(168,189,108,0.22)'], [1, 'rgba(168,189,108,0)']];
   A.drawProp = function (renderer, p) {
     if (!PROP_PIXELS.on) return drawProp.call(this, renderer, p);
     const ctx = renderer.ctx;
@@ -1289,9 +1497,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     if (p.kind === 'weapon' && p.inStand) {
       // Its glow is not the stand: in THE DARK's silhouette pass it came out as a black cloud.
       if (!renderer.silPass) {
-        const gl = ctx.createRadialGradient(p.x, p.y - 12, 0, p.x, p.y - 12, 40), a = 0.14 + 0.05 * Math.sin(renderer.t * 2.6 + p.phase);
-        gl.addColorStop(0, `rgba(239,230,208,${a})`); gl.addColorStop(1, 'rgba(239,230,208,0)');
-        ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, p.y - 12, 40, 0, Math.PI * 2); ctx.fill();
+        glowDisc(ctx, p.x, p.y - 12, 40, STAND_GLOW, 0.14 + 0.05 * Math.sin(renderer.t * 2.6 + p.phase));
       }
       renderer.shadow(p.x, p.y + 1, 14, 5);
       const x0 = p.x - 12 * TX, y0 = p.y + 5 - 23 * TX;
@@ -1331,9 +1537,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     if (p.kind === 'heal' && !p.big && !p.pail) {
       const bob = Math.sin(renderer.t * 2.4 + p.phase) * 2, g = S['grass-small'];
       if (!renderer.silPass) {   // a glow flattened by THE DARK's silhouettes is a solid disc
-        const glow = ctx.createRadialGradient(p.x, p.y + bob, 0, p.x, p.y + bob, 34);
-        glow.addColorStop(0, 'rgba(168,189,108,0.22)'); glow.addColorStop(1, 'rgba(168,189,108,0)');
-        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y + bob, 34, 0, Math.PI * 2); ctx.fill();
+        glowDisc(ctx, p.x, p.y + bob, 34, SPROUT_GLOW);
       }
       renderer.shadow(p.x, p.y + 4, 11, 5);
       put(ctx, 'grass-small', p.x - g.w * TX / 2, p.y + 6 + bob - g.h * TX);

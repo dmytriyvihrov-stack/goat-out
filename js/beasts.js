@@ -331,6 +331,7 @@ const Beast = {
   updateGoose(p, dt, game) {
     const C = TUNING.prop.goose;
     p.honkT = Math.max(0, (p.honkT || 0) - dt);
+    p.blowT = Math.max(0, (p.blowT || 0) - dt);
     // It runs on at the way out, into whatever is in the rooms, and it stops where it cannot go
     // further, a shut door (`collideEntities` holds it like a body), a gate, the stairs, or where
     // it has got `lead` tiles of the way ahead of him. It used to not wait at all: it raised a room
@@ -341,6 +342,19 @@ const Beast = {
     const on = Beast.onward(p, game), ahead = Beast.ahead(p, game);
     if (on && ahead < C.lead) Beast.step(p, game, on.x, on.y, C.speed * (ahead < 0 ? C.hurry : 1), dt);
     else { p.vx = 0; p.vy = 0; if (Math.abs(game.goat.x - p.x) > 8) p.face = Math.sign(game.goat.x - p.x); }   // waiting: it looks back for him
+    // A blow being wound up in its sight is honked at whatever the alarm's clock says (playtest,
+    // 2 Oct 2026: "the goose's honk doesn't knock enemies' blow"). The alarm went off the moment a
+    // man came into view and then slept `honkGap`, so a windup started in that sleep, which is
+    // nearly every windup, was never broken. `blowGap` only keeps it from honking every frame.
+    if (p.blowT <= 0) {
+      for (const e of game.liveEnemies) {
+        if (e.dead || e.held || e.ghosted || !Beast.winding(e)) continue;
+        if (hyp(e.x - p.x, e.y - p.y) > C.seeR * TILE) continue;
+        if (!game.sees(p.x, p.y, e.x, e.y)) continue;
+        Beast.honk(p, game, e);
+        return;
+      }
+    }
     if (p.honkT > 0) return;
     // Anybody it can see. It is not a man and the cult never goes for it, so what a honk buys is
     // purely the two things it does to them: the room learns where the GOAT is, and whoever was
@@ -355,7 +369,7 @@ const Beast = {
   },
   honk(p, game, at) {
     const C = TUNING.prop.goose, g = game.goat;
-    p.honkT = C.honkGap; p.wobble = 0.3;
+    p.honkT = C.honkGap; p.blowT = C.blowGap; p.wobble = 0.3;
     game.audio.sfxBleat && game.audio.sfxBleat(520, 0.1, 0.3);
     game.particles(p.x, p.y - 8, 5, PALETTE.bone, 120);
     game.ring(p.x, p.y, C.seeR * TILE * 0.5, 'rgba(239,230,208,0.35)');
@@ -374,6 +388,13 @@ const Beast = {
       game.floatText(p.x, p.y - 40, 'IT GIVES YOU AWAY. IT ALSO BREAKS THEM', PALETTE.bone);
     }
     void at; void g;
+  },
+  // A blow already coming: the states `Enemy.balk` breaks, so the goose honks exactly when a honk
+  // would do something. Keep the two lists the same.
+  winding(e) {
+    const s = e.state;
+    if (e.kind === 'wraith' || (e.kind === 'butcher' && s === 'hop')) return false;
+    return s === 'windup' || s === 'aim' || s === 'cast' || s === 'hookwind' || s === 'dart' || s === 'slamwind' || s === 'hopwind';
   },
 
   // Which way the level goes from here: down a distance field grown out of the stairs over every

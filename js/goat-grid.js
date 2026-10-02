@@ -422,7 +422,7 @@ const GoatGrid = {
     if (old && old.key === key) return old;
     const M = this.SCENE.men[it.tool], cfg = TUNING[M.kind];
     let hp = M.champion ? TUNING.champion.hp : cfg.hp || 1;
-    if (it.boss) hp = M.kind === 'butcher' ? cfg.hp : Math.max(TUNING.boss.hp, hp + 1);
+    if (it.boss) hp = M.kind === 'butcher' ? cfg.hp : hp + TUNING.boss.champHp;   // a champion: no soul in a scene stub
     const e = { key, id: it.id, kind: M.kind, cfg, r: cfg.radius, champion: !!M.champion, boss: !!it.boss, elite: !!it.boss && M.kind !== 'butcher',
       keeper: false, hp, maxHp: hp, dead: false, ghosted: false, x: it.x, y: it.y, vx: 0, vy: 0, facing: 0, flash: 0, burning: 0, witchBurn: false,
       bombFuse: 0, dazed: 0, poison: 0, shock: 0, impaled: 0, state: 'idle', timer: 0, say: null, soul: false, lurk: false };

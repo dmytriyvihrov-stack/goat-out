@@ -9,6 +9,86 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 2 October 2026, evening, two words on the music (shipped the same evening)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | a bigger difference between a fight and peace | the fight fills in by count: kick on every quarter and its pickups, a low tom, hats and rim up; the chase gets its own backbeat kick (`layers.fight`) |
+| 2 | feel | a bit longer melody | every theme's phrase is eight bars, an answering second half over the same roots (`THEME_BED`) |
+
+Worth his ear: the second half of each tune is new writing, if a turn in it is wrong say which bar.
+
+## 2 October 2026, "run it again and improve" (1.97, a second pass)
+
+Simple audits again: the generator over 250 new seeds a floor (0 failures), `balance.js` (every rule holds), the smoke
+bot over every floor, THE DARK and two trips on new seeds (22 of 22 OK, no throw, no NaN), a count of gradients made
+a frame, a look at every screen (play, the book, pause, death card, heaven, THE DARK, a phone), and a review of the
+first pass's own code. Then the work:
+
+| # | tag | what | done |
+|---|---|---|---|
+| 1 | bug | the floor's card (LEVEL 3, THE CAVE) was drawn over the open book and the pause menu | pause and book are drawn over every card |
+| 2 | bug | her wares are hidden while she is there, but a headbutt still found the empty stools: three butts at bare floor woke the rat ogre | a shelved ware is skipped by the horns; the gate's violet trail leads to her, not to a hidden stool |
+| 3 | bug | HUNGRY SOUL was forced into every passive deal of the first run, not only the first | offered once a run (`hungerOffered`) |
+| 4 | bug | the goose honked every 0.35 s at a wraith winding up, which no honk breaks | it honks only at what `Enemy.balk` breaks |
+| 5 | bug | after the rat ogre, the free shelf no longer came up as cards | walking up to a stool of a shelf she has left opens it, free |
+| 6 | tool | three names in the book's tile drawing leaked out as globals (a `;` for a `,`) | fixed |
+| 7 | feel | DEV TOOLS sat on the book, the god's box, the mirror and the animals' box (dev build only) | the corner word stays away while one is up |
+| 8 | perf | a brazier's foot shade, a stand of arms' glow and a milk sprout's glow were a new gradient each a frame (1-3 a frame) | one made once and scaled into place (`glowDisc`); 0 a frame on THE ALTAR, THE YARD, THE RAFTERS |
+
+The power column still reads THE THRESHING FLOOR and THE OSSUARY as easier than the floor before (9.4 after 10.0,
+10.1 after 10.8): left alone, it is a question of weights, not a broken rule. CLAUDE.md's threat ladder was the 1.74
+one; it now says 22.3 / 37.0 / 65.3 / 97.4 / 108.5 / 145.5 / 166.7 / 174.1, THE DARK 68.
+
+
+Simple audits (the smoke bot over every floor, THE DARK and THE TRIP on new seeds with a random talisman each, the
+escort bot, frame timings on every floor, every screen at four sizes), then the work:
+
+| # | tag | what | 1.97 |
+|---|---|---|---|
+| 1 | bug | the soul cards, her offer and the RULES tab threw `textW is not a function` (a local shadowed the global) | renamed; smoke clean: 20 of 20 runs OK, no throw, no NaN |
+| 2 | system | ECHO HORN's ghost blow ignored BULL NECK | it carries the run-up share |
+| 3 | system | a wraith hiding as a crate survived the blast that broke every real crate | a blast unmasks it, solid for a beat |
+| 4 | number | FIRE AMULET I was KINDLING | passes fire two men deep (was 1 / 2 / 6 / 99, now 2 / 3 / 6 / 99) |
+| 5 | feel | no keyword for BAAH or milk grass; "2.86x as fast"; SANDAL III and MIRROR III ran long; P, I and Q typed QWERTY or a key on a pad | keywords, words for the times, shorter tells, `KEY_FACE` I and P, Y on a pad |
+| 6 | feel | SETTINGS ran off a 960x600 screen; the book overlapped itself on a phone; ASCEND sat on the killer's box; the pause button on the rail on a phone; CONTINUE under a phone's home bar; a long ware name off its card | two columns, a stacked book, room under the picture, the button moved, lifted, squeezed |
+| 7 | feel | off-screen props drawn every frame; each rug baked a rect a texel | culled (`effects.propCull`, THE ALTAR 3.18 → 2.62 ms a draw); rugs 5 → 2 ms each |
+
+Escorts over 6 seeds: husky 9/9, rabbit 9/9, hen 4/4, goose 7/9, pig 7/9 (she leaves him for the grass on purpose).
+Left: the DEV TOOLS label overlaps the book and heaven's box (dev build only); THE THRESHING FLOOR and THE OSSUARY
+still read "easier than the last" in the power column, a weight question, not a failure.
+
+## 2 October 2026, his own run on 1.96 (1.97)
+
+Asked mid-session ("run the tests and improve"), with screenshots. All of it shipped in 1.97:
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | number | the fire set's grace is too much: one DRAGON BREATH and fire "does not take" | `BOON_SETS.fire.step` 0.5 / 1 / 2 → 0.2 / 0.3 / 0.5 s |
+| 2 | bug | two souls dealt two actives; the rule is active, passive, in turn | the 75% lean toward actives while a button is half-shut is gone; the deal alternates strictly after the first soul (`openBoonChoice`) |
+| 3 | system | on the first run, a passive deal should carry the third-card soul | HUNGRY SOUL is on the first passive deal of a browser's first run |
+| 4 | feel | the book (I): the goat left, the build right, the same pictures as the soul card and the mouse's card, no new art, laid out like the Ammonomicon | `Codex.drawBook` rebuilt as a two-page book (cover, spine, ribbon); body souls still show their emoji, the card has no other picture for them |
+| 5 | feel | say "I" on the floor of the mouse's room, so the build is looked at before buying | WALK UP TO HER / I - YOUR BUILD on her room's floor |
+| 6 | feel | no "Do you want sacrifices?" at the end of a floor | the two cult cards are gone |
+| 7 | feel | fruit, cheese and bread back on the tables, meat only sometimes | `scatter.menu.cult` is mostly fruit, bread, cheese and jugs again |
+| 8 | feel | more idle animation | the goat stretches, sniffs and scratches; a standing man breathes and shifts his weight (`TUNING.menIdle`) |
+| 9 | system | the mouse does not lay her things out; you walk up to her and talk | her wares are not on stools (`Shop.shelved`); walking up to her opens the offer |
+| 10 | feel | an animal does not say what it gives when brought out; the goose's honk does not break a blow | every animal's first words hint at its reward; the goose honks at a man winding up (`blowGap`) |
+| 11 | number | fire on the floor goes out too fast | hay 3 → 4.5 s, pools 4.5 → 6.5, breath 2.2 → 3.4, witchfire 3.6 → 4.8, chandelier 2.4 → 3.6 |
+| 12 | feel | the husky's song: no slow time, no dialog; fire roasts her too; a bit slower; her "woo" on the beat; his breath or spit answers "beh" | no box at the win; a husky voice in `Foley`; tempo 4.2 → 4.8 s; breath and spit bleat on the song |
+| 13 | feel | the animals' texts are too literal | rewritten as hints in their own voices |
+| 14 | feel | the tip after a death is a box that breaks the emergence | written on the floor of the first room for the whole floor |
+| 15 | feel | the white soul is one white pixel | a small wisp of cells with eyes |
+| 16 | feel | the camera shakes "claustrophobic" in a cave ogre arena | the boss pull eased (`fight.follow`), smaller (`pull` 0.22, `max` 3 tiles), thuds 0.62 → 0.4 |
+| 17 | feel | the soul should fly to you when you walk up to it too | within `motes.near` tiles it comes |
+| 18 | feel | the death card: the purse's skull and wisp, not "11 sacrificed / 3 souls kept" | `card.tally`, the purse's pictures |
+| 19 | feel | hide BEST on the title | only with the dev drawer open |
+| 20 | feel | Discord's icon on its menu row | the mark in cells beside SEND FEEDBACK |
+| 21 | feel | "the other way round: in some rooms the camera shakes like mad as he moves, much smoother" | softer camera, measured walking every room: acceleration 0.119 → 0.047 a frame, turn-backs 31 → 4 (`TUNING.camera`: lerp, lead, lens pump, deadzone, the hold's blend) |
+
+From the same session: THE YARD's chandelier lesson, the chandelier drawn quieter, and the mirror before the edge
+in heaven (CHANGELOG 1.97).
+
 ## 2 October 2026, six reviews of 1.93 and a slow cave (1.94)
 
 Asked on 1 Oct 2026: "go through the game and improve it, spend whatever it takes"; mid-way, from a run on THE CAVE:
@@ -33,7 +113,7 @@ Found and left, worth a word from him:
 - **number**: a blast that rings the gong hands the goat its rush wherever he stands (1.93's own question, still open). It
   now rings once a chain.
 - **system**: ECHO HORN's ghost blow ignores BULL NECK; a wraith hiding as a crate survives the blast that breaks every
-  real crate; FIRE AMULET tier I is now the same as KINDLING.
+  real crate; FIRE AMULET tier I is now the same as KINDLING. (fixed 1.97)
 - **feel**: the collector (1.95 measured it, see `CHANGELOG.md`): at real speed a minor collection 2 a second at 1-4 ms
   and a full one every few seconds at 15-30 ms, one dropped frame each. The big per-call sources are fixed; what is left
   is a flat tail of boxed numbers in the engine's middle tier (no one function over about 20 KB a frame of 250-290).
@@ -50,9 +130,11 @@ Found and left, worth a word from him:
   them is worth a look on a real machine with DevTools' Performance panel before more surgery.
   Careful with the tooling: a sampling heap profile "without minor-GC garbage" still counts everything alive when it
   stops (the last second's allocations), so it cannot say what is promoted. The trace's GC reasons can.
-- **feel**: text left as it was: BAAH and milk grass have no keyword, P and I are typed into notes (not in `KEY_FACE`),
-  the Q shelf says Q on a pad, `sayTimes` says "2.86x as fast", PILGRIM'S SANDAL III and MIRROR SHARD III run long.
-- **tool**: the shieldman review did not finish; nothing from it is in.
+- **feel**: text left as it was: BAAH and milk grass have no keyword (fixed 1.97), P and I are typed into notes (not in
+  `KEY_FACE`) (fixed 1.97), the Q shelf says Q on a pad (fixed 1.97), `sayTimes` says "2.86x as fast" (fixed 1.97), PILGRIM'S SANDAL III and
+  MIRROR SHARD III run long (fixed 1.97).
+- **tool**: the shieldman review did not finish; nothing from it is in. (checked live 2 Oct 2026, the loop: spikes,
+  brace and a butt from behind all behave; nothing to fix)
 
 ## 1 October 2026, "improve the game", worked through alone (1.93)
 

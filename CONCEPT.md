@@ -113,12 +113,14 @@ fire, so a build reads as a shape rather than as a list of names.
 
 | **Wraith** | THE OSSUARY's, and the one thing in the game that is not there most of the time: mist, nothing to hit, and walls are not walls to it. It works round to the side you are not facing and only there becomes a body, committed, swinging, and solid for most of a second after. A wraith can also lie in a room disguised as a box or a tuft of grass. See THE OSSUARY below. |
 
-**One rule for every kind (1.72).** A man without a yellow outline is one unit with one heart, whatever
-kind he is: any killing blow ends him. A **boss**: the man an arena is built round, is the champion
-version of his kind: a hard yellow pixel outline round the sprite, drawn a size bigger, and in the ring
-absorbs three hits, going down and getting back up (a Seer blinks clear each time). The ogre is only
-ever a boss and keeps his own four. Only a boss carries one of the level's souls: then he also glows
-amber, takes one more, and pays the soul out when he goes down.
+**One rule for every kind (1.72).** A man without an outline is one unit with one heart, whatever
+kind he is: any killing blow ends him. Two outlines (2 Oct 2026). A **champion**, a boss with no soul,
+wears a hard yellow pixel outline, is drawn a size bigger and takes his kind's own hearts plus one,
+nothing else. A man carrying one of the level's **corrupted souls** (a gate's keeper, the last boss
+whose soul lifts the stairs' gate) wears a violet one and glows violet: the strong one, in the ring
+absorbs 3 hits, going down and getting back up (a Seer blinks clear each time), takes 1 more for the
+soul, and pays the soul out when he goes down. So the room before a soul door is always violet. The
+ogre is only ever a boss and keeps his own four.
 
 **They talk.** Short barks over their heads: on first sight of you, when you are close and they have not
 seen you yet, when a scream pulls them somewhere, when they commit to a swing, when a man goes down in

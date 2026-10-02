@@ -4,6 +4,14 @@
 // nothing in it adds a key. Data lives in `ARTIFACTS` and `TUNING.shop` (js/tuning.js); this is
 // what happens when the goat reaches for it.
 const Shop = {
+  // Her wares stay with her (2 Oct 2026 playtest: "she does not lay things out in front of her, you go
+  // up to her and talk"): while the mouse of that shop is there, a ware of hers is neither drawn nor
+  // reached for; walking up to her opens the offer (`Codex.watchShop`). The crow's gift (no shop,
+  // `shopId` < 0) and a shelf she has left (turned, gone) are on the floor as before.
+  shelved(game, p) {
+    if (p.kind !== 'ware' || p.shopId === undefined || p.shopId < 0) return false;
+    return game.props.some((m) => m.kind === 'mouse' && m.shopId === p.shopId && !m.broken);
+  },
   // The artifact record for an id, and the tier's own numbers.
   def(id) { return ARTIFACTS.find((a) => a.id === id) || null; },
   tierOf(art) { const d = Shop.def(art.id); return d ? d.tiers[Math.max(0, Math.min(d.tiers.length, art.tier)) - 1] : null; },
@@ -78,7 +86,7 @@ const Shop = {
     game.audio.sfxThud(); game.shake(3); game.vibe(10);
     if (m.strikes < S.strikes) {
       const line = M.lines[Math.min(M.lines.length, m.strikes) - 1];
-      m.say = { text: line, life: 2.2, max: 2.2, angry: m.strikes >= 2 };
+      m.say = { text: line, life: 2.2, max: 2.2, angry: m.strikes >= 2, strike: true };
       m.angry = m.strikes >= 2 ? 1.5 : 0;
       game.audio.sfxCluck();
       if (m.strikes >= 2) { game.shake(5); game.particles(m.x, m.y - 6, 6, PALETTE.blood, 90); }
@@ -246,7 +254,7 @@ const Shop = {
     const ox = goat.x, oy = goat.y;
     if (goat.holding) {
       const h = goat.holding; goat.holding = null; h.held = false; goat.autoHeld = false;
-      if (!h.item) { h.state = 'floored'; h.timer = 0.5; }
+      if (!h.item) { h.state = 'floored'; h.timer = TUNING.goat.grab.letGo; }
       goat.spendGrab(game, !h.item);
     }
     // Whoever stood where he left: the third tier leaves them reeling.

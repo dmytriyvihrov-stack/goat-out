@@ -69,7 +69,7 @@
       ['cage bar', () => audio.sfxCageHit()], ['cage breaks', () => audio.sfxCage()], ['bell', () => audio.sfxBell()], ['toll', () => audio.sfxToll()], ['card', () => audio.sfxCard()],
       ['kill chain', () => [0, 1, 2, 3, 4].forEach((n) => setTimeout(() => audio.sfxKill(n), n * 260))], ['room goes dark', () => audio.sfxVeil()]]],
     ['Fire', [['catches', () => audio.sfxFire()], ['fuse', () => audio.sfxFuse(2)], ['bomb', () => audio.sfxBoom()]]],
-    ['Animals', [['hen', () => audio.sfxCluck(false)], ['hen, alarmed', () => audio.sfxCluck(true)], ['goose', () => audio.sfxAnimal('goose')], ['crow', () => audio.sfxAnimal('crow')], ['tortoise', () => audio.sfxAnimal('tortoise')]]],
+    ['Animals', [['hen', () => audio.sfxCluck(false)], ['hen, alarmed', () => audio.sfxCluck(true)], ['goose', () => audio.sfxAnimal('goose')], ['crow', () => audio.sfxAnimal('crow')], ['tortoise', () => audio.sfxAnimal('tortoise')], ['husky, woo', () => audio.sfxHusky('woo')], ['husky, waf', () => audio.sfxHusky('waf')], ['husky, hurt', () => audio.sfxHusky('hurt')]]],
     ['Music (raise the slider)', [['theme: level 1', () => theme(true, false)], ['theme: levels 2-4', () => theme(false, false)], ['theme: level 5+', () => theme(false, true)],
       ['idle', () => stage('idle')], ['spotted', () => stage('spotted')], ['chase', () => stage('chase')], ['combat', () => stage('combat')]]],
     ['The rooms (ambience)', [['still air', (b) => bed('air', b)], ['cave', (b) => bed('cave', b)], ['wind', (b) => bed('wind', b)], ['fire beside him', (b) => bed('blaze', b)],

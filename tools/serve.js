@@ -50,6 +50,29 @@ http.createServer((req, res) => {
     });
     return;
   }
+  // TEXT EDIT (js/text-edit.js): a text rewritten on screen lands in its literal, or in TEXT_EDITS
+  // (tools/text-patch.js).
+  if (req.method === 'POST' && req.url.startsWith('/text-edit')) {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      try { res.end(JSON.stringify(require('./text-patch.js').applyText(root, JSON.parse(body)))); }
+      catch (e) { res.end(JSON.stringify({ ok: false, error: String(e.message || e) })); }
+    });
+    return;
+  }
+  // The TALK page's animals: one line rewritten or taken out where it stands (tools/text-patch.js).
+  if (req.method === 'POST' && req.url.startsWith('/line-edit')) {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      try { res.end(JSON.stringify(require('./text-patch.js').editLine(root, JSON.parse(body)))); }
+      catch (e) { res.end(JSON.stringify({ ok: false, error: String(e.message || e) })); }
+    });
+    return;
+  }
   if (req.method === 'POST' && req.url.startsWith('/tuning-edit')) {
     let body = '';
     req.on('data', (c) => (body += c));

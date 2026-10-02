@@ -52,7 +52,8 @@ const Photo = {
     const r = game.renderer, ctx = r.ctx, s = r.hs || r.s || 1, S = game.settings;
     if (game.state === 'title') return;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const x = r.w - 22 * s, y = r.h - (r.railLow ? 95 : 60) * s;   // the skill rail sits bottom right on a desktop: above it, not on it
+    // the skill rail sits bottom right on a desktop: above it, not on it (`railTop`, its chips grow with `hud.rail`)
+    const x = r.w - 22 * s, y = r.railLow && r.railTop ? r.railTop - 20 * s : r.h - (r.railLow ? 95 : 60) * s;
     const t = S.photoAuto ? 1 - this.autoT / TUNING.photo.every : 0;
     ctx.globalAlpha = 0.75; ctx.fillStyle = '#efe6d0'; ctx.font = `700 ${Math.max(12 * r.s, 11 * s)}px ${FONT_SC}`; ctx.textAlign = 'right';
     ctx.fillText(`${this.shots.length}`, x - 16 * s, y + 4 * s);

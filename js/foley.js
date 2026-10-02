@@ -706,6 +706,26 @@ const Foley = (() => {
         trem: { hz: 27, amp: 0.5, pitch: 0.04 }, formants: [[420, 3, 1], [1050, 4, 0.6], [2300, 6, 0.25]], body: 0.4,
         env: (t) => Math.min(1, t / 0.08, (d - t) / 0.12), drive: 2.2 });
     },
+    // The husky (2 Oct 2026: her song was the tortoise's shell knock). `woo` is the howl she sings on
+    // the beat: the pitch climbs into it, holds on a slow waver, and sinks away, through a rounded
+    // 'oo' mouth that opens a little at the top. `waf` is the bark before it, small and bright, a
+    // young dog's. `hurt` is a yelp that falls away.
+    husky(sr, { note = 'woo' } = {}) {
+      if (note === 'waf') return barkOnce(sr, rnd(1.35, 1.5), rnd(0.1, 0.13));
+      if (note === 'hurt') {
+        const d = rnd(0.24, 0.3), f = rnd(820, 950), up = d * 0.15;
+        return voice(sr, d, { f: (t) => f * (t < up ? 1 + 0.2 * t / up : 1.2 * Math.pow(0.5, (t - up) / (d - up))),
+          jit: 0.02, shim: 0.12, rough: 0.12, breath: 0.35, tilt: 4200, formants: [[1150, 4, 1], [2500, 6, 0.45], [650, 3, 0.3]],
+          body: 0.1, env: (t) => (t < 0.012 ? t / 0.012 : Math.exp(-(t - 0.012) / (d * 0.4))), drive: 1.5 });
+      }
+      const d = rnd(0.82, 0.95), f = rnd(430, 470), rise = d * 0.22, fall = d * 0.68;
+      return voice(sr, d, {
+        f: (t) => f * (t < rise ? 0.72 + 0.28 * t / rise : t < fall ? 1 : Math.pow(0.7, (t - fall) / (d - fall))),
+        trem: { hz: 5.5, amp: 0.12, pitch: 0.012 }, jit: 0.008, shim: 0.05, rough: 0.04, breath: 0.22, tilt: 2600,
+        formants: [[(t) => 380 + 140 * Math.sin(Math.PI * Math.min(1, t / d)), 4, 1], [(t) => 820 + 260 * Math.sin(Math.PI * Math.min(1, t / d)), 5, 0.55], [2500, 7, 0.12]],
+        body: 0.25, bodyF: 420,
+        env: (t) => (t < 0.07 ? t / 0.07 : t < fall ? 1 : Math.exp(-(t - fall) / ((d - fall) * 0.45))), drive: 1.4 });
+    },
     // A jaw snapping shut: two hard clacks close together, tooth on tooth, and the breath he bit with.
     snap(sr) {
       const x = buf(sr, 0.22);
@@ -878,7 +898,7 @@ const Foley = (() => {
   // The rate each recipe is rendered at; the context resamples on playback. Nothing here needs the
   // top octave of a 48 kHz buffer, and the low, long ones (a blast, a lorry, a throat) have nothing
   // above 12 kHz at all, so they render at half the cost of the rest.
-  const LOW = new Set(['boom', 'engine', 'fall', 'scream', 'bleat', 'growl', 'wraith', 'unmade', 'veil', 'card', 'club', 'slow', 'cast', 'rune', 'bell', 'thud', 'roll', 'groan', 'heart', 'far', 'godVoice', 'leap']);
+  const LOW = new Set(['boom', 'engine', 'fall', 'scream', 'bleat', 'growl', 'wraith', 'unmade', 'veil', 'card', 'club', 'slow', 'cast', 'rune', 'bell', 'thud', 'roll', 'groan', 'heart', 'far', 'godVoice', 'leap', 'husky']);
   // `far` arrives through walls with nothing above 700 Hz left in it.
   const rateOf = (name) => (name === 'far' ? 12000 : LOW.has(name) ? 24000 : 32000);
   const loopRate = (name) => LOOP_RATE[name];

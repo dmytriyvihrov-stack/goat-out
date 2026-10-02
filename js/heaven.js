@@ -51,16 +51,14 @@ const HEAVEN_SEATS = [
 // A `|` inside a line cuts it into parts, each its own plate in turn (`Heaven.parts`). Edited, split
 // and written back from tools/god-talk.html (the dev drawer's GOD TALK), served by tools/serve.js.
 const HEAVEN_TALK = {
+  // Four plates, not seven (2 Oct 2026: "the first time the god talks far too long"): who he is, the
+  // gift and the quest (from the end of this talk every man he puts down leaves a white soul,
+  // `js/motes.js`, and the god wants `heaven.gift.quest` of them), and the mirror before the edge.
   intro: [
-    'BEHOLD. A GOAT. DEAD, BUT STILL VERY MUCH A GOAT.',
-    'I AM THE GOAT ABOVE. FATHER OF HORNS, KEEPER OF CLOUDS, EATER OF THE GOOD GRASS.',
-    'I CANNOT MAKE YOU NEW. I AM A GOD, NOT A MIRACLE. BUT I CAN SEND YOU BACK TO WHERE YOU FELL. MORE OR LESS.',
-    // The gift and the quest (1 Oct 2026): from the end of this talk every man he puts down leaves
-    // a white soul (`js/motes.js`), and the god wants `heaven.gift.quest` of them.
-    'BUT FIRST, A GIFT. HOLD STILL. ...THERE. A LITTLE OF MY LIGHT, IN YOUR HORNS.',
-    'NOW EVERY MAN YOU PUT DOWN LEAVES A SMALL WHITE SOUL. WALK OUT OF THE ROOM AND THEY FOLLOW YOU. THEY ARE MINE. BRING THEM.',
-    'TWO HUNDRED. BRING ME TWO HUNDRED, AND I WILL SHOW YOU WHAT MY MIRROR KEEPS AT THE BACK. WHAT YOU BRING, THE MIRROR TAKES AS PAY.',
-    'THE EDGE IS THROUGH THERE. JUMP. AND THIS TIME, BUTT FIRST. BEH.',
+    'BEHOLD. A GOAT. DEAD, BUT STILL VERY MUCH A GOAT. I AM THE GOAT ABOVE, AND I CAN SEND YOU BACK.',
+    'A GIFT FIRST. ...THERE. NOW EVERY MAN YOU PUT DOWN LEAVES A WHITE SOUL, AND IT FOLLOWS YOU.',
+    'BRING ME TWO HUNDRED, AND MY MIRROR WILL SHOW YOU WHAT IT KEEPS AT THE BACK.',
+    'LOOK INTO THE MIRROR. THEN JUMP. BUTT FIRST. BEH.',
   ],
   // For a goat who met him before the gift existed: the same gift, said on its own.
   gift: [
@@ -122,6 +120,9 @@ const HEAVEN_TALK = {
   bye: ['GO. THE EDGE IS THAT WAY. BEH.', 'JUMP ALREADY.', 'STILL HERE? THE CULT WILL NOT BUTT ITSELF.', 'DOWN YOU GO, LITTLE HORNS.'],
   butted: ['DO NOT BUTT THE DIVINE.', 'THAT TICKLED. DO IT AGAIN AND I SEND YOU TO THE TRIP.', 'BEH!'],
   answer: ['BEH.', 'BEEEH.', 'BEH BEH.', 'BAAH, YOURSELF.'],
+  // At the edge before he has ever looked in the mirror (2 Oct 2026, "the god does not let you jump
+  // down the first time before you go to the mirror"): `Heaven.holdEdge`.
+  notYet: ['NOT YET, LITTLE GOAT. THE MIRROR FIRST.', 'THE MIRROR. UP THERE. LOOK INTO IT, THEN JUMP.', 'NO JUMPING BEFORE THE MIRROR.'],
   // what the goat's mouth thinks of the gold grass
   munch: ['SWEET', 'HEAVENLY', 'MMM', 'TASTES OF SUNDAY', 'GOLDEN'],
 };
@@ -385,6 +386,8 @@ const Heaven = {
     if (H.panel) { this.idle(game, dt); game.clearEdges(); return; }
     if (H.jump) { this.updateJump(game, dt); return; }
     if (H.comb) { this.updateComb(game, dt); if (H.comb) { this.idle(game, dt); game.clearEdges(); return; } }
+    H.holdT = Math.max(0, (H.holdT || 0) - dt);
+    const ox = g.x, oy = g.y;
     // The first time ever, the god calls him over and says the whole of it.
     if (H.callAt !== undefined && (H.callAt -= dt) <= 0) { H.callAt = undefined; this.talk(game); return; }
     // GRAB on something that answers it: the god, the shepherd, the mirror, a seat.
@@ -409,9 +412,28 @@ const Heaven = {
       game.floatText(q.x, q.y - 26, HEAVEN_TALK.munch[Math.floor(Math.random() * HEAVEN_TALK.munch.length)], '#fff4c2');
       game.audio.sfxBleat(320, 0.07, 0.4); game.audio.sfxChime(T0.bells[Math.floor(Math.random() * T0.bells.length)], 0.35);
     }
+    // Not over the edge until he has looked in the mirror once: the god holds him back and says so.
+    if (!g.dead && !this.mirrorKnown() && game.world.isPitPx(g.x, g.y + g.r)) this.holdEdge(game, ox, oy);
     // Over the edge.
     if (!g.dead && game.world.isPitPx(g.x, g.y)) { this.jump(game); return; }
     game.updateCamera(dt);
+  },
+  // Whether he has ever stood at the mirror (`meta.mirror`, set by `openMirror`; a rank bought before
+  // the flag existed counts). Until then the edge is shut to him (`holdEdge`).
+  mirrorKnown() { const M = this.meta; return !M || M.mirror || M.bought > 0; },
+  // The god will not let him go down yet: put back where he stood, a step off the lip, the god's
+  // word over the screen and the mirror lit, so the way to it is plain. Said once a `holdGap`.
+  holdEdge(game, ox, oy) {
+    const H = game.heaven, g = game.goat, T0 = TUNING.heaven;
+    g.x = ox; g.y = oy - 2; g.vx *= 0.2; g.vy = -Math.abs(g.vy) * 0.3;
+    if (H.holdT > 0) return;
+    H.holdT = T0.holdGap;
+    // Said over the goat in the god's plate: the god himself is a room away, off the screen.
+    const K = HEAVEN_TALK.notYet, n = H.holdN = (H.holdN || 0) + 1;
+    H.plates.push({ x: g.x, y: g.y - 46, text: K[n === 1 ? 0 : Math.floor(Math.random() * K.length)], life: T0.plate, god: true });
+    game.audio.sfxGodVoice(0.8);
+    const m = game.props.find((p) => p.kind === 'hmirror');
+    if (m) { game.ring(m.x, m.y, 2.2 * TILE, '#fff4c2'); game.particles(m.x, m.y - 30, 16, '#fff4c2', 140); }
   },
   // What runs under a talk, the mirror or the comb: the world breathes, the goat stands.
   idle(game, dt) { game.goat.vx *= 0.8; game.goat.vy *= 0.8; game.updateEffects(dt); game.updateCamera(dt); },
@@ -565,6 +587,7 @@ const Heaven = {
   openMirror(game) {
     const H = game.heaven;
     H.panel = { t: 0, i: 0, flash: -1, flashT: 0, rects: [] };
+    if (!this.meta.mirror) { this.meta.mirror = true; this.save(); }   // the edge opens (`mirrorKnown`)
     game.goat.vx = game.goat.vy = 0;
     game.audio.sfxChime(TUNING.heaven.bells[0], 0.5); game.audio.sfxChime(TUNING.heaven.bells[3], 0.35, 0.12);
   },
@@ -1184,7 +1207,8 @@ Object.assign(Heaven, {
     ctx.font = `700 22px ${FONT_SC}`; ctx.fillStyle = 'rgba(176,122,34,0.5)';
     ctx.fillText('THE EDGE', 45 * TILE, 18.1 * TILE * TILT);
     ctx.font = `700 13px ${FONT_SC}`; ctx.fillStyle = 'rgba(176,122,34,0.42)';
-    ctx.fillText(game.touch && game.touch.active ? 'WALK OFF IT TO GO BACK DOWN' : `WALK OFF IT TO GO BACK DOWN  ·  ${keysOf(game).back}`, 45 * TILE, 18.7 * TILE * TILT);
+    ctx.fillText(!Heaven.mirrorKnown() ? 'THE MIRROR FIRST'
+      : game.touch && game.touch.active ? 'WALK OFF IT TO GO BACK DOWN' : `WALK OFF IT TO GO BACK DOWN  ·  ${keysOf(game).back}`, 45 * TILE, 18.7 * TILE * TILT);
     // (THE SEATS OF THE SAVED was lettered under the seats until 29 Sep 2026: "no words needed here")
     ctx.restore();
   },

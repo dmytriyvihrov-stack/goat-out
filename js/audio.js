@@ -21,7 +21,8 @@ const FIRST_MUSIC = { roots: [55,58.27,49,41.20], scale: MUSIC.scale };
 const musicTheme = (scene) => scene.first ? FIRST_MUSIC : scene.late ? LATE_MUSIC : MUSIC;
 // The tune the compound hums. Until 1.66 the room score was a drone, a bass note or two a bar and no
 // line anybody could hum, under a stone room's wash, and it read as noise. Each theme now has one
-// four-bar phrase over its four roots, played by the bone flute (`lead`) whenever the goat is not in
+// eight-bar phrase (`bars`; four until 2 Oct 2026, "a bit longer melody": each got an answering second
+// half over the same roots) over its four roots, played by the bone flute (`lead`) whenever the goat is not in
 // the two-bar warning: [sixteenth of the 64, semitones above the theme's first root four octaves up,
 // length in sixteenths]. The ordinary theme's hook is A-C-Bb-A and every phrase ends on the Phrygian
 // fall A-G-F-E over the E; the upper floors answer it in G minor; the first floor's is the same fall
@@ -29,23 +30,38 @@ const musicTheme = (scene) => scene.first ? FIRST_MUSIC : scene.late ? LATE_MUSI
 // [sixteenth, semitones above the root, length, gain], a folk gallop, not one long note. `toms` are
 // the frame drum's answers between the kicks.
 const THEME_BED = {
-  early: { gain: 0.085, pad: 0.03, toms: [6, 14],
+  early: { bars: 8, gain: 0.085, pad: 0.03, toms: [6, 14],
     melody: [[0,0,3],[3,3,2],[5,1,2],[7,0,2],[9,-2,3],[12,0,2],[14,1,2],
       [16,3,2],[18,5,2],[20,7,4],[24,5,2],[26,3,2],[28,1,4],
       [32,5,3],[35,3,1],[36,1,4],[40,0,2],[42,-2,2],[44,1,4],
-      [48,0,2],[50,-2,2],[52,-4,2],[54,-5,6],[62,-2,2]],
+      [48,0,2],[50,-2,2],[52,-4,2],[54,-5,6],[62,-2,2],
+      // the answer: the hook climbs straight through to F, turns, and the fall lands a step deeper on D
+      [64,0,2],[66,3,2],[68,5,2],[70,7,3],[73,8,1],[74,7,2],[76,5,2],[78,3,2],
+      [80,5,3],[83,3,1],[84,1,2],[86,0,2],[88,-2,4],[92,1,2],[94,3,2],
+      [96,5,2],[98,7,2],[100,8,3],[103,7,1],[104,5,2],[106,3,2],[108,1,4],
+      [112,-2,2],[114,-4,2],[116,-5,6],[122,-7,2],[124,-5,4]],
     bass: [[0,0,3,0.24],[3,0,1.5,0.12],[6,7,2,0.16],[8,0,2.5,0.2],[11,0,1.5,0.12],[14,10,2,0.14]] },
-  late: { gain: 0.08, pad: 0.03, toms: [6, 14],
+  late: { bars: 8, gain: 0.08, pad: 0.03, toms: [6, 14],
     melody: [[0,7,3],[3,3,1],[4,5,2],[6,2,2],[8,0,4],[12,3,1],[13,2,1],[14,0,2],
       [16,-2,4],[20,2,2],[22,5,2],[24,2,6],[30,0,2],
       [32,3,3],[35,0,1],[36,-3,4],[40,0,2],[42,3,2],[44,2,4],
-      [48,0,2],[50,-2,2],[52,0,6],[60,2,2],[62,3,2]],
+      [48,0,2],[50,-2,2],[52,0,6],[60,2,2],[62,3,2],
+      // the answer: up to the Eb and F over the G, down through the F, and home on a held G
+      [64,7,2],[66,8,2],[68,10,3],[71,8,1],[72,7,2],[74,5,2],[76,3,2],[78,2,2],
+      [80,0,3],[83,2,1],[84,3,2],[86,5,2],[88,7,4],[92,5,2],[94,3,2],
+      [96,2,2],[98,0,2],[100,-3,3],[103,0,1],[104,2,2],[106,3,2],[108,2,4],
+      [112,0,2],[114,3,2],[116,2,2],[118,0,6],[124,-2,2],[126,0,2]],
     bass: [[0,0,3,0.22],[6,0,1.5,0.12],[8,7,2.5,0.16],[12,0,2,0.15],[14,12,1.5,0.1]] },
-  first: { gain: 0.065, pad: 0.022, toms: [],
+  first: { bars: 8, gain: 0.065, pad: 0.022, toms: [],
     melody: [[0,7,4],[6,5,1],[7,3,1],[8,1,4],[12,0,3],
       [18,5,3],[21,1,1],[22,3,2],[24,5,5],[30,1,2],
       [32,-2,4],[36,1,2],[38,0,2],[40,-2,6],
-      [48,-5,5],[54,-2,2],[56,1,3],[60,0,4]],
+      [48,-5,5],[54,-2,2],[56,1,3],[60,0,4],
+      // the answer: the same hesitation a step lower, and the tritone again at the end of it
+      [64,7,3],[68,5,1],[69,3,3],[74,1,2],[76,0,4],
+      [82,3,2],[84,5,3],[88,3,1],[89,1,3],[94,-2,2],
+      [96,1,4],[102,0,2],[104,-2,4],[110,1,2],
+      [112,-5,4],[118,-4,2],[120,1,3],[124,-5,4]],
     bass: [[0,0,2.5,0.16],[8,0,1.2,0.07],[11,7,1.4,0.09]] },
 };
 // [sixteenth, semitones above root, octave multiplier, duration in sixteenths].
@@ -796,11 +812,13 @@ class GameAudio {
         const F = L.fight;
         if (name === 'chase') {
           if ([2,6,10,14].includes(beat)) this.rim(t, 0.05 * mix);
+          if (F.chaseKickBeats.includes(beat)) this.kick(t, F.chaseKick * mix);
           if (beat % 2 === 1) this.hat(t, F.chaseHat * mix);
         }
         if (name === 'combat') {
           if ([4,12].includes(beat)) this.tomHi(t, F.tom * mix);
-          if ([6,14].includes(beat)) this.kick(t, F.kick * mix);
+          if (F.lowBeats.includes(beat)) this.tomLo(t, F.low * mix);
+          if (F.kickBeats.includes(beat)) this.kick(t, F.kick * mix);
           if ([3,11].includes(beat)) this.rim(t, F.rim * mix);
           if (beat % 2 === 1) this.hat(t, F.hat * mix);
         }
@@ -834,7 +852,7 @@ class GameAudio {
   // and the frame drum's answers. The tune sings whole while nobody knows where he is, drops almost
   // out for the two-bar warning, and comes back under the chase and the fight.
   playThemeBed(key, s, t, stepLen, thin = () => 1, calm = 0) {
-    const B = THEME_BED[key], beat = s % 16, pos = s & 63, M = this.stageMix;
+    const B = THEME_BED[key], beat = s % 16, pos = s % (B.bars * 16), M = this.stageMix;
     const theme = key === 'first' ? FIRST_MUSIC : key === 'late' ? LATE_MUSIC : MUSIC;
     const root = theme.roots[(s >> 4) & 3], base = theme.roots[0] * 8;
     const C = TUNING.audio.layers.calm;
@@ -1128,7 +1146,13 @@ class GameAudio {
     if (kind === 'goose' || kind === 'crow') return this.foley(kind, { key: kind + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: kind === 'goose' ? 0.11 : 0.08 });
     if (kind === 'horse') return this.foley('horse', { key: 'horse' + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: 0.1 });
     if (kind === 'pig') return this.foley('pig', { key: 'pig' + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: hurt ? 0.09 : 0.12 });
+    if (kind === 'husky') return this.sfxHusky(hurt ? 'hurt' : 'woo');
     this.foley('tortoise', { gain: 0.115 });
+  }
+  // The husky's voice (js/beasts-more.js): `woo` the howl she sings on the beat, `waf` the bark before
+  // it, `hurt` a yelp. The howl is the beat the goat answers, so it sits a little over the fight.
+  sfxHusky(note = 'woo', vol = 1) {
+    this.foley('husky', { key: 'husky:' + note, args: { note }, takes: 3, gain: (note === 'woo' ? 0.17 : note === 'waf' ? 0.12 : 0.1) * vol, wet: 0.06 });
   }
   // The lorry under them: half a second of diesel knock, called every half second while the road
   // goes past, each faded at its ends so they run on without a seam.

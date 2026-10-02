@@ -208,7 +208,9 @@ const Codex = {
   // ================================================================ the book (I)
   open(game) {
     if (game.state === 'play' && (game.shopDlg || game.revive || game.beastTalk || (game.bless && game.bless.on))) return false;
-    if (game.state !== 'play' && !(game.state === 'heaven' && game.heaven && !game.heaven.talk && !game.heaven.panel)) return false;
+    // Over the soul's cards too (2 Oct 2026: "I has to work while choosing a soul, to look quickly"):
+    // closed, `pausedIn` hands the cards back exactly as they were.
+    if (game.state !== 'play' && game.state !== 'boon' && !(game.state === 'heaven' && game.heaven && !game.heaven.talk && !game.heaven.panel)) return false;
     game.pauseFrom = game.state; game.state = 'paused'; game.pause.index = 0;
     game.menu.panel = 'book'; game.bookFromKey = true; game.book = { i: 0, mx: -1, my: -1 };
     game.audio.sfxCard(); return true;
@@ -217,14 +219,18 @@ const Codex = {
     game.menu.panel = null; game.audio.sfxSwing();
     if (game.bookFromKey) { game.bookFromKey = false; game.state = game.pausedIn(); game.clearEdges(); }
   },
-  SECTIONS: ['ACTIVE', 'PASSIVE', 'TALISMAN', 'ANIMALS', 'FROM THE MIRROR'],
+  SECTIONS: ['SOULS', 'TALISMAN', 'ANIMALS', 'FROM THE MIRROR'],
+  // The souls in the order the book lays them (by verb, the active one first), so the arrow keys walk
+  // the page the way it reads.
+  VERB_ORDER: ['butt', 'grab', 'roll', 'scream', undefined],
   entries(game) {
     const out = [];
     // Up in heaven after a death the floor's souls are already lost (the card said so): the book lists what
     // the edge drops him back with, the head of the floor (`restartLevel` restores exactly these).
     const up = !!game.heaven, boons = up && game.levelBoons ? game.levelBoons : game.boons;
     const art = up && game.levelArtifact !== undefined ? game.levelArtifact : game.artifact;
-    for (const b of boons) out.push({ sec: b.active ? 'ACTIVE' : 'PASSIVE', kind: 'boon', b });
+    const vi = (b) => this.VERB_ORDER.indexOf(b.skill || undefined);
+    for (const b of boons.slice().sort((a, c) => vi(a) - vi(c) || !!c.active - !!a.active)) out.push({ sec: 'SOULS', kind: 'boon', b });
     if (art && Shop.def(art.id)) out.push({ sec: 'TALISMAN', kind: 'art', art });
     const c = typeof Beast !== 'undefined' ? Beast.counts(game) : {};
     for (const k of ['chicken', 'tortoise', 'goose', 'crow', 'horse', 'pig', 'rabbit', 'husky']) if (c[k]) out.push({ sec: 'ANIMALS', kind: 'beast', k, n: c[k] });
@@ -246,18 +252,28 @@ const Codex = {
     const u = e.u;
     return { name: u.name + ' ' + 'I'.repeat(e.r), tag: 'FROM THE MIRROR · FOR GOOD', color: '#f7d774', text: u.tell(u.params, e.r) };
   },
-  // The picture of an entry in a box `h` px across, centred at (cx, cy).
+  // The picture of an entry, centred at (cx, cy) in a box `h` px across: the very picture the game
+  // offered it with (2 Oct 2026, playtest: "show exactly what the card and the shelf showed"). A soul
+  // on a verb is that verb's chip as its soul card draws it (`Renderer.skillIcon` over `BOON_BASE` with
+  // that soul alone, so each soul shows its own mark rather than the whole build); a body soul's card
+  // has only its glyph, so the glyph; a talisman is the mouse's card (`artifactIcon` in a pool of its
+  // rarity); an animal is the one its terms are said beside (`Beast.portrait`); the mirror, heaven's skull.
   icon(R, game, e, cx, cy, h) {
     const ctx = R.ctx;
     if (e.kind === 'boon') {
-      ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
-      ctx.font = `${Math.round(h * 0.56)}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
-      ctx.fillText(e.b.emoji || '•', cx, cy + h * 0.04); ctx.restore();
-    } else if (e.kind === 'art') R.artifactIcon(e.art.id, cx, cy, h * 0.3, e.art.tier);
+      const b = e.b;
+      if (b.skill) {
+        const pm = Object.assign({}, BOON_BASE); b.apply(pm, b.params || {});
+        ctx.save(); ctx.translate(Math.round(cx), Math.round(cy)); R.skillIcon(b.skill, h * 0.3, game, !!pm.breath, pm); ctx.restore();
+      } else {
+        ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = PALETTE.bone;
+        ctx.font = `${Math.round(h * 0.48)}px ${FONT}`; ctx.fillText(b.emoji || '•', cx, cy + h * 0.03); ctx.restore();
+      }
+    } else if (e.kind === 'art') { this.pool(R, cx, cy, h * 0.5, rarityOf(e.art.tier).color, 1.2); R.artifactIcon(e.art.id, cx, cy, h * 0.3, e.art.tier); }
     else if (e.kind === 'beast') {
-      ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
-      ctx.font = `${Math.round(h * 0.56)}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
-      ctx.fillText(Beast.EMOJI[e.k], cx, cy + h * 0.04); ctx.restore();
+      // feet on the box's floor; the horse is drawn a size down, he is half again as long as the rest
+      const k = h * (e.k === 'horse' ? 0.62 : 0.78) / 52;
+      ctx.save(); ctx.translate(Math.round(cx), Math.round(cy + h * 0.34)); Beast.portrait(R, ctx, e.k, k); ctx.restore();
     } else {
       const sk = HEAVEN_PIXELS.sprites.skull, c = h * 0.5 / sk.w;
       Heaven.skull(ctx, cx - sk.w * c / 2, cy - sk.h * c / 2, c);
@@ -275,78 +291,295 @@ const Codex = {
   },
   bookClick(game, p) {
     const B = game.book; if (!B || !B.rects) return;
-    if (B.closeRect && p.x >= B.closeRect.x && p.x <= B.closeRect.x + B.closeRect.w && p.y >= B.closeRect.y && p.y <= B.closeRect.y + B.closeRect.h) { this.close(game); return; }
+    const on = (r) => r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+    if (on(B.closeRect) || on(B.xRect)) { this.close(game); return; }
     const i = B.rects.findIndex((r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
     if (i >= 0) { B.i = i; game.audio.sfxSwing(); }
   },
+  // The book itself (2 Oct 2026, playtest: "the goat on the left, his build on the right, laid out as a
+  // book, like Enter the Gungeon's ammonomicon"): a leather cover with brass corners, two pages and a
+  // spine, a ribbon out of the foot, all in hard cells of `P` HUD px like the rest of the party.
+  drawCover(R, x0, y0, pw, ph, P, cut) {
+    const ctx = R.ctx, half = Math.round(pw / 2 / P) * P, cv = 4 * P;
+    if (cut) return this.drawCoverStacked(R, x0, y0, pw, ph, P, cut);
+    // the cover, its corners cut in steps, a stitch line round it
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(x0 - cv - P, y0 - cv + P, pw + 2 * cv + 2 * P, ph + 2 * cv - 2 * P); ctx.fillRect(x0 - cv + P, y0 - cv - P, pw + 2 * cv - 2 * P, ph + 2 * cv + 2 * P);
+    ctx.fillStyle = PALETTE.plum; ctx.fillRect(x0 - cv, y0 - cv + P, pw + 2 * cv, ph + 2 * cv - 2 * P); ctx.fillRect(x0 - cv + P, y0 - cv, pw + 2 * cv - 2 * P, ph + 2 * cv);
+    ctx.fillStyle = 'rgba(239,230,208,0.07)'; ctx.fillRect(x0 - cv + P, y0 - cv, pw + 2 * cv - 2 * P, P);
+    ctx.fillStyle = 'rgba(26,16,22,0.45)'; ctx.fillRect(x0 - cv + P, y0 + ph + cv - P, pw + 2 * cv - 2 * P, P);
+    ctx.fillStyle = 'rgba(185,135,58,0.45)';
+    const st = Math.max(1, Math.round(P / 2));
+    for (let x = x0 - cv + 3 * P; x < x0 + pw + cv - 3 * P; x += 3 * P) { ctx.fillRect(x, y0 - cv + 2 * P, 2 * P, st); ctx.fillRect(x, y0 + ph + cv - 2 * P - st, 2 * P, st); }
+    // the block of leaves under each page, a few edges stepped out at the foot and the outer side
+    for (let k = 3; k >= 1; k--) {
+      ctx.fillStyle = k % 2 ? PALETTE.dirtHi : PALETTE.wood;
+      ctx.fillRect(x0 - k * P, y0 + k * P, half - P, ph);
+      ctx.fillRect(x0 + half + P + k * P, y0 + k * P, pw - half - P, ph);
+    }
+    // the pages, a printed rule inset round each, and the gutter darkening in hard bands toward the spine
+    // a step lighter than the floor's earth (2 Oct 2026: "the page a little lighter")
+    ctx.fillStyle = PALETTE.dirtHi; ctx.fillRect(x0, y0, half - P, ph); ctx.fillRect(x0 + half + P, y0, pw - half - P, ph);
+    ctx.fillStyle = 'rgba(239,230,208,0.05)'; ctx.fillRect(x0, y0, half - P, P); ctx.fillRect(x0 + half + P, y0, pw - half - P, P);
+    const rule = (x, w) => { ctx.fillStyle = 'rgba(185,135,58,0.28)'; ctx.fillRect(x, y0 + 3 * P, w, Math.max(1, P / 3)); ctx.fillRect(x, y0 + ph - 3 * P, w, Math.max(1, P / 3)); };
+    rule(x0 + 3 * P, half - 7 * P); rule(x0 + half + 4 * P, pw - half - 7 * P);
+    for (let k = 0; k < 4; k++) {
+      ctx.fillStyle = `rgba(26,16,22,${0.1 + k * 0.08})`;
+      ctx.fillRect(x0 + half - P - (4 - k) * P, y0, P, ph); ctx.fillRect(x0 + half + P + (3 - k) * P, y0, P, ph);
+    }
+    // the spine
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(x0 + half - P, y0 - cv, 2 * P, ph + 2 * cv);
+    // brass corners, a stepped triangle on each outer corner, lit on its top edge
+    const n = 6;
+    for (const [cx, cy, sx, sy] of [[x0 - cv, y0 - cv, 1, 1], [x0 + pw + cv, y0 - cv, -1, 1], [x0 - cv, y0 + ph + cv, 1, -1], [x0 + pw + cv, y0 + ph + cv, -1, -1]]) {
+      for (let i = 0; i < n; i++) {
+        const w = (n - i) * P, x = sx > 0 ? cx : cx - w, y = sy > 0 ? cy + i * P : cy - (i + 1) * P;
+        ctx.fillStyle = PALETTE.ink; ctx.fillRect(x - (sx > 0 ? 0 : P), y, w + P, P);
+        ctx.fillStyle = i === 0 ? PALETTE.fireHi : i < 2 ? PALETTE.hay : PALETTE.ochre; ctx.fillRect(x + (sx > 0 ? 0 : 0), y, w - P, P);
+      }
+    }
+    // the ribbon, out of the foot of the left page by the spine (the skill rail sits in the right-hand corner), its end cut in a V
+    const rx = x0 + half - 12 * P, rtop = y0 + ph - 6 * P, rlen = 15 * P, rw = 3 * P;
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(rx - P, rtop, rw + 2 * P, rlen);
+    ctx.fillStyle = PALETTE.bloodDark; ctx.fillRect(rx, rtop, rw, rlen - P);
+    ctx.fillStyle = PALETTE.blood; ctx.fillRect(rx, rtop, P, rlen - P);
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(rx + P, rtop + rlen - 2 * P, P, 2 * P);
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(rx - P, rtop - P, rw + 2 * P, P);
+  },
+  // The same book turned for a phone held upright (2 Oct 2026): side by side, a 375 px screen left each
+  // page 150 px and every word ran over the next, so the pages lie one over the other, the spine across
+  // at `cut` px from the top. Same leather, stitches, corners and ribbon.
+  drawCoverStacked(R, x0, y0, pw, ph, P, cut) {
+    const ctx = R.ctx, cv = 4 * P, bh = ph - cut - P;
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(x0 - cv - P, y0 - cv + P, pw + 2 * cv + 2 * P, ph + 2 * cv - 2 * P); ctx.fillRect(x0 - cv + P, y0 - cv - P, pw + 2 * cv - 2 * P, ph + 2 * cv + 2 * P);
+    ctx.fillStyle = PALETTE.plum; ctx.fillRect(x0 - cv, y0 - cv + P, pw + 2 * cv, ph + 2 * cv - 2 * P); ctx.fillRect(x0 - cv + P, y0 - cv, pw + 2 * cv - 2 * P, ph + 2 * cv);
+    ctx.fillStyle = 'rgba(185,135,58,0.45)';
+    const st = Math.max(1, Math.round(P / 2));
+    for (let y = y0 - cv + 3 * P; y < y0 + ph + cv - 3 * P; y += 3 * P) { ctx.fillRect(x0 - cv + 2 * P, y, st, 2 * P); ctx.fillRect(x0 + pw + cv - 2 * P - st, y, st, 2 * P); }
+    for (let k = 3; k >= 1; k--) {
+      ctx.fillStyle = k % 2 ? PALETTE.dirtHi : PALETTE.wood;
+      ctx.fillRect(x0 + k * P, y0 - k * P, pw, cut - P); ctx.fillRect(x0 + k * P, y0 + cut + P + k * P, pw, bh);
+    }
+    ctx.fillStyle = PALETTE.dirtHi; ctx.fillRect(x0, y0, pw, cut - P); ctx.fillRect(x0, y0 + cut + P, pw, bh);
+    ctx.fillStyle = 'rgba(185,135,58,0.28)'; ctx.fillRect(x0 + 3 * P, y0 + 3 * P, pw - 6 * P, Math.max(1, P / 3)); ctx.fillRect(x0 + 3 * P, y0 + ph - 3 * P, pw - 6 * P, Math.max(1, P / 3));
+    for (let k = 0; k < 4; k++) {
+      ctx.fillStyle = `rgba(26,16,22,${0.1 + k * 0.08})`;
+      ctx.fillRect(x0, y0 + cut - P - (4 - k) * P, pw, P); ctx.fillRect(x0, y0 + cut + P + (3 - k) * P, pw, P);
+    }
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(x0 - cv, y0 + cut - P, pw + 2 * cv, 2 * P);
+    const n = 6;
+    for (const [cx, cy, sx, sy] of [[x0 - cv, y0 - cv, 1, 1], [x0 + pw + cv, y0 - cv, -1, 1], [x0 - cv, y0 + ph + cv, 1, -1], [x0 + pw + cv, y0 + ph + cv, -1, -1]]) {
+      for (let i = 0; i < n; i++) {
+        const w = (n - i) * P, x = sx > 0 ? cx : cx - w, y = sy > 0 ? cy + i * P : cy - (i + 1) * P;
+        ctx.fillStyle = PALETTE.ink; ctx.fillRect(x - (sx > 0 ? 0 : P), y, w + P, P);
+        ctx.fillStyle = i === 0 ? PALETTE.fireHi : i < 2 ? PALETTE.hay : PALETTE.ochre; ctx.fillRect(x, y, w - P, P);
+      }
+    }
+    const rx = x0 + 12 * P, rtop = y0 + ph - 6 * P, rlen = 15 * P, rw = 3 * P;
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(rx - P, rtop - P, rw + 2 * P, rlen + P);
+    ctx.fillStyle = PALETTE.bloodDark; ctx.fillRect(rx, rtop, rw, rlen - P);
+    ctx.fillStyle = PALETTE.blood; ctx.fillRect(rx, rtop, P, rlen - P);
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(rx + P, rtop + rlen - 2 * P, P, 2 * P);
+  },
+  // A tile of the right page: the card's own face at a size, its colour round it, lit when picked.
+  tile(R, game, e, x, y, c, sel, s) {
+    const ctx = R.ctx, col = this.frameColor(e), boon = e.kind === 'boon', t = Math.max(2, Math.round((sel ? 3 : 2) * s));
+    if (sel) { ctx.fillStyle = 'rgba(239,230,208,0.9)'; const o = Math.round(4 * s), w = Math.max(2, Math.round(2 * s)); ctx.fillRect(x - o, y - o, c + 2 * o, w); ctx.fillRect(x - o, y + c + o - w, c + 2 * o, w); ctx.fillRect(x - o, y - o, w, c + 2 * o); ctx.fillRect(x + c + o - w, y - o, w, c + 2 * o); }
+    // the fills the soul card and the mouse's card use, so a tile reads as that card
+    ctx.fillStyle = boon ? (e.b.active ? (sel ? 'rgba(97,47,52,0.95)' : 'rgba(74,36,40,0.92)') : (sel ? 'rgba(76,45,66,0.95)' : 'rgba(59,34,51,0.9)')) : (sel ? 'rgba(52,36,46,0.97)' : 'rgba(34,24,32,0.94)');
+    ctx.fillRect(x, y, c, c);
+    ctx.fillStyle = col; ctx.fillRect(x, y, c, t); ctx.fillRect(x, y + c - t, c, t); ctx.fillRect(x, y, t, c); ctx.fillRect(x + c - t, y, t, c);
+    ctx.save(); ctx.beginPath(); ctx.rect(x + t, y + t, c - 2 * t, c - 2 * t); ctx.clip();
+    this.icon(R, game, e, x + c / 2, y + c / 2, c);
+    ctx.restore();
+    if (e.kind === 'beast' && e.n > 1) { ctx.font = `700 ${Math.max(12 * R.s, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'right'; ctx.fillText('×' + e.n, x + c - 4 * s, y + c - 5 * s); ctx.textAlign = 'left'; }
+    if (e.kind === 'mirror') { ctx.font = `700 ${Math.max(12 * R.s, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = '#f7d774'; ctx.textAlign = 'right'; ctx.fillText('I'.repeat(e.r), x + c - 4 * s, y + c - 5 * s); ctx.textAlign = 'left'; }
+  },
   drawBook(R, game) {
-    const ctx = R.ctx, s = R.ts, W = R.w, Hh = R.h, B = game.book || (game.book = { i: 0, mx: -1, my: -1 });
+    const ctx = R.ctx, s0 = R.ts, W = R.w, Hh = R.h, B = game.book || (game.book = { i: 0, mx: -1, my: -1 });
     const list = this.entries(game); if (B.i >= list.length) B.i = Math.max(0, list.length - 1);
     // the pointer, once it moves, picks what it is on
     const m = game.input.mouse, moved = m && (m.x !== B.mx || m.y !== B.my); if (m) { B.mx = m.x; B.my = m.y; }
     ctx.save();
-    ctx.fillStyle = 'rgba(9,7,9,0.78)'; ctx.fillRect(0, 0, W, Hh);
-    const pw = Math.min(W - 32 * s, 1040 * s), ph = Math.min(Hh - 32 * s, 620 * s), x0 = (W - pw) / 2, y0 = (Hh - ph) / 2;
-    // the book: two pages and a spine
-    ctx.fillStyle = '#3a1d22'; ctx.fillRect(x0 - 8 * s, y0 - 8 * s, pw + 16 * s, ph + 16 * s);
-    ctx.fillStyle = '#211519'; ctx.fillRect(x0, y0, pw, ph);
-    const half = Math.round(pw * 0.53), lx = x0 + 20 * s, rx = x0 + half + 22 * s, rw = pw - half - 42 * s;
-    ctx.fillStyle = 'rgba(239,230,208,0.05)'; ctx.fillRect(x0 + half - 3 * s, y0, 6 * s, ph);
-    ctx.fillStyle = PALETTE.ochre; ctx.fillRect(x0, y0, pw, 2 * s); ctx.fillRect(x0, y0 + ph - 2 * s, pw, 2 * s);
-    ctx.textAlign = 'left'; ctx.font = `700 ${Math.max(18 * R.s, 22 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-    ctx.fillText('WHAT HE CARRIES', lx, y0 + 34 * s);
-    // the left page: one block a section, a row of boxes in each
-    const cell = Math.round(48 * s), gap = Math.round(8 * s), cols = Math.max(1, Math.floor((half - 40 * s + gap) / (cell + gap)));
-    let y = y0 + 58 * s; B.rects = [];
-    const always = ['ACTIVE', 'PASSIVE', 'TALISMAN', 'ANIMALS'];
-    for (const sec of this.SECTIONS) {
-      const items = list.filter((e) => e.sec === sec);
-      if (!items.length && !always.includes(sec)) continue;
-      ctx.font = `700 ${Math.max(12 * R.s, 13 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText(sec, lx, y + 12 * s);
-      const tw = textW(ctx, sec); ctx.fillStyle = 'rgba(185,135,58,0.3)'; ctx.fillRect(lx + tw + 10 * s, y + 7 * s, half - 50 * s - tw, Math.max(1, s));
-      y += 22 * s;
-      if (!items.length) {
-        ctx.font = FONT_PICK.font('text', Math.max(12 * R.s, 12.5 * s)); ctx.fillStyle = 'rgba(239,230,208,0.35)';
-        ctx.fillText(sec === 'TALISMAN' ? 'nothing at his neck yet' : sec === 'ANIMALS' ? 'none brought out yet' : 'no soul here yet', lx + 4 * s, y + 14 * s);
-        y += 30 * s; continue;
+    ctx.fillStyle = 'rgba(9,7,9,0.82)'; ctx.fillRect(0, 0, W, Hh);
+    const P = Math.max(2, Math.round(3 * s0)), q = (v) => Math.round(v / P) * P;
+    // A screen taller than wide (a phone upright) stacks the pages, his over his build (`drawCoverStacked`).
+    const stack = W < Hh * 0.9;
+    const pw = q(Math.min(W - (stack ? 40 : 96) * s0, 1060 * s0)), ph = q(stack ? Hh - 150 * s0 : Math.min(Hh - 112 * s0, 620 * s0)), x0 = q((W - pw) / 2), y0 = q((Hh - ph) / 2);
+    // what is inside is laid out for a book 1060 x 620 HUD px and drawn smaller on a screen too short or narrow for that
+    const s = stack ? s0 : Math.min(s0, ph / 620, pw / 1060), cut = stack ? q(ph * 0.38) : 0;
+    this.drawCover(R, x0, y0, pw, ph, P, cut);
+    const half = q(pw / 2), LY = y0, LH = stack ? cut : ph, RY = y0 + cut, RH = ph - cut, RX = stack ? x0 : x0 + half;
+    const lx = x0 + 30 * s, lw = (stack ? pw : half) - 60 * s, rx = RX + 30 * s, rw = (stack ? pw : pw - half) - 60 * s, lc = x0 + (stack ? pw : half) / 2;
+    const head = (txt, x, y, w, align) => {
+      ctx.textAlign = align; ctx.font = `700 ${Math.max(18 * R.s, 22 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.fillText(txt, x, y);
+      ctx.fillStyle = 'rgba(185,135,58,0.55)'; const yy = Math.round(y + 10 * s), x1 = align === 'center' ? x - w / 2 : x;
+      ctx.fillRect(Math.round(x1), yy, Math.round(w), Math.max(1, Math.round(s)));
+      ctx.fillStyle = PALETTE.ochre; const d = Math.max(2, Math.round(3 * s)), mx = Math.round(x1 + w / 2);
+      ctx.fillRect(mx - d, yy - d + 1, 2 * d, 2 * d);
+    };
+
+    // ---- the left page: him, as he stands now
+    head('THE GOAT', lc, LY + 44 * s, Math.min(lw, 260 * s), 'center');
+    const g = game.goat, li = game.levelIndex | 0;
+    const gh = Math.min(LH * (stack ? 0.34 : 0.5), lw * 0.62, 330 * s), gf = LY + 64 * s + gh * 1.18;
+    this.pool(R, lc, gf - gh * 0.3, gh * 0.6, PALETTE.bone, 1.2);
+    this.portrait(R, game, lc, gf, gh, game.mods, game.heaven && game.levelArtifact !== undefined ? game.levelArtifact : game.artifact, 'book');
+    let ly = gf + 40 * s;
+    ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(13 * R.s, 15 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText(game.heaven ? 'THE PASTURE ABOVE' : `LEVEL ${li + 1} · ${Painting.floorName(game, li)}`, lc, ly);
+    // His hearts as the play HUD draws them (2 Oct 2026, "pictures, not words"): `HEART_GLYPH` in cells,
+    // full in blood with the HUD's glint, lost ones faint, THE MIRROR's light hearts after his own.
+    if (g && g.maxHp) {
+      const HG = HEART_GLYPH, hpx = Math.max(2, Math.round(3 * s)), step = (HG[0].length + 2) * hpx;
+      const n = g.maxHp + (g.light || 0), per = Math.max(1, Math.floor((lw + 2 * hpx) / step));
+      const rows = Math.ceil(n / per), hh = HG.length * hpx;
+      for (let i = 0; i < n; i++) {
+        const row = Math.floor(i / per), inRow = Math.min(per, n - row * per);
+        const ox = Math.round(lc - (inRow * step - 2 * hpx) / 2 + (i % per) * step), oy = Math.round(ly + 10 * s + row * (hh + 2 * hpx));
+        const light = i >= g.maxHp, full = light || i < g.hp;
+        ctx.fillStyle = light ? '#fff4c2' : full ? PALETTE.blood : 'rgba(239,230,208,0.16)';
+        for (let r = 0; r < HG.length; r++) for (let c = 0; c < HG[r].length; c++) if (HG[r][c] === '#') ctx.fillRect(ox + c * hpx, oy + r * hpx, hpx, hpx);
+        if (full && !light) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(ox + hpx, oy + hpx, hpx, hpx); }
       }
+      ly += 4 * s + rows * (hh + 2 * hpx);   // the next line's baseline sits 20 px under this: about the old text line's height
+    }
+    // what the souls and the talisman have done to how he looks, named the way the soul card names it
+    const looks = this.LOOKS.filter(([k]) => game.mods && game.mods[k]).map(([, nm]) => nm);
+    if (looks.length) {
+      ctx.font = `700 ${Math.max(12 * R.s, 12.5 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi;
+      R.wrap(looks.join(' · '), lw).forEach((l) => { ly += 20 * s; ctx.fillText(l, lc, ly); });
+    }
+    // the way out, at the foot of his page
+    ctx.font = `${Math.max(12 * R.s, 12.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
+    const hint = game.touch.active ? 'tap a picture to read it · tap here to close' : padOn(game) ? 'the stick turns the page · B closes' : `point at a picture to read it · ${KEY_FACE.KeyI} or ESC closes`;
+    const hy = LY + LH - 22 * s; ctx.fillText(hint, lc, hy);
+    const hw = textW(ctx, hint); B.closeRect = { x: lc - hw / 2, y: hy - 16 * s, w: hw, h: 22 * s };
+    // A cross in the book's top right corner (2 Oct 2026, "a clear × at the top right"): an ink plate on
+    // the page with a brass rim, the X in cells of `xc` px, lit under the pointer; a click or a tap is I / ESC.
+    {
+      const xc = Math.max(2, Math.round(3 * s)), xs = 11 * xc, xx = Math.round(x0 + pw - 12 * s - xs), xy = Math.round(y0 + 12 * s);
+      const hot = m && !padOn(game) && m.x >= xx && m.x <= xx + xs && m.y >= xy && m.y <= xy + xs;
+      B.xRect = { x: xx - 4 * s, y: xy - 4 * s, w: xs + 8 * s, h: xs + 8 * s };   // a little wider than it looks, for a finger
+      ctx.fillStyle = hot ? PALETTE.fireHi : PALETTE.ochre; ctx.fillRect(xx, xy, xs, xs);
+      ctx.fillStyle = hot ? 'rgba(74,36,40,0.97)' : PALETTE.ink; ctx.fillRect(xx + xc, xy + xc, xs - 2 * xc, xs - 2 * xc);
+      ctx.fillStyle = hot ? PALETTE.fireHi : PALETTE.bone;
+      for (let i = 3; i <= 7; i++) { ctx.fillRect(xx + i * xc, xy + i * xc, xc, xc); ctx.fillRect(xx + (10 - i) * xc, xy + i * xc, xc, xc); }
+      // thickened a cell to the right on each stroke, so it reads at a glance and stays on the grid
+      for (let i = 3; i <= 6; i++) { ctx.fillRect(xx + (i + 1) * xc, xy + i * xc, xc, xc); ctx.fillRect(xx + (9 - i) * xc, xy + i * xc, xc, xc); }
+    }
+
+    // ---- the right page: his build, a tile a thing, and the one picked read out at the foot
+    head('WHAT HE CARRIES', rx, RY + 44 * s, rw, 'left');
+    const cell = Math.round(48 * s), gap = Math.round(10 * s);
+    B.rects = [];
+    const lay = (items, x, y, w, c = cell, gp = gap) => {
+      const n = Math.max(1, Math.floor((w + gp) / (c + gp)));
       items.forEach((e, k) => {
-        const i = list.indexOf(e), cx0 = lx + (k % cols) * (cell + gap), cy0 = y + Math.floor(k / cols) * (cell + gap);
-        B.rects[i] = { x: cx0, y: cy0, w: cell, h: cell };
-        if (moved && m.x >= cx0 && m.x <= cx0 + cell && m.y >= cy0 && m.y <= cy0 + cell) B.i = i;
-        const sel = B.i === i, col = this.frameColor(e);
-        ctx.fillStyle = sel ? 'rgba(239,230,208,0.12)' : 'rgba(13,10,12,0.55)'; ctx.fillRect(cx0, cy0, cell, cell);
-        ctx.strokeStyle = col; ctx.lineWidth = (sel ? 3 : 1.6) * s; ctx.strokeRect(cx0, cy0, cell, cell);
-        this.icon(R, game, e, cx0 + cell / 2, cy0 + cell / 2, cell);
-        if (e.kind === 'beast' && e.n > 1) { ctx.font = `700 ${Math.max(12 * R.s, 11 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'right'; ctx.fillText('×' + e.n, cx0 + cell - 3 * s, cy0 + cell - 4 * s); ctx.textAlign = 'left'; }
+        const i = list.indexOf(e), tx = x + (k % n) * (c + gp), ty = y + Math.floor(k / n) * (c + gp);
+        B.rects[i] = { x: tx, y: ty, w: c, h: c };
+        if (moved && m.x >= tx && m.x <= tx + c && m.y >= ty && m.y <= ty + c) B.i = i;
+        this.tile(R, game, e, tx, ty, c, B.i === i, s);
       });
-      y += Math.ceil(items.length / cols) * (cell + gap) + 10 * s;
+      return Math.max(1, Math.ceil(items.length / n)) * (c + gp) - gp;
+    };
+    const label = (txt, x, y) => { ctx.textAlign = 'left'; ctx.font = `700 ${Math.max(12 * R.s, 13 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText(txt, x, y); return textW(ctx, txt); };
+    const none = (txt, x, y) => { ctx.textAlign = 'left'; ctx.font = FONT_PICK.font('text', Math.max(12 * R.s, 13 * s)); ctx.fillStyle = 'rgba(239,230,208,0.4)'; ctx.fillText(txt, x, y + cell / 2 + 5 * s); return cell; };
+    const of = (sec) => list.filter((e) => e.sec === sec);
+    let y = RY + 76 * s;
+    // The souls by the part of him they change (2 Oct 2026: "by the skills", then "a gradation by
+    // upgrades, tied to a part of the body"): HORNS the headbutt, TEETH the grab, LEGS the roll, THROAT
+    // the BAAH, BODY the rest. A row is the part's chip (the verb as the rail draws it over the whole
+    // build) and its slots in order, I the active, II and III the passives (`BOON_SLOTS`), an empty slot
+    // drawn empty so the row reads as how far that part has grown; a `key` soul (BY THE COLLAR) takes no
+    // slot and stands after them. The body has `BOON_SLOTS.general` slots. Two parts a line where it fits.
+    const souls = list.filter((e) => e.kind === 'boon'), K = keysOf(game), fire = !!(game.mods && game.mods.breath);
+    const VERBS = this.VERB_ORDER.filter(Boolean);
+    const onVerb = (id) => souls.filter((e) => (e.b.skill || 'body') === id);
+    const keyed = (id) => onVerb(id).filter((e) => e.b.key);
+    const slotsOf = (id) => id === 'body' ? BOON_SLOTS.general : BOON_SLOTS.active + BOON_SLOTS.passive;
+    const wide = Math.max(...VERBS.map((id) => slotsOf(id) + keyed(id).length));   // tiles after the chip, the widest part
+    const narrow = rw < 2 * ((wide + 1) * cell + wide * gap + 8 * s) + 16 * s, vg = narrow ? Math.round(5 * s) : gap, cg = narrow ? Math.round(5 * s) : Math.round(8 * s), colG = narrow ? Math.round(10 * s) : Math.round(16 * s);
+    const small = Math.round(26 * s), fitC = Math.floor((rw - colG - 2 * cg - 2 * (wide - 1) * vg) / (2 * (wide + 1)));
+    const vc = Math.min(cell, fitC), two = vc >= small, colW = two ? (rw - colG) / 2 : rw, cell2 = two ? vc : Math.min(cell, Math.floor((rw - cg - (wide - 1) * vg) / (wide + 1)));
+    const PART = { butt: 'HORNS', grab: 'TEETH', roll: 'LEGS', scream: 'THROAT', body: 'BODY' };
+    const partH = Math.round(Math.max(12 * R.s, 12 * s) + 6 * s);
+    const chip = (x, yy, id) => {
+      const cell = cell2;
+      ctx.fillStyle = 'rgba(13,10,12,0.55)'; ctx.fillRect(x, yy, cell, cell);
+      ctx.fillStyle = 'rgba(239,230,208,0.42)'; const t = Math.max(1, Math.round(1.5 * s));
+      ctx.fillRect(x, yy, cell, t); ctx.fillRect(x, yy + cell - t, cell, t); ctx.fillRect(x, yy, t, cell); ctx.fillRect(x + cell - t, yy, t, cell);
+      if (id === 'body') {   // the HUD's heart in ochre cells is the body
+        ctx.fillStyle = PALETTE.ochre;
+        const HG = HEART_GLYPH, hp = Math.max(1, Math.floor(cell * 0.55 / HG[0].length)), hx = Math.round(x + (cell - HG[0].length * hp) / 2), hy = Math.round(yy + (cell - HG.length * hp) / 2);
+        for (let r = 0; r < HG.length; r++) for (let c = 0; c < HG[r].length; c++) if (HG[r][c] === '#') ctx.fillRect(hx + c * hp, hy + r * hp, hp, hp);
+      } else { ctx.save(); ctx.translate(Math.round(x + cell / 2), Math.round(yy + cell / 2)); R.skillIcon(id, cell * 0.36, game, fire); ctx.restore(); }
+    };
+    // a slot nobody has filled: a faint frame of cells and its step, I, II, III
+    const empty = (x, yy, c, k) => {
+      const t = Math.max(1, Math.round(1.5 * s)), d = Math.max(2, Math.round(4 * s));
+      ctx.fillStyle = 'rgba(13,10,12,0.22)'; ctx.fillRect(x, yy, c, c);
+      ctx.fillStyle = 'rgba(239,230,208,0.22)';
+      for (let p = 0; p < c; p += 2 * d) { const w = Math.min(d, c - p); ctx.fillRect(x + p, yy, w, t); ctx.fillRect(x + p, yy + c - t, w, t); ctx.fillRect(x, yy + p, t, w); ctx.fillRect(x + c - t, yy + p, t, w); }
+      ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(12 * R.s, Math.min(14 * s, c * 0.32))}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
+      ctx.fillText(['I', 'II', 'III', 'IV', 'V', 'VI'][k] || String(k + 1), x + c / 2, yy + c / 2 + 5 * s); ctx.textAlign = 'left';
+    };
+    const put = (e, tx, ty, c) => {
+      const i = list.indexOf(e);
+      B.rects[i] = { x: tx, y: ty, w: c, h: c };
+      if (moved && m.x >= tx && m.x <= tx + c && m.y >= ty && m.y <= ty + c) B.i = i;
+      this.tile(R, game, e, tx, ty, c, B.i === i, s);
+    };
+    // one part: its name and key above, the chip, the slots filled in step order, then any key soul
+    const partRow = (x, yy, w, id) => {
+      const cell = cell2, all = onVerb(id), keys = all.filter((e) => e.b.key);
+      const ranked = id === 'body' ? all : all.filter((e) => !e.b.key && e.b.active).concat(all.filter((e) => !e.b.key && !e.b.active));
+      ctx.textAlign = 'left'; ctx.font = `700 ${Math.max(12 * R.s, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+      const nm = PART[id] + (id !== 'body' && !game.touch.active ? '  ·  ' + K[id] : '');
+      ctx.fillText(nm, x, yy + partH - 6 * s);
+      const ty = yy + partH;
+      chip(x, ty, id);
+      let tx = x + cell + cg;
+      const n = Math.max(slotsOf(id), ranked.length);
+      for (let k = 0; k < n; k++, tx += cell + vg) { if (ranked[k]) put(ranked[k], tx, ty, cell); else empty(tx, ty, cell, k); }
+      for (const e of keys) { put(e, tx, ty, cell); tx += cell + vg; }
+      return partH + cell;
+    };
+    label('SOULS', rx, y); y += 10 * s;
+    for (let i = 0; i < VERBS.length; i += two ? 2 : 1) {
+      let h = partRow(rx, y, colW, VERBS[i]);
+      if (two && VERBS[i + 1]) h = Math.max(h, partRow(rx + colW + colG, y, colW, VERBS[i + 1]));
+      y += h + (narrow ? vg : 8 * s);
     }
-    // the right page: the one picked, in full
+    y += partRow(rx, y, rw, 'body') + 20 * s;
+    // the talisman and the animals share a band: one thing at his neck, a few at most brought out
+    const tw = Math.max(cell, label('TALISMAN', rx, y)), ax = rx + tw + 34 * s;
+    label('ANIMALS', ax, y); y += 10 * s;
+    const ti = of('TALISMAN'), bi = of('ANIMALS');
+    const th = ti.length ? lay(ti, rx, y, cell) : none('none yet', rx + 2 * s, y);
+    const bh = bi.length ? lay(bi, ax, y, rx + rw - ax) : none('none brought out yet', ax + 2 * s, y);
+    y += Math.max(th, bh) + 20 * s;
+    const mi = of('FROM THE MIRROR');
+    if (mi.length) { label('FROM THE MIRROR', rx, y); y += 10 * s; y += lay(mi, rx, y, rw) + 20 * s; }
+
+    // the one picked, in full: its picture large, its name and kind, and what it does
     const e = list[B.i];
+    const dy = Math.max(y + 2 * s, RY + RH - 196 * s);
+    ctx.fillStyle = 'rgba(185,135,58,0.4)'; ctx.fillRect(Math.round(rx), Math.round(dy), Math.round(rw), Math.max(1, Math.round(s)));
     if (e) {
-      const a = this.about(game, e), big = Math.round(96 * s), bx = rx + rw / 2 - big / 2, by = y0 + 26 * s;
-      ctx.fillStyle = 'rgba(13,10,12,0.55)'; ctx.fillRect(bx, by, big, big);
-      ctx.strokeStyle = a.color; ctx.lineWidth = 2.5 * s; ctx.strokeRect(bx, by, big, big);
-      this.icon(R, game, e, bx + big / 2, by + big / 2, big);
-      ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(17 * R.s, 20 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-      ctx.fillText(a.name, rx + rw / 2, by + big + 32 * s);
-      ctx.font = `700 ${Math.max(12 * R.s, 12.5 * s)}px ${FONT_SC}`; ctx.fillStyle = a.color; ctx.fillText(a.tag, rx + rw / 2, by + big + 52 * s);
+      const a = this.about(game, e), big = Math.round(84 * s), by = dy + 18 * s;
+      this.tile(R, game, e, rx, by, big, false, s);
+      const nx = rx + big + 18 * s;
+      ctx.textAlign = 'left'; ctx.font = `700 ${Math.max(17 * R.s, 20 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+      // a soul is named the way its card names it: its glyph in front of the name
+      ctx.fillText((e.kind === 'boon' && e.b.skill && e.b.emoji ? e.b.emoji + ' ' : '') + a.name, nx, by + 30 * s);
+      ctx.font = `700 ${Math.max(12 * R.s, 12.5 * s)}px ${FONT_SC}`; ctx.fillStyle = a.color;
+      ctx.fillText(a.tag + (e.kind === 'boon' && e.b.skill && !game.touch.active ? ' · ' + keysOf(game)[e.b.skill] : ''), nx, by + 52 * s);
       ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 15 * s));
-      this.lines(R, a.text, rx + rw / 2, by + big + 82 * s, rw - 20 * s, 21 * s, 'center', 'rgba(239,230,208,0.85)');
+      this.lines(R, a.text, rx, by + big + 30 * s, rw, 21 * s, 'left', 'rgba(239,230,208,0.88)');
     } else {
-      ctx.textAlign = 'center'; ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 15 * s)); ctx.fillStyle = 'rgba(239,230,208,0.5)';
-      ctx.fillText('Nothing yet. A soul, a mouse or an animal will change that.', rx + rw / 2, y0 + 90 * s);
+      ctx.textAlign = 'left'; ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 15 * s)); ctx.fillStyle = 'rgba(239,230,208,0.5)';
+      R.wrap('Nothing yet. A soul, the mouse or an animal will change that.', rw).forEach((l, k) => ctx.fillText(l, rx, dy + 40 * s + k * 21 * s));
     }
-    // and him, as he stands now, at the foot of the page
-    const gh = Math.min(150 * s, ph * 0.28), gx = rx + rw / 2, gf = y0 + ph - 36 * s;
-    this.pool(R, gx, gf - gh * 0.3, gh * 0.48, '#efe6d0', 1);
-    this.portrait(R, game, gx, gf, gh, game.mods, game.artifact, 'book');
-    // the way out
-    ctx.textAlign = 'left'; ctx.font = `${Math.max(12 * R.s, 12 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
-    const hint = game.touch.active ? 'tap a box to read it · tap here to close' : padOn(game) ? 'the stick picks · B closes' : 'point at a box to read it · I or ESC closes';
-    ctx.fillText(hint, lx, y0 + ph - 16 * s);
-    const hw = textW(ctx, hint); B.closeRect = { x: lx, y: y0 + ph - 32 * s, w: hw, h: 22 * s };
     ctx.restore();
   },
 
@@ -389,7 +622,10 @@ const Codex = {
     const D = TUNING.shop.dlg, near = {};
     for (const p of game.props) {
       // not the crow's gift on the stairs (a ware of no shop, `shopId` < 0): that one is a grab
-      if ((p.kind !== 'mouse' && p.kind !== 'ware') || p.broken || p.shopId === undefined || p.shopId < 0) continue;
+      // Up to her, not to a stool: her wares stay with her (`Shop.shelved`).
+      // Once she has turned and her rat ogre is down, the free shelf is on its stools: up to one of them.
+      const her = p.kind === 'mouse' || (p.kind === 'ware' && !Shop.mouseOf(game, p));
+      if (!her || p.broken || p.shopId === undefined || p.shopId < 0) continue;
       const d = hyp(p.x - g.x, p.y - g.y);
       near[p.shopId] = Math.min(near[p.shopId] === undefined ? Infinity : near[p.shopId], d);
     }
@@ -400,7 +636,9 @@ const Codex = {
       const offers = this.shopOffers(game, +id);
       if (!offers.length || offers.some((o) => o.locked)) continue;
       const mouse = game.props.find((o) => o.kind === 'mouse' && o.shopId === +id && !o.broken);
-      if (mouse && ((mouse.strikes || 0) > 0 || mouse.angry > 0)) continue;   // rude: she is not offering
+      // Rude: she is not offering while she is still saying so. Never for good off a strike: her wares
+      // are with her (`Shop.shelved`), so one bump of the head used to leave the shop shut for the floor.
+      if (mouse && (mouse.angry > 0 || (mouse.say && mouse.say.strike))) continue;
       game.shopDlg = { id: +id, t: 0, i: 0, rects: [], mx: -1, my: -1, free: offers.some((o) => o.free) };
       g.vx = g.vy = 0; if (g.state === 'windup' || g.state === 'bite') g.state = 'idle';
       game.audio.sfxCard(); game.audio.sfxCluck();
@@ -475,12 +713,12 @@ const Codex = {
     const gh = narrow ? 0 : Math.min(200 * s, Hh * 0.3), gw = narrow ? 0 : gh * 1.3;
     const cx0 = x0 + gw + (gw ? 18 * s : 0), avail = pw - gw - (gw ? 18 * s : 0), gap = 14 * s;
     const cw = Math.min(260 * s, (avail - gap * (n - 1)) / n), rowW = n * cw + (n - 1) * gap, sx = cx0 + (avail - rowW) / 2;
-    const textW = cw - 24 * s;
+    const descW = cw - 24 * s;
     ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 13.5 * s));
     const card = offers.map((o) => {
       const milk = o.ware.id === 'milk', d = milk ? MILK_OFFER : Shop.def(o.ware.id), tier = milk ? null : Shop.tierOf(o.ware);
       const desc = milk ? MILK_OFFER.tiers[0].desc : tier ? tier.desc : '';
-      return { o, milk, d, rr: milk ? null : rarityOf(o.ware.tier), desc, lines: R.wrap(desc, textW) };
+      return { o, milk, d, rr: milk ? null : rarityOf(o.ware.tier), desc, lines: R.wrap(desc, descW) };
     });
     const ch = Math.max(...card.map((c) => 118 * s + c.lines.length * 18 * s + 34 * s));
     const body = Math.max(gh + 44 * s, ch + 20 * s + 32 * s + 34 * s), py = Math.max(16 * s, (Hh - (ph + 22 * s + body)) / 2);
@@ -527,14 +765,14 @@ const Codex = {
       if (!c.milk) this.pool(R, ix, iy, 30 * s, col, 1.2);
       R.artifactIcon(c.milk ? 'milk' : c.o.ware.id, ix, iy, 18 * s, c.o.ware.tier);
       ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(14 * R.s, 16 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-      ctx.fillText(c.d.name, ix, y + 84 * s);
+      ctx.fillText(c.d.name, ix, y + 84 * s, cw - 10 * s);   // squeezed, not spilled, on a phone's narrow card
       ctx.font = `700 ${Math.max(12 * R.s, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = col;
       ctx.fillText(c.milk ? `+${TUNING.shop.heals} HEARTS` : c.rr.name, ix, y + 102 * s);
       ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 13.5 * s));
       c.lines.forEach((l, k) => this.line(R, l, ix, y + 124 * s + k * 18 * s, 'center', 'rgba(239,230,208,0.82)'));
       ctx.font = `700 ${Math.max(12 * R.s, 11.5 * s)}px ${FONT_SC}`;
       const foot = c.o.chosen ? 'YOURS · TAKE IT BACK' : !c.milk && game.artifact ? 'INSTEAD OF ' + ((Shop.def(game.artifact.id) || {}).name || '') : '';
-      if (foot) { ctx.fillStyle = PALETTE.witchHi; ctx.fillText(foot, ix, y + ch - 12 * s); }
+      if (foot) { ctx.fillStyle = PALETTE.witchHi; ctx.fillText(foot, ix, y + ch - 12 * s, cw - 10 * s); }
       if (!game.touch.active && !padOn(game) && i < 3) { ctx.fillStyle = 'rgba(239,230,208,0.4)'; ctx.textAlign = 'left'; ctx.fillText(String(i + 1), x + 8 * s, y + 20 * s); }
       ctx.restore();
     });

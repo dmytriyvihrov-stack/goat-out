@@ -24,20 +24,23 @@ const CARPET_STYLES = [
 const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 // How far below a tile's centre a thing standing on that tile puts its feet: the middle of the tile
 // in a camera tilted this little, not its bottom or top edge.
+// The shade gathered under a brazier's three feet (`drawProp`).
+const BRAZIER_POOL=[[0,'rgba(0,0,0,0.42)'],[0.6,'rgba(0,0,0,0.2)'],[1,'rgba(0,0,0,0)']];
 const PROP_FOOT = 3;
 // Where the shieldman's board sits on him at each of the eight facings (0 east, 2 toward the camera, 6 away
-// from it): its middle in px off his feet, which view of it (`mshield-f` face, `-s` edge, `-b` back), whether
-// it goes under him, and mirrored (`PaintedArt.board`). `k`: world px a texel, the props' own grain.
+// from it): its middle in px off his feet, which view of it (`mshield<look>-f` face, `-s` edge, `-b` back), whether
+// it goes under him, and mirrored (`PaintedArt.board`). `k`: world px a texel. On his right arm (2 Oct 2026, the
+// user's), so from the front his belly shows beside it.
 const BOARD_POSE = Object.assign([
   { v: 's', x: 9, y: -15, under: false },
-  { v: 'f', x: 7, y: -14, under: false },
-  { v: 'f', x: -4, y: -13, under: false },
-  { v: 'f', x: -7, y: -14, under: false, flip: true },
-  { v: 's', x: -9, y: -15, under: false, flip: true },
-  { v: 'b', x: -6, y: -17, under: true, flip: true },
-  { v: 'b', x: 3, y: -17, under: true },
-  { v: 'b', x: 6, y: -17, under: true },
-], { k: 1.35 });
+  { v: 'f', x: 1, y: -12, under: false },
+  { v: 'f', x: -10, y: -14, under: false },
+  { v: 'f', x: -12, y: -14, under: false, flip: true },
+  { v: 's', x: -10, y: -15, under: true, flip: true },
+  { v: 'b', x: -3, y: -18, under: true, flip: true },
+  { v: 'b', x: 10, y: -16, under: true },
+  { v: 'b', x: 12, y: -15, under: true },
+], { k: 0.8 });
 // The painted props' own sizes, kept after their images went (1.74, `js/painted-assets.js` retired):
 // the pixel sprites that replaced them are fitted into the box the painting filled, and a caller
 // that gives only a width takes its height off these proportions.
@@ -46,6 +49,8 @@ const PAINTED_SIZE = {
   slabWoodClosed: [26, 116], slabIronClosed: [26, 116], slabVaultClosed: [26, 116], slabSoulClosed: [26, 116],
 };
 
+// The states a man may stand about in and breathe (`TUNING.menIdle`).
+const MEN_IDLE = new Set(['idle', 'wander', 'noticed', 'investigate', 'chase', 'orbit', 'patrol']);
 class PaintedArt extends AltarArt {
   // Nothing to load since 1.74: every prop is a pixel sprite (`js/prop-pixels.js`), and the painted
   // images these methods once drew are gone. `images` stays empty for the few that still ask it.
@@ -329,10 +334,10 @@ class PaintedArt extends AltarArt {
     const cache = this.carpetCache ||= new WeakMap();
     if (cache.has(c)) return cache.get(c);
     const N = CARPET_N, long = c.w >= c.h, LW = (long ? c.w : c.h) * N, SW = (long ? c.h : c.w) * N;
-    const P = CARPET_STYLES[c.style % CARPET_STYLES.length], px = new Map();
+    const P = CARPET_STYLES[c.style % CARPET_STYLES.length], px = new Array(LW * SW);   // a colour per texel, by index (a Map of 7200 was most of the bake)
     let s = c.seed >>> 0; const r = () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     // u runs along the rug, v across it; the canvas is turned to fit the way the rug lies.
-    const set = (u, v, col) => { if (u >= 0 && v >= 0 && u < LW && v < SW && col) px.set(long ? v * LW + u : u * SW + v, col); };
+    const set = (u, v, col) => { if (u >= 0 && v >= 0 && u < LW && v < SW && col) px[long ? v * LW + u : u * SW + v] = col; };
     const FR = 3, u0 = FR, u1 = LW - FR - 1, v0 = 1, v1 = SW - 3;   // the woven part; v1 + 1 is its shadow
     for (let u = u0; u <= u1; u++) for (let v = v0; v <= v1; v++) {
       const eu = Math.min(u - u0, u1 - u), ev = Math.min(v - v0, v1 - v), e = Math.min(eu, ev);
@@ -370,7 +375,7 @@ class PaintedArt extends AltarArt {
       }
     }
     for (let n = 0; n < LW * SW * 0.02; n++) { const u = u0 + Math.floor(r() * (u1 - u0)), v = v0 + Math.floor(r() * (v1 - v0)); worn.set(long ? v * LW + u : u * SW + v, 0.3); }
-    for (const [i, k] of worn) if (px.has(i)) px.set(i, wear(px.get(i), k));
+    for (const [i, k] of worn) if (px[i]) px[i] = wear(px[i], k);
     // A stain: a blot of old blood, ragged at its rim.
     if (c.blood) {
       const bu = u0 + 8 + r() * (u1 - u0 - 16), bv = v0 + 5 + r() * (v1 - v0 - 10), br = 3 + r() * 4;
@@ -386,9 +391,21 @@ class PaintedArt extends AltarArt {
     }
     for (let u = u0 + 1; u <= u1; u++) set(u, v1 + 1, 'rgba(10,6,8,0.38)');
     const W = long ? LW : SW, H = long ? SW : LW;
+    // Texels go into an image a pixel each and are scaled up once, unsmoothed: a fillStyle parsed and a
+    // fillRect per texel cost 5-9 ms a rug (2 Oct 2026), paid inside the frame that baked its room.
+    const one = document.createElement('canvas'); one.width = W; one.height = H;
+    const o = one.getContext('2d'), img = o.createImageData(W, H), d = img.data, rgba = new Map();
+    const parse = (col) => {
+      let q = rgba.get(col); if (q) return q;
+      if (col[0] === '#') q = [...hexRgb(col), 255];
+      else { const n = col.slice(col.indexOf('(') + 1, -1).split(',').map(Number); q = [n[0], n[1], n[2], n.length > 3 ? Math.round(n[3] * 255) : 255]; }
+      rgba.set(col, q); return q;
+    };
+    let last = null, q = null;   // a run of one colour is parsed once
+    for (let i = 0; i < px.length; i++) { const col = px[i]; if (!col) continue; if (col !== last) { q = parse(col); last = col; } const j = i * 4; d[j] = q[0]; d[j + 1] = q[1]; d[j + 2] = q[2]; d[j + 3] = q[3]; }
+    o.putImageData(img, 0, 0);
     const cv = document.createElement('canvas'); cv.width = W * CARPET_UP; cv.height = H * CARPET_UP;
-    const g = cv.getContext('2d');
-    for (const [i, col] of px) { g.fillStyle = col; g.fillRect((i % W) * CARPET_UP, Math.floor(i / W) * CARPET_UP, CARPET_UP, CARPET_UP); }
+    const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(one, 0, 0, cv.width, cv.height);
     cache.set(c, cv);
     return cv;
   }
@@ -426,10 +443,7 @@ class PaintedArt extends AltarArt {
       // A soft pool gathered under the three feet, not the hard disc every body stands on: the bowl
       // is the light in the room, so what is under it is small, and a wide flat ellipse lit orange by
       // its own fire read as a plate the brazier was standing on.
-      const sr=w*0.24,sg=ctx.createRadialGradient(p.x,foot-1,0,p.x,foot-1,sr);
-      sg.addColorStop(0,'rgba(0,0,0,0.42)');sg.addColorStop(0.6,'rgba(0,0,0,0.2)');sg.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.save();ctx.translate(p.x,foot-1);ctx.scale(1,0.34);ctx.translate(-p.x,-(foot-1));
-      ctx.fillStyle=sg;ctx.beginPath();ctx.arc(p.x,foot-1,sr,0,Math.PI*2);ctx.fill();ctx.restore();
+      glowDisc(ctx,p.x,foot-1,w*0.24,BRAZIER_POOL,1,0.34);
       const h=PIXEL_ENV.draw(ctx,'brazier',p.x,foot,w);
       const heat=p.spillCd>0?0.4+0.6*(1-p.spillCd/TUNING.prop.brazier.spillCd):1;
       renderer.flame(p.x,foot-h*0.72,(9+(p.phase*2.5%2.5))*heat,p.phase*10);
@@ -503,11 +517,16 @@ class PaintedArt extends AltarArt {
       } else renderer.shadow(p.x,p.y,10,5);
       ctx.save();
       ctx.translate(p.x,p.y-(up?24:0));
+      // The shieldman's skulls (`Enemy.dropShield`) stay facing the camera, whole pixels, a quarter turn
+      // at most in the air: turned by any angle they would smear.
+      if(p.skulls){const nm='mshield'+(ART_PASS.shield||0)+'-f',sg=PROP_PIXELS.sprites[nm],k=0.72;
+        PROP_PIXELS.draw(ctx,nm,-sg.w*k/2,-sg.h*k/2,k,p.flung?Math.floor((p.spin||0)/(Math.PI/2)):0);}
+      else{
       ctx.rotate(up?(p.weapon==='sword'?-Math.PI/2:0):p.flung?p.spin:(p.facing||0));
       // One size, whatever it is doing: racked, lying or in his mouth. It used to draw bigger on the
       // stand than anywhere else it is ever seen, which read as the object changing size the moment
       // you took it rather than as the same blade wherever it is.
-      this.atlas(ctx,p.weapon,0,0,p.weapon==='sword'?24:22*TUNING.prop.weapon.shieldScale,undefined,0.5);
+      this.atlas(ctx,p.weapon,0,0,p.weapon==='sword'?24:22*TUNING.prop.weapon.shieldScale,undefined,0.5);}
       ctx.restore();
       // What is left in a shield you are carrying: three studs, one per man or bullet it has in it.
       if(p.weapon==='shield'&&p.held&&p.uses>0){
@@ -599,7 +618,7 @@ class PaintedArt extends AltarArt {
   // 1.66: the butcher (the brute until 1.72) wears the old Butcher's sheet (skull, apron, cleaver) and that kind is
   // the ogre, drawn by js/ogre-pixels.js (`butcher.scale` a size up). The red-robed `brute` sheet is
   // unused for now.
-  characterKey(e) { if(e.kind==='butcher')return 'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'butcher':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
+  characterKey(e) { if(e.kind==='butcher')return 'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'butcher':e.shieldman?'spartan':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
 
   // The art is a top-down slab at the collision footprint, with no frame or square padding.
   doorSlab(ctx,p,wdt,hgt) {
@@ -631,6 +650,9 @@ class PaintedArt extends AltarArt {
       const born=e.state==='manifest'?1-Math.max(0,e.timer)/TUNING.wraith.manifest:(e.ghosted?0:1);
       ctx.globalAlpha*=0.35+born*0.65;const puff=1.12-born*0.12;ctx.scale(puff,puff);
     }
+    // The shieldman's leap: crouched behind the board, then thrown forward behind it.
+    if(e.state==='bashwind'){ctx.translate(Math.cos(angle)*-3,1);ctx.scale(1.08,0.9);}
+    if(e.state==='bash'){ctx.translate(Math.cos(angle)*4,-3);ctx.rotate(Math.cos(angle)*0.2);}
     if(e.state==='windup'||e.state==='hookwind'||e.state==='slamwind'){ctx.translate(Math.cos(angle)*-2,Math.sin(angle)*-2);ctx.rotate(-0.13);}
     if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
     if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
@@ -638,10 +660,15 @@ class PaintedArt extends AltarArt {
     // The hound has no stride on the sheet: running, he bounces (`dog.gait`, `dog.bob`), or he is a
     // picture of a dog sliding round the floor.
     if(key==='hound'&&moving){const G=TUNING.dog;ctx.translate(0,-Math.abs(Math.sin(renderer.t*G.gait*Math.PI+e.x*0.02))*G.bob);}
+    // A man standing still breathes and shifts his weight (`TUNING.menIdle`), never a statue; off as soon as he moves or acts.
+    if(key!=='sheep'&&e.kind&&!moving&&!e.dead&&MEN_IDLE.has(e.state)){const M=TUNING.menIdle,b=(1-Math.cos(renderer.t*Math.PI*2/M.period+(e.x||0)*0.13))/2;
+      ctx.rotate(Math.sin(renderer.t*Math.PI*2/M.swayPeriod+(e.y||0)*0.07)*M.sway);ctx.scale(1-M.wide*b,1+M.amp*b);}
     // The ogre has no atlas body: his own hand-drawn one (js/ogre-pixels.js), fists up through a slam or a leap.
     // The shieldman's board, under him when it is seen past him from behind and over him otherwise (`board`).
     if(e.shield)this.board(renderer,e,false);
     if(key==='ogre'&&typeof OGRE_PIXELS!=='undefined'&&OGRE_PIXELS.draw)OGRE_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e.state==='slamwind'||e.state==='hopwind'||e.state==='hop'?'up':'idle');
+    // The shieldman is Leonidas (2 Oct 2026): bare-chested under a Corinthian helmet, his own body (js/spartan-pixels.js).
+    else if(key==='spartan'&&typeof SPARTAN_PIXELS!=='undefined'&&SPARTAN_PIXELS.draw)SPARTAN_PIXELS.draw(ctx,angle,moving,renderer.t,e.x);
     else PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
     if(e.shield)this.board(renderer,e,true);
     // His horns as the butt souls have made them, in the same lean as the frame (`drawGoat` sets it).
@@ -649,19 +676,23 @@ class PaintedArt extends AltarArt {
     ctx.restore();
   }
 
-  // The shieldman's board on his off arm (`Enemy.giveShield`, the sprites `mshield-*` in js/prop-pixels.js):
+  // The shieldman's board on his off arm (`Enemy.giveShield`, the sprites `mshield<look>-*` in js/prop-pixels.js):
   // its face toward the camera, edge on from the side, its back seen past him from behind, which is the one
   // view drawn under him (`front` false). Off his facing as one of eight (`BOARD_POSE`), mirrored on the
   // left of the picture; a blow on it (`jolt`) shudders it. Inside `character`'s own frame, so it leans
   // with his windup and his swing and goes down with him.
+  // Up, it is at his chest between him and where he faces; down (`Enemy.shieldUp` false: dazed, floored,
+  // alight, `sh.low` easing it) it hangs at his knees a quarter turned, points to the floor, so the
+  // moment it can be gone through is one the picture says. Its design is `ART_PASS.shield`.
   board(renderer,e,front) {
     const sh=e.shield;if(!sh||typeof PROP_PIXELS==='undefined'||!PROP_PIXELS.draw)return;
     const o=((Math.round((e.facing||0)/(Math.PI/4))%8)+8)%8,B=BOARD_POSE[o];
     if(B.under===front)return;
-    const g=PROP_PIXELS.sprites['mshield-'+B.v];if(!g)return;
+    const name='mshield'+(ART_PASS.shield||0)+'-'+B.v,g=PROP_PIXELS.sprites[name];if(!g)return;
+    const S=TUNING.shieldman,low=sh.low||0,q=low>0.5?1:0;
     const k=BOARD_POSE.k,w=g.w*k,h=g.h*k,shake=sh.jolt>0?Math.round(Math.sin(renderer.t*70)*1.5):0;
-    const ctx=renderer.ctx;ctx.save();ctx.translate(B.x+shake,B.y);if(B.flip)ctx.scale(-1,1);
-    PROP_PIXELS.draw(ctx,'mshield-'+B.v,-w/2,-h/2,k);
+    const ctx=renderer.ctx;ctx.save();ctx.translate(B.x+shake+Math.round(S.side*low)*(B.flip?-1:1),B.y+Math.round(S.low*low));if(B.flip)ctx.scale(-1,1);
+    PROP_PIXELS.draw(ctx,name,q?-h/2:-w/2,q?-w/2:-h/2,k,q);
     ctx.restore();
   }
 
@@ -836,6 +867,9 @@ class PaintedArt extends AltarArt {
       if(fid.kind==='hop'){if(fk<0.2)ctx.scale(1.07,0.91);else if(fk<0.8)ctx.scale(0.96,1.05);else ctx.scale(1.06,0.93);}
       else if(fid.kind==='shake')ctx.rotate(Math.sin(fid.t*I.shake.freq)*I.shake.amp*(1-fk));
       else if(fid.kind==='paw'){const n=I.paw.scrapes,s=Math.sin(fk*n*Math.PI);ctx.translate(Math.cos(g.facing)*I.paw.dist*s,Math.sin(g.facing)*I.paw.dist*s*TILT);}
+      else if(fid.kind==='stretch'){const k=Math.sin(fk*Math.PI);ctx.scale(1+I.stretch.long*k,1-I.stretch.low*k);}
+      else if(fid.kind==='sniff'){const S=I.sniff,k=Math.sin(fk*Math.PI),d=Math.max(0,Math.sin(fk*S.sniffs*Math.PI*2));ctx.rotate(Math.cos(g.facing)*S.lean*k);ctx.scale(1+S.dip*0.5*k,1-S.dip*k*(0.6+0.4*d));}
+      else if(fid.kind==='scratch'){const S=I.scratch,k=Math.sin(fk*Math.PI);ctx.rotate(-Math.cos(g.facing)*S.lean*k+Math.sin(fid.t*S.freq)*S.amp*k);}
     }
     const fx=game.stairFx,climb=fx?clamp(fx.dir>0?fx.t:1-fx.t,0,1):0;
     if(climb>0){ctx.translate(0,-TUNING.stairs.rise*climb);ctx.scale(1-0.22*climb,1-0.22*climb);ctx.globalAlpha=1-climb*0.55;}

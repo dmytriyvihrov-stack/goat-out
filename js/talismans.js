@@ -120,9 +120,12 @@ const Talisman = {
   onLunge(game, g) {
     const E = game.mods.echo; if (!E) return;
     const S = Talisman.st(game), a = Math.atan2(g.aim.y, g.aim.x);
+    // BULL NECK: the ghost carries the run the real head went down with (`buttRun`, read at the
+    // windup), so the echo of a charging blow is a charging blow too.
+    const steam = game.mods.runButt ? 1 + game.mods.runButt * (g.buttRun || 0) : 1;
     for (let k = 0; k < E.count; k++) {
       const turn = k === 0 ? 0 : (Math.random() < 0.5 ? -1 : 1) * E.spread;
-      S.echoes.push({ x: g.x, y: g.y, a: a + turn, t: E.delay * (k + 1), lunge: g.lungeId, show: 0 });
+      S.echoes.push({ x: g.x, y: g.y, a: a + turn, t: E.delay * (k + 1), lunge: g.lungeId, show: 0, steam });
     }
   },
   // What a headbutt landing on `e` is worth. Called once per man per lunge from `headbuttHits`.
@@ -448,7 +451,7 @@ const Talisman = {
       if (ec.t > 0 || ec.done) continue;
       ec.done = true; ec.show = 0.35;
       const hb = TUNING.goat.headbutt, extra = (game.mods.headbuttReach - 1) * TILE;
-      const ax = Math.cos(ec.a), ay = Math.sin(ec.a), imp = hb.impulse * game.mods.headbuttImpulse * E.power;
+      const ax = Math.cos(ec.a), ay = Math.sin(ec.a), imp = hb.impulse * game.mods.headbuttImpulse * E.power * (ec.steam || 1);
       game.particles(ec.x + ax * 16, ec.y + ay * 16, 5, PALETTE.bone, 140);
       for (const e of game.enemies) {
         if (e.dead || e.held || e.ghosted || e.state === 'flung') continue;
@@ -712,15 +715,13 @@ const Talisman = {
     ctx.fillText('THE TALISMANS', pad, top);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
     ctx.fillText(`${ARTIFACTS.length} on the mouse's shelves · I / II / III puts one at his neck · click a number to change it · click the shelf line to rewrite it (one line for all three tiers)`, pad + 120 * s, top);
+    // One long page that scrolls on the wheel (`drawTool`'s `dev.scroll`), not pages (2 Oct 2026).
     const rowH = 96 * s, listTop = top + 22 * s;
-    const per = Math.max(1, Math.floor((H - listTop - 34 * s) / rowH));
-    const pages = Math.ceil(ARTIFACTS.length / per);
-    d.talPage = clamp(d.talPage || 0, 0, pages - 1);
     const leftW = 200 * s, colW = (W - pad * 2 - leftW) / RARITY.length;
     ctx.font = `700 ${7.5 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
     RARITY.forEach((rr, i) => ctx.fillText('TIER ' + 'I'.repeat(i + 1) + ' · ' + rr.name, pad + leftW + i * colW, listTop - 4 * s));
     const art = game.artifact;
-    ARTIFACTS.slice(d.talPage * per, d.talPage * per + per).forEach((a, i) => {
+    ARTIFACTS.forEach((a, i) => {
       const y = listTop + i * rowH;
       if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, y, W - pad * 2 + 8 * s, rowH); }
       const worn = art && art.id === a.id;
@@ -756,18 +757,13 @@ const Talisman = {
         }
       });
     });
-    if (pages > 1) {
-      const by = H - 28 * s;
-      r.devButton(d, pad, by, 60 * s, 18 * s, 'PREV', 'tal-page=-1', false);
-      ctx.font = `400 ${9 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash; ctx.textAlign = 'center';
-      ctx.fillText(`${d.talPage + 1} / ${pages}`, pad + 95 * s, by + 12 * s); ctx.textAlign = 'left';
-      r.devButton(d, pad + 130 * s, by, 60 * s, 18 * s, 'NEXT', 'tal-page=1', false);
-    }
+    // the page's foot, so the scroll reaches past the last row's chips
+    d.rects.push({ x: -10, y: listTop + ARTIFACTS.length * rowH, w: 0, h: 1, id: 'tal-end' });
   },
   // The tab's clicks. Returns whether `id` was one of them.
   devAction(game, id) {
     const d = game.dev;
-    if (id.startsWith('tal-page=')) { d.talPage = (d.talPage || 0) + Number(id.slice(9)); return true; }
+    if (id === 'tal-end') return true;
     if (id === 'tal-off') { game.artifact = null; game.applyBoons(); game.devToast('NOTHING AT HIS NECK'); return true; }
     if (id.startsWith('tal-wear=')) {
       const [aid, t] = id.slice(9).split('.');

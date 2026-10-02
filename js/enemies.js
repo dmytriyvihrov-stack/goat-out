@@ -137,7 +137,8 @@ class Enemy {
     // Whatever he was winding up, aiming or painting is gone.
     if (this.state === 'windup' || this.state === 'aim' || this.state === 'cast' || this.state === 'hookwind'
         || this.state === 'dodge' || this.state === 'retreat' || this.state === 'dart' || this.state === 'slamwind'
-        || this.state === 'hopwind') {
+        || this.state === 'hopwind' || this.state === 'bashwind') {
+      if (this.state === 'bashwind') this.bashCd = TUNING.shieldman.bash.cd * game.mods.enemySlow;
       this.dashPath = null;
       this.state = 'chase'; this.rune = null;
     }
@@ -158,8 +159,9 @@ class Enemy {
     if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return false;
     if (this.kind === 'butcher' && this.state === 'hop') return false;
     if (this.state !== 'windup' && this.state !== 'aim' && this.state !== 'cast' && this.state !== 'hookwind'
-        && this.state !== 'dart' && this.state !== 'slamwind' && this.state !== 'hopwind') return false;
+        && this.state !== 'dart' && this.state !== 'slamwind' && this.state !== 'hopwind' && this.state !== 'bashwind') return false;
     if (this.state === 'hookwind') this.hookCd = TUNING.champion.hook.cooldown * game.mods.enemySlow;
+    if (this.state === 'bashwind') this.bashCd = TUNING.shieldman.bash.cd * game.mods.enemySlow;
     this.state = 'chase'; this.rune = null; this.dashPath = null;
     this.dazed = Math.max(this.dazed, t);
     this.vx = 0; this.vy = 0;
@@ -260,7 +262,7 @@ class Enemy {
       // In the air he keeps flying: the heart is gone and the leap is not. Floored mid-leap over a
       // drop, the pit check had him the next step, three hearts and all.
       if (this.state === 'hop') { game.audio.sfxThud(); return; }
-      this.state = 'floored'; this.timer = 0.75; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false;
+      this.state = 'floored'; this.timer = TUNING.boss.downFor; this.vx = 0; this.vy = 0; this.thrown = false; this.flung = false;
       // A man knocked down is not in your mouth any more. Left there, he got up with his own AI back
       // while still pinned in front of the goat, a mage painting at his feet, a clubman swinging.
       if (this.held) {
@@ -338,7 +340,7 @@ class Enemy {
       const nx = dx / (d || 1), ny = dy / (d || 1);
       // A heart, but never out of the air (`Status.blast` the same), and once a chain (`Status.spared`).
       if ((o.kind === 'butcher' || o.kind === 'ratogre') && Status.spared(game, o)) continue;
-      if (o.kind === 'butcher') { o.hp -= 1; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = 0.4; } if (o.hp <= 0) o.die(game, 'splat', nx, ny, 'blast'); else Stats.blow(game, o, 'splat', 'blast'); }
+      if (o.kind === 'butcher') { o.hp -= 1; o.flash = 0.2; if (o.state !== 'hop') { o.state = 'stagger'; o.timer = TUNING.butcher.rocked.blast; } if (o.hp <= 0) o.die(game, 'splat', nx, ny, 'blast'); else Stats.blow(game, o, 'splat', 'blast'); }
       else if (o.kind === 'ratogre') o.die(game, 'splat', nx, ny, 'blast');
       else o.fling(nx * B.impulse, ny * B.impulse, true);
     }
@@ -728,16 +730,22 @@ class Enemy {
   // A step of him: `act`, then the one thing every state of a shieldman shares, the weight of the board.
   // Whichever way this step wanted him to face, he turns there no faster than `shieldman.turn`, so a goat
   // who circles, rolls or vaults round him reaches his back, and a swing he wound up facing one way goes
-  // that way (`meleeHit` reads `facing`). Thrown, carried or dead, the board has no say.
+  // that way (`meleeHit` reads `facing`). Thrown, carried or dead, the board has no say. Poisoned, the
+  // turn all but stops (`poisonTurn`): that is when he is walked round. `low` eases toward the board
+  // being down (`shieldUp`), for the picture only.
   update(dt, game) {
     const sh = this.shield;
     this.act(dt, game);
     if (!sh) return;
+    const S = TUNING.shieldman;
     if (this.shield === sh && !this.dead && this.state !== 'flung' && this.state !== 'held') {
-      const k = TUNING.shieldman.turn * dt;
+      // planted after a leap he cannot turn at all (`bashStep`): the moment to go round him
+      if (this.state !== 'recover') this.bashPlant = false;
+      const k = this.bashPlant ? 0 : S.turn * (this.poison > 0 ? S.poisonTurn : 1) * dt;
       this.facing = sh.ang + clamp(angleDiff(sh.ang, this.facing), -k, k);
     }
     sh.ang = this.facing; sh.jolt = Math.max(0, sh.jolt - dt);
+    sh.low = clamp((sh.low || 0) + (this.shieldUp() ? -1 : 1) * S.ease * dt, 0, 1);
   }
 
   // ---- the shieldman (`TUNING.shieldman`, 1 Oct 2026) ----
@@ -746,6 +754,8 @@ class Enemy {
   giveShield() {
     this.shieldman = true;   // what he is, for the death card and the run's report, board or no board
     this.shield = { uses: TUNING.shieldman.uses, jolt: 0, ang: this.facing };
+    this.hp = this.maxHp = TUNING.shieldman.hp;
+    this.bashCd = TUNING.shieldman.bash.cd * 0.5;
     this.speed = this.cfg.speed * TUNING.shieldman.speedMul;
   }
   // The board up at all: not on a man dazed, knocked about, in the goat's mouth or blundering alight.
@@ -758,25 +768,26 @@ class Enemy {
   shieldCovers(x, y) {
     return this.shieldUp() && Math.abs(angleDiff(this.facing, Math.atan2(y - this.y, x - this.x))) <= TUNING.shieldman.arc;
   }
-  // A blow on the board, arriving along (dx, dy): a use gone, and he is rocked back `push` along it for
-  // `brace` s with the board still up (`braced`, never a stagger: the board is the point). The last use
-  // splinters it, and from then on he is a clubman like any other.
-  shieldTakes(game, dx, dy) {
+  // A blow on the board, arriving along (dx, dy): `wear` uses gone (one, unless the horns met the spikes,
+  // `spikes.wear`), and he is rocked back `push` along it for `brace` s with the board still up
+  // (`braced`, never a stagger: the board is the point). The last use knocks it off his arm, and from
+  // then on he is a clubman like any other.
+  shieldTakes(game, dx, dy, wear = 1) {
     const S = TUNING.shieldman, sh = this.shield;
     if (!sh) return;
-    sh.uses--; sh.jolt = S.jolt; this.aware = true;
+    sh.uses -= wear; sh.jolt = S.jolt; this.aware = true;
     const l = hyp(dx, dy) || 1, fx = this.x + Math.cos(this.facing) * this.r, fy = this.y + Math.sin(this.facing) * this.r;
     // A man already winding up or swinging goes on with it behind the board: butting it then is a goat in
     // his recovery under a club (pillar 4), never a way of breaking the blow.
     if (this.state !== 'flung' && this.state !== 'windup' && this.state !== 'swing') { this.state = 'braced'; this.timer = S.brace * game.mods.enemySlow; this.vx = dx / l * S.push; this.vy = dy / l * S.push; }
-    // wood, struck: the pen's bar knock (it was steel, on a board of door planks)
-    game.audio.sfxCageHit(); game.audio.sfxThud(); game.vibe(10);
-    game.particles(fx, fy, 6, PALETTE.wood, 150);
-    if (sh.uses > 0) { game.bark(this, 'block', 0.6); return; }
-    this.shield = null; this.speed = this.cfg.speed;
-    game.audio.sfxCage();   // and split: the pen's frame going
-    game.particles(fx, fy, 14, PALETTE.wood, 230); game.particles(fx, fy, 5, PALETTE.ashHi, 160);
-    game.floatText(this.x, this.y - 30, 'SPLINTERS', PALETTE.bone);
+    // bone, struck: the pen's bar knock and a crack
+    game.audio.sfxCageHit(); game.audio.sfxCrack(); game.audio.sfxThud(); game.vibe(10);
+    game.particles(fx, fy, 6, PALETTE.bone, 150);
+    if (sh.uses > 0) { if (wear) game.bark(this, 'block', 0.6); return; }
+    this.shield = null; this.speed = this.cfg.speed; game.bark(this, 'shattered', 1);
+    game.audio.sfxCage();   // and off his arm: the pen's frame going
+    game.particles(fx, fy, 14, PALETTE.bone, 230); game.particles(fx, fy, 5, PALETTE.ashHi, 160);
+    game.floatText(this.x, this.y - 30, 'SHATTERED', PALETTE.bone);
     game.world.emitNoise(this.x, this.y, TUNING.noise.smash);
   }
   // Dead with uses left on it, the board is left lying where he fell: a shield like one off a stand
@@ -784,8 +795,12 @@ class Enemy {
   dropShield(game) {
     const sh = this.shield; this.shield = null;
     if (!sh || sh.uses <= 0) return;
-    const p = new Prop(this.x + Math.cos(this.facing) * this.r, this.y + Math.sin(this.facing) * this.r, 'weapon', { weapon: 'shield' });
-    p.inStand = false; p.uses = Math.min(sh.uses, p.uses);
+    // A step ahead of him, unless that is stone or a drop (he died facing the wall he was thrown into):
+    // then the nearest floor, never a board left inside the wall where nothing can reach it.
+    const at = game.freeSpot(this.x + Math.cos(this.facing) * this.r, this.y + Math.sin(this.facing) * this.r);
+    const p = new Prop(at.x, at.y, 'weapon', { weapon: 'shield' });
+    // his skulls, horns and all: a shield in the mouth, and thrown, the horns kill the first man they meet (`hitMan`)
+    p.inStand = false; p.uses = Math.min(sh.uses, p.uses); p.skulls = true;
     game.props.push(p);
   }
 
@@ -810,7 +825,7 @@ class Enemy {
     // mist is the one thing that can cross one.
     // A Butcher in the middle of a leap is over the hole, not in it: he never lands in one (`hopSpot`).
     if (!this.ghosted && !this.held && this.state !== 'hop' && w.isPitPx(this.x, this.y)) { this.die(game, 'fall'); return; }
-    this.hookCd = Math.max(0, this.hookCd - dt); this.reload = Math.max(0, this.reload - dt);
+    this.hookCd = Math.max(0, this.hookCd - dt); this.reload = Math.max(0, this.reload - dt); if (this.bashCd) this.bashCd = Math.max(0, this.bashCd - dt);
     // A hook out of his hand lives only while he is throwing, pulling or reeling it: whatever else
     // took him (a body, a crate, fire, a blast, the floor) took the rope out of his hand.
     if (this.hook && this.state !== 'hookthrow' && this.state !== 'hookpull' && this.state !== 'hookreel') this.dropHook(game);
@@ -1197,6 +1212,8 @@ class Enemy {
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
     // The butcher hooks you from across the room (`hookStep`); the man holding a post never throws.
     if (this.champion && !this.sentry && this.hookStep(dt, game, sees)) return;
+    // The shieldman leaps at you behind his board (`bashStep`).
+    if (this.shield && !this.sentry && this.bashStep(dt, game, sees)) return;
     if (this.state === 'chase') {
       const d = this.chaseGoat(game, this.speed, dt);
       if (d < reach + g.r && !g.dead) { this.state = 'windup'; this.timer = this.atk('windup') * game.mods.enemySlow; this.vx = 0; this.vy = 0; game.bark(this, 'attack', 0.25); }
@@ -1786,6 +1803,22 @@ class Enemy {
     if (this.firstHide) game.hideTaught = true;
     game.audio.sfxWraith(); game.shake(4); game.vibe(20);
   }
+  // A blast reached it while it lay as a box (`Prop.blastRoom`). Every real crate in reach is
+  // matchwood, so this one is too: the box goes to splinters and what was in it is left standing as a
+  // body, in the beat after a blow (`solidAfter`), the window a headbutt unmakes it in. Not a windup:
+  // the blast found it out, the goat did not, so it owes him no blow.
+  unmask(game) {
+    const box = this.disguise;
+    this.disguise = null; this.aware = true; this.woke = true;
+    this.solid = true; this.state = 'solid'; this.timer = this.cfg.solidAfter * game.mods.enemySlow;
+    this.facing = Math.atan2(game.goat.y - this.y, game.goat.x - this.x);
+    if (box) game.fx.debris(box, 0, 0);
+    game.particles(this.x, this.y, 11, PALETTE.wood, 165);
+    game.particles(this.x, this.y, 12, PALETTE.witchHi, 150);
+    game.floatText(this.x, this.y - 30, 'IT WAS NEVER THAT', PALETTE.witchHi);
+    if (this.firstHide) game.hideTaught = true;
+    game.audio.sfxCrack(); game.audio.sfxWraith();
+  }
   unmanifest(game, cd) {
     this.solid = false; this.state = 'chase'; this.dazed = 0; this.burning = 0;
     this.hideWant = Math.random() < this.cfg.hide.again;
@@ -2007,6 +2040,62 @@ class Enemy {
     this.hookAim = this.hookLead(game); this.facing = Math.atan2(this.hookAim.y - this.y, this.hookAim.x - this.x);
     const at = game.audio.heard(this.x - g.x, this.y - g.y);
     game.audio.sfxClatter('metal', 0.6 * at.vol, at.pan);
+    game.bark(this, 'attack', 0.3);
+    return true;
+  }
+  // The shieldman's leap (2 Oct 2026, the user's: "when he is close, he jumps with his shield in front";
+  // `TUNING.shieldman.bash`). Seen `min`..`max` tiles off, facing near enough at him, off `bashCd`, he
+  // crouches behind the board (`bashwind`, the strip he will cover laid amber, `Renderer.drawBashLine`),
+  // still turning after the goat at the board's pace, then throws himself along his facing (`bash`).
+  // The goat met is hit by the horns (a shield in his mouth takes it as it takes a club); a man of his own
+  // in the way is bowled over and said sorry to; stone sits him down dazed. Landed or missed, he is planted
+  // `recover` s after it and cannot turn (`bashPlant`, `update`): the clunk the goat goes round in.
+  bashStep(dt, game, sees) {
+    const B = TUNING.shieldman.bash, g = game.goat, slow = game.mods.enemySlow;
+    if (this.state === 'bashwind') {
+      this.vx = 0; this.vy = 0; this.timer -= dt;
+      if (!g.dead) this.facing = Math.atan2(g.y - this.y, g.x - this.x);
+      if (this.timer <= 0) {
+        this.state = 'bash'; this.timer = B.time; this.bashHit = false;
+        game.audio.sfxSwing(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult');
+        game.bark(this, 'bash', 0.5);
+      }
+      return true;
+    }
+    if (this.state === 'bash') {
+      this.timer -= dt;
+      const ux = Math.cos(this.facing), uy = Math.sin(this.facing), ox = this.x, oy = this.y;
+      this.vx = ux * B.speed; this.vy = uy * B.speed;
+      this.x += this.vx * dt; this.y += this.vy * dt; game.world.collideCircle(this);
+      const end = () => { this.state = 'recover'; this.timer = B.recover * slow; this.bashPlant = true; this.bashCd = B.cd * slow; this.vx = 0; this.vy = 0; };
+      if (!this.bashHit && !g.dead && !game.hidden(this.x, this.y) && hyp(g.x - this.x, g.y - this.y) < this.r + g.r + B.reach) {
+        this.bashHit = true;
+        if (!Talisman.parry(game, this, 'club') && !g.blockBlow(game, this, false)) g.damage(B.damage, game, ux * B.knock, uy * B.knock, false, this);
+        game.audio.sfxThud(); game.hitstop(0.04);
+        end(); return true;
+      }
+      // one of his own in the way: bowled over, and he is sorry about it
+      for (const o of game.liveEnemies) {
+        if (o === this || o.dead || o.held || o.state === 'flung' || o.unliftable || o.ghosted) continue;
+        if (hyp(o.x - this.x, o.y - this.y) > this.r + o.r + 2) continue;
+        o.fling(ux * B.bowl * o.knockMul(), uy * B.bowl * o.knockMul(), false); o.daze(game, 0.6);
+        game.bark(this, 'sorry', 1);
+      }
+      // stone: he sits down on it, dazed, the board down
+      if (hyp(this.x - ox, this.y - oy) < B.speed * dt * 0.4) {
+        end(); this.dazed = Math.max(this.dazed, B.wallDaze * slow);
+        game.audio.sfxThud(); game.shake(2); game.particles(this.x + ux * this.r, this.y + uy * this.r, 6, PALETTE.ashHi, 140);
+        game.bark(this, 'bonk', 1);
+        return true;
+      }
+      if (this.timer <= 0) end();
+      return true;
+    }
+    if (this.state !== 'chase' || !sees || g.dead || this.bashCd > 0 || this.poison > 0) return false;
+    const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
+    if (d < B.min * TILE || d > B.max * TILE || game.hidden(this.x, this.y) || !game.reaches(this.x, this.y, g.x, g.y)) return false;
+    if (Math.abs(angleDiff(this.facing, Math.atan2(dy, dx))) > B.aim) return false;
+    this.state = 'bashwind'; this.timer = B.wind * slow; this.vx = 0; this.vy = 0;
     game.bark(this, 'attack', 0.3);
     return true;
   }

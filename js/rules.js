@@ -608,7 +608,7 @@ const GEN_RULES = [
   // the trip or in THE DARK.
   { id: 'chandeliers', text: 'A chandelier hangs over open floor of an ordinary room, tied off to a cleat on the far wall above it that the goat can walk to.',
     check: (L) => {
-      const rings = L.props.filter((p) => p.kind === 'chandelier');
+      const rings = L.props.filter((p) => p.kind === 'chandelier' && !p.lesson);   // the lesson's ring is `chandlesson`'s
       if (!rings.length) return null;
       if (L.def.cave || L.def.shroom || L.def.dark) return 'a chandelier where there is no far wall to tie it to';
       if (rings.length > TUNING.chandelier.perLevel) return `${rings.length} chandeliers on one floor`;
@@ -626,6 +626,32 @@ const GEN_RULES = [
         if (r.role === 'pen' || r.role === 'rest' || r.role === 'lesson' || r.role === 'mill' || r.role === 'gallery' || r.role === 'killbox' || r.isAmbush || r.isTrap || r.isCalm)
           return `a chandelier in the ${r.isAmbush ? 'ambush' : r.isTrap ? 'trap room' : r.isCalm ? 'calm room' : r.role}`;
       }
+      return true;
+    } },
+  // THE YARD's chandelier lesson (`levelDef.chandAt`, 2 Oct 2026): its room is the notch template,
+  // its way out is one tile, one clubman holds it standing under the ring, and the ring's cleat is
+  // on stone straight above him where the goat can walk to it. Nothing else is put in the room.
+  { id: 'chandlesson', text: 'THE YARD teaches the chandelier: one man holds a one-tile way out under a ring whose cleat the goat can reach.',
+    check: (L) => {
+      const at = L.def.chandAt;
+      if (at === undefined) return null;
+      const r = L.rooms[at];
+      if (!r) return `room ${at} is missing`;
+      if (!r.tpl || r.tpl.name !== 'chandlesson') return `room ${at} is a ${r.tpl ? r.tpl.name : '?'} room`;
+      const men = L.spawns.filter((s) => s.roomIndex === at);
+      if (men.length !== 1 || !men[0].post || men[0].kind !== 'bearer' || men[0].champion || men[0].shield) return `room ${at} holds ${men.length} men, not one clubman at his post`;
+      const ring = L.props.find((p) => p.kind === 'chandelier' && p.lesson);
+      if (!ring || Math.hypot(ring.x - men[0].x, ring.y - men[0].y) > 1) return 'the man is not under the ring';
+      const c = L.props.find((q) => q.kind === 'cleat' && q.cid === ring.cid);
+      if (!c) return 'the ring is tied to nothing';
+      const cx = Math.floor(c.x / TILE), cy = Math.floor(c.y / TILE);
+      if (cx !== Math.floor(ring.x / TILE) || L.tiles[(cy - 1) * L.W + cx] !== T.WALL) return 'the cleat is not on the wall above him';
+      if (!walkedFrom(L)[cy * L.W + cx]) return `nobody can walk to the cleat at ${cx},${cy}`;
+      const b = r.exitBand;
+      if (!b) return 'the room has no side door';
+      for (let k = 1; k < b.wide; k++) if (L.tiles[(b.y + k) * L.W + b.x0] !== T.WALL) return 'the way out is wider than one tile';
+      const extra = L.props.filter((p) => p !== ring && p !== c && p.kind !== 'door' && p.x > r.x * TILE && p.x < (r.x + r.w) * TILE && p.y > r.y * TILE && p.y < (r.y + r.h) * TILE);
+      if (extra.length) return `the lesson room also holds ${extra.map((p) => p.kind).join(', ')}`;
       return true;
     } },
   // The wall's dressing (gen.js `dressWall`) answers a thrown body and is no weapon of its own, so its

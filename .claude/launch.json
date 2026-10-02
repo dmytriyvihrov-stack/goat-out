@@ -603,6 +603,51 @@
         "8880"
       ],
       "port": 8880
+    },
+    {
+      "name": "goat-out-improve9",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8890"
+      ],
+      "port": 8890
+    },
+    {
+      "name": "goat-out-textedit",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8891"
+      ],
+      "port": 8891
+    },
+    {
+      "name": "goat-out-outlines",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8892"
+      ],
+      "port": 8892
+    },
+    {
+      "name": "goat-out-spartan",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8893"
+      ],
+      "port": 8893
+    },
+    {
+      "name": "goat-out-loop",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8894"
+      ],
+      "port": 8894
     }
   ]
 }

@@ -10,7 +10,9 @@ SETTINGS > LAYERED MUSIC off, through the preserved `playLegacyStep` arrangement
 
 Until 1.66 the bed was a triangle drone, one or two bass notes a bar and no line anybody could hum,
 all sent into a 1.4 s stone reverb, and it read as noise. `THEME_BED` (`js/audio.js`) now gives each
-theme one four-bar phrase over its four roots, played by the bone flute (`lead`: triangle with a
+theme one eight-bar phrase over its four roots (four bars until 2 Oct 2026, "a bit longer melody": the
+second half is an answer over the same roots, the same hook climbing further and a fall that lands a
+step deeper), played by the bone flute (`lead`: triangle with a
 5 Hz vibrato that comes in as the note is held, a quiet sine octave over it) and a bass *line*
 (a folk gallop of five or six plucked-saw notes a bar, low-pass closing 700 to 170 Hz):
 
@@ -20,7 +22,10 @@ theme one four-bar phrase over its four roots, played by the bone flute (`lead`:
 - **Level 1 (roots A Bb G E):** the same fall broken up with rests, ending on a tritone (Bb over E).
 
 The tune sings whole at idle, drops to a third for the two-bar warning, and comes back under chase
-(0.8) and combat (0.55). The stage figures (`STAGE_MOTIFS`) are now a plucked saw riff an octave
+(0.8) and combat (0.55). Under a fight the drums fill in by count (`TUNING.audio.layers.fight`, 2 Oct
+2026, "a bigger difference between fight and peace"): the kick on every quarter and its pickups, a low
+tom, a louder rim and hats, and the chase gets a kick of its own on the backbeats so it sits between
+calm (flute, drone, two bass notes a bar) and the fight. The stage figures (`STAGE_MOTIFS`) are now a plucked saw riff an octave
 under the flute, so the two lines are told apart by sound. The drone is an open fifth an octave up
 (it was the bare root at 55 Hz), the frame drum answers the kicks with two soft toms, and the chase
 and combat off-beats are a rim knock instead of a noise hat. The room send is 0.06 into a 0.32 s
