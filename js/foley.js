@@ -718,7 +718,10 @@ const Foley = (() => {
           jit: 0.02, shim: 0.12, rough: 0.12, breath: 0.35, tilt: 4200, formants: [[1150, 4, 1], [2500, 6, 0.45], [650, 3, 0.3]],
           body: 0.1, env: (t) => (t < 0.012 ? t / 0.012 : Math.exp(-(t - 0.012) / (d * 0.4))), drive: 1.5 });
       }
-      const d = rnd(0.82, 0.95), f = rnd(430, 470), rise = d * 0.22, fall = d * 0.68;
+      // `wu`: the short howl, her song's first note (3 Oct 2026, it was the bark): the same throat, a
+      // little higher and under half as long.
+      const short = note === 'wu';
+      const d = short ? rnd(0.36, 0.42) : rnd(0.82, 0.95), f = short ? rnd(500, 540) : rnd(430, 470), rise = d * 0.22, fall = d * 0.68;
       return voice(sr, d, {
         f: (t) => f * (t < rise ? 0.72 + 0.28 * t / rise : t < fall ? 1 : Math.pow(0.7, (t - fall) / (d - fall))),
         trem: { hz: 5.5, amp: 0.12, pitch: 0.012 }, jit: 0.008, shim: 0.05, rough: 0.04, breath: 0.22, tilt: 2600,
@@ -834,15 +837,20 @@ const Foley = (() => {
       return add(x, filter(brown(n), sr, 'lp', 200, 0.6), sr, 0, 0.35);
     },
     // A fire: the low roar of it, never quite steady, a hiss of flame over that, and the crackle,
-    // small ticks all the time and a proper pop now and then.
+    // small ticks and a proper pop now and then. 3 Oct 2026, "less dense, more space between them": a
+    // third of the ticks (45 a second was a hiss of them) and fewer pops, each laid in its own slot of
+    // a jittered grid rather than anywhere, so two never land on top of each other; the take is longer,
+    // so the sparser pattern is not heard coming round again.
     blaze(sr) {
-      const d = 3.2, n = len(sr, d), x = filter(brown(n), sr, 'lp', 260, 0.7);
+      const d = 4.8, n = len(sr, d), x = filter(brown(n), sr, 'lp', 260, 0.7);
       let lvl = 1, to = 1;
       for (let i = 0; i < n; i++) { if (i % Math.ceil(sr * 0.05) === 0) to = rnd(0.6, 1.2); lvl += (to - lvl) * 0.0008; x[i] *= lvl; }
-      add(x, filter(pink(n), sr, 'bp', 1100, 0.5), sr, 0, 0.25);
-      crackle(x, sr, 0, d, Math.round(d * 45), 1800, 6500, 0.35, 1);
-      for (let k = 0; k < Math.round(d * 3); k++) {
-        const at = rnd(0, d - 0.05);
+      add(x, filter(pink(n), sr, 'bp', 1100, 0.5), sr, 0, 0.2);
+      const ticks = Math.round(d * 14), tick = d / ticks;
+      for (let k = 0; k < ticks; k++) click(x, sr, (k + rnd(0.15, 0.85)) * tick, rnd(1800, 6500), 0.35 * rnd(0.25, 1), rnd(0.0003, 0.0009));
+      const pops = Math.round(d * 1.3), slot = (d - 0.05) / pops;
+      for (let k = 0; k < pops; k++) {
+        const at = (k + rnd(0.2, 0.8)) * slot;
         click(x, sr, at, rnd(900, 1600), rnd(0.5, 1), 0.0012, 0.9);
         modes(x, sr, rnd(380, 700), [[1, 0.012, 0.35]], { at });
       }

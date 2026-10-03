@@ -657,6 +657,78 @@
         "8895"
       ],
       "port": 8895
+    },
+    {
+      "name": "goat-out-batch-1003",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8896"
+      ],
+      "port": 8896
+    },
+    {
+      "name": "goat-out-mech",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8897"
+      ],
+      "port": 8897
+    },
+    {
+      "name": "goat-out-keys",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8899"
+      ],
+      "port": 8899
+    },
+    {
+      "name": "goat-out-shell",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8902"
+      ],
+      "port": 8902
+    },
+    {
+      "name": "goat-out-thrower",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8910"
+      ],
+      "port": 8910
+    },
+    {
+      "name": "goat-out-stealth",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8898"
+      ],
+      "port": 8898
+    },
+    {
+      "name": "goat-out-check",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8915"
+      ],
+      "port": 8915
+    },
+    {
+      "name": "goat-out-cursor",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8911"
+      ],
+      "port": 8911
     }
   ]
 }

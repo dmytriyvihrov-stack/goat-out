@@ -60,6 +60,8 @@ const Talisman = {
         }
       }
     }
+    // THE NOSEBAG: hurt and standing still, he eats out of the bag (`bagGraze` filled it).
+    if (m.nosebag && R.bag > 0) Talisman.updateBag(game, dt, m.nosebag, R); else S.bagT = 0;
     // BLOOD CUP: a full cup waits for a heart to be missing.
     const cup = m.cup;
     if (cup && R.cup >= cup.need && g.hp < g.maxHp && !g.dead && S.cupHearts < cup.max) {
@@ -67,6 +69,40 @@ const Talisman = {
       game.floatText(g.x, g.y - 34, '+1 HEART', PALETTE.blood); game.audio.sfxBell && game.audio.sfxBell();
       game.particles(g.x, g.y, 12, PALETTE.blood, 140);
     }
+  },
+
+  // THE NOSEBAG, filling: asked by the milk loop (`Game.update`) for a tuft the goat stands in with every
+  // heart full. Grazed the usual time, it goes in the bag (big grass as two) instead of saying FULL. Not
+  // the mouse's pail (milk), not with the bag full. Returns whether the bag took this frame's graze.
+  bagGraze(game, p, near, dt) {
+    const nb = game.mods.nosebag, R = Talisman.run(game), H = TUNING.prop.heal;
+    if (!nb || p.pail > 0 || (R.bag || 0) >= nb.hold) return false;
+    if (near) game.goat.grazeAt = game.timer;
+    p.graze = near ? p.graze + dt : Math.max(0, p.graze - dt * 2);
+    if (p.graze < H.grazeTime * game.mods.grazeMul) return true;
+    // big grass with room for only one of its two hearts stays on the floor, whole, for later
+    if (p.big && nb.hold - (R.bag || 0) < H.bigGain) { p.graze = 0; return false; }
+    const n = Math.min(nb.hold - (R.bag || 0), p.big ? H.bigGain : 1);
+    R.bag = (R.bag || 0) + n; p.broken = true; p.dead = true;
+    game.particles(p.x, p.y, 14, PALETTE.hay, 150);
+    game.floatText(p.x, p.y - 24, n > 1 ? `${n} IN THE BAG` : 'IN THE BAG', PALETTE.bone);
+    game.audio.sfxClatter('soft', 0.8); game.vibe(12);
+    return true;
+  },
+  // THE NOSEBAG, eaten from: the graze verb anywhere, standing still and hurt with nothing in his teeth
+  // (never while the floor's own grass is under him, which is grazed first) for `chew` of a graze.
+  updateBag(game, dt, nb, R) {
+    const g = game.goat, S = Talisman.st(game), H = TUNING.prop.heal;
+    const onGrass = game.props.some((p) => p.kind === 'heal' && !p.broken && hyp(p.x - g.x, p.y - g.y) <= H.pickupR + g.r);
+    const still = !g.dead && g.hp < g.maxHp && g.state === 'idle' && !g.holding && !onGrass && hyp(g.vx, g.vy) < H.grazeSpeed;
+    S.bagT = still ? (S.bagT || 0) + dt : Math.max(0, (S.bagT || 0) - dt * 2);
+    if (still) g.grazeAt = game.timer;   // his head goes down into it (`PaintedArt.drawGoat`)
+    if (S.bagT < H.grazeTime * nb.chew * game.mods.grazeMul) return;
+    S.bagT = 0; R.bag--;
+    const gain = 1 + (game.mods.grassGain || 0);
+    g.hp = Math.min(g.maxHp, g.hp + gain);
+    game.particles(g.x, g.y, 12, PALETTE.hay, 140); game.ring(g.x, g.y, 1.4 * TILE, PALETTE.bone);
+    game.floatText(g.x, g.y - 34, gain > 1 ? `+${gain} HEARTS` : '+1 HEART', PALETTE.bone); game.audio.sfxBell(); game.vibe(20);
   },
 
   newRoom(game, idx, prev) {
@@ -296,6 +332,8 @@ const Talisman = {
     if (i >= 0) S.orbit.splice(i, 1);
     p.broken = true; p.dead = true; p.orbiting = false;
     const wood = p.kind === 'crate';
+    // A blade or a shield comes apart away from what it stopped (`Scatter.breakUp`).
+    if (!wood && game.scatter) game.scatter.breakUp(Scatter.piecesOf(p), p.x, p.y, 12, p.x - x, p.y - y, 0.8);
     game.particles(p.x, p.y, 14, wood ? '#8a6238' : p.weapon === 'sword' ? PALETTE.bone : PALETTE.ash, 220);
     game.particles((p.x + x) / 2, (p.y + y) / 2, 6, '#c0392b', 160);
     for (let k = 0; k < 3; k++) game.world.dot(p.x + (Math.random() - 0.5) * 22, p.y + (Math.random() - 0.5) * 14, 2.4, wood ? '#4a3626' : '#3a3630');
@@ -684,6 +722,13 @@ const Talisman = {
         ctx.fillRect(bx + k * 6 * s, by, 4 * s, 4 * s);
       }
     }
+    // THE NOSEBAG: a green pip for each tuft in the bag, an empty one for each it still has room for.
+    if (m.nosebag) {
+      for (let k = 0; k < m.nosebag.hold; k++) {
+        ctx.fillStyle = k < (R.bag || 0) ? '#9fd84a' : 'rgba(239,230,208,0.2)';
+        ctx.fillRect(bx + k * 6 * s, by, 4 * s, 4 * s);
+      }
+    }
     // The bell's thread: a small mark on the edge of the screen toward the stairs, and the vault.
     const B = m.bell;
     if (B && game.level && !game.goat.dead && game.state === 'play') {
@@ -824,6 +869,8 @@ const Talisman = {
     else if (id === 'knuckle') { ctx.rotate(-0.25); ctx.fillStyle = '#e8dcc0'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.85, -h * 0.45); ctx.quadraticCurveTo(-h * 0.95, -h * 0.9, -h * 0.4, -h * 0.75); ctx.quadraticCurveTo(0, -h * 0.45, h * 0.4, -h * 0.75); ctx.quadraticCurveTo(h * 0.95, -h * 0.9, h * 0.85, -h * 0.45); ctx.lineTo(h * 0.85, h * 0.45); ctx.quadraticCurveTo(h * 0.95, h * 0.9, h * 0.4, h * 0.75); ctx.quadraticCurveTo(0, h * 0.45, -h * 0.4, h * 0.75); ctx.quadraticCurveTo(-h * 0.95, h * 0.9, -h * 0.85, h * 0.45); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#a8977a'; ctx.beginPath(); ctx.ellipse(0, 0, h * 0.28, h * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(-h * 0.6, -h * 0.55, h * 0.3, h * 0.12); }
     // A horseshoe magnet: red, its two pole tips iron grey.
     else if (id === 'magnet') { ctx.lineCap = 'butt'; line(edge, 0.62); ctx.beginPath(); ctx.arc(0, -h * 0.15, h * 0.52, Math.PI, 0); ctx.lineTo(h * 0.52, h * 0.75); ctx.moveTo(-h * 0.52, -h * 0.15); ctx.lineTo(-h * 0.52, h * 0.75); ctx.stroke(); line('#c0392b', 0.42); ctx.beginPath(); ctx.arc(0, -h * 0.15, h * 0.52, Math.PI, 0); ctx.lineTo(h * 0.52, h * 0.4); ctx.moveTo(-h * 0.52, -h * 0.15); ctx.lineTo(-h * 0.52, h * 0.4); ctx.stroke(); ctx.fillStyle = '#b8b4ac'; ctx.fillRect(-h * 0.73, h * 0.4, h * 0.42, h * 0.38); ctx.fillRect(h * 0.31, h * 0.4, h * 0.42, h * 0.38); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(-h * 0.62, -h * 0.35, h * 0.12, h * 0.4); }
+    // A nosebag: a sack on a strap, grass standing out of its mouth.
+    else if (id === 'nosebag') { line('#5a3e22', 0.12); ctx.beginPath(); ctx.arc(0, -h * 0.25, h * 0.75, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); ctx.fillStyle = '#8a6238'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.55, -h * 0.2); ctx.lineTo(h * 0.55, -h * 0.2); ctx.quadraticCurveTo(h * 0.75, h * 0.85, 0, h * 0.9); ctx.quadraticCurveTo(-h * 0.75, h * 0.85, -h * 0.55, -h * 0.2); ctx.closePath(); ctx.fill(); ctx.stroke(); line('#9fd84a', 0.14); for (const gx of [-0.3, 0, 0.3]) { ctx.beginPath(); ctx.moveTo(gx * h, -h * 0.2); ctx.lineTo(gx * h * 1.6, -h * 0.75); ctx.stroke(); } ctx.fillStyle = '#5a3e22'; ctx.fillRect(-h * 0.55, -h * 0.05, h * 1.1, h * 0.12); }
     else if (id === 'tally') { ctx.rotate(-0.3); ctx.fillStyle = '#a57949'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.08; ctx.fillRect(-h * 0.2, -h, h * 0.4, h * 2); ctx.strokeRect(-h * 0.2, -h, h * 0.4, h * 2); line('#3b2a1a', 0.1); for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-h * 0.2, -h * 0.7 + k * h * 0.4); ctx.lineTo(h * 0.1, -h * 0.7 + k * h * 0.4); ctx.stroke(); } }
     else return false;
     return true;

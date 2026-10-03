@@ -8,13 +8,14 @@
 // point is drawn at the origin, which is where every caller has already put the shadow.
 const PIXEL_EXTENT = {
   goat: 34, clubman: 36, brute: 38, mage: 38, hound: 40, hunter: 38, butcher: 48, wraith: 38,
-  chicken: 22, ratogre: 70, ogre: 66, spartan: 36, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
+  chicken: 22, ratogre: 70, ogre: 66, spartan: 36, thrower: 48, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
 };
 // The painted slot names this pass fills. `sheep` is the goat's old slot name, not a sheep.
 const PIXEL_UNIT = {
   sheep: 'goat', clubman: 'clubman', brute: 'brute', mage: 'mage', hound: 'hound', hunter: 'hunter',
   butcher: 'butcher', wraith: 'wraith', chicken: 'chicken', ratogre: 'ratogre', ogre: 'ogre',   // the ogre draws off js/ogre-pixels.js, not the atlas
   spartan: 'spartan',   // the shieldman, off js/spartan-pixels.js
+  thrower: 'thrower',   // the thrower, off js/thrower-pixels.js
 };
 
 // The throat of the pixel goat in each of his eight idle facings, world px from the foot (the same

@@ -51,10 +51,11 @@ class Scatter {
   // sliding across the floor, its supper left it on the first blow.
   static drawOnTable(renderer, p) {
     const food = Scatter.foodOf(p); if (!food.length || p.flung || renderer.silPass) return;
-    const ctx = renderer.ctx, k = TUNING.scatter.texel;
+    // Heaven's feast stays bright: up there nothing is a fight, and the gold is the point.
+    const ctx = renderer.ctx, k = TUNING.scatter.texel, dim = renderer.game && renderer.game.heaven ? '' : '@dim';
     for (const f of food) {
       const g = PROP_PIXELS.sprites['food-' + f.id]; if (!g) continue;
-      PROP_PIXELS.draw(ctx, 'food-' + f.id, p.x + f.x - g.w * k / 2, p.y + f.y - g.h * k, k, f.turn);
+      PROP_PIXELS.draw(ctx, 'food-' + f.id + dim, p.x + f.x - g.w * k / 2, p.y + f.y - g.h * k, k, f.turn);
     }
   }
 
@@ -99,6 +100,34 @@ class Scatter {
       const d = hyp(p.x - x, p.y - y); if (d > r) continue;
       this.fromTable(p, p.x - x || 1, p.y - y, power * (1 - 0.5 * d / r));
     }
+  }
+
+  // A blade or a shield coming apart (3 Oct 2026 playtest: "not just vanish, fall apart"): `ids` are its
+  // pieces, cut off its own sprite (js/prop-pixels.js `brokeUp`), sent from (x, y) `z` px up along (dx, dy)
+  // spread wide, or all round when there is no way it was going.
+  breakUp(ids, x, y, z, dx, dy, power = 1) {
+    const S = TUNING.scatter, l = hyp(dx, dy), base = l > 1 ? Math.atan2(dy, dx) : Math.random() * Math.PI * 2;
+    ids.forEach((id, i) => {
+      const a = base + (l > 1 ? (Math.random() - 0.5) * 2.4 : i * Math.PI * 2 / ids.length + Math.random());
+      const sp = (S.speed[0] + Math.random() * (S.speed[1] - S.speed[0])) * power * 0.8;
+      this.add(id, x + (Math.random() - 0.5) * 6, y + (Math.random() - 0.5) * 4, z, Math.cos(a) * sp, Math.sin(a) * sp,
+        (S.lift[0] + Math.random() * (S.lift[1] - S.lift[0])) * power, Math.floor(Math.random() * 4));
+    });
+    if (ids.length) this.game.audio.sfxClatter(Scatter.kindOf(ids[0]).sound, 0.9);
+  }
+  // The blades stuck in a man (`Prop.stickIn`), broken out of him: from his middle, back the way each went in.
+  breakStuck(e, list = e.stuck) {
+    const K = TUNING.prop.weapon.stick, z = (e.r || 12) * 2.3 * K.lift;
+    for (const b of list || []) {
+      const a = (e.facing || 0) + b.rel;
+      this.breakUp(Scatter.piecesOf({ weapon: 'sword', halberd: b.halberd }), e.x, e.y, z, -Math.cos(a), -Math.sin(a), 0.7);
+    }
+  }
+  // Which pieces a thing breaks into (sprite names, js/prop-pixels.js).
+  static piecesOf(p) {
+    if (p.skulls) { const l = (typeof ART_PASS !== 'undefined' && ART_PASS.shield) || 0; return [0, 1, 2, 3].map((k) => `mshield${l}-bit${k}`); }
+    if (p.weapon === 'shield') return ['shield-bit0', 'shield-bit1', 'shield-bit2'];
+    return p.halberd ? ['halberd-bit0', 'halberd-bit1'] : ['sword-bit0', 'sword-bit1'];
   }
 
   add(id, x, y, z, vx, vy, vz, turn = 0) {
@@ -210,7 +239,8 @@ class Scatter {
   // Its shadow flat on the floor (world space), itself stood upright over it the way every prop is
   // (`scale(1, 1 / TILT)`), `z` px up.
   drawBit(ctx, b, air) {
-    const k = TUNING.scatter.texel, q = Math.round(b.turn / (Math.PI / 2)) & 3;
+    // `K.k`: a piece of something drawn at another grain than the supper (the shieldman's skulls).
+    const k = TUNING.scatter.texel * (b.K.k || 1), q = Math.round(b.turn / (Math.PI / 2)) & 3;
     const name = b.K.sprite || 'food-' + b.id, g = PROP_PIXELS.sprites[name]; if (!g && b.id !== 'shard') return;
     const w = g ? (q & 1 ? g.h : g.w) * k : 3, h = g ? (q & 1 ? g.w : g.h) * k : 3;
     if (air) {
@@ -225,7 +255,7 @@ class Scatter {
     } else {
       const sq = b.squash > 0 ? b.squash / TUNING.scatter.squash : 0;
       ctx.scale(1 + 0.28 * sq, 1 - 0.28 * sq);
-      PROP_PIXELS.draw(ctx, name, -w / 2, -h, k, q);
+      PROP_PIXELS.draw(ctx, PROP_PIXELS.sprites[name + '@dim'] ? name + '@dim' : name, -w / 2, -h, k, q);
     }
     ctx.restore();
   }
@@ -249,4 +279,15 @@ Scatter.KINDS = {
   'armor-helm': { round: true, bouncy: 1, sound: 'metal', sprite: 'armor-helm' },
   'armor-plate': { bouncy: 0.5, sound: 'metal', sprite: 'armor-plate' },
   'armor-pauldron': { bouncy: 0.85, sound: 'metal', sprite: 'armor-pauldron' },
+  // The tortoise's iron coming off the goat (`Goat.damage`): the suit's own plates at a goat's size.
+  'barding-plate': { bouncy: 0.5, sound: 'metal', sprite: 'armor-plate', k: 0.5 },
+  'barding-pauldron': { bouncy: 0.85, sound: 'metal', sprite: 'armor-pauldron', k: 0.5 },
+  // A blade or a shield broken (`breakUp`): the steel rings, the wood and the bone knock.
+  'sword-bit0': { bouncy: 0.7, sound: 'metal', sprite: 'sword-bit0' }, 'sword-bit1': { bouncy: 0.7, sound: 'metal', sprite: 'sword-bit1' },
+  'halberd-bit0': { bouncy: 0.5, sound: 'soft', sprite: 'halberd-bit0' }, 'halberd-bit1': { bouncy: 0.7, sound: 'metal', sprite: 'halberd-bit1' },
+  'shield-bit0': { bouncy: 0.55, sound: 'soft', sprite: 'shield-bit0' }, 'shield-bit1': { bouncy: 0.55, sound: 'soft', sprite: 'shield-bit1' },
+  'shield-bit2': { bouncy: 0.55, sound: 'soft', sprite: 'shield-bit2' },
 };
+// The shieldman's skulls in pieces, one set for each of the board's looks (`ART_PASS.shield`).
+// Drawn at the board's own grain (`PaintedArt` lays a dropped one at 0.72 px a texel), half the supper's.
+for (let l = 0; l < 3; l++) for (let k = 0; k < 4; k++) Scatter.KINDS[`mshield${l}-bit${k}`] = { bouncy: 0.65, sound: 'clay', sprite: `mshield${l}-bit${k}`, k: 0.5 };

@@ -70,9 +70,10 @@ const Motes = {
       game.audio.sfxChime(bells[Math.min(bells.length - 1, 3 + game.moteRun % 5)] * 2, 0.22);
     }
     game.particles(game.goat.x, game.goat.y - 14, 3, '#ffffff', 60);
-    const q = TUNING.heaven.gift.quest, after = Heaven.meta ? Heaven.meta.brought || 0 : 0;
-    if (before < q && after >= q) {
-      game.floatText(game.goat.x, game.goat.y - 50, 'THE GOD HAS HIS TWO HUNDRED', '#fff4c2');
+    const G = TUNING.heaven.gift, after = Heaven.meta ? Heaven.meta.brought || 0 : 0;
+    for (const [q, say] of [[G.mend, 'THE GOD HAS HIS TWENTY'], [G.quest, 'THE GOD HAS HIS TWO HUNDRED']]) {
+      if (before >= q || after < q) continue;
+      game.floatText(game.goat.x, game.goat.y - 50, say, '#fff4c2');
       game.ring(game.goat.x, game.goat.y, 2.4 * TILE, '#fff4c2');
     }
   },

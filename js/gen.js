@@ -67,9 +67,12 @@ function roomMenCap(men, tpl) {
 }
 
 // The encounter tables' pseudo-kinds are clubmen with something about them: 'champion' the butcher, 'shield'
-// the shieldman (`TUNING.shieldman`). A spawn carries the real kind and the flag; `threatKind` reads one back.
-function spawnKind(k) { return { kind: k === 'champion' || k === 'shield' ? 'bearer' : k, champion: k === 'champion', shield: k === 'shield' }; }
-function threatKind(s) { return s.champion ? 'champion' : s.shield ? 'shield' : s.kind; }
+// the shieldman (`TUNING.shieldman`), 'thrower' the thrower (`TUNING.thrower`). A spawn carries the real kind
+// and the flag; `threatKind` reads one back.
+function spawnKind(k) {
+  return { kind: k === 'champion' || k === 'shield' || k === 'thrower' ? 'bearer' : k, champion: k === 'champion', shield: k === 'shield', thrower: k === 'thrower' };
+}
+function threatKind(s) { return s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.kind; }
 
 function planEncounters(levelDef, rooms, rng) {
   const E = levelDef.encounters;
@@ -1066,13 +1069,34 @@ function tryGenerate(levelDef, seed, opts) {
     }
   });
 
+  // The thrower's ammunition (`TUNING.thrower.ammo`, `GEN_RULES.thrower`): a room he stands in has that many
+  // crates in it at least, so he always has something of his own to lift before he goes for one of his men.
+  // Its own stream: a floor without him is laid exactly as it was.
+  for (const sp of spawns) {
+    const room = sp.thrower && rooms[sp.roomIndex];
+    if (!room) continue;
+    const trng = new RNG(((seed ^ 0x7a2b0e5) + room.index * 6007) >>> 0), inside = (p) => p.x > room.x * TILE && p.x < (room.x + room.w) * TILE && p.y > room.y * TILE && p.y < (room.y + room.h) * TILE;
+    let have = props.filter((p) => (p.kind === 'crate' || p.kind === 'bomb') && inside(p)).length;
+    // A crowded room (THE ARMORY) takes them a tile apart in the second half of the tries; a standing
+    // suit of armour keeps its two tiles clear whatever happens (`GEN_RULES.suits`).
+    for (let a = 0; a < 160 && have < TUNING.thrower.ammo; a++) {
+      const tx = trng.int(room.x + 1, room.x + room.w - 2), ty = trng.int(room.y + 1, room.y + room.h - 2);
+      if (tiles[ty * W + tx] !== T.FLOOR || grass.has(ty * W + tx)) continue;
+      const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE, gap = a < 80 ? 1.4 : 1;
+      if (props.some((p) => len(p.x - px, p.y - py) < (p.kind === 'suit' ? 2.1 : gap) * TILE) || onTable(px, py, TUNING.prop.crate.r, props)) continue;
+      if (spawns.some((o) => len(o.x - px, o.y - py) < 0.9 * TILE)) continue;
+      if (room.enter && len(room.enter.x - px, room.enter.y - py) < 1.5 * TILE) continue;
+      props.push({ x: px, y: py, kind: 'crate' }); have++;
+    }
+  }
+
   // Some of the men in a room with grass in it are lying in the grass. Not the boss, not a butcher and
   // not the dead, a man who hides is an ordinary one, and each goes to the grass tile of his own
   // room with the most grass round it, so what shows of him is the top of him and nothing more.
   if (grass.size) {
     const taken = new Set();
     for (const sp of spawns) {
-      if (sp.boss || sp.champion || sp.shield || sp.sentry || sp.post || sp.alert || !['bearer', 'dog', 'hunter', 'seer'].includes(sp.kind)) continue;
+      if (sp.boss || sp.champion || sp.shield || sp.thrower || sp.sentry || sp.post || sp.alert || !['bearer', 'dog', 'hunter', 'seer'].includes(sp.kind)) continue;
       const room = rooms[sp.roomIndex];
       if (!room || !rng.chance(TUNING.grass.lurk)) continue;
       let best = -1, bestN = 0;
@@ -1207,6 +1231,32 @@ function tryGenerate(levelDef, seed, opts) {
         props.push({ x: px, y: py, kind: 'coop', holds: kind, beastRoom: room.index }); done = true;
       }
       if (done) break;
+    }
+    // THE IRON (`TUNING.keys.iron`, 3 Oct 2026). Some floors shut the animal in iron instead of slats,
+    // and stand a second iron cage with big milk grass in it in another room: two doors that want the
+    // same key, so the key is a choice (the animal, or the hearts). Its own stream, so a floor without
+    // iron is laid exactly as it was. Never the horse's stall.
+    const KI = TUNING.keys.iron, irng = new RNG(((seed ^ 0x1c0ca9e) >>> 0));
+    const coop = props.find((p) => p.kind === 'coop' && p.holds !== 'horse');
+    if (coop && levelIndexOf(levelDef) >= KI.from && irng.chance(KI.chance)) {
+      const spots = rooms.filter((r) => r.index > 0 && r.index !== coop.beastRoom && Math.abs(r.index - coop.beastRoom) <= 4 && !r.arena && !r.isMill
+        && !r.isHall && !r.isGallery && !r.isKillbox && !r.isAmbush && !r.isRest && !r.isCalm && !r.isTrap
+        && r.index !== lessonIndex && !r.isChand && r.index !== levelDef.vaultAt);
+      let laid = null;
+      for (const room of irng.shuffle(spots)) {
+        for (let a = 0; a < 60 && !laid; a++) {
+          const tx = irng.int(room.x + 1, room.x + room.w - 3), ty = irng.int(room.y + 1, room.y + room.h - 2);
+          if (tiles[ty * W + tx] !== T.FLOOR || tiles[ty * W + tx + 1] !== T.FLOOR) continue;
+          if (grass.has(ty * W + tx) || grass.has(ty * W + tx + 1)) continue;
+          const px = (tx + 1) * TILE, py = (ty + 0.5) * TILE;
+          if (props.some((p) => len(p.x - px, p.y - py) < 2.2 * TILE) || onTable(px, py, KI.r, props)) continue;
+          if (room.enter && len(room.enter.x - px, room.enter.y - py) < 2.5 * TILE) continue;
+          if (room.exitMouth && len(room.exitMouth.x - px, room.exitMouth.y - py) < 2.5 * TILE) continue;
+          laid = { x: px, y: py, kind: 'ironcage', holds: 'grass', ironRoom: room.index };
+        }
+        if (laid) break;
+      }
+      if (laid) { coop.ironCage = true; props.push(laid); }
     }
   }
 
@@ -2302,13 +2352,14 @@ function placeTables(cells, W, props) {
 // crate sat, drawn half under the top (playtest, 30 Sep 2026: "the crate and the table on one spot").
 // How far (x, y) is from the nearest table's top (0 on it); `onTable` asks it for a thing of radius r.
 // Shared by every loose thing the generator lays and by `GEN_RULES.ontable`.
-const TABLE_LOOSE = ['crate', 'bomb', 'barrel', 'weapon', 'coop', 'heal', 'rock', 'shrooms', 'suit'];
+const TABLE_LOOSE = ['crate', 'bomb', 'barrel', 'weapon', 'coop', 'ironcage', 'heal', 'rock', 'shrooms', 'suit'];
 function tableGap(t, x, y, hx = 0, hy = 0) {
   return len(Math.max(0, Math.abs(x - t.x) - TILE - hx), Math.max(0, Math.abs(y - t.y) - TILE - hy));
 }
 function looseR(p) {
   const P = TUNING.prop;
   return p.kind === 'heal' ? P.heal.r : p.kind === 'weapon' ? P.weapon.standR : p.kind === 'shrooms' ? 12
+    : p.kind === 'ironcage' ? TUNING.keys.iron.r
     : (P[p.kind] && P[p.kind].r) || 12;
 }
 function onTable(x, y, r, props, hx = 0, hy = 0) {
@@ -2342,7 +2393,7 @@ function inFurniture(x, y, props) {
     // A chandelier hangs in the air: a man under one is the trap set, not a man in the furniture.
     if (p.kind === 'heal' || p.kind === 'spike' || p.kind === 'door' || p.kind === 'secret' || p.kind === 'chandelier') continue;
     if (stallHalf(p)) { if (footGap(p, x, y) < 0.6 * TILE) return true; continue; }
-    const clear = p.kind === 'mill' ? 1.2 * TILE : p.kind === 'coop' ? 1.1 * TILE : 0.8 * TILE;
+    const clear = p.kind === 'mill' ? 1.2 * TILE : p.kind === 'coop' || p.kind === 'ironcage' ? 1.1 * TILE : 0.8 * TILE;
     if (len(p.x - x, p.y - y) < clear) return true;
   }
   return false;
@@ -2475,7 +2526,7 @@ function activeIn(props, room) {
 // never over grass, a grate, a fire, the milk or anything else a carpet would hide or cover up, and
 // laid under the tables where a room has them. Its own RNG stream, laid after everything else, so no
 // other roll moved when it came in. `GEN_RULES.carpets`.
-const CARPET_SKIP = new Set(['brazier', 'lamp', 'spike', 'heal', 'spire', 'rock', 'mill', 'coop', 'cage', 'shrooms', 'secret', 'mouse', 'ware', 'door', 'bell', 'barrel']);
+const CARPET_SKIP = new Set(['brazier', 'lamp', 'spike', 'heal', 'spire', 'rock', 'mill', 'coop', 'ironcage', 'cage', 'shrooms', 'secret', 'mouse', 'ware', 'door', 'bell', 'barrel']);
 function carpetFits(tiles, W, grass, props, c) {
   for (let y = c.y - 1; y <= c.y + c.h; y++) for (let x = c.x - 1; x <= c.x + c.w; x++) {
     const i = y * W + x, t = tiles[i], inside = x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h;

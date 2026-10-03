@@ -63,14 +63,16 @@ const CONTROL_LINES = {
   key: [
     ['WASD - MOVE'],
     ['RIGHT CLICK - GRAB', 'RELEASE - THROW'],
-    ['LEFT CLICK - HEADBUTT'],
+    // The second line is the rule the whole game kills by (3 Oct 2026 playtest: "explain it, people
+    // did not always understand how they die"): the horns knock a man down, what he meets kills him.
+    ['LEFT CLICK - HEADBUTT', 'HE DIES WHEN HE HITS SOMETHING'],
     ['E - ROLL'],
     ['SPACE - BAAH', 'IT BREAKS A SWING'],
   ],
   touch: [
     ['LEFT THUMB - MOVE'],
     ['GRAB - HOLD TO CARRY', 'RELEASE - THROW'],
-    ['BUTT - HEADBUTT'],
+    ['BUTT - HEADBUTT', 'HE DIES WHEN HE HITS SOMETHING'],
     ['ROLL'],
     ['BAAH', 'IT BREAKS A SWING'],
   ],
@@ -78,9 +80,17 @@ const CONTROL_LINES = {
   pad: [
     ['LEFT STICK - MOVE'],
     ['HOLD LT - GRAB', 'RELEASE - THROW'],
-    ['RT - HEADBUTT'],
+    ['RT - HEADBUTT', 'HE DIES WHEN HE HITS SOMETHING'],
     ['A - ROLL'],
     ['B - BAAH', 'IT BREAKS A SWING'],
+  ],
+  // KEYBOARD ONLY (SETTINGS `keysOnly`, 3 Oct 2026): no mouse, the run is the aim (`kbOn`).
+  keys: [
+    ['WASD - RUN AND AIM'],
+    ['HOLD K - GRAB', 'RELEASE - THROW'],
+    ['J - HEADBUTT', 'HE DIES WHEN HE HITS SOMETHING'],
+    ['L - ROLL'],
+    ['SPACE - BAAH', 'IT BREAKS A SWING'],
   ],
 };
 
@@ -90,12 +100,14 @@ const CONTROL_LINES = {
 // follows), and `keysOf(game)` is whichever the player is holding; `item` is Q, when worn.
 const SKILL_KEYS = { butt: 'LMB', grab: 'RMB', roll: 'E', scream: 'SPC', item: 'Q', go: 'SPACE', back: 'BACKSPACE' };
 const PAD_KEYS = { butt: 'RT', grab: 'LT', roll: 'A', scream: 'B', item: 'Y', go: 'A', back: 'BACK' };
+// KEYBOARD ONLY's caps (SETTINGS `keysOnly`): the same verbs moved off the mouse onto J K L.
+const KB_KEYS = { butt: 'J', grab: 'K', roll: 'L', scream: 'SPC', item: 'Q', go: 'SPACE', back: 'BACKSPACE' };
 // What the keys the game reads say on the player's own keyboard (1 Oct 2026). The game reads a key's
 // place (`e.code`), never its letter, so on an AZERTY board W A S D are Z Q S D and Q is A: the place
 // works, and the words on the floor and on the caps named keys he does not have. Chromium can say what is
 // printed there (`navigator.keyboard.getLayoutMap`); refused (an iframe without `keyboard-map`) or not
 // there at all, the words stay QWERTY's.
-const KEY_FACE = { KeyW: 'W', KeyA: 'A', KeyS: 'S', KeyD: 'D', KeyE: 'E', KeyQ: 'Q', KeyM: 'M', KeyI: 'I', KeyP: 'P' };
+const KEY_FACE = { KeyW: 'W', KeyA: 'A', KeyS: 'S', KeyD: 'D', KeyE: 'E', KeyQ: 'Q', KeyM: 'M', KeyI: 'I', KeyP: 'P', KeyJ: 'J', KeyK: 'K', KeyL: 'L', KeyZ: 'Z', KeyX: 'X', KeyC: 'C' };
 (() => {
   try {
     const kb = typeof navigator !== 'undefined' && navigator.keyboard;
@@ -119,10 +131,24 @@ function keyFaceSet(code, v) {
   CONTROL_LINES.key[0][0] = F.KeyW + F.KeyA + F.KeyS + F.KeyD + ' - MOVE';
   CONTROL_LINES.key[3][0] = F.KeyE + ' - ROLL';
   HINT_KEYS.roll[0] = F.KeyE + ', ROLL';
+  kbLay();
 }
+// Which hand the keyboard's verbs are under (3 Oct 2026): J K L beside WASD, Z X C beside the arrows.
+// The caps and the floor words name the set he last pressed (`kbUse`, from `Game.keyPress`).
+let KB_SET = 'jkl';
+function kbLay() {
+  const F = KEY_FACE, z = KB_SET === 'zxc';
+  KB_KEYS.butt = z ? F.KeyZ : F.KeyJ; KB_KEYS.grab = z ? F.KeyX : F.KeyK; KB_KEYS.roll = z ? F.KeyC : F.KeyL; KB_KEYS.item = F.KeyQ;
+  const K = CONTROL_LINES.keys;
+  K[0][0] = (z ? 'ARROWS' : F.KeyW + F.KeyA + F.KeyS + F.KeyD) + ' - RUN AND AIM'; K[1][0] = `HOLD ${KB_KEYS.grab} - GRAB`; K[2][0] = `${KB_KEYS.butt} - HEADBUTT`; K[3][0] = `${KB_KEYS.roll} - ROLL`;
+}
+function kbUse(set) { if (KB_SET !== set) { KB_SET = set; kbLay(); } }
 // Asked of a `game` that may be a tool's stub (the GOAT GRID lends one with no pad).
 const padOn = (game) => !!(game && game.pad && game.pad.active);
-const keysOf = (game) => (padOn(game) ? PAD_KEYS : SKILL_KEYS);
+// KEYBOARD ONLY is on and nothing else has the controls (a finger or a pad takes them as before).
+// `kbLive`: J K L or Z X C pressed with the setting off, until the mouse takes the aim back.
+const kbOn = (game) => !!(game && game.settings && (game.settings.keysOnly || game.kbLive) && !(game.touch && game.touch.active) && !padOn(game));
+const keysOf = (game) => (padOn(game) ? PAD_KEYS : kbOn(game) ? KB_KEYS : SKILL_KEYS);
 
 // A level's hint says what the room is about; this says which button it is about. `hintKey` on a
 // level definition picks one, and the keyboard or the touch wording follows what is in the player's
@@ -427,6 +453,7 @@ class Renderer {
       this.drawLight(game, cam);
       this.drawCatching(game, cam);     // after the light: the burning tile next door washed it out
       this.drawDust(game, cam, dt);
+      this.drawStealth(game);           // the STEALTH test: the cult's sight, under the unseen rooms' paint and THE DARK
       this.drawUnseen(game);            // ground, fire and firelight above it; everything that stands on it below
       this.drawRunes(game);
       this.drawBombFuse(game);
@@ -1851,7 +1878,7 @@ class Renderer {
       for (const l of all) { ctx.fillText(l, swap ? swap.x : (r0.x + r0.w / 2) * TILE, y * TILT); y += lh; }
     }
     if (lv.controls) {
-      const sets = game.touch.active ? CONTROL_LINES.touch : padOn(game) ? CONTROL_LINES.pad : CONTROL_LINES.key;
+      const sets = game.touch.active ? CONTROL_LINES.touch : padOn(game) ? CONTROL_LINES.pad : kbOn(game) ? CONTROL_LINES.keys : CONTROL_LINES.key;
       ctx.fillStyle = 'rgba(239,230,208,0.19)';
       for (const c of lv.controls) {
         // Block 0 (WASD) waits on the cage: while it is shut the only line worth reading is the
@@ -1909,7 +1936,7 @@ class Renderer {
       const C = TUNING.cagePrompt, a = clamp((game.timer - C.delay) / C.fade, 0, 1);
       if (a > 0) {
         const p = lv.cagePrompt, pulse = 0.3 + 0.12 * Math.sin(this.t * 3.2);
-        const label = game.touch.active ? 'BUTT - HEADBUTT' : padOn(game) ? `${PAD_KEYS.butt} - HEADBUTT` : 'LEFT CLICK - HEADBUTT';
+        const label = game.touch.active ? 'BUTT - HEADBUTT' : padOn(game) ? `${PAD_KEYS.butt} - HEADBUTT` : kbOn(game) ? `${KB_KEYS.butt} - HEADBUTT` : 'LEFT CLICK - HEADBUTT';
         this.fitFloorText([label], 15 * TILE, 27);
         ctx.fillStyle = `rgba(255,224,138,${a * pulse})`;
         ctx.fillText(label, p.x, p.y * TILT);
@@ -3507,13 +3534,14 @@ class Renderer {
     }
     // A hidden wraith is whatever it is pretending to be, drawn exactly as the real one is.
     if (e.state === 'hidden') { if (e.disguise) this.drawProp(e.disguise); return; }
-    const lying = e.state === 'floored' || e.state === 'stunned';
+    // A man over the thrower's head (`liftedBy`, js/thrower.js) is drawn lying across his fist, with no floor under him.
+    const lying = e.state === 'floored' || e.state === 'stunned' || !!e.liftedBy;
     // The world pass has laid everyone's floor marks already, under every body (`groundDone`).
     if (!this.groundDone) this.drawEnemyGround(e, game, true);
     // Pinned on a stag's antlers (`Enemy.antlers`): up on the wall with no shadow under him, straining,
     // and the tines drawn again over him so they come through him.
     const onWall = e.impaled > 0 && e.impaleOn && e.impaleOn.kind === 'trophy';
-    if (!e.ghosted && !onWall) this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
+    if (!e.ghosted && !onWall && !e.liftedBy) this.shadow(e.x, e.y, e.r * (lying ? 1.4 : 1.05), e.r * (lying ? 0.5 : 0.42));
     if (onWall) {
       const p = e.impaleOn;
       ctx.save(); ctx.translate(Math.round(Math.sin(this.t * 38) * TUNING.cave.spikes.impale.shiver), -TUNING.prop.trophy.lift);
@@ -3591,9 +3619,14 @@ class Renderer {
     if (e.dazed > 0) ctx.rotate(Math.sin(this.t * 24) * 0.12);
     // The butcher swinging the hook round before he lets it go: a sway.
     if (e.state === 'hookwind') ctx.translate(Math.sin(this.t * 16) * 1.5, 0);
+    // Shoving the goat off (`Enemy.shoveBack`): leaning into it, a few px toward where he faces, easing back.
+    const shoved = e.shoveAt !== undefined && game ? game.timer - e.shoveAt : 1e9, SH = TUNING.champion.shove;
+    if (shoved >= 0 && shoved < SH.lunge) { const k = 5 * (1 - shoved / SH.lunge); ctx.translate(Math.cos(e.facing) * k, Math.sin(e.facing) * k * TILT); }
     const r = e.r;
     const sc = this.bodyScale(e); if (sc !== 1) ctx.scale(sc, sc);
     if (lying) ctx.scale(1.35, 0.7);
+    // The blades in him (`Prop.stickIn`): those whose hilt points away from the camera go behind him.
+    if (e.stuck && e.stuck.length) this.drawStuck(e, paintedKey, false);
 
     const body = () => {
       if (paintedKey) this.painted.character(this,e,paintedKey,e.kind==='butcher'?58:e.kind==='dog'?42:e.kind==='seer'?38:42);
@@ -3628,6 +3661,7 @@ class Renderer {
       ctx.save(); ctx.globalAlpha = Math.min(0.9, e.flash * 10); ctx.filter = 'brightness(0) invert(1)';
       body(); ctx.restore();
     }
+    if (e.stuck && e.stuck.length) this.drawStuck(e, paintedKey, true);
     // Shock: poison and stun at once, one mark for both, a green-and-gold spiral over his head,
     // turning, in place of the stars and the bubbles, so the pair reads as one state.
     if (e.shock > 0) {
@@ -3672,12 +3706,59 @@ class Renderer {
     if (this.overheads) this.overheads.push({ e, a: ctx.globalAlpha }); else this.drawOverhead(e);
   }
 
+  // The blades stuck in a man (`Prop.stickIn`, `prop.weapon.stick`), in `drawEnemyBody`'s frame (his
+  // feet, upright, his scale): each its own sprite turned along the way it went in, its point at his
+  // middle, turning with him. `front`: those whose hilt comes toward the camera, drawn over him; the
+  // rest go in through his back and are drawn first, under him, so only what sticks out shows.
+  drawStuck(e, paintedKey, front) {
+    if (!paintedKey || typeof PROP_PIXELS === 'undefined' || !PROP_PIXELS.draw) return;
+    const ctx = this.ctx, K = TUNING.prop.weapon.stick, u = PIXEL_ART.unit(paintedKey), H = u ? PIXEL_EXTENT[u] : e.r * 2.3;
+    for (const b of e.stuck) {
+      const a = (e.facing || 0) + b.rel, sx = Math.cos(a), sy = Math.sin(a) * TILT, l = hyp(sx, sy) || 1, ux = sx / l, uy = sy / l;
+      const name = b.halberd ? 'halberd' : 'sword', g = PROP_PIXELS.sprites[name]; if (!g) continue;
+      const k = K.k * (b.halberd ? 0.8 : 1);
+      // In his flank (`b.rel` is the way the hilt points out of him): the point `depth` texels inside his
+      // edge, the blade along the outward line, hilt out; one sticking out of his far side goes under him.
+      if (b.flank) {
+        if ((uy < -0.3) === front) continue;
+        const edge = H * K.out * (Math.abs(ux) + 0.4 * Math.abs(uy)) - K.depth * k;
+        // seen side on, the near flank's hilt would point straight at the camera, down his middle again:
+        // it leans back toward his tail, as a blade in a man's side does
+        const lx = ux - Math.cos(e.facing || 0) * 0.8 * Math.abs(uy), ll = hyp(lx, uy) || 1;
+        ctx.save(); ctx.translate(ux * edge, -H * (K.lift + b.lift) + uy * edge); ctx.rotate(Math.atan2(-uy / ll, -lx / ll));
+        PROP_PIXELS.draw(ctx, name, -g.w * k, -g.h * k / 2, k); ctx.restore();
+        continue;
+      }
+      const behind = uy > 0.3; if (behind === front) continue;
+      const off = behind ? K.depth * k : 3;
+      ctx.save(); ctx.translate(b.side + ux * off, -H * (K.lift + b.lift) + uy * off); ctx.rotate(Math.atan2(uy, ux));
+      PROP_PIXELS.draw(ctx, name, -g.w * k, -g.h * k / 2, k); ctx.restore();
+    }
+  }
+
   // What hangs over a man's head: the search mark, his bark, a bomb's fuse, his notches. Its own
   // method so THE DARK can lay it back over the dark (`Dark.readable`), a shout is heard, not seen.
   // `placed` is the plates already drawn this frame: two men a step apart shouting at once had their
   // words printed over each other, and a later plate steps up clear of an earlier one.
   drawOverhead(e, placed) {
-    const ctx = this.ctx;
+    const ctx = this.ctx, G = this.game;
+    // STEALTH (dev test): his beat of doubt (`noticed`) is a `?` that grows and goes from amber to red
+    // as it runs out, and when it has, a `!` for `stealth.alarm` s: the time to get out of his sight in,
+    // and the end of it.
+    if (G && G.dev && G.dev.stealth && !e.dead) {
+      const doubt = e.state === 'noticed', alarm = !doubt && e.alarmAt !== undefined && G.timer - e.alarmAt < TUNING.stealth.alarm;
+      if (doubt || alarm) {
+        const p = doubt ? clamp(1 - e.timer / Math.max(0.01, e.noticeDur || 1), 0, 1) : 1, t = doubt ? '?' : '!';
+        ctx.save(); ctx.scale(1, 1 / TILT);
+        // Over the top of his sprite, his notches and whatever he is shouting, never on his hood.
+        const qy = e.y * TILT - this.spriteHead(e) - (e.maxHp > 1 && !e.ghosted ? 14 : 6) - (e.say ? 15 : 0);
+        ctx.font = `700 ${Math.round(doubt ? 18 + p * 6 : 25)}px ${FONT_SC}`; ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(13,10,12,0.6)'; ctx.fillText(t, e.x + 1, qy + 1);
+        ctx.fillStyle = `rgb(${Math.round(242 - 16 * p)},${Math.round(170 - 114 * p)},${Math.round(48 - 8 * p)})`;
+        ctx.fillText(t, e.x, qy);
+        ctx.textAlign = 'left'; ctx.restore();
+      }
+    }
     // A man who is searching rather than hunting shows a mark, so a scream reads as a lure.
     if (e.state === 'investigate' && !e.dead) {
       const bob = Math.sin(this.t * 6 + e.x) * 1.5;
@@ -3749,7 +3830,7 @@ class Renderer {
   // the old Butcher's 48 px sheet, the ogre on his own), times `boss.scale` for a boss, one rule
   // for every kind (`TUNING.boss`). Static, so THE DARK's eyes (js/dark.js) sit on the same head.
   static bodyScaleOf(e) {
-    const kind = e.kind === 'butcher' ? TUNING.butcher.scale : e.champion ? TUNING.champion.scale : e.shieldman ? TUNING.shieldman.scale : 1;
+    const kind = e.kind === 'butcher' ? TUNING.butcher.scale : e.champion ? TUNING.champion.scale : e.shieldman ? TUNING.shieldman.scale : e.thrower ? TUNING.thrower.scale : 1;
     return kind * (Renderer.isBoss(e) ? TUNING.boss.scale : 1);
   }
   bodyScale(e) { return Renderer.bodyScaleOf(e); }
@@ -3835,7 +3916,9 @@ class Renderer {
     if (e.state === 'slamwind') { this.drawSlamRing(e); return; }
     if (e.state === 'hookwind') { this.drawHookLine(e); return; }
     if (e.state === 'bashwind') { this.drawBashLine(e); return; }
-    if (e.kind === 'dog' || e.state !== 'windup') return;
+    if (e.state === 'twaim') { this.drawThrowLine(e); return; }
+    // The thrower's grab (`twgrab`, js/thrower.js) is laid like a windup: the wedge it reaches.
+    if (e.kind === 'dog' || (e.state !== 'windup' && e.state !== 'twgrab')) return;
     const ctx = this.ctx, cfg = TUNING[e.kind];
     if (ART_PASS.on) { this.drawTelegraphCells(e, cfg); return; }
     // Ground laid on the floor, so in world space, squashed with it: rotated in counter-squashed
@@ -3854,6 +3937,22 @@ class Renderer {
   // land (`e.hookAim`, where the goat is going, `Enemy.hookLead`), amber like every windup, dashed
   // and crawling outward, surer as the throw comes; a square of cells marks the landing. Only a line:
   // the hook is thin, and the lane to step out of is that thin too.
+  // The thrower planted to throw (`twaim`, js/thrower.js): the line to where it goes laid amber, the hook's dash.
+  drawThrowLine(e) {
+    const ctx = this.ctx, a = e.twAim; if (!a) return;
+    const p = this.windP(e, TUNING.thrower.aim), dx = a.x - e.x, dy = a.y - e.y, d = hyp(dx, dy) || 1, ux = dx / d, uy = dy / d;
+    ctx.save();
+    if (ART_PASS.tells) {
+      ctx.fillStyle = `rgba(242,170,48,${0.3 + 0.55 * p})`; ctx.beginPath();
+      this.floorLine(e.x + ux * e.r, e.y + uy * e.r, a.x, a.y, TUNING.effects.pixel * 2, 6, 5, this.t * 50);
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = `rgba(242,170,48,${0.3 + 0.55 * p})`; ctx.lineWidth = 1 + p;
+      ctx.setLineDash([6, 5]); ctx.lineDashOffset = -this.t * 50;
+      ctx.beginPath(); ctx.moveTo(e.x + ux * e.r, e.y + uy * e.r); ctx.lineTo(a.x, a.y); ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
   drawHookLine(e) {
     const ctx = this.ctx, H = TUNING.champion.hook, a = e.hookAim || (this.game && this.game.goat);
     if (!a) return;
@@ -4304,6 +4403,93 @@ class Renderer {
     }
   }
 
+  // STEALTH (the dev drawer's test, `TUNING.stealth`): while he sneaks, every man on his feet in the
+  // goat's sight who is not already after him lays on the floor where he looks, the way Baldur's Gate
+  // shows it. Under everything that stands, under the unseen rooms' paint (a cone through a doorway stops
+  // where the goat's knowledge of the building does) and under THE DARK. A man in his beat of doubt
+  // (`noticed`) has seen him: his cone goes hot. Fades with the crouch. His ears are the HEARING switch's.
+  drawStealth(game) {
+    const g = game.goat, k = g ? g.sneakK || 0 : 0;
+    if (!game.dev.stealth || k <= 0 || g.dead || game.state !== 'play') return;
+    const ctx = this.ctx, L = TUNING.stealth.look;
+    this.sightBudget = L.budget;
+    ctx.save(); ctx.globalAlpha = k;
+    for (const e of game.enemies) {
+      if (e.dead || e.held || e.ghosted || !e.cfg || !e.cfg.sight) continue;
+      if (e.state === 'hidden' || e.state === 'floored' || e.state === 'stunned' || e.state === 'flung') continue;
+      if (e.aware && e.state !== 'noticed') continue;
+      if (game.hidden(e.x, e.y) || !game.inSight(e)) continue;
+      this.drawSightCells(e, game, e.state === 'noticed' ? L.seen : L.cone, L.rim);
+    }
+    ctx.restore();
+  }
+  // Where a man can see the goat (`Enemy.canSeeGoat`): his range (THE DARK's when the goat is unlit) and
+  // his cone, a ray every `look.ray` rad cut where `game.sees` stops (stone, a shut door, the gong, the hub),
+  // each cut found to half a cell by halving the ray. The man himself first unless he has no front, then
+  // the end of every ray, as offsets from him. Kept on him (`e.sightPoly`) while he is within a cell of
+  // where he stood and `look.turn` rad of where he looked, `look.keep` s at most, for a door that opens,
+  // and past `look.budget` new ones a frame (`sightBudget`) the old one stands in: the rays are the cost.
+  sightPoly(e, game) {
+    const L = TUNING.stealth.look, cfg = e.cfg, two = Math.PI * 2;
+    let R = (e.watchful ? cfg.sight + (cfg.watchSight || 4) : cfg.sight) * TILE * (game.sneak ? TUNING.stealth.sight : 1);
+    if (game.goatLit === false) { const S = TUNING.dark.ai.sight; R = Math.min(R, (S[e.kind] || S.all) * TILE); }
+    // No front: a post, the dead, a hound with his eyes on the goat, a kind whose cone is the whole turn.
+    const round = !!(e.watchful || e.kind === 'wraith' || (e.kind === 'dog' && e.aware) || !(cfg.cone < two));
+    const c = e.sightPoly, same = c && c.R === R && c.round === round;
+    if (same && (this.sightBudget <= 0 || Math.abs(c.x - e.x) < L.px && Math.abs(c.y - e.y) < L.px
+      && (round || Math.abs(angleDiff(c.f, e.facing)) < L.turn) && Math.abs(game.timer - c.at) < L.keep)) return c;
+    this.sightBudget--;
+    const cone = round ? two : cfg.cone, n = Math.max(6, Math.ceil(cone / L.ray)), step = cone / n, a0 = e.facing - cone / 2;
+    const pts = new Float32Array((n + 2) * 2); let k = 0;
+    if (!round) { pts[k++] = 0; pts[k++] = 0; }
+    for (let i = 0; i <= n; i++) {
+      const a = a0 + i * step, ux = Math.cos(a), uy = Math.sin(a);
+      let r = R;
+      // The dead see through stone.
+      if (e.kind !== 'wraith' && !game.sees(e.x, e.y, e.x + ux * R, e.y + uy * R)) {
+        let lo = 0, hi = R;
+        while (hi - lo > L.px * 0.5) { const m = (lo + hi) / 2; if (game.sees(e.x, e.y, e.x + ux * m, e.y + uy * m)) lo = m; else hi = m; }
+        r = lo;
+      }
+      pts[k++] = ux * r; pts[k++] = uy * r;
+    }
+    return (e.sightPoly = { x: e.x, y: e.y, f: e.facing, R, round, at: game.timer, pts, len: k });
+  }
+  // The same as cells on the floor: inside is `fill`, a row at a time between the edges that row
+  // crosses, and the edge itself `rim`, a cell at a time along it. One path each, so a cell two rects
+  // share is laid once.
+  drawSightCells(e, game, fill, rim) {
+    const ctx = this.ctx, px = TUNING.stealth.look.px, P = this.sightPoly(e, game), p = P.pts, N = P.len, ox = e.x, oy = e.y;
+    let y0 = Infinity, y1 = -Infinity;
+    for (let k = 1; k < N; k += 2) { if (p[k] < y0) y0 = p[k]; if (p[k] > y1) y1 = p[k]; }
+    y0 += oy; y1 += oy;
+    const xs = this.sightXs || (this.sightXs = []);
+    ctx.fillStyle = fill; ctx.beginPath();
+    for (let j = Math.floor(y0 / px), j1 = Math.floor(y1 / px); j <= j1; j++) {
+      const yc = (j + 0.5) * px; xs.length = 0;
+      for (let k = 0; k < N; k += 2) {
+        const b = (k + 2) % N, ax = ox + p[k], ay = oy + p[k + 1], bx = ox + p[b], by = oy + p[b + 1];
+        if ((ay <= yc) !== (by <= yc)) xs.push(ax + (yc - ay) * (bx - ax) / (by - ay));
+      }
+      for (let q = 1; q < xs.length; q++) { const v = xs[q]; let r = q - 1; while (r >= 0 && xs[r] > v) { xs[r + 1] = xs[r]; r--; } xs[r + 1] = v; }
+      for (let q = 0; q + 1 < xs.length; q += 2) {
+        const a = Math.round(xs[q] / px), b = Math.round(xs[q + 1] / px);
+        if (b > a) ctx.rect(a * px, j * px, (b - a) * px, px);
+      }
+    }
+    ctx.fill();
+    ctx.fillStyle = rim; ctx.beginPath();
+    for (let k = 0; k < N; k += 2) {
+      const b = (k + 2) % N, ax = ox + p[k], ay = oy + p[k + 1], dx = p[b] - p[k], dy = p[b + 1] - p[k + 1], Ln = hyp(dx, dy);
+      let li = NaN, lj = NaN;
+      for (let s = 0; s <= Ln; s += px * 0.5) {
+        const t = Ln ? s / Ln : 0, i = Math.floor((ax + dx * t) / px), j = Math.floor((ay + dy * t) / px);
+        if (i !== li || j !== lj) { ctx.rect(i * px, j * px, px, px); li = i; lj = j; }
+      }
+    }
+    ctx.fill();
+  }
+
   // Two read-only overlays for the dev drawer, drawn in world space so they sit against the room
   // they are answering for. VISION is what `canSeeGoat` actually asks each man for, his sight
   // radius and his cone, or the wide blind-spot-free arc a watchful post gets, so a spot that
@@ -4314,27 +4500,31 @@ class Renderer {
   drawDevOverlay(game) {
     const ctx = this.ctx, d = game.dev;
     if (d.vision) {
+      // The STEALTH test's cells (`drawSightCells`, cut by stone), for every man near the goat, seen or not.
+      const L = TUNING.stealth.look, g = game.goat;
+      this.sightBudget = L.budget;
       for (const e of game.enemies) {
-        if (e.dead || e.ghosted || e.held) continue;
-        const cfg = e.cfg;
-        if (!cfg || !cfg.sight) continue;
-        const sight = (e.watchful ? cfg.sight + (cfg.watchSight || 0) : cfg.sight) * TILE;
-        const cone = e.watchful ? Math.PI * 2 : (cfg.cone || Math.PI * 2);
-        ctx.fillStyle = e.aware ? 'rgba(192,57,43,0.16)' : 'rgba(239,230,208,0.11)';
-        ctx.beginPath(); ctx.moveTo(e.x, e.y);
-        ctx.arc(e.x, e.y, sight, e.facing - cone / 2, e.facing + cone / 2);
-        ctx.closePath(); ctx.fill();
+        if (e.dead || e.ghosted || e.held || !e.cfg || !e.cfg.sight) continue;
+        if (g && hyp(e.x - g.x, e.y - g.y) > 30 * TILE) continue;
+        this.drawSightCells(e, game, e.aware ? L.seen : 'rgba(239,230,208,0.11)', e.aware ? L.rim : 'rgba(239,230,208,0.3)');
       }
     }
     if (d.hearing) {
       const g = game.goat;
+      // With the STEALTH test on, each man's ears too: how far off he hears a running hoof (`stealth.step`).
+      if (d.stealth) {
+        const px = TUNING.stealth.look.px / 2, earR = TUNING.stealth.step * TILE;
+        ctx.fillStyle = TUNING.stealth.look.ear; ctx.beginPath();
+        for (const e of game.enemies) if (!e.dead && !e.ghosted && !e.held && hyp(e.x - g.x, e.y - g.y) < 30 * TILE) this.floorRing(e.x, e.y, earR, earR - px, px);
+        ctx.fill();
+      }
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = 'rgba(185,135,58,0.55)';
-      ctx.beginPath(); ctx.arc(g.x, g.y, TUNING.noise.footstep * TILE, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(g.x, g.y, (d.stealth ? TUNING.stealth.step : TUNING.noise.footstep) * TILE, 0, Math.PI * 2); ctx.stroke();
       ctx.strokeStyle = 'rgba(192,57,43,0.6)';
       ctx.beginPath(); ctx.arc(g.x, g.y, TUNING.noise.headbutt * TILE, 0, Math.PI * 2); ctx.stroke();
       ctx.font = `700 10px ${FONT_SC}`; ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(239,230,208,0.75)'; ctx.fillText('WALK', g.x, g.y - TUNING.noise.footstep * TILE - 4);
+      ctx.fillStyle = 'rgba(239,230,208,0.75)'; ctx.fillText('WALK', g.x, g.y - (d.stealth ? TUNING.stealth.step : TUNING.noise.footstep) * TILE - 4);
       ctx.fillStyle = 'rgba(255,150,130,0.85)'; ctx.fillText('FIGHT', g.x, g.y - TUNING.noise.headbutt * TILE - 4);
       ctx.textAlign = 'left';
     }
@@ -4387,11 +4577,13 @@ class Renderer {
           ['textedit', TextEdit.on ? 'TEXT EDIT  ON' : 'TEXT EDIT  OFF'], ['rules', 'TOOLS'],
           ['vision', d.vision ? 'VISION  ON' : 'VISION  OFF'],
           ['hearing', d.hearing ? 'HEARING  ON' : 'HEARING  OFF'],
+          // ALT held sneaks; the cult's sight and ears on the floor; a blow from unseen throws further.
+          ['stealth', d.stealth ? 'STEALTH (ALT)  ON' : 'STEALTH (ALT)  OFF'],
           ['dark', d.dark ? 'DARK  ON' : 'DARK  OFF'],
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
           ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['showroom', 'SHOWROOM'],
           // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
-          ['heaven', 'HEAVEN'], ['sacrifices', '+100 SACR · +5 SOULS'],
+          ['heaven', 'HEAVEN'], ['sacrifices', '+100 SACR · +5 SOULS'], ['addkey', '+1 KEY'],
           // Every frame over `photo.dip.ms` writes down where it was, with a small picture (js/photo.js).
           ['dips', d.dips ? 'DIP LOG  ON' : 'DIP LOG  OFF'], ['dipsave', 'SAVE DIPS  (' + Photo.dips.length + ')'],
           // Every life's report this browser holds (js/stats.js), and the page that reads them.
@@ -4432,7 +4624,7 @@ class Renderer {
         ctx.fillText(col.head, px + 8 * s, py - 7 * s);
         col.rows.forEach(([id, label], i) => {
           const y = py + i * (rh + gap);
-          const on = (id === 'god' && d.god) || (id === 'textedit' && TextEdit.on) || (id === 'vision' && d.vision) || (id === 'hearing' && d.hearing);
+          const on = (id === 'god' && d.god) || (id === 'textedit' && TextEdit.on) || (id === 'vision' && d.vision) || (id === 'hearing' && d.hearing) || (id === 'stealth' && d.stealth);
           ctx.fillStyle = on ? 'rgba(192,57,43,0.5)' : 'rgba(59,34,51,0.75)';
           ctx.fillRect(px + 5 * s, y, rw - 10 * s, rh);
           ctx.strokeStyle = on ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 1 * s;
@@ -5331,6 +5523,11 @@ class Renderer {
         edit: [['USES', ['shieldman', 'uses']], ['ARC', ['shieldman', 'arc']], ['TURN', ['shieldman', 'turn']], ['SPEED ×', ['shieldman', 'speedMul']],
           ['BRACE', ['shieldman', 'brace']], ['PUSH', ['shieldman', 'push']], ['BOUNCE', ['shieldman', 'bounce']]],
         note: `A clubman behind a board of planks. Inside ${Math.round(TUNING.shieldman.arc * 180 / Math.PI)}° of his front a headbutt, a crate, a blade, a bite or a round meets the board: it takes ${TUNING.shieldman.uses} and splinters, and a body thrown into it dies as on a wall. He turns no faster than ${TUNING.shieldman.turn} rad/s and walks at ${Math.round(TUNING.shieldman.speedMul * 100)}%: go round him, roll past, vault him, or shout him dizzy (the board drops while he reels). Dead with the board whole, he leaves it to pick up.` },
+      { kind: 'bearer', tag: 'thrower', label: 'THROWER', thrower: true, cfg: TUNING.bearer, hp: TUNING.thrower.hp,
+        edit: [['HP', ['thrower', 'hp']], ['SPEED ×', ['thrower', 'speedMul']], ['KNOCK', ['thrower', 'flingMul']], ['SEEK', ['thrower', 'seek']],
+          ['LIFT', ['thrower', 'lift']], ['AIM', ['thrower', 'aim']], ['THING', ['thrower', 'thing']], ['MAN', ['thrower', 'man']],
+          ['GRAB CD', ['thrower', 'grab', 'cd']], ['GRAB WIND', ['thrower', 'grab', 'wind']], ['TOSS', ['thrower', 'grab', 'speed']], ['HURTS AT', ['thrower', 'grab', 'hurt']]],
+        note: `A clubman with the green pumped into one arm, a goat's skull strapped on: ${TUNING.thrower.hp} hits, never carried, a headbutt moves him ${Math.round(TUNING.thrower.flingMul * 100)}% as far. He finds a crate, a bomb, a clubman, a hound or one of your animals within ${TUNING.thrower.seek} tiles, lifts it overhead for ${TUNING.thrower.lift}s (butt him then and it comes down on him), carries it until you are ${TUNING.thrower.near}-${TUNING.thrower.far} tiles off, and throws it down an amber line: ${TUNING.thrower.hit} heart if it reaches you. Close up he punches, or grabs you and throws you at the worst thing near (a drop, fire, a grate, stone): only what you hit hurts. Roll out of the grab.` },
       // One row for the rule every kind shares (`TUNING.boss`) and the soul only a boss carries.
       { kind: 'bearer', tag: 'boss', boss: true, label: 'BOSS',
         cfg: TUNING.bearer, hp: 1 + TUNING.boss.champHp,
@@ -5385,6 +5582,7 @@ class Renderer {
       if (tag === 'bearer' || tag === 'boss') return [['CHASE', B.speed], idle(B.speed)];
       if (tag === 'champion') return [['CHASE', B.speed], ['ALIGHT', B.speed * C.rage.speed], idle(B.speed)];
       if (tag === 'shield') return [['CHASE', B.speed * TUNING.shieldman.speedMul], idle(B.speed * TUNING.shieldman.speedMul)];
+      if (tag === 'thrower') return [['CHASE', B.speed * TUNING.thrower.speedMul], ['CARRYING', B.speed * TUNING.thrower.speedMul * TUNING.thrower.carry], idle(B.speed * TUNING.thrower.speedMul)];
       if (tag === 'butcher') return [['CHASE', O.speed], ['LEAP ≤', O.leap.max * TILE / O.leap.air], ['ALIGHT', O.speed * O.rage.speed], idle(O.speed)];
       if (tag === 'dog') return [['CHASE', D.speed], ['RUN', D.dashSpeed], idle(D.speed)];
       if (tag === 'wraith') return [['DRIFT', TUNING.wraith.speed]];
@@ -5412,7 +5610,7 @@ class Renderer {
         champion: !!k.champion, boss: !!k.boss, elite: !!k.boss, facing: Math.PI / 2, hp: k.hp, maxHp: k.hp,
         dead: false, ghosted: false, vx: 0, vy: 0, flash: 0, burning: 0, bombFuse: 0, dazed: 0,
         state: 'idle', say: null, soul: !!(d.soulView && d.soulView[k.tag]), witchBurn: false,
-        shield: k.tag === 'shield' ? { uses: TUNING.shieldman.uses, jolt: 0, ang: Math.PI / 2 } : null };
+        shield: k.tag === 'shield' ? { uses: TUNING.shieldman.uses, jolt: 0, ang: Math.PI / 2 } : null, thrower: !!k.thrower };
       ctx.save(); this.drawEnemy(fake, game); ctx.restore();
       ctx.textAlign = 'left';
       ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
@@ -5808,7 +6006,7 @@ class Renderer {
         stats: `${P.coop.hits} hit to open · kicked at ${Math.round(P.chicken.launchSpeed)}px/s · kills once · +${P.chicken.saveHearts} heart if she reaches the stairs`,
         note: 'The one thing in the compound on your side. Loose, she follows you round walls and steps round fire, teeth and drops; walk past her coop and it breaks on its own as it leaves the screen. Kicked, she homes onto a man and kills on contact. Bring her to the stairs for a heart for the rest of the run.' },
       { kind: 'tortoise', label: 'TORTOISE', make: (x, y) => new Prop(x, y, 'tortoise'), hits: ['THROWN', 'BODY'],
-        stats: `walks at ${P.tortoise.speed}px/s · thrown at ${P.tortoise.throwSpeed}px/s, floors a man ${P.crate.stun}s · a shell for ${P.tortoise.tuck}s where it lands · +${P.tortoise.saveShield} use on every shield if it reaches the stairs`,
+        stats: `walks at ${P.tortoise.speed}px/s · thrown at ${P.tortoise.throwSpeed}px/s, floors a man ${P.crate.stun}s · a shell for ${P.tortoise.tuck}s where it lands · if it reaches the stairs, every floor after starts in armour that takes ${P.tortoise.saveArmour} blow`,
         note: 'Slower than a walk and it never catches up: the one escort you advance by picking it up and throwing it forward. Where it lands it pulls its head in and is a piece of the room, solid, and rounds stop on it, and cannot be picked up again until it comes out.' },
       { kind: 'goose', label: 'GOOSE', make: (x, y) => new Prop(x, y, 'goose'), hits: [],
         stats: `runs ahead at ${P.goose.speed}px/s (×${P.goose.hurry} when overtaken), waits ${P.goose.lead} tiles ahead ·honks at anyone inside ${P.goose.seeR}, every ${P.goose.honkGap}s · breaks a swing for ${P.goose.balkStun}s at any range`,
@@ -6731,10 +6929,12 @@ class Renderer {
     // Stars: the club is still ringing in his skull.
     if (g.dazed > 0 && !(game.intro && game.intro.fade > 0)) this.drawStars(g.x, g.y, 30, Math.min(1, g.dazed * 1.5));
     // aim pip: where the headbutt will go
-    if ((game.touch.active || padOn(game)) && game.state === 'play') {
+    if ((game.touch.active || padOn(game) || kbOn(game)) && game.state === 'play') {
+      // Two square cells along the aim, the near one bright, so a player with no pointer on the
+      // screen sees where the horns go (3 Oct 2026: the old soft dot at half alpha was lost on a floor).
       const a = game.input.aim;
-      ctx.fillStyle = 'rgba(239,230,208,0.5)';
-      ctx.beginPath(); ctx.arc(g.x + a.x * 34, g.y + a.y * 34, 3.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,248,230,0.85)'; ctx.fillRect(Math.round(g.x + a.x * 32 - 3), Math.round(g.y + a.y * 32 - 3), 6, 6);
+      ctx.fillStyle = 'rgba(255,248,230,0.45)'; ctx.fillRect(Math.round(g.x + a.x * 44 - 2), Math.round(g.y + a.y * 44 - 2), 4, 4);
     }
   }
 
@@ -7112,6 +7312,7 @@ class Renderer {
     if (this.painted.ready) {
       ctx.save(); ctx.translate(x, top + 10 * s); this.painted.soulWispBody(ctx, 17 * s); ctx.restore();
     } else { ctx.fillStyle = PALETTE.witch; ctx.fillRect(x - 4 * s, top + 3 * s, 8 * s, 12 * s); }
+    let left = x - 10 * s;
     // The heap only once the god has given him the gathering (js/motes.js): before it, nothing pays.
     if (Heaven.gifted() || M.sacrifices > 0) {
       x -= 22 * s;
@@ -7123,14 +7324,31 @@ class Renderer {
       x -= textW(ctx, heap) + 6 * s;
       const sk = HEAVEN_PIXELS.sprites.skull, c = 1.9 * s;
       Heaven.skull(ctx, x - sk.w * c, top + 8.5 * s - sk.h * c / 2, c);
-      // The god's two hundred, under the heap until they are brought.
-      if (Heaven.gifted() && !Heaven.questDone()) {
-        const q = TUNING.heaven.gift.quest, b = Math.min(q, M.brought || 0);
+      left = x - sk.w * c;
+      // What the god is counting toward (his twenty that mend the mirror, then two hundred), under the heap.
+      if (Heaven.goal()) {
+        const q = Heaven.goal(), b = Math.min(q, M.brought || 0);
         ctx.font = `700 ${Math.max(12 * this.s, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillText(`FOR THE GOD ${b} / ${q}`, hx + 1 * s, top + 33 * s);
         ctx.fillStyle = 'rgba(255,244,194,0.8)'; ctx.fillText(`FOR THE GOD ${b} / ${q}`, hx, top + 32 * s);
       }
     }
+    ctx.restore();
+    return left;
+  }
+
+  // The run's keys (`game.runKeys`), right-aligned at `right`: the skull-bowed key and the count. Shown
+  // once he has one, or on a floor with iron on it, where none is the thing to know.
+  drawKeys(game, right, top, s) {
+    const n = game.runKeys | 0;
+    if (!n && !(game.props && game.props.some((p) => p.ironCage && !p.broken))) return;
+    const ctx = this.ctx, fl = clamp((game.keyFlash || 0) / 0.5, 0, 1);
+    ctx.save(); ctx.textAlign = 'right'; ctx.font = `700 ${19 * s}px ${FONT}`;
+    const t = String(n);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(t, right + 1 * s, top + 17 * s);
+    ctx.fillStyle = fl > 0 ? '#ffffff' : n ? '#ffd877' : 'rgba(239,230,208,0.5)'; ctx.fillText(t, right, top + 16 * s - fl * 2 * s);
+    const g = PROP_PIXELS.sprites.key, c = 1.7 * s, x = right - textW(ctx, t) - 6 * s - g.w * c;
+    if (PROP_PIXELS.draw) { ctx.globalAlpha = n ? 1 : 0.5; PROP_PIXELS.draw(ctx, 'key', x, top + 9 * s - g.h * c / 2, c); }
     ctx.restore();
   }
 
@@ -7827,6 +8045,14 @@ class Renderer {
       ctx.fillStyle = '#fff4c2';
       for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) if (HEART[r][q] === '#') ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
     }
+    // The tortoise's iron after them: a heart of plate, lit along its top row, gone with the blow it takes.
+    for (let i = 0; i < (g.armour || 0); i++) {
+      const A = TUNING.prop.tortoise.armour, ox = 14 * s + (g.maxHp + (g.light || 0) + i) * 22 * s, oy = top + 14 * s;
+      for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) if (HEART[r][q] === '#') {
+        ctx.fillStyle = r === 1 ? A.lit : r % 2 ? A.mid : A.dark;
+        ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
+      }
+    }
     // Everyone brought out to the stairs this run, one animal each, under the hearts: what an escort
     // is worth is a number buried in `mods`, and a row of the animals themselves is the way to see
     // that the run is carrying them.
@@ -7853,11 +8079,12 @@ class Renderer {
     // The talisman, right of the hearts: one slot, and the shop is the only thing that fills it.
     // After the rail, because the rail clears the hover it shares with this.
     // Centred on the row of hearts, a gap past the last one.
-    this.drawArtifactChip(game, 14 * s + (g.maxHp + (g.light || 0)) * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
+    this.drawArtifactChip(game, 14 * s + (g.maxHp + (g.light || 0) + (g.armour || 0)) * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
     this.savedHover(game);   // after the rail too, which clears the hover it shares
     // What the god is paid in, the way heaven counts it (29 Sep 2026: "the same look as up there"):
     // the gold skull and the heap, and beside it the corrupted souls heaven keeps (`Heaven.meta`).
-    this.drawPurse(game, right, below + 2 * s, s);
+    const purseLeft = this.drawPurse(game, right, below + 2 * s, s);
+    this.drawKeys(game, (purseLeft === undefined ? right : purseLeft) - 16 * s, below + 2 * s, s);
     // The clock is a setting and it is off by default. A number climbing in the corner of a game
     // about running turns the run into the number, and the run is timed whether it is shown or not:
     // the card at the end of a level says what it took, which is where a time is worth reading.
@@ -7891,8 +8118,8 @@ class Renderer {
     ctx.fillText(`seed ${(game.runSeed >>> 0).toString(36)}${game.level && game.level.seed ? ' · ' + ((game.level.seed >>> 0).toString(36).slice(-4)) : ''}`, 14 * s, this.h - 23 * s);
     ctx.font = `${Math.max(12 * this.s, 9.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
     ctx.fillText(`v${BUILD}`, 14 * s, this.h - 12 * s);
-    // exit compass, pinned just inside the bottom of the play view
-    if (game.state === 'play' && !g.dead) {
+    // exit compass, pinned just inside the bottom of the play view (not under the husky's board, which stands there)
+    if (game.state === 'play' && !g.dead && !game.song) {
       const dx = game.level.exit.x - g.x, dy = game.level.exit.y - g.y, d = hyp(dx, dy);
       if (d > 6 * TILE) {
         const a = Math.atan2(dy, dx), cx = this.vcx;
@@ -8816,23 +9043,26 @@ class Renderer {
   // The one primary button of a card: the way on, framed and lit, with the key that also presses it.
   // Anywhere on the card takes the press (only SAVE on the clear card is its own), so the frame is the
   // thing to aim at rather than the only place that works. Returns its rect.
-  goButton(game, label, cx, top) {
-    const ctx = this.ctx, s = this.ts, touch = game.touch && game.touch.active;
+  // `opt.key` names another key than the card's own; `opt.quiet` is a second button beside the first,
+  // unlit; `opt.measure` only returns the width it would take.
+  goButton(game, label, cx, top, opt) {
+    const ctx = this.ctx, s = this.ts, touch = game.touch && game.touch.active, o = opt || {};
     const bh = 36 * s, lf = `700 ${18 * s}px ${FONT_SC}`, kf = `700 ${10 * s}px ${FONT_SC}`;
     ctx.font = lf; const lw = textW(ctx, label);
-    ctx.font = kf; const key = touch ? '' : keysOf(game).go, kw = key ? textW(ctx, key) + 12 * s : 0;
+    ctx.font = kf; const key = touch ? '' : o.key || keysOf(game).go, kw = key ? textW(ctx, key) + 12 * s : 0;
     const tri = 9 * s, bw = Math.round(lw + tri + 12 * s + (kw ? kw + 12 * s : 0) + 40 * s), bx = Math.round(cx - bw / 2), by = Math.round(top);
+    if (o.measure) return { x: bx, y: by, w: bw, h: bh };
     const over = game.input.mouse && !touch && game.input.mouse.x >= bx && game.input.mouse.x <= bx + bw && game.input.mouse.y >= by && game.input.mouse.y <= by + bh;
-    const pulse = 0.5 + 0.5 * Math.sin(this.t * 4);
+    const pulse = o.quiet ? 0 : 0.5 + 0.5 * Math.sin(this.t * 4);
     ctx.save(); ctx.textAlign = 'center';
-    ctx.fillStyle = over ? 'rgba(242,162,51,0.34)' : `rgba(242,162,51,${0.16 + 0.06 * pulse})`; ctx.fillRect(bx, by, bw, bh);
-    ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = (over ? 3 : 2) * s; ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = o.quiet ? (over ? 'rgba(239,230,208,0.16)' : 'rgba(239,230,208,0.06)') : over ? 'rgba(242,162,51,0.34)' : `rgba(242,162,51,${0.16 + 0.06 * pulse})`; ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = o.quiet ? 'rgba(239,230,208,0.55)' : PALETTE.fireHi; ctx.lineWidth = (over ? 3 : 2) * s; ctx.strokeRect(bx, by, bw, bh);
     let x = bx + 20 * s;
     ctx.font = lf; ctx.fillStyle = over ? '#fff6e0' : PALETTE.bone; ctx.textAlign = 'left';
     ctx.fillText(label, x, by + bh / 2 + 6.5 * s); x += lw + 12 * s;
     // the arrow, a stepped wedge of cells rather than a font glyph the face may not carry
     const c = Math.max(1, Math.round(1.5 * s)), cy = by + bh / 2;
-    ctx.fillStyle = PALETTE.fireHi;
+    ctx.fillStyle = o.quiet ? PALETTE.bone : PALETTE.fireHi;
     for (let k = 0; k < 6; k++) ctx.fillRect(Math.round(x + k * c), Math.round(cy - (6 - k) * c), c, (6 - k) * 2 * c);
     x += tri + 12 * s;
     if (key) {

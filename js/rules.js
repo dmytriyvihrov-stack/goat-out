@@ -14,7 +14,7 @@ const lessonOf = (L) => { const c = (L.controls || []).find((k) => k.part === 2)
 const quiet = (L, r) => r.index === 0 || SET_PIECE.has(r.role) || r.isAmbush || r.isRest || r.isCalm || r.index === lessonOf(L);
 const ORDINARY = new Set(['canon', 'mix', 'trap']);
 
-const kindOf = (s) => (s.champion ? 'champion' : s.shield ? 'shield' : s.kind);   // the tables' pseudo-kinds back (gen.js `threatKind`)
+const kindOf = (s) => (s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.kind);   // the tables' pseudo-kinds back (gen.js `threatKind`)
 const roomAt = (L, x, y) => L.rooms.find((r) => x >= r.x * TILE && x < (r.x + r.w) * TILE && y >= r.y * TILE && y < (r.y + r.h) * TILE);
 // Every tile he can walk to from where he starts (stone and holes stop him), as flags by tile index.
 const walkedFrom = (L, tiles = L.tiles) => {
@@ -414,6 +414,21 @@ const GEN_RULES = [
       }
       return true;
     } },
+  { id: 'iron', text: 'Iron comes in a pair: a floor that shuts its animal in iron (never the horse) stands one iron cage of big grass in another ordinary room near it, and no floor before TUNING.keys.iron.from has either.',
+    check: (L) => {
+      const coop = L.props.find((p) => p.kind === 'coop' && p.ironCage), grass = L.props.filter((p) => p.kind === 'ironcage');
+      if (!coop && !grass.length) return true;
+      if (!coop) return 'an iron cage of grass with no animal in iron to choose against';
+      if (coop.holds === 'horse') return 'the horse in iron';
+      if (grass.length !== 1) return `${grass.length} iron cages of grass on one floor`;
+      if (levelIndexOf(L.def) < TUNING.keys.iron.from) return `iron on floor ${levelIndexOf(L.def)}, before keys.iron.from`;
+      const r = roomAt(L, grass[0].x, grass[0].y);
+      if (!r) return 'the iron cage of grass outside any room';
+      if (quiet(L, r) || r.isTrap || r.index === L.def.vaultAt) return `the iron cage of grass in the ${r.role} (room ${r.index})`;
+      if (r.index === coop.beastRoom) return 'both iron cages in one room';
+      if (L.tiles[Math.floor(grass[0].y / TILE) * L.W + Math.floor(grass[0].x / TILE)] !== T.FLOOR) return 'the iron cage of grass off the floor';
+      return true;
+    } },
   { id: 'shrooms', text: 'At most one tuft of mushrooms, on plain floor of an ordinary room; never on the trip, and never where the trip would be the last floor.',
     check: (L) => {
       const t = L.props.filter((p) => p.kind === 'shrooms');
@@ -667,6 +682,18 @@ const GEN_RULES = [
   // The suit on a stand (gen.js, 1 Oct 2026): on plain floor where the room stays open round it, off the
   // way in and clear of whatever else stands, in a room that is not teaching, resting, a set piece or a
   // trap; a couple a floor at most, THE ARMORY's own aside.
+  // The thrower's ammunition (gen.js, 3 Oct 2026): a room he stands in has `TUNING.thrower.ammo` crates or bombs in it.
+  { id: 'thrower', text: 'A thrower always has something of his own to throw: his room holds TUNING.thrower.ammo crates or bombs at least.',
+    check: (L) => {
+      const men = L.spawns.filter((s) => s.thrower);
+      if (!men.length) return null;
+      for (const s of men) {
+        const r = L.rooms[s.roomIndex]; if (!r) continue;
+        const n = L.props.filter((p) => (p.kind === 'crate' || p.kind === 'bomb') && roomAt(L, p.x, p.y) === r).length;
+        if (n < TUNING.thrower.ammo) return `the thrower in room ${r.index} has ${n} things to throw`;
+      }
+      return true;
+    } },
   { id: 'suits', text: 'A suit of armour stands on plain floor in an ordinary room, clear of the way in and of every other thing; one a floor, THE ARMORY stands two of its own aside.',
     check: (L) => {
       const suits = L.props.filter((p) => p.kind === 'suit');
@@ -1059,12 +1086,12 @@ const GEN_RULES = [
     } },
   // Pillar 8's plainest promise: whatever is put in a room is somewhere he can get to. A cave corner
   // rounded over the mouth of a cell shut men and crates in it on THE TRIP (28 Sep 2026).
-  { id: 'reach', text: 'Every man, milk, crate, stand of arms and coop stands where he can walk to it.',
+  { id: 'reach', text: 'Every man, milk, crate, stand of arms, coop and iron cage stands where he can walk to it.',
     check: (L) => {
       const seen = walkedFrom(L), at = (o) => seen[Math.floor(o.y / TILE) * L.W + Math.floor(o.x / TILE)];
       const lost = L.spawns.find((s) => !at(s));
       if (lost) return `a ${kindOf(lost)} shut in at ${Math.floor(lost.x / TILE)},${Math.floor(lost.y / TILE)}`;
-      const p = L.props.find((q) => ['heal', 'crate', 'weapon', 'coop', 'bomb'].includes(q.kind) && !at(q));
+      const p = L.props.find((q) => ['heal', 'crate', 'weapon', 'coop', 'ironcage', 'bomb'].includes(q.kind) && !at(q));
       return p ? `a ${p.kind} shut in at ${Math.floor(p.x / TILE)},${Math.floor(p.y / TILE)}` : true;
     } },
 ];

@@ -112,14 +112,16 @@ the first blade stands. Every floor ends at a flight of stairs going up, and eve
 begins at the top of one.
 
 **You meet everything alone first.** The room that introduces a clubman, a butcher, a hound, a mage, a
-rifle, a shieldman or a wraith holds that one enemy and nothing else, and a boss you have never seen stands in his
+rifle, a shieldman, a thrower or a wraith holds that one enemy and nothing else, and a boss you have never seen stands in his
 arena without company. After that they arrive mixed, and the mix gets worse as the floor goes on and
 worse again on the floor after.
 
-**Eight enemy types.** Club-swinging Bearers; Butchers in bone aprons and bull-skull masks, too heavy
+**Nine enemy types.** Club-swinging Bearers; Butchers in bone aprons and bull-skull masks, too heavy
 to carry, who hook you from across a room and drag you to the cleaver; Shieldmen behind a board of
 door planks that takes anything from in front, a headbutt, a crate, a blade, a round, and kills a man
-thrown into it like a wall, but who turn slowly and have a back; blinking Seers whose runes erupt into violet witchfire
+thrown into it like a wall, but who turn slowly and have a back; Throwers in goat-skull masks, one arm swollen
+green, who lift whatever is in the room, a crate, one of their own, one of your animals, and throw it at you, and
+who grab you and throw you at the nearest drop or wall; blinking Seers whose runes erupt into violet witchfire
 that no boon protects you from; Hunters whose bullets travel and hit their own; the ogre, the cult's
 half-beast, who takes four, is never knocked back, leaps onto where you stand and brings his fists down
 on the floor all round him; the hounds; and the wraiths. One rule for all of them: a man without a
@@ -151,10 +153,10 @@ Firebrand leaves a line of fire behind anything you throw.
 talisman, another talisman or a pail of milk, and you take one. She takes nothing for it. Headbutting
 her stall is rude, and what comes out of the wall after the third time is not a mouse.
 
-**Talismans.** Twenty-three of them in three tiers, worn one at a time on a collar, each stated in plain
+**Talismans.** Twenty-four of them in three tiers, worn one at a time on a collar, each stated in plain
 numbers where it stands: a mirror shard that turns a blow back, a spade that leaves bodies lying to trip
 over, a boomerang on Q, a knucklebone that deals a soul's third card, a magnet that spins a sword or a crate round you to take a
-blow, and so on.
+blow, a nosebag that keeps the grass you had no need of for later, and so on.
 
 **Animals.** From the second floor a coop holds an animal, a hen, a goose, a crow, a tortoise, a
 horse. Break it open and get the animal to the stairs alive, and it pays you for the rest of the run,

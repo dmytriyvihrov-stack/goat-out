@@ -38,7 +38,7 @@ const Beast = {
   // What each one pays, in the player's words: the note under a HUD icon (`Renderer.drawSaved`).
   GIVES: {
     chicken: () => `+${TUNING.prop.chicken.saveHearts} heart for the run.`,
-    tortoise: () => `Every shield takes ${TUNING.prop.tortoise.saveShield} more blow.`,
+    tortoise: () => `Every floor you start in armour that takes ${TUNING.prop.tortoise.saveArmour} blow.`,
     goose: () => `Your voice carries ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further and comes back ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% sooner.`,
     crow: () => `It found ${/^[AEIOU]/.test(rarityOf(TUNING.prop.crow.giftTier).name) ? 'an' : 'a'} ${rarityOf(TUNING.prop.crow.giftTier).name.toLowerCase()} talisman and left it on the next floor's stairs.`,
     horse: () => `You run ${Math.round((TUNING.prop.horse.saveSpeed - 1) * 100)}% faster.`,
@@ -721,7 +721,8 @@ const Beast = {
   cameWith(p, game) {
     if (p.broken || p.dead) return false;
     const g = game.goat, C = TUNING.prop[p.kind] || {};
-    if (p.held || hyp(p.x - g.x, p.y - g.y) <= (C.saveR || 8) * TILE) return true;
+    // held in the goat's mouth, not over the thrower's head or in the air from his throw
+    if ((p.held && !p.tossed) || hyp(p.x - g.x, p.y - g.y) <= (C.saveR || 8) * TILE) return true;
     if (!game.level) return false;
     const top = game.goatRoom || 0, r = roomAt(game.level, p.x, p.y);
     return (r ? r.index : game.nearestRoomIdx(p.x, p.y, top)) >= top - (C.saveRooms || 0);
@@ -740,7 +741,7 @@ const Beast = {
     if (b.husky) m.screamCooldown *= Math.pow(TUNING.prop.husky.saveScreamCd, b.husky);
     // Legs tied (the rabbit's bargain, js/beasts-more.js): the roll is the hop, sooner and further.
     if (game.legsTied) { m.rollCooldown *= TUNING.prop.rabbit.tied.rollCd; m.rollDistance *= TUNING.prop.rabbit.tied.rollDist; }
-    if (b.tortoise) m.shieldUses = (m.shieldUses || 0) + TUNING.prop.tortoise.saveShield * b.tortoise;
+    if (b.tortoise) m.armour = (m.armour || 0) + TUNING.prop.tortoise.saveArmour * b.tortoise;
     if (b.horse) m.speed *= Math.pow(TUNING.prop.horse.saveSpeed, b.horse);
     if (b.goose) {
       const C = TUNING.prop.goose;
@@ -862,7 +863,7 @@ const Beast = {
     chicken: { how: 'Follows you round walls, steps round fire, teeth and drops, and keeps behind you when a man is close. Butt her and she flies at the first man along the line of the blow and kills him, once.',
       pays: () => `+${TUNING.prop.chicken.saveHearts} heart for the run` },
     tortoise: { how: 'Slower than a walk and never catches up: you carry it in your teeth, or throw it forward. Where it lands it is a shell, solid, rounds stop on it, a man it hits is floored, and it takes one blow for you, then lies on its back.',
-      pays: () => `+${TUNING.prop.tortoise.saveShield} use on every shield for the run` },
+      pays: () => `armour at the start of every floor after, which takes ${TUNING.prop.tortoise.saveArmour} blow whole and comes off` },
     goose: { how: `Leads rather than follows, up to ${TUNING.prop.goose.lead} tiles ahead, and honks at every man it sees: the room turns on you, and a blow already coming is broken.`,
       pays: () => `the voice carries ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further and comes back ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% sooner (never under ${TUNING.goat.scream.minCooldown} s)` },
     crow: { how: 'Follows the dead, not you: it flies to a body it can see and eats a while, and with nothing dead in reach it sits and waits where it is. A room behind you, or far off, it leaves the bodies and flies after you, landing a few tiles short. At the stairs it counts from the room before the last; the bird that brings its gift sits by it, then flies off.',

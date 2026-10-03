@@ -32,6 +32,8 @@ const SKILL_RAMPS = {
   antler: ['#4f3220', '#7a5636', '#b08a62', '#e6d3b0'],
   venom: ['#2f5a1c', '#5c9a2a', '#9fd84a', '#e4ffa0'],
   lava: ['#8f1e0a', '#e0521a', '#ffb43a', '#fff0a0'],
+  // the mouse pointer's horns (`Game.buttCursor`): the bare horns gone nearly white, to be seen on any floor
+  bone: ['#8c8478', '#cfc8bc', '#efeae2', '#ffffff'],
 };
 
 const SKILL_ART = {
@@ -181,6 +183,15 @@ const SKILL_ART = {
     '.............F..',
     '............iFi.',
     '...........hhhhh'], map: { h: '#a88a5e' } },
+  // RICOCHET: a blade's line meeting a wall and coming back off it, a spark where it met.
+  glance: { bare: true, rows: [
+    '', '', '', '', '', '', '', '', '', '',
+    'z..i............',
+    'z.i.............',
+    'zX..............',
+    'z.i.............',
+    'z..i............',
+    'z...i...........'] },
 
   // ---- roll: the goat balled up, and what the tumble leaves ----
   ball: { rows: [
@@ -369,6 +380,7 @@ const SKILL_ICONS = {
       // never once reached the chip.
       if (m.brandHold > 0) L.push('charged');
       if (m.coldEye) L.push('hourglass');
+      if (m.ricochet) L.push('glance');
       return L;
     }
     if (id === 'roll') {

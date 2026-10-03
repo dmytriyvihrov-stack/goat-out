@@ -526,7 +526,7 @@ class PaintedArt extends AltarArt {
       // One size, whatever it is doing: racked, lying or in his mouth. It used to draw bigger on the
       // stand than anywhere else it is ever seen, which read as the object changing size the moment
       // you took it rather than as the same blade wherever it is.
-      this.atlas(ctx,p.weapon,0,0,p.weapon==='sword'?24:22*TUNING.prop.weapon.shieldScale,undefined,0.5);}
+      this.atlas(ctx,p.halberd?'halberd':p.weapon,0,0,p.halberd?34:p.weapon==='sword'?24:22*TUNING.prop.weapon.shieldScale,undefined,0.5);}
       ctx.restore();
       // What is left in a shield you are carrying: three studs, one per man or bullet it has in it.
       if(p.weapon==='shield'&&p.held&&p.uses>0){
@@ -618,7 +618,7 @@ class PaintedArt extends AltarArt {
   // 1.66: the butcher (the brute until 1.72) wears the old Butcher's sheet (skull, apron, cleaver) and that kind is
   // the ogre, drawn by js/ogre-pixels.js (`butcher.scale` a size up). The red-robed `brute` sheet is
   // unused for now.
-  characterKey(e) { if(e.kind==='butcher')return 'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'butcher':e.shieldman?'spartan':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
+  characterKey(e) { if(e.kind==='butcher')return 'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'butcher':e.shieldman?'spartan':e.thrower?'thrower':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
 
   // The art is a top-down slab at the collision footprint, with no frame or square padding.
   doorSlab(ctx,p,wdt,hgt) {
@@ -657,6 +657,7 @@ class PaintedArt extends AltarArt {
     if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
     if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
     if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
+    if(e.liftedBy)ctx.rotate(Math.cos(e.liftedBy.facing)<0?1.45:-1.45);   // across the thrower's fist (js/thrower.js)
     // The hound has no stride on the sheet: running, he bounces (`dog.gait`, `dog.bob`), or he is a
     // picture of a dog sliding round the floor.
     if(key==='hound'&&moving){const G=TUNING.dog;ctx.translate(0,-Math.abs(Math.sin(renderer.t*G.gait*Math.PI+e.x*0.02))*G.bob);}
@@ -669,6 +670,8 @@ class PaintedArt extends AltarArt {
     if(key==='ogre'&&typeof OGRE_PIXELS!=='undefined'&&OGRE_PIXELS.draw)OGRE_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e.state==='slamwind'||e.state==='hopwind'||e.state==='hop'?'up':'idle');
     // The shieldman is Leonidas (2 Oct 2026): bare-chested under a Corinthian helmet, his own body (js/spartan-pixels.js).
     else if(key==='spartan'&&typeof SPARTAN_PIXELS!=='undefined'&&SPARTAN_PIXELS.draw)SPARTAN_PIXELS.draw(ctx,angle,moving,renderer.t,e.x);
+    // The thrower is a one-armed Bane in a goat's skull, the green pulsing in his arm (js/thrower-pixels.js).
+    else if(key==='thrower'&&typeof THROWER_PIXELS!=='undefined'&&THROWER_PIXELS.draw)THROWER_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e);
     else PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
     if(e.shield)this.board(renderer,e,true);
     // His horns as the butt souls have made them, in the same lean as the frame (`drawGoat` sets it).
@@ -789,6 +792,59 @@ class PaintedArt extends AltarArt {
     ctx.drawImage(cv,-ox,-oy,B,B);ctx.restore();
   }
 
+  // The tortoise's iron (`TUNING.prop.tortoise.armour`): rows of plate over his body in cells on the
+  // sprite's own grid, lit along each row's top, a dark seam between rows and a rivet now and then, his
+  // head and legs left bare, then cut to his own silhouette exactly as the wounds are. Baked per frame of him.
+  armour(renderer,g) {
+    const unit=PIXEL_ART.unit('sheep');if(!unit)return;
+    const ctx=renderer.ctx,A=TUNING.prop.tortoise.armour,S=2,B=48,ox=24,oy=40,moving=hyp(g.vx||0,g.vy||0)>30,u=PIXEL_ASSETS.units[unit];
+    const [dir,flip]=PIXEL_ART.facing(unit,g.facing||0),step=moving&&u&&u.walk?Math.floor(renderer.t*8+(g.x||0)*0.05)%4:-1;
+    const d=(Math.round((g.facing||0)/(Math.PI/4))+14)%8,cache=this.armourCache||(this.armourCache=new Map()),key=d+'|'+dir+'|'+flip+'|'+step;
+    let cv=cache.get(key);
+    if(!cv){
+      if(cache.size>=96)cache.clear();
+      cv=document.createElement('canvas');cv.width=cv.height=B*S;
+      const c=cv.getContext('2d');c.setTransform(S,0,0,S,ox*S,oy*S);
+      // The head, left bare: up from the throat point (`PIXEL_NECK`) and toward the way this frame faces,
+      // wider facing the camera, where the face is most of what is seen of him.
+      // Everything above the head is bare too (ears, horns), and seen from the front or the back the
+      // coat starts lower (`low`), at the shoulders and the rump, where the ears stand out to the sides.
+      const [nx,ny]=PIXEL_NECK[d],fa=(d+2)*Math.PI/4,front=Math.max(0,Math.sin(fa));
+      const hx=nx+Math.cos(fa)*2.5,hy=ny-3-2.5*front,hr=A.head+A.headFront*front;
+      const k=A.cell,y0=A.band[0]+A.low*Math.abs(Math.sin(fa)),y1=A.band[1],rows=Math.ceil((y1-y0)/k),cols=Math.ceil(2*A.wide/k);
+      const on=(q,r)=>{
+        if(r<0||r>=rows||q<0||q>=cols)return false;
+        const dx=-A.wide+(q+0.5)*k-hx,dy=y0+(r+0.5)*k-hy;
+        return hyp(dx,dy)>=hr&&!(dy<0&&Math.abs(dx)<hr);
+      };
+      // Plates laid like bricks (`plate` cells wide, `seam` rows tall, every other row half a plate
+      // over): each lit along its top and left, dark along its bottom and right, a rivet at its top
+      // corner, and the rim of the whole coat dark, so it reads as iron on him and not as stripes.
+      const [pw,ph]=[A.plate,A.seam];
+      for(let r=0;r<rows;r++)for(let q=0;q<cols;q++){
+        if(!on(q,r))continue;
+        const rr=r%ph,qq=(q+(Math.floor(r/ph)%2?pw>>1:0))%pw;
+        let col=A.mid;
+        if(rr===0||qq===0)col=A.lit;
+        if(rr===ph-1||qq===pw-1)col=A.dark;
+        if(rr===1&&qq===1)col=A.lit;
+        if(!on(q,r-1)||!on(q,r+1)||!on(q-1,r)||!on(q+1,r))col=A.rim;
+        c.fillStyle=col;c.fillRect(-A.wide+q*k,y0+r*k,k+0.05,k+0.05);
+      }
+      // Cut to him a texel in from his edge (his silhouette, and the same moved a texel each way), so
+      // his own dark outline stays round the iron and he still reads as the goat in it.
+      c.globalCompositeOperation='destination-in';
+      for(const [sx,sy] of [[0,0],[k,0],[-k,0],[0,k],[0,-k]]){c.save();c.translate(sx,sy);PIXEL_ART.draw(c,unit,g.facing||0,moving,renderer.t,g.x);c.restore();}
+      cache.set(key,cv);
+    }
+    ctx.save();ctx.globalAlpha*=A.alpha;
+    const a=g.facing||0;   // the lean `character()` gives a windup or a swing, as the wounds take it
+    if(g.state==='windup'){ctx.translate(Math.cos(a)*-2,Math.sin(a)*-2);ctx.rotate(-0.13);}
+    if(g.state==='swing'){ctx.translate(Math.cos(a)*3,Math.sin(a)*3);ctx.rotate(0.17);}
+    if(g.state==='stunned')ctx.rotate(0.7);
+    ctx.imageSmoothingEnabled=false;ctx.drawImage(cv,-ox,-oy,B,B);ctx.restore();
+  }
+
   // What leaves his face and stays in the world a moment (`TUNING.goat.face`): VENOM SPIT's drop off
   // the chin and the splat it makes, DRAGON BREATH's steam off a nostril and now and then a lick of
   // flame. A point is where it stands on the floor plus `z` screen px above it, so a drop let go
@@ -853,9 +909,12 @@ class PaintedArt extends AltarArt {
     // A pronk off the fidget, or a LEAPFROG vault: the same lift off his shadow, in whole pixels.
     const lp=g.leap,hop=lp?Math.sin(clamp(lp.t/lp.time,0,1)*Math.PI)*lp.h
       :fid&&fid.kind==='hop'&&fk>0.2&&fk<0.8?Math.sin((fk-0.2)/0.6*Math.PI)*I.hop.h:0;
-    const sh=Math.max(0.2,1-hop*0.03);   // a leap higher than ~26 px would hand `ellipse` a negative radius
-    renderer.shadow(g.x,g.y,16*sh,7*sh);
+    // Coming down out of heaven his shadow grows under him as he nears the floor (`Heaven.dropShadow`).
+    const dropK=game&&game.dropIn&&typeof Heaven!=='undefined'?Heaven.dropShadow(game):1;
+    const sh=Math.max(0.2,1-hop*0.03)*dropK;   // a leap higher than ~26 px would hand `ellipse` a negative radius
+    if(g.state!=='carried'&&sh>0.01)renderer.shadow(g.x,g.y,16*sh,7*sh);   // over the thrower's head he has no floor under him
     ctx.save();ctx.translate(g.x,g.y);ctx.scale(1,1/TILT);
+    if(game&&game.dropIn&&typeof Heaven!=='undefined')Heaven.drawShaft(ctx,game);
     if(g.jitter)ctx.translate(g.jitter.x,g.jitter.y);
     // Weight in the stride: a hop per hoof-fall in step with the walk frames, in whole pixels, and
     // the lean `Goat.update` smooths into a change of pace. Turned about the hooves.
@@ -875,7 +934,10 @@ class PaintedArt extends AltarArt {
     if(climb>0){ctx.translate(0,-TUNING.stairs.rise*climb);ctx.scale(1-0.22*climb,1-0.22*climb);ctx.globalAlpha=1-climb*0.55;}
     // Heaven's own moments (js/heaven.js): out of the light, over the edge, down onto a floor.
     const hv=typeof Heaven!=='undefined'&&(game.heaven||game.dropIn)?Heaven.goatLook(game):null;
-    if(hv){ctx.translate(0,hv.dy);if(hv.spin)ctx.rotate(hv.spin);ctx.scale(hv.s*(hv.sx||1),hv.s);ctx.globalAlpha*=hv.a;}
+    if(hv){ctx.translate(0,hv.dy);if(hv.sy)ctx.scale(1/Math.sqrt(hv.sy),hv.sy);if(hv.spin)ctx.rotate(hv.spin);ctx.scale(hv.s*(hv.sx||1),hv.s);ctx.globalAlpha*=hv.a;}
+    // Over the thrower's head on his back, legs up; and turning over in the air from his throw (js/thrower.js).
+    if(g.state==='carried'){ctx.translate(0,-26);ctx.scale(1,-1);ctx.rotate(Math.sin(renderer.t*9)*0.08);}
+    if(g.state==='tossed'){ctx.translate(0,-12);ctx.rotate(renderer.t*16*(Math.cos(g.facing)<0?-1:1));ctx.translate(0,12);}
     if(g.state==='falling'){const F=TUNING.fall,d=clamp((F.time+F.back-g.timer)/F.time,0,1);ctx.translate(0,d*26);ctx.rotate(d*1.5);ctx.scale(1-0.72*d,1-0.72*d);ctx.globalAlpha=1-d;}
     // A vault is not a tumble: stretched out long at the top of it rather than spun.
     if(g.state==='roll'){if(lp){const k=Math.sin(clamp(lp.t/lp.time,0,1)*Math.PI);ctx.scale(1+0.1*k,1-0.06*k);}else{ctx.rotate(g.rollSpin);ctx.scale(0.88,0.88);}}
@@ -889,6 +951,8 @@ class PaintedArt extends AltarArt {
     if(g.invuln>0&&Math.floor(renderer.t*30)%2===0)ctx.globalAlpha*=0.5;
     // Standing still he breathes: taller and a touch narrower from the hooves up, then back.
     if(g.state==='idle'&&hyp(g.vx||0,g.vy||0)<=30){const B=TUNING.goat.breathe,b=(1-Math.cos(renderer.t*Math.PI*2/B.period))/2;ctx.scale(1-B.wide*b,1+B.amp*b);}
+    // Sneaking (the STEALTH test, `goat.sneakK`): low and a touch wider, from the hooves up.
+    if(g.sneakK>0){const C=TUNING.stealth.crouch,k=g.sneakK;ctx.scale(1+C.wide*k,1-C.low*k);}
     // Grazing (`goat.grazeK`): head down over the front hooves, a lean toward the way he faces on a
     // side view, a squash from the hooves up on every view, and a nibble in it.
     if(g.grazeK>0){const P=TUNING.goat.grazePose,k=g.grazeK*g.grazeK*(3-2*g.grazeK),n=1+P.nibble*Math.max(0,Math.sin(renderer.t*P.rate*Math.PI*2));
@@ -900,6 +964,7 @@ class PaintedArt extends AltarArt {
       this.hornMods=game.mods;this.character(renderer,g,'sheep',40);
       // The blood is in his wool; the collar is over it, since a talisman has to read at any health.
       if(g.maxHp-g.hp>0)this.wounds(renderer,g,g.maxHp-g.hp);
+      if(g.armour>0)this.armour(renderer,g);
       if(game.artifact)this.collar(renderer,g,game.artifact);
       if(g.onFire)renderer.goatFlame(g);
     }finally{g.facing=f0;this.hornMods=null;ctx.restore();}   // a throw mid-glance must not leave the goat turned, nor the transform on the stack

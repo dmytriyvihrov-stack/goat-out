@@ -1152,7 +1152,7 @@ class GameAudio {
   // it, `hurt` a yelp. The howl is the beat the goat answers, so it sits a little over the fight.
   // `song`: a note of her song goes round the ducks (`keyBus`), so a fight's drums never cover the beat.
   sfxHusky(note = 'woo', vol = 1, song = false) {
-    this.foley('husky', { key: 'husky:' + note, args: { note }, takes: 3, gain: (note === 'woo' ? 0.17 : note === 'waf' ? 0.12 : 0.1) * vol * (song ? 1.3 : 1), wet: 0.06, bus: song ? this.keyBus : null });
+    this.foley('husky', { key: 'husky:' + note, args: { note }, takes: 3, gain: (note === 'woo' || note === 'wu' ? 0.17 : note === 'waf' ? 0.12 : 0.1) * vol * (song ? 1.3 : 1), wet: 0.06, bus: song ? this.keyBus : null });
   }
   // The lorry under them: half a second of diesel knock, called every half second while the road
   // goes past, each faded at its ends so they run on without a seam.

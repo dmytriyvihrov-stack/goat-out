@@ -199,7 +199,10 @@ class PadInput {
     const was = this.raw || [lx, ly, this.rs.x, this.rs.y], raw = [lx, ly, this.rs.x, this.rs.y];
     const moving = raw.some((v, i) => Math.abs(v - was[i]) > P.wakeMove);
     this.raw = raw;
-    this.touched = this.any() || (moving && (ll > P.wake || hyp(this.rs.x, this.rs.y) > P.wake));
+    // A device without the standard mapping (a wheel, a tablet, a HID gadget) whose axes jitter took
+    // the aim and the grab off the mouse for good (3 Oct 2026); its sticks never wake it, only a button.
+    const sticks = p.mapping === 'standard' && moving && (ll > P.wake || hyp(this.rs.x, this.rs.y) > P.wake);
+    this.touched = this.any() || sticks;
     // The menu direction: the d-pad, or the left stick pushed well over. One step on the push, then
     // a repeat while it is held, the way a held arrow key walks a list.
     const d = this.held(PAD_BTN.up) || ly < -P.navAt ? 'up' : this.held(PAD_BTN.down) || ly > P.navAt ? 'down'

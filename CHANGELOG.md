@@ -5,6 +5,76 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.98, the check pass, 3 Oct 2026
+
+His asks while the new mechanics were checked: "the cursor's style is good, a bit smaller, it is bigger than the
+goat"; "the old man who combs, somewhere about here" (down the edge room); "a cooler fall from the sky"; "a better
+stuck blade, as if it sticks out of him from the side".
+
+- **The pointer** at two CSS px a cell (`cursor.cell` 2, was 3).
+- **The shepherd** stands down the edge room toward the lip (`heaven.shepAt`), out from under the bells; heaven's
+  tables moved off his spot.
+- **The fall from heaven**: a shaft of light he comes down in (`drop.shaft`, `Heaven.drawShaft`), motes shed on the
+  way, his shadow growing under him as he nears the floor (`Heaven.dropShadow`), stretched long at the end
+  (`drop.stretch`), and he lands in a ring of light with motes thrown up, a harder squash and a beat of hitstop.
+- **A blade stuck in a man is in his flank** (`Prop.stickIn` sets `flank`, the side it came from): the hilt out past
+  his edge (`stick.out`), seen side on leaning back toward his tail; one on his far side goes under him.
+
+## The pointer, the keys, the broken mirror, 3 Oct 2026
+
+His asks: "a more visible mouse cursor, rather white, the headbutt icon: people do not tie the mouse to the actions";
+"check and improve the keyboard-only controls"; "the god asks for 20 skulls, not 200, then rewards you and opens growing
+between deaths: he mends the mirror, because it is broken"; "the mirror nearer the edge, on your way out of the first room".
+
+- **The pointer is the headbutt chip** off the skill rail (head and horns, near white, a pale halo round its ink, 60 px,
+  `buttCursor`, `TUNING.cursor`), so the hand and the left button are one picture; hidden while the keys or a pad aim.
+- **Keyboard**: J K L (or Z X C beside the arrows) pressed in play take the aim off the mouse without the setting
+  (`game.kbLive`), until a click or a real stretch of mouse travel; the caps and floor words name the set last pressed.
+  Standing still the aim snaps onto a man wider and nearer (`TUNING.kbAim.still`): eight ways to run is no aim at a man a
+  step off the diagonal. The aim mark is two square cells, brighter. KEYBOARD ONLY's note names both sets.
+- **The mirror starts broken** (cracks in cells, dull glass, nobody in it; GRAB says so, a butt rattles it). The god's
+  intro asks for twenty (`heaven.gift.mend`); the visit they are in he calls the goat over and mends it
+  (`Heaven.mend`), and only then does the edge wait for one look into it. Two hundred stays the far count that puts
+  SECOND CHANCE on the glass. A goat who already bought from it keeps it whole. The purse counts toward whichever is next.
+- **The mirror stands at the bridge's mouth** on the edge's side (`heaven.mirrorAt`), not the far corner.
+
+## The thrower, 3 Oct 2026
+
+His ask: "an enemy who also throws things, objects, his own men, even the goat", one arm much bigger than the
+other. Seven looks, then a Bane in a goat's skull, then "the butcher's size, it must read as a mask, the other arm
+really puny"; "three hearts, he looks for things and throws them, he can just hit in front of him, the goat knocks him
+back like the butcher"; "met on THE BRIDGE, it hurts when he throws the goat into something, he throws clubmen,
+hounds and the animals". Concept passes and DESIGN.md in `output/thrower-2026-10-03/`.
+
+- **THE THROWER** (`TUNING.thrower`, js/thrower.js): a bearer with `e.thrower`, 3 hearts, the butcher's `flingMul`,
+  never carried. Looks for a crate, a bomb, a clubman, a hound or an animal of the goat's in his room, lifts it (the
+  windup: butted then, a crate breaks on his own head), carries it until the goat is 1.6 to 6.5 tiles off, plants
+  with an amber line and throws: a heart if it reaches the goat; a man thrown dies on any wall. Close up a punch, or a
+  grab (the roll slips it): the goat over his head, turned toward the worst thing near (a drop, fire, a grate, stone)
+  and thrown; only what he hits hurts. Killer THE THROWER.
+- Met alone on THE BRIDGE (`introduce` 0.3), then THE RAFTERS and THE OSSUARY. `THREAT` 3. His room always holds
+  three crates or bombs (`GEN_RULES.thrower`, its own RNG stream).
+- His body (js/thrower-pixels.js): a goat's skull strapped over his own head, a tank of the green and a hose into a
+  port in his shoulder, one Popeye arm with veins lit by a wave on every beat (faster through every tell), the other
+  a stick. Four views drawn, none mirrored, so the big arm stays his right.
+- ENEMIES tab: a THROWER row (SPAWN, his numbers live).
+
+## Keys and iron, first cut, 3 Oct 2026
+
+His ask: a run resource of keys, kept from floor to floor, to choose with ("heal, or the animal, or keep the key"),
+and later a door that wants five of them. This is the first cut, "just to see how it works".
+
+- **Keys** (`TUNING.keys`, `game.runKeys`): a champion (a boss with no soul) drops one 35% of the time
+  (`Game.bossPrize` → `dropKey`); walked over, it is his. Saved with the run; a death gives back the floor's head
+  count (`levelRunKeys`). Shown top right beside the purse: a gold key with a skull for a bow (`key` in
+  js/prop-pixels.js), dimmed at 0 on a floor with iron on it. Not `game.keys`: that is the keyboard's Set.
+- **Iron cages**: from floor index 1, 60% of the floors with an animal (never the horse) shut it in iron
+  (`coop` + `ironCage`, sprite `coop-iron`: bars, rivets, a padlock with a skull) and stand a second iron cage with
+  big milk grass (`ironcage`) in another ordinary room within four rooms. No blow opens iron; standing by it says
+  IT NEEDS A KEY or HEADBUTT IT: SPEND A KEY, and a headbutt with a key spends it (`Prop.unlockIron`). One key,
+  two doors. Own RNG stream, so a floor without iron is laid as before. `GEN_RULES.iron`; `reach` counts the cage.
+- THE SHOWROOM: an iron coop, the iron grass cage and two keys in THE YARD's room. Dev drawer: `+1 KEY`.
+
 ## 1.97, the improvement loop, 2 Oct 2026
 
 Worked alone while he was away (log: `output/loop-2026-10-02/LOG.md`).

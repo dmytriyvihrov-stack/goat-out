@@ -131,7 +131,12 @@ function showroomLevel(def, seed) {
     // THE YARD, fire: bowls, powder, crates and the gong.
     (x, y) => { put('brazier', x + 5, y + 3, { roast: true }); put('brazier', x + 16, y + 11); put('brazier', x + 11, y + 3);
       put('barrel', x + 3, y + 10); put('barrel', x + 4, y + 11); put('barrel', x + 18, y + 4);
-      put('crate', x + 8, y + 11); put('crate', x + 9, y + 11); put('crate', x + 14, y + 4); put('bell', x + 19, y + 8); },
+      put('crate', x + 8, y + 11); put('crate', x + 9, y + 11); put('crate', x + 14, y + 4); put('bell', x + 19, y + 8);
+      // THE KEYS (3 Oct 2026, `TUNING.keys`), on the first floor that may stand iron: the pair, an animal
+      // and big grass behind bars only a key opens, and two keys to try them with.
+      put('coop', x + 6, y + 7, { holds: 'goose', beastRoom: 0, ironCage: true }); label('IRON COOP', x + 6, y + 8.4, 5);
+      put('ironcage', x + 11, y + 7); label('IRON · GRASS', x + 11, y + 8.4, 5);
+      put('key', x + 15, y + 7); put('key', x + 16, y + 7); label('KEYS', x + 15.5, y + 8.4, 4); },
     // THE CAVE, the hollow: grass, boulders, teeth at the wall, the mushrooms.
     (x, y) => { for (let dx = 2; dx < 9; dx++) for (let dy = 8; dy < 12; dy++) grass.push(at(x + dx, y + dy));
       put('rock', x + 14, y + 3); put('rock', x + 16, y + 4); put('rock', x + 13, y + 5);

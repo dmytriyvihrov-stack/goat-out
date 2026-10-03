@@ -69,10 +69,13 @@ class Enemy {
   get immunity() { return this.champion ? TUNING.champion.immune : this.cfg.immune; }
   get blunderProof() { const im = this.immunity; return !!(im && im.blunder); }
   // An attack number: the butcher has his own arm, everybody else reads their own kind.
-  atk(key) { return this.champion && TUNING.champion[key] !== undefined ? TUNING.champion[key] : this.cfg[key]; }
+  atk(key) {
+    if (this.thrower && TUNING.thrower.fist[key] !== undefined) return TUNING.thrower.fist[key];   // the big arm's fist (js/thrower.js)
+    return this.champion && TUNING.champion[key] !== undefined ? TUNING.champion[key] : this.cfg[key];
+  }
   // How far a headbutt throws him: light kinds further, the butcher and a man with a soul in him less.
   knockMul() {
-    return (this.cfg.flingMul || 1) * (this.champion ? TUNING.champion.flingMul : 1) * (this.soul ? TUNING.soulBearer.flingMul : 1);
+    return (this.cfg.flingMul || 1) * (this.champion ? TUNING.champion.flingMul : 1) * (this.thrower ? TUNING.thrower.flingMul : 1) * (this.soul ? TUNING.soulBearer.flingMul : 1);
   }
   // How fast a wall has to be met to kill him. A heavy man is thrown `knockMul` as far, and the
   // wall asks the same share less of him, or a butcher carrying a soul (0.55 × 0.6 of a throw) left a
@@ -85,7 +88,7 @@ class Enemy {
   // poisoned or stunned, a lower speed should hurt him"): `status.weak` on every kill speed against a wall.
   weakMul() { return this.poison > 0 || this.dazed > 0 || this.state === 'stunned' ? TUNING.status.weak : 1; }
   // Too heavy or too much more than a man to be carried: the ogre, the butcher, a soul-bearer.
-  get unliftable() { return this.kind === 'butcher' || this.champion || !!this.soul; }
+  get unliftable() { return this.kind === 'butcher' || this.champion || this.thrower || !!this.soul; }
 
   // Mist. There is no body here to hit, hold, burn, push or knock over, and a wall is not a wall
   // to it either. Everything in the game that reaches for an enemy asks this first.
@@ -98,8 +101,9 @@ class Enemy {
     // Nor is the ogre (the Butcher, 1.66): too heavy to go anywhere, which is what sets him apart
     // from the butcher, who does. Every heart he has is taken standing, while he is on his knees.
     if (this.kind === 'ratogre' || this.kind === 'butcher') { this.aware = true; return; }
-    this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true; this.flungBy = null; this.chain = 0;
+    this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true; this.flungBy = null; this.tossBy = null; this.chain = 0; this.liftedBy = null;
     this.fromMouth = false;   // `Goat.throwHeld` sets it after this; anything else that throws him clears it
+    this.floorMul = 0;        // the STEALTH test's longer fall (`stealth.floor`): `headbuttHits` sets it after this
     // Whatever he was halfway through painting goes with him. Throwing a mage mid-cast is the answer
     // to a mage in your mouth, so it has to actually stop the rune.
     this.rune = null;
@@ -137,7 +141,7 @@ class Enemy {
     // Whatever he was winding up, aiming or painting is gone.
     if (this.state === 'windup' || this.state === 'aim' || this.state === 'cast' || this.state === 'hookwind'
         || this.state === 'dodge' || this.state === 'retreat' || this.state === 'dart' || this.state === 'slamwind'
-        || this.state === 'hopwind' || this.state === 'bashwind') {
+        || this.state === 'hopwind' || this.state === 'bashwind' || this.state === 'twlift' || this.state === 'twaim' || this.state === 'twgrab') {
       if (this.state === 'bashwind') this.bashCd = TUNING.shieldman.bash.cd * game.mods.enemySlow;
       this.dashPath = null;
       this.state = 'chase'; this.rune = null;
@@ -159,7 +163,8 @@ class Enemy {
     if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return false;
     if (this.kind === 'butcher' && this.state === 'hop') return false;
     if (this.state !== 'windup' && this.state !== 'aim' && this.state !== 'cast' && this.state !== 'hookwind'
-        && this.state !== 'dart' && this.state !== 'slamwind' && this.state !== 'hopwind' && this.state !== 'bashwind') return false;
+        && this.state !== 'dart' && this.state !== 'slamwind' && this.state !== 'hopwind' && this.state !== 'bashwind'
+        && this.state !== 'twlift' && this.state !== 'twaim' && this.state !== 'twgrab') return false;
     if (this.state === 'hookwind') this.hookCd = TUNING.champion.hook.cooldown * game.mods.enemySlow;
     if (this.state === 'bashwind') this.bashCd = TUNING.shieldman.bash.cd * game.mods.enemySlow;
     this.state = 'chase'; this.rune = null; this.dashPath = null;
@@ -225,6 +230,7 @@ class Enemy {
 
   die(game, cause, dx, dy, how) {
     if (this.dead || this.ghosted) return;
+    if (this.carry) Thrower.drop(this, game);   // a blow that lands on the thrower brings down what he held
     Stats.blow(game, this, cause, how);   // what reached him, for the run's report (js/stats.js)
     // A blow that lands on the mage's man before the scene has given him the first gate's soul finds
     // it in him all the same (`game.blessNow`): that gate opens on nothing else.
@@ -278,7 +284,13 @@ class Enemy {
     const w = game.world;
     // A shieldman's board outlives him, unless the drop, the fire or a blast went with it.
     // A bomb, BOMB CHARGE and spilt powder kill with 'splat' and say so in `how`.
-    if (this.shield) { if (cause === 'fall' || cause === 'burn' || cause === 'boom' || how === 'bomb' || how === 'blast' || how === 'powder') this.shield = null; else this.dropShield(game); }
+    if (this.shield) {
+      // A blast takes the board apart with him (its skulls flying, `Scatter.breakUp`); the drop and the fire take it whole.
+      if (cause === 'boom' || how === 'bomb' || how === 'blast' || how === 'powder') { if (game.scatter) game.scatter.breakUp(Scatter.piecesOf({ skulls: true }), this.x, this.y, 16, Math.cos(this.facing), Math.sin(this.facing), 1.3); this.shield = null; }
+      else if (cause === 'fall' || cause === 'burn') this.shield = null; else this.dropShield(game);
+    }
+    // The blades he walked about with (`Prop.stickIn`) break as he goes down, each into its pieces.
+    if (this.stuck && this.stuck.length) { if (game.scatter) game.scatter.breakStuck(this); this.stuck = null; }
     // Killed while pinned on a stag's antlers, or dead on them outright (`antlers`): he stays up on the
     // wall, the trophy draws him from here on (`bodyImg`) and no body falls (`CombatFX.death`).
     if (this.impaleOn && this.impaleOn.kind === 'trophy' && cause !== 'boom' && cause !== 'roll' && cause !== 'fall') this.hung = this.impaleOn;
@@ -354,7 +366,8 @@ class Enemy {
     const g = game.goat; if (g.dead) return false;
     const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
     // A man posted to watch a door is not idling: he covers the whole room and he sees further.
-    if (d > (this.cfg.sight + (this.watchful ? (this.cfg.watchSight || 4) : 0)) * TILE) return false;
+    // STEALTH (dev test): a goat crouched (`game.sneak`) is seen `stealth.sight` of the way.
+    if (d > (this.cfg.sight + (this.watchful ? (this.cfg.watchSight || 4) : 0)) * TILE * (game.sneak ? TUNING.stealth.sight : 1)) return false;
     // THE DARK: out of the light a goat is a shape at `dark.ai.sight` tiles and nothing further, the
     // same few tiles his own ears give him, and a hound's a little more. Past it, noise is all anyone
     // has, on either side.
@@ -785,6 +798,8 @@ class Enemy {
     game.particles(fx, fy, 6, PALETTE.bone, 150);
     if (sh.uses > 0) { if (wear) game.bark(this, 'block', 0.6); return; }
     this.shield = null; this.speed = this.cfg.speed; game.bark(this, 'shattered', 1);
+    // It falls apart off his arm, skull by skull, along the blow (3 Oct 2026 playtest: "not just gone").
+    if (game.scatter) game.scatter.breakUp(Scatter.piecesOf({ skulls: true }), fx, fy, 16, dx / l, dy / l, 0.9);
     game.audio.sfxCage();   // and off his arm: the pen's frame going
     game.particles(fx, fy, 14, PALETTE.bone, 230); game.particles(fx, fy, 5, PALETTE.ashHi, 160);
     game.floatText(this.x, this.y - 30, 'SHATTERED', PALETTE.bone);
@@ -802,6 +817,32 @@ class Enemy {
     // his skulls, horns and all: a shield in the mouth, and thrown, the horns kill the first man they meet (`hitMan`)
     p.inStand = false; p.uses = Math.min(sh.uses, p.uses); p.skulls = true;
     game.props.push(p);
+  }
+
+  // Butted again and again (`TUNING.champion.shove`, 3 Oct 2026 playtest: a butcher or a corrupted
+  // clubman spammed in a corner never got out of it). Called by `Goat.headbuttHits` before the throw:
+  // every butt landed on him is counted while the last was under `window` s ago, and the n-th is
+  // answered at `odds[n]`: he is up at once if he was down and shoves the goat off, dazed a beat, no
+  // heart, nothing spent. Returns whether he did, in which case the butt did nothing to him.
+  shoveBack(game, g, ax, ay) {
+    if (this.kind !== 'bearer' || !(this.champion || this.soul) || this.dead || this.held || this.state === 'flung' || this.scripted) return false;
+    const S = TUNING.champion.shove, now = game.timer;
+    if (!(now - (this.buttAt === undefined ? -1e9 : this.buttAt) < S.window)) this.butts = 0;
+    this.buttAt = now;
+    const n = this.butts || 0;
+    if (Math.random() >= S.odds[Math.min(n, S.odds.length - 1)]) { this.butts = n + 1; return false; }
+    // Spammed on straight after it, the coin is back at once: in a corner no more than every other butt lands.
+    this.butts = 1;
+    // Up off the floor and square on to him: the corner he was being held in is his again.
+    if (this.state === 'floored' || this.state === 'stagger' || this.state === 'stunned' || this.state === 'braced') { this.state = 'chase'; this.timer = 0; }
+    this.facing = Math.atan2(g.y - this.y, g.x - this.x); this.aware = true; this.vx = 0; this.vy = 0;
+    this.shoveAt = now;
+    g.state = 'stunned'; g.timer = S.daze; g.dazed = Math.max(g.dazed || 0, S.daze);
+    g.vx = -ax * S.speed; g.vy = -ay * S.speed;
+    game.bark(this, 'shove', 0.8);
+    game.audio.sfxThud(); game.squashGoat(TUNING.juice.squash.hit); game.hitstop(0.04);
+    game.particles(g.x + ax * g.r, g.y + ay * g.r, 6, PALETTE.ash, 200);
+    return true;
   }
 
   act(dt, game) {
@@ -829,6 +870,8 @@ class Enemy {
     // A hook out of his hand lives only while he is throwing, pulling or reeling it: whatever else
     // took him (a body, a crate, fire, a blast, the floor) took the rope out of his hand.
     if (this.hook && this.state !== 'hookthrow' && this.state !== 'hookpull' && this.state !== 'hookreel') this.dropHook(game);
+    // The same for what the thrower holds over his head (js/thrower.js): out of those states, or alight, it comes down.
+    if (this.carry && (!Thrower.KEEPS.has(this.state) || this.burning > 0)) Thrower.drop(this, game);
     this.barkCd = Math.max(0, this.barkCd - dt);
     this.dazed = Math.max(0, this.dazed - dt);
     this.poison = Math.max(0, this.poison - dt);
@@ -911,7 +954,7 @@ class Enemy {
           game.floatText(this.x, this.y - 32, 'STILL CASTING', PALETTE.witch);
         }
       }
-      if (game.mods.livingShield && this.kind !== 'hunter') {
+      if (game.mods.livingShield && this.kind !== 'hunter' && !this.liftedBy) {
         this.heldSwing -= dt;
         if (this.heldSwing <= 0) {
           this.heldSwing = game.mods.shieldSwing; this.flail = 0.25;
@@ -961,7 +1004,8 @@ class Enemy {
       if (hyp(this.vx, this.vy) < TUNING.physics.flungFloorSpeed) {
         // Off the rat ogre's arm with nothing left in him: he does not get up from it.
         if (this.doomed) { this.die(game, 'club', this.vx, this.vy); return; }
-        this.state = 'floored'; this.timer = TUNING.bearer.flooredTime; this.flung = false; this.thrown = false;
+        this.state = 'floored'; this.timer = TUNING.bearer.flooredTime * (this.floorMul || 1); this.flung = false; this.thrown = false;
+        this.floorMul = 0;
       }
       return;
     }
@@ -998,7 +1042,7 @@ class Enemy {
     // the moment he is inside their room, cone and sight range or no (see `startLevel`).
     const sees = this.canSeeGoat(game) || (this.millLesson && !g.dead && roomAt(game.level, g.x, g.y) === game.level.rooms[this.room]);
     if (sees) {
-      if (!this.aware) { if (this.kind === 'dog') game.houndSeen(this); else game.bark(this, 'spot', 0.85); }
+      if (!this.aware) { if (this.kind === 'dog') game.houndSeen(this); else game.bark(this, 'spot', 0.85); this.spotT = game.timer; }
       this.aware = true; this.lastSeen = { x: g.x, y: g.y }; this.lostTimer = 0;
     }
     else if (this.aware) {
@@ -1060,12 +1104,19 @@ class Enemy {
     if (this.aware && (this.state === 'idle' || this.state === 'investigate')) {
       let notice = this.noticeFor;
       if (!notice) {
-        const distTiles = hyp(g.x - this.x, g.y - this.y) / TILE, A = TUNING.ai;
+        // STEALTH (dev test): a longer beat of doubt (`stealth.notice`), a `?` over him, to get out of his sight in.
+        const distTiles = hyp(g.x - this.x, g.y - this.y) / TILE, A = game.dev && game.dev.stealth ? TUNING.stealth.notice : TUNING.ai;
         const t = clamp((distTiles - A.noticeNear) / (A.noticeFar - A.noticeNear), 0, 1);
         notice = t > 0 ? lerp(A.noticeMin, A.noticeMax, t) : 0;
       }
-      if (notice > 0) { this.state = 'noticed'; this.timer = notice; }
-      else this.state = 'chase';
+      if (notice > 0) { this.state = 'noticed'; this.timer = this.noticeDur = notice; }
+      else { this.state = 'chase'; this.alarmAt = game.timer; }
+    }
+    // STEALTH (dev test): out of his sight again before his beat of doubt is over, he only thinks he
+    // saw something, and goes to look where it was. Not an authored beat (`noticeFor`).
+    if (this.state === 'noticed' && !sees && game.dev && game.dev.stealth && !this.noticeFor && this.lastSeen) {
+      this.aware = false; this.state = 'investigate'; this.target = { x: this.lastSeen.x, y: this.lastSeen.y };
+      game.bark(this, 'search', 0.5);
     }
     if (this.state === 'noticed') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(g.y - this.y, g.x - this.x);
@@ -1079,7 +1130,7 @@ class Enemy {
       // room is two men doing two different things, one after the other.
       if (this.millLesson && !this.millRun && this.timer <= 0 && (this.millWatchT = (this.millWatchT || 0) + dt) < TUNING.ai.millRun.watch
           && game.enemies.some((o) => o.millRun && !o.dead && o.room === this.room)) return;
-      if (this.timer <= 0) this.state = 'chase'; else return;
+      if (this.timer <= 0) { this.state = 'chase'; this.alarmAt = game.timer; } else return;
     }
     if (!this.ghosted && this.burning <= 0 && w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); if (this.burning > 0) return; }
 
@@ -1156,6 +1207,22 @@ class Enemy {
     return true;
   }
 
+  // STEALTH (dev test): an idle man looks into his room, not at its wall, now that where he looks is
+  // drawn on the floor. `stealth.idle.tries` headings all round him, each run out until stone (up to
+  // `far` tiles), and one of those within `keep` of the longest taken at random.
+  openFacing(game) {
+    const I = TUNING.stealth.idle, w = game.world, far = I.far * TILE, step = TILE / 2, n = I.tries, opts = [];
+    let best = 0;
+    for (let i = 0; i < n; i++) {
+      const a = this.facing + (i + Math.random() - 0.5) / n * Math.PI * 2, ux = Math.cos(a), uy = Math.sin(a);
+      let d = step;
+      while (d < far && !w.isSolid(Math.floor((this.x + ux * d) / TILE), Math.floor((this.y + uy * d) / TILE))) d += step;
+      opts.push({ a, d }); if (d > best) best = d;
+    }
+    const good = opts.filter((o) => o.d >= best * I.keep);
+    return good[Math.floor(Math.random() * good.length)].a;
+  }
+
   idleWander(dt, game) {
     if (this.sentry) { this.vx = 0; this.vy = 0; return; }   // he was put facing that way on purpose
     // A man lying in the grass stays lying there until something gets him up: that is what hiding is.
@@ -1166,6 +1233,10 @@ class Enemy {
     // choosing a fresh direction, so idling never drifts a man through a doorway into the next room
     // (or, in a room built to teach one idea, out of the corner the level put him in to wait).
     const out = len(this.x - this.home.x, this.y - this.home.y) > TUNING.ai.leash * TILE;
+    // STEALTH (dev test): stood with his nose to the stone (a search that ended on a wall), he looks round soon.
+    const sneakTest = game.dev && game.dev.stealth, I = TUNING.stealth.idle;
+    if (sneakTest && !this.walking && this.wander > I.wake && game.world.isSolid(Math.floor((this.x + Math.cos(this.facing) * I.wall * TILE) / TILE),
+      Math.floor((this.y + Math.sin(this.facing) * I.wall * TILE) / TILE))) this.wander = I.wake;
     if (this.wander <= 0 || out) {
       this.wander = 1 + Math.random() * 3;
       let f = out ? Math.atan2(this.home.y - this.y, this.home.x - this.x) : this.facing + (Math.random() - 0.5) * 2;
@@ -1173,7 +1244,8 @@ class Enemy {
       // ever checked: he'd just stand there looking at stone until the next wander beat. Resample a
       // few times against a look-ahead probe rather than leave him facing it, this only ever
       // touches the direction he is about to face, never whether he walks.
-      if (!out) {
+      if (!out && sneakTest) f = this.openFacing(game);
+      else if (!out) {
         const w = game.world, look = TUNING.ai.wanderClear * TILE;
         for (let tries = 0; tries < 5 && w.isSolid(Math.floor((this.x + Math.cos(f) * look) / TILE), Math.floor((this.y + Math.sin(f) * look) / TILE)); tries++) {
           f = this.facing + (Math.random() - 0.5) * 2;
@@ -1214,6 +1286,8 @@ class Enemy {
     if (this.champion && !this.sentry && this.hookStep(dt, game, sees)) return;
     // The shieldman leaps at you behind his board (`bashStep`).
     if (this.shield && !this.sentry && this.bashStep(dt, game, sees)) return;
+    // The thrower looks for something to throw, lifts it, throws it; up close he grabs the goat (js/thrower.js).
+    if (this.thrower && !this.sentry && Thrower.step(this, dt, game, sees)) return;
     if (this.state === 'chase') {
       const d = this.chaseGoat(game, this.speed, dt);
       if (d < reach + g.r && !g.dead) { this.state = 'windup'; this.timer = this.atk('windup') * game.mods.enemySlow; this.vx = 0; this.vy = 0; game.bark(this, 'attack', 0.25); }
@@ -1226,7 +1300,7 @@ class Enemy {
     }
     if (this.state === 'swing') {
       this.timer -= dt;
-      if (!this.swingHit) { this.swingHit = true; game.meleeHit(this, reach + 6, Math.PI / 2, cfg.damage, cfg.knock); if (this.keeper) this.keeperFire(game); }
+      if (!this.swingHit) { this.swingHit = true; game.meleeHit(this, reach + 6, Math.PI / 2, this.atk('damage'), this.atk('knock')); if (this.keeper) this.keeperFire(game); }
       if (this.timer <= 0) { this.state = 'recover'; this.timer = this.atk('recover') * game.mods.enemySlow; }
       return;
     }
@@ -2103,7 +2177,7 @@ class Enemy {
   // i-frames, and any other moment he cannot be hurt, go through the rope).
   static hookable(g) {
     if (g.dead || g.leap || g.invuln > 0) return false;
-    return g.state !== 'roll' && g.state !== 'stunned' && g.state !== 'falling' && g.state !== 'ko';
+    return g.state !== 'roll' && g.state !== 'stunned' && g.state !== 'falling' && g.state !== 'ko' && g.state !== 'carried' && g.state !== 'tossed';
   }
   // Stone and whatever stops a round stop the hook; his own men do not, it goes past them.
   hookLine(game, x, y) { return game.clearLine(this.x, this.y, x, y, game.props, 'stopsBullets', 2); }

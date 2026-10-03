@@ -77,3 +77,33 @@ sessions share the tree); no commit, push or publish. Dev server: `goat-out-loop
   other session kept the beat lists and guarded the hat calls); my changelog bullet, MUSIC.md and the counts above
   said "hats up / hats 64" and are corrected. The fight's contrast now rests on the kick, the toms, the rim and the riff.
 - Script lists: index.html == artifact.html, every js/ file loaded, nothing loaded that is not on disk.
+
+## Iteration 8 (3 Oct, after midnight)
+
+- After the other session's floor-plan change (THE ALTAR ends on a soul clubman, the butcher's ring is THE YARD's
+  room 4, keepers at three hearts): `doc-numbers.js` 56 of 56, `balance.js` every rule holds (the same two
+  "easier than the last" power notes as before), generator 250 fresh seeds a floor 0 failures, smoke bot THE ALTAR
+  and THE YARD on seeds 31 and 32: 4 of 4 OK, no throw, no NaN. CLAUDE.md's ramp paragraph was already updated there.
+- The bot's `souls 0` on every line is the bot, not the game: checked by hand on THE ALTAR seed 31, the last boss
+  (3 hearts, `soul`) dies on the wall, drops the exit gate's soul, and walking onto it opens two cards. The first
+  gate's man is `blessing` (the mage makes him keeper). The bot teleports when stuck and a three-heart keeper no
+  longer falls to its incidental kills, so it reaches the stairs with no card taken. Worth one look at smoke.js
+  some day (count souls dropped, not cards taken).
+- The bot's one 423 ms update stall (THE ALTAR seed 31, room 1 at 13 s) sent me to the profiler, and the profiler
+  is not to be trusted tonight: `PERF.frames` on a warmed page read THE ALTAR 1.94 ms update / 11.7 draw and THE
+  THRESHING FLOOR 3.48 / 10.5, against 0.95 / 2.48 on the same THRESHING FLOOR seed this morning. The machine is
+  at 57% CPU with Boosteroid (a cloud-gaming client, 3085 CPU s) and four Claude sessions running, and the pane is
+  hidden. Not called a regression. Tonight's render-side changes (white souls rising off every dead man, greyed
+  corpses, the cave's fog) are the suspects if a quiet-machine re-measure still reads high: `PERF.top('L4', 47, 200)`
+  would name the method.
+
+## Iteration 9
+
+- The tree: the other session committed everything in 1411e85 and 5ae6aca ("the loop's later iterations"), my
+  edits included; only this log is uncommitted. Machine still at 77% with Boosteroid up: no profiling.
+- `tools/smoke.js`: the report's `souls` was cards taken, which could not tell a bot that walked past a soul from a
+  floor that dropped none. Now `souls taken/dropped` (every soul that ever lay in `game.souls`), and a soul lying
+  within `opts.soulR` (8) tiles is walked onto, so a dropped soul's pickup and cards are exercised, and a gate's
+  soul opens the gate instead of being teleported past. THE ALTAR seed 31: `souls 0/0`, honest: the bot's
+  incidental butts never finish a three-heart keeper or boss, so nothing drops; the cards were proved by hand in
+  iteration 8. Tool only; no game code touched.

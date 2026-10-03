@@ -108,6 +108,8 @@ const JUICE_NOPLAY = {
   'The soul goes up': 'the goat dying on a floor, die on any floor',
   'Second chance': 'SECOND CHANCE bought in the mirror (dev drawer HEAVEN) and a death on a floor',
   'Armour flies apart': 'a suit of armour hangs on a far wall, THE SHOWROOM has one: throw a man at it',
+  'Blades and shields fall apart': 'a sword off a stand thrown at a wall, THE SHOWROOM has the stand',
+  'A blade stays in him': 'a sword thrown at a man with a heart to spare: spawn a butcher from the dev drawer',
   'Hung on the antlers': 'a stag’s head hangs on a far wall, THE SHOWROOM has one: throw a man at it',
   'Butcher hook line': 'a butcher a few tiles off with a clear line to the goat, play THE ALTAR or spawn one from the dev drawer',
   'Camera lead': 'a camera following him across a floor, play a floor',
@@ -337,7 +339,7 @@ const JuicePreview = {
       pathTimer: 99, milkFullUsed: false, toldGrab: false, firstKill: null, goatLit: true, henSaved: false,
       // What `startLevel` lays and the title never has: named here, so a preview opened from the
       // title reads empty lists of its own rather than nothing.
-      enemies: [], props: [], bullets: [], parts: [], floats: [], rings: [], puffs: [], flares: [], souls: [], globs: [], fallers: [],
+      enemies: [], props: [], bullets: [], parts: [], floats: [], rings: [], puffs: [], flares: [], souls: [], globs: [], fallers: [], tossed: [],
       hazards: [], sightBlockers: [], runes: [], niches: [], sealedRooms: [], soulGates: [], liveEnemies: [], beastSaved: [], wallArt: [],
       pathTrail: [], heartLog: [], killMarks: [], crowMarks: [],
       fx: null, scatter: null, audio: this.audioFor(game),

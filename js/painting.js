@@ -67,7 +67,10 @@ const Painting = {
       cuts.push(x1); return cuts;
     };
     let best = null;
+    // A short floor is shown whole, one strip (3 Oct 2026: "if the level is fairly short, show it all
+    // on one screen"): cut only when one strip would be wider than `oneRow` times its height.
     for (let n = 1; n <= P.maxRows; n++) {
+      if (best && best.n === 1 && best.cw / best.ch <= P.oneRow) break;
       const cuts = cutsFor(n); let wMax = 0;
       for (let k = 0; k < n; k++) wMax = Math.max(wMax, cuts[k + 1] - cuts[k]);
       const cw = wMax + P.pad * 2, ch = n * rowsH + (n - 1) * P.gap + P.pad * 2;
@@ -330,9 +333,11 @@ const Painting = {
     // the picture, whole, room left under it for the road, the words and the button
     // 266 is what goes under it: road 110, tally 34, the killer's plate 50, the button 36, the run code 36.
     // At 210 a short screen (1280x800) clamped the button up onto the plate (2 Oct 2026).
-    const cv = pic.canvas, top = H * D.top, room = Math.max(H * 0.18, H - 266 * s - top);
+    const cv = pic.canvas, top0 = H * D.top, room = Math.max(H * 0.18, H - 266 * s - top0);
     const k = Math.min(W * P.fit.w / cv.width, H * D.h / cv.height, room / cv.height);
     const dw = cv.width * k, dh = cv.height * k, dx = (W - dw) / 2;
+    // a short floor in one strip leaves the card's foot empty: the whole of it is centred instead
+    const top = Math.max(top0, (H - dh - 266 * s) / 2);
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, dx, top, dw, dh); ctx.restore();
     ctx.strokeStyle = 'rgba(239,230,208,0.22)'; ctx.lineWidth = Math.max(1, s);
     ctx.strokeRect(Math.round(dx) - 0.5, Math.round(top) - 0.5, Math.round(dw) + 1, Math.round(dh) + 1);
@@ -365,15 +370,28 @@ const Painting = {
     // The run code only with the dev drawer open (2 Oct 2026 playtest: "not sure the death screen needs
     // this"); leaving the card still copies it (`copyCode`) for whoever is asked to paste it.
     if (card.code && game.dev && game.dev.open) { ctx.font = `${Math.max(12 * r.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, H - 18 * s); }
-    if (card.go && game.stateTimer <= 0) {
-      ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1);
-      r.goButton(game, card.go, W / 2, Math.min(y + Math.max(words.length * 22 * s, plate) + 4 * s, H - 36 * s - 38 * s));
+    // ASCEND, and beside it RESTART, the floor again at once, past heaven (3 Oct 2026). RESTART is
+    // offered `death.quick` s after the blow, before the pull-back is done; ASCEND waits for it.
+    this.quickRect = null;
+    if (card.go) {
+      const by = Math.min(y + Math.max(words.length * 22 * s, plate) + 4 * s, H - 36 * s - 38 * s);
+      const qk = { key: keysOf(game).back, quiet: true };
+      const ra = r.goButton(game, card.go, 0, by, { measure: true }), rq = game.showroomOn ? null : r.goButton(game, 'RESTART', 0, by, Object.assign({ measure: true }, qk));
+      const gap = 16 * s, side = rq && ra.w + gap + rq.w <= W - 24 * s;
+      const left = W / 2 - (side ? ra.w + gap + rq.w : ra.w) / 2;
+      const since = TUNING.deathCam.delay + TUNING.deathCam.zoomTime - game.stateTimer;
+      if (rq && since >= D.quick) {
+        ctx.globalAlpha = clamp((since - D.quick) / 0.4, 0, 1);
+        this.quickRect = r.goButton(game, 'RESTART', side ? left + ra.w + gap + rq.w / 2 : W / 2, side ? by : Math.min(by + 44 * s, H - 40 * s), qk);
+      }
+      if (game.stateTimer <= 0) { ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1); r.goButton(game, card.go, left + ra.w / 2, by); }
     }
     ctx.restore();
   },
 
   hit(p, rc) { return !!(p && rc && p.x >= rc.x && p.x <= rc.x + rc.w && p.y >= rc.y && p.y <= rc.y + rc.h); },
   onSave(p) { return this.canSave && this.hit(p, this.saveRect); },
+  onQuick(p) { return this.hit(p, this.quickRect); },
 
   // What leaves the game: the picture at `export` times its own pixels, with its name, the run's
   // numbers and the seed that deals the same floors in a band underneath.

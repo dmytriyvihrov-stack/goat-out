@@ -275,13 +275,13 @@ Object.assign(Beast, {
       if (S.cleared >= 0 && c - S.cleared >= C.after) return Beast.endSong(game, false);
     }
     const ph = S.t - S.cycle * S.len;
-    // her two notes, sung as they cross the line
-    // (a bark on the first, the howl on the second, both heard: they used to be the tortoise's knock)
+    // her notes, sung as they cross the line: every one a howl (3 Oct 2026, "when her note comes, she
+    // really does WOO"; the first was a bark), the last held long
     for (const h of C.her) if (S.cycle >= 0 && ph >= h && ph - dt < h) {
-      const woo = h !== C.her[0];
-      p.singing = woo ? 0.9 : 0.4; game.audio.sfxHusky(woo ? 'woo' : 'waf', 1, true);
-      if (woo) game.ring(p.x, p.y, C.wooRing * TILE, '#9fd0ff', 0.5, 2);
-      game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: woo ? 'WOOO' : 'WAF', color: PALETTE.hen, life: 0.7, pact: true });
+      const long = h === C.her[C.her.length - 1];
+      p.singing = long ? 0.9 : 0.5; game.audio.sfxHusky(long ? 'woo' : 'wu', 1, true);
+      game.ring(p.x, p.y, (long ? 1 : 0.6) * C.wooRing * TILE, '#9fd0ff', 0.5, 2);
+      game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: long ? 'WOOOO' : 'WOO', color: PALETTE.hen, life: 0.7, pact: true });
     }
     if (S.practice) {
       // The practice cannot be lost: it ends sung, or when he walks out of the room, or men come in,
@@ -317,50 +317,81 @@ Object.assign(Beast, {
     }
     else { p.task = null; game.floats.push({ x: p.x, y: p.y, on: p, row: 0, n: 1, text: C.grade.lost, color: PALETTE.ashHi, life: 2, pact: true }); p.refused = C.giveUp; }
   },
-  // The two staves at the foot of the screen: her notes, then his, sliding left to the line.
+  // The song as Guitar Hero lays it (3 Oct 2026: "much shorter and centred, more like Guitar Hero, and
+  // instead of the words her face and yours"): two lanes down the middle of the screen's foot, the notes
+  // falling onto the strike line, her fret on the left and his on the right, and under each fret, in
+  // place of HER and YOU, the husky and the goat themselves. Her fret lights as she howls on it.
   drawSong(R, game) {
     const S = game.song; if (!S || game.state !== 'play') return;
-    const C = TUNING.prop.husky, ctx = R.ctx, s = R.ts, W = Math.min(R.vw - 40 * s, 520 * s), x0 = (R.vw - W) / 2;
-    const y0 = R.vh - (game.touch.active ? 230 * R.s : 150 * s), lane = 30 * s, hitX = x0 + 70 * s, speed = (W - 90 * s) / C.lead, len = S.len || C.cycle;
+    const C = TUNING.prop.husky, V = C.view, ctx = R.ctx, s = R.ts, len = S.len || C.cycle;
+    const laneW = V.lane * s, gap = V.gap * s, padX = 8 * s, W = laneW * 2 + gap + padX * 2, x0 = Math.round((R.vw - W) / 2);
+    const iconH = V.icon * s, bottom = R.vh - (game.touch.active ? 230 * R.s : V.foot * s);
+    const strikeY = Math.round(bottom - iconH - 12 * s), top = Math.round(strikeY - V.tall * s);
+    const lx = [x0 + padX + laneW / 2, x0 + padX + laneW + gap + laneW / 2];
+    const speed = (strikeY - top - 10 * s) / C.lead;
     const a = S.done ? clamp(S.end / 0.6, 0, 1) : clamp((S.t + C.leadIn) / 0.4, 0, 1);
+    const blue = '#9fd0ff', her = PALETTE.hen, sing = S.p.singing > 0;
     ctx.save(); ctx.globalAlpha = a;
-    ctx.fillStyle = 'rgba(13,10,12,0.78)'; ctx.fillRect(x0, y0, W, lane * 2 + 26 * s);
-    // The practice says what it wants, over the staves, where the eye already is.
-    if (S.practice && !S.done) {
-      let fs = Math.max(Math.ceil(12 * R.s), Math.round(14 * s)); ctx.font = FONT_PICK.font('text', fs);
-      const tw = textW(ctx, C.practice.say); if (tw > W - 20 * s) { fs = Math.max(Math.ceil(12 * R.s), Math.floor(fs * (W - 20 * s) / tw)); ctx.font = FONT_PICK.font('text', fs); }
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(13,10,12,0.78)'; ctx.fillRect(x0, y0 - 26 * s, W, 26 * s);
-      ctx.fillStyle = PALETTE.hen; ctx.fillText(C.practice.say, x0 + W / 2, y0 - 8 * s);
+    // the board: dark, faded off toward the top in hard steps (the far end of the highway)
+    ctx.fillStyle = 'rgba(13,10,12,0.9)'; ctx.fillRect(x0, top + 24 * s, W, bottom - top - 24 * s);
+    for (let k = 0; k < 4; k++) { ctx.fillStyle = `rgba(13,10,12,${0.16 + k * 0.16})`; ctx.fillRect(x0, top + k * 6 * s, W, 6 * s); }
+    // the two lanes, and the bar lines sliding down them so the board reads as moving
+    for (const k of [0, 1]) { ctx.fillStyle = k ? 'rgba(159,208,255,0.07)' : 'rgba(255,224,138,0.06)'; ctx.fillRect(lx[k] - laneW / 2, top, laneW, strikeY - top + 8 * s); }
+    for (let c = Math.max(0, S.cycle - 1); c <= S.cycle + 2; c++) for (let q = 0; q < 4; q++) {
+      const y = strikeY - (c * len + q * len / 4 - S.t) * speed; if (y < top + 2 * s || y > strikeY) continue;
+      ctx.fillStyle = `rgba(239,230,208,${q ? 0.06 : 0.16})`; ctx.fillRect(x0 + padX, Math.round(y), W - padX * 2, Math.max(1, Math.round(s)));
     }
-    ctx.fillStyle = '#9fd0ff'; ctx.fillRect(x0, y0, W, 2 * s);
-    ctx.font = `700 ${Math.max(12 * R.s, 12 * s)}px ${FONT_SC}`; ctx.textAlign = 'left';
-    ctx.fillStyle = PALETTE.hen; ctx.fillText('HER', x0 + 10 * s, y0 + 8 * s + lane * 0.62);
-    ctx.fillStyle = PALETTE.bone; ctx.fillText('YOU · ' + keysOf(game).scream, x0 + 10 * s, y0 + 8 * s + lane * 1.62);
-    for (const k of [0, 1]) { ctx.fillStyle = 'rgba(239,230,208,0.12)'; ctx.fillRect(hitX, y0 + 8 * s + k * lane + lane * 0.5 - 1, W - (hitX - x0) - 10 * s, 2); }
-    // the line, lit when he hits
-    ctx.fillStyle = S.flash > 0 ? '#9fd0ff' : S.miss > 0 ? PALETTE.blood : 'rgba(239,230,208,0.6)';
-    ctx.fillRect(hitX - 2 * s, y0 + 6 * s, 4 * s, lane * 2 + 4 * s);
-    // the window on his lane
-    const wl = Math.max(x0 + 4 * s, hitX - C.window * speed);
-    ctx.fillStyle = 'rgba(159,208,255,0.16)'; ctx.fillRect(wl, y0 + 8 * s + lane + 3 * s, hitX + C.window * speed - wl, lane - 6 * s);
-    const note = (time, lane_, col, big, gone) => {
-      const x = hitX + (time - S.t) * speed; if (x < x0 + 4 * s || x > x0 + W - 6 * s) return;
-      const cy = y0 + 8 * s + lane_ * lane + lane * 0.5, r = big ? 8 * s : 6 * s;
-      ctx.globalAlpha = a * (gone ? 0.25 : 1); ctx.fillStyle = col;
-      ctx.fillRect(Math.round(x - r), Math.round(cy - r * 0.7), Math.round(r * 2), Math.round(r * 1.4));
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(Math.round(x - r + 2 * s), Math.round(cy - r * 0.7 + 2 * s), Math.round(r * 0.6), Math.round(2 * s));
+    // his window round the strike line
+    const wTop = Math.max(top, strikeY - C.window * speed);
+    ctx.fillStyle = 'rgba(159,208,255,0.14)'; ctx.fillRect(lx[1] - laneW / 2, wTop, laneW, strikeY + Math.min(C.window * speed, 10 * s) - wTop);
+    // the strike line, lit when he hits, red when he missed
+    ctx.fillStyle = S.flash > 0 ? blue : S.miss > 0 ? PALETTE.blood : 'rgba(239,230,208,0.55)';
+    ctx.fillRect(x0 + 4 * s, strikeY - Math.round(1.5 * s), W - 8 * s, Math.round(3 * s));
+    // a note: a gem falling down its lane, its glint top left; faded in off the far end
+    const note = (time, k, col, big, gone) => {
+      const y = strikeY - (time - S.t) * speed; if (y < top + 2 * s || y > strikeY + 12 * s) return;
+      const w = (big ? 30 : 22) * s, h = (big ? 12 : 9) * s;
+      ctx.globalAlpha = a * (gone ? 0.25 : 1) * clamp((y - top) / (28 * s), 0, 1);
+      ctx.fillStyle = PALETTE.ink; ctx.fillRect(Math.round(lx[k] - w / 2 - s), Math.round(y - h / 2 - s), Math.round(w + 2 * s), Math.round(h + 2 * s));
+      ctx.fillStyle = col; ctx.fillRect(Math.round(lx[k] - w / 2), Math.round(y - h / 2), Math.round(w), Math.round(h));
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(Math.round(lx[k] - w / 2 + 2 * s), Math.round(y - h / 2 + 2 * s), Math.round(w * 0.3), Math.round(2 * s));
       ctx.globalAlpha = a;
     };
     for (let c = Math.max(0, S.cycle - 1); c <= S.cycle + 1; c++) {
       const base = c * len;
-      C.her.forEach((h, i) => note(base + h, 0, PALETTE.hen, i === 1, false));
-      note(base + C.you, 1, '#9fd0ff', true, c === S.cycle && S.answered);
+      C.her.forEach((h, i) => note(base + h, 0, her, i === C.her.length - 1, false));
+      note(base + C.you, 1, blue, true, c === S.cycle && S.answered);
     }
-    // how many answered, and the time left
-    ctx.globalAlpha = a; ctx.textAlign = 'right'; ctx.fillStyle = '#9fd0ff';
+    // the frets on the line: hers glows while she howls, his when he lands one; his key inside it
+    const fret = (k, col, lit) => {
+      const w = 34 * s, h = 16 * s, x = Math.round(lx[k] - w / 2), y = Math.round(strikeY - h / 2);
+      ctx.fillStyle = lit ? col : 'rgba(13,10,12,0.9)'; ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, Math.round(2 * s)); ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    };
+    fret(0, her, sing); fret(1, S.miss > 0 && !S.flash ? PALETTE.blood : blue, S.flash > 0);
+    ctx.font = `700 ${Math.max(12 * R.s, 11 * s)}px ${FONT_SC}`; ctx.textAlign = 'center';
+    ctx.fillStyle = S.flash > 0 ? PALETTE.ink : 'rgba(239,230,208,0.8)'; ctx.fillText(keysOf(game).scream, lx[1], strikeY + 4 * s);
+    // under the frets, in place of HER and YOU: the husky (muzzle up while she sings) and the goat
+    const hk = PROP_PIXELS.sprites[sing ? 'husky-sing' : 'husky-stand'];
+    if (hk) {
+      const T = iconH / hk.h, hop = sing ? Math.round(3 * s) : 0;
+      // drawn facing right, across the board at him
+      PROP_PIXELS.draw(ctx, sing ? 'husky-sing' : 'husky-stand', Math.round(lx[0] - hk.w * T / 2), Math.round(bottom - hk.h * T - hop), T);
+    }
+    // the goat as the book draws him (`Codex.portrait`): himself, with whatever souls and talisman he has
+    Codex.portrait(R, game, lx[1], bottom - (S.flash > 0 ? 3 * s : 0), V.goat * s, game.mods, game.artifact, 'song');
+    // over the board: how many answered (or how it ended), and in the practice what it wants
+    ctx.globalAlpha = a; ctx.textAlign = 'center';
     const done = { won: 'SUNG', lost: 'SHE GAVE UP', practised: 'READY · NOW FOR REAL', skipped: 'NOW FOR REAL' }[S.done];
-    ctx.fillText(done || `${S.practice ? 'PRACTICE · ' : ''}${S.hits} / ${Beast.songNeed(S)}`, x0 + W - 10 * s, y0 + 8 * s + lane * 0.62);
+    ctx.font = `700 ${Math.max(12 * R.s, 14 * s)}px ${FONT_SC}`; ctx.fillStyle = blue;
+    ctx.fillText(done || `${S.practice ? 'PRACTICE · ' : ''}${S.hits} / ${Beast.songNeed(S)}`, x0 + W / 2, top - 4 * s);
+    if (S.practice && !S.done) {
+      const PW = Math.min(R.vw - 32 * s, 460 * s);
+      let fs = Math.max(Math.ceil(12 * R.s), Math.round(14 * s)); ctx.font = FONT_PICK.font('text', fs);
+      const tw = textW(ctx, C.practice.say); if (tw > PW - 20 * s) { fs = Math.max(Math.ceil(12 * R.s), Math.floor(fs * (PW - 20 * s) / tw)); ctx.font = FONT_PICK.font('text', fs); }
+      ctx.fillStyle = 'rgba(13,10,12,0.78)'; ctx.fillRect((R.vw - PW) / 2, top - 46 * s, PW, 24 * s);
+      ctx.fillStyle = her; ctx.fillText(C.practice.say, R.vw / 2, top - 29 * s);
+    }
     ctx.restore();
   },
 });

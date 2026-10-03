@@ -236,6 +236,18 @@ const PROP_PIXELS = (() => {
     g.set(16, 3, P.i3); g.set(17, 3, P.i4);                                     // point
     return g.outline();
   }
+  // A halberd off a suit of armour (3 Oct 2026): the suit's own, lying, the shaft long, the head
+  // at the far end, spike, axe blade up, hook down. Thrown it is the sword's blade (`p.halberd`).
+  function halberd() {
+    const g = new Grid(31, 11), y = 5;
+    g.hl(1, y, 22, P.w2); g.hl(1, y + 1, 22, P.w1); g.set(1, y, P.w3); g.set(8, y, P.w3); g.set(15, y, P.w3);   // the shaft
+    g.rect(0, y, 1, 2, P.i2);                                                                       // its butt cap
+    g.rect(23, y - 1, 2, 4, P.i2);                                                                  // the socket
+    g.hl(25, y, 5, P.i4); g.hl(25, y + 1, 5, P.i3); g.set(30, y, P.i3);                             // the spike
+    g.poly([[23, y - 1], [28, y - 1], [29, y - 5], [26, y - 5], [23, y - 3]], P.i3); g.hl(26, y - 5, 4, P.i4);   // the axe blade
+    g.rect(23, y + 2, 2, 2, P.i2); g.set(25, y + 3, P.i2); g.set(26, y + 4, P.i1);                   // the hook
+    return g.outline();
+  }
   // The same sword stood on its point, hilt up: the stand holds it this way.
   function swordUp() {
     const h = sword(), g = new Grid(h.h, h.w);
@@ -772,6 +784,43 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
+  // ---------------------------------------------------------------- the iron cage, over the coop's dark
+  // The coop's frame in iron (`TUNING.keys`): round bars, top and bottom rails with rivets, and a
+  // padlock with a skull on it, which is the one thing on it that says what opens it. 38 x 25.
+  function ironFront() {
+    // The frame is outlined; the bars go in after, so the outline never fills the gaps between them
+    // (it did: a 2-texel gap beside a bar is all outline, and the cage read as a black box).
+    const g = new Grid(38, 25);
+    g.rect(1, 1, 36, 3, P.i2); g.hl(1, 1, 36, P.i4); g.hl(1, 3, 36, P.i1);
+    g.rect(1, 20, 36, 3, P.i1); g.hl(1, 20, 36, P.i3); g.hl(1, 22, 36, P.i0);
+    g.rect(0, 1, 2, 22, P.i1); g.vl(0, 1, 22, P.i3); g.rect(36, 1, 2, 22, P.i1); g.vl(37, 1, 22, P.i0);
+    for (let x = 4; x < 36; x += 8) { g.set(x, 2, P.i4); g.set(x, 21, P.i3); }
+    g.outline();
+    for (let x = 5; x < 35; x += 5) { g.vl(x, 4, 16, P.i3); g.vl(x + 1, 4, 16, P.i0); g.set(x, 4, P.i4); }
+    // the padlock: a shackle over a body, a bone skull on its face
+    const L = new Grid(38, 25);
+    L.ring(18.5, 9.5, 3, 3.2, 1, P.i3); L.rect(15, 10, 8, 8, P.b2); L.hl(15, 10, 8, P.b4); L.vl(15, 10, 8, P.b3); L.hl(15, 17, 8, P.b0); L.vl(22, 10, 8, P.b1);
+    L.rect(17, 12, 4, 3, P.n3); L.hl(17, 12, 4, P.n4); L.rect(18, 15, 2, 1, P.n2);
+    L.set(17, 13, P.k0); L.set(20, 13, P.k0); L.set(17, 14, P.h2);
+    return g.blit(L.outline(), 0, 0);
+  }
+
+  // ---------------------------------------------------------------- the key, 27 x 14
+  // Enter the Gungeon's key in the cult's taste: a gold shaft and bit, and the bow a bone skull with
+  // red in one socket.
+  function cultKey() {
+    const g = new Grid(28, 15), o = 1;
+    g.rect(10 + o, 5 + o, 14, 3, P.b2); g.hl(10 + o, 5 + o, 14, P.b4); g.hl(10 + o, 7 + o, 14, P.b1);
+    g.rect(19 + o, 8 + o, 2, 3, P.b2); g.vl(19 + o, 8 + o, 3, P.b3);
+    g.rect(22 + o, 8 + o, 2, 4, P.b2); g.vl(22 + o, 8 + o, 4, P.b3);
+    g.ell(5 + o, 5 + o, 4.6, 4.4, P.n3); g.rect(2 + o, 7 + o, 6, 3, P.n3);
+    g.tone((x, y) => y >= 8 + o || x >= 7 + o, P.n2, [P.n3]); g.hl(3 + o, 1 + o, 3, P.n4);
+    g.rect(2 + o, 4 + o, 2, 2, P.k0); g.rect(6 + o, 4 + o, 2, 2, P.k0); g.set(3 + o, 5 + o, P.h3);
+    g.set(5 + o, 7 + o, P.k1); g.set(3 + o, 9 + o, P.k1); g.set(5 + o, 9 + o, P.k1); g.set(7 + o, 9 + o, P.k1);
+    g.rect(9 + o, 4 + o, 2, 5, P.b3); g.vl(9 + o, 4 + o, 5, P.b4);
+    return g.outline();
+  }
+
   // ---------------------------------------------------------------- the horse's stall, in two layers
   // Three tiles by two (`TUNING.prop.stall`), drawn upright on its near edge: a back wall of boards
   // and a hay rack, straw on a dark floor, then the horse (drawn by the game), then the heavy front
@@ -899,7 +948,8 @@ const PROP_PIXELS = (() => {
 
   // ---------------------------------------------------------------- the cave's teeth
   // Three stone teeth standing out of old blood: the back two lower, the front one tall, every point
-  // the brightest thing on it. The blood round the foot is what says the rock kills. 22 x 24.
+  // wet red (3 Oct 2026 playtest: white points read as crystal, not as a thing that hurts). The blood
+  // round the foot and on the points is what says the rock kills. 22 x 24.
   function spire() {
     const pool = new Grid(22, 24), r = rng(101);
     pool.ell(11, 20.5, 10.5, 3.2, P.bl); pool.speckle(r, 26, P.r1, [P.bl]); pool.speckle(r, 8, P.r2, [P.bl]);
@@ -908,7 +958,7 @@ const PROP_PIXELS = (() => {
       g.poly([[x0, by], [tx + 0.5, ty], [x1, by]], P.s2);
       g.tone((x, y) => x + 0.5 > tx + 0.5 + (y - ty) * 0.12, P.s1, [P.s2]);        // the far side in shade
       g.tone((x, y) => x < tx - 1 + (y - ty) * -0.25 + 1, P.s3, [P.s2]);            // the lit edge
-      for (let y = ty; y < ty + 3; y++) g.set(tx, y, y === ty ? '#f2efe6' : P.s4);   // the point
+      for (let y = ty; y < ty + 3; y++) g.set(tx, y, y === ty ? '#ff6a55' : y === ty + 1 ? P.r3 : P.r2);   // the point, bloodied
       for (let x = Math.ceil(x0); x < x1; x++) if (r() < 0.45) g.set(x, by - 1, P.r1); // blood up the foot
     };
     const back = new Grid(22, 24), front = new Grid(22, 24);
@@ -1095,11 +1145,13 @@ const PROP_PIXELS = (() => {
   // The suit that stands on the floor (1 Oct 2026): the wall suit's iron on a wooden stand, upright, a
   // halberd at its side. `bare` is what is left when it has been brought down: the stand, its post and
   // crossbar, and the halberd still standing. 28 x 42, its feet on the stand's last row.
-  function suit(bare) {
+  function suit(bare, gone) {
     const g = new Grid(28, 42), cx = 12;
     g.rect(3, 38, 20, 3, P.w2); g.hl(3, 38, 20, P.w3); g.hl(3, 40, 20, P.w0); g.rect(3, 41, 3, 1, P.w0); g.rect(20, 41, 3, 1, P.w0);   // the stand
+    if (!gone) {
     g.vl(24, 4, 34, P.w2); g.vl(25, 4, 34, P.w3);                                                     // the halberd's shaft
     g.vl(24, 0, 4, P.i4); g.poly([[25, 3], [28, 4], [28, 10], [25, 9]], P.i3); g.vl(27, 4, 6, P.i4); g.poly([[23, 4], [20, 5], [23, 8]], P.i2);   // its head
+    }
     if (bare) {
       g.vl(cx, 12, 26, P.w1); g.vl(cx + 1, 12, 26, P.w2); g.hl(cx - 6, 15, 14, P.w2); g.hl(cx - 6, 16, 14, P.w0); g.set(cx - 7, 15, P.w1); g.set(cx + 8, 15, P.w1);   // post and crossbar
       return g.outline();
@@ -1116,9 +1168,10 @@ const PROP_PIXELS = (() => {
     g.set(cx, 3, P.r3); g.set(cx, 2, P.r3); g.set(cx - 1, 3, P.r2); g.set(cx + 1, 3, P.r2); g.set(cx, 1, P.r2);                            // its plume
     return g.outline();
   }
-  function armor(empty) {
+  // `n` is how many of the two halberds are still on it (`p.halberds`, a grab beside it takes one).
+  function armor(empty, n = 2) {
     const g = new Grid(28, 29), cx = 14, top = 5;
-    for (const m of [0, 1]) {                                                                      // the halberds, crossed
+    for (const m of [0, 1].slice(0, n)) {                                                                      // the halberds, crossed
       const s = m ? -1 : 1, x0 = m ? 25 : 2, x1 = m ? 2 : 25, hx = x1 + (m ? 0 : 1), hy = 5;
       g.line(x0, 28, x1, 5, P.w2); g.line(x0 + s, 28, x1 + s, 5, m ? P.w1 : P.w3);
       g.vl(hx, hy - 5, 4, P.i3);                                                                   // the spike
@@ -1215,14 +1268,14 @@ const PROP_PIXELS = (() => {
   const sprites = {
     'door-wood': doorWood(), 'door-iron': doorIron(), 'door-vault': doorVault(), 'door-soul': doorSoul(),
     'broken-wood': debris('wood'), 'broken-iron': debris('iron'), 'broken-vault': debris('vault'), 'broken-soul': debris('soul'),
-    sword: sword(), shield: shield(), bomb: bomb(), 
+    sword: sword(), halberd: halberd(), shield: shield(), bomb: bomb(), 
     'mill-hub': millHub(), 'mill-arm': millArm(), 'cage-post': cagePost(), 'cage-broken': cageBroken(),
     altar: altar(), banner: banner(), gong: gong(),
     'soul-wisp': soulWisp(), 'healing-grass': grass(true), 'grass-small': grass(false), pail: pail(),
     'healing-grass@pass': grass(true, true), 'grass-small@pass': grass(false, true),
     'spikes-idle': grating('idle'), 'spikes-arming': grating('arming'), 'spikes-up': grating('up'),
     'sword-up': swordUp(), 'rack-back': rackBack(), 'rack-base': rackBase(),
-    'coop-back': coopBack(), 'coop-front': coopFront(false), 'coop-cracked': coopFront(true),
+    'coop-back': coopBack(), 'coop-front': coopFront(false), 'coop-cracked': coopFront(true), 'coop-iron': ironFront(), key: cultKey(),
     'stall-back': stallBack(), 'stall-front': stallFront(false), 'stall-cracked': stallFront(true),
     burrow: burrow(), stool: stool(), spire: spire(), 'roast-back': roastRing(false), 'roast-front': roastRing(true), 'roast-sticks': roastSticks(), 'roast-croc': croc(),
   };
@@ -1233,12 +1286,48 @@ const PROP_PIXELS = (() => {
   for (let k = 0; k < 8; k++) { const lie = barrelLie(k, BR); sprites['barrel-lie' + k] = lie; sprites['barrel-up' + k] = transpose(lie); }
   for (let k = 0; k < 8; k++) { const lie = barrelLie(k, BV); sprites['vbarrel-lie' + k] = lie; sprites['vbarrel-up' + k] = transpose(lie); }
   for (const k in FOOD) sprites['food-' + k] = FOOD[k];
+  // The supper dulled (3 Oct 2026 playtest: bright on the tables, it read as something to pick up):
+  // each colour greyed by `scatter.dim.grey` and darkened to `dim.k` (`food-<id>@dim`, js/scatter.js).
+  const dimHex = (c) => {
+    // a sheet rendered in node without tuning.js gets the colours as painted
+    const D = (typeof TUNING !== 'undefined' && TUNING.scatter.dim) || { k: 1, grey: 0 }, m = typeof c === 'string' && /^#([0-9a-f]{6})$/i.exec(c); if (!m) return c;
+    const n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255, l = 0.3 * r + 0.59 * g + 0.11 * b;
+    const f = (v) => Math.round(Math.min(255, (v + (l - v) * D.grey) * D.k)).toString(16).padStart(2, '0');
+    return '#' + f(r) + f(g) + f(b);
+  };
+  for (const k in FOOD) { const s = FOOD[k], d = new Grid(s.w, s.h); d.p = s.p.map(dimHex); sprites['food-' + k + '@dim'] = d; }
   sprites['chand0'] = chandelier(0); sprites['chand1'] = chandelier(1); sprites['chand-down'] = chandelierDown();
   sprites.cleat = cleat(false); sprites['cleat-cut'] = cleat(true);
   sprites.armor = armor(false); sprites['armor-stand'] = armor(true); sprites.suit = suit(false); sprites['suit-bare'] = suit(true);
+  for (const n of [0, 1]) { sprites['armor-' + n] = armor(false, n); sprites['armor-stand-' + n] = armor(true, n); }
+  sprites['suit-0'] = suit(false, true); sprites['suit-bare-0'] = suit(true, true);
   for (const k of ['helm', 'plate', 'pauldron']) sprites['armor-' + k] = armorPiece(k);
   sprites.trophy = trophy(false, false); sprites['trophy-blood'] = trophy(true, false); sprites['trophy-tips'] = trophy(true, true);
   sprites['table-s'] = tableTop(); sprites['table-n'] = tableUnder(); sprites['table-e'] = tableSide(); sprites['table-w'] = mirror(sprites['table-e']);
+  // A blade or a shield broken (3 Oct 2026 playtest: "not just vanish, fall apart"; js/scatter.js
+  // `breakUp`): its own pixels where `keep(x, y)` holds, outlined again only along the cut, so the
+  // pieces lie together into the thing they were. The cuts step every other row, a break, not a saw.
+  const brokeUp = (g, keep) => {
+    const o = new Grid(g.w, g.h);
+    for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) { const v = g.get(x, y); if (v && keep(x, y)) o.set(x, y, v); }
+    const add = [];
+    for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) {
+      if (o.get(x, y)) continue;
+      const lit = [o.get(x - 1, y), o.get(x + 1, y), o.get(x, y - 1), o.get(x, y + 1)].some((v) => v && v !== P.ol);
+      if (lit && g.get(x, y)) add.push([x, y]);
+    }
+    for (const [x, y] of add) o.set(x, y, P.ol);
+    return o;
+  };
+  const jag = (n) => (n >> 1) & 1;
+  { const s = sword(); sprites['sword-bit0'] = brokeUp(s, (x, y) => x < 11 + jag(y)); sprites['sword-bit1'] = brokeUp(s, (x, y) => x >= 11 + jag(y)); }
+  { const h = halberd(); sprites['halberd-bit0'] = brokeUp(h, (x, y) => x < 13 + jag(y)); sprites['halberd-bit1'] = brokeUp(h, (x, y) => x >= 13 + jag(y)); }
+  { const s = shield(), cut = (x, y) => (x < 6 + jag(y) ? 0 : x < 12 + jag(y + 1) ? 1 : 2);
+    for (let k = 0; k < 3; k++) sprites['shield-bit' + k] = brokeUp(s, (x, y) => cut(x, y) === k); }
+  for (let l = 0; l < SHIELD_LOOKS.length; l++) {
+    const b = sprites['mshield' + l + '-f'], cx = Math.floor(b.w / 2), cy = Math.floor(b.h / 2);
+    for (let k = 0; k < 4; k++) sprites['mshield' + l + '-bit' + k] = brokeUp(b, (x, y) => (x < cx + jag(y) ? 0 : 1) + (y < cy + jag(x) ? 0 : 2) === k);
+  }
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
   for (const k in sprites) if (!/^(rack|coop|stall|roast)-/.test(k)) sprites[k] = sprites[k].trim();
   return { P, Grid, sprites, rng, SHIELD_LOOKS };
@@ -1299,13 +1388,13 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   // pixel sprite is fitted into that box, not the whole cell, or it would come out a size larger.
   const CELL = {
     'mill-hub': [12, 8, 104, 108], 'spikes-idle': [8, 10, 112, 106], 'spikes-arming': [8, 10, 112, 106], 'spikes-up': [8, 10, 112, 106],
-    sword: [8, 8, 112, 112], shield: [13, 8, 103, 108], 'healing-grass': [9, 8, 110, 108], 'soul-wisp': [26, 8, 77, 108],
+    sword: [8, 8, 112, 112], halberd: [8, 8, 112, 112], shield: [13, 8, 103, 108], 'healing-grass': [9, 8, 110, 108], 'soul-wisp': [26, 8, 77, 108],
   };
   // How each fills its box: 'bottom' stands on the box's floor, 'center' sits in it, 'fill' stretches
   // to it (the grating, squashed like the floor it is set in). `k` scales a sprite past the fit.
   const HOW = {
     'healing-grass': 'bottom', altar: 'bottom', gong: 'bottom', 'cage-post': 'bottom', banner: 'fill', 'mill-arm': 'fill',
-    'spikes-idle': 'fill', 'spikes-arming': 'fill', 'spikes-up': 'fill', sword: { how: 'center', k: 1.35 }, shield: { how: 'center', k: 1.15 },
+    'spikes-idle': 'fill', 'spikes-arming': 'fill', 'spikes-up': 'fill', sword: { how: 'center', k: 1.35 }, halberd: { how: 'center', k: 1.35 }, shield: { how: 'center', k: 1.15 },
   };
   for (let k = 0; k < 8; k++) HOW['lantern-' + k] = 'bottom';
   const STAMP = {
@@ -1403,14 +1492,14 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   // while a headbutt still rings in it; once a body has brought it down, the halberds and the bare
   // plate (`spilled`). No shadow on the floor: nothing of it stands there. In the prop's own upright frame.
   A.armor = function (renderer, p) {
-    const D = TUNING.prop.armor, k = D.texel, name = p.spilled ? 'armor-stand' : 'armor', g = S[name];
+    const D = TUNING.prop.armor, k = D.texel, name = (p.spilled ? 'armor-stand' : 'armor') + (p.halberds < 2 ? '-' + p.halberds : ''), g = S[name];
     const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 3) : 0;
     putSnap(renderer.ctx, name, p.x + wob - g.w * k / 2, p.y - TILE * 0.25 * TILT - D.foot - g.h * k, k);
     return true;
   };
   // The suit on its stand, upright on the floor with a shadow under it; the bare stand once it is down.
   A.suit = function (renderer, p) {
-    const D = TUNING.prop.suit, k = D.texel, name = p.spilled ? 'suit-bare' : 'suit', g = S[name];
+    const D = TUNING.prop.suit, k = D.texel, name = (p.spilled ? 'suit-bare' : 'suit') + (p.halberds < 1 ? '-0' : ''), g = S[name];
     if (!renderer.silPass) renderer.shadow(p.x, p.y + 6, 15, 5);
     const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 3) : 0;
     putSnap(renderer.ctx, name, p.x + wob - g.w * k / 2, p.y + 9 - g.h * k, k);
@@ -1566,6 +1655,27 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
       ctx.restore(); return true;
     }
     // The coop: its dark inside, the animal pacing in it, the slats over it (split after one blow).
+    // A key on the floor, bobbing and glinting (`TUNING.keys`).
+    if (p.kind === 'key') {
+      const g = S.key, k = 1.1, bob = Math.sin(renderer.t * 3 + p.phase) * 2;
+      ctx.save(); ctx.translate(p.x, p.y);
+      renderer.shadow(0, 6, g.w * k * 0.38, 4);
+      put(ctx, 'key', -g.w * k / 2, -g.h * k - 2 + bob, k);
+      if (Math.sin(renderer.t * 2.2 + p.phase) > 0.94) { ctx.fillStyle = '#fff6c8'; ctx.fillRect(4, -g.h * k + 1 + bob, 2, 2); }
+      ctx.restore(); return true;
+    }
+    // The cage of iron with big milk grass in it: the coop's dark, the grass, the bars.
+    if (p.kind === 'ironcage') {
+      const g = S['coop-back'], k = p.r * 2 / (g.w - 2), w = g.w * k, h = g.h * k;
+      const shake = p.wobble > 0 ? Math.sin(renderer.t * 55) * p.wobble * 3 : 0;
+      ctx.save(); ctx.translate(p.x + shake, p.y);
+      renderer.shadow(0, h * 0.42, p.r * 0.95, p.r * 0.45);
+      put(ctx, 'coop-back', -w / 2, -h / 2, k);
+      const gr = S['healing-grass'], gk = Math.min(1, (w - 6 * k) / gr.w);
+      put(ctx, 'healing-grass', -gr.w * gk / 2, h / 2 - 3 * k - gr.h * gk, gk);
+      put(ctx, 'coop-iron', -w / 2, -h / 2, k);
+      ctx.restore(); return true;
+    }
     if (p.kind === 'coop') {
       const g = S['coop-back'], k = p.r * 2 / (g.w - 2), w = g.w * k, h = g.h * k;
       const shake = p.wobble > 0 ? Math.sin(renderer.t * 55) * p.wobble * 4 : 0;
@@ -1587,7 +1697,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
         else if (p.holds === 'pig') { ctx.translate(0, 7); ctx.scale(0.85, 0.85); renderer.pigSprite(ctx, Math.cos(renderer.t * 1.3 + p.phase) > 0 ? 0 : Math.PI, true, 'idle', p.phase); }
       }
       ctx.restore();
-      put(ctx, (p.hits || 0) > 0 ? 'coop-cracked' : 'coop-front', -w / 2, -h / 2, k);
+      put(ctx, p.ironCage ? 'coop-iron' : (p.hits || 0) > 0 ? 'coop-cracked' : 'coop-front', -w / 2, -h / 2, k);
       ctx.restore(); return true;
     }
     // The powder barrel (29 Sep 2026, Enter the Gungeon's): standing, on its feet, shivering while a
@@ -1639,6 +1749,17 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     const g = S.spire, k = p.r * 2.4 / g.w, x0 = p.x - g.w * k / 2, y0 = p.y + 5 - g.h * k;
     this.shadow(p.x, p.y + 2, p.r * 0.95, p.r * 0.42);
     put(this.ctx, 'spire', x0, y0, k);
+    // The goat within `warnR`: a ring of amber cells round its foot, the colour every blow to come
+    // wears, beating faster the nearer he is. Live only, never into the rooms' bake.
+    const C = TUNING.cave.spikes, gt = this.game && this.game.goat;
+    if (gt && !this.baking && !this.silPass) {
+      const d = hyp(gt.x - p.x, gt.y - p.y) / TILE;
+      if (d < C.warnR) {
+        const near = 1 - d / C.warnR, a = (0.35 + 0.45 * near) * (0.6 + 0.4 * Math.sin(this.t * (5 + 7 * near)));
+        const ctx = this.ctx; ctx.save(); ctx.globalAlpha *= clamp(a, 0, 1); ctx.fillStyle = PALETTE.fireHi;
+        ctx.beginPath(); this.floorRing(p.x, p.y + 2, p.r + 2 * C.cell, p.r + C.cell, C.cell); ctx.fill(); ctx.restore();
+      }
+    }
     const tw = Math.pow(Math.max(0, Math.sin(this.t * 1.6 + p.x * 0.05)), 8);
     if (tw > 0.04 && !this.baking) { this.ctx.fillStyle = `rgba(255,255,255,${tw * TUNING.cave.spikes.glint})`; this.ctx.fillRect(x0 + 10 * k, y0 + 1 * k, k * 1.5, k * 1.5); }
   };

@@ -16,7 +16,7 @@
 // and `draw` average and worst milliseconds.
 window.SMOKE = {
   res: {},
-  opts: { maxT: 420, drawEvery: 12, stepsPerTick: 240, spikeUpd: 12, spikeDraw: 40 },
+  opts: { maxT: 420, drawEvery: 12, stepsPerTick: 240, spikeUpd: 12, spikeDraw: 40, soulR: 8 },
   field(g) {
     const w = g.world, W = w.W, H = w.H, D = new Int32Array(W * H).fill(-1), q = [];
     for (let i = 0; i < W * H; i++) if (w.tiles[i] === T.EXIT) { D[i] = 0; q.push(i); }
@@ -62,7 +62,10 @@ window.SMOKE = {
   },
   run1(which, seed) {
     const g = game, O = SMOKE.opts;
-    const r = { which, seed, ok: false, t: 0, errs: {}, nan: null, tp: 0, kills: 0, upd: 0, updMax: 0, draw: 0, drawMax: 0, nUpd: 0, nDraw: 0, souls: 0, end: '', spikes: [] };
+    const r = { which, seed, ok: false, t: 0, errs: {}, nan: null, tp: 0, kills: 0, upd: 0, updMax: 0, draw: 0, drawMax: 0, nUpd: 0, nDraw: 0, souls: 0, dropped: 0, end: '', spikes: [] };
+    // Every soul the floor has laid or dropped, so the report says taken/dropped: `souls 0` alone could not tell a
+    // bot that walked past them from a floor that dealt none (3 Oct 2026, a keeper at three hearts).
+    const seenSouls = new Set();
     const err = (where, e) => { const k = where + ': ' + (e && e.message || e) + ' @' + String(e && e.stack || '').split('\n').slice(1, 3).map((s) => s.trim().replace(/^at /, '').replace(/\(?https?:\/\/[^/]+\//, '')).join(' < '); r.errs[k] = (r.errs[k] || 0) + 1; };
     try { SMOKE.start(which, seed); } catch (e) { err('start', e); r.end = 'start threw'; return r; }
     let D = SMOKE.field(g), fieldT = 0, best = Infinity, stall = 0, buttCd = 0, steps = 0;
@@ -126,6 +129,14 @@ window.SMOKE = {
       const here = dAt(gt.x, gt.y);
       if (here >= 0 && here < best - 0.5) { best = here; stall = 0; } else stall += 1 / 60;
       const n = next(); dir.x = n ? n.x : 0; dir.y = n ? n.y : 0;
+      // A soul lying within reach is walked onto (the pickup and its cards are then exercised every floor,
+      // and a gate's soul opens the gate the bot would otherwise teleport past).
+      let soul = null, sd = SMOKE.opts.soulR * TILE;
+      for (const q of g.souls || []) {
+        if (!seenSouls.has(q)) { seenSouls.add(q); r.dropped++; }
+        const d = Math.hypot(q.x - gt.x, q.y - gt.y); if (d < sd) { sd = d; soul = q; }
+      }
+      if (soul) { const l = sd || 1; dir.x = (soul.x - gt.x) / l; dir.y = (soul.y - gt.y) / l; }
       buttCd -= 1 / 60;
       let foe = null, fd = 3 * TILE;
       for (const e of g.liveEnemies || g.enemies) {
@@ -193,7 +204,7 @@ window.SMOKE = {
   },
   report(tag = 'now') {
     const o = SMOKE.res[tag]; if (!o) return 'nothing under ' + tag;
-    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? 'OK ' : r.end.toUpperCase().slice(0, 7).padEnd(7)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} kills ${r.kills} souls ${r.souls} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.heap ? ' heap ' + r.heap + 'MB' : ''}${r.nan ? ' NaN ' + r.nan : ''}${r.spikes.length ? '\n     spikes ' + r.spikes.join(' ') : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
+    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? 'OK ' : r.end.toUpperCase().slice(0, 7).padEnd(7)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} kills ${r.kills} souls ${r.souls}/${r.dropped} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.heap ? ' heap ' + r.heap + 'MB' : ''}${r.nan ? ' NaN ' + r.nan : ''}${r.spikes.length ? '\n     spikes ' + r.spikes.join(' ') : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
     return (o.done ? '' : '(still running)\n') + lines.join('\n');
   },
 };

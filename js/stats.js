@@ -56,7 +56,7 @@ const Stats = {
   who(e) {
     if (!e) return '?';
     if (typeof e === 'string') return e;
-    const k = e.kind === 'bearer' ? (e.champion ? 'butcher' : e.shieldman ? 'shieldman' : 'clubman') : e.kind === 'butcher' ? 'ogre' : e.kind;
+    const k = e.kind === 'bearer' ? (e.champion ? 'butcher' : e.shieldman ? 'shieldman' : e.thrower ? 'thrower' : 'clubman') : e.kind === 'butcher' ? 'ogre' : e.kind;
     return e.boss ? k + '*' : k;
   },
   // Only the run itself: the JUICE tab's stage is `Object.create(game)`, the tools lend stubs.

@@ -9,6 +9,53 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 3 October 2026, the pointer, the keys, the broken mirror (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | a more visible pointer, rather white, the headbutt icon: people do not tie the mouse to the actions | the pointer is the rail's headbutt chip, near white with a pale halo, 60 px |
+| 2 | feel | check and improve the keyboard-only controls | J K L / Z X C take the aim with no setting, Z X C beside the arrows, a wider snap standing still, a brighter aim mark |
+| 3 | system | the god asks for 20, not 200, and mends his broken mirror; that opens growing between deaths | the mirror starts broken and buys nothing; twenty brought, he calls the goat over and mends it; 200 still unlocks SECOND CHANCE |
+| 4 | feel | the mirror nearer the edge, on the way out of the first room | at the bridge's mouth on the edge's side |
+
+## 3 October 2026, the tortoise, the music's level and heaven's question marks (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | system | the tortoise, once a level, lets you wear armour, if you brought it | its reward is no longer a use on every shield: brought to the stairs, every floor after starts with the goat in iron (`mods.armour`, `goat.armour`, a restart puts it on again) that takes one blow whole and comes off in goat-sized pieces (THE ARMOUR TOOK IT). Drawn as riveted plates over his body, kept a texel inside his outline, head and ears bare; an iron heart after the hearts. Its card, terms, HUD note and the ANIMALS tab say so |
+| 2 | number | turn the music down by default, players at the playtests turned it well down | the MUSIC VOLUME slider starts at 0.35 (was 0.5, about 3 dB quieter, `audio.musicDefault`); a saved setting still on the old untouched 0.5 is moved to it once |
+| 3 | feel | the fire's sound a little less dense, more space between the crackles | the fire loop has a third of the ticks (14 a second, was 45) and fewer pops, each in its own slot so two never land together, over a longer take, the hiss a touch lower |
+| 4 | feel | "at first I thought in heaven you only eat the hay": mark everything you can interact with up there, the first time | a bobbing gold question mark in cells over the god, the old man, the mirror, each filled seat, the bells and the tables until each has been tried once (talked to, combed, looked into, rung, butted, a table pushed), kept per browser (`meta.tried`); over whatever GRAB answers now the prompt says it instead |
+
+Open: note 1 is read as "starts each floor in it"; say if it should be a thing put on (a suit found on the floor, say) instead.
+
+## 3 October 2026, his notes on swords, the butcher and grass (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | system | a talisman that lets you take the grass with you | THE NOSEBAG (`nosebag`, tag `heal`): milk grass grazed at full hearts goes in the bag (big grass two; 1/2/3/4 tufts by tier) and is carried from floor to floor; hurt, standing still with nothing in the teeth, he eats one (+1 heart, FOUR STOMACHS too) after a graze's time (×0.7 / ×0.5 at tiers III/IV). Green pips under the chip; on THE SHOWROOM's shelf with the rest |
+| 2 | feel | in the sentry room, under LEFT CLICK - HEADBUTT: "he dies when hit on something"; people did not get how men die | a second floor line, HE DIES WHEN HE HITS SOMETHING, in all four wordings (keys, touch, pad, keyboard only) |
+| 3 | feel | the butcher (and a corrupted clubman) spammed in a corner: he should shove you off, a very short stun, almost instant, no damage, so there is no click-lock | `champion.shove`: butts landed within 2.4 s are counted; the 2nd is answered at 50%, the 3rd always (and after a shove the next is a coin again). He is up at once if he was down, shoves the goat off (13 tiles/s, stunned 0.28 s, no heart), leans into it, barks. Clubmen only: the butcher and any bearer with a soul |
+| 4 | system | a sword thrown at a wall can ricochet into an enemy, as an extra level | RICOCHET, a grab passive soul: a blade meeting stone turns off it at the nearest man in front of that wall it can see within 6 tiles (85% of its speed, at least 14 tiles/s), once a throw, no use spent; without one it breaks on the wall as before. A mark on the grab chip |
+| 5 | feel | a sword thrown at a big enemy sticks in him and he walks about with it, breaking when he dies; and the shield should fall apart, not vanish | a blade spent in a man with a heart to spare stays in him (up to 3, fanned, turning with him, under him when it went in through his back) and breaks out into pieces when he dies. Every sword, halberd and shield that snaps, the shieldman's board when it breaks (or a blast kills him), and a magnet orbiter now fall apart into pieces cut off their own sprite (hilt and point, three planks, four skulls) that clatter and stay on the floor |
+
+Open: note 3 counts any soul-carrying clubman (keepers, the soul bosses), not the yellow champions; say if those should shove too. Note 4 is a soul card, not a talisman tier; say if "extra level" meant a talisman.
+
+## 3 October 2026, two testers' notes (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | bug | the keyboard sometimes stops working, two testers, a reload cures it | the canvas takes focus (`tabIndex`) and every press on it takes the keyboard back to the page (`takeKeys` in `bindInput`): on itch the game is a frame, and a click outside it or an alt-tab left the keys going to itch's page while the mouse still played. Also a non-standard "gamepad" (wheel, tablet, HID gadget) no longer wakes on jittering axes, only a button (`PadInput.poll`) |
+| 2 | feel | the food on tables is too bright, it reads as something to use | drawn from a dulled copy of each sprite (`food-<id>@dim`, `scatter.dim` k 0.72, grey 0.35), on the table and scattered; heaven's feast stays bright |
+| 3 | system | the halberd on a suit of armour should be throwable, grab beside it | grab beside a suit (wall: two halberds, stand: one) pulls one off as a thrown blade (`p.halberds`, `p.halberd`, sprite `halberd`; one use, breaks on stone like the sword); the suit is drawn without it |
+| 4 | system | tips after a death: grab and throw, poison, fire panic vs rage, yellow champions | four lines added to `DEATH_TIPS.any` |
+| 5 | feel | headbutting the ogre: the goat should bounce off himself and be dazed briefly | `butcher.rebound`: thrown back at 14 tiles/s (about a tile and a half), `stunned` 0.35 s, no heart |
+| 6 | number | fire set too strong: immunity only from the third, 0.5 s, and 1 s more at four | `BOON_SETS.fire.step` 0, 0, 0.5, 1 (1.5 s at four), `immune: false`: no immunity; the fourth keeps the double burn |
+| 7 | feel | the cave's teeth should read as hurting | bloodied red points instead of white; within `warnR` (2.2 tiles) a beating ring of amber cells round the foot (`drawSpire`) |
+| 8 | system | teach the teeth: you walk in and a man walks onto them and dies, the first time | `Game.updateSpireLesson`: the first room this browser enters with a tooth the goat can see and a plain clubman with a walked way to it (`lesson.reach` 14 tiles) sends him onto it at `walk` 130; once ever (`SPIRE_KEY`), never THE TRIP |
+
+Open: note 4 said "E grabs and throws", but grab is the right mouse button (E is the roll); the tip says RIGHT CLICK. Ask whether he meant a rebinding.
+
 ## 2 October 2026, late, his notes on the book, the souls and the first two floors (shipped the same night)
 
 | # | tag | note | what shipped |
