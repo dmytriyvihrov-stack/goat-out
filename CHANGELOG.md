@@ -5,6 +5,29 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 1.99, the pixel title, a soul behind its gate, a softer shove, 3 Oct 2026
+
+- **The title's horns are his own** ("like the real ones on him"): pixels on a grid in his horn's browns with growth
+  rings, outlined and lit along the top (`titleHornBake`, `TUNING.goat.titleHorn`), and in the saved run's look:
+  LONG HORNS antlers (tines and a fork, the antler ramp), BOMB CHARGE lava with a glow, SPLASH venom with a drip
+  (off `game.save.boons`).
+- **The name is pixel blackletter** (Jacquard 24, `FONT_LOGO`, in the Google Fonts link of both pages and `RELEASE.page`),
+  written `Doomed Goat` (blackletter in capitals cannot be read), at a whole number of screen px a texel with its blood
+  shadow one texel over, and the horns drawn at the same texel, so the two are one picture. The horns are pixel art
+  proper: a cell is one step of a five-colour ramp, never a blend, rounded across the beam. Widths measured before the
+  font lands are dropped when it does (`TEXT_W.clear()`), or the name was centred on the fallback's width.
+- **GET OFF is rare** ("it should fire sometimes, clearly not always; the first one is really hard to kill"): the
+  butcher's and a soul-bearer's shove (`champion.shove`) lets two butts land always, then a quarter, then a half,
+  inside 1.8 s (was a coin on the second and certain on the third, inside 2.4 s), and a shove starts the count over.
+- **NEW GAME says the run saves itself in this browser**; SETTINGS lost its line of small print.
+- **A gate's soul lands on the goat's side of the gate**: a keeper flung through the bars died in the next room and his
+  soul lay behind the one door it opens (`freeSpot` asks the flow field, which walks under a shut door). `dropSoul`
+  pulls a gate's soul back into its room, the floor tile nearest where he fell (`spotInRoom`). Butting the gate no
+  longer floats THE SOUL OPENS IT over the word already drawn there.
+- **`tools/autoplay-bot.js`**: a friend's bot that plays through synthetic input only, kept as a test reference.
+  A life it plays is flagged `B` in RUN STATS (`Stats.bot`, kept for the browser as `d.bot`): the report goes to the
+  database marked and `tools/stats.html` leaves it out like god mode; that browser's funnel steps are not sent at all.
+
 ## 1.98, the check pass, 3 Oct 2026
 
 His asks while the new mechanics were checked: "the cursor's style is good, a bit smaller, it is bigger than the

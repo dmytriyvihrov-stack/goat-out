@@ -1684,10 +1684,10 @@ class Prop {
     // A patch of wall is not a door: two blows and a crack, not a count of what a door has left.
     if (this.kind === 'secret') { this.crackWall(game); return; }
     // The soul gate is barred from the far side and there is nothing on this one to break. It says
-    // so, once per blow, in the language of the thing that opens it.
+    // so with the word over it (`A SOUL OPENS IT`, drawn always) and the trail to its soul. A float
+    // saying the same again stacked three lines on the one spot (3 Oct 2026), so there is none.
     if (this.gate) {
       this.wobble = 0.3; game.audio.sfxSteel(); game.shake(3); game.vibe(10);
-      game.floatText(this.x, this.y - 28, 'THE SOUL OPENS IT', PALETTE.witchHi);
       game.guideTo(this);
       return;
     }

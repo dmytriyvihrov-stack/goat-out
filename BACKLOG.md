@@ -9,6 +9,22 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 3 October 2026, the title, a soul behind its gate, a friend's bot (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | the title's horns are the horns his run picked, if a horn active is in it | pixel horns like his own (browns, rings, outline), and in the saved run's look: LONG HORNS antlers, BOMB CHARGE lava, SPLASH venom |
+| 2 | feel | drop the small line under SETTINGS | gone |
+| 3 | feel | NEW GAME says the progress is kept in the browser ("a frequent question") | `(your progress saves itself in this browser)` |
+| 4 | bug | a video: the gate's soul lay on the far side of its own gate, three labels stacked on it | a gate's soul is pulled back into its own room (`dropSoul` → `spotInRoom`); the butt's float that repeated A SOUL OPENS IT is gone |
+| 5 | tool | a friend's autoplay bot, fun to watch: keep it, use it for active testing now and then | `tools/autoplay-bot.js`, as sent, with a header; see below |
+| 6 | number | GET OFF is too harsh, it should fire sometimes, not always; the first soul-bearer is really hard to kill | two butts always land, then 25%, then 50%, inside 1.8 s; a shove starts the count over |
+| 7 | feel | the horns in pixel art, and a better font for the game's name | pixel horns (one ramp step a cell) and the name in Jacquard 24, pixel blackletter, one texel size with the horns |
+
+**The bot, later** (his words): a base for collecting playtest numbers, its strength turned up or down (how often
+it uses the skills, how it reads the room, how it reacts to being hit), and then for balance and for judging
+levels. Nothing of that is built: today it is kept and runnable. It learns per browser (`doomedgoatbot.v1`).
+
 ## 3 October 2026, the pointer, the keys, the broken mirror (shipped the same day, not yet deployed)
 
 | # | tag | note | what shipped |

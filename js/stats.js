@@ -91,7 +91,17 @@ const Stats = {
     });
   },
   flags(game) {
-    return (game.settings && game.settings.easy ? 'E' : '') + (game.dev && game.dev.god ? 'X' : '') + (game.runJumped ? 'J' : '');
+    return (game.settings && game.settings.easy ? 'E' : '') + (game.dev && game.dev.god ? 'X' : '') + (game.runJumped ? 'J' : '')
+      + (Stats.bot() ? 'B' : '');
+  },
+  // The autoplay bot (`tools/autoplay-bot.js`, 3 Oct 2026: "mark it in the db so it does not break the stats"):
+  // it sets `window.bot`. A browser it has once played in is a bot's for good (`d.bot`): its reports go out
+  // flagged `B` (stored with the flag, left out of `tools/stats.html` like god mode) and its funnel steps,
+  // which carry no flag, do not go out at all.
+  bot() {
+    const d = Stats.load();
+    if (!d.bot && typeof window !== 'undefined' && window.bot && window.bot.iv) { d.bot = true; Stats.store(); }
+    return !!d.bot;
   },
   // Every letter the open life has worn at any moment, not only the last: GOD MODE thrown on and off
   // again before a death left a report with no X, and it was sent. Called at a switch and at the close.
@@ -230,7 +240,7 @@ const Stats = {
   step(game, name) {
     Stats.safe(() => {
       // The first title is shown from inside `new Game`, while `window.game` is still the canvas of that id.
-      if ((window.game instanceof Game && game !== window.game) || (Stats.life && /[XJ]/.test(Stats.life.flags || ''))) return;
+      if ((window.game instanceof Game && game !== window.game) || (Stats.life && /[XJ]/.test(Stats.life.flags || '')) || Stats.bot()) return;
       const d = Stats.load(), S = d.steps = d.steps || {};
       if (S[name]) return;
       // Taken under an answered NO it is never sent, as a life played under one never is; taken before the
@@ -242,7 +252,7 @@ const Stats = {
   // Everything not yet out in one POST; the worker keeps a player's step once, so a resend is harmless.
   flushSteps(game) {
     const C = TUNING.stats, d = Stats.load(), S = d.steps || {}, out = d.stepsOut = d.stepsOut || {};
-    if (!C.url || !game || !game.settings || !game.settings.stats) return;
+    if (!C.url || !game || !game.settings || !game.settings.stats || Stats.bot()) return;
     // One POST at a time; a step taken while one is out goes when it comes back, not at the next step.
     if (Stats.stepsGoing) { Stats.stepsAgain = true; return; }
     const release = typeof RELEASE !== 'undefined' && RELEASE.on;

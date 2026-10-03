@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '1.98';
+const BUILD = '1.99';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -446,6 +446,11 @@ const TUNING = {
         ramp: ['#2c1a10', '#4f3220', '#7a5636', '#b08a62', '#e6d3b0'] },
       lava: { ramp: ['#3a0d06', '#8f1e0a', '#e0521a', '#ffb43a', '#fff0a0'], glow: 'rgba(255,110,30,0.9)', blur: 5 },
       venom: { ramp: ['#12260e', '#2f5a1c', '#5c9a2a', '#9fd84a', '#e4ffa0'], glow: 'rgba(140,220,70,0.9)', blur: 4, drip: 1.6 } },
+    // The title's pair (`Renderer.titleHorns`), drawn as his own horns are: pixels on a grid `cells` square a horn,
+    // the horn `span` of the name's letter height across, outlined, lit along the top. The plain one is in his
+    // horn's browns (`ramp`, dark root to a paler tip; a cell takes one step of it, never a blend: pixel art,
+    // 3 Oct 2026); `ring` is the spacing of its growth rings along the beam.
+    titleHorn: { cells: 20, span: 1.05, ramp: ['#21160f', '#3d2b1f', '#5c4331', '#836448', '#b8986f'], outline: '#120a07', ring: 0.17 },
     // The collar a talisman hangs from on the pixel goat (`PaintedArt.collar`): half-width of the
     // ring, how far it opens toward the camera from the front, its least depth on a side view, the
     // strap's width and colours, and where the pendant hangs below the throat and how big.
@@ -1475,11 +1480,12 @@ const TUNING = {
     // Butted again and again (3 Oct 2026 playtest: spammed in a corner, the butcher and a corrupted
     // clubman were locked there): he and any clubman carrying a soul shove back (`Enemy.shoveBack`).
     // Every butt that lands on him is counted while the last was under `window` s ago; the n-th is
-    // answered instead at `odds[n]` (the first never, the second at a coin, the third always), at once
-    // and costing him nothing: the goat is thrown off at `speed` and dazed `daze` s, no heart. A reflex,
-    // not a blow (the user's: "you can hardly react, but it does no damage"). `lunge` s he is drawn
-    // leaning into it.
-    shove: { window: 2.4, odds: [0, 0.5, 1], speed: 13 * TILE, daze: 0.28, lunge: 0.2 },
+    // answered instead at `odds[n]`, at once and costing him nothing: the goat is thrown off at `speed`
+    // and dazed `daze` s, no heart. A reflex, not a blow (the user's: "you can hardly react, but it does
+    // no damage"). `lunge` s he is drawn leaning into it. Softened the same day ("it should fire
+    // sometimes, clearly not always; the first one is really hard to kill"): two butts always land, the
+    // third is a quarter, every one after a half, and a shove starts the count again from nothing.
+    shove: { window: 1.8, odds: [0, 0, 0.25, 0.5], speed: 13 * TILE, daze: 0.28, lunge: 0.2 },
     immune: { blunder: true } },
   // The SHIELDMAN (1 Oct 2026): a clubman behind a door-plank shield (the code's flag is `shield`, a
   // pseudo-kind in THREAT and the encounter tables, as `champion` is). Pillar 2 asked of the angle: a

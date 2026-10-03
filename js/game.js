@@ -293,9 +293,27 @@ class Game {
     }
     return { x: this.goat.x, y: this.goat.y };
   }
+  // A gate's soul must land on the goat's side of that gate: the keeper flung through the bars died
+  // in the next room, and `freeSpot` (the flow field walks under a shut door) left his soul behind
+  // the only door it opens (3 Oct 2026, a playtest video). So it is pulled back into its own room.
   dropSoul(x, y, gate) {
-    const p = this.freeSpot(x, y);
+    let p = this.freeSpot(x, y);
+    if (gate >= 0 && !this.inRoom(p, gate, 0.5)) p = this.spotInRoom(gate, x, y) || p;
     this.placeSoul(p.x, p.y, gate);
+  }
+  // The floor tile of a room nearest (x, y), clear of stone and furniture, or null.
+  spotInRoom(index, x, y) {
+    const r = this.level.rooms[index], w = this.world;
+    if (!r || !w) return null;
+    let best = null, bd = Infinity;
+    for (let ty = r.y + 1; ty < r.y + r.h - 1; ty++) for (let tx = r.x + 1; tx < r.x + r.w - 1; tx++) {
+      const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+      const t = w.tileAtPx(px, py);
+      if ((t !== T.FLOOR && t !== T.HAY && t !== T.ASH) || w.furn[ty * w.W + tx]) continue;
+      const d = (px - x) ** 2 + (py - y) ** 2;
+      if (d < bd) { bd = d; best = { x: px, y: py }; }
+    }
+    return best;
   }
   // What a boss leaves when the level has no soul left to give. A wall you had to break through is
   // never worth nothing, and milk is the one other thing in the game worth walking back for.

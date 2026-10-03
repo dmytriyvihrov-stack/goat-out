@@ -342,7 +342,7 @@ const sec = (title, sub, body) => `<section><h2>${title}</h2><p class="sub">${su
 
 function draw() {
   const b = $('build').value, easy = $('easy').checked;
-  const clean = REPORTS.filter((r) => (easy || !/E/.test(r.flags || '')) && !/[XJ]/.test(r.flags || ''));
+  const clean = REPORTS.filter((r) => (easy || !/E/.test(r.flags || '')) && !/[XJB]/.test(r.flags || ''));   // B: the autoplay bot
   const R = clean.filter((r) => !b || r.build === b);
   const FN = funnelOf(clean, b);
   const funnel = `<section class="funnel"><h2>The funnel</h2><p class="sub">${FN.players} players${b ? ' who came in on ' + esc(b) : ''}, each counted once at every step taken.

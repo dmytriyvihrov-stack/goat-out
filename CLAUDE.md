@@ -128,13 +128,14 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/painting.js` | `Painting`: the picture of a cleared floor, floor plan, the decal canvas's paint, the line he ran, a skull per kill, baked once at the stairs (`Painting.bake`, `TUNING.painting`), shown as the clear screen's last card, saved as a PNG (through the viewer's `downloads` capability when framed as an artifact, a plain link locally). Render and export only. |
 | `js/release.js` | `RELEASE`: the itch build. `RELEASE.on` (the zip's index.html sets `window.GOAT_RELEASE` first) means no dev drawer and no tool addresses; `RELEASE.build(game)` is the dev drawer's ITCH BUILD button, the page zips itself (flagged index.html + exactly the scripts it loaded, CRC'd, deflated by `CompressionStream`) and downloads it (through `Painting.dl` when framed as an artifact). Loads just before `game.js`. |
 | `js/photo.js` | `Photo`: PHOTO MODE (SETTINGS `photoKey` on P / `photoAuto` every `photo.every` s: the canvas read straight after the draw, kept in `Photo.shots`; PAUSE → PHOTOS is `menu.panel === 'photos'`, a page of thumbnails to choose from, saved through `RELEASE.hand` / `RELEASE.zip`) and the dev drawer's DIP LOG (`Photo.dipCheck`, a frame over `photo.dip.ms` written down with its room, counts and a small picture; `dipsave` writes JSON). Reads the picture; never touches a run. Loads just before `game.js`. |
-| `js/stats.js` | `Stats`: RUN STATS (1 Oct 2026). One report a life (opened at `startLevel`, closed by a death, the send, an escape, a quit or a closed tab): hearts lost and to what (`Goat.damage`), every blow on the cult and what landed it (`Enemy.die`'s fifth arg `how`: wall, body, door, blade, bomb…, pass one at a new kill site), soul cards dealt and taken, the mouse's shelf, every animal's fate. **THE FUNNEL** (`Stats.step`): the first time this browser takes each step (`open` the title, `start`, `death`, `restart` a life after one, `clear1`, `reach<n>` for `TUNING.stats.reach`, `win`), never off a god/LEVELS life, sent at once to `/steps`. Kept in `STATS_KEY`; sent to our own Cloudflare Worker (`TUNING.stats.url`, `tools/stats-worker/`) only after the title's once-asked question (`menu.panel === 'consent'`, SETTINGS `stats`), only off the itch build, never god/LEVELS. Loads just before `game.js`. |
+| `js/stats.js` | `Stats`: RUN STATS (1 Oct 2026). One report a life (opened at `startLevel`, closed by a death, the send, an escape, a quit or a closed tab): hearts lost and to what (`Goat.damage`), every blow on the cult and what landed it (`Enemy.die`'s fifth arg `how`: wall, body, door, blade, bomb…, pass one at a new kill site), soul cards dealt and taken, the mouse's shelf, every animal's fate. **THE FUNNEL** (`Stats.step`): the first time this browser takes each step (`open` the title, `start`, `death`, `restart` a life after one, `clear1`, `reach<n>` for `TUNING.stats.reach`, `win`), never off a god/LEVELS life, sent at once to `/steps`. Kept in `STATS_KEY`; sent to our own Cloudflare Worker (`TUNING.stats.url`, `tools/stats-worker/`) only after the title's once-asked question (`menu.panel === 'consent'`, SETTINGS `stats`), only off the itch build, never god/LEVELS. A browser the autoplay bot has played in (`Stats.bot`, `d.bot`) flags its reports `B` and sends no steps. Loads just before `game.js`. |
 | `js/game.js` | State machine, fixed-step loop, input plumbing, entity-vs-entity collision, boons, dev drawer. |
 | `index.html` | Local build. |
 | `artifact.html` | Published build. Same scripts, artifact-shaped head. **Keep the two script lists in sync.** |
 | `tools/serve.js` | Dev server. Also accepts `POST /shot?name=x` with a data URL and writes a PNG to `tools/shots/`. |
 | `tools/harness.js` | Console test harness. See *Testing*. |
 | `tools/escorts.js` | In-page bot: breaks a coop, runs the goat to the stairs, counts which animals arrive. |
+| `tools/autoplay-bot.js` | A friend's autoplay bot (3 Oct 2026), kept as sent: plays through synthetic keys and pointer only, reads `game` and never writes it, learns per browser (`doomedgoatbot.v1`); F8 on/off, F9 its panel, `bot.log`, `bot.mem.deaths`. Its lives go to RUN STATS flagged `B`, never into the funnel. For active testing when asked, not every time; later a base for playtest numbers and level judging (`BACKLOG.md`). |
 | `tools/smoke.js` | In-page smoke run: a bot walks every floor (and THE DARK, THE TRIP) to the stairs with the cult alive, god mode on, drawing a frame every few steps; reports throws, non-finite positions, set-downs and ms per update and draw (`SMOKE.run`, `SMOKE.report`). |
 | `tools/art-study.js` | In-page sheets for the art studies: every study on every floor with brightness contrast and OKLab distance, all eight facings, and before/after frames of a frozen scene (`ART_STUDY.stage`, `.pair`, `.all`). |
 | `tools/hounds.js` | In-page measure of how hounds run: reversals, sliding, planting, circling (`HOUNDS.sweep`), who never gets onto the ring (`HOUNDS.arrive`), and a picture of the lines (`HOUNDS.draw`). |
@@ -783,7 +784,7 @@ top of `Enemy.update`; `daze` and STUN+POISON call it). The rope is `Renderer.dr
 boss, who already wears the outline; he is lit too (amber haze, ring, red eyes), a label only.
 **Neither stands for being butted over and over** (3 Oct 2026, `champion.shove`, `Enemy.shoveBack`, asked by
 `headbuttHits` before the throw, a clubman only: the butcher and any bearer with a soul): butts landed inside
-`window` s are counted, the n-th is answered at `odds[n]` (0, ½, 1; after a shove the count stands at one), and he
+`window` s are counted, the n-th is answered at `odds[n]` (0, 0, ¼, ½; a shove starts the count again), and he
 is up at once and shoves the goat off (`speed`, `daze` s stunned, no heart; drawn leaning in for `lunge` s,
 `BARKS.shove`). Rule 4's exception, on purpose: a reflex with no windup, but it costs nothing.
 
@@ -1749,7 +1750,8 @@ Hooks load when a session starts.
   whichever they used.
 - Palette colours come from `PALETTE`, never as literals, except for one-off shading tints inside a
   single sprite.
-- Fonts are `FONT` and `FONT_SC` constants in `render.js` (Alegreya and Alegreya SC from Google Fonts).
+- Fonts are `FONT` and `FONT_SC` constants in `render.js` (Alegreya and Alegreya SC from Google Fonts); the title's
+  name alone is `FONT_LOGO` (Jacquard 24, pixel blackletter, mixed case: `LOGO_TEXT`).
   Spoken lines (barks, floats, animals, prologue) and description text (boon card, shelf note, skill
   note) go through `FONT_PICK.font('say' | 'text', px)` instead, which the dev drawer's SPEECH / TEXT
   rows cycle through five families (kept in `localStorage`; the itch build always reads entry 0).

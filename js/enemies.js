@@ -831,8 +831,8 @@ class Enemy {
     this.buttAt = now;
     const n = this.butts || 0;
     if (Math.random() >= S.odds[Math.min(n, S.odds.length - 1)]) { this.butts = n + 1; return false; }
-    // Spammed on straight after it, the coin is back at once: in a corner no more than every other butt lands.
-    this.butts = 1;
+    // After a shove the count starts again: the next two butts land whatever happens.
+    this.butts = 0;
     // Up off the floor and square on to him: the corner he was being held in is his again.
     if (this.state === 'floored' || this.state === 'stagger' || this.state === 'stunned' || this.state === 'braced') { this.state = 'chase'; this.timer = 0; }
     this.facing = Math.atan2(g.y - this.y, g.x - this.x); this.aware = true; this.vx = 0; this.vy = 0;

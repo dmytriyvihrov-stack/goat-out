@@ -2,6 +2,11 @@
 // on-screen touch controls and title cards. Level one uses the cached AltarArt environment.
 const FONT = "'Alegreya', Georgia, 'Times New Roman', serif";
 const FONT_SC = "'Alegreya SC', 'Alegreya', Georgia, serif";
+// The name on the title (3 Oct 2026): pixel blackletter, a 24-texel grid an em, drawn at a whole number of
+// screen px a texel so its pixels and the horns' are one size (`Renderer.drawTitle`).
+const FONT_LOGO = "'Jacquard 24', 'Alegreya SC', serif";
+// Blackletter in capitals cannot be read; it is a mixed-case hand.
+const LOGO_TEXT = 'Doomed Goat';
 // Two families the dev drawer swaps while the game runs (26 Sep 2026, trying fonts on). `say` is
 // every line spoken aloud, a man's bark, an animal's terms, the floating words, the prologue's,
 // and `text` the sentence under a name: a boon card, the mouse's shelf, a skill's note. Entry 0 is
@@ -8618,11 +8623,16 @@ class Renderer {
     ctx.textAlign = 'center';
     const spaced = 'letterSpacing' in ctx;
     // The name and its horns are one shape: measure it, then shrink until it fits the screen it got.
-    let size = clamp(Math.min(w * 0.155, h * 0.18), 26 * s, 88 * s);
+    // The pixel font is snapped to `px` screen px a texel (24 texels an em), and the horns take the same.
+    // A width measured before the font arrived is the fallback's, under the same font string: drop them all
+    // when it lands, or the name is centred on the wrong width for good.
+    if (!this.logoAsked) { this.logoAsked = true; try { document.fonts.load(`96px ${FONT_LOGO}`).then(() => TEXT_W.clear(), () => {}); } catch (e) { /* no FontFaceSet */ } }
+    let size = clamp(Math.min(w * 0.155, h * 0.18), 26 * s, 88 * s), px = 1;
     const measure = () => {
-      if (spaced) ctx.letterSpacing = `${(size * 0.09).toFixed(1)}px`;
-      ctx.font = `700 ${size}px ${FONT_SC}`;
-      return textW(ctx, 'DOOMED GOAT');
+      px = Math.max(1, Math.round(size * 1.35 / 24));
+      if (spaced) ctx.letterSpacing = `${px}px`;
+      ctx.font = `400 ${px * 24}px ${FONT_LOGO}`;
+      return textW(ctx, LOGO_TEXT);
     };
     let tw = measure();
     if (tw + size * 2.2 > w * 0.92) { size *= (w * 0.92) / (tw + size * 2.2); tw = measure(); }
@@ -8640,10 +8650,16 @@ class Renderer {
     const top = clamp(h * 0.47 - block / 2, 10 * s, Math.max(10 * s, h - block - 10 * s));
     const titleY = top + above, btnTop = top + above + below + lead;
 
-    ctx.fillStyle = 'rgba(122,31,24,0.85)'; ctx.fillText('DOOMED GOAT', cx + size * 0.04, titleY + size * 0.05);
-    ctx.fillStyle = PALETTE.bone; ctx.fillText('DOOMED GOAT', cx, titleY);
+    // whole texels: the name starts on a screen pixel and its blood shadow sits one texel down and over
+    const lx = Math.round(cx - tw / 2), ly = Math.round(titleY);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(122,31,24,0.9)'; ctx.fillText(LOGO_TEXT, lx + px, ly + px);
+    ctx.fillStyle = PALETTE.bone; ctx.fillText(LOGO_TEXT, lx, ly);
+    ctx.textAlign = 'center';
     if (spaced) ctx.letterSpacing = '0px';
-    this.titleHorns(cx, titleY, tw / 2 + size * 0.16, size);
+    // The horns the saved run's goat wears (3 Oct 2026): LONG HORNS antlers, BOMB CHARGE lava, SPLASH venom.
+    const worn = game.save && game.save.boons || [];
+    this.titleHorns(cx, titleY, tw / 2 + px * 5, size, worn.includes('horns') ? 'antler' : worn.includes('bomb') ? 'lava' : worn.includes('splash') ? 'venom' : null, px);
 
     game.menu.rects.length = 0;
     // The floor CONTINUE will play, which on a dark or trip save is not the LEVELS row (see `startLevel`).
@@ -8653,13 +8669,14 @@ class Renderer {
     const cleared = Object.keys(board.levels || {}).length;
     // One row per id in MENU, which is where the order of this screen lives.
     const rowFor = {
-      new: { label: 'NEW GAME' },
+      // "is my progress kept?" was the question testers asked most (3 Oct 2026)
+      new: { label: 'NEW GAME', note: '(your progress saves itself in this browser)' },
       continue: { label: 'CONTINUE', locked: !run,
         note: def ? `(${def.sub.toLowerCase()} · ${def.name.toLowerCase()}${souls ? ` · ${souls} soul${souls === 1 ? '' : 's'}` : ''})` : '(nothing to come back to)' },
       levels: { label: 'LEVELS', note: `(any of the ${LEVELS.length} with its souls, straight, tripping or dark)` },
       // "best run 0" read as a run scored nothing; until one is finished the board is levels only
       best: { label: 'BEST', note: board.run ? `(best run ${board.run})` : cleared ? `(${cleared} level${cleared === 1 ? '' : 's'} on the board)` : '(nothing on the board yet)' },
-      settings: { label: 'SETTINGS', note: `(clock ${game.settings.timer ? 'on' : 'off'} · sound ${game.settings.sound ? 'on' : 'off'} · easy ${game.settings.easy ? 'on' : 'off'})` },
+      settings: { label: 'SETTINGS' },
       // the one row in someone else's colour, so it is found without being looked for. It says what it
       // is FOR, not where it goes: "join the discord" read as an ad, "send feedback" reads as a door.
       discord: { label: 'SEND FEEDBACK', note: '(bugs, ideas, what hooked you · discord, new tab)', tint: '#5865f2' },
@@ -8956,13 +8973,100 @@ class Renderer {
     game.menu.rects.push({ x: 0, y: 0, w, h });
   }
 
-  // A pair of horns rising out of the name, drawn with the same tapered curve the goat wears.
-  titleHorns(cx, y, out, size) {
-    const bone = 'rgba(239,230,208,0.72)', ridge = 'rgba(26,16,22,0.4)';
+  // A pair of horns rising out of the name, drawn the way his own are on the sprite (3 Oct 2026: "like
+  // the real ones on him"): pixels on a grid, shaded off a ramp, lit along the top, outlined. `look` is
+  // the saved run's butt active (a `TUNING.goat.hornLooks` key, or none): an antler grows tines off the
+  // beam and a fork at its end, lava glows and venom drips off the tips. Baked once a look
+  // (`titleHornBake`), drawn crisp at `titleHorn.span` of the letter height, mirrored for the left one.
+  titleHorns(cx, y, out, size, look, texel) {
+    const ctx = this.ctx, TH = TUNING.goat.titleHorn, L = look && TUNING.goat.hornLooks[look];
+    // a whole number of screen px a cell, or the cells come out uneven and the horn reads soft
+    const b = this.titleHornBake(look), cell = texel || Math.max(1, Math.round(size * TH.span / TH.cells)), smooth = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
     for (const d of [-1, 1]) {
-      const bx = cx + d * out;
-      this.horn(bx, y + size * 0.02, bx + d * size * 0.2, y - size * 0.74, bx + d * size * 0.78, y - size * 0.94, size * 0.19, bone, ridge);
+      const bx = Math.round(cx + d * out), by = Math.round(y + size * 0.06);
+      ctx.save(); ctx.translate(bx, by); ctx.scale(d, 1);
+      if (L && L.glow) { ctx.shadowColor = L.glow; ctx.shadowBlur = size * 0.1 * (0.75 + 0.25 * Math.sin(this.t * 4 + d)); }
+      ctx.drawImage(b.canvas, -b.root[0] * cell, -b.root[1] * cell, b.canvas.width * cell, b.canvas.height * cell);
+      ctx.shadowBlur = 0;
+      // venom: a drop gathering at each tip and letting go, out of step on the two sides
+      if (look === 'venom') {
+        const p = ((this.t + (d > 0 ? 0.7 : 0)) % L.drip) / L.drip, c = Math.ceil(cell * 2);
+        ctx.globalAlpha = p < 0.6 ? p / 0.6 : 1 - (p - 0.6) / 0.4; ctx.fillStyle = L.ramp[3];
+        ctx.fillRect(Math.round((b.tip[0] - b.root[0]) * cell - c / 2), Math.round((b.tip[1] - b.root[1] + 1.5) * cell + (p < 0.6 ? 0 : (p - 0.6) * size * 1.2)), c, c);
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
     }
+    ctx.imageSmoothingEnabled = smooth;
+  }
+  // One horn of the title's pair, the right one, as a canvas a pixel a cell: `root` is the cell it grows
+  // out of the name at, `tip` its point. The beam is a curve stamped in discs (the way `antlerOf` grows
+  // one on the sprite), each cell keeping how far toward the tip it is, which picks its step on the ramp.
+  titleHornBake(look) {
+    const key = look || 'plain';
+    this.titleHorn = this.titleHorn || {};
+    if (this.titleHorn[key]) return this.titleHorn[key];
+    const TH = TUNING.goat.titleHorn, H = TUNING.goat.hornLooks, A = H.antler, antler = look === 'antler';
+    const N = Math.round(TH.cells * 1.8), val = new Float32Array(N * N).fill(-1), crs = new Float32Array(N * N), mid = new Float32Array(N * N).fill(9), root = [3, N - 3];
+    // Each cell keeps how far toward the tip it is (`val`) and where it sits across the beam (`crs`, -1 the
+    // under side to 1 the side facing the light, up and away from the name), which is what rounds it.
+    const stamp = (x, y, r, v, nx, ny) => {
+      for (let j = Math.floor(y - r); j <= Math.ceil(y + r); j++) for (let i = Math.floor(x - r); i <= Math.ceil(x + r); i++) {
+        if (i < 1 || j < 1 || i >= N - 1 || j >= N - 1 || (i + 0.5 - x) ** 2 + (j + 0.5 - y) ** 2 > r * r + 0.2) continue;
+        // the stamp this cell sits most centrally in wins it, so both fields run smooth along the beam
+        const k = j * N + i, m = Math.hypot(i + 0.5 - x, j + 0.5 - y) / Math.max(r, 0.8);
+        if (m < mid[k]) { mid[k] = m; val[k] = v; crs[k] = clamp(((i + 0.5 - x) * nx + (j + 0.5 - y) * ny) / Math.max(r, 0.8), -1, 1); }
+      } };
+    // the side of a line facing up (the light), as a unit normal
+    const up = (dx, dy) => dx > 0 ? [dy, -dx] : [-dy, dx];
+    const turn = (dx, dy, a) => [dx * Math.cos(a) - dy * Math.sin(a), dx * Math.sin(a) + dy * Math.cos(a)];
+    const line = (x0, y0, dx, dy, len, w0, w1, v0, v1) => {
+      const n = Math.ceil(len * 2.5);
+      const [nx, ny] = up(dx, dy);
+      for (let i = 0; i <= n; i++) { const q = i / n; stamp(x0 + dx * len * q, y0 + dy * len * q, (w0 + (w1 - w0) * q) / 2, v0 + (v1 - v0) * q, nx, ny); } };
+    // the beam: up out of the name and out over it, a goat's scimitar, or an antler's longer, thinner sweep
+    const [rx, ry] = root, S = TH.cells / 46;
+    const P = antler ? [[rx, ry], [rx + 7 * S, ry - 30 * S], [rx + 40 * S, ry - 46 * S]] : [[rx, ry], [rx + 9 * S, ry - 33 * S], [rx + 34 * S, ry - 42 * S]];
+    const w0 = (antler ? 10 : 17) * S, w1 = (antler ? 4.5 : 3) * S;
+    const at = (q) => [0, 1].map((c) => (1 - q) ** 2 * P[0][c] + 2 * (1 - q) * q * P[1][c] + q * q * P[2][c]);
+    const tan = (q) => { const v = [0, 1].map((c) => 2 * (1 - q) * (P[1][c] - P[0][c]) + 2 * q * (P[2][c] - P[1][c])), l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
+    const n = 160;
+    for (let i = 0; i <= n; i++) { const q = i / n, [x, y] = at(q), [dx, dy] = tan(q); stamp(x, y, (w0 + (w1 - w0) * q) / 2, antler ? q * 0.85 : q, dy, -dx); }
+    if (antler) {
+      // tines, each turned off the beam toward the sky, and the crown's fork
+      [[0.3, 0.42], [0.5, 0.4], [0.7, 0.32], [0.86, 0.24]].forEach(([q, len]) => {
+        const [x, y] = at(q), [dx, dy] = tan(q), l = turn(dx, dy, A.tineTurn), r = turn(dx, dy, -A.tineTurn), [ex, ey] = l[1] < r[1] ? l : r;
+        line(x, y, ex, ey, 46 * S * len, 4.5 * S, 2.2 * S, 0.35 + q * 0.4, 1);
+      });
+      const [ex, ey] = at(1), [dx, dy] = tan(1);
+      for (const a of [A.tineTurn * 0.55, -A.tineTurn * 0.55]) { const [fx, fy] = turn(dx, dy, a); line(ex, ey, fx, fy, 46 * S * A.fork * 0.9, w1, w1 * 0.55, 0.85, 1); }
+    }
+    const ramp = (look ? H[look].ramp : TH.ramp).map((c) => [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16)));
+    const edge = look === 'lava' || look === 'venom' ? H[look].ramp[0] : antler ? A.outline : TH.outline;
+    const c = document.createElement('canvas'); c.width = N; c.height = N;
+    const x = c.getContext('2d'), on = (a, b2) => a >= 0 && b2 >= 0 && a < N && b2 < N && val[b2 * N + a] >= 0;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const v = val[j * N + i];
+      if (v < 0) {
+        if (on(i + 1, j) || on(i - 1, j) || on(i, j + 1) || on(i, j - 1)) { x.fillStyle = edge; x.fillRect(i, j, 1, 1); }
+        continue;
+      }
+      // round across the beam: the side to the light a step up and its edge a highlight, the under side
+      // a step down; growth rings across a goat's horn, each a dark groove with a lit ridge after it on the
+      // light side; and on lava or venom a hashed cell here and there lit past its step, which reads as cracks
+      const k = j * N + i, cr = crs[k];
+      const round = cr > 0.6 ? 0.36 : cr > 0.1 ? 0.14 : cr < -0.55 ? -0.3 : 0;
+      const rp = (v / TH.ring) % 1, ringed = !antler && v > 0.06 && v < 0.82;
+      const ring = ringed && rp < 0.24 ? -0.25 : ringed && rp < 0.42 && cr > -0.2 ? 0.12 : 0;
+      const crack = (look === 'lava' || look === 'venom') && (((i * 73856093) ^ (j * 19349663)) >>> 0) % 1000 > 860 ? 0.3 : 0;
+      const base = antler ? 0.08 + v * 0.75 : look ? 0.18 + v * 0.45 : 0.3 + v * 0.4;
+      // one step of the ramp, never a blend between two: a small palette is what makes it pixel art
+      const a = ramp[Math.round(clamp(base + round + ring + crack, 0, 1) * (ramp.length - 1))];
+      x.fillStyle = `rgb(${a.join(',')})`;
+      x.fillRect(i, j, 1, 1);
+    }
+    return (this.titleHorn[key] = { canvas: c, root, tip: at(1) });
   }
 
   // The cult's sign, stamped huge and nearly out behind the name. Whole pixels, like the floor ones.

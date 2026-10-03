@@ -2,6 +2,15 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "goat-out-itchpage",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8921"
+      ],
+      "port": 8921
+    },
+    {
       "name": "goat-out",
       "runtimeExecutable": "node",
       "runtimeArgs": [
@@ -729,6 +738,15 @@
         "8911"
       ],
       "port": 8911
+    },
+    {
+      "name": "goat-out-titlehorns",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8920"
+      ],
+      "port": 8920
     }
   ]
 }
