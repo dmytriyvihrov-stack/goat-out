@@ -474,6 +474,16 @@ const Talisman = {
     if (p.broken) return;
     p.broken = true; p.dead = true;
     if (game.goat.holding === p) { game.goat.holding = null; game.goat.autoHeld = false; game.goat.spendGrab(game, false); }
+    // One the thrower took off the floor (`Thrower.bodyProp`) goes back to being the body it was: down on
+    // the floor again, tumbling onto its side (`CombatFX` ground), no second pool.
+    if (p.lit) { CombatFX.release(p.lit); p.lit = null; }
+    if (p.fromGround && p.sprite && game.fx && game.fx.fragment) {
+      const side = Math.random() < 0.5 ? -1 : 1, sp = hyp(p.vx, p.vy) || 1, k = Math.min(1, 160 / sp);
+      game.fx.fragment(p.x, p.y, p.sprite, p.crop || [0, 0, 96, 96], p.bodyW || 96, p.bodyH || 96, 0, 0, p.char || p.alight ? 'char' : 'body',
+        { vx: p.vx * k, vy: p.vy * k, vz: 70, z: 6, spin: 2.5 * side, angle: p.angle || 0, shade: p.shade, rest: side * Math.PI / 2, pool: 0, seed: (Math.random() * 1e6) | 0, key: p.key });
+      game.audio.sfxThud();
+      return;
+    }
     game.world.body(p.x, p.y, 11, p.angle || 0, '#2a1d20');
     game.world.splat(p.x, p.y, p.vx / 400 || 0, p.vy / 400 || 0, 8);
   },
@@ -645,6 +655,19 @@ const Talisman = {
     const ctx = r.ctx;
     const fade = p.held || p.flung ? 1 : Math.min(1, p.life / 2);
     ctx.save(); ctx.globalAlpha = fade;
+    // A body the thrower took off the floor (`Thrower.bodyProp`): its own canvas whole, already the dead's
+    // colours, pixels square; on the floor it lies in the world's squash as `CombatFX.drawPiece` lays it,
+    // over his head or in the air it is counter-squashed upright, as a man standing is.
+    if (p.fromGround && p.sprite) {
+      const up = p.held || p.flung, c = p.crop || [0, 0, 96, 96], w = p.bodyW || 96, h = p.bodyH || 96;
+      if (!up) r.shadow(p.x, p.y + 2, 14, 5); else if (p.flung) r.shadow(p.x, p.y + 6, 12, 4);
+      ctx.translate(p.x, p.y);
+      if (up) ctx.scale(1, 1 / TILT);
+      if (p.held) ctx.translate(0, -10);   // lying on the fist over his skull, not through his head
+      ctx.rotate(p.angle || 0); ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(up && p.lit ? p.lit : p.sprite, c[0], c[1], c[2], c[3], -w / 2, -h / 2, w, h);
+      ctx.restore(); return;
+    }
     r.shadow(p.x, p.y + 2, 14, 5);
     ctx.translate(p.x, p.y);
     ctx.scale(1, TILT);

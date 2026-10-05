@@ -206,6 +206,73 @@ function planEncounters(levelDef, rooms, rng) {
   return out;
 }
 
+// THE COMBOS (5 Oct 2026 playtest: "a man and a room, or men together, that make a situation"). Which
+// rooms may take combo `c`: an ordinary room the curve bought (never one that introduces a kind, a
+// trap, the ambush, the crowd, the chandelier's or a teaching room), or the arena of `room.arena`'s
+// boss once he is known; and whatever `room` asks of its template. Shared by `dealCombo` and
+// `GEN_RULES.combos`, so they ask one question.
+function comboRoomFits(c, room) {
+  const R = c.room || {}, tpl = room.tpl;
+  if (R.tpl && (!tpl || tpl.name !== R.tpl)) return false;
+  if (R.small && (!tpl || floorOf(tpl) > R.small)) return false;
+  if (R.pits) {
+    // Drops inside the room only: an 'O' on the border is a window in the wall.
+    let n = 0;
+    tpl.rows.forEach((row, y) => { for (let x = 1; x < row.length - 1; x++) if (row[x] === 'O' && y > 0 && y < tpl.rows.length - 1) n++; });
+    if (n < R.pits) return false;
+  }
+  return true;
+}
+// Whether every man in combo `c` was met on an earlier floor of the run (never one this floor introduces).
+function comboMet(def, c) {
+  const kinds = new Set(def.encounters.kinds);
+  return c.men.every((k) => def.met && def.met.has(k) && kinds.has(k)) && (!c.room || !c.room.arena || def.met.has(c.room.arena));
+}
+// One combo a floor at most, `combos.chance` of the floors (always, for the one `opts.combo` names:
+// the dev drawer's COMBOS tab). The combo's men become the room's first men; the rest of its budget
+// is bought off the curve with no clubman in it, so the room is the pairing, not the pairing and a
+// crowd; a room whose budget the pairing would pass by more than `over` is not offered. Marks
+// `room.combo` and the plan's cell; returns `{ id, room }` or null.
+function dealCombo(levelDef, rooms, plan, seed, opts) {
+  const CB = TUNING.combos, li = levelIndexOf(levelDef), crng = new RNG(((seed ^ 0x0c0b0a5) >>> 0));
+  if (!CB || levelDef.shroom || li < 0) return null;
+  const forced = opts && opts.combo, E = levelDef.encounters;
+  if (!forced && !crng.chance(CB.chance)) return null;
+  const caps = Object.assign({}, ENCOUNTER.cap, E.cap || {});
+  const offers = [];
+  for (const c of CB.list) {
+    if (forced ? c.id !== forced : li < c.from) continue;
+    if (!comboMet(levelDef, c)) continue;
+    const cost = c.men.reduce((a, k) => a + THREAT[k], 0);
+    for (const room of rooms) {
+      const cell = plan.rooms.get(room.index);
+      if (!cell || cell.intro || room.index < 2 || !comboRoomFits(c, room)) continue;
+      if (c.room && c.room.arena) {
+        if (!cell.arena || cell.boss !== c.room.arena || cell.men.length + 1 + c.men.length > caps.men + 2) continue;
+        if (c.men.some((k) => cell.men.filter((m) => m === k).length + c.men.filter((m) => m === k).length > (caps[k] || 99))) continue;
+      } else {
+        if (cell.threat === undefined || room.isTrap || room.isAmbush || room.isCrowd || room.isChand || plan.introRooms.has(room.index)) continue;
+        if (cost > cell.threat * CB.over || c.men.length > roomMenCap(caps.men, room.tpl)) continue;
+      }
+      offers.push({ c, room, cell, cost });
+    }
+  }
+  if (!offers.length) return null;
+  // The combo first, then its room: drawn over rooms, the one that fits anywhere (WITCHFIRE AND THE
+  // HOOK) took nearly every deal and the ones that want a particular room were never seen.
+  const ids = [...new Set(offers.map((o) => o.c.id))], pickId = ids[crng.int(0, ids.length - 1)], mine = offers.filter((o) => o.c.id === pickId);
+  const { c, room, cell, cost } = mine[crng.int(0, mine.length - 1)];
+  if (c.room && c.room.arena) cell.men = cell.men.concat(c.men);
+  else {
+    // At most `extra` men round the pairing (a late room's whole budget round it buried it in a crowd).
+    const left = cell.threat - cost, maxMen = Math.min(CB.extra, roomMenCap(caps.men, room.tpl) - c.men.length);
+    const avail = E.kinds.filter((k) => k !== ENCOUNTER.cheap.kind && levelDef.met.has(k) && !c.men.includes(k) && THREAT[k] <= left + 0.5);
+    cell.men = c.men.concat(left >= 1 && maxMen > 0 && avail.length ? fillRoom(left, avail, crng, caps, maxMen) : []);
+  }
+  cell.combo = c.id; room.combo = c.id;
+  return { id: c.id, room: room.index, forced: !!forced };
+}
+
 // `opts.luck` is the LUCKY CLOVER at the goat's neck when this floor is generated (`mods.luck`):
 // multipliers on the odds of a second secret, of grass behind one, and of a loose rack, plus bowls
 // of milk on top of the level's own count. Nothing else the goat carries reaches the generator.
@@ -680,6 +747,9 @@ function tryGenerate(levelDef, seed, opts) {
 
   // Props from the template markers, and the men the plan asked for placed on whatever the room has.
   const plan = planEncounters(levelDef, rooms, rng);
+  // A COMBO (`TUNING.combos`): now and then one room is dealt as a pairing worth meeting. Before the
+  // clock doors and the spawns, so both read the room as it will be. Its own stream.
+  const combo = dealCombo(levelDef, rooms, plan, seed, opts);
   // Which of the doors on a clock keep it. The offer only means anything if the room in front of it
   // holds enough to make staying costly, a count running down in an empty room is a timer with
   // nothing to beat, and it is never hung on a room that is teaching: the room that introduces a
@@ -912,10 +982,19 @@ function tryGenerate(levelDef, seed, opts) {
     if (!levelDef.cave && !levelDef.shroom && !levelDef.dark && room.index > 0 && !room.arena && !room.isAmbush && !room.isRest
         && !room.isCalm && !room.isTrap && !room.isMill && !room.isHall && !room.isGallery && !room.isKillbox && room.index !== lessonIndex && !room.isChand
         && !props.some((p) => p.kind === 'chandelier' && inBox(room, p))) {
-      const rollA = drng.float(0, 1), rollT = drng.float(0, 1);
+      // One roll a room for the dressing, then whichever of the two the floor has fewer of goes up first,
+      // the other if its spot will not fit (5 Oct 2026 playtest: "I never see a stag's head any more":
+      // the armour rolled first and took the room, and a floor with its two suits up was most of the way
+      // through before a head was ever tried; a head was on a third of floors, a suit on two thirds).
+      const roll = drng.float(0, 1), canA = room.index >= AR.from && armors < AR.perLevel, canT = room.index >= TR.from && trophies < TR.perLevel;
       if (armory) { for (let k = 0; k < AR.armory; k++) dressWall(tiles, W, room, props, grass, drng, 'armor', true); }
-      else if (room.index >= AR.from && armors < AR.perLevel && rollA < AR.chance) { if (dressWall(tiles, W, room, props, grass, drng, 'armor')) armors++; }
-      else if (room.index >= TR.from && trophies < TR.perLevel && rollT < TR.chance) { if (dressWall(tiles, W, room, props, grass, drng, 'trophy')) trophies++; }
+      else if ((canA || canT) && roll < AR.chance + TR.chance) {
+        const first = !canA ? 'trophy' : !canT ? 'armor' : trophies < armors ? 'trophy' : armors < trophies ? 'armor' : roll < TR.chance ? 'trophy' : 'armor';
+        for (const kind of [first, first === 'armor' ? 'trophy' : 'armor']) {
+          if (kind === 'armor' ? !canA : !canT) continue;
+          if (dressWall(tiles, W, room, props, grass, drng, kind)) { if (kind === 'armor') armors++; else trophies++; break; }
+        }
+      }
       // The suit that stands on the floor (1 Oct 2026): a post in the room on plain floor, where the
       // room stays open round it (`rockFits`), off the way in and clear of anything else that stands.
       // THE ARMORY has `suit.armory` of them; elsewhere it rolls like the wall's dressing. Own stream.
@@ -1076,7 +1155,8 @@ function tryGenerate(levelDef, seed, opts) {
     const room = sp.thrower && rooms[sp.roomIndex];
     if (!room) continue;
     const trng = new RNG(((seed ^ 0x7a2b0e5) + room.index * 6007) >>> 0), inside = (p) => p.x > room.x * TILE && p.x < (room.x + room.w) * TILE && p.y > room.y * TILE && p.y < (room.y + room.h) * TILE;
-    let have = props.filter((p) => (p.kind === 'crate' || p.kind === 'bomb') && inside(p)).length;
+    // A crate in the wheel's sweep is taken up again at the end (`MILL_CLEAR`): it is not his.
+    let have = props.filter((p) => (p.kind === 'crate' || p.kind === 'bomb') && inside(p) && !inMillSweep(props, p.x, p.y)).length;
     // A crowded room (THE ARMORY) takes them a tile apart in the second half of the tries; a standing
     // suit of armour keeps its two tiles clear whatever happens (`GEN_RULES.suits`).
     for (let a = 0; a < 160 && have < TUNING.thrower.ammo; a++) {
@@ -1084,7 +1164,7 @@ function tryGenerate(levelDef, seed, opts) {
       if (tiles[ty * W + tx] !== T.FLOOR || grass.has(ty * W + tx)) continue;
       const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE, gap = a < 80 ? 1.4 : 1;
       if (props.some((p) => len(p.x - px, p.y - py) < (p.kind === 'suit' ? 2.1 : gap) * TILE) || onTable(px, py, TUNING.prop.crate.r, props)) continue;
-      if (spawns.some((o) => len(o.x - px, o.y - py) < 0.9 * TILE)) continue;
+      if (spawns.some((o) => len(o.x - px, o.y - py) < 0.9 * TILE) || inMillSweep(props, px, py)) continue;
       if (room.enter && len(room.enter.x - px, room.enter.y - py) < 1.5 * TILE) continue;
       props.push({ x: px, y: py, kind: 'crate' }); have++;
     }
@@ -1238,23 +1318,29 @@ function tryGenerate(levelDef, seed, opts) {
     // iron is laid exactly as it was. Never the horse's stall.
     const KI = TUNING.keys.iron, irng = new RNG(((seed ^ 0x1c0ca9e) >>> 0));
     const coop = props.find((p) => p.kind === 'coop' && p.holds !== 'horse');
-    if (coop && levelIndexOf(levelDef) >= KI.from && irng.chance(KI.chance)) {
-      const spots = rooms.filter((r) => r.index > 0 && r.index !== coop.beastRoom && Math.abs(r.index - coop.beastRoom) <= 4 && !r.arena && !r.isMill
-        && !r.isHall && !r.isGallery && !r.isKillbox && !r.isAmbush && !r.isRest && !r.isCalm && !r.isTrap
-        && r.index !== lessonIndex && !r.isChand && r.index !== levelDef.vaultAt);
+    const coopRoom = coop && rooms.find((r) => r.index === coop.beastRoom);
+    // The slats break to one blow; iron would not, so a coop standing in a room's only way through stays slats.
+    // and neither does one in front of either of its doors (they are counted outside the room's floor)
+    const clearOf = (m) => !m || len(m.x - coop.x, m.y - coop.y) >= 2.5 * TILE;
+    if (coop && coopRoom && clearOf(coopRoom.enter) && clearOf(coopRoom.exitMouth) && discKeepsRoomOpen(tiles, W, coopRoom, coop.x, coop.y, ironReach())
+      && levelIndexOf(levelDef) >= KI.from && !(opts && opts.noIron) && irng.chance(KI.chance)) {
+      // The cage of grass stands in the coop's own room, `pair` tiles from it (5 Oct 2026, his answer: "a
+      // choice between the two cages is right, only then in one room, and it must read, grass or animal"):
+      // the two are seen together and the one key is spent on one of them. Neither may cut the room in two
+      // with the other standing. No spot, no iron on this floor.
+      const room = coopRoom, P = KI.pair;
       let laid = null;
-      for (const room of irng.shuffle(spots)) {
-        for (let a = 0; a < 60 && !laid; a++) {
-          const tx = irng.int(room.x + 1, room.x + room.w - 3), ty = irng.int(room.y + 1, room.y + room.h - 2);
-          if (tiles[ty * W + tx] !== T.FLOOR || tiles[ty * W + tx + 1] !== T.FLOOR) continue;
-          if (grass.has(ty * W + tx) || grass.has(ty * W + tx + 1)) continue;
-          const px = (tx + 1) * TILE, py = (ty + 0.5) * TILE;
-          if (props.some((p) => len(p.x - px, p.y - py) < 2.2 * TILE) || onTable(px, py, KI.r, props)) continue;
-          if (room.enter && len(room.enter.x - px, room.enter.y - py) < 2.5 * TILE) continue;
-          if (room.exitMouth && len(room.exitMouth.x - px, room.exitMouth.y - py) < 2.5 * TILE) continue;
-          laid = { x: px, y: py, kind: 'ironcage', holds: 'grass', ironRoom: room.index };
-        }
-        if (laid) break;
+      for (let a = 0; a < 120 && !laid; a++) {
+        const tx = irng.int(room.x + 1, room.x + room.w - 3), ty = irng.int(room.y + 1, room.y + room.h - 2);
+        if (tiles[ty * W + tx] !== T.FLOOR || tiles[ty * W + tx + 1] !== T.FLOOR) continue;
+        if (grass.has(ty * W + tx) || grass.has(ty * W + tx + 1)) continue;
+        const px = (tx + 1) * TILE, py = (ty + 0.5) * TILE, d = len(coop.x - px, coop.y - py);
+        if (d < P[0] * TILE || d > P[1] * TILE) continue;
+        if (props.some((p) => p !== coop && len(p.x - px, p.y - py) < 2.2 * TILE) || onTable(px, py, KI.r, props)) continue;
+        if (room.enter && len(room.enter.x - px, room.enter.y - py) < 2.5 * TILE) continue;
+        if (room.exitMouth && len(room.exitMouth.x - px, room.exitMouth.y - py) < 2.5 * TILE) continue;
+        if (!discKeepsRoomOpen(tiles, W, room, px, py, ironReach(), [[coop.x, coop.y]])) continue;
+        laid = { x: px, y: py, kind: 'ironcage', holds: 'grass', ironRoom: room.index };
       }
       if (laid) { coop.ironCage = true; props.push(laid); }
     }
@@ -1504,6 +1590,26 @@ function tryGenerate(levelDef, seed, opts) {
     props.push({ x: pick.x, y: pick.y, kind: 'heal' });
   });
 
+  // THE FIRST GRASS (`levelDef.firstGrass`, THE ALTAR; 5 Oct 2026 playtest: "I did not know the grass heals").
+  // One bowl more, in the straight run of a corridor he has to walk, the first one past the sentry's room that
+  // nothing narrows, with nothing else within `heal.firstClear` tiles of it: he cannot miss it, and the floor words
+  // beside it (`Renderer.drawFirstWords`) say what it is. On top of the rhythm, never instead of a bowl of it.
+  if (levelDef.firstGrass) {
+    const narrowed = new Set([sentryRoomAt, levelDef.chandAt, ...restsOf(levelDef), ...(levelDef.arenas || []).map((a) => a.at)]);
+    for (const room of rooms) {
+      if (room.index <= Math.max(0, sentryRoomAt) || narrowed.has(room.index) || !room.exitBand) continue;
+      const b = room.exitBand, turn = b.x1 - b.wide + 1;
+      let spot = null;
+      for (let tx = b.x0 + 1; tx < turn && !spot; tx++) {
+        let open = true;
+        for (let k = 0; k < b.wide; k++) if (tiles[(b.y + k) * W + tx] !== T.FLOOR || grass.has((b.y + k) * W + tx)) open = false;
+        const px = (tx + 0.5) * TILE, py = (b.y + b.wide / 2) * TILE;
+        if (open && !props.some((p) => len(p.x - px, p.y - py) < TUNING.prop.heal.firstClear * TILE)) spot = { x: px, y: py };
+      }
+      if (spot) { props.push({ x: spot.x, y: spot.y, kind: 'heal', firstGrass: true }); break; }
+    }
+  }
+
   // Where the mouse's milk goes if it is the offer taken, worked out once the room's own furniture is
   // in: the floor nearest her gap, more than a tile off it so nobody grazes in her doorway, spread so
   // the bowls read as three and not as one smudge, and, the promise every other bowl keeps, never in
@@ -1545,6 +1651,16 @@ function tryGenerate(levelDef, seed, opts) {
   // Safety: nothing spawns within 5 tiles of the start, and the start room keeps no props underfoot.
   const filtered = spawns.filter((s) => len(s.x - start.x, s.y - start.y) > 5 * TILE);
   const cleanProps = props.filter((p) => p.kind === 'door' || p.kind === 'cage' || len(p.x - start.x, p.y - start.y) > 3 * TILE);
+  // The wheel's sweep is kept bare (`MILL_CLEAR`): whatever any pass above stood in it is taken up, and
+  // a grate it was hiding is a plain grate again.
+  if (cleanProps.some((p) => p.kind === 'mill')) {
+    for (let i = cleanProps.length - 1; i >= 0; i--) {
+      const p = cleanProps[i];
+      if (!MILL_CLEAR.has(p.kind) || !inMillSweep(cleanProps, p.x, p.y)) continue;
+      for (const g of cleanProps) if (g.kind === 'spike' && g.hidden && len(g.x - p.x, g.y - p.y) < 4) g.hidden = false;
+      cleanProps.splice(i, 1);
+    }
+  }
   // Nobody is put down inside the furniture. A spawn marker and a crate scattered later could land
   // on the same tile, and a man who starts inside a box is a man who never gets out of it, he
   // stood there the whole level, wedged. Walk him out in rings to the nearest clear floor of the
@@ -1667,7 +1783,7 @@ function tryGenerate(levelDef, seed, opts) {
   // that hurts him keeps the grass instead (1.89 backlog).
   if (vault && vault.kind === 'ogre' && !ogreArmed(rooms[levelDef.vaultAt], cleanProps)) vault.kind = 'grass';
   const level = { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, forkTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop,
+    hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop, combo,
     // Grass lying under a wall that went back up is not grass: only what is still on floor.
     grass: [...grass].filter((i) => tiles[i] === T.FLOOR), exitGate: null };
   level.carpets = layCarpets(level);
@@ -2385,6 +2501,15 @@ function shiftOffTables(room, props, tiles, W, grass) {
   }
 }
 
+// THE WHEEL's sweep (5 Oct 2026 playtest: a stand of arms stood by the hub): nothing that can be
+// placed stands within the arm's reach plus `mill.clear` tiles of a mill, so the wheel is a hazard of
+// its own and never a rack's neighbour. `Prop.updateMill` butts out whatever ends up there in play.
+// `GEN_RULES.millclear` asks `inMillSweep` of the same kinds.
+const MILL_CLEAR = new Set(['crate', 'weapon', 'barrel', 'bomb', 'table', 'suit', 'rock', 'shrooms']);
+function inMillSweep(props, x, y) {
+  const R = TUNING.mill.armLen + TUNING.mill.clear * TILE;
+  return props.some((m) => m.kind === 'mill' && len(m.x - x, m.y - y) < R);
+}
 // Is a point inside something a man cannot stand in? Everything a room puts on the floor except what
 // is floor itself, a bowl of milk, a grating, or a door, which stands in a corridor and not a room.
 // Shared by the generator's own spawn pass and `GEN_RULES.furniture`, so the two cannot disagree.
@@ -2419,6 +2544,30 @@ function stallKeepsRoomOpen(tiles, W, room, tx, ty, S) {
   }
   return seen.size === total;
 }
+// The same for a disc that no blow moves (an iron cage, `TUNING.keys.iron`): the room's floor still one
+// piece with every tile whose middle is within `R` px of (px, py) taken out, `R` the cage and a goat
+// side by side. Iron gives only to a key, and a cage on the crossroads of a one-tile corridor, or in
+// the lane between two drops, left a floor that could not be finished without one (5 Oct 2026).
+// `more`: other discs of the same radius already standing in the room ([[x, y], ...]), asked together.
+function discKeepsRoomOpen(tiles, W, room, px, py, R, more) {
+  const under = (x, y) => len((x + 0.5) * TILE - px, (y + 0.5) * TILE - py) < R
+    || (!!more && more.some(([mx, my]) => len((x + 0.5) * TILE - mx, (y + 0.5) * TILE - my) < R));
+  const open = (x, y) => x > room.x && y > room.y && x < room.x + room.w - 1 && y < room.y + room.h - 1
+    && !under(x, y) && tiles[y * W + x] !== T.WALL && tiles[y * W + x] !== T.PIT;
+  let total = 0, start = -1;
+  for (let y = room.y + 1; y < room.y + room.h - 1; y++) for (let x = room.x + 1; x < room.x + room.w - 1; x++) if (open(x, y)) { total++; if (start < 0) start = y * W + x; }
+  if (start < 0) return false;
+  const seen = new Set([start]), stack = [start];
+  while (stack.length) {
+    const i = stack.pop(), x = i % W, y = (i / W) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const j = (y + dy) * W + x + dx;
+      if (!seen.has(j) && open(x + dx, y + dy)) { seen.add(j); stack.push(j); }
+    }
+  }
+  return seen.size === total;
+}
+function ironReach() { return TUNING.keys.iron.r + TUNING.goat.radius; }
 // The horse's stall is the one piece of furniture that is a box and not a disc (`TUNING.prop.stall`):
 // its half-extents, or null for anything else. A generator prop and a live `Prop` both answer it.
 function stallHalf(p) {
@@ -2527,7 +2676,36 @@ function activeIn(props, room) {
 // laid under the tables where a room has them. Its own RNG stream, laid after everything else, so no
 // other roll moved when it came in. `GEN_RULES.carpets`.
 const CARPET_SKIP = new Set(['brazier', 'lamp', 'spike', 'heal', 'spire', 'rock', 'mill', 'coop', 'ironcage', 'cage', 'shrooms', 'secret', 'mouse', 'ware', 'door', 'bell', 'barrel']);
-function carpetFits(tiles, W, grass, props, c) {
+// Every patch of floor that carries words, as tile boxes (5 Oct 2026 playtest: "LEFT CLICK - HEADBUTT"
+// was written over a rug, and words on a pattern cannot be read). Generous on purpose: a control
+// block may slide `CARPET_WORDS.slide` tiles up or down at draw time (`Renderer.clearFloorRow`), so its
+// box covers the whole slide; the mouse's room's words lie across its middle; THE FORK's names run
+// left of the flights. Read by `layCarpets` and `GEN_RULES.carpets` alike, so they ask one question.
+// A name under a thing (THE SHOWROOM's labels, `size` 14 px or less) is one short line: its box is its
+// letters (`small.glyph` of a px a letter) and `small.band` tiles high, kept `small.m` clear, not a tile.
+const CARPET_WORDS = { slide: 3, band: 1.6, wide: 14, m: 1, small: { size: 14, glyph: 0.7, band: 0.4, m: 0.3 } };
+function floorWords(level) {
+  const out = [], CW = CARPET_WORDS, box = (cx, cy, w, h, m = CW.m) => out.push({ x0: cx - w / 2, y0: cy - h / 2, x1: cx + w / 2, y1: cy + h / 2, m });
+  for (const h of level.hints || []) {
+    if (h.size && h.size <= CW.small.size) box(h.x / TILE, h.y / TILE, Math.min((h.w || TILE) / TILE, h.text.length * h.size * CW.small.glyph / TILE), 2 * CW.small.band, CW.small.m);
+    else box(h.x / TILE, h.y / TILE, Math.min(CW.wide, (h.w || 14 * TILE) / TILE), 2 * CW.band);
+  }
+  for (const c of level.controls || []) box(c.x / TILE, c.y / TILE, Math.min(CW.wide, (c.w || 14 * TILE) / TILE), 2 * (CW.band + CW.slide));
+  for (const p of level.props || []) {
+    const r = p.kind === 'mouse' && level.rooms[p.shopId];
+    if (r) box(r.x + r.w / 2, r.y + r.h / 2, r.w, 2 * CW.band);
+  }
+  const fk = level.forkTile, ex = level.exitTile;
+  if (fk && ex) out.push({ x0: fk.x0 - 10, y0: Math.min(fk.y0, ex.y0), x1: fk.x0, y1: Math.max(fk.y0, ex.y0) + 3, m: CW.m });
+  if (level.cagePrompt) box(level.cagePrompt.x / TILE, level.cagePrompt.y / TILE, 15, 2 * CW.band + 2);
+  return out;
+}
+// A carpet's box, the words' own margin round it (a tile for a line of floor words), against every patch.
+function carpetUnderWords(c, words) {
+  return (words || []).some((b) => c.x - b.m < b.x1 && c.x + c.w + b.m > b.x0 && c.y - b.m < b.y1 && c.y + c.h + b.m > b.y0);
+}
+function carpetFits(tiles, W, grass, props, c, words) {
+  if (carpetUnderWords(c, words)) return false;
   for (let y = c.y - 1; y <= c.y + c.h; y++) for (let x = c.x - 1; x <= c.x + c.w; x++) {
     const i = y * W + x, t = tiles[i], inside = x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h;
     if (inside ? t !== T.FLOOR || grass.has(i) : t === T.WALL || t === T.PIT) return false;
@@ -2539,7 +2717,7 @@ function carpetFits(tiles, W, grass, props, c) {
 function layCarpets(level) {
   const C = TUNING.carpet, def = level.def, out = [];
   if (def.cave || def.shroom) return out;
-  const tiles = level.tiles, W = level.W, grass = new Set(level.grass), rng = new RNG((level.seed ^ 0x0ca7e75) >>> 0);
+  const tiles = level.tiles, W = level.W, grass = new Set(level.grass), rng = new RNG((level.seed ^ 0x0ca7e75) >>> 0), words = floorWords(level);
   for (const room of level.rooms) {
     if (out.length >= C.perLevel) break;
     if (room.index === 0 || room.isTrap || room.isMill || room.isKillbox || room.isAmbush) continue;
@@ -2551,7 +2729,7 @@ function layCarpets(level) {
       const w = across ? S : L, h = across ? L : S;
       if (room.w - 4 < w || room.h - 4 < h) continue;
       const c = { x: rng.int(room.x + 2, room.x + room.w - 2 - w), y: rng.int(room.y + 2, room.y + room.h - 2 - h), w, h };
-      if (!carpetFits(tiles, W, grass, level.props, c)) continue;
+      if (!carpetFits(tiles, W, grass, level.props, c, words)) continue;
       // Under the tables first, then bigger, then nearer the middle of the room.
       const under = tables.filter((t) => t.x >= c.x * TILE && t.x < (c.x + w) * TILE && t.y >= c.y * TILE && t.y < (c.y + h) * TILE).length;
       const s = under * 6 + w * h * 0.15 - Math.hypot(c.x + w / 2 - room.x - room.w / 2, c.y + h / 2 - room.y - room.h / 2) * 0.4;

@@ -22,9 +22,18 @@ const Motes = {
     const ghost = !Heaven.gifted() || game.showroomOn || (game.dev && game.dev.god);
     const L = game.level, r = roomAt(L, e.x, e.y), room = r ? r.index : game.nearestRoomIdx(e.x, e.y, game.goatRoom || 0);
     if (!game.motes) game.motes = [];
-    const n = game.motes.length;
-    const M = TUNING.heaven.motes;
-    game.motes.push({ x: e.x, y: e.y, ox: e.x, oy: e.y, room, ghost, t: -M.delay - (n % 4) * M.stagger, fly: false, vx: 0, vy: 0, sp: 0, ph: Math.random() * 6.28, trail: [] });
+    const M = TUNING.heaven.motes, k = this.count(e);
+    for (let i = 0; i < k; i++) {
+      const n = game.motes.length, ox = e.x + (i - (k - 1) / 2) * M.spread, oy = e.y - (i % 2) * M.spread * 0.4;
+      game.motes.push({ x: ox, y: oy, ox, oy, room, ghost, t: -M.delay - (n % 4) * M.stagger, fly: false, vx: 0, vy: 0, sp: 0, ph: Math.random() * 6.28, trail: [] });
+    }
+  },
+  // How many souls a man leaves (`motes.per`): one, two for the big men, three for an ogre, and one more
+  // for a boss (a champion or a soul-bearer).
+  count(e) {
+    const P = TUNING.heaven.motes.per;
+    const kind = e.kind === 'bearer' ? (e.thrower ? 'thrower' : e.shieldman ? 'shield' : e.champion ? 'champion' : 'bearer') : e.kind;
+    return (P[kind] || 1) + (e.boss ? P.boss : 0);
   },
   // Out of the body a beat after he dies (`delay`), it rises slowly (`riseT`) and hangs there; after `wait` s
   // it comes once the goat has left its room or stands right by it (`near` tiles) (2 Oct 2026 playtest: it
@@ -39,7 +48,7 @@ const Motes = {
       if (!m.fly) {
         // risen over the body, breathing
         const k = clamp(m.t / M.riseT, 0, 1), e = 1 - Math.pow(1 - k, 3);
-        m.x = m.ox; m.y = m.oy - M.rise * e - Math.sin(m.t * 2.4 + m.ph) * M.bob * k;
+        m.x = m.ox + Math.sin(m.t * M.bobRate * 0.5 + m.ph * 1.7) * M.sway * k; m.y = m.oy - M.rise * e - Math.sin(m.t * M.bobRate + m.ph) * M.bob * k;
         // Out of their room, or walked up to (2 Oct 2026 playtest: "it should also fly to you when you just come up to it").
         if (!m.ghost && m.t > M.wait && (gi !== m.room || hyp(g.x - m.ox, g.y - m.oy) < M.near * TILE) && !g.dead) { m.fly = true; m.vx = 0; m.vy = -M.speed * 0.6; m.sp = M.speed; }
         continue;

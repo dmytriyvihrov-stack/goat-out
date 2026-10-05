@@ -38,13 +38,13 @@ const Beast = {
   // What each one pays, in the player's words: the note under a HUD icon (`Renderer.drawSaved`).
   GIVES: {
     chicken: () => `+${TUNING.prop.chicken.saveHearts} heart for the run.`,
-    tortoise: () => `Every floor you start in armour that takes ${TUNING.prop.tortoise.saveArmour} blow.`,
-    goose: () => `Your voice carries ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further and comes back ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% sooner.`,
+    tortoise: () => `You start every floor in armour that takes ${TUNING.prop.tortoise.saveArmour} hit.`,
+    goose: () => `Your BAAH reaches ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further and is ready ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% sooner.`,
     crow: () => `It found ${/^[AEIOU]/.test(rarityOf(TUNING.prop.crow.giftTier).name) ? 'an' : 'a'} ${rarityOf(TUNING.prop.crow.giftTier).name.toLowerCase()} talisman and left it on the next floor's stairs.`,
     horse: () => `You run ${Math.round((TUNING.prop.horse.saveSpeed - 1) * 100)}% faster.`,
-    pig: () => 'A tuft or two more milk grass on every floor ahead.',
-    rabbit: () => `Your roll comes back ${Math.round((1 - TUNING.prop.rabbit.saveRollCd) * 100)}% sooner.`,
-    husky: () => `Your voice comes back ${Math.round((1 - TUNING.prop.husky.saveScreamCd) * 100)}% sooner.`,
+    pig: () => 'More milk grass on every floor ahead.',
+    rabbit: () => `Your roll is ready ${Math.round((1 - TUNING.prop.rabbit.saveRollCd) * 100)}% sooner.`,
+    husky: () => `Your BAAH is ready ${Math.round((1 - TUNING.prop.husky.saveScreamCd) * 100)}% sooner.`,
   },
 
   // ---------------- being hurt ----------------

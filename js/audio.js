@@ -538,6 +538,8 @@ class GameAudio {
   updateScene(game, dt) {
     const preview = game.dev.rules && game.dev.tab === 'music' ? this.lab : null;
     if (this.preview !== preview) { this.resetScore(); this.preview = preview; }
+    // STEALTH (dev test): a sneak hushes the score (`layers.hush`, eased on `hushMix` in the step).
+    this.hush = !!(game.sneak && game.dev.stealth && game.state === 'play');
     this.updateAmbience(game, dt);
     this.heartbeat(game);
     if (preview) {
@@ -780,6 +782,7 @@ class GameAudio {
     for (const name of MUSIC_STAGES) this.stageMix[name] += ((stage === name ? 1 : 0) - this.stageMix[name]) * ease;
     this.combatMix += ((stage === 'combat' ? 1 : stage === 'chase' ? 0.65 : stage === 'spotted' ? 0.35 : 0) - this.combatMix) * ease;
     this.heartMix += ((scene.lastHeart ? 1 : 0) - this.heartMix) * ease;
+    this.hushMix = (this.hushMix || 0) + ((this.hush ? 1 : 0) - (this.hushMix || 0)) * ease;
     const combat = this.combatMix;
     // How far into calm the score is, past the first floor: 1 nobody after him, 0 a fight or level one.
     // Not in the MUSIC lab with no bed under it: that is how a part is heard on its own, and calm leaving the
@@ -858,14 +861,18 @@ class GameAudio {
     const C = TUNING.audio.layers.calm;
     if (beat === 0) this.pad(t, root * 2, stepLen * 16.4, B.pad * thin(C.pad));
     // Calm is fewer notes, not quieter ones: past `calm.sparse` the bass keeps only its `bassBeats`.
-    const sparse = calm > C.sparse;
-    for (const [at, semi, length, gain] of B.bass) if (at === beat && (!sparse || C.bassBeats.includes(at))) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain * thin(C.bass));
+    // A sneak (`layers.hush`, `hushMix`): fewer parts again, the bass down to its `hush.bassBeats`, the tune out.
+    const H = TUNING.audio.layers.hush, hush = this.hushMix || 0, hushed = hush > 0.5;
+    const sparse = calm > C.sparse || hushed, keep = hushed ? H.bassBeats : C.bassBeats;
+    for (const [at, semi, length, gain] of B.bass) if (at === beat && (!sparse || keep.includes(at))) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain * thin(C.bass));
     // On the last heart the tune steps back (`layers.heartSing`) and leaves the room to his heart.
-    const sing = (M.idle * thin(C.tune) + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55) * (1 - (1 - TUNING.audio.layers.heartSing) * this.heartMix);
+    const sing = (M.idle * thin(C.tune) + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55) * (1 - (1 - TUNING.audio.layers.heartSing) * this.heartMix)
+      * (1 - (1 - H.tune) * hush);
     if (sing > 0.01) for (const [at, semi, length] of B.melody) {
       if (at === pos) this.lead(t, base * Math.pow(2, semi / 12), stepLen * length * 0.95, B.gain * sing * (at % 16 === 0 ? 1 : 0.85));
     }
-    if (B.toms.includes(beat) && thin(C.toms) > 0.01) this.tomHi(t, 0.045 * thin(C.toms));
+    const toms = thin(C.toms) * (1 - (1 - H.toms) * hush);
+    if (B.toms.includes(beat) && toms > 0.01) this.tomHi(t, 0.045 * toms);
   }
   // Preserved original arrangement, including the threat tiers, hunter cue and bell drone.
   // SETTINGS > LAYERED MUSIC off selects this; keep future room-score changes above it.

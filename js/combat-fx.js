@@ -329,7 +329,8 @@ class CombatFX {
       this.fragment(e.x,e.y,body.image,[0,0,96,96],size,size,dx,dy,cause==='burn'?'char':'body',
         {vx:dx*20+(e.vx||0)*C.carry,vy:dy*20+(e.vy||0)*C.carry,vz:95,spin:2.5*side,angle:(e.facing||0)+0.8,
           shade:body.shade,rest:side*Math.PI/2+(Math.random()-0.5)*2*C.lie,
-          pool:cause==='burn'?0:(big?C.big:C.pool),seed:(Math.random()*1e6)|0});
+          pool:cause==='burn'?0:(big?C.big:C.pool),seed:(Math.random()*1e6)|0,
+          key:this.game.renderer.painted.characterKey(e)});   // who he was, for the thrower's fist (`Thrower.bodyProp`)
       if(cause==='burn') this.explosion(e.x,e.y,19,!!e.witchBurn,true);
     }
   }

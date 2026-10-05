@@ -530,7 +530,7 @@ class PaintedArt extends AltarArt {
       ctx.restore();
       // What is left in a shield you are carrying: three studs, one per man or bullet it has in it.
       if(p.weapon==='shield'&&p.held&&p.uses>0){
-        const n=TUNING.prop.weapon.uses.shield;
+        const n=p.skulls?TUNING.shieldman.drop:TUNING.prop.weapon.uses.shield;   // the shieldman's board has its own (`shieldman.drop`)
         for(let k=0;k<n;k++){
           ctx.fillStyle=k<p.uses?PALETTE.bone:'rgba(239,230,208,0.22)';
           ctx.fillRect(p.x-(n*5-2)/2+k*5,p.y-30,3.2,3.2);
@@ -694,7 +694,10 @@ class PaintedArt extends AltarArt {
     const name='mshield'+(ART_PASS.shield||0)+'-'+B.v,g=PROP_PIXELS.sprites[name];if(!g)return;
     const S=TUNING.shieldman,low=sh.low||0,q=low>0.5?1:0;
     const k=BOARD_POSE.k,w=g.w*k,h=g.h*k,shake=sh.jolt>0?Math.round(Math.sin(renderer.t*70)*1.5):0;
-    const ctx=renderer.ctx;ctx.save();ctx.translate(B.x+shake+Math.round(S.side*low)*(B.flip?-1:1),B.y+Math.round(S.low*low));if(B.flip)ctx.scale(-1,1);
+    // His blow up close (`shieldman.strike`): the board drawn in toward him through the windup and rammed
+    // out `thrust` px along his facing in the swing, whole pixels, so the clubman's wedge has a weapon in it.
+    const th=e.state==='windup'?-S.strike.thrust/2:e.state==='swing'?S.strike.thrust:0,tx=Math.round(Math.cos(e.facing||0)*th),ty=Math.round(Math.sin(e.facing||0)*th*0.6);
+    const ctx=renderer.ctx;ctx.save();ctx.translate(B.x+shake+tx+Math.round(S.side*low)*(B.flip?-1:1),B.y+ty+Math.round(S.low*low));if(B.flip)ctx.scale(-1,1);
     PROP_PIXELS.draw(ctx,name,q?-h/2:-w/2,q?-w/2:-h/2,k,q);
     ctx.restore();
   }
@@ -910,7 +913,7 @@ class PaintedArt extends AltarArt {
     const lp=g.leap,hop=lp?Math.sin(clamp(lp.t/lp.time,0,1)*Math.PI)*lp.h
       :fid&&fid.kind==='hop'&&fk>0.2&&fk<0.8?Math.sin((fk-0.2)/0.6*Math.PI)*I.hop.h:0;
     // Coming down out of heaven his shadow grows under him as he nears the floor (`Heaven.dropShadow`).
-    const dropK=game&&game.dropIn&&typeof Heaven!=='undefined'?Heaven.dropShadow(game):1;
+    const dropK=game&&(game.dropIn||(game.heaven&&game.heaven.jump))&&typeof Heaven!=='undefined'?Heaven.dropShadow(game):1;
     const sh=Math.max(0.2,1-hop*0.03)*dropK;   // a leap higher than ~26 px would hand `ellipse` a negative radius
     if(g.state!=='carried'&&sh>0.01)renderer.shadow(g.x,g.y,16*sh,7*sh);   // over the thrower's head he has no floor under him
     ctx.save();ctx.translate(g.x,g.y);ctx.scale(1,1/TILT);

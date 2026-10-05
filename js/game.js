@@ -16,6 +16,10 @@ const SET_KEY = 'goatout.settings.v1';
 const PEN_KEY = 'goatout.pen.v1';
 // The stone teeth have been shown killing a man once in this browser (`updateSpireLesson`).
 const SPIRE_KEY = 'goatout.spire.v1';
+// What this browser has done once (5 Oct 2026 playtest, "show what a thing is the first time"): `key` picked one up,
+// `iron` opened iron, `graze` healed off grass. Until it has, the floor says it beside the thing (`Renderer.drawFirstWords`),
+// and no floor shuts anything in iron before the first key (`noIron` to the generator).
+const LEARN_KEY = 'goatout.learned.v1';
 // The ENEMIES tab's six dev sliders (`game.dev.tune`): multipliers on the cult's and the goat's pace,
 // attack timings and cooldowns, for trying combinations by hand. A dev tool's range, not a game
 // number. Remembered by this browser; at 1 each is an exact no-op, and none of them writes TUNING.
@@ -154,7 +158,7 @@ class Game {
       // Two read-only overlays: a man's sight (cone plus range) and how far the goat's own noise
       // carries (a walk against a fight), both drawn in world space by `Renderer.drawDevOverlay`.
       vision: false, hearing: false,
-      // STEALTH: ALT held sneaks, the cult's sight and ears on the floor, a blow from unseen throws further
+      // STEALTH: ALT switches a sneak, the cult's sight and ears on the floor, a blow from unseen throws further
       // (`TUNING.stealth`). Never in the itch build, which has no drawer to turn it off with.
       stealth: (() => { try { return !RELEASE.on && localStorage.getItem(STEALTH_KEY) === '1'; } catch (e) { return false; } })(),
       // THE DARK's picture over whatever floor is up, without its gentler curve or its lamps.
@@ -172,7 +176,9 @@ class Game {
     this.bless = null; this.blessSeen = false;   // the mage at the first gate; see `watchBless`
     try { this.blessSeen = localStorage.getItem(BLESS_KEY) === '1'; } catch (e) { /* storage refused */ }
     try { this.penBroken = localStorage.getItem(PEN_KEY) === '1'; } catch (e) { /* storage refused */ }
+    this.learned = {}; try { this.learned = JSON.parse(localStorage.getItem(LEARN_KEY) || '{}') || {}; } catch (e) { /* storage refused */ }
     this.settings = this.loadSettings();
+    KeyBind.load(this.settings.binds); bindLay();   // SETTINGS → CONTROLS, and every word that names a key
     Heaven.load();   // what stays across deaths and runs: the sacrifices, the mirror, the seats (js/heaven.js)
     this.dev.god = !!this.settings.god;   // GOD MODE, thrown in SETTINGS or the drawer, outlives a reload
     this.audio.setLayered(this.settings.layeredMusic);
@@ -189,7 +195,7 @@ class Game {
       // The itch build itself (`RELEASE.on`, the dev drawer's ITCH BUILD) has no dev corner at all,
       // `#dev` or not, and none of the tool's addresses below: its GOD MODE is a switch in SETTINGS.
       this.dev.hidden = RELEASE.on || (/(^|\.)(itch\.io|itch\.zone|hwcdn\.net)$/i.test(location.hostname || '') && h !== 'dev');
-      if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'mirror' || h === 'roomlist' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats' || h === 'animals')) {
+      if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'mirror' || h === 'roomlist' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats' || h === 'animals' || h === 'combos')) {
         this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
       }
       // `#seed=k3j9a` is the whole of sharing a run: NEW GAME takes it instead of rolling one, so a
@@ -326,6 +332,12 @@ class Game {
   // the bar of no gate, the gates' souls lie on the floors of their rest rooms.
   // A gate's keeper (`soulGate`) is the one man who is not a boss and still pays: his soul is his
   // gate's bar, and swallowing it lifts that gate like the one that used to lie on the floor.
+  // Something done once in this browser (`LEARN_KEY`): its floor words go for good.
+  learn(what) {
+    if (this.learned[what]) return;
+    this.learned[what] = true;
+    try { localStorage.setItem(LEARN_KEY, JSON.stringify(this.learned)); } catch (e) { /* it lasts the tab */ }
+  }
   bossPrize(e) {
     if (e.soul) this.dropSoul(e.x, e.y, e.soulGate >= 0 ? e.soulGate : undefined); else this.dropMilk(e.x, e.y);
     // A champion (a boss with no soul in him) sometimes carries a key too (`TUNING.keys.drop`).
@@ -399,7 +411,7 @@ class Game {
     this.checkpoint = { level: this.levelIndex, room: this.holdAt, boons: this.boons.slice(),
       artifact: this.artifact ? { id: this.artifact.id, tier: this.artifact.tier } : null,
       talRun: this.talRun ? Object.assign({}, this.talRun) : null, crowGift: !!this.crowGift, tripAt: this.tripAt,
-      kills: this.kills, time: this.timer, firstKill: this.firstKill, pet: pet ? pet.kind : null,
+      kills: this.kills, time: this.timer, firstKill: this.firstKill, pet: pet ? pet.kind : null, keys: this.runKeys | 0,
       // The horse's race is half run by the gate: a soul room already beaten to it is kept.
       petWon: pet && pet.kind === 'horse' ? pet.won || 0 : 0, petFed: pet && pet.kind === 'pig' ? pet.fed || 0 : 0 };
     this.holdAt = -1;
@@ -662,6 +674,10 @@ class Game {
     }
     if (L && L.done) return;
     if (!this.level || this.level.def.shroom || !g || g.dead) return;
+    // Looked for `every` s, not every step: the walked way is a search per clubman, and until a
+    // browser has seen the lesson a cave room with a tooth ran it sixty times a second.
+    if ((this.spireLookT = (this.spireLookT || 0) - dt) > 0) return;
+    this.spireLookT = S.every;
     let told = false; try { told = localStorage.getItem(SPIRE_KEY) === '1'; } catch (err) { told = false; }
     if (told) { this.spireLesson = { done: true }; return; }
     const room = roomAt(this.level, g.x, g.y); if (!room) return;
@@ -837,12 +853,12 @@ class Game {
     for (const p of this.props) if (p.kind === 'mouse' && p.nicheTiles) { const r = this.level.rooms[p.shopId]; if (r && r.seen) lit.push(p); }
     for (const p of lit) {
       for (const i of p.nicheTiles) {
-        w.vis[i] = 1;
+        w.lightTile(i);
         const tx = i % w.W, ty = Math.floor(i / w.W);
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const nx = tx + dx, ny = ty + dy;
           if (nx < 0 || ny < 0 || nx >= w.W || ny >= w.H) continue;
-          if (!w.isSolid(nx, ny)) w.vis[ny * w.W + nx] = 1;
+          if (!w.isSolid(nx, ny)) w.lightTile(ny * w.W + nx);
         }
       }
     }
@@ -860,7 +876,7 @@ class Game {
         for (let dx = -1; dx <= 1; dx++) {
           const nx = tx + dx, ny = ty + dy;
           if (nx < 0 || ny < 0 || nx >= w.W || ny >= w.H) continue;
-          if (!w.isSolid(nx, ny)) w.vis[ny * w.W + nx] = 1;
+          if (!w.isSolid(nx, ny)) w.lightTile(ny * w.W + nx);
         }
       }
       // Once a run, in the room it first happens in, because a door that is open when you look at it
@@ -1294,7 +1310,7 @@ class Game {
     if (id === 'stealth') {
       this.dev.stealth = !this.dev.stealth;
       try { localStorage.setItem(STEALTH_KEY, this.dev.stealth ? '1' : '0'); } catch (e) { /* storage refused */ }
-      this.devToast(this.dev.stealth ? 'STEALTH ON: HOLD ALT TO SNEAK' : 'STEALTH OFF'); return;
+      this.devToast(this.dev.stealth ? 'STEALTH ON: ALT TO SNEAK' : 'STEALTH OFF'); return;
     }
     if (id === 'dark') { this.dev.dark = !this.dev.dark; return; }
     if (id === 'showroom') { this.dev.open = false; this.startShowroom(); return; }
@@ -1306,6 +1322,36 @@ class Game {
       const at = this.level.def.showroom ? 0 : this.levelIndex || 0, li = Math.max(0, Math.min(LEVELS.length - 1, at + (id === 'lvl-next' ? 1 : -1)));
       this.dev.open = false; this.dev.rules = false; this.startAtLevel(li);
       this.devToast('LEVEL ' + (li + 1) + ' · ' + LEVELS[li].name);
+      return;
+    }
+    // COMBOS tab: PLAY lays that pairing (`TUNING.combos`, gen.js `dealCombo` through `opts.combo`) on this
+    // floor if it may stand here, else on its own first floor, cutting the floor again off the next seeds
+    // until one is laid, then stands the goat a step inside that room's door with the men before it gone.
+    if (id.startsWith('combo=')) {
+      const C = TUNING.combos.list.find((c) => c.id === id.slice(6));
+      if (!C || !this.level || this.level.def.heaven || !this.goat) return;
+      const cur = this.level.def.showroom || this.level.def.shroom ? -1 : this.levelIndex || 0;
+      const li = cur >= C.from && LEVELS[cur] ? cur : Math.min(C.from, LEVELS.length - 1);
+      this.dev.open = false; this.dev.rules = false; this.dev.forceCombo = C.id;
+      const laid = () => this.level && this.level.combo && this.level.combo.id === C.id;
+      try {
+        this.startAtLevel(li);
+        for (let k = 1; k < 40 && !laid(); k++) this.startLevel(li, (this.levelSeed(li) + k * 7919) >>> 0, true);
+      } finally { this.dev.forceCombo = null; }
+      if (!laid()) { this.devToast(`NO ROOM FOR ${C.name} ON ${LEVELS[li].name}`); return; }
+      const L = this.level, at = L.combo.room, room = L.rooms[at], g = this.goat;
+      this.enemies = this.enemies.filter((e) => !(e.room >= 0 && e.room < at));
+      const ent = room.enter || { x: (room.x + 1.5) * TILE, y: (room.y + room.h / 2) * TILE };
+      const cx = (room.x + room.w / 2) * TILE, cy = (room.y + room.h / 2) * TILE, l = Math.hypot(cx - ent.x, cy - ent.y) || 1;
+      // Not `freeSpot`: it asks the flow field, which still runs from the start behind the gates.
+      let spot = { x: ent.x + (cx - ent.x) / l * 1.2 * TILE, y: ent.y + (cy - ent.y) / l * 1.2 * TILE };
+      for (let k = 1.2; k < l / TILE && [T.WALL, T.PIT].includes(this.world.tileAtPx(spot.x, spot.y)); k += 0.5) spot = { x: ent.x + (cx - ent.x) / l * k * TILE, y: ent.y + (cy - ent.y) / l * k * TILE };
+      g.x = spot.x; g.y = spot.y; g.safeX = g.x; g.safeY = g.y; g.safeTrail = [];
+      this.cageOpen = true; this.goatRoom = at;
+      this.cam.x = g.x; this.cam.y = g.y; this.camFollow = null; this.camTrack = null; this.camHold = undefined; this.camRoomMid = null; this.pathTrail = [{ x: g.x, y: g.y }];
+      this.world.computeFlow(g.x, g.y);
+      this.world.computeVis(g.x, g.y, TUNING.fog.radius, this.mods.oracle ? TUNING.fog.oracle : 0);
+      this.devToast(`${C.name} · ${LEVELS[li].name} ROOM ${at}`);
       return;
     }
     // Straight up to heaven from a floor under way, as a death would send him (js/heaven.js), and a
@@ -1344,6 +1390,9 @@ class Game {
       Heaven.save(); this.applyBoons(); this.devToast(`${u.toUpperCase()} RANK ${r}`); return;
     }
     if (id === 'mirror-reset') { const M = Heaven.meta || Heaven.load(); M.ranks = {}; Heaven.save(); this.applyBoons(); this.devToast('MIRROR RANKS CLEARED'); return; }
+    // HEAVEN tab: wake one more bell (a floor counted as won), or put them all back to sleep but the first.
+    if (id === 'bells-add') { const M = Heaven.meta || Heaven.load(); M.cleared = M.cleared || {}; for (let k = 0; k < 64; k++) if (!M.cleared['dev' + k]) { M.cleared['dev' + k] = 1; break; } Heaven.save(); this.devToast(`${Heaven.bellsOpen()} BELLS AWAKE`); return; }
+    if (id === 'bells-reset') { const M = Heaven.meta || Heaven.load(); M.cleared = {}; M.bellsSeen = 1; M.bellSong = 0; M.bellQuest = false; Heaven.save(); this.devToast('ONE BELL AWAKE'); return; }
     if (id === 'addkey') { this.runKeys = (this.runKeys | 0) + 1; this.keyFlash = 0.5; this.devToast(`${this.runKeys} KEYS`); return; }
     if (id === 'sacrifices') { Heaven.meta.sacrifices += 100; Heaven.meta.souls = (Heaven.meta.souls || 0) + 5; Heaven.save(); this.devToast(`${Heaven.meta.sacrifices} SACRIFICES · ${Heaven.meta.souls} SOULS`); return; }
     if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) { this.dev.page = this.level ? this.levelIndex : 0; this.dev.room = null; } return; }
@@ -1712,7 +1761,12 @@ class Game {
     const stop = () => { if (e) e.preventDefault(); };
     // anyPressed skips the opening scene; muting should not
     if (code !== 'KeyM') this.input.anyPressed = true;
-    if (code === 'Space') { this.input.spacePressed = true; stop(); }
+    // A row of SETTINGS → CONTROLS listening for its new button takes the very next key, whatever it is.
+    if (KeyBind.listen(this, code)) { stop(); return; }
+    // In play and heaven the verbs are wherever the player put them (`KeyBind`); everywhere else (the
+    // cards, the menus) Space is still the key that goes on.
+    const verbs = (this.state === 'play' || this.state === 'heaven') && !(this.heaven && this.heaven.panel);
+    if (code === 'Space') { if (!verbs) this.input.spacePressed = true; stop(); }
     // Her offer up (js/codex.js) takes the keys: a card, the arrows, looking away.
     if (this.state === 'play' && this.shopDlg && Codex.shopKey(this, code)) { stop(); this.wakeAudio(); return; }
     // I: the book of what he carries (js/codex.js), a page like the pause and no verb (pillar 1).
@@ -1737,6 +1791,7 @@ class Game {
       if (this.state === 'play' || this.state === 'heaven') { this.pauseFrom = this.state; this.state = 'paused'; this.pause.index = 0; this.menu.panel = null; this.audio.sfxCard(); }
       else if (this.state === 'paused') {
         if (this.menu.panel === 'book') Codex.close(this);
+        else if (this.menu.panel === 'controls') KeyBind.close(this);
         else if (this.menu.panel) { this.menu.panel = null; this.audio.sfxSwing(); }
         else { this.state = this.pausedIn(); this.audio.sfxSwing(); }
       }
@@ -1750,14 +1805,15 @@ class Game {
     if (code === 'KeyM') this.toggleSetting('sound');
     Photo.onKey(this, code);
     if (code === 'KeyN' && this.state === 'play' && this.dev.open) this.levelCleared();
-    if (code === 'KeyE') this.input.rollPressed = true;
+    if (verbs) KeyBind.press(this, code);
+    else if (code === 'KeyE') this.input.rollPressed = true;
     // KEYBOARD ONLY (SETTINGS `keysOnly`): J is the left button, L the roll, K the grab (held, read in
     // `readMoveInput`); only in play and heaven, so J on a card never lands on a button under a resting pointer.
     // Z X C are the same three beside the arrows (3 Oct 2026, "if a man has only a keyboard"). Pressed
     // with the setting off they take the aim anyway (`kbLive`), as a pad's stick does: nobody has to find
     // KEYBOARD ONLY in SETTINGS to play without a mouse. A mouse that clicks or really moves takes it back.
     const kbVerb = { KeyJ: 'butt', KeyZ: 'butt', KeyK: 'grab', KeyX: 'grab', KeyL: 'roll', KeyC: 'roll' }[code];
-    if (kbVerb && (this.state === 'play' || this.state === 'heaven')) {
+    if (kbVerb && (this.state === 'play' || this.state === 'heaven') && !KeyBind.acts(code).length) {
       if (!this.settings.keysOnly && !this.kbLive) { this.kbLive = true; this.kbAim = { x: this.input.aim.x, y: this.input.aim.y }; }
       this.kbMouse = 0;
       kbUse(code === 'KeyZ' || code === 'KeyX' || code === 'KeyC' ? 'zxc' : 'jkl');
@@ -1767,7 +1823,7 @@ class Game {
     }
     // A fifth key that does nothing until the shop puts something on it: Q throws the boomerang
     // or steps through STRANGE SYMBOLS, whichever is at his neck.
-    if (code === 'KeyQ') this.input.qPressed = true;
+    if (code === 'KeyQ' && !verbs) this.input.qPressed = true;
     if (this.state === 'boon') {
       if (code === 'Digit1') this.takeBoon(0); if (code === 'Digit2') this.takeBoon(1); if (code === 'Digit3') this.takeBoon(2);
       if (code === 'Digit4') this.skipBoon();
@@ -1856,11 +1912,15 @@ class Game {
       // under the game (the itch frame) until this was the first thing done with it.
       if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
       // ALT is the STEALTH test's sneak: on its own it takes the page's focus to the browser's menu.
-      if ((e.code === 'AltLeft' || e.code === 'AltRight') && this.dev && this.dev.stealth) e.preventDefault();
+      // Held with a key it is worse: Alt+D is the address bar, Alt+E the browser's menu, so sneaking
+      // while moving threw the focus out of the game. With the test on, no Alt chord reaches the browser.
+      if ((e.altKey || e.code === 'AltLeft' || e.code === 'AltRight') && this.dev && this.dev.stealth) e.preventDefault();
       if (e.repeat) return;
       // The RULES page has no keys: Backspace under it would regenerate the level it is describing.
       if (this.dev.rules) { e.preventDefault(); return; }
       this.keys.add(e.code);
+      // STEALTH (dev test): ALT is a switch, a press on and a press off (5 Oct 2026 playtest: "not hold").
+      if ((e.code === 'AltLeft' || e.code === 'AltRight') && this.dev.stealth) this.toggleSneak();
       // Only a key that plays the game hands it to the keyboard. A phone's volume rocker is a keydown
       // too, and it used to put the touch controls away for good a few seconds into the first level,
       // whenever somebody turned the sound down. A real key takes the controls off a pad the same way.
@@ -1888,6 +1948,8 @@ class Game {
       // a fresh left button on the next move in play, and headbutted.
       if (isMouse(e)) this.mouseButtons = e.buttons;
       if (this.hitDev(p)) return;
+      // A row of SETTINGS → CONTROLS listening: this button is its new one (the click that opened it was the last).
+      if (isMouse(e) && KeyBind.listen(this, 'Mouse' + e.button)) return;
       if (this.state === 'clear') this.input.mouse = p;   // a finger on SAVE is where the press was, too
       if (this.state === 'title') {
         this.touch.active = !isMouse(e); this.input.mouse = p;
@@ -1920,8 +1982,8 @@ class Game {
       if (isMouse(e)) {
         this.touch.active = false; this.input.anyPressed = true; this.input.mouse = p;
         this.kbLive = false;   // a click is the mouse taking the aim back off the keys
-        if (e.button === 0) this.input.lmbPressed = true;
-        if (e.button === 2) { this.input.rmbDown = true; this.input.rmbPressed = true; }
+        // Whatever the player put on this button (SETTINGS → CONTROLS; left headbutts, right grabs by default).
+        KeyBind.press(this, 'Mouse' + e.button);
         this.mouseButtons = e.buttons;
         return;
       }
@@ -1961,7 +2023,12 @@ class Game {
         // move when the page shifts under a resting cursor.
         if (this.pad.active && (e.movementX || e.movementY)) { this.pad.active = false; this.input.rmbDown = false; }
         // The keys' aim (`kbLive`) is let go only after a real stretch of mouse travel: a palm on a
-        // laptop's touchpad is not a player reaching for the mouse.
+        // laptop's touchpad is not a player reaching for the mouse. One stretch: travel is counted only
+        // inside a burst of moves (`mouseGap` s between them), or a palm's twitches added up over a
+        // whole fight and let go of the aim in the middle of it.
+        const nowM = performance.now();
+        if (nowM - (this.kbMouseAt || 0) > TUNING.kbAim.mouseGap * 1000) this.kbMouse = 0;
+        this.kbMouseAt = nowM;
         if (this.kbLive && (this.kbMouse = (this.kbMouse || 0) + Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0)) > TUNING.kbAim.mouseBack) this.kbLive = false;
         // A second button pressed while the first is still down is not a pointerdown, the browser
         // reports it as a move with a changed `buttons`. Holding grab and clicking to throw is exactly
@@ -1969,11 +2036,10 @@ class Game {
         // button was held, which left him clamped onto whatever he had.
         const was = this.mouseButtons || 0, now = e.buttons;
         if (now !== was && (this.state === 'play' || this.state === 'heaven')) {
-          if ((now & 1) && !(was & 1)) this.input.lmbPressed = true;
-          if ((now & 2) && !(was & 2)) { this.input.rmbDown = true; this.input.rmbPressed = true; }
+          for (let b = 0; b < 5; b++) { const bit = KeyBind.mouseBit(b); if ((now & bit) && !(was & bit)) KeyBind.press(this, 'Mouse' + b); }
         }
-        if (!(now & 2)) this.input.rmbDown = false;
         this.mouseButtons = now; this.mouseMoved = true;
+        if (this.state === 'play' || this.state === 'heaven') this.input.rmbDown = KeyBind.held(this, 'grab') || (kbOn(this) && (this.keys.has('KeyK') || this.keys.has('KeyX')));
         if ((this.state === 'title' || this.state === 'paused') && this.menu.sliderDrag != null) this.setSliderAt(this.menu.sliderDrag, p.x);
         return;
       }
@@ -1988,8 +2054,7 @@ class Game {
         this.discordPointer = undefined;
         if (e.type === 'pointerup' && this.state === 'title' && !this.menu.panel && this.menuItems()[this.menuAt(this.canvasPos(e))] === 'discord') this.menuPick(this.menuAt(this.canvasPos(e)));
       }
-      if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false;
-      if (e.pointerType === 'mouse') this.mouseButtons = e.buttons;
+      if (e.pointerType === 'mouse') { this.mouseButtons = e.buttons; if (KeyBind.code('grab') === 'Mouse' + e.button) this.input.rmbDown = false; }
       // A card is taken here and nowhere else: the pointer has to leave the same card it arrived on.
       if (this.state === 'boon') {
         // A finger lifted while the card is up is still let go of: the card always opens under a thumb
@@ -2011,8 +2076,12 @@ class Game {
     c.addEventListener('pointercancel', up);
     // Only the finger that pressed a card lets it go: a thumb lifted off the stick first threw away
     // the pick another finger was making.
-    window.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse' && e.button === 2) this.input.rmbDown = false; if (e.pointerId === this.boonPointer) this.boonDown = -1; this.menu.sliderDrag = null; });
+    window.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse') { this.mouseButtons = e.buttons; if (KeyBind.code('grab') === 'Mouse' + e.button) this.input.rmbDown = false; } if (e.pointerId === this.boonPointer) this.boonDown = -1; this.menu.sliderDrag = null;
+      // the mirror's rows are bought by holding (js/heaven.js `updatePanel`): a lifted pointer lets go
+      if (this.state === 'heaven' && this.heaven && this.heaven.panel) Heaven.panelRelease(this); });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
+    // A mouse's side buttons (a verb may sit on them, SETTINGS → CONTROLS) are the browser's back and forward.
+    c.addEventListener('mouseup', (e) => { if (e.button === 3 || e.button === 4) e.preventDefault(); });
     // The dev tool's pages scroll on the wheel (`Renderer.drawTool` clamps and draws it).
     c.addEventListener('wheel', (e) => {
       if (this.state === 'paused' && this.menu.panel === 'photos') { e.preventDefault(); Photo.wheel(this, e.deltaY); return; }
@@ -2045,17 +2114,40 @@ class Game {
     window.addEventListener('orientationchange', () => setTimeout(() => { this.renderer.resize(); this.layoutTouch(); }, 200));
   }
 
+  // STEALTH (dev test, 5 Oct 2026): how long the sneak stays shut after a fight found him (`stealth.deny`
+  // s after the last `breakSneak`); 0 when it is free. A timestamp, so a level's fresh clock frees it.
+  sneakDenied() {
+    const d = this.timer - (this.sneakDenyAt ?? -1e9);
+    return d >= 0 && d < TUNING.stealth.deny ? TUNING.stealth.deny - d : 0;
+  }
+  toggleSneak() {
+    if (this.state !== 'play' || !this.goat || this.goat.dead) return;
+    // Shut while a fight is on him: the press is answered by the ring round his feet, not by a crouch.
+    if (!this.sneakOn && this.sneakDenied() > 0) { this.sneakRefusedAt = this.timer; return; }
+    this.sneakOn = !this.sneakOn;
+  }
+  // A fight found him (an aware man sees him, a heart lost): the sneak ends and is shut for `stealth.deny`
+  // s, counted again from every such moment, so it opens only once the fight has let him go.
+  breakSneak() {
+    if (!this.dev.stealth) return;
+    if (this.sneakOn && this.goat) this.floatText(this.goat.x, this.goat.y - 30, TUNING.stealth.spotted, PALETTE.blood);
+    this.sneakOn = false; this.sneak = false; this.sneakDenyAt = this.timer;
+  }
+
   readMoveInput() {
     const k = this.keys;
-    let mx = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
-    let my = (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0) - (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0);
+    // The four the player put the run on (SETTINGS → CONTROLS, WASD by default); the arrows always run.
+    const H = (a) => KeyBind.held(this, a);
+    let mx = (H('right') || k.has('ArrowRight') ? 1 : 0) - (H('left') || k.has('ArrowLeft') ? 1 : 0);
+    let my = (H('down') || k.has('ArrowDown') ? 1 : 0) - (H('up') || k.has('ArrowUp') ? 1 : 0);
     const touching = this.touch.active, padding = this.pad.active;
     if (touching) { const mv = this.touch.moveVector(); if (mv.x || mv.y) { mx = mv.x; my = mv.y; } }
     if (padding) { const mv = this.pad.moveVector(); if (mv.x || mv.y) { mx = mv.x; my = mv.y; } }
     const l = hyp(mx, my); if (l > 1) { mx /= l; my /= l; }
     this.input.mx = mx; this.input.my = my;
-    // STEALTH (dev test): ALT held is a sneak, keys and mouse only for now (`TUNING.stealth`).
-    this.sneak = !!(this.dev.stealth && !touching && !padding && (k.has('AltLeft') || k.has('AltRight')));
+    // STEALTH (dev test): ALT switches the sneak (`toggleSneak`), keys and mouse only for now (`TUNING.stealth`).
+    if (!this.dev.stealth || !this.goat || this.goat.dead) this.sneakOn = false;
+    this.sneak = !!(this.dev.stealth && this.sneakOn && !touching && !padding);
     if (!this.goat) return;
 
     if (padding) {
@@ -2100,7 +2192,7 @@ class Game {
       if (mx || my) { const d = hyp(mx, my); this.kbAim = { x: mx / d, y: my / d }; }
       const a = this.kbAim || { x: 1, y: 0 }, KA = TUNING.kbAim;
       this.input.aim = mx || my ? autoAim(this, a.x, a.y, KA.cone, KA.reach) : autoAim(this, a.x, a.y, KA.still.cone, KA.still.reach);
-      this.input.rmbDown = this.keys.has('KeyK') || this.keys.has('KeyX') || !!((this.mouseButtons || 0) & 2);
+      this.input.rmbDown = this.keys.has('KeyK') || this.keys.has('KeyX') || KeyBind.held(this, 'grab');
       return;
     }
     // Undo the tilt when turning the cursor back into a world point.
@@ -2108,6 +2200,8 @@ class Game {
     const wy = this.cam.y + (this.input.mouse.y - this.renderer.vcy) / (this.cam.zoom * TILT);
     const dx = wx - this.goat.x, dy = wy - this.goat.y, d = hyp(dx, dy);
     if (d > 4) this.input.aim = { x: dx / d, y: dy / d };
+    // Grab is held on whatever it was put on: a key let go is never a pointer event (SETTINGS → CONTROLS).
+    if (KeyBind.code('grab') !== 'Mouse2') this.input.rmbDown = KeyBind.held(this, 'grab');
   }
   clearEdges() { this.input.rmbPressed = false; this.input.lmbPressed = false; this.input.spacePressed = false; this.input.rollPressed = false; this.input.qPressed = false; this.input.anyPressed = false; }
 
@@ -2131,6 +2225,9 @@ class Game {
     this.levelCrowGift = !!(head ? head.crowGift : this.crowGift);
     // The keys he walked onto this floor with: a death on it gives back exactly these.
     this.levelRunKeys = this.runKeys | 0;
+    // Back at the middle gate he has the keys he had there: one spent on iron before it stays spent,
+    // or a death refunded it while keeping the animal it let out (`cp.pet`).
+    if (cp && cp.keys !== undefined) this.runKeys = Math.max(0, cp.keys | 0);
     this.levelIndex = index;
     // The level he ate the mushrooms before is played as THE TRIP, in the place of this one.
     if (this.tripAt === undefined) this.tripAt = -1;
@@ -2156,7 +2253,9 @@ class Game {
     const pigs = (this.beasts && this.beasts.pig) || 0, PH = TUNING.prop.pig.saveHeals;
     const luck = pigs ? Object.assign({ secret: 1, racks: 1, grass: 1, heals: 0 }, this.mods.luck || {}) : this.mods.luck;
     if (pigs) luck.heals = (luck.heals || 0) + pigs * (PH[0] + ((seed >>> 5) % (PH[1] - PH[0] + 1)));
-    const genOpts = { luck, beast: this.beastFor(index) };
+    // No iron before this browser has held a key (5 Oct 2026 playtest: a cage that wants a key nobody has met reads as a wall).
+    const genOpts = { luck, beast: this.beastFor(index), noIron: !this.learned.key };
+    if (this.dev && this.dev.forceCombo) genOpts.combo = this.dev.forceCombo;   // the COMBOS tab's PLAY (`dealCombo`)
     try { this.level = generateLevel(def, seed >>> 0, genOpts); }
     catch (err) { console.error(err); this.level = generateLevel(def, (seed ^ 0x5bd1e995) >>> 0, genOpts); }
     this.world = new World(this.level);
@@ -2419,6 +2518,10 @@ class Game {
     // Only out of a level being played or lost. From the clear card or the climb it replayed a
     // level whose kills and score were already banked, and banked them a second time.
     if (!fromHeaven && this.state !== 'play' && this.state !== 'paused' && this.state !== 'dead') return;
+    // Off the death card while heaven has something new (`deathNews`), only ASCEND goes on: no restart.
+    if (!fromHeaven && this.state === 'dead' && this.deathNews && this.deathNews.length && !this.showroomOn) return;
+    // RESTART on the death card skips heaven, but the god still counts the death (`Heaven.restarted`).
+    if (!fromHeaven && this.state === 'dead' && !this.showroomOn) Heaven.restarted();
     // A restart you ask for is a death you chose, and it counts as one: `deaths` is in the seed, and
     // without this Backspace brought back the very layout you had just walked through.
     // ...and ends the life's report as a death does, or the next floor entry was written into the same life.
@@ -2472,7 +2575,7 @@ class Game {
       this.mouseMoved = false;
       const i = this.menuAt(this.input.mouse);
       if (i >= 0) {
-        if (this.menu.panel === 'settings' || this.menu.panel === 'levels' || this.menu.panel === 'consent') this.menu.sub = i;
+        if (this.menu.panel === 'settings' || this.menu.panel === 'levels' || this.menu.panel === 'consent' || this.menu.panel === 'controls') { if (!(this.menu.bindWait >= 0)) this.menu.sub = i; }
         else if (!this.menu.panel) this.menu.index = i;
       }
     }
@@ -2493,6 +2596,7 @@ class Game {
     if (m.panel === 'photos') { Photo.key(this, code); return; }
     if (m.panel === 'consent') { Stats.consentKey(this, code); return; }
     if (m.panel === 'book') { Codex.bookKey(this, code); return; }
+    if (m.panel === 'controls') { KeyBind.key(this, code); return; }
     if (m.panel === 'best') { m.panel = null; this.audio.sfxSwing(); return; }
     if (m.panel === 'settings' || m.panel === 'levels') {
       // the rows of whatever is up, and the way out at the bottom of them. LEVELS carries two rows
@@ -2526,6 +2630,7 @@ class Game {
       // A slider takes a drag or the left/right keys, both handled before this is ever reached; a
       // press on the row itself, Enter, or a tap that was not a drag, does nothing to it.
       if (SETTINGS[i].type === 'slider') return;
+      if (SETTINGS[i].type === 'panel') { KeyBind.open(this); return; }
       this.toggleSetting(SETTINGS[i].key);
       return;
     }
@@ -2611,6 +2716,7 @@ class Game {
   menuPanelClick(p) {
     if (this.menu.panel === 'book') { Codex.bookClick(this, p); return; }
     if (this.menu.panel === 'photos') { Photo.click(this, p); return; }
+    if (this.menu.panel === 'controls') { const i = this.menuAt(p); if (i >= 0) KeyBind.pick(this, i); return; }
     const i = this.menuAt(p); if (i < 0) return;
     const row = this.menu.panel === 'settings' ? SETTINGS[i] : null;
     if (row && row.type === 'slider') { this.setSliderAt(i, p.x); this.menu.sliderDrag = i; }
@@ -2701,7 +2807,8 @@ class Game {
     const cp = G ? { level: li, room: G.room, boons: (G.boons || []).map((id) => BOONS.find((b) => b.id === id)).filter(Boolean),
       artifact: G.artifact && ARTIFACTS.some((a) => a.id === G.artifact.id) ? { id: G.artifact.id, tier: Math.max(1, Math.min(RARITY.length, G.artifact.tier | 0)) } : null,
       talRun: null, crowGift: !!G.crowGift, tripAt: G.tripAt === undefined ? this.tripAt : G.tripAt,
-      kills: G.kills || 0, time: G.time || 0, pet: Beast.is(G.pet) || G.pet === 'chicken' ? G.pet : null } : null;
+      kills: G.kills || 0, time: G.time || 0, pet: Beast.is(G.pet) || G.pet === 'chicken' ? G.pet : null,
+      keys: G.keys === undefined ? undefined : Math.max(0, G.keys | 0) } : null;
     this.checkpoint = cp;
     // This floor is only laid to be dropped into from heaven: the death's tip is kept for that drop
     // (`restartLevel` from the edge), not spent here where nobody sees it.
@@ -2812,7 +2919,7 @@ class Game {
     // And the middle gate, if this floor has held his place at it: CONTINUE comes back there.
     const cp = this.checkpoint;
     if (cp) this.save.gate = { level: cp.level, room: cp.room, boons: cp.boons.map((b) => b.id), artifact: cp.artifact,
-      crowGift: cp.crowGift, tripAt: cp.tripAt, kills: cp.kills, time: cp.time, pet: cp.pet };
+      crowGift: cp.crowGift, tripAt: cp.tripAt, kills: cp.kills, time: cp.time, pet: cp.pet, keys: cp.keys };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (err) { /* private mode: the run dies with the tab */ }
   }
   // The tab closed on the stairs or the clear card. The floor is behind him, so what it pays is paid
@@ -2822,7 +2929,7 @@ class Game {
   saveAhead() {
     if (this.runJumped) return;
     if (this.state === 'climb') {
-      Motes.flush(this); Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1);
+      Motes.flush(this); Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1); Heaven.floorCleared(this, this.levelIndex);
       this.totalKills += this.kills; this.totalScore += this.scoreFor(this.kills, this.timer, this.levelIndex, this.level.def);
     }
     const ni = this.levelIndex + 1;
@@ -2848,6 +2955,8 @@ class Game {
       try { localStorage.setItem(DEATH_KEY, JSON.stringify(st)); } catch (e) {}
     }
     this.deaths++; this.state = 'dead'; this.slowTimer = 1.4; Painting.quickRect = null;
+    // What heaven has that is new (js/heaven.js `freshNews`): while there is any, the card offers only ASCEND.
+    this.deathNews = this.showroomOn ? [] : Heaven.freshNews(this, true);
     { const by = this.goat.hurtBy; this.tipNext = { level: this.levelIndex, kind: !by ? null : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind === 'bearer' && by.shieldman ? 'shield' : by.kind === 'bearer' && by.thrower ? 'thrower' : by.kind), name: this.killedBy(by) }; }
     // Written now, not at the next floor's head: a death quit to the title from its own card left the
     // old count in the save, and CONTINUE rebuilt the very layout he had just died in.
@@ -2954,7 +3063,7 @@ class Game {
     return (by.boss || by.kind === 'butcher' || by.kind === 'ratogre' ? 'THE ' : /^[AEIOU]/.test(name) ? 'AN ' : 'A ') + name;
   }
   levelCleared() {
-    if (!this.showroomOn) { Motes.flush(this); Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1); }
+    if (!this.showroomOn) { Motes.flush(this); Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1); Heaven.floorCleared(this, this.levelIndex); }
     this.showroomOn = false;
     Stats.cleared(this);
     this.state = 'clear'; this.totalKills += this.kills;
@@ -3231,12 +3340,34 @@ class Game {
     TextEdit.end(this.renderer.ctx);
     const t3 = performance.now();
     F.work = Math.max(F.work, t3 - work0);
+    this.adaptRes(t3 - work0, dtReal);
     // Straight after the picture: photo mode reads the canvas, the dip log writes down a long frame (js/photo.js).
     Photo.after(this, dtReal);
     Photo.dipCheck(this, gap * 1000, t3 - work0, t2 - t1, t3 - t2, dtReal);
     if (this.hurt) this.hurt.life -= dtReal;
     if (this.hurtVignette) this.hurtVignette.life -= dtReal;
     this.updateCursor();
+  }
+  // Adaptive resolution (`TUNING.perf.adapt`): fewer canvas pixels while the frame's own work stays over
+  // budget in play, a step back once it has room. A drop is checked: if the work did not fall by `gain`
+  // the pixels were not the cost (a slow script, not the raster) and it is undone for good.
+  adaptRes(work, dt) {
+    const Q = TUNING.perf.adapt, r = this.renderer;
+    if (!Q.on || this.state !== 'play' || !r) return;
+    // Not off the fallback interval (a hidden pane, a background tab) nor in a floor's first seconds.
+    if ((typeof document !== 'undefined' && document.hidden) || performance.now() - this.lastRaf > 100 || (this.timer || 0) < Q.settle) return;
+    const a = this.perfAdapt || (this.perfAdapt = { work, hold: 0, before: 0, off: false });
+    a.work += (work - a.work) * Math.min(1, dt); a.hold += dt;
+    if (a.off) return;
+    const q = r.quality || 1;
+    // Judged `wait` s after a drop: the work before it is in `before`.
+    if (a.before && a.hold > Q.wait) {
+      if (a.work > a.before * (1 - Q.gain)) { r.quality = Math.min(1, q + Q.step); r.resize(); a.off = true; }
+      a.before = 0; a.hold = 0; return;
+    }
+    // A drop straight after a step back means the room it had was the lower setting's: stay there.
+    if (a.work > Q.slow && a.hold > Q.wait && q > Q.min) { if (a.raised) a.noUp = true; a.raised = false; a.before = a.work; r.quality = Math.max(Q.min, q - Q.step); r.resize(); a.hold = 0; }
+    else if (!a.noUp && a.work < Q.fast && a.hold > Q.waitUp && q < 1) { a.raised = true; r.quality = Math.min(1, q + Q.step); r.resize(); a.hold = 0; }
   }
   // The OS pointer rather than a drawn one: the goat's own head, aimed at something to hit, and a
   // closed hand once there is something in his mouth to let go of instead of a wall to put his
@@ -3247,7 +3378,9 @@ class Game {
     // So does it while the keys hold the aim (`kbLive`, KEYBOARD ONLY): the run is the aim then.
     const keys = kbOn(this) && (this.state === 'play' || this.state === 'heaven');
     const want = this.pad.active || keys ? 'none' : this.state === 'play' && this.goat && this.goat.holding ? 'grabbing' : buttCursor();
-    if (this.canvas.style.cursor !== want) this.canvas.style.cursor = want;
+    // Compared against what we last wrote, never read back: the browser hands `url(...)` back quoted,
+    // so the read never matched and a few KB of data URL were written over again every frame.
+    if (this.cursorSet !== want) { this.cursorSet = want; this.canvas.style.cursor = want; }
   }
 
   update(dt) {
@@ -3259,7 +3392,7 @@ class Game {
     if (this.state === 'paused') {
       if (!this.touch.active) {
         if (!this.mouseMoved) { /* the keys have the row until the mouse moves (see `updateTitle`) */ }
-        else if (this.menu.panel === 'settings') { const i = this.menuAt(this.input.mouse); if (i >= 0) this.menu.sub = i; }
+        else if (this.menu.panel === 'settings' || (this.menu.panel === 'controls' && !(this.menu.bindWait >= 0))) { const i = this.menuAt(this.input.mouse); if (i >= 0) this.menu.sub = i; }
         else if (this.menu.panel !== 'book') { const i = this.pauseAt(this.input.mouse); if (i >= 0) this.pause.index = i; }
         this.mouseMoved = false;
       }
@@ -3485,7 +3618,7 @@ class Game {
       let gain = (p.big ? TUNING.prop.heal.bigGain : 1) + (p.pail > 0 ? 0 : this.mods.grassGain);
       // GOOD GRAZER's second rank: the first bowl of a floor fills him up.
       if (this.mods.milkFull && !this.milkFullUsed && !(p.pail > 0)) { this.milkFullUsed = true; gain = Math.max(gain, this.goat.maxHp - this.goat.hp); }
-      this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + gain);
+      this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + gain); this.learn('graze');
       this.particles(p.x, p.y, 18, PALETTE.bone, 170); this.ring(p.x, p.y, 2 * TILE, PALETTE.bone);
       this.floatText(p.x, p.y - 24, gain > 1 ? `+${gain} HEARTS` : '+1 HEART', PALETTE.bone); this.audio.sfxBell(); this.vibe(20);
     }
@@ -4291,7 +4424,8 @@ class Game {
     // The goat and whoever is awake, built once rather than once per prop: `[g].concat(en)` inside
     // the loop was a fresh eighty-element array for every piece of furniture in the level, every step.
     const all = this.collideList || (this.collideList = []);
-    all.length = 0; all.push(g);
+    // A goat over the thrower's head is in the air: furniture under the fist does not shove him about.
+    all.length = 0; if (g.state !== 'carried') all.push(g);
     for (const e of act) all.push(e);
     // The two escorts that walk on the ground are held by a shut door like anybody: a goose that
     // ghosted through a gate ran a whole room ahead of him. The hen and the crow are birds. The
@@ -4810,7 +4944,7 @@ class Game {
     t.mx = -real.mx; t.my = -real.my;
     t.rollPressed = real.spacePressed; t.spacePressed = real.rollPressed;
     const buttHeld = this.touch.active ? this.touch.pressed.butt !== undefined
-      : this.pad.active ? this.pad.buttHeld() : !!((this.mouseButtons || 0) & 1) || (kbOn(this) && (this.keys.has('KeyJ') || this.keys.has('KeyZ')));
+      : this.pad.active ? this.pad.buttHeld() : KeyBind.held(this, 'butt') || (kbOn(this) && (this.keys.has('KeyJ') || this.keys.has('KeyZ')));
     // A press latched by the pointer (`rmbPressed`) counts even if the button was up again by now:
     // a quick tap inside a kill's hitstop was lost, the one edge the frozen frames did not keep.
     const grabEdge = (real.rmbDown && !this.tripGrabWas) || !!real.rmbPressed;

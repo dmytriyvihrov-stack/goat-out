@@ -9,6 +9,102 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 5 October 2026, his own 48 notes with screenshots (shipped the same day, not yet deployed)
+
+Worked in five parallel parts (heaven, stealth, the thrower and the shieldman, the generator, fog and THE DARK) plus the rest.
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | bug | why is the game held at 30 FPS, 60 was agreed | the game has no cap: 11.8 ms of its own work fits 60. A steady 30 with ~34 ms gaps is the browser presenting every other vsync (Chrome's Energy Saver on battery). SHOW FPS now says so on its line |
+| 2 | tool | a SPAWN row for Bane (the thrower) | THROWER (BANE) in the dev drawer's SPAWN column |
+| 3 | system | the shieldman has no plain attack; his dropped shield has 1 use; a plain shieldman's spikes should not cost a heart | he rams the board close up (`shieldman.strike`, the board pulled in and thrust out); a dropped board always has `shieldman.drop` (3) uses; a plain one throws the goat off at 14 tiles/s with a 0.9 s stun and no heart (`spikes.plain`), a boss or a soul-bearer still costs one |
+| 4 | tool | GOD MODE runs x3 | `dev.godSpeed` 3 |
+| 5 | bug | two caged animals with a key on one floor, iron | there was only ever one coop: the second was the iron cage of grass drawn with the same sprite. His answer after: the choice between the two is right, only in one room, and it must read. The iron coop and the cage of big grass now stand in the same room `keys.iron.pair` (2.2-5.5) tiles apart, together never cutting it, and while both are shut the floor under each says BIG GRASS / TWO HEARTS or THE GOOSE / IT COMES WITH YOU (`drawIronPair`); `GEN_RULES.iron` holds the pair |
+| 6 | bug | running up-right, the horns' animation is broken | the packed back-left run had the horns standing up on two of its four steps (mirrored for up-right): `PIXEL_ART.hornFix` bakes those steps with the middle steps' horns on their own roots |
+| 7 | system | Bane throws his dead | he lifts a body lying in his room (or a Gravedigger's), the dead man's own sprite over his head, thrown like a crate; landed it lies as a body again |
+| 8 | bug | the grates never answer the men, only a man knocked or carried onto them | the goat's foot sets a patch off and it rests 1.7 s; the man chasing him crossed inside that rest every time. A man's foot now wakes a resting grate after `spike.restMan` (0.25 s); the goat still waits out the rest |
+| 8b | system | Bane's throw stuns the goat | anything he throws that lands (a heart, as before) stuns `thrower.stun` (0.6 s); no stun through mercy frames |
+| 9 | system | Bane's thing through fire catches | it already did (the crate's own rule); a burning one landing on the goat also lights his tile |
+| 10 | bug | Bane with something in his fist walks into traps and the void | fetching or carrying, he steps round every grate, flat ones too, and never fails the roll; never goes for a thing in fire, at a drop or on a grate |
+| 11 | system | combos of a man and a room or of men, in the generator and the dev tool | `TUNING.combos`: THE THROWER IN THE ARMORY, THE HOOK OVER THE DROP, WITCHFIRE AND THE HOOK, THE SMALL RING (a mage in an ogre's ring); `dealCombo` (own stream, only men already met, never a teaching/rest/trap room), `room.combo`, `GEN_RULES.combos`; a COMBOS tab (`#combos`) with PLAY, the name on the LEVEL tab |
+| 12 | bug | 19 FPS, 44 ms of the game's work in a busy room, unplugged | `Game.adaptRes` (`TUNING.perf.adapt`): while the frame's work stays over 15 ms in play, fewer canvas pixels a step at a time (down to 55%, upscaled pixelated so the art stays hard); back up with room; a drop that did not help is undone. On this desktop the late floors are 5-6.5 ms a frame |
+| 13 | number | the bare BAAH's swing break, a much smaller radius | `scream.balk` 2 → 1.25 tiles |
+| 14 | system | heaven: one bell at the start, one more for each new floor's boss; the shepherd gives the quest and still combs | `Heaven.bellsOpen` off `meta.cleared` (`floorCleared` at a floor's first clear); sleeping bells chained and padlocked, a dull knock; `SHEPHERD_TALK.quest`; a bell that woke rings on the next visit |
+| 15 | system | a door that shut in front of the men, they can open it | a clock door that has seated is leaned open from behind like plank (`openPressure`) |
+| 16 | system | Bane dead: a splash of acid, 3 cells | `thrower.acid` 3 poison tiles (not into a drop) |
+| 17 | bug | a carpet under the floor words | `floorWords(level)` boxes every floor text (hints, lessons over their slide, the mouse's room, THE FORK, the pen); `carpetFits` keeps off them; `GEN_RULES.carpets` (42 → 0 in 480 floors) |
+| 18 | bug | things stand by the wheel; one in its sweep should fly | nothing laid within the arm + `mill.clear` (350 → 0 in 480 floors, `GEN_RULES.millclear`); in play the arm knocks anything it reaches as a headbutt would (`mill.knockCd`) |
+| 19 | feel | RESTART first, ASCEND after; after the first death only ASCEND; RESTART only when nothing new opened | RESTART at 0.5 s, ASCEND after the pull-back; while `game.deathNews` (`Heaven.freshNews`: first death, an untold god line, a new seat, bell or affordable rank, a milestone) only ASCEND and Backspace does nothing; news shown once stops counting |
+| 20 | feel | arrows to the edge if he dawdles in heaven | pixel arrows over the lip after `heaven.arrows.after` (25 s) until he has jumped once |
+| 21 | bug | the mirror's plate written over its RMB prompt; any hover text must read | heaven's plates stack and never overlap, the prompt goes above them (or below) |
+| 22 | feel | no hard room cut-offs, an organic fog of war | `Renderer.drawMemFog`: a pixel a tile, blurred up like the cave's fog, over everything standing; the caves share it |
+| 23 | feel | do not show a room's layout before he has seen it | `world.mem` (every cast of his sight remembered, `World.remember` / `lightTile`); a room shows only what he has had in sight; corridors as before |
+| 24 | system | stealth: Alt is a switch, and sneaking makes no noise like a run | `Game.toggleSneak`; checked: a man 2.5 tiles off turns to a run, stays idle to a sneak |
+| 25 | feel | the music answers the sneak | `audio.layers.hush`: no tune, the bass a note a bar, no toms; the drone stays (parts, never tempo) |
+| 26 | system | a fight drops him out of stealth and it is shut a while | `Game.breakSneak` on being seen past the beat of doubt, a heart lost, a butt on a man who knew; SPOTTED, `stealth.deny` (6 s), an amber ring of cells draining at his feet |
+| 27 | bug | a man stuck against a boulder | a man walking to a noise gave his line to stone only: he gives up after `ai.investStuck` (2.5 s); walking home he steps off along the openest heading (`Enemy.freeHeading`); an idle man's facing no longer grows without end |
+| 28 | system | in stealth crates and stones block sight | `Enemy.screenAt` / `coverNear` (`stealth.cover`): crates, boulders, barrels, for `canSeeGoat` and the drawn cells alike |
+| 29 | system | in grass much less sight | in stealth a goat in grass is seen within `stealth.grass` (1.5 tiles), and grass blocks the view past it |
+| 30 | feel | the pictograms less bright | `effects.omens.alpha` [0.55, 0.75] → [0.3, 0.42], `wallAlpha` 0.8 → 0.5 |
+| 31 | feel | the souls sway gently; two for the big men, three for the ogre, a champion +1 | `motes.bob` / `sway`; `motes.per`: butcher, seer, rifleman, shieldman, thrower 2, ogre and rat ogre 3, any boss +1 |
+| 32 | system | the mirror mends only when he walks up and presses | GRAB at the glass once 20 are brought (MEND IT, a `?` over it); the god only tells him to |
+| 33 | feel | nothing written at heaven's edge | THE EDGE / WALK OFF IT gone |
+| 34 | feel | a prettier fall off heaven's edge | a crouch and a hop, a puff off the lip, a tumble shrinking toward the earth shedding motes, a white beat |
+| 35 | system | in stealth the men turn slower | unaware men (not hounds) turn at `stealth.turn` (1.6 rad/s) while he sneaks |
+| 36 | system | before giving up, the men come to the sound and look about | at a noise, `stealth.search.looks` (3) looks round `every` 1.1 s, then home |
+| 37 | feel | the crocodile's turn over, a little better | thins only to `roastThin` (0.45) and briefly side on (no sliver and snap); fat drips while his belly is down |
+| 38 | feel | in THE DARK a little more sight round the goat on the move | `dark.self`, `floor` up; `dark.run` eases in with his speed (the ring round him +29% running) |
+| 39 | bug | the shieldman looks different in the build and in the world | the ENEMIES tab's preview set his board but not his body: a clubman holding a board. Now the fat Spartan; GOAT GRID got him and Bane |
+| 40 | system | all bells: the blind one plays a tune, then a Guitar Hero turn, then the bells play on a minute | `startSong` / `songHit`: he plays the opening, the goat answers on lights falling to each bell (±0.24 s), then three loops on their own; butting him later plays it again. NOT "Du Hast" (a licence for a commercial game): an original stomping march in `TUNING.heaven.bellSong`, swappable |
+| 41 | bug | in THE DARK the floor words are drawn over the goat | `drawHints` inside `Dark.draw` under the silhouettes, `Dark.goatOver` lays him back over a line near him |
+| 42 | system | in THE DARK the men see little and hear more; a small cone in stealth | `Enemy.sightRange`: unlit and sneaking `dark.ai.sight` × `stealth.dark.sight`, ears × `stealth.dark.ear`; the cells drawn over the dark for men he can hear or who are lit |
+| 43 | bug | a floor where rooms and floor are one colour | THE BRIDGE's wall top was the floor's own colour (OKLab ΔE 0.011): wall tops lighter and faces darker on THE BRIDGE (0.079), THE OSSUARY, THE DARK; floors unchanged |
+| 44 | feel | hold to buy in the mirror, with tension, and a bought rank lit | `heaven.buy.hold` 0.85 s: the row fills in cells, a climbing chime, a growing shake; let go and nothing is spent; bought, a glint and sparks |
+| 45 | bug | the purse twice in the mirror's corner | heaven's corner purse is not drawn under the open panel |
+| 46 | feel | drop "what the sacrifices buy, for good" | gone |
+| 47 | bug | the hanging armour: one halberd, they are weapons now | `prop.armor.halberds` 1: drawn with one, a grab takes one |
+| 47b | bug | never a stag's head on a wall any more | it was there but rare (armour rolled first, 40% of floors): one roll a room, the kind the floor has fewer of first, `trophy.chance` 0.4; 68% of floors |
+| 48 | system | a blade charged with fire stuck in a man keeps burning him | a FIREBRAND blade left in him lights him again `stick.fire.gap` s after his fire goes out, for `for` (6) s (`Enemy.stuckFire`) |
+
+Asked after, his "+" to both: THE TRIP takes the soft fog too (its glow and colours untouched); in THE DARK a crate or a man
+behind the goat is no longer flattened over him (`Dark.silhouettes` lays what is behind his feet, cuts his shape out, then
+what is in front).
+
+His answers: grass in stealth hiding the goat in it AND blocking the view past it is right; a sneaking roll's noise is
+fine; the iron pair in one room (row 5).
+
+For the level rebalance (later, his word): THE HOOK OVER THE DROP is rare in a natural run (few rooms have 8+ drops and fit
+the budget; `combos` `pits` 6 would raise it).
+
+Open: the sleeping bells and the song are heaven's own, not in THE SHOWROOM; adaptive resolution is a guess at his laptop
+(the cost may be script, not pixels: then it switches itself off for the session).
+
+## 5 October 2026, three testers' answers (Petro, Silver, a friend with the bot), his picks (shipped the same day, not yet deployed)
+
+The common thread was onboarding: what a thing is the first time it is met, heaven, hard English. He picked these:
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | the first grass in a corridor you have to walk, nothing else near it | THE ALTAR (`firstGrass`) lays one more bowl in the straight run of the first corridor past the sentry's room that nothing narrows, nothing within `heal.firstClear` (2.4) tiles; `GEN_RULES.firstgrass` |
+| 2 | number | after butting the ogre, a longer stun, so it reads as a mistake | `butcher.rebound.daze` 0.35 → 0.9 s |
+| 3 | system | no iron cage until the player has picked up a key, the first time | `game.learned` (`LEARN_KEY`, per browser: `key`, `iron`, `graze`); until `key`, `startLevel` passes `noIron` and the generator shuts nothing in iron (0 iron over 360 floors with it, 372 cages without) |
+| 4 | feel | short words on the floor by the key and the grass | `Renderer.drawFirstWords`: GRASS HEALS / STAND ON IT WHEN HURT, A KEY / WALK OVER IT. IT OPENS IRON, IRON / HEADBUTT IT WITH A KEY; each gone for good once done once |
+| 5 | feel | "RIGHT M. CLICK" everywhere instead of RMB | every key label (rail caps, two lines under a chip; the card's key box; heaven's prompts; the mirror and the mouse's offer; floor lessons; a death tip) |
+| 6 | feel | the god's first words: do not cry, they sacrificed you and now you sacrifice to me, bring 20 souls and we mend the mirror | `HEAVEN_TALK.intro` is his three lines plus NOW JUMP OFF THE EDGE (Petro thought the game was played in heaven) |
+| 7 | feel | simplify every description to B1-B2 | 77 strings: soul cards, talisman tiers, the mirror, keyword tips, animals' rewards, rail notes, death tips |
+| 8 | system | key rebinding in SETTINGS | SETTINGS → CONTROLS (`KeyBind`, js/input.js): nine verbs (four moves, headbutt, grab, roll, BAAH, the talisman) on any key or mouse button, side buttons too; swaps on a clash; reserved keys refused; saved in the settings; every label follows (`bindLay`) |
+
+Not taken now: agency between runs (the skill structure changes next time), the sheep's picture between runs (a big task of
+its own), the rest of the three reports (in the Google doc). Open: the ALTAR bowl is one more heart on floor 1, on top of
+the rhythm; say if it should replace the first band's bowl instead.
+
+## 5 October 2026, a polish pass over 1.98-1.99, worked alone (shipped the same day, not yet deployed)
+
+Not a playtest: three code reviews and the running build. Everything found is in `CHANGELOG.md` (14 fixes: the
+iron cage that could cut a room in two, the thrower's held men and carried goat, GET OFF into a drop, the pointer
+rewritten every frame, the title on a phone). Left as it is, small: heaven's question marks build a few small arrays
+a frame (`Heaven.drawMarks`); NOSEBAG swapped away and bought again later brings its old tufts back.
+
 ## 3 October 2026, the title, a soul behind its gate, a friend's bot (shipped the same day, not yet deployed)
 
 | # | tag | note | what shipped |

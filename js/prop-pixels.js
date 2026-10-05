@@ -1137,7 +1137,7 @@ const PROP_PIXELS = (() => {
 
   // ---------------------------------------------------------------- a suit of armour on the wall, 28 x 29
   // Enter the Gungeon's (30 Sep 2026), hung on the far wall's face (30 Sep 2026: "more attached to the
-  // wall, less detailed, a decoration that falls apart in a fun way"): two halberds crossed on the
+  // wall, less detailed, a decoration that falls apart in a fun way"): a halberd (two crossed until 5 Oct 2026) on the
   // stone, an iron plate between them, and on it the helm, the pauldrons and the breastplate, no
   // stand, no legs, nothing on the floor. Three steps of steel, lit from the left, a red plume the one
   // colour. `empty` is what a body leaves: the halberds and the bare plate. The pieces that fly off
@@ -1168,7 +1168,7 @@ const PROP_PIXELS = (() => {
     g.set(cx, 3, P.r3); g.set(cx, 2, P.r3); g.set(cx - 1, 3, P.r2); g.set(cx + 1, 3, P.r2); g.set(cx, 1, P.r2);                            // its plume
     return g.outline();
   }
-  // `n` is how many of the two halberds are still on it (`p.halberds`, a grab beside it takes one).
+  // `n` is how many halberds are still on it (`p.halberds`, one since 5 Oct 2026; a grab beside it takes one).
   function armor(empty, n = 2) {
     const g = new Grid(28, 29), cx = 14, top = 5;
     for (const m of [0, 1].slice(0, n)) {                                                                      // the halberds, crossed
@@ -1298,8 +1298,10 @@ const PROP_PIXELS = (() => {
   for (const k in FOOD) { const s = FOOD[k], d = new Grid(s.w, s.h); d.p = s.p.map(dimHex); sprites['food-' + k + '@dim'] = d; }
   sprites['chand0'] = chandelier(0); sprites['chand1'] = chandelier(1); sprites['chand-down'] = chandelierDown();
   sprites.cleat = cleat(false); sprites['cleat-cut'] = cleat(true);
-  sprites.armor = armor(false); sprites['armor-stand'] = armor(true); sprites.suit = suit(false); sprites['suit-bare'] = suit(true);
-  for (const n of [0, 1]) { sprites['armor-' + n] = armor(false, n); sprites['armor-stand-' + n] = armor(true, n); }
+  // One halberd hangs behind the wall's suit (`armor.halberds`, 5 Oct 2026): what is drawn is what a grab takes down.
+  const ARMOR_N = typeof TUNING !== 'undefined' && TUNING.prop.armor.halberds !== undefined ? TUNING.prop.armor.halberds : 1;
+  sprites.armor = armor(false, ARMOR_N); sprites['armor-stand'] = armor(true, ARMOR_N); sprites.suit = suit(false); sprites['suit-bare'] = suit(true);
+  for (const n of [0, 1, 2]) { sprites['armor-' + n] = armor(false, n); sprites['armor-stand-' + n] = armor(true, n); }
   sprites['suit-0'] = suit(false, true); sprites['suit-bare-0'] = suit(true, true);
   for (const k of ['helm', 'plate', 'pauldron']) sprites['armor-' + k] = armorPiece(k);
   sprites.trophy = trophy(false, false); sprites['trophy-blood'] = trophy(true, false); sprites['trophy-tips'] = trophy(true, true);
@@ -1492,7 +1494,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   // while a headbutt still rings in it; once a body has brought it down, the halberds and the bare
   // plate (`spilled`). No shadow on the floor: nothing of it stands there. In the prop's own upright frame.
   A.armor = function (renderer, p) {
-    const D = TUNING.prop.armor, k = D.texel, name = (p.spilled ? 'armor-stand' : 'armor') + (p.halberds < 2 ? '-' + p.halberds : ''), g = S[name];
+    const D = TUNING.prop.armor, k = D.texel, name = (p.spilled ? 'armor-stand' : 'armor') + '-' + Math.max(0, Math.min(2, p.halberds | 0)), g = S[name];
     const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 3) : 0;
     putSnap(renderer.ctx, name, p.x + wob - g.w * k / 2, p.y - TILE * 0.25 * TILT - D.foot - g.h * k, k);
     return true;
@@ -1840,9 +1842,23 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     }
     put(ctx, 'roast-front', -20 * TX, 2 - 9 * TX);
     put(ctx, 'roast-sticks', -40 * TX, -29 - 7.5 * TX);
-    const turn = Math.cos(t * B.roastTurn + p.phase);
-    ctx.save(); ctx.translate(0, -29); ctx.scale(1, turn >= 0 ? Math.max(0.3, turn) : Math.min(-0.3, turn));
+    // The turn (5 Oct 2026, "a little better at the moment he goes over"): squashed to a sliver and
+    // snapped over, he read as a flat thing flipping. A body on a spit keeps most of its depth the whole
+    // way round, so he only thins to `roastThin` at the side-on moment, and that moment is brief (the
+    // cosine is bent toward its ends), and while his belly hangs over the coals the fat drips into them.
+    const c = Math.cos(t * B.roastTurn + p.phase), turn = Math.sign(c) * Math.pow(Math.abs(c), 0.45);
+    const thin = B.roastThin + (1 - B.roastThin) * Math.abs(turn);
+    ctx.save(); ctx.translate(0, -29); ctx.scale(1, turn >= 0 ? thin : -thin);
     put(ctx, 'roast-croc', -S['roast-croc'].w * TX / 2, -7.5 * TX);
-    ctx.restore(); ctx.restore();
+    ctx.restore();
+    if (turn > 0.6 && !this.silPass && !this.baking) {
+      for (let q = 0; q < 3; q++) {
+        const ph = (t * 1.3 + q * 0.37 + p.phase * 2) % 1;
+        ctx.globalAlpha = 0.85 * (1 - ph); ctx.fillStyle = q === 1 ? '#f0d68a' : '#d8b466';
+        ctx.fillRect(Math.round((q - 1) * 9 + Math.sin(q * 5.3) * 4), Math.round(-24 + ph * 22), 1, 2);
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
   };
 })();

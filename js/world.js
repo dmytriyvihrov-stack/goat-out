@@ -58,6 +58,12 @@ class World {
     // `computeVis`, and the box it last filled so the clear costs the same as the cast.
     this.vis = new Uint8Array(n);
     this.visBox = null;
+    // What he has ever had in sight on this floor (`computeVis` ORs every cast into it): the fog over a
+    // room is lifted a tile at a time off this, never a whole room at once (5 Oct 2026 playtest: "do not
+    // show the layout of a room I have not looked at"). `memN` counts the tiles, so the renderer rebuilds
+    // its fog only when it grows; `memBox` is the box the last growth touched.
+    this.mem = new Uint8Array(n);
+    this.memN = 0; this.memBox = null;
     // Things that are not stone but are as good as it to an eye: a shut door, the gong, the hub of
     // the wheel. The cone the cult sees down already stops at them (`game.sees`), and now so does
     // the goat's own, standing at a shut door and seeing the room behind it was the one place the
@@ -628,6 +634,30 @@ class World {
       if (tx >= 0 && ty >= 0 && tx < W && ty < H) v[ty * W + tx] = 1;
     }
     for (const m of VIS_OCTANTS) this.castVis(cx, cy, 1, 1, 0, radius, m[0], m[1], m[2], m[3]);
+    this.remember(this.visBox);
+  }
+  // Fold what is in sight inside `b` into `mem`, widening `memBox` round whatever was new.
+  remember(b) {
+    const v = this.vis, M = this.mem, W = this.W;
+    let n = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0, i = y * W + x; x <= b.x1; x++, i++) {
+      if (!v[i] || M[i]) continue;
+      M[i] = 1; n++;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    if (!n) return;
+    this.memN += n;
+    const o = this.memBox;
+    this.memBox = o ? { x0: Math.min(o.x0, x0), y0: Math.min(o.y0, y0), x1: Math.max(o.x1, x1), y1: Math.max(o.y1, y1) } : { x0, y0, x1, y1 };
+  }
+  // A tile lit by hand (a broken niche, the mouse's hole, a door on a clock): in sight now and remembered.
+  lightTile(i) {
+    this.vis[i] = 1;
+    if (!this.mem[i]) {
+      this.mem[i] = 1; this.memN++;
+      const x = i % this.W, y = (i / this.W) | 0, o = this.memBox;
+      this.memBox = o ? { x0: Math.min(o.x0, x), y0: Math.min(o.y0, y), x1: Math.max(o.x1, x), y1: Math.max(o.y1, y) } : { x0: x, y0: y, x1: x, y1: y };
+    }
   }
   castVis(cx, cy, row, start, end, radius, xx, xy, yx, yy) {
     if (start < end) return;

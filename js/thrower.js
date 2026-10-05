@@ -29,8 +29,8 @@ const Thrower = {
     const T = TUNING.thrower;
     e.thrower = true; e.hp = e.maxHp = T.hp;
     e.speed = e.cfg.speed * T.speedMul;
-    e.r = 13; e.wallR = Math.min(e.r, TUNING.ai.path.squeeze);
-    e.carry = null; e.twWant = null; e.twCd = 0.6; e.grabCd = 1.5; e.twForget = [];
+    e.r = TUNING.thrower.r; e.wallR = Math.min(e.r, TUNING.ai.path.squeeze);
+    e.carry = null; e.twWant = null; e.twCd = TUNING.thrower.wake.lift; e.grabCd = TUNING.thrower.wake.grab; e.twForget = [];
   },
   viewOf(a) { const d = (Math.round(a / (Math.PI / 4)) % 8 + 14) % 8; return d === 2 ? 'W' : d === 6 ? 'E' : d >= 3 && d <= 5 ? 'N' : 'S'; },
   // The hold point in world px: the screen offset turned back through the tilt, so a thing drawn at its
@@ -39,8 +39,12 @@ const Thrower = {
 
   // ---- what he looks for ----
   liftable(e, game, o, type) {
+    // A body of the cult lying on the floor (`CombatFX` ground, a whole man settled, not a piece of one).
+    if (type === 'body') return !!o && !o.taken && o.rest !== undefined && o.lay !== undefined && o.image && (o.material === 'body' || o.material === 'char')
+      && game.fx && game.fx.ground.indexOf(o) >= 0;
     if (!o || o.dead || o.broken || o.held) return false;
-    if (type === 'prop') return (o.kind === 'crate' && !o.noGrab && !o.flung) || (o.kind === 'bomb' && !o.flung);
+    // (a SPADE body or one of his own set down is a crate with `corpse`: his to lift whatever `noGrab` says to the goat)
+    if (type === 'prop') return (o.kind === 'crate' && (!o.noGrab || o.corpse) && !o.flung) || (o.kind === 'bomb' && !o.flung);
     if (type === 'beast') return Thrower.BEASTS.has(o.kind) && !o.flying && !o.leaving && !o.gift && o.birdState !== 'flying' && !o.tossed;
     // His own: a clubman or a hound, never one heavier than a man, one with a soul, a post, a boss or
     // another thrower, and nobody already in the air.
@@ -56,6 +60,8 @@ const Thrower = {
       const d = hyp(o.x - e.x, o.y - e.y); if (d > R) return;
       if (room && roomAt(game.level, o.x, o.y) !== room) return;
       if (!game.sees(e.x, e.y, o.x, o.y)) return;
+      // Nothing lying in fire, on a grate or at a lip: the walk to it is the walk he would not make laden.
+      if (e.hazardAt(game, o.x, o.y) || game.props.some((q) => q.kind === 'spike' && !q.broken && Math.abs(q.x - o.x) < TILE * 0.75 && Math.abs(q.y - o.y) < TILE * 0.75)) return;
       const s = d + extra * TILE;
       if (s < bestS) { bestS = s; best = { o, type }; }
     };
@@ -65,6 +71,8 @@ const Thrower = {
     }
     // All of them, not `liveEnemies`: that list is built as the step goes, and a man after him in it is not in it yet.
     for (const m of game.enemies) if (Math.abs(m.x - e.x) < R && Math.abs(m.y - e.y) < R) look(m, 'man', 1.5);
+    // The dead of his own room (5 Oct 2026, the user's): a body on the floor is a thing to throw.
+    if (game.fx && game.fx.ground) for (const b of game.fx.ground) if (Math.abs(b.x - e.x) < R && Math.abs(b.y - e.y) < R) look(b, 'body', T.body.extra);
     return best;
   },
 
@@ -74,7 +82,7 @@ const Thrower = {
     e.twCd = Math.max(0, (e.twCd || 0) - dt); e.grabCd = Math.max(0, (e.grabCd || 0) - dt); e.twFollow = Math.max(0, (e.twFollow || 0) - dt);
     // Whatever he held was taken out of his hands by something else (a blast, a bite): he stands empty-handed a beat.
     if (e.carry) Thrower.hold(e, game);
-    if (Thrower.KEEPS.has(e.state) && !e.carry) { e.state = 'recover'; e.timer = 0.3; e.vx = 0; e.vy = 0; return true; }
+    if (Thrower.KEEPS.has(e.state) && !e.carry) { e.state = 'recover'; e.timer = TUNING.thrower.rest.lost; e.vx = 0; e.vy = 0; return true; }
     switch (e.state) {
       case 'twgo': {
         const w = e.twWant;
@@ -99,7 +107,7 @@ const Thrower = {
         if (g.dead) { e.vx = 0; e.vy = 0; return true; }
         // Never a clear throw for `carryMax` s (the goat kept close, or round a corner): he puts it down.
         e.twCarry = (e.twCarry || 0) + dt;
-        if (e.twCarry > T.carryMax) { Thrower.putDown(e, game); e.state = 'recover'; e.timer = 0.4; e.twCd = T.cd; return true; }
+        if (e.twCarry > T.carryMax) { Thrower.putDown(e, game); e.state = 'recover'; e.timer = T.rest.put; e.twCd = T.cd; return true; }
         const d = hyp(g.x - e.x, g.y - e.y);
         if (d >= T.near * TILE && d <= T.far * TILE && Thrower.clear(e, game, g.x, g.y) && !game.hidden(e.x, e.y)) {
           e.state = 'twaim'; e.timer = T.aim * slow; e.vx = 0; e.vy = 0; e.twAim = { x: g.x, y: g.y };
@@ -127,7 +135,7 @@ const Thrower = {
       case 'twhold': {
         e.vx = 0; e.vy = 0; e.timer -= dt;
         // Turned toward where he will throw him, no faster than a heavy man turns.
-        const k = 7 * dt; e.facing += clamp(angleDiff(e.facing, e.twDir), -k, k);
+        const k = T.grab.turn * dt; e.facing += clamp(angleDiff(e.facing, e.twDir), -k, k);
         Thrower.hold(e, game);
         if (e.timer <= 0) Thrower.toss(e, game);
         return true;
@@ -143,7 +151,7 @@ const Thrower = {
     }
     if (dg < e.atk('reach') + g.r) return false;
     if (e.twCd <= 0) {
-      e.twCd = 0.5;   // a look round now and then, not every step
+      e.twCd = T.look;   // a look round now and then, not every step
       const want = Thrower.find(e, game);
       if (want) { e.state = 'twgo'; e.twWant = want; e.twGive = T.give; return true; }
     }
@@ -158,6 +166,7 @@ const Thrower = {
 
   // ---- lifting, holding, dropping ----
   lift(e, game, w) {
+    if (w.type === 'body') w = { o: Thrower.bodyProp(game, w.o), type: 'prop' };
     const T = TUNING.thrower, o = w.o;
     e.twWant = null; e.carry = w; o.held = true; o.vx = 0; o.vy = 0;
     if (w.type === 'prop') { o.flung = false; if (o.kind === 'bomb' && o.fuseT < 0) { o.fuseT = TUNING.prop.bomb.fuse; game.floatText(o.x, o.y - 26, 'LIT', PALETTE.fireHi); game.audio.sfxFuse(TUNING.prop.bomb.fuse); } }
@@ -167,20 +176,50 @@ const Thrower = {
     game.audio.sfxThud(); game.bark(e, 'lift', 0.6);
     Thrower.hold(e, game);
   },
+  // A body off the floor made a thing he can carry and throw: the SPADE's own kind of prop (a crate with
+  // `corpse`, js/talismans.js), its picture the very body that lay there (`fromGround`: its canvas and its
+  // shade, drawn whole by `Talisman.drawCorpse`). Its pool is stamped where it lay and it leaves the floor's list.
+  bodyProp(game, b) {
+    const fx = game.fx, i = fx.ground.indexOf(b);
+    if (i >= 0) fx.ground.splice(i, 1);
+    fx.stampPool(b); b.taken = true;
+    const p = new Prop(b.x, b.y, 'crate');
+    p.corpse = true; p.noGrab = true; p.fromGround = true; p.r = 11; p.life = TUNING.thrower.body.life;
+    p.sprite = b.image; p.shade = b.shade; p.crop = b.crop; p.bodyW = b.width; p.bodyH = b.height; p.angle = b.angle || 0;
+    p.char = b.material === 'char'; p.key = b.key;
+    // Over his head it is the dead man's own sprite a shade darker (`body.dark`), not the floor's grey: the
+    // floor's version on a dark fist against a dark floor read as a smudge. It lands as the floor's again.
+    const art = game.renderer && game.renderer.painted;
+    if (b.key && !p.char && art && typeof document !== 'undefined') {
+      const c = CombatFX.pieceCanvas(96, 96), x = c.getContext('2d');
+      x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, 96, 96); x.translate(48, 64);
+      art.character({ ctx: x, t: 0 }, { facing: Math.random() < 0.5 ? Math.PI : 0 }, b.key, 80);
+      x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-atop';
+      x.fillStyle = `rgba(24,12,16,${TUNING.thrower.body.dark})`; x.fillRect(0, 0, 96, 96); x.globalCompositeOperation = 'source-over';
+      p.lit = c;
+    }
+    game.props.push(p);
+    return p;
+  },
   hold(e, game) {
     const c = e.carry; if (!c) return;
     let at = Thrower.holdAt(e); const o = c.o;
     if (o.dead || o.broken || (c.type === 'goat' ? o.state !== 'carried' : !o.held)) {
       // let go of by something else (a fire, a blow that took a heart): a man is on his own feet again,
       // not lying across a fist that is not there, and not left inside the wall the fist was over
-      if (c.type === 'man' && !o.dead) { o.liftedBy = null; if (game.world.isSolid(Math.floor(o.x / TILE), Math.floor(o.y / TILE))) { o.x = e.x; o.y = e.y; } }
+      // (the fist may be over a one-tile pillar, open floor on its far side: a body let go there comes down
+      // at his feet, and so does the goat a SECOND CHANCE laid out over his head)
+      if (c.type === 'man' && !o.dead) o.liftedBy = null;
+      if ((c.type === 'man' || c.type === 'goat') && !o.dead && (game.world.isSolid(Math.floor(o.x / TILE), Math.floor(o.y / TILE)) || !game.world.los(e.x, e.y, o.x, o.y))) { o.x = e.x; o.y = e.y; }
       e.carry = null; return;
     }
     // The fist is over his head, a tile and a half up the screen: where that is stone (his back to a wall)
     // what he holds is kept at his feet, never in the wall; and a bomb about to go off goes off on him.
-    if (game.world.isSolid(Math.floor(at.x / TILE), Math.floor(at.y / TILE)) || (o.kind === 'bomb' && o.fuseT >= 0 && o.fuseT < 0.15)) at = { x: e.x, y: e.y };
+    if (game.world.isSolid(Math.floor(at.x / TILE), Math.floor(at.y / TILE)) || (o.kind === 'bomb' && o.fuseT >= 0 && o.fuseT < TUNING.thrower.bombOn)) at = { x: e.x, y: e.y };
     o.x = at.x; o.y = at.y; o.vx = 0; o.vy = 0;
     if (c.type === 'goat') { o.runT = 0; o.runUp = 1; }
+    // a body lies across the fist as a man of his own does (`PaintedArt.character`'s `liftedBy` turn)
+    if (o.corpse) o.angle = Math.cos(e.facing) < 0 ? 1.45 : -1.45;
   },
   // Out of his hands for any reason but the throw: a blow, a fire, a death. Whatever it is comes down
   // where he stands, and a crate comes down on him (`drop` s of it); the goat lands on his feet a beat later.
@@ -195,7 +234,7 @@ const Thrower = {
     } else if (c.type === 'man') {
       o.liftedBy = null; o.state = 'floored'; o.timer = TUNING.bearer.flooredTime;
     } else if (c.type === 'beast') {
-      o.tossed = false; if (o.kind === 'chicken') { o.birdState = 'stunned'; o.birdT = TUNING.prop.chicken.stunned || 0.6; }
+      o.tossed = false; if (o.kind === 'chicken') { o.birdState = 'stunned'; o.birdT = TUNING.prop.chicken.stunned; }
     } else if (c.type === 'goat') {
       if (g.state === 'carried') { g.state = 'stunned'; g.timer = TUNING.thrower.grab.land; g.carriedBy = null; game.world.collideCircle(g); }
     }
@@ -210,6 +249,7 @@ const Thrower = {
     o.held = false; o.x = ok ? px : e.x; o.y = ok ? py : e.y; o.vx = 0; o.vy = 0;
     if (c.type === 'man') { o.liftedBy = null; o.state = 'chase'; }
     if (c.type === 'beast') o.tossed = false;
+    if (o.fromGround) Talisman.corpseGone(game, o);   // a body set down is a body on the floor again
   },
 
   // ---- the throw ----
@@ -286,7 +326,10 @@ const Thrower = {
     const G = TUNING.thrower.grab, w = game.world;
     if (g.state === 'carried') {
       const e = g.carriedBy;
-      if (!e || e.dead || !e.carry || e.carry.o !== g) { g.state = 'stunned'; g.timer = G.land; g.carriedBy = null; w.collideCircle(g); return; }
+      if (!e || e.dead || !e.carry || e.carry.o !== g) {
+        if (e && !w.los(e.x, e.y, g.x, g.y)) { g.x = e.x; g.y = e.y; }   // never left on the far side of a pillar
+        g.state = 'stunned'; g.timer = G.land; g.carriedBy = null; w.collideCircle(g); return;
+      }
       g.vx = 0; g.vy = 0; g.runT = 0; g.runUp = 1;
       return;
     }
@@ -297,15 +340,16 @@ const Thrower = {
     g.burnStep(game, w, dt);
     if (g.dead || g.state !== 'tossed') return;
     if (impact > G.hurt) { Thrower.goatHits(game, g, 'stone'); return; }
-    if (hyp(g.vx, g.vy) < 1.5 * TILE) { g.state = 'stunned'; g.timer = G.land; g.vx *= 0.3; g.vy *= 0.3; g.tossedBy = null; game.dust(g.x, g.y, TUNING.juice.dust.land, 0, 0); }
+    if (hyp(g.vx, g.vy) < G.stop) { g.state = 'stunned'; g.timer = G.land; g.vx *= 0.3; g.vy *= 0.3; g.tossedBy = null; game.dust(g.x, g.y, TUNING.juice.dust.land, 0, 0); }
   },
   // The thrown goat meets something hard: the heart it costs (killer: the man who threw him), and he is
   // on the floor where he stopped.
   goatHits(game, g, what) {
     const G = TUNING.thrower.grab, by = g.tossedBy;
     const sp = hyp(g.vx, g.vy) || 1, kx = -g.vx / sp * TILE, ky = -g.vy / sp * TILE;
-    g.vx *= 0.15; g.vy *= 0.15;
-    g.invuln = 0;   // the throw itself never touched him; this is the blow
+    g.vx *= G.slam; g.vy *= G.slam;
+    // (no `invuln = 0` here: the throw never set any, and a blow taken over his head, a club, a bomb,
+    // keeps its mercy frames through the landing instead of letting the wall take a second heart)
     g.damage(G.hurtN, game, kx, ky, false, by || 'toss');
     game.shake(6, true); game.hitstop(0.06); game.dust(g.x, g.y, TUNING.juice.dust.land, kx, ky);
     if (!g.dead && g.state !== 'ko') { g.state = 'stunned'; g.timer = G.land; } g.tossedBy = null;   // `ko` is SECOND CHANCE's
@@ -314,8 +358,9 @@ const Thrower = {
   // The thrown goat through a man of the cult: the man goes down, the goat slows.
   goatIntoMan(game, g, e, nx, ny) {
     if (hyp(g.vx, g.vy) < TUNING.physics.knockHitSpeed || e === g.tossedBy) return;
-    if (e.kind !== 'butcher' && e.kind !== 'ratogre' && !e.unliftable) { e.state = 'floored'; e.timer = TUNING.bearer.flooredTime; e.aware = true; e.vx = g.vx * 0.4; e.vy = g.vy * 0.4; }
-    g.vx *= 0.45; g.vy *= 0.45;
+    const G = TUNING.thrower.grab;
+    if (e.kind !== 'butcher' && e.kind !== 'ratogre' && !e.unliftable) { e.state = 'floored'; e.timer = TUNING.bearer.flooredTime; e.aware = true; e.vx = g.vx * G.intoMan.man; e.vy = g.vy * G.intoMan.man; }
+    g.vx *= G.intoMan.goat; g.vy *= G.intoMan.goat;
     game.audio.sfxThud(); game.particles(e.x, e.y - 6, 5, PALETTE.bone, 120);
   },
 
@@ -326,15 +371,37 @@ const Thrower = {
     if (!by || g.dead || g.leap || g.state === 'carried' || g.state === 'tossed') return false;
     if (hyp(g.x - p.x, g.y - p.y) > g.r + (p.r || 10)) return false;
     const sp = hyp(p.vx, p.vy) || 1;
-    g.damage(TUNING.thrower.hit, game, p.vx / sp * TILE * 2, p.vy / sp * TILE * 2, false, by);
+    Thrower.hitGoat(game, p.vx / sp, p.vy / sp, by);
+    // Alight (it flew through a fire, `Prop.update`), it burns him as fire does: the floor he stands on
+    // goes up as it breaks on him, of the flame's own kind, and the fire on that tile is his clock.
+    if (p.alight) game.world.ignite(Math.floor(g.x / TILE), Math.floor(g.y / TILE), true, TUNING.prop.crate.burstTime, p.alight === 'witch');
     return true;
+  },
+  // Whatever he threw landing on the goat (5 Oct 2026, the user's): `hit` hearts and `stun` s seeing stars.
+  // The stun only follows a blow that landed: mercy frames, THE TRIP's misses, the TALLOW SKIN, none of it
+  // stuns (GOD MODE does, so it can be watched).
+  hitGoat(game, ux, uy, by) {
+    const T = TUNING.thrower, g = game.goat, open = !(g.invuln > 0);
+    g.damage(T.hit, game, ux * T.knock, uy * T.knock, false, by);
+    if (open && !g.dead && g.state !== 'ko' && (g.invuln > 0 || game.dev.god)) game.stunGoat(T.stun);
   },
   // A man he threw meeting the goat (`Game.collideEntities`): the same heart, and the man is floored by it.
   manHitsGoat(game, e, g) {
     const sp = hyp(e.vx, e.vy) || 1, by = e.tossBy; e.tossBy = null;
     if (g.state === 'carried' || g.state === 'tossed') return;
-    g.damage(TUNING.thrower.hit, game, e.vx / sp * TILE * 2, e.vy / sp * TILE * 2, false, by);
+    Thrower.hitGoat(game, e.vx / sp, e.vy / sp, by);
     e.vx *= -0.3; e.vy *= -0.3;
+  },
+  // A shut door whose slab (`collideEntities`' rectangle, not a disc) the body `p` overlaps, or null.
+  doorAt(p, game) {
+    const D = TUNING.prop.door, r = p.r || 10;
+    for (const q of game.props) {
+      if (q.kind !== 'door' || !q.blocking) continue;
+      if (Math.abs(q.x - p.x) > D.r + r || Math.abs(q.y - p.y) > D.r + r) continue;
+      const hx = q.vertical ? D.thick / 2 : D.r, hy = q.vertical ? D.r : D.thick / 2;
+      if (hyp(p.x - clamp(p.x, q.x - hx, q.x + hx), p.y - clamp(p.y, q.y - hy, q.y + hy)) < r) return q;
+    }
+    return null;
   },
   // Animals in the air (`game.tossed`): his throw, its own drag; stone or a man brings it down, the goat
   // takes `hit` from it, a drop takes it, and the throw hurts the animal once (`Beast.hurt`) on what it meets.
@@ -347,20 +414,24 @@ const Thrower = {
         L.splice(i, 1); p.held = false; p.tossed = false; p.vx = 0; p.vy = 0;
         if (hurt) Beast.hurt(p, game, 'thrown');
         if (p.kind === 'tortoise') Beast.land(p, game);
-        if (p.kind === 'chicken' && !p.broken) { p.birdState = 'stunned'; p.birdT = TUNING.prop.chicken.stunned || 0.6; }
+        if (p.kind === 'chicken' && !p.broken) { p.birdState = 'stunned'; p.birdT = TUNING.prop.chicken.stunned; }
         game.audio.sfxThud();
       };
       if (p.broken) { L.splice(i, 1); continue; }
       const drag = Math.exp(-T.beastDrag * dt); f.vx *= drag; f.vy *= drag;
+      const ox = p.x, oy = p.y;
       p.x += f.vx * dt; p.y += f.vy * dt;
+      // A shut door is a wall to it: held in the air it is out of `collideEntities`' door checks, and a
+      // hen the goat ducked flew on through a soul gate, a seal or the stairs' door. It stops on this side.
+      if (Thrower.doorAt(p, game)) { p.x = ox; p.y = oy; land(true); continue; }
       // the flight's speed is the throw's (`f`), so lend it to the body for the wall to measure the blow by
       p.vx = f.vx; p.vy = f.vy;
       const impact = w.collideCircle(p), spd = hyp(f.vx, f.vy);
       f.vx = p.vx; f.vy = p.vy; p.vx = 0; p.vy = 0;
       if (w.isPitPx(p.x, p.y)) { L.splice(i, 1); p.held = false; p.tossed = false; p.gone(game); continue; }
-      if (impact > 2 * TILE) { land(true); continue; }
+      if (impact > T.beastLand) { land(true); continue; }
       if (!g.dead && !g.leap && g.state !== 'carried' && g.state !== 'tossed' && hyp(g.x - p.x, g.y - p.y) < g.r + (p.r || 10)) {
-        g.damage(T.hit, game, f.vx / (spd || 1) * TILE * 2, f.vy / (spd || 1) * TILE * 2, false, f.by);
+        Thrower.hitGoat(game, f.vx / (spd || 1), f.vy / (spd || 1), f.by);
         land(true); continue;
       }
       const m = (game.liveEnemies || game.enemies).find((e) => e !== f.by && !e.dead && !e.held && !e.ghosted && hyp(e.x - p.x, e.y - p.y) < e.r + (p.r || 10));
@@ -368,7 +439,7 @@ const Thrower = {
         if (m.kind !== 'butcher' && m.kind !== 'ratogre') { m.state = 'floored'; m.timer = TUNING.prop.crate.stun; m.aware = true; m.vx = f.vx * 0.3; m.vy = f.vy * 0.3; }
         land(true); continue;
       }
-      if (spd < 2 * TILE) land(false);
+      if (spd < T.beastLand) land(false);
     }
   },
 };

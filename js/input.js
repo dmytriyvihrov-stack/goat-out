@@ -249,3 +249,146 @@ class PadInput {
     } catch (e) { /* a pad without the effect */ }
   }
 }
+
+// CONTROLS (SETTINGS → CONTROLS, 5 Oct 2026, playtest: "an option to rebind the keys"). No verb is added
+// (pillar 1): the same nine things, each on whichever key or mouse button the player puts it on. A binding is
+// a key's place (`e.code`) or `Mouse<n>` (0 left, 1 middle, 2 right, 3 / 4 the side buttons). The arrows always
+// move, the menus keep their own keys, and KEYBOARD ONLY's J K L / Z X C stay where they are unless a binding
+// takes one of them. `Game.keyPress` and the pointer handlers ask `acts(code)` in play and heaven only, so a card,
+// a menu or the mirror never changes under a rebinding. Saved in the settings (`settings.binds`); every word that
+// names a key is laid again off it (`bindLay` in render.js).
+const KeyBind = {
+  ACTS: [
+    { id: 'up', name: 'MOVE UP' }, { id: 'down', name: 'MOVE DOWN' }, { id: 'left', name: 'MOVE LEFT' }, { id: 'right', name: 'MOVE RIGHT' },
+    { id: 'butt', name: 'HEADBUTT' }, { id: 'grab', name: 'GRAB (HOLD), THROW (LET GO)' }, { id: 'roll', name: 'ROLL' },
+    { id: 'scream', name: 'BAAH' }, { id: 'item', name: 'TALISMAN (WHEN IT HAS A USE)' },
+  ],
+  DEFAULT: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', butt: 'Mouse0', grab: 'Mouse2', roll: 'KeyE', scream: 'Space', item: 'KeyQ' },
+  // Keys that already do something of their own everywhere (pause, restart, the book, mute, a photo, the
+  // cards' digits, the stealth test's Alt) and the arrows, which always move: never put on a verb.
+  RESERVED: /^(Escape|Backspace|Enter|NumpadEnter|Tab|KeyM|KeyI|KeyP|Digit[1-4]|F\d+|Meta|Alt|Arrow|ContextMenu|CapsLock)/,
+  map: null,
+  load(saved) {
+    this.map = Object.assign({}, this.DEFAULT);
+    if (saved && typeof saved === 'object') for (const a of this.ACTS) if (typeof saved[a.id] === 'string' && !this.RESERVED.test(saved[a.id])) this.map[a.id] = saved[a.id];
+    return this.map;
+  },
+  code(act) { return (this.map || this.DEFAULT)[act]; },
+  acts(code) { const m = this.map || this.DEFAULT, out = []; for (const a of this.ACTS) if (m[a.id] === code) out.push(a.id); return out; },
+  // The `buttons` bit of a mouse button: the browser numbers the right one 2 but sets bit 2 for it, and the
+  // middle one 1 but bit 4.
+  mouseBit(n) { return [1, 4, 2, 8, 16][n] || 0; },
+  // Is the button the act sits on held now: a key in `game.keys`, a mouse button in `game.mouseButtons`.
+  held(game, act) {
+    const c = this.code(act); if (!c) return false;
+    if (c.startsWith('Mouse')) return !!((game.mouseButtons || 0) & this.mouseBit(+c.slice(5)));
+    return game.keys.has(c);
+  },
+  isDefault() { const m = this.map || this.DEFAULT; return this.ACTS.every((a) => m[a.id] === this.DEFAULT[a.id]); },
+  // A button pressed in play: each act sitting on it sets the very flag its default button sets, so every
+  // reader downstream (the goat, heaven, THE TRIP's swap, the animals' answers) knows nothing of the rebinding.
+  press(game, code) {
+    const inp = game.input, acts = this.acts(code);
+    for (const a of acts) {
+      if (a === 'butt') inp.lmbPressed = true;
+      else if (a === 'grab') { inp.rmbDown = true; inp.rmbPressed = true; }
+      else if (a === 'roll') inp.rollPressed = true;
+      else if (a === 'scream') inp.spacePressed = true;
+      else if (a === 'item') inp.qPressed = true;
+    }
+    return acts.length > 0;
+  },
+  // What the key is called on the screen. `short` is for the caps under the rail's chips.
+  name(code, short) {
+    if (!code) return '?';
+    const mouse = { Mouse0: 'LEFT M. CLICK', Mouse1: 'MIDDLE M. CLICK', Mouse2: 'RIGHT M. CLICK', Mouse3: 'MOUSE 4', Mouse4: 'MOUSE 5' };
+    if (mouse[code]) return mouse[code];
+    if (code === 'Space') return short ? 'SPC' : 'SPACE';
+    const F = typeof KEY_FACE !== 'undefined' ? KEY_FACE : {};
+    if (F[code]) return F[code];
+    if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+    if (/^Digit\d$/.test(code)) return code.slice(5);
+    if (/^Numpad/.test(code)) return 'NUM ' + code.slice(6).toUpperCase();
+    const words = { ShiftLeft: 'SHIFT', ShiftRight: 'R. SHIFT', ControlLeft: 'CTRL', ControlRight: 'R. CTRL', Semicolon: ';', Quote: '\'', Comma: ',', Period: '.', Slash: '/', Backslash: '\\', BracketLeft: '[', BracketRight: ']', Minus: '-', Equal: '=', Backquote: '`' };
+    return words[code] || code.toUpperCase();
+  },
+  // Put `act` on `code`; whatever sat there takes the act's old button (a swap), so nothing is left unbound.
+  set(game, act, code) {
+    const m = this.map || this.load(), old = m[act];
+    for (const a of this.ACTS) if (a.id !== act && m[a.id] === code) m[a.id] = old;
+    m[act] = code;
+    this.save(game);
+  },
+  reset(game) { this.map = Object.assign({}, this.DEFAULT); this.save(game); },
+  save(game) {
+    game.settings.binds = this.isDefault() ? undefined : Object.assign({}, this.map);
+    game.saveSettings();
+    if (typeof bindLay === 'function') bindLay();
+  },
+
+  // ---------- the panel (`menu.panel === 'controls'`, over the title or the pause) ----------
+  // Rows: the nine acts, RESET, BACK. `menu.bindWait` is the row listening for a button.
+  rows() { return this.ACTS.length + 2; },
+  open(game) { const m = game.menu; m.panel = 'controls'; m.sub = 0; m.bindWait = -1; game.audio.sfxCard(); },
+  close(game) { const m = game.menu; m.bindWait = -1; m.panel = 'settings'; m.sub = Math.max(0, SETTINGS.findIndex((r) => r.key === 'controls')); game.audio.sfxSwing(); },
+  pick(game, i) {
+    const m = game.menu; m.sub = i;
+    if (i === this.ACTS.length) { this.reset(game); game.audio.sfxCard(); return; }
+    if (i > this.ACTS.length) { this.close(game); return; }
+    m.bindWait = i; m.bindNo = 0; game.audio.sfxSwing();
+  },
+  // The first button pressed while a row listens. Escape lets the row go unchanged; a reserved key is
+  // refused with a word. Returns true when it took the press.
+  listen(game, code) {
+    const m = game.menu;
+    if (!(m.panel === 'controls' && m.bindWait >= 0)) return false;
+    if (code === 'Escape') { m.bindWait = -1; game.audio.sfxSwing(); return true; }
+    if (this.RESERVED.test(code)) { m.bindNo = 1.4; return true; }
+    this.set(game, this.ACTS[m.bindWait].id, code);
+    m.bindWait = -1; game.audio.sfxCard();
+    return true;
+  },
+  key(game, code) {
+    const m = game.menu, n = this.rows();
+    if (code === 'KeyW' || code === 'ArrowUp') { m.sub = (m.sub + n - 1) % n; game.audio.sfxSwing(); }
+    else if (code === 'KeyS' || code === 'ArrowDown') { m.sub = (m.sub + 1) % n; game.audio.sfxSwing(); }
+    else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.pick(game, m.sub);
+    else if (code === 'Escape' || code === 'Backspace') this.close(game);
+  },
+  draw(R, game) {
+    const ctx = R.ctx, s = R.ts, w = R.w, h = R.h, cx = w / 2, m = game.menu, n = this.rows();
+    ctx.fillStyle = 'rgba(9,7,9,0.985)'; ctx.fillRect(0, 0, w, h);
+    const gap = 8 * s, rowH = clamp((h * 0.82 - 70 * s) / n - gap, 30 * s, 52 * s);
+    const bw = clamp(Math.min(w * 0.9, 560 * s), 260 * s, 600 * s), x0 = cx - bw / 2;
+    const top = h / 2 - (n * (rowH + gap)) / 2 + 18 * s;
+    ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.ochre;
+    ctx.font = `700 ${clamp(rowH * 0.5, 15 * s, 26 * s)}px ${FONT_SC}`;
+    ctx.fillText('CONTROLS', cx, top - 26 * s);
+    ctx.font = `${Math.max(11.5 * s, 12 * R.s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
+    ctx.fillText('Click a row, then press the key or mouse button you want. ESC cancels.', cx, top - 8 * s);
+    m.rects.length = 0;
+    if (m.bindNo > 0) m.bindNo = Math.max(0, m.bindNo - 1 / 60);
+    for (let i = 0; i < n; i++) {
+      const y = top + i * (rowH + gap), sel = m.sub === i, wait = m.bindWait === i;
+      m.rects.push({ x: x0, y, w: bw, h: rowH });
+      ctx.fillStyle = wait ? '#5a3a1c' : sel ? '#4a2428' : '#190f16'; ctx.fillRect(x0, y, bw, rowH);
+      ctx.strokeStyle = wait ? PALETTE.ochre : sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s;
+      ctx.strokeRect(x0, y, bw, rowH);
+      const ty = y + rowH * 0.64;
+      if (i >= this.ACTS.length) {
+        ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${15 * s}px ${FONT_SC}`;
+        ctx.fillText(i === this.ACTS.length ? 'RESET TO DEFAULT' : 'BACK', cx, ty);
+        continue;
+      }
+      const a = this.ACTS[i];
+      ctx.textAlign = 'left'; ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${14 * s}px ${FONT_SC}`;
+      ctx.fillText(a.name, x0 + 14 * s, ty);
+      ctx.textAlign = 'right';
+      const word = wait ? (m.bindNo > 0 ? 'THAT KEY IS TAKEN' : 'PRESS A KEY...') : this.name(this.code(a.id));
+      ctx.fillStyle = wait ? (m.bindNo > 0 ? PALETTE.blood : PALETTE.fireHi) : this.code(a.id) === this.DEFAULT[a.id] ? 'rgba(239,230,208,0.75)' : PALETTE.fireHi;
+      ctx.font = `700 ${14 * s}px ${FONT_SC}`;
+      ctx.fillText(word, x0 + bw - 14 * s, ty);
+    }
+    ctx.textAlign = 'left';
+  },
+};

@@ -256,7 +256,9 @@ const GoatGrid = {
   SCENE: {
     men: { clubman: { label: 'CLUBMAN', kind: 'bearer' }, butcher: { label: 'BUTCHER', kind: 'bearer', champion: true },
       rifle: { label: 'RIFLE', kind: 'hunter' }, hound: { label: 'HOUND', kind: 'dog' }, seer: { label: 'SEER', kind: 'seer' },
-      ogre: { label: 'OGRE', kind: 'butcher' }, wraith: { label: 'WRAITH', kind: 'wraith' } },
+      ogre: { label: 'OGRE', kind: 'butcher' }, wraith: { label: 'WRAITH', kind: 'wraith' },
+      // the two clubmen with a body of their own (5 Oct 2026): drawn here as in the world, the Spartan with his board, the thrower
+      shieldman: { label: 'SHIELDMAN', kind: 'bearer', shield: true }, thrower: { label: 'THROWER', kind: 'bearer', thrower: true } },
     fx: { fire: 'FIRE', witchfire: 'WITCHFIRE', pool: 'BLOOD POOL', spray: 'BLOOD SPRAY', blast: 'BLAST', witchblast: 'WITCH BLAST',
       smoke: 'SMOKE', dust: 'DUST', soul: 'SOUL' },
     // [label, Prop kind, opts, flat]: a flat one lies on the floor under everybody, as the game has it.
@@ -421,11 +423,12 @@ const GoatGrid = {
     const key = 'm|' + it.tool + '|' + it.boss + '|' + it.shout, old = sc.stubs.get('m' + it.id);
     if (old && old.key === key) return old;
     const M = this.SCENE.men[it.tool], cfg = TUNING[M.kind];
-    let hp = M.champion ? TUNING.champion.hp : cfg.hp || 1;
+    let hp = M.champion ? TUNING.champion.hp : M.shield ? TUNING.shieldman.hp : M.thrower ? TUNING.thrower.hp : cfg.hp || 1;
     if (it.boss) hp = M.kind === 'butcher' ? cfg.hp : hp + TUNING.boss.champHp;   // a champion: no soul in a scene stub
     const e = { key, id: it.id, kind: M.kind, cfg, r: cfg.radius, champion: !!M.champion, boss: !!it.boss, elite: !!it.boss && M.kind !== 'butcher',
       keeper: false, hp, maxHp: hp, dead: false, ghosted: false, x: it.x, y: it.y, vx: 0, vy: 0, facing: 0, flash: 0, burning: 0, witchBurn: false,
-      bombFuse: 0, dazed: 0, poison: 0, shock: 0, impaled: 0, state: 'idle', timer: 0, say: null, soul: false, lurk: false };
+      bombFuse: 0, dazed: 0, poison: 0, shock: 0, impaled: 0, state: 'idle', timer: 0, say: null, soul: false, lurk: false,
+      shieldman: !!M.shield, shield: M.shield ? { uses: TUNING.shieldman.uses, jolt: 0, ang: 0, low: 0 } : null, thrower: !!M.thrower };
     // What he shouts is off his kind's first-sight lines, picked by his number so it keeps.
     const B = M.kind === 'dog' || M.kind === 'wraith' ? null : BARKS.spot[M.kind] || BARKS.attack;
     if (it.shout && B && B.length) e.say = { text: B[it.id % B.length], life: 1, max: 2 };

@@ -137,6 +137,25 @@ const HEAVEN_PIXELS = (() => {
     g.set(Math.round(cx), H - 2, G4); g.set(Math.round(cx), H - 1, G3);
     return g.outline(OL);
   }
+  // A bell still asleep (5 Oct 2026, the shepherd's quest, `Heaven.bellsOpen`): the same bell gone to
+  // cold grey stone, an iron chain wound across it and a padlock hanging at its lip, so it reads as
+  // shut before it is ever butted.
+  function sleepingBell(n) {
+    const r = 7.6 - n * 0.55, W = Math.ceil(r * 2) + 4, H = Math.ceil(r * 2.2) + 5, g = new Grid(W, H), cx = W / 2 - 0.5;
+    const S0 = '#d9dce4', S1 = '#b4b8c6', S2 = '#8e93a4', S3 = '#6b7083', I0 = '#9aa0b4', I1 = '#4b4f60', I2 = '#2f3240';
+    g.rect(Math.round(cx) - 1, 0, 2, 2, S3);
+    g.poly([[cx - r * 0.55, 2], [cx + r * 0.55 + 1, 2], [cx + r + 1, H - 4], [cx - r, H - 4]], S1);
+    g.hl(Math.round(cx - r) - 1, H - 4, Math.round(r * 2) + 3, S2); g.hl(Math.round(cx - r) - 1, H - 3, Math.round(r * 2) + 3, S3);
+    g.tone((x, y) => x > cx + r * 0.25, S2, [S1]); g.tone((x, y) => x < cx - r * 0.3 && y < H - 6, S0, [S1]);
+    // the chain: links in two shades down a slant across the body
+    const y0 = Math.round(H * 0.3), y1 = Math.round(H * 0.62);
+    for (let x = 0; x < W; x++) { const y = Math.round(y0 + (y1 - y0) * x / (W - 1)); if (!g.get(x, y)) continue; g.set(x, y, x % 2 ? I1 : I0); if (g.get(x, y + 1)) g.set(x, y + 1, I2); }
+    // the padlock at the lip: a shackle over a body with a keyhole
+    const lx = Math.round(cx) - 1, ly = H - 5;
+    g.set(lx, ly - 1, I1); g.set(lx + 2, ly - 1, I1); g.hl(lx, ly - 2, 3, I1);
+    g.rect(lx - 1, ly, 5, 3, I0); g.hl(lx - 1, ly, 5, '#c3c8d8'); g.set(lx + 1, ly + 1, I2);
+    return g.outline('#3d3a4c');
+  }
   // The beam the bells hang from: a gold rail on two posts, `n` bells `gap` texels apart. The chime
   // stands its bells `BELL_GAP` apart, far enough that one butt rings one bell (js/heaven.js).
   const BELL_GAP = 20;
@@ -197,7 +216,7 @@ const HEAVEN_PIXELS = (() => {
     'shepherd-0': shepherd(0), 'shepherd-1': shepherd(1), 'shepherd-2': shepherd(2),
     mirror: mirror(), plinth: plinth(), skull: skull(), beam: beam(8, BELL_GAP, 52), 'grass-gold': goldGrass(false), 'grass-gold-big': goldGrass(true),
   };
-  for (let n = 0; n < 8; n++) sprites['bell-' + n] = bell(n);
+  for (let n = 0; n < 8; n++) { sprites['bell-' + n] = bell(n); sprites['bell-asleep-' + n] = sleepingBell(n); }
   return { sprites, GLASS, BELL_GAP, G: [G0, G1, G2, G3, G4], W: [W0, W1, W2, W3, W4], OL };
 })();
 if (typeof module !== 'undefined') module.exports = HEAVEN_PIXELS;

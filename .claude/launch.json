@@ -747,6 +747,87 @@
         "8920"
       ],
       "port": 8920
+    },
+    {
+      "name": "goat-out-polish5",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8925"
+      ],
+      "port": 8925
+    },
+    {
+      "name": "goat-out-pt1005",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8930"
+      ],
+      "port": 8930
+    },
+    {
+      "name": "goat-out-pt1005-heaven",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8931"
+      ],
+      "port": 8931
+    },
+    {
+      "name": "goat-out-pt1005-stealth",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8932"
+      ],
+      "port": 8932
+    },
+    {
+      "name": "goat-out-pt1005-bane",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8933"
+      ],
+      "port": 8933
+    },
+    {
+      "name": "goat-out-pt1005-gen",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8934"
+      ],
+      "port": 8934
+    },
+    {
+      "name": "goat-out-pt1005-fog",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8935"
+      ],
+      "port": 8935
+    },
+    {
+      "name": "goat-out-feedback",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8940"
+      ],
+      "port": 8940
+    },
+    {
+      "name": "goat-out-devlog",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8950"
+      ],
+      "port": 8950
     }
   ]
 }

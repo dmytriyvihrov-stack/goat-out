@@ -67,10 +67,10 @@ const BAKE_HOLD = 1.15, ROOM_WARM_MS = 4;
 const CONTROL_LINES = {
   key: [
     ['WASD - MOVE'],
-    ['RIGHT CLICK - GRAB', 'RELEASE - THROW'],
+    ['RIGHT M. CLICK - GRAB', 'RELEASE - THROW'],
     // The second line is the rule the whole game kills by (3 Oct 2026 playtest: "explain it, people
     // did not always understand how they die"): the horns knock a man down, what he meets kills him.
-    ['LEFT CLICK - HEADBUTT', 'HE DIES WHEN HE HITS SOMETHING'],
+    ['LEFT M. CLICK - HEADBUTT', 'HE DIES WHEN HE HITS SOMETHING'],
     ['E - ROLL'],
     ['SPACE - BAAH', 'IT BREAKS A SWING'],
   ],
@@ -103,7 +103,9 @@ const CONTROL_LINES = {
 // next to what it does, not just a name to remember. Kept in step with the `cap` on each row of
 // `drawSkills`. `PAD_KEYS` is the same for a gamepad (Xbox names, which the standard mapping
 // follows), and `keysOf(game)` is whichever the player is holding; `item` is Q, when worn.
-const SKILL_KEYS = { butt: 'LMB', grab: 'RMB', roll: 'E', scream: 'SPC', item: 'Q', go: 'SPACE', back: 'BACKSPACE' };
+// Laid off the player's bindings (SETTINGS → CONTROLS, `KeyBind`) by `bindLay`; never the bare 'RMB' (5 Oct 2026,
+// playtest: a tester did not know what RMB meant and spent five minutes in heaven).
+const SKILL_KEYS = { butt: 'LEFT M. CLICK', grab: 'RIGHT M. CLICK', roll: 'E', scream: 'SPC', item: 'Q', go: 'SPACE', back: 'BACKSPACE' };
 const PAD_KEYS = { butt: 'RT', grab: 'LT', roll: 'A', scream: 'B', item: 'Y', go: 'A', back: 'BACK' };
 // KEYBOARD ONLY's caps (SETTINGS `keysOnly`): the same verbs moved off the mouse onto J K L.
 const KB_KEYS = { butt: 'J', grab: 'K', roll: 'L', scream: 'SPC', item: 'Q', go: 'SPACE', back: 'BACKSPACE' };
@@ -132,11 +134,23 @@ function keyFaceSet(code, v) {
   if (KEY_FACE[code] === v) return;
   KEY_FACE[code] = v;
   const F = KEY_FACE;
-  SKILL_KEYS.roll = F.KeyE; SKILL_KEYS.item = F.KeyQ;
-  CONTROL_LINES.key[0][0] = F.KeyW + F.KeyA + F.KeyS + F.KeyD + ' - MOVE';
-  CONTROL_LINES.key[3][0] = F.KeyE + ' - ROLL';
-  HINT_KEYS.roll[0] = F.KeyE + ', ROLL';
+  bindLay();
   kbLay();
+}
+// Every word that names one of the player's own buttons, laid again off `KeyBind` (SETTINGS → CONTROLS) and
+// the key faces: the rail's caps, the floor's lessons, the level hints. Called on a rebinding, on a key face
+// learned, and once when the settings are read (`Game` constructor).
+function bindLay() {
+  if (typeof KeyBind === 'undefined') return;
+  const N = (a, short) => KeyBind.name(KeyBind.code(a), short);
+  SKILL_KEYS.butt = N('butt', true); SKILL_KEYS.grab = N('grab', true); SKILL_KEYS.roll = N('roll', true);
+  SKILL_KEYS.scream = N('scream', true); SKILL_KEYS.item = N('item', true);
+  const mv = ['up', 'left', 'down', 'right'].map((a) => N(a));
+  const L = CONTROL_LINES.key;
+  L[0][0] = (mv.every((w) => w.length === 1) ? mv.join('') : mv.join(' ')) + ' - MOVE';
+  L[1][0] = N('grab') + ' - GRAB'; L[2][0] = N('butt') + ' - HEADBUTT'; L[3][0] = N('roll') + ' - ROLL'; L[4][0] = N('scream') + ' - BAAH';
+  HINT_KEYS.butt[0] = N('butt') + ' - HEADBUTT'; HINT_KEYS.grab[0] = 'HOLD ' + N('grab') + ', CARRY';
+  HINT_KEYS.roll[0] = N('roll') + ', ROLL'; HINT_KEYS.scream[0] = N('scream') + ', BAAH';
 }
 // Which hand the keyboard's verbs are under (3 Oct 2026): J K L beside WASD, Z X C beside the arrows.
 // The caps and the floor words name the set he last pressed (`kbUse`, from `Game.keyPress`).
@@ -159,8 +173,8 @@ const keysOf = (game) => (padOn(game) ? PAD_KEYS : kbOn(game) ? KB_KEYS : SKILL_
 // level definition picks one, and the keyboard or the touch wording follows what is in the player's
 // hands, the way the floor controls do.
 const HINT_KEYS = {
-  butt: ['LEFT CLICK - HEADBUTT', 'BUTT'],
-  grab: ['HOLD RIGHT CLICK, CARRY', 'HOLD GRAB, CARRY'],
+  butt: ['LEFT M. CLICK - HEADBUTT', 'BUTT'],
+  grab: ['HOLD RIGHT M. CLICK, CARRY', 'HOLD GRAB, CARRY'],
   roll: ['E, ROLL', 'ROLL'],
   scream: ['SPACE, BAAH', 'BAAH'],
 };
@@ -371,9 +385,14 @@ class Renderer {
     const cssW = Math.max(320, c.clientWidth || window.innerWidth);
     const cssH = Math.max(240, c.clientHeight || window.innerHeight);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const maxPixels = 2200000;
+    // `quality` is the share of those pixels kept (`TUNING.perf.adapt`, lowered by `Game.adaptRes`
+    // only while the frame's own work stays over budget); under 1 the browser upscales it pixelated,
+    // so the art stays hard-edged rather than smeared.
+    const q = this.quality || 1, maxPixels = 2200000;
+    c.style.imageRendering = q < 1 ? 'pixelated' : '';
     let scale = dpr;
     if (cssW * cssH * scale * scale > maxPixels) scale = Math.sqrt(maxPixels / (cssW * cssH));
+    scale *= Math.sqrt(q);
     const w = Math.round(cssW * scale), h = Math.round(cssH * scale);
     if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     this.w = w; this.h = h; this.cssW = cssW; this.cssH = cssH; this.s = scale;
@@ -458,7 +477,7 @@ class Renderer {
       this.drawLight(game, cam);
       this.drawCatching(game, cam);     // after the light: the burning tile next door washed it out
       this.drawDust(game, cam, dt);
-      this.drawStealth(game);           // the STEALTH test: the cult's sight, under the unseen rooms' paint and THE DARK
+      this.drawStealth(game);           // the STEALTH test: the cult's sight, under the unseen rooms' paint (over THE DARK, below)
       this.drawUnseen(game);            // ground, fire and firelight above it; everything that stands on it below
       this.drawRunes(game);
       this.drawBombFuse(game);
@@ -474,7 +493,8 @@ class Renderer {
       // flat underneath him whenever he had walked past it read as the weapon sinking into the floor.
       const inFront = (p) => (p.kind === 'cage' && !p.deco || p.kind === 'weapon' && !p.inStand) && p.y > game.goat.y;
       // What he carries is drawn with him, in his teeth (`drawCarried`), and nowhere else.
-      const carried = (p) => p === game.goat.holding;
+      // A body over the thrower's head goes on with him too, after him (the `cast` loop), not under him.
+      const carried = (p) => p === game.goat.holding || (p.fromGround && p.held);
       // Nothing far off the picture is drawn: every seen room keeps its props (the pen's 28 bars, a room's
       // doors and bowls) until the clamp, and they were recorded every frame off-screen (2 Oct 2026). The
       // margin is wide (`effects.propCull` tiles past a fifth more than the view) for the wheel's arms, a
@@ -511,7 +531,7 @@ class Renderer {
       try {
         for (const o of cast) {
           if (o.orbiting) { Talisman.drawOrbiter(this, game, o); continue; }
-          if (o !== g) { this.drawEnemy(o, game); continue; }
+          if (o !== g) { this.drawEnemy(o, game); if (o.carry && o.carry.o.fromGround && o.carry.o.held) this.drawProp(o.carry.o); continue; }
           const behind = hld && hld.item && this.carryBehind(g);
           if (behind) this.drawCarried(g, hld);
           if (!g.dead) this.drawGoat(g, game);
@@ -541,7 +561,9 @@ class Renderer {
       if (game.scatter) game.scatter.drawAir(this);
       // THE DARK: over the world, under the floor words and the fog. The words were under it too, and
       // the one line that says what this floor is ("THE LAMPS ARE OUT") sat in 98% black.
-      if (dark) { Dark.draw(this, game, cam); this.drawHints(game); }
+      // The words are drawn inside it now, over the dark and under every body, the goat too (`Dark.draw`).
+      if (dark) { Dark.draw(this, game, cam); this.drawStealth(game, true); }
+      this.drawMemFog(game, cam);       // what he has never seen, over everything standing on it (5 Oct 2026)
       this.drawCageThought(game);
       this.drawFloatTexts(game);
       this.drawShade(game, cam);        // last of everything in world space: it covers what it covers
@@ -1941,7 +1963,7 @@ class Renderer {
       const C = TUNING.cagePrompt, a = clamp((game.timer - C.delay) / C.fade, 0, 1);
       if (a > 0) {
         const p = lv.cagePrompt, pulse = 0.3 + 0.12 * Math.sin(this.t * 3.2);
-        const label = game.touch.active ? 'BUTT - HEADBUTT' : padOn(game) ? `${PAD_KEYS.butt} - HEADBUTT` : kbOn(game) ? `${KB_KEYS.butt} - HEADBUTT` : 'LEFT CLICK - HEADBUTT';
+        const label = game.touch.active ? 'BUTT - HEADBUTT' : padOn(game) ? `${PAD_KEYS.butt} - HEADBUTT` : kbOn(game) ? `${KB_KEYS.butt} - HEADBUTT` : `${KeyBind.name(KeyBind.code('butt'))} - HEADBUTT`;
         this.fitFloorText([label], 15 * TILE, 27);
         ctx.fillStyle = `rgba(255,224,138,${a * pulse})`;
         ctx.fillText(label, p.x, p.y * TILT);
@@ -1950,7 +1972,60 @@ class Renderer {
         ctx.fillText('AGAIN. AND AGAIN.', p.x, (p.y + 30) * TILT);
       }
     }
+    this.drawFirstWords(game);
+    this.drawIronPair(game);
     ctx.textAlign = 'left'; ctx.restore();
+  }
+
+  // The iron pair (`keys.iron.pair`, 5 Oct 2026, "it must read, grass or animal"): while both stand shut, the
+  // floor under each says what is in it, so the one key is spent knowing which is which. Under the first
+  // words when those are still up.
+  // Both iron cages of the pair, still shut, or null.
+  ironPair(game) {
+    const cage = game.props.find((p) => p.kind === 'ironcage' && !p.broken && !p.dead);
+    const coop = cage && game.props.find((p) => p.kind === 'coop' && p.ironCage && !p.broken && !p.dead);
+    return coop ? { cage, coop } : null;
+  }
+  // One label a cage, in place of the first words' IRON line: what is in it, and until iron has once been
+  // opened in this browser, how it opens.
+  drawIronPair(game) {
+    const pair = this.ironPair(game); if (!pair) return;
+    const { cage, coop } = pair, ctx = this.ctx, g = game.goat, near = TUNING.keys.iron.readR * TILE;
+    if (hyp(g.x - cage.x, g.y - cage.y) > near && hyp(g.x - coop.x, g.y - coop.y) > near) return;
+    const how = !(game.learned && game.learned.iron), pulse = 0.62 + 0.1 * Math.sin(this.t * 2.2);
+    const name = (typeof Beast !== 'undefined' && Beast.NAME[coop.holds]) || 'ANIMAL';
+    ctx.textAlign = 'center';
+    for (const [p, a] of [[cage, 'BIG GRASS · TWO HEARTS'], [coop, 'THE ' + name + ' · IT COMES WITH YOU']]) {
+      if (game.hidden(p.x, p.y)) continue;
+      ctx.font = `700 15px ${FONT_SC}`; ctx.fillStyle = `rgba(255,224,138,${pulse})`;
+      ctx.fillText(a, p.x, (p.y + 30) * TILT);
+      if (!how) continue;
+      ctx.font = `700 12px ${FONT_SC}`; ctx.fillStyle = `rgba(239,230,208,${pulse - 0.18})`;
+      ctx.fillText('HEADBUTT IT WITH A KEY', p.x, (p.y + 46) * TILT);
+    }
+  }
+
+  // The first time a thing is met in this browser, the floor beside it says what it is (5 Oct 2026 playtest:
+  // "I did not know the grass heals", "where do I get a key", "what is the iron for"). Gone for good once
+  // `game.learned` has it (`Game.learn`): grass grazed for a heart, a key picked up, iron opened. Drawn in
+  // the floor words' own world space (`drawHints`), only in a room he has seen and near the view.
+  drawFirstWords(game) {
+    const L = game.learned || {}, ctx = this.ctx;
+    if (L.graze && L.key && L.iron) return;
+    const say = (p, lines) => {
+      if (Math.abs(p.x - game.cam.x) > 1400 || game.hidden(p.x, p.y)) return;
+      const pulse = 0.5 + 0.12 * Math.sin(this.t * 2.6);
+      ctx.textAlign = 'center';
+      ctx.font = `700 15px ${FONT_SC}`; ctx.fillStyle = `rgba(255,224,138,${pulse})`;
+      ctx.fillText(lines[0], p.x, (p.y + 30) * TILT);
+      if (lines[1]) { ctx.font = `700 12px ${FONT_SC}`; ctx.fillStyle = `rgba(239,230,208,${pulse - 0.1})`; ctx.fillText(lines[1], p.x, (p.y + 46) * TILT); }
+    };
+    for (const p of game.props) {
+      if (p.broken || p.dead) continue;
+      if (p.kind === 'heal' && !L.graze && !(p.pail > 0)) say(p, ['GRASS HEALS', 'STAND ON IT WHEN HURT']);
+      else if (p.kind === 'key' && !L.key) say(p, ['A KEY', 'WALK OVER IT. IT OPENS IRON']);
+      else if ((p.kind === 'ironcage' || (p.kind === 'coop' && p.ironCage)) && !L.iron && !this.ironPair(game)) say(p, ['IRON', 'HEADBUTT IT WITH A KEY']);
+    }
   }
 
   // One line of floor text becomes two if it is long, broken at the full stop it already has or, with
@@ -2430,7 +2505,13 @@ class Renderer {
   // turns amber under 55 and red under 40, so a hitch is seen without reading the number.
   drawFps(game) {
     const ctx = this.ctx, s = this.hs || this.ts, f = game.fps;
-    const text = `${Math.round(f.rate)} FPS · worst ${f.worst.toFixed(0)} ms · game ${f.work.toFixed(1)} ms`;
+    // The game has no frame cap. A steady 30 with every gap ~33 ms while its own work fits a 60th is
+    // the browser presenting every other vsync: Chrome's Energy Saver does exactly that on battery
+    // (5 Oct 2026: "why is it limited to 30?", played unplugged). Said on the line, so it is not
+    // taken for the game.
+    const capped = f.rate > 27 && f.rate < 33 && f.worst < 40 && f.work < 14;
+    const q = this.quality || 1;
+    const text = `${Math.round(f.rate)} FPS · worst ${f.worst.toFixed(0)} ms · game ${f.work.toFixed(1)} ms${q < 1 ? ` · ${Math.round(q * 100)}% pixels` : ''}${capped ? ' · the browser holds 30 (energy saver?)' : ''}`;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = `700 ${Math.max(12 * this.s, 11 * s)}px ${FONT}`; ctx.textAlign = 'left';
     const w = textW(ctx, text), x = 14 * this.s, y = 82 * this.s;   // under the hearts, clear of the dev corner
     ctx.fillStyle = 'rgba(13,10,12,0.7)'; ctx.fillRect(x - 5 * this.s, y - 16 * this.s, w + 10 * this.s, 22 * this.s);
@@ -3172,7 +3253,7 @@ class Renderer {
       ctx.restore();
       // What is left in a shield you are carrying: three studs, one per man or bullet it has in it.
       if (p.weapon === 'shield' && p.held && p.uses > 0) {
-        const n = TUNING.prop.weapon.uses.shield;
+        const n = p.skulls ? TUNING.shieldman.drop : TUNING.prop.weapon.uses.shield;
         for (let k = 0; k < n; k++) {
           ctx.fillStyle = k < p.uses ? PALETTE.bone : 'rgba(239,230,208,0.22)';
           ctx.fillRect(p.x - (n * 5 - 2) / 2 + k * 5, p.y - 30, 3.2, 3.2);
@@ -4413,10 +4494,20 @@ class Renderer {
   // shows it. Under everything that stands, under the unseen rooms' paint (a cone through a doorway stops
   // where the goat's knowledge of the building does) and under THE DARK. A man in his beat of doubt
   // (`noticed`) has seen him: his cone goes hot. Fades with the crouch. His ears are the HEARING switch's.
-  drawStealth(game) {
+  // `over`: the call after THE DARK (5 Oct 2026): under it the cells were lost in the black, so on a dark
+  // floor they are laid over it instead, cut to what each man sees by the light (`Enemy.sightRange`).
+  drawStealth(game, over) {
     const g = game.goat, k = g ? g.sneakK || 0 : 0;
-    if (!game.dev.stealth || k <= 0 || g.dead || game.state !== 'play') return;
+    if (!game.dev.stealth || !g || g.dead || game.state !== 'play' || !!over !== Dark.on(game)) return;
     const ctx = this.ctx, L = TUNING.stealth.look;
+    // A fight shut the sneak (`Game.breakSneak`): a ring of cells round his feet drains with the time left.
+    const deny = game.sneakDenied ? game.sneakDenied() : 0;
+    if (deny > 0) {
+      const R = L.denyR, px = L.px / 2, refused = game.timer - (game.sneakRefusedAt ?? -9) < 0.35;
+      ctx.fillStyle = refused ? L.seen : L.deny; ctx.beginPath();
+      this.floorArc(g.x, g.y, R, R - px, px, -Math.PI / 2, (deny / TUNING.stealth.deny) * Math.PI * 2); ctx.fill();
+    }
+    if (k <= 0) return;
     this.sightBudget = L.budget;
     ctx.save(); ctx.globalAlpha = k;
     for (const e of game.enemies) {
@@ -4424,6 +4515,8 @@ class Renderer {
       if (e.state === 'hidden' || e.state === 'floored' || e.state === 'stunned' || e.state === 'flung') continue;
       if (e.aware && e.state !== 'noticed') continue;
       if (game.hidden(e.x, e.y) || !game.inSight(e)) continue;
+      // Over THE DARK, only a man the dark lets him know is there: one he hears (`dark.near`) or one in the light.
+      if (over && hyp(e.x - g.x, e.y - g.y) > (TUNING.dark.near + 0.5) * TILE && Dark.lightAt(e.x, e.y) < 0.05) continue;
       this.drawSightCells(e, game, e.state === 'noticed' ? L.seen : L.cone, L.rim);
     }
     ctx.restore();
@@ -4436,8 +4529,10 @@ class Renderer {
   // and past `look.budget` new ones a frame (`sightBudget`) the old one stands in: the rays are the cost.
   sightPoly(e, game) {
     const L = TUNING.stealth.look, cfg = e.cfg, two = Math.PI * 2;
-    let R = (e.watchful ? cfg.sight + (cfg.watchSight || 4) : cfg.sight) * TILE * (game.sneak ? TUNING.stealth.sight : 1);
-    if (game.goatLit === false) { const S = TUNING.dark.ai.sight; R = Math.min(R, (S[e.kind] || S.all) * TILE); }
+    // His range as `canSeeGoat` has it (`Enemy.sightRange`: the sneak, THE DARK out of the light).
+    const R = e.sightRange ? e.sightRange(game) : cfg.sight * TILE;
+    // STEALTH: crates, boulders, barrels and far grass cut the rays as they cut his sight (`Enemy.screenAt`).
+    const screen = !!(game.dev && game.dev.stealth && e.screenAt && e.kind !== 'wraith');
     // No front: a post, the dead, a hound with his eyes on the goat, a kind whose cone is the whole turn.
     const round = !!(e.watchful || e.kind === 'wraith' || (e.kind === 'dog' && e.aware) || !(cfg.cone < two));
     const c = e.sightPoly, same = c && c.R === R && c.round === round;
@@ -4456,6 +4551,7 @@ class Renderer {
         while (hi - lo > L.px * 0.5) { const m = (lo + hi) / 2; if (game.sees(e.x, e.y, e.x + ux * m, e.y + uy * m)) lo = m; else hi = m; }
         r = lo;
       }
+      if (screen) r = e.screenAt(game, a, r);
       pts[k++] = ux * r; pts[k++] = uy * r;
     }
     return (e.sightPoly = { x: e.x, y: e.y, f: e.facing, R, round, at: game.timer, pts, len: k });
@@ -4582,7 +4678,7 @@ class Renderer {
           ['textedit', TextEdit.on ? 'TEXT EDIT  ON' : 'TEXT EDIT  OFF'], ['rules', 'TOOLS'],
           ['vision', d.vision ? 'VISION  ON' : 'VISION  OFF'],
           ['hearing', d.hearing ? 'HEARING  ON' : 'HEARING  OFF'],
-          // ALT held sneaks; the cult's sight and ears on the floor; a blow from unseen throws further.
+          // ALT switches the sneak; the cult's sight and ears on the floor; a blow from unseen throws further.
           ['stealth', d.stealth ? 'STEALTH (ALT)  ON' : 'STEALTH (ALT)  OFF'],
           ['dark', d.dark ? 'DARK  ON' : 'DARK  OFF'],
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
@@ -4601,7 +4697,7 @@ class Renderer {
           ['font-say', 'SPEECH  ' + FONT_PICK.nameOf('say')], ['font-text', 'TEXT  ' + FONT_PICK.nameOf('text')],
         ] },
         { head: 'SPAWN', rows: [
-          ['bearer', 'BEARER'], ['enemy-spawn=shield', 'SHIELDMAN'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
+          ['bearer', 'BEARER'], ['enemy-spawn=shield', 'SHIELDMAN'], ['enemy-spawn=thrower', 'THROWER (BANE)'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
           ['wraith', 'WRAITH'], ['butcher', 'OGRE'], ['ratogre', 'RAT OGRE'],
           ['mouse', 'MOUSE'], ['artifact', 'ARTIFACT'], ['soul', 'SOUL'],
           ['coop', 'HEN'], ['tortoise', 'TORTOISE'], ['goose', 'GOOSE'], ['crow', 'CROW'], ['horse', 'HORSE'],
@@ -4704,6 +4800,32 @@ class Renderer {
       if (mask) this.devButton(d, x0 + slots.length * cw + 8 * s, ry + 1 * s, 60 * s, 19 * s, 'RESET', `room-lvl-reset=${t.name}`, false);
     });
   }
+  // COMBOS (`TUNING.combos`, gen.js `dealCombo`): every pairing the generator may deal, what it asks of
+  // the room, from which floor, and a button that lays it (the floor cut again until one is laid) and
+  // walks the goat to that room's door. Read off the table, so the page cannot say what the game does not.
+  drawCombosTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, W = this.w, d = game.dev, CB = TUNING.combos, L = game.level;
+    ctx.textAlign = 'left'; ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('COMBOS, A MAN AND A ROOM, OR MEN TOGETHER', pad, top);
+    ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText(`${Math.round(CB.chance * 100)}% of floors deal one, only of men met on earlier floors · PLAY lays it on its floor (this one if it may) and stands him at its door`, pad, top + 16 * s);
+    const here = L && L.combo && TUNING.combos.list.find((c) => c.id === L.combo.id);
+    ctx.fillStyle = here ? PALETTE.fireHi : 'rgba(239,230,208,0.5)';
+    ctx.fillText(here ? `this floor: ${here.name}, room ${L.combo.room}` : 'this floor: none', pad, top + 32 * s);
+    let y = top + 58 * s;
+    for (const c of CB.list) {
+      const R = c.room || {}, need = R.tpl ? `room: ${R.tpl}` : R.pits ? `room: ${R.pits}+ tiles of drop` : R.small ? `room: ${R.small} tiles of floor at most` : R.arena ? `the ${R.arena === 'butcher' ? 'ogre' : R.arena}'s ring` : 'any ordinary room';
+      this.devButton(d, pad, y - 14 * s, 60 * s, 20 * s, 'PLAY', `combo=${c.id}`, here === c);
+      ctx.textAlign = 'left'; ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = here === c ? PALETTE.fireHi : PALETTE.bone;
+      ctx.fillText(c.name, pad + 70 * s, y);
+      ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
+      const men = c.men.map((k) => k === 'champion' ? 'butcher' : k === 'seer' ? 'mage' : k).join(' + ');
+      ctx.fillText(this.clip(`${men} · ${need} · from ${LEVELS[c.from] ? LEVELS[c.from].name : 'floor ' + c.from}`, W - pad * 2 - 80 * s), pad + 70 * s, y + 15 * s);
+      ctx.fillStyle = 'rgba(239,230,208,0.5)';
+      ctx.fillText(this.clip(c.why || '', W - pad * 2 - 80 * s), pad + 70 * s, y + 29 * s);
+      y += 46 * s;
+    }
+  }
   drawMirrorTab(game, pad, top) {
     const ctx = this.ctx, s = this.ts, W = this.w, d = game.dev, M = Heaven.meta || Heaven.load();
     ctx.textAlign = 'left';
@@ -4712,6 +4834,9 @@ class Renderer {
     ctx.fillText(`${M.sacrifices} sacrifices · ${M.souls || 0} souls in the heap · a rank button sets it now, free · saved in this browser`, pad, top + 18 * s);
     this.devButton(d, pad, top + 28 * s, 170 * s, 20 * s, '+100 SACR · +5 SOULS', 'sacrifices', false);
     this.devButton(d, pad + 178 * s, top + 28 * s, 120 * s, 20 * s, 'ALL RANKS 0', 'mirror-reset', false);
+    // the belfry (js/heaven.js `bellsOpen`): one more bell awake, or back to the first alone
+    this.devButton(d, pad + 306 * s, top + 28 * s, 130 * s, 20 * s, `BELL +1 (${Heaven.bellsOpen()})`, 'bells-add', false);
+    this.devButton(d, pad + 444 * s, top + 28 * s, 110 * s, 20 * s, 'BELLS RESET', 'bells-reset', false);
     let y = top + 70 * s;
     for (const u of MIRROR) {
       const r = (M.ranks && M.ranks[u.id]) || 0, max = u.costs.length;
@@ -4789,7 +4914,7 @@ class Renderer {
     // Solid: at 0.965 the title's big letters showed through under the rows and muddied them.
     ctx.fillStyle = 'rgb(13,10,12)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE'], ['talismans','TALISMANS'], ['animals','ANIMALS'], ['mirror','HEAVEN'], ['roomlist','ROOMS'], ['goats','GOAT GRID'], ['art','ART']];
+    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE'], ['talismans','TALISMANS'], ['animals','ANIMALS'], ['mirror','HEAVEN'], ['roomlist','ROOMS'], ['combos','COMBOS'], ['goats','GOAT GRID'], ['art','ART']];
     const cols = Math.max(1, Math.floor((W - pad * 2 - 72 * s) / (80 * s)));
     tabs.forEach(([id, label], i) => this.devButton(d, pad + i % cols * 80 * s,
       pad + Math.floor(i / cols) * 24 * s, 76 * s, 20 * s, label, 'tab-' + id, d.tab === id));
@@ -4809,6 +4934,7 @@ class Renderer {
     else if (d.tab === 'animals') this.drawAnimalsTab(game, pad, top);
     else if (d.tab === 'mirror') this.drawMirrorTab(game, pad, top);
     else if (d.tab === 'roomlist') this.drawRoomsTab(game, pad, top);
+    else if (d.tab === 'combos') this.drawCombosTab(game, pad, top);
     else if (d.tab === 'music') this.drawMusicTab(game, pad, top);
     else if (d.tab === 'juice') this.drawJuiceTab(game, pad, top);
     else if (d.tab === 'talismans') Talisman.drawToolTab(this, game, pad, top);
@@ -5449,7 +5575,10 @@ class Renderer {
       ctx.textAlign = 'left';
       this.roomPlan(L, r, cx + 2 * s, cy + 12 * s, cellW - 4 * s, cellH - 24 * s);
       ctx.font = `400 ${7 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)';
-      const foot = r.cell && r.cell.intro ? 'meets ' + r.cell.intro : `${r.room.w}×${r.room.h}  ${r.name}`;
+      // A combo (`TUNING.combos`) names itself under the plan, warm, in place of the size.
+      const combo = r.room.combo && TUNING.combos.list.find((c) => c.id === r.room.combo);
+      const foot = combo ? combo.name : r.cell && r.cell.intro ? 'meets ' + r.cell.intro : `${r.room.w}×${r.room.h}  ${r.name}`;
+      if (combo) ctx.fillStyle = PALETTE.fireHi;
       ctx.fillText(this.clip(foot, cellW - 6 * s), cx + 3 * s, cy + cellH - 4 * s);
       // A canon or mix room forced to one hand-authored template, the sentry's four tiles, the
       // ambush corridor, reads as an ordinary room right up until you notice it never changes
@@ -5507,6 +5636,8 @@ class Renderer {
       : tag === 'seer' ? cfg.castWind + cfg.castCooldown
       : tag === 'wraith' ? TUNING.wraith.manifest + TUNING.wraith.solidAfter + TUNING.wraith.fadeCd
       : tag === 'butcher' ? cfg.slam.wind + cfg.slam.recover
+      : tag === 'shield' ? (cfg = TUNING.shieldman.strike, cfg.windup + cfg.swing + cfg.recover)   // his ram, not the club
+      : tag === 'thrower' ? (cfg = TUNING.thrower.fist, cfg.windup + cfg.swing + cfg.recover)
       : (cfg.windup || 0) + (cfg.swing || 0) + (cfg.recover || 0);
     const levelsFor = (tag) => LEVELS.map((lv, i) => (lv.encounters.kinds.includes(tag)
       || (lv.encounters.introduce || []).some(([k]) => k === tag)
@@ -5524,10 +5655,11 @@ class Renderer {
           ['HOOK CD', ['champion', 'hook', 'cooldown']], ['HOOK WIND', ['champion', 'hook', 'wind']], ['RAGE', ['champion', 'rage', 'speed']]],
         immune: ['blunder'],
         note: `A clubman with a cleaver and a hook on a rope: ${TUNING.champion.hp} hits, the heavy one without the outline. Never carried; a headbutt moves him ${Math.round(TUNING.champion.flingMul * 100)}% as far. Seen ${TUNING.champion.hook.min}-${TUNING.champion.hook.max} tiles off he swings the hook ${TUNING.champion.hook.wind}s and throws it where you are going, past his own men; caught, you are dragged to his cleaver. Turn or roll to slip it. On fire he comes on faster instead of running.` },
-      { kind: 'bearer', tag: 'shield', label: 'SHIELDMAN', cfg: TUNING.bearer, hp: 1,
+      { kind: 'bearer', tag: 'shield', label: 'SHIELDMAN', cfg: TUNING.bearer, hp: TUNING.shieldman.hp,
         edit: [['USES', ['shieldman', 'uses']], ['ARC', ['shieldman', 'arc']], ['TURN', ['shieldman', 'turn']], ['SPEED ×', ['shieldman', 'speedMul']],
-          ['BRACE', ['shieldman', 'brace']], ['PUSH', ['shieldman', 'push']], ['BOUNCE', ['shieldman', 'bounce']]],
-        note: `A clubman behind a board of planks. Inside ${Math.round(TUNING.shieldman.arc * 180 / Math.PI)}° of his front a headbutt, a crate, a blade, a bite or a round meets the board: it takes ${TUNING.shieldman.uses} and splinters, and a body thrown into it dies as on a wall. He turns no faster than ${TUNING.shieldman.turn} rad/s and walks at ${Math.round(TUNING.shieldman.speedMul * 100)}%: go round him, roll past, vault him, or shout him dizzy (the board drops while he reels). Dead with the board whole, he leaves it to pick up.` },
+          ['BRACE', ['shieldman', 'brace']], ['PUSH', ['shieldman', 'push']], ['BOUNCE', ['shieldman', 'bounce']],
+          ['RAM WINDUP', ['shieldman', 'strike', 'windup']], ['RAM REACH', ['shieldman', 'strike', 'reach']], ['SPIKE DAZE', ['shieldman', 'spikes', 'plain', 'daze']], ['DROP USES', ['shieldman', 'drop']]],
+        note: `A fat Spartan behind a board of skulls. Up close he rams it into you (the clubman's wedge, his own timings). Inside ${Math.round(TUNING.shieldman.arc * 180 / Math.PI)}° of his front a headbutt, a crate, a blade, a bite or a round meets the board: it takes ${TUNING.shieldman.uses} and splinters, and a body thrown into it dies as on a wall. He turns no faster than ${TUNING.shieldman.turn} rad/s and walks at ${Math.round(TUNING.shieldman.speedMul * 100)}%: go round him, roll past, vault him, or shout him dizzy (the board drops while he reels). Butted head on, his spikes throw the goat off dazed (a boss's or a soul-bearer's take a heart). Dead with the board whole, he leaves it to pick up, ${TUNING.shieldman.drop} uses.` },
       { kind: 'bearer', tag: 'thrower', label: 'THROWER', thrower: true, cfg: TUNING.bearer, hp: TUNING.thrower.hp,
         edit: [['HP', ['thrower', 'hp']], ['SPEED ×', ['thrower', 'speedMul']], ['KNOCK', ['thrower', 'flingMul']], ['SEEK', ['thrower', 'seek']],
           ['LIFT', ['thrower', 'lift']], ['AIM', ['thrower', 'aim']], ['THING', ['thrower', 'thing']], ['MAN', ['thrower', 'man']],
@@ -5615,7 +5747,9 @@ class Renderer {
         champion: !!k.champion, boss: !!k.boss, elite: !!k.boss, facing: Math.PI / 2, hp: k.hp, maxHp: k.hp,
         dead: false, ghosted: false, vx: 0, vy: 0, flash: 0, burning: 0, bombFuse: 0, dazed: 0,
         state: 'idle', say: null, soul: !!(d.soulView && d.soulView[k.tag]), witchBurn: false,
-        shield: k.tag === 'shield' ? { uses: TUNING.shieldman.uses, jolt: 0, ang: Math.PI / 2 } : null, thrower: !!k.thrower };
+        // `shieldman` too, or `characterKey` drew a clubman holding the board, at a clubman's size (5 Oct 2026:
+        // "he looks different here and in the world"); the fat Spartan is `shieldman`, the board is `shield`.
+        shield: k.tag === 'shield' ? { uses: TUNING.shieldman.uses, jolt: 0, ang: Math.PI / 2, low: 0 } : null, shieldman: k.tag === 'shield', thrower: !!k.thrower };
       ctx.save(); this.drawEnemy(fake, game); ctx.restore();
       ctx.textAlign = 'left';
       ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
@@ -6698,7 +6832,7 @@ class Renderer {
       const noteY = y + box + (isItem ? 22 : 12) * s;
       this.skillHover = def
         ? { row: { name: `${def.name} · ${rarityOf(art.tier).name}`, note: tier.desc }, x, left: x, y: noteY, hot: false, boons: [] }
-        : { row: { name: 'NOTHING AT HIS NECK', note: 'A talisman goes here, one at a time. A mouse in a wall offers two for nothing: grab the one you want.', half: true }, x, left: x, y: noteY, hot: false, boons: [] };
+        : { row: { name: 'NOTHING AT HIS NECK', note: 'You can wear one talisman here. A mouse in a wall offers two for free: grab the one you want.', half: true }, x, left: x, y: noteY, hot: false, boons: [] };
     }
     if (def) Talisman.drawHud(this, game, x, y, box);   // the crust, the cup, the notches, the bell's thread
   }
@@ -7489,11 +7623,15 @@ class Renderer {
     // not to be looked at.
     // In a cave a room is not a box (2 Oct 2026 playtest: square black holes cut out of the rock "wtf,
     // make it properly, if it is not discovered, complete fog of war"): everything he has not opened,
-    // the rock round it too, goes under one soft fog (`caveFog`). Not on THE TRIP, whose look is kept.
-    const caveFog = def.cave && !def.shroom && game.state !== 'dead' && TUNING.cave.fog.on;
+    // the rock round it too, goes under one soft fog (`caveFog`). THE TRIP too since 5 Oct 2026 (asked: its
+    // glow and colours stay as they are, only the unopened rooms stop being black boxes).
+    const caveFog = def.cave && game.state !== 'dead' && TUNING.cave.fog.on;
     if (caveFog) this.drawCaveFog(game);
+    // A built floor's rooms are not boxes either (5 Oct 2026): `drawMemFog` lays the fog a tile at a time
+    // off what he has seen, later, over everything standing. Only a cave's recap keeps the boxes.
+    const memFog = !def.cave && TUNING.fog.mem.on;
     ctx.globalAlpha = game.state === 'dead' ? TUNING.deathCam.fogAlpha : 1;
-    if (!caveFog) for (const r of game.level.rooms) {
+    if (!caveFog && !memFog) for (const r of game.level.rooms) {
       if (r.seen) continue;
       ctx.fillRect(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE);
     }
@@ -7518,29 +7656,43 @@ class Renderer {
   // Opened: a seen room that is not shut behind him, the corridors that run out of one (flooded through
   // floor outside every room), and `cave.fog.margin` tiles of rock round both, never into a room not yet
   // seen. Rebuilt only when a room is seen or shut (`sig`), so the canvas is uploaded once a change.
+  // Since 5 Oct 2026 a seen room's floor is opened only where he has had it in sight (`world.mem`,
+  // `fog.mem`), so a look into a cave room shows what the look reached and not the rest of its shape;
+  // a growth of the memory alone rebuilds it at most every `fog.mem.every` s.
   drawCaveFog(game) {
-    const L = game.level, W = L.W, H = L.H, F = TUNING.cave.fog;
+    const L = game.level, W = L.W, H = L.H, F = TUNING.cave.fog, M = TUNING.fog.mem, wd = game.world;
     const sig = L.rooms.map((r) => (r.seen ? 1 : 0) + (r.clamped ? 2 : 0)).join('');
+    const mem = M.on && wd.mem ? wd.mem : null;
     let C = this.caveFogC;
-    if (!C || C.level !== L || C.sig !== sig) {
+    if (!C || C.level !== L || C.sig !== sig || (mem && C.memN !== wd.memN && this.t - C.at >= M.every)) {
       if (!C || C.level !== L) {
         const own = new Int16Array(W * H).fill(-1);
         for (const r of L.rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) own[y * W + x] = r.index;
-        const canvas = (C && C.canvas) || document.createElement('canvas'); canvas.width = W; canvas.height = H;
+        // Kept on the CPU (`willReadFrequently`): written with putImageData a few times a second, and on the GPU
+        // each write waited for the blur still reading it (a stall of tens of ms, measured 5 Oct 2026).
+        let canvas = C && C.canvas;
+        if (!canvas) { canvas = document.createElement('canvas'); canvas.getContext('2d', { willReadFrequently: true }); }
+        canvas.width = W; canvas.height = H;
         C = this.caveFogC = { level: L, own, canvas, sig: '' };
       }
-      C.sig = sig;
-      const own = C.own, w = game.world, open = new Uint8Array(W * H), q = [];
-      const lit = (i) => own[i] >= 0 && L.rooms[own[i]].seen && !L.rooms[own[i]].clamped;
+      C.sig = sig; C.memN = wd.memN; C.at = this.t;
+      // Rebuilt a few times a second while he explores (the memory): arrays kept, stone read off the tiles.
+      const own = C.own, tiles = wd.tiles, WALL = T.WALL, n = W * H, q = [];
+      const open = C.open && C.open.length === n ? C.open.fill(0) : (C.open = new Uint8Array(n));
+      const roomLit = L.rooms.map((r) => r.seen && !r.clamped);
+      const lit = (i) => own[i] >= 0 && roomLit[own[i]];
+      const w = { isSolid: (x, y) => tiles[y * W + x] === WALL };
+      // a seen room's floor he has never had in sight stays under it, like a room not opened
+      const unknown = (i) => own[i] >= 0 && (!lit(i) || (mem && !mem[i]));
       // the floor of the rooms, not their boxes: a cave room's box is mostly rock
-      for (let i = 0; i < W * H; i++) if (lit(i) && !w.isSolid(i % W, (i / W) | 0)) { open[i] = 1; q.push(i); }
+      for (let i = 0; i < n; i++) if (lit(i) && (!mem || mem[i]) && tiles[i] !== WALL) { open[i] = 1; q.push(i); }
       // through the corridors: floor that belongs to no room
       for (let k = 0; k < q.length; k++) {
         const i = q[k], x = i % W, y = (i / W) | 0;
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        for (let s = 0; s < 4; s++) {
+          const nx = x + (s === 0 ? 1 : s === 1 ? -1 : 0), ny = y + (s === 2 ? 1 : s === 3 ? -1 : 0); if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
           const j = ny * W + nx;
-          if (open[j] || (own[j] >= 0 && !lit(j)) || w.isSolid(nx, ny)) continue;
+          if (open[j] || unknown(j) || tiles[j] === WALL) continue;
           open[j] = 1; q.push(j);
         }
       }
@@ -7551,13 +7703,13 @@ class Renderer {
         const x = i % W, y = (i / W) | 0;
         for (let dy = -m; dy <= m; dy++) for (let dx = -m; dx <= m; dx++) {
           const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-          const j = ny * W + nx; if (own[j] >= 0 && !lit(j)) continue;
+          const j = ny * W + nx; if (own[j] >= 0 && (!lit(j) || (mem && !mem[j] && !w.isSolid(nx, ny)))) continue;
           shown[j] = 1;
         }
       }
-      const x = C.canvas.getContext('2d'), img = x.createImageData(W, H), d = img.data;
+      const x = C.canvas.getContext('2d'), img = C.img || (C.img = x.createImageData(W, H)), d = img.data;
       const hex = L.def.fog || '#0d0a0c', R = parseInt(hex.slice(1, 3), 16), G = parseInt(hex.slice(3, 5), 16), B = parseInt(hex.slice(5, 7), 16);
-      for (let i = 0; i < W * H; i++) if (!shown[i]) { d[i * 4] = R; d[i * 4 + 1] = G; d[i * 4 + 2] = B; d[i * 4 + 3] = 255; }
+      for (let i = 0; i < n; i++) { d[i * 4] = R; d[i * 4 + 1] = G; d[i * 4 + 2] = B; d[i * 4 + 3] = shown[i] ? 0 : 255; }
       x.putImageData(img, 0, 0);
       // blurred up to `soft` px a tile, so the edge rounds off the way the rock does instead of stepping by tiles
       const K = F.soft, sc = C.soft || (C.soft = document.createElement('canvas'));
@@ -7568,6 +7720,94 @@ class Renderer {
     const ctx = this.ctx, was = ctx.imageSmoothingEnabled, K = F.soft;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(C.soft, 0, 0, W * K, H * K, 0, 0, W * TILE, H * TILE);
+    ctx.imageSmoothingEnabled = was;
+  }
+
+  // The fog over a built floor's rooms (5 Oct 2026 playtest: "no hard cut-offs of rooms, more organic, a
+  // fog of war"; "do not show the layout of a room I have not looked at"). Every tile of a room's box he
+  // has never had in sight (`world.mem`) is under the floor's fog, and so is stone further than
+  // `fog.mem.solid` steps through the stone from a tile he has seen (so a block's core is not left a hole,
+  // and a wall is let out where it touches floor he has seen). Laid a pixel a tile and blurred up `soft` x
+  // like the cave's fog, so its edge is a soft cloud and never a box. Corridors are never under it, as
+  // before. It goes on over everything standing (a crate on a tile he never saw is under it), under the
+  // floating words and the shade. Repainted only where the memory grew (`world.memBox`), or whole for a
+  // new floor or a room shut behind him: never a frame for nothing.
+  drawMemFog(game, cam) {
+    const L = game.level, wd = game.world, F = TUNING.fog.mem;
+    if (!F.on || !wd || !wd.mem || L.def.cave || L.def.heaven) return;
+    const W = L.W, H = L.H, K = F.soft;
+    let C = this.memFogC;
+    if (!C || C.level !== L || C.world !== wd) {
+      const own = new Int16Array(W * H).fill(-1);
+      for (const r of L.rooms) for (let y = Math.max(0, r.y); y < Math.min(H, r.y + r.h); y++) for (let x = Math.max(0, r.x); x < Math.min(W, r.x + r.w); x++) { const i = y * W + x; if (own[i] < 0) own[i] = r.index; }
+      // `raw` on the CPU, as the cave's: written a few times a second, and on the GPU every write waited on the blur.
+      let raw = C && C.raw; const soft = (C && C.soft) || document.createElement('canvas');
+      if (!raw) { raw = document.createElement('canvas'); raw.getContext('2d', { willReadFrequently: true }); }
+      raw.width = W; raw.height = H; soft.width = W * K; soft.height = H * K;
+      const img = raw.getContext('2d').createImageData(W, H), d = img.data, hex = L.def.fog || '#0d0a0c';
+      const cr = parseInt(hex.slice(1, 3), 16), cg = parseInt(hex.slice(3, 5), 16), cb = parseInt(hex.slice(5, 7), 16);
+      for (let i = 0; i < W * H; i++) { d[i * 4] = cr; d[i * 4 + 1] = cg; d[i * 4 + 2] = cb; }
+      C = this.memFogC = { level: L, world: wd, own, raw, soft, img, shut: new Set() };
+      wd.memBox = { x0: 0, y0: 0, x1: W - 1, y1: H - 1 };
+    }
+    // A room shut behind him leaves this fog to the clamp's dark: its box is repainted, only it.
+    for (const r of L.rooms) {
+      if (!r.clamped || C.shut.has(r.index)) continue;
+      C.shut.add(r.index);
+      const o = wd.memBox, x1 = r.x + r.w - 1, y1 = r.y + r.h - 1;
+      wd.memBox = o ? { x0: Math.min(o.x0, r.x), y0: Math.min(o.y0, r.y), x1: Math.max(o.x1, x1), y1: Math.max(o.y1, y1) } : { x0: r.x, y0: r.y, x1, y1 };
+    }
+    const b = wd.memBox;
+    if (b) {
+      wd.memBox = null;
+      const D = F.solid, own = C.own, mem = wd.mem, d = C.img.data, tiles = wd.tiles, WALL = T.WALL;
+      // `a`: the tiles whose fog can have changed; `e`: those and the stone steps' reach round them
+      const ax0 = Math.max(0, b.x0 - D), ay0 = Math.max(0, b.y0 - D), ax1 = Math.min(W - 1, b.x1 + D), ay1 = Math.min(H - 1, b.y1 + D);
+      const ex0 = Math.max(0, ax0 - D), ey0 = Math.max(0, ay0 - D), ex1 = Math.min(W - 1, ax1 + D), ey1 = Math.min(H - 1, ay1 + D);
+      const ew = ex1 - ex0 + 1, eh = ey1 - ey0 + 1;
+      let known = new Uint8Array(ew * eh);
+      for (let y = 0; y < eh; y++) for (let x = 0; x < ew; x++) known[y * ew + x] = mem[(y + ey0) * W + x + ex0];
+      // Stone a step at a time: first any wall touching what he has seen, then stone touching that stone.
+      for (let s = 1; s <= D; s++) {
+        const next = known.slice();
+        for (let y = 0; y < eh; y++) for (let x = 0; x < ew; x++) {
+          const j = y * ew + x; if (known[j] || tiles[(y + ey0) * W + x + ex0] !== WALL) continue;
+          let hit = false;
+          for (let dy = -1; dy <= 1 && !hit; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= ew || yy >= eh || (!dx && !dy)) continue;
+            if (known[yy * ew + xx] && (s === 1 || tiles[(yy + ey0) * W + xx + ex0] === WALL)) { hit = true; break; }
+          }
+          if (hit) next[j] = 1;
+        }
+        known = next;
+      }
+      for (let y = ay0; y <= ay1; y++) for (let x = ax0; x <= ax1; x++) {
+        const i = y * W + x, r = own[i] >= 0 ? L.rooms[own[i]] : null;
+        // a room shut behind him is the clamp's own dark (`drawUnseen`), never this
+        d[i * 4 + 3] = r && !r.clamped && !known[(y - ey0) * ew + x - ex0] ? 255 : 0;
+      }
+      C.raw.getContext('2d').putImageData(C.img, 0, 0, ax0, ay0, ax1 - ax0 + 1, ay1 - ay0 + 1);
+      // Blurred again only round what changed: cleared and redrawn inside `q`, from the raw tiles a blur's reach further out.
+      const R = Math.ceil(F.blur * 3) + 1;
+      const qx0 = Math.max(0, ax0 - R), qy0 = Math.max(0, ay0 - R), qx1 = Math.min(W - 1, ax1 + R), qy1 = Math.min(H - 1, ay1 + R);
+      const sx0 = Math.max(0, qx0 - R), sy0 = Math.max(0, qy0 - R), sx1 = Math.min(W - 1, qx1 + R), sy1 = Math.min(H - 1, qy1 + R);
+      const sx = C.soft.getContext('2d');
+      sx.save();
+      sx.beginPath(); sx.rect(qx0 * K, qy0 * K, (qx1 - qx0 + 1) * K, (qy1 - qy0 + 1) * K); sx.clip();
+      sx.clearRect(qx0 * K, qy0 * K, (qx1 - qx0 + 1) * K, (qy1 - qy0 + 1) * K);
+      sx.imageSmoothingEnabled = true; sx.filter = `blur(${F.blur * K}px)`;
+      sx.drawImage(C.raw, sx0, sy0, sx1 - sx0 + 1, sy1 - sy0 + 1, sx0 * K, sy0 * K, (sx1 - sx0 + 1) * K, (sy1 - sy0 + 1) * K);
+      sx.filter = 'none';
+      sx.restore();
+    }
+    // Only the part of it in view.
+    const v = this.visibleTiles(cam), x0 = clamp(v.x0 - 1, 0, W - 1), y0 = clamp(v.y0 - 1, 0, H - 1), x1 = clamp(v.x1 + 1, 0, W - 1), y1 = clamp(v.y1 + 1, 0, H - 1);
+    const ctx = this.ctx, was = ctx.imageSmoothingEnabled;
+    ctx.save();
+    ctx.globalAlpha = game.state === 'dead' ? TUNING.deathCam.fogAlpha : 1;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(C.soft, x0 * K, y0 * K, (x1 - x0 + 1) * K, (y1 - y0 + 1) * K, x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE);
+    ctx.restore();
     ctx.imageSmoothingEnabled = was;
   }
 
@@ -7783,7 +8023,10 @@ class Renderer {
         // A key name means nothing to a thumb: on touch the picture of the verb is the whole caption.
         if (!game.touch.active) {
           ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${Math.max(12 * this.s, 9 * s)}px ${FONT_SC}`;
-          ctx.fillText(keysOf(game)[b.skill], x + cw - 20 * s, y + 34 * s);
+          // A long key name (RIGHT M. CLICK) is held inside the card's right edge rather than centred off it.
+          const kn = keysOf(game)[b.skill], al = ctx.textAlign;
+          if (textW(ctx, kn) > 34 * s) { ctx.textAlign = 'right'; ctx.fillText(kn, x + cw - 8 * s, y + 34 * s); ctx.textAlign = al; }
+          else ctx.fillText(kn, x + cw - 20 * s, y + 34 * s);
         }
       } else {
         ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${Math.max(12 * this.s, 9 * s)}px ${FONT_SC}`;
@@ -8162,9 +8405,9 @@ class Renderer {
       // and not a lockout: the button is simply not what threw it a moment ago.
       { id: 'butt', name: 'BUTT', cap: trip ? K.grab : K.butt, cd: 0, max: 0, ready: g.state === 'idle' && !g.holding,
         recover: g.state === 'recover' && g.recoverMax > 0 ? clamp(g.timer / g.recoverMax, 0, 1) : 0,
-        note: (game.mods.bomb ? 'Ram him. If he dies against something right after, he explodes.'
-          : game.mods.antlers ? 'Ram him further and harder. A wall, a fire or another man finishes him.'
-          : 'Ram him. He flies: a wall, a fire or another man finishes him.')
+        note: (game.mods.bomb ? 'Hit him. If he dies on something right after, he explodes.'
+          : game.mods.antlers ? 'Hit from further, throw harder. A wall, a fire or another man kills him.'
+          : 'Hit him and he flies. A wall, a fire or another man kills him.')
           + (game.mods.splash ? ' It poisons whoever is behind you.' : ''),
         // `stat` is a getter: it is read only on a hovered chip with the drawer open, and four of them
         // formatted every frame were a dozen strings a frame for nobody.
@@ -8176,16 +8419,16 @@ class Renderer {
         recover: M.coldEye && game.aimSlow > 0 ? clamp(game.aimSlow / M.coldEye.time, 0, 1) : 0,
         note: (game.mods.grabMen ? 'Carry a crate, a blade, a shield or a man. Let go to throw.'
           : 'Carry a crate, a blade or a shield. Let go to throw. Men are too heavy for now.')
-          + (game.mods.brandHold ? ' Held a moment, the floor it crosses burns.'
-            : game.mods.venomHold ? ' Held a moment, it drips poison where it flies.' : '')
+          + (game.mods.brandHold ? ' Hold it a moment to set its path on fire.'
+            : game.mods.venomHold ? ' Hold it a moment to drop poison as it flies.' : '')
           + (M.coldEye ? ' Picking up slows time.' : ''),
         get stat() { return `REACH ${sayN(G.reach / TILE)} TILES · ${sayN(G.cooldown * M.grabCooldown)}s BEFORE THE NEXT`
           + (M.grabMen ? ` · A MAN: ${sayN(G.bite)}s TO LIFT, ${sayPct(G.speedMul)} SPEED, STOPS ${M.shieldBullets} BULLETS, WORKS LOOSE IN ~${sayN(M.holdTime)}s, ${sayN(G.cooldown * M.grabCooldown * G.manCd)}s BEFORE THE NEXT` : '')
           + (M.coldEye ? ` · TIME AT ${sayPct(M.coldEye.scale)} FOR ${sayN(M.coldEye.time)}s, EVERY ${sayN(M.coldEye.every)}s` : ''); } },
       { id: 'roll', name: M.leapfrog ? 'LEAP' : 'ROLL', cap: trip ? K.scream : K.roll, cd: g.rollCd,
         max: g.rollCdMax || R.cooldown * game.mods.rollCooldown, ready: g.rollCd <= 0,
-        note: (game.mods.rollStun > 0 ? 'Dodge. Everyone you tumble through is dazed.'
-          : M.leapfrog ? 'Dodge. Roll at a man to vault over him.'
+        note: (game.mods.rollStun > 0 ? 'Dodge. Men you roll through are stunned.'
+          : M.leapfrog ? 'Dodge. Roll at a man to jump over him.'
           : 'Dodge. Nothing can hit you mid-roll.')
           + (game.mods.venomRoll ? ' You leave a puddle of poison.' : ''),
         get stat() { return `${sayN(R.speed * R.duration * M.rollDistance / TILE)} TILES · UNTOUCHABLE ${sayN(R.invuln)}s · ${sayN(R.cooldown * M.rollCooldown)}s COOLDOWN`
@@ -8195,9 +8438,9 @@ class Renderer {
         cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0,
         half: !fire && !game.mods.screamStun && !game.mods.spit,
         note: game.mods.spit ? 'Spit a glob of poison where you point.'
-          : fire ? 'Breathe fire where you run.'
-          : game.mods.screamStun ? 'Stun everyone near you, even mid-swing.'
-            : 'A shout. It breaks the swing of anyone on top of you and calls the rest to you.',
+          : fire ? 'Breathe fire ahead of you.'
+          : game.mods.screamStun ? 'Stun men near you, even as they swing.'
+            : 'A shout. A man right next to you stops his attack. The rest come to you.',
         get stat() { return (M.spit ? `FLIES UP TO ${sayN(TUNING.status.spit.range * (M.screamReach || 1))} TILES`
           : fire ? `CONE ${sayN(TUNING.goat.breath.range * (M.screamReach || 1) / TILE)} TILES`
           : M.screamStun ? `DAZES WITHIN ${sayN(M.screamRadius * (M.screamReach || 1))} TILES FOR ${sayN(V.stun)}s`
@@ -8246,7 +8489,12 @@ class Renderer {
         // A little clear of the box itself: flush under it read as part of the icon rather than a
         // caption of its own.
         // (27 px down while the souls' glyphs stood between; 16 since they went)
-        ctx.fillText(row.cap, x + box / 2, y + box + 16 * s);
+        // A cap wider than its chip (RIGHT M. CLICK, a rebinding's SHIFT) breaks after its first word.
+        const cap = String(row.cap), sp = cap.indexOf(' ');
+        if (sp > 0 && textW(ctx, cap) > box + gap) {
+          ctx.fillText(cap.slice(0, sp), x + box / 2, y + box + 16 * s);
+          ctx.fillText(cap.slice(sp + 1), x + box / 2, y + box + 29 * s);
+        } else ctx.fillText(cap, x + box / 2, y + box + 16 * s);
       }
     });
     // The gong, while it is still in him: a strip under the rail that drains with it, so four
@@ -8636,6 +8884,18 @@ class Renderer {
     };
     let tw = measure();
     if (tw + size * 2.2 > w * 0.92) { size *= (w * 0.92) / (tw + size * 2.2); tw = measure(); }
+    // The horns the saved run's goat wears (3 Oct 2026): LONG HORNS antlers, BOMB CHARGE lava, SPLASH venom.
+    // They are drawn `px` a cell, so the fit is asked in their own cells (an antler reaches further than the
+    // plain beam), and again after `px` rounds: rounding 1.5 up to 2 put the tips off a phone's edge.
+    const worn = game.save && game.save.boons || [];
+    const hornLook = worn.includes('horns') ? 'antler' : worn.includes('bomb') ? 'lava' : worn.includes('splash') ? 'venom' : null;
+    const hb = this.titleHornBake(hornLook);
+    if (hb.right == null) {   // the furthest cell it fills, read once a look (the bake is a square with room to spare)
+      const W = hb.canvas.width, d = hb.canvas.getContext('2d').getImageData(0, 0, W, hb.canvas.height).data;
+      hb.right = 0; for (let i = 3; i < d.length; i += 4) if (d[i] && (i >> 2) % W > hb.right) hb.right = (i >> 2) % W;
+    }
+    const reach = 5 + hb.right + 1 - hb.root[0];
+    for (let i = 0; i < 8 && px > 1 && tw + 2 * px * reach > w * 0.96; i++) { size *= 0.9; tw = measure(); }
     const bw = clamp(Math.min(w * 0.76, 330 * s), 170 * s, 400 * s);
     // The rows are sized to the screen they were given. The block used to be measured as two rows
     // however many there were, so five of them ran off the bottom of the window and took SETTINGS
@@ -8657,9 +8917,7 @@ class Renderer {
     ctx.fillStyle = PALETTE.bone; ctx.fillText(LOGO_TEXT, lx, ly);
     ctx.textAlign = 'center';
     if (spaced) ctx.letterSpacing = '0px';
-    // The horns the saved run's goat wears (3 Oct 2026): LONG HORNS antlers, BOMB CHARGE lava, SPLASH venom.
-    const worn = game.save && game.save.boons || [];
-    this.titleHorns(cx, titleY, tw / 2 + px * 5, size, worn.includes('horns') ? 'antler' : worn.includes('bomb') ? 'lava' : worn.includes('splash') ? 'venom' : null, px);
+    this.titleHorns(cx, titleY, tw / 2 + px * 5, size, hornLook, px);
 
     game.menu.rects.length = 0;
     // The floor CONTINUE will play, which on a dark or trip save is not the LEVELS row (see `startLevel`).
@@ -8726,6 +8984,7 @@ class Renderer {
     ctx.textAlign = 'left';
     if (game.menu.panel === 'best') this.drawBoard(game, board);
     if (game.menu.panel === 'settings') this.drawSettings(game);
+    if (game.menu.panel === 'controls') KeyBind.draw(this, game);
     if (game.menu.panel === 'levels') this.drawLevelPick(game, board);
     if (game.menu.panel === 'consent') Stats.drawConsent(this, game);
   }
@@ -8737,6 +8996,7 @@ class Renderer {
   // that function reads and it does not care whether the title or the pause overlay opened it.
   drawPause(game) {
     if (game.menu.panel === 'settings') { this.drawSettings(game); return; }
+    if (game.menu.panel === 'controls') { KeyBind.draw(this, game); return; }
     if (game.menu.panel === 'photos') { Photo.draw(game, this); return; }
     if (game.menu.panel === 'book') { Codex.drawBook(this, game); return; }
     const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
@@ -8816,6 +9076,10 @@ class Renderer {
         ctx.strokeRect(sx, sy, sw, sh);
         const kr = 6 * s;
         ctx.fillStyle = PALETTE.fireHi; ctx.beginPath(); ctx.arc(sx + sw * v, sy + sh / 2, kr, 0, Math.PI * 2); ctx.fill();
+      } else if (it.type === 'panel') {
+        // a page of its own (CONTROLS): an arrow where a switch would be
+        ctx.textAlign = 'right'; ctx.fillStyle = PALETTE.ochre; ctx.font = `700 ${18 * s}px ${FONT_SC}`;
+        ctx.fillText('>', x0 + bw - 18 * s, y + rowH * 0.62);
       } else {
         // the switch itself: a bar with a block in one end of it, lit when it is thrown
         const tw = 46 * s, th = 20 * s, tx = x0 + bw - tw - 16 * s, ty = y + rowH / 2 - th / 2;

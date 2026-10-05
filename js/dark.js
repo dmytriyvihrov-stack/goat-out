@@ -159,7 +159,12 @@ const Dark = {
     // crosses a tile, and a fresh pair of buffers every time was steady garbage while he ran.
     if (!this.img || this.img.width < mw || this.img.height < mh) { this.img = mx.createImageData(Math.max(mw, this.img ? this.img.width : 0) + R, Math.max(mh, this.img ? this.img.height : 0) + R); this.simg = sx.createImageData(this.img.width, this.img.height); }
     const px = this.img.data, sp = this.simg.data, IW = this.img.width, [cr, cg, cb] = D.color;
-    const hear = D.near, fl = D.floor, [selfR, selfK] = D.self, gx = g.x / TILE, gy = g.y / TILE;
+    // On the move he sees a little more round himself (5 Oct 2026 playtest: running down a corridor he
+    // was all but lost in the black): `run` eased in off his speed against `run.at`, out again standing.
+    const spd = Math.hypot(g.vx || 0, g.vy || 0), dtR = clamp(t - (this.runT ?? t), 0, 0.1); this.runT = t;
+    this.runK = (this.runK || 0) + (clamp(spd / D.run.at, 0, 1) - (this.runK || 0)) * Math.min(1, dtR * D.run.ease);
+    const k = this.runK, fl = lerp(D.floor, D.run.floor, k), selfR = lerp(D.self[0], D.run.self[0], k), selfK = lerp(D.self[1], D.run.self[1], k);
+    const hear = D.near, gx = g.x / TILE, gy = g.y / TILE;
     for (let j = 0; j < mh; j++) {
       const wy = y0 + (j + 0.5) / R, dy = wy - gy;
       for (let i = 0; i < mw; i++) {
@@ -178,7 +183,12 @@ const Dark = {
     ctx.drawImage(mc, 0, 0, mw, mh, x0 * TILE, y0 * TILE, nx * TILE, ny * TILE);
     ctx.restore();
     ctx.imageSmoothingEnabled = false;
+    this.goatDark = D.alpha * (1 - this.lightAt(g.x, g.y)) * (1 - Math.max(fl, selfK));   // how dark he stands, for `goatOver`
 
+    // The floor words over the dark, so they read, and under every body (5 Oct 2026 playtest: the line
+    // was written over the goat): the silhouettes come after them, and the goat is drawn again over them.
+    r.drawHints(game);
+    this.goatOver(r, game);
     this.walls(r, game);
     this.silhouettes(r, game, cam, sc, mw, mh);
     this.readable(r, game);
@@ -256,11 +266,20 @@ const Dark = {
     a.save(); a.beginPath(); a.rect(bx, by, bw, bh); a.clip();
     a.setTransform(m); a.imageSmoothingEnabled = false;
     const keep = r.ctx; r.ctx = a; r.silPass = true;
+    // The goat is not in this picture but he stands among it (5 Oct 2026 playtest: a crate or a man behind
+    // him was flattened over him): what stands behind his feet goes down first, then his own shape is cut
+    // out of it, then what stands in front of him goes over the hole.
+    const pass = (front) => {
+      const mine = (o) => (o.y > g.y) === front;
+      for (const p of list) if (p.kind !== 'lamp' && mine(p)) r.drawProp(p);
+      for (const e of men) if ((e.state === 'floored' || e.state === 'stunned') && mine(e)) r.drawEnemy(e, game);
+      for (const p of list) if (p.kind === 'lamp' && mine(p)) r.drawProp(p);
+      for (const e of men) if (e.state !== 'floored' && e.state !== 'stunned' && mine(e)) r.drawEnemy(e, game);
+    };
     try {
-      for (const p of list) if (p.kind !== 'lamp') r.drawProp(p);
-      for (const e of men) if (e.state === 'floored' || e.state === 'stunned') r.drawEnemy(e, game);
-      for (const p of list) if (p.kind === 'lamp') r.drawProp(p);
-      for (const e of men) if (e.state !== 'floored' && e.state !== 'stunned') r.drawEnemy(e, game);
+      pass(false);
+      if (!g.dead) { a.globalCompositeOperation = 'destination-out'; r.drawGoat(g, game); a.globalCompositeOperation = 'source-over'; }
+      pass(true);
     } catch (err) { a.restore(); throw err; }   // or the clip stays on A and every later frame is cut to it
     finally { r.ctx = keep; r.silPass = false; }
     // Cut to the mask: only inside his hearing, and only what no flame is already showing.
@@ -277,6 +296,49 @@ const Dark = {
     const o = Math.max(1, Math.round(cam.zoom));
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
     for (const [dx, dy] of [[o, 0], [-o, 0], [0, o], [0, -o]]) ctx.drawImage(B, bx, by, bw, bh, bx + dx, by + dy, bw, bh);
+    ctx.drawImage(A, bx, by, bw, bh, bx, by, bw, bh);
+    ctx.restore();
+  },
+
+  // Is a line of floor words near enough the goat to be written across him? Only then is he drawn again.
+  wordsNear(game) {
+    const L = game.level, g = game.goat;
+    const near = (x, y, w) => Math.abs(g.x - x) < (w || 14 * TILE) / 2 + TILE && Math.abs(g.y - y) < 2.5 * TILE;
+    for (const h of L.hints || []) if (near(h.x, h.y, h.w)) return true;
+    for (const c of L.controls || []) if (near(c.x, c.fy !== undefined ? c.fy : c.y, c.w)) return true;
+    const r0 = game.tip && L.rooms && L.rooms[0];
+    return !!(r0 && near((r0.x + r0.w / 2) * TILE, (r0.y + r0.h * 0.72) * TILE, r0.w * TILE));
+  },
+
+  // The goat over the floor words: drawn again off-screen in a box round him, darkened by as much as the
+  // dark lies where he stands (`goatDark`), and laid back over the words. The words stay over the dark.
+  goatOver(r, game) {
+    const g = game.goat, hold = g.holding;
+    if (g.dead || !this.wordsNear(game)) return;
+    const ctx = r.ctx, M = xform(ctx), m = { a: M.a, b: M.b, c: M.c, d: M.d, e: M.e, f: M.f }, W = r.w, H = r.h;
+    const at = (x, y) => ({ x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f });
+    const p0 = at(g.x - 2 * TILE, g.y - 3 * TILE), p1 = at(g.x + 2 * TILE, g.y + 1.5 * TILE);
+    const bx = Math.max(0, Math.floor(Math.min(p0.x, p1.x))), by = Math.max(0, Math.floor(Math.min(p0.y, p1.y)));
+    const bw = Math.min(W, Math.ceil(Math.max(p0.x, p1.x))) - bx, bh = Math.min(H, Math.ceil(Math.max(p0.y, p1.y))) - by;
+    if (bw < 2 || bh < 2) return;
+    const A = this.canvas('goatA', W, H), a = A.getContext('2d');
+    a.setTransform(1, 0, 0, 1, 0, 0); a.globalCompositeOperation = 'source-over'; a.globalAlpha = 1; a.clearRect(bx, by, bw, bh);
+    a.save(); a.beginPath(); a.rect(bx, by, bw, bh); a.clip();
+    a.setTransform(m); a.imageSmoothingEnabled = false;
+    const keep = r.ctx; r.ctx = a;
+    try {
+      // what is in his teeth with him, as the cast draws it (a man held is left to the cast)
+      const behind = hold && hold.item && r.carryBehind(g);
+      if (behind) r.drawCarried(g, hold);
+      r.drawGoat(g, game);
+      if (hold && hold.item && !behind) r.drawCarried(g, hold);
+    } finally { r.ctx = keep; a.restore(); }
+    const [cr, cg, cb] = TUNING.dark.color;
+    a.setTransform(1, 0, 0, 1, 0, 0);
+    a.globalCompositeOperation = 'source-atop'; a.globalAlpha = clamp(this.goatDark || 0, 0, 1);
+    a.fillStyle = `rgb(${cr},${cg},${cb})`; a.fillRect(bx, by, bw, bh);
+    a.globalCompositeOperation = 'source-over'; a.globalAlpha = 1;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(A, bx, by, bw, bh, bx, by, bw, bh);
     ctx.restore();
   },

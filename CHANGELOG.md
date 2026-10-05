@@ -5,6 +5,88 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 2.00: his 48 notes with screenshots, 5 Oct 2026
+
+The whole batch, note by note, is the 5 October table in `BACKLOG.md`. The larger pieces:
+
+- **Fog of war by sight** (`world.mem`, `Renderer.drawMemFog`): a room shows only the tiles he has had in sight, and
+  what he has not seen is a soft blurred fog, never a black box; caves and THE TRIP share it.
+- **Heaven**: one bell at the start and one more per floor first cleared (the shepherd's quest), the shepherd's song
+  on all eight and a Guitar Hero turn on the bells (an original march, `heaven.bellSong`), the mirror mended by his own
+  GRAB, hold to buy a rank, arrows to the edge for a dawdler, a new fall off the edge, no words at the edge, the
+  death card offering only ASCEND while heaven has news.
+- **Stealth** (behind its switch): Alt toggles, the music hushes, a fight shuts it for a while, crates, stones and
+  grass block sight, slower turning, a search before going home, short sight in THE DARK.
+- **The thrower** throws his dead, stuns with a hit, minds the grates while carrying, leaves acid; **the shieldman**
+  rams with the board, a plain one's spikes bounce the goat without a heart, a dropped board has three uses.
+- **The generator**: combos of men and rooms (`TUNING.combos`, a COMBOS tab), no carpet under floor words, a clear
+  sweep round the wheel (and the arm knocks things out of it), the iron pair (coop and grass) in one room and named, one halberd on the armour, stag
+  heads back to 68% of floors.
+- **The rest**: grates answer a chasing man (a resting grate wakes under him), adaptive resolution for a slow machine,
+  the FPS line names a browser cap of 30, the up-right horns no longer flap, GOD MODE x3 speed, a smaller bare BAAH
+  balk, clock doors leaned open by the men, souls sway and the big men leave two (the ogre three), the crocodile's
+  turn, a FIREBRAND blade stuck in a man keeps burning him, fainter pictograms, more light round the goat in THE DARK
+  and the goat over floor words and in front of props there, THE BRIDGE, THE OSSUARY and THE DARK's wall tops read
+  against the floor.
+
+## Three testers' onboarding notes, 5 Oct 2026 (not yet published)
+
+Petro, Silver and a friend who built a bot all stalled on the same thing: what a thing is the first time it is met.
+
+- **SETTINGS → CONTROLS** (`KeyBind`, js/input.js). Each of the nine verbs (four moves, headbutt, grab, roll, BAAH, the
+  talisman's Q) can sit on any key or mouse button, the middle and side buttons included (Silver: "the three mouse
+  buttons"). A rebinding sets the very input flags the default button set, so nothing downstream knows; the menus, the
+  cards and the mirror keep their own keys. Pause, restart, the book, mute, photos, the cards' digits, Alt and the
+  arrows are refused. Every word naming a key follows it (`bindLay`).
+- **No "RMB"** anywhere a player reads (Silver spent five minutes in heaven not knowing it): RIGHT M. CLICK, LEFT M. CLICK.
+- **What a thing is, the first time.** THE ALTAR lays one bowl of grass in a corridor he has to walk (`firstGrass`,
+  `GEN_RULES.firstgrass`); the floor beside grass, a key and iron says what it is until this browser has done it once
+  (`game.learned`). No floor shuts anything in iron before the first key is picked up (`noIron`).
+- **The ogre's horns rebound** dazes 0.9 s (was 0.35): it reads as a mistake.
+- **The god's first words** are the designer's: comfort, the turn, the quest, then jump off the edge.
+- **Descriptions in B1-B2 English**, 77 strings (souls, talismans, the mirror, keyword tips, animals, rail notes).
+
+## A polish pass over 1.98-1.99, 5 Oct 2026 (not yet published)
+
+Asked: "as always, another round of polish yourself". Three read-only reviews (the thrower; keys, iron, the mirror,
+the tortoise's armour, the nosebag, GET OFF; the title, the pointer, the keyboard, stealth), each finding checked in
+the code or the page before it was fixed.
+
+- **An iron cage could cut a room in two** (6 of 416 cages in a scratch flood fill over 60 seeds: on the crossroads of
+  a one-tile corridor, in the lane between two drops, a coop in front of the way out). Iron gives only to a key, and a
+  floor starts with none, so the floor could not be finished. The cage of grass is now laid only where the room's floor
+  stays one piece round it (`discKeepsRoomOpen`, the cage and a goat side by side), and a coop is shut in iron only if
+  it passes the same test and stands clear of both doors; otherwise it stays slats. `GEN_RULES.iron` holds both. 0 of
+  772 over 120 seeds.
+- **Over the thrower's head, a man on a grate, a tooth or the wheel emptied the goat's mouth**: the three hazards took
+  any `held` man to be the goat's, dropped whatever he carried and left it `held` for good (a crate that could never
+  be picked up again), and charged a man's grab cooldown. Only the goat's own hold is emptied now.
+- **The goat over the thrower's head met the floor**: a grate armed under him and bit him in the air, the wheel's arm
+  and the stone teeth reached him, furniture under the fist shoved him about. Carried, he is over all of it, as a
+  LEAPFROG is.
+- **A thrown animal flew through shut doors** (a soul gate, a seal, the stairs' door) when the goat ducked it. A shut
+  door stops it on its own side (`Thrower.doorAt`).
+- **Dazing the thrower** (a horse, STUN + POISON) left the goat overhead, no verb, for the whole daze, and thrown at
+  the end of it. A daze makes him let go now.
+- **The wall after a blow in the air took a second heart**: the toss cleared his mercy frames. It no longer does.
+- **Let go of over a one-tile pillar** (SECOND CHANCE over his head, a man set alight) a body came down on the far
+  side of it. It comes down at the thrower's feet.
+- **GET OFF and the ogre's rebound could slide him into a drop or a fire**: a shove with no windup that costs no heart
+  cost one. The stunned slide stops at the lip and at a flame, the way the lunge's lip does; the hook still drags.
+- **The thrower's numbers are in `TUNING.thrower`** (rule 2): his size, the first lift and grab, the look round, the
+  rests, the turn with the goat overhead, the landing speeds and knocks. Same values.
+- **The pointer was rewritten every frame**: the browser hands a `url(...)` cursor back quoted, so the comparison never
+  matched and a few KB of data URL went over again each frame. Compared against what was last written.
+- **Keyboard**: a palm's twitches on a touchpad added up over a whole fight and handed the aim back to the mouse; only
+  one burst of travel counts now (`kbAim.mouseGap`). With the STEALTH test on, no Alt chord reaches the browser (Alt+D
+  took the focus to the address bar while sneaking).
+- **The title's horns fit a phone**: the fit is asked in the horn's own cells (an antler reaches further), after the
+  texel rounds. Checked at 320, 360 and 1280 px with every look.
+- **The stone teeth's lesson** looks for a man to send every 0.25 s, not every step (`lesson.every`): until a browser had
+  seen it, a cave room with a tooth searched a walked way for every clubman sixty times a second.
+- **The middle gate keeps the keys he had there** (latent while `soul.hold.on` is off): a key spent on iron before it
+  came back with a death while the animal it freed stayed.
+
 ## 1.99, the pixel title, a soul behind its gate, a softer shove, 3 Oct 2026
 
 - **The title's horns are his own** ("like the real ones on him"): pixels on a grid in his horn's browns with growth

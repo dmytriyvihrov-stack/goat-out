@@ -784,7 +784,7 @@ const Codex = {
     ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(12 * R.s, 13 * s)}px ${FONT_SC}`; ctx.fillStyle = lon ? PALETTE.bone : 'rgba(239,230,208,0.7)';
     ctx.fillText('NOT NOW', lx + lw / 2, ly + lh / 2 + 5 * s);
     ctx.font = `${Math.max(12 * R.s, 11.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-    ctx.fillText(game.touch.active ? 'tap a card to take it' : padOn(game) ? 'A takes · B walks away' : 'click or 1 / 2 / 3 takes · ESC or RMB walks away', W / 2, ly + lh + 22 * s);
+    ctx.fillText(game.touch.active ? 'tap a card to take it' : padOn(game) ? 'A takes · B walks away' : 'click or 1 / 2 / 3 takes · ESC or RIGHT M. CLICK walks away', W / 2, ly + lh + 22 * s);
     ctx.restore();
   },
 };

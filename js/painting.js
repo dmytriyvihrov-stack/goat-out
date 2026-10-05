@@ -371,12 +371,14 @@ const Painting = {
     // this"); leaving the card still copies it (`copyCode`) for whoever is asked to paste it.
     if (card.code && game.dev && game.dev.open) { ctx.font = `${Math.max(12 * r.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, H - 18 * s); }
     // ASCEND, and beside it RESTART, the floor again at once, past heaven (3 Oct 2026). RESTART is
-    // offered `death.quick` s after the blow, before the pull-back is done; ASCEND waits for it.
+    // offered first, `death.quick` s after the blow, before the pull-back is done; ASCEND waits for it.
+    // While heaven has something new (`game.deathNews`, `Heaven.freshNews`: the first death, a new word
+    // from the god, a rank he can now afford, a bell woken...) there is no RESTART, only ASCEND.
     this.quickRect = null;
     if (card.go) {
       const by = Math.min(y + Math.max(words.length * 22 * s, plate) + 4 * s, H - 36 * s - 38 * s);
-      const qk = { key: keysOf(game).back, quiet: true };
-      const ra = r.goButton(game, card.go, 0, by, { measure: true }), rq = game.showroomOn ? null : r.goButton(game, 'RESTART', 0, by, Object.assign({ measure: true }, qk));
+      const qk = { key: keysOf(game).back, quiet: true }, news = game.deathNews && game.deathNews.length;
+      const ra = r.goButton(game, card.go, 0, by, { measure: true }), rq = game.showroomOn || news ? null : r.goButton(game, 'RESTART', 0, by, Object.assign({ measure: true }, qk));
       const gap = 16 * s, side = rq && ra.w + gap + rq.w <= W - 24 * s;
       const left = W / 2 - (side ? ra.w + gap + rq.w : ra.w) / 2;
       const since = TUNING.deathCam.delay + TUNING.deathCam.zoomTime - game.stateTimer;

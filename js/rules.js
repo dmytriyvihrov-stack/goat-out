@@ -219,6 +219,30 @@ const GEN_RULES = [
       const peak = Math.max(0, ...rs.filter((r) => ORDINARY.has(r.role)).map((r) => r.threat));
       return m.threat <= peak ? true : `${m.threat.toFixed(1)} threat, above the worst ordinary room (${peak.toFixed(1)})`;
     } },
+  // `MILL_CLEAR` (gen.js, 5 Oct 2026 playtest: a stand of arms by the hub): the wheel's sweep is bare.
+  { id: 'millclear', text: 'Nothing that can be placed (crate, stand of arms, barrel, bomb, table, suit, boulder, mushrooms) stands within the wheel\'s arm plus TUNING.mill.clear tiles.',
+    check: (L) => {
+      if (!L.props.some((p) => p.kind === 'mill')) return null;
+      const p = L.props.find((q) => MILL_CLEAR.has(q.kind) && inMillSweep(L.props, q.x, q.y));
+      return p ? `a ${p.kind} in the wheel's sweep at ${Math.floor(p.x / TILE)},${Math.floor(p.y / TILE)}` : true;
+    } },
+  // `dealCombo` (gen.js, `TUNING.combos`): a pairing is laid whole, where it may stand, of men already met.
+  { id: 'combos', text: 'At most one combo a floor, from its own floor on, of men met on earlier floors, in a room that fits it (an ordinary room the curve bought, or the named boss\'s ring) holding every man the combo names.',
+    check: (L) => {
+      const marked = L.rooms.filter((r) => r.combo);
+      if (!marked.length) return null;
+      if (marked.length > 1) return `${marked.length} combos on one floor`;
+      const room = marked[0], c = TUNING.combos.list.find((q) => q.id === room.combo), li = levelIndexOf(L.def);
+      if (!c) return `a combo nobody wrote down (${room.combo})`;
+      if (li < c.from && !(L.combo && L.combo.forced)) return `${c.name} on floor ${li}, before floor ${c.from}`;
+      if (!comboMet(L.def, c)) return `${c.name} on a floor that has not met all of ${c.men.join(', ')}`;
+      if (!comboRoomFits(c, room)) return `${c.name} in room ${room.index} (${room.tpl.name}), which does not fit it`;
+      const r = roomsOf(L)[room.index];
+      if (c.room && c.room.arena ? r.role !== 'arena' : !ORDINARY.has(r.role) || r.role === 'trap' || (r.cell && r.cell.intro)) return `${c.name} in the ${r.role} (room ${room.index})`;
+      const have = r.spawns.map(kindOf);
+      for (const k of c.men) if (have.filter((x) => x === k).length < c.men.filter((x) => x === k).length) return `${c.name} in room ${room.index} without its ${k}`;
+      return true;
+    } },
   // `crowdAt` / `crowdMen` (THE ALTAR's three clubmen between the lone butcher and his ring): the
   // room holds exactly the men the level named, in an ordinary room, and it is what stands between
   // two rooms with a butcher in them, the pair met back to back read as one room twice.
@@ -368,6 +392,17 @@ const GEN_RULES = [
       worst = Math.max(worst, n - 1 - prev);
       return worst <= limit ? true : `${worst} rooms without a bowl (limit ${limit})`;
     } },
+  { id: 'firstgrass', text: 'THE ALTAR (levelDef.firstGrass) lays one bowl of grass in a corridor he has to walk, on floor, with nothing else within heal.firstClear tiles of it.',
+    check: (L) => {
+      const first = L.props.filter((p) => p.kind === 'heal' && p.firstGrass);
+      if (!L.def.firstGrass) return first.length ? 'a first grass on a floor that does not lay one' : null;
+      if (first.length !== 1) return `${first.length} first grasses`;
+      const b = first[0];
+      if (roomAt(L, b.x, b.y)) return 'the first grass inside a room, not in a corridor';
+      if (L.tiles[Math.floor(b.y / TILE) * L.W + Math.floor(b.x / TILE)] !== T.FLOOR) return 'the first grass off the floor';
+      const near = L.props.find((p) => p !== b && Math.hypot(p.x - b.x, p.y - b.y) < TUNING.prop.heal.firstClear * TILE);
+      return near ? `a ${near.kind} beside the first grass` : true;
+    } },
   { id: 'bomb', text: 'At most one bomb a level, standing in an ordinary room and never a set piece.',
     check: (L) => {
       const bombs = L.props.filter((p) => p.kind === 'bomb');
@@ -414,19 +449,26 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'iron', text: 'Iron comes in a pair: a floor that shuts its animal in iron (never the horse) stands one iron cage of big grass in another ordinary room near it, and no floor before TUNING.keys.iron.from has either.',
+  { id: 'iron', text: 'Iron comes as a pair (5 Oct 2026): the animal\'s coop in iron (never the horse) and a cage of big grass in the same room, TUNING.keys.iron.pair tiles from it, one key for one of them; never one without the other, never two pairs; together they cut no room in two, and no floor before TUNING.keys.iron.from has iron.',
     check: (L) => {
-      const coop = L.props.find((p) => p.kind === 'coop' && p.ironCage), grass = L.props.filter((p) => p.kind === 'ironcage');
+      const coops = L.props.filter((p) => p.kind === 'coop' && p.ironCage), grass = L.props.filter((p) => p.kind === 'ironcage');
+      const coop = coops[0];
       if (!coop && !grass.length) return true;
-      if (!coop) return 'an iron cage of grass with no animal in iron to choose against';
+      if (coops.length > 1 || grass.length > 1) return `${coops.length} iron coops and ${grass.length} iron cages of grass on one floor`;
+      if (!coop || !grass.length) return coop ? 'an iron coop with no cage of grass beside it' : 'a cage of grass with no iron coop beside it';
       if (coop.holds === 'horse') return 'the horse in iron';
-      if (grass.length !== 1) return `${grass.length} iron cages of grass on one floor`;
       if (levelIndexOf(L.def) < TUNING.keys.iron.from) return `iron on floor ${levelIndexOf(L.def)}, before keys.iron.from`;
-      const r = roomAt(L, grass[0].x, grass[0].y);
+      const r = roomAt(L, grass[0].x, grass[0].y), P = TUNING.keys.iron.pair, d = len(coop.x - grass[0].x, coop.y - grass[0].y) / TILE;
       if (!r) return 'the iron cage of grass outside any room';
-      if (quiet(L, r) || r.isTrap || r.index === L.def.vaultAt) return `the iron cage of grass in the ${r.role} (room ${r.index})`;
-      if (r.index === coop.beastRoom) return 'both iron cages in one room';
+      if (r.index !== coop.beastRoom) return `the cage of grass in room ${r.index}, the coop in room ${coop.beastRoom}`;
+      if (d < P[0] - 0.01 || d > P[1] + 0.01) return `the two iron cages ${d.toFixed(1)} tiles apart`;
       if (L.tiles[Math.floor(grass[0].y / TILE) * L.W + Math.floor(grass[0].x / TILE)] !== T.FLOOR) return 'the iron cage of grass off the floor';
+      if (!discKeepsRoomOpen(L.tiles, L.W, r, grass[0].x, grass[0].y, ironReach(), [[coop.x, coop.y]])) return `the two iron cages cut room ${r.index} in two`;
+      // iron gives only to a key: neither may stand in front of a door either
+      for (const c of [coop, grass[0]]) {
+        const cr = roomAt(L, c.x, c.y);
+        for (const m of cr ? [cr.enter, cr.exitMouth] : []) if (m && len(m.x - c.x, m.y - c.y) < 2.5 * TILE) return `an iron cage in front of a door of room ${cr.index}`;
+      }
       return true;
     } },
   { id: 'shrooms', text: 'At most one tuft of mushrooms, on plain floor of an ordinary room; never on the trip, and never where the trip would be the last floor.',
@@ -527,13 +569,15 @@ const GEN_RULES = [
       return any ? true : null;
     } },
   // `layCarpets` (gen.js): a rug is laid where nothing it would hide is, and only so many.
-  { id: 'carpets', text: 'A carpet lies whole on plain floor with floor round it, over no grate, fire, milk, grass or barrel, at most TUNING.carpet.perLevel a floor, none in a cave or on the trip.',
+  { id: 'carpets', text: 'A carpet lies whole on plain floor with floor round it, over no grate, fire, milk, grass or barrel and a tile clear of any words on the floor, at most TUNING.carpet.perLevel a floor, none in a cave or on the trip.',
     check: (L) => {
       const cs = L.carpets || [];
       if (!cs.length) return null;
       if (L.def.cave || L.def.shroom) return 'a carpet in a cave';
       if (cs.length > TUNING.carpet.perLevel) return `${cs.length} carpets on one floor`;
-      const grass = new Set(L.grass);
+      const grass = new Set(L.grass), words = floorWords(L);
+      // Words first, by name: a rug under "LEFT CLICK - HEADBUTT" is the playtest's own complaint (5 Oct 2026).
+      for (const c of cs) if (carpetUnderWords(c, words)) return `the carpet at ${c.x},${c.y} lies under words on the floor`;
       for (const c of cs) if (!carpetFits(L.tiles, L.W, grass, L.props, c)) return `the carpet at ${c.x},${c.y} is not on clear floor`;
       return true;
     } },

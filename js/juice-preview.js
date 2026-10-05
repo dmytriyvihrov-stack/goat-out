@@ -191,7 +191,7 @@ const JUICE_SCENES = {
     setup(S) { S.goatAt(2.5, 7.5); S.bomb = S.prop(4.6, 5, 'bomb'); for (const x of [5.9, 7.5, 9.1]) S.prop(x, 5, 'barrel');
       S.prop(10.6, 4.4, 'lamp'); S.prop(5.6, 6.3, 'crate'); S.man(8.3, 6.2); S.man(10.2, 6.1); },
     at: [[0.5, (S) => S.bomb.explode(S.game)]] },
-  board: { period: 3.6, what: 'A headbutt on a shieldman’s board: its spikes take a heart off the goat and rock him back. From his side the same blow throws him.',
+  board: { period: 3.6, what: 'A headbutt on a shieldman’s board: its spikes throw the goat off seeing stars (a boss’s take a heart) and rock him back. From his side the same blow throws him.',
     setup(S) { S.goatAt(4, 5); S.sm = S.aimAt(S.man(6, 5)); S.sm.giveShield(); },
     at: [[0.45, (S) => S.butt()], [1.7, (S) => S.goatAt(S.sm.x / TILE, S.sm.y / TILE - 1.5)], [1.9, (S) => S.butt()]] },
   bomb: { period: 3.4, what: 'A bomb goes off between two men.',

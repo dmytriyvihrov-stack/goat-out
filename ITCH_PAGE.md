@@ -1,5 +1,18 @@
 # The itch.io page description
 
+**Since 3 Oct 2026 the live page is designed** (theme, banner, background, picture headings), and its
+text is no longer the block below: the user reworded it on itch (cursed powers / UberGoat, epic quests).
+The page as published is `output/itch-page-2026-10-03/`: `description.html` (the description with the
+art's local names), the art and the scripts that draw it (`scene.js` in the served game → `compose.cjs`
+for the header, `page.cjs` for headings, signs, background tile, hook and Discord button), and
+`mock.html` (`node mock.cjs`) to look at the whole page locally. Theme: BG `#140d12` + `bg-motifs.png`
+repeated, BG2 `#1f151a` at 90, text `#e8dfcc`, links `#f0c050`, headers `#e8dfcc`, buttons `#8a1d23`,
+Alegreya body, Pixelify Sans headers, screenshots in the sidebar. The images live on img.itch.zone; a
+changed one is uploaded again through the description editor's Add image. Same day, his second look:
+**no banner** (the page opens on the embedded game; `header.png` is kept for elsewhere), and only five
+pictures in the text (THE STORY + the hook, WHAT YOU DO, HELP THE GOAT, the Discord button): the rows of
+signs and the other cloths were "too many pictures, distracting".
+
 The text on the game's itch.io page, approved by the user on 1 Oct 2026. Paste the block below as it
 is. Every feature line is something the build actually does (checked against the code that day); keep
 it that way when editing. Suggested tags: roguelite, top-down, pixel-art, action, procedural-generation, goat.

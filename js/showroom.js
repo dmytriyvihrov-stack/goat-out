@@ -72,9 +72,11 @@ function showroomLevel(def, seed) {
   ]);
   // The supper (2 Oct 2026, the meat): tables laid by hand (`dishes`, laid by `Scatter.lay` in startLevel)
   // along a runner with a stain on it, and a rug of each of the other weaves (`layCarpets`, `PaintedArt.carpet`).
-  const carpets = [{ x: hx + 5, y: hy + 17, w: 17, h: 3, style: 0, seed: 11, blood: true },
-    { x: hx + 25, y: hy + 17, w: 4, h: 3, style: 1, seed: 22 }, { x: hx + 30, y: hy + 17, w: 4, h: 3, style: 2, seed: 33, blood: true },
-    { x: hx + 35, y: hy + 17, w: 2, h: 3, style: 3, seed: 44 }];
+  // No word is written on a rug (5 Oct 2026): the runner is the tables' own row, the rugs two rows, both
+  // clear of the names above (the row before) and below (the dishes, CARPETS). `GEN_RULES.carpets`.
+  const carpets = [{ x: hx + 5, y: hy + 18, w: 17, h: 1, style: 0, seed: 11, blood: true },
+    { x: hx + 25, y: hy + 18, w: 4, h: 2, style: 1, seed: 22 }, { x: hx + 30, y: hy + 18, w: 4, h: 2, style: 2, seed: 33, blood: true },
+    { x: hx + 35, y: hy + 18, w: 2, h: 2, style: 3, seed: 44 }];
   row(hy + 18, 'SUPPER', [
     ['ROAST · STEW', (x, y) => put('table', x, y, { dishes: ['roast', 'stew'] })],
     ['BOAR · LINKS', (x, y) => put('table', x, y, { dishes: ['boarhead', 'sausage'] })],

@@ -362,8 +362,40 @@ const PIXEL_ART = {
     // `% 8` before the + 14: an angle past about -11 rad (a heading nobody wrapped) made it negative.
     const [d, flip] = this.facing(id, angle);
     const f = moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d];
-    this.frame(ctx, f, id, 1, flip);
+    const fix = this.hornFix(id, d, f);
+    if (fix) {
+      const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      if (flip) { ctx.save(); ctx.scale(-1, 1); }
+      ctx.drawImage(fix, -f[4] * k, -f[5] * k, f[2] * k, f[3] * k);
+      if (flip) ctx.restore();
+      ctx.imageSmoothingEnabled = smooth;
+    } else this.frame(ctx, f, id, 1, flip);
     return true;
+  },
+  // The goat's back-left run (and the back-right, which is it mirrored) was packed with the horns
+  // standing up on the first and last steps and laid toward his nose on the middle two, so on a run to
+  // the top right they flapped every stride (5 Oct 2026, "the horns' animation is broken"). Those two
+  // frames get the middle steps' horns, moved onto their own roots; the rest of the frame is untouched.
+  // Baked once per frame, after the atlas has loaded (`image` is the hardened canvas by then).
+  hornFix(id, d, f) {
+    const R = PIXEL_HORN_FIX[id], u = PIXEL_ASSETS.units[id];
+    if (!R || !R[d] || !u.walk || typeof document === 'undefined' || !(this.image instanceof HTMLCanvasElement)) return null;
+    const i = u.walk[d].indexOf(f), from = R[d][i];
+    if (i < 0 || from === undefined || from === i) return null;
+    this.hornFixes ||= new Map();
+    let c = this.hornFixes.get(f); if (c) return c;
+    const g = u.walk[d][from], mine = this.hornsOf(f), theirs = this.hornsOf(g);
+    c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
+    const x = c.getContext('2d'); x.drawImage(this.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
+    if (mine.length && mine.length === theirs.length) {
+      const px = x.getImageData(0, 0, f[2], f[3]);
+      for (const h of mine) for (const p of h.blob) px.data[p * 4 + 3] = 0;
+      x.putImageData(px, 0, 0);
+      const byX = (a) => a.slice().sort((p, q) => p.base[0] - q.base[0]), A = byX(mine), B = byX(theirs);
+      A.forEach((h, k) => x.drawImage(B[k].canvas, Math.round(h.base[0] - B[k].base[0]), Math.round(h.base[1] - B[k].base[1])));
+    }
+    this.hornFixes.set(f, c);
+    return c;
   },
   // Which packed facing a heading draws, and whether mirrored. The goat's up-right view was packed
   // with both horns swept forward over his nose, every other view sweeps them back, which caught
@@ -380,11 +412,14 @@ const PIXEL_ART = {
   // more (the outline round his nose passes the colour test and fails the size one). Each blob is
   // one horn, with its own base, the centroid of its lowest rows, where it grows out of the head,
   // so a horn is scaled from its root and not from the middle of the frame. Cached per frame.
-  hornsOf(f) {
+  // `img`: the frame as its own canvas (a `hornFix`), read instead of the atlas.
+  hornsOf(f, img) {
     this.hornCache = this.hornCache || new Map();
-    if (this.hornCache.has(f)) return this.hornCache.get(f);
+    const key = img || f;
+    if (this.hornCache.has(key)) return this.hornCache.get(key);
     const w = f[2], h = f[3], c = document.createElement('canvas'); c.width = w; c.height = h;
-    const x = c.getContext('2d'); x.drawImage(this.image, f[0], f[1], w, h, 0, 0, w, h);
+    const x = c.getContext('2d');
+    if (img) x.drawImage(img, 0, 0); else x.drawImage(this.image, f[0], f[1], w, h, 0, 0, w, h);
     const D = x.getImageData(0, 0, w, h).data, on = new Uint8Array(w * h), seen = new Uint8Array(w * h), out = [];
     for (let i = 0; i < w * h; i++) { const r = D[i * 4], b = D[i * 4 + 2];
       on[i] = D[i * 4 + 3] > 200 && r < 72 && r >= 26 && r > b + 8 && i / w < h * 0.6 ? 1 : 0; }
@@ -407,7 +442,7 @@ const PIXEL_ART = {
       hx.putImageData(id, 0, 0);
       out.push({ canvas: hc, blob, base: [bx / n, by / n], tip: [tx, ty], y0, y1, w, h });
     }
-    this.hornCache.set(f, out);
+    this.hornCache.set(key, out);
     return out;
   },
   // A horn painted over in one of the three looks the butt souls give him: `lava` (BOMB CHARGE)
@@ -507,7 +542,7 @@ const PIXEL_ART = {
     ctx.save(); ctx.imageSmoothingEnabled = false;
     if (flip) ctx.scale(-1, 1);   // the frame `draw` mirrored (`facing`): the horns go with it
     ctx.translate(-f[4] * k, -f[5] * k); ctx.scale(k, k);
-    const all = this.hornsOf(f), mid = all.reduce((s, h) => s + h.base[0], 0) / (all.length || 1);
+    const all = this.hornsOf(f, this.hornFix(id, d, f)), mid = all.reduce((s, h) => s + h.base[0], 0) / (all.length || 1);
     // Which way is "back" on this facing: away from his nose. 0 on the straight front and back views.
     const back = [0, 1, 1, 1, 0, -1, -1, -1][d];
     for (const hn of all) {
@@ -582,6 +617,9 @@ if (typeof location !== 'undefined') {
 // Facings drawn as another facing mirrored, per unit (`PIXEL_ART.facing`): the goat's up-right (5)
 // is his up-left (3) turned over, since the packed 5 had its horns swept the wrong way.
 const PIXEL_MIRROR = { goat: { 5: 3 } };
+// Per unit and facing, the walk step whose horns each step wears (`PIXEL_ART.hornFix`): the goat's
+// back-left run takes the laid-back horns of its middle steps on all four.
+const PIXEL_HORN_FIX = { goat: { 3: [1, 1, 2, 2] } };
 
 // The environment half of the same pass (output/pixel-environment-2026-09-23, packed by
 // tools/pack-pixel-env.ps1 into js/pixel-env-assets.js): the furniture of a room, the things that
