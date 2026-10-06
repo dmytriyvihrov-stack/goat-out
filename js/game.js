@@ -29,6 +29,7 @@ const TUNE_KEY = 'goatout.devtune.v1';
 const RULE_HIDE_KEY = 'goatout.rulehide.v1';
 // The dev drawer's STEALTH test (`TUNING.stealth`), kept on through a reload in this browser only.
 const STEALTH_KEY = 'goatout.stealth.v1';
+const HORN_KEY = 'goatout.horns.v1';   // the dev test's horn size (`TUNING.horns`), this browser only
 const DEV_TUNE = [
   ['enemySpeed', 'ENEMY SPEED', 'every gait'], ['enemyAttack', 'ENEMY ATTACK', '×2 = twice as fast'],
   ['enemyCd', 'ENEMY COOLDOWN', '×2 = twice as long'], ['goatSpeed', 'GOAT SPEED', 'walk, run-up, roll'],
@@ -150,6 +151,9 @@ class Game {
     // the three it is showing, the rules that hold everywhere, one level in full, or the curve of
     // all seven, `page` the level the middle one is looking at, and `room` the one room the page
     // has been asked to open, which is reachable from either of the other two.
+    // HORN SIZES test: never in the itch build, which is always the wide horn it has always had.
+    this.hornKind = 'wide';
+    try { const hk = !RELEASE.on && localStorage.getItem(HORN_KEY); if (hk && TUNING.horns[hk]) this.hornKind = hk; } catch (e) { /* storage refused */ }
     this.dev = { open: false, god: false, dips: false, rects: [], toast: null, rules: false, tab: 'rules',
       page: 0, sample: null, sampleSeed: 1, samples: {}, matrix: null,
       ruleHide: (() => { try { return new Set(JSON.parse(localStorage.getItem(RULE_HIDE_KEY) || '[]')); } catch (e) { return new Set(); } })(),
@@ -252,6 +256,12 @@ class Game {
     Heaven.applyMeta(this.mods);   // what THE MIRROR has bought, under every run (js/heaven.js)
     this.applySets(this.mods);
     if (this.world) this.world.burnMul = this.mods.burnMul;
+    // HORN SIZES (`TUNING.horns`): under the souls, so LONG HORNS bends the size he has instead of replacing it.
+    const HN = TUNING.horns[this.hornKind] || TUNING.horns.wide;
+    this.mods.horn = HN;
+    this.mods.headbuttReach *= 1 + HN.reach;
+    this.mods.headbuttWindup = (this.mods.headbuttWindup || 1) * HN.windup;
+    this.mods.headbuttRecovery *= HN.recovery;
     if (this.settings.easy) { this.mods.maxHp += EASY.maxHp; this.mods.enemySlow *= EASY.enemySlow; }
     this.mods.maxHp += this.henHearts || 0;   // the hens he brought out with him, one heart a level
     Beast.applyRewards(this, this.mods);      // and the escorts he walked to the stairs (js/beasts.js)
@@ -1311,6 +1321,12 @@ class Game {
       this.dev.stealth = !this.dev.stealth;
       try { localStorage.setItem(STEALTH_KEY, this.dev.stealth ? '1' : '0'); } catch (e) { /* storage refused */ }
       this.devToast(this.dev.stealth ? 'STEALTH ON: ALT TO SNEAK' : 'STEALTH OFF'); return;
+    }
+    if (id === 'horns') {   // HORNS in the DEV MODE drawer: short, wide, long
+      const O = TUNING.horns.order;
+      this.hornKind = O[(O.indexOf(this.hornKind) + 1) % O.length];
+      try { localStorage.setItem(HORN_KEY, this.hornKind); } catch (e) { /* storage refused */ }
+      this.applyBoons(); this.devToast('HORNS: ' + TUNING.horns[this.hornKind].name + ' · ' + TUNING.horns[this.hornKind].note); return;
     }
     if (id === 'dark') { this.dev.dark = !this.dev.dark; return; }
     if (id === 'showroom') { this.dev.open = false; this.startShowroom(); return; }

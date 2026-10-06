@@ -9,6 +9,15 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 6 October 2026, horn sizes (a dev test is in, the rest is asked for)
+
+In: DEV MODE → HORNS steps SHORT (dagger) / WIDE (as it was) / LONG (spear, a lane that takes everyone in it), `TUNING.horns`, a label under the hearts. Numbers are a first guess, to be tuned in play. Not built, in his words:
+- **system**: the horn size rolled per run, so every run plays a little differently (the itch build stays WIDE until then).
+- **system**: a later soul or unlock that changes the verb itself, "whip horns" (a lash, more reach and a curve), to bend the shape and not only the numbers.
+- **system**: souls that pay off per size (short: speed, long: pierce, wide: sweep); the element souls on top, once the base is judged.
+- **feel**: a picture per size on the goat (only the long-horns look exists), and a swing shape on the floor for each.
+- **tool**: a row in THE SHOWROOM or the dev page for the three sizes (rule 9), once the test is kept.
+
 ## 5 October 2026, his own 48 notes with screenshots (shipped the same day, not yet deployed)
 
 Worked in five parallel parts (heaven, stealth, the thrower and the shieldman, the generator, fog and THE DARK) plus the rest.
