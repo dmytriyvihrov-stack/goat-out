@@ -138,6 +138,7 @@ const GEN_RULES = [
   // mostly clubmen is a late level built out of early men.
   { id: 'crowd', text: 'A rich room is not a poor one with more clubmen in it.',
     check: (L) => {
+      if (L.crowdMul > 1) return null;   // a thicker floor dealt to a goat who has not died yet (`Game.crowdFor`)
       const C = ENCOUNTER.cheap;
       const o = roomsOf(L).filter((r) => ORDINARY.has(r.role) && r.spawns.length);
       const rich = o.filter((r) => (r.cell && r.cell.threat ? r.cell.threat : r.threat) > C.none * 0.6);
@@ -160,6 +161,7 @@ const GEN_RULES = [
     } },
   { id: 'caps', text: 'No room breaks its caps. Over them only: the Great Hall, a gallery\'s rifles, one lone post, and THE ALTAR\'s crowd room.',
     check: (L) => {
+      if (L.crowdMul > 1) return null;   // a thicker floor dealt to a goat who has not died yet (`Game.crowdFor`)
       const caps = Object.assign({}, ENCOUNTER.cap, L.def.encounters.cap || {});
       for (const r of roomsOf(L)) {
         const n = {};
@@ -320,7 +322,7 @@ const GEN_RULES = [
       }
       return 'the trench room has no way round on land';
     } },
-  { id: 'chasm', text: 'THE CHASM: a drop one tile across a room, wall to wall, parting its way in from its way out, nothing heavy at its lip, a rifle or butcher across it; THE CAVE teaches it with the roll on its floor.',
+  { id: 'chasm', text: 'THE CHASM: a drop one tile across a room, wall to wall, parting its way in from its way out, nothing heavy at its lip, a rifle or butcher across it; THE YARD teaches it, in an empty room, with the roll on its floor.',
     check: (L) => {
       const def = L.def, list = L.chasms || [];
       if (def.shroom || def.dark) return list.length ? 'a chasm on THE TRIP or in THE DARK' : null;
@@ -353,6 +355,9 @@ const GEN_RULES = [
       if (lesson) {
         const words = (L.controls || []).filter((k) => k.part === 5), r = words.length === 1 && roomAt(L, words[0].x, words[0].y);
         if (!r || r.index !== lesson.room) return 'the roll over a drop is not written in its room';
+        // an empty room to try it in (7 Oct 2026): nobody stood in it
+        const men = L.spawns.filter((sp) => sp.roomIndex === lesson.room).length;
+        if (men) return `the drop's lesson room ${lesson.room} holds ${men} men`;
       }
       return true;
     } },
@@ -764,6 +769,8 @@ const GEN_RULES = [
         if (!seen[cy * L.W + cx]) return `nobody can walk to the cleat at ${cx},${cy}`;
         const r = roomAt(L, p.x, p.y);
         if (!r) return 'a chandelier outside any room';
+        // 7 Oct 2026: the cleat by a way in or out (`chandelier.byDoor` columns, one more where the room's wall clamps it)
+        if (c.byWay && ![r.enter, r.exitMouth].some((e) => e && Math.abs(Math.floor(e.x / TILE) - cx) <= TUNING.chandelier.byDoor + 1)) return `the cleat at ${cx},${cy} is by no way in or out`;
         if (r.role === 'pen' || r.role === 'rest' || r.role === 'lesson' || r.role === 'mill' || r.role === 'gallery' || r.role === 'killbox' || r.isAmbush || r.isTrap || r.isCalm)
           return `a chandelier in the ${r.isAmbush ? 'ambush' : r.isTrap ? 'trap room' : r.isCalm ? 'calm room' : r.role}`;
       }

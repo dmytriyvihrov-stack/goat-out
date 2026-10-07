@@ -1738,6 +1738,18 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
       ctx.restore(); return true;
     }
     // The coop: its dark inside, the animal pacing in it, the slats over it (split after one blow).
+    // A boss's bell on the floor (`Game.dropBell`): heaven's own bell sprite, standing on its lip, swaying a little, with a
+    // ring of gold cells breathing round it so it reads as a thing to take, not a gong to ring.
+    if (p.kind === 'lostbell' && typeof HEAVEN_PIXELS !== 'undefined') {
+      const name = 'bell-' + (p.note | 0), g = HEAVEN_PIXELS.sprites[name]; if (!g) return false;
+      const k = 1.6, sway = Math.sin(renderer.t * 2.2 + p.phase) * 0.12, glow = 0.5 + 0.5 * Math.sin(renderer.t * 3 + p.phase);
+      ctx.save(); ctx.translate(p.x, p.y);
+      renderer.shadow(0, 6, g.w * k * 0.4, 4);
+      ctx.globalAlpha = 0.35 + 0.35 * glow; CombatFX.pixelRing(ctx, 0, 2, 14 + glow * 3, 2, '#f7d774'); ctx.globalAlpha = 1;
+      ctx.scale(1, 1 / TILT); ctx.rotate(sway);
+      HEAVEN_PIXELS.draw(ctx, name, -g.w * k / 2, -g.h * k, k);
+      ctx.restore(); return true;
+    }
     // A key on the floor, bobbing and glinting (`TUNING.keys`).
     if (p.kind === 'key') {
       const g = S.key, k = 1.1, bob = Math.sin(renderer.t * 3 + p.phase) * 2;

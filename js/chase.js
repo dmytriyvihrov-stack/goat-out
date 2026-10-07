@@ -19,11 +19,12 @@ const Chase = {
     const L = game.level, d = L && L.def; if (!d || d.shroom || d.heaven || game.showroomOn) return false;
     return !!(d.mods && d.mods.includes('chase')) || Chase.forced(game) || Chase.quest(game);
   },
-  // Worn as the horse's dare from heaven (`Heaven.QUESTS`, `questOn('horse')`): every floor past the first while it
-  // holds, until it is won (`Heaven.questFloor`) or let go at the post.
+  // Worn as the horse's dare from heaven (`Heaven.QUESTS`, `questOn('horse')`): on `quests.horse.chance` of the floors past
+  // the first while it holds (7 Oct 2026, "two floors at random come with the chase", `Heaven.chaseRoll`), until it is
+  // won (`Heaven.questFloor`) or let go at the post.
   quest(game) {
     const d = game.level && game.level.def;
-    return !!(d && !d.shroom && !d.heaven && !game.showroomOn && levelIndexOf(d) >= 1 && typeof Heaven !== 'undefined' && Heaven.questOn('horse'));
+    return !!(d && !d.shroom && !d.heaven && !game.showroomOn && !game.runJumped && levelIndexOf(d) >= 1 && typeof Heaven !== 'undefined' && Heaven.questOn('horse') && Heaven.chaseRoll(game));
   },
   // Laid over a floor that does not have it by the dev drawer (the run code's `C`).
   forced(game) {

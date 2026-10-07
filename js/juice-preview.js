@@ -107,9 +107,15 @@ const JUICE_PLAY = {
 
 // Why a row has no preview. Anything not listed falls back on its category or status.
 const JUICE_NOPLAY = {
+  'The horns land': 'any headbutt on a man: SPAWN a BEARER in the dev drawer and butt him',
+  'A heart taken, on him': 'any blow taken with GOD off',
+  'A heart breaks': 'any blow taken with GOD off: the heart row, top left',
+  'Souls poured in': "heaven: the dev drawer's HEAVEN, then hold GRAB at the broken mirror, the overlook or the horse's stand",
+  'An escort dies': 'SPAWN a PIG (or any animal) and let a man club it, or walk two rooms on without it',
   'White souls': 'a run past the god’s gift: kill a man and walk out of his room',
   'The soul goes up': 'the goat dying on a floor, die on any floor',
   'Second chance': 'SECOND CHANCE bought in the mirror (dev drawer HEAVEN) and a death on a floor',
+  'Helldive': 'HELLDIVE R1 or R2 in the dev drawer HEAVEN, +1 LIFE, and a death on a floor with men near',
   'Armour flies apart': 'a suit of armour hangs on a far wall, THE SHOWROOM has one: throw a man at it',
   'Blades and shields fall apart': 'a sword off a stand thrown at a wall, THE SHOWROOM has the stand',
   'A blade stays in him': 'a sword thrown at a man with a heart to spare: spawn a butcher from the dev drawer',

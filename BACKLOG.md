@@ -9,6 +9,60 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 7 October 2026, his 36 notes with screenshots, batch 1 of 2 (shipped the same day, not yet deployed)
+
+Split in two at his word ("if needed split into two batches"): this batch is the fixes and the numbers; batch 2 is
+heaven made over (the animals' stands and quests, permadeath and the extra life, the rooms up there), below.
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | a companion's death must be shown clearly: an important event, the start of its road and the end | `Beast.farewell`: killed, fallen or left behind, the world slows and stops a beat, pale cells rise off it, a plate drops over the top of the screen with the animal on it (THE PIG IS DEAD / WAS LEFT BEHIND), `beast.farewell`. |
+| 2 | feel | the drop's lesson: not in the cave (screenshot), in an empty room where I can try that roll the first time | `chasmLesson` moved from THE CAVE to THE YARD, and its room is emptied of men and made calm (never hung, never an introduction or a boss's room): room 2 of THE YARD on all 150 seeds tried, 0 men. |
+| 3 | number | horns: BIG a bit less radius, a lunge, longer wait; LONG a forward lunge, the two horns a bit shorter, show where they hurt, middle wait; DAGGER short lunge, short wait, pushes ONE man | DAGGER `single` (the nearest man in the arc, nobody else that lunge); BIG reach 0.85 → 0.35, lunge 1.1, wait ×1.55; LONG reach 1.45 → 1.0, lunge 1.4, wait ×1.2. Where they hurt: the wave (tips bright) and the HORN TOOL's zone (7). |
+| 4 | feel | CONTINUE: if you did not die, back to the level, not to heaven | `resumeRun` lays the saved floor and he is on it, no heaven. |
+| 6 | feel | the title: a different tune that starts much calmer and picks up speed | `TITLE_TUNE` and `GameAudio.playTitleStep`: pad and a slow flute first, then bass, drum, gallop, kick, a plucked line, rim; tempo 74 → 118 over 80 s on the screen (`audio.title`). |
+| 7 | tool | the horns' length as a picture, and in dev mode change them right in the run, a mini tool showing the skill with its axis | DEV MODE → HORN TOOL: sliders for every number of the horn he has, live, SAVE to tuning.js, COPY, ONE MAN / ALL MEN; ZONE draws the hit shape on the floor along his aim, the axis ticked per tile with its length. |
+| 8 | feel | NO WAY BACK: not at random, on the floor by the shut door, if you turn back more than a room | written on the floor of the open side by the first mouth the clamp shuts (`game.clampWords`), gone for good once read (`clamp.readR`, `readFor`). |
+| 9 | feel | as in Hades, extra impact when the horns land, so it is seen | `Game.hornSplash`: a slash of cells across the man, a hot streak and a ring, white for a beat, a little hitstop; LONG's tips gold and harder. |
+| 10 | number | not died before the third floor: 1.5x the men there, 2x from the fourth, so you reach heaven and the gathering | `TUNING.thick`, `Game.crowdFor`: the ordinary rooms' budget and head cap ×1.5 / ×2 until his first visit to heaven. |
+| 12 | bug | moving the mouse round for 5 s while he moves, the screen starts to blink | NOT REPRODUCED here; the likeliest cause fixed: the adaptive resolution resized the canvas after the frame was drawn, so the screen showed a cleared canvas each step (`game.resizeNext` now resizes before the draw), and it no longer climbs back up on the same floor. If it still blinks: which browser, a laptop on battery, SHOW FPS on? |
+| 13 | feel | an even clearer animation of taking damage, so I register it | a lost heart: he is a white then a blinking red silhouette, a red slash across him along the blow, and the heart in the HUD swells, splits and falls (`juice.hurtLook`, `juice.heartBreak`). |
+| 14 | feel | the light's switch (the cleat) is usually at the start of the room, so I can use it (screenshot) | `chandelier.cleatIn` 0.8: the cleat by the way in, the ring toward the way out as far as the rope reaches. |
+| 15 | feel | the arrows over the edge: later, give a person time to find it themselves | `heaven.arrows.after` 25 → 75 s. |
+| 16 | feel | the halo more on top of the goat god (screenshot) | the hoop floats over the tips of his horns. |
+| 17 | number | a bit less heavenly grass (screenshot) | 16 tufts → 7. |
+| 18 | feel | an animal starts its talk only when no enemies are left in the room | `Beast.quiet`: let out in a fight it waits and talks the moment the room is still. |
+| 19 | feel | the destructibles: you have to find one, press the right button, and only then it opens | the scrap no longer opens when walked near; a GRAB on it opens it (`Prop.openScrap`). |
+| 20 | feel | the first mouse: no lesson needed (screenshot, the second line struck out) | her room's floor says only WALK UP TO HER · RIGHT M. CLICK. |
+| 21 | bug | make it pretty and aligned (screenshot: FOR THE GOD under the purse) | the line is flush with the purse's right edge. |
+| 22 | feel | the goose's honk does not stun the enemies, at least the first version when you meet it; now it honks all the time and stuns them | `goose.balks` false: the honk is the alarm only; its texts say so. |
+| 24 | feel | at death show the floor in one line too (screenshot) | `painting.death.oneRow` 14: the floor he died on is one strip. |
+| 25 | feel | kills and souls gathered are two different numbers; after the floor show the souls, maybe kills apart | the clear card shows N KILLS and N SOULS GATHERED; the death card's skull is the souls gathered on the floor, the kills in words (`game.floorSouls`). |
+| 27, 36 | feel | the modifiers' thing (the hitching rail, screenshot) only when there are modifiers | the rail stands only while a dare is worn, its shadow under the whole rail; the HUD's dares were already shown only when worn. |
+| 28 | system | save the heaven-for-the-animals concept from his GPT talk | CONCEPT.md, *Heaven as the animals' home (direction, not a spec)*, with his first three chains. |
+
+## 7 October 2026, his 36 notes, batch 2 of 2: heaven made over (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 5 | system | the animals' stands: at the start one is mended and the rest broken; mend each to open a new animal, for souls (later ones corrupted souls too); some need finds or secrets | `Heaven.standState` (js/heaven-home.js): open (tortoise, goose), broken (the horse, 40 souls poured in), locked (the rest, a padlock); only open kinds are dealt into runs (`Beast.deal(…, allow)`). Corrupted-soul costs and finds: not yet, the stands are locked. |
+| 11 | system | the bell is left on the ground after a new boss, and you really pick it up, right click | `Game.dropBell`: the boss of a floor's last room carries one until that floor's is taken; GRAB takes it (`Heaven.gotBell`, `meta.bellsGot`); floor words the first time; THE SHOWROOM has one. |
+| 23 | system | the overlook starts broken too, mended for souls | broken (leaning, grey, planks at its foot) until 30 souls are poured in (`home.tower.cost`). |
+| 26 | feel | mending the mirror: walk up and hold the right button, souls flow out of you into the mirror until it is mended (Cult of the Lamb) | POURING: GRAB held at anything broken spends the heap into it, a white soul a time flying into it, a chime each, kept if you let go (`meta.poured`); the mirror takes its twenty that way. |
+| 29 | system | three chains first (goose, horse, tortoise), the rest locked; a talisman for each; a quick way to test them | `QUESTS`: the tortoise (no running on a floor, his stride at a fifth; free, it walks heaven very slowly), the goose (a floor with nothing but BAAH; clean in the last room, geese honk back; free, it wanders honking and flies off round the sky with its flock), the horse (mend its stable for 40, win its race to bring it up; it lives in its paddock and comes to the fence; its dare: THE CHASE on two random floors; free, it runs where it likes). Talismans: TALLOW SKIN, BELLWETHER'S BELL, BRASS SPUR, off the shelves until won. Dev: HEAVEN tab rows (STAND, SAVED, DARE, WIN DARE, FREE, RESET). |
+| 30 | system | permadeath: if you die you die; heaven's progress and unlocks stay | `TUNING.permadeath`: a death ends the run, heaven's edge and RUN AGAIN start a new one from THE ALTAR (`Game.beginRun`); not LEVELS practice or THE SHOWROOM. |
+| 31 | system | one extra life by default, like Hades, back on the spot; given after the first heaven visit, taken away later | `heaven.extraLife`: a run begun after a visit carries one (`game.extraLives`), spent the way SECOND CHANCE is, back up with half his hearts; a white soul by the hearts. |
+| 32 | system | after the mirror is mended the god asks you to mend an animal's stand, promising the horse in runs | `HEAVEN_TALK.animal` rewritten, `animalAsk` until the horse's stand is whole. |
+| 33 | system | the blind shepherd asks you to beat bosses and take their bells, so he can play something | his quest and lines rewritten; the bells on his beam are the ones brought up (`bellsOpen`). |
+| 34 | system | as an option: a small room with the god where you come back, then the animals, then the room as now: story, side tasks, your strength and the run's start | three rooms (`HEAVEN_MAP`): THE THRONE (god, shepherd, bells), THE STALLS (stands, paddock, dares' rail), THE EDGE (mirror, overlook, horns, feast, the jump). |
+| 35 | system | lay the horns out before the jump (small, long, wide) so you can choose | three pairs on clouds by the lip (`hhorn`); GRAB one and it is yours, the itch build too (`HORN_KEY`). |
+
+Still open from batch 2:
+- **system**: the other stands (hen, crow, pig, rabbit, husky, fish): their cost (corrupted souls + souls), finds and secrets, and chains of their own (the concept's pond, nest, flock).
+- **feel**: the free animals' lives are a first sketch (wander, honk, a flock round the sky, grazing): the concept's scenes between them are not built.
+- **system**: the goose's dare asks for a floor with nothing but BAAH, and the way out is a soul gate the last boss's soul lifts: likely only by fire, traps and the floor's own geometry. Is that the dare he meant, or should the voice be allowed the kill too?
+- **number**: the horse's stable 40, the overlook 30, the pour rate 14 a second, the extra life's half of the hearts: first guesses.
+
 ## 7 October 2026, the horns (dagger, BIG, LONG) and THE FLANK (shipped, not yet deployed), and the 6 Oct review
 
 Shipped: DEV MODE → HORNS steps DAGGER (the horn as it was) / BIG (a deeper, wider arc, slower to swing) / LONG (two straight strips, the tips throw 1.4x, the shafts shove at half), `TUNING.goat.horns`, with a small wave of cells on the floor for each (`Renderer.drawHornWave`). THE FLANK: trench rooms (`ditchcut`, `ditchtee`, `ditchisland`) from THE CAVE on. The review's bugs B1 to B5 and the horse's NaN are fixed, the design suggestions I1 to I8 are tasks in `output/review-2026-10-06/TASKS_UK.md`. Not built, in his words and ours:

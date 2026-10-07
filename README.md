@@ -27,9 +27,11 @@ is a run to come back to; BEST and SETTINGS. With the dev tools open (bottom lef
 appears too, which puts you on any floor of the game with the souls a run would have banked getting there. Audio unlocks on that first input.
 
 A run is written to the browser at the head of every floor, so CONTINUE puts you back at the start of
-the furthest floor you reached with what you had when you walked onto it. Quitting a floor half played
-counts as a death, the way dying does: you come back to a new layout. Starting a new game throws the
-run away, and so does escaping; a floor started from LEVELS is practice and never touches it.
+the furthest floor you reached with what you had when you walked onto it, straight onto that floor.
+Quitting a floor half played (or closing the tab) puts it aside: CONTINUE brings back the same floor,
+with you standing where you left it, the men you killed still dead. A death ends the run: there is one life,
+and what stays is what heaven keeps (the mirror's strength, the animals, the bells). Starting a new game
+throws the run away, and so does escaping; a floor started from LEVELS is practice and never touches it.
 
 ---
 
@@ -48,8 +50,8 @@ Five verbs and nothing else. Souls change what a button does; they never add one
 | ROLL | E | a clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
 | BAAH | space | a noise every man who hears it walks toward, and a committed blow inside it falters. A soul makes it a stun or a cone of fire |
 | - | Q | only with a cape on your back: the cape's own verb |
-| tap after death | click after death | up to the pasture above; walk off its edge for the floor again, from a new seed |
-| - | Backspace | the floor again at once, from a new seed (from the death card, or from the pasture) |
+| tap after death | click after death | up to the pasture above; walk off its edge for a new run, from the first floor |
+| - | Backspace | RUN AGAIN at once, from the first floor (from the death card, or from the pasture) |
 | - | Esc | pause |
 | SETTINGS | - | DOUBLE SPEED OUT OF A FIGHT: with nobody after you, the goat runs twice as fast |
 | PAUSE → INVENTORY | I | the book of what you carry: your souls, the talismans and the cape, the animals, what the mirror bought, point at one to read it |
@@ -75,9 +77,9 @@ moment a stick or button is touched, and a key or the mouse takes it back:
 | BACK | the floor again at once (as Backspace) |
 | d-pad + A, B | every menu and card: A picks, B backs out; left / right chooses a soul |
 
-Four hearts, no regeneration (six on EASY MODE). A death costs the souls you took on that floor and
-builds the floor again from a new seed in under a second, from its head, with what you had when you
-walked onto it. The seed is printed in the bottom-left corner,
+Four hearts, no regeneration (six on EASY MODE). A death ends the run; once you have been up to the
+pasture above, every run starts with one more life, and losing your last heart there brings you back
+where you fell. The seed is printed in the bottom-left corner,
 and the death card carries a RUN CODE that rebuilds the floor you died on.
 
 ---
@@ -169,13 +171,17 @@ horse. Break it open and get the animal to the stairs alive, and it pays you for
 and takes its seat in the pasture above for good. Let one out and it stops you to say its terms. The horse, in a stall of its own, races you to the
 locked rooms with a soul and waits in each for the soul to be taken: it pays only if you beat it to one.
 
-**The pasture above.** A death goes up before it comes back down: two rooms of cloud where the goat god
-sits in his light and has a great deal to say about it (GRAB to listen, BAAH to argue), a blind shepherd
-combs you if you stand by him and GRAB, five bells play a tune if you butt the right ones, and a feast
-waits to be knocked off its table. Every man the cult loses is a sacrifice to the god, and every floor
-you climb out of is ten; **the mirror** trades them for things that stay with you from run to run,
-more hearts, hearts of light, quicker grazing, a quicker roll, longer mercy after a blow. Walk off the
-edge of the second room and you fall back into the floor, built again from a new seed.
+**The pasture above.** A death goes up before it comes back down: three rooms of cloud. In the first the
+goat god sits in his light and has a great deal to say about it (GRAB to listen, BAAH to argue), and a
+blind shepherd combs you and asks for the bells the cult's big men carry: beat the last of them on a
+floor and take his bell (GRAB). The second is the animals' stands: the tortoise's and the goose's are
+open, the horse's is broken, the rest are locked for now. Hold GRAB at a broken thing up there and the
+souls you brought pour into it until it is whole. An animal walked out of the compound sits on its stand
+and dares you; win its dare and it lives up here its own way, and a talisman comes onto the shelves.
+Every man the cult loses is a sacrifice to the god, and every floor you climb out of is ten; **the
+mirror** in the third room trades them for things that stay with you from run to run, more hearts,
+hearts of light, quicker grazing, a quicker roll, longer mercy after a blow. Choose your horns there
+(the dagger, BIG or LONG), and walk off the edge for a new run.
 
 **A room that fights back.** Braziers that spill coals when you headbutt them, spreading hay fire,
 barrels that roll and burst, doors you smash through, tables that slide and crush, oil lamps that go

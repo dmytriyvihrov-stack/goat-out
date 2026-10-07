@@ -50,18 +50,29 @@ const HEAVEN_SEATS = [
 // clear at least one floor wholly in stealth, all but the last room"; "something by the jump where such modifiers
 // can be let go"). `offer` is said at the first GRAB (`{n}` the floors), `took` at the second, `wear` while it holds
 // (`{left}`), `won` when it is done, `off` at the post (`Heaven.dropQuests`).
+// 7 Oct 2026, his three chains (CONCEPT.md, "Heaven as the animals' home"): the tortoise's, the goose's and the horse's.
+// The rabbit's dare went with the rabbit's stand (locked for now). `talisman`: what winning it puts on the shelves
+// (`Heaven.talismanLocked`); `free`: what it says when it is free; `done`: said when the floor that wins it is climbed out of.
 const QUESTS = {
-  horse: { name: "THE HORSE'S RACE", color: '#c8743a',
-    offer: 'A REMATCH. THE RED COMES AFTER YOU ON YOUR NEXT {n} FLOORS DOWN THERE. GRAB ME AGAIN AND IT IS A BET.',
-    took: 'IT IS A BET. RUN, GOAT.', wear: 'THE RED IS AFTER YOU. {left} MORE FLOORS TO OUTRUN IT.',
-    won: 'YOU OUTRAN THE RED. FINE. YOU WIN. THIS TIME.', off: 'NO BET? NEIGH. COWARD.' },
-  rabbit: { name: "THE RABBIT'S DARE", color: '#b8b4c8',
-    offer: 'CLIMB OUT OF ONE FLOOR AND NOT ONE OF THEM SEES YOU. THE LAST ROOM DOES NOT COUNT. ALT TO CREEP. GRAB ME AGAIN TO TAKE IT.',
-    took: 'QUIET NOW. QUIETER THAN THAT.', wear: 'NOT ONE OF THEM MAY SEE YOU. ONLY THE LAST ROOM MAY.',
-    won: 'NOT ONE OF THEM SAW YOU. YOU ARE HALF RABBIT NOW.', off: 'THUMP. SOME OTHER TIME, THEN.' },
+  tortoise: { name: "THE TORTOISE'S PACE", color: '#8fae6a', talisman: 'tallow',
+    offer: '...I AM TIRED OF RUNNING. EVERYBODY CALLS ME SLOW. I BEAT ACHILLES, AND STILL NOBODY IS PLEASED. YOU. DO NOT RUN. NOT ONCE, A WHOLE FLOOR. GRAB ME AGAIN AND IT IS A PROMISE.',
+    took: 'SLOWLY, THEN. AS SLOWLY AS ME.', wear: 'NO RUNNING. A WHOLE FLOOR AT MY PACE.',
+    won: 'YOU WALKED IT. A WHOLE FLOOR. THANK YOU. NOW I CAN REST.', off: '...ANOTHER TIME. SLOWLY.',
+    free: ['...', 'I AM RESTING.', 'NO HURRY. THERE NEVER WAS ANY.'] },
+  goose: { name: "THE GOOSE'S VOICE", color: '#e8e2d0', talisman: 'bell',
+    offer: 'HONK. YOU KNOW WHY I HONK AT EVERYONE? NEVER MIND. CLIMB OUT OF A FLOOR WITH NOTHING BUT YOUR VOICE. NO HORNS. NO TEETH. GRAB ME AGAIN AND WE SHOUT.',
+    took: 'HONK! NOTHING BUT BAAH NOW!', wear: 'ONLY YOUR VOICE. NO HORNS, NO TEETH, A WHOLE FLOOR.',
+    won: 'THEY ANSWERED! DID YOU HEAR THEM? MY FLOCK. I HONKED AT EVERYONE BECAUSE I WAS ALONE. NOT ANY MORE.', off: 'HONK. COWARD.',
+    free: ['HONK!', 'HONK HONK! THEY ARE BACK TONIGHT!', 'I AM NOT LONELY. I AM JUST LOUD.'] },
+  horse: { name: "THE HORSE'S CHASE", color: '#c8743a', talisman: 'spur',
+    offer: 'A REMATCH. NOW AND THEN THE RED WILL COME AFTER YOU DOWN THERE. OUTRUN IT ON {n} FLOORS. GRAB ME AGAIN AND IT IS A BET.',
+    took: 'IT IS A BET. RUN, GOAT.', wear: 'THE RED COMES AFTER YOU NOW AND THEN. {left} MORE FLOORS TO OUTRUN IT.',
+    won: 'YOU OUTRAN THE RED. ...I DO NOT WANT A FENCE. I WANT TO RUN WHERE I LIKE.', off: 'NO BET? NEIGH. COWARD.',
+    free: ['NEIGH!', 'NO FENCE. NO TRACK. WHERE I LIKE.', 'THE GOLD GRASS IS NOT BAD.'] },
 };
-// Where each seat stands in the god's room, in tiles, in the order of `HEAVEN_SEATS`.
-const SEAT_AT = [[6.5, 9.5], [6.5, 14], [6.5, 18.5], [24.5, 9.5], [24.5, 18.5], [24.5, 14], [10.5, 20.6], [20.5, 20.6], [15.5, 20.6]];
+// Where each seat (a stand now) stands, in tiles, in the order of `HEAVEN_SEATS` (tortoise, goose, hen, crow, horse, pig,
+// rabbit, husky, fish): in THE STALLS since 7 Oct 2026 (js/heaven-home.js `HEAVEN_MAP`), the horse's by its paddock.
+const SEAT_AT = [[34.5, 8.2], [39.5, 8.2], [45.5, 8.2], [51.5, 8.2], [56.5, 13.4], [37, 13.4], [42.5, 13.4], [48.5, 13.4], [56.5, 8.2]];
 
 // ---------------------------------------------------------------- what the god says
 // Grand and silly, in the cult's own capitals. `HEAVEN_TALK.intro` is the first meeting; `killer` a
@@ -91,14 +102,16 @@ const HEAVEN_TALK = {
   // walking up to the glass and pressing GRAB (`Heaven.interact` → `Heaven.mend`).
   mend: [
     'TWENTY. I COUNTED THEM. TWICE. ONE OF THEM WAS A DUCK, BUT I WILL ALLOW IT.',
-    'MY LIGHT IS IN YOUR HORNS NOW. GO TO MY MIRROR AND TOUCH IT, AND IT WILL BE WHOLE.',
+    'MY LIGHT IS IN YOUR HORNS NOW. GO TO MY MIRROR AND HOLD STILL BEFORE IT. POUR THE TWENTY INTO IT, AND IT WILL BE WHOLE.',
     'WHOLE, IT TURNS WHAT YOU BRING ME INTO STRENGTH THAT OUTLIVES YOU. AT TWO HUNDRED IT SHOWS WHAT IT KEEPS AT THE BACK.',
   ],
   // The mirror whole and no animal ever walked out of the compound (6 Oct 2026 playtest): his next ask. An animal
   // met down there and not brought out sits up here silent (`Heaven.noteMet`); one brought out talks and has a dare.
+  // 7 Oct 2026 (his note: "after the mirror is mended the god gives the task to mend a stand with an animal, and promises
+  // to open the horse in the runs"): THE STALLS, across the bridge, and the horse's stand.
   animal: [
-    'ONE MORE THING. THERE ARE ANIMALS DOWN THERE, IN THEIR COOPS AND STALLS. THE CULT KEEPS THEM FOR SUPPER.',
-    'WALK ONE OUT TO THE STAIRS ALIVE. JUST ONE. THE ONES YOU LOSE COME UP HERE AND DO NOT SPEAK TO YOU. I WOULD KNOW.',
+    'ONE MORE THING. THE CULT KEEPS ANIMALS DOWN THERE, FOR SUPPER. EVERY ONE OF THEM HAS A STAND UP HERE, ACROSS MY BRIDGE.',
+    'MOST OF THE STANDS ARE BROKEN. POUR FORTY SOULS INTO THE HORSE\'S, AND I WILL LET THE HORSE RUN IN YOUR RUNS. THE TORTOISE AND THE GOOSE ARE ALREADY DOWN THERE.',
   ],
   // The two hundred brought: SECOND CHANCE is on the glass from now on (`MIRROR`, `needs: 'quest'`).
   quest: [
@@ -172,9 +185,10 @@ const SHEPHERD_TALK = {
   bells: ['WHO IS AT THE BELLS? THE LITTLE KID?', 'NOT SO HARD. THEY ARE OLDER THAN I AM.', 'THAT ONE IS FLAT. IT ALWAYS WAS.',
     'AH, I KNOW THAT ONE. HOW DOES IT GO ON?', 'MY WIFE RANG THEM LIKE THAT.', 'SOFTLY. THE GOD IS DOZING.', 'GOATS DO NOT RING BELLS. OR DO THEY NOW?'],
   // His quest (5 Oct 2026): said the first time he is asked for the comb, or a sleeping bell is butted.
-  quest: 'MY BELLS ARE GONE, LITTLE KID. ONLY THE SMALLEST IS LEFT ME. WIN A FLOOR DOWN THERE AND ANOTHER COMES BACK. BRING THEM ALL HOME.',
-  asleep: ['NOTHING HANGS THERE YET. WIN A FLOOR, AND A BELL COMES BACK.', 'AN EMPTY HOOK. A FLOOR WON FILLS IT.'],
-  woke: ['I HEARD THAT. ANOTHER ONE IS BACK.', 'ANOTHER BELL. YOU WON A FLOOR DOWN THERE, DID YOU NOT?'],
+  // 7 Oct 2026: "he asks you to beat the bosses and take their bells; then he can play something, everything was lost".
+  quest: 'MY BELLS, LITTLE KID. THE CULT TOOK THEM, ALL BUT THE SMALLEST. THEIR BIG MEN CARRY THEM, THE LAST ONE ON EVERY FLOOR. BEAT HIM, TAKE HIS BELL, BRING IT HOME. THEN I CAN PLAY YOU SOMETHING.',
+  asleep: ['NOTHING HANGS THERE YET. THE BIG MAN AT THE END OF A FLOOR HAS IT.', 'AN EMPTY HOOK. BEAT THE LAST OF THEM AND TAKE HIS BELL.'],
+  woke: ['I HEARD THAT. ANOTHER ONE IS BACK.', 'ANOTHER BELL. YOU TOOK IT OFF ONE OF THEM, DID YOU NOT?'],
   // All eight awake: his tune, then the goat's turn (`Heaven.updateSong`).
   song: { come: 'ALL OF THEM AWAKE. WAIT THERE. LET AN OLD MAN PLAY.', listen: 'LISTEN, LITTLE KID.',
     you: 'NOW YOU. WHEN THE LIGHT FALLS ON A BELL, RING IT.', again: 'AGAIN? FOLLOW THE LIGHTS, THEN.',
@@ -221,6 +235,11 @@ const Heaven = {
     let m = null;
     try { m = JSON.parse(localStorage.getItem(HEAVEN_KEY) || 'null'); } catch (e) { m = null; }
     if (!m || m.v !== 1) m = { v: 1 };
+    // A store from before the bells came up from the floors (7 Oct 2026): every floor it had climbed out of is a bell had.
+    if (m.bellsGot === undefined) m.bellsGot = Object.assign({}, m.cleared || {});
+    // A dare worn from a build that had one this build has not (the rabbit's, until 7 Oct 2026): nothing shows it and the
+    // rail cannot untie it, so it goes.
+    if (m.quest) for (const k of Object.keys(m.quest)) if (!QUESTS[k]) delete m.quest[k];
     this.meta = Object.assign({ sacrifices: 0, souls: 0, soulsEarned: 0, earned: 0, pending: 0, ranks: {}, saved: {}, visits: 0, deaths: 0,
       combed: 0, heard: {}, killers: {}, best: -1, lastBest: -1, bought: 0, sung: false, told: {}, gift: false, brought: 0 }, m);
     return this.meta;
@@ -234,7 +253,7 @@ const Heaven = {
   // before it could break keeps it whole.
   mended() { const M = this.meta; return !M || !!M.mended || M.bought > 0 || Object.keys(M.ranks || {}).some((k) => M.ranks[k] > 0); },
   // His next ask once the glass is whole: bring one animal out alive (until one has been, `saved`).
-  animalAsk() { const M = this.meta; return !!(M && this.mended() && M.told && M.told.mend && !Object.keys(M.saved || {}).length); },
+  animalAsk() { const M = this.meta; return !!(M && this.mended() && M.told && M.told.mend && this.standState('horse') !== 'open'); },
   // An animal's terms heard down there (`Beast.met`): its seat shows it up here, pale and silent, until it is brought out.
   noteMet(kind) {
     if (!this.meta) this.load();
@@ -244,9 +263,21 @@ const Heaven = {
   },
   seatSeen(kind) { const M = this.meta; return !!(M && ((M.saved && M.saved[kind]) || (M.met && M.met[kind]))); },
   mendReady() { return !!(this.meta && this.meta.gift && this.meta.brought >= TUNING.heaven.gift.mend); },
-  // The bells that ring (5 Oct 2026, the blind shepherd's quest): the first, and one more for every
-  // floor this browser has ever climbed out of (`meta.cleared`, `floorCleared`), never more than hang.
-  bellsOpen() { const M = this.meta; return Math.min(TUNING.heaven.bells.length, 1 + (M && M.cleared ? Object.keys(M.cleared).length : 0)); },
+  // The bells that ring (5 Oct 2026, the blind shepherd's quest): the first, and one more for every bell brought up
+  // from a floor (7 Oct 2026, "the bell is left on the ground after a new boss and you really pick it up, right click":
+  // `meta.bellsGot` by floor, `Game.dropBell`, `gotBell`), never more than hang. Until then a floor climbed out of woke one.
+  bellsOpen() { const M = this.meta; return Math.min(TUNING.heaven.bells.length, 1 + (M && M.bellsGot ? Object.keys(M.bellsGot).length : 0)); },
+  // The bell a floor's last boss leaves is taken (GRAB, `Goat.tryGrab`): it is the old man's, for good.
+  gotBell(game, p) {
+    if (!this.meta) this.load();
+    const M = this.meta; M.bellsGot = M.bellsGot || {};
+    p.broken = true; p.dead = true;
+    if ((!(game.dev && game.dev.god) || p.dev) && !game.showroomOn) { M.bellsGot[p.floor] = 1; this.saveSoon(); game.bellWoke = true; }
+    game.learn && game.learn('bell');
+    game.particles(p.x, p.y - 14, 18, '#f7d774', 160); game.ring(p.x, p.y, 1.6 * TILE, '#fff4c2');
+    game.floatText(p.x, p.y - 40, 'A BELL FOR THE OLD MAN', '#fff4c2');
+    game.audio.sfxChime(TUNING.heaven.bells[p.note] || TUNING.heaven.bells[0], 0.8); game.audio.sfxChime(TUNING.heaven.bells[Math.max(0, (p.note | 0) - 2)] || TUNING.heaven.bells[1], 0.4, 0.14);
+  },
   // Which bells those are (6 Oct 2026 playtest: "the smallest is the open one for now, the rest come as you win;
   // I would even say they are not there yet"): they come back from the small end of the beam (the highest note,
   // the last index) toward the great bell, and one not back yet does not hang at all (`drawChime` draws its hook).
@@ -255,10 +286,11 @@ const Heaven = {
   // Not in GOD MODE or THE SHOWROOM, the sacrifices' rule.
   floorCleared(game, li) {
     if (!this.meta || !(li >= 0) || (game.dev && game.dev.god) || game.showroomOn) return;
-    this.questFloor(game);
+    if (!game.runJumped) this.questFloor(game);   // a LEVELS practice floor wins no dare (it is not a run)
     this.meta.cleared = this.meta.cleared || {};
-    game.bellWoke = false;
-    if (!this.meta.cleared[li]) { this.meta.cleared[li] = 1; game.bellWoke = this.bellsOpen() <= TUNING.heaven.bells.length; this.saveSoon(); }   // the clear card shows it (`Painting.drawTally`)
+    // (A floor climbed out of no longer wakes a bell by itself: its boss's bell, taken, does, `gotBell`, which also sets
+    // `game.bellWoke` for the clear card.)
+    if (!this.meta.cleared[li]) { this.meta.cleared[li] = 1; this.saveSoon(); }
   },
   // The death card offers RESTART only when nothing up here is new (5 Oct 2026: "after the first death
   // only ASCEND; RESTART only when nothing new opened"). `news` names everything that would be new on
@@ -270,7 +302,7 @@ const Heaven = {
     if (!M.told.intro) return ['first'];
     if (!M.gift) out.push('gift');
     if (this.mendReady() && !this.mended()) out.push('mend');
-    if (this.animalAsk() && !M.told.animal0) out.push('animal');
+    if (this.animalAsk() && !M.told.animal1) out.push('animal');
     if (this.questDone() && !M.told.quest0) out.push('quest');
     if (M.sung && !M.told.song0) out.push('song');
     if (M.freshSeat && !M.told['seat-' + M.freshSeat]) out.push('seat:' + M.freshSeat);
@@ -287,6 +319,11 @@ const Heaven = {
   // (`first`, the god's first talk not yet heard, is always fresh: it is the whole of heaven.)
   freshNews(game, dying) { const seen = (this.meta && this.meta.newsSeen) || []; return this.news(game, dying).filter((k) => k === 'first' || seen.indexOf(k) < 0); },
   seeNews(game) { if (this.meta) { this.meta.newsSeen = this.news(game, false); this.saveSoon(); } },
+  // How many more lives a run begun now carries (`heaven.extraLife`, `Game.beginRun`): one once he has been up here.
+  extraLivesFor() {
+    const X = TUNING.heaven.extraLife, M = this.meta || this.load();
+    return X && X.on && M && M.visits > 0 ? X.lives : 0;
+  },
   // RESTART on the death card (past heaven) is still a death to the god's tally.
   restarted() { if (this.meta) { this.meta.deaths++; this.saveSoon(); } },
   // What the god is counting toward now, for the purse (0: nothing more).
@@ -299,7 +336,18 @@ const Heaven = {
     game.audio.sfxChime(TUNING.heaven.bells[1]); game.audio.sfxChime(TUNING.heaven.bells[4], 0.7, 0.16); game.audio.sfxBell();
   },
   // What the mirror shows: every rank but the ones still waiting on the quest.
-  shelf() { return MIRROR.filter((u) => u.needs !== 'quest' || this.questDone()); },
+  // HELLDIVE (`needs: 'revive'`) is the shape of a revive, so it shows once he has one to shape: SECOND CHANCE's quest, or ONE MORE LIFE.
+  // Up here BAAH is a goat's voice and nothing else, and the souls' fire and poison stay below. Laid over `game.mods`
+  // on the way in and again after anything up here rebuilds them (`pickHorns`' `applyBoons`).
+  heavenMods(game) {
+    game.mods = Object.assign({}, game.mods, { breath: false, spit: false, screamStun: false, bomb: false, splash: false,
+      venomRoll: false, rollStun: 0, leapfrog: null, boomerang: null, blink: null, effigy: null, sprout: null, ruin: null, venomHold: 0, brandHold: 0,
+      headbuttRecovery: TUNING.heaven.buttRecovery, headbuttWindup: TUNING.heaven.buttWindup });
+    if (this.questOn('tortoise')) game.mods.speed /= TUNING.heaven.quests.tortoise.speed;   // the tortoise's pace is for the floors, not up here
+  },
+  shelf() { return MIRROR.filter((u) => u.needs === 'quest' ? this.questDone() : u.needs === 'revive' ? this.questDone() || TUNING.heaven.extraLife.on : true); },
+  // A rank's own name, where a mirror entry has one a rank (`names`, HELLDIVE): `r` 1-based.
+  rankName(u, r) { return u.names ? u.names[clamp(r, 1, u.names.length) - 1] : u.name; },
   // The gift lands: said at the end of the talk that gives it.
   giveGift(game) {
     const M = this.meta; if (M.gift) return;
@@ -359,10 +407,17 @@ const Heaven = {
   takeQuest(game, kind, at) {
     const M = this.meta, Q = TUNING.heaven.quests;
     M.quest = M.quest || {};
-    M.quest[kind] = { on: true, left: kind === 'horse' ? Q.horse.floors : 1 };
+    M.quest[kind] = { on: true, left: (Q[kind] && Q[kind].floors) || 1 };
     this.save();
     game.ring(at.x, at.y, 2.2 * TILE, QUESTS[kind].color); game.particles(at.x, at.y - 30, 20, '#fff4c2', 170);
     game.audio.sfxChime(TUNING.heaven.bells[3]); game.audio.sfxChime(TUNING.heaven.bells[6], 0.6, 0.12);
+  },
+  // The hitching rail is there while a dare is worn and gone while none is (it appears the moment one is taken).
+  syncPost(game) {
+    const on = this.quests().length > 0;
+    for (const p of game.props) if (p.kind === 'hpost') {
+      if (p.broken === on) { p.broken = !on; if (on) game.particles(p.x, p.y - 20, 8, '#fff4c2', 90); }
+    }
   },
   // At the post by the edge: every quest worn is let go, each animal's `off` said over it.
   dropQuests(game, post) {
@@ -377,29 +432,42 @@ const Heaven = {
   // wins on one where nobody but the last room saw him (`game.floorSeen`, `questStep`).
   questFloor(game) {
     const M = this.meta, Q = TUNING.heaven.quests, g = game.goat, at = g || { x: 0, y: 0 };
+    // Won: the animal is FREE (`meta.freed`, js/heaven-home.js: off its stand, living up here), its talisman is on the
+    // shelves from now on (`talismanLocked`), and its last word waits for the next GRAB at it (`questWon`).
     const win = (kind, pay) => {
       M.quest[kind].on = false; M.quest[kind].won = (M.quest[kind].won || 0) + 1;
+      (M.freed = M.freed || {})[kind] = 1;
       this.earn(game, pay); game.floatText(at.x, at.y - 60, QUESTS[kind].name + ' IS WON', '#fff4c2');
-      (M.questWon = M.questWon || {})[kind] = 1;   // said by the animal at its seat next time (`interact`)
+      const tal = typeof Shop !== 'undefined' && Shop.def(QUESTS[kind].talisman);
+      if (tal) game.floatText(at.x, at.y - 84, tal.name + ' IS ON THE SHELVES NOW', '#f7d774');
+      (M.questWon = M.questWon || {})[kind] = 1;
     };
-    if (this.questOn('horse') && game.chase) {
-      const h = M.quest.horse; h.left = Math.max(0, (h.left || 1) - 1); this.earn(game, Q.horse.pay);
-      if (h.left <= 0) win('horse', Q.horse.done);
-    }
-    if (this.questOn('rabbit') && !game.floorSeen) win('rabbit', Q.rabbit.done);
+    // A floor climbed out of under each dare: the horse's when the red was after him, the tortoise's always (he walked it),
+    // the goose's if nothing but his voice did it (`questStep`).
+    const step = (kind, ok, pay) => {
+      if (!this.questOn(kind) || !ok) return;
+      const q = M.quest[kind]; q.left = Math.max(0, (q.left || 1) - 1); if (pay) this.earn(game, pay);
+      if (q.left <= 0) win(kind, Q[kind].done);
+    };
+    step('horse', !!game.chase, Q.horse.pay);
+    step('tortoise', true);
+    step('goose', !game.questSpoiled);
     this.saveSoon();
   },
-  // One step of play (`Game.update`): under the rabbit's dare, the first man outside the last room aware of him
-  // spoils the floor, and he is told so.
+  // One step of play (`Game.update`): under the goose's dare, the horns, the teeth or a thing in his mouth spoil the
+  // floor (`game.questSpoiled`), and he is told so; still clean in the floor's last room, far off, geese answer
+  // (`game.geese`: a honk a beat, five of them).
   questStep(game) {
-    if (game.floorSeen || !this.questOn('rabbit')) return;
-    const L = game.level, last = L.rooms.length - 1, g = game.goat;
-    for (const e of game.liveEnemies) {
-      if (!e.aware || e.dead || e.scripted || e.chaser || e.room < 0 || e.room >= last) continue;
-      game.floorSeen = true;
-      if (g) game.floatText(g.x, g.y - 40, 'SEEN. THE RABBIT SIGHS', PALETTE.bone);
-      return;
+    const g = game.goat, L = game.level; if (!g || !L || !this.questOn('goose')) return;
+    if (!game.questSpoiled && (g.state === 'windup' || g.state === 'lunge' || g.state === 'bite' || g.holding)) {
+      game.questSpoiled = true; game.floatText(g.x, g.y - 40, 'NOT ONLY YOUR VOICE. THE GOOSE SIGHS', PALETTE.bone); return;
     }
+    if (!game.questSpoiled && !game.geese && (game.goatRoom || 0) >= L.rooms.length - 1) {
+      game.geese = { t: 0, n: 0 };
+      game.floatText(g.x, g.y - 46, 'FAR OFF: HONK... HONK HONK!', '#f4efe2');
+    }
+    const G = game.geese;
+    if (G && G.n < 5 && (G.t += 1 / 60) > G.n * 0.32) { G.n++; game.audio.sfxAnimal('goose'); }
   },
   // The dare's top-right corner (`Renderer.drawUI`, under the purse): each worn quest as its animal, gold, and
   // what is left of it. Returns the y under it.
@@ -422,7 +490,7 @@ const Heaven = {
         ctx.drawImage(img, B.x, B.y, B.w, B.h, Math.round(right - w), Math.round(y + size - B.h * z), Math.round(w), Math.round(B.h * z));
         ctx.imageSmoothingEnabled = sm;
       }
-      const text = k === 'horse' ? `THE RED · ${M.quest.horse.left} LEFT` : game.floorSeen ? 'SEEN THIS FLOOR' : 'UNSEEN SO FAR';
+      const text = k === 'horse' ? `THE RED · ${M.quest.horse.left} LEFT` : k === 'tortoise' ? 'NO RUNNING · A WHOLE FLOOR' : game.questSpoiled ? 'NOT ONLY YOUR VOICE' : 'ONLY YOUR VOICE SO FAR';
       ctx.font = `700 ${Math.max(12 * R.s, 13 * s)}px ${FONT_SC}`;
       const tx = right - w - 8 * s, ty = y + size * 0.7;
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillText(text, tx + 1, ty + 1);
@@ -436,7 +504,7 @@ const Heaven = {
   drawPost(R, game, p) {
     const ctx = R.ctx, c = 2, on = this.quests(), sway = p.wobble > 0 ? Math.round(Math.sin(R.t * 40) * p.wobble * 3) : 0;
     ctx.save(); ctx.translate(Math.round(p.x), Math.round(p.y + 8)); ctx.scale(1, 1 / TILT);
-    R.shadow(0, 0, 12, 4);
+    R.shadow(2, 3, 30, 5);   // under the whole rail, the stakes' own width (it was a small one between them, 7 Oct 2026)
     const px = (x, y, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(x * c + sway, y * c, w * c, h * c); };
     // a hitching rail: two stakes and a rail between them, as a horse is tied to
     for (const sx of [-12, 8]) { px(sx, -17, 5, 18, '#3a2c2a'); px(sx + 1, -16, 3, 16, '#8a5a34'); px(sx + 1, -16, 1, 16, '#b07a4a'); px(sx, -18, 5, 2, '#3a2c2a'); }
@@ -451,27 +519,32 @@ const Heaven = {
   applyMeta(m) {
     if (!this.meta) this.load();
     for (const u of MIRROR) { const r = this.rank(u.id); if (r > 0) u.apply(m, u.params, r); }
+    // THE TORTOISE'S PACE, worn: his stride at a fifth (`quests.tortoise.speed`), "no running at all".
+    if (this.questOn('tortoise')) m.speed *= TUNING.heaven.quests.tortoise.speed;
   },
 
   // ---------------------------------------------------------------- the place
-  // Laid by hand, like THE SHOWROOM (js/showroom.js): the god's room on the left, a bridge of cloud, the
-  // edge's room on the right with its south side open onto the drop.
+  // Laid by hand, like THE SHOWROOM (js/showroom.js). Three rooms since 7 Oct 2026 (`HEAVEN_MAP`, js/heaven-home.js:
+  // "a small room with the god where you come back, the next with the animals, the next as it is now"): THE THRONE, a
+  // bridge of cloud, THE STALLS, another bridge, and THE EDGE with its south side open onto the drop.
   level() {
-    const W = 60, H = 36, tiles = new Uint8Array(W * H).fill(T.WALL), at = (x, y) => y * W + x;
+    const MAP = HEAVEN_MAP, W = MAP.W, H = MAP.H, tiles = new Uint8Array(W * H).fill(T.WALL), at = (x, y) => y * W + x;
     const fill = (x0, y0, x1, y1, t) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) tiles[at(x, y)] = t; };
     const px = (tx) => (tx + 0.5) * TILE;
     const rooms = [];
     const room = (x, y, w, h, name) => { fill(x + 1, y + 1, x + w - 2, y + h - 2, T.FLOOR);
       const r = { x, y, w, h, index: rooms.length, markers: [], role: 'heaven', seen: true, drawn: false, name, tpl: { name, rows: [] } };
       rooms.push(r); return r; };
-    const A = room(3, 5, 26, 18, 'the throne'), B = room(33, 6, 24, 15, 'the edge');
+    const A = MAP.throne, S = MAP.stalls, E = MAP.edge;
+    room(A.x, A.y, A.w, A.h, 'the throne'); room(S.x, S.y, S.w, S.h, 'the stalls'); room(E.x, E.y, E.w, E.h, 'the edge');
     // the god's cloud: three rows of stone to the simulation, a great billow to the eye
     fill(12, 6, 19, 8, T.WALL);
-    // the bridge between the two rooms
-    fill(28, 13, 33, 16, T.FLOOR);
+    // the bridges: the throne to the stalls, the stalls to the edge
+    fill(A.x + A.w - 1, 11, S.x, 14, T.FLOOR);
+    fill(S.x + S.w - 1, 12, E.x, 15, T.FLOOR);
     // the drop: the edge room's south side is open all the way down the map
-    fill(34, 20, 55, H - 1, T.PIT);
-    fill(34, 19, 55, 19, T.FLOOR);
+    fill(E.x + 1, E.y + E.h - 1, E.x + E.w - 2, H - 1, T.PIT);
+    fill(E.x + 1, E.y + E.h - 2, E.x + E.w - 2, E.y + E.h - 2, T.FLOOR);
     const props = [];
     const put = (kind, x, y, o) => props.push(Object.assign({ x, y, kind, heaven: true }, o || {}));
     HEAVEN_SEATS.forEach((s, i) => put('hseat', px(SEAT_AT[i][0]) - 16, px(SEAT_AT[i][1]), { seat: s.kind }));
@@ -483,25 +556,30 @@ const Heaven = {
     put('htower', px(TUNING.heaven.towerAt[0]), px(TUNING.heaven.towerAt[1]));
     // the post by the lip where the animals' dares are let go (`dropQuests`)
     put('hpost', px(TUNING.heaven.quests.postAt[0]), px(TUNING.heaven.quests.postAt[1]));
-    for (let k = 0; k < TUNING.heaven.bells.length; k++) put('hbell', px(41.6) + k * HEAVEN_PIXELS.BELL_GAP * 1.35, px(10.2), { note: k });
+    // the old man's bells: in THE THRONE, left of the god's steps, over his stool (7 Oct 2026)
+    for (let k = 0; k < TUNING.heaven.bells.length; k++) put('hbell', px(5.8) + k * HEAVEN_PIXELS.BELL_GAP * 1.35, px(10.2), { note: k });
+    // the three pairs of horns before the jump (js/heaven-home.js `pickHorns`)
+    TUNING.goat.horns.order.forEach((h, i) => put('hhorn', px(TUNING.heaven.home.horns.at[0] + i * TUNING.heaven.home.horns.gap), px(TUNING.heaven.home.horns.at[1]), { horn: h }));
     // the supper above the clouds (js/scatter.js)
     // one table a visit, as often as not; now and then two, now and then none (`heaven.tables.odds`)
     const odds = TUNING.heaven.tables.odds, roll = Math.random();
     let many = 0; for (let a = 0, k = 0; k < odds.length; k++) { a += odds[k]; if (roll < a) { many = k; break; } many = k; }
-    [[40.2, 15], [44.2, 13.6], [41.8, 17.2], [50.5, 13.6]].slice(0, many).forEach(([tx, ty]) => put('table', px(tx), px(ty), { menu: 'heaven', heaven: false }));
+    [[71.2, 15], [75.2, 13.6], [69.4, 17.2], [81.5, 13.6]].slice(0, many).forEach(([tx, ty]) => put('table', px(tx), px(ty), { menu: 'heaven', heaven: false }));
     const start = { x: px(15.5), y: px(16.2) };
     // Gold grass here and there, to be grazed for nothing but the taste (`Heaven.update`): never on
     // the god's steps, the bridge, by the lip, or under anything that stands.
     const tufts = [], rng = new RNG(5), clearOf = (x, y) => props.every((p) => hyp(p.x - x, p.y - y) > 60 && hyp(p.x - x, p.y - 36 - y) > 60) && hyp(start.x - x, start.y - y) > 70;
-    for (let a = 0; a < 400 && tufts.length < 16; a++) {
-      const tx = rng.int(4, 55), ty = rng.int(6, 21);
-      if (tiles[at(tx, ty)] !== T.FLOOR || tiles[at(tx, ty + 1)] === T.PIT || (tx >= 12 && tx <= 19 && ty <= 12) || (tx >= 27 && tx <= 34)) continue;
+    for (let a = 0; a < 400 && tufts.length < 7; a++) {   // 7 Oct 2026 playtest: "a bit less of the heavenly grass, there is a lot of it": 16 became 7
+      const tx = rng.int(4, W - 4), ty = rng.int(6, 21);
+      // never the god's steps, a bridge, or the horse's paddock
+      if (tiles[at(tx, ty)] !== T.FLOOR || tiles[at(tx, ty + 1)] === T.PIT || (tx >= 12 && tx <= 19 && ty <= 12) || (tx >= A.x + A.w - 2 && tx <= S.x + 1) || (tx >= S.x + S.w - 2 && tx <= E.x + 1)
+        || (tx >= S.x && tx < S.x + S.w && ty >= TUNING.heaven.home.paddock.fence - 1)) continue;
       let wallNear = false; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (tiles[at(tx + dx, ty + dy)] === T.WALL) wallNear = true;
       const x = px(tx) + rng.float(-8, 8), y = px(ty) + rng.float(-8, 8);
       if (wallNear || !clearOf(x, y) || tufts.some((q) => hyp(q.x - x, q.y - y) < 80)) continue;
       tufts.push({ x, y, graze: 0, eaten: false, big: rng.chance(0.3) });
     }
-    return { W, H, tiles, rooms, spawns: [], props, start, tufts, exit: { x: px(45), y: px(22) }, exitTile: { x0: 45, y0: 22 },
+    return { W, H, tiles, rooms, spawns: [], props, start, tufts, exit: { x: px(E.x + 12), y: px(22) }, exitTile: { x0: E.x + 12, y0: 22 },
       forkTile: null, entry: null, seed: 1, def: HEAVEN_LEVEL, hints: [], controls: [], cagePrompt: null, vault: null,
       windows: new Set(), plan: null, gates: [], sealedArenas: [], shop: null, grass: [],
       god: { x: px(15.5) + TILE / 2, y: 9 * TILE }, pool: start, edgeY: 20 * TILE };
@@ -522,7 +600,8 @@ const Heaven = {
     const kind = !by ? null : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind === 'bearer' && by.shieldman ? 'shield' : by.kind === 'bearer' && by.thrower ? 'thrower' : by.kind === 'bearer' && by.shaman ? 'shaman' : by.kind);
     M.visits++; if (!visit) M.deaths++;
     if (game.levelIndex !== undefined) this.reached(levelIndexOf(game.level && game.level.def) >= 0 ? levelIndexOf(game.level.def) : game.levelIndex);
-    const floorName = (game.level && game.level.def && game.level.def.name) || '';
+    // Where the edge leads: with PERMADEATH a new run, so the first floor, whatever floor he fell on.
+    const floorName = game.permadeath && game.permadeath() ? LEVELS[0].name : (game.level && game.level.def && game.level.def.name) || '';
     const gate = game.checkpoint && game.checkpoint.level === game.levelIndex;
     game.heaven = { t: 0, killer: kind, floor: floorName, gate, talk: null, panel: null, jump: null, comb: null, plates: [],
       talked: false, tally: M.pending, tallyT: 0, notes: [], answerT: -1, mirrorButt: 0, near: null, rmbWas: true, godBlink: 2 };
@@ -537,10 +616,15 @@ const Heaven = {
     game.goat = new Goat(L.start.x, L.start.y); game.goat.facing = -Math.PI / 2; game.goat.invuln = 0;
     game.enemies = []; game.liveEnemies.length = 0; game.bullets = []; game.souls = []; game.globs = []; game.fallers = []; game.motes = []; game.revive = null;
     game.props = L.props.map((p) => { const o = new Prop(p.x, p.y, p.kind, p); o.heaven = !!p.heaven; if (p.menu) o.menu = p.menu;
-      if (p.seat) o.seat = p.seat; if (p.note !== undefined) o.note = p.note; return o; });
+      if (p.seat) o.seat = p.seat; if (p.note !== undefined) o.note = p.note; if (p.horn) o.horn = p.horn; return o; });
     for (const p of game.props) if (p.kind === 'hseat' || p.kind === 'hshep' || p.kind === 'hmirror') p.r = TUNING.heaven.bodyR[p.kind];
-    for (const p of game.props) if (p.kind === 'hbell' || p.kind === 'htower') p.r = TUNING.heaven.bodyR[p.kind];
+    for (const p of game.props) if (p.kind === 'hbell' || p.kind === 'htower' || p.kind === 'hhorn') p.r = TUNING.heaven.bodyR[p.kind];
+    // The horse's paddock if its stand is whole, and whoever lives up here (js/heaven-home.js).
+    this.layPaddock(game); this.spawnRoamers(game);
+    // The hitching rail stands only while a dare is tied to it (7 Oct 2026 playtest: "the thing for modifiers makes
+    // sense only when there are modifiers"): `syncPost` keeps it `broken` (not drawn, not blocking, not asked) otherwise.
     for (const p of game.props) if (p.kind === 'hpost') p.r = TUNING.heaven.quests.postR;
+    this.syncPost(game);
     // A bell not won back yet is not on the beam (`bellAwake`): `broken` keeps it out of every body, butt and
     // mark. One won since the last visit is still away until `updateWake` hangs it, in front of him.
     for (const p of game.props) if (p.kind === 'hbell' && !this.bellAwake(p.note, game.heaven.wake ? seen : open)) p.broken = true;
@@ -554,10 +638,7 @@ const Heaven = {
     game.guide = null; game.bless = null; game.intro = null; game.stairFx = null; game.dropIn = null; game.deathCam = null;
     game.hurt = null; game.hurtVignette = null; game.flashAmt = 0; game.shakeAmt = 0; game.kickX = game.kickY = 0; game.zoomKick = 0;
     game.hitstopTimer = 0; game.slowTimer = 0; game.timeScale = 1;
-    // Up here BAAH is a goat's voice and nothing else, and the souls' fire and poison stay below.
-    game.mods = Object.assign({}, game.mods, { breath: false, spit: false, screamStun: false, bomb: false, splash: false,
-      venomRoll: false, rollStun: 0, leapfrog: null, boomerang: null, blink: null, effigy: null, sprout: null, ruin: null, venomHold: 0, brandHold: 0,
-      headbuttRecovery: TUNING.heaven.buttRecovery, headbuttWindup: TUNING.heaven.buttWindup });
+    this.heavenMods(game);
     game.goat.maxHp = game.goat.hp = game.mods.maxHp;
     game.cam.x = L.start.x; game.cam.y = L.start.y - 2 * TILE; game.cam.zoom = game.renderer.zoomFit;
     game.camLead.x = game.camLead.y = 0; game.camFollow = null; game.camTrack = null; game.camHold = undefined; game.camRoomMid = null; game.camFight = 0;
@@ -574,7 +655,8 @@ const Heaven = {
     Renderer.heavenBake = null;
   },
 
-  // Off the edge: the floor he died on, rebuilt (`Game.restartLevel`), and he drops into it.
+  // Off the edge: a new run from THE ALTAR (PERMADEATH, `Game.restartLevel` → `beginRun`), or for a LEVELS practice
+  // the floor he died on, rebuilt; either way he drops into it.
   leave(game) {
     this.seeNews(game);   // a rank bought, a bell heard: what he saw up here is not news next time
     game.heaven = null; game.audio.heavenMusic = false;
@@ -597,7 +679,7 @@ const Heaven = {
     if (!told.intro) return { key: 'intro', lines: K.intro };
     if (!M.gift) return { key: 'gift', lines: K.gift };
     if (this.mendReady() && !this.mended() && !told.mend) return { key: 'mend', lines: K.mend };
-    if (this.animalAsk() && !told.animal0) return { key: 'animal0', lines: K.animal };
+    if (this.animalAsk() && !told.animal1) return { key: 'animal1', lines: K.animal };
     if (this.questDone() && !told.quest0) return { key: 'quest0', lines: K.quest };
     if (M.sung && !told.song0) return { key: 'song0', lines: K.song };
     if (M.freshSeat) {
@@ -637,6 +719,13 @@ const Heaven = {
     if (H.comb) { this.updateComb(game, dt); if (H.comb) { this.idle(game, dt); game.clearEdges(); return; } }
     H.holdT = Math.max(0, (H.holdT || 0) - dt);
     H.loiter = (H.loiter || 0) + dt;   // walking about with nothing open: the arrows' clock (`drawArrows`)
+    this.syncPost(game);
+    this.updateRoam(game, dt);   // the animals who live up here (js/heaven-home.js)
+    // POURING: GRAB held at what is broken spends the heap into it; let go, or walked off, and it stops.
+    if (H.pour) {
+      if (this.grabHeld(game) && game.goat.state === 'idle') { this.updatePour(game, dt); this.idle(game, dt); game.clearEdges(); return; }
+      H.pour = null; this.save();
+    }
     this.updateWake(game, dt);
     this.updateSong(game, dt);
     const ox = g.x, oy = g.y;
@@ -702,18 +791,24 @@ const Heaven = {
       if (p.kind === 'hshep') { if (!game.heaven.song) consider('shepherd', p.x, p.y, p); }   // at the bells, he combs nobody
       else if (p.kind === 'hmirror') consider('mirror', p.x, p.y, p);
       else if (p.kind === 'htower') consider('tower', p.x, p.y, p);
-      else if (p.kind === 'hpost') consider('post', p.x, p.y, p);
-      else if (p.kind === 'hseat' && this.seatSeen(p.seat)) consider('seat', p.x, p.y, p);
+      else if (p.kind === 'hpost') { if (!p.broken) consider('post', p.x, p.y, p); }
+      else if (p.kind === 'hseat') consider('seat', p.x, p.y, p);   // every stand answers now: locked, broken, empty or filled
+      else if (p.kind === 'hhorn') consider('horns', p.x, p.y, p);
+      else if (p.kind === 'hroam' && !p.flying) consider('roam', p.x, p.y, p);
     }
     return best;
   },
   interact(game, n) {
     const H = game.heaven;
     this.tried(n.kind === 'seat' ? 'seat:' + n.thing.seat : n.kind);
+    // What is broken is mended by pouring into it (js/heaven-home.js): the press starts it, the hold goes on with it.
+    const P = this.pourable(n);
+    if (P) { this.startPour(game, n, P); return; }
+    if (n.kind === 'horns') { this.pickHorns(game, n.thing); return; }
+    if (n.kind === 'roam') { this.talkRoam(game, n.thing); return; }
     if (n.kind === 'god') this.talk(game);
     else if (n.kind === 'shepherd') this.startComb(game, n.thing);
-    // His twenty in, the goat mends it himself, at the glass (5 Oct 2026): GRAB, and it is whole.
-    else if (n.kind === 'mirror' && !this.mended() && this.mendReady()) this.mend(game);
+    // Broken and not yet his to mend (before the god's gift): it only rattles. (Mending it is `pourable`, above.)
     else if (n.kind === 'mirror' && !this.mended()) {
       const B = HEAVEN_TALK.broken;
       H.plates.push({ x: n.x, y: n.y - 74, text: B[(H.brokenN = (H.brokenN || 0) + 1) === 1 ? 0 : Math.floor(Math.random() * B.length)], life: TUNING.heaven.plate });
@@ -724,6 +819,7 @@ const Heaven = {
     else if (n.kind === 'post') this.dropQuests(game, n.thing);
     else if (n.kind === 'seat') {
       const s = HEAVEN_SEATS.find((q) => q.kind === n.thing.seat);
+      if (s && this.seatAnswer(game, n, s)) return;
       if (s) {
         const times = (this.meta.savedN && this.meta.savedN[s.kind]) || 1, Q = QUESTS[s.kind], M = this.meta;
         const lift = s.kind === 'horse' ? 76 : 46, say = (text, k) => H.plates.push({ x: n.x, y: n.y - lift, text, life: TUNING.heaven.plate * (k || 1.2) });
@@ -731,10 +827,8 @@ const Heaven = {
         // Met down there and never brought out: it is up here, but it does not speak to him (6 Oct 2026 playtest).
         if (!M.saved[s.kind]) { say(s.sound + ' ...', 1); return; }
         // An animal with a dare (`QUESTS`): the first GRAB says its line and the dare, a second while it waits takes it.
-        if (Q && M.questWon && M.questWon[s.kind]) { delete M.questWon[s.kind]; this.saveSoon(); say(s.sound + ' ' + Q.won, 1.6); return; }
-        if (Q && this.questOn(s.kind)) { say(s.sound + ' ' + Q.wear.replace('{left}', (M.quest[s.kind].left || 0)), 1.4); return; }
-        if (Q && H.offer && H.offer.kind === s.kind && H.t < H.offer.until) { H.offer = null; this.takeQuest(game, s.kind, n); say(Q.took); return; }
-        if (Q) { H.offer = { kind: s.kind, until: H.t + TUNING.heaven.quests.offer }; say(s.sound + ' ' + Q.offer.replace('{n}', TUNING.heaven.quests.horse.floors), 2); return; }
+        if (Q && this.dareTalk(game, n, s, say)) return;
+        void Q;
         say(s.sound + ' ' + s.line + (times >= 2 ? ' ' + s.more : ''), times >= 2 ? 1.8 : 1.2);
       }
     }
@@ -966,6 +1060,17 @@ const Heaven = {
   drawTower(R, game, p) {
     const ctx = R.ctx, k = TUNING.heaven.towerScale, S = HEAVEN_PIXELS.sprites.watchtower, C = HEAVEN_PIXELS.sprites['watchtower-cloud'];
     const sway = p.wobble > 0 ? Math.sin(R.t * 50) * p.wobble * 2 : 0;
+    // Broken until souls are poured into it (7 Oct 2026, `towerMended`): leaning, its cloud gone grey, planks at its foot.
+    if (!this.towerMended()) {
+      ctx.save(); ctx.translate(p.x + sway, p.y + 12); ctx.scale(1, 1 / TILT);
+      R.shadow(0, 0, 26, 7); ctx.rotate(-0.12); ctx.globalAlpha = 0.85; ctx.filter = 'grayscale(0.8) brightness(0.9)';
+      HEAVEN_PIXELS.draw(ctx, 'watchtower', -S.w * k / 2, -S.h * k, k);
+      ctx.restore();
+      ctx.save(); ctx.translate(p.x, p.y + 12); ctx.scale(1, 1 / TILT);
+      ctx.fillStyle = '#3a2c2a'; for (const [x, y, w] of [[-30, -4, 22], [8, -2, 26], [-12, 2, 18]]) { ctx.fillRect(x - 1, y - 1, w + 2, 6); }
+      ctx.fillStyle = '#8a5a34'; for (const [x, y, w] of [[-30, -4, 22], [8, -2, 26], [-12, 2, 18]]) { ctx.fillRect(x, y, w, 4); }
+      ctx.restore(); return;
+    }
     // its cloud drifts a texel or two either way, a whole texel at a time, never off its posts
     const drift = Math.round(Math.sin(R.t * 0.45) * 1.6) * k, top = -S.h * k;
     ctx.save(); ctx.translate(p.x + sway, p.y + 12); ctx.scale(1, 1 / TILT);
@@ -1782,10 +1887,15 @@ Object.assign(Heaven, {
       else if (p.kind === 'hshep') list.push({ y: p.y, f: () => this.drawShepherd(R, game, p) });
       else if (p.kind === 'hmirror') list.push({ y: p.y, f: () => this.drawMirror(R, game, p) });
       else if (p.kind === 'htower') list.push({ y: p.y, f: () => this.drawTower(R, game, p) });
-      else if (p.kind === 'hpost') list.push({ y: p.y, f: () => this.drawPost(R, game, p) });
+      else if (p.kind === 'hpost') { if (!p.broken) list.push({ y: p.y, f: () => this.drawPost(R, game, p) }); }
       else if (p.kind === 'hbell') { if (!beam) { beam = true; list.push({ y: p.y - 2, f: () => this.drawChime(R, game) }); } }
       else if (p.kind === 'table') list.push({ y: p.y, f: () => R.drawProp(p) });
+      else if (p.kind === 'hhorn') list.push({ y: p.y, f: () => this.drawHorn(R, game, p) });   // js/heaven-home.js
+      else if (p.kind === 'hroam') list.push({ y: p.y, f: () => this.drawRoam(R, game, p) });
     }
+    // the paddock's rails stand on the line of its posts
+    { const post = game.props.find((p) => p.kind === 'hfence'); if (post) list.push({ y: post.y, f: () => this.drawPaddock(R, game) });
+      else if (this.standState('horse') === 'broken') list.push({ y: (TUNING.heaven.home.paddock.fence + 0.5) * TILE, f: () => this.drawPaddockRuin(R, game) }); }
     if (!g.dead) list.push({ y: g.y, f: () => R.drawGoat(g, game) });
     list.sort((a, b) => a.y - b.y);
     R.shadeColor = 'rgba(70,90,150,0.26)';
@@ -1793,6 +1903,8 @@ Object.assign(Heaven, {
     R.drawPuffs(game); R.drawRings(game); R.drawParticles(game);
     game.fx.draw(R, game); game.scatter.drawAir(R);
     this.drawMotes(R, game);
+    this.drawPour(R, game);    // the souls flying from him into what he mends (js/heaven-home.js)
+    this.drawFlock(R, game);   // the goose and its flock, round the sky
     this.drawMarks(R, game);
     this.drawArrows(R, game);       // the way down, for a dawdler who never jumped
     this.drawSongLights(R, game);   // the old man's tune, the goat's turn
@@ -1806,7 +1918,7 @@ Object.assign(Heaven, {
   // passing between.
   drawEarth(R, game, B) {
     const ctx = R.ctx, L = game.level, cam = game.cam, E = B.earth, K = E.K, k = TUNING.heaven.earthDepth, t = R.t;
-    const px0 = 34 * TILE, py0 = 20 * TILE, px1 = 56 * TILE, py1 = L.H * TILE;
+    const E0 = HEAVEN_MAP.edge, px0 = (E0.x + 1) * TILE, py0 = 20 * TILE, px1 = (E0.x + E0.w - 1) * TILE, py1 = L.H * TILE;
     ctx.save(); ctx.beginPath(); ctx.rect(px0, py0, px1 - px0, py1 - py0); ctx.clip();
     ctx.fillStyle = '#9fbde6'; ctx.fillRect(px0, py0, px1 - px0, py1 - py0);
     // The empty pen sits in the middle of what the drop shows while he stands at its lip (the camera
@@ -1946,10 +2058,13 @@ Object.assign(Heaven, {
     const breathe = 1 + 0.012 * Math.sin(t * 1.4), top = -h * breathe - 10;
     // the halo: a ring of gold cells behind his horns, breathing light
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    const hg = ctx.createRadialGradient(0, top + 26 * k, 0, 0, top + 26 * k, 70);
-    hg.addColorStop(0, 'rgba(255,238,170,0.5)'); hg.addColorStop(1, 'rgba(255,238,170,0)'); ctx.fillStyle = hg; ctx.fillRect(-70, top + 26 * k - 70, 140, 140);
+    // 7 Oct 2026 playtest: "the nimb is more on top of the goat god": the ring floats over the tips of the horns now
+    // (it sat at the height of his eyes, half behind the horns), still behind him.
+    const hy = top - 2;
+    const hg = ctx.createRadialGradient(0, hy, 0, 0, hy, 70);
+    hg.addColorStop(0, 'rgba(255,238,170,0.5)'); hg.addColorStop(1, 'rgba(255,238,170,0)'); ctx.fillStyle = hg; ctx.fillRect(-70, hy - 70, 140, 140);
     ctx.restore();
-    this.halo(ctx, 0, top + 24 * k, 40, true, t);
+    this.halo(ctx, 0, hy, 40, true, t);
     const talking = H.talk && H.talk.shown < H.talk.lines[H.talk.i].length && Math.floor(t * 10) % 2 === 0;
     const name = talking ? 'god-speak' : H.godBlink < 0 ? 'god-blink' : 'god';
     ctx.save(); ctx.scale(1, breathe);
@@ -2001,6 +2116,10 @@ Object.assign(Heaven, {
     R.shadow(0, 0, 20, 6);
     HEAVEN_PIXELS.draw(ctx, 'plinth', -S.w * k / 2, -S.h * k, k);
     const top = -S.h * k + 8;
+    // whose stand it is, small, on its foot (7 Oct 2026: every stand answers now, so each says whose it is)
+    { const seat = HEAVEN_SEATS.find((q) => q.kind === p.seat); if (seat) { ctx.font = `700 9px ${FONT_SC}`; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(58,44,78,0.62)'; ctx.fillText(seat.name.replace('THE ', ''), 0, 12); } }
+    // a stand locked, broken or emptied by a freed animal (js/heaven-home.js); the horse brought up is in its paddock
+    if (this.drawStandState(R, game, p, top) || this.freed(p.seat) || (p.seat === 'horse' && saved)) { ctx.restore(); return; }
     if (saved) {
       const img = this.animalGod(R, p.seat), bob = Math.round(Math.sin(t * 1.6 + p.x) * 1.5);
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -2282,8 +2401,10 @@ Object.assign(Heaven, {
   // The key and the word over a thing GRAB answers: `[RMB] TALK`, `GRAB · BE COMBED` on a phone.
   drawPrompt(R, game, n) {
     const ctx = R.ctx, s = R.ts, cam = game.cam, z = cam.zoom;
-    const word = { god: 'TALK', shepherd: 'BE COMBED', mirror: this.mended() ? 'LOOK INTO IT' : this.mendReady() ? 'MEND IT' : 'LOOK AT IT', seat: 'LISTEN', tower: 'CLIMB AND LOOK DOWN' }[n.kind];
-    const lift = { god: 150, shepherd: 70, mirror: 90, seat: 80, tower: 112 }[n.kind];
+    // What is broken says HOLD and what it still asks (js/heaven-home.js `pourable`).
+    const P = this.pourable(n), seatSt = n.kind === 'seat' ? this.standState(n.thing.seat) : null;
+    const word = P ? `HOLD: MEND IT ${this.poured(P.key)}/${P.cost}` : n.kind === 'seat' && seatSt === 'locked' ? 'LOCKED' : { god: 'TALK', shepherd: 'BE COMBED', mirror: this.mended() ? 'LOOK INTO IT' : 'LOOK AT IT', seat: 'LISTEN', tower: 'CLIMB AND LOOK DOWN', horns: 'TAKE THESE HORNS', roam: 'TALK' }[n.kind];
+    const lift = { god: 150, shepherd: 70, mirror: 90, seat: 80, tower: 112, horns: 54, roam: n.thing && n.thing.as === 'horse' ? 76 : 46 }[n.kind];
     const x = R.vcx + (n.x - cam.x) * z, y = R.vcy + (n.y - cam.y) * z * TILT - lift * z;
     const key = game.touch && game.touch.active ? 'GRAB' : keysOf(game).grab;
     ctx.save(); ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.textAlign = 'left';
@@ -2436,7 +2557,7 @@ Object.assign(Heaven, {
       }
       if (sel) { ctx.fillStyle = '#f7d774'; ctx.fillRect(rx + shake, y, 3 * s, rh - 8 * s); }
       ctx.textAlign = 'left'; ctx.font = `700 ${17 * s}px ${FONT_SC}`; ctx.fillStyle = r >= max ? '#f7d774' : '#fff4c2';
-      ctx.fillText(u.name, rx + 16 * s + shake, y + 22 * s);
+      ctx.fillText(this.rankName(u, r >= max ? r : r + 1), rx + 16 * s + shake, y + 22 * s);
       // the ranks as pips
       for (let q = 0; q < max; q++) { ctx.fillStyle = q < r ? '#f7d774' : 'rgba(247,215,116,0.22)'; ctx.fillRect(Math.round(rx + 16 * s + q * 14 * s), Math.round(y + 30 * s), Math.round(10 * s), Math.round(5 * s)); }
       ctx.font = FONT_PICK.font('text', Math.round(13 * s)); ctx.fillStyle = 'rgba(244,239,226,0.82)';
@@ -2664,7 +2785,7 @@ Object.assign(Heaven, {
     const ctx = R.ctx, c = A.cell, G = A.glyph, w = G[0].length * c, h = G.length * c, lip = 19.55 * TILE;
     ctx.save(); ctx.scale(1, 1 / TILT); ctx.globalAlpha = H.arrowK;
     for (let i = 0; i < A.n; i++) {
-      const x = (37 + (i + 0.5) * 15 / A.n) * TILE, bob = Math.round(Math.sin(R.t * A.bob.rate + i * 0.9) * A.bob.amp / c) * c;
+      const x = (HEAVEN_MAP.edge.x + 4 + (i + 0.5) * 15 / A.n) * TILE, bob = Math.round(Math.sin(R.t * A.bob.rate + i * 0.9) * A.bob.amp / c) * c;
       const ox = Math.round(x - w / 2), oy = Math.round(lip * TILT - h + bob);
       ctx.fillStyle = A.rim;
       for (let r = 0; r < G.length; r++) for (let q = 0; q < G[r].length; q++) if (G[r][q] === '#') ctx.fillRect(ox + (q - 1) * c, oy + (r - 1) * c, c * 3, c * 3);

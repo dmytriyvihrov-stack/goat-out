@@ -73,7 +73,43 @@ const Beast = {
     game.world.splat(p.x, p.y, 0, 0, 6);
     game.particles(p.x, p.y, 16, p.kind === 'crow' ? PALETTE.ink : PALETTE.bone, 200);
     game.audio.sfxSplat();
-    game.floatText(p.x, p.y - 30, 'THE ' + Beast.NAME[p.kind] + ' IS DEAD', PALETTE.blood);
+    Beast.farewell(p, game, 'dead');
+  },
+  // The end of an escort's road is an event, not a caption (7 Oct 2026 playtest: "show its death clearly, it is an
+  // important event, the start of the road and the end"): the world slows and stops a beat, a ring and a pale shape
+  // go up off the spot, and a plate comes down over the top of the screen with the animal on it and what happened
+  // to it (`game.beastFarewell`, `Beast.drawFarewell`, `TUNING.beast.farewell`). `how`: 'dead' or 'left' behind.
+  farewell(p, game, how) {
+    const F = TUNING.beast.farewell, kind = p.kind === 'coop' ? p.holds || 'chicken' : p.kind;
+    game.beastFarewell = { kind, how, t: 0, x: p.x, y: p.y };
+    game.slowTimer = Math.max(game.slowTimer || 0, F.slow); game.hitstop(F.stop);
+    game.ring(p.x, p.y, 1.4 * TILE, how === 'dead' ? PALETTE.blood : PALETTE.ash, 0.7, 4);
+    // The soul of it leaving: pale cells rising off the spot.
+    for (let i = 0; i < F.wisps; i++) game.parts.push({ x: p.x + (Math.random() - 0.5) * 18, y: p.y - 4, vx: (Math.random() - 0.5) * 24, vy: -(40 + Math.random() * 60), life: 0.9 + Math.random() * 0.7, color: '#f1ead8', size: 3 });
+    game.audio.sfxBell && game.audio.sfxBell(true);
+  },
+  drawFarewell(R, game) {
+    const B = game.beastFarewell, F = TUNING.beast.farewell; if (!B) return;
+    const ctx = R.ctx, s = R.ts, W = R.vw, k = Math.min(1, B.t / F.in) * Math.min(1, Math.max(0, (F.life - B.t) / F.out));
+    if (k <= 0) return;
+    const e = 1 - Math.pow(1 - k, 3), name = 'THE ' + (Beast.NAME[B.kind] || 'ANIMAL') + (B.how === 'dead' ? ' IS DEAD' : ' WAS LEFT BEHIND');
+    const bw = Math.min(W * 0.7, 640 * s), bh = 84 * s, bx = Math.round((W - bw) / 2), by = Math.round(40 * s - (1 - e) * 90 * s);
+    ctx.save(); ctx.globalAlpha = Math.min(1, k * 1.6);
+    // the room goes dim a little round the plate, so it is the thing looked at
+    ctx.fillStyle = 'rgba(13,10,12,0.32)'; ctx.fillRect(0, 0, W, R.vh);
+    ctx.fillStyle = 'rgba(22,15,20,0.95)'; ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = B.how === 'dead' ? PALETTE.blood : PALETTE.ash; ctx.fillRect(bx, by, bw, 4 * s); ctx.fillRect(bx, by + bh - 3 * s, bw, 3 * s);
+    ctx.strokeStyle = 'rgba(232,221,200,0.22)'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx + 6 * s, by + 10 * s, bw - 12 * s, bh - 20 * s);
+    // the animal on the plate's left, in the state the plate says
+    ctx.save(); ctx.translate(Math.round(bx + 56 * s), Math.round(by + bh - 14 * s));
+    if (B.how === 'dead') { ctx.rotate(-0.0); ctx.globalAlpha *= 0.85; ctx.filter = 'grayscale(0.85)'; }
+    Beast.portrait(R, ctx, B.kind, (bh - 4 * s) / 44);
+    ctx.restore();
+    ctx.textAlign = 'left'; ctx.font = FONT_PICK.font('say', Math.round(30 * s)); ctx.fillStyle = B.how === 'dead' ? PALETTE.blood : PALETTE.bone;
+    ctx.fillText(name, bx + 112 * s, by + 42 * s);
+    ctx.font = `700 ${Math.round(13 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(232,221,200,0.6)';
+    ctx.fillText(B.how === 'dead' ? 'IT WALKED OUT OF ITS PEN WITH YOU, AND ENDS HERE.' : 'IT DID NOT KEEP YOUR PACE.', bx + 112 * s, by + 66 * s);
+    ctx.restore();
   },
   // Walled in behind him by the clamp (`game.updateClamps`). Gone, and said over the goat's head
   // rather than over the animal's, which is two rooms back in the dark where nobody can read it.
@@ -83,7 +119,8 @@ const Beast = {
     const kind = p.kind === 'coop' ? p.holds || 'chicken' : p.kind;
     Stats.beast(game, kind, p.kind === 'coop' ? 'coop' : 'lost');
     game.audio.sfxAnimal(kind, true);
-    game.floatText(g.x, g.y - 46, 'THE ' + Beast.NAME[kind] + ' WAS LEFT BEHIND', PALETTE.blood);
+    if (p.kind === 'coop') game.floatText(g.x, g.y - 46, 'THE ' + Beast.NAME[kind] + ' WAS LEFT BEHIND', PALETTE.blood);   // never let out: no road to end
+    else Beast.farewell(p, game, 'left');
   },
   // Fire under its feet and the wound clock, every step, for the three escorts and the hen alike.
   tick(p, dt, game) {
@@ -131,7 +168,7 @@ const Beast = {
     // the hen and the hound do. An animal walking about explains nothing on its own.
     if (p.gift) return Beast.updateGift(p, dt, game);
     if (p.refused > 0) return Beast.updateRefused(p, dt, game);   // said no to: it goes its way (js/beasts-more.js)
-    if (hyp(p.x - game.goat.x, p.y - game.goat.y) < TUNING.beast.tellFor * TILE) Beast.met(game, p);
+    if (hyp(p.x - game.goat.x, p.y - game.goat.y) < TUNING.beast.tellFor * TILE && Beast.quiet(game)) Beast.met(game, p);
     if (p.kind === 'tortoise') return Beast.updateTortoise(p, dt, game);
     if (p.kind === 'goose') return Beast.updateGoose(p, dt, game);
     if (p.kind === 'crow') return Beast.updateCrow(p, dt, game);
@@ -440,7 +477,7 @@ const Beast = {
     // 2 Oct 2026: "the goose's honk doesn't knock enemies' blow"). The alarm went off the moment a
     // man came into view and then slept `honkGap`, so a windup started in that sleep, which is
     // nearly every windup, was never broken. `blowGap` only keeps it from honking every frame.
-    if (p.blowT <= 0) {
+    if (p.blowT <= 0 && C.balks) {
       for (const e of game.liveEnemies) {
         if (e.dead || e.held || e.ghosted || !Beast.winding(e)) continue;
         if (hyp(e.x - p.x, e.y - p.y) > C.seeR * TILE) continue;
@@ -474,12 +511,12 @@ const Beast = {
       if (e.dead || e.held || e.ghosted) continue;
       if (hyp(e.x - p.x, e.y - p.y) > C.seeR * TILE) continue;
       e.aware = true;
-      if (e.balk) e.balk(game, C.balkStun);
+      if (C.balks && e.balk) e.balk(game, C.balkStun);
     }
     // Not over its own first words: the second half of what it is for waits for the next honk.
     if (!game.gooseTold && !game.floats.some((f) => f.pact)) {
       game.gooseTold = true;
-      game.floatText(p.x, p.y - 40, 'IT GIVES YOU AWAY. IT ALSO BREAKS THEM', PALETTE.bone);
+      game.floatText(p.x, p.y - 40, C.balks ? 'IT GIVES YOU AWAY. IT ALSO BREAKS THEM' : 'IT GIVES YOU AWAY', PALETTE.bone);
     }
     void at; void g;
   },
@@ -551,6 +588,9 @@ const Beast = {
     p.kickT = Math.max(0, (p.kickT || 0) - dt); p.slowT = Math.max(0, (p.slowT || 0) - dt);
     // Out of the stall it stands `ready` s and says its bet to his face before it goes: a line
     // shouted by something already a room away is a line nobody read.
+    // Let out in a fight it waits for the room to go still and its terms to be said (`Beast.quiet`, `met`) before
+    // the clock of its bet starts: a race run before anyone heard of it was a leg lost for nothing.
+    if (!p.asked) { p.vx = 0; p.vy = 0; if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x); return; }
     p.age = (p.age || 0) + dt;
     if (p.age < C.ready) { p.vx = 0; p.vy = 0; if (Math.abs(g.x - p.x) > 8) p.face = Math.sign(g.x - p.x); return; }
     Beast.horseRace(p, game);
@@ -862,7 +902,8 @@ const Beast = {
     // A talisman, never a cape (a cape is found, not brought), and never one he wears: "free" was the
     // same thing swapped back. At `giftTier`, or the top tier of one that has fewer.
     const stock = stockFor(game.level.def, new RNG((Math.random() * 1e9) | 0)).filter((w) => !w.cape);
-    const pick = stock.find((a) => !Shop.worn(game, a.id)) || ARTIFACTS.find((a) => !Shop.worn(game, a.id)) || ARTIFACTS[0];
+    const free = (a) => !Shop.worn(game, a.id) && !Heaven.talismanLocked(a.id);   // nor one a heaven dare still holds back
+    const pick = stock.find(free) || ARTIFACTS.find(free) || ARTIFACTS[0];
     const ware = new Prop(spot.x, spot.y, 'ware', {
       shopId: -1 - ((Math.random() * 1e6) | 0), ware: { id: pick.id, tier: Shop.tierFit(pick.id, C.giftTier) },
     });
@@ -901,17 +942,19 @@ const Beast = {
   // nothing fresh on its list is thrown away and walked again; after `tries` of those the last walk
   // simply steps over such a floor. Index by level; null is a floor with no animal.
   // `early` lets the first one come on the `known` floor instead (a browser that has cleared it).
-  deal(seed, early) {
+  // `allow` (7 Oct 2026, js/heaven-home.js `beastsOpen`): only the kinds whose stand up in heaven is open are dealt.
+  deal(seed, early, allow) {
     const D = TUNING.beast.deal, rng = new RNG(((seed >>> 0) ^ 0xbea57) >>> 0), kinds = new Set();
     const lo = early ? Math.min(D.known, D.first[0]) : D.first[0];
-    for (const L of LEVELS) for (const k of (L.beasts || [])) kinds.add(k);
+    const ok = (k) => !allow || allow.includes(k), listOf = (L) => (L.beasts || []).filter(ok);
+    for (const L of LEVELS) for (const k of listOf(L)) kinds.add(k);
     const walk = (strict) => {
       const plan = LEVELS.map(() => null), used = new Set();
       let i = rng.int(lo, D.first[1]);
       // Never the last floor: every animal pays for the rest of the run, and after the last floor's
       // stairs there is no run left to pay it into.
       while (i < LEVELS.length - 1 && used.size < kinds.size) {
-        const can = (LEVELS[i].beasts || []).filter((k) => !used.has(k));
+        const can = listOf(LEVELS[i]).filter((k) => !used.has(k));
         if (can.length) { const k = can[rng.int(0, can.length - 1)]; plan[i] = k; used.add(k); i += rng.int(D.gap[0], D.gap[1]); }
         else if (strict) return null;
         else i++;
@@ -922,6 +965,20 @@ const Beast = {
     return walk(false);
   },
 
+  // Nobody of the cult is on his feet in the goat's room (7 Oct 2026 playtest: "the animal starts its talk only when
+  // there are no enemies left in the room"): a box over a floor with a club coming at him is a death, so an animal
+  // let out in a fight stands and waits, and says its words the moment the room is quiet (`Beast.update` asks again
+  // every step it is near). In a corridor, nobody within ten tiles.
+  quiet(game) {
+    const L = game.level, g = game.goat, room = L && roomAt(L, g.x, g.y);
+    for (const e of game.enemies) {
+      // a man who has not seen him (a lurker in the straw, the wraith in a door, a sentry at his post) is not a fight:
+      // counted, an animal let out past one kept its words, and the horse its race, for good
+      if (e.dead || e.scripted || e.chaser || e.ghosted || e.caged || e.mimicDoor || !e.aware) continue;
+      if (room ? roomAt(L, e.x, e.y) === room : hyp(e.x - g.x, e.y - g.y) < 10 * TILE) return false;
+    }
+    return true;
+  },
   // ---------------- the first one of a run ----------------
   // One line, once, the way the hen and the hound get one: an animal walking after you explains
   // nothing on its own, and an escort nobody understands is left standing in the room it was in.
@@ -964,7 +1021,7 @@ const Beast = {
       pays: () => `+${TUNING.prop.chicken.saveHearts} heart for the run` },
     tortoise: { how: 'Slower than a walk and never catches up: you carry it in your teeth, or throw it forward. Where it lands it is a shell, solid, rounds stop on it, a man it hits is floored, and it takes one blow for you, then lies on its back.',
       pays: () => `armour at the start of every floor after, which takes ${TUNING.prop.tortoise.saveArmour} blow whole and comes off` },
-    goose: { how: `Leads rather than follows, up to ${TUNING.prop.goose.lead} tiles ahead, and honks at every man it sees: the room turns on you, and a blow already coming is broken.`,
+    goose: { how: `Leads rather than follows, up to ${TUNING.prop.goose.lead} tiles ahead, and honks at every man it sees: the room turns on you.${TUNING.prop.goose.balks ? ' A blow already coming is broken.' : ''}`,
       pays: () => `the voice carries ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further and comes back ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% sooner (never under ${TUNING.goat.scream.minCooldown} s)` },
     crow: { how: 'Follows the dead, not you: it flies to a body it can see and eats a while, and with nothing dead in reach it sits and waits where it is. A room behind you, or far off, it leaves the bodies and flies after you, landing a few tiles short. At the stairs it counts from the room before the last; the bird that brings its gift sits by it, then flies off.',
       pays: () => `${crowGiftName().toLowerCase()} (its top tier, for one with a single tier) on the next floor's stairs` },
@@ -985,7 +1042,7 @@ const Beast = {
     if (kind === 'crow') out.push(...P.lines);
     if (kind === 'horse') out.push(...P.talk.race, ...P.talk.beaten, P.lines.won, P.lines.mine, P.lines.left, P.lines.lost, P.lines.yours, P.lines.pay, P.lines.none, ...P.lines.taunt);
     if (kind === 'pig') out.push(...P.talk.hello, ...P.talk.full, ...P.lines.munch, ...P.lines.left);
-    if (kind === 'goose') out.push('IT GIVES YOU AWAY. IT ALSO BREAKS THEM');
+    if (kind === 'goose') out.push(TUNING.prop.goose.balks ? 'IT GIVES YOU AWAY. IT ALSO BREAKS THEM' : 'IT GIVES YOU AWAY');
     if (BEAST_HELLO[kind]) out.push(...BEAST_HELLO[kind]);
     return out;
   },

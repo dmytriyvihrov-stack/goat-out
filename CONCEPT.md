@@ -452,8 +452,10 @@ on the grass behind it: the only tell is something heavy leaning on the door fro
 
 ## Between deaths: the pasture above
 
-A death is not a menu. The card says what killed him, and a click takes him **up**: two rooms of cloud
-laid by hand, the same every visit. Pillar 6 has nothing to catch here, because nothing up here is
+A death is not a menu, and since 7 Oct 2026 it is the end of the run (PERMADEATH: "if you die, you die; what
+heaven holds and what you unlocked stay"). The card says what killed him, and a click takes him **up**: three rooms
+of cloud laid by hand, the same every visit: THE THRONE (the god, the shepherd and his bells: the story and its
+tasks), THE STALLS (the animals' stands and their dares), THE EDGE (the mirror, the overlook, the horns, the jump). Pillar 6 has nothing to catch here, because nothing up here is
 worth knowing the layout of, it is where you stand between runs, not a level.
 
 - **The goat god** sits on the biggest cloud: a ram made of light, gold horns, a white beard, a bell at
@@ -462,11 +464,14 @@ worth knowing the layout of, it is where you stand between runs, not a level.
   you shall be there. BEH."). What he says follows what happened: who killed you, how many times you
   have died, a floor you got further on than ever, an animal you brought out. GRAB talks to him; BAAH
   at him and he answers.
-- **The seats.** Five empty clouds round him, one for each animal the compound keeps: tortoise, goose,
-  hen, crow, horse. Bring one up the stairs alive and its seat has a god on it from then on, and it has
-  something to say.
+- **The stands.** One for each animal the compound keeps, in THE STALLS. The tortoise's and the goose's are
+  open from the start (their animals come into the runs); the horse's is broken and is mended by pouring
+  forty souls into it; the rest are locked for now. Bring an animal up the stairs alive and it sits on its
+  stand and dares you; win the dare and it lives up here its own way, and a talisman comes onto the shelves
+  (see *Heaven as the animals' home*).
 - **The shepherd.** A blind old man on a stool with a comb. GRAB beside him and he combs the goat,
-  he takes you for a ewe. It does nothing, and that is the point of it.
+  he takes you for a ewe. It does nothing, and that is the point of it. The cult took his bells; the last
+  big man on every floor carries one, and it lies where he falls for the goat to take (GRAB).
 - **The mirror** is where the dead goat gets better for good. Every man the compound loses is a
   sacrifice to the god, one each, and every floor climbed out of is ten more; the mirror trades them
   for five things of two ranks each: THICK FLEECE (more hearts), HALO (hearts of light over yours,
@@ -476,16 +481,83 @@ worth knowing the layout of, it is where you stand between runs, not a level.
   goat in it butts back, harder.
 - **Things to do that do nothing**: five bells to butt into a tune (the god knows one of them), a table
   laid with a feast to knock flying, gold grass to graze.
-- **The edge.** The second room ends in nothing, and far below it is the earth, fields, a river, the
-  compound, and the pen in a shaft of light. Walk off and he falls, and drops into the floor built
-  again from a new seed exactly as a death always built it: into the pen on the first floor, at the
-  head of any other. Backspace on the death card skips the pasture for whoever wants the
-  old second back.
+- **Pouring.** Anything broken up here (the mirror, the overlook, a stand) is mended by holding GRAB at it:
+  the souls on the heap fly out of him into it one by one until it is whole.
+- **The edge.** The last room ends in nothing, and far below it is the earth, fields, a river, the
+  compound, and the pen in a shaft of light. The three horns lie before it (the dagger, BIG, LONG): GRAB
+  a pair to wear it. Walk off and he falls into a new run, beside the pen on the first floor. Once he has
+  been up here, every run starts with one more life (Hades' Death Defiance), to be taken away later. RUN
+  AGAIN on the death card skips the pasture.
 
 Why it is here: a run is long, and a player stuck on one floor needs something that grows while his
 skill does, the thing that brings people back to *Hades* and *Enter the Gungeon* for one more. It is
 kept small on purpose: a few hearts and a few seconds, never a button, never a kill without geometry,
 so it is still the skill that gets him out.
+
+### Heaven as the animals' home (direction, 7 Oct 2026, not a spec)
+
+Saved from his talk about it, where to look rather than what to build; the mechanics of each animal are his to
+add later.
+
+**The idea.** Between runs the goat comes back to heaven, and heaven slowly becomes a fit place for other
+animals, each with its own idea of a good life. The themes: freedom and the right to choose your own life; a
+home, safety, belonging; creatures with different wants living side by side; caring for another and
+understanding what it needs. The animals' seats read flat today; they should get character and meaning from
+short personal stories, a quest of each one's own, and changes you can see in heaven.
+
+**Opening an animal is not freeing it.** Souls are the currency that opens an animal (its stand, the
+companion in runs). Its real freedom comes only through its own personal quest, and it can never be bought
+with more souls. The loop: gather souls and open the animal; meet it and learn what life it wants; do its
+quest; heaven changes to fit its wish and you see its life change. The quests already exist in some form; tie
+them to this rather than add another layer of grind.
+
+**In the run.** The run's own goal stays first. An animal's quest is a second goal inside a run; meeting it,
+its story moving on and heaven changing happen between runs. A quest asks for an act that matters to *that*
+animal, never the same resource under a different name. Free does not mean gone: it can stay and live in the
+shared home. Animals coming along on later runs (to hell) is a separate idea, not worked on now.
+
+**First directions, not scripts:**
+- Horse: the freedom to choose where and when to run. An open plain with no fence and no set track.
+- Fish: room to swim in a wide pond; perhaps depth and somewhere to hide, so it is not always in view.
+- Hen: to keep her eggs and raise her young. A safe nest, then chicks.
+- Tortoise: a clean pond and a fit bank; perhaps living at its own pace, never rushed.
+- Goose: open; maybe finding its flock again, leaving and coming back.
+Each wants something different, and it shows in how it behaves after its quest.
+
+**Underneath.** Through the animals' unfreedom, a touch of people's; never a manifesto, never a moral said in
+a line. A possible nod at capitalism: the player starts with numbers and saving up, then finds that another
+creature's freedom is not had by a bigger sum, only by understanding it and doing one particular thing. Not
+every player needs to read it; it is enough that they feel they helped someone get their own life.
+
+**The reward is their life.** Heaven grows not only to make the goat stronger: the other animals' lives are a
+reward of their own. The means: a small corner of the hub that changes; new behaviour after an animal is free;
+short lines and small scenes; the animals doing things with each other, so the residents have lives that are
+not about the hero. Keep the jokes: a free goose can stay loud, rude and funny.
+
+**References, for single decisions, not systems to copy:** *Hades* (coming back to familiar characters between
+runs), *Cult of the Lamb* (a base that fills up), *Animal Crossing* (attachment through living next to
+someone), *Happy Home Paradise* (a space fitted to one resident's wish), *Spiritfarer* (personal stories,
+care and letting go), *Cozy Grove* (helping someone changes the place you see).
+
+**Limits.** He cannot build complex rooms or a large settlement simulation. Short stories, the existing
+quests, small changes to the hub and expressive behaviour. A freeing is never replaced by a currency upgrade
+or a repeatable grind.
+
+**His first three chains (7 Oct 2026, to build):**
+- *Goose*: in runs it runs ahead and honks. In heaven it dares you to clear any one floor using only BAAH.
+  Clear it and in the last room you hear other geese honking back; up in heaven its flock has found it. It
+  says it honked at everyone because it was alone, and now it is not. After: it wanders heaven honking, and now
+  and then flies off with a few birds and circles in the sky past a cloud.
+- *Horse*: first a small stable is bought with souls, a feeder and a straight racetrack with a fence. Met on a
+  floor, it races you; win and it goes to its paddock in heaven, eats and runs, and comes to the fence when you
+  come near. Then THE CHASE: two floors at random come with the chase and you get through them. Done, it decides
+  it does not want to run behind a fence, and runs free about heaven, stopping now and then to eat grass.
+- *Tortoise*: its stand open from the start. Carry it to the stairs or wait (it is slow) until it gets there. It
+  says it is tired of running and of everyone calling it slow, even after it beat Achilles. It asks you not to
+  run at all on a floor; take the dare and you move at a fifth of your speed. Win and it thanks you, says it can
+  rest now, and walks about heaven very, very slowly.
+Each chain unlocks one of the existing talismans. Opening order: the tortoise's and the goose's stands open at
+the start, the horse's for 40 souls, the others locked for now.
 
 ---
 

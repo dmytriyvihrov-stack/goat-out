@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '2.01';
+const BUILD = '2.02';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -240,6 +240,19 @@ const TUNING = {
     // fell on `hearts` hearts, untouchable `invuln` s, every man within `push` tiles thrown back at
     // `fling` tiles/s (under what stone kills at: the light shoves, it does not kill) and dazed `daze` s.
     second: { hearts: 2, invuln: 2.2, push: 3.2, daze: 1.6, fling: 6, time: 1.9 },
+    // HELLDIVE (7 Oct 2026, a mirror rank, `MIRROR` 'helldive'; "on a revive the god lifts you up to the sky and throws you
+    // down like a rocket"): any revive (SECOND CHANCE, ONE MORE LIFE) goes `up` s into the beam, then for `aim` s the world
+    // waits while he steers where he lands, clumsily (a mark on the floor pushed by the stick at `accel` tiles/s², never past
+    // `speed` tiles/s, its way lost at `drag` a second, no further than `reach` tiles from where he fell, never onto stone, a
+    // drop or behind a shut door), then `fall` s down. Landing: every man within `hurt[r]` tiles of the mark loses a heart and
+    // is thrown out at `fling` tiles/s; every man within `stun[r]` tiles (the whole room on rank two, `room` true) is dazed
+    // `daze` s. `height` px over him is where he goes out of the picture.
+    dive: { up: 0.7, aim: 1.9, fall: 0.32, height: 420, accel: 16, speed: 5.2, drag: 1.4, reach: 7, hurt: [0.75, 2], stun: [3, 3], room: [false, true], fling: 7, daze: 2.2, cell: 3 },
+    // ONE MORE LIFE (7 Oct 2026, "like Hades: you come back to life at once, where you fell; given after the first visit
+    // up here, to be taken away later"): a run begun by a goat who has been to heaven carries `lives` of them
+    // (`Game.beginRun` → `game.extraLives`), spent by `Motes.second` the way SECOND CHANCE is, back up with `hearts` of his
+    // hearts (a share of the most). `on` false takes it away again.
+    extraLife: { on: true, lives: 1, hearts: 0.5 },
     // The soul leaving a dead goat (`Motes.drawAscent`): it rises `rise` px over `time` s in a beam
     // `beam` px wide, from `lift` s after the blow; `sway` px side to side.
     ascent: { time: 1.75, rise: 150, lift: 0.2, beam: 26, sway: 4 },
@@ -254,7 +267,8 @@ const TUNING = {
     // nothing there".) What says where the way down is instead (`Heaven.drawArrows`): until he has once
     // walked off the edge (`meta.jumped`), after `after` s up here with nothing open, `n` arrows of
     // cells (`cell` world px a texel) bob over the lip, `bob.amp` px at `bob.rate` rad/s, in over `fade` s.
-    arrows: { after: 25, n: 4, cell: 4, bob: { rate: 3.2, amp: 5 }, fade: 0.8, glyph: ['.###.', '.###.', '.###.', '#####', '.###.', '..#..'], fill: '#f7d774', lit: '#fff4c2', rim: '#3a2c4e' },
+    // 7 Oct 2026 playtest: "too early, give the person a chance to find it out themselves": 25 s became 75.
+    arrows: { after: 75, n: 4, cell: 4, bob: { rate: 3.2, amp: 5 }, fade: 0.8, glyph: ['.###.', '.###.', '.###.', '#####', '.###.', '..#..'], fill: '#f7d774', lit: '#fff4c2', rim: '#3a2c4e' },
     mirrorFlash: 0.35, mirrorBack: 7, mirrorDaze: 0.7, panelArm: 0.25,
     // A rank is bought by holding (5 Oct 2026, "like Hades"): click, SPACE or A held `hold` s fills the
     // row, a rising chime every `tick` s, the row shaking up to `shake` px; let go early and nothing is
@@ -308,21 +322,41 @@ const TUNING = {
     drop: { time: 0.75, height: 230, lead: 0.45, turns: 1.25, flips: 2, ko: 1.3, getup: 0.35, besidePen: 1.4,
       stretch: 0.45, motes: 40, ring: 38, burst: 12,
       shaft: { w: 14, over: 260, fade: 0.6, alpha: 0.22, color: '#fff4d6' } },
-    bodyR: { hseat: 16, hshep: 15, hmirror: 17, hbell: 8, htower: 18 },
+    bodyR: { hseat: 16, hshep: 15, hmirror: 17, hbell: 8, htower: 18, hhorn: 12 },
     // THE OVERLOOK's tile (6 Oct 2026, `Heaven.openOverlook`): the edge room's far corner, over the drop,
     // a wooden watchtower (`HEAVEN_PIXELS` `watchtower`, its top in a cloud) drawn `towerScale` world px a texel.
-    towerAt: [53.6, 9.4], towerScale: 1.4,
+    // 7 Oct 2026, heaven in three rooms (js/heaven-home.js `HEAVEN_MAP`): the edge room is 31 tiles further east.
+    towerAt: [84.6, 9.4], towerScale: 1.4,
     // The animals' quests (6 Oct 2026 playtest, `Heaven.QUESTS`): offered at a filled seat by GRAB, taken by a second
     // GRAB within `offer` s, worn as a run modifier until won or let go at the post by the edge (`postAt` tiles,
-    // `postR` px). `horse`: THE CHASE on every floor past the first he plays until `floors` of them are climbed out
-    // of, `pay` sacrifices each, `done` more for the last. `rabbit`: one floor climbed out of with no man aware of him
-    // outside its last room; while it is worn the stealth test (ALT) is on; `done` sacrifices.
-    quests: { offer: 6, postAt: [36.6, 18.4], postR: 9, horse: { floors: 3, pay: 15, done: 40 }, rabbit: { done: 60 } },
+    // `postR` px; in THE STALLS since 7 Oct 2026). His three chains (7 Oct 2026, `QUESTS`): `tortoise`, no running on one
+    // floor (`speed` of his stride while it is worn); `goose`, one floor with nothing but BAAH (a headbutt, a bite or
+    // a thing taken spoils it); `horse`, THE CHASE on `chance` of the floors past the first until `floors` of them are
+    // climbed out of. Each pays `done` sacrifices and frees the animal. `pay`: the horse's for each chased floor.
+    quests: { offer: 6, postAt: [58.5, 11], postR: 9, tortoise: { floors: 1, speed: 0.2, done: 40 }, goose: { floors: 1, done: 40 },
+      horse: { floors: 2, chance: 0.6, pay: 15, done: 40 } },
+    // THE ANIMALS' HOME (7 Oct 2026, js/heaven-home.js). `pour`: GRAB held pours `rate` sacrifices a second into what is
+    // broken, each soul `fly` s in the air. `tower`: the overlook starts broken and costs `cost`. `stands`: `open` from the
+    // start, `cost` in sacrifices to mend a broken one (the rest locked). `paddock` (tiles): posts every `post` from `x0` to
+    // `x1` along `fence`, `postR` px each, the horse at `y`; within `come` tiles of the fence he comes to it. `roam`: how fast
+    // each free animal walks (px/s), the goose's honk and flight gaps (s), its flock, the horse's grazing beat.
+    // `horns`: the three pairs before the jump, the first at `at`, `gap` tiles apart.
+    home: {
+      pour: { rate: 14, fly: 0.45 },
+      tower: { cost: 30 },
+      stands: { open: ['tortoise', 'goose'], cost: { horse: 40 } },
+      // The fence runs wall to wall (7 Oct 2026: the end posts left ~22 px to the stone, the goat is 24 across; now ~10):
+      // `x0` / `x1` the first and last post's tile, one laid at `x1` whatever the spacing leaves.
+      paddock: { x0: 32, x1: 59, fence: 17.4, post: 0.55, postR: 7, y: 20, come: 3.2 },
+      roam: { tortoise: { speed: 7 }, goose: { speed: 55, honk: [7, 15], fly: [22, 40], flyFor: 11, flock: 6 }, horse: { speed: 165, graze: [2, 5] } },
+      horns: { at: [74.7, 17.4], gap: 1.8 },
+    },
     // The mirror's tile (`Heaven.level`): at the bridge's mouth on the edge's side, so the way down passes it.
-    mirrorAt: [35.7, 12.2],
+    mirrorAt: [66.7, 12.2],
     // The shepherd's tile: down the edge room toward the lip (3 Oct 2026, "the old man somewhere about
     // here"), out from under the bells, so the comb is on the way down rather than tucked in a corner.
-    shepAt: [46, 17.2],
+    // (In THE THRONE since 7 Oct 2026, under his bells, left of the god's steps.)
+    shepAt: [8.8, 16.6],
     godTexel: 1.55, seaDepth: 0.55, seaDrift: 5, earthDepth: 0.2, wispDepth: 0.45,
     // The rite far below, through the drop (30 Sep 2026: "the cultists down there perform a strange
     // ritual with fire and your ewe"), in the earth's own pixels (`Heaven.bakeEarth` / `drawRite`).
@@ -381,11 +415,18 @@ const TUNING = {
     // `wave` is the small picture of it on the floor (`Renderer.drawHornWave`): cells for `time` s, `alpha` at most.
     horns: {
       order: ['dagger', 'big', 'long'],
-      dagger: { name: 'DAGGER', note: 'THE ARC, AS IT WAS', windup: 1, recovery: 1, lunge: 1, impulse: 1, reach: 0, cone: 0.15 },
-      big:    { name: 'BIG',    note: 'A WIDE, DEEP ARC. SLOWER TO SWING', windup: 1.2, recovery: 1.25, lunge: 1, impulse: 1, reach: 0.85, cone: -0.3 },
-      long:   { name: 'LONG',   note: 'TWO HORNS, STRAIGHT. THE TIPS HIT HARD', windup: 1.1, recovery: 1.1, lunge: 1.15, impulse: 1, reach: 1.45, cone: 0.5,
+      // 7 Oct 2026 playtest: the DAGGER is the short quick stab and shoves ONE man (`single`: the nearest in the arc, the
+      // rest of the arc is empty); BIG's radius was "unbelievable" (0.85 tiles over, now 0.35), it keeps a lunge and
+      // is the slowest to come back; LONG lunges the furthest, its two horns a little shorter, a middle wait.
+      dagger: { name: 'DAGGER', note: 'A SHORT STAB. ONE MAN', windup: 1, recovery: 1, lunge: 1, impulse: 1, reach: 0, cone: 0.15, single: true },
+      big:    { name: 'BIG',    note: 'A WIDE ARC. SLOW TO COME BACK', windup: 1.2, recovery: 1.55, lunge: 1.1, impulse: 1, reach: 0.35, cone: -0.2 },
+      long:   { name: 'LONG',   note: 'TWO HORNS, STRAIGHT. THE TIPS HIT HARD', windup: 1.1, recovery: 1.2, lunge: 1.4, impulse: 1, reach: 1.0, cone: 0.5,
         rows: 2, rowGap: 0.4, rowW: 0.17, tip: 0.62, tipMul: 1.4, shaftMul: 0.5 },
       wave: { time: 0.34, alpha: 0.5 },
+      // The hit's own picture (7 Oct 2026, "as in Hades, more impact when the horns land"): `splash` is the small slash
+      // laid across a man the blow lands on (`Game.hornSplash`, `Renderer.drawSlashes`): `life` s, `len` px a streak
+      // (the tips' `tipLen`), `n` streaks, `flash` s the man is white, `stop` the hitstop it adds (the tips add `tipStop`).
+      splash: { life: 0.22, len: 34, tipLen: 50, n: 3, flash: 0.14, stop: 0.035, tipStop: 0.05 },
     },
     // A headbutt or a roll pressed while he is still busy is kept `buffer` s and goes the frame he is
     // free, instead of being dropped for being early. Not a cancel: what he was doing still runs
@@ -1343,7 +1384,10 @@ const TUNING = {
     // slower than the goat it leads ended every level twenty-odd tiles behind him.
     // 30 Sep 2026 playtest: "the goose should run further ahead and call the enemies harder", `lead`
     // 6 → 10, `seeR` 9 → 12, `honkGap` 2.2 → 1.5, and the honk is heard `callR` tiles off (it was `seeR`).
-    goose: { r: 12, speed: 200 * SLOW, hurry: 1.35, seeR: 12, honkGap: 1.5, balkStun: 0.5,
+    // 7 Oct 2026 playtest: "the goose's cry does not stun enemies, at least in the first version, when you only meet it;
+    // now it cries all the time and stuns them": `balks` false, the honk is the alarm only (the room turns on you). A
+    // later gift of the goose (its quest, a heaven reward) can turn it back on; `balkStun` and the code stay.
+    goose: { r: 12, speed: 200 * SLOW, hurry: 1.35, seeR: 12, honkGap: 1.5, balks: false, balkStun: 0.5,
       // A windup in its sight is honked at on the spot, the alarm's `honkGap` aside; `blowGap` is
       // only the breath between two such honks.
       blowGap: 0.35, lead: 10, callR: 16,
@@ -1511,6 +1555,10 @@ const TUNING = {
     // Its health over its head (6 Oct 2026 playtest, "just in case"; `Beast.drawHealth`): a pip a heart, `pip`
     // world px square, `gap` apart, `up` px over its feet (`upOf` for the tall ones), `near` tiles from the goat
     // or hurt or doped to show; the tortoise's are iron (its shell, only fire gets through).
+    // THE FAREWELL (7 Oct 2026 playtest, "when a companion dies, show it clearly, it is an important event"): when an
+    // escort dies or is left behind (`Beast.farewell`) the world slows `slow` s, stops `stop` s, `wisps` pale cells
+    // rise off the spot and a plate stays over the top of the screen `life` s, in over `in` and out over `out`.
+    farewell: { life: 3.4, in: 0.3, out: 0.7, slow: 0.8, stop: 0.12, wisps: 14 },
     health: { pip: 3, gap: 1, up: 30, upOf: { horse: 52, pig: 34, husky: 34, fish: 30 }, near: 9, row: 10,
       colors: { full: '#d2443a', empty: 'rgba(40,24,28,0.75)', shell: '#a3abb5', rim: '#120c10', poison: '#9fd84a' } },
     // Getting out of reach: the hen runs `shySpeed` × her follow speed and the crow flies `shyFly` ×
@@ -1855,6 +1903,13 @@ const TUNING = {
     // The plain, non-directional half of a hit taken: the corners of the screen redden and fade
     // over `life` seconds. `alpha` is how dark it gets at its darkest corner.
     hurtVignette: { life: 1.0, alpha: 0.32 },
+    // A HEART LOST, made impossible to miss (7 Oct 2026 playtest: "an even clearer animation of taking damage, so I
+    // register it"). On the goat (`hurtLook`): he is a white silhouette for the first `white` s of `life`, then a
+    // red one blinking `blink` times a second, and a slash of `len` px of red cells goes across him along the blow
+    // (`Game.hurtBurst`). In the HUD (`heartBreak`): the lost heart swells white, splits and its halves fall away, `bits`
+    // cells of blood thrown off it, over `life` s.
+    hurtLook: { life: 0.55, white: 0.11, blink: 22, len: 46, slash: 0.3 },
+    heartBreak: { life: 0.9, swell: 1.8, split: 0.14, drift: 16, fall: 40, bits: 9 },
     // The JUICE tab's own additions (see js/juice.js for where each one comes from).
     // `hitFlash`: seconds a man the horns land on is painted solid white, the frame that says
     // "that connected" before the fling has moved him a pixel.
@@ -2018,8 +2073,8 @@ const TUNING = {
   // over it, and a word that E rolls over a drop too"; "and as a pattern, especially with rifles or the
   // butcher on the far side"). A band of drop one tile across, wall to wall, between the way in and the way
   // out (`carveChasm`, gen.js): the roll carries him over it (`Goat.update`), nobody else crosses (an animal
-  // hops it, `Beast.hopGap`). A floor with `chasmLesson` (THE CAVE) cuts one in its first ordinary room from
-  // `minRoom` that takes it and writes the roll on its floor; from floor index `from` a floor cuts one more at
+  // hops it, `Beast.hopGap`). A floor with `chasmLesson` (THE YARD since 7 Oct 2026, THE CAVE before) cuts one in its first
+  // ordinary room from `minRoom` that takes it, empties that room of men, and writes the roll on its floor; from floor index `from` a floor cuts one more at
   // `chance`, a room with a rifle or the butcher in it first, and stands those men on the far side (`farKinds`).
   // `margin`: tiles kept between it and either doorway; `lane`: rows of floor two tiles out on both sides
   // where he can run up and land; `clear`: tiles nothing stands from it.
@@ -2214,9 +2269,18 @@ const TUNING = {
   // out goes back to stone under a veil of dark and the room goes black (`game.updateClamps`). The
   // room he has just come out of stays open, that is the one you can still step back into. `slam`
   // is a third of how long the dark takes to come down, `hear` how many tiles off it is heard.
-  // `say`: s the first clamp's NO WAY BACK rides over him (once a browser). `cell`: world px a texel of the veil
-  // in the mouth (`Renderer.drawVeil`, pixels since 6 Oct 2026).
-  clamp: { slam: 0.35, hear: 14, say: 4.5, cell: 3 },
+  // `say`: s the first clamp's NO WAY BACK rides over him (once a browser; unused since 7 Oct 2026, the words are on
+  // the floor by the shut door now: `readR` tiles and `readFor` s of standing near them and they are read, gone for
+  // good). `cell`: world px a texel of the veil in the mouth (`Renderer.drawVeil`, pixels since 6 Oct 2026).
+  clamp: { slam: 0.35, hear: 14, say: 4.5, cell: 3, readR: 5, readFor: 2.2 },
+  // PERMADEATH (7 Oct 2026, "if you die, you die; what is in heaven and what you unlocked stay"): a death ends the run,
+  // heaven's edge (and the death card's RUN AGAIN) starts a new one from THE ALTAR (`Game.beginRun`, `Game.permadeath`).
+  // Never a LEVELS practice or THE SHOWROOM. False brings back the old way: the same floor, built again.
+  permadeath: true,
+  // THICK FLOORS (7 Oct 2026 playtest): a goat who has never died, never been up to heaven, meets `mul` × the men on the
+  // floor at index `from` (the third) and `mul2` × from `from2` (the fourth) on: it is how a first run is made to die
+  // soon enough to find heaven and the gathering. Off for good after his first visit (`Game.crowdFor`, `opts.crowd`).
+  thick: { from: 2, mul: 1.5, from2: 3, mul2: 2 },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
   // A beat of thought the moment the pen gives: not a caption, a small comic-panel bubble over his
@@ -2355,6 +2419,10 @@ const TUNING = {
     // lifting it) was tried on 1 Oct 2026 and taken out the same day, "out of a fight it is just
     // stretched; it should be simpler by count, not by stretching". Calm is `layers.calm`'s job.
     bpm: 118,
+    // THE TITLE (7 Oct 2026 playtest): its own tune that begins as calm as the score gets and builds over `build` s of
+    // standing on the screen, the tempo from `bpm[0]` to `bpm[1]` along `curve` (above 1, slow at first); the parts
+    // come in at `gallopAt`, `kickAt`, `pluckAt`, `rimAt`, `octaveAt` of the build. `pad` and `tune` are its levels.
+    title: { build: 80, bpm: [74, 118], curve: 1.5, pad: 0.03, tune: 0.075, gallopAt: 0.45, kickAt: 0.55, pluckAt: 0.65, rimAt: 0.8, octaveAt: 0.7 },
     // The score's low-pass (`GameAudio.scoreTone`): `open` Hz as a rule, `heart` on the last heart (the
     // music under water; `glide` s to get there), and a dip to `hurt` Hz on every heart lost, back up
     // over `back` s. The effects are not in it: the blow itself stays sharp.
@@ -2478,7 +2546,8 @@ const TUNING = {
   // cells where it lands (`killR`) come up; while it falls that ring fills.
   // `nearDoor`: the ring within that many columns of a way in or out; `byDoor`: the cleat within that many
   // of one (2 Oct 2026 playtest, the rope runs across the room); `reach`: columns between them at most.
-  chandelier: { chance: 0.3, perLevel: 2, fromWall: 4, nearDoor: 5, byDoor: 2, reach: 9, z: 64, texel: 2, gravity: 1500, killR: 34, fireR: 1, fireFor: 3.6, sway: 0.05,
+  // `cleatIn` (7 Oct 2026): the share of chandeliers whose cleat is by the way in (the rest by the way out).
+  chandelier: { chance: 0.3, perLevel: 2, fromWall: 4, nearDoor: 5, byDoor: 2, cleatIn: 0.8, reach: 9, z: 64, texel: 2, gravity: 1500, killR: 34, fireR: 1, fireFor: 3.6, sway: 0.05,
     look: { ring: 1.5, fade: 0.32, rope: 0.8, ropeA: 0.4, warnR: 2.6 * TILE } },
   // The dev drawer's tool pages are drawn `uiScale` × the HUD's text scale, and no text on them is
   // smaller than `minText` CSS px (30 Sep 2026: "the fonts in the dev tools are tiny everywhere,
@@ -2624,7 +2693,8 @@ const TUNING = {
     // one button on the screen"): the floor again at once, past heaven, offered `quick` s after the blow,
     // beside ASCEND; Backspace (the pad's BACK) presses it. RESTART comes first (`quick`), ASCEND once the
     // pull-back is done; and only ASCEND while heaven has something new (`Heaven.news`, 5 Oct 2026).
-    death: { at: 0.6, fade: 0.9, h: 0.56, top: 0.07, quick: 0.5 },   // top 0.2 until DIED left the top (30 Sep 2026)
+    // `oneRow` 7 Oct 2026 ("at death show it in one line too"): the floor he died on is one strip up to this wide against its height.
+    death: { at: 0.6, fade: 0.9, h: 0.56, top: 0.07, quick: 0.5, oneRow: 14 },   // top 0.2 until DIED left the top (30 Sep 2026)
   },
 };
 
@@ -3253,6 +3323,13 @@ const MIRROR = [
   { id: 'second', name: 'SECOND CHANCE', costs: [250], souls: [3], needs: 'quest', params: { hearts: TUNING.heaven.second.hearts },
     tell: (p) => `Once a floor, you come back where you died, with ${sayWord(p.hearts)} hearts.`,
     apply: (m, p) => { m.secondChance = p.hearts; } },
+  // HELLDIVE / SUPER HELLDIVE (7 Oct 2026, the user: one an upgrade of the other): not a life of its own, the shape of
+  // every revive he has (SECOND CHANCE, ONE MORE LIFE; `needs: 'revive'`, `Heaven.shelf`). The beam lifts him out of the
+  // picture, he steers his fall and lands like a shell (`Motes.updateDive`, `TUNING.heaven.dive`). `names` per rank.
+  { id: 'helldive', name: 'HELLDIVE', names: ['HELLDIVE', 'SUPER HELLDIVE'], costs: [150, 320], souls: [1, 4], needs: 'revive', params: { hurt: TUNING.heaven.dive.hurt, stun: TUNING.heaven.dive.stun },
+    tell: (p, r) => r > 1 ? 'You come back crashing down where you steer. It hurts all near and stuns the whole room.'
+      : 'You come back crashing down where you steer. It hurts who you land on, stuns those near.',
+    apply: (m, p, r) => { m.helldive = r; } },
 ];
 
 // THE TALISMANS (`ARTIFACTS`). What the mouse sells, worn on the collar at his neck, up to
@@ -3766,6 +3843,10 @@ const LEVELS = [
     // SPACE - BAAH on the floor of its first room with a crowd in it (30 Sep 2026, "write the space
     // lesson somewhere from the second floor"): the voice is the one verb THE ALTAR never names.
     teachScream: true,
+    // The first drop cut across a room, with the roll written on its floor (`TUNING.chasm`, 6 Oct 2026), in an empty
+    // room. Here since 7 Oct 2026 (it was THE CAVE's: "not in the cave; an empty room where I can try the roll the first
+    // time"), so a building's plain floor teaches it a floor before the cave's own drops.
+    chasmLesson: true,
     // The mage brings fire; the rooms already have it. Coals, straw and ovens, so the thing the Seer
     // does to the floor is a thing you have been doing to the floor yourself since the second room.
     canon: { id: 'fire', name: 'FIRE', idea: 'Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself.' },
@@ -3852,8 +3933,7 @@ const LEVELS = [
     // A floor whose one idea is the shape of the room is where a thing you throw down to make a
     // shape belongs. The hen too, as a second choice for the run's deal (`Beast.deal`).
     beasts: ['tortoise', 'chicken', 'pig', 'husky', 'rabbit'],
-    // The first drop cut across a room, with the roll written on its floor (`TUNING.chasm`, 6 Oct 2026).
-    chasmLesson: true,
+    // (The drop's lesson was taught here until 7 Oct 2026; THE YARD teaches it now, in an empty room.)
     encounters: {
       kinds: ['bearer', 'champion', 'dog', 'seer'],
       // The shaman is met here, with two clubmen for his spirit to go into (`ENCOUNTER.introWith`).
@@ -4095,7 +4175,6 @@ const BEAST_HELLO = {
   tortoise: ['...?', 'I AM SLOW. CARRY ME IN YOUR TEETH, OR THROW ME AT THEM. MY SHELL TAKES ONE BLOW FOR YOU.',
     'BRING ME OUT, AND ON EVERY FLOOR AFTER YOU WILL WEAR A SHELL OF YOUR OWN.'],
   goose: ['HONK-HONK!', "I RUN AHEAD AND TELL THEM ALL WHERE YOU ARE. WE'RE HERE TO KICK THEIR ASS!!!",
-    'AND MY HONK KNOCKS A SWING RIGHT OUT OF THEIR HANDS.',
     "GET ME UP THE STAIRS AND I'LL TEACH YOU TO SHOUT. LOUDER, AND MORE OFTEN."],
   crow: ['CAW.', 'I DO NOT FOLLOW YOU. I FOLLOW THE ROAD OF BODIES.',
     "KEEP ME FED ALL THE WAY TO THE STAIRS, AND I'LL BRING YOU SOMETHING SHINY."],

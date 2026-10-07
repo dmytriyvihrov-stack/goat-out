@@ -916,7 +916,7 @@ class PaintedArt extends AltarArt {
     const lp=g.leap,hop=lp?Math.sin(clamp(lp.t/lp.time,0,1)*Math.PI)*lp.h
       :fid&&fid.kind==='hop'&&fk>0.2&&fk<0.8?Math.sin((fk-0.2)/0.6*Math.PI)*I.hop.h:0;
     // Coming down out of heaven his shadow grows under him as he nears the floor (`Heaven.dropShadow`).
-    const dropK=game&&(game.dropIn||(game.heaven&&game.heaven.jump))&&typeof Heaven!=='undefined'?Heaven.dropShadow(game):1;
+    const dropK=game&&game.revive&&game.revive.dive&&typeof Motes!=='undefined'?Motes.diveShadow(game):game&&(game.dropIn||(game.heaven&&game.heaven.jump))&&typeof Heaven!=='undefined'?Heaven.dropShadow(game):1;
     const sh=Math.max(0.2,1-hop*0.03)*dropK;   // a leap higher than ~26 px would hand `ellipse` a negative radius
     if(g.state!=='carried'&&sh>0.01)renderer.shadow(g.x,g.y,16*sh,7*sh);   // over the thrower's head he has no floor under him
     ctx.save();ctx.translate(g.x,g.y);ctx.scale(1,1/TILT);
@@ -939,7 +939,8 @@ class PaintedArt extends AltarArt {
     const fx=game.stairFx,climb=fx?clamp(fx.dir>0?fx.t:1-fx.t,0,1):0;
     if(climb>0){ctx.translate(0,-TUNING.stairs.rise*climb);ctx.scale(1-0.22*climb,1-0.22*climb);ctx.globalAlpha=1-climb*0.55;}
     // Heaven's own moments (js/heaven.js): out of the light, over the edge, down onto a floor.
-    const hv=typeof Heaven!=='undefined'&&(game.heaven||game.dropIn)?Heaven.goatLook(game):null;
+    // HELLDIVE's lift and fall (js/motes.js) the same way.
+    const hv=game.revive&&game.revive.dive&&typeof Motes!=='undefined'?Motes.diveLook(game):typeof Heaven!=='undefined'&&(game.heaven||game.dropIn)?Heaven.goatLook(game):null;
     if(hv){ctx.translate(0,hv.dy);if(hv.sy)ctx.scale(1/Math.sqrt(hv.sy),hv.sy);if(hv.spin)ctx.rotate(hv.spin);ctx.scale(hv.s*(hv.sx||1),hv.s);ctx.globalAlpha*=hv.a;}
     // Over the thrower's head on his back, legs up; and turning over in the air from his throw (js/thrower.js).
     if(g.state==='carried'){ctx.translate(0,-26);ctx.scale(1,-1);ctx.rotate(Math.sin(renderer.t*9)*0.08);}
@@ -969,6 +970,12 @@ class PaintedArt extends AltarArt {
     try{
       this.hornMods=game.mods;this.capeId=game.cape&&game.cape.id;this.character(renderer,g,'sheep',40);
       // The blood is in his wool; the collar is over it, since a talisman has to read at any health.
+      // A blow taken (`hurtLook`): the same goat again as a white silhouette, then a red one that blinks.
+      if(g.hurtT>0){const H=TUNING.juice.hurtLook,k=clamp(g.hurtT/H.life,0,1);
+        ctx.save();
+        if(g.hurtT>H.life-H.white){ctx.globalAlpha*=0.92;ctx.filter='brightness(0) invert(1)';}
+        else{ctx.globalAlpha*=0.78*Math.min(1,k*3)*(Math.floor(renderer.t*H.blink)%2?1:0.35);ctx.filter='brightness(0) invert(0.4) sepia(1) saturate(40) hue-rotate(-20deg) brightness(0.85)';}   // a flat blood red (~217,50,48), whatever his wool
+        this.character(renderer,g,'sheep',40);ctx.restore();}
       if(g.maxHp-g.hp>0)this.wounds(renderer,g,g.maxHp-g.hp);
       if(g.armour>0)this.armour(renderer,g);
       if((game.artifacts||[]).length)this.collar(renderer,g,game.artifacts);

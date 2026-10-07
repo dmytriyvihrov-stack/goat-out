@@ -121,7 +121,10 @@ const HORSE_PIXELS = (() => {
     { fn: [-3, 5], ff: [0, 3], hn: [-1, 0], hf: [1, 1], by: 0, head: 0, tail: 2 },
   ];
   const KICK = { fn: [-1, 0], ff: [1.5, 0], hn: [11, 8], hf: [9, 10], by: 0, head: 'kick', tail: 3 };
-  const NECK = { 0: [9, 7.5, 2.3], 1: [8, 8.5, 2.12], '-1': [9.5, 7, 2.38], kick: [7.5, 15, 1.75] };
+  const NECK = { 0: [9, 7.5, 2.3], 1: [8, 8.5, 2.12], '-1': [9.5, 7, 2.38], kick: [7.5, 15, 1.75], eat0: [8.5, 29.2, 1.8], eat1: [8.3, 29.6, 1.7] };
+  // Grazing (7 Oct 2026, heaven's paddock): standing square, the neck down and the muzzle in the grass, two frames of
+  // the jaw working (`eat0`, `eat1`).
+  const EAT = [Object.assign({}, GAIT[0], { head: 'eat0' }), Object.assign({}, GAIT[0], { head: 'eat1' })];
   const TAIL = [
     [[38, 15, 1.6], [40.5, 19, 2.1], [40.8, 27, 1.8], [40.2, 31, 1.1]],
     [[38, 15, 1.6], [42, 15.5, 2.1], [46, 18, 1.6], [48.5, 21, 1]],
@@ -133,7 +136,7 @@ const HORSE_PIXELS = (() => {
   // the camera (the body foreshortened, the rump further off and so higher up the grid, the far legs
   // showing left of the near ones), `turn` -1 swings it away (the rump nearest, the face gone).
   function side(o, turn) {
-    const g = new Grid(W, H), kick = o.pose === 'kick', f = kick ? KICK : GAIT[o.frame], run = kick || o.frame > 0;
+    const g = new Grid(W, H), kick = o.pose === 'kick', eat = o.pose === 'eat', f = kick ? KICK : eat ? EAT[o.frame & 1] : GAIT[o.frame], run = kick || (!eat && o.frame > 0);
     const cx = 25, sx = turn ? 0.74 : 1, slope = turn * -0.08, tilt = kick ? -0.28 : 0;
     const X = (x) => cx + (x - cx) * sx;
     const Yb = (y, x) => y + f.by + (x - cx) * (slope + tilt);
@@ -179,7 +182,7 @@ const HORSE_PIXELS = (() => {
   // Head on: the long face coming at the camera between the ears, the chest, the fores in front and
   // the hinds behind them. Trotting, a diagonal pair lifts. The kick rears: fores folded, body up.
   function front(o) {
-    const g = new Grid(W, H), cx = 25, s = o.frame === 1 ? 1 : o.frame === 2 ? -1 : 0, rear = o.pose === 'kick';
+    const eat = o.pose === 'eat', g = new Grid(W, H), cx = 25, s = eat ? 0 : o.frame === 1 ? 1 : o.frame === 2 ? -1 : 0, rear = o.pose === 'kick';
     const by = rear ? -3 : s ? -1 : 0;
     for (const k of [-1, 1]) post(g, cx + k * 5, 24 + by, 30 + by / 2, s === -k ? 2 : 0, { far: true, r0: 2.2 });
     ball(g, cx, 19.5 + by, 8.5, 5.5, DIM);                         // the barrel behind the chest
@@ -192,8 +195,10 @@ const HORSE_PIXELS = (() => {
       }
       else post(g, cx + k * 4, 25 + by, 31 + by / 2, s === k ? 3 : 0, { r0: 2.2 });
     }
-    const hy = by + (rear ? 3 : 1);   // whole rows: the face is painted over what is drawn
-    cap(g, cx, 18 + hy, cx, 11 + hy, 5, 4, HIDE);                  // the neck
+    // whole rows: the face is painted over what is drawn; grazing, it hangs down between the fores to the grass
+    const hy = by + (rear ? 3 : eat ? 18 + (o.frame & 1) : 1);
+    if (eat) cap(g, cx, 17 + by, cx, 9 + hy, 5, 4, HIDE);          // the neck, bowed toward the camera
+    else cap(g, cx, 18 + hy, cx, 11 + hy, 5, 4, HIDE);             // the neck
     cap(g, cx - 3.4, 3.2 + hy, cx - 4.2, 0.4 + hy, 1.15, 0.5, HIDE); cap(g, cx + 3.4, 3.2 + hy, cx + 4.2, 0.4 + hy, 1.15, 0.5, HIDE);
     ball(g, cx, 6.5 + hy, 4.2, 3.6, HIDE);                          // the brow
     cap(g, cx, 7 + hy, cx, 13.5 + hy, 3.6, 2.6, HIDE);              // the face
@@ -213,8 +218,8 @@ const HORSE_PIXELS = (() => {
   // From behind: the quarters and the tail down between them, the hinds planted either side, the
   // neck and ears over the top with the mane down it. The kick throws both heels up at the camera.
   function back(o) {
-    const g = new Grid(W, H), cx = 25, s = o.frame === 1 ? 1 : o.frame === 2 ? -1 : 0, kick = o.pose === 'kick';
-    const by = s ? -1 : 0, rb = kick ? -3 : by, hb = (kick ? 4 : by) + 1;
+    const eat = o.pose === 'eat', g = new Grid(W, H), cx = 25, s = eat ? 0 : o.frame === 1 ? 1 : o.frame === 2 ? -1 : 0, kick = o.pose === 'kick';
+    const by = s ? -1 : 0, rb = kick ? -3 : by, hb = (kick ? 4 : by) + 1 + (eat ? 8 : 0);   // grazing, the head is down behind the barrel
     for (const k of [-1, 1]) post(g, cx + k * 3.5, 24 + by, 30 + by / 2, s === -k ? 2 : 0, { far: true, r0: 2 });
     cap(g, cx, 18 + hb, cx, 10 + hb, 5, 3.8, HIDE);                // the neck
     cap(g, cx - 3.2, 5 + hb, cx - 4.2, 1.8 + hb, 1.15, 0.5, HIDE); cap(g, cx + 3.2, 5 + hb, cx + 4.2, 1.8 + hb, 1.15, 0.5, HIDE);
@@ -245,7 +250,7 @@ const HORSE_PIXELS = (() => {
   const FRAMES = { front: 2, side: 4, back: 2 };
   const cache = new Map();
   function sprite(d, pose, frame) {
-    pose = pose === 'kick' ? 'kick' : 'idle'; frame = pose === 'kick' ? 0 : frame | 0;
+    pose = pose === 'kick' || pose === 'eat' ? pose : 'idle'; frame = pose === 'kick' ? 0 : pose === 'eat' ? frame & 1 : frame | 0;
     const key = d + pose + frame; let v = cache.get(key); if (v) return v;
     const [kind, turn, flip] = VIEWS[d], o = { pose, frame };
     const g = finish(kind === 'front' ? front(o) : kind === 'back' ? back(o) : side(o, turn));
@@ -256,6 +261,7 @@ const HORSE_PIXELS = (() => {
   const GALLOP = 8, TROT = 6;
   const facing = (angle) => (Math.round(angle / (Math.PI / 4)) + 14) % 8;
   const frameAt = (d, moving, t, pose) => {
+    if (pose === 'eat') return Math.floor(Math.max(0, t) * 2.5) % 2;   // the jaw, standing
     if (pose === 'kick' || !moving) return 0;
     const kind = VIEWS[d][0], n = FRAMES[kind];
     return 1 + Math.floor(Math.max(0, t) * (kind === 'side' ? GALLOP : TROT)) % n;

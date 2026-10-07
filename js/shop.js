@@ -59,9 +59,10 @@ const Shop = {
         if (pool.length) p.ware = { id: pool[Math.floor(h * pool.length)].id, cape: true };
         return;
       }
-      if (!Shop.worn(game, w.id)) return;
+      // Off the shelf too: a talisman an animal's dare has not paid for yet (js/heaven-home.js `talismanLocked`).
+      if (!Shop.worn(game, w.id) && !Heaven.talismanLocked(w.id)) return;
       const tagOf = (id) => (Shop.def(id) || {}).tag;
-      const pool = ARTIFACTS.filter((a) => !Shop.worn(game, a.id) && !shelf.some((o) => !o.ware.cape && (o.ware.id === a.id || (a.tag && tagOf(o.ware.id) === a.tag))));
+      const pool = ARTIFACTS.filter((a) => !Shop.worn(game, a.id) && !Heaven.talismanLocked(a.id) && !shelf.some((o) => !o.ware.cape && (o.ware.id === a.id || (a.tag && tagOf(o.ware.id) === a.tag))));
       if (pool.length) { const a = pool[Math.floor(h * pool.length)]; p.ware = { id: a.id, tier: Math.min(w.tier || 1, a.tiers.length) }; }
     });
     Shop.freshen(game, wares, seed);
@@ -76,7 +77,7 @@ const Shop = {
       const shelf = wares.filter((p) => p.shopId === id), arts = shelf.filter((p) => !p.ware.cape);
       if (!arts.length || arts.some((p) => !seen[p.ware.id])) continue;
       const p = arts[Math.floor(farHash(seed % 7919, id | 0) * arts.length)], rest = shelf.filter((o) => o !== p && !o.ware.cape);
-      const pool = ARTIFACTS.filter((a) => !seen[a.id] && !Shop.worn(game, a.id) && !rest.some((o) => o.ware.id === a.id || (a.tag && tagOf(o.ware.id) === a.tag)));
+      const pool = ARTIFACTS.filter((a) => !seen[a.id] && !Shop.worn(game, a.id) && !Heaven.talismanLocked(a.id) && !rest.some((o) => o.ware.id === a.id || (a.tag && tagOf(o.ware.id) === a.tag)));
       if (!pool.length) continue;
       const a = pool[Math.floor(farHash(id | 0, seed % 104729) * pool.length)];
       p.ware = { id: a.id, tier: Math.min(p.ware.tier || 1, a.tiers.length), fresh: true };

@@ -164,7 +164,9 @@ function showroomLevel(def, seed) {
       // and big grass behind bars only a key opens, and two keys to try them with.
       put('coop', x + 6, y + 7, { holds: 'goose', beastRoom: 0, ironCage: true }); label('IRON COOP', x + 6, y + 8.4, 5);
       put('ironcage', x + 11, y + 7); label('IRON · GRASS', x + 11, y + 8.4, 5);
-      put('key', x + 15, y + 7); put('key', x + 16, y + 7); label('KEYS', x + 15.5, y + 8.4, 4); },
+      put('key', x + 15, y + 7); put('key', x + 16, y + 7); label('KEYS', x + 15.5, y + 8.4, 4);
+      // A boss's bell for the old man (7 Oct 2026, `Game.dropBell`): GRAB takes it (here it counts for nothing).
+      put('lostbell', x + 19, y + 12, { note: 6 }); label('A BOSS BELL', x + 19, y + 13.4, 5); },
     // THE CAVE, the hollow: grass, boulders, teeth at the wall, the mushrooms, and THE CHASM across its far
     // end with the roll written before it (6 Oct 2026, `carveChasm` in gen.js; an animal hops it).
     (x, y) => { for (let dx = 2; dx < 9; dx++) for (let dy = 8; dy < 12; dy++) grass.push(at(x + dx, y + dy));

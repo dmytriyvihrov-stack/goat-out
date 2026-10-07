@@ -5,6 +5,24 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 2.02, published 7 Oct 2026
+
+- **THE ANIMALS' HOME**: heaven is three rooms (the throne, the stalls, the edge); stands open, broken or locked; souls poured
+  into the mirror, the overlook and a broken stand; the tortoise's, goose's and horse's dares, won animals living up there,
+  the horse in its paddock (now grazing, head down, and the fence wall to wall); horns picked before the jump; the old man's
+  bells carried by the last boss of a floor.
+- **PERMADEATH** and **ONE MORE LIFE** after the first visit to heaven. **A floor put aside**: quitting to the title or
+  closing the tab is no longer a death; CONTINUE lays the same floor and stands him where he was, the men he killed dead,
+  what he spent spent (`Game.spotOf` / `enterAtSpot`).
+- **HELLDIVE / SUPER HELLDIVE** in the mirror: a revive lifts him out of the picture, he steers a heavy mark and crashes down
+  on it (rank 1: hurts who he lands on, dazes within three tiles; rank 2: hurts within two, dazes the whole room). TRY IT HERE
+  in the dev drawer's HEAVEN tab (both ranks, a bell at his feet, a boss carrying a bell).
+- Two reviews' fixes: heaven's horns no longer switched the souls' fire and the cape back on, an old rabbit dare no longer
+  forces stealth, the hen and the horse wait for a quiet room before their terms, a dropped bell is the next one, a flying
+  goose no longer blocks, free animals walk between heaven's rooms and never shove him, LEVELS practice wins no dare,
+  THICK FLOORS end at the first death however the card is left, the farewell plate is not drawn over the pause.
+- The smoke bot: every floor, THE DARK and THE TRIP, two seeds each, 20 of 20 OK.
+
 ## 2.01, published 7 Oct 2026
 
 Everything under the next sections that says "not yet published" (capes and two grades of talisman, THE CHASE, the deeper secrets, the shaman, the ten notes from his uncle, THE FLANK, the three horns and the review's fixes) went out together as 2.01.

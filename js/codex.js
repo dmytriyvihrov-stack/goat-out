@@ -258,7 +258,7 @@ const Codex = {
     if (e.kind === 'cape') { const c = Cape.def(e.cape.id); return { name: c.name, tag: 'CAPE · ' + keysOf(game).item, color: CAPE_RARITY.color, text: c.desc }; }
     if (e.kind === 'beast') return { name: 'THE ' + Beast.NAME[e.k] + (e.n > 1 ? ' ×' + e.n : ''), tag: 'ANIMAL · BROUGHT OUT', color: PALETTE.hen || PALETTE.bone, text: Beast.GIVES[e.k]() };
     const u = e.u;
-    return { name: u.name + ' ' + 'I'.repeat(e.r), tag: 'FROM THE MIRROR · FOR GOOD', color: '#f7d774', text: u.tell(u.params, e.r) };
+    return { name: u.names ? Heaven.rankName(u, e.r) : u.name + ' ' + 'I'.repeat(e.r), tag: 'FROM THE MIRROR · FOR GOOD', color: '#f7d774', text: u.tell(u.params, e.r) };
   },
   // The picture of an entry, centred at (cx, cy) in a box `h` px across: the very picture the game
   // offered it with (2 Oct 2026, playtest: "show exactly what the card and the shelf showed"). A soul

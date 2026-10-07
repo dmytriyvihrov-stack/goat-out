@@ -64,6 +64,17 @@ const THEME_BED = {
       [112,-5,4],[118,-4,2],[120,1,3],[124,-5,4]],
     bass: [[0,0,2.5,0.16],[8,0,1.2,0.07],[11,7,1.4,0.09]] },
 };
+// THE TITLE'S OWN TUNE (7 Oct 2026 playtest: "a slightly different melody for the opening screen, so that it starts much
+// calmer and picks up speed"). The same mode as the compound's (phrygian on A, its four roots) but its own phrase:
+// eight bars of long falling lines, [sixteenth of the 128, semitones above A4, length in sixteenths]. Played by
+// `playTitleStep`, which adds a part every so often as the screen is stayed on (`TUNING.audio.title`) and winds the
+// tempo up from a lullaby to the score's own.
+const TITLE_TUNE = {
+  bars: 8,
+  melody: [[0,0,6],[6,1,2],[8,0,8], [16,-2,6],[22,-5,2],[24,-2,8], [32,0,4],[36,3,4],[40,1,6],[46,0,2], [48,-2,8],[56,-5,8],
+    [64,3,6],[70,5,2],[72,3,8], [80,1,6],[86,0,2],[88,-2,8], [96,0,4],[100,5,4],[104,3,4],[108,1,4], [112,0,6],[118,-2,2],[120,-5,8]],
+  bass: [[0,0,3,0.24],[3,0,1.5,0.12],[6,7,2,0.16],[8,0,2.5,0.2],[11,0,1.5,0.12],[14,10,2,0.14]],
+};
 // [sixteenth, semitones above root, octave multiplier, duration in sixteenths].
 // These small authored phrases replace the room score briefly; they never fight its harmony.
 const MUSIC_CUES = {
@@ -547,6 +558,15 @@ class GameAudio {
       this.setScoreTone(this.scene.lastHeart);
       return;
     }
+    // THE TITLE's tune builds the longer he stays on the screen, and its tempo with it (`playTitleStep`); counted only
+    // while the audio is running, so a screen left open before the first click does not arrive half built.
+    this.titleOn = game.state === 'title' && this.layered;
+    if (this.titleOn) {
+      const T = TUNING.audio.title;
+      if (this.ctx && this.ctx.state === 'running' && !this.muted) this.titleT = (this.titleT || 0) + dt;
+      this.titleBuild = clamp((this.titleT || 0) / T.build, 0, 1);
+      this.bpm = T.bpm[0] + (T.bpm[1] - T.bpm[0]) * Math.pow(this.titleBuild, T.curve);
+    } else if (this.titleT !== undefined) { this.titleT = 0; this.titleBuild = 0; this.bpm = TUNING.audio.bpm; }
     const special = this.cue?.kind || this.terminalCue;
     if (special) {
       const allowed = special === 'death' ? ['dead'] : special === 'clear' ? ['clear','win'] : ['play','boon','paused'];
@@ -752,11 +772,36 @@ class GameAudio {
       if (this.preview && !this.preview.playing) return;
       // Above the clouds (js/heaven.js) there is no fight to score: heaven's own harp instead.
       if (this.heavenMusic && !this.preview) { if (!this.muted) this.playHeavenStep(s, t, stepLen); return; }
+      if (this.titleOn && !this.preview && !this.cue && (this.layered)) { if (!this.muted) this.playTitleStep(s, t, stepLen); return; }
       if ((this.layered || this.preview) && this.cue) { this.playCueStep(t, stepLen); return; }
       if ((this.layered || this.preview) && this.terminalCue) return;
       if (this.layered || this.preview) this.playLayeredStep(s, t, stepLen);
       else if (!this.muted) this.playLegacyStep(s % 64, t, stepLen);
     } finally { this.scoring = false; this.musicTick++; }
+  }
+  // THE TITLE: one slow tune that builds. `titleBuild` 0..1 is how long he has stayed on the screen against
+  // `audio.title.build` s: the pad and the flute alone to begin with, the bass one long note a bar, then the
+  // frame drum, the gallop, the kick, a plucked counter-line, the rim, the flute's octave. The tempo climbs with it.
+  playTitleStep(s, t, stepLen) {
+    const T = TUNING.audio.title, b = this.titleBuild || 0, beat = s % 16, pos = s % (TITLE_TUNE.bars * 16);
+    const root = MUSIC.roots[(s >> 4) & 3], base = MUSIC.roots[0] * 8, ease = (a, z) => clamp((b - a) / (z - a), 0, 1);
+    if (beat === 0) this.pad(t, root * 2, stepLen * 16.4, T.pad * (0.7 + 0.5 * ease(0, 0.5)));
+    for (const [at, semi, len] of TITLE_TUNE.melody) if (at === pos) {
+      this.lead(t, base * Math.pow(2, semi / 12), stepLen * len * 0.97, T.tune * (0.75 + 0.25 * ease(0, 0.4)));
+      if (b > T.octaveAt) this.lead(t, base * 2 * Math.pow(2, semi / 12), stepLen * len * 0.7, T.tune * 0.3 * ease(T.octaveAt, 1));
+    }
+    // the bass: a single long root a bar to begin with, the folk gallop once the build is half done
+    if (b > 0.1) {
+      if (b < T.gallopAt) { if (beat === 0) this.bass(t, root, stepLen * 12, 0.18 * ease(0.1, 0.35)); }
+      else for (const [at, semi, length, gain] of TITLE_TUNE.bass) if (at === beat) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain * ease(T.gallopAt, T.gallopAt + 0.15));
+    }
+    if (b > 0.3 && [6, 14].includes(beat)) this.tomHi(t, 0.045 * ease(0.3, 0.6));
+    if (b > T.kickAt && (beat === 0 || beat === 8)) this.kick(t, 0.07 + 0.12 * ease(T.kickAt, 0.9));
+    if (b > T.pluckAt) {
+      const degree = STAGE_MOTIFS.early.chase[beat];
+      if (degree >= 0) this.pluck(t, root * 4 * Math.pow(2, MUSIC.scale[degree] / 12), stepLen * 1.6, 0.04 * ease(T.pluckAt, 0.95));
+    }
+    if (b > T.rimAt && [2, 6, 10, 14].includes(beat)) this.rim(t, 0.04 * ease(T.rimAt, 1));
   }
   // THE PASTURE ABOVE: a harp walking up and down a slow major progression (I, vi, IV, V, a bar
   // each) over a soft pad, and the choir of the ambience bed singing under it.

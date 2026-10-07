@@ -11,6 +11,7 @@
 const PAINT_GLYPHS = {
   skull: ['.###.', '#####', '#.#.#', '#####', '.#.#.'],
   head: ['#...#', '.#.#.', '.###.', '.###.', '..#..'],
+  wisp: ['..#..', '..##.', '.###.', '#####', '#.#.#', '#####', '.###.'],
 };
 
 const Painting = {
@@ -38,7 +39,9 @@ const Painting = {
     const l = game.level.tiles[i]; return l !== T.WALL ? l : T.WALL;
   },
 
-  bake(game) {
+  // `oneRow`: the widest one strip may be against its height before the floor is cut into rows. The death's own is
+  // wider (`painting.death.oneRow`, 7 Oct 2026: "at death show it in one line too").
+  bake(game, oneRow) {
     this.init();
     const P = TUNING.painting, lv = game.level, def = lv.def, W = lv.W, H = lv.H, px = P.px;
     const hidden = new Set();
@@ -70,7 +73,7 @@ const Painting = {
     // A short floor is shown whole, one strip (3 Oct 2026: "if the level is fairly short, show it all
     // on one screen"): cut only when one strip would be wider than `oneRow` times its height.
     for (let n = 1; n <= P.maxRows; n++) {
-      if (best && best.n === 1 && best.cw / best.ch <= P.oneRow) break;
+      if (best && best.n === 1 && best.cw / best.ch <= (oneRow || P.oneRow)) break;
       const cuts = cutsFor(n); let wMax = 0;
       for (let k = 0; k < n; k++) wMax = Math.max(wMax, cuts[k + 1] - cuts[k]);
       const cw = wMax + P.pad * 2, ch = n * rowsH + (n - 1) * P.gap + P.pad * 2;
@@ -245,11 +248,13 @@ const Painting = {
   // Under the road (6 Oct 2026 playtest): the bodies this floor left, a skull and a count, and the bell that woke up in
   // heaven for the floor, drawn as cells. Nothing when there is neither.
   drawTally(r, game, cx, y, t) {
-    const ctx = r.ctx, s = r.ts, kills = (game.killMarks || []).length, bell = !!game.bellWoke;
-    if (!kills && !bell) return;
+    const ctx = r.ctx, s = r.ts, kills = (game.killMarks || []).length, bell = !!game.bellWoke, gathered = game.floorSouls | 0;
+    if (!kills && !bell && !gathered) return;
     const a = clamp((t - TUNING.painting.reveal * 0.6) / 0.5, 0, 1); if (a <= 0) return;
     const cell = Math.max(2, Math.round(3 * s)), items = [];
+    // Two numbers (7 Oct 2026): the bodies and the white souls that came to him from them.
     if (kills) items.push({ g: PAINT_GLYPHS.skull, col: PALETTE.bone, text: kills + (kills === 1 ? ' KILL' : ' KILLS') });
+    if (gathered) items.push({ g: PAINT_GLYPHS.wisp, col: '#fff4c2', text: gathered + (gathered === 1 ? ' SOUL GATHERED' : ' SOULS GATHERED') });
     if (bell) items.push({ g: ['..xx..', '.xxxx.', '.xxxx.', 'xxxxxx', 'xxxxxx', '......', '..xx..'], col: '#f7d774', text: 'A BELL WAKES IN HEAVEN' });
     ctx.save(); ctx.globalAlpha *= a; ctx.font = `700 ${20 * s}px ${FONT}`;
     const gap = 36 * s, ws = items.map((it) => textW(ctx, it.text) + 8 * cell + 10 * s);
@@ -401,13 +406,15 @@ const Painting = {
     if (card.go) {
       const by = Math.min(y + Math.max(words.length * 22 * s, plate) + 4 * s, H - 36 * s - 38 * s);
       const qk = { key: keysOf(game).back, quiet: true }, news = game.deathNews && game.deathNews.length;
-      const ra = r.goButton(game, card.go, 0, by, { measure: true }), rq = game.showroomOn || news ? null : r.goButton(game, 'RESTART', 0, by, Object.assign({ measure: true }, qk));
+      // PERMADEATH: the quick way back is a new run (RUN AGAIN), not this floor again.
+      const quick = game.permadeath && game.permadeath() ? 'RUN AGAIN' : 'RESTART';
+      const ra = r.goButton(game, card.go, 0, by, { measure: true }), rq = game.showroomOn || news ? null : r.goButton(game, quick, 0, by, Object.assign({ measure: true }, qk));
       const gap = 16 * s, side = rq && ra.w + gap + rq.w <= W - 24 * s;
       const left = W / 2 - (side ? ra.w + gap + rq.w : ra.w) / 2;
       const since = TUNING.deathCam.delay + TUNING.deathCam.zoomTime - game.stateTimer;
       if (rq && since >= D.quick) {
         ctx.globalAlpha = clamp((since - D.quick) / 0.4, 0, 1);
-        this.quickRect = r.goButton(game, 'RESTART', side ? left + ra.w + gap + rq.w / 2 : W / 2, side ? by : Math.min(by + 44 * s, H - 40 * s), qk);
+        this.quickRect = r.goButton(game, quick, side ? left + ra.w + gap + rq.w / 2 : W / 2, side ? by : Math.min(by + 44 * s, H - 40 * s), qk);
       }
       if (game.stateTimer <= 0) { ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1); r.goButton(game, card.go, left + ra.w / 2, by); }
     }

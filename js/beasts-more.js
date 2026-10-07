@@ -215,13 +215,13 @@ Object.assign(Beast, {
     if (game.goat.holding === p) game.goat.holding = null;
     p.held = false; p.flying = false;
     game.audio.sfxTank && game.audio.sfxTank();
-    if (fell) { p.gone(game); Stats.beast(game, 'fish', 'dead'); game.floatText(p.x, p.y - 30, 'THE FISH IS GONE', PALETTE.blood); return; }
+    if (fell) { p.gone(game); Stats.beast(game, 'fish', 'dead'); return; }   // `gone` says it: the farewell plate
     p.broken = true; p.dead = true; Stats.beast(game, 'fish', 'dead');
     game.particles(p.x, p.y - 6, 18, '#8fcbd2', 220); game.particles(p.x, p.y, 10, '#e2f6f4', 160); game.particles(p.x, p.y, 4, '#ec7a22', 90);
     if (game.scatter) game.scatter.breakUp(['fish-shard', 'fish-shard', 'fish-shard', 'fish-body'], p.x, p.y, 10, ax || 0, ay || 0, 0.7);
     game.world.dot(p.x, p.y, 11, 'rgba(60,110,130,0.55)');
-    game.floatText(p.x, p.y - 30, 'THE FISH IS DEAD', PALETTE.blood);
-    game.shake(3); game.hitstop(0.04);
+    Beast.farewell(p, game, 'dead');
+    game.shake(3);
   },
   drawFish(R, p, k) {
     const ctx = R.ctx, T = 1.35 * (k || 1), held = p.held;

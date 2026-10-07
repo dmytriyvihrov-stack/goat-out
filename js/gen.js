@@ -75,11 +75,15 @@ function spawnKind(k) {
 }
 function threatKind(s) { return s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.shaman ? 'shaman' : s.kind; }
 
-function planEncounters(levelDef, rooms, rng) {
+// `crowd` (7 Oct 2026 playtest, `Game.crowdFor`): a thicker floor for a goat who has not died yet, ×1.5 on the third floor
+// and ×2 after it, "so that he reaches heaven and gets the gathering". It scales the ordinary rooms' budget and head
+// count only (an introduction stays alone, a boss keeps his escort); the generator's own promises are held to the
+// unscaled floor (`GEN_RULES.caps` and `crowd` step aside for `level.crowdMul`).
+function planEncounters(levelDef, rooms, rng, crowd = 1) {
   const E = levelDef.encounters;
   // A level may loosen a cap: the finale is allowed rooms the earlier ones are not.
   const caps = Object.assign({}, ENCOUNTER.cap, E.cap || {});
-  const capsOf = (room) => Object.assign({}, caps, { men: roomMenCap(caps.men, room.tpl) });
+  const capsOf = (room) => Object.assign({}, caps, { men: Math.ceil(roomMenCap(caps.men, room.tpl) * crowd) });
   const weight = E.weight ? Object.assign({}, ENCOUNTER.weight, E.weight) : null;
   const out = { rooms: new Map(), introRooms: new Set(), hunterFrom: -1, caps };
   const fight = rooms.filter((r) => r.index > 0);
@@ -201,7 +205,7 @@ function planEncounters(levelDef, rooms, rng) {
       out.rooms.set(room.index, { men: posts.concat(crowd), gallery: true });
       continue;
     }
-    const budget = curve * (easeOff ? ENCOUNTER.afterIntro : 1);
+    const budget = curve * (easeOff ? ENCOUNTER.afterIntro : 1) * crowd;
     out.rooms.set(room.index, { men: fillRoom(budget, mixable, rng, capsOf(room), 0, weight), threat: budget });
     easeOff = false; step++;
   }
@@ -790,7 +794,8 @@ function tryGenerate(levelDef, seed, opts) {
   }
 
   // Props from the template markers, and the men the plan asked for placed on whatever the room has.
-  const plan = planEncounters(levelDef, rooms, rng);
+  const crowdMul = (opts && opts.crowd > 1) ? opts.crowd : 1;
+  const plan = planEncounters(levelDef, rooms, rng, crowdMul);
   // A COMBO (`TUNING.combos`): now and then one room is dealt as a pairing worth meeting. Before the
   // clock doors and the spawns, so both read the room as it will be. Its own stream.
   const combo = dealCombo(levelDef, rooms, plan, seed, opts);
@@ -817,7 +822,17 @@ function tryGenerate(levelDef, seed, opts) {
     const ordered = rooms.filter(fits);
     if (levelDef.chasmLesson) {
       // The taught one: the first room that takes it, so it comes early and the floor says what to do.
-      for (const r of ordered) if (cut(r)) { chasms[chasms.length - 1].lesson = true; break; }
+      // An EMPTY room (7 Oct 2026 playtest: "it must be an empty room where I can try such a roll for the
+      // first time"): never one that introduces a kind, and its men are taken out of the plan and the room
+      // is calm from here on (`isCalm`, every placement below already skips it), so nobody is after him
+      // while he learns that the roll carries him over a drop.
+      for (const r of ordered) {
+        // (never a hung room: `GEN_RULES.stack` keeps the calm one off the stack, and a quiet room is not hung)
+        if (r.stacked || plan.introRooms.has(r.index) || (plan.rooms.get(r.index) || {}).boss || !cut(r)) continue;
+        chasms[chasms.length - 1].lesson = true;
+        r.isCalm = true; plan.rooms.set(r.index, { men: [], calm: true });
+        break;
+      }
       if (!chasms.length) return null;   // a floor that teaches it has it: a fresh cut rather than none
     }
     if (li >= CH.from && crng.chance(CH.chance)) {
@@ -1028,13 +1043,22 @@ function tryGenerate(levelDef, seed, opts) {
       // the far wall by a way in or out (`CH.byDoor` columns of it) and the ring near a way in or out,
       // the rope run across the room between them: cut it walking out and it lands behind you on the
       // men following, or cut it coming in and it lands ahead. `CH.reach` columns at most apart.
+      // 7 Oct 2026 playtest ("the light's switch is usually at the start of the room, so I can use it for my goal"):
+      // the cleat is by the way IN in `CH.cleatIn` of the rooms and the ring by the way out, so the rope is in his
+      // hand as he walks in and the ring comes down on whoever waits for him deeper in; the rest the other way round.
       const ends = [room.enter, room.exitMouth].filter(Boolean), colOf = (pt) => Math.floor(pt.x / TILE);
       const inRoom = (x, m) => clamp(x, room.x + m, room.x + room.w - 1 - m);
+      const wayIn = room.enter || room.exitMouth, wayOut = room.exitMouth || room.enter;
+      const cleatByIn = crng.chance(CH.cleatIn), cleatEnd = cleatByIn ? wayIn : wayOut, ringEnd = cleatByIn ? wayOut : wayIn;
       for (let a = 0; a < 60; a++) {
         const near = ends.length && a < 45;
-        const tx = near ? inRoom(colOf(crng.pick(ends)) + crng.int(-CH.nearDoor, CH.nearDoor), 2) : crng.int(room.x + 2, room.x + room.w - 3);
+        // The cleat first, by its door; the ring toward the other door from it, a few columns in (the rope's reach is
+        // `CH.reach` columns, so a wide room's ring is not by its far door but as far across as the rope goes).
+        let kx = near ? inRoom(colOf(cleatEnd) + crng.int(-CH.byDoor, CH.byDoor), 1) : -1;
+        const dir = near ? (Math.sign(colOf(ringEnd) - kx) || (crng.chance(0.5) ? 1 : -1)) : 0;
+        const tx = near ? inRoom(Math.abs(colOf(ringEnd) - kx) <= CH.reach ? colOf(ringEnd) + crng.int(-CH.nearDoor, CH.nearDoor) : kx + dir * crng.int(3, CH.reach), 2) : crng.int(room.x + 2, room.x + room.w - 3);
         const ty = crng.int(room.y + CH.fromWall, room.y + room.h - 3);
-        const kx = near ? inRoom(colOf(crng.pick(ends)) + crng.int(-CH.byDoor, CH.byDoor), 1) : tx;
+        if (!near) kx = tx;
         if (Math.abs(kx - tx) > CH.reach) continue;
         let open = true;
         for (let dy = -1; dy <= 1 && open; dy++) for (let dx = -1; dx <= 1; dx++) if (tiles[(ty + dy) * W + tx + dx] !== T.FLOOR) { open = false; break; }
@@ -1042,7 +1066,8 @@ function tryGenerate(levelDef, seed, opts) {
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE, cx = (kx + 0.5) * TILE, cy = (room.y + 1.25) * TILE;
         if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE || len(p.x - cx, p.y - cy) < 1.2 * TILE)) continue;
         if (room.enter && (len(room.enter.x - px, room.enter.y - py) < 3 * TILE || len(room.enter.x - cx, room.enter.y - cy) < 1.5 * TILE)) continue;
-        props.push({ x: px, y: py, kind: 'chandelier', cid: chandeliers }, { x: cx, y: cy, kind: 'cleat', cid: chandeliers });
+        // `byWay`: the cleat was put by a way in or out (the first tries); `GEN_RULES.chandeliers` holds it to that.
+        props.push({ x: px, y: py, kind: 'chandelier', cid: chandeliers }, { x: cx, y: cy, kind: 'cleat', cid: chandeliers, byWay: near });
         chandeliers++;
         break;
       }
@@ -1929,7 +1954,7 @@ function tryGenerate(levelDef, seed, opts) {
     if (opts.fresh && opts.fresh.vault === 'ogre') opts.fresh.vault = null;   // the unseen kind was not laid after all
   }
   const level = { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, forkTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop, combo, chasms, gaps,
+    hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop, combo, chasms, gaps, crowdMul,
     // Grass lying under a wall that went back up is not grass: only what is still on floor.
     grass: [...grass].filter((i) => tiles[i] === T.FLOOR), exitGate: null };
   level.carpets = layCarpets(level);

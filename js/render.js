@@ -527,6 +527,7 @@ class Renderer {
       if (hld && !hld.item) this.drawEnemyGround(hld, game);
       if (!g.dead) this.drawGoatPoison(g);
       if (g.wave && !g.dead) this.drawHornWave(g, game);
+      if (!RELEASE.on && game.dev && game.dev.hornTool) this.drawHornZone(g, game);
       // In the air over a man's back (LEAPFROG) he is over everyone.
       const foot = (o) => (o === g && g.leap ? Infinity : o.y);
       // What THE MAGNET carries round him stands in the same order (js/talismans.js).
@@ -549,6 +550,7 @@ class Renderer {
       for (const p of game.props) if (p.kind === 'chandelier' && lit(p)) this.drawChandelierAir(p);
       this.drawSkyTables(game, 'air');
       this.drawFlares(game);
+      this.drawSlashes(game);
       for (const b of game.globs) this.drawGlob(b);
       this.drawBoomerang(game);
       if (game.intro) this.drawIntroWorld(game);
@@ -605,6 +607,7 @@ class Renderer {
     if (game.bless && game.bless.on) this.drawBlessOverlay(game);
     this.drawUI(game);
     if (game.beastTalk && game.state === 'play') Beast.drawTalk(this, game);
+    if (game.beastFarewell && game.state === 'play') Beast.drawFarewell(this, game);   // the end of an escort's road (js/beasts.js)
     if (game.shopDlg && game.state === 'play') Codex.drawShop(this, game);   // js/codex.js
     if (game.posterView && game.state === 'play') Codex.drawPoster(this, game);
     this.drawTitle(game, dt);
@@ -1941,11 +1944,12 @@ class Renderer {
       // Her offer is had by walking up to her (`Shop.shelved`); the floor says so, and, before he buys,
       // which key shows him what he already carries (2 Oct 2026 playtest: "I - the inventory, on the floor
       // of the room where you see the mouse, so you look at your build before buying").
-      const book = game.touch.active ? 'PAUSE - YOUR BUILD' : padOn(game) ? 'START - YOUR BUILD' : `${KEY_FACE.KeyI} - YOUR BUILD`;
-      const lines = [game.touch.active ? 'WALK UP TO HER · GRAB' : padOn(game) ? 'WALK UP TO HER · GRAB' : 'WALK UP TO HER · RIGHT M. CLICK', book];
+      // 7 Oct 2026 playtest: the second line (I - YOUR BUILD) is struck out, "the first time you see the mouse no
+      // lesson is needed": one line, how to reach her.
+      const lines = [game.touch.active ? 'WALK UP TO HER · GRAB' : padOn(game) ? 'WALK UP TO HER · GRAB' : 'WALK UP TO HER · RIGHT M. CLICK'];
       this.fitFloorText(lines, room.w * TILE - 2.6 * TILE, 24);
       ctx.fillStyle = 'rgba(255,224,138,0.22)';
-      ctx.fillText(lines[0], cx, (cy - 0.45 * TILE) * TILT); ctx.fillText(lines[1], cx, (cy + 0.45 * TILE) * TILT);
+      ctx.fillText(lines[0], cx, cy * TILT);
     }
     // THE FORK: the floor in front of each flight says where it goes, the floor it climbs to, and
     // under it what that floor is, so the one choice of road in a run is read, not found out on
@@ -2020,7 +2024,17 @@ class Renderer {
   // the floor words' own world space (`drawHints`), only in a room he has seen and near the view.
   drawFirstWords(game) {
     const L = game.learned || {}, ctx = this.ctx;
-    if (L.graze && L.key && L.iron) return;
+    // The shut door's words (`game.clampWords`, 7 Oct 2026): on the floor by the stone that closed behind him.
+    const cw = game.clampWords;
+    if (cw && !L.clamp && !game.hidden(cw.x, cw.y)) {
+      const pulse = 0.62 + 0.12 * Math.sin(this.t * 2.2);
+      ctx.textAlign = 'center';
+      ctx.font = `700 22px ${FONT_SC}`; ctx.fillStyle = `rgba(150,128,255,${pulse})`;
+      ctx.fillText('NO WAY BACK', cw.x, cw.y * TILT);
+      ctx.font = `700 14px ${FONT_SC}`; ctx.fillStyle = `rgba(239,230,208,${pulse - 0.1})`;
+      ctx.fillText('THE ROOMS BEHIND YOU CLOSE', cw.x, (cw.y + 24) * TILT);
+    }
+    if (L.graze && L.key && L.iron && L.bell) return;
     const say = (p, lines) => {
       if (Math.abs(p.x - game.cam.x) > 1400 || game.hidden(p.x, p.y)) return;
       const pulse = 0.5 + 0.12 * Math.sin(this.t * 2.6);
@@ -2038,6 +2052,7 @@ class Renderer {
       if (p.broken || p.dead) continue;
       if (p === firstGrass) say(p, ['GRASS HEALS']);
       else if (p.kind === 'key' && !L.key) say(p, ['A KEY', 'WALK OVER IT. IT OPENS IRON']);
+      else if (p.kind === 'lostbell' && !L.bell) say(p, ['A BELL', (game.touch.active || padOn(game) ? 'GRAB IT' : 'RIGHT M. CLICK') + ': THE OLD MAN UP THERE LOST IT']);
       else if ((p.kind === 'ironcage' || (p.kind === 'coop' && p.ironCage)) && !L.iron && !this.ironPair(game)) say(p, ['IRON', game.touch.active || padOn(game) ? 'GRAB IT: COST 1 KEY' : 'RIGHT M. CLICK: COST 1 KEY']);
     }
   }
@@ -4714,6 +4729,7 @@ class Renderer {
     // In a fight on touch the corner is under the stick's thumb: a brush of it opened the drawer.
     // It is still there on the pause screen, and the open drawer keeps its close.
     if (game.touch.active && game.state === 'play' && !d.open) return;
+    this.drawHornTool(game);   // the panel stays over the run with the drawer shut
     // The corner word sat on the book's page and on a talk box: while one is up it stays away.
     if (!d.open && (game.menu.panel === 'book' || game.beastTalk || game.shopDlg || (game.state === 'heaven' && game.heaven && (game.heaven.talk || game.heaven.panel)))) return;
     // The way in is a word in the corner, not a button. A bordered box down there reads as part of
@@ -4742,6 +4758,7 @@ class Renderer {
           ['chase', d.chase ? 'CHASE  ON' : 'CHASE  OFF'],
           // Horn size, a test (`TUNING.goat.horns`): each click steps short, wide, long.
           ['horns', 'HORNS  ' + TUNING.goat.horns[game.hornKind].name],
+          ['hornTool', d.hornTool ? 'HORN TOOL  ON' : 'HORN TOOL  OFF'],   // the sliders over the run, and the zone on the floor
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
           ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['showroom', 'SHOWROOM'],
           // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
@@ -4911,7 +4928,25 @@ class Renderer {
     this.devButton(d, pad + 306 * s, top + 28 * s, 130 * s, 20 * s, `BELL +1 (${Heaven.bellsOpen()})`, 'bells-add', false);
     this.devButton(d, pad + 444 * s, top + 28 * s, 110 * s, 20 * s, 'BELLS RESET', 'bells-reset', false);
     this.devButton(d, pad + 562 * s, top + 28 * s, 110 * s, 20 * s, 'ALL BELLS', 'bells-all', false);
-    let y = top + 70 * s;
+    // THE ANIMALS' HOME (7 Oct 2026, js/heaven-home.js): the overlook, the mirror, one more life, and each chain's step.
+    this.devButton(d, pad + 680 * s, top + 28 * s, 120 * s, 20 * s, Heaven.towerMended() ? 'TOWER: WHOLE' : 'TOWER: BROKEN', 'home-tower', Heaven.towerMended());
+    this.devButton(d, pad + 808 * s, top + 28 * s, 120 * s, 20 * s, Heaven.mended() ? 'MIRROR: WHOLE' : 'MIRROR: BROKEN', 'home-mirror', Heaven.mended());
+    this.devButton(d, pad + 936 * s, top + 28 * s, 110 * s, 20 * s, `+1 LIFE (${game.extraLives | 0})`, 'home-life', false);
+    // Tries on the floor under the drawer (7 Oct 2026: "so I can test it and the bells from the tool mode"): HELLDIVE at
+    // either rank on three men round him (a revive given if he has none), a bell at his feet, a boss beside him who carries one.
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText('TRY IT HERE', pad, top + 68 * s);
+    [['HELLDIVE', 'dive-test=1'], ['SUPER HELLDIVE', 'dive-test=2'], ['A BELL AT MY FEET', 'bell-drop'], ['A BOSS WITH A BELL', 'bell-boss']].forEach(([label, id], i) =>
+      this.devButton(d, pad + 110 * s + i * 150 * s, top + 54 * s, 142 * s, 20 * s, label, id, false));
+    let y = top + 100 * s;
+    for (const kind of Object.keys(QUESTS)) {
+      ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = Heaven.freed(kind) ? PALETTE.fireHi : PALETTE.bone; ctx.fillText(QUESTS[kind].name, pad, y);
+      [['STAND', 'stand'], ['SAVED', 'saved'], ['DARE', 'dare'], ['WIN DARE', 'win'], ['FREE', 'free'], ['RESET', 'reset']].forEach(([label, op], i) =>
+        this.devButton(d, pad + 220 * s + i * 84 * s, y - 14 * s, 80 * s, 20 * s, label, `home=${kind}.${op}`, op === 'saved' ? !!M.saved[kind] : op === 'dare' ? Heaven.questOn(kind) : op === 'free' ? Heaven.freed(kind) : false));
+      ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
+      ctx.fillText(this.clip(Heaven.devHomeLine(kind), W - pad * 2 - 20 * s), pad + 14 * s, y + 18 * s);
+      y += 40 * s;
+    }
+    y += 10 * s;
     for (const u of MIRROR) {
       const r = (M.ranks && M.ranks[u.id]) || 0, max = u.costs.length;
       ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = r ? PALETTE.fireHi : PALETTE.bone; ctx.fillText(u.name, pad, y);
@@ -4925,6 +4960,78 @@ class Renderer {
       says.forEach((t, i) => ctx.fillText(this.clip(t, W - pad * 2 - 20 * s), pad + 14 * s, y + (18 + i * 16) * s));
       y += (30 + says.length * 16) * s;
     }
+  }
+  // THE HORN TOOL (7 Oct 2026, a dev test): the horn he has as a panel of sliders over the run, each a number of
+  // `TUNING.goat.horns[kind]` changed live (`Game.setHornParam`), SAVE writing them into js/tuning.js. Its picture
+  // is `drawHornZone`, on the floor. Not in the itch build (the drawer is not there).
+  drawHornTool(game) {
+    const d = game.dev, HN = TUNING.goat.horns[game.hornKind]; if (!HN || !d.hornTool || game.state === 'title') return;
+    const ctx = this.ctx, s = this.ts, W = 262 * s, x0 = this.w - W - 12 * s, rowH = 24 * s;
+    const rows = HORN_TOOL.filter((r) => !r[5] || (r[5] === 'rows') === !!HN.rows);
+    const H = 34 * s + rows.length * rowH + 30 * s, y0 = 74 * s;
+    ctx.fillStyle = 'rgba(16,10,14,0.88)'; ctx.fillRect(x0, y0, W, H);
+    ctx.strokeStyle = 'rgba(239,230,208,0.22)'; ctx.lineWidth = 1 * s; ctx.strokeRect(x0, y0, W, H);
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+    ctx.fillText('HORN TOOL · ' + HN.name, x0 + 8 * s, y0 + 15 * s);
+    this.devButton(d, x0 + W - 108 * s, y0 + 4 * s, 48 * s, 15 * s, 'NEXT', 'horns', false);
+    this.devButton(d, x0 + W - 56 * s, y0 + 4 * s, 48 * s, 15 * s, d.hornZone ? 'ZONE ON' : 'ZONE OFF', 'hornZone', d.hornZone);
+    rows.forEach(([key, label, lo, hi, step, , unit], i) => {
+      const y = y0 + 28 * s + i * rowH, v = HN[key], t = clamp((v - lo) / (hi - lo), 0, 1), tw = W - 16 * s;
+      ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'left';
+      ctx.fillText(label, x0 + 8 * s, y + 8 * s);
+      ctx.textAlign = 'right'; ctx.fillStyle = PALETTE.fireHi;
+      ctx.fillText((key === 'cone' ? Math.round(Math.acos(clamp(v, -1, 1)) * 360 / Math.PI) + '° WIDE  ' : '') + (Math.round(v * 100) / 100) + unit, x0 + W - 8 * s, y + 8 * s);
+      ctx.fillStyle = 'rgba(239,230,208,0.16)'; ctx.fillRect(x0 + 8 * s, y + 13 * s, tw, 4 * s);
+      ctx.fillStyle = 'rgba(242,162,51,0.6)'; ctx.fillRect(x0 + 8 * s, y + 13 * s, tw * t, 4 * s);
+      ctx.fillStyle = PALETTE.fireHi; ctx.fillRect(x0 + 8 * s + tw * t - 2.5 * s, y + 10 * s, 5 * s, 10 * s);
+      d.rects.push({ x: x0 + 8 * s, y: y + 6 * s, w: tw, h: 16 * s, id: 'horn=' + key, horn: key, lo, hi, step });
+    });
+    const by = y0 + H - 22 * s, bw = (W - 16 * s - 12 * s) / 4;
+    this.devButton(d, x0 + 8 * s, by, bw, 16 * s, HN.single ? 'ONE MAN' : 'ALL MEN', 'hornSingle', !!HN.single);
+    this.devButton(d, x0 + 8 * s + (bw + 4 * s), by, bw, 16 * s, 'SAVE', 'hornSave', false);
+    this.devButton(d, x0 + 8 * s + (bw + 4 * s) * 2, by, bw, 16 * s, 'COPY', 'hornCopy', false);
+    this.devButton(d, x0 + 8 * s + (bw + 4 * s) * 3, by, bw, 16 * s, 'CLOSE', 'hornTool', false);
+    ctx.textAlign = 'left';
+  }
+  // THE HORN ZONE, on the floor while the tool is open: the same shape `Goat.hornHit` asks, standing, along his aim,
+  // pale where a man is shoved and bright where the tips throw, with the axis he strikes along ticked every tile and
+  // its length written at the end. A world-space picture of the numbers in the panel.
+  drawHornZone(g, game) {
+    const d = game.dev, HN = game.mods.horn; if (RELEASE.on || !d || !d.hornTool || !d.hornZone || !HN || g.dead) return;
+    const ctx = this.ctx, px = TUNING.effects.pixel * 2, ax = g.aim.x, ay = g.aim.y, x = g.x, y = g.y + 2;
+    const R = g.r + 10 + (game.mods.headbuttReach - 1) * TILE + 14;
+    ctx.save();
+    const cells = (test) => {
+      const j0 = Math.floor((y - R) / px), j1 = Math.floor((y + R) / px), i0 = Math.floor((x - R) / px), i1 = Math.floor((x + R) / px);
+      for (let j = j0; j <= j1; j++) {
+        let run = null;
+        for (let i = i0; i <= i1 + 1; i++) {
+          if (i <= i1 && test((i + 0.5) * px - x, (j + 0.5) * px - y)) { if (run === null) run = i; }
+          else if (run !== null) { ctx.rect(run * px, j * px, (i - run) * px, px); run = null; }
+        }
+      }
+    };
+    let pale, hard;
+    if (HN.rows) {
+      const off = HN.rowGap * TILE, w = HN.rowW * TILE + 14, tipAt = R * HN.tip, s0 = g.r * 0.8;   // + a man's body, as `hornHit` adds his r (R's 14 above)
+      const inRows = (u, v) => { const s = u * ax + v * ay, o = u * ay - v * ax; return s >= s0 && s <= R && Math.min(Math.abs(o - off), Math.abs(o + off)) <= w; };
+      pale = (u, v) => inRows(u, v) && u * ax + v * ay < tipAt;
+      hard = (u, v) => inRows(u, v) && u * ax + v * ay >= tipAt;
+    } else {
+      const inFan = (u, v) => { const dd = hyp(u, v); return dd >= g.r * 0.8 && dd <= R && (dd < 1 || (u * ax + v * ay) / dd >= HN.cone); };
+      pale = (u, v) => inFan(u, v) && hyp(u, v) < R - px * 2;
+      hard = (u, v) => inFan(u, v) && hyp(u, v) >= R - px * 2;
+    }
+    ctx.globalAlpha = 0.2; ctx.fillStyle = PALETTE.bone; ctx.beginPath(); cells(pale); ctx.fill();
+    ctx.globalAlpha = 0.5; ctx.fillStyle = PALETTE.fireHi; ctx.beginPath(); cells(hard); ctx.fill();
+    // The axis: a line of cells along the aim, a tick every tile, and its reach in tiles at the end.
+    ctx.globalAlpha = 0.7; ctx.fillStyle = PALETTE.fireHi;
+    for (let t = g.r; t <= R; t += px) ctx.fillRect(Math.round((x + ax * t) / px) * px, Math.round((y + ay * t) / px) * px, px * 0.6, px * 0.6);
+    for (let t = TILE; t <= R; t += TILE) ctx.fillRect(Math.round((x + ax * t) / px) * px - px, Math.round((y + ay * t) / px) * px - px, px * 2, px * 2);
+    ctx.globalAlpha = 1; ctx.translate(x + ax * (R + 10), y + ay * (R + 10)); ctx.scale(1, 1 / TILT);   // in the ground's squashed space: counter-squash, as a sprite is
+    ctx.font = `700 11px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi; ctx.textAlign = 'center';
+    ctx.fillText(`${(R / TILE).toFixed(2)} TILES`, 0, 0);
+    ctx.restore();
   }
   devButton(d, x, y, w, h, label, id, on) {
     const ctx = this.ctx, s = this.ts;
@@ -6296,7 +6403,7 @@ class Renderer {
         note: 'Slower than a walk and it never catches up: the one escort you advance by picking it up and throwing it forward. Where it lands it pulls its head in and is a piece of the room, solid, and rounds stop on it, and cannot be picked up again until it comes out.' },
       { kind: 'goose', label: 'GOOSE', make: (x, y) => new Prop(x, y, 'goose'), hits: [],
         stats: `runs ahead at ${P.goose.speed}px/s (×${P.goose.hurry} when overtaken), waits ${P.goose.lead} tiles ahead ·honks at anyone inside ${P.goose.seeR}, every ${P.goose.honkGap}s · breaks a swing for ${P.goose.balkStun}s at any range`,
-        note: 'It does not follow and it does not wait: it runs for the stairs on its own, room after room, and it honks at every man it sees, which is a noise, so the room turns and comes for YOU. The same honk breaks a blow a man has already committed to, at any range at all. A permanent alarm you have to live with. At the stairs: the voice carries further and comes back sooner.' },
+        note: 'It does not follow and it does not wait: it runs for the stairs on its own, room after room, and it honks at every man it sees, which is a noise, so the room turns and comes for YOU. (It no longer breaks a blow: that is a gift it may give later.) A permanent alarm you have to live with. At the stairs: the voice carries further and comes back sooner.' },
       { kind: 'crow', label: 'CROW', make: (x, y) => new Prop(x, y, 'crow'), hits: [],
         stats: `answers a body inside ${P.crow.markR} tiles for ${P.crow.markFor}s · sits with no body in reach, flies after the goat a room behind or ${P.crow.catchUp} tiles off · ${crowGiftName().toLowerCase()} if it reaches the stairs`,
         note: 'It follows corpses, not you: every room with nothing dead in it, it falls behind. The one escort that argues with run, don\'t fight, and that is the price of what it carries out, a rare talisman standing on the next floor\'s stairs, free.' },
@@ -7674,8 +7781,10 @@ class Renderer {
       if (Heaven.goal()) {
         const q = Heaven.goal(), b = Math.min(q, M.brought || 0);
         ctx.font = `700 ${Math.max(12 * this.s, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillText(`FOR THE GOD ${b} / ${q}`, hx + 1 * s, top + 33 * s);
-        ctx.fillStyle = 'rgba(255,244,194,0.8)'; ctx.fillText(`FOR THE GOD ${b} / ${q}`, hx, top + 32 * s);
+        // Flush with the right edge of the whole purse, under the souls' number (7 Oct 2026 playtest: "make it
+        // aligned"): it used to end under the heap's own number, a little left of everything above it.
+        ctx.fillText(`FOR THE GOD ${b} / ${q}`, right + 1 * s, top + 33 * s);
+        ctx.fillStyle = 'rgba(255,244,194,0.8)'; ctx.fillText(`FOR THE GOD ${b} / ${q}`, right, top + 32 * s);
       }
     }
     ctx.restore();
@@ -8372,6 +8481,38 @@ class Renderer {
     ctx.globalAlpha = 1;
   }
 
+  // THE HORNS' SPLASH (`Game.hornSplash`): where a blow lands, `splash.n` streaks of cells fanned across the blow with
+  // a bright one down its middle and a ring of cells at the man; shorter every frame, never a stroke or a gradient.
+  drawSlashes(game) {
+    if (!game.slashes || !game.slashes.length) return;
+    const ctx = this.ctx, S = TUNING.goat.horns.splash, px = TUNING.effects.pixel;
+    for (const f of game.slashes) {
+      if (game.hidden(f.x, f.y)) continue;
+      const k = clamp(f.life / f.max, 0, 1), grow = Math.min(1, (1 - k) * 4), L = f.len * (0.5 + 0.5 * grow);
+      const hot = f.hurt ? '#ffe3dc' : f.tip ? PALETTE.fireHi : '#fff7e0', warm = f.hurt ? PALETTE.blood : f.tip ? PALETTE.fire : PALETTE.bone;
+      const cell = (u, v, c, s) => {
+        const ca = Math.cos(f.a), sa = Math.sin(f.a), x = f.x + ca * u - sa * v, y = f.y + sa * u + ca * v;
+        ctx.fillStyle = c; ctx.fillRect(Math.round(x / px) * px - s, Math.round(y / px) * px - s, s * 2, s * 2);
+      };
+      ctx.globalAlpha = Math.min(1, k * 2.2);
+      for (let i = 0; i < S.n; i++) {
+        const t = S.n === 1 ? 0 : i / (S.n - 1) - 0.5, ang = t * 1.5, mid = i === Math.floor(S.n / 2);
+        const ca = Math.cos(ang), sa = Math.sin(ang), len = L * (mid ? 1 : 0.72);
+        for (let u = -len * 0.35; u <= len; u += px * 1.5) {
+          const wob = Math.sin(f.seed + u * 0.12) * 1.2;
+          cell(u * ca - wob * sa, u * sa + wob * ca, mid ? hot : warm, mid ? px : px * 0.75);
+        }
+      }
+      // The ring of cells round the man, widening as the splash goes.
+      const rr = 8 + (1 - k) * 14, cnt = 10;
+      for (let i = 0; i < cnt; i++) {
+        const a = f.seed + i / cnt * Math.PI * 2;
+        cell(Math.cos(a) * rr * 1, Math.sin(a) * rr * 0.9, hot, px * 0.75);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
   drawParticles(game) {
     const ctx = this.ctx;
     // Every bit is whole world pixels on the grid the sprites are drawn at.
@@ -8537,6 +8678,42 @@ class Renderer {
     ctx.fillStyle = grad; ctx.fillRect(0, 0, this.vw, this.vh);
   }
 
+  // A heart lost breaks on the HUD (`TUNING.juice.heartBreak`, 7 Oct 2026 playtest): it swells white where it hung, splits
+  // down the middle, the halves drift apart and fall, and cells of blood fly off. Which hearts went is the difference
+  // between the hearts last frame and now; a new goat, a new floor or a heal starts it clean.
+  drawHeartBreak(game, g, x0, y0, stride, px, HEART) {
+    const B = TUNING.juice.heartBreak, ctx = this.ctx;
+    if (this.hpGoat !== g || game.state === 'title') { this.hpGoat = g; this.hpSeen = g.hp; this.heartFx = []; }
+    if (g.hp < this.hpSeen) for (let i = Math.max(0, g.hp); i < Math.min(this.hpSeen, g.maxHp); i++) this.heartFx.push({ i, t0: this.t, bits: Array.from({ length: B.bits }, () => ({ a: Math.random() * 6.28, v: 30 + Math.random() * 60 })) });
+    this.hpSeen = g.hp;
+    if (!this.heartFx || !this.heartFx.length) return;
+    this.heartFx = this.heartFx.filter((f) => this.t - f.t0 < B.life);
+    const W = HEART[0].length, s = px / 2.6;
+    for (const f of this.heartFx) {
+      const k = (this.t - f.t0) / B.life, ox = x0 + f.i * stride, oy = y0, cx = ox + W * px / 2, cy = oy + HEART.length * px / 2;
+      const alpha = 1 - Math.max(0, (k - 0.55) / 0.45);
+      ctx.save(); ctx.globalAlpha = alpha;
+      if (k < B.split) {   // swelling, white, shaking
+        const z = 1 + (B.swell - 1) * Math.sin(k / B.split * Math.PI / 2), sh = Math.round(Math.sin(this.t * 90) * 1.5 * s);
+        ctx.translate(cx + sh, cy); ctx.scale(z, z); ctx.translate(-cx, -cy);
+        ctx.fillStyle = '#ffffff';
+        for (let r = 0; r < HEART.length; r++) for (let q = 0; q < W; q++) if (HEART[r][q] === '#') ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
+      } else {   // two halves apart, falling, going dark red
+        const u = (k - B.split) / (1 - B.split), dx = B.drift * s * Math.sqrt(u) , dy = B.fall * s * u * u;
+        for (const half of [0, 1]) {
+          const sgn = half ? 1 : -1;
+          ctx.save(); ctx.translate(sgn * dx, dy + 0); ctx.translate(cx, cy); ctx.rotate(sgn * 0.5 * u); ctx.translate(-cx, -cy);
+          ctx.fillStyle = u < 0.25 ? '#ffd9d2' : PALETTE.blood;
+          for (let r = 0; r < HEART.length; r++) for (let q = 0; q < W; q++) if (HEART[r][q] === '#' && (half ? q * 2 >= W - 1 : q * 2 < W - 1)) ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
+          ctx.restore();
+        }
+        ctx.fillStyle = PALETTE.blood;
+        for (const b of f.bits) { const d = b.v * s * Math.sqrt(u) * 0.6; ctx.fillRect(Math.round(cx + Math.cos(b.a) * d), Math.round(cy + Math.sin(b.a) * d + dy * 0.5), Math.ceil(px), Math.ceil(px)); }
+      }
+      ctx.restore();
+    }
+  }
+
   drawUI(game) {
     const ctx = this.ctx; if (!game.world || game.state === 'intro') return;
     if (game.heaven && game.level && game.level.def.heaven) { Heaven.drawHud(this, game); return; }   // js/heaven.js
@@ -8562,6 +8739,7 @@ class Renderer {
       }
       if (on) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(Math.round(ox + px), Math.round(oy + px), Math.ceil(px), Math.ceil(px)); }
     }
+    this.drawHeartBreak(game, g, 14 * s, top + 14 * s, 22 * s, 2.6 * s, HEART);
     // THE MIRROR's HALO: hearts of light after his own, each gone with the blow it took (js/heaven.js).
     for (let i = 0; i < (g.light || 0); i++) {
       const ox = 14 * s + (g.maxHp + i) * 22 * s, oy = top + 14 * s, glow = 0.55 + 0.25 * Math.sin(this.t * 3 + i);
@@ -8576,6 +8754,15 @@ class Renderer {
       for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) if (HEART[r][q] === '#') {
         ctx.fillStyle = r === 1 ? A.lit : r % 2 ? A.mid : A.dark;
         ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
+      }
+    }
+    // ONE MORE LIFE (`game.extraLives`, js/motes.js `second`): a white soul after the hearts for each he still has.
+    for (let i = 0; i < (game.extraLives | 0); i++) {
+      const ox = 14 * s + (g.maxHp + (g.light || 0) + (g.armour || 0) + i) * 22 * s, oy = top + 10 * s, c = 2.2 * s, bob = Math.round(Math.sin(this.t * 2.4 + i) * s);
+      for (let r = 0; r < WISP.length; r++) for (let q = 0; q < WISP[r].length; q++) {
+        const ch = WISP[r][q]; if (ch === '.') continue;
+        ctx.fillStyle = ch === 'o' ? '#b9c3dd' : ch === 'e' ? '#3a2c4e' : '#ffffff';
+        ctx.fillRect(Math.round(ox + q * c), Math.round(oy + r * c + bob), Math.ceil(c), Math.ceil(c));
       }
     }
     // HORN SIZES test (`TUNING.goat.horns`): which horn he has and what it does, under the hearts. Never in the itch build.
@@ -8612,7 +8799,7 @@ class Renderer {
     // The talismans, right of the hearts, and the cape after them (`drawArtifactChip`).
     // After the rail, because the rail clears the hover it shares with this.
     // Centred on the row of hearts, a gap past the last one.
-    this.drawArtifactChip(game, 14 * s + (g.maxHp + (g.light || 0) + (g.armour || 0)) * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
+    this.drawArtifactChip(game, 14 * s + (g.maxHp + (g.light || 0) + (g.armour || 0) + (game.extraLives | 0)) * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
     this.savedHover(game);   // after the rail too, which clears the hover it shares
     // What the god is paid in, the way heaven counts it (29 Sep 2026: "the same look as up there"):
     // the gold skull and the heap, and beside it the corrupted souls heaven keeps (`Heaven.meta`).

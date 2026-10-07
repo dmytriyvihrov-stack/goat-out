@@ -53,7 +53,7 @@ class Goat {
     this.screamCd = Math.max(0, this.screamCd - dt * cdRate); this.screaming = Math.max(0, this.screaming - dt);
     this.grabCd = Math.max(0, this.grabCd - dt * cdRate);
     this.fussCd = Math.max(0, this.fussCd - dt);
-    this.invuln = Math.max(0, this.invuln - dt); this.dazed = Math.max(0, this.dazed - dt);
+    this.invuln = Math.max(0, this.invuln - dt); this.dazed = Math.max(0, this.dazed - dt); this.hurtT = Math.max(0, (this.hurtT || 0) - dt);
     // Anything that took him out of the tumble (a stun, the stairs, a death) took him out of the air.
     if (this.leap && this.state !== 'roll') this.leap = null;
     // And anything that took him out of the bite (a blow, a roll, a stun) let go of the man.
@@ -679,7 +679,11 @@ class Goat {
     const extra = (game.mods.headbuttReach - 1) * TILE, impulse = g.impulse * game.mods.headbuttImpulse * steam * HN.impulse;
     const ax = this.aim.x, ay = this.aim.y;
     this.cutGrass(game, ax, ay);
-    for (const e of game.enemies) {
+    // The DAGGER shoves ONE man (`HN.single`, 7 Oct 2026 playtest): the nearest the horns reach, and once one has been hit
+    // the rest of the arc is empty for this lunge (`singleDone`). The other horns hit everyone their shape touches.
+    const foes = HN.single ? game.enemies.slice().sort((p, q) => hyp(p.x - this.x, p.y - this.y) - hyp(q.x - this.x, q.y - this.y)) : game.enemies;
+    for (const e of foes) {
+      if (HN.single && this.singleDone === this.lungeId) break;
       if (e.dead || e.held || e.lastLunge === this.lungeId) continue;
       // Horns through mist. Saying so where it happened is the only tutorial this enemy gets.
       if (e.ghosted) {
@@ -695,6 +699,7 @@ class Goat {
       // `reaches`, as the club is: `sees` let the horns through a table or a brazier his club stops at.
       if (!game.reaches(this.x, this.y, e.x, e.y)) continue;
       e.lastLunge = this.lungeId;
+      if (HN.single) this.singleDone = this.lungeId;   // the dagger's one man is this one, whatever he does next
       // Caught while it is a body. Horn through a thing that has just made itself real undoes it,
       // no wall needed, because the window was the hard part. (It said UNMADE over it until 30 Sep
       // 2026: "no sense in it", the burst says it.)
@@ -712,6 +717,7 @@ class Goat {
         if (open) {
           game.hitstop(0.05); game.shake(6); game.kick(-ax, -ay, TUNING.juice.kick); game.zoomPunch(0.8);
           game.impact(this.x + ax * (this.r + 6), this.y + ay * (this.r + 6), ax, ay);
+          game.hornSplash(e, ax, ay, false);
           game.particles(e.x, e.y, 9, PALETTE.blood, 260);
           e.die(game, 'headbutt', ax, ay);
         } else {
@@ -746,6 +752,7 @@ class Goat {
         game.particles(this.x + ax * this.r, this.y + ay * this.r, 9, PALETTE.bone, 300);
         game.kick(-ax, -ay, TUNING.juice.kick); game.zoomPunch(0.8);
         game.impact(this.x + ax * (this.r + 6), this.y + ay * (this.r + 6), ax, ay); game.squashGoat(TUNING.juice.squash.hit);
+        game.hornSplash(e, ax, ay, false);
         game.world.splat(e.x, e.y, ax, ay, 8);
         if (e.hp <= 0) e.die(game, 'headbutt', ax, ay);
       } else {
@@ -803,6 +810,7 @@ class Goat {
         game.kick(ax, ay, TUNING.juice.kick * 0.55);
         e.flash = Math.max(e.flash, TUNING.juice.hitFlash);
         game.impact(this.x + ax * (this.r + 6), this.y + ay * (this.r + 6), ax, ay);
+        game.hornSplash(e, ax, ay, !!(HN.rows && hit.tip));   // Hades' slash across the man the horns land on (7 Oct 2026)
         game.squashGoat(TUNING.juice.squash.hit);
         // `exploded` has to come back with the fuse: a bomb charge now only takes off one heart
         // against a multi-hit target, and without this a second charge would relight a fuse that
@@ -909,7 +917,15 @@ class Goat {
     this.grabTries = (this.grabTries || 0) + 1;   // a hidden wraith watches for a reach near it
     // An open scrap of the cult's paper is read, not lifted (`Codex.openPoster`).
     for (const p of game.props) {
-      if (p.kind === 'poster' && !p.torn && p.unfold >= 1 && hyp(p.x - this.x, p.y - this.y) < this.r + TUNING.prop.poster.r + g.reach * 0.6) { Codex.openPoster(game, p); return; }
+      if (p.kind !== 'poster' || p.torn || hyp(p.x - this.x, p.y - this.y) >= this.r + TUNING.prop.poster.r + g.reach * 0.6) continue;
+      if (p.unfold >= 1) { Codex.openPoster(game, p); return; }
+      // Folded, it is opened by this grab, if nothing stands on it and it is not behind stone or a door.
+      if (!(p.unfold > 0) && !p.scrapCovered(game) && game.sees(this.x, this.y, p.x, p.y)) { p.openScrap(game); return; }
+    }
+    // A boss's bell on the floor (`Game.dropBell`): taken by the grab, for the old man up there (`Heaven.gotBell`).
+    for (const p of game.props) {
+      if (p.kind !== 'lostbell' || p.broken || hyp(p.x - this.x, p.y - this.y) >= this.r + p.r + g.reach * 0.6) continue;
+      if (game.sees(this.x, this.y, p.x, p.y)) { Heaven.gotBell(game, p); return; }
     }
     let best = null, bestD = Infinity;
     const consider = (o) => {
@@ -1205,6 +1221,8 @@ class Goat {
     // is what says it felt that.
     game.audio.sfxBleat(560, 0.24, 0.3);
     game.hurtFlash(Math.atan2(-(ky || 0), -(kx || 0)));
+    this.hurtT = TUNING.juice.hurtLook.life;   // his own picture goes white, then red (`PaintedArt.drawGoat`)
+    game.hurtBurst(this, kx, ky);
     game.world.splat(this.x, this.y, (kx || 0) / 100, (ky || 0) / 100, 9);
     if (this.state === 'windup' || this.state === 'bite') this.state = 'idle';   // a blow takes the bite out of his mouth too
     if (this.hp <= 0 && !Talisman.scapegoat(game, this) && !Motes.second(game, this)) this.die(game);
@@ -1286,6 +1304,7 @@ class Prop {
     this.spillCd = 0;                         // a brazier building its coals back after a spill
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
     this.deco = !!(opts && opts.deco);        // a cage that is scenery: it never opens
+    if (kind === 'lostbell') { this.note = opts && opts.note !== undefined ? opts.note : 7; this.floor = opts && opts.floor !== undefined ? opts.floor : -1; this.phase = 0; }   // a boss's bell (`Game.dropBell`)
     this.roast = !!(opts && opts.roast);      // a brazier drawn as a campfire with a crocodile on a spit
     // Its ring is low and wide, so the bowl's circle stood out past the stones (1 Oct 2026: "collision again"): it is `roastR`.
     if (this.roast) this.r = P.brazier.roastR;
@@ -1420,9 +1439,10 @@ class Prop {
     // cannot be picked up again until it comes out, which is what makes the throw a decision about
     // cover rather than a way of carrying it about. See js/beasts.js.
     if (this.kind === 'tortoise') return !this.flying && this.tuckT > 0 && !this.held && !(this.coolT > 0);
+    if (this.kind === 'hroam') return !this.flying;   // heaven's free animals: a goose up round the sky with its flock is not there
     if (this.kind === 'goose' || this.kind === 'crow' || this.kind === 'horse' || this.kind === 'pig' || this.kind === 'rabbit' || this.kind === 'husky') return false;
     // A lantern on the wall is up on the stone, out of anybody's way.
-    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce' || this.kind === 'cleat' || this.kind === 'chandelier' || this.kind === 'trophy' || this.kind === 'poster' || this.kind === 'key') return false;
+    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce' || this.kind === 'cleat' || this.kind === 'chandelier' || this.kind === 'trophy' || this.kind === 'poster' || this.kind === 'key' || this.kind === 'lostbell') return false;
     // A suit of armour hangs on the stone, out of anybody's way too: what comes to it is found by what
     // arrives (`Enemy.wallDressing`, `hitProp`, `Scatter.burst`).
     if (this.kind === 'armor') return false;
@@ -1908,7 +1928,7 @@ class Prop {
     // The first of a kind says its own terms over its head (`Beast.PACT`); after that its name will do.
     const told = kind === 'chicken' ? game.henTold : (game.beastTold || {})[kind];
     if (told) { game.audio.sfxAnimal(kind); game.floatText(this.x, this.y - 34, 'A ' + Beast.NAME[kind], PALETTE.hen); }
-    else if (kind === 'chicken') game.henFreed(pet); else Beast.met(game, pet);   // her words ride on her, not the coop
+    else if (Beast.quiet(game)) { if (kind === 'chicken') game.henFreed(pet); else Beast.met(game, pet); }   // her words ride on her, not the coop; in a fight she waits (`Beast.quiet`)
   }
 
   // An iron cage (`TUNING.keys`): no blow gives it, a key does. Butted with none it rings and says
@@ -1984,6 +2004,8 @@ class Prop {
   updateBird(dt, game) {
     if (this.refused > 0) { Beast.updateRefused(this, dt, game); return; }   // the hen told no goes her way
     if (this.broken) return;
+    // Let out in a fight, she says her terms the moment the room is still (`Beast.quiet`, as every animal does).
+    if (!game.henTold && hyp(this.x - game.goat.x, this.y - game.goat.y) < TUNING.beast.tellFor * TILE && Beast.quiet(game)) game.henFreed(this);
     // In the goat's mouth she goes where his mouth goes, `Goat.update` sets her x/y directly, the
     // same way it does a crate's, so nothing here may also be steering her.
     if (this.held) return;
@@ -2146,7 +2168,7 @@ class Prop {
     this.broken = true; this.dead = true;
     game.audio.sfxFall && game.audio.sfxFall();
     // An animal of ours going down a hole is a loss and says so, the way one killed does.
-    if (Beast.NAME[this.kind]) game.floatText(this.x, this.y - 30, 'THE ' + Beast.NAME[this.kind] + ' FELL', PALETTE.blood);
+    if (Beast.NAME[this.kind]) { if (this.kind === 'coop') game.floatText(this.x, this.y - 30, 'THE ' + Beast.NAME[this.kind] + ' FELL', PALETTE.blood); else Beast.farewell(this, game, 'dead'); }
   }
 
   // Tables slide, and men they catch ride the impulse into whatever is behind them. `by` is whoever
@@ -2220,11 +2242,15 @@ class Prop {
   // comes within `readR` tiles with nothing standing on it (the ritual altar over the first one: butted off, it
   // shows), then it opens out over `unfold` s, says what it is, and is the book's for good (`Unlocks` OBJECTS),
   // so it never lies on a floor again (`Game.layScraps`). It hurts nobody, and nothing kills for it (pillar 3).
+  // 7 Oct 2026 playtest ("you have to find it first, press the right button and only then does it open"): it no
+  // longer opens by itself when he walks by. It lies folded until a GRAB lands on it (`Goat.tryGrab` → `openScrap`).
   updateScrap(game, dt) {
     if (this.torn) return;
-    const D = TUNING.prop.poster, g = game.goat;
-    if (this.unfold > 0) { if (this.unfold < 1) this.unfold = Math.min(1, this.unfold + dt / D.unfold); return; }
-    if (!g || g.dead || hyp(g.x - this.x, g.y - this.y) > D.readR * TILE || this.scrapCovered(game)) return;
+    const D = TUNING.prop.poster;
+    if (this.unfold > 0 && this.unfold < 1) this.unfold = Math.min(1, this.unfold + dt / D.unfold);
+  }
+  openScrap(game) {
+    if (this.torn || this.unfold > 0) return;
     this.unfold = 0.001; this.wobble = 0.3;
     game.audio.sfxCard();
     const it = typeof Unlocks !== 'undefined' && Unlocks.DESTRUCT.find((d) => d.id === 'poster-' + this.look);

@@ -927,6 +927,15 @@
         "8991"
       ],
       "port": 8991
+    },
+    {
+      "name": "goat-out-helldive",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8996"
+      ],
+      "port": 8996
     }
   ]
 }
