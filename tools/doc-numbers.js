@@ -80,7 +80,7 @@ const CLAIMS = [
   ['CONCEPT.md', 'boons', `against ${N} boons`, () => g('BOONS').length],
   ['CONCEPT.md', 'cards a build holds', `a build that holds ${N}`, slots],
   ['CONCEPT.md', 'kill streak window', `Kills inside ${N} s of each other stack`, () => T.juice.comboWindow || T.combo && T.combo.window, 0.05],
-  ['CLAUDE.md', 'artifacts', `\`ARTIFACTS\`: ${N}, three tiers`, () => g('ARTIFACTS').length],
+  ['CLAUDE.md', 'artifacts', `\`ARTIFACTS\`: ${N}, one or two tiers`, () => g('ARTIFACTS').length],
   ['CLAUDE.md', 'souls a floor', `\`levelDef.souls\` = ${N}`, () => LEVELS[1].souls],
   ['CLAUDE.md', 'canon minimum', `A canon needs \`CANON.minRooms\` \\(${N}\\)`, () => g('CANON').minRooms],
 ];

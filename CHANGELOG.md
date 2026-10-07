@@ -5,6 +5,120 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## Talismans in two grades, three at once, and capes, 6 Oct 2026 (not yet published)
+
+His ask: "I don't want four grades on each, one or two makes sense; some only common, with middle numbers, the
+pilgrim's sandal; up to three talismans a run, and their look changes; a new item, a cape, worn on you, much rarer,
+an active with a big cooldown: teleport, more grass, destruction (the ones in the talismans now)".
+- **Two grades.** Every talisman is COMMON, or COMMON and RARE (the old I and II merged, the old III). COMMON only, in
+  the middle of the old ladder: PILGRIM'S SANDAL, BELLWETHER'S BELL, THE KNUCKLEBONE (every second soul). `RARITY` is two.
+  The first mouse of a run sells COMMON only, later ones RARE at 45% / 80% where it exists (`TUNING.shop.rare`); the
+  crow brings RARE; her rat ogre down lifts the shelf to its top tier (LEGENDARY is gone). An old save's tier III or IV
+  is its talisman's top tier.
+- **Up to three talismans** (`game.artifacts`, `TUNING.talisman.slots`): a fourth puts the oldest back on the stool
+  (or the one taken off that stool), the card says INSTEAD OF which; the same one again goes RARE. Never one he wears
+  on a shelf (`Shop.restock`). SCAPEGOAT breaks only itself. Each is a pixel charm of its own shape and colour on his
+  collar, side by side, and a chip of its own right of the hearts; the book lists them; the run code ends `W…`.
+- **Capes** (`CAPES`, js/capes.js, js/cape-pixels.js): one on his back, its verb on Q, a long wait. CLOAK OF SIGNS
+  (a blink 5 tiles, 12 s), SHEPHERD'S MANTLE (a tuft of milk grass ahead, to graze, 40 s), CAPE OF RUIN (crates,
+  barrels, plank doors, lamps and cracked walls round him break, men are thrown, never a blow on him, 25 s), BONE MANTLE
+  (the boomerang, 14.4 s), SCARECROW'S CAPE (the straw goat, 18 s): the three Q talismans became the last three. Found
+  in a niche behind a niche, or 12% of the time on a mouse's shelf in place of a talisman. Drawn on him per view in
+  hand-placed pixels, each its own cloth, trim, clasp and pattern, the hem swinging on the run
+  (`output/capes-2026-10-06/sheet.png`). In THE SHOWROOM beside the talismans; the TALISMANS tab lists them.
+
+## Level modifiers: THE CHASE, 6 Oct 2026 (not yet published)
+
+His ask: "one level whose main focus is a chase, an extra modifier: a red screen comes slowly from the left until it takes
+20% of the screen, enemies run out of it, more or less endless; run away and the red shrinks and you get a bit more time".
+- **Level modifiers** (`LEVEL_MODS` in tuning.js, `levelDef.mods`): a rule laid over a whole floor. THE CHASE is the first,
+  on THE ROAD. The dev drawer's CHASE row lays it over any floor (not the trip, heaven or THE SHOWROOM); its codes carry `C`.
+- **THE CHASE** (js/chase.js, `TUNING.chase`): a pressure 0..1 grows on the clock (full in 34 s standing, at 0.55 while
+  the floor's own men are on him, not at all sealed in an arena) and every tile of new best distance toward the stairs pays
+  0.016 of it back. Drawn as a red field of square cells at the left, its edge ragged and flickering, embers off it, 20% of
+  the screen at full, the frame reddening past 0.6. From 0.4 men of the floor's own crowd come out of it (one every 6.5 s
+  down to 2.2 s, 2 to 5 alive; the rifle and the butcher only past 0.75), on the floor behind him, never ahead or near him.
+  They pay nothing (no kill on the count, no white soul), never hold a room behind him open, and are let go when walled in
+  or left far behind. The card says "they are coming", the picture THEY ARE COMING. KEEP RUNNING., a low toll when they come.
+- Simulated on THE ROAD (14 rooms, ~430 tiles): rooms of 6 s never see a man, of 12 s (set pieces 25 s) pass the threshold
+  ~50 s of the floor, of 20 s (35 s) ~300 s.
+
+## Deeper secrets and four souls retuned, 6 Oct 2026 (not yet published)
+
+- **More walls that give on THE YARD and THE CAVE**: `secrets: [2, 3]` on both (was one, a second at 35%). Over 300
+  seeds: THE YARD 1.28 → 2.33 a floor, THE CAVE 1.36 → 2.49; the cave's rock takes them as well as square walls do.
+- **The secret inside the secret** (`carveDeepSecret`, `TUNING.secret.deep`): 30% of niches (40% from THE ROAD on) have a
+  second wall that gives at their back, onto a deeper niche with big grass, always, and a cape beside it at 35% (the cape
+  prop is another change's). Stone and unseen until the first wall is down; nothing opens it from the room. Its own RNG
+  stream. `GEN_RULES.secrets` holds that it is reached only through its niche and has its grass; `reach` holds the cape.
+  THE SHOWROOM has TWO WALLS THAT GIVE beside A WALL THAT GIVES.
+- **STRONG JAW**: things you throw fly further (×1.35 impulse on a crate, blade, bomb; a man is thrown as before, so his
+  kill range stays BY THE COLLAR's), grab ready sooner (×0.6, kept). No longer needs BY THE COLLAR; the longer hold and
+  the extra bullets are gone (`mods.throwFar`).
+- **LIVING SHIELD is gone**: the card, its mods (`livingShield`, `shieldSwing`, `shieldReload`), the held man's swing and
+  the held rifle's faster reload, its rail mark. A saved run that held it simply drops the id.
+- **SURE HOOVES**: 20% faster (was 13%). **DRAGON BREATH**: the cone reaches 3 tiles (was 4.2); BIG LUNGS still lengthens it.
+- **The dev drawer's BOONS tab** is laid out by body part (HORNS, TEETH, LEGS, THROAT, BODY, actives first), shows each
+  soul as the very card the soul-choice screen draws (`drawBoonCard`, factored out of `drawBoonChoice`; a long key name
+  no longer runs into the name on a narrow card), and edits it: EDIT NAME, EDIT TEXT, DELETE / RESTORE. Served, written
+  into js/tuning.js (POST /boon-edit: the literal, or `BOON_TEXT` for a getter's text, `BOON_OFF` for a deleted soul,
+  never dealt); opened as a file, kept in the browser with NOT SAVED TO DISK and an EXPORT / IMPORT as JSON.
+
+## The shaman, 6 Oct 2026 (not yet published)
+
+His ask: "another enemy, a shaman, with two skills: he boosts the run speed, the damage and +1 heart of the ordinary kind;
+and on your goat it is as if he held the run key down one way, toward him, shown over you, for a limited time, while you
+can press the other keys". The reference was the Bad Dürrenberg shaman (deer antlers, boar tusks, crane, turtle). Three
+looks drawn, his to pick; concept sheets in `output/shaman-2026-10-06/`.
+
+- **THE SHAMAN** (`TUNING.shaman`, js/shaman.js): a bearer with `e.shaman`, two hearts, keeps 3.5 to 6.5 tiles off the goat
+  behind his men, swings his staff only with the goat in his face. Killer THE SHAMAN.
+- **THE SPIRIT**: he shakes the staff 0.9 s (green cells running to each man, a ring filling at their feet), then up to three
+  plain clubmen of his room he can see run ×1.3, hit a heart harder (`Enemy.atk`) and take a heart more, for 14 s or
+  until he is down. Pale antlers over a man show it (`Shaman.drawSpirit`).
+- **THE CALL**: seen 2.5 to 8 tiles off, he holds out his hand 1.2 s: an amber line to the goat and, over the goat's head, a
+  key ringed by cells filling round. His line of sight broken at any moment of it, or poison on him (blind), and it goes
+  out. Full and the goat not mid-roll, the goat's run key is held toward him for 2.6 s, snapped to one of eight ways and added
+  to the player's own input (`Shaman.pull`, before `goat.update`, after THE TRIP's swap): pressing away stands him still,
+  across bends him, every other verb is his. A keycap with the arrow and a draining row of cells hangs over the goat, a red
+  thread runs to the shaman (`Shaman.drawWorld`). His death ends both, and a blow that reaches the goat shakes the call off
+  and keeps it off 3 s (`Shaman.shake` from `Goat.damage`, `call.guard`). Through either windup a thin green ring of
+  cells stands round him with nine runes blinking round it, each on its own beat (Enter the Gungeon's wizards;
+  `Shaman.drawAura`, `shaman.aura`, `PALETTE.spirit`), flashing out when the cast goes off. Which cast he tries first is
+  the goat's distance (past `shaman.near`, 4.5 tiles, the call; inside it the spirit into his men), and a man who has
+  the spirit is topped up, so the spirit is seen. Narrower than the first cut, and the
+  skull on his staff turns with him (both eyes, a profile, the back of it). A scream, a daze or a blow breaks either windup.
+- Met on THE CAVE (`introduce` 0.45) with two clubmen (`ENCOUNTER.introWith`, `GEN_RULES.alone` allows exactly them), then
+  every floor from THE ROAD on. `THREAT` 2.6, weight 1, cap 1 a room. THE OSSUARY's cap is eleven men so its worst room
+  stays over THE RAFTERS's.
+- His body (js/shaman-pixels.js), in the cast's own look (his: "one style with the pixel mages"): squat, a head as big as
+  the body, flat tones outlined in a dark step of their own hue, the face a void with burning eyes, a turtle's shell on his
+  back, his eyes burning green, a staff with a small skull whose eyes burn red. His pick of six looks over two rounds is
+  the crane's skull (beak down his chest, a fan of its feathers); the robe is `ART_PASS.shaman` (ART tab, SHAMAN ROBE):
+  DUSK, SOOT (his pick, the default), OCHRE. The rounds are in `output/shaman-2026-10-06/` (`sheet-v1.png`, `zoom-v2.png`). Sounds `rattle` and
+  `chant` in `Foley`, on the sfx board. ENEMIES tab row and SPAWN.
+
+## Ten notes from his uncle, 6 Oct 2026 (not yet published)
+
+The table, note by note, is the 6 October batch in `BACKLOG.md`.
+
+- **THE CHASM** (`TUNING.chasm`, `carveChasm` / `chasmRoomFits` in gen.js, `GEN_RULES.chasm`): a band of drop one tile
+  across a room, wall to wall, parting its way in from its way out. The roll carries the goat over a hole while it lasts
+  (`Game.update` skips the fall for state `roll`; a roll that ends over it drops him) and `Goat.rollDirection` sends a roll
+  asked straight over a drop he can clear exactly there. THE CAVE teaches it (`chasmLesson`, its words in
+  `CONTROL_LINES` part 5); later floors cut one at `chance`, a rifle or the butcher across it. The generator's and the
+  rules' floods take `level.gaps` as a way over; our animals hop it (`Beast.hopGap`, `chasm.hop`).
+- **THE FISH** (js/beasts-more.js): a tank, carried slow, thrown short, broken by anything it meets; it only bubbles
+  (`Foley` `blub`). Pays a wet fleece (`mods.wet`, `goat.wet`: the first fire a floor only steams).
+- **Our animals poisoned and dazed** (`Beast.dope`, `beast.dope`), the horse's `talk.cheated`, **their hearts over their
+  heads** (`Beast.drawHealth`, `beast.health`), the horse 5 → 9 hearts.
+- **Poisoned men misread the floor** (`status.poison.trapMul` / `trapGap` / `pitSense`; `Enemy.avoidHazard`, the lip).
+- **FIREBRAND** lights the man it throws.
+- **A wraith in a door** (`Game.stageDoorMimic`, `wraith.hide.door`, `Enemy.mimicDoor`), and WRAITH DOOR in SPAWN.
+- **UNLOCKS** (`Unlocks`, `UNLOCK_KEY`): the book's second tab and a title row.
+- **THE OVERLOOK** (`Heaven.openOverlook`, `HEAVEN_PIXELS` `overlook`, `game.runPaintings`): heaven's tower, the run's floors
+  from above.
+
 ## 2.00: his 48 notes with screenshots, 5 Oct 2026
 
 The whole batch, note by note, is the 5 October table in `BACKLOG.md`. The larger pieces:

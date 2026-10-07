@@ -8,7 +8,7 @@
 // point is drawn at the origin, which is where every caller has already put the shadow.
 const PIXEL_EXTENT = {
   goat: 34, clubman: 36, brute: 38, mage: 38, hound: 40, hunter: 38, butcher: 48, wraith: 38,
-  chicken: 22, ratogre: 70, ogre: 66, spartan: 36, thrower: 48, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
+  chicken: 22, ratogre: 70, ogre: 66, spartan: 36, thrower: 48, shaman: 44, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
 };
 // The painted slot names this pass fills. `sheep` is the goat's old slot name, not a sheep.
 const PIXEL_UNIT = {
@@ -16,6 +16,7 @@ const PIXEL_UNIT = {
   butcher: 'butcher', wraith: 'wraith', chicken: 'chicken', ratogre: 'ratogre', ogre: 'ogre',   // the ogre draws off js/ogre-pixels.js, not the atlas
   spartan: 'spartan',   // the shieldman, off js/spartan-pixels.js
   thrower: 'thrower',   // the thrower, off js/thrower-pixels.js
+  shaman: 'shaman',     // the shaman, off js/shaman-pixels.js
 };
 
 // The throat of the pixel goat in each of his eight idle facings, world px from the foot (the same
@@ -82,6 +83,8 @@ const ART_PASS = {
   on: false, hunter: 7, clubman: 1, floors: true,
   // the shieldman's board, one of `PROP_PIXELS.SHIELD_LOOKS` (2 Oct 2026: ASPIS, THORNS, RAM)
   shield: 0,
+  // the shaman's robe, one of `SHAMAN_PIXELS.ROBES` (6 Oct 2026: DUSK, SOOT, OCHRE); his pick, SOOT
+  shaman: 1,
   shadows: true, tells: true, hay: true, cave: true,
   // A level's `artPass` colours in place of its own, and back: the tuned ones are kept on the level
   // the first time it is switched, so switching off is exact.
@@ -442,8 +445,13 @@ const PIXEL_ART = {
       hx.putImageData(id, 0, 0);
       out.push({ canvas: hc, blob, base: [bx / n, by / n], tip: [tx, ty], y0, y1, w, h });
     }
-    this.hornCache.set(key, out);
-    return out;
+    // A horn is a couple of hundred pixels; a 15-pixel fleck of a dark ear or hoof outline that passes the colour test
+    // is not one. On some steps of the back-right run it made the horn counts differ and `hornFix` left the frame
+    // as packed (6 Oct 2026 playtest: "going up-right, sometimes the horns point the wrong way").
+    const big = out.reduce((m, o) => Math.max(m, o.blob.length), 0);
+    const kept = out.filter((o) => o.blob.length >= big * 0.4);
+    this.hornCache.set(key, kept);
+    return kept;
   },
   // A horn painted over in one of the three looks the butt souls give him: `lava` (BOMB CHARGE)
   // or `venom` (SPLASH), each pixel taking its place on a ramp off how bright the original was and

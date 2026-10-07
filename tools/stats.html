@@ -46,6 +46,15 @@
   .scroll { max-height: 420px; overflow: auto; }
   .empty { color: var(--dim); padding: 30px; text-align: center; }
   details { margin-top: 6px; } summary { cursor: pointer; color: var(--dim); font-size: 13px; }
+  /* The date range (6 Oct 2026): every chart, table and the funnel read only what falls inside it. */
+  .range { display: flex; gap: 6px; align-items: center; padding: 3px 8px; border: 1px solid rgba(224,172,62,0.5); }
+  .range label { font: 700 13px 'Alegreya SC', serif; color: var(--gold); }
+  .range input { font: 14px Alegreya, serif; background: var(--panel); color: var(--ink); border: 1px solid #e0ac3e; padding: 4px 6px; color-scheme: dark; }
+  .range.on { background: rgba(247,215,116,0.14); border-color: #e0ac3e; }
+  /* Floor by room grids: a cell's shade is its share of the grid's largest value. */
+  table.rg td, table.rg th { text-align: center; padding: 3px 2px; min-width: 26px; font-size: 13px; }
+  table.rg td.f { text-align: left; white-space: nowrap; padding-right: 8px; }
+  table.rg td.x { color: rgba(239,230,208,0.25); }
   pre { white-space: pre-wrap; font: 12px/1.35 ui-monospace, Consolas, monospace; color: var(--dim); max-height: 300px; overflow: auto; }
 </style>
 </head>
@@ -57,6 +66,7 @@
   <button id="local">THIS BROWSER</button>
   <select id="build"></select>
   <label class="chk"><input id="easy" type="checkbox"> with easy mode</label>
+  <span class="range"><label for="from">FROM</label><input id="from" type="date"><label for="to">TO</label><input id="to" type="date"><button id="allTime" title="Every date">ALL DATES</button></span>
   <span id="status"></span>
 </header>
 <main id="main"><div class="empty">Loading…</div></main>
@@ -68,6 +78,7 @@ const nameOf = (() => {
   const m = {};
   try { for (const b of BOONS) m[b.id] = b.name; } catch (e) {}
   try { for (const a of ARTIFACTS) m[a.id] = a.name; } catch (e) {}
+  try { for (const c of CAPES) m[c.id] = c.name; } catch (e) {}   // a cape is its id alone (6 Oct 2026); boomerang, symbols, effigy were talismans before
   return (id) => id == null ? '-' : m[String(id).split(':')[0]] ? m[String(id).split(':')[0]] + (String(id).includes(':') ? ' ' + 'I'.repeat(+String(id).split(':')[1]) : '') : String(id);
 })();
 const WHO = { clubman: 'Clubman', shieldman: 'Shieldman', butcher: 'Butcher', ogre: 'Ogre', hunter: 'Rifleman', dog: 'Hound', seer: 'Mage', wraith: 'Wraith', ratogre: 'Rat ogre',
@@ -105,6 +116,11 @@ const S = (v, n = 40) => typeof v === 'string' && v.length ? v.slice(0, n) : nul
 const N = (v) => typeof v === 'number' && Number.isFinite(v) ? v : 0;
 const A = (v, n = 300) => Array.isArray(v) ? v.slice(0, n).filter((x) => x && typeof x === 'object') : [];
 const O = (v) => v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+// A floor's souls at its start (`boons`): ids, up to as many as a goat can hold.
+const strs30 = (v) => (Array.isArray(v) ? v : []).slice(0, 40).map((x) => S(x, 30)).filter(Boolean);
+// What he did in a room (js/stats.js `roomLeave`), in the order the charts stack them.
+const STRAT = ['fight', 'stealth', 'run', 'empty'];
+const STRAT_NAME = { fight: 'Fought through', stealth: 'Unseen', run: 'Ran past them', empty: 'Nobody there' };
 function sanitize(r) {
   if (!r || typeof r !== 'object') return null;
   const id = S(r.id), player = S(r.player), build = S(r.build, 16), at = N(r.at);
@@ -118,11 +134,23 @@ function sanitize(r) {
     souls: A(f.souls).map((s) => ({ offer: strs(s.offer, 30), took: s.took === null ? null : S(s.took, 30) || undefined })),
     shop: A(f.shop).map((s) => ({ offer: strs(s.offer, 30), took: S(s.took, 30) })),
     beasts: A(f.beasts).map((b) => ({ kind: S(b.kind, 16) || '?', ev: S(b.ev, 8) || '?', room: N(b.room), t: N(b.t) })),
+    rooms: N(f.rooms), boons: strs30(f.boons),
+    // Room by room (6 Oct 2026; older reports have none, and every reader below copes with an empty list).
+    rm: A(f.rm, 60).filter((x) => STRAT.includes(x.s)).map((x) => ({ i: N(x.i), r: S(x.r, 12) || '?', t: N(x.t), h: N(x.h), k: N(x.k), n: N(x.n), d: N(x.d), a: N(x.a), s: x.s })),
+    path: (Array.isArray(f.path) ? f.path : []).slice(0, 120).filter((p) => Array.isArray(p)).map((p) => [N(p[0]), N(p[1])]),
+    // SOMETHING NEW (6 Oct 2026, js/stats.js `Novelty`): [floor second, 'section:id', seconds dry before it], the
+    // dry seconds on walking in (null on an older report), and what was slipped in because it ran dry.
+    nw: (Array.isArray(f.nw) ? f.nw : []).slice(0, 60).filter((p) => Array.isArray(p) && S(p[1], 40)).map((p) => [N(p[0]), S(p[1], 40), N(p[2])]),
+    dry: typeof f.dry === 'number' && Number.isFinite(f.dry) ? f.dry : null,
+    nudge: (Array.isArray(f.nudge) ? f.nudge : []).slice(0, 12).map((x) => S(x, 40)).filter(Boolean),
   }));
   if (!floors.length) return null;
   const E = O(r.end);
   return { id, player, build, at, done: N(r.done) || at, flags: S(r.flags, 8) || '', release: !!r.release, floors,
-    end: { how: S(E.how, 8) || '?', f: S(E.f, 4), by: S(E.by, 24), kills: N(E.kills), t: N(E.t), room: N(E.room), code: S(E.code, 120) } };
+    mirror: (Array.isArray(r.mirror) ? r.mirror : []).slice(0, 40).map((x) => S(x, 30)).filter(Boolean),
+    dryMax: typeof r.dryMax === 'number' && Number.isFinite(r.dryMax) ? r.dryMax : null, dryEnd: typeof r.dryEnd === 'number' && Number.isFinite(r.dryEnd) ? r.dryEnd : null,
+    end: { how: S(E.how, 8) || '?', f: S(E.f, 4), by: S(E.by, 24), kills: N(E.kills), t: N(E.t), room: N(E.room), code: S(E.code, 120),
+      role: S(E.role, 12), rooms: N(E.rooms) } };
 }
 // Steps in any shape they come: the worker's rows, this browser's store, a SAVE STATS file.
 function stepsOf(x) {
@@ -198,6 +226,20 @@ $('files').onchange = async (e) => { for (const f of e.target.files) { try { con
 document.addEventListener('dragover', (e) => e.preventDefault());
 document.addEventListener('drop', async (e) => { e.preventDefault(); for (const f of e.dataTransfer.files) { try { const x = JSON.parse(await f.text()); addSteps(stepsOf(x)); add(reportsOf(x), f.name); } catch (err) {} } });
 $('build').onchange = draw; $('easy').onchange = draw;
+// The dates to look at (6 Oct 2026: "let me pick from when to look"): FROM and TO are whole days in this
+// browser's own time, either may be empty, and the pick is kept in this browser.
+const RANGE_KEY = 'goatout.stats.range';
+function rangeOf() {
+  const day = (v, end) => { if (!v) return null; const t = new Date(v + (end ? 'T23:59:59.999' : 'T00:00:00')).getTime(); return Number.isFinite(t) ? t : null; };
+  const from = day($('from').value, false), to = day($('to').value, true);
+  return { from, to, on: from != null || to != null, has: (t) => (from == null || t >= from) && (to == null || t <= to) };
+}
+function rangeSaved() {
+  try { localStorage.setItem(RANGE_KEY, JSON.stringify({ from: $('from').value, to: $('to').value })); } catch (e) {}
+}
+try { const g = JSON.parse(localStorage.getItem(RANGE_KEY) || 'null'); if (g) { $('from').value = g.from || ''; $('to').value = g.to || ''; } } catch (e) {}
+$('from').onchange = $('to').onchange = () => { rangeSaved(); draw(); };
+$('allTime').onclick = () => { $('from').value = ''; $('to').value = ''; rangeSaved(); draw(); };
 function builds() {
   const cur = $('build').value;
   const bs = [...new Set(REPORTS.map((r) => r.build).concat(Object.values(STEPS).flatMap((o) => Object.values(o).map((v) => v.build))))].sort();
@@ -278,6 +320,240 @@ function rateTable(rows, head) {
     rows.map((r) => `<tr><td>${esc(nameOf(r.id))}</td><td class="n">${r.offered}</td><td class="n">${r.taken}</td><td class="n">${Math.round(100 * r.taken / r.offered)}%</td>` +
       `<td style="width:30%"><span class="bar" style="width:${100 * r.taken / max}%"></span><span class="bar" style="width:${100 * (r.offered - r.taken) / max}%;opacity:.25"></span></td></tr>`).join('') + '</table></div>';
 }
+// What a life ended up wearing: the last floor's souls at its start plus the card taken on it, and the floors
+// it cleared. `ended`: how it closed (death, win, quit, closed).
+function buildOf(r) {
+  const fl = r.floors || [], last = fl[fl.length - 1] || {};
+  const ids = new Set(last.boons || []);
+  for (const s of last.souls || []) if (s.took) ids.add(s.took);
+  return { ids: [...ids], cleared: fl.filter((F) => F.cleared).length, ended: (r.end && r.end.how) || '?' };
+}
+// One row a skill: lives that ended wearing it, floors cleared on average, and how those lives ended.
+function skillTable(R) {
+  const S = Object.create(null);
+  for (const r of R) {
+    const b = buildOf(r);
+    for (const id of b.ids) {
+      const o = S[id] = S[id] || { lives: 0, cleared: 0, died: 0, won: 0 };
+      o.lives++; o.cleared += b.cleared; if (b.ended === 'death') o.died++; if (b.ended === 'win') o.won++;
+    }
+  }
+  const rows = Object.entries(S).sort((a, b) => b[1].cleared / b[1].lives - a[1].cleared / a[1].lives || b[1].lives - a[1].lives);
+  if (!rows.length) return '<div class="empty">Nothing yet.</div>';
+  return `<div class="scroll"><table><tr><th>Skill</th><th class="n">Lives</th><th class="n">Floors cleared (avg)</th><th class="n">Died</th><th class="n">Escaped</th></tr>` +
+    rows.map(([id, o]) => `<tr><td>${esc(nameOf(id))}</td><td class="n">${o.lives}</td><td class="n">${(o.cleared / o.lives).toFixed(1)}</td>` +
+      `<td class="n">${Math.round(100 * o.died / o.lives)}%</td><td class="n">${o.won}</td></tr>`).join('') + '</table></div>';
+}
+function enemyTable(R) {
+  const E = Object.create(null), g = (k) => E[k] = E[k] || { hearts: 0, deaths: 0, killed: 0, blows: 0 };
+  for (const r of R) {
+    if (r.end && r.end.how === 'death' && r.end.by) g(r.end.by).deaths++;
+    for (const F of r.floors || []) {
+      for (const h of F.hurt || []) g(h.by).hearts += h.n;
+      for (const [k, [n, kills]] of Object.entries(F.blows || {})) { const [e, hw] = k.split('|'); if (hw === 'dev') continue; const o = g(e.replace('*', '')); o.blows += n; o.killed += kills; }
+    }
+  }
+  const rows = Object.entries(E).sort((a, b) => b[1].hearts - a[1].hearts);
+  if (!rows.length) return '<div class="empty">Nothing yet.</div>';
+  const max = Math.max(1, ...rows.map((r) => r[1].hearts));
+  return '<div class="scroll"><table><tr><th>Enemy</th><th class="n">Hearts taken</th><th class="n">Lives ended</th><th class="n">Blows on it</th><th class="n">Killed</th><th></th></tr>' +
+    rows.map(([k, o]) => `<tr><td>${esc(who(k))}</td><td class="n">${o.hearts}</td><td class="n">${o.deaths}</td><td class="n">${o.blows}</td><td class="n">${o.killed}</td>` +
+      `<td style="width:25%"><span class="bar" style="width:${100 * o.hearts / max}%"></span></td></tr>`).join('') + '</table></div>';
+}
+function mirrorTable(R) {
+  const L = R.filter((r) => r.mirror && r.mirror.length).sort((a, b) => a.at - b.at);
+  if (!L.length) return '<div class="empty">Nothing yet. Needs lives played after this build.</div>';
+  return '<div class="scroll"><table><tr><th>Life</th><th>Bought, in order</th><th class="n">Floors cleared</th><th>Ended</th></tr>' +
+    L.slice(-40).reverse().map((r) => `<tr><td>${new Date(r.at).toLocaleDateString()}</td><td>${esc(r.mirror.map((m) => m.replace(':', ' ')).join(' → '))}</td><td class="n">${buildOf(r).cleared}</td><td>${esc((r.end || {}).how || '?')}</td></tr>`).join('') + '</table></div>';
+}
+// ---------- room by room ----------
+// (6 Oct 2026: "in which room of the level he died and on which floor: the path matters", "the strategy for each
+// room".) Every room he walked into is a row of `F.rm` (js/stats.js `roomTick`); lives from before it have none,
+// and only the deaths grid and the ends along the floor (which read `end.room` and `F.rooms`) go back further.
+const sortFloors = (o) => Object.keys(o).sort((a, b) => FLOOR_ORDER(a) - FLOOR_ORDER(b));
+// The most rooms each floor has had, for the grids' width.
+function roomsOf(R) {
+  const n = Object.create(null);
+  for (const r of R) for (const F of r.floors) n[F.f] = Math.max(n[F.f] || 0, F.rooms || 0);
+  return n;
+}
+// A floor by room-number grid: a row a floor, a column a room (room 1 is the one he starts the floor in), a
+// cell shaded by its share of the grid's largest value. `cells[f][i]` the value, `fmt` how it reads, `tip` the hover.
+function roomGrid(cells, rooms, fmt = (v) => String(v), tip = (f, i, v) => fmt(v)) {
+  const floors = sortFloors(cells);
+  if (!floors.length) return '<div class="empty">Nothing yet.</div>';
+  const cols = Math.max(1, ...floors.map((f) => Math.max(rooms[f] || 0, ...Object.keys(cells[f]).map((i) => +i + 1))));
+  const max = Math.max(1e-9, ...floors.flatMap((f) => Object.values(cells[f])));
+  let h = '<div class="scroll"><table class="rg"><tr><th>Floor</th>';
+  for (let i = 0; i < cols; i++) h += `<th>${i + 1}</th>`;
+  h += '</tr>';
+  for (const f of floors) {
+    h += `<tr><td class="f">${esc(f)}</td>`;
+    for (let i = 0; i < cols; i++) {
+      const v = cells[f][i];
+      if (v == null) { h += `<td class="x">${rooms[f] && i >= rooms[f] ? '' : '·'}</td>`; continue; }
+      h += `<td style="background:rgba(224,172,62,${(0.12 + 0.7 * v / max).toFixed(2)})" title="${esc(f + ', room ' + (i + 1) + ': ' + tip(f, i, v))}">${esc(fmt(v))}</td>`;
+    }
+    h += '</tr>';
+  }
+  return h + '</table></div>';
+}
+// Deaths by the room he died in (`end.room`, written since the stats began).
+function deathGrid(R) {
+  const cells = Object.create(null);
+  for (const r of R) if (r.end.how === 'death' && r.end.f) { const c = cells[r.end.f] = cells[r.end.f] || Object.create(null); c[r.end.room] = (c[r.end.room] || 0) + 1; }
+  return roomGrid(cells, roomsOf(R), String, (f, i, v) => v + (v === 1 ? ' death' : ' deaths'));
+}
+// Seconds in each room on average, over every life that walked into it.
+function timeGrid(R) {
+  const sum = Object.create(null), cnt = Object.create(null);
+  for (const r of R) for (const F of r.floors) for (const x of F.rm) { inc(sum, F.f, x.i, x.t); inc(cnt, F.f, x.i); }
+  const cells = Object.create(null);
+  for (const f of Object.keys(sum)) { cells[f] = Object.create(null); for (const i of Object.keys(sum[f])) cells[f][i] = sum[f][i] / cnt[f][i]; }
+  return roomGrid(cells, roomsOf(R), (v) => String(Math.round(v)), (f, i, v) => Math.round(v) + ' s on average, ' + cnt[f][i] + ' visits');
+}
+// What he did in the rooms of each floor, as shares of them (empty rooms left out: nothing to choose there).
+function stratByFloor(R) {
+  const n = Object.create(null);
+  for (const r of R) for (const F of r.floors) for (const x of F.rm) if (x.s !== 'empty') inc(n, F.f, x.s);
+  const out = Object.create(null);
+  for (const [f, o] of Object.entries(n)) {
+    const tot = Object.values(o).reduce((a, b) => a + b, 0);
+    out[f] = Object.create(null); for (const s of STRAT) if (o[s]) out[f][s] = Math.round(1000 * o[s] / tot) / 10;
+  }
+  return out;
+}
+// One row a kind of room (`room.role`): how often each way through it was taken, and what it cost.
+const ROLE_NAME = { pen: 'Pen (start)', canon: "Floor's own", mix: 'Mixed', arena: 'Arena (boss)', rest: 'Rest (soul gate)', trap: 'Trap', mill: 'Wheel', hall: 'Great hall',
+  gallery: 'Gallery', killbox: 'Killbox', calm: 'Calm', lesson: 'Lesson' };
+function roleTable(R) {
+  const T = Object.create(null);
+  for (const r of R) for (const F of r.floors) for (const x of F.rm) {
+    const o = T[x.r] = T[x.r] || { n: 0, t: 0, h: 0, k: 0, men: 0, s: Object.create(null) };
+    o.n++; o.t += x.t; o.h += x.h; o.k += x.k; o.men += x.n; o.s[x.s] = (o.s[x.s] || 0) + 1;
+  }
+  const rows = Object.entries(T).sort((a, b) => b[1].n - a[1].n);
+  if (!rows.length) return '<div class="empty">Nothing yet. Needs lives played on a build that writes rooms.</div>';
+  const pct = (o, s) => { const v = o.s[s] || 0, d = o.n - (o.s.empty || 0); return s === 'empty' ? Math.round(100 * v / o.n) + '%' : d ? Math.round(100 * v / d) + '%' : ''; };
+  return '<div class="scroll"><table><tr><th>Room</th><th class="n">Visits</th><th class="n">Men</th>' + STRAT.map((s) => `<th class="n">${STRAT_NAME[s]}</th>`).join('') +
+    '<th class="n">Seconds</th><th class="n">Hearts lost</th><th class="n">Killed</th></tr>' +
+    rows.map(([k, o]) => `<tr><td>${esc(ROLE_NAME[k] || k)}</td><td class="n">${o.n}</td><td class="n">${(o.men / o.n).toFixed(1)}</td>` + STRAT.map((s) => `<td class="n">${pct(o, s)}</td>`).join('') +
+      `<td class="n">${Math.round(o.t / o.n)}</td><td class="n">${(o.h / o.n).toFixed(2)}</td><td class="n">${(o.k / o.n).toFixed(1)}</td></tr>`).join('') + '</table></div>';
+}
+// A floor's rooms on average: how many he walked into, and what one cost him in seconds and hearts.
+function floorRoomTable(R) {
+  const T = Object.create(null);
+  for (const r of R) for (const F of r.floors) {
+    if (!F.rm.length) continue;
+    const o = T[F.f] = T[F.f] || { lives: 0, rooms: 0, of: 0, back: 0, t: 0, h: 0, k: 0 };
+    o.lives++; o.rooms += F.rm.length; o.of = Math.max(o.of, F.rooms); o.back += Math.max(0, F.path.length - F.rm.length);
+    for (const x of F.rm) { o.t += x.t; o.h += x.h; o.k += x.k; }
+  }
+  const floors = sortFloors(T);
+  if (!floors.length) return '<div class="empty">Nothing yet. Needs lives played on a build that writes rooms.</div>';
+  return '<div class="scroll"><table><tr><th>Floor</th><th class="n">Lives</th><th class="n">Rooms walked into (of)</th><th class="n">Steps back</th><th class="n">Seconds a room</th><th class="n">Hearts a room</th><th class="n">Kills a room</th></tr>' +
+    floors.map((f) => { const o = T[f]; return `<tr><td>${esc(f)}</td><td class="n">${o.lives}</td><td class="n">${(o.rooms / o.lives).toFixed(1)} (${o.of || '?'})</td><td class="n">${(o.back / o.lives).toFixed(1)}</td>` +
+      `<td class="n">${Math.round(o.t / Math.max(1, o.rooms))}</td><td class="n">${(o.h / Math.max(1, o.rooms)).toFixed(2)}</td><td class="n">${(o.k / Math.max(1, o.rooms)).toFixed(1)}</td></tr>`; }).join('') + '</table></div>';
+}
+// A floor from end to end (6 Oct 2026: "the average time to pass each level and how many rooms it had"). Read off
+// `F.time` and `F.rooms`, which every report has carried since the stats began.
+const med = (a) => { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const mmss = (v) => { v = Math.round(v); return Math.floor(v / 60) + ':' + String(v % 60).padStart(2, '0'); };
+function floorTimeTable(R) {
+  const T = Object.create(null);
+  for (const r of R) for (const F of r.floors) {
+    const o = T[F.f] = T[F.f] || { lives: 0, clear: [], rooms: [], died: [] };
+    o.lives++; if (F.rooms) o.rooms.push(F.rooms);
+    if (F.cleared && F.time > 0) o.clear.push(F.time); else if (F.time > 0) o.died.push(F.time);
+  }
+  const floors = sortFloors(T);
+  if (!floors.length) return '<div class="empty">Nothing yet.</div>';
+  const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+  return '<div class="scroll"><table><tr><th>Floor</th><th class="n">Lives on it</th><th class="n">Cleared</th><th class="n">Time to clear (avg)</th><th class="n">Median</th><th class="n">Fastest</th><th class="n">Rooms</th><th class="n">Seconds a room</th><th class="n">Time before dying or quitting there</th></tr>' +
+    floors.map((f) => { const o = T[f], c = avg(o.clear), rm = avg(o.rooms);
+      return `<tr><td>${esc(f)}</td><td class="n">${o.lives}</td><td class="n">${o.clear.length}</td><td class="n">${o.clear.length ? mmss(c) : ''}</td><td class="n">${o.clear.length ? mmss(med(o.clear)) : ''}</td>` +
+        `<td class="n">${o.clear.length ? mmss(Math.min(...o.clear)) : ''}</td><td class="n">${rm ? rm.toFixed(1) : '?'}</td><td class="n">${o.clear.length && rm ? Math.round(c / rm) : ''}</td><td class="n">${o.died.length ? mmss(avg(o.died)) : ''}</td></tr>`; }).join('') + '</table></div>';
+}
+// SOMETHING NEW (js/stats.js `Novelty`): per floor, how much was met for the first time and how dry it ran.
+// Only floors from a build that writes it (`F.dry` set).
+const NEW_SEC = { rooms: 'Room', foes: 'Enemy', floors: 'Floor', vaults: 'Vault', boons: 'Soul', beasts: 'Animal', arts: 'Talisman', capes: 'Cape', items: 'Object', objects: 'Paper' };
+function noveltyTable(R) {
+  const T = Object.create(null);
+  for (const r of R) for (const F of r.floors) {
+    if (F.dry == null) continue;
+    const o = T[F.f] = T[F.f] || { n: 0, nw: 0, none: 0, dry: 0, gap: 0, nudge: 0 };
+    o.n++; o.nw += F.nw.length; if (!F.nw.length) o.none++; o.dry += F.dry; o.nudge += F.nudge.length;
+    for (const p of F.nw) o.gap = Math.max(o.gap, p[2]);
+  }
+  const floors = sortFloors(T);
+  if (!floors.length) return '<div class="empty">Nothing yet. Needs lives played on a build that writes it.</div>';
+  return '<div class="scroll"><table><tr><th>Floor</th><th class="n">Visits</th><th class="n">New things a visit</th><th class="n">Visits with nothing new</th><th class="n">Dry on walking in (avg)</th><th class="n">Longest dry spell ended here</th><th class="n">Slipped in a visit</th></tr>' +
+    floors.map((f) => { const o = T[f]; return `<tr><td>${esc(f)}</td><td class="n">${o.n}</td><td class="n">${(o.nw / o.n).toFixed(1)}</td><td class="n">${Math.round(100 * o.none / o.n)}%</td>` +
+      `<td class="n">${mmss(o.dry / o.n)}</td><td class="n">${mmss(o.gap)}</td><td class="n">${(o.nudge / o.n).toFixed(2)}</td></tr>`; }).join('') + '</table></div>';
+}
+// What was new on each floor, by kind of thing.
+function newByFloor(R) {
+  const out = Object.create(null);
+  for (const r of R) for (const F of r.floors) for (const p of F.nw) inc(out, F.f, p[1].split(':')[0]);
+  return out;
+}
+// The dry spells themselves: every gap that ended in something new, plus the one still running when a life ended.
+const GAPS = [[30, 'under 30 s'], [60, '30 s to 1 min'], [120, '1 to 2 min'], [240, '2 to 4 min'], [480, '4 to 8 min'], [Infinity, '8 min +']];
+function gapHist(R) {
+  const out = Object.create(null), put = (s, k) => { const b = GAPS.find(([lim]) => s < lim)[1]; inc(out, b, k); };
+  for (const r of R) { for (const F of r.floors) for (const p of F.nw) put(p[2], 'ended'); if (r.dryEnd != null) put(r.dryEnd, 'running'); }
+  return out;
+}
+// Whether the game runs out of new things as a player keeps playing: each player's lives in the order he played
+// them (only lives that write it), and per life number the new things a minute and the longest dry spell.
+function noveltyByLife(R) {
+  const by = Object.create(null);
+  for (const r of R) if (r.floors.some((F) => F.dry != null)) (by[r.player] = by[r.player] || []).push(r);
+  const T = [];
+  for (const L of Object.values(by)) L.sort((a, b) => a.at - b.at).forEach((r, i) => {
+    const k = Math.min(i, 9), o = T[k] = T[k] || { n: 0, nw: 0, t: 0, dry: [] };
+    o.n++; for (const F of r.floors) { o.nw += F.nw.length; o.t += F.time; }
+    if (r.dryMax != null) o.dry.push(r.dryMax);
+  });
+  if (!T.length) return '<div class="empty">Nothing yet. Needs lives played on a build that writes it.</div>';
+  const max = Math.max(...T.map((o) => o ? o.nw / Math.max(1, o.t / 60) : 0), 1e-9);
+  return '<div class="scroll"><table><tr><th>Life</th><th class="n">Lives</th><th class="n">New things a minute</th><th class="n">Longest dry spell (median)</th><th></th></tr>' +
+    T.map((o, k) => { if (!o) return ''; const pm = o.nw / Math.max(1, o.t / 60);
+      return `<tr><td>${k === 9 ? '10th and later' : (k + 1) + (['st', 'nd', 'rd'][k] || 'th')}</td><td class="n">${o.n}</td><td class="n">${pm.toFixed(1)}</td><td class="n">${o.dry.length ? mmss(med(o.dry)) : ''}</td>` +
+        `<td style="width:30%"><span class="bar" style="width:${100 * pm / max}%"></span></td></tr>`; }).join('') + '</table></div>';
+}
+// Where `TUNING.novelty.dry` should sit, read off the spells themselves (6 Oct 2026: "set the threshold from the
+// histogram after a week"): the gaps of five seconds or more that ended in something new, and the line a quarter
+// of them pass (the 75th percentile, to the half minute). Below 30 spells it says so instead of guessing.
+function drySuggest(R) {
+  const now = (typeof TUNING !== 'undefined' && TUNING.novelty) ? TUNING.novelty.dry : 240;
+  const g = []; for (const r of R) for (const F of r.floors) for (const p of F.nw) if (p[2] >= 5) g.push(p[2]);
+  if (g.length < 30) return `The threshold is ${now} s; ${g.length} dry spell${g.length === 1 ? '' : 's'} so far, a suggestion needs 30.`;
+  g.sort((a, b) => a - b);
+  const p75 = g[Math.floor(0.75 * (g.length - 1))], sug = Math.max(30, Math.round(p75 / 30) * 30), over = g.filter((v) => v >= now).length;
+  return `The threshold is ${now} s, passed by ${Math.round(100 * over / g.length)}% of ${g.length} dry spells; a quarter of them pass ${Math.round(p75)} s, so <b>TUNING.novelty.dry = ${sug}</b> would slip something in on the longest quarter.`;
+}
+// How far into its floor each life that did not escape got: the room it ended in against the floor's rooms.
+const PART = ['start', 'q1', 'q2', 'q3', 'last'];
+const PART_NAME = { start: 'First room', q1: 'First third', q2: 'Middle third', q3: 'Last third', last: 'Last room' };
+function endsAlong(R) {
+  const out = Object.create(null);
+  for (const r of R) {
+    if (r.end.how === 'win' || !r.end.f) continue;
+    const F = r.floors.filter((x) => x.f === r.end.f).pop(), n = r.end.rooms || (F && F.rooms) || 0;
+    if (n < 2) continue;
+    const i = r.end.room, p = i <= 0 ? 'start' : i >= n - 1 ? 'last' : ['q1', 'q2', 'q3'][Math.min(2, Math.floor(3 * (i - 1) / Math.max(1, n - 2)))];
+    inc(out, r.end.f, p);
+  }
+  return out;
+}
+// A life's way through its last floor, for the list of last lives: room numbers, the one he ended in marked.
+function pathOf(r) {
+  const F = r.floors[r.floors.length - 1];
+  if (!F || !F.path.length) return '';
+  const st = Object.create(null); for (const x of F.rm) st[x.i] = x.s[0].toUpperCase();
+  return ' · path ' + F.path.map(([i]) => (i + 1) + (st[i] || '')).join(' ');
+}
 // A player's first day is the day of his first life here; any later day he plays he came back.
 function byDay(R) {
   const day = (t) => new Date(t).toISOString().slice(5, 10), first = Object.create(null), seen = Object.create(null), out = Object.create(null);
@@ -296,7 +572,8 @@ const FUNNEL = [['open', 'Opened the game'], ['start', 'Started a run'], ['death
 // (lives from before the steps existed, a step lost on the way). Anyone with a step opened the game, and
 // anyone past it started a run. `R` is every life of every build; `build` keeps the players who came in
 // on it (the build of their first step).
-function funnelOf(R, build) {
+// `rg` (the date range) keeps the players whose first step falls inside it, and counts their steps up to its TO.
+function funnelOf(R, build, rg) {
   const P = Object.create(null);
   const put = (pl, k, at, b) => { const o = P[pl] = P[pl] || Object.create(null); if (!o[k] || o[k].at > at) o[k] = { at, build: b }; };
   for (const [pl, o] of Object.entries(STEPS)) for (const [k, v] of Object.entries(o)) put(pl, k, v.at, v.build);
@@ -321,9 +598,10 @@ function funnelOf(R, build) {
   for (const o of Object.values(P)) {
     const first = Object.values(o).sort((a, b) => a.at - b.at)[0];
     if (!first || (build && first.build !== build)) continue;
+    if (rg && rg.on && !rg.has(first.at)) continue;
     players++;
-    const keys = new Set(Object.keys(o).concat('open'));
-    if (Object.keys(o).some((k) => k !== 'open')) keys.add('start');
+    const keys = new Set(Object.keys(o).filter((k) => !rg || rg.to == null || o[k].at <= rg.to).concat('open'));
+    if ([...keys].some((k) => k !== 'open')) keys.add('start');
     for (const k of keys) out[k] = (out[k] || 0) + 1;
   }
   return { n: out, players };
@@ -343,12 +621,16 @@ const sec = (title, sub, body) => `<section><h2>${title}</h2><p class="sub">${su
 function draw() {
   const b = $('build').value, easy = $('easy').checked;
   const clean = REPORTS.filter((r) => (easy || !/E/.test(r.flags || '')) && !/[XJB]/.test(r.flags || ''));   // B: the autoplay bot
-  const R = clean.filter((r) => !b || r.build === b);
-  const FN = funnelOf(clean, b);
-  const funnel = `<section class="funnel"><h2>The funnel</h2><p class="sub">${FN.players} players${b ? ' who came in on ' + esc(b) : ''}, each counted once at every step taken.
+  // The date range: a life by the moment it began, the funnel by each player's first step (`funnelOf`).
+  const rg = rangeOf(); $('from').parentNode.classList.toggle('on', rg.on);
+  const dates = rg.on ? ` · ${rg.from != null ? 'from ' + esc($('from').value) : 'up'} to ${rg.to != null ? esc($('to').value) : 'today'}` : '';
+  const R = clean.filter((r) => (!b || r.build === b) && rg.has(r.at));
+  const FN = funnelOf(clean, b, rg);
+  const funnel = `<section class="funnel"><h2>The funnel${dates}</h2><p class="sub">${FN.players} players${b ? ' who came in on ' + esc(b) : ''}${rg.on ? ' whose first step falls in these dates' : ''}, each counted once at every step taken.
     Only players who said yes to the title's question are counted (itch.io's own page counts everyone who opened it).
     Dying and clearing floor 1 can come in either order.</p>${funnelTable(FN)}</section>`;
-  if (!R.length && FN.players) { $('main').innerHTML = funnel; return; }
+  if (!R.length && FN.players && !(rg.on && clean.length)) { $('main').innerHTML = funnel; return; }
+  if (!R.length && rg.on && clean.length) { $('main').innerHTML = funnel + '<div class="empty">No lives in these dates. Press ALL DATES to see every life.</div>'; return; }
   if (!R.length) { $('main').innerHTML = '<div class="empty">No lives here yet. Play one, press THIS BROWSER, or open a file the dev drawer\'s SAVE STATS wrote, or press SERVER.</div>'; return; }
   const C = count(R);
   const deaths = R.filter((r) => r.end && r.end.how === 'death').length;
@@ -357,12 +639,14 @@ function draw() {
   const back = Object.values(days).filter((s) => s.size > 1).length;
   const tiles = [[C.lives, 'lives'], [C.players, 'players'], [back, 'players who came back another day'], [deaths, 'deaths'], [C.wins, 'escapes'],
     [Math.round(C.lifeTime / Math.max(1, C.lives)) + 's', 'seconds into the last floor, on average'], [C.released, 'souls released unspent']];
+  const dry = R.filter((r) => r.dryMax != null).map((r) => r.dryMax);
+  if (dry.length) tiles.push([mmss(med(dry)), 'longest stretch with nothing new in a life (median)']);
   const souls = Object.entries(C.souls).map(([id, o]) => ({ id, ...o })).sort((a, b) => b.taken / b.offered - a.taken / a.offered || b.offered - a.offered);
   const shop = Object.entries(C.shop).map(([id, o]) => ({ id, ...o })).sort((a, b) => b.taken / b.offered - a.taken / a.offered);
   const reach = Object.create(null); for (const [f, n] of Object.entries(C.floorsReached)) reach[f] = { cleared: C.cleared[f] || 0, died: n - (C.cleared[f] || 0) };
   const blows = Object.entries(C.blows).sort((a, b) => b[1].kills - a[1].kills);
-  const EV = ['here', 'freed', 'yes', 'no', 'paid', 'saved', 'dead', 'lost', 'coop'];
-  const EVN = { here: 'On the floor', freed: 'Let out', yes: 'Said yes', no: 'Said no', paid: 'Paid early', saved: 'Saved at stairs', dead: 'Died', lost: 'Left behind', coop: 'Never let out' };
+  const EV = ['here', 'freed', 'yes', 'no', 'paid', 'saved', 'with', 'dead', 'lost', 'coop'];
+  const EVN = { here: 'On the floor', freed: 'Let out', yes: 'Said yes', no: 'Said no', paid: 'Paid early', saved: 'Saved at stairs', with: 'With him at the end', dead: 'Died', lost: 'Left behind', coop: 'Never let out' };
   $('main').innerHTML =
     funnel + '<div class="tiles">' + tiles.map(([v, l]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('') + '</div><div class="grid">' +
     sec('Where the goat dies', 'Deaths on each floor, by what took the last heart.', stacked(C.deaths)) +
@@ -370,8 +654,20 @@ function draw() {
     sec('How the cult dies', 'Kills on each floor, by what finished the man.', stacked(C.kills, { name: how })) +
     sec('Players by day', 'Each day: players seen for the first time, and players who came back from an earlier day.', stacked(byDay(R), { order: (a, b) => a < b ? -1 : 1, name: (k) => k === 'first' ? 'First day' : 'Came back' })) +
     sec('How far lives get', 'Each floor: walked onto and cleared, or walked onto and died on.', stacked(reach, { name: (k) => k === 'cleared' ? 'Cleared' : 'Died or quit there' })) +
+    sec('Which room he dies in', 'Deaths by floor and room number, in the order the floor lays its rooms (room 1 is where he starts it). A dot is a room nobody died in.', deathGrid(R)) +
+    sec('Where lives end along the floor', 'Every life that did not escape, by how far into the floor it got: the room it ended in against the floor\'s rooms.', stacked(endsAlong(R), { name: (k) => PART_NAME[k] || k })) +
+    sec('What he does in a room', 'The rooms with men in them on each floor, as % of them: fought through (half the room\'s men or more left dead), unseen (none of them ever came after him), or ran past them (left with men after him).', stacked(stratByFloor(R), { name: (k) => STRAT_NAME[k] || k })) +
+    sec('Seconds in each room', 'Average seconds spent in each room, by floor and room number, over every visit (a corridor counts to the room behind him).', timeGrid(R)) +
+    sec('Rooms, floor by floor', 'Per floor, a life\'s rooms on average: how many it walked into, how many times it went back into one, and what a room cost.', floorRoomTable(R)) +
+    sec('Time per floor', 'Per floor: how long a clear takes (on the floor\'s own clock, cards and talk boxes not counted), how many rooms the floor had, and how long the lives that ended there lasted on it.', floorTimeTable(R)) +
+    sec('Something new', `How long a player goes without meeting anything for the first time (a room, an enemy, a floor, a soul, an animal, a talisman, a cape, an object), counted in play seconds over every run in that browser. Past ${(typeof TUNING !== 'undefined' && TUNING.novelty ? TUNING.novelty.dry : 240)} s dry the game slips something in: an unseen soul card, unseen rooms and an unseen vault on the next floor, an unseen talisman on the mouse's shelf.`, noveltyTable(R)) +
+    sec('What was new, by floor', 'First sightings on each floor, by kind of thing.', stacked(newByFloor(R), { name: (k) => NEW_SEC[k] || k })) +
+    sec('Does the new run out?', 'Each player\'s lives in the order he played them: how many new things a minute of play brought, and the longest stretch without one. A falling first column is the game running out of surprises for him.', noveltyByLife(R)) +
+    sec('Dry spells','Every stretch of play between two new things, by length. "Still running" is the one a life ended in. ' + drySuggest(R),stacked(gapHist(R), { order: (a, b) => GAPS.findIndex((g) => g[1] === a) - GAPS.findIndex((g) => g[1] === b), name: (k) => k === 'ended' ? 'Ended in something new' : 'Still running at the end' })) +
+    sec('Rooms by kind','Every room walked into, by its kind: men in it, what he did there (empty rooms as a share of all, the rest of the rooms with men), and what it cost.', roleTable(R)) +
     sec('Souls taken by floor', 'The card picked at each soul, floor by floor.', stacked(C.soulFloor, { name: nameOf })) +
     sec('Every soul card', 'How often a card was dealt and how often it was the one taken.', rateTable(souls, 'Soul')) +
+    sec('Skills against how far', 'Every life counted under each soul it ended wearing: floors cleared on average, and the share of those lives that died. Read it for balance, but a skill taken late has had less time to fail.', skillTable(R)) +
     sec('The mouse', `Talismans on her shelf and how often each was taken. Milk taken ${C.milk} times; the rat ogre called ${C.ogre} times.`, rateTable(shop, 'Talisman')) +
     sec('Companions', 'What became of each animal, counted over every floor it was on.',
       `<div class="scroll"><table><tr><th>Animal</th>${EV.map((e) => `<th class="n">${EVN[e]}</th>`).join('')}</tr>` +
@@ -379,10 +675,12 @@ function draw() {
     sec('Every way a blow landed', 'All blows on the cult (a two-heart man takes two), and how many of them killed, by whom.',
       `<div class="scroll"><table><tr><th>How</th><th class="n">Blows</th><th class="n">Kills</th><th>Killed most</th></tr>` +
       blows.map(([k, o]) => `<tr><td>${esc(how(k))}</td><td class="n">${o.blows}</td><td class="n">${o.kills}</td><td>${esc(Object.entries(o.by).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([e, n]) => who(e) + ' ' + n).join(', '))}</td></tr>`).join('') + '</table></div>') +
-    sec('Last lives', 'The most recent lives, newest first. Click one to see the whole report.',
+    sec('Every enemy', 'Per kind: hearts it took from him, lives it ended, and how many of it he finished and with how many blows.', enemyTable(R)) +
+    sec('Bought in heaven', 'The mirror ranks bought before each life, in the order he bought them.', mirrorTable(R)) +
+    sec('Last lives', 'The most recent lives, newest first. Click one to see the whole report. The path is the last floor\'s rooms in the order he walked into them, each marked F fought, S unseen, R ran, E empty.',
       '<div class="scroll">' + R.slice().sort((a, b) => (b.done || b.at) - (a.done || a.at)).slice(0, 30).map((r) => {
-        const E = r.end || {};
-        return `<details><summary>${new Date(r.done || r.at).toLocaleString()} · ${esc(r.build)} · ${esc(E.how || '?')} on ${esc(E.f || '?')}${E.by ? ' · ' + esc(who(E.by)) : ''} · ${N(E.kills)} kills</summary><pre>${esc(JSON.stringify(r, null, 1))}</pre></details>`;
+        const E = r.end || {}, bd = buildOf(r);
+        return `<details><summary>${new Date(r.done || r.at).toLocaleString()} · ${esc(r.build)} · ${esc(E.how || '?')} on ${esc(E.f || '?')} room ${N(E.room) + 1}${E.rooms ? ' of ' + E.rooms : ''}${E.by ? ' · ' + esc(who(E.by)) : ''} · ${bd.cleared} floors cleared · ${N(E.kills)} kills · ${bd.ids.length ? esc(bd.ids.map(nameOf).join(', ')) : 'no souls'}${r.dryMax != null ? ' · longest with nothing new ' + mmss(r.dryMax) : ''}${esc(pathOf(r))}</summary><pre>${esc(JSON.stringify(r, null, 1))}</pre></details>`;
       }).join('') + '</div>') +
     '</div>';
 }

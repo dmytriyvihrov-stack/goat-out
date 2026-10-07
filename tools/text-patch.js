@@ -117,4 +117,106 @@ function editLine(root, { file, from, to, del }) {
   return { ok: true };
 }
 
-module.exports = { applyText, findAll, editLine };
+// The BOONS tab's EDIT NAME / EDIT TEXT / DELETE (POST /boon-edit). A soul's words are rewritten where
+// they stand, the plain `name:` / `desc:` literal of its own entry inside `const BOONS = [`; a desc a
+// getter builds (or a template with a number filled in) has no literal to rewrite, so its new words go
+// into `BOON_TEXT` instead, which js/text-edit.js lays over the entry at load. DELETE is `BOON_OFF`,
+// never the entry itself: a deleted soul is only never dealt, and RESTORE is one id out of a list.
+//   { op: 'text', id, field: 'name' | 'desc', to, restore }   restore: back to the original
+//   { op: 'off', id, off }
+//   { op: 'import', text: { id: { name, desc } }, off: [id] }  a page's edits made off the server
+function boonSpan(src, id) {
+  const a = src.indexOf('const BOONS = [');
+  if (a < 0) throw new Error('BOONS not found in js/tuning.js');
+  const end = src.indexOf('\n];', a);
+  const re = new RegExp("\\n  \\{ id: '" + id.replace(/[^\w-]/g, '') + "'", 'g');
+  re.lastIndex = a;
+  const m = re.exec(src);
+  if (!m || m.index > end) throw new Error('no soul ' + id + ' in BOONS');
+  // its entry runs to the next soul's line, or to the end of the list
+  const next = src.indexOf('\n  { id: ', m.index + 1);
+  return { a: m.index, b: next > 0 && next < end ? next : end };
+}
+// The `field: '...'` literal in an entry, as a key (after `{ `, `, ` or the line's indent), never `get desc()`.
+function boonLiteral(src, span, field) {
+  const re = new RegExp('(^|[{,]\\s*|\\n\\s*)' + field + ":\\s*(['\"`])", 'g');
+  re.lastIndex = span.a;
+  let m;
+  while ((m = re.exec(src)) && m.index < span.b) {
+    const q = m[2], start = m.index + m[0].length;
+    let i = start;
+    for (; i < src.length; i++) { if (src[i] === '\\') { i++; continue; } if (src[i] === q) break; }
+    if (i >= span.b) return null;
+    // a template that fills something in is built, not written: it is BOON_TEXT's
+    if (q === '`' && src.slice(start, i).includes('${')) return null;
+    return { a: start, b: i, q };
+  }
+  return null;
+}
+function readBoonText(src) {
+  const head = 'const BOON_TEXT = {', a = src.indexOf(head), b = src.indexOf('\n};', a);
+  if (a < 0 || b < 0) throw new Error('BOON_TEXT not found in js/tuning.js');
+  const out = {}, body = src.slice(a + head.length, b);
+  // one soul a line: `  id: { name: '…', desc: '…' },`, read back with the quotes it was written in
+  for (const line of body.split('\n')) {
+    const m = /^\s*([\w-]+): \{(.*)\},?\s*$/.exec(line); if (!m) continue;
+    const o = {}, fr = /(name|desc): '((?:\\.|[^'\\])*)'/g; let f;
+    while ((f = fr.exec(m[2]))) o[f[1]] = f[2].replace(/\\(.)/g, '$1');
+    out[m[1]] = o;
+  }
+  return { a, b, head, out };
+}
+function writeBoonText(src, text) {
+  const { a, b, head } = readBoonText(src);
+  const body = Object.keys(text).sort().filter((k) => Object.keys(text[k]).length)
+    .map((k) => '  ' + k + ': { ' + ['name', 'desc'].filter((f) => typeof text[k][f] === 'string').map((f) => f + ": '" + escFor(text[k][f], "'") + "'").join(', ') + ' },').join('\n');
+  return src.slice(0, a) + head + (body ? '\n' + body : '') + src.slice(b);
+}
+function writeBoonOff(src, off) {
+  const head = 'const BOON_OFF = [', a = src.indexOf(head), b = src.indexOf('];', a);
+  if (a < 0 || b < 0) throw new Error('BOON_OFF not found in js/tuning.js');
+  return src.slice(0, a) + head + [...new Set(off)].sort().map((k) => "'" + k.replace(/[^\w-]/g, '') + "'").join(', ') + src.slice(b);
+}
+function readBoonOff(src) {
+  const a = src.indexOf('const BOON_OFF = ['), b = src.indexOf('];', a);
+  return (src.slice(a, b).match(/'([\w-]+)'/g) || []).map((s) => s.slice(1, -1));
+}
+function boonText(src, id, field, to, restore) {
+  if (field !== 'name' && field !== 'desc') throw new Error('bad field');
+  if (typeof to !== 'string') throw new Error('no text');
+  const span = boonSpan(src, id), lit = boonLiteral(src, span, field), T = readBoonText(src).out;
+  let where;
+  if (lit) {
+    src = src.slice(0, lit.a) + escFor(to, lit.q) + src.slice(lit.b);
+    if (T[id]) delete T[id][field];
+    where = 'source';
+  } else {
+    T[id] = T[id] || {};
+    if (restore) delete T[id][field]; else T[id][field] = to;
+    where = 'BOON_TEXT';
+  }
+  return { src: writeBoonText(src, T), where };
+}
+function editBoon(root, edit) {
+  const file = path.join(root, 'js', 'tuning.js');
+  let src = fs.readFileSync(file, 'utf8'), where = 'BOON_OFF';
+  if (edit.op === 'text') ({ src, where } = boonText(src, String(edit.id), edit.field, edit.to, !!edit.restore));
+  else if (edit.op === 'off') {
+    boonSpan(src, String(edit.id));
+    const off = readBoonOff(src).filter((k) => k !== edit.id);
+    if (edit.off) off.push(String(edit.id));
+    src = writeBoonOff(src, off);
+  } else if (edit.op === 'import') {
+    for (const [id, o] of Object.entries(edit.text || {})) for (const f of ['name', 'desc']) if (typeof o[f] === 'string') src = boonText(src, id, f, o[f], false).src;
+    // off as a list of ids, or { id: true | false } (EXPORT's shape: a RESTORE made off the server too)
+    const off = Array.isArray(edit.off) ? Object.fromEntries(edit.off.map((k) => [k, true])) : (edit.off || {});
+    let list = readBoonOff(src);
+    for (const [id, on] of Object.entries(off)) { boonSpan(src, id); list = list.filter((k) => k !== id); if (on) list.push(id); }
+    src = writeBoonOff(src, list);
+    where = 'import';
+  } else throw new Error('bad op');
+  fs.writeFileSync(file, src);
+  return { ok: true, where, file: 'js/tuning.js' };
+}
+
+module.exports = { applyText, findAll, editLine, editBoon };

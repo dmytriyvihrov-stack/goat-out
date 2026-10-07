@@ -9,6 +9,70 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 6 October 2026, late, nine notes with screenshots (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | the iron cage says "cost 1 key, right mouse click": not the headbutt, it must be a decision | a key is spent by GRAB (`Goat.tryGrab`, `Prop.unlockIron`); a headbutt only rings the cage (`Prop.ringIron`, says GRAB IT TO USE THE KEY or IT NEEDS A KEY). The floor words: RIGHT M. CLICK: COST 1 KEY. |
+| 2 | feel | the mouse: I must really walk up to her and press the right button | her offer opens on a grab pressed within `shop.dlg.r`, no longer on standing there (`Codex.watchShop`); the floor words say WALK UP TO HER · RIGHT M. CLICK. |
+| 3 | feel | the food on the tables a little more appetizing | `scatter.dim` back toward the painted colours (k 0.72 to 0.86, grey 0.35 to 0.12). Still a shade down, so it does not read as a pickup. |
+| 4 | bug | two doors (screenshot): cannot be in the rules | a plain corridor door within `DOOR_APART` (7) tiles of a soul gate or a seal is taken down (it was 160 of 960 floors); `GEN_RULES.doors`. |
+| 5 | feel | the ogre by the trap is smarter: hurt once, he does not leap a second time (screenshot) | read as the rat ogre: with a heart gone he no longer leaps onto a landing in the wheel's sweep or a fire, he stands and looks (`Enemy.updateOgre`). |
+| 6 | number | the ogre alight is angry and attacks much faster | `butcher.rage` 1.5 / 1.5 to speed 1.8, tempo 2.4. |
+| 7 | feel | the animal's yes / no buttons more in the game's style | pixel-notched plates in the box's own face, a notched key cap (`Beast.drawTalk`). |
+| 8 | feel | draw the halo better | `Heaven.halo`: a flat gold hoop in cells, lit on its upper lip, shaded under, a glint going round, a glow; god and seats. |
+| 9 | bug | walking through a door looks strange (screenshot) | NOT FIXED, not reproduced: a door is passable from half its swing (`open` 0.5) while it is still drawn sweeping through him. Which door was it, and who opened it? |
+
+## 6 October 2026, night, the cape, the paper, the purse (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | the cape should look like the inspiration (a pony with a hero's cape tied at the neck); now it covers the whole body, it should cover only a little | every view of every cape redrawn in `CAPE_PIXELS.VIEWS`, four times (too big, then "even smaller", then "it must not cover the rump, only part of the back"): tied in a bow at the throat, over the shoulders and the front half of the back, hanging a little down the side; rump, belly and legs show. Sheet: `output/capes-2026-10-06/sheet.png` |
+| 2 | feel | it still shows his sides, and when he moves it moves a little in the wind; then "more in the wind" | real flapping (`TUNING.cape.wind`): off his speed and the clock, the lower rows stream back and ripple, and ("billow up more") the end rises up to four cells over his back like a flag; from behind it lifts its hem and ripples instead of swelling; standing it stirs. The back view redrawn as cloth ("from the back it looks strangest"): a bow under the collar, folds, a pointed hem, flanks showing. `walk.png` |
+| 3 | feel | the cape chip a bit bigger and down and left, like Enter the Gungeon, so the cooldown is easier to see | `Renderer.drawCapeCorner`: a plate in the bottom-left corner over the dev word (`TUNING.hud.cape`), Q in its corner, the wait as a veil drawn down off the icon plus a bar up its right edge; ready, the rim lights gold. Touch keeps the old chip by the hearts (the corners are thumbs there) |
+| 4 | system | destructibles: a scrap of paper on the floor that unfolds into a drawing when found; butt it to tear it; it goes in the finds and never lies on a map again; the first under the big table in the first room | the posters are scraps now (`kind: 'poster'`): folded on the floor (gen.js, half of them under a room's table), opening within `readR` tiles with nothing on it, its name said, marked found in `Unlocks` OBJECTS on the spot; a butt, a body or a blast tears it once it is open. `Game.layScraps` lays the breeds chart under THE ALTAR's ritual table and only drawings this browser has not found. `GEN_RULES.posters` rewritten for the floor |
+| 5 | tool | tools/god-talk.html: did not understand how it works | it needs the dev server; opened as a file the browser will not let it read the game's code, so it showed nothing. It now says so in a box with the command and the address, and opens with one line on what it is for |
+| 6 | feel | the key icon top right a bit smaller; the souls only shown while collected and in the book, not standing, they are meta | the key and its count a size down (`hud.keyScale`), it holds the corner; heaven's skull and wisp come up beside it for `hud.purse.show` s when either count moves and fade; always in heaven and at the foot of his page in the book (I) |
+
+Open: the decal of the ritual scene stays where the altar stood, so the opened drawing reads as lying on a stone slab. Is that fine, or should the scrap lie beside it?
+
+## 6 October 2026, evening, his twelve notes with screenshots (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | the room shut behind him looks bad (a black box over the walls); show the fog of war behind that door; the first time, say there is no way back | a shut room goes under the floor's own soft fog (it thickens inside its walls, then `drawMemFog` takes it whole, the walls facing him left out); the veil in its mouth is cells now; the first clamp in a browser says NO WAY BACK / THE ROOMS BEHIND YOU CLOSE over him |
+| 2 | feel | some rooms have an open way through, more on later floors; count them as rooms anyway | read as the fog: a corridor too wide for a door (THE THRESHING FLOOR's five) is fogged until seen like a room's floor. The clamp already shut every room, door or none |
+| 3 | tool | stats: let me pick the dates to look at | FROM / TO / ALL DATES in tools/stats.html, kept in that browser; every chart, table and the funnel follow it |
+| 4 | tool | the data game analytics use: which room of which floor he died in, the path | every life's report keeps each floor's rooms walked into (`rm`: index, role, seconds, hearts, kills, men) and the path; stats.html shows deaths by floor x room, where along the floor lives end, seconds per room, rooms by kind |
+| 5 | tool | the strategy per room: fight, stealth, run | each room is judged as he leaves it: fight (half its men dead or more), stealth (none ever aware of him), run (left men who knew him alive), empty; the mix per floor in stats.html |
+| 6 | feel | of the bells only the smallest is open for now, the rest come as bosses and floors are won; they should not even be there yet | the smallest bell rings first and they come back toward the great one, one a floor ever climbed out of; one not won yet does not hang (an empty hook), and one won since the last visit drops onto its hook. The shepherd's lines say so |
+| 7 | feel | the overlook: a view of a beautiful landscape, the castle and its towers, not every floor apart; a simple wooden watchtower into the cloud, not a lighthouse | see CLAUDE.md's THE OVERLOOK paragraph: one pixel landscape of the cult's castle from the top of a wooden watchtower whose top is lost in a cloud |
+| 8 | system | the horse in heaven gives a quest, a run modifier: your floors get THE CHASE; it shows top right | GRAB its seat: the dare (the red after him on his next three floors); GRAB again within 6 s: a bet. Every floor past the first is chased until three are climbed out of (15 sacrifices each, 40 for the last); top right under the purse, the gold horse and THE RED · N LEFT |
+| 9 | system | something by the jump where such modifiers are let go | a hitching rail by the lip, a ribbon tied on for each dare worn; GRAB it and they are all let go, each animal saying so |
+| 10 | system | the rabbit's quest: in any run, clear one floor wholly unseen, all but the last room | GRAB its seat twice: worn until a floor is climbed out of with no man outside its last room ever aware of him (60 sacrifices); while it is worn the stealth test is on (ALT to creep), the corner says UNSEEN SO FAR or SEEN THIS FLOOR, and the first man to see him says so |
+| 11 | feel | no question mark over the table in heaven | gone |
+| 12 | feel | GRASS HEALS again by a room's grass; it is only for the first time, in the corridor, so you cannot walk past it | only THE ALTAR's corridor grass says it now |
+| 13 | feel | a clearer sound when a man dies | the death is five layers: a bright bone crack, a muffled struck-log mark identical every time (so the ear learns it), a short gasp through the throat, the wet, a heavier body drop; a heavy take for the butcher, ogre, thrower, shieldman; 2.4 dB louder and the rest of the mix ducks a little deeper and longer |
+
+Still open, to ask him: the horse's three floors and both rewards are guesses (the note's number of floors was lost in dictation); the rabbit's dare turns ALT on for a player who has it, a new key while it is worn (rule 1), say if that is wrong; bosses do not wake bells, only floors (a floor's end is its last boss); the stats worker has optional shape checks for the new fields that need a redeploy to apply (it accepts them already).
+
+## 6 October 2026, ten notes from his uncle (shipped the same day, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | system | a small drop with spikes between the two sides of a room, on level 3; you roll over it, and the floor says E rolls over a drop too | THE CHASM: `carveChasm` cuts a band of drop one tile across a room, wall to wall, between its way in and its way out (a hole's stakes under it); THE CAVE (`chasmLesson`) always has one in its first room that takes it, with `E - ROLL / IT CARRIES YOU OVER A DROP` on the near side (`CONTROL_LINES` part 5, follows the key bindings). The roll carries him over a hole while it lasts (a roll that ends over it drops him), and asked straight across a drop he can clear, the roll goes exactly there |
+| 2 | system | the same as a room pattern, especially with rifles or the butcher on the far side | from floor index `chasm.from` (2) a floor cuts one more at `chance` (0.45), rooms with a rifle or the butcher first, and stands those men on the far side (the line and the hook reach over it; nobody in the cult crosses). Our animals hop it (`Beast.hopGap`). `GEN_RULES.chasm` |
+| 3 | system | a fish in an aquarium: only gurgles in the box; heavy, only carried; thrown it flies a couple of tiles and stops, hits something on the way and it breaks and the fish dies | THE FISH (js/beasts-more.js): a tank on the floor, no coop; BLUB / BLUB BLUB / ...BLUB? and no question; carried at 60% of his stride; thrown 2.2 tiles and set down; stone, a door, furniture or a man on the way breaks it (shards, the fish on the floor, THE FISH IS DEAD), fire does nothing to it. Up the stairs: the first fire on him each floor only steams. On THE YARD, THE ROAD, THE BRIDGE and THE RAFTERS' lists; a seat in heaven; in THE SHOWROOM |
+| 4 | system | poisoned enemies are no exception, they fall into traps and the hole more often | a poisoned man's trap sense is × `status.poison.trapMul` (0.35), rolled every 0.9 s whether or not he has seen the goat, and he misreads a drop too (`pitSense` 0.6) and walks off it |
+| 5 | system | an overlook in the sky, like Hades: climb it and see your road from above, the levels in pixel art | THE OVERLOOK: a tower of cloud-stone in heaven's edge room; GRAB, CLIMB AND LOOK DOWN: the run's floors as their paintings (the clear card's own pixel pictures, kept at every clear and at the death), one large in a gold frame, the road of floors under it, the one he fell on with a skull |
+| 6 | system | poison the horse to slow it: it says you cheated but admits you won; poison and stun on the following animals too, lasting longer on them; they still walk round traps | `Beast.dope`: a puddle (the spit, VENOM JAW's drip, SOUR TUMBLE, a burst) poisons one for 9 s at 45% pace; a headbutt, DEAD WEIGHT's tumble or THE FULL THROAT dazes one 2.6 s; their steering round fire and drops is unchanged. Beaten after that, the horse says YOU POISONED ME! CHEAT! CHEAT! and still hands over its legs |
+| 7 | system | health over the companions; the horse has a lot, the hen less; the tortoise's like a shield's, spent by nothing but fire | `Beast.drawHealth`: a pip a heart over each animal near him, hurt or doped (green poisoned, three cells wheeling dazed); the horse 5 → 9 hearts (the hen keeps her 5); the tortoise's pips are iron and only fire takes them, as before |
+| 8 | system | in the book and the menu a tab of unlocks: skills, companions, talismans, items; question marks for now | UNLOCKS (`Unlocks`, js/codex.js, kept per browser): the book's second tab (Tab or Enter turns it) and a title row; souls dealt / taken, animals met / brought out, talismans seen / worn, ten things had (crate, bomb, sword, shield, halberd, both grasses, key, barrel, mushrooms); what is not met is a question mark |
+| 9 | system | with the fire throw, the thrown one catches fire too | FIREBRAND: a man thrown from a charged mouth goes out alight (`Status.markThrow`) |
+| 10 | system | the ghost can be a door, rarely, surprise | on a fifth of the floors with a wraith, once the first hidden one has been met, one waits in a plank door into or out of its room; butted, reached at or stepped up to, the planks burst and it comes out of them (THE DOOR WAS IT); the planks breathe now and then while he is near. WRAITH DOOR in the drawer's SPAWN column |
+
+Still open, to ask him: the fish's reward (wet fleece) and the horse's nine hearts are guesses; the chasm's 45% of later floors may be too many; the overlook keeps its pictures only for the life of the page.
+
 ## 5 October 2026, his own 48 notes with screenshots (shipped the same day, not yet deployed)
 
 Worked in five parallel parts (heaven, stealth, the thrower and the shieldman, the generator, fog and THE DARK) plus the rest.
@@ -1955,3 +2019,19 @@ a charge, and a club that lands on it staggers the man who swung. His back is st
 Asked for as "минус один том, как было в начале уровня". `startLevel` snapshots what he walked in with
 and `restartLevel` returns that list minus its newest entry, so a tome picked up in the level that
 killed you goes with it. The death card names what went.
+
+## 6 Oct 2026, playtest batch (animals in heaven, bells, feel)
+
+| Tag | Note | Done |
+|---|---|---|
+| system | An animal met down there shows in heaven pale and silent (`meta.met`, `Heaven.noteMet`); brought out once it talks and gives its dare | yes |
+| system | God's next ask once the mirror is whole and no animal was ever brought out (`HEAVEN_TALK.animal`, `Heaven.animalAsk`) | yes |
+| bug | "IT FALLS TO THE FLOOR BELOW" float removed | yes |
+| dev | ALL BELLS button in the HEAVEN tab | yes |
+| bug | Horns flipped on some steps of the up-right run: stray 15 px blobs broke `hornFix` (`hornsOf` keeps real horns only) | yes |
+| feel | A butt along a wall slid on; recovery drift 0.35 to 0.12 | yes |
+| number | Base headbutt half a tile shorter (`headbutt.lunge` 13.3 to 10 tiles/s, 2.0 to 1.5 tiles) | yes |
+| system | Grabbing an open scrap of paper opens it full screen (`Codex.openPoster`) | yes |
+| bug | Two grasses in one room: the first grass skips a room that has its rhythm bowl | yes |
+| feel | Clear card shows the kills and the bell that woke; SAVE THE PICTURE off (`painting.saveButton`) | yes |
+| note | Rabbit "lost the option to talk": it was the rabbit's dare (stealth on), as designed; to be framed as a run modifier chosen in heaven | open |

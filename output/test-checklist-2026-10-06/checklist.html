@@ -1,0 +1,206 @@
+<title>Doomed Goat Testing Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+SC:wght@500;700&family=Jacquard+24&display=swap">
+<style>
+/* Layout: one narrow column of cards, a sticky bar with the count and filters; the game's own dark stone and bone. */
+:root {
+  --bg: #17130f; --panel: #211b16; --line: #3a3027; --fg: #efe6d0; --dim: #a8977c;
+  --blood: #c0392b; --amber: #f2aa30; --ok: #7fae5a; --violet: #9a7ce0;
+  --display: 'Jacquard 24', 'Alegreya SC', Georgia, serif;
+  --head: 'Alegreya SC', Georgia, serif;
+  --body: 'Alegreya', Georgia, 'Times New Roman', serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 17px/1.45 var(--body); margin: 0; }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 60px; }
+h1 { font: 400 52px/1 var(--display); margin: 8px 0 4px; letter-spacing: 0.5px; }
+.lede { color: var(--dim); margin: 0 0 14px; max-width: 65ch; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding-block: 10px; }
+.count { font: 700 15px var(--head); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.meter { flex: 1 1 160px; height: 8px; background: var(--line); display: flex; min-width: 120px; }
+.meter i { display: block; height: 100%; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+button { font: 600 14px var(--head); letter-spacing: 0.05em; color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  padding: 5px 10px; cursor: pointer; border-radius: 3px; }
+button:hover { border-color: var(--dim); }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sync { font-size: 13px; color: var(--dim); margin-left: auto; }
+h2 { font: 700 20px var(--head); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin: 28px 0 10px; text-wrap: balance; }
+.list { display: grid; gap: 12px; }
+.item { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); padding: 14px 16px; min-width: 0; }
+.item[data-s="ok"] { border-left-color: var(--ok); }
+.item[data-s="bad"] { border-left-color: var(--blood); }
+.item[data-s="wip"] { border-left-color: var(--amber); }
+.top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.top h3 { font: 700 19px var(--head); margin: 0; letter-spacing: 0.03em; flex: 1 1 260px; min-width: 0; }
+.tag { font: 700 11px var(--head); letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; border: 1px solid; }
+.tag.new { color: var(--amber); } .tag.big { color: var(--violet); }
+.how { margin: 8px 0 6px; font-size: 15px; color: var(--dim); }
+.how b { color: var(--fg); font-weight: 600; }
+kbd { font: 600 13px var(--head); background: var(--bg); border: 1px solid var(--line); padding: 0 5px; color: var(--fg); }
+ul { list-style: none; margin: 6px 0 10px; padding: 0; display: grid; gap: 4px; }
+li label { display: flex; gap: 9px; align-items: flex-start; cursor: pointer; }
+li input { margin-top: 5px; accent-color: var(--ok); width: 16px; height: 16px; flex: none; }
+li.done span { color: var(--dim); text-decoration: line-through; text-decoration-color: var(--line); }
+.status { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.status button[data-v="ok"][aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #10140c; }
+.status button[data-v="bad"][aria-pressed="true"] { background: var(--blood); border-color: var(--blood); color: var(--fg); }
+.status button[data-v="wip"][aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: #1a1208; }
+textarea { width: 100%; margin-top: 8px; min-height: 2.6em; resize: vertical; background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); font: 15px/1.4 var(--body); padding: 6px 8px; }
+.note { font-size: 13px; color: var(--dim); margin-top: 22px; }
+.ro .status button, .ro input, .ro textarea { pointer-events: none; opacity: 0.6; }
+@media (prefers-reduced-motion: no-preference) { .meter i { transition: width .3s; } }
+@media (max-width: 480px) { h1 { font-size: 40px; } .sync { margin-left: 0; width: 100%; } }
+</style>
+
+<div class="wrap">
+  <h1>Doomed Goat: что потестить</h1>
+  <p class="lede">Большие штуки последних сборок (2.00 и после), не мелкие фиксы. У каждой: как её вызвать и что проверить. Галочки и заметки сохраняются, Claude их потом читает.</p>
+  <div class="bar">
+    <span class="count" id="count">0 / 0 ПРОВЕРЕНО</span>
+    <div class="meter" id="meter" aria-hidden="true"></div>
+    <div class="filters" role="group" aria-label="Фильтр">
+      <button id="f-all" data-f="all" aria-pressed="true">ВСЕ</button>
+      <button id="f-left" data-f="left" aria-pressed="false">ОСТАЛОСЬ</button>
+      <button id="f-bad" data-f="bad" aria-pressed="false">СЛОМАНО</button>
+    </div>
+    <span class="sync" id="sync">загружаю отметки…</span>
+  </div>
+  <div id="groups"></div>
+  <p class="note">DEV TOOLS: слово в левом нижнем углу (локальная сборка и этот артефакт, в itch-сборке его нет). LEVELS в главном меню видно только при открытом DEV TOOLS. GOD в DEV TOOLS, чтобы не умирать на проверке.</p>
+</div>
+
+<script>
+// The checklist itself: what to test and how to get there. Marks live in the db (marks/<id>), never here.
+const GROUPS = [
+  { name: 'Враги', items: [
+    { id: 'shaman', title: 'ШАМАН', tag: 'new', how: '<b>LEVELS → THE CAVE</b>, комната со знакомством (шаман + два дубинщика). Или <b>DEV TOOLS → SPAWN → SHAMAN</b> и пара <b>BEARER</b>. Балахон по умолчанию чёрный (SOOT), другие два цвета: <b>ART → SHAMAN ROBE</b>.',
+      checks: ['Издалека шаман сначала пытается зов, вблизи сначала бафает своих', 'Во время каста вокруг него зелёный круг с мигающими рунами', 'ДУХ: зелёные клетки к дубинщикам, над ними зелёные рога, под ногами зелёное кольцо', 'Дубинщик с духом быстрее, бьёт на 2 сердца, держит 2 удара; повторный каст его обновляет', 'ЗОВ: над головой козла клавиша, вокруг неё по кругу заполняются клетки', 'Разорвать прямую видимость, пока заполняется, = зов пропадает (LOST HIM)', 'Отравить шамана = слепой, каст срывается (BLIND) и новых нет', 'Заполнилось: клавиша бега зажата к шаману, против стоишь на месте, вбок гнёт', 'Любой удар по козлу снимает зов (SHAKEN OFF) и 3 с новый не цепляет', 'Шаман держит 2 удара; убить его = дух гаснет, зов снимается (FREE)', 'Череп на посохе смотрит туда же, куда шаман; у черепа глаза красные, у шамана зелёные', 'Чёрный балахон (SOOT) читается на всех полах'] },
+    { id: 'shieldman', title: 'ЩИТОНОСЕЦ (толстый спартанец)', tag: 'big', how: '<b>DEV TOOLS → SPAWN → SHIELDMAN</b>, или <b>LEVELS → THE THRESHING FLOOR</b>. Щит: <b>ART → SHIELD</b>.',
+      checks: ['Спереди щит держит удар, ящик, клинок, пулю; брошенное тело умирает о щит как о стену', 'Поворачивается медленно: обойти, кувыркнуться мимо, LEAPFROG', 'Таран щитом вблизи (своя подготовка)', 'Прыжок со щитом с жёлтой полосой', 'Шипы: удар в лоб отбрасывает козла', 'Отравленный поворачивается совсем медленно', 'Умер со щитом: щит можно подобрать'] },
+    { id: 'thrower', title: 'МЕТАТЕЛЬ (Бэйн)', tag: 'big', how: '<b>DEV TOOLS → SPAWN → THROWER (BANE)</b>, или <b>LEVELS → THE BRIDGE</b>. Комбо: <b>COMBOS → THE THROWER IN THE ARMORY</b>.',
+      checks: ['Ищет и поднимает ящик, бомбу, своего, нашего зверя, труп', 'Янтарная линия броска перед броском', 'Удар во время подъёма роняет груз ему на голову', 'Хватает козла и швыряет в худшее рядом (обрыв, огонь, решётка, стена); кувырок срывает захват', 'Попадание брошенным: сердце + оглушение', 'Обходит решётки, когда несёт груз', 'Умер: лужа кислоты'] },
+    { id: 'wraithdoor', title: 'ПРИЗРАК В ДВЕРИ', tag: 'new', how: '<b>DEV TOOLS → SPAWN → WRAITH DOOR</b> (нужна деревянная дверь на этаже), естественно на THE OSSUARY.',
+      checks: ['Доски «дышат», когда подходишь', 'Удар по двери: дверь разлетается, THE DOOR WAS IT', 'Дверь, открытая кем-то другим, тоже будит его'] },
+  ] },
+  { name: 'Комнаты и генерация', items: [
+    { id: 'combos', title: 'КОМБО: люди + комната', tag: 'big', how: '<b>DEV TOOLS → вкладка COMBOS → PLAY</b> на строке. Ставит комбо и козла у его двери.',
+      checks: ['THE THROWER IN THE ARMORY', 'THE HOOK OVER THE DROP', 'WITCHFIRE AND THE HOOK', 'THE SMALL RING (маг в кольце огра)', 'Комбо читается как задумка, а не как случайная толпа'] },
+    { id: 'chasm', title: 'ПРОВАЛ ПОПЕРЁК КОМНАТЫ', tag: 'new', how: '<b>LEVELS → THE CAVE</b>: первый провал с надписью про кувырок. Позже бывает на других этажах. В <b>SHOWROOM</b> в пещерной комнате.',
+      checks: ['Кувырок переносит через провал, кончился над дырой = падение', 'Кувырок прямо на провал летит туда, куда просили', 'Стрелок или мясник стоят за провалом', 'Наши звери перепрыгивают'] },
+    { id: 'fog', title: 'ТУМАН ПО ЗРЕНИЮ', tag: 'big', how: 'Любой этаж. Пещеры тоже (кроме THE TRIP).',
+      checks: ['Комната открывается только там, куда козёл реально посмотрел', 'Нет мигания и рывков, когда память растёт', 'Невиданный тайл не показывает людей', 'Закрытая позади комната уходит под мягкий туман, без чёрного прямоугольника; завеса в проходе пиксельная', 'Первый раз за браузер над козлом: NO WAY BACK', 'THE THRESHING FLOOR: широкие коридоры тоже под туманом, пока не увидел'] },
+    { id: 'keys', title: 'КЛЮЧИ И ЖЕЛЕЗНЫЕ КЛЕТКИ', tag: 'big', how: 'Этаж 2+ со зверем: клетка зверя и клетка с большой травой в одной комнате. Ключ падает с чемпиона. <b>DEV TOOLS → +1 KEY</b>.',
+      checks: ['Под обеими клетками написано, что внутри', 'Удар с ключом открывает железо и тратит ключ', 'Ключей не хватает на всё: выбор читается', 'Смерть возвращает ключи начала этажа'] },
+    { id: 'showroom', title: 'ШОУРУМ', tag: 'big', how: '<b>DEV TOOLS → SHOWROOM</b>. Каждая вещь подписана на полу.',
+      checks: ['Все пропы, двери, комнаты этажей на месте', 'Новые вещи (рыба, провал) есть', 'Ничего не выглядит сломанным'] },
+    { id: 'dark', title: 'THE DARK и развилка', tag: 'big', how: 'THE ROAD: в последней комнате вторая, холодная лестница. Или <b>LEVELS → THE DARK</b>.',
+      checks: ['Лампы: сбил = горит, потом комната чёрная', 'Люди слышат козла, а не видят', 'Надписи на полу читаются поверх тьмы'] },
+  ] },
+  { name: 'Стелс (переделанный)', items: [
+    { id: 'stealth', title: 'СТЕЛС', tag: 'big', how: '<b>DEV TOOLS → STEALTH (ALT) ON</b>, потом <kbd>ALT</kbd> переключает крадучись.',
+      checks: ['ALT включает/выключает, музыка стихает', 'Видимость культистов клетками на полу', '«?» наполняется от янтарного к красному, потом «!»', 'Ящики, валуны, бочки и высокая трава закрывают взгляд', 'Удар по не видевшему: UNSEEN, лежит дольше', 'Брошенный ящик шумит и отвлекает', 'Бой (заметили, потерял сердце) = SPOTTED, кольцо запрета на время', 'Обыскал шум, огляделся, пошёл домой', 'В THE DARK тоже работает'] },
+  ] },
+  { name: 'Звери', items: [
+    { id: 'beasts', title: 'ЗВЕРИ: яд, оглушение, сердца, скачки', tag: 'big', how: '<b>DEV TOOLS → SPAWN</b>: HORSE, PIG, RABBIT, HUSKY, TORTOISE, GOOSE, CROW, HEN. Вкладка <b>ANIMALS</b>.',
+      checks: ['Сердца над зверем, когда рядом или ранен', 'Лужа травит зверя, удар оглушает', 'Конь: гонка по комнатам с душой, обман = talk.cheated', 'Кролик связывает ноги, хаски поёт', 'Ответ BAAAH да / bah нет на условия'] },
+  ] },
+  { name: 'Рай', items: [
+    { id: 'heaven', title: 'РАЙ: колокола, зеркало, башня', tag: 'big', how: '<b>DEV TOOLS → HEAVEN</b>, деньги <b>+100 SACR · +5 SOULS</b>. Колокола: вкладка <b>HEAVEN</b> (BELL +1).',
+      checks: ['Зеркало сначала разбито, козёл чинит его сам (GRAB) после двадцати', 'Пока не заглянул в зеркало, бог не пускает прыгать', 'Стрелки у края, если долго не прыгает; прыжок красивый', 'Колокола: первым звонит самый маленький, остальных нет на балке (пустые крюки), за каждый пройденный этаж один спускается на крюк', 'THE OVERLOOK: деревянная вышка в облако, вид на замок культа'] },
+    { id: 'dares', title: 'ЗАДАНИЯ ЗВЕРЕЙ: конь и заяц', tag: 'new', how: 'В раю, когда конь или заяц уже сидят на своих местах (вкладка <b>ANIMALS → + BONUS</b> сажает). <kbd>GRAB</kbd> на месте зверя: он говорит задание, ещё раз <kbd>GRAB</kbd> за 6 секунд: принято. Коновязь у края, слева от прыжка, снимает все задания.',
+      checks: ['Конь: на следующих этажах (кроме первого) идёт ПОГОНЯ, справа вверху золотой конь и THE RED · N LEFT', 'После трёх пройденных этажей с погоней задание выиграно, конь говорит об этом на своём месте', 'Заяц: включается стелс (ALT), справа вверху UNSEEN SO FAR, первый заметивший пишет SEEN', 'Этаж без единого заметившего (кроме последней комнаты) выигрывает задание зайца', 'Коновязь: ленточка за каждое задание, GRAB снимает все'] },
+  ] },
+  { name: 'Управление и интерфейс', items: [
+    { id: 'controls', title: 'ПЕРЕНАЗНАЧЕНИЕ КЛАВИШ', tag: 'big', how: '<b>SETTINGS → CONTROLS</b>, <b>SETTINGS → KEYBOARD ONLY</b>, геймпад.',
+      checks: ['Любое действие на любую клавишу или кнопку мыши, конфликт меняет местами', 'Подсказки на полу и иконки показывают новые клавиши', 'KEYBOARD ONLY: J K L и Z X C, прицел по бегу', 'Геймпад: всё работает, меню ходятся'] },
+    { id: 'unlocks', title: 'КНИГА И UNLOCKS', tag: 'new', how: 'В игре <kbd>I</kbd> (вторая вкладка UNLOCKS), или строка <b>UNLOCKS</b> на титуле.',
+      checks: ['Встреченные души, звери, талисманы отмечаются', 'Tab / Enter переключают вкладки'] },
+  ] },
+];
+
+const $ = (s) => document.querySelector(s);
+let marks = {}, filter = 'all', db = null, readOnly = false;
+const allItems = GROUPS.flatMap((g) => g.items);
+
+function stateOf(it) { return (marks[it.id] && marks[it.id].status) || null; }
+function render() {
+  const out = [];
+  for (const g of GROUPS) {
+    const items = g.items.filter((it) => filter === 'all' || (filter === 'left' ? stateOf(it) !== 'ok' : stateOf(it) === 'bad'));
+    if (!items.length) continue;
+    out.push(`<h2>${g.name}</h2><div class="list">`);
+    for (const it of items) {
+      const m = marks[it.id] || {}, ch = m.checks || {};
+      out.push(`<section class="item" data-s="${m.status || ''}" data-id="${it.id}">
+        <div class="top"><h3>${it.title}</h3><span class="tag ${it.tag}">${it.tag === 'new' ? 'новое' : 'большое'}</span></div>
+        <p class="how">${it.how}</p>
+        <ul>${it.checks.map((c, i) => `<li class="${ch[i] ? 'done' : ''}"><label><input type="checkbox" id="c-${it.id}-${i}" data-i="${i}" ${ch[i] ? 'checked' : ''}><span>${c}</span></label></li>`).join('')}</ul>
+        <div class="status" role="group" aria-label="Итог">
+          <button data-v="ok" aria-pressed="${m.status === 'ok'}">РАБОТАЕТ</button>
+          <button data-v="wip" aria-pressed="${m.status === 'wip'}">ЕСТЬ ВОПРОСЫ</button>
+          <button data-v="bad" aria-pressed="${m.status === 'bad'}">СЛОМАНО</button>
+        </div>
+        <textarea id="n-${it.id}" placeholder="Заметка: что не так, что хочется поменять">${(m.note || '').replace(/</g, '&lt;')}</textarea>
+      </section>`);
+    }
+    out.push('</div>');
+  }
+  $('#groups').innerHTML = out.join('') || '<p class="lede">Здесь пусто: по этому фильтру ничего.</p>';
+  const n = allItems.length, ok = allItems.filter((it) => stateOf(it) === 'ok').length, bad = allItems.filter((it) => stateOf(it) === 'bad').length, wip = allItems.filter((it) => stateOf(it) === 'wip').length;
+  $('#count').textContent = `${ok + bad + wip} / ${n} ПРОВЕРЕНО · ${bad} СЛОМАНО`;
+  $('#meter').innerHTML = `<i style="width:${ok / n * 100}%;background:var(--ok)"></i><i style="width:${wip / n * 100}%;background:var(--amber)"></i><i style="width:${bad / n * 100}%;background:var(--blood)"></i>`;
+}
+
+// One write at a time per item, and only on a change.
+const busy = {};
+async function save(id, patch) {
+  marks[id] = Object.assign({}, marks[id] || {}, patch, { at: new Date().toISOString() });
+  render();
+  if (!db || readOnly) return;
+  while (busy[id]) await busy[id];
+  busy[id] = (async () => {
+    try { await db.doc('marks/' + id).set(marks[id]); $('#sync').textContent = 'сохранено'; }
+    catch (e) { if (e && e.code === 'invalid_argument') { readOnly = true; document.body.classList.add('ro'); $('#sync').textContent = 'только чтение'; } else $('#sync').textContent = 'не сохранилось: ' + ((e && e.code) || 'ошибка'); }
+  })();
+  await busy[id]; busy[id] = null;
+}
+
+document.addEventListener('click', (ev) => {
+  const f = ev.target.closest('[data-f]');
+  if (f) { filter = f.dataset.f; document.querySelectorAll('[data-f]').forEach((b) => b.setAttribute('aria-pressed', b === f)); render(); return; }
+  const b = ev.target.closest('.status button'); if (!b) return;
+  const id = b.closest('.item').dataset.id, cur = stateOf({ id });
+  save(id, { status: cur === b.dataset.v ? null : b.dataset.v });
+});
+document.addEventListener('change', (ev) => {
+  const box = ev.target.closest('input[type=checkbox]'); if (!box) return;
+  const id = box.closest('.item').dataset.id, ch = Object.assign({}, (marks[id] && marks[id].checks) || {});
+  ch[box.dataset.i] = box.checked; save(id, { checks: ch });
+});
+document.addEventListener('focusout', (ev) => {
+  const t = ev.target.closest('textarea'); if (!t) return;
+  const id = t.closest('.item').dataset.id;
+  if ((t.value || '') !== ((marks[id] && marks[id].note) || '')) save(id, { note: t.value });
+});
+
+render();
+(async () => {
+  db = window.claude && window.claude.use ? await window.claude.use('db') : null;
+  if (!db) { $('#sync').textContent = 'отметки не сохраняются в этом окне'; return; }
+  db.collection('marks').onSnapshot((snap) => {
+    const next = {};
+    for (const d of snap.docs) next[d.id] = d.data();
+    // keep a note being typed from being wiped by a snapshot
+    const typing = document.activeElement && document.activeElement.tagName === 'TEXTAREA' ? document.activeElement : null;
+    const keep = typing && { id: typing.id, v: typing.value, s: typing.selectionStart };
+    marks = next; render();
+    if (keep) { const t = document.getElementById(keep.id); if (t) { t.value = keep.v; t.focus(); t.setSelectionRange(keep.s, keep.s); } }
+    $('#sync').textContent = 'отметки сохраняются';
+  }, (e) => { $('#sync').textContent = 'отметки недоступны: ' + e.code; });
+})();
+</script>

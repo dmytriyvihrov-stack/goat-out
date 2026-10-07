@@ -20,6 +20,7 @@ class TouchUI {
     this.buttPressed = false;     // edge: consumed by the game each step
     this.screamPressed = false;
     this.rollPressed = false;
+    this.grabTap = false;         // edge: a touch on GRAB, handed on once so a shop's offer and a grab fire on the press, not the hold
     this.itemPressed = false;
     this.itemReady = false;       // a fifth key that does not exist until the shop puts something on it
     this.grabDown = false;
@@ -74,7 +75,7 @@ class TouchUI {
       else if (b.key === 'scream') this.screamPressed = true;
       else if (b.key === 'roll') this.rollPressed = true;
       else if (b.key === 'item') this.itemPressed = true;
-      else if (b.key === 'grab') this.grabDown = true;
+      else if (b.key === 'grab') { this.grabDown = true; this.grabTap = true; }
       if (navigator.vibrate) navigator.vibrate(8);
       return;
     }
@@ -103,7 +104,7 @@ class TouchUI {
     }
   }
 
-  clear() { this.stick = null; this.aimDrag = null; this.pressed = {}; this.grabDown = false; this.buttonAim = null; }
+  clear() { this.stick = null; this.aimDrag = null; this.pressed = {}; this.grabDown = false; this.grabTap = false; this.buttonAim = null; }
 
   // Movement vector in [-1, 1].
   moveVector() {
@@ -131,6 +132,7 @@ class TouchUI {
 
   consumeButt() { const v = this.buttPressed; this.buttPressed = false; return v; }
   consumeScream() { const v = this.screamPressed; this.screamPressed = false; return v; }
+  consumeGrab() { const v = this.grabTap; this.grabTap = false; return v; }
   consumeRoll() { const v = this.rollPressed; this.rollPressed = false; return v; }
   consumeItem() { const v = this.itemPressed; this.itemPressed = false; return v; }
 }

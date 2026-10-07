@@ -30,7 +30,7 @@ class Goat {
     this.autoHeld = false; // the thing in his mouth walked into it: a butt drops it, a press throws it
     this.rmbWas = false;   // grab last frame, so the press can be told from the holding
     this.fussCd = 0;       // holding rmb near a hound used to repaint TOO QUICK every single frame
-    this.itemCd = 0; this.itemCdMax = 0;   // Q: whichever verb artifact is at his neck, its own clock
+    this.itemCd = 0; this.itemCdMax = 0;   // Q: the cape's verb, its own clock
   }
 
   update(dt, game) {
@@ -38,7 +38,11 @@ class Goat {
     this.aim = inp.aim;
     // The one press of grab, rather than the holding of it. An arm that came into his mouth on its
     // own was never picked up by a button, so there is no button to let go of: a press throws it.
-    const rmbEdge = inp.rmbDown && !this.rmbWas;
+    // `rmbPressed` is the latch the pointer, the keys and a finger set on the press itself: a tap that was up
+    // again before this step still counts as one press (a slow frame lost it), but it only ever lands the
+    // once-asked things (a ware, an iron cage, a scrap of paper), never a pick-up that a release would throw.
+    const rmbTap = !!inp.rmbPressed && !inp.rmbDown;
+    const rmbEdge = (inp.rmbDown && !this.rmbWas) || !!inp.rmbPressed;
     this.rmbWas = inp.rmbDown; this.rmbEdgeNow = rmbEdge;   // `tryGrab` reads the press, not the hold, for buying a ware
     // The gong is still ringing in his head: everything he has to wait for comes back half again
     // as fast, and so does he. It runs down whatever he is doing, stunned included.
@@ -154,6 +158,11 @@ class Goat {
           this.rollHit.push(e); e.daze(game, game.mods.rollStun);
           game.particles(e.x, e.y - 6, 5, PALETTE.bone, 120); game.audio.sfxThud(); game.vibe(10);
         }
+        // DEAD WEIGHT through one of his own animals dazes it as well (`Beast.dope`).
+        for (const p of game.props) {
+          if (!Beast.is(p.kind) || this.rollHit.indexOf(p) >= 0 || hyp(p.x - this.x, p.y - this.y) > R.stunR + p.r) continue;
+          this.rollHit.push(p); Beast.dope(p, game, 'stun');
+        }
       }
       if (this.timer <= 0) {
         // He lands and has to get up: the stride he had built is gone with the tumble (pillar 4).
@@ -186,7 +195,7 @@ class Goat {
     // ---- movement (momentum) ----
     // A man on your back is most of your stride. A blade in your teeth is barely any of it, which
     // is what lets an arm be something you take in passing instead of something you commit to.
-    let mul = this.holding ? (this.holding.item ? g.grab.itemSpeedMul : g.grab.speedMul) : 1;
+    let mul = this.holding ? (this.holding.kind === 'fish' ? TUNING.prop.fish.carry : this.holding.item ? g.grab.itemSpeedMul : g.grab.speedMul) : 1;
     if (this.state === 'recover') mul *= 0.55;
     else if (this.state === 'windup') mul *= 0.3;
     else if (this.state === 'bite') mul *= g.grab.biteMove;
@@ -281,7 +290,7 @@ class Goat {
     } else if (this.state === 'lunge') {
       this.timer -= dt;
       this.headbuttHits(game);
-      if (this.timer <= 0) { this.state = 'recover'; this.timer = this.recoverMax = g.headbutt.recovery * game.mods.headbuttRecovery; this.vx *= 0.35; this.vy *= 0.35; }
+      if (this.timer <= 0) { this.state = 'recover'; this.timer = this.recoverMax = g.headbutt.recovery * game.mods.headbuttRecovery; this.vx *= 0.12; this.vy *= 0.12; }   // 6 Oct 2026: a butt along a wall slid on; the lunge is the whole of the travel
     } else if (this.state === 'recover') {
       this.timer -= dt; if (this.timer <= 0) this.state = 'idle';
     } else if (this.state === 'bite') {
@@ -290,7 +299,7 @@ class Goat {
 
 
     // ---- grab / hold / throw ----
-    if (inp.rmbDown && !this.holding && this.state === 'idle' && this.grabCd <= 0) this.tryGrab(game);
+    if ((inp.rmbDown || rmbTap) && !this.holding && this.state === 'idle' && this.grabCd <= 0) this.tryGrab(game, rmbTap);
     if (this.holding) {
       const h = this.holding;
       if (h.dead || h.broken) { this.holding = null; this.autoHeld = false; }
@@ -326,24 +335,13 @@ class Goat {
     }
 
     // ---- the item (Q) ----
-    // A fifth key that does not exist until there is something to put on it. One slot, and the two
-    // artifacts that live in it are the only two things in the shop that are a verb rather than
-    // body work: BOOMERANG throws, STRANGE SYMBOLS steps through nowhere. Neither is grab or roll
-    // wearing a different hat, each keeps its own cooldown (`itemCd`), never `grabCd` or `rollCd`,
-    // because what it does is its own trick and not a reskin of a verb he already had.
+    // A fifth key that does not exist until there is a cape on his back (`CAPES`, js/capes.js): the
+    // cape's one verb, a blink, a tuft of grass, a shock, a boomerang, a straw goat. None is grab or
+    // roll wearing a different hat, so it keeps its own cooldown (`itemCd`), never `grabCd` or `rollCd`.
     this.itemCd = Math.max(0, this.itemCd - dt * cdRate);
-    if (inp.qPressed && this.itemCd <= 0 && !this.dead) {
-      if (game.mods.boomerang && !game.boom.fly) {
-        if (Shop.throwBoomerang(game, this)) this.itemCd = this.itemCdMax = game.mods.boomerang.cooldown;
-      } else if (game.mods.blink) {
-        // Not out of a lunge, a roll or its stagger, the roll's own rule: a blink there cut the
-        // headbutt short, stacked its mercy frames on the roll's and skipped the recovery (rule 4).
-        const busy = this.state !== 'idle';
-        if (!busy && Shop.blink(game, this, inp.mx, inp.my)) this.itemCd = this.itemCdMax = game.mods.blink.cooldown;
-      } else if (game.mods.effigy) {
-        if (Talisman.placeEffigy(game, this)) this.itemCd = this.itemCdMax = game.mods.effigy.cd;
-      }
-    }
+    // A cape put back on a stool keeps the wait it still owed (`Shop.wearCape`) and works it off while it hangs there.
+    if (game.capeWait) for (const k in game.capeWait) { const w = game.capeWait[k]; w.cd -= dt * cdRate; if (w.cd <= 0) delete game.capeWait[k]; }
+    if (inp.qPressed && this.itemCd <= 0 && !this.dead && game.cape) Cape.use(game, this, inp);
 
     // ---- scream ----
     // Three things one button can be, and which one it is was decided by a soul. Fire, a blow, or
@@ -370,6 +368,8 @@ class Goat {
           if (hyp(e.x - this.x, e.y - this.y) > R) continue;
           e.daze(game, g.scream.stun); n++;
         }
+        // His own animals in earshot reel too (`Beast.dope`).
+        for (const p of game.props) if (Beast.is(p.kind) && hyp(p.x - this.x, p.y - this.y) <= R) Beast.dope(p, game, 'stun');
         if (n) game.floatText(this.x, this.y - 44, n + (n === 1 ? ' REELS' : ' REEL'), PALETTE.fireHi);
       } else {
         // The bare voice. It is a `lure` noise, which is the one kind of noise that pulls a man to
@@ -564,6 +564,14 @@ class Goat {
       threats.push({ x: dx / d, y: dy / d, w: (1 - d / range) * urgency });
     }
     const want = hyp(inx, iny) > 0.1 ? Math.atan2(iny, inx) : null;
+    // Asked straight over a drop he can clear (THE CHASM), he goes exactly where he was asked: the jump is the
+    // one roll that is never a panic, and a man across it was turning it off the lip into the hole's length.
+    if (want !== null) {
+      const cx = Math.cos(want), cy = Math.sin(want), solid = (x, y) => w.isSolid(Math.floor(x / TILE), Math.floor(y / TILE));
+      const lx = this.x + cx * dist / 0.8, ly = this.y + cy * dist / 0.8;
+      if (!w.isPitPx(lx, ly) && !solid(lx, ly) && [0.4, 0.7, 1].some((f) => w.isPitPx(this.x + cx * dist * f, this.y + cy * dist * f))
+        && ![0.4, 0.7, 1].some((f) => solid(this.x + cx * dist * f, this.y + cy * dist * f))) return { x: cx, y: cy };
+    }
     let best = null, bestScore = -Infinity;
     for (let i = 0; i < 24; i++) {
       // With a stick direction, walk outward from it; without one, sweep the whole circle.
@@ -573,11 +581,15 @@ class Goat {
       for (const t of threats) score -= (t.x * cx + t.y * cy) * t.w * 2.4;
       // How far along this line he actually gets before a wall or a fire stops being worth it.
       let clear = 1;
+      // Where the whole tumble ends: over a narrow drop (THE CHASM) with floor past it, the hole on the way
+      // is no reason to turn, the roll carries him over it (`Game.update` keeps him up while he rolls).
+      const lx = this.x + cx * dist / 0.8, ly = this.y + cy * dist / 0.8;
+      const over = !w.isPitPx(lx, ly) && !w.isSolid(Math.floor(lx / TILE), Math.floor(ly / TILE));
       for (const f of [0.4, 0.7, 1]) {
         const px = this.x + cx * dist * f, py = this.y + cy * dist * f;
         if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE))) { clear = f - 0.3; break; }
         // A hole is worse than a wall: a wall stops the tumble, a hole charges a heart for it.
-        if (w.isPitPx(px, py)) { clear = f - 0.6; break; }
+        if (w.isPitPx(px, py)) { if (over) continue; clear = f - 0.6; break; }
         if (w.isBurningPx(px, py)) { clear = f - 0.5; break; }
         // Ending a tumble in a brazier or under the wheel is the same mistake as ending it in a wall.
         // A plate lying flat is floor and is not.
@@ -852,9 +864,12 @@ class Goat {
     // A shell goes flat and hard and stops where it lands: it is how you advance the one escort that
     // cannot keep up, and it is not a crate, nothing it hits breaks and it does not break either.
     if (h.kind === 'tortoise') { Beast.throwTortoise(h, game, this.aim.x, this.aim.y); this.spendGrab(game, false); return; }
+    // The fish's tank goes a couple of tiles and sets down, or breaks on whatever it meets (js/beasts-more.js).
+    if (h.kind === 'fish') { Beast.throwFish(h, game, this.aim.x, this.aim.y); this.spendGrab(game, false); return; }
     // A goat is not a gorilla. A crate or a blade goes the length of the room; a grown man goes a
     // short way and lands, which is still every wall in it and every man standing by one.
-    const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul : h.item ? 1 : g.grab.manThrow;
+    // STRONG JAW (`mods.throwFar`) sends a thing further, never a man: his kill range is BY THE COLLAR's.
+    const mul = h.kind === 'weapon' ? TUNING.prop.weapon.throwMul * game.mods.throwFar : h.item ? game.mods.throwFar : g.grab.manThrow;
     h.fling(this.aim.x * g.grab.throwImpulse * mul, this.aim.y * g.grab.throwImpulse * mul, true);
     // A man out of the mouth has to arrive at `physics.thrownKill` to die on what he meets; every
     // other thrown body (a blast, the rat ogre's arm) still dies on any touch. `fling` clears it.
@@ -865,9 +880,13 @@ class Goat {
     game.vibe(18);
   }
 
-  tryGrab(game) {
+  tryGrab(game, tap) {
     const g = TUNING.goat.grab;
     this.grabTries = (this.grabTries || 0) + 1;   // a hidden wraith watches for a reach near it
+    // An open scrap of the cult's paper is read, not lifted (`Codex.openPoster`).
+    for (const p of game.props) {
+      if (p.kind === 'poster' && !p.torn && p.unfold >= 1 && hyp(p.x - this.x, p.y - this.y) < this.r + TUNING.prop.poster.r + g.reach * 0.6) { Codex.openPoster(game, p); return; }
+    }
     let best = null, bestD = Infinity;
     const consider = (o) => {
       const dx = o.x - this.x, dy = o.y - this.y, d = hyp(dx, dy);
@@ -880,6 +899,17 @@ class Goat {
     };
     // The shelf first. A ware is reached for the way a crate is, and reaching for it is the whole
     // of taking it, the press, not the holding, so it is asked once and not every frame.
+    // An iron cage is opened by a grab with a key, never by a headbutt (6 Oct 2026 playtest: "not a headbutt,
+    // the right button, it must be a decision"): a butt can land by accident, a key is not wasted on one.
+    if (this.rmbEdgeNow) {
+      for (const p of game.props) {
+        if (p.broken || p.dead || !(p.kind === 'ironcage' || (p.kind === 'coop' && p.ironCage))) continue;
+        const dx = p.x - this.x, dy = p.y - this.y, d = hyp(dx, dy);
+        if (d > this.r + p.r + g.reach || (dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) continue;
+        if (!game.sees(this.x, this.y, p.x, p.y)) continue;   // not through stone or a shut door
+        p.unlockIron(game); this.grabCd = this.grabCdMax = 0.3; return;
+      }
+    }
     if (this.rmbEdgeNow) {
       // The full reach rather than the crate's six tenths of it: a stool is reached up to from the
       // gap in the wall, not stood over.
@@ -887,10 +917,12 @@ class Goat {
         if (p.kind !== 'ware' || p.broken || Shop.shelved(game, p)) continue;
         const dx = p.x - this.x, dy = p.y - this.y, d = hyp(dx, dy);
         if (d > this.r + p.r + g.reach || (dx * this.aim.x + dy * this.aim.y) / (d || 1) < -0.2) continue;
+        if (!game.sees(this.x, this.y, p.x, p.y)) continue;   // a ware behind a wall is not within reach (6 Oct 2026 review)
         if (d < bestD) { bestD = d; best = p; }
       }
       if (best) { Shop.buy(game, best, this); this.grabCd = this.grabCdMax = 0.3; return; }
     }
+    if (tap) return;   // a tap up before this step asks for the once-asked things only, never a pick-up the release would throw
     // Out of the pen the mouth takes objects and nothing else. A grown man is BY THE COLLAR, and
     // until that soul is swallowed reaching for one is a thing you are told about rather than a
     // thing that silently does nothing.
@@ -1104,9 +1136,17 @@ class Goat {
   damage(n, game, kx, ky, fromFire, by) {
     if (this.dead || (this.invuln > 0 && !fromFire)) return;
     if (game.breakSneak) game.breakSneak();   // STEALTH (dev test): a blow on him is a fight, the sneak ends
+    Shaman.shake(game, this);   // a blow that reaches him shakes off the shaman's call for a while (js/shaman.js)
     if (game.dev.god) { game.particles(this.x, this.y, 4, PALETTE.fireHi, 90); return; }
     if (by !== 'fall' && this.tripPhase(game, kx, ky)) return;
     if (Talisman.absorb(game, this)) return;   // TALLOW SKIN took it
+    // THE FISH's water (`mods.wet`, js/beasts-more.js): the first fire on him a floor only steams off his fleece.
+    if (this.wet > 0 && (fromFire || by === 'fire' || by === 'witchfire')) {
+      this.wet--; this.invuln = TUNING.goat.invuln + (game.mods.invulnAdd || 0);
+      game.particles(this.x, this.y - 10, 14, '#d8e4e8', 140); game.audio.sfxAnimal('fish');
+      game.floatText(this.x, this.y - 34, 'IT ONLY STEAMS', '#d8e4e8');
+      return;
+    }
     // The tortoise's iron (js/beasts.js), the outermost thing on him: takes the whole blow and comes
     // off him in pieces the way the blow went (pillar 3 untouched, it never kills anybody).
     if (this.armour > 0) {
@@ -1136,6 +1176,7 @@ class Goat {
     Talisman.loseRunUp(game, this);            // whatever he had built up, the club took it (BRASS SPUR keeps some)
 
     game.shake(TUNING.juice.shakeHit, true); game.audio.sfxHit(); game.audio.musicEvent('hurt'); game.squashGoat(TUNING.juice.squash.hurt);
+    game.hitstop(TUNING.juice.hurtStop);   // the world holds a beat on a lost heart (Hollow Knight's)
     // A goat that only grunts when it is hit reads as armour, not an animal, the frightened bleat
     // is what says it felt that.
     game.audio.sfxBleat(560, 0.24, 0.3);
@@ -1191,11 +1232,11 @@ class Prop {
       : kind === 'weapon' ? P.weapon.r : kind === 'secret' ? P.door.r
       : kind === 'coop' ? P.coop.r : kind === 'chicken' ? P.chicken.r
       : kind === 'tortoise' ? P.tortoise.r : kind === 'goose' ? P.goose.r : kind === 'crow' ? P.crow.r : kind === 'horse' ? P.horse.r : kind === 'pig' ? P.pig.r
-      : kind === 'rabbit' ? P.rabbit.r : kind === 'husky' ? P.husky.r
+      : kind === 'rabbit' ? P.rabbit.r : kind === 'husky' ? P.husky.r : kind === 'fish' ? P.fish.r
       : kind === 'cage' ? P.cage.r : kind === 'spike' ? P.spike.r : kind === 'brazier' ? P.brazier.r
       : kind === 'bomb' ? P.bomb.r : kind === 'rock' ? P.rock.r : kind === 'spire' ? P.spire.r
       : kind === 'barrel' ? P.barrel.r : kind === 'cleat' ? P.cleat.r
-      : kind === 'armor' ? P.armor.r : kind === 'trophy' ? P.trophy.r : kind === 'suit' ? P.suit.r
+      : kind === 'armor' ? P.armor.r : kind === 'trophy' ? P.trophy.r : kind === 'suit' ? P.suit.r : kind === 'poster' ? P.poster.r
       : kind === 'mouse' ? P.mouse.r : kind === 'ware' ? P.ware.r
       : kind === 'key' ? TUNING.keys.r : kind === 'ironcage' ? TUNING.keys.iron.r : 13;
     // The shop (js/shop.js). A mouse carries which room's shelf is hers (`shopId`), where the gap
@@ -1204,7 +1245,9 @@ class Prop {
     // it is `locked` (the ogre is out) or `free` (he is down).
     this.shopId = opts && opts.shopId !== undefined ? opts.shopId : -1;
     this.gap = (opts && opts.gap) || null; this.strikes = 0; this.say = null; this.angry = 0;
-    this.ware = (opts && opts.ware) || null; this.locked = false; this.free = false;
+    // `free` from the spec only on THE SHOWROOM's shelf, where every stool is his (it was dropped here, and
+    // one take packed the whole shelf away); a shop's stools go free when her rat ogre is down.
+    this.ware = (opts && opts.ware) || null; this.locked = false; this.free = !!(opts && opts.free);
     this.milkSpots = (opts && opts.milkSpots) || null;   // the milk offer: where her pail is stood
     // -1 until it is thrown for the first time (`fling` arms it); ticking down after that regardless
     // of whether it is picked up and thrown again, so a live bomb stays live.
@@ -1215,6 +1258,7 @@ class Prop {
     // A barrel of poison, not oil (`TUNING.prop.barrel.venom`). Not `venom`: that is VENOM JAW's mark
     // on a thing thrown dripping (`Status.markThrow`), and the barrel would drip where it stood.
     this.toxic = !!(opts && opts.toxic);
+    this.firstGrass = !!(opts && opts.firstGrass);   // THE ALTAR's grass in the corridor, the one that says GRASS HEALS
     this.spillCd = 0;                         // a brazier building its coals back after a spill
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
     this.deco = !!(opts && opts.deco);        // a cage that is scenery: it never opens
@@ -1232,6 +1276,10 @@ class Prop {
     // taken its one body (`spent`), the man on it (`body`, his picture `bodyImg`, his feet `bodyFoot`
     // world px under the prop) and how long it has been bleeding down the wall (`bleedT`).
     this.side = (opts && opts.side) || 'n'; this.spilled = false;
+    // A scrap of the cult's paper on the floor (`TUNING.prop.poster`): which drawing it is (`look`: 'breeds' |
+    // 'cuts'), how far it has opened out (`unfold`, 0 folded small, 1 the whole drawing; never `open`, the doors'),
+    // and torn up.
+    this.look = (opts && opts.look) || 'breeds'; this.torn = false; this.unfold = opts && opts.unfolded ? 1 : 0;
     // The halberds a suit still holds (3 Oct 2026 playtest): the wall's one (`armor.halberds`), the stand's one,
     // each taken by a grab beside it (`Goat.tryGrab`) as a thrown blade.
     this.halberds = kind === 'armor' ? TUNING.prop.armor.halberds : kind === 'suit' ? 1 : 0;
@@ -1333,7 +1381,9 @@ class Prop {
   get item() { return (this.kind === 'crate' && !this.noGrab) || this.kind === 'weapon' || this.kind === 'bomb' || (this.kind === 'chicken' && this.birdState === 'loose')
     // A tortoise on its feet is picked up like a crate; one that has just landed has pulled its head
     // in and is a piece of the room instead (`blocking`, below) until it comes out of it again.
-    || (this.kind === 'tortoise' && !this.flying && !(this.tuckT > 0) && !(this.coolT > 0)); }
+    || (this.kind === 'tortoise' && !this.flying && !(this.tuckT > 0) && !(this.coolT > 0))
+    // THE FISH's tank: carried, never walked (js/beasts-more.js).
+    || (this.kind === 'fish' && !this.flying && !this.broken); }
   get blocking() {
     if (this.broken) return false;
     // Nothing stands on a plate's shoulders: it is floor until it is teeth. A loose bird is not
@@ -1348,7 +1398,7 @@ class Prop {
     if (this.kind === 'tortoise') return !this.flying && this.tuckT > 0 && !this.held && !(this.coolT > 0);
     if (this.kind === 'goose' || this.kind === 'crow' || this.kind === 'horse' || this.kind === 'pig' || this.kind === 'rabbit' || this.kind === 'husky') return false;
     // A lantern on the wall is up on the stone, out of anybody's way.
-    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce' || this.kind === 'cleat' || this.kind === 'chandelier' || this.kind === 'trophy' || this.kind === 'key') return false;
+    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce' || this.kind === 'cleat' || this.kind === 'chandelier' || this.kind === 'trophy' || this.kind === 'poster' || this.kind === 'key') return false;
     // A suit of armour hangs on the stone, out of anybody's way too: what comes to it is found by what
     // arrives (`Enemy.wallDressing`, `hitProp`, `Scatter.burst`).
     if (this.kind === 'armor') return false;
@@ -1400,19 +1450,24 @@ class Prop {
       case 'cleat': this.cutRope(game); break;
       // A horn brings it down too (1 Oct 2026: "they fly apart when you butt them"), as a body landing by it does.
       case 'armor': case 'suit': if (!this.spilled) this.burstArmor(game, ax, ay, 0.9); break;
+      case 'poster': this.tear(game, ax, ay); break;
       case 'table': if (this.flipped) this.knockFlipped(game, ax, ay); else this.shove(game, ax, ay); break;
       case 'barrel': this.roll(game, ax, ay, TUNING.prop.barrel.roll); break;
       case 'lamp': this.topple(game, ax, ay); break;
       case 'brazier': this.spill(game, ax, ay); break;
       case 'cage': if (this.deco) this.breakDeadCage(game); else this.breakCage(game); break;
-      case 'coop': if (this.ironCage) this.unlockIron(game); else this.breakCoop(game); break;
-      case 'ironcage': this.unlockIron(game); break;
+      case 'coop': if (this.ironCage) this.ringIron(game); else this.breakCoop(game); break;
+      case 'ironcage': this.ringIron(game); break;
       case 'chicken': this.kick(game, ax, ay); break;
       // The pig he said no to, eating his grass out of spite: the horns are the one way to stop her.
-      case 'pig': if (this.spite) Beast.hurt(this, game, 'blow'); else { this.wobble = 0.3; game.audio.sfxThud(); } break;
+      case 'pig': if (this.spite) Beast.hurt(this, game, 'blow'); else { this.wobble = 0.3; game.audio.sfxThud(); Beast.dope(this, game, 'stun'); } break;
       // The trader and her shelf: rough is a strike against her, and the third one is the rat ogre.
       case 'mouse': case 'ware': Shop.provoke(game, this); break;
-      default: this.wobble = 0.3; game.audio.sfxThud(); break;
+      default:
+        this.wobble = 0.3; game.audio.sfxThud();
+        // One of his own animals dazed by the horns (6 Oct 2026 playtest: "the stun works on them too").
+        if (Beast.is(this.kind)) Beast.dope(this, game, 'stun');
+        break;
     }
   }
 
@@ -1453,7 +1508,6 @@ class Prop {
     // A table butted off heaven's edge lands on the floor below, on a man (`Game.updateSkyTables`).
     if (this.kind === 'table' && game.state === 'heaven') {
       game.heavenTables = (game.heavenTables || 0) + 1;
-      game.floatText(this.x, this.y - 30, 'IT FALLS TO THE FLOOR BELOW', PALETTE.bone);
     }
     this.broken = true; this.dead = true; this.flung = false; this.thrown = false; this.vx = 0; this.vy = 0;
     if (game.goat.holding === this) { game.goat.holding = null; game.goat.autoHeld = false; game.goat.spendGrab(game, false); }
@@ -1759,6 +1813,10 @@ class Prop {
   // A patch of wall that used to be a wall. Two blows, and nothing on the way there says which
   // patch: the crack in it is the only hint the level ever gives, and finding it was the game.
   crackWall(game) {
+    // The deep one of a double niche (`carveDeepSecret`) is still rock inside the first niche's list
+    // until that wall is down: nothing, a blast through the stone included, opens it from the room.
+    const at = Math.floor(this.y / TILE) * game.world.W + Math.floor(this.x / TILE);
+    if (game.niches && game.niches.some((o) => o !== this && !o.broken && o.nicheTiles.indexOf(at) > 0)) return;
     const need = TUNING.prop.secret.hits;
     this.hits = (this.hits || 0) + 1;
     if (this.hits < need) {
@@ -1832,13 +1890,14 @@ class Prop {
   // An iron cage (`TUNING.keys`): no blow gives it, a key does. Butted with none it rings and says
   // so; butted with one, the key is spent and the door swings. An animal walks out the way it does
   // out of slats (`breakCoop`, told its blows are done); the grass cage leaves its big milk grass standing.
+  // A headbutt only rings it, and says what does open it.
+  ringIron(game) {
+    this.wobble = 0.25; game.audio.sfxThud(); game.audio.sfxSteel(); game.shake(2); game.vibe(8);
+    game.floatText(this.x, this.y - 34, game.runKeys > 0 ? 'GRAB IT TO USE THE KEY' : 'IT NEEDS A KEY', PALETTE.bone);
+  }
   unlockIron(game) {
     if (this.broken) return;
-    if (!(game.runKeys > 0)) {
-      this.wobble = 0.25; game.audio.sfxThud(); game.audio.sfxSteel(); game.shake(2); game.vibe(8);
-      game.floatText(this.x, this.y - 34, 'IT NEEDS A KEY', PALETTE.bone);
-      return;
-    }
+    if (!(game.runKeys > 0)) { this.ringIron(game); return; }
     game.runKeys--; game.keyFlash = 0.5;
     game.audio.sfxSteel(); game.audio.sfxBell && game.audio.sfxBell();
     game.particles(this.x, this.y, 14, PALETTE.ash, 220);
@@ -1914,6 +1973,8 @@ class Prop {
       return;
     }
     if (this.birdState === 'loose') {
+      // Dazed by him she sits (`Beast.dope`); poisoned she walks slow, like every animal of ours.
+      if (this.stunT > 0 && !this.gapHop) { this.vx = 0; this.vy = 0; return; }
       // She keeps the goat company at a distance and only hurries when he has got away from her.
       const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy) || 1;
       let wx, wy, spd;
@@ -1934,8 +1995,11 @@ class Prop {
         this.wanderA += (Math.random() - 0.5) * 4 * dt;
         wx = Math.cos(this.wanderA); wy = Math.sin(this.wanderA); spd = C.followSpeed * C.wander;
       }
+      // Over a chasm she hops (`Beast.hopGap`), as every animal of ours does.
+      if ((this.gapHop || d > C.followAt * TILE) && Beast.hopGap(this, game, wx, wy, dt)) return;
       // She minds the room the way a careful man does: fire, coals, the wheel, raised teeth, a drop.
       const safe = this.henSteer(game, wx, wy);
+      if (this.poisonT > 0) spd *= TUNING.beast.dope.poisonMove;
       if (safe) { this.vx = safe.x * spd; this.vy = safe.y * spd; }
       else { this.vx = 0; this.vy = 0; this.wanderA += Math.PI; }
       this.x += this.vx * dt; this.y += this.vy * dt;
@@ -2127,6 +2191,37 @@ class Prop {
     game.audio.sfxSteel(); game.dust(this.x, this.y, 5, dx, dy);
     game.world.emitNoise(this.x, this.y, TUNING.noise.steel);
   }
+  // The cult's paper on the floor (6 Oct 2026, his redesign: "a little scrap of paper on the floor; found, it
+  // unfolds into a drawing, and one of the things you can do is butt it and tear it up"). Folded small until he
+  // comes within `readR` tiles with nothing standing on it (the ritual altar over the first one: butted off, it
+  // shows), then it opens out over `unfold` s, says what it is, and is the book's for good (`Unlocks` OBJECTS),
+  // so it never lies on a floor again (`Game.layScraps`). It hurts nobody, and nothing kills for it (pillar 3).
+  updateScrap(game, dt) {
+    if (this.torn) return;
+    const D = TUNING.prop.poster, g = game.goat;
+    if (this.unfold > 0) { if (this.unfold < 1) this.unfold = Math.min(1, this.unfold + dt / D.unfold); return; }
+    if (!g || g.dead || hyp(g.x - this.x, g.y - this.y) > D.readR * TILE || this.scrapCovered(game)) return;
+    this.unfold = 0.001; this.wobble = 0.3;
+    game.audio.sfxCard();
+    const it = typeof Unlocks !== 'undefined' && Unlocks.DESTRUCT.find((d) => d.id === 'poster-' + this.look);
+    if (it) game.floatText(this.x, this.y - 26, it.name, PALETTE.fireHi);
+    if (it && !(game.dev && game.dev.god) && !(game.level && game.level.def.showroom)) { Unlocks.mark('objects', it.id, 1); Unlocks.flush(); }
+  }
+  // Something standing on the scrap hides it: a table (the altar), a crate, a barrel.
+  scrapCovered(game) {
+    return game.props.some((q) => q !== this && !q.broken && !q.held && (q.kind === 'table' || q.kind === 'crate' || q.kind === 'barrel')
+      && hyp(q.x - this.x, q.y - this.y) < q.r + TUNING.prop.poster.r * 0.5);
+  }
+  // Torn up where it lies (a horn, a body landing by it, a blast), only once it is open: folded, nobody has
+  // seen it yet. Paper in the air and its shreds left on the floor.
+  tear(game, dx, dy) {
+    if (this.kind !== 'poster' || this.torn || !(this.unfold > 0)) return;
+    this.torn = true; this.wobble = 0.3;
+    const D = TUNING.prop.poster;
+    game.audio.sfxCard(); game.dust(this.x, this.y, 4, dx, dy);
+    game.particles(this.x, this.y, D.bits, '#dccfa6', 110); game.particles(this.x, this.y, 3, '#3a2a20', 90);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.smash * 0.3);
+  }
   // Hanging, it does nothing; cut, it falls, and where it lands (`TUNING.chandelier`) a man is
   // crushed, a two-hit kind loses a heart, his `die` decides, the goat loses a heart, a table
   // under it goes to planks and the candles light the floor round it. Then it lies there.
@@ -2175,6 +2270,7 @@ class Prop {
     if (this.kind === 'cleat') { this.updateCleat(dt, game); return; }
     // What comes to it is found by what arrives (`Enemy.wallDressing`, `hitProp`, `collideEntities`,
     // `Scatter.burst`); a spent stag's head only goes on bleeding down the wall.
+    if (this.kind === 'poster') { this.updateScrap(game, dt); return; }
     if (this.kind === 'armor' || this.kind === 'trophy' || this.kind === 'suit') { if (this.spent) this.bleedT += dt; return; }
     if (this.kind === 'spike') { this.updateSpike(dt, game); return; }
     if (this.kind === 'spire') { this.updateSpire(dt, game); return; }

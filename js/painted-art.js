@@ -618,7 +618,7 @@ class PaintedArt extends AltarArt {
   // 1.66: the butcher (the brute until 1.72) wears the old Butcher's sheet (skull, apron, cleaver) and that kind is
   // the ogre, drawn by js/ogre-pixels.js (`butcher.scale` a size up). The red-robed `brute` sheet is
   // unused for now.
-  characterKey(e) { if(e.kind==='butcher')return 'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'butcher':e.shieldman?'spartan':e.thrower?'thrower':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
+  characterKey(e) { if(e.kind==='butcher')return 'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.champion?'butcher':e.shieldman?'spartan':e.thrower?'thrower':e.shaman?'shaman':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
 
   // The art is a top-down slab at the collision footprint, with no frame or square padding.
   doorSlab(ctx,p,wdt,hgt) {
@@ -672,7 +672,18 @@ class PaintedArt extends AltarArt {
     else if(key==='spartan'&&typeof SPARTAN_PIXELS!=='undefined'&&SPARTAN_PIXELS.draw)SPARTAN_PIXELS.draw(ctx,angle,moving,renderer.t,e.x);
     // The thrower is a one-armed Bane in a goat's skull, the green pulsing in his arm (js/thrower-pixels.js).
     else if(key==='thrower'&&typeof THROWER_PIXELS!=='undefined'&&THROWER_PIXELS.draw)THROWER_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e);
-    else PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
+    // The shaman in his pelt and headdress, the rattle up through either cast (js/shaman-pixels.js).
+    else if(key==='shaman'&&typeof SHAMAN_PIXELS!=='undefined'&&SHAMAN_PIXELS.draw)SHAMAN_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e);
+    else{
+      // The goat's cape (js/cape-pixels.js): behind his frame on the front view, over it on the rest, in
+      // step with his stride. `capeId` is lent by `drawGoat` for the one draw.
+      // The wind in it (`TUNING.cape.wind`): his speed over his stride, and the clock.
+      const cs=key==='sheep'&&this.capeId?(moving?Math.floor(renderer.t*8+(e.x||0)*0.05)%4:-1):null;
+      const cw=cs!==null?{t:renderer.t,k:moving?Math.min(1,Math.hypot(e.vx||0,e.vy||0)/TUNING.goat.speed):0}:null;
+      if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'behind',angle,cs,cw);
+      PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
+      if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'over',angle,cs,cw);
+    }
     if(e.shield)this.board(renderer,e,true);
     // His horns as the butt souls have made them, in the same lean as the frame (`drawGoat` sets it).
     if(key==='sheep'&&this.hornMods){PIXEL_ART.horns(ctx,pixel,angle,moving,renderer.t,e.x,this.hornMods);PIXEL_ART.face(ctx,angle,renderer.t,this.hornMods,e);}
@@ -711,43 +722,35 @@ class PaintedArt extends AltarArt {
   // beside it. `-cx` puts the charm behind him the same way `+cx` is his own nose: opposite
   // whichever of the eight painted facings is on screen, which is the one spot this sprite was
   // actually checked, facing by facing, to be open fur rather than the bell, the face or the tail.
-  collar(renderer,g,art) {
+  // Up to three talismans (`arts`, in the order taken) hang on it as charms side by side (6 Oct 2026), each
+  // a few hand-placed pixels of its own shape and colour (`CAPE_PIXELS.charm`), along the ring's near half
+  // at `TUNING.talisman.charm.at`.
+  collar(renderer,g,arts) {
     const ctx=renderer.ctx,a=g.facing,cx=Math.cos(a),sy=Math.sin(a);
-    // The pixel goat has no bell: the charm hangs at his throat on a cord, per facing (`PIXEL_NECK`).
+    // The pixel goat has no bell: the charms hang at his throat on a cord, per facing (`PIXEL_NECK`).
     if(PIXEL_ART.unit('sheep')){
-      // One collar for every talisman, turned with him; only the pendant changes. It is a ring round
-      // the neck seen from the camera: an ellipse whose short axis lies along the way he faces
-      // (squashed to a band on a side view, opened to a curve under the chin from the front), and
-      // only its near half is drawn, the half toward the camera, because the rest is behind his
-      // neck. It was one fixed smile of cord at every facing, which lay across the neck like a
-      // mouth on the side views. Its front sits on the throat point `PIXEL_NECK` measured.
-      const d=(Math.round(a/(Math.PI/4))+14)%8,[nx,ny]=PIXEL_NECK[d],back=d>=3&&d<=5,C=TUNING.goat.collar;
-      const col=(ARTIFACTS.find((x)=>x.id===art.id)||{}).color||PALETTE.bone;
-      const fa=(d+2)*(Math.PI/4);                    // the facing this frame was drawn at
-      // A diagonal frame shows the head nearly side-on, so the ring turns further toward a side view
-      // than the world angle says (`C.flat` on the vertical part of the facing).
-      let vx=Math.cos(fa),vy=Math.sin(fa)*(Math.abs(Math.cos(fa))>0.1?C.flat:1);
-      const vl=hyp(vx,vy)||1;vx/=vl;vy/=vl;
-      if(vy<-0.1){vx=-vx;vy=-vy;}                    // the near side of the ring
-      // On the two front diagonals the ring rises toward the nape, behind the jaw, and dips at the
-      // throat under the chin; turned the plain way it rose toward his face and sat on it like a hook.
-      if(d===1||d===7)vx=-vx;
-      const R=C.r,r=C.r*C.depth*Math.abs(vy)+C.thin,cx=nx-vx*r,cy=ny-vy*r;
-      const rot=Math.atan2(-vx,vy);                  // u = (vy, -vx), so the arc 0..π is the near half
+      // One collar for every talisman, turned with him. It is a ring round the neck seen from the
+      // camera: an ellipse whose short axis lies along the way he faces (squashed to a band on a side
+      // view, opened to a curve under the chin from the front), and only its near half is drawn, the
+      // half toward the camera, because the rest is behind his neck. It was one fixed smile of cord at
+      // every facing, which lay across the neck like a mouth on the side views. Its front sits on the
+      // throat point `PIXEL_NECK` measured; the ring's shape is `CAPE_PIXELS.ring`.
+      const d=(Math.round(a/(Math.PI/4))+14)%8,C=TUNING.goat.collar,q=CAPE_PIXELS.ring(d,PIXEL_NECK[d],C);
+      const {cx,cy,R,r,rot}=q;
       ctx.save();ctx.lineCap='round';
       ctx.strokeStyle=C.edge;ctx.lineWidth=C.w+1.2;
       ctx.beginPath();ctx.ellipse(cx,cy,R,r,rot,0,Math.PI);ctx.stroke();
       ctx.strokeStyle=C.leather;ctx.lineWidth=C.w;
       ctx.beginPath();ctx.ellipse(cx,cy,R,r,rot,0.08,Math.PI-0.08);ctx.stroke();
-      if(back){ctx.fillStyle=col;ctx.fillRect(cx-R*0.55-0.8,cy+r*0.6-0.8,1.6,1.6);ctx.fillRect(cx+R*0.55-0.8,cy+r*0.6-0.8,1.6,1.6);}
+      // From behind the charms are under his chin, out of sight: a fleck of each at the ring's ends.
+      if(q.back){arts.slice(0,2).forEach((art,k)=>{ctx.fillStyle=(Shop.def(art.id)||{}).color||PALETTE.bone;ctx.fillRect(cx+(k?1:-1)*R*0.55-0.8,cy+r*0.6-0.8,1.6,1.6);});}
       else{
-        // The ring the pendant hangs from, then the pendant itself, below the front of the collar.
-        ctx.strokeStyle=C.edge;ctx.lineWidth=1;ctx.beginPath();ctx.arc(nx,ny+1.3,1.1,0,Math.PI*2);ctx.stroke();
-        renderer.artifactIcon(art.id,nx,ny+C.drop,C.icon,art.tier);
+        const T=TUNING.talisman.charm,at=T.at[Math.min(arts.length,T.at.length)-1];
+        arts.slice(0,at.length).forEach((art,k)=>{const p=CAPE_PIXELS.ringAt(q,at[k]);CAPE_PIXELS.charm(ctx,art.id,p.x,p.y+T.drop);});
       }
       ctx.restore();return;
     }
-    const nx=-cx*7,ny=-6+sy*3;
+    const art=arts[0],nx=-cx*7,ny=-6+sy*3;
     ctx.save();
     ctx.strokeStyle='#5a3d24';ctx.lineWidth=1.5;ctx.lineCap='round';
     ctx.beginPath();ctx.moveTo(nx-3,ny-2);ctx.lineTo(nx+3,ny+2);ctx.moveTo(nx+3,ny-2);ctx.lineTo(nx-3,ny+2);ctx.stroke();
@@ -964,13 +967,15 @@ class PaintedArt extends AltarArt {
     const f0=g.facing,look=fid&&fid.kind==='look'&&fk>0.12&&fk<0.88;
     if(look)g.facing=f0+fid.dir*Math.PI/4;
     try{
-      this.hornMods=game.mods;this.character(renderer,g,'sheep',40);
+      this.hornMods=game.mods;this.capeId=game.cape&&game.cape.id;this.character(renderer,g,'sheep',40);
       // The blood is in his wool; the collar is over it, since a talisman has to read at any health.
       if(g.maxHp-g.hp>0)this.wounds(renderer,g,g.maxHp-g.hp);
       if(g.armour>0)this.armour(renderer,g);
-      if(game.artifact)this.collar(renderer,g,game.artifact);
+      if((game.artifacts||[]).length)this.collar(renderer,g,game.artifacts);
+      // the cape's clasp at his throat, over the collar, on the front view (the others carry it in the cloth)
+      if(this.capeId&&PIXEL_ART.unit('sheep'))CAPE_PIXELS.clasp(ctx,this.capeId,g.facing,PIXEL_NECK[CAPE_PIXELS.view(g.facing)]);
       if(g.onFire)renderer.goatFlame(g);
-    }finally{g.facing=f0;this.hornMods=null;ctx.restore();}   // a throw mid-glance must not leave the goat turned, nor the transform on the stack
+    }finally{g.facing=f0;this.hornMods=null;this.capeId=null;ctx.restore();}   // a throw mid-glance must not leave the goat turned, nor the transform on the stack
     this.goatFx(renderer,g,game);
     if(g.dazed>0&&!(game.intro&&game.intro.fade>0))renderer.drawStars(g.x,g.y,30,Math.min(1,g.dazed*1.5));
     if((game.touch.active||(game.pad&&game.pad.active))&&game.state==='play'){const a=game.input.aim;ctx.fillStyle=PALETTE.bone;ctx.beginPath();ctx.arc(g.x+a.x*34,g.y+a.y*34,2,0,Math.PI*2);ctx.fill();}

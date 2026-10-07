@@ -6,7 +6,8 @@
 // that) and no rule in `GEN_RULES` is asked of it.
 // THE RULE (1 Oct 2026): anything new the game stands on a floor, a prop, an animal, a talisman, goes
 // in here the day it is added. Every animal has a coop in the COOPS row, every talisman a stool on the
-// shelf along the near wall (tier III, free: grab one to wear it, grab another to swap). Floors read their stone per tile off `zones`
+// shelf along the near wall (its top tier, free: grab one to wear it, grab another to swap), every cape
+// folded on the floor beside it. Floors read their stone per tile off `zones`
 // (`PaintedArt.drawTiles`); the round cave and the dark's lighting are level-wide and are not here.
 const SHOWROOM_LEVEL = {
   name: 'THE SHOWROOM', sub: 'Dev', rooms: 10, showroom: true,
@@ -22,7 +23,7 @@ function showroomLevel(def, seed) {
   // The level's own look is THE ALTAR's; every other floor is a zone.
   for (const k of ['floor', 'floorAlt', 'wall', 'wallTop', 'fog']) def[k] = LEVELS[0][k];
   def.met = new Set(Object.keys(THREAT)); def.known = new Set(floors.map((d) => d.canon && d.canon.id).filter(Boolean));
-  const rooms = [], props = [], hints = [], grass = [], windows = new Set();
+  const rooms = [], props = [], hints = [], grass = [], windows = new Set(), chasms = [], gaps = new Set(), controls = [];
   const at = (x, y) => y * W + x, P = (tx, ty) => ({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE });
   const put = (kind, tx, ty, opts) => props.push(Object.assign(P(tx, ty), { kind }, opts || {}));
   const label = (text, tx, ty, w, big) => hints.push({ x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE, text, w: (w || 4) * TILE, size: big ? 26 : 12, a: big ? 0.34 : 0.42 });
@@ -40,14 +41,14 @@ function showroomLevel(def, seed) {
   const hall = room(2, 22, 46, 33, 'showroom hall', 0);
   const hx = hall.x + 1, hy = hall.y + 1;
   label('THE SHOWROOM', hx + 22, hy + 2.4, 30, true);
-  const row = (y, head, list) => {
+  const row = (y, head, list, gap = 4.4) => {
     label(head, hx + 1.5, y, 6);
-    list.forEach(([name, fn], i) => { const tx = hx + 7 + i * 4.4 | 0; fn(tx, y); label(name, tx, y + 1.3, 4); });
+    list.forEach(([name, fn], i) => { const tx = hx + 7 + i * gap | 0; fn(tx, y); label(name, tx, y + 1.3, 4); });
   };
   row(hy + 5, 'STANDS', [
     ['BRAZIER', (x, y) => put('brazier', x, y)], ['ROAST', (x, y) => put('brazier', x, y, { roast: true })],
     ['LAMP', (x, y) => put('lamp', x, y)], ['TABLE', (x, y) => put('table', x, y)],
-    ['ALTAR', (x, y) => put('table', x, y, { altar: true })], ['GONG', (x, y) => put('bell', x, y)],
+    ['ALTAR', (x, y) => { put('poster', x, y, { look: 'breeds' }); put('table', x, y, { altar: true }); }],   // a scrap under it, as on THE ALTAR ['GONG', (x, y) => put('bell', x, y)],
     ['BARREL', (x, y) => put('barrel', x, y)], ['BOULDER', (x, y) => put('rock', x, y)],
   ]);
   row(hy + 10, 'LIFTED', [
@@ -84,14 +85,21 @@ function showroomLevel(def, seed) {
     ['THE REST', (x, y) => put('table', x, y, { dishes: ['leg', 'bread', 'cheese', 'jug'] })],
   ]);
   label('CARPETS', hx + 31, hy + 20.3, 8);
-  row(hy + 21, 'COOPS', ['chicken', 'tortoise', 'goose', 'crow', 'horse', 'pig', 'rabbit', 'husky'].map((k) =>
-    [k === 'chicken' ? 'HEN' : k.toUpperCase(), (x, y) => put('coop', x, y, { holds: k, beastRoom: 0 })]));
-  // Every talisman on a stool, tier III, two rows along the near wall: a shelf of no shop (`shopId` < 0,
-  // so no dialog opens) where every stool is his (`free`): grab one to wear it, another to swap.
-  label('TALISMANS · GRAB TO WEAR', hx + 22, hy + 24.6, 14);
+  // The fish has no coop: its tank stands on the floor as it would on a level (6 Oct 2026).
+  row(hy + 21, 'COOPS', ['chicken', 'tortoise', 'goose', 'crow', 'horse', 'pig', 'rabbit', 'husky', 'fish'].map((k) =>
+    [k === 'chicken' ? 'HEN' : k.toUpperCase(), (x, y) => (k === 'fish' ? put('fish', x, y, { beastRoom: 0 }) : put('coop', x, y, { holds: k, beastRoom: 0 }))]), 3.9);
+  // Every talisman on a stool at its top tier, two rows along the near wall: a shelf of no shop (`shopId`
+  // < 0, so no dialog opens) where every stool is his (`free`): grab one to wear it (up to three), another
+  // to swap. Beside them every cape lying folded on the floor as a niche leaves it (`Cape.lay`), its name under it.
+  label('TALISMANS · GRAB TO WEAR', hx + 14, hy + 24.6, 14);
   ARTIFACTS.forEach((a, i) => {
     const per = Math.ceil(ARTIFACTS.length / 2), r = Math.floor(i / per), c = i % per;
-    put('ware', hx + 2 + Math.round(c * 40 / (per - 1)), hy + 26 + r * 3, { shopId: -9, free: true, ware: { id: a.id, tier: 3 } });
+    put('ware', hx + 2 + Math.round(c * 25 / (per - 1)), hy + 26 + r * 3, { shopId: -9, free: true, ware: { id: a.id, tier: a.tiers.length } });
+  });
+  label('CAPES · GRAB TO WEAR · Q', hx + 36, hy + 24.6, 14);
+  CAPES.forEach((c, i) => {
+    const tx = hx + 30 + i * 3, ty = hy + 26 + (i % 2) * 3;
+    put('cape', tx, ty, { capeId: c.id }); label(c.name, tx, ty + 1.3, 4);
   });
   // The doors, each at the mouth of a blind alcove in the hall's far wall, so none of them is in the way.
   const doors = [['PLANK', {}], ['IRON', { iron: true }], ['STAIRS', { iron: true, stair: true }],
@@ -108,6 +116,12 @@ function showroomLevel(def, seed) {
     props.push(Object.assign(dressPoint(kind, tx, hy, 'n'), { kind, side: 'n' }));
     label(name, tx, hy + 1.6, 5);
   }
+  // The cult's paper (6 Oct 2026): two scraps folded on the floor that open as he walks up and tear under a butt,
+  // the goat-breeds chart and the butcher's diagram (a third lies under the ALTAR in the STANDS row).
+  for (const [look, tx, name] of [['breeds', hx + 17, 'PAPER: BREEDS'], ['cuts', hx + 23, 'PAPER: CUTS']]) {
+    put('poster', tx, hy + 2, { look });
+    label(name, tx, hy + 3.2, 5);
+  }
   // The suit on its stand, out in the hall, a step off the wall's dressing.
   put('suit', hx + 13, hy + 8); label('STANDING SUIT', hx + 13, hy + 9.8, 5);
   // The mouse and her pail (gen.js: she sits in a hole at a gate room's wall; the dev drawer's `spawnShop` lays one on the floor
@@ -121,6 +135,18 @@ function showroomLevel(def, seed) {
     put('secret', tx, wr, { wallColor: def.wall, wallTop: def.wallTop, wallSide: 'down', nicheTiles: [at(tx, wr), at(tx, wr + 1), at(tx + 1, wr + 1)] });
     put('heal', tx, wr + 1, { big: true }); put('weapon', tx + 1, wr + 1, { weapon: 'sword' });
     label('A WALL THAT GIVES', tx + 0.5, wr - 1.2, 6);
+  }
+  // The secret inside the secret (gen.js `carveDeepSecret`): a second wall at the niche's back, on its
+  // right tile, its own tile in the first niche's list so it stays rock until the first one is down.
+  {
+    const tx = hx + 28, wr = hall.y + hall.h - 1, dw = at(tx + 1, wr + 2);
+    fill(tx, wr, tx, wr, T.FLOOR); fill(tx, wr + 1, tx + 1, wr + 1, T.FLOOR); fill(tx + 1, wr + 2, tx + 1, wr + 2, T.FLOOR);
+    fill(tx + 1, wr + 3, tx + 2, wr + 3, T.FLOOR); zone(tx - 1, wr, tx + 3, wr + 4, 0);
+    put('secret', tx, wr, { wallColor: def.wall, wallTop: def.wallTop, wallSide: 'down', nicheTiles: [at(tx, wr), at(tx, wr + 1), at(tx + 1, wr + 1), dw] });
+    put('weapon', tx + 1, wr + 1, { weapon: 'shield' });
+    put('secret', tx + 1, wr + 2, { deep: true, wallColor: def.wall, wallTop: def.wallTop, wallSide: 'down', nicheTiles: [dw, at(tx + 1, wr + 3), at(tx + 2, wr + 3)] });
+    put('heal', tx + 1, wr + 3, { big: true }); put('cape', tx + 2, wr + 3);
+    label('TWO WALLS THAT GIVE', tx + 0.5, wr - 1.2, 6);
   }
 
   // One room a floor, in run order, each in its own stone with what its canon is built out of.
@@ -139,9 +165,13 @@ function showroomLevel(def, seed) {
       put('coop', x + 6, y + 7, { holds: 'goose', beastRoom: 0, ironCage: true }); label('IRON COOP', x + 6, y + 8.4, 5);
       put('ironcage', x + 11, y + 7); label('IRON · GRASS', x + 11, y + 8.4, 5);
       put('key', x + 15, y + 7); put('key', x + 16, y + 7); label('KEYS', x + 15.5, y + 8.4, 4); },
-    // THE CAVE, the hollow: grass, boulders, teeth at the wall, the mushrooms.
+    // THE CAVE, the hollow: grass, boulders, teeth at the wall, the mushrooms, and THE CHASM across its far
+    // end with the roll written before it (6 Oct 2026, `carveChasm` in gen.js; an animal hops it).
     (x, y) => { for (let dx = 2; dx < 9; dx++) for (let dy = 8; dy < 12; dy++) grass.push(at(x + dx, y + dy));
-      put('rock', x + 14, y + 3); put('rock', x + 16, y + 4); put('rock', x + 13, y + 5);
+      put('rock', x + 12, y + 3); put('rock', x + 13, y + 5); put('rock', x + 11, y + 6);
+      { const c = x + 16, cut = []; for (let ty = y; ty <= y + RH - 3; ty++) { tiles[at(c, ty)] = T.PIT; cut.push(at(c, ty)); gaps.add(at(c, ty)); }
+        chasms.push({ room: rooms.length - 1, axis: 'v', at: c, lo: y, hi: y + RH - 3, far: 1, tiles: cut, lesson: true });
+        controls.push({ x: (x + 12) * TILE, y: (y + 8.5) * TILE, w: 9 * TILE, part: 5, chasm: rooms.length - 1 }); label('CHASM', c, y + 1.4, 4); }
       for (const dx of [4, 8, 18]) put('spire', x + dx, y); put('shrooms', x + 18, y + 10); put('heal', x + 11, y + 11); },
     // THE ROAD, the line: two rows of pillars, lamps, a band of grating.
     (x, y) => { for (let dx = 3; dx < 20; dx += 4) { tiles[at(x + dx, y + 3)] = T.WALL; tiles[at(x + dx, y + 10)] = T.WALL; }
@@ -186,6 +216,6 @@ function showroomLevel(def, seed) {
 
   return { W, H, tiles, rooms, spawns: [], props, start: P(hx + 2, hy + 13), exit: { x: (last.x + last.w) * TILE, y: (ey + 1) * TILE },
     exitTile: { x0: last.x + last.w - 1, y0: ey }, forkTile: null, entry: null, seed, def,
-    hints, controls: [], cagePrompt: null, vault: null, windows, plan: null, gates: [], sealedArenas: [], shop: null,
+    hints, controls, chasms, gaps, cagePrompt: null, vault: null, windows, plan: null, gates: [], sealedArenas: [], shop: null,
     grass: grass.filter((i) => tiles[i] === T.FLOOR), zones, zoneDefs: floors, carpets };
 }

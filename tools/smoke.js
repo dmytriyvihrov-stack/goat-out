@@ -25,7 +25,8 @@ window.SMOKE = {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const n = ny * W + nx; if (D[n] >= 0) continue;
-        const t = w.tiles[n]; if (t === T.WALL || t === T.PIT) continue;
+        // A chasm's tiles (`level.gaps`) are crossed with a roll, so the field runs over them; every other drop is a wall.
+        const t = w.tiles[n]; if (t === T.WALL || (t === T.PIT && !(g.level.gaps && g.level.gaps.has(n)))) continue;
         D[n] = D[i] + 1; q.push(n);
       }
     }
@@ -33,7 +34,7 @@ window.SMOKE = {
   },
   start(which, seed) {
     const g = game;
-    g.forgetLessons(); g.boons = []; g.artifact = null; g.levelArtifact = null; g.beasts = {};
+    g.forgetLessons(); g.boons = []; g.artifacts = []; g.levelArtifacts = null; g.cape = null; g.levelCape = null; g.beasts = {};
     g.runJumped = true;   // a bot run is practice: it never writes the save or the BEST board
     g.tripAt = -1; g.darkAt = -1; g.deaths = 0; g.totalKills = 0; g.totalScore = 0; g.runSeed = seed;
     let li;
@@ -45,7 +46,9 @@ window.SMOKE = {
     let budget = 0; for (let i = 0; i < li; i++) budget += LEVELS[i].souls || 0;
     for (let n = 0; n < budget; n++) { g.applyBoons(); const open = BOONS.filter((b) => g.boonOpen(b, li)); if (!open.length) break; g.boons.push(open[(Math.random() * open.length) | 0]); }
     g.applyBoons();
-    g.startLevel(li, seed, false, false);
+    // keepBoons true: the build dealt above is the one he starts the floor with (false emptied it, so every late
+    // floor was played bare, 6 Oct 2026 review).
+    g.startLevel(li, seed, true, false);
     g.dev.god = true;
     // The bot runs in a pane that is often behind another window; losing focus must not pause it.
     g.autoPause = false;
@@ -62,7 +65,7 @@ window.SMOKE = {
   },
   run1(which, seed) {
     const g = game, O = SMOKE.opts;
-    const r = { which, seed, ok: false, t: 0, errs: {}, nan: null, tp: 0, kills: 0, upd: 0, updMax: 0, draw: 0, drawMax: 0, nUpd: 0, nDraw: 0, souls: 0, dropped: 0, end: '', spikes: [] };
+    const r = { which, seed, ok: false, t: 0, errs: {}, nan: null, tp: 0, rolled: 0, kills: 0, upd: 0, updMax: 0, draw: 0, drawMax: 0, nUpd: 0, nDraw: 0, souls: 0, dropped: 0, end: '', spikes: [] };
     // Every soul the floor has laid or dropped, so the report says taken/dropped: `souls 0` alone could not tell a
     // bot that walked past them from a floor that dealt none (3 Oct 2026, a keeper at three hearts).
     const seenSouls = new Set();
@@ -136,6 +139,14 @@ window.SMOKE = {
         if (!seenSouls.has(q)) { seenSouls.add(q); r.dropped++; }
         const d = Math.hypot(q.x - gt.x, q.y - gt.y); if (d < sd) { sd = d; soul = q; }
       }
+      // A chasm ahead is rolled over, never walked into (god mode would only put him back on the lip for good): when the
+      // next step lands in one the roll goes, and with the roll still owed he waits at the edge. Counted apart from `tp`.
+      if (n && g.level.gaps && g.level.gaps.size) {
+        const W = w().W, ax = Math.floor((gt.x + n.x * TILE * 0.8) / TILE), ay = Math.floor((gt.y + n.y * TILE * 0.8) / TILE);
+        if (g.level.gaps.has(ay * W + ax) && gt.state !== 'roll') {
+          if (gt.rollCd <= 0 && gt.state === 'idle') { g.input.rollPressed = true; r.rolled++; } else { dir.x = dir.y = 0; }
+        }
+      }
       if (soul) { const l = sd || 1; dir.x = (soul.x - gt.x) / l; dir.y = (soul.y - gt.y) / l; }
       buttCd -= 1 / 60;
       let foe = null, fd = 3 * TILE;
@@ -193,7 +204,7 @@ window.SMOKE = {
         cur.steps();
         const doneOk = g.state === 'climb' || g.state === 'clear' || g.state === 'win';
         if (doneOk || g.state === 'dead' || cur.t > SMOKE.opts.maxT) {
-          cur.ok = doneOk; cur.end = doneOk ? 'stairs' : g.state === 'dead' ? 'dead' : 'timeout';
+          cur.ok = doneOk; cur.end = doneOk ? (cur.tp ? 'stairs+tp' : 'stairs') : g.state === 'dead' ? 'dead' : 'timeout';
           cur.finish(); out.rows.push(cur); cur = null; break;
         }
       }
@@ -204,7 +215,7 @@ window.SMOKE = {
   },
   report(tag = 'now') {
     const o = SMOKE.res[tag]; if (!o) return 'nothing under ' + tag;
-    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? 'OK ' : r.end.toUpperCase().slice(0, 7).padEnd(7)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} kills ${r.kills} souls ${r.souls}/${r.dropped} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.heap ? ' heap ' + r.heap + 'MB' : ''}${r.nan ? ' NaN ' + r.nan : ''}${r.spikes.length ? '\n     spikes ' + r.spikes.join(' ') : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
-    return (o.done ? '' : '(still running)\n') + lines.join('\n');
+    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? (r.tp ? 'OK*' : 'OK ') : r.end.toUpperCase().slice(0, 7).padEnd(3)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} roll ${r.rolled} kills ${r.kills} souls ${r.souls}/${r.dropped} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.heap ? ' heap ' + r.heap + 'MB' : ''}${r.nan ? ' NaN ' + r.nan : ''}${r.spikes.length ? '\n     spikes ' + r.spikes.join(' ') : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
+    return (o.done ? '' : '(still running)\n') + '(OK = walked and rolled to the stairs, OK* = reached them with set-downs: a teleport is not a walk-through)\n' + lines.join('\n');
   },
 };

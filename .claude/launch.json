@@ -828,6 +828,96 @@
         "8950"
       ],
       "port": 8950
+    },
+    {
+      "name": "goat-out-pt1006",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8960"
+      ],
+      "port": 8960
+    },
+    {
+      "name": "goat-out-shaman",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8970"
+      ],
+      "port": 8970
+    },
+    {
+      "name": "goat-out-chase",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8980"
+      ],
+      "port": 8980
+    },
+    {
+      "name": "goat-out-secrets",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8981"
+      ],
+      "port": 8981
+    },
+    {
+      "name": "goat-out-capes",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8982"
+      ],
+      "port": 8982
+    },
+    {
+      "name": "goat-out-pt1006b",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8984"
+      ],
+      "port": 8984
+    },
+    {
+      "name": "goat-out-boontab",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8983"
+      ],
+      "port": 8983
+    },
+    {
+      "name": "goat-out-hurtstop",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8987"
+      ],
+      "port": 8987
+    },
+    {
+      "name": "goat-out-scrap",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8986"
+      ],
+      "port": 8986
+    },
+    {
+      "name": "goat-out-novelty",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8991"
+      ],
+      "port": 8991
     }
   ]
 }

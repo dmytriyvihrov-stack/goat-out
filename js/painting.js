@@ -210,6 +210,7 @@ const Painting = {
     // goat's head walking on to the next floor, the way Nuclear Throne shows it between areas.
     // (Leaving the card still copies the code for whoever is asked to paste it.)
     this.drawRoute(r, game, W / 2, dy + dh + 44 * s, 'clear', t);
+    this.drawTally(r, game, W / 2, dy + dh + 44 * s + 96 * s, t);
     // Once it can be left: how to leave, and SAVE for whoever wants the picture.
     this.saveRect = null;
     if (game.stateTimer <= 0) {
@@ -220,7 +221,7 @@ const Painting = {
       // a phone's foot is its home bar: lifted clear of it there (it sat 8 px off the edge, 2 Oct 2026)
       const goR = r.goButton(game, 'CONTINUE', W / 2, H - 22 * s - 24 * s - (game.touch.active ? 24 * r.s : 0)), gw = goR.w;
       ctx.textAlign = 'center';
-      if (this.canSave) {
+      if (this.canSave && TUNING.painting.saveButton) {
         const label = { saving: 'SAVING…', saved: 'SAVED', no: 'NOT SAVED' }[this.status] || 'SAVE THE PICTURE';
         ctx.font = `${16 * s}px ${FONT_SC}`;
         // Flush with the picture's right edge, but never over the words beside it (a narrow picture
@@ -239,6 +240,28 @@ const Painting = {
       ctx.globalAlpha = 1;
     }
     ctx.textAlign = 'left';
+  },
+
+  // Under the road (6 Oct 2026 playtest): the bodies this floor left, a skull and a count, and the bell that woke up in
+  // heaven for the floor, drawn as cells. Nothing when there is neither.
+  drawTally(r, game, cx, y, t) {
+    const ctx = r.ctx, s = r.ts, kills = (game.killMarks || []).length, bell = !!game.bellWoke;
+    if (!kills && !bell) return;
+    const a = clamp((t - TUNING.painting.reveal * 0.6) / 0.5, 0, 1); if (a <= 0) return;
+    const cell = Math.max(2, Math.round(3 * s)), items = [];
+    if (kills) items.push({ g: PAINT_GLYPHS.skull, col: PALETTE.bone, text: kills + (kills === 1 ? ' KILL' : ' KILLS') });
+    if (bell) items.push({ g: ['..xx..', '.xxxx.', '.xxxx.', 'xxxxxx', 'xxxxxx', '......', '..xx..'], col: '#f7d774', text: 'A BELL WAKES IN HEAVEN' });
+    ctx.save(); ctx.globalAlpha *= a; ctx.font = `700 ${20 * s}px ${FONT}`;
+    const gap = 36 * s, ws = items.map((it) => textW(ctx, it.text) + 8 * cell + 10 * s);
+    let x = cx - (ws.reduce((p, w) => p + w, 0) + gap * (items.length - 1)) / 2;
+    items.forEach((it, i) => {
+      const g = it.g, gw = g[0].length * cell, gh = g.length * cell;
+      ctx.fillStyle = it.col;
+      for (let yy = 0; yy < g.length; yy++) for (let xx = 0; xx < g[0].length; xx++) if (g[yy][xx] !== '.' && g[yy][xx] !== ' ') ctx.fillRect(Math.round(x + xx * cell), Math.round(y - gh / 2 + yy * cell), cell, cell);
+      ctx.textAlign = 'left'; ctx.fillStyle = PALETTE.bone; ctx.fillText(it.text, x + gw + 10 * s, y + 7 * s);
+      x += ws[i] + gap;
+    });
+    ctx.restore();
   },
 
   // The name a floor goes by on the road: THE DARK or THE TRIP where this run put one in its place.

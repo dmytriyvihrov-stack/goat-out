@@ -75,10 +75,44 @@ const BEAST_MORE = (() => {
     g.hl(hx + 1.6, hy + 2.2, 2, HK.pk);   // the cheek
     return g.outline(P.ol).trim();
   };
+  // THE FISH in its tank (6 Oct 2026, the uncle's): a glass box seen from the front and a little above,
+  // water lit at the top, gravel and a stalk of weed at the bottom, and a small orange fish that swims
+  // from one end to the other. Four frames, `fish-0..3`: where it is, which way it faces, its bubbles.
+  // `broken`: the empty frame and the glass's shards, for the corpse on the floor.
+  const FT = { g0: '#2a4a52', g1: '#4d8592', g2: '#8fcbd2', g3: '#e2f6f4', w0: '#1d4356', w1: '#2c637a', w2: '#4f98aa',
+    s0: '#6e5c3a', s1: '#a58d58', s2: '#d4bc84', f0: '#9c3814', f1: '#ec7a22', f2: '#ffc457', wd0: '#24461c', wd1: '#3f7a29' };
+  const tank = (fx, dir, bubbles, broken) => {
+    const g = new G(22, 18);
+    g.rect(1, 3, 20, 14, FT.g1);                                 // the glass, seen through
+    if (!broken) {
+      g.rect(2, 5, 18, 11, FT.w1).hl(2, 5, 18, FT.w2).hl(2, 6, 18, FT.w2).hl(3, 7, 16, FT.w2, true);   // water, lit from the top
+      g.rect(2, 13, 18, 3, FT.s1).hl(2, 13, 18, FT.s2);            // gravel
+      for (const x of [3, 6, 8, 11, 15, 18]) g.set(x, 14 + (x % 2), FT.s0);
+      g.vl(4, 9, 4, FT.wd1).vl(5, 10, 3, FT.wd0).set(3, 10, FT.wd1).set(6, 11, FT.wd1);   // weed
+      // the fish: a body, its belly lit, a tail behind it, an eye in front
+      g.ell(fx, 9.5, 2.8, 1.7, FT.f1).hl(fx - 1, 10, 3, FT.f2);
+      const tx = fx - dir * 3.4;
+      g.poly([[tx + dir * 0.8, 9.5], [tx - dir * 1.6, 7.8], [tx - dir * 1.6, 11.2]], FT.f0);
+      g.set(fx + dir * 1.6, 9, '#14100e');
+      for (const [bx, by] of bubbles) g.set(bx, by, FT.g3);
+    } else {
+      g.rect(2, 13, 18, 3, FT.s1).hl(2, 13, 18, FT.s0);            // only wet gravel left
+    }
+    // the box: a lit top rim, the near edges, a dark foot, and the glare down the glass
+    g.hl(1, 3, 20, FT.g3).vl(1, 3, 14, FT.g2).vl(20, 3, 14, FT.g0).hl(1, 16, 20, FT.g0);
+    g.vl(17, 6, 5, FT.g3).vl(18, 7, 2, FT.g2);
+    if (broken) { g.rect(6, 3, 5, 6, null); g.line(6, 3, 9, 9, FT.g3).line(12, 3, 10, 8, FT.g2).set(14, 4, null); }
+    return g.outline(P.ol).trim();
+  };
   const S = PROP_PIXELS.sprites;
   S['rabbit-sit'] = rabbit(false); S['rabbit-hop'] = rabbit(true);
   S['husky-stand'] = husky(false); S['husky-sing'] = husky(true);
-  return { RB, HK };
+  S['fish-0'] = tank(7, 1, [[12, 8]]); S['fish-1'] = tank(11, 1, [[14, 7], [13, 10]]);
+  S['fish-2'] = tank(14, -1, [[9, 7]]); S['fish-3'] = tank(10, -1, [[6, 8], [7, 11]]);
+  S['fish-broken'] = tank(0, 1, [], true);
+  S['fish-shard'] = new G(4, 5).poly([[0, 0], [4, 1], [1, 5]], FT.g2).set(1, 1, FT.g3).outline(P.ol).trim();
+  S['fish-body'] = new G(9, 5).ell(4.5, 2.5, 3, 1.6, FT.f1).hl(3, 3, 3, FT.f2).poly([[1.6, 2.5], [0, 0.6], [0, 4.4]], FT.f0).set(6, 2, '#14100e').outline(P.ol).trim();
+  return { RB, HK, FT };
 })();
 
 Object.assign(Beast, {
@@ -131,6 +165,74 @@ Object.assign(Beast, {
     const g = game.goat, dx = p.x - g.x, dy = p.y - g.y, d = hyp(dx, dy) || 1;
     Beast.step(p, game, dx / d, dy / d, (TUNING.prop[p.kind] && TUNING.prop[p.kind].speed) || 60, dt);
     if (p.refused <= 0) { p.broken = true; p.dead = true; game.particles(p.x, p.y, 10, PALETTE.ash, 90); }
+  },
+
+  // ---------------------------------------------------------------- the fish
+  // THE FISH (6 Oct 2026, the uncle's: "a fish in an aquarium. It only gurgles when you talk to it. Its tank is
+  // heavy and you can only carry it. Thrown, it flies a couple of tiles and stops; if it hits something on
+  // the way it breaks and the fish dies"). No coop: the tank stands on the floor of its room. In his teeth he
+  // walks at `carry` of his stride (`Goat.update`); thrown it goes `throwTiles` and sets down; stone, a
+  // shut door, furniture or a man on the way and the glass goes (`breakFish`). Up the stairs with it: his
+  // fleece is wet on every floor after (`mods.wet`), and the first flame on him each floor only steams.
+  updateFish(p, dt, game) {
+    const C = TUNING.prop.fish;
+    p.blubT = (p.blubT === undefined ? C.blub[0] : p.blubT) - dt;
+    if (p.flying) {
+      const sp = hyp(p.vx, p.vy) || 1, ox = p.x, oy = p.y;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.flown = (p.flown || 0) + sp * dt;
+      const impact = game.world.collideCircle(p);
+      if (impact > 0 || p.hitProp(game, p.vx / sp, p.vy / sp)) { Beast.breakFish(p, game, p.vx / sp, p.vy / sp); return; }
+      for (const e of game.enemies) {
+        if (e.dead || e.held || e.ghosted || hyp(e.x - p.x, e.y - p.y) > e.r + p.r) continue;
+        // A man is in the way like a wall is: the tank goes, and he is floored by it as by a crate.
+        if (e.kind !== 'butcher' && e.kind !== 'ratogre') { const st = TUNING.prop.crate.stun; e.state = 'floored'; e.timer = st; e.dazed = Math.max(e.dazed, st); e.aware = true; }
+        Beast.breakFish(p, game, p.vx / sp, p.vy / sp); return;
+      }
+      void ox; void oy;
+      if (p.flown >= C.throwTiles * TILE) {
+        p.flying = false; p.vx = 0; p.vy = 0; p.flown = 0;
+        game.audio.sfxThud(); game.particles(p.x, p.y, 4, '#8fcbd2', 90);
+        if (game.world.isPitPx(p.x, p.y)) { Beast.breakFish(p, game, 0, 0, true); return; }
+      }
+      return;
+    }
+    p.vx = 0; p.vy = 0;
+    if (p.blubT <= 0) {
+      p.blubT = C.blub[0] + Math.random() * (C.blub[1] - C.blub[0]);
+      if (hyp(p.x - game.goat.x, p.y - game.goat.y) < C.hearR * TILE) game.audio.sfxAnimal('fish');
+      game.particles(p.x, p.y - 18, 2, '#e2f6f4', 30);
+    }
+  },
+  throwFish(p, game, ax, ay) {
+    const C = TUNING.prop.fish, l = hyp(ax, ay) || 1;
+    p.flying = true; p.flown = 0; p.vx = (ax / l) * C.throwSpeed; p.vy = (ay / l) * C.throwSpeed;
+    game.audio.sfxSwing(); game.audio.sfxAnimal('fish');
+  },
+  // The glass goes: shards, the water, and the fish flapping out its last on the floor (a fall takes it
+  // with the tank). Dead either way, the way an escort dies (`Beast.hurt`'s last heart).
+  breakFish(p, game, ax, ay, fell) {
+    if (p.broken) return;
+    if (game.goat.holding === p) game.goat.holding = null;
+    p.held = false; p.flying = false;
+    game.audio.sfxTank && game.audio.sfxTank();
+    if (fell) { p.gone(game); Stats.beast(game, 'fish', 'dead'); game.floatText(p.x, p.y - 30, 'THE FISH IS GONE', PALETTE.blood); return; }
+    p.broken = true; p.dead = true; Stats.beast(game, 'fish', 'dead');
+    game.particles(p.x, p.y - 6, 18, '#8fcbd2', 220); game.particles(p.x, p.y, 10, '#e2f6f4', 160); game.particles(p.x, p.y, 4, '#ec7a22', 90);
+    if (game.scatter) game.scatter.breakUp(['fish-shard', 'fish-shard', 'fish-shard', 'fish-body'], p.x, p.y, 10, ax || 0, ay || 0, 0.7);
+    game.world.dot(p.x, p.y, 11, 'rgba(60,110,130,0.55)');
+    game.floatText(p.x, p.y - 30, 'THE FISH IS DEAD', PALETTE.blood);
+    game.shake(3); game.hitstop(0.04);
+  },
+  drawFish(R, p, k) {
+    const ctx = R.ctx, T = 1.35 * (k || 1), held = p.held;
+    const name = p.broken ? 'fish-broken' : 'fish-' + (Math.floor((R.t + (p.phase || 0)) * 1.6) % 4);
+    const g = PROP_PIXELS.sprites[name], w = g.w * T, h = g.h * T;
+    const spin = p.flying ? Math.sin(R.t * 18) * 0.12 : 0, lift = p.flying ? 6 : held ? 2 : 0;
+    if (!held) R.shadow(p.x, p.y + 2 + lift, w * 0.42, w * 0.14);
+    ctx.save(); ctx.translate(p.x, p.y + 3 - lift); ctx.rotate(spin); ctx.scale(1, 1 / TILT);
+    if (p.hurtFlash > 0) ctx.filter = 'brightness(2)';
+    PROP_PIXELS.draw(ctx, name, -w / 2, -h, T);
+    ctx.restore();
   },
 
   // ---------------------------------------------------------------- the rabbit
@@ -379,7 +481,7 @@ Object.assign(Beast, {
       PROP_PIXELS.draw(ctx, sing ? 'husky-sing' : 'husky-stand', Math.round(lx[0] - hk.w * T / 2), Math.round(bottom - hk.h * T - hop), T);
     }
     // the goat as the book draws him (`Codex.portrait`): himself, with whatever souls and talisman he has
-    Codex.portrait(R, game, lx[1], bottom - (S.flash > 0 ? 3 * s : 0), V.goat * s, game.mods, game.artifact, 'song');
+    Codex.portrait(R, game, lx[1], bottom - (S.flash > 0 ? 3 * s : 0), V.goat * s, game.mods, Shop.wearOf(game), 'song');
     // over the board: how many answered (or how it ended), and in the practice what it wants
     ctx.globalAlpha = a; ctx.textAlign = 'center';
     const done = { won: 'SUNG', lost: 'SHE GAVE UP', practised: 'READY · NOW FOR REAL', skipped: 'NOW FOR REAL' }[S.done];

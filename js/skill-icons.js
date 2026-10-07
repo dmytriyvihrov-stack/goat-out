@@ -171,12 +171,6 @@ const SKILL_ART = {
   teeth: { rows: [
     '', '', '', '', '', '', '', '', '',
     '.............iIi'] },
-  club: { rows: [
-    '', '', '', '', '', '', '', '', '',
-    '................',
-    '...............3',
-    '...............2',
-    '...............1'], ramp: 'horn' },
   hourglass: { rows: [
     '...........hhhhh',
     '............iFi.',
@@ -373,8 +367,8 @@ const SKILL_ICONS = {
     if (id === 'grab') {
       L.push('jaw');
       if (!m.grabMen) L.push('crate');
-      else { L.push('man'); if (m.livingShield) L.push('club'); }
-      if (m.shieldBullets > (typeof BOON_BASE !== 'undefined' ? BOON_BASE.shieldBullets : 2)) L.push('teeth');
+      else L.push('man');
+      if (m.throwFar > 1) L.push('teeth');   // STRONG JAW
       if (m.venomHold > 0) L.push('venomJaw');
       // FIREBRAND's mod is `brandHold` (the soul's id stayed `charge`): asking `chargeHold`, its flame
       // never once reached the chip.

@@ -12,7 +12,7 @@
 //             solid, and rounds stop on it. At the stairs: every shield in the run gets a use.
 //   GOOSE     leads rather than follows, and honks at every man it sees, which turns the room
 //             onto YOU, and which breaks a committed blow at any range. At the stairs: the voice.
-//   CROW      follows corpses, not you. At the stairs: a tier III talisman on the next floor.
+//   CROW      follows corpses, not you. At the stairs: a rare talisman on the next floor.
 //   HORSE     races you to each locked room with a soul, waits there for the soul, then on to the
 //             stairs: kicks the doors in its way down and bowls the men in it aside. Beat it to one
 //             soul room, or to the stairs, and: a longer stride for the run.
@@ -27,14 +27,14 @@ const NO_PROPS = [];   // `bodyClear` with no furniture to ask about: a bird hop
 const Beast = {
   // Every kind this file drives. `Prop.update` and the generator both ask here rather than carrying
   // three literals about, so a fourth animal is one line in this list and one `update` branch.
-  KINDS: ['tortoise', 'goose', 'crow', 'horse', 'pig', 'rabbit', 'husky'],   // the last two: js/beasts-more.js
+  KINDS: ['tortoise', 'goose', 'crow', 'horse', 'pig', 'rabbit', 'husky', 'fish'],   // the last three: js/beasts-more.js
   is(kind) { return Beast.KINDS.indexOf(kind) >= 0; },
 
   // The hen is one of the animals too, for everything but how she moves (`Prop.updateBird`).
   animal(p) { return !p.broken && !p.dead && (Beast.is(p.kind) || p.kind === 'chicken'); },
-  NAME: { tortoise: 'TORTOISE', goose: 'GOOSE', crow: 'CROW', chicken: 'HEN', horse: 'HORSE', pig: 'PIG', rabbit: 'RABBIT', husky: 'HUSKY' },
+  NAME: { tortoise: 'TORTOISE', goose: 'GOOSE', crow: 'CROW', chicken: 'HEN', horse: 'HORSE', pig: 'PIG', rabbit: 'RABBIT', husky: 'HUSKY', fish: 'FISH' },
   // What the top-left corner shows for every one brought to the stairs (`Renderer.drawSaved`).
-  EMOJI: { tortoise: '\u{1F422}', goose: '\u{1FABF}', crow: '\u{1F426}\u200D\u2B1B', chicken: '\u{1F414}', horse: '\u{1F40E}', pig: '\u{1F416}', rabbit: '\u{1F407}', husky: '\u{1F415}' },
+  EMOJI: { fish: '\u{1F41F}', tortoise: '\u{1F422}', goose: '\u{1FABF}', crow: '\u{1F426}\u200D\u2B1B', chicken: '\u{1F414}', horse: '\u{1F40E}', pig: '\u{1F416}', rabbit: '\u{1F407}', husky: '\u{1F415}' },
   // What each one pays, in the player's words: the note under a HUD icon (`Renderer.drawSaved`).
   GIVES: {
     chicken: () => `+${TUNING.prop.chicken.saveHearts} heart for the run.`,
@@ -45,6 +45,7 @@ const Beast = {
     pig: () => 'More milk grass on every floor ahead.',
     rabbit: () => `Your roll is ready ${Math.round((1 - TUNING.prop.rabbit.saveRollCd) * 100)}% sooner.`,
     husky: () => `Your BAAH is ready ${Math.round((1 - TUNING.prop.husky.saveScreamCd) * 100)}% sooner.`,
+    fish: () => `Your fleece is wet: the first fire on you each floor only steams.`,
   },
 
   // ---------------- being hurt ----------------
@@ -56,6 +57,8 @@ const Beast = {
     if (!Beast.animal(p) || p.held || (p.hurtCd || 0) > 0) return;
     const B = TUNING.beast;
     if (p.kind === 'tortoise' && src !== 'fire') { Beast.shellTakes(p, game); p.hurtCd = B.hurtCd; return; }
+    // The fish is in water (fire does nothing) and in glass (anything else breaks it).
+    if (p.kind === 'fish') { if (src !== 'fire') Beast.breakFish(p, game, 0, 0); return; }
     const own = TUNING.prop[p.kind] && TUNING.prop[p.kind].hp;   // the horse and the hen are sturdier than the rest
     p.beastHp = (p.beastHp === undefined ? own || B.hp : p.beastHp) - 1;
     p.hurtCd = B.hurtCd; p.wobble = 0.3; p.hurtFlash = 0.25;
@@ -86,10 +89,16 @@ const Beast = {
   tick(p, dt, game) {
     p.hurtCd = Math.max(0, (p.hurtCd || 0) - dt);
     p.hurtFlash = Math.max(0, (p.hurtFlash || 0) - dt);
+    // Poisoned and dazed (6 Oct 2026 playtest: "you can cheat: poison the horse, or slow the ones that
+    // follow you, so you have time to clear the rooms"): a puddle under its feet poisons it, for longer
+    // than a man; a daze stands it still (`Beast.dope`, `TUNING.beast.dope`).
+    p.poisonT = Math.max(0, (p.poisonT || 0) - dt); p.stunT = Math.max(0, (p.stunT || 0) - dt);
+    if (!p.held && !p.flying && !p.gapZ && game.world.isPoisonPx(p.x, p.y)) Beast.dope(p, game, 'poison');
+    if (p.poisonT > 0 && Math.random() < dt * 6) game.particles(p.x, p.y - 10, 1, PALETTE.venom, 40);
     // Down on its feet over a hole, a shell or a hen landed there off a wall, one set down by a
     // roll, it falls. `step` refuses every move that ends over a drop, so one that was already over
     // it used to hover there for the rest of the floor.
-    if (!p.held && !p.flying && !p.leaving && game.world.isPitPx(p.x, p.y)) { p.gone(game); return; }
+    if (!p.held && !p.flying && !p.leaving && !p.gapHop && game.world.isPitPx(p.x, p.y)) { p.gone(game); return; }
     if (!p.held && !p.flying && game.world.isBurningPx(p.x, p.y)) Beast.hurt(p, game, 'fire');
     // Left behind, further off him than `strayR` tiles, and not so far that it has gone out of
     // hearing (`strayFar`), it calls every `strayGap` seconds or so, and the edge of the picture
@@ -116,6 +125,8 @@ const Beast = {
     if (p.broken || p.held) return;          // in his mouth he goes where his mouth goes
     Beast.tick(p, dt, game); if (p.broken) return;
     p.bob = (p.bob || 0) + dt * 3;
+    // Dazed: it stands where it is (a hop over a chasm already under way still lands).
+    if (p.stunT > 0 && !p.gapHop) { p.vx = 0; p.vy = 0; return; }
     // Close enough to have seen it: the first of each kind in a run says what it is for, the way
     // the hen and the hound do. An animal walking about explains nothing on its own.
     if (p.gift) return Beast.updateGift(p, dt, game);
@@ -128,12 +139,15 @@ const Beast = {
     if (p.kind === 'pig') return Beast.updatePig(p, dt, game);
     if (p.kind === 'rabbit') return Beast.updateRabbit(p, dt, game);
     if (p.kind === 'husky') return Beast.updateHusky(p, dt, game);
+    if (p.kind === 'fish') return Beast.updateFish(p, dt, game);
   },
 
   // Where an animal may put its foot: the hen's own steering, which borrows the men's `hazardAt` so
   // nothing on our side walks into a fire, the wheel, raised teeth or a drop. One method for all of
   // them, because an animal that blunders into the room reads as broken rather than as characterful.
   step(p, game, dx, dy, spd, dt) {
+    if (Beast.hopGap(p, game, dx, dy, dt)) return;
+    if (p.poisonT > 0) spd *= TUNING.beast.dope.poisonMove;
     const safe = Prop.prototype.henSteer.call(p, game, dx, dy);
     if (!safe) { p.vx = 0; p.vy = 0; p.wanderA = (p.wanderA || 0) + Math.PI; return; }
     p.vx = safe.x * spd; p.vy = safe.y * spd;
@@ -150,6 +164,86 @@ const Beast = {
       if (bad()) { p.x = ox; p.y = oy + p.vy * dt; }
       if (bad()) { p.x = ox; p.y = oy; p.wanderA = (p.wanderA || 0) + Math.PI; }
     }
+  },
+  // Its hearts over its head (6 Oct 2026 playtest: "show the companions' health, just in case; the horse has a
+  // lot, the hen not much; the tortoise's like a shield's, and nothing but fire spends it"). A pip a heart in
+  // cells (`beast.health`), shown near him, or hurt, or doped; a poisoned one's are green, a dazed one has
+  // three cells going round over them. Never on one in his mouth, a coop or the crow's gift bird.
+  drawHealth(R, game, see) {
+    const ctx = R.ctx, Hh = TUNING.beast.health, C = Hh.colors, g = game.goat;
+    for (const p of game.props) {
+      if (!Beast.animal(p) || p.gift || p.held || p.leaving || !see(p)) continue;
+      const max = Beast.maxHp(p), cur = p.beastHp === undefined ? max : Math.max(0, p.beastHp);
+      const doped = p.poisonT > 0 || p.stunT > 0;
+      if (cur >= max && !doped && hyp(p.x - g.x, p.y - g.y) > Hh.near * TILE) continue;
+      const n = Math.min(max, Hh.row * 2), rows = Math.ceil(n / Hh.row), per = Math.min(n, Hh.row), s = Hh.pip, step = s + Hh.gap;
+      const w = per * step - Hh.gap, h = rows * step - Hh.gap, up = (Hh.upOf[p.kind] || Hh.up) + (p.gapZ || 0);
+      ctx.save(); ctx.translate(Math.round(p.x), Math.round(p.y)); ctx.scale(1, 1 / TILT);
+      const x0 = Math.round(-w / 2), y0 = Math.round(-up - h);
+      ctx.fillStyle = C.rim; ctx.fillRect(x0 - 1, y0 - 1, w + 2, h + 2);
+      const full = p.kind === 'tortoise' ? C.shell : p.poisonT > 0 ? C.poison : C.full;
+      for (let k = 0; k < n; k++) {
+        ctx.fillStyle = k < cur ? full : C.empty;
+        ctx.fillRect(x0 + (k % Hh.row) * step, y0 + Math.floor(k / Hh.row) * step, s, s);
+      }
+      // dazed: three cells wheeling over the row
+      if (p.stunT > 0) {
+        ctx.fillStyle = PALETTE.bone;
+        for (let k = 0; k < 3; k++) { const a = R.t * 6 + k * 2.1; ctx.fillRect(Math.round(Math.cos(a) * 7) - 1, Math.round(y0 - 6 + Math.sin(a) * 2.5) - 1, 2, 2); }
+      }
+      ctx.restore();
+    }
+  },
+  maxHp(p) { const own = TUNING.prop[p.kind] && TUNING.prop[p.kind].hp; return own || TUNING.beast.hp; },
+  // What the goat can do to his own animals (6 Oct 2026 playtest: "it is a legit strategy, you can cheat").
+  // Poison (a puddle, the spit, a thing thrown dripping) slows it to `dope.poisonMove` for `dope.poison` s,
+  // renewed while it stands in it; a daze (a headbutt, DEAD WEIGHT's tumble, a scream that stuns) stands it
+  // still `dope.stun` s. It still steps round fire and drops, poisoned or not. The horse knows it was done
+  // to it (`p.cheated`) and says so when he beats it, and still pays.
+  dope(p, game, how, t) {
+    if (!Beast.animal(p) || p.held || p.gift || p.kind === 'fish') return;
+    const D = TUNING.beast.dope, first = how === 'poison' ? !(p.poisonT > 0) : !(p.stunT > 0);
+    if (how === 'poison') p.poisonT = Math.max(p.poisonT || 0, t || D.poison);
+    else { p.stunT = Math.max(p.stunT || 0, t || D.stun); p.wobble = 0.3; }
+    if (p.kind === 'horse' && p.age >= TUNING.prop.horse.ready && !p.home) p.cheated = true;
+    if (!first) return;
+    game.audio.sfxAnimal && game.audio.sfxAnimal(p.kind === 'coop' ? 'chicken' : p.kind, true);
+    game.floatText(p.x, p.y - 30, how === 'poison' ? D.poisonWord : D.stunWord, how === 'poison' ? PALETTE.venomHi : PALETTE.bone);
+  },
+  // THE CHASM (`level.chasms`, 6 Oct 2026): the goat rolls over it, nobody in the cult crosses it, and an
+  // animal of ours hops it. Walking into the band square enough, with floor `chasm.hop.land` tiles past it,
+  // it goes up over it in `hop.time` s, `hop.h` px high (`p.gapZ`, drawn by `Renderer.drawProp`). True while
+  // it is in the air, so the step it was about to take is not taken.
+  hopGap(p, game, dx, dy, dt) {
+    const H = TUNING.chasm.hop, w = game.world;
+    if (p.gapHop) {
+      const j = p.gapHop; j.t += dt;
+      const k = Math.min(1, j.t / H.time);
+      p.x = j.fx + (j.tx - j.fx) * k; p.y = j.fy + (j.ty - j.fy) * k; p.gapZ = Math.sin(k * Math.PI) * H.h;
+      p.vx = (j.tx - j.fx) / H.time; p.vy = (j.ty - j.fy) / H.time;
+      if (k >= 1) { p.gapHop = null; p.gapZ = 0; game.dust(p.x, p.y, 2, p.vx, p.vy); }
+      return true;
+    }
+    const L = game.level, gaps = L && L.gaps;
+    if (!gaps || !gaps.size) return false;
+    // A probe a little way on, past where the steering (`henSteer`) would already turn it off the lip.
+    let i = -1;
+    for (const k of [4, 16, 28]) {
+      const ax = p.x + dx * (p.r + k), ay = p.y + dy * (p.r + k), j = Math.floor(ay / TILE) * w.W + Math.floor(ax / TILE);
+      if (gaps.has(j)) { i = j; break; }
+    }
+    if (i < 0) return false;
+    const c = L.chasms.find((q) => q.tiles.includes(i));
+    if (!c) return false;
+    const v = c.axis === 'v', d = v ? dx : dy;
+    if (Math.abs(d) < H.square) return false;
+    const s = Math.sign(d), land = (c.at + 0.5 + s * H.land) * TILE;
+    const tx = v ? land : p.x, ty = v ? p.y : land;
+    if (w.isPitPx(tx, ty) || w.isSolid(Math.floor(tx / TILE), Math.floor(ty / TILE))) return false;
+    p.gapHop = { fx: p.x, fy: p.y, tx, ty, t: 0 };
+    if (Math.abs(tx - p.x) > 4) p.face = Math.sign(tx - p.x);
+    game.audio.sfxAnimal && game.audio.sfxAnimal(p.kind === 'coop' ? 'chicken' : p.kind);
+    return true;
   },
   // Toward the goat: the straight line only when he is close and in sight, otherwise the route every
   // man in the building already chases down (`way`), so a wall or a table between them is a way
@@ -426,8 +520,10 @@ const Beast = {
       return d;
     };
     let f = game.exitField;
-    if (!f || f.level !== L) f = game.exitField = { level: L, d: grow((n) => w.walkable(n)), open: null, at: -1e9 };
-    if (game.timer - f.at > TUNING.beast.exitEvery) { f.open = grow((n) => w.open(n)); f.at = game.timer; }
+    // A chasm is in the way out too: an animal hops it (`hopGap`), so the field runs over it.
+    const gap = (n) => !!(L.gaps && L.gaps.has(n));
+    if (!f || f.level !== L) f = game.exitField = { level: L, d: grow((n) => w.walkable(n) || gap(n)), open: null, at: -1e9 };
+    if (game.timer - f.at > TUNING.beast.exitEvery) { f.open = grow((n) => w.open(n) || gap(n)); f.at = game.timer; }
     return f;
   },
 
@@ -552,7 +648,7 @@ const Beast = {
       leg.told = true;
       // Beaten, it says so in the box and hands over what it bet (30 Sep 2026: "you outran me, take
       // it"); winning, it crows over its head, and says which try he has left.
-      if (leg.first === 'goat') Beast.talk(game, p, C.talk.beaten.map((l) => l.replace('{pct}', Math.round((C.saveSpeed - 1) * 100))));
+      if (leg.first === 'goat') Beast.talk(game, p, (p.cheated ? C.talk.cheated : C.talk.beaten).map((l) => l.replace('{pct}', Math.round((C.saveSpeed - 1) * 100))));
       else Beast.speak(game, p, [C.lines.won, p.won > 0 ? C.lines.mine : C.lines.left]);
     }
     const open = !leg.sg.prop || leg.sg.prop.broken;
@@ -683,7 +779,7 @@ const Beast = {
     const out = [];
     for (const p of game.props) {
       // The bird that brought the crow's gift came with the gift, not with the goat: banked, it paid
-      // another tier III talisman on every floor after for the rest of the run.
+      // another talisman on every floor after for the rest of the run.
       if (p.gift || !Beast.is(p.kind) || p.refused || p.agreed === false) continue;
       // The rabbit pays for legs still tied at the top of the stairs; the husky for a song sung.
       if (p.kind === 'rabbit' && !(game.legsTied && game.legsTied.p === p)) continue;
@@ -743,6 +839,7 @@ const Beast = {
     if (game.legsTied) { m.rollCooldown *= TUNING.prop.rabbit.tied.rollCd; m.rollDistance *= TUNING.prop.rabbit.tied.rollDist; }
     if (b.tortoise) m.armour = (m.armour || 0) + TUNING.prop.tortoise.saveArmour * b.tortoise;
     if (b.horse) m.speed *= Math.pow(TUNING.prop.horse.saveSpeed, b.horse);
+    if (b.fish) m.wet = (m.wet || 0) + TUNING.prop.fish.saveWet * b.fish;   // `goat.wet`, set at every `startLevel`
     if (b.goose) {
       const C = TUNING.prop.goose;
       m.screamRadius *= Math.pow(C.saveScreamRange, b.goose);
@@ -761,12 +858,12 @@ const Beast = {
     // on the first frame of a level reads as something he is standing in, not as something left for
     // him. A negative `shopId` belongs to no room, so `Shop.buy`'s gate call finds nothing and returns.
     const spot = game.freeSpot(at.x + TILE * 2.5, at.y);
-    const stock = stockFor(game.level.def, new RNG((Math.random() * 1e9) | 0));
-    // Never the talisman he wears: worn at tier III already, "free" was the same thing swapped back.
-    const worn = game.artifact && game.artifact.id;
-    const pick = stock.find((a) => a.id !== worn) || ARTIFACTS.find((a) => a.id !== worn) || { id: ARTIFACTS[0].id };
+    // A talisman, never a cape (a cape is found, not brought), and never one he wears: "free" was the
+    // same thing swapped back. At `giftTier`, or the top tier of one that has fewer.
+    const stock = stockFor(game.level.def, new RNG((Math.random() * 1e9) | 0)).filter((w) => !w.cape);
+    const pick = stock.find((a) => !Shop.worn(game, a.id)) || ARTIFACTS.find((a) => !Shop.worn(game, a.id)) || ARTIFACTS[0];
     const ware = new Prop(spot.x, spot.y, 'ware', {
-      shopId: -1 - ((Math.random() * 1e6) | 0), ware: { id: pick.id, tier: C.giftTier },
+      shopId: -1 - ((Math.random() * 1e6) | 0), ware: { id: pick.id, tier: Shop.tierFit(pick.id, C.giftTier) },
     });
     const bird = new Prop(spot.x, spot.y - TILE * 0.9, 'crow');
     // `gift` is set here rather than passed in: `Prop`'s constructor copies the opts it knows about and
@@ -831,6 +928,7 @@ const Beast = {
     game.beastTold = game.beastTold || {};
     if (p.asked) return;
     p.asked = true;
+    if (typeof Heaven !== 'undefined' && !(game.dev && game.dev.god) && !game.showroomOn) Heaven.noteMet(p.kind);   // its seat up there, silent until brought out
     // The rabbit and the husky pay only on a yes: met again after a death, the question is put again
     // (its last page), or the fresh one could never be agreed to and never pay.
     if (game.beastTold[p.kind]) {
@@ -854,7 +952,8 @@ const Beast = {
     // (or will not) come along is the one thing a player cannot guess by watching it for a second.
     // Every one of them in the box now (30 Sep 2026: a float over a head was glimpsed, not read, and
     // letting one out did not register as a thing that had happened).
-    if (BEAST_HELLO[p.kind]) return Beast.talk(game, p, BEAST_HELLO[p.kind], true);
+    // The fish asks nothing (it only bubbles): no BAAAH or bah after it.
+    if (BEAST_HELLO[p.kind]) return Beast.talk(game, p, BEAST_HELLO[p.kind], p.kind !== 'fish');
     Beast.speak(game, p, Beast.PACT[p.kind]);
   },
   // The ANIMALS tab of the dev drawer (`Renderer.drawAnimalsTab`): how each one behaves and what it
@@ -867,13 +966,15 @@ const Beast = {
     goose: { how: `Leads rather than follows, up to ${TUNING.prop.goose.lead} tiles ahead, and honks at every man it sees: the room turns on you, and a blow already coming is broken.`,
       pays: () => `the voice carries ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further and comes back ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% sooner (never under ${TUNING.goat.scream.minCooldown} s)` },
     crow: { how: 'Follows the dead, not you: it flies to a body it can see and eats a while, and with nothing dead in reach it sits and waits where it is. A room behind you, or far off, it leaves the bodies and flies after you, landing a few tiles short. At the stairs it counts from the room before the last; the bird that brings its gift sits by it, then flies off.',
-      pays: () => `a tier ${TUNING.prop.crow.giftTier} talisman on the next floor's stairs` },
+      pays: () => `${crowGiftName().toLowerCase()} (its top tier, for one with a single tier) on the next floor's stairs` },
     horse: { how: `Shut in a stall of ${TUNING.prop.stall.w} x ${TUNING.prop.stall.h} tiles before the first soul gate (${TUNING.prop.stall.hits} blows). Races you in legs: to each locked room with a soul ahead of it (a soul gate's room, the mouse's too), where it waits at the bar until the gate gives, then on, and last to the stairs. A leg is yours if you are in its room before it, and the stairs are the last try; it says its terms in a box as it comes out, and when you beat it. Kicks down the doors in its way and bowls the men in it aside without killing them; a sealed arena, the vault door or the dark flight's door holds it too.`,
       pays: () => `×${TUNING.prop.horse.saveSpeed} stride for the run, at once, if you win one try (a soul room or the stairs); banked at the stairs` },
     rabbit: { how: 'Hops after you. In its box it offers to tie your legs: said yes, you have no stride at all, only the headbutt, the voice, what you carry, and the roll, which goes where you point and comes back far sooner. Up the stairs with it so.',
       pays: () => `the roll back ${Math.round((1 - TUNING.prop.rabbit.saveRollCd) * 100)}% sooner for the run` },
     husky: { how: `Said yes, first a practice: in the first room with nobody alive, the same song with no cult and no way to lose (${TUNING.prop.husky.practice.need} answers, or ${TUNING.prop.husky.practice.time} s, or you walk out). Then she runs to the fullest room with men within ${TUNING.prop.husky.ahead} rooms ahead (they leave her be) and waits in its middle; as you come in ${TUNING.prop.husky.extra} more of the cult come after you and she sings: answer her ${TUNING.prop.husky.need} times with your voice on the beat (two staves at the foot of the screen, ±${TUNING.prop.husky.window} s). Gives up after ${TUNING.prop.husky.time} s, or ${TUNING.prop.husky.after} cycles after the room is empty.`,
       pays: () => `the voice back ${Math.round((1 - TUNING.prop.husky.saveScreamCd) * 100)}% sooner for the run, if she sang and comes up the stairs` },
+    fish: { how: `A tank on the floor, no coop. It says nothing but BLUB. Too heavy for anything but your teeth: carried, you walk at ${Math.round(TUNING.prop.fish.carry * 100)}% of your stride. Thrown, it goes ${TUNING.prop.fish.throwTiles} tiles and sets down; stone, a door, furniture or a man on the way, and the glass breaks and the fish dies. Fire does nothing to it; any blow breaks it. A roll drops it where you stood.`,
+      pays: () => `your fleece is wet on every floor after: the first ${TUNING.prop.fish.saveWet} fire on you each floor only steams` },
     pig: { how: `Ambles after you and eats any milk grass she can see within ${TUNING.prop.pig.smell} tiles (${TUNING.prop.pig.eatTime} s a tuft), yours, unless you graze it first. ${TUNING.prop.pig.full} and she is full, thanks you in a box and eats no more. Says what she wants in a box when she comes out.`,
       pays: () => `${TUNING.prop.pig.saveHeals.join('-')} more milk grass on every floor after, if she is full at the stairs` },
   },
@@ -901,6 +1002,7 @@ const Beast = {
     pig: ['OINK.'],
     rabbit: ['THUMP-THUMP.'],
     husky: ['AWOO!'],
+    fish: ['BLUB.'],
   },
   // Its sound, then its terms, over its head and held far longer than a float, so the sentence is
   // read and not glimpsed (24 Sep 2026: "long enough that the player really reads it"). The lines
@@ -1038,6 +1140,7 @@ const Beast = {
     ctx.save(); ctx.scale(k, k);
     if (kind === 'horse') R.horseSprite(ctx, 0, false, 'idle');
     else if (kind === 'pig') R.pigSprite(ctx, 0, false, 'idle');
+    else if (kind === 'fish') { const z = TUNING.beast.talk.size.fish || 1.5; ctx.scale(z, z * TILT); Beast.drawFish(R, { x: 0, y: 0, kind, phase: 0 }); }
     else if (kind === 'rabbit' || kind === 'husky') {
       const z = TUNING.beast.talk.size[kind] || 1.5;
       ctx.scale(z, z * TILT); Beast.drawMore(R, { x: 0, y: 0, kind, face: 1, bob: R.t * 3, vx: 0, vy: 0, r: TUNING.prop[kind].r });
@@ -1110,28 +1213,31 @@ const Beast = {
         const x = Math.round(x2 + i * (bw2 + ansGap)), y = Math.round(y2), on = !typing && m && !game.touch.active && m.x >= x && m.x <= x + bw2 && m.y >= y && m.y <= y + bh2;
         const yes = i === 1, C = yes ? A.yes : A.no, lift = on ? Math.round(2 * s) : 0, col = C.word;
         K.rects.push({ x, y, w: bw2, h: bh2 });
-        // a plate: a dark drop under it, a fill, a hard two-pixel rim and a lit top edge
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x + 3 * s, y + 4 * s, bw2, bh2);
-        ctx.fillStyle = on ? C.hot : C.fill; ctx.fillRect(x, y - lift, bw2, bh2);
-        ctx.fillStyle = C.lit; ctx.fillRect(x, y - lift, bw2, Math.round(bh2 * 0.45));
-        ctx.strokeStyle = C.rim; ctx.lineWidth = Math.max(2, Math.round(2 * s));
-        ctx.strokeRect(x + 1, y - lift + 1, bw2 - 2, bh2 - 2);
+        // a plate in the box's own hand (6 Oct 2026 playtest: "buttons more in the game's style"): pixel-notched
+        // corners, a dark outline, the box's thin inner rule in the answer's colour and a lit top row, the
+        // key a small notched cap, the words in the box's own face
+        const n = Math.max(2, Math.round(3 * s)), y0 = y - lift, plate = (px, py, w, h, k, col) => { ctx.fillStyle = col; ctx.fillRect(px + k, py, w - 2 * k, h); ctx.fillRect(px, py + k, w, h - 2 * k); };
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x + n, y + bh2 - n + 4 * s, bw2 - 2 * n, n);
+        plate(x - 2, y0 - 2, bw2 + 4, bh2 + 4, n + 1, '#0c0709');
+        plate(x, y0, bw2, bh2, n, C.rim);
+        plate(x + 2, y0 + 2, bw2 - 4, bh2 - 4, n - 1 > 0 ? n - 1 : 1, on ? C.hot : C.fill);
+        ctx.fillStyle = C.lit; ctx.fillRect(x + n + 2, y0 + 3, bw2 - 2 * n - 4, Math.max(2, Math.round(3 * s)));
         // the key on a cap at the left, the word, the plain meaning after it
-        const cap = Math.round(30 * s), cy = y - lift + (bh2 - cap) / 2;
-        let wx = x + 14 * s;
+        const cap = Math.round(30 * s), cy = y0 + (bh2 - cap) / 2;
+        let wx = x + 16 * s;
         if (!game.touch.active) {
           ctx.font = `700 ${Math.round(12 * s)}px ${FONT_SC}`;
-          const cw = Math.max(cap, textW(ctx, key) + 14 * s);
-          ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(wx, cy + 3 * s, cw, cap);
-          ctx.fillStyle = '#efe6d0'; ctx.fillRect(wx, cy, cw, cap - 3 * s);
-          ctx.fillStyle = '#b9ad94'; ctx.fillRect(wx, cy + cap - 3 * s, cw, 3 * s);
+          const cw = Math.max(cap, textW(ctx, key) + 14 * s), k = Math.max(2, Math.round(2 * s));
+          plate(wx - 1, cy - 1, cw + 2, cap + 1, k, '#0c0709');
+          plate(wx, cy, cw, cap - 3 * s, k, '#efe6d0');
+          ctx.fillStyle = '#b9ad94'; ctx.fillRect(wx, cy + cap - 6 * s, cw, 3 * s);
           ctx.fillStyle = '#1a1214'; ctx.textAlign = 'center'; ctx.fillText(key, wx + cw / 2, cy + cap * 0.62);
-          wx += cw + 12 * s;
+          wx += cw + 14 * s;
         }
-        ctx.textAlign = 'left'; ctx.font = `700 ${Math.round((yes ? 22 : 19) * s)}px ${FONT_SC}`; ctx.fillStyle = col;
-        ctx.fillText(word, wx, y - lift + bh2 * 0.64);
+        ctx.textAlign = 'left'; ctx.font = FONT_PICK.font('text', Math.round((yes ? 25 : 21) * s)); ctx.fillStyle = col;
+        ctx.fillText(word, wx, y0 + bh2 * 0.66);
         const ww = textW(ctx, word);
-        ctx.font = `${Math.round(14 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(232,221,200,0.65)'; ctx.fillText(say, wx + ww + 8 * s, y - lift + bh2 * 0.64);
+        ctx.font = `${Math.round(14 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(232,221,200,0.65)'; ctx.fillText(say, wx + ww + 8 * s, y0 + bh2 * 0.66);
       });
       ctx.restore();
     } else if (!typing) {

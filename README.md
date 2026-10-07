@@ -47,12 +47,12 @@ Five verbs and nothing else. Souls change what a button does; they never add one
 | release GRAB | release right click | throw, a box flattens, a sword goes through, a thrown man kills what he hits |
 | ROLL | E | a clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
 | BAAH | space | a noise every man who hears it walks toward, and a committed blow inside it falters. A soul makes it a stun or a cone of fire |
-| - | Q | only with a talisman that has a use of its own (the boomerang, the strange symbols, the straw effigy) |
+| - | Q | only with a cape on your back: the cape's own verb |
 | tap after death | click after death | up to the pasture above; walk off its edge for the floor again, from a new seed |
 | - | Backspace | the floor again at once, from a new seed (from the death card, or from the pasture) |
 | - | Esc | pause |
 | SETTINGS | - | DOUBLE SPEED OUT OF A FIGHT: with nobody after you, the goat runs twice as fast |
-| PAUSE → INVENTORY | I | the book of what you carry: your souls, the talisman, the animals, what the mirror bought, point at one to read it |
+| PAUSE → INVENTORY | I | the book of what you carry: your souls, the talismans and the cape, the animals, what the mirror bought, point at one to read it |
 | - | M | mute |
 
 Phones and tablets get on-screen controls automatically. In portrait the play view is letterboxed and
@@ -70,7 +70,7 @@ moment a stick or button is touched, and a key or the mouse takes it back:
 | hold LT or LB, release | carry, throw |
 | A | roll |
 | B | BAAH |
-| Y | the talisman's own use (the Q key) |
+| Y | the cape's own verb (the Q key) |
 | START | pause (INVENTORY is on it) |
 | BACK | the floor again at once (as Backspace) |
 | d-pad + A, B | every menu and card: A picks, B backs out; left / right chooses a soul |
@@ -112,16 +112,18 @@ the first blade stands. Every floor ends at a flight of stairs going up, and eve
 begins at the top of one.
 
 **You meet everything alone first.** The room that introduces a clubman, a butcher, a hound, a mage, a
-rifle, a shieldman, a thrower or a wraith holds that one enemy and nothing else, and a boss you have never seen stands in his
+rifle, a shieldman, a thrower or a wraith holds that one enemy and nothing else (the shaman alone comes with two clubmen, because they are what his magic is for), and a boss you have never seen stands in his
 arena without company. After that they arrive mixed, and the mix gets worse as the floor goes on and
 worse again on the floor after.
 
-**Nine enemy types.** Club-swinging Bearers; Butchers in bone aprons and bull-skull masks, too heavy
+**Ten enemy types.** Club-swinging Bearers; Butchers in bone aprons and bull-skull masks, too heavy
 to carry, who hook you from across a room and drag you to the cleaver; Shieldmen behind a board of
 door planks that takes anything from in front, a headbutt, a crate, a blade, a round, and kills a man
 thrown into it like a wall, but who turn slowly and have a back; Throwers in goat-skull masks, one arm swollen
 green, who lift whatever is in the room, a crate, one of their own, one of your animals, and throw it at you, and
-who grab you and throw you at the nearest drop or wall; blinking Seers whose runes erupt into violet witchfire
+who grab you and throw you at the nearest drop or wall; Shamans with a turtle's shell on their backs, who shake a skull on a staff to put
+the old spirit into the clubmen round them (faster, harder hitting, a heart more) and hold out a hand to hold your
+run key down toward themselves for a few seconds; blinking Seers whose runes erupt into violet witchfire
 that no boon protects you from; Hunters whose bullets travel and hit their own; the ogre, the cult's
 half-beast, who takes four, is never knocked back, leaps onto where you stand and brings his fists down
 on the floor all round him; the hounds; and the wraiths. One rule for all of them: a man without a
@@ -153,10 +155,14 @@ Firebrand leaves a line of fire behind anything you throw.
 talisman, another talisman or a pail of milk, and you take one. She takes nothing for it. Headbutting
 her stall is rude, and what comes out of the wall after the third time is not a mouse.
 
-**Talismans.** Twenty-four of them in three tiers, worn one at a time on a collar, each stated in plain
-numbers where it stands: a mirror shard that turns a blow back, a spade that leaves bodies lying to trip
-over, a boomerang on Q, a knucklebone that deals a soul's third card, a magnet that spins a sword or a crate round you to take a
-blow, a nosebag that keeps the grass you had no need of for later, and so on.
+**Talismans.** 21 of them, some COMMON only, most COMMON or RARE, up to three worn at once as charms on
+a collar, each stated in plain words where it stands: a mirror shard that turns a blow back, a spade that
+leaves bodies lying to trip over, a knucklebone that deals a soul's third card, a magnet that spins a sword
+or a crate round you to take a blow, a nosebag that keeps the grass you had no need of for later, and so on.
+
+**Capes.** Rarer still: one lies in a niche behind a niche now and then, or on a mouse's shelf in place of a
+talisman. One on your back at a time, each a verb on Q with a long wait: a blink ahead, a tuft of milk
+grass, a shock that breaks the room round you, a boomerang, a straw goat the cult goes for instead of you.
 
 **Animals.** From the second floor a coop holds an animal, a hen, a goose, a crow, a tortoise, a
 horse. Break it open and get the animal to the stairs alive, and it pays you for the rest of the run,

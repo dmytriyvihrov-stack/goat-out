@@ -96,6 +96,7 @@ class Scatter {
   burst(x, y, r, power = 1.4) {
     for (const p of this.game.props) {
       if ((p.kind === 'armor' || p.kind === 'suit') && !p.spilled) { const d = hyp(p.x - x, p.y - y); if (d <= r) p.burstArmor(this.game, p.x - x || 1, p.y - y, power); continue; }
+      if (p.kind === 'poster') { if (!p.torn && hyp(p.x - x, p.y - y) <= r) p.tear(this.game, p.x - x || 1, p.y - y); continue; }
       if (p.kind !== 'table' || p.broken || !Scatter.foodOf(p).length) continue;
       const d = hyp(p.x - x, p.y - y); if (d > r) continue;
       this.fromTable(p, p.x - x || 1, p.y - y, power * (1 - 0.5 * d / r));
@@ -287,6 +288,8 @@ Scatter.KINDS = {
   'halberd-bit0': { bouncy: 0.5, sound: 'soft', sprite: 'halberd-bit0' }, 'halberd-bit1': { bouncy: 0.7, sound: 'metal', sprite: 'halberd-bit1' },
   'shield-bit0': { bouncy: 0.55, sound: 'soft', sprite: 'shield-bit0' }, 'shield-bit1': { bouncy: 0.55, sound: 'soft', sprite: 'shield-bit1' },
   'shield-bit2': { bouncy: 0.55, sound: 'soft', sprite: 'shield-bit2' },
+  // THE FISH's tank broken (`Beast.breakFish`, js/beasts-more.js): glass, and the fish itself.
+  'fish-shard': { bouncy: 0.6, sound: 'clay', sprite: 'fish-shard', k: 0.6 }, 'fish-body': { bouncy: 0.9, sound: 'soft', sprite: 'fish-body', k: 0.6 },
 };
 // The shieldman's skulls in pieces, one set for each of the board's looks (`ART_PASS.shield`).
 // Drawn at the board's own grain (`PaintedArt` lays a dropped one at 0.72 px a texel), half the supper's.

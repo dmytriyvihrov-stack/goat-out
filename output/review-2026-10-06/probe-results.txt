@@ -1,0 +1,7 @@
+boot play
+mobile shop {"touch":{"down":true,"pressed":false,"opened":false,"dialog":false},"mouse":{"opened":true,"dialog":true}}
+cape swap cooldown {"original":"symbols","before":37,"between":{"id":"meadow","cd":0},"after":{"id":"symbols","cd":0},"onFloor":{"id":"meadow","cape":true}}
+grab through obstruction {"lineOfSight":false,"before":"symbols","after":"ruin","shouldHaveStayed":"symbols"}
+short grab click vs held {"fast":{"cape":null,"edge":false},"held":{"cape":{"id":"ruin"},"edge":true}}
+real wall grab {"lineOfSight":false,"distance":64,"reach":73.2,"cape":{"id":"ruin"},"wallStillSolid":true}
+hound returning home corrupts positions {"before":{"sideT":1.1,"sideAng":"undefined","x":144.8,"vx":0},"after":{"facing":"NaN","vx":"NaN","vy":"NaN"},"goatX":"NaN","goatY":"NaN"}

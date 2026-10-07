@@ -51,6 +51,16 @@ function floorOk(f) {
   if (f.souls !== undefined && !(list(f.souls, 60) && f.souls.every((x) => strs(x.offer, 30) && strOrNull(x.took, 30)))) return false;
   if (f.shop !== undefined && !(list(f.shop, 20) && f.shop.every((x) => strs(x.offer, 30) && strOrNull(x.took, 30)))) return false;
   if (f.beasts !== undefined && !(list(f.beasts, 60) && f.beasts.every((b) => str(b.kind, 16) && str(b.ev, 8)))) return false;
+  // Room by room (6 Oct 2026, `Stats.roomTick`): the game keeps at most 40 rooms and 80 steps of path a floor.
+  if (f.rm !== undefined && !(list(f.rm, 60) && f.rm.every((x) => num(x.i) && strOrNull(x.r, 12) && str(x.s, 8)
+    && numOr(x.t) && numOr(x.h) && numOr(x.k) && numOr(x.n) && numOr(x.d) && numOr(x.a)))) return false;
+  if (f.path !== undefined && !(Array.isArray(f.path) && f.path.length <= 120
+    && f.path.every((p) => Array.isArray(p) && p.length === 2 && num(p[0]) && num(p[1])))) return false;
+  // SOMETHING NEW (6 Oct 2026, `Novelty`): at most `TUNING.novelty.cap` (40) first sightings a floor.
+  if (f.nw !== undefined && !(Array.isArray(f.nw) && f.nw.length <= 60
+    && f.nw.every((p) => Array.isArray(p) && p.length === 3 && num(p[0]) && str(p[1], 40) && num(p[2])))) return false;
+  if (!numOr(f.dry)) return false;
+  if (f.nudge !== undefined && !(Array.isArray(f.nudge) && f.nudge.length <= 12 && f.nudge.every((x) => str(x, 40)))) return false;
   return true;
 }
 function check(r) {
@@ -61,6 +71,8 @@ function check(r) {
   const e = r.end;
   if (!obj(e) || !['death', 'win', 'quit', 'closed'].includes(e.how) || !strOrNull(e.f, 4) || !strOrNull(e.by, 24) || !strOrNull(e.code, 160)) return null;
   if (!numOr(e.kills) || !numOr(e.t) || !strOrNull(r.flags, 8)) return null;
+  if (!numOr(e.room) || !numOr(e.rooms) || !strOrNull(e.role, 12)) return null;
+  if (!numOr(r.dryMax) || !numOr(r.dryEnd)) return null;
   return r;
 }
 

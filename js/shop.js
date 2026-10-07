@@ -1,8 +1,7 @@
-// The shop: the mouse in the wall, her shelf, what she turns into, and the two artifacts that are
-// verbs (the boomerang and the blink). Everything here is reached from the goat's own buttons,
-// grab is buy, a headbutt is rude, grab on nothing throws the boomerang, roll is the blink, so
-// nothing in it adds a key. Data lives in `ARTIFACTS` and `TUNING.shop` (js/tuning.js); this is
-// what happens when the goat reaches for it.
+// The shop: the mouse in the wall, her shelf, what she turns into, and two of the capes' verbs (the
+// boomerang and the blink; the capes themselves are js/capes.js). Grab is take and a headbutt is rude,
+// so the shop adds no key; Q exists only while a cape is worn (`Cape.use`). Data lives in `ARTIFACTS`,
+// `CAPES` and `TUNING.shop` (js/tuning.js); this is what happens when the goat reaches for it.
 const Shop = {
   // Her wares stay with her (2 Oct 2026 playtest: "she does not lay things out in front of her, you go
   // up to her and talk"): while the mouse of that shop is there, a ware of hers is neither drawn nor
@@ -15,30 +14,115 @@ const Shop = {
   // The artifact record for an id, and the tier's own numbers.
   def(id) { return ARTIFACTS.find((a) => a.id === id) || null; },
   tierOf(art) { const d = Shop.def(art.id); return d ? d.tiers[Math.max(0, Math.min(d.tiers.length, art.tier)) - 1] : null; },
-  // `game.artifact` into `game.mods`, the way a boon's `apply` goes: read at the use site, never here.
+  // A talisman's tier clamped to the tiers it has: an old save's tier III or IV is its top one now.
+  tierFit(id, tier) { const d = Shop.def(id); return d ? clamp(tier | 0, 1, d.tiers.length) : 1; },
+  // Every worn talisman into `game.mods`, the way a boon's `apply` goes: read at the use site, never here.
   applyArtifact(mods, art) {
     const d = Shop.def(art.id), t = Shop.tierOf(art);
     if (d && t) d.apply(mods, t.params);
   },
+  // The talisman of that id at his neck, if he wears it.
+  worn(game, id) { return (game.artifacts || []).find((a) => a.id === id) || null; },
+  // What he wears, for every picture of him (`PaintedArt.drawGoat`'s `game.artifacts` / `game.cape`).
+  wearOf(game) { return { artifacts: (game.artifacts || []).slice(), cape: game.cape || null }; },
+  // A ware read the same way whatever it is: its record, name, line and rarity (a cape's is `CAPE_RARITY`).
+  info(w) {
+    if (!w || w.id === 'milk') return null;
+    if (w.cape) { const d = Cape.def(w.id); return d ? { def: d, name: d.name, desc: d.desc, rr: CAPE_RARITY, cape: true } : null; }
+    const d = Shop.def(w.id), t = d && Shop.tierOf(w);
+    return t ? { def: d, name: d.name, desc: t.desc, rr: rarityOf(w.tier), cape: false } : null;
+  },
+  // What taking `ware` would hand back onto its stool, or null: a cape for the cape he has on; a fourth
+  // talisman for the oldest of his three, or, off a stool that already holds one of his, for the one he
+  // took from it (so changing his mind back is the same reach again). The same talisman twice hands
+  // nothing back: his own is lifted to its top tier.
+  replaces(game, ware) {
+    const w = ware.ware;
+    if (!w || w.id === 'milk') return null;
+    if (w.cape) return game.cape && game.cape.id !== w.id ? { id: game.cape.id, cape: true } : null;
+    const list = game.artifacts || [];
+    if (Shop.worn(game, w.id) || list.length < TUNING.talisman.slots) return null;
+    return (ware.chosen && ware.swapped && Shop.worn(game, ware.swapped)) || list[0];
+  },
+  // A worn talisman on a shelf is another one (`Game.startLevel`): the generator does not know what he
+  // wears, and a shelf offering his own was one choice fewer. Off the level's seed and the stool's place,
+  // never two of one sort on a shelf, never one he wears; a cape on a shelf the same way, for the cape.
+  restock(game) {
+    if (game.level && game.level.def && game.level.def.showroom) return;   // THE SHOWROOM's shelf is every one, worn or not
+    const seed = (game.level && game.level.seed) || 0, wares = game.props.filter((p) => p.kind === 'ware' && p.ware && p.ware.id !== 'milk');
+    wares.forEach((p, i) => {
+      const w = p.ware, shelf = wares.filter((o) => o !== p && o.shopId === p.shopId);
+      const h = farHash(i * 17 + (seed % 7919), (p.x | 0) * 3 + (p.y | 0));
+      if (w.cape) {
+        if (!game.cape || game.cape.id !== w.id) return;
+        const pool = CAPES.filter((c) => c.id !== w.id && !shelf.some((o) => o.ware.cape && o.ware.id === c.id));
+        if (pool.length) p.ware = { id: pool[Math.floor(h * pool.length)].id, cape: true };
+        return;
+      }
+      if (!Shop.worn(game, w.id)) return;
+      const tagOf = (id) => (Shop.def(id) || {}).tag;
+      const pool = ARTIFACTS.filter((a) => !Shop.worn(game, a.id) && !shelf.some((o) => !o.ware.cape && (o.ware.id === a.id || (a.tag && tagOf(o.ware.id) === a.tag))));
+      if (pool.length) { const a = pool[Math.floor(h * pool.length)]; p.ware = { id: a.id, tier: Math.min(w.tier || 1, a.tiers.length) }; }
+    });
+    Shop.freshen(game, wares, seed);
+  },
+  // SOMETHING NEW (`Novelty`, 6 Oct 2026): played dry, a shelf that holds no talisman this browser has ever seen
+  // swaps one of its talismans (never the cape) for one it has not, worn by nobody and of a sort not on the shelf.
+  // `ware.fresh` is how the floor's report learns of it (`Stats.enter`).
+  freshen(game, wares, seed) {
+    if (typeof Novelty === 'undefined' || (game.dev && game.dev.god) || !Novelty.hungry()) return;
+    const seen = Unlocks.load().arts, tagOf = (id) => (Shop.def(id) || {}).tag;
+    for (const id of new Set(wares.map((p) => p.shopId))) {
+      const shelf = wares.filter((p) => p.shopId === id), arts = shelf.filter((p) => !p.ware.cape);
+      if (!arts.length || arts.some((p) => !seen[p.ware.id])) continue;
+      const p = arts[Math.floor(farHash(seed % 7919, id | 0) * arts.length)], rest = shelf.filter((o) => o !== p && !o.ware.cape);
+      const pool = ARTIFACTS.filter((a) => !seen[a.id] && !Shop.worn(game, a.id) && !rest.some((o) => o.ware.id === a.id || (a.tag && tagOf(o.ware.id) === a.tag)));
+      if (!pool.length) continue;
+      const a = pool[Math.floor(farHash(id | 0, seed % 104729) * pool.length)];
+      p.ware = { id: a.id, tier: Math.min(p.ware.tier || 1, a.tiers.length), fresh: true };
+    }
+  },
   // The mouse a ware belongs to, or null once she has turned or gone.
   mouseOf(game, p) { return game.props.find((o) => o.kind === 'mouse' && o.shopId === p.shopId && !o.broken) || null; },
 
-  // Grab on a ware. She takes nothing for it: the offer is a choice of three, either talisman, or
-  // the milk (`takeMilk`), and reaching for one talisman hangs it at his neck and packs the rest away. One slot: taking onto a full one puts the old
-  // talisman back on the stool you took from, so a change of mind is a second reach and not a loss.
-  // The first reach in her room is what lifts its gate, she is the bar of it, not a soul.
+  // Putting a cape on keeps the wait of the one it replaces and gives back what its own still owed, so
+  // taking the same cape off a stool and on again is never a way round its clock (6 Oct 2026 review, B5).
+  wearCape(game, goat, id) {
+    const wait = game.capeWait = game.capeWait || {};
+    if (game.cape && game.cape.id !== id && goat.itemCd > 0) wait[game.cape.id] = { cd: goat.itemCd, max: goat.itemCdMax };
+    const back = wait[id]; delete wait[id];
+    if (game.cape && game.cape.id === id) return;
+    game.cape = { id };
+    goat.itemCd = back ? back.cd : 0; goat.itemCdMax = back ? back.max : 0;
+  },
+  // Grab on a ware. She takes nothing for it: the offer is a choice of three, either talisman (or a
+  // cape, now and then, in place of one), or the milk (`takeMilk`), and reaching for one hangs it on
+  // him and packs the rest away. Up to `TUNING.talisman.slots` talismans at his neck and one cape on
+  // his back: taking onto a full one puts what it replaces (`replaces`) back on the stool you took
+  // from, so a change of mind is a second reach and not a loss. The first reach in her room is what
+  // lifts its gate, she is the bar of it, not a soul. A cape lying in a niche is a ware of no shop.
   buy(game, ware, goat) {
     if (ware.broken) return;
     if (ware.locked) { game.floatText(ware.x, ware.y - 26, 'KILL HIM FIRST', PALETTE.blood); game.audio.sfxThud(); return; }
     if (ware.ware.id === 'milk') { Shop.takeMilk(game, ware, goat); return; }
-    Stats.shop(game, ware, ware.ware.id + ':' + ware.ware.tier);
-    const old = game.artifact, def = Shop.def(ware.ware.id);
-    game.artifact = { id: ware.ware.id, tier: ware.ware.tier };
+    const w = ware.ware, info = Shop.info(w); if (!info) return;
+    Stats.shop(game, ware, w.cape ? w.id : w.id + ':' + w.tier);
+    const old = Shop.replaces(game, ware);
+    let rr = info.rr;
+    if (w.cape) Shop.wearCape(game, goat, w.id);
+    else {
+      game.artifacts = (game.artifacts || []).slice();
+      const mine = Shop.worn(game, w.id);
+      if (mine) { mine.tier = Shop.def(w.id).tiers.length; rr = rarityOf(mine.tier); }
+      else { if (old) game.artifacts = game.artifacts.filter((a) => a !== old); game.artifacts.push({ id: w.id, tier: Shop.tierFit(w.id, w.tier) }); }
+    }
     game.applyBoons(); game.saveRun();
-    game.floatText(goat.x, goat.y - 36, `${def.name} · ${rarityOf(ware.ware.tier).name}`, rarityOf(ware.ware.tier).color);
+    const def = info.def;
+    game.floatText(goat.x, goat.y - 36, `${def.name} · ${rr.name}`, rr.color);
     game.ring(ware.x, ware.y, 1.6 * TILE, def.color); game.particles(ware.x, ware.y, 14, def.color, 150);
     game.audio.sfxBell(); game.vibe(20);
-    if (!game.shopTold) { game.shopTold = true; game.floatText(goat.x, goat.y - 54, 'IT HANGS AT YOUR NECK', PALETTE.bone); }
+    if (w.cape && !game.capeTold) { game.capeTold = true; game.floatText(goat.x, goat.y - 54, `ON YOUR BACK · ${keysOf(game).item}`, PALETTE.bone); }
+    else if (!w.cape && !game.shopTold) { game.shopTold = true; game.floatText(goat.x, goat.y - 54, 'IT HANGS AT YOUR NECK', PALETTE.bone); }
     // The others go back into the wall: one of the three, never two, unless the rat ogre is dead
     // on her floor (`ogreDown`), which is what THE SHELF IS YOURS says: every stool is his then.
     if (!ware.free) for (const o of game.props) {
@@ -49,7 +133,7 @@ const Shop = {
     if (m && !ware.chosen) { m.say = { text: TUNING.prop.mouse.thanks, life: 2, max: 2 }; m.wobble = 0.25; }
     // `free` is left as it was: with the rat ogre dead the whole shelf is his, and a stool made
     // un-free here packed away every other one the moment he took his old talisman back off it.
-    if (old) { ware.ware = { id: old.id, tier: old.tier }; ware.chosen = true; }
+    if (old) { ware.ware = old.cape ? { id: old.id, cape: true } : { id: old.id, tier: old.tier }; ware.chosen = true; ware.swapped = w.id; }
     else { ware.broken = true; ware.dead = true; }
     game.openSoulGate(ware.shopId);
   },
@@ -137,17 +221,19 @@ const Shop = {
     game.slowTimer = Math.max(game.slowTimer, cfg.emergeFx.slow);
     e.say = { text: 'YOU WERE ASKED', life: 2.4, max: 2.4 };
   },
-  // He is down: whatever is still on the shelf is yours for nothing, and LEGENDARY (1 Oct 2026,
-  // playtest: "legendary only once you have beaten the mouse's ogre"): every talisman she had out that
-  // is not his own old one put back goes up to the fourth tier (`RARITY`), the only way to one.
+  // He is down: whatever is still on the shelf is yours for nothing, and at its top tier (1 Oct 2026,
+  // playtest: "the best only once you have beaten the mouse's ogre"; with two grades since 6 Oct 2026, a
+  // COMMON talisman that has a RARE tier goes RARE, one with a single tier and a cape stay as they are).
   ogreDown(game, e) {
-    let any = false, legend = false;
+    let any = false, lifted = false;
+    const top = RARITY[RARITY.length - 1];
     for (const w of game.props) if (w.kind === 'ware' && w.shopId === e.shopId && !w.broken) {
       w.locked = false; w.free = true; any = true;
-      if (w.ware && w.ware.id !== 'milk' && !w.chosen) { w.ware = { id: w.ware.id, tier: RARITY.length }; legend = true;
-        game.ring(w.x, w.y, 1.4 * TILE, RARITY[RARITY.length - 1].color); game.particles(w.x, w.y - 12, 16, RARITY[RARITY.length - 1].color, 150); }
+      const d = w.ware && !w.ware.cape && w.ware.id !== 'milk' && !w.chosen ? Shop.def(w.ware.id) : null;
+      if (d && w.ware.tier < d.tiers.length) { w.ware = { id: w.ware.id, tier: d.tiers.length }; lifted = true;
+        game.ring(w.x, w.y, 1.4 * TILE, top.color); game.particles(w.x, w.y - 12, 16, top.color, 150); }
     }
-    if (any) game.floatText(e.x, e.y - 58, legend ? 'THE SHELF IS YOURS · LEGENDARY' : 'THE SHELF IS YOURS', legend ? RARITY[RARITY.length - 1].color : PALETTE.fireHi);
+    if (any) game.floatText(e.x, e.y - 58, lifted ? `THE SHELF IS YOURS · ${top.name}` : 'THE SHELF IS YOURS', lifted ? top.color : PALETTE.fireHi);
     // her offer comes up again as cards the next time he is by it (js/codex.js)
     if (game.shopShut) delete game.shopShut[e.shopId];
   },

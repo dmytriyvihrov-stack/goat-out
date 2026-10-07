@@ -1,5 +1,5 @@
-// The talismans the mouse gives that are body work or a Q verb of their own (ARTIFACTS_TZ.md).
-// FIRE AMULET, LUCKY CLOVER, BOOMERANG and STRANGE SYMBOLS keep their own homes (gen.js, shop.js);
+// The talismans the mouse gives (ARTIFACTS_TZ.md), and the straw goat of the SCARECROW'S CAPE (a Q
+// talisman until 6 Oct 2026, a cape now: js/capes.js). FIRE AMULET and LUCKY CLOVER keep their own homes (gen.js);
 // everything the seventeen later ones do lives here, and the rest of the game only calls in at a
 // handful of hooks, the same shape `Status` has for poison. Every number is on the talisman's
 // tier in `ARTIFACTS` (js/tuning.js) and reaches here through `game.mods.<id>`, never a literal.
@@ -209,12 +209,13 @@ const Talisman = {
       if (e.dead || e.ghosted || hyp(e.x - g.x, e.y - g.y) > sg.r * TILE) continue;
       e.daze(game, sg.stun);
     }
-    // The snapshot only if it is this talisman: one bought at the mouse on this floor, over another
-    // he walked in wearing, goes back to that other on a restart, as any talisman taken here does.
-    game.artifact = null;
-    if (game.levelArtifact && game.levelArtifact.id === 'scapegoat') game.levelArtifact = null;
-    const cp = game.checkpoint;   // nor does the middle gate hand it back (`holdGate`)
-    if (cp && cp.artifact && cp.artifact.id === 'scapegoat') cp.artifact = null;
+    // Only this talisman comes off; the others stay at his neck. It goes from the floor's snapshot too
+    // (a restart would hand it straight back), and from the middle gate's (`holdGate`).
+    const off = (list) => (list || []).filter((a) => a.id !== 'scapegoat');
+    game.artifacts = off(game.artifacts);
+    if (game.levelArtifacts) game.levelArtifacts = off(game.levelArtifacts);
+    const cp = game.checkpoint;
+    if (cp && cp.artifacts) cp.artifacts = off(cp.artifacts);
     game.applyBoons(); game.saveRun();
     return true;
   },
@@ -712,10 +713,13 @@ const Talisman = {
       ctx.fillText('!', 0, -e.r * 2.6); ctx.restore();
     }
   },
-  // Screen space, beside the talisman chip: the crust, the cup, the notches, and the bell's thread.
-  drawHud(r, game, x, y, box) {
-    const ctx = r.ctx, s = r.hs, m = game.mods, R = Talisman.run(game);
+  // Screen space, under a talisman's chip: the crust, the cup, the notches, the bone's and the bag's
+  // pips, and the bell's thread on the screen's edge. `id` is the chip's talisman: each draws under its
+  // own chip (up to three side by side), so only that one's mods are read here.
+  drawHud(r, game, x, y, box, id) {
+    const ctx = r.ctx, s = r.hs, R = Talisman.run(game);
     const bx = x, by = y + box + 14 * s;
+    const m = { [id]: game.mods[id], thirdEvery: id === 'knuckle' ? game.mods.thirdEvery : 0 };
     if (m.tallow) {
       const n = m.tallow.rooms;
       for (let k = 0; k < n; k++) {
@@ -738,7 +742,7 @@ const Talisman = {
       if (R.tallyCharged) { ctx.fillStyle = PALETTE.fireHi; ctx.font = `700 ${8 * s}px ${FONT_SC}`; ctx.fillText('x2', bx + n * 5 * s + 3 * s, by + 7 * s); }
     }
     // THE KNUCKLEBONE: a pip for each soul counted toward the next third card.
-    if (game.artifact && game.artifact.id === 'knuckle' && m.thirdEvery > 1) {
+    if (id === 'knuckle' && m.thirdEvery > 1) {
       const n = m.thirdEvery - 1;
       for (let k = 0; k < n; k++) {
         ctx.fillStyle = k < (R.third || 0) ? PALETTE.witchHi : 'rgba(239,230,208,0.2)';
@@ -782,25 +786,23 @@ const Talisman = {
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE TALISMANS', pad, top);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText(`${ARTIFACTS.length} on the mouse's shelves · I / II / III puts one at his neck · click a number to change it · click the shelf line to rewrite it (one line for all three tiers)`, pad + 120 * s, top);
+    ctx.fillText(`${ARTIFACTS.length} on the mouse's shelves, up to ${TUNING.talisman.slots} worn · COMMON / RARE puts one at his neck · click a number to change it · click the shelf line to rewrite it (one line for both tiers) · the ${CAPES.length} capes below`, pad + 120 * s, top);
     // One long page that scrolls on the wheel (`drawTool`'s `dev.scroll`), not pages (2 Oct 2026).
     const rowH = 96 * s, listTop = top + 22 * s;
     const leftW = 200 * s, colW = (W - pad * 2 - leftW) / RARITY.length;
     ctx.font = `700 ${7.5 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
     RARITY.forEach((rr, i) => ctx.fillText('TIER ' + 'I'.repeat(i + 1) + ' · ' + rr.name, pad + leftW + i * colW, listTop - 4 * s));
-    const art = game.artifact;
     ARTIFACTS.forEach((a, i) => {
       const y = listTop + i * rowH;
       if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, y, W - pad * 2 + 8 * s, rowH); }
-      const worn = art && art.id === a.id;
+      const art = Shop.worn(game, a.id), worn = !!art;
       r.artifactIcon(a.id, pad + 16 * s, y + 20 * s, 12 * s, worn ? art.tier : 1);
       ctx.textAlign = 'left'; ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = worn ? PALETTE.fireHi : PALETTE.bone;
       ctx.fillText(a.name, pad + 36 * s, y + 14 * s);
       ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-      const q = a.tag === 'q';
-      ctx.fillText(`${a.id} · ${a.tag || 'first four'}${q ? ' · Q' : ''}`, pad + 36 * s, y + 26 * s);
-      [1, 2, 3, 4].forEach((t) => r.devButton(d, pad + 36 * s + (t - 1) * 26 * s, y + 34 * s, 24 * s, 16 * s, 'I'.repeat(t), `tal-wear=${a.id}.${t}`, worn && art.tier === t));
-      if (worn) r.devButton(d, pad + 36 * s + 104 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', 'tal-off', false);
+      ctx.fillText(`${a.id} · ${a.tag || 'first two'} · ${a.tiers.length === 1 ? 'COMMON ONLY' : 'COMMON, RARE'}`, pad + 36 * s, y + 26 * s);
+      a.tiers.forEach((_, ti) => r.devButton(d, pad + 36 * s + ti * 26 * s, y + 34 * s, 24 * s, 16 * s, 'I'.repeat(ti + 1), `tal-wear=${a.id}.${ti + 1}`, worn && art.tier === ti + 1));
+      if (worn) r.devButton(d, pad + 36 * s + 56 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', `tal-off=${a.id}`, false);
       a.tiers.forEach((tier, ti) => {
         const cx = pad + leftW + ti * colW, cw = colW - 10 * s;
         // The player's line (`desc`: the talisman's hand-written `text`, else `tell`), what the shelf
@@ -825,25 +827,48 @@ const Talisman = {
         }
       });
     });
+    // The capes (`CAPES`): one grade each, one worn at a time, its Q verb's line and numbers.
+    const capeTop = listTop + ARTIFACTS.length * rowH + 14 * s, capeH = 62 * s;
+    ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = CAPE_RARITY.color; ctx.textAlign = 'left';
+    ctx.fillText('THE CAPES · ONE ON HIS BACK · Q', pad, capeTop);
+    CAPES.forEach((c, i) => {
+      const y = capeTop + 10 * s + i * capeH, on = game.cape && game.cape.id === c.id;
+      if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, y, W - pad * 2 + 8 * s, capeH); }
+      r.artifactIcon(c.id, pad + 16 * s, y + 20 * s, 12 * s, 0, true);
+      ctx.textAlign = 'left'; ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = on ? PALETTE.fireHi : PALETTE.bone;
+      ctx.fillText(c.name, pad + 36 * s, y + 14 * s);
+      r.devButton(d, pad + 36 * s, y + 24 * s, 46 * s, 16 * s, on ? 'OFF' : 'WEAR', on ? 'cape-off' : `cape-wear=${c.id}`, on);
+      const cx = pad + leftW, cw = W - pad * 2 - leftW - 10 * s;
+      ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.bone;
+      r.wrap(c.desc, cw).slice(0, 2).forEach((l, li) => ctx.fillText(l, cx, y + 12 * s + li * 10 * s));
+      ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
+      r.wrap(c.detail, cw).slice(0, 2).forEach((l, li) => ctx.fillText(l, cx, y + 34 * s + li * 9 * s));
+    });
     // the page's foot, so the scroll reaches past the last row's chips
-    d.rects.push({ x: -10, y: listTop + ARTIFACTS.length * rowH, w: 0, h: 1, id: 'tal-end' });
+    d.rects.push({ x: -10, y: capeTop + 10 * s + CAPES.length * capeH, w: 0, h: 1, id: 'tal-end' });
   },
   // The tab's clicks. Returns whether `id` was one of them.
   devAction(game, id) {
     const d = game.dev;
     if (id === 'tal-end') return true;
-    if (id === 'tal-off') { game.artifact = null; game.applyBoons(); game.devToast('NOTHING AT HIS NECK'); return true; }
+    if (id.startsWith('tal-off=')) { const aid = id.slice(8); game.artifacts = (game.artifacts || []).filter((a) => a.id !== aid); game.applyBoons(); game.devToast(`${(Shop.def(aid) || {}).name} OFF`); return true; }
+    if (id === 'cape-off') { game.cape = null; game.applyBoons(); game.devToast('NO CAPE'); return true; }
+    if (id.startsWith('cape-wear=')) { const c = Cape.def(id.slice(10)); if (c) { game.cape = { id: c.id }; game.goat.itemCd = game.goat.itemCdMax = 0; game.applyBoons(); game.devToast(c.name); } return true; }
     if (id.startsWith('tal-wear=')) {
       const [aid, t] = id.slice(9).split('.');
       const def = ARTIFACTS.find((a) => a.id === aid); if (!def) return true;
-      game.artifact = { id: aid, tier: Number(t) }; game.applyBoons();
-      game.devToast(`${def.name} ${'I'.repeat(Number(t))}`);
+      // Already worn: its tier changes in place. Otherwise on, the oldest off past the slots.
+      const mine = Shop.worn(game, aid);
+      if (mine) mine.tier = Shop.tierFit(aid, Number(t));
+      else game.artifacts = (game.artifacts || []).concat([{ id: aid, tier: Shop.tierFit(aid, Number(t)) }]).slice(-TUNING.talisman.slots);
+      game.applyBoons();
+      game.devToast(`${def.name} · ${rarityOf(Number(t)).name}`);
       return true;
     }
-    // The shelf line, one for the talisman's three tiers; left empty it goes back to the generated one.
+    // The shelf line, one for the talisman's tiers; left empty it goes back to the generated one.
     if (id.startsWith('tal-text=')) {
       const def = ARTIFACTS.find((a) => a.id === id.slice(9)); if (!def) return true;
-      const raw = window.prompt(`${def.name}, the line on the shelf, all three tiers (empty: back to the generated one)`, def.text || def.tiers[0].desc);
+      const raw = window.prompt(`${def.name}, the line on the shelf, every tier (empty: back to the generated one)`, def.text || def.tiers[0].desc);
       if (raw === null) return true;
       const text = raw.trim() || null;
       if (text) def.text = text; else delete def.text;

@@ -971,9 +971,10 @@ class GameAudio {
     if (this.warming || !this.ctx) return;
     this.warming = true;
     const F = TUNING.audio.foley, bank = this.bank || (this.bank = {});
-    const want = { bell: 2, hoof: 6, groan: TUNING.audio.foley.groan.takes };
+    const want = { bell: 2, hoof: 6, groan: TUNING.audio.foley.groan.takes, death: TUNING.audio.spotlight.takes };
     for (const name of Foley.plain) if (!bank[name]) bank[name] = { list: [], want: want[name] || F.takes, make: () => Foley.render(name), rate: Foley.rateOf(name), last: -1 };
     if (!bank.toll) bank.toll = { list: [], want: 2, make: () => Foley.render('bell', { low: true }), rate: Foley.rateOf('bell'), last: -1 };
+    if (!bank['death:big']) bank['death:big'] = { list: [], want: TUNING.audio.spotlight.takes, make: () => Foley.render('death', { big: true }), rate: Foley.rateOf('death'), last: -1 };
     // The rooms' loops, one take each, after every effect has its first.
     for (const name of Foley.loops) if (!bank['loop:' + name]) bank['loop:' + name] = { list: [], want: 1, make: () => Foley.loop(name), rate: Foley.loopRate(name), last: -1 };
     const later = () => {
@@ -1128,9 +1129,11 @@ class GameAudio {
   // A man killed (`Game.onKill`): his own sound (`Foley` `death`: bone, the wet, the drop) on the
   // bus nothing ducks, from where he fell, and the rest of the mix stepping back round it
   // (`spotlight`). `k` is how big a death it is: an ogre, a chain. `where` is `heard(dx, dy)`.
-  sfxDeath(where, k = 1) {
+  // `heavy` (a body in `spotlight.heavy`) is the recipe's `big` take: a lower gasp, a heavier drop.
+  sfxDeath(where, k = 1, heavy = false) {
     const S = TUNING.audio.spotlight, vol = where ? Math.max(S.near, where.vol) : 1;
-    this.foley('death', { bus: this.keyBus, gain: S.gain * vol * Math.min(S.gainMax, k), pan: where ? where.pan * 0.6 : 0, wet: 0.05, takes: 4 });
+    this.foley('death', { bus: this.keyBus, key: heavy ? 'death:big' : 'death', args: heavy ? { big: true } : null, takes: S.takes,
+      gain: S.gain * vol * Math.min(S.gainMax, k), pan: where ? where.pan * 0.6 : 0, wet: 0.05 });
     this.spotlight(k);
   }
   sfxGunshot() { this.foley('gunshot', { gain: 1.1, wet: 0.12 }); }
@@ -1153,6 +1156,8 @@ class GameAudio {
     if (kind === 'horse') return this.foley('horse', { key: 'horse' + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: 0.1 });
     if (kind === 'pig') return this.foley('pig', { key: 'pig' + (hurt ? '!' : ''), args: { hurt: !!hurt }, gain: hurt ? 0.09 : 0.12 });
     if (kind === 'husky') return this.sfxHusky(hurt ? 'hurt' : 'woo');
+    // The fish only ever bubbles (6 Oct 2026), hurt or not; its tank breaking is `sfxTank`.
+    if (kind === 'fish') return this.foley('blub', { takes: 4, gain: 0.16 });
     this.foley('tortoise', { gain: 0.115 });
   }
   // The husky's voice (js/beasts-more.js): `woo` the howl she sings on the beat, `waf` the bark before
@@ -1164,6 +1169,8 @@ class GameAudio {
   // The lorry under them: half a second of diesel knock, called every half second while the road
   // goes past, each faded at its ends so they run on without a seam.
   sfxEngine() { this.foley('engine', { gain: 0.039 }); }
+  // The fish's tank going: the clay pot's break, and the water.
+  sfxTank() { this.foley('pot', { gain: 0.5 }); this.foley('splat', { gain: 0.3 }); this.foley('blub', { takes: 4, gain: 0.12 }); }
   // A club coming down on a skull, heard from inside the skull.
   sfxClub() { this.foley('club', { gain: 0.82 }); }
   // Something wooden giving way.
@@ -1214,6 +1221,9 @@ class GameAudio {
   sfxBreath() { this.foley('breath', { gain: 0.42 }); }
   sfxBoom() { this.foley('boom', { gain: 1.1, wet: 0.12 }); }
   sfxCast() { this.foley('cast', { gain: 0.18, wet: 0.05 }); }
+  // The shaman (js/shaman.js): the rattle shaken over his men, the call on the goat.
+  sfxRattle(where) { const v = where ? where.vol : 1; if (v > 0.02) this.foley('rattle', { gain: 0.32 * v, pan: where ? where.pan : 0, wet: 0.05 }); }
+  sfxChant(where) { const v = where ? where.vol : 1; if (v > 0.02) this.foley('chant', { gain: 0.3 * v, pan: where ? where.pan : 0, wet: 0.08 }); }
   sfxRune() { this.foley('rune', { gain: 0.53, wet: 0.05 }); }
   sfxBlink() { this.foley('blink', { gain: 0.29 }); }
   // A room left behind going dark: a breath drawn in, and the stone settling. Not a clank: nothing

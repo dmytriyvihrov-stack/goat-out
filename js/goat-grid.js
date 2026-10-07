@@ -4,7 +4,7 @@
 // call with a stub `game` carrying the mods that cell stands for, so the grid can never show a look
 // the game does not have. Each cell keeps its own copy of the painter's particle state (steam,
 // flame, the venom drip) so sixteen goats breathing at once do not share one plume.
-// Nothing here touches the run: no `game.mods`, no `game.artifact`, no simulation.
+// Nothing here touches the run: no `game.mods`, no `game.artifacts` or `game.cape`, no simulation.
 const GoatGrid = {
   AXES: {
     horns: { name: 'HORNS', values: [
@@ -14,7 +14,8 @@ const GoatGrid = {
     voice: { name: 'VOICE', values: [
       { label: 'PLAIN', mods: {} }, { label: 'FULL THROAT', mods: { screamStun: true } },
       { label: 'DRAGON BREATH', mods: { breath: true } }, { label: 'VENOM SPIT', mods: { spit: true } }] },
-    talisman: { name: 'TALISMAN', values: null },   // filled from ARTIFACTS on first use
+    talisman: { name: 'TALISMAN', values: null },   // filled from ARTIFACTS on first use, and three at once
+    cape: { name: 'CAPE', values: null },           // filled from CAPES on first use
     eye: { name: 'THIRD EYE', values: [{ label: 'NONE', mods: {} }, { label: 'THE ORACLE', mods: { oracle: true } }] },
     facing: { name: 'FACING', values: ['S', 'SW', 'W', 'NW', 'N', 'NE', 'E', 'SE'].map((label, i) => ({ label, facing: i })) },
     wounds: { name: 'WOUNDS', values: [0, 1, 2, 3].map((n) => ({ label: n ? n + ' LOST' : 'WHOLE', wounds: n })) },
@@ -43,7 +44,9 @@ const GoatGrid = {
 
   axis(key) {
     const a = this.AXES[key];
-    if (!a.values && key === 'talisman') a.values = [{ label: 'NONE', artifact: null }].concat(ARTIFACTS.map((x) => ({ label: x.name, artifact: x.id })));
+    if (!a.values && key === 'talisman') a.values = [{ label: 'NONE', artifact: null }].concat(ARTIFACTS.map((x) => ({ label: x.name, artifact: x.id })),
+      [{ label: 'THREE AT ONCE', artifact: ARTIFACTS.slice(0, TUNING.talisman.slots).map((x) => x.id) }]);
+    if (!a.values && key === 'cape') a.values = [{ label: 'NONE', cape: null }].concat(CAPES.map((x) => ({ label: x.name, cape: x.id })));
     if (!a.values && key === 'floor') a.values = [{ label: 'NONE' }].concat(LEVELS.filter((l) => l.canon).map((l) => ({ label: l.canon.name, floor: l })));
     return a;
   },
@@ -53,6 +56,8 @@ const GoatGrid = {
     if (!d.grid) d.grid = { across: 'horns', down: 'voice', frame: 'full', bg: 'diag', pose: 'idle', shout: true, tier: 1, zoom: 2, shadow: 'pixel', side: 'behind', fmt: 'png',
       pick: { horns: [0, 1, 2, 3], voice: [0, 1, 2, 3], talisman: [0, 1, 2, 3], eye: [0, 1], facing: [0, 1, 2, 3, 4, 5, 6, 7], wounds: [0, 1, 2, 3], floor: [1, 2, 3, 4], decor: [1, 2, 3, 6] },
       base: { horns: 0, voice: 0, talisman: 0, eye: 0, facing: 7, wounds: 0, floor: 0, decor: 0 }, painters: new Map(), sig: '' };
+    // the CAPE axis (6 Oct 2026), into a grid kept from before it
+    d.grid.pick.cape ||= [0, 1, 2, 3, 4, 5]; if (d.grid.base.cape === undefined) d.grid.base.cape = 0;
     return d.grid;
   },
   // The values along one axis, or a single blank when nothing is picked for it.
@@ -63,17 +68,18 @@ const GoatGrid = {
     const at = Object.assign({}, G.base);
     if (across) at[across.key] = across.i;
     if (down) at[down.key] = down.i;
-    const mods = {}; let artifact = null, facing = 7, wounds = 0, floor = null, decor = null;
+    const mods = {}; let artifacts = [], cape = null, facing = 7, wounds = 0, floor = null, decor = null;
     for (const [key, i] of Object.entries(at)) {
       const v = this.axis(key).values[i]; if (!v) continue;
       if (v.mods) Object.assign(mods, v.mods);
-      if (v.artifact) artifact = { id: v.artifact, tier: G.tier };
+      if (v.artifact) artifacts = [].concat(v.artifact).map((id) => ({ id, tier: Shop.tierFit(id, G.tier) }));
+      if (v.cape) cape = { id: v.cape };
       if (v.facing !== undefined) facing = v.facing;
       if (v.wounds !== undefined) wounds = v.wounds;
       if (v.floor) floor = v.floor;
       if (v.decor) decor = v.decor;
     }
-    return { mods, artifact, facing, wounds, floor, decor };
+    return { mods, artifacts, cape, facing, wounds, floor, decor };
   },
 
   // One goat into a cell box. `painter` is this cell's own view of the renderer's painter (its
@@ -82,7 +88,7 @@ const GoatGrid = {
     const angle = (spec.facing + 2) * Math.PI / 4, walk = G.pose === 'walk';
     const g = { x: 0, y: 0, facing: angle, vx: walk ? Math.cos(angle) * 80 : 0, vy: walk ? Math.sin(angle) * 80 : 0,
       state: 'idle', trail: [], hp: 4 - spec.wounds, maxHp: 4, invuln: 0, screaming: G.shout ? 1 : 0, dazed: 0, jitter: null, sqLeft: 0 };
-    const stub = { mods: spec.mods, artifact: spec.artifact, goat: g, stairFx: null, intro: null, touch: { active: false }, state: 'grid' };
+    const stub = { mods: spec.mods, artifacts: spec.artifacts, cape: spec.cape, goat: g, stairFx: null, intro: null, touch: { active: false }, state: 'grid' };
     const L = this.LOOK, old = r.ctx;
     ctx.save();
     ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
@@ -258,7 +264,7 @@ const GoatGrid = {
       rifle: { label: 'RIFLE', kind: 'hunter' }, hound: { label: 'HOUND', kind: 'dog' }, seer: { label: 'SEER', kind: 'seer' },
       ogre: { label: 'OGRE', kind: 'butcher' }, wraith: { label: 'WRAITH', kind: 'wraith' },
       // the two clubmen with a body of their own (5 Oct 2026): drawn here as in the world, the Spartan with his board, the thrower
-      shieldman: { label: 'SHIELDMAN', kind: 'bearer', shield: true }, thrower: { label: 'THROWER', kind: 'bearer', thrower: true } },
+      shieldman: { label: 'SHIELDMAN', kind: 'bearer', shield: true }, thrower: { label: 'THROWER', kind: 'bearer', thrower: true }, shaman: { label: 'SHAMAN', kind: 'bearer', shaman: true } },
     fx: { fire: 'FIRE', witchfire: 'WITCHFIRE', pool: 'BLOOD POOL', spray: 'BLOOD SPRAY', blast: 'BLAST', witchblast: 'WITCH BLAST',
       smoke: 'SMOKE', dust: 'DUST', soul: 'SOUL' },
     // [label, Prop kind, opts, flat]: a flat one lies on the floor under everybody, as the game has it.
@@ -423,12 +429,12 @@ const GoatGrid = {
     const key = 'm|' + it.tool + '|' + it.boss + '|' + it.shout, old = sc.stubs.get('m' + it.id);
     if (old && old.key === key) return old;
     const M = this.SCENE.men[it.tool], cfg = TUNING[M.kind];
-    let hp = M.champion ? TUNING.champion.hp : M.shield ? TUNING.shieldman.hp : M.thrower ? TUNING.thrower.hp : cfg.hp || 1;
+    let hp = M.champion ? TUNING.champion.hp : M.shield ? TUNING.shieldman.hp : M.thrower ? TUNING.thrower.hp : M.shaman ? TUNING.shaman.hp : cfg.hp || 1;
     if (it.boss) hp = M.kind === 'butcher' ? cfg.hp : hp + TUNING.boss.champHp;   // a champion: no soul in a scene stub
     const e = { key, id: it.id, kind: M.kind, cfg, r: cfg.radius, champion: !!M.champion, boss: !!it.boss, elite: !!it.boss && M.kind !== 'butcher',
       keeper: false, hp, maxHp: hp, dead: false, ghosted: false, x: it.x, y: it.y, vx: 0, vy: 0, facing: 0, flash: 0, burning: 0, witchBurn: false,
       bombFuse: 0, dazed: 0, poison: 0, shock: 0, impaled: 0, state: 'idle', timer: 0, say: null, soul: false, lurk: false,
-      shieldman: !!M.shield, shield: M.shield ? { uses: TUNING.shieldman.uses, jolt: 0, ang: 0, low: 0 } : null, thrower: !!M.thrower };
+      shieldman: !!M.shield, shield: M.shield ? { uses: TUNING.shieldman.uses, jolt: 0, ang: 0, low: 0 } : null, thrower: !!M.thrower, shaman: !!M.shaman };
     // What he shouts is off his kind's first-sight lines, picked by his number so it keeps.
     const B = M.kind === 'dog' || M.kind === 'wraith' ? null : BARKS.spot[M.kind] || BARKS.attack;
     if (it.shout && B && B.length) e.say = { text: B[it.id % B.length], life: 1, max: 2 };
@@ -524,7 +530,7 @@ const GoatGrid = {
     else if (p === 'flung') { g.state = 'roll'; g.rollSpin = r.t * 14; }
     else if (p === 'burning') g.onFire = true;
     else if (p === 'dazed') g.dazed = 1;
-    return { g, stub: { mods: spec.mods, artifact: spec.artifact, goat: g, stairFx: null, intro: null, touch: { active: false }, state: 'grid' } };
+    return { g, stub: { mods: spec.mods, artifacts: spec.artifacts, cape: spec.cape, goat: g, stairFx: null, intro: null, touch: { active: false }, state: 'grid' } };
   },
 
   // The whole frame into a screen rect, in the order the game's world pass keeps: floor and walls,
@@ -615,7 +621,7 @@ const GoatGrid = {
     row('ROOM', [['SIZE ' + cols + '×' + rows, 'grid-sc-size'], ['WALLS: ' + S.walls[sc.walls].toUpperCase(), 'grid-sc-walls'], null,
       ['FRAME: ' + (sc.frame === 'room' ? 'ROOM' : 'CAST'), 'grid-sc-frame'], null,
       ['ZOOM −', 'grid-sc-zoom=-1'], ['ZOOM ' + S.zooms[sc.zoom] + '×', 'grid-sc-zoom=0'], ['ZOOM +', 'grid-sc-zoom=1']]);
-    row('THE GOAT', [tool('goat', 'PUT THE GOAT'), null].concat(['horns', 'voice', 'talisman', 'eye', 'wounds', 'facing'].map((k) =>
+    row('THE GOAT', [tool('goat', 'PUT THE GOAT'), null].concat(['horns', 'voice', 'talisman', 'cape', 'eye', 'wounds', 'facing'].map((k) =>
       [this.axis(k).name + ': ' + this.axis(k).values[G.base[k]].label, 'grid-sc-goat=' + k]), [['TIER ' + 'I'.repeat(G.tier), 'grid-tier'], ['SHOUTING', 'grid-shout', G.shout]]));
     row('THE CULT', Object.entries(S.men).map(([k, m]) => tool(k, m.label)));
     row('POSE', S.poses.map((p) => [p.toUpperCase(), 'grid-sc-pose=' + p, sc.pose === p]).concat([null, ['BOSS', 'grid-sc-boss', sc.boss],
@@ -672,7 +678,7 @@ const GoatGrid = {
     else if (cmd === 'side') G.side = { behind: 'left', left: 'right', right: 'behind' }[G.side];
     else if (cmd === 'fmt') G.fmt = G.fmt === 'png' ? 'jpg' : 'png';
     else if (cmd === 'shadow') G.shadow = { pixel: 'soft', soft: 'none', none: 'pixel' }[G.shadow];
-    else if (cmd === 'tier') G.tier = G.tier % 3 + 1;
+    else if (cmd === 'tier') G.tier = G.tier % RARITY.length + 1;
     else if (cmd === 'reset') { game.dev.grid = null; if (G.mode === 'scene') this.state(game).mode = 'scene'; }
     else if (cmd === 'export') {
       const scene = G.mode === 'scene';

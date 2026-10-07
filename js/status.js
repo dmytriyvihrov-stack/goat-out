@@ -240,6 +240,9 @@ const Status = {
       // A crate goes out of his mouth alight (25 Sep 2026): whoever it lands on catches, and it
       // breaks into its one burning tile, the brand a crate carried through fire already was.
       if (h.kind === 'crate' && !h.alight) h.alight = 'fire';
+      // A man goes out of it alight too (6 Oct 2026 playtest, "with the fire throw he catches as well"):
+      // `ignite` before the fling, which keeps `burning` and only takes the state for the flight.
+      if (h instanceof Enemy) h.ignite(game);
       game.audio.sfxFire();
     }
   },
@@ -324,6 +327,8 @@ const Status = {
         if (hyp(e.x - nx, e.y - ny) < e.r + 6) { burst = true; break; }
       }
       if (!burst) for (const p of game.props) {
+        // One of his own animals is a thing to spit at too (`Beast.dope`: the puddle it bursts into poisons it).
+        if (Beast.animal(p) && !p.held && hyp(p.x - nx, p.y - ny) < (p.r || 12) + 4) { burst = true; break; }
         if (p.broken || !p.blocking) continue;
         if (hyp(p.x - nx, p.y - ny) < (p.r || 12) + 4) { burst = true; break; }
       }

@@ -136,7 +136,7 @@ const Motes = {
     const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
     x.translate(S * K / 2, S * K * this.foot); x.scale(K, K);
     const g = { x: 0, y: 0, facing: f * Math.PI / 4, vx: 0, vy: 0, state: 'idle', trail: [], hp: 1, maxHp: 1, invuln: 0, dazed: 0, jitter: null, sqLeft: 0 };
-    const stub = { mods: Object.assign({}, m), artifact: null, goat: g, stairFx: null, intro: null, touch: { active: false }, state: 'ghost' };
+    const stub = { mods: Object.assign({}, m), artifacts: [], cape: null, goat: g, stairFx: null, intro: null, touch: { active: false }, state: 'ghost' };
     const painter = this.painter || (this.painter = Object.assign(Object.create(R.painted), { fx: [] }));
     const old = R.ctx, shade = R.shadow, t = R.t;
     R.ctx = x; R.shadow = () => {}; R.t = 0;

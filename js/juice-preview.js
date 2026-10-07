@@ -81,6 +81,8 @@ const JUICE_PLAY = {
   'A blow that does nothing': { scene: 'ratogre' },
   'The blink': { scene: 'blink' },
   'The boomerang': { scene: 'boomerang' },
+  'The ruin (CAPE OF RUIN)': { scene: 'ruin' },
+  'The tuft (SHEPHERD\'S MANTLE)': { scene: 'sprout' },
   'Hound run line': { scene: 'hound' },
   'Ogre slam ring': { scene: 'ogreSlam' },
   'Talisman: parry': { scene: 'parry' },
@@ -251,10 +253,16 @@ const JUICE_SCENES = {
   coldeye: { period: 3.8, what: 'COLD EYE: a crate into his mouth slows the world while he aims; the throw ends it.',
     setup(S) { S.boon('coldeye'); S.goatAt(4, 5); S.aimAt(S.prop(5, 5, 'crate')); S.target = S.man(11.5, 5); },
     at: [[0.35, (S) => { S.rmb = true; }], [0.6, (S) => S.aimAt(S.target)], [2.2, (S) => { S.rmb = false; }]] },
-  boomerang: { period: 3.6, what: 'The BOOMERANG thrown on Q past two men, and home.',
+  boomerang: { period: 3.6, what: "The BONE MANTLE's boomerang thrown on Q past two men, and home.",
     setup(S) { S.wear('boomerang', 1); S.goatAt(4, 5); S.aimAt({ x: 12 * TILE, y: 5 * TILE }); S.man(7.2, 5); S.man(8.4, 5.3); },
     at: [[0.4, (S) => S.q()]] },
-  blink: { period: 2.4, what: 'STRANGE SYMBOLS on Q: he steps through nowhere.',
+  ruin: { period: 3.2, what: 'The CAPE OF RUIN on Q: crates and a barrel break round him, two men are thrown.',
+    setup(S) { S.wear('ruin'); S.goatAt(6, 5); S.prop(7.3, 5, 'crate'); S.prop(4.8, 4.4, 'barrel'); S.man(6, 6.6); S.man(7.6, 4.2); },
+    at: [[0.5, (S) => S.q()]] },
+  sprout: { period: 2.6, what: 'The SHEPHERD\'S MANTLE on Q: a tuft of milk grass grows in front of him.',
+    setup(S) { S.wear('meadow'); S.goatAt(5, 5); S.aimAt({ x: 9 * TILE, y: 5 * TILE }); },
+    at: [[0.4, (S) => S.q()]] },
+  blink: { period: 2.4, what: 'The CLOAK OF SIGNS on Q: he steps through nowhere.',
     setup(S) { S.wear('symbols', 1); S.goatAt(4, 5); S.aimAt({ x: 12 * TILE, y: 5 * TILE }); },
     at: [[0.4, (S) => { S.move(1, 0); S.q(); }], [0.6, (S) => S.move(0, 0)]] },
   ratogre: { period: 2.8, what: 'The horns on the rat ogre standing: the goat bounces off him.',
@@ -326,7 +334,7 @@ const JuicePreview = {
     }
     Object.assign(pg, {
       state: 'play', levelIndex: 1, showroomOn: true, autoPause: false, awayNow: false,
-      boons: [], artifact: null, tal: null, talRun: null, henHearts: 0, beasts: {}, crowGift: false, levelCrowGift: false,
+      boons: [], artifacts: [], cape: null, tal: null, talRun: null, henHearts: 0, beasts: {}, crowGift: false, levelCrowGift: false,
       input: { mx: 0, my: 0, aim: { x: 1, y: 0 }, lmbPressed: false, rmbDown: false, rmbPressed: false, spacePressed: false, rollPressed: false, qPressed: false, mouse: { x: 0, y: 0 }, anyPressed: false },
       keys: new Set(), cam: { x: 0, y: 0, zoom: 1 }, camLead: { x: 0, y: 0 }, camFollow: null, camTrack: null, camHold: undefined, camRoomMid: null, camFight: 0, camBoss: null,
       dev: { open: false, rules: false, hidden: true, god: true, rects: [], toast: null, tab: 'juice', vision: false, hearing: false, dark: false, tune: game.dev.tune, scroll: {} },
@@ -395,7 +403,8 @@ const JuicePreview = {
     S.roll = () => { pg.input.rollPressed = true; };
     S.q = () => { pg.input.qPressed = true; };
     S.boon = (id) => { const b = BOONS.find((o) => o.id === id); if (b) { pg.boons.push(b); pg.applyBoons(); pg.goat.hp = pg.goat.maxHp; } };
-    S.wear = (id, tier) => { pg.artifact = { id, tier }; pg.applyBoons(); pg.goat.hp = pg.goat.maxHp; };
+    // A cape on his back when `id` is one (`CAPES`), else that talisman at his neck.
+    S.wear = (id, tier) => { if (Cape.def(id)) pg.cape = { id }; else pg.artifacts = [{ id, tier }]; pg.applyBoons(); pg.goat.hp = pg.goat.maxHp; };
     S.burn = (x, y, dur) => pg.world.ignite(x, y, true, dur);
     // A man: held on his mark (the wheel lesson's own hold, `millLesson` before `millOpen`, every
     // blow, fling, fall and flame still plays on him), or `live`, awake and after the goat.
@@ -416,6 +425,7 @@ const JuicePreview = {
     pg.level = level; pg.world = new World(level);
     pg.goat = new Goat(level.start.x, level.start.y);
     pg.enemies = []; pg.props = []; pg.liveEnemies = [];
+    pg.chase = null;   // THE CHASE of the run under the tab is not the stage's (js/chase.js)
     pg.fx = new CombatFX(pg); pg.scatter = new Scatter(pg);
     pg.applyBoons(); pg.goat.hp = pg.goat.maxHp; pg.goat.invuln = 0;
     // The room is framed whole, still: the preview is about the effect, not the follow.

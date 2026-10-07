@@ -47,7 +47,7 @@ window.PERF = {
   },
   setup(which, seed) {
     const g = game;
-    g.forgetLessons(); g.boons = []; g.artifact = null; g.levelArtifact = null; g.beasts = {};
+    g.forgetLessons(); g.boons = []; g.artifacts = []; g.levelArtifacts = null; g.cape = null; g.levelCape = null; g.beasts = {};
     g.runJumped = true; g.tripAt = -1; g.darkAt = -1; g.deaths = 0; g.runSeed = seed;
     let li;
     if (which === 'N') { li = DARK_LEVEL.darkOf; g.darkAt = li; }

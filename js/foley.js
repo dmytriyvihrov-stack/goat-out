@@ -42,6 +42,8 @@ const Foley = (() => {
   }
 
   function white(n) { const x = new Float32Array(n); for (let i = 0; i < n; i++) x[i] = Math.random() * 2 - 1; return x; }
+  // White noise that is the same every take (its own little LCG): a layer meant to be learnt by ear.
+  function still(n, seed = 7) { const x = new Float32Array(n); let s = seed >>> 0; for (let i = 0; i < n; i++) { s = (s * 1664525 + 1013904223) >>> 0; x[i] = s / 2147483648 - 1; } return x; }
   // Equal energy an octave, which is what most of the world's noise is (Kellet's economy filter).
   function pink(n) {
     const x = new Float32Array(n); let b0 = 0, b1 = 0, b2 = 0;
@@ -501,6 +503,27 @@ const Foley = (() => {
         env: (t) => swell(t, d, 0.65, 1.2), drive: 1.3 }), sr, 0, 1);
       return whoosh(x, sr, 0.05, d * 0.9, 300, 3200, 0.7, 0.75, 0.9);
     },
+    // The shaman's rattle (6 Oct 2026): three shakes of a bunch of tusks and dry bone on a staff, each a
+    // spray of small hard clicks, thinning at its end.
+    rattle(sr) {
+      const x = buf(sr, 0.62);
+      for (let k = 0; k < 3; k++) {
+        const at = 0.02 + k * rnd(0.15, 0.19), n = rint(10, 16);
+        for (let i = 0; i < n; i++) ping(x, sr, at + Math.pow(Math.random(), 1.6) * 0.09, rnd(1700, 4600), rnd(0.004, 0.012), rnd(0.25, 0.7) * (1 - k * 0.15));
+        const hiss = noiseBand(len(sr, 0.12), sr, 'bp', 3800, 1.2, white);
+        add(x, env(hiss, sr, (t) => hit(t, 0.004, 0.04)), sr, at, 0.18);
+      }
+      return x;
+    },
+    // His call: a low throat held under the breath, falling a third and opening from 'oo' to 'ah', a hum
+    // with too much air in it.
+    chant(sr) {
+      const d = 0.85, x = buf(sr, d);
+      add(x, voice(sr, d, { f: (t) => 92 * Math.pow(0.84, Math.min(1, t / d)), jit: 0.02, shim: 0.1, breath: 0.5, tilt: 1500,
+        formants: [[(t) => 300 + 420 * t / d, 4, 1], [(t) => 700 + 500 * t / d, 6, 0.45], [2300, 9, 0.2]], body: 0.35,
+        env: (t) => swell(t, d, 0.35, 1.3), drive: 1.5 }), sr, 0, 1);
+      return whoosh(x, sr, 0.1, d * 0.8, 200, 1800, 0.35, 0.6, 0.9);
+    },
     // A rune going up: the ground giving fire, a deep thump and a roar, crackling.
     rune(sr) {
       const d = 0.6, x = buf(sr, d), n = x.length;
@@ -579,22 +602,52 @@ const Foley = (() => {
     // the same sound as a plank door going or a table breaking. Now it has a shape of its own that no
     // other blow makes: bone going first (a dry crunch, two or three snaps), the wet of it, and then,
     // a beat later, the whole weight of him meeting the floor, the drop is what says "down for good".
-    death(sr) {
-      const x = buf(sr, 0.62), drop = rnd(0.12, 0.16);
-      for (let k = 0, n = rint(2, 3); k < n; k++) click(x, sr, rnd(0, 0.022), rnd(1800, 3400), rnd(0.6, 1), 0.0009, 1.6);
-      const crunch = noiseBand(len(sr, 0.09), sr, 'bp', rnd(1100, 1600), 1.2);
-      add(x, env(crunch, sr, (t) => hit(t, 0.001, 0.022)), sr, 0, 1.5);
-      modes(x, sr, rnd(110, 135), [[1, 0.05, 0.7], [1.7, 0.03, 0.35]], { bend: 0.6, bendT: 0.012 });
-      for (let k = 0; k < 3; k++) {
-        const at = rnd(0.01, 0.08), d = rnd(0.035, 0.06), f0 = rnd(600, 1200), s = pink(len(sr, d));
-        filter(s, sr, 'bp', (t) => f0 * (1 - 0.6 * t / d), rnd(4, 7));
-        add(x, env(s, sr, (t) => hit(t, 0.003, d * 0.3)), sr, at, rnd(0.5, 0.9));
+    // 6 Oct 2026 ("a clearer, more distinctive sound when an enemy dies"): five layers now, in order.
+    // THE CRACK: a bone giving way twice ("crack-ack"), a hard bright snap with real top in it, which
+    // no knockdown, splat or door has. THE MARK: one muffled struck log, the same pitch and shape in
+    // every take (no dice in it), so the ear learns it as "that one is dead". THE GASP: the air
+    // knocked out of him through a throat, its pitch rolled per take (his long groan still follows on
+    // its own, `sfxGroan`). THE WET, as before. THE DROP: the whole weight of him on the floor a beat
+    // later and his limbs after it. `big` (an ogre, a butcher, a thrower, a shieldman) is lower,
+    // later and heavier in the gasp and the drop; the mark stays the same mark.
+    death(sr, { big } = {}) {
+      const x = buf(sr, big ? 0.7 : 0.58), drop = big ? rnd(0.17, 0.21) : rnd(0.12, 0.15), low = big ? 0.78 : 1, wt = big ? 1.4 : 1;
+      // The crack: a broadband snap first, then a smaller one as the bone lets go.
+      for (const [at, level] of [[0, 1], [rnd(0.012, 0.022), rnd(0.45, 0.6)]]) {
+        const sn = white(len(sr, 0.012));
+        filter(sn, sr, 'hp', rnd(2200, 2800), 0.8);
+        add(x, env(sn, sr, (t) => hit(t, 0.0002, 0.0018)), sr, at, 1.6 * level);
+        modes(x, sr, rnd(1900, 2600), [[1, 0.012, 0.5], [1.47, 0.008, 0.35], [2.09, 0.005, 0.25]], { at, gain: level, spread: 0.03 });
+        for (let k = 0, n = rint(2, 3); k < n; k++) click(x, sr, at + rnd(0, 0.006), rnd(3000, 6000), level * rnd(0.6, 1), 0.0005, 1.4);
       }
-      modes(x, sr, rnd(78, 92), [[1, 0.09, 1.1], [1.55, 0.05, 0.5], [2.3, 0.03, 0.3]], { at: drop, bend: 0.35, bendT: 0.02 });
-      const slap = noiseBand(len(sr, 0.12), sr, 'lp', rnd(900, 1300), 0.8);
-      add(x, env(slap, sr, (t) => hit(t, 0.002, 0.03)), sr, drop, 1.1);
+      const crunch = noiseBand(len(sr, 0.08), sr, 'bp', rnd(1100, 1600), 1.2);
+      add(x, env(crunch, sr, (t) => hit(t, 0.001, 0.02)), sr, 0.002, 1.1);
+      // The mark: fixed, a felt-wrapped beater on a hollow log, low and short, never a tone that sings.
+      modes(x, sr, 146, [[1, 0.075, 0.95], [2.43, 0.032, 0.32], [3.86, 0.016, 0.14]], { at: 0.004, spread: 0, bend: 0.12, bendT: 0.01 });
+      const felt = filter(still(len(sr, 0.05)), sr, 'lp', 520, 0.8);
+      add(x, env(felt, sr, (t) => hit(t, 0.001, 0.008)), sr, 0.004, 0.6);
+      // The gasp: a short 'hhuh', mostly breath with a little throat, falling as it empties.
+      const gf = rnd(140, 185) * low, gd = rnd(0.11, 0.15) * (big ? 1.25 : 1);
+      add(x, voice(sr, gd, { f: (t) => gf * (1 - 0.3 * t / gd), buzz: 0.45, breath: 0.85, jit: 0.04, shim: 0.2, rough: 0.3, tilt: 2400,
+        formants: [[rnd(620, 720) * (big ? 0.85 : 1), 3, 1], [rnd(1050, 1250), 4, 0.55], [2600, 6, 0.3]], body: 0.25, bodyF: 320,
+        env: (t) => (t < 0.008 ? t / 0.008 : Math.exp(-(t - 0.008) / (gd * 0.35))), drive: 1.4 }), sr, rnd(0.018, 0.03), 0.42);
+      for (let k = 0; k < 3; k++) {
+        const at = rnd(0.012, 0.08), d = rnd(0.035, 0.06), f0 = rnd(600, 1200), s = pink(len(sr, d));
+        filter(s, sr, 'bp', (t) => f0 * (1 - 0.6 * t / d), rnd(4, 7));
+        add(x, env(s, sr, (t) => hit(t, 0.003, d * 0.3)), sr, at, rnd(0.45, 0.75));
+      }
+      // The drop: the chest and the floor, a slap of cloth and skin, grit, then the limbs.
+      modes(x, sr, rnd(72, 84) * low, [[1, 0.12, 1.25], [1.55, 0.07, 0.65], [2.3, 0.04, 0.38], [3.1, 0.025, 0.2]], { at: drop, gain: wt, bend: 0.42, bendT: 0.022 });
+      const slap = noiseBand(len(sr, 0.14), sr, 'lp', rnd(800, 1150) * low, 0.8);
+      add(x, env(slap, sr, (t) => hit(t, 0.002, 0.034)), sr, drop, 1.25 * wt);
       const grit = noiseBand(len(sr, 0.06), sr, 'bp', rnd(2400, 3200), 0.9, white);
-      return add(x, env(grit, sr, (t) => hit(t, 0.001, 0.012)), sr, drop, 0.3);
+      add(x, env(grit, sr, (t) => hit(t, 0.001, 0.012)), sr, drop, 0.3);
+      const limbs = drop + rnd(0.05, 0.08) * (big ? 1.3 : 1);
+      modes(x, sr, rnd(110, 140) * low, [[1, 0.04, 0.45], [1.7, 0.025, 0.2]], { at: limbs, bend: 0.3, bendT: 0.015 });
+      const flop = noiseBand(len(sr, 0.07), sr, 'lp', 1400, 0.8);
+      add(x, env(flop, sr, (t) => hit(t, 0.002, 0.018)), sr, limbs, 0.45);
+      if (big) { const rum = noiseBand(len(sr, 0.3), sr, 'lp', 180, 0.7, brown); add(x, env(rum, sr, (t) => hit(t, 0.006, 0.08)), sr, drop, 0.9); }
+      return x;
     },
     // A kill in a chain: a struck bone bar, one step higher each time (`GameAudio.sfxKill` sets the rate).
     kill(sr) {
@@ -788,6 +841,20 @@ const Foley = (() => {
       }
       const sp = noiseBand(len(sr, 0.03), sr, 'hp', 3200, 0.7, white);
       return add(x, env(sp, sr, (t) => hit(t, 0.0008, 0.006)), sr, 0, 0.25);
+    },
+    // THE FISH (6 Oct 2026): all it ever says. Two or three bubbles up through its tank, each the drip's
+    // closing rise a good deal lower and rounder, a beat apart.
+    blub(sr) {
+      const x = buf(sr, 0.5), n = x.length, k = 2 + (Math.random() < 0.5 ? 1 : 0);
+      for (let b = 0; b < k; b++) {
+        const at = b * rnd(0.09, 0.14), f0 = rnd(260, 420) * (1 + b * 0.12); let ph = 0;
+        for (let i = Math.floor(at * sr); i < n; i++) {
+          const t = i / sr - at; if (t > 0.12) break;
+          ph += TAU * f0 * (1 + 0.9 * (1 - Math.exp(-t / 0.03))) / sr;
+          x[i] += Math.sin(ph) * hit(t, 0.004, 0.05) * (1 - b * 0.2);
+        }
+      }
+      return filter(x, sr, 'lp', 1800, 0.7);
     },
     // The milk grass, heard only when he is hurt and near it: three small glassy notes, high and soft.
     sparkle(sr) {

@@ -15,7 +15,7 @@ class Enemy {
     this.burning = 0; this.burnDir = 0; this.burnTick = 0; this.hookCd = 0; this.reload = 0; this.flash = 0;
     this.litByMan = false; this.passedFire = false;   // who may hand fire on, and who has already
     this.lastLunge = -1; this.shieldHits = 0; this.wander = Math.random() * 3; this.lostTimer = 0;
-    this.bombFuse = 0; this.exploded = false; this.flail = 0; this.heldSwing = 0;
+    this.bombFuse = 0; this.exploded = false;
     // 0 for everybody: only the Mill lesson's two men are ever given a beat to plant and face the
     // goat before they move, so this changes nothing about how fast the rest of the game notices you.
     this.noticeFor = 0;
@@ -72,7 +72,9 @@ class Enemy {
   atk(key) {
     if (this.thrower && TUNING.thrower.fist[key] !== undefined) return TUNING.thrower.fist[key];   // the big arm's fist (js/thrower.js)
     if (this.shieldman && TUNING.shieldman.strike[key] !== undefined) return TUNING.shieldman.strike[key];   // the board rammed in (`shieldman.strike`)
-    return this.champion && TUNING.champion[key] !== undefined ? TUNING.champion[key] : this.cfg[key];
+    const v = this.champion && TUNING.champion[key] !== undefined ? TUNING.champion[key] : this.cfg[key];
+    // THE SPIRIT in him (js/shaman.js): his blow costs `spirit.hurt` hearts more.
+    return key === 'damage' && this.spirit ? v + TUNING.shaman.spirit.hurt : v;
   }
   // How far a headbutt throws him: light kinds further, the butcher and a man with a soul in him less.
   knockMul() {
@@ -148,7 +150,9 @@ class Enemy {
         || this.state === 'hopwind' || this.state === 'bashwind' || this.state === 'twlift' || this.state === 'twaim' || this.state === 'twgrab'
         // the thrower dazed lets go (the next step's `Thrower.drop`): a goat held over his head stayed
         // up there through the whole daze, no verb of his own, and was thrown at the end of it anyway
-        || this.state === 'twhold' || this.state === 'twcarry') {
+        || this.state === 'twhold' || this.state === 'twcarry'
+        // the shaman's rattle and his call (js/shaman.js)
+        || this.state === 'shspirit' || this.state === 'shcall') {
       if (this.state === 'bashwind') this.bashCd = TUNING.shieldman.bash.cd * game.mods.enemySlow;
       this.dashPath = null;
       this.state = 'chase'; this.rune = null;
@@ -171,7 +175,7 @@ class Enemy {
     if (this.kind === 'butcher' && this.state === 'hop') return false;
     if (this.state !== 'windup' && this.state !== 'aim' && this.state !== 'cast' && this.state !== 'hookwind'
         && this.state !== 'dart' && this.state !== 'slamwind' && this.state !== 'hopwind' && this.state !== 'bashwind'
-        && this.state !== 'twlift' && this.state !== 'twaim' && this.state !== 'twgrab') return false;
+        && this.state !== 'twlift' && this.state !== 'twaim' && this.state !== 'twgrab' && this.state !== 'shspirit' && this.state !== 'shcall') return false;
     if (this.state === 'hookwind') this.hookCd = TUNING.champion.hook.cooldown * game.mods.enemySlow;
     if (this.state === 'bashwind') this.bashCd = TUNING.shieldman.bash.cd * game.mods.enemySlow;
     this.state = 'chase'; this.rune = null; this.dashPath = null;
@@ -298,6 +302,8 @@ class Enemy {
     }
     // The thrower's tank goes when he does: a small splash of poison where he fell (`thrower.acid` tiles).
     if (this.thrower && cause !== 'fall') Status.spatter(game, this.x, this.y, TUNING.thrower.acid);
+    // The shaman down: his spirit goes out of his men and the goat's legs are his own (js/shaman.js).
+    if (this.shaman) Shaman.onDie(this, game);
     // The blades he walked about with (`Prop.stickIn`) break as he goes down, each into its pieces.
     if (this.stuck && this.stuck.length) { if (game.scatter) game.scatter.breakStuck(this); this.stuck = null; }
     // Killed while pinned on a stag's antlers, or dead on them outright (`antlers`): he stays up on the
@@ -518,14 +524,18 @@ class Enemy {
     const overPit = (ahead && ahead.pit) || (here && here.pit);
     // The thrower with a load overhead never blunders (5 Oct 2026, the user's): a man walking a crate into
     // a grate or a fire read as the load steering him. His trap roll waits until his hands are empty.
-    if (!overPit && !this.laden) {
+    // Poisoned he is blind and slow, and the floor is the first thing he misreads (`status.poison.trapMul`):
+    // a drop too (`pitSense`), and whether or not he had seen the goat.
+    const SP = TUNING.status.poison, sick = this.poison > 0;
+    if ((!overPit || sick) && !this.laden) {
       if (this.hazardRoll <= 0) {
-        this.hazardRoll = TUNING.ai.rollGap;
+        this.hazardRoll = sick ? SP.trapGap : TUNING.ai.rollGap;
         // The blunder is for a man already coming for you, rattled and in a hurry, a patrol who
         // has not even noticed the goat has no reason to misread the ground under his own feet.
         // Without `aware` here a bored guard would eventually wander into every plate in his room
         // simply from pacing past it enough times, which reads as broken rather than as a mistake.
-        if (this.aware && Math.random() > this.trapSense) this.hazardBlind = TUNING.ai.blindFor;
+        const sense = sick ? (overPit ? SP.pitSense : this.trapSense * SP.trapMul) : this.trapSense;
+        if ((this.aware || sick) && Math.random() > sense) this.hazardBlind = TUNING.ai.blindFor;
       }
       if (this.hazardBlind > 0) return { x: dirx, y: diry };
     }
@@ -960,7 +970,6 @@ class Enemy {
     this.dodgeCd = Math.max(0, this.dodgeCd - dt); this.dodgeFx = Math.max(0, this.dodgeFx - dt);
     if (this.say) { this.say.life -= dt; if (this.say.life <= 0) this.say = null; }
     this.flash = Math.max(0, this.flash - dt); this.lured = Math.max(0, (this.lured || 0) - dt);
-    this.flail = Math.max(0, this.flail - dt);
     // The fuse used to be the trigger as well as the clock: whoever was still ticking when it hit
     // zero went off wherever he stood, mid-air or not. Now only a collision sets him off, so a fuse
     // that runs out with no wall or body to answer it just fizzles, `die()`'s own check reads
@@ -1006,10 +1015,9 @@ class Enemy {
     if (this.impaled > 0) { this.impaledStep(dt, game); return; }
     if (this.state === 'held') {
       // A held Hunter keeps shooting where he is pointed, for two or three rounds, and then he is
-      // out and you are carrying a man. With Living Shield a held Bearer keeps swinging too, and
-      // everything he hits is on his own side.
+      // out and you are carrying a man.
       if (this.kind === 'hunter' && this.reload <= 0 && this.heldShots > 0 && this.poison <= 0) {
-        this.reload = cfg.reload * (game.mods.livingShield ? game.mods.shieldReload : 1) * game.mods.enemySlow;
+        this.reload = cfg.reload * game.mods.enemySlow;
         this.heldShots -= 1;
         game.fireBullet(this, Math.cos(this.facing), Math.sin(this.facing));
         if (this.heldShots <= 0) game.floatText(this.x, this.y - 28, 'CLICK', PALETTE.ashHi);
@@ -1030,14 +1038,6 @@ class Enemy {
           this.rune = { x: this.x, y: this.y }; this.timer = cfg.castWind * game.mods.enemySlow;
           game.audio.sfxCast(); game.world.emitNoise(this.x, this.y, TUNING.noise.cast, 'cult');
           game.floatText(this.x, this.y - 32, 'STILL CASTING', PALETTE.witch);
-        }
-      }
-      if (game.mods.livingShield && this.kind !== 'hunter' && !this.liftedBy) {
-        this.heldSwing -= dt;
-        if (this.heldSwing <= 0) {
-          this.heldSwing = game.mods.shieldSwing; this.flail = 0.25;
-          game.meleeHit(this, cfg.reach + 12, Math.PI * 0.9, cfg.damage, cfg.knock, true);
-          game.audio.sfxSwing();
         }
       }
       // Fire does not care that he is in your mouth, and a mage standing in his own is no exception:
@@ -1258,7 +1258,9 @@ class Enemy {
     // over the edge of a hole mid-stride (playtest, 30 Sep 2026). Slide along it instead, an axis at
     // a time; a hound whose run meets it has run it, as against stone.
     const nx = this.x + this.vx * mv, ny = this.y + this.vy * mv;
-    if (!this.ghosted && this.state !== 'hop' && w.isPitPx(nx, ny) && !w.isPitPx(this.x, this.y)) {
+    // Poisoned and blind to the floor this beat (`avoidHazard`, `status.poison.pitSense`), he walks off it.
+    const reel = this.poison > 0 && this.hazardBlind > 0;
+    if (!this.ghosted && !reel && this.state !== 'hop' && w.isPitPx(nx, ny) && !w.isPitPx(this.x, this.y)) {
       if (!w.isPitPx(nx, this.y)) { this.x = nx; this.vy = 0; }
       else if (!w.isPitPx(this.x, ny)) { this.y = ny; this.vx = 0; }
       else { this.vx = 0; this.vy = 0; }
@@ -1341,7 +1343,7 @@ class Enemy {
     // (5 Oct 2026, a clubman in the cave, his face in a rock). Pinned for `ai.investStuck` s, he steps off
     // along the most open heading toward home (`freeHeading`) for a while, and with none he stops trying
     // for as long again.
-    if (this.sideT > 0) this.sideT -= dt;
+    if (this.homeSideT > 0) this.homeSideT -= dt;
     if (!out || this.homeX === undefined) { this.homeT = 0; this.homeX = this.x; this.homeY = this.y; }
     else if ((this.homeT += dt) >= TUNING.ai.investStuck) {
       const moved = len(this.x - this.homeX, this.y - this.homeY), P = TUNING.ai.path;
@@ -1349,7 +1351,7 @@ class Enemy {
       if (moved < P.stuckMove * TILE) {
         const side = this.freeHeading(game, Math.atan2(this.home.y - this.y, this.home.x - this.x));
         if (side === null) { this.homeGive = game.timer + TUNING.ai.investStuck; this.homeward = 0; out = false; }
-        else { this.sideAng = side; this.sideT = P.unstick * 3; }
+        else { this.homeSideAng = side; this.homeSideT = P.unstick * 3; }
       }
     }
     // STEALTH (dev test): stood with his nose to the stone (a search that ended on a wall), he looks round soon.
@@ -1362,7 +1364,7 @@ class Enemy {
     }
     if (this.wander <= 0 || out) {
       this.wander = 1 + Math.random() * 3;
-      let f = out ? (this.sideT > 0 ? this.sideAng : Math.atan2(this.home.y - this.y, this.home.x - this.x)) : this.facing + (Math.random() - 0.5) * 2;
+      let f = out ? (this.homeSideT > 0 && Number.isFinite(this.homeSideAng) ? this.homeSideAng : Math.atan2(this.home.y - this.y, this.home.x - this.x)) : this.facing + (Math.random() - 0.5) * 2;
       // A pure random turn can point him straight at the wall behind him, and nothing about idling
       // ever checked: he'd just stand there looking at stone until the next wander beat. Resample a
       // few times against a look-ahead probe rather than leave him facing it, this only ever
@@ -1449,6 +1451,8 @@ class Enemy {
     if (this.shield && !this.sentry && this.bashStep(dt, game, sees)) return;
     // The thrower looks for something to throw, lifts it, throws it; up close he grabs the goat (js/thrower.js).
     if (this.thrower && !this.sentry && Thrower.step(this, dt, game, sees)) return;
+    // The shaman keeps back behind his men, puts his spirit into them, and calls the goat to him (js/shaman.js).
+    if (this.shaman && !this.sentry && Shaman.step(this, dt, game, sees)) return;
     if (this.state === 'chase') {
       const d = this.chaseGoat(game, this.speed, dt);
       if (d < reach + g.r && !g.dead) { this.state = 'windup'; this.timer = this.atk('windup') * game.mods.enemySlow; this.vx = 0; this.vy = 0; game.bark(this, 'attack', 0.25); }
@@ -1949,6 +1953,13 @@ class Enemy {
     if (this.state === 'hidden') {
       this.vx = 0; this.vy = 0;
       if (g.dead) return;
+      // Hung as a door (`Game.stageDoorMimic`): broken or leaned open by anything at all, it is found out;
+      // near him the planks breathe now and then, the one tell there is.
+      const md = this.mimicDoor;
+      if (md) {
+        if (md.broken || md.open > 0.3) { this.spring(game); return; }
+        if (hyp(g.x - this.x, g.y - this.y) < H.doorTell * TILE && Math.random() < dt / H.doorBreath) md.wobble = 0.22;
+      }
       const d = hyp(g.x - this.x, g.y - this.y);
       // The press is what gives it away, not the blow landing: counted where the windup starts.
       if (this.grabSeen === -1) { this.grabSeen = g.grabTries || 0; this.lungeSeen = g.buttTries || 0; }
@@ -2042,13 +2053,19 @@ class Enemy {
   }
   // Found out. It comes up out of what it was pretending to be and the blow is already coming.
   spring(game) {
-    const H = this.cfg.hide, g = game.goat;
+    const H = this.cfg.hide, g = game.goat, md = this.mimicDoor;
     this.disguise = null; this.aware = true; this.woke = true;
+    // It was the door: the planks come apart as it steps out of them.
+    if (md) {
+      this.mimicDoor = null; md.mimic = null;
+      if (!md.broken) { md.hits = 0; md.smash(game, Math.cos(this.facing), Math.sin(this.facing), null); md.broken = true; }
+      game.floatText(this.x, this.y - 30, 'THE DOOR WAS IT', PALETTE.witchHi);
+    }
     this.solid = true; this.state = 'windup'; this.timer = H.springWind * game.mods.enemySlow;
     this.facing = Math.atan2(g.y - this.y, g.x - this.x);
     game.particles(this.x, this.y, 16, PALETTE.witchHi, 170);
     game.ring(this.x, this.y, 1.8 * TILE, PALETTE.witch);
-    game.floatText(this.x, this.y - 30, 'IT WAS NEVER THAT', PALETTE.witchHi);
+    if (!md) game.floatText(this.x, this.y - 30, 'IT WAS NEVER THAT', PALETTE.witchHi);
     if (this.firstHide) game.hideTaught = true;
     game.audio.sfxWraith(); game.shake(4); game.vibe(20);
   }
@@ -2596,6 +2613,10 @@ class Enemy {
         }
         continue;
       }
+      if (p.kind === 'poster') {
+        if (!p.torn && hyp(this.x - p.x, this.y - p.y) < this.r + p.r + TUNING.prop.poster.near) p.tear(game, vx, vy);
+        continue;
+      }
       if (p.kind !== 'trophy' || p.spent || this.kind === 'wraith') continue;
       const foot = Math.floor(p.y / TILE) * TILE;
       if (-vy < Tr.hit || Math.abs(this.x - p.x) > Tr.hitR || this.y - foot > this.r + Tr.reach || this.y < foot) continue;
@@ -2704,7 +2725,16 @@ class Enemy {
     if (this.state === 'chase') {
       this.vx = 0; this.vy = 0;
       if (target && td < cfg.reach + target.r) { this.state = 'windup'; this.timer = cfg.windup * game.mods.enemySlow; return; }
-      this.hopFrom = { x: this.x, y: this.y }; this.hopTo = this.hopSpot(game, target, td);
+      const to = this.hopSpot(game, target, td);
+      // Once a blow has told him, he does not leap into the wheel's sweep or a fire again (6 Oct 2026
+      // playtest: "the ogre by the trap is smarter, hurt once he does not jump a second time"): he
+      // waits a beat and looks for another spot instead of a landing on the trap.
+      if (this.hp < this.maxHp && (game.world.isBurningPx(to.x, to.y) || game.props.some((m) => m.kind === 'mill' && !m.broken && hyp(m.x - to.x, m.y - to.y) < TUNING.mill.armLen + this.r + TUNING.ai.millClear))) {
+        this.hopCd = (this.hopCd || 0) + dt;
+        if (this.hopCd > 1.2) { this.hopCd = 0; this.facing = Math.atan2(g.y - this.y, g.x - this.x); }   // looks at it, does not go
+        return;
+      }
+      this.hopFrom = { x: this.x, y: this.y }; this.hopTo = to;
       this.facing = Math.atan2(this.hopTo.y - this.y, this.hopTo.x - this.x);
       this.state = 'hopwind'; this.timer = H.wind * game.mods.enemySlow;
       return;

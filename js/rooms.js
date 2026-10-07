@@ -850,6 +850,61 @@ const ROOM_TEMPLATES = [
     '######################',
   ]},
 
+  // ---- THE FLANK (7 Oct 2026, "go straight at them, or jump the pit and come round behind"; Enter the Gungeon's
+  // rooms with a trench in the middle). Mix rooms, from THE CAVE on (`ROOM_LEVELS`), where the roll that crosses a
+  // chasm has been taught. A trench is ONE tile wide, which the roll carries him over (two would not): a way
+  // round on land always exists, two tiles of floor all the way round the room so a door never opens onto the
+  // trench, and the squad stands on the far lip, where a shove from behind is a body into the drop (pillar 3).
+  // A bar down the middle with a three-wide gate, the men holding the gate's far side.
+  { name: 'ditchcut', tag: 'flank', rows: [
+    '######################',
+    '#....................#',
+    '#....................#',
+    '#.........O....m..o..#',
+    '#.........O.e........#',
+    '#....................#',
+    '#..w.........e..r.B..#',
+    '#....................#',
+    '#.........O.e........#',
+    '#.........O.......o..#',
+    '#....................#',
+    '#....................#',
+    '######################',
+  ]},
+  // A tee: a bar across the room with a gate in it and a stem under the gate, so the two halves below it are
+  // parted from each other and join only through the gate, under the squad's nose, or the long way round.
+  { name: 'ditchtee', tag: 'flank', rows: [
+    '######################',
+    '#..o.......r.........#',
+    '#...e..e......e..e...#',
+    '#..........m......o..#',
+    '#..OOOOOOO...OOOOOO..#',
+    '#..........O.........#',
+    '#..........O.........#',
+    '#.....w....O....B....#',
+    '#..........O.........#',
+    '#..........O.........#',
+    '#....................#',
+    '#....................#',
+    '######################',
+  ]},
+  // An island: a moat round the squad's platform with one gate on the side he walks in at. Roll the moat on any side.
+  { name: 'ditchisland', tag: 'flank', rows: [
+    '######################',
+    '#....................#',
+    '#....................#',
+    '#..w...OOOOOOOO......#',
+    '#......O...e.BO......#',
+    '#........e....O......#',
+    '#.........mr.eO...o..#',
+    '#........e....O......#',
+    '#......O...e.BO......#',
+    '#..w...OOOOOOOO......#',
+    '#....................#',
+    '#....................#',
+    '######################',
+  ]},
+
   // ---- THE DROP: the rafters' canon, for the level whose floor is not all there ----
   // 'O' is a drop. In the floor it is a hole in the boards; in a wall run it is a window. Men will
   // not path into either and a thrown one goes through both, so every one of these rooms is built

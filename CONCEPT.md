@@ -39,8 +39,9 @@ the way.
    a door coming off its hinges. The scream is the exception, it is the one loud thing that makes no
    noise at all.
 6. **Six verbs, forever.** Upgrades bend numbers or change what a button does. They never add a button.
-   One exception was made on purpose (18 Sep 2026): a talisman with a use of its own, the boomerang,
-   the strange symbols, the straw effigy, puts it on Q, a key that does not exist until one is worn.
+   One exception was made on purpose (18 Sep 2026): a thing worn with a use of its own puts it on Q,
+   a key that does not exist until one is worn. Since 6 Oct 2026 that is a cape (a blink, a tuft of
+   grass, a shock, the boomerang, the straw effigy), one at a time; the talismans have no use of their own.
 
 ---
 
@@ -378,7 +379,7 @@ the player to believe that a goat reads.
 
 **A level gives up exactly two**, one in the middle and one at the end: the keeper of the middle gate
 carries the first, the last boss the second. On THE YARD, THE ROAD and THE BRIDGE the mouse stands in
-for the first, thirteen across a run, against twenty-nine boons and a build that holds seventeen, so no
+for the first, thirteen across a run, against twenty-eight boons and a build that holds seventeen, so no
 run gets everything and no two runs are the same goat. Nothing else pays one: not a cleared room, not a
 lit boss on a lucky seed, not the vault. Every other boss leaves milk. **A man carrying one is lit**: an
 amber haze that breathes, a ring at his feet, and red eyes, so the one man in a room worth crossing the
@@ -557,7 +558,7 @@ Mirrors as an environmental puzzle, a Priest boss, and the later acts sketched i
 original brief. Kept for later, not scheduled (26 Sep 2026): three lives on a run; the hunt, men walking
 in from the entry once a floor runs long past its par; hell, a second act with its own curve and deck;
 heaven as a secret ending, a run that swallowed no soul going up alive (the pasture the dead go up to
-is built, above); and a second talisman slot, which belongs to the later acts.
+is built, above). The second talisman slot is built (6 Oct 2026: up to three at once, and a cape).
 The opening scene takes his wife deeper into the compound and the first gate shows her going on through
 it under the mage's arm; nothing after that mentions her. Whether she is somewhere in the building to be
 found, and what the ending does about it, is undecided.

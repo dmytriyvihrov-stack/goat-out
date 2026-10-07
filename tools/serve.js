@@ -73,6 +73,17 @@ http.createServer((req, res) => {
     });
     return;
   }
+  // The BOONS tab: a soul's name or text rewritten, or the soul taken out of the deal (tools/text-patch.js).
+  if (req.method === 'POST' && req.url.startsWith('/boon-edit')) {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      try { res.end(JSON.stringify(require('./text-patch.js').editBoon(root, JSON.parse(body)))); }
+      catch (e) { res.end(JSON.stringify({ ok: false, error: String(e.message || e) })); }
+    });
+    return;
+  }
   if (req.method === 'POST' && req.url.startsWith('/tuning-edit')) {
     let body = '';
     req.on('data', (c) => (body += c));

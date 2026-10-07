@@ -1229,6 +1229,70 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
+  // ---------------------------------------------------------------- the cult's posters, 30 x 26
+  // Pinned to the far wall (6 Oct 2026: "art objects you find once and destroy, because they are bad"): the
+  // first two destructibles. `breeds` is the chart of which goats eat best (six, goat breeds, the layout of a
+  // sheep-breed chart); `cuts` is the butcher's diagram of a goat with its joints and the meat laid round it.
+  // `torn`: what a headbutt leaves, two ragged corners still pinned. Paper and ink literals are this sprite's own.
+  function poster(kind) {
+    const PAPER = '#dccfa6', PAPER2 = '#b9a87d', INK = '#3a2a20', FADE = '#7a6a4c', RED = '#b3402e', PINK = '#d9766a', PINK2 = '#a8443a', BONE = '#f0e6d0';
+    const g = new Grid(30, 26);
+    if (kind === 'torn') {
+      g.poly([[1, 1], [8, 1], [7, 3], [8, 5], [5, 6], [4, 9], [1, 8]], PAPER); g.vl(1, 1, 8, PAPER2);
+      g.poly([[21, 1], [28, 1], [28, 7], [26, 6], [25, 4], [23, 4], [22, 2]], PAPER); g.vl(28, 1, 7, PAPER2);
+      g.set(2, 1, RED); g.set(27, 1, RED);
+      return g.outline();
+    }
+    g.rect(1, 1, 28, 24, PAPER); g.vl(28, 1, 24, PAPER2); g.hl(1, 24, 28, PAPER2);
+    g.set(2, 1, RED); g.set(27, 1, RED);
+    g.rect(3, 2, 24, 4, INK);                                      // the title, a bar of lettering
+    for (let x = 5; x < 25; x += 2) { g.set(x, 3, PAPER); if (x % 6 !== 5) g.set(x, 4, PAPER); }
+    if (kind === 'breeds') {
+      // One small goat side view, 8 x 5: horn, head, body, four legs, a tail.
+      const mini = (x, y, body, head, long) => {
+        g.set(x, y, INK); g.rect(x, y + 1, 2, 2, head); if (long) g.set(x + 1, y + 3, head);
+        g.rect(x + 2, y + 1, 5, 2, body); g.set(x + 7, y, body);
+        g.vl(x + 2, y + 3, 2, INK); g.vl(x + 3, y + 3, 2, INK); g.vl(x + 5, y + 3, 2, INK); g.vl(x + 6, y + 3, 2, INK);
+        g.hl(x + 2, y + 1, 5, body === '#f0eadc' ? '#ffffff' : body);
+      };
+      const rows = [[['#f0eadc', '#8a4a28'], ['#f0eadc', '#f0eadc'], ['#b08050', '#b08050', 1]], [['#5a3a24', '#2a2020'], ['#a8402c', '#a8402c'], ['#2a2428', '#2a2428']]];
+      rows.forEach((row, j) => row.forEach((b, i) => {
+        const x = 3 + i * 8, y = 8 + j * 9; mini(x, y, b[0], b[1], b[2]);
+        for (let k = 0; k < 7; k += 2) g.set(x + k, y + 6, FADE);   // its name, in dashes
+      }));
+      g.set(10, 9, RED); g.set(11, 8, RED);                      // a tick by the first: best on the spit
+      return g.outline();
+    }
+    // cuts: a goat, left facing, ruled into joints, with the meat laid round the edge
+    g.ell(15, 13, 7.5, 4, '#a9a39a'); g.tone((x, y) => y >= 14, '#8a857d', ['#a9a39a']);
+    g.ell(6, 11, 2.6, 2.4, '#a9a39a'); g.set(4, 8, INK); g.set(6, 8, INK); g.set(5, 11, INK);
+    g.vl(10, 16, 3, '#8a857d'); g.vl(12, 16, 3, '#8a857d'); g.vl(19, 16, 3, '#8a857d'); g.vl(21, 16, 3, '#8a857d'); g.set(23, 10, '#a9a39a');
+    for (const x of [9, 13, 18]) for (let y = 9; y <= 17; y += 2) g.set(x, y, INK);   // the dashed joints
+    const slab = (x, y, w) => { g.rect(x, y, w, 3, PINK); g.hl(x, y + 2, w, PINK2); g.hl(x + 1, y, w - 2, '#f0a89a'); g.set(x + w - 2, y + 1, BONE); };
+    slab(2, 7, 6); slab(22, 7, 6); slab(2, 19, 7); slab(21, 19, 7);
+    g.line(8, 9, 9, 10, FADE); g.line(22, 9, 20, 10, FADE); g.line(9, 19, 10, 17, FADE); g.line(21, 19, 20, 17, FADE);
+    return g.outline();
+  }
+
+  // The same paper folded small, as it is found on the floor (6 Oct 2026: "a little scrap of paper on the floor"),
+  // 12 x 9: a square folded in two, its flap turned up, the ink showing through; and `shreds`, what a butt leaves.
+  function scrap(torn) {
+    const PAPER = '#dccfa6', PAPER2 = '#b9a87d', INK = '#3a2a20', FADE = '#7a6a4c', RED = '#b3402e';
+    if (torn) {
+      const g = new Grid(16, 11);
+      g.poly([[1, 1], [5, 1], [3, 4]], PAPER); g.poly([[7, 3], [11, 2], [10, 5], [8, 6]], PAPER);
+      g.poly([[11, 7], [14, 6], [14, 9], [12, 9]], PAPER2); g.poly([[2, 6], [6, 7], [4, 9]], PAPER);
+      g.set(3, 2, INK); g.set(9, 4, INK); g.set(10, 3, RED); g.set(4, 7, FADE); g.set(13, 8, INK);
+      return g.outline();
+    }
+    const g = new Grid(12, 9);
+    g.poly([[1, 2], [9, 1], [10, 7], [2, 7]], PAPER);
+    g.poly([[7, 1], [9, 1], [10, 4]], PAPER2);                     // the flap, turned up
+    g.line(5, 1, 6, 7, PAPER2);                                    // the fold
+    g.set(3, 4, INK); g.set(4, 4, INK); g.set(3, 5, FADE); g.set(8, 5, INK); g.set(7, 3, RED);
+    return g.outline();
+  }
+
   // ---------------------------------------------------------------- what lies on a table
   // The feast the cult sat down to, a thing a texel a colour off a letter grid (29 Sep 2026: "put
   // food on the tables that scatters when you hit them"). The golden apple, the milk and the
@@ -1305,6 +1369,8 @@ const PROP_PIXELS = (() => {
   sprites['suit-0'] = suit(false, true); sprites['suit-bare-0'] = suit(true, true);
   for (const k of ['helm', 'plate', 'pauldron']) sprites['armor-' + k] = armorPiece(k);
   sprites.trophy = trophy(false, false); sprites['trophy-blood'] = trophy(true, false); sprites['trophy-tips'] = trophy(true, true);
+  sprites['poster-breeds'] = poster('breeds'); sprites['poster-cuts'] = poster('cuts'); sprites['poster-torn'] = poster('torn');
+  sprites['poster-scrap'] = scrap(false); sprites['poster-shreds'] = scrap(true);
   sprites['table-s'] = tableTop(); sprites['table-n'] = tableUnder(); sprites['table-e'] = tableSide(); sprites['table-w'] = mirror(sprites['table-e']);
   // A blade or a shield broken (3 Oct 2026 playtest: "not just vanish, fall apart"; js/scatter.js
   // `breakUp`): its own pixels where `keep(x, y)` holds, outlined again only along the cut, so the
@@ -1526,6 +1592,21 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     }
     ctx.drawImage(p.bodyImg, Math.round(p.x - 48), foot - 64);
     putSnap(ctx, 'trophy-tips', x0, y0, k);
+    return true;
+  };
+
+  // The cult's paper lying flat on the floor (`TUNING.prop.poster`), on its own middle: folded small (`scrap`)
+  // until it is found, then its drawing (`look`: 'breeds' | 'cuts') opening out from the fold (`p.unfold`,
+  // grown in its height), and torn, its shreds. Flat, so squashed by TILT like the floor under it.
+  A.poster = function (renderer, p) {
+    const D = TUNING.prop.poster, ctx = renderer.ctx;
+    const open = p.torn ? 1 : p.unfold > 0 ? p.unfold : 0;
+    const name = p.torn ? 'poster-shreds' : open > 0 ? 'poster-' + p.look : 'poster-scrap', g = S[name];
+    const k = open > 0 && !p.torn ? D.texel * D.flat : D.texel, sy = p.torn || !open ? 1 : 0.2 + 0.8 * open;
+    const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 3) : 0;
+    ctx.save(); ctx.translate(p.x + wob, p.y); ctx.scale(1, TILT * sy);
+    putSnap(ctx, name, -g.w * k / 2, -g.h * k / 2, k);
+    ctx.restore();
     return true;
   };
 
