@@ -991,6 +991,8 @@ one card `drawBoonChoice` draws too: change the card there, never a copy), and b
 they are kept in this browser (`BOON_EDIT_KEY`), the tab says NOT SAVED TO DISK, and EXPORT AS JSON / IMPORT
 JSON carry them to a served page that writes them. The itch build reads `BOON_TEXT` / `BOON_OFF` only.
 
+**Horn sizes** (6 Oct 2026, a dev test, `TUNING.horns`, `game.hornKind`, DEV MODE → HORNS steps short / wide / long, kept under `HORN_KEY`, the itch build is always wide): `applyBoons` lays the horn's `windup` / `recovery` / `reach` under the souls (`mods.horn`), `Goat.headbuttHits` reads its `cone` (arc) or `lane` (a strip, everyone in it: the spear) and `impulse`, the lunge step its `lunge`. WIDE is the old horn. A label under the hearts says which and what it does. Planned, not built: a random size per run, souls that change the shape, pictures per size.
+
 **Timing.** Headbutt has no cooldown (recovery is the cost); `goat.grabCd` on every release, set only
 through `Goat.spendGrab(game, man)`, a man costs `grab.manCd` × a thing, however he left the mouth,
 and `grabCdMax` is what the rail drains against; roll its own. A lunge that hits stone calls `headbuttHits` before ending, or flush doors could not be hit.

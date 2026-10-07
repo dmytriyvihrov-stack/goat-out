@@ -5,6 +5,9 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## Unreleased: horn sizes, a dev test, 6 Oct 2026
+
+DEV MODE → HORNS: SHORT, WIDE, LONG (`TUNING.horns`, `game.hornKind`, `mods.horn`). Windup, recovery, lunge, throw, reach, arc or lane per size; WIDE is the old horn and the only one in the itch build. Pushed to main only, not deployed. What comes next is in `BACKLOG.md` (6 October).
 ## Talismans in two grades, three at once, and capes, 6 Oct 2026 (not yet published)
 
 His ask: "I don't want four grades on each, one or two makes sense; some only common, with middle numbers, the

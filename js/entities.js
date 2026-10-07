@@ -283,7 +283,8 @@ class Goat {
         const ga = DT ? DT.goatAttack : 1;
         this.state = 'lunge'; this.timer = g.headbutt.active / ga; this.lungeId++;
         Talisman.onLunge(game, this);   // ECHO HORN
-        this.vx = this.aim.x * g.headbutt.lunge * ga; this.vy = this.aim.y * g.headbutt.lunge * ga;
+        const hl = (game.mods.horn ? game.mods.horn.lunge : 1) * ga;   // the horn's size: a dagger steps in less, a spear more
+        this.vx = this.aim.x * g.headbutt.lunge * hl; this.vy = this.aim.y * g.headbutt.lunge * hl;
         game.dust(this.x - this.aim.x * 8, this.y - this.aim.y * 8, TUNING.juice.dust.lunge, -this.aim.x, -this.aim.y);
         game.audio.sfxHeadbutt(); game.audio.musicEvent('headbutt'); world.emitNoise(this.x, this.y, TUNING.noise.headbutt);
       }
@@ -654,10 +655,10 @@ class Goat {
   }
 
   headbuttHits(game) {
-    const g = TUNING.goat.headbutt;
+    const g = TUNING.goat.headbutt, HN = game.mods.horn || TUNING.horns.wide;   // the horn's size, `TUNING.horns`
     // BULL NECK: the run he put his head down out of goes into the man (men only; a crate keeps its own throw).
     const steam = game.mods.runButt ? 1 + game.mods.runButt * (this.buttRun || 0) : 1;
-    const extra = (game.mods.headbuttReach - 1) * TILE, impulse = g.impulse * game.mods.headbuttImpulse * steam;
+    const extra = (game.mods.headbuttReach - 1) * TILE, impulse = g.impulse * game.mods.headbuttImpulse * steam * HN.impulse;
     const ax = this.aim.x, ay = this.aim.y;
     this.cutGrass(game, ax, ay);
     for (const e of game.enemies) {
@@ -667,8 +668,12 @@ class Goat {
         if (hyp(e.x - this.x, e.y - this.y) < this.r + e.r + 12 + extra) game.mistTold(e);
         continue;
       }
-      const dx = e.x - this.x, dy = e.y - this.y, d = hyp(dx, dy);
-      if (d > this.r + e.r + 10 + extra || (dx * ax + dy * ay) / (d || 1) < 0.15) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, d = hyp(dx, dy), reachPx = this.r + e.r + 10 + extra;
+      const along = dx * ax + dy * ay;
+      if (HN.lane) {
+        // A strip along his aim (the long horn): whoever stands in it out to the reach, the first man and the ones behind him.
+        if (along < 0 || along > reachPx || Math.abs(dx * ay - dy * ax) > HN.lane * TILE + e.r) continue;
+      } else if (d > reachPx || along / (d || 1) < HN.cone) continue;
       // Held to the same line as everything else that reaches (ECHO HORN already was): with LONG
       // HORNS a man on the far side of a shut iron door was thrown across the room behind it.
       // `reaches`, as the club is: `sees` let the horns through a table or a brazier his club stops at.

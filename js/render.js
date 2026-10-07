@@ -4701,6 +4701,8 @@ class Renderer {
           ['dark', d.dark ? 'DARK  ON' : 'DARK  OFF'],
           // THE CHASE (js/chase.js) laid over whatever floor is up; THE ROAD has it of its own.
           ['chase', d.chase ? 'CHASE  ON' : 'CHASE  OFF'],
+          // Horn size, a test (`TUNING.horns`): each click steps short, wide, long.
+          ['horns', 'HORNS  ' + TUNING.horns[game.hornKind].name],
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
           ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['showroom', 'SHOWROOM'],
           // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
@@ -8537,11 +8539,19 @@ class Renderer {
         ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
       }
     }
+    // HORN SIZES test (`TUNING.horns`): which horn he has and what it does, under the hearts. Never in the itch build.
+    if (!RELEASE.on && game.mods && game.mods.horn) {
+      const HN = game.mods.horn, M = game.mods, H = TUNING.goat.headbutt;
+      ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+      ctx.fillText(`HORNS: ${HN.name}  ·  ${HN.note}`, 14 * s, top + 42 * s);
+      ctx.font = `600 ${10.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(`WINDUP ${sayN(H.windup * M.headbuttWindup)}s · RECOVERY ${sayN(H.recovery * M.headbuttRecovery)}s · REACH ${M.headbuttReach >= 1 ? '+' : '-'}${sayN(Math.abs(M.headbuttReach - 1))} TILES · LUNGE x${sayN(HN.lunge)} ·${HN.lane ? 'LANE ' + sayN(HN.lane * 2) + ' WIDE' : 'ARC ' + Math.round(Math.acos(HN.cone) * 360 / Math.PI) + '°'}`, 14 * s, top + 56 * s);
+    }
     // Everyone brought out to the stairs this run, one animal each, under the hearts: what an escort
     // is worth is a number buried in `mods`, and a row of the animals themselves is the way to see
     // that the run is carrying them.
     // (46 until 30 Sep 2026: "a little more room under the hearts for the animals")
-    const saved = this.drawSaved(game, 14 * s, top + 56 * s, s);
+    const saved = this.drawSaved(game, 14 * s, top + (RELEASE.on ? 56 : 72) * s, s);   // lower while the horn test's two lines are up
     // Kills that landed on top of each other, while the window is still open.
     if (game.combo >= 2 && game.comboTimer > 0) {
       const a = Math.min(1, game.comboTimer / 0.6);
