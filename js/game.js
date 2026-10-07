@@ -171,7 +171,7 @@ class Game {
     // all seven, `page` the level the middle one is looking at, and `room` the one room the page
     // has been asked to open, which is reachable from either of the other two.
     // HORN SIZES test: never in the itch build, which is always the wide horn it has always had.
-    this.hornKind = 'dagger';
+    this.hornKind = 'short';
     // The horns he chose before the jump (heaven, js/heaven-home.js `pickHorns`), the itch build too since 7 Oct 2026.
     try { const hk = localStorage.getItem(HORN_KEY); if (hk && TUNING.goat.horns.order.includes(hk)) this.hornKind = hk; } catch (e) { /* storage refused */ }
     this.dev = { open: false, god: false, dips: false, rects: [], toast: null, rules: false, tab: 'rules',
@@ -278,7 +278,9 @@ class Game {
     this.applySets(this.mods);
     if (this.world) this.world.burnMul = this.mods.burnMul;
     // HORN SIZES (`TUNING.goat.horns`): under the souls, so LONG HORNS bends the size he has instead of replacing it.
-    const HN = TUNING.goat.horns[this.hornKind] || TUNING.goat.horns.dagger;
+    // BIG and LONG are the god's to give (`Heaven.hornsOpen`, his hundred souls): until then the SHORT, outside a dev build.
+    const shut = RELEASE.on && this.hornKind !== 'short' && !Heaven.hornsOpen();
+    const HN = (!shut && TUNING.goat.horns[this.hornKind]) || TUNING.goat.horns.short;
     this.mods.horn = HN;
     this.mods.headbuttReach *= 1 + HN.reach;
     this.mods.headbuttWindup = (this.mods.headbuttWindup || 1) * HN.windup;
@@ -1504,6 +1506,8 @@ class Game {
     if (id === 'hornSave') { this.saveHorn(); return; }
     if (id === 'hornCopy') { this.copyHorn(); return; }
     if (id === 'hornSingle') { const HN = TUNING.goat.horns[this.hornKind]; if (HN) { HN.single = !HN.single; this.devToast(HN.name + (HN.single ? ': ONE MAN A BLOW' : ': EVERY MAN IN THE SHAPE') + ' (live only: COPY has it)'); } return; }
+    // THE ALTAR AGAIN (`altarAgain`): auto (this browser cleared it?), always, never; the next start of floor one uses it.
+    if (id === 'altar-again') { const d = this.dev, n = d.altarAgain || 0; d.altarAgain = n === 0 ? 1 : n > 0 ? -1 : 0; this.devToast('THE ALTAR AGAIN: ' + (d.altarAgain > 0 ? 'ALWAYS' : d.altarAgain < 0 ? 'NEVER' : 'AUTO, ' + (this.altarKnown() ? 'ON' : 'OFF')) + '. NEW GAME OR LEVELS TO SEE IT.'); return; }
     if (id === 'horns') {   // HORNS in the DEV MODE drawer: short, wide, long
       const O = TUNING.goat.horns.order;
       this.hornKind = O[(O.indexOf(this.hornKind) + 1) % O.length];
@@ -1624,6 +1628,7 @@ class Game {
       b.note = Math.max(0, TUNING.heaven.bells.length - 2 - Object.keys(M.bellsGot).length);
       this.props.push(b); this.dev.open = false; this.devToast('A BELL: GRAB IT'); return;
     }
+    if (id === 'home-horns') { const M = Heaven.meta || Heaven.load(); M.hornsOpen = !M.hornsOpen; if (M.poured) delete M.poured.god; Heaven.save(); this.applyBoons(); this.devToast(M.hornsOpen ? 'BIG AND LONG ARE OPEN' : 'THE GOD KEEPS BIG AND LONG'); return; }
     if (id === 'home-life') { this.extraLives = (this.extraLives | 0) + 1; this.devToast(`${this.extraLives} MORE ${this.extraLives === 1 ? 'LIFE' : 'LIVES'}`); return; }
     if (id === 'bells-reset') { const M = Heaven.meta || Heaven.load(); M.bellsGot = {}; M.bellsSeen = 1; M.bellSong = 0; M.bellQuest = false; Heaven.save(); this.devToast('ONE BELL AWAKE'); return; }
     if (id === 'addkey') { this.runKeys = (this.runKeys | 0) + 1; this.keyFlash = 0.5; this.devToast(`${this.runKeys} KEYS`); return; }
@@ -2481,6 +2486,14 @@ class Game {
   // How much thicker this floor's rooms are for a goat who has not died yet (7 Oct 2026 playtest: "if you have not
   // died before the third floor, it has one and a half times the men, and the fourth on twice: that is how you reach
   // heaven and get the gathering"). Only until his first visit up there; never in GOD MODE, THE SHOWROOM or a LEVELS run.
+  // Has this browser climbed out of THE ALTAR (`Heaven.meta.cleared[0]`)? Then the first floor is THE ALTAR AGAIN
+  // (`altarAgain`): the ramp's placed lessons go and it is a little harder. Never THE SHOWROOM's; a dev can force it
+  // (`dev.altarAgain`, the LEVEL TOOL's ALTAR row: 1 always, -1 never).
+  altarKnown() {
+    const f = this.dev && this.dev.altarAgain; if (f) return f > 0;
+    const M = Heaven.meta || Heaven.load();
+    return !!(M && M.cleared && M.cleared[0]);
+  }
   crowdFor(index) {
     const T = TUNING.thick, M = Heaven.meta;
     if (!T || !M || M.visits > 0 || M.deaths > 0 || M.died || this.showroomOn || this.runJumped || (this.dev && this.dev.god)) return 1;
@@ -2517,7 +2530,9 @@ class Game {
     // when the run took the fork's dark flight, and only there: its place is its own (`darkOf`).
     if (this.darkAt === undefined) this.darkAt = -1;
     this.climbDark = false;
-    const def = this.showroomOn ? SHOWROOM_LEVEL : index === this.tripAt ? tripLevel(index) : index === this.darkAt && index === DARK_LEVEL.darkOf ? darkLevel() : LEVELS[index];
+    // THE ALTAR AGAIN for a goat who has climbed out of it once; a floor put aside comes back the way it was laid (`floorGen.again`).
+    const again = index === 0 && !this.showroomOn && (sp && sp.gen && sp.gen.again !== undefined ? !!sp.gen.again : this.altarKnown());
+    const def = this.showroomOn ? SHOWROOM_LEVEL : index === this.tripAt ? tripLevel(index) : index === this.darkAt && index === DARK_LEVEL.darkOf ? darkLevel() : again ? altarAgain(seed) : LEVELS[index];
     this.levelTripAt = this.tripAt;
     if (cp) this.tripAt = cp.tripAt;   // a tuft eaten before the gate stays eaten
     this.tripBanner = def.shroom ? TUNING.shroom.banner.time : 0;
@@ -2546,7 +2561,7 @@ class Game {
     if (sp && sp.gen) { const G = sp.gen; for (const k of ['luck', 'beast', 'noIron', 'crowd']) { if (G[k] === undefined) delete genOpts[k]; else genOpts[k] = G[k]; }
       if (G.fresh) genOpts.fresh = { seen: new Set(G.fresh.seen || []), vaults: new Set(G.fresh.vaults || []) }; else delete genOpts.fresh; }
     this.floorGen = { luck: genOpts.luck === undefined ? undefined : JSON.parse(JSON.stringify(genOpts.luck || null)), beast: genOpts.beast === undefined ? undefined : JSON.parse(JSON.stringify(genOpts.beast)),
-      noIron: genOpts.noIron, crowd: genOpts.crowd, fresh: genOpts.fresh ? { seen: [...genOpts.fresh.seen], vaults: [...genOpts.fresh.vaults] } : null };
+      noIron: genOpts.noIron, crowd: genOpts.crowd, again, fresh: genOpts.fresh ? { seen: [...genOpts.fresh.seen], vaults: [...genOpts.fresh.vaults] } : null };
     try { this.level = generateLevel(def, seed >>> 0, genOpts); }
     catch (err) { console.error(err); this.level = generateLevel(def, (seed ^ 0x5bd1e995) >>> 0, genOpts); }
     this.world = new World(this.level);
@@ -4176,7 +4191,9 @@ class Game {
     // boss several times a second on a 16:10 screen (playtest, 30 Sep 2026).
     const v = this.renderer.view({ zoom: this.renderer.zoomFit * C.zoomRest });
     const room = this.level && roomAt(this.level, this.goat.x, this.goat.y);
-    const fits = room && room.w * TILE <= v.w - C.fitMargin && room.h * TILE <= v.h - C.fitMargin;
+    // The HUD's weight at the bottom (`hudLift`): the frame sits that much lower, and a held room must fit under it too.
+    const lift = this.touch.active || this.renderer.portrait || (this.level && this.level.def.heaven) ? 0 : C.hudLift * v.h;
+    const fits = room && room.w * TILE <= v.w - C.fitMargin && room.h * TILE <= v.h - C.fitMargin - 2 * lift;
     // Held is a blend, not a switch (1 Oct 2026, the playtests' camera note: "between two rooms it
     // throws itself from room one to room two, show the state in between, a smooth follow"). How
     // far he is in from the room's edge, over `blend` tiles, is how much of the room's middle the
@@ -4229,7 +4246,7 @@ class Game {
     const mid = this.camRoomMid || this.camTrack;
     if (!this.camFollow) this.camFollow = { x: tx, y: ty };
     this.camFollow.x = lerp(this.camTrack.x, mid.x, this.camHold);
-    this.camFollow.y = lerp(this.camTrack.y, mid.y, this.camHold);
+    this.camFollow.y = lerp(this.camTrack.y, mid.y, this.camHold) + lift;
     const k = 1 - Math.exp(-C.lerp * dt);
     this.cam.x += (this.camFollow.x - this.cam.x) * k; this.cam.y += (this.camFollow.y - this.cam.y) * k;
     const targetZoom = this.renderer.zoomFit * lerp(C.zoomRest, C.zoomFast, clamp(spd, 0, 1)) * lerp(1, F.zoom, this.camFight);

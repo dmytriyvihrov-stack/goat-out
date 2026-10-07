@@ -171,17 +171,20 @@ horse. Break it open and get the animal to the stairs alive, and it pays you for
 and takes its seat in the pasture above for good. Let one out and it stops you to say its terms. The horse, in a stall of its own, races you to the
 locked rooms with a soul and waits in each for the soul to be taken: it pays only if you beat it to one.
 
-**The pasture above.** A death goes up before it comes back down: three rooms of cloud. In the first the
-goat god sits in his light and has a great deal to say about it (GRAB to listen, BAAH to argue), and a
-blind shepherd combs you and asks for the bells the cult's big men carry: beat the last of them on a
-floor and take his bell (GRAB). The second is the animals' stands: the tortoise's and the goose's are
+**The pasture above.** A death goes up before it comes back down: two rooms of cloud. In the first the
+goat god sits in his light and has a great deal to say about it (GRAB to listen, BAAH to argue). Across
+the bridge a blind shepherd combs you and asks for the bells the cult's big men carry: beat the last of them
+on a floor and take his bell (GRAB). The animals' stands are in both rooms: the tortoise's and the goose's are
 open, the horse's is broken, the rest are locked for now. Hold GRAB at a broken thing up there and the
 souls you brought pour into it until it is whole. An animal walked out of the compound sits on its stand
 and dares you; win its dare and it lives up here its own way, and a talisman comes onto the shelves.
 Every man the cult loses is a sacrifice to the god, and every floor you climb out of is ten; **the
-mirror** in the third room trades them for things that stay with you from run to run, more hearts,
+mirror** in the second room trades them for things that stay with you from run to run, more hearts,
 hearts of light, quicker grazing, a quicker roll, longer mercy after a blow. Choose your horns there
-(the dagger, BIG or LONG), and walk off the edge for a new run.
+(the SHORT, and BIG or LONG once you have given the god a hundred souls), and walk off the edge for a new run.
+
+**The altar, again.** Once you have climbed out of the first floor, it stops teaching: no guard in the doorway, no
+lessons laid in order, more men to a room, and the wheel and the last fight are not where they were.
 
 **A room that fights back.** Braziers that spill coals when you headbutt them, spreading hay fire,
 barrels that roll and burst, doors you smash through, tables that slide and crush, oil lamps that go

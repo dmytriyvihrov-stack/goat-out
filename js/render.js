@@ -2229,7 +2229,7 @@ class Renderer {
   }
   // THE HORNS' WAVE (7 Oct 2026, "a small wave on the floor, showing where the damage and the push are for each horn"):
   // for `horns.wave.time` s after the head comes up, cells on the floor where the blow lands, out from his feet at the
-  // aim he swung at. The dagger and BIG are a fan the shape of their arc, a pale fill with the front of the wave
+  // aim he swung at. The SHORT and BIG are a fan the shape of their arc, a pale fill with the front of the wave
   // bright; LONG is the two strips of its horns, the shafts pale (a shove) and the last of each bright (the tips throw).
   // Cells on the world grid, never a stroke; the same geometry `Goat.hornHit` asks, so the picture is the hit.
   drawHornWave(g, game) {
@@ -2580,7 +2580,7 @@ class Renderer {
     const q = this.quality || 1;
     const text = `${Math.round(f.rate)} FPS · worst ${f.worst.toFixed(0)} ms · game ${f.work.toFixed(1)} ms${q < 1 ? ` · ${Math.round(q * 100)}% pixels` : ''}${capped ? ' · the browser holds 30 (energy saver?)' : ''}`;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = `700 ${Math.max(12 * this.s, 11 * s)}px ${FONT}`; ctx.textAlign = 'left';
-    const w = textW(ctx, text), x = 14 * this.s, y = 82 * this.s;   // under the hearts, clear of the dev corner
+    const w = textW(ctx, text), x = 14 * this.s, y = (this.hudLow ? 132 : 82) * this.s;   // under the top-left row, clear of the dev corner
     ctx.fillStyle = 'rgba(13,10,12,0.7)'; ctx.fillRect(x - 5 * this.s, y - 16 * this.s, w + 10 * this.s, 22 * this.s);
     ctx.fillStyle = f.rate < 40 ? PALETTE.blood : f.rate < 55 ? PALETTE.fireHi : PALETTE.bone;
     ctx.fillText(text, x, y); ctx.restore();
@@ -4738,7 +4738,7 @@ class Renderer {
     ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
     const cw = textW(ctx, label) + 16 * s, chH = 17 * s;
     // Bottom left, over the seed and the build: the bottom-right corner is the skill rail's now.
-    const cx = pad, cy = this.h - 38 * this.hs - chH;
+    const cx = pad, cy = this.leftTop !== undefined && game.state !== 'title' ? this.leftTop - 8 * s - chH : this.h - 38 * this.hs - chH;
     let toastY = cy - 10 * s;
     if (d.open) {
       // Two columns: the switches and the level on the left, and everything that can be dropped at
@@ -4758,6 +4758,7 @@ class Renderer {
           ['chase', d.chase ? 'CHASE  ON' : 'CHASE  OFF'],
           // Horn size, a test (`TUNING.goat.horns`): each click steps short, wide, long.
           ['horns', 'HORNS  ' + TUNING.goat.horns[game.hornKind].name],
+          ['altar-again', 'ALTAR AGAIN  ' + (!game.dev.altarAgain ? (game.altarKnown() ? 'AUTO: ON' : 'AUTO: OFF') : game.dev.altarAgain > 0 ? 'ON' : 'OFF')],
           ['hornTool', d.hornTool ? 'HORN TOOL  ON' : 'HORN TOOL  OFF'],   // the sliders over the run, and the zone on the floor
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
           ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['showroom', 'SHOWROOM'],
@@ -4932,6 +4933,8 @@ class Renderer {
     this.devButton(d, pad + 680 * s, top + 28 * s, 120 * s, 20 * s, Heaven.towerMended() ? 'TOWER: WHOLE' : 'TOWER: BROKEN', 'home-tower', Heaven.towerMended());
     this.devButton(d, pad + 808 * s, top + 28 * s, 120 * s, 20 * s, Heaven.mended() ? 'MIRROR: WHOLE' : 'MIRROR: BROKEN', 'home-mirror', Heaven.mended());
     this.devButton(d, pad + 936 * s, top + 28 * s, 110 * s, 20 * s, `+1 LIFE (${game.extraLives | 0})`, 'home-life', false);
+    // the god's hundred (`Heaven.hornsOpen`): BIG and LONG open at the edge, or shut again
+    this.devButton(d, pad + 1054 * s, top + 28 * s, 120 * s, 20 * s, Heaven.hornsOpen() ? 'HORNS: OPEN' : 'HORNS: SHUT', 'home-horns', Heaven.hornsOpen());
     // Tries on the floor under the drawer (7 Oct 2026: "so I can test it and the bells from the tool mode"): HELLDIVE at
     // either rank on three men round him (a revive given if he has none), a bell at his feet, a boss beside him who carries one.
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText('TRY IT HERE', pad, top + 68 * s);
@@ -7127,7 +7130,9 @@ class Renderer {
   // word and the seed, which keep the very bottom.
   drawCapeCorner(game, cape) {
     const ctx = this.ctx, s = this.hs, g = game.goat, m = game.input.mouse, H = TUNING.hud.cape;
-    const box = H.box * s, x0 = 14 * s, y0 = this.h - H.lift * s - box, cx = x0 + box / 2, cy = y0 + box / 2;
+    // Over the bottom-left stack of hearts and lives when it is there (`leftTop`, set by `drawUI`), else where it was.
+    const box = H.box * s, x0 = 14 * s, y0 = this.leftTop !== undefined ? this.leftTop - 10 * s - box : this.h - H.lift * s - box, cx = x0 + box / 2, cy = y0 + box / 2;
+    if (this.leftTop !== undefined) this.leftTop = y0;
     const wait = g.itemCdMax > 0 && g.itemCd > 0, frac = !wait ? 0 : game.boom.fly ? 1 : clamp(g.itemCd / g.itemCdMax, 0, 1);
     ctx.fillStyle = 'rgba(13,10,12,0.62)'; ctx.fillRect(x0, y0, box, box);
     this.artifactIcon(cape.id, cx, cy + 1 * s, box * 0.36, 0, true);
@@ -7779,7 +7784,7 @@ class Renderer {
       left = x - sk.w * c;
       // What the god is counting toward (his twenty that mend the mirror, then two hundred), under the heap.
       if (Heaven.goal()) {
-        const q = Heaven.goal(), b = Math.min(q, M.brought || 0);
+        const q = Heaven.goal(), b = Heaven.goalHave();
         ctx.font = `700 ${Math.max(12 * this.s, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(0,0,0,0.5)';
         // Flush with the right edge of the whole purse, under the souls' number (7 Oct 2026 playtest: "make it
         // aligned"): it used to end under the heap's own number, a little left of everything above it.
@@ -8714,8 +8719,24 @@ class Renderer {
     }
   }
 
+  // One more life (`game.extraLives`) as a small portrait of the goat on a dark plate with a soul-white rim, bobbing a
+  // pixel (Hades' Death Defiance over the health bar). The goat is his build's own (`Codex.portrait`), plain if the atlas
+  // has not loaded; `i` staggers the bob.
+  lifePortrait(game, x, y, box, i) {
+    const ctx = this.ctx, s = this.hs, bob = Math.round(Math.sin(this.t * 2.4 + i) * s * 0.8);
+    ctx.fillStyle = 'rgba(13,10,12,0.62)'; ctx.fillRect(Math.round(x), Math.round(y + bob), Math.round(box), Math.round(box));
+    ctx.strokeStyle = 'rgba(232,238,252,0.85)'; ctx.lineWidth = Math.max(1, 1.5 * s);
+    ctx.strokeRect(Math.round(x) + 1, Math.round(y + bob) + 1, Math.round(box) - 2, Math.round(box) - 2);
+    if (!PIXEL_ART.ready) return;
+    ctx.save(); ctx.beginPath(); ctx.rect(Math.round(x) + 2, Math.round(y + bob) + 2, Math.round(box) - 4, Math.round(box) - 4); ctx.clip();   // a portrait, framed
+    Codex.portrait(this, game, x + box / 2, y + bob + box * 0.95, box * 1.45, game.mods, null, 'hud-life');
+    ctx.restore();
+  }
+
   drawUI(game) {
-    const ctx = this.ctx; if (!game.world || game.state === 'intro') return;
+    const ctx = this.ctx;
+    this.leftTop = undefined;   // the top of the bottom-left stack, for the cape and the dev word (`drawCapeCorner`, `drawDevPage`)
+    if (!game.world || game.state === 'intro') return;
     if (game.heaven && game.level && game.level.def.heaven) { Heaven.drawHud(this, game); return; }   // js/heaven.js
     // THE CHASE's red at the left and its words (js/chase.js): under every part of the HUD.
     if (game.chase) { Chase.draw(this, game); Chase.drawBanner(this, game); }
@@ -8726,12 +8747,18 @@ class Renderer {
     // corner of the screen is a thing you read once and then look past for ten minutes.
     const HEART = HEART_GLYPH;
     const px = 2.6 * s;
+    // The hearts live in the bottom-left corner (7 Oct 2026, his ask, Hades' way): what is looked at most, near the eye's
+    // path down to the rail; the talismans and the animals carried keep the top-left, out of their way. Touch and a
+    // portrait screen keep the old row up top: the bottom corners are the thumbs'. `hx`, `hy`: the first heart's corner.
+    const low = !game.touch.active && !this.portrait;
+    this.hudLow = low;
+    const hx = 14 * s, hy = low ? this.h - 24 * s - HEART.length * px : top + 14 * s;
     for (let i = 0; i < g.maxHp; i++) {
       const on = i < g.hp;
       // The last heart standing throbs with the vignette, from its own centre.
       const beat = on && g.hp <= TUNING.juice.heartbeat.hp && game.state === 'play' ? 1 + TUNING.juice.heartbeat.throb * this.heartbeat() : 1;
       const px = 2.6 * s * beat;
-      const ox = 14 * s + i * 22 * s - (px - 2.6 * s) * HEART[0].length / 2, oy = top + 14 * s - (px - 2.6 * s) * HEART.length / 2;
+      const ox = hx + i * 22 * s - (px - 2.6 * s) * HEART[0].length / 2, oy = hy - (px - 2.6 * s) * HEART.length / 2;
       ctx.fillStyle = on ? PALETTE.blood : 'rgba(239,230,208,0.16)';
       for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) {
         if (HEART[r][q] !== '#') continue;
@@ -8739,10 +8766,10 @@ class Renderer {
       }
       if (on) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(Math.round(ox + px), Math.round(oy + px), Math.ceil(px), Math.ceil(px)); }
     }
-    this.drawHeartBreak(game, g, 14 * s, top + 14 * s, 22 * s, 2.6 * s, HEART);
+    this.drawHeartBreak(game, g, hx, hy, 22 * s, 2.6 * s, HEART);
     // THE MIRROR's HALO: hearts of light after his own, each gone with the blow it took (js/heaven.js).
     for (let i = 0; i < (g.light || 0); i++) {
-      const ox = 14 * s + (g.maxHp + i) * 22 * s, oy = top + 14 * s, glow = 0.55 + 0.25 * Math.sin(this.t * 3 + i);
+      const ox = hx + (g.maxHp + i) * 22 * s, oy = hy, glow = 0.55 + 0.25 * Math.sin(this.t * 3 + i);
       ctx.fillStyle = `rgba(255,236,160,${glow * 0.5})`;
       for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) if (HEART[r][q] === '#') ctx.fillRect(Math.round(ox + q * px - px * 0.5), Math.round(oy + r * px - px * 0.5), Math.ceil(px * 2), Math.ceil(px * 2));
       ctx.fillStyle = '#fff4c2';
@@ -8750,40 +8777,40 @@ class Renderer {
     }
     // The tortoise's iron after them: a heart of plate, lit along its top row, gone with the blow it takes.
     for (let i = 0; i < (g.armour || 0); i++) {
-      const A = TUNING.prop.tortoise.armour, ox = 14 * s + (g.maxHp + (g.light || 0) + i) * 22 * s, oy = top + 14 * s;
+      const A = TUNING.prop.tortoise.armour, ox = hx + (g.maxHp + (g.light || 0) + i) * 22 * s, oy = hy;
       for (let r = 0; r < HEART.length; r++) for (let q = 0; q < HEART[r].length; q++) if (HEART[r][q] === '#') {
         ctx.fillStyle = r === 1 ? A.lit : r % 2 ? A.mid : A.dark;
         ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
       }
     }
-    // ONE MORE LIFE (`game.extraLives`, js/motes.js `second`): a white soul after the hearts for each he still has.
-    for (let i = 0; i < (game.extraLives | 0); i++) {
-      const ox = 14 * s + (g.maxHp + (g.light || 0) + (g.armour || 0) + i) * 22 * s, oy = top + 10 * s, c = 2.2 * s, bob = Math.round(Math.sin(this.t * 2.4 + i) * s);
-      for (let r = 0; r < WISP.length; r++) for (let q = 0; q < WISP[r].length; q++) {
-        const ch = WISP[r][q]; if (ch === '.') continue;
-        ctx.fillStyle = ch === 'o' ? '#b9c3dd' : ch === 'e' ? '#3a2c4e' : '#ffffff';
-        ctx.fillRect(Math.round(ox + q * c), Math.round(oy + r * c + bob), Math.ceil(c), Math.ceil(c));
-      }
+    // ONE MORE LIFE (`game.extraLives`, js/motes.js `second`): a small portrait of the goat each, over the hearts, the way
+    // Hades stands its Death Defiances over the health bar (7 Oct 2026, his ask: "the life as a little goat portrait,
+    // smaller, above them"). Up top on touch, after the hearts, as before.
+    const lives = game.extraLives | 0, LB = 28 * s;
+    for (let i = 0; i < lives; i++) {
+      const bx = low ? hx + i * (LB + 4 * s) : hx + (g.maxHp + (g.light || 0) + (g.armour || 0) + i) * 22 * s, by = low ? hy - 8 * s - LB : hy - 5 * s;
+      this.lifePortrait(game, bx, by, low ? LB : 20 * s, i);
     }
+    if (low) this.leftTop = lives ? hy - 8 * s - LB : hy;
     // HORN SIZES test (`TUNING.goat.horns`): which horn he has and what it does, under the hearts. Never in the itch build.
     if (!RELEASE.on && game.mods && game.mods.horn) {
       const HN = game.mods.horn, M = game.mods, H = TUNING.goat.headbutt;
       ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-      ctx.fillText(`HORNS: ${HN.name}  ·  ${HN.note}`, 14 * s, top + 42 * s);
+      ctx.fillText(`HORNS: ${HN.name}  ·  ${HN.note}`, 14 * s, top + (low ? 52 : 42) * s);
       ctx.font = `600 ${10.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-      ctx.fillText(`WINDUP ${sayN(H.windup * M.headbuttWindup)}s · RECOVERY ${sayN(H.recovery * M.headbuttRecovery)}s · REACH ${M.headbuttReach >= 1 ? '+' : '-'}${sayN(Math.abs(M.headbuttReach - 1))} TILES · LUNGE x${sayN(HN.lunge)} ·${HN.rows ? 'TWO ROWS, TIPS x' + sayN(HN.tipMul) + ' SHAFTS x' + sayN(HN.shaftMul) : 'ARC ' + Math.round(Math.acos(HN.cone) * 360 / Math.PI) + '°'}`, 14 * s, top + 56 * s);
+      ctx.fillText(`WINDUP ${sayN(H.windup * M.headbuttWindup)}s · RECOVERY ${sayN(H.recovery * M.headbuttRecovery)}s · REACH ${M.headbuttReach >= 1 ? '+' : '-'}${sayN(Math.abs(M.headbuttReach - 1))} TILES · LUNGE x${sayN(HN.lunge)} ·${HN.rows ? 'TWO ROWS, TIPS x' + sayN(HN.tipMul) + ' SHAFTS x' + sayN(HN.shaftMul) : 'ARC ' + Math.round(Math.acos(HN.cone) * 360 / Math.PI) + '°'}`, 14 * s, top + (low ? 66 : 56) * s);
     }
     // Everyone brought out to the stairs this run, one animal each, under the hearts: what an escort
     // is worth is a number buried in `mods`, and a row of the animals themselves is the way to see
     // that the run is carrying them.
     // (46 until 30 Sep 2026: "a little more room under the hearts for the animals")
-    const saved = this.drawSaved(game, 14 * s, top + (RELEASE.on ? 56 : 72) * s, s);   // lower while the horn test's two lines are up
+    const saved = this.drawSaved(game, 14 * s, top + (RELEASE.on ? (low ? 64 : 56) : (low ? 92 : 72)) * s, s);   // lower while the horn test's two lines are up
     // Kills that landed on top of each other, while the window is still open.
     if (game.combo >= 2 && game.comboTimer > 0) {
       const a = Math.min(1, game.comboTimer / 0.6);
       ctx.font = `700 ${(15 + Math.min(11, game.combo * 2)) * s}px ${FONT_SC}`;
       ctx.fillStyle = `rgba(192,57,43,${a})`;
-      ctx.fillText(`x${game.combo} IN A ROW`, 14 * s, top + (saved ? 88 : 58) * s);
+      ctx.fillText(`x${game.combo} IN A ROW`, 14 * s, top + (saved ? 88 : 58) * s + (low ? 20 * s : 0));
     }
 
     // The rail sits in the bottom-right corner, where a glance down at a cooldown does not cost the
@@ -8799,7 +8826,10 @@ class Renderer {
     // The talismans, right of the hearts, and the cape after them (`drawArtifactChip`).
     // After the rail, because the rail clears the hover it shares with this.
     // Centred on the row of hearts, a gap past the last one.
-    this.drawArtifactChip(game, 14 * s + (g.maxHp + (g.light || 0) + (g.armour || 0) + (game.extraLives | 0)) * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
+    // With the hearts down in the corner the talismans have the top-left to themselves, a little smaller (7 Oct 2026:
+    // "there can be several of them, so apart from the hearts, which are looked at more often").
+    if (low) this.drawArtifactChip(game, 10 * s, top + 6 * s, 24 * s);
+    else this.drawArtifactChip(game, 14 * s + (g.maxHp + (g.light || 0) + (g.armour || 0) + (game.extraLives | 0)) * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
     this.savedHover(game);   // after the rail too, which clears the hover it shares
     // What the god is paid in, the way heaven counts it (29 Sep 2026: "the same look as up there"):
     // the gold skull and the heap, and beside it the corrupted souls heaven keeps (`Heaven.meta`).
@@ -8832,7 +8862,7 @@ class Renderer {
     // The rabbit's bargain, said under the hearts while it holds.
     if (game.legsTied && game.state === 'play') {
       ctx.font = `700 ${Math.max(12, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.hen; ctx.textAlign = 'left';
-      ctx.fillText('LEGS TIED · ' + keysOf(game).roll + ' HOPS', 14 * s, top + 40 * s);
+      ctx.fillText('LEGS TIED · ' + keysOf(game).roll + ' HOPS', 14 * s, top + (low ? 50 : 40) * s);
     }
     this.drawSkillNote(game);
 
@@ -8844,9 +8874,15 @@ class Renderer {
     ctx.textAlign = 'left'; ctx.font = `${Math.max(12 * this.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)';
     // And the floor's own layout after it (2 Oct 2026 playtest: the run seed alone, the same after a death,
     // read as the same layout, though every death cuts a new one off `deaths`).
-    ctx.fillText(`seed ${(game.runSeed >>> 0).toString(36)}${game.level && game.level.seed ? ' · ' + ((game.level.seed >>> 0).toString(36).slice(-4)) : ''}`, 14 * s, this.h - 23 * s);
-    ctx.font = `${Math.max(12 * this.s, 9.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
-    ctx.fillText(`v${BUILD}`, 14 * s, this.h - 12 * s);
+    const seedTxt = `seed ${(game.runSeed >>> 0).toString(36)}${game.level && game.level.seed ? ' · ' + ((game.level.seed >>> 0).toString(36).slice(-4)) : ''}`;
+    if (low) {   // under the hearts, one faint line, seed and build together
+      ctx.font = `${Math.max(12 * this.s, 9.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
+      ctx.fillText(`${seedTxt} · v${BUILD}`, 14 * s, this.h - 7 * s);
+    } else {
+      ctx.fillText(seedTxt, 14 * s, this.h - 23 * s);
+      ctx.font = `${Math.max(12 * this.s, 9.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
+      ctx.fillText(`v${BUILD}`, 14 * s, this.h - 12 * s);
+    }
     // exit compass, pinned just inside the bottom of the play view (not under the husky's board, which stands there)
     if (game.state === 'play' && !g.dead && !game.song) {
       const dx = game.level.exit.x - g.x, dy = game.level.exit.y - g.y, d = hyp(dx, dy);

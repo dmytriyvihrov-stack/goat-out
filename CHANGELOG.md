@@ -5,6 +5,18 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 2.03, published 7 Oct 2026: the HUD in the corner, heaven in two rooms, the god's horns, THE ALTAR AGAIN
+
+- **The HUD**: the hearts in the bottom-left corner (Hades'), ONE MORE LIFE as small framed portraits of the goat over them,
+  the cape's plate over those; the talismans small in the top-left with the animals carried under them. The camera frames
+  him a little above the middle (`camera.hudLift`) so the bottom's extra weight does not cover the room.
+- **Heaven is two rooms again**: the throne (the god, five stands, the horse's paddock) and the edge (mirror, bells and the
+  shepherd, overlook, four stands, the horns, the jump), a short bridge between.
+- **SHORT** is the horn's name (was the dagger). **BIG and LONG are the god's**: after the twenty that mend the mirror he asks
+  for a hundred souls given to him (GRAB held at him), and then the pairs at the edge can be picked.
+- **THE ALTAR AGAIN**: once a browser has climbed out of floor one, floor one stops teaching and gets a little harder
+  (`altarAgain`): the placed lessons go, three men a room, the wheel and the last ring off the seed.
+
 ## 2.02, published 7 Oct 2026
 
 - **THE ANIMALS' HOME**: heaven is three rooms (the throne, the stalls, the edge); stands open, broken or locked; souls poured

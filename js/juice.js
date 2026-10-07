@@ -149,7 +149,7 @@ const JUICE = [
     size: () => `impulse ${Math.round(TUNING.goat.headbutt.impulse)}px/s`,
     godot: 'CharacterBody2D: velocity = dir * impulse, then friction in _physics_process; spin the sprite while velocity > threshold.' },
   { name: 'The horns wave', cat: 'BODY', status: 'new', src: 'GOAT', code: 'Renderer.drawHornWave · Goat.hornHit · TUNING.goat.horns',
-    trigger: 'The moment the head comes up, whichever horns he has (the dagger, BIG, LONG; the dev drawer HORNS row)', look: 'Cells on the floor where the blow lands: a fan for the dagger and BIG, two straight strips for LONG; pale where it shoves, bright at the front of the wave and on LONG tips, where it throws hard',
+    trigger: 'The moment the head comes up, whichever horns he has (the SHORT, BIG, LONG; the dev drawer HORNS row)', look: 'Cells on the floor where the blow lands: a fan for the SHORT and BIG, two straight strips for LONG; pale where it shoves, bright at the front of the wave and on LONG tips, where it throws hard',
     size: () => `${TUNING.goat.horns.wave.time}s, at most ${Math.round(TUNING.goat.horns.wave.alpha * 100)}% · LONG tips x${TUNING.goat.horns.long.tipMul}, shafts x${TUNING.goat.horns.long.shaftMul}`,
     godot: 'A Node2D child of the goat with a short Tween: draw the hit shape with _draw() (a polygon for the fan, two rects for the strips) on a grid-snapped ShaderMaterial or as TileMap cells, modulate.a fades to 0; reuse the same Area2D shape the hit test uses so the picture is the hit.' },
   { name: 'The horns land', cat: 'BODY', status: 'new', src: 'HADES', code: 'Game.hornSplash · Renderer.drawSlashes · TUNING.goat.horns.splash',

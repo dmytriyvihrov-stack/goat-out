@@ -2,7 +2,7 @@
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '2.02';
+const BUILD = '2.03';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -225,7 +225,9 @@ const TUNING = {
     // `mend` (3 Oct 2026, "the god asks for 20, not 200: then he mends his broken mirror and you can grow
     // between deaths"): the mirror is broken until that many are brought and the god has said so
     // (`Heaven.mended`); `quest` stays the far count that puts SECOND CHANCE on it.
-    gift: { mend: 20, quest: 200 },
+    // 7 Oct 2026, his order of the god's asks: twenty to mend the mirror, then a HUNDRED poured into the god himself
+    // (GRAB held at him, `Heaven.pourable`) opens BIG and LONG at the edge (`Heaven.hornsOpen`), then the two hundred.
+    gift: { mend: 20, horns: 100, quest: 200 },
     // 2 Oct 2026 playtest: out of the body `delay` s after the death, up over `riseT` s, hanging `wait` s
     // before it may come, and only from right by it (`near` tiles) or once he is out of its room;
     // `ghostFor`: how long one nobody is paid for (before the gift) hangs before it goes out.
@@ -325,15 +327,15 @@ const TUNING = {
     bodyR: { hseat: 16, hshep: 15, hmirror: 17, hbell: 8, htower: 18, hhorn: 12 },
     // THE OVERLOOK's tile (6 Oct 2026, `Heaven.openOverlook`): the edge room's far corner, over the drop,
     // a wooden watchtower (`HEAVEN_PIXELS` `watchtower`, its top in a cloud) drawn `towerScale` world px a texel.
-    // 7 Oct 2026, heaven in three rooms (js/heaven-home.js `HEAVEN_MAP`): the edge room is 31 tiles further east.
-    towerAt: [84.6, 9.4], towerScale: 1.4,
+    // Heaven in two rooms again (7 Oct 2026, js/heaven-home.js `HEAVEN_MAP`): the edge room's far corner.
+    towerAt: [59.6, 9.4], towerScale: 1.4,
     // The animals' quests (6 Oct 2026 playtest, `Heaven.QUESTS`): offered at a filled seat by GRAB, taken by a second
     // GRAB within `offer` s, worn as a run modifier until won or let go at the post by the edge (`postAt` tiles,
-    // `postR` px; in THE STALLS since 7 Oct 2026). His three chains (7 Oct 2026, `QUESTS`): `tortoise`, no running on one
+    // `postR` px; by the lip). His three chains (7 Oct 2026, `QUESTS`): `tortoise`, no running on one
     // floor (`speed` of his stride while it is worn); `goose`, one floor with nothing but BAAH (a headbutt, a bite or
     // a thing taken spoils it); `horse`, THE CHASE on `chance` of the floors past the first until `floors` of them are
     // climbed out of. Each pays `done` sacrifices and frees the animal. `pay`: the horse's for each chased floor.
-    quests: { offer: 6, postAt: [58.5, 11], postR: 9, tortoise: { floors: 1, speed: 0.2, done: 40 }, goose: { floors: 1, done: 40 },
+    quests: { offer: 6, postAt: [36.6, 18.4], postR: 9, tortoise: { floors: 1, speed: 0.2, done: 40 }, goose: { floors: 1, done: 40 },
       horse: { floors: 2, chance: 0.6, pay: 15, done: 40 } },
     // THE ANIMALS' HOME (7 Oct 2026, js/heaven-home.js). `pour`: GRAB held pours `rate` sacrifices a second into what is
     // broken, each soul `fly` s in the air. `tower`: the overlook starts broken and costs `cost`. `stands`: `open` from the
@@ -347,16 +349,15 @@ const TUNING = {
       stands: { open: ['tortoise', 'goose'], cost: { horse: 40 } },
       // The fence runs wall to wall (7 Oct 2026: the end posts left ~22 px to the stone, the goat is 24 across; now ~10):
       // `x0` / `x1` the first and last post's tile, one laid at `x1` whatever the spacing leaves.
-      paddock: { x0: 32, x1: 59, fence: 17.4, post: 0.55, postR: 7, y: 20, come: 3.2 },
+      paddock: { x0: 4, x1: 27, fence: 20.6, post: 0.55, postR: 7, y: 23.2, come: 3.2 },
       roam: { tortoise: { speed: 7 }, goose: { speed: 55, honk: [7, 15], fly: [22, 40], flyFor: 11, flock: 6 }, horse: { speed: 165, graze: [2, 5] } },
-      horns: { at: [74.7, 17.4], gap: 1.8 },
+      horns: { at: [48.6, 17.6], gap: 1.8 },
     },
     // The mirror's tile (`Heaven.level`): at the bridge's mouth on the edge's side, so the way down passes it.
-    mirrorAt: [66.7, 12.2],
+    mirrorAt: [35.7, 12.2],
     // The shepherd's tile: down the edge room toward the lip (3 Oct 2026, "the old man somewhere about
     // here"), out from under the bells, so the comb is on the way down rather than tucked in a corner.
-    // (In THE THRONE since 7 Oct 2026, under his bells, left of the god's steps.)
-    shepAt: [8.8, 16.6],
+    shepAt: [46, 17.2],
     godTexel: 1.55, seaDepth: 0.55, seaDrift: 5, earthDepth: 0.2, wispDepth: 0.45,
     // The rite far below, through the drop (30 Sep 2026: "the cultists down there perform a strange
     // ritual with fire and your ewe"), in the earth's own pixels (`Heaven.bakeEarth` / `drawRite`).
@@ -403,9 +404,9 @@ const TUNING = {
     // until 30 Sep 2026, when the playtest asked for 15% more between two butts again.
     headbutt: { windup: 0.12, active: 0.15, recovery: 0.53, lunge: 10 * TILE, impulse: 21 * TILE, propImpulse: 28 * TILE, reach: 1.64 * TILE },
     // THE THREE HORNS (6 Oct 2026 a dev test with a dagger, an axe and a spear; 7 Oct 2026 his word: "the ones we have
-    // are the dagger horns, and two new ones on top, BIG and LONG"). Which one he has is `game.hornKind` (the DEV MODE
-    // drawer's HORNS row steps them, kept under `HORN_KEY`; the itch build is always the dagger, the horns as they always
-    // were). Each is a set of multipliers laid over the headbutt above: `windup` `recovery` `lunge` (his step into it)
+    // are the dagger horns, and two new ones on top, BIG and LONG"; the same day: "not the dagger, the SHORT"). Which one he has is `game.hornKind` (the DEV MODE
+    // drawer's HORNS row steps them, kept under `HORN_KEY`; the SHORT is every goat's until the god's
+    // hundred souls open the other two, `Heaven.hornsOpen`). Each is a set of multipliers laid over the headbutt above: `windup` `recovery` `lunge` (his step into it)
     // `impulse` (the throw) scale those numbers, `reach` is tiles added to how far a man can be and still be hit
     // (`mods.headbuttReach`, so LONG HORNS the soul and ECHO HORN follow), `cone` is the least dot with his aim a man may
     // stand at (0.15 is nearly a half circle, below 0 more than one). Under it the blow is an ARC. With `rows` it is a
@@ -414,11 +415,11 @@ const TUNING = {
     // on the shafts is only shoved `shaftMul` (pillar 3: nothing here kills, the wall behind the man does).
     // `wave` is the small picture of it on the floor (`Renderer.drawHornWave`): cells for `time` s, `alpha` at most.
     horns: {
-      order: ['dagger', 'big', 'long'],
-      // 7 Oct 2026 playtest: the DAGGER is the short quick stab and shoves ONE man (`single`: the nearest in the arc, the
+      order: ['short', 'big', 'long'],
+      // 7 Oct 2026 playtest: the SHORT is the quick stab and shoves ONE man (`single`: the nearest in the arc, the
       // rest of the arc is empty); BIG's radius was "unbelievable" (0.85 tiles over, now 0.35), it keeps a lunge and
       // is the slowest to come back; LONG lunges the furthest, its two horns a little shorter, a middle wait.
-      dagger: { name: 'DAGGER', note: 'A SHORT STAB. ONE MAN', windup: 1, recovery: 1, lunge: 1, impulse: 1, reach: 0, cone: 0.15, single: true },
+      short:  { name: 'SHORT',  note: 'A QUICK STAB. ONE MAN', windup: 1, recovery: 1, lunge: 1, impulse: 1, reach: 0, cone: 0.15, single: true },
       big:    { name: 'BIG',    note: 'A WIDE ARC. SLOW TO COME BACK', windup: 1.2, recovery: 1.55, lunge: 1.1, impulse: 1, reach: 0.35, cone: -0.2 },
       long:   { name: 'LONG',   note: 'TWO HORNS, STRAIGHT. THE TIPS HIT HARD', windup: 1.1, recovery: 1.2, lunge: 1.4, impulse: 1, reach: 1.0, cone: 0.5,
         rows: 2, rowGap: 0.4, rowW: 0.17, tip: 0.62, tipMul: 1.4, shaftMul: 0.5 },
@@ -2281,6 +2282,11 @@ const TUNING = {
   // floor at index `from` (the third) and `mul2` × from `from2` (the fourth) on: it is how a first run is made to die
   // soon enough to find heaven and the gathering. Off for good after his first visit (`Game.crowdFor`, `opts.crowd`).
   thick: { from: 2, mul: 1.5, from2: 3, mul2: 2 },
+  // THE ALTAR AGAIN (`altarAgain`, 7 Oct 2026): THE ALTAR for a browser that has climbed out of it once. Its curve
+  // (`from` → `to`, `ease`; the taught floor runs 1 → 4.5) and `men` a room (it was two), the rooms the wheel may stand
+  // in (`millAt`, a gate or a rest never), `butcherBoss` the odds the last ring is a butcher, `racks` its stands of arms.
+  // Under THE YARD's top (8.5): `GEN_RULES.harder` holds the run's ladder.
+  altarAgain: { from: 1.5, to: 6, ease: 1.4, men: 3, millAt: [2, 3, 4, 5, 7], butcherBoss: 0.4, racks: 0.3 },
   // How long the goat stands in the pen before the floor tells it which button opens it.
   cagePrompt: { delay: 5, fade: 1.1 },
   // A beat of thought the moment the pen gives: not a caption, a small comic-panel bubble over his
@@ -2506,6 +2512,10 @@ const TUNING = {
   // blend 3.2 (the hold let go anywhere within three tiles of a door, and a small room swam), holdLerp 4.
   camera: { lead: 2.4 * TILE, lerp: 3.5, leadLerp: 1.8, leadStill: 0.3, zoomRest: 1.0, zoomFast: 0.985, zoomLerp: 1.0,
     deadzone: 0.8 * TILE, fitMargin: 2 * TILE,
+    // The hearts sit in the bottom-left corner (7 Oct 2026, his ask, Hades' way), so the bottom of the screen carries more
+    // HUD than the top: the picture is framed `hudLift` of the view's height lower, he stands that much above the middle.
+    // Not on touch (its HUD stays up top) or in heaven.
+    hudLift: 0.05,
     // Framing the fight (GMTK's "How to Make a Good 2D Camera", 26 Sep 2026). In a room too big to
     // hold whole, an awake boss within `near` of the goat pulls the follow point `pull` of the way
     // toward him (never more than `max`) and backs the lens out to `zoom`, eased in and out at
@@ -4297,5 +4307,28 @@ function darkLevel() { return DARK_LEVEL; }
 // Which floor of the run a level is: its place in LEVELS, or, for THE DARK, the place of the floor
 // it is played in place of. THE TRIP stays -1 on purpose (see `tripLevel`).
 function levelIndexOf(def) {
-  return def && def.darkOf !== undefined ? def.darkOf : LEVELS.indexOf(def);
+  return def && def.darkOf !== undefined ? def.darkOf : def && def.againOf !== undefined ? def.againOf : LEVELS.indexOf(def);
+}
+
+// THE ALTAR AGAIN (7 Oct 2026, his ask: "after the first clear of the first level its rules need not hold, make it a
+// bit harder: a fixed structure will bore players"). A browser that has climbed out of THE ALTAR once (`Game.altarKnown`)
+// is dealt this in its place: the pen, the ritual, the middle gate and its keeper and the last ring stay (what the floor
+// IS, rule 6), but the ramp's placed rooms go (the sentry in the doorway, the calm room, the lone ambush, the hayloft, the
+// crowd room), the wheel stands in a room rolled off the seed and teaches nothing, the floor words are gone, the curve
+// climbs to `TUNING.altarAgain.to` with three men a room, and the last ring is a clubman or a butcher, off the seed.
+// Built per seed (cheap), never cached: `againOf` keeps its place in the run for everything that asks (`levelIndexOf`).
+function altarAgain(seed) {
+  const base = LEVELS[0], A = TUNING.altarAgain, h = (k) => ((Math.imul((seed >>> 0) ^ (k * 0x9e3779b1), 0x85ebca6b) >>> 0) % 1000) / 1000;
+  const mills = A.millAt.filter((i) => !base.gates.includes(i) && !(base.rests || []).includes(i));
+  const butcher = h(2) < A.butcherBoss;
+  const def = Object.assign({}, base, {
+    againOf: 0, again: true, showControls: false, sentryIntro: false, firstGrass: false, rollWith: undefined, secretsAfter: undefined,
+    calmAt: undefined, ambushAt: undefined, trapAt: undefined, trapTpl: undefined, trapMen: undefined, crowdAt: undefined, crowdMen: undefined,
+    millAt: mills[Math.floor(h(1) * mills.length)], millLesson: false, racks: A.racks, racksFrom: 0,
+    arenas: [butcher ? { at: base.rooms - 1, boss: 'champion', escorts: 1 } : Object.assign({}, base.arenas[0])],
+    encounters: Object.assign({}, base.encounters, { introduce: [], from: A.from, to: A.to, ease: A.ease, cap: { men: A.men } }),
+  });
+  def.met = new Set(base.encounters.kinds);
+  def.known = new Set(base.known);
+  return def;
 }

@@ -218,7 +218,7 @@ function showroomLevel(def, seed) {
 
   // THE FLANK (7 Oct 2026, gen.js `flankAt`): the three trench rooms laid from their own templates in a second row under the
   // floors, a door out of the hall's far wall into the first. Spawn men into them from the dev drawer; HORNS there steps
-  // the dagger, BIG and LONG to see each one's wave on the floor.
+  // the SHORT, BIG and LONG to see each one's wave on the floor.
   {
     const y0 = 47, names = ['ditchcut', 'ditchtee', 'ditchisland'], doorRows = [y0 + 4, y0 + 6];
     let prevR = hall, px0 = hall.x + hall.w + 4;

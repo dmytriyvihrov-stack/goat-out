@@ -284,7 +284,7 @@ class Goat {
         this.state = 'lunge'; this.timer = g.headbutt.active / ga; this.lungeId++;
         Talisman.onLunge(game, this);   // ECHO HORN
         this.wave = { t: 0, ax: this.aim.x, ay: this.aim.y };   // the small picture of where the blow lands (`Renderer.drawHornWave`)
-        const hl = (game.mods.horn ? game.mods.horn.lunge : 1) * ga;   // the horn's size: a dagger steps in less, a spear more
+        const hl = (game.mods.horn ? game.mods.horn.lunge : 1) * ga;   // the horn's size: the SHORT steps in less, a spear more
         this.vx = this.aim.x * g.headbutt.lunge * hl; this.vy = this.aim.y * g.headbutt.lunge * hl;
         game.dust(this.x - this.aim.x * 8, this.y - this.aim.y * 8, TUNING.juice.dust.lunge, -this.aim.x, -this.aim.y);
         game.audio.sfxHeadbutt(); game.audio.musicEvent('headbutt'); world.emitNoise(this.x, this.y, TUNING.noise.headbutt);
@@ -657,7 +657,7 @@ class Goat {
   }
 
   // Is a body `(dx, dy)` from the goat, `r` wide, under the horns he swings at `(ax, ay)` out to `reachPx`? An arc
-  // (the dagger, BIG) is a cone of the horn's own width; LONG is two strips, a horn each, straight out, and what is
+  // (the SHORT, BIG) is a cone of the horn's own width; LONG is two strips, a horn each, straight out, and what is
   // met in the last of it is hit by the tips. `{ tip }` or null. The picture draws the same shape (`drawHornWave`).
   static hornHit(HN, dx, dy, ax, ay, reachPx, r) {
     const along = dx * ax + dy * ay;
@@ -673,13 +673,13 @@ class Goat {
   }
 
   headbuttHits(game) {
-    const g = TUNING.goat.headbutt, HN = game.mods.horn || TUNING.goat.horns.dagger;   // the horn he has, `TUNING.goat.horns`
+    const g = TUNING.goat.headbutt, HN = game.mods.horn || TUNING.goat.horns.short;   // the horn he has, `TUNING.goat.horns`
     // BULL NECK: the run he put his head down out of goes into the man (men only; a crate keeps its own throw).
     const steam = game.mods.runButt ? 1 + game.mods.runButt * (this.buttRun || 0) : 1;
     const extra = (game.mods.headbuttReach - 1) * TILE, impulse = g.impulse * game.mods.headbuttImpulse * steam * HN.impulse;
     const ax = this.aim.x, ay = this.aim.y;
     this.cutGrass(game, ax, ay);
-    // The DAGGER shoves ONE man (`HN.single`, 7 Oct 2026 playtest): the nearest the horns reach, and once one has been hit
+    // The SHORT shoves ONE man (`HN.single`, 7 Oct 2026 playtest): the nearest the horns reach, and once one has been hit
     // the rest of the arc is empty for this lunge (`singleDone`). The other horns hit everyone their shape touches.
     const foes = HN.single ? game.enemies.slice().sort((p, q) => hyp(p.x - this.x, p.y - this.y) - hyp(q.x - this.x, q.y - this.y)) : game.enemies;
     for (const e of foes) {
@@ -699,7 +699,7 @@ class Goat {
       // `reaches`, as the club is: `sees` let the horns through a table or a brazier his club stops at.
       if (!game.reaches(this.x, this.y, e.x, e.y)) continue;
       e.lastLunge = this.lungeId;
-      if (HN.single) this.singleDone = this.lungeId;   // the dagger's one man is this one, whatever he does next
+      if (HN.single) this.singleDone = this.lungeId;   // the SHORT's one man is this one, whatever he does next
       // Caught while it is a body. Horn through a thing that has just made itself real undoes it,
       // no wall needed, because the window was the hard part. (It said UNMADE over it until 30 Sep
       // 2026: "no sense in it", the burst says it.)

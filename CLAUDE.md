@@ -126,7 +126,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/pig-pixels.js` | `PIG_PIXELS`: the pig as a hand-built pixel unit, the horse's recipe a size down (five views mirrored to eight, a trot, the `eat` pose head-down); `PIG_PIXELS.draw(ctx, angle, moving, t, pose)`, called by `Renderer.pigSprite`. Loads after `horse-pixels.js`. `output/pig-2026-09-30/render.cjs` renders a sheet. |
 | `js/heaven-pixels.js` | `HEAVEN_PIXELS`: heaven's sprites on `PROP_PIXELS.Grid`, the god (`god`, `god-speak`, `god-blink`), the blind shepherd's three arms, the mirror (its glass one flat colour, `GLASS`), the five bells and their beam (`BELL_GAP`), a seat, gold grass, the gold skull the HUD counts sacrifices in. Loads after `horse-pixels.js`; node-requirable for a sheet. |
 | `js/heaven.js` | `Heaven`: THE PASTURE ABOVE, where a death's card leads (see *Heaven* below): the store that outlives runs (`HEAVEN_KEY`, `meta`: sacrifices, `MIRROR` ranks, the seats), the hand-laid three-room level (`level`, `HEAVEN_MAP`), its step (`update`: GRAB answers, the comb, the talk, the mirror panel, the bells, the edge), what the god says (`HEAVEN_TALK`, `pickTalk`) and all of its picture (`bake*`, `draw*`, `drawHud`). |
-| `js/heaven-home.js` | THE ANIMALS' HOME (7 Oct 2026, on `Heaven`): `HEAVEN_MAP` (the three rooms), the stands (`standState`, `beastsOpen`, `talismanLocked`), pouring souls into what is broken (`pourable`, `startPour`, `updatePour`, `finishPour`, `drawPour`), the horns before the jump (`HORN_GLYPHS`, `pickHorns`, `drawHorn`), the paddock and who lives up here (`layPaddock`, `spawnRoamers`, `updateRoam`, `drawRoam`, `drawFlock`, `drawPaddock`, `drawPaddockRuin`), what the stands and the animals say (`seatAnswer`, `dareTalk`, `talkRoam`), `chaseRoll`, and the dev tab's `devHome`. Loads after heaven.js. |
+| `js/heaven-home.js` | THE ANIMALS' HOME (7 Oct 2026, on `Heaven`): `HEAVEN_MAP` (the two rooms; `stalls` is the throne's alias), the stands (`standState`, `beastsOpen`, `talismanLocked`), pouring souls into what is broken (`pourable`, `startPour`, `updatePour`, `finishPour`, `drawPour`), the horns before the jump (`HORN_GLYPHS`, `pickHorns`, `drawHorn`), the paddock and who lives up here (`layPaddock`, `spawnRoamers`, `updateRoam`, `drawRoam`, `drawFlock`, `drawPaddock`, `drawPaddockRuin`), what the stands and the animals say (`seatAnswer`, `dareTalk`, `talkRoam`), `chaseRoll`, and the dev tab's `devHome`. Loads after heaven.js. |
 | `js/motes.js` | `Motes`: the white souls (1.86), `spawn` over a man put down once `Heaven.gifted()`, `update` (they follow him out of their room), `bank` (`Heaven.earn`), `flush` at the stairs, `draw`; his own soul: `drawAscent` on a death, `second` / `updateRevive` / `drawRevive` for SECOND CHANCE, `ghost` (his picture washed white, baked per facing). Loads after `heaven.js`. |
 | `js/beasts-more.js` | THE FISH (6 Oct 2026: `updateFish`, `throwFish`, `breakFish`, `drawFish`, sprites `fish-0..3`). The rabbit and the husky (1.86) on `Beast`: `drawMore` (their `PROP_PIXELS` sprites `rabbit-sit/-hop`, `husky-stand/-sing`), `answer` / `refuse` / `updateRefused` (BAAAH yes / bah no after every animal's terms, `BEAST_ANSWER`), `updateRabbit` and `game.legsTied`, `updateHusky` / `startSong` / `heard` / `updateSong` / `drawSong` (`game.song`). Loads after `pig-pixels.js`. |
 | `js/codex.js` | `Codex` (1.86): `KEYWORDS` marked in descriptions (`line`, `lines`) and explained on the pointer (`drawTip`, last thing drawn; `R.tips`); `portrait` (the goat large, facing SE, any mods and talisman), `drawBoonGoat` over the soul cards; the book on I / PAUSE → INVENTORY (`menu.panel === 'book'`, `drawBook`, `bookKey`, `bookClick`); the mouse's offer as cards (`watchShop`, `game.shopDlg`, `updateShop`, `shopKey`, `drawShop`); `Unlocks` (the book's UNLOCKS tab). Loads after `motes.js`. |
@@ -379,6 +379,13 @@ A whole dead man (`CombatFX.death`) lands, skids, turns to an exact quarter turn
 shapes; the loop is the motion. A new effect is cells on that grid, never a smooth arc or gradient
 (light is the one exception: `drawLight`, a blast's flash).
 
+**The bottom-left corner** (7 Oct 2026, his ask, Hades' HUD): off touch and off a portrait screen (`renderer.hudLow`) the
+hearts (light and iron after them) stand in the bottom-left corner over one faint line of seed and build; ONE MORE LIFE is
+a small framed portrait of the goat each over them (`lifePortrait`); the cape's plate (`drawCapeCorner`) stands over that
+stack and the dev word over the cape (`renderer.leftTop`, set by `drawUI` every frame). The talismans (`drawArtifactChip`,
+24 px chips), the animals carried (`drawSaved`), the horn test's lines and the combo have the top-left. Because the bottom
+now carries more, the camera frames him `camera.hudLift` of the view above the middle (`updateCamera`'s `lift`; a held room
+must fit under it too); not on touch, a portrait screen or heaven. Touch keeps the old row up top.
 **Small things.** The smear: `TUNING.goat.trail`, mixed by `mods.speed * goat.runUp` against
 `trail.fastAt` (only visible sign of SURE HOOVES). The pointer: `game.updateCursor`, the headbutt chip near white (`buttCursor`, `TUNING.cursor`; 3 Oct 2026, "people do not tie the mouse to the actions"), hidden while the keys or a pad aim, horns
 (`CURSOR_GOAT`) or `grabbing`; `crosshair` fallback in both HTML files. Touch: `touch.active`; only a
@@ -534,6 +541,13 @@ shows them again with ↺), the rule still runs in `balance.js`. Samples come fr
 (`drawStatusTab`), TALISMANS, FIXTURES, JUICE, MUSIC, HEAVEN (`drawMirrorTab`, `#mirror`: every
 `MIRROR` rank as a button that sets it, costs, what each rank does), GOAT GRID (`js/goat-grid.js`).
 
+**THE ALTAR AGAIN** (7 Oct 2026, `altarAgain(seed)` in tuning.js, `TUNING.altarAgain`, `Game.altarKnown`): once this browser
+has climbed out of THE ALTAR (`Heaven.meta.cleared[0]`), floor one is dealt as a derived def (`againOf: 0`, so `levelIndexOf`
+and `roomSlot` answer 0; ask those, never `LEVELS.indexOf`): the pen, the ritual, the middle gate's keeper and the mage, the
+last ring stay; the sentry, the calm room, the ambush, the hayloft, the crowd room, the wheel lesson, the floor words, the first
+grass and `secretsAfter` go; the wheel stands in a room off the seed (`altarAgain.millAt`), the curve and men a room are
+`altarAgain`'s, the last ring a clubman or (`butcherBoss`) a butcher. A floor put aside keeps whichever it was (`floorGen.again`).
+The DEV MODE drawer's ALTAR AGAIN row cycles AUTO / ALWAYS / NEVER (`dev.altarAgain`). `GEN_RULES.first` steps aside for it.
 **Level modifiers** (6 Oct 2026, `LEVEL_MODS` in tuning.js): a rule laid over a whole floor, named by id in
 `levelDef.mods`, its numbers in `TUNING.<id>`, its code in a file of its own. Never on THE TRIP, in heaven or THE
 SHOWROOM. **THE CHASE** (`chase`, js/chase.js, THE ROAD): `Chase.start` in `startLevel` (the card adds its `card`
@@ -1004,7 +1018,7 @@ one card `drawBoonChoice` draws too: change the card there, never a copy), and b
 they are kept in this browser (`BOON_EDIT_KEY`), the tab says NOT SAVED TO DISK, and EXPORT AS JSON / IMPORT
 JSON carry them to a served page that writes them. The itch build reads `BOON_TEXT` / `BOON_OFF` only.
 
-**The three horns** (6 Oct 2026 a dev test, 7 Oct 2026 his shape: "the ones we have are the dagger horns, and two new ones on top"; `TUNING.goat.horns`, `game.hornKind`, DEV MODE → HORNS steps DAGGER / BIG / LONG, kept under `HORN_KEY`, the itch build is always the dagger). `applyBoons` lays the horn's `windup` / `recovery` / `reach` under the souls (`mods.horn`), the lunge step its `lunge`, and `Goat.hornHit` is the one shape every reader asks (men, props): an ARC of the horn's `cone` (7 Oct 2026 playtest: the DAGGER a short stab that shoves ONE man, `single`, the nearest in its arc and nobody else that lunge, `goat.singleDone`; BIG a wide arc a little deeper by `reach`, with a lunge and the longest wait; LONG the furthest lunge and a middle wait) or, with `rows`, LONG's two straight strips, a horn each (`rowGap`, `rowW`), out to the reach: a man met in the last `1 - tip` of it is hit by the tips and thrown `tipMul` times as hard, one on the shafts only shoved `shaftMul` (pillar 3 stands: no horn kills, the wall behind the man does). Its picture is **the wave** (`Renderer.drawHornWave`, `goat.wave` set as the head comes up, `horns.wave`): cells on the floor for a third of a second, the same geometry as the hit, pale where it shoves and bright at the front of the wave and on LONG's tips. The LONG HORNS soul (`mods.antlers`) bends whichever horn he has. A label under the hearts says which and what it does (not in the itch build). **Where they land** (Hades' slash, 7 Oct 2026): `Game.hornSplash` lays a slash of cells across every man the horns reach, white for a beat, a little more hitstop (`horns.splash`, `game.slashes`, `Renderer.drawSlashes`; LONG's tips gold and harder). **THE HORN TOOL** (DEV MODE → HORN TOOL, `dev.hornTool`): a panel of sliders over the run (`Renderer.drawHornTool`, `HORN_TOOL` in game.js, `Game.setHornParam`), one per number of the horn he has, live; ONE MAN / ALL MEN flips `single`, SAVE writes them into tuning.js (`persistTuningEdit`), COPY puts them on the clipboard; ZONE draws the hit shape standing on the floor along his aim with its axis ticked a tile at a time and its reach in tiles (`drawHornZone`). Planned, not built: a horn rolled or earned per run (his call: how a player gets BIG or LONG), souls that pay off per horn.
+**The three horns** (6 Oct 2026 a dev test, 7 Oct 2026 his shape: "the ones we have are the dagger horns, and two new ones on top", and the same day "not the dagger, the SHORT"; `TUNING.goat.horns`, `game.hornKind`, DEV MODE → HORNS steps SHORT / BIG / LONG, kept under `HORN_KEY`; an old saved `dagger` reads as SHORT). **BIG and LONG are the god's** (`Heaven.hornsOpen`, `meta.hornsOpen`): picked at the edge (`hhorn`, `pickHorns`) only once a hundred souls have been poured into him (`gift.horns`, see *THE ANIMALS' HOME*); until then a locked pair is pale under a padlock and says `HEAVEN_TALK.hornsShut`, and in the itch build `applyBoons` lays the SHORT whatever `hornKind` says. `applyBoons` lays the horn's `windup` / `recovery` / `reach` under the souls (`mods.horn`), the lunge step its `lunge`, and `Goat.hornHit` is the one shape every reader asks (men, props): an ARC of the horn's `cone` (7 Oct 2026 playtest: the SHORT a quick stab that shoves ONE man, `single`, the nearest in its arc and nobody else that lunge, `goat.singleDone`; BIG a wide arc a little deeper by `reach`, with a lunge and the longest wait; LONG the furthest lunge and a middle wait) or, with `rows`, LONG's two straight strips, a horn each (`rowGap`, `rowW`), out to the reach: a man met in the last `1 - tip` of it is hit by the tips and thrown `tipMul` times as hard, one on the shafts only shoved `shaftMul` (pillar 3 stands: no horn kills, the wall behind the man does). Its picture is **the wave** (`Renderer.drawHornWave`, `goat.wave` set as the head comes up, `horns.wave`): cells on the floor for a third of a second, the same geometry as the hit, pale where it shoves and bright at the front of the wave and on LONG's tips. The LONG HORNS soul (`mods.antlers`) bends whichever horn he has. A label under the hearts says which and what it does (not in the itch build). **Where they land** (Hades' slash, 7 Oct 2026): `Game.hornSplash` lays a slash of cells across every man the horns reach, white for a beat, a little more hitstop (`horns.splash`, `game.slashes`, `Renderer.drawSlashes`; LONG's tips gold and harder). **THE HORN TOOL** (DEV MODE → HORN TOOL, `dev.hornTool`): a panel of sliders over the run (`Renderer.drawHornTool`, `HORN_TOOL` in game.js, `Game.setHornParam`), one per number of the horn he has, live; ONE MAN / ALL MEN flips `single`, SAVE writes them into tuning.js (`persistTuningEdit`), COPY puts them on the clipboard; ZONE draws the hit shape standing on the floor along his aim with its axis ticked a tile at a time and its reach in tiles (`drawHornZone`). Planned, not built: a horn rolled or earned per run (his call: how a player gets BIG or LONG), souls that pay off per horn.
 
 **Timing.** Headbutt has no cooldown (recovery is the cost); `goat.grabCd` on every release, set only
 through `Goat.spendGrab(game, man)`, a man costs `grab.manCd` × a thing, however he left the mouth,
@@ -1447,8 +1461,8 @@ tier with `Shop.tierFit`), with `levelArtifacts` and the checkpoint's copies. FI
 LUCKY CLOVER: `mods.luck` → `generateLevel(def, seed, { luck })` for the next floor (`balance.js` runs without).
 THE KNUCKLEBONE (`knuckle`, tag `soul`, 30 Sep 2026): `mods.thirdEvery` 2, a soul's third card (see *Boons*).
 The crow brings `prop.crow.giftTier` (RARE, a single-tier one's COMMON). On him each is a charm on the collar
-(`PaintedArt.collar`, `CAPE_PIXELS.charm`, `TUNING.talisman.charm`); in the HUD a chip each right of the hearts,
-its pips and its own counters under it (`Renderer.drawArtifactChip`, `Talisman.drawHud(…, id)`).
+(`PaintedArt.collar`, `CAPE_PIXELS.charm`, `TUNING.talisman.charm`); in the HUD a chip each in the top-left corner (right of
+the hearts on touch), its pips and its own counters under it (`Renderer.drawArtifactChip`, `Talisman.drawHud(…, id)`).
 
 **Capes** (6 Oct 2026, `CAPES`, js/capes.js, js/cape-pixels.js, `TUNING.cape`). One worn, `game.cape` `{ id }`
 (`levelCape`, saved as `cape`), one grade each (`CAPE_RARITY`), each a verb on **Q**, which does not exist until
@@ -1677,7 +1691,7 @@ card's RUN AGAIN (`Painting.quickRect`, Backspace) start a new one from THE ALTA
 card's RUN AGAIN share). A LEVELS practice and THE SHOWROOM keep the old way below (the same floor, built again). **One more
 life** (`heaven.extraLife`): a run begun once heaven has been visited (`Heaven.extraLivesFor`) carries `game.extraLives`, saved
 with the run (`lives`), spent by `Motes.second` the way SECOND CHANCE is (after it, if both), back up where he fell with a share
-of his hearts; a white soul after the hearts in the HUD.
+of his hearts; a small portrait of the goat over the hearts in the HUD (`Renderer.lifePortrait`, Hades' Death Defiance).
 **HELLDIVE / SUPER HELLDIVE** (7 Oct 2026, one `MIRROR` entry `helldive` with two ranks and a name a rank, `names`,
 `Heaven.rankName`; `needs: 'revive'`: on the glass once he has a revive to shape, SECOND CHANCE's quest or ONE MORE LIFE):
 not a life, the shape of every revive (`mods.helldive`). Where the plain revive is the god's beam sending his soul back
@@ -1731,9 +1745,14 @@ pays heaven and the talismans nothing the second time. A thing added on a floor 
 place in `loose`.
 
 **THE ANIMALS' HOME** (7 Oct 2026, `js/heaven-home.js`, `TUNING.heaven.home`; CONCEPT.md *Heaven as the animals' home*). Heaven is
-three rooms (`HEAVEN_MAP`): THE THRONE (the god, the shepherd and his bells; he comes up at `start`), THE STALLS (the stands,
-`SEAT_AT`; the horse's paddock below `paddock.fence`; the dares' rail), THE EDGE (mirror, overlook, the horns, tables, the drop;
-`drawEarth` and `drawArrows` read its x). A stand is `Heaven.standState`: 'open' (`home.stands.open`: tortoise, goose; or mended,
+two rooms (`HEAVEN_MAP`; three for a day, 7 Oct 2026, back to two the same day: "too long a run to the jump"): THE THRONE (the
+god; five stands, `SEAT_AT`: tortoise, goose, hen, crow, horse; the horse's paddock along its foot below `paddock.fence`; he comes
+up at `start`) and, over the bridge, THE EDGE (mirror, the bells and the shepherd, overlook, the other four stands east of the
+bells, the horns, tables, the post, the drop; the drop is only its first `HEAVEN_MAP.drop` tiles, which `drawEarth` and
+`drawArrows` read). **The god's asks, in order** (7 Oct 2026): twenty souls mend the mirror (`gift.mend`), then a hundred given
+to him (`gift.horns`: `HEAVEN_TALK.horns` asks, `hornsAsk`; GRAB held at him pours, `pourable` key `god`, with an empty heap a
+GRAB is still a word with him; `hornsHave` is the purse's FOR THE GOD count, `goalHave`) open BIG and LONG at the edge
+(`hornsOpen`, `hornsDone`), then the two hundred for SECOND CHANCE. The HEAVEN dev tab's HORNS row toggles it. A stand is `Heaven.standState`: 'open' (`home.stands.open`: tortoise, goose; or mended,
 `meta.mendedStands`), 'broken' (`stands.cost`: the horse, 40) or 'locked' (the rest, a padlock); only open kinds are dealt into a
 run (`Beast.deal(seed, early, allow)` ← `Heaven.beastsOpen`, the plan keyed on them in `beastPlanFor`). **Pouring**: GRAB held at
 the broken mirror (once gifted, `gift.mend`), the broken overlook (`home.tower.cost`, `meta.towerMended`) or a broken stand spends

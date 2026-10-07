@@ -88,6 +88,12 @@ const Motes = {
       game.floatText(game.goat.x, game.goat.y - 50, say, '#fff4c2');
       game.ring(game.goat.x, game.goat.y, 2.4 * TILE, '#fff4c2');
     }
+    // The god's hundred for the horns (`gift.horns`): said once the heap could pay it, while it is still owed.
+    if (Heaven.meta && Heaven.mended() && !Heaven.hornsOpen() && Heaven.meta.told && Heaven.meta.told.horns0 && !game.hornsSaid && Heaven.hornsHave() >= G.horns) {
+      game.hornsSaid = true;
+      game.floatText(game.goat.x, game.goat.y - 50, 'A HUNDRED FOR THE GOD: THE HORNS', '#fff4c2');
+      game.ring(game.goat.x, game.goat.y, 2.4 * TILE, '#fff4c2');
+    }
   },
   // The floor is done: whatever is still hanging is his.
   flush(game) {

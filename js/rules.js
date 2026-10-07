@@ -93,7 +93,7 @@ const GEN_RULES = [
     } },
   { id: 'first', text: 'The run opens on one clubman, standing in the only way out of his room.',
     check: (L) => {
-      if (levelIndexOf(L.def) !== 0) return null;
+      if (levelIndexOf(L.def) !== 0 || !L.def.sentryIntro) return null;   // THE ALTAR AGAIN has no sentry (`altarAgain`)
       const r = roomsOf(L).find((x) => x.spawns.length);
       if (!r) return 'no fighting room at all';
       if (r.spawns.length !== 1) return `it holds ${r.men.join(', ')}`;

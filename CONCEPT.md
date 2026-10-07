@@ -453,9 +453,10 @@ on the grass behind it: the only tell is something heavy leaning on the door fro
 ## Between deaths: the pasture above
 
 A death is not a menu, and since 7 Oct 2026 it is the end of the run (PERMADEATH: "if you die, you die; what
-heaven holds and what you unlocked stay"). The card says what killed him, and a click takes him **up**: three rooms
-of cloud laid by hand, the same every visit: THE THRONE (the god, the shepherd and his bells: the story and its
-tasks), THE STALLS (the animals' stands and their dares), THE EDGE (the mirror, the overlook, the horns, the jump). Pillar 6 has nothing to catch here, because nothing up here is
+heaven holds and what you unlocked stay"). The card says what killed him, and a click takes him **up**: two rooms
+of cloud laid by hand, the same every visit: THE THRONE (the god, and half of the animals' stands with the horse's
+paddock) and, over a short bridge, THE EDGE (the mirror, the shepherd and his bells, the overlook, the other stands,
+the horns, the jump). A third room was tried for a day and taken out: the walk to the jump was too long. Pillar 6 has nothing to catch here, because nothing up here is
 worth knowing the layout of, it is where you stand between runs, not a level.
 
 - **The goat god** sits on the biggest cloud: a ram made of light, gold horns, a white beard, a bell at
@@ -464,7 +465,7 @@ worth knowing the layout of, it is where you stand between runs, not a level.
   you shall be there. BEH."). What he says follows what happened: who killed you, how many times you
   have died, a floor you got further on than ever, an animal you brought out. GRAB talks to him; BAAH
   at him and he answers.
-- **The stands.** One for each animal the compound keeps, in THE STALLS. The tortoise's and the goose's are
+- **The stands.** One for each animal the compound keeps, by the throne and by the edge. The tortoise's and the goose's are
   open from the start (their animals come into the runs); the horse's is broken and is mended by pouring
   forty souls into it; the rest are locked for now. Bring an animal up the stairs alive and it sits on its
   stand and dares you; win the dare and it lives up here its own way, and a talisman comes onto the shelves
@@ -484,8 +485,9 @@ worth knowing the layout of, it is where you stand between runs, not a level.
 - **Pouring.** Anything broken up here (the mirror, the overlook, a stand) is mended by holding GRAB at it:
   the souls on the heap fly out of him into it one by one until it is whole.
 - **The edge.** The last room ends in nothing, and far below it is the earth, fields, a river, the
-  compound, and the pen in a shaft of light. The three horns lie before it (the dagger, BIG, LONG): GRAB
-  a pair to wear it. Walk off and he falls into a new run, beside the pen on the first floor. Once he has
+  compound, and the pen in a shaft of light. The three horns lie before it (the SHORT, BIG, LONG): GRAB
+  a pair to wear it. BIG and LONG are the god's: his second ask, after the twenty that mend the mirror, is a
+  hundred souls given to him, and then they are yours to choose. Walk off and he falls into a new run, beside the pen on the first floor. Once he has
   been up here, every run starts with one more life (Hades' Death Defiance), to be taken away later. RUN
   AGAIN on the death card skips the pasture.
 

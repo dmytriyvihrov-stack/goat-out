@@ -9,6 +9,19 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 7 October 2026, the HUD, heaven back to two rooms, the god's horns, THE ALTAR AGAIN (shipped in 2.03)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | the hearts bottom left (screenshot) | the hearts in the bottom-left corner over one faint seed and build line (`renderer.hudLow`); touch keeps them up top |
+| 2 | feel | the life as a goat portrait, like Hades, smaller, above them | ONE MORE LIFE: a framed portrait of the goat each over the hearts (`lifePortrait`); the cape's plate and the dev word over that |
+| 3 | feel | the talismans top left, small, apart from the hearts | 24 px chips in the top-left, the animals carried and the horn test's lines under them |
+| 4 | feel | the camera a little lower, the bottom carries more now | `camera.hudLift` 0.05: he stands that share of the view above the middle (not touch, not heaven) |
+| 5 | feel | heaven back to two rooms, bells and everything where they were, the animals half in each; too long a run to the jump | `HEAVEN_MAP` two rooms; five stands by the throne with the horse's paddock along its foot, four in the edge room east of the bells; the drop as wide as it was |
+| 6 | number | the horns: not dagger, SHORT | `short` everywhere (an old saved `dagger` reads as SHORT) |
+| 7 | system | the god's quests: twenty to mend the mirror, then a hundred given to him to open the horns | `gift.horns` 100 poured into the god (GRAB held at him) opens BIG and LONG at the edge (`hornsOpen`); locked pairs pale under a padlock; HEAVEN tab HORNS row |
+| 8 | system | after the first clear of floor one, it need not keep its rules, a bit harder: a fixed structure will bore players | THE ALTAR AGAIN (`altarAgain`): no sentry, calm, ambush, hayloft or crowd room, no floor words, the wheel off the seed, three men a room to 6 threat, the last ring a clubman or a butcher; DEV MODE ALTAR AGAIN row; every rule holds over 300 seeds |
+
 ## 7 October 2026, his 36 notes with screenshots, batch 1 of 2 (shipped the same day, not yet deployed)
 
 Split in two at his word ("if needed split into two batches"): this batch is the fixes and the numbers; batch 2 is

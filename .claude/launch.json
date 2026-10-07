@@ -929,6 +929,15 @@
       "port": 8991
     },
     {
+      "name": "goat-out-hudlow",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8997"
+      ],
+      "port": 8997
+    },
+    {
       "name": "goat-out-helldive",
       "runtimeExecutable": "node",
       "runtimeArgs": [

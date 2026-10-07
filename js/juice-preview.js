@@ -53,7 +53,7 @@ const JUICE_PLAY = {
   'Squash & stretch (poses)': { scene: 'buttKnock', tip: 'crouch, stretch, try ¼×' },
   'Squash spring': { scene: 'buttKnock', off: { game: { squashGoat: null } } },
   'Knockback': { scene: 'buttKnock' },
-  'The horns wave': { scene: 'buttKnock', tip: 'the dev drawer HORNS row steps the dagger, BIG and LONG' },
+  'The horns wave': { scene: 'buttKnock', tip: 'the dev drawer HORNS row steps the SHORT, BIG and LONG' },
   'Player recoil': { scene: 'hurt' },
   'Motion smear': { scene: 'runFast', off: { tune: { 'goat.trail.fastAt': 99, 'goat.trail.at': 99 } } },
   'Invulnerability blink': { scene: 'hurt' },

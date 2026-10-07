@@ -2930,7 +2930,7 @@ function roomSlot(def) {
   if (!def) return -1;
   if (def.shroom) return LEVELS.length + 1;
   if (def.dark) return LEVELS.length;
-  return LEVELS.indexOf(def);
+  return levelIndexOf(def);   // THE ALTAR AGAIN (`againOf`) is THE ALTAR's slot
 }
 // May this template be dealt on this floor (`ROOM_LEVELS`)? No entry, or a floor the string does not
 // reach (a hand-laid one), is yes.

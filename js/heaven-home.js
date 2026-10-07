@@ -1,7 +1,8 @@
-// THE ANIMALS' HOME (7 Oct 2026, batch 2 of his 36 notes; CONCEPT.md, "Heaven as the animals' home"). Heaven is three
-// rooms now (`HEAVEN_MAP`, laid by `Heaven.level`): THE THRONE, where he comes up (the god, the blind shepherd and his
-// bells: the story and its tasks), THE STALLS (the animals' stands, the horse's paddock, the rail for their dares: the
-// side tasks), and THE EDGE (the mirror, the overlook, the horns and the drop: his strength and the start of a run).
+// THE ANIMALS' HOME (7 Oct 2026, batch 2 of his 36 notes; CONCEPT.md, "Heaven as the animals' home"). Heaven is two
+// rooms (`HEAVEN_MAP`, laid by `Heaven.level`; three for a day, 7 Oct 2026: "put the rooms and the bells back, two
+// rooms, the animals part in the first room and part in the second; it is too long a run to the jump now"): THE THRONE,
+// where he comes up (the god, five of the stands, the horse's paddock along its foot), and THE EDGE across the bridge
+// (the mirror, the bells and the blind shepherd, the overlook, the other four stands, the horns and the drop).
 //
 // Opening an animal is not freeing it. A stand is LOCKED (a padlock: not yet), BROKEN (mended by pouring souls into
 // it) or OPEN (the tortoise's and the goose's from the start, `home.stands.open`); only an open stand's animal is dealt
@@ -16,16 +17,18 @@
 //
 // Pillar 1 holds: GRAB is the only verb any of it asks for. Rule 6 holds: laid by hand, the same every visit.
 const HEAVEN_MAP = {
-  W: 90, H: 36,
-  throne: { x: 4, y: 5, w: 24, h: 16 },    // interior 5..26 x 6..19: the god's cloud over 12..19, his steps 13..19 x 9..12
-  stalls: { x: 31, y: 4, w: 30, h: 20 },   // interior 32..59 x 5..22: the stands, the paddock below `paddock.fence`
-  edge: { x: 64, y: 6, w: 24, h: 15 },     // interior 65..86 x 7..19, its south side open on the drop from row 20
+  W: 66, H: 36,
+  throne: { x: 3, y: 5, w: 26, h: 22 },    // interior 4..27 x 6..25: the god's cloud over 12..19, his steps; the paddock below `paddock.fence`
+  edge: { x: 33, y: 6, w: 30, h: 15 },     // interior 34..61 x 7..19, its south side open on the drop from row 20
+  drop: 22,                                 // how much of the edge room's south side is the drop (34..55, as it always was)
 };
+// The room the animals call home (the horse's paddock, the goose's flock over it): THE THRONE.
+HEAVEN_MAP.stalls = HEAVEN_MAP.throne;
 // The horns laid out before the jump (`hhorn`, 7 Oct 2026, "lay the horns out before the jump, small, long and wide,
 // so you can choose"), each a pair drawn in cells: `#` the horn, `+` its lit edge. Read left to right, the tip up.
 const HORN_GLYPHS = {
   // `s` the little skull they grow from, `e` its eyes, `h` the horn, `+` the horn's lit tip.
-  dagger: ['..+......+..', '..h......h..', '...h....h...', '...h....h...', '....ssss....', '...ssssss...', '...sessse...', '....ssss....'],
+  short: ['..+......+..', '..h......h..', '...h....h...', '...h....h...', '....ssss....', '...ssssss...', '...sessse...', '....ssss....'],
   big: ['.++......++.', 'h..h....h..h', 'h.hh....hh.h', '.hh.ssss.hh.', '...ssssss...', '...sessse...', '....ssss....'],
   long: ['+..........+', '.h........h.', '..h......h..', '..h......h..', '...h....h...', '...h....h...', '....ssss....', '...ssssss...', '...sessse...', '....ssss....'],
 };
@@ -55,6 +58,9 @@ Object.assign(Heaven, {
     const M = this.meta, P = TUNING.heaven.home;
     if (!n || !M) return null;
     if (n.kind === 'mirror' && !this.mended() && M.gift) return { key: 'mirror', cost: TUNING.heaven.gift.mend, word: 'MEND IT' };
+    // The god's hundred for the horns, once he has asked for it (`horns0`) and there is something to give: a GRAB with
+    // nothing in the heap is still a word with him.
+    if (n.kind === 'god' && this.hornsAsk() && M.told.horns0 && (M.sacrifices > 0 || this.poured('god') >= TUNING.heaven.gift.horns)) return { key: 'god', cost: TUNING.heaven.gift.horns, word: 'GIVE' };
     if (n.kind === 'tower' && !this.towerMended()) return { key: 'tower', cost: P.tower.cost, word: 'MEND IT' };
     if (n.kind === 'seat' && this.standState(n.thing.seat) === 'broken') return { key: 'stand:' + n.thing.seat, cost: P.stands.cost[n.thing.seat], word: 'MEND IT' };
     return null;
@@ -99,6 +105,13 @@ Object.assign(Heaven, {
     game.ring(n.x, n.y, 3 * TILE, '#fff4c2'); game.particles(n.x, n.y - 30, 30, '#ffffff', 200);
     game.audio.sfxBell(); game.audio.sfxChime(TUNING.heaven.bells[1]); game.audio.sfxChime(TUNING.heaven.bells[4], 0.7, 0.16);
     if (P.key === 'mirror') { this.mend(game); return; }
+    if (P.key === 'god') {
+      M.hornsOpen = true; this.save();
+      game.heaven.plates.push({ x: game.level.god.x, y: game.level.god.y - 118, text: HEAVEN_TALK.hornsDone[0], life: TUNING.heaven.plate * 1.6, god: true });
+      game.audio.sfxGodVoice(1);
+      for (const h of game.props) if (h.kind === 'hhorn') { h.wobble = 0.4; game.ring(h.x, h.y, 1.6 * TILE, '#f7d774'); }
+      return;
+    }
     if (P.key === 'tower') {
       M.towerMended = true; this.save();
       if (n.thing) n.thing.wobble = 0.4;
@@ -134,6 +147,11 @@ Object.assign(Heaven, {
   // GRAB at a pair: these are his horns from now on (`game.hornKind`, `HORN_KEY`, the itch build too).
   pickHorns(game, p) {
     const HN = TUNING.goat.horns[p.horn]; if (!HN) return;
+    if (p.horn !== 'short' && !this.hornsOpen()) {   // the god's until his hundred (`hornsOpen`)
+      const K = HEAVEN_TALK.hornsShut;
+      game.heaven.plates.push({ x: p.x, y: p.y - 46, text: K[Math.floor(Math.random() * K.length)], life: TUNING.heaven.plate, god: true });
+      p.wobble = 0.2; game.audio.sfxClatter('metal', 0.3); return;
+    }
     game.hornKind = p.horn;
     try { localStorage.setItem(HORN_KEY, p.horn); } catch (e) { /* storage refused: this visit only */ }
     game.applyBoons(); this.heavenMods(game);   // the new horn's numbers, and heaven's own laid back over them
@@ -142,23 +160,30 @@ Object.assign(Heaven, {
     game.heaven.plates.push({ x: p.x, y: p.y - 46, text: HN.name + ' HORNS: ' + HN.note, life: TUNING.heaven.plate });
   },
   drawHorn(R, game, p) {
-    const ctx = R.ctx, G = HORN_GLYPHS[p.horn], c = 3, mine = game.hornKind === p.horn, t = R.t;
+    const ctx = R.ctx, G = HORN_GLYPHS[p.horn], c = 3, mine = game.hornKind === p.horn, t = R.t, shut = p.horn !== 'short' && !this.hornsOpen();
     ctx.save(); ctx.translate(p.x, p.y + 6); ctx.scale(1, 1 / TILT);
     R.shadow(0, 0, 14, 4);
     this.puff(ctx, 0, -2, 11, '#f4f8ff', 2); this.puff(ctx, 0, 1, 8, '#dfe9fb', 2);   // its cushion of cloud
     const w = G[0].length * c, h = G.length * c, bob = Math.round(Math.sin(t * 1.8 + p.x) * 1.5), ox = -w / 2, oy = -h - 14 + bob;
     if (mine) { ctx.globalAlpha = 0.45 + 0.25 * Math.sin(t * 3); CombatFX.pixelRing(ctx, 0, oy + h / 2, Math.max(w, h) * 0.7, 2, '#f7d774'); ctx.globalAlpha = 1; }
+    if (shut) ctx.globalAlpha = 0.3;   // the god's still: pale, under a padlock
     ctx.fillStyle = '#3a2c4e';
     for (let r = 0; r < G.length; r++) for (let q = 0; q < G[r].length; q++) if (G[r][q] !== '.') ctx.fillRect(ox + (q - 1) * c, oy + (r - 1) * c, c * 3, c * 3);
     const col = { '+': '#fff4c2', h: mine ? '#f7d774' : '#cdb58a', s: '#efe6d0', e: '#3a2c4e' };
     for (let r = 0; r < G.length; r++) for (let q = 0; q < G[r].length; q++) if (G[r][q] !== '.') { ctx.fillStyle = col[G[r][q]]; ctx.fillRect(ox + q * c, oy + r * c, c, c); }
+    ctx.globalAlpha = 1;
+    if (shut) {
+      const ly = oy + h / 2 - 4;
+      ctx.fillStyle = '#3a2c4e'; ctx.fillRect(-7, ly - 2, 14, 12); ctx.fillRect(-5, ly - 9, 3, 8); ctx.fillRect(2, ly - 9, 3, 8); ctx.fillRect(-5, ly - 10, 10, 3);
+      ctx.fillStyle = '#b8b0a0'; ctx.fillRect(-5, ly, 10, 8); ctx.fillStyle = '#3a2c4e'; ctx.fillRect(-1, ly + 2, 2, 4);
+    }
     // its name under it, small, on the cloud
     ctx.font = `700 9px ${FONT_SC}`; ctx.textAlign = 'center'; ctx.fillStyle = mine ? '#b07a22' : 'rgba(58,44,78,0.7)'; ctx.fillText(TUNING.goat.horns[p.horn].name, 0, 14);
     ctx.restore();
   },
 
   // ---------------------------------------------------------------- the paddock and who lives up here
-  // The horse's paddock (`home.paddock`): a fence of rails across THE STALLS once its stand is whole, the horse in it
+  // The horse's paddock (`home.paddock`): a fence of rails across THE THRONE's foot once its stand is whole, the horse in it
   // once it has come up (saved, not yet free). The posts are bodies (`hfence`) so he walks to the fence, not through it.
   layPaddock(game) {
     const P = TUNING.heaven.home.paddock, px = (t) => (t + 0.5) * TILE;
@@ -185,7 +210,7 @@ Object.assign(Heaven, {
   },
   // A spot of open cloud for a free animal to go to: in its own room most of the time, now and then another.
   roamSpot(game, kind) {
-    const w = game.world, rooms = [HEAVEN_MAP.throne, HEAVEN_MAP.stalls, HEAVEN_MAP.edge], rng = Math.random;
+    const w = game.world, rooms = [HEAVEN_MAP.throne, HEAVEN_MAP.edge], rng = Math.random;
     const home = kind === 'goose' ? HEAVEN_MAP.stalls : kind === 'tortoise' ? HEAVEN_MAP.stalls : null;
     for (let a = 0; a < 40; a++) {
       const R = home && rng() < 0.7 ? home : rooms[Math.floor(rng() * rooms.length)];
@@ -245,7 +270,7 @@ Object.assign(Heaven, {
   // toward the goal nearest its own row; it lines up with that row inside its room, then walks through. Null once it
   // is in the goal's room.
   roamVia(game, p, goal) {
-    const rooms = [HEAVEN_MAP.throne, HEAVEN_MAP.stalls, HEAVEN_MAP.edge], tx = p.x / TILE;
+    const rooms = [HEAVEN_MAP.throne, HEAVEN_MAP.edge], tx = p.x / TILE;
     const idx = (x) => rooms.findIndex((r, i) => x < (rooms[i + 1] ? (r.x + r.w + rooms[i + 1].x) / 2 : 1e9));
     const a = idx(tx), b = idx(goal.x / TILE); if (a === b || a < 0 || b < 0) return null;
     const dir = Math.sign(b - a), L = rooms[Math.min(a, a + dir)], gx = Math.floor((L.x + L.w + rooms[Math.min(a, a + dir) + 1].x) / 2);
@@ -268,7 +293,7 @@ Object.assign(Heaven, {
     const fake = p.fake || (p.fake = new Prop(p.x, p.y, p.as)); fake.x = p.x; fake.y = p.y; fake.bob = p.bob; fake.face = p.face; fake.vx = p.vx || 0; fake.vy = p.vy || 0; fake.honkT = 0;
     R.drawProp(fake);
   },
-  // The goose's flock, up and round the sky over THE STALLS while it is away.
+  // The goose's flock, up and round the sky over THE THRONE while it is away.
   drawFlock(R, game) {
     const goose = game.props.find((p) => p.kind === 'hroam' && p.as === 'goose' && p.flying > 0); if (!goose) return;
     const ctx = R.ctx, C = TUNING.heaven.home.roam.goose, S = HEAVEN_MAP.stalls, t = R.t, k = clamp(Math.min(goose.flying, C.flyFor - goose.flying) / 1.5, 0, 1);
