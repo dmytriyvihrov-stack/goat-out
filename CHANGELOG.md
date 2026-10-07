@@ -5,6 +5,10 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 2.01, published 7 Oct 2026
+
+Everything under the next sections that says "not yet published" (capes and two grades of talisman, THE CHASE, the deeper secrets, the shaman, the ten notes from his uncle, THE FLANK, the three horns and the review's fixes) went out together as 2.01.
+
 ## THE FLANK, three horns, and the review's bugs, 7 Oct 2026 (not yet published)
 
 His ask: "a room like Gungeon's with a pit: go straight at them, or jump the pit and come round behind; and the horns: the ones
