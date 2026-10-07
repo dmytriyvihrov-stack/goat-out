@@ -911,6 +911,15 @@
       "port": 8986
     },
     {
+      "name": "goat-out-ditch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8995"
+      ],
+      "port": 8995
+    },
+    {
       "name": "goat-out-novelty",
       "runtimeExecutable": "node",
       "runtimeArgs": [

@@ -29,7 +29,7 @@ const TUNE_KEY = 'goatout.devtune.v1';
 const RULE_HIDE_KEY = 'goatout.rulehide.v1';
 // The dev drawer's STEALTH test (`TUNING.stealth`), kept on through a reload in this browser only.
 const STEALTH_KEY = 'goatout.stealth.v1';
-const HORN_KEY = 'goatout.horns.v1';   // the dev test's horn size (`TUNING.horns`), this browser only
+const HORN_KEY = 'goatout.horns.v1';   // the dev test's horn size (`TUNING.goat.horns`), this browser only
 const DEV_TUNE = [
   ['enemySpeed', 'ENEMY SPEED', 'every gait'], ['enemyAttack', 'ENEMY ATTACK', '×2 = twice as fast'],
   ['enemyCd', 'ENEMY COOLDOWN', '×2 = twice as long'], ['goatSpeed', 'GOAT SPEED', 'walk, run-up, roll'],
@@ -153,8 +153,8 @@ class Game {
     // all seven, `page` the level the middle one is looking at, and `room` the one room the page
     // has been asked to open, which is reachable from either of the other two.
     // HORN SIZES test: never in the itch build, which is always the wide horn it has always had.
-    this.hornKind = 'wide';
-    try { const hk = !RELEASE.on && localStorage.getItem(HORN_KEY); if (hk && TUNING.horns[hk]) this.hornKind = hk; } catch (e) { /* storage refused */ }
+    this.hornKind = 'dagger';
+    try { const hk = !RELEASE.on && localStorage.getItem(HORN_KEY); if (hk && TUNING.goat.horns.order.includes(hk)) this.hornKind = hk; } catch (e) { /* storage refused */ }
     this.dev = { open: false, god: false, dips: false, rects: [], toast: null, rules: false, tab: 'rules',
       page: 0, sample: null, sampleSeed: 1, samples: {}, matrix: null,
       ruleHide: (() => { try { return new Set(JSON.parse(localStorage.getItem(RULE_HIDE_KEY) || '[]')); } catch (e) { return new Set(); } })(),
@@ -258,8 +258,8 @@ class Game {
     Heaven.applyMeta(this.mods);   // what THE MIRROR has bought, under every run (js/heaven.js)
     this.applySets(this.mods);
     if (this.world) this.world.burnMul = this.mods.burnMul;
-    // HORN SIZES (`TUNING.horns`): under the souls, so LONG HORNS bends the size he has instead of replacing it.
-    const HN = TUNING.horns[this.hornKind] || TUNING.horns.wide;
+    // HORN SIZES (`TUNING.goat.horns`): under the souls, so LONG HORNS bends the size he has instead of replacing it.
+    const HN = TUNING.goat.horns[this.hornKind] || TUNING.goat.horns.dagger;
     this.mods.horn = HN;
     this.mods.headbuttReach *= 1 + HN.reach;
     this.mods.headbuttWindup = (this.mods.headbuttWindup || 1) * HN.windup;
@@ -1343,10 +1343,10 @@ class Game {
       this.devToast(this.dev.stealth ? 'STEALTH ON: ALT TO SNEAK' : 'STEALTH OFF'); return;
     }
     if (id === 'horns') {   // HORNS in the DEV MODE drawer: short, wide, long
-      const O = TUNING.horns.order;
+      const O = TUNING.goat.horns.order;
       this.hornKind = O[(O.indexOf(this.hornKind) + 1) % O.length];
       try { localStorage.setItem(HORN_KEY, this.hornKind); } catch (e) { /* storage refused */ }
-      this.applyBoons(); this.devToast('HORNS: ' + TUNING.horns[this.hornKind].name + ' · ' + TUNING.horns[this.hornKind].note); return;
+      this.applyBoons(); this.devToast('HORNS: ' + TUNING.goat.horns[this.hornKind].name + ' · ' + TUNING.goat.horns[this.hornKind].note); return;
     }
     if (id === 'dark') { this.dev.dark = !this.dev.dark; return; }
     // THE CHASE over whatever floor is up, from now (js/chase.js); off takes it away. Its run codes carry `C`.

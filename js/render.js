@@ -526,6 +526,7 @@ class Renderer {
       for (const e of standing) this.drawEnemyGround(e, game);
       if (hld && !hld.item) this.drawEnemyGround(hld, game);
       if (!g.dead) this.drawGoatPoison(g);
+      if (g.wave && !g.dead) this.drawHornWave(g, game);
       // In the air over a man's back (LEAPFROG) he is over everyone.
       const foot = (o) => (o === g && g.leap ? Infinity : o.y);
       // What THE MAGNET carries round him stands in the same order (js/talismans.js).
@@ -2209,6 +2210,44 @@ class Renderer {
     ctx.globalAlpha = 1;
     const col = sick && Math.sin(this.t * 12) > 0 ? PALETTE.bone : PALETTE.venomHi;
     CombatFX.pixelArc(ctx, x, y, r, 2, col, sick ? g.poisoned / TUNING.goat.poison.time : f);
+    ctx.restore();
+  }
+  // THE HORNS' WAVE (7 Oct 2026, "a small wave on the floor, showing where the damage and the push are for each horn"):
+  // for `horns.wave.time` s after the head comes up, cells on the floor where the blow lands, out from his feet at the
+  // aim he swung at. The dagger and BIG are a fan the shape of their arc, a pale fill with the front of the wave
+  // bright; LONG is the two strips of its horns, the shafts pale (a shove) and the last of each bright (the tips throw).
+  // Cells on the world grid, never a stroke; the same geometry `Goat.hornHit` asks, so the picture is the hit.
+  drawHornWave(g, game) {
+    const W = TUNING.goat.horns.wave, HN = game.mods.horn; if (!HN || !g.wave) return;
+    const ctx = this.ctx, p = clamp(g.wave.t / W.time, 0, 1), px = TUNING.effects.pixel * 2;
+    const ax = g.wave.ax, ay = g.wave.ay, x = g.x, y = g.y + 2;
+    // The centre of the man it reaches (a man's own width is `e.r`, about half a tile): the picture ends where a hit would.
+    const R = g.r + 10 + (game.mods.headbuttReach - 1) * TILE + 14;
+    const front = R * Math.min(1, p / 0.45), fade = Math.pow(1 - p, 1.2);
+    ctx.save();
+    const cells = (test) => {
+      const j0 = Math.floor((y - R) / px), j1 = Math.floor((y + R) / px), i0 = Math.floor((x - R) / px), i1 = Math.floor((x + R) / px);
+      for (let j = j0; j <= j1; j++) {
+        let run = null;
+        for (let i = i0; i <= i1 + 1; i++) {
+          if (i <= i1 && test((i + 0.5) * px - x, (j + 0.5) * px - y)) { if (run === null) run = i; }
+          else if (run !== null) { ctx.rect(run * px, j * px, (i - run) * px, px); run = null; }
+        }
+      }
+    };
+    let pale, hard;
+    if (HN.rows) {
+      const off = HN.rowGap * TILE, w = HN.rowW * TILE, tipAt = R * HN.tip, s0 = g.r * 0.8;
+      const inRows = (u, v) => { const s = u * ax + v * ay, o = u * ay - v * ax; return s >= s0 && s <= front && Math.min(Math.abs(o - off), Math.abs(o + off)) <= w; };
+      pale = (u, v) => inRows(u, v) && u * ax + v * ay < tipAt;
+      hard = (u, v) => inRows(u, v) && u * ax + v * ay >= tipAt;
+    } else {
+      const inFan = (u, v) => { const d = hyp(u, v); return d >= g.r * 0.8 && d <= front && (d < 1 || (u * ax + v * ay) / d >= HN.cone); };
+      pale = (u, v) => inFan(u, v) && hyp(u, v) < front - px * 2;
+      hard = (u, v) => inFan(u, v) && hyp(u, v) >= front - px * 2;
+    }
+    ctx.globalAlpha = W.alpha * fade; ctx.fillStyle = PALETTE.bone; ctx.beginPath(); cells(pale); ctx.fill();
+    ctx.globalAlpha = Math.min(1, W.alpha * 1.7) * fade; ctx.fillStyle = PALETTE.fireHi; ctx.beginPath(); cells(hard); ctx.fill();
     ctx.restore();
   }
   // VENOM JAW / FIREBRAND: a ring closing round whatever is in his mouth, and once it is shut the
@@ -4701,8 +4740,8 @@ class Renderer {
           ['dark', d.dark ? 'DARK  ON' : 'DARK  OFF'],
           // THE CHASE (js/chase.js) laid over whatever floor is up; THE ROAD has it of its own.
           ['chase', d.chase ? 'CHASE  ON' : 'CHASE  OFF'],
-          // Horn size, a test (`TUNING.horns`): each click steps short, wide, long.
-          ['horns', 'HORNS  ' + TUNING.horns[game.hornKind].name],
+          // Horn size, a test (`TUNING.goat.horns`): each click steps short, wide, long.
+          ['horns', 'HORNS  ' + TUNING.goat.horns[game.hornKind].name],
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
           ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['showroom', 'SHOWROOM'],
           // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
@@ -8539,13 +8578,13 @@ class Renderer {
         ctx.fillRect(Math.round(ox + q * px), Math.round(oy + r * px), Math.ceil(px), Math.ceil(px));
       }
     }
-    // HORN SIZES test (`TUNING.horns`): which horn he has and what it does, under the hearts. Never in the itch build.
+    // HORN SIZES test (`TUNING.goat.horns`): which horn he has and what it does, under the hearts. Never in the itch build.
     if (!RELEASE.on && game.mods && game.mods.horn) {
       const HN = game.mods.horn, M = game.mods, H = TUNING.goat.headbutt;
       ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
       ctx.fillText(`HORNS: ${HN.name}  ·  ${HN.note}`, 14 * s, top + 42 * s);
       ctx.font = `600 ${10.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-      ctx.fillText(`WINDUP ${sayN(H.windup * M.headbuttWindup)}s · RECOVERY ${sayN(H.recovery * M.headbuttRecovery)}s · REACH ${M.headbuttReach >= 1 ? '+' : '-'}${sayN(Math.abs(M.headbuttReach - 1))} TILES · LUNGE x${sayN(HN.lunge)} ·${HN.lane ? 'LANE ' + sayN(HN.lane * 2) + ' WIDE' : 'ARC ' + Math.round(Math.acos(HN.cone) * 360 / Math.PI) + '°'}`, 14 * s, top + 56 * s);
+      ctx.fillText(`WINDUP ${sayN(H.windup * M.headbuttWindup)}s · RECOVERY ${sayN(H.recovery * M.headbuttRecovery)}s · REACH ${M.headbuttReach >= 1 ? '+' : '-'}${sayN(Math.abs(M.headbuttReach - 1))} TILES · LUNGE x${sayN(HN.lunge)} ·${HN.rows ? 'TWO ROWS, TIPS x' + sayN(HN.tipMul) + ' SHAFTS x' + sayN(HN.shaftMul) : 'ARC ' + Math.round(Math.acos(HN.cone) * 360 / Math.PI) + '°'}`, 14 * s, top + 56 * s);
     }
     // Everyone brought out to the stairs this run, one animal each, under the hearts: what an escort
     // is worth is a number buried in `mods`, and a row of the animals themselves is the way to see

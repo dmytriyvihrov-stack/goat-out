@@ -5,9 +5,29 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
-## Unreleased: horn sizes, a dev test, 6 Oct 2026
+## THE FLANK, three horns, and the review's bugs, 7 Oct 2026 (not yet published)
 
-DEV MODE → HORNS: SHORT, WIDE, LONG (`TUNING.horns`, `game.hornKind`, `mods.horn`). Windup, recovery, lunge, throw, reach, arc or lane per size; WIDE is the old horn and the only one in the itch build. Pushed to main only, not deployed. What comes next is in `BACKLOG.md` (6 October).
+His ask: "a room like Gungeon's with a pit: go straight at them, or jump the pit and come round behind; and the horns: the ones
+we have are dagger horns, two new on top, BIG (a big radius and reach) and LONG (straight, two rows, the damage at the tips),
+with a small wave showing where the damage and the push are for each". Plus a reviewer's report (`output/review-2026-10-06/`):
+the bugs fixed at once, the design suggestions kept as tasks (`TASKS_UK.md` there).
+- **THE FLANK** (`tag: 'flank'` templates `ditchcut`, `ditchtee`, `ditchisland`, `TUNING.rooms.flank`, `GEN_RULES.flank`): one
+  floor in about 0.6, from THE CAVE, an ordinary room is a trench with a squad on its far lip. The drop is one tile across (the
+  roll carries him over it), a way round on land always exists, and a shove from behind sends a body into it. In THE SHOWROOM,
+  a second row under the floors.
+- **The three horns** (`TUNING.goat.horns`, DEV MODE → HORNS): DAGGER is the horn as it was, BIG a deeper, wider arc that is
+  slower to swing, LONG two straight strips with the tips throwing 1.4 times and the shafts only shoving at half (`Goat.hornHit`).
+  **The wave** (`Renderer.drawHornWave`): cells on the floor for a third of a second where the blow lands, pale for the shove,
+  bright at the front and on LONG's tips. The merged dev test read `TUNING.horns` while the table lived under `TUNING.goat`: it
+  threw on the first `applyBoons`, now `TUNING.goat.horns` everywhere.
+- **B1** a hound walking home shared `sideT` with his ring and took an `undefined` heading: every position NaN (his own `homeSideT`).
+- **B2** touch GRAB never opened the mouse's offer: a finger's press is now one edge (`TouchUI.consumeGrab`).
+- **B3** a very short GRAB between two frames was lost: `input.rmbPressed` latches it for the once-asked things (a ware, an iron
+  cage, a scrap), never a pick-up (and in heaven).
+- **B4** a ware or an iron cage could be taken through a wall: both ask `game.sees` now (every shop's wares were checked reachable).
+- **B5** swapping a cape reset its wait: `Shop.wearCape` keeps what each still owes.
+- **The smoke bot** runs over chasms by rolling, starts floors with the dealt build (`keepBoons`) and marks a run with set-downs `OK*`.
+
 ## Talismans in two grades, three at once, and capes, 6 Oct 2026 (not yet published)
 
 His ask: "I don't want four grades on each, one or two makes sense; some only common, with middle numbers, the

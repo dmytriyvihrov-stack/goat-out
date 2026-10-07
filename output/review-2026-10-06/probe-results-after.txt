@@ -1,0 +1,43 @@
+boot play
+mobile shop {"touch":{"down":true,"pressed":true,"opened":true,"dialog":true},"mouse":{"opened":false,"dialog":true}}
+cape swap cooldown {"original":"symbols","before":37,"between":{"id":"meadow","cd":0},"after":{"id":"symbols","cd":37},"onFloor":{"id":"meadow","cape":true}}
+grab through obstruction {"lineOfSight":false,"before":"symbols","after":"symbols","shouldHaveStayed":"symbols"}
+short grab click vs held {"fast":{"cape":{"id":"ruin"},"edge":true},"held":{"cape":{"id":"ruin"},"edge":true}}
+real wall grab {"lineOfSight":false,"distance":64,"reach":73.2,"cape":null,"wallStillSolid":true}
+hound returning home corrupts positions {"before":{"sideT":1.1,"sideAng":"undefined","x":144.8,"vx":0},"after":{"facing":"3.141592653589793","vx":"-11.340403199999999","vy":"1.38879884799204e-15"},"goatX":"123.924397312","goatY":"1696"}
+{"wares":108,"bad":[]}
+{
+ "dagger": {
+  "front 1.0t": 672,
+  "front 2.0t": "-",
+  "front 2.6t": "-",
+  "front 3.2t": "-",
+  "side 1.0t": "-",
+  "beside 1.2t,.7t": "-",
+  "diag .6t,.6t": 672,
+  "behind": "-",
+  "between horns 2.4t": "-"
+ },
+ "big": {
+  "front 1.0t": 672,
+  "front 2.0t": "-",
+  "front 2.6t": "-",
+  "front 3.2t": "-",
+  "side 1.0t": 672,
+  "beside 1.2t,.7t": 672,
+  "diag .6t,.6t": 672,
+  "behind": "-",
+  "between horns 2.4t": "-"
+ },
+ "long": {
+  "front 1.0t": 336,
+  "front 2.0t": 941,
+  "front 2.6t": "-",
+  "front 3.2t": "-",
+  "side 1.0t": "-",
+  "beside 1.2t,.7t": 336,
+  "diag .6t,.6t": 336,
+  "behind": "-",
+  "between horns 2.4t": 941
+ }
+}

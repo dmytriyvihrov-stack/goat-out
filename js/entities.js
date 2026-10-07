@@ -283,6 +283,7 @@ class Goat {
         const ga = DT ? DT.goatAttack : 1;
         this.state = 'lunge'; this.timer = g.headbutt.active / ga; this.lungeId++;
         Talisman.onLunge(game, this);   // ECHO HORN
+        this.wave = { t: 0, ax: this.aim.x, ay: this.aim.y };   // the small picture of where the blow lands (`Renderer.drawHornWave`)
         const hl = (game.mods.horn ? game.mods.horn.lunge : 1) * ga;   // the horn's size: a dagger steps in less, a spear more
         this.vx = this.aim.x * g.headbutt.lunge * hl; this.vy = this.aim.y * g.headbutt.lunge * hl;
         game.dust(this.x - this.aim.x * 8, this.y - this.aim.y * 8, TUNING.juice.dust.lunge, -this.aim.x, -this.aim.y);
@@ -339,6 +340,7 @@ class Goat {
     // A fifth key that does not exist until there is a cape on his back (`CAPES`, js/capes.js): the
     // cape's one verb, a blink, a tuft of grass, a shock, a boomerang, a straw goat. None is grab or
     // roll wearing a different hat, so it keeps its own cooldown (`itemCd`), never `grabCd` or `rollCd`.
+    if (this.wave && (this.wave.t += dt) > TUNING.goat.horns.wave.time) this.wave = null;
     this.itemCd = Math.max(0, this.itemCd - dt * cdRate);
     // A cape put back on a stool keeps the wait it still owed (`Shop.wearCape`) and works it off while it hangs there.
     if (game.capeWait) for (const k in game.capeWait) { const w = game.capeWait[k]; w.cd -= dt * cdRate; if (w.cd <= 0) delete game.capeWait[k]; }
@@ -654,8 +656,24 @@ class Goat {
     }
   }
 
+  // Is a body `(dx, dy)` from the goat, `r` wide, under the horns he swings at `(ax, ay)` out to `reachPx`? An arc
+  // (the dagger, BIG) is a cone of the horn's own width; LONG is two strips, a horn each, straight out, and what is
+  // met in the last of it is hit by the tips. `{ tip }` or null. The picture draws the same shape (`drawHornWave`).
+  static hornHit(HN, dx, dy, ax, ay, reachPx, r) {
+    const along = dx * ax + dy * ay;
+    if (HN.rows) {
+      if (along < 0 || along > reachPx) return null;
+      const perp = dx * ay - dy * ax, off = HN.rowGap * TILE, w = HN.rowW * TILE + r;
+      if (Math.min(Math.abs(perp - off), Math.abs(perp + off)) > w) return null;
+      return { tip: along >= reachPx * HN.tip };
+    }
+    const d = hyp(dx, dy);
+    if (d > reachPx || (d > 1 && along / d < HN.cone)) return null;
+    return { tip: false };
+  }
+
   headbuttHits(game) {
-    const g = TUNING.goat.headbutt, HN = game.mods.horn || TUNING.horns.wide;   // the horn's size, `TUNING.horns`
+    const g = TUNING.goat.headbutt, HN = game.mods.horn || TUNING.goat.horns.dagger;   // the horn he has, `TUNING.goat.horns`
     // BULL NECK: the run he put his head down out of goes into the man (men only; a crate keeps its own throw).
     const steam = game.mods.runButt ? 1 + game.mods.runButt * (this.buttRun || 0) : 1;
     const extra = (game.mods.headbuttReach - 1) * TILE, impulse = g.impulse * game.mods.headbuttImpulse * steam * HN.impulse;
@@ -668,12 +686,10 @@ class Goat {
         if (hyp(e.x - this.x, e.y - this.y) < this.r + e.r + 12 + extra) game.mistTold(e);
         continue;
       }
-      const dx = e.x - this.x, dy = e.y - this.y, d = hyp(dx, dy), reachPx = this.r + e.r + 10 + extra;
-      const along = dx * ax + dy * ay;
-      if (HN.lane) {
-        // A strip along his aim (the long horn): whoever stands in it out to the reach, the first man and the ones behind him.
-        if (along < 0 || along > reachPx || Math.abs(dx * ay - dy * ax) > HN.lane * TILE + e.r) continue;
-      } else if (d > reachPx || along / (d || 1) < HN.cone) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, reachPx = this.r + e.r + 10 + extra;
+      // An arc, or (LONG) two straight strips with the tips out at the end of them: null is a miss.
+      const hit = Goat.hornHit(HN, dx, dy, ax, ay, reachPx, e.r);
+      if (!hit) continue;
       // Held to the same line as everything else that reaches (ECHO HORN already was): with LONG
       // HORNS a man on the far side of a shut iron door was thrown across the room behind it.
       // `reaches`, as the club is: `sees` let the horns through a table or a brazier his club stops at.
@@ -773,7 +789,9 @@ class Goat {
         // butted round his board: he takes it personally
         if (e.shield) game.bark(e, 'back', 0.7);
         const SN = TUNING.stealth;
-        const imp = Talisman.buttImpulse(game, this, e, impulse * (e.knockMul ? e.knockMul() : 1) * (unseen ? SN.knock : 1));
+        const tipK = HN.rows ? (hit.tip ? HN.tipMul : HN.shaftMul) : 1;   // LONG: the tips throw hard, the shafts only shove
+        const imp = Talisman.buttImpulse(game, this, e, impulse * tipK * (e.knockMul ? e.knockMul() : 1) * (unseen ? SN.knock : 1));
+        if (HN.rows && hit.tip) { game.hitstop(0.03); game.particles(e.x - ax * e.r, e.y - ay * e.r, 5, PALETTE.fireHi, 240); }
         if (unseen) { game.floatText(e.x, e.y - 40, SN.text, PALETTE.fireHi); game.hitstop(SN.stop); }
         // SPLASH poisons the man on the horns as well as whoever is behind (1 Oct 2026, playtest),
         // before the throw: with the whole poison set the onset is a blow, whose floor wiped the fling.
@@ -823,8 +841,9 @@ class Goat {
       // gives a body landing dead centre.
       // A door is a slab two tiles long: standing at one end of it, the nearest point is off to the
       // side of the nose, so it takes a blow from anywhere in front of the shoulders, not the cone.
-      const cone = p.kind === 'door' || p.box ? -0.25 : 0.15;
-      if (d > reach || (d > 1 && (dx * ax + dy * ay) / d < cone)) continue;
+      const cone = p.kind === 'door' || p.box ? -0.25 : Math.min(0.15, HN.cone);
+      if (HN.rows && p.kind !== 'door' && !p.box) { if (!Goat.hornHit(HN, dx, dy, ax, ay, reach, p.r)) continue; }
+      else if (d > reach || (d > 1 && (dx * ax + dy * ay) / d < cone)) continue;
       p.lastLunge = this.lungeId;
       p.headbutt(game, ax, ay);
     }

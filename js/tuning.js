@@ -368,19 +368,24 @@ const TUNING = {
     // `recovery` 0.38 until 25 Sep 2026: a fifth longer between two butts, asked for in play; 0.46
     // until 30 Sep 2026, when the playtest asked for 15% more between two butts again.
     headbutt: { windup: 0.12, active: 0.15, recovery: 0.53, lunge: 10 * TILE, impulse: 21 * TILE, propImpulse: 28 * TILE, reach: 1.64 * TILE },
-    // HORN SIZES (6 Oct 2026, a dev test: the DEV MODE drawer's HORNS row, `game.hornKind`; the itch build
-    // is always `wide`). The bare head as a weapon with a shape, the way a dagger, an axe and a spear differ,
-    // so a run can play differently by what grows on him. Each is a multiplier set over the headbutt above:
-    // `windup` `recovery` `lunge` (his step into it) `impulse` (the throw) scale those numbers, `reach` is
-    // tiles added to how far a man can be and still be hit (`mods.headbuttReach`, so the long-horns look and
-    // ECHO HORN follow), `cone` is the least dot with his aim a man may stand at (0.15 is nearly a half
-    // circle), and `lane` (tiles, half width) turns the blow from an arc into a strip that takes everyone
-    // in it out to the reach, the man and whoever is behind him. WIDE is the horn as it always was.
+    // THE THREE HORNS (6 Oct 2026 a dev test with a dagger, an axe and a spear; 7 Oct 2026 his word: "the ones we have
+    // are the dagger horns, and two new ones on top, BIG and LONG"). Which one he has is `game.hornKind` (the DEV MODE
+    // drawer's HORNS row steps them, kept under `HORN_KEY`; the itch build is always the dagger, the horns as they always
+    // were). Each is a set of multipliers laid over the headbutt above: `windup` `recovery` `lunge` (his step into it)
+    // `impulse` (the throw) scale those numbers, `reach` is tiles added to how far a man can be and still be hit
+    // (`mods.headbuttReach`, so LONG HORNS the soul and ECHO HORN follow), `cone` is the least dot with his aim a man may
+    // stand at (0.15 is nearly a half circle, below 0 more than one). Under it the blow is an ARC. With `rows` it is a
+    // STRAIGHT blow instead (`Goat.hornHit`): two strips, one a horn, `rowGap` tiles either side of his aim and `rowW`
+    // wide, out to the reach; a man in the last `1 - tip` of it is hit by the tips and thrown `tipMul` times as hard, one
+    // on the shafts is only shoved `shaftMul` (pillar 3: nothing here kills, the wall behind the man does).
+    // `wave` is the small picture of it on the floor (`Renderer.drawHornWave`): cells for `time` s, `alpha` at most.
     horns: {
-      order: ['short', 'wide', 'long'],
-      short: { name: 'SHORT', note: 'DAGGER: QUICK, SHORT, NARROW', windup: 0.8, recovery: 0.6, lunge: 0.85, impulse: 0.85, reach: -0.3, cone: 0.5, lane: 0 },
-      wide:  { name: 'WIDE',  note: 'AXE: THE ARC, AS IT WAS',       windup: 1, recovery: 1, lunge: 1, impulse: 1, reach: 0, cone: 0.15, lane: 0 },
-      long:  { name: 'LONG',  note: 'SPEAR: A LANE, THE MAN AND THOSE BEHIND', windup: 1.1, recovery: 1.1, lunge: 1.1, impulse: 1, reach: 0.9, cone: 0.5, lane: 0.55 },
+      order: ['dagger', 'big', 'long'],
+      dagger: { name: 'DAGGER', note: 'THE ARC, AS IT WAS', windup: 1, recovery: 1, lunge: 1, impulse: 1, reach: 0, cone: 0.15 },
+      big:    { name: 'BIG',    note: 'A WIDE, DEEP ARC. SLOWER TO SWING', windup: 1.2, recovery: 1.25, lunge: 1, impulse: 1, reach: 0.85, cone: -0.3 },
+      long:   { name: 'LONG',   note: 'TWO HORNS, STRAIGHT. THE TIPS HIT HARD', windup: 1.1, recovery: 1.1, lunge: 1.15, impulse: 1, reach: 1.45, cone: 0.5,
+        rows: 2, rowGap: 0.4, rowW: 0.17, tip: 0.62, tipMul: 1.4, shaftMul: 0.5 },
+      wave: { time: 0.34, alpha: 0.5 },
     },
     // A headbutt or a roll pressed while he is still busy is kept `buffer` s and goes the frame he is
     // free, instead of being dropped for being early. Not a cancel: what he was doing still runs

@@ -391,20 +391,6 @@ function tryGenerate(levelDef, seed, opts) {
       if (cand.length) armoryAt = cand[arng.int(0, cand.length - 1)];
     }
   }
-  // THE FLANK (7 Oct 2026, `TUNING.rooms.flank`): one ordinary room (canon or mix, it keeps its role, so the canon's share stands) of a floor `ROOM_LEVELS` lets it on is a trench
-  // with a squad on its far lip, a way round on land and a roll straight across. Its own RNG stream, a template
-  // marked `tag: 'flank'` (kept out of every draw); the roll that crosses it is taught by THE CAVE's chasm first.
-  const flankAt = new Map();
-  {
-    const FL = TUNING.rooms.flank, frng = new RNG(((seed ^ 0x0f1a4c) >>> 0));
-    const pool = ROOM_TEMPLATES.filter((t) => t.tag === 'flank' && roomAllowed(t, levelDef));
-    if (!levelDef.dark && !levelDef.shroom && pool.length && frng.chance(FL.chance)) {
-      const cand = ordinaryRooms(levelDef, n).filter((i) => i >= FL.from && !trapRooms.has(i) && i !== armoryAt
-        && i !== levelDef.ambushAt && i !== levelDef.vaultAt && i !== shopRoomOf(levelDef) && i !== levelDef.calmAt && i !== levelDef.chandAt
-        && i !== levelDef.crowdAt);
-      if (cand.length) flankAt.set(cand[frng.int(0, cand.length - 1)], pool[frng.int(0, pool.length - 1)]);
-    }
-  }
   // THE BRIDGE's own rooms (30 Sep 2026 playtest: "one or two rooms shaped like the bridge, with
   // holes at its sides and between"): `levelDef.bridges` [lo, hi] of the canon's rooms, spread down
   // the floor, are built as a template marked `bridge`, on their own stream, so no other roll moves.
@@ -413,12 +399,26 @@ function tryGenerate(levelDef, seed, opts) {
   if (levelDef.bridges && canonId) {
     const pool = ROOM_TEMPLATES.filter((t) => t.bridge && t.canon === canonId && fits(t));
     const brng = new RNG(((seed ^ 0x0b41d6e) >>> 0));
-    const cand = [...canonRooms].filter((i) => i >= 2 && i !== armoryAt && i !== levelDef.vaultAt && !flankAt.has(i)).sort((a, b) => a - b);
+    const cand = [...canonRooms].filter((i) => i >= 2 && i !== armoryAt && i !== levelDef.vaultAt).sort((a, b) => a - b);
     const want = pool.length ? Math.min(cand.length, brng.int(levelDef.bridges[0], levelDef.bridges[1])) : 0;
     const first = brng.int(0, pool.length - 1);
     for (let k = 0; k < want; k++) {
       const i = cand[want === 1 ? brng.int(0, cand.length - 1) : Math.round(k * (cand.length - 1) / (want - 1))];
       bridgeAt.set(i, pool[(first + k) % pool.length]);
+    }
+  }
+  // THE FLANK (7 Oct 2026, `TUNING.rooms.flank`): one ordinary room (canon or mix, it keeps its role, so the canon's share stands) of a floor `ROOM_LEVELS` lets it on is a trench
+  // with a squad on its far lip, a way round on land and a roll straight across. Its own RNG stream, a template
+  // marked `tag: 'flank'` (kept out of every draw); the roll that crosses it is taught by THE CAVE's chasm first.
+  const flankAt = new Map();
+  {
+    const FL = TUNING.rooms.flank, frng = new RNG(((seed ^ 0x0f1a4c) >>> 0));
+    const pool = ROOM_TEMPLATES.filter((t) => t.tag === 'flank' && roomAllowed(t, levelDef));
+    if (!levelDef.dark && !levelDef.shroom && pool.length && frng.chance(FL.chance)) {
+      const cand = ordinaryRooms(levelDef, n).filter((i) => i >= FL.from && !trapRooms.has(i) && i !== armoryAt && !bridgeAt.has(i)
+        && i !== levelDef.ambushAt && i !== levelDef.vaultAt && i !== shopRoomOf(levelDef) && i !== levelDef.calmAt && i !== levelDef.chandAt
+        && i !== levelDef.crowdAt);
+      if (cand.length) flankAt.set(cand[frng.int(0, cand.length - 1)], pool[frng.int(0, pool.length - 1)]);
     }
   }
   let trapIdx = 0;

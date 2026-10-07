@@ -214,6 +214,27 @@ function showroomLevel(def, seed) {
   zone(last.x + last.w - 1, ey - 1, last.x + last.w + 3, ey + 2, floors.length - 1);
   props.push({ x: (last.x + last.w - 1.5) * TILE, y: (ey + 1) * TILE, kind: 'door', vertical: true, iron: true, stair: true, fromRoom: last.index });
 
+  // THE FLANK (7 Oct 2026, gen.js `flankAt`): the three trench rooms laid from their own templates in a second row under the
+  // floors, a door out of the hall's far wall into the first. Spawn men into them from the dev drawer; HORNS there steps
+  // the dagger, BIG and LONG to see each one's wave on the floor.
+  {
+    const y0 = 47, names = ['ditchcut', 'ditchtee', 'ditchisland'], doorRows = [y0 + 4, y0 + 6];
+    let prevR = hall, px0 = hall.x + hall.w + 4;
+    names.forEach((nm, k) => {
+      const tpl = ROOM_TEMPLATES.find((t) => t.name === nm), w = tpl.rows[0].length, h = tpl.rows.length;
+      const r = room(px0, y0, w, h, nm, 2); r.role = 'canon';
+      fill(prevR.x + prevR.w - 1, doorRows[0], px0, doorRows[1], T.FLOOR); zone(prevR.x + prevR.w, doorRows[0] - 1, px0 - 1, doorRows[1] + 1, 2);
+      tpl.rows.forEach((row, ty) => [...row].forEach((c, tx) => {
+        const X = px0 + tx, Y = y0 + ty;
+        if (c === 'O') tiles[at(X, Y)] = T.PIT;
+        else if (c === 'B') put('brazier', X, Y);
+        else if (c === 'o') put('crate', X, Y);
+        else if (c === 'w') put('weapon', X, Y, { weapon: 'sword' });
+      }));
+      label('THE FLANK · ' + nm.slice(5).toUpperCase(), px0 + 11, y0 + 1.6, 18, true);
+      prevR = r; px0 += w + 4;
+    });
+  }
   return { W, H, tiles, rooms, spawns: [], props, start: P(hx + 2, hy + 13), exit: { x: (last.x + last.w) * TILE, y: (ey + 1) * TILE },
     exitTile: { x0: last.x + last.w - 1, y0: ey }, forkTile: null, entry: null, seed, def,
     hints, controls, chasms, gaps, cagePrompt: null, vault: null, windows, plan: null, gates: [], sealedArenas: [], shop: null,

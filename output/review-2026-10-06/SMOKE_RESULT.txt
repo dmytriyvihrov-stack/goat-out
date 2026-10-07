@@ -1,0 +1,27 @@
+Smoke bot, 7 Oct 2026, after the fixes: L0..L7, N (THE DARK), T2 (THE TRIP) x seeds 11 and 22, god mode, the pane open.
+20 of 20 reach the stairs, no throws, no NaN. (Before: 10 of 20 timed out, 7 of those with NaN.)
+OK = walked and rolled the whole way, OK* = reached them with `tp` set-downs (the bot got stuck: not a walk-through).
+roll = rolls over a chasm's drop (`level.gaps`). Timings are from a hidden pane and say nothing about real frame times.
+
+L0   11     OK*   51s room 11/12 tp 2 roll 0 kills 8
+L0   22     OK*   48s room 11/12 tp 2 roll 0 kills 6
+L1   11     OK*   54s room 11/12 tp 3 roll 0 kills 11
+L1   22     OK*   47s room 11/12 tp 2 roll 0 kills 5
+L2   11     OK*  103s room 12/13 tp 3 roll 1 kills 19
+L2   22     OK*   55s room 12/13 tp 2 roll 2 kills 12
+L3   11     OK    73s room 13/14 tp 0 roll 0 kills 32
+L3   22     OK*   65s room 13/14 tp 1 roll 1 kills 20
+L4   11     OK*   44s room 12/13 tp 2 roll 0 kills 13
+L4   22     OK*   65s room 12/13 tp 3 roll 0 kills 31
+L5   11     OK    63s room 14/15 tp 0 roll 0 kills 21
+L5   22     OK*   79s room 14/15 tp 3 roll 0 kills 32
+L6   11     OK*   70s room 14/15 tp 2 roll 0 kills 40
+L6   22     OK*   76s room 14/15 tp 2 roll 0 kills 37
+L7   11     OK*   76s room 14/15 tp 4 roll 0 kills 38
+L7   22     OK*   69s room 14/15 tp 3 roll 0 kills 36
+N    11     OK*   62s room 11/12 tp 2 roll 0 kills 12
+N    22     OK*   50s room 11/12 tp 1 roll 0 kills 11
+T2   11     OK*   46s room 12/13 tp 1 roll 0 kills 3
+T2   22     OK*   41s room 12/13 tp 1 roll 0 kills 0
+
+Found by it this time: the horse's detour was `-p.side` where a Prop's `side` is 'n' (NaN speed, then NaN for everyone it bowled): L3 seed 22, 16 s in.

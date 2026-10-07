@@ -9,14 +9,15 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
-## 6 October 2026, horn sizes (a dev test is in, the rest is asked for)
+## 7 October 2026, the horns (dagger, BIG, LONG) and THE FLANK (shipped, not yet deployed), and the 6 Oct review
 
-In: DEV MODE → HORNS steps SHORT (dagger) / WIDE (as it was) / LONG (spear, a lane that takes everyone in it), `TUNING.horns`, a label under the hearts. Numbers are a first guess, to be tuned in play. Not built, in his words:
-- **system**: the horn size rolled per run, so every run plays a little differently (the itch build stays WIDE until then).
-- **system**: a later soul or unlock that changes the verb itself, "whip horns" (a lash, more reach and a curve), to bend the shape and not only the numbers.
-- **system**: souls that pay off per size (short: speed, long: pierce, wide: sweep); the element souls on top, once the base is judged.
-- **feel**: a picture per size on the goat (only the long-horns look exists), and a swing shape on the floor for each.
-- **tool**: a row in THE SHOWROOM or the dev page for the three sizes (rule 9), once the test is kept.
+Shipped: DEV MODE → HORNS steps DAGGER (the horn as it was) / BIG (a deeper, wider arc, slower to swing) / LONG (two straight strips, the tips throw 1.4x, the shafts shove at half), `TUNING.goat.horns`, with a small wave of cells on the floor for each (`Renderer.drawHornWave`). THE FLANK: trench rooms (`ditchcut`, `ditchtee`, `ditchisland`) from THE CAVE on. The review's bugs B1 to B5 and the horse's NaN are fixed, the design suggestions I1 to I8 are tasks in `output/review-2026-10-06/TASKS_UK.md`. Not built, in his words and ours:
+- **system**: how a player gets BIG or LONG (the itch build is always the dagger): rolled per run, a soul or talisman that changes the shape, or opened in heaven. His call.
+- **system**: a later soul that changes the verb itself, "whip horns" (a lash, more reach and a curve); souls that pay off per horn (LONG: pierce, BIG: sweep).
+- **feel**: a picture per horn on the goat (only the long-horns look exists) and a windup preview of the shape.
+- **number**: BIG and LONG are a first guess (reach, windup, `tipMul`, `shaftMul`); the trench's chance (0.6 a floor) wants a playtest.
+- **system**: more FLANK layouts (a trench round an arena's men, a trench with a bridge), and a quest or a combo that uses one.
+
 ## 6 October 2026, late, nine notes with screenshots (shipped the same day, not yet deployed)
 
 | # | tag | note | what shipped |

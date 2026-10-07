@@ -610,8 +610,9 @@ const Beast = {
     // `stuckFor` s steps off to one side for `sideFor` s, the other side the next time.
     const here = at(p.x, p.y);
     if (here >= 0 && (p.best === undefined || here < p.best)) { p.best = here; p.stuck = 0; } else p.stuck = (p.stuck || 0) + dt;
-    if (p.stuck > C.stuckFor) { p.side = -(p.side || 1); p.sideT = C.sideFor; p.stuck = 0; p.ways = null; }
-    if (p.sideT > 0 && on) { p.sideT -= dt; on = { x: -on.y * p.side * 0.9 - on.x * 0.4, y: on.x * p.side * 0.9 - on.y * 0.4 }; }
+    // `p.side` is every Prop's wall side ('n'): -'n' was NaN and the horse's gallop went with it (the smoke bot found it, 7 Oct 2026), so the detour has its own field.
+    if (p.stuck > C.stuckFor) { p.detour = -(p.detour || 1); p.sideT = C.sideFor; p.stuck = 0; p.ways = null; }
+    if (p.sideT > 0 && on) { p.sideT -= dt; on = { x: -on.y * p.detour * 0.9 - on.x * 0.4, y: on.x * p.detour * 0.9 - on.y * 0.4 }; }
     if (on) Beast.step(p, game, on.x, on.y, C.speed * (p.slowT > 0 ? C.slow : 1), dt);
     else { p.vx = 0; p.vy = 0; }
     Beast.bowl(p, game);
