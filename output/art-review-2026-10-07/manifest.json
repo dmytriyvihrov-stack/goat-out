@@ -1,0 +1,930 @@
+[
+  {
+    "id": "hound",
+    "name": "Гончая",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "mage",
+    "name": "Маг",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "brute",
+    "name": "Громила",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "chicken",
+    "name": "Курица",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "butcher",
+    "name": "Чемпион",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "turtle",
+    "name": "Черепаха",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "raven",
+    "name": "Ворон",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "wraith",
+    "name": "Призрак",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "sheep-pet",
+    "name": "Овечка",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "hunter",
+    "name": "Охотник",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. Keep brown clothing and hat with small red band.",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "ratogre",
+    "name": "Крысоогр",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "clubman",
+    "name": "Культист с дубиной",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-0.png"
+  },
+  {
+    "id": "mouse",
+    "name": "Мышь-торговка",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "goose",
+    "name": "Гусь",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "goat",
+    "name": "Коза",
+    "category": "Персонажи",
+    "desc": "Preserve the reference character identity, outfit, species, weapons and proportions. ",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "ogre",
+    "name": "Огр",
+    "category": "Персонажи",
+    "desc": "Preserve this character identity. Simplify fine texture into broad clusters; retain species and equipment.",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "spartan",
+    "name": "Щитоносец",
+    "category": "Персонажи",
+    "desc": "Preserve this character identity. Simplify fine texture into broad clusters; retain species and equipment.",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "thrower",
+    "name": "Метатель",
+    "category": "Персонажи",
+    "desc": "Preserve this character identity. Simplify fine texture into broad clusters; retain species and equipment.",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "shaman",
+    "name": "Шаман",
+    "category": "Персонажи",
+    "desc": "Preserve this character identity. Simplify fine texture into broad clusters; retain species and equipment.",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "horse",
+    "name": "Лошадь",
+    "category": "Персонажи",
+    "desc": "Preserve this character identity. Simplify fine texture into broad clusters; retain species and equipment.",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "pig",
+    "name": "Свинья",
+    "category": "Персонажи",
+    "desc": "Preserve this character identity. Simplify fine texture into broad clusters; retain species and equipment.",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "rabbit",
+    "name": "Кролик",
+    "category": "Персонажи",
+    "desc": "Preserve the animal in the reference, including its container if present.",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "husky",
+    "name": "Хаски",
+    "category": "Персонажи",
+    "desc": "Preserve the animal in the reference, including its container if present.",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "fish-tank",
+    "name": "Рыбка в аквариуме",
+    "category": "Персонажи",
+    "desc": "Preserve the animal in the reference, including its container if present.",
+    "ref": "references/ref-12.png"
+  },
+  {
+    "id": "door-wood",
+    "name": "Деревянная дверь",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "door-iron",
+    "name": "Железная дверь",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "door-vault",
+    "name": "Дверь хранилища",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "door-soul",
+    "name": "Врата душ",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "sword",
+    "name": "Меч",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "halberd",
+    "name": "Алебарда",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "shield",
+    "name": "Щит",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "bomb",
+    "name": "Бомба",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "altar",
+    "name": "Алтарь",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "banner",
+    "name": "Знамя",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "gong",
+    "name": "Гонг",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "soul-wisp",
+    "name": "Душа",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-24.png"
+  },
+  {
+    "id": "healing-grass",
+    "name": "Большая лечебная трава",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "grass-small",
+    "name": "Малая лечебная трава",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "pail",
+    "name": "Ведро молока",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "spikes-up",
+    "name": "Шиповая ловушка",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "key",
+    "name": "Ключ",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "burrow",
+    "name": "Нора",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "stool",
+    "name": "Табурет",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "spire",
+    "name": "Острый сталагмит",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "barrel",
+    "name": "Бочка",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "vbarrel",
+    "name": "Ядовитая бочка",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "chand0",
+    "name": "Люстра",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "cleat",
+    "name": "Крепление верёвки",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-36.png"
+  },
+  {
+    "id": "armor",
+    "name": "Настенные доспехи",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "suit",
+    "name": "Доспехи на стойке",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "trophy",
+    "name": "Голова оленя",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "poster-breeds",
+    "name": "Плакат пород",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "poster-cuts",
+    "name": "Схема мясника",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "lantern-0",
+    "name": "Напольный фонарь",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "sconce-f0",
+    "name": "Настенный фонарь",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "mshield0-f",
+    "name": "Костяной щит",
+    "category": "Предметы",
+    "desc": "Preserve the specific object in the reference, its materials and functional silhouette.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "food-apple",
+    "name": "Яблоко",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "food-gapple",
+    "name": "Золотое яблоко",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "food-pear",
+    "name": "Груша",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "food-bread",
+    "name": "Хлеб",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-48.png"
+  },
+  {
+    "id": "food-cheese",
+    "name": "Сыр",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-jug",
+    "name": "Кувшин",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-milk",
+    "name": "Молочник",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-goblet",
+    "name": "Кубок",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-fish",
+    "name": "Рыба на столе",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-leg",
+    "name": "Окорочок",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-grapes",
+    "name": "Виноград",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-honey",
+    "name": "Соты",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-plate",
+    "name": "Тарелка",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-roast",
+    "name": "Жаркое",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-ribs",
+    "name": "Рёбрышки",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-haunch",
+    "name": "Окорок",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-60.png"
+  },
+  {
+    "id": "food-sausage",
+    "name": "Колбаски",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "food-boarhead",
+    "name": "Кабанья голова на блюде",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "food-stew",
+    "name": "Похлёбка",
+    "category": "Еда",
+    "desc": "One simple small food or tableware prop, as in reference. Keep restrained contrast and 12-20 art pixel detail budget.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "crate",
+    "name": "Ящик",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "hay",
+    "name": "Сено",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "table",
+    "name": "Стол",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "pillar",
+    "name": "Колонна",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "brazier",
+    "name": "Жаровня",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "planks",
+    "name": "Обломки досок",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "rubble",
+    "name": "Каменная осыпь",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "straw",
+    "name": "Солома",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "rug",
+    "name": "Ковёр",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-72.png"
+  },
+  {
+    "id": "boulder",
+    "name": "Валун",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "stalagmites",
+    "name": "Сталагмиты",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "shrooms",
+    "name": "Грибы",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "crystals",
+    "name": "Кристаллы",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "pebbles",
+    "name": "Галька",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "moss",
+    "name": "Мох",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "puddle",
+    "name": "Лужа",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "crack",
+    "name": "Трещина",
+    "category": "Окружение",
+    "desc": "Preserve reference object. Simplify material texture, clear upper-left light; subdued background-prop contrast.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "heaven-god",
+    "name": "Козий бог",
+    "category": "Небеса",
+    "desc": "Keep the heavenly ivory and gold palette, soft plum outline, reference identity and shape.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "heaven-shepherd-0",
+    "name": "Пастух",
+    "category": "Небеса",
+    "desc": "Keep the heavenly ivory and gold palette, soft plum outline, reference identity and shape.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "heaven-watchtower",
+    "name": "Смотровая башня",
+    "category": "Небеса",
+    "desc": "Keep the heavenly ivory and gold palette, soft plum outline, reference identity and shape.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "heaven-mirror",
+    "name": "Небесное зеркало",
+    "category": "Небеса",
+    "desc": "Keep the heavenly ivory and gold palette, soft plum outline, reference identity and shape.",
+    "ref": "references/ref-84.png"
+  },
+  {
+    "id": "heaven-plinth",
+    "name": "Пьедестал",
+    "category": "Небеса",
+    "desc": "Keep the heavenly ivory and gold palette, soft plum outline, reference identity and shape.",
+    "ref": "references/ref-96.png"
+  },
+  {
+    "id": "heaven-skull",
+    "name": "Череп",
+    "category": "Небеса",
+    "desc": "Keep the heavenly ivory and gold palette, soft plum outline, reference identity and shape.",
+    "ref": "references/ref-96.png"
+  },
+  {
+    "id": "heaven-grass-gold",
+    "name": "Золотая трава",
+    "category": "Небеса",
+    "desc": "Keep the heavenly ivory and gold palette, soft plum outline, reference identity and shape.",
+    "ref": "references/ref-96.png"
+  },
+  {
+    "id": "heaven-bell-0",
+    "name": "Небесный колокол",
+    "category": "Небеса",
+    "desc": "Keep the heavenly ivory and gold palette, soft plum outline, reference identity and shape.",
+    "ref": "references/ref-96.png"
+  },
+  {
+    "id": "mill",
+    "name": "Вращающаяся ловушка",
+    "category": "Окружение",
+    "desc": "A complete wooden horizontal rotating trap wheel with iron-ended radial arms and a central hub."
+  },
+  {
+    "id": "cage",
+    "name": "Клетка",
+    "category": "Окружение",
+    "desc": "A complete iron barred pen/cage for the goat, low dungeon cage, no captive."
+  },
+  {
+    "id": "weapon-rack",
+    "name": "Стойка оружия",
+    "category": "Окружение",
+    "desc": "A wooden floor rack holding a few upright swords and a shield."
+  },
+  {
+    "id": "coop",
+    "name": "Курятник",
+    "category": "Окружение",
+    "desc": "A small wooden animal coop with a barred opening, no animal."
+  },
+  {
+    "id": "iron-coop",
+    "name": "Железная клетка для животных",
+    "category": "Окружение",
+    "desc": "Small dark iron cage with barred front, no animal."
+  },
+  {
+    "id": "stall",
+    "name": "Стойло",
+    "category": "Окружение",
+    "desc": "A wooden horse stall with simple timber gate, no horse."
+  },
+  {
+    "id": "croc-roast",
+    "name": "Крокодил на вертеле",
+    "category": "Окружение",
+    "desc": "A whole cartoon crocodile roast on a horizontal spit above a low stone fire ring, no gore."
+  },
+  {
+    "id": "stairs",
+    "name": "Лестница",
+    "category": "Окружение",
+    "desc": "A short flight of stone dungeon stairs."
+  },
+  {
+    "id": "secret-wall",
+    "name": "Секретная стена",
+    "category": "Окружение",
+    "desc": "A short burgundy gray stone dungeon wall section with a subtle stepped crack hinting at a hidden door."
+  },
+  {
+    "id": "pit",
+    "name": "Провал",
+    "category": "Окружение",
+    "desc": "A square hole in dungeon stone floor with a clear rim and dark interior."
+  },
+  {
+    "id": "ash",
+    "name": "Пепел",
+    "category": "Окружение",
+    "desc": "A low scattered patch of burnt gray ash and charcoal."
+  },
+  {
+    "id": "grass",
+    "name": "Высокая трава",
+    "category": "Окружение",
+    "desc": "A restrained olive green tuft of tall grass, broad tapered clumps, open readable gaps."
+  },
+  {
+    "id": "talisman-firecharm",
+    "name": "Огненный амулет",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a small amber fire amulet on a cord. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-clover",
+    "name": "Счастливый клевер",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a four-leaf green clover charm. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-mason",
+    "name": "Знак каменщика",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a small engraved stone mason medallion. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-domino",
+    "name": "Кость домино",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: an ivory domino bone with dark pips. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-echo",
+    "name": "Рог эха",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a little curved ivory blowing horn. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-spade",
+    "name": "Лопата могильщика",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a tiny iron spade with wooden handle. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-grease",
+    "name": "Жир мясника",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a small pot of reddish butcher grease. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-awl",
+    "name": "Шило плотника",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a wood-handled iron awl. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-mask",
+    "name": "Рогатая маска",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: an ivory goat mask with two horns. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-spur",
+    "name": "Латунная шпора",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a brass spur. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-moth",
+    "name": "Шерсть моли",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a small pale tuft of wool with moth-like silhouette. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-bell",
+    "name": "Колокольчик вожака",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a small brass bell on a collar. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-sandal",
+    "name": "Сандалия паломника",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a worn brown leather sandal. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-scapegoat",
+    "name": "Козёл отпущения",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a little ivory goat effigy. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-tallow",
+    "name": "Сальная кожа",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a pale waxy tallow charm. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-mirror",
+    "name": "Осколок зеркала",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: one pale cyan mirror shard. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-cup",
+    "name": "Кровавый кубок",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a little metal cup filled with dark red liquid. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-knuckle",
+    "name": "Костяшка",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a small ivory knucklebone. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-magnet",
+    "name": "Магнит",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a red horseshoe magnet with steel tips. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-tally",
+    "name": "Счётная палочка",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a notched wooden tally stick. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "talisman-nosebag",
+    "name": "Торба",
+    "category": "Талисманы",
+    "desc": "A collectible talisman: a brown leather feed bag with shoulder strap. Simple iconic 16-24 art pixel silhouette, no extra props."
+  },
+  {
+    "id": "cape-symbols",
+    "name": "Плащ знаков",
+    "category": "Плащи",
+    "desc": "A small goat shoulder cape, purple cloth with sparse arcane symbols, short triangular shoulder mantle tied with a bow, shown alone laid out, no wearer, no long human cape."
+  },
+  {
+    "id": "cape-meadow",
+    "name": "Мантия пастуха",
+    "category": "Плащи",
+    "desc": "A small goat shoulder cape, muted meadow green cloth with simple leafy trim, short triangular shoulder mantle tied with a bow, shown alone laid out, no wearer, no long human cape."
+  },
+  {
+    "id": "cape-ruin",
+    "name": "Плащ разрушения",
+    "category": "Плащи",
+    "desc": "A small goat shoulder cape, deep burgundy cloth with a restrained orange fractured motif, short triangular shoulder mantle tied with a bow, shown alone laid out, no wearer, no long human cape."
+  },
+  {
+    "id": "cape-boomerang",
+    "name": "Костяная мантия",
+    "category": "Плащи",
+    "desc": "A small goat shoulder cape, ivory cloth with bone fastener, short triangular shoulder mantle tied with a bow, shown alone laid out, no wearer, no long human cape."
+  },
+  {
+    "id": "cape-effigy",
+    "name": "Плащ пугала",
+    "category": "Плащи",
+    "desc": "A small goat shoulder cape, ochre straw and burlap cloth with rough hem, short triangular shoulder mantle tied with a bow, shown alone laid out, no wearer, no long human cape."
+  }
+]
