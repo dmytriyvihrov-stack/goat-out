@@ -1,6 +1,6 @@
 # PLAYTEST, the first round, 30 September to 6 October 2026
 
-The plan agreed on 23 September (`tools/backlog-questions.html:142-164`, summarised at `BACKLOG.md:38-40`)
+The plan agreed on 23 September (`tools/backlog-questions.html:142-164`, summarised in the old backlog, `git show 19f4efd:BACKLOG.md`)
 turned into something a person can run: what we are asking, what build, what the testers fill in, what the
 facilitator writes down, how the three numbers are counted, and whether the build is ready. The plan's
 wording is kept; where it says nothing, the line is marked *(proposal)* and is the user's to take or
@@ -319,7 +319,7 @@ browser, which this audit could not use), or **later** (a public-launch row, not
 | B9 | Zip layout | `index.html` at the zip root, relative paths, only `index.html` + `js/`; list the zip back | pass | `node tools/itch-zip.js`: `index.html` + exactly the scripts it loads, refuses a dirty tree, lists the zip back CRC-checked; 33 files, 5.17 MiB unpacked, 3.10 MiB zipped (after `tools/png-harden.js`); opens with Windows Expand-Archive and `unzip -t` | Claude | yes |
 | B10 | Encoding | charset meta; the file is UTF-8 | pass | `<meta charset="utf-8">` (`index.html:4`); valid UTF-8, no BOM (node) | Claude | no |
 | B11 | Reads at the embed size | the RUN CODE line and the HUD at 960×540 and in fullscreen | pass | 24 Sep (evening), 960x540 in the Browser pane at DPR 2: the death card and its RUN CODE line read cleanly at the foot of the card, the HUD and skill rail fit. A phone held upright (375x812) also fits; floor hints are now fitted to the view as well as the room | Claude | no |
-| B12 | Phone and touch (claimed: `README.md:8`) | one phone, the plan's own step | **?** | touch UI in `js/input.js`; "buttons vanish on a phone" fixed in code, never checked on a phone (`BACKLOG.md:29`) | user | only if phones are invited |
+| B12 | Phone and touch (claimed: `README.md:8`) | one phone, the plan's own step | **?** | touch UI in `js/input.js`; "buttons vanish on a phone" fixed in code, never checked on a phone (`BACKLOG.md`, bug) | user | only if phones are invited |
 | B13 | Holds up over 20 minutes on a weak laptop | the plan's weak laptop, frame rate and memory | **?** | foley is a 658-line rewrite of every effect, days before the build (`scope-check.md` #63) | user | yes |
 | G1 | Every file parses | `node --check` over `js/` and `tools/` | pass | 42 files, 0 fails (probe A) | Claude | yes |
 | G2 | Generator sweep | every floor on many seeds, THE TRIP in each place, THE DARK | pass | 8 floors × 250, THE TRIP × 60 in each of 2–8, THE DARK × 120: 0 fails (probe C) | Claude | yes |

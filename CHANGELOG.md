@@ -7,7 +7,7 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ## 2.04, published 8 Oct 2026: three playtest batches, THE FLOOR'S LAST MAN, a polish round, a clean-up
 
-- **The three batches of his notes** (72 in all) are in `BACKLOG.md` under the three "8 October 2026" headings, each with
+- **The three batches of his notes** (72 in all) are in the old backlog (`git show 19f4efd:BACKLOG.md`) under the three "8 October 2026" headings, each with
   what shipped: GRASS for milk everywhere a player reads, a floor gives one heart back (not all), the god's fifty for the
   horns and his third ask, every stand but the tortoise's broken and mended for souls, bells hung by hand, the dare's
   dialogue and marks, shorter corridors with doors facing, the shaman met alone with his tooth, the chasm lesson back on
@@ -25,7 +25,9 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 - **The clean-up**: dead code out (the leftovers of CARPENTER'S AWL, BUTCHER'S GREASE and BELLWETHER'S BELL: the grease
   on the floor, its grip and drag, the splinters, the bell's silhouettes and its thread on the screen's edge; seven
   functions nothing called: `drawDeathTip`, `postSpot`, `drawQuestHud`, `pnoise`, `rimShade`, `drawVeilSmooth`,
-  `drawBodySouls`), `.claude/launch.json` from 110 one-off servers to six.
+  `drawBodySouls`), `.claude/launch.json` from 110 one-off servers to six, and `BACKLOG.md` from 2219 lines of
+  mostly shipped tables to what is still open (questions for him, unbuilt asks, first guesses, parked and decided
+  against); the old file is `git show 19f4efd:BACKLOG.md`.
 - Checked: 2000 generated floors without a throw, every balance rule, `doc-numbers` 57 of 57, the smoke bot 20 of 20 to
   the stairs with no throw or NaN (8 with set-downs), the boss's bell over 406 drops never through a shut door.
 

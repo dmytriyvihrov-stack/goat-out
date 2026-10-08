@@ -170,7 +170,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `tools/stats.html` | THE FUNNEL on top (players, not lives: opened, started, died, played again, cleared floor 1, reached 4, reached 8, escaped; the steps the game sent, filled in from the lives; the build picker keeps the players who came in on it), then the reports read back as charts: deaths, hearts lost and cult kills by floor and cause, how far lives get, soul cards and talismans offered vs taken, companions. Reads this browser (served), files (the dev drawer's SAVE STATS), or the worker (SERVER: its address and READ_KEY, kept in that browser). Also players by day, first vs came back. FROM / TO dates in the header (6 Oct 2026, kept under `goatout.stats.range`) filter every chart by when a life began and the funnel by each player's first step; the room sections (which room he dies in, where lives end along the floor, what he does in a room, seconds per room, rooms by floor and by kind) read the reports' `rm` / `path`, and older reports simply have none. |
 | `tools/stats-worker/` | RUN STATS' receiver: a Cloudflare Worker (`worker.js`) over D1 (`schema.sql`). POST `/report` (shape, size and the id patterns checked, a rate limit per hashed address, stored once by id) and `/steps` (the funnel, a player's step stored once), GET `/reports` (newest first, `?before=` pages back, `X-Oldest-Got`) and `/steps` with the `READ_KEY` secret. `README.md` there is how to deploy it; `wrangler.toml` holds the database id. |
 | `tools/sfx-board.html` | Every sound effect on one page of buttons, through the game's own mix and room. Served, `/tools/sfx-board.html`. |
-| `BACKLOG.md` | Playtest notes, dated and tagged bug / feel / number / system. Requests, not decisions. |
+| `BACKLOG.md` | What is still open: questions for him, unbuilt asks, first-guess numbers, parked and decided-against items. Compacted 8 Oct 2026; every older batch is `git show 19f4efd:BACKLOG.md`. |
 | `PLAYTEST.md` | The first itch.io playtest as a runnable plan: the three questions, the form, the observation sheet, how the numbers are counted, and the go / no-go for the build. |
 | `PLAYTEST_QUESTIONS.md` | The eight short questions sent to a tester after playing, English and Ukrainian, ready to paste. |
 | `ITCH_PAGE.md` | The itch.io page description as approved (1 Oct 2026), ready to paste, plus the tags. Every line in it is something the build does. |
@@ -294,7 +294,7 @@ between frames, for an A/B or a pixel comparison: a frame matches the browser's 
 boundary or two (the browser rounds `setTransform` to 32-bit floats, so a restored matrix is ~1/1000 px
 off its own). Measured in two 60 s fights: 20 full collections → 5, and 18 → 10, about a quarter of the time frozen (815 → 209 ms). How it was found
 (a `v8.gc` trace with `cppgc` phases, `GCIncrementalMarkingStart`'s reason: "approaching global allocation
-limit") is in `BACKLOG.md`.
+limit") is in the old backlog (`git show 19f4efd:BACKLOG.md`).
 
 **What the step is allowed to ask** (23 Sep 2026 perf pass, ~18 → ~3.5 ms on a late floor):
 - `game.liveEnemies` is who ran this step, **a man in the goat's mouth included** (the wheel, the grating and
@@ -2150,8 +2150,8 @@ Hooks load when a session starts.
   hearts that grow by floor, the chain headbutt. Settled: two souls a floor, in the middle and at
   the end; a full slot deals swaps. A souls *resource* stays decided against (23 Sep 2026).
 - Market and positioning (gore, price, publisher, a GIF export; `MARKET.md` §9): "later", not today.
-- The endless roll against a wall, reported in the 14 Sep 2026 playtest and **not reproduced**: see
-  `BACKLOG.md` for what was measured and what to ask him. The soul barrier from the same batch was
+- The endless roll against a wall, reported in the 14 Sep 2026 playtest and **not reproduced**, closed on
+  23 Sep 2026 as already fine (what was measured: `git show 19f4efd:BACKLOG.md`). The soul barrier from the same batch was
   parked, for the reason pillar 1 gives; everything else in it shipped in 1.4.
 
 `CONCEPT.md` is the current design truth.
