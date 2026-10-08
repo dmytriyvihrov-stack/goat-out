@@ -821,7 +821,9 @@ class Enemy {
   // being down (`shieldUp`), for the picture only.
   update(dt, game) {
     const sh = this.shield;
-    this.act(dt, game);
+    // The floor's last man held to his picture (the ogre at his bone, the mages by their bowl) until he is met (js/endboss.js).
+    if (this.endHold && EndBoss.hold(this, dt, game)) return;
+    if (!GapCross.step(this, dt, game)) this.act(dt, game);   // over a drop, if it is his kind to (js/gapcross.js)
     if (this.stuck && !this.dead) this.stuckFire(dt, game);
     if (!sh) return;
     const S = TUNING.shieldman;
@@ -1044,14 +1046,14 @@ class Enemy {
       // whatever catches comes straight out of it, which is the counter to carrying one at all.
       // A brazier is fire too: walk him into one and he lights the way a thrown man does.
       if (w.isBurningPx(this.x, this.y)) { this.ignite(game, w.isWitchPx(this.x, this.y)); return; }
-      if (game.touchingBrazier(this)) { this.ignite(game); return; }
+      { const bz = game.touchingBrazier(this); if (bz) { this.ignite(game, !!bz.witch); return; } }
       return;
     }
 
     // ---- flung bodies ----
     if (this.state === 'flung') {
       this.millRun = null;                     // the wheel lesson's run ends at the first blow
-      const drag =Math.exp(-TUNING.physics.flungDrag * Talisman.dragMul(game, this) * dt);
+      const drag = Math.exp(-TUNING.physics.flungDrag * dt);
       this.vx *= drag; this.vy *= drag;
       const preSpeed = hyp(this.vx, this.vy);
       // In steps no longer than his body: LONG HORNS with a charged TALLY blow moves a man ~34 px a
@@ -1078,7 +1080,7 @@ class Enemy {
       // A body arriving at speed knocks the coals out of the bowl as well as catching from it, so
       // a man thrown into a brazier lights the floor on the far side of it too.
       const bz = game.touchingBrazier(this);
-      if (bz) { if (preSpeed > TUNING.physics.knockHitSpeed) bz.spill(game, this.vx, this.vy); this.ignite(game); return; }
+      if (bz) { if (preSpeed > TUNING.physics.knockHitSpeed) bz.spill(game, this.vx, this.vy); this.ignite(game, !!bz.witch); return; }
       if (hyp(this.vx, this.vy) < TUNING.physics.flungFloorSpeed) {
         // Off the rat ogre's arm with nothing left in him: he does not get up from it.
         if (this.doomed) { this.die(game, 'club', this.vx, this.vy); return; }
@@ -1532,12 +1534,15 @@ class Enemy {
         // Point blank he flinches: half the time the round goes somewhere else altogether.
         if (d < cfg.wildNear * TILE && Math.random() < cfg.wildChance)
           spread = (Math.random() < 0.5 ? -1 : 1) * cfg.wildSpread * (1 + Math.random());
-        game.fireBullet(this, Math.cos(this.facing + spread), Math.sin(this.facing + spread));
+        if (this.shotgun) EndBoss.shotgun(this, game, spread);   // THE THRESHING FLOOR's last man: three a shot (js/endboss.js)
+        else game.fireBullet(this, Math.cos(this.facing + spread), Math.sin(this.facing + spread));
         this.reload = cfg.reload * game.mods.enemySlow; this.state = 'chase';
       }
       return;
     }
     // chase: keep distance, shoot when possible
+    // The corrupted rifleman from his second meeting blinks out from a goat who has closed on him (js/endboss.js).
+    if (this.blinker && EndBoss.hunterBlink(this, game, d, dt)) return;
     const reach = (cfg.sight + (this.watchful ? cfg.watchSight : 0)) * TILE;
     // Stepping out from behind the man in front of him: sideways across the line, a beat, then look again.
     if (this.sidestep > 0) {
@@ -2167,6 +2172,8 @@ class Enemy {
           life: 0.3 + Math.random() * 0.45, color: Math.random() < 0.5 ? PALETTE.witch : PALETTE.witchHi, size: 3 + Math.random() * 3 });
       }
       game.ring(this.rune.x, this.rune.y, cfg.runeRadius * TILE * 1.6, PALETTE.witchHi);
+      // THE YARD's last mage from his third meeting: the rune goes on out over the room in rings (js/endboss.js, js/waves.js).
+      if (this.endRings) Waves.rings(game, this.rune.x, this.rune.y, this.endRings);
       game.flash(PALETTE.witch, 0.14);
       w.emitNoise(this.rune.x, this.rune.y, TUNING.noise.rune, 'cult');   // his own fire: THE DARK's cult does not hunt it
       game.audio.sfxRune(); game.shake(5);
@@ -2174,8 +2181,9 @@ class Enemy {
     this.rune = null; this.castCd = cfg.castCooldown * game.mods.enemySlow;
   }
 
-  blink(game) {
-    const cfg = this.cfg, w = game.world, g = game.goat;
+  // `cfg` lends the reach and the wait (the corrupted rifleman's, js/endboss.js); the mage's own otherwise.
+  blink(game, cfg = this.cfg) {
+    const w = game.world, g = game.goat;
     // A sealed arena's doors open when the room is empty and not before, so a mage shut in one may
     // not leave it: blinking out through the wall left him alive on the far side of a door nothing
     // could open, with the goat locked in behind it and the level unfinishable.
@@ -2258,12 +2266,13 @@ class Enemy {
       if (this.timer <= 0) {
         this.hopZ = 0; this.state = 'hopland'; this.timer = L.land * game.mods.enemySlow; this.slamCd = L.cd;
         this.quake(game, L, L.radius * TILE);
+        if (this.soul) Waves.land(game, this);   // a corrupted ogre met again: rings of witchfire (js/waves.js)
       }
       return;
     }
     if (this.state === 'slamwind') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(g.y - this.y, g.x - this.x); this.timer -= dt;
-      if (this.timer <= 0) { this.state = 'recover'; this.timer = S.recover * game.mods.enemySlow; this.quake(game, S, S.range * TILE); }
+      if (this.timer <= 0) { this.state = 'recover'; this.timer = S.recover * game.mods.enemySlow; this.quake(game, S, S.range * TILE); if (this.soul) Waves.slam(game, this); }
       return;
     }
     if (this.state === 'hopland' || this.state === 'recover') { this.vx = 0; this.vy = 0; this.timer -= dt; if (this.timer <= 0) this.state = 'chase'; return; }

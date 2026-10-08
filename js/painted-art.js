@@ -446,7 +446,7 @@ class PaintedArt extends AltarArt {
       glowDisc(ctx,p.x,foot-1,w*0.24,BRAZIER_POOL,1,0.34);
       const h=PIXEL_ENV.draw(ctx,'brazier',p.x,foot,w);
       const heat=p.spillCd>0?0.4+0.6*(1-p.spillCd/TUNING.prop.brazier.spillCd):1;
-      renderer.flame(p.x,foot-h*0.72,(9+(p.phase*2.5%2.5))*heat,p.phase*10);
+      renderer.flame(p.x,foot-h*0.72,(9+(p.phase*2.5%2.5))*heat,p.phase*10,!!p.witch);   // a mage's bowl burns violet (js/endboss.js)
       return true;
     }
     if(p.kind==='lamp'){
@@ -662,7 +662,8 @@ class PaintedArt extends AltarArt {
     // picture of a dog sliding round the floor.
     if(key==='hound'&&moving){const G=TUNING.dog;ctx.translate(0,-Math.abs(Math.sin(renderer.t*G.gait*Math.PI+e.x*0.02))*G.bob);}
     // A man standing still breathes and shifts his weight (`TUNING.menIdle`), never a statue; off as soon as he moves or acts.
-    if(key!=='sheep'&&e.kind&&!moving&&!e.dead&&MEN_IDLE.has(e.state)){const M=TUNING.menIdle,b=(1-Math.cos(renderer.t*Math.PI*2/M.period+(e.x||0)*0.13))/2;
+    // THE SHOWROOM's figures (`e.statue`, js/showroom.js) are the one thing that does stand like a statue.
+    if(key!=='sheep'&&e.kind&&!moving&&!e.dead&&!e.statue&&MEN_IDLE.has(e.state)){const M=TUNING.menIdle,b=(1-Math.cos(renderer.t*Math.PI*2/M.period+(e.x||0)*0.13))/2;
       ctx.rotate(Math.sin(renderer.t*Math.PI*2/M.swayPeriod+(e.y||0)*0.07)*M.sway);ctx.scale(1-M.wide*b,1+M.amp*b);}
     // The ogre has no atlas body: his own hand-drawn one (js/ogre-pixels.js), fists up through a slam or a leap.
     // The shieldman's board, under him when it is seen past him from behind and over him otherwise (`board`).

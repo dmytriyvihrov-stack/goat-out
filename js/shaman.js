@@ -60,14 +60,23 @@ const Shaman = {
     const a = Math.round(Math.atan2(e.y - g.y, e.x - g.x) / (Math.PI / 4)) * (Math.PI / 4);
     g.called = { by: e, ux: Math.round(Math.cos(a) * 1000) / 1000, uy: Math.round(Math.sin(a) * 1000) / 1000, t: S.time, max: S.time };
     game.floatText(g.x, g.y - 34, 'CALLED', PALETTE.fireHi);
+    game.audio.sfxSeized();   // the one sound for "he has you" (8 Oct 2026), its twin is `free`
     game.ring(g.x, g.y, g.r * 2, PALETTE.fireHi, 0.35, 2);
     game.bark(e, 'call', 0.8);
+  },
+  // Every way the call ends (expired, shaken off by a blow, its caster down or gone) goes through here, so the
+  // goat always hears the one sound for "your legs are yours again". `why` is the word floated, if any.
+  free(game, g, why, col) {
+    if (!g || !g.called) return;
+    g.called = null;
+    if (why) game.floatText(g.x, g.y - 34, why, col || PALETTE.bone);
+    game.audio.sfxFreed();
   },
   // A blow on the goat (`Goat.damage`, before anything takes it): the call is shaken off and none takes him for
   // `call.guard` s. The guard is kept on the clock of the run (`game.timer`), so a new floor never inherits one.
   shake(game, g) {
     if (!g || g.dead) return;
-    if (g.called) { g.called = null; game.floatText(g.x, g.y - 34, 'SHAKEN OFF', PALETTE.bone); }
+    if (g.called) Shaman.free(game, g, 'SHAKEN OFF');
     g.callGuard = game.timer + TUNING.shaman.call.guard;
   },
   guarded(game, g) { return g.callGuard !== undefined && game.timer < g.callGuard; },
@@ -75,7 +84,7 @@ const Shaman = {
   // standstill, across bends it, and nothing else he does is touched.
   pull(game, input) {
     const g = game.goat, c = g && g.called; if (!c) return;
-    if (c.t <= 0 || g.dead || c.by.dead || game.enemies.indexOf(c.by) < 0) { g.called = null; return; }
+    if (c.t <= 0 || g.dead || c.by.dead || game.enemies.indexOf(c.by) < 0) { if (g.dead) g.called = null; else Shaman.free(game, g); return; }
     let mx = input.mx + c.ux, my = input.my + c.uy; const l = hyp(mx, my);
     if (l > 1) { mx /= l; my /= l; }
     input.mx = mx; input.my = my;
@@ -97,7 +106,7 @@ const Shaman = {
     if (!e.shaman) return;
     for (const o of game.enemies) if (o.spirit && o.spirit.by === e) Shaman.spiritOut(o, game);
     const g = game.goat;
-    if (g && g.called && g.called.by === e) { g.called = null; game.floatText(g.x, g.y - 34, 'FREE', PALETTE.bone); }
+    if (g && g.called && g.called.by === e) Shaman.free(game, g, 'FREE');
   },
 
   // ---- his part of `Enemy.updateBearer`: true when it took the step ----
@@ -235,18 +244,18 @@ const Shaman = {
     game.ring(e.x, e.y, A.burst * TILE, PALETTE.spirit, 0.45, 3); game.ring(e.x, e.y, A.r * TILE, PALETTE.spiritHi, 0.3, 2);
     game.particles(e.x, e.y - 20, 8, PALETTE.spiritHi, 110);
   },
-  // The spirit in a man (`Renderer.drawOverhead`, under his notches): a pair of antlers of light over his
-  // head, bone with the shaman's green round them, breathing.
-  ANTLERS: ['x.x.......x.x', '.x.x.....x.x.', '..x.......x..', '..x.x...x.x..', '...x.....x...', '....x...x....'],
+  // The spirit in a man (`Renderer.drawOverhead`, under his notches): an arrow up over his head (8 Oct 2026
+  // playtest: "simpler"; it was a pair of antlers of light), bone with the shaman's green round it, rising.
+  ANTLERS: ['...x...', '..xxx..', '.xxxxx.', 'xx.x.xx', '...x...', '...x...', '...x...'],
   drawSpirit(r, e) {
     if (!e.spirit || e.dead) return;
-    const ctx = r.ctx, A = Shaman.ANTLERS, C = 1.5, w = A[0].length, b = 0.5 + 0.5 * Math.sin(r.t * 5 + e.x * 0.03);
+    const ctx = r.ctx, A = Shaman.ANTLERS, C = 2, w = A[0].length, b = 1.5 + 1.5 * Math.sin(r.t * 5 + e.x * 0.03);
     ctx.save(); ctx.scale(1, 1 / TILT);
     const x0 = Math.round(e.x - w * C / 2), y0 = Math.round(e.y * TILT - r.spriteHead(e) - A.length * C + 3 - b);
     const on = (i, j) => j >= 0 && j < A.length && i >= 0 && i < w && A[j][i] === 'x';
-    ctx.globalAlpha *= 0.55 + 0.35 * b; ctx.fillStyle = PALETTE.spirit;
+    ctx.globalAlpha *= 0.85; ctx.fillStyle = PALETTE.ink;
     for (let j = -1; j <= A.length; j++) for (let i = -1; i <= w; i++) if (!on(i, j) && (on(i - 1, j) || on(i + 1, j) || on(i, j - 1) || on(i, j + 1))) ctx.fillRect(x0 + i * C, y0 + j * C, C, C);
-    ctx.globalAlpha /= 0.55 + 0.35 * b; ctx.globalAlpha *= 0.9; ctx.fillStyle = PALETTE.bone;
+    ctx.globalAlpha /= 0.85; ctx.fillStyle = PALETTE.spiritHi;
     for (let j = 0; j < A.length; j++) for (let i = 0; i < w; i++) if (on(i, j)) ctx.fillRect(x0 + i * C, y0 + j * C, C, C);
     ctx.restore();
   },

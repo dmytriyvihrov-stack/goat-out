@@ -76,6 +76,9 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
    something new, it has to appear in the showroom"). A prop, an animal, a talisman, a door, a floor's
    furniture: `showroomLevel` (js/showroom.js) lays one of it under its name, and an animal or a man the
    dev drawer can drop also gets a SPAWN row. A feature nobody can walk up to on that floor is not done.
+   And each floor's room there (8 Oct 2026, the user's rule) stands a still figure of every kind of man that
+   floor can deal (its `encounters.kinds` and `introduce`, the pseudo-kinds too, and its rings' bosses), its
+   name under it: a new kind, or a kind added to a floor, shows up in that floor's gallery on its own.
 
 ---
 
@@ -88,7 +91,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/rng.js` | Seeded RNG (mulberry32) plus `clamp` / `lerp` / `len` / `angleDiff`. |
 | `js/rooms.js` | Hand-authored room templates as character grids, legend at the top (`'w'` a stand of arms, `'O'` a drop). Also the start room, arena, Mill room, Great Hall, Gallery. Templates carrying a `tag` belong to one level's pool. `groundOf`. |
 | `js/gen.js` | Level generation: chains rooms, carves corridors, places props, spawns, heals, validates reachability. Defines the tile enum `T`. |
-| `js/showroom.js` | THE SHOWROOM (dev only: SHOWROOM in the dev drawer, or `#showroom` + NEW GAME): `showroomLevel`, a laid (not rolled) floor, a hall with every prop named on the floor, a door of every kind in blind alcoves, a wall that gives, then one room per floor in its own stone and canon furniture (`level.zones` / `zoneDefs`, read per tile by `PaintedArt.drawTiles`), and under them THE FLANK's three trench rooms laid from their own templates. `game.showroomOn` holds it through a death; the stairs, the title or any other start let it go. |
+| `js/showroom.js` | THE SHOWROOM (dev only: SHOWROOM in the dev drawer, or `#showroom` + NEW GAME): `showroomLevel`, a laid (not rolled) floor, a hall with every prop named on the floor, a door of every kind in blind alcoves, a wall that gives, then one small room per floor (16 x 15, 8 Oct 2026) in its own stone and canon furniture (`level.zones` / `zoneDefs`, read per tile by `PaintedArt.drawTiles`) with a gallery of that floor's men (`level.statues` → `showroomStatues` → `level.statueMen`: real `Enemy`s never put in `game.enemies`, drawn with the cast by `Renderer.draw`, `e.statue` keeps them from breathing), and under them THE FLANK's three trench rooms laid from their own templates. `game.showroomOn` holds it through a death; its stairs lead back to its own start (8 Oct 2026), the title or any other start let it go, and GOD as it was before it comes back (`godBeforeShowroom`). |
 | `js/rules.js` | `GEN_RULES`, the generator's promises with a `check(level)` each; `checkRules`, `roomsOf`, `levelFacts`. Read by the dev drawer's RULES page and by `tools/balance.js`. |
 | `js/juice.js` | `JUICE`, the game-feel catalogue: every effect with trigger, look, size (read off `TUNING`), code pointer, source and a Godot 4 recipe. Read by the JUICE tab and `tools/juice-md.js`. |
 | `js/juice-preview.js` | `JuicePreview`: the JUICE tab's live preview, `JUICE_PLAY` (row → staged scene, what EFFECT OFF turns down), `JUICE_SCENES` (a room laid by hand, what is pressed when), `JUICE_NOPLAY` (why a row has none); the stage is `Object.create(game)` stepped by `Game.update` and drawn by its own `Renderer`. Dev only; loads after `goat-grid.js`. |
@@ -102,6 +105,9 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/status.js` | `Status`: poison, the three reactions between poison / stun / fire, puddles, the spit glob, thrown things that drip poison (VENOM JAW) or burn a line (FIREBRAND, `brandTrail`). |
 | `js/thrower.js` | `Thrower`: the thrower's part of `Enemy.updateBearer` (looking for something to lift, the lift, the carry, the aim, the throw; his grab of the goat and the throw of him), the goat's `carried` / `tossed` states (`goatStep`), what he throws meeting the goat, and the animals he threw in the air (`game.tossed`, `fly`). Loads after `enemies.js`. |
 | `js/shaman.js` | `Shaman`: the shaman's part of `Enemy.updateBearer` (keeping back, THE SPIRIT `shspirit` into his clubmen, `o.spirit`; THE CALL `shcall` on the goat, `goat.called`, `Shaman.pull` holds the run key before `goat.update`), `update` (their clocks), `onDie`, and their picture (`drawTell`, `drawSpirit`, `drawWorld`). Loads after `thrower.js`. |
+| `js/waves.js` | `Waves` (8 Oct 2026): a corrupted ogre met again in a run (`game.ogreMet`, `e.soulMeet`, saved as `ogreMet`): from the `soulOgre.ring.from`-th his landing throws rings of witchfire with gaps, from the `line.from`-th his slam sends a band three tiles across at the goat; a heart unless he rolls. `game.waves`, `update` in the play step, `draw` after the fire. Loads after `enemies.js`. |
+| `js/endboss.js` | `EndBoss` (8 Oct 2026): THE FLOOR'S LAST MAN. The first five floors end on their own kind with the soul in him (`LEVELS[].arenas`, last entry in the last room; `with` names escorts the generator always stands at his back). `ENDBOSS_KEY` counts per browser which meeting it is (`meetFor`, one more the moment the goat walks into that room; dev drawer END BOSS row = `dev.endMeet`). `lay` (from `startLevel`) sets him up: `e.endBoss`, `e.soulMeet` (js/waves.js reads it), `endHold` (the ogre gnawing among his bones, the two mages by their bowl; `hold` from the top of `Enemy.update`). `watch` starts the floor's short scene (`game.endScene`, held like the gate's mage, `endActor`s shown through the fog): THE ALTAR's twin through the way out (third meeting on, `endTwin`, drops grass), THE YARD's mage and the opening's mage running out with her (bowls to witchfire `p.witch` from the second; his rune in rings `Waves.rings` from the third), THE CAVE's ogre throwing his bone and leaping. THE THRESHING FLOOR's rifleman: `shotgun`, `hunterBlink` from the second. LEVELS page shows each floor's last man. `GEN_RULES.endboss`. Loads after `waves.js`. |
+| `js/gapcross.js` | `GapCross` (8 Oct 2026): the men at a one-tile drop (`level.gaps`) with the goat across and no short way round: a hound or rifleman jumps it (state `hop`), a seer in sight blinks over, a plain clubman waits at the lip and after `gapCross.fall.after` s may try it and fall. `step` is asked first in `Enemy.update` and skips `act` while he is in the air. Loads after `waves.js`. |
 | `js/shop.js` | `Shop`: the mouse in the wall, her offers, provoking her, the rat ogre, what a ware is (`info`), what taking one hands back (`replaces`), nothing worn on a shelf (`restock`), and two capes' verbs (boomerang flight, blink). |
 | `js/capes.js` | `Cape` (6 Oct 2026): the capes' Q (`use`), SHEPHERD'S MANTLE's tuft (`sprout`), CAPE OF RUIN's shock (`ruin`), a niche's `cape` prop laid as a ware on the floor (`lay`, which cape off `pick`). Loads after `shop.js`. |
 | `js/cape-pixels.js` | `CAPE_PIXELS`: the capes on him as hand-placed cells on the goat's sprite grid, one cloth shape per view (`VIEWS`, behind him on the front, over him elsewhere), each cape's cloth, trim, clasp and pattern (`LOOKS`), the sway on the run, the folded cape (`icon`), the collar's ring (`ring`, `ringAt`) and the talismans' charms on it (`CHARMS`, `charm`). Loads after `prop-pixels.js`; node-requirable (`output/capes-2026-10-06/render.cjs` renders the sheet). |
@@ -126,7 +132,7 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `js/pig-pixels.js` | `PIG_PIXELS`: the pig as a hand-built pixel unit, the horse's recipe a size down (five views mirrored to eight, a trot, the `eat` pose head-down); `PIG_PIXELS.draw(ctx, angle, moving, t, pose)`, called by `Renderer.pigSprite`. Loads after `horse-pixels.js`. `output/pig-2026-09-30/render.cjs` renders a sheet. |
 | `js/heaven-pixels.js` | `HEAVEN_PIXELS`: heaven's sprites on `PROP_PIXELS.Grid`, the god (`god`, `god-speak`, `god-blink`), the blind shepherd's three arms, the mirror (its glass one flat colour, `GLASS`), the five bells and their beam (`BELL_GAP`), a seat, gold grass, the gold skull the HUD counts sacrifices in. Loads after `horse-pixels.js`; node-requirable for a sheet. |
 | `js/heaven.js` | `Heaven`: THE PASTURE ABOVE, where a death's card leads (see *Heaven* below): the store that outlives runs (`HEAVEN_KEY`, `meta`: sacrifices, `MIRROR` ranks, the seats), the hand-laid three-room level (`level`, `HEAVEN_MAP`), its step (`update`: GRAB answers, the comb, the talk, the mirror panel, the bells, the edge), what the god says (`HEAVEN_TALK`, `pickTalk`) and all of its picture (`bake*`, `draw*`, `drawHud`). |
-| `js/heaven-home.js` | THE ANIMALS' HOME (7 Oct 2026, on `Heaven`): `HEAVEN_MAP` (the two rooms; `stalls` is the throne's alias), the stands (`standState`, `beastsOpen`, `talismanLocked`), pouring souls into what is broken (`pourable`, `startPour`, `updatePour`, `finishPour`, `drawPour`), the horns before the jump (`HORN_GLYPHS`, `pickHorns`, `drawHorn`), the paddock and who lives up here (`layPaddock`, `spawnRoamers`, `updateRoam`, `drawRoam`, `drawFlock`, `drawPaddock`, `drawPaddockRuin`), what the stands and the animals say (`seatAnswer`, `dareTalk`, `talkRoam`), `chaseRoll`, and the dev tab's `devHome`. Loads after heaven.js. |
+| `js/heaven-home.js` | THE ANIMALS' HOME (7 Oct 2026, on `Heaven`): `HEAVEN_MAP` (the two rooms; `stalls` is the throne's alias), the stands (`standState`, `beastsOpen`, `talismanLocked`), pouring souls into what is broken (`pourable`, `startPour`, `updatePour`, `finishPour`, `drawPour`), the horns before the jump (`HORN_GLYPHS`, `pickHorns`, `drawHorn`), the paddock and who lives up here (`layPaddock`, `spawnRoamers`, `updateRoam`, `drawRoam`, `drawFlock`, `drawPaddock`), what the stands and the animals say (`seatAnswer`, `dareTalk`, `talkRoam`), `chaseRoll`, and the dev tab's `devHome`. Loads after heaven.js. |
 | `js/motes.js` | `Motes`: the white souls (1.86), `spawn` over a man put down once `Heaven.gifted()`, `update` (they follow him out of their room), `bank` (`Heaven.earn`), `flush` at the stairs, `draw`; his own soul: `drawAscent` on a death, `second` / `updateRevive` / `drawRevive` for SECOND CHANCE, `ghost` (his picture washed white, baked per facing). Loads after `heaven.js`. |
 | `js/beasts-more.js` | THE FISH (6 Oct 2026: `updateFish`, `throwFish`, `breakFish`, `drawFish`, sprites `fish-0..3`). The rabbit and the husky (1.86) on `Beast`: `drawMore` (their `PROP_PIXELS` sprites `rabbit-sit/-hop`, `husky-stand/-sing`), `answer` / `refuse` / `updateRefused` (BAAAH yes / bah no after every animal's terms, `BEAST_ANSWER`), `updateRabbit` and `game.legsTied`, `updateHusky` / `startSong` / `heard` / `updateSong` / `drawSong` (`game.song`). Loads after `pig-pixels.js`. |
 | `js/codex.js` | `Codex` (1.86): `KEYWORDS` marked in descriptions (`line`, `lines`) and explained on the pointer (`drawTip`, last thing drawn; `R.tips`); `portrait` (the goat large, facing SE, any mods and talisman), `drawBoonGoat` over the soul cards; the book on I / PAUSE → INVENTORY (`menu.panel === 'book'`, `drawBook`, `bookKey`, `bookClick`); the mouse's offer as cards (`watchShop`, `game.shopDlg`, `updateShop`, `shopKey`, `drawShop`); `Unlocks` (the book's UNLOCKS tab). Loads after `motes.js`. |
@@ -331,7 +337,7 @@ limit") is in `BACKLOG.md`.
   raw `castWind` while the timer was `castWind * mods.enemySlow`; the negative radius threw
   `IndexSizeError`. Clamp radii; measure a timer against the duration it was given.
 
-**The camera.** `game.camLead` lerps toward `aim * camera.lead` (`leadLerp`, `leadStill`); `game.camFollow`
+**The camera.** The dev drawer's ENEMIES tab has a CAMERA ZOOM slider (0.5 to 3, `DEV_TUNE`, x `Renderer.zoomFit`; never in the itch build). `game.camLead` lerps toward `aim * camera.lead` (`leadLerp`, `leadStill`); `game.camFollow`
 moves only past `camera.deadzone` (`game.camTrack`), and a room that fits the view (`fitMargin`) is
 **held by a blend, never a switch** (1 Oct 2026): `game.camHold` is how far he is from the room's nearest
 way out (`Game.roomMouthDist`, the open tiles of its border), none within `camera.blendIn` of a doorway,
@@ -380,9 +386,10 @@ shapes; the loop is the motion. A new effect is cells on that grid, never a smoo
 (light is the one exception: `drawLight`, a blast's flash).
 
 **The bottom-left corner** (7 Oct 2026, his ask, Hades' HUD): off touch and off a portrait screen (`renderer.hudLow`) the
-hearts (light and iron after them) stand in the bottom-left corner over one faint line of seed and build; ONE MORE LIFE is
+hearts (light and iron after them) stand in the bottom-left corner (the seed and build, and the shut dev word, top right under the keys
+since 8 Oct 2026, `renderer.devTop`); ONE MORE LIFE is
 a small framed portrait of the goat each over them (`lifePortrait`); the cape's plate (`drawCapeCorner`) stands over that
-stack and the dev word over the cape (`renderer.leftTop`, set by `drawUI` every frame). The talismans (`drawArtifactChip`,
+stack (`renderer.leftTop`, set by `drawUI` every frame); the open dev drawer still rises from there. The talismans (`drawArtifactChip`,
 24 px chips), the animals carried (`drawSaved`), the horn test's lines and the combo have the top-left. Because the bottom
 now carries more, the camera frames him `camera.hudLift` of the view above the middle (`updateCamera`'s `lift`; a held room
 must fit under it too); not on touch, a portrait screen or heaven. Touch keeps the old row up top.
@@ -457,6 +464,13 @@ cave and later floors that drew one, grass *before* the cave fails.
 candidates under `DOORS.far` (0.7) of the best distance *before* rolling. Wide-corridor clamping (`fit`)
 applies to the **candidates**, or THE THRESHING FLOOR undoes it. A side door also prefers rows with a clear tile one step in (`stepClear`, `room.mouths`, `GEN_RULES.doorstep`). `noteFar` → `room.exitFar` →
 `GEN_RULES.farexit`.
+**The way between rooms** (8 Oct 2026 playtest: "fewer corridors, rooms joined straight to rooms, especially on the first
+level"; `CORRIDOR` in tuning.js): `gap` tiles of rock between one room's wall and the next, `jog` rows up or down; a level's
+own `gap` / `jog` override them, and `meet` (THE ALTAR, so THE ALTAR AGAIN) has the next room's door take the row nearest
+the last one's (`pickDoorY`'s `toward`), so the doors face across two or three tiles and a facing pair hangs its door in the
+first tile of rock. Since the same day's second note ("rooms flush against rooms") that is every floor's default
+(`CORRIDOR` gap [2, 3], `meet` true); a level with wide corridors keeps three at least. Only the corridor out of the first room past the sentry's is long (`CORRIDOR.grassGap`, `carveCorridor`'s
+`late`: turned just short of the next wall, no door), and the first grass lies in its straight run (`exitBand.run`).
 
 **Stacked rooms.** Still one chain. `levelDef.stack` (level two on): `stackSpot` + `carveShaft`. A
 stacked room never reaches left of its parent nor stops short of its right wall. `stackable` refuses the
@@ -496,6 +510,11 @@ resting, trap or set-piece room; its men lead the room's cell, `extra` more off 
 `room.combo` / `level.combo`; `comboRoomFits` / `comboMet` are shared with `GEN_RULES.combos`. The dev drawer's
 COMBOS tab (`drawCombosTab`, `#combos`) lists them, and PLAY (`combo=<id>`, `opts.combo` via `dev.forceCombo`)
 lays one and stands him at its door; the LEVEL tab's room tile names it.
+
+**A first meeting is a bare room** (8 Oct 2026, `TUNING.rooms.firstMeet`, the end of `tryGenerate`): the room that
+introduces a kind in `firstMeet.kinds` (the hound) loses everything in `drop` (chandelier, cleat, armour, stag's head,
+suit, barrels, bombs, the stand of arms) and keeps `crates` crates and `tables` tables, plus a table a scrap of paper lies
+under. `GEN_RULES.firstmeet`.
 
 **Spawns.** `take` in `tryGenerate` keeps the best of a few dozen rolls (clear of men, props,
 `room.enter`; `GEN_RULES.spacing`). Afterwards anyone `inFurniture` is walked to clear floor
@@ -586,8 +605,8 @@ the ambush; the middle gate, its soul carried by a keeper (`gateKeeper`, see *So
 room, placed not rolled); the first butcher alone, plain, no outline (`introduce` champion at 1); three clubmen (`crowdAt`, so his two rooms are
 not back to back); rest (no gate, no soul); a clubman as a boss with two clubmen at his back, who
 carries the second soul, three hearts (`arenas[].hp`; 2 Oct 2026: the boss butcher who ended the floor
-was "a bit hard", his ring is THE YARD's room 4 now, `hp` 4, one man, no soul; the ogre is THE YARD's
-last room). `surprises: false`: THE ALTAR deals exactly those two souls.
+was "a bit hard", his ring is THE YARD's room 4 now, `hp` 4, one man, no soul; THE YARD ends on two mages
+since 8 Oct 2026, the ogre on THE CAVE). `surprises: false`: THE ALTAR deals exactly those two souls.
 
 **The wheel lesson.** `levelDef.millLesson`: `MILL_LESSON_TEMPLATE`, seven tall, hub one row off the top
 so only the bottom lane is clear; **two men** on the far `e` markers with `trapSense` pinned to 0 and 1
@@ -659,7 +678,8 @@ the room goes under the floor's own fog, the floor's fog thickening inside its w
 **Doors that open for you.** `fromRoom` iron, stair and clock doors swing open (`open`, never `broken`) when that
 room's men are dead (`game.updateClearDoors`; not gates, seals, vault); a plank door stays shut to be broken (26 Sep 2026).
 A clock door that has seated is leaned open by the men behind it like plank (`openPressure`, `clockRoom >= 0`; 5 Oct 2026). Butting a soul gate lays a violet trail to what opens
-it (`game.guideTo`, `drawGuide`, `TUNING.soul.guide`). The **clock door** (`prop.door.clockFor`,
+it (`game.guideTo`, `drawGuide`, `TUNING.soul.guide`), or, the soul still in a man, to him with a violet arrow over his head
+(`guideMark`, 8 Oct 2026); a sealed arena's door does the same for the nearest man it waits on (`guideSeal`). The **clock door** (`prop.door.clockFor`,
 `levelDef.clockDoors`, level three on) stands open (`open` 1), shuts on `clockEase` at 9 s =
 `score.perRoom`, never on a body, lights itself while counting, and `gen.js` removes it from rooms with
 fewer than two men, that introduce a kind or follow one, or whose door is more than `clockReach` tiles'
@@ -843,9 +863,12 @@ spares `state === 'hop'` from the pit, `collideEntities` skips him, the horns mi
 `slam.near`: `slamwind` → `recover`. Both land through `Enemy.quake` (ring: the goat hurt and
 thrown out; his own men in it untouched). **The horns do nothing to him** (1.71, `butcher.hornsHurt`): a butt bounces
 the goat off, no stagger; blades, fire, bombs and thrown bodies take his hearts, so every ogre arena is
-`OGRE_ARENA_TEMPLATE` (two braziers, three stands all swords; the first of a run, THE YARD's last room,
+`OGRE_ARENA_TEMPLATE` (two braziers, three stands all swords; the first of a run, THE CAVE's last room since 8 Oct 2026,
 the floor whose `met` has no `butcher` yet, is the wide `OGRE_FIRST_TEMPLATE`),
-held by `GEN_RULES.ogre`. `daze` / `balk` break the crouch, never the leap.
+held by `GEN_RULES.ogre`. `daze` / `balk` break the crouch, never the leap. A corrupted ogre met again in a run brings
+witchfire (js/waves.js, `TUNING.soulOgre`): rings off his landing from the second, a band off his slam from the third. The dev
+drawer's SPAWN AS row (`dev.spawnAs`, `DEV_SPAWN_AS`, `Game.devSpawnAs`) drops any SPAWN plain, champion, or corrupted at
+its 1st / 2nd / 3rd meeting.
 
 **Butcher and soul-bearers.** The BUTCHER is the brute renamed (1.72), every player-facing string
 says BUTCHER; the code keeps `champion` (a `bearer` with the flag, `THREAT.champion`, `TUNING.champion`)
@@ -870,7 +893,7 @@ then `daze` s more while the butcher goes straight into his ordinary `windup`. T
 then `recover`. Anything that knocks him out of those states drops the rope (`dropHook`, checked at the
 top of `Enemy.update`; `daze` and STUN+POISON call it). The rope is `Renderer.drawHooks`.
 `game.ensoul(e)` is the only way to set `e.soul` (`soulBearer.hp`), and it is only ever called on a
-boss, who already wears the outline; he is lit too (amber haze, ring, red eyes), a label only.
+boss, who already wears the outline; he is lit too (violet haze, `SOUL_HAZE`, ring, red eyes), a label only.
 **Neither stands for being butted over and over** (3 Oct 2026, `champion.shove`, `Enemy.shoveBack`, asked by
 `headbuttHits` before the throw, a clubman only: the butcher and any bearer with a soul): butts landed inside
 `window` s are counted, the n-th is answered at `odds[n]` (0, 0, ¼, ½; a shove starts the count again), and he
@@ -905,6 +928,7 @@ Up close he rams the board (`shieldman.strike`, read by `Enemy.atk`: the clubman
 draws it drawn in through the windup and out `thrust` px in the swing). His spikes cost a heart only on a boss or a soul-bearer;
 an ordinary one throws the goat off stunned (`spikes.plain`, the ogre's rebound). The board he drops has `shieldman.drop` uses.
 Every stub that draws him must carry `shieldman` as well as `shield` (`characterKey`), or he is a clubman holding a board.
+**Up or down at a glance** (8 Oct 2026, `shieldman.guard`): while `shieldUp` an arc of steel cells (`PALETTE.guard`) lies on the floor in front of him as wide as the board covers (`Renderer.drawGuard`, from `drawEnemyGround`), white for a beat after a blow lands, gone as the board drops. **The board turns DRAGON BREATH** aimed into it (`shieldman.breath`, `Goat.breathe`): he does not catch and `igniteCone`'s `skip` leaves the floor behind the board unlit; grass already burning under him still lights him.
 
 **Thrower** (3 Oct 2026, `TUNING.thrower`, js/thrower.js, js/thrower-pixels.js). A clubman with one arm grown on the
 green: the pseudo-kind `thrower` in `THREAT`, `ENCOUNTER` (weight 1, cap 1) and `LEVELS` (introduced alone on THE BRIDGE,
@@ -978,14 +1002,14 @@ point ("You run 20% faster"), and then a getter over `this.params`, never typed,
 with the full numbers off `p` / TUNING (`sayN`, `sayPct`, `sayTimes`, `sayPoison`) for the dev drawer
 only; `skill` hangs it on a button; `needs` gates the
 deal. `synergy` / `addition` on a boon are marks for the BOONS tab only. `BOON_SLOTS` (one active + two passives per button, four body); `game.boonOpen` is the one deal
-test; `key` boons count against nothing. The body souls are shown in the book's BODY row only (2 Oct 2026; `drawBodySouls` is no longer called). **A full slot is a swap, not a heart** (26 Sep
+test; `key` boons count against nothing. The body souls are shown in the book's BODY row only (2 Oct 2026). **A full slot is a swap, not a heart** (26 Sep
 2026): `game.boonSwaps` pairs every card shut out only by its slot with one boon in that slot;
 `openBoonChoice` deals them where the open cards run short (`game.boonReplace`, parallel to
 `boonChoice`), the card says `INSTEAD OF`, and `takeBoon` drops the old one first and pays no `heal`.
 The silent +1 heart is left only for a deal with nothing at all to offer.
 **Two cards, a third earned** (30 Sep 2026): a soul deals `BOON_CARDS` (2). `mods.thirdEvery` (n: every
 n-th soul) deals one more, HUNGRY SOUL (`hunger`, a body passive, every soul) or THE KNUCKLEBONE
-(`knuckle`, a talisman: every 3rd / 2nd / every soul by tier), the more generous wins, counted in
+(`knuckle`, a talisman: every soul since its one form, 8 Oct 2026), the more generous wins, counted in
 `talRun.third` (so a death rolls it back with the rest of `levelTalRun`); `game.boonThird` names whose
 it is and the card says `THIRD CARD · <name>`. The chip shows the bone's count as pips.
 **Element sets** (30 Sep 2026, `BOON_SETS`): a boon's `element` (`fire`: breath, charge, kindling,
@@ -1018,7 +1042,11 @@ one card `drawBoonChoice` draws too: change the card there, never a copy), and b
 they are kept in this browser (`BOON_EDIT_KEY`), the tab says NOT SAVED TO DISK, and EXPORT AS JSON / IMPORT
 JSON carry them to a served page that writes them. The itch build reads `BOON_TEXT` / `BOON_OFF` only.
 
-**The three horns** (6 Oct 2026 a dev test, 7 Oct 2026 his shape: "the ones we have are the dagger horns, and two new ones on top", and the same day "not the dagger, the SHORT"; `TUNING.goat.horns`, `game.hornKind`, DEV MODE → HORNS steps SHORT / BIG / LONG, kept under `HORN_KEY`; an old saved `dagger` reads as SHORT). **BIG and LONG are the god's** (`Heaven.hornsOpen`, `meta.hornsOpen`): picked at the edge (`hhorn`, `pickHorns`) only once a hundred souls have been poured into him (`gift.horns`, see *THE ANIMALS' HOME*); until then a locked pair is pale under a padlock and says `HEAVEN_TALK.hornsShut`, and in the itch build `applyBoons` lays the SHORT whatever `hornKind` says. `applyBoons` lays the horn's `windup` / `recovery` / `reach` under the souls (`mods.horn`), the lunge step its `lunge`, and `Goat.hornHit` is the one shape every reader asks (men, props): an ARC of the horn's `cone` (7 Oct 2026 playtest: the SHORT a quick stab that shoves ONE man, `single`, the nearest in its arc and nobody else that lunge, `goat.singleDone`; BIG a wide arc a little deeper by `reach`, with a lunge and the longest wait; LONG the furthest lunge and a middle wait) or, with `rows`, LONG's two straight strips, a horn each (`rowGap`, `rowW`), out to the reach: a man met in the last `1 - tip` of it is hit by the tips and thrown `tipMul` times as hard, one on the shafts only shoved `shaftMul` (pillar 3 stands: no horn kills, the wall behind the man does). Its picture is **the wave** (`Renderer.drawHornWave`, `goat.wave` set as the head comes up, `horns.wave`): cells on the floor for a third of a second, the same geometry as the hit, pale where it shoves and bright at the front of the wave and on LONG's tips. The LONG HORNS soul (`mods.antlers`) bends whichever horn he has. A label under the hearts says which and what it does (not in the itch build). **Where they land** (Hades' slash, 7 Oct 2026): `Game.hornSplash` lays a slash of cells across every man the horns reach, white for a beat, a little more hitstop (`horns.splash`, `game.slashes`, `Renderer.drawSlashes`; LONG's tips gold and harder). **THE HORN TOOL** (DEV MODE → HORN TOOL, `dev.hornTool`): a panel of sliders over the run (`Renderer.drawHornTool`, `HORN_TOOL` in game.js, `Game.setHornParam`), one per number of the horn he has, live; ONE MAN / ALL MEN flips `single`, SAVE writes them into tuning.js (`persistTuningEdit`), COPY puts them on the clipboard; ZONE draws the hit shape standing on the floor along his aim with its axis ticked a tile at a time and its reach in tiles (`drawHornZone`). Planned, not built: a horn rolled or earned per run (his call: how a player gets BIG or LONG), souls that pay off per horn.
+**The three horns** (6 Oct 2026 a dev test, 7 Oct 2026 his shape: "the ones we have are the dagger horns, and two new ones on top", and the same day "not the dagger, the SHORT"; `TUNING.goat.horns`, `game.hornKind`, DEV MODE → HORNS steps SHORT / BIG / LONG, kept under `HORN_KEY`; an old saved `dagger` reads as SHORT). **BIG and LONG are the god's** (`Heaven.hornsOpen`, `meta.hornsOpen`): picked at the edge (`hhorn`, `pickHorns`) only once fifty souls have been poured into him (`gift.horns`, see *THE ANIMALS' HOME*); until then a locked pair is pale under a padlock and says `HEAVEN_TALK.hornsShut`, and in the itch build `applyBoons` lays the SHORT whatever `hornKind` says. `applyBoons` lays the horn's `windup` / `recovery` / `reach` under the souls (`mods.horn`), the lunge step its `lunge`, and `Goat.hornHit` is the one shape every reader asks (men, props): an ARC of the horn's `cone` (7 Oct 2026 playtest: the SHORT a quick stab that shoves ONE man, `single`, the nearest in its arc and nobody else that lunge, `goat.singleDone`; BIG a wide arc a little deeper by `reach`, with a lunge and the longest wait; LONG the furthest lunge and a middle wait) or, with `rows`, LONG's two straight strips, a horn each (`rowGap`, `rowW`), out to the reach: a man met in the last `1 - tip` of it is hit by the tips and thrown `tipMul` times as hard, one on the shafts only shoved `shaftMul` (pillar 3 stands: no horn kills, the wall behind the man does). Its picture is **the wave** (`Renderer.drawHornWave`, `goat.wave` set as the head comes up, `horns.wave`): cells on the floor for a third of a second, the same geometry as the hit, pale where it shoves and bright at the front of the wave and on LONG's tips. The LONG HORNS soul (`mods.antlers`) bends whichever horn he has. A label under the hearts says which and what it does (not in the itch build). **Where they land** (Hades' slash, 7 Oct 2026): `Game.hornSplash` lays a slash of cells across every man the horns reach, white for a beat, a little more hitstop (`horns.splash`, `game.slashes`, `Renderer.drawSlashes`; LONG's tips gold and harder). **THE HORN TOOL** (DEV MODE → HORN TOOL, `dev.hornTool`): a panel of sliders over the run (`Renderer.drawHornTool`, `HORN_TOOL` in game.js, `Game.setHornParam`), one per number of the horn he has, live; ONE MAN / ALL MEN flips `single`, SAVE writes them into tuning.js (`persistTuningEdit`), COPY puts them on the clipboard; ZONE draws the hit shape standing on the floor along his aim with its axis ticked a tile at a time and its reach in tiles (`drawHornZone`). Planned, not built: a horn rolled or earned per run (his call: how a player gets BIG or LONG), souls that pay off per horn.
+
+**The charge** (8 Oct 2026, Hades' hold): BIG and LONG have `charge` in `TUNING.goat.horns`; past its windup the head stays down while the headbutt button is held
+(`input.buttDown`, `Game.buttHeldNow`, the grab button on THE TRIP), up to `charge.time` s, and `goat.chargeK` scales the lunge, the throw and the reach
+(`headbuttHits`, `drawHornWave`); `Renderer.drawHornCharge` is the ring, `Game.chargeFull` the cue. The SHORT has none.
 
 **Timing.** Headbutt has no cooldown (recovery is the cost); `goat.grabCd` on every release, set only
 through `Goat.spendGrab(game, man)`, a man costs `grab.manCd` × a thing, however he left the mouth,
@@ -1209,7 +1237,8 @@ nothing standing on it (`Prop.scrapCovered`: a table, crate or barrel), opens it
 a headbutt, a flung body within `near` or a blast calls `Prop.tear` (paper bits, shreds left, no harm). `Game.layScraps`
 (startLevel) lays `first` folded under THE ALTAR's ritual table (before it in `props`, so under it, opened by butting the
 altar off) and gives every scrap a drawing this browser has not found, or takes it up: found, never on a floor again.
-The book's old ITEMS shelf is now OBJECTS and holds both. An animal in heaven
+The book's UNLOCKS keeps them on a shelf of their own, THE CULT'S PAPERS (8 Oct 2026); a folded scrap within `heaven.bellDrop.near`
+tiles says RIGHT M. CLICK: UNFOLD IT, as a boss's bell says TAKE IT (no name over either). An animal in heaven
 (`Heaven.meta.saved`) wears a gold halo on its UNLOCKS tile. The first grass's floor words are one line, on the first grass only.
 THE SHOWROOM lays both on the hall floor and one under its ALTAR.
 
@@ -1292,7 +1321,7 @@ everything placed after sees the hole. `level.chasms` (`{ room, axis, at, lo, hi
 `level.gaps` (its tiles): **every flood that asks "can he get there" passes `gaps`** (gen.js `reachable`, rules.js
 `walkedFrom`), the men's fields never do. **The roll carries him over a hole** (`Game.update`'s fall test skips state
 `roll`; ending over it he falls), and `rollDirection` returns a stick direction straight over a clearable drop as asked.
-`chasmLesson` (THE YARD since 7 Oct 2026, THE CAVE before: "not in the cave") always has one, in an EMPTY room (7 Oct 2026: the first room that takes it and is not hung, introduces no kind and holds no boss; its men are taken out of the plan and it is `isCalm`), its words `CONTROL_LINES` part 5 (`controls`, `chasm`); from `from` a floor
+`chasmLesson` (THE CAVE; THE YARD's for 7 Oct 2026 only, back on 8 Oct: "on the level the drops are on") always has one, in an EMPTY room (7 Oct 2026: the first room that takes it and is not hung, introduces no kind and holds no boss; its men are taken out of the plan and it is `isCalm`), its words `CONTROL_LINES` part 5 (`controls`, `chasm`); from `from` a floor
 cuts one more at `chance`, rifle and butcher rooms first, those men stood across it (`farKinds`). A clock on its door
 is taken off. Animals hop it (`Beast.hopGap`: a probe ahead, `chasm.hop`, `p.gapZ` drawn by `drawProp`; the exit
 field runs over gaps). `GEN_RULES.chasm`. THE SHOWROOM's cave room has one.
@@ -1387,14 +1416,14 @@ drawn again over it in his own dark (`Dark.goatOver`), so no word is written acr
 sees a little more round himself (`dark.run`, eased by his speed).
 
 **Shaman** (6 Oct 2026, `TUNING.shaman`, js/shaman.js, js/shaman-pixels.js). A bearer with `e.shaman` (pseudo-kind `shaman`
-in `THREAT`, `ENCOUNTER`, `LEVELS`; met on THE CAVE with two clubmen, `ENCOUNTER.introWith`, which `GEN_RULES.alone`
-allows). Two hearts (`hp`); keeps `keep` tiles back behind his men. `shspirit` (the staff shaken, green cells to each man): up to `spirit.max`
+in `THREAT`, `ENCOUNTER`, `LEVELS`; met on THE CAVE alone since 8 Oct 2026, a stone tooth at the wall nearest his room's middle for his call to pull
+the goat onto (`shamanMeet` in gen.js); a man his spirit is in wears an arrow up over his head, `drawSpirit`). Two hearts (`hp`); keeps `keep` tiles back behind his men. `shspirit` (the staff shaken, green cells to each man): up to `spirit.max`
 plain clubmen (`Shaman.can`) get `o.spirit` = { by, t, speed0 }: `speed` × pace, `Enemy.atk('damage')` + `hurt`, `hp` more
 hearts, taken back by `spiritOut` when it runs out or he dies. `shcall` (a key over the goat's head filling round, `drawWorld`; his line of sight broken or poison on him and it goes): `goat.called` =
 { by, ux, uy, t, max }, one of eight directions, and `Shaman.pull` adds it to `input.mx/my` before `goat.update` (after
 `tripInput`): a held key, not a force, so away is a standstill (rule 1 holds: nothing new to press). Which goes first is the goat's distance (past `shaman.near` the call, inside it the spirit), a man who has the spirit is topped up, and through either a green ring of
 blinking runes stands round him (`drawAura`, `shaman.aura`, `PALETTE.spirit`). Both windups are in
-`daze` and `balk`'s lists. Killer token `shaman`.
+`daze` and `balk`'s lists. Killer token `shaman`. Taken and let go have a sound each (`sfxSeized`, `sfxFreed`; every way it ends goes through `Shaman.free`).
 
 ### Souls, shop, talismans, escorts
 
@@ -1416,7 +1445,7 @@ GRASS HEALS is said only beside THE ALTAR's corridor grass (`p.firstGrass`), nev
 **Keys and iron** (3 Oct 2026, first cut, `TUNING.keys`). A run resource he asked for (a souls resource is still
 decided against; keys are a different thing, on purpose): `game.runKeys` (**never `game.keys`, the keyboard's
 Set**), kept floor to floor, saved, a death gives back `levelRunKeys`. A champion drops one at `keys.drop`
-(`bossPrize` → `dropKey`, a `key` prop taken by walking over it). From `iron.from`, `iron.chance` of the floors with
+(`bossPrize` → `dropKey`, a `key` prop taken with GRAB since 8 Oct 2026, `Goat.tryGrab` → `Prop.takeKey`). From `iron.from`, `iron.chance` of the floors with
 an animal (not the horse) shut the animal's coop in iron (`coop` + `ironCage`) and stand an `ironcage` of big grass in
 the SAME room, `iron.pair` tiles from it (5 Oct 2026, his call: "the choice between two cages is right, only in one room,
 and it must read, grass or animal"; the floor under each names it while both are shut, `Renderer.drawIronPair`,
@@ -1430,8 +1459,7 @@ not built: keys saved up for a door wanting five, a secret floor behind it.
 **The shop.** `TUNING.shop.levels` (YARD, ROAD, BRIDGE), in `gates[0]` (`shopRoomOf`). `carveHole` cuts
 nothing (`gap` is a mark; no spot → reseed). Three `ware`s `shop.spread` apart: two talismans
 (`stockFor`: COMMON on the first mouse of a run, RARE at `shop.rare[visit]` after where a talisman has it, no two
-of one `tag`; one of them a cape at `TUNING.cape.shopChance`, `ware.cape`) and the pail (`MILK_OFFER`, `milkSpots`,
-`TUNING.shop.heals`, drunk a heart at a time via `prop.pail`). What he wears is never on a shelf: `Shop.restock`
+of one `tag`; one of them a cape at `TUNING.cape.shopChance`, `ware.cape`) and GRASS (`MILK_OFFER`, id still `milk`; 8 Oct 2026 "no milk anywhere": `TUNING.shop.heals` tufts laid on `milkSpots`, a heart each). Her offer is laid as the soul's (`Codex.drawShop`): him large over the cards, her at the left with THE MOUSE under her, a cross top right, no NOT NOW; with a cape on his back a shelf's cape becomes a talisman (`Shop.restock`). What he wears is never on a shelf: `Shop.restock`
 swaps it in `startLevel` (the generator does not know the goat). **She takes nothing; one choice**:
 `Shop.buy` / `Shop.takeMilk` pack the rest and `game.openSoulGate`. A full set (`TUNING.talisman.slots`, or the
 cape) → what it replaces (`Shop.replaces`: the oldest talisman, or the one taken off that stool, `ware.swapped`)
@@ -1452,14 +1480,20 @@ tier whole off its own params, never as a diff on the one before, because a shel
 its own. `desc` shows on the shelf and the chip hover; a new tier needs no text, a new param needs `tell`
 and `say` to read it. A ware is read the same way whatever it is through `Shop.info` (a cape's rarity is `CAPE_RARITY`).
 
-**Artifacts.** `ARTIFACTS`: 21, one or two tiers (6 Oct 2026; four until then): `RARITY` is COMMON, RARE.
-COMMON only, in the middle of the old ladder: PILGRIM'S SANDAL, BELLWETHER'S BELL, THE KNUCKLEBONE; the rest
-COMMON (the old I and II merged) and RARE (the old III). `apply(m, p)` via `applyBoons`, every worn one;
+**Artifacts.** `ARTIFACTS`: 18, **one form each and a `rarity` of its own** (8 Oct 2026, the user went down the list: `RARITY` is
+COMMON, RARE, EPIC; `tiers` has the one entry and a worn one's `tier` is always 1; ask `rarityOfArt(id)` / `rarityNo(id)`, never `rarityOf(art.tier)`;
+the TALISMANS tab steps a rarity with a click and writes it to tuning.js). The first mouse sells COMMON only, a later one fills a slot with a
+RARE or EPIC at `shop.rare[visit]` (`stockFor`), the crow brings a rarer one (`Beast.placeGift`), her ogre's death swaps a COMMON on the shelf for a rarer
+one (`Shop.ogreDown`). Gone: CARPENTER'S AWL, BUTCHER'S GREASE, BELLWETHER'S BELL (their code went too). Renamed, ids kept:
+SCARY MASK (`mask`), SPRINTER'S SPUR (`spur`: run-up x0.5 and the top of it +20%), SACRIFICED GOAT (`scapegoat`, EPIC, three hearts), SNAKE SKIN
+(`tallow`: the first hit of EVERY floor, a new skin at `Talisman.st`), SUGAR CANE (`tally`). PILGRIM'S SANDAL runs every wait x2 for 4 s (`Talisman.cdMul`),
+BLOOD CUP counts every kill, KNUCKLEBONE deals a third card every soul. `tools/talisman-check.js` (`await TALCHECK.run()`) drives each one through the real hooks.
+`apply(m, p) via `applyBoons`, every worn one;
 `game.artifacts` `[{ id, tier }]` in the order taken, up to `TUNING.talisman.slots` (3), never two of one id,
 saved as `artifacts` (`Game.wornFrom` reads an old save's single `artifact`, a Q one as its cape, and clamps a
 tier with `Shop.tierFit`), with `levelArtifacts` and the checkpoint's copies. FIRE AMULET: `mods.firePass` depth.
 LUCKY CLOVER: `mods.luck` → `generateLevel(def, seed, { luck })` for the next floor (`balance.js` runs without).
-THE KNUCKLEBONE (`knuckle`, tag `soul`, 30 Sep 2026): `mods.thirdEvery` 2, a soul's third card (see *Boons*).
+THE KNUCKLEBONE (`knuckle`, tag `soul`, 30 Sep 2026): `mods.thirdEvery` 1, a soul's third card (see *Boons*).
 The crow brings `prop.crow.giftTier` (RARE, a single-tier one's COMMON). On him each is a charm on the collar
 (`PaintedArt.collar`, `CAPE_PIXELS.charm`, `TUNING.talisman.charm`); in the HUD a chip each in the top-left corner (right of
 the hearts on touch), its pips and its own counters under it (`Renderer.drawArtifactChip`, `Talisman.drawHud(…, id)`).
@@ -1529,7 +1563,7 @@ with `tools/escorts.js` (`ESCORT.run`), the way 1.57 measured the men.
   drawn on him by `PaintedArt.armour` (plates masked to his sprite) and as iron hearts after the hearts.
 - **Goose**: leads down `Beast.onward` (`game.exitField`), ≤ `goose.lead` ahead, held by doors; honks
   within `seeR` (a noise heard `callR` tiles off). The honk no longer breaks a blow (7 Oct 2026, "it stuns them all the time";
-  `goose.balks` false, the code kept for a later gift). Reward: scream range and cooldown.
+  `goose.balks` false, the code kept for a later gift). Reward: scream range only (8 Oct 2026: never sooner), `screamReach` too, so the breath and the spit go further.
 - **Crow**: follows corpses (`game.crowMarks`), eating `feedFor` s at each, and hops after him at
   `slack` in between; `crow.late` rooms behind him (one: the next room walls it in) it drops the bodies
   and flies after him, as it does past `catchUp` tiles (26 Sep 2026: it was walled in on 4 of 6 bot
@@ -1602,9 +1636,10 @@ with `tools/escorts.js` (`ESCORT.run`), the way 1.57 measured the men.
 
 ### Level flow, UI and persistence
 
-**The title's own tune** (7 Oct 2026, "starts much calmer and picks up speed"): on the title `GameAudio.playTitleStep` plays
-`TITLE_TUNE` and builds it over `audio.title.build` s of standing there (pad and flute, then the bass, the drum, the gallop, the
-kick, a plucked line, the rim), the tempo from `title.bpm[0]` up to the score's own; `titleT` counts only while the audio runs.
+**The opening's calm tune** (7 Oct 2026 on the title; 8 Oct 2026 moved to the opening scene, "calmer is not half the tempo"):
+through the prologue and the opening scene `GameAudio.playTitleStep` plays `TITLE_TUNE` at the score's own tempo, built by count
+(pad and flute, then the bass, the drum, the gallop, the kick, a plucked line, the rim) to `audio.title.intro[phase]`, eased over
+`title.ease` s; the grab and the fade are the score's climb (`INTRO_STAGE`). The title screen plays the score.
 
 **Music.** Room-driven score (`GameAudio.updateScene`, `MUSIC_PARTS`, `TUNING.audio.layers`,
 `encounterStage`, `STAGE_MOTIFS`, `FIRST_MUSIC`, `startMusicCue` / `MUSIC_CUES`); legacy
@@ -1746,14 +1781,15 @@ place in `loose`.
 
 **THE ANIMALS' HOME** (7 Oct 2026, `js/heaven-home.js`, `TUNING.heaven.home`; CONCEPT.md *Heaven as the animals' home*). Heaven is
 two rooms (`HEAVEN_MAP`; three for a day, 7 Oct 2026, back to two the same day: "too long a run to the jump"): THE THRONE (the
-god; five stands, `SEAT_AT`: tortoise, goose, hen, crow, horse; the horse's paddock along its foot below `paddock.fence`; he comes
+god; five stands, `SEAT_AT`: tortoise, goose and horse down its right side on the way to the bridge, hen and crow on the left; the horse's paddock a small box of rails by its stand once mended; he comes
 up at `start`) and, over the bridge, THE EDGE (mirror, the bells and the shepherd, overlook, the other four stands east of the
 bells, the horns, tables, the post, the drop; the drop is only its first `HEAVEN_MAP.drop` tiles, which `drawEarth` and
-`drawArrows` read). **The god's asks, in order** (7 Oct 2026): twenty souls mend the mirror (`gift.mend`), then a hundred given
-to him (`gift.horns`: `HEAVEN_TALK.horns` asks, `hornsAsk`; GRAB held at him pours, `pourable` key `god`, with an empty heap a
+`drawArrows` read). **The god's asks, in order** (7 Oct 2026): twenty souls mend the mirror (`gift.mend`), then fifty given
+to him (`gift.horns`, 50 since 8 Oct 2026; until then the pairs at the edge are hidden, `broken`: `HEAVEN_TALK.horns` asks, `hornsAsk`; GRAB held at him pours, `pourable` key `god`, with an empty heap a
 GRAB is still a word with him; `hornsHave` is the purse's FOR THE GOD count, `goalHave`) open BIG and LONG at the edge
-(`hornsOpen`, `hornsDone`), then the two hundred for SECOND CHANCE. The HEAVEN dev tab's HORNS row toggles it. A stand is `Heaven.standState`: 'open' (`home.stands.open`: tortoise, goose; or mended,
-`meta.mendedStands`), 'broken' (`stands.cost`: the horse, 40) or 'locked' (the rest, a padlock); only open kinds are dealt into a
+(`hornsOpen`, `hornsDone`), then a hundred given and one corrupted soul (`gift.skills`, `skillsSouls`, pour key `god2`,
+`skillsAsk`, `meta.upgraded`): UPGRADED SKILLS, a name with no mechanics yet, and SECOND CHANCE on the glass (`questDone`). The HEAVEN dev tab's HORNS row toggles it. A stand is `Heaven.standState`: 'open' (`home.stands.open`: the tortoise's alone since 8 Oct 2026; or mended,
+`meta.mendedStands`, or its animal already brought up), 'broken' (every other, `stands.cost`) or 'locked' (no cost given; none now); no caption under any; only open kinds are dealt into a
 run (`Beast.deal(seed, early, allow)` ← `Heaven.beastsOpen`, the plan keyed on them in `beastPlanFor`). **Pouring**: GRAB held at
 the broken mirror (once gifted, `gift.mend`), the broken overlook (`home.tower.cost`, `meta.towerMended`) or a broken stand spends
 `meta.sacrifices` into it at `home.pour.rate` (`pourable` → `startPour` → `updatePour`, `meta.poured`, `grabHeld` reads the button
@@ -1766,12 +1802,13 @@ bite or a thing held, `game.questSpoiled`; clean in the last room, geese honk ba
 (`questFloor`). Won: `meta.freed`, its talisman off `talismanLocked` (`Shop.restock` / `freshen`, `Beast.placeGift`), and it
 lives up here (`hroam`: `spawnRoamers`, `updateRoam`, `drawRoam`): the tortoise very slowly anywhere, the goose about the stalls
 honking and now and then up round the sky with its flock (`drawFlock`), the horse free over all of it; brought up and not yet
-free the horse is in its paddock (`hfence` posts, `htrough`, `drawPaddock`; a ruin before its stand is mended,
-`drawPaddockRuin`) and comes to the fence when he is near. **The god's next ask** after the mirror (`animalAsk`, `told.animal1`):
+free the horse is in its paddock (`hfence` posts round `paddock.x0..x1 x y0..y1`, `htrough`, `drawPaddock`; nothing at all before its stand is mended)
+and comes to the fence when he is near. **The god's next ask** after the mirror (`animalAsk`, `told.animal1`):
 mend the horse's stand. **The horns** (`hhorn`, `HORN_GLYPHS`, `pickHorns`): GRAB a pair before the jump and it is his
 (`HORN_KEY`, the itch build too). **The old man's bells** (`Game.dropBell` from `bossPrize`: the boss of a floor's last room,
-once a floor, a `lostbell` prop; GRAB takes it, `Heaven.gotBell` → `meta.bellsGot`; `bellsOpen` counts them; THE SHOWROOM has
-one). Dev: the HEAVEN tab's rows (`devHome`: STAND, SAVED, DARE, WIN DARE, FREE, RESET; TOWER, MIRROR, +1 LIFE).
+once a floor, a `lostbell` prop flown `heaven.bellDrop.apart` tiles clear of the soul (`p.fly`); never THE ALTAR's first climb, on THE ALTAR
+AGAIN a second man of the last ring carries it, `e.bellMan`; GRAB takes it, `Heaven.gotBell` → `meta.bellsGot`, carried until he hangs it: GRAB at the beam's next empty hook, `hangBell`, `meta.bellsHung`, a clank and its note, no show (8 Oct 2026); `bellsOpen` counts the hung; THE SHOWROOM has
+one). **Hearts between floors** (8 Oct 2026): a new floor gives back `goat.floorHeal` (1), not all (`nextHp` → `levelHp`, saved as `hp`). Dev: the HEAVEN tab's rows (`devHome`: STAND, SAVED, DARE, WIN DARE, FREE, RESET; TOWER, MIRROR, +1 LIFE).
 
 **Heaven** (1.79, `js/heaven.js`, `js/heaven-pixels.js`, `TUNING.heaven`). The death card's button is
 ASCEND, and its press is `Heaven.enter(game)` (THE SHOWROOM goes straight round): `game.level`, `world`,
@@ -1808,14 +1845,13 @@ lies on its side (`drawSkyTables` ground and air passes). Only that floor.
 `openMirror`; any rank bought counts, `Heaven.mirrorKnown`) the god will not let him jump: `holdEdge` puts
 him back a step off the lip, says `HEAVEN_TALK.notYet` in the god's plate over the goat (every `holdGap` s) and
 rings the mirror. Backspace still leaves. **5 Oct 2026 playtest:** nothing is lettered by the edge any more; a
-goat who never jumped (`meta.jumped`) and dawdles `heaven.arrows.after` s gets pixel arrows over the lip
+goat who never jumped (`meta.jumped`) and dawdles `heaven.arrows.say` s is told to jump by the god (`HEAVEN_TALK.goOn`, `H.nudged`), and `arrows.after` s past that gets pixel arrows over the lip
 (`drawArrows`); the jump is a crouch, a hop, a cloud puff and a shrinking tumble with a beat of white
 (`jumpLook`, `heaven.jump`). The broken mirror is mended by the goat himself, GRAB at the glass once his
 twenty are in (`interact` → `mend`); the god only sends him. A rank is bought by holding (`startHold`,
 `updatePanel`, `heaven.buy`; a lifted pointer is `panelRelease`), the panel hides the HUD purse. Plates
 never overlap: `drawPlates` stacks them and keeps `plateRects`, which `drawPrompt` steps clear of.
-**The belfry's quest**: one bell awake, one more per floor ever climbed out of (`bellsOpen`, `meta.cleared`
-via `floorCleared`), from the SMALLEST (the last index, `bellAwake`) toward the great bell; one not won yet does
+**The belfry's quest**: one bell awake, one more for every bell he has hung (`bellsOpen` = 1 + `bellsHung`, 8 Oct 2026), from the SMALLEST (the last index, `bellAwake`) toward the great bell; one not won yet does
 not hang at all (`p.broken`, an empty hook drawn), and one won since the last visit drops onto its hook (`updateWake`); the
 shepherd gives the quest (`giveQuest`). All eight awake, he plays `heaven.bellSong` (an original march;
 `startSong` / `updateSong`), the goat plays it back on falling lights (`songHit`, `drawSongLights`), and
@@ -1825,8 +1861,8 @@ filled seat says its dare, a second GRAB within `offer` s takes it (`takeQuest`)
 deaths and runs. The horse's: THE CHASE on every floor past the first (`Chase.quest`) until `horse.floors` are climbed
 out of. The rabbit's: one floor climbed out of with no man outside its last room aware of him (`game.floorSeen`,
 `Heaven.questStep`), and while it is worn `startLevel` turns the stealth test on (ALT). Counted in `questFloor` from
-`floorCleared` (never GOD MODE). Worn dares show top right under the purse (`drawQuestHud`), and the hitching rail by
-the lip (`hpost`, `quests.postAt`, `drawPost`, a ribbon a dare) lets them all go (`dropQuests`); it stands only while a dare is worn (`Heaven.syncPost`, `broken` otherwise; 7 Oct 2026).
+`floorCleared` (never GOD MODE). Worn dares show in the top-left (`Heaven.drawDareMarks`, 8 Oct 2026): the dare's name over a ? and the floor it waits for; on that floor (`questHere`: `quests[kind].floor`, the tortoise's floor 2, the goose's floor 3; the horse's wherever its red is out) a bigger red ! and what it asks. An animal's talk up there (a dare's offer, yes or no; a saved one's word; the shepherd's) is `Beast.talk`'s box, its `opt` giving the name, portrait, sound and `onAnswer`; a plate newer at the same spot or with the same words puts the older out. And the hitching rail by
+the lip (`hpost`, `quests.postAt`, `drawPost`, a ribbon a dare) lets them all go (`dropQuests`); it always stands (8 Oct 2026, his screenshot; 7 Oct it stood only while a dare was worn), a GRAB with none tied saying how one gets there.
 **CONTINUE goes straight to the floor** (7 Oct 2026, "if you did not die, back to the level, not to heaven": `resumeRun` lays the saved floor and he is on it; until then it came up here first, `Heaven.enter(game, { visit: true })`, which still exists). **The belfry**: eight bells
 (`heaven.bells`, pentatonic, the god's tune on the first three) on a 52-texel beam; the blind shepherd
 answers the chime (`heaven.shepBells`, `SHEPHERD_TALK.bells`). Heaven's harp is `heaven.music`.
@@ -1841,7 +1877,7 @@ up in whole texels in a gold frame. Its eight towers are the eight floors: one c
 (`game.runPaintings[i]`, reset at NEW GAME and RUN AGAIN, memory only) has gold windows and a gold pennant, the one he
 fell on (`died`) a red flag.
 **What outlives runs** is `Heaven.meta` under `HEAVEN_KEY` (never cleared by NEW GAME): `sacrifices`
-(`Heaven.earn`: `heaven.pay.kill` a white soul as it reaches the goat, `js/motes.js`; a man leaves `motes.per` of them, one, two for the butcher, seer, rifleman, shieldman and thrower, three for an ogre, one more for a boss, swaying `bob` / `sway` px over the body (5 Oct 2026), nothing before the god's gift, `meta.brought` toward his twenty (`gift.mend`: the mirror starts broken, `Heaven.mended`, and the goat mends it, GRAB at the glass, once the god has the twenty, `Heaven.mend`; 5 Oct 2026) and then 200 (`gift.quest`, SECOND CHANCE), `Heaven.goal` under the purse, `pay.floor` a floor in `levelCleared`; not in GOD
+(`Heaven.earn`: `heaven.pay.kill` a white soul as it reaches the goat, `js/motes.js`; a man leaves `motes.per` of them, one, two for the butcher, seer, rifleman, shieldman and thrower, three for an ogre, one more for a boss, swaying `bob` / `sway` px over the body (5 Oct 2026), nothing before the god's gift, `meta.brought` toward his twenty (`gift.mend`: the mirror starts broken, `Heaven.mended`, and the goat mends it, GRAB at the glass, once the god has the twenty, `Heaven.mend`; 5 Oct 2026) and then the god's asks (`gift.horns`, `gift.skills`), `Heaven.goal` under the purse, `pay.floor` a floor in `levelCleared`; not in GOD
 MODE or THE SHOWROOM), `ranks` of `MIRROR` (`Heaven.applyMeta` in `applyBoons`: `mods.maxHp`,
 `lightHearts`, `goat.light`, set in `startLevel`, spent first in `Goat.damage`, drawn after the hearts,
 `grazeMul`, `milkFull`, `rollCooldown`, `invulnAdd`), `saved` (the seats: `Heaven.saved` in
@@ -1851,7 +1887,8 @@ death would; `+100 SACR · +5 SOULS` feeds the mirror.
 calls `Heaven.earnSoul` → `meta.souls`, and a `MIRROR` entry's `souls[r]` is what rank `r + 1` asks on top
 of its sacrifices (`Heaven.soulCost`; only the top ranks of THICK FLEECE, HALO, GOOD GRAZER). **The
 purse** (`Renderer.drawPurse`) is heaven's own look: the gold skull and `meta.sacrifices`, the wisp and `meta.souls`.
-They are meta, so the play HUD shows them only for `hud.purse.show` s after either moves, left of the keys (6 Oct 2026);
+They are meta, so the play HUD shows them only for `hud.purse.show` s after either moves, and not mid-fight (8 Oct 2026: once the
+score's fight has gone quiet, `purseDue`), left of the keys (6 Oct 2026);
 heaven's corner (`drawHud`), the mirror panel and the foot of his page in the book always show them.
 
 **Seeds and saves.** `game.runSeed`; `game.levelSeed(i)` hashes it with level and `deaths`; base 36 in the

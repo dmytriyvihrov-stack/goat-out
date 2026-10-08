@@ -77,9 +77,9 @@ moment a stick or button is touched, and a key or the mouse takes it back:
 | BACK | the floor again at once (as Backspace) |
 | d-pad + A, B | every menu and card: A picks, B backs out; left / right chooses a soul |
 
-Four hearts, no regeneration (six on EASY MODE). A death ends the run; once you have been up to the
+Four hearts (six on EASY MODE); grass gives them back, and each new floor gives one back. A death ends the run; once you have been up to the
 pasture above, every run starts with one more life, and losing your last heart there brings you back
-where you fell. The seed is printed in the bottom-left corner,
+where you fell. The seed is printed in the top-right corner,
 and the death card carries a RUN CODE that rebuilds the floor you died on.
 
 ---
@@ -114,7 +114,7 @@ the first blade stands. Every floor ends at a flight of stairs going up, and eve
 begins at the top of one.
 
 **You meet everything alone first.** The room that introduces a clubman, a butcher, a hound, a mage, a
-rifle, a shieldman, a thrower or a wraith holds that one enemy and nothing else (the shaman alone comes with two clubmen, because they are what his magic is for), and a boss you have never seen stands in his
+rifle, a shieldman, a thrower or a wraith holds that one enemy and nothing else (the shaman too, with a stone tooth in his room for his call to pull you onto), and a boss you have never seen stands in his
 arena without company. After that they arrive mixed, and the mix gets worse as the floor goes on and
 worse again on the floor after.
 
@@ -126,7 +126,7 @@ green, who lift whatever is in the room, a crate, one of their own, one of your 
 who grab you and throw you at the nearest drop or wall; Shamans with a turtle's shell on their backs, who shake a skull on a staff to put
 the old spirit into the clubmen round them (faster, harder hitting, a heart more) and hold out a hand to hold your
 run key down toward themselves for a few seconds; blinking Seers whose runes erupt into violet witchfire
-that no boon protects you from; Hunters whose bullets travel and hit their own; the ogre, the cult's
+that nothing makes you proof against; Hunters whose bullets travel and hit their own; the ogre, the cult's
 half-beast, who takes four, is never knocked back, leaps onto where you stand and brings his fists down
 on the floor all round him; the hounds; and the wraiths. One rule for all of them: a man without a
 outline dies to one killing blow (the Butcher takes three, the Seer two); a champion wears a yellow outline, stands a size bigger and takes one more than his kind, and a man carrying a corrupted soul wears a violet one, glows violet and takes 3 and 1 more for the soul. They shout short lines when they see you, hear
@@ -146,24 +146,24 @@ inside a wall, so a wall at your back is one arc it cannot come from.
 opens, and one at the end, in the last boss. A soul offers two cards, an active that changes what a button does, or a passive
 that bends its numbers, and the build holds one active and two passives per button. Once a slot is full,
 a card for it offers to swap one you have. A third card has to be earned: the Hungry Soul deals one on
-every soul after it, and the mouse's Knucklebone every third, second or every soul by its tier. Souls of one
-element add up: each fire soul buys you longer in flame before it hurts and all four make you proof
-against it and your fire burn twice as long; each poison soul, longer in a puddle before it slows you, and
+every soul after it, and so does the mouse's Knucklebone. Souls of one
+element add up: the third and fourth fire souls buy you longer in flame (witchfire too) before it hurts,
+and all four make your fire burn twice as long; each poison soul, longer in a puddle before it slows you, and
 all four make you proof against it and your poison take a heart as it takes a man. Dragon Breath turns
 the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Long Horns grows antlers,
 Firebrand leaves a line of fire behind anything you throw.
 
 **The mouse in the wall.** On THE YARD, THE ROAD and THE BRIDGE one gate is her room instead: a
-talisman, another talisman or a pail of milk, and you take one. She takes nothing for it. Headbutting
+talisman, another talisman or three tufts of grass, and you take one. She takes nothing for it. Headbutting
 her stall is rude, and what comes out of the wall after the third time is not a mouse.
 
-**Talismans.** 21 of them, some COMMON only, most COMMON or RARE, up to three worn at once as charms on
+**Talismans.** 18 of them, each COMMON, RARE or EPIC, up to three worn at once as charms on
 a collar, each stated in plain words where it stands: a mirror shard that turns a blow back, a spade that
 leaves bodies lying to trip over, a knucklebone that deals a soul's third card, a magnet that spins a sword
 or a crate round you to take a blow, a nosebag that keeps the grass you had no need of for later, and so on.
 
 **Capes.** Rarer still: one lies in a niche behind a niche now and then, or on a mouse's shelf in place of a
-talisman. One on your back at a time, each a verb on Q with a long wait: a blink ahead, a tuft of milk
+talisman. One on your back at a time, each a verb on Q with a long wait: a blink ahead, a tuft of
 grass, a shock that breaks the room round you, a boomerang, a straw goat the cult goes for instead of you.
 
 **Animals.** From the second floor a coop holds an animal, a hen, a goose, a crow, a tortoise, a
@@ -174,14 +174,14 @@ locked rooms with a soul and waits in each for the soul to be taken: it pays onl
 **The pasture above.** A death goes up before it comes back down: two rooms of cloud. In the first the
 goat god sits in his light and has a great deal to say about it (GRAB to listen, BAAH to argue). Across
 the bridge a blind shepherd combs you and asks for the bells the cult's big men carry: beat the last of them
-on a floor and take his bell (GRAB). The animals' stands are in both rooms: the tortoise's and the goose's are
-open, the horse's is broken, the rest are locked for now. Hold GRAB at a broken thing up there and the
+on a floor, take his bell (GRAB) and hang it on the old man's beam. The animals' stands are in both rooms: only
+the tortoise's is whole, every other is broken and wants 25 to 45 souls. Hold GRAB at a broken thing up there and the
 souls you brought pour into it until it is whole. An animal walked out of the compound sits on its stand
 and dares you; win its dare and it lives up here its own way, and a talisman comes onto the shelves.
 Every man the cult loses is a sacrifice to the god, and every floor you climb out of is ten; **the
 mirror** in the second room trades them for things that stay with you from run to run, more hearts,
-hearts of light, quicker grazing, a quicker roll, longer mercy after a blow. Choose your horns there
-(the SHORT, and BIG or LONG once you have given the god a hundred souls), and walk off the edge for a new run.
+hearts of light, quicker grazing, a quicker roll, longer mercy after a blow, one more life a run. Choose your horns there
+(the SHORT, and BIG or LONG once you have given the god fifty souls), and walk off the edge for a new run.
 
 **The altar, again.** Once you have climbed out of the first floor, it stops teaching: no guard in the doorway, no
 lessons laid in order, more men to a room, and the wheel and the last fight are not where they were.

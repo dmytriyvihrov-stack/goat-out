@@ -141,7 +141,13 @@ function planEncounters(levelDef, rooms, rng, crowd = 1) {
       // one butcher and one man, whatever the threat curve would have bought him.
       // A clubman boss (THE ALTAR's last room since 2 Oct 2026) is backed by clubmen: with his own kind
       // left out, the floor's only other kind was the butcher, and he came with two of them.
-      const escorts = known ? fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => k !== boss || boss === 'bearer'), rng, caps, room.arena.escorts || 0, weight) : [];
+      // `with` (8 Oct 2026, js/endboss.js): men the ring always has at his back, a kind already met only (THE YARD's
+      // mage by his bowl with another mage, THE ROAD's butcher with his mages); the rest of `escorts` off the budget.
+      const forced = known ? (room.arena.with || []).filter((k) => seen.has(k)) : [];
+      const more = room.arena.escorts ? Math.max(0, room.arena.escorts - forced.length) : 0;
+      // A kind the named men already fill to its cap is not bought again on top of them.
+      const full = (k) => caps[k] && forced.filter((f) => f === k).length + (k === boss ? 1 : 0) >= caps[k];
+      const escorts = !known ? [] : forced.concat(room.arena.escorts && !more ? [] : fillRoom(ENCOUNTER.escortThreat, mixable.filter((k) => (k !== boss || boss === 'bearer') && !(forced.length && full(k))), rng, caps, more, weight));
       out.rooms.set(room.index, { men: escorts, boss, intro: known ? null : boss, arena: true, hp: room.arena.hp });
       if (!known) out.introRooms.add(room.index);
       seen.add(boss);
@@ -433,8 +439,17 @@ function tryGenerate(levelDef, seed, opts) {
   // room exists yet, because the template is chosen room by room below and this one has to be known
   // going in rather than fixed up after the fact.
   const sentryRoomAt = levelDef.sentryIntro ? ordinaryRooms(levelDef, n)[0] : -1;
-  // The gap between one room and the next, on average, for the width budget below.
-  const GAP = 5;
+  // The rock between one room and the next (`CORRIDOR`, or the level's own `gap` / `jog`), and its
+  // average, for the width budget below.
+  const gap0 = levelDef.gap || CORRIDOR.gap, jogR = levelDef.jog || CORRIDOR.jog;
+  const gapR = (levelDef.corridorW || 2) > 2 ? [Math.max(3, gap0[0]), Math.max(3, gap0[1])] : gap0;
+  // The first grass's corridor (`levelDef.firstGrass`): out of the first room past the sentry's that nothing
+  // narrows (the same rooms the placement below passes over). It alone is left long, `CORRIDOR.grassGap`,
+  // and turned late, so it has a straight run for the bowl however short the rest are.
+  const narrowAt = new Set([sentryRoomAt, levelDef.chandAt, ...restsOf(levelDef), ...(levelDef.arenas || []).map((a) => a.at)]);
+  let grassAt = -1;
+  if (levelDef.firstGrass) for (let j = Math.max(1, sentryRoomAt + 1); j < n - 1; j++) if (!narrowAt.has(j)) { grassAt = j; break; }
+  const GAP = (gapR[0] + gapR[1]) / 2 + (grassAt >= 0 ? (CORRIDOR.grassGap - (gapR[0] + gapR[1]) / 2) / n : 0);
   // Which of the set pieces still lie ahead of room `i`, by width, so a room can be given its fair
   // share of what is left rather than an average that a Great Hall then eats.
   // An arena's shape is its boss's: the ogre's carries the swords and the bowls the horns cannot
@@ -575,7 +590,8 @@ function tryGenerate(levelDef, seed, opts) {
     rooms.push(room);
     if (i > 0) {
       const link = stacked ? carveShaft(tiles, W, rooms[i - 1], room, stacked.dir, rng, levelDef.corridorW)
-        : carveCorridor(tiles, W, rooms[i - 1], room, rng, levelDef.corridorW, i - 1 === sentryRoomAt);
+        : carveCorridor(tiles, W, rooms[i - 1], room, rng, levelDef.corridorW, i - 1 === sentryRoomAt,
+          { meet: levelDef.meet !== undefined ? !!levelDef.meet : !!CORRIDOR.meet, late: i - 1 === grassAt });
       if (!link) return null;
       if (link) {
         room.enter = link.enter;    // where you walk in, so a room can put something in your way
@@ -601,11 +617,11 @@ function tryGenerate(levelDef, seed, opts) {
         }
       }
     }
-    x += w + rng.int(3, 7);
+    x += w + (i === grassAt ? CORRIDOR.grassGap : rng.int(gapR[0], gapR[1]));
     // Still trending up the hill, but pulled back toward the middle of the world the further it
     // strays: a room hung above the last one starts the next stretch high already, and a chain that
     // only climbs ran into the top of the world and went on as a flat line along it.
-    y += rng.int(-6, 3) + Math.round((H * 0.55 - (y + h / 2)) * 0.2);
+    y += rng.int(jogR[0], jogR[1]) + Math.round((H * 0.55 - (y + h / 2)) * 0.2);
   }
 
   // Exit: a 2-tall flight of stairs cut into the right wall of the last room, marked EXIT.
@@ -1143,11 +1159,15 @@ function tryGenerate(levelDef, seed, opts) {
     // tooth he lands by (`cave.spikes.impale`), and with none in his ring that never happened in
     // play, the cave's only ogre is fought there (28 Sep 2026).
     const ogreRing = !!(room.arena && room.arena.boss === 'butcher');
+    // The shaman is met alone (8 Oct 2026 playtest), with one tooth in his room for his call to pull the goat onto,
+    // at the wall as near the middle of the room as one stands.
+    const shamanMeet = !!(cell && cell.intro === 'shaman');
     if (levelDef.cave && !levelDef.shroom && room.index > 0 && !room.isRest && (!room.arena || ogreRing) && !room.isTrap && !room.isAmbush
         && !room.isMill && !room.isHall && !room.isGallery && !room.isKillbox
-        && (ogreRing || (!(cell && cell.intro) && rng.chance(TUNING.cave.spikes.chance)))) {
+        && (ogreRing || shamanMeet || (!(cell && cell.intro) && rng.chance(TUNING.cave.spikes.chance)))) {
       const solidAt = (tx, ty) => tiles[ty * W + tx] === T.WALL;
-      for (let a = 0, placed = 0; a < (ogreRing ? 120 : 40) && placed < (ogreRing ? TUNING.cave.spikes.ring : TUNING.cave.spikes.perRoom); a++) {
+      let mid = null;
+      for (let a = 0, placed = 0; a < (ogreRing || shamanMeet ? 120 : 40) && placed < (ogreRing ? TUNING.cave.spikes.ring : TUNING.cave.spikes.perRoom); a++) {
         const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
         const i = ty * W + tx;
         if (tiles[i] !== T.FLOOR || grass.has(i)) continue;
@@ -1162,9 +1182,11 @@ function tryGenerate(levelDef, seed, opts) {
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
         if (room.enter && len(room.enter.x - px, room.enter.y - py) < 3 * TILE) continue;
         if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
+        if (shamanMeet) { const d = len(px - (room.x + room.w / 2) * TILE, py - (room.y + room.h / 2) * TILE); if (!mid || d < mid.d) mid = { x: px, y: py, d }; continue; }
         props.push({ x: px, y: py, kind: 'spire' });
         placed++;
       }
+      if (mid) props.push({ x: mid.x, y: mid.y, kind: 'spire' });
     }
     if (!cell) return;                                                       // the pen stays empty
     // The wheel's own lesson, on the level that first shows it: the two men stand past the arm, on
@@ -1283,7 +1305,7 @@ function tryGenerate(levelDef, seed, opts) {
       const tx = trng.int(room.x + 1, room.x + room.w - 2), ty = trng.int(room.y + 1, room.y + room.h - 2);
       if (tiles[ty * W + tx] !== T.FLOOR || grass.has(ty * W + tx)) continue;
       const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE, gap = a < 80 ? 1.4 : 1;
-      if (props.some((p) => len(p.x - px, p.y - py) < (p.kind === 'suit' ? 2.1 : gap) * TILE) || onTable(px, py, TUNING.prop.crate.r, props)) continue;
+      if (props.some((p) => len(p.x - px, p.y - py) < (p.kind === 'suit' ? 2.1 : p.kind === 'poster' ? 1.5 : gap) * TILE) || onTable(px, py, TUNING.prop.crate.r, props)) continue;
       if (spawns.some((o) => len(o.x - px, o.y - py) < 0.9 * TILE) || inMillSweep(props, px, py)) continue;
       if (room.enter && len(room.enter.x - px, room.enter.y - py) < 1.5 * TILE) continue;
       props.push({ x: px, y: py, kind: 'crate' }); have++;
@@ -1724,7 +1746,8 @@ function tryGenerate(levelDef, seed, opts) {
       if (placed) break;
       if (room.index <= Math.max(0, sentryRoomAt) || narrowed.has(room.index) || !room.exitBand) continue;
       if (lone && (healRooms.includes(room) || props.some((p) => p.kind === 'heal' && p.x > room.x * TILE - 2 * TILE && p.x < (room.x + room.w + 2) * TILE && p.y > room.y * TILE && p.y < (room.y + room.h) * TILE))) continue;
-      const b = room.exitBand, turn = b.x1 - b.wide + 1;
+      // `run`: the corridor's straight stretch, the whole of it when it never turns (`carveCorridor`).
+      const b = room.exitBand, turn = b.run !== undefined ? b.run + 1 : b.x1 - b.wide + 1;
       let spot = null;
       for (let tx = b.x0 + 1; tx < turn && !spot; tx++) {
         let open = true;
@@ -1892,9 +1915,30 @@ function tryGenerate(levelDef, seed, opts) {
       const ex = mr.enter.x / TILE, ey = mr.enter.y / TILE, cx = mr.x + mr.w / 2, cy = mr.y + mr.h / 2;
       // Along the way in: a door in a side wall reads across the room, one in the top or bottom down it.
       const side = Math.abs(ex - cx) / mr.w >= Math.abs(ey - cy) / mr.h, inset = TUNING.hints.rollInset;
-      const tx = side ? clamp(ex + Math.sign(cx - ex) * inset, mr.x + 2, mr.x + mr.w - 2) : clamp(ex, mr.x + 3, mr.x + mr.w - 3);
-      const ty = side ? clamp(ey, mr.y + 1.5, mr.y + mr.h - 1.5) : clamp(ey + Math.sign(cy - ey) * inset, mr.y + 1.5, mr.y + mr.h - 1.5);
-      controls.push({ x: tx * TILE, y: ty * TILE, w: Math.min(mr.w, 10) * TILE, part: 3 });
+      // 8 Oct 2026 playtest ("E - ROLL in the corridor before the butcher, and nothing may cover it"): along the straight
+      // corridor outside a side door, where nothing is ever stood, when it runs `hints.rollRun` tiles or more; else inside.
+      // The corridor's floor is walked out from the door (`hints.rollWalk` steps, in no room) and the longest straight
+      // stretch along a row is taken, the nearest of the longest.
+      const inAny = (x, y) => rooms.some((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+      const open = (x, y) => x >= 0 && y >= 0 && x < W && y < H && tiles[y * W + x] !== T.WALL && tiles[y * W + x] !== T.PIT && !inAny(x, y);
+      const seen = new Set(), q = [], dx0 = Math.floor(ex), dy0 = Math.floor(ey);
+      for (let k = 1; k <= 3; k++) for (const [x, y] of [[dx0 - k, dy0], [dx0 + k, dy0], [dx0, dy0 - k], [dx0, dy0 + k]]) if (open(x, y) && !seen.has(y * W + x)) { seen.add(y * W + x); q.push([x, y, k]); }
+      let best = null;
+      for (let i = 0; i < q.length; i++) {
+        const [x, y, d] = q[i];
+        let a = x, b = x; while (open(a - 1, y)) a--; while (open(b + 1, y)) b++;
+        const run = b - a + 1;
+        if (!best || run > best.run || (run === best.run && d < best.d)) best = { a, b, y, run, d };
+        if (d < TUNING.hints.rollWalk) for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) if (open(nx, ny) && !seen.has(ny * W + nx)) { seen.add(ny * W + nx); q.push([nx, ny, d + 1]); }
+      }
+      if (best && best.run >= TUNING.hints.rollRun) {
+        const n = Math.min(best.run, 8), near = Math.abs(best.a - dx0) < Math.abs(best.b - dx0), x0 = near ? best.a : best.b - n + 1;
+        controls.push({ x: (x0 + n / 2) * TILE, y: (best.y + 0.5) * TILE, w: n * TILE, part: 3, corridor: true });
+      } else {
+        const tx = side ? clamp(ex + Math.sign(cx - ex) * inset, mr.x + 2, mr.x + mr.w - 2) : clamp(ex, mr.x + 3, mr.x + mr.w - 3);
+        const ty = side ? clamp(ey, mr.y + 1.5, mr.y + mr.h - 1.5) : clamp(ey + Math.sign(cy - ey) * inset, mr.y + 1.5, mr.y + mr.h - 1.5);
+        controls.push({ x: tx * TILE, y: ty * TILE, w: Math.min(mr.w, 10) * TILE, part: 3 });
+      }
       pick = 'placed';
     }
     if (!pick && firstArenaAt > 0) {
@@ -1946,6 +1990,30 @@ function tryGenerate(levelDef, seed, opts) {
     const n0 = taught.far > 0 ? a0 : taught.at + 1, n1 = taught.far > 0 ? taught.at : a1, mid = (n0 + n1) / 2;
     controls.push(v ? { x: mid * TILE, y: (r.y + r.h / 2) * TILE, w: (n1 - n0 + 2) * TILE, part: 5, chasm: taught.room }
       : { x: (r.x + r.w / 2) * TILE, y: mid * TILE, w: r.w * TILE, part: 5, chasm: taught.room });
+    // Nothing lies over it (8 Oct 2026 playtest: "the main thing, do not cover it with objects"): straw, tall grass and
+    // anything loose taken off the words' own patch of floor.
+    const c = controls[controls.length - 1], cx0 = Math.floor(c.x / TILE) - 3, cx1 = Math.floor(c.x / TILE) + 3, cy0 = Math.floor(c.y / TILE) - 1, cy1 = Math.floor(c.y / TILE) + 1;
+    for (let y = cy0; y <= cy1; y++) for (let x = cx0; x <= cx1; x++) { const i = y * W + x; if (tiles[i] === T.HAY) tiles[i] = T.FLOOR; grass.delete(i); }
+    for (let i = cleanProps.length - 1; i >= 0; i--) {
+      const p = cleanProps[i], tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+      if (tx >= cx0 && tx <= cx1 && ty >= cy0 && ty <= cy1 && ['crate', 'barrel', 'rock', 'bomb', 'table', 'weapon'].includes(p.kind)) cleanProps.splice(i, 1);
+    }
+  }
+  // A first meeting is a bare room (8 Oct 2026 playtest: "the very first room with the dog, a few less things; for a
+  // first meeting it is overfull"): the room that introduces a kind in `rooms.firstMeet.kinds` loses what hangs and
+  // what was scattered (`drop`), and keeps no more than `crates` crates and `tables` tables.
+  { const FM = TUNING.rooms.firstMeet;
+    for (const [ri, cell] of plan.rooms) {
+      if (!cell.intro || !FM.kinds.includes(cell.intro)) continue;
+      const r = rooms[ri], inR = (p) => p.x >= r.x * TILE && p.x < (r.x + r.w) * TILE && p.y >= r.y * TILE && p.y < (r.y + r.h) * TILE;
+      const keep = { crate: FM.crates, table: FM.tables };
+      // A table with a scrap of the cult's paper under it stays (`GEN_RULES.posters`: the scrap was laid for it).
+      const roof = (p) => p.kind === 'table' && cleanProps.some((q) => q.kind === 'poster' && q.x === p.x && q.y === p.y);
+      for (let i = 0; i < cleanProps.length; i++) {
+        const p = cleanProps[i]; if (!inR(p) || roof(p)) continue;
+        if (FM.drop.includes(p.kind) || (keep[p.kind] !== undefined && keep[p.kind]-- <= 0)) { cleanProps.splice(i, 1); i--; }
+      }
+    }
   }
   // The ogre's vault wakes him into its room, where the horns do nothing to him: a room with nothing
   // that hurts him keeps the grass instead (1.89 backlog).
@@ -2026,8 +2094,8 @@ function shopRoomOf(levelDef) {
   return TUNING.shop.levels.includes(li) && levelDef.gates && levelDef.gates.length ? levelDef.gates[0] : -1;
 }
 // What a mouse stocks: `TUNING.shop.wares` distinct talismans. The first mouse of a run sells COMMON
-// only; on a later one each talisman that has a RARE tier is RARE at `shop.rare[visit]` (6 Oct 2026, two
-// grades; the n-th mouse used to sell tier n). Now and then (`TUNING.cape.shopChance`) one of them is a
+// only; on a later one each slot is a RARE or EPIC talisman at `shop.rare[visit]`, else a COMMON one (8 Oct 2026:
+// a talisman has one form and its own rarity, `ARTIFACTS[].rarity`; before, a RARE tier of the same talisman). Now and then (`TUNING.cape.shopChance`) one of them is a
 // cape instead, the only way to one besides a niche behind a niche. Nothing is priced: the offer is a
 // choice, not a sale. What he already wears is swapped out in play (`Shop.restock`), never here: the
 // generator knows the floor, not the goat.
@@ -2037,12 +2105,18 @@ function stockFor(levelDef, rng) {
   // Never two of one sort on a shelf (`tag`): two talismans that both bend the headbutt are one
   // choice offered twice. The shuffle is the same single roll it always was.
   const out = [];
-  for (const a of rng.shuffle(ARTIFACTS.slice())) {
-    if (out.length >= S.wares) break;
-    if (a.tag && out.some((o) => o.tag === a.tag)) continue;
-    out.push(a);
+  const take = (pool) => {
+    for (const a of rng.shuffle(pool.slice())) {
+      if (out.includes(a) || (a.tag && out.some((o) => o.tag === a.tag))) continue;
+      out.push(a); return true;
+    }
+    return false;
+  };
+  for (let i = 0; i < S.wares; i++) {
+    const up = rng.chance(S.rare[visit]);
+    if (!take(ARTIFACTS.filter((a) => (up ? a.rarity > 1 : a.rarity === 1))) && !take(ARTIFACTS)) break;
   }
-  const stock = out.map((a) => ({ id: a.id, tier: a.tiers.length > 1 && rng.chance(S.rare[visit]) ? 2 : 1 }));
+  const stock = out.map((a) => ({ id: a.id, tier: 1 }));
   if (stock.length && rng.chance(TUNING.cape.shopChance)) stock[rng.int(0, stock.length - 1)] = { id: rng.pick(CAPES).id, cape: true };
   return stock;
 }
@@ -2072,7 +2146,8 @@ function buildCage(cx, cy, halfW, halfH, deco) {
 // which now and then put the exit a tile from the entrance, you came in at the top of the room and
 // left at the top of it, and the room's men, its pillars and its wheel were something you ran past
 // rather than something between you and the door. Far is the whole of the motivation to cross a room.
-function pickDoorY(room, side, rng, awayFrom, fit, wide) {
+// `toward` (a level's `meet`, the way in only): the rows nearest it instead, so the door faces the last one.
+function pickDoorY(room, side, rng, awayFrom, fit, wide, toward) {
   const col = side === 'right' ? room.w - 2 : 1;
   const raw = [];
   for (let ty = 1; ty < room.h - 2; ty++) {
@@ -2098,8 +2173,10 @@ function pickDoorY(room, side, rng, awayFrom, fit, wide) {
     }
     return true;
   };
-  const clear = candidates.filter(stepClear);
-  const pick = noteFar(room, rng.pick(farthest(clear.length ? clear : candidates, awayFrom)), clear.length ? clear : candidates, awayFrom);
+  const clear = candidates.filter(stepClear), pool = clear.length ? clear : candidates;
+  const near = toward === undefined || toward === null ? null
+    : pool.filter((v) => Math.abs(v - toward) === Math.min(...pool.map((u) => Math.abs(u - toward))));
+  const pick = noteFar(room, rng.pick(near || farthest(pool, awayFrom)), pool, awayFrom);
   (room.mouths = room.mouths || {})[side] = { y: pick, clear: stepClear(pick), could: clear.length > 0 };
   return pick;
 }
@@ -2142,7 +2219,10 @@ function enterCol(room) {
 // `turn` is the sentry's room (`blockSpot`): the corridor out of it turns in the first tile past its
 // wall, and never onto the row his gap is on, so a man knocked through that gap meets the corridor's
 // far wall a step later instead of flying the length of it and getting up (`GEN_RULES.sentrywall`).
-function carveCorridor(tiles, W, a, b, rng, width, turn) {
+// `how.meet` (a level's `meet`): `b`'s door takes the row nearest `a`'s, so the two face each other and
+// the way through is straight wherever the rooms overlap. `how.late`: the turn is made just short of `b`'s
+// wall, so the stretch leaving `a` is the long one (the first grass lies in it).
+function carveCorridor(tiles, W, a, b, rng, width, turn, how) {
   const wide = Math.max(2, width || 2);
   const H = tiles.length / W;
   // A band wider than two is kept inside the height of the wall it goes through. Picked for two
@@ -2154,18 +2234,21 @@ function carveCorridor(tiles, W, a, b, rng, width, turn) {
   // With `turn`, `b`'s band may not carry on from `a`'s top row (the one row `narrowExit` leaves
   // open) nor from either row beside it: a body leaving the gap at a shallow slope slid into a band
   // that ran along the next row and went the length of it.
-  const yB = pickDoorY(b, 'left', rng, null, (y) => { const m = fit(b, y); return turn && m > yA - wide - 1 && m < yA + 2 ? null : m; }, wide);
+  const yB = pickDoorY(b, 'left', rng, null, (y) => { const m = fit(b, y); return turn && m > yA - wide - 1 && m < yA + 2 ? null : m; }, wide,
+    how && how.meet && yA >= 0 ? yA : null);
   if (yA < 0 || yB < 0) return null;
   const xA = a.x + a.w - 1, xB = b.x;
   // The turn is kept clear of `b`'s own wall where there is rock enough for it: a five-wide turn
   // centred in a short gap ran down through the wall and out under the room, for the same reason.
-  const midX = turn ? xA + 1 : clamp(Math.floor((xA + xB) / 2), xA + 1, Math.max(xA + 1, xB - wide));
+  const midX = turn ? xA + 1 : how && how.late ? Math.max(xA + 1, xB - wide)
+    : clamp(Math.floor((xA + xB) / 2), xA + 1, Math.max(xA + 1, xB - wide));
   const carve = (tx, ty) => { if (tx >= 0 && tx < W && ty >= 1 && ty < H - 1) tiles[ty * W + tx] = T.FLOOR; };
   const band = (tx, ty) => { for (let k = 0; k < wide; k++) carve(tx, ty + k); };
   for (let tx = xA; tx <= midX + wide - 1; tx++) band(tx, yA);
   // The stretch of corridor leaving `a`. A room that has to be shut behind one man needs to know
   // exactly which tiles let you out of it.
-  a.exitBand = { y: yA, x0: xA, x1: midX + wide - 1, wide };
+  // `run` is the last column of its straight stretch: the whole way to `b`'s wall when the doors face.
+  a.exitBand = { y: yA, x0: xA, x1: midX + wide - 1, wide, run: yA === yB ? xB - 1 : midX - 1 };
   // The tiles of `a`'s own wall the corridor cut through: stone them back up and `a` is shut off
   // from everything after it (`game.updateClamps`, held by `GEN_RULES.clamp`).
   a.exitMouth = { tiles: Array.from({ length: wide }, (_, k) => (yA + k) * W + xA), x: (xA + 0.5) * TILE, y: (yA + wide / 2) * TILE, vertical: true, span: wide };
@@ -2178,8 +2261,13 @@ function carveCorridor(tiles, W, a, b, rng, width, turn) {
   // A door is two tiles of slab. Hung in a five-wide band it covered two fifths of it and stood in
   // open floor with a way round either side, a door in the middle of nowhere. Wide corridors get none.
   if (wide > 2) return { enter, door: null };
+  // The first grass's corridor (`late`) is left open: the bowl in it is the thing to see, not a slab.
+  if (how && how.late) return { enter, door: null };
   if (y1 - y0 >= 4) return { enter, door: { x: (midX + 1) * TILE, y: (Math.floor((y0 + y1) / 2) + 0.5) * TILE, vertical: false } };
   if (midX - xA >= 3) return { enter, door: { x: (Math.floor((xA + midX) / 2) + 0.5) * TILE, y: (yA + 1) * TILE, vertical: true } };
+  // Two doors facing across a short run of rock: the slab hangs in its first tile, against the room it
+  // leaves, so it stands in rock with stone above and below.
+  if (yA === yB && xB - xA >= 2) return { enter, door: { x: (xA + 1.5) * TILE, y: (yA + 1) * TILE, vertical: true } };
   return { enter, door: null };
 }
 
@@ -2606,23 +2694,6 @@ function blockSpot(tiles, W, room, props) {
     const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
     if (props.some((p) => len(p.x - px, p.y - py) < 1.4 * TILE)) continue;
     return { x: px, y: py };
-  }
-  return null;
-}
-
-// A few tiles inside the mouth of a room, on clear floor and clear of the furniture: where you put
-// a man who is supposed to be standing in the way when you walk in.
-function postSpot(tiles, W, room, enter, props) {
-  const ex = Math.floor(enter.x / TILE), ey = Math.floor(enter.y / TILE);
-  for (let dx = 2; dx <= 6; dx++) {
-    for (const dy of [0, -1, 1, -2, 2]) {
-      const tx = ex + dx, ty = ey + dy;
-      if (tx < room.x + 1 || tx > room.x + room.w - 2 || ty < room.y + 1 || ty > room.y + room.h - 2) continue;
-      if (tiles[ty * W + tx] !== T.FLOOR) continue;
-      const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
-      if (props.some((p) => len(p.x - px, p.y - py) < 1.6 * TILE)) continue;
-      return { x: px, y: py };
-    }
   }
   return null;
 }

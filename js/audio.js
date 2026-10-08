@@ -67,8 +67,8 @@ const THEME_BED = {
 // THE TITLE'S OWN TUNE (7 Oct 2026 playtest: "a slightly different melody for the opening screen, so that it starts much
 // calmer and picks up speed"). The same mode as the compound's (phrygian on A, its four roots) but its own phrase:
 // eight bars of long falling lines, [sixteenth of the 128, semitones above A4, length in sixteenths]. Played by
-// `playTitleStep`, which adds a part every so often as the screen is stayed on (`TUNING.audio.title`) and winds the
-// tempo up from a lullaby to the score's own.
+// `playTitleStep`, which adds a part at a time as the opening scene goes on (`TUNING.audio.title.intro`; since the
+// 8 Oct 2026 playtest the opening's, not the title screen's, and at the score's own tempo throughout).
 const TITLE_TUNE = {
   bars: 8,
   melody: [[0,0,6],[6,1,2],[8,0,8], [16,-2,6],[22,-5,2],[24,-2,8], [32,0,4],[36,3,4],[40,1,6],[46,0,2], [48,-2,8],[56,-5,8],
@@ -558,15 +558,17 @@ class GameAudio {
       this.setScoreTone(this.scene.lastHeart);
       return;
     }
-    // THE TITLE's tune builds the longer he stays on the screen, and its tempo with it (`playTitleStep`); counted only
-    // while the audio is running, so a screen left open before the first click does not arrive half built.
-    this.titleOn = game.state === 'title' && this.layered;
+    // The calm tune is THE OPENING SCENE's, not the title's (8 Oct 2026 playtest: "the calmer music not on the menu, on
+    // the opening; and calmer is not just half the tempo"): `playTitleStep` plays it through the prologue and the scene,
+    // at the score's own tempo, its parts coming in one by one as the scene goes on (`audio.title.intro`, a build per
+    // phase, eased); the grab and the fade are the score's own climb (`INTRO_STAGE`). The title has the score again.
+    const T = TUNING.audio.title, ph = game.state === 'intro' && game.intro ? game.intro.phase : null;
+    this.titleOn = !!(ph && T.intro[ph] !== undefined) && this.layered;
     if (this.titleOn) {
-      const T = TUNING.audio.title;
-      if (this.ctx && this.ctx.state === 'running' && !this.muted) this.titleT = (this.titleT || 0) + dt;
-      this.titleBuild = clamp((this.titleT || 0) / T.build, 0, 1);
-      this.bpm = T.bpm[0] + (T.bpm[1] - T.bpm[0]) * Math.pow(this.titleBuild, T.curve);
-    } else if (this.titleT !== undefined) { this.titleT = 0; this.titleBuild = 0; this.bpm = TUNING.audio.bpm; }
+      const to = T.intro[ph];
+      this.titleBuild = (this.titleBuild || 0) + (to - (this.titleBuild || 0)) * Math.min(1, dt / T.ease);
+      this.bpm = TUNING.audio.bpm;
+    } else this.titleBuild = 0;
     const special = this.cue?.kind || this.terminalCue;
     if (special) {
       const allowed = special === 'death' ? ['dead'] : special === 'clear' ? ['clear','win'] : ['play','boon','paused'];
@@ -779,9 +781,9 @@ class GameAudio {
       else if (!this.muted) this.playLegacyStep(s % 64, t, stepLen);
     } finally { this.scoring = false; this.musicTick++; }
   }
-  // THE TITLE: one slow tune that builds. `titleBuild` 0..1 is how long he has stayed on the screen against
-  // `audio.title.build` s: the pad and the flute alone to begin with, the bass one long note a bar, then the
-  // frame drum, the gallop, the kick, a plucked counter-line, the rim, the flute's octave. The tempo climbs with it.
+  // THE OPENING's tune (once the title's): one tune that builds by count. `titleBuild` 0..1 is how far the scene has
+  // come (`audio.title.intro`): the pad and the flute alone to begin with, the bass one long note a bar, then the
+  // frame drum, the gallop, the kick, a plucked counter-line, the rim, the flute's octave. One tempo all through.
   playTitleStep(s, t, stepLen) {
     const T = TUNING.audio.title, b = this.titleBuild || 0, beat = s % 16, pos = s % (TITLE_TUNE.bars * 16);
     const root = MUSIC.roots[(s >> 4) & 3], base = MUSIC.roots[0] * 8, ease = (a, z) => clamp((b - a) / (z - a), 0, 1);
@@ -1269,6 +1271,11 @@ class GameAudio {
   // The shaman (js/shaman.js): the rattle shaken over his men, the call on the goat.
   sfxRattle(where) { const v = where ? where.vol : 1; if (v > 0.02) this.foley('rattle', { gain: 0.32 * v, pan: where ? where.pan : 0, wet: 0.05 }); }
   sfxChant(where) { const v = where ? where.vol : 1; if (v > 0.02) this.foley('chant', { gain: 0.3 * v, pan: where ? where.pan : 0, wet: 0.08 }); }
+  // The shaman's call taking the goat's legs, and letting them go: two sounds that cannot be confused.
+  sfxSeized(where) { const v = where ? where.vol : 1; this.foley('seize', { gain: 0.5 * Math.max(0.5, v), bus: this.keyBus, wet: 0.06 }); }
+  sfxFreed() { this.foley('loose', { gain: 0.34, bus: this.keyBus, wet: 0.08 }); }
+  // The held headbutt reaching its full charge: one clear small bell, so the hand knows to let go.
+  sfxCharged() { this.foley('chime', { key: 'charged', args: { f: 740 }, takes: 1, gain: 0.18, wet: 0.05 }); }
   sfxRune() { this.foley('rune', { gain: 0.53, wet: 0.05 }); }
   sfxBlink() { this.foley('blink', { gain: 0.29 }); }
   // A room left behind going dark: a breath drawn in, and the stone settling. Not a clank: nothing
@@ -1299,6 +1306,8 @@ class GameAudio {
   sfxVault() { this.foley('vault', { gain: 0.27 }); }
   // One hoof on the stone, running (`TUNING.audio.foley.hooves`; `vol` is MOTH WOOL's quiet).
   // Every other step is the other side of him, a hair apart in place and pitch (`foley.hoofSide`).
+  // Tall grass parted under him (`foley.rustle`), on its own clock while he walks through it.
+  sfxRustle(vol = 1) { this.foley('rustle', { gain: TUNING.audio.foley.rustle * vol, takes: 4, pan: (Math.random() - 0.5) * 0.4 }); }
   sfxHoof(vol = 1) {
     const F = TUNING.audio.foley, S = F.hoofSide, side = (this.hoofSide = -(this.hoofSide || 1));
     this.foley('hoof', { gain: F.hooves * vol, takes: 6, pan: side * S.pan, rate: 1 + side * S.rate });

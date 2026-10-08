@@ -87,7 +87,6 @@ const JUICE_PLAY = {
   'Hound run line': { scene: 'hound' },
   'Ogre slam ring': { scene: 'ogreSlam' },
   'Talisman: parry': { scene: 'parry' },
-  'Talisman: grease': { scene: 'grease' },
   'Talisman: echo': { scene: 'echo' },
   'Last-heart blood trail': { scene: 'runBleed' },
   'Blood in the wool': { scene: 'wool' },
@@ -135,7 +134,6 @@ const JUICE_NOPLAY = {
   'The veil': 'needs rooms behind him to close',
   'Soul fanfare': 'the soul\'s card screen',
   'Soul into the goat': 'the soul\'s card screen',
-  'Talisman: bell shapes': 'needs men behind stone out of his sight',
   'Death-map skulls': 'the death screen',
   'Rising into the pasture': 'heaven\'s own screen',
   'The god speaks': 'heaven\'s own screen',
@@ -152,9 +150,6 @@ const JUICE_SCENES = {
     at: [[0.45, (S) => S.butt()]] },
   buttKill: { period: 2.8, what: 'A headbutt into a man with the wall two tiles behind him: the wall kills (pillar 3).',
     setup(S) { S.goatAt(9.3, 5); S.aimAt(S.man(11.4, 5)); },
-    at: [[0.45, (S) => S.butt()]] },
-  grease: { period: 3, what: 'BUTCHER\'S GREASE worn: a headbutt into a man with the wall behind him.',
-    setup(S) { S.wear('grease', 1); S.goatAt(9.3, 5); S.aimAt(S.man(11.4, 5)); },
     at: [[0.45, (S) => S.butt()]] },
   charge: { period: 3.2, what: 'BOMB CHARGE: a headbutt lights a man\'s fuse and the wall behind him sets it off, he comes apart, and the man beside him is thrown.',
     setup(S) { S.boon('bomb'); S.goatAt(9.3, 5); S.aimAt(S.man(11.4, 5)); S.man(12.4, 3.2); },
@@ -352,6 +347,8 @@ const JuicePreview = {
       card: null, deathCam: null, painting: null, deathPainting: null, guide: null, skyTables: null, breathFx: null, checkpoint: null,
       tripBanner: 0, tripBack: 0, tripAt: -1, darkAt: -1, climbDark: false, fromHeaven: false, heavenTables: 0, soulsHere: 0, boonChoice: null,
       pathTimer: 99, milkFullUsed: false, toldGrab: false, firstKill: null, goatLit: true, henSaved: false,
+      // The run's last man and his scene (js/endboss.js) and the ogre's witchfire (js/waves.js): never the preview's.
+      endBoss: null, endScene: null, waves: [], ogreMet: 0,
       // What `startLevel` lays and the title never has: named here, so a preview opened from the
       // title reads empty lists of its own rather than nothing.
       enemies: [], props: [], bullets: [], parts: [], floats: [], rings: [], puffs: [], flares: [], souls: [], globs: [], fallers: [], tossed: [],

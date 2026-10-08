@@ -39,10 +39,10 @@ const Beast = {
   GIVES: {
     chicken: () => `+${TUNING.prop.chicken.saveHearts} heart for the run.`,
     tortoise: () => `You start every floor in armour that takes ${TUNING.prop.tortoise.saveArmour} hit.`,
-    goose: () => `Your BAAH reaches ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further and is ready ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% sooner.`,
+    goose: () => `Your BAAH reaches ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further.`,
     crow: () => `It found ${/^[AEIOU]/.test(rarityOf(TUNING.prop.crow.giftTier).name) ? 'an' : 'a'} ${rarityOf(TUNING.prop.crow.giftTier).name.toLowerCase()} talisman and left it on the next floor's stairs.`,
     horse: () => `You run ${Math.round((TUNING.prop.horse.saveSpeed - 1) * 100)}% faster.`,
-    pig: () => 'More milk grass on every floor ahead.',
+    pig: () => 'More grass on every floor ahead.',
     rabbit: () => `Your roll is ready ${Math.round((1 - TUNING.prop.rabbit.saveRollCd) * 100)}% sooner.`,
     husky: () => `Your BAAH is ready ${Math.round((1 - TUNING.prop.husky.saveScreamCd) * 100)}% sooner.`,
     fish: () => `Your fleece is wet: the first fire on you each floor only steams.`,
@@ -885,7 +885,7 @@ const Beast = {
       const C = TUNING.prop.goose;
       m.screamRadius *= Math.pow(C.saveScreamRange, b.goose);
       m.screamCall = (m.screamCall || TUNING.goat.scream.call) * Math.pow(C.saveScreamRange, b.goose);
-      m.screamCooldown *= Math.pow(C.saveScreamCd, b.goose);
+      m.screamReach = (m.screamReach || 1) * Math.pow(C.saveScreamRange, b.goose);   // the breath and the spit go further too, nothing sooner
     }
   },
   // The crow's own, which is not a number but a thing standing on the next floor: one talisman at
@@ -900,12 +900,13 @@ const Beast = {
     // him. A negative `shopId` belongs to no room, so `Shop.buy`'s gate call finds nothing and returns.
     const spot = game.freeSpot(at.x + TILE * 2.5, at.y);
     // A talisman, never a cape (a cape is found, not brought), and never one he wears: "free" was the
-    // same thing swapped back. At `giftTier`, or the top tier of one that has fewer.
-    const stock = stockFor(game.level.def, new RNG((Math.random() * 1e9) | 0)).filter((w) => !w.cape);
+    // same thing swapped back. A RARE or EPIC one (8 Oct 2026: one form each, its grade its own; `giftTier` is what the line says).
     const free = (a) => !Shop.worn(game, a.id) && !Heaven.talismanLocked(a.id);   // nor one a heaven dare still holds back
-    const pick = stock.find(free) || ARTIFACTS.find(free) || ARTIFACTS[0];
+    const rarer = ARTIFACTS.filter((a) => a.rarity >= Math.max(2, C.giftTier) && free(a)), any = ARTIFACTS.filter(free);
+    const list = rarer.length ? rarer : any.length ? any : ARTIFACTS;
+    const pick = list[Math.floor(Math.random() * list.length)];
     const ware = new Prop(spot.x, spot.y, 'ware', {
-      shopId: -1 - ((Math.random() * 1e6) | 0), ware: { id: pick.id, tier: Shop.tierFit(pick.id, C.giftTier) },
+      shopId: -1 - ((Math.random() * 1e6) | 0), ware: { id: pick.id, tier: 1 },
     });
     const bird = new Prop(spot.x, spot.y - TILE * 0.9, 'crow');
     // `gift` is set here rather than passed in: `Prop`'s constructor copies the opts it knows about and
@@ -1022,7 +1023,7 @@ const Beast = {
     tortoise: { how: 'Slower than a walk and never catches up: you carry it in your teeth, or throw it forward. Where it lands it is a shell, solid, rounds stop on it, a man it hits is floored, and it takes one blow for you, then lies on its back.',
       pays: () => `armour at the start of every floor after, which takes ${TUNING.prop.tortoise.saveArmour} blow whole and comes off` },
     goose: { how: `Leads rather than follows, up to ${TUNING.prop.goose.lead} tiles ahead, and honks at every man it sees: the room turns on you.${TUNING.prop.goose.balks ? ' A blow already coming is broken.' : ''}`,
-      pays: () => `the voice carries ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further and comes back ${Math.round((1 - TUNING.prop.goose.saveScreamCd) * 100)}% sooner (never under ${TUNING.goat.scream.minCooldown} s)` },
+      pays: () => `the voice carries ${Math.round((TUNING.prop.goose.saveScreamRange - 1) * 100)}% further (the call, THE FULL THROAT, the breath, the spit)` },
     crow: { how: 'Follows the dead, not you: it flies to a body it can see and eats a while, and with nothing dead in reach it sits and waits where it is. A room behind you, or far off, it leaves the bodies and flies after you, landing a few tiles short. At the stairs it counts from the room before the last; the bird that brings its gift sits by it, then flies off.',
       pays: () => `${crowGiftName().toLowerCase()} (its top tier, for one with a single tier) on the next floor's stairs` },
     horse: { how: `Shut in a stall of ${TUNING.prop.stall.w} x ${TUNING.prop.stall.h} tiles before the first soul gate (${TUNING.prop.stall.hits} blows). Races you in legs: to each locked room with a soul ahead of it (a soul gate's room, the mouse's too), where it waits at the bar until the gate gives, then on, and last to the stairs. A leg is yours if you are in its room before it, and the stairs are the last try; it says its terms in a box as it comes out, and when you beat it. Kicks down the doors in its way and bowls the men in it aside without killing them; a sealed arena, the vault door or the dark flight's door holds it too.`,
@@ -1033,8 +1034,8 @@ const Beast = {
       pays: () => `the voice back ${Math.round((1 - TUNING.prop.husky.saveScreamCd) * 100)}% sooner for the run, if she sang and comes up the stairs` },
     fish: { how: `A tank on the floor, no coop. It says nothing but BLUB. Too heavy for anything but your teeth: carried, you walk at ${Math.round(TUNING.prop.fish.carry * 100)}% of your stride. Thrown, it goes ${TUNING.prop.fish.throwTiles} tiles and sets down; stone, a door, furniture or a man on the way, and the glass breaks and the fish dies. Fire does nothing to it; any blow breaks it. A roll drops it where you stood.`,
       pays: () => `your fleece is wet on every floor after: the first ${TUNING.prop.fish.saveWet} fire on you each floor only steams` },
-    pig: { how: `Ambles after you and eats any milk grass she can see within ${TUNING.prop.pig.smell} tiles (${TUNING.prop.pig.eatTime} s a tuft), yours, unless you graze it first. ${TUNING.prop.pig.full} and she is full, thanks you in a box and eats no more. Says what she wants in a box when she comes out.`,
-      pays: () => `${TUNING.prop.pig.saveHeals.join('-')} more milk grass on every floor after, if she is full at the stairs` },
+    pig: { how: `Ambles after you and eats any grass she can see within ${TUNING.prop.pig.smell} tiles (${TUNING.prop.pig.eatTime} s a tuft), yours, unless you graze it first. ${TUNING.prop.pig.full} and she is full, thanks you in a box and eats no more. Says what she wants in a box when she comes out.`,
+      pays: () => `${TUNING.prop.pig.saveHeals.join('-')} more grass on every floor after, if she is full at the stairs` },
   },
   // Every line it can say, for the same tab: its terms, and whatever else it says along the way.
   lines(kind) {
@@ -1160,11 +1161,13 @@ const Beast = {
   // heaven (`Heaven.drawTalk`) in the compound's colours: its picture on the left, its words typing
   // across the bottom, a press to turn each page. While it is up `Game.update` runs nothing else.
   // `ask`: the last page waits for BAAAH (yes) or bah (no) (`BEAST_ANSWER`, `Beast.answer`, 1 Oct 2026).
-  talk(game, p, lines, ask) {
+  // `opt` (8 Oct 2026, heaven's own talk in this box): `name` over the box, `portrait(R, ctx, k)` in place of the animal's,
+  // `sound()` in place of its voice, `onAnswer(game, yes)` in place of `Beast.answer`.
+  talk(game, p, lines, ask, opt) {
     if (!lines || !lines.length) return;
-    game.beastTalk = { p, kind: p.kind, lines, i: 0, shown: 0, t: 0, out: 0, ask: !!ask, pick: 0, rects: [] };
+    game.beastTalk = Object.assign({ p, kind: p.kind, lines, i: 0, shown: 0, t: 0, out: 0, ask: !!ask, pick: 0, rects: [] }, opt || {});
     game.goat.vx = 0; game.goat.vy = 0;
-    game.audio.sfxAnimal && game.audio.sfxAnimal(p.kind);
+    if (opt && opt.sound) opt.sound(); else game.audio.sfxAnimal && game.audio.sfxAnimal(p.kind);
   },
   updateTalk(game, dt) {
     const K = game.beastTalk, inp = game.input, T0 = TUNING.beast.talk;
@@ -1176,7 +1179,7 @@ const Beast = {
     const press = inp.lmbPressed || inp.spacePressed || inp.rollPressed || inp.rmbPressed || inp.qPressed;
     if (!press || K.t < T0.arm) return;
     if (K.shown < line.length) { K.shown = line.length; return; }
-    if (K.i + 1 < K.lines.length) { K.i++; K.shown = 0; game.audio.sfxAnimal && game.audio.sfxAnimal(K.kind); return; }
+    if (K.i + 1 < K.lines.length) { K.i++; K.shown = 0; if (K.sound) K.sound(); else game.audio.sfxAnimal && game.audio.sfxAnimal(K.kind); return; }
     if (K.ask) {
       // The question waits `talk.askArm` s once it is all written out: on a pad A turns every page and is
       // also the roll, "no", so tapping through the box refused the animal for good.
@@ -1188,7 +1191,7 @@ const Beast = {
       else if (inp.lmbPressed && inp.mouse) { const i = K.rects.findIndex((r) => inp.mouse.x >= r.x && inp.mouse.x <= r.x + r.w && inp.mouse.y >= r.y && inp.mouse.y <= r.y + r.h); if (i >= 0) yes = i === 1; }
       if (yes === null) return;
       if (yes) game.audio.sfxBleat(300, 0.2, 0.5); else game.audio.sfxBleat(520, 0.06, 0.25);
-      K.out = 0.0001; Beast.answer(game, K.p, yes);
+      K.out = 0.0001; if (K.onAnswer) K.onAnswer(game, yes); else Beast.answer(game, K.p, yes);
       return;
     }
     K.out = 0.0001;   // the press that closed it is spent here: `Game.update` clears the edges after
@@ -1238,14 +1241,14 @@ const Beast = {
     ctx.save(); ctx.translate(Math.round(fx), Math.round(fy));
     const bob = typing ? Math.round(Math.abs(Math.sin(t * 9)) * 2 * s) : 0;
     ctx.translate(0, -bob);
-    Beast.portrait(R, ctx, K.kind, k);
+    if (K.portrait) K.portrait(R, ctx, k); else Beast.portrait(R, ctx, K.kind, k);
     ctx.restore();
     // the box
     ctx.fillStyle = 'rgba(22,15,20,0.94)'; ctx.fillRect(bx, by, bw, bh);
     ctx.fillStyle = PALETTE.ochre; ctx.fillRect(bx, by, bw, 3 * s); ctx.fillRect(bx, by + bh - 2 * s, bw, 2 * s);
     ctx.strokeStyle = 'rgba(232,221,200,0.25)'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx + 6 * s, by + 9 * s, bw - 12 * s, bh - 17 * s);
     // the name plate
-    const name = 'THE ' + (Beast.NAME[K.kind] || 'ANIMAL');
+    const name = K.name || 'THE ' + (Beast.NAME[K.kind] || 'ANIMAL');
     ctx.font = `700 ${17 * s}px ${FONT_SC}`; const nw = textW(ctx, name) + 30 * s;
     const nx = bx + 30 * s + half * 2;   // beside the animal, which stands on the box's edge
     ctx.fillStyle = 'rgba(22,15,20,0.96)'; ctx.fillRect(nx, by - 26 * s, nw, 28 * s);

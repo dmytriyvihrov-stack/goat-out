@@ -78,7 +78,8 @@ climb from if the first room already hands you everything. The rail says which h
 `THINGS` before GRAB, `CALL` before BAAH, so a half-lit chip is a promise rather than a missing
 feature. The keys are written under the chips; what a verb does is a sentence the pointer brings up.
 
-Four hearts, no regeneration, one life per level. A new level puts every heart back. Blood smears the
+Four hearts, one life a run (and one more once heaven has been visited). Grass gives hearts back, and a
+new floor gives one. Blood smears the
 coat as you take hits, so health reads on the character as well as in the corner.
 
 He is drawn a quarter turn toward the camera: the head clear of the body, two tapered horns rising off
@@ -111,7 +112,7 @@ fire, so a build reads as a shape rather than as a list of names.
 | **Thrower** | (3 Oct 2026) A clubman with one arm grown huge on the green the cult pumps into it from a tank on his back, a goat's skull strapped on for a face, the other arm a stick. Met alone on THE BRIDGE, then on the floors after it. Three hits, and a headbutt moves him no further than it moves the butcher. He looks round his room for something to throw (a crate, a bomb, a clubman or a hound of his own, one of your animals), lifts it overhead, which is his windup and the moment to butt him (it comes down on his own head), carries it until you are a few tiles off and throws it down an amber line; it costs a heart if it reaches you, and his own men thrown at you die on whatever wall they meet. Up close he punches, or grabs you and throws you at the worst thing near, a drop, fire, a grate, a wall: the throw does nothing, what you hit does. The roll slips the grab. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for most of a second with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run, flattened, streaking, eyes lit, which is the one tell you get, bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it, but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
-| **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher), a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit, but not by the horns, which do nothing to him: a blade, the coals of a brazier, a bomb or a thrown body is what costs him a heart, and his arena always stands braziers and swords for it (the first time, THE YARD's last room, nowhere shows him before it, a wide room with two pillars, so the idea reads). His own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
+| **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher), a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit, but not by the horns, which do nothing to him: a blade, the coals of a brazier, a bomb or a thrown body is what costs him a heart, and his arena always stands braziers and swords for it (the first time, THE CAVE's last room since 8 Oct 2026, found at his meal, nowhere shows him before it, a wide room with two pillars, so the idea reads). His own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
 
 | **Wraith** | THE OSSUARY's, and the one thing in the game that is not there most of the time: mist, nothing to hit, and walls are not walls to it. It works round to the side you are not facing and only there becomes a body, committed, swinging, and solid for most of a second after. A wraith can also lie in a room disguised as a box or a tuft of grass. See THE OSSUARY below. |
 
@@ -202,10 +203,10 @@ the rest rooms):
 | | Rooms | Canon | Regular enemies | Bosses |
 |---|---|---|---|---|
 | **THE ALTAR** | 12 | Stone | Bearers, butchers | A clubman with the soul in him, three hearts, two men |
-| **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Butcher with one man (room 4, four hearts), elite Seer (sealed in), ogre (the last room, the first of him) |
-| **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers | Ogre, butcher |
-| **THE ROAD** | 14 | The line | All five, rifles new | Two ogres |
-| **THE THRESHING FLOOR** | 13 | Open ground | All five, shieldmen new | Elite Seer, ogre, butcher |
+| **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Butcher with one man (room 4, four hearts), elite Seer (sealed in), a mage by a brazier with a second mage (the last room) |
+| **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers | Butcher, ogre (the last room, the first of him) |
+| **THE ROAD** | 14 | The line | All five, rifles new | Ogre; the butcher with four men and two mages (the last room) |
+| **THE THRESHING FLOOR** | 13 | Open ground | All five, shieldmen new | Elite Seer, ogre, a rifleman, three hearts (the last room) |
 | *or* **THE DARK** | 12 | The lamp | Bearers, butchers, hounds and Seers heavy, shieldmen new; never a rifle | Elite Seer, ogre, butcher |
 | **THE BRIDGE** | 15 | The funnel | All six | Ogre, elite Seer, ogre |
 | **THE RAFTERS** | 15 | The drop | All six | Elite Seer, ogre, butcher |
@@ -381,13 +382,13 @@ the player to believe that a goat reads.
 carries the first, the last boss the second. On THE YARD, THE ROAD and THE BRIDGE the mouse stands in
 for the first, thirteen across a run, against twenty-eight boons and a build that holds seventeen, so no
 run gets everything and no two runs are the same goat. Nothing else pays one: not a cleared room, not a
-lit boss on a lucky seed, not the vault. Every other boss leaves milk. **A man carrying one is lit**: an
-amber haze that breathes, a ring at his feet, and red eyes, so the one man in a room worth crossing the
+lit boss on a lucky seed, not the vault. Every other boss leaves grass. **A man carrying one is lit**: an
+violet haze that breathes, a ring at his feet, and red eyes, so the one man in a room worth crossing the
 room for says so from across it.
 
 A soul offers **two of one kind**: either two actives or two passives (three until 30 Sep 2026). A
 third card is bought, not given: **Hungry Soul**, a body soul, deals one on every soul after it, and the
-mouse's **Knucklebone** on every third, second or every soul by its tier, a wider choice later is what
+mouse's **Knucklebone** on every soul too, a wider choice later is what
 either of them costs you now. The first soul of a run
 always offers actives, and while any button is still shut the cards lean hard toward them. A build
 holds one active and two passives per button, and four for the body. Once a slot is full a soul does not
@@ -420,11 +421,12 @@ running, **Big Lungs** carries every form of BAAH further.
 
 **Elements add up** (30 Sep 2026). Four souls are fire, Dragon Breath, Firebrand, Kindling, Ember
 Coat, and four are poison, Splash, Venom Jaw, Sour Tumble, Venom Spit. Each one of a set carried
-buys grace against it, and the shares grow and add up: the first half a second, the second a second
-more, the third two more, three and a half with three, before a tick of ordinary fire lands, or
-before a puddle's ring fills. A card says only what it adds itself, never a count. All four make the goat proof against it outright; the
-whole fire set makes his fire burn twice as long, the whole poison set makes poison a blow (a heart,
-as it takes a man). Witchfire is the Seer's and no set turns it. A stun set (The Full Throat, Dead
+buys grace against it. Poison: half a second, a second more, two more, before a puddle's ring
+fills, and all four make the goat proof against it and make poison a blow (a heart, as it takes a man).
+Fire (3 Oct 2026, immunity at four was "a skill with no risk"): the first two buy nothing, the third
+half a second and the fourth a second more before a tick of flame lands, witchfire's too since 8 Oct
+2026, never immunity, and the whole set makes his fire burn twice as long. A card says only what it
+adds itself, never a count. A stun set (The Full Throat, Dead
 Weight, Leapfrog) was asked for and is parked: two of its three share the roll.
 
 **He is poisoned too.** Every puddle is one of his own souls', and standing in one fills a ring round
@@ -465,29 +467,32 @@ worth knowing the layout of, it is where you stand between runs, not a level.
   you shall be there. BEH."). What he says follows what happened: who killed you, how many times you
   have died, a floor you got further on than ever, an animal you brought out. GRAB talks to him; BAAH
   at him and he answers.
-- **The stands.** One for each animal the compound keeps, by the throne and by the edge. The tortoise's and the goose's are
-  open from the start (their animals come into the runs); the horse's is broken and is mended by pouring
-  forty souls into it; the rest are locked for now. Bring an animal up the stairs alive and it sits on its
+- **The stands.** One for each animal the compound keeps, by the throne and by the edge. Only the tortoise's is
+  whole from the start (so at first only the tortoise comes into the runs); every other is broken and is
+  mended by pouring souls into it (the goose's 25, the hen's and the crow's 30, the fish's 35, the horse's and
+  the pig's 40, the rabbit's and the husky's 45), and only a whole stand's animal is dealt into a run. Bring an animal up the stairs alive and it sits on its
   stand and dares you; win the dare and it lives up here its own way, and a talisman comes onto the shelves
   (see *Heaven as the animals' home*).
 - **The shepherd.** A blind old man on a stool with a comb. GRAB beside him and he combs the goat,
   he takes you for a ewe. It does nothing, and that is the point of it. The cult took his bells; the last
-  big man on every floor carries one, and it lies where he falls for the goat to take (GRAB).
+  big man on every floor carries one, and it flies off where he falls for the goat to take (GRAB), carry up
+  and hang on the old man's beam by hand.
 - **The mirror** is where the dead goat gets better for good. Every man the compound loses is a
   sacrifice to the god, one each, and every floor climbed out of is ten more; the mirror trades them
-  for five things of two ranks each: THICK FLEECE (more hearts), HALO (hearts of light over yours,
-  which take the blows first), GOOD GRAZER (milk and grass grazed faster; at the second rank the first
-  bowl of a floor fills you), QUICK TUMBLE (the roll back sooner) and LONG MERCY (longer untouchable
-  after a blow). None of them adds a button, and none of them kills anything. Butt the mirror and the
+  (some ranks also for corrupted souls) for: ONE MORE LIFE (a life more on every run), THICK FLEECE (more
+  hearts), HALO (hearts of light over yours, which take the blows first), GOOD GRAZER (grass grazed faster;
+  at the second rank the first grass of a floor fills you), QUICK TUMBLE (the roll back sooner) and LONG MERCY (longer untouchable
+  after a blow), and later SECOND CHANCE (the god's third ask) and HELLDIVE, the shape of a revive. None
+  of them adds a button, and none of them kills anything. Butt the mirror and the
   goat in it butts back, harder.
-- **Things to do that do nothing**: five bells to butt into a tune (the god knows one of them), a table
+- **Things to do that do nothing**: eight bells to butt into a tune (the god knows one of them), a table
   laid with a feast to knock flying, gold grass to graze.
 - **Pouring.** Anything broken up here (the mirror, the overlook, a stand) is mended by holding GRAB at it:
   the souls on the heap fly out of him into it one by one until it is whole.
 - **The edge.** The last room ends in nothing, and far below it is the earth, fields, a river, the
   compound, and the pen in a shaft of light. The three horns lie before it (the SHORT, BIG, LONG): GRAB
-  a pair to wear it. BIG and LONG are the god's: his second ask, after the twenty that mend the mirror, is a
-  hundred souls given to him, and then they are yours to choose. Walk off and he falls into a new run, beside the pen on the first floor. Once he has
+  a pair to wear it. BIG and LONG are the god's: his second ask, after the twenty that mend the mirror, is
+  fifty souls given to him, and then they are yours to choose. Walk off and he falls into a new run, beside the pen on the first floor. Once he has
   been up here, every run starts with one more life (Hades' Death Defiance), to be taken away later. RUN
   AGAIN on the death card skips the pasture.
 
@@ -558,8 +563,8 @@ or a repeatable grind.
   says it is tired of running and of everyone calling it slow, even after it beat Achilles. It asks you not to
   run at all on a floor; take the dare and you move at a fifth of your speed. Win and it thanks you, says it can
   rest now, and walks about heaven very, very slowly.
-Each chain unlocks one of the existing talismans. Opening order: the tortoise's and the goose's stands open at
-the start, the horse's for 40 souls, the others locked for now.
+Each chain unlocks one of the existing talismans. Opening order: the tortoise's stand is whole at the start, every
+other is mended for souls (25 to 45).
 
 ---
 

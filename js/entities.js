@@ -49,7 +49,7 @@ class Goat {
     this.gong = Math.max(0, this.gong - dt);
     // GOAT COOLDOWN (dev drawer, `game.dev.tune`): × 2 is every wait twice as long. At 1, nothing.
     const DT = game.dev && game.dev.tune;
-    const cdRate = (this.gong > 0 ? TUNING.prop.bell.cooldownMul : 1) / (DT ? DT.goatCd : 1);
+    const cdRate = (this.gong > 0 ? TUNING.prop.bell.cooldownMul : 1) / (DT ? DT.goatCd : 1) * Talisman.cdMul(game, this);   // PILGRIM'S SANDAL runs every wait faster for a while
     this.screamCd = Math.max(0, this.screamCd - dt * cdRate); this.screaming = Math.max(0, this.screaming - dt);
     this.grabCd = Math.max(0, this.grabCd - dt * cdRate);
     this.fussCd = Math.max(0, this.fussCd - dt);
@@ -203,7 +203,7 @@ class Goat {
     if (game.sneak) mul *= TUNING.stealth.speed;
     const base =g.speed * game.mods.speed * this.runUp * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1) * Talisman.speedMul(game)
       * (this.poisoned > 0 ? g.poison.moveMul : 1) * (game.calmFast ? TUNING.calmRun.mul : 1)
-      * (game.dev && game.dev.god ? TUNING.dev.godSpeed : 1);
+      * (game.level && game.level.def.showroom ? TUNING.showroom.speed : game.dev && game.dev.god ? TUNING.dev.godSpeed : 1);   // the floor, not `showroomOn`: the JUICE preview borrows that flag
     const top = base * mul;
     if (this.state !== 'lunge' && this.state !== 'roll') {
       const moving = inp.mx !== 0 || inp.my !== 0;
@@ -214,7 +214,7 @@ class Goat {
       const along = sp0 > 1 ? (this.vx * inp.mx + this.vy * inp.my) / (sp0 * mlen) : 1;
       // Only his own run: the drift of a recovery or a knockback is not his to brake (pillar 4).
       const reverse = moving && this.state === 'idle' && along <= F.skid.dot;
-      const rate = (moving ? base / g.accel : base / g.decel) * Talisman.gripMul(game, this) * (reverse ? F.turnGrip : 1);
+      const rate = (moving ? base / g.accel : base / g.decel) * (reverse ? F.turnGrip : 1);
       this.skidCd = Math.max(0, (this.skidCd || 0) - dt);
       if (this.state === 'idle') {
         if (reverse && sp0 > top * F.skid.at && this.skidCd <= 0) {
@@ -270,6 +270,7 @@ class Goat {
       this.state = 'windup'; this.timer = g.headbutt.windup * (game.mods.headbuttWindup || 1) / (DT ? DT.goatAttack : 1);
       // BULL NECK reads the run he had when the head went down, not what is left of it by the lunge.
       this.buttRun = clamp((this.runUp - 1) / g.momentum.max, 0, 1);
+      this.chargeT = 0; this.charge = 0; this.chargeK = 0;   // the BIG and LONG horns may be held (`TUNING.goat.horns`, `charge`)
       // STEALTH: a man who first sees him after this is still a man taken unseen (`Enemy.spotT`).
       this.buttT = game.timer;
       this.buttTries = (this.buttTries || 0) + 1;   // a hidden wraith watches for a headbutt near it
@@ -279,12 +280,18 @@ class Goat {
     }
     if (this.state === 'windup') {
       this.timer -= dt;
-      if (this.timer <= 0) {
+      const CH = game.mods.horn && game.mods.horn.charge;
+      // CHARGE: the head stays down while the button is held, up to `charge.time` s past the windup.
+      if (this.timer <= 0 && CH && inp.buttDown && this.chargeT < CH.time) {
+        const was = this.chargeT; this.chargeT = Math.min(CH.time, this.chargeT + dt); this.charge = this.chargeT / CH.time;
+        if (was < CH.time && this.chargeT >= CH.time) game.chargeFull(this);
+      } else if (this.timer <= 0) {
         const ga = DT ? DT.goatAttack : 1;
+        this.chargeK = CH ? this.charge : 0; this.charge = 0;
         this.state = 'lunge'; this.timer = g.headbutt.active / ga; this.lungeId++;
         Talisman.onLunge(game, this);   // ECHO HORN
-        this.wave = { t: 0, ax: this.aim.x, ay: this.aim.y };   // the small picture of where the blow lands (`Renderer.drawHornWave`)
-        const hl = (game.mods.horn ? game.mods.horn.lunge : 1) * ga;   // the horn's size: the SHORT steps in less, a spear more
+        this.wave = { t: 0, ax: this.aim.x, ay: this.aim.y, k: this.chargeK };   // the small picture of where the blow lands (`Renderer.drawHornWave`)
+        const hl = (game.mods.horn ? game.mods.horn.lunge : 1) * (1 + (CH ? CH.lunge * this.chargeK : 0)) * ga;   // the horn's size: the SHORT steps in less, a spear more, a held one most
         this.vx = this.aim.x * g.headbutt.lunge * hl; this.vy = this.aim.y * g.headbutt.lunge * hl;
         game.dust(this.x - this.aim.x * 8, this.y - this.aim.y * 8, TUNING.juice.dust.lunge, -this.aim.x, -this.aim.y);
         game.audio.sfxHeadbutt(); game.audio.musicEvent('headbutt'); world.emitNoise(this.x, this.y, TUNING.noise.headbutt);
@@ -495,6 +502,11 @@ class Goat {
         if (quiet > 0) { world.emitNoise(this.x, this.y, stepR * quiet); game.audio.sfxHoof(quiet); }
       }
     } else this.stepNoiseTimer = 0;
+    // Walking through tall grass it swishes round him (8 Oct 2026 playtest), a stroke every `foley.rustleGap` s while he moves.
+    { const tx = Math.floor(this.x / TILE), ty = Math.floor(this.y / TILE), wg = world.grass;
+      if (spd > 40 && wg && tx >= 0 && ty >= 0 && tx < world.W && ty < world.H && wg[ty * world.W + tx]) {
+        if ((this.rustleT = (this.rustleT || 0) - dt) <= 0) { this.rustleT = TUNING.audio.foley.rustleGap * (spd > 160 ? 0.75 : 1); game.audio.sfxRustle(game.sneak ? 0.5 : 1); }
+      } else this.rustleT = Math.max(0, (this.rustleT || 0) - dt); }   // runs down, never reset: in and out along an edge was a swish a step
     // The last boards he stood on. A fall puts him back on them, so they are worth keeping. The
     // trail behind it is the same idea a few seconds deep: `goatFalls` reaches into it for a point
     // with room behind it, rather than the exact edge his hoof was leaving.
@@ -620,13 +632,28 @@ class Goat {
     const ax = Math.cos(dir), ay = Math.sin(dir);
     const range = B.range * (game.mods.screamReach || 1);   // BIG LUNGS
     this.screamCd = game.mods.screamCooldown; this.screaming = 0.4;
-    game.world.igniteCone(this.x, this.y, ax, ay, range, B.halfAngle, B.fireTime);
+    const inCone = (e) => { const dx = e.x - this.x, dy = e.y - this.y, d = hyp(dx, dy);
+      return d <= range + e.r && (dx * ax + dy * ay) / (d || 1) >= Math.cos(B.halfAngle) && game.world.los(this.x, this.y, e.x, e.y); };
+    // A shieldman with his board turned to the goat takes the flame on it (8 Oct 2026, `shieldman.breath`): he does
+    // not catch, and the floor behind the board, the tile he stands on included, is not lit. Already burning grass
+    // under him is a fire of its own and takes him as ever.
+    const boards = game.enemies.filter((e) => !e.dead && !e.held && e.shield && e.shieldCovers(this.x, this.y) && inCone(e));
+    const shade = TUNING.shieldman.breath.shade;
+    const behind = boards.length ? (tx, ty) => boards.some((e) => {
+      const cx = (tx + 0.5) * TILE - this.x, cy = (ty + 0.5) * TILE - this.y, ex = e.x - this.x, ey = e.y - this.y, de = hyp(ex, ey) || 1;
+      const along = (cx * ex + cy * ey) / de, across = Math.abs(-cx * ey + cy * ex) / de;
+      return along >= de - TILE * 0.6 && across <= (e.r + shade) * along / de;
+    }) : null;
+    game.world.igniteCone(this.x, this.y, ax, ay, range, B.halfAngle, B.fireTime, behind);
     for (const e of game.enemies) {
-      if (e.dead || e.held || e.ghosted) continue;
-      const dx = e.x - this.x, dy = e.y - this.y, d = hyp(dx, dy);
-      if (d > range + e.r || (dx * ax + dy * ay) / (d || 1) < Math.cos(B.halfAngle)) continue;
-      if (!game.world.los(this.x, this.y, e.x, e.y)) continue;
+      if (e.dead || e.held || e.ghosted || !inCone(e)) continue;
+      if (boards.includes(e) || (behind && behind(Math.floor(e.x / TILE), Math.floor(e.y / TILE)))) continue;
       e.ignite(game);
+    }
+    for (const e of boards) {
+      e.shield.jolt = TUNING.shieldman.jolt;
+      game.particles(e.x + Math.cos(e.facing) * e.r, e.y + Math.sin(e.facing) * e.r, 10, PALETTE.fireHi, 160);
+      game.floatText(e.x, e.y - 34, 'BLOCKED', PALETTE.guard);
     }
     for (let i = 0; i < B.parts; i++) {
       const a = Math.atan2(ay, ax) + (Math.random() - 0.5) * B.halfAngle * 2;
@@ -676,7 +703,8 @@ class Goat {
     const g = TUNING.goat.headbutt, HN = game.mods.horn || TUNING.goat.horns.short;   // the horn he has, `TUNING.goat.horns`
     // BULL NECK: the run he put his head down out of goes into the man (men only; a crate keeps its own throw).
     const steam = game.mods.runButt ? 1 + game.mods.runButt * (this.buttRun || 0) : 1;
-    const extra = (game.mods.headbuttReach - 1) * TILE, impulse = g.impulse * game.mods.headbuttImpulse * steam * HN.impulse;
+    const ck = HN.charge ? this.chargeK || 0 : 0;   // how far a held blow was charged (0 for a plain one)
+    const extra = (game.mods.headbuttReach - 1) * TILE + (ck ? HN.charge.reach * ck * TILE : 0), impulse = g.impulse * game.mods.headbuttImpulse * steam * HN.impulse * (1 + (ck ? HN.charge.impulse * ck : 0));
     const ax = this.aim.x, ay = this.aim.y;
     this.cutGrass(game, ax, ay);
     // The SHORT shoves ONE man (`HN.single`, 7 Oct 2026 playtest): the nearest the horns reach, and once one has been hit
@@ -922,9 +950,14 @@ class Goat {
       // Folded, it is opened by this grab, if nothing stands on it and it is not behind stone or a door.
       if (!(p.unfold > 0) && !p.scrapCovered(game) && game.sees(this.x, this.y, p.x, p.y)) { p.openScrap(game); return; }
     }
+    // A key on the floor: taken by the grab too (8 Oct 2026), within `keys.pickR` or a reach.
+    for (const p of game.props) {
+      if (p.kind !== 'key' || p.broken || hyp(p.x - this.x, p.y - this.y) >= Math.max(TUNING.keys.pickR, this.r + p.r + g.reach * 0.6)) continue;
+      if (game.sees(this.x, this.y, p.x, p.y)) { p.takeKey(game); return; }
+    }
     // A boss's bell on the floor (`Game.dropBell`): taken by the grab, for the old man up there (`Heaven.gotBell`).
     for (const p of game.props) {
-      if (p.kind !== 'lostbell' || p.broken || hyp(p.x - this.x, p.y - this.y) >= this.r + p.r + g.reach * 0.6) continue;
+      if (p.kind !== 'lostbell' || p.broken || p.fly || hyp(p.x - this.x, p.y - this.y) >= this.r + p.r + g.reach * 0.6) continue;
       if (game.sees(this.x, this.y, p.x, p.y)) { Heaven.gotBell(game, p); return; }
     }
     let best = null, bestD = Infinity;
@@ -1067,7 +1100,6 @@ class Goat {
         if (--h.uses <= 0) h.snap(game);
         return;
       }
-      e.byBlade = true;   // a cut, not a wall: the cup and the grease pass over it
       e.die(game, 'splat', this.aim.x, this.aim.y, 'blade');
       game.gore(e.x, e.y, 5, this.aim.x, this.aim.y); game.audio.sfxSplat(); game.audio.sfxSteel();
       game.world.emitNoise(h.x, h.y, TUNING.noise.steel);
@@ -1119,22 +1151,25 @@ class Goat {
     const g = TUNING.goat;
     // ---- fire ----
     // Witchfire goes straight through the coat: nothing the souls offer turns the Seer's fire away.
-    const witch = world.isWitchPx(this.x, this.y);
+    // A bowl the corrupted mage turned violet (`p.witch`, js/endboss.js) is witchfire too.
+    const bowl = this.intoBrazier(game), witch = world.isWitchPx(this.x, this.y) || !!(bowl && bowl.witch);
     this.witchFire = witch;
-    this.onFire = witch || world.isBurningPx(this.x, this.y) || !!this.intoBrazier(game);
+    this.onFire = witch || world.isBurningPx(this.x, this.y) || !!bowl;
     if (this.onFire) {
       this.fireTick += dt;
       // EMBER COAT does not stop the burning, it buys time against it: ordinary fire takes
       // `fireResist` times as long to land its tick, and stacking up flame under a goat who never
       // takes damage from it made running through it a way of not playing the level. The fire souls
       // he carries add their grace on top (`mods.fireGuard`, `BOON_SETS.fire`), and all four of them
-      // make ordinary fire nothing to him at all. Witchfire is the Seer's, and no soul turns it.
-      const interval = g.fireDamageInterval * (witch ? 1 : game.mods.fireResist) + (witch ? 0 : game.mods.fireGuard || 0)
+      // make ordinary fire nothing to him at all. Witchfire is the Seer's, and no soul turns it away: but it
+      // lands its heart on the same clock (8 Oct 2026 playtest: "witchfire hurts three times faster than ordinary,
+      // the first heart"; EMBER COAT tripled the one and not the other), only immunity passes it by.
+      const interval = g.fireDamageInterval * game.mods.fireResist + (game.mods.fireGuard || 0)
         + (game.level.def.shroom ? TUNING.shroom.burnDelay : 0);
       if (!witch && game.mods.fireImmune) this.fireTick = 0;
       else if (this.fireTick >= interval) {
         this.fireTick = 0; this.damage(1, game, -this.aim.x * 60, -this.aim.y * 60, true, witch ? 'witchfire' : 'fire');
-        if (witch && game.mods.fireResist > 1) game.floatText(this.x, this.y - 32, 'WITCHFIRE', PALETTE.witch);
+        if (witch && game.mods.fireImmune) game.floatText(this.x, this.y - 32, 'WITCHFIRE', PALETTE.witch);
       }
       // How far the flame on him has grown toward the heart it costs (1 Oct 2026, "small when he has
       // just stepped in, growing fast, and full size is the damage"): the drawing reads only this.
@@ -1306,6 +1341,7 @@ class Prop {
     this.deco = !!(opts && opts.deco);        // a cage that is scenery: it never opens
     if (kind === 'lostbell') { this.note = opts && opts.note !== undefined ? opts.note : 7; this.floor = opts && opts.floor !== undefined ? opts.floor : -1; this.phase = 0; }   // a boss's bell (`Game.dropBell`)
     this.roast = !!(opts && opts.roast);      // a brazier drawn as a campfire with a crocodile on a spit
+    this.witch = !!(opts && opts.witch);      // a bowl of witchfire: THE YARD's last mage turns his room's (js/endboss.js), THE SHOWROOM lays one
     // Its ring is low and wide, so the bowl's circle stood out past the stones (1 Oct 2026: "collision again"): it is `roastR`.
     if (this.roast) this.r = P.brazier.roastR;
     // A lantern on the wall (THE DARK): which way the wall it hangs on is, one tile's step.
@@ -1527,11 +1563,12 @@ class Prop {
     this.spillCd = B.spillCd;
     const l = hyp(ax, ay) || 1; ax /= l; ay /= l;
     const px = this.x + ax * B.spillAt * TILE, py = this.y + ay * B.spillAt * TILE;
-    game.world.ignitePool(px, py, B.spill, false, B.spillTime);
+    game.world.ignitePool(px, py, B.spill, !!this.witch, B.spillTime);
+    const hot = this.witch ? [PALETTE.witch, PALETTE.witchHi] : [PALETTE.fire, PALETTE.fireHi];
     for (let i = 0; i < 16; i++) {
       const a = Math.atan2(ay, ax) + (Math.random() - 0.5) * 1.4, sp = 120 + Math.random() * 260;
       game.parts.push({ x: this.x + ax * 8, y: this.y + ay * 8 - 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-        life: 0.25 + Math.random() * 0.35, color: Math.random() < 0.5 ? PALETTE.fire : PALETTE.fireHi, size: 2 + Math.random() * 3 });
+        life: 0.25 + Math.random() * 0.35, color: hot[i & 1], size: 2 + Math.random() * 3 });
     }
     game.world.emitNoise(this.x, this.y, TUNING.noise.embers);
     game.audio.sfxFire(); game.shake(3); game.vibe(12);
@@ -1821,7 +1858,9 @@ class Prop {
     // side of it opens it, only the room going quiet does.
     if (this.seal) {
       this.wobble = 0.3; game.audio.sfxSteel(); game.shake(3); game.vibe(10);
-      game.floatText(this.x, this.y - 28, 'IT WILL NOT GIVE', PALETTE.bone);
+      // The trail to the man it waits on, and the words once, never stacked (8 Oct 2026: two of them on one spot).
+      game.guideSeal(this);
+      if (!(game.timer - (this.saidAt ?? -9) < 2.5)) { this.saidAt = game.timer; game.floatText(this.x, this.y - 28, 'IT WILL NOT GIVE', PALETTE.bone); }
       return;
     }
     const D = TUNING.prop.door;
@@ -1953,9 +1992,10 @@ class Prop {
   }
 
   // A key on the floor: walked over, it is his (`game.runKeys`), and it stays his from floor to floor.
-  updateKey(game) {
-    const g = game.goat;
-    if (this.broken || g.dead || hyp(g.x - this.x, g.y - this.y) > TUNING.keys.pickR) return;
+  // A key is taken with GRAB, as a bell is (8 Oct 2026 playtest), not by walking over it (`Goat.tryGrab`).
+  updateKey(game) { }
+  takeKey(game) {
+    if (this.broken) return;
     this.broken = true; this.dead = true;
     game.runKeys = (game.runKeys || 0) + 1; game.keyFlash = 0.6; game.learn('key');
     game.audio.sfxSteel(); game.vibe(10);
@@ -2321,6 +2361,15 @@ class Prop {
     // What comes to it is found by what arrives (`Enemy.wallDressing`, `hitProp`, `collideEntities`,
     // `Scatter.burst`); a spent stag's head only goes on bleeding down the wall.
     if (this.kind === 'poster') { this.updateScrap(game, dt); return; }
+    // A boss's bell in the air (`Game.dropBell`): out of his hands onto its spot, in an arc.
+    if (this.kind === 'lostbell') {
+      const F = this.fly; if (!F) return;
+      const BD = TUNING.heaven.bellDrop; F.t = Math.min(1, F.t + dt / BD.fly);
+      const u = F.t, e = u * (2 - u);
+      this.x = F.x0 + (F.x1 - F.x0) * e; this.y = F.y0 + (F.y1 - F.y0) * e; this.z = Math.sin(u * Math.PI) * BD.z;
+      if (F.t >= 1) { this.fly = null; this.z = 0; game.dust(this.x, this.y, 4, 0, 0); game.audio.sfxChime(TUNING.heaven.bells[this.note | 0], 0.35); }
+      return;
+    }
     if (this.kind === 'armor' || this.kind === 'trophy' || this.kind === 'suit') { if (this.spent) this.bleedT += dt; return; }
     if (this.kind === 'spike') { this.updateSpike(dt, game); return; }
     if (this.kind === 'spire') { this.updateSpire(dt, game); return; }
@@ -2569,7 +2618,6 @@ class Prop {
       return;
     }
     if (this.weapon === 'sword') {
-      e.byBlade = true;   // the cup and the grease count the room's kills, not the blade's
       e.die(game, 'splat', nx, ny, 'sword');
       game.gore(this.x, this.y, 6, nx, ny); game.audio.sfxSplat();
       game.shake(6); game.hitstop(0.05); game.kick(nx, ny, TUNING.juice.kick);
@@ -3002,7 +3050,6 @@ class Prop {
   shatter(game) {
     if (this.broken) return;
     if (this.corpse) { Talisman.corpseGone(game, this); return; }
-    if (this.kind === 'crate') Talisman.splinters(game, this);   // CARPENTER'S AWL
     this.broken = true; this.dead = true;
     if (this.kind === 'barrel') this.unHazard(game);
     // A barrel that breaks without going up spills its powder (`Game.spillPowder`); a barrel of

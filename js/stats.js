@@ -415,7 +415,7 @@ const Stats = {
   },
   consentKey(game, code) {
     const m = game.menu;
-    // Left is NO THANKS and right is YES (`drawConsent`), so a side key lands on its own side; up and down toggle.
+    // Left is NO and right is YES (`drawConsent`), so a side key lands on its own side; up and down toggle.
     if (code === 'KeyA' || code === 'ArrowLeft') { m.sub = 1; game.audio.sfxSwing(); }
     else if (code === 'KeyD' || code === 'ArrowRight') { m.sub = 0; game.audio.sfxSwing(); }
     else if (code === 'KeyW' || code === 'ArrowUp' || code === 'KeyS' || code === 'ArrowDown') { m.sub = m.sub === 0 ? 1 : 0; game.audio.sfxSwing(); }
@@ -437,7 +437,7 @@ const Stats = {
     game.menu.rects.length = 0;
     // Index 0 is still YES (`answer`, `consentKey`), drawn on the right and green (6 Oct 2026: "swap them,
     // the yes button greener"); NO THANKS on the left stays the quiet one.
-    ['YES, SEND IT', 'NO THANKS'].forEach((label, i) => {
+    ['YES', 'NO'].forEach((label, i) => {
       const x = x0 + (1 - i) * (half + gap), sel = game.menu.sub === i, yes = i === 0;
       game.menu.rects.push({ x, y, w: half, h: bh });
       ctx.fillStyle = yes ? (sel ? '#3f5a26' : '#26361a') : (sel ? '#4a2428' : '#190f16'); ctx.fillRect(x, y, half, bh);

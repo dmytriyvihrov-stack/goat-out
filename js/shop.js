@@ -15,6 +15,7 @@ const Shop = {
   def(id) { return ARTIFACTS.find((a) => a.id === id) || null; },
   tierOf(art) { const d = Shop.def(art.id); return d ? d.tiers[Math.max(0, Math.min(d.tiers.length, art.tier)) - 1] : null; },
   // A talisman's tier clamped to the tiers it has: an old save's tier III or IV is its top one now.
+  // (8 Oct 2026: one form each, so this is 1 for everything; an old save's tier II or III is that form.)
   tierFit(id, tier) { const d = Shop.def(id); return d ? clamp(tier | 0, 1, d.tiers.length) : 1; },
   // Every worn talisman into `game.mods`, the way a boon's `apply` goes: read at the use site, never here.
   applyArtifact(mods, art) {
@@ -30,7 +31,7 @@ const Shop = {
     if (!w || w.id === 'milk') return null;
     if (w.cape) { const d = Cape.def(w.id); return d ? { def: d, name: d.name, desc: d.desc, rr: CAPE_RARITY, cape: true } : null; }
     const d = Shop.def(w.id), t = d && Shop.tierOf(w);
-    return t ? { def: d, name: d.name, desc: t.desc, rr: rarityOf(w.tier), cape: false } : null;
+    return t ? { def: d, name: d.name, desc: t.desc, rr: rarityOfArt(w.id), cape: false } : null;
   },
   // What taking `ware` would hand back onto its stool, or null: a cape for the cape he has on; a fourth
   // talisman for the oldest of his three, or, off a stool that already holds one of his, for the one he
@@ -54,9 +55,13 @@ const Shop = {
       const w = p.ware, shelf = wares.filter((o) => o !== p && o.shopId === p.shopId);
       const h = farHash(i * 17 + (seed % 7919), (p.x | 0) * 3 + (p.y | 0));
       if (w.cape) {
-        if (!game.cape || game.cape.id !== w.id) return;
-        const pool = CAPES.filter((c) => c.id !== w.id && !shelf.some((o) => o.ware.cape && o.ware.id === c.id));
-        if (pool.length) p.ware = { id: pool[Math.floor(h * pool.length)].id, cape: true };
+        if (!game.cape) return;
+        // With a cape on his back the shelf offers no second one (8 Oct 2026 playtest): a talisman of
+        // the shelf's own grade stands on that stool instead, of a sort the shelf does not have.
+        const tagOf = (id) => (Shop.def(id) || {}).tag, arts = shelf.filter((o) => !o.ware.cape && o.ware.id !== 'milk');
+        const tier = arts.length ? Math.max(...arts.map((o) => o.ware.tier || 1)) : 1;
+        const pool = ARTIFACTS.filter((a) => !Shop.worn(game, a.id) && !Heaven.talismanLocked(a.id) && !shelf.some((o) => !o.ware.cape && (o.ware.id === a.id || (a.tag && tagOf(o.ware.id) === a.tag))));
+        if (pool.length) { const a = pool[Math.floor(h * pool.length)]; p.ware = { id: a.id, tier: Math.min(tier, a.tiers.length) }; }
         return;
       }
       // Off the shelf too: a talisman an animal's dare has not paid for yet (js/heaven-home.js `talismanLocked`).
@@ -114,7 +119,7 @@ const Shop = {
     else {
       game.artifacts = (game.artifacts || []).slice();
       const mine = Shop.worn(game, w.id);
-      if (mine) { mine.tier = Shop.def(w.id).tiers.length; rr = rarityOf(mine.tier); }
+      if (mine) { mine.tier = 1; rr = rarityOfArt(w.id); }
       else { if (old) game.artifacts = game.artifacts.filter((a) => a !== old); game.artifacts.push({ id: w.id, tier: Shop.tierFit(w.id, w.tier) }); }
     }
     game.applyBoons(); game.saveRun();
@@ -147,10 +152,15 @@ const Shop = {
     Stats.shop(game, ware, 'milk');
     const spots = ware.milkSpots && ware.milkSpots.length ? ware.milkSpots
       : [game.freeSpot(ware.x, ware.y + TILE)];
-    const s = spots[0] || { x: ware.x, y: ware.y + TILE };
-    game.props.push(new Prop(s.x, s.y, 'heal', { pail: TUNING.shop.heals }));
-    game.particles(s.x, s.y, 14, PALETTE.bone, 130);
-    game.floatText(goat.x, goat.y - 36, `${TUNING.shop.heals} HEARTS OF MILK`, PALETTE.bone);
+    // grass, not milk (8 Oct 2026): a tuft a heart on her spots, the last one big if the spots run short
+    let left = TUNING.shop.heals;
+    for (let i = 0; i < spots.length && left > 0; i++) {
+      const s = spots[i] || { x: ware.x, y: ware.y + TILE }, big = i === spots.length - 1 && left > 1;
+      game.props.push(new Prop(s.x, s.y, 'heal', big ? { big: true } : {}));
+      game.particles(s.x, s.y, 10, PALETTE.grassHi, 110);
+      left -= big ? 2 : 1;
+    }
+    game.floatText(goat.x, goat.y - 36, 'GRASS', PALETTE.bone);
     game.audio.sfxBell(); game.vibe(16);
     for (const o of game.props) {
       if (o.kind !== 'ware' || o.shopId !== ware.shopId || o.broken || (ware.free && o !== ware)) continue;
@@ -222,18 +232,28 @@ const Shop = {
     game.slowTimer = Math.max(game.slowTimer, cfg.emergeFx.slow);
     e.say = { text: 'YOU WERE ASKED', life: 2.4, max: 2.4 };
   },
-  // He is down: whatever is still on the shelf is yours for nothing, and at its top tier (1 Oct 2026,
-  // playtest: "the best only once you have beaten the mouse's ogre"; with two grades since 6 Oct 2026, a
-  // COMMON talisman that has a RARE tier goes RARE, one with a single tier and a cape stay as they are).
+  // He is down: whatever is still on the shelf is yours for nothing, and a rarer one (1 Oct 2026, playtest: "the best only
+  // once you have beaten the mouse's ogre"; since 8 Oct 2026 a talisman has one form, so a COMMON one on a stool is swapped
+  // for a RARE or EPIC one, off the stool's own hash, of a sort the shelf has not and nobody wears; a cape and the one
+  // he chose stay as they are).
   ogreDown(game, e) {
-    let any = false, lifted = false;
-    const top = RARITY[RARITY.length - 1];
-    for (const w of game.props) if (w.kind === 'ware' && w.shopId === e.shopId && !w.broken) {
+    let any = false, lifted = false, best = null;
+    const wares = game.props.filter((w) => w.kind === 'ware' && w.shopId === e.shopId && !w.broken), seed = (game.level && game.level.seed) || 0;
+    const tagOf = (id) => (Shop.def(id) || {}).tag;
+    wares.forEach((w, i) => {
       w.locked = false; w.free = true; any = true;
       const d = w.ware && !w.ware.cape && w.ware.id !== 'milk' && !w.chosen ? Shop.def(w.ware.id) : null;
-      if (d && w.ware.tier < d.tiers.length) { w.ware = { id: w.ware.id, tier: d.tiers.length }; lifted = true;
-        game.ring(w.x, w.y, 1.4 * TILE, top.color); game.particles(w.x, w.y - 12, 16, top.color, 150); }
-    }
+      if (!d || d.rarity > 1) return;
+      const rest = wares.filter((o) => o !== w && o.ware && !o.ware.cape);
+      const pool = ARTIFACTS.filter((a) => a.rarity > d.rarity && !Shop.worn(game, a.id) && !Heaven.talismanLocked(a.id)
+        && !rest.some((o) => o.ware.id === a.id || (a.tag && tagOf(o.ware.id) === a.tag)));
+      if (!pool.length) return;
+      const a = pool[Math.floor(farHash(i * 31 + (seed % 7919), (w.x | 0) + (w.y | 0)) * pool.length)];
+      w.ware = { id: a.id, tier: 1 }; lifted = true; best = !best || a.rarity > best.rarity ? a : best;
+      const rr = rarityOf(a.rarity);
+      game.ring(w.x, w.y, 1.4 * TILE, rr.color); game.particles(w.x, w.y - 12, 16, rr.color, 150);
+    });
+    const top = best ? rarityOf(best.rarity) : null;
     if (any) game.floatText(e.x, e.y - 58, lifted ? `THE SHELF IS YOURS · ${top.name}` : 'THE SHELF IS YOURS', lifted ? top.color : PALETTE.fireHi);
     // her offer comes up again as cards the next time he is by it (js/codex.js)
     if (game.shopShut) delete game.shopShut[e.shopId];

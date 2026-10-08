@@ -232,11 +232,24 @@ class CombatFX {
 
   // The whole body at a set facing, duller than the living (`corpse.dark`, charred if burnt), and
   // its silhouette, which is the shadow it lies on.
+  // Baked once per look and handed out as copies (8 Oct 2026): the grey pass reads the pixels back, a GPU
+  // sync that cost every kill 10-36 ms, on the very frame a kill should land clean. A copy is a drawImage.
+  // The copies are piece canvases as before, so `release` still takes them back; the masters never go round.
   corpseSprite(e,facing,burnt) {
-    const art=this.game.renderer.painted,image=CombatFX.pieceCanvas(96,96),c=image.getContext('2d');
+    const art=this.game.renderer.painted,C=TUNING.effects.corpse,key=art.characterKey(e)||'sheep';
+    const look=[key,facing,!!burnt,C.dark,C.grey,ART_PASS.on,ART_PASS.hunter,ART_PASS.clubman,ART_PASS.shield,ART_PASS.shaman].join('|');
+    const cache=CombatFX.corpses||(CombatFX.corpses=new Map());
+    let m=cache.get(look);
+    if(!m){ m=CombatFX.bakeCorpse(art,key,facing,burnt); if(PIXEL_ART.ready) cache.set(look,m); }
+    const image=CombatFX.pieceCanvas(96,96),shade=CombatFX.pieceCanvas(96,96);
+    image.getContext('2d').drawImage(m.image,0,0);shade.getContext('2d').drawImage(m.shade,0,0);
+    return {image,shade};
+  }
+  static bakeCorpse(art,key,facing,burnt) {
+    const image=CombatFX.canvas(96,96),c=image.getContext('2d');
     // Feet at 64, not 74: the body turns about the canvas centre, and at full size a man hung off
     // his feet rolled over a good way off the spot he died on.
-    c.translate(48,64);art.character({ctx:c,t:0},{facing},art.characterKey(e)||'sheep',80);
+    c.translate(48,64);art.character({ctx:c,t:0},{facing},key,80);
     c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-atop';
     c.fillStyle=burnt?'rgba(19,13,16,0.8)':`rgba(24,12,16,${TUNING.effects.corpse.dark})`;c.fillRect(0,0,96,96);
     // Greyed toward ash (`corpse.grey`, 2 Oct 2026 playtest: a dead man and a floored one read alike),
@@ -245,7 +258,7 @@ class CombatFX {
     if(G>0&&!burnt){c.setTransform(1,0,0,1,0,0);const d=c.getImageData(0,0,96,96),a=d.data;
       for(let i=0;i<a.length;i+=4){if(!a[i+3])continue;const l=0.3*a[i]+0.59*a[i+1]+0.11*a[i+2];a[i]+=(l-a[i])*G;a[i+1]+=(l-a[i+1])*G;a[i+2]+=(l*1.06-a[i+2])*G;}
       c.putImageData(d,0,0);}
-    const shade=CombatFX.pieceCanvas(96,96),s=shade.getContext('2d');s.drawImage(image,0,0);
+    const shade=CombatFX.canvas(96,96),s=shade.getContext('2d');s.drawImage(image,0,0);
     s.globalCompositeOperation='source-in';s.fillStyle='#0b0709';s.fillRect(0,0,96,96);
     return {image,shade};
   }

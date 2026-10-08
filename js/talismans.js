@@ -4,7 +4,7 @@
 // handful of hooks, the same shape `Status` has for poison. Every number is on the talisman's
 // tier in `ARTIFACTS` (js/tuning.js) and reaches here through `game.mods.<id>`, never a literal.
 //
-// State that belongs to one level (rooms entered, grease on the floor, echoes waiting, bodies,
+// State that belongs to one level (rooms entered, echoes waiting, bodies,
 // the effigy) is on `game.tal`, rebuilt when `game.level` changes. State the goat carries between
 // levels (the tallow's charge, the cup) is on `game.talRun`, forgotten when a run starts over.
 const Talisman = {
@@ -12,9 +12,10 @@ const Talisman = {
   st(game) {
     if (!game.tal || game.tal.level !== game.level) {
       game.tal = { level: game.level, visited: new Set([game.goatRoom || 0]), room: game.goatRoom || 0,
-        grease: new Map(), echoes: [], effigy: null, pulse: 0, cupHearts: 0, orbit: [], magnetRooms: new Set(), spin: 0 };
+        echoes: [], effigy: null, pulse: 0, cupHearts: 0, orbit: [], magnetRooms: new Set(), spin: 0 };
       const R = Talisman.run(game), cup = game.mods.cup;
       if (!(cup && cup.carry)) R.cup = 0;
+      R.tallow = true;   // SNAKE SKIN: a new floor, a new skin (8 Oct 2026)
     }
     return game.tal;
   },
@@ -41,7 +42,6 @@ const Talisman = {
       if (e.decoyT > 0) e.decoyT -= dt;
     }
     if (S.echoes.length) Talisman.updateEchoes(game, dt);
-    if (S.grease.size) Talisman.updateGrease(game, dt);
     Talisman.updateCorpses(game, dt);
     if (S.effigy) Talisman.updateEffigy(game, dt);
     if (m.magnet || S.orbit.length) Talisman.updateMagnet(game, dt);
@@ -107,8 +107,8 @@ const Talisman = {
 
   newRoom(game, idx, prev) {
     const m = game.mods, g = game.goat, R = Talisman.run(game);
-    // TALLOW SKIN: the crust grows back one new room at a time.
-    if (m.tallow && !R.tallow) {
+    // SNAKE SKIN grows back on a new floor (`st`); a tallow with `rooms` (an old tuning) still grows back a room at a time.
+    if (m.tallow && m.tallow.rooms && !R.tallow) {
       R.tallowCount++;
       if (R.tallowCount >= m.tallow.rooms) { R.tallow = true; R.tallowCount = 0; game.floatText(g.x, g.y - 34, 'THE TALLOW SETS', PALETTE.bone); }
     }
@@ -134,9 +134,15 @@ const Talisman = {
 
   // ---- the goat's side ----
   runUpTime(game) { return game.mods.spur ? game.mods.spur.time : 1; },
-  speedMul(game) { const g = game.goat, sd = game.mods.sandal; return sd && g.sandalT > 0 ? 1 + sd.speed : 1; },
-  // Grip under the hooves: on grease he turns and stops like a man on ice, but he never goes down.
-  gripMul(game, g) { const gr = game.mods.grease; return gr && Talisman.greaseAt(game, g.x, g.y) ? gr.grip : 1; },
+  // PILGRIM'S SANDAL's speed while it lasts, and SPRINTER'S SPUR's top: the run-up's share of its full height is that share of `top` more.
+  speedMul(game) {
+    const g = game.goat, sd = game.mods.sandal, sp = game.mods.spur;
+    let k = sd && g.sandalT > 0 ? 1 + sd.speed : 1;
+    if (sp && sp.top) k *= 1 + sp.top * clamp((g.runUp - 1) / TUNING.goat.momentum.max, 0, 1);
+    return k;
+  },
+  // Every wait (roll, grab, voice, the cape) ticking faster for `sandal.time` s after a new room with men on his heels.
+  cdMul(game, g) { const sd = game.mods.sandal; return sd && sd.cd > 1 && g.sandalT > 0 ? sd.cd : 1; },
   // A blow takes the run-up: all of it, or with BRASS SPUR II a share.
   loseRunUp(game, g) {
     const k = game.mods.spur ? game.mods.spur.keep : 0;
@@ -191,7 +197,7 @@ const Talisman = {
     const R = Talisman.run(game);
     if (!game.mods.tallow || !R.tallow) return false;
     R.tallow = false; R.tallowCount = 0; g.invuln = TUNING.goat.invuln;
-    game.floatText(g.x, g.y - 30, 'THE TALLOW CRACKS', PALETTE.bone);
+    game.floatText(g.x, g.y - 30, 'THE SKIN TEARS', PALETTE.bone);
     game.particles(g.x, g.y, 14, '#e8dcb0', 160); game.audio.sfxThud(); game.shake(4); game.hitstop(0.04);
     return true;
   },
@@ -372,53 +378,11 @@ const Talisman = {
     game.particles((f.x + o.x) / 2, (f.y + o.y) / 2, 3, PALETTE.fireHi, 160); game.audio.sfxThud();
     return true;
   },
-  dragMul(game, e) {
-    const gr = game.mods.grease; if (!gr) return 1;
-    return Talisman.greaseAt(game, e.x, e.y) ? gr.drag : 1;
-  },
-  greaseAt(game, x, y) {
-    const S = game.tal; if (!S || S.level !== game.level || !S.grease.size) return false;
-    return S.grease.has(Math.floor(y / TILE) * game.world.W + Math.floor(x / TILE));
-  },
-  updateGrease(game, dt) {
-    const S = game.tal, gr = game.mods.grease;
-    for (const [k, t] of S.grease) { if (t - dt <= 0) S.grease.delete(k); else S.grease.set(k, t - dt); }
-    if (!gr || !gr.slip) return;
-    for (const e of game.enemies) {
-      if (e.dead || e.ghosted || e.held || Talisman.heavy(e) || e.kind === 'butcher') continue;
-      if (e.state !== 'chase' || hyp(e.vx, e.vy) < e.speed * 0.5 || !Talisman.greaseAt(game, e.x, e.y)) continue;
-      if (Math.random() < gr.slip * dt) { e.state = 'floored'; e.timer = 0.6; e.vx *= 1.4; e.vy *= 1.4; game.floatText(e.x, e.y - 26, 'SLIP', PALETTE.blood); }
-    }
-  },
-  // CARPENTER'S AWL: a crate coming apart throws splinters into whoever is beside it.
-  splinters(game, p) {
-    const A = game.mods.awl; if (!A) return;
-    game.particles(p.x, p.y, 10, PALETTE.wood, 260);
-    for (const e of game.enemies) {
-      if (e.dead || e.held || e.ghosted || e.state === 'flung') continue;
-      const dx = e.x - p.x, dy = e.y - p.y, d = hyp(dx, dy);
-      if (d > A.r * TILE + e.r) continue;
-      if (Talisman.heavy(e) || e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = 0.4; } continue; }
-      if (A.fling > 0) { const l = d || 1; e.fling(dx / l * A.fling * TILE, dy / l * A.fling * TILE, false); }
-      else { e.state = 'floored'; e.timer = 0.7; e.aware = true; }
-    }
-  },
-
   // ---- a kill ----
   onKill(game, e, cause) {
     const m = game.mods, S = Talisman.st(game), R = Talisman.run(game);
-    // BLOOD CUP: the room did it, not a blade or a flame.
-    if (m.cup && !e.byBlade && (cause === 'splat' || cause === 'mill' || cause === 'spike' || cause === 'fall')) {
-      R.cup = Math.min(R.cup + 1, m.cup.need);
-    }
-    // BUTCHER'S GREASE: what a wall kill leaves on the floor.
-    if (m.grease && cause === 'splat' && !e.byBlade) {
-      const r = m.grease.r, w = game.world, tx = Math.floor(e.x / TILE), ty = Math.floor(e.y / TILE), n = Math.ceil(r);
-      for (let y = ty - n; y <= ty + n; y++) for (let x = tx - n; x <= tx + n; x++) {
-        if (hyp(x - tx, y - ty) > r + 0.2 || w.isSolid(x, y)) continue;
-        S.grease.set(y * w.W + x, m.grease.life);
-      }
-    }
+    // BLOOD CUP: every man killed, by anything (8 Oct 2026: it was only the room's kills); the cult's chasers pay nothing.
+    if (m.cup && !e.chaser) R.cup = Math.min(R.cup + 1, m.cup.need);
     // HORNED MASK: whoever watched it runs.
     const MK = m.mask;
     if (MK) for (const o of game.enemies) {
@@ -608,24 +572,10 @@ const Talisman = {
   },
 
   // ---- drawing ----
-  // Under everything that stands: grease on the boards, the effigy, echoes of the horns.
+  // Under everything that stands: the effigy, echoes of the horns.
   drawGround(r, game) {
     const S = game.tal; if (!S || S.level !== game.level) return;   // last floor's, until `st` rebuilds it in play
-    const ctx = r.ctx, w = game.world, gr = game.mods.grease;
-    if (S.grease.size) {
-      const life = gr ? gr.life : 15;
-      for (const [k, t] of S.grease) {
-        const x = (k % w.W) * TILE, y = Math.floor(k / w.W) * TILE;
-        if (game.hidden(x + TILE / 2, y + TILE / 2)) continue;
-        // A wet smear per tile, not a square: an ellipse a little wider than the tile, jittered off
-        // the tile's own index so neighbours overlap into one pool, and a glint of light on it.
-        const a = Math.min(1, t / life), o = (k * 7) % 9 - 4, q = (k * 13) % 7 - 3;
-        ctx.fillStyle = `rgba(150,28,24,${0.3 * a})`;
-        ctx.beginPath(); ctx.ellipse(x + TILE / 2 + o, y + TILE / 2 + q, TILE * 0.62, TILE * 0.5, (k % 5) * 0.4, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = `rgba(255,210,190,${0.3 * a})`; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(x + 9 + o, y + 12 + q); ctx.lineTo(x + 18 + o, y + 10 + q); ctx.stroke();
-      }
-    }
+    const ctx = r.ctx;
     for (const ec of S.echoes) {
       if (!ec.done || ec.show <= 0) continue;
       ctx.save(); ctx.globalAlpha = 0.5 * ec.show / 0.35; ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = 3;
@@ -682,30 +632,9 @@ const Talisman = {
     }
     ctx.restore();
   },
-  // Over the shade: what the bell lets him see through stone, and the panic over the runners' heads.
+  // Over the shade: the panic over the runners' heads.
   drawWorld(r, game) {
-    const ctx = r.ctx, g = game.goat, B = game.mods.bell, w = game.world;
-    if (B && B.sil > 0 && !g.dead) {
-      for (const e of game.enemies) {
-        if (e.dead || e.state === 'hidden' || (e.ghosted && e.kind === 'wraith')) continue;
-        if (hyp(e.x - g.x, e.y - g.y) > B.sil * TILE) continue;
-        const tx = Math.floor(e.x / TILE), ty = Math.floor(e.y / TILE);
-        const lit = !game.hidden(e.x, e.y) && w.vis && w.vis[ty * w.W + tx];
-        if (lit) continue;
-        ctx.save(); ctx.globalAlpha = 0.4;
-        ctx.filter = e.aware ? 'brightness(0) invert(0.35) sepia(1) saturate(6) hue-rotate(-40deg)' : 'brightness(0) invert(0.55)';
-        const keep = e.say; e.say = null; r.drawEnemy(e, game); e.say = keep;
-        ctx.restore();
-      }
-    }
-    if (B && B.mimic && !g.dead) {
-      for (const e of game.enemies) {
-        if (e.dead || e.state !== 'hidden' || hyp(e.x - g.x, e.y - g.y) > 4 * TILE) continue;
-        const a = 0.25 + 0.25 * Math.sin(r.t * 9 + e.x);
-        ctx.strokeStyle = `rgba(191,230,255,${a})`; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.ellipse(e.x + Math.sin(r.t * 31) * 1.2, e.y, 16, 12, 0, 0, Math.PI * 2); ctx.stroke();
-      }
-    }
+    const ctx = r.ctx;
     for (const e of game.enemies) {
       if (e.dead || e.state !== 'flee' || game.hidden(e.x, e.y)) continue;
       ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
@@ -714,18 +643,16 @@ const Talisman = {
     }
   },
   // Screen space, under a talisman's chip: the crust, the cup, the notches, the bone's and the bag's
-  // pips, and the bell's thread on the screen's edge. `id` is the chip's talisman: each draws under its
+  // pips. `id` is the chip's talisman: each draws under its
   // own chip (up to three side by side), so only that one's mods are read here.
   drawHud(r, game, x, y, box, id) {
     const ctx = r.ctx, s = r.hs, R = Talisman.run(game);
     const bx = x, by = y + box + 14 * s;
     const m = { [id]: game.mods[id], thirdEvery: id === 'knuckle' ? game.mods.thirdEvery : 0 };
     if (m.tallow) {
-      const n = m.tallow.rooms;
-      for (let k = 0; k < n; k++) {
-        ctx.fillStyle = R.tallow || k < R.tallowCount ? '#e8dcb0' : 'rgba(239,230,208,0.18)';
-        ctx.fillRect(bx + k * 6 * s, by, 4 * s, 4 * s);
-      }
+      // one pip: the skin is on, or torn off for this floor
+      ctx.fillStyle = R.tallow ? '#b6c78a' : 'rgba(239,230,208,0.18)';
+      ctx.fillRect(bx, by, 4 * s, 4 * s);
     }
     if (m.cup) {
       const f = Math.min(1, R.cup / m.cup.need), cw = box, ch = 5 * s;
@@ -756,25 +683,6 @@ const Talisman = {
         ctx.fillRect(bx + k * 6 * s, by, 4 * s, 4 * s);
       }
     }
-    // The bell's thread: a small mark on the edge of the screen toward the stairs, and the vault.
-    const B = m.bell;
-    if (B && game.level && !game.goat.dead && game.state === 'play') {
-      const cam = game.cam, z = cam.zoom, targets = [];
-      if (game.level.exitTile) targets.push([(game.level.exitTile.x0 + 0.5) * TILE, (game.level.exitTile.y0 + 1) * TILE, PALETTE.bone]);
-      const vd = game.props.find((p) => p.vault && !p.broken);
-      if (vd) targets.push([vd.x, vd.y, PALETTE.witch]);
-      for (const [wx, wy, col] of targets) {
-        const sx = r.vcx + (wx - cam.x) * z, sy = r.vcy + (wy - cam.y) * z * TILT;
-        const pad = 26 * s;
-        // Against the play view (`vh`), not the whole canvas: on a portrait phone the arrow sat in the touch band.
-        if (sx > pad && sx < r.w - pad && sy > pad && sy < r.vh - pad) continue;
-        const a = Math.atan2(sy - r.vcy, sx - r.vcx);
-        const ex = clamp(r.vcx + Math.cos(a) * r.w, pad, r.w - pad), ey = clamp(r.vcy + Math.sin(a) * r.vh, pad, r.vh - pad);
-        ctx.save(); ctx.translate(ex, ey); ctx.rotate(a); ctx.globalAlpha = 0.75;
-        ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(10 * s, 0); ctx.lineTo(-6 * s, -6 * s); ctx.lineTo(-3 * s, 0); ctx.lineTo(-6 * s, 6 * s); ctx.closePath(); ctx.fill();
-        ctx.restore();
-      }
-    }
   },
   // ---- the TALISMANS tab of the level tool ----
   // Every entry in `ARTIFACTS` as a row: its drawing, its name and sort, which tier (if any) is at
@@ -786,23 +694,24 @@ const Talisman = {
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE TALISMANS', pad, top);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
-    ctx.fillText(`${ARTIFACTS.length} on the mouse's shelves, up to ${TUNING.talisman.slots} worn · COMMON / RARE puts one at his neck · click a number to change it · click the shelf line to rewrite it (one line for both tiers) · the ${CAPES.length} capes below`, pad + 120 * s, top);
+    ctx.fillText(`${ARTIFACTS.length} on the mouse's shelves, up to ${TUNING.talisman.slots} worn · WEAR puts one at his neck · click a number to change it · click the rarity to step COMMON, RARE, EPIC · click the shelf line to rewrite it · the ${CAPES.length} capes below`, pad + 120 * s, top);
     // One long page that scrolls on the wheel (`drawTool`'s `dev.scroll`), not pages (2 Oct 2026).
     const rowH = 96 * s, listTop = top + 22 * s;
-    const leftW = 200 * s, colW = (W - pad * 2 - leftW) / RARITY.length;
+    const leftW = 200 * s, colW = W - pad * 2 - leftW;   // one form each (8 Oct 2026), so one column
     ctx.font = `700 ${7.5 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.5)';
-    RARITY.forEach((rr, i) => ctx.fillText('TIER ' + 'I'.repeat(i + 1) + ' · ' + rr.name, pad + leftW + i * colW, listTop - 4 * s));
+    ctx.fillText('WHAT IT SAYS ON THE SHELF · WHAT IT DOES IN FULL · ITS NUMBERS', pad + leftW, listTop - 4 * s);
     ARTIFACTS.forEach((a, i) => {
       const y = listTop + i * rowH;
       if (i % 2) { ctx.fillStyle = 'rgba(239,230,208,0.03)'; ctx.fillRect(pad - 4 * s, y, W - pad * 2 + 8 * s, rowH); }
       const art = Shop.worn(game, a.id), worn = !!art;
-      r.artifactIcon(a.id, pad + 16 * s, y + 20 * s, 12 * s, worn ? art.tier : 1);
+      r.artifactIcon(a.id, pad + 16 * s, y + 20 * s, 12 * s, 1);
       ctx.textAlign = 'left'; ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = worn ? PALETTE.fireHi : PALETTE.bone;
       ctx.fillText(a.name, pad + 36 * s, y + 14 * s);
       ctx.font = `400 ${7.5 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-      ctx.fillText(`${a.id} · ${a.tag || 'first two'} · ${a.tiers.length === 1 ? 'COMMON ONLY' : 'COMMON, RARE'}`, pad + 36 * s, y + 26 * s);
-      a.tiers.forEach((_, ti) => r.devButton(d, pad + 36 * s + ti * 26 * s, y + 34 * s, 24 * s, 16 * s, 'I'.repeat(ti + 1), `tal-wear=${a.id}.${ti + 1}`, worn && art.tier === ti + 1));
-      if (worn) r.devButton(d, pad + 36 * s + 56 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', `tal-off=${a.id}`, false);
+      ctx.fillText(`${a.id} · ${a.tag || 'no sort'}`, pad + 36 * s, y + 26 * s);
+      r.devButton(d, pad + 36 * s, y + 34 * s, 46 * s, 16 * s, worn ? 'WORN' : 'WEAR', `tal-wear=${a.id}.1`, worn);
+      if (worn) r.devButton(d, pad + 36 * s + 50 * s, y + 34 * s, 34 * s, 16 * s, 'OFF', `tal-off=${a.id}`, false);
+      r.devButton(d, pad + 36 * s, y + 54 * s, 70 * s, 16 * s, rarityOfArt(a.id).name, `tal-rarity=${a.id}`, false);
       a.tiers.forEach((tier, ti) => {
         const cx = pad + leftW + ti * colW, cw = colW - 10 * s;
         // The player's line (`desc`: the talisman's hand-written `text`, else `tell`), what the shelf
@@ -862,7 +771,15 @@ const Talisman = {
       if (mine) mine.tier = Shop.tierFit(aid, Number(t));
       else game.artifacts = (game.artifacts || []).concat([{ id: aid, tier: Shop.tierFit(aid, Number(t)) }]).slice(-TUNING.talisman.slots);
       game.applyBoons();
-      game.devToast(`${def.name} · ${rarityOf(Number(t)).name}`);
+      game.devToast(`${def.name} · ${rarityOfArt(aid).name}`);
+      return true;
+    }
+    // The rarity steps COMMON, RARE, EPIC and back, and is written into tuning.js where the entry stands.
+    if (id.startsWith('tal-rarity=')) {
+      const def = ARTIFACTS.find((a) => a.id === id.slice(11)); if (!def) return true;
+      def.rarity = def.rarity % RARITY.length + 1;
+      game.persistTuningEdit({ root: 'ARTIFACTS', id: def.id, path: ['rarity'], value: def.rarity });
+      game.devToast(`${def.name} · ${rarityOfArt(def.id).name}`);
       return true;
     }
     // The shelf line, one for the talisman's tiers; left empty it goes back to the generated one.
@@ -901,16 +818,15 @@ const Talisman = {
     else if (id === 'domino') { ctx.fillStyle = PALETTE.bone; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.12; ctx.fillRect(-h * 0.5, -h * 0.9, h, h * 1.8); ctx.strokeRect(-h * 0.5, -h * 0.9, h, h * 1.8); ctx.fillStyle = PALETTE.ink; ctx.fillRect(-h * 0.5, -h * 0.04, h, h * 0.08); for (const [px, py] of [[0, -h * 0.45], [-h * 0.22, h * 0.3], [h * 0.22, h * 0.6]]) { ctx.beginPath(); ctx.arc(px, py, h * 0.12, 0, Math.PI * 2); ctx.fill(); } }
     else if (id === 'echo') { line(PALETTE.bone, 0.2); ctx.beginPath(); ctx.arc(-h * 0.3, 0, h * 0.6, -1.2, 1.2); ctx.stroke(); line('rgba(239,230,208,0.55)', 0.16); ctx.beginPath(); ctx.arc(h * 0.1, 0, h * 0.6, -1.2, 1.2); ctx.stroke(); line('rgba(239,230,208,0.3)', 0.12); ctx.beginPath(); ctx.arc(h * 0.5, 0, h * 0.6, -1.2, 1.2); ctx.stroke(); }
     else if (id === 'spade') { line('#6b4a2c', 0.18); ctx.beginPath(); ctx.moveTo(0, -h); ctx.lineTo(0, h * 0.2); ctx.stroke(); ctx.fillStyle = '#8d8a85'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.45, h * 0.15); ctx.lineTo(h * 0.45, h * 0.15); ctx.lineTo(h * 0.35, h * 0.75); ctx.lineTo(0, h); ctx.lineTo(-h * 0.35, h * 0.75); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-    else if (id === 'grease') { ctx.fillStyle = PALETTE.blood; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.12; ctx.beginPath(); ctx.moveTo(0, -h * 0.9); ctx.quadraticCurveTo(h * 0.8, h * 0.1, 0, h * 0.85); ctx.quadraticCurveTo(-h * 0.8, h * 0.1, 0, -h * 0.9); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255,220,200,0.6)'; ctx.beginPath(); ctx.ellipse(-h * 0.2, h * 0.1, h * 0.12, h * 0.25, 0.3, 0, Math.PI * 2); ctx.fill(); }
-    else if (id === 'awl') { ctx.rotate(0.7); ctx.fillStyle = '#6b4a2c'; ctx.fillRect(-h * 0.2, -h * 0.95, h * 0.4, h * 0.8); line('#b8b4ac', 0.14); ctx.beginPath(); ctx.moveTo(0, -h * 0.15); ctx.lineTo(0, h * 0.95); ctx.stroke(); }
     else if (id === 'mask') { ctx.fillStyle = PALETTE.bone; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.12; ctx.beginPath(); ctx.ellipse(0, h * 0.1, h * 0.6, h * 0.75, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); line(PALETTE.bone, 0.18); ctx.beginPath(); ctx.moveTo(-h * 0.4, -h * 0.45); ctx.quadraticCurveTo(-h * 0.95, -h * 0.8, -h * 0.7, -h * 1.05); ctx.moveTo(h * 0.4, -h * 0.45); ctx.quadraticCurveTo(h * 0.95, -h * 0.8, h * 0.7, -h * 1.05); ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(-h * 0.22, 0, h * 0.13, h * 0.18, 0, 0, Math.PI * 2); ctx.ellipse(h * 0.22, 0, h * 0.13, h * 0.18, 0, 0, Math.PI * 2); ctx.fill(); }
     else if (id === 'effigy') { ctx.fillStyle = '#c9a24e'; ctx.strokeStyle = '#7a5a26'; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.ellipse(-h * 0.1, 0, h * 0.65, h * 0.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(h * 0.6, -h * 0.4, h * 0.28, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); line('#6b4a2c', 0.12); for (const lx of [-0.5, -0.1, 0.3]) { ctx.beginPath(); ctx.moveTo(lx * h, h * 0.35); ctx.lineTo(lx * h, h * 0.85); ctx.stroke(); } }
     else if (id === 'spur') { ctx.fillStyle = '#c29a44'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.08; ctx.beginPath(); for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, rr = k % 2 ? h * 0.4 : h * 0.9; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(0, 0, h * 0.15, 0, Math.PI * 2); ctx.fill(); }
     else if (id === 'moth') { ctx.fillStyle = '#b8ad97'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.08; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx * h * 0.45, -h * 0.2, h * 0.45, h * 0.35, sx * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(sx * h * 0.35, h * 0.35, h * 0.3, h * 0.25, -sx * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); } ctx.fillStyle = '#5a5250'; ctx.fillRect(-h * 0.08, -h * 0.5, h * 0.16, h * 1.1); }
-    else if (id === 'bell') { ctx.fillStyle = '#c29a44'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.7, h * 0.55); ctx.quadraticCurveTo(-h * 0.55, -h * 0.85, 0, -h * 0.8); ctx.quadraticCurveTo(h * 0.55, -h * 0.85, h * 0.7, h * 0.55); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(0, h * 0.7, h * 0.15, 0, Math.PI * 2); ctx.fill(); }
     else if (id === 'sandal') { ctx.fillStyle = '#8a6238'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.ellipse(0, 0, h * 0.45, h * 0.95, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); line('#3b2a1a', 0.12); ctx.beginPath(); ctx.moveTo(-h * 0.45, -h * 0.3); ctx.lineTo(h * 0.45, -h * 0.1); ctx.moveTo(-h * 0.4, h * 0.25); ctx.lineTo(h * 0.45, h * 0.4); ctx.stroke(); }
-    else if (id === 'scapegoat') { disc('#e8e0cc'); ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(-h * 0.28, -h * 0.05, h * 0.16, 0, Math.PI * 2); ctx.arc(h * 0.28, -h * 0.05, h * 0.16, 0, Math.PI * 2); ctx.fill(); line('#e8e0cc', 0.16); ctx.beginPath(); ctx.moveTo(-h * 0.5, -h * 0.6); ctx.quadraticCurveTo(-h * 1.05, -h * 0.9, -h * 0.8, -h * 0.2); ctx.moveTo(h * 0.5, -h * 0.6); ctx.quadraticCurveTo(h * 1.05, -h * 0.9, h * 0.8, -h * 0.2); ctx.stroke(); }
-    else if (id === 'tallow') { ctx.fillStyle = '#e8dcb0'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.fillRect(-h * 0.35, -h * 0.4, h * 0.7, h * 1.3); ctx.strokeRect(-h * 0.35, -h * 0.4, h * 0.7, h * 1.3); ctx.fillStyle = PALETTE.fire; ctx.beginPath(); ctx.moveTo(0, -h * 1.0); ctx.quadraticCurveTo(h * 0.25, -h * 0.6, 0, -h * 0.45); ctx.quadraticCurveTo(-h * 0.25, -h * 0.6, 0, -h * 1.0); ctx.fill(); }
+    // The sacrificed goat (8 Oct 2026): a bone-white goat's skull under a gold halo, the blood of it running from the neck.
+    else if (id === 'scapegoat') { ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = h * 0.12; ctx.beginPath(); ctx.ellipse(0, -h * 0.98, h * 0.46, h * 0.14, 0, 0, Math.PI * 2); ctx.stroke(); line('#e8e0cc', 0.17); ctx.beginPath(); ctx.moveTo(-h * 0.42, -h * 0.5); ctx.quadraticCurveTo(-h * 1.0, -h * 0.7, -h * 0.82, -h * 0.05); ctx.moveTo(h * 0.42, -h * 0.5); ctx.quadraticCurveTo(h * 1.0, -h * 0.7, h * 0.82, -h * 0.05); ctx.stroke(); ctx.fillStyle = '#e8e0cc'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.5, -h * 0.55); ctx.quadraticCurveTo(0, -h * 0.85, h * 0.5, -h * 0.55); ctx.lineTo(h * 0.36, h * 0.35); ctx.lineTo(h * 0.14, h * 0.62); ctx.lineTo(-h * 0.14, h * 0.62); ctx.lineTo(-h * 0.36, h * 0.35); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(-h * 0.22, -h * 0.12, h * 0.13, h * 0.18, 0, 0, Math.PI * 2); ctx.ellipse(h * 0.22, -h * 0.12, h * 0.13, h * 0.18, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = PALETTE.blood; ctx.beginPath(); ctx.moveTo(-h * 0.1, h * 0.6); ctx.lineTo(h * 0.1, h * 0.6); ctx.lineTo(h * 0.06, h * 1.0); ctx.quadraticCurveTo(0, h * 1.15, -h * 0.06, h * 1.0); ctx.closePath(); ctx.fill(); }
+    // The snake skin (8 Oct 2026): a shed skin lying in an S, scaled in pale diamonds, the head at one end.
+    else if (id === 'tallow') { ctx.lineCap = 'round'; const S = () => { ctx.beginPath(); ctx.moveTo(h * 0.55, -h * 0.8); ctx.bezierCurveTo(-h * 0.95, -h * 0.75, -h * 0.95, -h * 0.05, 0, -h * 0.05); ctx.bezierCurveTo(h * 0.95, -h * 0.05, h * 0.95, h * 0.75, -h * 0.55, h * 0.8); }; S(); ctx.strokeStyle = edge; ctx.lineWidth = h * 0.66; ctx.stroke(); S(); ctx.strokeStyle = '#9fb067'; ctx.lineWidth = h * 0.46; ctx.stroke(); S(); ctx.strokeStyle = '#dfe8b0'; ctx.lineWidth = h * 0.14; ctx.setLineDash([h * 0.14, h * 0.32]); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#9fb067'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.ellipse(h * 0.66, -h * 0.84, h * 0.3, h * 0.2, -0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(h * 0.72, -h * 0.88, h * 0.06, 0, Math.PI * 2); ctx.fill(); }
     else if (id === 'mirror') { ctx.fillStyle = '#bfe6ff'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(0, -h); ctx.lineTo(h * 0.6, 0); ctx.lineTo(0, h); ctx.lineTo(-h * 0.6, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); line('rgba(255,255,255,0.85)', 0.1); ctx.beginPath(); ctx.moveTo(-h * 0.2, -h * 0.4); ctx.lineTo(h * 0.15, -h * 0.05); ctx.stroke(); }
     else if (id === 'cup') { ctx.fillStyle = '#8d8a85'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.7, -h * 0.6); ctx.lineTo(h * 0.7, -h * 0.6); ctx.quadraticCurveTo(h * 0.6, h * 0.3, 0, h * 0.35); ctx.quadraticCurveTo(-h * 0.6, h * 0.3, -h * 0.7, -h * 0.6); ctx.fill(); ctx.stroke(); ctx.fillStyle = PALETTE.blood; ctx.beginPath(); ctx.ellipse(0, -h * 0.55, h * 0.6, h * 0.15, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#8d8a85'; ctx.fillRect(-h * 0.1, h * 0.35, h * 0.2, h * 0.4); ctx.fillRect(-h * 0.4, h * 0.72, h * 0.8, h * 0.18); }
     // An astragalus: a goat's ankle bone, knuckled at both ends and waisted in the middle, one pit on its face.
@@ -919,7 +835,8 @@ const Talisman = {
     else if (id === 'magnet') { ctx.lineCap = 'butt'; line(edge, 0.62); ctx.beginPath(); ctx.arc(0, -h * 0.15, h * 0.52, Math.PI, 0); ctx.lineTo(h * 0.52, h * 0.75); ctx.moveTo(-h * 0.52, -h * 0.15); ctx.lineTo(-h * 0.52, h * 0.75); ctx.stroke(); line('#c0392b', 0.42); ctx.beginPath(); ctx.arc(0, -h * 0.15, h * 0.52, Math.PI, 0); ctx.lineTo(h * 0.52, h * 0.4); ctx.moveTo(-h * 0.52, -h * 0.15); ctx.lineTo(-h * 0.52, h * 0.4); ctx.stroke(); ctx.fillStyle = '#b8b4ac'; ctx.fillRect(-h * 0.73, h * 0.4, h * 0.42, h * 0.38); ctx.fillRect(h * 0.31, h * 0.4, h * 0.42, h * 0.38); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(-h * 0.62, -h * 0.35, h * 0.12, h * 0.4); }
     // A nosebag: a sack on a strap, grass standing out of its mouth.
     else if (id === 'nosebag') { line('#5a3e22', 0.12); ctx.beginPath(); ctx.arc(0, -h * 0.25, h * 0.75, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); ctx.fillStyle = '#8a6238'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.55, -h * 0.2); ctx.lineTo(h * 0.55, -h * 0.2); ctx.quadraticCurveTo(h * 0.75, h * 0.85, 0, h * 0.9); ctx.quadraticCurveTo(-h * 0.75, h * 0.85, -h * 0.55, -h * 0.2); ctx.closePath(); ctx.fill(); ctx.stroke(); line('#9fd84a', 0.14); for (const gx of [-0.3, 0, 0.3]) { ctx.beginPath(); ctx.moveTo(gx * h, -h * 0.2); ctx.lineTo(gx * h * 1.6, -h * 0.75); ctx.stroke(); } ctx.fillStyle = '#5a3e22'; ctx.fillRect(-h * 0.55, -h * 0.05, h * 1.1, h * 0.12); }
-    else if (id === 'tally') { ctx.rotate(-0.3); ctx.fillStyle = '#a57949'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.08; ctx.fillRect(-h * 0.2, -h, h * 0.4, h * 2); ctx.strokeRect(-h * 0.2, -h, h * 0.4, h * 2); line('#3b2a1a', 0.1); for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-h * 0.2, -h * 0.7 + k * h * 0.4); ctx.lineTo(h * 0.1, -h * 0.7 + k * h * 0.4); ctx.stroke(); } }
+    // The sugar cane (8 Oct 2026): a jointed green-gold stalk with its leaves streaming off the top.
+    else if (id === 'tally') { ctx.rotate(-0.25); line('#6f8a3a', 0.14); ctx.lineCap = 'round'; for (const lx of [-0.7, 0.75, 0.2]) { ctx.beginPath(); ctx.moveTo(0, -h * 0.75); ctx.quadraticCurveTo(lx * h, -h * 1.1, lx * h * 1.2, -h * 0.55); ctx.stroke(); } ctx.fillStyle = '#c9d28a'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.09; ctx.fillRect(-h * 0.2, -h * 0.8, h * 0.4, h * 1.8); ctx.strokeRect(-h * 0.2, -h * 0.8, h * 0.4, h * 1.8); line('#7c8f52', 0.12); for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-h * 0.2, -h * 0.4 + k * h * 0.45); ctx.lineTo(h * 0.2, -h * 0.4 + k * h * 0.45); ctx.stroke(); } ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(-h * 0.12, -h * 0.75, h * 0.06, h * 1.6); }
     else return false;
     return true;
   },

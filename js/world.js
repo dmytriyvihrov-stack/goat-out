@@ -860,7 +860,7 @@ class World {
     return false;
   }
   // A breathed cone of flame: short-lived on bare floor, but it sets hay going properly.
-  igniteCone(x, y, dirx, diry, range, halfAngle, dur) {
+  igniteCone(x, y, dirx, diry, range, halfAngle, dur, skip) {
     const r = Math.ceil(range / TILE);
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE);
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
@@ -869,6 +869,7 @@ class World {
       if (d > range || d < 1) continue;
       if ((wx * dirx + wy * diry) / d < Math.cos(halfAngle)) continue;
       if (!this.los(x, y, (cx + dx + 0.5) * TILE, (cy + dy + 0.5) * TILE)) continue;
+      if (skip && skip(cx + dx, cy + dy)) continue;   // behind a shieldman's board (`Goat.breathe`)
       this.ignite(cx + dx, cy + dy, true, dur);
     }
   }

@@ -9,6 +9,112 @@ Batches are dated. Tags: **bug**, something is wrong; **feel**, it works and doe
 it works and the number is wrong; **system**, it does not exist yet; **tool**, for whoever builds it, not
 the game.
 
+## 8 October 2026, his 24 notes with screenshots, the mouse, the drop, the corrupted ogre (built, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | the modifiers' post stands here, so you can turn them down | the hitching rail by the edge always stands now (a ribbon a dare; with none, GRAB says how one gets there). Read as "always there"; say if it was only "it stands in the right spot" |
+| 2 | tool | dev: see it as if I helped an animal the most | HEAVEN tab: ALL DONE on each chain (stand whole, brought up twice, dare won, free) and EVERY ANIMAL: ALL DONE |
+| 3 | feel | the god praises an animal helped, one short line | brought up or freed since the last visit: one short line over the goat soon after he comes up (`HEAVEN_TALK.praise`), once; the old long `saved` line is one short one too |
+| 4 | bug | climbed the showroom's stairs and everything broke | the showroom's stairs lead back to its own start; GOD as it was before the showroom comes back when it is left (it stayed on, x2 pace, into THE YARD) |
+| 5 | system | hound and rifleman jump a drop, the mage teleports, the butcher hooks, the clubman cannot, and in a long chase one falls | js/gapcross.js: across a one-tile drop with no short way round, a hound or rifleman crouches and jumps it, a seer in sight blinks to the goat's side, a clubman waits at the lip and after 5 s may try it and fall; the butcher's hook already flew over (pulled back, the goat falls in) |
+| 6 | feel | the cape plate a bit smaller | 52 → 44 px |
+| 7 | feel | a cross on her offer, strike the useless text; one cape, no second one offered | a pixel X top right; NOT NOW and the keys line gone; wearing a cape, a shelf's cape becomes a talisman of the shelf's grade |
+| 8 | system | no milk anywhere, grass instead | her third offer is GRASS: three tufts laid on her floor, a heart each (the last big if the spots run short); "milk" gone from every line a player reads |
+| 9 | feel | no AT YOUR NECK | gone |
+| 10 | feel | the goat large as on the soul cards, the mouse where he was | so: him over the cards, her at the left |
+| 11 | feel | under her just THE MOUSE, no speech; no NOT NOW for items | so; ESC, E or a right click still walk away |
+| 12 | feel | a soul door must read as one; butting it shows whom to kill | the gate's violet halo stronger; a butt lays the trail to the man still carrying its soul and a violet arrow over his head; a sealed arena's door does the same for the nearest man it waits on, and IT WILL NOT GIVE is said once, not stacked |
+| 13 | system | a key is taken with the right button too | GRAB, like the bell; the floor says RIGHT M. CLICK: TAKE IT near one |
+| 14 | bug | CLEAR NEAR did nothing to the ogre | it took one heart (two-heart men absorb a blow); now every heart |
+| 15 | system | a corrupted ogre met again: rings of witchfire on landing; third time a band three rows wide from a slam. Dev: choose champion or corrupted and which meeting | js/waves.js: from the 2nd corrupted ogre of a run his landing throws two rings with gaps, from the 3rd his slam sends a band 3 tiles across racing at the goat; a heart unless rolling. SPAWN AS row in the drawer: PLAIN / CHAMPION / CORRUPTED 1ST / 2ND / 3RD for every SPAWN |
+| 16 | feel | the cleared floor's map shows the secrets not found | violet niche and a ? on the clear card (never the death card) |
+| 17 | feel | corridors shorter, rooms flush | every floor now 2-3 tiles of rock and doors meeting (THE ALTAR had it); THE THRESHING FLOOR keeps 3 for its wide ways |
+| 18 | feel | the shaman met alone, a spike he leads you onto | alone in his room (no clubmen), one stone tooth at the wall nearest the middle |
+| 19 | feel | an arrow up over a man the shaman boosted | the antlers are an up arrow |
+| 20 | number | the breath small by default | 3 → 2.2 tiles, half-angle 0.64 → 0.42 |
+| 21 | number | the goose: only range, not cooldown | the goose's reward is reach only (call, FULL THROAT, breath, spit), nothing sooner |
+| 22 | feel | the seed and dev word out of the bottom-left | top right under the keys |
+| 23 | feel | the cape plate's rim too bright | a quiet warm grey |
+| 24 | feel | the souls only briefly after a room, left of the key | the purse waits out a fight and shows when it goes quiet |
+
+## 8 October 2026, his 27 notes with screenshots, heaven and the showroom (built, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | dawdling, the god first says "well, jump", arrows only after | `heaven.arrows.say` (50 s): the god's line over the goat (`HEAVEN_TALK.goOn`); the arrows `after` (25) s past it |
+| 2 | bug | the same plate stacked four high | a newer plate at the same spot or with the same words puts the older out |
+| 3 | feel | the tower simpler and wooden | redrawn: gable roof, plank hut with a window, a deck, two legs, one girt and one cross, a ladder; no cloud, no grey when broken |
+| 4 | ? | "when you brought 20 souls" (unfinished) | NOT BUILT: see below |
+| 5 | system | a dear skill that adds a life | ONE MORE LIFE, first on the glass: 300 and 4 corrupted souls, every run after carries one more life |
+| 6 | feel | a cross to close the mirror; strike the useless words | a pixel X top right; THE MIRROR title and the keys line under the rows gone |
+| 7 | feel | the shepherd talks in a box, like the animals or the god | his quest, hello, the empty hook's word, a butt's word in `Beast.talk`'s box with his portrait and name |
+| 8 | system | a bell brought up is hung by hand, a nice sound, no show | carried until GRAB at the beam's next empty hook (HANG THE BELL, a ? over it): a clank, its note, the old man's word |
+| 9 | feel | the first three animals on the way out | tortoise, goose, horse down the throne's right side by the bridge; hen and crow to the left |
+| 10 | system | every stand broken, mended for souls | all but the tortoise's cost: goose 25, hen 30, crow 30, fish 35, horse 40, pig 40, rabbit 45, husky 45; no padlocks |
+| 11 | system | the tortoise's open from the start, empty | so; only open stands deal their animal into a run, so at first only the tortoise is dealt |
+| 12 | feel | the planks (unclear) out | the paddock in ruins is gone |
+| 13 | number | up here x1.5 | `heaven.speed` 1.5 |
+| 14 | feel | no captions under the stands | gone (read as "no captions"; say if it was "there should be") |
+| 15 | feel | the life as a goat's face front on, in a circle; spent, an empty ring | a pixel goat face in a ring of cells; spent ones stay as dim empty rings (`game.livesMax`, saved) |
+| 16 | feel | the mage's scene only the first time | once seen (`BLESS_KEY`), his man simply carries the soul from the start, no scene |
+| 17 | bug | the dev drawer gone after HEAVEN mid-talk | `Heaven.enter` clears an animal's box (and its farewell) left open below |
+| 18 | number | the chase 3x faster | `chase.fill` 34 → 11.3 |
+| 19 | feel | fewer corridors, rooms door to door, most of all on floor 1 | THE ALTAR (and again): rock between rooms 5.0 → 2.75 tiles, jogs 3.7 → 1.3 rows, 47% of links straight door to door; the first grass keeps its long corridor; later floors ~1 tile shorter (`CORRIDOR`, `levelDef.gap` / `jog` / `meet`) |
+| 20 | feel | the death card's line in pictures | the killer's plate, a bone skull and the kills, a struck violet wisp and the souls lost; no words |
+| 21 | feel | more contrast, what I can buy and not | a buyable row lit with a gold rim and a gold price; the rest at 42% |
+| 22 | feel | no paddock until built; then small, cramped, straight | a 5 x 3 tile box of rails by the horse's stand, only once mended |
+| 23 | system | the dare as a full dialogue, yes or no; a ? top left with the modifier; floor requests; ! on its floor | the box with BAAAH / bah; the tortoise's dare is floor 2, the goose's floor 3, the horse's red on floors nobody knows; top left the name over a ?, on its floor a bigger red ! and what it asks |
+| 24 | number | the showroom at x2 | x2 in place of GOD's x3 on that floor (read as x2 in all; say if it was x2 on top) |
+| 25 | feel | the showroom's floor rooms much smaller | 24 x 16 → 16 x 15 tiles, every piece still in them |
+| 26 | system | each floor's room shows its enemies as still figures, a rule | every kind the floor can deal stands still with its name under it (real men never simulated, `level.statueMen`); ground rule 9 says so |
+| 27 | feel | an animal brought out, shown in a picture | on the clear card's road every animal that came out trots at his heels, and THE TORTOISE ... CAME WITH YOU under it |
+
+Still open, to ask him: **4**, "when you brought 20 souls" stops there: what should happen then (the god says something, the mirror mends by itself, something shown)? **14** and **24** are read one way each, as said above.
+
+## 8 October 2026, his 21 notes with screenshots (built, not yet deployed)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | bug | witchfire's first heart lands three times faster than ordinary fire's | witchfire runs on the same clock (EMBER COAT's `fireResist` and the fire set's grace now count for it too); only fire immunity still passes it by. EMBER COAT's card no longer says "not witchfire" |
+| 2 | feel | "Can we use info about your run? No / Yes" | the consent screen asks "Can we use info about your run?", buttons NO (left) and YES |
+| 3 | feel | the calm music on the opening scene, not on the menu; calmer is not half the tempo | the title has the score again; the calm tune (`TITLE_TUNE`) plays through the prologue and the opening scene at the score's own tempo, parts coming in one by one with the scene (`audio.title.intro`); the grab is the score's climb as before |
+| 4 | feel | the posters in the unlocks: more real pixel art, readable; the right-click offer when you walk up | both drawings redrawn at 46 x 36: six goats that read as goats (horns, ear, beard, legs), the favourite ticked in red; the butcher's chart one big goat ruled into joints, a cleaver. Within a few tiles of a folded scrap the floor says RIGHT M. CLICK: UNFOLD IT |
+| 5 | bug | no second table under the table (the altar) | the stone slab painted under the ritual altar (`AltarArt.makeRitual`) is gone: butted off, the altar no longer leaves a copy on the floor |
+| 6 | feel | the papers are their own kind of object | the book's UNLOCKS has a shelf of its own, THE CULT'S PAPERS, under OBJECTS |
+| 7 | feel | the horn size as a picture in the corner, once there is a choice | once the god has opened BIG and LONG, the pair he wears stands as a small picture over the hearts (`HORN_GLYPHS`) |
+| 8 | feel | a switch for the horn details, they overwhelm | DEV MODE → HORN INFO (off by default, kept per browser) shows the two lines under the hearts |
+| 9 | feel | E - ROLL in the corridor before the butcher, and nothing over it | the words lie on the corridor's straight stretch outside the first butcher's room when one runs four tiles or more (about 60% of seeds); otherwise inside his door as before, and a block of words now slides off straw bales too |
+| 10 | number | short horns back at the base wait, big and long longer, so it is felt | SHORT is the bare headbutt's timing; BIG windup x1.3, recovery x2.1; LONG x1.15, x1.65 |
+| 11 | feel | walking through grass, a clearer sound | a dry swish (`Foley` `rustle`) every 0.3 s while he moves through tall grass; the milk grass's call when he is hurt is louder, more often and reaches further. On the SFX board |
+| 12 | ? | "if a corridor, then the barrier here" (screenshot) | NOT BUILT: not understood; see the question below |
+| 13 | feel | the bell apart from the soul, no name on it, the right-click hint only when near; they fly apart | the bell flies 2.6 tiles clear of where the boss fell (the soul stays there), in an arc; no name over it, "HE CARRIED A BELL" gone; within 2.6 tiles it says RIGHT M. CLICK: TAKE IT |
+| 14 | system | floor one's bell not on the first clear; from the second, two at the end, one with the soul, one with the bell | THE ALTAR (first climb) drops no bell; THE ALTAR AGAIN makes a second man of the last ring a champion carrying the bell (`e.bellMan`), until that bell is taken |
+| 15 | feel | the first room with the hound is too full | the room that introduces the hound keeps one crate and one table and loses the chandelier, armour, stag's head, suit, barrels, bombs and the stand of arms (`rooms.firstMeet`) |
+| 16 | feel | the drop's lesson on the level the drops are on, the third; near it just E - ROLL, nothing covering it | `chasmLesson` back on THE CAVE (empty room kept); the words are only the key; straw, tall grass and loose things are taken off the words' patch |
+| 17 | number | between floors only one heart back (a tree upgrade later) | a new floor starts with the hearts he climbed out with plus `goat.floorHeal` (1); a restart of that floor and CONTINUE start with the same; a new run is whole; the card says "3 of 4 hearts" |
+| 18 | feel | no THE FLOOR ENDS when you fall; smooth the death line | the words are gone; the line he ran on the death pull-back is smoothed (three corner-cutting passes, `deathCam.smooth`) |
+| 19 | feel | the god's name plate (crossed out "father of horns") | THE GOAT ABOVE alone |
+| 20 | system | the horns hidden until the god's second quest, for 50 | the three pairs at the edge are not there until the god has his fifty (`gift.horns` 50, was 100); they come up when the last soul goes in |
+| 21 | system | the third quest: 100 souls and 1 corrupted, for UPGRADED SKILLS (mechanics later) | after the horns, the god asks a hundred given (poured, as the fifty) and one corrupted soul (`gift.skills`, `skillsSouls`); kept, `meta.upgraded`: "UPGRADED SKILLS" said, and SECOND CHANCE comes onto the mirror with it. The old "two hundred brought" quest is gone; a goat who already heard it keeps SECOND CHANCE. What UPGRADED SKILLS does is not built |
+
+Still open, to ask him: **12**, "if a corridor, then the barrier here". One reading: the soul gate's bars stand in the rest room's doorway, and he wants them at the far end of the corridor, where it opens into the next room (where his arrows point). Another: something about NO WAY BACK's stone. Which barrier, and why there? **16** also undoes the 7 Oct move ("not in the cave"): the lesson is in THE CAVE again, still in an empty room; say if the cave's own look was the problem.
+
+### For the test bot (8 Oct 2026 batch: what to walk through)
+
+Checked by hand once already: the consent screen, no slab under a shoved altar, horn info off by default, 3 of 4 hearts after a climb (and in the save), a bell flying 2.6 tiles from the soul with its near-only prompt, THE ALTAR AGAIN's soul man plus bell man (4 seeds) and none on the first climb, horns hidden in heaven, the god's plate, the third quest end to end, the horn picture over the hearts, the papers shelf, the calm tune in the opening at 118, the cave's chasm words, witchfire at EMBER COAT's pace, one corridor E - ROLL. `balance.js` and `doc-numbers.js` pass. Still worth a bot's walk:
+
+- **hearts between floors**: die on floor 2+ with permadeath off (LEVELS, THE SHOWROOM) and restart; quit mid-floor and CONTINUE (the spot path). The head-of-floor hearts (`levelHp`) must come back: never full by mistake, never 0.
+- **E - ROLL in the corridor** over many THE ALTAR seeds: the words readable and on floor, not on a wall top; how often it falls back inside the room.
+- **the bell's flight** on every floor's last boss: never lands in a pit, behind a shut door or in stone, never under the stairs' gate; a quit mid-flight and CONTINUE.
+- **THE ALTAR AGAIN's bell man**: killed first or second, the bell drops only from him; with floor one's bell already taken he is an ordinary champion.
+- **the hound's first room**: still winnable and not bare of cover.
+- **the chasm lesson on THE CAVE**: the words never under a boulder or tall grass.
+- **tall-grass rustle**: no spam standing on a grass edge or sneaking; THE CAVE, THE TRIP.
+- **the opening's music**: a full watch of the prologue and the scene, then the title: parts build, no stuck notes, the score back on the title.
+- **heaven**: the horns appear after the fifty are poured (and on re-entering); the third ask without a corrupted soul waits, and finishes on the next GRAB once one is carried; the purse's goal reads 50, then 100.
+- **the new posters**: their floor size (46 x 36 at `flat` 0.75) under a table and in the open; tearing; the big view on GRAB.
+
 ## 7 October 2026, the HUD, heaven back to two rooms, the god's horns, THE ALTAR AGAIN (shipped in 2.03)
 
 | # | tag | note | what shipped |

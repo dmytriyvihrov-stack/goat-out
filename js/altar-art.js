@@ -370,25 +370,8 @@ class AltarArt {
       const C = TUNING.prop.cage;
       for (let k = 0; k < 12; k++) this.straw(ctx, sx - C.halfW * TILE + 16 + (k % 4) * 28,
         sy - C.halfH * TILE + 14 + Math.floor(k / 4) * 24, k * 7, false);
-      const ax = sx - 4 * TILE, ay = sy - 0.2 * TILE;
-      // A low stone altar with a worn red runner, straps and three guttered candles.
-      r(P.shadow, ax - 48, ay + 15, 101, 15);
-      r(P.outline, ax - 48, ay - 26, 96, 51); r(P.wallShade, ax - 45, ay + 14, 90, 12);
-      r(P.stoneShade, ax - 47, ay - 24, 94, 44); r(P.stoneLight, ax - 46, ay - 24, 92, 3);
-      r(P.stones[2], ax - 44, ay - 20, 88, 34); r(P.stoneEdge, ax - 44, ay - 19, 2, 31);
-      r(P.crack, ax + 28, ay - 20, 1, 8); r(P.crack, ax + 26, ay - 13, 2, 1);
-      r(P.clothDark, ax - 11, ay - 25, 23, 50); r(P.cloth, ax - 9, ay - 24, 18, 47);
-      r(P.clothHi, ax - 8, ay - 21, 2, 41); r(P.glyph, ax - 1, ay - 9, 2, 19);
-      r(P.glyph, ax - 7, ay - 6, 14, 2); r(P.glyph, ax - 7, ay - 11, 2, 5); r(P.glyph, ax + 5, ay - 11, 2, 5);
-      for (const dx of [-30, 29]) {
-        r(P.woodDark, ax + dx, ay - 20, 4, 34); r(P.woodHi, ax + dx + 1, ay - 7, 3, 3);
-      }
-      for (const [dx, dy, h] of [[-38, -16, 10], [-29, -17, 7], [36, -16, 13]]) {
-        r(P.outline, ax + dx - 3, ay + dy + 2, 7, 3);
-        r(P.glyph, ax + dx - 2, ay + dy - h, 5, h + 3);
-        r(PALETTE.bone, ax + dx - 2, ay + dy - h, 2, h); r(P.ember, ax + dx - 1, ay + dy - h - 5, 3, 5);
-        r(PALETTE.fireHi, ax + dx, ay + dy - h - 6, 1, 5);
-      }
+      // No slab painted under the altar any more (8 Oct 2026 playtest: "no second table under the table"): the
+      // altar is a real table (`Game.startLevel`), and once it was butted off this one was left on the floor.
       // A compact bone pile and old stains, clearly scenery rather than another living animal.
       const bx = sx - 4.9 * TILE, by = sy + 1.7 * TILE;
       r(P.clothDark, bx - 22, by - 9, 55, 20); r(P.clothDark, bx - 16, by - 13, 37, 28);

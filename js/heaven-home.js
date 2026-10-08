@@ -39,7 +39,8 @@ Object.assign(Heaven, {
   standState(kind) {
     const S = TUNING.heaven.home.stands, M = this.meta || this.load();
     if (M.standOverride && M.standOverride[kind]) return M.standOverride[kind];   // the dev drawer's (`devHome`)
-    if (S.open.includes(kind) || (M.mendedStands && M.mendedStands[kind])) return 'open';
+    // (an animal already brought up keeps its stand open: it was mended for it, whatever the costs say now)
+    if (S.open.includes(kind) || (M.mendedStands && M.mendedStands[kind]) || (M.saved && M.saved[kind])) return 'open';
     return S.cost[kind] ? 'broken' : 'locked';
   },
   // The kinds a run may deal (`Game.beastPlanFor`): every one whose stand is open.
@@ -61,6 +62,8 @@ Object.assign(Heaven, {
     // The god's hundred for the horns, once he has asked for it (`horns0`) and there is something to give: a GRAB with
     // nothing in the heap is still a word with him.
     if (n.kind === 'god' && this.hornsAsk() && M.told.horns0 && (M.sacrifices > 0 || this.poured('god') >= TUNING.heaven.gift.horns)) return { key: 'god', cost: TUNING.heaven.gift.horns, word: 'GIVE' };
+    // The third ask (`gift.skills`): the hundred poured as the fifty were; the corrupted soul is taken when they are in (`finishPour`).
+    if (n.kind === 'god' && this.skillsAsk() && M.told.skills0 && (M.sacrifices > 0 || this.poured('god2') >= TUNING.heaven.gift.skills)) return { key: 'god2', cost: TUNING.heaven.gift.skills, word: 'GIVE' };
     if (n.kind === 'tower' && !this.towerMended()) return { key: 'tower', cost: P.tower.cost, word: 'MEND IT' };
     if (n.kind === 'seat' && this.standState(n.thing.seat) === 'broken') return { key: 'stand:' + n.thing.seat, cost: P.stands.cost[n.thing.seat], word: 'MEND IT' };
     return null;
@@ -109,7 +112,20 @@ Object.assign(Heaven, {
       M.hornsOpen = true; this.save();
       game.heaven.plates.push({ x: game.level.god.x, y: game.level.god.y - 118, text: HEAVEN_TALK.hornsDone[0], life: TUNING.heaven.plate * 1.6, god: true });
       game.audio.sfxGodVoice(1);
-      for (const h of game.props) if (h.kind === 'hhorn') { h.wobble = 0.4; game.ring(h.x, h.y, 1.6 * TILE, '#f7d774'); }
+      // The horns were hidden until now (8 Oct 2026 playtest): they come up out of their cloud at the edge.
+      for (const h of game.props) if (h.kind === 'hhorn') { h.broken = false; h.wobble = 0.4; game.ring(h.x, h.y, 1.6 * TILE, '#f7d774'); game.particles(h.x, h.y - 16, 10, '#fff4c2', 120); }
+      return;
+    }
+    if (P.key === 'god2') {
+      const G = TUNING.heaven.gift;
+      if ((M.souls || 0) < G.skillsSouls) {   // the hundred is in him; he waits for the violet one
+        game.heaven.plates.push({ x: game.level.god.x, y: game.level.god.y - 118, text: HEAVEN_TALK.skillsSoul[0], life: TUNING.heaven.plate * 1.4, god: true });
+        game.audio.sfxGodVoice(0.9); return;
+      }
+      M.souls -= G.skillsSouls; M.upgraded = true; this.save();
+      game.heaven.plates.push({ x: game.level.god.x, y: game.level.god.y - 118, text: HEAVEN_TALK.skillsDone[0], life: TUNING.heaven.plate * 1.8, god: true });
+      game.floatText(game.goat.x, game.goat.y - 50, 'UPGRADED SKILLS', '#fff4c2');
+      game.audio.sfxGodVoice(1);
       return;
     }
     if (P.key === 'tower') {
@@ -147,7 +163,7 @@ Object.assign(Heaven, {
   // GRAB at a pair: these are his horns from now on (`game.hornKind`, `HORN_KEY`, the itch build too).
   pickHorns(game, p) {
     const HN = TUNING.goat.horns[p.horn]; if (!HN) return;
-    if (p.horn !== 'short' && !this.hornsOpen()) {   // the god's until his hundred (`hornsOpen`)
+    if (p.horn !== 'short' && !this.hornsOpen()) {   // the god's until his fifty (`hornsOpen`)
       const K = HEAVEN_TALK.hornsShut;
       game.heaven.plates.push({ x: p.x, y: p.y - 46, text: K[Math.floor(Math.random() * K.length)], life: TUNING.heaven.plate, god: true });
       p.wobble = 0.2; game.audio.sfxClatter('metal', 0.3); return;
@@ -188,10 +204,13 @@ Object.assign(Heaven, {
   layPaddock(game) {
     const P = TUNING.heaven.home.paddock, px = (t) => (t + 0.5) * TILE;
     if (this.standState('horse') !== 'open' || game.props.some((p) => p.kind === 'hfence')) return;
-    const xs = []; for (let x = P.x0; x < P.x1 - P.post * 0.5; x += P.post) xs.push(x); xs.push(P.x1);   // the last one against the wall
-    for (const x of xs) { const f = new Prop(px(x), px(P.fence), 'hfence'); f.heaven = true; f.r = P.postR; game.props.push(f); }
-    // the trough at its left end
-    const tr = new Prop(px(P.x0 + 1.2), px(P.fence + 1.6), 'htrough'); tr.heaven = true; tr.r = 12; game.props.push(tr);
+    // a box of posts: the top and bottom rows whole, the sides between them
+    const along = (a, b) => { const out = []; for (let v = a; v < b - P.post * 0.5; v += P.post) out.push(v); out.push(b); return out; };
+    const put = (x, y, side) => { const f = new Prop(px(x), px(y), 'hfence'); f.heaven = true; f.r = P.postR; f.side = side; game.props.push(f); };
+    for (const x of along(P.x0, P.x1)) { put(x, P.y0, 'n'); put(x, P.y1, 's'); }
+    for (const y of along(P.y0, P.y1).slice(1, -1)) { put(P.x0, y, 'w'); put(P.x1, y, 'e'); }
+    // the trough in its corner
+    const tr = new Prop(px(P.x0 + 0.9), px(P.y0 + 0.9), 'htrough'); tr.heaven = true; tr.r = 12; game.props.push(tr);
     this.spawnRoamers(game);
   },
   // Who lives up here this visit: every animal freed, anywhere in the three rooms; the horse brought up and not yet free
@@ -202,7 +221,7 @@ Object.assign(Heaven, {
       if (game.props.some((p) => p.kind === 'hroam' && p.as === kind)) continue;
       const free = this.freed(kind), pen = kind === 'horse' && !free && M.saved[kind] && this.standState('horse') === 'open';
       if (!free && !pen) continue;
-      const at = pen ? { x: px((P.x0 + P.x1) / 2), y: px(P.y) } : this.roamSpot(game, kind);
+      const at = pen ? { x: px((P.x0 + P.x1) / 2), y: px((P.y0 + P.y1) / 2) } : this.roamSpot(game, kind);
       const r = new Prop(at.x, at.y, 'hroam'); r.heaven = true; r.as = kind; r.pen = !!pen; r.face = 1; r.goal = null; r.wait = 1; r.r = kind === 'horse' ? 13 : 10; r.bob = 0;
       game.props.push(r);
     }
@@ -216,7 +235,7 @@ Object.assign(Heaven, {
       const R = home && rng() < 0.7 ? home : rooms[Math.floor(rng() * rooms.length)];
       const tx = R.x + 2 + Math.floor(rng() * (R.w - 4)), ty = R.y + 2 + Math.floor(rng() * (R.h - 4));
       if (w.isSolid(tx, ty) || w.isPitPx((tx + 0.5) * TILE, (ty + 0.5) * TILE) || w.isPitPx((tx + 0.5) * TILE, (ty + 1.5) * TILE)) continue;
-      if (R === HEAVEN_MAP.stalls && ty >= TUNING.heaven.home.paddock.fence - 0.5 && this.standState('horse') === 'open') continue;
+      { const P = TUNING.heaven.home.paddock; if (tx >= P.x0 - 1 && tx <= P.x1 + 1 && ty >= P.y0 - 1 && ty <= P.y1 + 1 && this.standState('horse') === 'open') continue; }
       return { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
     }
     return { x: game.level.start.x, y: game.level.start.y };
@@ -240,15 +259,16 @@ Object.assign(Heaven, {
       }
       // the horse in its paddock comes to the fence when he is near it
       if (p.pen) {
-        const nearFence = g.y < (P.fence + 0.5) * TILE && g.y > (P.fence - P.come) * TILE && g.x > P.x0 * TILE && g.x < (P.x1 + 1) * TILE;
-        if (nearFence) p.goal = { x: clamp(g.x, (P.x0 + 1) * TILE, P.x1 * TILE), y: (P.fence + 0.95) * TILE, stay: true };
+        const ix0 = (P.x0 + 1.1) * TILE, ix1 = (P.x1 - 0.1) * TILE, iy0 = (P.y0 + 1.1) * TILE, iy1 = (P.y1 - 0.1) * TILE;
+        const nearFence = g.x > (P.x0 - P.come) * TILE && g.x < (P.x1 + 1 + P.come) * TILE && g.y > (P.y0 - P.come) * TILE && g.y < (P.y1 + 1 + P.come) * TILE;
+        if (nearFence) p.goal = { x: clamp(g.x, ix0, ix1), y: clamp(g.y, iy0, iy1), stay: true };
         else if (p.goal && p.goal.stay) p.goal = null;
       }
       if (!p.goal) {
         p.wait -= dt;
         if (p.wait > 0) { p.vx = p.vy = 0; p.grazing = p.as === 'horse'; continue; }
         p.grazing = false;
-        p.goal = p.pen ? { x: ((P.x0 + 1) + Math.random() * (P.x1 - P.x0 - 2)) * TILE, y: (P.y + (Math.random() - 0.5) * 2.4) * TILE } : this.roamSpot(game, p.as);
+        p.goal = p.pen ? { x: (P.x0 + 1.1 + Math.random() * Math.max(0.1, P.x1 - P.x0 - 1.2)) * TILE, y: (P.y0 + 1.1 + Math.random() * Math.max(0.1, P.y1 - P.y0 - 1.2)) * TILE } : this.roamSpot(game, p.as);
       }
       // a goal in another room is walked to through the way between them (`roamVia`), never at the wall between
       const via = this.roamVia(game, p, p.goal);
@@ -310,11 +330,17 @@ Object.assign(Heaven, {
   // The paddock's rails over its posts, and the trough at its end.
   drawPaddock(R, game) {
     const posts = game.props.filter((p) => p.kind === 'hfence'); if (!posts.length) return;
-    const ctx = R.ctx, c = 2;
+    const ctx = R.ctx, c = 2, P = TUNING.heaven.home.paddock, px = (t) => (t + 0.5) * TILE;
     ctx.save(); ctx.scale(1, 1 / TILT);
-    const y = posts[0].y * TILT, x0 = posts[0].x, x1 = posts[posts.length - 1].x;
-    for (const [dy, col] of [[-18, '#8a5a34'], [-10, '#8a5a34']]) { ctx.fillStyle = '#3a2c2a'; ctx.fillRect(x0 - 2, y + dy - 2, x1 - x0 + 4, 6); ctx.fillStyle = col; ctx.fillRect(x0, y + dy, x1 - x0, 3); ctx.fillStyle = '#c08a5a'; ctx.fillRect(x0, y + dy, x1 - x0, 1); }
-    for (const p of posts) { ctx.fillStyle = '#3a2c2a'; ctx.fillRect(Math.round(p.x - 3), Math.round(y - 24), 6, 26); ctx.fillStyle = '#9c6a3c'; ctx.fillRect(Math.round(p.x - 2), Math.round(y - 23), 4, 24); ctx.fillStyle = '#c08a5a'; ctx.fillRect(Math.round(p.x - 2), Math.round(y - 23), 1, 24); }
+    const X0 = px(P.x0), X1 = px(P.x1), Y0 = px(P.y0) * TILT, Y1 = px(P.y1) * TILT;
+    // the far rails, the side rails, then the posts, then the near rails over them: a small box, straight
+    const rail = (x0, x1, y) => { for (const dy of [-18, -10]) { ctx.fillStyle = '#3a2c2a'; ctx.fillRect(x0 - 2, y + dy - 2, x1 - x0 + 4, 6); ctx.fillStyle = '#8a5a34'; ctx.fillRect(x0, y + dy, x1 - x0, 3); ctx.fillStyle = '#c08a5a'; ctx.fillRect(x0, y + dy, x1 - x0, 1); } };
+    const side = (x) => { for (const dy of [-18, -10]) { ctx.fillStyle = '#3a2c2a'; ctx.fillRect(x - 2, Y0 + dy - 1, 5, Y1 - Y0 + 3); ctx.fillStyle = '#8a5a34'; ctx.fillRect(x - 1, Y0 + dy, 3, Y1 - Y0); } };
+    const post = (p) => { const y = p.y * TILT; ctx.fillStyle = '#3a2c2a'; ctx.fillRect(Math.round(p.x - 3), Math.round(y - 24), 6, 26); ctx.fillStyle = '#9c6a3c'; ctx.fillRect(Math.round(p.x - 2), Math.round(y - 23), 4, 24); ctx.fillStyle = '#c08a5a'; ctx.fillRect(Math.round(p.x - 2), Math.round(y - 23), 1, 24); };
+    rail(X0, X1, Y0); side(X0); side(X1);
+    for (const p of posts) if (p.side !== 's') post(p);
+    for (const p of posts) if (p.side === 's') post(p);
+    rail(X0, X1, Y1);
     ctx.restore();
     const tr = game.props.find((p) => p.kind === 'htrough');
     if (tr) {
@@ -324,19 +350,6 @@ Object.assign(Heaven, {
       ctx.restore();
     }
     void c;
-  },
-  // The horse's paddock before its stand is mended: the fence down in planks along its line, a post or two still up.
-  drawPaddockRuin(R, game) {
-    const P = TUNING.heaven.home.paddock, ctx = R.ctx, y = (P.fence + 0.5) * TILE * TILT;
-    ctx.save(); ctx.scale(1, 1 / TILT);
-    for (let i = 0; i < 9; i++) {
-      const x = (P.x0 + 0.5 + i * (P.x1 - P.x0) / 9) * TILE, h = farHash(i, 3), up = h > 0.7;
-      if (up) { ctx.fillStyle = '#3a2c2a'; ctx.fillRect(Math.round(x - 3), Math.round(y - 20), 6, 22); ctx.fillStyle = '#7a5434'; ctx.fillRect(Math.round(x - 2), Math.round(y - 19), 4, 20); continue; }
-      const w = 18 + Math.round(h * 14), dy = Math.round((farHash(i, 7) - 0.5) * 10);
-      ctx.fillStyle = '#3a2c2a'; ctx.fillRect(Math.round(x - w / 2) - 1, Math.round(y + dy) - 1, w + 2, 6);
-      ctx.fillStyle = '#7a5434'; ctx.fillRect(Math.round(x - w / 2), Math.round(y + dy), w, 4);
-    }
-    ctx.restore();
   },
   // A stand's own state over its plinth (`drawSeat` calls it): the padlock on a locked one, cracks and rubble on a broken
   // one with what it still asks, a ribbon of gold on one whose animal is free.
@@ -383,14 +396,17 @@ Object.assign(Heaven, {
   },
   // An animal's dare (`QUESTS`): the line it wins with, said once; what it asks while worn; a second GRAB within
   // `quests.offer` s takes it. True if it said something.
+  // 8 Oct 2026 playtest ("a whole dialogue with the animal: you can agree or not"): said in the box, the offer's last page
+  // waiting for BAAAH or bah (`Beast.talk`'s `ask`).
   dareTalk(game, n, s, say) {
-    const H = game.heaven, M = this.meta, Q = QUESTS[s.kind]; if (!Q) return false;
-    if (M.questWon && M.questWon[s.kind]) { delete M.questWon[s.kind]; this.saveSoon(); say(s.sound + ' ' + Q.won, 1.8); return true; }
+    const M = this.meta, Q = QUESTS[s.kind]; if (!Q) return false;
+    const box = (text, ask, onAnswer) => Beast.talk(game, { kind: s.kind, x: n.x, y: n.y }, this.parts([text]), ask, onAnswer ? { onAnswer } : null);
+    if (M.questWon && M.questWon[s.kind]) { delete M.questWon[s.kind]; this.saveSoon(); box(s.sound + ' ' + Q.won); return true; }
     if (this.freed(s.kind)) return false;
-    if (this.questOn(s.kind)) { say(s.sound + ' ' + Q.wear.replace('{left}', (M.quest[s.kind].left || 0)), 1.4); return true; }
-    if (H.offer && H.offer.kind === s.kind && H.t < H.offer.until) { H.offer = null; this.takeQuest(game, s.kind, n); say(Q.took); return true; }
-    H.offer = { kind: s.kind, until: H.t + TUNING.heaven.quests.offer };
-    say(s.sound + ' ' + Q.offer.replace('{n}', (TUNING.heaven.quests[s.kind] || {}).floors || 1), 2.2);
+    if (this.questOn(s.kind)) { box(s.sound + ' ' + Q.wear.replace('{left}', (M.quest[s.kind].left || 0))); return true; }
+    box(s.sound + ' ' + Q.offer.replace('{n}', (TUNING.heaven.quests[s.kind] || {}).floors || 1), true, (g2, yes) => {
+      if (yes) { this.takeQuest(game, s.kind, n); say(Q.took); } else say(Q.off);
+    });
     return true;
   },
   // GRAB at one who lives up here: the horse in its paddock has its dare; a free one says something of its own life.
@@ -402,7 +418,7 @@ Object.assign(Heaven, {
     if (this.dareTalk(game, n, s, say)) return;
     const L = Q && Q.free ? Q.free : [s.line];
     this.roamN = (this.roamN || 0) + 1;
-    say(L[this.roamN % L.length]);
+    Beast.talk(game, { kind: p.as, x: p.x, y: p.y }, [L[this.roamN % L.length]]);
   },
   // THE HORSE'S CHASE comes on `quests.horse.chance` of the floors past the first, off the run and the floor (`Chase.quest`).
   chaseRoll(game) {
@@ -425,6 +441,16 @@ Object.assign(Heaven, {
     else if (op === 'dare') { if (this.questOn(kind)) M.quest[kind].on = false; else M.quest[kind] = { on: true, left: (TUNING.heaven.quests[kind] || {}).floors || 1 }; }
     else if (op === 'win') { M.quest[kind] = { on: false, left: 0, won: 1 }; M.freed[kind] = 1; (M.questWon = M.questWon || {})[kind] = 1; M.saved[kind] = M.saved[kind] || Date.now(); }
     else if (op === 'free') { if (M.freed[kind]) delete M.freed[kind]; else M.freed[kind] = 1; }
+    // As if he had done all of it for the animal (8 Oct 2026: "a dev option to see it as if I helped the animal the
+    // most"): its stand whole, brought up twice, its dare won and the animal free. `all` does every stand.
+    else if (op === 'max') {
+      const one = (k) => {
+        M.standOverride[k] = 'open'; M.mendedStands[k] = 1; M.saved[k] = M.saved[k] || Date.now();
+        M.savedN = M.savedN || {}; M.savedN[k] = Math.max(2, M.savedN[k] || 0);
+        if (QUESTS[k]) { M.quest[k] = { on: false, left: 0, won: 1 }; M.freed[k] = 1; (M.questWon = M.questWon || {})[k] = 1; }
+      };
+      if (kind === 'all') HEAVEN_SEATS.forEach((s) => one(s.kind)); else one(kind);
+    }
     else if (op === 'reset') { delete M.standOverride[kind]; delete M.mendedStands[kind]; delete M.saved[kind]; delete M.freed[kind]; delete M.quest[kind]; if (M.poured) delete M.poured['stand:' + kind]; }
     void S;
     this.save();
@@ -432,6 +458,7 @@ Object.assign(Heaven, {
       game.props = game.props.filter((p) => p.kind !== 'hroam' && p.kind !== 'hfence' && p.kind !== 'htrough');
       this.layPaddock(game); this.spawnRoamers(game); this.syncPost(game);
     }
+    if (kind === 'all') { game.devToast('EVERY ANIMAL: DONE ALL A GOAT CAN DO FOR IT'); return; }
     game.devToast(`${kind.toUpperCase()}: ${this.standState(kind).toUpperCase()}${M.saved[kind] ? ' · SAVED' : ''}${this.questOn(kind) ? ' · DARE ON' : ''}${M.freed[kind] ? ' · FREE' : ''}`);
   },
   // A dev's word on what a chain stands at, for the tab's line.

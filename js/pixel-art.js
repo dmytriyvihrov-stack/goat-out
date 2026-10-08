@@ -313,10 +313,15 @@ const PIXEL_ART = {
   },
   // The studies (`ART_PASS`) baked now, one a tick, while the title is up: baked the first time a unit
   // was drawn, they froze the frame the first clubman, mage or rifle came into view (0.06, 0.06 and
-  // 0.37 s, measured 26 Sep 2026), the rifle's in the middle of THE ROAD.
+  // 0.37 s, measured 26 Sep 2026), the rifle's in the middle of THE ROAD. The goat's horn-fixed run frames
+  // (`hornFix`) too: baked on first draw they froze the first run toward the top right for ~75 ms (8 Oct 2026).
   warm() {
-    const ids = ['clubman', 'mage', 'hunter'];
-    const step = () => { const id = ids.shift(); if (!id) return; try { this.studyOf(id); } catch (err) { /* baked when drawn */ } setTimeout(step, 30); };
+    const jobs = ['clubman', 'mage', 'hunter'].map((id) => () => this.studyOf(id));
+    for (const id in PIXEL_HORN_FIX) {
+      const u = PIXEL_ASSETS.units[id];
+      if (u && u.walk) for (const d in PIXEL_HORN_FIX[id]) for (const f of u.walk[d] || []) jobs.push(() => this.hornFix(id, +d, f));
+    }
+    const step = () => { const job = jobs.shift(); if (!job) return; try { job(); } catch (err) { /* baked when drawn */ } setTimeout(step, 30); };
     setTimeout(step, 120);
   },
   get ready() { return !!this.image && this.image.naturalWidth > 0; },

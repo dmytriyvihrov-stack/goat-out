@@ -83,7 +83,7 @@ const Motes = {
     }
     game.particles(game.goat.x, game.goat.y - 14, 3, '#ffffff', 60);
     const G = TUNING.heaven.gift, after = Heaven.meta ? Heaven.meta.brought || 0 : 0;
-    for (const [q, say] of [[G.mend, 'THE GOD HAS HIS TWENTY'], [G.quest, 'THE GOD HAS HIS TWO HUNDRED']]) {
+    for (const [q, say] of [[G.mend, 'THE GOD HAS HIS TWENTY']]) {
       if (before >= q || after < q) continue;
       game.floatText(game.goat.x, game.goat.y - 50, say, '#fff4c2');
       game.ring(game.goat.x, game.goat.y, 2.4 * TILE, '#fff4c2');
@@ -91,7 +91,7 @@ const Motes = {
     // The god's hundred for the horns (`gift.horns`): said once the heap could pay it, while it is still owed.
     if (Heaven.meta && Heaven.mended() && !Heaven.hornsOpen() && Heaven.meta.told && Heaven.meta.told.horns0 && !game.hornsSaid && Heaven.hornsHave() >= G.horns) {
       game.hornsSaid = true;
-      game.floatText(game.goat.x, game.goat.y - 50, 'A HUNDRED FOR THE GOD: THE HORNS', '#fff4c2');
+      game.floatText(game.goat.x, game.goat.y - 50, 'FIFTY FOR THE GOD: THE HORNS', '#fff4c2');
       game.ring(game.goat.x, game.goat.y, 2.4 * TILE, '#fff4c2');
     }
   },

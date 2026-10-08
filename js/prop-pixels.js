@@ -1229,48 +1229,88 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
-  // ---------------------------------------------------------------- the cult's posters, 30 x 26
+  // ---------------------------------------------------------------- the cult's posters, 46 x 34
   // Pinned to the far wall (6 Oct 2026: "art objects you find once and destroy, because they are bad"): the
   // first two destructibles. `breeds` is the chart of which goats eat best (six, goat breeds, the layout of a
   // sheep-breed chart); `cuts` is the butcher's diagram of a goat with its joints and the meat laid round it.
   // `torn`: what a headbutt leaves, two ragged corners still pinned. Paper and ink literals are this sprite's own.
   function poster(kind) {
-    const PAPER = '#dccfa6', PAPER2 = '#b9a87d', INK = '#3a2a20', FADE = '#7a6a4c', RED = '#b3402e', PINK = '#d9766a', PINK2 = '#a8443a', BONE = '#f0e6d0';
-    const g = new Grid(30, 26);
+    const PAPER = '#dccfa6', PAPER2 = '#b9a87d', STAIN = '#cbbb8e', INK = '#3a2a20', FADE = '#7a6a4c', RED = '#b3402e';
+    // 8 Oct 2026 playtest ("make them more real, in pixel art, but readable"): a bigger sheet, 46 x 34, and goats
+    // drawn as goats, horns, ear, beard, four legs and a tail, a letter grid each so they read at a glance.
+    const W = 46, H = 36, g = new Grid(W, H);
     if (kind === 'torn') {
-      g.poly([[1, 1], [8, 1], [7, 3], [8, 5], [5, 6], [4, 9], [1, 8]], PAPER); g.vl(1, 1, 8, PAPER2);
-      g.poly([[21, 1], [28, 1], [28, 7], [26, 6], [25, 4], [23, 4], [22, 2]], PAPER); g.vl(28, 1, 7, PAPER2);
-      g.set(2, 1, RED); g.set(27, 1, RED);
+      g.poly([[1, 1], [11, 1], [10, 4], [12, 7], [7, 8], [6, 12], [1, 11]], PAPER); g.vl(1, 1, 11, PAPER2);
+      g.poly([[33, 1], [44, 1], [44, 10], [41, 9], [39, 6], [36, 6], [34, 3]], PAPER); g.vl(44, 1, 10, PAPER2);
+      g.set(3, 2, RED); g.set(42, 2, RED); g.set(5, 5, FADE); g.set(40, 4, INK);
       return g.outline();
     }
-    g.rect(1, 1, 28, 24, PAPER); g.vl(28, 1, 24, PAPER2); g.hl(1, 24, 28, PAPER2);
-    g.set(2, 1, RED); g.set(27, 1, RED);
-    g.rect(3, 2, 24, 4, INK);                                      // the title, a bar of lettering
-    for (let x = 5; x < 25; x += 2) { g.set(x, 3, PAPER); if (x % 6 !== 5) g.set(x, 4, PAPER); }
+    // the sheet: aged paper, a darker fold down the middle, two red pins, a stain
+    g.rect(1, 1, W - 2, H - 2, PAPER); g.vl(W - 2, 1, H - 2, PAPER2); g.hl(1, H - 2, W - 2, PAPER2);
+    g.vl(Math.floor(W / 2), 2, H - 4, STAIN); g.ell(40, 31, 2, 1, STAIN);
+    g.set(3, 2, RED); g.set(W - 4, 2, RED);
+    // the title, a line of heavy black lettering between two rules
+    g.hl(5, 3, W - 10, FADE); g.hl(5, 8, W - 10, FADE);
+    for (let x = 7, i = 0; x < W - 8; x += 3, i++) { if (i === 5) { x -= 1; continue; } g.rect(x, 4, 2, 3, INK); if (i % 3 === 1) g.set(x + 1, 5, PAPER); }
+    // A goat seen from the side, facing left, off a letter grid: h horn, H head, e eye, E ear, b beard, B body,
+    // S a patch, L leg, k hoof, t tail.
+    const GOAT = [
+      '....hh.......',
+      '..hh.........',
+      '.HHHE........',
+      'HeHHHBBBBBBt.',
+      'HHHHBBBBBBBBt',
+      '.b.BBBSSBBBB.',
+      '.b.L.L...L.L.',
+      '...L.L...L.L.',
+      '...k.k...k.k.',
+    ];
+    const goat = (x, y, pal, rows = GOAT) => rows.forEach((r, j) => [...r].forEach((ch, i) => { if (pal[ch]) g.set(x + i, y + j, pal[ch]); }));
+    const HORN = '#8a7a5a';
     if (kind === 'breeds') {
-      // One small goat side view, 8 x 5: horn, head, body, four legs, a tail.
-      const mini = (x, y, body, head, long) => {
-        g.set(x, y, INK); g.rect(x, y + 1, 2, 2, head); if (long) g.set(x + 1, y + 3, head);
-        g.rect(x + 2, y + 1, 5, 2, body); g.set(x + 7, y, body);
-        g.vl(x + 2, y + 3, 2, INK); g.vl(x + 3, y + 3, 2, INK); g.vl(x + 5, y + 3, 2, INK); g.vl(x + 6, y + 3, 2, INK);
-        g.hl(x + 2, y + 1, 5, body === '#f0eadc' ? '#ffffff' : body);
-      };
-      const rows = [[['#f0eadc', '#8a4a28'], ['#f0eadc', '#f0eadc'], ['#b08050', '#b08050', 1]], [['#5a3a24', '#2a2020'], ['#a8402c', '#a8402c'], ['#2a2428', '#2a2428']]];
-      rows.forEach((row, j) => row.forEach((b, i) => {
-        const x = 3 + i * 8, y = 8 + j * 9; mini(x, y, b[0], b[1], b[2]);
-        for (let k = 0; k < 7; k += 2) g.set(x + k, y + 6, FADE);   // its name, in dashes
-      }));
-      g.set(10, 9, RED); g.set(11, 8, RED);                      // a tick by the first: best on the spit
+      // Six breeds, as a sheep-breed chart lays them: a goat, its name under it in ink.
+      const breeds = [
+        { B: '#f4efe2', H: '#8a4a28', S: '#f4efe2', L: '#d8d0c0' },   // white with a brown head: the meat goat
+        { B: '#f4efe2', H: '#f4efe2', S: '#e2dccc', L: '#d8d0c0' },   // all white
+        { B: '#b08050', H: '#7a5232', S: '#d8b888', L: '#7a5232' },   // fawn, a pale saddle
+        { B: '#5a3a24', H: '#2a2020', S: '#5a3a24', L: '#2a2020' },   // brown, black at the head and legs
+        { B: '#a8402c', H: '#a8402c', S: '#7a2a1c', L: '#7a2a1c' },   // red
+        { B: '#2a2428', H: '#2a2428', S: '#3e383c', L: '#2a2428' },   // black
+      ];
+      breeds.forEach((b, i) => {
+        const x = 3 + (i % 3) * 14, y = 11 + Math.floor(i / 3) * 12;
+        goat(x, y, { h: HORN, H: b.H, e: INK, E: b.H === '#f4efe2' ? '#d8d0c0' : b.L, b: b.H === '#2a2428' ? '#3e383c' : '#d8d0c0', B: b.B, S: b.S, L: b.L, k: INK, t: b.B });
+        for (let k = 0; k < 11; k += 2) g.set(x + 1 + k, y + 10, i === 0 ? RED : k === 4 ? FADE : INK);   // its name, in ink
+      });
+      // the one they like best on the spit: its name in red and a red tick over it
+      g.set(13, 12, RED); g.set(14, 13, RED); g.set(15, 12, RED); g.set(16, 11, RED); g.set(17, 10, RED);
       return g.outline();
     }
-    // cuts: a goat, left facing, ruled into joints, with the meat laid round the edge
-    g.ell(15, 13, 7.5, 4, '#a9a39a'); g.tone((x, y) => y >= 14, '#8a857d', ['#a9a39a']);
-    g.ell(6, 11, 2.6, 2.4, '#a9a39a'); g.set(4, 8, INK); g.set(6, 8, INK); g.set(5, 11, INK);
-    g.vl(10, 16, 3, '#8a857d'); g.vl(12, 16, 3, '#8a857d'); g.vl(19, 16, 3, '#8a857d'); g.vl(21, 16, 3, '#8a857d'); g.set(23, 10, '#a9a39a');
-    for (const x of [9, 13, 18]) for (let y = 9; y <= 17; y += 2) g.set(x, y, INK);   // the dashed joints
-    const slab = (x, y, w) => { g.rect(x, y, w, 3, PINK); g.hl(x, y + 2, w, PINK2); g.hl(x + 1, y, w - 2, '#f0a89a'); g.set(x + w - 2, y + 1, BONE); };
-    slab(2, 7, 6); slab(22, 7, 6); slab(2, 19, 7); slab(21, 19, 7);
-    g.line(8, 9, 9, 10, FADE); g.line(22, 9, 20, 10, FADE); g.line(9, 19, 10, 17, FADE); g.line(21, 19, 20, 17, FADE);
+    // cuts: the butcher's chart, one big goat ruled into joints, each joint its own red, and a cleaver in the corner
+    const BIG = [
+      '.....hh...................',
+      '....h.....................',
+      '..hh......................',
+      '.HHHHE....................',
+      'HeHHHHE...................',
+      'HHHHHHNNNSSSSSRRRRRLLLLLt.',
+      'HHHHHNNNNSSSSSRRRRRLLLLLLt',
+      '.bHHNNNNNSSSSSRRRRRLLLLLL.',
+      '.b..NNNNNSSSSSRRRRRLLLLLL.',
+      '.b...NNNNSSSSSRRRRRLLLLL..',
+      '......NNNSSSSSRRRRRLLLL...',
+      '......FF.FF.......GG.GG...',
+      '......FF.FF.......GG.GG...',
+      '......F...F.......G...G...',
+      '......F...F.......G...G...',
+      '......k...k.......k...k...',
+    ];
+    goat(10, 11, { h: HORN, H: '#c9c2b5', e: INK, E: '#a9a39a', b: '#a9a39a', N: '#d9766a', S: '#c25a4a', R: '#e09080', L: '#a8443a', t: '#a8443a', F: '#a9a39a', G: '#8a857d', k: INK }, BIG);
+    // the joints ruled off in ink dashes, and a number dot on each
+    for (const x of [19, 24, 29]) for (let y = 16; y <= 21; y += 2) g.set(x, y, INK);
+    for (const [x, y] of [[16, 18], [21, 18], [26, 18], [31, 18]]) g.set(x, y, '#f0e6d0');
+    // a cleaver, top right of the chart
+    g.rect(37, 11, 5, 4, '#c9c2b5'); g.hl(37, 14, 5, RED); g.set(40, 12, INK); g.rect(36, 12, 1, 2, '#4a3420'); g.rect(33, 12, 3, 2, '#4a3420');
     return g.outline();
   }
 
@@ -1745,8 +1785,9 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
       const k = 1.6, sway = Math.sin(renderer.t * 2.2 + p.phase) * 0.12, glow = 0.5 + 0.5 * Math.sin(renderer.t * 3 + p.phase);
       ctx.save(); ctx.translate(p.x, p.y);
       renderer.shadow(0, 6, g.w * k * 0.4, 4);
-      ctx.globalAlpha = 0.35 + 0.35 * glow; CombatFX.pixelRing(ctx, 0, 2, 14 + glow * 3, 2, '#f7d774'); ctx.globalAlpha = 1;
-      ctx.scale(1, 1 / TILT); ctx.rotate(sway);
+      if (!p.fly) { ctx.globalAlpha = 0.35 + 0.35 * glow; CombatFX.pixelRing(ctx, 0, 2, 14 + glow * 3, 2, '#f7d774'); ctx.globalAlpha = 1; }
+      ctx.translate(0, -Math.round((p.z || 0) * TILT));   // in the air on its way out of his hands (`p.fly`)
+      ctx.scale(1, 1 / TILT); ctx.rotate(p.fly ? p.fly.t * Math.PI * 2 : sway);
       HEAVEN_PIXELS.draw(ctx, name, -g.w * k / 2, -g.h * k, k);
       ctx.restore(); return true;
     }

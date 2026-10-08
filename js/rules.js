@@ -72,7 +72,7 @@ function roomsOf(L) {
 }
 
 const GEN_RULES = [
-  { id: 'alone', text: 'Every kind is met alone: one enemy in the room, and a first-time boss with no escort (the shaman with the clubmen his spirit is for, ENCOUNTER.introWith).',
+  { id: 'alone', text: 'Every kind is met alone: one enemy in the room, and a first-time boss with no escort (anyone ENCOUNTER.introWith names comes with his company).',
     check: (L) => {
       const def = L.def, E = def.encounters;
       const fresh = new Set((E.introduce || []).map(([k]) => k));
@@ -166,9 +166,11 @@ const GEN_RULES = [
       for (const r of roomsOf(L)) {
         const n = {};
         for (const s of r.spawns) { const k = kindOf(s); n[k] = (n[k] || 0) + 1; }
+        // An arena's `with` (js/endboss.js) names men on top of the kind's cap: THE YARD's mage and his mage, THE ROAD's butcher's two.
+        const arenaDef = r.role === 'arena' && (L.def.arenas || []).find((a) => a.at === r.index), named = (k) => arenaDef ? (arenaDef.with || []).filter((w) => w === k).length + (arenaDef.boss === k ? 1 : 0) : 0;
         for (const [k, c] of Object.entries(n)) {
           if (r.role === 'hall' || (r.role === 'gallery' && k === 'hunter')) continue;
-          if (caps[k] && c > caps[k]) return `room ${r.index}: ${c}x ${k} (cap ${caps[k]})`;
+          if (caps[k] && c > Math.max(caps[k], named(k))) return `room ${r.index}: ${c}x ${k} (cap ${caps[k]})`;
         }
         // +2 only where a boss stands with his escort: an ordinary room is held to what its floor
         // holds (`roomMenCap`: the level's count at `ENCOUNTER.room.ref` tiles). What is laid on top of the plan is not counted against it: a lone rifle post (one
@@ -322,7 +324,7 @@ const GEN_RULES = [
       }
       return 'the trench room has no way round on land';
     } },
-  { id: 'chasm', text: 'THE CHASM: a drop one tile across a room, wall to wall, parting its way in from its way out, nothing heavy at its lip, a rifle or butcher across it; THE YARD teaches it, in an empty room, with the roll on its floor.',
+  { id: 'chasm', text: 'THE CHASM: a drop one tile across a room, wall to wall, parting its way in from its way out, nothing heavy at its lip, a rifle or butcher across it; THE CAVE teaches it (chasmLesson), in an empty room, the roll on its floor and nothing lying on the words.',
     check: (L) => {
       const def = L.def, list = L.chasms || [];
       if (def.shroom || def.dark) return list.length ? 'a chasm on THE TRIP or in THE DARK' : null;
@@ -358,6 +360,13 @@ const GEN_RULES = [
         // an empty room to try it in (7 Oct 2026): nobody stood in it
         const men = L.spawns.filter((sp) => sp.roomIndex === lesson.room).length;
         if (men) return `the drop's lesson room ${lesson.room} holds ${men} men`;
+        // nothing lies over the words (8 Oct 2026: "do not cover it with objects"): no straw, tall grass or loose thing on their patch
+        const c = words[0], cx = Math.floor(c.x / TILE), cy = Math.floor(c.y / TILE), grass = new Set(L.grass || []);
+        for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 3; x <= cx + 3; x++) {
+          const i = y * W + x; if (L.tiles[i] === T.HAY || grass.has(i)) return `straw or grass over the drop's words at ${x},${y}`;
+        }
+        const loose = L.props.find((p) => ['crate', 'barrel', 'rock', 'bomb', 'table', 'weapon'].includes(p.kind) && Math.abs(Math.floor(p.x / TILE) - cx) <= 3 && Math.abs(Math.floor(p.y / TILE) - cy) <= 1);
+        if (loose) return `a ${loose.kind} lying on the drop's words`;
       }
       return true;
     } },
@@ -404,8 +413,10 @@ const GEN_RULES = [
         const roll = L.controls.find((c) => c.part === 3), cell = L.plan && [...L.plan.rooms].find(([, c]) => c.intro === def.rollWith && !c.arena);
         const room = cell && L.rooms[cell[0]];
         if (!room) return `no room introduces the ${def.rollWith}`;
-        if (roomAt(L, roll.x, roll.y) !== room) return `E - ROLL is not in the first ${def.rollWith}'s room (${room.index})`;
-        if (!room.enter || Math.hypot(roll.x - room.enter.x, roll.y - room.enter.y) > (TUNING.hints.rollInset + 1.5) * TILE) return `E - ROLL is not by the door of room ${room.index}`;
+        // ...or, since 8 Oct 2026, on the corridor's floor just outside it (`corridor`), in no room at all.
+        const inCorr = roll.corridor && !roomAt(L, roll.x, roll.y) && room.enter && Math.hypot(roll.x - room.enter.x, roll.y - room.enter.y) < (TUNING.hints.rollWalk + 4) * TILE;
+        if (!inCorr && roomAt(L, roll.x, roll.y) !== room) return `E - ROLL is not in the first ${def.rollWith}'s room (${room.index}) or the corridor before it`;
+        if (!inCorr && (!room.enter || Math.hypot(roll.x - room.enter.x, roll.y - room.enter.y) > (TUNING.hints.rollInset + 1.5) * TILE)) return `E - ROLL is not by the door of room ${room.index}`;
       }
       const rs = roomsOf(L);
       const sentry = rs.find((r) => r.spawns.some((s) => s.sentry));
@@ -814,6 +825,19 @@ const GEN_RULES = [
     } },
   // The cult's paper (gen.js, 6 Oct 2026): a scrap folded on the floor of an ordinary room, under one of its tables
   // or on plain floor clear of everything, never in THE ARMORY, a floor's few. The altar's own is the game's (startLevel).
+  { id: 'firstmeet', text: `A first meeting with a kind in TUNING.rooms.firstMeet.kinds is a bare room: nothing hung or scattered (firstMeet.drop), at most ${TUNING.rooms.firstMeet.crates} crate and ${TUNING.rooms.firstMeet.tables} table (and a table a scrap of paper lies under).`,
+    check: (L) => {
+      const FM = TUNING.rooms.firstMeet; if (!L.plan) return null;
+      for (const [ri, cell] of L.plan.rooms) {
+        if (!cell.intro || !FM.kinds.includes(cell.intro)) continue;
+        const r = L.rooms[ri], inR = (p) => p.x >= r.x * TILE && p.x < (r.x + r.w) * TILE && p.y >= r.y * TILE && p.y < (r.y + r.h) * TILE;
+        const here = L.props.filter(inR), roof = (p) => here.some((q) => q.kind === 'poster' && q.x === p.x && q.y === p.y);
+        const hung = here.find((p) => FM.drop.includes(p.kind)); if (hung) return `a ${hung.kind} in room ${ri}, where the ${cell.intro} is met first`;
+        if (here.filter((p) => p.kind === 'crate').length > FM.crates) return `more than ${FM.crates} crates where the ${cell.intro} is met first (room ${ri})`;
+        if (here.filter((p) => p.kind === 'table' && !roof(p)).length > FM.tables) return `more than ${FM.tables} tables where the ${cell.intro} is met first (room ${ri})`;
+      }
+      return true;
+    } },
   { id: 'posters', text: 'A scrap of cult paper lies on the floor of an ordinary room, under a table or on plain floor clear of the rest, never in THE ARMORY; TUNING.prop.poster.perLevel a floor.',
     check: (L) => {
       const list = L.props.filter((p) => p.kind === 'poster'), PO = TUNING.prop.poster;
@@ -1063,6 +1087,21 @@ const GEN_RULES = [
       if (doors.some((d) => !d.gate || !d.exitGate || d.gateRoom !== last)) return 'a stair door that is not the exit gate';
       return true;
     } },
+  // js/endboss.js (8 Oct 2026): the first five floors end on their own kind with the soul in him, and the escorts named
+  // in `with` stand at his back.
+  { id: 'endboss', text: 'The first five floors end on their own man with the soul in him: the last arena boss in the last room, carrying a soul, with every man its "with" names at his back.',
+    check: (L) => {
+      const li = levelIndexOf(L.def), last = L.rooms.length - 1, arenas = L.def.arenas || [], a = arenas[arenas.length - 1];
+      if (!(li >= 0 && li <= 4) || L.def.shroom || L.def.dark || L.def.again || !a) return null;
+      if (a.at !== last) return `the last ring is room ${a.at}, not the last room`;
+      const plan = soulPlan(L), i = L.spawns.findIndex((s) => s.boss && s.roomIndex === last);
+      if (i < 0) return 'no boss in the last room';
+      if (threatKind(L.spawns[i]) !== a.boss) return `the last boss is a ${threatKind(L.spawns[i])}, not a ${a.boss}`;
+      if (!plan.ensoul.includes(i)) return 'the last boss carries no soul';
+      const men = L.spawns.filter((s, j) => j !== i && s.roomIndex === last).map(threatKind);
+      for (const k of new Set(a.with || [])) if (((L.def.met && L.def.met.has(k)) || L.def.encounters.kinds.includes(k)) && men.filter((m) => m === k).length < a.with.filter((w) => w === k).length) return `fewer ${k}s at his back than \`with\` names`;
+      return true;
+    } },
   { id: 'fork', text: 'THE FORK: the fork floor ends on two flights in the one far wall, apart, each behind its own iron door; the second climbs into the dark.',
     check: (L) => {
       const F = TUNING.dark.fork, here = F && F.at >= 0 && levelIndexOf(L.def) === F.at && F.at + 1 < LEVELS.length;
@@ -1231,7 +1270,7 @@ const GEN_RULES = [
       if (room.isAmbush || m.shopId === L.def.vaultAt) return `her room ${m.shopId} is a teaching room or the vault's`;
       const gr = roomAt(L, m.gap.x, m.gap.y);
       if (!gr || gr.index !== m.shopId) return 'her hole does not open into her room';
-      // `stockFor`: a talisman at one of its own tiers, COMMON on the first mouse of a run, or (now and
+      // `stockFor`: a talisman at its one form, COMMON on the first mouse of a run, or (now and
       // then) one cape in place of one of them.
       const first = S.levels.indexOf(li) === 0, capes = wares.filter((w) => w.ware && w.ware.cape);
       if (capes.length > 1) return `${capes.length} capes on one shelf`;
@@ -1240,8 +1279,8 @@ const GEN_RULES = [
       for (const w of tals) {
         const a = w.ware && ARTIFACTS.find((o) => o.id === w.ware.id);
         if (!a) return `a ware that is not a talisman (${w.ware && w.ware.id})`;
-        if (!(w.ware.tier >= 1 && w.ware.tier <= a.tiers.length)) return `${a.name} at a tier it does not have (${w.ware.tier})`;
-        if (first && w.ware.tier !== 1) return `${a.name} above COMMON on the first mouse of a run`;
+        if (w.ware.tier !== 1) return `${a.name} at a tier it does not have (${w.ware.tier}), one form each`;
+        if (first && a.rarity !== 1) return `${a.name} above COMMON on the first mouse of a run`;
       }
       if (tals.length > 1 && tals[0].ware.id === tals[1].ware.id) return 'the same talisman twice';
       // `stockFor`: never two of one sort (`tag`) on a shelf, two that bend the headbutt are one choice.

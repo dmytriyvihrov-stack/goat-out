@@ -3,7 +3,8 @@
 // room in each floor's own stone, its floor sheet, its walls, its colours and the furniture its canon
 // is built out of, one after another, THE ALTAR to THE DARK. It is for looking at the art and the
 // props side by side, so nothing here is rolled, nobody is spawned (the drawer's SPAWN column is for
-// that) and no rule in `GEN_RULES` is asked of it.
+// that; each floor's gallery is figures only, `showroomStatues`) and no rule in `GEN_RULES` is asked of it.
+// He walks it `TUNING.showroom.speed` times faster (entities.js, the stride).
 // THE RULE (1 Oct 2026): anything new the game stands on a floor, a prop, an animal, a talisman, goes
 // in here the day it is added. Every animal has a coop in the COOPS row, every talisman a stool on the
 // shelf along the near wall (its top tier, free: grab one to wear it, grab another to swap), every cape
@@ -16,6 +17,25 @@ const SHOWROOM_LEVEL = {
   souls: 0, heals: 0, gates: [], arenas: [],
   hint: null, hintKey: null,
 };
+// What each kind is called under his figure in a floor's gallery (the names the game's own text uses).
+const SHOWROOM_NAMES = { bearer: 'CLUBMAN', champion: 'BUTCHER', dog: 'HOUND', seer: 'MAGE', hunter: 'RIFLEMAN', butcher: 'OGRE',
+  shield: 'SHIELDMAN', thrower: 'THROWER', shaman: 'SHAMAN', wraith: 'WRAITH' };
+// The galleries' figures (8 Oct 2026): each a man built the way `startLevel` builds a spawn, then kept as
+// `level.statueMen` and never handed to `game.enemies`, so nothing steps, sees, reaches, hurts or counts
+// him (no kill, soul, seal or clamp waits on him); `Renderer` stands them with the cast, facing the camera,
+// and `PaintedArt.character` leaves them out of the men's idle breathing (`e.statue`).
+function showroomStatues(level) {
+  return (level.statues || []).map((s) => {
+    const e = new Enemy(s.x, s.y, s.kind);
+    if (s.champion) { e.champion = true; e.hp = e.maxHp = TUNING.champion.hp; }
+    if (s.shield) e.giveShield();
+    if (s.thrower) Thrower.give(e);
+    if (s.shaman) Shaman.give(e);
+    e.statue = true; e.room = -1; e.facing = Math.PI / 2; e.solid = true;   // a wraith in his body, not his mist
+    if (e.shield) e.shield.ang = e.facing;
+    return e;
+  });
+}
 
 function showroomLevel(def, seed) {
   const W = 420, H = 78, tiles = new Uint8Array(W * H).fill(T.WALL), zones = new Uint8Array(W * H);
@@ -46,7 +66,7 @@ function showroomLevel(def, seed) {
     list.forEach(([name, fn], i) => { const tx = hx + 7 + i * gap | 0; fn(tx, y); label(name, tx, y + 1.3, 4); });
   };
   row(hy + 5, 'STANDS', [
-    ['BRAZIER', (x, y) => put('brazier', x, y)], ['ROAST', (x, y) => put('brazier', x, y, { roast: true })],
+    ['BRAZIER', (x, y) => put('brazier', x, y)], ['WITCH BOWL', (x, y) => put('brazier', x, y, { witch: true })], ['ROAST', (x, y) => put('brazier', x, y, { roast: true })],
     ['LAMP', (x, y) => put('lamp', x, y)], ['TABLE', (x, y) => put('table', x, y)],
     ['ALTAR', (x, y) => { put('poster', x, y, { look: 'breeds' }); put('table', x, y, { altar: true }); }],   // a scrap under it, as on THE ALTAR ['GONG', (x, y) => put('bell', x, y)],
     ['BARREL', (x, y) => put('barrel', x, y)], ['BOULDER', (x, y) => put('rock', x, y)],
@@ -94,7 +114,7 @@ function showroomLevel(def, seed) {
   label('TALISMANS · GRAB TO WEAR', hx + 14, hy + 24.6, 14);
   ARTIFACTS.forEach((a, i) => {
     const per = Math.ceil(ARTIFACTS.length / 2), r = Math.floor(i / per), c = i % per;
-    put('ware', hx + 2 + Math.round(c * 25 / (per - 1)), hy + 26 + r * 3, { shopId: -9, free: true, ware: { id: a.id, tier: a.tiers.length } });
+    put('ware', hx + 2 + Math.round(c * 25 / (per - 1)), hy + 26 + r * 3, { shopId: -9, free: true, ware: { id: a.id, tier: 1 } });
   });
   label('CAPES · GRAB TO WEAR · Q', hx + 36, hy + 24.6, 14);
   CAPES.forEach((c, i) => {
@@ -149,52 +169,78 @@ function showroomLevel(def, seed) {
     label('TWO WALLS THAT GIVE', tx + 0.5, wr - 1.2, 6);
   }
 
-  // One room a floor, in run order, each in its own stone with what its canon is built out of.
-  const RW = 24, RH = 16, ry = 28, mid = ry + RH / 2 - 1;
+  // One room a floor, in run order, each in its own stone with what its canon is built out of. Small on
+  // purpose (8 Oct 2026 playtest: "I want to look at each level's assets, not run through them whole"): the
+  // floor's furniture in the top half, and its gallery in the bottom one (below). The interior is 14 x 13;
+  // the way through is rows 4-6 (`mid`, the hall's door row), kept clear at both ends.
+  const RW = 16, RH = 15, ry = 30, mid = ry + 5;
   let prev = hall;
   const dress = [
     // THE ALTAR, stone: bowls of coals, tables, straw and the altar.
-    (x, y) => { put('brazier', x + 4, y + 3); put('brazier', x + 17, y + 11); put('table', x + 8, y + 10); put('table', x + 10, y + 10);
-      put('table', x + 15, y + 3, { altar: true }); fill(x + 1, y + 11, x + 4, y + 12, T.HAY); put('weapon', x + 19, y + 3, { weapon: 'sword' }); },
+    (x, y) => { put('brazier', x + 1, y + 1); put('brazier', x + 12, y + 1); put('table', x + 5, y + 5); put('table', x + 7, y + 5);
+      put('table', x + 8, y + 2, { altar: true }); fill(x, y + 3, x + 3, y + 3, T.HAY); put('weapon', x + 12, y + 3, { weapon: 'sword' }); },
     // THE YARD, fire: bowls, powder, crates and the gong.
-    (x, y) => { put('brazier', x + 5, y + 3, { roast: true }); put('brazier', x + 16, y + 11); put('brazier', x + 11, y + 3);
-      put('barrel', x + 3, y + 10); put('barrel', x + 4, y + 11); put('barrel', x + 18, y + 4);
-      put('crate', x + 8, y + 11); put('crate', x + 9, y + 11); put('crate', x + 14, y + 4); put('bell', x + 19, y + 8);
+    // The iron pair stands in the room's middle row, so its own words (`Renderer.drawIronPair`) fall in the gap
+    // above the gallery and never across the furniture.
+    (x, y) => { put('brazier', x + 1, y + 1, { roast: true }); put('brazier', x + 12, y + 1); put('brazier', x + 9, y + 3);
+      put('barrel', x + 4, y + 1); put('barrel', x + 5, y + 1); put('barrel', x + 2, y + 3);
+      put('crate', x + 7, y + 1); put('crate', x + 8, y + 1); put('crate', x + 3, y + 3); put('bell', x + 10, y + 1);
       // THE KEYS (3 Oct 2026, `TUNING.keys`), on the first floor that may stand iron: the pair, an animal
       // and big grass behind bars only a key opens, and two keys to try them with.
-      put('coop', x + 6, y + 7, { holds: 'goose', beastRoom: 0, ironCage: true }); label('IRON COOP', x + 6, y + 8.4, 5);
-      put('ironcage', x + 11, y + 7); label('IRON · GRASS', x + 11, y + 8.4, 5);
-      put('key', x + 15, y + 7); put('key', x + 16, y + 7); label('KEYS', x + 15.5, y + 8.4, 4);
+      put('coop', x + 3, y + 5, { holds: 'goose', beastRoom: 0, ironCage: true }); put('ironcage', x + 10, y + 5);
+      put('key', x + 6, y + 3); put('key', x + 7, y + 3); label('KEYS', x + 6.5, y + 4.9, 3);   // under the words a first key says (`drawFirstWords`)
       // A boss's bell for the old man (7 Oct 2026, `Game.dropBell`): GRAB takes it (here it counts for nothing).
-      put('lostbell', x + 19, y + 12, { note: 6 }); label('A BOSS BELL', x + 19, y + 13.4, 5); },
-    // THE CAVE, the hollow: grass, boulders, teeth at the wall, the mushrooms, and THE CHASM across its far
-    // end with the roll written before it (6 Oct 2026, `carveChasm` in gen.js; an animal hops it).
-    (x, y) => { for (let dx = 2; dx < 9; dx++) for (let dy = 8; dy < 12; dy++) grass.push(at(x + dx, y + dy));
-      put('rock', x + 12, y + 3); put('rock', x + 13, y + 5); put('rock', x + 11, y + 6);
-      { const c = x + 16, cut = []; for (let ty = y; ty <= y + RH - 3; ty++) { tiles[at(c, ty)] = T.PIT; cut.push(at(c, ty)); gaps.add(at(c, ty)); }
+      put('lostbell', x + 12, y + 3, { note: 6 }); label('A BOSS BELL', x + 12, y + 4.2, 4); },
+    // THE CAVE, the hollow: grass, boulders, teeth at the wall, the mushrooms, and THE CHASM across it, wall
+    // to wall, with the roll written before it (6 Oct 2026, `carveChasm` in gen.js; an animal hops it).
+    (x, y) => { for (let dx = 0; dx < 3; dx++) for (let dy = 1; dy < 4; dy++) grass.push(at(x + dx, y + dy));
+      put('rock', x + 5, y + 2); put('rock', x + 6, y + 3); put('rock', x + 4, y + 3);
+      { const c = x + 9, cut = []; for (let ty = y; ty <= y + RH - 3; ty++) { tiles[at(c, ty)] = T.PIT; cut.push(at(c, ty)); gaps.add(at(c, ty)); }
         chasms.push({ room: rooms.length - 1, axis: 'v', at: c, lo: y, hi: y + RH - 3, far: 1, tiles: cut, lesson: true });
-        controls.push({ x: (x + 12) * TILE, y: (y + 8.5) * TILE, w: 9 * TILE, part: 5, chasm: rooms.length - 1 }); label('CHASM', c, y + 1.4, 4); }
-      for (const dx of [4, 8, 18]) put('spire', x + dx, y); put('shrooms', x + 18, y + 10); put('heal', x + 11, y + 11); },
+        controls.push({ x: (x + 5) * TILE, y: (y + 5.5) * TILE, w: 7 * TILE, part: 5, chasm: rooms.length - 1 }); label('CHASM', c, y + 2.2, 3); }
+      for (const dx of [2, 6, 12]) put('spire', x + dx, y); put('shrooms', x + 12, y + 2); put('heal', x + 11, y + 3); },
     // THE ROAD, the line: two rows of pillars, lamps, a band of grating.
-    (x, y) => { for (let dx = 3; dx < 20; dx += 4) { tiles[at(x + dx, y + 3)] = T.WALL; tiles[at(x + dx, y + 10)] = T.WALL; }
-      put('lamp', x + 1, y + 1); put('lamp', x + 20, y + 12); for (let dx = 7; dx < 15; dx++) put('spike', x + dx, y + 12); put('crate', x + 16, y + 1); },
+    (x, y) => { for (const dx of [4, 7, 10]) { tiles[at(x + dx, y + 1)] = T.WALL; tiles[at(x + dx, y + 6)] = T.WALL; }
+      put('lamp', x + 1, y + 2); put('lamp', x + 12, y + 2); for (let dx = 4; dx < 11; dx++) put('spike', x + dx, y + 3); put('crate', x + 13, y + 1); },
     // THE THRESHING FLOOR, open ground: the wheel in the middle of nothing, straw, powder.
-    (x, y) => { put('mill', x + 11, y + 4, { phase: 1 }); fill(x + 2, y + 10, x + 6, y + 12, T.HAY); fill(x + 16, y + 1, x + 20, y + 2, T.HAY);
-      put('barrel', x + 18, y + 11); put('crate', x + 3, y + 2); },
-    // THE BRIDGE, the funnel: a drop the width of the room and one way over it.
-    (x, y) => { fill(x + 8, y, x + 13, y + RH - 3, T.PIT); fill(x + 8, mid, x + 13, mid + 2, T.FLOOR);
-      put('lamp', x + 6, mid - 2); put('lamp', x + 15, mid + 2); put('weapon', x + 3, y + 2, { weapon: 'shield' }); },
+    (x, y) => { put('mill', x + 7, y + 3, { phase: 1 }); fill(x, y + 1, x + 2, y + 2, T.HAY); fill(x + 11, y + 1, x + 13, y + 2, T.HAY);
+      put('barrel', x + 13, y + 3); put('crate', x, y + 3); },
+    // THE BRIDGE, the funnel: a drop across the room's top half and one way over it, the way through.
+    (x, y) => { fill(x + 5, y, x + 8, y + 7, T.PIT); fill(x + 5, mid, x + 8, mid + 2, T.FLOOR);
+      put('lamp', x + 3, y + 2); put('lamp', x + 10, y + 3); put('weapon', x + 1, y + 1, { weapon: 'shield' }); },
     // THE RAFTERS, the drop: holes in the boards and windows in the far wall.
-    (x, y) => { fill(x + 4, y + 2, x + 5, y + 3, T.PIT); fill(x + 15, y + 10, x + 17, y + 11, T.PIT); fill(x + 10, y + 11, x + 11, y + 12, T.PIT);
-      for (const wx of [x + 3, x + 12]) for (let k = 0; k < 4; k++) { tiles[at(wx + k, y - 1)] = T.PIT; windows.add(at(wx + k, y - 1)); }
-      put('crate', x + 19, y + 2); put('barrel', x + 2, y + 11); },
+    (x, y) => { fill(x + 3, y + 1, x + 4, y + 2, T.PIT); fill(x + 9, y + 5, x + 10, y + 6, T.PIT); fill(x + 7, y + 2, x + 8, y + 3, T.PIT);
+      for (const wx of [x + 1, x + 8]) for (let k = 0; k < 4; k++) { tiles[at(wx + k, y - 1)] = T.PIT; windows.add(at(wx + k, y - 1)); }
+      put('crate', x + 12, y + 1); put('barrel', x, y + 3); },
     // THE OSSUARY, the niche: the walls stepped into alcoves, stands of arms in them.
-    (x, y) => { for (let dx = 1; dx < 22; dx += 4) { fill(x + dx, y, x + dx, y + 1, T.WALL); fill(x + dx, y + RH - 4, x + dx, y + RH - 3, T.WALL); }
-      put('weapon', x + 3, y, { weapon: 'sword' }); put('weapon', x + 11, y + RH - 3, { weapon: 'shield' }); put('heal', x + 19, y); put('brazier', x + 11, y + 5); },
+    (x, y) => { for (const dx of [2, 6, 10]) fill(x + dx, y, x + dx, y + 1, T.WALL); for (const dx of [4, 8]) fill(x + dx, y + 5, x + dx, y + 6, T.WALL);
+      put('weapon', x + 4, y, { weapon: 'sword' }); put('weapon', x + 6, y + 6, { weapon: 'shield' }); put('heal', x + 12, y); put('brazier', x + 7, y + 4); },
     // THE DARK, the lamp: standing lamps, lanterns on the wall, straw.
-    (x, y) => { put('lamp', x + 4, y + 3); put('lamp', x + 17, y + 10); put('lamp', x + 11, y + 11);
-      put('sconce', x + 6, y, { wx: 0, wy: -1 }); put('sconce', x + 16, y, { wx: 0, wy: -1 }); fill(x + 1, y + 1, x + 3, y + 2, T.HAY); },
+    (x, y) => { put('lamp', x + 3, y + 3); put('lamp', x + 10, y + 3); put('lamp', x + 7, y + 6);
+      put('sconce', x + 4, y, { wx: 0, wy: -1 }); put('sconce', x + 9, y, { wx: 0, wy: -1 }); fill(x, y + 1, x + 2, y + 2, T.HAY); },
   ];
+  // THE RULE (8 Oct 2026, the user's): each floor's room also stands a still figure of every kind of man that
+  // floor can deal, his name under him: its crowd (`encounters.kinds`, the pseudo-kinds too) and the bosses of
+  // its rings. They are `statues` (`showroomStatues`), never in `game.enemies`: nothing moves, notices,
+  // strikes, is struck or counts. One row up to five, else two, across the room's bottom half.
+  // The tall ones first, so a second row never stands over the names of the first.
+  const TALL = ['butcher', 'thrower', 'champion'];
+  const kindsOf = (fd) => { const E = fd.encounters || {};
+    const ks = [...new Set([...(E.kinds || []), ...(E.introduce || []).map((n) => n[0]), ...(fd.arenas || []).map((a) => a.boss)])];
+    return ks.filter((k) => TALL.includes(k)).sort((a, b) => TALL.indexOf(a) - TALL.indexOf(b)).concat(ks.filter((k) => !TALL.includes(k))); };
+  const statues = [];
+  const gallery = (ks, ix, iy) => {
+    const rowsN = ks.length > 5 ? 2 : 1, per = Math.ceil(ks.length / rowsN);
+    ks.forEach((k, n) => {
+      const rr = Math.floor(n / per), m = Math.min(per, ks.length - rr * per), j = n - rr * per;
+      let dx = m === 1 ? 6.5 : 0.5 + j * 12 / (m - 1); const dy = rowsN === 1 ? 9.6 : rr ? 11.4 : 8;
+      // Never stood over a drop (THE CAVE's chasm runs wall to wall): stepped aside to the nearest floor.
+      const clear = (d) => [-0.45, 0.45].every((o) => tiles[at(Math.floor(ix + d + 0.5 + o), Math.floor(iy + dy + 0.5))] === T.FLOOR);
+      dx = [0, -1, 1, -1.5, 1.5].map((o) => dx + o).find(clear) ?? dx;
+      statues.push(Object.assign(P(ix + dx, iy + dy), spawnKind(k)));
+      label(SHOWROOM_NAMES[k] || k.toUpperCase(), ix + dx, iy + dy + 1, 3);
+    });
+  };
   floors.forEach((fd, i) => {
     const x = hall.x + hall.w + 4 + i * (RW + 4), r = room(x, ry, RW, RH, fd.name.toLowerCase(), i);
     r.role = 'canon';
@@ -202,7 +248,8 @@ function showroomLevel(def, seed) {
     fill(prev.x + prev.w - 1, mid, x, mid + 2, T.FLOOR); zone(prev.x + prev.w, mid - 1, x - 1, mid + 3, i);
     const ix = x + 1, iy = ry + 1;
     dress[i](ix, iy);
-    label(fd.name + (fd.canon ? ' · ' + fd.canon.name : ''), ix + 11, iy + 2, RW - 2, true);
+    gallery(kindsOf(fd), ix, iy);
+    label(fd.name + (fd.canon ? ' · ' + fd.canon.name : ''), ix + 6.5, iy + 0.5, RW - 2, true);
     prev = r;
   });
   // A corridor must never be dressed over: a floor-wide drop or a pillar may have landed across it.
@@ -240,5 +287,5 @@ function showroomLevel(def, seed) {
   return { W, H, tiles, rooms, spawns: [], props, start: P(hx + 2, hy + 13), exit: { x: (last.x + last.w) * TILE, y: (ey + 1) * TILE },
     exitTile: { x0: last.x + last.w - 1, y0: ey }, forkTile: null, entry: null, seed, def,
     hints, controls, chasms, gaps, cagePrompt: null, vault: null, windows, plan: null, gates: [], sealedArenas: [], shop: null,
-    grass: grass.filter((i) => tiles[i] === T.FLOOR), zones, zoneDefs: floors, carpets };
+    grass: grass.filter((i) => tiles[i] === T.FLOOR), zones, zoneDefs: floors, carpets, statues };
 }

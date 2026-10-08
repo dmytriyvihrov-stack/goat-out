@@ -524,6 +524,24 @@ const Foley = (() => {
         env: (t) => swell(t, d, 0.35, 1.3), drive: 1.5 }), sr, 0, 1);
       return whoosh(x, sr, 0.1, d * 0.8, 200, 1800, 0.35, 0.6, 0.9);
     },
+    // The shaman's hand closing on the goat (8 Oct 2026: "two different clear sounds, taken and let go"): a low
+    // hollow clamp, a dull knock and a dissonant bone-bell cluster falling under it, the air drawn down. Heavy and
+    // dark, so it can never be taken for its twin.
+    seize(sr) {
+      const d = 0.9, x = buf(sr, d);
+      modes(x, sr, rnd(58, 66), [[1, 0.22, 1.1], [1.5, 0.12, 0.5], [2.1, 0.07, 0.3]], { bend: 0.5, bendT: 0.08 });
+      modes(x, sr, rnd(150, 170), [[1, 0.5, 0.5], [1.414, 0.45, 0.4], [2.35, 0.3, 0.25]], { at: 0.03, bend: 0.12, bendT: 0.5 });
+      click(x, sr, 0, 900, 0.7, 0.002);
+      return whoosh(x, sr, 0, 0.45, 2400, 220, 0.5, 0.55, 0.9);
+    },
+    // And let go: the clamp opening, a bright glassy double ting climbing a fifth over a breath rushing out.
+    loose(sr) {
+      const f = rnd(880, 940), x = buf(sr, 0.9);
+      modes(x, sr, f, [[1, 0.45, 0.9], [2.76, 0.2, 0.35], [5.4, 0.1, 0.18]], { spread: 0.002 });
+      modes(x, sr, f * 1.5, [[1, 0.55, 0.8], [2.76, 0.22, 0.3]], { at: 0.09, spread: 0.002 });
+      click(x, sr, 0, 6000, 0.35, 0.0006);
+      return whoosh(x, sr, 0, 0.3, 500, 4200, 0.3, 0.5, 1.1);
+    },
     // A rune going up: the ground giving fire, a deep thump and a roar, crackling.
     rune(sr) {
       const d = 0.6, x = buf(sr, d), n = x.length;
@@ -856,6 +874,16 @@ const Foley = (() => {
       }
       return filter(x, sr, 'lp', 1800, 0.7);
     },
+    // Tall grass parted by a goat walking through it (8 Oct 2026 playtest: "passing through the grass, a clearer, more
+    // distinct sound"): a dry swish of blades, two strokes of bright band noise, the second the far side of him.
+    rustle(sr) {
+      const x = buf(sr, 0.32);
+      for (const [at, g, f] of [[0, 1, rnd(3200, 4200)], [rnd(0.06, 0.1), rnd(0.55, 0.8), rnd(2400, 3200)]]) {
+        const n = noiseBand(len(sr, 0.2), sr, 'bp', f, 0.9, white);
+        add(x, env(n, sr, (t) => Math.sin(Math.min(1, t / 0.16) * Math.PI) * (1 + 0.5 * Math.sin(t * 190))), sr, at, g);
+      }
+      return filter(x, sr, 'hp', 1200, 0.7);
+    },
     // The milk grass, heard only when he is hurt and near it: three small glassy notes, high and soft.
     sparkle(sr) {
       const x = buf(sr, 0.9), base = rnd(1900, 2300);
@@ -973,7 +1001,7 @@ const Foley = (() => {
   // The rate each recipe is rendered at; the context resamples on playback. Nothing here needs the
   // top octave of a 48 kHz buffer, and the low, long ones (a blast, a lorry, a throat) have nothing
   // above 12 kHz at all, so they render at half the cost of the rest.
-  const LOW = new Set(['boom', 'engine', 'fall', 'scream', 'bleat', 'growl', 'wraith', 'unmade', 'veil', 'card', 'club', 'slow', 'cast', 'rune', 'bell', 'thud', 'roll', 'groan', 'heart', 'far', 'godVoice', 'leap', 'husky']);
+  const LOW = new Set(['boom', 'engine', 'fall', 'scream', 'bleat', 'growl', 'wraith', 'unmade', 'veil', 'card', 'club', 'slow', 'cast', 'rune', 'seize', 'bell', 'thud', 'roll', 'groan', 'heart', 'far', 'godVoice', 'leap', 'husky']);
   // `far` arrives through walls with nothing above 700 Hz left in it.
   const rateOf = (name) => (name === 'far' ? 12000 : LOW.has(name) ? 24000 : 32000);
   const loopRate = (name) => LOOP_RATE[name];

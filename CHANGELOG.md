@@ -5,6 +5,30 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 2.04, published 8 Oct 2026: three playtest batches, THE FLOOR'S LAST MAN, a polish round, a clean-up
+
+- **The three batches of his notes** (72 in all) are in `BACKLOG.md` under the three "8 October 2026" headings, each with
+  what shipped: GRASS for milk everywhere a player reads, a floor gives one heart back (not all), the god's fifty for the
+  horns and his third ask, every stand but the tortoise's broken and mended for souls, bells hung by hand, the dare's
+  dialogue and marks, shorter corridors with doors facing, the shaman met alone with his tooth, the chasm lesson back on
+  THE CAVE, the men at a drop (js/gapcross.js), the corrupted ogre's witchfire waves (js/waves.js), the showroom's
+  floor galleries.
+- **THE FLOOR'S LAST MAN** (js/endboss.js): the first five floors end on their own kind with the soul in him, worse at
+  each meeting this browser has had with him, with a short scene for THE ALTAR's twin, THE YARD's mages and THE CAVE's ogre.
+- **The polish round**: README and CONCEPT brought in line with the build (hearts between floors, the floors' bosses,
+  the stands, fifty souls for the horns, eight bells, the mirror's ONE MORE LIFE, the fire set, the Knucklebone every
+  soul, the seed top right); the GRASS and HEARTS tips. Fixed: the JUICE preview threw on floors one to five; after
+  CONTINUE a last boss killed before the quit could play his scene again; THE TORTOISE'S PACE followed him into heaven;
+  a held headbutt went stale in heaven; the bare first-meeting room could take the table a scrap of paper lay under;
+  skipping THE ALTAR's twin could leave him behind the bars; the grass swish spammed along an edge; the mage's rings drew
+  at 7 ms a frame (now about 3). New rules `firstmeet` and the chasm lesson's clear words; numbers moved into `tuning.js`.
+- **The clean-up**: dead code out (the leftovers of CARPENTER'S AWL, BUTCHER'S GREASE and BELLWETHER'S BELL: the grease
+  on the floor, its grip and drag, the splinters, the bell's silhouettes and its thread on the screen's edge; seven
+  functions nothing called: `drawDeathTip`, `postSpot`, `drawQuestHud`, `pnoise`, `rimShade`, `drawVeilSmooth`,
+  `drawBodySouls`), `.claude/launch.json` from 110 one-off servers to six.
+- Checked: 2000 generated floors without a throw, every balance rule, `doc-numbers` 57 of 57, the smoke bot 20 of 20 to
+  the stairs with no throw or NaN (8 with set-downs), the boss's bell over 406 drops never through a shut door.
+
 ## 2.03, published 7 Oct 2026: the HUD in the corner, heaven in two rooms, the god's horns, THE ALTAR AGAIN
 
 - **The HUD**: the hearts in the bottom-left corner (Hades'), ONE MORE LIFE as small framed portraits of the goat over them,

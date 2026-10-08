@@ -211,50 +211,52 @@ const HEAVEN_PIXELS = (() => {
     return g.outline(OL);
   }
 
-  // ---------------------------------------------------------------- the watchtower, 44 x 102
-  // THE OVERLOOK (6 Oct 2026 playtest, then the same day: "not a lighthouse, a simpler wooden watchtower
-  // going up into the cloud"): four timber legs splayed at the foot, braced in crosses between girts, a
-  // ladder up the front to a plank platform with a rail, the posts going on up into a cloud of its own
-  // (`watchtower-cloud`, laid over it by `Heaven.drawTower` so it can drift), its feet in a cushion of cloud.
-  // Only its outside is outlined: the holes in the lattice stay open to the cloud behind it.
+  // ---------------------------------------------------------------- the watchtower, 40 x 92
+  // THE OVERLOOK: a plain wooden hunter's tower since 8 Oct 2026 (it was a lattice up into a cloud of its own,
+  // `watchtower-cloud`, still baked for nothing to draw over it). Only its outside is outlined.
   const WD = ['#f2dcae', '#d6ab70', '#a97b4a', '#7a5536', '#54392a'];
   const TOWER_CLOUD = 13;   // the texel row of the tower the cloud's foot sits on
   function watchtower() {
-    const W = 44, H = 102, g = new Grid(W, H), top = 29, foot = 96;
-    const at = (L, y) => L[0] + (L[1] - L[0]) * (y - foot) / (top - foot);   // a leg's x at a height
-    const FL = [3.5, 12.5], FR = [40.5, 31.5], BL = [10.5, 16.5], BR = [33.5, 27.5];
-    const leg = (L, y0, w, c, lit, dark) => { for (let y = y0; y <= foot; y++) { const x = Math.round(at(L, y) - w / 2); g.hl(x, y, w, c); g.set(x, y, lit); g.set(x + w - 1, y, dark); } };
-    const rows = [top, 46, 63, 80, foot - 2];
-    // the back pair a shade down, and their bracing seen between the front legs
-    for (let i = 0; i < rows.length - 1; i++) { const a = rows[i], b = rows[i + 1]; g.line(at(BL, a), a, at(BR, b), b, WD[4]); g.line(at(BR, a), a, at(BL, b), b, WD[4]); }
-    leg(BL, top - 4, 2, WD[3], WD[2], WD[4]); leg(BR, top - 4, 2, WD[3], WD[3], WD[4]);
-    // the front: crosses in each storey, a girt at each storey's foot, then the legs over them
-    for (let i = 0; i < rows.length - 1; i++) {
-      const a = rows[i] + 2, b = rows[i + 1];
-      g.line(at(FL, a) + 1, a, at(FR, b) - 1, b, WD[2]); g.line(at(FR, a) - 1, a, at(FL, b) + 1, b, WD[3]);
+    // 8 Oct 2026 playtest ("redo the tower, simpler and wooden"): a plain hunter's tower, no lattice and no cloud. A
+    // shingled gable roof over a plank hut with a window, a deck, two legs in front and two behind, one girt and one
+    // cross low down, a ladder, its feet in a cushion of cloud. 40 x 92.
+    const W = 40, H = 92, g = new Grid(W, H), deck = 28, foot = 86;
+    // the roof: a gable of shingles, darker every third row, its left edge lit
+    for (let y = 0; y <= 10; y++) {
+      const half = Math.round(3 + y * 1.7), x0 = 20 - half;
+      g.hl(x0, y, half * 2, y % 3 === 2 ? WD[4] : WD[3]); g.set(x0, y, WD[2]); g.set(x0 + 1, y, WD[2]);
     }
-    for (const y of rows.slice(1, -1)) { const x0 = Math.round(at(FL, y)), x1 = Math.round(at(FR, y)); g.hl(x0, y, x1 - x0, WD[1]).hl(x0, y + 1, x1 - x0, WD[3]); }
-    leg(FL, top - 3, 3, WD[2], WD[0], WD[3]); leg(FR, top - 3, 3, WD[2], WD[1], WD[4]);
-    // knees out under the platform's ends
-    for (const [L, x] of [[FL, 4], [FR, 40]]) { g.line(at(L, 41), 41, x, 30, WD[2]); g.line(at(L, 42), 42, x, 31, WD[3]); }
-    // the ladder up the middle, under the platform's lip
-    for (let y = 24; y <= 98; y++) { g.set(19, y, WD[1]); g.set(24, y, WD[2]); }
-    for (let y = 32; y <= 97; y += 3) g.hl(20, y, 4, WD[0]);
-    // the rail's back posts and rails, then the deck seen from above and its front edge
-    for (const x of [7, 36]) g.vl(x, 2, 22, WD[3]);
-    g.hl(7, 12, 30, WD[3]).hl(7, 17, 30, WD[4]);
-    for (let y = 21; y <= 25; y++) g.hl(3, y, 39, y % 2 ? WD[1] : WD[0]);
-    for (let x = 7; x < 41; x += 6) g.set(x, 22, WD[2]).set(x + 3, 24, WD[2]);
-    g.hl(3, 26, 39, WD[0]).rect(3, 27, 39, 2, WD[1]).hl(3, 29, 39, WD[3]);
-    for (let x = 7; x < 41; x += 5) g.vl(x, 27, 2, WD[2]);
-    g.vl(19, 19, 5, WD[1]).vl(24, 19, 5, WD[2]);   // the ladder's ends above the deck, to hold
-    // the front rail: four posts going on up into the cloud, a top rail and a middle one
-    for (const x of [3, 12, 30, 40]) { g.rect(x, 0, 2, 26, WD[2]); g.vl(x, 0, 26, WD[1]); }
-    g.hl(3, 13, 39, WD[0]).hl(3, 14, 39, WD[2]).hl(3, 19, 39, WD[1]);
+    g.hl(1, 11, 38, WD[4]);
+    // the hut: corner posts, plank walls, a window onto the dark inside, a sill
+    for (let y = 12; y <= deck - 1; y++) for (let x = 4; x <= 35; x++) g.set(x, y, ((x - 4) % 4 === 0) ? WD[3] : (x % 8 < 4 ? WD[1] : WD[2]));
+    g.rect(9, 15, 22, 7, '#3a2a20'); g.hl(9, 15, 22, '#2a1e18');
+    g.hl(8, 22, 24, WD[0]).hl(8, 23, 24, WD[3]);
+    for (const x of [4, 34]) { g.vl(x, 12, deck - 12, WD[2]); g.vl(x + 1, 12, deck - 12, x === 4 ? WD[1] : WD[3]); }
+    // the deck, its plank ends along the front
+    g.hl(1, deck, 38, WD[0]).hl(1, deck + 1, 38, WD[1]).hl(1, deck + 2, 38, WD[3]);
+    for (let x = 3; x < 38; x += 4) g.set(x, deck + 1, WD[2]);
+    // the legs: the back pair thin and a shade down, the front pair splayed a little
+    const at = (x0, x1, y) => Math.round(x0 + (x1 - x0) * (y - deck) / (foot - deck));
+    for (let y = deck + 3; y <= foot; y++) {
+      g.hl(at(12, 11, y), y, 2, WD[4]); g.hl(at(27, 28, y), y, 2, WD[4]);
+    }
+    const girt = 54, cross = 62;
+    g.hl(at(12, 11, girt), girt, at(27, 28, girt) - at(12, 11, girt) + 2, WD[4]);
+    for (let y = deck + 3; y <= foot; y++) {
+      const l = at(5, 2, y), r = at(32, 35, y);
+      g.hl(l, y, 3, WD[2]); g.set(l, y, WD[0]); g.set(l + 2, y, WD[3]);
+      g.hl(r, y, 3, WD[2]); g.set(r, y, WD[1]); g.set(r + 2, y, WD[4]);
+    }
+    // one girt, and one cross under it
+    { const l = at(5, 2, girt) + 3, r = at(32, 35, girt); g.hl(l, girt, r - l, WD[1]).hl(l, girt + 1, r - l, WD[3]); }
+    g.line(at(5, 2, cross) + 3, cross, at(32, 35, foot - 3) - 1, foot - 3, WD[2]); g.line(at(32, 35, cross) - 1, cross, at(5, 2, foot - 3) + 3, foot - 3, WD[3]);
+    // the ladder up the middle to the deck
+    for (let y = deck + 3; y <= foot + 1; y++) { g.set(17, y, WD[1]); g.set(22, y, WD[2]); }
+    for (let y = deck + 6; y <= foot; y += 4) g.hl(18, y, 4, WD[0]);
     // the footings, and the cushion of cloud the feet stand in
-    for (const L of [FL, FR]) { const x = Math.round(at(L, foot)) - 2; g.rect(x, foot - 1, 5, 3, '#c9c4d0').hl(x, foot - 1, 5, '#e6e2ec'); }
-    for (const [x, y, r] of [[4, 98, 5], [12, 99, 6], [22, 99.5, 7], [32, 99, 6], [40, 98, 5]]) g.ell(x, y, r, r * 0.55, '#f4f8ff');
-    g.tone((x, y) => y > 99, '#b9cbee', ['#f4f8ff']); g.tone((x, y) => y < 97 && x < 22, W0, ['#f4f8ff']);
+    for (const x of [at(5, 2, foot) - 1, at(32, 35, foot) - 1]) g.rect(x, foot - 1, 5, 3, '#c9c4d0').hl(x, foot - 1, 5, '#e6e2ec');
+    for (const [x, y, r] of [[4, 88, 5], [12, 89, 6], [20, 89.5, 7], [28, 89, 6], [36, 88, 5]]) g.ell(x, y, r, r * 0.55, '#f4f8ff');
+    g.tone((x, y) => y > 89, '#b9cbee', ['#f4f8ff']);
     // the outline, round the outside only
     const out = new Uint8Array(W * H), st = [];
     for (let x = 0; x < W; x++) st.push(x, 0, x, H - 1);

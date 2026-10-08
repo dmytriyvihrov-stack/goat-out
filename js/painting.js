@@ -12,6 +12,10 @@ const PAINT_GLYPHS = {
   skull: ['.###.', '#####', '#.#.#', '#####', '.#.#.'],
   head: ['#...#', '.#.#.', '.###.', '.###.', '..#..'],
   wisp: ['..#..', '..##.', '.###.', '#####', '#.#.#', '#####', '.###.'],
+  // a soul lost on the death card: drawn over a dimmed wisp, two cells wider so it crosses it edge to edge
+  // a wall that gave nothing because nobody broke it (8 Oct 2026): a question mark over the niche on the clear card
+  ask: ['.###.', '#...#', '...#.', '..#..', '.....', '..#..'],
+  strike: ['......#', '.....#.', '....#..', '...#...', '..#....', '.#.....', '#......'],
 };
 
 const Painting = {
@@ -153,6 +157,17 @@ const Painting = {
     ctx.globalAlpha = 1;
     for (const m of game.killMarks || []) this.glyph(ctx, PAINT_GLYPHS.skull, at(m), P.glyphCell, PALETTE.bone);
     if (trail.length) this.glyph(ctx, PAINT_GLYPHS.head, at(trail[trail.length - 1]), P.glyphCell, PALETTE.bone);
+    // The secrets he walked past (8 Oct 2026 playtest: "on the finished floor's map the ones not found can be shown too"):
+    // the niche's tiles a faint violet in the rock and a question mark over it.
+    for (const p of (game.goat && game.goat.dead) ? [] : game.niches || []) {   // the clear card only, never a death's
+      if (p.broken || !p.nicheTiles || !p.nicheTiles.length) continue;
+      ctx.globalAlpha = 0.45; ctx.fillStyle = PALETTE.witch;
+      let sx = 0, sy = 0;
+      for (const i of p.nicheTiles) { const tx = i % W, ty = (i / W) | 0; sx += tx; sy += ty; if (tx >= row.a && tx < row.b) ctx.fillRect(X(tx), Y(ty), px, px); }
+      ctx.globalAlpha = 1;
+      const n = p.nicheTiles.length, cx = sx / n + 0.5, cy = sy / n + 0.5;
+      if (cx >= row.a && cx < row.b) this.glyph(ctx, PAINT_GLYPHS.ask, at({ x: cx * TILE, y: cy * TILE }), P.glyphCell, PALETTE.witchHi);
+    }
   },
 
   // A pixel line: a d x d stamp at every step of a plain Bresenham walk.
@@ -324,6 +339,23 @@ const Painting = {
       } catch (err) { ctx.restore(); }
     }
     if (!drew) this.glyph(ctx, dead ? PAINT_GLYPHS.skull : PAINT_GLYPHS.head, { x: Math.round(hx), y: Math.round(Y - h - 6 * c + bob) }, 2 * c, dead ? PALETTE.blood : bone);
+    // Every animal that came out with him trots at his heels down the road (8 Oct 2026 playtest: "if it worked out with
+    // an animal, show it nicely, in a picture: the animal went off with me"), and the line under the road says who.
+    const came = mode === 'clear' ? (game.beastSaved || []).concat(game.henSaved ? ['chicken'] : []) : [];
+    if (came.length) {
+      came.forEach((kind, i) => {
+        const big = kind === 'horse', ax = hx - 44 * s - i * 50 * s - (big ? 14 * s : 0);
+        const ab = !dead && e > 0 && e < 1 ? -Math.round(Math.abs(Math.sin(e * Math.PI * 5 + i + 1)) * 2) * c : 0;
+        try { ctx.save(); ctx.translate(Math.round(ax), Math.round(Y - h - c + ab)); Beast.portrait(r, ctx, kind, (big ? 0.72 : 1.05) * s); ctx.restore(); }
+        catch (err) { ctx.restore(); }
+      });
+      const who = came.map((k) => 'THE ' + (Beast.NAME[k] || 'ANIMAL'));
+      const line = (who.length > 1 ? who.slice(0, -1).join(', ') + ' AND ' + who[who.length - 1] : who[0]) + ' CAME WITH YOU';
+      ctx.save(); ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(14 * s, TUNING.hud.minText * r.s)}px ${FONT_SC}`;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillText(line, cx + 1, Y + h + 46 * s + 1);
+      ctx.fillStyle = '#f7d774'; ctx.fillText(line, cx, Y + h + 46 * s);
+      ctx.restore();
+    }
     // the names that matter: where he is (or fell), and where the road goes next
     ctx.font = `${Math.max(13 * s, TUNING.hud.minText * r.s)}px ${FONT_SC}`;
     const next = !dead && game.climbDark && cur + 1 < n ? 'THE DARK' : this.floorName(game, to);
@@ -375,7 +407,7 @@ const Painting = {
     // what took him, on its plate, beside the lines that name it and say what he keeps
     // The tally as the purse draws it (`Renderer.drawPurse`): the gold skull and the bodies, the wisp and
     // the souls he keeps; under it only what was lost and who did it.
-    const T = card.tally, words = T ? [T.said].filter(Boolean) : card.lines.slice(1).filter((l) => l && !/^LEVEL /.test(l));
+    const T = card.tally, words = T ? [] : card.lines.slice(1).filter((l) => l && !/^LEVEL /.test(l));
     if (T) {
       const sk = HEAVEN_PIXELS.sprites.skull, c = 1.9 * s, gap = 34 * s;
       ctx.save(); ctx.font = `700 ${19 * s}px ${FONT}`; ctx.textAlign = 'left';
@@ -388,12 +420,37 @@ const Painting = {
       ctx.restore(); y += 34 * s;
     }
     const plate = card.killer && card.killer !== 'fall' ? Math.round(46 * s) : 0;
-    ctx.font = `${15 * s}px ${FONT}`;
-    const lw = words.length ? Math.max(...words.map((w) => textW(ctx, w))) : 0;
-    const lx = W / 2 + (plate ? (plate + 14 * s) / 2 : 0);
-    if (plate) r.drawKiller(card.killer, lx - lw / 2 - 14 * s - plate / 2, y - 17 * s, plate);
-    ctx.textAlign = 'center';
-    words.forEach((w, i) => { ctx.font = `${15 * s}px ${FONT}`; ctx.fillStyle = i === words.length - 1 ? PALETTE.blood : 'rgba(239,230,208,0.62)'; ctx.fillText(w, lx, y + i * 22 * s); });
+    let rowH = 0;
+    if (T) {
+      // 8 Oct 2026 playtest ("this in pictures, not words"): the killer's plate, then the bodies as the clear
+      // card's bone skull and a count (only when the gold skull above counts souls), then the souls lost as a
+      // dimmed wisp struck through in blood and a count. No KILLED BY: the plate is who it was.
+      const cell = Math.max(2, Math.round(3 * s)), igap = 8 * s, gap = 22 * s, items = [];
+      if (T.slain !== null && T.slain !== undefined) items.push({ g: [PAINT_GLYPHS.skull], col: [PALETTE.bone], n: String(T.slain), tc: PALETTE.bone });
+      if (T.lost) items.push({ g: [PAINT_GLYPHS.wisp, PAINT_GLYPHS.strike], col: ['#7a6e99', PALETTE.blood], n: String(T.lost), tc: PALETTE.blood });
+      ctx.save(); ctx.font = `700 ${19 * s}px ${FONT}`; ctx.textAlign = 'left';
+      const ws = items.map((it) => Math.max(...it.g.map((g) => g[0].length)) * cell + igap + textW(ctx, it.n));
+      const total = (plate ? plate : 0) + ws.reduce((p, w) => p + w, 0) + gap * (items.length - (plate ? 0 : 1));
+      let x = W / 2 - Math.max(0, total) / 2;
+      rowH = Math.max(plate, items.length ? 7 * cell : 0);
+      const mid = Math.round(y - 17 * s + rowH / 2);
+      if (plate) { r.drawKiller(card.killer, x + plate / 2, mid - plate / 2, plate); x += plate + gap; }
+      items.forEach((it, i) => {
+        const gw = Math.max(...it.g.map((g) => g[0].length)) * cell, gx = Math.round(x + gw / 2);
+        it.g.forEach((g, k) => this.glyph(ctx, g, { x: gx, y: mid }, cell, it.col[k]));
+        ctx.fillStyle = it.tc; ctx.fillText(it.n, x + gw + igap, mid + 7 * s);
+        x += ws[i] + gap;
+      });
+      ctx.restore();
+    } else {
+      ctx.font = `${15 * s}px ${FONT}`;
+      const lw = words.length ? Math.max(...words.map((w) => textW(ctx, w))) : 0;
+      const lx = W / 2 + (plate ? (plate + 14 * s) / 2 : 0);
+      if (plate) r.drawKiller(card.killer, lx - lw / 2 - 14 * s - plate / 2, y - 17 * s, plate);
+      ctx.textAlign = 'center';
+      words.forEach((w, i) => { ctx.font = `${15 * s}px ${FONT}`; ctx.fillStyle = i === words.length - 1 ? PALETTE.blood : 'rgba(239,230,208,0.62)'; ctx.fillText(w, lx, y + i * 22 * s); });
+      rowH = Math.max(words.length * 22 * s, plate);
+    }
     ctx.globalAlpha = 1;
     // The run code only with the dev drawer open (2 Oct 2026 playtest: "not sure the death screen needs
     // this"); leaving the card still copies it (`copyCode`) for whoever is asked to paste it.
@@ -404,7 +461,7 @@ const Painting = {
     // from the god, a rank he can now afford, a bell woken...) there is no RESTART, only ASCEND.
     this.quickRect = null;
     if (card.go) {
-      const by = Math.min(y + Math.max(words.length * 22 * s, plate) + 4 * s, H - 36 * s - 38 * s);
+      const by = Math.min(y + rowH + 4 * s, H - 36 * s - 38 * s);
       const qk = { key: keysOf(game).back, quiet: true }, news = game.deathNews && game.deathNews.length;
       // PERMADEATH: the quick way back is a new run (RUN AGAIN), not this floor again.
       const quick = game.permadeath && game.permadeath() ? 'RUN AGAIN' : 'RESTART';
