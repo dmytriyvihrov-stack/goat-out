@@ -5,8 +5,13 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
-## 2.06, 9 Oct 2026 (not yet published): the fight seen, the poison's picture, a readable blast
+## 2.06, published 9 Oct 2026: the fight seen, the poison's picture, a readable blast, the fourth batch of 9 Oct
 
+- **The fourth batch of his 9 Oct notes** in `BACKLOG.md`: animals look further for fire and step out of harm's way
+  (`Beast.hotAt`, `Beast.flee`, `beast.flee`); a dead companion lies where it fell for the rest of the floor, over blood or soot,
+  and its plate says what killed it (`Beast.drawBodies`); the horn chip moved to the top-left row after the talismans; THE
+  TORTOISE'S PACE at 40%; an iron cage wherever it fits (`keys.iron.chance` 1); a freed animal waits on its stand to say what it
+  unlocked, which is in the next deal and on the next shelf (`meta.offerNext`); the horns at the edge moved west of the shepherd.
 - **The blast is three phases** ("the explosion is poorly readable"): a solid flash disc with rays, a fireball in concentric bands
   white-hot to ember cooling from the rim in, then smoke lighter than any floor, every cloud cut out by a one-texel dark rim
   (`CombatFX.burstFrames`, `paint`'s `rim`, `CombatFX.smoke`). The harm radius is stamped on the floor the frame it goes off and a
