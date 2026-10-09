@@ -1323,6 +1323,15 @@ class Game {
     // Once: passed over, it is an ordinary card again, not one forced into every passive deal of the run.
     const hunger = !this.lastBoonActive && firstRunNow && !this.hungerOffered && pool.find((b) => b.id === 'hunger');
     if (hunger && pick.length < n) { pick.push(hunger); pool.splice(pool.indexOf(hunger), 1); this.hungerOffered = true; }
+    // Unlocked for the first time (a won dare's soul, `Heaven.offerNext`): in this deal, whichever kind it is.
+    for (const id of Heaven.pendingOffers('boons').slice()) {
+      const b = BOONS.find((x) => x.id === id); if (!b || this.dev.god) break;
+      const list = pool.includes(b) ? pool : other.includes(b) ? other : null; if (!list) continue;
+      // a full hand (the first soul's two skills) gives up its last card for it; a card it clashes with goes too
+      const foe = pick.find((o) => o.active && b.active && (o.skill === b.skill || (o.element && o.element === b.element)));
+      if (foe) pick.splice(pick.indexOf(foe), 1); else if (pick.length >= n) pick.pop();
+      list.splice(list.indexOf(b), 1); pick.push(b); Heaven.offered('boons', id);
+    }
     // SOMETHING NEW (`Novelty`, `TUNING.novelty.dry`): played dry for a while, the first card the pools deal
     // is one this browser has never been dealt, if the pool still holds one.
     let fresh = !this.dev.god && !this.showroomOn && Novelty.hungry();
@@ -2758,7 +2767,7 @@ class Game {
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.puffs = []; this.flares = []; this.hurt = null; this.hurtVignette = null; this.fallers = []; this.globs = []; this.tossed = [];
     this.guide = null;   // a trail to a soul or a ware of the last layout pointed at nothing in this one
     this.fx = new CombatFX(this); this.scatter = new Scatter(this);
-    this.souls = []; this.boonChoice = null; this.breathFx = null; this.bless = null; this.endBoss = null; this.endScene = null; this.beastTalk = null; this.posterView = null; this.beastsHere = {}; this.clampWords = null; this.beastFarewell = null; this.bellWoke = false;
+    this.souls = []; this.boonChoice = null; this.breathFx = null; this.bless = null; this.endBoss = null; this.endScene = null; this.beastTalk = null; this.posterView = null; this.beastsHere = {}; this.clampWords = null; this.beastFarewell = null; this.beastBodies = []; this.bellWoke = false;
     if (this.perfAdapt) this.perfAdapt.noUp = false;   // a new floor may climb back to full resolution (`adaptRes`)
     // Before applyBoons: tied legs lend the roll their numbers, and they must not outlive the floor.
     this.legsTied = null; this.song = null; this.calmFast = false; this.applyBoons(); this.goat.hp = this.goat.maxHp;

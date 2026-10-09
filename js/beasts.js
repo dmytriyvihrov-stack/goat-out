@@ -64,6 +64,7 @@ const Beast = {
     // window is `hurtFire`, long enough to walk out of it, and it blinks as the goat does.
     // The fish is in water (fire does nothing) and in glass (anything else breaks it).
     if (p.kind === 'fish') { if (src !== 'fire') Beast.breakFish(p, game, 0, 0); return; }
+    p.lastBy = src;   // what the plate and its body say killed it
     const own = TUNING.prop[p.kind] && TUNING.prop[p.kind].hp;   // the horse and the hen are sturdier than the rest
     p.beastHp = (p.beastHp === undefined ? own || B.hp : p.beastHp) - 1;
     p.hurtCd = src === 'fire' ? B.hurtFire : B.hurtCd; p.hurtMax = p.hurtCd; p.wobble = 0.3; p.hurtFlash = 0.25;
@@ -78,7 +79,29 @@ const Beast = {
     game.world.splat(p.x, p.y, 0, 0, 6);
     game.particles(p.x, p.y, 16, p.kind === 'crow' ? PALETTE.ink : PALETTE.bone, 200);
     game.audio.sfxSplat();
+    // Its body stays where it fell (9 Oct 2026 playtest: "show its body, at least to the eye, so you can tell what it died
+    // of"): on its side, scorched if fire took it, for the rest of the floor. Render only (`Beast.drawBodies`).
+    (game.beastBodies || (game.beastBodies = [])).push({ kind: p.kind, x: p.x, y: p.y, face: p.face || 1,
+      burnt: p.lastBy === 'fire' || p.lastBy === 'witchfire', t: 0 });
     Beast.farewell(p, game, 'dead');
+  },
+  // The dead escorts of this floor, lying where they fell: the animal's own picture turned on its side, greyed,
+  // with blood (or soot) under it. In the ground pass, after the men's bodies.
+  drawBodies(R, game) {
+    const L = game.beastBodies; if (!L || !L.length) return;
+    const ctx = R.ctx;
+    for (const b of L) {
+      if (game.hidden && game.hidden(b.x, b.y)) continue;
+      ctx.save(); ctx.translate(Math.round(b.x), Math.round(b.y));
+      // the stain under it, in cells
+      ctx.fillStyle = b.burnt ? 'rgba(24,18,16,0.55)' : PALETTE.blood;
+      for (let i = -3; i <= 3; i++) for (let j = -1; j <= 1; j++) if (Math.abs(i) + Math.abs(j) * 2 < 4) ctx.fillRect(i * 4 - 2, j * 4 + 2, 4, 4);
+      ctx.scale(1, 1 / TILT); ctx.translate(0, -2);
+      ctx.rotate(b.face > 0 ? Math.PI / 2 : -Math.PI / 2);
+      ctx.filter = b.burnt ? 'grayscale(0.9) brightness(0.45)' : 'grayscale(0.6) brightness(0.8)';
+      Beast.portrait(R, ctx, b.kind, b.kind === 'horse' ? 0.9 : 0.75);
+      ctx.restore();
+    }
   },
   // The end of an escort's road is an event, not a caption (7 Oct 2026 playtest: "show its death clearly, it is an
   // important event, the start of the road and the end"): the world slows and stops a beat, a ring and a pale shape
@@ -86,7 +109,7 @@ const Beast = {
   // to it (`game.beastFarewell`, `Beast.drawFarewell`, `TUNING.beast.farewell`). `how`: 'dead' or 'left' behind.
   farewell(p, game, how) {
     const F = TUNING.beast.farewell, kind = p.kind === 'coop' ? p.holds || 'chicken' : p.kind;
-    game.beastFarewell = { kind, how, t: 0, x: p.x, y: p.y };
+    game.beastFarewell = { kind, how, t: 0, x: p.x, y: p.y, by: how === 'dead' && p.lastBy ? game.killedBy(p.lastBy) : null };
     game.slowTimer = Math.max(game.slowTimer || 0, F.slow); game.hitstop(F.stop);
     game.ring(p.x, p.y, 1.4 * TILE, how === 'dead' ? PALETTE.blood : PALETTE.ash, 0.7, 4);
     // The soul of it leaving: pale cells rising off the spot.
@@ -113,7 +136,7 @@ const Beast = {
     ctx.textAlign = 'left'; ctx.font = FONT_PICK.font('say', Math.round(30 * s)); ctx.fillStyle = B.how === 'dead' ? PALETTE.blood : PALETTE.bone;
     ctx.fillText(name, bx + 112 * s, by + 42 * s);
     ctx.font = `700 ${Math.round(13 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(232,221,200,0.6)';
-    ctx.fillText(B.how === 'dead' ? 'IT WALKED OUT OF ITS PEN WITH YOU, AND ENDS HERE.' : 'IT DID NOT KEEP YOUR PACE.', bx + 112 * s, by + 66 * s);
+    ctx.fillText(B.how === 'dead' ? (B.by ? 'KILLED BY ' + B.by + '.' : 'IT WALKED OUT OF ITS PEN WITH YOU, AND ENDS HERE.') : 'IT DID NOT KEEP YOUR PACE.', bx + 112 * s, by + 66 * s);
     ctx.restore();
   },
   // Walled in behind him by the clamp (`game.updateClamps`). Gone, and said over the goat's head
@@ -173,6 +196,10 @@ const Beast = {
     p.bob = (p.bob || 0) + dt * 3;
     // Dazed: it stands where it is (a hop over a chasm already under way still lands).
     if (p.stunT > 0 && !p.gapHop) { p.vx = 0; p.vy = 0; return; }
+    // Standing in harm's way, fire reaching it, a rune under it, a grate coming up, it steps out first (9 Oct 2026
+    // playtest: "the animals a little more careful with fire and the things that hurt"): a pig waiting by the goat
+    // stood on while witchfire spread round its feet. The tortoise is carried or tucked as often as walked: it too.
+    if (!p.gapHop && Beast.flee(p, dt, game)) return;
     // Close enough to have seen it: the first of each kind in a run says what it is for, the way
     // the hen and the hound do. An animal walking about explains nothing on its own.
     if (p.gift) return Beast.updateGift(p, dt, game);
@@ -186,6 +213,34 @@ const Beast = {
     if (p.kind === 'rabbit') return Beast.updateRabbit(p, dt, game);
     if (p.kind === 'husky') return Beast.updateHusky(p, dt, game);
     if (p.kind === 'fish') return Beast.updateFish(p, dt, game);
+  },
+
+  // Is this spot harm for an animal: the men's `hazardAt` at its centre, or fire within its body's reach (a flame at
+  // its edge burns it by the next step, `isBurningPx` alone let it stand with its rump in one).
+  hotAt(p, game, x, y) {
+    const w = game.world, r = p.r || 10;
+    if (Enemy.prototype.hazardAt.call(p, game, x, y)) return true;
+    return w.isBurningPx(x + r, y) || w.isBurningPx(x - r, y) || w.isBurningPx(x, y + r) || w.isBurningPx(x, y - r);
+  },
+  // Out of harm, the shortest way that stays out of it, leaning toward the goat. False when it is standing clear.
+  flee(p, dt, game) {
+    if (p.held || p.flying || !Beast.hotAt(p, game, p.x, p.y)) { p.fleeA = null; return false; }
+    const w = game.world, g = game.goat, step = TILE * TUNING.beast.flee.look;
+    let best = null, bs = -1e9;
+    for (let i = 0; i < 16; i++) {
+      const a = i * Math.PI / 8, x = p.x + Math.cos(a) * step, y = p.y + Math.sin(a) * step;
+      if (w.isSolid(Math.floor(x / TILE), Math.floor(y / TILE)) || Beast.hotAt(p, game, x, y)) continue;
+      // toward the goat a little, and the way it was already going a little more, so it never dithers on the lip
+      const sc = -hyp(g.x - x, g.y - y) * 0.2 + (p.fleeA !== null && p.fleeA !== undefined ? Math.cos(a - p.fleeA) * 20 : 0);
+      if (sc > bs) { bs = sc; best = a; }
+    }
+    if (best === null) return false;   // nowhere clear within a step: its own walk carries on
+    p.fleeA = best;
+    const spd = Math.max((TUNING.prop[p.kind] && TUNING.prop[p.kind].speed) || 60, TUNING.beast.flee.speed);
+    p.vx = Math.cos(best) * spd; p.vy = Math.sin(best) * spd;
+    if (Math.abs(p.vx) > 4) p.face = Math.sign(p.vx);
+    p.x += p.vx * dt; p.y += p.vy * dt; w.collideCircle(p);
+    return true;
   },
 
   // Where an animal may put its foot: the hen's own steering, which borrows the men's `hazardAt` so

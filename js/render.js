@@ -476,6 +476,7 @@ class Renderer {
       this.drawOmens(game, cam);
       this.drawDecals(game, cam);
       game.fx.drawGround(this,game);
+      Beast.drawBodies(this, game);   // a dead escort, on its side where it fell
       if (game.scatter) game.scatter.drawGround(this);   // a table's supper, where it came to rest
       this.drawPits(game, cam);
       this.drawFallers(game);
@@ -8339,42 +8340,12 @@ class Renderer {
   // began and a small cross where it ended. `lineWidth` is a screen-pixel width divided back out of
   // the camera zoom, since we are inside `worldTransform` here and a world-space width would go from
   // a thread to a rope over the length of the pull-back.
+  // 9 Oct 2026 playtest ("at the death, do not show this line"): only the skulls are laid on the floor now; the line
+  // the run took is the death card's painting's (js/painting.js), not drawn over the moment he falls.
   drawDeathPath(game) {
-    const trail = game.pathTrail;
-    if (!trail || trail.length < 2) return;
     const ctx = this.ctx, z = game.cam.zoom;
-    ctx.save();
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    ctx.strokeStyle = PALETTE.blood; ctx.globalAlpha = 0.8;
-    ctx.lineWidth = TUNING.deathCam.lineWidth / z;
-    // Smoothed (8 Oct 2026 playtest: "smooth these lines a little"): the samples cut at their corners twice (Chaikin),
-    // the two ends kept where they are, so a step sampled every `sampleGap` s no longer reads as a zigzag.
-    const SC = this.deathSmooth;
-    let pts = SC && SC.trail === trail && SC.n === trail.length ? SC.pts : trail;
-    if (pts === trail) for (let pass = 0; pass < TUNING.deathCam.smooth; pass++) {
-      const out = [pts[0]];
-      for (let i = 0; i < pts.length - 1; i++) {
-        const a = pts[i], b = pts[i + 1];
-        out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 }, { x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
-      }
-      out.push(pts[pts.length - 1]); pts = out;
-      this.deathSmooth = { trail, n: trail.length, pts };   // made once a death, not once a frame
-    }
-    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.stroke();
-    const start = trail[0], end = trail[trail.length - 1], dot = 4 / z, x = 6 / z;
-    ctx.fillStyle = PALETTE.bone; ctx.globalAlpha = 0.9;
-    ctx.beginPath(); ctx.arc(start.x, start.y, dot, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = TUNING.deathCam.lineWidth / z;
-    ctx.beginPath();
-    ctx.moveTo(end.x - x, end.y - x); ctx.lineTo(end.x + x, end.y + x);
-    ctx.moveTo(end.x - x, end.y + x); ctx.lineTo(end.x + x, end.y - x);
-    ctx.stroke();
-    // A small skull wherever a man went down, so the map says what the run did as well as where.
-    const k = TUNING.deathCam.skull / z;
-    for (const m of game.killMarks || []) this.skullMark(m.x, m.y, k);
-    ctx.restore();
+    const k0 = TUNING.deathCam.skull / z;
+    ctx.save(); for (const m of game.killMarks || []) this.skullMark(m.x, m.y, k0); ctx.restore();
   }
   // A skull `k` world units across, drawn upright on the tilted floor: a round cranium, a jaw, two
   // eye sockets and a nose. Bone on a dark rim so it holds on a pale floor and a dark one alike.
@@ -8933,16 +8904,23 @@ class Renderer {
     // The horns he wears, as a picture over the hearts, once there is more than one pair to choose (8 Oct 2026 playtest:
     // "the horn size as a picture, here, once other options exist; with one pair it means nothing"): `HORN_GLYPHS`, the
     // pairs at heaven's edge, in the same cells.
+    // 9 Oct 2026 playtest: "the horn size in the top-left of the screen": in the talismans' row after their chips, the
+    // dares' marks after it (`hornRowW`, read by `Heaven.drawDareMarks`); the pointer on it names the pair.
     const HG = typeof HORN_GLYPHS !== 'undefined' && Heaven.hornsOpen() && HORN_GLYPHS[game.hornKind];
+    this.hornRowW = 0;
     if (HG) {
-      const c = Math.max(2, Math.round(2.4 * s)), w = HG[0].length * c, h = HG.length * c;
-      const bx = Math.round(low ? hx - 2 * s : hx + (g.maxHp + (g.light || 0) + (g.armour || 0) + lives) * HGAP + 8 * s);
-      const by = Math.round(low ? this.leftTop - 10 * s - h : hy - 8 * s);
+      const c = Math.max(2, Math.round(2.2 * s)), w = HG[0].length * c, h = HG.length * c;
+      const chips = (game.artifacts || []).length, top0 = 3 * s + (this.portrait ? 12 * s : 0) + 6 * s;
+      const bx = Math.round(low ? 10 * s + chips * 27 * s + (chips ? 10 * s : 34 * s) : hx + (g.maxHp + (g.light || 0) + (g.armour || 0) + lives) * HGAP + 8 * s);
+      const by = Math.round(low ? top0 + 2 * s + Math.max(0, 24 * s - h) / 2 : hy - 8 * s);
+      if (low) this.hornRowW = w + 12 * s;
+      const m = game.input.mouse, HN = TUNING.goat.horns[game.hornKind];
+      if (HN && !game.touch.active && !padOn(game) && m.x >= bx && m.x <= bx + w && m.y >= by && m.y <= by + h)
+        this.skillHover = { row: { name: 'HORNS: ' + HN.name, note: HN.note || '', half: true }, x: bx, left: bx, y: by + h + 12 * s, hot: false, boons: [] };
       ctx.fillStyle = 'rgba(14,9,14,0.85)';
       for (let r = 0; r < HG.length; r++) for (let q = 0; q < HG[r].length; q++) if (HG[r][q] !== '.') ctx.fillRect(bx + (q - 1) * c, by + (r - 1) * c, c * 3, c * 3);
       const col = { '+': '#fff4c2', h: '#e0ac3e', s: '#efe6d0', e: '#3a2c4e' };
       for (let r = 0; r < HG.length; r++) for (let q = 0; q < HG[r].length; q++) if (HG[r][q] !== '.') { ctx.fillStyle = col[HG[r][q]]; ctx.fillRect(bx + q * c, by + r * c, c, c); }
-      if (low) this.leftTop = by - c;
     }
     // HORN SIZES test (`TUNING.goat.horns`): which horn he has and what it does, under the hearts. Never in the itch build.
     // Off unless the DEV MODE drawer's HORN INFO is on (8 Oct 2026 playtest: "a bit overwhelming").

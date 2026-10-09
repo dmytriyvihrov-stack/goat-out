@@ -17,6 +17,20 @@ Tags: **bug** something is wrong; **feel** it works and does not read; **number*
 
 ## Batches
 
+### 9 Oct 2026, fourth batch (his 9 notes and a screenshot)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | system | first meeting with any animal in the middle of a floor | Already in 2.05 (`beast.mid` [0.3, 0.6]). |
+| 2 | tooling | run less heavy stuff so parallel sessions are lighter | Already in 2.05 (CLAUDE.md *Work light*). |
+| 3 | tooling | Defender exclusions for the Claude Code projects | A security setting: the command is given to him to run himself (admin PowerShell). |
+| 4 | polish | check and polish the rest | Syntax, rules (`balance.js --seeds 6`) and a browser pass over this batch: clean. |
+| 5 | feel | animals more careful with fire and things that hurt (pig by witchfire) | They look 2 tiles ahead (was 1.5) and half a step too, count a flame at the body's edge, and one standing in harm's way steps out first (`Beast.hotAt`, `Beast.flee`, `beast.flee`). |
+| 6 | feel | the horn size in the top-left of the screen | The horn picture moved from over the hearts into the top-left row after the talismans, its name and note on the pointer; the dares' marks follow it. |
+| 7 | feel | a dead companion: show its body, so you see what killed it | It lies on its side where it fell for the rest of the floor, over blood, or darkened over soot if fire took it (`Beast.drawBodies`, `game.beastBodies`); the plate's second line says KILLED BY FIRE / A CLUBMAN... |
+| 8 | number | THE TORTOISE'S PACE at 40%, not 30% | `quests.tortoise.speed` 0.2 → 0.4. |
+| 9 | system | iron cages vanished as a choice; animal or grass is fine | With only the tortoise's stand open a run deals one animal, and iron then came on 60% of those floors (and never before a key is held). Now always where it fits (`keys.iron.chance` 1, about 85-100% of animal floors). |
+
 ### 9 Oct 2026, third batch (his 19 notes and screenshots, and one more mid-work)
 
 | # | tag | note | what shipped |

@@ -71,6 +71,13 @@ const Shop = {
       if (pool.length) { const a = pool[Math.floor(h * pool.length)]; p.ware = { id: a.id, tier: Math.min(w.tier || 1, a.tiers.length) }; }
     });
     Shop.freshen(game, wares, seed);
+    // Unlocked for the first time (a won dare's talisman, `Heaven.offerNext`): on the first shelf after, in a stool's place.
+    for (const id of Heaven.pendingOffers('arts').slice()) {
+      const a = Shop.def(id), arts = wares.filter((p) => !p.ware.cape);
+      if (!a || !arts.length || Shop.worn(game, id) || (game.dev && game.dev.god)) continue;
+      if (!arts.some((p) => p.ware.id === id)) { const p = arts[Math.floor(farHash(seed % 7919, 5) * arts.length)]; p.ware = { id, tier: Math.min(p.ware.tier || 1, a.tiers.length), fresh: true }; }
+      Heaven.offered('arts', id);
+    }
   },
   // SOMETHING NEW (`Novelty`, 6 Oct 2026): played dry, a shelf that holds no talisman this browser has ever seen
   // swaps one of its talismans (never the cape) for one it has not, worn by nobody and of a sort not on the shelf.

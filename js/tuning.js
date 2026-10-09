@@ -361,7 +361,7 @@ const TUNING = {
     // climbed out of. Each pays `done` sacrifices and frees the animal. `pay`: the horse's for each chased floor.
     // 8 Oct 2026 playtest: a dare may ask for its own floor (`floor`, a LEVELS index: the tortoise's the second, the goose's the
     // third); the horse's red comes on floors nobody knows.
-    quests: { offer: 6, postAt: [36.6, 18.4], postR: 9, tortoise: { floors: 1, floor: 1, speed: 0.2, near: 7, done: 40 }, goose: { floors: 1, floor: 2, done: 40 },
+    quests: { offer: 6, postAt: [36.6, 18.4], postR: 9, tortoise: { floors: 1, floor: 1, speed: 0.4, near: 7, done: 40 }, goose: { floors: 1, floor: 2, done: 40 },
       horse: { floors: 2, chance: 0.6, pay: 15, done: 40 } },
     // THE ANIMALS' HOME (7 Oct 2026, js/heaven-home.js). `pour`: GRAB held pours `rate` sacrifices a second into what is
     // broken, each soul `fly` s in the air. `tower`: the overlook starts broken and costs `cost`. `stands`: `open` from the
@@ -374,12 +374,12 @@ const TUNING = {
       tower: { cost: 30 },
       // 8 Oct 2026 playtest: "all the stands are broken and you mend them for souls, all but the tortoise's, open from the
       // start (with nobody on it, of course)". No padlocks: every other stand has its price.
-      stands: { open: ['tortoise'], cost: { goose: 25, horse: 40 } },   // 8 Oct 2026: only the three of the story; the other six stay locked
+      stands: { open: ['tortoise'], cost: { goose: 25, horse: 40 }, ghostDrop: 12 },   // 8 Oct 2026: only the three of the story; the other six stay locked
       // The paddock (8 Oct 2026 playtest: "not there at first; built when you mend the stand, and very small, cramped and
       // straight"): a box of rails by the horse's stand, `x0`..`x1` x `y0`..`y1` tiles, a post every `post` along each side.
       paddock: { x0: 21.2, x1: 26.6, y0: 20.8, y1: 24.0, post: 0.6, postR: 7, come: 2.6 },
       roam: { tortoise: { speed: 7 }, goose: { speed: 55, honk: [7, 15], fly: [22, 40], flyFor: 11, flock: 6 }, horse: { speed: 165, graze: [2, 5] } },
-      horns: { at: [48.6, 17.6], gap: 1.8 },
+      horns: { at: [40.4, 17.6], gap: 1.8 },   // 9 Oct 2026 playtest: moved left, west of the shepherd
     },
     // The mirror's tile (`Heaven.level`): at the bridge's mouth on the edge's side, so the way down passes it.
     mirrorAt: [35.7, 12.2],
@@ -1462,7 +1462,7 @@ const TUNING = {
       // walls it in with its room (25 Sep 2026; it used to break out after him). A hen still with
       // him, inside `saveR` tiles, when he reaches the stairs is worth `saveHearts` for the rest of
       // the run, once a level however many he brings.
-      look: 1.5, detourFor: 0.5, saveR: 8, saveHearts: 1,
+      look: 2, detourFor: 0.5, saveR: 8, saveHearts: 1,
       // Tougher and warier (29 Sep 2026, "the hen takes more damage and is more careful"): `hp` blows
       // instead of `beast.hp`; she looks `look` further for fire and grates, and keeps out of reach
       // of any man, aware of him or not, from `shyMul` × `beast.shyR` away (`Beast.shy`).
@@ -1667,7 +1667,7 @@ const TUNING = {
   // meet three or four, odd floors too"): from the second floor, then every one or two.
   // `calmMen`: the room the run's first animal is found in keeps at most this many men, the weakest (8 Oct 2026: "the room with the cage
   // easier; the fight distracted from the event"); its boss, a sentry or a man met there for the first time are not cut.
-  beast: { deal: { first: [1, 2], known: 1, gap: [1, 2], tries: 60 }, mid: [0.3, 0.6], calmMen: 2, refuseFor: 1.6, clear: 1.2, tellFor: 3.4, pactFor: 6.5, hp: 5, hurtCd: 1.0, hurtFire: 2.0, callR: 6, callGap: 2.6,
+  beast: { deal: { first: [1, 2], known: 1, gap: [1, 2], tries: 60 }, mid: [0.3, 0.6], calmMen: 2, flee: { look: 0.9, speed: 70 }, refuseFor: 1.6, clear: 1.2, tellFor: 3.4, pactFor: 6.5, hp: 5, hurtCd: 1.0, hurtFire: 2.0, callR: 6, callGap: 2.6,
     shyR: 2.4, shyBack: 1.3, exitEvery: 1.0,
     // What the goat can do to his own (6 Oct 2026 playtest: "a legit strategy, you can cheat", `Beast.dope`):
     // poisoned it walks at `poisonMove` for `poison` s (a man is poisoned 3 s), dazed it stands `stun` s.
@@ -2779,7 +2779,7 @@ const TUNING = {
   keys: { drop: 0.35, r: 12, pickR: 24, start: 0,
     // `animal`: since 5 Oct 2026 a floor stands ONE iron cage, never the pair; this share of them is the
     // animal's coop in iron, the rest the cage of big grass (its coop stays slats).
-    iron: { from: 1, chance: 0.6, pair: [2.2, 5.5], readR: 7, sayR: 2.4, sayGap: 3.2, r: 26, apart: 1 } },
+    iron: { from: 1, chance: 1, pair: [2.2, 5.5], readR: 7, sayR: 2.4, sayGap: 3.2, r: 26, apart: 1 } },
   soul: { r: 13, pickupR: 22, bossChance: 0.4, roomChance: 0, apart: 3,
     // The way out of a level is a soul gate too (1 Oct 2026): the stair door is barred until the soul the
     // last boss carries is swallowed (`level.exitGate`, gen.js `tryGenerate`, `GEN_RULES.exitgate`).

@@ -2159,7 +2159,11 @@ class Prop {
     const C = TUNING.prop.chicken, look = this.r + C.look * TILE, w = game.world;
     const bad = (ax, ay) => {
       const x = this.x + ax * look, y = this.y + ay * look;
-      return w.isSolid(Math.floor(x / TILE), Math.floor(y / TILE)) ? 'wall' : Enemy.prototype.hazardAt.call(this, game, x, y);
+      if (w.isSolid(Math.floor(x / TILE), Math.floor(y / TILE))) return 'wall';
+      // half a step ahead too, and fire at the body's edge (9 Oct 2026: they walked up to a flame and stood in its lick)
+      const hx = this.x + ax * look * 0.5, hy = this.y + ay * look * 0.5;
+      return Enemy.prototype.hazardAt.call(this, game, x, y) || Enemy.prototype.hazardAt.call(this, game, hx, hy)
+        || (w.isBurningPx(x + ax * this.r, y + ay * this.r) ? { kind: 'fire' } : null);
     };
     // A way round, once chosen, is kept for `detourFor`: re-deciding every frame turned her back and
     // forth on the lip of a fire, a step each way, and she never got round it at all.

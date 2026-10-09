@@ -46,6 +46,9 @@ Object.assign(Heaven, {
   // The kinds a run may deal (`Game.beastPlanFor`): every one whose stand is open.
   beastsOpen() { return HEAVEN_SEATS.map((s) => s.kind).filter((k) => this.standState(k) === 'open'); },
   freed(kind) { const M = this.meta; return !!(M && M.freed && M.freed[kind]); },
+  // Free and gone off its stand: free, and its last word said (9 Oct 2026 playtest: "the tortoise ran off before the
+  // dialogue"). Until it has thanked him it waits on its stand (the horse in its paddock).
+  roaming(kind) { const M = this.meta; return this.freed(kind) && !(M && M.questWon && M.questWon[kind]); },
   // It has thanked him once and asked to be brought out again, and has not been yet: its cage at the start of a floor.
   wantsAgain(kind) { const M = this.meta; return !!(M && M.again && M.again[kind] && !((M.savedN && M.savedN[kind]) >= 2)); },
   // A talisman a dare pays for is off the shelves until that dare is won (`Shop.restock`, `Beast.placeGift`).
@@ -230,13 +233,14 @@ Object.assign(Heaven, {
   },
   // Who lives up here this visit: every animal freed, anywhere in the three rooms; the horse brought up and not yet free
   // in its paddock (`hroam`, `p.as`, `p.pen`).
-  spawnRoamers(game) {
+  spawnRoamers(game, from) {
     const M = this.meta, L = game.level, P = TUNING.heaven.home.paddock, px = (t) => (t + 0.5) * TILE;
     for (const kind of ['tortoise', 'goose', 'horse']) {
       if (game.props.some((p) => p.kind === 'hroam' && p.as === kind)) continue;
-      const free = this.freed(kind), pen = kind === 'horse' && !free && M.saved[kind] && this.standState('horse') === 'open';
+      const free = this.roaming(kind), pen = kind === 'horse' && !free && M.saved[kind] && this.standState('horse') === 'open';
       if (!free && !pen) continue;
-      const at = pen ? { x: px((P.x0 + P.x1) / 2), y: px((P.y0 + P.y1) / 2) } : this.roamSpot(game, kind);
+      // `from`: the stand it has just stepped off, its thanks said
+      const at = pen ? { x: px((P.x0 + P.x1) / 2), y: px((P.y0 + P.y1) / 2) } : from && from.kind === kind ? { x: from.x, y: from.y + 10 } : this.roamSpot(game, kind);
       const r = new Prop(at.x, at.y, 'hroam'); r.heaven = true; r.as = kind; r.pen = !!pen; r.face = 1; r.goal = null; r.wait = 1; r.r = kind === 'horse' ? 13 : 10; r.bob = 0;
       game.props.push(r);
     }
@@ -367,7 +371,7 @@ Object.assign(Heaven, {
     void c;
   },
   // A stand's own state over its plinth (`drawSeat` calls it): the padlock on a locked one, cracks and rubble on a broken
-  // one with what it still asks, a ribbon of gold on one whose animal is free.
+  // one with what it still asks.
   drawStandState(R, game, p, top) {
     const ctx = R.ctx, st = this.standState(p.seat), c = 2;
     // A locked stand is a ruin, with nothing asked of it yet (8 Oct 2026, "the shut ones are ruined": the padlock went);
@@ -381,11 +385,7 @@ Object.assign(Heaven, {
       ctx.font = `700 11px ${FONT_SC}`; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(58,44,78,0.8)'; ctx.fillText(`${poured} / ${P}`, 0, top - 12);
       return true;
     }
-    if (this.freed(p.seat)) {
-      ctx.fillStyle = '#e0a92e'; ctx.fillRect(-14, top - 4, 28, 3); ctx.fillStyle = '#f7d774'; ctx.fillRect(-14, top - 4, 28, 1);
-      ctx.fillStyle = '#e0a92e'; ctx.fillRect(10, top - 2, 3, 8); ctx.fillRect(13, top - 1, 3, 7);
-      return false;
-    }
+    // (a free animal's stand had a gold ribbon here; since 9 Oct 2026 its light silhouette in the sign says it, `drawSeat`)
     return false;
   },
 });
@@ -418,7 +418,18 @@ Object.assign(Heaven, {
   dareTalk(game, n, s, say) {
     const M = this.meta, Q = QUESTS[s.kind]; if (!Q) return false;
     const box = (text, ask, onAnswer) => Beast.talk(game, { kind: s.kind, x: n.x, y: n.y }, this.parts([text]), ask, onAnswer ? { onAnswer } : null);
-    if (M.questWon && M.questWon[s.kind]) { delete M.questWon[s.kind]; this.saveSoon(); box(s.sound + ' ' + Q.won); return true; }
+    // its last word, and under it what the dare opened (9 Oct 2026 playtest: "I saved the tortoise and never saw the unlock")
+    if (M.questWon && M.questWon[s.kind]) {
+      delete M.questWon[s.kind]; this.queueOffer(s.kind); this.saveSoon();
+      const un = this.unlockWords(s.kind);
+      box(s.sound + ' ' + Q.won + (un.length ? ' | ' + un.join(' ') : ''));
+      game.audio.sfxBell();
+      // said: now it steps off its stand and lives up here (the horse goes from its paddock: out of the pen, loose)
+      if (s.kind === 'horse') game.props = game.props.filter((p) => !(p.kind === 'hroam' && p.as === 'horse'));
+      this.spawnRoamers(game, { kind: s.kind, x: n.x, y: n.y });
+      for (const p of game.props) if (p.kind === 'hroam' && p.as === s.kind) { p.wait = 1.5; p.goal = null; }
+      return true;
+    }
     if (this.freed(s.kind)) return false;
     if (this.questOn(s.kind)) { box(s.sound + ' ' + Q.wear.replace('{left}', (M.quest[s.kind].left || 0))); return true; }
     // Brought out once (9 Oct 2026 playtest): its thanks, and the ask to be brought out again; its cage is at the start of a

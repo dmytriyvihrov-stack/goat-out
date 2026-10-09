@@ -56,9 +56,11 @@ const HEAVEN_SEATS = [
 const QUESTS = {
   tortoise: { name: "THE TORTOISE'S PACE", color: '#8fae6a', talisman: 'tallow',
     // 9 Oct 2026: slow only with the cult near (`quests.tortoise.near`), and it is not a race: slowness is strength.
-    offer: 'EVERYBODY CALLS ME SLOW, AS IF IT WERE A WEAKNESS. IT IS NOT. SLOW IS A STRENGTH: I HAVE NEVER ONCE RUN INTO A KNIFE. | ON THE SECOND FLOOR, WHEN THEY ARE CLOSE, MOVE AT MY PACE. LEARN IT. WILL YOU?',
-    took: 'SLOWLY, THEN. SLOW IS STRONG.', wear: 'SLOW WHEN THEY ARE CLOSE. THE SECOND FLOOR AT MY PACE.',
-    won: 'YOU SEE IT NOW. SLOW IS NOT WEAK. THANK YOU. NOW I CAN REST. | AND TAKE THIS, FROM ME: WHEN THEY CROWD YOU, BECOME A SHELL. HOLD THE ROLL.', off: '...ANOTHER TIME. SLOWLY.',
+    // 9 Oct 2026 playtest, "a slow fight, not a chase": the words are about standing and fighting at its pace, not running.
+    offer: 'EVERYBODY CALLS ME SLOW, AS IF IT WERE A WEAKNESS. IT IS NOT. I HAVE NEVER RUN FROM A FIGHT, AND I HAVE NEVER LOST ONE. | ON THE SECOND FLOOR, WHEN THEY COME CLOSE, FIGHT AT MY PACE. NO DASHING ABOUT. SLOW, AND HEAVY, AND SURE. WILL YOU?',
+    took: 'SLOWLY, THEN. A SLOW FIGHT IS STILL A FIGHT WON.', wear: 'WHEN THEY COME CLOSE, FIGHT AT MY PACE: SLOW AND SURE. THE SECOND FLOOR.',
+    won: 'YOU SEE IT NOW. YOU FOUGHT THEM SLOWLY, AND YOU WON. SLOW IS NOT WEAK. THANK YOU. NOW I CAN REST. | AND TAKE THIS, FROM ME: WHEN THEY CROWD YOU, BECOME A SHELL. HOLD THE ROLL.', off: '...ANOTHER TIME. SLOWLY.',
+    boon: 'shell',   // the soul its dare opens (`BOONS` `unlock`): dealt on the next soul after (`Heaven.offerNext`)
     // 9 Oct 2026 playtest, the chain: brought out once it thanks him and asks to be brought out again (`thanks`, `again`),
     // and from then on its cage is at the start of a floor (`Heaven.wantsAgain`, gen.js `opts.beastAtStart`); twice, the dare.
     thanks: 'THANK YOU, GOAT. YOU CARRIED ME OUT OF THERE. | THERE ARE MORE OF US IN THEIR CAGES DOWN THERE. LOOK FOR ME NEAR THE START OF A FLOOR, AND BRING ME OUT ONCE MORE.',
@@ -545,6 +547,7 @@ const Heaven = {
       const tal = typeof Shop !== 'undefined' && Shop.def(QUESTS[kind].talisman);
       if (tal) game.floatText(at.x, at.y - 84, tal.name + ' IS ON THE SHELVES NOW', '#f7d774');
       (M.questWon = M.questWon || {})[kind] = 1; M.praise = kind;   // the god's word next time up
+      this.queueOffer(kind);
       (game.questWonNow = game.questWonNow || []).push(kind);   // the clear card shows it glad (`Painting.drawHappy`)
     };
     // A floor climbed out of under each dare: the horse's when the red was after him, the tortoise's always (he walked it),
@@ -558,6 +561,30 @@ const Heaven = {
     step('tortoise', this.questHere(game, 'tortoise'));
     step('goose', this.questHere(game, 'goose') && !game.questSpoiled);
     this.saveSoon();
+  },
+  // Unlocked for the first time is in the very next choice (9 Oct 2026 playtest): what a won dare opens (its soul, its
+  // talisman) waits in `meta.offerNext` until the next soul's deal (`Game.openBoonChoice`) or shelf (`Shop.restock`) lays it.
+  queueOffer(kind) {
+    const M = this.meta, Q = QUESTS[kind]; if (!M || !Q) return;
+    // once a dare (a store from before this, whose dare was already won, is queued at its thanks: `dareTalk`)
+    M.offerQueued = M.offerQueued || {}; if (M.offerQueued[kind]) return; M.offerQueued[kind] = 1;
+    const O = M.offerNext = M.offerNext || { boons: [], arts: [] };
+    if (Q.boon && !O.boons.includes(Q.boon)) O.boons.push(Q.boon);
+    if (Q.talisman && !O.arts.includes(Q.talisman)) O.arts.push(Q.talisman);
+  },
+  // Spent: laid in a deal or on a shelf.
+  offered(sec, id) {
+    const O = this.meta && this.meta.offerNext; if (!O || !O[sec]) return;
+    const i = O[sec].indexOf(id); if (i >= 0) { O[sec].splice(i, 1); this.saveSoon(); }
+  },
+  pendingOffers(sec) { const O = this.meta && this.meta.offerNext; return (O && O[sec]) || []; },
+  // What the won dare opened, said under its last word at the stand, so the unlock is seen where it is thanked for.
+  unlockWords(kind) {
+    const Q = QUESTS[kind]; if (!Q) return [];
+    const out = [], b = Q.boon && BOONS.find((x) => x.id === Q.boon), tal = typeof Shop !== 'undefined' && Shop.def(Q.talisman);
+    if (b) out.push('UNLOCKED: ' + b.name + '. ON YOUR NEXT SOUL.');
+    if (tal) out.push('UNLOCKED: ' + tal.name + '. ON THE NEXT SHELF.');
+    return out;
   },
   // One step of play (`Game.update`): under the goose's dare, the horns, the teeth or a thing in his mouth spoil the
   // floor (`game.questSpoiled`), and he is told so; still clean in the floor's last room, far off, geese answer
@@ -593,7 +620,7 @@ const Heaven = {
     // Up in the top-left corner, in the talismans' row after their chips (9 Oct 2026: "smaller, and in the corner;
     // it sat near the middle"); a second dare goes under the first.
     const chips = (game.artifacts || []).length, top0 = 3 * s + (R.portrait ? 12 * s : 0) + (R.hudLow ? 6 * s : 14 * s);
-    const x0 = Math.round(R.hudLow ? 10 * s + chips * 27 * s + (chips ? 10 * s : 4 * s) : 16 * s);
+    const x0 = Math.round(R.hudLow ? 10 * s + chips * 27 * s + (chips ? 10 * s : 4 * s) + (R.hornRowW ? R.hornRowW + (chips ? 0 : 30 * s) : 0) : 16 * s);
     let y = Math.round(R.hudLow ? top0 + 2 * s : R.h * 0.24);
     ctx.save(); ctx.textAlign = 'left';
     for (const k of on) {
@@ -616,7 +643,7 @@ const Heaven = {
         ctx.fillStyle = here ? '#fff4c2' : 'rgba(239,230,208,0.8)'; ctx.fillText(num, nx, ny);
         w += 8 * s + textW(ctx, num);
       }
-      const ask = k === 'horse' ? 'OUTRUN THE RED' : k === 'tortoise' ? 'SLOW WHEN THEY ARE CLOSE' : game.questSpoiled ? 'NOT ONLY YOUR VOICE' : 'ONLY YOUR VOICE';
+      const ask = k === 'horse' ? 'OUTRUN THE RED' : k === 'tortoise' ? 'FIGHT AT MY PACE' : game.questSpoiled ? 'NOT ONLY YOUR VOICE' : 'ONLY YOUR VOICE';
       if (alert && e > 0) {
         // while it is big the words are beside it; the rest of the time they are on the pointer
         const tx = x + w + 14 * s;
@@ -740,7 +767,7 @@ const Heaven = {
     if (game.legsTied) { game.legsTied = null; game.applyBoons(); }
     // An animal's box left open below (the dev drawer's HEAVEN pressed mid-talk) hid the drawer for the whole visit
     // (8 Oct 2026 playtest): it is the floor's, and goes with it.
-    game.song = null; game.shopDlg = null; game.beastTalk = null; game.beastFarewell = null;
+    game.song = null; game.shopDlg = null; game.beastTalk = null; game.beastFarewell = null; game.beastBodies = [];
     const visit = !!(opts && opts.visit);
     const M = this.meta, L = this.level(), by = !visit && game.goat && game.goat.hurtBy;
     const kind = !by ? null : typeof by === 'string' ? by : (by.kind === 'bearer' && by.champion ? 'brute' : by.kind === 'bearer' && by.shieldman ? 'shield' : by.kind === 'bearer' && by.thrower ? 'thrower' : by.kind === 'bearer' && by.shaman ? 'shaman' : by.kind);
@@ -2298,7 +2325,7 @@ Object.assign(Heaven, {
   // Brought up, the animal itself stands on the lit sign in gold, as before; met and lost, its pale shade.
   drawSeat(R, game, p) {
     const ctx = R.ctx, t = R.t, saved = this.meta.saved[p.seat], met = !saved && this.seatSeen(p.seat), st = this.standState(p.seat);
-    const live = st === 'open', gold = !!saved || this.freed(p.seat);
+    const live = st === 'open', gold = !!saved || this.freed(p.seat), away = this.roaming(p.seat);
     ctx.save(); ctx.translate(p.x, p.y + 6); ctx.scale(1, 1 / TILT);
     this.drawSign(ctx, t + p.x * 0.01, live, gold);
     const sil = this.animalSil(R, p.seat, live), lift = sil ? -sil.height + 12 : -40;
@@ -2309,10 +2336,19 @@ Object.assign(Heaven, {
       ctx.globalAlpha = live ? 0.85 + 0.15 * Math.sin(t * 1.8 + p.x) : 0.5; ctx.drawImage(sil, -sil.width / 2, lift); ctx.globalAlpha = 1;
       ctx.imageSmoothingEnabled = sm;
     }
+    // Its animal free and off living up here (or the horse in its paddock): the gold sign keeps a light shape of it in its
+    // middle (9 Oct 2026 playtest: "the portals are beautiful, just add a light silhouette of the animal in the middle").
+    const ghost = (away || (p.seat === 'horse' && saved)) && this.animalSil(R, p.seat, 'ghost');
+    if (ghost) {
+      const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      // its body sits in the ring's middle (the sprite's feet are 12 px over its canvas foot, its body above them)
+      ctx.globalAlpha = 0.55 + 0.12 * Math.sin(t * 1.6 + p.x); ctx.drawImage(ghost, -ghost.width / 2, -ghost.height + 12 + TUNING.heaven.home.stands.ghostDrop); ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = sm;
+    }
     const top = sil ? lift + (sil.headY !== undefined ? sil.headY : 30) - 4 : -40;
     // (whose stand it is was lettered on its foot until 8 Oct 2026: "no captions under the stands")
     // a stand locked, broken or emptied by a freed animal (js/heaven-home.js); the horse brought up is in its paddock
-    if (this.drawStandState(R, game, p, st === 'open' ? -4 : top) || this.freed(p.seat) || (p.seat === 'horse' && saved)) { ctx.restore(); return; }
+    if (this.drawStandState(R, game, p, st === 'open' ? -4 : top) || away || (p.seat === 'horse' && saved)) { ctx.restore(); return; }
     if (saved) {
       const img = this.animalGod(R, p.seat), bob = Math.round(Math.sin(t * 1.6 + p.x) * 1.5);
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -2351,12 +2387,13 @@ Object.assign(Heaven, {
   // An animal's shape, all white (`animalGod`'s drawing filled), for its stand's sign. Baked once a kind.
   // `live`: white in a blue rim; otherwise a grey-blue shape in a darker rim, the stand not open yet.
   animalSil(R, kind, live) {
-    const cache = this.sils || (this.sils = {}), key = kind + (live ? ':lit' : ':dim');
+    // `live` 'ghost': a pale gold shape, the sign of an animal that lives up here now
+    const cache = this.sils || (this.sils = {}), key = kind + (live === 'ghost' ? ':ghost' : live ? ':lit' : ':dim');
     if (cache[key] !== undefined) return cache[key];
     const img = this.animalGod(R, kind); if (!img) return (cache[key] = null);
     const flat = (col) => { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d');
       x.drawImage(img, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height); return c; };
-    const rim = flat(live ? '#6f84b8' : '#7d8aa8'), body = flat(live ? '#ffffff' : '#b8c3da');
+    const ghost = live === 'ghost', rim = flat(ghost ? '#e0a92e' : live ? '#6f84b8' : '#7d8aa8'), body = flat(ghost ? '#fff4c2' : live ? '#ffffff' : '#b8c3da');
     const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d');
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) x.drawImage(rim, dx, dy);
     x.drawImage(body, 0, 0);
