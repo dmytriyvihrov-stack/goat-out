@@ -1072,7 +1072,8 @@ class Goat {
           game.floatText(e.x, e.y - 24, board ? 'GO ROUND THE SHIELD' : big ? (e.soul && e.kind !== 'butcher' && !e.champion ? 'THE SOUL HOLDS HIM' : 'TOO BIG') : 'TOO QUICK', PALETTE.ashHi); this.fussCd = 0.8; break;
         }
       }
-      if (!game.mods.grabMen) game.reachedForAMan(this);
+      // Only with a man actually in reach (9 Oct 2026 playtest: it came up grabbing at a wall, "it tells me nothing")
+      if (!game.mods.grabMen && game.enemies.some((e) => !e.dead && !e.held && e.kind !== 'dog' && !e.scripted && hyp(e.x - this.x, e.y - this.y) <= this.r + e.r + g.reach)) game.reachedForAMan(this);
       return;
     }
     // An arm is an arm however it got there: the same hoof-over-it path takes it, tips its stand
@@ -1890,10 +1891,13 @@ class Prop {
     // A patch of wall is not a door: two blows and a crack, not a count of what a door has left.
     if (this.kind === 'secret') { this.crackWall(game); return; }
     // The soul gate is barred from the far side and there is nothing on this one to break. It says
-    // so with the word over it (`A SOUL OPENS IT`, drawn always) and the trail to its soul. A float
+    // so with the trail to its soul, and the word over it (`A SOUL OPENS IT`) after a second blow. A float
     // saying the same again stacked three lines on the one spot (3 Oct 2026), so there is none.
     if (this.gate) {
       this.wobble = 0.3; game.audio.sfxSteel(); game.shake(3); game.vibe(10);
+      // The trail comes first; the word over the door (`A SOUL OPENS IT`) only once he has butted it again, a goat who
+      // kept at it did not read the arrows (9 Oct 2026 playtest: "when the player dawdled and did not understand them").
+      this.buttN = (this.buttN || 0) + 1;
       game.guideTo(this);
       return;
     }
@@ -3164,6 +3168,8 @@ class Bullet {
       }
       for (const e of game.enemies) {
         if (e.dead || e.held || e.ghosted) continue;
+        // The rifle and the pack (9 Oct 2026): the cult's own round flies over a hound, the goat's reflected one does not
+        if (e.kind === 'dog' && !this.reflected && this.shooter && this.shooter.kind === 'hunter') continue;
         if (hyp(e.x - this.x, e.y - this.y) < e.r + 2) {
           this.dead = true;
           // The shieldman's board stops a round from in front of him (a use spent), his own side's included.

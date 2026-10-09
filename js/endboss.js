@@ -72,10 +72,14 @@ const EndBoss = {
       for (const o of [e, mate]) if (o) { o.endHold = 'stand'; if (bowl) o.facing = Math.atan2(bowl.y - o.y, bowl.x - o.x); }
       B.mate = mate || null;
       if (meet >= T.mage.ringsFrom) e.endRings = T.mage.ring;
-    } else if (kind === 'hunter') {
-      e.hp = e.maxHp = T.hunter.hp; e.shotgun = T.hunter;
-      if (meet >= T.hunter.blinkFrom) { e.blinker = true; e.blinkCd = 0; e.blinkFx = 0; }
-    } else if (kind === 'bearer' && meet >= T.twin.from) B.twinDue = true;
+    } else if (kind === 'hunter') this.rifleman(e, meet);
+    else if (kind === 'bearer' && meet >= T.twin.from) B.twinDue = true;
+  },
+  // THE THRESHING FLOOR's rifleman, and the dev drawer's corrupted one: his hearts, three rounds a shot, the blink.
+  rifleman(e, meet) {
+    const H = TUNING.endBoss.hunter;
+    e.hp = e.maxHp = H.hp; e.shotgun = H;
+    if (meet >= H.blinkFrom) { e.blinker = true; e.blinkCd = 0; e.blinkFx = 0; }
   },
   inRoom(room, x, y, pad = 0) {
     return x >= (room.x + pad) * TILE && x < (room.x + room.w - pad) * TILE && y >= (room.y + pad) * TILE && y < (room.y + room.h - pad) * TILE;

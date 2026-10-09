@@ -100,6 +100,34 @@ const Shaman = {
       o.spirit.t -= dt;
       if (o.dead || o.spirit.t <= 0 || by.dead || game.enemies.indexOf(by) < 0) Shaman.spiritOut(o, game);
     }
+    Shaman.crowd(dt, game);
+  },
+  // A shaman and a mage side by side get in each other's way (9 Oct 2026, `TUNING.links.shamanMage`): now and then one
+  // elbows the other off, which breaks what the shoved one was winding up. The shove itself is a few pixels a step.
+  crowd(dt, game) {
+    const C = TUNING.links.shamanMage, R = C.near * TILE, w = game.world;
+    for (const o of game.enemies) {
+      const j = o.jostle; if (!j) continue;
+      j.t -= dt; if (j.t <= 0 || o.dead) { o.jostle = null; continue; }
+      const nx = o.x + j.vx * dt, ny = o.y + j.vy * dt;
+      if (w.walkableAt(Math.floor(nx / TILE), Math.floor(o.y / TILE))) o.x = nx;
+      if (w.walkableAt(Math.floor(o.x / TILE), Math.floor(ny / TILE))) o.y = ny;
+    }
+    for (const s of game.liveEnemies || game.enemies) {
+      if (!s.shaman || s.dead || s.held || s.scripted || !s.woke) continue;
+      s.jostleCd = Math.max(0, (s.jostleCd || 0) - dt); if (s.jostleCd > 0) continue;
+      for (const m of game.liveEnemies || game.enemies) {
+        if (m.kind !== 'seer' || m.dead || m.held || m.scripted || m.caged || m.endHold || hyp(m.x - s.x, m.y - s.y) > R) continue;
+        s.jostleCd = C.every[0] + Math.random() * (C.every[1] - C.every[0]);
+        if (Math.random() < 0.5) continue;   // not every beat: "sometimes"
+        const [pusher, hit] = Math.random() < 0.5 ? [s, m] : [m, s], dx = hit.x - pusher.x, dy = hit.y - pusher.y, d = hyp(dx, dy) || 1, sp = C.push * TILE / C.time;
+        hit.jostle = { vx: dx / d * sp, vy: dy / d * sp, t: C.time };
+        hit.balk(game, C.daze); hit.flash = 0.15;
+        game.particles(hit.x, hit.y - 10, 3, PALETTE.bone, 60);
+        game.bark(pusher, 'crowd', 1);
+        break;
+      }
+    }
   },
   // He is down: what he gave his men goes out of them and the goat's legs are his own again.
   onDie(e, game) {

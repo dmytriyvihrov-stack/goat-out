@@ -864,7 +864,7 @@ const Codex = {
       ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(14 * R.s, 16 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
       ctx.fillText(c.d.name, ix, y + 84 * s, cw - 10 * s);   // squeezed, not spilled, on a phone's narrow card
       ctx.font = `700 ${Math.max(12 * R.s, 12 * s)}px ${FONT_SC}`; ctx.fillStyle = col;
-      ctx.fillText(c.milk ? `+${TUNING.shop.heals} HEARTS` : c.rr.name, ix, y + 102 * s);
+      ctx.fillText(c.milk ? `GET BACK ${TUNING.shop.heals} HEARTS` : c.rr.name, ix, y + 102 * s);
       ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 13.5 * s));
       c.lines.forEach((l, k) => this.line(R, l, ix, y + 124 * s + k * 18 * s, 'center', 'rgba(239,230,208,0.82)'));
       ctx.font = `700 ${Math.max(12 * R.s, 11.5 * s)}px ${FONT_SC}`;
@@ -1082,11 +1082,8 @@ const Unlocks = {
       ctx.textAlign = 'left'; ctx.font = `700 ${Math.max(16 * R.s, 19 * s)}px ${FONT_SC}`; ctx.fillStyle = known ? PALETTE.bone : 'rgba(239,230,208,0.5)';
       ctx.fillText(known ? e.name : e.lock ? 'LOCKED' : '? ? ?', fx, fy + 28 * s);
       ctx.font = `700 ${Math.max(12 * R.s, 12.5 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
-      if (!known && e.lock) {
-        ctx.fillText(e.tag, fx, fy + 48 * s);
-        ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 14 * s)); Codex.lines(R, e.lock, fx, fy + 74 * s, fw, 20 * s, 'left', 'rgba(239,230,208,0.88)');
-        return;
-      }
+      // A shut one is a secret (9 Oct 2026 playtest): no part of him, no way to open it, only that it is shut.
+      if (!known && e.lock) return;
       const how = e.sec === 'boons' ? (e.lvl > 1 ? 'TAKEN' : 'DEALT') : e.sec === 'beasts' ? (e.lvl > 1 ? 'BROUGHT OUT' : 'MET') : e.sec === 'arts' || e.sec === 'capes' ? (e.lvl > 1 ? 'WORN' : 'SEEN') : e.sec === 'objects' ? 'TORN DOWN' : 'FOUND';
       ctx.fillText(known ? e.tag + ' · ' + how : 'NOT MET YET', fx, fy + 48 * s);
       if (known) { ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 14 * s)); Codex.lines(R, e.text, fx, fy + 74 * s, fw, 20 * s, 'left', 'rgba(239,230,208,0.88)'); }

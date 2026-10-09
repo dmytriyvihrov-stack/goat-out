@@ -5,8 +5,9 @@
 // heart is his death), a man of the cult (a plain one dies on it, a boss loses a heart and is floored there), a
 // companion (its own heart). Each payment fills a socket, and a socket never empties. Stand on it yourself, lure the
 // men onto it, butt them onto it, carry one there in your teeth, bring an animal: whatever pays. Six full, the skull in
-// its middle opens its eyes, the world goes dark (`fade`), and the floor is laid again as THE DARK, which is played in
-// THE CAVE's place (`darkOf`, the same door THE FORK's dark flight opens).
+// its middle opens its eyes and a red door opens beside it (`portal`, 9 Oct 2026); stepping into it the world goes dark
+// (`fade`), and the floor is laid again as THE DARK, which is played in THE CAVE's place (`darkOf`, the same door THE
+// FORK's dark flight opens).
 //
 // Level data and a picture, never a prop: it blocks nothing, the men do not know it, and nothing here is read by
 // the AI. Its sockets are `game.altar.filled`; who stands on it and for how long, `game.altar.on` (a Map).
@@ -37,6 +38,15 @@ const Sacrifice = {
       if (a.doneT >= S.fade && g && !g.dead) this.descend(game);
       return;
     }
+    // Six full: the red door beside it stands open, and it is his to take or leave (9 Oct 2026 playtest: "after six drops a red
+    // portal opens by the altar and offers you to go down", it used to drag him down on its own after `fade` s). The altar
+    // drinks no more; stepping into the door begins the fade, as the sixth drop did.
+    if (a.full) {
+      a.portalT = (a.portalT || 0) + dt;
+      const P = a.portal;
+      if (P && g && !g.dead && !g.leap && hyp(g.x - P.x, g.y - P.y) < S.portal.r * TILE) { a.done = true; a.doneT = 0; game.audio.sfxBell(true); }
+      return;
+    }
     const now = this.standing(game, a);
     // stepping off starts the second over
     for (const o of [...a.on.keys()]) if (!now.includes(o)) a.on.delete(o);
@@ -45,7 +55,7 @@ const Sacrifice = {
       if (t < S.tick) { a.on.set(o, t); continue; }
       a.on.set(o, 0);
       this.pay(game, a, o);
-      if (a.done) return;
+      if (a.done || a.full) return;
     }
   },
   pay(game, a, o) {
@@ -62,10 +72,23 @@ const Sacrifice = {
     game.floatText(a.x, a.y - TUNING.sacrifice.radius * TILE - 10, `${a.filled} / ${S.cells}`, PALETTE.blood);
     if (!a.told) { a.told = true; game.floatText(o.x, o.y - 44, 'THE ALTAR DRINKS', PALETTE.blood); }
     if (a.filled >= S.cells) {
-      a.done = true; a.doneT = 0;
+      a.full = true; a.portal = this.portalSpot(game, a);
       game.audio.sfxBell(true);
-      game.floatText(a.x, a.y - TUNING.sacrifice.radius * TILE - 34, 'THE DARK OPENS', PALETTE.bone);
+      // no spot beside it for a door: the old way, down at once
+      if (!a.portal) { a.done = true; a.doneT = 0; game.floatText(a.x, a.y - TUNING.sacrifice.radius * TILE - 34, 'THE DARK OPENS', PALETTE.bone); }
     }
+  },
+  // Where the red door stands: `portal.gap` tiles off the disc's rim on plain floor, on the side toward the stairs (a tile of
+  // floor on every side of it, no prop standing there), or none.
+  portalSpot(game, a) {
+    const S = TUNING.sacrifice, w = game.world, d = (S.radius + S.portal.gap) * TILE;
+    const open = (x, y) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].every(([ox, oy]) => w.walkableAt(Math.floor((x + ox * TILE * 0.8) / TILE), Math.floor((y + oy * TILE * 0.8) / TILE)))
+      && !game.props.some((p) => !p.broken && (p.blocking || p.item) && hyp(p.x - x, p.y - y) < TILE * 1.1);
+    const L = game.level, ex = L && L.exit ? L.exit.x : a.x, ey = L && L.exit ? L.exit.y : a.y;
+    const spots = [];
+    for (let k = 0; k < 16; k++) { const q = k / 16 * Math.PI * 2, x = a.x + Math.cos(q) * d, y = a.y + Math.sin(q) * d; if (open(x, y)) spots.push({ x, y }); }
+    spots.sort((p, q) => hyp(p.x - ex, p.y - ey) - hyp(q.x - ex, q.y - ey));
+    return spots[0] || null;
   },
   // Down into THE DARK: the floor laid again in THE CAVE's place, what he carries kept, the souls on the floor his.
   descend(game) {
@@ -120,6 +143,42 @@ const Sacrifice = {
       ctx.globalAlpha = 1;
     }
     ctx.imageSmoothingEnabled = sm;
+    if (a.portal) this.drawPortal(R, game, a);
+  },
+  // The red door, on the floor: a ring of cells round a slow red swirl going down into black, embers rising off it, and under it
+  // the offer in two words once he is near. Cells the way fire and the waves are (never a smooth shape); it opens over `0.6` s.
+  drawPortal(R, game, a) {
+    const S = TUNING.sacrifice, P = a.portal, ctx = R.ctx, px = TUNING.effects.pixel * 2, t = R.t;
+    const open = clamp((a.portalT || 0) / 0.6, 0, 1), rad = S.portal.size * TILE * (0.3 + 0.7 * open), n = Math.ceil(rad / px);
+    const B = [[], [], [], []];   // [black core, swirl, rim, hot rim]
+    for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
+      const dx = i * px, dy = j * px, rr = Math.hypot(dx, dy) / rad; if (rr > 1) continue;
+      const ang = Math.atan2(dy, dx), v = Math.sin(ang * 2 + rr * 8 - t * 3.2);
+      const b = rr > 0.82 ? (((i * 7 + j * 3 + Math.floor(t * 14)) % 5) === 0 ? 3 : 2) : (rr < 0.28 || v < -0.35) ? 0 : 1;
+      B[b].push(Math.round((P.x + dx) / px) * px, Math.round((P.y + dy) / px) * px);
+    }
+    const cols = ['#1a0306', PALETTE.blood, '#7a1c1c', PALETTE.fireHi];
+    ctx.save();
+    for (let b = 0; b < 4; b++) {
+      if (!B[b].length) continue;
+      ctx.fillStyle = cols[b]; ctx.beginPath();
+      for (let k = 0; k < B[b].length; k += 2) ctx.rect(B[b][k], B[b][k + 1], px, px);
+      ctx.fill();
+    }
+    // embers climbing off it, a few cells, each on its own slow loop
+    ctx.fillStyle = PALETTE.fireHi;
+    for (let k = 0; k < 7; k++) {
+      const u = (t * 0.55 + k * 0.143) % 1, ex = P.x + Math.sin(k * 12.9 + u * 3) * rad * 0.6, ey = P.y - u * TILE * 1.3;
+      ctx.globalAlpha = (1 - u) * open; ctx.fillRect(Math.round(ex / px) * px, Math.round(ey / px) * px, px, px);
+    }
+    ctx.globalAlpha = 1;
+    const g = game.goat;
+    if (open >= 1 && g && hyp(g.x - P.x, g.y - P.y) < S.portal.near * TILE) {
+      ctx.scale(1, 1 / TILT); ctx.font = `700 11px ${FONT_SC}`; ctx.textAlign = 'center';
+      ctx.fillStyle = `rgba(239,120,100,${0.65 + 0.3 * Math.sin(t * 3)})`; ctx.fillText('INTO THE DARK', P.x, (P.y - rad - 10) * TILT);
+      ctx.textAlign = 'left';
+    }
+    ctx.restore();
   },
   // In screen space, over the picture and under the HUD: the dark coming down at six, and lifting off THE DARK's start.
   drawOverlay(R, game) {

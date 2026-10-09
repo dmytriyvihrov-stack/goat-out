@@ -1601,7 +1601,7 @@ class Enemy {
   friendInLine(game, ang) {
     const R = this.cfg.friendClear * TILE, cx = Math.cos(ang), cy = Math.sin(ang);
     for (const o of game.enemies) {
-      if (o === this || o.dead || o.held || o.ghosted || o.kind === 'ratogre') continue;
+      if (o === this || o.dead || o.held || o.ghosted || o.kind === 'ratogre' || o.kind === 'dog') continue;   // a round goes over a hound's back (9 Oct 2026: the rifle and the pack)
       const ox = o.x - this.x, oy = o.y - this.y, along = ox * cx + oy * cy;
       if (along <= 0 || along > R + o.r) continue;
       if (Math.abs(ox * -cy + oy * cx) < o.r + 5) return true;

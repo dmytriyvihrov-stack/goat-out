@@ -3284,7 +3284,7 @@ class Renderer {
       ctx.restore();
       // ...and a word over the top of it. The vault says what is behind it; the gate says what it
       // wants, which is the only instruction in the game that is also a reward.
-      if ((p.vault && !p.vaultEmpty) || p.gate) {
+      if ((p.vault && !p.vaultEmpty) || (p.gate && (p.buttN || 0) >= 2)) {
         ctx.save(); ctx.scale(1, 1 / TILT);
         ctx.font = `700 ${11}px ${FONT_SC}`; ctx.textAlign = 'center';
         ctx.fillStyle = p.gate ? `rgba(191,230,255,${0.55 + 0.3 * Math.sin(this.t * 3)})`
@@ -5099,11 +5099,10 @@ class Renderer {
           ['font-say', 'SPEECH  ' + FONT_PICK.nameOf('say')], ['font-text', 'TEXT  ' + FONT_PICK.nameOf('text')],
         ] },
         { head: 'SPAWN', rows: [
-          // what the rows below drop (`Game.devSpawnAs`): plain, champion, or corrupted at its 1st / 2nd / 3rd meeting
-          ['spawn-as', 'AS  ' + DEV_SPAWN_AS[d.spawnAs | 0]],
+          // a click on a man opens a small menu beside the row (`d.spawnMenu`, `Game.devAction` `spawn-pick=`): plain, champion,
+          // or corrupted at its 1st / 2nd / 3rd meeting (`Game.devSpawnAs`)
           ['bearer', 'BEARER'], ['enemy-spawn=shield', 'SHIELDMAN'], ['enemy-spawn=thrower', 'THROWER (BANE)'], ['enemy-spawn=shaman', 'SHAMAN'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
           ['wraith', 'WRAITH'], ['wraithdoor', 'WRAITH DOOR'], ['butcher', 'OGRE'],
-          ['ogre-soul=1', 'OGRE · SOUL 1'], ['ogre-soul=2', 'OGRE · SOUL 2 RINGS'], ['ogre-soul=3', 'OGRE · SOUL 3 BAND'],
           ['ratogre', 'RAT OGRE'],
           ['mouse', 'MOUSE'], ['artifact', 'TALISMAN · CAPE'], ['soul', 'SOUL'],
           // Every soul as its picture, a click puts it on him or takes it off (`drawSoulPick`, 9 Oct 2026 playtest).
@@ -5137,6 +5136,7 @@ class Renderer {
       ctx.fillStyle = 'rgba(13,10,12,0.93)'; ctx.fillRect(px0, py - 20 * s, boxW, boxH);
       ctx.strokeStyle = 'rgba(185,135,58,0.6)'; ctx.lineWidth = 1.5 * s;
       ctx.strokeRect(px0, py - 20 * s, boxW, boxH);
+      let popAt = null;
       cols.forEach((col, ci) => {
         const px = px0 + 3 * s + colX[ci], rw = colW[ci];
         ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
@@ -5150,9 +5150,30 @@ class Renderer {
           ctx.strokeRect(px + 5 * s, y, rw - 10 * s, rh);
           ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = on ? PALETTE.fireHi : PALETTE.bone;
           ctx.textBaseline = 'middle'; ctx.fillText(label, px + 13 * s, y + rh / 2); ctx.textBaseline = 'alphabetic';
-          d.rects.push({ x: px + 5 * s, y, w: rw - 10 * s, h: rh, id });
+          const rr = { x: px + 5 * s, y, w: rw - 10 * s, h: rh, id }; d.rects.push(rr);
+          if (DEV_SPAWN_POP.has(id)) { rr.pop = true; if (d.spawnMenu && d.spawnMenu.id === id) popAt = { rr, label }; }
         });
       });
+      // The spawn menu beside the row that opened it, kept inside the box, its foot above the rows' end
+      if (popAt) {
+        const note = DEV_SPAWN_NOTE[popAt.rr.id.replace('enemy-spawn=', '')], pw = 262 * s, noteH = note ? note.length * 12 * s + 8 * s : 0, ph = DEV_SPAWN_AS.length * (rh + gap) + 28 * s + noteH;
+        const qx = Math.max(px0 + 4 * s, Math.min(popAt.rr.x + popAt.rr.w * 0.3, px0 + boxW - pw - 4 * s)), qy = Math.max(py - 18 * s, Math.min(popAt.rr.y, py + n * (rh + gap) - ph));
+        ctx.fillStyle = 'rgba(13,10,12,0.98)'; ctx.fillRect(qx, qy, pw, ph);
+        ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 1.5 * s; ctx.strokeRect(qx, qy, pw, ph);
+        ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+        ctx.fillText(popAt.label + ' · SUMMON AS', qx + 8 * s, qy + 16 * s);
+        DEV_SPAWN_AS.forEach((lab, i) => {
+          const y = qy + 24 * s + i * (rh + gap);
+          ctx.fillStyle = 'rgba(59,34,51,0.9)'; ctx.fillRect(qx + 5 * s, y, pw - 10 * s, rh);
+          ctx.strokeStyle = i >= 2 ? 'rgba(143,94,196,0.7)' : i === 1 ? 'rgba(224,176,64,0.7)' : 'rgba(239,230,208,0.25)'; ctx.lineWidth = 1 * s; ctx.strokeRect(qx + 5 * s, y, pw - 10 * s, rh);
+          ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textBaseline = 'middle'; ctx.fillText(lab, qx + 13 * s, y + rh / 2); ctx.textBaseline = 'alphabetic';
+          d.rects.push({ x: qx + 5 * s, y, w: pw - 10 * s, h: rh, id: 'spawn-pick=' + i, top: true });
+        });
+        if (note) {
+          ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ash;
+          note.forEach((l, i) => ctx.fillText(l, qx + 8 * s, qy + ph - noteH + 12 * s + i * 12 * s, pw - 14 * s));
+        }
+      }
       // Burst or bleed, over every death this browser has had: which lever the deaths point at.
       const st = game.deathStats();
       ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
@@ -5259,6 +5280,26 @@ class Renderer {
       ctx.fillStyle = 'rgba(239,230,208,0.5)';
       ctx.fillText(this.clip(c.why || '', W - pad * 2 - 80 * s), pad + 70 * s, y + 29 * s);
       y += 46 * s;
+    }
+  }
+  // LINKS (9 Oct 2026): what a kind of man does beside another, one row each (`LINKS`), and a PLAY that sets the pair up
+  // beside the goat on the floor under the drawer.
+  drawLinksTab(game, pad, top) {
+    const ctx = this.ctx, s = this.ts, W = this.w, d = game.dev, lw = W - pad * 2 - 90 * s;
+    ctx.textAlign = 'left'; ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+    ctx.fillText('LINKS, WHAT MEN DO BESIDE EACH OTHER', pad, top);
+    ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
+    ctx.fillText('PLAY sets the pair up beside him on the floor (GOD on is kinder) · the numbers are TUNING.links', pad, top + 16 * s);
+    let y = top + 44 * s;
+    for (const L of LINKS) {
+      this.devButton(d, pad, y - 14 * s, 60 * s, 20 * s, 'PLAY', 'link-play=' + L.id, false);
+      ctx.textAlign = 'left'; ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+      ctx.fillText(`${L.name}  ·  ${L.men.join(' + ')}`, pad + 70 * s, y);
+      ctx.font = `${10 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.75)';
+      const lines = this.wrap(L.what(), lw);
+      lines.forEach((l, i) => ctx.fillText(l, pad + 70 * s, y + (16 + i * 14) * s));
+      ctx.fillStyle = 'rgba(239,230,208,0.45)'; ctx.fillText(L.where, pad + 70 * s, y + (16 + lines.length * 14 + 2) * s);
+      y += (34 + lines.length * 14 + 14) * s;
     }
   }
   drawMirrorTab(game, pad, top) {
@@ -5444,7 +5485,7 @@ class Renderer {
     // Solid: at 0.965 the title's big letters showed through under the rows and muddied them.
     ctx.fillStyle = 'rgb(13,10,12)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE'], ['talismans','TALISMANS'], ['animals','ANIMALS'], ['mirror','HEAVEN'], ['roomlist','ROOMS'], ['combos','COMBOS'], ['goats','GOAT GRID'], ['art','ART']];
+    const tabs = [['rules','RULES'], ['levels','LEVEL'], ['balance','BALANCE'], ['enemies','ENEMIES'], ['boons','BOONS'], ['status','STATUS'], ['props','OBJECTS'], ['music','MUSIC'], ['juice','JUICE'], ['talismans','TALISMANS'], ['animals','ANIMALS'], ['mirror','HEAVEN'], ['roomlist','ROOMS'], ['combos','COMBOS'], ['links','LINKS'], ['goats','GOAT GRID'], ['art','ART']];
     const cols = Math.max(1, Math.floor((W - pad * 2 - 72 * s) / (80 * s)));
     tabs.forEach(([id, label], i) => this.devButton(d, pad + i % cols * 80 * s,
       pad + Math.floor(i / cols) * 24 * s, 76 * s, 20 * s, label, 'tab-' + id, d.tab === id));
@@ -5465,6 +5506,7 @@ class Renderer {
     else if (d.tab === 'mirror') this.drawMirrorTab(game, pad, top);
     else if (d.tab === 'roomlist') this.drawRoomsTab(game, pad, top);
     else if (d.tab === 'combos') this.drawCombosTab(game, pad, top);
+    else if (d.tab === 'links') this.drawLinksTab(game, pad, top);
     else if (d.tab === 'music') this.drawMusicTab(game, pad, top);
     else if (d.tab === 'juice') this.drawJuiceTab(game, pad, top);
     else if (d.tab === 'talismans') Talisman.drawToolTab(this, game, pad, top);
@@ -7291,7 +7333,7 @@ class Renderer {
     ctx.fillStyle = 'rgba(13,10,12,0.7)'; ctx.fillText(label, p.x + 1, ty + 1);
     ctx.fillStyle = p.locked ? PALETTE.blood : PALETTE.fireHi; ctx.fillText(label, p.x, ty);
     ctx.font = `700 9px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.8)';
-    ctx.fillText(`+${TUNING.shop.heals} HEARTS`, p.x, ty + 12);
+    ctx.fillText(`GET BACK ${TUNING.shop.heals} HEARTS`, p.x, ty + 12);
     ctx.textAlign = 'left'; ctx.restore();
     this.wareNote(p, MILK_OFFER, MILK_OFFER.name, MILK_OFFER.tiers[0].desc);
   }

@@ -36,12 +36,18 @@ const Waves = {
     if ((e.soulMeet | 0) < W.line.from || !g) return;
     const dx = g.x - e.x, dy = g.y - e.y, d = hyp(dx, dy) || 1;
     game.waves = game.waves || [];
-    game.waves.push({ ring: false, x: e.x, y: e.y, ux: dx / d, uy: dy / d, d: W.line.start * TILE, delay: 0, t: 0 });
+    // `n` bands one behind the other, each aimed again at the goat as it leaves (`aim`, in `update`); one heart a volley
+    const volley = {};
+    for (let k = 0; k < (W.line.n || 1); k++) game.waves.push({ ring: false, x: e.x, y: e.y, ux: dx / d, uy: dy / d, d: W.line.start * TILE, delay: k * (W.line.apart || 0), aim: k > 0, t: 0, volley });
   },
   update(game, dt) {
     const W = TUNING.soulOgre, g = game.goat, w = game.world;
     for (const v of game.waves) {
-      if (v.delay > 0) { v.delay -= dt; continue; }
+      if (v.delay > 0) {
+        v.delay -= dt;
+        if (v.delay <= 0 && v.aim && g && !g.dead) { const ax = g.x - v.x, ay = g.y - v.y, ad = hyp(ax, ay) || 1; v.ux = ax / ad; v.uy = ay / ad; }
+        continue;
+      }
       v.t += dt;
       if (v.ring) {
         const C = v.cfg || W.ring;
@@ -56,7 +62,7 @@ const Waves = {
         v.d += W.line.speed * TILE * dt;
         const fx = v.x + v.ux * v.d, fy = v.y + v.uy * v.d;
         if (v.d > W.line.max * TILE || w.tileAtPx(fx, fy) === T.WALL) v.dead = true;
-        else if (!v.hit && g && !g.dead) {
+        else if (!v.hit && !(v.volley && v.volley.hit) && g && !g.dead) {
           const rx = g.x - v.x, ry = g.y - v.y, along = rx * v.ux + ry * v.uy, across = Math.abs(-rx * v.uy + ry * v.ux);
           if (Math.abs(along - v.d) < W.line.depth * TILE / 2 + g.r * 0.5 && across < W.line.w * TILE / 2) this.hit(game, v, v.ux, v.uy);
         }
@@ -128,7 +134,19 @@ const Waves = {
           const hot = ((Math.round(s / px) * 5 + Math.round(o / px) * 3 + ft) % 4) === 0 ? 1 : 0;
           B[(o > 0 ? 0 : 2) + hot].push(cx, cy);
         }
-        flush(0.95, 0.55);
+        flush(W.line.flames ? 0.6 : 0.95, W.line.flames ? 0.35 : 0.55);
+        // Fire standing along the band's leading edge, as on the rings (9 Oct 2026): the game's own witchfire every `flames` tiles across it
+        if (W.line.flames) {
+          const step = W.line.flames * TILE, m = Math.max(2, Math.round(W.line.w * TILE / step)), pts = [];
+          for (let i = 0; i <= m; i++) {
+            const s = -hw + (i / m) * hw * 2, fx = v.x + v.ux * v.d + px2 * s, fy = v.y + v.uy * v.d + py2 * s;
+            if (!stone(fx, fy)) pts.push([fx, fy, i]);
+          }
+          pts.sort((p, q) => p[1] - q[1]);
+          ctx.globalAlpha = 0.95; ctx.save(); ctx.scale(1, 1 / TILT);
+          for (const [fx, fy, i] of pts) R.flame(fx, fy * TILT, W.line.flameSize + (i * 7) % 3, i * 3, true);
+          ctx.restore();
+        }
       }
     }
     ctx.restore();

@@ -421,6 +421,9 @@ const Talisman = {
       const p = new Prop(e.x, e.y, 'crate');
       p.corpse = true; p.noGrab = !SP.grab; p.r = SP.r; p.life = SP.life; p.sprite = game.fx.snapshot(e);
       p.angle = (e.facing || 0) + Math.PI / 2; p.fromKind = e.kind;
+      // The blow that killed him is not a blow on his body (9 Oct 2026 playtest: "the spade does not work"): the prop pass of
+      // the very headbutt that did it found the new crate in front of him, sent it down the wall at the blow's speed and broke it.
+      p.lastLunge = game.goat.lungeId;
       game.props.push(p);
       const bodies = game.props.filter((q) => q.corpse && !q.broken);
       if (bodies.length > SP.cap) Talisman.corpseGone(game, bodies[0]);

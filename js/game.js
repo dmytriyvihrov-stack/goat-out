@@ -229,7 +229,7 @@ class Game {
       // The itch build itself (`RELEASE.on`, the dev drawer's ITCH BUILD) has no dev corner at all,
       // `#dev` or not, and none of the tool's addresses below: its GOD MODE is a switch in SETTINGS.
       this.dev.hidden = RELEASE.on || (/(^|\.)(itch\.io|itch\.zone|hwcdn\.net)$/i.test(location.hostname || '') && h !== 'dev');
-      if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'mirror' || h === 'roomlist' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats' || h === 'animals' || h === 'combos')) {
+      if (!this.dev.hidden && (h === 'rules' || h === 'balance' || h === 'levels' || h === 'enemies' || h === 'boons' || h === 'mirror' || h === 'roomlist' || h === 'status' || h === 'props' || h === 'music' || h === 'juice' || h === 'goats' || h === 'animals' || h === 'combos' || h === 'links')) {
         this.dev.open = true; this.dev.rules = true; this.dev.tab = h;
       }
       // `#seed=k3j9a` is the whole of sharing a run: NEW GAME takes it instead of rolling one, so a
@@ -658,7 +658,7 @@ class Game {
       sh.done = true;
       const back = L.rooms[room.index - 1];
       if (back && !back.clamped) { sh.tiles.forEach((i, k) => { w.tiles[i] = sh.was[k]; }); w.caveDirty(); }
-      this.audio.sfxSwing(); this.floatText(g.x, g.y - 40, 'THE WAY BACK IS OPEN', PALETTE.fireHi);
+      this.audio.sfxSwing();   // no words (9 Oct 2026 playtest: "not needed"): the stone going down says it
     }
     const r = this.goatRoom | 0, room = L.rooms[r], back = L.rooms[r - 1];
     if (!room || room.bossShut || !back || back.clamped || !back.exitMouth || !this.inRoom(g, r, B.inset) || !bossIn(room)) return;
@@ -1472,8 +1472,16 @@ class Game {
 
   // ---------- dev mode ----------
   hitDev(p) {
+    // The SPAWN menu (`spawn-pick=`) is on top of everything beside it; a click anywhere else shuts it and goes on.
+    if (this.dev.spawnMenu) {
+      const t = this.dev.rects.find((r) => r.top && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+      if (t) { this.devAction(t.id); return true; }
+      this.dev.spawnMenu = null;
+    }
     for (const r of this.dev.rects) {
       if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
+        // A man in SPAWN asks how first (plain, champion, corrupted at its 1st, 2nd or 3rd meeting)
+        if (r.pop) { if (this.state !== 'play' || !this.world) this.devToast('START A FLOOR FIRST'); else this.dev.spawnMenu = { id: r.id }; return true; }
         // A slider is taken hold of, not clicked: the press sets it where it landed and the drag
         // (pointermove) carries on from there. Twice quickly on one puts it back to 1.
         if (r.tune) {
@@ -1912,14 +1920,30 @@ class Game {
       else this.devSpawnAs(e, tag);
       return;
     }
-    // The corrupted ogre at a given meeting, one row each (8 Oct 2026: "I did not see where to summon the ogre's second and
-    // third waves"): the SPAWN AS row does the same for any kind, but it is a switch you have to know about.
-    if (id.startsWith('ogre-soul=')) {
-      const n = +id.slice(10) || 1, e = this.spawnEnemy('butcher'); if (!e) return;
-      const keep = this.dev.spawnAs; this.dev.spawnAs = n + 1; this.devSpawnAs(e, 'ogre'); this.dev.spawnAs = keep;
+    // The LINKS tab's PLAY: the pair set up beside him, close together (`LINKS`)
+    if (id.startsWith('link-play=')) {
+      const k = id.slice(10), g = this.goat, w = this.world;
+      const beside = (a, e, x, y) => { if (e && w.walkableAt(Math.floor(x / TILE), Math.floor(y / TILE))) { e.x = x; e.y = y; } };
+      if (k === 'shamanMage') {
+        const s = this.spawnEnemy('bearer'), m = this.spawnEnemy('seer'); if (!s || !m) return;
+        Shaman.give(s); s.woke = true; m.woke = true; beside(s, m, s.x + TILE * 1.1, s.y);
+        this.devToast('+ A SHAMAN AND A MAGE SIDE BY SIDE');
+      } else if (k === 'rifleHound') {
+        const h = this.spawnEnemy('hunter'); if (!h) return;
+        h.woke = true;
+        for (let i = 0; i < 3; i++) { const o = this.spawnEnemy('dog'); if (o) { o.woke = true; beside(h, o, h.x + (g.x - h.x) * (0.25 + 0.15 * i), h.y + (g.y - h.y) * (0.25 + 0.15 * i)); } }
+        this.devToast('+ A RIFLEMAN WITH HOUNDS IN HIS LINE');
+      }
       return;
     }
-    if (id === 'spawn-as') { this.dev.spawnAs = ((this.dev.spawnAs | 0) + 1) % DEV_SPAWN_AS.length; this.devToast('SPAWN AS ' + DEV_SPAWN_AS[this.dev.spawnAs]); return; }
+    // The menu a SPAWN row opens (9 Oct 2026, the user's ask; it replaced the SPAWN AS switch and the ogre's three rows): the
+    // row's own spawn, run with `spawnAs` set to the pick for the one call.
+    if (id.startsWith('spawn-pick=')) {
+      const m = this.dev.spawnMenu; this.dev.spawnMenu = null; if (!m) return;
+      const keep = this.dev.spawnAs; this.dev.spawnAs = +id.slice(11) | 0;
+      try { this.devAction(m.id); } finally { this.dev.spawnAs = keep; }
+      return;
+    }
     if (id === 'mouse') { this.spawnShop(); return; }
     // A wraith hung in the nearest plank door (`stageDoorMimic`'s surprise, on demand).
     if (id === 'wraithdoor') {
@@ -1965,7 +1989,11 @@ class Game {
     const a = this.dev.spawnAs | 0; if (!a || e.kind === 'ratogre') return;
     e.boss = true; e.elite = e.kind !== 'butcher';
     e.hp = e.maxHp = e.kind === 'butcher' ? e.cfg.hp : e.hp + TUNING.boss.champHp;
-    if (a >= 2) { this.ensoul(e); e.soulMeet = a - 1; }
+    if (a >= 2) {
+      this.ensoul(e); e.soulMeet = a - 1;
+      // the corrupted rifleman is THE THRESHING FLOOR's last man (4 hearts, three rounds, the blink) with his three hounds
+      if (e.kind === 'hunter') { EndBoss.rifleman(e, a - 1); for (let k = 0; k < 3; k++) { const h = this.spawnEnemy('dog'); if (h) { h.aware = true; } } }
+    }
     this.devToast('+ ' + String(tag || e.kind).toUpperCase() + ' · ' + DEV_SPAWN_AS[a]);
   }
   spawnEnemy(kind) {
@@ -3207,8 +3235,9 @@ class Game {
     this.quitToTitle();
   }
   // ABANDON RUN: a death where he stands (killer GIVING UP, counted, the run's report closed, the save cleared under
-  // PERMADEATH) and heaven at once, no card; heaven's edge starts the next run as after any death. From heaven, a
-  // LEVELS practice or THE SHOWROOM there is no run to give up: it is QUIT TO TITLE.
+  // PERMADEATH) and the title at once, no card (9 Oct 2026 playtest: it went up to heaven, "not the menu"; the souls of the
+  // run are not lost, a death banks them as ever). From heaven, a LEVELS practice or THE SHOWROOM there is no run to give
+  // up: it is QUIT TO TITLE.
   abandonRun() {
     const ok = this.level && !this.level.def.heaven && !this.showroomOn && this.goat && this.pausedIn() !== 'heaven';
     if (!ok) { this.quitToTitle(); return; }
@@ -3216,7 +3245,7 @@ class Game {
     this.goat.hurtBy = 'abandon'; this.goat.hp = 0;
     this.onGoatDied();
     this.card = null; this.deathPainting = null;
-    Heaven.enter(this);
+    this.showTitle();
   }
   // Leaving a floor half played puts it aside (7 Oct 2026, the user: "a death ends the run, but quitting to the menu
   // brings you back, on CONTINUE, to the place you were"): the save carries where he stood and what of the floor is

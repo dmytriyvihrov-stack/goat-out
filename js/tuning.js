@@ -508,11 +508,12 @@ const TUNING = {
     // keeps doing whatever he was doing through it; if he is gone or out of `biteSlack` × the reach
     // when it closes, the mouth closes on nothing and costs `biteMiss` s. Carried, he is `speedMul`
     // (0.6 from 0.7: under a mage's cast in your mouth you only just get clear of his own fire).
-    // And a man costs the mouth `manCd` × `cooldown` before it takes again, however he left it.
+    // And a man costs the mouth `manCd` × `cooldown` before it takes again, however he left it (1.4 → 1.15 on 9 Oct 2026
+    // playtest: "after a thing the wait is much shorter than after a man", the gap was felt as a fault).
     // Objects are none of this: a crate is still in your mouth the frame you ask.
     grab: { reach: 1.6 * TILE, speedMul: 0.6, itemSpeedMul: 0.94, holdTime: 8.0, holdVary: 0.125,
       throwImpulse: 27.2 * TILE, manThrow: 0.7, holdDist: 22, cooldown: 1.35 * GOAT_CD,
-      bite: 0.18, biteMove: 0.4, biteSlack: 1.2, biteMiss: 0.45, manCd: 1.4,
+      bite: 0.18, biteMove: 0.4, biteSlack: 1.2, biteMiss: 0.45, manCd: 1.15,
       // A man out of his mouth without a throw lies `letGo` s when the goat drops him (a roll, a blink, the
       // pen's stun) and `loose` s when he works himself free or is left at the stairs (literals until 2 Oct 2026).
       letGo: 0.5, loose: 0.6 },
@@ -958,9 +959,17 @@ const TUNING = {
   // another); a seer in sight within `blinkR` tiles blinks over; a plain clubman waits, and past `fall.after` s at
   // the lip tries it at `fall.chance` a check, and falls.
   gapCross: { every: 0.25, near: 1.5, reach: 2.8, longer: 2.5, blinkR: 9, hop: { wind: 0.35, air: 0.45, lift: 22, cd: 2.5 }, fall: { after: 5, chance: 0.12, windMul: 1.4 } },
+  // Men who stand together affect each other (9 Oct 2026, the user's: "if the shaman and the mage stand side by side they get
+  // in each other's way, now and then shoving"; the dev drawer's LINKS tab, `LINKS`). A shaman and a mage within `near` tiles
+  // of each other: every `every` [lo, hi] s one of them, by chance, elbows the other `push` tiles away over `time` s; a windup
+  // the shoved one was in breaks (`Enemy.balk`) and he is dazed `daze` s (js/shaman.js `crowd`).
+  links: { shamanMage: { near: 1.7, every: [1.6, 3.4], push: 0.9, time: 0.2, daze: 0.5 } },
   soulOgre: { damage: 1, knock: 4,   // `knock`: tiles a second the wave throws him on
-    ring: { from: 2, n: 2, apart: 0.5, start: 1.2, speed: 6, max: 9, thick: 0.55, gaps: 2, gap: 0.34 },
-    line: { from: 3, start: 1.9, speed: 11, max: 14, w: 3, depth: 0.7 } },
+    // 9 Oct 2026 playtest, the mage's rings' own note over again ("the ogre's fire goes much slower too, and one line, not two"):
+    // the ring 6 → 3.5 tiles/s and standing in flames like the mage's, the band 11 → 4.5 tiles/s in flames along its front,
+    // `n` of them one behind the other `apart` s, each aimed at where he is when it leaves (one heart a volley, as the rings).
+    ring: { from: 2, n: 2, apart: 0.7, start: 1.2, speed: 3.5, max: 12, thick: 0.6, gaps: 2, gap: 0.34, flames: 0.75, flameSize: 9 },
+    line: { from: 3, n: 2, apart: 0.9, start: 1.9, speed: 4.5, max: 14, w: 3, depth: 0.7, flames: 0.75, flameSize: 9 } },
   // THE FLOOR'S LAST MAN (8 Oct 2026, the user's: "at the end of every level a corrupted man, the one that floor is
   // about"; js/endboss.js). The last ring of each of the first five floors is that floor's kind with the soul in him
   // (`LEVELS[].arenas`): THE ALTAR a clubman, THE YARD a mage, THE CAVE the ogre, THE ROAD the butcher with men and
@@ -992,7 +1001,8 @@ const TUNING = {
       long: { mage: 1.8, run: 1.8, gnaw: 1.3, roar: 1.0, throw: 0.7, cap: 9 } },
     // THE THRESHING FLOOR's rifleman: `hp` hearts, `pellets` rounds a shot over `spread` rad; from `blinkFrom`
     // he blinks away when the goat closes inside `blink.range` tiles, to `blink.dist` tiles off him, every `blink.cooldown` s.
-    hunter: { hp: 3, pellets: 3, spread: 0.24, blinkFrom: 2, blink: { range: 3.2, dist: 6, cooldown: 3.6 } },
+    // 9 Oct 2026: four hearts and the blink from the first meeting (it was the second), the corrupted rifleman is all of it at once.
+    hunter: { hp: 4, pellets: 3, spread: 0.24, blinkFrom: 1, blink: { range: 3.2, dist: 6, cooldown: 3.6 } },
   },
   // The rat ogre: what the mouse in the wall turns into on the third blow. He is not on the curve,
   // nobody meets him who did not go and make him, and he is built to be dear rather than to be
@@ -2298,8 +2308,11 @@ const TUNING = {
   // Cells never empty. Full, the world goes dark over `fade` s and the floor is laid again as THE DARK (`darkOf`).
   // `radius`: the drawn disc's radius in tiles; `blink`: how fast its empty sockets breathe.
   // `clutter`: the loose things taken up off its disc rather than refusing the spot.
+  // 9 Oct 2026 playtest: six full no longer drags him down on its own; a red door opens `portal.gap` tiles off the disc and
+  // stepping within `portal.r` tiles of it begins the fade (`fade` s of dark, then THE DARK). `portal.near`: how close the
+  // goat is for the door's words (INTO THE DARK) to show.
   sacrifice: { at: 2, minRoom: 2, clear: 1, propGap: 1.8, spawnGap: 2, enterGap: 3, r: 1.1, tick: 1, cells: 6, fade: 1.6,
-    radius: 1.6, blink: 1.4, clutter: ['crate', 'barrel', 'rock', 'bomb'] },
+    radius: 1.6, blink: 1.4, clutter: ['crate', 'barrel', 'rock', 'bomb'], portal: { r: 0.7, gap: 2.4, near: 6, size: 0.95 } },
   secret: { chance2: 0.35, healChance: 0.4, deep: { chance: 0, late: 0.4, lateFrom: 3, cape: 0.35 } },
   // THE CHASM (6 Oct 2026 playtest: "a small drop with spikes between the sides of a room, you have to roll
   // over it, and a word that E rolls over a drop too"; "and as a pattern, especially with rifles or the
@@ -2982,7 +2995,7 @@ const PAUSE_MENU = [
   { id: 'settings', name: 'SETTINGS' },
   { id: 'photos', name: 'PHOTOS' },
   // 9 Oct 2026 playtest ("an option to abandon the run, to go back to heaven"): the run ends here as a death would,
-  // and he goes straight up (`Game.abandonRun`). Asked twice: the first press only arms it.
+  // and he lands on the title, not in heaven (`Game.abandonRun`; the same day's second note). Asked twice: the first press only arms it.
   { id: 'abandon', name: 'ABANDON RUN' },
   { id: 'quit', name: 'QUIT TO TITLE' },
 ];
@@ -3796,10 +3809,23 @@ for (const a of ARTIFACTS) for (const tier of a.tiers) {
 // what knows it is not one.
 // No milk anywhere (8 Oct 2026 playtest): her third offer is grass, laid on the floor in tufts, a heart each.
 const MILK_OFFER = { id: 'milk', name: 'GRASS', color: '#a8bd6c',
-  tiers: [{ desc: `${TUNING.shop.heals} tufts of grass, a heart each. Taking it means no talisman.` }] };
+  tiers: [{ desc: 'A heart a tuft. No talisman.' }] };
 
 // The dev drawer's SPAWN AS (`Game.devSpawnAs`), in the order a click steps through them.
 const DEV_SPAWN_AS = ['PLAIN', 'CHAMPION', 'CORRUPTED · 1ST', 'CORRUPTED · 2ND', 'CORRUPTED · 3RD'];
+// The SPAWN rows that ask which one first (9 Oct 2026: "when I click to summon a unit, a menu: plain, champion, corrupted 1st,
+// 2nd, 3rd meeting"), and what a corrupted one of a kind brings with it, said at the foot of that menu.
+const DEV_SPAWN_POP = new Set(['bearer', 'enemy-spawn=shield', 'enemy-spawn=thrower', 'enemy-spawn=shaman', 'hunter', 'dog', 'seer', 'wraith', 'butcher']);
+// What each kind of man does beside another (the dev drawer's LINKS tab): `what` is read live off the numbers, `where` is the code.
+const LINKS = [
+  { id: 'rifleHound', men: ['RIFLEMAN', 'HOUND'], name: 'THE RIFLE OVER THE PACK',
+    what: () => 'A rifleman never holds his fire for a hound in the line, and his round flies over the hound\'s back. His rounds still hit every other man. THE THRESHING FLOOR\'s last man comes with three hounds.',
+    where: 'js/enemies.js friendInLine · js/entities.js Bullet.update' },
+  { id: 'shamanMage', men: ['SHAMAN', 'MAGE'], name: 'THE SHAMAN AND THE MAGE',
+    what: () => { const C = TUNING.links.shamanMage; return `Within ${C.near} tiles of each other they get in each other's way: every ${C.every[0]} to ${C.every[1]} s one of them elbows the other ${C.push} tile off, and if the shoved one was winding something up it breaks and he is dazed ${C.daze} s. The pusher grumbles.`; },
+    where: 'js/shaman.js crowd · TUNING.links' },
+];
+const DEV_SPAWN_NOTE = { hunter: ['CORRUPTED: 4 HEARTS, BLINKS, THREE ROUNDS A SHOT,', 'THREE HOUNDS WITH HIM (HIS ROUNDS GO OVER THEM)'], butcher: ['CORRUPTED: 2ND MEETING RINGS OF FIRE,', '3RD A BAND OF IT, TWO ONE AFTER THE OTHER'] };
 
 // A talisman's tier is its rarity, and there are two (6 Oct 2026; it was four, common to legendary,
 // 1 Oct 2026). `RARITY[tier - 1]`. A cape is a rarity of its own (`CAPE_RARITY`): one grade, and
@@ -3927,6 +3953,8 @@ const BARKS = {
     seer: ['THE LAMB RUNS', 'I MARK YOU', 'THE GROUND WILL EAT IT', 'STAND THERE'],
     butcher: ['MINE', 'COME TO THE BLOCK', 'LITTLE GOAT', 'NO FURTHER'],
   },
+  // the shaman and the mage standing side by side, one elbowing the other (`TUNING.links`, js/shaman.js `crowd`)
+  crowd: ['MOVE OVER', 'YOU ARE IN MY LIGHT', 'MIND MY STAFF', 'ELBOWS!', 'GIVE ME ROOM'],
   // a clubman tired of standing at a drop tries it anyway (js/gapcross.js)
   fall: ['I CAN MAKE IT', 'HOLD MY CLUB', 'FOR THE ALTAR', 'IT IS NOT THAT WIDE'],
   // something was heard, or a scream pulled him
@@ -4281,8 +4309,9 @@ const LEVELS = [
     canon: { id: 'open', name: 'OPEN GROUND', idea: 'Almost no wall. What kills is what is standing in the room: posts, tables, braziers, a ring of hay, and which half of it you decide is yours.' },
     theme: 'An open threshing floor, swept for grain and now for bodies.',
     decor: 'Wide yards, posts, tables, braziers, rings of hay, almost no wall at all.',
-    // 8 Oct 2026: the last man is a rifleman with the soul in him, three hearts and three rounds a shot (js/endboss.js).
-    arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'hunter', hp: 3 }],
+    // 8 Oct 2026: the last man is a rifleman with the soul in him, three rounds a shot (js/endboss.js); 9 Oct 2026: four hearts,
+    // a blink from the first meeting, and three hounds at his back, whose backs his rounds go over.
+    arenas: [{ at: 3, boss: 'seer' }, { at: 8, boss: 'butcher' }, { at: 12, boss: 'hunter', hp: 4, escorts: 3, with: ['dog', 'dog', 'dog'] }],
     gates: [5], rests: [11], gateKeeper: true,
     millAt: 6, heals: 4, souls: 2, killboxAt: 10, lonePosts: 4, racks: 0.18, spikes: 0.35, crates: 0.4, barrels: 0.3, vaultAt: 7, traps: 1,
     // The crow is met on the widest, fullest floor in the game, because the one thing it asks for is
