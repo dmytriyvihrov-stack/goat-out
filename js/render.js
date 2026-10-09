@@ -2194,58 +2194,88 @@ class Renderer {
     }
   }
 
+  // One tile of the pool, baked (9 Oct 2026: laid cell by cell every frame it cost 1.7 ms on a two-dozen-tile
+  // puddle and 4.9 on a big one, which is most of a draw). Everything about a tile that does not move is in it:
+  // `mask` is which of its four sides has poison beside it (N=1, E=2, S=4, W=8), so the dark rim runs along the
+  // open ones only and two neighbours never draw a seam between them; `v` is which set of bites those open sides
+  // get, so no edge is straight and the tile beside it is bitten differently; `dry` is which step of drying it is
+  // on, the body ordered-dithered away. A run meets a few dozen of the 16 × `variants` × `drySteps` of them.
+  venomTile(mask, v, dry) {
+    const L = TUNING.status.look, sig = `${L.cell}|${L.bite}|${L.deep}|${L.drySteps}`;
+    if (this.venomSig !== sig) { this.venomSig = sig; this.venomTiles = new Map(); }
+    const key = (mask * L.variants + v) * L.drySteps + dry, got = this.venomTiles.get(key);
+    if (got) return got;
+    const cell = L.cell, n = Math.round(TILE / cell), hash = CombatFX.hash, bayer = CombatFX.bayer;
+    const N = !!(mask & 1), E = !!(mask & 2), S = !!(mask & 4), Wn = !!(mask & 8);
+    const eN = [], eS = [], eW = [], eE = [];
+    for (let k = 0; k < n; k++) {
+      eN.push(Math.floor(hash(k, v, 11) * (L.bite + 1))); eS.push(Math.floor(hash(k, v, 12) * (L.bite + 1)));
+      eW.push(Math.floor(hash(k, v, 13) * (L.bite + 1))); eE.push(Math.floor(hash(k, v, 14) * (L.bite + 1)));
+    }
+    // A cell outside the tile is the neighbour's business: with poison beside it there is no edge here at all.
+    const inside = (k, j) => {
+      if (j < 0) return N; if (j >= n) return S; if (k < 0) return Wn; if (k >= n) return E;
+      return !((!N && j < eN[k]) || (!S && j >= n - eS[k]) || (!Wn && k < eW[j]) || (!E && k >= n - eE[j]));
+    };
+    const rim = [], dark = [], mid = [], dryK = dry / L.drySteps;
+    for (let j = 0; j < n; j++) for (let k = 0; k < n; k++) {
+      if (!inside(k, j)) continue;
+      if (dryK > 0 && bayer(k, j) < dryK * 1.1) continue;
+      if (!inside(k, j - 1) || !inside(k, j + 1) || !inside(k - 1, j) || !inside(k + 1, j)) { rim.push(k, j); continue; }
+      (bayer(k, j) < L.deep ? dark : mid).push(k, j);
+    }
+    const c = CombatFX.canvas(TILE, TILE), g = c.getContext('2d');
+    const lay = (list, color, alpha) => {
+      if (!list.length) return; g.globalAlpha = alpha; g.fillStyle = color; g.beginPath();
+      for (let i = 0; i < list.length; i += 2) g.rect(list[i] * cell, list[i + 1] * cell, cell, cell);
+      g.fill();
+    };
+    lay(dark, PALETTE.venomDark, 0.9); lay(mid, PALETTE.venom, 0.78); lay(rim, PALETTE.venomDark, 1);
+    this.venomTiles.set(key, c);
+    return c;
+  }
   // Poison on the floor (`TUNING.status.look`, 9 Oct 2026: it was a green oval a tile, which read as a chessboard of
-  // eggs, never as a pool): one pool in cells. A tile's body is an ordered dither of the two greens, a dark rim one
-  // cell wide runs along every side with no puddle beside it, bitten in a cell or two per column so no edge is
-  // straight, and the rim follows the bite; a sheen of lit cells comes and goes over the body; bubbles swell from
-  // one cell to four and pop into a ring. Drying, the body is dithered away rather than faded. Walked from the world's
-  // own set of poisoned tiles; three fills a frame and the bubbles, never a rect a cell.
+  // eggs, never as a pool): one pool, each tile its baked self (`venomTile`), and over them the two things that move,
+  // a sheen of lit cells coming and going and bubbles that swell and pop into a ring, collected from every tile and
+  // laid in two fills. Walked from the world's own set of poisoned tiles rather than the whole grid.
   drawPoison(game, cam) {
     const ctx = this.ctx, wd = game.world; if (!wd.poisonOn.size) return;
     const { x0, y0, x1, y1 } = this.visibleTiles(cam), full = TUNING.status.poison.pool, L = TUNING.status.look;
-    const cell = L.cell, n = Math.round(TILE / cell), W = wd.W, hash = CombatFX.hash, bayer = CombatFX.bayer, t = this.t;
+    const cell = L.cell, n = Math.round(TILE / cell), W = wd.W, hash = CombatFX.hash, t = this.t, last = L.drySteps - 1;
     const on = (tx, ty) => tx >= 0 && ty >= 0 && tx < W && ty < wd.H && wd.poison[ty * W + tx] > 0;
-    const rim = [], dark = [], mid = [], hi = [], eN = new Array(n), eS = new Array(n), eW = new Array(n), eE = new Array(n);
+    const hi = [], dark = [], smooth = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
     for (const i of wd.poisonOn) {
       const tx = i % W, ty = (i / W) | 0;
       if (tx < x0 || tx > x1 || ty < y0 || ty > y1) continue;
-      const a = clamp(wd.poison[i] / Math.min(1.2, full), 0, 1), dryK = a < L.dry ? 1 - a / L.dry : 0;
-      const N = on(tx, ty - 1), S = on(tx, ty + 1), Wn = on(tx - 1, ty), E = on(tx + 1, ty), bx = tx * TILE, by = ty * TILE;
-      // how deep each closed side is bitten, per column or row: off the tile's own place, so it never crawls
-      for (let k = 0; k < n; k++) {
-        eN[k] = Math.floor(hash(tx * n + k, ty, 11) * (L.bite + 1)); eS[k] = Math.floor(hash(tx * n + k, ty, 12) * (L.bite + 1));
-        eW[k] = Math.floor(hash(tx, ty * n + k, 13) * (L.bite + 1)); eE[k] = Math.floor(hash(tx, ty * n + k, 14) * (L.bite + 1));
+      const a = clamp(wd.poison[i] / Math.min(1.2, full), 0, 1);
+      const dry = a < L.dry ? Math.min(last, Math.floor((1 - a / L.dry) * L.drySteps)) : 0;
+      const mask = (on(tx, ty - 1) ? 1 : 0) | (on(tx + 1, ty) ? 2 : 0) | (on(tx, ty + 1) ? 4 : 0) | (on(tx - 1, ty) ? 8 : 0);
+      const v = Math.floor(hash(tx, ty, 7) * L.variants), bx = tx * TILE, by = ty * TILE;
+      ctx.drawImage(this.venomTile(mask, v, dry), bx, by);
+      if (dry >= last) continue;   // all but gone: nothing moves on it any more
+      // The sheen: a few cells of the tile lit for a beat each, on their own clocks.
+      for (let k = 0; k < L.sheen; k++) {
+        if (Math.sin(t * 2.2 + hash(tx, ty, 61 + k) * 90) < 0.55) continue;
+        hi.push(bx + (2 + Math.floor(hash(tx, ty, 71 + k) * (n - 4))) * cell, by + (2 + Math.floor(hash(tx, ty, 81 + k) * (n - 4))) * cell);
       }
-      const inside = (k, j) => {
-        if (j < 0) return N; if (j >= n) return S; if (k < 0) return Wn; if (k >= n) return E;
-        return !((!N && j < eN[k]) || (!S && j >= n - eS[k]) || (!Wn && k < eW[j]) || (!E && k >= n - eE[j]));
-      };
-      for (let j = 0; j < n; j++) for (let k = 0; k < n; k++) {
-        if (!inside(k, j)) continue;
-        if (dryK > 0 && bayer(k, j) < dryK * 1.1) continue;
-        const x = bx + k * cell, y = by + j * cell;
-        if (!inside(k, j - 1) || !inside(k, j + 1) || !inside(k - 1, j) || !inside(k + 1, j)) { rim.push(x, y); continue; }
-        // the sheen: a few cells lit for a beat each, on their own clocks
-        const h = hash(tx * n + k, ty * n + j, 21);
-        if (h < L.film && Math.sin(t * 2.2 + h * 90) > 0.55) { hi.push(x, y); continue; }
-        (bayer(k, j) < L.deep ? dark : mid).push(x, y);
-      }
-      // the bubbles: a cell that swells to four and pops into a ring, each on its own place and clock
-      if (dryK < 0.5) for (let b = 0; b < L.bubbles; b++) {
-        const ph = ((t / L.bubble) + hash(tx, ty, 31 + b)) % 1, k = 2 + Math.floor(hash(tx, ty, 41 + b) * (n - 4)), j = 2 + Math.floor(hash(tx, ty, 51 + b) * (n - 4));
-        if (!inside(k, j) || !inside(k + 1, j + 1) || !inside(k - 1, j - 1)) continue;
-        const x = bx + k * cell, y = by + j * cell;
+      // The bubbles: a cell swells to four and pops into a ring. Kept three cells inside the tile, further in than
+      // any bite reaches, so one never sits on an edge and no cell of it has to be tested.
+      for (let b = 0; b < L.bubbles; b++) {
+        const ph = (t / L.bubble + hash(tx, ty, 31 + b)) % 1;
+        const x = bx + (3 + Math.floor(hash(tx, ty, 41 + b) * (n - 6))) * cell, y = by + (3 + Math.floor(hash(tx, ty, 51 + b) * (n - 6))) * cell;
         if (ph < 0.3) hi.push(x, y);
-        else if (ph < 0.62) { hi.push(x, y, x + cell, y, x, y + cell, x + cell, y + cell); }
+        else if (ph < 0.62) hi.push(x, y, x + cell, y, x, y + cell, x + cell, y + cell);
         else if (ph < 0.78) { hi.push(x - cell, y, x + 2 * cell, y, x, y - cell, x, y + 2 * cell); dark.push(x, y, x + cell, y, x, y + cell, x + cell, y + cell); }
       }
     }
+    ctx.imageSmoothingEnabled = smooth;
     const fill = (list, color, alpha) => {
       if (!list.length) return; ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath();
       for (let k = 0; k < list.length; k += 2) ctx.rect(list[k], list[k + 1], cell, cell);
       ctx.fill();
     };
-    fill(dark, PALETTE.venomDark, 0.9); fill(mid, PALETTE.venom, 0.78); fill(rim, PALETTE.venomDark, 1); fill(hi, PALETTE.venomHi, 0.9);
+    fill(dark, PALETTE.venomDark, 0.9); fill(hi, PALETTE.venomHi, 0.9);
     ctx.globalAlpha = 1;
   }
   // Bubbles off a poisoned body (`status.look`): three cells rising off the head in turn, each swelling to four and
@@ -3512,7 +3542,7 @@ class Renderer {
     ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(hx + 1.4, hy - 0.8, 0.9, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     // Stars over her while she picks herself up, the same as anything else that has been floored.
-    if (stunned) this.drawStars(p.x, p.y, 14, Math.min(1, p.birdT * 2));
+    if (stunned) this.drawStars(p.x, p.y, PIXEL_EXTENT.chicken, Math.min(1, p.birdT * 2));
   }
 
   // A rank of iron spikes stood up along an arc of a body: the butcher's back, and nobody else's.
@@ -3929,7 +3959,17 @@ class Renderer {
       if (k) { ctx.rotate(a); ctx.scale(1 + k, 1 - k * 0.6); ctx.rotate(-a); }
       ctx.rotate(this.t * 14);
     } else if (!paintedKey) ctx.rotate(e.facing);
-    if (e.state === 'stagger') ctx.translate(Math.sin(this.t * 60) * 2, 0);
+    // ROCKED (`enemyAnim.rocked`): an ogre staggered or a shieldman braced behind his board is thrown back off his
+    // facing and eases home, trembling over the first part of it. It was a buzz on the spot, and nothing at all for
+    // the board. Render only: the state's full length is read off his timer the frame it begins.
+    if (e.state === 'stagger' || e.state === 'braced') {
+      const R = TUNING.enemyAnim.rocked;
+      if (e.rockState !== e.state || e.timer > e.rockFull) { e.rockState = e.state; e.rockFull = Math.max(1e-3, e.timer || 0); }
+      const k = clamp((e.timer || 0) / e.rockFull, 0, 1), f = e.facing || 0;
+      const tr = k > 1 - R.shakeFor ? Math.sin(this.t * 60) * R.shake : 0;
+      ctx.translate(-Math.cos(f) * R.back * k + tr, -Math.sin(f) * R.back * k * TILT);
+      ctx.rotate((Math.cos(f) >= 0 ? -1 : 1) * R.tilt * k);
+    }
     // The rat ogre's and the Butcher's leap: up off the floor over his own shadow, and a crouch before it.
     if (e.state === 'hop' && e.hopZ) ctx.translate(0, -e.hopZ);
     if (e.state === 'hopwind') ctx.scale(1.1, 0.86);
@@ -3980,31 +4020,30 @@ class Renderer {
       body(); ctx.restore();
     }
     if (e.stuck && e.stuck.length) this.drawStuck(e, paintedKey, true);
+    // How tall his sprite is drawn, so what goes over his head goes over his head and not across his chest
+    // (`drawStuck` reads it the same way): the marks used to be placed off `e.r`, which is his feet's width.
+    const unit = paintedKey && PIXEL_ART.unit(paintedKey), top = unit && PIXEL_EXTENT[unit] ? PIXEL_EXTENT[unit] : e.r * 2.3;
     // Shock: poison and stun at once, one mark for both, a green-and-gold spiral over his head,
     // turning, in place of the stars and the bubbles, so the pair reads as one state.
     if (e.shock > 0) {
-      // Half the size it was: at 16 px across it covered the man it was a label on.
-      ctx.save(); ctx.translate(0, -r - 9); ctx.rotate(this.t * 6);
-      ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+      // Two arms wound out from the middle a cell at a time, green and gold for the pair that made it
+      // (`juice.marks`); it was a stroked spiral, the one smooth line left over a man. Half the size it was:
+      // at 16 px across it covered the man it was a label on.
+      const M = TUNING.juice.marks, mpx = M.px, turns = Math.round(M.shock * M.turns);
+      ctx.save(); ctx.translate(0, -top - 7); ctx.rotate(this.t * M.shockSpin);
       for (let k = 0; k < 2; k++) {
-        ctx.strokeStyle = k ? PALETTE.venomHi : PALETTE.fireHi;
+        ctx.fillStyle = k ? PALETTE.venomHi : PALETTE.fireHi;
         ctx.beginPath();
-        for (let a = 0; a < Math.PI * 3.2; a += 0.3) {
-          const rr = 1 + a * 0.8, aa = a + k * Math.PI;
-          if (a === 0) ctx.moveTo(Math.cos(aa) * rr, Math.sin(aa) * rr * 0.6); else ctx.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr * 0.6);
+        for (let i = 0; i <= turns; i++) {
+          const a = i / M.shock * Math.PI * 2 + k * Math.PI, rr = mpx + i * M.shockR;
+          ctx.rect(Math.round(Math.cos(a) * rr / mpx) * mpx, Math.round(Math.sin(a) * rr * 0.6 / mpx) * mpx, mpx, mpx);
         }
-        ctx.stroke();
+        ctx.fill();
       }
       ctx.restore();
     }
-    // Stars: he heard the scream and is still hearing it.
-    else if (e.dazed > 0) {
-      ctx.fillStyle = PALETTE.fireHi;
-      for (let k = 0; k < 3; k++) {
-        const a = this.t * 7 + k * 2.1;
-        ctx.beginPath(); ctx.arc(Math.cos(a) * r * 0.95, Math.sin(a) * r * 0.5 - r - 5, 3, 0, Math.PI * 2); ctx.fill();
-      }
-    }
+    // Stars: he heard the scream and is still hearing it. Cells, like every other mark (`juice.marks`).
+    else if (e.dazed > 0) this.starMarks(ctx, top + 2, 1);
     // Poisoned (`status.look`): the green is in him, his own pixels again flat venom, breathing, and bubbles in
     // cells rising off his head. Blind and slow reads at once. It was an oval over the eyes and round bubbles.
     if (e.poison > 0 && !(e.shock > 0) && !this.silPass) {
@@ -7584,7 +7623,7 @@ class Renderer {
     ctx.globalAlpha = 1;
     ctx.restore();
     // Stars: the club is still ringing in his skull.
-    if (g.dazed > 0 && !(game.intro && game.intro.fade > 0)) this.drawStars(g.x, g.y, 30, Math.min(1, g.dazed * 1.5));
+    if (g.dazed > 0 && !(game.intro && game.intro.fade > 0)) this.drawStars(g.x, g.y, PIXEL_EXTENT.goat + 2, Math.min(1, g.dazed * 1.5));
     // aim pip: where the headbutt will go
     if ((game.touch.active || padOn(game) || kbOn(game)) && game.state === 'play') {
       // Two square cells along the aim, the near one bright, so a player with no pointer on the
@@ -7612,14 +7651,26 @@ class Renderer {
   }
 
   // Stars over a head, orbiting upright in the counter-tilted frame.
+  // The stars over a dazed head (`juice.marks`), in the frame they are handed, upright: `stars` pluses of cells
+  // turning round an ellipse, the one coming toward the camera drawn a cell bigger, so it reads as a ring and not
+  // as three dots in a row. Shared by the goat and every man; it was three smooth discs.
+  starMarks(ctx, above, alpha, rx, ry) {
+    const M = TUNING.juice.marks, px = M.px, a0 = ctx.globalAlpha;
+    ctx.globalAlpha = a0 * clamp(alpha, 0, 1); ctx.fillStyle = PALETTE.fireHi; ctx.beginPath();
+    for (let k = 0; k < M.stars; k++) {
+      const a = this.t * M.spin + k / M.stars * Math.PI * 2, s = Math.sin(a);
+      const x = Math.round(Math.cos(a) * (rx === undefined ? M.rx : rx) / px) * px, y = Math.round((s * (ry === undefined ? M.ry : ry) - above) / px) * px;
+      const w = px * (1 + Math.round(M.grow * (0.5 + 0.5 * s)));   // nearer the camera, a cell bigger
+      ctx.rect(x - w / 2, y - w / 2, w, w);
+      ctx.rect(x - w / 2 - px, y - w / 2, px, w); ctx.rect(x + w / 2, y - w / 2, px, w);
+      ctx.rect(x - w / 2, y - w / 2 - px, w, px); ctx.rect(x - w / 2, y + w / 2, w, px);
+    }
+    ctx.fill(); ctx.globalAlpha = a0;
+  }
   drawStars(x, y, above, alpha) {
     const ctx = this.ctx;
-    ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT); ctx.globalAlpha = clamp(alpha, 0, 1);
-    ctx.fillStyle = PALETTE.fireHi;
-    for (let k = 0; k < 3; k++) {
-      const a = this.t * 6.5 + k * 2.1;
-      ctx.beginPath(); ctx.arc(Math.cos(a) * 15, Math.sin(a) * 6 - above, 3.2, 0, Math.PI * 2); ctx.fill();
-    }
+    ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT);
+    this.starMarks(ctx, above, alpha);
     ctx.restore();
   }
 
@@ -7727,7 +7778,7 @@ class Renderer {
     const it = game.intro, ctx = this.ctx, s = this.ts;
     if (it.fade > 0) { ctx.fillStyle = `rgba(13,10,12,${clamp(it.fade, 0, 1)})`; ctx.fillRect(0, 0, this.w, this.h); }
     if (it.starsA > 0 && it.fade > 0) {
-      ctx.save(); this.worldTransform(game); this.drawStars(game.goat.x, game.goat.y, 30, it.starsA); ctx.restore();
+      ctx.save(); this.worldTransform(game); this.drawStars(game.goat.x, game.goat.y, PIXEL_EXTENT.goat + 2, it.starsA); ctx.restore();
     }
     if (it.echo > 0) {
       ctx.save(); ctx.globalAlpha = Math.min(1, it.echo, (1.6 - it.echo) * 3) * 0.55;

@@ -21,7 +21,16 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   knocked down tips over, bounces onto his side squashed and gets up through a crouch (`PaintedArt.knockdown`), where he snapped
   before; a body in flight is squashed along the blow on the horns' beat and stretched along its flight after, with dust where it
   lands; the last share of every windup pops bright; the goat's lunge is stretched along his aim. Nothing in the simulation moved.
-- JUICE rows for each (`Knocked down, and up again`, `A body in flight`, `The windup pop`, `The poison pool`, `Poisoned`), a
+- **The marks over a head are cells** (`juice.marks`): the dazed stars are pluses turning round an ellipse, the one toward the camera
+  a cell bigger (`Renderer.starMarks`, shared by the goat, the hen and every man), and SHOCK is two arms wound out from the middle,
+  gold and green for the pair. Both now stand over the sprite's own top (`PIXEL_EXTENT`) rather than at a multiple of `e.r`, which
+  put them across his chest. **Rocked** (`enemyAnim.rocked`): an ogre staggered and a shieldman braced are thrown back off their
+  facing and ease home; it was a buzz on the spot, and the board got nothing.
+- **The pool is baked** (`Renderer.venomTile`, keyed on its open sides, its bites and its step of drying): laid cell by cell it cost
+  1.7 ms a frame on two dozen tiles and 4.9 on a big puddle, which is most of a draw; baked it is 0.2 and 0.4, and only the sheen
+  and the bubbles are live.
+- JUICE rows for each (`Knocked down, and up again`, `A body in flight`, `The windup pop`, `The poison pool`, `Poisoned`, `The shock
+  mark`, `Rocked back`), `Dazed stars` rewritten, `shock` and `poison` preview scenes, a
   `poison` preview scene, `JUICE.md` regenerated. **The JUICE preview threw on every row since 1.96**: the stage's `isolate`
   copies each array of the game as an empty one, so `revealRooms` found `visBufs` empty; it now makes its own pair when the
   one it has is not two lists.

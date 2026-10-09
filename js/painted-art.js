@@ -506,7 +506,7 @@ class PaintedArt extends AltarArt {
       if(stunned)ctx.rotate(Math.PI*0.4);
       if(flying){ctx.save();ctx.rotate(angle);ctx.fillStyle='rgba(232,221,200,0.3)';for(let k=1;k<=3;k++)ctx.fillRect(-k*7,-2,4,2);ctx.restore();}
       this.character(renderer,{facing:angle},'chicken',28);ctx.restore();
-      if(stunned)renderer.drawStars(p.x,p.y,14,Math.min(1,p.birdT*2));return true;
+      if(stunned)renderer.drawStars(p.x,p.y,PIXEL_EXTENT.chicken,Math.min(1,p.birdT*2));return true;
     }
     if(p.kind==='weapon'){
       const up=p.inStand;
@@ -1045,7 +1045,7 @@ class PaintedArt extends AltarArt {
       if(g.onFire)renderer.goatFlame(g);
     }finally{g.facing=f0;this.hornMods=null;this.capeId=null;ctx.restore();}   // a throw mid-glance must not leave the goat turned, nor the transform on the stack
     this.goatFx(renderer,g,game);
-    if(g.dazed>0&&!(game.intro&&game.intro.fade>0))renderer.drawStars(g.x,g.y,30,Math.min(1,g.dazed*1.5));
+    if(g.dazed>0&&!(game.intro&&game.intro.fade>0))renderer.drawStars(g.x,g.y,PIXEL_EXTENT.goat+2,Math.min(1,g.dazed*1.5));
     // and the bubbles off him, in cells, the same as off a poisoned man
     if(g.poisoned>0&&!g.dead&&!renderer.silPass){ctx.save();ctx.translate(g.x,g.y);ctx.scale(1,1/TILT);renderer.drawBubbles(0,0,30,Math.min(1,g.poisoned*3),g.x);ctx.restore();}
     if((game.touch.active||(game.pad&&game.pad.active))&&game.state==='play'){const a=game.input.aim;ctx.fillStyle=PALETTE.bone;ctx.beginPath();ctx.arc(g.x+a.x*34,g.y+a.y*34,2,0,Math.PI*2);ctx.fill();}

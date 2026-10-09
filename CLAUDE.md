@@ -387,6 +387,13 @@ and bounces back onto it, squashed as he lands, lies, and rises through a crouch
 time read off his timer the frame it starts (`lieState` / `lieFull`), the goat keeps his own pose. **In flight** (`enemyAnim.flung`,
 `drawEnemyBody`): on the beat the horns land he is squashed along the blow under the white flash, then stretched along his flight the
 faster he goes; a puff of dust where he comes down (`Enemy.update`'s landing). The goat's lunge is stretched along his aim, not the screen.
+**Rocked** (`enemyAnim.rocked`): an ogre staggered and a shieldman braced behind his board are thrown back off their facing and ease
+home, trembling over the first part of it (it was a buzz on the spot, and nothing at all for the board); the state's own length is
+read off his timer the frame it begins (`rockState` / `rockFull`), as the knockdown reads it.
+**The marks over a head are cells** (9 Oct 2026, `TUNING.juice.marks`): the dazed stars are pluses of cells turning round an ellipse,
+the one toward the camera a cell bigger (`Renderer.starMarks`, which `drawStars` and the men's branch share), and SHOCK is two arms
+wound out from the middle a cell at a time, gold and green for the pair. Both stand over the sprite's own top (`PIXEL_EXTENT`), never
+at a multiple of `e.r`, which is how wide his feet are.
 **Effects are pixels too.** Fire, blasts, dust and blood sprays are frames `CombatFX` bakes itself
 (`flameFrames`, `burstFrames`, lazily per frame, pre-warmed by `CombatFX.warm`) at `effects.pixel`
 world px a texel and draws with smoothing off; rings are `CombatFX.pixelRing`, drops `cellDisc`. A man torn apart (a blast, a roll) is five pieces cut off his
@@ -1150,8 +1157,10 @@ his roll, within `brazier.into` of the bowl, inside `touch` px of the rims).
 
 **The poison's picture** (9 Oct 2026, "improve the effect and the look of poison, especially in a puddle"; `TUNING.status.look`):
 `Renderer.drawPoison` lays every puddle as one pool in cells, a dark rim bitten in along every side with no puddle beside it, the body
-a dither of the two greens with a sheen that comes and goes, bubbles that swell and pop into rings, dithered away as it dries, three
-fills a frame. A poisoned man is his own pixels again flat venom (`POISON_FILTER`, painted-art.js) with cell bubbles off his head
+a dither of the two greens, dithered away as it dries. **All of that is baked per tile** (`Renderer.venomTile`, keyed on which of its
+four sides has poison beside it, one of `variants` sets of bites and which of `drySteps` steps of drying it is on; laid cell by cell
+every frame it cost 1.7 ms on two dozen tiles and 4.9 on a big puddle, and is 0.2 and 0.4 baked). Only what moves is live: a `sheen`
+cells a tile lit in turn and the bubbles, collected from every tile and laid in two fills. A poisoned man is his own pixels again flat venom (`POISON_FILTER`, painted-art.js) with cell bubbles off his head
 (`Renderer.drawBubbles`); the goat the same once his ring is full (`drawGoat`); anyone moving through a puddle throws drops off his
 hooves (`Status.drops`, from `Status.goat` and `soak`). VENOM SPIT's glob is cells with a tail (`drawGlob`).
 **Statuses.** Stun `Enemy.dazed`, fire `Enemy.burning`, poison `Enemy.poison` (blind + slow via

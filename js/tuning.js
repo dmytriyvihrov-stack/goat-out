@@ -700,6 +700,10 @@ const TUNING = {
     // never more, and on the beat the horns land (his white flash) it is squashed `hit` along the blow instead.
     down: { time: 0.14, lie: 0.7, over: 0.95, squash: 0.18, up: 0.2, crouch: 0.12 },
     flung: { stretch: 0.3, per: 900, hit: 0.22 },
+    // ROCKED (the ogre staggered, a shieldman braced behind his board): he is thrown `back` px away from where he
+    // faces and tipped `tilt`, easing home over his own count, with a tremble of `shake` px over the first `shakeFor`
+    // of it. It was a buzz at a fixed rate and nothing at all for the board.
+    rocked: { back: 5, tilt: 0.12, shake: 1.6, shakeFor: 0.45 },
   },
   bearer: {
     radius: 11, speed: 0.85 * CULT_PACE, sight: 8, cone: Math.PI / 2,
@@ -1082,13 +1086,15 @@ const TUNING = {
     // THE POISON'S PICTURE (9 Oct 2026, "improve the effect and the look of poison, especially in a puddle").
     // The puddle (`Renderer.drawPoison`): one pool, not a tile of ovals, in cells of `cell` world px: a dark rim one
     // cell wide round every side with no puddle beside it, bitten in up to `bite` cells so no edge is straight, the
-    // body an ordered dither of the two greens, `deep` of it the dark one, with `film` of its cells lit now and then (a sheen), `bubbles` a tile
-    // each swelling from one cell to four over `bubble` s and popping into a ring; past `dry` of its life the body is
-    // dithered away as it dries. A poisoned man (`Renderer.drawEnemyBody`): his own pixels again flat venom at `tint`,
+    // body an ordered dither of the two greens, `deep` of it the dark one. All of that is baked per tile
+    // (`Renderer.venomTile`, keyed on which sides have poison beside it, one of `variants` sets of bites, and which of
+    // `drySteps` steps of drying it is on: past `dry` of its life the body is dithered away as it dries); drawn live over
+    // it, `sheen` cells a tile lit in turn and `bubbles` a tile each swelling from one cell to four over `bubble` s and
+    // popping into a ring. A poisoned man (`Renderer.drawEnemyBody`): his own pixels again flat venom at `tint`,
     // breathing, bubbles in cells rising off his head. The goat (`PaintedArt.drawGoat`): the same at `goatTint` once
     // the ring has filled, and `drops` a second of it off the hooves of anyone moving through a puddle (`Status.goat`,
     // `Status.soak`). `glob`: VENOM SPIT's glob is `globR` px of cells with a tail of `tail` cells.
-    look: { cell: 2, bite: 2, deep: 0.68, film: 0.06, bubbles: 2, bubble: 1.1, dry: 0.4, tint: 0.42, goatTint: 0.38, drops: 16, globR: 6, tail: 2 },
+    look: { cell: 2, bite: 2, deep: 0.68, variants: 8, drySteps: 4, sheen: 3, bubbles: 2, bubble: 1.1, dry: 0.4, tint: 0.42, goatTint: 0.38, drops: 16, globR: 6, tail: 2 },
     // POISON meets FIRE: it goes off. `hitR` tiles is a hit on everybody inside it (a heart off a
     // big man, the end of an ordinary one); out to `radius` it only throws, and the wall finishes it.
     // `hits` is what it costs whoever is inside: two hearts, and then nothing more from it for `guard`
@@ -2071,6 +2077,11 @@ const TUNING = {
     // `hitFlash`: seconds a man the horns land on is painted solid white, the frame that says
     // "that connected" before the fling has moved him a pixel.
     hitFlash: 0.07,
+    // The marks over a head, in cells like everything else (9 Oct 2026; they were smooth arcs and a stroked spiral).
+    // `stars`: BAAH's three, each a plus of `px` world px turning `spin` round an ellipse `rx` × `ry`, the one nearest
+    // the camera the biggest. `shock` (POISON + STUN): two arms of cells wound `turns` round, `cells` a turn, turning
+    // at `shockSpin`, green and gold for the pair.
+    marks: { px: 2, stars: 3, rx: 11, ry: 4.5, spin: 6.5, grow: 0.5, shock: 7, turns: 1.5, shockSpin: 2.4, shockR: 0.95 },
     // `windupTint`: a man winding up a blow goes lighter as it comes (Cult of the Lamb, 24 Sep 2026):
     // his own sprite again over itself as a warm pale silhouette, at `max` alpha by the end of the
     // windup, eased in by `curve` (above 1 = holds back early, flares at the last), so the moment to
