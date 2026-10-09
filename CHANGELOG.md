@@ -5,7 +5,7 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
-## Next, 9 Oct 2026: the sixth batch of 9 Oct (not yet published; the deploy names the BUILD)
+## 2.07, published 9 Oct 2026: the sixth batch of 9 Oct, merged with the cloud's horns held still
 
 - **The level card no longer counts the souls in the floor** (it said "2 souls in here").
 - **TALK page** (tools/god-talk.html): every group says WHEN the game speaks it (`TRIGGERS`, `triggerOf`), and wears a portrait of
@@ -105,6 +105,24 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 - **The overlook's towers survive a reload** (backlog, 6 Oct): the save keeps which floors were climbed out of and where he fell
   (`towers`), and CONTINUE lays them back under the overlook.
 - The TALK page lists every animal's road lines under ON THE ROAD, editable in place; the ANIMALS tab's lines include them.
+
+---
+
+## 2.07, 9 Oct 2026: the horns and the thing in his teeth hold still on the run (the cloud's, merged)
+
+- **The horns are one pair a facing** ("work on the consistency of my animation, the horns and the sword while moving"):
+  measured off the atlas, the west and east runs had the two horns fused into one dark lump on some steps and apart on
+  the others, and on nearly every facing the standing frame's horns were a size or a sweep off the run's, so they jumped
+  at every start and stop of a run; only the back-left run had been fixed (5 Oct). `PIXEL_HORN_FIX` now names one
+  reference walk step a facing and `PIXEL_ART.hornFix` bakes every other frame of it, the idle included, with that
+  step's horns on the frame's own roots (a fused pair placed as one piece off its lowest root, `lowRoot`). The head
+  still bobs with the stride; the horns on it never change shape. LONG HORNS, BOMB CHARGE and SPLASH read the fixed
+  frames as before.
+- **The thing in his teeth rides the head** (`PaintedArt.mouth`, `stance`, `PIXEL_ART.headShift`): a carried sword,
+  crate, bomb or animal was drawn at a fixed point off his feet while the sprite bobbed, leaned into a change of pace and
+  moved its head a few pixels a step, so it hung beside the muzzle on the run. It now goes through the same shake, bob
+  and lean `drawGoat` lays on him, plus the packed frame's own head offset read off the horn roots, and turns with the
+  lean. The face marks (THE FULL THROAT, VENOM SPIT, THE ORACLE) ride the same offset. Render only.
 
 ---
 
