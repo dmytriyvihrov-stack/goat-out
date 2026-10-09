@@ -135,12 +135,19 @@ const TUNING = {
     // A rifle's spent case: `w` × `h` world px of brass thrown `speed` px/s out of the side of the
     // breech and `back` of that behind it, `lift` px/s up; it bounces once and stays on the floor.
     shell: { w: 2, h: 4, speed: 150, back: 0.3, lift: 120 },
-    blast: { scale: 0.85, dustScale: 0.8, frames: 12, bloodFrames: 6, fade: 0.55, dustAlpha: 0.85,
+    blast: { scale: 0.85, dustScale: 0.8, frames: 12, bloodFrames: 6, fade: 0.62, dustAlpha: 0.85,
       light: 3.2, lightFor: 0.28, ringOut: 1.1, ringFor: 0.3,
+      // The fire's three phases on the strip (9 Oct 2026, "the explosion is poorly readable"): the FLASH, a solid
+      // pale disc with rays, to `flashTo` of the life; the FIREBALL to `fireTo`, concentric bands white to ember
+      // cooling from the rim in; then smoke, lighter than any floor (`CombatFX.smoke`), every cloud cut out by a
+      // one-texel dark `rim`. `stamp`: the harm radius laid on the floor the frame it goes off, a disc of cells
+      // dithered away over `time` s from `alpha`, so where the blast reached is read before the smoke hides it; the
+      // shock ring runs out to that radius `ringW` px thick. `debris`: charred chunks thrown up, bouncing once.
+      flashTo: 0.17, fireTo: 0.6, rim: true, stamp: { time: 0.24, alpha: 0.5 }, ringW: 4, debris: 7,
       // Its weight, with no shake in it: `embers` streaks (for a 40 px blast), a screen `flash` and
       // a lens `punch` (both under `juice.screen`), and a column of smoke `soot` × the radius that
       // starts `sootAfter` s in and rises for `sootLife` s.
-      embers: 16, flash: 0.28, punch: 1.3, soot: 0.75, sootAfter: 0.3, sootLife: 1.3 },
+      embers: 16, flash: 0.22, punch: 1.3, soot: 0.75, sootAfter: 0.3, sootLife: 1.3 },
     // How big a kill's blood is: the burst, the droplets thrown and the stain left. It was a shade
     // loud, a clubman going down painted a patch the size of a room corner.
     bloodScale: 0.6,
@@ -686,6 +693,13 @@ const TUNING = {
     recoil: { kick: 4, tilt: 0.14, time: 0.22 },
     // a mage casting rises `lift` px and draws up `stretch` as the rune fills, trembling over its last `shakeFrom`
     cast: { lift: 2.5, stretch: 0.06, shakeFrom: 0.75, shake: 0.6 },
+    // KNOCKED DOWN (9 Oct 2026, "improve the fight animations": a man floored or stunned snapped onto his side the
+    // frame it happened and snapped back up). Now he goes over in `time` s, past `lie` rad through `over` and back
+    // (a bounce), squashed `squash` as he meets the floor; for the last `up` s of it he gets up, the lie easing off
+    // through a crouch of `crouch`. `flung`: a thrown body is stretched along its flight, `stretch` at `per` px/s and
+    // never more, and on the beat the horns land (his white flash) it is squashed `hit` along the blow instead.
+    down: { time: 0.14, lie: 0.7, over: 0.95, squash: 0.18, up: 0.2, crouch: 0.12 },
+    flung: { stretch: 0.3, per: 900, hit: 0.22 },
   },
   bearer: {
     radius: 11, speed: 0.85 * CULT_PACE, sight: 8, cone: Math.PI / 2,
@@ -1065,6 +1079,16 @@ const TUNING = {
     // `ai.rollGap`, aware of the goat or not, and a drop, which nobody blunders into sober, he misreads at
     // `pitSense` (`Enemy.avoidHazard`).
     poison: { time: 3, moveMul: 0.55, tempo: 0.6, pool: 5.0, trapMul: 0.35, trapGap: 0.9, pitSense: 0.6 },
+    // THE POISON'S PICTURE (9 Oct 2026, "improve the effect and the look of poison, especially in a puddle").
+    // The puddle (`Renderer.drawPoison`): one pool, not a tile of ovals, in cells of `cell` world px: a dark rim one
+    // cell wide round every side with no puddle beside it, bitten in up to `bite` cells so no edge is straight, the
+    // body an ordered dither of the two greens, `deep` of it the dark one, with `film` of its cells lit now and then (a sheen), `bubbles` a tile
+    // each swelling from one cell to four over `bubble` s and popping into a ring; past `dry` of its life the body is
+    // dithered away as it dries. A poisoned man (`Renderer.drawEnemyBody`): his own pixels again flat venom at `tint`,
+    // breathing, bubbles in cells rising off his head. The goat (`PaintedArt.drawGoat`): the same at `goatTint` once
+    // the ring has filled, and `drops` a second of it off the hooves of anyone moving through a puddle (`Status.goat`,
+    // `Status.soak`). `glob`: VENOM SPIT's glob is `globR` px of cells with a tail of `tail` cells.
+    look: { cell: 2, bite: 2, deep: 0.68, film: 0.06, bubbles: 2, bubble: 1.1, dry: 0.4, tint: 0.42, goatTint: 0.38, drops: 16, globR: 6, tail: 2 },
     // POISON meets FIRE: it goes off. `hitR` tiles is a hit on everybody inside it (a heart off a
     // big man, the end of an ordinary one); out to `radius` it only throws, and the wall finishes it.
     // `hits` is what it costs whoever is inside: two hearts, and then nothing more from it for `guard`
@@ -2053,7 +2077,9 @@ const TUNING = {
     // move reads off his body and not only off the strip on the floor. `warm` pushes the white toward
     // straw (a CSS saturate after a sepia; 0 is plain white, which is the hit flash's colour).
     // `states` are the telegraphs it rides on, every kind's committed wait before the blow lands.
-    windupTint: { max: 0.4, curve: 1.6, warm: 2.6,
+    // `pop`: past this share of the windup the tint jumps to `popMax` (9 Oct 2026): the last beat before the blow is
+    // one bright frame or three, the moment to move, not the end of a slow fade.
+    windupTint: { max: 0.4, curve: 1.6, warm: 2.6, pop: 0.88, popMax: 0.85,
       states: ['windup', 'hookwind', 'slamwind', 'hopwind', 'cast', 'aim'] },
     // `impact`: a quick ring and a star of sparks where a blow lands. `ring` is tiles across at its
     // widest, `life` seconds; `killRing` the same for a kill, wider and slower.

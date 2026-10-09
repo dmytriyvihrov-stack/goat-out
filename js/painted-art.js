@@ -51,6 +51,9 @@ const PAINTED_SIZE = {
 
 // The states a man may stand about in and breathe (`TUNING.menIdle`).
 const MEN_IDLE = new Set(['idle', 'wander', 'noticed', 'investigate', 'chase', 'orbit', 'patrol']);
+// A body again as flat venom green (~139,210,0 whatever its colours): the poison's tint on a man and on the goat
+// (`status.look.tint` / `goatTint`), laid over the sprite the way the hit flash is, masked to its own pixels.
+const POISON_FILTER = 'brightness(0) invert(0.6) sepia(1) saturate(6) hue-rotate(35deg)';
 class PaintedArt extends AltarArt {
   // Nothing to load since 1.74: every prop is a pixel sprite (`js/prop-pixels.js`), and the painted
   // images these methods once drew are gone. `images` stays empty for the few that still ask it.
@@ -671,6 +674,19 @@ class PaintedArt extends AltarArt {
     return {x:cx*S.lunge*(1-k),y:cy*S.lunge*(1-k),r:side*S.tilt*(1-k),sx:1+sl*0.5,sy:1-sl};
   }
 
+  // A man going down and getting up (`TUNING.enemyAnim.down`, 9 Oct 2026): over the first `time` s of the floor he
+  // tips past the lie and bounces back onto it, squashed as he lands; lying, he holds it; for the last `up` s he
+  // rises through a crouch. Render only: when the state began and how long it was given are read off his timer the
+  // frame it starts (`lieState` / `lieFull`, as `windupGlow` does for a windup), so the simulation feels nothing.
+  knockdown(ctx,e){
+    const D=TUNING.enemyAnim.down;
+    if(e.lieState!==e.state||e.timer>e.lieFull){e.lieState=e.state;e.lieFull=Math.max(1e-3,e.timer||0);}
+    const since=e.lieFull-(e.timer||0),left=Math.max(0,e.timer||0);
+    if(since<D.time){const u=since/D.time,b=Renderer.backOut(u),sq=D.squash*Math.sin(u*Math.PI);ctx.rotate(D.lie*b+(D.over-D.lie)*Math.sin(u*Math.PI));ctx.scale(1+sq,1-sq);return;}
+    if(left<D.up){const v=1-left/D.up,k=Math.sin(v*Math.PI);ctx.rotate(D.lie*(1-v*v));ctx.scale(1+D.crouch*k,1-D.crouch*k);return;}
+    ctx.rotate(D.lie);
+  }
+
   // Every unit is a pixel sprite now (`PIXEL_ART`); what is left here is the lean of a windup or a
   // swing, the tip of a man on the floor, the wraith's fade and the rat ogre's grow-in.
   character(renderer,e,key,width) {
@@ -694,7 +710,7 @@ class PaintedArt extends AltarArt {
       if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
     }
     if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
-    if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
+    if(e.state==='floored'||e.state==='stunned'){if(e.kind&&key!=='sheep')this.knockdown(ctx,e);else ctx.rotate(0.7);}
     if(e.liftedBy)ctx.rotate(Math.cos(e.liftedBy.facing)<0?1.45:-1.45);   // across the thrower's fist (js/thrower.js)
     // The hound has no stride on the sheet: running, he bounces (`dog.gait`, `dog.bob`), or he is a
     // picture of a dog sliding round the floor.
@@ -991,7 +1007,8 @@ class PaintedArt extends AltarArt {
     // The bite (BY THE COLLAR) is the same crouch as the headbutt's windup, on its own clock.
     if(g.state==='windup'||g.state==='bite'){const W=g.state==='bite'?TUNING.goat.grab.bite:TUNING.goat.headbutt.windup,k=clamp(1-(g.timer||0)/W,0,1),a=g.aim||{x:0,y:0};
       ctx.translate(-a.x*FE.pull*k,-a.y*FE.pull*k*TILT);ctx.scale(0.85,1.1);}
-    if(g.state==='lunge')ctx.scale(1.15,0.92);
+    // The lunge stretched along the way the head goes, not along the screen (9 Oct 2026).
+    if(g.state==='lunge'){const a=g.aim?Math.atan2(g.aim.y*TILT,g.aim.x):0;ctx.rotate(a);ctx.scale(1.15,0.9);ctx.rotate(-a);}
     if(g.state==='ko'||g.state==='stunned'){ctx.rotate(0.9);ctx.scale(1.1,0.8);}
     // The squash spring (game.squashGoat): a landed blow, a blow taken, the end of a roll.
     if(g.sqLeft){const a=g.sqLeft*Math.cos(TUNING.juice.squash.freq*g.sqT);ctx.scale(1+a,1-a);}
@@ -1016,6 +1033,10 @@ class PaintedArt extends AltarArt {
         if(g.hurtT>H.life-H.white){ctx.globalAlpha*=0.92;ctx.filter='brightness(0) invert(1)';}
         else{ctx.globalAlpha*=0.78*Math.min(1,k*3)*(Math.floor(renderer.t*H.blink)%2?1:0.35);ctx.filter='brightness(0) invert(0.4) sepia(1) saturate(40) hue-rotate(-20deg) brightness(0.85)';}   // a flat blood red (~217,50,48), whatever his wool
         this.character(renderer,g,'sheep',40);ctx.restore();}
+      // Poisoned (`Status.goat`, the ring full): the same goat again flat venom green, breathing, for as long as the slow
+      // lasts, so the slow is seen on him and not only in the ring at his feet (9 Oct 2026).
+      if(g.poisoned>0){const L=TUNING.status.look,k=Math.min(1,g.poisoned*3);
+        ctx.save();ctx.globalAlpha*=L.goatTint*k*(0.7+0.3*Math.sin(renderer.t*6));ctx.filter=POISON_FILTER;this.character(renderer,g,'sheep',40);ctx.restore();}
       if(g.maxHp-g.hp>0)this.wounds(renderer,g,g.maxHp-g.hp);
       if(g.armour>0)this.armour(renderer,g);
       if((game.artifacts||[]).length)this.collar(renderer,g,game.artifacts);
@@ -1025,6 +1046,8 @@ class PaintedArt extends AltarArt {
     }finally{g.facing=f0;this.hornMods=null;this.capeId=null;ctx.restore();}   // a throw mid-glance must not leave the goat turned, nor the transform on the stack
     this.goatFx(renderer,g,game);
     if(g.dazed>0&&!(game.intro&&game.intro.fade>0))renderer.drawStars(g.x,g.y,30,Math.min(1,g.dazed*1.5));
+    // and the bubbles off him, in cells, the same as off a poisoned man
+    if(g.poisoned>0&&!g.dead&&!renderer.silPass){ctx.save();ctx.translate(g.x,g.y);ctx.scale(1,1/TILT);renderer.drawBubbles(0,0,30,Math.min(1,g.poisoned*3),g.x);ctx.restore();}
     if((game.touch.active||(game.pad&&game.pad.active))&&game.state==='play'){const a=game.input.aim;ctx.fillStyle=PALETTE.bone;ctx.beginPath();ctx.arc(g.x+a.x*34,g.y+a.y*34,2,0,Math.PI*2);ctx.fill();}
   }
 }

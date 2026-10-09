@@ -1006,7 +1006,8 @@ class Game {
     // lanes of a two-tile corridor, and blocking half of it left a clear line down the other half.
     // Two lists taken in turn, never a new one a step: `setVisBlocks` keeps the list it is handed until the next.
     // Own, not inherited: the JUICE preview's stage is Object.create(game), and a shared buffer would be refilled under the real world's feet.
-    const bufs = Object.hasOwn(this, 'visBufs') ? this.visBufs : (this.visBufs = [[], []]), blocks = bufs[this.visFlip = 1 - (this.visFlip || 0)];
+    // And whole: the stage's `isolate` copies every array of the game as an empty one (9 Oct 2026: every preview threw here since 1.96).
+    const bufs = Object.hasOwn(this, 'visBufs') && this.visBufs.length === 2 ? this.visBufs : (this.visBufs = [[], []]), blocks = bufs[this.visFlip = 1 - (this.visFlip || 0)];
     blocks.length = 0;
     for (const p of this.sightBlockers) {
       if (!p.opaque) continue;
@@ -1159,7 +1160,7 @@ class Game {
       if (q.lit < 0) { if (w.isBurningPx(x, y)) q.lit = P.fuse; continue; }
       if ((q.lit -= dt) > 0) continue;
       this.powder.delete(i);
-      this.fx.explosion(x, y, R, false); w.scorch(x, y, R * 0.6); w.ignitePool(x, y, 0.6);
+      this.fx.explosion(x, y, R, false, false, undefined, R); w.scorch(x, y, R * 0.6); w.ignitePool(x, y, 0.6);
       if (this.scatter) this.scatter.burst(x, y, R);   // armour and suppers go over, as in every other blast
       this.audio.sfxBoom(); this.thud(x, y, 5); this.ring(x, y, R, PALETTE.fireHi); this.particles(x, y, 12, PALETTE.fire, 220);
       w.emitNoise(x, y, TUNING.noise.boom);

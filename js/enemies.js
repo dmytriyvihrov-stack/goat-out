@@ -356,7 +356,7 @@ class Enemy {
     // The blast that flings and damages the room is still the full `B.radius` below; only the
     // burst graphic itself is drawn smaller and shorter, so the explosion reads as a beat in the
     // fight rather than something that eats the screen for a third of a second.
-    game.fx.explosion(this.x,this.y,B.radius * B.fxScale,false,false,B.fxLife);
+    game.fx.explosion(this.x,this.y,B.radius * B.fxScale,false,false,B.fxLife,B.radius);
     w.splat(this.x, this.y, 0, 0, 30); w.scorch(this.x, this.y, B.radius * 0.5);
     game.particles(this.x, this.y, 18, PALETTE.blood, 320);
     game.particles(this.x, this.y, 10, PALETTE.fire, 260);
@@ -1096,6 +1096,7 @@ class Enemy {
         if (this.doomed) { this.die(game, 'club', this.vx, this.vy); return; }
         this.state = 'floored'; this.timer = TUNING.bearer.flooredTime * (this.floorMul || 1); this.flung = false; this.thrown = false;
         this.floorMul = 0;
+        game.dust(this.x, this.y, TUNING.juice.dust.land, this.vx, this.vy);   // he hits the floor: a puff pushed along the slide
       }
       return;
     }

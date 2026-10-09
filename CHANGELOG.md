@@ -5,6 +5,27 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 2.06, 9 Oct 2026 (not yet published): the fight seen, the poison's picture, a readable blast
+
+- **The blast is three phases** ("the explosion is poorly readable"): a solid flash disc with rays, a fireball in concentric bands
+  white-hot to ember cooling from the rim in, then smoke lighter than any floor, every cloud cut out by a one-texel dark rim
+  (`CombatFX.burstFrames`, `paint`'s `rim`, `CombatFX.smoke`). The harm radius is stamped on the floor the frame it goes off and a
+  thick shock ring races to it (`effects.blast.stamp`, `ringW`); charred chunks are thrown and bounce (`debris`); the screen flash a
+  shade softer. A puddle going off is green (`bands` / `smoke` / `explosion` take `'venom'`), no longer a bomb's picture. Every
+  caller of `fx.explosion` passes the harm radius as its seventh argument.
+- **The poison's picture** ("especially in a puddle"; `TUNING.status.look`): a puddle is one pool in cells with a bitten dark rim, a
+  dithered body, a sheen and bubbles that pop, dithered away as it dries (`Renderer.drawPoison`), not an oval a tile. A poisoned
+  man is his own pixels again flat venom with cell bubbles off his head; the goat the same once his ring fills; drops off the hooves
+  of anyone moving through a puddle (`Status.drops`); the glob is cells with a tail.
+- **The fight seen** ("go through and improve the fight animations"; `enemyAnim.down` / `flung`, `juice.windupTint.pop`): a man
+  knocked down tips over, bounces onto his side squashed and gets up through a crouch (`PaintedArt.knockdown`), where he snapped
+  before; a body in flight is squashed along the blow on the horns' beat and stretched along its flight after, with dust where it
+  lands; the last share of every windup pops bright; the goat's lunge is stretched along his aim. Nothing in the simulation moved.
+- JUICE rows for each (`Knocked down, and up again`, `A body in flight`, `The windup pop`, `The poison pool`, `Poisoned`), a
+  `poison` preview scene, `JUICE.md` regenerated. **The JUICE preview threw on every row since 1.96**: the stage's `isolate`
+  copies each array of the game as an empty one, so `revealRooms` found `visBufs` empty; it now makes its own pair when the
+  one it has is not two lists.
+
 ## 2.05, published 9 Oct 2026: the 8 Oct evening batch and three batches of 9 Oct, TURTLEIZE, animals in the middle
 
 - **Four batches of his notes** (77 in all) in `BACKLOG.md` under "8 Oct 2026, late evening" and the three "9 Oct 2026"
