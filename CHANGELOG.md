@@ -29,8 +29,17 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 - **The pool is baked** (`Renderer.venomTile`, keyed on its open sides, its bites and its step of drying): laid cell by cell it cost
   1.7 ms a frame on two dozen tiles and 4.9 on a big puddle, which is most of a draw; baked it is 0.2 and 0.4, and only the sheen
   and the bubbles are live.
+- **The goat is knocked over like a man** (`TUNING.goat.knock`): stunned by the pen, a hook's drag, a shove, a shieldman's spikes or
+  the thrower, he tips past his side, bounces onto it, lies flattened and rises through a crouch, where he had snapped both ways. The
+  opening scene's KO keeps its own still lie.
+- **The hook's and the slam's winds coil** (`attackPose`): the butcher swinging his hook round and the ogre raising his fists had a
+  2 px nudge and a fixed tilt, less body than a clubman's windup; both take the club's own coil on their own clocks. Their swings and
+  recovers keep their own look, and the leap's crouch is still the ogre's pose. The hound's dart trails cells off his hip instead of a
+  stroked line, the last smooth mark left on a body.
+- An animal wears the men's stars over its row of hearts; poisoned, the row itself is green, which at that size says it better than
+  bubbles did.
 - JUICE rows for each (`Knocked down, and up again`, `A body in flight`, `The windup pop`, `The poison pool`, `Poisoned`, `The shock
-  mark`, `Rocked back`), `Dazed stars` rewritten, `shock` and `poison` preview scenes, a
+  mark`, `Rocked back`, `The goat knocked over`, `The big winds coil too`), `Dazed stars` rewritten, `shock` and `poison` preview scenes, a
   `poison` preview scene, `JUICE.md` regenerated. **The JUICE preview threw on every row since 1.96**: the stage's `isolate`
   copies each array of the game as an empty one, so `revealRooms` found `visBufs` empty; it now makes its own pair when the
   one it has is not two lists.

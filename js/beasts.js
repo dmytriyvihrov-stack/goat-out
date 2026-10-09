@@ -232,11 +232,10 @@ const Beast = {
         ctx.fillStyle = k < cur ? full : C.empty;
         ctx.fillRect(x0 + (k % Hh.row) * step, y0 + Math.floor(k / Hh.row) * step, s, s);
       }
-      // dazed: three cells wheeling over the row
-      if (p.stunT > 0) {
-        ctx.fillStyle = PALETTE.bone;
-        for (let k = 0; k < 3; k++) { const a = R.t * 6 + k * 2.1; ctx.fillRect(Math.round(Math.cos(a) * 7) - 1, Math.round(y0 - 6 + Math.sin(a) * 2.5) - 1, 2, 2); }
-      }
+      // Dazed: the stars a man wears, small enough for an animal (`Renderer.starMarks`), over the row of hearts.
+      // Poisoned needs no mark of its own: the row itself goes green (`colors.poison`), and bubbles over a body
+      // this size were one green smudge beside another.
+      if (p.stunT > 0) R.starMarks(ctx, up + h + 6, 1, 7, 2.5);
       ctx.restore();
     }
   },

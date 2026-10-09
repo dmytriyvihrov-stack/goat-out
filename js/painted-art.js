@@ -656,9 +656,19 @@ class PaintedArt extends AltarArt {
       const C=A.cast,p=renderer.windP(e,(TUNING.seer||{}).castWind||0.6),k=p*p*(3-2*p),sh=p>C.shakeFrom?Math.sin(renderer.t*64+(e.y||0))*C.shake:0;
       return {x:sh,y:-C.lift*k,r:0,sx:1-C.stretch*0.5*k,sy:1+C.stretch*k};
     }
-    if(st!=='windup'&&st!=='swing'&&st!=='recover')return null;
     const cfg=TUNING[e.kind]||{},dur=(k)=>{const v=e.atk?e.atk(k):cfg[k];return v>0?v:0.4;};
     const cx=Math.cos(angle),cy=Math.sin(angle),side=cx>=0?1:-1,W=A.windup,S=A.swing,R=A.recover;
+    // The hook swung round and the ogre's fists going up: the club's own coil on their own clocks (9 Oct 2026),
+    // so the two blows that matter most wind up with the whole body and not with the 2 px nudge they had. Their
+    // swings and recovers keep their own look (the rope's flight, the quake), which is why only the winds are here.
+    // The leap's crouch (`hopwind`) is the ogre's own pose and is left alone.
+    if(st==='hookwind'||st==='slamwind'){
+      const hw=((TUNING.champion||{}).hook||{}).wind,sw=(cfg.slam||{}).wind,d=st==='hookwind'?hw:sw;
+      const p=renderer.windP(e,d>0?d:0.6),k=p*p*(3-2*p);
+      const sh=p>W.shakeFrom?Math.sin(renderer.t*70+(e.x||0))*W.shake:0;
+      return {x:-cx*W.back*k+sh,y:-cy*W.back*k,r:-side*W.tilt*k*0.6,sx:1+W.wide*k,sy:1-W.squat*k};
+    }
+    if(st!=='windup'&&st!=='swing'&&st!=='recover')return null;
     if(st==='windup'){
       const p=renderer.windP(e,dur('windup')),k=p*p*(3-2*p);
       const sh=p>W.shakeFrom?Math.sin(renderer.t*70+(e.x||0))*W.shake:0;
@@ -678,13 +688,13 @@ class PaintedArt extends AltarArt {
   // tips past the lie and bounces back onto it, squashed as he lands; lying, he holds it; for the last `up` s he
   // rises through a crouch. Render only: when the state began and how long it was given are read off his timer the
   // frame it starts (`lieState` / `lieFull`, as `windupGlow` does for a windup), so the simulation feels nothing.
-  knockdown(ctx,e){
-    const D=TUNING.enemyAnim.down;
+  knockdown(ctx,e,D){
+    D=D||TUNING.enemyAnim.down;
     if(e.lieState!==e.state||e.timer>e.lieFull){e.lieState=e.state;e.lieFull=Math.max(1e-3,e.timer||0);}
     const since=e.lieFull-(e.timer||0),left=Math.max(0,e.timer||0);
     if(since<D.time){const u=since/D.time,b=Renderer.backOut(u),sq=D.squash*Math.sin(u*Math.PI);ctx.rotate(D.lie*b+(D.over-D.lie)*Math.sin(u*Math.PI));ctx.scale(1+sq,1-sq);return;}
     if(left<D.up){const v=1-left/D.up,k=Math.sin(v*Math.PI);ctx.rotate(D.lie*(1-v*v));ctx.scale(1+D.crouch*k,1-D.crouch*k);return;}
-    ctx.rotate(D.lie);
+    ctx.rotate(D.lie);if(D.flat)ctx.scale(1+D.flat,1-D.flat);
   }
 
   // Every unit is a pixel sprite now (`PIXEL_ART`); what is left here is the lean of a windup or a
@@ -709,7 +719,12 @@ class PaintedArt extends AltarArt {
       if(e.state==='windup'||e.state==='hookwind'||e.state==='slamwind'){ctx.translate(Math.cos(angle)*-2,Math.sin(angle)*-2);ctx.rotate(-0.13);}
       if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
     }
-    if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
+    // The dart: stretched along his run, with a few cells of speed trailing off his hip (9 Oct 2026; it was a
+    // stroked line, the last smooth mark left on a body).
+    if(e.state==='dart'){ctx.scale(1.17,0.85);
+      const px=TUNING.juice.marks.px,a0=ctx.globalAlpha;ctx.fillStyle=PALETTE.bone;
+      for(let k=0;k<3;k++){ctx.globalAlpha=a0*(0.45-k*0.13);ctx.fillRect(Math.round((-width*0.4-k*px*2)/px)*px,4,px*2,px);}
+      ctx.globalAlpha=a0;}
     if(e.state==='floored'||e.state==='stunned'){if(e.kind&&key!=='sheep')this.knockdown(ctx,e);else ctx.rotate(0.7);}
     if(e.liftedBy)ctx.rotate(Math.cos(e.liftedBy.facing)<0?1.45:-1.45);   // across the thrower's fist (js/thrower.js)
     // The hound has no stride on the sheet: running, he bounces (`dog.gait`, `dog.bob`), or he is a
@@ -1009,7 +1024,10 @@ class PaintedArt extends AltarArt {
       ctx.translate(-a.x*FE.pull*k,-a.y*FE.pull*k*TILT);ctx.scale(0.85,1.1);}
     // The lunge stretched along the way the head goes, not along the screen (9 Oct 2026).
     if(g.state==='lunge'){const a=g.aim?Math.atan2(g.aim.y*TILT,g.aim.x):0;ctx.rotate(a);ctx.scale(1.15,0.9);ctx.rotate(-a);}
-    if(g.state==='ko'||g.state==='stunned'){ctx.rotate(0.9);ctx.scale(1.1,0.8);}
+    // Knocked over (`goat.knock`): he tips past his side and bounces onto it, lies, and rises through a crouch;
+    // `ko` is the opening scene, where he is out cold and does not move at all.
+    if(g.state==='stunned')this.knockdown(ctx,g,TUNING.goat.knock);
+    else if(g.state==='ko'){ctx.rotate(0.9);ctx.scale(1.1,0.8);}
     // The squash spring (game.squashGoat): a landed blow, a blow taken, the end of a roll.
     if(g.sqLeft){const a=g.sqLeft*Math.cos(TUNING.juice.squash.freq*g.sqT);ctx.scale(1+a,1-a);}
     if(g.invuln>0&&Math.floor(renderer.t*30)%2===0)ctx.globalAlpha*=0.5;

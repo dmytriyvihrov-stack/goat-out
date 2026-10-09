@@ -2281,11 +2281,11 @@ class Renderer {
   // Bubbles off a poisoned body (`status.look`): three cells rising off the head in turn, each swelling to four and
   // popping into a ring of four, drawn in whatever frame is current (the man's upright one, the goat's).
   drawBubbles(x, y, above, alpha, seed) {
-    const ctx = this.ctx, L = TUNING.status.look, px = L.cell;
+    const ctx = this.ctx, L = TUNING.status.look, px = L.cell, up = L.rise;
     ctx.fillStyle = PALETTE.venomHi;
     for (let k = 0; k < 3; k++) {
       const ph = (this.t / L.bubble + k / 3 + (seed || 0) * 0.013) % 1;
-      const bx = x + Math.round(Math.sin(k * 2.4 + Math.floor(ph * 3) * 1.7) * 7 / px) * px, by = y + Math.round((-above - ph * 18) / px) * px;
+      const bx = x + Math.round(Math.sin(k * 2.4 + Math.floor(ph * 3) * 1.7) * 7 / px) * px, by = y + Math.round((-above - ph * up) / px) * px;
       ctx.globalAlpha = alpha * (ph < 0.6 ? 1 : 1 - (ph - 0.6) / 0.4);
       if (ph < 0.3) ctx.fillRect(bx, by, px, px);
       else if (ph < 0.62) ctx.fillRect(bx, by, px * 2, px * 2);
@@ -4049,7 +4049,7 @@ class Renderer {
     if (e.poison > 0 && !(e.shock > 0) && !this.silPass) {
       const a = Math.min(1, e.poison * 1.5), L = TUNING.status.look;
       ctx.save(); ctx.globalAlpha *= L.tint * a * (0.75 + 0.25 * Math.sin(this.t * 5 + (e.x || 0) * 0.02)); ctx.filter = POISON_FILTER; body(); ctx.restore();
-      const a0 = ctx.globalAlpha; this.drawBubbles(0, 0, r + 4, a0 * a, e.x); ctx.globalAlpha = a0;
+      const a0 = ctx.globalAlpha; this.drawBubbles(0, 0, top + 4, a0 * a, e.x); ctx.globalAlpha = a0;   // over his head, as the stars and the shock are
     }
     if (e.burning > 0) this.flame(0, -4, 12, e.x, e.witchBurn);
     ctx.restore();

@@ -389,11 +389,17 @@ time read off his timer the frame it starts (`lieState` / `lieFull`), the goat k
 faster he goes; a puff of dust where he comes down (`Enemy.update`'s landing). The goat's lunge is stretched along his aim, not the screen.
 **Rocked** (`enemyAnim.rocked`): an ogre staggered and a shieldman braced behind his board are thrown back off their facing and ease
 home, trembling over the first part of it (it was a buzz on the spot, and nothing at all for the board); the state's own length is
-read off his timer the frame it begins (`rockState` / `rockFull`), as the knockdown reads it.
+read off his timer the frame it begins (`rockState` / `rockFull`), as the knockdown reads it. **The hook's and the slam's winds coil**
+too (`attackPose`'s `hookwind` / `slamwind` branch, the club's own numbers on their own clocks): the two heaviest blows had a 2 px
+nudge; their swings and recovers keep their own look, and the leap's crouch is still the ogre's own pose. **The goat is knocked over**
+the same way (`TUNING.goat.knock`, `knockdown`'s second argument): `stunned` tips past his side and bounces onto it, lies flattened by
+`flat` and rises through a crouch; the opening's `ko` keeps its own still lie. The hound's dart trails cells off his hip, not a stroke.
 **The marks over a head are cells** (9 Oct 2026, `TUNING.juice.marks`): the dazed stars are pluses of cells turning round an ellipse,
 the one toward the camera a cell bigger (`Renderer.starMarks`, which `drawStars` and the men's branch share), and SHOCK is two arms
 wound out from the middle a cell at a time, gold and green for the pair. Both stand over the sprite's own top (`PIXEL_EXTENT`), never
-at a multiple of `e.r`, which is how wide his feet are.
+at a multiple of `e.r`, which is how wide his feet are, and the poison's bubbles stand there too. An animal wears the same stars over
+its row of hearts (`Beast.drawHealth`); poisoned, the row itself goes green and it gets no bubbles, which at that size were one green
+smudge beside another.
 **Effects are pixels too.** Fire, blasts, dust and blood sprays are frames `CombatFX` bakes itself
 (`flameFrames`, `burstFrames`, lazily per frame, pre-warmed by `CombatFX.warm`) at `effects.pixel`
 world px a texel and draws with smoothing off; rings are `CombatFX.pixelRing`, drops `cellDisc`. A man torn apart (a blast, a roll) is five pieces cut off his

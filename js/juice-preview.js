@@ -64,6 +64,8 @@ const JUICE_PLAY = {
   'Invulnerability blink': { scene: 'hurt' },
   'Dazed stars': { scene: 'daze' },
   'The shock mark': { scene: 'shock' },
+  'The goat knocked over': { scene: 'board', approx: 'the shieldman\'s spikes are what stun him here', tip: 'a hook, a shove and the pen do the same' },
+  'The big winds coil too': { scene: 'ogreSlam', tip: 'the butcher\'s hook winds up the same way' },
   'Rocked back': { scene: 'ogreSlam', approx: 'the ogre is staggered by hand, as a blast or a crate would', off: { tune: { 'enemyAnim.rocked.back': 0, 'enemyAnim.rocked.tilt': 0 } } },
   'Impact ring + sparks': { scene: 'buttKnock', off: { game: { impact: null } } },
   'Kill shockwave': { scene: 'buttKill', off: { tune: { 'juice.impact.killLife': 0.0001 } } },

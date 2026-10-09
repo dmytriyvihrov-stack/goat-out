@@ -673,6 +673,11 @@ const TUNING = {
     // `cache`: how many baked frames of him with his blots on are kept (`PaintedArt.wounds`).
     wounds: { r: 1.9, grow: 0.15, front: 0.65, alpha: 0.8, spots: [[-4, -10], [5, -9], [-1, -14], [-7, -7], [7, -13], [2, -6]], cache: 96 },
     invuln: 0.9,            // s of invulnerability after a hit
+    // KNOCKED OVER (9 Oct 2026): the goat stunned (the pen, a hook's drag, a shove, a shieldman's spikes, the
+    // thrower) went onto his side in one frame and stood up in one. His own shape of the men's `enemyAnim.down`:
+    // over in `time` s past `lie` rad through `over` and back, squashed `squash` as he meets the floor, `flat`
+    // while he is down, up over the last `up` s through a crouch of `crouch`. The intro's `ko` keeps its own lie.
+    knock: { time: 0.16, lie: 0.9, over: 1.2, squash: 0.2, flat: 0.1, up: 0.22, crouch: 0.14 },
   },
   // A man standing (drawn only, 2 Oct 2026): he breathes from the feet up over `period` s, by `amp`,
   // and his weight shifts side to side by `sway` rad over `swayPeriod` s, each man on his own phase.
@@ -1090,11 +1095,11 @@ const TUNING = {
     // (`Renderer.venomTile`, keyed on which sides have poison beside it, one of `variants` sets of bites, and which of
     // `drySteps` steps of drying it is on: past `dry` of its life the body is dithered away as it dries); drawn live over
     // it, `sheen` cells a tile lit in turn and `bubbles` a tile each swelling from one cell to four over `bubble` s and
-    // popping into a ring. A poisoned man (`Renderer.drawEnemyBody`): his own pixels again flat venom at `tint`,
+    // popping into a ring (they climb `rise` px). A poisoned man (`Renderer.drawEnemyBody`): his own pixels again flat venom at `tint`,
     // breathing, bubbles in cells rising off his head. The goat (`PaintedArt.drawGoat`): the same at `goatTint` once
     // the ring has filled, and `drops` a second of it off the hooves of anyone moving through a puddle (`Status.goat`,
     // `Status.soak`). `glob`: VENOM SPIT's glob is `globR` px of cells with a tail of `tail` cells.
-    look: { cell: 2, bite: 2, deep: 0.68, variants: 8, drySteps: 4, sheen: 3, bubbles: 2, bubble: 1.1, dry: 0.4, tint: 0.42, goatTint: 0.38, drops: 16, globR: 6, tail: 2 },
+    look: { cell: 2, bite: 2, deep: 0.68, variants: 8, drySteps: 4, sheen: 3, bubbles: 2, bubble: 1.1, dry: 0.4, tint: 0.42, goatTint: 0.38, drops: 16, globR: 6, tail: 2, rise: 16 },
     // POISON meets FIRE: it goes off. `hitR` tiles is a hit on everybody inside it (a heart off a
     // big man, the end of an ordinary one); out to `radius` it only throws, and the wall finishes it.
     // `hits` is what it costs whoever is inside: two hearts, and then nothing more from it for `guard`
