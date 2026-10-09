@@ -1948,7 +1948,7 @@ class Renderer {
         // and stays on its row: nothing stands in a corridor, and a slide would put it on the wall.
         const size = this.fitFloorText(lines, Math.min(viewW, c.corridor ? c.w + TILE : (c.w || 14 * TILE) - 2.6 * TILE), 26);
         const lh = size * 1.4;
-        if (c.fy === undefined) c.fy = c.corridor ? c.y : this.clearFloorRow(game, c, lines, lh);
+        if (c.fy === undefined) c.fy = c.corridor || c.fixed ? c.y : this.clearFloorRow(game, c, lines, lh);   // `fixed`: the generator already found a clear row (`clearWordsRows`)
         const top = c.fy - (lines.length - 1) * lh / 2;
         // The roll (blocks 3 and 5) is the one a life hangs on (9 Oct 2026 playtest: "brighter and blinking, it is critical
         // information"): gold, a slow beat, never under the other lines' strength.
@@ -2091,13 +2091,15 @@ class Renderer {
     const L = game.learned || {}, ctx = this.ctx;
     // The shut door's words (`game.clampWords`, 7 Oct 2026): on the floor by the stone that closed behind him.
     const cw = game.clampWords;
-    if (cw && !L.clamp && !game.hidden(cw.x, cw.y)) {
-      const pulse = 0.62 + 0.12 * Math.sin(this.t * 2.2);
-      ctx.textAlign = 'center';
-      ctx.font = `700 22px ${FONT_SC}`; ctx.fillStyle = `rgba(150,128,255,${pulse})`;
-      ctx.fillText('NO WAY BACK', cw.x, cw.y * TILT);
-      ctx.font = `700 14px ${FONT_SC}`; ctx.fillStyle = `rgba(239,230,208,${pulse - 0.1})`;
-      ctx.fillText('THE ROOMS BEHIND YOU CLOSE', cw.x, (cw.y + 24) * TILT);
+    // Just NO WAY BACK, and only when he comes up to it (9 Oct 2026 playtest): it fades in over `clamp.showR` .. `readR` tiles.
+    if (cw && !L.clamp && !game.hidden(cw.x, cw.y) && game.goat) {
+      const C = TUNING.clamp, near = clamp((C.showR * TILE - hyp(cw.x - game.goat.x, cw.y - game.goat.y)) / ((C.showR - C.readR) * TILE), 0, 1);
+      if (near > 0) {
+        const pulse = (0.62 + 0.12 * Math.sin(this.t * 2.2)) * near;
+        ctx.textAlign = 'center';
+        ctx.font = `700 22px ${FONT_SC}`; ctx.fillStyle = `rgba(150,128,255,${pulse})`;
+        ctx.fillText('NO WAY BACK', cw.x, cw.y * TILT);
+      }
     }
     const say = (p, lines) => {
       if (Math.abs(p.x - game.cam.x) > 1400 || game.hidden(p.x, p.y)) return;
@@ -8618,7 +8620,8 @@ class Renderer {
       const line = k >= S.all ? S.whole : S.step[k - 1] && !S.quiet ? S.gain(S.step[k - 1]) : null;
       if (line) for (const l of line.split(' · ')) foot.push([l, b.element === 'fire' ? PALETTE.fireHi : PALETTE.venomHi]);
     }
-    if (third) foot.push([`THIRD CARD · ${third}`, PALETTE.witchHi]);
+    // No "THIRD CARD · HUNGRY SOUL" line any more (9 Oct 2026: "no need to write about hungry soul"): the third card is
+    // simply there; `third` still says whose it is for the dev drawer and the stats.
     ctx.font = FONT_PICK.font('text', 13.5 * s);
     return { desc: this.wrap(String(b.desc || ''), cw - 24 * s), foot, old };
   }
@@ -9094,18 +9097,19 @@ class Renderer {
   }
 
   // STEALTH's status beside the hearts (9 Oct 2026 playtest: "when it is on through ALT, show a status by the health"): an eye
-  // in cells and STEALTH while the sneak holds, SPOTTED and the seconds left while a fight keeps it shut (`Game.sneakDenied`).
+  // in cells and STEALTH while the sneak holds. Nothing while a fight keeps it shut (9 Oct 2026: "no need to write SPOTTED when
+  // it ends": the amber ring at his feet and the floating word over him say it, the hearts' corner stays quiet).
   drawSneakStatus(game, g, x, y, h, s) {
     if (!game.stealthLive || game.state !== 'play' || g.dead) return;
-    const L = TUNING.stealth.look, deny = game.sneakDenied(), on = game.sneak && (g.sneakK || 0) > 0.02;
-    if (!on && !(deny > 0)) return;
+    const L = TUNING.stealth.look, on = game.sneak && (g.sneakK || 0) > 0.02;
+    if (!on) return;
     const ctx = this.ctx, c = Math.max(2, Math.round(2 * s)), EYE = ['...###...', '.##...##.', '#..###..#', '.##...##.', '...###...'];
-    const col = on ? L.status : L.statusDeny, w = EYE[0].length * c, top = Math.round(y + (h - EYE.length * c) / 2);
-    ctx.save(); ctx.globalAlpha = on ? Math.min(1, (g.sneakK || 0) * 2) : 0.9;
-    ctx.fillStyle = col;
+    const w = EYE[0].length * c, top = Math.round(y + (h - EYE.length * c) / 2);
+    ctx.save(); ctx.globalAlpha = Math.min(1, (g.sneakK || 0) * 2);
+    ctx.fillStyle = L.status;
     for (let r = 0; r < EYE.length; r++) for (let q = 0; q < EYE[r].length; q++) if (EYE[r][q] === '#') ctx.fillRect(Math.round(x + q * c), top + r * c, c, c);
     ctx.font = `700 ${Math.max(12 * this.s, 12 * s)}px ${FONT_SC}`; ctx.textBaseline = 'middle';
-    ctx.fillText(on ? TUNING.stealth.statusText : `${TUNING.stealth.spotted} ${Math.ceil(deny)}`, x + w + 8 * s, y + h / 2 + 1);
+    ctx.fillText(TUNING.stealth.statusText, x + w + 8 * s, y + h / 2 + 1);
     ctx.restore();
   }
 

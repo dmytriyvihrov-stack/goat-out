@@ -664,7 +664,13 @@ so only the bottom lane is clear; **two men** on the far `e` markers with `trapS
 and `noticeFor` (`TUNING.ai.millNotice`). `noFlipX`. Both hold their marks, no sight, noise or
 wander, until the goat is inside the room's box (`e.millOpen`, 1.72): nobody rides the arm unwatched.
 
-**Words on the floor.** `CONTROL_LINES` (`render.js`), placed by `level.controls`, never in an empty room:
+**Words on the floor are readable** (9 Oct 2026, his rule, a screenshot of ALT - STEALTH MODE under three braziers): `clearWordsRows`
+(gen.js, once the props are final) pins each block in a room (not the pen's, the drop's, a corridor's) to the nearest spot whose patch (`wordsPatch`:
+`CONTROL_PATCH` chars, lines, a prop's box with a flame's height) has no stone, drop, straw, grass or prop on it, sliding along and across the room, then
+the words set smaller, then straw taken off, then a loose crate or barrel; BAAH and the sneak move to the next fitting room (`wordOrders`) when one has no
+spot, E - ROLL stays by its door. The block's `w` becomes the cleared patch and `c.fixed` keeps the renderer from sliding it again.
+`GEN_RULES.wordsclear` (`wordsBlock`, shared with the generator; a room with no spot answers `null`). A new block of floor words goes in `CONTROL_PATCH`.
+`CONTROL_LINES` (`render.js`), placed by `level.controls`, never in an empty room:
 0 `WASD - MOVE` in the pen above `cagePrompt`; 1 grab/throw in the ambush; 2 the headbutt, one line,
 on the sentry's floor (`lessonRoom`); 4 `SPACE - BAAH` on THE YARD (`levelDef.teachScream`: its first
 ordinary room with two men or more, `GEN_RULES.screamlesson`); 3 `E - ROLL` only: `hints.rollInset` tiles inside the door of the
@@ -727,7 +733,7 @@ stoned mouth; `carveSecret`, `carveVault` and wide `carveCorridor` guard the lea
 **What it looks like** (6 Oct 2026 playtest: the black box cut across the walls, "it looks bad"): on a built floor
 the room goes under the floor's own fog, the floor's fog thickening inside its walls over `clamp.slam * 3` s
 (`drawUnseen`), then `drawMemFog` takes it whole (`C.shut`), all but the walls that face what is still his;
-`drawVeil` is cells (`clamp.cell`). The first clamp in a browser writes NO WAY BACK on the floor by the shut mouth, on the open side (`game.clampWords`, drawn in `drawFirstWords`; 7 Oct 2026, "not at random over him, on the floor by the closed door, if you turn back"), read and gone for good once he has stood within `clamp.readR` tiles of it `clamp.readFor` s (`learned.clamp`).
+`drawVeil` is cells (`clamp.cell`). The first clamp in a browser writes NO WAY BACK, and only that, on the floor by the shut mouth, on the open side, shown only as he comes up to it (`clamp.showR`) (`game.clampWords`, drawn in `drawFirstWords`; 7 Oct 2026, "not at random over him, on the floor by the closed door, if you turn back"), read and gone for good once he has stood within `clamp.readR` tiles of it `clamp.readFor` s (`learned.clamp`).
 
 **Doors that open for you.** `fromRoom` iron, stair and clock doors swing open (`open`, never `broken`) when that
 room's men are dead (`game.updateClearDoors`; not gates, seals, vault); a plank door stays shut to be broken (26 Sep 2026).
@@ -816,9 +822,9 @@ line is `game.sees` (stone + `game.sightBlockers`: shut door, gong, hub; `Prop.o
 floor"): `Game.stealthLive` (the old `game.dev.stealth` reads all ask it; the drawer's STEALTH still lays it on every floor, THE SHOWROOM has it)
 is true on any floor past the first, never in heaven or on the trip. Rule 1's exception, his: the one new key, ALT, a switch. The lesson is
 `levelDef.teachSneak` (THE YARD), block 6 of the floor words, `ALT - STEALTH MODE`, in the first room with a man in it that is not the voice's room
-(`GEN_RULES.sneaklesson`), gone for good once he has sneaked once (`learned.sneak`; THE SHOWROOM's hall keeps it). **A fight takes it off by
+(`GEN_RULES.sneaklesson`; the words lie where nothing stands on them, see *Words on the floor*), gone for good once he has sneaked once (`learned.sneak`; THE SHOWROOM's hall keeps it). **A fight takes it off by
 itself**: `Game.fightOn` (an aware man past his beat of doubt within `stealth.fightR` tiles) breaks it every step it is on and refuses the press
-until it ends. What is on is shown by the hearts (`Renderer.drawSneakStatus`: an eye in cells and STEALTH, SPOTTED and the seconds while it is shut).
+until it ends. What is on is shown by the hearts (`Renderer.drawSneakStatus`: an eye in cells and STEALTH while it holds; nothing by the hearts while a fight keeps it shut).
 The notes below are the test's history:
 
 **Stealth, a test behind the dev drawer** (3 Oct 2026, two playtesters asked for it; `TUNING.stealth`,
@@ -1075,7 +1081,7 @@ The silent +1 heart is left only for a deal with nothing at all to offer.
 n-th soul) deals one more, HUNGRY SOUL (`hunger`, a body passive, every soul) or THE KNUCKLEBONE
 (`knuckle`, a talisman: every soul since its one form, 8 Oct 2026), the more generous wins, counted in
 `talRun.third` (so a death rolls it back with the rest of `levelTalRun`); `game.boonThird` names whose
-it is and the card says `THIRD CARD · <name>`. The chip shows the bone's count as pips.
+it is (the card says nothing about it since 9 Oct 2026). The chip shows the bone's count as pips.
 **Element sets** (30 Sep 2026, `BOON_SETS`): a boon's `element` (`fire`: breath, charge, kindling,
 ember; `poison`: splash, venomjaw, venomroll, spit) is counted by `Game.applySets` inside `applyBoons`.
 `step[0..n-1]` summed is the grace, in seconds: `mods.fireGuard` on the fire tick's interval (`Goat.update`, ordinary

@@ -5,6 +5,20 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.002, 9 Oct 2026: floor words that can be read, and four lines of text struck out
+
+- **The words on the floor are never under things** (his rule, from a screenshot of ALT - STEALTH MODE under three braziers: "the inscription must be
+  readable"). `clearWordsRows` (gen.js, after the props are final) pins every block of floor words in a room to the nearest spot whose patch has no stone,
+  drop, straw, grass or prop on it (a brazier's flame counts, `CONTROL_PATCH.box`), sliding along the room and across it, setting the words a little smaller
+  where the room is tight (`kinds`), taking straw off the patch and, last, a loose crate or barrel. The block's width (`w`) becomes the cleared patch, so the
+  renderer sets the line no wider (`fixed`, `Renderer.drawHints` no longer slides it). BAAH and ALT - STEALTH MODE move on to the next fitting room when one has
+  no spot. `GEN_RULES.wordsclear` holds it (E - ROLL stays within `rollInset` + `doorLeash` of its door); a room with no spot at all answers `null`.
+- **No SPOTTED beside the hearts** when a fight takes stealth away: only the eye and STEALTH while it holds (the amber ring at his feet and the word over him stay).
+- **NO WAY BACK is alone and shy**: the second line is gone, and the words show only as he comes up to them (`clamp.showR` 8 tiles, full by `readR`).
+- **No `THIRD CARD · HUNGRY SOUL` line** on the soul card (the third card is simply dealt).
+
+---
+
 ## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
 
 - **Versions count 0.001, 0.002, ...** (`BUILD`; his word: "big numbers confuse me"). The old line ended at 2.07.

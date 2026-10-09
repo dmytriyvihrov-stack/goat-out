@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.001';
+const BUILD = '0.002';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -2512,7 +2512,8 @@ const TUNING = {
   // `say`: s the first clamp's NO WAY BACK rides over him (once a browser; unused since 7 Oct 2026, the words are on
   // the floor by the shut door now: `readR` tiles and `readFor` s of standing near them and they are read, gone for
   // good). `cell`: world px a texel of the veil in the mouth (`Renderer.drawVeil`, pixels since 6 Oct 2026).
-  clamp: { slam: 0.35, hear: 14, say: 4.5, cell: 3, readR: 5, readFor: 2.2 },
+  // `showR`: the words by the shut door stay unseen until he is this many tiles from them, full by `readR` (9 Oct 2026).
+  clamp: { slam: 0.35, hear: 14, say: 4.5, cell: 3, readR: 5, readFor: 2.2, showR: 8 },
   // PERMADEATH (7 Oct 2026, "if you die, you die; what is in heaven and what you unlocked stay"): a death ends the run,
   // heaven's edge (and the death card's RUN AGAIN) starts a new one from THE ALTAR (`Game.beginRun`, `Game.permadeath`).
   // Never a LEVELS practice or THE SHOWROOM. False brings back the old way: the same floor, built again.
