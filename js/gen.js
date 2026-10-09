@@ -1155,6 +1155,17 @@ function tryGenerate(levelDef, seed, opts) {
         placed++; if (!armory) suits++;
       }
     }
+    // A stag's head in the room with the big man (9 Oct 2026 playtest: "sometimes in the room with the big one, a head on
+    // the wall, somewhere to stick him"): a boss's ring (never the ogre's, nothing flings him) or a room holding a butcher
+    // takes one at `trophy.big` of the time, over the floor's `perLevel` and off its own stream. A head on this floor
+    // already in the room (the ordinary roll above) stays the only one. `GEN_RULES.trophies` knows the same rooms.
+    {
+      const TB = TUNING.prop.trophy, cb = plan.rooms.get(room.index), brng = new RNG(((seed ^ 0x0b16f3a) + room.index * 6151) >>> 0);
+      const big = !!cb && (room.arena ? room.arena.boss !== 'butcher' : (cb.men || []).includes('champion'));
+      if (big && !levelDef.cave && !levelDef.shroom && !levelDef.dark && room.index > 0 && !room.isAmbush && !room.isRest && !room.isCalm && !room.isTrap
+          && !room.isChand && room.index !== lessonIndex && !props.some((p) => (p.kind === 'trophy' || p.kind === 'armor' || p.kind === 'suit' || p.kind === 'chandelier') && inBox(room, p))
+          && brng.chance(TB.big)) dressWall(tiles, W, room, props, grass, brng, 'trophy');
+    }
     // The cult's paper (6 Oct 2026, his redesign): a scrap folded on the floor that opens into its drawing when
     // he finds it, for the book's OBJECTS. Under one of the room's tables `underTable` of the time (a thing to
     // look for), else on plain floor clear of everything. Which drawing is the game's (`Game.layScraps`: only
@@ -2059,6 +2070,24 @@ function tryGenerate(levelDef, seed, opts) {
     if (at !== undefined) {
       const r = rooms[at];
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: Math.min(r.w, 12) * TILE, part: 4 });
+    }
+  }
+  // Block 6, the sneak (`levelDef.teachSneak`, THE YARD, 9 Oct 2026 playtest: "on the second level, at some moment, the
+  // stealth lesson, ALT - STEALTH MODE on the floor"): in the first ordinary room with a man in it that is not the voice's
+  // room (a crowd is for BAAH, a sneak wants one man to go round), never a trap, the vault's, a gate or an arena.
+  if (levelDef.teachSneak) {
+    const skip = new Set([lessonIndex, levelDef.vaultAt, levelDef.ambushAt, ...(levelDef.arenas || []).map((a) => a.at)]);
+    const voice = controls.find((c) => c.part === 4);
+    const voiceRoom = voice ? rooms.findIndex((r) => voice.x >= r.x * TILE && voice.x < (r.x + r.w) * TILE && voice.y >= r.y * TILE && voice.y < (r.y + r.h) * TILE) : -1;
+    const fit = (i, other) => {
+      const c = plan.rooms.get(i);
+      return i >= 1 && c && !skip.has(i) && !trapRooms.has(i) && !c.arena && (c.men || []).length >= 1 && (!other || i !== voiceRoom);
+    };
+    const list = ordinaryRooms(levelDef, rooms.length).sort((a, b) => a - b);
+    const at = list.find((i) => fit(i, true)) !== undefined ? list.find((i) => fit(i, true)) : list.find((i) => fit(i, false));
+    if (at !== undefined) {
+      const r = rooms[at];
+      controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: Math.min(r.w, 12) * TILE, part: 6 });
     }
   }
   // Block 5, the roll over a drop (THE CHASM's lesson, `levelDef.chasmLesson`): across the middle of the floor

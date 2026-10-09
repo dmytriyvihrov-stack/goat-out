@@ -348,6 +348,9 @@ limit") is in the old backlog (`git show 19f4efd:BACKLOG.md`).
   **The resize waits for the next draw** (`game.resizeNext`, 7 Oct 2026: "after five seconds of moving the mouse the screen
   starts to blink"): a canvas resized after the frame was drawn showed the screen its cleared self for a frame. And once it
   has dropped on a floor it does not climb back until the next floor (`perfAdapt.noUp`).
+- **A thrown exception inside `draw` costs the rest of the frame, and then the whole picture.** `safeFrame` (game.js) resets the canvas after a
+  throw, so one every headbutt (a `FE` that was local to `stance`, read in `drawGoat`'s windup branch, 9 Oct 2026) was "the screen blinks black on
+  every headbutt". Look for a thrown frame first (`game.frameErrs`, the console) whenever a flash has no source in the effects.
 - **A thrown exception inside `draw` costs the rest of the frame.** `drawRunes` once measured against
   raw `castWind` while the timer was `castWind * mods.enemySlow`; the negative radius threw
   `IndexSizeError`. Clamp radii; measure a timer against the duration it was given.
@@ -440,8 +443,8 @@ stack (`renderer.leftTop`, set by `drawUI` every frame); the open dev drawer sti
 now carries more, the camera frames him `camera.hudLift` of the view above the middle (`updateCamera`'s `lift`; a held room
 must fit under it too); not on touch, a portrait screen or heaven. Touch keeps the old row up top.
 **Small things.** The smear: `TUNING.goat.trail`, mixed by `mods.speed * goat.runUp` against
-`trail.fastAt` (only visible sign of SURE HOOVES). The pointer: `game.updateCursor`, the headbutt chip near white (`buttCursor`, `TUNING.cursor`; 3 Oct 2026, "people do not tie the mouse to the actions"), hidden while the keys or a pad aim, horns
-(`CURSOR_GOAT`) or `grabbing`; `crosshair` fallback in both HTML files. Touch: `touch.active`; only a
+`trail.fastAt` (only visible sign of SURE HOOVES). The pointer: `game.updateCursor`, the headbutt chip near white (`buttCursor`, `TUNING.cursor`; 3 Oct 2026, "people do not tie the mouse to the actions"), hidden while the keys or a pad aim. It is the ONLY pointer (9 Oct 2026, "show only the updated cursor everywhere"): no
+drawn horns, no `grabbing` hand for a held thing, no page `crosshair` (the HTML says `cursor: none` until `Game`'s constructor lays the chip), `default` if the picture cannot be made. Touch: `touch.active`; only a
 `keydown` matching `KEYBOARD_KEY` turns it off, and on a `coarse` device every pointer is a finger.
 
 **The gamepad** (30 Sep 2026, un-parked on request). `PadInput` (js/input.js) reads the first
@@ -808,6 +811,15 @@ line is `game.sees` (stone + `game.sightBlockers`: shut door, gong, hub; `Prop.o
 `sees` and `reaches` are both `clearLine`. Past `ai.noticeNear` a man is `noticed` for
 `ai.noticeMin`–`noticeMax` (to `noticeFar`) before chasing; `noticeFor` overrides. `chaseGoat` emits
 `noise.chase` at `ai.chaseNoise`.
+
+**Stealth is in the game from the second floor** (9 Oct 2026, his word: "on the second level, at some moment, the stealth lesson, ALT - STEALTH MODE on the
+floor"): `Game.stealthLive` (the old `game.dev.stealth` reads all ask it; the drawer's STEALTH still lays it on every floor, THE SHOWROOM has it)
+is true on any floor past the first, never in heaven or on the trip. Rule 1's exception, his: the one new key, ALT, a switch. The lesson is
+`levelDef.teachSneak` (THE YARD), block 6 of the floor words, `ALT - STEALTH MODE`, in the first room with a man in it that is not the voice's room
+(`GEN_RULES.sneaklesson`), gone for good once he has sneaked once (`learned.sneak`; THE SHOWROOM's hall keeps it). **A fight takes it off by
+itself**: `Game.fightOn` (an aware man past his beat of doubt within `stealth.fightR` tiles) breaks it every step it is on and refuses the press
+until it ends. What is on is shown by the hearts (`Renderer.drawSneakStatus`: an eye in cells and STEALTH, SPOTTED and the seconds while it is shut).
+The notes below are the test's history:
 
 **Stealth, a test behind the dev drawer** (3 Oct 2026, two playtesters asked for it; `TUNING.stealth`,
 STEALTH (ALT) in the drawer, `game.dev.stealth`, kept under `STEALTH_KEY`, never in the itch build). ALT
@@ -1262,6 +1274,10 @@ one tile (`narrowExit`; the template's `P` pier only fixes the door's row and go
 the man (`post`: `e.sentry`'s feet, never walked out of furniture) holding it under a ring whose cleat is on
 the far wall by the way in, its rope across the room (9 Oct 2026: it was straight above him). Nothing else is put in that room, it is never a trap, canon, armory or
 secret room, and the room after it never stacks. `GEN_RULES.chandlesson`.
+
+**A stag's head in the room with the big man** (9 Oct 2026, "sometimes in the room with the big one a head on the wall, somewhere to stick him"):
+a boss's ring but the ogre's, or a room holding a butcher, takes one head at `trophy.big` (0.25) on its own stream, over the floor's `perLevel`
+(gen.js, after the wall's dressing; `GEN_RULES.trophies` knows those rooms).
 
 **The wall's dressing** (30 Sep 2026, Enter the Gungeon's; `TUNING.prop.armor`, `TUNING.prop.trophy`).
 `gen.js` `dressWall` (its own RNG stream, after the chandelier) hangs a **suit of armour** (`kind:
@@ -1804,7 +1820,7 @@ stay"). A death ends the run: `onGoatDied` clears the save, heaven's edge (`Heav
 card's RUN AGAIN (`Painting.quickRect`, Backspace) start a new one from THE ALTAR (`Game.beginRun`, which NEW GAME and the win
 card's RUN AGAIN share). A LEVELS practice and THE SHOWROOM keep the old way below (the same floor, built again). PAUSE → ABANDON RUN (pressed
 twice, `Game.abandonRun`, 9 Oct 2026) is that death on purpose: killer GIVING UP, no card, straight to the title (9 Oct 2026: it went up to heaven first). **One more
-life** (`heaven.extraLife`): a run begun after the first visit up there (given in the god's first talk "as faith", 9 Oct 2026 evening; for half a day it waited for the repaired mirror) (`Heaven.extraLivesFor`) carries `game.extraLives`, saved
+life** (`heaven.extraLife`): a run begun after the god has promised it (`told.life`: said in his box over the DEATH CARD, the first death after a visit up there, `Heaven.lifeDue` / `sayLife`, `HEAVEN_TALK.life`, "oh, I almost forgot, from now on a second chance, do not disappoint me", 9 Oct 2026 last note; the first talk ends on the jump, no life in it) (`Heaven.extraLivesFor`) carries `game.extraLives`, saved
 with the run (`lives`), spent by `Motes.second` the way SECOND CHANCE is (after it, if both), back up where he fell with a share
 of his hearts; a small portrait of the goat over the hearts in the HUD (`Renderer.lifePortrait`, Hades' Death Defiance).
 **HELLDIVE / SUPER HELLDIVE** (7 Oct 2026, one `MIRROR` entry `helldive` with two ranks and a name a rank, `names`,
@@ -1868,7 +1884,7 @@ bells, the horns, tables, the post, the drop; the drop is only its first `HEAVEN
 to him (`gift.horns`, 50 since 8 Oct 2026; until then the pairs at the edge are hidden, `broken`: `HEAVEN_TALK.horns` asks, `hornsAsk`, since 9 Oct 2026 at the lip, not on his cloud: the mirror whole and looked into, he walks within `heaven.hornsEdge` tiles of the drop and the god's talk opens there, "I forgot to tell you", `Heaven.talk(game, t0)`; GRAB held at him pours, `pourable` key `god`, with an empty heap a
 GRAB is still a word with him; `hornsHave` is the purse's FOR THE GOD count, `goalHave`) open BIG and LONG at the edge
 (`hornsOpen`, `hornsDone`), then a hundred given and one corrupted soul (`gift.skills`, `skillsSouls`, pour key `god2`,
-`skillsAsk`, `meta.upgraded`): UPGRADED SKILLS, a name with no mechanics yet, and SECOND CHANCE on the glass (`questDone`). The HEAVEN dev tab's HORNS row toggles it. A stand is drawn as a sign of white cells on the cloud with the animal's shape on it (`drawSeat`, `drawSign`, `animalSil`; 9 Oct 2026, "not pedestals"): lit white in a blue rim when open, grey-blue and still when not, the animal itself in gold once brought up, a light gold shape of it in the middle once it lives up here (`animalSil(..., 'ghost')`); both shapes small, inside the sign's inner ring (`stands.inRing`, 9 Oct 2026). A stand is `Heaven.standState`: 'open' (`home.stands.open`: the tortoise's alone since 8 Oct 2026; or mended,
+`skillsAsk`, `meta.upgraded`): UPGRADED SKILLS, a name with no mechanics yet, and SECOND CHANCE on the glass (`questDone`). The HEAVEN dev tab's HORNS row toggles it. A stand is drawn as a sign of white cells on the cloud with the animal's shape on it (`drawSeat`, `drawSign`, `animalSil`; 9 Oct 2026, "not pedestals"; the shapes are hand-built pictograms, `HEAVEN_PIXELS.silhouettes`, one world px a cell, drawn whole: the lit sprites flattened read as blobs; a locked or empty stand says LOCKED on the pointer or `EMPTY.` over it and nothing more): lit white in a blue rim when open, grey-blue and still when not, the animal itself in gold once brought up, a light gold shape of it in the middle once it lives up here (`animalSil(..., 'ghost')`); both shapes small, inside the sign's inner ring (`stands.inRing`, 9 Oct 2026). A stand is `Heaven.standState`: 'open' (`home.stands.open`: the tortoise's alone since 8 Oct 2026; or mended,
 `meta.mendedStands`, or its animal already brought up), 'broken' (the goose's and the horse's, `stands.cost`, each with what broke it, `STAND_STORY`) or 'locked' (the other six, no cost until the god's fifty are given and the horns are open, `standCost` → `stands.later`; since 9 Oct 2026 evening every stand not open wears a padlock, `drawStandState`); no caption under any; only open kinds are dealt into a
 run (`Beast.deal(seed, early, allow)` ← `Heaven.beastsOpen`, the plan keyed on them in `beastPlanFor`). **Pouring**: GRAB held at
 the broken mirror (once gifted, `gift.mend`), the broken overlook (`home.tower.cost`, `meta.towerMended`) or a broken stand spends
@@ -2223,7 +2239,8 @@ Hooks load when a session starts.
   note) go through `FONT_PICK.font('say' | 'text', px)` instead, which the dev drawer's SPEECH / TEXT
   rows cycle through five families (kept in `localStorage`; the itch build always reads entry 0).
   A new family goes into `FONT_PICK.list` and the Google Fonts link in both HTML files and `RELEASE.page`.
-- Version history and the reasoning behind each change live in `CHANGELOG.md`.
+- Version history and the reasoning behind each change live in `CHANGELOG.md`. **Versions count 0.001, 0.002, ...** (9 Oct 2026, his
+  word: "big numbers confuse me"; the line before ended at 2.07): bump `BUILD` by one thousandth with a changelog entry.
 - **Text must be readable** (30 Sep 2026: "the dev tools' fonts are tiny everywhere, make it readable,
   make it a rule"). Screen-space text is never under 12 CSS px (canvas px = CSS px × `renderer.s`):
   size fonts off `renderer.hs` / `ts` with that floor in mind. The dev drawer enforces it itself,

@@ -37,7 +37,10 @@ const dressedRight = (L, list, kind) => {
     if (!r) return `a ${name} outside any room`;
     const armory = r.tpl && r.tpl.name === 'armory';
     if (!armory) loose++;
-    if (quiet(L, r) || r.isTrap || r.index < D.from && !armory) return `a ${name} in room ${r.index} (${r.isTrap ? 'trap' : r.role})`;
+    // A head may hang in the room with the big man (a boss's ring but the ogre's, or a butcher's room: `trophy.big`, gen.js).
+    const big = kind === 'trophy' && !r.isTrap && !r.isAmbush && !r.isRest && !r.isCalm && r.index > 0 && roomsOf(L)[r.index].spawns.some((s) => (s.boss ? s.kind !== 'butcher' : s.champion));
+    if (big) loose--;
+    if (!big && (quiet(L, r) || r.isTrap || r.index < D.from && !armory)) return `a ${name} in room ${r.index} (${r.isTrap ? 'trap' : r.role})`;
     const side = p.side || 'n', tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE), at = dressPoint(kind, tx, ty, side);
     if (side !== 'n') return `a ${name} on a side wall in room ${r.index}`;
     if (Math.abs(at.x - p.x) > 0.5 || Math.abs(at.y - p.y) > 0.5 || !wallFits(L.tiles, L.W, r, tx, ty, side, grass)) return `a ${name} off its wall or by an opening at ${tx},${ty}`;
@@ -401,6 +404,16 @@ const GEN_RULES = [
       if (!room) return 'the BAAH line is in no room';
       const men = (rs[room.index] || { spawns: [] }).spawns.length;
       return men >= 2 || `the BAAH line lies in room ${room.index} with ${men} men`;
+    } },
+  { id: 'sneaklesson', text: 'ALT - STEALTH MODE is painted once, in a room of THE YARD with a man in it.',
+    check: (L) => {
+      if (!L.def.teachSneak) return null;
+      const c = (L.controls || []).filter((q) => q.part === 6);
+      if (c.length !== 1) return `${c.length} STEALTH lines`;
+      const room = roomAt(L, c[0].x, c[0].y), rs = roomsOf(L);
+      if (!room) return 'the STEALTH line is in no room';
+      const men = (rs[room.index] || { spawns: [] }).spawns.length;
+      return men >= 1 || `the STEALTH line lies in room ${room.index} with nobody in it`;
     } },
   { id: 'lessons', text: 'The teaching rooms are the same every run: pen, sentry, wheel, ambush; E - ROLL at the first butcher\'s door.',
     check: (L) => {

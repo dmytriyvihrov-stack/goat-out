@@ -550,7 +550,7 @@ class GameAudio {
     const preview = game.dev.rules && game.dev.tab === 'music' ? this.lab : null;
     if (this.preview !== preview) { this.resetScore(); this.preview = preview; }
     // STEALTH (dev test): a sneak hushes the score (`layers.hush`, eased on `hushMix` in the step).
-    this.hush = !!(game.sneak && game.dev.stealth && game.state === 'play');
+    this.hush = !!(game.sneak && game.stealthLive && game.state === 'play');
     this.updateAmbience(game, dt);
     this.heartbeat(game);
     if (preview) {
@@ -1105,16 +1105,22 @@ class GameAudio {
       amb.far = gap(A.far.gap);
       if (!this.encounter.active) this.foley('far', { bus: this.ambBus, gain: A.far.gain, pan: side(), wet: A.far.wet, takes: 2 });
     }
-    // The milk grass calls to a goat who needs it.
-    if (g.hp < g.maxHp && (amb.grass -= el) <= 0) {
-      amb.grass = gap(A.grass.gap);
-      let best = null, bd = A.grass.radius * TILE;
+    // The milk grass calls to a goat who needs it. It answers the moment he is hurt and near it, then keeps a steady beat
+    // (9 Oct 2026 playtest: "a strange random big delay on the grass sound": the first call used to wait out a random 2 to 4 s).
+    // The grass is looked for twice a second, not on every beat of the clock.
+    if (g.hp < g.maxHp && (amb.grassScan = (amb.grassScan || 0) - el) <= 0) {
+      amb.grassScan = 0.5; amb.grassNear = null; let bd = A.grass.radius * TILE;
       for (const p of game.props) {
         if (p.kind !== 'heal' || p.broken || p.dead) continue;
         const d = hyp(p.x - g.x, p.y - g.y);
-        if (d < bd) { bd = d; best = p; }
+        if (d < bd) { bd = d; amb.grassNear = p; amb.grassD = d; }
       }
-      if (best) this.foley('sparkle', { bus: this.ambBus, gain: A.grass.gain * (1 - 0.6 * bd / (A.grass.radius * TILE)),
+    }
+    const best = g.hp < g.maxHp && amb.grassNear && !amb.grassNear.broken && !amb.grassNear.dead ? amb.grassNear : null;
+    if (!best) { amb.grass = 0; if (g.hp >= g.maxHp) { amb.grassScan = 0; amb.grassNear = null; } }
+    else if ((amb.grass -= el) <= 0) {
+      amb.grass = gap(A.grass.gap);
+      this.foley('sparkle', { bus: this.ambBus, gain: A.grass.gain * (1 - 0.6 * hyp(best.x - g.x, best.y - g.y) / (A.grass.radius * TILE)),
         pan: clamp((best.x - g.x) / (TUNING.audio.space.pan * TILE), -1, 1), takes: 3 });
     }
   }

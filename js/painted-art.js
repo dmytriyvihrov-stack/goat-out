@@ -1037,7 +1037,7 @@ class PaintedArt extends AltarArt {
     if(g.state==='roll'){if(lp){const k=Math.sin(clamp(lp.t/lp.time,0,1)*Math.PI);ctx.scale(1+0.1*k,1-0.06*k);}else{ctx.rotate(g.rollSpin);ctx.scale(0.88,0.88);}}
     // The bite (BY THE COLLAR) is the same crouch as the headbutt's windup, on its own clock.
     if(g.state==='windup'||g.state==='bite'){const W=g.state==='bite'?TUNING.goat.grab.bite:TUNING.goat.headbutt.windup,k=clamp(1-(g.timer||0)/W,0,1),a=g.aim||{x:0,y:0};
-      ctx.translate(-a.x*FE.pull*k,-a.y*FE.pull*k*TILT);ctx.scale(0.85,1.1);}
+      const FP=TUNING.goat.feel.pull;ctx.translate(-a.x*FP*k,-a.y*FP*k*TILT);ctx.scale(0.85,1.1);}
     // The lunge stretched along the way the head goes, not along the screen (9 Oct 2026).
     if(g.state==='lunge'){const a=g.aim?Math.atan2(g.aim.y*TILT,g.aim.x):0;ctx.rotate(a);ctx.scale(1.15,0.9);ctx.rotate(-a);}
     // Knocked over (`goat.knock`): he tips past his side and bounces onto it, lies, and rises through a crouch;

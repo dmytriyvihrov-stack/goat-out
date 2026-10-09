@@ -457,13 +457,14 @@ Object.assign(Heaven, {
     const H = game.heaven, M = this.meta, st = this.standState(s.kind), lift = s.kind === 'horse' ? 76 : 46;
     const say = (text, k) => H.plates.push({ x: n.x, y: n.y - lift, text, life: TUNING.heaven.plate * (k || 1.2) });
     const grab = game.touch && game.touch.active ? 'GRAB' : 'RIGHT M. CLICK';
-    if (st === 'locked') { say(this.mended() ? 'LOCKED. GIVE THE GOD HIS FIFTY, AND THE LOCK COMES OFF.' : 'LOCKED. THE MIRROR FIRST.', 1); game.audio.sfxClatter('metal', 0.3); return true; }
+    // A lock says LOCKED on the pointer and nothing more (9 Oct 2026 playtest: "if it is locked, why write it again, less text").
+    if (st === 'locked') { game.audio.sfxClatter('metal', 0.3); return true; }
     // the three of the story (8 Oct 2026, "make a good story for the three"): what broke each stand, then what it asks
     if (st === 'broken') { say(`${STAND_STORY[s.kind] || 'BROKEN.'} HOLD ${grab} AND POUR SOULS INTO IT: ${this.poured('stand:' + s.kind)} / ${this.standCost(s.kind)}.`, 1.6); return true; }
     if (M.questWon && M.questWon[s.kind]) return false;   // the dare's last word is said at the stand once, wherever it lives now
     if (this.freed(s.kind)) { say(s.name + ' IS NOT HERE. IT LIVES UP HERE NOW, ITS OWN WAY. FIND IT.', 1.3); return true; }
     if (s.kind === 'horse' && M.saved.horse) { say('THE HORSE IS IN ITS PADDOCK, BELOW. GO AND SEE IT.', 1.2); return true; }
-    if (!M.saved[s.kind]) { say(M.met && M.met[s.kind] ? s.sound + ' ...' : 'EMPTY. WALK ' + s.name + ' OUT OF THE COMPOUND ALIVE, AND IT SITS HERE.', 1.4); return true; }
+    if (!M.saved[s.kind]) { say(M.met && M.met[s.kind] ? s.sound + ' ...' : 'EMPTY.', 1.4); return true; }
     return false;
   },
   // An animal's dare (`QUESTS`): the line it wins with, said once; what it asks while worn; a second GRAB within

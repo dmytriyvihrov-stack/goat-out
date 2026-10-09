@@ -75,6 +75,8 @@ const CONTROL_LINES = {
     ['SPACE - BAAH', 'IT BREAKS A SWING'],
     // THE CHASM's lesson (THE CAVE): the roll carries him over a drop. Only the key since 8 Oct 2026 ("near the chasm just E - ROLL").
     ['E - ROLL'],
+    // THE YARD's sneak (9 Oct 2026): one line, gone for good once he has used it (`learned.sneak`).
+    ['ALT - STEALTH MODE'],
   ],
   touch: [
     ['LEFT THUMB - MOVE'],
@@ -83,6 +85,7 @@ const CONTROL_LINES = {
     ['ROLL'],
     ['BAAH', 'IT BREAKS A SWING'],
     ['ROLL'],
+    [],
   ],
   // A gamepad (`PadInput`): the same four lessons on the buttons `PAD_KEYS` names.
   pad: [
@@ -92,6 +95,7 @@ const CONTROL_LINES = {
     ['A - ROLL'],
     ['B - BAAH', 'IT BREAKS A SWING'],
     ['A - ROLL'],
+    [],
   ],
   // KEYBOARD ONLY (SETTINGS `keysOnly`, 3 Oct 2026): no mouse, the run is the aim (`kbOn`).
   keys: [
@@ -101,6 +105,7 @@ const CONTROL_LINES = {
     ['L - ROLL'],
     ['SPACE - BAAH', 'IT BREAKS A SWING'],
     ['L - ROLL'],
+    ['ALT - STEALTH MODE'],
   ],
 };
 
@@ -633,6 +638,7 @@ class Renderer {
     if (game.touch.active && (game.state === 'play' || (game.state === 'heaven' && game.heaven && !game.heaven.talk && !game.heaven.panel))) this.drawTouchUI(game);
     this.drawBoonChoice(game);
     this.drawCard(game);
+    if (game.beastTalk && game.state === 'dead') Beast.drawTalk(this, game);   // the god's second chance over the death card (`Heaven.sayLife`)
     // The pause and the book over every card: the floor's name was laid across the open book.
     if (game.state === 'paused') this.drawPause(game);
     Codex.drawTip(this, game);   // the word under the pointer, explained (js/codex.js)
@@ -1937,6 +1943,7 @@ class Renderer {
         if (c.part === 0 && lv.cagePrompt && !game.cageOpen) continue;
         if (Math.abs(c.x - game.cam.x) > 1400) continue;
         const lines = sets[c.part] || [];
+        if (!lines.length || (c.part === 6 && game.learned && game.learned.sneak && !lv.def.showroom)) continue;
         // A block on a corridor's own stretch (E - ROLL before the butcher, `corridor`) takes the stretch and a tile over,
         // and stays on its row: nothing stands in a corridor, and a slide would put it on the wall.
         const size = this.fitFloorText(lines, Math.min(viewW, c.corridor ? c.w + TILE : (c.w || 14 * TILE) - 2.6 * TILE), 26);
@@ -4146,7 +4153,7 @@ class Renderer {
     // STEALTH (dev test): his beat of doubt (`noticed`) is a `?` that grows and goes from amber to red
     // as it runs out, and when it has, a `!` for `stealth.alarm` s: the time to get out of his sight in,
     // and the end of it.
-    if (G && G.dev && G.dev.stealth && !e.dead) {
+    if (G && G.stealthLive && !e.dead) {
       const doubt = e.state === 'noticed', alarm = !doubt && e.alarmAt !== undefined && G.timer - e.alarmAt < TUNING.stealth.alarm;
       if (doubt || alarm) {
         const p = doubt ? clamp(1 - e.timer / Math.max(0.01, e.noticeDur || 1), 0, 1) : 1, t = doubt ? '?' : '!';
@@ -4833,7 +4840,7 @@ class Renderer {
   // floor they are laid over it instead, cut to what each man sees by the light (`Enemy.sightRange`).
   drawStealth(game, over) {
     const g = game.goat, k = g ? g.sneakK || 0 : 0;
-    if (!game.dev.stealth || !g || g.dead || game.state !== 'play' || !!over !== Dark.on(game)) return;
+    if (!game.stealthLive || !g || g.dead || game.state !== 'play' || !!over !== Dark.on(game)) return;
     const ctx = this.ctx, L = TUNING.stealth.look;
     // A fight shut the sneak (`Game.breakSneak`): a ring of cells round his feet drains with the time left.
     const deny = game.sneakDenied ? game.sneakDenied() : 0;
@@ -4867,7 +4874,7 @@ class Renderer {
     // His range as `canSeeGoat` has it (`Enemy.sightRange`: the sneak, THE DARK out of the light).
     const R = e.sightRange ? e.sightRange(game) : cfg.sight * TILE;
     // STEALTH: crates, boulders, barrels and far grass cut the rays as they cut his sight (`Enemy.screenAt`).
-    const screen = !!(game.dev && game.dev.stealth && e.screenAt && e.kind !== 'wraith');
+    const screen = !!(game.stealthLive && e.screenAt && e.kind !== 'wraith');
     // No front: a post, the dead, a hound with his eyes on the goat, a kind whose cone is the whole turn.
     const round = !!(e.watchful || e.kind === 'wraith' || (e.kind === 'dog' && e.aware) || !(cfg.cone < two));
     const c = e.sightPoly, same = c && c.R === R && c.round === round;
@@ -9128,6 +9135,22 @@ class Renderer {
     for (let r = 0; r < gh; r++) for (let q = 0; q < gw; q++) if (G[r][q] !== '.') { ctx.fillStyle = LIFE_FACE_COL[G[r][q]]; ctx.fillRect(ox + q * c, oy + r * c, c, c); }
   }
 
+  // STEALTH's status beside the hearts (9 Oct 2026 playtest: "when it is on through ALT, show a status by the health"): an eye
+  // in cells and STEALTH while the sneak holds, SPOTTED and the seconds left while a fight keeps it shut (`Game.sneakDenied`).
+  drawSneakStatus(game, g, x, y, h, s) {
+    if (!game.stealthLive || game.state !== 'play' || g.dead) return;
+    const L = TUNING.stealth.look, deny = game.sneakDenied(), on = game.sneak && (g.sneakK || 0) > 0.02;
+    if (!on && !(deny > 0)) return;
+    const ctx = this.ctx, c = Math.max(2, Math.round(2 * s)), EYE = ['...###...', '.##...##.', '#..###..#', '.##...##.', '...###...'];
+    const col = on ? L.status : L.statusDeny, w = EYE[0].length * c, top = Math.round(y + (h - EYE.length * c) / 2);
+    ctx.save(); ctx.globalAlpha = on ? Math.min(1, (g.sneakK || 0) * 2) : 0.9;
+    ctx.fillStyle = col;
+    for (let r = 0; r < EYE.length; r++) for (let q = 0; q < EYE[r].length; q++) if (EYE[r][q] === '#') ctx.fillRect(Math.round(x + q * c), top + r * c, c, c);
+    ctx.font = `700 ${Math.max(12 * this.s, 12 * s)}px ${FONT_SC}`; ctx.textBaseline = 'middle';
+    ctx.fillText(on ? TUNING.stealth.statusText : `${TUNING.stealth.spotted} ${Math.ceil(deny)}`, x + w + 8 * s, y + h / 2 + 1);
+    ctx.restore();
+  }
+
   drawUI(game) {
     const ctx = this.ctx;
     this.leftTop = undefined;   // the top of the bottom-left stack, for the cape and the dev word (`drawCapeCorner`, `drawDevPage`)
@@ -9224,13 +9247,9 @@ class Renderer {
     // that the run is carrying them.
     // (46 until 30 Sep 2026: "a little more room under the hearts for the animals")
     const saved = this.drawSaved(game, 14 * s, top + (!hornInfo ? (low ? 64 : 56) : (low ? 92 : 72)) * s, s);   // lower while the horn test's two lines are up
-    // Kills that landed on top of each other, while the window is still open.
-    if (game.combo >= 2 && game.comboTimer > 0) {
-      const a = Math.min(1, game.comboTimer / 0.6);
-      ctx.font = `700 ${(15 + Math.min(11, game.combo * 2)) * s}px ${FONT_SC}`;
-      ctx.fillStyle = `rgba(192,57,43,${a})`;
-      ctx.fillText(`x${game.combo} IN A ROW`, 14 * s, top + (saved ? 88 : 58) * s + (low ? 20 * s : 0));
-    }
+    // (The "xN IN A ROW" line that stood here is gone, 9 Oct 2026 playtest: "the number of kills in a row need not be written";
+    // `game.combo` still runs, the score and the music read it.)
+    this.drawSneakStatus(game, g, hx + (g.maxHp + (g.light || 0) + (g.armour || 0)) * HGAP + 10 * s, hy, HEART.length * px, s);
 
     // The rail sits in the bottom-right corner, where a glance down at a cooldown does not cost the
     // top of the room (playtest, 24 Sep 2026: "up there is awkward to watch"). On a touch screen the

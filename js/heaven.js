@@ -98,15 +98,24 @@ const HEAVEN_TALK = {
   // gift and the quest (from the end of this talk every man he puts down leaves a white soul,
   // `js/motes.js`, and the god wants `heaven.gift` of them, three asks), and the mirror before the edge.
   // 5 Oct 2026, his words: comfort first, then the turn (the sacrifice now sacrifices to him), then the quest.
-  // 9 Oct 2026, his words again (five plates), and ONE MORE LIFE given here, before the mirror: "as a reward and a promise
-  // for the future, like faith in the god" (`extraLivesFor`, `lifeFaith`).
+  // 9 Oct 2026, his words again (five plates); the evening's note gave ONE MORE LIFE here "as faith", and the next note took it
+  // back out: it is said over the death card after the first visit (`life` below).
   intro: [
     'DO NOT CRY, LITTLE GOAT. NOT ALL IS LOST.',
     'I AM THE GOAT GOD. THE ONE ABOVE.',
     'I CANNOT BRING BACK YOUR EWE. BUT I CAN TURN BACK TIME.',
     'AND I WILL HELP YOU GROW STRONGER ON YOUR WAY.',
     'SACRIFICE TO ME 20 SOULS OF THOSE WHO WANTED TO SACRIFICE YOU, AND I WILL GIVE YOU MORE POWER.',
-    'AND TAKE THIS NOW, ON FAITH: ONE MORE LIFE ON EVERY RUN. FALL, AND YOU GET BACK UP ONCE. NOW JUMP. BUTT FIRST. BEH.',
+    'WHEN YOU ARE READY, JUMP OFF THE EDGE OF THE CLOUD. BUTT FIRST. BEH.',
+  ],
+  // The second chance (9 Oct 2026 playtest, his words: "not up there: when you die for the first time after the visit and
+  // begin to rise, he says, oh, I almost forgot, from now on I give you a second chance, do not disappoint me"): said in
+  // the god's box over the death card, the first death after a visit (`Heaven.lifeDue`); from then on a run begun carries
+  // ONE MORE LIFE (`extraLivesFor`).
+  life: [
+    'OH, I ALMOST FORGOT.',
+    'FROM NOW ON I GIVE YOU A SECOND CHANCE. FALL ONCE, AND YOU GET BACK UP.',
+    'DO NOT DISAPPOINT ME.',
   ],
   // For a goat who met him before the gift existed: the same gift, said on its own.
   gift: [
@@ -153,7 +162,6 @@ const HEAVEN_TALK = {
   skillsDone: ['A HUNDRED, AND THE VIOLET ONE. YOUR SKILLS ARE UPGRADED.'],
   skillsSoul: ['A HUNDRED. NOW THE CORRUPTED ONE: TAKE A SOUL FROM ONE OF THEIR BIG MEN AND BRING IT UP.'],
   // GRAB on the mirror before it is mended (`Heaven.interact`).
-  padlock: 'LOCKED. THE MIRROR FIRST: REPAIR IT, AND THEN THE REST.',   // the tower and the broken stands until it is (9 Oct 2026)
   broken: ['BROKEN.'],   // 8 Oct 2026: until he has brought the god twenty, the mirror says only this
   killer: {
     bearer: ['A MAN WITH A STICK. YOU HAVE TWO HORNS AND FOUR LEGS. DO THE ARITHMETIC.'],
@@ -382,6 +390,7 @@ const Heaven = {
   news(game, dying) {
     const M = this.meta || this.load(), out = [];
     if (!M.told.intro) return ['first'];
+    if (dying && this.lifeDue(game)) out.push('life');   // said over the card, so the card offers only ASCEND until it has been
     if (!M.gift) out.push('gift');
     if (this.mendReady() && !this.mended()) out.push('mend');
     if (this.hornsAsk() && !M.told.horns0) out.push('horns');
@@ -404,13 +413,24 @@ const Heaven = {
   // (`first`, the god's first talk not yet heard, is always fresh: it is the whole of heaven.)
   freshNews(game, dying) { const seen = (this.meta && this.meta.newsSeen) || []; return this.news(game, dying).filter((k) => k === 'first' || seen.indexOf(k) < 0); },
   seeNews(game) { if (this.meta) { this.meta.newsSeen = this.news(game, false); this.saveSoon(); } },
-  // How many more lives a run begun now carries (`heaven.extraLife`, `Game.beginRun`): one once he has been up here.
+  // The first death after a visit up here: the god's second chance is said over the card and is his from then on (`told.life`).
+  lifeDue(game) { const M = this.meta || this.load(), X = TUNING.heaven.extraLife; return !!(X && X.on && M && M.visits > 0 && M.told && M.told.intro && !M.told.life && !game.showroomOn && !game.runJumped); },
+  sayLife(game) {
+    const M = this.meta; M.told.life = 1; this.save();
+    Beast.talk(game, { kind: 'god', x: game.goat.x, y: game.goat.y }, this.parts(HEAVEN_TALK.life), false, {
+      name: 'THE GOAT ABOVE', sound: () => game.audio.sfxGodVoice(0.7),
+      portrait: (R, ctx, k) => {
+        const S = HEAVEN_PIXELS.sprites.god, z = k * 0.8, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(HEAVEN_PIXELS.canvas('god-speak'), 0, 0, S.w * 4, 60 * 4, Math.round(-S.w * z / 2), Math.round(-60 * z), Math.round(S.w * z), Math.round(60 * z));
+        ctx.imageSmoothingEnabled = sm;
+      } });
+  },
+  // How many more lives a run begun now carries (`heaven.extraLife`, `Game.beginRun`): one once the god has promised it.
   extraLivesFor() {
     const X = TUNING.heaven.extraLife, M = this.meta || this.load();
-    // 9 Oct 2026, second note of the day: back to the first visit, said in the god's first talk ("he gives it before the
-    // mirror is repaired, as a reward and a promise, like faith in the god"); for the mirror, earlier that day, it came too late.
+    // 9 Oct 2026, last note of the day: given on the death card after the first visit (`lifeDue`, `HEAVEN_TALK.life`), not up here.
     const r = this.rank('life');
-    return (X && X.on && M && (M.visits > 0 || M.mended) ? X.lives : 0) + (r > 0 ? MIRROR.find((u) => u.id === 'life').params.lives[r - 1] : 0);
+    return (X && X.on && M && M.told && M.told.life ? X.lives : 0) + (r > 0 ? MIRROR.find((u) => u.id === 'life').params.lives[r - 1] : 0);
   },
   // RESTART on the death card (past heaven) is still a death to the god's tally.
   restarted() { if (this.meta) { this.meta.deaths++; this.saveSoon(); } },
@@ -1040,10 +1060,8 @@ const Heaven = {
     }
     else if (n.kind === 'mirror') this.openMirror(game);
     // Padlocked (the tower, a broken stand) until the mirror is repaired: it says so, and nothing opens.
-    else if (this.padlocked(n)) {
-      H.plates.push({ x: n.x, y: n.y - (n.kind === 'tower' ? 110 : 74), text: HEAVEN_TALK.padlock, life: TUNING.heaven.plate });
-      game.audio.sfxClatter('metal', 0.4);
-    }
+    // (No words over it since 9 Oct 2026, "if it says LOCKED already, why write more": the pointer's own LOCKED is the whole of it.)
+    else if (this.padlocked(n)) game.audio.sfxClatter('metal', 0.4);
     else if (n.kind === 'tower' && !this.towerMended()) game.audio.sfxClatter('wood', 0.4);
     else if (n.kind === 'tower') this.openOverlook(game);
     else if (n.kind === 'post') this.dropQuests(game, n.thing);
@@ -2354,7 +2372,7 @@ Object.assign(Heaven, {
     // inner ring (`inRing`), not at the animal's own size standing over it.
     const inRing = (img) => {
       const b = img.box; if (!b) return;
-      const k = Math.min(TUNING.heaven.home.stands.inRing / b.w, TUNING.heaven.home.stands.inRing * 0.8 / b.h), w = b.w * k, h = b.h * k;
+      const k = img.fit ? 1 : Math.min(TUNING.heaven.home.stands.inRing / b.w, TUNING.heaven.home.stands.inRing * 0.8 / b.h), w = b.w * k, h = b.h * k;
       const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, b.x, b.y, b.w, b.h, Math.round(-w / 2), Math.round(-h / 2 - 2), Math.round(w), Math.round(h));
       ctx.imageSmoothingEnabled = sm;
@@ -2415,6 +2433,20 @@ Object.assign(Heaven, {
     // `live` 'ghost': a pale gold shape, the sign of an animal that lives up here now
     const cache = this.sils || (this.sils = {}), key = kind + (live === 'ghost' ? ':ghost' : live ? ':lit' : ':dim');
     if (cache[key] !== undefined) return cache[key];
+    // The hand-built pictogram (`HEAVEN_PIXELS.silhouettes`, 9 Oct 2026), one world px a cell: the body in white (grey-blue, pale
+    // gold) with a one-cell rim; `fit` says it is drawn whole, never scaled (`drawSeat`'s `inRing`).
+    const grid = HEAVEN_PIXELS.silhouettes && HEAVEN_PIXELS.silhouettes[kind];
+    if (grid) {
+      const ghost = live === 'ghost', rimC = ghost ? '#e0a92e' : live ? '#6f84b8' : '#7d8aa8', bodyC = ghost ? '#fff4c2' : live ? '#ffffff' : '#b8c3da';
+      const gw = grid[0].length, gh = grid.length, c = document.createElement('canvas'); c.width = gw + 2; c.height = gh + 2;
+      const x = c.getContext('2d'), on = (i, j) => i >= 0 && j >= 0 && i < gw && j < gh && grid[j][i] === '#';
+      for (let j = -1; j <= gh; j++) for (let i = -1; i <= gw; i++) {
+        if (on(i, j)) { x.fillStyle = bodyC; x.fillRect(i + 1, j + 1, 1, 1); }
+        else if (on(i - 1, j) || on(i + 1, j) || on(i, j - 1) || on(i, j + 1)) { x.fillStyle = rimC; x.fillRect(i + 1, j + 1, 1, 1); }
+      }
+      c.box = { x: 0, y: 0, w: gw + 2, h: gh + 2 }; c.fit = true; c.headY = 0;
+      return (cache[key] = c);
+    }
     const img = this.animalGod(R, kind); if (!img) return (cache[key] = null);
     const flat = (col) => { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d');
       x.drawImage(img, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height); return c; };
@@ -2695,7 +2727,7 @@ Object.assign(Heaven, {
     const ctx = R.ctx, s = R.ts, cam = game.cam, z = cam.zoom;
     // What is broken says HOLD and what it still asks (js/heaven-home.js `pourable`).
     const P = this.pourable(n), seatSt = n.kind === 'seat' ? this.standState(n.thing.seat) : null;
-    const word = P ? `HOLD: REPAIR IT ${this.poured(P.key)}/${P.cost}` : this.padlocked(n) ? 'LOCKED' : n.kind === 'seat' && seatSt === 'locked' ? 'RUINED' : { god: 'TALK', shepherd: 'BE COMBED', mirror: this.mended() ? 'LOOK INTO IT' : 'LOOK AT IT', seat: 'LISTEN', tower: 'CLIMB AND LOOK DOWN', horns: 'TAKE THESE HORNS', roam: 'TALK', hang: 'HANG THE BELL' }[n.kind];
+    const word = P ? `HOLD: REPAIR IT ${this.poured(P.key)}/${P.cost}` : this.padlocked(n) ? 'LOCKED' : n.kind === 'seat' && seatSt === 'locked' ? 'LOCKED' : { god: 'TALK', shepherd: 'BE COMBED', mirror: this.mended() ? 'LOOK INTO IT' : 'LOOK AT IT', seat: 'LISTEN', tower: 'CLIMB AND LOOK DOWN', horns: 'TAKE THESE HORNS', roam: 'TALK', hang: 'HANG THE BELL' }[n.kind];
     const lift = { god: 150, shepherd: 70, mirror: 90, seat: 80, tower: 112, horns: 54, hang: 70, roam: n.thing && n.thing.as === 'horse' ? 76 : 46 }[n.kind];
     const x = R.vcx + (n.x - cam.x) * z, y = R.vcy + (n.y - cam.y) * z * TILT - lift * z;
     const key = game.touch && game.touch.active ? 'GRAB' : keysOf(game).grab;
