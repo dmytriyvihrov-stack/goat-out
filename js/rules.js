@@ -324,7 +324,7 @@ const GEN_RULES = [
       }
       return 'the trench room has no way round on land';
     } },
-  { id: 'chasm', text: 'THE CHASM: a drop one tile across a room, wall to wall, parting its way in from its way out, nothing heavy at its lip, a rifle or butcher across it; THE CAVE teaches it (chasmLesson), in an empty room, the roll on its floor and nothing lying on the words.',
+  { id: 'chasm', text: 'THE CHASM: a drop one tile across a room, wall to wall, parting its way in from its way out, nothing heavy at its lip, a rifle or butcher across it; THE ROAD teaches it (chasmLesson), in an empty room, the roll on its floor and nothing lying on the words.',
     check: (L) => {
       const def = L.def, list = L.chasms || [];
       if (def.shroom || def.dark) return list.length ? 'a chasm on THE TRIP or in THE DARK' : null;
@@ -333,7 +333,7 @@ const GEN_RULES = [
       const { W } = L, n = L.rooms.length;
       for (const c of list) {
         const r = L.rooms[c.room];
-        if (!r || !chasmRoomFits(def, r, n)) return `a chasm in room ${c.room} (${r ? r.role : 'none'})`;
+        if (!r || !chasmRoomFits(def, r, n, c.shaman ? 1 : undefined)) return `a chasm in room ${c.room} (${r ? r.role : 'none'})`;
         const v = c.axis === 'v', at = (s) => (v ? s * W + c.at : c.at * W + s);
         for (let s = c.lo; s <= c.hi; s++) { const t = L.tiles[at(s)]; if (t !== T.PIT && t !== T.WALL) return `room ${c.room}: floor left in its chasm`; }
         // Parted: from the way in, the way out is reached only over it.
@@ -476,13 +476,14 @@ const GEN_RULES = [
       const n = L.def.rooms;
       const limit = levelIndexOf(L.def) >= 3 ? TUNING.prop.heal.gapMax : Math.ceil(TUNING.prop.heal.every);
       const bowls = L.props.filter((p) => p.kind === 'heal');
-      const rooms = bowls.map((p) => roomAt(L, p.x, p.y)).filter(Boolean);
+      // THE ALTAR's corridor grass stands for the room it leads into (`counts`, gen.js), whose own bowl it took up
+      const rooms = bowls.map((p) => (p.counts !== undefined ? L.rooms.find((r) => r.index === p.counts) : roomAt(L, p.x, p.y))).filter(Boolean);
       // A heart you have to pay a heart for is not a heart: no bowl stands in a brazier or under a lamp.
       for (const b of bowls) for (const p of L.props) {
         if (p.kind !== 'brazier' && p.kind !== 'lamp') continue;
         if (Math.hypot(p.x - b.x, p.y - b.y) < 2 * TILE) return `a bowl in a ${p.kind}`;
       }
-      for (const r of rooms) if (SET_PIECE.has(r.role) && r.role !== 'hall') return `a bowl in the ${r.role}`;
+      for (const p of bowls) { const r = p.counts === undefined && roomAt(L, p.x, p.y); if (r && SET_PIECE.has(r.role) && r.role !== 'hall') return `a bowl in the ${r.role}`; }
       const idx = rooms.map((r) => r.index).sort((a, b) => a - b);
       let prev = 0, worst = 0;
       for (const i of idx) { worst = Math.max(worst, i - prev); prev = i; }
@@ -510,11 +511,11 @@ const GEN_RULES = [
       if (quiet(L, r) || r.isTrap) return `a bomb in the ${r.role || 'set piece'} (room ${r.index})`;
       return true;
     } },
-  // THE ESCORTS (js/beasts.js). One a floor, found early, and found in a room that is not already
-  // busy saying something else. The first third is the promise that matters: the whole of an escort
-  // is the walk from where you found it to the stairs, and one handed over in the last room was
-  // never a decision about anything.
-  { id: 'beasts', text: 'At most one animal a floor, shut in a coop on plain floor of an ordinary room inside the first third of the level, never in the pen, a rest room, a teaching room, a trap room or a set piece. The horse stands before the first soul gate, in a stall of plain floor that leaves its room one piece.',
+  // THE ESCORTS (js/beasts.js). One a floor, found by the middle of it (9 Oct 2026, was the first
+  // third), in a room that is not already busy saying something else. Never past the middle: the
+  // whole of an escort is the walk from where you found it to the stairs, and one handed over in the
+  // last room was never a decision about anything.
+  { id: 'beasts', text: 'At most one animal a floor, shut in a coop on plain floor of an ordinary room no later than the middle of the level, never in the pen, a rest room, a teaching room, a trap room or a set piece. The horse stands before the first soul gate, in a stall of plain floor that leaves its room one piece.',
     check: (L) => {
       const kinds = ['tortoise', 'goose', 'crow', 'chicken', 'horse', 'pig', 'rabbit', 'husky', 'fish'];
       // The fish's tank is its own coop (6 Oct 2026): it stands on the floor as found.
@@ -528,9 +529,13 @@ const GEN_RULES = [
       if (L.def.beasts.indexOf(p.kind) < 0) return `a ${p.kind} on a floor that does not hold one`;
       const r = roomAt(L, p.x, p.y);
       if (!r) return 'an escort outside any room';
-      if (quiet(L, r) || r.isTrap || r.index === L.def.vaultAt) return `an escort in the ${r.role} (room ${r.index})`;
-      const cut = Math.max(2, Math.ceil(L.rooms.length * TUNING.beast.third));
-      if (r.index > cut) return `an escort in room ${r.index} of ${L.rooms.length}, past the first third`;
+      // The middle gate's rest room and the wheel's room (clear of the sweep) are allowed (gen.js: the middle of most floors is set pieces); the
+      // mouse's never, nor the rest room before the end; and never the last room.
+      const n = L.rooms.length, cut = Math.max(2, Math.ceil(n * TUNING.beast.mid[1])), from = Math.max(1, Math.floor(n * TUNING.beast.mid[0]));
+      const midGate = r.isRest && (L.def.gates || []).includes(r.index) && r.index !== shopRoomOf(L.def) && r.index >= from && r.index <= cut;
+      const midMill = r.isMill && r.index >= from && r.index <= cut && p.kind !== 'horse' && !inMillSweep(L.props, p.x, p.y);
+      if ((quiet(L, r) && !midGate && !midMill) || r.isTrap || r.index === L.def.vaultAt) return `an escort in the ${r.role} (room ${r.index})`;
+      if (r.index >= n - 1) return `an escort in the last room (${r.index})`;
       if (L.tiles[Math.floor(p.y / TILE) * L.W + Math.floor(p.x / TILE)] !== T.FLOOR) return 'an escort off the floor';
       // The horse races to the locked rooms with a soul, so it is found before the first of them,
       // in a stall of plain floor with open floor all round it (`TUNING.prop.stall`).
@@ -569,7 +574,7 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'shrooms', text: 'At most one tuft of mushrooms, on plain floor of an ordinary room; never on the trip, and never where the trip would be the last floor.',
+  { id: 'shrooms', text: 'At most one tuft of mushrooms, only on the floors shroom.from..upTo (THE ROAD), on plain floor of an ordinary room; never on the trip, and never where the trip would be the last floor.',
     check: (L) => {
       const t = L.props.filter((p) => p.kind === 'shrooms');
       if (!t.length) return null;
@@ -580,6 +585,7 @@ const GEN_RULES = [
       const r = roomAt(L, t[0].x, t[0].y);
       if (!r) return 'a tuft outside any room';
       if (li < TUNING.shroom.from) return `a tuft on level ${li + 1}, before shroom.from`;
+      if (li > TUNING.shroom.upTo) return `a tuft on level ${li + 1}, past shroom.upTo`;
       if (SET_PIECE.has(r.role) || r.role === 'pen' || r.isAmbush || r.isRest || r.index === lessonOf(L) || r.index === L.def.vaultAt) return `a tuft in the ${r.role} (room ${r.index})`;
       if (L.tiles[Math.floor(t[0].y / TILE) * L.W + Math.floor(t[0].x / TILE)] !== T.FLOOR) return 'a tuft off the floor';
       return true;
@@ -789,7 +795,7 @@ const GEN_RULES = [
     } },
   // THE YARD's chandelier lesson (`levelDef.chandAt`, 2 Oct 2026): its room is the notch template,
   // its way out is one tile, one clubman holds it standing under the ring, and the ring's cleat is
-  // on stone straight above him where the goat can walk to it. Nothing else is put in the room.
+  // on the wall by the way in (9 Oct 2026; it was straight above him) where the goat can walk to it. Nothing else is put in the room.
   { id: 'chandlesson', text: 'THE YARD teaches the chandelier: one man holds a one-tile way out under a ring whose cleat the goat can reach.',
     check: (L) => {
       const at = L.def.chandAt;
@@ -804,7 +810,9 @@ const GEN_RULES = [
       const c = L.props.find((q) => q.kind === 'cleat' && q.cid === ring.cid);
       if (!c) return 'the ring is tied to nothing';
       const cx = Math.floor(c.x / TILE), cy = Math.floor(c.y / TILE);
-      if (cx !== Math.floor(ring.x / TILE) || L.tiles[(cy - 1) * L.W + cx] !== T.WALL) return 'the cleat is not on the wall above him';
+      // the cleat is on the far wall by the way IN (9 Oct 2026), the rope across the room to the ring over the man
+      if (L.tiles[(cy - 1) * L.W + cx] !== T.WALL) return 'the cleat is not on a wall';
+      if (r.enter && Math.abs(cx - Math.floor(r.enter.x / TILE)) > 3) return `the cleat at ${cx} is more than three columns from the way in`;
       if (!walkedFrom(L)[cy * L.W + cx]) return `nobody can walk to the cleat at ${cx},${cy}`;
       const b = r.exitBand;
       if (!b) return 'the room has no side door';
@@ -838,11 +846,11 @@ const GEN_RULES = [
       }
       return true;
     } },
-  { id: 'posters', text: 'A scrap of cult paper lies on the floor of an ordinary room, under a table or on plain floor clear of the rest, never in THE ARMORY; TUNING.prop.poster.perLevel a floor.',
+  { id: 'posters', text: 'A scrap of cult paper lies on the floor of an ordinary room, under a table or on plain floor clear of the rest, only on a floor with `scraps` (THE DARK); TUNING.prop.poster.perLevel a floor.',
     check: (L) => {
       const list = L.props.filter((p) => p.kind === 'poster'), PO = TUNING.prop.poster;
       if (!list.length) return null;
-      if (L.def.cave || L.def.shroom || L.def.dark) return 'a scrap on a floor that lays none';
+      if (!L.def.scraps) return 'a scrap on a floor that lays none';
       if (list.length > PO.perLevel) return `${list.length} scraps on one floor`;
       const grass = new Set(L.grass || []);
       for (const p of list) {
@@ -857,7 +865,8 @@ const GEN_RULES = [
             const i = (ty + dy) * L.W + tx + dx;
             if (L.tiles[i] !== T.FLOOR || grass.has(i)) return `a scrap off plain floor at ${tx},${ty}`;
           }
-          if (L.props.some((q) => q !== p && len(q.x - p.x, q.y - p.y) < 1.5 * TILE)) return `a scrap hard by another thing at ${tx},${ty}`;
+          // THE DARK's lamps are stood after the scrap is laid; a lamp beside it only lights it
+          if (L.props.some((q) => q !== p && q.kind !== 'lamp' && q.kind !== 'sconce' && len(q.x - p.x, q.y - p.y) < 1.5 * TILE)) return `a scrap hard by another thing at ${tx},${ty}`;
         }
       }
       return true;
@@ -943,7 +952,10 @@ const GEN_RULES = [
     check: (L) => {
       const sp = L.props.filter((p) => p.kind === 'spire');
       if (!sp.length) return null;
-      if (!L.def.cave || L.def.shroom) return 'stone teeth off the cave';
+      if (L.def.shroom) return 'stone teeth on the trip';
+      // off the cave only in the room that meets the shaman (his call pulls the goat onto it)
+      const shamanRoom = L.plan && [...L.plan.rooms].find(([, c]) => c && c.intro === 'shaman');
+      if (!L.def.cave) for (const p of sp) { const r = roomAt(L, p.x, p.y); if (!shamanRoom || !r || r.index !== (shamanRoom[0].index ?? shamanRoom[0])) return 'stone teeth off the cave'; }
       const by = new Map();
       for (const p of sp) {
         const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
@@ -967,7 +979,7 @@ const GEN_RULES = [
         if (n > (ring ? TUNING.cave.spikes.ring : TUNING.cave.spikes.perRoom)) return `${n} sets of teeth in room ${idx}`;
       }
       // Every cave has them (the floor says so), and its ogre is fought among them.
-      if (!L.def.shroom) for (const r of L.rooms) if (r.arena && r.arena.boss === 'butcher' && !by.get(r.index)) return `no teeth in the ogre's ring (room ${r.index})`;
+      if (L.def.cave && !L.def.shroom) for (const r of L.rooms) if (r.arena && r.arena.boss === 'butcher' && !by.get(r.index)) return `no teeth in the ogre's ring (room ${r.index})`;
       return true;
     } },
   // The cave is the third floor now, so five levels after it draw cave rooms into their mix
@@ -1102,7 +1114,7 @@ const GEN_RULES = [
       for (const k of new Set(a.with || [])) if (((L.def.met && L.def.met.has(k)) || L.def.encounters.kinds.includes(k)) && men.filter((m) => m === k).length < a.with.filter((w) => w === k).length) return `fewer ${k}s at his back than \`with\` names`;
       return true;
     } },
-  { id: 'fork', text: 'THE FORK: the fork floor ends on two flights in the one far wall, apart, each behind its own iron door; the second climbs into the dark.',
+  { id: 'fork', text: 'THE FORK: the fork floor (when the run deals it) ends on two flights in the one far wall, apart; the lit one behind its iron door, the dark one behind a wall that gives.',
     check: (L) => {
       const F = TUNING.dark.fork, here = F && F.at >= 0 && levelIndexOf(L.def) === F.at && F.at + 1 < LEVELS.length;
       if (!here) return L.forkTile ? 'a second flight on a floor that is not the fork' : null;
@@ -1110,9 +1122,12 @@ const GEN_RULES = [
       if (!f) return 'one flight only';
       if (f.x0 !== e.x0) return 'the two flights are not in the same wall';
       if (Math.abs(f.y0 - e.y0) < F.apart) return `the flights are ${Math.abs(f.y0 - e.y0)} rows apart`;
-      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) if (L.tiles[(f.y0 + dy) * L.W + f.x0 + dx] !== T.EXIT) return 'the second flight is not stairs';
+      for (let dy = 0; dy < 2; dy++) for (let dx = 1; dx < 3; dx++) if (L.tiles[(f.y0 + dy) * L.W + f.x0 + dx] !== T.EXIT) return 'the second flight is not stairs';
       const doors = L.props.filter((p) => p.kind === 'door' && p.stair);
-      if (doors.length !== 2 || !doors.some((p) => p.fork)) return `${doors.length} stair doors`;
+      if (doors.length !== 1 || doors.some((p) => p.fork)) return `${doors.length} stair doors`;
+      const crack = L.props.find((p) => p.kind === 'secret' && p.fork);
+      if (!crack || Math.floor(crack.x / TILE) !== f.x0 || Math.floor(crack.y / TILE) !== f.y0) return 'no wall that gives in front of the dark flight';
+      if (L.tiles[(f.y0 + 1) * L.W + f.x0] !== T.WALL) return 'the wall under the crack is open';
       return true;
     } },
   // The sealed arena (`sealedArenas` in gen.js, `game.updateSeals`): both ends barred by a seal door
@@ -1215,7 +1230,7 @@ const GEN_RULES = [
   { id: 'secrets', text: 'At most two walls that give a level (three where the floor says so), off ordinary rooms only (never the vault\'s, a trap, the mouse\'s), none before the room the level names, and each one walked to. A deep one is behind a niche, reached only through its wall, with big grass in it.',
     check: (L) => {
       const at = L.def.secretsAfter !== undefined ? L.def.secretsAfter : -1;
-      const all = L.props.filter((p) => p.kind === 'secret'), walls = all.filter((p) => !p.deep), deeps = all.filter((p) => p.deep);
+      const all = L.props.filter((p) => p.kind === 'secret' && !p.fork), walls = all.filter((p) => !p.deep), deeps = all.filter((p) => p.deep);   // THE FORK's crack is its own rule
       const most = L.def.secrets ? L.def.secrets[1] : 2;
       if (walls.length > most) return `${walls.length} walls that give`;
       // The secret inside the secret (`carveDeepSecret`): its wall is a tile of an outer niche's list, and

@@ -209,7 +209,10 @@ const Painting = {
     // The picture, fitted whole into its box, never smoothed, and never taller than leaves room for
     // the road under it and the row with SAVE: on a phone held sideways (390 px tall) the line under
     // the old score sat on the way on and under the button.
-    const dy = H * P.fit.top + 10 * s, room = Math.max(H * 0.2, H - 150 * s - dy);
+    // (8 Oct 2026: on a tall window the picture took what `fit.h` allowed and the tally under the road sat on the
+    // CONTINUE button: the road is `44 s` under the picture, the tally `96 s` under that and CONTINUE starts about
+    // `76 s` above the bottom, so the picture leaves `232 s` under itself.)
+    const dy = H * P.fit.top + 10 * s, room = Math.max(H * 0.2, H - 232 * s - dy);
     const cv = pic.canvas, k = Math.min(W * P.fit.w / cv.width, H * P.fit.h / cv.height, room / cv.height);
     const dw = cv.width * k, dh = cv.height * k, dx = (W - dw) / 2;
     ctx.save(); ctx.imageSmoothingEnabled = false;
@@ -228,7 +231,9 @@ const Painting = {
     // goat's head walking on to the next floor, the way Nuclear Throne shows it between areas.
     // (Leaving the card still copies the code for whoever is asked to paste it.)
     this.drawRoute(r, game, W / 2, dy + dh + 44 * s, 'clear', t);
-    this.drawTally(r, game, W / 2, dy + dh + 44 * s + 96 * s, t);
+    // never lower than the button's top (a small window can leave the picture its `H * 0.2` floor and nothing more)
+    this.drawTally(r, game, W / 2, Math.min(dy + dh + 44 * s + 96 * s, H - 110 * s - (game.touch.active ? 24 * r.s : 0)), t);
+    this.drawHappy(r, game, W * 0.86, Math.min(dy + dh + 44 * s + 96 * s, H - 110 * s - (game.touch.active ? 24 * r.s : 0)), t);
     // Once it can be left: how to leave, and SAVE for whoever wants the picture.
     this.saveRect = null;
     if (game.stateTimer <= 0) {
@@ -263,25 +268,62 @@ const Painting = {
   // Under the road (6 Oct 2026 playtest): the bodies this floor left, a skull and a count, and the bell that woke up in
   // heaven for the floor, drawn as cells. Nothing when there is neither.
   drawTally(r, game, cx, y, t) {
-    const ctx = r.ctx, s = r.ts, kills = (game.killMarks || []).length, bell = !!game.bellWoke, gathered = game.floorSouls | 0;
-    if (!kills && !bell && !gathered) return;
+    const ctx = r.ctx, s = r.ts, kills = (game.killMarks || []).length, bell = !!game.bellWoke, gathered = game.floorSouls | 0, dark = game.floorCorrupt | 0;
+    if (!kills && !bell && !gathered && !dark) return;
     const a = clamp((t - TUNING.painting.reveal * 0.6) / 0.5, 0, 1); if (a <= 0) return;
     const cell = Math.max(2, Math.round(3 * s)), items = [];
     // Two numbers (7 Oct 2026): the bodies and the white souls that came to him from them.
-    if (kills) items.push({ g: PAINT_GLYPHS.skull, col: PALETTE.bone, text: kills + (kills === 1 ? ' KILL' : ' KILLS') });
-    if (gathered) items.push({ g: PAINT_GLYPHS.wisp, col: '#fff4c2', text: gathered + (gathered === 1 ? ' SOUL GATHERED' : ' SOULS GATHERED') });
+    // 9 Oct 2026 playtest: the words ("KILLS", "CORRUPTED SOULS") only on the pointer; the card shows the picture and the number
+    if (kills) items.push({ g: PAINT_GLYPHS.skull, col: PALETTE.bone, text: String(kills), word: kills === 1 ? 'KILL' : 'KILLS' });
+    // 8 Oct 2026: no GATHERED, and the corrupted souls he swallowed on the floor beside them, violet, when there were any
+    if (gathered) items.push({ g: PAINT_GLYPHS.wisp, col: '#fff4c2', text: String(gathered), word: gathered === 1 ? 'SOUL' : 'SOULS' });
+    if (dark) items.push({ g: PAINT_GLYPHS.wisp, col: '#b48cff', text: String(dark), word: dark === 1 ? 'CORRUPTED SOUL' : 'CORRUPTED SOULS' });
     if (bell) items.push({ g: ['..xx..', '.xxxx.', '.xxxx.', 'xxxxxx', 'xxxxxx', '......', '..xx..'], col: '#f7d774', text: 'A BELL WAKES IN HEAVEN' });
     ctx.save(); ctx.globalAlpha *= a; ctx.font = `700 ${20 * s}px ${FONT}`;
     const gap = 36 * s, ws = items.map((it) => textW(ctx, it.text) + 8 * cell + 10 * s);
     let x = cx - (ws.reduce((p, w) => p + w, 0) + gap * (items.length - 1)) / 2;
+    const mouse = game.input.mouse && !game.touch.active ? game.input.mouse : null;
     items.forEach((it, i) => {
       const g = it.g, gw = g[0].length * cell, gh = g.length * cell;
       ctx.fillStyle = it.col;
       for (let yy = 0; yy < g.length; yy++) for (let xx = 0; xx < g[0].length; xx++) if (g[yy][xx] !== '.' && g[yy][xx] !== ' ') ctx.fillRect(Math.round(x + xx * cell), Math.round(y - gh / 2 + yy * cell), cell, cell);
-      ctx.textAlign = 'left'; ctx.fillStyle = PALETTE.bone; ctx.fillText(it.text, x + gw + 10 * s, y + 7 * s);
+      ctx.textAlign = 'left'; ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${20 * s}px ${FONT}`; ctx.fillText(it.text, x + gw + 10 * s, y + 7 * s);
+      if (it.word && mouse && this.hit(mouse, { x: x - 6 * s, y: y - 20 * s, w: ws[i] + 12 * s, h: 40 * s })) {
+        ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.75)'; ctx.textAlign = 'center';
+        ctx.fillText(it.word, x + ws[i] / 2, y + 32 * s);
+      }
       x += ws[i] + gap;
     });
     ctx.restore();
+  },
+
+  // An animal's dare won on this floor (`game.questWonNow`, set by `Heaven.questFloor`): the animal itself at the right of the
+  // tally, hopping for joy under pixel hearts (9 Oct 2026 playtest: "when the animal's quest is done, show here that it is
+  // happy!!!"). The dare's name on the pointer, as the tally's words are.
+  drawHappy(r, game, cx, y, t) {
+    const won = game.questWonNow || []; if (!won.length || typeof Beast === 'undefined') return;
+    const a = clamp((t - TUNING.painting.reveal * 0.6 - 0.3) / 0.5, 0, 1); if (a <= 0) return;
+    const ctx = r.ctx, s = r.ts, cell = Math.max(2, Math.round(2.5 * s)), HEART = ['.x.x.', 'xxxxx', 'xxxxx', '.xxx.', '..x..'];
+    const mouse = game.input.mouse && !game.touch.active ? game.input.mouse : null;
+    won.forEach((kind, i) => {
+      const x = cx - (won.length - 1 - i) * 110 * s, ph = (t * 2.4 + i * 0.9) % 1, hop = Math.abs(Math.sin(ph * Math.PI)) * 18 * s;
+      ctx.save(); ctx.globalAlpha *= a;
+      ctx.translate(Math.round(x), Math.round(y + 24 * s - hop));
+      Beast.portrait(r, ctx, kind, (kind === 'horse' ? 0.9 : 1.5) * s);
+      ctx.restore();
+      // hearts rising off it, a new one every third of a second
+      ctx.save();
+      for (let k = 0; k < 4; k++) {
+        const q = ((t * 1.1 + k / 4 + i * 0.37) % 1), hx = x + Math.sin((k * 2.3 + i) + q * 5) * 18 * s, hy = y - 30 * s - q * 60 * s;
+        ctx.globalAlpha = a * clamp(Math.min(q * 4, (1 - q) * 2.5), 0, 1); ctx.fillStyle = k % 2 ? '#f7d774' : '#e0646b';
+        for (let yy = 0; yy < HEART.length; yy++) for (let xx = 0; xx < 5; xx++) if (HEART[yy][xx] === 'x') ctx.fillRect(Math.round(hx + (xx - 2.5) * cell), Math.round(hy + yy * cell), cell, cell);
+      }
+      ctx.restore();
+      if (mouse && this.hit(mouse, { x: x - 50 * s, y: y - 90 * s, w: 100 * s, h: 130 * s })) {
+        ctx.save(); ctx.globalAlpha *= a; ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.85)'; ctx.textAlign = 'center';
+        ctx.fillText(`${(QUESTS[kind] || {}).name || kind.toUpperCase()} IS WON`, x, y + 52 * s); ctx.restore();
+      }
+    });
   },
 
   // The name a floor goes by on the road: THE DARK or THE TRIP where this run put one in its place.
@@ -427,7 +469,7 @@ const Painting = {
       // dimmed wisp struck through in blood and a count. No KILLED BY: the plate is who it was.
       const cell = Math.max(2, Math.round(3 * s)), igap = 8 * s, gap = 22 * s, items = [];
       if (T.slain !== null && T.slain !== undefined) items.push({ g: [PAINT_GLYPHS.skull], col: [PALETTE.bone], n: String(T.slain), tc: PALETTE.bone });
-      if (T.lost) items.push({ g: [PAINT_GLYPHS.wisp, PAINT_GLYPHS.strike], col: ['#7a6e99', PALETTE.blood], n: String(T.lost), tc: PALETTE.blood });
+      // (the souls lost, a struck wisp and a count, went the same day: "wtf is that", its 1 read as an I)
       ctx.save(); ctx.font = `700 ${19 * s}px ${FONT}`; ctx.textAlign = 'left';
       const ws = items.map((it) => Math.max(...it.g.map((g) => g[0].length)) * cell + igap + textW(ctx, it.n));
       const total = (plate ? plate : 0) + ws.reduce((p, w) => p + w, 0) + gap * (items.length - (plate ? 0 : 1));
@@ -468,12 +510,27 @@ const Painting = {
       const ra = r.goButton(game, card.go, 0, by, { measure: true }), rq = game.showroomOn || news ? null : r.goButton(game, quick, 0, by, Object.assign({ measure: true }, qk));
       const gap = 16 * s, side = rq && ra.w + gap + rq.w <= W - 24 * s;
       const left = W / 2 - (side ? ra.w + gap + rq.w : ra.w) / 2;
-      const since = TUNING.deathCam.delay + TUNING.deathCam.zoomTime - game.stateTimer;
-      if (rq && since >= D.quick) {
-        ctx.globalAlpha = clamp((since - D.quick) / 0.4, 0, 1);
+      // RUN AGAIN comes up with ASCEND (9 Oct 2026: before it, a new player's hand found RUN AGAIN and never saw
+      // heaven), and on the browser's first `D.lateRuns` runs `D.late` s after it, so ASCEND is read first.
+      const runs = ((game.best || (game.best = game.loadBest())).runs || 0);
+      const since = -game.stateTimer, after = runs <= D.lateRuns ? D.late : 0;
+      if (rq && since >= after) {
+        ctx.globalAlpha = clamp((since - after) / 0.4, 0, 1);
         this.quickRect = r.goButton(game, quick, side ? left + ra.w + gap + rq.w / 2 : W / 2, side ? by : Math.min(by + 44 * s, H - 40 * s), qk);
       }
       if (game.stateTimer <= 0) { ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1); r.goButton(game, card.go, left + ra.w / 2, by); }
+      // Small, under them (9 Oct 2026 playtest): for a playtest, this floor again instead of a new run. Only where a death
+      // would end the run; with SETTINGS `sameFloor` on, RESTART already is that.
+      this.sameRect = null;
+      if (game.permadeath && game.permadeath() && game.stateTimer <= 0) {
+        const txt = '(FOR A PLAYTEST: RESTART ON THIS FLOOR)', px = Math.max(12 * r.s, 12 * s), sy = Math.min(by + (side ? 44 : 88) * s, H - 14 * s);
+        ctx.font = `700 ${px}px ${FONT_SC}`; ctx.textAlign = 'center';
+        const w = textW(ctx, txt), m = game.input.mouse, rc = { x: W / 2 - w / 2 - 6 * s, y: sy - px - 4 * s, w: w + 12 * s, h: px + 10 * s };
+        const hot = !game.touch.active && this.hit(m, rc);
+        ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1) * (hot ? 0.9 : 0.45); ctx.fillStyle = PALETTE.bone;
+        ctx.fillText(txt, W / 2, sy);
+        this.sameRect = rc;
+      }
     }
     ctx.restore();
   },
@@ -481,6 +538,7 @@ const Painting = {
   hit(p, rc) { return !!(p && rc && p.x >= rc.x && p.x <= rc.x + rc.w && p.y >= rc.y && p.y <= rc.y + rc.h); },
   onSave(p) { return this.canSave && this.hit(p, this.saveRect); },
   onQuick(p) { return this.hit(p, this.quickRect); },
+  onSame(p) { return this.hit(p, this.sameRect); },
 
   // What leaves the game: the picture at `export` times its own pixels, with its name, the run's
   // numbers and the seed that deals the same floors in a band underneath.

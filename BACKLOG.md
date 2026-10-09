@@ -17,13 +17,139 @@ Tags: **bug** something is wrong; **feel** it works and does not read; **number*
 
 ## Batches
 
-*(none since the compaction)*
+### 9 Oct 2026, third batch (his 19 notes and screenshots, and one more mid-work)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | an animal's dare done: show it glad, and the dare's mark turns to a smiley | The clear card of the floor that won it shows the animal hopping under pixel hearts at the right of the tally (`Painting.drawHappy`); the dare's ? in the corner becomes a green smile until the animal has thanked him up there (`marks.smile`). |
+| 2 | feel | the first ogre: the mage runs off with the ewe again and gives the ogre power; he finishes the carcass, roars, throws, leaps; more time, more of a film | First meeting only (`endBoss.ogre.long`, `EndBoss.stepOgreLong`): the opening's mage by him with her under his arm says EAT, BROTHER, pours a stream of violet into him, runs out through the way out; three CRUNCH bites, he rises and roars, throws the bone, leaps. About 7 s, skippable once seen. |
+| 3 | system | the ogre landing on spikes is hurt | A leap that comes down with a spire within 10 px past touching, or on a grate (his weight drives its teeth up), costs him a heart and pins him (`Enemy.landOnTeeth`). Before, the spire only caught him on the goat's exact spot. |
+| 4 | bug | the chase started at random on the 4th | THE ROAD no longer lays THE CHASE itself: it is the horse's dare and the dev row only. One line (`mods: ['chase']`) brings it back. Tell me if you meant something else. |
+| 5 | system | the shaman's first room: many drops with stakes, so his skill is felt | His first room is one drops can be cut across, and two are cut, him beyond both (`chasm.shaman`); his call pulls the goat toward the fall. About 3 seeds in 4; the rest keep the old stone tooth. |
+| 6 | feel | the chase does not back off when I walk at it | The red keeps 4 tiles of floor between it and him (was 1.5) and eases back as he comes (`chase.look.clear`, `back`). |
+| 7 | feel | E - ROLL on the floor, not on the wall, brighter and blinking: critical | THE ROAD's chasm words stand on a row of clear floor by the lip (never slid onto a stub wall), and E - ROLL (both places it is written) is gold and pulses. |
+| 8 | bug | the rifleman could not aim across the drop | He stood just past his sight trying to walk round. Cut off by a drop, he sees down a clear line 1.5× as far, shoots from the lip and holds it (`hunter.gapReach`, `Enemy.cutOffByGap`). |
+| 9 | system | 4th: the rifleman and the chasms first; 5th the shaman; 6th the shieldman | THE ROAD: rifle and the taught drop (shaman out of its pool). THE THRESHING FLOOR: the shaman (shieldman out). THE BRIDGE: the shieldman. The thrower moved on to THE RAFTERS (two first meetings on THE BRIDGE broke its curve, `balance.js`); THE DARK has no shieldman now (curve 6→14 → 4→11 to stay under THE CAVE). Balance passes. |
+| 10 | feel | the dots by the talisman are not needed | The rarity pips under the chips are gone (the rarity is on the pointer). |
+| 11 | system | the god's first talk, his five lines | Word for word, plus a sixth: ONE MORE LIFE given "on faith" (see 17), and the jump. |
+| 12 | tool | SETTINGS and small on the death card: (playtest) restart on the same floor | SETTINGS: PLAYTEST: RESTART ON THE SAME FLOOR (a death lays that floor again, as before permadeath). The death card: a small (FOR A PLAYTEST: RESTART ON THIS FLOOR) under the buttons, once. |
+| 13 | system | the 50 souls for the horns asked after the mirror, as you walk to the edge: "forgot to tell you..." | Said at the lip, once the mirror is whole and looked into (`heaven.hornsEdge`), no longer on his cloud. |
+| 14 | feel | stands in heaven: a white heavenly pictogram and the animal's silhouette; not broken, dim and inactive | A sign of white cells on the cloud and the animal's shape on it, white in a blue rim when open, grey-blue and still when not (padlock and count kept), the animal in gold once brought up. |
+| 15 | system | TURTLEIZE: on E, a shell, blows charge it, let go or 5 s and a wave throws them off; a much longer roll wait; a magic shell; after the tortoise's quest | `js/shell.js`. Mid-work note: a corrupted soul's card, the plain roll untouched until taken, and winning the tortoise's dare puts it in the deal (`unlock`). Held up to 5 s, every blow but a fall lands on the crystal (no heart), the wave grows with what it took, then the roll waits ×4. A violet crystal carapace with three shards, its seams lit by the charge, the wave's reach ringed in cells. |
+| 16 | system | first save: it thanks you and is in heaven; talked to, it asks to be saved again and its cage is at the very start of a floor; then the dare; then the skill | As written: `thanks` / `again` lines, its cage the first room that takes it (`opts.beastAtStart`), the dare only after the second save, TURTLEIZE after the tortoise's dare. |
+| 17 | system | the first life before the mirror, as reward and promise ("faith") | ONE MORE LIFE from the first visit again, said in the god's first talk (half a day ago it waited for the mirror). |
+| 18 | feel | run far from the tortoise and it shouts BRING ME WITH YOU | Once he is a room on (or far), its plate says it, at most every 9 s, kept in the picture. |
+| 19 | system | mushrooms on the 4th after the 3rd run there | Only on THE ROAD, and only once this browser has walked onto it in 3 runs (`shroom.upTo`, `runs`, `Heaven.arrived`). |
+| + | feel | UNLOCKS: open, not found (?), locked until a condition (the shell) | A third state: a padlock, and under the page what opens it (TURTLEIZE, the talismans a dare pays for; `Unlocks.lockOf`). |
+
+Checked: syntax on every file, the generator sweep (0 failures), `balance.js` (passes), `doc-numbers.js`; in the browser: the shell
+(4 blows taken, no heart lost, both men thrown, 7 s wait), the death card's line, heaven's stands, the clear card, THE ROAD's E - ROLL,
+the shaman's room, UNLOCKS, the long ogre scene (mage, run, bites, roar, throw, leap: ~6.5 s) and the god's talk at the lip.
+
+### 9 Oct 2026, second batch (his 22 notes and screenshots)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | bug | an animal hurt gets a short window too; the tortoise died in a mage's fire in seconds | After a burn the window is 2 s (`beast.hurtFire`), after a blow 1 s (was 0.6 for both), and the animal blinks through it. |
+| 2 | system | the second secret scrap on THE DARK | The generator lays a scrap only on a floor with `scraps` (THE DARK); the first stays under THE ALTAR's table. `GEN_RULES.posters` follows. |
+| 3 | feel | the lives should not move and be much smaller | No bob; 15 px instead of 28 (`hud.life`). |
+| 4 | feel | the butcher's shove clearer, and no spamming it | Never twice in 4 s (`champion.shove.cd`); an amber ring off him and a smaller one on the goat, a deeper and longer lean, more hitstop. |
+| 5 | feel | RUN AGAIN only after (the other button) on the first 3-4 runs, then together | RUN AGAIN no longer comes up before ASCEND: with it, and on a browser's first 4 runs 1.4 s after it (`painting.death.late`, `lateRuns`). Backspace waits for the button too. |
+| 6 | system | THE YARD's last room: a crack, behind it a way down to THE DARK; half the runs, never the first | `dark.fork.at` 3 в†’ 1: a wall that gives (`kind: 'secret'`, `fork`) in the last room's far wall, the flight hidden behind it until it breaks, A WAY DOWN, INTO THE DARK. `chance` 0.5 off the run seed, never while the browser has run under twice (`Game.forkRun`). THE DARK is played in THE CAVE's place (Level 3), its curve 7в†’16 в†’ 6в†’14 so it stays under THE CAVE (62.2 vs 63). The flights' floor words wait for the crack. README, CONCEPT updated. |
+| 7 | system | padlocks on the tower and the stands until the mirror is repaired | The tower and the broken stands (goose, horse) carry a padlock and pour nothing until it is (`Heaven.padlocked`); a GRAB says LOCKED. THE MIRROR FIRST. Souls poured into them before (his 11 in the tower) are given back once. |
+| 8 | feel | locked, no HOLD prompt | The prompt says LOCKED. |
+| 9 | feel | the post not needed until modifiers | It stands only while a dare is worn (the 7 Oct way), so it can be let go. |
+| 10 | feel | the purse plate too wide | As wide as its widest line. |
+| 11 | bug | heaven's progress lost on a reload, NEW GAME offered | The pour wrote on a timer a reload could cut, and the tower had taken the souls the mirror needed (see 7, 15). A death ending the run is the permadeath rule, so NEW GAME after a reload in heaven is right; what he carries up there is meta and stays. |
+| 12 | bug | objects collided strangely (the crocodile's spit over the straw) | A roast only on a fire with plain floor a tile either side and a row above. |
+| 13 | system | 20 souls в†’ talk to the god в†’ he sends you to the mirror в†’ repair it в†’ the first life is his gift | The mirror pours only after the god's word (`Heaven.mendSent`), and ONE MORE LIFE comes with the repaired mirror, not the first visit (`extraLivesFor`), said in a plate as it is whole. |
+| 14 | number | 2 hearts between floors by default | `goat.floorHeal` 1 в†’ 2. |
+| 15 | bug | a mess between the count and the quest (FOR THE GOD 20/20 over a mirror at 16/20) | Sent to the mirror, the purse says FOR THE MIRROR and what is poured into it. |
+| 16 | number | ONE MORE LIFE 150 souls and 2 corrupted | 300 / 4 в†’ 150 / 2. |
+| 17 | number | 0-1 tables in heaven | odds 0.4 / 0.6, never two. |
+| 18 | system | at the post, RIGHT M. CLICK: a small popup to choose modifiers; a little further right, nearer the god | Not built (no modifiers yet): *Open*, below. |
+| 19 | feel | the ? smaller and in the top-left corner | 2 px cells (was 3), in the talismans' row after their chips. |
+| 20 | feel | on THE ALTAR, no instructions after a death | THE ALTAR's control lines are not drawn once this browser has died (`Heaven.meta.deaths`). |
+| 21 | feel | the route in one strip | `painting.oneRow` 7.5 в†’ 40: a cleared floor's picture is never cut into rows. |
+| 22 | system | the tortoise's dare: very slow only with enemies within 7 tiles; slowness is strength, not a race | `Heaven.paceMul`: his stride Г— 0.2 while a woken man stands within 7 tiles (`quests.tortoise.near`), full otherwise. Its words say slow is a strength. |
+
+### 9 Oct 2026 (his 20 notes and screenshots)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | HELP THE GOAT: "can we anonymously send info about your run? No name, email or other personal data" | Those words (`TUNING.stats.ask`). The panel is near opaque now: the menu's rows read through it in his screenshot. |
+| 2 | feel | NEW GAME: "(progress saves automatically)" | The note says exactly that. |
+| 3 | feel | UNLOCKS, "don't need this" | Off the title (dev drawer only, like LEVELS and BEST); the book's UNLOCKS tab is unchanged. |
+| 4 | feel | the discord row: "Join the discord / send your feedback, bugs and ideas"; the small menu bigger | JOIN THE DISCORD, "Send your feedback, bugs and ideas". Every row taller (56 px), the names 22 px, the notes 15.5 px and brighter, the rows wider. |
+| 5 | feel | the paper: name on top, "headbutt to destroy" under; torn up, the same everywhere on the floor | The name is above the picture and the line under it says HEADBUTT TO DESTROY (ANY KEY TO PUT IT DOWN is gone; any key still closes it). The torn shreds already were one sprite; his answer on the last sentence: the paper opened on the floor is the same plain sheet too (the drawing is only in the full-screen view). |
+| 6 | feel | the floor's instructions a bit more visible | Control lines 0.19 → 0.36, level hints 0.15 → 0.27. |
+| 7 | feel | "for a new game the placement of things is bad, the first time I would ideally see (everything)" | His answer: the things stand where they can be seen from the door. A loose crate is now rolled in sight of the room's way in (no stone between, 25 rolls before any spot will do). Tables and furniture are the templates' own and not moved. |
+| 8 | tool | does the bot need an AI; what to finish so it runs from the computer alone | It has no AI: plain JavaScript heuristics, no network call. `#bot` on a served page loads it (F8 on/off). What it still lacks is in *Open*. |
+| 9 | feel | less blood lying about for no reason, and less bright | The old blood a room was "cleaned of" was meant to be faint (alpha 0.16) but `dot` paints into the stain tiles, which never saw that alpha: every room's five blots were full strength, in half the rooms. Now 0.3 on the stain tile, in a quarter of the rooms. Blood from real fights is untouched. |
+| 10 | feel | hearts a bit bigger, an important element | 2.8 px cells, 24 px apart (`hud.heart`, was 2.1 / 18 after the 8 Oct "smaller"). |
+| 11 | feel | the little arrow is not needed | The exit compass is gone. |
+| 12 | bug | a sword broke beside a man and he did nothing | A blade breaking is a noise now (`noise.steel`, 9 tiles): the unaware go and look, as at a smashed crate. |
+| 13 | feel | too many words over the soul | The word SOUL over a loose soul is gone; the door's "A SOUL OPENS IT" and the take prompt stay. |
+| 14 | feel | this floor looks strange (black dithered blots) | Ordinary soot at 0.5 instead of 0.8 (witchfire's untouched). A guess: tell me if it was something else. |
+| 15 | feel | a little too many things in the rooms, first run | Loose crates 1 to 3 a room that rolled them, was 2 to 4 (`rooms.crateWant`). |
+| 16 | feel | bring an item to a door and let go, it does not destroy itself; one often wants to carry things between rooms | His answer: both break, if it is wooden. A crate let go with a plank door right in front of the mouth breaks the door and itself (`Goat.throwHeld`); iron, gates, seals, vaults and stairs do not give. |
+| 17 | feel | KILLS / CORRUPTED SOULS words on hover only | The card shows the picture and the number; the word is under the pointer. |
+| 18 | feel | the chandelier lesson with the rope by the entrance | The cleat is on the wall by the way in (3 columns of it at most), the rope across the room to the ring over the man (`GEN_RULES.chandlesson`). |
+| 19 | bug | the mouse on her offer goes up and down | Her portrait on the card holds still (`still`). |
+| 20 | number | witchfire sets you alight three times faster, "need..." (cut off) | Already one clock since 8 Oct. His answer: it should start to damage three times faster. Its FIRST bite after he steps in comes at a third of the interval (0.4 s against 1.2 s, `goat.witchOnset`); the ones after keep ordinary fire's clock. Measured: 0.47 s then 1.25 s later, against 1.26 s and 1.25 s for ordinary. |
+
+### 8 Oct 2026, late evening (his 16 notes and screenshots)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | before the god has his 20, a GRAB at the mirror should just say BROKEN | It offered HOLD: REPAIR IT 0/20 from the gift on. Now it pours only once the twenty are brought (`mendReady`); before that it says BROKEN. (`HEAVEN_TALK.broken` is that one word now.) |
+| 2 | system | the other stands locked, not repairable; a good story for the three | Only the goose's (25) and the horse's (40) are broken and repairable; hen, crow, pig, rabbit, husky, fish are under a padlock (LOCKED. THE GOD WILL OPEN IT, LATER.). Each broken one says what broke it (`STAND_STORY`), and the god's ask after the mirror tells the three: the tortoise already down there, the goose and the horse to repair. |
+| 3 | feel | my hit's impact whiter, yellow is the enemies' | The impact ring and sparks, the horns' splash, the wave and the charge ring are white (`PALETTE.hit`, `hitTip` a cool white for LONG's tips). |
+| 4 | feel | hearts still, a bit smaller, no attention there | No throb on the last heart, no flicker on the light ones; 2.1 px cells and 18 px apart instead of 2.6 / 22 (`hud.heart`). |
+| 5 | feel | the fallen chandelier less active in colour | The wreck's brass a step darker, the candles snuffed grey with a black wick, the wax dull. The ring in the air keeps its bright brass. |
+| 6 | feel | the goat bigger on the mouse's screen; small I - OPEN STATS at the bottom | Portrait ~45% bigger; I · OPEN STATS under the cards, and I now opens the book over her offer (closing it leaves the offer up). |
+| 7 | feel | the grass apart from the talismans, it is not one | Its own dark green card, set off by a gap with OR between. |
+| 8 | feel | rarity colours: common white, rare green, epic violet | `RARITY` colours changed everywhere (card frame, the ring round the pointed card, the glow behind the icon, chips). |
+| 9 | bug | a shut door on floor 2, cannot get through | The rest room before THE YARD's last ring has nobody in it, and a door out of a room nobody was ever in never swung open; iron reads as unbreakable. It opens now once he walks into that empty room. Seeds 44 and 111 showed it; both open. |
+| 10 | system | two mages aim at different cells; the second throws where you are going | A rune about to go off within 2.2 tiles of him already, the next mage aims ahead along his run (velocity x the windup, at most 4 tiles), or, him standing, 2.2 tiles to the side away from the first (`seer.pair`, `Enemy.runeSpot`). |
+| 11 | system | a corrupted soul taken with the right click | GRAB takes it (`Game.takeSoul`), RIGHT M. CLICK: TAKE IT shows when close; walking over it no longer swallows it. |
+| 12 | feel | add the corrupted souls found to the clear card; no GATHERED | "28 SOULS", and "N CORRUPTED SOULS" in violet beside it when he swallowed any on the floor (`floorCorrupt`). |
+| 13 | feel | CONTINUE breathing brighter and darker | Every gold button breathes, fill and frame, slower than a blink. |
+| 14 | system | trench pits and the shaman first on the next floor, not the cave; the cave's first is the ogre boss | THE FLANK's trench rooms from THE ROAD (`ROOM_LEVELS` '0001111100'); the shaman met alone in THE ROAD's first room, with his tooth (the one stone tooth allowed off a cave). THE CAVE introduces nothing but its ogre now. |
+| 15 | feel | the shaman's first room is top, just elsewhere | Kept as it was (alone, the tooth), moved to THE ROAD. |
+| 16 | feel | the room with the cage easier, the fight distracted from the event | The room an animal is found in keeps at most 2 men, the weakest (`beast.calmMen`); a boss, a sentry, a first meeting and a combo's men are never cut. Every animal's room, not only the first. |
+
+His answers the same night: the chasm lesson goes to THE ROAD ("on the fourth, where the proper chasm is"): `chasmLesson` moved, `chasm.from` 3, and a lone rifle post never stands in its empty room. #16 is the run's first animal only (`opts.firstBeast`, from the run's deal). Still open: the stands' stories and the god's three lines are first drafts.
+
+Then, his ask to polish with the enemies' attacks first: a man's blow is a body now (`PaintedArt.attackPose`, `TUNING.enemyAnim`): the windup coils away and crouches, trembling at the end; the swing snaps out to a lunge with a stretch; the recover drifts home slumped; the swing is seen on the floor as a crescent of amber cells sweeping the wedge (`drawSwingSmear`, 0.07 ms); the rifle kicks its shooter back; the mage rises as his rune fills. The windup's pale tint went from 0.55 to 0.4 so the body still reads at its end.
+
+### 8 Oct 2026, evening (his notes and screenshots)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | bug | grass in the corridor and again in the room on THE ALTAR, "don't repeat" | It was every seed: the first grass's corridor (out of room 2) always led into room 3, which always drew its rhythm bowl. The corridor grass now takes up the rhythm's bowl in the room it leaves and the room it leads into, and counts as the bowl of the room ahead (`counts`, gen.js; `GEN_RULES.milk` reads it). 300 seeds: 300 adjacent before, 0 after; every rule holds. |
+| 2 | tool | check the earlier "what to polish" list | Shipped: 2.04 is on main, the artifact and itch (`butler status`: html5 2.04). launch.json is down to six entries. Still open: the bot walk (*tool* below), the first-kill hitch (did not reproduce today: first kill 5.2 ms against 4.0 for the second, in a hidden pane), the questions under *Ask him*, the threat-over-power flag (unchanged). |
+| 3 | tool | camera distance in the dev drawer, "didn't find it" | It was a slider on the ENEMIES tab. Now also a CAMERA ×n row on the drawer's first page: each click steps 0.8 → 1.4 (`DEV_CAM_STEPS`, the same `dev.tune.camera`). |
+| 4 | bug | low FPS even on the first floor (38 FPS, game 32.6 ms) | The biggest single cost was the veil in a shut room's mouth (`drawVeil`): ~1300 one-cell fills, each with a new colour string, for every shut mouth on the floor, on screen or not. Now a rect per row, a path per thread, and only near the view: 4.3 → under 0.8 ms a veil (measured in the page), nothing for one off screen. The rest of the frame is spread thin; see *Open* for what is left. |
+| 5 | feel | smoother death, no red line | The red line was an off-screen rifleman's aim line left frozen over the pull-back. Every windup and aim line now fades out over `deathCam.tellFade` (0.25 s) once he is dead (`Renderer.tellFade`, THE DARK too). |
+| 6 | feel | "wtf is that" (the I on the death card) | It was the count of souls lost, a struck wisp and a 1 that Alegreya draws like an I. Gone from the card. |
+| 7 | feel | broken stands should look broken, "so you feel like repairing" | A broken stand is its own sprite (`plinth-broken`): split down the middle, one half slumped and tilted, a corner knocked off onto the cloud, the gold band snapped, the cushion flat and grey, stones at its foot. Its count sits on the wreck. |
+| 8 | feel | "when it is empty, it is empty" | The pale halo waiting over an empty open stand is gone. |
+| 9 | feel | not MEND but REPAIR | Every player-facing MEND / MENDED in heaven says REPAIR / REPAIRED (the prompt, the god's lines, the mirror's). |
+
+Open from this batch: the camera at ×1.2 is his call (numbers in the reply); the rest of the FPS (below).
 
 ---
 
 ## Ask him
 
 Read one way and built that way; his word settles it.
+
+- (9 Oct second #5) "RUN AGAIN only after the [hint/ascend] appears" read as: RUN AGAIN never before ASCEND, and late by 1.4 s on the first four runs. Was it the death tip he meant?
+- (9 Oct second #6) the crack can be broken before THE YARD's last boss is down, so the dark flight skips his fight (and his soul). Fine as a secret's price, or should it wait until the room is clear?
+- (9 Oct second #20) the control lines go once the browser has died; the pen's headbutt prompt after 5 s stays. Right?
+
+- (9 Oct #14) soot softened as a guess; is it the black dithered blots or something else in that room?
 
 - (8 Oct, heaven #4) "when you brought 20 souls" breaks off there. What should happen then: the god says something, the mirror mends by itself, something shown?
 - (8 Oct, #12) "if a corridor, then the barrier here" (screenshot), not built. Reading A: the soul gate's bars move from the rest room's doorway to the far end of its corridor, where it opens into the next room. Reading B: something about NO WAY BACK's stone. Which barrier, and why there?
@@ -32,7 +158,6 @@ Read one way and built that way; his word settles it.
 - (7 Oct) the goose's dare: a floor with nothing but BAAH, while the way out is a soul gate the last boss's soul lifts, so only fire, traps and geometry can clear it. The dare he meant, or may the voice kill?
 - (6 Oct) the horse's dare floor counts were lost in dictation; three floors, 15 sacrifices each and 40 for the last are guesses.
 - (6 Oct) the rabbit's dare turned the stealth test (ALT) on while worn: a key against rule 1. The rabbit's stand is locked for now (`QUESTS` has only the tortoise, goose and horse); does the stealth dare come back as a run modifier chosen in heaven? Tied to whether stealth stays.
-- (5 Oct) THE ALTAR's first grass (`firstGrass`) adds a heart on top of the milk rhythm. Should it replace the first band's bowl?
 - (3 Oct) the tortoise's reward is read as "every floor starts in iron" (`mods.armour`). Or a thing put on, a suit found on the floor?
 - (3 Oct) GET OFF (`champion.shove`) answers the butcher and soul-carrying clubmen, not the yellow champions. Should they shove too?
 - (3 Oct) RICOCHET is a grab passive soul. Did "extra level" mean a talisman tier?
@@ -56,11 +181,12 @@ Read one way and built that way; his word settles it.
 
 ### system
 - (8 Oct) **UPGRADED SKILLS** (`meta.upgraded`, the god's third ask: a hundred souls and a corrupted one): only the name exists. What it does is not built.
-- (8 Oct) a heaven upgrade that raises the heal between floors (`goat.floorHeal`, 1 now): "a tree upgrade later".
+- (8 Oct) a heaven upgrade that raises the heal between floors (`goat.floorHeal`, 2 since 9 Oct): "a tree upgrade later".
 - (7 Oct) the other stands (hen, crow, pig, rabbit, husky, fish) have plain costs; still to build: corrupted-soul costs, finds and secrets as conditions, and chains of their own (the concept's pond, nest, flock).
 - (7 Oct) a later soul that changes the verb itself, "whip horns" (a lash, more reach and a curve), and souls that pay off per horn (LONG: pierce, BIG: sweep).
 - (7 Oct) more FLANK layouts (a trench round an arena's men, a trench with a bridge), and a quest or combo that uses one.
-- (7 Oct) ONE MORE LIFE after the first heaven visit is "to be taken away later".
+- (9 Oct) the hitching post becomes the modifiers' picker once modifiers exist: RIGHT M. CLICK by it opens a small popup to choose them; it stands a little further right, nearer the god. Not built.
+- (7 Oct) ONE MORE LIFE (since 9 Oct the repaired mirror's gift) is "to be taken away later".
 - (6 Oct) the overlook's run state (`game.runPaintings`) lives in memory only; a reload loses which towers are gold.
 - (1 Oct) **stun, the third element set** (parked, "don't bother for now"): each stun soul buys grace off `stunGoat` (½, 1, 2 s) and lengthens the stuns he deals; all four make a stunned man forget the goat (`lastSeen` cleared). Only three souls stun (THE FULL THROAT, DEAD WEIGHT, LEAPFROG), two of them roll actives, so it needs one or two new stun souls first. Its unbuilt headbutt idea: hold to lower the horns, a frontal parry (a parry staggers the striker and spends his run-up, a wall stops him like the butcher); never frontal i-frames (rule 4), never bullets ("horns are not iron").
 
@@ -78,7 +204,8 @@ Read one way and built that way; his word settles it.
 - THE HOOK OVER THE DROP is rare in a natural run; `combos` `pits` 6 would raise it (for the later level rebalance, his word).
 - The grab (24 Sep): does `grab.bite` 0.18 s read as preparation or as lag; is FIREBRAND's 3 s line long enough to split a room; does BY THE COLLAR still out-pick the scream actives at `BOON_POWER` 1.3.
 - Threat over power: `balance.js` says THE THRESHING FLOOR and THE OSSUARY ask less of the goat than the floor before (9.4 after 10.0, 10.1 after 10.8). A question of `BOON_POWER` weights, a design call.
-- The adaptive resolution (`perf.adapt`) is a guess at his laptop; unverified there.
+- The adaptive resolution (`perf.adapt`) is a guess at his laptop; unverified there. It gives up for good on a floor once a drop in pixels does not cut the script's time, which is his case (38 FPS with `game` 32.6 ms is script, not pixels).
+- (8 Oct) the frame after the veil fix: ~12 ms of draw script on THE ALTAR in a hidden pane, no single call over ~1.5 ms (`drawHints`, `drawSkills`, `drawUI`, the room bake, props). Next candidates: the floor words baked to canvases instead of `fillText` each frame, the HUD rail cached until it changes. Wants a run of `tools/perf.js` with the pane visible.
 - How long heaven holds a player between deaths: nobody else has played it.
 
 ### bug, not reproduced (ask for the run code next time)

@@ -599,7 +599,7 @@ class PaintedArt extends AltarArt {
       // It is a tile of the wall, so it is drawn flat like the tiles either side of it: a prop stands
       // counter-squashed (`Renderer.drawProp`), which made it a notch taller than the wall it is in.
       ctx.save();ctx.translate(p.x,p.y);ctx.scale(1,TILT);ctx.translate(-p.x,-p.y);ctx.imageSmoothingEnabled=true;
-      this.drawWall(ctx,renderer.game.level.def,p.x-TILE/2,p.y-TILE/2,p.wallSide==='up'?4:1);
+      this.drawWall(ctx,renderer.game.level.def,p.x-TILE/2,p.y-TILE/2,p.wallSide==='up'?4:p.wallSide==='right'?8:1);
       ctx.restore();
       // The crack tells still have to be drawn: the art carries none, and they're what the blow count
       // reads as (see `Renderer.wallCrack` / CLAUDE.md's "A wall that gives").
@@ -639,6 +639,38 @@ class PaintedArt extends AltarArt {
     ctx.globalAlpha=0.75;this.drawFrame(ctx,image,384,0,128,128,0,0,64,64);ctx.restore();
   }
 
+  // The body of a man's blow, off how far through each state he is (`renderer.windP`): the windup a coil away from the
+  // goat that builds and trembles at the end, the swing a snap through to a lunge with a stretch at its middle, the
+  // recover a drift home with a slump (the opening). Null for anything else, which keeps its own lean.
+  attackPose(renderer,e,angle){
+    const A=TUNING.enemyAnim,st=e.state,gm=renderer.game;
+    // a shot's kick, whatever state he is in now: back off the muzzle and settling, eased out
+    if(e.shotAt!==undefined&&gm&&gm.timer-e.shotAt<A.recoil.time&&gm.timer>=e.shotAt){
+      const u=(gm.timer-e.shotAt)/A.recoil.time,k=(1-u)*(1-u),c=Math.cos(angle),s=Math.sin(angle);
+      return {x:-c*A.recoil.kick*k,y:-s*A.recoil.kick*k,r:-(c>=0?1:-1)*A.recoil.tilt*k,sx:1,sy:1};
+    }
+    if(st==='cast'&&e.kind==='seer'&&!e.byEar){
+      const C=A.cast,p=renderer.windP(e,(TUNING.seer||{}).castWind||0.6),k=p*p*(3-2*p),sh=p>C.shakeFrom?Math.sin(renderer.t*64+(e.y||0))*C.shake:0;
+      return {x:sh,y:-C.lift*k,r:0,sx:1-C.stretch*0.5*k,sy:1+C.stretch*k};
+    }
+    if(st!=='windup'&&st!=='swing'&&st!=='recover')return null;
+    const cfg=TUNING[e.kind]||{},dur=(k)=>{const v=e.atk?e.atk(k):cfg[k];return v>0?v:0.4;};
+    const cx=Math.cos(angle),cy=Math.sin(angle),side=cx>=0?1:-1,W=A.windup,S=A.swing,R=A.recover;
+    if(st==='windup'){
+      const p=renderer.windP(e,dur('windup')),k=p*p*(3-2*p);
+      const sh=p>W.shakeFrom?Math.sin(renderer.t*70+(e.x||0))*W.shake:0;
+      return {x:-cx*W.back*k+sh,y:-cy*W.back*k,r:-side*W.tilt*k,sx:1+W.wide*k,sy:1-W.squat*k};
+    }
+    if(st==='swing'){
+      e.poseSwungAt=renderer.t;   // render only: the recover that follows is this blow's (a slam's, a hook's, a cast's is not)
+      const q=renderer.windP(e,dur('swing')),k=1-Math.pow(1-q,3),l=-W.back+(S.lunge+W.back)*k,s=Math.sin(q*Math.PI)*S.stretch;
+      return {x:cx*l,y:cy*l,r:side*S.tilt*k,sx:1+s,sy:1-s*0.6};
+    }
+    if(!(renderer.t-(e.poseSwungAt??-99)<dur('recover')*((renderer.game&&renderer.game.mods&&renderer.game.mods.enemySlow)||1)+0.3))return null;
+    const r=renderer.windP(e,dur('recover')),u=Math.min(1,r/R.settle),k=u*u*(3-2*u),sl=R.slump*Math.sin(Math.PI*Math.min(1,r*1.25));
+    return {x:cx*S.lunge*(1-k),y:cy*S.lunge*(1-k),r:side*S.tilt*(1-k),sx:1+sl*0.5,sy:1-sl};
+  }
+
   // Every unit is a pixel sprite now (`PIXEL_ART`); what is left here is the lean of a windup or a
   // swing, the tip of a man on the floor, the wraith's fade and the rat ogre's grow-in.
   character(renderer,e,key,width) {
@@ -653,8 +685,14 @@ class PaintedArt extends AltarArt {
     // The shieldman's leap: crouched behind the board, then thrown forward behind it.
     if(e.state==='bashwind'){ctx.translate(Math.cos(angle)*-3,1);ctx.scale(1.08,0.9);}
     if(e.state==='bash'){ctx.translate(Math.cos(angle)*4,-3);ctx.rotate(Math.cos(angle)*0.2);}
-    if(e.state==='windup'||e.state==='hookwind'||e.state==='slamwind'){ctx.translate(Math.cos(angle)*-2,Math.sin(angle)*-2);ctx.rotate(-0.13);}
-    if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
+    // A man's blow moves his whole body (`attackPose`, `TUNING.enemyAnim`): a coil, a snap, a slump. The goat and the
+    // butcher's hook and the ogre's slam keep the old fixed lean.
+    const pose=e.kind&&key!=='sheep'?this.attackPose(renderer,e,angle):null;
+    if(pose){ctx.translate(pose.x,pose.y);ctx.rotate(pose.r);ctx.scale(pose.sx,pose.sy);}
+    else{
+      if(e.state==='windup'||e.state==='hookwind'||e.state==='slamwind'){ctx.translate(Math.cos(angle)*-2,Math.sin(angle)*-2);ctx.rotate(-0.13);}
+      if(e.state==='swing'){ctx.translate(Math.cos(angle)*3,Math.sin(angle)*3);ctx.rotate(0.17);}
+    }
     if(e.state==='dart'){ctx.scale(1.17,0.85);ctx.strokeStyle=PALETTE.bone;ctx.globalAlpha*=0.45;ctx.beginPath();ctx.moveTo(-width*0.4,5);ctx.lineTo(-width*0.7,5);ctx.stroke();ctx.globalAlpha/=0.45;}
     if(e.state==='floored'||e.state==='stunned')ctx.rotate(0.7);
     if(e.liftedBy)ctx.rotate(Math.cos(e.liftedBy.facing)<0?1.45:-1.45);   // across the thrower's fist (js/thrower.js)
@@ -910,6 +948,7 @@ class PaintedArt extends AltarArt {
 
   drawGoat(renderer,g,game) {
     const ctx=renderer.ctx;
+    if(g.state==='shell'&&g.shell&&typeof Shell!=='undefined'){Shell.draw(renderer,game,g);return;}   // TURTLEIZE: the crystal in his place
     for(const t of g.trail){ctx.save();ctx.globalAlpha=t.life/(t.max||TUNING.goat.trail.life)*0.12;ctx.translate(t.x,t.y);ctx.scale(1,1/TILT);this.character(renderer,{facing:t.a},'sheep',40);ctx.restore();}
     // A fidget (`Goat.update`, `goat.idle`) as a 0..1 through it, and how high a pronk has him.
     const I=TUNING.goat.idle,fid=g.fidget,fk=fid?clamp(fid.t/fid.dur,0,1):0;

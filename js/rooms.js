@@ -1763,7 +1763,8 @@ const AMBUSH_TEMPLATE = { name: 'ambush', noFlipX: true, rows: [
 // in the right wall (the `P` pier is only there so the one row `pickDoorY` can take is row five,
 // far enough down that the ring hung over him never covers its cleat; gen.js turns it back to floor
 // once the door is cut), one clubman holds it (`post`, a sentry's feet) and a chandelier hangs over
-// him, its rope straight up to a cleat on the far wall. Butt the cleat and the ring comes down on him.
+// him, its rope across the room to a cleat on the far wall by the way in (9 Oct 2026; it was straight above him).
+// Butt the cleat and the ring comes down on him.
 // `noFlipX` and `noFlipY`: the notch and the cleat only work the way round they are written.
 const CHAND_LESSON_TEMPLATE = { name: 'chandlesson', noFlipX: true, noFlipY: true, rows: [
   '##########',

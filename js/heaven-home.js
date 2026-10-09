@@ -4,8 +4,8 @@
 // where he comes up (the god, five of the stands, the horse's paddock along its foot), and THE EDGE across the bridge
 // (the mirror, the bells and the blind shepherd, the overlook, the other four stands, the horns and the drop).
 //
-// Opening an animal is not freeing it. A stand is LOCKED (a padlock: not yet), BROKEN (mended by pouring souls into
-// it) or OPEN (the tortoise's and the goose's from the start, `home.stands.open`); only an open stand's animal is dealt
+// Opening an animal is not freeing it. A stand is LOCKED (a ruin, not yet: the other six), BROKEN (mended by pouring souls into
+// it) or OPEN (the tortoise's from the start, `home.stands.open`); only an open stand's animal is dealt
 // into a run (`Beast.deal`'s `allow`, `beastsOpen`). Brought out alive it sits on its stand (`meta.saved`) and offers its
 // dare (`QUESTS`); the dare won, it is FREE (`meta.freed`), off its stand and living up here its own way (`hroam`), and
 // its talisman (`QUESTS[kind].talisman`) is on the mouse's shelves from then on (`talismanLocked`).
@@ -46,6 +46,8 @@ Object.assign(Heaven, {
   // The kinds a run may deal (`Game.beastPlanFor`): every one whose stand is open.
   beastsOpen() { return HEAVEN_SEATS.map((s) => s.kind).filter((k) => this.standState(k) === 'open'); },
   freed(kind) { const M = this.meta; return !!(M && M.freed && M.freed[kind]); },
+  // It has thanked him once and asked to be brought out again, and has not been yet: its cage at the start of a floor.
+  wantsAgain(kind) { const M = this.meta; return !!(M && M.again && M.again[kind] && !((M.savedN && M.savedN[kind]) >= 2)); },
   // A talisman a dare pays for is off the shelves until that dare is won (`Shop.restock`, `Beast.placeGift`).
   talismanLocked(id) {
     for (const k of Object.keys(QUESTS)) if (QUESTS[k].talisman === id && !this.freed(k)) return true;
@@ -58,15 +60,28 @@ Object.assign(Heaven, {
   pourable(n) {
     const M = this.meta, P = TUNING.heaven.home;
     if (!n || !M) return null;
-    if (n.kind === 'mirror' && !this.mended() && M.gift) return { key: 'mirror', cost: TUNING.heaven.gift.mend, word: 'MEND IT' };
+    // only once the god has his twenty (`mendReady`); before that a GRAB at it says BROKEN (8 Oct 2026)
+    if (n.kind === 'mirror' && !this.mended() && this.mendSent()) return { key: 'mirror', cost: TUNING.heaven.gift.mend, word: 'REPAIR IT' };
     // The god's hundred for the horns, once he has asked for it (`horns0`) and there is something to give: a GRAB with
     // nothing in the heap is still a word with him.
     if (n.kind === 'god' && this.hornsAsk() && M.told.horns0 && (M.sacrifices > 0 || this.poured('god') >= TUNING.heaven.gift.horns)) return { key: 'god', cost: TUNING.heaven.gift.horns, word: 'GIVE' };
     // The third ask (`gift.skills`): the hundred poured as the fifty were; the corrupted soul is taken when they are in (`finishPour`).
     if (n.kind === 'god' && this.skillsAsk() && M.told.skills0 && (M.sacrifices > 0 || this.poured('god2') >= TUNING.heaven.gift.skills)) return { key: 'god2', cost: TUNING.heaven.gift.skills, word: 'GIVE' };
-    if (n.kind === 'tower' && !this.towerMended()) return { key: 'tower', cost: P.tower.cost, word: 'MEND IT' };
-    if (n.kind === 'seat' && this.standState(n.thing.seat) === 'broken') return { key: 'stand:' + n.thing.seat, cost: P.stands.cost[n.thing.seat], word: 'MEND IT' };
+    // The tower and the broken stands wait for the mirror (9 Oct 2026: "padlocks on them until the mirror is repaired").
+    if (n.kind === 'tower' && !this.towerMended() && this.mended()) return { key: 'tower', cost: P.tower.cost, word: 'REPAIR IT' };
+    if (n.kind === 'seat' && this.standState(n.thing.seat) === 'broken' && this.mended()) return { key: 'stand:' + n.thing.seat, cost: P.stands.cost[n.thing.seat], word: 'REPAIR IT' };
     return null;
+  },
+  // Broken and still padlocked: the tower or a broken stand before the mirror is repaired (`pourable` refuses them).
+  padlocked(n) {
+    if (!n || this.mended()) return false;
+    return (n.kind === 'tower' && !this.towerMended()) || (n.kind === 'seat' && this.standState(n.thing.seat) === 'broken');
+  },
+  // The padlock itself, its body's top-left at x, y in the caller's frame, `c` px a cell (the horns' lock, scaled).
+  drawPadlock(ctx, x, y, c) {
+    ctx.fillStyle = '#3a2c4e'; ctx.fillRect(x - c, y - c, 9 * c, 7 * c); ctx.fillRect(x + c, y - 5 * c, 2 * c, 5 * c); ctx.fillRect(x + 4 * c, y - 5 * c, 2 * c, 5 * c); ctx.fillRect(x + c, y - 6 * c, 5 * c, 2 * c);
+    ctx.fillStyle = '#b8b0a0'; ctx.fillRect(x, y, 7 * c, 5 * c); ctx.fillStyle = '#e8e0cc'; ctx.fillRect(x, y, 7 * c, c);
+    ctx.fillStyle = '#3a2c4e'; ctx.fillRect(x + 3 * c, y + c, c, 3 * c);
   },
   // GRAB still held, read off the hand itself: the press that started a pour clears `input.rmbDown` (as every press up
   // here does), and with the mouse still the flag stays down until it moves.
@@ -355,19 +370,15 @@ Object.assign(Heaven, {
   // one with what it still asks, a ribbon of gold on one whose animal is free.
   drawStandState(R, game, p, top) {
     const ctx = R.ctx, st = this.standState(p.seat), c = 2;
-    if (st === 'locked') {
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = '#3a2c4e'; ctx.fillRect(-9, top - 26, 18, 16); ctx.fillRect(-7, top - 34, 4, 9); ctx.fillRect(3, top - 34, 4, 9); ctx.fillRect(-7, top - 36, 14, 4);
-      ctx.fillStyle = '#b8b0a0'; ctx.fillRect(-7, top - 24, 14, 12); ctx.fillRect(-5, top - 33, 2, 8); ctx.fillRect(3, top - 33, 2, 8); ctx.fillRect(-5, top - 34, 10, 2);
-      ctx.fillStyle = '#3a2c4e'; ctx.fillRect(-1, top - 21, 2, 5);
-      ctx.globalAlpha = 1; return true;
-    }
+    // A locked stand is a ruin, with nothing asked of it yet (8 Oct 2026, "the shut ones are ruined": the padlock went);
+    // the plinth is the broken one (`drawSeat`).
+    if (st === 'locked') return true;
     if (st === 'broken') {
-      ctx.fillStyle = '#4e5d70';
-      for (const [x, y, w] of [[-12, -6, 7], [-4, -13, 3], [5, -8, 6], [9, -15, 2], [-9, -18, 2]]) ctx.fillRect(x * c / 2 * 2, top + y, w * c, c);
-      ctx.fillStyle = '#c9cfdc'; for (const [x, y] of [[-20, 6], [16, 4], [-14, 9]]) ctx.fillRect(x, y - 2, c * 2, c);
+      // the split, the slump and the stones are the sprite's own (`plinth-broken`, js/heaven-pixels.js)
+      // Padlocked until the mirror is repaired: the lock, and no count (9 Oct 2026).
+      if (!this.mended()) { this.drawPadlock(ctx, -7, top - 22, 2); return true; }
       const P = TUNING.heaven.home.stands.cost[p.seat] || 0, poured = this.poured('stand:' + p.seat);
-      ctx.font = `700 11px ${FONT_SC}`; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(58,44,78,0.8)'; ctx.fillText(`${poured} / ${P}`, 0, top - 30);
+      ctx.font = `700 11px ${FONT_SC}`; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(58,44,78,0.8)'; ctx.fillText(`${poured} / ${P}`, 0, top - 12);
       return true;
     }
     if (this.freed(p.seat)) {
@@ -379,6 +390,11 @@ Object.assign(Heaven, {
   },
 });
 
+// What broke the story's stands (8 Oct 2026): said before what the stand asks. The tortoise's was never broken.
+const STAND_STORY = {
+  goose: "BROKEN. THE GOOSE HONKED AT THE CULT'S PRIEST, AND THEY SMASHED ITS STAND FOR IT. REPAIR IT, AND THE GOOSE WALKS YOUR RUNS.",
+  horse: 'BROKEN. THE CULT TOOK THE HORSE FOR THEIR WHEEL AND KICKED ITS STAND TO PIECES. REPAIR IT, AND THE HORSE RACES YOU DOWN THERE.',
+};
 Object.assign(Heaven, {
   // ---------------------------------------------------------------- what the stands and the animals say
   // GRAB at a stand that has nothing to offer yet, or whose animal is not on it: true if it answered.
@@ -386,8 +402,9 @@ Object.assign(Heaven, {
     const H = game.heaven, M = this.meta, st = this.standState(s.kind), lift = s.kind === 'horse' ? 76 : 46;
     const say = (text, k) => H.plates.push({ x: n.x, y: n.y - lift, text, life: TUNING.heaven.plate * (k || 1.2) });
     const grab = game.touch && game.touch.active ? 'GRAB' : 'RIGHT M. CLICK';
-    if (st === 'locked') { say('LOCKED. NOT YET.', 1); game.audio.sfxClatter('metal', 0.3); return true; }
-    if (st === 'broken') { say(`BROKEN. HOLD ${grab} AND POUR SOULS INTO IT: ${this.poured('stand:' + s.kind)} / ${TUNING.heaven.home.stands.cost[s.kind]}.`, 1.4); return true; }
+    if (st === 'locked') { say('RUINED. THE GOD WILL REPAIR IT, LATER.', 1); game.audio.sfxClatter('metal', 0.3); return true; }
+    // the three of the story (8 Oct 2026, "make a good story for the three"): what broke each stand, then what it asks
+    if (st === 'broken') { say(`${STAND_STORY[s.kind] || 'BROKEN.'} HOLD ${grab} AND POUR SOULS INTO IT: ${this.poured('stand:' + s.kind)} / ${TUNING.heaven.home.stands.cost[s.kind]}.`, 1.6); return true; }
     if (M.questWon && M.questWon[s.kind]) return false;   // the dare's last word is said at the stand once, wherever it lives now
     if (this.freed(s.kind)) { say(s.name + ' IS NOT HERE. IT LIVES UP HERE NOW, ITS OWN WAY. FIND IT.', 1.3); return true; }
     if (s.kind === 'horse' && M.saved.horse) { say('THE HORSE IS IN ITS PADDOCK, BELOW. GO AND SEE IT.', 1.2); return true; }
@@ -404,6 +421,14 @@ Object.assign(Heaven, {
     if (M.questWon && M.questWon[s.kind]) { delete M.questWon[s.kind]; this.saveSoon(); box(s.sound + ' ' + Q.won); return true; }
     if (this.freed(s.kind)) return false;
     if (this.questOn(s.kind)) { box(s.sound + ' ' + Q.wear.replace('{left}', (M.quest[s.kind].left || 0))); return true; }
+    // Brought out once (9 Oct 2026 playtest): its thanks, and the ask to be brought out again; its cage is at the start of a
+    // floor from now on (`wantsAgain`). The dare waits for the second time.
+    if (((M.savedN && M.savedN[s.kind]) || 0) < 2 && !(M.quest && M.quest[s.kind])) {
+      M.again = M.again || {};
+      if (!M.again[s.kind]) { M.again[s.kind] = 1; this.saveSoon(); box(s.sound + ' ' + Q.thanks); }
+      else box(s.sound + ' ' + Q.again);
+      return true;
+    }
     box(s.sound + ' ' + Q.offer.replace('{n}', (TUNING.heaven.quests[s.kind] || {}).floors || 1), true, (g2, yes) => {
       if (yes) { this.takeQuest(game, s.kind, n); say(Q.took); } else say(Q.off);
     });

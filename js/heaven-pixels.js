@@ -179,6 +179,29 @@ const HEAVEN_PIXELS = (() => {
     g.tone((x, y) => y < 5, W0, ['#f4f8ff']);
     return g.outline('#7d8fbf');
   }
+  // The same seat broken (8 Oct 2026: "more broken, so you feel like repairing it"): split down the middle, the
+  // right half slumped and tilted, its corner knocked off onto the cloud, the gold band snapped with one end hanging,
+  // the cushion gone grey and flat, stones at its foot. 36 wide, the seat's own height and centre, so it sits where
+  // the whole one did.
+  function plinthBroken() {
+    const W = 36, H = 20, g = new Grid(W, H), S0 = '#e2dfeb', S1 = '#c9c4d8', S2 = '#a7a1ba', CR = '#6f6886';
+    // the left half, whole but cracked
+    g.rect(7, 10, 10, 8, S0); g.vl(7, 10, 8, '#f6f4fa'); g.hl(7, 17, 10, S1);
+    g.hl(7, 12, 10, G2); g.hl(7, 13, 10, G3);
+    g.set(16, 14, G2); g.set(16, 15, G3); g.set(17, 16, G3);           // the band's snapped end, hanging
+    g.line(12, 10, 14, 13, CR, true); g.line(14, 13, 13, 16, CR, true); g.line(9, 15, 10, 17, CR, true);
+    // the right half, sunk two texels at its far end, the band going down with it
+    g.poly([[19, 11], [27, 13], [27, 17], [19, 17]], S1); g.vl(27, 13, 5, S2); g.hl(19, 17, 9, S2);
+    g.line(19, 13, 27, 15, G2, true); g.line(19, 14, 27, 16, G3, true);
+    g.line(22, 12, 23, 15, CR, true);
+    // the corner knocked off, on its side on the cloud, and the stones
+    g.rect(29, 15, 3, 3, S1); g.set(29, 15, S0); g.set(31, 17, S2); g.set(30, 16, G3);
+    for (const [x, y, c] of [[4, 17, S1], [5, 16, S2], [18, 18, S1], [33, 17, S2], [24, 18, S2]]) g.set(x, y, c);
+    // the cushion, flat and unlit, sagging into the split
+    g.ell(11, 9, 4.5, 2.2, '#cfd5e4'); g.ell(16, 10, 2.6, 1.6, '#bcc4d8'); g.ell(23, 11, 3, 1.5, '#c3cadc');
+    g.tone((x, y) => y >= 10, '#aab3ca', ['#cfd5e4', '#bcc4d8', '#c3cadc']);
+    return g.outline('#7d84a3');
+  }
 
   // ---------------------------------------------------------------- gold grass, to be grazed for the taste
   // The milk grass's blades (js/prop-pixels.js `grass`), grown gold, with white flowers in them.
@@ -290,7 +313,7 @@ const HEAVEN_PIXELS = (() => {
     watchtower: watchtower(), 'watchtower-cloud': towerCloud(),
     god: god(false, false), 'god-speak': god(true, false), 'god-blink': god(false, true),
     'shepherd-0': shepherd(0), 'shepherd-1': shepherd(1), 'shepherd-2': shepherd(2),
-    mirror: mirror(), plinth: plinth(), skull: skull(), beam: beam(8, BELL_GAP, 52), 'grass-gold': goldGrass(false), 'grass-gold-big': goldGrass(true),
+    mirror: mirror(), plinth: plinth(), 'plinth-broken': plinthBroken(), skull: skull(), beam: beam(8, BELL_GAP, 52), 'grass-gold': goldGrass(false), 'grass-gold-big': goldGrass(true),
   };
   for (let n = 0; n < 8; n++) { sprites['bell-' + n] = bell(n); sprites['bell-asleep-' + n] = sleepingBell(n); }
   return { sprites, GLASS, BELL_GAP, TOWER_CLOUD, G: [G0, G1, G2, G3, G4], W: [W0, W1, W2, W3, W4], OL };

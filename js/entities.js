@@ -104,6 +104,9 @@ class Goat {
     // ---- clumsy sideways roll ----
     const R = TUNING.goat.roll;
     this.rollCd = Math.max(0, this.rollCd - dt * cdRate);
+    // TURTLEIZE (js/shell.js): with the tortoise's soul the roll is the shell, held.
+    if (this.state === 'shell') { Shell.step(this, game, dt); return; }
+    if (rollAsk && game.mods.shell && game.mods.roll && this.rollCd <= 0 && this.state !== 'lunge' && this.state !== 'roll' && this.state !== 'rollrecover' && !this.dead) { Shell.start(this, game); return; }
     if (rollAsk && game.mods.roll && this.rollCd <= 0 && this.state !== 'lunge' && this.state !== 'roll' && this.state !== 'rollrecover' && !this.dead) {
       this.rollBuf = 0;
       // LEAPFROG: a man in front and clear floor behind him turns the tumble into a vault over his
@@ -201,7 +204,7 @@ class Goat {
     else if (this.state === 'bite') mul *= g.grab.biteMove;
     else if (this.state === 'rollrecover') mul *= TUNING.goat.roll.recoverMove;
     if (game.sneak) mul *= TUNING.stealth.speed;
-    const base =g.speed * game.mods.speed * this.runUp * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1) * Talisman.speedMul(game)
+    const base =g.speed * game.mods.speed * this.runUp * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1) * Talisman.speedMul(game) * Heaven.paceMul(game)
       * (this.poisoned > 0 ? g.poison.moveMul : 1) * (game.calmFast ? TUNING.calmRun.mul : 1)
       * (game.level && game.level.def.showroom ? TUNING.showroom.speed : game.dev && game.dev.god ? TUNING.dev.godSpeed : 1);   // the floor, not `showroomOn`: the JUICE preview borrows that flag
     const top = base * mul;
@@ -826,7 +829,7 @@ class Goat {
         const SN = TUNING.stealth;
         const tipK = HN.rows ? (hit.tip ? HN.tipMul : HN.shaftMul) : 1;   // LONG: the tips throw hard, the shafts only shove
         const imp = Talisman.buttImpulse(game, this, e, impulse * tipK * (e.knockMul ? e.knockMul() : 1) * (unseen ? SN.knock : 1));
-        if (HN.rows && hit.tip) { game.hitstop(0.03); game.particles(e.x - ax * e.r, e.y - ay * e.r, 5, PALETTE.fireHi, 240); }
+        if (HN.rows && hit.tip) { game.hitstop(0.03); game.particles(e.x - ax * e.r, e.y - ay * e.r, 5, PALETTE.hitTip, 240); }
         if (unseen) { game.floatText(e.x, e.y - 40, SN.text, PALETTE.fireHi); game.hitstop(SN.stop); }
         // SPLASH poisons the man on the horns as well as whoever is behind (1 Oct 2026, playtest),
         // before the throw: with the whole poison set the onset is a blow, whose floor wiped the fling.
@@ -934,6 +937,19 @@ class Goat {
     // A man out of the mouth has to arrive at `physics.thrownKill` to die on what he meets; every
     // other thrown body (a blast, the rat ogre's arm) still dies on any touch. `fling` clears it.
     if (!h.item) h.fromMouth = true;
+    // A crate let go right against a plank door breaks the door and itself (9 Oct 2026 playtest: "bring it to the door and
+    // let go, both break, if it is wooden"). From a distance the thrown crate does this itself (`Prop.updateFlung`); held
+    // to the wood it is already past the door's edge when it leaves the mouth and never "arrives". Iron, gates, seals,
+    // vaults and stairs are none of this: only a door one blow opens.
+    if (h.kind === 'crate' && !h.broken) {
+      const reach = g.grab.holdDist + TILE * 0.75;
+      for (const p of game.props) {
+        if (p.kind !== 'door' || p.broken || p.open >= 0.5 || p.gate || p.seal || p.iron || p.vault || p.stair || p.needHits) continue;
+        const dx = p.x - this.x, dy = p.y - this.y, d = hyp(dx, dy);
+        if (d > reach || (dx * this.aim.x + dy * this.aim.y) < d * 0.5) continue;
+        p.smash(game, this.aim.x, this.aim.y, null); h.shatter(game); break;
+      }
+    }
     this.spendGrab(game, !h.item);
     if (h.kind === 'weapon') { game.audio.sfxSteel(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); }
     else game.audio.sfxSwing();
@@ -949,6 +965,11 @@ class Goat {
       if (p.unfold >= 1) { Codex.openPoster(game, p); return; }
       // Folded, it is opened by this grab, if nothing stands on it and it is not behind stone or a door.
       if (!(p.unfold > 0) && !p.scrapCovered(game) && game.sees(this.x, this.y, p.x, p.y)) { p.openScrap(game); return; }
+    }
+    // A corrupted soul lying loose: the grab swallows it (8 Oct 2026, `Game.takeSoul`).
+    if (game.souls) for (const tm of game.souls) {
+      if (tm.taken || hyp(tm.x - this.x, tm.y - this.y) >= game.soulGrabR()) continue;
+      if (game.sees(this.x, this.y, tm.x, tm.y)) { game.takeSoul(tm); return; }
     }
     // A key on the floor: taken by the grab too (8 Oct 2026), within `keys.pickR` or a reach.
     for (const p of game.props) {
@@ -1166,18 +1187,21 @@ class Goat {
       // the first heart"; EMBER COAT tripled the one and not the other), only immunity passes it by.
       const interval = g.fireDamageInterval * game.mods.fireResist + (game.mods.fireGuard || 0)
         + (game.level.def.shroom ? TUNING.shroom.burnDelay : 0);
+      // witchfire's first bite comes at `witchOnset` of the interval (`witchBit` says one has landed since he was last cold)
+      const due = witch && !this.witchBit ? interval * g.witchOnset : interval;
       if (!witch && game.mods.fireImmune) this.fireTick = 0;
-      else if (this.fireTick >= interval) {
-        this.fireTick = 0; this.damage(1, game, -this.aim.x * 60, -this.aim.y * 60, true, witch ? 'witchfire' : 'fire');
+      else if (this.fireTick >= due) {
+        this.fireTick = 0; if (witch) this.witchBit = true; this.damage(1, game, -this.aim.x * 60, -this.aim.y * 60, true, witch ? 'witchfire' : 'fire');
         if (witch && game.mods.fireImmune) game.floatText(this.x, this.y - 32, 'WITCHFIRE', PALETTE.witch);
       }
       // How far the flame on him has grown toward the heart it costs (1 Oct 2026, "small when he has
       // just stepped in, growing fast, and full size is the damage"): the drawing reads only this.
-      this.fireK = clamp(this.fireTick / interval, 0, 1);
+      this.fireK = clamp(this.fireTick / due, 0, 1);
     } else {
       // Out of it he still smoulders: the heat already in him stays (never past `burnLook.keep` of a tick, so
       // stepping in and out is not a way round it) and cools off slowly, `burnLook.cool` s a second.
       this.fireTick = Math.max(0, Math.min(this.fireTick, g.fireDamageInterval * g.burnLook.keep) - g.burnLook.cool * dt);
+      if (this.fireTick <= 0) this.witchBit = false;
       this.fireK = 0;
     }
 
@@ -1210,6 +1234,8 @@ class Goat {
   // the death card can say what the last heart went to.
   damage(n, game, kx, ky, fromFire, by) {
     if (this.dead || (this.invuln > 0 && !fromFire)) return;
+    // TURTLEIZE: shelled, the crystal takes every blow but the fall and keeps it for the wave (js/shell.js)
+    if (this.state === 'shell' && by !== 'fall' && Shell.absorb(this, game, n, kx, ky)) return;
     if (game.breakSneak) game.breakSneak();   // STEALTH (dev test): a blow on him is a fight, the sneak ends
     Shaman.shake(game, this);   // a blow that reaches him shakes off the shaman's call for a while (js/shaman.js)
     if (game.dev.god) { game.particles(this.x, this.y, 4, PALETTE.fireHi, 90); return; }
@@ -1439,6 +1465,7 @@ class Prop {
     // Which of the room's walls a secret was carved from: 'up' reads as a top wall (the painted art
     // gives it the coping band an ordinary top wall gets), 'down' as a bottom wall (it does not).
     this.wallSide = (opts && opts.wallSide) || null;
+    this.fork = !!(opts && opts.fork);   // THE FORK's stair door, and since 9 Oct 2026 the crack that hides its flight
     // The bird: 'loose' walking with the goat, 'flying' once he has put his head under her, and
     // 'stunned' for the beat after she has hit something that was not a man. `target` is whoever
     // she picked at the kick and is steering at; `flap` and `bob` are hers alone and are drawn.
@@ -1911,11 +1938,11 @@ class Prop {
     }
     this.broken = true; this.dead = true;
     // The rock the niche was hiding under goes with the wall (see `startLevel`).
-    if (this.nicheTiles) for (const i of this.nicheTiles.slice(1)) game.world.tiles[i] = T.FLOOR;
+    if (this.nicheTiles) for (const i of this.nicheTiles.slice(1)) game.world.tiles[i] = (this.under && this.under[i]) || T.FLOOR;
     game.world.caveDirty();   // an unbroken secret is rock to the cave renderer; this one is not
     game.world.emitNoise(this.x, this.y, TUNING.noise.smash); game.audio.sfxSplat(); game.shake(6); game.hitstop(0.03);
     game.particles(this.x, this.y, 18, PALETTE.ash, 240);
-    game.floatText(this.x, this.y - 30, 'A HIDDEN NICHE', PALETTE.fireHi);
+    game.floatText(this.x, this.y - 30, this.fork ? 'A WAY DOWN, INTO THE DARK' : 'A HIDDEN NICHE', this.fork ? '#aab2e6' : PALETTE.fireHi);
   }
 
   // A boulder in the cave. `rock.hits` blows and it is rubble, the tile it stood on is floor to the
@@ -2483,6 +2510,9 @@ class Prop {
     if (held) { game.goat.holding = null; game.goat.spendGrab(game, false); }
     if (game.scatter) game.scatter.breakUp(Scatter.piecesOf(this), this.x, this.y, z, dx || 0, dy || 0, 0.8);
     game.audio.sfxSteel(); game.shake(3);
+    // A blade breaking is heard (9 Oct 2026 playtest: one broke right beside a man and he did nothing): the same
+    // reach as steel on stone, so every unaware man in earshot goes to look, as at a crate smashed.
+    game.world.emitNoise(this.x, this.y, TUNING.noise.steel);
     game.particles(this.x, this.y, 7, this.weapon === 'sword' ? PALETTE.bone : PALETTE.ash, 220);
   }
   // A blade that is spent in a man who gets up from it stays in him (`prop.weapon.stick`): gone from the

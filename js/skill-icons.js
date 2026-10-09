@@ -34,6 +34,8 @@ const SKILL_RAMPS = {
   lava: ['#8f1e0a', '#e0521a', '#ffb43a', '#fff0a0'],
   // the mouse pointer's horns (`Game.buttCursor`): the bare horns gone nearly white, to be seen on any floor
   bone: ['#8c8478', '#cfc8bc', '#efeae2', '#ffffff'],
+  // TURTLEIZE's crystal shell (js/shell.js), its own violet
+  crystal: ['#2e1a4e', '#7a4cc0', '#b48cff', '#f2e8ff'],
 };
 
 const SKILL_ART = {
@@ -241,6 +243,23 @@ const SKILL_ART = {
     '...........W..W.',
     '..........W..W..'] },
   // LEAPFROG: the ball at the top of its arc over a man's head.
+  // TURTLEIZE (9 Oct 2026): the crystal shell he becomes, three shards out of its crown, its scutes seamed dark.
+  shellIcon: { rows: [
+    '................',
+    '.......4........',
+    '...3...43...3...',
+    '...43..43..43...',
+    '....3..43..3....',
+    '.....222222.....',
+    '....24431122....',
+    '...2443122212...',
+    '..244312221222..',
+    '..243111111122..',
+    '..232221222122..',
+    '..222212221222..',
+    '..111111111111..',
+    '................',
+  ], ramp: 'crystal' },
   leapBall: { rows: [
     '......www3......',
     '.....wWWW.2.....',
@@ -378,6 +397,7 @@ const SKILL_ICONS = {
       return L;
     }
     if (id === 'roll') {
+      if (m.shell) return ['shellIcon'];
       if (m.leapfrog) return ['arc', 'leapMan', 'leapBall'].concat(m.rollCooldown < 1 ? ['streaks'] : [], m.rollKeep > 0 ? ['spring'] : []);
       L.push(m.rollCooldown < 1 ? 'streaksLong' : 'streaks');
       if (m.venomRoll) L.push('puddle');

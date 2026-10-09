@@ -41,6 +41,9 @@ const DEV_TUNE = [
   ['camera', 'CAMERA ZOOM', '×1.2 = closer, ×0.8 = further', [0.5, 3]],
 ];
 const DEV_TUNE_RANGE = [0.3, 5];
+// The same lens as a row on the drawer's first page (8 Oct 2026: "I could not find it", it was on the ENEMIES tab):
+// each click steps to the next of these, round again after the last.
+const DEV_CAM_STEPS = [0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4];
 const devTuneRange = (key) => (DEV_TUNE.find((e) => e[0] === key) || [])[3] || DEV_TUNE_RANGE;
 // THE HORN TOOL (7 Oct 2026, "give me an option to change them right in the run, in a mini tool, so I can see the skill
 // with the length of the axis and everything"): one slider a number of the horn he has (`TUNING.goat.horns[kind]`),
@@ -241,6 +244,12 @@ class Game {
       this.askedDark = h === 'dark' && !this.dev.hidden;
       // `#showroom`: NEW GAME opens THE SHOWROOM (js/showroom.js) instead of the pen.
       this.askedShowroom = h === 'showroom';
+      // `#bot` (9 Oct 2026, "can I run the bot from the computer without the AI"): the friend's autoplay bot
+      // (tools/autoplay-bot.js, plain script, no model behind it) is loaded the way the harness is. Served pages only
+      // (the artifact has no /tools), F8 starts and stops it, F9 hides its panel.
+      if (h === 'bot' && !this.dev.hidden && /^(localhost|127\.0\.0\.1)$/.test(location.hostname || '')) {
+        const s = document.createElement('script'); s.src = '/tools/autoplay-bot.js'; (document.body || document.head).appendChild(s);
+      }
     } catch (e) { /* no location worth reading */ }
     this.layoutTouch();
     this.bindInput();
@@ -738,7 +747,10 @@ class Game {
       if (!d.iron && !d.stair && !d.clockFor) continue;
       const room = L.rooms[d.fromRoom]; if (!room || !room.seen) continue;
       if (room.wasEmpty === undefined) room.wasEmpty = !this.enemies.some((e) => e.room === d.fromRoom && !e.scripted);
-      if (room.wasEmpty) continue;   // nobody was ever in it: nothing was beaten
+      // Nobody was ever in it: nothing to beat, so it opens once he is inside (8 Oct 2026, "a shut door on the second floor,
+      // I cannot get through": the rest room before THE YARD's last ring had an iron door out that never opened, and iron
+      // reads as unbreakable, the iron cages are). It used to stay shut for good.
+      if (room.wasEmpty && this.goatRoom !== d.fromRoom) continue;
       if (this.enemies.some((e) => e.room === d.fromRoom && !e.dead && !e.scripted)) continue;
       // It swings open on its hinge rather than vanishing (playtest, 25 Sep 2026: "the doors should
       // open, not disappear by magic"). `open` above 0 is eased to 1 by `updateDoor`, and from 0.5 on
@@ -1181,7 +1193,7 @@ class Game {
   // default: a number counting up in the corner of a game about running is a game about the number,
   // and the run is timed either way, the card at the end of a level is where the time belongs.
   loadSettings() {
-    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: TUNING.audio.musicDefault, sfxVolume: 0.5, shake: 1, fps: false, photoKey: false, photoAuto: false, fastCalm: false, stats: false, statsAsked: false, keysOnly: false, musicLow: true };
+    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: TUNING.audio.musicDefault, sfxVolume: 0.5, shake: 1, fps: false, photoKey: false, photoAuto: false, fastCalm: false, stats: false, statsAsked: false, keysOnly: false, musicLow: true, sameFloor: false };
     try {
       const saved = JSON.parse(localStorage.getItem(SET_KEY) || '{}');
       // The music starts quieter (3 Oct 2026: playtesters turned it well down). A store written before
@@ -1354,7 +1366,8 @@ class Game {
   // body, a build is spread over the animal rather than piled on one verb. A `key` is never capped.
   boonOpen(b, li) {
     // `off`: DELETED in the dev drawer's BOONS tab (`BOON_OFF`, js/text-edit.js `BoonEdit`), never dealt
-    if (b.off || this.boons.includes(b) || (b.needs && !this.mods[b.needs]) || li < (b.minLevel || 0)) return false;
+    // `unlock`: a soul a dare up in heaven opens (TURTLEIZE, the tortoise's)
+    if (b.off || this.boons.includes(b) || (b.needs && !this.mods[b.needs]) || (b.unlock && !b.unlock()) || li < (b.minLevel || 0)) return false;
     if (b.key) return true;
     const cap = !b.skill ? BOON_SLOTS.general : b.active ? BOON_SLOTS.active : BOON_SLOTS.passive;
     return this.boons.filter((o) => !o.key && o.skill === b.skill && !!o.active === !!b.active).length < cap;
@@ -1366,7 +1379,7 @@ class Game {
   boonSwaps(li) {
     const out = [];
     for (const b of BOONS) {
-      if (b.off || b.key || this.boons.includes(b) || (b.needs && !this.mods[b.needs]) || li < (b.minLevel || 0) || this.boonOpen(b, li)) continue;
+      if (b.off || b.key || this.boons.includes(b) || (b.needs && !this.mods[b.needs]) || (b.unlock && !b.unlock()) || li < (b.minLevel || 0) || this.boonOpen(b, li)) continue;
       const held = this.boons.filter((o) => !o.key && o.skill === b.skill && !!o.active === !!b.active);
       if (held.length) out.push({ b, old: held[(Math.random() * held.length) | 0] });
     }
@@ -1555,6 +1568,10 @@ class Game {
     // THE CHASE over whatever floor is up, from now (js/chase.js); off takes it away. Its run codes carry `C`.
     if (id === 'chase') { this.dev.chase = !this.dev.chase; if (this.level && this.world && this.goat) Chase.start(this); this.devToast(this.dev.chase ? 'CHASE ON: THE RED COMES FROM THE LEFT' : 'CHASE OFF'); return; }
     if (id === 'showroom') { this.dev.open = false; this.startShowroom(); return; }
+    if (id === 'cam-zoom') {
+      const cur = this.dev.tune.camera || 1, next = DEV_CAM_STEPS.find((v) => v > cur + 0.001) || DEV_CAM_STEPS[0];
+      this.setDevTune('camera', next); this.devToast(`CAMERA ×${next}: ${next > 1 ? 'CLOSER, EVERYTHING BIGGER' : next < 1 ? 'FURTHER, MORE OF THE ROOM' : 'AS SHIPPED'}`); return;
+    }
     // PREV / NEXT LEVEL: straight onto the floor before or after this one, as LEVELS on the title does
     // (`startAtLevel`: the souls a run would have banked dealt out, no save touched). SKIP LEVEL is the
     // other one: it climbs the stairs of the run he is in.
@@ -1854,6 +1871,13 @@ class Game {
       else this.devSpawnAs(e, tag);
       return;
     }
+    // The corrupted ogre at a given meeting, one row each (8 Oct 2026: "I did not see where to summon the ogre's second and
+    // third waves"): the SPAWN AS row does the same for any kind, but it is a switch you have to know about.
+    if (id.startsWith('ogre-soul=')) {
+      const n = +id.slice(10) || 1, e = this.spawnEnemy('butcher'); if (!e) return;
+      const keep = this.dev.spawnAs; this.dev.spawnAs = n + 1; this.devSpawnAs(e, 'ogre'); this.dev.spawnAs = keep;
+      return;
+    }
     if (id === 'spawn-as') { this.dev.spawnAs = ((this.dev.spawnAs | 0) + 1) % DEV_SPAWN_AS.length; this.devToast('SPAWN AS ' + DEV_SPAWN_AS[this.dev.spawnAs]); return; }
     if (id === 'mouse') { this.spawnShop(); return; }
     // A wraith hung in the nearest plank door (`stageDoorMimic`'s surprise, on demand).
@@ -2096,6 +2120,8 @@ class Game {
     if (this.state === 'heaven' && this.heaven && this.heaven.panel && Heaven.panelKey(this, code)) { stop(); this.wakeAudio(); return; }
     // Backspace up in heaven is the jump, at once: a death is still a restart under a second away.
     // A page open over the pause (the book, SETTINGS) takes Backspace as "close" in `menuKey`; here it restarted the floor.
+    // On the death card Backspace is the RUN AGAIN button, so only once that button is up (`Painting.drawDeath`).
+    if (code === 'Backspace' && this.state === 'dead' && !Painting.quickRect && !this.showroomOn) { stop(); return; }
     if (code === 'Backspace' && !(this.state === 'paused' && this.menu.panel)) { stop(); if ((this.state === 'heaven' || (this.state === 'paused' && this.pauseFrom === 'heaven')) && this.heaven) Heaven.leave(this); else this.restartLevel(); }
     // Escape out of actual play pauses in place rather than dropping to the title, the room
     // stays exactly as it is and RESUME is the only way this function runs again. Escape out of
@@ -2421,6 +2447,8 @@ class Game {
     // kept the floor's death count and CONTINUE rebuilt the very layout he had just walked through.
     // Not a page only put aside in the back/forward cache (`persisted`): it comes back as it was.
     window.addEventListener('pagehide', (e) => {
+      // Heaven writes its store a beat late (`saveSoon`); a reload inside that beat lost a pour (9 Oct 2026).
+      if (typeof Heaven !== 'undefined' && Heaven.saveT) Heaven.save();
       if (e.persisted || this.showroomOn) return;
       Stats.close(this, 'closed');
       // The stairs and the clear card are not a death: the floor is behind him (`saveAhead`).
@@ -2598,16 +2626,23 @@ class Game {
     if (pigs) luck.heals = (luck.heals || 0) + pigs * (PH[0] + ((seed >>> 5) % (PH[1] - PH[0] + 1)));
     // No iron before this browser has held a key (5 Oct 2026 playtest: a cage that wants a key nobody has met reads as a wall).
     const genOpts = { luck, beast: this.beastFor(index), noIron: !this.learned.key };
+    // The mushrooms only once this browser has walked onto their floor in `shroom.runs` runs (9 Oct 2026 playtest).
+    if (index >= TUNING.shroom.from && index <= TUNING.shroom.upTo && !(Heaven.arrivals(index) >= TUNING.shroom.runs)) genOpts.shrooms = false;
+    // the run's first animal: its room is the quieter fight (`beast.calmMen`, gen.js; 8 Oct 2026, "only for the first")
+    if (genOpts.beast && this.beastPlanFor().findIndex((x) => x) === index) genOpts.firstBeast = true;
+    // an animal that asked up there to be brought out again stands near the start of the floor (9 Oct 2026 playtest)
+    if (genOpts.beast && Heaven.wantsAgain(genOpts.beast)) genOpts.beastAtStart = true;
     const crowd = this.crowdFor(index); if (crowd > 1) genOpts.crowd = crowd;
+    if (index === TUNING.dark.fork.at) genOpts.fork = this.forkRun();   // THE FORK's crack, or not, this run
     // Played dry (`Novelty`), the floor's draw leans toward room templates this browser has never walked into.
     if (!this.showroomOn && !(this.dev && this.dev.god)) { const fr = Novelty.freshOpts(); if (fr) genOpts.fresh = fr; }
     if (this.dev && this.dev.forceCombo) genOpts.combo = this.dev.forceCombo;   // the COMBOS tab's PLAY (`dealCombo`)
     // A floor put aside is laid with what it was laid with the first time (`floorGen`): the novelty clock, the first key,
     // a clover bought on it since would each deal another layout, and `spotOf`'s places would name other men and things.
-    if (sp && sp.gen) { const G = sp.gen; for (const k of ['luck', 'beast', 'noIron', 'crowd']) { if (G[k] === undefined) delete genOpts[k]; else genOpts[k] = G[k]; }
+    if (sp && sp.gen) { const G = sp.gen; for (const k of ['luck', 'beast', 'noIron', 'crowd', 'firstBeast', 'fork', 'shrooms', 'beastAtStart']) { if (G[k] === undefined) delete genOpts[k]; else genOpts[k] = G[k]; }
       if (G.fresh) genOpts.fresh = { seen: new Set(G.fresh.seen || []), vaults: new Set(G.fresh.vaults || []) }; else delete genOpts.fresh; }
     this.floorGen = { luck: genOpts.luck === undefined ? undefined : JSON.parse(JSON.stringify(genOpts.luck || null)), beast: genOpts.beast === undefined ? undefined : JSON.parse(JSON.stringify(genOpts.beast)),
-      noIron: genOpts.noIron, crowd: genOpts.crowd, again, fresh: genOpts.fresh ? { seen: [...genOpts.fresh.seen], vaults: [...genOpts.fresh.vaults] } : null };
+      noIron: genOpts.noIron, crowd: genOpts.crowd, firstBeast: genOpts.firstBeast, fork: genOpts.fork, shrooms: genOpts.shrooms, beastAtStart: genOpts.beastAtStart, again, fresh: genOpts.fresh ? { seen: [...genOpts.fresh.seen], vaults: [...genOpts.fresh.vaults] } : null };
     try { this.level = generateLevel(def, seed >>> 0, genOpts); }
     catch (err) { console.error(err); this.level = generateLevel(def, (seed ^ 0x5bd1e995) >>> 0, genOpts); }
     this.world = new World(this.level);
@@ -2698,7 +2733,12 @@ class Game {
     // the room's own box where the room fog never reaches, so the rack and the grass in it sat there
     // under nothing but the shade for anybody to read through the wall. `crackWall` gives it back.
     this.niches = this.props.filter((p) => p.kind === 'secret' && p.nicheTiles);
-    for (const p of this.niches) for (const i of p.nicheTiles.slice(1)) if (this.world.tiles[i] === T.FLOOR) this.world.tiles[i] = T.WALL;
+    // THE FORK's crack hides a flight of stairs, not floor (`p.under` gives each tile back as it was).
+    for (const p of this.niches) for (const i of p.nicheTiles.slice(1)) {
+      const t = this.world.tiles[i]; if (t !== T.FLOOR && t !== T.EXIT) continue;
+      if (t === T.EXIT) (p.under || (p.under = {}))[i] = t;
+      this.world.tiles[i] = T.WALL;
+    }
     this.world.caveDirty();
     // The cave cut through the middle of its tiles, when that is the shape asked for. Laid once the
     // furniture is down, since nothing that was put somewhere may end up grown over.
@@ -2758,7 +2798,7 @@ class Game {
     this.shopDlg = null; this.shopShut = {};   // the mouse's offer (js/codex.js)
     this.legsTied = null; this.song = null;   // the rabbit's bargain, the husky's song (js/beasts-more.js)
     this.crowMarks = [];   // the same bodies, for the crow, a level's dead do not call it to the next one
-    this.kills = 0; this.floorSouls = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0; this.aimSlow = 0; this.aimSlowCd = 0;
+    this.kills = 0; this.floorSouls = 0; this.floorCorrupt = 0; this.timer = 0; this.timeScale = 1; this.slowTimer = 0; this.aimSlow = 0; this.aimSlowCd = 0;
     this.kickX = 0; this.kickY = 0; this.zoomKick = 0; this.flashAmt = 0;
     // A death in the frame of a kill kept the hitstop and the shake into the next floor's first frames.
     this.hitstopTimer = 0; this.shakeAmt = 0; this.shakeX = 0; this.shakeY = 0; this.tripGrabWas = false;
@@ -2920,8 +2960,8 @@ class Game {
       this.beginRun(false);
       return;
     }
-    // Off the death card while heaven has something new (`deathNews`), only ASCEND goes on: no restart.
-    if (!fromHeaven && this.state === 'dead' && this.deathNews && this.deathNews.length && !this.showroomOn) return;
+    // Off the death card while heaven has something new (`deathNews`), only ASCEND goes on: no restart (the playtest line excepted).
+    if (!fromHeaven && this.state === 'dead' && this.deathNews && this.deathNews.length && !this.showroomOn && !this.sameOnce) return;
     // RESTART on the death card skips heaven, but the god still counts the death (`Heaven.restarted`).
     if (!fromHeaven && this.state === 'dead' && !this.showroomOn) Heaven.restarted();
     // A restart you ask for is a death you chose, and it counts as one: `deaths` is in the seed, and
@@ -2986,7 +3026,8 @@ class Game {
   // menu only while the dev drawer is open (30 Sep 2026: "moving between levels from the menu, only in
   // dev mode"), and never in the itch build, which has no drawer.
   // LEVELS, and BEST (2 Oct 2026 playtest: "hide it for now, it is not about the score"), only with the dev drawer open.
-  menuItems() { return MENU.filter((id) => (id !== 'levels' && id !== 'best') || (this.dev && this.dev.open && !this.dev.hidden)); }
+  // UNLOCKS joined the dev-only rows on 9 Oct 2026 ("don't need this" on the title): the book's second tab still has it
+  menuItems() { return MENU.filter((id) => (id !== 'levels' && id !== 'best' && id !== 'unlocks') || (this.dev && this.dev.open && !this.dev.hidden)); }
   menuAt(p) {
     const r = this.menu.rects;
     for (let i = 0; i < r.length; i++) if (p.x >= r[i].x && p.x <= r[i].x + r[i].w && p.y >= r[i].y && p.y <= r[i].y + r[i].h) return i;
@@ -3079,7 +3120,8 @@ class Game {
     this.startLevel(0, this.levelSeed(0), false, withIntro);
   }
   // Whether a death ends this run (`TUNING.permadeath`): never a LEVELS practice or THE SHOWROOM, which go round their floor.
-  permadeath() { return !!TUNING.permadeath && !this.runJumped && !this.showroomOn; }
+  // (SETTINGS `sameFloor`, a playtest's, or the death card's small PLAYTEST line for this one death, `sameOnce`: the old way.)
+  permadeath() { return !!TUNING.permadeath && !this.runJumped && !this.showroomOn && !(this.settings && this.settings.sameFloor) && !this.sameOnce; }
   // A new tab, never this one: the run on the title stays where it was. Framed as the artifact a
   // popup can be refused, so a plain link click is the fallback.
   openDiscord() {
@@ -3382,7 +3424,7 @@ class Game {
   saveAhead() {
     if (this.runJumped) return;
     if (this.state === 'climb') {
-      Motes.flush(this); Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1); Heaven.floorCleared(this, this.levelIndex);
+      Motes.flush(this); Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1); Heaven.arrived(this, levelIndexOf(this.level.def) + 1); Heaven.floorCleared(this, this.levelIndex);
       this.totalKills += this.kills; this.totalScore += this.scoreFor(this.kills, this.timer, this.levelIndex, this.level.def);
     }
     const ni = this.levelIndex + 1;
@@ -3536,7 +3578,7 @@ class Game {
     // THE SHOWROOM's stairs lead back round to its own start (8 Oct 2026 playtest: climbing them out into THE YARD
     // as a practice run with GOD still on "broke everything"); it is a floor to walk about, not a way into a run.
     if (this.showroomOn) { this.startShowroom(); this.devToast('THE SHOWROOM AGAIN'); return; }
-    if (!this.showroomOn) { Motes.flush(this); Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1); Heaven.floorCleared(this, this.levelIndex); }
+    if (!this.showroomOn) { Motes.flush(this); Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1); Heaven.arrived(this, levelIndexOf(this.level.def) + 1); Heaven.floorCleared(this, this.levelIndex); }
     this.showroomOn = false;
     Stats.cleared(this);
     this.state = 'clear'; this.totalKills += this.kills;
@@ -3894,6 +3936,8 @@ class Game {
       if (this.deathCam) this.updateDeathCam(dt);
       // RESTART on the card (`Painting.drawDeath`): the floor again at once, heaven skipped; Backspace is the same.
       if (this.input.lmbPressed && Painting.onQuick(this.input.mouse)) { Painting.quickRect = null; this.copyCode(); this.restartLevel(); this.clearEdges(); return; }
+      // The small PLAYTEST line under them (9 Oct 2026): this floor again, whatever PERMADEATH says.
+      if (this.input.lmbPressed && Painting.onSame(this.input.mouse)) { Painting.sameRect = null; this.copyCode(); this.sameOnce = true; this.restartLevel(); this.sameOnce = false; this.clearEdges(); return; }
       // Up to the pasture above (js/heaven.js); its edge is the way back down. THE SHOWROOM, a dev
       // floor, goes straight round again.
       if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) { this.copyCode(); if (this.showroomOn) this.restartLevel(); else Heaven.enter(this); }
@@ -4068,16 +4112,11 @@ class Game {
     keepIf(this.bullets, notDead);
     this.updateEffects(dt);
 
+    // A corrupted soul is taken with GRAB now, as a key and a bell are (8 Oct 2026: "to grab a corrupted soul I need the
+    // right mouse click"): `Goat.tryGrab` calls `takeSoul`. Walking over it no longer swallows it.
     for (const tm of this.souls) {
       tm.life += dt;
       if (this.goat.dead || tm.taken) continue;
-      if (hyp(tm.x - this.goat.x, tm.y - this.goat.y) < TUNING.soul.pickupR + this.goat.r) {
-        tm.taken = true; this.particles(tm.x, tm.y, 18, PALETTE.witchHi, 180); this.ring(tm.x, tm.y, 3 * TILE, PALETTE.witch);
-        // a soul given back by a floor put aside (`spotOf`, `back`) paid heaven and the talismans the first time
-        this.openSoulGate(tm.gate); if (!tm.back) { Talisman.onSoul(this); Heaven.earnSoul(this); }
-        this.audio.startMusicCue('soul', this.levelIndex);
-        this.openBoonChoice(); this.clearEdges(); return;
-      }
     }
     keepIf(this.souls, Game.untaken);
     for (const p of this.props) {
@@ -5148,6 +5187,7 @@ class Game {
       if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE))) { blocked = true; break; }
       mx = px; my = py;
     }
+    shooter.shotAt = this.timer;   // render only: the recoil (`PaintedArt.attackPose`)
     this.audio.sfxGunshot(); this.world.emitNoise(shooter.x, shooter.y, TUNING.noise.gunshot);
     this.particles(mx, my, 4, PALETTE.fireHi, 120); this.shake(1.5);
     this.flares.push({ x: mx, y: my, a: Math.atan2(dy, dx), life: TUNING.juice.muzzle.life });
@@ -5378,7 +5418,7 @@ class Game {
   // Off his feet: no verbs until it passes. The pen is the only thing that does it to him.
   stunGoat(t) {
     const g = this.goat;
-    if (g.dead) return;
+    if (g.dead || g.state === 'shell') return;   // a shell is not shoved (TURTLEIZE, js/shell.js)
     if (g.holding) { const h = g.holding; g.holding = null; h.held = false; if (!h.item) { h.state = 'floored'; h.timer = TUNING.goat.grab.letGo; } }
     g.state = 'stunned'; g.timer = t; g.dazed = Math.max(g.dazed, t + 0.6);
     this.shake(10, true); this.kick(0, 1, TUNING.juice.kick, true); this.hitstop(0.06);
@@ -5458,6 +5498,13 @@ class Game {
   }
   // Is the headbutt's own button held right now, on whatever it was put on (the mouse, a key, KEYBOARD ONLY's J or Z, a pad's
   // trigger, a thumb on the butt button): what a charged blow reads (`Goat.update`, `horns.*.charge`).
+  // The roll button held now (TURTLEIZE's shell lasts while it is, js/shell.js); on THE TRIP the roll is on BAAH's button.
+  rollHeldNow() {
+    const act = this.level && this.level.def && this.level.def.shroom ? 'scream' : 'roll';
+    return this.touch.active ? this.touch.pressed[act] !== undefined
+      : this.pad.active ? this.pad.held(act === 'roll' ? PAD_BTN.a : PAD_BTN.b)
+      : KeyBind.held(this, act) || (act === 'roll' && kbOn(this) && (this.keys.has('KeyL') || this.keys.has('KeyC')));
+  }
   buttHeldNow() {
     return this.touch.active ? this.touch.pressed.butt !== undefined
       : this.pad.active ? this.pad.buttHeld() : KeyBind.held(this, 'butt') || (kbOn(this) && (this.keys.has('KeyJ') || this.keys.has('KeyZ')));
@@ -5576,11 +5623,11 @@ class Game {
   // says "here", the sparks say "that way", and neither outlives the hitstop by much.
   impact(x, y, dx, dy) {
     const I = TUNING.juice.impact;
-    this.ring(x, y, I.ring * TILE, PALETTE.fireHi, I.life, 4);
+    this.ring(x, y, I.ring * TILE, PALETTE.hit, I.life, 4);
     const base = Math.atan2(dy, dx);
     for (let i = 0; i < I.sparks; i++) {
       const a = base + (Math.random() - 0.5) * 1.6, sp = 260 + Math.random() * 220;
-      this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.12 + Math.random() * 0.1, color: PALETTE.fireHi, size: 2, streak: true });
+      this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.12 + Math.random() * 0.1, color: PALETTE.hit, size: 2, streak: true });
     }
   }
   // A heart lost on the goat: a slash of red cells laid across him along the blow, the same picture as the horns'
@@ -5589,6 +5636,15 @@ class Game {
     const L = TUNING.juice.hurtLook, a = (kx || ky) ? Math.atan2(ky || 0, kx || 0) : Math.random() * Math.PI * 2;
     (this.slashes || (this.slashes = [])).push({ x: g.x, y: g.y - 4, a, life: L.slash, max: L.slash, len: L.len, tip: false, hurt: true, seed: Math.random() * 6.28 });
   }
+  // The soul swallowed (`Goat.tryGrab` within `soulGrabR`): its gate lifts, heaven and the talismans are paid, the cards come.
+  takeSoul(tm) {
+    tm.taken = true; this.particles(tm.x, tm.y, 18, PALETTE.witchHi, 180); this.ring(tm.x, tm.y, 3 * TILE, PALETTE.witch);
+    // a soul given back by a floor put aside (`spotOf`, `back`) paid heaven and the talismans the first time
+    this.openSoulGate(tm.gate); if (!tm.back) { Talisman.onSoul(this); Heaven.earnSoul(this); this.floorCorrupt = (this.floorCorrupt | 0) + 1; }
+    this.audio.startMusicCue('soul', this.levelIndex);
+    this.openBoonChoice(); this.clearEdges();
+  }
+  soulGrabR() { return Math.max(TUNING.soul.pickupR + this.goat.r, this.goat.r + TUNING.goat.grab.reach * 0.6 + 10); }
   // THE HORNS LAND (7 Oct 2026 playtest, "as in Hades, more impact when the horns hit"): a slash of cells laid across
   // the man the blow reaches, pale streaks fanning along the blow with a hot one down its middle, the man white for a
   // beat and a little more hitstop on top of the blow's own. `tip` (LONG's tips) lays it longer, harder and gold.
@@ -5621,6 +5677,14 @@ class Game {
   // (`first`) lies folded under THE ALTAR's ritual table (drawn before it, so under it, and shut in until it is
   // butted off), and every scrap the generator laid is given a drawing this browser has not found and this floor
   // does not already hold, or is taken up. THE SHOWROOM keeps its own.
+  // THE FORK this run (9 Oct 2026): a crack in THE YARD's last room onto the way down to THE DARK, on
+  // `dark.fork.chance` of runs off the run seed, never the browser's first; a LEVELS start and the dev's
+  // #dark always have it, so it can be walked to.
+  forkRun() {
+    if (this.runJumped || this.askedDark) return true;
+    const runs = (this.best || (this.best = this.loadBest())).runs || 0;
+    return runs > 1 && new RNG(((this.runSeed >>> 0) ^ 0x0f0e4c) >>> 0).chance(TUNING.dark.fork.chance);
+  }
   layScraps() {
     if (this.level.def.showroom) return;
     const PO = TUNING.prop.poster, got = (typeof Unlocks !== 'undefined' && Unlocks.load().objects) || {};

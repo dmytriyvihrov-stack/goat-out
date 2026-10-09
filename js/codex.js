@@ -207,7 +207,8 @@ const Codex = {
     game.audio.sfxCard();
   },
   open(game) {
-    if (game.state === 'play' && (game.shopDlg || game.revive || game.beastTalk || (game.bless && game.bless.on))) return false;
+    // over her offer too (8 Oct 2026: "I - open stats" under the cards); closed, the offer is still up where it was
+    if (game.state === 'play' && (game.revive || game.beastTalk || (game.bless && game.bless.on))) return false;
     // Over the soul's cards too (2 Oct 2026: "I has to work while choosing a soul, to look quickly"):
     // closed, `pausedIn` hands the cards back exactly as they were.
     if (game.state !== 'play' && game.state !== 'boon' && !(game.state === 'heaven' && game.heaven && !game.heaven.talk && !game.heaven.panel)) return false;
@@ -673,17 +674,18 @@ const Codex = {
     ctx.save(); ctx.globalAlpha = vis;
     ctx.fillStyle = 'rgba(13,10,12,0.82)'; ctx.fillRect(0, 0, W, H);
     // whole texels, so the paper's pixels stay square: as large as fits with room for the name under it
-    const k = Math.max(1, Math.floor(Math.min(W * 0.8 / g.w, H * 0.66 / g.h))), dw = g.w * k, dh = g.h * k, x = Math.round((W - dw) / 2), y = Math.round(H * 0.46 - dh / 2 + (1 - vis) * 24 * s);
+    // 9 Oct 2026 playtest: the name on TOP of the picture, and under it what to do with the paper (a headbutt tears it)
+    const k = Math.max(1, Math.floor(Math.min(W * 0.8 / g.w, H * 0.62 / g.h))), dw = g.w * k, dh = g.h * k, x = Math.round((W - dw) / 2), y = Math.round(H * 0.5 - dh / 2 + (1 - vis) * 24 * s);
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x + 6 * s, y + 8 * s, dw, dh);
     const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
     PROP_PIXELS.draw(ctx, 'poster-' + K.look, x, y, k);
     ctx.imageSmoothingEnabled = sm;
     ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = Math.max(2, 2 * s); ctx.strokeRect(x - 4 * s, y - 4 * s, dw + 8 * s, dh + 8 * s);
     const it = Unlocks.DESTRUCT.find((d) => d.id === 'poster-' + K.look);
-    ctx.textAlign = 'center'; ctx.font = `700 ${24 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
-    ctx.fillText(it ? it.name : 'THE CULT\'S PAPER', W / 2, y + dh + 40 * s);
-    ctx.font = `${15 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
-    ctx.fillText('ANY KEY TO PUT IT DOWN', W / 2, y + dh + 66 * s);
+    ctx.textAlign = 'center'; ctx.font = `700 ${26 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone;
+    ctx.fillText(it ? it.name : 'THE CULT\'S PAPER', W / 2, Math.max(30 * s, y - 22 * s));
+    ctx.font = `700 ${17 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.7)';
+    ctx.fillText('HEADBUTT TO DESTROY', W / 2, y + dh + 40 * s);
     ctx.restore();
   },
   watchShop(game) {
@@ -751,7 +753,7 @@ const Codex = {
   },
   shopKey(game, code) {
     const D = game.shopDlg; if (!D) return false;
-    if (code === 'KeyM' || code === TUNING.photo.key) return false;   // the mute and the camera are no verb, and work over her offer
+    if (code === 'KeyM' || code === TUNING.photo.key || code === 'KeyI') return false;   // the mute, the camera and the book are no verb, and work over her offer
     const n = this.shopOffers(game, D.id).length;
     if (code === 'Escape' || code === 'KeyE' || code === 'Backspace') { this.closeShop(game); return true; }
     if (D.t < TUNING.shop.dlg.arm) return true;
@@ -802,7 +804,10 @@ const Codex = {
     // her at the left, where he used to stand; on a narrow screen she is left out, her name over the cards
     const mw = narrow ? 0 : Math.min(190 * s, pw * 0.2);
     const cx0 = x0 + mw, avail = pw - 2 * mw, gap = 14 * s;
-    const cw = Math.min(260 * s, (avail - gap * (n - 1)) / n), rowW = n * cw + (n - 1) * gap, sx = cx0 + (avail - rowW) / 2;
+    // The grass is its own choice, not a talisman (8 Oct 2026): set apart from them by `sep`, an OR between.
+    const mi = offers.findIndex((o) => o.ware.id === 'milk'), sep = mi > 0 ? 46 * s : 0;
+    const cw = Math.min(260 * s, (avail - gap * (n - 1) - sep) / n), rowW = n * cw + (n - 1) * gap + sep, sx = cx0 + (avail - rowW) / 2;
+    const cardX = (i) => sx + i * (cw + gap) + (mi > 0 && i >= mi ? sep : 0);
     const descW = cw - 24 * s;
     ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 13.5 * s));
     const card = offers.map((o) => {
@@ -811,7 +816,8 @@ const Codex = {
       return { o, milk, d, rr: milk ? null : info.rr, desc, lines: R.wrap(desc, descW) };
     });
     const ch = Math.max(...card.map((c) => 118 * s + c.lines.length * 18 * s + 34 * s));
-    const gh = narrow ? 0 : clamp(Hh * 0.22, 80 * s, 180 * s);
+    // him larger than the soul's cards have him (8 Oct 2026: "the goat should look bigger here, so the changes show")
+    const gh = narrow ? 0 : clamp(Hh * 0.32, 110 * s, 270 * s);
     const whole = (gh ? gh + 44 * s : 40 * s) + ch;
     const top = Math.max(16 * s, (Hh - whole) / 2), cy = top + (gh ? gh + 44 * s : 40 * s);
     const sel = D.i < n ? offers[D.i] : null, selInfo = sel ? Shop.info(sel.ware) : null;
@@ -828,7 +834,7 @@ const Codex = {
       const mx = x0 + mw / 2, mf = cy + ch * 0.62;
       if (mouse) {
         ctx.save(); ctx.translate(mx + 9 * 5 * s, mf); const k = 5 * s; ctx.scale(k, k);
-        const fake = { x: 0, y: 0, phase: 0, wobble: 0, angry: 0, strikes: 0, kind: 'mouse' };
+        const fake = { x: 0, y: 0, phase: 0, wobble: 0, angry: 0, strikes: 0, kind: 'mouse', still: true };
         try { R.drawMouse(fake); } catch (err) { /* no picture of her: her name does */ }
         ctx.restore();
       }
@@ -837,14 +843,15 @@ const Codex = {
     // the cards
     D.rects = [];
     card.forEach((c, i) => {
-      const x = sx + i * (cw + gap), y = cy, hov = moved && m.x >= x && m.x <= x + cw && m.y >= y && m.y <= y + ch;
+      const x = cardX(i), y = cy, hov = moved && m.x >= x && m.x <= x + cw && m.y >= y && m.y <= y + ch;
       if (hov) D.i = i;
       const on = D.i === i, col = c.milk ? PALETTE.bone : c.rr.color;
       D.rects[i] = { x, y, w: cw, h: ch };
       const pk = clamp((D.t - 0.08 * i) / 0.22, 0, 1); if (pk <= 0) return;
       ctx.save(); ctx.globalAlpha *= pk;
-      if (on) { ctx.strokeStyle = 'rgba(239,230,208,0.9)'; ctx.lineWidth = 2 * s; ctx.strokeRect(x - 4 * s, y - 4 * s, cw + 8 * s, ch + 8 * s); }
-      ctx.fillStyle = on ? 'rgba(52,36,46,0.97)' : 'rgba(34,24,32,0.94)'; ctx.fillRect(x, y, cw, ch);
+      // the ring round the one pointed at is its rarity's colour too (white, green, violet)
+      if (on) { ctx.strokeStyle = col; ctx.lineWidth = 2 * s; ctx.strokeRect(x - 4 * s, y - 4 * s, cw + 8 * s, ch + 8 * s); }
+      ctx.fillStyle = c.milk ? (on ? 'rgba(34,48,30,0.97)' : 'rgba(24,34,22,0.94)') : on ? 'rgba(52,36,46,0.97)' : 'rgba(34,24,32,0.94)'; ctx.fillRect(x, y, cw, ch);
       ctx.strokeStyle = col; ctx.lineWidth = (on ? 3 : 2) * s; ctx.strokeRect(x, y, cw, ch);
       ctx.fillStyle = col; ctx.fillRect(x, y, cw, 4 * s);
       // the thing itself, breathing in a little light of its rarity
@@ -863,6 +870,15 @@ const Codex = {
       if (!game.touch.active && !padOn(game) && i < 3) { ctx.fillStyle = 'rgba(239,230,208,0.4)'; ctx.textAlign = 'left'; ctx.fillText(String(i + 1), x + 8 * s, y + 20 * s); }
       ctx.restore();
     });
+    if (sep) {
+      ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(13 * R.s, 15 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.55)';
+      ctx.fillText('OR', cardX(mi) - (sep + gap) / 2, cy + ch / 2 + 5 * s);
+    }
+    // a small line under the cards: the book, his stats and what he wears, is a key away (8 Oct 2026)
+    if (!game.touch.active && !padOn(game)) {
+      ctx.textAlign = 'center'; ctx.font = `700 ${Math.max(12 * R.s, 11 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
+      ctx.fillText('I · OPEN STATS', W / 2, Math.min(Hh - 10 * s, cy + ch + 30 * s));
+    }
     // the cross, the book's own, over the top right of the cards; `D.rects[n]` is it
     const B0 = game.book; game.book = game.book || {};
     this.drawCloseX(R, game, sx, cy - 48 * s, rowW + 12 * s, s);
@@ -965,17 +981,29 @@ const Unlocks = {
   // The four shelves, each a list of { sec, id, lvl, name, tag, text, draw }.
   shelves() {
     const d = this.load(), out = [];
-    out.push({ name: 'SOULS', list: BOONS.filter((b) => !b.off).map((b) => ({ sec: 'boons', id: b.id, lvl: d.boons[b.id] || 0, b,
+    // `lock` (9 Oct 2026 playtest: "show what is open, what is not found yet (a question mark), and what is not unlocked, which
+    // cannot be had until a special condition is met"): the condition that opens it, while it is shut (`Unlocks.lockOf`).
+    out.push({ name: 'SOULS', list: BOONS.filter((b) => !b.off).map((b) => ({ sec: 'boons', id: b.id, lvl: d.boons[b.id] || 0, b, lock: this.lockOf('boons', b),
       name: b.name, tag: (b.active ? 'ACTIVE' : 'PASSIVE') + ' · ' + (b.skill ? { butt: 'HORNS', grab: 'TEETH', roll: 'LEGS', scream: 'THROAT' }[b.skill] : 'BODY'), text: b.desc })) });
     out.push({ name: 'ANIMALS', list: ['chicken', ...Beast.KINDS].map((k) => ({ sec: 'beasts', id: k, lvl: d.beasts[k] || 0,
       name: 'THE ' + Beast.NAME[k], tag: 'ANIMAL', text: Beast.GIVES[k] ? Beast.GIVES[k]() : '' })) });
-    out.push({ name: 'TALISMANS', list: ARTIFACTS.map((a) => ({ sec: 'arts', id: a.id, lvl: d.arts[a.id] || 0,
+    out.push({ name: 'TALISMANS', list: ARTIFACTS.map((a) => ({ sec: 'arts', id: a.id, lvl: d.arts[a.id] || 0, lock: this.lockOf('arts', a),
       name: a.name, tag: 'TALISMAN · ' + rarityOfArt(a.id).name, text: a.tiers[0] ? a.tiers[0].desc : '' })) });
     out.push({ name: 'CAPES', list: CAPES.map((c) => ({ sec: 'capes', id: c.id, lvl: d.capes[c.id] || 0, name: c.name, tag: 'CAPE · ' + sayQ(), text: c.desc })) });
     out.push({ name: 'OBJECTS', list: this.ITEMS.map((it) => ({ sec: 'items', id: it.id, lvl: d.items[it.id] || 0, it, name: it.name, tag: 'OBJECT', text: it.text })) });
     // The cult's paper is a kind of its own (8 Oct 2026 playtest: "this is a separate type of objects"), on a shelf of its own.
     out.push({ name: "THE CULT'S PAPERS", list: this.DESTRUCT.map((it) => ({ sec: 'objects', id: it.id, lvl: d.objects[it.id] || 0, it, name: it.name, tag: "THE CULT'S PAPER", text: it.text })) });
     return out;
+  },
+  // What still shuts one away, in words, or null: a soul with an `unlock` (TURTLEIZE, the tortoise's dare), a talisman a
+  // dare pays for (`Heaven.talismanLocked`, `QUESTS[kind].talisman`).
+  lockOf(sec, x) {
+    if (sec === 'boons' && x.unlock && !x.unlock()) return x.lockText || 'NOT OPEN YET.';
+    if (sec === 'arts' && typeof Heaven !== 'undefined' && typeof QUESTS !== 'undefined' && Heaven.talismanLocked(x.id)) {
+      const k = Object.keys(QUESTS).find((q) => QUESTS[q].talisman === x.id);
+      return k ? `WIN ${QUESTS[k].name} UP IN HEAVEN, AND IT IS ON THE MOUSE'S SHELVES.` : 'NOT OPEN YET.';
+    }
+    return null;
   },
   count() { return this.shelves().reduce((a, s) => a + s.list.length, 0); },
   found() { return this.shelves().reduce((a, s) => a + s.list.filter((e) => e.lvl > 0).length, 0); },
@@ -1045,8 +1073,13 @@ const Unlocks = {
       ctx.fillStyle = 'rgba(185,135,58,0.4)'; ctx.fillRect(Math.round(fx), Math.round(fy), Math.round(fw), Math.max(1, Math.round(s)));
       const known = e.lvl > 0;
       ctx.textAlign = 'left'; ctx.font = `700 ${Math.max(16 * R.s, 19 * s)}px ${FONT_SC}`; ctx.fillStyle = known ? PALETTE.bone : 'rgba(239,230,208,0.5)';
-      ctx.fillText(known ? e.name : '? ? ?', fx, fy + 28 * s);
+      ctx.fillText(known ? e.name : e.lock ? 'LOCKED' : '? ? ?', fx, fy + 28 * s);
       ctx.font = `700 ${Math.max(12 * R.s, 12.5 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
+      if (!known && e.lock) {
+        ctx.fillText(e.tag, fx, fy + 48 * s);
+        ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 14 * s)); Codex.lines(R, e.lock, fx, fy + 74 * s, fw, 20 * s, 'left', 'rgba(239,230,208,0.88)');
+        return;
+      }
       const how = e.sec === 'boons' ? (e.lvl > 1 ? 'TAKEN' : 'DEALT') : e.sec === 'beasts' ? (e.lvl > 1 ? 'BROUGHT OUT' : 'MET') : e.sec === 'arts' || e.sec === 'capes' ? (e.lvl > 1 ? 'WORN' : 'SEEN') : e.sec === 'objects' ? 'TORN DOWN' : 'FOUND';
       ctx.fillText(known ? e.tag + ' · ' + how : 'NOT MET YET', fx, fy + 48 * s);
       if (known) { ctx.font = FONT_PICK.font('text', Math.max(13 * R.s, 14 * s)); Codex.lines(R, e.text, fx, fy + 74 * s, fw, 20 * s, 'left', 'rgba(239,230,208,0.88)'); }
@@ -1058,6 +1091,12 @@ const Unlocks = {
     ctx.fillStyle = known ? (sel ? 'rgba(52,36,46,0.97)' : 'rgba(34,24,32,0.94)') : 'rgba(20,14,18,0.7)'; ctx.fillRect(x, y, c, c);
     const col = !known ? 'rgba(239,230,208,0.16)' : e.lvl > 1 ? PALETTE.ochre : 'rgba(185,135,58,0.5)';
     ctx.fillStyle = col; ctx.fillRect(x, y, c, t); ctx.fillRect(x, y + c - t, c, t); ctx.fillRect(x, y, t, c); ctx.fillRect(x + c - t, y, t, c);
+    if (!known && e.lock) {
+      // shut until its condition is met: a padlock, not a question
+      const u = Math.max(2, Math.round(c / 14));
+      ctx.globalAlpha = 0.75; Heaven.drawPadlock(ctx, Math.round(x + c / 2 - 3.5 * u), Math.round(y + c / 2 - 0.5 * u), u); ctx.globalAlpha = 1;
+      return;
+    }
     if (!known) {
       ctx.textAlign = 'center'; ctx.font = `700 ${Math.round(c * 0.5)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.25)';
       ctx.fillText('?', x + c / 2, y + c * 0.68); ctx.textAlign = 'left';

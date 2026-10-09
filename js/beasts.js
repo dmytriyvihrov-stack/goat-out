@@ -24,6 +24,8 @@
 // `TUNING.prop.<kind>` is every number; `TUNING.beast` is where one comes from. `GEN_RULES.beasts`
 // holds the placement to its promise.
 const NO_PROPS = [];   // `bodyClear` with no furniture to ask about: a bird hops what stands on the floor
+// What an animal left a room behind shouts (`Beast.tick`; 9 Oct 2026 playtest, the tortoise's).
+const BEAST_STRAY = { tortoise: 'BRING ME WITH YOU!' };
 const Beast = {
   // Every kind this file drives. `Prop.update` and the generator both ask here rather than carrying
   // three literals about, so a fourth animal is one line in this list and one `update` branch.
@@ -57,11 +59,14 @@ const Beast = {
     if (!Beast.animal(p) || p.held || (p.hurtCd || 0) > 0) return;
     const B = TUNING.beast;
     if (p.kind === 'tortoise' && src !== 'fire') { Beast.shellTakes(p, game); p.hurtCd = B.hurtCd; return; }
+    // Fire hurts on every tile of it the animal stands in, so a burning floor was a heart every
+    // `hurtCd` (9 Oct 2026: the tortoise died in a mage's fire in a few seconds); after a burn the
+    // window is `hurtFire`, long enough to walk out of it, and it blinks as the goat does.
     // The fish is in water (fire does nothing) and in glass (anything else breaks it).
     if (p.kind === 'fish') { if (src !== 'fire') Beast.breakFish(p, game, 0, 0); return; }
     const own = TUNING.prop[p.kind] && TUNING.prop[p.kind].hp;   // the horse and the hen are sturdier than the rest
     p.beastHp = (p.beastHp === undefined ? own || B.hp : p.beastHp) - 1;
-    p.hurtCd = B.hurtCd; p.wobble = 0.3; p.hurtFlash = 0.25;
+    p.hurtCd = src === 'fire' ? B.hurtFire : B.hurtCd; p.hurtMax = p.hurtCd; p.wobble = 0.3; p.hurtFlash = 0.25;
     game.particles(p.x, p.y, 7, src === 'fire' ? PALETTE.fire : PALETTE.blood, 150);
     if (p.beastHp > 0) {
       game.audio.sfxAnimal(p.kind, true);
@@ -153,7 +158,11 @@ const Beast = {
     if (!p.gift && !p.spite && p.behind >= 0 && p.strayT <= 0 && d > B.strayR && d < B.strayFar && game.state === 'play') {
       p.strayT = B.strayGap * (1 + (Math.random() * 2 - 1) * B.strayJitter) * (p.behind >= 1 ? B.strayUrgent : 1);
       p.calledAt = game.timer;
-      game.audio.sfxAnimal(p.kind);
+      // The tortoise says it in words once he has gone a room on without it (9 Oct 2026 playtest: "run far from the
+      // tortoise and it shouts BRING ME WITH YOU, so you do not lose it"); `Beast.speak` keeps the plate in the picture.
+      if (p.kind === 'tortoise' && (p.behind >= 1 || d > B.strayR * 1.6) && !(p.saidStray > game.timer - B.strayWords)) {
+        p.saidStray = game.timer; Beast.speak(game, p, [BEAST_STRAY.tortoise]);
+      } else game.audio.sfxAnimal(p.kind);
     }
   },
 

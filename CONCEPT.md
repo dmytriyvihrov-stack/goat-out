@@ -108,8 +108,8 @@ fire, so a build reads as a shape rather than as a list of names.
 | **Bearer** | Melee. About half a second of windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |
 | **Butcher** | (The brute until 1.72.) A clubman with a cleaver and a hook on a rope, too heavy to be carried: a big shape in a bone apron with a bull's skull for a mask (since 1.66, the old Butcher's body, hence the name; that kind is the ogre now). Three killing blows, the one kind that is heavy without the outline; four as a boss. Seen from three to seven tiles off with a clear line, he plants and swings the hook round, a thin line on the floor to where it will land, and throws it where you are going, past his own men: run straight on and it catches you, and only a real turn after it leaves his hand, or a roll, slips it. Caught, you are dragged to his cleaver. The hook itself hurts nothing, the swing at the end of the rope does, and whatever the rope drags you across. A table, a barrel, a brazier or a shut door in its line stops it, a carried shield turns it, and a miss is reeled in while he stands. (Until 30 Sep 2026 he charged instead; furniture kept stopping it.) |
 | **Seer** | The cult mage. Never closes. Paints a rune under your feet that erupts into witchfire after about a second, and blinks five tiles clear if you get within three. Takes two of anything (the one man besides the Butcher who does without the outline), blinking clear after the first, and unlike the ogre he can always be grabbed, carried and thrown. Arrives late and never two to a room. |
-| **Shieldman** | (1 Oct 2026) A clubman behind a board of door planks, met alone on THE THRESHING FLOOR (or THE DARK) and from then on a few a floor. From in front the board takes whatever comes: a headbutt only rocks him back a step and throws the goat off it, a crate breaks on it, a blade sticks in it, a round stops, the teeth meet wood, and a man thrown into it dies on it as on a wall. Two blows split it. It is heavy: he walks slower than a clubman and turns slowly, so a goat who circles him, rolls past him or vaults him has his back, and a scream that sets him reeling drops it. Dead with the board whole, he leaves it lying, a shield to pick up. |
-| **Thrower** | (3 Oct 2026) A clubman with one arm grown huge on the green the cult pumps into it from a tank on his back, a goat's skull strapped on for a face, the other arm a stick. Met alone on THE BRIDGE, then on the floors after it. Three hits, and a headbutt moves him no further than it moves the butcher. He looks round his room for something to throw (a crate, a bomb, a clubman or a hound of his own, one of your animals), lifts it overhead, which is his windup and the moment to butt him (it comes down on his own head), carries it until you are a few tiles off and throws it down an amber line; it costs a heart if it reaches you, and his own men thrown at you die on whatever wall they meet. Up close he punches, or grabs you and throws you at the worst thing near, a drop, fire, a grate, a wall: the throw does nothing, what you hit does. The roll slips the grab. |
+| **Shieldman** | (1 Oct 2026) A clubman behind a board of door planks, met alone on THE BRIDGE (9 Oct 2026; THE THRESHING FLOOR before) and from then on a few a floor. From in front the board takes whatever comes: a headbutt only rocks him back a step and throws the goat off it, a crate breaks on it, a blade sticks in it, a round stops, the teeth meet wood, and a man thrown into it dies on it as on a wall. Two blows split it. It is heavy: he walks slower than a clubman and turns slowly, so a goat who circles him, rolls past him or vaults him has his back, and a scream that sets him reeling drops it. Dead with the board whole, he leaves it lying, a shield to pick up. |
+| **Thrower** | (3 Oct 2026) A clubman with one arm grown huge on the green the cult pumps into it from a tank on his back, a goat's skull strapped on for a face, the other arm a stick. Met alone on THE RAFTERS (9 Oct 2026; THE BRIDGE before), then on the floors after it. Three hits, and a headbutt moves him no further than it moves the butcher. He looks round his room for something to throw (a crate, a bomb, a clubman or a hound of his own, one of your animals), lifts it overhead, which is his windup and the moment to butt him (it comes down on his own head), carries it until you are a few tiles off and throws it down an amber line; it costs a heart if it reaches you, and his own men thrown at you die on whatever wall they meet. Up close he punches, or grabs you and throws you at the worst thing near, a drop, fire, a grate, a wall: the throw does nothing, what you hit does. The roll slips the grab. |
 | **Hunter** | Rifle. Keeps five to eight tiles away, aims for most of a second with a visible line, bullets travel. Friendly fire is on and he does not care. |
 | **Hound** | The cult's dog, and the one enemy that is not a man. As quick as the goat. Cannot be grabbed, and is not there for roughly a third of the headbutts aimed at it. Circles out past your horns, commits to a run, flattened, streaking, eyes lit, which is the one tell you get, bites once and gets out. A pack sends one in at a time, so three hounds are hard rather than unreadable. One hit kills it, but the scream takes it apart for well over twice as long as it takes a man, and a dazed hound cannot dodge. It is the enemy that exists to make BAAH worth pressing. |
 | **Ogre** | Heavy: the cult's ogre (1.66, once the Butcher), a hunched two-legged half-beast in the cult's red hood and mantle, not the rat ogre. Nothing knocks him back. Four hits, and fire only ever costs him one of them however long he burns. He has no swing. Out of reach he crouches with a ring drawn on the floor where you stand and leaps onto it, over men and holes; close in he brings both fists down on the floor, a ring round him on every side. Both leave him on his knees long enough to be hit, but not by the horns, which do nothing to him: a blade, the coals of a brazier, a bomb or a thrown body is what costs him a heart, and his arena always stands braziers and swords for it (the first time, THE CAVE's last room since 8 Oct 2026, found at his meal, nowhere shows him before it, a wide room with two pillars, so the idea reads). His own men inside a ring are left standing. A scream breaks the crouch, never the leap. Deals one heart. |
@@ -205,11 +205,11 @@ the rest rooms):
 | **THE ALTAR** | 12 | Stone | Bearers, butchers | A clubman with the soul in him, three hearts, two men |
 | **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Butcher with one man (room 4, four hearts), elite Seer (sealed in), a mage by a brazier with a second mage (the last room) |
 | **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers | Butcher, ogre (the last room, the first of him) |
-| **THE ROAD** | 14 | The line | All five, rifles new | Ogre; the butcher with four men and two mages (the last room) |
-| **THE THRESHING FLOOR** | 13 | Open ground | All five, shieldmen new | Elite Seer, ogre, a rifleman, three hearts (the last room) |
-| *or* **THE DARK** | 12 | The lamp | Bearers, butchers, hounds and Seers heavy, shieldmen new; never a rifle | Elite Seer, ogre, butcher |
-| **THE BRIDGE** | 15 | The funnel | All six | Ogre, elite Seer, ogre |
-| **THE RAFTERS** | 15 | The drop | All six | Elite Seer, ogre, butcher |
+| *or* **THE DARK** | 12 | The lamp | Bearers, butchers, hounds and Seers heavy; never a rifle | Elite Seer, ogre, butcher |
+| **THE ROAD** | 14 | The line | All five, rifles new, the first drop across a room | Ogre; the butcher with four men and two mages (the last room) |
+| **THE THRESHING FLOOR** | 13 | Open ground | All five, the shaman new (in a room cut by drops) | Elite Seer, ogre, a rifleman, three hearts (the last room) |
+| **THE BRIDGE** | 15 | The funnel | All six, shieldmen new | Ogre, elite Seer, ogre |
+| **THE RAFTERS** | 15 | The drop | All seven, the thrower new | Elite Seer, ogre, butcher |
 | **THE OSSUARY** | 15 | The niche | Wraiths, and a garrison | Ogre, elite wraith, elite Seer |
 
 **THE CAVE** is third: out under the compound the ground stops being built. No wall runs straight and
@@ -218,14 +218,14 @@ a boulder, the end of a bend. Tall grass hides whoever is in it, the goat includ
 the foot of the rock kill a man and cost the goat a heart. Nothing new walks in; the ground is the new
 thing, the last floor about the ground before the rifles make it about what stands on it.
 
-**THE FORK and THE DARK.** THE ROAD's last room has two flights of stairs. The lit one climbs to THE
-THRESHING FLOOR; the cold one to THE DARK, which is played in its place: cellars where nothing is lit
-but what burns. Every room with men in it stands a lamp or two, and the lamp is the choice, it shows
+**THE FORK and THE DARK.** On half the runs (never a browser's first) a wall of THE YARD's last room
+is cracked (9 Oct 2026; THE ROAD's second flight until then). Butt it open and a cold flight behind it
+goes to THE DARK, which is played in THE CAVE's place: cellars where nothing is lit but what burns. Every room with men in it stands a lamp or two, and the lamp is the choice, it shows
 them to you and you to them, and a headbutt puts it on the floor alight and then the room is black. A
 lantern on the wall by every door is never put out. Out of the light the cult sees you only close and
 hunts by what it hears. Fewer men, no rifles, hounds and Seers oftener.
 
-**THE TRIP.** From THE ROAD to THE BRIDGE, a tuft of pale mushrooms lies on some floors (never where it would turn the last floor into the trip). Eat it and the next floor is played as THE
+**THE TRIP.** On THE ROAD alone, and only once this browser has walked onto it in three runs (9 Oct 2026), a tuft of pale mushrooms lies on some floors (never where it would turn the last floor into the trip). Eat it and the next floor is played as THE
 TRIP: a glowing cave where every key is the other way round, the stick reversed, the horns and the
 teeth swapped, the tumble and the voice swapped, with the first floor's men and the first floor's
 curve, because what is asked of the hands is already the whole difficulty. Take THE FORK's dark flight
@@ -380,7 +380,7 @@ the player to believe that a goat reads.
 
 **A level gives up exactly two**, one in the middle and one at the end: the keeper of the middle gate
 carries the first, the last boss the second. On THE YARD, THE ROAD and THE BRIDGE the mouse stands in
-for the first, thirteen across a run, against twenty-eight boons and a build that holds seventeen, so no
+for the first, thirteen across a run, against twenty-nine boons (TURTLEIZE only once the tortoise's dare is won) and a build that holds seventeen, so no
 run gets everything and no two runs are the same goat. Nothing else pays one: not a cleared room, not a
 lit boss on a lucky seed, not the vault. Every other boss leaves grass. **A man carrying one is lit**: an
 violet haze that breathes, a ring at his feet, and red eyes, so the one man in a room worth crossing the

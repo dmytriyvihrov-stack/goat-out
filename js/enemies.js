@@ -313,6 +313,10 @@ class Enemy {
       const p = this.hung;
       p.body = this; p.bodyFoot = this.y - p.y; this.impaled = 0; this.impaleOn = null; this.pin = null;
       if (game.fx && game.fx.corpseSprite && game.renderer) p.bodyImg = game.fx.corpseSprite(this, Math.PI / 2, cause === 'burn').image;
+      // He swings on the tines, and says so (`trophy.sway`, `trophy.lines`): the trophy draws the swing from `hungAt`.
+      p.hungAt = game.renderer ? game.renderer.t : 0;
+      const L = TUNING.prop.trophy.lines;
+      game.floatText(p.x, p.y - 44 - TUNING.prop.trophy.lift, L[Math.floor(Math.random() * L.length)], PALETTE.bone);
     }
     if (this.kind === 'wraith') {
       game.particles(this.x, this.y, 26, PALETTE.witchHi, 240);
@@ -920,6 +924,8 @@ class Enemy {
     if (!(now - (this.buttAt === undefined ? -1e9 : this.buttAt) < S.window)) this.butts = 0;
     this.buttAt = now;
     const n = this.butts || 0;
+    // Never twice in `cd` s (9 Oct 2026: "he must not spam the shove"): inside it every butt lands as usual.
+    if (this.shoveAt !== undefined && now - this.shoveAt < S.cd) { this.butts = n + 1; return false; }
     if (Math.random() >= S.odds[Math.min(n, S.odds.length - 1)]) { this.butts = n + 1; return false; }
     // After a shove the count starts again: the next two butts land whatever happens.
     this.butts = 0;
@@ -930,8 +936,12 @@ class Enemy {
     g.state = 'stunned'; g.timer = S.daze; g.dazed = Math.max(g.dazed || 0, S.daze);
     g.vx = -ax * S.speed; g.vy = -ay * S.speed;
     game.bark(this, 'shove', 0.8);
-    game.audio.sfxThud(); game.squashGoat(TUNING.juice.squash.hit); game.hitstop(0.04);
-    game.particles(g.x + ax * g.r, g.y + ay * g.r, 6, PALETTE.ash, 200);
+    game.audio.sfxThud(); game.squashGoat(TUNING.juice.squash.hit); game.hitstop(S.stop);
+    game.particles(g.x + ax * g.r, g.y + ay * g.r, 10, PALETTE.ash, 260);
+    // Seen as a shove (9 Oct 2026: "show it more clearly"): a ring bursting off him in the enemy's amber and a
+    // smaller one where it met the goat, as the lean (`S.lunge`, `S.lean` px) throws him into it.
+    game.ring(this.x, this.y, S.ring * TILE, PALETTE.fire, 0.35, 3);
+    game.ring(g.x, g.y, S.ring * 0.55 * TILE, PALETTE.fireHi, 0.25, 2);
     return true;
   }
 
@@ -1522,6 +1532,11 @@ class Enemy {
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
     const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy);
+    // Across a drop from the goat with no short way round (9 Oct 2026 playtest: "the rifleman could not aim here, as if he
+    // cannot aim across a chasm"): the goat stood just past his sight and he pushed at the lip trying to walk to him. Cut
+    // off, he sees down a clear line `gapReach` times as far, shoots from there, and holds the lip instead of walking at it.
+    const cut = this.aware && this.cutOffByGap(game, d);
+    if (cut && !sees && d < cfg.sight * cfg.gapReach * TILE && this.poison <= 0 && Talisman.visibleTo(game, this, d) && game.sees(this.x, this.y, g.x, g.y)) sees = true;
     if (this.state === 'aim') {
       this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx); this.timer -= dt;
       if (!sees || this.poison > 0) { this.state = 'chase'; return; }
@@ -1543,7 +1558,7 @@ class Enemy {
     // chase: keep distance, shoot when possible
     // The corrupted rifleman from his second meeting blinks out from a goat who has closed on him (js/endboss.js).
     if (this.blinker && EndBoss.hunterBlink(this, game, d, dt)) return;
-    const reach = (cfg.sight + (this.watchful ? cfg.watchSight : 0)) * TILE;
+    const reach = (cfg.sight * (cut ? cfg.gapReach : 1) + (this.watchful ? cfg.watchSight : 0)) * TILE;
     // Stepping out from behind the man in front of him: sideways across the line, a beat, then look again.
     if (this.sidestep > 0) {
       this.sidestep -= dt;
@@ -1572,8 +1587,14 @@ class Enemy {
       else { this.vx = 0; this.vy = 0; }
       this.facing = Math.atan2(dy, dx); return;
     }
-    if (d > cfg.keepMax * TILE || !sees) { this.chaseGoat(game, this.speed, dt); return; }
+    if ((d > cfg.keepMax * TILE || !sees) && !(cut && sees)) { this.chaseGoat(game, this.speed, dt); return; }
     this.vx = 0; this.vy = 0; this.facing = Math.atan2(dy, dx);
+  }
+  // A drop (`level.gaps`) between him and the goat and the land way round long or none (`gapCross.longer`, js/gapcross.js).
+  cutOffByGap(game, d) {
+    const L = game.level; if (!L || !L.gaps || !(L.gaps.size || L.gaps.length)) return false;
+    const fl = game.world.flowDist(this.x, this.y);
+    return fl < 0 || fl > d / TILE * TUNING.gapCross.longer;
   }
 
   // Is one of his own in the first `friendClear` tiles of the line he would fire down?
@@ -2133,7 +2154,7 @@ class Enemy {
     if (d < cfg.blinkRange * TILE && this.blinkCd <= 0 && !g.dead) { this.blink(game); return; }
     if (sees && this.castCd <= 0 && !g.dead && this.poison <= 0) {
       this.state = 'cast'; this.timer = cfg.castWind * game.mods.enemySlow; this.vx = 0; this.vy = 0;
-      this.rune = { x: g.x, y: g.y }; this.byEar = false;
+      this.rune = this.runeSpot(game); this.byEar = false;
       game.audio.sfxCast(); w.emitNoise(this.x, this.y, TUNING.noise.cast, 'cult');
       return;
     }
@@ -2158,6 +2179,25 @@ class Enemy {
     if (d < own || d > A.earCast * TILE) return;
     for (const o of game.enemies) if (o !== this && !o.dead && hyp(o.x - n.x, o.y - n.y) < own) return;
     this.earRune = { x: n.x, y: n.y, at: game.timer };
+  }
+
+  // Where a rune he starts now is painted: on the goat, unless another mage's rune is already waiting there; then
+  // where the goat is going, or beside him, so two mages cover two places (`seer.pair`).
+  runeSpot(game) {
+    const g = game.goat, P = TUNING.seer.pair, w = game.world;
+    const taken = game.enemies.some((o) => o !== this && !o.dead && o.kind === 'seer' && o.state === 'cast' && o.rune && !o.byEar && hyp(o.rune.x - g.x, o.rune.y - g.y) < P.apart * TILE);
+    if (!P || !taken) return { x: g.x, y: g.y };
+    const T0 = this.cfg.castWind * game.mods.enemySlow * P.lead, sp = hyp(g.vx || 0, g.vy || 0);
+    let ox, oy;
+    if (sp > 20) { const k = Math.min(sp * T0, P.maxLead * TILE) / sp; ox = g.vx * k; oy = g.vy * k; }
+    else {
+      const o = game.enemies.find((q) => q !== this && q.kind === 'seer' && q.state === 'cast' && q.rune);
+      const a = Math.atan2(g.y - this.y, g.x - this.x) + (o && Math.sin(Math.atan2(o.rune.y - g.y, o.rune.x - g.x) - Math.atan2(g.y - this.y, g.x - this.x)) > 0 ? -1 : 1) * Math.PI / 2;
+      ox = Math.cos(a) * P.apart * TILE; oy = Math.sin(a) * P.apart * TILE;
+    }
+    // never into stone: pulled back toward him a quarter at a time
+    for (let f = 1; f > 0; f -= 0.25) { const x = g.x + ox * f, y = g.y + oy * f; if (w.tileAtPx(x, y) !== T.WALL) return { x, y }; }
+    return { x: g.x, y: g.y };
   }
 
   // The rune he has been painting goes off where he painted it. Held or standing, same fire.
@@ -2266,6 +2306,7 @@ class Enemy {
       if (this.timer <= 0) {
         this.hopZ = 0; this.state = 'hopland'; this.timer = L.land * game.mods.enemySlow; this.slamCd = L.cd;
         this.quake(game, L, L.radius * TILE);
+        this.landOnTeeth(game);
         if (this.soul) Waves.land(game, this);   // a corrupted ogre met again: rings of witchfire (js/waves.js)
       }
       return;
@@ -2378,7 +2419,7 @@ class Enemy {
   // i-frames, and any other moment he cannot be hurt, go through the rope).
   static hookable(g) {
     if (g.dead || g.leap || g.invuln > 0) return false;
-    return g.state !== 'roll' && g.state !== 'stunned' && g.state !== 'falling' && g.state !== 'ko' && g.state !== 'carried' && g.state !== 'tossed';
+    return g.state !== 'roll' && g.state !== 'stunned' && g.state !== 'falling' && g.state !== 'ko' && g.state !== 'carried' && g.state !== 'tossed' && g.state !== 'shell';
   }
   // Stone and whatever stops a round stop the hook; his own men do not, it goes past them.
   hookLine(game, x, y) { return game.clearLine(this.x, this.y, x, y, game.props, 'stopsBullets', 2); }
@@ -2596,6 +2637,24 @@ class Enemy {
   // slam, no step, for whatever the room holds (a blade, fire, a thrown body). Before this he was
   // stuck by accident: every man steers off a spire, so standing on one he could not walk off it,
   // and it took a heart a second until he died. Now it is a window with an end.
+  // Come down out of a leap with his whole body on teeth (9 Oct 2026 playtest: "when the ogre lands on spikes he takes
+  // damage"): a spire under his feet's footprint (`impale.landR` px past touching), or a grate under him, which his weight
+  // drives up at once. The spire's own touch only ever caught him on the goat's exact spot, which the goat never stands on.
+  landOnTeeth(game) {
+    const I = TUNING.cave.spikes.impale;
+    if (this.dead || this.impaled > 0 || !I.kinds.includes(this.kind)) return;
+    for (const p of game.props) {
+      if (p.broken || p.dead) continue;
+      const d = hyp(p.x - this.x, p.y - this.y);
+      if (p.kind === 'spire' && d < this.r + p.r + I.landR) { this.spireAt = game.timer; this.impale(game, p); return; }
+      if (p.kind === 'spike' && d < this.r * 0.6 + TILE * 0.5) {
+        const S = TUNING.prop.spike;
+        p.spikeState = 'up'; p.spikeT = S.up; p.bit = [this];
+        game.audio.sfxCrack(); game.audio.sfxSteel(); game.particles(p.x, p.y, 6, PALETTE.wood, 150);
+        this.spireAt = game.timer; this.impale(game, p); return;
+      }
+    }
+  }
   impale(game, p) {
     const I = TUNING.cave.spikes.impale;
     this.vx = 0; this.vy = 0; this.hopZ = 0;
@@ -2698,6 +2757,7 @@ class Enemy {
   hopLand(game) {
     const H = this.cfg.hop, g = game.goat, R = H.radius * TILE;
     this.hopZ = 0; this.state = 'hopland'; this.timer = H.land * game.mods.enemySlow; this.vx = 0; this.vy = 0;
+    this.landOnTeeth(game);
     game.thud(this.x, this.y, 8); game.hitstop(0.03); game.audio.sfxThud(); game.vibe(24);
     game.ring(this.x, this.y, R, PALETTE.blood, 0.4, 4); game.dust(this.x, this.y, 12, 0, 0);
     game.world.emitNoise(this.x, this.y, TUNING.noise.swing, 'cult');

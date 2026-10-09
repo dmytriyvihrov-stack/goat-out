@@ -1117,11 +1117,13 @@ const PROP_PIXELS = (() => {
   }
   function chandelierDown() {
     const g = new Grid(38, 16), r = rng(29), cx = 19, cy = 9;
-    g.ring(cx, cy, 15, 5, 2, P.b2); g.tone((x, y) => y < cy - 1, P.b3, [P.b2]); g.tone((x, y) => y > cy + 1, P.b1, [P.b2]);
+    // Down, it is spent and says so (8 Oct 2026: "less active in colour once it has fallen"): the brass a step darker and
+    // tarnished, the candles snuffed grey with a black wick, the wax dull. The ring in the air keeps its bright brass.
+    g.ring(cx, cy, 15, 5, 2, P.b1); g.tone((x, y) => y < cy - 1, P.b2, [P.b1]); g.tone((x, y) => y > cy + 1, P.b0, [P.b1]);
     g.rect(cx + 7, cy + 3, 5, 2, null);                                                             // bent where it hit
-    for (const [x, y, w] of [[3, 3, 5], [26, 1, 4], [30, 12, 5], [9, 13, 4], [18, 4, 3]]) { g.rect(x, y, w, 2, P.c1); g.hl(x, y, w, P.c2); }
-    for (let i = 0; i < 7; i++) g.set(Math.floor(r() * 36) + 1, Math.floor(r() * 14) + 1, P.c0);   // wax on the floor
-    g.set(cx, 2, P.b3); g.set(cx + 1, 2, P.b2); g.set(cx - 1, 1, P.i3);                             // the hub and a link of chain
+    for (const [x, y, w] of [[3, 3, 5], [26, 1, 4], [30, 12, 5], [9, 13, 4], [18, 4, 3]]) { g.rect(x, y, w, 2, P.s2); g.hl(x, y, w, P.s3); g.set(x, y, P.d1); }
+    for (let i = 0; i < 7; i++) g.set(Math.floor(r() * 36) + 1, Math.floor(r() * 14) + 1, P.s1);   // wax on the floor
+    g.set(cx, 2, P.b2); g.set(cx + 1, 2, P.b1); g.set(cx - 1, 1, P.i2);                             // the hub and a link of chain
     return g.outline();
   }
   // The cleat the rope is tied off at, on the far wall; `cut` the rope is gone, a frayed end left.
@@ -1630,7 +1632,12 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
       const n = Math.floor(Math.max(0, run - lag * Tr.drip) / c);
       for (let i = 0; i < n; i++) { ctx.fillStyle = i % 4 === 3 ? PALETTE.bloodDark : PALETTE.blood; ctx.fillRect(Math.round(p.x + dx), foot - 12 + i * c, c, c); }
     }
+    // Swinging on the tines about his middle: a wide swing at first that dies down to a hang (`trophy.sway`).
+    const W = Tr.sway, age = Math.max(0, renderer.t - (p.hungAt || 0)), amp = W.amp * Math.max(0, 1 - age / W.settle) + W.rest;
+    const ang = amp * Math.sin(age * W.rate * Math.PI * 2 + (p.x | 0)), piv = foot - 34;
+    ctx.save(); ctx.translate(Math.round(p.x), piv); ctx.rotate(ang); ctx.translate(-Math.round(p.x), -piv);
     ctx.drawImage(p.bodyImg, Math.round(p.x - 48), foot - 64);
+    ctx.restore();
     putSnap(ctx, 'trophy-tips', x0, y0, k);
     return true;
   };
@@ -1641,7 +1648,9 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   A.poster = function (renderer, p) {
     const D = TUNING.prop.poster, ctx = renderer.ctx;
     const open = p.torn ? 1 : p.unfold > 0 ? p.unfold : 0;
-    const name = p.torn ? 'poster-shreds' : open > 0 ? 'poster-' + p.look : 'poster-scrap', g = S[name];
+    // Opened on the floor it is the same plain sheet whatever drawing it holds (9 Oct 2026 playtest: "it can look the same
+    // everywhere"); the drawing itself is the full-screen view (`Codex.drawPoster`), not the floor's.
+    const name = p.torn ? 'poster-shreds' : 'poster-scrap', g = S[name];
     const k = open > 0 && !p.torn ? D.texel * D.flat : D.texel, sy = p.torn || !open ? 1 : 0.2 + 0.8 * open;
     const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 3) : 0;
     ctx.save(); ctx.translate(p.x + wob, p.y); ctx.scale(1, TILT * sy);

@@ -106,6 +106,9 @@ const JUICE_PLAY = {
 
 // Why a row has no preview. Anything not listed falls back on its category or status.
 const JUICE_NOPLAY = {
+  'A blow as a body': 'SPAWN a BEARER in the dev drawer and stand by him',
+  'The swing seen': 'SPAWN a BEARER in the dev drawer and stand by him',
+  'Rifle recoil': 'SPAWN a HUNTER in the dev drawer',
   'The horns land': 'any headbutt on a man: SPAWN a BEARER in the dev drawer and butt him',
   'A heart taken, on him': 'any blow taken with GOD off',
   'A heart breaks': 'any blow taken with GOD off: the heart row, top left',

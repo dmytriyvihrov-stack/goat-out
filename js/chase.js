@@ -200,7 +200,12 @@ const Chase = {
     // Never over the goat himself: at the head of a floor the camera stands at the world's edge and he is at the
     // left of the picture, and a goat drawn under the red is a goat nobody can play. The pressure is not cut.
     const g = game.goat, gsx = g ? R.vcx + (g.x - game.cam.x) * game.cam.zoom : R.vw;
-    const W = Math.min(c.show * TUNING.chase.band * R.vw, gsx - L.clear * TILE * game.cam.zoom), H = R.vh;
+    // It backs off as he walks at it (9 Oct 2026 playtest: "the chase does not step back when I come up to it"): `clear` tiles
+    // of floor always between the field and him, the field easing back to there (`c.backW`) rather than cut at his heels.
+    const want = Math.max(0, Math.min(c.show * TUNING.chase.band * R.vw, gsx - L.clear * TILE * game.cam.zoom));
+    const fdt = clamp((game.timer || 0) - (c.backAt === undefined ? game.timer || 0 : c.backAt), 0, 0.1); c.backAt = game.timer || 0;
+    c.backW = c.backW === undefined ? want : want < c.backW ? c.backW + (want - c.backW) * Math.min(1, L.back * fdt) : want;
+    const W = c.backW, H = R.vh;
     // The whole frame reddens a little once it is most of the way full.
     if (c.show > L.tintFrom) { ctx.fillStyle = PALETTE.blood; ctx.globalAlpha = L.tint * (c.show - L.tintFrom) / (1 - L.tintFrom); ctx.fillRect(0, 0, R.vw, H); ctx.globalAlpha = 1; }
     if (W < cell) return;

@@ -96,7 +96,7 @@ const EndBoss = {
     const B = game.endBoss, g = game.goat;
     if (!B || B.seen || g.dead) return false;
     const room = game.level.rooms[B.room];
-    if (!this.inRoom(room, g.x, g.y, 1)) return false;
+    if (!room || !this.inRoom(room, g.x, g.y, 1)) return false;   // (a floor swapped under it: nothing to watch)
     B.seen = true;
     if (!(game.dev && game.dev.endMeet > 0) && !(game.dev && game.dev.god)) { const D = this.load(); D.met[B.li] = Math.max(D.met[B.li] | 0, B.meet); this.save(); }
     const e = B.e;
@@ -133,7 +133,7 @@ const EndBoss = {
     const S = game.endScene, C = TUNING.endBoss.scene;
     S.t += dt;
     const skip = S.seen && S.t > C.skipAfter && (game.input.lmbPressed || game.input.spacePressed);
-    if (skip || S.t > C.cap) { this.end(game); return; }
+    if (skip || S.t > (S.long ? TUNING.endBoss.ogre.long.cap : C.cap)) { this.end(game); return; }
     S.bars = S.done ? Math.max(0, S.bars - dt * 4) : Math.min(1, S.bars + dt * 3);
     const look = S.kind === 'twin' ? this.stepTwin(game, dt) : S.kind === 'mage' ? this.stepMage(game, dt) : this.stepOgre(game, dt);
     if (!game.endScene) return;
@@ -287,11 +287,34 @@ const EndBoss = {
   },
 
   // ---- THE CAVE: the ogre at his meal ----
+  // The first meeting is longer (9 Oct 2026 playtest: "the first time you see the ogre, the mage runs off with your ewe
+  // again and gives the ogre his power; he finishes the carcass, roars, throws, and leaps at you; more time, more of a
+  // film"): the opening's mage stands by him with her under his arm, pours the violet into him, runs out through the way
+  // out; the ogre crunches the last of his meal, rises, roars, throws the bone, and leaps (`long`, phases in `S.phase`).
   startOgre(game) {
-    const S = game.endScene; S.bone = null;
+    const S = game.endScene, B = game.endBoss, e = B.e, w = game.world, L = TUNING.endBoss.ogre.long;
+    S.bone = null;
+    if (!(B.meet <= 1 && L)) return;
+    const x = this.exitDoor(game);
+    S.long = true; S.phase = x ? 'mage' : 'gnaw'; S.pt = 0;
+    if (!x) return;
+    S.door = x.door; S.out = x.out;
+    // the mage a step off the ogre toward the way out, her under his arm, the old way (`underArm`)
+    const dir = Math.sign(S.door.x - e.x) || 1;
+    const spot = [[dir, 0], [dir, -0.8], [dir, 0.8], [0, 1.2], [0, -1.2]].map(([sx, sy]) => ({ x: e.x + sx * TILE * 1.6, y: e.y + sy * TILE }))
+      .find((p) => w.walkableAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE))) || { x: e.x, y: e.y + TILE };
+    const m = new Enemy(spot.x, spot.y, 'seer'); m.scripted = true; m.aware = true; m.hp = m.maxHp = 1; m.endActor = true;
+    m.facing = Math.atan2(e.y - m.y, e.x - m.x);
+    game.enemies.push(m);
+    const s = { x: m.x, y: m.y, facing: 0, kick: 0, bleating: 0.35, jitter: null, vx: 0, vy: 0, gone: false };
+    game.underArm(s, m, 0);
+    S.mage = m; S.ewe = s; S.bleat = 0.5;
+    game.floatText(s.x, s.y - 30, 'BEEH!', PALETTE.bone); game.audio.sfxBleat(540, 0.14, 0.26);
   },
   stepOgre(game, dt) {
-    const S = game.endScene, T = TUNING.endBoss.ogre, e = game.endBoss.e, g = game.goat;
+    const S = game.endScene;
+    if (S.long) return this.stepOgreLong(game, dt);
+    const T = TUNING.endBoss.ogre, e = game.endBoss.e, g = game.goat;
     if (!S.flags.throw && S.t >= T.throwAt) {
       S.flags.throw = true; e.endHold = 'up';
       e.facing = Math.atan2(g.y - e.y, g.x - e.x);
@@ -312,8 +335,84 @@ const EndBoss = {
     if (S.t >= T.end) { this.end(game); return null; }
     return e;
   },
+  stepOgreLong(game, dt) {
+    const S = game.endScene, L = TUNING.endBoss.ogre.long, T = TUNING.endBoss.ogre, e = game.endBoss.e, g = game.goat, m = S.mage, s = S.ewe, d = S.door;
+    S.pt += dt;
+    const phase = (p) => { S.phase = p; S.pt = 0; };
+    if (s && !s.gone && m) { game.underArm(s, m, S.t); s.bleating = Math.max(0, s.bleating - dt); }
+    // The bone in the air, whenever it was thrown.
+    if (S.bone && S.bone.life > 0) {
+      const b = S.bone; b.life -= dt; b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 360 * dt; b.spin += dt * 14;
+      if (b.life <= 0) { game.particles(b.x, b.y, 4, PALETTE.bone, 90); game.audio.sfxThud(); if (game.endBoss.bones) game.endBoss.bones.push({ x: b.x, y: b.y + 10, a: b.spin, big: true }); }
+    }
+    if (S.phase === 'mage') {
+      // He gives the ogre the violet: a stream of it off his staff into the beast at his meal.
+      if (!S.flags.say && S.pt > 0.25) { S.flags.say = true; game.say(m, 'EAT, BROTHER. TAKE MY FIRE.'); game.audio.sfxCast(); }
+      if (!S.flags.baah && S.pt > 0.6) { S.flags.baah = true; game.floatText(g.x, g.y - 30, 'BAAH!', PALETTE.bone); game.audio.sfxBleat(300, 0.16, 0.3); }
+      if (S.pt > 0.35 && S.pt < L.mage - 0.2) {
+        for (let k = 0; k < 3; k++) { const q = Math.random(); game.particles(lerp(m.x, e.x, q), lerp(m.y - 34, e.y - 30, q) - Math.sin(q * Math.PI) * 18, 1, Math.random() < 0.5 ? PALETTE.witchHi : PALETTE.witch, 40); }
+      }
+      if (!S.flags.given && S.pt >= L.mage - 0.2) {
+        S.flags.given = true; e.flash = 0.45;
+        game.ring(e.x, e.y, TILE * 1.6, PALETTE.witchHi); game.particles(e.x, e.y - 30, 22, PALETTE.witch, 180);
+        game.flash(PALETTE.witch, 0.16); game.audio.sfxRune(); game.shake(4);
+      }
+      if (S.pt >= L.mage) {
+        phase('run');
+        m.path = [{ x: d.x - S.out.x * TILE, y: d.y - S.out.y * TILE }, { x: d.x, y: d.y }, { x: d.x + S.out.x * TILE * 2.2, y: d.y + S.out.y * TILE * 2.2 }];
+      }
+      return S.flags.given ? e : m;
+    }
+    if (S.phase === 'run') {
+      const done = game.followPath(m, TUNING.endBoss.mage.run, dt), far = hyp(m.x - d.x, m.y - d.y);
+      S.bleat -= dt;
+      if (S.bleat <= 0) { S.bleat = 0.45 + Math.random() * 0.25; s.bleating = 0.25; game.floatText(s.x, s.y - 28, 'BEEH!', PALETTE.bone); game.audio.sfxBleat(540, 0.12, 0.25); }
+      if (far < 1.4 * TILE) d.open = Math.min(1, d.open + dt * 4);
+      if (done || S.pt > L.run) {
+        game.enemies = game.enemies.filter((o) => o !== m); s.gone = true;
+        d.open = 0; game.audio.sfxThud(); game.audio.sfxSteel();
+        game.floatText(g.x, g.y - 30, 'BAAH!', PALETTE.bone); game.audio.sfxBleat(290, 0.18, 0.4);
+        phase('gnaw');
+      }
+      return m;
+    }
+    if (S.phase === 'gnaw') {
+      // the last of the carcass, crunched down in three bites
+      const bites = 3;
+      for (let k = 0; k < bites; k++) if (!S.flags['bite' + k] && S.pt >= (k + 0.5) * L.gnaw / (bites + 0.5)) {
+        S.flags['bite' + k] = true; e.flash = 0.12;
+        game.particles(e.x, e.y - 28, 6, PALETTE.blood, 110); game.particles(e.x, e.y - 30, 3, PALETTE.bone, 90);
+        game.floatText(e.x + (k - 1) * 14, e.y - 50 - k * 6, 'CRUNCH', PALETTE.bone); game.audio.sfxThud();
+      }
+      if (S.pt >= L.gnaw) { phase('roar'); e.endHold = 'up'; e.facing = Math.atan2(g.y - e.y, g.x - e.x); }
+      return e;
+    }
+    if (S.phase === 'roar') {
+      if (!S.flags.roar && S.pt >= 0.15) {
+        S.flags.roar = true;
+        game.floatText(e.x, e.y - 58, 'RRRAAAGH!', PALETTE.blood);
+        if (game.audio.sfxGroan) game.audio.sfxGroan('butcher');
+        game.audio.sfxGrowl(); game.thud(e.x, e.y, 12);
+        game.particles(e.x, e.y - 30, 14, PALETTE.blood, 160); game.ring(e.x, e.y, TILE * 2.2, PALETTE.witchHi);
+        game.cam.zoom *= 1.04;
+      }
+      if (S.pt >= L.roar) {
+        phase('throw');
+        const dx = g.x - e.x, dy = g.y - e.y, dd = hyp(dx, dy) || 1, sp = T.boneSpeed;
+        S.bone = { x: e.x, y: e.y - 26, vx: dx / dd * sp, vy: dy / dd * sp - 120, z: 0, spin: 0, life: Math.min(1.2, dd / sp + 0.1), tx: g.x, ty: g.y };
+        game.audio.sfxThud();
+      }
+      return e;
+    }
+    if (S.phase === 'throw' && S.pt >= L.throw) { this.end(game); return null; }
+    return e;
+  },
   endOgre(game) {
-    const B = game.endBoss, e = B && B.e, g = game.goat;
+    const B = game.endBoss, e = B && B.e, g = game.goat, S = game.endScene;
+    // skipped while the mage was still in the room: he is gone all the same, and so is she
+    if (S && S.mage) game.enemies = game.enemies.filter((o) => o !== S.mage);
+    if (S && S.ewe) S.ewe.gone = true;
+    if (S && S.door) S.door.open = 0;
     if (!e || e.dead) return;
     e.endHold = null; e.aware = true; e.woke = true;
     // And he comes down on the goat: the leap he would have taken himself, off the crouch.

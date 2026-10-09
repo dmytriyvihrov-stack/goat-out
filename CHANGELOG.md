@@ -5,6 +5,21 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 2.05, published 9 Oct 2026: the 8 Oct evening batch and three batches of 9 Oct, TURTLEIZE, animals in the middle
+
+- **Four batches of his notes** (77 in all) in `BACKLOG.md` under "8 Oct 2026, late evening" and the three "9 Oct 2026"
+  headings, each with what shipped: white hits for the goat and amber for the cult, rarity colours, the mouse's card, the
+  floors re-ordered (THE ROAD the rifleman and the drops, THE THRESHING FLOOR the shaman across his drops, THE BRIDGE the
+  shieldman), THE FORK on THE YARD into THE DARK, the chase only as the horse's dare, the god's first talk and ONE MORE LIFE
+  on faith, the fifty for the horns asked at the lip, padlocks until the mirror, signs for heaven's stands, two hearts
+  between floors, the playtest switch RESTART ON THE SAME FLOOR, UNLOCKS with a padlock state, the second scrap on THE DARK.
+- **TURTLEIZE** (js/shell.js): the tortoise's gift on the roll, a crystal shell held on the button that blows charge and
+  a wave that throws them off; dealt only once THE TORTOISE'S PACE is won.
+- **Animals met in the middle of a floor**: the middle of most floors is set pieces, so the cage fell back to room 1 on
+  most of them; now an ordinary room in the middle, the middle gate's rest room or the wheel's room clear of its sweep,
+  then later rooms, and only then earlier ones. Measured: every floor's animal now in its middle third.
+- **Working light**: CLAUDE.md asks sessions for narrow checks while iterating and one full `balance.js` before a push.
+
 ## 2.04, published 8 Oct 2026: three playtest batches, THE FLOOR'S LAST MAN, a polish round, a clean-up
 
 - **The three batches of his notes** (72 in all) are in the old backlog (`git show 19f4efd:BACKLOG.md`) under the three "8 October 2026" headings, each with

@@ -161,7 +161,7 @@ const Thrower = {
   grabbable(e, game) {
     const g = game.goat;
     if (g.dead || g.leap || g.invuln > 0 || game.hidden(e.x, e.y)) return false;
-    return !['roll', 'falling', 'stunned', 'ko', 'carried', 'tossed'].includes(g.state);
+    return !['roll', 'falling', 'stunned', 'ko', 'carried', 'tossed', 'shell'].includes(g.state);
   },
 
   // ---- lifting, holding, dropping ----

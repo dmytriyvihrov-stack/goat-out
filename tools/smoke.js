@@ -147,7 +147,7 @@ window.SMOKE = {
           if (gt.rollCd <= 0 && gt.state === 'idle') { g.input.rollPressed = true; r.rolled++; } else { dir.x = dir.y = 0; }
         }
       }
-      if (soul) { const l = sd || 1; dir.x = (soul.x - gt.x) / l; dir.y = (soul.y - gt.y) / l; }
+      if (soul) { const l = sd || 1; dir.x = (soul.x - gt.x) / l; dir.y = (soul.y - gt.y) / l; if (sd < g.soulGrabR() && g.sees(gt.x, gt.y, soul.x, soul.y)) g.takeSoul(soul); }   // a soul is taken with GRAB since 8 Oct 2026: walking onto it no longer swallows it
       buttCd -= 1 / 60;
       let foe = null, fd = 3 * TILE;
       for (const e of g.liveEnemies || g.enemies) {

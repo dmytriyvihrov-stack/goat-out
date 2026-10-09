@@ -352,7 +352,7 @@ const Dark = {
       if (e.dead || e.state === 'hidden' || game.hidden(e.x, e.y)) continue;
       const dark = 1 - this.lightAt(e.x, e.y);
       if (dark < 0.05) continue;
-      ctx.globalAlpha = dark;
+      ctx.globalAlpha = dark * r.tellFade(game);
       r.drawTelegraph(e); r.drawAimTelegraph(e); r.drawHopMark(e);
       // What is over his head sets its own alpha and is opaque, so only where the one under the dark
       // is mostly gone, and only for a man he can hear, or one shouting: the shout carries.

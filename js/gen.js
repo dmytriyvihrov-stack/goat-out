@@ -108,7 +108,9 @@ function planEncounters(levelDef, rooms, rng, crowd = 1) {
     // If an arena on this level is built round that kind, he has to be met in the open first: the
     // first butcher you ever see should not be the one with the extra heart standing in the ring.
     const ring = fight.find((r) => r.arena && r.arena.boss === kind);
-    const clean = plain.length ? plain : ordinary;
+    let clean = plain.length ? plain : ordinary;
+    // The shaman is met in a room his drops can be cut across (9 Oct 2026 playtest): never THE ARMORY, a trench room or a hung one.
+    if (kind === 'shaman') { const cut = clean.filter((r) => !r.stacked && chasmRoomFits(levelDef, r, rooms.length, 1)); if (cut.length) clean = cut; }
     const early = ring ? clean.filter((r) => r.index < ring.index) : clean;
     const list = early.length ? early : clean;
     const w = Math.min(want, list.length - 1);
@@ -640,12 +642,16 @@ function tryGenerate(levelDef, seed, opts) {
   props.push({ x: (last.x + last.w - 1.5) * TILE, y: (doorY + 1) * TILE,
     kind: 'door', vertical: true, iron: true, stair: true, fromRoom: last.index !== undefined ? last.index : rooms.length - 1 });
   // THE FORK (`TUNING.dark.fork`): on its floor the same wall carries a second flight, `apart` rows
-  // or more from the first so it reads as another way and not a wider one, barred the same way.
-  // It climbs to the next floor with the lamps out (`game.climbDark`). A last room with no row for
-  // it is another seed, never a fork quietly left out (`GEN_RULES.fork`).
+  // or more from the first so it reads as another way and not a wider one. It climbs to the next
+  // floor with the lamps out (`game.climbDark`). A last room with no row for it is another seed,
+  // never a fork quietly left out (`GEN_RULES.fork`). Since 9 Oct 2026 ("on the second floor, in the
+  // last room, a crack in a wall, and behind it a way down to THE DARK; half the runs, not the first")
+  // it is a secret: no door, a wall that gives (`kind: 'secret'`, `fork: true`) on its top row, the
+  // row under it stone, the flight behind hidden as a niche's floor is (`nicheTiles`). Whether this
+  // run has it is the game's (`opts.fork`, `Game.forkRun`); without the option (balance, dev samples) it is laid.
   let forkTile = null;
   const FK = TUNING.dark.fork;
-  if (FK && FK.at >= 0 && FK.at + 1 < LEVELS.length && levelIndexOf(levelDef) === FK.at) {
+  if (FK && FK.at >= 0 && FK.at + 1 < LEVELS.length && levelIndexOf(levelDef) === FK.at && !levelDef.againOf && !(opts && opts.fork === false)) {
     const col = last.w - 2, R = last.tpl.rows, rows = [];
     for (let ty = 1; ty < last.h - 2; ty++) {
       if (R[ty][col] === '#' || R[ty][col] === 'P' || R[ty + 1][col] === '#' || R[ty + 1][col] === 'P') continue;
@@ -653,10 +659,12 @@ function tryGenerate(levelDef, seed, opts) {
     }
     if (!rows.length) return null;
     const fy = rng.pick(farthest(rows, doorY));
-    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) tiles[(fy + dy) * W + (last.x + last.w - 1 + dx)] = T.EXIT;
-    forkTile = { x0: last.x + last.w - 1, y0: fy };
-    props.push({ x: (last.x + last.w - 1.5) * TILE, y: (fy + 1) * TILE, kind: 'door', vertical: true, iron: true, stair: true, fork: true,
-      fromRoom: last.index !== undefined ? last.index : rooms.length - 1 });
+    const wx = last.x + last.w - 1, hidden = [];
+    for (let dy = 0; dy < 2; dy++) for (let dx = 1; dx < 3; dx++) { tiles[(fy + dy) * W + wx + dx] = T.EXIT; hidden.push((fy + dy) * W + wx + dx); }
+    tiles[fy * W + wx] = T.FLOOR;   // the crack's own tile; the wall under it stays stone
+    forkTile = { x0: wx, y0: fy };
+    props.push({ x: (wx + 0.5) * TILE, y: (fy + 0.5) * TILE, kind: 'secret', fork: true, wallColor: levelDef.wall, wallTop: levelDef.wallTop,
+      nicheTiles: [fy * W + wx, ...hidden], wallSide: 'right' });
   }
 
   // Every level after the first is entered the same way: up a flight cut into the left wall of the
@@ -851,6 +859,14 @@ function tryGenerate(levelDef, seed, opts) {
       }
       if (!chasms.length) return null;   // a floor that teaches it has it: a fresh cut rather than none
     }
+    // The shaman's first room (9 Oct 2026 playtest: "best met first in a room full of drops with stakes, then his skill is
+    // felt"): two drops cut across it if it takes them, one at least, so his call pulls the goat toward a fall. He stands
+    // across them (the far-side pass below). A room that takes none keeps the old stone tooth (`shamanMeet`).
+    for (const r of rooms) {
+      const cell = plan.rooms.get(r.index);
+      if (!cell || cell.intro !== 'shaman' || r.stacked || !chasmRoomFits(levelDef, r, rooms.length, 1)) continue;
+      for (let k = 0; k < TUNING.chasm.shaman; k++) if (cut(r)) chasms[chasms.length - 1].shaman = true;
+    }
     if (li >= CH.from && crng.chance(CH.chance)) {
       // A rifle or the butcher across it is the room the drop was made for: they are tried first.
       const far = (r) => { const c = plan.rooms.get(r.index); return c && (c.men || []).some((k) => CH.farKinds.includes(k)) ? 0 : 1; };
@@ -900,7 +916,10 @@ function tryGenerate(levelDef, seed, opts) {
       // A roast is picked off a hash of the tile, not the rng, so no seed moved when it landed,
       // and there is at most one a level, because a crocodile on every third fire stopped being a find.
       if (m.c === 'B') {
-        const roast = !roasted && (((m.tx * 73856093) ^ (m.ty * 19349663)) >>> 0) % 1000 < TUNING.prop.brazier.roast * 1000;
+        // The spit and its posts reach a tile either side and the beast sits a row up: all of that plain floor, or no
+        // roast (9 Oct 2026, his screenshot: the crocodile's spit lay across the straw bales round the fire).
+        const clearSpit = [-1, 0, 1].every((dx) => [-1, 0].every((dy) => (dx === 0 && dy === 0) || tiles[(m.ty + dy) * W + m.tx + dx] === T.FLOOR));
+        const roast = !roasted && clearSpit && (((m.tx * 73856093) ^ (m.ty * 19349663)) >>> 0) % 1000 < TUNING.prop.brazier.roast * 1000;
         if (roast) roasted = true;
         props.push({ x: px, y: py, kind: 'brazier', roast });
       }
@@ -958,12 +977,20 @@ function tryGenerate(levelDef, seed, opts) {
     // Not in the wheel's lesson either: a crate in its one clear lane shut the way past the arm.
     if (room.index > 0 && !room.isAmbush && !room.isRest && !room.isCalm && room.index !== lessonIndex && !room.isChand
       && !(room.isMill && levelDef.millLesson) && rng.chance(levelDef.crates || 0)) {
-      const want = room.tpl && room.tpl.name === 'armory' ? rng.int(0, TUNING.rooms.armory.crates) : rng.int(2, 4);
+      const want = room.tpl && room.tpl.name === 'armory' ? rng.int(0, TUNING.rooms.armory.crates) : rng.int(TUNING.rooms.crateWant[0], TUNING.rooms.crateWant[1]);
       for (let a = 0, placed = 0; a < 40 && placed < want; a++) {
         const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
         if (tiles[ty * W + tx] !== T.FLOOR || grass.has(ty * W + tx)) continue;   // grass is drawn over what stands in it
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
         if (props.some((p) => len(p.x - px, p.y - py) < 1.4 * TILE) || onTable(px, py, TUNING.prop.crate.r, props)) continue;
+        // In sight of the way in (9 Oct 2026 playtest: "where the things stand, the first time I would ideally see them from
+        // the door"): not behind a pillar or an inner wall, for the first 25 rolls; a room with no such spot takes any.
+        if (a < 25 && room.enter) {
+          const ex = room.enter.x, ey = room.enter.y, n = Math.ceil(len(px - ex, py - ey) / (TILE * 0.25));
+          let hidden = false;
+          for (let k = 1; k < n && !hidden; k++) hidden = tiles[Math.floor((ey + (py - ey) * k / n) / TILE) * W + Math.floor((ex + (px - ex) * k / n) / TILE)] === T.WALL;
+          if (hidden) continue;
+        }
         props.push({ x: px, y: py, kind: 'crate' });
         placed++;
       }
@@ -1127,12 +1154,17 @@ function tryGenerate(levelDef, seed, opts) {
         props.push({ x: px, y: py, kind: 'suit' });
         placed++; if (!armory) suits++;
       }
-      // The cult's paper (6 Oct 2026, his redesign): a scrap folded on the floor that opens into its drawing when
-      // he finds it, for the book's OBJECTS. Under one of the room's tables `underTable` of the time (a thing to
-      // look for), else on plain floor clear of everything. Not in THE ARMORY. Which drawing is the game's
-      // (`Game.layScraps`: only one this browser has not found, or none), so `look` here is only a default.
+    }
+    // The cult's paper (6 Oct 2026, his redesign): a scrap folded on the floor that opens into its drawing when
+    // he finds it, for the book's OBJECTS. Under one of the room's tables `underTable` of the time (a thing to
+    // look for), else on plain floor clear of everything. Which drawing is the game's (`Game.layScraps`: only
+    // one this browser has not found, or none), so `look` here is only a default. The first lies under THE
+    // ALTAR's ritual table; the generator lays the second only on a floor with `scraps` (9 Oct 2026: "the
+    // second secret scrap on THE DARK"), in an ordinary room.
+    {
       const PO = TUNING.prop.poster, porng = new RNG(((seed ^ 0x0f05713) + room.index * 5233) >>> 0);
-      if (!armory && room.index >= PO.from && posters < PO.perLevel && porng.chance(PO.chance)) {
+      if (levelDef.scraps && room.index >= PO.from && !room.arena && !room.isAmbush && !room.isRest && !room.isCalm && !room.isTrap
+          && posters < PO.perLevel && porng.chance(PO.chance)) {
         const look = PO.looks[(seed + posters + room.index) % PO.looks.length];
         const tables = props.filter((q) => q.kind === 'table' && inBox(room, q));
         let at = tables.length && porng.chance(PO.underTable) ? porng.pick(tables) : null;
@@ -1161,8 +1193,9 @@ function tryGenerate(levelDef, seed, opts) {
     const ogreRing = !!(room.arena && room.arena.boss === 'butcher');
     // The shaman is met alone (8 Oct 2026 playtest), with one tooth in his room for his call to pull the goat onto,
     // at the wall as near the middle of the room as one stands.
-    const shamanMeet = !!(cell && cell.intro === 'shaman');
-    if (levelDef.cave && !levelDef.shroom && room.index > 0 && !room.isRest && (!room.arena || ogreRing) && !room.isTrap && !room.isAmbush
+    const shamanMeet = !!(cell && cell.intro === 'shaman') && !room.chasm;   // drops cut in his room are the danger; no tooth beside them
+    // the shaman's own room takes its tooth on any floor (8 Oct 2026: met on THE ROAD now, not in the cave)
+    if ((levelDef.cave || shamanMeet) && !levelDef.shroom && room.index > 0 && !room.isRest && (!room.arena || ogreRing) && !room.isTrap && !room.isAmbush
         && !room.isMill && !room.isHall && !room.isGallery && !room.isKillbox
         && (ogreRing || shamanMeet || (!(cell && cell.intro) && rng.chance(TUNING.cave.spikes.chance)))) {
       const solidAt = (tx, ty) => tiles[ty * W + tx] === T.WALL;
@@ -1240,9 +1273,12 @@ function tryGenerate(levelDef, seed, opts) {
       // The pier only chose the door's row: once it is cut the pier goes back to floor, so the goat
       // at the cleat sees the ring land on him (from behind stone he was not drawn at all).
       if (b) for (let ty = room.y + 1; ty < b.y; ty++) if (room.tpl.rows[ty - room.y][tx - room.x] === 'P') tiles[ty * W + tx] = T.FLOOR;
-      if (b && tiles[b.y * W + tx] === T.FLOOR && tiles[room.y * W + tx] === T.WALL && tiles[(room.y + 1) * W + tx] === T.FLOOR) {
+      // The cleat is by the way IN (9 Oct 2026 playtest: "the rope by the entrance, then it is more fun"): the goat comes in
+      // at it, sees the ring across the room hung over the man in the notch, and brings it down on him from where he stands.
+      const kx = room.enter ? clamp(Math.floor(room.enter.x / TILE) + 2, room.x + 1, tx - 3) : tx;
+      if (b && tiles[b.y * W + tx] === T.FLOOR && tiles[room.y * W + kx] === T.WALL && tiles[(room.y + 1) * W + kx] === T.FLOOR) {
         const px = (tx + 0.5) * TILE, py = (b.y + 0.5) * TILE;
-        props.push({ x: px, y: py, kind: 'chandelier', cid: chandeliers, lesson: true }, { x: px, y: (room.y + 1.25) * TILE, kind: 'cleat', cid: chandeliers });
+        props.push({ x: px, y: py, kind: 'chandelier', cid: chandeliers, lesson: true }, { x: (kx + 0.5) * TILE, y: (room.y + 1.25) * TILE, kind: 'cleat', cid: chandeliers });
         chandeliers++;
         spawns.push(Object.assign({ x: px, y: py }, spawnKind('bearer'), { roomIndex: room.index, post: true, facing: Math.PI }));
         return;
@@ -1341,7 +1377,7 @@ function tryGenerate(levelDef, seed, opts) {
   // problem from a rifle inside a crowd: you have to cross its line rather than out-run the pile.
   if (levelDef.lonePosts && plan.hunterFrom >= 0) {
     const eligible = rng.shuffle(rooms.filter((r) => r.index > plan.hunterFrom && !r.arena && !r.isMill
-      && !r.isGallery && !r.isHall && !r.isKillbox && !r.isRest && !plan.introRooms.has(r.index)));
+      && !r.isGallery && !r.isHall && !r.isKillbox && !r.isRest && !r.isCalm && !plan.introRooms.has(r.index)));   // never the chasm lesson's empty room (`isCalm`)
     let placed = 0;
     for (const room of eligible) {
       if (placed >= levelDef.lonePosts) break;
@@ -1388,10 +1424,11 @@ function tryGenerate(levelDef, seed, opts) {
     }
   }
 
-  // THE ESCORT. One animal a floor, standing loose in an ordinary room inside the first
-  // `TUNING.beast.third` of the level, first third because the whole of one is the walk from where you
-  // find it to the stairs, and a tortoise found in the last room is a tortoise that was never a
-  // decision. `levelDef.beasts` is which of them this floor may hold and the dice pick one of those.
+  // THE ESCORT. One animal a floor, in an ordinary room near the MIDDLE of the level (`TUNING.beast.mid`,
+  // 9 Oct 2026, his call: "the first meeting somewhere in the middle, so it is easier to bring it home"):
+  // half a floor of walking it to the stairs is a decision, a whole floor of it was mostly losing it,
+  // and a tortoise found in the last room is still a tortoise that was never a decision. Rooms in the
+  // window go first, nearest the middle first; a room before it is the fallback (the horse's gate). `levelDef.beasts` is which of them this floor may hold and the dice pick one of those.
   // Never in the pen, a rest room, a teaching room or a set piece: an escort is a thing to meet on
   // an ordinary floor, and every one of those rooms is already saying something else.
   // What each of them then does is js/beasts.js; `GEN_RULES.beasts` holds this placement.
@@ -1399,15 +1436,35 @@ function tryGenerate(levelDef, seed, opts) {
   // twice): a kind, or null for a floor that gets none. Without it, the balance report, the dev
   // drawer's samples, the dice pick off the floor's own list, as they always did.
   if (levelDef.beasts && levelDef.beasts.length && opts.beast !== null) {
-    const BT = TUNING.beast, cut = Math.max(2, Math.ceil(rooms.length * BT.third));
+    const BT = TUNING.beast, n = rooms.length, cut = Math.max(2, Math.ceil(n * BT.mid[1]));
+    const from = Math.max(1, Math.floor(n * BT.mid[0])), middle = (from + cut) / 2;
     const rolled = levelDef.beasts[rng.int(0, levelDef.beasts.length - 1)];
     const kind = opts.beast || rolled;
-    const eligible = rng.shuffle(rooms.filter((r) => r.index > 0 && r.index <= cut && !r.arena && !r.isMill
-      && !r.isHall && !r.isGallery && !r.isKillbox && !r.isAmbush && !r.isRest && !r.isCalm && !r.isTrap
+    // The middle of most floors is set pieces (arena, wheel, gallery, trap, the gate's rest room), so a
+    // window of ordinary rooms alone was empty and every floor fell back to room 1 (measured 9 Oct 2026:
+    // THE ROAD, THE THRESHING FLOOR, THE OSSUARY always room 1). So, in order: an ordinary room in the
+    // window; the middle gate's rest room (not the mouse's, not for the horse, who races to that gate);
+    // an ordinary room in the window where a kind is met alone (the first hound shared his room with a
+    // coop four times in ten on THE YARD, and "met alone" is the point of that room); an ordinary room
+    // past the window, never the last (a shorter walk home, which is what the middle is for); and only
+    // then one before it.
+    const midGate = (r) => r.isRest && kind !== 'horse' && (levelDef.gates || []).includes(r.index) && r.index !== shopRoomOf(levelDef);
+    // The wheel's room too, the coop clear of the arm's sweep (`inMillSweep`), never the horse's stall.
+    const midMill = (r) => r.isMill && kind !== 'horse' && !levelDef.millLesson;
+    const tier = (r) => {
+      const inWin = r.index >= from && r.index <= cut;
+      if (r.isRest || r.isMill) return 1;
+      if (inWin) return plan.introRooms.has(r.index) ? 2 : 0;
+      return r.index > cut ? 3 : 4;
+    };
+    const midRank = (r) => tier(r) * 1000 + Math.abs(r.index - middle);
+    const eligible = rng.shuffle(rooms.filter((r) => r.index > 0 && r.index < n - 1 && !r.arena
+      && !r.isHall && !r.isGallery && !r.isKillbox && !r.isAmbush && !r.isCalm && !r.isTrap
+      && (!r.isRest || (midGate(r) && r.index >= from && r.index <= cut))
+      && (!r.isMill || (midMill(r) && r.index >= from && r.index <= cut))
       && r.index !== lessonIndex && !r.isChand && r.index !== levelDef.vaultAt))
-      // A room where a kind is met alone is tried last: the first hound or mage of a run shared his
-      // room with a coop four times in ten on THE YARD, and "met alone" is the point of that room.
-      .sort((a, b) => plan.introRooms.has(a.index) - plan.introRooms.has(b.index));
+      .sort((a, b) => (opts.beastAtStart ? a.index - b.index : midRank(a) - midRank(b)));
+    // (`opts.beastAtStart`: it asked up there to be brought out again, so its cage is the first room that takes it.)
     // It starts shut in a coop, whichever animal it is, two tiles of slatted crate you have to put
     // your head through (and which calls out as he comes near, `Prop.updateCoop`), so meeting one is
     // a decision to stop rather than something that happened to be standing in the room.
@@ -1450,6 +1507,7 @@ function tryGenerate(levelDef, seed, opts) {
         const px = (tx + 1) * TILE, py = (ty + 0.5) * TILE;
         if (props.some((p) => len(p.x - px, p.y - py) < Math.max(BT.clear, 2.2) * TILE) || onTable(px, py, TUNING.prop.coop.r, props)) continue;
         if (room.enter && len(room.enter.x - px, room.enter.y - py) < 2.5 * TILE) continue;
+        if (room.isMill && inMillSweep(props, px, py)) continue;
         // The fish needs no coop: its tank stands on the floor (js/beasts-more.js).
         props.push(kind === 'fish' ? { x: px, y: py, kind: 'fish', beastRoom: room.index } : { x: px, y: py, kind: 'coop', holds: kind, beastRoom: room.index }); done = true;
       }
@@ -1487,6 +1545,19 @@ function tryGenerate(levelDef, seed, opts) {
       }
       if (laid) { coop.ironCage = true; props.push(laid); }
     }
+    // The run's first animal's room is a quieter fight (`beast.calmMen`, `opts.firstBeast`): finding it is the event, not
+    // the men round it. The strongest go first.
+    const den = props.find((p) => (p.kind === 'coop' || p.kind === 'fish') && p.beastRoom !== undefined);
+    // (never a combo's room: its pairing is the point of it, `GEN_RULES.combos`)
+    const denRoom = den && rooms.find((r) => r.index === den.beastRoom);
+    if (den && opts.firstBeast && !(denRoom && denRoom.combo)) {
+      const mine = spawns.filter((sp) => sp.roomIndex === den.beastRoom && !sp.boss && !sp.intro && !sp.sentry && !sp.post);
+      if (mine.length > BT.calmMen) {
+        mine.sort((a, b) => (THREAT[threatKind(b)] || 1) - (THREAT[threatKind(a)] || 1));
+        const cut = new Set(mine.slice(0, mine.length - BT.calmMen));
+        for (let i = spawns.length - 1; i >= 0; i--) if (cut.has(spawns[i])) spawns.splice(i, 1);
+      }
+    }
   }
 
   // The mushrooms: one tuft, some levels, lying on the floor of an ordinary room where nothing else
@@ -1495,7 +1566,8 @@ function tryGenerate(levelDef, seed, opts) {
   // not on a trip at the first floor's curve with the wraith never met (28 Sep 2026), never on the
   // trip itself, never in a room that is teaching or a room that is a fight you cannot walk out of.
   const li = levelIndexOf(levelDef), SH = TUNING.shroom;
-  if (li >= SH.from && li < LEVELS.length - 2 && rng.chance(SH.chance)) {
+  // (`opts.shrooms` false: this browser has not been this far often enough yet, `TUNING.shroom.runs`; balance runs leave it out.)
+  if (li >= SH.from && li <= SH.upTo && li < LEVELS.length - 2 && opts.shrooms !== false && rng.chance(SH.chance)) {
     const eligible = rng.shuffle(rooms.filter((r) => r.index > 0 && !r.arena && !r.isMill && !r.isHall && !r.isGallery
       && !r.isKillbox && !r.isAmbush && !r.isRest && r.index !== lessonIndex && !r.isChand && r.index !== levelDef.vaultAt));
     let done = false;
@@ -1730,7 +1802,7 @@ function tryGenerate(levelDef, seed, opts) {
     const pick = room.isAmbush && room.enter
       ? pool.reduce((a, b) => (off(b) > off(a) ? b : a), pool[0])
       : pool[rng.int(0, pool.length - 1)];
-    props.push({ x: pick.x, y: pick.y, kind: 'heal' });
+    props.push({ x: pick.x, y: pick.y, kind: 'heal', rhythm: room.index });
   });
 
   // THE FIRST GRASS (`levelDef.firstGrass`, THE ALTAR; 5 Oct 2026 playtest: "I did not know the grass heals").
@@ -1739,13 +1811,16 @@ function tryGenerate(levelDef, seed, opts) {
   // beside it (`Renderer.drawFirstWords`) say what it is. On top of the rhythm, never instead of a bowl of it.
   if (levelDef.firstGrass) {
     const narrowed = new Set([sentryRoomAt, levelDef.chandAt, ...restsOf(levelDef), ...(levelDef.arenas || []).map((a) => a.at)]);
-    // 6 Oct 2026 playtest ("again two grasses in one room"): a room that already has its rhythm bowl is passed over
-    // on the first walk; only if none else has a straight run does the second walk take it.
+    // It is the rhythm's bowl for the rooms either side of it (8 Oct 2026 playtest, "again grass in the corridor and in
+    // the room, don't repeat"): the corridor out of room 2 led into room 3 on every seed, and room 3 always drew a bowl.
+    // So the rhythm's bowls in the room it leaves and the room it leads into are taken up, and `counts` is the room it
+    // stands for (`GEN_RULES.milk`). A room with a bowl of its own template's is still passed over on the first walk.
     let placed = false;
+    const ownBowl = (room) => props.some((p) => p.kind === 'heal' && p.rhythm === undefined && p.x > room.x * TILE - 2 * TILE && p.x < (room.x + room.w + 2) * TILE && p.y > room.y * TILE && p.y < (room.y + room.h) * TILE);
     for (const lone of [true, false]) for (const room of rooms) {
       if (placed) break;
       if (room.index <= Math.max(0, sentryRoomAt) || narrowed.has(room.index) || !room.exitBand) continue;
-      if (lone && (healRooms.includes(room) || props.some((p) => p.kind === 'heal' && p.x > room.x * TILE - 2 * TILE && p.x < (room.x + room.w + 2) * TILE && p.y > room.y * TILE && p.y < (room.y + room.h) * TILE))) continue;
+      if (lone && ownBowl(room)) continue;
       // `run`: the corridor's straight stretch, the whole of it when it never turns (`carveCorridor`).
       const b = room.exitBand, turn = b.run !== undefined ? b.run + 1 : b.x1 - b.wide + 1;
       let spot = null;
@@ -1755,7 +1830,9 @@ function tryGenerate(levelDef, seed, opts) {
         const px = (tx + 0.5) * TILE, py = (b.y + b.wide / 2) * TILE;
         if (open && !props.some((p) => len(p.x - px, p.y - py) < TUNING.prop.heal.firstClear * TILE)) spot = { x: px, y: py };
       }
-      if (spot) { props.push({ x: spot.x, y: spot.y, kind: 'heal', firstGrass: true }); placed = true; }
+      if (!spot) continue;
+      for (let i = props.length - 1; i >= 0; i--) if (props[i].kind === 'heal' && (props[i].rhythm === room.index || props[i].rhythm === room.index + 1)) props.splice(i, 1);
+      props.push({ x: spot.x, y: spot.y, kind: 'heal', firstGrass: true, counts: room.index + 1 }); placed = true;
     }
   }
 
@@ -1803,12 +1880,14 @@ function tryGenerate(levelDef, seed, opts) {
   for (const ch of chasms) {
     const r = rooms[ch.room], v = ch.axis === 'v', side = (x, y) => Math.sign((v ? x : y) / TILE - ch.at - 0.5) || 1;
     for (const s of spawns) {
-      if (s.roomIndex !== r.index || !TUNING.chasm.farKinds.includes(s.champion ? 'champion' : s.kind) || side(s.x, s.y) === ch.far) continue;
+      const across = (x, y) => chasms.every((o) => o.room !== r.index || (Math.sign(((o.axis === 'v') ? x : y) / TILE - o.at - 0.5) || 1) === o.far);
+      const sham = s.shaman && ch.shaman;
+      if (s.roomIndex !== r.index || !(sham || TUNING.chasm.farKinds.includes(s.champion ? 'champion' : s.kind)) || (sham ? across(s.x, s.y) : side(s.x, s.y) === ch.far)) continue;
       let best = null, bs = -Infinity;
       for (let k = 0; k < 60; k++) {
         const tx = rng.int(r.x + 1, r.x + r.w - 2), ty = rng.int(r.y + 1, r.y + r.h - 2);
         const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
-        if (tiles[ty * W + tx] !== T.FLOOR || side(px, py) !== ch.far || Math.abs((v ? tx : ty) - ch.at) < 2) continue;
+        if (tiles[ty * W + tx] !== T.FLOOR || side(px, py) !== ch.far || Math.abs((v ? tx : ty) - ch.at) < 2 || (sham && !across(px, py))) continue;
         let near = Infinity; for (const o of spawns) if (o !== s) near = Math.min(near, len(o.x - px, o.y - py));
         let prop = Infinity; for (const p of props) if (p.kind !== 'door') prop = Math.min(prop, len(p.x - px, p.y - py));
         if (near < 1.5 * TILE || prop < 0.9 * TILE) continue;
@@ -1988,7 +2067,29 @@ function tryGenerate(levelDef, seed, opts) {
   if (taught) {
     const r = rooms[taught.room], v = taught.axis === 'v', a0 = v ? r.x + 1 : r.y + 1, a1 = v ? r.x + r.w - 1 : r.y + r.h - 1;
     const n0 = taught.far > 0 ? a0 : taught.at + 1, n1 = taught.far > 0 ? taught.at : a1, mid = (n0 + n1) / 2;
-    controls.push(v ? { x: mid * TILE, y: (r.y + r.h / 2) * TILE, w: (n1 - n0 + 2) * TILE, part: 5, chasm: taught.room }
+    // 9 Oct 2026 playtest ("E - ROLL not on the wall, on the floor; it is critical"): on a row of plain floor on the near side,
+    // the longest straight run of it in the room's middle half, the words centred on the stretch of it nearest the lip, held
+    // on that row (`fixed`) so the renderer never slides them onto a stub wall.
+    const flo = (x, y) => tiles[y * W + x] === T.FLOOR || tiles[y * W + x] === T.HAY || tiles[y * W + x] === T.ASH;
+    let lay = null;
+    if (v) {
+      const lip = taught.far > 0 ? taught.at - 1 : taught.at + 1, dir = taught.far > 0 ? -1 : 1, my = r.y + r.h / 2;
+      for (let y = r.y + 1; y < r.y + r.h - 1; y++) {
+        let n = 0; while (n < 7 && flo(lip + dir * n, y)) n++;
+        const sc = n * 10 - Math.abs(y + 0.5 - my);
+        if (n >= 3 && (!lay || sc > lay.sc)) lay = { sc, x: (lip + dir * (n - 1) / 2 + 0.5) * TILE, y: (y + 0.5) * TILE, w: n * TILE };
+      }
+    } else {
+      const y = taught.far > 0 ? taught.at - 2 : taught.at + 2, mx = r.x + r.w / 2;
+      for (let x = r.x + 1; x < r.x + r.w - 1; x++) {
+        if (!flo(x, y)) continue;
+        let n = 0; while (n < 8 && flo(x + n, y)) n++;
+        const sc = n * 10 - Math.abs(x + n / 2 - mx);
+        if (n >= 3 && (!lay || sc > lay.sc)) lay = { sc, x: (x + n / 2) * TILE, y: (y + 0.5) * TILE, w: n * TILE };
+      }
+    }
+    controls.push(lay ? { x: lay.x, y: lay.y, w: lay.w + TILE, part: 5, chasm: taught.room, corridor: true }
+      : v ? { x: mid * TILE, y: (r.y + r.h / 2) * TILE, w: (n1 - n0 + 2) * TILE, part: 5, chasm: taught.room }
       : { x: (r.x + r.w / 2) * TILE, y: mid * TILE, w: r.w * TILE, part: 5, chasm: taught.room });
     // Nothing lies over it (8 Oct 2026 playtest: "the main thing, do not cover it with objects"): straw, tall grass and
     // anything loose taken off the words' own patch of floor.
@@ -2712,9 +2813,10 @@ function chasmNear(ch, x, y) {
 // set-piece room is saying something else already. Shared with `GEN_RULES.chasm`.
 // A room laid from a `tag: 'flank'` template (the template is flipped into a copy, so it is known by its name).
 const isFlankRoom = (r) => !!(r && r.tpl && /^ditch/.test(r.tpl.name || ''));
-function chasmRoomFits(def, r, n) {
+// `min` overrides `chasm.minRoom` (the shaman's room may be the floor's first, 9 Oct 2026).
+function chasmRoomFits(def, r, n, min) {
   const name = r.tpl && r.tpl.name;
-  return r.index >= TUNING.chasm.minRoom && r.index < n - 1 && (r.role === 'canon' || r.role === 'mix') && !r.isTrap && !r.isAmbush
+  return r.index >= (min === undefined ? TUNING.chasm.minRoom : min) && r.index < n - 1 && (r.role === 'canon' || r.role === 'mix') && !r.isTrap && !r.isAmbush
     && !r.isChand && !r.isCrowd && r.index !== def.vaultAt && r.index !== shopRoomOf(def) && name !== 'armory' && !(r.tpl && r.tpl.bridge) && !isFlankRoom(r);
 }
 // A band of drop one tile across the room, from wall to wall, between where he walks in and where he walks

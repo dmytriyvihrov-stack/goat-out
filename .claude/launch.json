@@ -54,6 +54,15 @@
         "8771"
       ],
       "port": 8771
+    },
+    {
+      "name": "goat-out-7",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/serve.js",
+        "8772"
+      ],
+      "port": 8772
     }
   ]
 }

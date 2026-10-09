@@ -77,7 +77,7 @@ moment a stick or button is touched, and a key or the mouse takes it back:
 | BACK | the floor again at once (as Backspace) |
 | d-pad + A, B | every menu and card: A picks, B backs out; left / right chooses a soul |
 
-Four hearts (six on EASY MODE); grass gives them back, and each new floor gives one back. A death ends the run; once you have been up to the
+Four hearts (six on EASY MODE); grass gives them back, and each new floor gives two back. A death ends the run; once you have been up to the
 pasture above, every run starts with one more life, and losing your last heart there brings you back
 where you fell. The seed is printed in the top-right corner,
 and the death card carries a RUN CODE that rebuilds the floor you died on.
@@ -93,14 +93,14 @@ are one man in a doorway), THE RAFTERS (holes in the floor, windows in the walls
 come from behind). Each is a chain of hand-authored rooms dealt in a new order every run: the floor's own
 rooms first, then rooms from every idea the run has already taught you.
 
-**THE DARK**, the other way up. THE ROAD ends on two flights of stairs: one climbs to THE THRESHING
-FLOOR, the other to the cellars under it, where nothing is lit but what burns. Every room has a standing
+**THE DARK**, the other way down. On some runs a wall of THE YARD's last room is cracked, and behind it a
+flight goes down to the cellars, played in THE CAVE's place, where nothing is lit but what burns. Every room has a standing
 lamp or two, it shows them to you and you to them, and a headbutt puts it on the floor, burning, and
 then the room is black, and a lantern on the wall by every door that nothing puts out. Out of the light
 they see you only close and hunt by what they hear; you hear them before you see them, and see the eyes
 of the hounds and the mages across a room. Fewer of them, no rifles. LEVELS (dev tools) has a row for it.
 
-**THE TRIP.** From THE ROAD on, some floors have a tuft of pale mushrooms on them. Eat it and the next floor is a glowing
+**THE TRIP.** Once you have reached THE ROAD in three runs, it sometimes has a tuft of pale mushrooms on it. Eat it and the next floor is a glowing
 cave where every key is the other way round, the stick reversed, the horns and the teeth swapped, the
 tumble and the voice swapped, and the men are the first floor's.
 
@@ -114,7 +114,7 @@ the first blade stands. Every floor ends at a flight of stairs going up, and eve
 begins at the top of one.
 
 **You meet everything alone first.** The room that introduces a clubman, a butcher, a hound, a mage, a
-rifle, a shieldman, a thrower or a wraith holds that one enemy and nothing else (the shaman too, with a stone tooth in his room for his call to pull you onto), and a boss you have never seen stands in his
+rifle, a shieldman, a thrower or a wraith holds that one enemy and nothing else (the shaman too, in a room cut by drops for his call to pull you toward), and a boss you have never seen stands in his
 arena without company. After that they arrive mixed, and the mix gets worse as the floor goes on and
 worse again on the floor after.
 

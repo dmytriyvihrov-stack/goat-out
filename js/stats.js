@@ -424,7 +424,8 @@ const Stats = {
   },
   drawConsent(R, game) {
     const ctx = R.ctx, s = R.ts, w = R.w, h = R.h, cx = w / 2;
-    ctx.fillStyle = 'rgba(9,7,9,0.94)'; ctx.fillRect(0, 0, w, h);
+    // Near opaque (9 Oct 2026 playtest: the menu's rows read through the question and its words): the title behind it is not the point
+    ctx.fillStyle = 'rgba(9,7,9,0.99)'; ctx.fillRect(0, 0, w, h);
     const bw = clamp(Math.min(w * 0.9, 560 * s), 260 * s, 600 * s), x0 = cx - bw / 2;
     const lines = TUNING.stats.ask;
     let y = h * 0.5 - (lines.length * 22 + 150) * s / 2;

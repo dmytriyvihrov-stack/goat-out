@@ -90,13 +90,14 @@ class World {
       if (room.index === 0) continue;
       // The signs themselves are sprites now (`placeOmens`); what stays on the decal canvas is the
       // old blood a room was cleaned of.
-      if (rng.chance(0.5)) {
+      // 9 Oct 2026 playtest ("less blood lying about for no reason, and less bright"): the old blood was meant to be
+      // faint (alpha 0.16 on the decal canvas) but `dot` paints a blood colour into the stain tiles, which never saw that
+      // alpha, so every room's five blots were full strength. Now they are painted faint on the stain tile itself, in a
+      // quarter of the rooms, not half. Its rolls are all taken first, so the signs after it keep their dice.
+      if (rng.chance(0.25)) {
         const tx = rng.int(room.x + 1, room.x + room.w - 2), ty = rng.int(room.y + 1, room.y + room.h - 2);
-        if (this.tileAt(tx, ty) !== T.WALL) {
-          this.dctx.globalAlpha = 0.16;
-          for (let k = 0; k < 5; k++) this.dot((tx + 0.5) * TILE + rng.float(-20, 20), (ty + 0.5) * TILE + rng.float(-20, 20), rng.float(3, 8), PALETTE.bloodDark);
-          this.dctx.globalAlpha = 1;
-        }
+        const blots = []; for (let k = 0; k < 5; k++) blots.push([(tx + 0.5) * TILE + rng.float(-20, 20), (ty + 0.5) * TILE + rng.float(-20, 20), rng.float(3, 8)]);
+        if (this.tileAt(tx, ty) !== T.WALL) for (const [bx, by, br] of blots) this.paintStain(bx, by, br, (c) => { c.save(); c.globalAlpha = 0.3; c.fillStyle = PALETTE.bloodDark; CombatFX.cellDisc(c, bx, by, br); c.restore(); });
       }
     }
     this.paintStartRoom(level, rng);
@@ -995,7 +996,8 @@ class World {
     const px=TUNING.effects.pixel,seed=(x*3+y*5)|0;
     this.paintStain(x,y,r,c=>{
       const x0=Math.round(x/px)*px,y0=Math.round(y/px)*px,span=Math.ceil(r/px)*px;
-      c.fillStyle=witch?'rgba(38,26,64,0.8)':'rgba(20,14,12,0.8)';c.beginPath();
+      // ordinary soot 0.8 → 0.5 (9 Oct 2026, "this floor looks strange": black dithered blots round the goat read as holes)
+      c.fillStyle=witch?'rgba(38,26,64,0.8)':'rgba(20,14,12,0.5)';c.beginPath();
       for(let oy=-span;oy<=span;oy+=px)for(let ox=-span;ox<=span;ox+=px){
         const d=hyp(ox,oy)/r+(CombatFX.noise((x0+ox)*0.15,(y0+oy)*0.15,seed)-0.5)*0.35;
         if(d<1&&CombatFX.bayer(ox/px,oy/px)<1.35-d*1.4)c.rect(x0+ox,y0+oy,px,px);
