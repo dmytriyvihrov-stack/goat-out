@@ -5,6 +5,27 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
+
+- **Versions count 0.001, 0.002, ...** (`BUILD`; his word: "big numbers confuse me"). The old line ended at 2.07.
+- **The screen no longer blinks black on every headbutt.** `PaintedArt.drawGoat` read a `FE` that lived only inside `stance`: it threw on every windup frame,
+  and `safeFrame` clears the canvas after a throw. Found by measuring the canvas's brightness a frame at a time in headless Chromium (four frames of 0).
+- **One pointer, everywhere**: the headbutt chip is the only cursor. The closed hand for a held thing, the drawn horns behind the chip and the page's
+  `crosshair` are gone (the HTML says `cursor: none` until the game lays the chip in its constructor).
+- **Stealth is in the game from the second floor** (`Game.stealthLive`): THE YARD writes `ALT - STEALTH MODE` on the floor of its first room with a man in
+  it (`teachSneak`, block 6, `GEN_RULES.sneaklesson`), gone once he has sneaked; THE SHOWROOM's hall has it too. While it holds, an eye and STEALTH stand
+  by the hearts; a fight (`Game.fightOn`) takes it off by itself, and the press is refused until the fight is over (SPOTTED and the seconds left).
+- **The second chance is said over the death card**, the first death after a visit up there (`HEAVEN_TALK.life`, `Heaven.lifeDue`): "oh, I almost
+  forgot, from now on I give you a second chance, do not disappoint me". The god's first talk ends on the twenty souls and the jump, no life in it.
+- **Less text on a lock**: LOCKED says LOCKED on the pointer and nothing over it; an empty stand says `EMPTY.`
+- **The animals' pictograms on their stands** are hand-built side views (`HEAVEN_PIXELS.silhouettes`), not the lit sprites flattened.
+- **The milk grass answers at once** when he is hurt and near it, then every 1.6 to 2.2 s (it waited out a random 2 to 4 s first).
+- **A stag's head sometimes in the room with the big man** (`trophy.big`): a boss's ring but the ogre's, or a butcher's room.
+- **"xN IN A ROW" is gone** from the HUD (the combo still feeds the score and the music).
+- Not changed: "the view round a corner is fine" was read as a remark, not a request.
+
+---
+
 ## 2.07, published 9 Oct 2026: the sixth batch of 9 Oct, merged with the cloud's horns held still
 
 - **The level card no longer counts the souls in the floor** (it said "2 souls in here").

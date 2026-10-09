@@ -504,7 +504,7 @@ class Goat {
       if (this.stepNoiseTimer <= 0) {
         this.stepNoiseTimer = TUNING.noise.footstepGap;
         const quiet = Talisman.stepMul(game, this);   // MOTH WOOL
-        const stepR = game.dev && game.dev.stealth ? TUNING.stealth.step : TUNING.noise.footstep;
+        const stepR = game.stealthLive ? TUNING.stealth.step : TUNING.noise.footstep;
         if (quiet > 0) { world.emitNoise(this.x, this.y, stepR * quiet); game.audio.sfxHoof(quiet); }
       }
     } else this.stepNoiseTimer = 0;
@@ -791,11 +791,11 @@ class Goat {
         if (e.hp <= 0) e.die(game, 'headbutt', ax, ay);
       } else {
         // STEALTH (dev test): a man who never saw him coming, or saw him only once the head was down.
-        const unseen = !!(game.dev && game.dev.stealth) && (!e.aware || e.spotT >= this.buttT);
+        const unseen = !!(game.stealthLive) && (!e.aware || e.spotT >= this.buttT);
         // A hound is not always there for it: that is what makes him a hound and not a man. Not a
         // hound taken unseen: he cannot slip what he did not see coming.
         // A blow traded with a man who knew he was there is an open fight: the sneak ends (`Game.breakSneak`).
-        if (!unseen && e.aware && game.dev && game.dev.stealth) game.breakSneak();
+        if (!unseen && e.aware && game.stealthLive) game.breakSneak();
         if (!unseen && e.tryDodge && e.tryDodge(game, ax, ay)) continue;
         // The shieldman's board, met head on: its spikes take the horns (2 Oct 2026, `shieldman.spikes`).
         // The goat loses a heart and is thrown off it, he is rocked back behind it, and the bone is not

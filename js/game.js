@@ -57,31 +57,16 @@ const HORN_TOOL = [
   ['tip', 'TIP STARTS AT', 0.2, 0.95, 0.02, 'rows', ''], ['tipMul', 'TIP THROW  ×', 0.5, 3, 0.05, 'rows', '×'],
   ['shaftMul', 'SHAFT THROW  ×', 0.1, 2, 0.05, 'rows', '×'],
 ];
-// The pointer, drawn as the animal rather than as a plain OS crosshair. It used to be the 🐐 emoji
-// glyph, which every OS draws facing its own way (several draw it left, aiming nowhere near where a
-// click actually lands) and which is a whole standing goat when the one part of him that matters to
-// aim is the head, headbutt is the verb the cursor exists to aim. Then it was a drawn head, which
-// at 32px read as a blob. It is a pair of horns now, symmetrical so it has no facing to get wrong,
-// with the hotspot on the red point between them.
-// `encodeURIComponent` rather than hand-escaping the quotes, since a cursor string that is wrong is
-// silently wrong, the browser just falls back to `crosshair` with nothing in the console about it.
-const CURSOR_GOAT = `url("data:image/svg+xml,${encodeURIComponent(
-  "<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'>"
-  // two ridged horns sweeping up and out from a brow, the verb the pointer aims
-  + "<path d='M14,20 Q6,19 4.5,11 Q4,5 9,4 Q6.5,8 8.5,12 Q10.5,15.5 15,16 Z' fill='#d9c49a' stroke='#1a1016' stroke-width='1.4' stroke-linejoin='round'/>"
-  + "<path d='M18,20 Q26,19 27.5,11 Q28,5 23,4 Q25.5,8 23.5,12 Q21.5,15.5 17,16 Z' fill='#d9c49a' stroke='#1a1016' stroke-width='1.4' stroke-linejoin='round'/>"
-  + "<path d='M6,14 L9,13 M5.5,10.5 L8.3,10.2 M26,14 L23,13 M26.5,10.5 L23.7,10.2' stroke='#8a6a3a' stroke-width='1.1' stroke-linecap='round'/>"
-  + "<circle cx='16' cy='18' r='2' fill='#c0392b' stroke='#1a1016' stroke-width='1'/>"
-  + "</svg>"
-)}") 16 18, crosshair`;
 // 3 Oct 2026 playtest ("people do not tie the mouse to what the goat does; the pointer was not seen
 // enough"): the pointer is the headbutt's own chip off the skill rail (`SKILL_ICONS`, head and horns),
 // near white, `TUNING.cursor.cell` px a cell and ringed in a pale halo outside its ink, so what the hand
-// moves and what the left button does are one picture on any floor. Baked once; the drawn horns above
-// stay behind it in the list for a browser that cannot take it.
+// moves and what the left button does are one picture on any floor. Baked once. It is the only pointer there is
+// (9 Oct 2026 playtest: "show only the updated cursor everywhere, never the old one"): the drawn pair of horns that
+// stood behind it, the OS crosshair of the page and the closed hand for a held thing are gone; a browser that cannot
+// take the picture gets its plain arrow.
 let BUTT_CURSOR = null;
 function buttCursor() {
-  if (BUTT_CURSOR !== null) return BUTT_CURSOR || CURSOR_GOAT;
+  if (BUTT_CURSOR !== null) return BUTT_CURSOR || 'default';
   BUTT_CURSOR = '';
   try {
     const C = TUNING.cursor, src = SKILL_ICONS.cells(['head', 'horns:bone']), n = src.length, W = n + 2;
@@ -103,9 +88,9 @@ function buttCursor() {
     for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) if (grid[j][i]) { cx.fillStyle = grid[j][i]; cx.fillRect((i - x0) * k, (j - y0) * k, k, k); }
     // the hot spot is the brow between the horns: the head's top row (row 8 of the chip), its middle
     const hx = Math.round(cv.width / 2), hy = Math.min(cv.height - 1, (8 + 2 - y0) * k);
-    BUTT_CURSOR = `url(${cv.toDataURL('image/png')}) ${hx} ${hy}, ${CURSOR_GOAT}`;
+    BUTT_CURSOR = `url(${cv.toDataURL('image/png')}) ${hx} ${hy}, default`;
   } catch (e) { BUTT_CURSOR = ''; }
-  return BUTT_CURSOR || CURSOR_GOAT;
+  return BUTT_CURSOR || 'default';
 }
 // The codes that mean somebody is playing on a keyboard. Anything else, a volume rocker, a media key,
 // a phone's own `Unidentified`, is not a reason to take the thumb controls off the screen.
@@ -123,6 +108,7 @@ class Game {
   static untaken = (tm) => !tm.taken;
   constructor(canvas) {
     this.canvas = canvas; this.renderer = new Renderer(canvas); this.audio = new GameAudio();
+    this.cursorSet = buttCursor(); canvas.style.cursor = this.cursorSet;   // the pointer from the first frame: the page itself shows none (`cursor: none`)
     this.fx = new CombatFX(this);
     this.touch = new TouchUI();
     this.coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches);
@@ -2298,13 +2284,13 @@ class Game {
       // ALT is the STEALTH test's sneak: on its own it takes the page's focus to the browser's menu.
       // Held with a key it is worse: Alt+D is the address bar, Alt+E the browser's menu, so sneaking
       // while moving threw the focus out of the game. With the test on, no Alt chord reaches the browser.
-      if ((e.altKey || e.code === 'AltLeft' || e.code === 'AltRight') && this.dev && this.dev.stealth) e.preventDefault();
+      if ((e.altKey || e.code === 'AltLeft' || e.code === 'AltRight') && this.stealthLive) e.preventDefault();
       if (e.repeat) return;
       // The RULES page has no keys: Backspace under it would regenerate the level it is describing.
       if (this.dev.rules) { e.preventDefault(); return; }
       this.keys.add(e.code);
       // STEALTH (dev test): ALT is a switch, a press on and a press off (5 Oct 2026 playtest: "not hold").
-      if ((e.code === 'AltLeft' || e.code === 'AltRight') && this.dev.stealth) this.toggleSneak();
+      if ((e.code === 'AltLeft' || e.code === 'AltRight') && this.stealthLive) this.toggleSneak();
       // Only a key that plays the game hands it to the keyboard. A phone's volume rocker is a keydown
       // too, and it used to put the touch controls away for good a few seconds into the first level,
       // whenever somebody turned the sound down. A real key takes the controls off a pad the same way.
@@ -2317,7 +2303,7 @@ class Game {
       }
       this.keyPress(e.code, e);
     });
-    window.addEventListener('keyup', (e) => { if ((e.code === 'AltLeft' || e.code === 'AltRight') && this.dev && this.dev.stealth) e.preventDefault(); this.keys.delete(e.code); });
+    window.addEventListener('keyup', (e) => { if ((e.code === 'AltLeft' || e.code === 'AltRight') && this.stealthLive) e.preventDefault(); this.keys.delete(e.code); });
 
     // What a pointer is, for the controls: on a device whose main pointer is a finger, all of them are
     // fingers. Some phone browsers and in-app views report a tap as a `mouse` pointer, and a single
@@ -2502,20 +2488,41 @@ class Game {
 
   // STEALTH (dev test, 5 Oct 2026): how long the sneak stays shut after a fight found him (`stealth.deny`
   // s after the last `breakSneak`); 0 when it is free. A timestamp, so a level's fresh clock frees it.
+  // Stealth is part of the game from the second floor on (9 Oct 2026, his word: the floor teaches `ALT - STEALTH MODE`); on
+  // the first it stays what it was, a dev test (the drawer's STEALTH), and never in heaven or the trip (THE SHOWROOM has it, with the lesson on its hall's floor).
+  get stealthLive() {
+    if (this.dev && this.dev.stealth) return true;
+    const d = this.level && this.level.def;
+    return !!(d && !d.heaven && !d.shroom && (d.showroom || levelIndexOf(d) >= 1) && this.state !== 'heaven');
+  }
   sneakDenied() {
     const d = this.timer - (this.sneakDenyAt ?? -1e9);
     return d >= 0 && d < TUNING.stealth.deny ? TUNING.stealth.deny - d : 0;
   }
+  // A fight is on (9 Oct 2026 playtest: "after a fight starts ALT and the stealth come off by themselves"): a man who has
+  // seen him and is past his beat of doubt is within `stealth.fightR` tiles. Read by `readMoveInput` while the sneak is on
+  // and by `toggleSneak`, so it cannot be had again with the hunt still after him.
+  fightOn() {
+    const g = this.goat; if (!g) return false;
+    const R = TUNING.stealth.fightR * TILE;
+    for (const e of this.liveEnemies || this.enemies) {
+      if (e.dead || e.held || !e.aware) continue;
+      if (e.state === 'idle' || e.state === 'investigate' || e.state === 'noticed' || e.state === 'hidden' || e.millLesson) continue;
+      if (hyp(e.x - g.x, e.y - g.y) < R) return true;
+    }
+    return false;
+  }
   toggleSneak() {
     if (this.state !== 'play' || !this.goat || this.goat.dead) return;
     // Shut while a fight is on him: the press is answered by the ring round his feet, not by a crouch.
-    if (!this.sneakOn && this.sneakDenied() > 0) { this.sneakRefusedAt = this.timer; return; }
+    if (!this.sneakOn && (this.sneakDenied() > 0 || this.fightOn())) { this.sneakRefusedAt = this.timer; return; }
     this.sneakOn = !this.sneakOn;
+    if (this.sneakOn) this.learn('sneak');
   }
   // A fight found him (an aware man sees him, a heart lost): the sneak ends and is shut for `stealth.deny`
   // s, counted again from every such moment, so it opens only once the fight has let him go.
   breakSneak() {
-    if (!this.dev.stealth) return;
+    if (!this.stealthLive) return;
     if (this.sneakOn && this.goat) this.floatText(this.goat.x, this.goat.y - 30, TUNING.stealth.spotted, PALETTE.blood);
     this.sneakOn = false; this.sneak = false; this.sneakDenyAt = this.timer;
   }
@@ -2532,8 +2539,9 @@ class Game {
     const l = hyp(mx, my); if (l > 1) { mx /= l; my /= l; }
     this.input.mx = mx; this.input.my = my;
     // STEALTH (dev test): ALT switches the sneak (`toggleSneak`), keys and mouse only for now (`TUNING.stealth`).
-    if (!this.dev.stealth || !this.goat || this.goat.dead) this.sneakOn = false;
-    this.sneak = !!(this.dev.stealth && this.sneakOn && !touching && !padding);
+    if (!this.stealthLive || !this.goat || this.goat.dead) this.sneakOn = false;
+    if (this.sneakOn && this.state === 'play' && this.fightOn()) this.breakSneak();
+    this.sneak = !!(this.stealthLive && this.sneakOn && !touching && !padding);
     if (!this.goat) return;
 
     if (padding) {
@@ -3957,15 +3965,13 @@ class Game {
     if (a.work > Q.slow && a.hold > Q.wait && q > Q.min) { a.noUp = true; a.raised = false; a.before = a.work; r.quality = Math.max(Q.min, q - Q.step); this.resizeNext = true; a.hold = 0; }
     else if (!a.noUp && a.work < Q.fast && a.hold > Q.waitUp && q < 1) { a.raised = true; r.quality = Math.min(1, q + Q.step); this.resizeNext = true; a.hold = 0; }
   }
-  // The OS pointer rather than a drawn one: the goat's own head, aimed at something to hit, and a
-  // closed hand once there is something in his mouth to let go of instead of a wall to put his
-  // skull into. A plain `crosshair` was the one cursor in the whole game regardless of what he was
-  // carrying; `CURSOR_GOAT` still falls back to it if the browser can't render the inline SVG.
+  // The OS pointer rather than a drawn one: the headbutt's chip (`buttCursor`), in every state and whatever he carries
+  // (9 Oct 2026: the closed hand for a held thing and the page's crosshair are gone). Hidden only for a pad or the keys.
   updateCursor() {
     // With a pad in hand the pointer means nothing and would sit wherever the mouse was left.
     // So does it while the keys hold the aim (`kbLive`, KEYBOARD ONLY): the run is the aim then.
     const keys = kbOn(this) && (this.state === 'play' || this.state === 'heaven');
-    const want = this.pad.active || keys ? 'none' : this.state === 'play' && this.goat && this.goat.holding ? 'grabbing' : buttCursor();
+    const want = this.pad.active || keys ? 'none' : buttCursor();
     // Compared against what we last wrote, never read back: the browser hands `url(...)` back quoted,
     // so the read never matched and a few KB of data URL were written over again every frame.
     if (this.cursorSet !== want) { this.cursorSet = want; this.canvas.style.cursor = want; }
@@ -3999,6 +4005,9 @@ class Game {
     if (this.state === 'dead') {
       this.stateTimer -= dt; this.updateEffects(dt);
       if (this.deathCam) this.updateDeathCam(dt);
+      // The god's second chance, said over the card once it is up (`Heaven.lifeDue`; the first death after a visit).
+      if (this.beastTalk) { Beast.updateTalk(this, dt); this.clearEdges(); return; }
+      if (this.stateTimer <= 0 && Heaven.lifeDue(this)) { Heaven.sayLife(this); this.clearEdges(); return; }
       // RESTART on the card (`Painting.drawDeath`): the floor again at once, heaven skipped; Backspace is the same.
       if (this.input.lmbPressed && Painting.onQuick(this.input.mouse)) { Painting.quickRect = null; this.copyCode(); this.restartLevel(); this.clearEdges(); return; }
       // The small PLAYTEST line under them (9 Oct 2026): this floor again, whatever PERMADEATH says.

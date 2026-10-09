@@ -396,7 +396,7 @@ class Enemy {
     // Tall grass hides the goat the way it hides them: past `grass.hideR`, a goat standing in it is
     // not there to see, cone or no cone. What gives him away in it is noise, as anywhere else.
     const w = game.world, gt = Math.floor(g.y / TILE) * w.W + Math.floor(g.x / TILE);
-    const sneakTest = !!(game.dev && game.dev.stealth);
+    const sneakTest = !!(game.stealthLive);
     if (w.grass[gt] && d > (sneakTest ? TUNING.stealth.grass : TUNING.grass.hideR) * TILE) return false;
     const ang = Math.atan2(dy, dx);
     // Behind a man is behind him however close you are standing. Walking up on somebody used to
@@ -424,7 +424,7 @@ class Enemy {
     let R = (cfg.sight + (this.watchful ? (cfg.watchSight || 4) : 0)) * TILE * (game.sneak ? ST.sight : 1);
     if (game.goatLit === false) {
       const S = TUNING.dark.ai.sight;
-      R = Math.min(R, (S[this.kind] || S.all) * TILE * (game.sneak && game.dev && game.dev.stealth ? ST.dark.sight : 1));
+      R = Math.min(R, (S[this.kind] || S.all) * TILE * (game.sneak && game.stealthLive ? ST.dark.sight : 1));
     }
     return R;
   }
@@ -1136,7 +1136,7 @@ class Enemy {
       this.aware = true; this.lastSeen = { x: g.x, y: g.y }; this.lostTimer = 0;
       // STEALTH (dev test): a man past his beat of doubt with his eyes on the goat is a fight, and the
       // sneak ends and stays shut while it lasts (`Game.breakSneak`, `stealth.deny`).
-      if (game.dev && game.dev.stealth && this.state !== 'idle' && this.state !== 'investigate' && this.state !== 'noticed'
+      if (game.stealthLive && this.state !== 'idle' && this.state !== 'investigate' && this.state !== 'noticed'
           && !this.millLesson) game.breakSneak();
     }
     else if (this.aware) {
@@ -1158,7 +1158,7 @@ class Enemy {
     if (!sees && !this.aware && this.state !== 'investigate' && Math.random() < dt * TUNING.bark.nearChance
         && hyp(g.x - this.x, g.y - this.y) < TUNING.bark.nearDist * TILE) game.bark(this, 'near');
     // STEALTH (dev test): in THE DARK, with less to see by, every man hears `stealth.dark.ear` × as far.
-    const ear = game.inDark && game.dev && game.dev.stealth ? TUNING.stealth.dark.ear : 1;
+    const ear = game.inDark && game.stealthLive ? TUNING.stealth.dark.ear : 1;
     for (const n of w.noises) {
       // The rat ogre has his own mind: nothing lures him and nothing turns his head but what he sees.
       if (this.kind === 'ratogre' || this.state === 'hidden') break;
@@ -1201,7 +1201,7 @@ class Enemy {
       let notice = this.noticeFor;
       if (!notice) {
         // STEALTH (dev test): a longer beat of doubt (`stealth.notice`), a `?` over him, to get out of his sight in.
-        const distTiles = hyp(g.x - this.x, g.y - this.y) / TILE, A = game.dev && game.dev.stealth ? TUNING.stealth.notice : TUNING.ai;
+        const distTiles = hyp(g.x - this.x, g.y - this.y) / TILE, A = game.stealthLive ? TUNING.stealth.notice : TUNING.ai;
         const t = clamp((distTiles - A.noticeNear) / (A.noticeFar - A.noticeNear), 0, 1);
         notice = t > 0 ? lerp(A.noticeMin, A.noticeMax, t) : 0;
       }
@@ -1210,7 +1210,7 @@ class Enemy {
     }
     // STEALTH (dev test): out of his sight again before his beat of doubt is over, he only thinks he
     // saw something, and goes to look where it was. Not an authored beat (`noticeFor`).
-    if (this.state === 'noticed' && !sees && game.dev && game.dev.stealth && !this.noticeFor && this.lastSeen) {
+    if (this.state === 'noticed' && !sees && game.stealthLive && !this.noticeFor && this.lastSeen) {
       this.aware = false; this.state = 'investigate'; this.target = { x: this.lastSeen.x, y: this.lastSeen.y };
       game.bark(this, 'search', 0.5);
     }
@@ -1253,7 +1253,7 @@ class Enemy {
     // STEALTH (dev test, 5 Oct 2026): while the goat sneaks, a man who does not know he is there turns at
     // `stealth.turn` rad/s whatever turned him (a glance round, a noise, a new heading), and walks only
     // as much as he already faces his way, so a turn is a slow thing to get behind. A hound has his legs.
-    if (game.sneak && !this.aware && this.kind !== 'dog' && game.dev && game.dev.stealth) {
+    if (game.sneak && !this.aware && this.kind !== 'dog' && game.stealthLive) {
       const k = TUNING.stealth.turn * dt, want = this.facing;
       const f = face0 + clamp(angleDiff(face0, want), -k, k);
       this.facing = Math.atan2(Math.sin(f), Math.cos(f));   // kept within a turn (the eight-facing lookups)
@@ -1367,7 +1367,7 @@ class Enemy {
       }
     }
     // STEALTH (dev test): stood with his nose to the stone (a search that ended on a wall), he looks round soon.
-    const sneakTest = game.dev && game.dev.stealth, I = TUNING.stealth.idle;
+    const sneakTest = game.stealthLive, I = TUNING.stealth.idle;
     // A boulder or a crate in his face counts as stone, walking into it or stood at it (5 Oct 2026, the cave).
     if (sneakTest && this.wander > I.wake) {
       const nx = this.x + Math.cos(this.facing) * I.wall * TILE, ny = this.y + Math.sin(this.facing) * I.wall * TILE;
@@ -1406,7 +1406,7 @@ class Enemy {
   investigate(dt, game) {
     if (this.sentry) { this.target = null; this.state = 'idle'; this.vx = 0; this.vy = 0; return; }
     if (!this.target) { this.state = 'idle'; return; }
-    const ST = TUNING.stealth, sneakTest = !!(game.dev && game.dev.stealth);
+    const ST = TUNING.stealth, sneakTest = !!(game.stealthLive);
     // A fresh noise (a new `target`) starts the walk, the watch on it and the search over.
     if (this.searchFor !== this.target) {
       this.searchFor = this.target; this.searchN = 0; this.invRoute = false;

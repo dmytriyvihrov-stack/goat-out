@@ -61,6 +61,7 @@ function showroomLevel(def, seed) {
   const hall = room(2, 22, 46, 33, 'showroom hall', 0);
   const hx = hall.x + 1, hy = hall.y + 1;
   label('THE SHOWROOM', hx + 22, hy + 2.4, 30, true);
+  controls.push({ x: (hx + 22) * TILE, y: (hy + 3.7) * TILE, w: 18 * TILE, part: 6 });   // ALT - STEALTH MODE, as THE YARD teaches it (stealth is live here)
   const row = (y, head, list, gap = 4.4) => {
     label(head, hx + 1.5, y, 6);
     list.forEach(([name, fn], i) => { const tx = hx + 7 + i * gap | 0; fn(tx, y); label(name, tx, y + 1.3, 4); });

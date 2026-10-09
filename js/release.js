@@ -62,7 +62,7 @@ const RELEASE = {
       + "    font-family: 'Alegreya', Georgia, 'Times New Roman', serif; overflow: hidden; overscroll-behavior: none;\n"
       + '    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }\n'
       + '  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: var(--ink);\n'
-      + '    touch-action: none; cursor: crosshair; }\n  #game:focus-visible { outline: none; }\n</style>\n</head>\n<body>\n'
+      + '    touch-action: none; cursor: none; }\n  #game:focus-visible { outline: none; }\n</style>\n</head>\n<body>\n'
       + '<canvas id="game" aria-label="Doomed Goat, a top-down escape game"></canvas>\n'
       + tags + '</body>\n</html>\n';
   },

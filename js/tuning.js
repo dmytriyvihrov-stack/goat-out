@@ -1,8 +1,9 @@
 // GOAT OUT, all tuning values in one place. Units: px, seconds. 1 tile = TILE px.
 const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
-// by hand alongside a CHANGELOG entry so a bug report can name the build it happened on.
-const BUILD = '2.07';
+// by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
+// ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
+const BUILD = '0.001';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -1246,7 +1247,7 @@ const TUNING = {
     // died on the wall beside it: `hitR` was 13 px, under half a tile, and `hit` 4 tiles/s): `hitR` 28 and `hit` 3
     // tiles/s, and he is drawn swinging on the tines (`sway`: `amp` rad at first, `rate` swings a second, gone
     // after `settle` s, a little left over as `rest`) with one of `lines` over him.
-    trophy: { r: 8, chance: 0.4, perLevel: 2, from: 1, hit: 3 * TILE, hitR: 28, reach: 5, time: 2.6, free: 0.5,
+    trophy: { r: 8, chance: 0.4, perLevel: 2, from: 1, big: 0.25, hit: 3 * TILE, hitR: 28, reach: 5, time: 2.6, free: 0.5,
       lift: 20, texel: 1.4, drip: 9,
       sway: { amp: 0.16, rate: 0.9, settle: 6, rest: 0.025 },
       lines: ['HANGING AROUND', 'STAG PARTY', 'JUST HANGING', 'ANTLER-ED', 'NICE VIEW'] },
@@ -2056,7 +2057,7 @@ const TUNING = {
   // off than that. A man who came to a noise looks round `search.looks` times, `search.every` s apart, and
   // walks home (`Enemy.investigate`, `e.homeward`). In THE DARK (`game.goatLit` false) his sight is
   // `dark.sight` of `dark.ai.sight` and he hears every noise `dark.ear` × as far.
-  stealth: { speed: 0.8, sight: 0.8, step: 4.5, knock: 1.5, floor: 1.5, stop: 0.06, text: 'UNSEEN', ease: 6, alarm: 0.7,
+  stealth: { fightR: 14, speed: 0.8, sight: 0.8, step: 4.5, knock: 1.5, floor: 1.5, stop: 0.06, text: 'UNSEEN', statusText: 'STEALTH', ease: 6, alarm: 0.7,
     deny: 6, spotted: 'SPOTTED', turn: 1.6, grass: 1.5,
     cover: { kinds: ['crate', 'rock', 'barrel'], grow: 2 },
     search: { looks: 3, every: 1.1 },
@@ -2065,7 +2066,7 @@ const TUNING = {
     idle: { tries: 12, far: 6, keep: 0.75, wall: 1, wake: 0.4 },
     crouch: { wide: 0.07, low: 0.12 },
     look: { px: 4, ray: 0.03, keep: 0.25, turn: 0.06, budget: 3, cone: 'rgba(196,48,36,0.2)', rim: 'rgba(226,70,50,0.6)',
-      seen: 'rgba(238,64,42,0.34)', ear: 'rgba(214,160,72,0.4)', deny: 'rgba(226,150,60,0.7)', denyR: 20 } },
+      seen: 'rgba(238,64,42,0.34)', ear: 'rgba(214,160,72,0.4)', deny: 'rgba(226,150,60,0.7)', denyR: 20, status: '#9fc7e8', statusDeny: '#e0a040' } },
   juice: {
     // The master dials, over every call site at once: `screen` multiplies every shake, kick, lens
     // punch and flash, `stop` every hitstop. 1.37 stacked a hit flash, a ring, sparks, dust and a
@@ -2694,7 +2695,7 @@ const TUNING = {
       fire: { gain: 1.5, radius: 7, lit: 0.35, tile: 0.12, man: 0.6, glide: 0.25 },
       drip: { gap: [1.5, 5], gain: 0.7, wet: 0.25 },
       far: { gap: [40, 90], gain: 0.9, wet: 0.2 },
-      grass: { radius: 5, gap: [2, 4], gain: 0.95 },   // louder and more often since the 8 Oct 2026 playtest ("very quiet")
+      grass: { radius: 5, gap: [1.6, 2.2], gain: 0.95 },   // louder and more often since the 8 Oct 2026 playtest ("very quiet")
       heart: { gain: 0.26, dub: 0.6 } },
     // The effects (js/foley.js). `takes` recordings of each are rendered and one is picked every time,
     // nudged up to `pitch` in speed and `level` in loudness: the same blow twice running is what a
@@ -4109,6 +4110,8 @@ const LEVELS = [
     // SPACE - BAAH on the floor of its first room with a crowd in it (30 Sep 2026, "write the space
     // lesson somewhere from the second floor"): the voice is the one verb THE ALTAR never names.
     teachScream: true,
+    // ALT - STEALTH MODE on the floor of its first populated room that is not the voice's (9 Oct 2026 playtest; `GEN_RULES.sneaklesson`).
+    teachSneak: true,
     // The mage brings fire; the rooms already have it. Coals, straw and ovens, so the thing the Seer
     // does to the floor is a thing you have been doing to the floor yourself since the second room.
     canon: { id: 'fire', name: 'FIRE', idea: 'Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself.' },
