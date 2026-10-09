@@ -319,7 +319,7 @@ const PIXEL_ART = {
     const jobs = ['clubman', 'mage', 'hunter'].map((id) => () => this.studyOf(id));
     for (const id in PIXEL_HORN_FIX) {
       const u = PIXEL_ASSETS.units[id];
-      if (u && u.walk) for (const d in PIXEL_HORN_FIX[id]) for (const f of u.walk[d] || []) jobs.push(() => this.hornFix(id, +d, f));
+      if (u && u.walk) for (const d in PIXEL_HORN_FIX[id]) for (const f of [u.idle[d], ...(u.walk[d] || [])]) jobs.push(() => this.hornFix(id, +d, f));
     }
     const step = () => { const job = jobs.shift(); if (!job) return; try { job(); } catch (err) { /* baked when drawn */ } setTimeout(step, 30); };
     setTimeout(step, 120);
@@ -380,30 +380,70 @@ const PIXEL_ART = {
     } else this.frame(ctx, f, id, 1, flip);
     return true;
   },
-  // The goat's back-left run (and the back-right, which is it mirrored) was packed with the horns
-  // standing up on the first and last steps and laid toward his nose on the middle two, so on a run to
-  // the top right they flapped every stride (5 Oct 2026, "the horns' animation is broken"). Those two
-  // frames get the middle steps' horns, moved onto their own roots; the rest of the frame is untouched.
-  // Baked once per frame, after the atlas has loaded (`image` is the hardened canvas by then).
+  // The goat's horns were packed a little differently on every frame: the back-left run had them standing up
+  // on the first and last steps and laid toward his nose on the middle two (5 Oct 2026, "the horns' animation
+  // is broken"), the west and east runs had the pair fused into one dark lump on some steps and apart on the
+  // others, and on nearly every facing the standing frame's horns were a size or a sweep off the run's, so
+  // they jumped at every start and stop (9 Oct 2026, "the horns' consistency while moving"). So one step a
+  // facing is the reference (`PIXEL_HORN_FIX`), and every other frame of that facing, the idle included,
+  // wears its horns, moved onto the frame's own roots: the head still moves with the stride, the horns on it
+  // never change shape. Roots pair up left to right when the frame has as many horns as the reference; a
+  // frame whose two horns touch (one blob) is placed off its lowest root, the near horn's, as one piece.
+  // Baked once per frame, after the atlas has loaded (`image` is the hardened canvas by then); a frame with
+  // nothing to do (the reference itself, no horns found) caches null and draws as packed.
   hornFix(id, d, f) {
     const R = PIXEL_HORN_FIX[id], u = PIXEL_ASSETS.units[id];
-    if (!R || !R[d] || !u.walk || typeof document === 'undefined' || !(this.image instanceof HTMLCanvasElement)) return null;
-    const i = u.walk[d].indexOf(f), from = R[d][i];
-    if (i < 0 || from === undefined || from === i) return null;
+    if (!R || R[d] === undefined || !u.walk || typeof document === 'undefined' || !(this.image instanceof HTMLCanvasElement)) return null;
+    const g = u.walk[d][R[d]]; if (!g || g === f) return null;
     this.hornFixes ||= new Map();
-    let c = this.hornFixes.get(f); if (c) return c;
-    const g = u.walk[d][from], mine = this.hornsOf(f), theirs = this.hornsOf(g);
-    c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
-    const x = c.getContext('2d'); x.drawImage(this.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
-    if (mine.length && mine.length === theirs.length) {
+    if (this.hornFixes.has(f)) return this.hornFixes.get(f);
+    const mine = this.hornsOf(f), theirs = this.hornsOf(g);
+    let c = null;
+    if (mine.length && theirs.length) {
+      c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
+      const x = c.getContext('2d'); x.drawImage(this.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
       const px = x.getImageData(0, 0, f[2], f[3]);
       for (const h of mine) for (const p of h.blob) px.data[p * 4 + 3] = 0;
       x.putImageData(px, 0, 0);
-      const byX = (a) => a.slice().sort((p, q) => p.base[0] - q.base[0]), A = byX(mine), B = byX(theirs);
-      A.forEach((h, k) => x.drawImage(B[k].canvas, Math.round(h.base[0] - B[k].base[0]), Math.round(h.base[1] - B[k].base[1])));
+      if (mine.length === theirs.length) {
+        const byX = (a) => a.slice().sort((p, q) => p.base[0] - q.base[0]), A = byX(mine), B = byX(theirs);
+        A.forEach((h, k) => x.drawImage(B[k].canvas, Math.round(h.base[0] - B[k].base[0]), Math.round(h.base[1] - B[k].base[1])));
+      } else {
+        const a = this.lowRoot(mine), b = this.lowRoot(theirs), dx = Math.round(a[0] - b[0]), dy = Math.round(a[1] - b[1]);
+        for (const h of theirs) x.drawImage(h.canvas, dx, dy);
+      }
     }
     this.hornFixes.set(f, c);
     return c;
+  },
+  // The lowest root among a frame's horns, the near one on a side view: the one root a fused pair still has.
+  lowRoot(hs) { return hs.reduce((m, h) => h.base[1] > m.base[1] ? h : m).base; },
+  // Where this frame's head is against the facing's standing frame, in atlas px, read off the horns' roots
+  // (the packed stride moves the head a few pixels a step on top of the bob `drawGoat` adds): what sits on
+  // the head, the thing in his teeth (`Renderer.drawCarried`) and the face marks (`face`), moves with it.
+  // The mean of the roots when the frame has as many horns as the idle, else the lowest root of each. [0, 0]
+  // for the idle itself, a frame with no horns found, or before the atlas is up.
+  headShift(id, d, f) {
+    const u = PIXEL_ASSETS.units[id], i = u && u.idle[d];
+    if (!i || f === i || typeof document === 'undefined' || !(this.image instanceof HTMLCanvasElement)) return [0, 0];
+    this.headShifts ||= new Map();
+    let s = this.headShifts.get(f); if (s) return s;
+    const mine = this.hornsOf(f), theirs = this.hornsOf(i);
+    if (!mine.length || !theirs.length) s = [0, 0];
+    else {
+      const mean = (hs) => hs.reduce((m, h) => [m[0] + h.base[0] / hs.length, m[1] + h.base[1] / hs.length], [0, 0]);
+      const a = mine.length === theirs.length ? mean(mine) : this.lowRoot(mine), b = mine.length === theirs.length ? mean(theirs) : this.lowRoot(theirs);
+      // the roots against each frame's own foot: the frames are laid by their feet, not their corners
+      s = [Math.round(a[0] - f[4] - (b[0] - i[4])), Math.round(a[1] - f[5] - (b[1] - i[5]))];
+    }
+    this.headShifts.set(f, s);
+    return s;
+  },
+  // The frame `draw` puts down for this heading and clock, and whether it is mirrored (`facing`), so what is
+  // laid on him can ask the same frame.
+  frameOf(id, angle, moving, t, x) {
+    const u = PIXEL_ASSETS.units[id], [d, flip] = this.facing(id, angle);
+    return { d, flip, f: moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d] };
   },
   // Which packed facing a heading draws, and whether mirrored. The goat's up-right view was packed
   // with both horns swept forward over his nose, every other view sweeps them back, which caught
@@ -581,9 +621,16 @@ const PIXEL_ART = {
   // off the foot (`PIXEL_FACE`). Drawn by hand, pixel by pixel (`PIXEL_FACE_ART`), on the sprite's
   // own grid: at this size a shape computed from an ellipse comes out as noise. Only what stays on
   // him is here; what leaves him, the drip, the steam, the flame, is `PaintedArt.goatFx`.
-  face(ctx, angle, t, mods, g) {
+  // `moving` and `x` pick the stride's frame the way `draw` does, so the marks ride the head of that frame (`headShift`).
+  face(ctx, angle, t, mods, g, moving, x) {
     const d = (Math.round(angle / (Math.PI / 4)) % 8 + 14) % 8, P = PIXEL_FACE[d], F = TUNING.goat.face, A = PIXEL_FACE_ART;
     const view = d === 0 ? 'front' : d === 2 || d === 6 ? 'side' : 'diag', flip = d === 1 || d === 2;
+    if (!mods.screamStun && !mods.spit && !mods.oracle) return;
+    const fr = this.frameOf('goat', angle, moving, t, x), sh = this.headShift('goat', fr.d, fr.f), k = PIXEL_EXTENT.goat / PIXEL_ASSETS.target;
+    ctx.save(); ctx.translate((fr.flip ? -sh[0] : sh[0]) * k, sh[1] * k);
+    try { this.faceMarks(ctx, P, F, A, view, flip, t, mods, g); } finally { ctx.restore(); }
+  },
+  faceMarks(ctx, P, F, A, view, flip, t, mods, g) {
     // THE FULL THROAT: the mouth drawn out into a horn's bell, a size up while he is shouting.
     if (mods.screamStun && P.mouth) {
       const T = F.throat, s = A.throat[view][(g.screaming || 0) > 0 ? 1 : 0];
@@ -630,9 +677,10 @@ if (typeof location !== 'undefined') {
 // Facings drawn as another facing mirrored, per unit (`PIXEL_ART.facing`): the goat's up-right (5)
 // is his up-left (3) turned over, since the packed 5 had its horns swept the wrong way.
 const PIXEL_MIRROR = { goat: { 5: 3 } };
-// Per unit and facing, the walk step whose horns each step wears (`PIXEL_ART.hornFix`): the goat's
-// back-left run takes the laid-back horns of its middle steps on all four.
-const PIXEL_HORN_FIX = { goat: { 3: [1, 1, 2, 2] } };
+// Per unit and facing, the walk step whose horns every frame of that facing wears, the idle included
+// (`PIXEL_ART.hornFix`): the step with both horns apart and swept back the way most of the sheet has them.
+// The goat's up-right (5) is never drawn (`PIXEL_MIRROR`).
+const PIXEL_HORN_FIX = { goat: { 0: 2, 1: 1, 2: 3, 3: 1, 4: 1, 6: 2, 7: 2 } };
 
 // The environment half of the same pass (output/pixel-environment-2026-09-23, packed by
 // tools/pack-pixel-env.ps1 into js/pixel-env-assets.js): the furniture of a room, the things that

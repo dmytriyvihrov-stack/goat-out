@@ -231,7 +231,12 @@ inline (mill caps and hub, the ware's stool, the shelf pail). The painted pack i
 
 **What he carries sits in his teeth.** `Renderer.drawCarried` draws a held *thing* at the mouth of the
 facing the sprite shows (`PIXEL_FACE`), `goat.carry.lead` + `reach` × r ahead, turned with the head,
-behind him on the back views; render only, `grab.holdDist` is still where a throw starts from. Held
+behind him on the back views; render only, `grab.holdDist` is still where a throw starts from. **The mouth
+moves with the head** (9 Oct 2026, "the horns' and the sword's consistency while moving"): the point goes
+through `PaintedArt.mouth`, the same shake, bob and lean `drawGoat` lays on him (`PaintedArt.stance`, the one
+helper both read) plus the packed stride's own head movement, `PIXEL_ART.headShift`, read off the horn roots of
+the frame against the facing's idle; the thing's facing takes the lean too. The face marks (`PIXEL_ART.face`,
+`faceMarks`) ride the same `headShift`; the collar (`PIXEL_NECK`) does not, the neck moves less. Held
 props are skipped in both prop passes. A held man still draws at the hold point. **Carrying anything
 he faces his aim**, running or standing (`goat.carry.turn` rad/s in real time, so COLD EYE does not
 slow it; the movement block's own `facing = velocity` is skipped while holding), otherwise the thing
@@ -260,9 +265,13 @@ hangs over a head (`drawOverhead`) is collected in `renderer.overheads` and draw
 nearest the camera first, a bark plate stepping up clear of one already placed.
 Props keep their fixed order (`inFront` is the exception list).
 
-**His back-left run** (and its mirror, the back-right) was packed with the horns standing up on two of
-its four steps, so they flapped every stride: `PIXEL_ART.hornFix` / `PIXEL_HORN_FIX` bakes those frames
-with the middle steps' horns moved onto their own roots (5 Oct 2026); `hornsOf(f, img)` reads the fixed one.
+**The horns are one pair a facing** (5 Oct 2026 the back-left run, whose horns stood up on two steps; 9 Oct 2026
+every facing: the west and east runs had the pair fused into one lump on some steps, and nearly every idle
+frame's horns were a size or a sweep off its run's, so they jumped at every start and stop): `PIXEL_ART.hornFix`
+/ `PIXEL_HORN_FIX` (facing → the reference walk step) bakes every other frame of that facing, the idle
+included, with the reference step's horns moved onto the frame's own roots (paired left to right when the
+counts match, else as one piece off the lowest root, `lowRoot`); `hornsOf(f, img)` reads the fixed one, and
+`warm` bakes them all on the title. The head still moves with the stride; the horns on it never change shape.
 **The goat's extras.** `PIXEL_ART.hornsOf(frame)` / `PIXEL_ART.horns` redraw the horns for LONG HORNS
 (an active since 1.56: `mods.antlers`, stag antlers built per horn by `antlerOf` on the art's grid),
 BOMB CHARGE, SPLASH (`TUNING.goat.hornLooks`; `hornMods` shares the lean). `PIXEL_ART.face` puts the

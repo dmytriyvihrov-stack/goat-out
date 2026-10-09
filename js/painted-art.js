@@ -756,7 +756,7 @@ class PaintedArt extends AltarArt {
     }
     if(e.shield)this.board(renderer,e,true);
     // His horns as the butt souls have made them, in the same lean as the frame (`drawGoat` sets it).
-    if(key==='sheep'&&this.hornMods){PIXEL_ART.horns(ctx,pixel,angle,moving,renderer.t,e.x,this.hornMods);PIXEL_ART.face(ctx,angle,renderer.t,this.hornMods,e);}
+    if(key==='sheep'&&this.hornMods){PIXEL_ART.horns(ctx,pixel,angle,moving,renderer.t,e.x,this.hornMods);PIXEL_ART.face(ctx,angle,renderer.t,this.hornMods,e,moving,e.x);}
     ctx.restore();
   }
 
@@ -977,6 +977,23 @@ class PaintedArt extends AltarArt {
     }
   }
 
+  // The shake (`g.jitter`), the stride's bob and the lean a change of pace gives him, in sprite px about the
+  // hooves, as `drawGoat` applies them: translate by x, y, turn by rot, then lift by hop. `mouth(renderer, g, mx, my)`
+  // carries a point of the standing sprite (`PIXEL_FACE`, sprite px off the foot) through the same stance and the
+  // packed stride's own head movement (`PIXEL_ART.headShift`), so a thing drawn at the muzzle stays on the muzzle
+  // through a run (9 Oct 2026: it hung still in the air while the head bobbed and the whole goat leaned).
+  stance(renderer,g,hop) {
+    const FE=TUNING.goat.feel,spd=hyp(g.vx||0,g.vy||0),st={x:g.jitter?g.jitter.x:0,y:g.jitter?g.jitter.y:0,rot:g.lean||0,hop:Math.round(hop||0)};
+    if(g.state==='idle'&&spd>30){const k=Math.min(1,spd/(TUNING.goat.speed||1));st.y-=Math.round(Math.abs(Math.sin((renderer.t*8+(g.x||0)*0.05)*Math.PI/2))*FE.bob*k);}
+    return st;
+  }
+  mouth(renderer,g,mx,my) {
+    const st=this.stance(renderer,g,0);
+    if(PIXEL_ART.unit('sheep')){const moving=hyp(g.vx||0,g.vy||0)>30,fr=PIXEL_ART.frameOf('goat',g.facing,moving,renderer.t,g.x),sh=PIXEL_ART.headShift('goat',fr.d,fr.f),k=PIXEL_EXTENT.goat/PIXEL_ASSETS.target;
+      mx+=(fr.flip?-sh[0]:sh[0])*k;my+=sh[1]*k;}
+    const c=Math.cos(st.rot),s=Math.sin(st.rot);
+    return {x:st.x+mx*c-my*s,y:st.y+mx*s+my*c,rot:st.rot};
+  }
   drawGoat(renderer,g,game) {
     const ctx=renderer.ctx;
     if(g.state==='shell'&&g.shell&&typeof Shell!=='undefined'){Shell.draw(renderer,game,g);return;}   // TURTLEIZE: the crystal in his place
@@ -992,13 +1009,11 @@ class PaintedArt extends AltarArt {
     if(g.state!=='carried'&&sh>0.01)renderer.shadow(g.x,g.y,16*sh,7*sh);   // over the thrower's head he has no floor under him
     ctx.save();ctx.translate(g.x,g.y);ctx.scale(1,1/TILT);
     if(game&&game.dropIn&&typeof Heaven!=='undefined')Heaven.drawShaft(ctx,game);
-    if(g.jitter)ctx.translate(g.jitter.x,g.jitter.y);
     // Weight in the stride: a hop per hoof-fall in step with the walk frames, in whole pixels, and
-    // the lean `Goat.update` smooths into a change of pace. Turned about the hooves.
-    const FE=TUNING.goat.feel,spd=hyp(g.vx||0,g.vy||0);
-    if(g.state==='idle'&&spd>30){const k=Math.min(1,spd/(TUNING.goat.speed||1));ctx.translate(0,-Math.round(Math.abs(Math.sin((renderer.t*8+(g.x||0)*0.05)*Math.PI/2))*FE.bob*k));}
-    if(g.lean)ctx.rotate(g.lean);
-    if(hop)ctx.translate(0,-Math.round(hop));
+    // the lean `Goat.update` smooths into a change of pace. Turned about the hooves. One helper
+    // (`stance`) so what sits in his teeth (`Renderer.drawCarried`) rides the same shake, bob and lean.
+    const st=this.stance(renderer,g,hop);
+    ctx.translate(st.x,st.y);if(st.rot)ctx.rotate(st.rot);if(st.hop)ctx.translate(0,-st.hop);
     if(fid){
       if(fid.kind==='hop'){if(fk<0.2)ctx.scale(1.07,0.91);else if(fk<0.8)ctx.scale(0.96,1.05);else ctx.scale(1.06,0.93);}
       else if(fid.kind==='shake')ctx.rotate(Math.sin(fid.t*I.shake.freq)*I.shake.amp*(1-fk));

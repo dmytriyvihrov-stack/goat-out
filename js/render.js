@@ -2310,14 +2310,16 @@ class Renderer {
   // his aim, which swung round him on its own circle while the sprite turned in eighths): at the
   // mouth of the facing the frame is drawn at, a little ahead of the muzzle, turned with the head,
   // and behind him on the three views of his back. Only the picture moves; x, y and facing go back.
+  // The mouth goes through `PaintedArt.mouth` (9 Oct 2026): the stride's bob, the lean and the packed
+  // frame's own head movement, so the thing is in his teeth on every step and not hanging beside them.
   carryBehind(g) { const d = (Math.round(g.facing / (Math.PI / 4)) + 14) % 8; return d >= 3 && d <= 5; }
   drawCarried(g, h) {
     const C = TUNING.goat.carry, d = (Math.round(g.facing / (Math.PI / 4)) + 14) % 8, fa = (d + 2) * Math.PI / 4;
     const F = PIXEL_FACE[d], m = F.mouth || F.nose[0], lead = C.lead + h.r * C.reach;
-    const x = h.x, y = h.y, f = h.facing;
-    h.x = g.x + m[0] + Math.cos(fa) * lead;
-    h.y = g.y + m[1] / TILT + Math.sin(fa) * lead + (C.lift[h.kind] || 0);
-    h.facing = fa;
+    const x = h.x, y = h.y, f = h.facing, at = this.painted.mouth(this, g, m[0], m[1]);
+    h.x = g.x + at.x + Math.cos(fa) * lead;
+    h.y = g.y + at.y / TILT + Math.sin(fa) * lead + (C.lift[h.kind] || 0);
+    h.facing = fa + at.rot;
     try { this.drawProp(h); this.drawHoldCharge(this.game); } finally { h.x = x; h.y = y; h.facing = f; }
   }
   // His own poison (`Status.goat`): a ring of cells on the floor round his feet, filling clockwise
