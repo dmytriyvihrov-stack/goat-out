@@ -15,18 +15,20 @@ const Waves = {
     const W = TUNING.soulOgre; this.meet(game, e);
     if ((e.soulMeet | 0) < W.ring.from) return;
     game.waves = game.waves || [];
+    const volley = {};   // one heart a volley at most (9 Oct 2026 playtest): the throw off the first ring carried him into the next
     for (let k = 0; k < W.ring.n; k++) {
       const gaps = []; for (let j = 0; j < W.ring.gaps; j++) gaps.push(Math.random() * Math.PI * 2);
-      game.waves.push({ ring: true, x: e.x, y: e.y, r: W.ring.start * TILE, delay: k * W.ring.apart, gaps, t: 0 });
+      game.waves.push({ ring: true, x: e.x, y: e.y, r: W.ring.start * TILE, delay: k * W.ring.apart, gaps, t: 0, volley });
     }
   },
   // Rings off any spot with a ring config of their own (`cfg` like `soulOgre.ring`): the corrupted mage's rune
   // from his third meeting (js/endboss.js) sends `n` of them over the whole room.
   rings(game, x, y, C) {
     game.waves = game.waves || [];
+    const volley = {};
     for (let k = 0; k < C.n; k++) {
       const gaps = []; for (let j = 0; j < C.gaps; j++) gaps.push(Math.random() * Math.PI * 2);
-      game.waves.push({ ring: true, x, y, r: C.start * TILE, delay: k * C.apart, gaps, t: 0, cfg: C });
+      game.waves.push({ ring: true, x, y, r: C.start * TILE, delay: k * C.apart, gaps, t: 0, cfg: C, volley });
     }
   },
   slam(game, e) {
@@ -45,7 +47,7 @@ const Waves = {
         const C = v.cfg || W.ring;
         v.r += C.speed * TILE * dt;
         if (v.r > C.max * TILE) v.dead = true;
-        else if (!v.hit && g && !g.dead) {
+        else if (!v.hit && !(v.volley && v.volley.hit) && g && !g.dead) {
           const dx = g.x - v.x, dy = g.y - v.y, d = hyp(dx, dy), a = Math.atan2(dy, dx);
           if (Math.abs(d - v.r) < C.thick * TILE / 2 + g.r * 0.5 && !v.gaps.some((q) => Math.abs(angleDiff(a, q)) < C.gap)
             && w.los(v.x, v.y, g.x, g.y)) this.hit(game, v, dx / (d || 1), dy / (d || 1));
@@ -65,7 +67,7 @@ const Waves = {
   hit(game, v, nx, ny) {
     const g = game.goat;
     if (g.invuln > 0 || g.state === 'roll' || g.state === 'falling') return;   // the roll goes through it
-    v.hit = true;
+    v.hit = true; if (v.volley) v.volley.hit = true;
     g.damage(TUNING.soulOgre.damage, game, nx * TUNING.soulOgre.knock * TILE, ny * TUNING.soulOgre.knock * TILE, false, 'witchfire');
   },
   // In cells on the floor, the witchfire's own two violets flickering; a ring fades as it spreads. Every cell goes
@@ -102,7 +104,22 @@ const Waves = {
             B[(Math.abs(o) < th / 4 ? 0 : 2) + hot].push(cx, cy);
           }
         }
-        flush(a * 0.95, a * 0.6);
+        flush(a * (C.flames ? 0.55 : 0.95), a * (C.flames ? 0.35 : 0.6));
+        // Fire standing on it (9 Oct 2026 playtest: "visually a bit like fire"): the game's own baked witchfire
+        // (`CombatFX.flame`) every `flames` tiles round the ring, nearest the camera last, none in a gap or on stone.
+        if (C.flames) {
+          const step = C.flames * TILE, m = Math.max(8, Math.round(Math.PI * 2 * v.r / step)), pts = [];
+          for (let i = 0; i < m; i++) {
+            const ang = i / m * Math.PI * 2; if (v.gaps.some((q) => Math.abs(angleDiff(ang, q)) < C.gap)) continue;
+            const fx = v.x + Math.cos(ang) * v.r, fy = v.y + Math.sin(ang) * v.r; if (stone(fx, fy)) continue;
+            pts.push(fx, fy, i);
+          }
+          const order = []; for (let k = 0; k < pts.length; k += 3) order.push(k);
+          order.sort((p, q) => pts[p + 1] - pts[q + 1]);
+          ctx.globalAlpha = Math.min(1, a + 0.2); ctx.save(); ctx.scale(1, 1 / TILT);
+          for (const k of order) R.flame(pts[k], pts[k + 1] * TILT, C.flameSize + (pts[k + 2] * 7) % 3, pts[k + 2] * 3 + (v.delay | 0), true);
+          ctx.restore();
+        }
       } else {
         const hw = W.line.w * TILE / 2, dep = W.line.depth * TILE, px2 = -v.uy, py2 = v.ux, ft = Math.floor(t * 20);
         for (let s = -hw; s <= hw; s += px) for (let o = -dep / 2; o <= dep / 2; o += px) {

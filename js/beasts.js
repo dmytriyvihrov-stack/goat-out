@@ -24,13 +24,11 @@
 // `TUNING.prop.<kind>` is every number; `TUNING.beast` is where one comes from. `GEN_RULES.beasts`
 // holds the placement to its promise.
 const NO_PROPS = [];   // `bodyClear` with no furniture to ask about: a bird hops what stands on the floor
-// What an animal left a room behind shouts (`Beast.tick`; 9 Oct 2026 playtest, the tortoise's).
-const BEAST_STRAY = { tortoise: 'BRING ME WITH YOU!' };
 const Beast = {
   // Every kind this file drives. `Prop.update` and the generator both ask here rather than carrying
   // three literals about, so a fourth animal is one line in this list and one `update` branch.
   KINDS: ['tortoise', 'goose', 'crow', 'horse', 'pig', 'rabbit', 'husky', 'fish'],   // the last three: js/beasts-more.js
-  is(kind) { return Beast.KINDS.indexOf(kind) >= 0; },
+  is(kind) { return (Beast.kindSet || (Beast.kindSet = new Set(Beast.KINDS))).has(kind); },   // a Set: asked a couple of hundred times a frame
 
   // The hen is one of the animals too, for everything but how she moves (`Prop.updateBird`).
   animal(p) { return !p.broken && !p.dead && (Beast.is(p.kind) || p.kind === 'chicken'); },
@@ -72,6 +70,7 @@ const Beast = {
     if (p.beastHp > 0) {
       game.audio.sfxAnimal(p.kind, true);
       game.floatText(p.x, p.y - 26, p.beastHp + ' LEFT', PALETTE.hen);
+      BeastChat.own(game, p, 'ouch');   // and what it thinks of it (js/beast-chat.js)
       return;
     }
     p.broken = true; p.dead = true; Stats.beast(game, p.kind, 'dead');
@@ -109,7 +108,8 @@ const Beast = {
   // to it (`game.beastFarewell`, `Beast.drawFarewell`, `TUNING.beast.farewell`). `how`: 'dead' or 'left' behind.
   farewell(p, game, how) {
     const F = TUNING.beast.farewell, kind = p.kind === 'coop' ? p.holds || 'chicken' : p.kind;
-    game.beastFarewell = { kind, how, t: 0, x: p.x, y: p.y, by: how === 'dead' && p.lastBy ? game.killedBy(p.lastBy) : null };
+    game.beastFarewell = { kind, how, t: 0, x: p.x, y: p.y, by: how === 'dead' && p.lastBy ? game.killedBy(p.lastBy) : null,
+      last: how === 'left' ? BeastChat.lastWord(kind) : null };   // walled in behind him, it has a last word (`BEAST_CHAT[kind].left`)
     game.slowTimer = Math.max(game.slowTimer || 0, F.slow); game.hitstop(F.stop);
     game.ring(p.x, p.y, 1.4 * TILE, how === 'dead' ? PALETTE.blood : PALETTE.ash, 0.7, 4);
     // The soul of it leaving: pale cells rising off the spot.
@@ -121,7 +121,7 @@ const Beast = {
     const ctx = R.ctx, s = R.ts, W = R.vw, k = Math.min(1, B.t / F.in) * Math.min(1, Math.max(0, (F.life - B.t) / F.out));
     if (k <= 0) return;
     const e = 1 - Math.pow(1 - k, 3), name = 'THE ' + (Beast.NAME[B.kind] || 'ANIMAL') + (B.how === 'dead' ? ' IS DEAD' : ' WAS LEFT BEHIND');
-    const bw = Math.min(W * 0.7, 640 * s), bh = 84 * s, bx = Math.round((W - bw) / 2), by = Math.round(40 * s - (1 - e) * 90 * s);
+    const bw = Math.min(W * 0.7, 640 * s), bh = (B.last ? 104 : 84) * s, bx = Math.round((W - bw) / 2), by = Math.round(40 * s - (1 - e) * 90 * s);
     ctx.save(); ctx.globalAlpha = Math.min(1, k * 1.6);
     // the room goes dim a little round the plate, so it is the thing looked at
     ctx.fillStyle = 'rgba(13,10,12,0.32)'; ctx.fillRect(0, 0, W, R.vh);
@@ -137,6 +137,7 @@ const Beast = {
     ctx.fillText(name, bx + 112 * s, by + 42 * s);
     ctx.font = `700 ${Math.round(13 * s)}px ${FONT_SC}`; ctx.fillStyle = 'rgba(232,221,200,0.6)';
     ctx.fillText(B.how === 'dead' ? (B.by ? 'KILLED BY ' + B.by + '.' : 'IT WALKED OUT OF ITS PEN WITH YOU, AND ENDS HERE.') : 'IT DID NOT KEEP YOUR PACE.', bx + 112 * s, by + 66 * s);
+    if (B.last) { ctx.font = FONT_PICK.font('say', Math.round(16 * s)); ctx.fillStyle = PALETTE.hen; ctx.fillText('"' + B.last + '"', bx + 112 * s, by + 88 * s); }
     ctx.restore();
   },
   // Walled in behind him by the clamp (`game.updateClamps`). Gone, and said over the goat's head
@@ -181,10 +182,12 @@ const Beast = {
     if (!p.gift && !p.spite && p.behind >= 0 && p.strayT <= 0 && d > B.strayR && d < B.strayFar && game.state === 'play') {
       p.strayT = B.strayGap * (1 + (Math.random() * 2 - 1) * B.strayJitter) * (p.behind >= 1 ? B.strayUrgent : 1);
       p.calledAt = game.timer;
-      // The tortoise says it in words once he has gone a room on without it (9 Oct 2026 playtest: "run far from the
-      // tortoise and it shouts BRING ME WITH YOU, so you do not lose it"); `Beast.speak` keeps the plate in the picture.
-      if (p.kind === 'tortoise' && (p.behind >= 1 || d > B.strayR * 1.6) && !(p.saidStray > game.timer - B.strayWords)) {
-        p.saidStray = game.timer; Beast.speak(game, p, [BEAST_STRAY.tortoise]);
+      // It says it in words once he has gone a room on without it (9 Oct 2026 playtest: "run far from the tortoise and it
+      // shouts BRING ME WITH YOU, so you do not lose it"; every animal since the same evening, `BEAST_CHAT[kind].stray`);
+      // `Beast.speak` keeps the plate in the picture.
+      const S = BEAST_CHAT[p.kind] && BEAST_CHAT[p.kind].stray;
+      if (S && (p.behind >= 1 || d > B.strayR * 1.6) && !(p.saidStray > game.timer - B.strayWords) && !game.floats.some((f) => f.on === p)) {
+        p.saidStray = game.timer; Beast.speak(game, p, [S[Math.floor(Math.random() * S.length)]]);
       } else game.audio.sfxAnimal(p.kind);
     }
   },
@@ -1064,18 +1067,18 @@ const Beast = {
     if (p.kind === 'horse') {
       const C = TUNING.prop.horse, n = Beast.horseLegs(p, game).length + 1;
       const word = ['NO TRIES', 'ONE TRY', 'TWO TRIES', 'THREE TRIES', 'FOUR TRIES'][n] || n + ' TRIES';
-      return Beast.talk(game, p, (n > 1 ? C.talk.race : C.talk.raceOne).map((l) => l.replace('{tries}', word)), true);
+      return Beast.talk(game, p, BeastChat.hello('horse', (n > 1 ? C.talk.race : C.talk.raceOne).map((l) => l.replace('{tries}', word))), true);
     }
     if (p.kind === 'pig') {
       const n = TUNING.prop.pig.full, word = ['NONE', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'][n] || String(n);
-      return Beast.talk(game, p, TUNING.prop.pig.talk.hello.map((l) => l.replace('{n}', word)), true);
+      return Beast.talk(game, p, BeastChat.hello('pig', TUNING.prop.pig.talk.hello.map((l) => l.replace('{n}', word))), true);
     }
     // In the animal's own voice, and it says the rule it keeps rather than what it is: how it will
     // (or will not) come along is the one thing a player cannot guess by watching it for a second.
     // Every one of them in the box now (30 Sep 2026: a float over a head was glimpsed, not read, and
     // letting one out did not register as a thing that had happened).
     // The fish asks nothing (it only bubbles): no BAAAH or bah after it.
-    if (BEAST_HELLO[p.kind]) return Beast.talk(game, p, BEAST_HELLO[p.kind], p.kind !== 'fish');
+    if (BEAST_HELLO[p.kind]) return Beast.talk(game, p, BeastChat.hello(p.kind, BEAST_HELLO[p.kind]), p.kind !== 'fish');
     Beast.speak(game, p, Beast.PACT[p.kind]);
   },
   // The ANIMALS tab of the dev drawer (`Renderer.drawAnimalsTab`): how each one behaves and what it
@@ -1108,6 +1111,7 @@ const Beast = {
     if (kind === 'pig') out.push(...P.talk.hello, ...P.talk.full, ...P.lines.munch, ...P.lines.left);
     if (kind === 'goose') out.push(TUNING.prop.goose.balks ? 'IT GIVES YOU AWAY. IT ALSO BREAKS THEM' : 'IT GIVES YOU AWAY');
     if (BEAST_HELLO[kind]) out.push(...BEAST_HELLO[kind]);
+    if (typeof BeastChat !== 'undefined') out.push(...BeastChat.lines(kind));   // what it says on the road
     return out;
   },
   // What each of them says the first time a run meets one: its sound, then its terms.

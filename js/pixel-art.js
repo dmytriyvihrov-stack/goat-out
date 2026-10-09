@@ -365,12 +365,12 @@ const PIXEL_ART = {
 
   // Eight facings off the same index the painted sheets use; the goat alone has a walk cycle, and
   // standing still is his own idle frame rather than a phase of the stride.
-  draw(ctx, id, angle, moving, t, x) {
+  draw(ctx, id, angle, moving, t, x, bare) {
     const u = PIXEL_ASSETS.units[id]; if (!u) return false;
     // `% 8` before the + 14: an angle past about -11 rad (a heading nobody wrapped) made it negative.
     const [d, flip] = this.facing(id, angle);
     const f = moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d];
-    const fix = this.hornFix(id, d, f);
+    const fix = bare ? this.bare(id, d, f) : this.hornFix(id, d, f);
     if (fix) {
       const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
       if (flip) { ctx.save(); ctx.scale(-1, 1); }
@@ -403,6 +403,22 @@ const PIXEL_ART = {
       A.forEach((h, k) => x.drawImage(B[k].canvas, Math.round(h.base[0] - B[k].base[0]), Math.round(h.base[1] - B[k].base[1])));
     }
     this.hornFixes.set(f, c);
+    return c;
+  },
+  // The frame with its packed horns taken off (alpha 0 on every horn blob), for BIG and LONG, which `horns` draws whole
+  // over it from one shape a facing: grown off each step's own horn they changed shape every stride (9 Oct 2026 playtest:
+  // "the horns are not consistent while he moves"). Baked once per frame.
+  bare(id, d, f) {
+    if (typeof document === 'undefined' || !(this.image instanceof HTMLCanvasElement)) return this.hornFix(id, d, f);
+    this.bares ||= new Map();
+    let c = this.bares.get(f); if (c) return c;
+    const fix = this.hornFix(id, d, f);
+    c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
+    const x = c.getContext('2d');
+    if (fix) x.drawImage(fix, 0, 0); else x.drawImage(this.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
+    const hs = this.hornsOf(f, fix);
+    if (hs.length) { const px = x.getImageData(0, 0, f[2], f[3]); for (const h of hs) for (const p of h.blob) px.data[p * 4 + 3] = 0; x.putImageData(px, 0, 0); }
+    this.bares.set(f, c);
     return c;
   },
   // Which packed facing a heading draws, and whether mirrored. The goat's up-right view was packed
@@ -542,13 +558,89 @@ const PIXEL_ART = {
     }
     return (hn.skins[key] = { canvas: c, pad });
   },
+  // BIG and LONG grown out of a horn blob the way `antlerOf` grows an antler (9 Oct 2026 playtest: "the long ones should
+  // look like a gazelle's, the big ones like a moose's"), `TUNING.goat.horns[kind].look` naming the shape and
+  // `TUNING.goat.hornLooks[shape]` its numbers. `gazelle`: a long slender beam swept back off the horn and its tip turned
+  // up and in again (a lyre), ringed dark `rings` times along its first `ringTo`. `moose`: a short beam out to the side
+  // and a broad flat palm off its end, opening from straight out to straight up, `points` tines along its rim.
+  // A cell on the art's own grid (`cell` atlas px), one step of `ramp` (or a soul's look) a cell, outlined like the sprite.
+  hornShapeOf(hn, spread, back, shape, look) {
+    const key = shape + ':' + (look || '');
+    hn.skins = hn.skins || {};
+    if (hn.skins[key]) return hn.skins[key];
+    const A = TUNING.goat.hornLooks[shape], C = A.cell, [bx, by] = hn.base, [tx, ty] = hn.tip;
+    const L = Math.max(6, hyp(tx - bx, ty - by)), ux = (tx - bx) / L, uy = (ty - by) / L;
+    const sd = back || spread || 1;
+    let nx = -uy, ny = ux; if (nx * sd < 0) { nx = -nx; ny = -ny; }
+    const B = L * A.len, pad = Math.ceil(B * 1.9 + A.w0) + C * 2;
+    const W = Math.ceil((hn.w + pad * 2) / C), Hh = Math.ceil((hn.h + pad * 2) / C);
+    const val = new Float32Array(W * Hh).fill(-1);
+    const put = (i, j, v, over) => { if (i < 0 || j < 0 || i >= W || j >= Hh) return; const k = j * W + i; if (over || val[k] < v) val[k] = v; };
+    const stamp = (x, y, r, v, over) => {
+      const cx = (x + pad) / C, cy = (y + pad) / C, rc = Math.max(0.5, r / C);
+      for (let j = Math.floor(cy - rc); j <= Math.ceil(cy + rc); j++) for (let i = Math.floor(cx - rc); i <= Math.ceil(cx + rc); i++)
+        if ((i + 0.5 - cx) ** 2 + (j + 0.5 - cy) ** 2 <= rc * rc + 0.15) put(i, j, v, over);
+    };
+    const line = (x0, y0, dx, dy, len, r0, r1, v0, v1) => {
+      const n = Math.max(1, Math.ceil(len / (C * 0.4)));
+      for (let i = 0; i <= n; i++) { const q = i / n; stamp(x0 + dx * len * q, y0 + dy * len * q, (r0 + (r1 - r0) * q) / 2, v0 + (v1 - v0) * q); }
+    };
+    if (shape === 'gazelle') {
+      const p1x = bx + ux * B * 0.5 + nx * B * A.bend, p1y = by + uy * B * 0.5 + ny * B * A.bend;
+      const p2x = bx + ux * B + nx * B * A.bend * A.tipIn, p2y = by + uy * B + ny * B * A.bend * A.tipIn;
+      const n = Math.ceil(B / (C * 0.3));
+      // base to tip, each stamp over the last, so a ring's dark band stays where it was laid
+      for (let i = 0; i <= n; i++) {
+        const q = i / n, x = (1 - q) ** 2 * bx + 2 * (1 - q) * q * p1x + q * q * p2x, y = (1 - q) ** 2 * by + 2 * (1 - q) * q * p1y + q * q * p2y;
+        const ring = q < A.ringTo && Math.floor(q * A.rings * 2) % 2 === 1;
+        stamp(x, y, (A.w0 + (A.w1 - A.w0) * q) / 2, ring ? 0.05 + q * 0.3 : 0.25 + q * 0.7, true);
+      }
+    } else {
+      // the beam: out to the side (`out`) and up (`rise`)
+      // on a side or a diagonal view "out" is back over his body: there the plate stands up (`sideOut`)
+      const nk = back ? A.sideOut : 1;
+      let ox = nx * A.out * nk + ux * A.rise, oy = ny * A.out * nk + uy * A.rise; const ol = hyp(ox, oy) || 1; ox /= ol; oy /= ol;
+      const Bm = B * A.beam, ex = bx + ox * Bm, ey = by + oy * Bm, P = B * A.palm;
+      line(bx, by, ox, oy, Bm, A.w0, A.w1, 0.1, 0.4);
+      // the palm: every cell within P of the beam's end whose bearing lies between out-and-a-little-up (`from`) and
+      // up-and-a-little-out (`to`), a plate opening above him rather than down his back
+      const a0 = Math.atan2(ny * nk + uy * A.from, nx * nk + ux * A.from), span = angleDiff(Math.atan2(uy + ny * A.to * nk, ux + nx * A.to * nk), a0);
+      const cx = (ex + pad) / C, cy = (ey + pad) / C, Pc = P / C;
+      for (let j = Math.floor(cy - Pc) - 1; j <= Math.ceil(cy + Pc) + 1; j++) for (let i = Math.floor(cx - Pc) - 1; i <= Math.ceil(cx + Pc) + 1; i++) {
+        const dx = i + 0.5 - cx, dy = j + 0.5 - cy, d = hyp(dx, dy); if (d > Pc) continue;
+        const f = d < 0.8 ? 0.5 : angleDiff(Math.atan2(dy, dx), a0) / span;
+        if (f >= -0.08 && f <= 1.08) put(i, j, 0.45 + 0.45 * d / Pc);
+      }
+      // the points along its rim, pointing out of it
+      for (let k = 0; k < A.points; k++) {
+        const a = a0 + span * (k + 0.5) / A.points, dx = Math.cos(a), dy = Math.sin(a);
+        line(ex + dx * P * 0.85, ey + dy * P * 0.85, dx, dy, P * A.pointLen, A.pointW, A.pointW * 0.5, 0.8, 1);
+      }
+    }
+    const ramp = look ? TUNING.goat.hornLooks[look].ramp : A.ramp;
+    const c = document.createElement('canvas'); c.width = W * C; c.height = Hh * C;
+    const x = c.getContext('2d');
+    const on = (a, b) => a >= 0 && b >= 0 && a < W && b < Hh && val[b * W + a] >= 0;
+    for (let j = 0; j < Hh; j++) for (let i = 0; i < W; i++) {
+      const v = val[j * W + i];
+      if (v < 0) {
+        if (on(i + 1, j) || on(i - 1, j) || on(i, j + 1) || on(i, j - 1)) { x.fillStyle = A.outline; x.fillRect(i * C, j * C, C, C); }
+        continue;
+      }
+      // one step of the ramp a cell, never a blend (pixel art): lit on its upper edge, darker on its lower
+      const lit = on(i, j - 1) ? 0 : 0.18, dark = on(i, j + 1) ? 0 : -0.12;
+      x.fillStyle = ramp[Math.floor(clamp(v + lit + dark, 0, 0.999) * ramp.length)];
+      x.fillRect(i * C, j * C, C, C);
+    }
+    return (hn.skins[key] = { canvas: c, pad });
+  },
   // His horns as the souls on the headbutt have made them, over the frame `draw` just drew with
   // the same foot and scale: LONG HORNS makes each one an antler (`antlerOf`), BOMB CHARGE runs
   // lava down them and SPLASH venom, with a glow for the one and a drip for the other.
   horns(ctx, id, angle, moving, t, x, mods) {
-    const H = TUNING.goat.hornLooks, antler = !!mods.antlers;
+    const H = TUNING.goat.hornLooks, antler = !!mods.antlers, shape = mods.horn && mods.horn.look;
     const look = mods.bomb ? 'lava' : mods.splash ? 'venom' : null;
-    if (!antler && !look) return;
+    if (!antler && !look && !shape) return;
     const u = PIXEL_ASSETS.units[id], [d, flip] = this.facing(id, angle);
     const f = moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d];
     const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, smooth = ctx.imageSmoothingEnabled;
@@ -558,11 +650,31 @@ const PIXEL_ART = {
     const all = this.hornsOf(f, this.hornFix(id, d, f)), mid = all.reduce((s, h) => s + h.base[0], 0) / (all.length || 1);
     // Which way is "back" on this facing: away from his nose. 0 on the straight front and back views.
     const back = [0, 1, 1, 1, 0, -1, -1, -1][d];
+    // BIG and LONG: one shape a facing, grown off the standing frame's horns and carried on each step's own roots, so the
+    // stride moves them with his head and never redraws them (`bare` took the packed ones off the frame under them).
+    const byX = (a) => a.slice().sort((p, q) => p.base[0] - q.base[0]);
+    const ref = shape && u.idle ? byX(this.hornsOf(u.idle[d])) : null, refMid = ref ? ref.reduce((s, h) => s + h.base[0], 0) / (ref.length || 1) : 0;
+    if (ref && ref.length) {
+      // One shift for both horns, the mean of how far each root moved on this step (a root measured off a blob is a pixel
+      // or two noisy); a step whose horns would not pair up keeps the standing frame's place, through the two frames' feet.
+      const now = byX(all), fi = u.idle[d], pair = now.length === ref.length;
+      const mdx = pair ? now.reduce((a, h, i) => a + h.base[0] - ref[i].base[0], 0) / now.length : f[4] - fi[4];
+      const mdy = pair ? now.reduce((a, h, i) => a + h.base[1] - ref[i].base[1], 0) / now.length : f[5] - fi[5];
+      const dx = Math.round(mdx), dy = Math.round(mdy);
+      ref.forEach((rh) => {
+        const spread = Math.abs(rh.base[0] - refMid) > 4 ? Math.sign(rh.base[0] - refMid) : 0, a = this.hornShapeOf(rh, spread, back, shape, look);
+        if (look) { ctx.shadowColor = H[look].glow; ctx.shadowBlur = H[look].blur * (0.75 + 0.25 * Math.sin(t * 7 + rh.base[0])); }
+        ctx.drawImage(a.canvas, dx - a.pad, dy - a.pad); ctx.shadowBlur = 0;
+      });
+      ctx.imageSmoothingEnabled = smooth; ctx.restore();
+      return;
+    }
     for (const hn of all) {
       const [bx, by] = hn.base;
       if (look) { ctx.shadowColor = H[look].glow; ctx.shadowBlur = H[look].blur * (0.75 + 0.25 * Math.sin(t * 7 + bx)); }
-      if (antler) {
-        const spread = Math.abs(bx - mid) > 4 ? Math.sign(bx - mid) : 0, a = this.antlerOf(hn, spread, back, look);
+      // BIG and LONG keep their own shape (the moose's, the gazelle's); LONG HORNS the soul grows the SHORT into an antler
+      if (shape || antler) {
+        const spread = Math.abs(bx - mid) > 4 ? Math.sign(bx - mid) : 0, a = shape ? this.hornShapeOf(hn, spread, back, shape, look) : this.antlerOf(hn, spread, back, look);
         ctx.drawImage(a.canvas, -a.pad, -a.pad);
       } else ctx.drawImage(this.hornSkin(hn, look), 0, 0);
       ctx.shadowBlur = 0;

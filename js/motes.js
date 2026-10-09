@@ -42,6 +42,11 @@ const Motes = {
     const list = game.motes; if (!list || !list.length) return;
     const M = TUNING.heaven.motes, g = game.goat, L = game.level;
     const here = roomAt(L, g.x, g.y), gi = here ? here.index : -1;
+    // The last room holds the stairs, so he never leaves it before he climbs, and its souls were banked unseen at the
+    // top (9 Oct 2026 playtest: "in the last room, at the way out, you sometimes skip them"): once nobody in it is
+    // left standing, its souls come to him as if he had walked out.
+    const last = L.rooms.length - 1, inLast = (e) => { const r = roomAt(L, e.x, e.y); return (r ? r.index : e.room) === last; };
+    const lastDone = list.some((m) => m.room === last && !m.fly) && !game.enemies.some((e) => !e.dead && !e.scripted && !e.chaser && inLast(e));
     for (const m of list) {
       m.t += dt;
       if (m.ghost) { if (m.t > M.ghostFor) m.done = true; }
@@ -50,7 +55,7 @@ const Motes = {
         const k = clamp(m.t / M.riseT, 0, 1), e = 1 - Math.pow(1 - k, 3);
         m.x = m.ox + Math.sin(m.t * M.bobRate * 0.5 + m.ph * 1.7) * M.sway * k; m.y = m.oy - M.rise * e - Math.sin(m.t * M.bobRate + m.ph) * M.bob * k;
         // Out of their room, or walked up to (2 Oct 2026 playtest: "it should also fly to you when you just come up to it").
-        if (!m.ghost && m.t > M.wait && (gi !== m.room || hyp(g.x - m.ox, g.y - m.oy) < M.near * TILE) && !g.dead) { m.fly = true; m.vx = 0; m.vy = -M.speed * 0.6; m.sp = M.speed; }
+        if (!m.ghost && m.t > M.wait && (gi !== m.room || hyp(g.x - m.ox, g.y - m.oy) < M.near * TILE || (lastDone && m.room === last)) && !g.dead) { m.fly = true; m.vx = 0; m.vy = -M.speed * 0.6; m.sp = M.speed; }
         continue;
       }
       // homing, faster the longer it flies, with a little curl so a flock does not arrive as a line

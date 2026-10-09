@@ -169,6 +169,8 @@ function kbLay() {
 function kbUse(set) { if (KB_SET !== set) { KB_SET = set; kbLay(); } }
 // Asked of a `game` that may be a tool's stub (the GOAT GRID lends one with no pad).
 const padOn = (game) => !!(game && game.pad && game.pad.active);
+// The hook over a goat on the butcher's rope (`Renderer.drawHookMark`): `r` the rope, `#` the iron.
+const HOOK_MARK = ['..r..', '..r..', '..#..', '..#..', '#.#..', '#.#..', '.##..'];
 // KEYBOARD ONLY is on and nothing else has the controls (a finger or a pad takes them as before).
 // `kbLive`: J K L or Z X C pressed with the setting off, until the mouse takes the aim back.
 const kbOn = (game) => !!(game && game.settings && (game.settings.keysOnly || game.kbLive) && !(game.touch && game.touch.active) && !padOn(game));
@@ -485,6 +487,7 @@ class Renderer {
       const dark = Dark.on(game);
       if (!dark) this.drawHints(game);   // in THE DARK the floor words go on over it (below)
       this.drawFire(game, cam);
+      Sacrifice.draw(this, game);   // THE SACRIFICE ALTAR, carved in the floor (js/sacrifice.js)
       Waves.draw(this, game);   // a corrupted ogre's witchfire rings and bands (js/waves.js)
       this.drawPoison(game, cam);
       this.drawLight(game, cam);
@@ -619,6 +622,7 @@ class Renderer {
     if (game.intro) this.drawIntroOverlay(game);
     if (game.bless && game.bless.on) this.drawBlessOverlay(game);
     if (game.endScene) EndBoss.drawOverlay(this, game);
+    if ((game.altar && game.altar.done) || game.altarFade) Sacrifice.drawOverlay(this, game);   // the dark the altar opens
     this.drawUI(game);
     if (game.beastTalk && game.state === 'play') Beast.drawTalk(this, game);
     if (game.beastFarewell && game.state === 'play') Beast.drawFarewell(this, game);   // the end of an escort's road (js/beasts.js)
@@ -2002,7 +2006,31 @@ class Renderer {
     }
     this.drawFirstWords(game);
     this.drawIronPair(game);
+    this.drawSealWords(game);
     ctx.textAlign = 'left'; ctx.restore();
+  }
+  // A sealed arena's doors, shut, say they are (9 Oct 2026 playtest: "the door is hard locked, though it does not look
+  // it"): over each a lock of cells and how many of the men it waits on are still up. A soul gate says its own words.
+  drawSealWords(game) {
+    if (!game.sealedRooms) return;
+    const ctx = this.ctx, pulse = 0.6 + 0.2 * Math.sin(this.t * 3), px = 2;
+    for (const sr of game.sealedRooms) {
+      if (sr.open || !sr.armed) continue;
+      const left = (sr.held || []).filter((e) => !e.dead && !e.ghosted).length;
+      for (const d of sr.doors) {
+        if (d.broken || d.open > 0 || game.hidden(d.x, d.y)) continue;
+        // the padlock: a shackle and a body, in cells, over the top of the door (the slab is drawn after the floor words)
+        const top = d.y - (d.vertical ? 29 : 7) - 22;
+        const x = Math.round(d.x / px) * px, y = Math.round(top * TILT / px) * px;
+        ctx.fillStyle = `rgba(13,10,12,${0.85 * pulse + 0.15})`; ctx.fillRect(x - 7 * px, y - 8 * px, 14 * px, 15 * px);
+        ctx.fillStyle = `rgba(214,72,52,${pulse})`;
+        ctx.fillRect(x - 3 * px, y - 7 * px, 6 * px, px); ctx.fillRect(x - 4 * px, y - 6 * px, px, 4 * px); ctx.fillRect(x + 3 * px, y - 6 * px, px, 4 * px);
+        ctx.fillRect(x - 6 * px, y - 2 * px, 12 * px, 8 * px);
+        ctx.fillStyle = 'rgba(13,10,12,0.9)'; ctx.fillRect(x - px, y, 2 * px, 3 * px);
+        ctx.textAlign = 'center'; ctx.font = `700 12px ${FONT_SC}`; ctx.fillStyle = `rgba(239,200,180,${pulse})`;
+        ctx.fillText(left > 1 ? `UNTIL THEY FALL · ${left} LEFT` : 'UNTIL HE FALLS', d.x, y - 12 * px);
+      }
+    }
   }
 
   // The iron pair (`keys.iron.pair`, 5 Oct 2026, "it must read, grass or animal"): while both stand shut, the
@@ -2023,13 +2051,28 @@ class Renderer {
     const how = !(game.learned && game.learned.iron), pulse = 0.62 + 0.1 * Math.sin(this.t * 2.2);
     const name = (typeof Beast !== 'undefined' && Beast.NAME[coop.holds]) || 'ANIMAL';
     ctx.textAlign = 'center';
-    for (const [p, a] of [[cage, 'BIG GRASS · TWO HEARTS'], [coop, 'THE ' + name + ' · IT COMES WITH YOU']]) {
-      if (game.hidden(p.x, p.y)) continue;
-      ctx.font = `700 15px ${FONT_SC}`; ctx.fillStyle = `rgba(255,224,138,${pulse})`;
-      ctx.fillText(a, p.x, (p.y + 30) * TILT);
-      if (!how) continue;
+    // 9 Oct 2026 playtest: the two labels ran into each other under the cages (on the wall) and the line under them read
+    // as if a headbutt opened them. Now each is a short stack OVER its own cage, what it is and what it gives, lifted
+    // clear of the other if they would touch, and how they open (the GRAB, never the horns) is said once over both.
+    const open = game.touch.active || padOn(game) ? 'GRAB IT: OPEN WITH 1 KEY' : 'RIGHT M. CLICK: OPEN WITH 1 KEY';
+    const items = [[cage, 'BIG GRASS', 'TWO HEARTS'], [coop, 'THE ' + name, 'IT COMES WITH YOU']].filter(([p]) => !game.hidden(p.x, p.y)).sort((a, b) => a[0].x - b[0].x);
+    if (!items.length) return;
+    const lh = 15;
+    ctx.font = `700 15px ${FONT_SC}`;
+    const wOf = (it) => Math.max(textW(ctx, it[1]), textW(ctx, it[2]) * 0.8) + 14;
+    let lift = 0, top = Infinity;
+    items.forEach((it, i) => {
+      const [p, a, b] = it;
+      if (i && Math.abs(p.x - items[0][0].x) < (wOf(it) + wOf(items[0])) / 2) lift = 2 * lh + 6;
+      const y0 = p.y - 34 - lh - lift; top = Math.min(top, y0);
+      ctx.font = `700 15px ${FONT_SC}`; ctx.fillStyle = `rgba(255,224,138,${pulse})`; ctx.fillText(a, p.x, y0 * TILT);
+      ctx.font = `700 12px ${FONT_SC}`; ctx.fillStyle = `rgba(239,230,208,${pulse - 0.1})`; ctx.fillText(b, p.x, (y0 + lh) * TILT);
+    });
+    // how either opens, once, over both: one key, one of the two
+    if (how) {
+      const mx = items.reduce((m, it) => m + it[0].x, 0) / items.length;
       ctx.font = `700 12px ${FONT_SC}`; ctx.fillStyle = `rgba(239,230,208,${pulse - 0.18})`;
-      ctx.fillText(game.touch.active || padOn(game) ? 'GRAB IT: COST 1 KEY' : 'RIGHT M. CLICK: COST 1 KEY', p.x, (p.y + 46) * TILT);
+      ctx.fillText(items.length > 1 ? open + ' · ONE OF THE TWO' : open, mx, (top - lh - 4) * TILT);
     }
   }
 
@@ -2370,7 +2413,11 @@ class Renderer {
       hard = (u, v) => inFan(u, v) && hyp(u, v) >= front - px * 2;
     }
     ctx.globalAlpha = W.alpha * fade; ctx.fillStyle = PALETTE.bone; ctx.beginPath(); cells(pale); ctx.fill();
-    ctx.globalAlpha = Math.min(1, W.alpha * 1.7) * fade; ctx.fillStyle = PALETTE.hit; ctx.beginPath(); cells(hard); ctx.fill();
+    if (HN.rows) {
+      // LONG's tips are where it hurts: red, and they stay once the wave has gone by (`tipHold`), fading over that hold.
+      const late = clamp((g.wave.t - W.time) / W.tipHold, 0, 1);
+      ctx.globalAlpha = W.tipAlpha * Math.min(1, p / 0.45) * (1 - late); ctx.fillStyle = PALETTE.blood; ctx.beginPath(); cells(hard); ctx.fill();
+    } else { ctx.globalAlpha = Math.min(1, W.alpha * 1.7) * fade; ctx.fillStyle = PALETTE.hit; ctx.beginPath(); cells(hard); ctx.fill(); }
     ctx.restore();
   }
   // THE CHARGE (8 Oct 2026): a ring of cells round his feet filling clockwise while the head is held down, the
@@ -4930,6 +4977,61 @@ class Renderer {
     } catch (err) { /* a context that will not take it keeps its own sizes */ }
     try { this.drawDevPage(game); } finally { this.ts = s0; delete ctx.font; }
   }
+  // PICK A SOUL (9 Oct 2026 playtest: "an option to choose absolutely any skill, from a visual menu"): every soul in `BOONS`
+  // as the book's own picture of it (`Codex.icon`), in a column per part he grows (HORNS, TEETH, LEGS, THROAT, BODY;
+  // actives first), lit gold where he has it. A click gives or takes it (`boon-have=`, slots not asked: a test);
+  // the pointer names it and says what it does. Laid right of the drawer, its rects ahead of the drawer's.
+  drawSoulPick(game, x0) {
+    const ctx = this.ctx, s = this.ts, d = game.dev, m = game.input.mouse, have = new Set(game.boons.map((b) => b.id));
+    const parts = Codex.VERB_ORDER, heads = ['HORNS', 'TEETH', 'LEGS', 'THROAT', 'BODY'];
+    const cols = parts.map((v) => BOONS.filter((b) => (b.skill || undefined) === v).sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0)));
+    const box = 40 * s, gap = 5 * s, per = Math.max(1, Math.floor((this.h - 150 * s) / (box + gap)));
+    const sub = cols.map((c) => Math.max(1, Math.ceil(c.length / per)));   // a long part runs on into a second column
+    const W = sub.reduce((a, n) => a + n * (box + gap) + 14 * s, 0) + 20 * s, rows = Math.min(per, Math.max(...cols.map((c) => c.length)));
+    const H = rows * (box + gap) + 70 * s, x = Math.min(x0, this.w - W - 10 * s), y = Math.max(10 * s, this.h - H - 60 * s);
+    const rects = [];
+    ctx.save();
+    ctx.fillStyle = 'rgba(13,10,12,0.95)'; ctx.fillRect(x, y, W, H);
+    ctx.strokeStyle = 'rgba(185,135,58,0.7)'; ctx.lineWidth = 1.5 * s; ctx.strokeRect(x, y, W, H);
+    ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+    ctx.fillText('PICK A SOUL  · CLICK: ON HIM / OFF HIM', x + 10 * s, y + 18 * s);
+    // the close cross, top right
+    ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'right'; ctx.fillText('×', x + W - 10 * s, y + 18 * s);
+    rects.push({ x: x + W - 28 * s, y, w: 28 * s, h: 26 * s, id: 'soulpick' });
+    let cx = x + 10 * s, hover = null;
+    cols.forEach((list, ci) => {
+      ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
+      ctx.fillText(heads[ci], cx, y + 40 * s);
+      list.forEach((b, i) => {
+        const bx = cx + Math.floor(i / per) * (box + gap), by = y + 48 * s + (i % per) * (box + gap), on = have.has(b.id);
+        const over = m && m.x >= bx && m.x <= bx + box && m.y >= by && m.y <= by + box;
+        ctx.fillStyle = on ? 'rgba(242,162,51,0.32)' : over ? 'rgba(239,230,208,0.14)' : 'rgba(59,34,51,0.75)'; ctx.fillRect(bx, by, box, box);
+        ctx.strokeStyle = on ? PALETTE.fireHi : b.active ? 'rgba(239,230,208,0.45)' : 'rgba(239,230,208,0.18)'; ctx.lineWidth = (on ? 2 : 1) * s; ctx.strokeRect(bx, by, box, box);
+        ctx.save(); if (b.off) ctx.globalAlpha = 0.35;
+        try { Codex.icon(this, game, { kind: 'boon', b }, bx + box / 2, by + box / 2, box * 0.86); } catch (err) { /* a soul with no picture keeps its box */ }
+        ctx.restore();
+        rects.push({ x: bx, y: by, w: box, h: box, id: 'boon-have=' + b.id });
+        if (over) hover = { b, bx, by };
+      });
+      cx += sub[ci] * (box + gap) + 14 * s;
+    });
+    if (hover) {
+      const b = hover.b, txt = (b.desc || '').replace(/\s+/g, ' ');
+      ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.textAlign = 'left';
+      const lines = [b.name + (b.active ? ' · ACTIVE' : ' · PASSIVE') + (b.off ? ' · DELETED' : '') + (have.has(b.id) ? ' · ON HIM' : '')];
+      ctx.font = `${12 * s}px ${FONT}`;
+      let cur = ''; for (const w of txt.split(' ')) { if (textW(ctx, cur + ' ' + w) > 300 * s && cur) { lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w; }
+      if (cur) lines.push(cur);
+      const tw = Math.max(...lines.map((l) => textW(ctx, l))) + 20 * s, th = lines.length * 16 * s + 12 * s;
+      const tx = clamp(hover.bx, 6 * s, this.w - tw - 6 * s), ty = hover.by - th - 6 * s < 6 * s ? hover.by + box + 6 * s : hover.by - th - 6 * s;
+      ctx.fillStyle = 'rgba(13,10,12,0.96)'; ctx.fillRect(tx, ty, tw, th); ctx.strokeStyle = 'rgba(185,135,58,0.6)'; ctx.strokeRect(tx, ty, tw, th);
+      lines.forEach((l, i) => { ctx.font = i ? `${12 * s}px ${FONT}` : `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = i ? PALETTE.bone : PALETTE.fireHi; ctx.fillText(l, tx + 10 * s, ty + 18 * s + i * 16 * s); });
+    }
+    ctx.restore();
+    // ahead of the drawer's own rows, and the rest of the screen swallowed so a miss is not a headbutt
+    d.rects.unshift(...rects);
+    d.rects.push({ x: 0, y: 0, w: this.w, h: this.h, id: 'soulpick-miss' });
+  }
   // A dev drawer in the bottom-right: god mode and spawns, for poking at the game.
   drawDevPage(game) {
     const ctx = this.ctx, s = this.ts, d = game.dev;
@@ -4999,9 +5101,11 @@ class Renderer {
           ['spawn-as', 'AS  ' + DEV_SPAWN_AS[d.spawnAs | 0]],
           ['bearer', 'BEARER'], ['enemy-spawn=shield', 'SHIELDMAN'], ['enemy-spawn=thrower', 'THROWER (BANE)'], ['enemy-spawn=shaman', 'SHAMAN'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
           ['wraith', 'WRAITH'], ['wraithdoor', 'WRAITH DOOR'], ['butcher', 'OGRE'],
-          ['ogre-soul=1', 'OGRE · CORRUPTED 1ST'], ['ogre-soul=2', 'OGRE · CORRUPTED 2ND (RINGS)'], ['ogre-soul=3', 'OGRE · CORRUPTED 3RD (RINGS + BAND)'],
+          ['ogre-soul=1', 'OGRE · SOUL 1'], ['ogre-soul=2', 'OGRE · SOUL 2 RINGS'], ['ogre-soul=3', 'OGRE · SOUL 3 BAND'],
           ['ratogre', 'RAT OGRE'],
           ['mouse', 'MOUSE'], ['artifact', 'TALISMAN · CAPE'], ['soul', 'SOUL'],
+          // Every soul as its picture, a click puts it on him or takes it off (`drawSoulPick`, 9 Oct 2026 playtest).
+          ['soulpick', d.soulPick ? 'PICK A SOUL  ON' : 'PICK A SOUL'],
           ['coop', 'HEN'], ['tortoise', 'TORTOISE'], ['goose', 'GOOSE'], ['crow', 'CROW'], ['horse', 'HORSE'],
           ['pig', 'PIG'], ['rabbit', 'RABBIT'], ['husky', 'HUSKY'], ['fish', 'FISH'],
         ] },
@@ -5024,6 +5128,10 @@ class Renderer {
       const boxW = colW.reduce((a, w) => a + w, 0) + 6 * s, boxH = n * (rh + gap) + 24 * s + footH;
       const px0 = pad, py = cy - 22 * s - footH - (n * (rh + gap));
       toastY = py - 30 * s;
+      // Wider than the screen (9 Oct 2026 playtest: the SPAWN columns ran off the right edge), the whole box is drawn
+      // smaller from its bottom-left corner, and every rect it lays is mapped through the same shrink.
+      const fitK = Math.min(1, (this.w - 2 * pad) / boxW), ax = px0, ay = py - 20 * s + boxH, rect0 = d.rects.length;
+      if (fitK < 1) { ctx.save(); ctx.translate(ax, ay); ctx.scale(fitK, fitK); ctx.translate(-ax, -ay); toastY = ay - (ay - toastY) * fitK; }
       ctx.fillStyle = 'rgba(13,10,12,0.93)'; ctx.fillRect(px0, py - 20 * s, boxW, boxH);
       ctx.strokeStyle = 'rgba(185,135,58,0.6)'; ctx.lineWidth = 1.5 * s;
       ctx.strokeRect(px0, py - 20 * s, boxW, boxH);
@@ -5053,6 +5161,11 @@ class Renderer {
       ctx.fillText(`DEATHS  ${st.burst} BURST · ${st.bleed} BLED  (burst: 2 hearts < ${TUNING.dev.burstGap}s)`, px0 + 11 * s, fy + 10 * s);
       ctx.fillStyle = hungry ? PALETTE.fireHi : PALETTE.ochre;
       ctx.fillText(`SOMETHING NEW  ${dry}s AGO${hungry ? '  · DRY: THE UNSEEN COMES FIRST' : `  (dry at ${TUNING.novelty.dry}s)`}`, px0 + 11 * s, fy + 25 * s);
+      if (fitK < 1) {
+        ctx.restore();
+        for (let i = rect0; i < d.rects.length; i++) { const r = d.rects[i]; r.x = ax + (r.x - ax) * fitK; r.y = ay + (r.y - ay) * fitK; r.w *= fitK; r.h *= fitK; }
+      }
+      if (d.soulPick && game.goat && game.boons) this.drawSoulPick(game, px0 + boxW * fitK + 12 * s);
     }
     ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
     ctx.fillStyle = d.open ? PALETTE.fireHi : 'rgba(185,135,58,0.55)';
@@ -6398,7 +6511,7 @@ class Renderer {
         // what it is: active / passive on which verb, or body work, its set, what it needs, its id
         let ly = y + fpx(9);
         const slot = b.key ? 'KEY · ' + b.skill.toUpperCase() + ' (NO SLOT)' : b.skill ? (b.active ? 'ACTIVE · ' : 'PASSIVE · ') + b.skill.toUpperCase() : 'BODY';
-        const tags = [b.off ? 'DELETED' : null, slot, b.element && BOON_SETS[b.element] ? BOON_SETS[b.element].name + ' SET' : null,
+        const tags = [b.off ? 'DELETED' : null, slot, b.element && BOON_SETS[b.element] ? BOON_SETS[b.element].name + ' SET' + (BOON_SETS[b.element].quiet ? ' (EACH: ' + BOON_SETS[b.element].step.map((t) => '+' + sayN(t) + 's').join(' / ') + ' BEFORE A PUDDLE SLOWS YOU)' : '') : null,
           b.needs ? 'NEEDS ' + b.needs : null, b.id].filter(Boolean).join(' · ');
         font(700, 9, FONT_SC); ctx.fillStyle = b.off ? PALETTE.blood : b.active ? 'rgba(232,120,110,0.9)' : 'rgba(242,190,110,0.85)';
         ctx.fillText(this.clip(tags, rw), rx, ly); ly += tagH - fpx(9) * 0.4;
@@ -7668,6 +7781,17 @@ class Renderer {
     }
     ctx.fill(); ctx.globalAlpha = a0;
   }
+  // HOOKED as a status mark over his head (9 Oct 2026 playtest: "not the word, a small icon on top, like a movement
+  // status"): an iron hook in cells, its rope going up, swinging a little; amber, the colour of a blow to come.
+  drawHookMark(x, y, above) {
+    const ctx = this.ctx, px = TUNING.juice.marks.px, G = HOOK_MARK, w = G[0].length;
+    ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT);
+    const sway = Math.round(Math.sin(this.t * 6) * 1.5), x0 = (sway - Math.floor(w / 2)) * px, y0 = -above - (G.length + 3) * px;
+    ctx.fillStyle = 'rgba(13,10,12,0.85)';
+    for (let r = 0; r < G.length; r++) for (let q = 0; q < w; q++) if (G[r][q] !== '.') ctx.fillRect(x0 + (q - 1) * px, y0 + (r - 1) * px, px * 3, px * 3);
+    for (let r = 0; r < G.length; r++) for (let q = 0; q < w; q++) if (G[r][q] !== '.') { ctx.fillStyle = G[r][q] === 'r' ? PALETTE.bone : PALETTE.fireHi; ctx.fillRect(x0 + q * px, y0 + r * px, px, px); }
+    ctx.restore();
+  }
   drawStars(x, y, above, alpha) {
     const ctx = this.ctx;
     ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT);
@@ -8482,7 +8606,7 @@ class Renderer {
     if (b.element && BOON_SETS[b.element]) {
       const S = BOON_SETS[b.element];
       const k = (game.setCount ? game.setCount(b.element) : 0) - (old && old.element === b.element ? 1 : 0) + 1;
-      const line = k >= S.all ? S.whole : S.step[k - 1] ? S.gain(S.step[k - 1]) : null;
+      const line = k >= S.all ? S.whole : S.step[k - 1] && !S.quiet ? S.gain(S.step[k - 1]) : null;
       if (line) for (const l of line.split(' · ')) foot.push([l, b.element === 'fire' ? PALETTE.fireHi : PALETTE.venomHi]);
     }
     if (third) foot.push([`THIRD CARD · ${third}`, PALETTE.witchHi]);
@@ -8932,6 +9056,19 @@ class Renderer {
   // Hades' Death Defiance over the health bar. `spent`: the ring alone. Still (9 Oct 2026: "the lives should not move,
   // and be much smaller: you look at them between fights, not in one").
   lifePortrait(game, x, y, box, i, spent) {
+    // Baked once per size (9 Oct 2026 perf pass: a few hundred cells laid one by one every frame cost about a millisecond).
+    const c0 = Math.max(1, Math.round(box / 17)), R0 = Math.round(box / 2 / c0) * c0, m = 4 * c0, key = box + ':' + !!spent;
+    const cache = this.lifeBake || (this.lifeBake = new Map());
+    let cv = cache.get(key);
+    if (!cv) {
+      cv = document.createElement('canvas'); cv.width = cv.height = 2 * (R0 + m);
+      const real = this.ctx; this.ctx = cv.getContext('2d');
+      try { this.lifePortraitCells(R0 + m - box / 2, R0 + m - box / 2, box, spent); } finally { this.ctx = real; }
+      cache.set(key, cv);
+    }
+    this.ctx.drawImage(cv, Math.round(x + box / 2) - R0 - m, Math.round(y + box / 2) - R0 - m);
+  }
+  lifePortraitCells(x, y, box, spent) {
     const ctx = this.ctx, bob = 0;
     const cx = Math.round(x + box / 2), cy = Math.round(y + box / 2 + bob), c = Math.max(1, Math.round(box / 17)), R = Math.round(box / 2 / c) * c;
     // the plate: a disc of cells, its rim soul-white (dim once spent)
@@ -9013,19 +9150,19 @@ class Renderer {
     // 9 Oct 2026 playtest: "the horn size in the top-left of the screen": in the talismans' row after their chips, the
     // dares' marks after it (`hornRowW`, read by `Heaven.drawDareMarks`); the pointer on it names the pair.
     const HG = typeof HORN_GLYPHS !== 'undefined' && Heaven.hornsOpen() && HORN_GLYPHS[game.hornKind];
-    this.hornRowW = 0;
+    this.hornRowW = 0; this.hornHov = null;
     if (HG) {
       const c = Math.max(2, Math.round(2.2 * s)), w = HG[0].length * c, h = HG.length * c;
       const chips = (game.artifacts || []).length, top0 = 3 * s + (this.portrait ? 12 * s : 0) + 6 * s;
-      const bx = Math.round(low ? 10 * s + chips * 27 * s + (chips ? 10 * s : 34 * s) : hx + (g.maxHp + (g.light || 0) + (g.armour || 0) + lives) * HGAP + 8 * s);
+      // First in the row (9 Oct 2026 playtest: "first the horns, then the modifier, then the medallions").
+      const bx = Math.round(low ? 10 * s : hx + (g.maxHp + (g.light || 0) + (g.armour || 0) + lives) * HGAP + 8 * s);
       const by = Math.round(low ? top0 + 2 * s + Math.max(0, 24 * s - h) / 2 : hy - 8 * s);
       if (low) this.hornRowW = w + 12 * s;
-      const m = game.input.mouse, HN = TUNING.goat.horns[game.hornKind];
-      if (HN && !game.touch.active && !padOn(game) && m.x >= bx && m.x <= bx + w && m.y >= by && m.y <= by + h)
-        this.skillHover = { row: { name: 'HORNS: ' + HN.name, note: HN.note || '', half: true }, x: bx, left: bx, y: by + h + 12 * s, hot: false, boons: [] };
+      // its hover is set after the rail (`hornHov`, below), which clears the hover it shares (9 Oct 2026: it never showed)
+      this.hornHov = { x: bx, y: by, w, h };
       ctx.fillStyle = 'rgba(14,9,14,0.85)';
       for (let r = 0; r < HG.length; r++) for (let q = 0; q < HG[r].length; q++) if (HG[r][q] !== '.') ctx.fillRect(bx + (q - 1) * c, by + (r - 1) * c, c * 3, c * 3);
-      const col = { '+': '#fff4c2', h: '#e0ac3e', s: '#efe6d0', e: '#3a2c4e' };
+      const col = { '+': '#fff4c2', h: '#e0ac3e', r: '#8a5a22', s: '#efe6d0', e: '#3a2c4e' };
       for (let r = 0; r < HG.length; r++) for (let q = 0; q < HG[r].length; q++) if (HG[r][q] !== '.') { ctx.fillStyle = col[HG[r][q]]; ctx.fillRect(bx + q * c, by + r * c, c, c); }
     }
     // HORN SIZES test (`TUNING.goat.horns`): which horn he has and what it does, under the hearts. Never in the itch build.
@@ -9066,10 +9203,16 @@ class Renderer {
     // Centred on the row of hearts, a gap past the last one.
     // With the hearts down in the corner the talismans have the top-left to themselves, a little smaller (7 Oct 2026:
     // "there can be several of them, so apart from the hearts, which are looked at more often").
-    if (low) this.drawArtifactChip(game, 10 * s, top + 6 * s, 24 * s);
+    // The top-left row reads horns, the dares worn, then the talismans (9 Oct 2026 playtest), so the dares go down
+    // first and say how wide they were (`dareRowW`).
+    this.dareRowW = 0;
+    { const H = this.hornHov, m = game.input.mouse, HN = TUNING.goat.horns[game.hornKind];
+      if (H && HN && m && !game.touch.active && !padOn(game) && m.x >= H.x - 4 * s && m.x <= H.x + H.w + 4 * s && m.y >= H.y - 4 * s && m.y <= H.y + H.h + 4 * s)
+        this.skillHover = { row: { name: 'HORNS: ' + HN.name, note: HN.note || '', half: true }, x: H.x, left: H.x, y: H.y + H.h + 12 * s, hot: false, boons: [] }; }
+    if (!game.level.def.heaven) Heaven.drawDareMarks(this, game, s);   // the dares worn: ? on the way, ! on their floor
+    if (low) this.drawArtifactChip(game, 10 * s + (this.hornRowW || 0) + (this.dareRowW || 0), top + 6 * s, 24 * s);
     else this.drawArtifactChip(game, 14 * s + (g.maxHp + (g.light || 0) + (g.armour || 0) + (game.extraLives | 0)) * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
     this.savedHover(game);   // after the rail too, which clears the hover it shares
-    if (!game.level.def.heaven) Heaven.drawDareMarks(this, game, s);   // the dares worn: ? on the way, ! on their floor
     // What the god is paid in, the way heaven counts it (29 Sep 2026: "the same look as up there"):
     // the gold skull and the heap, and beside it the corrupted souls heaven keeps (`Heaven.meta`).
     // Meta, so not standing (6 Oct 2026, his ask): shown `hud.purse.show` s after either count moves, then
@@ -9744,7 +9887,7 @@ class Renderer {
       ctx.strokeStyle = sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s;
       ctx.strokeRect(x0, y, bw, rowH);
       ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${16 * s}px ${FONT_SC}`;
-      ctx.fillText(PAUSE_MENU[i].id === 'photos' && Photo.shots.length ? `PHOTOS (${Photo.shots.length})` : PAUSE_MENU[i].name, cx, y + rowH * 0.62);
+      ctx.fillText(PAUSE_MENU[i].id === 'photos' && Photo.shots.length ? `PHOTOS (${Photo.shots.length})` : PAUSE_MENU[i].id === 'abandon' && game.pause.armAbandon > performance.now() ? 'ABANDON RUN? PRESS AGAIN' : PAUSE_MENU[i].name, cx, y + rowH * 0.62);
     }
     ctx.textAlign = 'left';
   }

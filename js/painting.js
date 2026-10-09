@@ -276,17 +276,26 @@ const Painting = {
     // 9 Oct 2026 playtest: the words ("KILLS", "CORRUPTED SOULS") only on the pointer; the card shows the picture and the number
     if (kills) items.push({ g: PAINT_GLYPHS.skull, col: PALETTE.bone, text: String(kills), word: kills === 1 ? 'KILL' : 'KILLS' });
     // 8 Oct 2026: no GATHERED, and the corrupted souls he swallowed on the floor beside them, violet, when there were any
-    if (gathered) items.push({ g: PAINT_GLYPHS.wisp, col: '#fff4c2', text: String(gathered), word: gathered === 1 ? 'SOUL' : 'SOULS' });
-    if (dark) items.push({ g: PAINT_GLYPHS.wisp, col: '#b48cff', text: String(dark), word: dark === 1 ? 'CORRUPTED SOUL' : 'CORRUPTED SOULS' });
+    // 9 Oct 2026 playtest: "the same pictures as in the mirror, so it is clear": the white souls as the gold skull heaven
+    // counts them in, the corrupted ones as the purse's violet wisp (`Renderer.drawPurse`).
+    const sk = HEAVEN_PIXELS.sprites.skull, skc = 2.6 * s;
+    if (gathered) items.push({ w: sk.w * skc, h: sk.h * skc, draw: (x, y0) => Heaven.skull(ctx, x, y0, skc), text: String(gathered), word: gathered === 1 ? 'SOUL' : 'SOULS' });
+    if (dark) items.push({ w: 22 * s, h: 24 * s, draw: (x, y0) => {
+      if (r.painted.ready) { ctx.save(); ctx.translate(x + 11 * s, y0 + 14 * s); r.painted.soulWispBody(ctx, 22 * s); ctx.restore(); }
+      else { ctx.fillStyle = PALETTE.witch; ctx.fillRect(x + 2 * s, y0 + 2 * s, 12 * s, 18 * s); }
+    }, text: String(dark), word: dark === 1 ? 'CORRUPTED SOUL' : 'CORRUPTED SOULS' });
     if (bell) items.push({ g: ['..xx..', '.xxxx.', '.xxxx.', 'xxxxxx', 'xxxxxx', '......', '..xx..'], col: '#f7d774', text: 'A BELL WAKES IN HEAVEN' });
     ctx.save(); ctx.globalAlpha *= a; ctx.font = `700 ${20 * s}px ${FONT}`;
-    const gap = 36 * s, ws = items.map((it) => textW(ctx, it.text) + 8 * cell + 10 * s);
+    const gap = 36 * s, ws = items.map((it) => textW(ctx, it.text) + (it.draw ? it.w + 2 * cell : 8 * cell) + 10 * s);
     let x = cx - (ws.reduce((p, w) => p + w, 0) + gap * (items.length - 1)) / 2;
     const mouse = game.input.mouse && !game.touch.active ? game.input.mouse : null;
     items.forEach((it, i) => {
-      const g = it.g, gw = g[0].length * cell, gh = g.length * cell;
-      ctx.fillStyle = it.col;
-      for (let yy = 0; yy < g.length; yy++) for (let xx = 0; xx < g[0].length; xx++) if (g[yy][xx] !== '.' && g[yy][xx] !== ' ') ctx.fillRect(Math.round(x + xx * cell), Math.round(y - gh / 2 + yy * cell), cell, cell);
+      const g = it.g, gw = it.draw ? it.w : g[0].length * cell, gh = it.draw ? it.h : g.length * cell;
+      if (it.draw) it.draw(Math.round(x), Math.round(y - gh / 2));
+      else {
+        ctx.fillStyle = it.col;
+        for (let yy = 0; yy < g.length; yy++) for (let xx = 0; xx < g[0].length; xx++) if (g[yy][xx] !== '.' && g[yy][xx] !== ' ') ctx.fillRect(Math.round(x + xx * cell), Math.round(y - gh / 2 + yy * cell), cell, cell);
+      }
       ctx.textAlign = 'left'; ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${20 * s}px ${FONT}`; ctx.fillText(it.text, x + gw + 10 * s, y + 7 * s);
       if (it.word && mouse && this.hit(mouse, { x: x - 6 * s, y: y - 20 * s, w: ws[i] + 12 * s, h: 40 * s })) {
         ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = 'rgba(239,230,208,0.75)'; ctx.textAlign = 'center';
@@ -523,7 +532,7 @@ const Painting = {
       // would end the run; with SETTINGS `sameFloor` on, RESTART already is that.
       this.sameRect = null;
       if (game.permadeath && game.permadeath() && game.stateTimer <= 0) {
-        const txt = '(FOR A PLAYTEST: RESTART ON THIS FLOOR)', px = Math.max(12 * r.s, 12 * s), sy = Math.min(by + (side ? 44 : 88) * s, H - 14 * s);
+        const txt = '(FOR A PLAYTEST: RESTART ON THIS FLOOR)', px = Math.max(12 * r.s, 12 * s), sy = Math.min((side || !rq ? by : Math.min(by + 44 * s, H - 40 * s)) + ra.h + 18 * r.ts + px, H - 14 * s);   // clear under the buttons' own height (9 Oct 2026: it sat on their rims)
         ctx.font = `700 ${px}px ${FONT_SC}`; ctx.textAlign = 'center';
         const w = textW(ctx, txt), m = game.input.mouse, rc = { x: W / 2 - w / 2 - 6 * s, y: sy - px - 4 * s, w: w + 12 * s, h: px + 10 * s };
         const hot = !game.touch.active && this.hit(m, rc);

@@ -29,8 +29,9 @@ HEAVEN_MAP.stalls = HEAVEN_MAP.throne;
 const HORN_GLYPHS = {
   // `s` the little skull they grow from, `e` its eyes, `h` the horn, `+` the horn's lit tip.
   short: ['..+......+..', '..h......h..', '...h....h...', '...h....h...', '....ssss....', '...ssssss...', '...sessse...', '....ssss....'],
-  big: ['.++......++.', 'h..h....h..h', 'h.hh....hh.h', '.hh.ssss.hh.', '...ssssss...', '...sessse...', '....ssss....'],
-  long: ['+..........+', '.h........h.', '..h......h..', '..h......h..', '...h....h...', '...h....h...', '....ssss....', '...ssssss...', '...sessse...', '....ssss....'],
+  // 9 Oct 2026 playtest: BIG a moose's palms, LONG a gazelle's lyre, ringed (`r`), as they are drawn on him.
+  big: ['+.+.+..+.+.+', 'hhhhh..hhhhh', '.hhhh..hhhh.', '...hh..hh...', '....ssss....', '...ssssss...', '...sessse...', '....ssss....'],
+  long: ['...+....+...', '..h......h..', '.r........r.', '.h........h.', '.r........r.', '..h......h..', '..r......r..', '...h....h...', '....ssss....', '...ssssss...', '...sessse...', '....ssss....'],
 };
 
 Object.assign(Heaven, {
@@ -41,8 +42,11 @@ Object.assign(Heaven, {
     if (M.standOverride && M.standOverride[kind]) return M.standOverride[kind];   // the dev drawer's (`devHome`)
     // (an animal already brought up keeps its stand open: it was mended for it, whatever the costs say now)
     if (S.open.includes(kind) || (M.mendedStands && M.mendedStands[kind]) || (M.saved && M.saved[kind])) return 'open';
-    return S.cost[kind] ? 'broken' : 'locked';
+    return this.standCost(kind) ? 'broken' : 'locked';
   },
+  // What mending a stand costs: its own price, or `later` for the six locked ones once the god's fifty are given and the
+  // horns are open (9 Oct 2026, was the hundred: "the other companions after bringing fifty souls and opening the horns").
+  standCost(kind) { const S = TUNING.heaven.home.stands; return S.cost[kind] || (this.hornsOpen() ? S.later : 0); },
   // The kinds a run may deal (`Game.beastPlanFor`): every one whose stand is open.
   beastsOpen() { return HEAVEN_SEATS.map((s) => s.kind).filter((k) => this.standState(k) === 'open'); },
   freed(kind) { const M = this.meta; return !!(M && M.freed && M.freed[kind]); },
@@ -72,7 +76,7 @@ Object.assign(Heaven, {
     if (n.kind === 'god' && this.skillsAsk() && M.told.skills0 && (M.sacrifices > 0 || this.poured('god2') >= TUNING.heaven.gift.skills)) return { key: 'god2', cost: TUNING.heaven.gift.skills, word: 'GIVE' };
     // The tower and the broken stands wait for the mirror (9 Oct 2026: "padlocks on them until the mirror is repaired").
     if (n.kind === 'tower' && !this.towerMended() && this.mended()) return { key: 'tower', cost: P.tower.cost, word: 'REPAIR IT' };
-    if (n.kind === 'seat' && this.standState(n.thing.seat) === 'broken' && this.mended()) return { key: 'stand:' + n.thing.seat, cost: P.stands.cost[n.thing.seat], word: 'REPAIR IT' };
+    if (n.kind === 'seat' && this.standState(n.thing.seat) === 'broken' && this.mended()) return { key: 'stand:' + n.thing.seat, cost: this.standCost(n.thing.seat), word: 'REPAIR IT' };
     return null;
   },
   // Broken and still padlocked: the tower or a broken stand before the mirror is repaired (`pourable` refuses them).
@@ -203,7 +207,7 @@ Object.assign(Heaven, {
     if (shut) ctx.globalAlpha = 0.3;   // the god's still: pale, under a padlock
     ctx.fillStyle = '#3a2c4e';
     for (let r = 0; r < G.length; r++) for (let q = 0; q < G[r].length; q++) if (G[r][q] !== '.') ctx.fillRect(ox + (q - 1) * c, oy + (r - 1) * c, c * 3, c * 3);
-    const col = { '+': '#fff4c2', h: mine ? '#f7d774' : '#cdb58a', s: '#efe6d0', e: '#3a2c4e' };
+    const col = { '+': '#fff4c2', h: mine ? '#f7d774' : '#cdb58a', r: mine ? '#a8762a' : '#8a7454', s: '#efe6d0', e: '#3a2c4e' };
     for (let r = 0; r < G.length; r++) for (let q = 0; q < G[r].length; q++) if (G[r][q] !== '.') { ctx.fillStyle = col[G[r][q]]; ctx.fillRect(ox + q * c, oy + r * c, c, c); }
     ctx.globalAlpha = 1;
     if (shut) {
@@ -305,6 +309,36 @@ Object.assign(Heaven, {
       if (Math.abs(dx) > 2) p.face = Math.sign(dx);
     }
   },
+  // The free ones' scenes (`HEAVEN_BANTER`): a pair near each other and near him says one, the first, then the answer.
+  updateBanter(game, dt) {
+    const B = TUNING.heaven.home.banter, H = game.heaven, g = game.goat;
+    if (!B || !H) return;
+    const say = (p, text, other) => {
+      H.plates.push({ x: p.x, y: p.y - (p.as === 'horse' ? 70 : 40), text, life: B.life });
+      game.audio.sfxAnimal(p.as);
+      if (other) { p.face = Math.sign(other.x - p.x) || p.face; }
+      p.goal = null; p.wait = Math.max(p.wait || 0, B.reply + 1.5); p.vx = p.vy = 0;
+    };
+    if (H.banterNext) {
+      const n = H.banterNext; n.t -= dt;
+      if (n.t <= 0) { H.banterNext = null; if (!n.p.broken && !n.p.flying) say(n.p, n.text, n.to); }
+      return;
+    }
+    H.banterT = (H.banterT === undefined ? B.first : H.banterT) - dt;
+    if (H.banterT > 0 || game.beastTalk || H.talk || H.panel) return;   // never over the god or the mirror
+    const R = game.props.filter((p) => p.kind === 'hroam' && !p.broken && !p.flying);
+    for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) {
+      const a = R[i], b = R[j];
+      if (hyp(a.x - b.x, a.y - b.y) > B.near * TILE || Math.min(hyp(a.x - g.x, a.y - g.y), hyp(b.x - g.x, b.y - g.y)) > B.watch * TILE) continue;
+      const key = [a.as, b.as].sort().join('|'), L = HEAVEN_BANTER[key]; if (!L) continue;
+      H.banterN = H.banterN || {}; const k = (H.banterN[key] = ((H.banterN[key] === undefined ? Math.floor(Math.random() * L.length) : H.banterN[key] + 1)) % L.length);
+      const [first, second] = a.as === key.split('|')[0] ? [a, b] : [b, a];
+      say(first, L[k][0], second); second.goal = null; second.wait = Math.max(second.wait || 0, B.reply + 2); second.vx = second.vy = 0;
+      H.banterNext = { p: second, to: first, text: L[k][1], t: B.reply };
+      H.banterT = B.gap;
+      return;
+    }
+  },
   // Where an animal bound for another room steps next: the open tile of the gap between its room and the next one
   // toward the goal nearest its own row; it lines up with that row inside its room, then walks through. Null once it
   // is in the goal's room.
@@ -374,14 +408,14 @@ Object.assign(Heaven, {
   // one with what it still asks.
   drawStandState(R, game, p, top) {
     const ctx = R.ctx, st = this.standState(p.seat), c = 2;
-    // A locked stand is a ruin, with nothing asked of it yet (8 Oct 2026, "the shut ones are ruined": the padlock went);
-    // the plinth is the broken one (`drawSeat`).
-    if (st === 'locked') return true;
+    // A locked stand is a ruin under a padlock (9 Oct 2026, "padlocks on every broken one"; the plinth is the broken one,
+    // `drawSeat`): nothing is asked of it until the horns are open (`standCost`).
+    if (st === 'locked') { this.drawPadlock(ctx, -7, top - 22, 2); return true; }
     if (st === 'broken') {
       // the split, the slump and the stones are the sprite's own (`plinth-broken`, js/heaven-pixels.js)
       // Padlocked until the mirror is repaired: the lock, and no count (9 Oct 2026).
       if (!this.mended()) { this.drawPadlock(ctx, -7, top - 22, 2); return true; }
-      const P = TUNING.heaven.home.stands.cost[p.seat] || 0, poured = this.poured('stand:' + p.seat);
+      const P = this.standCost(p.seat) || 0, poured = this.poured('stand:' + p.seat);
       ctx.font = `700 11px ${FONT_SC}`; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(58,44,78,0.8)'; ctx.fillText(`${poured} / ${P}`, 0, top - 12);
       return true;
     }
@@ -391,6 +425,27 @@ Object.assign(Heaven, {
 });
 
 // What broke the story's stands (8 Oct 2026): said before what the stand asks. The tortoise's was never broken.
+// What the free ones say to each other when he is near (9 Oct 2026, the backlog's "the concept's scenes between them";
+// `Heaven.updateBanter`, numbers `TUNING.heaven.home.banter`). Keyed by the two kinds in alphabetical order; each
+// scene is [what the first of the key says, what the second answers].
+const HEAVEN_BANTER = {
+  'goose|tortoise': [
+    ['HONK! RACE YOU TO THE EDGE!', '...YOU GO AHEAD. I WILL BE THERE BY SPRING.'],
+    ['WHY ARE YOU SO SLOW?!', 'WHY ARE YOU SO LOUD?'],
+    ['I LED HIM THROUGH A WHOLE FLOOR! HONK!', 'HE CARRIED ME THROUGH ONE. IN HIS TEETH. VERY COMFORTABLE.'],
+    ['HONK. HONK HONK. HONK?', '...I AGREE.'],
+  ],
+  'horse|tortoise': [
+    ['WANT A RIDE, OLD SHELL?', 'I HAVE SEEN WHERE YOU PUT YOUR FEET. NO.'],
+    ['YOU WOULD NEVER WIN A RACE.', 'I HAVE NEVER LOST ONE. I NEVER ENTER.'],
+    ['THE GOAT RAN HIS LEGS OFF FOR ME.', 'HE WALKED. I WAS IN HIS MOUTH. IT WAS SLOWER.'],
+  ],
+  'goose|horse': [
+    ['HONK! I COULD BEAT YOU UP THERE!', 'YOU HAVE WINGS. THAT IS CHEATING.'],
+    ['THE CULT WAS SCARED OF ME!', 'THE CULT WAS STEPPED ON BY ME.'],
+    ['HONK HONK HONK!', 'YES. VERY LOUD. WELL DONE.'],
+  ],
+};
 const STAND_STORY = {
   goose: "BROKEN. THE GOOSE HONKED AT THE CULT'S PRIEST, AND THEY SMASHED ITS STAND FOR IT. REPAIR IT, AND THE GOOSE WALKS YOUR RUNS.",
   horse: 'BROKEN. THE CULT TOOK THE HORSE FOR THEIR WHEEL AND KICKED ITS STAND TO PIECES. REPAIR IT, AND THE HORSE RACES YOU DOWN THERE.',
@@ -402,9 +457,9 @@ Object.assign(Heaven, {
     const H = game.heaven, M = this.meta, st = this.standState(s.kind), lift = s.kind === 'horse' ? 76 : 46;
     const say = (text, k) => H.plates.push({ x: n.x, y: n.y - lift, text, life: TUNING.heaven.plate * (k || 1.2) });
     const grab = game.touch && game.touch.active ? 'GRAB' : 'RIGHT M. CLICK';
-    if (st === 'locked') { say('RUINED. THE GOD WILL REPAIR IT, LATER.', 1); game.audio.sfxClatter('metal', 0.3); return true; }
+    if (st === 'locked') { say(this.mended() ? 'LOCKED. GIVE THE GOD HIS FIFTY, AND THE LOCK COMES OFF.' : 'LOCKED. THE MIRROR FIRST.', 1); game.audio.sfxClatter('metal', 0.3); return true; }
     // the three of the story (8 Oct 2026, "make a good story for the three"): what broke each stand, then what it asks
-    if (st === 'broken') { say(`${STAND_STORY[s.kind] || 'BROKEN.'} HOLD ${grab} AND POUR SOULS INTO IT: ${this.poured('stand:' + s.kind)} / ${TUNING.heaven.home.stands.cost[s.kind]}.`, 1.6); return true; }
+    if (st === 'broken') { say(`${STAND_STORY[s.kind] || 'BROKEN.'} HOLD ${grab} AND POUR SOULS INTO IT: ${this.poured('stand:' + s.kind)} / ${this.standCost(s.kind)}.`, 1.6); return true; }
     if (M.questWon && M.questWon[s.kind]) return false;   // the dare's last word is said at the stand once, wherever it lives now
     if (this.freed(s.kind)) { say(s.name + ' IS NOT HERE. IT LIVES UP HERE NOW, ITS OWN WAY. FIND IT.', 1.3); return true; }
     if (s.kind === 'horse' && M.saved.horse) { say('THE HORSE IS IN ITS PADDOCK, BELOW. GO AND SEE IT.', 1.2); return true; }
@@ -440,8 +495,12 @@ Object.assign(Heaven, {
       else box(s.sound + ' ' + Q.again);
       return true;
     }
-    box(s.sound + ' ' + Q.offer.replace('{n}', (TUNING.heaven.quests[s.kind] || {}).floors || 1), true, (g2, yes) => {
-      if (yes) { this.takeQuest(game, s.kind, n); say(Q.took); } else say(Q.off);
+    // What winning pays goes in as the page before the question (9 Oct 2026 playtest: "first show what it gives"), and a
+    // no is not the end of it: the offer stands, the next GRAB asks again.
+    const pages = Q.offer.replace('{n}', (TUNING.heaven.quests[s.kind] || {}).floors || 1).split('|').map((x) => x.trim()), prize = this.prizeWords(s.kind);
+    if (prize) pages.splice(pages.length - 1, 0, prize);
+    box(s.sound + ' ' + pages.join(' | '), true, (g2, yes) => {
+      if (yes) { this.takeQuest(game, s.kind, n); say(Q.took); } else say(Q.off + ' ASK ME AGAIN WHEN YOU ARE READY.');
     });
     return true;
   },
@@ -500,6 +559,6 @@ Object.assign(Heaven, {
   // A dev's word on what a chain stands at, for the tab's line.
   devHomeLine(kind) {
     const M = this.meta || this.load(), Q = TUNING.heaven.quests[kind] || {};
-    return `stand ${this.standState(kind)}${this.standState(kind) === 'broken' ? ' (' + this.poured('stand:' + kind) + '/' + TUNING.heaven.home.stands.cost[kind] + ')' : ''} · ${M.saved[kind] ? 'brought up' : 'not brought up'} · dare ${this.questOn(kind) ? 'on, ' + M.quest[kind].left + ' of ' + (Q.floors || 1) + ' left' : 'off'} · ${this.freed(kind) ? 'FREE · ' + ((Shop.def(QUESTS[kind].talisman) || {}).name || '') + ' unlocked' : 'not free'}`;
+    return `stand ${this.standState(kind)}${this.standState(kind) === 'broken' ? ' (' + this.poured('stand:' + kind) + '/' + this.standCost(kind) + ')' : ''} · ${M.saved[kind] ? 'brought up' : 'not brought up'} · dare ${this.questOn(kind) ? 'on, ' + M.quest[kind].left + ' of ' + (Q.floors || 1) + ' left' : 'off'} · ${this.freed(kind) ? 'FREE · ' + ((Shop.def(QUESTS[kind].talisman) || {}).name || '') + ' unlocked' : 'not free'}`;
   },
 });

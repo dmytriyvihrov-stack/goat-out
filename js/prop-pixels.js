@@ -1430,6 +1430,9 @@ const PROP_PIXELS = (() => {
     return o;
   };
   const jag = (n) => (n >> 1) & 1;
+  // The bare stand of a suit, butted (9 Oct 2026 playtest: "the empty stand falls or breaks too"): the crossbar with the
+  // top of the post, the rest of the post, the foot.
+  { const b = suit(true, true); sprites['stand-bit0'] = brokeUp(b, (x, y) => y < 22 + jag(x)); sprites['stand-bit1'] = brokeUp(b, (x, y) => y >= 22 + jag(x) && y < 37); sprites['stand-bit2'] = brokeUp(b, (x, y) => y >= 37); }
   { const s = sword(); sprites['sword-bit0'] = brokeUp(s, (x, y) => x < 11 + jag(y)); sprites['sword-bit1'] = brokeUp(s, (x, y) => x >= 11 + jag(y)); }
   { const h = halberd(); sprites['halberd-bit0'] = brokeUp(h, (x, y) => x < 13 + jag(y)); sprites['halberd-bit1'] = brokeUp(h, (x, y) => x >= 13 + jag(y)); }
   { const s = shield(), cut = (x, y) => (x < 6 + jag(y) ? 0 : x < 12 + jag(y + 1) ? 1 : 2);

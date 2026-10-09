@@ -84,6 +84,9 @@ class Goat {
       } else { this.vx *= 0.86; this.vy *= 0.86; }
       const sx = this.x, sy = this.y;
       this.x += this.vx * dt; this.y += this.vy * dt; world.collideCircle(this);
+      // The rope's end is on him wherever he is dragged: left where it caught him (the butcher not stepped that frame,
+      // two rooms off, held), it hung in the air tiles behind him (9 Oct 2026 playtest's screenshot).
+      if (this.hooked && this.hooked.hook) { this.hooked.hook.x = this.x; this.hooked.hook.y = this.y; }
       // A shove with no windup (GET OFF, the ogre's rebound) costs no heart, so it may not slide him into
       // one either: the lip and a fire hold him like the lunge's lip does. The rope may drag him anywhere.
       if (!this.hooked) {
@@ -350,7 +353,7 @@ class Goat {
     // A fifth key that does not exist until there is a cape on his back (`CAPES`, js/capes.js): the
     // cape's one verb, a blink, a tuft of grass, a shock, a boomerang, a straw goat. None is grab or
     // roll wearing a different hat, so it keeps its own cooldown (`itemCd`), never `grabCd` or `rollCd`.
-    if (this.wave && (this.wave.t += dt) > TUNING.goat.horns.wave.time) this.wave = null;
+    if (this.wave && (this.wave.t += dt) > TUNING.goat.horns.wave.time + (game.mods.horn && game.mods.horn.rows ? TUNING.goat.horns.wave.tipHold : 0)) this.wave = null;
     this.itemCd = Math.max(0, this.itemCd - dt * cdRate);
     // A cape put back on a stool keeps the wait it still owed (`Shop.wearCape`) and works it off while it hangs there.
     if (game.capeWait) for (const k in game.capeWait) { const w = game.capeWait[k]; w.cd -= dt * cdRate; if (w.cd <= 0) delete game.capeWait[k]; }
@@ -829,7 +832,11 @@ class Goat {
         const SN = TUNING.stealth;
         const tipK = HN.rows ? (hit.tip ? HN.tipMul : HN.shaftMul) : 1;   // LONG: the tips throw hard, the shafts only shove
         const imp = Talisman.buttImpulse(game, this, e, impulse * tipK * (e.knockMul ? e.knockMul() : 1) * (unseen ? SN.knock : 1));
-        if (HN.rows && hit.tip) { game.hitstop(0.03); game.particles(e.x - ax * e.r, e.y - ay * e.r, 5, PALETTE.hitTip, 240); }
+        if (HN.rows && hit.tip) {
+          game.hitstop(0.03); game.particles(e.x - ax * e.r, e.y - ay * e.r, 5, PALETTE.hitTip, 240);
+          // LONG's tips cut (`tipHurt`): a heart off him, then the throw; a man with hearts to spare is floored by it and still flies.
+          if (HN.tipHurt) { game.particles(e.x, e.y, 8, PALETTE.blood, 260); for (let k = 0; k < HN.tipHurt && !e.dead; k++) e.die(game, 'headbutt', ax, ay, 'horntip'); }
+        }
         if (unseen) { game.floatText(e.x, e.y - 40, SN.text, PALETTE.fireHi); game.hitstop(SN.stop); }
         // SPLASH poisons the man on the horns as well as whoever is behind (1 Oct 2026, playtest),
         // before the throw: with the whole poison set the onset is a blow, whose floor wiped the fling.
@@ -885,6 +892,16 @@ class Goat {
       else if (d > reach || (d > 1 && (dx * ax + dy * ay) / d < cone)) continue;
       p.lastLunge = this.lungeId;
       p.headbutt(game, ax, ay);
+      // BIG and LONG reach past the face of the stone: the blow that opens a wall that gives goes on into the niche
+      // behind it and takes what stands there (9 Oct 2026 playtest: "the wall broke, the sword behind it did not").
+      if (p.kind === 'secret' && p.broken && HN.reach > 0 && p.nicheTiles) {
+        const W = game.world.W;
+        for (const q of game.props) {
+          if (q === p || q.broken || q.held || q.lastLunge === this.lungeId || q.kind === 'heal') continue;
+          if (p.nicheTiles.indexOf(Math.floor(q.y / TILE) * W + Math.floor(q.x / TILE)) < 0) continue;
+          q.lastLunge = this.lungeId; q.headbutt(game, ax, ay);
+        }
+      }
     }
   }
 
@@ -895,7 +912,6 @@ class Goat {
     if (p.inStand) {
       p.inStand = false;
       game.world.dot(p.x - 4, p.y + 7, 4.5, '#3a2c20'); game.world.dot(p.x + 5, p.y + 9, 3.5, '#3a2c20');
-      game.floatText(p.x, p.y - 32, p.weapon === 'sword' ? 'SWORD' : 'SHIELD', PALETTE.bone);
     }
     p.held = true; p.flung = false; p.thrown = false;
     this.holding = p; this.holdTimer = 0; this.autoHeld = true;
@@ -1042,8 +1058,7 @@ class Goat {
       best.halberds--; best.wobble = 0.3;
       const h = new Prop(best.x, best.y + 6, 'weapon', { weapon: 'sword' });
       h.halberd = true; h.uses = TUNING.prop.weapon.uses.halberd || 1;
-      game.props.push(h); h.inStand = false;
-      game.floatText(best.x, best.y - 34, 'HALBERD', PALETTE.bone);
+      game.props.push(h); h.inStand = false;   // no word over it (9 Oct 2026 playtest): the halberd in his teeth says what it is
       this.takeArm(game, h); this.autoHeld = false; return;
     }
     if (!best) {
@@ -1287,6 +1302,7 @@ class Goat {
     game.world.splat(this.x, this.y, (kx || 0) / 100, (ky || 0) / 100, 9);
     if (this.state === 'windup' || this.state === 'bite') this.state = 'idle';   // a blow takes the bite out of his mouth too
     if (this.hp <= 0 && !Talisman.scapegoat(game, this) && !Motes.second(game, this)) this.die(game);
+    else if (this.hp > 0) BeastChat.event(game, this.hp === 1 && this.maxHp > 1 ? 'last' : 'hurt');   // a companion near him says so (js/beast-chat.js)
   }
   // THE TRIP's mercy: a blow that lands may turn out never to have. He is somewhere else, away from
   // where it came from, on plain floor with nothing burning, and says so. Returns true if it did.
@@ -1556,7 +1572,7 @@ class Prop {
       case 'rock': this.crackRock(game); break;
       case 'cleat': this.cutRope(game); break;
       // A horn brings it down too (1 Oct 2026: "they fly apart when you butt them"), as a body landing by it does.
-      case 'armor': case 'suit': if (!this.spilled) this.burstArmor(game, ax, ay, 0.9); break;
+      case 'armor': case 'suit': if (!this.spilled) this.burstArmor(game, ax, ay, 0.9); else if (this.kind === 'suit') this.breakStand(game, ax, ay); break;
       case 'poster': this.tear(game, ax, ay); break;
       case 'table': if (this.flipped) this.knockFlipped(game, ax, ay); else this.shove(game, ax, ay); break;
       case 'barrel': this.roll(game, ax, ay, TUNING.prop.barrel.roll); break;
@@ -2003,7 +2019,7 @@ class Prop {
   // A headbutt only rings it, and says what does open it.
   ringIron(game) {
     this.wobble = 0.25; game.audio.sfxThud(); game.audio.sfxSteel(); game.shake(2); game.vibe(8);
-    game.floatText(this.x, this.y - 34, game.runKeys > 0 ? 'GRAB IT TO USE THE KEY' : 'IT NEEDS A KEY', PALETTE.bone);
+    game.floatText(this.x, this.y - 34, game.runKeys > 0 ? (game.touch.active || padOn(game) ? 'NOT THE HORNS: GRAB IT' : 'NOT THE HORNS: RIGHT M. CLICK') : 'IT NEEDS A KEY', PALETTE.bone);
   }
   unlockIron(game) {
     if (this.broken) return;
@@ -2139,7 +2155,7 @@ class Prop {
     // Into a man: she comes apart on him and takes him with her. That is the whole of the bargain.
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
-      if (hyp(e.x - this.x, e.y - this.y) > e.r + this.r) continue;
+      if (hyp(e.x - this.x, e.y - this.y) > e.r + this.r + TUNING.prop.throwHit) continue;
       this.strike(game, e, this.vx / spd, this.vy / spd);
       return;
     }
@@ -2301,6 +2317,18 @@ class Prop {
   // A suit of armour coming off the wall (`TUNING.prop.armor`): helm, pauldrons and breastplate
   // thrown along (dx, dy) off the heights they hung at (js/scatter.js), its halberd left on it for a grab.
   // Nothing in it hurts anybody, it is the room answering a body, not a weapon (pillar 3).
+  // The bare stand a suit left, butted: it breaks into its wood (`stand-bit*`) and its halberd's pieces if it still held
+  // one, and is gone (9 Oct 2026 playtest).
+  breakStand(game, dx, dy) {
+    if (this.kind !== 'suit' || !this.spilled || this.broken) return;
+    this.broken = true;
+    if (game.scatter) {
+      game.scatter.breakUp(['stand-bit0', 'stand-bit1', 'stand-bit2'], this.x, this.y, 14, dx, dy, 1);
+      if (this.halberds > 0) game.scatter.breakUp(Scatter.piecesOf({ halberd: true }), this.x, this.y, 22, dx, dy, 1);
+    }
+    game.audio.sfxThud(); game.dust(this.x, this.y, 5, dx, dy);
+    game.world.emitNoise(this.x, this.y, TUNING.noise.steel);
+  }
   burstArmor(game, dx, dy, power = 1) {
     if ((this.kind !== 'armor' && this.kind !== 'suit') || this.spilled) return;
     this.spilled = true; this.wobble = 0.3;
@@ -2465,7 +2493,7 @@ class Prop {
     if (this.byCult && Thrower.thingHitsGoat(game, this)) { end(); return; }
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted || e === this.byCult) continue;
-      if (hyp(e.x - this.x, e.y - this.y) < e.r + this.r) {
+      if (hyp(e.x - this.x, e.y - this.y) < e.r + this.r + (this.byCult ? 0 : TUNING.prop.throwHit)) {
         // A crate that catches a wraith in its window is as good as a horn.
         if (e.kind === 'wraith') { e.die(game, 'unmade', this.vx / 300, this.vy / 300); this.shatter(game); return; }
         // A shieldman's board from in front takes the crate: it breaks on it, a use off the board.
@@ -2619,9 +2647,11 @@ class Prop {
       if (game.world.isPitPx(this.x, this.y)) this.fall(game);
       return;
     }
+    // As far out as a dripping throw poisons (`status.jaw.touch`): an ogre poisoned by a sword that had gone by him
+    // untouched (9 Oct 2026 playtest) was a blade that missed by those few px.
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted || this.passed.indexOf(e) >= 0) continue;
-      if (hyp(e.x - this.x, e.y - this.y) > e.r + this.r) continue;
+      if (hyp(e.x - this.x, e.y - this.y) > e.r + this.r + Math.max(TUNING.status.jaw.touch, TUNING.prop.throwHit)) continue;
       this.hitMan(game, e, spd);
       if (!this.flung || this.broken) return;
     }
@@ -2695,7 +2725,7 @@ class Prop {
       if (this.byCult && !game.goat.dead && hyp(game.goat.x - this.x, game.goat.y - this.y) < game.goat.r + this.r) { this.explode(game); return; }
       if (armed && v0 >= H.speed) for (const e of game.liveEnemies || game.enemies) {
         if (e.dead || e.held || e.ghosted || e.state === 'hop' || e === this.byCult) continue;
-        if (hyp(e.x - this.x, e.y - this.y) < e.r + this.r) { this.explode(game); return; }
+        if (hyp(e.x - this.x, e.y - this.y) < e.r + this.r + (this.byCult ? 0 : TUNING.prop.throwHit)) { this.explode(game); return; }
       }
       if (impact > 0 || hit) { this.vx = 0; this.vy = 0; this.flung = false; this.thrown = false; }
       else { const drag = Math.exp(-TUNING.prop.weapon.drag * dt); this.vx *= drag; this.vy *= drag; if (hyp(this.vx, this.vy) < 8) { this.vx = 0; this.vy = 0; this.flung = false; this.thrown = false; } }

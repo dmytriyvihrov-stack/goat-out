@@ -5,6 +5,109 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## Next, 9 Oct 2026: the sixth batch of 9 Oct (not yet published; the deploy names the BUILD)
+
+- **The level card no longer counts the souls in the floor** (it said "2 souls in here").
+- **TALK page** (tools/god-talk.html): every group says WHEN the game speaks it (`TRIGGERS`, `triggerOf`), and wears a portrait of
+  who says it (the god, the shepherd, the skull of a death; `portrait`, off js/heaven-pixels.js loaded beside the page).
+- **SKIP THE OPENING** (SETTINGS, `settings.skipIntro`): a new run starts in the pen without the opening scene, watched or not.
+- **The goat a tenth faster** (`goat.speed` × 1.1, the second tenth since 26 Sep 2026).
+- **Padlocks on every stand but the open ones** (`Heaven.drawStandState`): a locked stand wears the lock as a broken one does before the
+  mirror; the goose's and the horse's open to pouring once the mirror is whole (as before), and the six locked ones once the god's fifty are
+  given and the horns are open (`Heaven.standCost` asks `hornsOpen`, not the hundred; `hornsDone` says so, the skills' lines no longer do).
+- **One line from the cult at a time** (`Game.bark`, `bark.cap` / `bossCap`): no man starts a bark while another's is up; a boss may
+  speak over one, never a third.
+- **LONG's tips cut** (`horns.long.tip` 0.62 → 0.8, `tipHurt` 1): the red zone is the last fifth of the reach, and a man met there
+  loses a heart before he is thrown (pillar 3's exception, his: skill and judged distance are paid).
+- **BIG and LONG hold their shape through the stride** (`PIXEL_ART.bare`, `horns`): grown once a facing off the standing frame and
+  carried on the step's own roots, the frame's packed horns taken off under them; grown off each step they changed every stride.
+- **ABANDON RUN** on the pause menu (`Game.abandonRun`, press twice): the run ends there as a death (killer GIVING UP) and he goes
+  straight up to heaven.
+- **A sealed arena's shut doors say so** (`Renderer.drawSealWords`): a padlock of cells and UNTIL THEY FALL · n LEFT over each.
+- **HOOKED is a hook over his head** (`Renderer.drawHookMark`, `HOOK_MARK`), and the rope's end rides on him while he is dragged
+  (it was left where it caught him whenever the butcher was not stepped that frame).
+- **The iron pair's words**: name and gift over each cage, lifted clear of the other; how they open said once over both, RIGHT M.
+  CLICK (or GRAB) and never the horns, which now say NOT THE HORNS.
+- **Thrown things meet men further out** (`prop.throwHit` 9 px): crate, bomb, blade, shield, the kicked hen.
+- **No HALBERD / SWORD / SHIELD word** when one is taken off its stand or a suit.
+- **BIG and LONG reach into a niche**: the blow that opens a wall that gives goes on into what stands behind it.
+- **A bare suit stand breaks** under a butt (`Prop.breakStand`, sprites `stand-bit0..2`).
+- **Every chandelier's cleat is by the way in** (`chandelier.cleatIn` 1).
+- **Dev drawer fits any width**: the long SPAWN rows shortened, and a drawer wider than the screen is drawn smaller with its buttons.
+- **TALK page**: a syntax error had it stuck on loading…; opened as a file it now reads the scripts directly (SAVE needs the server).
+- **Perf**: the ONE MORE LIFE portrait baked once a size (it was hundreds of cells a frame), `Beast.is` a Set, and a room's sound
+  loop is no longer rendered ahead during a fight (`GameAudio.warm`: only one the floor asked for, `loopReady`).
+
+## 2.07, 9 Oct 2026: the fifth batch of 9 Oct (same build as the companions' talk)
+
+- **The top-left reads horns, the dares, then the talismans** (his order): the horn picture first, the dares' marks after its
+  width (`hornRowW`), the talisman chips after theirs (`Renderer.dareRowW`, set by `Heaven.drawDareMarks`, now drawn first).
+  The horn picture's hover was set before the skill rail cleared it, so it never showed (`hornHov`, read after the rail).
+- **BIG and LONG look like their animals** (`TUNING.goat.horns[kind].look`, `PIXEL_ART.hornShapeOf`, `hornLooks.gazelle` / `moose`):
+  LONG a gazelle's long ringed lyre, BIG a moose's palm with points, grown on the art's own grid off each packed horn like the LONG
+  HORNS soul's antlers (that soul now only bends the SHORT). Their glyphs (`HORN_GLYPHS`, the HUD and heaven's pairs) follow, a
+  ringed lyre and two palms (`r`, the ring colour).
+- **LONG's damage zone stays up red** at the end of the wave (`horns.wave.tipHold`, `tipAlpha`): the tips' cells are blood red and
+  outlast the pale shaft cells by a beat.
+- **A body no longer gets past a shut door's middle** (`collideEntities`, `_cx` / `_cy`): knocked fast enough, one step carried its
+  centre over the slab and the push sent it out the far side (one stood behind a shut soul gate). It is put back on the side it was on.
+- **The last room's white souls come once it is cleared** (`Motes.update`, `lastDone`): it holds the stairs, so he never left it and
+  they were banked unseen at the top.
+- **The clear card's tally wears the mirror's pictures**: the white souls as heaven's gold skull, the corrupted ones as the purse's
+  violet wisp (`Painting.drawTally`).
+- **The death card's playtest line clears the buttons** (it sat on their rims; placed under the buttons' own height).
+- **The book's object tiles hold still**: a new `Prop` every frame rolled a new `phase`, so the grass and the key jittered; one is kept
+  a tile (`Unlocks.iconProps`).
+- **PICK A SOUL** in the dev drawer's SPAWN column (`drawSoulPick`): every soul as its picture by the part he grows, a click puts it on
+  him or takes it off, the pointer names it.
+- **The mage's rings are fire, slower, one heart a volley** (`endBoss.mage.ring`: speed 6.5 → 3.5, `flames` / `flameSize`: the
+  game's own witchfire stood round each ring, `CombatFX.flame`); every ring volley, the ogre's too, costs one heart at most (`volley`):
+  the throw off the first carried him into the second.
+- **The way back shuts in a boss's room** (`Game.updateBossShut`, `rooms.bossShut`): with an outlined boss or a keeper standing in his
+  room, once he is `inset` tiles in, the last room's mouth is stone (NO WAY BACK UNTIL HE FALLS); it opens again the moment no boss
+  stands there, unless the clamp took that room meanwhile. A caged vault ogre does not count.
+- **A sword circling him on THE MAGNET cuts** (`Talisman.updateMagnet`, `magnet.cutR` / `cutCd`): a man it passes through is hit as by
+  a thrown blade, a use spent each time, the last breaking it; a board in front takes it instead.
+- **A thrown blade reaches as far as its poison** (`Prop.updateWeapon`: `e.r + this.r + status.jaw.touch`): an ogre poisoned by a
+  sword that had flown by him untouched.
+- **VENOM JAW and FIREBRAND charge 30% faster** (`holdFor` 1.5 → 1.05 s).
+- **Floors 1-3 keep their secrets small** (`secret.deep.chance` 0.3 → 0): the niche behind a niche comes from THE ROAD on.
+- **Heaven's stand signs carry the animal small, inside the ring** (`stands.inRing`, the shape's own box `c.box`), the empty sign
+  and the gold one of an animal that lives up there alike; `ghostDrop` went.
+- Measured, not changed: THE CAVE with the antlers and THE MAGNET draws at ~18 ms a frame (p95 45) against ~14 plain, update ~3.5;
+  nothing near the 72 ms of his screenshot. Nothing of THE TORTOISE'S PACE outlives its floor (`paceMul` asks the floor every step);
+  heaven runs him at ×1.5 (`heaven.speed`), which a floor after it can feel slow against.
+- **THE SACRIFICE ALTAR** (his ask, Nuclear Throne's and Spelunky's; `js/sacrifice.js`, `TUNING.sacrifice`, `GEN_RULES.sacrifice`):
+  the wheel of six he picked from four sketches (`output/altar-2026-10-09/`), carved in the floor of the room nearest THE CAVE's
+  middle. Anything living on it pays a heart a second and fills a socket: the goat (his last heart is his death, THE ALTAR), a man
+  (a plain one dies on it), a companion (its own heart). Sockets never empty. Six, and the dark comes down and the floor is laid
+  again as THE DARK, in THE CAVE's place, with what he carries. One bell a socket, blood off whoever paid, the next socket breathing
+  red and filling while somebody stands on it. In THE SHOWROOM's cave room, where six only start it over.
+
+---
+
+## 2.07, 9 Oct 2026: the companions talk on the road
+
+- **The companions' talk** (his ask: "go through the backlog and ideas, especially the companions' dialogues"; `js/beast-chat.js`,
+  `BEAST_CHAT`, `TUNING.beast.chat`). An animal used to speak twice, its terms and the card at the stairs, and was a parcel in
+  between. Now, once its terms are said, it answers what happens near it in a voice of its own: a man down, a boss down, a room
+  cleared, the cult seeing him, a heart lost, his last heart, a soul swallowed, the last room, him standing about; and what is done
+  to it: hurt, carried, thrown (the hen kicked), butted, poisoned. One line at a time on the whole floor (`gap` 3.5 s, `cd` 9 s an
+  animal), the nearest in sight answers, never twice the same line running, never over its terms or another's plate (two side by
+  side laid one over the other). Render only: no noise, no AI.
+- **Every animal calls in words when left behind** (`BEAST_CHAT[kind].stray`; the tortoise's BRING ME WITH YOU was the only one), and
+  one walled in by the clamp has a last word on its farewell plate (`left`, a third line).
+- **It knows him again**: met in a run after it was once brought up to heaven, its first page is a line that remembers him (`again`,
+  `BeastChat.hello`; a first page that is only its sound gives way, the horse's race is kept after it).
+- **The free ones talk to each other in heaven** (the backlog's "the concept's scenes between them"; `HEAVEN_BANTER`,
+  `Heaven.updateBanter`, `heaven.home.banter`): two of the tortoise, the goose and the horse near each other with him near, one
+  speaks, they stop and turn, the other answers; a pair's scenes in turn, never over the god or the mirror.
+- **The overlook's towers survive a reload** (backlog, 6 Oct): the save keeps which floors were climbed out of and where he fell
+  (`towers`), and CONTINUE lays them back under the overlook.
+- The TALK page lists every animal's road lines under ON THE ROAD, editable in place; the ANIMALS tab's lines include them.
+
+---
+
 ## 2.06, published 9 Oct 2026: the fight seen, the poison's picture, a readable blast, the fourth batch of 9 Oct
 
 - **The fourth batch of his 9 Oct notes** in `BACKLOG.md`: animals look further for fire and step out of harm's way

@@ -1023,17 +1023,21 @@ class GameAudio {
     if (!bank.toll) bank.toll = { list: [], want: 2, make: () => Foley.render('bell', { low: true }), rate: Foley.rateOf('bell'), last: -1 };
     if (!bank['death:big']) bank['death:big'] = { list: [], want: TUNING.audio.spotlight.takes, make: () => Foley.render('death', { big: true }), rate: Foley.rateOf('death'), last: -1 };
     // The rooms' loops, one take each, after every effect has its first.
-    for (const name of Foley.loops) if (!bank['loop:' + name]) bank['loop:' + name] = { list: [], want: 1, make: () => Foley.loop(name), rate: Foley.loopRate(name), last: -1 };
+    for (const name of Foley.loops) if (!bank['loop:' + name]) bank['loop:' + name] = { list: [], want: 1, make: () => Foley.loop(name), rate: Foley.loopRate(name), last: -1, loop: true };
     const later = () => {
       if (typeof requestIdleCallback === 'function') requestIdleCallback(next, { timeout: 500 });
       else setTimeout(next, F.warmGap * 1000);
     };
     // As many takes as the idle moment has room for, and always at least one.
+    // A room's loop is a long render (a quarter of a second here, most of a second on a slow laptop): mid-fight it is
+    // not rendered ahead, only between floors and on the cards (9 Oct 2026 perf pass, the stalls of a fight on fire);
+    // one the floor asks for (`loopReady`) still is.
+    const busy = () => typeof game !== 'undefined' && game && game.state === 'play';
     const next = (idle) => {
       do {
-        const all = Object.values(this.bank);
+        const all = Object.values(this.bank).filter((x) => !(x.loop && !x.asked && busy()));
         const b = all.find((x) => !x.list.length) || all.find((x) => x.list.length < x.want);
-        if (!b) { this.warming = false; return; }
+        if (!b) { if (Object.values(this.bank).some((x) => x.loop && x.list.length < x.want)) { setTimeout(later, 1000); return; } this.warming = false; return; }
         b.list.push(this.toBuffer(b.make(), b.rate));
       } while (idle && !idle.didTimeout && idle.timeRemaining() > 8);
       later();
@@ -1117,6 +1121,7 @@ class GameAudio {
   loopReady(name) {
     const b = this.bank && this.bank['loop:' + name];
     if (b && b.list.length) return true;
+    if (b) b.asked = true;   // wanted now: rendered ahead even in a fight
     this.warm();
     return false;
   }

@@ -846,6 +846,25 @@ const GEN_RULES = [
       }
       return true;
     } },
+  { id: 'sacrifice', text: 'THE SACRIFICE ALTAR lies on THE CAVE and nowhere else (TUNING.sacrifice.at), once, in an ordinary room that is not the last two, on a disc of plain floor TUNING.sacrifice.clear tiles round, clear of the furniture, the men laid and the way in, and he can walk to it.',
+    check: (L) => {
+      const S = TUNING.sacrifice, here = LEVELS.indexOf(L.def) === S.at, a = L.sacrifice;
+      if (!here) return a ? 'an altar on a floor that lays none' : null;
+      if (!a) return 'THE CAVE with no altar';
+      const r = L.rooms[a.room], tx = Math.floor(a.x / TILE), ty = Math.floor(a.y / TILE), grass = new Set(L.grass || []);
+      if (!r || roomAt(L, a.x, a.y) !== r) return 'an altar outside its room';
+      if (!(r.role === 'canon' || r.role === 'mix') || r.isTrap || r.index >= L.rooms.length - 2) return `an altar in room ${r.index} (${r.isTrap ? 'trap' : r.role})`;
+      for (let dy = -S.clear; dy <= S.clear; dy++) for (let dx = -S.clear; dx <= S.clear; dx++) {
+        if (dx * dx + dy * dy > S.clear * S.clear + S.clear) continue;
+        const i = (ty + dy) * L.W + tx + dx;
+        if (L.tiles[i] !== T.FLOOR || grass.has(i)) return `the altar's floor broken at ${tx + dx},${ty + dy}`;
+      }
+      if (L.props.some((p) => hyp(p.x - a.x, p.y - a.y) < S.propGap * TILE)) return 'furniture on the altar';
+      if (L.spawns.some((sp) => hyp(sp.x - a.x, sp.y - a.y) < S.spawnGap * TILE)) return 'a man laid on the altar';
+      if (r.enter && hyp(r.enter.x - a.x, r.enter.y - a.y) < S.enterGap * TILE) return 'the altar in the way in';
+      if (!walkedFrom(L)[ty * L.W + tx]) return 'nobody can walk to the altar';
+      return true;
+    } },
   { id: 'posters', text: 'A scrap of cult paper lies on the floor of an ordinary room, under a table or on plain floor clear of the rest, only on a floor with `scraps` (THE DARK); TUNING.prop.poster.perLevel a floor.',
     check: (L) => {
       const list = L.props.filter((p) => p.kind === 'poster'), PO = TUNING.prop.poster;

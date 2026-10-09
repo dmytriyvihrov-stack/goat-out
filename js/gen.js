@@ -1094,7 +1094,7 @@ function tryGenerate(levelDef, seed, opts) {
       const wayIn = room.enter || room.exitMouth, wayOut = room.exitMouth || room.enter;
       const cleatByIn = crng.chance(CH.cleatIn), cleatEnd = cleatByIn ? wayIn : wayOut, ringEnd = cleatByIn ? wayOut : wayIn;
       for (let a = 0; a < 60; a++) {
-        const near = ends.length && a < 45;
+        const near = ends.length && a < 55;
         // The cleat first, by its door; the ring toward the other door from it, a few columns in (the rope's reach is
         // `CH.reach` columns, so a wide room's ring is not by its far door but as far across as the rope goes).
         let kx = near ? inRoom(colOf(cleatEnd) + crng.int(-CH.byDoor, CH.byDoor), 1) : -1;
@@ -2116,6 +2116,8 @@ function tryGenerate(levelDef, seed, opts) {
       }
     }
   }
+  // THE SACRIFICE ALTAR (9 Oct 2026, his ask; js/sacrifice.js): laid last, so nothing placed after it stands on it.
+  const sacrifice = LEVELS.indexOf(levelDef) === TUNING.sacrifice.at ? placeSacrifice(levelDef, rooms, tiles, W, grass, cleanProps, filtered, seed) : null;
   // The ogre's vault wakes him into its room, where the horns do nothing to him: a room with nothing
   // that hurts him keeps the grass instead (1.89 backlog).
   if (vault && vault.kind === 'ogre' && !ogreArmed(rooms[levelDef.vaultAt], cleanProps)) {
@@ -2123,7 +2125,7 @@ function tryGenerate(levelDef, seed, opts) {
     if (opts.fresh && opts.fresh.vault === 'ogre') opts.fresh.vault = null;   // the unseen kind was not laid after all
   }
   const level = { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, forkTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop, combo, chasms, gaps, crowdMul,
+    hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop, combo, chasms, gaps, crowdMul, sacrifice,
     // Grass lying under a wall that went back up is not grass: only what is still on floor.
     grass: [...grass].filter((i) => tiles[i] === T.FLOOR), exitGate: null };
   level.carpets = layCarpets(level);
@@ -2813,6 +2815,37 @@ function chasmNear(ch, x, y) {
 // set-piece room is saying something else already. Shared with `GEN_RULES.chasm`.
 // A room laid from a `tag: 'flank'` template (the template is flipped into a copy, so it is known by its name).
 const isFlankRoom = (r) => !!(r && r.tpl && /^ditch/.test(r.tpl.name || ''));
+// THE SACRIFICE ALTAR's place (`TUNING.sacrifice`): the ordinary room nearest the middle of the floor that has a disc
+// `clear` tiles round of plain floor (no grass, no hole, no stone) clear of furniture by `propGap`, of the men laid by
+// `spawnGap` and of the way in by `enterGap`. Its own stream off the seed. Level data, never a prop: it blocks nothing.
+function placeSacrifice(def, rooms, tiles, W, grass, props, spawns, seed) {
+  const S = TUNING.sacrifice, rng = new RNG(((seed ^ 0x5ac21f1) >>> 0)), n = rooms.length, mid = (n - 1) / 2;
+  const fits = (r) => r.index >= S.minRoom && r.index < n - 2 && (r.role === 'canon' || r.role === 'mix') && !r.isTrap && !r.isAmbush && !r.isChand
+    && !r.isCrowd && r.index !== def.vaultAt && r.index !== shopRoomOf(def) && !(r.tpl && (r.tpl.bridge || r.tpl.name === 'armory')) && !isFlankRoom(r);
+  const order = rooms.filter(fits).sort((a, b) => Math.abs(a.index - mid) - Math.abs(b.index - mid));
+  const c = S.clear;
+  for (const r of order) {
+    const spots = [];
+    for (let ty = r.y + 1 + c; ty <= r.y + r.h - 2 - c; ty++) for (let tx = r.x + 1 + c; tx <= r.x + r.w - 2 - c; tx++) spots.push([tx, ty]);
+    for (const [tx, ty] of rng.shuffle(spots)) {
+      let ok = true;
+      for (let dy = -c; dy <= c && ok; dy++) for (let dx = -c; dx <= c && ok; dx++) {
+        if (dx * dx + dy * dy > c * c + c) continue;
+        const i = (ty + dy) * W + tx + dx;
+        if (tiles[i] !== T.FLOOR || grass.has(i)) ok = false;
+      }
+      if (!ok) continue;
+      const x = (tx + 0.5) * TILE, y = (ty + 0.5) * TILE, near = (p) => len(p.x - x, p.y - y) < S.propGap * TILE;
+      // loose clutter on it is taken up (`S.clutter`); anything else there refuses the spot
+      if (props.some((p) => near(p) && !S.clutter.includes(p.kind))) continue;
+      if (spawns.some((s) => len(s.x - x, s.y - y) < S.spawnGap * TILE)) continue;
+      if (r.enter && len(r.enter.x - x, r.enter.y - y) < S.enterGap * TILE) continue;
+      for (let i = props.length - 1; i >= 0; i--) if (near(props[i])) props.splice(i, 1);
+      return { x, y, room: r.index };
+    }
+  }
+  return null;
+}
 // `min` overrides `chasm.minRoom` (the shaman's room may be the floor's first, 9 Oct 2026).
 function chasmRoomFits(def, r, n, min) {
   const name = r.tpl && r.tpl.name;

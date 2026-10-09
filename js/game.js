@@ -642,6 +642,35 @@ class Game {
     }
     return seen;
   }
+  // A room with a boss in it (an outlined man: a champion, a soul-bearer, a gate's keeper) shuts the way back behind him
+  // once he is `rooms.bossShut.inset` tiles inside it, and gives it back the moment no boss is left standing in it
+  // (9 Oct 2026 playtest: "the ogre made me run into the room before, and there was nothing there to fight him with;
+  // in every room with such a mini boss close the way back"). The stone goes where the clamp would put it, the last
+  // room's own mouth (`exitMouth`), and comes up again unless the clamp has taken that room for good meanwhile.
+  updateBossShut() {
+    const L = this.level, w = this.world, g = this.goat, B = TUNING.rooms.bossShut;
+    if (!B.on || !L || !w || L.def.heaven || this.showroomOn || g.dead) return;
+    const bossIn = (room) => this.enemies.some((e) => !e.dead && !e.scripted && !e.chaser && (e.boss || e.keeper) && !e.caged && roomAt(L, e.x, e.y) === room);
+    const onMouth = (m, x, y, r) => m.tiles.some((i) => Math.abs(x - (i % w.W + 0.5) * TILE) < TILE / 2 + r && Math.abs(y - (((i / w.W) | 0) + 0.5) * TILE) < TILE / 2 + r);
+    // open again what no longer holds a boss
+    for (const room of L.rooms) {
+      const sh = room.bossShut; if (!sh || sh.done || bossIn(room)) continue;
+      sh.done = true;
+      const back = L.rooms[room.index - 1];
+      if (back && !back.clamped) { sh.tiles.forEach((i, k) => { w.tiles[i] = sh.was[k]; }); w.caveDirty(); }
+      this.audio.sfxSwing(); this.floatText(g.x, g.y - 40, 'THE WAY BACK IS OPEN', PALETTE.fireHi);
+    }
+    const r = this.goatRoom | 0, room = L.rooms[r], back = L.rooms[r - 1];
+    if (!room || room.bossShut || !back || back.clamped || !back.exitMouth || !this.inRoom(g, r, B.inset) || !bossIn(room)) return;
+    const m = back.exitMouth;
+    if (this.enemies.some((e) => !e.dead && onMouth(m, e.x, e.y, e.r)) || this.props.some((p) => !p.broken && Beast.animal(p) && onMouth(m, p.x, p.y, 0))) return;
+    room.bossShut = { tiles: m.tiles.slice(), was: m.tiles.map((i) => w.tiles[i]) };
+    for (const i of m.tiles) w.tiles[i] = T.WALL;
+    w.caveDirty();
+    this.audio.sfxSteel(); this.shake(4); this.vibe(20);
+    this.particles(m.x, m.y, 12, PALETTE.ash, 200);
+    this.floatText(g.x, g.y - 40, 'NO WAY BACK UNTIL HE FALLS', PALETTE.bone);
+  }
   // `quiet`: shut at once and without a sound, the rooms behind the middle gate he comes back to.
   updateClamps(quiet) {
     const L = this.level, w = this.world, g = this.goat;
@@ -1194,7 +1223,7 @@ class Game {
   // default: a number counting up in the corner of a game about running is a game about the number,
   // and the run is timed either way, the card at the end of a level is where the time belongs.
   loadSettings() {
-    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: TUNING.audio.musicDefault, sfxVolume: 0.5, shake: 1, fps: false, photoKey: false, photoAuto: false, fastCalm: false, stats: false, statsAsked: false, keysOnly: false, musicLow: true, sameFloor: false };
+    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: TUNING.audio.musicDefault, sfxVolume: 0.5, shake: 1, fps: false, photoKey: false, photoAuto: false, fastCalm: false, stats: false, statsAsked: false, keysOnly: false, musicLow: true, sameFloor: false, skipIntro: false };
     try {
       const saved = JSON.parse(localStorage.getItem(SET_KEY) || '{}');
       // The music starts quieter (3 Oct 2026: playtesters turned it well down). A store written before
@@ -1868,6 +1897,8 @@ class Game {
     if (this.state !== 'play' || !this.world) return;
     if (id === 'heal') { this.goat.hp = this.goat.maxHp; this.devToast('HEALED'); return; }
     if (id === 'soul') { this.dropSoul(this.goat.x + 28, this.goat.y); this.devToast('SOUL DROPPED'); return; }
+    if (id === 'soulpick') { this.dev.soulPick = !this.dev.soulPick; return; }
+    if (id === 'soulpick-miss') return;   // a click beside PICK A SOUL's panel goes nowhere
     // The ENEMIES tab's SPAWN under a kind: that man, with a soul in him when the row's SOUL is on.
     if (id.startsWith('enemy-spawn=')) {
       const tag = id.slice(12), e = this.spawnEnemy(tag === 'champion' || tag === 'boss' || tag === 'shield' || tag === 'thrower' || tag === 'shaman' ? 'bearer' : tag);
@@ -2822,6 +2853,7 @@ class Game {
     // field: `freeSpot` asks it, and asked before it existed it put the gift on the goat every time.
     Beast.placeGift(this);
     Chase.start(this);   // THE CHASE (js/chase.js): the red at the left, on a floor whose `mods` name it
+    Sacrifice.start(this);   // THE SACRIFICE ALTAR on THE CAVE (js/sacrifice.js)
     // The rabbit's dare (`Heaven.QUESTS`): nobody outside the last room has seen him yet (`Heaven.questStep`), and
     // while it is worn the stealth test is on, whatever the dev drawer's switch says; off again once it is not.
     this.floorSeen = false;
@@ -2930,7 +2962,8 @@ class Game {
     // Once watched, a new run (NEW GAME, RUN AGAIN) goes straight to the pen (30 Sep 2026: "don't
     // show the opening again if he has seen it"); `withIntro === 'force'` plays it anyway (tests).
     Stats.enter(this);   // a new life's report, or the next floor of this one (js/stats.js); before the opening scene's return
-    if (withIntro && def.ritual && def.startCage && (!this.introSeen || withIntro === 'force')) { this.beginIntro(); return; }
+    // SKIP THE OPENING (a setting, 9 Oct 2026) goes straight to the pen even on a browser that never watched it.
+    if (withIntro && def.ritual && def.startCage && (withIntro === 'force' || (!this.introSeen && !this.settings.skipIntro))) { this.beginIntro(); return; }
     this.state = 'card';
     // A new level puts every heart back. The card is where the goat finds that out.
     const lines = [def.sub.toUpperCase(), def.name];
@@ -2940,7 +2973,7 @@ class Game {
     if (cp) tail.push('back at the middle gate');
     if (sp) tail.push('back where you left off');
     if ((index > 0 || keepBoons) && !sp) tail.push(this.goat.hp >= this.goat.maxHp ? 'hearts full' : this.goat.hp + ' of ' + this.goat.maxHp + ' hearts');
-    if (this.soulsHere && !cp && !sp) tail.push(this.soulsHere === 1 ? '1 soul in here' : this.soulsHere + ' souls in here');
+    // (the souls in it were counted here until 9 Oct 2026: "don't write how many souls are in here")
     if (this.level.shop && !cp && !sp) tail.push('a mouse in the wall');
     if (this.chase) tail.push(LEVEL_MODS.chase.card);
     if (tail.length) lines.push('', tail.join(' \u00b7 '));
@@ -3165,8 +3198,25 @@ class Game {
     if (id === 'settings') { this.menu.panel = 'settings'; this.menu.sub = 0; this.audio.sfxCard(); return; }
     if (id === 'photos') { this.menu.panel = 'photos'; Photo.open(); this.audio.sfxCard(); return; }
     if (id === 'book') { this.menu.panel = 'book'; this.bookFromKey = false; this.book = { i: 0, mx: -1, my: -1 }; this.audio.sfxCard(); return; }
+    if (id === 'abandon') {
+      // A press arms it (the row says ARE YOU SURE?), a second within `abandonArm` s ends the run.
+      if (!(this.pause.armAbandon > performance.now())) { this.pause.armAbandon = performance.now() + 4000; this.audio.sfxCard(); return; }
+      this.pause.armAbandon = 0; this.abandonRun(); return;
+    }
     // QUIT TO TITLE is the old Escape behaviour: abandon the room rather than resume it.
     this.quitToTitle();
+  }
+  // ABANDON RUN: a death where he stands (killer GIVING UP, counted, the run's report closed, the save cleared under
+  // PERMADEATH) and heaven at once, no card; heaven's edge starts the next run as after any death. From heaven, a
+  // LEVELS practice or THE SHOWROOM there is no run to give up: it is QUIT TO TITLE.
+  abandonRun() {
+    const ok = this.level && !this.level.def.heaven && !this.showroomOn && this.goat && this.pausedIn() !== 'heaven';
+    if (!ok) { this.quitToTitle(); return; }
+    this.state = 'play'; this.boonChoice = null;
+    this.goat.hurtBy = 'abandon'; this.goat.hp = 0;
+    this.onGoatDied();
+    this.card = null; this.deathPainting = null;
+    Heaven.enter(this);
   }
   // Leaving a floor half played puts it aside (7 Oct 2026, the user: "a death ends the run, but quitting to the menu
   // brings you back, on CONTINUE, to the place you were"): the save carries where he stood and what of the floor is
@@ -3267,6 +3317,7 @@ class Game {
     this.totalKills = s.totalKills || 0; this.deaths = s.deaths || 0; this.totalScore = s.score || 0;
     this.henHearts = s.henHearts || 0;
     this.beasts = s.beasts || {}; this.crowGift = !!s.crowGift; this.runKeys = Math.max(0, s.keys | 0);
+    if (Array.isArray(s.towers) && !(this.runPaintings && this.runPaintings.length)) this.runPaintings = s.towers.map((v) => (v ? (v === 2 ? { died: true } : {}) : undefined));
     this.extraLives = Math.max(0, s.lives | 0);   // the extra life a run starts with (`beginRun`), if it is not spent
     this.livesMax = Math.max(this.extraLives, s.livesMax | 0);   // and how many it began with: spent ones stay as empty rings
     this.ogreMet = s.ogreMet | 0;
@@ -3418,7 +3469,10 @@ class Game {
       beasts: this.beasts || {}, crowGift: this.levelCrowGift === undefined ? !!this.crowGift : !!this.levelCrowGift,
       artifacts: arts.map((a) => ({ id: a.id, tier: a.tier })), cape: cape ? cape.id : null, third: (this.levelTalRun && this.levelTalRun.third) || 0,
       bag: (this.levelTalRun && this.levelTalRun.bag) || 0,
-      keys: this.levelRunKeys === undefined ? this.runKeys | 0 : this.levelRunKeys | 0, lives: this.extraLives | 0, livesMax: this.livesMax | 0, ogreMet: this.ogreMet | 0, hp: this.levelHp == null ? 0 : this.levelHp | 0, at: Date.now() };
+      keys: this.levelRunKeys === undefined ? this.runKeys | 0 : this.levelRunKeys | 0, lives: this.extraLives | 0, livesMax: this.livesMax | 0, ogreMet: this.ogreMet | 0, hp: this.levelHp == null ? 0 : this.levelHp | 0,
+      // the overlook's towers (`Heaven.drawOverlook`): 1 a floor climbed out of this run, 2 the one he fell on; only the mark
+      // is kept, the paintings themselves are memory (6 Oct 2026 backlog: a reload lost which towers were gold)
+      towers: (this.runPaintings || []).map((p) => (p ? (p.died ? 2 : 1) : 0)), at: Date.now() };
     // And the middle gate, if this floor has held his place at it: CONTINUE comes back there.
     const cp = this.checkpoint;
     if (cp) this.save.gate = { level: cp.level, room: cp.room, boons: cp.boons.map((b) => b.id), artifacts: cp.artifacts || [], cape: cp.cape ? cp.cape.id : null,
@@ -3847,7 +3901,8 @@ class Game {
     // world. It lives only while something is still in his mouth, the throw is what ends it.
     const eye = this.mods && this.mods.coldEye;
     this.aimSlowCd = Math.max(0, (this.aimSlowCd || 0) - dtReal);
-    if (this.aimSlow > 0) this.aimSlow = eye && this.state === 'play' && this.goat && this.goat.holding ? Math.max(0, this.aimSlow - dtReal) : 0;
+    // COLD EYE's `keep` (9 Oct 2026): the slow runs its seconds out, a throw no longer ends it.
+    if (this.aimSlow > 0) this.aimSlow = eye && this.state === 'play' && this.goat && (eye.keep || this.goat.holding) ? Math.max(0, this.aimSlow - dtReal) : 0;
     this.timeScale += ((wantSlow ? 0.32 : this.aimSlow > 0 ? eye.scale : 1) - this.timeScale) * (1 - Math.exp(-7 * dtReal));
     this.acc += dtReal * this.timeScale;
     const step = 1 / 60;
@@ -3986,6 +4041,7 @@ class Game {
     if (Codex.watchShop(this)) { this.clearEdges(); return; }
     this.timer += dt;
     Novelty.tick(this, dt);   // SOMETHING NEW (js/stats.js): play seconds since this browser last met a thing for the first time
+    BeastChat.update(this, dt);   // the companions' talk on the road (js/beast-chat.js)
     Chase.update(this, dt);   // THE CHASE (js/chase.js): the red grows, the way out pays it back, men come out of it
     Heaven.questStep(this);   // the rabbit's dare: the first man outside the last room aware of him spoils the floor
     if (this.tip) this.tip.t += dt;   // written on the floor for the whole floor (`Renderer.drawHints`)
@@ -4110,11 +4166,13 @@ class Game {
     this.updateVaultTrap(); this.updateVaultOgre(dt); this.updateSpireLesson(dt);
     this.updateClearDoors();
     this.updateClamps();
+    this.updateBossShut();
     Stats.roomTick(this);   // the room he is in, for the run's report (js/stats.js): after the clamp has set `goatRoom`
     if (this.holdAt >= 0) this.holdGate();
     if (this.skyTables) this.updateSkyTables(dt);
     if (this.powder && this.powder.size) this.updatePowder(dt);
     if (this.waves && this.waves.length) Waves.update(this, dt);   // a corrupted ogre's witchfire (js/waves.js)
+    Sacrifice.update(this, dt);   // THE SACRIFICE ALTAR: a heart a second for whatever stands on it (js/sacrifice.js)
     w.updateFire(dt);
     Status.update(this, dt);
     Talisman.update(this, dt);   // the mouse's talismans (js/talismans.js)
@@ -4161,8 +4219,8 @@ class Game {
       // the extra heart, not the room it happens to be standing in.
       // FOUR STOMACHS: grass is worth more to him; the pail (`p.pail`, still >= 1 on its last drink) is milk.
       let gain = (p.big ? TUNING.prop.heal.bigGain : 1) + (p.pail > 0 ? 0 : this.mods.grassGain);
-      // GOOD GRAZER's second rank: the first bowl of a floor fills him up.
-      if (this.mods.milkFull && !this.milkFullUsed && !(p.pail > 0)) { this.milkFullUsed = true; gain = Math.max(gain, this.goat.maxHp - this.goat.hp); }
+      // GOOD GRAZER's second rank (9 Oct 2026, was: the first grass of a floor heals fully): a tuft has `grazeLuck` odds of one more heart.
+      if (this.mods.grazeLuck && !(p.pail > 0) && Math.random() < this.mods.grazeLuck) gain++;
       this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + gain); this.learn('graze');
       this.particles(p.x, p.y, 18, PALETTE.bone, 170); this.ring(p.x, p.y, 2 * TILE, PALETTE.bone);
       this.floatText(p.x, p.y - 24, gain > 1 ? `+${gain} HEARTS` : '+1 HEART', PALETTE.bone); this.audio.sfxBell(); this.vibe(20);
@@ -5005,6 +5063,19 @@ class Game {
         if (p.kind === 'door') {
           const hx = p.vertical ? TUNING.prop.door.thick / 2 : TUNING.prop.door.r;
           const hy = p.vertical ? TUNING.prop.door.r : TUNING.prop.door.thick / 2;
+          // A body that went past the slab's middle since the last step was on the other side of it, and is put back
+          // there (9 Oct 2026 playtest: one stood behind a shut soul gate). Knocked fast enough, a step carried its
+          // centre over the middle and the push below then sent it out the far side. `_cx` / `_cy`: where it was.
+          const ox = e._cx, oy = e._cy;
+          if (ox !== undefined && Math.abs(e.x - ox) + Math.abs(e.y - oy) < 2 * TILE) {
+            const was = p.vertical ? ox - p.x : oy - p.y, now = p.vertical ? e.x - p.x : e.y - p.y;
+            const along = p.vertical ? Math.abs(e.y - p.y) - hy : Math.abs(e.x - p.x) - hx;
+            if (was * now < 0 && along < e.r * 0.5) {
+              const side = Math.sign(was), back = (p.vertical ? hx : hy) + e.r;
+              if (p.vertical) { e.x = p.x + side * back; if (e.vx * side < 0) e.vx = 0; }
+              else { e.y = p.y + side * back; if (e.vy * side < 0) e.vy = 0; }
+            }
+          }
           const cx = clamp(e.x, p.x - hx, p.x + hx), cy = clamp(e.y, p.y - hy, p.y + hy);
           const dx = e.x - cx, dy = e.y - cy; d = hyp(dx, dy); min = e.r;
           if (d < 0.001) {
@@ -5076,6 +5147,7 @@ class Game {
         e.x += nx * (min - d); e.y += ny * (min - d);
       }
     }
+    for (const e of all) { e._cx = e.x; e._cy = e.y; }   // which side of every door it is on, for the next step
   }
   // A table on its side, leaned on by the goat (30 Sep 2026: "when the table is flipped over and I'm
   // next to it, I can move it, when I walk into it, in that direction, very slowly"). It creeps away
@@ -5374,8 +5446,11 @@ class Game {
     this.crowMarks.push({ x: e.x, y: e.y, t: this.timer });
     if (this.state === 'play' && !this.goat.dead) this.audio.musicEvent('kill');
     // The last man of the room he was put in: the score says the room is done.
-    if (this.state === 'play' && !this.goat.dead && e.room >= 0 && !e.scripted &&
-      !this.enemies.some((o) => o !== e && !o.dead && !o.scripted && o.room === e.room)) this.audio.musicEvent('cleared');
+    const roomDone = this.state === 'play' && !this.goat.dead && e.room >= 0 && !e.scripted &&
+      !this.enemies.some((o) => o !== e && !o.dead && !o.scripted && o.room === e.room);
+    if (roomDone) this.audio.musicEvent('cleared');
+    // And a companion near it has a word for it (js/beast-chat.js): the room done, a big one down, or any man.
+    if (!e.chaser && !e.scripted) BeastChat.event(this, e.boss || e.kind === 'butcher' || e.kind === 'ratogre' ? 'big' : roomDone ? 'clear' : 'kill', e.x, e.y);
     // A man out of THE CHASE's red (js/chase.js) is endless: he is no kill on the floor's count and leaves
     // no white soul, or the red would be a farm for the score and the mirror.
     if (!e.chaser) { this.kills++; Motes.spawn(this, e); }   // a white soul over him, the god's once it reaches the goat (js/motes.js)
@@ -5604,7 +5679,7 @@ class Game {
     if (this.henTold) return;
     this.henTold = true;
     // In the box, like every animal let out since 30 Sep 2026: read, not glimpsed.
-    Beast.talk(this, hen, BEAST_HELLO.chicken, true);
+    Beast.talk(this, hen, BeastChat.hello('chicken', BEAST_HELLO.chicken), true);
   }
   // One man speaks at a time: a crowd all shouting at once reads as noise, not as a cult.
   bark(e, kind, chance) {
@@ -5614,6 +5689,11 @@ class Game {
     if (e.kind === 'wraith' || e.kind === 'ratogre') return;
     if (chance !== undefined && Math.random() > chance) return;
     if (this.barkCd > 0 || e.barkCd > 0) return;
+    // One line on screen at a time; a boss may talk over it, never a third (9 Oct 2026 playtest:
+    // "one phrase at a time, two only bosses, otherwise a bit too many words").
+    let talking = 0;
+    for (const o of this.liveEnemies || this.enemies) if (o !== e && !o.dead && o.say && o.say.life > 0) talking++;
+    if (talking >= (Renderer.isBoss(e) ? TUNING.bark.bossCap : TUNING.bark.cap)) return;
     if (this.wordNear(e.x, e.y)) return;   // the same test a floating word is held to (`quiet.dy`)
     const pool = BARKS[kind]; if (!pool) return;
     const list = Array.isArray(pool) ? pool : (pool[e.kind] || pool.bearer);
@@ -5652,6 +5732,7 @@ class Game {
     // a soul given back by a floor put aside (`spotOf`, `back`) paid heaven and the talismans the first time
     this.openSoulGate(tm.gate); if (!tm.back) { Talisman.onSoul(this); Heaven.earnSoul(this); this.floorCorrupt = (this.floorCorrupt | 0) + 1; }
     this.audio.startMusicCue('soul', this.levelIndex);
+    BeastChat.event(this, 'soul');   // said as the cards come up, read once they are gone (js/beast-chat.js)
     this.openBoonChoice(); this.clearEdges();
   }
   soulGrabR() { return Math.max(TUNING.soul.pickupR + this.goat.r, this.goat.r + TUNING.goat.grab.reach * 0.6 + 10); }

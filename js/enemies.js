@@ -246,10 +246,9 @@ class Enemy {
     // A blow that lands on the mage's man before the scene has given him the first gate's soul finds
     // it in him all the same (`game.blessNow`): that gate opens on nothing else.
     if (this.blessing) game.blessNow(this);
-    // A fused man only goes off if a collision is what kills him, flung into a wall, into another
-    // body, or thrown into one. A blade, fire, a bullet, a trap: those just kill him same as anybody,
-    // and the fuse that was counting down under it goes nowhere.
-    if (this.bombFuse > 0 && !this.exploded && cause === 'splat') { this.explode(game); return; }
+    // A fused man goes off however he dies while the fuse is counting (9 Oct 2026 playtest, the card: "if the enemy dies
+    // after a headbutt, he explodes"; it was a collision only). A fall takes him and his fuse down the hole.
+    if (this.bombFuse > 0 && !this.exploded && cause !== 'fall' && (cause === 'splat' || this.hp <= 1)) { this.explode(game); return; }
     // Anyone carrying more than one hit, an arena elite, or any Seer, eats it, goes down and gets
     // back up; a Seer blinks clear as he does. Fire counts, so a mage has to be lit twice. Being torn
     // open does not: there is nothing left to get up. A bomb charge no longer skips this either, it
@@ -2492,7 +2491,7 @@ class Enemy {
     this.state = 'hookpull'; this.timer = H.pullMax;
     game.audio.sfxSteel(); game.audio.sfxThud(); game.hitstop(0.05); game.vibe(30);
     game.particles(g.x, g.y - 6, 6, PALETTE.bone, 120);
-    game.floatText(g.x, g.y - 30, 'HOOKED', PALETTE.fireHi);
+    // no HOOKED word any more: a hook stands over his head while the rope has him (`Renderer.drawHookMark`)
     game.bark(this, 'attack', 0.5);
   }
   hookProp(game, p) {

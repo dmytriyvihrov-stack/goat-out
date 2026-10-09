@@ -174,6 +174,7 @@ function showroomLevel(def, seed) {
   // floor's furniture in the top half, and its gallery in the bottom one (below). The interior is 14 x 13;
   // the way through is rows 4-6 (`mid`, the hall's door row), kept clear at both ends.
   const RW = 16, RH = 15, ry = 30, mid = ry + 5;
+  let sacrifice = null;
   let prev = hall;
   const dress = [
     // THE ALTAR, stone: bowls of coals, tables, straw and the altar.
@@ -198,7 +199,9 @@ function showroomLevel(def, seed) {
       { const c = x + 9, cut = []; for (let ty = y; ty <= y + RH - 3; ty++) { tiles[at(c, ty)] = T.PIT; cut.push(at(c, ty)); gaps.add(at(c, ty)); }
         chasms.push({ room: rooms.length - 1, axis: 'v', at: c, lo: y, hi: y + RH - 3, far: 1, tiles: cut, lesson: true });
         controls.push({ x: (x + 5) * TILE, y: (y + 5.5) * TILE, w: 7 * TILE, part: 5, chasm: rooms.length - 1 }); label('CHASM', c, y + 2.2, 3); }
-      for (const dx of [2, 6, 12]) put('spire', x + dx, y); put('shrooms', x + 12, y + 2); put('heal', x + 11, y + 3); },
+      for (const dx of [2, 6, 12]) put('spire', x + dx, y); put('shrooms', x + 12, y + 2); put('heal', x + 11, y + 3);
+      // THE SACRIFICE ALTAR (js/sacrifice.js): here six sockets only start it over
+      sacrifice = Object.assign(P(x + 12, y + 5.5), { room: rooms.length - 1 }); label('THE SACRIFICE ALTAR', x + 12, y + 7.4, 6); },
     // THE ROAD, the line: two rows of pillars, lamps, a band of grating.
     (x, y) => { for (const dx of [4, 7, 10]) { tiles[at(x + dx, y + 1)] = T.WALL; tiles[at(x + dx, y + 6)] = T.WALL; }
       put('lamp', x + 1, y + 2); put('lamp', x + 12, y + 2); for (let dx = 4; dx < 11; dx++) put('spike', x + dx, y + 3); put('crate', x + 13, y + 1); },
@@ -287,5 +290,5 @@ function showroomLevel(def, seed) {
   return { W, H, tiles, rooms, spawns: [], props, start: P(hx + 2, hy + 13), exit: { x: (last.x + last.w) * TILE, y: (ey + 1) * TILE },
     exitTile: { x0: last.x + last.w - 1, y0: ey }, forkTile: null, entry: null, seed, def,
     hints, controls, chasms, gaps, cagePrompt: null, vault: null, windows, plan: null, gates: [], sealedArenas: [], shop: null,
-    grass: grass.filter((i) => tiles[i] === T.FLOOR), zones, zoneDefs: floors, carpets, statues };
+    grass: grass.filter((i) => tiles[i] === T.FLOOR), zones, zoneDefs: floors, carpets, statues, sacrifice };
 }

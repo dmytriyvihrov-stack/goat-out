@@ -285,6 +285,8 @@ Scatter.KINDS = {
   'barding-pauldron': { bouncy: 0.85, sound: 'metal', sprite: 'armor-pauldron', k: 0.5 },
   // A blade or a shield broken (`breakUp`): the steel rings, the wood and the bone knock.
   'sword-bit0': { bouncy: 0.7, sound: 'metal', sprite: 'sword-bit0' }, 'sword-bit1': { bouncy: 0.7, sound: 'metal', sprite: 'sword-bit1' },
+  'stand-bit0': { bouncy: 0.5, sound: 'soft', sprite: 'stand-bit0' }, 'stand-bit1': { bouncy: 0.5, sound: 'soft', sprite: 'stand-bit1' },
+  'stand-bit2': { bouncy: 0.4, sound: 'soft', sprite: 'stand-bit2' },
   'halberd-bit0': { bouncy: 0.5, sound: 'soft', sprite: 'halberd-bit0' }, 'halberd-bit1': { bouncy: 0.7, sound: 'metal', sprite: 'halberd-bit1' },
   'shield-bit0': { bouncy: 0.55, sound: 'soft', sprite: 'shield-bit0' }, 'shield-bit1': { bouncy: 0.55, sound: 'soft', sprite: 'shield-bit1' },
   'shield-bit2': { bouncy: 0.55, sound: 'soft', sprite: 'shield-bit2' },

@@ -24,7 +24,14 @@
   .what { font-size: 15px; margin: 0 0 14px; }
   #offline { display: none; border: 2px solid #e0ac3e; background: #2a1c12; padding: 14px 16px; margin: 0 0 18px; font-size: 16px; }
   #offline code { font-size: 15px; }
-  section { background: var(--panel); margin: 0 0 14px; padding: 12px 14px; border-left: 3px solid #e0ac3e; }
+  section { background: var(--panel); margin: 0 0 14px; padding: 12px 14px; border-left: 3px solid #e0ac3e; display: flex; gap: 14px; }
+  section > .body { flex: 1; min-width: 0; }
+  /* who says it (9 Oct 2026, "stick a portrait on"): the god, the shepherd or the skull of a death, drawn off js/heaven-pixels.js */
+  .who { width: 92px; flex: none; text-align: center; color: var(--dim); font: 700 11px 'Alegreya SC', serif; padding-top: 4px; }
+  .who canvas { display: block; margin: 0 auto 4px; image-rendering: pixelated; }
+  /* when the game says it (9 Oct 2026, "show the trigger, at what moment the dialogue comes up") */
+  .when { color: var(--gold); font-size: 13px; margin: -4px 0 8px; opacity: 0.85; }
+  .when b { color: var(--ink); font-weight: 400; opacity: 0.7; }
   section h2 { font: 700 15px 'Alegreya SC', serif; margin: 0 0 8px; color: var(--gold); display: flex; justify-content: space-between; align-items: center; }
   .row { border-top: 1px solid var(--line); padding: 8px 0; }
   .row:first-of-type { border-top: 0; }
@@ -36,7 +43,7 @@
   .part.long { outline: 1px solid var(--warn); }
   .count { color: var(--dim); font-size: 12px; margin-left: auto; }
   .count.long { color: var(--warn); }
-  @media (max-width: 600px) { header { position: static; } .part { max-width: 100%; } }
+  @media (max-width: 600px) { header { position: static; } .part { max-width: 100%; } section { flex-direction: column; } .who { width: auto; } }
 </style>
 </head>
 <body>
@@ -49,8 +56,8 @@
 </header>
 <main>
   <div id="offline">
-    <b>This page was opened as a file, so the browser will not let it read the game's code.</b><br>
-    It works only through the dev server. In a terminal in the project folder run <code>node tools/serve.js 8766</code>,
+    <b>This page was opened as a file:</b> every line below is read straight from the game's scripts, to read and edit, and
+    COPY AS JS works, but SAVE cannot write to the disk from here. In a terminal in the project folder run <code>node tools/serve.js 8766</code>,
     then open <a id="served" href="http://localhost:8766/tools/god-talk.html">http://localhost:8766/tools/god-talk.html</a>
     (or press TALK in the game's dev drawer while it is served).
   </div>
@@ -75,6 +82,64 @@ document.getElementById('lim').textContent = LONG;
 const NOTES = { munch: "what the goat's mouth thinks of the gold grass" };
 // What can take his last heart (the run code's token), each a list of tips (`DEATH_TIPS.killer`).
 const TIP_KILLERS = ['bearer', 'brute', 'butcher', 'seer', 'hunter', 'dog', 'wraith', 'ratogre', 'fire', 'witchfire', 'spike', 'spire', 'bomb', 'chandelier', 'mill', 'fall', 'rifle'];
+// When the game says each group (9 Oct 2026): `Heaven.pickTalk` is "the next talk", what the god says the next time
+// GRAB is pressed at him, dealt in this order: intro, gift, mend, animal, skills, song, saved, deaths, further, killer,
+// mirror, combed, any. The rest are said on their own moment.
+const TRIGGERS = {
+  'HEAVEN_TALK.intro': 'THE FIRST VISIT EVER: GRAB at the god. Each line its own plate, in order. Then nothing else that visit.',
+  'HEAVEN_TALK.gift': 'The next talk for a goat who met him before the gift existed (an old store with no `gift`).',
+  'HEAVEN_TALK.mend': 'The next talk once twenty souls are brought and the mirror is still broken; after it he mends the glass himself (GRAB at it).',
+  'HEAVEN_TALK.animal': 'The next talk once the mirror is whole and no animal has been brought out of the compound yet (once).',
+  'HEAVEN_TALK.horns': 'Not at the god: said at the lip of the drop as he walks up to jump, the mirror whole and looked into (once).',
+  'HEAVEN_TALK.hornsDone': 'Over the god as the fiftieth soul is poured into him (GRAB held at his cloud).',
+  'HEAVEN_TALK.hornsShut': 'GRAB on BIG or LONG at the edge before the fifty are given.',
+  'HEAVEN_TALK.skills': 'The next talk once the horns are open (once).',
+  'HEAVEN_TALK.skillsSoul': 'Over the god when the hundred are poured in but no corrupted soul has been brought up yet.',
+  'HEAVEN_TALK.skillsDone': 'Over the god as the hundred and the corrupted soul are in.',
+  'HEAVEN_TALK.broken': 'GRAB on the mirror before twenty souls are brought.',
+  'HEAVEN_TALK.again': 'Not said anywhere at the moment (kept for later).',
+  'HEAVEN_TALK.further': 'The next talk after a run that got further than ever; the line is picked by the floor reached.',
+  'HEAVEN_TALK.saved': 'The next talk after an animal was brought up for the first time ({animal} its name).',
+  'HEAVEN_TALK.praise': 'On its own, over him soon after he comes up, when an animal was brought up or freed this run.',
+  'HEAVEN_TALK.mirror': 'The next talk after a rank was bought on the mirror (once).',
+  'HEAVEN_TALK.combed': 'The next talk after the shepherd combed him (once).',
+  'HEAVEN_TALK.song': 'The next talk after the bells\' song was played through (once).',
+  'HEAVEN_TALK.any': 'The next talk when nothing above is due: each line once, in order, then one at random.',
+  'HEAVEN_TALK.bye': 'GRAB at the god again on the same visit, once he has had his talk.',
+  'HEAVEN_TALK.butted': 'A headbutt on the god.',
+  'HEAVEN_TALK.answer': 'A BAAH near the god.',
+  'HEAVEN_TALK.goOn': 'A goat who has never jumped yet, dawdling up here for a while (before the arrows appear at the lip).',
+  'HEAVEN_TALK.notYet': 'Walking to the drop before ever looking into the mirror: he is put back a step and told.',
+  'HEAVEN_TALK.munch': 'Over the goat\'s mouth while he grazes the gold grass.',
+  'SHEPHERD_TALK.hello': 'Walking up to the shepherd the first time this visit (the second line for a goat he has combed before).',
+  'SHEPHERD_TALK.comb': 'During the comb, every few strokes.',
+  'SHEPHERD_TALK.butted': 'A headbutt on the shepherd.',
+  'SHEPHERD_TALK.bells': 'A bell butted: he hears it and answers from where he stands.',
+  'SHEPHERD_TALK.asleep': 'An empty hook butted (a bell not won from its boss yet).',
+  'SHEPHERD_TALK.woke': 'Coming up with a bell hung since the last visit.',
+  'DEATH_TIPS.any': 'At the foot of a floor tried again after a death, a few seconds: one of these when the killer has no tips of his own.',
+};
+const triggerOf = (path) => {
+  const key = path.slice(0, 2).join('.');
+  if (path[0] === 'HEAVEN_TALK' && path[1] === 'killer') return `The next talk after a death to ${path[2].toUpperCase()}, each line once (then the general lines).`;
+  if (path[0] === 'DEATH_TIPS' && path[1] === 'killer') return `At the foot of a floor tried again after a death to ${path[2].toUpperCase()}, a few seconds.`;
+  if (path[0] === 'HEAVEN_TALK' && path[1] === 'deaths') return `The next talk once his tally of deaths reaches ${path[2]} (once).`;
+  return TRIGGERS[key] || '';
+};
+// Who says it: a sprite off js/heaven-pixels.js (loaded as a script beside the page) on a small canvas.
+const PORTRAIT = { HEAVEN_TALK: ['god-speak', 'THE GOD'], SHEPHERD_TALK: ['shepherd-0', 'THE SHEPHERD'], DEATH_TIPS: ['skull', 'A DEATH'] };
+function portrait(group) {
+  const [name, label] = PORTRAIT[group] || [], who = document.createElement('div'); who.className = 'who';
+  const S = typeof HEAVEN_PIXELS !== 'undefined' && HEAVEN_PIXELS.sprites && HEAVEN_PIXELS.sprites[name];
+  if (S) {
+    const up = 2, scale = name === 'skull' ? 5 : Math.min(84 / Math.max(S.w, S.h), 3);
+    const c = document.createElement('canvas'), x = c.getContext('2d'); c.width = S.w * up; c.height = S.h * up;
+    for (let j = 0; j < S.h; j++) for (let i = 0; i < S.w; i++) { const v = S.get(i, j); if (v) { x.fillStyle = v; x.fillRect(i * up, j * up, up, up); } }
+    c.style.width = Math.round(S.w * scale) + 'px'; c.style.height = Math.round(S.h * scale) + 'px';
+    who.appendChild(c);
+  }
+  who.appendChild(document.createTextNode(label || '')); return who;
+}
 let data = null;
 const status = (t) => { document.getElementById('status').textContent = t; };
 
@@ -93,10 +158,36 @@ function literal(src, name, at) {
   return new Function('return ' + src.slice(a + head.length, i + 1))();
 }
 
+const offline = location.protocol === 'file:';
+const script = (src) => new Promise((ok) => { const el = document.createElement('script'); el.src = src; el.onload = el.onerror = ok; document.head.appendChild(el); });
+// js/heaven.js and js/beasts.js reach for the rest of the game as they load; whatever they define before that stands.
+async function loadOffline() {
+  status('opened as a file: reading the scripts straight off the disk (SAVE needs the dev server, COPY works)');
+  window.onerror = () => true;
+  await loadPixels();
+  for (const f of ['tuning', 'heaven', 'beasts']) await script('../js/' + f + '.js');
+  const g = (name) => { try { return (0, eval)(name); } catch (e) { return undefined; } };
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+  if (!g('HEAVEN_TALK')) { status('could not read js/heaven.js from the disk: start the dev server'); return; }
+  data = { HEAVEN_TALK: clone(g('HEAVEN_TALK')), SHEPHERD_TALK: clone(g('SHEPHERD_TALK')), DEATH_TIPS: clone(g('DEATH_TIPS')) };
+  for (const k of TIP_KILLERS) if (!data.DEATH_TIPS.killer[k]) data.DEATH_TIPS.killer[k] = [];
+  render();
+  const B = g('Beast');
+  loadAnimals({ TUNING: g('TUNING'), BEAST_HELLO: g('BEAST_HELLO') || {}, BEAST_ANSWER: g('BEAST_ANSWER') || {}, BEAST_CHAT: g('BEAST_CHAT') || {} }, (B && B.PACT) || {});
+}
+
+async function loadPixels() {
+  if (typeof HEAVEN_PIXELS !== 'undefined') return;
+  for (const f of ['prop-pixels', 'heaven-pixels']) await script('../js/' + f + '.js');
+}
+
 async function load() {
   // Off the disk the page may not fetch its own files: say so plainly instead of an empty page.
-  if (location.protocol === 'file:') { document.getElementById('offline').style.display = 'block'; status('opened as a file: start the dev server'); return; }
+  // 9 Oct 2026 playtest ("the speeches did not load"): opened as a file, the game's own scripts are loaded as scripts
+  // instead (which the browser allows), so every line is there to read, edit and COPY; SAVE still needs the server.
+  if (location.protocol === 'file:') { document.getElementById('offline').style.display = 'block'; return loadOffline(); }
   status('loading…');
+  await loadPixels();
   try {
     const src = await (await fetch('../js/heaven.js', { cache: 'no-store' })).text();
     data = { HEAVEN_TALK: literal(src, 'HEAVEN_TALK'), SHEPHERD_TALK: literal(src, 'SHEPHERD_TALK'), DEATH_TIPS: literal(src, 'DEATH_TIPS') };
@@ -124,13 +215,16 @@ function groups() {
 function render() {
   const root = document.getElementById('groups'); root.innerHTML = '';
   for (const g of groups()) {
-    const sec = document.createElement('section');
+    const sec = document.createElement('section'), body = document.createElement('div'); body.className = 'body';
     const h = document.createElement('h2');
     h.textContent = g.path.slice(1).join(' · ') + (g.path[0] === 'SHEPHERD_TALK' ? '  (shepherd)' : g.path[0] === 'DEATH_TIPS' ? '  (tip after a death)' : '');
     const add = document.createElement('button'); add.className = 'small'; add.textContent = '+ LINE';
     add.onclick = () => { g.list.push('NEW LINE.'); render(); };
-    h.appendChild(add); sec.appendChild(h);
-    g.list.forEach((line, i) => sec.appendChild(rowFor(g, i)));
+    h.appendChild(add); body.appendChild(h);
+    const when = document.createElement('div'); when.className = 'when'; when.innerHTML = '<b>WHEN:</b> '; when.appendChild(document.createTextNode(triggerOf(g.path) || '(no note yet: add it to TRIGGERS in tools/god-talk.html)'));
+    body.appendChild(when);
+    g.list.forEach((line, i) => body.appendChild(rowFor(g, i)));
+    sec.append(portrait(g.path[0]), body);
     root.appendChild(sec);
   }
 }
@@ -185,6 +279,7 @@ const out = () => ({ HEAVEN_TALK: js(data.HEAVEN_TALK, 0), SHEPHERD_TALK: js(dat
 
 document.getElementById('save').onclick = async () => {
   if (!data) return;
+  if (offline) { status('opened as a file: SAVE needs the dev server; COPY AS JS works'); return; }
   status('saving…');
   try {
     const r = await (await fetch('/talk-edit', { method: 'POST', body: JSON.stringify(out()) })).json();
@@ -199,13 +294,18 @@ document.getElementById('copy').onclick = async () => {
 document.getElementById('reload').onclick = load;
 
 // ---- the animals: each line edited in place in its own file (POST /line-edit, tools/text-patch.js)
-async function loadAnimals() {
+async function loadAnimals(given, givenPact) {
   const root = document.getElementById('animals'); root.innerHTML = '';
   try {
+    if (given) return drawAnimals(root, given, givenPact);
     const tsrc = await (await fetch('../js/tuning.js', { cache: 'no-store' })).text();
-    const T = new Function(tsrc + ';return { TUNING, BEAST_HELLO, BEAST_ANSWER };')();
+    const T = new Function(tsrc + ";return { TUNING, BEAST_HELLO, BEAST_ANSWER, BEAST_CHAT: typeof BEAST_CHAT !== 'undefined' ? BEAST_CHAT : {} };")();
     const bsrc = await (await fetch('../js/beasts.js', { cache: 'no-store' })).text();
     let PACT = {}; try { PACT = literal(bsrc, 'PACT', 'PACT: '); } catch (e) { /* none */ }
+    drawAnimals(root, T, PACT);
+  } catch (e) { root.textContent = 'could not read the animals: ' + e.message; }
+}
+function drawAnimals(root, T, PACT) {
     const groups = [];
     const strings = (v, path, file, out) => {
       if (typeof v === 'string') out.push({ path, value: v, file });
@@ -213,7 +313,7 @@ async function loadAnimals() {
       else if (v && typeof v === 'object') for (const k of Object.keys(v)) strings(v[k], path + '.' + k, file, out);
     };
     const add = (title, note, list) => { if (list.length) groups.push({ title, note, list }); };
-    const kinds = [...new Set([...Object.keys(T.BEAST_HELLO), 'horse', 'pig', 'crow', 'mouse'])];
+    const kinds = [...new Set([...Object.keys(T.BEAST_HELLO), ...Object.keys(T.BEAST_CHAT), 'horse', 'pig', 'crow', 'mouse'])];
     for (const k of kinds) {
       const out = [];
       if (T.BEAST_HELLO[k]) strings(T.BEAST_HELLO[k], 'BEAST_HELLO.' + k, 'js/tuning.js', out);
@@ -221,16 +321,18 @@ async function loadAnimals() {
       for (const key of ['talk', 'lines', 'thanks']) if (P[key] !== undefined) strings(P[key], 'TUNING.prop.' + k + '.' + key, 'js/tuning.js', out);
       if (PACT[k]) strings(PACT[k], 'Beast.PACT.' + k, 'js/beasts.js', out);
       add(k.toUpperCase(), k === 'mouse' ? 'lines: a headbutt on her, one a strike' : '', out);
+      // what it says on the road (js/beast-chat.js): kill, big, clear, fight, hurt, last, soul, stairs, idle, ouch...
+      const road = []; if (T.BEAST_CHAT[k]) strings(T.BEAST_CHAT[k], 'BEAST_CHAT.' + k, 'js/tuning.js', road);
+      add(k.toUpperCase() + ' ON THE ROAD', 'one line over its head when something happens near it; left: its last word walled in; again: met after heaven', road);
     }
     const ans = []; strings(T.BEAST_ANSWER, 'BEAST_ANSWER', 'js/tuning.js', ans);
     add('THE ANSWER', "yes / no after every animal's terms, and what one says refused", ans);
     for (const g of groups) {
-      const sec = document.createElement('section');
-      const h = document.createElement('h2'); h.textContent = g.title + (g.note ? '  (' + g.note + ')' : ''); sec.appendChild(h);
-      for (const l of g.list) sec.appendChild(animalRow(l));
-      root.appendChild(sec);
+      const sec = document.createElement('section'), body = document.createElement('div'); body.className = 'body';
+      const h = document.createElement('h2'); h.textContent = g.title + (g.note ? '  (' + g.note + ')' : ''); body.appendChild(h);
+      for (const l of g.list) body.appendChild(animalRow(l));
+      sec.appendChild(body); root.appendChild(sec);
     }
-  } catch (e) { root.textContent = 'could not read the animals: ' + e.message; }
 }
 function animalRow(l) {
   const row = document.createElement('div'); row.className = 'row';
@@ -240,6 +342,7 @@ function animalRow(l) {
   const save = document.createElement('button'); save.className = 'small'; save.textContent = 'SAVE';
   const del = document.createElement('button'); del.className = 'small'; del.textContent = 'DELETE';
   const send = async (body) => {
+    if (offline) { status('opened as a file: SAVE needs the dev server (node tools/serve.js 8766)'); return; }
     status('saving…');
     try {
       const r = await (await fetch('/line-edit', { method: 'POST', body: JSON.stringify(Object.assign({ file: l.file, from: l.value }, body)) })).json();

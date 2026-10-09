@@ -751,7 +751,8 @@ class PaintedArt extends AltarArt {
       const cs=key==='sheep'&&this.capeId?(moving?Math.floor(renderer.t*8+(e.x||0)*0.05)%4:-1):null;
       const cw=cs!==null?{t:renderer.t,k:moving?Math.min(1,Math.hypot(e.vx||0,e.vy||0)/TUNING.goat.speed):0}:null;
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'behind',angle,cs,cw);
-      PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x);
+      // BIG and LONG are drawn whole by `PIXEL_ART.horns`: the frame under them goes without its packed horns (`bare`).
+      PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x,key==='sheep'&&this.hornMods&&this.hornMods.horn&&this.hornMods.horn.look);
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'over',angle,cs,cw);
     }
     if(e.shield)this.board(renderer,e,true);
@@ -1064,6 +1065,7 @@ class PaintedArt extends AltarArt {
     }finally{g.facing=f0;this.hornMods=null;this.capeId=null;ctx.restore();}   // a throw mid-glance must not leave the goat turned, nor the transform on the stack
     this.goatFx(renderer,g,game);
     if(g.dazed>0&&!(game.intro&&game.intro.fade>0))renderer.drawStars(g.x,g.y,PIXEL_EXTENT.goat+2,Math.min(1,g.dazed*1.5));
+    if(g.hooked)renderer.drawHookMark(g.x,g.y,PIXEL_EXTENT.goat+2);   // on the butcher's rope: a hook over his head, not a word
     // and the bubbles off him, in cells, the same as off a poisoned man
     if(g.poisoned>0&&!g.dead&&!renderer.silPass){ctx.save();ctx.translate(g.x,g.y);ctx.scale(1,1/TILT);renderer.drawBubbles(0,0,30,Math.min(1,g.poisoned*3),g.x);ctx.restore();}
     if((game.touch.active||(game.pad&&game.pad.active))&&game.state==='play'){const a=game.input.aim;ctx.fillStyle=PALETTE.bone;ctx.beginPath();ctx.arc(g.x+a.x*34,g.y+a.y*34,2,0,Math.PI*2);ctx.fill();}

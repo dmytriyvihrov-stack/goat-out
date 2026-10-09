@@ -293,6 +293,23 @@ const Talisman = {
       o.p.x = lerp(o.fx, g.x + Math.cos(a) * C.orbitR, k); o.p.y = lerp(o.fy, g.y + Math.sin(a) * C.orbitR, k);
       o.p.bob = (o.p.bob || 0) + dt;
     });
+    // A sword going round him cuts whoever it passes through (9 Oct 2026 playtest: "if the circling sword hits an enemy,
+    // it damages him"), as a thrown one does (`Prop.hitMan`): a man once every `cutCd` s, a use spent each time, the
+    // last breaking it. A board in front of it takes the cut instead.
+    for (const o of orb.slice()) {
+      const p = o.p; if (o.t < 1 || p.weapon !== 'sword' || g.dead) continue;
+      o.cut = o.cut || new Map();
+      for (const e of game.liveEnemies || game.enemies) {
+        if (e.dead || e.held || e.ghosted || e.state === 'hidden' || e.scripted) continue;
+        if (hyp(e.x - p.x, e.y - p.y) > e.r + C.cutR || game.timer - (o.cut.get(e) ?? -99) < C.cutCd) continue;
+        o.cut.set(e, game.timer);
+        const d = hyp(e.x - g.x, e.y - g.y) || 1, nx = (e.x - g.x) / d, ny = (e.y - g.y) / d;
+        if (e.shield && e.shieldCovers(p.x, p.y)) e.shieldTakes(game, nx, ny);
+        else { e.die(game, 'splat', nx, ny, 'sword'); game.gore(e.x, e.y, 5, nx, ny); game.audio.sfxSplat(); game.hitstop(0.04); game.kick(nx, ny, TUNING.juice.kick); }
+        game.audio.sfxSteel();
+        if (--p.uses <= 0) { Talisman.breakOrbit(game, o, e.x, e.y); break; }
+      }
+    }
     if (!M || g.dead || orb.length >= M.count || !game.level) return;
     // Once a room: the first time he stands in it with a free place in the orbit and something to take.
     const room = roomAt(game.level, g.x, g.y);

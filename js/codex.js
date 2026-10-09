@@ -40,8 +40,11 @@ const Codex = {
   // One line of a description at (x, y), aligned about x ('left' | 'center' | 'right'), in the font
   // already set: plain words in `color`, the game's own words in theirs with a dotted line under them,
   // each one a box the pointer can rest on (`R.tips`, read by `drawTip` at the end of the frame).
+  // `marks` false (9 Oct 2026 playtest: "remove every tooltip from the skills, why explain what walls are"): the words are
+  // drawn plain, no colour, no dotted line, no tip. `KEYWORDS` stays, for the day one earns its explanation back.
+  marks: false,
   line(R, text, x, y, align, color) {
-    const ctx = R.ctx, segs = this.segments(text), w = textW(ctx, text);
+    const ctx = R.ctx, segs = this.marks ? this.segments(text) : [{ t: text }], w = textW(ctx, text);
     const fs = parseFloat((/(\d+(?:\.\d+)?)px/.exec(ctx.font) || [0, 12])[1]);
     let cx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
     const keep = ctx.textAlign; ctx.textAlign = 'left';
@@ -1014,7 +1017,11 @@ const Unlocks = {
     if (e.sec === 'arts') { Codex.pool(R, cx, cy, h * 0.5, rarityOfArt(e.id).color, 1.2); R.artifactIcon(e.id, cx, cy, h * 0.42, 1); return; }
     if (e.sec === 'capes') { Codex.pool(R, cx, cy, h * 0.5, CAPE_RARITY.color, 1.2); R.artifactIcon(e.id, cx, cy, h * 0.44, 0, true); return; }
     if (e.sec === 'beasts') { Codex.icon(R, game, { kind: 'beast', k: e.id }, cx, cy, h * 1.3); return; }
-    const p = new Prop(0, 0, e.it.kind, e.it.opts || {}); Object.assign(p, e.it.opts || {}); p.inStand = false; p.bob = 0; p.held = false;
+    // One Prop a tile, kept (9 Oct 2026 playtest: the grass and the key "shake strangely and very fast"): a new one every
+    // frame rolled its sway and glint phases afresh each time.
+    const ip = this.iconProps || (this.iconProps = {}), ik = e.sec + ':' + e.id;
+    let p = ip[ik];
+    if (!p) { p = ip[ik] = new Prop(0, 0, e.it.kind, e.it.opts || {}); Object.assign(p, e.it.opts || {}); p.inStand = false; p.bob = 0; p.held = false; }
     const k = h / 46 * 1.3;
     // the cult's paper lies flat on its own middle (`PROP_PIXELS` `A.poster`); everything else stands on its foot
     ctx.save(); ctx.translate(Math.round(cx), Math.round(cy + (e.sec === 'objects' ? 0 : h * 0.12))); ctx.scale(k, k * TILT);

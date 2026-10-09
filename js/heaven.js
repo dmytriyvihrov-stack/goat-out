@@ -141,16 +141,16 @@ const HEAVEN_TALK = {
     'BRING THEM, STAND BEFORE ME AND HOLD STILL, AND POUR. NOW GO ON. JUMP.',
   ],
   // The fifty given: said over him as the last soul goes in.
-  hornsDone: ['FIFTY. THE HORNS BY THE EDGE ARE YOURS NOW. PICK A PAIR BEFORE YOU JUMP. YOU CAN ALWAYS COME BACK AND PICK AGAIN.'],
+  hornsDone: ['FIFTY. THE HORNS BY THE EDGE ARE YOURS NOW. PICK A PAIR BEFORE YOU JUMP. AND THE LOCKS ARE OFF THE OTHER STANDS: POUR SOULS INTO ONE, AND ITS ANIMAL IS DOWN THERE FOR YOU.'],
   // GRAB at a pair of horns he has not earned yet.
   hornsShut: ['NOT YET, LITTLE HORNS. FIFTY SOULS, GIVEN TO ME, AND THEY ARE YOURS.', 'THOSE ARE MINE UNTIL YOU BRING ME MY FIFTY.'],
   // The horns given, his third ask (8 Oct 2026): a hundred given to him and one corrupted soul, for UPGRADED SKILLS
   // (`gift.skills`, poured as the horns' fifty were, key `god2`).
   skills: [
     'NOW THE LAST THING I WILL ASK OF YOU. A HUNDRED SOULS, GIVEN TO ME, AND ONE CORRUPTED SOUL, THE VIOLET KIND THE CULT KEEPS IN ITS BIG MEN.',
-    'BRING THEM, AND WHAT YOU DO DOWN THERE WILL GROW. UPGRADED SKILLS. AND THE BACK OF MY MIRROR WILL OPEN.',
+    'BRING THEM, AND WHAT YOU DO DOWN THERE WILL GROW. UPGRADED SKILLS.',
   ],
-  skillsDone: ['A HUNDRED, AND THE VIOLET ONE. YOUR SKILLS ARE UPGRADED. AND LOOK AT THE BACK OF MY MIRROR: SOMETHING FOR A GOAT WHO KEEPS DYING.'],
+  skillsDone: ['A HUNDRED, AND THE VIOLET ONE. YOUR SKILLS ARE UPGRADED.'],
   skillsSoul: ['A HUNDRED. NOW THE CORRUPTED ONE: TAKE A SOUL FROM ONE OF THEIR BIG MEN AND BRING IT UP.'],
   // GRAB on the mirror before it is mended (`Heaven.interact`).
   padlock: 'LOCKED. THE MIRROR FIRST: REPAIR IT, AND THEN THE REST.',   // the tower and the broken stands until it is (9 Oct 2026)
@@ -280,6 +280,10 @@ const Heaven = {
     // A dare worn from a build that had one this build has not (the rabbit's, until 7 Oct 2026): nothing shows it and the
     // rail cannot untie it, so it goes.
     if (m.quest) for (const k of Object.keys(m.quest)) if (!QUESTS[k]) delete m.quest[k];
+    // 9 Oct 2026: SECOND CHANCE became ONE MORE LIFE's second rank, LONG MERCY went. A store that bought SECOND CHANCE keeps
+    // a life for it; LONG MERCY's rank is simply gone. QUICK TUMBLE kept its id (`tumble`) and its ranks.
+    if (m.ranks && m.ranks.second) { m.ranks.life = Math.min(2, (m.ranks.life || 0) + 1); delete m.ranks.second; }
+    if (m.ranks && m.ranks.mercy) delete m.ranks.mercy;
     // 9 Oct 2026: the tower and the broken stands wait for the mirror now (padlocked). A store that poured into them
     // before it was repaired gets those souls back, so the mirror's twenty are there to pour (his: 16 / 20, none left).
     if (!m.mended && m.poured && !m.bought && !Object.keys(m.ranks || {}).some((k) => m.ranks[k] > 0)) {
@@ -405,7 +409,8 @@ const Heaven = {
     const X = TUNING.heaven.extraLife, M = this.meta || this.load();
     // 9 Oct 2026, second note of the day: back to the first visit, said in the god's first talk ("he gives it before the
     // mirror is repaired, as a reward and a promise, like faith in the god"); for the mirror, earlier that day, it came too late.
-    return (X && X.on && M && (M.visits > 0 || M.mended) ? X.lives : 0) + (this.rank('life') > 0 ? MIRROR.find((u) => u.id === 'life').params.lives[0] : 0);
+    const r = this.rank('life');
+    return (X && X.on && M && (M.visits > 0 || M.mended) ? X.lives : 0) + (r > 0 ? MIRROR.find((u) => u.id === 'life').params.lives[r - 1] : 0);
   },
   // RESTART on the death card (past heaven) is still a death to the god's tally.
   restarted() { if (this.meta) { this.meta.deaths++; this.saveSoon(); } },
@@ -586,6 +591,16 @@ const Heaven = {
     if (tal) out.push('UNLOCKED: ' + tal.name + '. ON THE NEXT SHELF.');
     return out;
   },
+  // What a dare pays, said before he answers (9 Oct 2026 playtest: "first show what it gives, don't refuse at once"):
+  // the soul and the talisman it opens, each with its own card words.
+  prizeWords(kind) {
+    const Q = QUESTS[kind]; if (!Q) return '';
+    const b = Q.boon && BOONS.find((x) => x.id === Q.boon), tal = typeof Shop !== 'undefined' && Shop.def(Q.talisman);
+    const out = [];
+    if (b) out.push('THE SOUL ' + b.name + ': ' + String(b.desc).toUpperCase());
+    if (tal) { const tier = tal.tiers && tal.tiers[0], d = tier && tier.desc; out.push('THE TALISMAN ' + tal.name + (d ? ': ' + String(d).toUpperCase() : '.')); }
+    return out.length ? 'WIN IT, AND YOU GET ' + out.join(' AND ') : '';
+  },
   // One step of play (`Game.update`): under the goose's dare, the horns, the teeth or a thing in his mouth spoil the
   // floor (`game.questSpoiled`), and he is told so; still clean in the floor's last room, far off, geese answer
   // (`game.geese`: a honk a beat, five of them).
@@ -619,8 +634,11 @@ const Heaven = {
     const BANG = ['##', '##', '##', '##', '##', '..', '##'], hov = !game.touch.active && !padOn(game);
     // Up in the top-left corner, in the talismans' row after their chips (9 Oct 2026: "smaller, and in the corner;
     // it sat near the middle"); a second dare goes under the first.
-    const chips = (game.artifacts || []).length, top0 = 3 * s + (R.portrait ? 12 * s : 0) + (R.hudLow ? 6 * s : 14 * s);
-    const x0 = Math.round(R.hudLow ? 10 * s + chips * 27 * s + (chips ? 10 * s : 4 * s) + (R.hornRowW ? R.hornRowW + (chips ? 0 : 30 * s) : 0) : 16 * s);
+    // 9 Oct 2026 playtest, second note: "first the horns, then the modifier, then the medallions": after the horns'
+    // picture, and the talismans after the widest mark (`R.dareRowW`, read by `drawUI`).
+    const top0 = 3 * s + (R.portrait ? 12 * s : 0) + (R.hudLow ? 6 * s : 14 * s);
+    const x0 = Math.round(R.hudLow ? 10 * s + (R.hornRowW || 0) : 16 * s);
+    let wMax = 0;
     let y = Math.round(R.hudLow ? top0 + 2 * s : R.h * 0.24);
     ctx.save(); ctx.textAlign = 'left';
     for (const k of on) {
@@ -660,8 +678,10 @@ const Heaven = {
         const note = glad ? 'WON. GO UP AND SEE IT: IT HAS SOMETHING TO SAY.' : QUESTS[k].wear.replace('{left}', left) + (F !== undefined && !here ? ' IT WAITS ON FLOOR ' + (F + 1) + '.' : '') + (k === 'goose' && here && game.questSpoiled ? ' SPOILED: NOT ONLY YOUR VOICE.' : '');
         R.skillHover = { row: { name: QUESTS[k].name, note, half: true }, x, left: x, y: y + gh + 10 * s, hot: false, boons: [] };
       }
+      wMax = Math.max(wMax, D.cell * s * G[0].length + (num ? 8 * s + textW(ctx, num) : 0));
       y += Math.round(Math.max(gh, 20 * s) + 18 * s);
     }
+    if (R.hudLow) R.dareRowW = wMax + 14 * s;
     ctx.restore();
   },
   // The post by the edge (`postAt`): a stake of planks with a ribbon tied on for every dare worn.
@@ -916,6 +936,7 @@ const Heaven = {
       } }
     this.syncPost(game);
     this.updateRoam(game, dt);   // the animals who live up here (js/heaven-home.js)
+    this.updateBanter(game, dt);   // and what they say to each other while he is near
     // POURING: GRAB held at what is broken spends the heap into it; let go, or walked off, and it stops.
     if (H.pour) {
       if (this.grabHeld(game) && game.goat.state === 'idle') { this.updatePour(game, dt); this.idle(game, dt); game.clearEdges(); return; }
@@ -2328,24 +2349,28 @@ Object.assign(Heaven, {
     const live = st === 'open', gold = !!saved || this.freed(p.seat), away = this.roaming(p.seat);
     ctx.save(); ctx.translate(p.x, p.y + 6); ctx.scale(1, 1 / TILT);
     this.drawSign(ctx, t + p.x * 0.01, live, gold);
-    const sil = this.animalSil(R, p.seat, live), lift = sil ? -sil.height + 12 : -40;
+    const sil = this.animalSil(R, p.seat, live);
+    // 9 Oct 2026 playtest ("small images inscribed in the pictogram"): the shape is drawn small, inside the sign's
+    // inner ring (`inRing`), not at the animal's own size standing over it.
+    const inRing = (img) => {
+      const b = img.box; if (!b) return;
+      const k = Math.min(TUNING.heaven.home.stands.inRing / b.w, TUNING.heaven.home.stands.inRing * 0.8 / b.h), w = b.w * k, h = b.h * k;
+      const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, b.x, b.y, b.w, b.h, Math.round(-w / 2), Math.round(-h / 2 - 2), Math.round(w), Math.round(h));
+      ctx.imageSmoothingEnabled = sm;
+    };
     // its silhouette, unless the animal itself (or its shade) stands there: white in a blue rim on an open stand, a
     // grey-blue shape half there on one not open yet (a white shape alone was lost on the white cloud)
     if (sil && !saved && !met && !(this.freed(p.seat) && p.seat !== 'horse')) {
-      const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = live ? 0.85 + 0.15 * Math.sin(t * 1.8 + p.x) : 0.5; ctx.drawImage(sil, -sil.width / 2, lift); ctx.globalAlpha = 1;
-      ctx.imageSmoothingEnabled = sm;
+      ctx.globalAlpha = live ? 0.85 + 0.15 * Math.sin(t * 1.8 + p.x) : 0.5; inRing(sil); ctx.globalAlpha = 1;
     }
     // Its animal free and off living up here (or the horse in its paddock): the gold sign keeps a light shape of it in its
     // middle (9 Oct 2026 playtest: "the portals are beautiful, just add a light silhouette of the animal in the middle").
     const ghost = (away || (p.seat === 'horse' && saved)) && this.animalSil(R, p.seat, 'ghost');
     if (ghost) {
-      const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-      // its body sits in the ring's middle (the sprite's feet are 12 px over its canvas foot, its body above them)
-      ctx.globalAlpha = 0.55 + 0.12 * Math.sin(t * 1.6 + p.x); ctx.drawImage(ghost, -ghost.width / 2, -ghost.height + 12 + TUNING.heaven.home.stands.ghostDrop); ctx.globalAlpha = 1;
-      ctx.imageSmoothingEnabled = sm;
+      ctx.globalAlpha = 0.55 + 0.12 * Math.sin(t * 1.6 + p.x); inRing(ghost); ctx.globalAlpha = 1;
     }
-    const top = sil ? lift + (sil.headY !== undefined ? sil.headY : 30) - 4 : -40;
+    const top = -30;   // over the sign, now that the shape sits inside it
     // (whose stand it is was lettered on its foot until 8 Oct 2026: "no captions under the stands")
     // a stand locked, broken or emptied by a freed animal (js/heaven-home.js); the horse brought up is in its paddock
     if (this.drawStandState(R, game, p, st === 'open' ? -4 : top) || away || (p.seat === 'horse' && saved)) { ctx.restore(); return; }
@@ -2398,6 +2423,10 @@ Object.assign(Heaven, {
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) x.drawImage(rim, dx, dy);
     x.drawImage(body, 0, 0);
     c.headY = img.headY;
+    // the box its pixels fill, for drawing it small inside the sign (`drawSeat`'s `inRing`)
+    const d = x.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let j = 0; j < c.height; j++) for (let i = 0; i < c.width; i++) if (d[(j * c.width + i) * 4 + 3] > 20) { x0 = Math.min(x0, i); x1 = Math.max(x1, i); y0 = Math.min(y0, j); y1 = Math.max(y1, j); }
+    c.box = x1 >= x0 ? { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } : null;
     return (cache[key] = c);
   },
   // An animal's own drawing, lit from inside and outlined in gold: baked once a kind.

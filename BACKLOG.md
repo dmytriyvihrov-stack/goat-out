@@ -17,6 +17,54 @@ Tags: **bug** something is wrong; **feel** it works and does not read; **number*
 
 ## Batches
 
+### 9 Oct 2026, sixth batch (his 18 notes and screenshots)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | the cult says one line at a time, two only for a boss | `Game.bark`: no man starts a line while another's is up (`bark.cap` 1); a boss may talk over one (`bossCap` 2). |
+| 2 | tool | the dev drawer runs off the screen | Long rows shortened (OGRE · SOUL 1 / 2 RINGS / 3 BAND); wider than the screen, the whole drawer is drawn smaller, its buttons mapped with it. |
+| 3 | tool | the TALK page did not load | It had a syntax error (a quote inside a quote, from the companions' talk work): fixed. Opened as a file it now reads the game's scripts as scripts, so every line is there to read, edit and COPY; SAVE still needs `node tools/serve.js`. |
+| 4 | ? | "from the skills:" with nothing after it | Ask him what he meant to write. |
+| 5 | feel | LONG's tip zone small, red, and it damages | The tips are the last 20% of the reach (was 38%), drawn red as before, and a man met there loses a heart (`horns.long.tipHurt`): a clubman dies on the tips. Pillar 3's exception, his. |
+| 6 | art | the horn pictures change while he moves | BIG and LONG are grown once a facing off the standing frame and carried on each step's roots; the packed horns are taken off the frame under them (`PIXEL_ART.bare`). |
+| 7 | system | ABANDON RUN in the menu, back to heaven | PAUSE → ABANDON RUN (press twice): a death where he stands, killer GIVING UP, straight up to heaven (`Game.abandonRun`). |
+| 8 | feel | the chandelier's switch by the way in | Every cleat now by the way in (`chandelier.cleatIn` 1): 206 of 213 over 280 floors, the rest a fallback when nothing by the door fits. |
+| 9 | tool | the drawer still does not fit | Same as 2. |
+| 10 | bug | "it glitched here" (the hook) | Read as the rope's end left hanging tiles behind him while he was dragged: the end now rides on him every step. Ask him if it was something else (a freeze?). |
+| 11 | feel | a small icon instead of HOOKED | A hook in cells hangs over his head while the rope has him (`Renderer.drawHookMark`); no word. |
+| 12 | feel | the iron cages' words overlap, and RIGHT M. CLICK is the action | Each cage's name and gift stand over it, lifted clear of the other; RIGHT M. CLICK: OPEN WITH 1 KEY said once over both; the horns on iron say NOT THE HORNS: RIGHT M. CLICK. |
+| 13 | feel | a thrown thing passes a man without touching | Every thing he throws meets a man `prop.throwHit` (9) px further out: crate, bomb, blade, shield, the hen. |
+| 14 | feel | no HALBERD word when taken | Gone, and SWORD / SHIELD off a stand with it. |
+| 15 | bug | BIG horns broke the secret wall, not the sword behind it | With BIG or LONG the blow that opens a niche goes on into it (`headbuttHits`). |
+| 16 | feel | the empty stand falls or breaks too | A butt on a bare suit stand breaks it into wood (`Prop.breakStand`, `stand-bit*`). |
+| 17 | bug | a door hard locked that does not look it | A sealed arena (THE YARD, the mage's): shut, each door now wears a padlock of cells and UNTIL THEY FALL · n LEFT (`Renderer.drawSealWords`). |
+| 18 | perf | 1 FPS, a 2.3 s stall, game 35-40 ms | The 2.3 s was outside the game's own work (its counter said 40 ms): the browser or the machine. Taken off the frame: the ONE MORE LIFE portrait is baked (≈1 ms a frame), the animals' kind test is a Set; a room's sound loop (0.25 s to render here) is no longer rendered ahead mid-fight. DIP LOG on and SAVE DIPS next time it happens. |
+
+### 9 Oct 2026, fifth batch (his 20 notes and screenshots)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | feel | top-left order: horns, then the dare, then the talismans | Done (`hornRowW`, `dareRowW`). |
+| 2 | bug | a body got behind a shut soul gate | A body is kept on the side of a shut door it was on (`collideEntities`, `_cx`). If it is seen again, the run code please. |
+| 3 | bug | the death card's playtest line stuck to the buttons | Placed under the buttons' own height. |
+| 4 | feel | LONG horns: show the damage zone in red at the end | The tips' cells red, held `tipHold` past the wave. |
+| 5 | art | LONG like a gazelle's, BIG like a moose's | `hornShapeOf`: a ringed lyre, a palm with points; the glyphs follow. First take, open to his eye. |
+| 6 | bug | the last room's souls sometimes skipped | They come once the last room is cleared (`lastDone`). Ask him: was it the white souls, or the soul gate opening without the soul? |
+| 7 | polish | the clear card's pictures as the mirror's | Gold skull and violet wisp (`drawTally`). |
+| 8 | bug | speed not back after THE TORTOISE'S PACE | Not reproduced: `paceMul` asks the floor every step, nothing lingers. Heaven runs ×1.5 (`heaven.speed`), which makes the floor after feel slow. Ask him: lower `heaven.speed`? |
+| 9 | bug | the book's icons shake | One `Prop` a tile, kept (`iconProps`). |
+| 10 | tool | pick any soul from a visual menu | PICK A SOUL in the drawer. |
+| 11 | feel | the mage's rings: like fire, slower, roll through, one heart | Witchfire flames on them, 3.5 tiles/s, one heart a volley. |
+| 12 | number | floors 1-3: small secret rooms only | No niche behind a niche before THE ROAD (`deep.chance` 0). Ask him if he also meant fewer, or the vault. |
+| 13 | feel | the magnet's circling sword cuts | `updateMagnet`, `cutR` / `cutCd`, a use a cut. |
+| 14 | bug | 11 FPS in the cave | Measured THE CAVE with his build (antlers, magnet): ~18 ms draw, ~3.5 update. Not reproduced; DIP LOG on and SAVE DIPS next time, or the run code. Other sessions' heavy runs on the same machine at that moment are the first suspect. |
+| 15 | number | poison / fire charge of a held thing 30% faster | `holdFor` 1.5 → 1.05. |
+| 16 | system | a mini boss's room shuts the way back | `updateBossShut`: any outlined boss or keeper, shut once he is inside, open when the boss falls. |
+| 17 | bug | a poisoned sword hit the ogre, poisoned him, did no harm | The blade reaches as far as the poison (`jaw.touch`). |
+| 18 | art | the animal small inside the stand's sign | `inRing`. |
+| 19 | bug | no hover on the horn picture | It was cleared by the rail; set after it now. |
+| 20 | system | THE SACRIFICE ALTAR (Nuclear Throne, Spelunky): six cells, a heart a second, any living thing on it, then THE DARK and a secret floor | Built on his answers: look A, THE CAVE only, the goat's last heart is a death, a companion pays its own, cells never empty, six take him into THE DARK (the existing floor) in THE CAVE's place. Not asked back: a man pays as the goat does (a plain one dies on it), read off his first note. |
+
 ### 9 Oct 2026, fourth batch (his 9 notes and a screenshot)
 
 | # | tag | note | what shipped |
@@ -159,6 +207,11 @@ Open from this batch: the camera at ×1.2 is his call (numbers in the reply); th
 
 Read one way and built that way; his word settles it.
 
+- (9 Oct sixth #4) "from the skills:" came with nothing after it. What was it?
+- (9 Oct sixth #10) "it glitched at this moment" read as the hook's rope left hanging behind him (fixed). Was it a freeze instead?
+- (9 Oct sixth #5, built) LONG's tips cost a man a heart (a clubman dies on them): is a heart the right size, and is the last 20% of the reach small enough?
+
+- (9 Oct fifth #20, built) THE SACRIFICE ALTAR: a man on it pays a heart a second as the goat does, so a plain one dies there. Or should only a man held or thrown onto it count?
 - (9 Oct second #5) "RUN AGAIN only after the [hint/ascend] appears" read as: RUN AGAIN never before ASCEND, and late by 1.4 s on the first four runs. Was it the death tip he meant?
 - (9 Oct second #6) the crack can be broken before THE YARD's last boss is down, so the dark flight skips his fight (and his soul). Fine as a secret's price, or should it wait until the room is clear?
 - (9 Oct second #20) the control lines go once the browser has died; the pen's headbutt prompt after 5 s stays. Right?
@@ -201,11 +254,11 @@ Read one way and built that way; his word settles it.
 - (7 Oct) more FLANK layouts (a trench round an arena's men, a trench with a bridge), and a quest or combo that uses one.
 - (9 Oct) the hitching post becomes the modifiers' picker once modifiers exist: RIGHT M. CLICK by it opens a small popup to choose them; it stands a little further right, nearer the god. Not built.
 - (7 Oct) ONE MORE LIFE (since 9 Oct the repaired mirror's gift) is "to be taken away later".
-- (6 Oct) the overlook's run state (`game.runPaintings`) lives in memory only; a reload loses which towers are gold.
 - (1 Oct) **stun, the third element set** (parked, "don't bother for now"): each stun soul buys grace off `stunGoat` (½, 1, 2 s) and lengthens the stuns he deals; all four make a stunned man forget the goat (`lastSeen` cleared). Only three souls stun (THE FULL THROAT, DEAD WEIGHT, LEAPFROG), two of them roll actives, so it needs one or two new stun souls first. Its unbuilt headbutt idea: hold to lower the horns, a frontal parry (a parry staggers the striker and spends his run-up, a wall stops him like the butcher); never frontal i-frames (rule 4), never bullets ("horns are not iron").
 
 ### feel
-- (7 Oct) the free animals' lives in heaven are a first sketch (wander, honk, a flock round the sky, grazing); the concept's scenes between them are not built.
+- (7 Oct) the free animals' lives in heaven are a first sketch (wander, honk, a flock round the sky, grazing). Since 2.07 they talk to each other when he is near (`HEAVEN_BANTER`, three exchanges a pair); the concept's bigger scenes (the pond, the nest, the flock) are not built.
+- (9 Oct, 2.07) the companions' road lines (`BEAST_CHAT`) are first drafts in voices I gave them (the hen a mother, the tortoise dry, the goose a brawler, the crow a gourmet of the dead, the horse vain, the pig hungry, the rabbit scared, the husky a performer); his edits on the TALK page. How often they speak (`beast.chat`) is a guess.
 - (7 Oct) a picture of each horn on the goat himself (only the LONG HORNS antlers exist; the HUD has a horn picture since 8 Oct) and a windup preview of the hit shape.
 - (5 Oct) the sleeping bells and the bell song are only in heaven, not in THE SHOWROOM (rule 9).
 - (1 Oct) keyword tips (`KEYWORDS`) work on the cards and the book only; the rail's note closes when the pointer leaves the chip, so a word in it cannot be pointed at.
