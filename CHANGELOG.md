@@ -5,6 +5,45 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 2.06, 9 Oct 2026 (not yet published): the fight seen, the poison's picture, a readable blast
+
+- **The blast is three phases** ("the explosion is poorly readable"): a solid flash disc with rays, a fireball in concentric bands
+  white-hot to ember cooling from the rim in, then smoke lighter than any floor, every cloud cut out by a one-texel dark rim
+  (`CombatFX.burstFrames`, `paint`'s `rim`, `CombatFX.smoke`). The harm radius is stamped on the floor the frame it goes off and a
+  thick shock ring races to it (`effects.blast.stamp`, `ringW`); charred chunks are thrown and bounce (`debris`); the screen flash a
+  shade softer. A puddle going off is green (`bands` / `smoke` / `explosion` take `'venom'`), no longer a bomb's picture. Every
+  caller of `fx.explosion` passes the harm radius as its seventh argument.
+- **The poison's picture** ("especially in a puddle"; `TUNING.status.look`): a puddle is one pool in cells with a bitten dark rim, a
+  dithered body, a sheen and bubbles that pop, dithered away as it dries (`Renderer.drawPoison`), not an oval a tile. A poisoned
+  man is his own pixels again flat venom with cell bubbles off his head; the goat the same once his ring fills; drops off the hooves
+  of anyone moving through a puddle (`Status.drops`); the glob is cells with a tail.
+- **The fight seen** ("go through and improve the fight animations"; `enemyAnim.down` / `flung`, `juice.windupTint.pop`): a man
+  knocked down tips over, bounces onto his side squashed and gets up through a crouch (`PaintedArt.knockdown`), where he snapped
+  before; a body in flight is squashed along the blow on the horns' beat and stretched along its flight after, with dust where it
+  lands; the last share of every windup pops bright; the goat's lunge is stretched along his aim. Nothing in the simulation moved.
+- **The marks over a head are cells** (`juice.marks`): the dazed stars are pluses turning round an ellipse, the one toward the camera
+  a cell bigger (`Renderer.starMarks`, shared by the goat, the hen and every man), and SHOCK is two arms wound out from the middle,
+  gold and green for the pair. Both now stand over the sprite's own top (`PIXEL_EXTENT`) rather than at a multiple of `e.r`, which
+  put them across his chest. **Rocked** (`enemyAnim.rocked`): an ogre staggered and a shieldman braced are thrown back off their
+  facing and ease home; it was a buzz on the spot, and the board got nothing.
+- **The pool is baked** (`Renderer.venomTile`, keyed on its open sides, its bites and its step of drying): laid cell by cell it cost
+  1.7 ms a frame on two dozen tiles and 4.9 on a big puddle, which is most of a draw; baked it is 0.2 and 0.4, and only the sheen
+  and the bubbles are live.
+- **The goat is knocked over like a man** (`TUNING.goat.knock`): stunned by the pen, a hook's drag, a shove, a shieldman's spikes or
+  the thrower, he tips past his side, bounces onto it, lies flattened and rises through a crouch, where he had snapped both ways. The
+  opening scene's KO keeps its own still lie.
+- **The hook's and the slam's winds coil** (`attackPose`): the butcher swinging his hook round and the ogre raising his fists had a
+  2 px nudge and a fixed tilt, less body than a clubman's windup; both take the club's own coil on their own clocks. Their swings and
+  recovers keep their own look, and the leap's crouch is still the ogre's pose. The hound's dart trails cells off his hip instead of a
+  stroked line, the last smooth mark left on a body.
+- An animal wears the men's stars over its row of hearts; poisoned, the row itself is green, which at that size says it better than
+  bubbles did.
+- JUICE rows for each (`Knocked down, and up again`, `A body in flight`, `The windup pop`, `The poison pool`, `Poisoned`, `The shock
+  mark`, `Rocked back`, `The goat knocked over`, `The big winds coil too`), `Dazed stars` rewritten, `shock` and `poison` preview scenes, a
+  `poison` preview scene, `JUICE.md` regenerated. **The JUICE preview threw on every row since 1.96**: the stage's `isolate`
+  copies each array of the game as an empty one, so `revealRooms` found `visBufs` empty; it now makes its own pair when the
+  one it has is not two lists.
+
 ## 2.05, published 9 Oct 2026: the 8 Oct evening batch and three batches of 9 Oct, TURTLEIZE, animals in the middle
 
 - **Four batches of his notes** (77 in all) in `BACKLOG.md` under "8 Oct 2026, late evening" and the three "9 Oct 2026"

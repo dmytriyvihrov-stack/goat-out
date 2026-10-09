@@ -2749,7 +2749,7 @@ class Prop {
     this.broken = true; this.dead = true; this.flung = false;
     if (game.goat.holding === this) { game.goat.holding = null; game.goat.autoHeld = false; game.goat.spendGrab(game, false); }
     const B = TUNING.prop.bomb;
-    game.fx.explosion(this.x, this.y, B.blastR, false);
+    game.fx.explosion(this.x, this.y, B.blastR, false, false, undefined, B.blastR);
     game.world.splat(this.x, this.y, 0, 0, 24); game.world.scorch(this.x, this.y, B.blastR * 0.5);
     game.particles(this.x, this.y, 16, PALETTE.fire, 260);
     game.ring(this.x, this.y, B.blastR, PALETTE.fireHi);
@@ -2995,7 +2995,7 @@ class Prop {
     if (this.broken) return;
     const B = TUNING.prop.barrel;
     if (witch === undefined) witch = this.oilWitch;
-    game.fx.explosion(this.x, this.y, B.burst * TILE, witch);
+    game.fx.explosion(this.x, this.y, B.burst * TILE, witch, false, undefined, B.burst * TILE);
     game.world.ignitePool(this.x, this.y, B.burst, witch, B.burstTime);
     game.audio.sfxBoom(); game.thud(this.x, this.y, 8); game.hitstop(0.05); game.vibe(35);
     game.flash(witch ? PALETTE.witch : PALETTE.fire, 0.22); game.zoomPunch(1.1);

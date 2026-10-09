@@ -88,7 +88,7 @@ const Status = {
 
   blast(game, x, y, B, source, green = true) {
     const R = B.radius * TILE, w = game.world;
-    game.fx.explosion(x, y, R * 0.8, false);
+    game.fx.explosion(x, y, R * 0.8, green ? 'venom' : false, false, undefined, R);   // the green set, so a puddle going off is not a bomb
     game.particles(x, y, 18, green ? PALETTE.venomHi : PALETTE.fireHi, 300);
     game.particles(x, y, 10, green ? PALETTE.venom : PALETTE.fire, 220);
     game.ring(x, y, R, green ? PALETTE.venomHi : PALETTE.fireHi);
@@ -158,12 +158,21 @@ const Status = {
   },
 
   // Everybody standing in poison has it.
-  soak(game) {
+  soak(game, dt) {
     const w = game.world; if (!w.poisonOn.size) return;
     for (const e of game.enemies) {
       if (e.dead || e.ghosted || e.held) continue;
-      if (w.isPoisonPx(e.x, e.y)) Status.poison(game, e);
+      if (w.isPoisonPx(e.x, e.y)) { Status.poison(game, e); if (dt) Status.drops(game, e, dt * 0.5); }
     }
+  },
+
+  // Drops of it off the hooves (or the boots) of anyone moving through a puddle (`status.look.drops` a second at a
+  // full stride): the one thing that says the floor is wet while he is on it, not only green.
+  drops(game, o, dt) {
+    const sp = hyp(o.vx || 0, o.vy || 0); if (sp < 40) return;
+    if (Math.random() >= dt * TUNING.status.look.drops * Math.min(1, sp / 160)) return;
+    game.parts.push({ x: o.x + (Math.random() - 0.5) * 12, y: o.y + 3, vx: -o.vx * 0.25 + (Math.random() - 0.5) * 50, vy: -o.vy * 0.25 - 40 - Math.random() * 50,
+      life: 0.22 + Math.random() * 0.2, color: Math.random() < 0.5 ? PALETTE.venom : PALETTE.venomHi, size: 2 });
   },
 
   // Once a step: the puddles dry, a puddle a flame reaches goes off, the glob flies, and whatever he
@@ -185,7 +194,7 @@ const Status = {
     // One blast a step at most, and it burns off the puddle round it: a big puddle lit at one
     // corner goes off in a short chain rather than all at once, which reads as it catching.
     if (lit !== null) Status.blast(game, (lit % w.W + 0.5) * TILE, (((lit / w.W) | 0) + 0.5) * TILE, TUNING.status.blast, null);
-    Status.soak(game);
+    Status.soak(game, dt);
     Status.updateGlobs(game, dt);
     Status.updateCarried(game);
   },
@@ -201,6 +210,7 @@ const Status = {
     const P = TUNING.goat.poison, m = game.mods;
     const inIt = !m.poisonImmune && !g.leap && g.state !== 'falling' && game.world.isPoisonPx(g.x, g.y);
     if (g.poisoned > 0) g.poisoned = Math.max(0, g.poisoned - dt);
+    if (inIt) Status.drops(game, g, dt);
     if (inIt && g.poisoned > 0) { g.poisoned = P.time; g.venomFill = 1; return; }
     if (!inIt) { g.venomFill = Math.max(0, (g.venomFill || 0) - dt * P.drain); return; }
     g.venomFill = (g.venomFill || 0) + dt / (P.build + (m.poisonGuard || 0));

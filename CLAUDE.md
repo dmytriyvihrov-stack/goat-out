@@ -380,12 +380,37 @@ in `JUICE_NOPLAY`); one staged by setting a thing by hand says `approx`.
 quarter; the swing snaps out to a lunge with a stretch; the recover drifts home slumped, only after a real swing (`e.poseSwungAt`, render only:
 a slam's, a hook's or a cast's recover keeps its own look); a shot kicks the rifleman back (`e.shotAt`, set in `fireBullet`); a mage's cast
 rises and trembles. `Renderer.drawSwingSmear` lays the swing on the floor as a crescent of amber cells sweeping the windup's wedge (enemy
-yellow; the goat's blows are white, `PALETTE.hit`). The windup tint (`juice.windupTint`) is 0.4 since the coil carries the tell.
+yellow; the goat's blows are white, `PALETTE.hit`). The windup tint (`juice.windupTint`) is 0.4 since the coil carries the tell, and
+its last `pop` share jumps to `popMax` (9 Oct 2026): the beat before the blow is a flash, not the end of a fade. **Knocked down**
+(`PaintedArt.knockdown`, `enemyAnim.down`, same day, "improve the fight animations"): a man floored or stunned tips over past his side
+and bounces back onto it, squashed as he lands, lies, and rises through a crouch over the last `up` s; render only, his state's full
+time read off his timer the frame it starts (`lieState` / `lieFull`), the goat keeps his own pose. **In flight** (`enemyAnim.flung`,
+`drawEnemyBody`): on the beat the horns land he is squashed along the blow under the white flash, then stretched along his flight the
+faster he goes; a puff of dust where he comes down (`Enemy.update`'s landing). The goat's lunge is stretched along his aim, not the screen.
+**Rocked** (`enemyAnim.rocked`): an ogre staggered and a shieldman braced behind his board are thrown back off their facing and ease
+home, trembling over the first part of it (it was a buzz on the spot, and nothing at all for the board); the state's own length is
+read off his timer the frame it begins (`rockState` / `rockFull`), as the knockdown reads it. **The hook's and the slam's winds coil**
+too (`attackPose`'s `hookwind` / `slamwind` branch, the club's own numbers on their own clocks): the two heaviest blows had a 2 px
+nudge; their swings and recovers keep their own look, and the leap's crouch is still the ogre's own pose. **The goat is knocked over**
+the same way (`TUNING.goat.knock`, `knockdown`'s second argument): `stunned` tips past his side and bounces onto it, lies flattened by
+`flat` and rises through a crouch; the opening's `ko` keeps its own still lie. The hound's dart trails cells off his hip, not a stroke.
+**The marks over a head are cells** (9 Oct 2026, `TUNING.juice.marks`): the dazed stars are pluses of cells turning round an ellipse,
+the one toward the camera a cell bigger (`Renderer.starMarks`, which `drawStars` and the men's branch share), and SHOCK is two arms
+wound out from the middle a cell at a time, gold and green for the pair. Both stand over the sprite's own top (`PIXEL_EXTENT`), never
+at a multiple of `e.r`, which is how wide his feet are, and the poison's bubbles stand there too. An animal wears the same stars over
+its row of hearts (`Beast.drawHealth`); poisoned, the row itself goes green and it gets no bubbles, which at that size were one green
+smudge beside another.
 **Effects are pixels too.** Fire, blasts, dust and blood sprays are frames `CombatFX` bakes itself
 (`flameFrames`, `burstFrames`, lazily per frame, pre-warmed by `CombatFX.warm`) at `effects.pixel`
 world px a texel and draws with smoothing off; rings are `CombatFX.pixelRing`, drops `cellDisc`. A man torn apart (a blast, a roll) is five pieces cut off his
 own sprite, each its own small canvas whose cut is his edge pixels tinted blood (`effects.goreCut`),
 never a bar across the crop box, which read as long red sticks on the floor (26 Sep 2026).
+**A blast is three phases** (9 Oct 2026, "the explosion is poorly readable"; `effects.blast`): the FLASH, a solid pale disc at the
+radius with rays, to `flashTo` of the strip; the FIREBALL to `fireTo`, the cloud in concentric bands white-hot to ember cooling from
+the rim in; then smoke lighter than any floor (`CombatFX.smoke`), every cloud cut out by a one-texel dark `rim` (`paint`'s last
+argument). The harm radius goes on the floor the frame it goes off (`stamp`, a disc of cells dithered away; every caller of
+`fx.explosion` passes it as its seventh argument) with a thick shock ring to it, and `debris` charred chunks are thrown and bounce.
+`bands` / `smoke` / `explosion` take a tint: `true` witchfire, `'venom'` a puddle going off (`Status.blast`), so the poison's blast is green.
 A whole dead man (`CombatFX.death`) lands, skids, turns to an exact quarter turn
 (`effects.corpse.lie` 0 keeps his pixels square) and bleeds a pool (`CombatFX.pool`, live in
 `drawGround` until `stampPool` puts it in the stains). A flame's `size` picks a baked set, so **never animate a flame's size per frame**: it flicks between
@@ -1136,6 +1161,14 @@ headbutt: one death, not two), else both floored.
 The men catch off a touch; **the goat burns only walking into one** (`Goat.intoBrazier`: his stick, or
 his roll, within `brazier.into` of the bowl, inside `touch` px of the rims).
 
+**The poison's picture** (9 Oct 2026, "improve the effect and the look of poison, especially in a puddle"; `TUNING.status.look`):
+`Renderer.drawPoison` lays every puddle as one pool in cells, a dark rim bitten in along every side with no puddle beside it, the body
+a dither of the two greens, dithered away as it dries. **All of that is baked per tile** (`Renderer.venomTile`, keyed on which of its
+four sides has poison beside it, one of `variants` sets of bites and which of `drySteps` steps of drying it is on; laid cell by cell
+every frame it cost 1.7 ms on two dozen tiles and 4.9 on a big puddle, and is 0.2 and 0.4 baked). Only what moves is live: a `sheen`
+cells a tile lit in turn and the bubbles, collected from every tile and laid in two fills. A poisoned man is his own pixels again flat venom (`POISON_FILTER`, painted-art.js) with cell bubbles off his head
+(`Renderer.drawBubbles`); the goat the same once his ring is full (`drawGoat`); anyone moving through a puddle throws drops off his
+hooves (`Status.drops`, from `Status.goat` and `soak`). VENOM SPIT's glob is cells with a tail (`drawGlob`).
 **Statuses.** Stun `Enemy.dazed`, fire `Enemy.burning`, poison `Enemy.poison` (blind + slow via
 `dt * tempo`, `moveMul`); `js/status.js`, `TUNING.status`. Reactions either order: POISON+FIRE
 `Status.blast`, POISON+STUN `sting` (no hit, `e.shock`), STUN+FIRE `scaldIt`. **The goat is poisoned

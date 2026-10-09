@@ -27,8 +27,18 @@ class CombatFX {
     return h00+(h10-h00)*a+(h01+(h11-h01)*a-h00-(h10-h00)*a)*b;
   }
   static bayer(x,y) { return BAYER4[(y&3)*4+(x&3)]; }
+  // The five heat bands, ember to white-hot: ordinary fire, witchfire (`true` or 'witch'), and the poison's own
+  // green for a puddle going off ('venom', 9 Oct 2026: it was drawn as a bomb, and read as one).
   static bands(witch) {
-    return witch?['#2a1d5c','#4b35b8','#7d5cff','#bfe6ff','#f6fcff']:['#6e1d14','#c8472a','#f2a233','#ffe08a','#fff8e2'];
+    if(witch==='venom')return ['#2f5a1c','#5c9a2a','#9fd84a','#d6f07a','#f4ffd0'];
+    return witch===true||witch==='witch'?['#2a1d5c','#4b35b8','#7d5cff','#bfe6ff','#f6fcff']:['#6e1d14','#c8472a','#f2a233','#ffe08a','#fff8e2'];
+  }
+  // A cloud's smoke, darkest rim first: lighter than any floor it is over (9 Oct 2026, "the explosion is poorly
+  // readable": the old soot was two shades off the plum floor and a bomb read as a black puff). `dust` is a door or a
+  // crate breaking, the rest go with the fire's tint.
+  static smoke(kind,tint) {
+    if(kind==='dust'&&tint!=='witch')return ['#2a2220','#625650','#978a7e','#c2b5a6'];
+    return tint==='witch'?['#1a1326','#4a3b6e','#7e6ca8','#b3a3d6']:tint==='venom'?['#1b2a10','#3f5a22','#6f8f3a','#a9c660']:['#241c20','#5a4e50','#8f8280','#bdb0a6'];
   }
   static canvas(w,h) { const c=document.createElement('canvas');c.width=Math.max(1,w);c.height=Math.max(1,h);return c; }
   // A piece's canvas, from the ones bodies already stamped into the floor gave back (`release`), else new.
@@ -49,13 +59,23 @@ class CombatFX {
   // Paint a heat field into ImageData through the bands: a field of 0..1 per cell becomes 1 of 5 flat
   // colours or nothing. `fn(x,y)` returns a colour, or nothing for empty; only cells inside `box`
   // ([x0, y0, x1, y1]) are asked, which is most of the cost of a blast that has not grown yet.
-  static paint(w,h,fn,box) {
+  // `rim`: a colour laid on every empty cell touching a filled one (four ways), so the shape has a one-texel dark
+  // outline whatever floor it is drawn over; done on the pixel array before it is put, never read back.
+  static paint(w,h,fn,box,rim) {
     const c=CombatFX.canvas(w,h),g=c.getContext('2d'),img=g.createImageData(w,h),d=img.data,cache={};
     const rgb=(hex)=>cache[hex]||(cache[hex]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
     const [x0,y0,x1,y1]=box?box.map((v,i)=>Math.max(0,Math.min(i%2?h:w,Math.round(v)))):[0,0,w,h];
     for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
       const col=fn(x,y);if(!col)continue;const v=rgb(col),i=(y*w+x)*4;
       d[i]=v[0];d[i+1]=v[1];d[i+2]=v[2];d[i+3]=255;
+    }
+    if(rim){
+      const v=rgb(rim),edge=[];
+      for(let y=Math.max(0,y0-1);y<Math.min(h,y1+1);y++)for(let x=Math.max(0,x0-1);x<Math.min(w,x1+1);x++){
+        const i=(y*w+x)*4;if(d[i+3])continue;
+        if((x>0&&d[i-1])||(x<w-1&&d[i+7])||(y>0&&d[i-w*4+3])||(y<h-1&&d[i+w*4+3]))edge.push(i);
+      }
+      for(const i of edge){d[i]=v[0];d[i+1]=v[1];d[i+2]=v[2];d[i+3]=255;}
     }
     g.putImageData(img,0,0);return c;
   }
@@ -94,14 +114,20 @@ class CombatFX {
   // kind 'boom': flash → fireball → smoke that rises, darkens and dithers away.
   // kind 'dust': the same smoke with no fire in it (a door, a crate, a man burnt out).
   // kind 'blood': a splash thrown out in spokes that break into drops.
+  // A real blast ('boom') is three phases on the strip (`E.flashTo`, `E.fireTo`; 9 Oct 2026, "the explosion is
+  // poorly readable"): the FLASH, a solid pale disc at the radius with rays past it; the FIREBALL, the cloud of puffs
+  // in concentric bands, white-hot inside, ember at the rim, cooling from the rim in; then SMOKE, lighter than the
+  // floor, rising and dithered away. Every frame wears a one-texel dark rim (`paint`'s `rim`), so the shape is cut
+  // out of whatever is behind it. `witch` is a tint: true / 'witch' for witchfire, 'venom' for a puddle going off.
   static burstFrames(kind,r,witch) {
     r=Math.max(6,Math.round(r/2)*2);
-    const key=kind+(witch?'w':'')+r;CombatFX.blasts=CombatFX.blasts||{};
+    const tint=witch===true||witch==='witch'?'witch':witch==='venom'?'venom':'fire';
+    const key=kind+(tint==='fire'?'':tint[0])+r;CombatFX.blasts=CombatFX.blasts||{};
     if(CombatFX.blasts[key])return CombatFX.blasts[key];
     const E=TUNING.effects.blast,F=kind==='blood'?E.bloodFrames:E.frames,D=Math.ceil(r*2.9)|1,c=D/2;
-    const B=kind==='blood'?['#3d0d0b',PALETTE.bloodDark,PALETTE.blood,'#e0604a','#e0604a']:CombatFX.bands(witch);
-    const smoke=witch?['#1c1428','#3b3150','#5b487d','#7b6aa0']:kind==='dust'?['#231c1a','#4e4540','#776b62','#a29482']:['#140e10','#2e2427','#4c4040','#72655d'];
-    const seed=(r*13+(witch?5:0)+(kind==='dust'?2:0))|0,hash=CombatFX.hash,noise=CombatFX.noise,bayer=CombatFX.bayer;
+    const B=kind==='blood'?['#3d0d0b',PALETTE.bloodDark,PALETTE.blood,'#e0604a','#e0604a']:CombatFX.bands(tint);
+    const smoke=CombatFX.smoke(kind,tint),rim=E.rim&&kind!=='blood'?smoke[0]:null;
+    const seed=(r*13+(tint==='witch'?5:tint==='venom'?9:0)+(kind==='dust'?2:0))|0,hash=CombatFX.hash,noise=CombatFX.noise,bayer=CombatFX.bayer;
     // The puffs the cloud is made of: fixed per size, so every frame is the same cloud growing.
     const puffs=[];const np=kind==='blood'?0:10+(r>30?4:0);
     for(let k=0;k<np;k++){const a=k/np*Math.PI*2+hash(k,r,seed)*1.2;
@@ -136,7 +162,25 @@ class CombatFX {
           return 0;
         },[c-ext,c-ext,c+ext,c+ext]);
       }
-      const grow=Math.sqrt(Math.min(1,q*2.4)),R=r*(0.38+0.7*grow+0.18*q),lift=r*0.4*q*q,hot=kind==='boom'?Math.max(0,1.25-q*2.1):0;
+      const boom=kind==='boom';
+      // THE FLASH: a solid disc of the two hottest bands, a dark rim, and rays thrown past it; the second frame
+      // is already the whole radius, so the first thing seen is the size of the thing.
+      if(boom&&q<E.flashTo){
+        const k=q/E.flashTo,rf=r*(0.6+0.42*k),rays=8,ext=r*1.5+3;
+        const cv=CombatFX.paint(D,D,(x,y)=>{
+          const dx=x+0.5-c,dy=y+0.5-c,d=Math.sqrt(dx*dx+dy*dy);
+          if(d<rf)return B[d<rf-2.5?4:3];
+          if(d>ext)return 0;
+          // a ray: a wedge of cells each `2π/rays` round, thinning to one cell at its tip
+          const a=Math.atan2(dy,dx),s=((a/(Math.PI*2)*rays+0.5)%1+1)%1,wedge=Math.abs(s-0.5)*2,L=rf+(ext-rf)*(0.55+0.45*(1-k));
+          if(d<L&&wedge<0.12*(1-(d-rf)/(L-rf)))return B[d<rf+(L-rf)*0.4?4:3];
+          return 0;
+        },[c-ext-1,c-ext-1,c+ext+1,c+ext+1],rim);
+        return cv;
+      }
+      const grow=Math.sqrt(Math.min(1,q*2.4)),R=r*(0.38+0.7*grow+0.18*q),lift=r*0.4*q*q;
+      // how much fire is left in the cloud: all of it at the flash's end, none past `fireTo`
+      const heat=boom?Math.max(0,Math.min(1,(E.fireTo-q)/(E.fireTo-E.flashTo))):0;
       const gone=q>E.fade?(q-E.fade)/(1-E.fade):0,spread=1+q*0.45,r0=R*0.62;
       const pf=puffs.map(p=>({x:c+p.ca*p.d*R*0.75*spread,y:c+p.sa*p.d*R*0.6*spread-lift*(0.5+p.up),ir:1/(p.s*R*(1-gone*0.4))}));
       // Which puff a cell belongs to and how deep in it: the deepest wins, and where in that puff
@@ -156,20 +200,17 @@ class CombatFX {
         const n=NA[(y+shift)*D+x]+NB[y*D+x];
         const m=dn-n*0.4+0.12;if(m<=0)return 0;
         if(gone>0&&bayer(x,y)<gone*1.15)return 0;
-        if(hot>0){const hx=x+0.5-c,hy=y+0.5-c+lift,h=hot*(m*1.3+(1-Math.sqrt(hx*hx+hy*hy)/R)*0.6)-n*0.3;
-          if(h>0.2)return B[h>1.05?4:h>0.82?3:h>0.58?2:h>0.36?1:0];}
+        // THE FIREBALL: bands by depth into the cloud (`m`, 0 at its edge), white-hot at the heart and ember at the
+        // rim, the whole scale sliding down as the heat goes, so the fire shrinks to a yellow core inside the smoke
+        // and then is gone. Noise only roughens the band edges, it never chews the body to a mush.
+        if(heat>0){const v=m*(0.8+0.9*heat)+heat*0.95-n*0.3;
+          if(v>1.35)return B[4];if(v>1.05)return B[3];if(v>0.75)return B[2];if(v>0.45)return B[1];if(v>0.22)return B[0];}
         // Smoke: each puff lit on its upper left, a rim of the darkest at the edge of the cloud.
         // Tones are ordered-dithered into each other, so a puff is round rather than cut from facets.
-        if(m<0.09)return smoke[0];
+        if(m<0.07)return smoke[0];
         const lit=-(lx*0.55+ly*0.75)+(n-0.4)*0.9+(bayer(x,y)-0.5)*0.55-q*0.35;
         return smoke[lit>0.3?3:lit>-0.25?2:1];
-      },[bx0-1,by0-1,bx1+1,by1+1]);
-      // The first frames of a real blast: a white-hot ball and a star of rays thrown past the cloud.
-      if(kind==='boom'&&q<0.25){const g=cv.getContext('2d'),k=1-q/0.25;g.fillStyle=B[3];
-        for(let i=0;i<8;i++){const a=i/8*Math.PI*2+0.2,L=r*(0.9+0.45*(i%2))*(0.55+0.45*(1-k));
-          for(let s=R*0.5;s<L;s+=1)g.fillRect(Math.round(c+Math.cos(a)*s-0.5),Math.round(c+Math.sin(a)*s-0.5),1,1);}
-        g.fillStyle=B[4];const cr=Math.round(r*0.34*k);g.beginPath();
-        for(let y=-cr;y<=cr;y++){const w=Math.round(Math.sqrt(cr*cr-y*y));g.rect(Math.round(c)-w,Math.round(c)+y,w*2,1);}g.fill();}
+      },[bx0-1,by0-1,bx1+1,by1+1],rim);
       return cv;
     };
     const frames=new Array(F).fill(null);
@@ -201,8 +242,9 @@ class CombatFX {
     const E=TUNING.effects,P=TUNING.prop.bomb,G=TUNING.goat.bomb,k=E.bloodScale,jobs=[];
     // The radii `draw` asks for, scaled the way it scales them.
     const booms=[P.blastR,G.radius*G.fxScale],dusts=[[17,false],[23,false],[19,false],[19,true],[35,true]];
-    const sets=[...booms.map(r=>['boom',r*E.blast.scale,false]),...booms.map(r=>['soot',r*E.blast.soot*E.blast.dustScale,false]),
-      ...dusts.map(([r,w])=>['dust',r*E.blast.dustScale,w]),['blood',30*k,false],['blood',46*k,false]];
+    const venomR=TUNING.status.blast.radius*TILE*0.8;   // a puddle going off (`Status.blast`), the green set
+    const sets=[...booms.map(r=>['boom',r*E.blast.scale,false]),['boom',venomR*E.blast.scale,'venom'],...booms.map(r=>['soot',r*E.blast.soot*E.blast.dustScale,false]),
+      ['soot',venomR*E.blast.soot*E.blast.dustScale,'venom'],...dusts.map(([r,w])=>['dust',r*E.blast.dustScale,w]),['blood',30*k,false],['blood',46*k,false]];
     // What the first floor meets first goes first: a kill's spray, then the flames.
     sets.sort((a,b)=>(b[0]==='blood')-(a[0]==='blood'));
     const late=[];
@@ -376,18 +418,24 @@ class CombatFX {
 
   // `life` overrides the shared `burstLife` for this one burst, Bomb Charge asks for a smaller,
   // quicker flash than a door or a crate breaking so the fight behind it stays readable.
-  explosion(x,y,r,witch=false,smokeOnly=false,life) {
+  // `harm`: the radius the blast actually reaches (hearts, the fling), laid on the floor as the stamp the frame it
+  // goes off (`draw`); the cloud itself is `r`, which a caller draws smaller than the harm on purpose (BOMB CHARGE).
+  // `witch` is the tint: true for witchfire, 'venom' for a puddle going off.
+  explosion(x,y,r,witch=false,smokeOnly=false,life,harm) {
     if(this.bursts.length>=TUNING.effects.maxBursts)this.bursts.shift();
-    this.bursts.push({x,y,r,witch,smokeOnly,t:0,seed:Math.random()*6.28,life});
+    this.bursts.push({x,y,r,witch,smokeOnly,t:0,seed:Math.random()*6.28,life,harm});
     if(smokeOnly)return;
     // What makes a blast weigh something without shaking the picture (shakes are the goat's alone):
-    // embers that outrun the cloud, a beat of light on the screen and the lens, and a column of
-    // smoke that goes on rising after the fireball has burnt out.
-    const g=this.game,E=TUNING.effects.blast,n=Math.round(E.embers*Math.min(1.4,r/40));
+    // embers that outrun the cloud, a beat of light on the screen and the lens, charred chunks thrown up
+    // that come down and bounce, and a column of smoke that goes on rising after the fireball has burnt out.
+    const g=this.game,E=TUNING.effects.blast,n=Math.round(E.embers*Math.min(1.4,r/40)),venom=witch==='venom';
+    const hi=venom?PALETTE.venomHi:witch?PALETTE.witchHi:PALETTE.fireHi,lo=venom?PALETTE.venom:witch?PALETTE.witch:PALETTE.fire;
     for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=r*(3.5+Math.random()*5.5);
-      g.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.14+Math.random()*0.3,
-        color:witch?(i%3?PALETTE.witchHi:PALETTE.witch):(i%3?PALETTE.fireHi:PALETTE.fire),size:i%4?1:2,streak:true});}
-    g.flash(witch?PALETTE.witch:PALETTE.fireHi,E.flash);g.zoomPunch(E.punch);
+      g.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.14+Math.random()*0.3,color:i%3?hi:lo,size:i%4?1:2,streak:true});}
+    const soot=CombatFX.smoke('boom',venom?'venom':witch?'witch':'fire'),nd=Math.round(E.debris*Math.min(1.4,r/40));
+    for(let i=0;i<nd;i++){const a=Math.random()*Math.PI*2;
+      this.fragment(x,y,null,[0,0,0,0],2+Math.random()*2,2+Math.random()*3,Math.cos(a),Math.sin(a),'char',{color:i%3?soot[1]:soot[0],z:3,vz:TUNING.effects.lift*(0.9+Math.random()*0.8)});}
+    g.flash(hi,E.flash);g.zoomPunch(E.punch);
     if(this.bursts.length>=TUNING.effects.maxBursts)this.bursts.shift();
     this.bursts.push({x,y:y-r*0.35,r:r*E.soot,witch,smokeOnly:true,soot:true,t:-E.sootAfter,life:E.sootLife});
   }
@@ -474,7 +522,8 @@ class CombatFX {
       // A splinter is a slab of cells with a lit edge and, on a long one, a nail: no vector wedges.
       const px=TUNING.effects.pixel,w=Math.max(px,Math.round(p.width/px)*px),h=Math.max(px,Math.round(p.height/px)*px);
       c.fillStyle=p.color;c.fillRect(-w/2,-h/2,w,h);
-      c.fillStyle=p.material==='metal'?'#a3a6ae':p.material==='brass'?PALETTE.fireHi:'#c49860';c.fillRect(-w/2,-h/2,px,h);
+      // a charred chunk out of a blast has no lit grain: its edge is only a shade lighter than itself
+      c.fillStyle=p.material==='metal'?'#a3a6ae':p.material==='brass'?PALETTE.fireHi:p.material==='char'?'#6b5f5e':'#c49860';c.fillRect(-w/2,-h/2,px,h);
       if(h>12){c.fillStyle='#29232a';c.fillRect(0,-h/2+4,px,px);}
     }
     c.restore();
@@ -505,17 +554,29 @@ class CombatFX {
       const set=CombatFX.burstFrames(kind,b.r*(kind==='boom'?E.blast.scale:kind==='blood'?1:E.blast.dustScale),b.witch);
       const q=kind==='dust'||kind==='soot'?0.3+progress*0.7:progress;
       const im=set.frame(Math.min(set.n-1,Math.floor(q*set.n)));
+      const venom=b.witch==='venom',hi=venom?PALETTE.venomHi:b.witch?PALETTE.witchHi:PALETTE.fireHi,lo=venom?PALETTE.venom:b.witch?PALETTE.witch:PALETTE.fire;
       // A blast lights the room for an instant: the one smooth thing, because light is.
       if(kind==='boom'&&progress<E.blast.lightFor) {
         const a=1-progress/E.blast.lightFor,R=b.r*E.blast.light;c.save();c.globalCompositeOperation='lighter';
         const gl=c.createRadialGradient(b.x,b.y,0,b.x,b.y,R);
-        gl.addColorStop(0,b.witch?`rgba(125,92,255,${0.5*a})`:`rgba(255,170,70,${0.5*a})`);gl.addColorStop(1,'rgba(0,0,0,0)');
+        gl.addColorStop(0,venom?`rgba(170,230,90,${0.45*a})`:b.witch?`rgba(125,92,255,${0.5*a})`:`rgba(255,170,70,${0.5*a})`);gl.addColorStop(1,'rgba(0,0,0,0)');
         c.fillStyle=gl;c.fillRect(b.x-R,b.y-R,R*2,R*2);c.restore();
       }
-      // The shock on the floor, a pixel ring racing out ahead of the cloud.
+      // THE STAMP (`blast.stamp`): the harm radius on the floor the frame it goes off, a disc of cells in the fire's
+      // own colour, ordered-dithered away over its short life, so where the blast reached is read at once and the
+      // cloud that follows is known to be its picture, not its reach.
+      if(kind==='boom'&&b.harm&&progress<E.blast.stamp.time) {
+        const S=E.blast.stamp,p=progress/S.time,cell=E.pixel*2,n=Math.round(b.harm/cell),bayer=CombatFX.bayer;
+        c.save();c.globalAlpha=S.alpha*(1-p*0.6);c.fillStyle=lo;c.beginPath();
+        const ox=Math.round(b.x/cell)*cell,oy=Math.round(b.y/cell)*cell;
+        for(let j=-n;j<=n;j++){const w=Math.sqrt(Math.max(0,n*n-j*j));for(let i=-w;i<=w;i++)if(bayer(i,j)>=p*1.25)c.rect(ox+i*cell,oy+j*cell,cell,cell);}
+        c.fill();c.restore();
+      }
+      // The shock on the floor: a pixel ring racing out ahead of the cloud to the harm's edge, the hot band with
+      // the darker one a step inside it.
       if(kind==='boom'&&progress<E.blast.ringFor) {
-        const p=progress/E.blast.ringFor;c.save();c.globalAlpha=1-p;
-        CombatFX.pixelRing(c,b.x,b.y,b.r*(0.5+p*E.blast.ringOut),2*(1-p)+1,b.witch?PALETTE.witchHi:PALETTE.fireHi);c.restore();
+        const p=progress/E.blast.ringFor,R=(b.harm||b.r)*(0.45+p*E.blast.ringOut),W=E.blast.ringW*(1-p)+1;c.save();c.globalAlpha=1-p*p;
+        CombatFX.pixelRing(c,b.x,b.y,R,W,hi);CombatFX.pixelRing(c,b.x,b.y,R-W-1,Math.max(1,W*0.6),lo);c.restore();
       }
       c.save();c.imageSmoothingEnabled=false;c.translate(b.x,b.y);c.scale(1,1/TILT);
       const px=E.pixel,s=set.D*px,dustA=kind==='dust'||kind==='soot'?E.blast.dustAlpha:1;
