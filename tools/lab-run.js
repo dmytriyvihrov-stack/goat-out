@@ -68,14 +68,15 @@ function findChrome() {
 const chromePath = findChrome();
 if (!chromePath) { log('no Chrome or Edge found; pass --chrome <path>'); process.exit(1); }
 
-const up = () => new Promise((res) => { const r = http.get({ host: '127.0.0.1', port, path: '/lab/beat', timeout: 2000 }, (x) => { x.resume(); res(x.statusCode === 200); }); r.on('error', () => res(false)); r.on('timeout', () => { r.destroy(); res(false); }); });
+const up = () => new Promise((res) => { const r = http.get({ host: '127.0.0.1', port, path: '/lab/beat', timeout: 8000 }, (x) => { x.resume(); res(x.statusCode === 200); }); r.on('error', () => res(false)); r.on('timeout', () => { r.destroy(); res(false); }); });
 
 const S = { server: null, lanes: [] };
 for (let i = 1; i <= lanesN; i++) S.lanes.push({ lane: i, hand: handOf(i), chrome: null, at: 0, recycleDue: false });
 const writePid = () => fs.writeFileSync(pidFile, JSON.stringify({ pid: process.pid, port, level, lanes: lanesN, server: S.server && S.server.pid, chrome: S.lanes.map((l) => l.chrome && l.chrome.pid).filter(Boolean), at: new Date().toISOString() }));
 
 async function ensureServer() {
-  if (await up()) return;
+  // its own server still running is answer enough: three busy browsers can keep it past the probe's timeout
+  if ((S.server && S.server.exitCode === null) || await up()) return;
   S.server = spawn(process.execPath, [path.join(root, 'tools', 'serve.js'), String(port)], { cwd: root, stdio: 'ignore', windowsHide: true });
   S.server.on('exit', (c) => { log(`server exited (${c})`); S.server = null; });
   for (let i = 0; i < 20 && !(await up()); i++) await new Promise((r) => setTimeout(r, 250));
