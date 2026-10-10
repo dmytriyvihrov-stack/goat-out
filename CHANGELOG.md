@@ -5,6 +5,17 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.006, 10 Oct 2026: the beard is a beard, and the far front leg is there
+
+- **The goat has two front legs on the front diagonals** (the playtest's arrow on the down-right run: "this looks like a leg but is not one,
+  and you draw it as a leg; there has to be a real leg there"). The atlas drew one front leg on the down-right and down-left views and let
+  the beard hang where the far one belongs, so the beard stepped like a leg. Now the beard is found under his mouth (it has no hoof),
+  trimmed to a short tuft and kept still, and the far front leg is drawn behind it, a copy of the near one a little to the side and darker,
+  stepping a half cycle off the near one (`PIXEL_ART.beardAndLeg`, `TUNING.goat.gait.beard` / `farLeg`). On the front view the beard
+  touched his right leg and walked with it; it stays put now too.
+
+---
+
 ## 0.005, 10 Oct 2026: clean feet
 
 - **No more slivers by the feet** (the playtest's arrows at the goat, the clubman, the rifleman, the mage and the hound on the down-right

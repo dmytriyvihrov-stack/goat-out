@@ -614,8 +614,61 @@ const PIXEL_ART = {
     }).filter((hn) => hn.blob.length);
     this.hornCache = this.hornCache || new Map();
     this.hornCache.set(c, out);
+    this.beardAndLeg(id, d, f, c);
     this.hornFixes.set(f, c);
     return c;
+  },
+  // THE BEARD IS NOT A LEG (10 Oct 2026 playtest: "this thing looks like a leg but is not one, and you draw it as a leg;
+  // there has to be a real leg there"). On the front diagonals the atlas drew one front leg and let the beard hang where
+  // the far one should be, and on the front view the beard touches the near right leg. So on the frame (`c`, the one
+  // `hornModel` baked) the beard is found under the mouth (`PIXEL_FACE`): a piece under the belly with no hoof in it
+  // (fewer than `hoofN` near-black pixels), or on a straight view the columns within `band` of the mouth that hang off a leg.
+  // It is trimmed to `trim` rows under the mouth, its cut end outlined, and kept off the legs (`beards`), so it never
+  // steps. On the views in `farLeg.at` the near front leg (the one hoofed piece on the beard's side) is copied
+  // `farLeg.dx` toward the beard and `dy` up, `shade` darker, behind everything (only where the frame is empty): the
+  // far front leg, its own leg for `legsOf` (`extraLegs`), so it steps a half cycle off the near one.
+  beardAndLeg(id, d, f, c) {
+    const B = TUNING.goat.gait.beard, FL = TUNING.goat.gait.farLeg, P = PIXEL_FACE[d];
+    if (!B || !P || !P.mouth) return;
+    const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, mx = f[4] + P.mouth[0] / k, my = f[5] + P.mouth[1] / k;
+    const w = f[2], h = f[3], x = c.getContext('2d'), img = x.getImageData(0, 0, w, h), D = img.data;
+    const G = Object.assign({}, TUNING.goat.gait, { hoof: false, scrap: -1 });
+    this.legCache ||= new Map(); this.legCache.delete(c);
+    const L = this.legsOf(f, c, G); this.legCache.delete(c);
+    const op = (i) => D[i * 4 + 3] > 127, sum = (i) => D[i * 4] + D[i * 4 + 1] + D[i * 4 + 2];
+    // a hoof is a solid block of near-black; a beard has only its outline that dark
+    const hoofN = (blob) => { let n = 0; for (const i of blob) if (sum(i) < B.dark) n++; return n; };
+    const beard = new Set();
+    let near = null;
+    for (const l of L.legs) {
+      const hoofed = hoofN(l.blob) >= B.hoofN, by = l.x0 - B.reach <= mx && l.x1 + B.reach >= mx;
+      if (!hoofed && by) { for (const i of l.blob) beard.add(i); continue; }
+      if (hoofed && Math.abs(Math.cos((d + 2) * Math.PI / 4)) < 0.5) {   // a straight view: the beard hangs off a leg's side
+        for (const i of l.blob) { const px = i % w, py = (i / w) | 0; if (Math.abs(px + 0.5 - mx) <= B.band && py <= my + B.len && sum(i) > B.dark) beard.add(i); }
+      }
+      if (hoofed && (!near || Math.abs(l.cx - mx) < Math.abs(near.cx - mx))) near = l;
+    }
+    // trimmed, and its new end outlined in its own darkest colour
+    if (beard.size) {
+      let dark = null; for (const i of beard) if (!dark || sum(i) < dark[0] + dark[1] + dark[2]) dark = [D[i * 4], D[i * 4 + 1], D[i * 4 + 2]];
+      const cut = Math.round(my + B.trim);
+      for (const i of [...beard]) if (((i / w) | 0) > cut) { D[i * 4 + 3] = 0; beard.delete(i); }
+      for (const i of beard) if (((i / w) | 0) === cut) { D[i * 4] = dark[0]; D[i * 4 + 1] = dark[1]; D[i * 4 + 2] = dark[2]; }
+    }
+    // the far front leg, behind the frame
+    const extra = [];
+    if (FL.at.includes(d) && near) {
+      const sg = Math.sign(mx - near.cx) || 1, dx = Math.round(sg * FL.dx), dy = -Math.round(FL.dy);
+      for (const i of near.blob) {
+        const px = i % w + dx, py = ((i / w) | 0) + dy; if (px < 0 || px >= w || py < 0 || py >= h) continue;
+        const j = py * w + px; if (op(j)) continue;
+        D[j * 4] = D[i * 4] * FL.shade; D[j * 4 + 1] = D[i * 4 + 1] * FL.shade; D[j * 4 + 2] = D[i * 4 + 2] * FL.shade; D[j * 4 + 3] = 255;
+        extra.push(j);
+      }
+    }
+    x.putImageData(img, 0, 0);
+    this.beards ||= new Map(); this.extraLegs ||= new Map();
+    this.beards.set(c, beard); if (extra.length) this.extraLegs.set(c, extra);
   },
   // The frame with its packed horns taken off (alpha 0 on every horn blob), for BIG and LONG, which `horns` draws whole
   // over it from one shape a facing: grown off each step's own horn they changed shape every stride (9 Oct 2026 playtest:
@@ -630,6 +683,8 @@ const PIXEL_ART = {
     if (fix) x.drawImage(fix, 0, 0); else x.drawImage(this.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
     const hs = this.hornsOf(f, fix);
     if (hs.length) { const px = x.getImageData(0, 0, f[2], f[3]); for (const h of hs) for (const p of h.blob) px.data[p * 4 + 3] = 0; x.putImageData(px, 0, 0); }
+    if (fix && this.beards && this.beards.has(fix)) this.beards.set(c, this.beards.get(fix));
+    if (fix && this.extraLegs && this.extraLegs.has(fix)) this.extraLegs.set(c, this.extraLegs.get(fix));
     this.bares.set(f, c);
     return c;
   },
@@ -654,6 +709,10 @@ const PIXEL_ART = {
     const D = x.getImageData(0, 0, w, h).data, on = new Uint8Array(w * h), rowW = new Int32Array(h);
     let maxW = 0, bottom = -1;
     for (let i = 0; i < w * h; i++) if (D[i * 4 + 3] > 127) { on[i] = 1; rowW[(i / w) | 0]++; }
+    // the beard stays body and the far leg is a leg of its own (`beardAndLeg`): both out of the search
+    const beardM = img && this.beards && this.beards.get(img), extraM = img && this.extraLegs && this.extraLegs.get(img);
+    if (beardM) for (const i of beardM) on[i] = 0;
+    if (extraM) for (const i of extraM) on[i] = 0;
     for (let py = 0; py < h; py++) { if (rowW[py] > maxW) maxW = rowW[py]; if (rowW[py]) bottom = py; }
     let top = bottom;
     for (let py = bottom; py >= 0; py--) if (rowW[py] >= maxW * G.belly) { top = py + 1; break; }
@@ -713,6 +772,7 @@ const PIXEL_ART = {
       legs.length = 0;
       for (const part of [l.blob.filter((i) => i % w < mx), l.blob.filter((i) => i % w >= mx)]) if (part.length) legs.push(Object.assign(piece(part), { liftOnly: true }));
     }
+    if (extraM && extraM.length) legs.push(piece(extraM.slice()));
     legs.sort((a, b) => a.cx - b.cx);
     const out = { legs, data: D, w, h, mid: w / 2, top, bottom };
     this.legCache.set(key, out); return out;

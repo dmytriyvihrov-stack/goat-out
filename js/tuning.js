@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.005';
+const BUILD = '0.006';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -698,7 +698,13 @@ const TUNING = {
     // air a leg is shortened from the hoof up by `lift` and its hoof swings `swing` forward along the facing; on the
     // front and back views a lifted hoof steps `side` outward instead. `steps` bakes a cycle (three a walk frame).
     // `units` take it; the ewe (`sheep-pet`) has no walk frames at all and walks off her standing frame this way.
-    gait: { steps: 12, lift: 7, swing: 6, side: 3, belly: 0.6, reach: 16, minBlob: 10, legW: 15, scrap: 3, hoof: true, units: ['goat', 'sheep-pet'] },
+    gait: { steps: 12, lift: 7, swing: 6, side: 3, belly: 0.6, reach: 16, minBlob: 10, legW: 15, scrap: 3, hoof: true, units: ['goat', 'sheep-pet'],
+      // The beard is not a leg (10 Oct 2026, `PIXEL_ART.beardAndLeg`): a piece under the mouth with fewer than `hoofN`
+      // pixels darker than `dark` (r+g+b; a hoof is a block of them, a beard only its outline), within `reach` px of the mouth's column, or on a straight view the columns within
+      // `band` of it down to `len` rows, stays still, cut to `trim` rows under the mouth. On the views in `farLeg.at` (the two
+      // front diagonals) the far front leg the atlas never drew is the near one copied `dx` toward the beard, `dy` up, `shade`.
+      beard: { dark: 100, hoofN: 60, reach: 8, band: 4.5, len: 16, trim: 9 },
+      farLeg: { at: [1, 7], dx: 15, dy: 3, shade: 0.8 } },
     // What he does standing still once he has stood `after` s: every `gap` s (a roll between the
     // two) one fidget, picked by `weights`, glances one facing aside (`look` s), a little pronk
     // (`hop`: `h` px up over `time` s), a shake of the head (`shake`: `amp` rad at `freq` rad/s),
