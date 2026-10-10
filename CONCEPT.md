@@ -491,8 +491,8 @@ worth knowing the layout of, it is where you stand between runs, not a level.
   the souls on the heap fly out of him into it one by one until it is whole.
 - **The edge.** The last room ends in nothing, and far below it is the earth, fields, a river, the
   compound, and the pen in a shaft of light. The three horns lie before it (the SHORT, BIG, LONG): GRAB
-  a pair to wear it. BIG and LONG are the god's: his second ask, after the twenty that mend the mirror, is
-  fifty souls given to him, and then they are yours to choose. Walk off and he falls into a new run, beside the pen on the first floor. Once he has
+  a pair to wear it. BIG and LONG are the god's: his second ask, after the fifteen that mend the mirror, is
+  thirty souls given to him, and then they are yours to choose. Walk off and he falls into a new run, beside the pen on the first floor. Once he has
   been up here, every run starts with one more life (Hades' Death Defiance), to be taken away later. RUN
   AGAIN on the death card skips the pasture.
 

@@ -243,7 +243,8 @@ const TUNING = {
     // The god's three asks (8 Oct 2026 playtest): twenty brought mend the mirror; fifty GIVEN to him open BIG and LONG
     // (`horns`, the horns hidden at the edge until then); a hundred given and one corrupted soul (`skills`, `skillsSouls`)
     // are UPGRADED SKILLS (a name for now, the mechanics later; SECOND CHANCE comes onto the glass with it).
-    gift: { mend: 20, horns: 50, skills: 100, skillsSouls: 1 },
+    // 10 Oct 2026, his numbers: fifteen to mend the mirror, thirty for the horns, sixty for the third ask.
+    gift: { mend: 15, horns: 30, skills: 60, skillsSouls: 1 },
     // A boss's bell (`Game.dropBell`) flies `apart` tiles clear of where he fell (and the soul he leaves there) over `fly` s,
     // `z` px at the top of its arc. Its floor words (`Renderer.drawFirstWords`) show only within `near` tiles of him.
     bellDrop: { apart: 2.6, fly: 0.55, z: 30, near: 2.6 },
