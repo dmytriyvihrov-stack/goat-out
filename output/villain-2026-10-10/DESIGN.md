@@ -102,3 +102,8 @@ Doom-like fight cue (the score's own combat stage plays), the monster's sprite.
   the gun (js/warden.js). The second phase: THE FLAYED, "an ogre upgraded, for now" (js/flayed-pixels.js, `flayed.cjs` → `flayed.png`).
 - The score's doom layer for his fight; the seated men sunk behind the table on their stools.
 - Still open: his eight facings (front only), the monster's own body (the ogre's re-skinned), what she is and where (the platter is empty).
+
+## Built, third batch (10 Oct 2026)
+
+Eight facings of the Warden (`ingame.cjs` → `ingame.png`), the supper through a quit and CONTINUE, the handoff at the end of THE YARD
+(the mage runs to him, she goes under his arm, he goes out through the gate), and the hall's entry notes: heaven's harp, flat and far.

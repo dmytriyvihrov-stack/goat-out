@@ -24,6 +24,13 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   corrupted ogre's witchfire, faster, fire off his fists; his death drops the way out's soul. The score goes heavy for it
   (`audio.layers.doom`: a riff chugged on every step, the kick on every eighth). The men at the table are drawn sunk and cut at the
   feet, on stools. SPAWN rows THE WARDEN and THE FLAYED; both stand in THE SHOWROOM's last gallery.
+- **The Warden from every side** (`js/warden-pixels.js`): five views drawn in the ogre's recipe and mirrored to eight, strides, and the
+  fight's poses (the sword back and out, the gun at the shoulder, the hand up). The mirrored views draw the board and the sword on the
+  other arm, so he is right-handed from everywhere.
+- **The supper survives a quit**: CONTINUE lays it back as it stood (the corner and the barrier, the fight with his hearts, the Flayed).
+- **She changes hands at the end of THE YARD**: the opening's mage runs to the Warden waiting at the way out, she goes under his arm,
+  "MINE NOW, GOAT. COME AND TAKE HER.", and he is the one who goes through the gate with her. THE CAVE's mage comes without her now.
+- **Walking into the hall** a few of heaven's harp notes sound, flat and far, over a drone, under the hushed score: is she here?
 
 ## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
 

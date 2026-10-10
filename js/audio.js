@@ -1272,6 +1272,13 @@ class GameAudio {
   // A barrel on its side, a knock a turn, lower and quieter as it slows (`k` 1 → 0).
   sfxStave(k = 1) { this.foley('stave', { gain: 0.036 + 0.088 * k, rate: 0.82 + 0.22 * k }); }
   // A rifle cocked: the one tell a rifle gives, so it is bright and dry and sits above the mix.
+  // THE LAST SUPPER's door (js/endboss.js `startSupper`, `TUNING.audio.supper`): heaven's harp, flat and far, over a drone.
+  sfxSupper() {
+    const A = TUNING.audio.supper; if (!this.ctx || this.muted) return;
+    const t0 = this.ctx.currentTime + 0.05;
+    this.tone(A.drone, t0, A.droneLen, { type: 'sine', gain: A.droneGain, bus: this.musicBus, attack: 0.8 });
+    for (const [at, f, k] of A.notes) this.pluck(t0 + at, f * (k || 1) * A.detune, A.len, A.gain);
+  }
   sfxCock(vol = 1) { if (vol <= 0.02) return; this.foley('cock', { gain: 0.45 * vol }); }
   // The hound: a jaw snapping shut, dry and close.
   sfxSnap() { this.foley('snap', { gain: 0.46 }); }

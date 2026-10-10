@@ -86,7 +86,7 @@ const Warden = {
     return false;
   },
   // His last heart gone: the soul in him swallowed, and THE FLAYED stands where he stood.
-  transform(game, e) {
+  transform(game, e, quiet) {
     const M = TUNING.warden.monster;
     e.wardenGone = true;
     const m = new Enemy(e.x, e.y, 'butcher');
@@ -97,12 +97,13 @@ const Warden = {
     const i = game.enemies.indexOf(e); if (i >= 0) game.enemies.splice(i, 1, m); else game.enemies.push(m);
     e.dead = true; e.state = 'dead';
     if (game.goat.holding === e) game.goat.holding = null;
+    if (game.supper) { game.supper.phase = 'monster'; game.supper.monster = m; }
+    if (quiet) return m;   // laid back by CONTINUE: no show
     game.flash(PALETTE.witch, 0.22); game.ring(m.x, m.y, 2.8 * TILE, PALETTE.witchHi); game.ring(m.x, m.y, 1.6 * TILE, PALETTE.witch, 0.8, 4);
     game.particles(m.x, m.y - 30, 40, PALETTE.witchHi, 240); game.particles(m.x, m.y - 20, 24, PALETTE.blood, 180);
     game.floatText(m.x, m.y - 76, 'HE TAKES THE SOUL', PALETTE.witchHi);
     game.audio.sfxToll(); game.audio.sfxRune(); if (game.audio.sfxGroan) game.audio.sfxGroan('butcher');
     game.shake(9); game.hitstop(0.12); game.thud(m.x, m.y, 10);
-    if (game.supper) { game.supper.phase = 'monster'; game.supper.monster = m; }
     return m;
   },
   // The fire off THE FLAYED's fists, every frame he stands (render-side particles off his sides).

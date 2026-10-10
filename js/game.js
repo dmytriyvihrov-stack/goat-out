@@ -562,7 +562,8 @@ class Game {
       artifacts: (this.artifacts || []).map((a) => ({ id: a.id, tier: a.tier })), cape: this.cape ? this.cape.id : null,
       third: (this.talRun && this.talRun.third) || 0, bag: (this.talRun && this.talRun.bag) || 0, keys: this.runKeys | 0, crowGift: !!gift,
       kills: this.kills, time: this.timer, firstKill: this.firstKill || null, goneE, goneP, gates: sg.filter((o) => o.prop && o.prop.broken).map((o) => o.room),
-      souls, second: !!this.secondUsed, cage: !!this.cageOpen, tripAt: this.tripAt, pet: pet ? { kind: pet.kind, won: pet.won || 0, fed: pet.fed || 0 } : null };
+      souls, second: !!this.secondUsed, cage: !!this.cageOpen, tripAt: this.tripAt, pet: pet ? { kind: pet.kind, won: pet.won || 0, fed: pet.fed || 0 } : null,
+      supper: EndBoss.supperSpot(this) };   // THE LAST SUPPER as it stood (js/endboss.js)
   }
   // CONTINUE onto a floor put aside (`spotOf`): the same layout, everyone he put down gone, every room behind him with
   // nobody left in it shut at once, what he spent spent, and he stands where he stood with the hearts he had.
@@ -2969,9 +2970,11 @@ class Game {
     this.fromHeaven = false;
     if (cp) this.enterAtGate(cp);
     else if (sp) this.enterAtSpot(sp);
+    this.spotIn = sp || null;   // for `EndBoss.lay`: THE LAST SUPPER picks up where it stood
     // The floor's last man and his meeting (js/endboss.js): after a spot or a gate has taken out who is gone,
     // or a man killed before a quit was laid again (his bone in the air, his scene played on nobody).
     EndBoss.lay(this);
+    this.spotIn = null;
     // Every level starts by writing the run down: that head is what CONTINUE comes back to.
     this.saveRun();
     // Once watched, a new run (NEW GAME, RUN AGAIN) goes straight to the pen (30 Sep 2026: "don't

@@ -979,7 +979,9 @@ const TUNING = {
     // her (`run` px/s; `see` s of looking first); from `witchFrom` the corrupted one turns every bowl in the room to
     // witchfire (`witch` s of it, the soul keeps him out of it: `soulBearer.witchProof`); from `ringsFrom` his rune
     // goes off in `ring.n` rings over the whole room, a beat apart, gaps to slip through or a roll.
-    mage: { see: 1.1, run: 4.6 * TILE, runCap: 4, witchFrom: 2, witch: 1.2, ringsFrom: 3,
+    // Since 10 Oct 2026 (the user's) the mage runs to THE WARDEN waiting at the way out and hands her over (`hand` s, his `wardenLine`),
+    // and it is the Warden who goes out through the gate with her: THE CAVE's mage comes without her from then on.
+    mage: { see: 1.1, run: 4.6 * TILE, runCap: 4, hand: 1.5, wardenLine: 'MINE NOW, GOAT. COME AND TAKE HER.', witchFrom: 2, witch: 1.2, ringsFrom: 3,
       // 9 Oct 2026 playtest: "the mage's rings slower, a bit like fire, so I can roll through it": `speed` 6.5 → 3.5 tiles/s, and
       // `flames` puts the game's own witchfire every that many tiles round the ring (`flameSize`, `CombatFX.flame`'s size).
       // A volley costs one heart at most (js/waves.js `volley`).
@@ -2691,6 +2693,11 @@ const TUNING = {
       // it gets on the nerves"): a hiss on every off-eighth was that crackle. The kick, toms and rim carry it.
       fight: { kick: 0.34, kickBeats: [4, 6, 12, 14], tom: 0.36, low: 0.3, lowBeats: [10], rim: 0.09, hat: 0,
         chaseHat: 0, chaseKick: 0.2, chaseKickBeats: [4, 12] } },
+    // THE LAST SUPPER's door (10 Oct 2026, the user's: "when you come in, something answers with a touch of heaven, spooky, a few
+    // separate notes, so you very faintly doubt"): heaven's own harp notes (`playHeavenStep`'s C major), each `detune` flat, laid
+    // at `notes` [seconds, Hz, extra detune] over a `drone` Hz sine `droneLen` s long; the score is hushed under it (`audio.hush`).
+    supper: { drone: 55, droneLen: 5.5, droneGain: 0.06, detune: 0.985, gain: 0.05, len: 2.4,
+      notes: [[0, 392], [0.6, 329.63], [1.45, 261.63], [2.05, 523.25, 0.97], [3.4, 392], [4.3, 329.63, 0.96]] },
     // The score's clock: one tempo everywhere. A floor's tempo (96 on the meadow rising to 124, a fight
     // lifting it) was tried on 1 Oct 2026 and taken out the same day, "out of a fight it is just
     // stretched; it should be simpler by count, not by stretching". Calm is `layers.calm`'s job.
