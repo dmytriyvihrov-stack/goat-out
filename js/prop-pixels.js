@@ -883,6 +883,15 @@ const PROP_PIXELS = (() => {
     g.rect(12, 2, 3, 2, '#b8b8c2'); g.set(13, 1, '#e2e2ea');
     return g.outline();
   }
+  // The same platter thrown down (THE LAST SUPPER's end): the plate flat and empty, the dome lying on its side by it.
+  function platterOpen() {
+    const g = new Grid(36, 18);
+    g.ell(11, 14, 10.5, 2.8, '#6a6a72'); g.ell(11, 13.5, 9.5, 1.9, '#9c9ca6'); g.ell(11, 13.2, 6, 1, '#b8b8c2');
+    g.ell(27, 11, 7.5, 6, '#8a8a94'); g.tone((x, y) => x > 29, '#5e5e68', ['#8a8a94']); g.tone((x, y) => x < 25 && y < 10, '#b8b8c2', ['#8a8a94']);
+    g.ell(27, 11, 4.5, 3.4, '#3a3a40'); g.hl(22, 7, 3, '#e2e2ea');
+    g.rect(33, 10, 3, 2, '#b8b8c2');
+    return g.outline();
+  }
   function stool() {
     const g = new Grid(14, 11);
     g.rect(1, 1, 12, 4, P.w2); g.hl(1, 1, 12, P.w4); g.hl(1, 2, 12, P.w3); g.hl(1, 4, 12, P.w0);
@@ -1393,7 +1402,7 @@ const PROP_PIXELS = (() => {
     'sword-up': swordUp(), 'rack-back': rackBack(), 'rack-base': rackBase(),
     'coop-back': coopBack(), 'coop-front': coopFront(false), 'coop-cracked': coopFront(true), 'coop-iron': ironFront(), key: cultKey(),
     'stall-back': stallBack(), 'stall-front': stallFront(false), 'stall-cracked': stallFront(true),
-    burrow: burrow(), stool: stool(), platter: platter(), spire: spire(), 'roast-back': roastRing(false), 'roast-front': roastRing(true), 'roast-sticks': roastSticks(), 'roast-croc': croc(),
+    burrow: burrow(), stool: stool(), platter: platter(), 'platter-open': platterOpen(), spire: spire(), 'roast-back': roastRing(false), 'roast-front': roastRing(true), 'roast-sticks': roastSticks(), 'roast-croc': croc(),
   };
   for (let l = 0; l < SHIELD_LOOKS.length; l++) for (const v of 'fsb') sprites['mshield' + l + '-' + v] = boneShield(l, v);
   for (let k = 0; k < 8; k++) sprites['lantern-' + k] = lantern(k);
@@ -1824,9 +1833,10 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
       ctx.restore(); return true;
     }
     if (p.kind === 'platter') {
-      const g = S.platter, k = 1.2;
+      const name = p.open ? 'platter-open' : 'platter', g = S[name], k = 1.2;
       ctx.save(); ctx.translate(p.x, p.y);
-      put(ctx, 'platter', -g.w * k / 2, -g.h * k + 2, k);
+      if (p.open) renderer.shadow(0, 4, g.w * k * 0.4, 3);
+      put(ctx, name, -g.w * k / 2, -g.h * k + 2, k);
       if (Math.sin(renderer.t * 1.7 + (p.phase || 0)) > 0.96) { ctx.fillStyle = '#ffffff'; ctx.fillRect(-5, -g.h * k + 6, 2, 2); }
       ctx.restore(); return true;
     }

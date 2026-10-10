@@ -31,7 +31,8 @@ function showroomStatues(level) {
     if (s.shield) e.giveShield();
     if (s.thrower) Thrower.give(e);
     if (s.shaman) Shaman.give(e);
-    if (s.warden) { e.warden = true; e.pose = 'idle'; }   // THE WARDEN (js/warden-pixels.js), the last floor's gallery
+    if (s.warden) { e.warden = true; e.pose = 'idle'; }
+    if (s.flayed) { e.flayed = true; e.boss = true; e.soul = true; }   // THE FLAYED (js/flayed-pixels.js), his second phase   // THE WARDEN (js/warden-pixels.js), the last floor's gallery
     e.statue = true; e.room = -1; e.facing = Math.PI / 2; e.solid = true;   // a wraith in his body, not his mist
     if (e.shield) e.shield.ang = e.facing;
     return e;
@@ -256,7 +257,10 @@ function showroomLevel(def, seed) {
     dress[i](ix, iy);
     gallery(kindsOf(fd), ix, iy);
     // THE WARDEN stands in the last floor's gallery: the man at the head of its supper (js/endboss.js, js/warden-pixels.js).
-    if (fd === LEVELS[LEVELS.length - 1]) { statues.push(Object.assign(P(ix + 13, iy + 4.6), { kind: 'bearer', warden: true })); label('THE WARDEN', ix + 13, iy + 5.6, 4); }
+    if (fd === LEVELS[LEVELS.length - 1]) {
+      statues.push(Object.assign(P(ix + 12, iy + 4.6), { kind: 'bearer', warden: true })); label('THE WARDEN', ix + 12, iy + 5.6, 4);
+      statues.push(Object.assign(P(ix + 14.5, iy + 4.6), { kind: 'butcher', flayed: true })); label('THE FLAYED', ix + 14.5, iy + 5.6, 4);
+    }
     label(fd.name + (fd.canon ? ' · ' + fd.canon.name : ''), ix + 6.5, iy + 0.5, RW - 2, true);
     prev = r;
   });

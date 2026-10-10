@@ -1891,8 +1891,11 @@ class Game {
     if (id === 'soulpick-miss') return;   // a click beside PICK A SOUL's panel goes nowhere
     // The ENEMIES tab's SPAWN under a kind: that man, with a soul in him when the row's SOUL is on.
     if (id.startsWith('enemy-spawn=')) {
-      const tag = id.slice(12), e = this.spawnEnemy(tag === 'champion' || tag === 'boss' || tag === 'shield' || tag === 'thrower' || tag === 'shaman' ? 'bearer' : tag);
+      const tag = id.slice(12), e = this.spawnEnemy(tag === 'champion' || tag === 'boss' || tag === 'shield' || tag === 'thrower' || tag === 'shaman' || tag === 'warden' ? 'bearer' : tag === 'flayed' ? 'butcher' : tag);
       if (!e) return;
+      // the villain's two phases (js/warden.js): the man with his seven hearts, the monster with the soul in him
+      if (tag === 'warden') { Warden.give(e); this.ensoul(e); e.hp = e.maxHp = TUNING.warden.hp; this.devToast('+ THE WARDEN'); return; }
+      if (tag === 'flayed') { const M = TUNING.warden.monster; e.boss = true; e.flayed = true; this.ensoul(e); e.soulMeet = M.meet; e.hp = e.maxHp = M.hp; e.speed = e.cfg.speed * M.speedMul; this.devToast('+ THE FLAYED'); return; }
       if (tag === 'champion') { e.champion = true; e.hp = e.maxHp = TUNING.champion.hp; }
       if (tag === 'shield') e.giveShield();
       if (tag === 'thrower') Thrower.give(e);

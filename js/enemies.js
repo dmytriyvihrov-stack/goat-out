@@ -70,6 +70,7 @@ class Enemy {
   get blunderProof() { const im = this.immunity; return !!(im && im.blunder); }
   // An attack number: the butcher has his own arm, everybody else reads their own kind.
   atk(key) {
+    if (this.warden && TUNING.warden.sword[key] !== undefined) return TUNING.warden.sword[key];   // the sword (js/warden.js)
     if (this.thrower && TUNING.thrower.fist[key] !== undefined) return TUNING.thrower.fist[key];   // the big arm's fist (js/thrower.js)
     if (this.shieldman && TUNING.shieldman.strike[key] !== undefined) return TUNING.shieldman.strike[key];   // the board rammed in (`shieldman.strike`)
     const v = this.champion && TUNING.champion[key] !== undefined ? TUNING.champion[key] : this.cfg[key];
@@ -106,7 +107,7 @@ class Enemy {
     // blast. No wall ever kills him, which is the whole of what makes him dear.
     // Nor is the ogre (the Butcher, 1.66): too heavy to go anywhere, which is what sets him apart
     // from the butcher, who does. Every heart he has is taken standing, while he is on his knees.
-    if (this.kind === 'ratogre' || this.kind === 'butcher') { this.aware = true; return; }
+    if (this.kind === 'ratogre' || this.kind === 'butcher' || this.barrier) { this.aware = true; return; }
     this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true; this.flungBy = null; this.tossBy = null; this.chain = 0; this.liftedBy = null;
     this.fromMouth = false;   // `Goat.throwHeld` sets it after this; anything else that throws him clears it
     this.floorMul = 0;        // the STEALTH test's longer fall (`stealth.floor`): `headbuttHits` sets it after this
@@ -241,6 +242,10 @@ class Enemy {
 
   die(game, cause, dx, dy, how) {
     if (this.dead || this.ghosted) return;
+    // THE WARDEN behind his barrier (THE LAST SUPPER, js/endboss.js): nothing lands.
+    if (this.barrier) { game.audio.sfxCageHit(); game.particles(this.x, this.y - 20, 6, PALETTE.witchHi, 120); game.ring(this.x, this.y, TUNING.warden.barrier.r * TILE, PALETTE.witch, 0.3, 2); return; }
+    // His last heart: not a death, a change (js/warden.js).
+    if (this.warden && !this.wardenGone && cause !== 'fall' && this.hp <= 1 && typeof Warden !== 'undefined') { Warden.transform(game, this); return; }
     if (this.carry) Thrower.drop(this, game);   // a blow that lands on the thrower brings down what he held
     Stats.blow(game, this, cause, how);   // what reached him, for the run's report (js/stats.js)
     // A blow that lands on the mage's man before the scene has given him the first gate's soul finds
@@ -865,7 +870,7 @@ class Enemy {
   // The board up at all: not on a man dazed, knocked about, in the goat's mouth or blundering alight.
   shieldUp() {
     const s = this.shield;
-    return !!(s && s.uses > 0 && !this.dead && !this.held && !(this.dazed > 0) && !(this.burning > 0)
+    return !!(s && s.uses > 0 && !this.dead && !this.held && !(this.dazed > 0) && !(this.burning > 0) && !this.guardOff && this.state !== 'aim' && this.state !== 'wroll'
       && this.state !== 'floored' && this.state !== 'stagger' && this.state !== 'stunned' && this.state !== 'flung' && this.state !== 'dead');
   }
   // The board between him and (x, y): up, and the point within `arc` of the way he faces.
@@ -1457,6 +1462,8 @@ class Enemy {
     const g = game.goat, cfg = this.cfg, reach = this.atk('reach');
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
+    // THE WARDEN: the board, the sword, the tumble and the gun (js/warden.js).
+    if (this.warden && Warden.step(this, dt, game, sees)) return;
     // The butcher hooks you from across the room (`hookStep`); the man holding a post never throws.
     if (this.champion && !this.sentry && this.hookStep(dt, game, sees)) return;
     // The shieldman leaps at you behind his board (`bashStep`).

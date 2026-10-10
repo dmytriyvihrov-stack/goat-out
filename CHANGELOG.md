@@ -16,6 +16,14 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   wraith. Reached, BAAH, or a blow on anybody at the table: he laughs, every man is up, and he walks out through the way out
   with the platter. THE SHOWROOM has the platter in its hall and the Warden in THE OSSUARY's gallery.
 - **LAST ROOM · SCENE** in the dev drawer: this floor laid again, the goat stood at the door of its last room, its scene ready.
+- **The fight** (the user's, later the same day; `js/warden.js`, `TUNING.warden`): while his men fight the Warden stands in the corner
+  with the platter, laughing behind a barrier nothing passes; the last of them down, he throws the platter down, empty, and comes:
+  seven hearts, the shieldman's board up for a stretch and down for a stretch, a sword of a fair reach and a quick swing, a tumble to
+  the side off a goat running straight at him, the shotgun at a middle or far distance with the reload broken open. His last heart
+  is a change, not a death: THE FLAYED (`js/flayed-pixels.js`, the ogre's body with the hide off), an ogre with the soul in him, the
+  corrupted ogre's witchfire, faster, fire off his fists; his death drops the way out's soul. The score goes heavy for it
+  (`audio.layers.doom`: a riff chugged on every step, the kick on every eighth). The men at the table are drawn sunk and cut at the
+  feet, on stools. SPAWN rows THE WARDEN and THE FLAYED; both stand in THE SHOWROOM's last gallery.
 
 ## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
 

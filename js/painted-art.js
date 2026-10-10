@@ -621,7 +621,7 @@ class PaintedArt extends AltarArt {
   // 1.66: the butcher (the brute until 1.72) wears the old Butcher's sheet (skull, apron, cleaver) and that kind is
   // the ogre, drawn by js/ogre-pixels.js (`butcher.scale` a size up). The red-robed `brute` sheet is
   // unused for now.
-  characterKey(e) { if(e.kind==='butcher')return 'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.warden?'warden':e.champion?'butcher':e.shieldman?'spartan':e.thrower?'thrower':e.shaman?'shaman':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
+  characterKey(e) { if(e.kind==='butcher')return e.flayed?'flayed':'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.warden?'warden':e.champion?'butcher':e.shieldman?'spartan':e.thrower?'thrower':e.shaman?'shaman':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
 
   // The art is a top-down slab at the collision footprint, with no frame or square padding.
   doorSlab(ctx,p,wdt,hgt) {
@@ -738,6 +738,8 @@ class PaintedArt extends AltarArt {
     // The shieldman's board, under him when it is seen past him from behind and over him otherwise (`board`).
     if(e.shield)this.board(renderer,e,false);
     if(key==='ogre'&&typeof OGRE_PIXELS!=='undefined'&&OGRE_PIXELS.draw)OGRE_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e.state==='slamwind'||e.state==='hopwind'||e.state==='hop'?'up':'idle');
+    // THE FLAYED, the Warden's second phase: the ogre's body with the hide off (js/flayed-pixels.js).
+    else if(key==='flayed'&&typeof FLAYED_PIXELS!=='undefined'&&FLAYED_PIXELS.draw)FLAYED_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e.state==='slamwind'||e.state==='hopwind'||e.state==='hop'?'up':'idle');
     // The shieldman is Leonidas (2 Oct 2026): bare-chested under a Corinthian helmet, his own body (js/spartan-pixels.js).
     else if(key==='spartan'&&typeof SPARTAN_PIXELS!=='undefined'&&SPARTAN_PIXELS.draw)SPARTAN_PIXELS.draw(ctx,angle,moving,renderer.t,e.x);
     // The thrower is a one-armed Bane in a goat's skull, the green pulsing in his arm (js/thrower-pixels.js).

@@ -95,3 +95,10 @@ soul on the man ("so I see he is a strong one even in the first form") and a swo
 for her, a chair pulled out for you by his hand, free to walk, nobody attacks, spooky music; the chair is a ghost, he laughs, the
 brawl starts; skippable) is in js/endboss.js, see CLAUDE.md. Not built: his own fight (he leaves with the platter instead), a
 Doom-like fight cue (the score's own combat stage plays), the monster's sprite.
+
+## Built, second batch (10 Oct 2026, the user's list)
+
+- The fight: the corner, the barrier, the empty platter, then seven hearts, the board that sometimes blocks, the sword, the tumble,
+  the gun (js/warden.js). The second phase: THE FLAYED, "an ogre upgraded, for now" (js/flayed-pixels.js, `flayed.cjs` → `flayed.png`).
+- The score's doom layer for his fight; the seated men sunk behind the table on their stools.
+- Still open: his eight facings (front only), the monster's own body (the ogre's re-skinned), what she is and where (the platter is empty).

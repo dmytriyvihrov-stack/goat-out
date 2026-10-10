@@ -8,7 +8,7 @@
 // point is drawn at the origin, which is where every caller has already put the shadow.
 const PIXEL_EXTENT = {
   goat: 34, clubman: 36, brute: 38, mage: 38, hound: 40, hunter: 38, butcher: 48, wraith: 38,
-  chicken: 22, ratogre: 70, ogre: 66, spartan: 36, thrower: 48, shaman: 44, warden: 52, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
+  chicken: 22, ratogre: 70, ogre: 66, spartan: 36, thrower: 48, shaman: 44, warden: 52, flayed: 66, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
 };
 // The painted slot names this pass fills. `sheep` is the goat's old slot name, not a sheep.
 const PIXEL_UNIT = {
@@ -18,6 +18,7 @@ const PIXEL_UNIT = {
   thrower: 'thrower',   // the thrower, off js/thrower-pixels.js
   shaman: 'shaman',     // the shaman, off js/shaman-pixels.js
   warden: 'warden',     // THE WARDEN, off js/warden-pixels.js (front view only, js/endboss.js's supper)
+  flayed: 'flayed',     // THE FLAYED, his second phase, off js/flayed-pixels.js (the ogre's body re-skinned)
 };
 
 // The throat of the pixel goat in each of his eight idle facings, world px from the foot (the same
