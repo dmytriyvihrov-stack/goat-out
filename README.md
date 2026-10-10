@@ -45,7 +45,7 @@ Five verbs and nothing else. Souls change what a button does; they never add one
 | aim follows your run and snaps to nearby men | mouse | aim |
 | BUTT on the bars | left click on the bars | break out of the pen you start the run in, seven blows the first time ever, and the third and the sixth leave you on the floor. Every run after that, two |
 | BUTT | left click | headbutt, it knocks a man down. Into a wall, a pillar, a brazier or another man, he stays down for good |
-| hold GRAB | hold right click | carry a box, a blade, a shield, a bomb. A man is a soul away: until BY THE COLLAR the mouth takes objects only |
+| hold GRAB | hold right click | carry a box, a blade, a shield, a bomb. A man is a soul away: until WHO IS THE BOSS the mouth takes objects only |
 | release GRAB | release right click | throw, a box flattens, a sword goes through, a thrown man kills what he hits |
 | ROLL | E | a clumsy sideways tumble with brief mercy frames, on a short cooldown. Ask for no direction and it throws you clear of whoever is about to hit you |
 | BAAH | space | a noise every man who hears it walks toward, and a committed blow inside it falters. A soul makes it a stun or a cone of fire |

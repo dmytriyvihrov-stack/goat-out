@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bot Lab</title>
+<!-- THE BOT LAB's report (10 Oct 2026): reads the runs tools/bot-lab.js wrote to this origin's localStorage
+     (`goatlab.v1`, so open it on the same server and port the bot played on), or a JSON file LAB.export() saved. -->
+<script src="/js/tuning.js"></script>
+<style>
+  :root { --bg: #15140f; --card: #201e17; --ink: #efe6d0; --dim: #a39a85; --line: #3a3628; --strong: #7fbf5a; --medium: #e0b84a; --weak: #d06a4a; --bar: #8a7f63; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f6f1e4; --card: #fffaf0; --ink: #2a2518; --dim: #6f6650; --line: #ddd2b8; --bar: #b7a983; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; padding: 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; } h2 { font-size: 16px; margin: 22px 0 8px; }
+  .dim { color: var(--dim); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  button, select, label.file { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; font: inherit; cursor: pointer; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .card b { font-size: 22px; }
+  .wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--dim); font-weight: 600; cursor: pointer; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { display: inline-block; height: 10px; background: var(--bar); border-radius: 2px; vertical-align: middle; }
+  .s-strong { color: var(--strong); } .s-medium { color: var(--medium); } .s-weak { color: var(--weak); }
+  .b-strong { background: var(--strong); } .b-medium { background: var(--medium); } .b-weak { background: var(--weak); }
+  .floors { display: grid; grid-template-columns: 60px 1fr; gap: 3px 8px; align-items: center; }
+  .stack { display: flex; height: 14px; }
+</style>
+</head>
+<body>
+<h1>Bot Lab</h1>
+<div class="dim" id="src"></div>
+<div class="row" style="margin:10px 0">
+  <select id="hand"><option value="">every hand</option><option>strong</option><option>medium</option><option>weak</option></select>
+  <button id="reload">reload</button>
+  <label class="file">open JSON<input type="file" id="file" accept=".json" hidden></label>
+  <button id="save">save JSON</button>
+</div>
+<div class="cards" id="cards"></div>
+<h2>Where runs end</h2><div class="floors" id="floors"></div>
+<h2>What killed it</h2><div class="wrap"><table id="killers"></table></div>
+<h2>Souls: taken, and how far runs that took them got</h2><div class="wrap"><table id="boons"></table></div>
+<h2>Talismans</h2><div class="wrap"><table id="arts"></table></div>
+<h2>Runs</h2><div class="wrap"><table id="runs"></table></div>
+<script>
+const HANDS = ['strong', 'medium', 'weak'];
+let DB = { runs: [] }, FROM = 'this browser';
+const $ = (id) => document.getElementById(id);
+const nameOf = (id) => { const b = typeof BOONS !== 'undefined' && BOONS.find((x) => x.id === id); if (b) return b.name; const a = typeof ARTIFACTS !== 'undefined' && ARTIFACTS.find((x) => x.id === id); if (a) return a.name; const c = typeof CAPES !== 'undefined' && CAPES.find((x) => x.id === id); return c ? c.name : id; };
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+function loadLocal() { try { DB = JSON.parse(localStorage.getItem('goatlab.v1') || 'null') || { runs: [] }; } catch (e) { DB = { runs: [] }; } FROM = 'this browser (' + location.host + ')'; draw(); }
+function sortable(tbl, rows, cols) {
+  let key = cols.findIndex((c) => c.sort), dir = -1;
+  const paint = () => {
+    const r = rows.slice().sort((a, b) => { const x = cols[key].v(a), y = cols[key].v(b); return (x > y ? 1 : x < y ? -1 : 0) * dir; });
+    tbl.innerHTML = '<tr>' + cols.map((c, i) => `<th data-i="${i}">${c.h}${i === key ? (dir < 0 ? ' ▾' : ' ▴') : ''}</th>`).join('') + '</tr>' +
+      r.map((row) => '<tr>' + cols.map((c) => `<td class="${c.num ? 'num' : ''}">${c.html ? c.html(row) : esc(c.v(row))}</td>`).join('') + '</tr>').join('');
+    tbl.querySelectorAll('th').forEach((th) => th.onclick = () => { const i = +th.dataset.i; if (i === key) dir = -dir; else { key = i; dir = -1; } paint(); });
+  };
+  if (key < 0) key = 0; paint();
+}
+function draw() {
+  const hand = $('hand').value, runs = DB.runs.filter((r) => !hand || r.skill === hand);
+  $('src').textContent = `${DB.runs.length} runs from ${FROM}` + (hand ? `, showing ${runs.length} of the ${hand} hand` : '');
+  // cards per hand
+  $('cards').innerHTML = HANDS.map((h) => {
+    const rs = DB.runs.filter((r) => r.skill === h); if (!rs.length) return `<div class="card"><span class="s-${h}">${h}</span><br><span class="dim">no runs yet</span></div>`;
+    const fl = rs.map((r) => r.reached || 1).sort((a, b) => a - b), avg = fl.reduce((s, v) => s + v, 0) / fl.length, med = fl[Math.floor(fl.length / 2)];
+    const win = rs.filter((r) => r.end === 'win').length, dur = rs.reduce((s, r) => s + (r.dur || 0), 0) / rs.length;
+    return `<div class="card"><span class="s-${h}">${h}</span> · ${rs.length} runs<br><b>${avg.toFixed(1)}</b> <span class="dim">avg floor · median ${med} · best ${fl[fl.length - 1]}</span><br>escaped ${win} · ${Math.round(dur / 60)} min a run · ${(rs.reduce((s, r) => s + (r.kills || 0), 0) / rs.length).toFixed(0)} kills a run</div>`;
+  }).join('');
+  // where runs end: per floor, a bar stacked by hand
+  const maxF = Math.max(8, ...runs.map((r) => r.reached || 1)), per = {};
+  for (const r of runs) { const f = r.end === 'win' ? 'OUT' : r.reached || 1; (per[f] = per[f] || {})[r.skill] = ((per[f] || {})[r.skill] || 0) + 1; }
+  const top = Math.max(1, ...Object.values(per).map((o) => Object.values(o).reduce((s, v) => s + v, 0)));
+  const rowsF = [...Array(maxF).keys()].map((i) => i + 1).concat(['OUT']);
+  $('floors').innerHTML = rowsF.map((f) => { const o = per[f] || {}, tot = Object.values(o).reduce((s, v) => s + v, 0);
+    const names = typeof LEVELS !== 'undefined' && f !== 'OUT' && LEVELS[f - 1] ? LEVELS[f - 1].name : '';
+    return `<span title="${esc(names)}">${f === 'OUT' ? 'escaped' : 'floor ' + f}</span><div class="row" style="gap:6px"><div class="stack" style="width:${tot / top * 70}%">${HANDS.map((h) => o[h] ? `<div class="b-${h}" style="flex:${o[h]}" title="${h}: ${o[h]}"></div>` : '').join('')}</div><span class="dim">${tot || ''} ${names ? '· ' + esc(names) : ''}</span></div>`; }).join('');
+  // killers
+  const K = {}; for (const r of runs) if (r.end !== 'win') { const k = r.killer || '?'; K[k] = K[k] || { k, n: 0, f: 0, by: {} }; K[k].n++; K[k].f += r.reached || 1; K[k].by[r.skill] = (K[k].by[r.skill] || 0) + 1; }
+  sortable($('killers'), Object.values(K), [
+    { h: 'killer', v: (x) => x.k }, { h: 'deaths', v: (x) => x.n, num: true, sort: true },
+    { h: 'avg floor', v: (x) => +(x.f / x.n).toFixed(1), num: true },
+    ...HANDS.map((h) => ({ h, v: (x) => x.by[h] || 0, num: true })),
+  ]);
+  // souls and talismans
+  const table = (tbl, field, all) => {
+    const S = {}; for (const id of all) S[id] = { id, n: 0, off: 0, f: 0, at: 0, runs: 0 };
+    for (const r of runs) {
+      const seen = new Set();
+      for (const b of r[field] || []) { const s = S[b.id] || (S[b.id] = { id: b.id, n: 0, off: 0, f: 0, at: 0, runs: 0 }); s.n++; s.at += b.f || 1; if (!seen.has(b.id)) { seen.add(b.id); s.runs++; s.f += r.reached || 1; } }
+      if (field === 'boons') for (const o of r.offers || []) for (const id of o.of || []) { const s = S[id] || (S[id] = { id, n: 0, off: 0, f: 0, at: 0, runs: 0 }); s.off++; }
+    }
+    const best = Math.max(1, ...Object.values(S).map((s) => s.n));
+    sortable(tbl, Object.values(S), [
+      { h: 'name', v: (s) => nameOf(s.id) }, { h: 'taken', v: (s) => s.n, num: true, sort: true, html: (s) => `<span class="bar" style="width:${s.n / best * 80}px"></span> ${s.n}` },
+      ...(field === 'boons' ? [{ h: 'offered', v: (s) => s.off, num: true }, { h: 'taken / offered', v: (s) => s.off ? Math.round(s.n / s.off * 100) : 0, num: true, html: (s) => s.off ? Math.round(s.n / s.off * 100) + '%' : '-' }] : []),
+      { h: 'on floor (avg)', v: (s) => s.n ? +(s.at / s.n).toFixed(1) : 0, num: true },
+      { h: 'runs with it reached (avg floor)', v: (s) => s.runs ? +(s.f / s.runs).toFixed(2) : 0, num: true },
+    ]);
+  };
+  table($('boons'), 'boons', typeof BOONS !== 'undefined' ? BOONS.map((b) => b.id) : []);
+  table($('arts'), 'arts', typeof ARTIFACTS !== 'undefined' ? ARTIFACTS.map((a) => a.id) : []);
+  // runs, newest first
+  sortable($('runs'), runs.slice().reverse(), [
+    { h: '#', v: (r) => r.n, num: true, sort: true }, { h: 'hand', v: (r) => r.skill, html: (r) => `<span class="s-${r.skill}">${r.skill}</span>` },
+    { h: 'floor', v: (r) => r.reached || 1, num: true }, { h: 'ended', v: (r) => r.end === 'win' ? 'ESCAPED' : r.end === 'stuck' ? 'stuck' : r.killer || '?' },
+    { h: 'min', v: (r) => +((r.dur || 0) / 60).toFixed(1), num: true }, { h: 'kills', v: (r) => r.kills || 0, num: true },
+    { h: 'souls', v: (r) => (r.boons || []).map((b) => nameOf(b.id) + ' (' + b.f + ')').join(', ') },
+    { h: 'talismans', v: (r) => (r.arts || []).map((a) => nameOf(a.id)).join(', ') + (r.cape ? ' · ' + nameOf(r.cape) : '') },
+    { h: 'seed', v: (r) => r.seed }, { h: 'when', v: (r) => (r.at || '').slice(5, 16).replace('T', ' ') },
+  ]);
+}
+$('hand').onchange = draw; $('reload').onclick = loadLocal;
+$('file').onchange = (ev) => { const f = ev.target.files[0]; if (!f) return; f.text().then((t) => { DB = JSON.parse(t); FROM = f.name; draw(); }); };
+$('save').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(DB, null, 1)], { type: 'application/json' })); a.download = 'goat-bot-lab.json'; a.click(); };
+loadLocal(); setInterval(() => { if (FROM.startsWith('this browser')) loadLocal(); }, 15000);
+</script>
+</body>
+</html>

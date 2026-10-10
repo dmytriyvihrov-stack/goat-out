@@ -6727,7 +6727,7 @@ class Renderer {
     const SRC = [
       ['💦 SPLASH (butt)', [['REACH', ['status', 'splash', 'range']], ['BEHIND PAST', ['status', 'splash', 'back']]]],
       ['🐍 VENOM JAW (grab)', [['PUDDLE HALF', ['status', 'jaw', 'half']], ['TOUCH', ['status', 'jaw', 'touch']]]],
-      ['☄️ FIREBRAND (grab)', [['BURNS', ['status', 'brand', 'burn']], ['GAP', ['status', 'brand', 'gap']]]],
+      ['☄️ SUPERHOT (grab)', [['BURNS', ['status', 'brand', 'burn']], ['GAP', ['status', 'brand', 'gap']]]],
       ['🦠 SOUR TUMBLE (roll)', [['PUDDLE HALF', ['status', 'tumble', 'half']]]],
       ['🫧 VENOM SPIT (scream)', [['SPEED', ['status', 'spit', 'speed']], ['RANGE', ['status', 'spit', 'range']], ['PUDDLE HALF', ['status', 'spit', 'half']]]],
     ];
@@ -6738,7 +6738,7 @@ class Renderer {
       sy = chips(list, pad + 170 * s, sy, W - pad);
     }
     ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.45)';
-    ctx.fillText('the hold time of VENOM JAW and FIREBRAND, and the SPIT cooldown, are the boons\' own params on the BOONS tab', pad, sy + 8 * s);
+    ctx.fillText('the hold time of VENOM JAW and SUPERHOT, and the SPIT cooldown, are the boons\' own params on the BOONS tab', pad, sy + 8 * s);
   }
 
   // THE FIXTURES: every kind of Prop that stands in a room, read live off TUNING the way the

@@ -131,7 +131,9 @@
       return { x: r.left + mx * r.width / cv.width, y: r.top + my * r.height / cv.height };
     };
     const ptr = (type, cx, cy, button = 0, buttons = 0) => cv.dispatchEvent(new PointerEvent(type, { clientX: cx, clientY: cy, pointerType: 'mouse', pointerId: 1, button, buttons, bubbles: true, cancelable: true }));
-    const aim = (wx, wy) => { B.aimW = { x: wx, y: wy }; const c = toClient(wx, wy); B.mx = c.x; B.my = c.y; ptr('pointermove', c.x, c.y); return c; };
+    // `B.aimErr` (px, set by tools/bot-lab.js for a weaker hand): the pointer lands that far off at random.
+    const aim = (wx, wy) => { if (B.aimErr) { const a = Math.random() * 6.283, r = B.aimErr * Math.sqrt(Math.random()); wx += Math.cos(a) * r; wy += Math.sin(a) * r; }
+      B.aimW = { x: wx, y: wy }; const c = toClient(wx, wy); B.mx = c.x; B.my = c.y; ptr('pointermove', c.x, c.y); return c; };
     const butt = (wx, wy) => { const c = aim(wx, wy); ptr('pointerdown', c.x, c.y, 0, 1); setTimeout(() => ptr('pointerup', c.x, c.y, 0, 0), 30); };
     const rmb = (down, wx, wy) => {
       const c = wx != null ? aim(wx, wy) : { x: B.mx || 0, y: B.my || 0 };
@@ -350,6 +352,8 @@
     const boonValue = b => b ? (BOON_PRIOR[b.id] != null ? BOON_PRIOR[b.id] : 3) + (mem.boonScore[b.id] || 0) : 0;
     function pickBoon() {
       const ch = g.boonChoice || []; if (!ch.length) return;
+      // tools/bot-lab.js picks for it when it wants variety (`B.choose` returns a card's index, or null to let the bot pick)
+      if (B.choose) { const ci = B.choose(ch, g.boonReplace || []); if (ci != null && ch[ci]) { tap('Digit' + (ci + 1)); say('boon: lab took ' + ch[ci].id + ' from ' + ch.map(b => b.id).join('/')); return; } }
       let bi = -1, bv = 0.5;
       ch.forEach((b, i) => { const v = boonValue(b) - boonValue(g.boonReplace && g.boonReplace[i]); if (v > bv) { bv = v; bi = i; } });
       if (bi < 0) { tap('Digit4'); say('boon: skip ' + ch.map(b => b.id).join('/')); return; }
@@ -579,7 +583,7 @@
       if (st === 'paused') { if (B.t % 20 === 0) tap('Escape'); return; }
       if (st === 'dead') { if (B.t % 20 === 0) tap('Space'); return; }
       if (st !== 'play') return;
-      if (g.shopDlg) { releaseAll(); if (B.rmb) rmb(false); if (B.t % 10 === 0) { tap('Digit1'); say('shop: take offer 1'); } return; }
+      if (g.shopDlg) { releaseAll(); if (B.rmb) rmb(false); if (B.t % 10 === 0) { const si = (B.chooseShop && B.chooseShop()) || 0; tap('Digit' + (si + 1)); say('shop: take offer ' + (si + 1)); } return; }
       if (g.beastTalk) { if (B.t % 15 === 0) tap('Space'); }
       const o = g.goat; if (!o || o.dead) return;
       if (!B.life || B.life.level !== g.levelIndex) newLife(B.life ? 'level changed' : 'start');
@@ -932,8 +936,9 @@
     }
   
     B.release = () => { releaseAll(); if (B.rmb) rmb(false); };
-    Object.assign(B, { bfs, blockedGrid, lineClear, butt, aim, move, tap, millDanger, endLife });
-    B.iv = setInterval(() => { try { tick(); } catch (err) { say('ERR ' + err.message); } }, 50);
+    Object.assign(B, { bfs, blockedGrid, lineClear, butt, aim, move, tap, millDanger, endLife, pickBoon, releaseAll });
+    // `B.skip` (0..1, tools/bot-lab.js): that share of its looks at the world are skipped, a slower reaction.
+    B.iv = setInterval(() => { try { if (B.skip && g.state === 'play' && Math.random() < B.skip) return; tick(); } catch (err) { say('ERR ' + err.message); } }, 50);
     say('doomed goat bot started');
   })();
   
