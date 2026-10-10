@@ -107,3 +107,9 @@ Doom-like fight cue (the score's own combat stage plays), the monster's sprite.
 
 Eight facings of the Warden (`ingame.cjs` → `ingame.png`), the supper through a quit and CONTINUE, the handoff at the end of THE YARD
 (the mage runs to him, she goes under his arm, he goes out through the gate), and the hall's entry notes: heaven's harp, flat and far.
+
+## Built, fourth batch (10 Oct 2026)
+
+THE FLAYED drawn from scratch (`flayed.cjs` → `flayed.png`), the front aim down the barrels, the handoff's view of her, and the third
+sighting: across THE ROAD's chasm with her under his arm. The order of his appearances is now THE YARD's end, THE ROAD's drop, THE
+OSSUARY's table; the fight is the table's.

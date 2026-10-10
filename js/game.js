@@ -4206,7 +4206,8 @@ class Game {
     if (this.skyTables) this.updateSkyTables(dt);
     if (this.powder && this.powder.size) this.updatePowder(dt);
     if (this.waves && this.waves.length) Waves.update(this, dt);   // a corrupted ogre's witchfire (js/waves.js)
-    if (this.supper) EndBoss.supperStep(this, dt);   // THE LAST SUPPER: the chair, his lines, what breaks it, his way out (js/endboss.js)
+    if (this.supper) EndBoss.supperStep(this, dt);
+    if (this.glimpse) EndBoss.glimpseStep(this, dt);   // THE ROAD: the Warden seen across the chasm with her (js/endboss.js)   // THE LAST SUPPER: the chair, his lines, what breaks it, his way out (js/endboss.js)
     Sacrifice.update(this, dt);   // THE SACRIFICE ALTAR: a heart a second for whatever stands on it (js/sacrifice.js)
     w.updateFire(dt);
     Status.update(this, dt);

@@ -40,7 +40,7 @@ const EndBoss = {
 
   // `startLevel`, once the souls are in: find the floor's last man and set him up for his meeting.
   lay(game) {
-    game.endBoss = null; game.endScene = null; game.supper = null; game.doom = false;
+    game.endBoss = null; game.endScene = null; game.supper = null; game.doom = false; game.glimpse = null;
     const L = game.level, def = L && L.def;
     if (!def || game.showroomOn || def.heaven || def.shroom || def.trip !== undefined || def.dark) return;
     const li = levelIndexOf(def);
@@ -49,6 +49,7 @@ const EndBoss = {
     const arenas = def.arenas || [], ring = arenas[arenas.length - 1];
     if (!ring) return;
     if (li === LEVELS.length - 1) { if (ring.supper) this.laySupper(game, ring, li); return; }
+    if (li === TUNING.endBoss.glimpse.floor) this.layGlimpse(game, li);
     const last = ring.at, room = L.rooms[last];
     if (!room) return;
     const e = game.enemies.find((o) => o.boss && o.soul && !o.dead && o.room === last);
@@ -271,14 +272,16 @@ const EndBoss = {
       if (done || S.pt > T.runCap) {
         if (!wd) { game.enemies = game.enemies.filter((o) => o !== m); shut(); return m; }
         // into the Warden's arm: he turns to the goat with her, and says so
-        phase('hand'); S.carrier = wd; m.facing = Math.atan2(wd.y - m.y, wd.x - m.x); wd.facing = Math.atan2(g.y - wd.y, g.x - wd.x);
+        phase('hand'); S.carrier = wd; m.facing = Math.atan2(wd.y - m.y, wd.x - m.x);
+        // he turns so that she, on his right side (`underArm`), is on the side away from the mage
+        wd.facing = Math.atan2(m.y - wd.y, m.x - wd.x) + Math.PI / 2;
         game.say(wd, T.wardenLine); game.audio.sfxGrowl(); game.floatText(wd.x, wd.y - 60, 'HA HA HA!', PALETTE.blood);
-        m.path = [{ x: m.x - S.out.x * TILE * 1.2 + S.out.y * TILE, y: m.y - S.out.y * TILE * 1.2 - S.out.x * TILE }];   // the mage steps aside
+        m.path = [{ x: m.x - S.out.x * TILE * 1.4 + S.out.y * TILE * 2.2, y: m.y - S.out.y * TILE * 1.4 - S.out.x * TILE * 2.2 }];   // the mage steps well aside, so she is seen under the Warden's arm
       }
       return m;
     }
     if (S.phase === 'hand') {
-      game.followPath(m, T.run * 0.6, dt); bleat();
+      game.followPath(m, T.run * 0.8, dt); bleat();
       if (S.pt >= T.hand) { phase('out'); wd.path = [{ x: d.x - S.out.x * TILE, y: d.y - S.out.y * TILE }, { x: d.x, y: d.y }, { x: d.x + S.out.x * TILE * 2.2, y: d.y + S.out.y * TILE * 2.2 }]; }
       return wd;
     }
@@ -473,6 +476,52 @@ const EndBoss = {
     return true;
   },
 
+  // ---- THE ROAD: a glimpse of him across the chasm ----
+  // (10 Oct 2026, the user's: seen three times before he is fought.) In the chasm lesson's empty room THE WARDEN stands on
+  // the far side of the drop with her under his arm; the goat in the room, he says his line, laughs, and walks out through
+  // the room's way out, gone past it. Not a held scene (`game.glimpse`, `glimpseStep` in the play step); untouchable (`barrier`).
+  layGlimpse(game, li) {
+    game.glimpse = null;
+    const L = game.level, c = (L.chasms || []).find((q) => q.lesson); if (!c) return;
+    const room = L.rooms[c.room], w = game.world; if (!room || !room.exitMouth) return;
+    const T = TUNING.endBoss.glimpse, mid = (c.lo + c.hi) / 2;
+    const spots = [];
+    for (let k = T.past; k <= T.past + 2; k += 0.5) for (const o of [0, -1, 1, -2, 2]) {
+      const tx = c.axis === 'v' ? c.at + c.far * k : mid + o, ty = c.axis === 'v' ? mid + o : c.at + c.far * k;
+      if (w.walkableAt(Math.floor(tx), Math.floor(ty))) spots.push({ x: (Math.floor(tx) + 0.5) * TILE, y: (Math.floor(ty) + 0.5) * TILE });
+    }
+    if (!spots.length) return;
+    const at = spots[0];
+    const e = new Enemy(at.x, at.y, 'bearer'); e.warden = true; e.scripted = true; e.barrier = true; e.aware = false; e.room = -1; e.pose = 'idle'; e.hp = e.maxHp = 99;
+    e.facing = c.axis === 'v' ? (c.far > 0 ? Math.PI : 0) : (c.far > 0 ? -Math.PI / 2 : Math.PI / 2);
+    game.enemies.push(e);
+    const s = { x: e.x, y: e.y, facing: 0, kick: 0, bleating: 0, jitter: null, vx: 0, vy: 0, gone: false };
+    game.underArm(s, e, 0);
+    game.glimpse = { room: c.room, e, ewe: s, seen: false, t: 0, bleat: 0.6 };
+  },
+  glimpseStep(game, dt) {
+    const G = game.glimpse, e = G.e, g = game.goat, T = TUNING.endBoss.glimpse, room = game.level.rooms[G.room];
+    if (!G || e.dead) { game.glimpse = null; return; }
+    if (e.say) { e.say.life -= dt; if (e.say.life <= 0) e.say = null; }
+    if (!G.seen) {
+      if (g.dead || !room || !this.inRoom(room, g.x, g.y)) { game.underArm(G.ewe, e, 0); return; }
+      G.seen = true; G.t = 0;
+      e.facing = Math.atan2(g.y - e.y, g.x - e.x);
+      game.say(e, T.line); game.floatText(e.x, e.y - 60, 'HA HA HA!', PALETTE.blood); game.audio.sfxGrowl();
+      game.floatText(G.ewe.x, G.ewe.y - 28, 'BEEH!', PALETTE.bone); game.audio.sfxBleat(540, 0.14, 0.26); G.ewe.bleating = 0.35;
+      const M = room.exitMouth, cx = (room.x + room.w / 2) * TILE, cy = (room.y + room.h / 2) * TILE;
+      const ox = M.vertical ? Math.sign(M.x - cx) || 1 : 0, oy = M.vertical ? 0 : Math.sign(M.y - cy) || 1;
+      e.path = [{ x: M.x - ox * TILE * 0.5, y: M.y - oy * TILE * 0.5 }, { x: M.x + ox * TILE * 2.5, y: M.y + oy * TILE * 2.5 }];
+      return;
+    }
+    G.t += dt;
+    game.underArm(G.ewe, e, G.t); G.ewe.bleating = Math.max(0, G.ewe.bleating - dt);
+    G.bleat -= dt; if (G.bleat <= 0) { G.bleat = 0.6 + Math.random() * 0.3; G.ewe.bleating = 0.25; game.floatText(G.ewe.x, G.ewe.y - 28, 'BEEH!', PALETTE.bone); game.audio.sfxBleat(540, 0.12, 0.25); }
+    const done = G.t > T.wait && game.followPath(e, T.speed * TILE, dt);
+    if (G.t <= T.wait) e.facing = Math.atan2(g.y - e.y, g.x - e.x);
+    if (done || G.t > T.cap) { game.enemies = game.enemies.filter((o) => o !== e); game.glimpse = null; }
+  },
+
   // ---- THE OSSUARY: THE LAST SUPPER ----
   // `startLevel`: the room's men sat along the table, the boss nearest the head, THE WARDEN standing past it, the chair (a wraith
   // hidden as a stool) past the foot, the platter on the middle table. The men are held (`endHold` 'sit') until it breaks.
@@ -659,7 +708,8 @@ const EndBoss = {
   },
   // Over everybody: the bone in his teeth, the bone in the air, her under the running mage's arm.
   drawWorld(R, game) {
-    const B = game.endBoss, S = game.endScene, U = game.supper;
+    const B = game.endBoss, S = game.endScene, U = game.supper, G = game.glimpse;
+    if (G && G.ewe && !G.e.dead && game.inSight(G.e)) R.drawSheep(G.ewe);
     if (U && U.warden && !U.warden.dead && game.inSight(U.warden)) {
       const w = U.warden, ctx = R.ctx;
       if (U.carry) { ctx.save(); ctx.translate(w.x, w.y - (PIXEL_EXTENT.warden + 4) * TILT); ctx.scale(1, 1 / TILT); R.painted.platter(ctx, 0, 0); ctx.restore(); }

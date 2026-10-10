@@ -13,7 +13,7 @@ const y0 = 30 + FP.H * Z + 250; x = pad;
 text(img, 'AT WORLD SIZE: clubman, the Warden, the ogre, the Flayed', pad, y0 - 230, '#e8d8b0', 2);
 const put = (im, k, foot, label) => { const w = Math.round(im.w * k * S), h = Math.round(im.h * k * S); img.blit(im, 0, 0, im.w, im.h, x, Math.round(y0 - foot * k * S), w, h, true); text(img, label, x, y0 + 6, '#d8ccb0', 2); x += w + pad; };
 let a = C.atlasImg('clubman', 0); put(a.im, a.k, a.foot, 'man');
-put(C.toImg(WP.sprite('idle')), 0.72, WP.FOOT + 1, 'warden');
+{ const sp = WP.sprite(0, 'idle', 0); put(flipImg(sp.g, sp.flip), 0.72, WP.FOOT + 1, 'warden'); }
 const og = OG.sprite(0, 'idle', 0); put(flipImg(og.g, og.flip), 1.4, OG.FOOT, 'ogre');
 const fl = FP.sprite(0, 'idle', 0); put(flipImg(fl.g, fl.flip), 1.4, FP.FOOT, 'flayed');
 fs.writeFileSync(__dirname + '/flayed.png', img.png()); console.log('flayed.png', img.w, img.h);

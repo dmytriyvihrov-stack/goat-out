@@ -8,7 +8,7 @@
 // point is drawn at the origin, which is where every caller has already put the shadow.
 const PIXEL_EXTENT = {
   goat: 34, clubman: 36, brute: 38, mage: 38, hound: 40, hunter: 38, butcher: 48, wraith: 38,
-  chicken: 22, ratogre: 70, ogre: 66, spartan: 36, thrower: 48, shaman: 44, warden: 52, flayed: 66, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
+  chicken: 22, ratogre: 70, ogre: 66, spartan: 36, thrower: 48, shaman: 44, warden: 52, flayed: 80, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
 };
 // The painted slot names this pass fills. `sheep` is the goat's old slot name, not a sheep.
 const PIXEL_UNIT = {

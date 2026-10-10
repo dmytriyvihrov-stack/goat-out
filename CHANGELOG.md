@@ -31,6 +31,10 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 - **She changes hands at the end of THE YARD**: the opening's mage runs to the Warden waiting at the way out, she goes under his arm,
   "MINE NOW, GOAT. COME AND TAKE HER.", and he is the one who goes through the gate with her. THE CAVE's mage comes without her now.
 - **Walking into the hall** a few of heaven's harp notes sound, flat and far, over a drone, under the hushed score: is she here?
+- **THE FLAYED is a body of his own** (`js/flayed-pixels.js`, no longer the ogre re-skinned): the ogre's recipe, a size over him, meat
+  and sinew, the cage, the ribs, and the man's harness with the soul the size of a fist at its crossing.
+- **Seen three times**: on THE ROAD the Warden stands across the chasm lesson's drop with her under his arm, says his line and walks off.
+- The front aim looks down the two barrels now; at the handoff the mage steps well aside so she is seen under the Warden's arm.
 
 ## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
 

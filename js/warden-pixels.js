@@ -108,7 +108,14 @@ const WARDEN_PIXELS = (() => {
     if (up) { arm(g, rx, 27, cx - 20 * L, 20, cx - 17 * L, 7, T, 5.5); bracer(g, cx - 17 * L, 7, cx - 20 * L, 20); vol(g, cx - 17 * L, 6, 3.8, 3.4, T); for (const [dx, dy] of [[-3, -2.5], [-1.5, -3.5], [0.5, -3.5], [2.5, -2.5]]) limb(g, cx - 17 * L + dx * 0.6 * L, 5, cx - 17 * L + dx * L, 3 + dy, 1.6, T); if (p === 'raise') soulSpark(g, cx - 17 * L, 3); }
     else if (wind) { arm(g, rx, 27, cx - 22 * L, 22, cx - 20 * L, 12, T, 5.5); sword(g, cx - 20 * L, 12, cx - 26 * L, 2); }
     else if (swing) { arm(g, rx, 27, cx - 14 * L, 40, cx - 2 * L, 48, T, 5.5); sword(g, cx - 2 * L, 48, cx + 14 * L, 60); }
-    else if (aim) { arm(g, rx, 27, cx - 8 * L, 36, cx - 2 * L, 40, T, 5.5); gun(g, cx - 2 * L, 41, cx - 2 * L, 56); }
+    else if (aim) {
+      // the gun pointed at the camera: the stock up at his shoulder foreshortened, both hands on it, and the two muzzles looked down
+      arm(g, rx, 27, cx - 8 * L, 36, cx - 3 * L, 42, T, 5.5);
+      g.bar(cx + 3 * L, 29, cx - 1 * L, 39, 3.4, R.hide[2], R.hide[3], R.hide[1]);
+      g.ell(cx, 44.5, 6.2, 3.6, R.iron[2]); g.ring(cx, 44.5, 6.2, 3.6, 1, R.iron[1]);
+      for (const sg of [-1, 1]) { g.ell(cx + sg * 2.6, 44.5, 2.4, 2.4, R.iron[3]); g.ell(cx + sg * 2.6, 44.5, 1.3, 1.3, R.iron[0]); }
+      dot(g, cx - 4.5, 42.5, R.iron[4]);
+    }
     else { arm(g, rx, 27, cx - 19 * L, 39, cx - 18 * L, 52, T, 5.5); bracer(g, cx - 18 * L, 52, cx - 19 * L, 39); }
     head(g, cx - turn * 2, 13, T);
     mask(g, cx - turn * 2, 13, turn);

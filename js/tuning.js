@@ -1005,6 +1005,9 @@ const TUNING = {
     // Then (the user's, same day): he carries the platter to a corner (`corner` tiles in from it) and laughs there behind a barrier
     // (`TUNING.warden.barrier`) while his men fight; the last of them down, he throws the platter down, empty (`drop.wait` s of
     // that, `drop.line`), and the fight with him is on (js/warden.js), the score gone heavy (`audio.layers.doom`).
+    // THE ROAD's glimpse (10 Oct 2026): THE WARDEN on the far side of the lesson's drop, `past` tiles past it, with her under his arm;
+    // seen, his `line`, `wait` s looking at the goat, then out through the room's way out at `speed` tiles/s (`cap` s at most).
+    glimpse: { floor: 3, past: 2, line: 'STILL COMING, GOAT? SHE IS KEPT FOR THE TABLE.', wait: 1.6, speed: 4.6, cap: 12 },
     supper: { seat: 1.55, gap: 1.6, inset: 0.9, head: 1.5, chair: 1.1, slide: 0.9, slideBy: 0.8, lineGap: 3.2, leave: 4.2, leaveCap: 6, corner: 2.2, sink: 10,
       lines: ['SIT, LITTLE GOAT.', 'EAT WITH US.', 'SHE IS WARM STILL.'], laugh: 'NOT YET.', laughs: ['HA HA HA!', 'HAAA HA HA!', 'HEH HEH HEH.'],
       drop: { wait: 1.6, line: 'SHE WAS NEVER HERE.' } },
