@@ -236,6 +236,14 @@ class Game {
       if (h === 'bot' && !this.dev.hidden && /^(localhost|127\.0\.0\.1)$/.test(location.hostname || '')) {
         const s = document.createElement('script'); s.src = '/tools/autoplay-bot.js'; (document.body || document.head).appendChild(s);
       }
+      // `#lab`, `#lab=strong|medium|weak|rotate` (10 Oct 2026): THE BOT LAB (tools/bot-lab.js) plays run after run at that
+      // hand and writes them down; the report is /tools/bot-lab.html on the same server. Served pages only, like `#bot`.
+      const lab = /^lab(?:=(strong|medium|weak|rotate))?$/.exec(h);
+      if (lab && !this.dev.hidden && /^(localhost|127\.0\.0\.1)$/.test(location.hostname || '')) {
+        const s = document.createElement('script'); s.src = '/tools/bot-lab.js';
+        s.onload = () => setTimeout(() => window.LAB.start({ level: lab[1] || 'rotate', pick: 'variety' }), 1500);
+        (document.body || document.head).appendChild(s);
+      }
     } catch (e) { /* no location worth reading */ }
     this.layoutTouch();
     this.bindInput();
