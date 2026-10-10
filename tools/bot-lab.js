@@ -31,6 +31,9 @@ window.LAB = (() => {
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(L.db)); } catch (e) { L.db.runs.splice(0, 50); try { localStorage.setItem(KEY, JSON.stringify(L.db)); } catch (e2) { } } };
   load();
 
+  // Served by tools/serve.js, every run also goes to tools/lab/runs.jsonl (POST /lab), and a heartbeat every
+  // `beatMs` to tools/lab/beat.json, which tools/lab-run.js watches: the diary outlives the browser profile.
+  const post = (m) => { try { fetch('/lab', { method: 'POST', body: JSON.stringify(m) }).catch(() => {}); } catch (e) { } };
   const g = () => window.game;
   const floorName = () => { const d = g().level && g().level.def; return d ? (d.name || '?') : '?'; };
   const floorNo = () => (g().levelIndex | 0) + 1;
@@ -89,7 +92,7 @@ window.LAB = (() => {
     if (end === 'death') { try { R.killer = G.killedBy(G.goat.hurtBy) || '?'; } catch (e) { R.killer = '?'; } }
     if (end === 'stuck') R.killer = 'STUCK';
     R.cape = G.cape ? G.cape.id : R.cape;
-    delete R.t0; L.db.runs.push(R); if (L.db.runs.length > 600) L.db.runs.splice(0, L.db.runs.length - 600); save();
+    delete R.t0; L.db.runs.push(R); post({ type: 'run', run: R }); if (L.db.runs.length > 600) L.db.runs.splice(0, L.db.runs.length - 600); save();
     L.n++; L.run = null;
     console.log(`[LAB] run ${R.n} ${R.skill}: ${R.end} on floor ${R.reached} (${R.lastName}) by ${R.killer || '-'} after ${R.dur}s; souls ${R.boons.map((b) => b.id).join(', ') || '-'}; talismans ${R.arts.map((a) => a.id).join(', ') || '-'}`);
     if (L.cfg.runs && L.n >= L.cfg.runs) { console.log('[LAB] done: ' + L.n + ' runs'); LAB.stop(); }
@@ -98,6 +101,7 @@ window.LAB = (() => {
   function poll() {
     const G = g(), B = window.bot; if (!G || !B) return;
     const st = G.state;
+    if (!L.beatAt || performance.now() - L.beatAt > 20000) { L.beatAt = performance.now(); post({ type: 'beat', state: st, floor: floorNo(), run: L.run ? L.run.n : null, hand: L.run ? L.run.skill : null, session: L.n }); }
     // a run starts the first time the goat is on a floor with no run open
     if (!L.run && (st === 'play' || st === 'boon') && G.levelIndex === 0) beginRecord();
     const R = L.run;

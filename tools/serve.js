@@ -102,6 +102,34 @@ http.createServer((req, res) => {
     });
     return;
   }
+  // THE BOT LAB (tools/bot-lab.js, tools/lab-run.js): a finished run is appended to tools/lab/runs.jsonl, a heartbeat
+  // overwrites tools/lab/beat.json (the supervisor restarts the browser when it goes stale), GET /lab/runs reads them back.
+  if (req.url.startsWith('/lab')) {
+    const dir = path.join(root, 'tools', 'lab'), runs = path.join(dir, 'runs.jsonl');
+    fs.mkdirSync(dir, { recursive: true });
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        try {
+          const m = JSON.parse(body);
+          if (m.type === 'run' && m.run) fs.appendFileSync(runs, JSON.stringify(m.run) + '\n');
+          else if (m.type === 'beat') fs.writeFileSync(path.join(dir, 'beat.json'), JSON.stringify(Object.assign({ at: new Date().toISOString() }, m)));
+          res.end('{"ok":true}');
+        } catch (e) { res.end(JSON.stringify({ ok: false, error: String(e.message || e) })); }
+      });
+      return;
+    }
+    if (req.url.startsWith('/lab/runs')) {
+      const list = fs.existsSync(runs) ? fs.readFileSync(runs, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean) : [];
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ v: 1, runs: list })); return;
+    }
+    if (req.url.startsWith('/lab/beat')) {
+      const f = path.join(dir, 'beat.json');
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(fs.existsSync(f) ? fs.readFileSync(f) : '{}'); return;
+    }
+  }
   const urlPath = decodeURIComponent(req.url.split('?')[0]);
   let file = path.join(root, urlPath === '/' ? 'index.html' : urlPath);
   if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end('not found'); return; }

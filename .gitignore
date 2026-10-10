@@ -5,3 +5,4 @@ tools/shots/
 dist/
 tools/stats-worker/.read-key
 tools/stats-worker/.wrangler/
+tools/lab/

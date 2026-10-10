@@ -52,6 +52,9 @@ let DB = { runs: [] }, FROM = 'this browser';
 const $ = (id) => document.getElementById(id);
 const nameOf = (id) => { const b = typeof BOONS !== 'undefined' && BOONS.find((x) => x.id === id); if (b) return b.name; const a = typeof ARTIFACTS !== 'undefined' && ARTIFACTS.find((x) => x.id === id); if (a) return a.name; const c = typeof CAPES !== 'undefined' && CAPES.find((x) => x.id === id); return c ? c.name : id; };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+// The server's file first (tools/lab/runs.jsonl, every browser the lab ran in, tools/lab-run.js's headless one too);
+// this browser's localStorage when there is no server file.
+async function loadServer() { try { const r = await fetch('/lab/runs', { cache: 'no-store' }); const d = await r.json(); if (d && d.runs && d.runs.length) { DB = d; FROM = 'tools/lab/runs.jsonl'; let b = {}; try { b = await (await fetch('/lab/beat', { cache: 'no-store' })).json(); } catch (e) { } if (b.at) FROM += ` · last heartbeat ${b.at.slice(11, 19)} UTC, ${b.state} on floor ${b.floor}, run ${b.run} (${b.hand})`; draw(); return true; } } catch (e) { } return false; }
 function loadLocal() { try { DB = JSON.parse(localStorage.getItem('goatlab.v1') || 'null') || { runs: [] }; } catch (e) { DB = { runs: [] }; } FROM = 'this browser (' + location.host + ')'; draw(); }
 function sortable(tbl, rows, cols) {
   let key = cols.findIndex((c) => c.sort), dir = -1;
@@ -116,10 +119,11 @@ function draw() {
     { h: 'seed', v: (r) => r.seed }, { h: 'when', v: (r) => (r.at || '').slice(5, 16).replace('T', ' ') },
   ]);
 }
-$('hand').onchange = draw; $('reload').onclick = loadLocal;
+$('hand').onchange = draw; $('reload').onclick = async () => { if (!(await loadServer())) loadLocal(); };
 $('file').onchange = (ev) => { const f = ev.target.files[0]; if (!f) return; f.text().then((t) => { DB = JSON.parse(t); FROM = f.name; draw(); }); };
 $('save').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(DB, null, 1)], { type: 'application/json' })); a.download = 'goat-bot-lab.json'; a.click(); };
-loadLocal(); setInterval(() => { if (FROM.startsWith('this browser')) loadLocal(); }, 15000);
+(async () => { if (!(await loadServer())) loadLocal(); })();
+setInterval(async () => { if (FROM.startsWith('tools/lab')) await loadServer(); else if (FROM.startsWith('this browser') && !(await loadServer())) loadLocal(); }, 15000);
 </script>
 </body>
 </html>
