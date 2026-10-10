@@ -2055,18 +2055,20 @@ function tryGenerate(levelDef, seed, opts) {
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: r.w * TILE, part: 3 });
     }
   }
+  const wordOrders = {};   // part → the rooms that may hold it, best first: the words move on to the next if a room has no clear spot (`clearWordsRows`)
   // Block 4, the voice (`levelDef.teachScream`, THE YARD): in the first ordinary room with two men or
   // more, a blow worth breaking, never a trap, the vault's, a gate or an arena.
   if (levelDef.teachScream) {
     const skip = new Set([lessonIndex, levelDef.vaultAt, levelDef.ambushAt, ...(levelDef.arenas || []).map((a) => a.at)]);
     // Failing that, the first trap room or arena with two in it, the boss counted (since 2 Oct 2026 THE
     // YARD's room 4, the plain room that most often held the pair, is the butcher's ring).
-    const pick = (loose) => ordinaryRooms(levelDef, rooms.length).concat(loose ? (levelDef.arenas || []).map((a) => a.at) : []).sort((a, b) => a - b).find((i) => {
+    const pick = (loose) => ordinaryRooms(levelDef, rooms.length).concat(loose ? (levelDef.arenas || []).map((a) => a.at) : []).sort((a, b) => a - b).filter((i) => {
       const c = plan.rooms.get(i);
       if (i < 1 || !c || (c.men || []).length + (c.boss ? 1 : 0) < 2) return false;
       return loose ? i !== lessonIndex && i !== levelDef.vaultAt : !skip.has(i) && !trapRooms.has(i) && !c.arena && (c.men || []).length >= 2;
     });
-    const at = pick(false) !== undefined ? pick(false) : pick(true);
+    wordOrders[4] = [...pick(false), ...pick(true).filter((i) => !pick(false).includes(i))];
+    const at = wordOrders[4][0];
     if (at !== undefined) {
       const r = rooms[at];
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: Math.min(r.w, 12) * TILE, part: 4 });
@@ -2084,7 +2086,8 @@ function tryGenerate(levelDef, seed, opts) {
       return i >= 1 && c && !skip.has(i) && !trapRooms.has(i) && !c.arena && (c.men || []).length >= 1 && (!other || i !== voiceRoom);
     };
     const list = ordinaryRooms(levelDef, rooms.length).sort((a, b) => a - b);
-    const at = list.find((i) => fit(i, true)) !== undefined ? list.find((i) => fit(i, true)) : list.find((i) => fit(i, false));
+    wordOrders[6] = [...list.filter((i) => fit(i, true)), ...list.filter((i) => fit(i, false) && !fit(i, true))];
+    const at = wordOrders[6][0];
     if (at !== undefined) {
       const r = rooms[at];
       controls.push({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, w: Math.min(r.w, 12) * TILE, part: 6 });
@@ -2145,6 +2148,10 @@ function tryGenerate(levelDef, seed, opts) {
       }
     }
   }
+  // THE FLOOR WORDS ARE READABLE (9 Oct 2026 playtest: ALT - STEALTH MODE was painted under a row of three braziers): every block
+  // in a room is pinned to the nearest row whose patch has no wall, straw, grass or thing standing on it (`clearWordsRows`),
+  // and the renderer then keeps it there (`c.fixed`) instead of sliding it at draw time. `GEN_RULES.wordsclear`.
+  clearWordsRows(controls, rooms, tiles, W, grass, cleanProps, plan, wordOrders);
   // THE SACRIFICE ALTAR (9 Oct 2026, his ask; js/sacrifice.js): laid last, so nothing placed after it stands on it.
   const sacrifice = LEVELS.indexOf(levelDef) === TUNING.sacrifice.at ? placeSacrifice(levelDef, rooms, tiles, W, grass, cleanProps, filtered, seed) : null;
   // The ogre's vault wakes him into its room, where the horns do nothing to him: a room with nothing
@@ -3221,6 +3228,84 @@ function floorWords(level) {
   if (fk && ex) out.push({ x0: fk.x0 - 10, y0: Math.min(fk.y0, ex.y0), x1: fk.x0, y1: Math.max(fk.y0, ex.y0) + 3, m: CW.m });
   if (level.cagePrompt) box(level.cagePrompt.x / TILE, level.cagePrompt.y / TILE, 15, 2 * CW.band + 2);
   return out;
+}
+// THE FLOOR WORDS MUST BE READABLE (9 Oct 2026 playtest, a screenshot: "ALT - STEALTH MODE" under three braziers; "make it a
+// rule"). The patch a block of floor words covers, from its longest line (`chars`, the widest wording of any input set) and its
+// line count; the renderer shrinks a line past the block's width (`shrink` tiles of margin), so the patch never grows past that.
+const CONTROL_PATCH = { chars: [18, 21, 30, 8, 17, 8, 18], lines: [1, 2, 2, 1, 2, 1, 1], px: 17, line: 36, glyph: 20, margin: 6, shrink: 2.6, kinds: [1, 0.85, 0.7],
+  // E - ROLL stays by its door (`GEN_RULES.lessons`): within `rollInset` + this many tiles of the room's way in
+  doorLeash: 1.45,
+  // what a prop covers round its centre in px, [across, up, down]: a fire's flame stands well above its bowl
+  box: { table: [TILE, TILE, TILE], brazier: [14, 40, 12], lamp: [12, 40, 12], crate: [12, 12, 12], barrel: [12, 12, 12] }, boxDefault: [16, 16, 16],
+  // wall-hung or flat things the words may lie beside or over
+  skip: new Set(['door', 'secret', 'sconce', 'armor', 'trophy', 'poster', 'cleat', 'weapon']), loose: new Set(['crate', 'barrel']) };
+// `k` < 1: the same words set smaller to fit a tighter gap (the renderer shrinks a line to the block's `w`).
+function wordsPatch(c, k = 1) {
+  const P = CONTROL_PATCH, wide = Math.min((P.chars[c.part] || 14) * P.px, Math.max(TILE, (c.w || 14 * TILE) - P.shrink * TILE)) * k;
+  return { wide, half: wide / 2 + TILE * 0.3, band: ((P.lines[c.part] || 1) - 1) * P.line / 2 + P.glyph / 2 + P.margin };
+}
+// What lies on the patch of words centred at (x, y), or null: stone, a drop, straw, tall grass, or any prop (a brazier, a
+// table, a crate). Read by `clearWordsRows` and `GEN_RULES.wordsclear`, so both ask one question. `soft` 1: straw and grass
+// do not count, 2: nor does a loose crate or barrel (the generator takes them off the patch afterwards, as the drop's lesson does).
+function wordsBlock(tiles, W, grass, props, c, y, x = c.x, soft = 0, k = 1) {
+  const { half, band } = wordsPatch(c, k);
+  for (let px = x - half; px <= x + half; px += TILE / 2) for (const yy of [y - band * 0.6, y, y + band * 0.6]) {
+    const tx = Math.floor(px / TILE), ty = Math.floor(yy / TILE), i = ty * W + tx, t = tiles[i];
+    if (t === T.WALL || t === T.PIT) return t === T.WALL ? 'stone' : 'a drop';
+    if (!soft && (t === T.HAY || grass.has(i))) return 'straw or grass';
+  }
+  for (const p of props) {
+    if (CONTROL_PATCH.skip.has(p.kind) || p.broken || (soft > 1 && CONTROL_PATCH.loose.has(p.kind))) continue;
+    const [rx, up, down] = CONTROL_PATCH.box[p.kind] || CONTROL_PATCH.boxDefault;
+    if (Math.abs(p.x - x) < half + rx && p.y - up < y + band && p.y + down > y - band) return `a ${p.kind}`;
+  }
+  return null;
+}
+// The nearest spot to (c.x, c.y) inside room `r` (a tile across, half a tile down, then the same words set smaller) where the
+// patch is clear, or null; with no wholly clear one, the nearest where only straw or grass lies on it (`soft`, taken off by
+// `clearWordsRows`).
+function clearWordsRow(tiles, W, grass, props, c, r) {
+  const cand = [];
+  for (const k of CONTROL_PATCH.kinds) {
+    // the lines themselves stay inside the room's floor (the patch's margin may reach the wall's face)
+    const { half, band } = wordsPatch(c, k), ext = band - CONTROL_PATCH.margin, yLo = (r.y + 1) * TILE + ext, yHi = (r.y + r.h - 1) * TILE - ext;
+    const xLo = (r.x + 1) * TILE + half - TILE * 0.3, xHi = (r.x + r.w - 1) * TILE - half + TILE * 0.3;
+    for (let dx = -r.w; dx <= r.w; dx++) for (let dy = -2 * r.h; dy <= 2 * r.h; dy++) {
+      const x = c.x + dx * TILE, y = c.y + dy * TILE / 2;
+      if (c.part === 3 && r.enter && Math.hypot(x - r.enter.x, y - r.enter.y) > (TUNING.hints.rollInset + CONTROL_PATCH.doorLeash) * TILE) continue;
+      if (y >= yLo && y <= yHi && x >= xLo && x <= xHi) cand.push({ x, y, k, d: Math.abs(dy) / 2 + Math.abs(dx) * 0.6 + (1 - k) * 8 });
+    }
+  }
+  cand.sort((p, q) => p.d - q.d);
+  for (const soft of c.part === 1 ? [0, 1] : [0, 1, 2]) for (const q of cand) if (!wordsBlock(tiles, W, grass, props, c, q.y, q.x, soft, q.k)) return { x: q.x, y: q.y, k: q.k, soft };
+  return null;
+}
+function clearWordsRows(controls, rooms, tiles, W, grass, props, plan, orders) {
+  const inRoom = (c) => rooms.find((r) => c.x >= r.x * TILE && c.x < (r.x + r.w) * TILE && c.y >= r.y * TILE && c.y < (r.y + r.h) * TILE);
+  for (const c of controls) {
+    // The pen's and the drop's words have their own places (the prompt's row, a corridor's stretch, a cleared patch).
+    if (c.corridor || c.part === 0 || c.part === 5) continue;
+    const r = inRoom(c); if (!r) continue;
+    let at = clearWordsRow(tiles, W, grass, props, c, r), w = c.w;
+    // The voice's and the sneak's words move on to the next room that can hold them when this one has no clear spot.
+    if ((!at || at.soft) && orders && orders[c.part]) for (const i of orders[c.part]) {
+      const q = rooms[i]; if (q === r) continue;
+      const moved = { ...c, x: (q.x + q.w / 2) * TILE, y: (q.y + q.h / 2) * TILE, w: Math.min(q.w, 12) * TILE }, mat = clearWordsRow(tiles, W, grass, props, moved, q);
+      if (mat && !mat.soft) { w = moved.w; at = mat; break; }
+    }
+    if (!at) continue;
+    // The block's own width is the patch that was cleared, so the renderer sets the words no wider than it (`fitFloorText`).
+    c.w = wordsPatch({ ...c, w }, at.k).wide + CONTROL_PATCH.shrink * TILE; c.x = at.x; c.y = at.y; c.fixed = true;
+    if (at.soft) {
+      const { half, band } = wordsPatch(c);
+      for (let px = c.x - half; px <= c.x + half; px += TILE / 2) for (const yy of [c.y - band * 0.6, c.y, c.y + band * 0.6]) {
+        const i = Math.floor(yy / TILE) * W + Math.floor(px / TILE);
+        if (tiles[i] === T.HAY) tiles[i] = T.FLOOR;
+        grass.delete(i);
+      }
+      if (at.soft > 1) for (let i = props.length - 1; i >= 0; i--) if (CONTROL_PATCH.loose.has(props[i].kind) && wordsBlock(tiles, W, grass, [props[i]], c, c.y)) props.splice(i, 1);
+    }
+  }
 }
 // A carpet's box, the words' own margin round it (a tile for a line of floor words), against every patch.
 function carpetUnderWords(c, words) {

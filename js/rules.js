@@ -415,6 +415,23 @@ const GEN_RULES = [
       const men = (rs[room.index] || { spawns: [] }).spawns.length;
       return men >= 1 || `the STEALTH line lies in room ${room.index} with nobody in it`;
     } },
+  { id: 'wordsclear', text: 'The words on a floor (ALT - STEALTH MODE, the lessons) lie on a row with no wall, straw, grass or thing standing on it.',
+    check: (L) => {
+      const grass = new Set(L.grass || []); let none = false;
+      for (const c of L.controls || []) {
+        const room = c.corridor || c.part === 0 || c.part === 5 ? null : roomAt(L, c.x, c.y);
+        if (!room) continue;
+        if (!c.fixed) {
+          // No spot at all in this room (a lamp's flame, a pillar and the door's leash): the renderer's slide is all that is left,
+          // and one seed cannot answer for it (null); a spot the generator missed is blood.
+          if (clearWordsRow(L.tiles, L.W, grass, L.props, c, room)) return `block ${c.part}: a clear row it did not take`;
+          none = true; continue;
+        }
+        const why = wordsBlock(L.tiles, L.W, grass, L.props, c, c.y, c.x);
+        if (why) return `block ${c.part}: ${why} on the words`;
+      }
+      return none ? null : true;
+    } },
   { id: 'lessons', text: 'The teaching rooms are the same every run: pen, sentry, wheel, ambush; E - ROLL at the first butcher\'s door.',
     check: (L) => {
       const def = L.def;
