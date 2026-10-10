@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.010';
+const BUILD = '0.011';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -1040,7 +1040,15 @@ const TUNING = {
     // THE THRESHING FLOOR's rifleman: `hp` hearts, `pellets` rounds a shot over `spread` rad; from `blinkFrom`
     // he blinks away when the goat closes inside `blink.range` tiles, to `blink.dist` tiles off him, every `blink.cooldown` s.
     // 9 Oct 2026: four hearts and the blink from the first meeting (it was the second), the corrupted rifleman is all of it at once.
-    hunter: { hp: 4, pellets: 3, spread: 0.24, blinkFrom: 1, blink: { range: 3.2, dist: 6, cooldown: 3.6 } },
+    hunter: { hp: 4, pellets: 3, spread: 0.24, blinkFrom: 1, blink: { range: 3.2, dist: 6, cooldown: 3.6 },
+      // His scene (10 Oct 2026, the floor had none): his hounds lie round his feet `lie` tiles off; seen, he turns and says `line`,
+      // each hound gets up at its `rise` s with a growl, he racks the gun at `cock` s and fires one into the air at `shot`; `end` s in all.
+      scene: { lie: 1.3, line: 'RUN, GOAT. THEY LIKE A RUNNER.', rise: [0.8, 1.1, 1.4], cock: 1.8, shot: 2.3, end: 2.9 } },
+    // THE ROAD's butcher (10 Oct 2026, the floor had no scene): seen, he brings the club down on the floor at each of `slams` s, a man
+    // of his turns to the goat with each, and at `lineAt` he says `line`; `end` s in all.
+    champion: { slams: [0.45, 1.0], lineAt: 1.45, line: 'FRESH MEAT FOR THE HOOK.', end: 2.5 },
+    // THE ALTAR's clubman at his first meetings, before his twin comes (`twin.from`): the butcher's scene, one blow, his own line.
+    clubman: { slams: [0.5], lineAt: 0.95, line: 'BACK TO THE PEN, GOAT.', end: 2.0 },
     // THE LAST SUPPER (10 Oct 2026, the user's; the last floor's last room, `SUPPER_TEMPLATE`, `EndBoss.laySupper`): the room's men sat
     // along the table (`seat` tiles off its row, `gap` tiles apart, `inset` tiles in from its ends), THE WARDEN (js/warden-pixels.js)
     // standing `head` tiles past the far end, the chair `chair` tiles off the near end: a wraith hidden as a stool. The goat in the room:

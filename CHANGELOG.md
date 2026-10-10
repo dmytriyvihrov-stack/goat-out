@@ -5,6 +5,30 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.011, 10 Oct 2026: every floor's last man has his scene
+
+Went through the scene of each floor's last man (THE ALTAR's twin, THE YARD's handoff, THE CAVE's ogre, THE ROAD, THE
+THRESHING FLOOR, THE LAST SUPPER), each run in the build at the meeting that shows the most.
+
+- **THE ROAD's butcher** had no scene: his men stand held round him until the goat walks in, then he brings the club
+  down on the floor twice (THOOM, dust, a ring), with each blow more of his men turn to the goat, and he says FRESH MEAT
+  FOR THE HOOK. (`TUNING.endBoss.champion`, `EndBoss.stepButcher`).
+- **THE THRESHING FLOOR's rifleman** had no scene: his three hounds lie round his feet; seen, he says RUN, GOAT. THEY
+  LIKE A RUNNER., the hounds get up one by one growling, he racks the gun and fires one into the air, and the pack
+  barks (`TUNING.endBoss.hunter.scene`, `EndBoss.stepRifle`).
+- **THE YARD**: the opening's mage, who hands her to the Warden, was left standing in the room for good after the
+  scene, a frozen `scripted` statue. He now goes out through the gate at the Warden's heels, and a skip takes him too.
+- **A flash in a scene wore off only when it ended**: nobody's own update runs while a scene holds the floor, so the
+  ogre lit by the mage's fire (and the butcher's slams) stayed white to the end. `EndBoss.update` counts every flash down.
+- **THE ALTAR's clubman** had a scene only from the third meeting (the twin). At the first two he and his two men are held
+  until the goat walks in; then one blow of the club on the floor, his men turn, and BACK TO THE PEN, GOAT.
+  (`TUNING.endBoss.clubman`; the butcher's scene, `EndBoss.stepRally`).
+- **The scenes' blows shook nothing**: the twin's door, its burst and slam, the witchfire bowls, the mage's fire into the
+  ogre and the platter thrown down called `game.shake` without `hurt`, which is × `shakeOther` (0). They go through
+  `game.thud` now, weight off where it happens.
+- A held group is one group: a man of the boss's knocked about from the doorway before the goat is in wakes all of
+  them, not him alone beside statues (`EndBoss.hold`).
+
 ## 0.010, 10 Oct 2026: no more wedged in a corner, THE FLAYED's change you can read
 
 - **Wedged goat** (playtest screenshot: stuck between the altar and a post): a goat pressing a move key who has not moved for

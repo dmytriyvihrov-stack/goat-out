@@ -82,8 +82,21 @@ const EndBoss = {
       for (const o of [e, mate]) if (o) { o.endHold = 'stand'; if (bowl) o.facing = Math.atan2(bowl.y - o.y, bowl.x - o.x); }
       B.mate = mate || null;
       if (meet >= T.mage.ringsFrom) e.endRings = T.mage.ring;
-    } else if (kind === 'hunter') this.rifleman(e, meet);
-    else if (kind === 'bearer' && meet >= T.twin.from) B.twinDue = true;
+    } else if (kind === 'hunter') {
+      this.rifleman(e, meet);
+      // his hounds lie round his feet, all three facing out, until the goat is in the room
+      const dogs = game.enemies.filter((o) => o !== e && !o.dead && o.kind === 'dog' && o.room === last), H = T.hunter.scene;
+      dogs.forEach((o, k) => {
+        const a = Math.PI / 2 + (k - (dogs.length - 1) / 2) * 1.1, x = e.x + Math.cos(a) * H.lie * TILE, y = e.y + Math.sin(a) * H.lie * TILE;
+        if (game.world.walkableAt(Math.floor(x / TILE), Math.floor(y / TILE))) { o.x = x; o.y = y; }
+        o.endHold = 'stand'; o.facing = a;
+      });
+      e.endHold = 'stand'; B.crew = dogs;
+    } else if (kind === 'champion' || (kind === 'bearer' && meet < T.twin.from)) {
+      // the butcher among his men (THE ROAD), THE ALTAR's clubman and his two before his twin comes: held until the goat is in
+      B.crew = game.enemies.filter((o) => o !== e && !o.dead && !o.scripted && o.room === last && o.state !== 'hidden');
+      for (const o of [e, ...B.crew]) o.endHold = 'stand';
+    } else if (kind === 'bearer' && meet >= T.twin.from) B.twinDue = true;
   },
   // THE THRESHING FLOOR's rifleman, and the dev drawer's corrupted one: his hearts, three rounds a shot, the blink.
   rifleman(e, meet) {
@@ -98,7 +111,13 @@ const EndBoss = {
   // The top of `Enemy.update`: a man held to his picture until the goat is in the room (`endHold`). Hurt, lit or
   // knocked about before then and he is simply up.
   hold(e, dt, game) {
-    if (e.dead || e.held || e.hp < e.maxHp || e.burning > 0 || e.dazed > 0 || e.state === 'flung' || (e.thrown)) { e.endHold = null; e.aware = true; return false; }
+    if (e.dead || e.held || e.hp < e.maxHp || e.burning > 0 || e.dazed > 0 || e.state === 'flung' || (e.thrown)) {
+      e.endHold = null; e.aware = true;
+      // one of the group knocked about before the goat is in: the whole group is up, not him alone beside statues
+      const B = game.endBoss;
+      if (B && !B.seen && B.kind !== 'supper' && (e === B.e || e === B.mate || (B.crew && B.crew.includes(e)))) this.release(game);
+      return false;
+    }
     e.vx = 0; e.vy = 0; e.flash = Math.max(0, (e.flash || 0) - dt);
     if (e.say) { e.say.life -= dt; if (e.say.life <= 0) e.say = null; }
     if (e.endHold === 'gnaw') { e.facing = Math.PI / 2; if (Math.random() < dt * 1.6) game.particles(e.x, e.y - 30, 2, PALETTE.bone, 50); }
@@ -120,26 +139,31 @@ const EndBoss = {
     if (B.kind === 'bearer' && B.twinDue && !e.dead) kind = 'twin';
     else if (B.kind === 'seer' && !e.dead && e.endHold) kind = 'mage';
     else if (B.kind === 'butcher' && !e.dead && e.endHold === 'gnaw') kind = 'ogre';
+    else if (B.kind === 'hunter' && !e.dead && e.endHold) kind = 'rifle';
+    else if (B.kind === 'champion' && !e.dead && e.endHold) kind = 'butcher';
+    else if (B.kind === 'bearer' && !e.dead && e.endHold) kind = 'clubman';
     if (!kind) { this.release(game); return false; }
     // He stops where he is; whatever he was doing ends.
     g.state = 'idle'; g.timer = 0; g.vx = 0; g.vy = 0; g.leap = null; g.runT = 0; g.buttBuf = 0; g.rollBuf = 0; g.path = null;
     game.endScene = { kind, t: 0, bars: 0, flags: {}, seen: !!this.load().seen[kind] };
-    for (const o of [e, B.mate]) if (o) o.endActor = true;
+    for (const o of [e, B.mate, ...(B.crew || [])]) if (o) o.endActor = true;
     if (kind === 'twin') this.startTwin(game);
     else if (kind === 'mage') this.startMage(game);
-    else this.startOgre(game);
+    else if (kind === 'ogre') this.startOgre(game);
     return true;
   },
   release(game) {
     const B = game.endBoss; if (!B) return;
-    for (const o of [B.e, B.mate]) if (o && !o.dead) { o.endHold = null; o.aware = true; o.woke = true; if (o.state === 'idle') o.state = 'chase'; }
+    for (const o of [B.e, B.mate, ...(B.crew || [])]) if (o && !o.dead) {
+      o.endHold = null; o.endActor = false; o.aware = true; o.woke = true; o.lastSeen = { x: game.goat.x, y: game.goat.y }; if (o.state === 'idle') o.state = 'chase';
+    }
   },
   end(game) {
     const S = game.endScene; if (!S) return;
     const D = this.load(); D.seen[S.kind] = true; this.save();
     if (S.kind === 'twin') this.endTwin(game);
     else if (S.kind === 'mage') this.endMage(game);
-    else this.endOgre(game);
+    else if (S.kind === 'ogre') this.endOgre(game);
     game.endScene = null;
     this.release(game);
   },
@@ -151,9 +175,11 @@ const EndBoss = {
     const skip = S.seen && S.t > C.skipAfter && (game.input.lmbPressed || game.input.spacePressed);
     if (skip || S.t > (S.long ? TUNING.endBoss.ogre.long.cap : C.cap)) { this.end(game); return; }
     S.bars = S.done ? Math.max(0, S.bars - dt * 4) : Math.min(1, S.bars + dt * 3);
-    const look = S.kind === 'twin' ? this.stepTwin(game, dt) : S.kind === 'mage' ? this.stepMage(game, dt) : this.stepOgre(game, dt);
+    const look = S.kind === 'twin' ? this.stepTwin(game, dt) : S.kind === 'mage' ? this.stepMage(game, dt)
+      : S.kind === 'rifle' ? this.stepRifle(game, dt) : S.kind === 'butcher' || S.kind === 'clubman' ? this.stepRally(game, dt) : this.stepOgre(game, dt);
     if (!game.endScene) return;
-    for (const o of game.enemies) if (o.say) { o.say.life -= dt; if (o.say.life <= 0) o.say = null; }
+    // lines age, and a flash wears off: nobody's own update runs through a scene, so a man flashed on a beat stayed white to its end
+    for (const o of game.enemies) { if (o.say) { o.say.life -= dt; if (o.say.life <= 0) o.say = null; } if (o.flash > 0) o.flash = Math.max(0, o.flash - dt); }
     game.revealRooms(); game.updateEffects(dt);
     const g = game.goat, o = look || game.endBoss.e, K = TUNING.camera, k = 1 - Math.exp(-K.lerp * dt);
     game.cam.x += ((g.x + o.x) / 2 - game.cam.x) * k; game.cam.y += ((g.y + o.y) / 2 - game.cam.y) * k;
@@ -185,13 +211,13 @@ const EndBoss = {
     T.rattles.forEach((at, k) => {
       if (S.flags['r' + k] || S.t < at) return;
       S.flags['r' + k] = true;
-      d.wobble = 0.35; game.audio.sfxThud(); game.shake(2 + k);
+      d.wobble = 0.35; game.audio.sfxThud(); game.thud(d.x, d.y, 3 + k * 2);
       game.particles(d.x, d.y, 5 + k * 2, PALETTE.ash, 110);
       game.floatText(d.x, d.y - 26, k < T.rattles.length - 1 ? 'THUD' : 'CRACK', PALETTE.bone);
     });
     if (!S.flags.burst && S.t >= T.burst) {
       S.flags.burst = true; d.open = 1;
-      game.audio.sfxThud(); game.audio.sfxSteel(); game.shake(6); game.particles(d.x, d.y, 18, PALETTE.ash, 200);
+      game.audio.sfxThud(); game.audio.sfxSteel(); game.thud(d.x, d.y, 9); game.particles(d.x, d.y, 18, PALETTE.ash, 200);
       const ox = d.x + S.out.x * TILE * 1.3, oy = d.y + S.out.y * TILE * 1.3;
       const m = new Enemy(ox, oy, 'bearer');
       m.boss = true; m.elite = true; m.room = game.endBoss.room; m.endTwin = true;
@@ -206,7 +232,7 @@ const EndBoss = {
       if (arrived || S.t > T.burst + T.walk * 2) { S.flags.in = true; S.inAt = S.t; S.twin.path = null; S.twin.facing = Math.atan2(g.y - S.twin.y, g.x - S.twin.x); }
     }
     if (S.flags.in && !S.flags.shut && S.t >= S.inAt + T.shut) {
-      S.flags.shut = true; d.open = 0; game.audio.sfxThud(); game.audio.sfxSteel(); game.shake(4);
+      S.flags.shut = true; d.open = 0; game.audio.sfxThud(); game.audio.sfxSteel(); game.thud(d.x, d.y, 6);
     }
     if (S.flags.shut && S.t >= S.inAt + T.shut + 0.6) { this.end(game); return null; }
     return S.twin && S.flags.burst ? S.twin : d;
@@ -286,14 +312,19 @@ const EndBoss = {
     }
     if (S.phase === 'hand') {
       game.followPath(m, T.run * 0.8, dt); bleat();
-      if (S.pt >= T.hand) { phase('out'); wd.path = [{ x: d.x - S.out.x * TILE, y: d.y - S.out.y * TILE }, { x: d.x, y: d.y }, { x: d.x + S.out.x * TILE * 2.2, y: d.y + S.out.y * TILE * 2.2 }]; }
+      if (S.pt >= T.hand) {
+        phase('out'); wd.path = [{ x: d.x - S.out.x * TILE, y: d.y - S.out.y * TILE }, { x: d.x, y: d.y }, { x: d.x + S.out.x * TILE * 2.2, y: d.y + S.out.y * TILE * 2.2 }];
+        // and the mage goes out at his heels (he was left standing in the room for good, a statue nobody could do anything with)
+        m.path = wd.path.map((q) => ({ x: q.x, y: q.y }));
+      }
       return wd;
     }
     if (S.phase === 'out') {
       const done = game.followPath(wd, T.run, dt), far = hyp(wd.x - d.x, wd.y - d.y);
+      if (m.path) game.followPath(m, T.run, dt);
       bleat();
       if (far < 1.4 * TILE) d.open = Math.min(1, d.open + dt * 4);
-      if (done || S.pt > T.runCap) { game.enemies = game.enemies.filter((o) => o !== wd); S.warden = null; m.path = null; shut(); }
+      if (done || S.pt > T.runCap) { game.enemies = game.enemies.filter((o) => o !== wd && o !== m); S.warden = null; shut(); }
       return wd;
     }
     if (S.phase === 'witch') {
@@ -306,7 +337,7 @@ const EndBoss = {
           p.witch = true; game.ring(p.x, p.y, TILE * 1.4, PALETTE.witchHi);
           game.particles(p.x, p.y - 10, 14, PALETTE.witch, 160);
         }
-        game.flash(PALETTE.witch, 0.18); game.audio.sfxRune(); game.shake(4);
+        game.flash(PALETTE.witch, 0.18); game.audio.sfxRune(); game.thud(e.x, e.y, 5);
       }
       if (!S.flags.lit && Math.random() < dt * 30) game.particles(e.x, e.y - 30, 1, PALETTE.witchHi, 60);
       if (S.pt >= T.witch) phase('after');
@@ -318,7 +349,7 @@ const EndBoss = {
   endMage(game) {
     const S = game.endScene, B = game.endBoss;
     if (S.warden) game.enemies = game.enemies.filter((o) => o !== S.warden);   // skipped: he is gone through the gate with her all the same
-    if (S.mage) { S.mage.path = null; if (!S.warden && S.phase !== 'witch' && S.phase !== 'after' && S.phase !== 'hand' && S.phase !== 'out') game.enemies = game.enemies.filter((o) => o !== S.mage); }
+    if (S.mage) game.enemies = game.enemies.filter((o) => o !== S.mage);   // skipped: out through the gate with them
     if (S.ewe) S.ewe.gone = true;
     if (S.door) S.door.open = 0;
     // Skipped before the bowls turned: they turn all the same.
@@ -395,7 +426,7 @@ const EndBoss = {
       if (!S.flags.given && S.pt >= L.mage - 0.2) {
         S.flags.given = true; e.flash = 0.45;
         game.ring(e.x, e.y, TILE * 1.6, PALETTE.witchHi); game.particles(e.x, e.y - 30, 22, PALETTE.witch, 180);
-        game.flash(PALETTE.witch, 0.16); game.audio.sfxRune(); game.shake(4);
+        game.flash(PALETTE.witch, 0.16); game.audio.sfxRune(); game.thud(e.x, e.y, 5);
       }
       if (S.pt >= L.mage) {
         phase('run');
@@ -461,7 +492,51 @@ const EndBoss = {
     } else e.state = 'chase';
   },
 
+  // ---- THE ROAD's butcher among his men, THE ALTAR's clubman before his twin ----
+  // Seen, he brings his club down on the floor, a man of his turns to the goat with each blow, and he says his line.
+  stepRally(game, dt) {
+    const S = game.endScene, C = TUNING.endBoss[S.kind === 'clubman' ? 'clubman' : 'champion'], B = game.endBoss, e = B.e, g = game.goat, crew = B.crew || [];
+    const at = (k, t) => !S.flags[k] && S.t >= t && (S.flags[k] = true);
+    if (at('turn', 0.15)) e.facing = Math.atan2(g.y - e.y, g.x - e.x);
+    C.slams.forEach((t, k) => {
+      if (!at('slam' + k, t)) return;
+      const fx = e.x + Math.cos(e.facing) * TILE * 0.8, fy = e.y + Math.sin(e.facing) * TILE * 0.8;
+      e.flash = 0.15; game.audio.sfxClub(); game.audio.sfxThud(); game.thud(fx, fy, 5);
+      game.particles(fx, fy, 10, PALETTE.ash, 140); game.ring(fx, fy, TILE * 0.9, PALETTE.fire, 0.4, 2);
+      game.floatText(fx, fy - 20, 'THOOM', PALETTE.bone);
+      const n = Math.ceil(crew.length * (k + 1) / C.slams.length);
+      crew.slice(0, n).forEach((o, i) => {
+        if (o.dead || S.flags['m' + i]) return;
+        S.flags['m' + i] = true; o.facing = Math.atan2(g.y - o.y, g.x - o.x); game.floatText(o.x, o.y - 50, '!', PALETTE.fire);
+      });
+    });
+    if (at('line', C.lineAt)) { game.say(e, C.line); game.audio.sfxGrowl(); }
+    if (S.t >= C.end) { this.end(game); return null; }
+    return e;
+  },
+
   // ---- THE THRESHING FLOOR: the rifleman ----
+  // His scene: the hounds get up round him one by one, he racks the gun and fires one into the air.
+  stepRifle(game, dt) {
+    const S = game.endScene, H = TUNING.endBoss.hunter.scene, B = game.endBoss, e = B.e, g = game.goat, dogs = B.crew || [];
+    const at = (k, t) => !S.flags[k] && S.t >= t && (S.flags[k] = true);
+    if (at('turn', 0.2)) { e.facing = Math.atan2(g.y - e.y, g.x - e.x); game.say(e, H.line); }
+    dogs.forEach((o, k) => {
+      if (o.dead || !at('dog' + k, H.rise[k % H.rise.length])) return;
+      o.facing = Math.atan2(g.y - o.y, g.x - o.x); o.flash = 0.12;
+      game.particles(o.x, o.y, 5, PALETTE.ash, 70); game.audio.sfxGrowl(); game.floatText(o.x, o.y - 30, 'GRRR', PALETTE.fire);
+    });
+    if (at('cock', H.cock)) { game.audio.sfxCock(); game.floatText(e.x, e.y - 56, 'CLICK-CLACK', PALETTE.bone); }
+    if (at('shot', H.shot)) {
+      // into the air: the muzzle over his head, smoke and a flash, and the pack answers
+      const mx = e.x + Math.cos(e.facing) * 12, my = e.y - 44;
+      game.audio.sfxGunshot(); game.flash(PALETTE.fireHi, 0.08);
+      game.particles(mx, my, 10, PALETTE.ash, 120); game.particles(mx, my, 4, PALETTE.fireHi, 160);
+      for (const o of dogs) if (!o.dead) game.audio.sfxBark(game.audio.heard(o.x - g.x, o.y - g.y));
+    }
+    if (S.t >= H.end) { this.end(game); return null; }
+    return e;
+  },
   // A shot of `pellets` rounds over `spread` (`updateHunter` asks this in place of one round).
   shotgun(e, game, spread0) {
     const H = e.shotgun, n = H.pellets;
@@ -679,7 +754,7 @@ const EndBoss = {
     S.phase = 'drop'; S.t = 0; S.carry = false; w.pose = 'idle';
     const dx = g.x - w.x, dy = g.y - w.y, d = hyp(dx, dy) || 1;
     const p = new Prop(w.x + dx / d * TILE * 1.3, w.y + dy / d * TILE * 1.3, 'platter'); p.open = true; p.phase = 0; game.props.push(p);
-    game.audio.sfxSteel(); game.audio.sfxThud(); game.shake(3); game.particles(p.x, p.y, 8, PALETTE.ashHi, 110);
+    game.audio.sfxSteel(); game.audio.sfxThud(); game.thud(p.x, p.y, 4); game.particles(p.x, p.y, 8, PALETTE.ashHi, 110);
     game.floatText(p.x, p.y - 26, 'EMPTY', PALETTE.bone); game.say(w, T.drop.line);
     const D = this.load(); D.seen.supper = true; this.save();
   },
