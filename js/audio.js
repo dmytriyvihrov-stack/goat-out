@@ -551,7 +551,7 @@ class GameAudio {
     if (this.preview !== preview) { this.resetScore(); this.preview = preview; }
     // STEALTH (dev test): a sneak hushes the score (`layers.hush`, eased on `hushMix` in the step).
     // THE LAST SUPPER hushes it too (js/endboss.js, `game.supper`), until the chair is reached.
-    this.hush = !!(game.sneak && game.stealthLive && game.state === 'play') || !!(game.supper && game.supper.phase === 'offer');
+    this.hush = !!(game.sneak && game.stealthLive && game.state === 'play') || !!(game.supper && (game.supper.phase === 'intro' || game.supper.phase === 'offer'));
     this.doom = !!(game.doom && game.state === 'play');   // THE WARDEN's fight (js/warden.js, `layers.doom`)
     this.updateAmbience(game, dt);
     this.heartbeat(game);
@@ -718,6 +718,35 @@ class GameAudio {
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(lp); lp.connect(g); g.connect(this.musicBus); o.start(t); o.stop(t + dur + 0.02);
     this.trackMusicNode(o);
+  }
+  // THE WARDEN's riff (`layers.doom`): two saws a hair apart and a square an octave up, a filter that snaps shut, driven
+  // into a waveshaper (`doomBus`, a tanh curve into a low-pass) so it chugs like a palm-muted guitar; `accent` opens the filter.
+  doomBus() {
+    if (this.doomOut) return this.doomOut;
+    const ctx = this.ctx, ws = ctx.createWaveShaper(), n = 512, c = new Float32Array(n), D = TUNING.audio.layers.doom;
+    for (let i = 0; i < n; i++) { const x = i * 2 / (n - 1) - 1; c[i] = Math.tanh(x * D.drive) / Math.tanh(D.drive); }
+    ws.curve = c; ws.oversample = '2x';
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = D.tone; lp.Q.value = 0.9;
+    const g = ctx.createGain(); g.gain.value = D.out;
+    ws.connect(lp); lp.connect(g); g.connect(this.musicBus);
+    return this.doomOut = ws;
+  }
+  chug(t, f, dur, gain, accent) {
+    this.scoreTrack = 'bass';
+    const ctx = this.ctx, g = ctx.createGain(), lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(accent ? 2600 : 1400, t); lp.frequency.exponentialRampToValueAtTime(220, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    for (const [type, mul] of [['sawtooth', 1], ['sawtooth', 1.006], ['square', 2]]) {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f * mul, t);
+      o.connect(lp); o.start(t); o.stop(t + dur + 0.02); this.trackMusicNode(o);
+    }
+    lp.connect(g); g.connect(this.doomBus());
+  }
+  // A snare for the riff: a crack of noise over a short skin.
+  snare(t, g = 0.3) {
+    this.scoreTrack = 'drums';
+    this.tone(190, t, 0.16, { gain: g * 0.7, sweep: 0.5, bus: this.drumBus });
+    this.noise(t, 0.14, { gain: g, hp: 900, lp: 7500, bus: this.drumBus });
   }
   // A bone flute: soft in, a breath of vibrato once the note is held, a thin octave over it.
   lead(t, f, dur, gain) {
@@ -914,13 +943,19 @@ class GameAudio {
     // A sneak (`layers.hush`, `hushMix`): fewer parts again, the bass down to its `hush.bassBeats`, the tune out.
     const H = TUNING.audio.layers.hush, hush = this.hushMix || 0, hushed = hush > 0.5;
     const sparse = calm > C.sparse || hushed, keep = hushed ? H.bassBeats : C.bassBeats;
-    // THE WARDEN's fight (`layers.doom`, `doomMix`): the riff on every step, the kick on every eighth, the bed's bass and the tune under it.
+    // THE WARDEN's fight (`layers.doom`, `doomMix`; 10 Oct 2026 evening, "much more of the DOOM format"): a distorted guitar riff
+    // (`chug`, through the `doomBus` waveshaper) chugged on every step, its notes off `riff` over two bars, the jumps accented and
+    // galloped in pairs on `gallop` steps; the kick on every eighth and doubled on `doubles`, a snare on the backbeats, a crash
+    // every bar; the bed's own bass and the tune go down by it.
     const D = TUNING.audio.layers.doom, doom = this.doomMix || 0;
     if (doom > 0.03) {
-      this.bass(t, root * Math.pow(2, D.riff[beat] / 12) * D.octave, stepLen * D.len, D.gain * doom);
-      if (beat % 2 === 0) this.kick(t, D.kick * doom);
-      if (D.lowBeats.includes(beat)) this.tomLo(t, D.low !== undefined ? D.low : 0.3 * doom);
-      if (beat === 0 && s % 32 === 0) this.crash(t, D.crash * doom);
+      const pos = s % D.riff.length, semi = D.riff[pos], accent = semi !== 0, f = root * Math.pow(2, semi / 12) * D.octave;
+      const g = D.gain * doom * (accent ? D.accent : 1);
+      if (D.gallop.includes(beat)) { this.chug(t, f, stepLen * D.len * 0.5, g, accent); this.chug(t + stepLen * 0.5, f, stepLen * D.len * 0.5, g, accent); }
+      else this.chug(t, f, stepLen * D.len, g, accent);
+      if (beat % 2 === 0 || D.doubles.includes(beat)) this.kick(t, D.kick * doom);
+      if (D.snareBeats.includes(beat)) this.snare(t, D.snare * doom);
+      if (beat === 0) this.crash(t, D.crash * doom);
     }
     for (const [at, semi, length, gain] of B.bass) if (at === beat && (!sparse || keep.includes(at))) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain * thin(C.bass) * (1 - doom));
     // On the last heart the tune steps back (`layers.heartSing`) and leaves the room to his heart.

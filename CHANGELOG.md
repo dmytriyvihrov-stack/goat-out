@@ -5,6 +5,40 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.008, 10 Oct 2026: the supper opens as a scene, softer late floors, a DOOM riff
+
+The 10 Oct 2026 evening playtest, the last floor and the floors before it.
+
+- **THE LAST SUPPER opens as a scene** ("cinematic at the start: the camera finds him, Humungus laughs, says you were expected, come"):
+  the goat in the room is held like the other floors' last men (`game.endScene` kind `supper`, `EndBoss.stepSupperScene`, `supper.intro`):
+  the camera goes to the Warden (`S.camAt`), he laughs, WE HAVE BEEN WAITING FOR YOU, GOAT., his hand goes up and the chair slides out,
+  COME. SIT.; then the floor is his again at `supper.slow` (0.4) of its pace while the offer stands ("more drama: everything much
+  slower walking to the table"), EAT WITH US., SHE IS WARM STILL. A click skips it once seen. CONTINUE in the scene lays the table again.
+- **The stool is closer to the table**: `chair` 1.1 → 0.7 tiles off its end, slid `slideBy` 0.8 → 0.45 further.
+- **Every man at the table is a champion** ("at the table, the champion versions of the units"): the outline and a heart more; they
+  drop no grass and no key for it (`e.noPrize`), the room's bell is still dropped by the first of them.
+- **The platter is in his hand**, not on his head (his screenshot): carried at his hip a little ahead of him, swaying with his stride.
+- **His corner is bare** (his screenshot, the Warden stood on a stand of arms: "what is this, unclear"): a corner with no bowl of coals
+  within `supper.clear` (2) tiles comes first, and whatever else stands within it is taken up. And **no cult sign on the last room's
+  floor** (`World.placeOmens` skips it, as it skips the pen).
+- **A softer climb on the late floors** ("too many men on the last levels"): the curves' tops THE THRESHING FLOOR 23 → 19, THE BRIDGE
+  24 → 22, THE RAFTERS 37 → 28, THE OSSUARY 40 → 29 (its foot 15 → 11), and a man fewer a room on each (`cap.men` 9 / 9 / 9 / 10).
+  `node tools/balance.js` holds: totals 103 / 133 / 139 / 169.
+- **The DOOM riff** ("the music at the final brawl: much, much more of the DOOM format"): `GameAudio.chug`, two saws a hair apart and
+  a square an octave up with a snapping filter, driven through a waveshaper (`doomBus`: `drive` 5 into a tanh, a low-pass at `tone`
+  Hz, `out`), a two-bar `riff` with the jumps to the octave and the fifth as its hook (`accent`), galloped in pairs on the bar's last
+  two steps, the kick on every eighth and doubled on `doubles`, a snare (`GameAudio.snare`) on the backbeats, a crash every bar, the
+  tune down to 0.12. `layers.doom`.
+- **A soul never lies in a doorway** (his screenshot: one against the gate could not be taken, the door was between him and it for the
+  grab's line): `Game.dropSoul` moves one within a door's reach `soul.doorOff` (1.6) tiles off it into the room, and the grab takes
+  a soul at his feet whatever stands between (`Goat.tryGrab`).
+- **A standing table stops a round over its whole top** ("shots fly through a standing table, not a flipped one": the circle at its
+  middle let a round through either end), `Bullet.update`.
+- **No FULL over the grass** ("at the start of the level, no need to write whether the hearts are full or not"): standing in grass with
+  every heart says nothing, his head simply does not go down.
+
+---
+
 ## 0.007, 10 Oct 2026: the branches folded into main
 
 - THE WARDEN branch (modest-goldberg) and the goat-art branch (sharp-edison) merged with main; the SPAWN list keeps main's menu and gains THE WARDEN and THE FLAYED.

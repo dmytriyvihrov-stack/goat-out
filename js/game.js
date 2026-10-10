@@ -348,6 +348,16 @@ class Game {
   dropSoul(x, y, gate) {
     let p = this.freeSpot(x, y);
     if (gate >= 0 && !this.inRoom(p, gate, 0.5)) p = this.spotInRoom(gate, x, y) || p;
+    // Never in a doorway (10 Oct 2026 playtest, a soul the keeper dropped against the gate could not be taken: the door was
+    // between him and it for the grab's line): a soul within a door's reach is moved `soul.doorOff` tiles off it, into the room.
+    const door = this.props.find((q) => q.kind === 'door' && !q.broken && hyp(q.x - p.x, q.y - p.y) < TUNING.prop.door.r + TILE * 0.5);
+    if (door) {
+      const room = gate >= 0 ? this.level.rooms[gate] : roomAt(this.level, x, y);
+      let ax = x - door.x, ay = y - door.y;
+      if (room && hyp(ax, ay) < TILE * 0.3) { ax = (room.x + room.w / 2) * TILE - door.x; ay = (room.y + room.h / 2) * TILE - door.y; }
+      const d = hyp(ax, ay) || 1, qx = door.x + ax / d * TILE * TUNING.soul.doorOff, qy = door.y + ay / d * TILE * TUNING.soul.doorOff;
+      p = (room && this.spotInRoom(room.index, qx, qy)) || this.freeSpot(qx, qy);
+    }
     this.placeSoul(p.x, p.y, gate);
   }
   // The floor tile of a room nearest (x, y), clear of stone and furniture, or null.
@@ -384,10 +394,11 @@ class Game {
   bossPrize(e) {
     // THE ALTAR's twin (js/endboss.js) has the soul's look and none in him: the gate's soul is his brother's.
     if (e.endTwin) { this.dropMilk(e.x, e.y); return; }
-    if (e.soul) this.dropSoul(e.x, e.y, e.soulGate >= 0 ? e.soulGate : undefined); else this.dropMilk(e.x, e.y);
+    // THE LAST SUPPER's champions (`e.noPrize`, js/endboss.js) drop neither grass nor a key; the bell is still the room's.
+    if (e.soul) this.dropSoul(e.x, e.y, e.soulGate >= 0 ? e.soulGate : undefined); else if (!e.noPrize) this.dropMilk(e.x, e.y);
     this.dropBell(e);
     // A champion (a boss with no soul in him) sometimes carries a key too (`TUNING.keys.drop`).
-    if (e.boss && !e.soul && !e.keeper && !(this.level && this.level.def && this.level.def.heaven) && Math.random() < TUNING.keys.drop) this.dropKey(e.x, e.y);
+    if (e.boss && !e.soul && !e.keeper && !e.noPrize && !(this.level && this.level.def && this.level.def.heaven) && Math.random() < TUNING.keys.drop) this.dropKey(e.x, e.y);
   }
   // THE OLD MAN'S BELLS (7 Oct 2026, "the bell you collect is left on the ground after a new boss, and you really pick it up,
   // right click"; the blind shepherd: "beat the bosses and take their bells"): the boss of a floor's last room carries one,
@@ -3973,7 +3984,9 @@ class Game {
     this.aimSlowCd = Math.max(0, (this.aimSlowCd || 0) - dtReal);
     // COLD EYE's `keep` (9 Oct 2026): the slow runs its seconds out, a throw no longer ends it.
     if (this.aimSlow > 0) this.aimSlow = eye && this.state === 'play' && this.goat && (eye.keep || this.goat.holding) ? Math.max(0, this.aimSlow - dtReal) : 0;
-    this.timeScale += ((wantSlow ? 0.32 : this.aimSlow > 0 ? eye.scale : 1) - this.timeScale) * (1 - Math.exp(-7 * dtReal));
+    // THE LAST SUPPER's offer (js/endboss.js, `supper.slow`): the floor runs slow while the goat walks to the table.
+    const supSlow = this.supper && this.supper.phase === 'offer' && this.state === 'play' ? TUNING.endBoss.supper.slow : 1;
+    this.timeScale += ((wantSlow ? 0.32 : Math.min(this.aimSlow > 0 ? eye.scale : 1, supSlow)) - this.timeScale) * (1 - Math.exp(-7 * dtReal));
     this.acc += dtReal * this.timeScale;
     const step = 1 / 60;
     // The pad has no events: it is read here, once, and what it pressed waits in `input` for the
@@ -4270,10 +4283,9 @@ class Game {
         // THE NOSEBAG: with every heart full the tuft goes in the bag instead (js/talismans.js).
         if (Talisman.bagGraze(this, p, near, dt)) { p.fullTold = false; continue; }
         p.graze = 0;
-        // Standing in it with a full heart already used to do nothing at all, which reads as the
-        // grass being broken rather than as the goat having nothing left to gain from it.
-        if (near && !p.fullTold) { p.fullTold = true; this.floatText(p.x, p.y - 24, 'FULL', PALETTE.bone); }
-        else if (!near) p.fullTold = false;
+        // Standing in it with every heart already (10 Oct 2026 playtest: no FULL over the grass, "no need to write
+        // whether the hearts are full or not"): nothing is said, his head simply does not go down.
+        p.fullTold = near;
         continue;
       }
       p.fullTold = false;

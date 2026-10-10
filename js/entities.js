@@ -984,8 +984,10 @@ class Goat {
     }
     // A corrupted soul lying loose: the grab swallows it (8 Oct 2026, `Game.takeSoul`).
     if (game.souls) for (const tm of game.souls) {
-      if (tm.taken || hyp(tm.x - this.x, tm.y - this.y) >= game.soulGrabR()) continue;
-      if (game.sees(this.x, this.y, tm.x, tm.y)) { game.takeSoul(tm); return; }
+      const sd = hyp(tm.x - this.x, tm.y - this.y);
+      if (tm.taken || sd >= game.soulGrabR()) continue;
+      // a soul at his feet is his whatever stands between (10 Oct 2026 playtest: one against a door could not be taken)
+      if (sd < this.r + TILE * 0.7 || game.sees(this.x, this.y, tm.x, tm.y)) { game.takeSoul(tm); return; }
     }
     // A key on the floor: taken by the grab too (8 Oct 2026), within `keys.pickR` or a reach.
     for (const p of game.props) {
@@ -3207,7 +3209,10 @@ class Bullet {
           if (p.toxic) p.shatter(game); else p.light(game, false);
           return;
         }
-        if (p.stopsBullets && hyp(p.x - this.x, p.y - this.y) < p.r + 2) {
+        // A standing table stops a round over its whole top (10 Oct 2026 playtest: "shots fly through a standing table, not a
+        // flipped one": the circle at its middle let a round through either end of it); on its side it is the round body it was.
+        const inTable = p.kind === 'table' && !p.flipped && Math.abs(p.x - this.x) < p.r * 1.35 && Math.abs(p.y - this.y) < p.r * 0.8;
+        if (p.stopsBullets && (inTable || hyp(p.x - this.x, p.y - this.y) < p.r + 2)) {
           this.dead = true; game.particles(this.x, this.y, 4, p.kind === 'table' ? PALETTE.wood : PALETTE.ochre, 100);
           game.world.dot(this.x, this.y, 2, '#2a2020');
           if (p.kind === 'bell') p.ring(game);
