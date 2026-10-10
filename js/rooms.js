@@ -1621,6 +1621,70 @@ const OGRE_FIRST_TEMPLATE = { name: 'ogre hall', rows: [
   '####################',
 ]};
 
+// ARENA VARIANTS (10 Oct 2026, the user's: "a few room options" for the boss fights). A boss's ring was the one plain
+// `ARENA_TEMPLATE` every time, so every fight past the first was the same floor with a different man on it. Three more,
+// each the same 14 x 12 (every arena fits a desktop view), each an answer to a kind of boss, and each still carrying two
+// bowls, two stands and the straw, so nothing a floor's last scene reads (the mage's bowl, js/endboss.js) is missing.
+// `gen.js` deals one off its own stream (`TUNING.rooms.arena`), never on a kind's first meeting (a first meeting is a bare
+// room), never the ogre's (his ring is his own), never THE TRIP's or THE DARK's; `ARENA_VARIANTS` says which boss each fits and
+// `GEN_RULES.arenas` holds it. Pillar 3: each one is more wall, not more men.
+// THE WELL: a hole in the middle of the ring. A shove across it and he is gone; a mage's blink never lands in it.
+// Never a butcher's (his hook would drag the goat over it) and never a floor before the chasm is taught.
+const ARENA_WELL_TEMPLATE = { name: 'arena well', rows: [
+  '##############',
+  '#............#',
+  '#..w......w..#',
+  '#...P....P...#',
+  '#............#',
+  '#.L...OO.X.L.#',
+  '#.....OO.....#',
+  '#...P....P...#',
+  '#..hh....hh..#',
+  '#.B........B.#',
+  '#............#',
+  '##############',
+]};
+// THE COLONNADE: two rows of pillars. Stone breaks the hook's line and the rifle's, so the fight is won between the
+// columns, and every column is a thing to put a man into.
+const ARENA_COLONNADE_TEMPLATE = { name: 'arena colonnade', rows: [
+  '##############',
+  '#............#',
+  '#..P.P..P.P..#',
+  '#.w........w.#',
+  '#............#',
+  '#.....X......#',
+  '#.L........L.#',
+  '#............#',
+  '#..P.P..P.P..#',
+  '#.B..hh.hh.B.#',
+  '#............#',
+  '##############',
+]};
+// THE FEAST: the cult's tables either side of the lane he stands in. A table goes over when it is sent sliding and kills
+// what meets it fast (`table.killSpeed`); the supper on it flies. Never a wide body's (the butcher routes round furniture
+// on grid corners and a hall of tables pinned him).
+const ARENA_FEAST_TEMPLATE = { name: 'arena feast', rows: [
+  '##############',
+  '#............#',
+  '#.w........w.#',
+  '#....tttt....#',
+  '#....tttt....#',
+  '#.B...X....B.#',
+  '#............#',
+  '#....tttt....#',
+  '#....tttt....#',
+  '#.L........L.#',
+  '#..hh....hh..#',
+  '##############',
+]};
+// Which boss each shape fits (the numbers, `from` floors and the odds, are `TUNING.rooms.arena`): `id` keys them there.
+const ARENA_VARIANTS = [
+  { id: 'well', tpl: ARENA_WELL_TEMPLATE, kinds: ['bearer', 'seer', 'hunter', 'dog', 'wraith'], noCave: true },
+  { id: 'colonnade', tpl: ARENA_COLONNADE_TEMPLATE, kinds: ['bearer', 'seer', 'hunter', 'dog', 'wraith', 'champion'] },
+  { id: 'feast', tpl: ARENA_FEAST_TEMPLATE, kinds: ['bearer', 'seer', 'hunter', 'dog', 'wraith'], noCave: true },
+];
+
+
 // The Mill: a ritual grinding wheel with a shorter reach now, in a room built tighter around it.
 // 'M' is the hub. The room is still taller than the arms are long, there is a lane along the top
 // and the bottom that the sweep never reaches, but the whole footprint shrank with the arm, so a

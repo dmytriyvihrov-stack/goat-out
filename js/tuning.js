@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.010';
+const BUILD = '0.011';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -2249,7 +2249,14 @@ const TUNING = {
   // `purse`: heaven's two counts (sacrifices, souls) are meta, so off the play HUD (6 Oct 2026, his ask)
   // but for `show` s after either changes, fading over the last `fade` s; always in heaven and the book.
   // `life`: ONE MORE LIFE's portrait, px a side Г— `hs` (9 Oct 2026: 28 в†’ 15, "much smaller").
-  hud: { scale: 1.05, rail: 1.25, minText: 12, heart: { px: 2.8, gap: 24 }, life: 15, cape: { box: 44, lift: 82 }, purse: { show: 3.5, fade: 0.8 }, keyScale: 1.25 },
+  hud: { scale: 1.05, rail: 1.25, minText: 12, heart: { px: 2.8, gap: 24 }, life: 15, cape: { box: 44, lift: 82 }, purse: { show: 3.5, fade: 0.8 }, keyScale: 1.25,
+    // THE BOSS BAR (10 Oct 2026, "the boss fights: clarity, readability"; `Renderer.drawBossBar`, `BOSS_HINTS`): a man who takes more
+    // than one blow, awake in the goat's room or after him within `near` tiles, gets his name, what he is and his hearts at the top
+    // of the screen. `show` s to come up (the name slams in over `slam` s), `hide` s to go once he is out of the picture, `hold` s
+    // held empty once he is down; `hint` s of what his fight turns on, the first time each man is met; `shake` s of the bar
+    // rattling and the lost cell burning white on a heart gone; at most `rows` bars, the floor's last man first; `w` the widest
+    // the hearts' row goes, in HUD px.
+    boss: { on: true, near: 12, show: 0.3, slam: 0.45, hide: 1.2, hold: 1.4, hint: 5, shake: 0.35, rows: 3, w: 260, cell: 14, cellH: 5, gap: 3 } },
   // On touch the headbutt turns toward the likeliest man ahead of the stick: within `reach` tiles and
   // `cone` radians of it, and only one the goat can see (never a mist, a disguise or a man in the fog).
   touchAim: { reach: 5.2, cone: 0.95 },
@@ -2913,7 +2920,11 @@ const TUNING = {
   // `bossShut`: the way back shuts while a boss stands in the room he is in (`Game.updateBossShut`, 9 Oct 2026), once he is
   // `inset` tiles inside it.
   rooms: { crateWant: [1, 3], bossShut: { on: true, inset: 1.2 }, armory: { chance: 0.5, from: 2, crates: 1 }, flank: { chance: 0.6, from: 2 },
-    firstMeet: { kinds: ['dog'], crates: 1, tables: 1, drop: ['chandelier', 'cleat', 'armor', 'trophy', 'suit', 'barrel', 'bomb', 'weapon'] } },
+    firstMeet: { kinds: ['dog'], crates: 1, tables: 1, drop: ['chandelier', 'cleat', 'armor', 'trophy', 'suit', 'barrel', 'bomb', 'weapon'] },
+    // ARENA VARIANTS (10 Oct 2026, `ARENA_VARIANTS` in rooms.js, dealt in gen.js): `vary` of a boss's rings past a kind's first
+    // meeting are one of the shapes that fit him, from floor index `from` (THE YARD), the well from `fromOf.well` (THE ROAD,
+    // where the drop is taught) and the feast from `fromOf.feast` (a mage's first meeting is THE YARD's, so in play from THE THRESHING FLOOR); THE ALTAR, THE TRIP, THE DARK and the ogre's ring are never varied.
+    arena: { vary: 0.7, from: 1, fromOf: { well: 3, colonnade: 1, feast: 1 } } },
   // `godSpeed`: GOD MODE also runs him this many times faster (5 Oct 2026, "in god mode speed x3"),
   // for crossing a floor to the thing under test.
   dev: { burstGap: 1.5, uiScale: 1.3, minText: 12, godSpeed: 3 },
@@ -4041,6 +4052,28 @@ const KEYWORDS = [
 
 // What the death card says took the last heart: a kind of man (a clubman is split into the
 // ordinary one and the butcher in `game.killedBy`), or the word a hazard passes to `Goat.damage`.
+// THE BOSS BAR's words (10 Oct 2026, `Renderer.drawBossBar`): the name a man is given over his hearts, and the one line of
+// what his fight turns on, said once per man, where the fight is rather than in the book. `keeper` is any gate's keeper
+// whatever his kind; `end` what a floor's last man wears beside the soul's tag. Keep each `hint` under about forty letters:
+// it is read while he comes at you.
+const BOSS_HINTS = {
+  bearer: { name: 'THE CLUBMAN', hint: 'READ THE SWING · PUT HIM INTO THE WALL' },
+  champion: { name: 'THE BUTCHER', hint: 'THE HOOK: TURN OR ROLL · TOO BIG TO LIFT' },
+  seer: { name: 'THE MAGE', hint: 'STEP OFF THE RUNE · HIT, HE BLINKS AWAY' },
+  butcher: { name: 'THE OGRE', hint: 'THE HORNS DO NOTHING · BLADES, FIRE, BODIES' },
+  hunter: { name: 'THE RIFLEMAN', hint: 'BREAK HIS LINE · CLOSE THE DISTANCE' },
+  dog: { name: 'THE HOUND', hint: 'MEET THE DART WITH THE HORNS' },
+  wraith: { name: 'THE WRAITH', hint: 'IT COMES FROM BEHIND · STRIKE IT SOLID' },
+  shield: { name: 'THE SHIELDMAN', hint: 'THE BOARD TURNS HORNS · GO ROUND IT' },
+  thrower: { name: 'THE THROWER', hint: 'HE THROWS WHAT HE FINDS · ROLL THE GRAB' },
+  shaman: { name: 'THE SHAMAN', hint: 'HIS MEN CARRY HIS SPIRIT · GET TO HIM' },
+  ratogre: { name: 'THE RAT OGRE', hint: 'HURT ONLY DOWN: A CRATE, A BLADE, THE WHEEL' },
+  warden: { name: 'THE WARDEN', hint: 'THE BOARD TURNS HORNS · HIS BACK IS OPEN' },
+  flayed: { name: 'THE FLAYED', hint: 'THE HORNS DO NOTHING · BLADES, FIRE, BODIES' },
+  keeper: { hint: 'HIS SWING LIGHTS WITCHFIRE · HE WALKS INTO IT' },
+  tags: { soul: 'A SOUL IN HIM', keeper: 'KEEPER OF THE GATE', champion: 'CHAMPION', down: 'DOWN' },
+};
+
 const KILLED_BY = {
   hunter: 'RIFLEMAN', dog: 'HOUND', seer: 'MAGE', butcher: 'OGRE', wraith: 'WRAITH', ratogre: 'RAT OGRE',
   fire: 'FIRE', witchfire: 'WITCHFIRE', spike: 'THE GRATING', bomb: 'A BOMB', mill: 'THE WHEEL',

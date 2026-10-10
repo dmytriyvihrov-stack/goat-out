@@ -296,6 +296,31 @@ function showroomLevel(def, seed) {
       prevR = r; px0 += w + 4;
     });
   }
+  // THE ARENAS (10 Oct 2026, rooms.js `ARENA_VARIANTS`): the three boss rings a floor past a kind's first meeting may deal, in a
+  // third row under THE FLANK's, their pillars, bowls, stands, tables and the well laid as the generator lays them; SPAWN a
+  // boss into one from the dev drawer to fight him on it.
+  {
+    const y0 = 63;
+    let prevR = hall, px0 = hall.x + hall.w + 4;
+    ARENA_VARIANTS.forEach((v) => {
+      const tpl = v.tpl, w = tpl.rows[0].length, h = tpl.rows.length, doorRows = [y0 + 5, y0 + 6];
+      const r = room(px0, y0, w, h, tpl.name, 1); r.role = 'arena';
+      fill(prevR.x + prevR.w - 1, doorRows[0], px0, doorRows[1], T.FLOOR); zone(prevR.x + prevR.w, doorRows[0] - 1, px0 - 1, doorRows[1] + 1, 1);
+      tpl.rows.forEach((row, ty) => [...row].forEach((c, tx) => {
+        const X = px0 + tx, Y = y0 + ty;
+        if (c === 'O') tiles[at(X, Y)] = T.PIT;
+        else if (c === 'P') tiles[at(X, Y)] = T.WALL;
+        else if (c === 'h') tiles[at(X, Y)] = T.HAY;
+        else if (c === 'B') put('brazier', X, Y);
+        else if (c === 'L') put('lamp', X, Y);
+        else if (c === 'w') put('weapon', X, Y, { weapon: tx < w / 2 ? 'sword' : 'shield' });
+        // one table on each 2 x 2 of a `t` block, as `placeTables` stands them: at the block's even offsets
+        else if (c === 't' && (tx - row.indexOf('t')) % 2 === 0 && (ty - tpl.rows.findIndex((rw) => rw[tx] === 't')) % 2 === 0) put('table', X + 0.5, Y + 0.5);
+      }));
+      label('ARENA · ' + tpl.name.slice(6).toUpperCase(), px0 + w / 2 - 0.5, y0 + 1.1, w - 2, true);
+      prevR = r; px0 += w + 4;
+    });
+  }
   return { W, H, tiles, rooms, spawns: [], props, start: P(hx + 2, hy + 13), exit: { x: (last.x + last.w) * TILE, y: (ey + 1) * TILE },
     exitTile: { x0: last.x + last.w - 1, y0: ey }, forkTile: null, entry: null, seed, def,
     hints, controls, chasms, gaps, cagePrompt: null, vault: null, windows, plan: null, gates: [], sealedArenas: [], shop: null,

@@ -5,6 +5,25 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.011, 10 Oct 2026: THE BOSS BAR, and three more rings to fight him in
+
+- **THE BOSS BAR** (his ask: "the boss fights: clarity, readability"): a man who takes more than one blow (a champion, a gate's keeper,
+  a soul-bearer, the rat ogre, THE WARDEN, THE FLAYED), awake in the goat's room or after him within `hud.boss.near` tiles, gets a
+  plate at the top of the screen: his name, what he is (A SOUL IN HIM violet, CHAMPION gold, KEEPER OF THE GATE), his hearts as big
+  cells, and for the first `hint` s the one line his fight turns on (THE HORNS DO NOTHING · BLADES, FIRE, BODIES on the ogre, THE
+  BOARD TURNS HORNS · GO ROUND IT on the shieldman, THE HOOK: TURN OR ROLL on the butcher; `BOSS_HINTS`), said where the fight is,
+  once per man. The name slams in; a heart lost burns its cell white and rattles the plate; down, it reads DOWN with every cell empty
+  for a beat. At most three plates, the floor's last man first. `Renderer.drawBossBar`, `TUNING.hud.boss`; render only.
+- **ARENA VARIANTS** ("maybe a few room options"): a boss's ring was the one plain arena every time. Three more, the same 14 x 12,
+  each an answer to a kind (`ARENA_VARIANTS`, rooms.js): THE WELL (a hole in the middle of the ring: a shove across it and he is
+  gone; never a butcher's, whose hook would drag the goat over it, from THE ROAD where the drop is taught), THE COLONNADE (two rows
+  of pillars that break the hook's line and the rifle's), THE FEAST (the cult's tables either side of his lane, which go over and
+  kill; never a wide body's). Dealt in gen.js off its own stream (`TUNING.rooms.arena`: `vary` 0.7 from THE YARD), never on a kind's
+  first meeting, THE ALTAR's, THE TRIP's, THE DARK's, the ogre's ring or the supper. `GEN_RULES.arenas`. THE SHOWROOM lays the three in a third
+  row under THE FLANK's.
+
+---
+
 ## 0.010, 10 Oct 2026: no more wedged in a corner, THE FLAYED's change you can read
 
 - **Wedged goat** (playtest screenshot: stuck between the altar and a post): a goat pressing a move key who has not moved for
