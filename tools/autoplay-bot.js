@@ -583,8 +583,16 @@
       }
       if (B.pickCd > 0) { B.pickCd--; return false; }
       if (o.holding || B.rmb) return false;
-      const it = pickables().find(q => hyp(q.x - o.x, q.y - o.y) < q.r * 0.9 && g.sees(o.x, o.y, q.x, q.y));
-      if (!it) return false;
+      const near = pickables().filter(q => g.sees(o.x, o.y, q.x, q.y)).map(q => ({ q, d: hyp(q.x - o.x, q.y - o.y) })).sort((a, b) => a.d - b.d)[0];
+      if (!near) { B.approach = 0; return false; }
+      // a soul dropped against a gate or a wall: the route ends a step short of the grab's reach, so the last
+      // step is walked straight at it (a few seconds at most, then the route has it again)
+      if (near.d >= near.q.r) {
+        if (near.d < near.q.r * 2.2 && (B.approach || 0) < 60) { B.approach = (B.approach || 0) + 1; move(near.q.x - o.x, near.q.y - o.y); aim(near.q.x, near.q.y); B.goal = 'step to ' + near.q.what; return true; }
+        if (near.d >= near.q.r * 2.2) B.approach = 0;
+        return false;
+      }
+      B.approach = 0; const it = near.q;
       B.pick = { it, t: 0 }; releaseAll(); stop(); aim(it.x, it.y); return true;
     }
     function tick() {
