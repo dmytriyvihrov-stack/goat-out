@@ -226,7 +226,9 @@ const at = decode(Buffer.from(src.match(/data:image\/png;base64,([A-Za-z0-9+/=]+
 const EXT = { goat: 34, clubman: 36 };
 const atlasImg = (u, d) => { const f = A.units[u].idle[d], im = new Img(f[2], f[3]); for (let j = 0; j < f[3]; j++) for (let i = 0; i < f[2]; i++) { const k = ((f[1] + j) * at.w + f[0] + i) * 4; if (at.data[k + 3] < 128) continue; im.fill(i, j, 1, 1, '#' + [0, 1, 2].map((o) => at.data[k + o].toString(16).padStart(2, '0')).join('')); } return { im, foot: f[5], k: EXT[u] / A.target }; };
 
-const Z = +(process.argv[2] || 4), pad = 16, TX = 0.68, S = 3;     // TX: world px a texel (plain: ~50 px to the crown, the butcher's ~44 and the ogre's ~70 between)
+const TX = 0.68, EXPORT = { W, H, FOOT, K, TX, R, V, D, leg, arm, bracer, harness, belt, loin, eyes, corruptBody, sprite, toImg, atlasImg, hash, LOOKS, OG, Grid, Img, text };
+if (require.main !== module) { module.exports = EXPORT; return; }
+const Z = +(process.argv[2] || 4), pad = 16, S = 3;     // TX: world px a texel (plain: ~50 px to the crown, the butcher's ~44 and the ogre's ~70 between)
 const blockW = Math.round(W * Z + W * K * Z) + 3 * pad, blockH = Math.round(H * K * Z) + 80, perRow = 3, rows = Math.ceil(LOOKS.length / perRow);
 const stripH = Math.round(H * K * TX * S) + 60;
 const stripW = (() => { let w = pad; const add = (pw, k) => { w += Math.round(pw * k * S) + pad; }; add(A.units.goat.idle[7][2], EXT.goat / A.target); add(A.units.clubman.idle[0][2], EXT.clubman / A.target); for (let i = 0; i < 5; i++) add(W, TX); add(OG.W, 1.4); for (let i = 0; i < 5; i++) add(W * K, TX); return w + pad; })();
