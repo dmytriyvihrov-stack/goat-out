@@ -5,6 +5,18 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.002, 10 Oct 2026: THE WARDEN and THE LAST SUPPER
+
+- **The villain** (output/villain-2026-10-10/: five looks, then three options a phase; the user picked the sawn-skull Humungus for
+  the man and the flayed cage for the monster): `js/warden-pixels.js`, THE WARDEN, front view only, with a corrupted soul at the
+  crossing of his harness, the skull board, a sword over one shoulder and the sawn-off over the other. His fight is not built.
+- **THE LAST SUPPER** (js/endboss.js, `SUPPER_TEMPLATE`, `TUNING.endBoss.supper`, `GEN_RULES.supper`): THE OSSUARY's last room
+  is a hall with one long table, the room's men sat along it, the Warden at its head, a covered platter in the middle, a chair at
+  the foot that slides out for the goat under his hand. Nobody moves and the score hushes while he asks him to sit; the chair is a
+  wraith. Reached, BAAH, or a blow on anybody at the table: he laughs, every man is up, and he walks out through the way out
+  with the platter. THE SHOWROOM has the platter in its hall and the Warden in THE OSSUARY's gallery.
+- **LAST ROOM · SCENE** in the dev drawer: this floor laid again, the goat stood at the door of its last room, its scene ready.
+
 ## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
 
 - **Versions count 0.001, 0.002, ...** (`BUILD`; his word: "big numbers confuse me"). The old line ended at 2.07.

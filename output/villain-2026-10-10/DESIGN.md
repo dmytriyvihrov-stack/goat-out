@@ -85,3 +85,13 @@ built:
 - Every heart he loses lets a swallowed soul out as a wraith: the room fills as he empties.
 - THE SACRIFICE ALTAR in the middle of his room (`js/sacrifice.js`): anything standing on it pays a heart a tick,
   him too. BAAH lures him onto it, his own pull drags the goat over it. The sacrificer sacrificed.
+
+## Built (10 Oct 2026, the same day)
+
+The user picked **B · BONE** for the man and **A · CAGE with the witchfire fists** for the monster, and asked for a small corrupted
+soul on the man ("so I see he is a strong one even in the first form") and a sword over one shoulder with the gun over the other.
+`js/warden-pixels.js` is that man, front view only (`ingame.cjs` → `ingame.png`); the monster is not drawn in the game yet.
+**THE LAST SUPPER** (his ask: THE OSSUARY's last room, every man at a holy supper, the Warden at the head, a covered platter you take
+for her, a chair pulled out for you by his hand, free to walk, nobody attacks, spooky music; the chair is a ghost, he laughs, the
+brawl starts; skippable) is in js/endboss.js, see CLAUDE.md. Not built: his own fight (he leaves with the platter instead), a
+Doom-like fight cue (the score's own combat stage plays), the monster's sprite.
