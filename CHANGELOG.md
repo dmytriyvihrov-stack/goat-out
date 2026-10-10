@@ -5,6 +5,23 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.002, 10 Oct 2026: the goat's legs, and the opening in pixels
+
+- **His legs move on the run** (`PIXEL_ART.gait`, `TUNING.goat.gait`; his ask: "finish the goat's animation, especially the legs"). The packed
+  walk frames moved the legs a pixel or two, so the run read as a body bobbing on four stiff pegs. The legs are found on each frame
+  (`legsOf`: the blobs under the belly line that stand on the floor, a touching pair cut at the gap between its hooves) and moved by their
+  phase of a trot: lifted from the hoof up and swung forward along the facing in the air, back on the ground, outward on the front and back
+  views. Whole atlas pixels, twelve steps a cycle, baked once and warmed on the title. The ewe in the opening walks the same way off her one
+  standing frame (she slid before).
+- **The opening is pixels** (`js/prologue-art.js`, `PrologueArt`; "the look of the opening"). The field, the road and the sacking were a gradient
+  sky, a disc for a sun, a hill in one curve, grass as strokes and a truck in rectangles beside pixel animals. Now in cells the size the sprites'
+  texels read at: a sky in dithered bands, the sun with its halo, two ranges of hills with trees, a speckled field with flowers, the blades
+  bending in a wind, clouds, a butterfly, the pen's rails in cells; at night a moon with its seas, stars that blink, a treeline, the asphalt
+  and the verge going by as strips, the truck with a roof, a door, a lamp's beam, exhaust, dust and wheels turning a cell at a time; the
+  sacking a woven cloth. Baked once per screen size; only what moves is drawn live. The scene's coordinates did not move.
+
+---
+
 ## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
 
 - **Versions count 0.001, 0.002, ...** (`BUILD`; his word: "big numbers confuse me"). The old line ended at 2.07.

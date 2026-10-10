@@ -321,6 +321,12 @@ const PIXEL_ART = {
       const u = PIXEL_ASSETS.units[id];
       if (u && u.walk) for (const d in PIXEL_HORN_FIX[id]) for (const f of [u.idle[d], ...(u.walk[d] || [])]) jobs.push(() => this.hornFix(id, +d, f));
     }
+    // and the goat's legs at every step of the stride (`gait`), a facing at a time
+    const G = TUNING.goat.gait, gu = PIXEL_ASSETS.units.goat;
+    if (gu && gu.walk) for (let d = 0; d < 8; d++) {
+      if (PIXEL_MIRROR.goat && PIXEL_MIRROR.goat[d] !== undefined) continue;
+      for (let st = 0; st < G.steps; st++) { const f = gu.walk[d][Math.floor(st * 4 / G.steps) % 4]; jobs.push(() => this.gait('goat', d, f, this.hornFix('goat', d, f), st)); }
+    }
     const step = () => { const job = jobs.shift(); if (!job) return; try { job(); } catch (err) { /* baked when drawn */ } setTimeout(step, 30); };
     setTimeout(step, 120);
   },
@@ -370,7 +376,9 @@ const PIXEL_ART = {
     // `% 8` before the + 14: an angle past about -11 rad (a heading nobody wrapped) made it negative.
     const [d, flip] = this.facing(id, angle);
     const f = moving && u.walk ? u.walk[d][Math.floor(t * 8 + (x || 0) * 0.05) % 4] : u.idle[d];
-    const fix = bare ? this.bare(id, d, f) : this.hornFix(id, d, f);
+    let fix = bare ? this.bare(id, d, f) : this.hornFix(id, d, f);
+    // the legs moved by their phase of the stride (`gait`), over the horn-fixed or bare frame
+    if (moving && TUNING.goat.gait.units.includes(id)) { const g = this.gait(id, d, f, fix, this.gaitStep(t, x)); if (g) fix = g; }
     if (fix) {
       const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
       if (flip) { ctx.save(); ctx.scale(-1, 1); }
@@ -431,6 +439,86 @@ const PIXEL_ART = {
     if (hs.length) { const px = x.getImageData(0, 0, f[2], f[3]); for (const h of hs) for (const p of h.blob) px.data[p * 4 + 3] = 0; x.putImageData(px, 0, 0); }
     this.bares.set(f, c);
     return c;
+  },
+  // THE LEGS (10 Oct 2026, "finish the goat's animation, especially the legs"; `TUNING.goat.gait`). The packed
+  // walk frames move his legs a pixel or two: the run read as a body bobbing on four stiff pegs. So the legs are
+  // moved here. `legsOf` finds them on a frame: the belly line is the lowest row at least `belly` of the widest
+  // row, and the legs are the blobs of opaque pixels under it that stand on the floor (within `reach` rows of the
+  // frame's lowest, a hind hoof on a diagonal view stands higher than a front one), left to right; a beard hanging
+  // under the chin on the front view reaches no floor and stays body. `gait` bakes the frame with each leg at its
+  // phase of a trot, neighbours a half cycle apart: in the air it is shortened from the hoof up by `lift` and the
+  // hoof swings forward along the facing by `swing` (the hip stays put, each row moving by its share of the leg),
+  // on the ground it goes back; on the front and back views, where forward is toward or away from the camera, a
+  // lifted hoof steps `side` outward instead. Whole atlas pixels; `steps` bakes a cycle, cached per base frame
+  // (the horn-fixed or bare one) and step. The ewe (`sheep-pet`), who has no walk frames at all, walks off her
+  // standing frame the same way (`Renderer.drawSheep` passes `moving` now).
+  legsOf(f, img) {
+    this.legCache ||= new Map();
+    const key = img || f; if (this.legCache.has(key)) return this.legCache.get(key);
+    const G = TUNING.goat.gait, w = f[2], h = f[3], c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    if (img) x.drawImage(img, 0, 0); else x.drawImage(this.image, f[0], f[1], w, h, 0, 0, w, h);
+    const D = x.getImageData(0, 0, w, h).data, on = new Uint8Array(w * h), rowW = new Int32Array(h);
+    let maxW = 0, bottom = -1;
+    for (let i = 0; i < w * h; i++) if (D[i * 4 + 3] > 127) { on[i] = 1; rowW[(i / w) | 0]++; }
+    for (let py = 0; py < h; py++) { if (rowW[py] > maxW) maxW = rowW[py]; if (rowW[py]) bottom = py; }
+    let top = bottom;
+    for (let py = bottom; py >= 0; py--) if (rowW[py] >= maxW * G.belly) { top = py + 1; break; }
+    const seen = new Uint8Array(w * h), legs = [];
+    for (let s = top * w; s < w * h; s++) {
+      if (!on[s] || seen[s]) continue;
+      const blob = [], st = [s]; seen[s] = 1; let x0 = w, x1 = 0, y0 = h, y1 = 0, sx = 0;
+      while (st.length) { const i = st.pop(); blob.push(i); const px = i % w, py = (i / w) | 0;
+        if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; sx += px;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = px + dx, ny = py + dy, j = ny * w + nx;
+          if (nx >= 0 && nx < w && ny >= top && ny < h && on[j] && !seen[j]) { seen[j] = 1; st.push(j); } } }
+      if (blob.length < G.minBlob || y1 < bottom - G.reach) continue;
+      // Two legs that touch (a pair one behind the other on a side view, both on the front and back views) are
+      // one blob: wider than a leg (`legW`) it is cut into two, each with its own phase, down the column of its
+      // middle half with the fewest pixels in its lower rows (the gap between the hooves; the bbox's own middle
+      // cut through a leg where the blob carried a piece of the belly to one side).
+      if (x1 - x0 + 1 > G.legW) {
+        const cols = new Int32Array(w), lo = y0 + (y1 - y0) * 0.4;
+        for (const i of blob) if (((i / w) | 0) >= lo) cols[i % w]++;
+        let mx = Math.round((x0 + x1) / 2), best = Infinity;
+        for (let cx = x0 + ((x1 - x0) >> 2); cx <= x1 - ((x1 - x0) >> 2); cx++) if (cols[cx] < best) { best = cols[cx]; mx = cx; }
+        const a = blob.filter((i) => i % w < mx), b = blob.filter((i) => i % w >= mx);
+        for (const part of [a, b]) if (part.length >= G.minBlob) {
+          let px0 = w, px1 = 0, py0 = h, py1 = 0, psx = 0;
+          for (const i of part) { const px = i % w, py = (i / w) | 0; if (px < px0) px0 = px; if (px > px1) px1 = px; if (py < py0) py0 = py; if (py > py1) py1 = py; psx += px; }
+          legs.push({ blob: part.sort((q, r) => q - r), x0: px0, x1: px1, y0: py0, y1: py1, cx: psx / part.length });
+        }
+      } else legs.push({ blob: blob.sort((a, b) => a - b), x0, x1, y0, y1, cx: sx / blob.length });
+    }
+    legs.sort((a, b) => a.cx - b.cx);
+    const out = { legs, data: D, w, h, mid: w / 2, top, bottom };
+    this.legCache.set(key, out); return out;
+  },
+  // Which step of the stride's `steps` this clock and place are on, in step with `draw`'s frame.
+  gaitStep(t, x) { const G = TUNING.goat.gait; return Math.floor((t * 8 + (x || 0) * 0.05) % 4 / 4 * G.steps) % G.steps; },
+  gait(id, d, f, base, step) {
+    if (typeof document === 'undefined' || !(this.image instanceof HTMLCanvasElement)) return null;
+    const G = TUNING.goat.gait; this.gaits ||= new Map();
+    const key = base || f; let arr = this.gaits.get(key); if (!arr) { arr = new Array(G.steps).fill(undefined); this.gaits.set(key, arr); }
+    if (arr[step] !== undefined) return arr[step];
+    const L = this.legsOf(f, base); if (!L.legs.length) { arr[step] = null; return null; }
+    const { w, h, data: D } = L, c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d'), out = x.createImageData(w, h), O = out.data, isLeg = new Uint8Array(w * h);
+    for (const l of L.legs) for (const i of l.blob) isLeg[i] = 1;
+    for (let i = 0; i < w * h; i++) if (!isLeg[i]) for (let q = 0; q < 4; q++) O[i * 4 + q] = D[i * 4 + q];
+    // packed index `d` is `facing`'s: 6 looks right along +x, 0 down the screen (the front view), 4 up (the back)
+    const fx = Math.cos((d + 2) * Math.PI / 4), frontal = Math.abs(fx) < 0.5;
+    L.legs.forEach((l, n) => {
+      const p = (step / G.steps + (n % 2) * 0.5) % 1, si = Math.sin(p * Math.PI * 2), co = Math.cos(p * Math.PI * 2);
+      const lift = Math.round(G.lift * Math.max(0, si)), span = Math.max(1, l.y1 - l.y0);
+      const dx = frontal ? Math.round(G.side * Math.max(0, si) * (l.cx < L.mid ? -1 : 1)) : Math.round(-G.swing * co * Math.sign(fx));
+      // the blob's rows run top to bottom, so where a shortened leg folds up the hoof's own pixels land last
+      for (const i of l.blob) { const px = i % w, py = (i / w) | 0, k = (py - l.y0) / span;
+        const nx = px + Math.round(dx * k), ny = py - Math.round(lift * k);
+        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+        const j = (ny * w + nx) * 4; for (let q = 0; q < 4; q++) O[j + q] = D[i * 4 + q]; }
+    });
+    x.putImageData(out, 0, 0); arr[step] = c; return c;
   },
   // The lowest root among a frame's horns, the near one on a side view: the one root a fused pair still has.
   lowRoot(hs) { return hs.reduce((m, h) => h.base[1] > m.base[1] ? h : m).base; },

@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.001';
+const BUILD = '0.002';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -683,6 +683,14 @@ const TUNING = {
     feel: { turnGrip: 1.6, lean: 0.14, leanRate: 14, run: 0.05, bob: 1.3, pull: 3,
       kick: { from: 0.25, squash: -0.07, dust: 2 }, stop: { at: 0.7, squash: 0.06 },
       skid: { dot: -0.3, at: 0.55, squash: 0.09, dust: 3, gap: 0.35 } },
+    // His legs on the run (10 Oct 2026, "finish the goat's animation, especially the legs"; `PIXEL_ART.gait`). The
+    // packed walk frames move the legs a pixel or two, so the run read as a body bobbing on four stiff pegs: the legs
+    // are found on each frame (the blobs under the belly line, `belly` of the widest row, that reach within `reach`
+    // rows of the floor and are `minBlob` px or more; one wider than `legW` is two legs touching, cut in two) and moved by their phase of a trot, in whole atlas px: in the
+    // air a leg is shortened from the hoof up by `lift` and its hoof swings `swing` forward along the facing; on the
+    // front and back views a lifted hoof steps `side` outward instead. `steps` bakes a cycle (three a walk frame).
+    // `units` take it; the ewe (`sheep-pet`) has no walk frames at all and walks off her standing frame this way.
+    gait: { steps: 12, lift: 7, swing: 6, side: 3, belly: 0.6, reach: 16, minBlob: 10, legW: 15, units: ['goat', 'sheep-pet'] },
     // What he does standing still once he has stood `after` s: every `gap` s (a roll between the
     // two) one fidget, picked by `weights`, glances one facing aside (`look` s), a little pronk
     // (`hop`: `h` px up over `time` s), a shake of the head (`shake`: `amp` rad at `freq` rad/s),
@@ -2568,6 +2576,10 @@ const TUNING = {
       // on black, so this is the one place a player has to be told what kind of scene they are
       // looking at. Held, then the meadow bleeds through it over the second half.
       titleCard: 2.6,
+      // The picture (10 Oct 2026, js/prologue-art.js): a cell is `cell` of the scene's scale in screen px, never
+      // under 2, the size the sprites' own texels read at; `tufts` blades of grass in the field, `stars` on the
+      // road's sky, `flowers` in the grass; the treeline and the verge go by at those shares of `roadSpeed`.
+      cell: 0.6, tufts: 90, flowers: 36, stars: 70, treeline: 0.22, verge: 0.6, clouds: 7,
     },
   },
   // The first gate of the run, seen being shut on him (`LEVELS[0].blessGate`, `game.bless`, 26 Sep
