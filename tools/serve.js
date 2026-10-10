@@ -127,7 +127,7 @@ http.createServer((req, res) => {
     }
     if (req.url.startsWith('/lab/beat')) {
       // every lane's heartbeat, newest first (tools/lab-run.js runs one browser a lane)
-      const beats = fs.readdirSync(dir).filter((n) => /^beat(-d+)?.json$/.test(n)).map((n) => { try { return JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8')); } catch (e) { return null; } }).filter(Boolean).sort((a, b) => (b.at > a.at ? 1 : -1));
+      const beats = fs.readdirSync(dir).filter((n) => /^beat(-\d+)?\.json$/.test(n)).map((n) => { try { return JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8')); } catch (e) { return null; } }).filter(Boolean).sort((a, b) => (b.at > a.at ? 1 : -1));
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(Object.assign({}, beats[0] || {}, { lanes: beats }))); return;
     }
   }

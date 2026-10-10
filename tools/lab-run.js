@@ -39,7 +39,7 @@ const killTree = (pid) => { if (!pid) return; try { if (process.platform === 'wi
 const cmd = process.argv[2];
 if (cmd === 'stop' || cmd === 'status') {
   let st = null; try { st = JSON.parse(fs.readFileSync(pidFile, 'utf8')); } catch (e) { }
-  const beats = fs.readdirSync(dir).filter((n) => /^beat(-d+)?.json$/.test(n)).map((n) => { try { return JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8')); } catch (e) { return null; } }).filter(Boolean);
+  const beats = fs.readdirSync(dir).filter((n) => /^beat(-\d+)?\.json$/.test(n)).map((n) => { try { return JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8')); } catch (e) { return null; } }).filter(Boolean);
   const runs = fs.existsSync(path.join(dir, 'runs.jsonl')) ? fs.readFileSync(path.join(dir, 'runs.jsonl'), 'utf8').split('\n').filter(Boolean).length : 0;
   if (cmd === 'status') {
     console.log(st && alive(st.pid) ? `running (supervisor ${st.pid}, port ${st.port}, hand ${st.level})` : 'not running');
@@ -49,7 +49,8 @@ if (cmd === 'stop' || cmd === 'status') {
     process.exit(0);
   }
   if (!st) { console.log('not running'); process.exit(0); }
-  for (const c of [].concat(st.chrome || [])) killTree(c); killTree(st.server); killTree(st.pid);
+  killTree(st.pid); for (const c of [].concat(st.chrome || [])) killTree(c); killTree(st.server);
+  if (process.platform === 'win32') try { execSync(`powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*goat-out-lab*' -or $_.CommandLine -like '*serve.js ${st.port}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`, { stdio: 'ignore' }); } catch (e) { }
   try { fs.unlinkSync(pidFile); } catch (e) { }
   console.log('stopped'); process.exit(0);
 }
@@ -95,23 +96,29 @@ function startChrome(L) {
 }
 function stopChrome(L, why) { if (!L.chrome) return; log(`lane ${L.lane}: restarting the browser: ${why}`); killTree(L.chrome.pid); L.chrome = null; }
 
+// One watch at a time: a slow one overlapping the next started a second server and a second browser on a profile
+// already in use (Chrome's exit 21), and the lanes killed each other in turn.
+let watching = false;
 async function watch() {
+  if (watching) return; watching = true;
   try {
     await ensureServer();
     for (const L of S.lanes) {
-      if (!L.chrome) { startChrome(L); continue; }
+      // one browser started a watch, so a machine already busy is not handed three cold starts at once
+      if (!L.chrome) { startChrome(L); break; }
       const age = (Date.now() - L.at) / 60000;
       let beat = null; try { beat = JSON.parse(fs.readFileSync(path.join(dir, `beat-${L.lane}.json`), 'utf8')); } catch (e) { }
       const beatAt = beat ? Date.parse(beat.at) : 0, beatAge = beat ? (Date.now() - beatAt) / 60000 : Infinity;
       // a page that never spoke, or stopped speaking: started again (two minutes' grace to load)
-      if (age > 2 && (beatAge > staleMin || beatAt < L.at - 1000)) { stopChrome(L, `no heartbeat for ${beatAge === Infinity ? 'ever' : beatAge.toFixed(1) + ' min'}`); startChrome(L); continue; }
+      if (age > 3 && (beatAge > staleMin || beatAt < L.at - 1000)) { stopChrome(L, `no heartbeat for ${beatAge === Infinity ? 'ever' : beatAge.toFixed(1) + ' min'}`); startChrome(L); continue; }
       // fresh every `recycle` minutes, but never in the middle of a floor
       if (recycleMin > 0 && age > recycleMin) L.recycleDue = true;
       if (L.recycleDue && beat && beat.state !== 'play' && beat.state !== 'boon') { stopChrome(L, `recycle after ${Math.round(age)} min`); startChrome(L); }
     }
   } catch (e) { log('watch: ' + (e.message || e)); }
+  watching = false;
 }
 
 process.on('SIGINT', () => { for (const L of S.lanes) killTree(L.chrome && L.chrome.pid); if (S.server) killTree(S.server.pid); try { fs.unlinkSync(pidFile); } catch (e) { } process.exit(0); });
 log(`supervisor ${process.pid} up: port ${port}, ${lanesN} browser(s), hands ${S.lanes.map((l) => l.hand).join(' / ')}, profiles under ${profileRoot}`);
-writePid(); watch(); setInterval(watch, 30000);
+writePid(); watch(); setInterval(watch, 20000);
