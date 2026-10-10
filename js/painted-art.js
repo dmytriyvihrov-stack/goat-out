@@ -727,9 +727,16 @@ class PaintedArt extends AltarArt {
       ctx.globalAlpha=a0;}
     if(e.state==='floored'||e.state==='stunned'){if(e.kind&&key!=='sheep')this.knockdown(ctx,e);else ctx.rotate(0.7);}
     if(e.liftedBy)ctx.rotate(Math.cos(e.liftedBy.facing)<0?1.45:-1.45);   // across the thrower's fist (js/thrower.js)
-    // The hound has no stride on the sheet: running, he bounces (`dog.gait`, `dog.bob`), or he is a
-    // picture of a dog sliding round the floor.
-    if(key==='hound'&&moving){const G=TUNING.dog;ctx.translate(0,-Math.abs(Math.sin(renderer.t*G.gait*Math.PI+e.x*0.02))*G.bob);}
+    // ON THE RUN (`TUNING.enemyAnim.run`, 10 Oct 2026): a man steps on a phase the distance he covers drives (`e.runP`, a
+    // cycle every `stride` px; render only, kept on him the way `lieState` is), his feet moved by `PIXEL_ART.gait`, and his
+    // body bobs on each footfall, rocks side to side and leans into the run, harder after the goat (`e.aware`).
+    const RC=e.kind&&key!=='sheep'?PIXEL_ART.gaitCfg(pixel):null;let runP=null;
+    if(RC){const sp=hyp(e.vx||0,e.vy||0),now=renderer.t;
+      if(e.runAt!==undefined&&now>e.runAt)e.runP=((e.runP||0)+Math.min(0.1,now-e.runAt)*sp/RC.stride)%1;
+      e.runAt=now;
+      if(moving){runP=e.runP||0;const k=Math.min(1,sp/RC.fast),a=runP*Math.PI*2,lean=RC.lean*k*(e.aware?1:0.5)*Math.cos(angle);
+        ctx.translate(0,-Math.abs(Math.sin(a))*RC.bob*k);ctx.rotate(Math.sin(a)*RC.tilt*k+lean);
+        if(RC.stretch){const st=Math.sin(a*2)*RC.stretch*k;ctx.scale(1+st,1-st);}}}
     // A man standing still breathes and shifts his weight (`TUNING.menIdle`), never a statue; off as soon as he moves or acts.
     // THE SHOWROOM's figures (`e.statue`, js/showroom.js) are the one thing that does stand like a statue.
     if(key!=='sheep'&&e.kind&&!moving&&!e.dead&&!e.statue&&MEN_IDLE.has(e.state)){const M=TUNING.menIdle,b=(1-Math.cos(renderer.t*Math.PI*2/M.period+(e.x||0)*0.13))/2;
@@ -756,7 +763,7 @@ class PaintedArt extends AltarArt {
       const cw=cs!==null?{t:renderer.t,k:moving?Math.min(1,Math.hypot(e.vx||0,e.vy||0)/TUNING.goat.speed):0}:null;
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'behind',angle,cs,cw);
       // BIG and LONG are drawn whole by `PIXEL_ART.horns`: the frame under them goes without its packed horns (`bare`).
-      PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x,key==='sheep'&&this.hornMods&&this.hornMods.horn&&this.hornMods.horn.look);
+      PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x,key==='sheep'&&this.hornMods&&this.hornMods.horn&&this.hornMods.horn.look,runP);
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'over',angle,cs,cw);
     }
     if(e.shield)this.board(renderer,e,true);

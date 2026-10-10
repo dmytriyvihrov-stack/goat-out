@@ -5,6 +5,12 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.007, 10 Oct 2026: the branches folded into main
+
+- THE WARDEN branch (modest-goldberg) and the goat-art branch (sharp-edison) merged with main; the SPAWN list keeps main's menu and gains THE WARDEN and THE FLAYED.
+
+---
+
 ## 0.002, 9 Oct 2026: floor words that can be read, and four lines of text struck out
 
 - **The words on the floor are never under things** (his rule, from a screenshot of ALT - STEALTH MODE under three braziers: "the inscription must be
@@ -48,6 +54,72 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   and sinew, the cage, the ribs, and the man's harness with the soul the size of a fist at its crossing.
 - **Seen three times**: on THE ROAD the Warden stands across the chasm lesson's drop with her under his arm, says his line and walks off.
 - The front aim looks down the two barrels now; at the handoff the mage steps well aside so she is seen under the Warden's arm.
+## 0.006, 10 Oct 2026: the beard is a beard, and the far front leg is there
+
+- **The goat has two front legs on the front diagonals** (the playtest's arrow on the down-right run: "this looks like a leg but is not one,
+  and you draw it as a leg; there has to be a real leg there"). The atlas drew one front leg on the down-right and down-left views and let
+  the beard hang where the far one belongs, so the beard stepped like a leg. Now the beard is found under his mouth (it has no hoof),
+  trimmed to a short tuft and kept still, and the far front leg is drawn behind it, a copy of the near one a little to the side and darker,
+  stepping a half cycle off the near one (`PIXEL_ART.beardAndLeg`, `TUNING.goat.gait.beard` / `farLeg`). On the front view the beard
+  touched his right leg and walked with it; it stays put now too.
+
+---
+
+## 0.005, 10 Oct 2026: clean feet
+
+- **No more slivers by the feet** (the playtest's arrows at the goat, the clubman, the rifleman, the mage and the hound on the down-right
+  run). A single wide boot was cut in two at its edge, and the scraps under the belly line (a bit of the far foot, a piece of outline) each
+  stepped on a phase of their own, so pieces tore off the feet. Now a foot is cut in two only at a real gap between two feet, a scrap moves
+  with the leg it lies against, a staff's or a club's end stays where it is, and a man's two feet fused into one piece on a diagonal are
+  halved and lifted in turn, never swung. The goat's legs need a dark hoof, so his beard stays on his chin.
+
+---
+
+## 0.004, 10 Oct 2026: one pair of horns from every side, and the men run on their feet
+
+- **His horns are one pair in the round** ("here the horns are a bit strange, and the same with the length of all the horns and their look").
+  The atlas drew them a different way on every facing: 25 to 29 px from the side, 18 from behind, the far one 16, forward over his nose
+  on the up-left view, two horns on one step and one lump on the next. They are taken off every frame and one pair is drawn in their
+  place off a single model (`PIXEL_ART.hornModel`, `TUNING.goat.hornModel`): a horn rising, sweeping back over his neck and a little out,
+  the same length and shape from every side, only turned, in the packed horn's colours with a lighter band, a glint and ridges. BIG, LONG,
+  the antlers and the lava and venom skins grow off it, so they hold one shape too. This replaces 0.003's mirrored back diagonal.
+- **The men run on their feet** ("in the old videos, when my legs and the enemies' moved, it gave more of a chase and more fun"). The
+  painted sheets had four walk frames a facing; since the pixel atlas (1.55) the men had none and slid about on their standing frame. Now
+  the clubman, the brute, the rifleman, the mage, the butcher, the rat ogre and the hound step (`TUNING.enemyAnim.run`): a cycle for every
+  stretch of floor they cover, so a man running faster steps faster; their feet (the hound's paws) lift and swing, and their bodies bob on
+  each footfall, rock side to side and lean into the run, harder when they are after him. The hound's old fixed bob (`dog.gait`, `dog.bob`)
+  is folded into it.
+
+---
+
+## 0.003, 10 Oct 2026: the bolt over the eye is earned, and the horns from behind sweep back
+
+- **The lightning over his eye comes with the first corrupted soul** (his ask). The atlas painted it on every frame; it is cut off on load
+  (`PIXEL_ART.splitMark`) and the face under it filled from the wool round it, so a new run, and every run after a death, starts a clean
+  lamb. Swallow a soul and the bolt is drawn back over him (`markOn`: `game.boons`).
+- **The mirror shows the lamb**: no bolt in the glass, whatever is in him (`markForce` round the reflection, at the mirror and in its panel).
+- **The horns from behind sweep back** ("here the horns point the wrong way, and on many pictures"). The up-left view, and so the up-right
+  run that mirrors it, had both horns grown forward over his nose, idle and every step. `PIXEL_HORN_FLIP` mirrors them about their roots
+  there and fills the crown under where they were; the antlers, BIG and LONG follow.
+
+---
+
+## 0.002, 10 Oct 2026: the goat's legs, and the opening in pixels
+
+- **His legs move on the run** (`PIXEL_ART.gait`, `TUNING.goat.gait`; his ask: "finish the goat's animation, especially the legs"). The packed
+  walk frames moved the legs a pixel or two, so the run read as a body bobbing on four stiff pegs. The legs are found on each frame
+  (`legsOf`: the blobs under the belly line that stand on the floor, a touching pair cut at the gap between its hooves) and moved by their
+  phase of a trot: lifted from the hoof up and swung forward along the facing in the air, back on the ground, outward on the front and back
+  views. Whole atlas pixels, twelve steps a cycle, baked once and warmed on the title. The ewe in the opening walks the same way off her one
+  standing frame (she slid before).
+- **The opening is pixels** (`js/prologue-art.js`, `PrologueArt`; "the look of the opening"). The field, the road and the sacking were a gradient
+  sky, a disc for a sun, a hill in one curve, grass as strokes and a truck in rectangles beside pixel animals. Now in cells the size the sprites'
+  texels read at: a sky in dithered bands, the sun with its halo, two ranges of hills with trees, a speckled field with flowers, the blades
+  bending in a wind, clouds, a butterfly, the pen's rails in cells; at night a moon with its seas, stars that blink, a treeline, the asphalt
+  and the verge going by as strips, the truck with a roof, a door, a lamp's beam, exhaust, dust and wheels turning a cell at a time; the
+  sacking a woven cloth. Baked once per screen size; only what moves is drawn live. The scene's coordinates did not move.
+
+---
 
 ## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
 

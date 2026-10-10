@@ -7865,12 +7865,14 @@ class Renderer {
     const ctx = this.ctx;
     this.shadow(s.x, s.y, 15, 7.5);
     if (PIXEL_ART.ready) {
-      // She is the pixel pass's pet sheep. There is no walk cycle for her, so a stride is a bob.
+      // She is the pixel pass's pet sheep. There is no walk cycle for her, so a stride is a bob, and since
+      // 10 Oct 2026 her legs moved off the standing frame (`PIXEL_ART.gait`, `moving`).
+      const moving = s.kick || hyp(s.vx || 0, s.vy || 0) > 40;
       ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, 1 / TILT);
       if (s.jitter) ctx.translate(s.jitter.x, s.jitter.y);
-      if (s.kick || hyp(s.vx || 0, s.vy || 0) > 40) ctx.translate(0, -Math.abs(Math.sin(this.t * 11)) * 1.6);
+      if (moving) ctx.translate(0, -Math.abs(Math.sin(this.t * 11)) * 1.6);
       if (s.bleating > 0) ctx.scale(1.04, 0.96);
-      PIXEL_ART.draw(ctx, 'sheep-pet', s.facing || 0, false, this.t, s.x);
+      PIXEL_ART.draw(ctx, 'sheep-pet', s.facing || 0, !!moving, this.t, s.x);
       ctx.restore(); return;
     }
     ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, 1 / TILT); ctx.translate(0, -5);
@@ -8004,39 +8006,20 @@ class Renderer {
       ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'center'; ctx.fillText(txt, x, y); ctx.restore();
     };
 
+    // The picture is js/prologue-art.js (10 Oct 2026): pixels in cells, baked once a screen size; this only lays
+    // the scene's actors between its layers. `L` is the frame the three screens share.
+    const L = { w, h, cx, cy, sy, hy, k, pk, c: PrologueArt.cell(k), t: this.t };
     if (ph === 'meadow') {
-      // The one bright screen in the game. Sky, a low sun, a hill, and a field.
-      const sky = ctx.createLinearGradient(0, 0, 0, hy);
-      sky.addColorStop(0, '#6f8a99'); sky.addColorStop(1, '#c9b98a');
-      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, hy);
-      ctx.fillStyle = 'rgba(255,224,138,0.85)'; ctx.beginPath(); ctx.arc(w * 0.78, hy * 0.55, 26 * s, 0, Math.PI * 2); ctx.fill();
-      const hill = Math.min(h * 0.12, hy * 0.5);
-      ctx.fillStyle = '#5f7a3e'; ctx.beginPath(); ctx.moveTo(0, hy);
-      ctx.quadraticCurveTo(w * 0.3, hy - hill, w * 0.55, hy - hill * 0.33); ctx.quadraticCurveTo(w * 0.8, hy + hill * 0.17, w, hy - hill * 0.5);
-      ctx.lineTo(w, hy); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = PALETTE.grass; ctx.fillRect(0, hy, w, h - hy);
-      // grass, scattered the same way every frame
-      ctx.strokeStyle = PALETTE.grassHi; ctx.lineWidth = 1.6 * s; ctx.lineCap = 'round';
-      for (let i = 0; i < 90; i++) {
-        const gx = ((i * 137.5) % w), gy = hy + 8 * s + ((i * 89.3) % (h - hy)), sway = Math.sin(this.t * 1.4 + i) * 1.5 * s;
-        ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx - 3 * s + sway, gy - 7 * s); ctx.moveTo(gx, gy); ctx.lineTo(gx + 3 * s + sway, gy - 8 * s); ctx.stroke();
-      }
+      // The one bright screen in the game. Sky, a low sun, hills, and a field; the pen's rails round them.
+      PrologueArt.meadow(this, game, L);
+      PrologueArt.fence(this, L, true);
       ctx.save(); scene();
-      // the fence: back rails first, then the two of them, then the front rails
-      const fx0 = -160, fx1 = 160, fy0 = -62, fy1 = 62;
-      const rail = (x0, y0, x1, y1) => { ctx.strokeStyle = PALETTE.woodHi; ctx.lineWidth = 3.2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
-      const post = (x, y) => { ctx.fillStyle = PALETTE.wood; ctx.fillRect(x - 2.6, y - 22, 5.2, 24); ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(x - 2.6, y - 22, 5.2, 3); };
-      for (const yy of [-12, -3]) { rail(fx0, fy0 + yy, fx1, fy0 + yy); }
-      for (let x = fx0; x <= fx1; x += 32) post(x, fy0);
-      for (const yy of [-12, -3]) { rail(fx0, fy0 + yy, fx0, fy1 + yy); rail(fx1, fy0 + yy, fx1, fy1 + yy); }
-      for (let y = fy0 + 32; y < fy1; y += 32) { post(fx0, y); post(fx1, y); }
       // them, back to front
       const actors = [pr.goat, pr.ewe].sort((a, b) => a.y - b.y);
       for (const o of actors) o === pr.goat ? this.drawGoat(o, game) : this.drawSheep(o);
       if (pr.heart) { ctx.save(); ctx.globalAlpha = pr.heart.a; this.drawHeart(pr.heart); ctx.restore(); }
-      for (const yy of [-12, -3]) rail(fx0, fy1 + yy, fx1, fy1 + yy);
-      for (let x = fx0; x <= fx1; x += 32) post(x, fy1);
       ctx.restore();
+      PrologueArt.fence(this, L, false);
       // A black screen and three words before anything else in the game has shown itself: nothing
       // else opens on black, so this is the one place a player has to be told what they are looking
       // at is a memory rather than the game starting somewhere strange. Held, then bleeds away as
@@ -8048,58 +8031,17 @@ class Renderer {
         word('SOME TIME AGO', cx, cy, Math.min(clamp(tp / 0.12, 0, 1), textA), 15);
       }
     } else if (ph === 'road') {
-      // Night, a moon, and a road going past under a truck that stays where it is.
-      const sky = ctx.createLinearGradient(0, 0, 0, h * 0.55);
-      sky.addColorStop(0, '#171420'); sky.addColorStop(1, '#2b2434');
-      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h * 0.55);
-      ctx.fillStyle = 'rgba(239,230,208,0.8)'; ctx.beginPath(); ctx.arc(w * 0.2, h * 0.2, 18 * s, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1c1719'; ctx.fillRect(0, h * 0.55, w, h * 0.45);
-      const ry0 = h * 0.6, ry1 = h * 0.86;
-      ctx.fillStyle = '#3a3538'; ctx.fillRect(0, ry0, w, ry1 - ry0);
-      ctx.fillStyle = '#4a4448'; ctx.fillRect(0, ry0, w, 3 * s); ctx.fillRect(0, ry1 - 3 * s, w, 3 * s);
-      // the centre line, and the ground going past with it
-      const period = 90 * s, off = (pr.t * P.roadSpeed * s) % period;
-      ctx.fillStyle = 'rgba(239,230,208,0.55)';
-      for (let x = -off; x < w + period; x += period) ctx.fillRect(x, (ry0 + ry1) / 2 - 2 * s, period * 0.5, 4 * s);
-      ctx.strokeStyle = 'rgba(239,230,208,0.12)'; ctx.lineWidth = 1.5 * s;
-      for (let i = 0; i < 14; i++) {
-        const lx = ((i * 173 - pr.t * P.roadSpeed * 1.3 * s) % (w + 200)) + (i % 2 ? 0 : 100), ly = h * 0.56 + (i * 41) % (h * 0.04);
-        ctx.beginPath(); ctx.moveTo(((lx % (w + 200)) + w + 200) % (w + 200) - 100, ly); ctx.lineTo(((lx % (w + 200)) + w + 200) % (w + 200) - 100 + 40 * s, ly); ctx.stroke();
-      }
+      // Night, a moon, and a road going past under a truck that stays where it is; the two of them in the cage on its bed.
+      PrologueArt.road(this, game, L);
       ctx.save(); scene(); ctx.translate(0, 44 + (pr.jolt || 0) * 0.5);   // wheels on the asphalt, not the verge
-      // the truck: a flatbed, a cab, two wheels, and a cage on the back
-      ctx.fillStyle = '#2a2224'; ctx.fillRect(-118, 8, 214, 12);                   // bed
-      ctx.fillStyle = '#3b2f33'; ctx.fillRect(96, -34, 52, 54); ctx.fillStyle = '#6f8a99'; ctx.fillRect(104, -28, 34, 22);   // cab, window
-      ctx.fillStyle = PALETTE.fireHi; ctx.fillRect(146, -4, 5, 8);                // headlamp
-      const wheel = (x) => {
-        ctx.save(); ctx.translate(x, 26); ctx.rotate(pr.t * P.wheelSpin);
-        ctx.fillStyle = '#141013'; ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#4a4448'; ctx.lineWidth = 3;
-        for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 13, Math.sin(a) * 13); ctx.stroke(); }
-        ctx.fillStyle = '#4a4448'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-      };
-      wheel(-76); wheel(64);
-      // the cage, back bars, then them, then the front bars
-      const bar = (x, y0, y1) => { ctx.fillStyle = '#7a7377'; ctx.fillRect(x - 1.6, y0, 3.2, y1 - y0); };
-      ctx.fillStyle = 'rgba(20,16,19,0.5)'; ctx.fillRect(-104, -56, 168, 64);
-      for (let x = -104; x <= 64; x += 21) if (x < -40 || x > 30) bar(x, -56, 8);
-      ctx.fillStyle = '#5a5257'; ctx.fillRect(-106, -58, 172, 4);
       for (const o of [pr.goat, pr.ewe]) o === pr.goat ? this.drawGoat(o, game) : this.drawSheep(o);
-      for (let x = -104; x <= 64; x += 21) bar(x, -56, 8);
       ctx.restore();
+      PrologueArt.truck(this, game, L, false);
     } else if (ph === 'dark') {
       ctx.fillStyle = '#0d0a0c'; ctx.fillRect(0, 0, w, h);
     } else if (ph === 'cloth') {
       // The pen is under this. Sacking, dropping off it from the top down, with a sway in it.
-      const p = clamp(pr.sceneT / P.cloth, 0, 1), e = p * p, drop = e * h * 1.2, sway = Math.sin(p * 7) * 14 * s * (1 - p);
-      // The sacking covers the view and slides down off it, so the pen comes out from the top edge.
-      ctx.save(); ctx.translate(sway, drop);
-      ctx.fillStyle = '#2a2119'; ctx.fillRect(-40 * s, 0, w + 80 * s, h * 1.05);
-      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
-      for (let y = 0; y < h; y += 9 * s) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y + 4 * s); ctx.stroke(); }
-      ctx.restore();
-      ctx.fillStyle = `rgba(13,10,12,${(1 - p) * 0.6})`; ctx.fillRect(0, 0, w, h);
+      PrologueArt.cloth(this, game, L, clamp(pr.sceneT / P.cloth, 0, 1));
     }
     // The words. Over whoever said it in the field and on the road; in the dark they are all there is,
     // and they come from the two sides of the screen the two of them were last on.
