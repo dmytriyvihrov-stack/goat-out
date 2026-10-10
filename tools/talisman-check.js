@@ -66,7 +66,7 @@ window.TALCHECK = {
       TALCHECK.wear('spade'); TALCHECK.arena();
       const e = TALCHECK.man(2, 0); e.die(game, 'splat', 1, 0);
       const body = game.props.find((p) => p.corpse);
-      return [!!body && !body.noGrab, `a body left as a thing: ${!!body}, can be grabbed: ${body ? !body.noGrab : '-'}`];
+      return [!!body && body.noGrab, `a body left as a thing: ${!!body}, cannot be lifted: ${body ? body.noGrab : '-'}`];
     },
     mask() {
       TALCHECK.wear('mask'); TALCHECK.arena();

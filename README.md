@@ -159,7 +159,7 @@ her stall is rude, and what comes out of the wall after the third time is not a 
 
 **Talismans.** 18 of them, each COMMON, RARE or EPIC, up to three worn at once as charms on
 a collar, each stated in plain words where it stands: a mirror shard that turns a blow back, a spade that
-leaves bodies lying to trip over, a knucklebone that deals a soul's third card, a magnet that spins a sword
+leaves bodies lying to trip over and kick, a knucklebone that deals a soul's third card, a magnet that spins a sword
 or a crate round you to take a blow, a nosebag that keeps the grass you had no need of for later, and so on.
 
 **Capes.** Rarer still: one lies in a niche behind a niche now and then, or on a mouse's shelf in place of a

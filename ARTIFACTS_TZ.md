@@ -105,16 +105,16 @@ Q-глагол из этого списка один - STRAW EFFIGY; он дел
 
 | Ступень | params | В игре |
 |---|---|---|
-| I | `{ life: 20, trip: 0.6, grab: false, lethal: false }` | *The dead stay where they fall, and the living trip over them.* |
-| II | `{ life: 20, trip: 0.6, grab: true, lethal: false }` | *You can pick a body up and throw it like a crate.* |
-| III | `{ life: 25, trip: 0.6, grab: true, lethal: true }` | *A thrown body hits like a live one: it kills.* |
+| I | `{ life: 20, trip: 0.6, lethal: false, r: 12, cap: 6 }` | *The dead stay on the floor, and men trip over them. You cannot lift a body, but a headbutt kicks it.* |
+
+Одна ступень (с 8 окт.). С 10 окт. тело нельзя поднять (`noGrab` всегда), но удар головой пинает его как ящик.
 
 - Хук: `Enemy.die` для причин, где есть тело (`splat`, `headbutt`, `mill`, `club`, `spike`, `blade`,
   `bullet`) - новый проп `corpse` (`r` 11, картинка - `CombatFX.snapshot` убитого, лёжа).
   Не для `fall`, `burn`, `boom`, `devour`, `unmade`.
 - Спотыкание: в `collideEntities` мужик, идущий быстрее половины своей скорости, задев труп - `floored`
   на `trip`, не чаще раза на пару «мужик–труп».
-- II: `item` у трупа - true; хватается и бросается как ящик, скорость броска ящика, `grabCd` как у ящика.
+- Подобрать нельзя (`noGrab`); удар головой пинает тело как ящик (`Prop.headbutt` → `fling`).
 - III: брошенный труп, попавший в мужика на скорости ≥ `physics.bodyKillSpeed`, убивает его
   (по брошенному-изо-рта правилу), труп остаётся лежать.
 - Лимит 6 трупов; старейший превращается в decal (`world.body`). Зажатая комната (`clamp`) их убирает.

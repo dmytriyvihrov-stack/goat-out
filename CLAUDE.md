@@ -1616,7 +1616,7 @@ behind it spreads and the hem lifts (behind: lifts more, spreads less); a breeze
 `onLunge`, `stepMul`, `speedMul` / `gripMul` / `runUpTime`, `splatMul` / `bodyMul` / `domino` / `dragMul`,
 `visibleTo`, `splinters` / `corpseGone`, states `flee` / `decoyhit`. Params on `game.mods.<id>`;
 `game.tal` per level, `game.talRun` per run. MIRROR SHARD: `goat.parryT` from windup start. SCAPEGOAT takes
-only itself out of `game.artifacts`, `game.levelArtifacts` **and** the checkpoint's. GRAVEDIGGER'S SPADE: `crate` props with `corpse`; `e.corpsed`.
+only itself out of `game.artifacts`, `game.levelArtifacts` **and** the checkpoint's. GRAVEDIGGER'S SPADE: `crate` props with `corpse`; `e.corpsed`; a body is never lifted by the goat (`noGrab` always, 10 Oct 2026), a headbutt kicks it like a crate (`Prop.headbutt`); only the thrower lifts one.
 TALISMANS tab edits live via `tools/tuning-patch.js`.
 THE MAGNET (`magnet`, `TUNING.magnet`, 1.87): once a room (`tal.magnetRooms`) up to `count` swords and shields
 (`any`: crates too) within `reach` are taken OUT of `game.props` into `tal.orbit` and circle him
