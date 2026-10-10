@@ -18,6 +18,36 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 - **No `THIRD CARD · HUNGRY SOUL` line** on the soul card (the third card is simply dealt).
 
 ---
+## 0.002, 10 Oct 2026: THE WARDEN and THE LAST SUPPER
+
+- **The villain** (output/villain-2026-10-10/: five looks, then three options a phase; the user picked the sawn-skull Humungus for
+  the man and the flayed cage for the monster): `js/warden-pixels.js`, THE WARDEN, front view only, with a corrupted soul at the
+  crossing of his harness, the skull board, a sword over one shoulder and the sawn-off over the other. His fight is not built.
+- **THE LAST SUPPER** (js/endboss.js, `SUPPER_TEMPLATE`, `TUNING.endBoss.supper`, `GEN_RULES.supper`): THE OSSUARY's last room
+  is a hall with one long table, the room's men sat along it, the Warden at its head, a covered platter in the middle, a chair at
+  the foot that slides out for the goat under his hand. Nobody moves and the score hushes while he asks him to sit; the chair is a
+  wraith. Reached, BAAH, or a blow on anybody at the table: he laughs, every man is up, and he walks out through the way out
+  with the platter. THE SHOWROOM has the platter in its hall and the Warden in THE OSSUARY's gallery.
+- **LAST ROOM · SCENE** in the dev drawer: this floor laid again, the goat stood at the door of its last room, its scene ready.
+- **The fight** (the user's, later the same day; `js/warden.js`, `TUNING.warden`): while his men fight the Warden stands in the corner
+  with the platter, laughing behind a barrier nothing passes; the last of them down, he throws the platter down, empty, and comes:
+  seven hearts, the shieldman's board up for a stretch and down for a stretch, a sword of a fair reach and a quick swing, a tumble to
+  the side off a goat running straight at him, the shotgun at a middle or far distance with the reload broken open. His last heart
+  is a change, not a death: THE FLAYED (`js/flayed-pixels.js`, the ogre's body with the hide off), an ogre with the soul in him, the
+  corrupted ogre's witchfire, faster, fire off his fists; his death drops the way out's soul. The score goes heavy for it
+  (`audio.layers.doom`: a riff chugged on every step, the kick on every eighth). The men at the table are drawn sunk and cut at the
+  feet, on stools. SPAWN rows THE WARDEN and THE FLAYED; both stand in THE SHOWROOM's last gallery.
+- **The Warden from every side** (`js/warden-pixels.js`): five views drawn in the ogre's recipe and mirrored to eight, strides, and the
+  fight's poses (the sword back and out, the gun at the shoulder, the hand up). The mirrored views draw the board and the sword on the
+  other arm, so he is right-handed from everywhere.
+- **The supper survives a quit**: CONTINUE lays it back as it stood (the corner and the barrier, the fight with his hearts, the Flayed).
+- **She changes hands at the end of THE YARD**: the opening's mage runs to the Warden waiting at the way out, she goes under his arm,
+  "MINE NOW, GOAT. COME AND TAKE HER.", and he is the one who goes through the gate with her. THE CAVE's mage comes without her now.
+- **Walking into the hall** a few of heaven's harp notes sound, flat and far, over a drone, under the hushed score: is she here?
+- **THE FLAYED is a body of his own** (`js/flayed-pixels.js`, no longer the ogre re-skinned): the ogre's recipe, a size over him, meat
+  and sinew, the cage, the ribs, and the man's harness with the soul the size of a fist at its crossing.
+- **Seen three times**: on THE ROAD the Warden stands across the chasm lesson's drop with her under his arm, says his line and walks off.
+- The front aim looks down the two barrels now; at the handoff the mage steps well aside so she is seen under the Warden's arm.
 
 ## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
 

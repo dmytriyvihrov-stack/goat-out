@@ -1551,6 +1551,25 @@ const ROOM_TEMPLATES = [
 
 // One stand of arms in the ring, not two: what the room hands you is one throw, and after that it
 // is you and the geometry again.
+// THE LAST SUPPER (10 Oct 2026, the user's: "when you come in they are at a holy supper"): the last floor's last room.
+// One long table across the middle (a one-row 't' block is five tables in a line), the men sat along both sides of it
+// (js/endboss.js seats them), THE WARDEN standing at its head by the way out, the chair at its foot toward the way in,
+// the platter in the middle. Never flipped: the head has to be the far end.
+const SUPPER_TEMPLATE = { name: 'supper', noFlipX: true, noFlipY: true, rows: [
+  '####################',
+  '#..................#',
+  '#..w............w..#',
+  '#.L..............L.#',
+  '#..................#',
+  '#....tttttttttt..X.#',
+  '#..................#',
+  '#..................#',
+  '#.B......w.......B.#',
+  '#..................#',
+  '#..................#',
+  '####################',
+]};
+
 const ARENA_TEMPLATE = { name: 'arena', rows: [
   '##############',
   '#............#',

@@ -1522,7 +1522,7 @@ class Prop {
     if (this.kind === 'hroam') return !this.flying;   // heaven's free animals: a goose up round the sky with its flock is not there
     if (this.kind === 'goose' || this.kind === 'crow' || this.kind === 'horse' || this.kind === 'pig' || this.kind === 'rabbit' || this.kind === 'husky') return false;
     // A lantern on the wall is up on the stone, out of anybody's way.
-    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce' || this.kind === 'cleat' || this.kind === 'chandelier' || this.kind === 'trophy' || this.kind === 'poster' || this.kind === 'key' || this.kind === 'lostbell') return false;
+    if (this.item || this.kind === 'heal' || this.kind === 'spike' || this.kind === 'spire' || this.kind === 'chicken' || this.kind === 'mouse' || this.kind === 'ware' || this.kind === 'clamp' || this.kind === 'shrooms' || this.kind === 'sconce' || this.kind === 'cleat' || this.kind === 'chandelier' || this.kind === 'trophy' || this.kind === 'poster' || this.kind === 'key' || this.kind === 'lostbell' || this.kind === 'platter') return false;
     // A suit of armour hangs on the stone, out of anybody's way too: what comes to it is found by what
     // arrives (`Enemy.wallDressing`, `hitProp`, `Scatter.burst`).
     if (this.kind === 'armor') return false;

@@ -550,7 +550,9 @@ class GameAudio {
     const preview = game.dev.rules && game.dev.tab === 'music' ? this.lab : null;
     if (this.preview !== preview) { this.resetScore(); this.preview = preview; }
     // STEALTH (dev test): a sneak hushes the score (`layers.hush`, eased on `hushMix` in the step).
-    this.hush = !!(game.sneak && game.stealthLive && game.state === 'play');
+    // THE LAST SUPPER hushes it too (js/endboss.js, `game.supper`), until the chair is reached.
+    this.hush = !!(game.sneak && game.stealthLive && game.state === 'play') || !!(game.supper && game.supper.phase === 'offer');
+    this.doom = !!(game.doom && game.state === 'play');   // THE WARDEN's fight (js/warden.js, `layers.doom`)
     this.updateAmbience(game, dt);
     this.heartbeat(game);
     if (preview) {
@@ -830,6 +832,7 @@ class GameAudio {
     this.combatMix += ((stage === 'combat' ? 1 : stage === 'chase' ? 0.65 : stage === 'spotted' ? 0.35 : 0) - this.combatMix) * ease;
     this.heartMix += ((scene.lastHeart ? 1 : 0) - this.heartMix) * ease;
     this.hushMix = (this.hushMix || 0) + ((this.hush ? 1 : 0) - (this.hushMix || 0)) * ease;
+    this.doomMix = (this.doomMix || 0) + ((this.doom ? 1 : 0) - (this.doomMix || 0)) * ease;
     const combat = this.combatMix;
     // How far into calm the score is, past the first floor: 1 nobody after him, 0 a fight or level one.
     // Not in the MUSIC lab with no bed under it: that is how a part is heard on its own, and calm leaving the
@@ -911,10 +914,18 @@ class GameAudio {
     // A sneak (`layers.hush`, `hushMix`): fewer parts again, the bass down to its `hush.bassBeats`, the tune out.
     const H = TUNING.audio.layers.hush, hush = this.hushMix || 0, hushed = hush > 0.5;
     const sparse = calm > C.sparse || hushed, keep = hushed ? H.bassBeats : C.bassBeats;
-    for (const [at, semi, length, gain] of B.bass) if (at === beat && (!sparse || keep.includes(at))) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain * thin(C.bass));
+    // THE WARDEN's fight (`layers.doom`, `doomMix`): the riff on every step, the kick on every eighth, the bed's bass and the tune under it.
+    const D = TUNING.audio.layers.doom, doom = this.doomMix || 0;
+    if (doom > 0.03) {
+      this.bass(t, root * Math.pow(2, D.riff[beat] / 12) * D.octave, stepLen * D.len, D.gain * doom);
+      if (beat % 2 === 0) this.kick(t, D.kick * doom);
+      if (D.lowBeats.includes(beat)) this.tomLo(t, D.low !== undefined ? D.low : 0.3 * doom);
+      if (beat === 0 && s % 32 === 0) this.crash(t, D.crash * doom);
+    }
+    for (const [at, semi, length, gain] of B.bass) if (at === beat && (!sparse || keep.includes(at))) this.bass(t, root * Math.pow(2, semi / 12), stepLen * length, gain * thin(C.bass) * (1 - doom));
     // On the last heart the tune steps back (`layers.heartSing`) and leaves the room to his heart.
     const sing = (M.idle * thin(C.tune) + M.spotted * 0.35 + M.chase * 0.8 + M.combat * 0.55) * (1 - (1 - TUNING.audio.layers.heartSing) * this.heartMix)
-      * (1 - (1 - H.tune) * hush);
+      * (1 - (1 - H.tune) * hush) * (1 - (1 - D.tune) * doom);
     if (sing > 0.01) for (const [at, semi, length] of B.melody) {
       if (at === pos) this.lead(t, base * Math.pow(2, semi / 12), stepLen * length * 0.95, B.gain * sing * (at % 16 === 0 ? 1 : 0.85));
     }
@@ -1261,6 +1272,13 @@ class GameAudio {
   // A barrel on its side, a knock a turn, lower and quieter as it slows (`k` 1 → 0).
   sfxStave(k = 1) { this.foley('stave', { gain: 0.036 + 0.088 * k, rate: 0.82 + 0.22 * k }); }
   // A rifle cocked: the one tell a rifle gives, so it is bright and dry and sits above the mix.
+  // THE LAST SUPPER's door (js/endboss.js `startSupper`, `TUNING.audio.supper`): heaven's harp, flat and far, over a drone.
+  sfxSupper() {
+    const A = TUNING.audio.supper; if (!this.ctx || this.muted) return;
+    const t0 = this.ctx.currentTime + 0.05;
+    this.tone(A.drone, t0, A.droneLen, { type: 'sine', gain: A.droneGain, bus: this.musicBus, attack: 0.8 });
+    for (const [at, f, k] of A.notes) this.pluck(t0 + at, f * (k || 1) * A.detune, A.len, A.gain);
+  }
   sfxCock(vol = 1) { if (vol <= 0.02) return; this.foley('cock', { gain: 0.45 * vol }); }
   // The hound: a jaw snapping shut, dry and close.
   sfxSnap() { this.foley('snap', { gain: 0.46 }); }

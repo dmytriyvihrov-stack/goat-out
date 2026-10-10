@@ -989,7 +989,9 @@ const TUNING = {
     // her (`run` px/s; `see` s of looking first); from `witchFrom` the corrupted one turns every bowl in the room to
     // witchfire (`witch` s of it, the soul keeps him out of it: `soulBearer.witchProof`); from `ringsFrom` his rune
     // goes off in `ring.n` rings over the whole room, a beat apart, gaps to slip through or a roll.
-    mage: { see: 1.1, run: 4.6 * TILE, runCap: 4, witchFrom: 2, witch: 1.2, ringsFrom: 3,
+    // Since 10 Oct 2026 (the user's) the mage runs to THE WARDEN waiting at the way out and hands her over (`hand` s, his `wardenLine`),
+    // and it is the Warden who goes out through the gate with her: THE CAVE's mage comes without her from then on.
+    mage: { see: 1.1, run: 4.6 * TILE, runCap: 4, hand: 1.5, wardenLine: 'MINE NOW, GOAT. COME AND TAKE HER.', witchFrom: 2, witch: 1.2, ringsFrom: 3,
       // 9 Oct 2026 playtest: "the mage's rings slower, a bit like fire, so I can roll through it": `speed` 6.5 → 3.5 tiles/s, and
       // `flames` puts the game's own witchfire every that many tiles round the ring (`flameSize`, `CombatFX.flame`'s size).
       // A volley costs one heart at most (js/waves.js `volley`).
@@ -1005,6 +1007,21 @@ const TUNING = {
     // he blinks away when the goat closes inside `blink.range` tiles, to `blink.dist` tiles off him, every `blink.cooldown` s.
     // 9 Oct 2026: four hearts and the blink from the first meeting (it was the second), the corrupted rifleman is all of it at once.
     hunter: { hp: 4, pellets: 3, spread: 0.24, blinkFrom: 1, blink: { range: 3.2, dist: 6, cooldown: 3.6 } },
+    // THE LAST SUPPER (10 Oct 2026, the user's; the last floor's last room, `SUPPER_TEMPLATE`, `EndBoss.laySupper`): the room's men sat
+    // along the table (`seat` tiles off its row, `gap` tiles apart, `inset` tiles in from its ends), THE WARDEN (js/warden-pixels.js)
+    // standing `head` tiles past the far end, the chair `chair` tiles off the near end: a wraith hidden as a stool. The goat in the room:
+    // the chair slides out `slideBy` tiles over `slide` s under his raised hand, he says `lines` one every `lineGap` s, nobody
+    // moves, the score hushes. Reached (the wraith springs), BAAH, or a blow on anybody at the table: he laughs (`laugh`), every man
+    // is up, the platter goes over his head and he walks out through the way out at `leave` tiles/s (`leaveCap` s at most), which shuts.
+    // Then (the user's, same day): he carries the platter to a corner (`corner` tiles in from it) and laughs there behind a barrier
+    // (`TUNING.warden.barrier`) while his men fight; the last of them down, he throws the platter down, empty (`drop.wait` s of
+    // that, `drop.line`), and the fight with him is on (js/warden.js), the score gone heavy (`audio.layers.doom`).
+    // THE ROAD's glimpse (10 Oct 2026): THE WARDEN on the far side of the lesson's drop, `past` tiles past it, with her under his arm;
+    // seen, his `line`, `wait` s looking at the goat, then out through the room's way out at `speed` tiles/s (`cap` s at most).
+    glimpse: { floor: 3, past: 2, line: 'STILL COMING, GOAT? SHE IS KEPT FOR THE TABLE.', wait: 1.6, speed: 4.6, cap: 12 },
+    supper: { seat: 1.55, gap: 1.6, inset: 0.9, head: 1.5, chair: 1.1, slide: 0.9, slideBy: 0.8, lineGap: 3.2, leave: 4.2, leaveCap: 6, corner: 2.2, sink: 10,
+      lines: ['SIT, LITTLE GOAT.', 'EAT WITH US.', 'SHE IS WARM STILL.'], laugh: 'NOT YET.', laughs: ['HA HA HA!', 'HAAA HA HA!', 'HEH HEH HEH.'],
+      drop: { wait: 1.6, line: 'SHE WAS NEVER HERE.' } },
   },
   // The rat ogre: what the mouse in the wall turns into on the third blow. He is not on the curve,
   // nobody meets him who did not go and make him, and he is built to be dear rather than to be
@@ -1892,6 +1909,21 @@ const TUNING = {
   // (none: nothing head on wears it down, a thrown thing, a blade or a round still do). Poisoned, he
   // turns at `poisonTurn` of `turn`, slow enough to walk round. Down (dazed, floored, alight) the
   // board hangs at his knees, `low` px lower and `side` px out, turned a quarter, eased at `ease`/s.
+  // THE WARDEN (10 Oct 2026, js/warden.js): `hp` hearts; the shieldman's board on his arm, up `guard.up` s and down `guard.down` s
+  // in turn (jittered), never worn out; `sword`: the clubman's blow on these numbers (`reach` px, the arc of the swing); `roll`: off
+  // a goat running at him (faster than `goatSpeed` tiles/s, within `cone` rad of straight at him, `min`..`range` tiles off) he dashes
+  // `dist` tiles to the side over `time` s, `recover` s after, once every `cd` s; `gun`: between `min` and `max` tiles with a clear
+  // line he aims `aimTime` s and fires `pellets` over `spread` rad (THE THRESHING FLOOR's shotgun), then `recover` s broken open,
+  // and not again for `reload` s. `barrier`: the ring nothing passes while he laughs in the corner (THE LAST SUPPER), `r` tiles.
+  // `monster`: THE FLAYED he becomes on his last heart: an ogre at `speedMul` × the ogre's pace with `hp` hearts, the corrupted
+  // ogre's witchfire as at its `meet`-th meeting (js/waves.js), `emerge` s standing up; `fists`: the fire off his hands.
+  warden: { hp: 7, speedMul: 1.05,
+    sword: { windup: 0.3, swing: 0.12, recover: 0.42, reach: 1.5 * TILE, damage: 1, arc: Math.PI * 0.75 },
+    guard: { up: 2.2, down: 1.4 },
+    roll: { range: 5, min: 1.6, goatSpeed: 3, cone: 0.4, dist: 2.6, time: 0.32, recover: 0.2, cd: 2.4, first: 1 },
+    gun: { min: 4, max: 9, aimTime: 0.8, reload: 2.6, recover: 0.9, first: 1.5, pellets: 3, spread: 0.2 },
+    barrier: { r: 1.7, laughEvery: 2.8 },
+    monster: { hp: 5, speedMul: 1.15, meet: 3, emerge: 1.1, fists: { rate: 40, speed: 50, low: 22, up: 62 } } },
   shieldman: { uses: 2, arc: 1.2, speedMul: 0.86, turn: 2.4, brace: 0.3, push: 3 * TILE, bounce: 3 * TILE, jolt: 0.2,
     // (2 Oct 2026, the user's: "a little bigger, two hearts, the dangerous one") `hp` hearts, the second
     // kind after the seer to carry two without the outline; drawn `scale` the size of a clubman.
@@ -2667,6 +2699,10 @@ const TUNING = {
       // slower or merely quieter. Eased in on `GameAudio.hushMix`: the tune keeps `tune` of itself, the bass
       // only its `bassBeats` (one note a bar), the bed's toms `toms`; the drone carries the held breath.
       hush: { tune: 0, toms: 0, bassBeats: [0] },
+      // THE WARDEN's fight (10 Oct 2026, the user's: "music like Doom"; `game.doom`, eased on `doomMix`): the bass line is a riff
+      // chugged on every step, `riff` the semitone over the root a step (16 a bar) an `octave` down, `len` of a step long, the kick
+      // on every eighth, a low tom on `lowBeats`, a crash every other bar; the bed's own bass and the tune go down by it.
+      doom: { riff: [0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 5, 3, 3], octave: 0.5, len: 0.85, gain: 0.1, kick: 0.5, lowBeats: [4, 12], crash: 0.1, tune: 0.35 },
       // 2 Oct 2026, "a bigger difference between a fight and peace": peace is already down to the flute, the
       // drone and two bass notes a bar, so the gap is widened on the fight's side by count: the kick on every
       // quarter and its pickups (`kickBeats`, it was 6 and 14 over the bed's 0 and 8), a low tom (`lowBeats`),
@@ -2675,6 +2711,11 @@ const TUNING = {
       // it gets on the nerves"): a hiss on every off-eighth was that crackle. The kick, toms and rim carry it.
       fight: { kick: 0.34, kickBeats: [4, 6, 12, 14], tom: 0.36, low: 0.3, lowBeats: [10], rim: 0.09, hat: 0,
         chaseHat: 0, chaseKick: 0.2, chaseKickBeats: [4, 12] } },
+    // THE LAST SUPPER's door (10 Oct 2026, the user's: "when you come in, something answers with a touch of heaven, spooky, a few
+    // separate notes, so you very faintly doubt"): heaven's own harp notes (`playHeavenStep`'s C major), each `detune` flat, laid
+    // at `notes` [seconds, Hz, extra detune] over a `drone` Hz sine `droneLen` s long; the score is hushed under it (`audio.hush`).
+    supper: { drone: 55, droneLen: 5.5, droneGain: 0.06, detune: 0.985, gain: 0.05, len: 2.4,
+      notes: [[0, 392], [0.6, 329.63], [1.45, 261.63], [2.05, 523.25, 0.97], [3.4, 392], [4.3, 329.63, 0.96]] },
     // The score's clock: one tempo everywhere. A floor's tempo (96 on the meadow rising to 124, a fight
     // lifting it) was tried on 1 Oct 2026 and taken out the same day, "out of a fight it is just
     // stretched; it should be simpler by count, not by stretching". Calm is `layers.calm`'s job.
@@ -4437,7 +4478,7 @@ const LEVELS = [
     // The run ends on its last boss, the one with the last soul in him (28 Sep 2026): the arena was
     // room 13 of 15, and room 14 after it, the floor's heaviest crowd, a trap one run in three,
     // was the last thing in the game, fought after the last soul had been paid out.
-    arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 14, boss: 'seer' }],
+    arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 14, boss: 'seer', escorts: 6, with: ['bearer', 'bearer', 'bearer', 'shield', 'thrower', 'dog'], supper: true }],   // THE LAST SUPPER (js/endboss.js)
     gates: [8], rests: [13], gateKeeper: true,
     millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, barrels: 0.2, traps: 2, vaultAt: 7,
     beasts: ['crow', 'tortoise', 'horse'],

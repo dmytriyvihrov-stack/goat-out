@@ -31,6 +31,8 @@ function showroomStatues(level) {
     if (s.shield) e.giveShield();
     if (s.thrower) Thrower.give(e);
     if (s.shaman) Shaman.give(e);
+    if (s.warden) { e.warden = true; e.pose = 'idle'; }
+    if (s.flayed) { e.flayed = true; e.boss = true; e.soul = true; }   // THE FLAYED (js/flayed-pixels.js), his second phase   // THE WARDEN (js/warden-pixels.js), the last floor's gallery
     e.statue = true; e.room = -1; e.facing = Math.PI / 2; e.solid = true;   // a wraith in his body, not his mist
     if (e.shield) e.shield.ang = e.facing;
     return e;
@@ -71,6 +73,7 @@ function showroomLevel(def, seed) {
     ['LAMP', (x, y) => put('lamp', x, y)], ['TABLE', (x, y) => put('table', x, y)],
     ['ALTAR', (x, y) => { put('poster', x, y, { look: 'breeds' }); put('table', x, y, { altar: true }); }],   // a scrap under it, as on THE ALTAR ['GONG', (x, y) => put('bell', x, y)],
     ['BARREL', (x, y) => put('barrel', x, y)], ['BOULDER', (x, y) => put('rock', x, y)],
+    ['PLATTER', (x, y) => { put('table', x, y); put('platter', x, y - 0.15); }],   // THE LAST SUPPER's covered dish (js/endboss.js)
   ]);
   row(hy + 10, 'LIFTED', [
     ['CRATE', (x, y) => put('crate', x, y)], ['BOMB', (x, y) => put('bomb', x, y)],
@@ -253,6 +256,11 @@ function showroomLevel(def, seed) {
     const ix = x + 1, iy = ry + 1;
     dress[i](ix, iy);
     gallery(kindsOf(fd), ix, iy);
+    // THE WARDEN stands in the last floor's gallery: the man at the head of its supper (js/endboss.js, js/warden-pixels.js).
+    if (fd === LEVELS[LEVELS.length - 1]) {
+      statues.push(Object.assign(P(ix + 12, iy + 4.6), { kind: 'bearer', warden: true })); label('THE WARDEN', ix + 12, iy + 5.6, 4);
+      statues.push(Object.assign(P(ix + 14.5, iy + 4.6), { kind: 'butcher', flayed: true })); label('THE FLAYED', ix + 14.5, iy + 5.6, 4);
+    }
     label(fd.name + (fd.canon ? ' · ' + fd.canon.name : ''), ix + 6.5, iy + 0.5, RW - 2, true);
     prev = r;
   });

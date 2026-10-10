@@ -570,7 +570,8 @@ class Game {
       artifacts: (this.artifacts || []).map((a) => ({ id: a.id, tier: a.tier })), cape: this.cape ? this.cape.id : null,
       third: (this.talRun && this.talRun.third) || 0, bag: (this.talRun && this.talRun.bag) || 0, keys: this.runKeys | 0, crowGift: !!gift,
       kills: this.kills, time: this.timer, firstKill: this.firstKill || null, goneE, goneP, gates: sg.filter((o) => o.prop && o.prop.broken).map((o) => o.room),
-      souls, second: !!this.secondUsed, cage: !!this.cageOpen, tripAt: this.tripAt, pet: pet ? { kind: pet.kind, won: pet.won || 0, fed: pet.fed || 0 } : null };
+      souls, second: !!this.secondUsed, cage: !!this.cageOpen, tripAt: this.tripAt, pet: pet ? { kind: pet.kind, won: pet.won || 0, fed: pet.fed || 0 } : null,
+      supper: EndBoss.supperSpot(this) };   // THE LAST SUPPER as it stood (js/endboss.js)
   }
   // CONTINUE onto a floor put aside (`spotOf`): the same layout, everyone he put down gone, every room behind him with
   // nobody left in it shut at once, what he spent spent, and he stands where he stood with the hearts he had.
@@ -1638,19 +1639,23 @@ class Game {
         for (let k = 1; k < 40 && !laid(); k++) this.startLevel(li, (this.levelSeed(li) + k * 7919) >>> 0, true);
       } finally { this.dev.forceCombo = null; }
       if (!laid()) { this.devToast(`NO ROOM FOR ${C.name} ON ${LEVELS[li].name}`); return; }
-      const L = this.level, at = L.combo.room, room = L.rooms[at], g = this.goat;
-      this.enemies = this.enemies.filter((e) => !(e.room >= 0 && e.room < at));
-      const ent = room.enter || { x: (room.x + 1.5) * TILE, y: (room.y + room.h / 2) * TILE };
-      const cx = (room.x + room.w / 2) * TILE, cy = (room.y + room.h / 2) * TILE, l = Math.hypot(cx - ent.x, cy - ent.y) || 1;
-      // Not `freeSpot`: it asks the flow field, which still runs from the start behind the gates.
-      let spot = { x: ent.x + (cx - ent.x) / l * 1.2 * TILE, y: ent.y + (cy - ent.y) / l * 1.2 * TILE };
-      for (let k = 1.2; k < l / TILE && [T.WALL, T.PIT].includes(this.world.tileAtPx(spot.x, spot.y)); k += 0.5) spot = { x: ent.x + (cx - ent.x) / l * k * TILE, y: ent.y + (cy - ent.y) / l * k * TILE };
-      g.x = spot.x; g.y = spot.y; g.safeX = g.x; g.safeY = g.y; g.safeTrail = [];
-      this.cageOpen = true; this.goatRoom = at;
-      this.cam.x = g.x; this.cam.y = g.y; this.camFollow = null; this.camTrack = null; this.camHold = undefined; this.camRoomMid = null; this.pathTrail = [{ x: g.x, y: g.y }];
-      this.world.computeFlow(g.x, g.y);
-      this.world.computeVis(g.x, g.y, TUNING.fog.radius, this.mods.oracle ? TUNING.fog.oracle : 0);
+      const at = this.level.combo.room;
+      this.standAtRoom(at);
       this.devToast(`${C.name} · ${LEVELS[li].name} ROOM ${at}`);
+      return;
+    }
+    // LAST ROOM (10 Oct 2026, the user's: "a button that starts the final room of every floor, with its scene"): this floor laid
+    // again as LEVELS would lay it and the goat stood a step inside its last room's door, the men before it gone. The floor's
+    // last man's scene (js/endboss.js) and THE LAST SUPPER on the last floor start as he walks in.
+    if (id === 'lastroom') {
+      if (!this.level || this.level.def.heaven || this.level.def.showroom || this.level.def.shroom || !this.goat || (this.state !== 'play' && this.state !== 'paused')) { this.devToast('LAST ROOM: ONLY ON A FLOOR'); return; }
+      const li = this.levelIndex || 0;
+      this.dev.open = false; this.dev.rules = false;
+      this.startAtLevel(li, false, !!this.level.def.dark);
+      const at = this.level.rooms.length - 1;
+      this.standAtRoom(at);
+      const scene = this.supper ? 'THE LAST SUPPER' : this.endBoss ? 'ITS LAST MAN, MEETING ' + this.endBoss.meet : 'NO SCENE ON THIS FLOOR';
+      this.devToast(`LAST ROOM · ${this.level.def.name} · ${scene}`);
       return;
     }
     // Straight up to heaven from a floor under way, as a death would send him (js/heaven.js), and a
@@ -1903,8 +1908,11 @@ class Game {
     if (id === 'soulpick-miss') return;   // a click beside PICK A SOUL's panel goes nowhere
     // The ENEMIES tab's SPAWN under a kind: that man, with a soul in him when the row's SOUL is on.
     if (id.startsWith('enemy-spawn=')) {
-      const tag = id.slice(12), e = this.spawnEnemy(tag === 'champion' || tag === 'boss' || tag === 'shield' || tag === 'thrower' || tag === 'shaman' ? 'bearer' : tag);
+      const tag = id.slice(12), e = this.spawnEnemy(tag === 'champion' || tag === 'boss' || tag === 'shield' || tag === 'thrower' || tag === 'shaman' || tag === 'warden' ? 'bearer' : tag === 'flayed' ? 'butcher' : tag);
       if (!e) return;
+      // the villain's two phases (js/warden.js): the man with his seven hearts, the monster with the soul in him
+      if (tag === 'warden') { Warden.give(e); this.ensoul(e); e.hp = e.maxHp = TUNING.warden.hp; this.devToast('+ THE WARDEN'); return; }
+      if (tag === 'flayed') { const M = TUNING.warden.monster; e.boss = true; e.flayed = true; this.ensoul(e); e.soulMeet = M.meet; e.hp = e.maxHp = M.hp; e.speed = e.cfg.speed * M.speedMul; this.devToast('+ THE FLAYED'); return; }
       if (tag === 'champion') { e.champion = true; e.hp = e.maxHp = TUNING.champion.hp; }
       if (tag === 'shield') e.giveShield();
       if (tag === 'thrower') Thrower.give(e);
@@ -2998,9 +3006,11 @@ class Game {
     this.fromHeaven = false;
     if (cp) this.enterAtGate(cp);
     else if (sp) this.enterAtSpot(sp);
+    this.spotIn = sp || null;   // for `EndBoss.lay`: THE LAST SUPPER picks up where it stood
     // The floor's last man and his meeting (js/endboss.js): after a spot or a gate has taken out who is gone,
     // or a man killed before a quit was laid again (his bone in the air, his scene played on nobody).
     EndBoss.lay(this);
+    this.spotIn = null;
     // Every level starts by writing the run down: that head is what CONTINUE comes back to.
     this.saveRun();
     // Once watched, a new run (NEW GAME, RUN AGAIN) goes straight to the pen (30 Sep 2026: "don't
@@ -3820,6 +3830,21 @@ class Game {
   inPrologue() { const p = this.intro && this.intro.phase; return p === 'meadow' || p === 'road' || p === 'dark' || p === 'cloth'; }
 
   // Moves anything with a `path` of points along it at `speed`; true once the path is used up.
+  // The goat stood a step inside room `at`'s door, every man of the rooms before it gone (the COMBOS tab's PLAY, LAST ROOM).
+  standAtRoom(at) {
+    const L = this.level, room = L.rooms[at], g = this.goat;
+    this.enemies = this.enemies.filter((e) => !(e.room >= 0 && e.room < at));
+    const ent = room.enter || { x: (room.x + 1.5) * TILE, y: (room.y + room.h / 2) * TILE };
+    const cx = (room.x + room.w / 2) * TILE, cy = (room.y + room.h / 2) * TILE, l = Math.hypot(cx - ent.x, cy - ent.y) || 1;
+    // Not `freeSpot`: it asks the flow field, which still runs from the start behind the gates.
+    let spot = { x: ent.x + (cx - ent.x) / l * 1.2 * TILE, y: ent.y + (cy - ent.y) / l * 1.2 * TILE };
+    for (let k = 1.2; k < l / TILE && [T.WALL, T.PIT].includes(this.world.tileAtPx(spot.x, spot.y)); k += 0.5) spot = { x: ent.x + (cx - ent.x) / l * k * TILE, y: ent.y + (cy - ent.y) / l * k * TILE };
+    g.x = spot.x; g.y = spot.y; g.safeX = g.x; g.safeY = g.y; g.safeTrail = [];
+    this.cageOpen = true; this.goatRoom = at;
+    this.cam.x = g.x; this.cam.y = g.y; this.camFollow = null; this.camTrack = null; this.camHold = undefined; this.camRoomMid = null; this.pathTrail = [{ x: g.x, y: g.y }];
+    this.world.computeFlow(g.x, g.y);
+    this.world.computeVis(g.x, g.y, TUNING.fog.radius, this.mods.oracle ? TUNING.fog.oracle : 0);
+  }
   followPath(e, speed, dt) {
     if (!e.path || !e.path.length) { e.vx = 0; e.vy = 0; return true; }
     const t = e.path[0], dx = t.x - e.x, dy = t.y - e.y, d = hyp(dx, dy), step = speed * dt;
@@ -4218,6 +4243,8 @@ class Game {
     if (this.skyTables) this.updateSkyTables(dt);
     if (this.powder && this.powder.size) this.updatePowder(dt);
     if (this.waves && this.waves.length) Waves.update(this, dt);   // a corrupted ogre's witchfire (js/waves.js)
+    if (this.supper) EndBoss.supperStep(this, dt);
+    if (this.glimpse) EndBoss.glimpseStep(this, dt);   // THE ROAD: the Warden seen across the chasm with her (js/endboss.js)   // THE LAST SUPPER: the chair, his lines, what breaks it, his way out (js/endboss.js)
     Sacrifice.update(this, dt);   // THE SACRIFICE ALTAR: a heart a second for whatever stands on it (js/sacrifice.js)
     w.updateFire(dt);
     Status.update(this, dt);

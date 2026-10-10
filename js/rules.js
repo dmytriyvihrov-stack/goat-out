@@ -1163,6 +1163,26 @@ const GEN_RULES = [
       for (const k of new Set(a.with || [])) if (((L.def.met && L.def.met.has(k)) || L.def.encounters.kinds.includes(k)) && men.filter((m) => m === k).length < a.with.filter((w) => w === k).length) return `fewer ${k}s at his back than \`with\` names`;
       return true;
     } },
+  // js/endboss.js (10 Oct 2026): THE LAST SUPPER, the last floor's last room.
+  { id: 'supper', text: 'THE LAST SUPPER: the last floor ends in the supper hall, its tables in one row with floor at both ends of it, at least four men at the table and the soul in one of them.',
+    check: (L) => {
+      const li = levelIndexOf(L.def), last = L.rooms.length - 1, arenas = L.def.arenas || [], a = arenas[arenas.length - 1];
+      if (li !== LEVELS.length - 1 || L.def.shroom || L.def.dark || !a) return null;
+      if (!a.supper || a.at !== last) return 'the last ring is not the supper';
+      const room = L.rooms[last];
+      if (room.tpl.name !== 'supper') return `the last room is ${room.tpl.name}, not the supper hall`;
+      const inRoom = (p) => p.x >= room.x * TILE && p.x < (room.x + room.w) * TILE && p.y >= room.y * TILE && p.y < (room.y + room.h) * TILE;
+      const tables = L.props.filter((p) => p.kind === 'table' && inRoom(p)).sort((p, q) => p.x - q.x);
+      if (tables.length < 4) return `only ${tables.length} tables`;
+      if (tables.some((t) => Math.abs(t.y - tables[0].y) > TILE * 0.5)) return 'the tables are not in one row';
+      const solid = (x, y) => L.tiles[Math.floor(y / TILE) * L.W + Math.floor(x / TILE)] !== T.FLOOR;
+      if (solid(tables[0].x - TILE * 2, tables[0].y) || solid(tables[tables.length - 1].x + TILE * 2.5, tables[0].y)) return 'no floor at an end of the table';
+      const men = L.spawns.filter((s) => s.roomIndex === last);
+      if (men.length < 4) return `only ${men.length} men at the table`;
+      const plan = soulPlan(L);
+      if (!men.some((s) => plan.ensoul.includes(L.spawns.indexOf(s)))) return 'no soul at the table';
+      return true;
+    } },
   { id: 'fork', text: 'THE FORK: the fork floor (when the run deals it) ends on two flights in the one far wall, apart; the lit one behind its iron door, the dark one behind a wall that gives.',
     check: (L) => {
       const F = TUNING.dark.fork, here = F && F.at >= 0 && levelIndexOf(L.def) === F.at && F.at + 1 < LEVELS.length;

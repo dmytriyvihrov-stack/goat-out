@@ -4032,6 +4032,10 @@ class Renderer {
     // The rat ogre's and the Butcher's leap: up off the floor over his own shadow, and a crouch before it.
     if (e.state === 'hop' && e.hopZ) ctx.translate(0, -e.hopZ);
     if (e.state === 'hopwind') ctx.scale(1.1, 0.86);
+    // THE WARDEN's tumble (js/warden.js): over and over along the way he goes, low.
+    if (e.state === 'wroll') { ctx.translate(0, -6); ctx.rotate((Math.cos(e.rollAng || 0) >= 0 ? 1 : -1) * this.t * 22); ctx.scale(0.9, 0.9); }
+    // At THE LAST SUPPER's table (js/endboss.js, `e.seat`): sunk `sink` px and cut off at his feet' line, so the table and the stool take his legs.
+    if (e.seat && e.endHold === 'sit') { const SK = TUNING.endBoss.supper.sink; ctx.translate(0, SK); ctx.beginPath(); ctx.rect(-90, -220, 180, 220 - SK); ctx.clip(); }
     if (e.dazed > 0) ctx.rotate(Math.sin(this.t * 24) * 0.12);
     // The butcher swinging the hook round before he lets it go: a sway.
     if (e.state === 'hookwind') ctx.translate(Math.sin(this.t * 16) * 1.5, 0);
@@ -4694,7 +4698,7 @@ class Renderer {
   }
 
   drawAimTelegraph(e) {
-    if (e.kind !== 'hunter' || (e.state !== 'aim' && !e.held)) return;
+    if ((e.kind !== 'hunter' && !e.warden) || (e.state !== 'aim' && !e.held)) return;   // the Warden's gun aims the same line (js/warden.js)
     const ctx = this.ctx, r = e.r;
     if (ART_PASS.tells) {
       // The line in cells, the windups' amber where it was red on the cult's own red floors (the
@@ -5093,7 +5097,9 @@ class Renderer {
           ['hornTool', d.hornTool ? 'HORN TOOL  ON' : 'HORN TOOL  OFF'],   // the sliders over the run, and the zone on the floor
           ['cam-zoom', 'CAMERA  ×' + (d.tune && d.tune.camera || 1)],   // the lens, a step a click (also a slider on ENEMIES)
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
-          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['showroom', 'SHOWROOM'],
+          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'],
+          ['lastroom', 'LAST ROOM · SCENE'],   // this floor's last room with its scene (js/endboss.js; THE LAST SUPPER on the last floor)
+          ['showroom', 'SHOWROOM'],
           // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
           ['heaven', 'HEAVEN'], ['sacrifices', '+100 SACR · +5 SOULS'], ['addkey', '+1 KEY'],
           // Every frame over `photo.dip.ms` writes down where it was, with a small picture (js/photo.js).
@@ -5111,6 +5117,7 @@ class Renderer {
           // a click on a man opens a small menu beside the row (`d.spawnMenu`, `Game.devAction` `spawn-pick=`): plain, champion,
           // or corrupted at its 1st / 2nd / 3rd meeting (`Game.devSpawnAs`)
           ['bearer', 'BEARER'], ['enemy-spawn=shield', 'SHIELDMAN'], ['enemy-spawn=thrower', 'THROWER (BANE)'], ['enemy-spawn=shaman', 'SHAMAN'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
+          ['enemy-spawn=warden', 'THE WARDEN'], ['enemy-spawn=flayed', 'THE FLAYED'],   // the villain's two phases (js/warden.js)
           ['wraith', 'WRAITH'], ['wraithdoor', 'WRAITH DOOR'], ['butcher', 'OGRE'],
           ['ratogre', 'RAT OGRE'],
           ['mouse', 'MOUSE'], ['artifact', 'TALISMAN · CAPE'], ['soul', 'SOUL'],

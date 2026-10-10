@@ -457,7 +457,7 @@ function tryGenerate(levelDef, seed, opts) {
   // An arena's shape is its boss's: the ogre's carries the swords and the bowls the horns cannot
   // stand in for, and the first one of a run (THE YARD's since 26 Sep 2026: whichever floor has not
   // met him yet) is the wide hall that shows it.
-  const arenaTpl = (a) => a.boss !== 'butcher' ? ARENA_TEMPLATE
+  const arenaTpl = (a) => a.supper ? SUPPER_TEMPLATE : a.boss !== 'butcher' ? ARENA_TEMPLATE
     : levelDef.met && !levelDef.met.has('butcher') ? OGRE_FIRST_TEMPLATE : OGRE_ARENA_TEMPLATE;
   const fixedW = (j) => {
     const aj = (levelDef.arenas || []).find((a) => a.at === j);
