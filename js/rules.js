@@ -1105,6 +1105,21 @@ const GEN_RULES = [
       }
       return true;
     } },
+  // ARENA VARIANTS (10 Oct 2026, rooms.js `ARENA_VARIANTS`, gen.js `arenaTplAt`): the ring's shape is a promise about who it fits.
+  { id: 'arenas', text: 'A boss\'s ring is the plain arena, or past his kind\'s first meeting one of the shapes that fit him (the well, the colonnade, the feast), each from its own floor and never a hole or a feast in a cave; the ogre keeps his ring, THE ALTAR, THE TRIP and THE DARK the plain one, and no boss stands on a drop.',
+    check: (L) => {
+      const def = L.def, li = levelIndexOf(def), AV = TUNING.rooms.arena;
+      const rings = L.rooms.filter((r) => r.arena && !r.arena.supper && r.arena.boss !== 'butcher');
+      if (!rings.length) return null;
+      for (const r of rings) {
+        const name = r.tpl.name, v = ARENA_VARIANTS.find((o) => o.tpl.name === name);
+        if (!v) { if (name !== ARENA_TEMPLATE.name) return `room ${r.index} is "${name}"`; continue; }
+        if (def.shroom || def.dark || li < AV.from || !(def.met && def.met.has(r.arena.boss))) return `room ${r.index} is ${name} where the plain ring is owed`;
+        if (!arenaVariantsFor(def, r.arena.boss, li).includes(v)) return `room ${r.index} is ${name}, which does not fit a ${r.arena.boss} on floor ${li + 1}`;
+        if (r.bossSpot && L.tiles[Math.floor(r.bossSpot.y / TILE) * L.W + Math.floor(r.bossSpot.x / TILE)] === T.PIT) return `the boss of room ${r.index} stands on the drop`;
+      }
+      return true;
+    } },
   { id: 'traps', text: 'A trap room is never a set piece nor one of the first two ordinary rooms.',
     check: (L) => {
       const o = L.rooms.filter((r) => ORDINARY.has(r.role)), t = o.filter((r) => r.role === 'trap');

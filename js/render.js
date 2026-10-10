@@ -2040,6 +2040,97 @@ class Renderer {
     }
   }
 
+  // THE BOSS BAR (10 Oct 2026, "the boss fights: clarity, readability"; `TUNING.hud.boss`, `BOSS_HINTS` in tuning.js). A man
+  // who takes more than one blow (`Renderer.isBoss`: a champion, a gate's keeper, a soul-bearer; the rat ogre, THE WARDEN and
+  // THE FLAYED) awake in the goat's room, or after him within `near` tiles, gets a plate at the top of the screen: his name,
+  // what he is (A SOUL IN HIM violet, CHAMPION gold, KEEPER OF THE GATE), his hearts as big cells, and for the first `hint` s
+  // the one line his fight turns on (the horns do nothing to the ogre, the board turns them, the hook drags), said where the
+  // fight is rather than in the book, once per man. The name slams in over `slam` s; a heart lost burns its cell white and
+  // rattles the plate `shake` s; down, the plate reads DOWN with every cell empty for `hold` s and goes. The floor's last man
+  // first, at most `rows` plates. Render only: `this.bossBars` keeps each man's last seen hearts and nothing touches the
+  // simulation; the notches over his head stay, this is the same count where the eye already is (Hades, Dead Cells).
+  static bossKind(e) {
+    return e.flayed ? 'flayed' : e.warden ? 'warden' : e.kind === 'ratogre' ? 'ratogre' : e.champion ? 'champion'
+      : e.shieldman ? 'shield' : e.thrower ? 'thrower' : e.shaman ? 'shaman' : e.kind;
+  }
+  drawBossBar(game) {
+    const B = TUNING.hud.boss, L = game.level, g = game.goat;
+    if (!B || !B.on || !L || !g || typeof BOSS_HINTS === 'undefined') return;
+    if (this.bossLevel !== L) { this.bossLevel = L; this.bossBars = new Map(); this.bossHinted = new WeakSet(); }
+    const bars = this.bossBars, t = this.t, dt = this.bossT === undefined ? 0 : clamp(t - this.bossT, 0, 0.1); this.bossT = t;
+    const here = game.goatRoom, near = B.near * TILE;
+    if (!g.dead && game.state !== 'dead') for (const e of game.enemies) {
+      if (e.dead || e.held || !e.woke || e.scripted || e.caged || e.endHold || e.disguise || e.mimicDoor || e.statue) continue;
+      if (!(Renderer.isBoss(e) || e.kind === 'ratogre' || e.warden || e.flayed)) continue;
+      if (game.hidden(e.x, e.y)) continue;
+      if (roomAt(L, e.x, e.y) !== here && hyp(e.x - g.x, e.y - g.y) > near) continue;
+      let b = bars.get(e);
+      if (!b) { b = { e, hp: e.hp, a: 0, since: t, lostAt: -9, lostN: 0, hint: !this.bossHinted.has(e) }; this.bossHinted.add(e); bars.set(e, b); }
+      b.seen = t;
+    }
+    const rows = [];
+    for (const [e, b] of bars) {
+      const live = b.seen === t;
+      if (e.dead && b.downAt === undefined) b.downAt = t;
+      const hp = e.dead ? 0 : e.hp;
+      if (hp < b.hp) { b.lostAt = t; b.lostN = b.hp - hp; }
+      b.hp = hp;
+      const keep = live || (e.dead && t - b.downAt < B.hold);
+      b.a = clamp(b.a + (keep ? dt / B.show : -dt / B.hide), 0, 1);
+      if (b.a <= 0 && !keep) bars.delete(e); else rows.push(b);
+    }
+    if (!rows.length) { this.bossBarBottom = undefined; return; }
+    const lead = (b) => (b.e.endBoss !== undefined || b.e.warden || b.e.flayed ? 0 : 1);
+    rows.sort((p, q) => lead(p) - lead(q) || (q.e.maxHp | 0) - (p.e.maxHp | 0) || p.since - q.since);
+    const ctx = this.ctx, s = this.hs, cs = this.s, K = BOSS_HINTS, O = TUNING.boss.outline;
+    const nameF = Math.max(12 * cs, 14 * s), tagF = Math.max(12 * cs, 11 * s), hintF0 = Math.max(12 * cs, 11.5 * s);
+    const maxW = this.w - 24 * s;
+    let y = 3 * s + (this.portrait ? 12 * s : 0) + (game.dev && game.dev.god ? 14 * s : 0) + 4 * s;
+    ctx.save(); ctx.textBaseline = 'alphabetic';
+    for (const b of rows.slice(0, B.rows)) {
+      const e = b.e, H = K[Renderer.bossKind(e)] || {}, down = e.dead, soul = !!e.soul;
+      const name = H.name || (KILLED_BY[e.kind] ? 'THE ' + KILLED_BY[e.kind] : String(e.kind).toUpperCase());
+      const tag = down ? K.tags.down : soul ? K.tags.soul : e.keeper ? K.tags.keeper : e.boss ? K.tags.champion : '';
+      const col = down ? 'rgba(239,230,208,0.5)' : soul ? O.soul : e.boss || e.keeper ? O.color : PALETTE.bone;
+      const age = t - b.since, slam = clamp(1 - age / B.slam, 0, 1), sc = 1 + slam * slam * 0.35;
+      const max = Math.max(1, e.maxHp | 0), gap = B.gap * s, cw = Math.min(B.cell * s, (B.w * s - (max - 1) * gap) / max), ch = B.cellH * s;
+      const rowW = max * cw + (max - 1) * gap;
+      const since = t - b.lostAt, shake = since < B.shake ? Math.sin(t * 70) * 3 * s * (1 - since / B.shake) : 0;
+      const hint = b.hint && age < B.hint && !down ? (e.keeper ? K.keeper.hint : H.hint) || '' : '';
+      ctx.font = `700 ${nameF}px ${FONT_SC}`; const nw = textW(ctx, name);
+      ctx.font = `700 ${tagF}px ${FONT_SC}`; const tw = tag ? textW(ctx, ' · ' + tag) : 0;
+      let hintF = hintF0, hw = 0;
+      if (hint) { ctx.font = `700 ${hintF}px ${FONT_SC}`; hw = textW(ctx, hint); if (hw > maxW) { hintF = Math.max(12 * cs, hintF * maxW / hw); ctx.font = `700 ${hintF}px ${FONT_SC}`; hw = textW(ctx, hint); } }
+      const plateW = Math.min(this.w - 8 * s, Math.max(rowW, nw + tw, hw) + 24 * s);
+      const plateH = 4 * s + nameF + 5 * s + ch + (hint ? 4 * s + hintF : 0) + 7 * s;
+      ctx.save(); ctx.globalAlpha = b.a; ctx.translate(Math.round(this.w / 2 + shake), Math.round(y)); ctx.scale(sc, sc);
+      ctx.fillStyle = 'rgba(13,10,12,0.64)'; ctx.fillRect(-plateW / 2, 0, plateW, plateH);
+      ctx.fillStyle = col; ctx.fillRect(-plateW / 2, 0, plateW, Math.max(1, Math.round(s)));
+      // the name, the tag after it in his colour
+      const ny = 4 * s + nameF * 0.82; let x = -(nw + tw) / 2;
+      ctx.textAlign = 'left';
+      ctx.font = `700 ${nameF}px ${FONT_SC}`; ctx.fillStyle = down ? 'rgba(239,230,208,0.55)' : PALETTE.bone; ctx.fillText(name, x, ny); x += nw;
+      if (tag) { ctx.font = `700 ${tagF}px ${FONT_SC}`; ctx.fillStyle = col; ctx.fillText(' · ' + tag, x, ny); }
+      // the hearts: a cell each, the lost one burning white for a beat
+      const hy = ny + 5 * s; let hx = -rowW / 2;
+      for (let i = 0; i < max; i++, hx += cw + gap) {
+        const on = i < b.hp, lost = !on && i < b.hp + b.lostN && since < B.shake * 2;
+        ctx.fillStyle = 'rgba(13,10,12,0.75)'; ctx.fillRect(hx - s, hy - s, cw + 2 * s, ch + 2 * s);
+        ctx.fillStyle = on ? PALETTE.blood : lost ? `rgba(255,255,255,${clamp(1 - since / (B.shake * 2), 0, 1)})` : 'rgba(239,230,208,0.16)';
+        ctx.fillRect(hx, hy, cw, ch);
+        if (on) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(hx + s, hy + s, Math.max(0, cw - 2 * s), Math.max(1, s)); }
+      }
+      if (hint) {
+        ctx.globalAlpha = b.a * clamp((B.hint - age) / 0.5, 0, 1); ctx.textAlign = 'center';
+        ctx.font = `700 ${hintF}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi; ctx.fillText(hint, 0, hy + ch + 4 * s + hintF * 0.82);
+      }
+      ctx.restore();
+      y += plateH + 4 * s;
+    }
+    ctx.restore(); ctx.textAlign = 'left';
+    this.bossBarBottom = y;
+  }
+
   // The iron pair (`keys.iron.pair`, 5 Oct 2026, "it must read, grass or animal"): while both stand shut, the
   // floor under each says what is in it, so the one key is spent knowing which is which. Under the first
   // words when those are still up.
@@ -9137,6 +9228,7 @@ class Renderer {
     if (game.heaven && game.level && game.level.def.heaven) { Heaven.drawHud(this, game); return; }   // js/heaven.js
     // THE CHASE's red at the left and its words (js/chase.js): under every part of the HUD.
     if (game.chase) { Chase.draw(this, game); Chase.drawBanner(this, game); }
+    this.drawBossBar(game);   // THE BOSS BAR, top centre, under GOD MODE's word
     const g = game.goat, s = this.hs, top = 3 * s + (this.portrait ? 12 * s : 0);
     ctx.textAlign = 'left';
     // The level's name used to stand over the hearts. The card at the head of every level has

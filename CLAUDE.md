@@ -607,6 +607,17 @@ It takes at most `armory.crates` (1) loose crates on top of its own two, and a g
 any of its crates or stands (`spike.hidden.armoryCrate` / `armoryStand`), only on a floor that lays grates (`levelDef.spikes`; see *Grating*).
 **THE FLANK** (7 Oct 2026, "go straight at them, or jump the pit and come round behind", Enter the Gungeon's trench rooms; `TUNING.rooms.flank`, `tag: 'flank'` templates `ditchcut`, `ditchtee`, `ditchisland`, `ROOM_LEVELS` '0001111100': THE ROAD to THE OSSUARY since 8 Oct 2026, "not in the cave"): `flankAt` (gen.js, its own RNG stream, after the bridges) lays one of them at `chance` a floor in an ordinary room from `from`, canon or mix, keeping its role so the canon's share stands, never a bridge's, the vault's, the shop's, a teaching or trap room. A trench is ONE tile across (the roll carries him over one, not two), two tiles of floor all the way round the room so a door never opens onto it, and a way round on land always exists: the squad holds the far lip, the straight way is the gate under their guns, the other is a roll over the drop to come in from the side or behind, where a butt shoves a body into it (a fall, pillar 3). Not a chasm (`chasmRoomFits` refuses it). `GEN_RULES.flank`; THE SHOWROOM lays all three in a second row under the floors.
 
+**ARENA VARIANTS** (10 Oct 2026, "a few room options" for the boss fights; `ARENA_VARIANTS` in rooms.js, `TUNING.rooms.arena`): a
+boss's ring past his kind's first meeting is, `vary` of the time, one of three shapes the same 14 x 12 as the plain arena, each an
+answer to a kind: THE WELL (`arena well`, a 2 x 2 drop in the middle; a mage's blink never lands in it; never a butcher's, the hook
+would drag the goat over it; `fromOf.well` THE ROAD, never a cave), THE COLONNADE (`arena colonnade`, two rows of pillars
+against the hook's line and the rifle's; the one shape a butcher may get), THE FEAST (`arena feast`, four tables either side of his
+lane; never a wide body's, `routeW`; never a cave). Each keeps two bowls, two stands and the straw, so a floor's last
+scene (the mage's bowl, js/endboss.js) finds what it reads. `arenaTplAt` in `tryGenerate` (its own stream, two rolls an arena whatever
+the pool) feeds `arenaTpl`; `arenaVariantsFor` (gen.js) is the fit, shared with `GEN_RULES.arenas`. Never THE ALTAR's (`from` 1), THE
+TRIP's, THE DARK's (its ladder stands a hair under THE CAVE's, 63.0 to 62.9 over 60 seeds, and a colonnade in it tipped that), the
+ogre's ring or the supper. THE SHOWROOM lays the three in a third row under THE FLANK's.
+
 **Things that go off** (`TUNING.prop.clutter`, `activeIn`): brazier, lamp, barrel, chandelier, bomb;
 barrels, the chandelier and the bomb are only added to a room under `max`, barrels in the `edge` band.
 `GEN_RULES.clutter`.
@@ -900,6 +911,14 @@ violet. The ogre, boss-only, keeps his own `butcher.hp`. Drawn × `boss.scale` o
 THE DARK's eyes share); `Renderer.bossOutline` lays his own body as a flat silhouette
 `outline.px` out on eight sides via a canvas shadow (one exact colour, blur 0) so it is hard pixels,
 never a glow. Set in `startLevel` off the spawn's `boss`. A soul only ever goes into a boss.
+
+**THE BOSS BAR** (10 Oct 2026, "the boss fights: clarity, readability"; `Renderer.drawBossBar`, `TUNING.hud.boss`, `BOSS_HINTS` in
+tuning.js): a man who takes more than one blow (`Renderer.isBoss`, the rat ogre, THE WARDEN, THE FLAYED), awake in the goat's room or
+after him within `near` tiles, gets a plate at the top centre of the screen under GOD MODE's word: his name (`BOSS_HINTS[kind].name`,
+`Renderer.bossKind`), his tag in his outline's colour (A SOUL IN HIM, CHAMPION, KEEPER OF THE GATE; DOWN once he is dead), his hearts as
+`cell` × `cellH` cells, and for `hint` s the one line his fight turns on, once per man a floor (`bossHinted`). Render only:
+`renderer.bossBars` (a map off the man: last seen hearts, alpha, when a heart went) is reset with the level; the notches over his head
+stay. A new kind of boss needs a `BOSS_HINTS` entry, else it is named off `KILLED_BY`. Nothing in the itch build hides it; `on` false does.
 
 **Two hits.** `hp > 1` (a boss, a soul-bearer, the rat ogre) absorbs a killing blow in `die()`: floored, one lost,
 up again (a boss Seer blinks). Fire counts. `'fall'` skips it. A bomb charge is an ordinary hit; a

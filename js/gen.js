@@ -14,6 +14,14 @@ function flipTemplate(tpl, rng) {
   return { name: tpl.name, rows, lamps: tpl.lamps };
 }
 
+// Which arena shapes a boss of `kind` may be rung in on floor index `li` (`ARENA_VARIANTS`, `TUNING.rooms.arena.fromOf`):
+// the ones that name his kind, from their own floor, and never a hole or a feast in a cave (THE DARK takes none at all). Shared with
+// `GEN_RULES.arenas`.
+function arenaVariantsFor(levelDef, kind, li) {
+  const F = TUNING.rooms.arena.fromOf;
+  return ARENA_VARIANTS.filter((v) => v.kinds.includes(kind) && li >= (F[v.id] || 0) && !(v.noCave && levelDef.cave));
+}
+
 // ---------------------------------------------------------------------------------------------
 // THE ENCOUNTER PLAN. Difficulty is decided here, once, before a single man is placed; the generator
 // below only finds floor for what this returns. Two rules, and both are testable:
@@ -457,7 +465,22 @@ function tryGenerate(levelDef, seed, opts) {
   // An arena's shape is its boss's: the ogre's carries the swords and the bowls the horns cannot
   // stand in for, and the first one of a run (THE YARD's since 26 Sep 2026: whichever floor has not
   // met him yet) is the wide hall that shows it.
-  const arenaTpl = (a) => a.supper ? SUPPER_TEMPLATE : a.boss !== 'butcher' ? ARENA_TEMPLATE
+  // ARENA VARIANTS (10 Oct 2026, "a few room options" for the boss fights; `ARENA_VARIANTS` in rooms.js, `TUNING.rooms.arena`):
+  // a boss's ring past his kind's first meeting is, `vary` of the time, one of the shapes that fit his kind (the well, the
+  // colonnade, the feast), each from its own floor. Its own stream, two rolls an arena whatever the pool, so no other roll
+  // moves. Never THE ALTAR's (`from`), THE TRIP's, THE DARK's (its lamps are the level, and its ladder stands a hair under THE
+  // CAVE's, which a colonnade of unlit stone tipped), the ogre's ring or the supper. `GEN_RULES.arenas`.
+  const arenaTplAt = new Map();
+  {
+    const AV = TUNING.rooms.arena, arng = new RNG(((seed ^ 0x0a3e7a) >>> 0)), li = levelIndexOf(levelDef);
+    for (const a of (levelDef.arenas || [])) {
+      const roll = arng.next(), pick = arng.next();
+      if (a.supper || a.boss === 'butcher' || levelDef.shroom || levelDef.dark || !(li >= AV.from) || !(levelDef.met && levelDef.met.has(a.boss))) continue;
+      const pool = arenaVariantsFor(levelDef, a.boss, li);
+      if (pool.length && roll < AV.vary) arenaTplAt.set(a.at, pool[Math.min(pool.length - 1, Math.floor(pick * pool.length))].tpl);
+    }
+  }
+  const arenaTpl = (a) => a.supper ? SUPPER_TEMPLATE : a.boss !== 'butcher' ? (arenaTplAt.get(a.at) || ARENA_TEMPLATE)
     : levelDef.met && !levelDef.met.has('butcher') ? OGRE_FIRST_TEMPLATE : OGRE_ARENA_TEMPLATE;
   const fixedW = (j) => {
     const aj = (levelDef.arenas || []).find((a) => a.at === j);
