@@ -5,6 +5,23 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.004, 10 Oct 2026: one pair of horns from every side, and the men run on their feet
+
+- **His horns are one pair in the round** ("here the horns are a bit strange, and the same with the length of all the horns and their look").
+  The atlas drew them a different way on every facing: 25 to 29 px from the side, 18 from behind, the far one 16, forward over his nose
+  on the up-left view, two horns on one step and one lump on the next. They are taken off every frame and one pair is drawn in their
+  place off a single model (`PIXEL_ART.hornModel`, `TUNING.goat.hornModel`): a horn rising, sweeping back over his neck and a little out,
+  the same length and shape from every side, only turned, in the packed horn's colours with a lighter band, a glint and ridges. BIG, LONG,
+  the antlers and the lava and venom skins grow off it, so they hold one shape too. This replaces 0.003's mirrored back diagonal.
+- **The men run on their feet** ("in the old videos, when my legs and the enemies' moved, it gave more of a chase and more fun"). The
+  painted sheets had four walk frames a facing; since the pixel atlas (1.55) the men had none and slid about on their standing frame. Now
+  the clubman, the brute, the rifleman, the mage, the butcher, the rat ogre and the hound step (`TUNING.enemyAnim.run`): a cycle for every
+  stretch of floor they cover, so a man running faster steps faster; their feet (the hound's paws) lift and swing, and their bodies bob on
+  each footfall, rock side to side and lean into the run, harder when they are after him. The hound's old fixed bob (`dog.gait`, `dog.bob`)
+  is folded into it.
+
+---
+
 ## 0.003, 10 Oct 2026: the bolt over the eye is earned, and the horns from behind sweep back
 
 - **The lightning over his eye comes with the first corrupted soul** (his ask). The atlas painted it on every frame; it is cut off on load

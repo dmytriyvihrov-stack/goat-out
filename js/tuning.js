@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.003';
+const BUILD = '0.004';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -683,6 +683,13 @@ const TUNING = {
     feel: { turnGrip: 1.6, lean: 0.14, leanRate: 14, run: 0.05, bob: 1.3, pull: 3,
       kick: { from: 0.25, squash: -0.07, dust: 2 }, stop: { at: 0.7, squash: 0.06 },
       skid: { dot: -0.3, at: 0.55, squash: 0.09, dust: 3, gap: 0.35 } },
+    // His horns in the round (10 Oct 2026, `PIXEL_ART.hornModel`): from each root `up`, `back` and `out` as [a, b] of
+    // len × (a·q + b·q²) along the horn (q 0 at the root, 1 at the tip; `up` is a·q − b·q², the curl over), `len` atlas px,
+    // `w0` → `w1` px across (radius), the floor foreshortened by `pitch`, a dark ridge every `ridge` px, and `pal` the
+    // packed horn's own colours (all dark and warm: `hornsOf` reads a horn by them).
+    // `head` is the least room above the tip in the frame: a horn that would rise past it is flattened, for that frame only.
+    hornModel: { len: 27, up: [0.72, 0.17], back: [0.25, 0.6], out: [0.22, 0.15], pitch: 0.3, w0: 5, w1: 0.9, ridge: 3.5, head: 1,
+      pal: { line: '#231611', body: '#2c1f18', band: '#36261d', glint: '#443126', ridge: '#251812' } },
     // His legs on the run (10 Oct 2026, "finish the goat's animation, especially the legs"; `PIXEL_ART.gait`). The
     // packed walk frames move the legs a pixel or two, so the run read as a body bobbing on four stiff pegs: the legs
     // are found on each frame (the blobs under the belly line, `belly` of the widest row, that reach within `reach`
@@ -742,6 +749,19 @@ const TUNING = {
     // faces and tipped `tilt`, easing home over his own count, with a tremble of `shake` px over the first `shakeFor`
     // of it. It was a buzz at a fixed rate and nothing at all for the board.
     rocked: { back: 5, tilt: 0.12, shake: 1.6, shakeFor: 0.45 },
+    // ON THE RUN (10 Oct 2026, "in the old videos, when my legs and the enemies' moved, it gave more of a chase and more
+    // fun"): the painted sheets (1.18 to 1.54) had four walk frames a facing; the pixel atlas gave the men none, so they
+    // slid. Now every man in `units` steps: a cycle every `stride` world px he covers (so a man running faster steps
+    // faster, and stops stepping the moment he stops), his feet found on his standing frame (`PIXEL_ART.legsOf`) and
+    // moved whole (`whole`) by `lift` atlas px up and `swing` px along his heading, `side` px out on the front and back
+    // views (`PIXEL_ART.gait`, `steps` a cycle; a blob further than `centre` of the frame's width off its middle is a
+    // weapon's end, not a foot); his body comes up `bob` px on each footfall, rocks `tilt` rad side to side and leans
+    // `lean` rad into the way he runs, all of it at full from `fast` px/s, and half the lean while he is not after the
+    // goat. `stretch` (the hound) draws him long on the reach of each bound. `per` is a kind's own numbers.
+    run: { stride: 30, fast: 80, bob: 1.6, tilt: 0.07, lean: 0.12, lift: 6, swing: 5, side: 3, steps: 12, centre: 0.3, whole: true, stretch: 0,
+      units: ['clubman', 'brute', 'hunter', 'mage', 'butcher', 'ratogre', 'hound'],
+      per: { hound: { stride: 44, bob: 1.6, tilt: 0, lean: 0.08, stretch: 0.07, lift: 5, swing: 7, centre: 0.6 },
+        mage: { bob: 1.2, tilt: 0.05 }, ratogre: { stride: 52, bob: 3, tilt: 0.05, lift: 8, swing: 8 }, butcher: { stride: 36, bob: 2.2 } } },
   },
   bearer: {
     radius: 11, speed: 0.85 * CULT_PACE, sight: 8, cone: Math.PI / 2,
@@ -828,8 +848,6 @@ const TUNING = {
     // a man square in front cannot flip him left and right. `give` s of going round and not a tile
     // nearer the goat (boxed in by a knot of them) and he leans on through for as long, as he used to.
     pass: { look: 1.3, step: 0.3, arc: 1.5, hold: 0.45, give: 1.2 },
-    // A running hound bounces: `bob` px up at the top of each of `gait` strides a second.
-    gait: 6.5, bob: 1.5,
     packGap: 7, packWait: 0.55,   // one hound runs in at a time; the rest hold the ring
     // He gives tongue as he runs: a bark every `barkGap` s (±40%) while he hunts, every `barkDart` s
     // on the run in. Sound only, the men answer the goat's noise, not their own dogs'.
