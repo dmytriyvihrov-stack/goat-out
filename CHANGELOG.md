@@ -5,6 +5,20 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.002, 10 Oct 2026: a pass over what the god, the shepherd and the animals say
+
+- **The god, the shepherd and the animals, reread** (his ask: "a little story, no padding; the asks concrete, not explained twice"; the first
+  talks, the god's `intro` and `life` and every animal's `BEAST_HELLO`, were his already and stand). `HEAVEN_TALK`: `gift`, `mend`, `animal`,
+  `horns`, `hornsDone`, `hornsShut`, `skills` and its two answers shortened to the ask and one line of why (the mirror broke the day he was on
+  the altar; the horns by the edge are the ones he wore down there; the violet souls are the cult's own dead); the death tallies and `further`
+  cut to the joke; one more `any` line, the old man's bells rang up here once. `killer` knows the shaman, the thrower (his throw too), the
+  altar and GIVING UP, and the hound's line says where to put the horns. `SHEPHERD_TALK`: the quest in three plates (the bells went the night
+  the flock did; the last man of every floor wears one; all of them home and he plays what his wife played), two comb lines of his own story,
+  `asleep` and `woke` say "home". `HEAVEN_SEATS`: the hen speaks for herself, the rest a word shorter. `QUESTS`: each dare's offer is the floor
+  and the rule, its thanks one line of story (the tortoise carried for the first time in its life, the goose that bit almost nobody, the horse
+  that turned their wheel) and one concrete ask; `STAND_STORY` likewise. The road: the tortoise's `again` no longer repeats its seat's line, the
+  horse calls a daze a foul, not poison.
+
 ## 0.001, published 9 Oct 2026: the versions start again at 0.001, and the playtest's fifteen notes
 
 - **Versions count 0.001, 0.002, ...** (`BUILD`; his word: "big numbers confuse me"). The old line ended at 2.07.

@@ -447,8 +447,8 @@ const HEAVEN_BANTER = {
   ],
 };
 const STAND_STORY = {
-  goose: "BROKEN. THE GOOSE HONKED AT THE CULT'S PRIEST, AND THEY SMASHED ITS STAND FOR IT. REPAIR IT, AND THE GOOSE WALKS YOUR RUNS.",
-  horse: 'BROKEN. THE CULT TOOK THE HORSE FOR THEIR WHEEL AND KICKED ITS STAND TO PIECES. REPAIR IT, AND THE HORSE RACES YOU DOWN THERE.',
+  goose: "BROKEN. THE GOOSE HONKED IN THE PRIEST'S FACE. THEY SMASHED ITS STAND FOR THAT. MEND IT, AND THE GOOSE IS DOWN THERE IN YOUR RUNS.",
+  horse: 'BROKEN. THEY TOOK THE HORSE TO TURN THEIR WHEEL AND KICKED ITS STAND TO PIECES. MEND IT, AND THE HORSE RACES YOU DOWN THERE.',
 };
 Object.assign(Heaven, {
   // ---------------------------------------------------------------- what the stands and the animals say
@@ -462,7 +462,7 @@ Object.assign(Heaven, {
     // the three of the story (8 Oct 2026, "make a good story for the three"): what broke each stand, then what it asks
     if (st === 'broken') { say(`${STAND_STORY[s.kind] || 'BROKEN.'} HOLD ${grab} AND POUR SOULS INTO IT: ${this.poured('stand:' + s.kind)} / ${this.standCost(s.kind)}.`, 1.6); return true; }
     if (M.questWon && M.questWon[s.kind]) return false;   // the dare's last word is said at the stand once, wherever it lives now
-    if (this.freed(s.kind)) { say(s.name + ' IS NOT HERE. IT LIVES UP HERE NOW, ITS OWN WAY. FIND IT.', 1.3); return true; }
+    if (this.freed(s.kind)) { say(s.name + ' IS NOT HERE. IT LIVES UP HERE NOW, LOOSE. GO AND FIND IT.', 1.3); return true; }
     if (s.kind === 'horse' && M.saved.horse) { say('THE HORSE IS IN ITS PADDOCK, BELOW. GO AND SEE IT.', 1.2); return true; }
     if (!M.saved[s.kind]) { say(M.met && M.met[s.kind] ? s.sound + ' ...' : 'EMPTY.', 1.4); return true; }
     return false;

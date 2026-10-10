@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.001';
+const BUILD = '0.002';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -1647,7 +1647,7 @@ const TUNING = {
         raceOne: ['NEIGH! RACE YOU TO THE STAIRS.', "ONE TRY. BEAT ME AND YOU CAN KEEP MY LEGS. YOU WON'T."],
         beaten: ['YOU OUTRAN ME. ME!', 'A BET IS A BET. MY LEGS ARE YOURS NOW, ALL THE WAY OUT.'],
         // Beaten after he poisoned or dazed it (`p.cheated`, `Beast.dope`, 6 Oct 2026): it knows, and pays.
-        cheated: ['YOU POISONED ME! CHEAT! CHEAT!', 'BUT A WIN IS A WIN, I SUPPOSE. TAKE MY LEGS, YOU DIRTY GOAT.'] } },
+        cheated: ['THAT WAS A FOUL! CHEAT! CHEAT!', 'BUT A WIN IS A WIN, I SUPPOSE. TAKE MY LEGS, YOU DIRTY GOAT.'] } },
     // The pig (30 Sep 2026: "she only wants to eat. Feed her three of your grasses if you want her
     // to thank you, and on the floors after you find a tuft or two more"). Out of her coop she
     // ambles after him (`speed`, standing within `followAt` tiles, `catchUp` × her pace past
@@ -4516,7 +4516,7 @@ const BEAST_CHAT = {
     stun: ['...RUDE.'], poison: ['I TASTE GREEN.'],
     stray: ['BRING ME WITH YOU!', 'I AM STILL HERE. SLOWLY.'],
     left: 'I WILL CATCH UP. ONE DAY.',
-    again: '...YOU AGAIN. GOOD. MY LEGS REMEMBER YOUR TEETH.',
+    again: '...YOU AGAIN. GOOD. PICK ME UP, THEN.',
   },
   goose: {
     kill: ['HONK! ANOTHER ONE!', 'YES! STOMP HIM!', 'THAT IS HOW WE DO IT!'],
