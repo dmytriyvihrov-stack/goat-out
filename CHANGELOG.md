@@ -5,6 +5,18 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.003, 10 Oct 2026: the bolt over the eye is earned, and the horns from behind sweep back
+
+- **The lightning over his eye comes with the first corrupted soul** (his ask). The atlas painted it on every frame; it is cut off on load
+  (`PIXEL_ART.splitMark`) and the face under it filled from the wool round it, so a new run, and every run after a death, starts a clean
+  lamb. Swallow a soul and the bolt is drawn back over him (`markOn`: `game.boons`).
+- **The mirror shows the lamb**: no bolt in the glass, whatever is in him (`markForce` round the reflection, at the mirror and in its panel).
+- **The horns from behind sweep back** ("here the horns point the wrong way, and on many pictures"). The up-left view, and so the up-right
+  run that mirrors it, had both horns grown forward over his nose, idle and every step. `PIXEL_HORN_FLIP` mirrors them about their roots
+  there and fills the crown under where they were; the antlers, BIG and LONG follow.
+
+---
+
 ## 0.002, 10 Oct 2026: the goat's legs, and the opening in pixels
 
 - **His legs move on the run** (`PIXEL_ART.gait`, `TUNING.goat.gait`; his ask: "finish the goat's animation, especially the legs"). The packed

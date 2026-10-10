@@ -2541,7 +2541,9 @@ Object.assign(Heaven, {
       }
     } else if (Math.abs(dx) < 90 && dy > -10 && dy < 150) {
       ctx.save(); ctx.translate(gx - dx * 0.25, gy + 16 * k - 4); ctx.scale(0.9, 0.9);
-      R.painted.character(R, { facing: -(g.facing || 0), vx: g.vx, vy: -g.vy, state: g.state }, 'sheep', 40);
+      // the glass shows the lamb he was: no bolt over the eye, whatever is in him (`PIXEL_ART.markOn`)
+      PIXEL_ART.markForce = false;
+      try { R.painted.character(R, { facing: -(g.facing || 0), vx: g.vx, vy: -g.vy, state: g.state }, 'sheep', 40); } finally { PIXEL_ART.markForce = null; }
       ctx.restore();
     }
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.moveTo(gx - 8 * k, gy - 10 * k); ctx.lineTo(gx - 3 * k, gy - 15 * k); ctx.lineTo(gx + 1 * k, gy - 13 * k); ctx.lineTo(gx - 5 * k, gy - 7 * k); ctx.fill();
@@ -2849,7 +2851,8 @@ Object.assign(Heaven, {
     const sky = ctx.createLinearGradient(0, ey - 16 * mk, 0, ey + 16 * mk); sky.addColorStop(0, '#dcebfa'); sky.addColorStop(1, '#9fc4e8');
     ctx.fillStyle = sky; ctx.fillRect(ex - 12 * mk, ey - 17 * mk, 24 * mk, 34 * mk);
     ctx.translate(ex, ey + 9 * mk); ctx.scale(mk * 0.34, mk * 0.34);
-    R.painted.character(R, { facing: Math.PI / 2 + Math.sin(t * 0.7) * 0.4, state: 'idle', x: 0, vx: 0, vy: 0 }, 'sheep', 40);
+    PIXEL_ART.markForce = false;   // the lamb in the glass (`drawMirror`)
+    try { R.painted.character(R, { facing: Math.PI / 2 + Math.sin(t * 0.7) * 0.4, state: 'idle', x: 0, vx: 0, vy: 0 }, 'sheep', 40); } finally { PIXEL_ART.markForce = null; }
     ctx.restore();
     // what it offers
     const rx = x0 + 60 * s + gw, rw = x0 + pw - 26 * s - rx, rh = Math.min(74 * s, (ph - 150 * s) / (this.shelf().length + 0.8));

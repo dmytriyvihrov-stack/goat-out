@@ -307,6 +307,7 @@ const PIXEL_ART = {
       for (let i = 3; i < a.length; i += 4) a[i] = a[i] >= 128 ? 255 : 0;
       x.putImageData(d, 0, 0); c.naturalWidth = c.width; c.naturalHeight = c.height;
       this.image = c;
+      this.splitMark();
       this.warm();
     };
     this.image = img; img.src = PIXEL_ASSETS.src;
@@ -386,7 +387,93 @@ const PIXEL_ART = {
       if (flip) ctx.restore();
       ctx.imageSmoothingEnabled = smooth;
     } else this.frame(ctx, f, id, 1, flip);
+    // the lightning over his eye, once a corrupted soul is in him (`splitMark`, `markOn`)
+    const mark = id === 'goat' && this.marks && this.marks.get(f);
+    if (mark && this.markOn()) {
+      const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      if (flip) { ctx.save(); ctx.scale(-1, 1); }
+      ctx.drawImage(mark, -f[4] * k, -f[5] * k, f[2] * k, f[3] * k);
+      if (flip) ctx.restore();
+      ctx.imageSmoothingEnabled = smooth;
+    }
     return true;
+  },
+  // THE MARK (10 Oct 2026, his ask: "the lightning over the eye shown only after the first corrupted soul, and none at all
+  // in the mirror, just a virgin lamb"). The atlas paints a violet bolt over the goat's eye on every frame that shows it.
+  // On load it is cut off the atlas into a frame-sized canvas of its own (`marks`, keyed by frame) and the face under it
+  // is filled back in from the wool round it (each hole pixel takes the commonest colour among its known neighbours,
+  // a ring at a time), so every bake off the atlas (horns, legs) is the clean lamb, and `draw` lays the bolt back over
+  // him only while `markOn`. The bolt is the violet pixels plus the lavender blend at its edge.
+  splitMark() {
+    const u = PIXEL_ASSETS.units.goat; if (!u) return;
+    const x = this.image.getContext('2d'); this.marks = new Map();
+    for (const f of [...u.idle, ...(u.walk || []).flat()]) {
+      const [fx, fy, w, h] = f, img = x.getImageData(fx, fy, w, h), D = img.data, hole = new Uint8Array(w * h);
+      const violet = (i) => D[i * 4 + 3] && D[i * 4 + 2] > D[i * 4] + 20 && D[i * 4 + 2] > D[i * 4 + 1] + 20;
+      let n = 0;
+      for (let i = 0; i < w * h; i++) if (violet(i)) { hole[i] = 1; n++; }
+      if (!n) continue;
+      // its edge, two rings out: the lavender blend, and the cream glow painted down one side of it (brighter than the wool)
+      for (let ring = 0; ring < 2; ring++) {
+        const add = [];
+        for (let i = 0; i < w * h; i++) {
+          if (hole[i] || !D[i * 4 + 3]) continue;
+          const px = i % w, py = (i / w) | 0, r = D[i * 4], g = D[i * 4 + 1], b = D[i * 4 + 2], lum = (r + g + b) / 3;
+          const near = (px > 0 && hole[i - 1]) || (px < w - 1 && hole[i + 1]) || (py > 0 && hole[i - w]) || (py < h - 1 && hole[i + w]);
+          if (near && ((b >= g - 4 && b > r - 60 && lum > 70) || lum > 211)) add.push(i);
+        }
+        for (const i of add) hole[i] = 2;
+      }
+      const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+      const mx = mc.getContext('2d'), mi = mx.createImageData(w, h);
+      for (let i = 0; i < w * h; i++) if (hole[i]) for (let q = 0; q < 4; q++) mi.data[i * 4 + q] = D[i * 4 + q];
+      mx.putImageData(mi, 0, 0);
+      this.fillHoles(D, w, h, hole, 3);
+      x.putImageData(img, fx, fy);
+      this.marks.set(f, mc);
+    }
+  },
+  // Fill the pixels flagged in `hole` (RGBA `D`, `w` x `h`) from the outside in: a ring at a time, a hole pixel with
+  // `need` or more known opaque neighbours of its eight is filled, with the median of the light known pixels within
+  // three (the wool round it, never the eye or an outline), or with no light one there the commonest of its neighbours.
+  // A hole that never gets enough known neighbours (it was out in the air) is left clear.
+  fillHoles(D, w, h, hole, need) {
+    const left = []; for (let i = 0; i < w * h; i++) if (hole[i]) { left.push(i); D[i * 4 + 3] = 0; }
+    for (let pass = 0; pass < 24 && left.length; pass++) {
+      const set = [];
+      for (const i of left) {
+        const px = i % w, py = (i / w) | 0, tally = new Map();
+        let known = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const nx = px + dx, ny = py + dy, j = ny * w + nx;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h || hole[j] || !D[j * 4 + 3]) continue;
+          known++; const key = (D[j * 4] << 16) | (D[j * 4 + 1] << 8) | D[j * 4 + 2]; tally.set(key, (tally.get(key) || 0) + 1);
+        }
+        if (known < need) continue;
+        const rs = [], gs = [], bs = [];
+        for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+          const nx = px + dx, ny = py + dy, j = ny * w + nx;
+          if (dx * dx + dy * dy > 10 || nx < 0 || ny < 0 || nx >= w || ny >= h || hole[j] || !D[j * 4 + 3]) continue;
+          if (D[j * 4] + D[j * 4 + 1] + D[j * 4 + 2] < 300) continue;
+          rs.push(D[j * 4]); gs.push(D[j * 4 + 1]); bs.push(D[j * 4 + 2]);
+        }
+        if (rs.length >= 3) { const med = (a) => a.sort((p, q) => p - q)[a.length >> 1]; set.push([i, (med(rs) << 16) | (med(gs) << 8) | med(bs)]); continue; }
+        let best = -1, bn = 0;
+        for (const [key, c] of tally) { const lum = (key >> 16) + ((key >> 8) & 255) + (key & 255), bl = (best >> 16) + ((best >> 8) & 255) + (best & 255); if (c > bn || (c === bn && lum > bl)) { best = key; bn = c; } }
+        set.push([i, best]);
+      }
+      if (!set.length) break;
+      for (const [i, key] of set) { D[i * 4] = key >> 16; D[i * 4 + 1] = (key >> 8) & 255; D[i * 4 + 2] = key & 255; D[i * 4 + 3] = 255; hole[i] = 0; }
+      for (let q = left.length - 1; q >= 0; q--) if (!hole[left[q]]) left.splice(q, 1);
+    }
+  },
+  // Whether the bolt is drawn: `markForce` when someone set it for one drawing (the mirror sets false), else whether the
+  // run has swallowed a soul (`game.boons`: a new run starts a lamb, and so does every run after a death).
+  markOn() {
+    if (this.markForce === true || this.markForce === false) return this.markForce;
+    const g = typeof window !== 'undefined' && window.game;
+    return !!(g && g.boons && g.boons.length);
   },
   // The goat's horns were packed a little differently on every frame: the back-left run had them standing up
   // on the first and last steps and laid toward his nose on the middle two (5 Oct 2026, "the horns' animation
@@ -399,10 +486,12 @@ const PIXEL_ART = {
   // frame whose two horns touch (one blob) is placed off its lowest root, the near horn's, as one piece.
   // Baked once per frame, after the atlas has loaded (`image` is the hardened canvas by then); a frame with
   // nothing to do (the reference itself, no horns found) caches null and draws as packed.
+  // On a facing in `PIXEL_HORN_FLIP` the reference horns are also mirrored about their own roots, the reference frame
+  // included, and the head under where the packed horns were is filled back in (`fillHoles`).
   hornFix(id, d, f) {
-    const R = PIXEL_HORN_FIX[id], u = PIXEL_ASSETS.units[id];
+    const R = PIXEL_HORN_FIX[id], u = PIXEL_ASSETS.units[id], turn = !!(PIXEL_HORN_FLIP[id] && PIXEL_HORN_FLIP[id][d]);
     if (!R || R[d] === undefined || !u.walk || typeof document === 'undefined' || !(this.image instanceof HTMLCanvasElement)) return null;
-    const g = u.walk[d][R[d]]; if (!g || g === f) return null;
+    const g = u.walk[d][R[d]]; if (!g || (g === f && !turn)) return null;
     this.hornFixes ||= new Map();
     if (this.hornFixes.has(f)) return this.hornFixes.get(f);
     const mine = this.hornsOf(f), theirs = this.hornsOf(g);
@@ -410,15 +499,27 @@ const PIXEL_ART = {
     if (mine.length && theirs.length) {
       c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
       const x = c.getContext('2d'); x.drawImage(this.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
-      const px = x.getImageData(0, 0, f[2], f[3]);
-      for (const h of mine) for (const p of h.blob) px.data[p * 4 + 3] = 0;
+      const px = x.getImageData(0, 0, f[2], f[3]), gone = new Uint8Array(f[2] * f[3]);
+      for (const h of mine) for (const p of h.blob) { px.data[p * 4 + 3] = 0; gone[p] = 1; }
       x.putImageData(px, 0, 0);
+      // one horn laid with its root at (rx, ry) and the reference's root at (bx, by): moved, or mirrored about the root
+      const lay = (cv, rx, ry, bx, by) => {
+        if (!turn) { x.drawImage(cv, Math.round(rx - bx), Math.round(ry - by)); return; }
+        x.save(); x.translate(Math.round(rx + bx), Math.round(ry - by)); x.scale(-1, 1); x.drawImage(cv, 0, 0); x.restore();
+      };
       if (mine.length === theirs.length) {
         const byX = (a) => a.slice().sort((p, q) => p.base[0] - q.base[0]), A = byX(mine), B = byX(theirs);
-        A.forEach((h, k) => x.drawImage(B[k].canvas, Math.round(h.base[0] - B[k].base[0]), Math.round(h.base[1] - B[k].base[1])));
+        A.forEach((h, k) => lay(B[k].canvas, h.base[0], h.base[1], B[k].base[0], B[k].base[1]));
       } else {
-        const a = this.lowRoot(mine), b = this.lowRoot(theirs), dx = Math.round(a[0] - b[0]), dy = Math.round(a[1] - b[1]);
-        for (const h of theirs) x.drawImage(h.canvas, dx, dy);
+        const a = this.lowRoot(mine), b = this.lowRoot(theirs);
+        for (const h of theirs) lay(h.canvas, a[0], a[1], b[0], b[1]);
+      }
+      if (turn) {
+        // the crown the old horns covered, where the turned ones do not: filled from the head round it
+        const after = x.getImageData(0, 0, f[2], f[3]);
+        for (let i = 0; i < gone.length; i++) if (!gone[i] || after.data[i * 4 + 3]) gone[i] = 0;
+        this.fillHoles(after.data, f[2], f[3], gone, 5);
+        x.putImageData(after, 0, 0);
       }
     }
     this.hornFixes.set(f, c);
@@ -781,7 +882,7 @@ const PIXEL_ART = {
     // BIG and LONG: one shape a facing, grown off the standing frame's horns and carried on each step's own roots, so the
     // stride moves them with his head and never redraws them (`bare` took the packed ones off the frame under them).
     const byX = (a) => a.slice().sort((p, q) => p.base[0] - q.base[0]);
-    const ref = shape && u.idle ? byX(this.hornsOf(u.idle[d])) : null, refMid = ref ? ref.reduce((s, h) => s + h.base[0], 0) / (ref.length || 1) : 0;
+    const ref = shape && u.idle ? byX(this.hornsOf(u.idle[d], PIXEL_HORN_FLIP[id] && PIXEL_HORN_FLIP[id][d] ? this.hornFix(id, d, u.idle[d]) : undefined)) : null, refMid = ref ? ref.reduce((s, h) => s + h.base[0], 0) / (ref.length || 1) : 0;
     if (ref && ref.length) {
       // One shift for both horns, the mean of how far each root moved on this step (a root measured off a blob is a pixel
       // or two noisy); a step whose horns would not pair up keeps the standing frame's place, through the two frames' feet.
@@ -881,6 +982,10 @@ const PIXEL_MIRROR = { goat: { 5: 3 } };
 // (`PIXEL_ART.hornFix`): the step with both horns apart and swept back the way most of the sheet has them.
 // The goat's up-right (5) is never drawn (`PIXEL_MIRROR`).
 const PIXEL_HORN_FIX = { goat: { 0: 2, 1: 1, 2: 3, 3: 1, 4: 1, 6: 2, 7: 2 } };
+// The facings whose packed horns grow forward over his nose instead of back over his neck, which the reference horns are
+// mirrored about their roots on (`hornFix`): the back diagonal, and so its mirror, the up-right run (10 Oct 2026: "here
+// the horns point the wrong way, and on many pictures").
+const PIXEL_HORN_FLIP = { goat: { 3: true } };
 
 // The environment half of the same pass (output/pixel-environment-2026-09-23, packed by
 // tools/pack-pixel-env.ps1 into js/pixel-env-assets.js): the furniture of a room, the things that
