@@ -564,6 +564,29 @@
       return true; // a song is on: keep the BAAH for the beat
     }
   
+    function pickables() {
+      const out = [], R = g.soulGrabR ? g.soulGrabR() : 40, reach = TUNING.goat.grab.reach * 0.6;
+      for (const s of g.souls || []) if (!s.taken) out.push({ x: s.x, y: s.y, r: R, what: 'soul', gone: () => s.taken });
+      for (const p of g.props) {
+        if (p.broken || p.dead) continue;
+        if (p.kind === 'key') out.push({ x: p.x, y: p.y, r: Math.max(TUNING.keys.pickR || 0, g.goat.r + (p.r || 8) + reach), what: 'key', gone: () => p.broken || p.dead });
+        else if (p.kind === 'lostbell' && !p.fly) out.push({ x: p.x, y: p.y, r: g.goat.r + (p.r || 10) + reach, what: 'bell', gone: () => p.broken || p.dead || !g.props.includes(p) });
+      }
+      return out;
+    }
+    function pickNear(o) {
+      const P = B.pick;
+      if (P) {
+        P.t++;
+        if (P.it.gone() || P.t > 30) { rmb(false); say(`pick ${P.it.what}: ${P.it.gone() ? 'taken' : 'gave up'}`); B.pick = null; B.pickCd = P.it.gone() ? 0 : 40; return P.t <= 30; }
+        stop(); if (P.t > 3 && !B.rmb) rmb(true, P.it.x, P.it.y); B.goal = 'pick ' + P.it.what; return true;
+      }
+      if (B.pickCd > 0) { B.pickCd--; return false; }
+      if (o.holding || B.rmb) return false;
+      const it = pickables().find(q => hyp(q.x - o.x, q.y - o.y) < q.r * 0.9 && g.sees(o.x, o.y, q.x, q.y));
+      if (!it) return false;
+      B.pick = { it, t: 0 }; releaseAll(); stop(); aim(it.x, it.y); return true;
+    }
     function tick() {
       if (!B.on) return;
       B.t++;
@@ -597,6 +620,9 @@
       B.lastPos = { x: o.x, y: o.y };
   
       if (escapeMill()) return;
+      // Since 8 Oct 2026 a soul, a key and a boss's bell are taken with GRAB, standing (`Goat.tryGrab` only runs idle,
+      // teeth empty, grab ready), never by walking over them: next to one, stop, hold the grab until it is gone.
+      if (pickNear(o)) return;
       // standing in fire or poison: step to the nearest clean tile first
       { const w = g.world; if (w.isBurningPx(o.x, o.y) || w.isPoisonPx(o.x, o.y)) {
           const W = w.W, cx = Math.floor(o.x / TILE), cy = Math.floor(o.y / TILE); let bx = 0, by = 0, bd2 = 1e9;
@@ -825,8 +851,8 @@
           }
         }
       }
-      const souls = (g.souls || []).filter(s => !s.taken);
-      if (!r && souls.length) r = route(souls.map(s => ({ x: s.x, y: s.y, what: 'soul' })));
+      const loose = pickables();
+      if (!r && loose.length) r = route(loose.map(q => ({ x: q.x, y: q.y, what: q.what })));
       // clear every reachable man before moving on, so nobody follows us into the next fight;
       // a man we cannot catch for 30 s is left alone for a minute
       if (!r && enemies.length) {

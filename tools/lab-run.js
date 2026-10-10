@@ -24,8 +24,13 @@ const port = Number(arg('port', 8790));
 const level = arg('level', 'rotate');
 const staleMin = Number(arg('stale', 5));
 const recycleMin = Number(arg('recycle', 180));
+// `--browsers n` (default 3): that many browsers at once, each a lane with a profile and a heartbeat of its own; with
+// `--level rotate` the lanes take the hands in turn (strong, medium, weak), so every hand is always being played.
+const lanesN = Math.max(1, Number(arg('browsers', 3)));
+const HANDS = ['strong', 'medium', 'weak'];
+const handOf = (lane) => level === 'rotate' && lanesN > 1 ? HANDS[(lane - 1) % 3] : level;
 // The browser profile is kept off the synced project folder: a Chrome profile is thousands of small files.
-const profile = arg('profile', path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'goat-out-lab', 'profile'));
+const profileRoot = arg('profile', path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'goat-out-lab'));
 
 const log = (m) => { const line = `${new Date().toISOString()} ${m}`; console.log(line); try { fs.appendFileSync(logFile, line + '\n'); } catch (e) { } };
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return false; } };
@@ -34,16 +39,17 @@ const killTree = (pid) => { if (!pid) return; try { if (process.platform === 'wi
 const cmd = process.argv[2];
 if (cmd === 'stop' || cmd === 'status') {
   let st = null; try { st = JSON.parse(fs.readFileSync(pidFile, 'utf8')); } catch (e) { }
-  let beat = {}; try { beat = JSON.parse(fs.readFileSync(beatFile, 'utf8')); } catch (e) { }
+  const beats = fs.readdirSync(dir).filter((n) => /^beat(-d+)?.json$/.test(n)).map((n) => { try { return JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8')); } catch (e) { return null; } }).filter(Boolean);
   const runs = fs.existsSync(path.join(dir, 'runs.jsonl')) ? fs.readFileSync(path.join(dir, 'runs.jsonl'), 'utf8').split('\n').filter(Boolean).length : 0;
   if (cmd === 'status') {
     console.log(st && alive(st.pid) ? `running (supervisor ${st.pid}, port ${st.port}, hand ${st.level})` : 'not running');
-    console.log(`runs written: ${runs}; last heartbeat: ${beat.at || '-'} ${beat.state || ''} floor ${beat.floor || '-'} run ${beat.run || '-'} (${beat.hand || '-'})`);
+    console.log(`runs written: ${runs}`);
+    for (const b of beats) console.log(`  lane ${b.lane || 0} ${b.hand || '-'}: ${b.at} ${b.state} floor ${b.floor} room ${b.room != null ? b.room + 1 : '-'}/${b.rooms || '-'} hearts ${b.hp != null ? b.hp : '-'} run ${b.run || '-'}`);
     if (st) console.log(`report: http://127.0.0.1:${st.port}/tools/bot-lab.html`);
     process.exit(0);
   }
   if (!st) { console.log('not running'); process.exit(0); }
-  killTree(st.chrome); killTree(st.server); killTree(st.pid);
+  for (const c of [].concat(st.chrome || [])) killTree(c); killTree(st.server); killTree(st.pid);
   try { fs.unlinkSync(pidFile); } catch (e) { }
   console.log('stopped'); process.exit(0);
 }
@@ -63,8 +69,9 @@ if (!chromePath) { log('no Chrome or Edge found; pass --chrome <path>'); process
 
 const up = () => new Promise((res) => { const r = http.get({ host: '127.0.0.1', port, path: '/lab/beat', timeout: 2000 }, (x) => { x.resume(); res(x.statusCode === 200); }); r.on('error', () => res(false)); r.on('timeout', () => { r.destroy(); res(false); }); });
 
-const S = { server: null, chrome: null, chromeAt: 0, recycleDue: false };
-const writePid = () => fs.writeFileSync(pidFile, JSON.stringify({ pid: process.pid, port, level, server: S.server && S.server.pid, chrome: S.chrome && S.chrome.pid, at: new Date().toISOString() }));
+const S = { server: null, lanes: [] };
+for (let i = 1; i <= lanesN; i++) S.lanes.push({ lane: i, hand: handOf(i), chrome: null, at: 0, recycleDue: false });
+const writePid = () => fs.writeFileSync(pidFile, JSON.stringify({ pid: process.pid, port, level, lanes: lanesN, server: S.server && S.server.pid, chrome: S.lanes.map((l) => l.chrome && l.chrome.pid).filter(Boolean), at: new Date().toISOString() }));
 
 async function ensureServer() {
   if (await up()) return;
@@ -73,35 +80,38 @@ async function ensureServer() {
   for (let i = 0; i < 20 && !(await up()); i++) await new Promise((r) => setTimeout(r, 250));
   log(`server on http://127.0.0.1:${port}`); writePid();
 }
-function startChrome() {
+function startChrome(L) {
+  const profile = path.join(profileRoot, 'profile-' + L.lane);
   fs.mkdirSync(profile, { recursive: true });
   const args = [`--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--mute-audio', '--autoplay-policy=no-user-gesture-required',
     // the reason a hidden tab crawled: none of its timers may be slowed
     '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling',
     '--window-size=1280,800', ...(flag('show') ? [] : ['--headless=new']),
-    `http://127.0.0.1:${port}/#lab=${level}`];
-  S.chrome = spawn(chromePath, args, { stdio: 'ignore', windowsHide: !flag('show') });
-  S.chromeAt = Date.now(); S.recycleDue = false;
-  S.chrome.on('exit', (c) => { log(`browser exited (${c})`); S.chrome = null; });
-  log(`browser started (${path.basename(chromePath)}${flag('show') ? ', visible' : ', headless'}), hand ${level}`); writePid();
+    `http://127.0.0.1:${port}/#lab=${L.hand}&lane=${L.lane}`];
+  L.chrome = spawn(chromePath, args, { stdio: 'ignore', windowsHide: !flag('show') });
+  L.at = Date.now(); L.recycleDue = false;
+  const me = L.chrome; L.chrome.on('exit', (c) => { log(`lane ${L.lane}: browser exited (${c})`); if (L.chrome === me) L.chrome = null; });
+  log(`lane ${L.lane}: browser started (${path.basename(chromePath)}${flag('show') ? ', visible' : ', headless'}), hand ${L.hand}`); writePid();
 }
-function stopChrome(why) { if (!S.chrome) return; log(`restarting the browser: ${why}`); killTree(S.chrome.pid); S.chrome = null; }
+function stopChrome(L, why) { if (!L.chrome) return; log(`lane ${L.lane}: restarting the browser: ${why}`); killTree(L.chrome.pid); L.chrome = null; }
 
 async function watch() {
   try {
     await ensureServer();
-    if (!S.chrome) { startChrome(); return; }
-    const age = (Date.now() - S.chromeAt) / 60000;
-    let beat = null; try { beat = JSON.parse(fs.readFileSync(beatFile, 'utf8')); } catch (e) { }
-    const beatAge = beat ? (Date.now() - Date.parse(beat.at)) / 60000 : Infinity;
-    // a page that never spoke, or stopped speaking: started again (two minutes' grace to load)
-    if (age > 2 && (beatAge > staleMin || Date.parse(beat && beat.at) < S.chromeAt - 1000)) { stopChrome(`no heartbeat for ${beatAge === Infinity ? 'ever' : beatAge.toFixed(1) + ' min'}`); startChrome(); return; }
-    // fresh every `recycle` minutes, but never in the middle of a floor
-    if (recycleMin > 0 && age > recycleMin) S.recycleDue = true;
-    if (S.recycleDue && beat && beat.state !== 'play' && beat.state !== 'boon') { stopChrome(`recycle after ${Math.round(age)} min`); startChrome(); }
+    for (const L of S.lanes) {
+      if (!L.chrome) { startChrome(L); continue; }
+      const age = (Date.now() - L.at) / 60000;
+      let beat = null; try { beat = JSON.parse(fs.readFileSync(path.join(dir, `beat-${L.lane}.json`), 'utf8')); } catch (e) { }
+      const beatAt = beat ? Date.parse(beat.at) : 0, beatAge = beat ? (Date.now() - beatAt) / 60000 : Infinity;
+      // a page that never spoke, or stopped speaking: started again (two minutes' grace to load)
+      if (age > 2 && (beatAge > staleMin || beatAt < L.at - 1000)) { stopChrome(L, `no heartbeat for ${beatAge === Infinity ? 'ever' : beatAge.toFixed(1) + ' min'}`); startChrome(L); continue; }
+      // fresh every `recycle` minutes, but never in the middle of a floor
+      if (recycleMin > 0 && age > recycleMin) L.recycleDue = true;
+      if (L.recycleDue && beat && beat.state !== 'play' && beat.state !== 'boon') { stopChrome(L, `recycle after ${Math.round(age)} min`); startChrome(L); }
+    }
   } catch (e) { log('watch: ' + (e.message || e)); }
 }
 
-process.on('SIGINT', () => { killTree(S.chrome && S.chrome.pid); if (S.server) killTree(S.server.pid); try { fs.unlinkSync(pidFile); } catch (e) { } process.exit(0); });
-log(`supervisor ${process.pid} up: port ${port}, hand ${level}, profile ${profile}`);
+process.on('SIGINT', () => { for (const L of S.lanes) killTree(L.chrome && L.chrome.pid); if (S.server) killTree(S.server.pid); try { fs.unlinkSync(pidFile); } catch (e) { } process.exit(0); });
+log(`supervisor ${process.pid} up: port ${port}, ${lanesN} browser(s), hands ${S.lanes.map((l) => l.hand).join(' / ')}, profiles under ${profileRoot}`);
 writePid(); watch(); setInterval(watch, 30000);

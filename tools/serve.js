@@ -115,7 +115,7 @@ http.createServer((req, res) => {
         try {
           const m = JSON.parse(body);
           if (m.type === 'run' && m.run) fs.appendFileSync(runs, JSON.stringify(m.run) + '\n');
-          else if (m.type === 'beat') fs.writeFileSync(path.join(dir, 'beat.json'), JSON.stringify(Object.assign({ at: new Date().toISOString() }, m)));
+          else if (m.type === 'beat') fs.writeFileSync(path.join(dir, m.lane ? `beat-${m.lane | 0}.json` : 'beat.json'), JSON.stringify(Object.assign({ at: new Date().toISOString() }, m)));
           res.end('{"ok":true}');
         } catch (e) { res.end(JSON.stringify({ ok: false, error: String(e.message || e) })); }
       });
@@ -126,8 +126,9 @@ http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ v: 1, runs: list })); return;
     }
     if (req.url.startsWith('/lab/beat')) {
-      const f = path.join(dir, 'beat.json');
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(fs.existsSync(f) ? fs.readFileSync(f) : '{}'); return;
+      // every lane's heartbeat, newest first (tools/lab-run.js runs one browser a lane)
+      const beats = fs.readdirSync(dir).filter((n) => /^beat(-d+)?.json$/.test(n)).map((n) => { try { return JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8')); } catch (e) { return null; } }).filter(Boolean).sort((a, b) => (b.at > a.at ? 1 : -1));
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(Object.assign({}, beats[0] || {}, { lanes: beats }))); return;
     }
   }
   const urlPath = decodeURIComponent(req.url.split('?')[0]);

@@ -24,7 +24,7 @@ window.LAB = (() => {
   };
   const ORDER = ['strong', 'medium', 'weak'];
   const L = {
-    cfg: { level: 'rotate', pick: 'variety', runs: 0, stuckMin: 12 },
+    cfg: { level: 'rotate', pick: 'variety', runs: 0, stuckMin: 12, lane: 0 },
     db: null, run: null, iv: null, n: 0, on: false,
   };
   const load = () => { try { L.db = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { L.db = null; } if (!L.db || !L.db.runs) L.db = { v: 1, runs: [] }; };
@@ -92,7 +92,7 @@ window.LAB = (() => {
     if (end === 'death') { try { R.killer = G.killedBy(G.goat.hurtBy) || '?'; } catch (e) { R.killer = '?'; } }
     if (end === 'stuck') R.killer = 'STUCK';
     R.cape = G.cape ? G.cape.id : R.cape;
-    delete R.t0; L.db.runs.push(R); post({ type: 'run', run: R }); if (L.db.runs.length > 600) L.db.runs.splice(0, L.db.runs.length - 600); save();
+    delete R.t0; L.db.runs.push(R); post({ type: 'run', run: Object.assign({ lane: L.cfg.lane }, R) }); if (L.db.runs.length > 600) L.db.runs.splice(0, L.db.runs.length - 600); save();
     L.n++; L.run = null;
     console.log(`[LAB] run ${R.n} ${R.skill}: ${R.end} on floor ${R.reached} (${R.lastName}) by ${R.killer || '-'} after ${R.dur}s; souls ${R.boons.map((b) => b.id).join(', ') || '-'}; talismans ${R.arts.map((a) => a.id).join(', ') || '-'}`);
     if (L.cfg.runs && L.n >= L.cfg.runs) { console.log('[LAB] done: ' + L.n + ' runs'); LAB.stop(); }
@@ -101,7 +101,13 @@ window.LAB = (() => {
   function poll() {
     const G = g(), B = window.bot; if (!G || !B) return;
     const st = G.state;
-    if (!L.beatAt || performance.now() - L.beatAt > 20000) { L.beatAt = performance.now(); post({ type: 'beat', state: st, floor: floorNo(), run: L.run ? L.run.n : null, hand: L.run ? L.run.skill : null, session: L.n }); }
+    if (!L.beatAt || performance.now() - L.beatAt > 20000) { L.beatAt = performance.now(); const o = G.goat || {};
+      post({ type: 'beat', lane: L.cfg.lane, state: st, floor: floorNo(), run: L.run ? L.run.n : null, hand: L.run ? L.run.skill : null, session: L.n,
+        hp: o.hp, room: G.goatRoom, rooms: G.level && G.level.rooms ? G.level.rooms.length : null, kills: (G.totalKills | 0) + (G.kills | 0), x: o.x | 0, y: o.y | 0, goal: B.goal || null,
+        souls: L.run ? L.run.boons.map((b) => b.id) : [], log: (B.log || []).slice(-4) });
+      // a picture of the page every minute (tools/shots/lab.png), so a headless run can be looked at
+      if (!L.shotAt || performance.now() - L.shotAt > 60000) { L.shotAt = performance.now(); try { const c = document.createElement('canvas'), src = G.canvas; c.width = 640; c.height = Math.round(640 * src.height / src.width); c.getContext('2d').drawImage(src, 0, 0, c.width, c.height); fetch('/shot?name=lab' + (L.cfg.lane || ''), { method: 'POST', body: c.toDataURL('image/png') }).catch(() => {}); } catch (e) { } }
+    }
     // a run starts the first time the goat is on a floor with no run open
     if (!L.run && (st === 'play' || st === 'boon') && G.levelIndex === 0) beginRecord();
     const R = L.run;
