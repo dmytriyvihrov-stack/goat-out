@@ -278,7 +278,15 @@
         const x = o.x + dx / d * v * t, y = o.y + dy / d * v * t;
         for (const m of mills()) if (millHits(m, x, y, t, B.P.margin.mill * 0.5) && !millHits(m, o.x, o.y, 0, 0)) { blocked = true; break; }
       }
-      if (blocked && !millDanger(o.x, o.y, 0.4)) { if (!B.millWait0) B.millWait0 = performance.now(); stop(); B.goal = 'wait mill'; return; }
+      // waited past 7 s (the wheel lesson's lane is never clear for the whole look): 2.5 s of going for it, rolling
+      // through the sweep when the roll is ready, rather than waiting for ever (10 Oct 2026, the lab's stuck runs)
+      const now = performance.now();
+      if (blocked && waited > 7000 && !(B.millBold > now)) { B.millBold = now + 2500; say('mill: going for it'); }
+      if (B.millBold > now) {
+        blocked = false;
+        if (o.rollCd <= 0 && (o.state === 'idle' || o.state === 'run' || !o.state) && mills().some(m => hyp(m.x - o.x, m.y - o.y) < MILL.armLen + 60)) { move(dx, dy); aim(o.x + dx / d * 60, o.y + dy / d * 60); tap('KeyE'); }
+      }
+      if (blocked && !millDanger(o.x, o.y, 0.4)) { if (!B.millWait0) B.millWait0 = now; stop(); B.goal = 'wait mill'; return; }
       B.millWait0 = 0;
       // fire ahead and not burning yet: roll through it (quicker than walking, the burn needs ~1.2 s)
       if (o.rollCd <= 0 && !o.onFire && (o.state === 'idle' || o.state === 'run' || !o.state)) {
@@ -917,7 +925,12 @@
           const m = mice[0], d = hyp(m.x - o.x, m.y - o.y), shut = g.shopShut && g.shopShut[m.shopId];
           if (shut) {
             if (d < 4.2 * TILE) { move(o.x - m.x, o.y - m.y); B.goal = 'leave shop to reopen'; return; }
-          } else if (d < 1.8 * TILE) { stop(); B.goal = 'at shop'; return; }
+          } else if (d < 1.8 * TILE) {
+            // her offer opens on a GRAB pressed beside her (6 Oct 2026), never on standing there: a short press now and then
+            stop(); B.goal = 'at shop';
+            if (!B.rmb && B.t % 12 === 0) { rmb(true, m.x, m.y); setTimeout(() => rmb(false), 120); }
+            return;
+          }
           if (!shut) r = route([{ x: m.x, y: m.y, what: 'shopkeeper' }]);
         }
       }

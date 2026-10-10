@@ -24,9 +24,9 @@ const port = Number(arg('port', 8790));
 const level = arg('level', 'rotate');
 const staleMin = Number(arg('stale', 5));
 const recycleMin = Number(arg('recycle', 180));
-// `--browsers n` (default 3): that many browsers at once, each a lane with a profile and a heartbeat of its own; with
+// `--browsers n` (default 1; three was too heavy beside other work, 10 Oct 2026): that many browsers at once, each a lane with a profile and a heartbeat of its own; with
 // `--level rotate` the lanes take the hands in turn (strong, medium, weak), so every hand is always being played.
-const lanesN = Math.max(1, Number(arg('browsers', 3)));
+const lanesN = Math.max(1, Number(arg('browsers', 1)));
 const HANDS = ['strong', 'medium', 'weak'];
 const handOf = (lane) => level === 'rotate' && lanesN > 1 ? HANDS[(lane - 1) % 3] : level;
 // The browser profile is kept off the synced project folder: a Chrome profile is thousands of small files.
