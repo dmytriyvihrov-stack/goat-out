@@ -5,6 +5,16 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.005, 10 Oct 2026: clean feet
+
+- **No more slivers by the feet** (the playtest's arrows at the goat, the clubman, the rifleman, the mage and the hound on the down-right
+  run). A single wide boot was cut in two at its edge, and the scraps under the belly line (a bit of the far foot, a piece of outline) each
+  stepped on a phase of their own, so pieces tore off the feet. Now a foot is cut in two only at a real gap between two feet, a scrap moves
+  with the leg it lies against, a staff's or a club's end stays where it is, and a man's two feet fused into one piece on a diagonal are
+  halved and lifted in turn, never swung. The goat's legs need a dark hoof, so his beard stays on his chin.
+
+---
+
 ## 0.004, 10 Oct 2026: one pair of horns from every side, and the men run on their feet
 
 - **His horns are one pair in the round** ("here the horns are a bit strange, and the same with the length of all the horns and their look").

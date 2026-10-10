@@ -657,32 +657,61 @@ const PIXEL_ART = {
     for (let py = 0; py < h; py++) { if (rowW[py] > maxW) maxW = rowW[py]; if (rowW[py]) bottom = py; }
     let top = bottom;
     for (let py = bottom; py >= 0; py--) if (rowW[py] >= maxW * G.belly) { top = py + 1; break; }
-    const seen = new Uint8Array(w * h), legs = [];
+    // every piece under the line that stands on the floor: a leg, or a scrap of one (a sliver of the far foot, a bit of
+    // outline) that must move with the leg it belongs to, or it tears off it on the step (10 Oct 2026 playtest: "slivers
+    // by the feet"). With `hoof`, a piece with no dark hoof in it is not a leg (the goat's beard on a front diagonal).
+    const seen = new Uint8Array(w * h), found = [];
+    const piece = (blob) => { let x0 = w, x1 = 0, y0 = h, y1 = 0, sx = 0, dark = 0;
+      for (const i of blob) { const px = i % w, py = (i / w) | 0; if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; sx += px;
+        if (D[i * 4] + D[i * 4 + 1] + D[i * 4 + 2] < 270) dark++; }
+      return { blob: blob.sort((a, b) => a - b), x0, x1, y0, y1, cx: sx / blob.length, dark }; };
     for (let s = top * w; s < w * h; s++) {
       if (!on[s] || seen[s]) continue;
-      const blob = [], st = [s]; seen[s] = 1; let x0 = w, x1 = 0, y0 = h, y1 = 0, sx = 0;
+      const blob = [], st = [s]; seen[s] = 1;
       while (st.length) { const i = st.pop(); blob.push(i); const px = i % w, py = (i / w) | 0;
-        if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; sx += px;
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = px + dx, ny = py + dy, j = ny * w + nx;
           if (nx >= 0 && nx < w && ny >= top && ny < h && on[j] && !seen[j]) { seen[j] = 1; st.push(j); } } }
-      if (blob.length < G.minBlob || y1 < bottom - G.reach) continue;
-      if (G.whole && Math.abs(sx / blob.length - w / 2) > w * G.centre) continue;   // a club's or a rifle's end, not a foot
+      if (blob.length < 2) continue;
+      const pc = piece(blob);
+      if (pc.y1 < bottom - G.reach) continue;
+      if (G.whole && Math.abs(pc.cx - w / 2) > w * G.centre) continue;   // a club's or a rifle's end, not a foot
+      found.push(pc);
+    }
+    const big = found.reduce((m, pc) => Math.max(m, pc.blob.length), 0), min = Math.max(G.minBlob, big * 0.35);
+    const legs = [], scraps = [];
+    for (const pc of found) {
+      if (pc.blob.length < min || (G.hoof && pc.dark < 3)) { scraps.push(pc); continue; }
       // Two legs that touch (a pair one behind the other on a side view, both on the front and back views) are
       // one blob: wider than a leg (`legW`) it is cut into two, each with its own phase, down the column of its
       // middle half with the fewest pixels in its lower rows (the gap between the hooves; the bbox's own middle
       // cut through a leg where the blob carried a piece of the belly to one side).
-      if (x1 - x0 + 1 > G.legW) {
-        const cols = new Int32Array(w), lo = y0 + (y1 - y0) * 0.4;
-        for (const i of blob) if (((i / w) | 0) >= lo) cols[i % w]++;
-        let mx = Math.round((x0 + x1) / 2), best = Infinity;
-        for (let cx = x0 + ((x1 - x0) >> 2); cx <= x1 - ((x1 - x0) >> 2); cx++) if (cols[cx] < best) { best = cols[cx]; mx = cx; }
-        const a = blob.filter((i) => i % w < mx), b = blob.filter((i) => i % w >= mx);
-        for (const part of [a, b]) if (part.length >= G.minBlob) {
-          let px0 = w, px1 = 0, py0 = h, py1 = 0, psx = 0;
-          for (const i of part) { const px = i % w, py = (i / w) | 0; if (px < px0) px0 = px; if (px > px1) px1 = px; if (py < py0) py0 = py; if (py > py1) py1 = py; psx += px; }
-          legs.push({ blob: part.sort((q, r) => q - r), x0: px0, x1: px1, y0: py0, y1: py1, cx: psx / part.length });
-        }
-      } else legs.push({ blob: blob.sort((a, b) => a - b), x0, x1, y0, y1, cx: sx / blob.length });
+      if (pc.x1 - pc.x0 + 1 > G.legW) {
+        const cols = new Int32Array(w), lo = pc.y0 + (pc.y1 - pc.y0) * 0.4;
+        for (const i of pc.blob) if (((i / w) | 0) >= lo) cols[i % w]++;
+        let mx = Math.round((pc.x0 + pc.x1) / 2), best = Infinity;
+        for (let cx = pc.x0 + ((pc.x1 - pc.x0) >> 2); cx <= pc.x1 - ((pc.x1 - pc.x0) >> 2); cx++) if (cols[cx] < best) { best = cols[cx]; mx = cx; }
+        // only where there is a real gap between two real legs: the valley well under the columns' mean, and both halves a
+        // leg's size; a wide single boot cut at its edge became a leg and a sliver stepping against each other
+        let sum = 0, nc = 0; for (let cx = pc.x0; cx <= pc.x1; cx++) if (cols[cx]) { sum += cols[cx]; nc++; }
+        const a = pc.blob.filter((i) => i % w < mx), b = pc.blob.filter((i) => i % w >= mx);
+        if (best <= (sum / Math.max(1, nc)) * 0.45 && Math.min(a.length, b.length) >= Math.max(G.minBlob, pc.blob.length * 0.25)) { legs.push(piece(a)); legs.push(piece(b)); }
+        else legs.push(pc);
+      } else legs.push(pc);
+    }
+    // a scrap goes with the leg it lies against (within `scrap` px across); one off on its own stays with the body
+    for (const sc of scraps) {
+      if (G.hoof && sc.dark < 3 && sc.blob.length >= min) continue;   // a beard is not a scrap of a leg either
+      if (sc.x1 - sc.x0 < 2 && sc.y1 - sc.y0 >= 2) continue;            // nor a staff's or a club's end, a line a pixel or two wide
+      let bestL = null, gap = G.scrap + 1;
+      for (const l of legs) { const g = Math.max(0, l.x0 - sc.x1 - 1, sc.x0 - l.x1 - 1); if (g < gap) { gap = g; bestL = l; } }
+      if (bestL) { bestL.blob = bestL.blob.concat(sc.blob).sort((a, b) => a - b); bestL.x0 = Math.min(bestL.x0, sc.x0); bestL.x1 = Math.max(bestL.x1, sc.x1); bestL.y0 = Math.min(bestL.y0, sc.y0); bestL.y1 = Math.max(bestL.y1, sc.y1); }
+    }
+    // A man's two feet fused into one piece (a diagonal view, the feet one behind the other) step in place: halved down the
+    // middle, each half lifted in turn and never swung along the floor, which would tear the boot (`pairW` wide or more).
+    if (G.whole && legs.length === 1 && legs[0].x1 - legs[0].x0 + 1 >= G.pairW) {
+      const l = legs[0], mx = Math.round((l.x0 + l.x1 + 1) / 2);
+      legs.length = 0;
+      for (const part of [l.blob.filter((i) => i % w < mx), l.blob.filter((i) => i % w >= mx)]) if (part.length) legs.push(Object.assign(piece(part), { liftOnly: true }));
     }
     legs.sort((a, b) => a.cx - b.cx);
     const out = { legs, data: D, w, h, mid: w / 2, top, bottom };
@@ -696,7 +725,7 @@ const PIXEL_ART = {
     const G = TUNING.goat.gait; if (G.units.includes(id)) return G;
     const R = TUNING.enemyAnim.run; if (!R.units.includes(id)) return null;
     this.gaitCfgs ||= {};
-    return this.gaitCfgs[id] ||= Object.assign({ belly: G.belly, reach: G.reach, minBlob: G.minBlob, legW: G.legW }, R, R.per[id] || {});
+    return this.gaitCfgs[id] ||= Object.assign({ belly: G.belly, reach: G.reach, minBlob: G.minBlob, legW: G.legW, scrap: G.scrap }, R, R.per[id] || {});
   },
   // The frame cut out of the unit's study (`ART_PASS`, `studyOf`) as a canvas of its own, so what is baked off it keeps the
   // study's colours; null when the unit is drawn off the packed atlas.
@@ -723,7 +752,7 @@ const PIXEL_ART = {
     L.legs.forEach((l, n) => {
       const p = (step / G.steps + (n % 2) * 0.5) % 1, si = Math.sin(p * Math.PI * 2), co = Math.cos(p * Math.PI * 2);
       const lift = Math.round(G.lift * Math.max(0, si)), span = Math.max(1, l.y1 - l.y0);
-      const dx = frontal ? Math.round(G.side * Math.max(0, si) * (l.cx < L.mid ? -1 : 1)) : Math.round(-G.swing * co * Math.sign(fx));
+      const dx = l.liftOnly ? 0 : frontal ? Math.round(G.side * Math.max(0, si) * (l.cx < L.mid ? -1 : 1)) : Math.round(-G.swing * co * Math.sign(fx));
       // the blob's rows run top to bottom, so where a shortened leg folds up the hoof's own pixels land last;
       // a man's foot under his robe (`whole`) is moved as one piece
       for (const i of l.blob) { const px = i % w, py = (i / w) | 0, k = G.whole ? 1 : (py - l.y0) / span;
