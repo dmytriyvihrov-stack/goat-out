@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.001';
+const BUILD = '0.002';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -994,6 +994,14 @@ const TUNING = {
     // THE THRESHING FLOOR's rifleman: `hp` hearts, `pellets` rounds a shot over `spread` rad; from `blinkFrom`
     // he blinks away when the goat closes inside `blink.range` tiles, to `blink.dist` tiles off him, every `blink.cooldown` s.
     hunter: { hp: 3, pellets: 3, spread: 0.24, blinkFrom: 2, blink: { range: 3.2, dist: 6, cooldown: 3.6 } },
+    // THE LAST SUPPER (10 Oct 2026, the user's; the last floor's last room, `SUPPER_TEMPLATE`, `EndBoss.laySupper`): the room's men sat
+    // along the table (`seat` tiles off its row, `gap` tiles apart, `inset` tiles in from its ends), THE WARDEN (js/warden-pixels.js)
+    // standing `head` tiles past the far end, the chair `chair` tiles off the near end: a wraith hidden as a stool. The goat in the room:
+    // the chair slides out `slideBy` tiles over `slide` s under his raised hand, he says `lines` one every `lineGap` s, nobody
+    // moves, the score hushes. Reached (the wraith springs), BAAH, or a blow on anybody at the table: he laughs (`laugh`), every man
+    // is up, the platter goes over his head and he walks out through the way out at `leave` tiles/s (`leaveCap` s at most), which shuts.
+    supper: { seat: 1.55, gap: 1.6, inset: 0.9, head: 1.5, chair: 1.1, slide: 0.9, slideBy: 0.8, lineGap: 3.2, leave: 4.2, leaveCap: 6,
+      lines: ['SIT, LITTLE GOAT.', 'EAT WITH US.', 'SHE IS WARM STILL.'], laugh: 'NOT YET.' },
   },
   // The rat ogre: what the mouse in the wall turns into on the third blow. He is not on the curve,
   // nobody meets him who did not go and make him, and he is built to be dear rather than to be
@@ -4406,7 +4414,7 @@ const LEVELS = [
     // The run ends on its last boss, the one with the last soul in him (28 Sep 2026): the arena was
     // room 13 of 15, and room 14 after it, the floor's heaviest crowd, a trap one run in three,
     // was the last thing in the game, fought after the last soul had been paid out.
-    arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 14, boss: 'seer' }],
+    arenas: [{ at: 4, boss: 'butcher' }, { at: 9, boss: 'wraith' }, { at: 14, boss: 'seer', escorts: 6, with: ['bearer', 'bearer', 'bearer', 'shield', 'thrower', 'dog'], supper: true }],   // THE LAST SUPPER (js/endboss.js)
     gates: [8], rests: [13], gateKeeper: true,
     millAt: 6, heals: 4, souls: 2, killboxAt: 11, lonePosts: 2, racks: 0.2, spikes: 0.35, crates: 0.35, barrels: 0.2, traps: 2, vaultAt: 7,
     beasts: ['crow', 'tortoise', 'horse'],

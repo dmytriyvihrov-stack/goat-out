@@ -550,7 +550,8 @@ class GameAudio {
     const preview = game.dev.rules && game.dev.tab === 'music' ? this.lab : null;
     if (this.preview !== preview) { this.resetScore(); this.preview = preview; }
     // STEALTH (dev test): a sneak hushes the score (`layers.hush`, eased on `hushMix` in the step).
-    this.hush = !!(game.sneak && game.stealthLive && game.state === 'play');
+    // THE LAST SUPPER hushes it too (js/endboss.js, `game.supper`), until the chair is reached.
+    this.hush = !!(game.sneak && game.stealthLive && game.state === 'play') || !!(game.supper && game.supper.phase === 'offer');
     this.updateAmbience(game, dt);
     this.heartbeat(game);
     if (preview) {

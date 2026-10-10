@@ -5091,7 +5091,9 @@ class Renderer {
           ['hornTool', d.hornTool ? 'HORN TOOL  ON' : 'HORN TOOL  OFF'],   // the sliders over the run, and the zone on the floor
           ['cam-zoom', 'CAMERA  ×' + (d.tune && d.tune.camera || 1)],   // the lens, a step a click (also a slider on ENEMIES)
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
-          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['showroom', 'SHOWROOM'],
+          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'],
+          ['lastroom', 'LAST ROOM · SCENE'],   // this floor's last room with its scene (js/endboss.js; THE LAST SUPPER on the last floor)
+          ['showroom', 'SHOWROOM'],
           // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
           ['heaven', 'HEAVEN'], ['sacrifices', '+100 SACR · +5 SOULS'], ['addkey', '+1 KEY'],
           // Every frame over `photo.dip.ms` writes down where it was, with a small picture (js/photo.js).

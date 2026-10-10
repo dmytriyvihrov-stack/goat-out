@@ -2067,13 +2067,13 @@ class Enemy {
   }
   // Settle into the room as a box or a bowl of milk. Only on open floor: a disguise inside a wall is
   // no disguise. Returns whether it took. Without `game` (the constructor) it takes where it stands.
-  hide(game) {
+  hide(game, as) {
     const tx = Math.floor(this.x / TILE), ty = Math.floor(this.y / TILE);
     if (game && (game.world.isSolid(tx, ty) || game.world.isPitPx(this.x, this.y))) return false;
     this.x = (tx + 0.5) * TILE; this.y = (ty + 0.5) * TILE;
     this.state = 'hidden'; this.solid = false; this.hideWant = false; this.vx = 0; this.vy = 0;
     const milk = Math.random() < this.cfg.hide.milk;
-    this.disguise = new Prop(this.x, this.y, milk ? 'heal' : 'crate');
+    this.disguise = new Prop(this.x, this.y, as || (milk ? 'heal' : 'crate'));   // `as`: THE LAST SUPPER's chair (js/endboss.js)
     if (game) { game.particles(this.x, this.y, 6, PALETTE.witch, 70); this.lungeSeen = game.goat.buttTries || 0; this.grabSeen = game.goat.grabTries || 0; }
     return true;
   }
