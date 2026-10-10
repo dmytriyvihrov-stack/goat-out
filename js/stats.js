@@ -100,7 +100,7 @@ const Stats = {
   },
   flags(game) {
     return (game.settings && game.settings.easy ? 'E' : '') + (game.dev && game.dev.god ? 'X' : '') + (game.runJumped ? 'J' : '')
-      + (Stats.bot() ? 'B' : '');
+      + (game.testerUsed ? 'T' : '') + (Stats.bot() ? 'B' : '');   // T: PLAYTESTER MODE gave him something (`Game.testerAction`)
   },
   // The autoplay bot (`tools/autoplay-bot.js`, 3 Oct 2026: "mark it in the db so it does not break the stats"):
   // it sets `window.bot`. A browser it has once played in is a bot's for good (`d.bot`): its reports go out
@@ -334,7 +334,7 @@ const Stats = {
   step(game, name) {
     Stats.safe(() => {
       // The first title is shown from inside `new Game`, while `window.game` is still the canvas of that id.
-      if ((window.game instanceof Game && game !== window.game) || (Stats.life && /[XJ]/.test(Stats.life.flags || '')) || Stats.bot()) return;
+      if ((window.game instanceof Game && game !== window.game) || (Stats.life && /[XJT]/.test(Stats.life.flags || '')) || Stats.bot()) return;
       const d = Stats.load(), S = d.steps = d.steps || {};
       if (S[name]) return;
       // Taken under an answered NO it is never sent, as a life played under one never is; taken before the
@@ -370,7 +370,7 @@ const Stats = {
     const C = TUNING.stats;
     if (!C.url || !game.settings || !game.settings.stats || !L.ok) return false;
     if (!(typeof RELEASE !== 'undefined' && RELEASE.on) && !C.sendDev) return false;
-    return !/[XJ]/.test(L.flags || '') && L.floors.length > 0;
+    return !/[XJT]/.test(L.flags || '') && L.floors.length > 0;
   },
   // Every report not yet out, each as itself: one POST to our own worker (tools/stats-worker), whose
   // address no blocker lists. `text/plain` keeps it a simple request, so no preflight and an iframe on

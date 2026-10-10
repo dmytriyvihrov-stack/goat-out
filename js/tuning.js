@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.007';
+const BUILD = '0.010';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -1130,6 +1130,9 @@ const TUNING = {
     // squeeze through it now; men, the goat and the furniture still meet them at their full width.
     path: { ahead: 7, bodyMul: 0.9, every: 0.22, reach: 0.45, stuckCheck: 0.5, stuckMove: 0.3, unstick: 0.45, wideR: 17, squeeze: 15 } },
   physics: {
+    // A goat pressing a move key and not moving for `after` s is wedged between furniture: the props within `reach` px of
+    // him let go of him until he is `clear` px off each (`moved`: tiles a second under which he counts as not moving).
+    wedge: { after: 0.3, moved: 0.6, reach: 4, clear: 6 },
     splatSpeed: 11 * TILE,
     flungDrag: 3.5,
     flungFloorSpeed: 3.5 * TILE,
@@ -1957,7 +1960,7 @@ const TUNING = {
     roll: { range: 5, min: 1.6, goatSpeed: 3, cone: 0.4, dist: 2.6, time: 0.32, recover: 0.2, cd: 2.4, first: 1 },
     gun: { min: 4, max: 9, aimTime: 0.8, reload: 2.6, recover: 0.9, first: 1.5, pellets: 3, spread: 0.2 },
     barrier: { r: 1.7, laughEvery: 2.8 },
-    monster: { hp: 5, speedMul: 1.15, meet: 3, emerge: 1.1, fists: { rate: 40, speed: 50, low: 22, up: 62 } } },
+    monster: { hp: 5, speedMul: 1.15, meet: 3, emerge: 2.2, pulse: 0.45, fists: { rate: 40, speed: 50, low: 22, up: 62 } } },
   shieldman: { uses: 2, arc: 1.2, speedMul: 0.86, turn: 2.4, brace: 0.3, push: 3 * TILE, bounce: 3 * TILE, jolt: 0.2,
     // (2 Oct 2026, the user's: "a little bigger, two hearts, the dangerous one") `hp` hearts, the second
     // kind after the seer to carry two without the outline; drawn `scale` the size of a clubman.
@@ -3136,6 +3139,9 @@ const SETTINGS = [
   // On, a death no longer ends the run (`Game.permadeath`): the floor is laid again and he starts it with what he came in with.
   { key: 'sameFloor', name: 'PLAYTEST: RESTART ON THE SAME FLOOR', note: 'For testing. A death starts the same floor again, with what you had on it, instead of a new run.' },
   // 9 Oct 2026: the opening scene in the pen (the ewe taken, the first blow) left out of a new run.
+  // 10 Oct 2026, the user's: a playtester's short drawer, on itch too (`Renderer.testerCols`, `Game.devAction`): start on any floor
+  // (LEVELS on the title), GOD, a soul, the mouse, heaven's riches, a companion. A life it gives anything to is left out of RUN STATS.
+  { key: 'tester', name: 'PLAYTESTER MODE', note: 'For testing. LEVELS on the title, and a PLAYTEST corner in play: god mode, a soul, the mouse, heaven, a companion. Those runs are not counted.' },
   { key: 'skipIntro', name: 'SKIP THE OPENING', note: 'A new run starts in the pen without the opening scene.' },
   { key: 'photoAuto', name: 'PHOTO MODE: EVERY 3 SECONDS', note: 'A picture every three seconds of play, so you can just run. Choose which to keep under PAUSE, PHOTOS.' },
 ];
@@ -3694,35 +3700,48 @@ const BOON_OFF = ['ricochet', 'leapfrog', 'hocks'];
 // `souls[r]` (29 Sep 2026: "the strongest upgrades up there want corrupted souls too") is what rank
 // `r + 1` asks in corrupted souls on top of its sacrifices: every soul the goat swallows down there is
 // banked up here (`Heaven.earnSoul`), and only the top ranks of the best three want any.
+// The glass reads as Hades' Mirror of Night (10 Oct 2026, "less text, more visual"): a row is a name, a
+// pixel `glyph` (`MIRROR_GLYPHS`, js/heaven.js) beside `value(p, r)`, what rank `r` gives now in a few
+// characters, a + and the price; only the row pointed at says its `tell`, under the rows. The pointer on the value
+// explains it (`hint`, a string or `hint(p)`: what the number is), with NOW and NEXT. The rows open one by one
+// (10 Oct 2026, "gradual unlocking"): `opens` is how many ranks must be bought on the glass, in all, before it can be.
 const MIRROR = [
   // 8 Oct 2026 playtest: "a dear skill that adds one life", first on the glass. Every run begun after it carries one more
   // ONE MORE LIFE (`Heaven.extraLivesFor`), on top of the one a visit up here gives.
   // 9 Oct 2026: 300 and 4 corrupted → 150 and 2. Same evening, the user: ONE MORE LIFE and SECOND CHANCE were the same
   // thing twice, so they are one entry in two ranks, a life a run each (`lives[r - 1]`, the total); with the one the first
   // visit up here gives, three. SECOND CHANCE's own once-a-floor revive (`mods.secondChance`) is no longer bought.
-  { id: 'life', name: 'ONE MORE LIFE', names: ['ONE MORE LIFE', 'SECOND CHANCE'], costs: [150, 150], souls: [2, 2], params: { lives: [1, 2] },
+  { id: 'life', name: 'ONE MORE LIFE', names: ['ONE MORE LIFE', 'SECOND CHANCE'], costs: [150, 150], souls: [2, 2], params: { lives: [1, 2] }, glyph: 'life', opens: 3,
+    hint: 'More lives each run. When you fall, you get back up where you fell.', value: (p, r) => `+${r ? p.lives[r - 1] : 0}`,
     tell: (p, r) => r > 1 ? 'Every run, you get back up two more times where you fell.' : 'Every run, you get back up once more where you fell.',
     apply: () => {} },
-  { id: 'fleece', name: 'THICK FLEECE', costs: [40, 120], souls: [0, 3], params: { hearts: [1, 2] },
+  { id: 'fleece', name: 'THICK FLEECE', costs: [40, 120], souls: [0, 3], params: { hearts: [1, 2] }, glyph: 'heart', opens: 0,
+    hint: 'Hearts added to your maximum, every run.', value: (p, r) => `+${r ? p.hearts[r - 1] : 0}`,
     tell: (p, r) => `+${p.hearts[r - 1]} ${sayHearts(p.hearts[r - 1])}.`,
     apply: (m, p, r) => { m.maxHp += p.hearts[r - 1]; } },
-  { id: 'halo', name: 'HALO', costs: [30, 90], souls: [0, 2], params: { light: [1, 2] },
+  { id: 'halo', name: 'HALO', costs: [30, 90], souls: [0, 2], params: { light: [1, 2] }, glyph: 'halo', opens: 1,
+    hint: 'Hearts of light you start every floor with. Each takes one hit for you, then it is gone.', value: (p, r) => `+${r ? p.light[r - 1] : 0}`,
     tell: (p, r) => r > 1 ? `You start every floor with ${sayWord(p.light[r - 1])} hearts of light. Each takes one hit.` : 'You start every floor with a heart of light. It takes the first hit.',
     apply: (m, p, r) => { m.lightHearts = p.light[r - 1]; } },
   // 9 Oct 2026: the second rank was "the first grass of a floor heals you fully"; now every tuft has `luck` odds of a second heart.
-  { id: 'grazer', name: 'GOOD GRAZER', costs: [25, 80], souls: [0, 1], params: { graze: 0.5, luck: 0.33 },
+  { id: 'grazer', name: 'GOOD GRAZER', costs: [25, 80], souls: [0, 1], params: { graze: 0.5, luck: 0.33 }, glyph: 'grass', opens: 0,
+    hint: (p) => `Seconds you stand in grass to eat it: less is better. At the top rank a tuft has a ${sayPct(p.luck)} chance to heal two hearts.`,
+    value: (p, r) => `${sayN(TUNING.prop.heal.grazeTime * (r ? p.graze : 1))}s${r > 1 ? ' +' + sayPct(p.luck) : ''}`,
     tell: (p, r) => `Grass takes ${p.graze === 0.5 ? 'half' : sayPct(p.graze) + ' of'} the time to graze.${r > 1 ? ` Grass has a ${sayPct(p.luck)} chance to heal two hearts.` : ''}`,
     apply: (m, p, r) => { m.grazeMul = p.graze; if (r > 1) m.grazeLuck = p.luck; } },
   // QUICK (9 Oct 2026, was QUICK TUMBLE, the roll alone; the id stays): each rank one more button readied sooner,
   // the roll, then BAAH, then the headbutt's recovery (it has no cooldown of its own). LONG MERCY went the same day.
-  { id: 'tumble', name: 'QUICK', costs: [20, 50, 100], params: { roll: 0.85, scream: 0.9, butt: 0.9 },
+  { id: 'tumble', name: 'QUICK', costs: [20, 50, 100], params: { roll: 0.85, scream: 0.9, butt: 0.9 }, glyph: 'quick', opens: 2,
+    hint: 'How many of your buttons come back sooner: the roll, then BAAH, then the headbutt.', value: (p, r) => `${r} / 3`,
     tell: (p, r) => [`Your roll is ready ${sayPct(1 - p.roll)} sooner.`, `Your roll is ready ${sayPct(1 - p.roll)} sooner, BAAH ${sayPct(1 - p.scream)} sooner.`,
       `Roll ${sayPct(1 - p.roll)}, BAAH ${sayPct(1 - p.scream)} and headbutt ${sayPct(1 - p.butt)} quicker.`][r - 1],
     apply: (m, p, r) => { m.rollCooldown *= p.roll; if (r > 1) m.screamCooldown *= p.scream; if (r > 2) m.headbuttRecovery *= p.butt; } },
   // HELLDIVE / SUPER HELLDIVE (7 Oct 2026, the user: one an upgrade of the other): not a life of its own, the shape of
   // every revive he has (SECOND CHANCE, ONE MORE LIFE; `needs: 'revive'`, `Heaven.shelf`). The beam lifts him out of the
   // picture, he steers his fall and lands like a shell (`Motes.updateDive`, `TUNING.heaven.dive`). `names` per rank.
-  { id: 'helldive', name: 'HELLDIVE', names: ['HELLDIVE', 'SUPER HELLDIVE'], costs: [150, 320], souls: [1, 4], needs: 'revive', params: { hurt: TUNING.heaven.dive.hurt, stun: TUNING.heaven.dive.stun },
+  { id: 'helldive', name: 'HELLDIVE', names: ['HELLDIVE', 'SUPER HELLDIVE'], costs: [150, 320], souls: [1, 4], needs: 'revive', params: { hurt: TUNING.heaven.dive.hurt, stun: TUNING.heaven.dive.stun }, glyph: 'dive', opens: 4,
+    hint: 'How you come back from a fall: you steer where you land and crash down on the enemies.',
+    value: (p, r) => ['OFF', 'ON', 'SUPER'][r],
     tell: (p, r) => r > 1 ? 'You come back crashing down where you steer. It hurts all near and stuns the whole room.'
       : 'You come back crashing down where you steer. It hurts who you land on, stuns those near.',
     apply: (m, p, r) => { m.helldive = r; } },
@@ -3897,6 +3916,10 @@ const MILK_OFFER = { id: 'milk', name: 'GRASS', color: '#a8bd6c',
 const DEV_SPAWN_AS = ['PLAIN', 'CHAMPION', 'CORRUPTED · 1ST', 'CORRUPTED · 2ND', 'CORRUPTED · 3RD'];
 // The SPAWN rows that ask which one first (9 Oct 2026: "when I click to summon a unit, a menu: plain, champion, corrupted 1st,
 // 2nd, 3rd meeting"), and what a corrupted one of a kind brings with it, said at the foot of that menu.
+// PLAYTESTER MODE's short drawer (SETTINGS `tester`, `Renderer.testerCols`): the only rows that answer in a build with no dev
+// drawer, and of them the ones that hand him something (a life given any of those is flagged `T`, js/stats.js).
+const TESTER_IDS = new Set(['toggle', 'god', 'heal', 'lvl-prev', 'lvl-next', 'lvl-last', 'next', 'lastroom', 'soul', 'soulpick', 'soulpick-miss', 'mouse', 'sacrifices', 'addkey', 'tester-pets']);
+const TESTER_GIFTS = new Set(['heal', 'lvl-prev', 'lvl-next', 'lvl-last', 'next', 'lastroom', 'soul', 'soulpick', 'mouse', 'sacrifices', 'addkey']);
 const DEV_SPAWN_POP = new Set(['bearer', 'enemy-spawn=shield', 'enemy-spawn=thrower', 'enemy-spawn=shaman', 'hunter', 'dog', 'seer', 'wraith', 'butcher']);
 // What each kind of man does beside another (the dev drawer's LINKS tab): `what` is read live off the numbers, `where` is the code.
 const LINKS = [

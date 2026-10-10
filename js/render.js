@@ -5051,8 +5051,9 @@ class Renderer {
   drawDevPage(game) {
     const ctx = this.ctx, s = this.ts, d = game.dev;
     d.rects = [];
-    if (d.rules) { this.drawTool(game); return; }
-    if (d.hidden) {   // served from itch without `#dev`, or the itch build itself (`Game` constructor)
+    if (d.rules && !d.hidden) { this.drawTool(game); return; }
+    const tester = d.hidden && !!(game.settings && game.settings.tester);   // PLAYTESTER MODE: the short drawer (`testerCols`)
+    if (d.hidden && !tester) {   // served from itch without `#dev`, or the itch build itself (`Game` constructor)
       // GOD MODE thrown in SETTINGS still says so, where the drawer would have.
       if (d.god && game.state !== 'title') { ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.blood; ctx.textAlign = 'center'; ctx.fillText('GOD MODE', this.w / 2, 16 * s); ctx.textAlign = 'left'; }
       return;
@@ -5060,12 +5061,12 @@ class Renderer {
     // In a fight on touch the corner is under the stick's thumb: a brush of it opened the drawer.
     // It is still there on the pause screen, and the open drawer keeps its close.
     if (game.touch.active && game.state === 'play' && !d.open) return;
-    this.drawHornTool(game);   // the panel stays over the run with the drawer shut
+    if (!tester) this.drawHornTool(game);   // the panel stays over the run with the drawer shut
     // The corner word sat on the book's page and on a talk box: while one is up it stays away.
     if (!d.open && (game.menu.panel === 'book' || game.beastTalk || game.shopDlg || (game.state === 'heaven' && game.heaven && (game.heaven.talk || game.heaven.panel)))) return;
     // The way in is a word in the corner, not a button. A bordered box down there reads as part of
     // the game and this is not part of the game: it is a door for whoever is building it.
-    const pad = 8 * s, label = d.open ? 'close dev' : 'dev tools';
+    const pad = 8 * s, label = tester ? (d.open ? 'close playtest' : 'playtest') : d.open ? 'close dev' : 'dev tools';
     ctx.font = `700 ${9.5 * s}px ${FONT_SC}`;
     const cw = textW(ctx, label) + 16 * s, chH = 17 * s;
     // Bottom left, over the seed and the build: the bottom-right corner is the skill rail's now.
@@ -5077,7 +5078,7 @@ class Renderer {
       // Two columns: the switches and the level on the left, and everything that can be dropped at
       // his feet under SPAWN on the right. One column of twenty-three rows ran off the top of a
       // laptop screen.
-      const cols = [
+      const cols = tester ? this.testerCols(game) : [
         { head: 'DEV MODE', rows: [
           ['god', d.god ? 'GOD  ON' : 'GOD  OFF'],
           // Every text on the screen, rewritten or deleted by clicking it (js/text-edit.js).
@@ -5097,7 +5098,7 @@ class Renderer {
           ['hornTool', d.hornTool ? 'HORN TOOL  ON' : 'HORN TOOL  OFF'],   // the sliders over the run, and the zone on the floor
           ['cam-zoom', 'CAMERA  ×' + (d.tune && d.tune.camera || 1)],   // the lens, a step a click (also a slider on ENEMIES)
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
-          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'],
+          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['lvl-last', 'LAST LEVEL'],
           ['lastroom', 'LAST ROOM · SCENE'],   // this floor's last room with its scene (js/endboss.js; THE LAST SUPPER on the last floor)
           ['showroom', 'SHOWROOM'],
           // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
@@ -5132,7 +5133,7 @@ class Renderer {
       // 6 Oct 2026 ("at 1280x760 it covers nearly the whole screen, its foot is cramped"): rows a little
       // tighter, each column as wide as its longest label (TALK ran into the column beside it), and the foot
       // its own strip of two lines (`footH`) under the rows instead of squeezed onto the box's edge.
-      const rh = 21 * s, gap = 2 * s, footH = 38 * s;
+      const rh = 21 * s, gap = 2 * s, footH = tester ? 6 * s : 38 * s;
       const fit = Math.max(4, Math.floor((cy - 22 * s - 20 * s - 8 * s - footH) / (rh + gap)));
       for (let ci = 0; ci < cols.length; ci++) {
         if (cols[ci].rows.length <= fit) continue;
@@ -5159,7 +5160,7 @@ class Renderer {
         ctx.fillText(col.head, px + 8 * s, py - 7 * s);
         col.rows.forEach(([id, label], i) => {
           const y = py + i * (rh + gap);
-          const on = (id === 'god' && d.god) || (id === 'textedit' && TextEdit.on) || (id === 'vision' && d.vision) || (id === 'hearing' && d.hearing) || (id === 'stealth' && d.stealth) || (id === 'chase' && d.chase);
+          const on = (id === 'tester-pets' && d.testerPets) || (id === 'god' && d.god) || (id === 'textedit' && TextEdit.on) || (id === 'vision' && d.vision) || (id === 'hearing' && d.hearing) || (id === 'stealth' && d.stealth) || (id === 'chase' && d.chase);
           ctx.fillStyle = on ? 'rgba(192,57,43,0.5)' : 'rgba(59,34,51,0.75)';
           ctx.fillRect(px + 5 * s, y, rw - 10 * s, rh);
           ctx.strokeStyle = on ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 1 * s;
@@ -5191,6 +5192,7 @@ class Renderer {
         }
       }
       // Burst or bleed, over every death this browser has had: which lever the deaths point at.
+      if (!tester) {
       const st = game.deathStats();
       ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
       // and SOMETHING NEW (`Novelty`): play seconds since this browser last met a thing for the first time, red once it is dry.
@@ -5200,6 +5202,7 @@ class Renderer {
       ctx.fillText(`DEATHS  ${st.burst} BURST · ${st.bleed} BLED  (burst: 2 hearts < ${TUNING.dev.burstGap}s)`, px0 + 11 * s, fy + 10 * s);
       ctx.fillStyle = hungry ? PALETTE.fireHi : PALETTE.ochre;
       ctx.fillText(`SOMETHING NEW  ${dry}s AGO${hungry ? '  · DRY: THE UNSEEN COMES FIRST' : `  (dry at ${TUNING.novelty.dry}s)`}`, px0 + 11 * s, fy + 25 * s);
+      }
       if (fitK < 1) {
         ctx.restore();
         for (let i = rect0; i < d.rects.length; i++) { const r = d.rects[i]; r.x = ax + (r.x - ax) * fitK; r.y = ay + (r.y - ay) * fitK; r.w *= fitK; r.h *= fitK; }
@@ -5223,6 +5226,28 @@ class Renderer {
       ctx.fillText(d.toast.text, pad + 4 * s, toastY);
       ctx.textAlign = 'left'; ctx.globalAlpha = 1;
     }
+  }
+
+  // PLAYTESTER MODE's drawer (SETTINGS `tester`, 10 Oct 2026): the few rows a playtester needs, the same ids as the dev
+  // drawer's (`TESTER_IDS` in tuning.js gates them in `Game.devAction`). A COMPANION opens its second choice, which animal,
+  // as rows under it. Which floor to start on is LEVELS on the title, shown while this is on.
+  testerCols(game) {
+    const d = game.dev;
+    const give = [
+      ['soul', 'A SOUL  (CARDS)'], ['soulpick', d.soulPick ? 'ANY SOUL  ON' : 'ANY SOUL  (PICK)'],
+      ['mouse', 'THE MOUSE  (TALISMANS)'], ['sacrifices', 'HEAVEN  +100 SACR · +5 SOULS'], ['addkey', '+1 KEY'],
+      ['tester-pets', d.testerPets ? 'A COMPANION  ▾' : 'A COMPANION  ▸'],
+    ];
+    if (d.testerPets) give.push(['coop', '  HEN'], ['tortoise', '  TORTOISE'], ['goose', '  GOOSE'], ['crow', '  CROW'], ['horse', '  HORSE'],
+      ['pig', '  PIG'], ['rabbit', '  RABBIT'], ['husky', '  HUSKY'], ['fish', '  FISH']);
+    return [
+      { head: 'PLAYTEST', rows: [
+        ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['heal', 'HEAL'],
+        ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['lvl-last', 'LAST LEVEL'], ['next', 'SKIP LEVEL'],
+        ['lastroom', 'LAST ROOM · BOSS'],
+      ] },
+      { head: 'GIVE', rows: give },
+    ];
   }
 
   // A button in the drawer's own style, and its rect.

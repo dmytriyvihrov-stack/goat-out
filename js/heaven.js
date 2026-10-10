@@ -1239,18 +1239,34 @@ const Heaven = {
     if (!this.meta.mirror) { this.meta.mirror = true; this.save(); }   // the edge opens (`mirrorKnown`)
     game.goat.vx = game.goat.vy = 0;
     game.audio.sfxChime(TUNING.heaven.bells[0], 0.5); game.audio.sfxChime(TUNING.heaven.bells[3], 0.35, 0.12);
+    this.noteOpened(game, false);
+  },
+  // The rows open one by one (10 Oct 2026, "gradual unlocking"): a row is open once `opens` ranks are bought on the
+  // glass in all, or once it has a rank of its own (a store from before keeps what it bought).
+  ranksBought() { const R = this.meta.ranks || {}; return Object.keys(R).reduce((n, k) => n + (R[k] || 0), 0); },
+  rowOpen(u) { return this.rank(u.id) > 0 || this.ranksBought() >= (u.opens || 0); },
+  // A row open for the first time in this browser (`meta.mirrorOpen`) breaks its padlock with a glint (`P.openFx`).
+  noteOpened(game, loud) {
+    const P = game.heaven && game.heaven.panel, M = this.meta; if (!P) return;
+    M.mirrorOpen = M.mirrorOpen || {}; P.openFx = P.openFx || {};
+    let any = false;
+    for (const u of this.shelf()) if (this.rowOpen(u) && !M.mirrorOpen[u.id]) { M.mirrorOpen[u.id] = true; P.openFx[u.id] = loud ? -0.35 : 0; any = true; }
+    if (!any) return;
+    this.save();
+    if (loud) { game.audio.sfxChime(TUNING.heaven.bells[5], 0.6, 0.35); game.audio.sfxChime(TUNING.heaven.bells[7], 0.5, 0.5); }
   },
   closeMirror(game) { if (game.heaven) game.heaven.panel = null; game.audio.sfxSwing(); },
   // A rank of `u` bought with sacrifices, if there are enough and there is a rank left.
   buy(game, i) {
     const H = game.heaven, P = H && H.panel, u = this.shelf()[i]; if (!P || !u) return;
     const r = this.rank(u.id), cost = u.costs[r];
-    if (cost === undefined) { game.audio.sfxThud(); return; }
+    if (cost === undefined || !this.rowOpen(u)) { P.shake = 0.35; P.shakeRow = i; game.audio.sfxThud(); return; }
     const sc = this.soulCost(u, r);
     if (this.meta.sacrifices < cost || (this.meta.souls || 0) < sc) { P.shake = 0.35; P.shakeRow = i; game.audio.sfxThud(); return; }
     this.meta.sacrifices -= cost; this.meta.souls = (this.meta.souls || 0) - sc; this.meta.ranks[u.id] = r + 1; this.meta.bought++; this.save(); Stats.mirror(game, u.id, r + 1);
     P.flash = i; P.flashT = 0;
     game.audio.sfxChime(TUNING.heaven.bells[2]); game.audio.sfxChime(TUNING.heaven.bells[4], 0.6, 0.1); game.audio.sfxBell();
+    this.noteOpened(game, true);
   },
   panelKey(game, code) {
     const P = game.heaven && game.heaven.panel; if (!P) return false;
@@ -2820,7 +2836,7 @@ Object.assign(Heaven, {
     ctx.save(); ctx.globalAlpha = k;
     ctx.fillStyle = 'rgba(16,14,34,0.82)'; ctx.fillRect(0, 0, W, Hh);
     const pw = Math.min(W - 30 * s, 980 * s), ph = Math.min(Hh - 30 * s, 560 * s), x0 = (W - pw) / 2, y0 = (Hh - ph) / 2;
-    ctx.fillStyle = 'rgba(34,26,52,0.95)'; ctx.fillRect(x0, y0, pw, ph);
+    ctx.fillStyle = 'rgba(16,11,26,0.97)'; ctx.fillRect(x0, y0, pw, ph);
     ctx.fillStyle = '#e0ac3e'; ctx.fillRect(x0, y0, pw, 3 * s); ctx.fillRect(x0, y0 + ph - 3 * s, pw, 3 * s);
     // (its title THE MIRROR and its subtitle went: 5 and 8 Oct 2026, "useless words". A cross in the top-right corner closes it.)
     const xs = 30 * s, xx = x0 + pw - xs - 12 * s, xy = y0 + 12 * s, xOn = P.i === -2 || (!game.touch.active && game.input.mouse && game.input.mouse.x >= xx && game.input.mouse.x <= xx + xs && game.input.mouse.y >= xy && game.input.mouse.y <= xy + xs);
@@ -2829,17 +2845,6 @@ Object.assign(Heaven, {
     { const c = Math.max(2, Math.round(3 * s)), n = Math.floor(xs / c / 2) - 2;
       ctx.fillStyle = xOn ? '#fff4c2' : '#e0ac3e';
       for (let k = -n; k <= n; k++) { ctx.fillRect(Math.round(xx + xs / 2 + k * c - c / 2), Math.round(xy + xs / 2 + k * c - c / 2), c, c); ctx.fillRect(Math.round(xx + xs / 2 + k * c - c / 2), Math.round(xy + xs / 2 - k * c - c / 2), c, c); } }
-    // the heap
-    ctx.textAlign = 'right'; ctx.font = `700 ${24 * s}px ${FONT_SC}`; ctx.fillStyle = '#fff4c2';
-    const heap = String(M.sacrifices), hw = textW(ctx, heap);
-    const hx0 = x0 + pw - 26 * s - xs - 18 * s;
-    ctx.fillText(heap, hx0, y0 + 44 * s);
-    this.skull(ctx, hx0 - 8 * s - hw - 20 * s, y0 + 24 * s, 2.4 * s);
-    // and the souls banked beside it
-    const sl = String(M.souls || 0), sx = hx0 - 8 * s - hw - 44 * s;
-    ctx.fillStyle = '#d9ccff'; ctx.fillText(sl, sx, y0 + 44 * s);
-    this.soulIcon(R, sx - textW(ctx, sl) - 12 * s, y0 + 36 * s, 20 * s);
-    ctx.font = `${Math.max(12 * R.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(247,215,116,0.6)'; ctx.fillText('souls  ·  sacrifices', hx0, y0 + 62 * s);
     // the goat in the glass
     const gw = Math.min(pw * 0.3, 260 * s), gcx = x0 + 26 * s + gw / 2, gcy = y0 + ph * 0.56;
     const S = HEAVEN_PIXELS.sprites.mirror, mk = Math.min(gw / S.w, (ph * 0.7) / S.h);
@@ -2854,67 +2859,158 @@ Object.assign(Heaven, {
     PIXEL_ART.markForce = false;   // the lamb in the glass (`drawMirror`)
     try { R.painted.character(R, { facing: Math.PI / 2 + Math.sin(t * 0.7) * 0.4, state: 'idle', x: 0, vx: 0, vy: 0 }, 'sheep', 40); } finally { PIXEL_ART.markForce = null; }
     ctx.restore();
-    // what it offers
-    const rx = x0 + 60 * s + gw, rw = x0 + pw - 26 * s - rx, rh = Math.min(74 * s, (ph - 150 * s) / (this.shelf().length + 0.8));
+    // What it offers, as Hades' Mirror of Night (10 Oct 2026, "less text, more visual"): a row is the name, its glyph
+    // and value now, a + and the price; the heap stands over the price columns; only the row pointed at says what it does.
+    const rx = x0 + 60 * s + gw, rw = x0 + pw - 26 * s - rx, list = this.shelf(), locked = MIRROR.filter((u) => !list.includes(u));
+    const top = y0 + 92 * s, rh = Math.min(60 * s, (ph - 190 * s) / (list.length + locked.length));
+    const costX = rx + rw - 14 * s, soulX = rx + rw - 110 * s, plusX = rx + rw - 200 * s, valX = rx + Math.max(210 * s, rw * 0.42);
+    const cell = Math.max(2, Math.round(4 * s)), gc = Math.max(2, Math.round(3 * s));
+    // the heap, over its columns: souls, then sacrifices
+    ctx.textAlign = 'right'; ctx.font = `700 ${20 * s}px ${FONT_SC}`;
+    ctx.fillStyle = '#d9ccff'; ctx.fillText(String(M.souls || 0), soulX - 26 * s, y0 + 74 * s); this.soulIcon(R, soulX - 10 * s, y0 + 67 * s, 18 * s);
+    ctx.fillStyle = '#fff4c2'; ctx.fillText(String(M.sacrifices), costX - 30 * s, y0 + 74 * s); this.skull(ctx, costX - 24 * s, y0 + 56 * s, 1.9 * s);
+    // a dotted gold rule under the heap, as a ledger's
+    ctx.fillStyle = 'rgba(224,172,62,0.35)'; for (let x = rx; x < rx + rw; x += cell * 2) ctx.fillRect(x, top - 8 * s, cell, Math.max(1, Math.round(s)));
     P.rects = [];
-    this.shelf().forEach((u, i) => {
-      const r = this.rank(u.id), max = u.costs.length, cost = u.costs[r], y = y0 + 96 * s + i * rh;
-      const over = !game.touch.active && !padOn(game) && game.input.mouse && game.input.mouse.x >= rx && game.input.mouse.x <= rx + rw && game.input.mouse.y >= y && game.input.mouse.y <= y + rh - 8 * s;
+    const mouse = !game.touch.active && !padOn(game) && game.input.mouse;
+    // a slanted band of light in cells run across a row, `k` of the way (a rank bought, a row opened)
+    const glint = (y, h, k) => {
+      const bandX = rx - h + (rw + h * 2) * k;
+      ctx.fillStyle = `rgba(255,244,194,${0.4 * (1 - k)})`; ctx.fillRect(rx, y, rw, h);
+      ctx.save(); ctx.beginPath(); ctx.rect(rx, y, rw, h); ctx.clip(); ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      for (let yy = 0; yy < h; yy += cell) { const xx = Math.round((bandX - yy * 0.6) / cell) * cell; ctx.fillRect(xx, y + yy, cell * 3, cell); ctx.fillRect(xx + cell * 5, y + yy, cell, cell); }
+      ctx.restore();
+    };
+    let tip = null;
+    list.forEach((u, i) => {
+      const r = this.rank(u.id), max = u.costs.length, cost = u.costs[r], y = top + i * rh, h = rh - 6 * s;
+      const over = mouse && mouse.x >= rx && mouse.x <= rx + rw && mouse.y >= y && mouse.y <= y + h;
       if (over && game.mouseMoved !== false) P.i = i;
-      const sc = this.soulCost(u, r), sel = P.i === i, afford = cost !== undefined && M.sacrifices >= cost && (M.souls || 0) >= sc;
+      const sc = this.soulCost(u, r), sel = P.i === i, whole = cost === undefined, afford = !whole && M.sacrifices >= cost && (M.souls || 0) >= sc;
       // Held (`updatePanel`): the row fills from the left in whole cells and trembles harder as it fills.
-      const Bu = TUNING.heaven.buy, hk = P.hold && P.hold.i === i ? clamp(P.hold.t / Bu.hold, 0, 1) : 0, cell = Math.max(2, Math.round(4 * s));
-      const shake = (P.shakeRow === i && P.shake > 0 ? Math.sin(P.shake * 60) * 6 * s * P.shake : 0) + (hk ? Math.round(Math.sin(t * 70) * Bu.shake * s * hk) : 0);
-      P.rects.push({ x: rx, y, w: rw, h: rh - 8 * s });
-      // What can be bought now stands out and what cannot sinks back (8 Oct 2026 playtest: "more contrast between them").
-      const whole = cost === undefined;
-      ctx.fillStyle = sel ? 'rgba(247,215,116,0.16)' : afford ? 'rgba(247,215,116,0.08)' : 'rgba(255,255,255,0.02)'; ctx.fillRect(rx + shake, y, rw, rh - 8 * s);
-      if (afford) { ctx.strokeStyle = 'rgba(247,215,116,0.55)'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(rx + shake + 0.5, y + 0.5, rw - 1, rh - 9 * s); }
-      ctx.save(); if (!afford && !whole) ctx.globalAlpha *= 0.42;
+      const Bu = TUNING.heaven.buy, hk = P.hold && P.hold.i === i ? clamp(P.hold.t / Bu.hold, 0, 1) : 0;
+      const sh = (P.shakeRow === i && P.shake > 0 ? Math.sin(P.shake * 60) * 6 * s * P.shake : 0) + (hk ? Math.round(Math.sin(t * 70) * Bu.shake * s * hk) : 0);
+      P.rects.push({ x: rx, y, w: rw, h });
+      // the pointed-at row is a band of violet light, as Hades lights it
+      if (sel) { ctx.fillStyle = 'rgba(150,110,220,0.22)'; ctx.fillRect(rx + sh, y, rw, h); ctx.fillStyle = '#f7d774'; ctx.fillRect(rx + sh, y, Math.max(2, Math.round(3 * s)), h); }
+      const my = y + h / 2;
+      // Not open yet: a padlock, the name in grey and how many ranks bought on the glass open it. Opened just now, the
+      // padlock flies off and a glint runs across (`noteOpened`; a beat late when a purchase opened it).
+      let ofx = P.openFx && P.openFx[u.id];
+      if (ofx !== undefined) { ofx = P.openFx[u.id] += 1 / 60; if (ofx > 1.2) { delete P.openFx[u.id]; ofx = undefined; } }
+      const lc = Math.max(1, Math.round(1.6 * s));
+      if (!this.rowOpen(u) || ofx < 0) {
+        const n = Math.max(1, (u.opens || 0) - this.ranksBought());
+        ctx.save(); ctx.globalAlpha *= sel ? 0.75 : 0.45;
+        this.drawPadlock(ctx, Math.round(rx + 18 * s + sh), Math.round(my - lc), lc);
+        ctx.textAlign = 'left'; ctx.font = `700 ${20 * s}px ${FONT_SC}`; ctx.fillStyle = '#b8b0a0'; ctx.fillText(u.name, rx + 42 * s + sh, my + 7 * s);
+        ctx.textAlign = 'right'; ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillText(ofx < 0 ? '' : `BUY ${n} MORE TO OPEN`, costX + sh, my + 6 * s);
+        ctx.restore(); return;
+      }
+      if (ofx !== undefined) {
+        const k2 = ofx / 1.2; glint(y, h, k2);
+        ctx.save(); ctx.globalAlpha *= Math.max(0, 1 - k2 * 2); this.drawPadlock(ctx, Math.round(rx + 18 * s), Math.round(my - lc - ofx * 60 * s), lc); ctx.restore();
+      }
       if (P.drain && P.drain.i === i) { P.drain.k -= 1 / 60 / 0.25; if (P.drain.k <= 0) P.drain = null; }
       const fillK = hk || (P.drain && P.drain.i === i ? P.drain.k : 0);
       if (fillK > 0) {
-        ctx.fillStyle = `rgba(247,215,116,${0.16 + 0.22 * fillK})`; ctx.fillRect(rx + shake, y, Math.round(rw * fillK / cell) * cell, rh - 8 * s);
-        ctx.fillStyle = '#fff4c2'; ctx.fillRect(rx + shake + Math.round(rw * fillK / cell) * cell - cell, y, cell, rh - 8 * s);   // its bright leading edge
+        ctx.fillStyle = `rgba(247,215,116,${0.14 + 0.2 * fillK})`; ctx.fillRect(rx + sh, y, Math.round(rw * fillK / cell) * cell, h);
+        ctx.fillStyle = '#fff4c2'; ctx.fillRect(rx + sh + Math.round(rw * fillK / cell) * cell - cell, y, cell, h);   // its bright leading edge
       }
-      // Bought: a glint, a slanted band of light in cells, runs across the row; the row flashes under it.
+      // Bought: a glint, a slanted band of light in cells, runs across the row; sparks off the + box.
       const gl = Bu.glint;
       if (P.flash === i && P.flashT < gl) {
-        const a = P.flashT / gl, rhh = rh - 8 * s, bandX = rx - rhh + (rw + rhh * 2) * a;
-        ctx.fillStyle = `rgba(255,244,194,${0.45 * (1 - a)})`; ctx.fillRect(rx, y, rw, rhh);
-        ctx.save(); ctx.beginPath(); ctx.rect(rx, y, rw, rhh); ctx.clip(); ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        for (let yy = 0; yy < rhh; yy += cell) { const xx = Math.round((bandX - yy * 0.6) / cell) * cell; ctx.fillRect(xx, y + yy, cell * 3, cell); ctx.fillRect(xx + cell * 5, y + yy, cell, cell); }
+        const k2 = P.flashT / gl, bandX = rx - h + (rw + h * 2) * k2;
+        ctx.fillStyle = `rgba(255,244,194,${0.4 * (1 - k2)})`; ctx.fillRect(rx, y, rw, h);
+        ctx.save(); ctx.beginPath(); ctx.rect(rx, y, rw, h); ctx.clip(); ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        for (let yy = 0; yy < h; yy += cell) { const xx = Math.round((bandX - yy * 0.6) / cell) * cell; ctx.fillRect(xx, y + yy, cell * 3, cell); ctx.fillRect(xx + cell * 5, y + yy, cell, cell); }
         ctx.restore();
-        // and sparks of cells thrown off its corners
-        ctx.fillStyle = `rgba(255,244,194,${1 - a})`;
-        for (let q = 0; q < 6; q++) { const ang = q / 6 * Math.PI * 2 + 0.4, d = (10 + 30 * a) * s; ctx.fillRect(Math.round(rx + rw - 30 * s + Math.cos(ang) * d), Math.round(y + rhh / 2 + Math.sin(ang) * d * 0.6), cell, cell); }
+        ctx.fillStyle = `rgba(255,244,194,${1 - k2})`;
+        for (let q = 0; q < 6; q++) { const ang = q / 6 * Math.PI * 2 + 0.4, d = (10 + 30 * k2) * s; ctx.fillRect(Math.round(plusX + 11 * s + Math.cos(ang) * d), Math.round(y + h / 2 + Math.sin(ang) * d * 0.6), cell, cell); }
       }
-      if (sel) { ctx.fillStyle = '#f7d774'; ctx.fillRect(rx + shake, y, 3 * s, rh - 8 * s); }
-      ctx.textAlign = 'left'; ctx.font = `700 ${17 * s}px ${FONT_SC}`; ctx.fillStyle = r >= max ? '#f7d774' : '#fff4c2';
-      ctx.fillText(this.rankName(u, r >= max ? r : r + 1), rx + 16 * s + shake, y + 22 * s);
-      // the ranks as pips
-      for (let q = 0; q < max; q++) { ctx.fillStyle = q < r ? '#f7d774' : 'rgba(247,215,116,0.22)'; ctx.fillRect(Math.round(rx + 16 * s + q * 14 * s), Math.round(y + 30 * s), Math.round(10 * s), Math.round(5 * s)); }
-      ctx.font = FONT_PICK.font('text', Math.round(13 * s)); ctx.fillStyle = 'rgba(244,239,226,0.82)';
-      ctx.fillText(u.tell(u.params, Math.min(max, r + (r >= max ? 0 : 1))), rx + 16 * s + max * 14 * s + 8 * s, y + 36 * s);
-      ctx.textAlign = 'right'; ctx.font = `700 ${16 * s}px ${FONT_SC}`;
-      if (cost === undefined) { ctx.fillStyle = '#f7d774'; ctx.fillText('WHOLE', rx + rw - 14 * s, y + 24 * s); }
-      else { ctx.fillStyle = afford ? '#f7d774' : '#fff4c2'; ctx.fillText(String(cost), rx + rw - 14 * s, y + 24 * s);
-        const cx2 = rx + rw - 22 * s - textW(ctx, String(cost)) - 16 * s;
-        this.skull(ctx, cx2, y + 8 * s, 1.8 * s, !afford);
-        // a top rank's price in souls, left of the skull
-        if (sc) { ctx.fillStyle = (M.souls || 0) >= sc ? '#d9ccff' : 'rgba(217,204,255,0.35)'; ctx.fillText(String(sc), cx2 - 10 * s, y + 24 * s);
-          this.soulIcon(R, cx2 - 22 * s - textW(ctx, String(sc)), y + 17 * s, 16 * s, (M.souls || 0) < sc); } }
+      ctx.save(); if (!afford && !whole && !sel) ctx.globalAlpha *= 0.55;
+      // the name, rose like Hades' (gold once whole), its ranks as small pips under it
+      ctx.textAlign = 'left'; ctx.font = `700 ${20 * s}px ${FONT_SC}`; ctx.fillStyle = whole ? '#f7d774' : '#ef6a6a';
+      ctx.fillText(this.rankName(u, whole ? r : r + 1), rx + 16 * s + sh, my + 2 * s);
+      for (let q = 0; q < max; q++) { ctx.fillStyle = q < r ? '#f7d774' : 'rgba(247,215,116,0.22)'; ctx.fillRect(Math.round(rx + 16 * s + sh + q * 10 * s), Math.round(my + 10 * s), Math.round(7 * s), Math.max(2, Math.round(3 * s))); }
+      // what it gives now: the value and its glyph
+      ctx.fillStyle = r ? '#fff4c2' : 'rgba(255,244,194,0.6)';
+      const v = u.value ? u.value(u.params, r) : String(r); ctx.fillText(v, valX + sh, my + 6 * s);
+      this.glyph(ctx, u.glyph, valX + sh + textW(ctx, v) + 8 * s, my, gc);
+      // the pointer on the value explains it (`hint`), drawn after the rows
+      if (mouse) { const G = MIRROR_GLYPHS[u.glyph], vw = textW(ctx, v) + 8 * s + (G ? G.rows[0].length * gc : 0);
+        if (mouse.x >= valX - 6 * s && mouse.x <= valX + vw + 6 * s && mouse.y >= y && mouse.y <= y + h) tip = { u, r, x: mouse.x, y: mouse.y }; }
+      // the + box: lit when it can be bought, a hollow frame when not, gone once whole
+      if (!whole) {
+        const bs = 22 * s, bx = Math.round(plusX + sh), by = Math.round(my - bs / 2), on = afford && (sel || hk);
+        ctx.fillStyle = on ? 'rgba(190,150,255,0.55)' : afford ? 'rgba(150,120,200,0.35)' : 'rgba(255,255,255,0.06)'; ctx.fillRect(bx, by, bs, bs);
+        ctx.strokeStyle = afford ? '#d9ccff' : 'rgba(217,204,255,0.3)'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx + 0.5, by + 0.5, bs - 1, bs - 1);
+        const pc = Math.max(2, Math.round(2.5 * s)), cx = Math.round(bx + bs / 2), cy = Math.round(by + bs / 2);
+        ctx.fillStyle = afford ? '#fff' : 'rgba(255,255,255,0.35)'; ctx.fillRect(cx - pc / 2, cy - pc * 2.5, pc, pc * 5); ctx.fillRect(cx - pc * 2.5, cy - pc / 2, pc * 5, pc);
+      }
+      // the price, under the heap's own columns
+      ctx.textAlign = 'right';
+      if (whole) { ctx.fillStyle = '#f7d774'; ctx.fillText('MAX', costX + sh, my + 6 * s); }
+      else {
+        ctx.fillStyle = M.sacrifices >= cost ? '#f7d774' : '#fff4c2'; ctx.fillText(String(cost), costX - 30 * s + sh, my + 6 * s);
+        this.skull(ctx, costX - 22 * s + sh, my - 10 * s, 1.6 * s, M.sacrifices < cost);
+        if (sc) { const ok = (M.souls || 0) >= sc; ctx.fillStyle = ok ? '#d9ccff' : 'rgba(217,204,255,0.45)'; ctx.fillText(String(sc), soulX - 26 * s + sh, my + 6 * s); this.soulIcon(R, soulX - 10 * s + sh, my, 16 * s, !ok); }
+      }
       ctx.restore();
     });
-    // the way out
-    const cy2 = y0 + ph - 46 * s, bw2 = 170 * s, bx2 = rx + rw - bw2;
-    P.rects.push({ x: bx2, y: cy2, w: bw2, h: 30 * s });
-    const selC = P.i === this.shelf().length;
-    ctx.fillStyle = selC ? 'rgba(247,215,116,0.2)' : 'rgba(255,255,255,0.04)'; ctx.fillRect(bx2, cy2, bw2, 30 * s);
-    ctx.strokeStyle = '#e0ac3e'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx2, cy2, bw2, 30 * s);
-    ctx.textAlign = 'center'; ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = '#fff4c2'; ctx.fillText('LOOK AWAY', bx2 + bw2 / 2, cy2 + 20 * s);
-    // (the line of keys under the rows went 8 Oct 2026, "useless words")
+    // What is not on the glass yet, as Hades shows its locked rows: the name greyed beside a padlock, nothing else.
+    locked.forEach((u, j) => {
+      const my = top + (list.length + j) * rh + (rh - 6 * s) / 2, c = Math.max(1, Math.round(1.6 * s));
+      ctx.save(); ctx.globalAlpha *= 0.4; this.drawPadlock(ctx, Math.round(rx + 18 * s), Math.round(my - 1 * c), c);
+      ctx.textAlign = 'left'; ctx.font = `700 ${17 * s}px ${FONT_SC}`; ctx.fillStyle = '#b8b0a0'; ctx.fillText(u.name, rx + 42 * s, my + 6 * s);
+      ctx.restore();
+    });
+    // the one row's words, under the rows: what its next rank does (what it does, once whole), or what opens it
+    const su = list[P.i];
+    if (su) {
+      const r = this.rank(su.id), max = su.costs.length, n = (su.opens || 0) - this.ranksBought();
+      ctx.textAlign = 'center'; ctx.font = FONT_PICK.font('text', Math.round(15 * s)); ctx.fillStyle = 'rgba(244,239,226,0.9)';
+      ctx.fillText(this.rowOpen(su) ? su.tell(su.params, Math.min(max, r + (r >= max ? 0 : 1))) : `Buy ${sayWord(n)} more ${n === 1 ? 'upgrade' : 'upgrades'} here to open it.`, rx + rw / 2, y0 + ph - 62 * s);
+    }
+    // The value explained: what the number is, then what it is now and what the next rank makes it.
+    if (tip) {
+      const u = tip.u, r = tip.r, max = u.costs.length, hint = typeof u.hint === 'function' ? u.hint(u.params) : (u.hint || '');
+      const tw = 320 * s, pad = 12 * s, lh = 20 * s, rowH = 26 * s, val = (k) => (u.value ? u.value(u.params, k) : String(k));
+      ctx.font = FONT_PICK.font('text', Math.round(15 * s));
+      const lines = []; let line = '';
+      for (const w of hint.split(' ')) { const tl = line ? line + ' ' + w : w; if (line && textW(ctx, tl) > tw) { lines.push(line); line = w; } else line = tl; }
+      if (line) lines.push(line);
+      const rows = [['NOW', val(r)]]; if (r < max) rows.push(['NEXT', val(r + 1)]);
+      const bw = tw + pad * 2, bh = pad * 2 + lines.length * lh + 6 * s + rows.length * rowH;
+      let bx = tip.x + 18 * s, by = tip.y + 14 * s;
+      if (bx + bw > W - 8 * s) bx = tip.x - bw - 12 * s;
+      if (by + bh > Hh - 8 * s) by = Hh - 8 * s - bh;
+      ctx.fillStyle = 'rgba(10,7,18,0.97)'; ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#e0ac3e'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+      ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(244,239,226,0.92)';
+      lines.forEach((l, j) => ctx.fillText(l, bx + pad, by + pad + 15 * s + j * lh));
+      let yy = by + pad + lines.length * lh + 6 * s;
+      for (const [k, v] of rows) {
+        yy += rowH;
+        ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = k === 'NOW' ? 'rgba(247,215,116,0.75)' : '#d9ccff'; ctx.fillText(k, bx + pad, yy - 7 * s);
+        ctx.font = `700 ${18 * s}px ${FONT_SC}`; ctx.fillStyle = '#fff4c2'; ctx.fillText(v, bx + pad + 60 * s, yy - 7 * s);
+        this.glyph(ctx, u.glyph, bx + pad + 60 * s + textW(ctx, v) + 8 * s, yy - 13 * s, Math.max(2, Math.round(2.4 * s)));
+      }
+    }
+    // the way out, small, in the corner (the keys walk to it; the cross does the same)
+    const bw2 = 130 * s, bh2 = 26 * s, bx2 = rx + rw - bw2, cy2 = y0 + ph - 40 * s;
+    P.rects.push({ x: bx2, y: cy2, w: bw2, h: bh2 });
+    const selC = P.i === list.length;
+    ctx.fillStyle = selC ? 'rgba(247,215,116,0.2)' : 'rgba(255,255,255,0.03)'; ctx.fillRect(bx2, cy2, bw2, bh2);
+    ctx.strokeStyle = selC ? '#e0ac3e' : 'rgba(224,172,62,0.45)'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx2, cy2, bw2, bh2);
+    ctx.textAlign = 'center'; ctx.font = `700 ${13 * s}px ${FONT_SC}`; ctx.fillStyle = selC ? '#fff4c2' : 'rgba(255,244,194,0.6)'; ctx.fillText('LOOK AWAY', bx2 + bw2 / 2, cy2 + 18 * s);
     ctx.restore();
+  },
+  // A mirror row's glyph (`MIRROR_GLYPHS`), `c` px a cell, its left edge at x and centred on y.
+  glyph(ctx, key, x, y, c) {
+    const G = MIRROR_GLYPHS[key]; if (!G) return;
+    const x0 = Math.round(x), y0 = Math.round(y - G.rows.length * c / 2);
+    G.rows.forEach((row, j) => { for (let i = 0; i < row.length; i++) { const col = G.pal[row[i]]; if (col) { ctx.fillStyle = col; ctx.fillRect(x0 + i * c, y0 + j * c, c, c); } } });
   },
   // The corrupted soul as a counter's mark: the wisp's own pixel body, `w` px wide, centred at (x, y).
   soulIcon(R, x, y, w, dim) {
@@ -3081,7 +3177,7 @@ Object.assign(Heaven, {
   // ---------------------------------------------------------------- the mirror, bought by holding
   // Whether a row can be bought now (a rank left, enough in the heap).
   canBuy(i) {
-    const u = this.shelf()[i]; if (!u) return false;
+    const u = this.shelf()[i]; if (!u || !this.rowOpen(u)) return false;
     const r = this.rank(u.id), cost = u.costs[r];
     return cost !== undefined && this.meta.sacrifices >= cost && (this.meta.souls || 0) >= this.soulCost(u, r);
   },
@@ -3160,3 +3256,20 @@ Object.assign(Heaven, {
     ctx.restore();
   },
 });
+
+// The mirror rows' glyphs (10 Oct 2026, Hades' Mirror of Night): a cell a character, '.' empty.
+const MIRROR_GLYPHS = {
+  heart: { pal: { o: '#3a1420', r: '#d8343c', h: '#ff9a8a' }, rows: [
+    '.oo...oo.', 'orro.orro', 'orhrorrro', 'orrrrrrro', '.orrrrro.', '..orrro..', '...oro...', '....o....'] },
+  halo: { pal: { o: '#b07a1e', y: '#fff4c2', w: '#ffffff' }, rows: [
+    '.oo...oo.', 'oyyo.oyyo', 'oywyoyyyo', 'oyyyyyyyo', '.oyyyyyo.', '..oyyyo..', '...oyo...', '....o....'] },
+  life: { pal: { h: '#c9a46a', w: '#efe6d0', e: '#2a2030', n: '#d89a9a' }, rows: [
+    'h.......h', '.h.....h.', '..hwwwh..', '.wwwwwww.', '..wewew..', '..wwwww..', '...wnw...', '....w....'] },
+  // a tuft and a clock: how long he stands in grass to eat it (10 Oct 2026, "a clearer picture")
+  grass: { pal: { g: '#5f9a3c', G: '#a8d26a', o: '#e0ac3e', w: '#fff4c2', h: '#3a2c4e' }, rows: [
+    '....g......ooooo.', '.g..g..g..owwhwwo', '.gg.g.gg..owwhwwo', '..g.gGg...owwhhho', 'g.gGgGg.g.owwwwwo', '.gGgGgGg...ooooo.', '..ggggg..........'] },
+  quick: { pal: { o: '#e0ac3e', s: '#fff4c2' }, rows: [
+    'ooooooo', '.o...o.', '..oso..', '...o...', '..o.o..', '.o.s.o.', 'ooooooo'] },
+  dive: { pal: { a: '#d9ccff', s: '#f7d774' }, rows: [
+    '...a...', '...a...', '...a...', 'a..a..a', '.a.a.a.', '..aaa..', '...a...', 's.s.s.s'] },
+};

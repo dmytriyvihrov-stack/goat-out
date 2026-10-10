@@ -704,6 +704,7 @@ class PaintedArt extends AltarArt {
     const pixel=PIXEL_ART.unit(key); if(!pixel)return;
     ctx.save();
     if(key==='ratogre'&&e.state==='emerge'){const k=1-Math.max(0,e.timer)/TUNING.ratogre.emerge;ctx.scale(0.4+0.6*k,0.4+0.6*k);ctx.globalAlpha*=0.5+0.5*k;}
+    if(e.flayed&&e.state==='emerge'){const k=1-Math.max(0,e.timer)/TUNING.warden.monster.emerge,s=0.7+0.3*k*k;ctx.scale(s,s);ctx.globalAlpha*=0.45+0.55*k;}
     if(key==='wraith'){
       const born=e.state==='manifest'?1-Math.max(0,e.timer)/TUNING.wraith.manifest:(e.ghosted?0:1);
       ctx.globalAlpha*=0.35+born*0.65;const puff=1.12-born*0.12;ctx.scale(puff,puff);

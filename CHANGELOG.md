@@ -5,6 +5,45 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.010, 10 Oct 2026: no more wedged in a corner, THE FLAYED's change you can read
+
+- **Wedged goat** (playtest screenshot: stuck between the altar and a post): a goat pressing a move key who has not moved for
+  `physics.wedge.after` (0.3) s is let go by every blocking prop within `reach` of him until he is clear of each (`g.wedge`,
+  `Game.collideEntities`). Walls still hold him; only furniture lets go. A small puff of bone dust marks it.
+- **THE FLAYED rises** (his ask: a clearer pause between the phases): `warden.monster.emerge` 1.1 to 2.2 s, a ring and a toll every
+  `pulse` s growing outward, the goat shoved a step clear (no hit), THE FLAYED RISES over him, the fire off his fists thickened, and he
+  grows in from a crouch (`PaintedArt.character`); a red flash and a groan as he stands and the fight is his.
+
+---
+
+## 0.009, 10 Oct 2026: PLAYTESTER MODE and a LAST LEVEL button
+
+- **LAST LEVEL** in the dev drawer (his ask): straight onto THE OSSUARY, beside PREV / NEXT LEVEL (`lvl-last`).
+- **PLAYTESTER MODE** (his ask: "far fewer options, but on itch"): a SETTINGS switch. On, LEVELS shows on the title (start on any floor),
+  and a small `playtest` corner in play opens a short drawer, in the itch build too: GOD, HEAL, PREV / NEXT / LAST LEVEL, SKIP LEVEL,
+  LAST ROOM · BOSS, and under GIVE a soul (the cards), any soul (the picker), the mouse with her talismans, heaven's +100 sacrifices
+  and +5 souls (with a chime), a key, and A COMPANION, which opens the second choice: which animal. `Renderer.testerCols`, gated by
+  `TESTER_IDS` in `Game.devAction`. A life it hands anything to is flagged `T` in RUN STATS and left out of the funnel and the charts.
+- Polish check the same day: syntax, 250 seeds of every floor, every rule over 8 seeds, the doc numbers, the smoke bot on every floor,
+  THE DARK and THE TRIP: no throw, no NaN. THE YARD and THE THRESHING FLOOR end in a timeout for the bot only: the soul that lifts
+  their way out is in a blinking mage and a rifleman with four hearts, which a bot that only butts never brings down.
+
+---
+
+## 0.008, 10 Oct 2026: the mirror as Hades' Mirror of Night
+
+- **The mirror panel is read at a glance** (his ask, a screenshot of Hades: "less text, more visual"). Each upgrade is one row: its name in rose (gold once whole) with its ranks as pips,
+  what it gives now as a number beside a pixel glyph (`MIRROR[].value`, `glyph`, `MIRROR_GLYPHS` in js/heaven.js: a heart, a heart of light, a goat's head, a tuft, an hourglass, the dive),
+  a + box lit when it can be bought, and the price under the heap's own columns (souls, skulls); MAX once whole. Only the row pointed at says what it does, one line under the rows.
+  What is not on the glass yet (HELLDIVE before a revive) stands greyed behind a padlock. Bought by holding, as before.
+- **The rows open one by one** (his ask, "gradual unlocking"): `MIRROR[].opens` is how many ranks must be bought on the glass in all (THICK FLEECE and GOOD GRAZER
+  from the start, HALO after one, QUICK after two, ONE MORE LIFE after three, HELLDIVE after four). A shut row is a padlock, the name in grey and BUY n MORE TO OPEN; the
+  purchase that opens one breaks its padlock with a glint and two bells (`Heaven.rowOpen`, `noteOpened`, `meta.mirrorOpen`). A row already bought into stays open.
+- **The pointer on a value explains it** (`MIRROR[].hint`): what the number is, then NOW and NEXT with the glyph.
+- **GOOD GRAZER reads as time**: the value is the seconds he stands in grass (1.4s, then 0.7s), the glyph a tuft beside a clock.
+
+---
+
 ## 0.007, 10 Oct 2026: the branches folded into main
 
 - THE WARDEN branch (modest-goldberg) and the goat-art branch (sharp-edison) merged with main; the SPAWN list keeps main's menu and gains THE WARDEN and THE FLAYED.

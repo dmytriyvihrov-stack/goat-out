@@ -620,7 +620,7 @@ const sec = (title, sub, body) => `<section><h2>${title}</h2><p class="sub">${su
 
 function draw() {
   const b = $('build').value, easy = $('easy').checked;
-  const clean = REPORTS.filter((r) => (easy || !/E/.test(r.flags || '')) && !/[XJB]/.test(r.flags || ''));   // B: the autoplay bot
+  const clean = REPORTS.filter((r) => (easy || !/E/.test(r.flags || '')) && !/[XJBT]/.test(r.flags || ''));   // B: the autoplay bot, T: PLAYTESTER MODE's gifts
   // The date range: a life by the moment it began, the funnel by each player's first step (`funnelOf`).
   const rg = rangeOf(); $('from').parentNode.classList.toggle('on', rg.on);
   const dates = rg.on ? ` · ${rg.from != null ? 'from ' + esc($('from').value) : 'up'} to ${rg.to != null ? esc($('to').value) : 'today'}` : '';

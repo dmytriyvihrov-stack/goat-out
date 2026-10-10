@@ -1218,7 +1218,7 @@ class Game {
   // default: a number counting up in the corner of a game about running is a game about the number,
   // and the run is timed either way, the card at the end of a level is where the time belongs.
   loadSettings() {
-    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: TUNING.audio.musicDefault, sfxVolume: 0.5, shake: 1, fps: false, photoKey: false, photoAuto: false, fastCalm: false, stats: false, statsAsked: false, keysOnly: false, musicLow: true, sameFloor: false, skipIntro: false };
+    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: TUNING.audio.musicDefault, sfxVolume: 0.5, shake: 1, fps: false, photoKey: false, photoAuto: false, fastCalm: false, stats: false, statsAsked: false, keysOnly: false, musicLow: true, sameFloor: false, skipIntro: false, tester: false };
     try {
       const saved = JSON.parse(localStorage.getItem(SET_KEY) || '{}');
       // The music starts quieter (3 Oct 2026: playtesters turned it well down). A store written before
@@ -1572,6 +1572,20 @@ class Game {
     } catch (e) { /* fetch unavailable */ }
   }
   devAction(id) {
+    // PLAYTESTER MODE (10 Oct 2026, the user's: "far fewer options, but on itch: start from a given level, god mode, a soul,
+    // the mouse's talisman, heaven's resources, a companion and then which"): SETTINGS `tester` gives the itch build, which has
+    // no dev drawer, a short one (`Renderer.testerCols`). Only its rows answer there, and what they hand him marks the life
+    // `T` (js/stats.js), so the playtest's numbers never count it.
+    if (this.dev.hidden) {
+      const pet = id === 'coop' || Beast.is(id), pick = id.startsWith('boon-have=');
+      if (!(this.settings && this.settings.tester) || !(TESTER_IDS.has(id) || pet || pick)) return;
+      const floor = this.level && !this.level.def.heaven && this.goat && this.world && (this.state === 'play' || this.state === 'paused');
+      if (TESTER_GIFTS.has(id) || pet || pick) {
+        if (!floor) { this.devToast('START A FLOOR FIRST'); return; }
+        this.testerUsed = true; Stats.mark(this);
+      }
+    }
+    if (id === 'tester-pets') { this.dev.testerPets = !this.dev.testerPets; return; }
     if (id.startsWith('music-')) { this.audio.labAction(id.slice(6), this); return; }
     if (id === 'toggle') { this.dev.open = !this.dev.open; return; }
     if (id === 'god') { this.toggleSetting('god'); this.devToast(this.dev.god ? 'GOD MODE ON' : 'GOD MODE OFF'); return; }
@@ -1617,9 +1631,10 @@ class Game {
     // PREV / NEXT LEVEL: straight onto the floor before or after this one, as LEVELS on the title does
     // (`startAtLevel`: the souls a run would have banked dealt out, no save touched). SKIP LEVEL is the
     // other one: it climbs the stairs of the run he is in.
-    if (id === 'lvl-prev' || id === 'lvl-next') {
-      if (!this.level || this.level.def.heaven || !this.goat || (this.state !== 'play' && this.state !== 'paused')) return;
-      const at = this.level.def.showroom ? 0 : this.levelIndex || 0, li = Math.max(0, Math.min(LEVELS.length - 1, at + (id === 'lvl-next' ? 1 : -1)));
+    // LAST LEVEL (10 Oct 2026, the user's): straight onto THE OSSUARY, the run's last floor.
+    if (id === 'lvl-prev' || id === 'lvl-next' || id === 'lvl-last') {
+      if (!this.level || this.level.def.heaven || !this.goat || (this.state !== 'play' && this.state !== 'paused')) { this.devToast('START A FLOOR FIRST, OR LEVELS ON THE TITLE'); return; }
+      const at = this.level.def.showroom ? 0 : this.levelIndex || 0, li = id === 'lvl-last' ? LEVELS.length - 1 : Math.max(0, Math.min(LEVELS.length - 1, at + (id === 'lvl-next' ? 1 : -1)));
       this.dev.open = false; this.dev.rules = false; this.startAtLevel(li);
       this.devToast('LEVEL ' + (li + 1) + ' · ' + LEVELS[li].name);
       return;
@@ -1732,7 +1747,9 @@ class Game {
     if (id === 'home-life') { this.extraLives = (this.extraLives | 0) + 1; this.livesMax = Math.max(this.livesMax | 0, this.extraLives); this.devToast(`${this.extraLives} MORE ${this.extraLives === 1 ? 'LIFE' : 'LIVES'}`); return; }
     if (id === 'bells-reset') { const M = Heaven.meta || Heaven.load(); M.bellsGot = {}; M.bellsSeen = 1; M.bellsHung = 0; M.bellSong = 0; M.bellQuest = false; Heaven.save(); this.devToast('ONE BELL AWAKE'); return; }
     if (id === 'addkey') { this.runKeys = (this.runKeys | 0) + 1; this.keyFlash = 0.5; this.devToast(`${this.runKeys} KEYS`); return; }
-    if (id === 'sacrifices') { Heaven.meta.sacrifices += 100; Heaven.meta.souls = (Heaven.meta.souls || 0) + 5; Heaven.save(); this.devToast(`${Heaven.meta.sacrifices} SACRIFICES · ${Heaven.meta.souls} SOULS`); return; }
+    if (id === 'sacrifices') { Heaven.meta.sacrifices += 100; Heaven.meta.souls = (Heaven.meta.souls || 0) + 5; Heaven.save();
+      [523, 659, 784, 1047].forEach((f, i) => this.audio.sfxChime(f, 1, i * 0.09));   // heard, so a press is never in doubt
+      this.devToast(`${Heaven.meta.sacrifices} SACRIFICES · ${Heaven.meta.souls} SOULS`); return; }
     if (id === 'rules') { this.dev.rules = !this.dev.rules; if (this.dev.rules) { this.dev.page = this.level ? this.levelIndex : 0; this.dev.room = null; } return; }
     if (id.startsWith('rules-L')) { this.dev.page = Number(id.slice(7)); this.dev.room = null; return; }
     if (id === 'rules-roll') { this.dev.sampleSeed = (Math.random() * 1e9) | 0; this.dev.samples = {}; this.dev.matrix = null; this.dev.room = null; return; }
@@ -3124,7 +3141,7 @@ class Game {
   // dev mode"), and never in the itch build, which has no drawer.
   // LEVELS, and BEST (2 Oct 2026 playtest: "hide it for now, it is not about the score"), only with the dev drawer open.
   // UNLOCKS joined the dev-only rows on 9 Oct 2026 ("don't need this" on the title): the book's second tab still has it
-  menuItems() { return MENU.filter((id) => (id !== 'levels' && id !== 'best' && id !== 'unlocks') || (this.dev && this.dev.open && !this.dev.hidden)); }
+  menuItems() { return MENU.filter((id) => (id !== 'levels' && id !== 'best' && id !== 'unlocks') || (this.dev && this.dev.open && !this.dev.hidden) || (id === 'levels' && this.settings && this.settings.tester)); }
   menuAt(p) {
     const r = this.menu.rects;
     for (let i = 0; i < r.length; i++) if (p.x >= r[i].x && p.x <= r[i].x + r[i].w && p.y >= r[i].y && p.y <= r[i].y + r[i].h) return i;
@@ -5113,6 +5130,18 @@ class Game {
     // ghosted through a gate ran a whole room ahead of him. The hen and the crow are birds. The
     // horse is held too, which is what it kicks at (`Beast.doorAhead`).
     for (const p of this.props) if ((p.kind === 'goose' || p.kind === 'horse' || p.kind === 'pig' || p.kind === 'rabbit' || p.kind === 'husky' || (p.kind === 'tortoise' && !p.flying)) && !p.broken && !p.held) all.push(p);
+    // Wedged (10 Oct 2026 playtest: stuck in a corner between a table and a post): he leans on a move key and does not
+    // move for `wedge.after` s, so the props he overlaps stop holding him until he is clear of every one of them.
+    const WG = TUNING.physics.wedge, wasX = g._wx, wasY = g._wy; g._wx = g.x; g._wy = g.y;
+    const pushing = !g.dead && g.state !== 'stunned' && g.state !== 'carried' && g.state !== 'tossed' && g.state !== 'falling' && g.state !== 'ko' && g.state !== 'bite' && hyp(this.input.mx || 0, this.input.my || 0) > 0.3;
+    if (pushing && wasX !== undefined && hyp(g.x - wasX, g.y - wasY) < WG.moved * dt * TILE) g.wedgeT = (g.wedgeT || 0) + dt; else if (!pushing || (wasX !== undefined && hyp(g.x - wasX, g.y - wasY) > WG.moved * 2 * dt * TILE)) g.wedgeT = 0;
+    if (g.wedge && g.wedge.size) for (const p of g.wedge) if (p.broken || hyp(g.x - p.x, g.y - p.y) > g.r + p.r + WG.clear) g.wedge.delete(p);
+    if (g.wedge && !g.wedge.size) g.wedge = null;
+    if ((g.wedgeT || 0) >= WG.after) {
+      g.wedgeT = 0; g.wedge = g.wedge || new Set();
+      for (const p of this.props) if (!p.broken && !p.item && p.blocking && p.kind !== 'door' && p.kind !== 'gate' && hyp(g.x - p.x, g.y - p.y) < g.r + p.r + WG.reach) g.wedge.add(p);
+      if (g.wedge.size) this.particles(g.x, g.y - 8, 6, PALETTE.bone, 90);
+    }
     for (const p of this.props) {
       if (p.broken) continue;
       if (p.item) {
@@ -5125,6 +5154,7 @@ class Game {
       if (!p.blocking) continue;
       for (const e of all) {
         if (e === p || e.dead || e.held || e.ghosted) continue;
+        if (e === g && g.wedge && g.wedge.has(p)) continue;
         // Nothing within reach of this prop: the cheapest rejection there is, ahead of the slab and
         // disc maths below. `far` is a generous box, the door's own half-span plus a body.
         if (Math.abs(e.x - p.x) > e.r + p.r + TILE || Math.abs(e.y - p.y) > e.r + p.r + TILE) continue;
@@ -5728,7 +5758,7 @@ class Game {
     }
   }
 
-  forgetLessons() { this.runJumped = false; this.hideTaught = false; this.tripAt = -1; this.darkAt = -1; this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; this.gooseTold = false; this.beastTold = {}; this.boardTold = false; this.hungerOffered = false; }
+  forgetLessons() { this.runJumped = false; this.testerUsed = false; this.hideTaught = false; this.tripAt = -1; this.darkAt = -1; this.houndTold = false; this.henTold = false; this.clockTold = false; this.mistSaid = 0; this.ogreTold = false; this.shopTold = false; this.gooseTold = false; this.beastTold = {}; this.boardTold = false; this.hungerOffered = false; }
 
   mistTold(e) {
     if (this.mistSaid === undefined) this.mistSaid = 0;

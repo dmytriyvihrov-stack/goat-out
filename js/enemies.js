@@ -2781,7 +2781,26 @@ class Enemy {
   }
   updateOgre(dt, game, sees) {
     const g = game.goat, cfg = this.cfg, w = game.world;
-    if (this.state === 'emerge') { this.vx = 0; this.vy = 0; this.timer -= dt; if (this.timer <= 0) { this.state = 'chase'; this.aware = true; } return; }
+    if (this.state === 'emerge') {
+      this.vx = 0; this.vy = 0; this.timer -= dt;
+      if (this.flayed) {
+        // THE FLAYED's change is a pause you can read: the world slowed by the first beat, a ring every `pulse` s, the goat
+        // shoved clear of him (no hit) and the fire off his fists, then he is up and the fight is his.
+        const M = TUNING.warden.monster, first = !this.emergeSeen; this.emergeSeen = true;
+        this.emergeP = (this.emergeP || 0) - dt;
+        if (this.emergeP <= 0) {
+          this.emergeP = M.pulse; const k = 1 - Math.max(0, this.timer) / M.emerge;
+          game.ring(this.x, this.y, (1.2 + 2.2 * k) * TILE, PALETTE.witchHi, 0.6, 3); game.audio.sfxToll();
+          const dx = g.x - this.x, dy = g.y - this.y, d = hyp(dx, dy) || 1;
+          if (d < 3.2 * TILE) { g.x += dx / d * 0.45 * TILE; g.y += dy / d * 0.45 * TILE; }
+          game.shake(3);
+        }
+        if (first) game.floatText(this.x, this.y - 90, 'THE FLAYED RISES', PALETTE.blood);
+        Warden.fistFire(game, this, dt * 3);
+      }
+      if (this.timer <= 0) { this.state = 'chase'; this.aware = true; if (this.flayed) { game.flash(PALETTE.blood, 0.12); game.audio.sfxGroan && game.audio.sfxGroan('butcher'); } }
+      return;
+    }
     if (this.state === 'idle' || this.state === 'investigate' || this.state === 'noticed') { this.state = 'chase'; this.aware = true; }
     let target = null, td = Infinity;
     if (!g.dead) { target = g; td = hyp(g.x - this.x, g.y - this.y); if (!sees && !w.los(this.x, this.y, g.x, g.y)) td = Infinity; }
