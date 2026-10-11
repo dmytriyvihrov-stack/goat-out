@@ -91,6 +91,8 @@ const LOOKS = [
 ];
 
 const sprite = (Lk, s) => { const [g, d] = mk(); Lk.draw(d, s); return g.outline(OL); };
+module.exports = { LOOKS, sprite, W, H, FOOT, TX };
+if (require.main !== module) return;
 
 const Z = +(process.argv[2] || 4), pad = 16, S = 3;
 const blockW = 2 * W * Z + 3 * pad, blockH = H * Z + 86, perRow = 2, rows = Math.ceil(LOOKS.length / perRow);

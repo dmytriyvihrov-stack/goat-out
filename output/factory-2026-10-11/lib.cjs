@@ -106,7 +106,7 @@ const toImg = (g) => { const im = new Img(g.w, g.h); for (let y = 0; y < g.h; y+
 const src = fs.readFileSync(path.join(__dirname, '../../js/pixel-assets.js'), 'utf8');
 const A = JSON.parse(src.match(/const PIXEL_ASSETS = (\{.*?\});/s)[1].replace(/"image":"data:image\/png;base64,[^"]*"/, '"image":""'));
 const at = decode(Buffer.from(src.match(/data:image\/png;base64,([A-Za-z0-9+/=]+)/)[1], 'base64'));
-const EXT = { goat: 34, clubman: 36, mage: 38 };
+const EXT = { goat: 34, clubman: 36, mage: 38, hound: 26, butcher: 44, hunter: 36 };
 const atlasImg = (u, d) => { const f = A.units[u].idle[d], im = new Img(f[2], f[3]); for (let j = 0; j < f[3]; j++) for (let i = 0; i < f[2]; i++) { const k = ((f[1] + j) * at.w + f[0] + i) * 4; if (at.data[k + 3] < 128) continue; im.fill(i, j, 1, 1, '#' + [0, 1, 2].map((o) => at.data[k + o].toString(16).padStart(2, '0')).join('')); } return { im, foot: f[5], k: EXT[u] / A.target }; };
 
 // Lays an atlas unit on the sheet with its feet at world point (wx, wy) of a diagram whose texel origin is (ox, oy) px and
@@ -196,3 +196,52 @@ function room(look, w, h, deco) {
 }
 
 module.exports = { fs, path, Img, text, P, Grid, F, D, TX, TT, TILE, OL, hash, lit, toImg, atlasImg, putUnit, LOOKS, room };
+
+// ---------------------------------------------------------------- second pass (11 Oct 2026): light, shadow, tilt
+// The first sheets were flat. The game squashes world Y by TILT, puts a shadow under every foot, and its rooms are lit
+// by what burns in them. These work on the composed Img (px), after the room is laid and before or after the units.
+const TILT = 0.86;
+// a soft dark ellipse under a foot point (px)
+function shadow(img, cx, cy, rx, ry, a = 0.45) {
+  for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
+    const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, n = dx * dx + dy * dy; if (n > 1) continue;
+    img.put(x, y, 12, 8, 10, Math.round(255 * a * (n < 0.6 ? 1 : (1 - n) / 0.4)));
+  }
+}
+// Lights over a rect of the image: `ambient` [r,g,b] multipliers for the dark, each light { x, y, r, c: [r,g,b], k }
+// adding its colour inside `r` px with a squared falloff. The sum is quantised to `steps` so the light reads in bands
+// like everything else on the floor, never a smooth gradient (the game's one exception is a blast's flash).
+function light(img, x0, y0, w, h, lights, ambient = [0.42, 0.40, 0.48], steps = 7, max = 1.45) {
+  const d = img.data;
+  for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+    const o = (y * img.w + x) * 4; if (!d[o + 3]) continue;
+    let r = ambient[0], g = ambient[1], b = ambient[2];
+    for (const L of lights) { const dx = x - L.x, dy = (y - L.y) / (L.sy || 1), dd = Math.hypot(dx, dy); if (dd >= L.r) continue; const f = (1 - dd / L.r) ** 2 * (L.k || 1); r += f * L.c[0]; g += f * L.c[1]; b += f * L.c[2]; }
+    const q = (v) => Math.min(max, Math.round(v * steps) / steps);
+    r = q(r); g = q(g); b = q(b);
+    d[o] = Math.min(255, d[o] * r); d[o + 1] = Math.min(255, d[o + 1] * g); d[o + 2] = Math.min(255, d[o + 2] * b);
+  }
+}
+// dust and steam motes over a lit room: a few pale specks, more near the lights
+function motes(img, x0, y0, w, h, n, seed, c = [230, 225, 215]) {
+  for (let k = 0; k < n; k++) { const x = x0 + hash(k, seed) * w / 100, y = y0 + hash(seed, k * 7) * h / 100, a = 60 + hash(k * 3, seed) % 90; img.put(Math.round(x), Math.round(y), c[0], c[1], c[2], a); img.put(Math.round(x) + 1, Math.round(y), c[0], c[1], c[2], a >> 1); }
+}
+// an Img rotated a quarter turn (a man lying on the belt is his sprite on its side)
+function rot90(src, cw) { const im = new Img(src.h, src.w); for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) { const o = (y * src.w + x) * 4; const nx = cw ? src.h - 1 - y : y, ny = cw ? x : src.w - 1 - x; const q = (ny * im.w + nx) * 4; im.data[q] = src.data[o]; im.data[q + 1] = src.data[o + 1]; im.data[q + 2] = src.data[o + 2]; im.data[q + 3] = src.data[o + 3]; } return im; }
+// the game's cells laid straight on the image (px): a dot every `step` px over a world-rect, for a tell or a hit
+function cellsPx(img, x0, y0, w, h, c, step = 6, size = 3, a = 255) { const [r, g, b] = Img.hex(c); for (let y = y0; y < y0 + h; y += step) for (let x = x0; x < x0 + w; x += step) for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) img.put(Math.round(x) + i, Math.round(y) + j, r, g, b, a); }
+// a ring of cells (the horn wave, a quake) in px
+function ringPx(img, cx, cy, r, c, n = 28, size = 3, sy = TILT) { const [rr, g, b] = Img.hex(c); for (let k = 0; k < n; k++) { const a = k * 2 * Math.PI / n, x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r * sy); for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) img.put(x + i, y + j, rr, g, b, 255); } }
+// Lays a room grid on the image squashed by TILT, so a wall face stands taller than a floor tile the way it does in play.
+function layRoom(img, g, x, y, Z) { const im = toImg(g); img.blit(im, 0, 0, g.w, g.h, x, y, g.w * Z, Math.round(g.h * Z * TILT)); return { w: g.w * Z, h: Math.round(g.h * Z * TILT) }; }
+// a unit with its feet at world (wx, wy) of a tilted room at (ox, oy), with its shadow; `lying` lays the sprite on its side
+function unit(img, u, d, ox, oy, wx, wy, Z, opt = {}) {
+  const a = atlasImg(u, d), s = a.k * Z / TX; let im = a.im, foot = a.foot, w = Math.round(im.w * s), h = Math.round(im.h * s);
+  const px = ox + wx * Z / TX, py = oy + wy * Z / TX * TILT;
+  if (opt.lying) { im = rot90(im, opt.lying === 'cw'); w = Math.round(im.w * s); h = Math.round(im.h * s); foot = im.h * 0.5; }
+  if (!opt.noShadow) shadow(img, px, py - (opt.air || 0) * 0 + 2, w * 0.42, w * 0.18, opt.air ? 0.25 : 0.45);
+  if (opt.tint) { im = new Img(im.w, im.h); im.data.set(a.im.data); if (opt.lying) im = rot90(im, opt.lying === 'cw'); for (let i = 0; i < im.data.length; i += 4) if (im.data[i + 3]) { im.data[i] = Math.min(255, im.data[i] * opt.tint[0]); im.data[i + 1] = Math.min(255, im.data[i + 1] * opt.tint[1]); im.data[i + 2] = Math.min(255, im.data[i + 2] * opt.tint[2]); } }
+  img.blit(im, 0, 0, im.w, im.h, Math.round(px - w / 2), Math.round(py - foot * s - (opt.air || 0) * Z / TX), w, h, true);
+  return { x: px, y: py, w, h };
+}
+Object.assign(module.exports, { TILT, shadow, light, motes, rot90, cellsPx, ringPx, layRoom, unit });

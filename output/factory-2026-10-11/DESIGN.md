@@ -1,6 +1,55 @@
 # THE FACTORY (working name): a floor of machines, the cult's rendering works
 
-Concept notes, 11 Oct 2026. Nothing here is built. The brief (the user's, same day): a floor "factory / mechanisms", its
+## Second pass (11 Oct 2026, "can you do better")
+
+The first pass was a list: three floors, twenty-one props, twelve traps, four robots, flat on the page. Two things were
+wrong with it. The pictures were not what a frame of play looks like (no tilt, no shadow under a foot, no light from what
+burns, nothing happening), and the idea had no spine: a factory with traps in it is a prop list, not a floor. The second
+pass is three sheets that fix both; the first-pass sheets stay below as the parts bin.
+
+| sheet | script | what |
+|---|---|---|
+| `hero.png` | `hero.cjs` | three scenes as the game would frame them: the room squashed by TILT, a shadow under every foot, lit by its lamps and furnaces (banded, never a gradient), the tells in amber cells and the blows in white over the light, the action mid-beat |
+| `line.png` | `line.cjs` | THE LINE: the floor as the cult's slaughter line, eight stations in order, each a small lit room with its machine |
+| `engines.png` | `engines.cjs` | THE RENDERED: the mechanical man as one family of three sizes, a rendered animal's soul burning in each, in three states |
+
+**THE LINE is the floor.** The cult's works is a slaughter line, and the stations of a real one are the rooms, in order:
+the pens, the stunning box, the bleeding room, the scalding tanks, the splitting room, the rendering house, the ovens. The
+goat lands at the far end, among the ovens and the press, and runs the line BACKWARDS up to the loading dock, where the
+trucks of the prologue stand (he came in on one) and the way out is the dock gate. That gives the generator a canon with
+an order to it (`levelDef.stations`, each with its own template pool and machine, dealt in sequence the way the ramp's
+teaching rooms are placed, not rolled), the floor a colour arc (the ovens hot and dark, the tile cold and white, the dock
+open to the night), and the player a story he reads off the rooms: every room is a step of what was going to happen to
+him. The escort's cage is in THE PENS (station 7), among the other animals; the middle gate's rest room sits between the
+scalding tanks and the bleeding room. The three first-pass looks are not three floors any more: C · THE BONE MILL is the
+ovens' end, B · THE RENDERING HOUSE the middle, A · THE KILLING FLOOR the pens' end, and the floor walks from one into
+the next.
+
+**THE RENDERED is the enemy.** Not a steampunk robot: the cult's iron is driven by what it rendered. Every engine is a
+shell round a brass-rimmed glass port, and in the port burns the soul of an animal that went down the line, a dog in
+THE KETTLE (hound-sized, the hound's ring and dart, built up as steam), a goat in THE STOKER (man-sized, the clubman's
+swing, a shovel), a bull in THE ENGINE (the floor's last man, ogre-sized, the ogre's leap and slam with a ring of scald
+on landing, hooks for hands, four stacks). The immunities now mean something a player can read: **fire feeds the
+soul-flame** (STOKED: faster, the gauge red; the fire set's own player, KINDLING and EMBER, meets the one man his build
+makes stronger), **poison finds no blood** (the drip beads off iron), and what kills them is the floor's own water and
+steam (the vats, the steam main, the tipped tank): QUENCHED, the port goes dark and cracks and **the soul goes up, white,
+to heaven** (`Motes.spawn` as for any kill, `Heaven.earn`: freeing them pays the god, which is what the goat was sent
+back down to do), and stone, the press and the hammer break the shell the way a wall breaks a man. The third state is
+the one that makes the seer worth something on a floor where fire is nothing: **witchfire CORRUPTS the soul** (violet,
+the game's own corrupted colour) and the engine turns on its own cult for `rendered.corrupt` s, the way the shaman's
+spirit turns a man. A seer who casts at the goat beside an engine has made a mistake, and a goat with the right cape
+(CLOAK OF SIGNS) or a carried rune can make it on purpose. In the code: `immune: { fire: true, poison: true }` (poison new),
+`unliftable`, `fling` refuses them as it refuses the ogre, `Enemy.quench` on contact with scald or steam, `Enemy.corrupt`
+off a witchfire tile, each a clubman / hound / ogre with its own key in `characterKey` and its own picture.
+
+If one thing is built first: THE LINE as a canon with THE STOKER as its man, three machines (the press lane, the belt
+into the grinder, the sorting gates) and the steam main as the counter, on the existing ladder as a canon of THE BRIDGE
+and THE RAFTERS; THE ENGINE as a boss and the dock come when the floor is cut round it.
+
+---
+
+
+Concept notes, 11 Oct 2026, first pass. Nothing here is built. The brief (the user's, same day): a floor "factory / mechanisms", its
 theme the processing of animals; one of its traps the squeezing walls, a press; more design options and traps than one;
 and a thought on a mechanical enemy that fire and poison do nothing to. Shown first, decided after.
 
