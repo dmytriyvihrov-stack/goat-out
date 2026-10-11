@@ -100,6 +100,10 @@ const KEYBOARD_KEY = /^(Key[A-Z]|Digit\d|Arrow|Space|Enter|Escape|Backspace|Tab|
 // written down, and of those the ones that leave the floor for good rather than lie there broken.
 // The mouse is her own record (`shops`: provoked, her ogre up or down), the floor's loose drops theirs (`loose`).
 const SPOT_KEEP = new Set(['heal', 'key', 'lostbell', 'cape', 'ware', 'shrooms', 'coop', 'crate', 'door', 'ironcage', 'barrel', 'bomb', 'fish']);
+// What the wedge (`physics.wedge`, `collideEntities`) never lets him through: everything that holds him ON PURPOSE until a
+// blow, a key or a crack opens it. 11 Oct 2026 playtest: "I just walked through the first cage without breaking it", the
+// pen's bars, 6 px apart, read as furniture he was wedged between and let go of him after 0.3 s of leaning on them.
+const WEDGE_HOLD = new Set(['cage', 'coop', 'ironcage', 'rock', 'secret', 'mill', 'suit', 'barrel', 'brazier', 'bell', 'fish', 'shrooms']);
 const SPOT_DROP = new Set(['heal', 'key', 'lostbell', 'cape', 'ware', 'shrooms', 'crate', 'barrel', 'bomb', 'fish']);
 const SPOT_LOOSE = new Set(['heal', 'key', 'lostbell']);
 class Game {
@@ -5139,7 +5143,7 @@ class Game {
     if (g.wedge && !g.wedge.size) g.wedge = null;
     if ((g.wedgeT || 0) >= WG.after) {
       g.wedgeT = 0; g.wedge = g.wedge || new Set();
-      for (const p of this.props) if (!p.broken && !p.item && p.blocking && p.kind !== 'door' && p.kind !== 'gate' && hyp(g.x - p.x, g.y - p.y) < g.r + p.r + WG.reach) g.wedge.add(p);
+      for (const p of this.props) if (!p.broken && !p.item && p.blocking && p.kind !== 'door' && p.kind !== 'gate' && !WEDGE_HOLD.has(p.kind) && hyp(g.x - p.x, g.y - p.y) < g.r + p.r + WG.reach) g.wedge.add(p);
       if (g.wedge.size) this.particles(g.x, g.y - 8, 6, PALETTE.bone, 90);
     }
     for (const p of this.props) {

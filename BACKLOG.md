@@ -17,6 +17,14 @@ Tags: **bug** something is wrong; **feel** it works and does not read; **number*
 
 ## Batches
 
+### 11 Oct 2026, seventh batch (his three notes)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | bug | walked through the pen's bars without breaking them, while the floor said hit again and again | 0.010's wedge release let go of every blocking prop a goat leaned on for 0.3 s, the pen's bars included: `WEDGE_HOLD` (game.js) keeps the cage, coops, iron cages, boulders, secret walls, the hub, suits, barrels, braziers, the gong, the fish and the mushroom solid; tables and the rest still let a wedged goat go (0.013). |
+| 2 | system | a FACTORY floor, "mechanisms", the processing of animals; the press (squeezing walls) one of its traps; more design options and traps, shown first | Not built. The study is `output/factory-2026-10-11/` (DESIGN.md and four sheets: three looks for the canon, 21 machines, 12 traps, the mechanical man in four looks). Waiting on his picks: the look, the floor's place in the ladder, which traps, which man. |
+| 3 | system | a mechanical enemy with protection from fire and poison | Same study, `enemy.png` and the last section of DESIGN.md: `immune.fire` exists (the wraith's), `immune.poison` would be new; water, steam, stone and witchfire are what kill him. |
+
 ### 9 Oct 2026, sixth batch (his 18 notes and screenshots)
 
 | # | tag | note | what shipped |
