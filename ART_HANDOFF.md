@@ -119,4 +119,19 @@ shade it with `tone`, and `outline()` it; register it in `sprites`. Render it bi
 (`rack-`, `coop-`, `roast-` names) keeps its frame so the layers line up; everything else is trimmed.
 About 1.35 world px a texel (`TX`) is the grain of the crate and barrel.
 
+### Native-size study, 12 Oct 2026 (not the default)
+
+The user rejected the large Oct 7 concept illustrations as too detailed for this game and narrowed
+the next comparison to bomb, husky and fish. `js/small-art-study.js` registers `@small` variants at
+the originals' exact grid dimensions, including singing, swimming and broken states. Select with
+`ART_PASS.smallProps`, the ART tab's BOMB / HUSKY / FISH button, or `#smallart`; `#aspacked` starts
+with originals. The renderer cache keys include the variant name. Collision and tuning are unchanged.
+
+Evidence and transparent native PNGs: `output/small-art-2026-10-12/index.html`. Reproduce using
+`node tools/capture-small-art.cjs` (one temporary headless Chrome, existing server and H harness).
+Actual game frames and 5x3 floor patches use the game's renderer. Eight floor mean-colour checks,
+first-draw timings and browser exceptions are in `validation.json`. No browser exceptions observed.
+Trade-offs: the husky is warmer; the quieter aquarium is less conspicuous than the original;
+the bomb's mean floor contrast remains only 1.06–1.43, so its light edge and fuse carry readability.
+These are reviewable studies, not a recorded user selection or a published change.
 

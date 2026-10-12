@@ -649,7 +649,7 @@ class Game {
     const onMouth = (m, x, y, r) => m.tiles.some((i) => Math.abs(x - (i % w.W + 0.5) * TILE) < TILE / 2 + r && Math.abs(y - (((i / w.W) | 0) + 0.5) * TILE) < TILE / 2 + r);
     // open again what no longer holds a boss
     for (const room of L.rooms) {
-      const sh = room.bossShut; if (!sh || sh.done || bossIn(room)) continue;
+      const sh = room.bossShut; if (!sh || sh.done || sh.hold || bossIn(room)) continue;   // `hold`: THE LAST SUPPER's seal, down when it is done (js/endboss.js)
       sh.done = true;
       const back = L.rooms[room.index - 1];
       if (back && !back.clamped) { sh.tiles.forEach((i, k) => { w.tiles[i] = sh.was[k]; }); w.caveDirty(); }
@@ -1784,6 +1784,7 @@ class Game {
     if (id === 'art-floors') { ART_PASS.floors = !ART_PASS.floors; return; }
     if (id === 'art-shield') { ART_PASS.shield = ((ART_PASS.shield || 0) + 1) % PROP_PIXELS.SHIELD_LOOKS.length; return; }
     if (id === 'art-shaman') { ART_PASS.shaman = ((ART_PASS.shaman || 0) + 1) % SHAMAN_PIXELS.LOOKS.length; return; }
+    if (id === 'art-smallProps') { ART_PASS.smallProps = !ART_PASS.smallProps; return; }
     // the second pass's switches; the baked rooms and cave key themselves on hay and the cave's floor
     if (id === 'art-shadows' || id === 'art-tells' || id === 'art-hay' || id === 'art-cave') { const k = id.slice(4); ART_PASS[k] = !ART_PASS[k]; return; }
     if (id === 'art-clubman') { ART_PASS.clubman = (ART_PASS.clubman + 1) % PIXEL_STUDY.clubman.length; return; }
@@ -2549,12 +2550,12 @@ class Game {
 
   // STEALTH (dev test, 5 Oct 2026): how long the sneak stays shut after a fight found him (`stealth.deny`
   // s after the last `breakSneak`); 0 when it is free. A timestamp, so a level's fresh clock frees it.
-  // Stealth is part of the game from the second floor on (9 Oct 2026, his word: the floor teaches `ALT - STEALTH MODE`); on
-  // the first it stays what it was, a dev test (the drawer's STEALTH), and never in heaven or the trip (THE SHOWROOM has it, with the lesson on its hall's floor).
+  // Stealth is part of the game from the first floor on (12 Oct 2026, his word: "it may as well be there from the start,
+  // the lesson only comes later"; THE YARD still teaches `ALT - STEALTH MODE`), never in heaven or the trip.
   get stealthLive() {
     if (this.dev && this.dev.stealth) return true;
     const d = this.level && this.level.def;
-    return !!(d && !d.heaven && !d.shroom && (d.showroom || levelIndexOf(d) >= 1) && this.state !== 'heaven');
+    return !!(d && !d.heaven && !d.shroom && (d.showroom || levelIndexOf(d) >= 0) && this.state !== 'heaven');
   }
   sneakDenied() {
     const d = this.timer - (this.sneakDenyAt ?? -1e9);
@@ -4283,7 +4284,8 @@ class Game {
       if (this.goat.dead) { p.graze = 0; continue; }
       const near = hyp(p.x - this.goat.x, p.y - this.goat.y) <= H.pickupR + this.goat.r
         && hyp(this.goat.vx, this.goat.vy) < H.grazeSpeed;
-      if (this.goat.hp >= this.goat.maxHp) {
+      // THE LAST SUPPER's tuft (`p.supper`, js/endboss.js) is grazed at any hearts: sitting down to it is what it is for.
+      if (this.goat.hp >= this.goat.maxHp && !p.supper) {
         // THE NOSEBAG: with every heart full the tuft goes in the bag instead (js/talismans.js).
         if (Talisman.bagGraze(this, p, near, dt)) { p.fullTold = false; continue; }
         p.graze = 0;
@@ -5139,7 +5141,9 @@ class Game {
     if (g.wedge && !g.wedge.size) g.wedge = null;
     if ((g.wedgeT || 0) >= WG.after) {
       g.wedgeT = 0; g.wedge = g.wedge || new Set();
-      for (const p of this.props) if (!p.broken && !p.item && p.blocking && p.kind !== 'door' && p.kind !== 'gate' && hyp(g.x - p.x, g.y - p.y) < g.r + p.r + WG.reach) g.wedge.add(p);
+      // A pen is a wall that is meant to hold until it is broken (12 Oct 2026, a tester walked out of the first pen by leaning on it):
+      // the wedge is for furniture a body got stuck between, never for bars, which a headbutt opens.
+      for (const p of this.props) if (!p.broken && !p.item && p.blocking && p.kind !== 'door' && p.kind !== 'gate' && p.kind !== 'cage' && p.kind !== 'ironcage' && p.kind !== 'coop' && hyp(g.x - p.x, g.y - p.y) < g.r + p.r + WG.reach) g.wedge.add(p);
       if (g.wedge.size) this.particles(g.x, g.y - 8, 6, PALETTE.bone, 90);
     }
     for (const p of this.props) {

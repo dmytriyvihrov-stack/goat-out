@@ -5,6 +5,31 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## Unreleased, 12 Oct 2026: the first pen holds, and a marked thing looks marked
+
+- **THE LAST SUPPER IS A SCENE** (the user, with a screenshot of walking into THE OSSUARY's last room): the goat in the room no
+  longer simply gets the chair slid out at him while he runs about. Control is taken for a beat (`EndBoss.stepSupper`, a held
+  scene like the other floors' last men): the way in is stoned behind him (SEALED), the camera goes over to THE WARDEN, who sits
+  at the head of the table like everyone else, stands, and slides the chair out under his raised hand, and his words come in the
+  animals' own box (THE WARDEN: "WE HAVE BEEN WAITING FOR YOU, LITTLE GOAT.", "COME IN. SIT. EAT WITH US."); then the camera
+  comes back and the floor is his, but he can only walk (`supper.slow`, no run-up). A tuft of grass lies at the chair: sit down
+  to it and the chair is what it was (a wraith) once four fifths of the graze is eaten (`grassAt`), whatever his hearts; or butt
+  anybody at the table, or BAAH, and the brawl is on. The platter stands on the Warden's own table now, the one at the head, and
+  the brawl puts a dome over him and that table (`S.dome`): nothing passes it until the last of his men is down, then the platter
+  is thrown down at his feet, empty, the dome drops and the fight with him is on as before. The stone behind comes down when he
+  has fallen. `TUNING.endBoss.supper.scene` / `slow` / `grass` / `grassAt` / `dome`.
+
+- **THE PEN NO LONGER LETS YOU THROUGH** (a tester, Max: "I just walked through the first cage without breaking it, per the
+  tutorial's 'headbutt again and again'"): the wedge (`physics.wedge`, the 10 Oct anti-stuck rule: lean on a move key for 0.3 s
+  without moving and the props you overlap stop holding you) counted the pen's bars as furniture, so leaning on them for half a
+  second walked the goat out in 0.6 s. It now skips `cage`, `ironcage` and `coop`, things that are walls until they are broken.
+  One line in `Game`'s prop collision.
+- **A BURNING OR POISONED THING LOOKS IT** (his ask): a crate or blade that is `alight` / carries a `brand` has a flame riding on it
+  (witchfire stays blue), one that is `venom` a green glow, a dashed ring and drips, and a thing in his teeth whose hold ring is
+  full shows the mark it is about to leave the mouth with. `Renderer.drawItemStatus`, render only.
+
+---
+
 ## 0.012, 10 Oct 2026: THE BOSS BAR, and three more rings to fight him in
 
 - **THE BOSS BAR** (his ask: "the boss fights: clarity, readability"): a man who takes more than one blow (a champion, a gate's keeper,

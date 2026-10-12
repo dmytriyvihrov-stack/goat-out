@@ -241,7 +241,8 @@ class Scatter {
   // (`scale(1, 1 / TILT)`), `z` px up.
   drawBit(ctx, b, air) {
     // `K.k`: a piece of something drawn at another grain than the supper (the shieldman's skulls).
-    const k = TUNING.scatter.texel * (b.K.k || 1), q = Math.round(b.turn / (Math.PI / 2)) & 3;
+    // `K.flat`: a plank only ever lies along the floor (a half turn), never stood on its end like a stick.
+    const k = TUNING.scatter.texel * (b.K.k || 1), q = (Math.round(b.turn / (Math.PI / 2)) & 3) & (b.K.flat ? 2 : 3);
     const name = b.K.sprite || 'food-' + b.id, g = PROP_PIXELS.sprites[name]; if (!g && b.id !== 'shard') return;
     const w = g ? (q & 1 ? g.h : g.w) * k : 3, h = g ? (q & 1 ? g.w : g.h) * k : 3;
     if (air) {
@@ -293,6 +294,8 @@ Scatter.KINDS = {
   // THE FISH's tank broken (`Beast.breakFish`, js/beasts-more.js): glass, and the fish itself.
   'fish-shard': { bouncy: 0.6, sound: 'clay', sprite: 'fish-shard', k: 0.6 }, 'fish-body': { bouncy: 0.9, sound: 'soft', sprite: 'fish-body', k: 0.6 },
 };
+// A crate's planks (`CombatFX.debris`): wood, a dull knock, a short bounce.
+for (let k = 0; k < 5; k++) Scatter.KINDS['crate-bit' + k] = { bouncy: 0.45, sound: 'soft', sprite: 'crate-bit' + k, flat: k < 4 };
 // The shieldman's skulls in pieces, one set for each of the board's looks (`ART_PASS.shield`).
 // Drawn at the board's own grain (`PaintedArt` lays a dropped one at 0.72 px a texel), half the supper's.
 for (let l = 0; l < 3; l++) for (let k = 0; k < 4; k++) Scatter.KINDS[`mshield${l}-bit${k}`] = { bouncy: 0.65, sound: 'clay', sprite: `mshield${l}-bit${k}`, k: 0.5 };

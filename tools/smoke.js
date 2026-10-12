@@ -16,10 +16,12 @@
 // and `draw` average and worst milliseconds.
 window.SMOKE = {
   res: {},
-  opts: { maxT: 420, drawEvery: 12, stepsPerTick: 240, spikeUpd: 12, spikeDraw: 40, soulR: 8 },
-  field(g) {
+  opts: { maxT: 420, huntCap: 50, drawEvery: 12, stepsPerTick: 240, spikeUpd: 12, spikeDraw: 40, soulR: 8 },
+  // Distance in tiles to the stairs, or, given `from` (a world x, y), to that spot: the hunt's field.
+  field(g, from) {
     const w = g.world, W = w.W, H = w.H, D = new Int32Array(W * H).fill(-1), q = [];
-    for (let i = 0; i < W * H; i++) if (w.tiles[i] === T.EXIT) { D[i] = 0; q.push(i); }
+    if (from) { const i = Math.floor(from.y / TILE) * W + Math.floor(from.x / TILE); if (i >= 0 && i < W * H) { D[i] = 0; q.push(i); } }
+    else for (let i = 0; i < W * H; i++) if (w.tiles[i] === T.EXIT) { D[i] = 0; q.push(i); }
     for (let h = 0; h < q.length; h++) {
       const i = q[h], x = i % W, y = (i / W) | 0;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -65,13 +67,28 @@ window.SMOKE = {
   },
   run1(which, seed) {
     const g = game, O = SMOKE.opts;
-    const r = { which, seed, ok: false, t: 0, errs: {}, nan: null, tp: 0, rolled: 0, kills: 0, upd: 0, updMax: 0, draw: 0, drawMax: 0, nUpd: 0, nDraw: 0, souls: 0, dropped: 0, end: '', spikes: [] };
+    const r = { which, seed, ok: false, t: 0, errs: {}, nan: null, tp: 0, rolled: 0, kills: 0, upd: 0, updMax: 0, draw: 0, drawMax: 0, nUpd: 0, nDraw: 0, souls: 0, dropped: 0, hunted: 0, fin: 0, end: '', spikes: [] };
     // Every soul the floor has laid or dropped, so the report says taken/dropped: `souls 0` alone could not tell a
     // bot that walked past them from a floor that dealt none (3 Oct 2026, a keeper at three hearts).
     const seenSouls = new Set();
     const err = (where, e) => { const k = where + ': ' + (e && e.message || e) + ' @' + String(e && e.stack || '').split('\n').slice(1, 3).map((s) => s.trim().replace(/^at /, '').replace(/\(?https?:\/\/[^/]+\//, '')).join(' < '); r.errs[k] = (r.errs[k] || 0) + 1; };
     try { SMOKE.start(which, seed); } catch (e) { err('start', e); r.end = 'start threw'; return r; }
     let D = SMOKE.field(g), fieldT = 0, best = Infinity, stall = 0, buttCd = 0, steps = 0;
+    // THE HUNT: a gate that opens for a soul is shut until the soul-bearer behind it is dead, and he keeps his distance, so a
+    // bot that only walks to the stairs stood at the bars until the clock ran out (L1, L4 seed 11, 12 Oct 2026). With the
+    // goat in or past the gate's room, the bot goes after that man down a field of its own, aimed at him, until he is down.
+    let DH = null, huntT = 0, hunting = null, huntMode = false, flankT = 0, flankDir = 1;
+    // The armed hunt (a keeper the horns do nothing to, THE OGRE): the bot fetches a blade, carries it in his teeth and lets go at him.
+    let huntClock = 0, holdGrab = false, DW = null, DWt = 0, DWp = null;
+    const keeperOf = () => {
+      const gt = g.goat; let best = null, bd = Infinity;
+      for (const e of g.enemies) {
+        if (e.dead || e.ghosted || !(e.soulGate >= 0) || g.goatRoom < e.soulGate) continue;
+        if (!g.props.some((p) => p.kind === 'door' && p.gate && p.gateRoom === e.soulGate && !p.broken && !(p.open >= 0.5))) continue;
+        const d = Math.hypot(e.x - gt.x, e.y - gt.y); if (d < bd) { bd = d; best = e; }
+      }
+      return best;
+    };
     const dir = { x: 0, y: 0 }, aim = { x: 1, y: 0 };
     // THE TRIP turns the stick round and puts the horns on the other button (`game.tripInput`), so the
     // bot pushes the other way and butts with a tap of the grab button.
@@ -80,20 +97,22 @@ window.SMOKE = {
     g.readMoveInput = function () {
       orig(); const trip = g.level && g.level.def.shroom, k = trip ? -1 : 1;
       g.input.mx = dir.x * k; g.input.my = dir.y * k; g.input.aim = { x: aim.x, y: aim.y };
+      if (!trip) g.input.rmbDown = holdGrab;
       if (trip) { g.input.rmbDown = tripButt; tripButt = false; }
     };
     const butt = () => { if (g.level && g.level.def.shroom) tripButt = true; else g.input.lmbPressed = true; };
     const w = () => g.world;
-    const dAt = (x, y) => { const W = w().W, tx = Math.floor(x / TILE), ty = Math.floor(y / TILE); return D[ty * W + tx]; };
-    // The neighbour tile that is nearer the stairs, as a unit vector, or null.
-    const next = () => {
+    const dAt = (x, y, F = D) => { const W = w().W, tx = Math.floor(x / TILE), ty = Math.floor(y / TILE); return F[ty * W + tx]; };
+    // The neighbour tile that is nearer the stairs (or, hunting, the man), as a unit vector, or null.
+    const active = () => (huntMode && DH ? DH : D);
+    const next = (F = active()) => {
       const W = w().W, gt = g.goat, tx = Math.floor(gt.x / TILE), ty = Math.floor(gt.y / TILE);
-      let here = D[ty * W + tx]; if (here < 0) here = 1e9;
+      let here = F[ty * W + tx]; if (here < 0) here = 1e9;
       let bestV = here, bx = 0, by = 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         if (!dx && !dy) continue;
-        if (dx && dy && (D[ty * W + tx + dx] < 0 || D[(ty + dy) * W + tx] < 0)) continue;
-        const v = D[(ty + dy) * W + tx + dx];
+        if (dx && dy && (F[ty * W + tx + dx] < 0 || F[(ty + dy) * W + tx] < 0)) continue;
+        const v = F[(ty + dy) * W + tx + dx];
         if (v >= 0 && v < bestV) { bestV = v; bx = dx; by = dy; }
       }
       if (bestV === here) return null;
@@ -102,6 +121,7 @@ window.SMOKE = {
     };
     // Set him down `k` tiles further along the field, on the nearest free spot.
     const hop = (k) => {
+      const D = active();
       const W = w().W, gt = g.goat;
       let i = Math.floor(gt.y / TILE) * W + Math.floor(gt.x / TILE);
       if (D[i] < 0) { let bi = -1, bd = Infinity; for (let j = 0; j < D.length; j++) if (D[j] >= 0) { const d = Math.hypot(j % W - i % W, ((j / W) | 0) - ((i / W) | 0)); if (d < bd) { bd = d; bi = j; } } i = bi; }
@@ -129,7 +149,22 @@ window.SMOKE = {
         Shop.takeMilk(g, q, gt); break;   // packs her shelf (every ware broken), so it happens once
       }
       fieldT += 1 / 60; if (fieldT > 4) { fieldT = 0; D = SMOKE.field(g); }
-      const here = dAt(gt.x, gt.y);
+      // The hunt: the keeper's own field is rebuilt every 0.4 s because he moves; it ends the moment the gate is open.
+      huntT += 1 / 60;
+      if (huntT > 0.4) {
+        huntT = 0; const k = keeperOf();
+        if (k) { if (!huntMode) { best = Infinity; stall = 0; } hunting = k; huntMode = true; DH = SMOKE.field(g, k); }
+        else if (huntMode) { huntMode = false; hunting = null; DH = null; best = Infinity; stall = 0; }
+      }
+      if (huntMode) {
+        r.hunted += 1 / 60;
+        // A keeper the bot cannot finish in `huntCap` s (the ogre once the arena's blades are spent: the rest hang in racks
+        // across the floor) is put down by hand and counted, so the floor still gets walked to its stairs and the report
+        // says `fin n` instead of a timeout nobody can read.
+        huntClock += 1 / 60;
+        if (huntClock > SMOKE.opts.huntCap && hunting && !hunting.dead) { hunting.die(g, 'smoke', 0, 0); r.fin++; huntClock = 0; }
+      } else huntClock = 0;
+      const here = dAt(gt.x, gt.y, active());
       if (here >= 0 && here < best - 0.5) { best = here; stall = 0; } else stall += 1 / 60;
       const n = next(); dir.x = n ? n.x : 0; dir.y = n ? n.y : 0;
       // A soul lying within reach is walked onto (the pickup and its cards are then exercised every floor,
@@ -154,9 +189,52 @@ window.SMOKE = {
         if (e.dead || e.ghosted) continue;
         const d = Math.hypot(e.x - gt.x, e.y - gt.y); if (d < fd) { fd = d; foe = e; }
       }
+      // The man being hunted is the one to hit once he is close, whoever else stands nearer.
+      if (huntMode && hunting && !hunting.dead) { const hd = Math.hypot(hunting.x - gt.x, hunting.y - gt.y); if (hd < 4 * TILE) { foe = hunting; fd = hd; } }
       if (foe) { const l = fd || 1; aim.x = (foe.x - gt.x) / l; aim.y = (foe.y - gt.y) / l; }
       else if (n) { aim.x = n.x; aim.y = n.y; }
-      if ((foe || stall > 1.2) && buttCd <= 0) { butt(); buttCd = 0.45; }
+      // A keeper behind a board (the shieldman: THE BOARD TURNS HORNS, GO ROUND IT): within four tiles of him the bot stops
+      // butting the front and walks a ring round him, one way for three seconds and then the other (a wall at one end), and
+      // butts the moment he stands where the board does not cover. Closing in is the field's job, the ring is the bot's.
+      let noButt = false;
+      const kp = huntMode && hunting && !hunting.dead && hunting.shield && hunting.shieldUp && hunting.shieldUp() ? hunting : null;
+      if (kp) {
+        const dx = gt.x - kp.x, dy = gt.y - kp.y, d = Math.hypot(dx, dy) || 1;
+        if (d < 4 * TILE) {
+          stall = 0; flankT += 1 / 60; if (flankT > 3) { flankT = 0; flankDir = -flankDir; }
+          if (kp.shieldCovers(gt.x, gt.y)) {
+            const pull = d > 2 * TILE ? 0.5 : d < 1.3 * TILE ? -0.4 : 0;
+            let vx = -dy / d * flankDir - dx / d * pull, vy = dx / d * flankDir - dy / d * pull; const l = Math.hypot(vx, vy) || 1;
+            dir.x = vx / l; dir.y = vy / l; noButt = true;
+          } else { dir.x = -dx / d; dir.y = -dy / d; }
+        }
+      }
+      // The ogre: the horns only rock him, so the bot arms himself. A blade lying free is walked to and taken in the teeth, and
+      // carried at him until he is inside throwing range with a clear line, then let go. Nothing to fetch: back to the field.
+      holdGrab = false;
+      if (huntMode && hunting && !hunting.dead && hunting.kind === 'butcher' && !(g.level && g.level.def.shroom)) {
+        noButt = true;
+        const hd = Math.hypot(hunting.x - gt.x, hunting.y - gt.y), h = gt.holding;
+        if (h && h.kind === 'weapon') {
+          holdGrab = true;
+          if (hd < 6 * TILE && g.sees(gt.x, gt.y, hunting.x, hunting.y)) {
+            aim.x = (hunting.x - gt.x) / (hd || 1); aim.y = (hunting.y - gt.y) / (hd || 1);
+            dir.x = dir.y = 0; if (gt.state === 'carried' || gt.state === 'idle') holdGrab = false;
+          } else if (hd < 3 * TILE) { dir.x = dir.y = 0; }   // too close without a line: let him come
+        } else {
+          let wp = null, wd = Infinity;
+          for (const q of g.props) {
+            if (q.kind !== 'weapon' || q.broken || q.held || q.flung) continue;
+            const d = Math.hypot(q.x - gt.x, q.y - gt.y); if (d < wd) { wd = d; wp = q; }
+          }
+          if (wp) {
+            DWt += 1 / 60; if (wp !== DWp || DWt > 3) { DWp = wp; DWt = 0; DW = SMOKE.field(g, wp); }
+            if (wd < 1.6 * TILE) { holdGrab = true; dir.x = dir.y = 0; aim.x = (wp.x - gt.x) / (wd || 1); aim.y = (wp.y - gt.y) / (wd || 1); }
+            else { const nw = next(DW); if (nw) { dir.x = nw.x; dir.y = nw.y; stall = 0; } }
+          }
+        }
+      }
+      if ((foe || stall > 1.2) && buttCd <= 0 && !noButt) { butt(); buttCd = 0.45; }
       if (stall > 7) { hop(stall > 25 ? 14 : 5); stall = stall > 25 ? 0 : 1.5; best = Infinity; }
     };
     const step = () => {
@@ -183,7 +261,7 @@ window.SMOKE = {
       r.updMax = +r.updMax.toFixed(1); r.drawMax = +r.drawMax.toFixed(1); r.t = Math.round(r.t);
       // The JS heap after the floor (Chrome only): a figure that climbs floor after floor is a leak.
       r.heap = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null;
-      delete r.steps; delete r.finish; delete r.nUpd; delete r.nDraw;
+      r.hunted = Math.round(r.hunted); delete r.steps; delete r.finish; delete r.nUpd; delete r.nDraw;
     };
     return r;
   },
@@ -215,7 +293,7 @@ window.SMOKE = {
   },
   report(tag = 'now') {
     const o = SMOKE.res[tag]; if (!o) return 'nothing under ' + tag;
-    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? (r.tp ? 'OK*' : 'OK ') : r.end.toUpperCase().slice(0, 7).padEnd(3)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} roll ${r.rolled} kills ${r.kills} souls ${r.souls}/${r.dropped} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.heap ? ' heap ' + r.heap + 'MB' : ''}${r.nan ? ' NaN ' + r.nan : ''}${r.spikes.length ? '\n     spikes ' + r.spikes.join(' ') : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
+    const lines = o.rows.map((r) => `${r.which.padEnd(4)} ${String(r.seed).padEnd(6)} ${r.ok ? (r.tp ? 'OK*' : 'OK ') : r.end.toUpperCase().slice(0, 7).padEnd(3)} ${String(r.t).padStart(4)}s room ${r.room}/${r.rooms} tp ${r.tp} roll ${r.rolled} kills ${r.kills} souls ${r.souls}/${r.dropped}${r.hunted ? ' hunt ' + r.hunted + 's' : ''}${r.fin ? ' FIN ' + r.fin : ''} upd ${r.upd}/${r.updMax}ms draw ${r.draw}/${r.drawMax}ms${r.heap ? ' heap ' + r.heap + 'MB' : ''}${r.nan ? ' NaN ' + r.nan : ''}${r.spikes.length ? '\n     spikes ' + r.spikes.join(' ') : ''}${Object.keys(r.errs).length ? '\n     ' + Object.entries(r.errs).map(([k, v]) => v + 'x ' + k).join('\n     ') : ''}`);
     return (o.done ? '' : '(still running)\n') + '(OK = walked and rolled to the stairs, OK* = reached them with set-downs: a teleport is not a walk-through)\n' + lines.join('\n');
   },
 };

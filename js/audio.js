@@ -551,7 +551,7 @@ class GameAudio {
     if (this.preview !== preview) { this.resetScore(); this.preview = preview; }
     // STEALTH (dev test): a sneak hushes the score (`layers.hush`, eased on `hushMix` in the step).
     // THE LAST SUPPER hushes it too (js/endboss.js, `game.supper`), until the chair is reached.
-    this.hush = !!(game.sneak && game.stealthLive && game.state === 'play') || !!(game.supper && game.supper.phase === 'offer');
+    this.hush = !!(game.sneak && game.stealthLive && game.state === 'play') || !!(game.supper && (game.supper.phase === 'offer' || game.supper.phase === 'scene'));
     this.doom = !!(game.doom && game.state === 'play');   // THE WARDEN's fight (js/warden.js, `layers.doom`)
     this.updateAmbience(game, dt);
     this.heartbeat(game);

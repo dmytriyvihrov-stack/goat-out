@@ -1061,8 +1061,18 @@ const TUNING = {
     // THE ROAD's glimpse (10 Oct 2026): THE WARDEN on the far side of the lesson's drop, `past` tiles past it, with her under his arm;
     // seen, his `line`, `wait` s looking at the goat, then out through the room's way out at `speed` tiles/s (`cap` s at most).
     glimpse: { floor: 3, past: 2, line: 'STILL COMING, GOAT? SHE IS KEPT FOR THE TABLE.', wait: 1.6, speed: 4.6, cap: 12 },
-    supper: { seat: 1.55, gap: 1.6, inset: 0.9, head: 1.5, chair: 1.1, slide: 0.9, slideBy: 0.8, lineGap: 3.2, leave: 4.2, leaveCap: 6, corner: 2.2, sink: 10,
-      lines: ['SIT, LITTLE GOAT.', 'EAT WITH US.', 'SHE IS WARM STILL.'], laugh: 'NOT YET.', laughs: ['HA HA HA!', 'HAAA HA HA!', 'HEH HEH HEH.'],
+    // THE LAST SUPPER (12 Oct 2026, the user's shape): the goat in the room is a short held scene (`scene`): the way in is stoned
+    // behind him at `seal` s, the camera goes over to the Warden from `pan` s, at `raise` he stands up from his seat at the head and
+    // the chair slides out, at `box` his words come in the animals' box (`scene.lines`, a page each), and `back` s after the box
+    // the floor is his again. Through the offer he can only walk, at `slow` of his stride and with no run-up; a tuft of grass lies
+    // at the chair (`grass` tiles off it toward the table), and the chair's wraith springs once `grassAt` of the graze is eaten.
+    // The platter stands on the Warden's own table, the one at the head, and the brawl puts a dome over him and it (`dome.pad`
+    // tiles past the two of them), which the goat cannot pass until the last of his men is down.
+    supper: { seat: 1.55, gap: 1.6, inset: 0.9, head: 1.5, chair: 1.1, slide: 0.9, slideBy: 0.8, lineGap: 3.2, sink: 10,
+      scene: { seal: 0.35, pan: 0.6, raise: 2.0, box: 2.9, back: 0.9, zoom: 1.0, cap: 40,
+        lines: ['WE HAVE BEEN WAITING FOR YOU, LITTLE GOAT.', 'COME IN. SIT. EAT WITH US.'] },
+      slow: 0.42, grass: 0.55, grassAt: 0.8, dome: { pad: 1.1 },
+      lines: ['SIT.', 'EAT.', 'SHE IS WARM STILL.'], laugh: 'NOT YET.', laughs: ['HA HA HA!', 'HAAA HA HA!', 'HEH HEH HEH.'],
       drop: { wait: 1.6, line: 'SHE WAS NEVER HERE.' } },
   },
   // The rat ogre: what the mouse in the wall turns into on the third blow. He is not on the curve,
@@ -2263,8 +2273,8 @@ const TUNING = {
     // of the screen. `show` s to come up (the name slams in over `slam` s), `hide` s to go once he is out of the picture, `hold` s
     // held empty once he is down; `hint` s of what his fight turns on, the first time each man is met; `shake` s of the bar
     // rattling and the lost cell burning white on a heart gone; at most `rows` bars, the floor's last man first; `w` the widest
-    // the hearts' row goes, in HUD px.
-    boss: { on: true, near: 12, show: 0.3, slam: 0.45, hide: 1.2, hold: 1.4, hint: 5, shake: 0.35, rows: 3, w: 260, cell: 14, cellH: 5, gap: 3 } },
+    // the hearts' row goes, in HUD px. `hint` 0 since 12 Oct 2026 (his word: "no long line under the boss bar about what he does").
+    boss: { on: true, near: 12, show: 0.3, slam: 0.45, hide: 1.2, hold: 1.4, hint: 0, shake: 0.35, rows: 3, w: 260, cell: 14, cellH: 5, gap: 3 } },
   // On touch the headbutt turns toward the likeliest man ahead of the stick: within `reach` tiles and
   // `cone` radians of it, and only one the goat can see (never a mist, a disguise or a man in the fog).
   touchAim: { reach: 5.2, cone: 0.95 },
@@ -2864,7 +2874,9 @@ const TUNING = {
   // acceleration a frame, and how often it turned back on itself): 0.119 → 0.047, 31 turn-backs → 4. Was lerp 7,
   // leadLerp 3.4, zoomFast 0.94 (every start and stop pumped the lens 6%), zoomLerp 1.6, deadzone 0.55 tiles,
   // blend 3.2 (the hold let go anywhere within three tiles of a door, and a small room swam), holdLerp 4.
-  camera: { lead: 2.4 * TILE, lerp: 3.5, leadLerp: 1.8, leadStill: 0.3, zoomRest: 1.0, zoomFast: 0.985, zoomLerp: 1.0,
+  // `lens` (12 Oct 2026, his: "1.2 feels great in the camera, 1.1 maybe") is × the fit on a desktop screen, never a phone's,
+  // which already shows fewer tiles; the dev drawer's CAMERA ×n is on top of it.
+  camera: { lens: 1.1, lead: 2.4 * TILE, lerp: 3.5, leadLerp: 1.8, leadStill: 0.3, zoomRest: 1.0, zoomFast: 0.985, zoomLerp: 1.0,
     deadzone: 0.8 * TILE, fitMargin: 2 * TILE,
     // The hearts sit in the bottom-left corner (7 Oct 2026, his ask, Hades' way), so the bottom of the screen carries more
     // HUD than the top: the picture is framed `hudLift` of the view's height lower, he stands that much above the middle.

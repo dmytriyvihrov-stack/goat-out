@@ -1,0 +1,245 @@
+{
+  "state": "play",
+  "firstDrawMs": {
+    "bomb-original": 6.9,
+    "bomb-study": 2.6,
+    "husky-original": 4,
+    "husky-study": 2.3,
+    "fish-original": 2.2,
+    "fish-study": 1.8,
+    "crate-original": 0.4,
+    "barrel-original": 0.1,
+    "crate-study": 0.3,
+    "barrel-study": 0
+  },
+  "contrast": [
+    {
+      "floor": "THE ALTAR",
+      "sprites": [
+        {
+          "name": "bomb",
+          "ratio": 1.4,
+          "OKLab": 10
+        },
+        {
+          "name": "husky",
+          "ratio": 4.13,
+          "OKLab": 35.3
+        },
+        {
+          "name": "fish",
+          "ratio": 2.1,
+          "OKLab": 19.5
+        }
+      ]
+    },
+    {
+      "floor": "THE YARD",
+      "sprites": [
+        {
+          "name": "bomb",
+          "ratio": 1.24,
+          "OKLab": 7
+        },
+        {
+          "name": "husky",
+          "ratio": 3.66,
+          "OKLab": 31.6
+        },
+        {
+          "name": "fish",
+          "ratio": 1.86,
+          "OKLab": 15.7
+        }
+      ]
+    },
+    {
+      "floor": "THE CAVE",
+      "sprites": [
+        {
+          "name": "bomb",
+          "ratio": 1.42,
+          "OKLab": 10.7
+        },
+        {
+          "name": "husky",
+          "ratio": 4.19,
+          "OKLab": 36.1
+        },
+        {
+          "name": "fish",
+          "ratio": 2.13,
+          "OKLab": 20
+        }
+      ]
+    },
+    {
+      "floor": "THE ROAD",
+      "sprites": [
+        {
+          "name": "bomb",
+          "ratio": 1.09,
+          "OKLab": 4.7
+        },
+        {
+          "name": "husky",
+          "ratio": 3.21,
+          "OKLab": 27.8
+        },
+        {
+          "name": "fish",
+          "ratio": 1.63,
+          "OKLab": 12.2
+        }
+      ]
+    },
+    {
+      "floor": "THE THRESHING FLOOR",
+      "sprites": [
+        {
+          "name": "bomb",
+          "ratio": 1.06,
+          "OKLab": 4.8
+        },
+        {
+          "name": "husky",
+          "ratio": 3.14,
+          "OKLab": 27.3
+        },
+        {
+          "name": "fish",
+          "ratio": 1.59,
+          "OKLab": 11.6
+        }
+      ]
+    },
+    {
+      "floor": "THE BRIDGE",
+      "sprites": [
+        {
+          "name": "bomb",
+          "ratio": 1.43,
+          "OKLab": 10.6
+        },
+        {
+          "name": "husky",
+          "ratio": 4.21,
+          "OKLab": 36.3
+        },
+        {
+          "name": "fish",
+          "ratio": 2.14,
+          "OKLab": 20.2
+        }
+      ]
+    },
+    {
+      "floor": "THE RAFTERS",
+      "sprites": [
+        {
+          "name": "bomb",
+          "ratio": 1.19,
+          "OKLab": 6
+        },
+        {
+          "name": "husky",
+          "ratio": 3.51,
+          "OKLab": 30.3
+        },
+        {
+          "name": "fish",
+          "ratio": 1.79,
+          "OKLab": 14.5
+        }
+      ]
+    },
+    {
+      "floor": "THE OSSUARY",
+      "sprites": [
+        {
+          "name": "bomb",
+          "ratio": 1.29,
+          "OKLab": 7.2
+        },
+        {
+          "name": "husky",
+          "ratio": 3.81,
+          "OKLab": 32.9
+        },
+        {
+          "name": "fish",
+          "ratio": 1.94,
+          "OKLab": 16.8
+        }
+      ]
+    }
+  ],
+  "floors": [
+    "THE ALTAR",
+    "THE CAVE",
+    "THE BRIDGE"
+  ],
+  "frames": [
+    {
+      "name": "bomb@small",
+      "width": 14,
+      "height": 15,
+      "colours": 6
+    },
+    {
+      "name": "husky-stand@small",
+      "width": 27,
+      "height": 21,
+      "colours": 8
+    },
+    {
+      "name": "husky-sing@small",
+      "width": 27,
+      "height": 23,
+      "colours": 7
+    },
+    {
+      "name": "fish-0@small",
+      "width": 22,
+      "height": 16,
+      "colours": 14
+    },
+    {
+      "name": "fish-1@small",
+      "width": 22,
+      "height": 16,
+      "colours": 14
+    },
+    {
+      "name": "fish-2@small",
+      "width": 22,
+      "height": 16,
+      "colours": 14
+    },
+    {
+      "name": "fish-3@small",
+      "width": 22,
+      "height": 16,
+      "colours": 14
+    },
+    {
+      "name": "fish-broken@small",
+      "width": 22,
+      "height": 16,
+      "colours": 8
+    },
+    {
+      "name": "fish-shard@small",
+      "width": 4,
+      "height": 5,
+      "colours": 3
+    },
+    {
+      "name": "fish-body@small",
+      "width": 9,
+      "height": 5,
+      "colours": 4
+    }
+  ],
+  "errors": []
+}

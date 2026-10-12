@@ -193,7 +193,9 @@ class Goat {
     // drains several times faster than it built the moment he stops, so a room you cross without
     // touching anything hands you the far side of it faster than a room you fight your way through.
     // A sneak (the STEALTH test's ALT, `game.sneak`) is never a run: it builds nothing and drains what there was.
-    const M = g.momentum, asking = hyp(inp.mx, inp.my) >= M.atLeast && !game.sneak;
+    // At THE LAST SUPPER's offer (js/endboss.js) he can only walk: no run-up, and `supper.slow` of the stride below.
+    const supperSlow = !!(game.supper && game.supper.phase === 'offer');
+    const M = g.momentum, asking = hyp(inp.mx, inp.my) >= M.atLeast && !game.sneak && !supperSlow;
     const mt = M.time * Talisman.runUpTime(game);   // BRASS SPUR builds it faster
     this.runT = clamp(asking ? this.runT + dt : this.runT - dt * M.lose, 0, mt);
     this.runUp = 1 + M.max * (this.runT / mt);
@@ -207,6 +209,7 @@ class Goat {
     else if (this.state === 'bite') mul *= g.grab.biteMove;
     else if (this.state === 'rollrecover') mul *= TUNING.goat.roll.recoverMove;
     if (game.sneak) mul *= TUNING.stealth.speed;
+    if (supperSlow) mul *= TUNING.endBoss.supper.slow;
     const base =g.speed * game.mods.speed * this.runUp * (this.gong > 0 ? TUNING.prop.bell.speedMul : 1) * Talisman.speedMul(game) * Heaven.paceMul(game)
       * (this.poisoned > 0 ? g.poison.moveMul : 1) * (game.calmFast ? TUNING.calmRun.mul : 1)
       * (game.level && game.level.def.showroom ? TUNING.showroom.speed : game.dev && game.dev.god ? TUNING.dev.godSpeed : 1);   // the floor, not `showroomOn`: the JUICE preview borrows that flag

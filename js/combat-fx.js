@@ -403,6 +403,16 @@ class CombatFX {
 
   debris(p,dx=0,dy=0) {
     // Splinters are cut out of the pixel crate itself, so what flies off is the box that broke.
+    // A crate goes to planks of its own wood (12 Oct 2026, "not organic": flat slabs at any tilt read as stray sticks),
+    // thrown through the scatter like a blade's pieces, square on the floor where they stop (`crate-bit*`).
+    const sc=this.game.scatter;
+    if(p.kind==='crate'&&sc&&typeof PROP_PIXELS!=='undefined'&&PROP_PIXELS.sprites['crate-bit0']) {
+      const ids=['crate-bit0','crate-bit1','crate-bit2','crate-bit3','crate-bit4'];
+      if(Math.random()<0.5)ids.push('crate-bit'+(1+Math.floor(Math.random()*3)));
+      sc.breakUp(ids,p.x,p.y,10,dx||0,dy||0,0.55);
+      this.explosion(p.x,p.y,17,false,true);
+      return;
+    }
     const metal=!!p.iron, f=PIXEL_ENV_ASSETS.items[PIXEL_ENV_ID[p.kind==='barrel'?'barrel':'crate']], img=PIXEL_ENV.ready?PIXEL_ENV.image:null;
     const count=p.kind==='door'?TUNING.effects.doorPieces:TUNING.effects.cratePieces;
     const speed=hyp(dx,dy); if(speed){dx/=speed;dy/=speed;}

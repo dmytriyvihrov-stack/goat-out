@@ -85,6 +85,7 @@ const ART_PASS = {
   on: false, hunter: 7, clubman: 1, floors: true,
   // the shieldman's board, one of `PROP_PIXELS.SHIELD_LOOKS` (2 Oct 2026: ASPIS, THORNS, RAM)
   shield: 0,
+  smallProps: false, // native-resolution bomb, husky and fish study; opt in from ART / #smallart
   // the shaman's robe, one of `SHAMAN_PIXELS.ROBES` (6 Oct 2026: DUSK, SOOT, OCHRE); his pick, SOOT
   shaman: 1,
   shadows: true, tells: true, hay: true, cave: true,
@@ -111,6 +112,13 @@ const RAMP = {
   pitch: ['#0c0b0f', '#19171d', '#28252d', '#39353f', '#504a56'],
   steel: ['#1d2f3d', '#35566b', '#5a8196', '#86aab5', '#b9d3d2'],
   witch: ['#4b35b8', '#7d5cff', '#bfe6ff', '#f6fcff'],   // CombatFX.bands(true) less its darkest
+  // The clubman out of the red (12 Oct 2026, his ask: red is blood and harm, and a red crowd takes that
+  // job off it). Dusk ramps: each a cool shadow going to a light that is never as bright as the goat's cream.
+  ash: ['#141519', '#2a2a30', '#45444b', '#68656a', '#918b88'],
+  bone: ['#2b241f', '#4f4439', '#776a58', '#9d8f76', '#bcae92'],
+  dusk: ['#16152a', '#2b2940', '#46405a', '#6d6175', '#9a8790'],
+  sack: ['#1a1712', '#322c22', '#4f4636', '#706550', '#93876c'],
+  gloam: ['#111821', '#232f3b', '#3b4a57', '#5d6c76', '#8b9698'],
 };
 // The studies the ART tab switches between, each a recipe over one packed unit: `parts` recolours a
 // class of its pixels (`STUDY_PARTS`) onto a ramp, keeping the share of light each had, cut to the
@@ -131,6 +139,11 @@ const PIXEL_STUDY = {
     { name: 'AS PACKED', rule: 'the packed red robe, as wide as the atlas drew him' },
     { name: 'SLIM', rule: 'a seventh of his width taken out of the robe, column by column: a lighter man, for one who flies off a single butt', slim: 0.14 },
     { name: 'SLIM + RED RAMP', rule: 'slim, and the robe cut to five reds that lean crimson in shadow and orange in the light', slim: 0.14, parts: { robe: RAMP.cult } },
+    { name: 'ASH + BELT', rule: 'slim, the robe ash grey and only the belt left the cult\'s red: red is blood, fire and the windup, and a sash of it says whose man he is', slim: 0.14, parts: { robe: RAMP.ash }, belt: RAMP.cult },
+    { name: 'BONE + BELT', rule: 'slim, an unbleached cream gone dusty, a step under the goat\'s own, a red belt round it', slim: 0.14, parts: { robe: RAMP.bone }, belt: RAMP.cult },
+    { name: 'SACKCLOTH + BELT', rule: 'DUSK\'s cultists: grimy burlap, grey-brown and dead, the colour of a sack left in a cellar, a red belt the one bright thing on him', slim: 0.14, parts: { robe: RAMP.sack }, belt: RAMP.cult },
+    { name: 'VIOLET + BELT', rule: 'slim, violet in the folds and an ashen rose in the light, a red belt', slim: 0.14, parts: { robe: RAMP.dusk }, belt: RAMP.cult },
+    { name: 'GLOAM + BELT', rule: 'slim, slate in the folds to a cold fog in the light, the coolest of them, a red belt', slim: 0.14, parts: { robe: RAMP.gloam }, belt: RAMP.cult },
   ],
   // Under the art pass alone: the seer's flame and eyes in the bands witchfire burns in.
   mage: [{ name: 'AS PACKED' }, { name: 'WITCHFIRE', parts: { flame: RAMP.witch } }],
@@ -143,6 +156,8 @@ const STUDY_PARTS = {
   clubman: (h, s, v) => (h <= 14 || h >= 340) && s >= 0.4 && v >= 0.15 ? 'robe' : null,
   mage: (h, s, v) => h >= 165 && h <= 215 && s >= 0.3 && v >= 0.35 ? 'flame' : null,
 };
+// The clubman's tan, his belt and his club alike (`STUDY.belt` tells which is which).
+const STUDY_TAN = (h, s, v) => h > 14 && h < 50 && s > 0.3 && v >= 0.12;
 const STUDY = (() => {
   const hsv = (r, g, b) => {
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b), dl = mx - mn; let h = 0;
@@ -290,7 +305,42 @@ const STUDY = (() => {
     });
     return out;
   }
-  return { recolour, slim, marks, rgb };
+  // The clubman's belt (12 Oct 2026, his ask: the robe out of the red, "but a red belt, so there is a detail").
+  // The belt and the club are the same tan, so they are told apart by what holds them: each tan piece
+  // (4-connected) is the belt if most of what borders it is robe, while the club sits against air and the
+  // dark outline. Found on the packed colours, before the robe is recoloured, and laid after it, so the new
+  // red is never taken for robe. Returns [pixel, colour] pairs; each piece keeps its light cut to the ramp.
+  function belt(A, W, frames, x0, y0, isRobe, isTan, ramp) {
+    const out = [], R = ramp.map(rgb), cuts = R.length === 5 ? [0.1, 0.32, 0.7, 0.92] : [0.35, 0.7, 0.9];
+    for (const f of frames) {
+      const fx = f[0] - x0, fy = f[1] - y0, fw = f[2], fh = f[3], at = (i, j) => ((fy + j) * W + fx + i) * 4;
+      const kind = new Int8Array(fw * fh);   // 0 air, 1 robe, 2 tan, 3 anything else
+      for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) {
+        const p = at(i, j); if (!A[p + 3]) continue;
+        const [h, s, v] = hsv(A[p], A[p + 1], A[p + 2]);
+        kind[j * fw + i] = isRobe(h, s, v) ? 1 : isTan(h, s, v) ? 2 : 3;
+      }
+      const seen = new Uint8Array(fw * fh);
+      for (let s0 = 0; s0 < fw * fh; s0++) {
+        if (kind[s0] !== 2 || seen[s0]) continue;
+        const piece = [s0]; seen[s0] = 1; let robe = 0, other = 0;
+        for (let q = 0; q < piece.length; q++) {
+          const i = piece[q] % fw, j = (piece[q] / fw) | 0;
+          for (const [u, v] of [[i - 1, j], [i + 1, j], [i, j - 1], [i, j + 1]]) {
+            if (u < 0 || v < 0 || u >= fw || v >= fh) { other++; continue; }
+            const n = v * fw + u, k = kind[n];
+            if (k === 2) { if (!seen[n]) { seen[n] = 1; piece.push(n); } } else if (k === 1) robe++; else other++;
+          }
+        }
+        // a scrap of a few pixels is a fleck of the packed shading (one by the hood read as a red eye), not a belt
+        if (robe <= other || piece.length < 6) continue;
+        const lit = piece.map((n) => { const p = at(n % fw, (n / fw) | 0); return [p, 0.299 * A[p] + 0.587 * A[p + 1] + 0.114 * A[p + 2]]; }).sort((a, b) => a[1] - b[1]);
+        lit.forEach(([p], i) => { let b = 0; while (b < cuts.length && i / lit.length >= cuts[b]) b++; out.push([p, R[b]]); });
+      }
+    }
+    return out;
+  }
+  return { recolour, slim, marks, belt, rgb };
 })();
 
 const PIXEL_ART = {
@@ -351,8 +401,10 @@ const PIXEL_ART = {
     const x = c.getContext('2d'); x.drawImage(this.image, x0, y0, c.width, c.height, 0, 0, c.width, c.height);
     const d = x.getImageData(0, 0, c.width, c.height);
     const marks = R.marks ? STUDY.marks(d.data, c.width, frames, x0, y0, R.marks) : [];
+    const belt = R.belt ? STUDY.belt(d.data, c.width, frames, x0, y0, STUDY_PARTS.clubman, STUDY_TAN, R.belt) : [];
     if (R.parts) STUDY.recolour(d.data, c.width, frames, x0, y0, STUDY_PARTS[id], R.parts);
     for (const [p, col] of marks) d.data.set(STUDY.rgb(col), p);
+    for (const [p, col] of belt) d.data.set(col, p);
     if (R.slim) for (const f of frames) STUDY.slim(d.data, c.width, f, x0, y0, R.slim);
     x.putImageData(d, 0, 0);
     s = { img: c, ox: x0, oy: y0 }; this.studies.set(key, s); return s;

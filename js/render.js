@@ -423,8 +423,10 @@ class Renderer {
     const phone = Math.min(cssW, cssH) < 520;
     const wantX = phone ? (this.portrait ? 14 : 17) : (cssW < 760 ? 16 : 24);
     // The dev drawer's CAMERA ZOOM (`DEV_TUNE` camera) is × the lens; never in the itch build.
+    // `camera.lens` (12 Oct 2026) brings the picture a little closer on a desktop screen, the itch build too.
     const cm = this.game && this.game.dev && this.game.dev.tune && !(typeof RELEASE !== 'undefined' && RELEASE.on) ? this.game.dev.tune.camera || 1 : 1;
-    this.zoomFit = Math.min(this.vw / (wantX * TILE), this.vh / (9 * TILE * TILT)) * cm;
+    const lens = phone ? 1 : (TUNING.camera.lens || 1);
+    this.zoomFit = Math.min(this.vw / (wantX * TILE), this.vh / (9 * TILE * TILT)) * cm * lens;
     this.vignette = null;
   }
 
@@ -2908,7 +2910,38 @@ class Renderer {
     // An animal inside its window after a wound blinks, the goat's own i-frame look (`Beast.hurt`).
     if (p.hurtCd > 0 && Beast.animal(p) && Math.floor(this.t * 14) % 2) ctx.globalAlpha *= 0.35;
     this.drawPropBody(p);
+    if (p.alight || p.brand || p.venom || p.held) this.drawItemStatus(p);
     ctx.restore();
+  }
+
+  // A thing carrying a status looks like it (12 Oct 2026, the user's ask): a burning crate or blade has a flame
+  // riding on it, a poisoned one a sick green glow, a dashed ring and drips. The same marks the rules read:
+  // `alight` / `brand` (`Status.markThrow`, or a fire it flew through), `venom` (`Status.markThrow`), and a thing in
+  // his teeth whose hold ring is full (`Status.holdCharge`), which is about to leave the mouth marked.
+  drawItemStatus(p) {
+    const game = this.game, g = game && game.goat;
+    let fire = !!(p.alight || p.brand), venom = !!p.venom;
+    if (g && g.holding === p && Status.holdCharge(game, g) >= 1) { if (game.mods.brandHold) fire = true; else venom = true; }
+    if (!fire && !venom) return;
+    const ctx = this.ctx, r = p.r || 12, t = this.t, seed = p._stSeed === undefined ? (p._stSeed = Math.random() * 10) : p._stSeed;
+    if (venom) {
+      ctx.save();
+      ctx.globalAlpha = 0.2 + 0.1 * Math.sin(t * 8 + seed);
+      ctx.fillStyle = PALETTE.venom; ctx.beginPath(); ctx.arc(p.x, p.y - 2, r + 3, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.85; ctx.strokeStyle = PALETTE.venomHi; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.lineDashOffset = -t * 10;
+      ctx.beginPath(); ctx.arc(p.x, p.y - 2, r + 2, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      for (let k = 0; k < 3; k++) {
+        const ph = (t * 1.5 + k / 3 + seed) % 1;
+        ctx.globalAlpha = 1 - ph; ctx.fillStyle = k === 1 ? PALETTE.venom : PALETTE.venomHi;
+        ctx.fillRect(Math.round(p.x + (k - 1) * r * 0.6), Math.round(p.y - r * 0.2 + ph * r * 1.3), 2, 3);
+      }
+      ctx.restore();
+    }
+    if (fire) {
+      const witch = p.alight === 'witch' || !!(p.brand && p.brand.witch);
+      this.flame(p.x, p.y - r * 0.35, Math.max(8, Math.round(r * 0.9)), seed, witch);
+    }
   }
 
   // THE ESCORTS (js/beasts.js). Three animals drawn the way everything else in this game is drawn:
@@ -5722,8 +5755,9 @@ class Renderer {
     [['shadows', 'SHADOWS', 'PIXEL', 'SMOOTH'], ['tells', 'TELLS', 'CELLS', 'STROKES'], ['hay', 'HAY', 'A STEP DOWN', 'AS PACKED'], ['cave', 'CAVE FLOOR', 'SHEET', 'AS PACKED']].forEach(([k, name, yes, no], i) =>
       this.devButton(d, pad + i * 170 * s, top + 40 * s, 164 * s, 18 * s, `${name}: ${ART_PASS[k] ? yes : no}`, 'art-' + k, ART_PASS[k]));
     ctx.font = `400 ${7.8 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.6)'; ctx.textAlign = 'left';
-    ctx.fillText(this.clip('hunter, ' + H2.rule, W - pad * 2), pad, top + 70 * s);
-    ctx.fillText(this.clip('clubman, ' + C2.rule, W - pad * 2), pad, top + 80 * s);
+    this.devButton(d, pad, top + 62 * s, 230 * s, 18 * s, 'BOMB / HUSKY / FISH: ' + (ART_PASS.smallProps ? 'STUDY' : 'ORIGINAL'), 'art-smallProps', ART_PASS.smallProps);
+    ctx.fillText(this.clip('hunter, ' + H2.rule, W - pad * 2), pad, top + 92 * s);
+    ctx.fillText(this.clip('clubman, ' + C2.rule, W - pad * 2), pad, top + 102 * s);
 
     const colGap = 24 * s, colW = (W - pad * 2 - colGap) / 2;
     const cols = [[], []];
@@ -5732,7 +5766,7 @@ class Renderer {
 
     cols.forEach((sections, ci) => {
       const x = pad + ci * (colW + colGap);
-      let y = top + 98 * s;
+      let y = top + 120 * s;
       sections.forEach((sec) => {
         ctx.font = `700 ${9.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.fireHi; ctx.textAlign = 'left';
         ctx.fillText(sec.section, x, y);

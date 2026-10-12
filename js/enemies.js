@@ -1998,7 +1998,9 @@ class Enemy {
       if (this.grabSeen === -1) { this.grabSeen = g.grabTries || 0; this.lungeSeen = g.buttTries || 0; }
       const acted = (g.buttTries || 0) !== this.lungeSeen || (g.grabTries || 0) !== this.grabSeen;
       this.lungeSeen = g.buttTries || 0; this.grabSeen = g.grabTries || 0;
-      if (d < H.touchR * TILE + g.r || (acted && d < H.springR * TILE)) this.spring(game);
+      // THE LAST SUPPER's chair (js/endboss.js): the goat sitting down to the grass beside it is not what springs it; the graze is
+      const chair = game.supper && game.supper.chair === this && game.supper.phase !== 'brawl';
+      if ((d < H.touchR * TILE + g.r && !chair) || (acted && d < H.springR * TILE)) this.spring(game);
       return;
     }
     // Committed: manifest, swing, and the long beat afterwards where it can still be hit.

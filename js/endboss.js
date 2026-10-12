@@ -10,14 +10,17 @@
 //     witchfire rings, from the third his slam sends a band (js/waves.js reads `e.soulMeet`).
 //   THE THRESHING FLOOR: the rifleman's three rounds a shot, and from the second he blinks away from the goat.
 // The scenes hold the floor as the gate's mage does (`game.endScene`: nothing else steps, the clock included).
-//   THE OSSUARY (10 Oct 2026, the user's): THE LAST SUPPER. The last room is the supper hall (`SUPPER_TEMPLATE`): the room's men sat
-//     along one long table, THE WARDEN (js/warden-pixels.js, the man who took the ewe) standing at its head, a covered platter in the
-//     middle, a chair at its foot. The goat in: the chair slides out under his raised hand, he asks him to sit, nobody moves, the
-//     score hushes; the goat may walk the room. The chair reached (it is a wraith), BAAH, or a blow on anybody at the table: he laughs,
-//     every man is up. He carries the platter to a corner and laughs there behind a barrier nothing passes while they fight; the
-//     last of them down, he throws the platter down, empty, and the fight with him is on (js/warden.js: seven hearts, the board,
-//     the sword, the tumble, the gun; then THE FLAYED, the soul swallowed). Not a held scene (`game.supper`, `supperStep` in the
-//     play step). The soul that lifts the way out is his, not the table's mage's.
+//   THE OSSUARY (10 Oct 2026, the user's; its shape of 12 Oct 2026): THE LAST SUPPER. The last room is the supper hall
+//     (`SUPPER_TEMPLATE`): the room's men sat along one long table, THE WARDEN (js/warden-pixels.js, the man who took the ewe) seated
+//     at its head with the covered platter on his own table, a chair at its foot. The goat in: a short held scene (`stepSupper`,
+//     `game.endScene` kind 'supper'): the way in is stoned behind him, the camera goes over to the Warden, he stands and the chair
+//     slides out under his raised hand, his words come in the animals' box (`Beast.talk`), and the camera comes back. Then the
+//     offer (`game.supper`, `supperStep` in the play step): the score hushed, the goat free but only walking (`supper.slow`), a tuft
+//     of grass at the chair. The grass `grassAt` grazed (the chair is a wraith and springs), BAAH, or a blow on anybody at the table:
+//     he laughs, every man is up, and a dome goes up over him and his table (`S.dome`, `barrierPush`) with the platter under it,
+//     nothing passes it while they fight; the last of them down, he throws the platter down at his feet, empty, the dome drops and
+//     the fight with him is on (js/warden.js: seven hearts, the board, the sword, the tumble, the gun; then THE FLAYED, the soul
+//     swallowed). The stone behind comes down when he has fallen (`unseal`). The soul that lifts the way out is his, not the table's mage's.
 const ENDBOSS_KEY = 'goatout.endboss';
 // What a floor's last man is called on the LEVELS page (`drawLevelPick`).
 const END_BOSS_NAMES = { bearer: 'CLUBMAN', seer: 'MAGE', butcher: 'OGRE', champion: 'BUTCHER', hunter: 'RIFLEMAN',
@@ -133,7 +136,6 @@ const EndBoss = {
     if (!room || !this.inRoom(room, g.x, g.y, 1)) return false;   // (a floor swapped under it: nothing to watch)
     B.seen = true;
     if (!(game.dev && game.dev.endMeet > 0) && !(game.dev && game.dev.god)) { const D = this.load(); D.met[B.li] = Math.max(D.met[B.li] | 0, B.meet); this.save(); }
-    if (B.kind === 'supper') { this.startSupper(game); return false; }
     const e = B.e;
     let kind = null;
     if (B.kind === 'bearer' && B.twinDue && !e.dead) kind = 'twin';
@@ -142,6 +144,11 @@ const EndBoss = {
     else if (B.kind === 'hunter' && !e.dead && e.endHold) kind = 'rifle';
     else if (B.kind === 'champion' && !e.dead && e.endHold) kind = 'butcher';
     else if (B.kind === 'bearer' && !e.dead && e.endHold) kind = 'clubman';
+    if (B.kind === 'supper') {
+      // THE LAST SUPPER's scene (`startSupper`, `stepSupper`): the way in sealed, the camera over to him, his words in the box.
+      g.state = 'idle'; g.timer = 0; g.vx = 0; g.vy = 0; g.leap = null; g.runT = 0; g.buttBuf = 0; g.rollBuf = 0; g.path = null;
+      this.startSupper(game); return !!game.endScene;
+    }
     if (!kind) { this.release(game); return false; }
     // He stops where he is; whatever he was doing ends.
     g.state = 'idle'; g.timer = 0; g.vx = 0; g.vy = 0; g.leap = null; g.runT = 0; g.buttBuf = 0; g.rollBuf = 0; g.path = null;
@@ -164,26 +171,32 @@ const EndBoss = {
     if (S.kind === 'twin') this.endTwin(game);
     else if (S.kind === 'mage') this.endMage(game);
     else if (S.kind === 'ogre') this.endOgre(game);
+    else if (S.kind === 'supper') this.endSupperScene(game);
     game.endScene = null;
-    this.release(game);
+    if (S.kind !== 'supper') this.release(game);   // the supper's men stay at the table: the offer is what wakes them
   },
 
   // The scene's step, in place of the floor's.
   update(game, dt) {
     const S = game.endScene, C = TUNING.endBoss.scene;
+    // The Warden's words in the animals' box (THE LAST SUPPER): the page is turned before the scene goes on.
+    if (game.beastTalk) { Beast.updateTalk(game, dt); return; }
     S.t += dt;
     const skip = S.seen && S.t > C.skipAfter && (game.input.lmbPressed || game.input.spacePressed);
-    if (skip || S.t > (S.long ? TUNING.endBoss.ogre.long.cap : C.cap)) { this.end(game); return; }
+    if (skip || S.t > (S.long ? TUNING.endBoss.ogre.long.cap : S.kind === 'supper' ? TUNING.endBoss.supper.scene.cap : C.cap)) { this.end(game); return; }
     S.bars = S.done ? Math.max(0, S.bars - dt * 4) : Math.min(1, S.bars + dt * 3);
     const look = S.kind === 'twin' ? this.stepTwin(game, dt) : S.kind === 'mage' ? this.stepMage(game, dt)
-      : S.kind === 'rifle' ? this.stepRifle(game, dt) : S.kind === 'butcher' || S.kind === 'clubman' ? this.stepRally(game, dt) : this.stepOgre(game, dt);
+      : S.kind === 'rifle' ? this.stepRifle(game, dt) : S.kind === 'butcher' || S.kind === 'clubman' ? this.stepRally(game, dt)
+      : S.kind === 'supper' ? this.stepSupper(game, dt) : this.stepOgre(game, dt);
     if (!game.endScene) return;
     // lines age, and a flash wears off: nobody's own update runs through a scene, so a man flashed on a beat stayed white to its end
     for (const o of game.enemies) { if (o.say) { o.say.life -= dt; if (o.say.life <= 0) o.say = null; } if (o.flash > 0) o.flash = Math.max(0, o.flash - dt); }
     game.revealRooms(); game.updateEffects(dt);
     const g = game.goat, o = look || game.endBoss.e, K = TUNING.camera, k = 1 - Math.exp(-K.lerp * dt);
-    game.cam.x += ((g.x + o.x) / 2 - game.cam.x) * k; game.cam.y += ((g.y + o.y) / 2 - game.cam.y) * k;
-    game.cam.zoom += (game.renderer.zoomFit * C.zoom - game.cam.zoom) * (1 - Math.exp(-K.zoomLerp * dt));
+    // `camAt`: the picture goes whole to one of them (the supper's Warden, then the goat), not between the two
+    const cx = S.camAt ? S.camAt.x : (g.x + o.x) / 2, cy = S.camAt ? S.camAt.y : (g.y + o.y) / 2;
+    game.cam.x += (cx - game.cam.x) * k; game.cam.y += (cy - game.cam.y) * k;
+    game.cam.zoom += (game.renderer.zoomFit * (S.kind === 'supper' ? TUNING.endBoss.supper.scene.zoom : C.zoom) - game.cam.zoom) * (1 - Math.exp(-K.zoomLerp * dt));
     g.facing = Math.atan2(o.y - g.y, o.x - g.x);
   },
 
@@ -602,8 +615,12 @@ const EndBoss = {
   },
 
   // ---- THE OSSUARY: THE LAST SUPPER ----
-  // `startLevel`: the room's men sat along the table, the boss nearest the head, THE WARDEN standing past it, the chair (a wraith
-  // hidden as a stool) past the foot, the platter on the middle table. The men are held (`endHold` 'sit') until it breaks.
+  // `startLevel`: the room's men sat along the table, the boss nearest the head, THE WARDEN seated at its head, the chair (a wraith
+  // hidden as a stool) past the foot, the platter on his own table. The men are held (`endHold` 'sit') until it breaks.
+  // The goat in the room (12 Oct 2026, the user's shape): a short held scene (`stepSupper`): the way in stoned behind him, the camera
+  // over to the Warden, who stands and slides the chair out, his words in the animals' box; then the offer, the floor his again but
+  // slow (`supper.slow`, `Goat.update`), a tuft of grass at the chair, and the wraith springs once `grassAt` of it is grazed, or a
+  // blow on anybody, or BAAH, breaks it. The brawl: a dome over him and his table (`S.dome`, `barrierPush`), the platter under it.
   laySupper(game, ring, li) {
     const L = game.level, last = ring.at, room = L.rooms[last], T = TUNING.endBoss.supper, w = game.world;
     if (!room) return;
@@ -623,18 +640,20 @@ const EndBoss = {
     // A floor put aside in the middle of it (`spotOf` → `supperSpot`): laid back as it stood, the men he put down gone by their sid already.
     const was = game.spotIn && game.spotIn.supper, ph = was ? was.phase : 'wait';
     if (ph === 'done') { if (boss) { boss.soul = false; boss.soulGate = -1; } return; }   // the Warden and the monster fell; the soul is loose or taken (the spot's own)
-    const seated = ph === 'wait' || ph === 'offer';
+    const seated = ph === 'wait' || ph === 'scene' || ph === 'offer';
     if (seated) order.forEach((e, i) => {
       const s = seats[i];
       if (s) { e.x = s.x; e.y = s.y; e.seat = s; e.facing = s.facing; }
       e.vx = 0; e.vy = 0; e.endHold = 'sit'; e.aware = false;
     });
     else for (const e of order) { e.aware = true; e.woke = true; if (e.state === 'idle') e.state = 'chase'; }
-    // THE WARDEN at the head: a real man of the room (js/warden.js), `scripted` so he does nothing until his fight, behind his
-    // barrier until then (`e.barrier`: `die` and `fling` refuse, the goat is kept out of the ring in `supperStep`). The way
-    // out's soul is his, taken off the table's mage, so the gate waits on him and not on the table.
+    // THE WARDEN at the head: a real man of the room (js/warden.js), `scripted` so he does nothing until his fight, seated like
+    // the rest until the goat is in (`endHold` 'sit', `seat`), behind his dome through the brawl (`e.barrier`: `die` and `fling`
+    // refuse; the goat is kept out of the dome in `supperStep`). The way out's soul is his, taken off the table's mage, so the
+    // gate waits on him and not on the table.
     const wx = ok(x1 + TILE * T.head, rowY) ? x1 + TILE * T.head : x1 + TILE * 0.8;
     const wd = new Enemy(wx, rowY, 'bearer'); Warden.give(wd); wd.scripted = true; wd.room = last; wd.facing = Math.PI; wd.barrier = true; wd.aware = false;
+    if (seated) { wd.seat = { x: wx, y: rowY, facing: Math.PI }; wd.endHold = 'sit'; }
     if (boss && boss.soulGate >= 0) { wd.soulGate = boss.soulGate; boss.soulGate = -1; boss.soul = false; boss.hp = boss.maxHp = Math.min(boss.hp, (boss.cfg.hp || 1) + TUNING.boss.champHp); }
     game.ensoul(wd); wd.hp = wd.maxHp = TUNING.warden.hp;
     game.enemies.push(wd);
@@ -645,15 +664,13 @@ const EndBoss = {
       game.enemies.push(chair);
       if (!chair.hide(game, 'stool')) { game.enemies.pop(); chair = null; }
     }
-    const mid = tables[Math.floor(tables.length / 2)];
-    const platter = new Prop(mid.x, mid.y - 4, 'platter'); platter.supper = true; platter.phase = Math.random() * 6;
+    // the platter on his own table, the one at the head
+    const headT = tables[tables.length - 1];
+    const platter = new Prop(headT.x, headT.y - 4, 'platter'); platter.supper = true; platter.phase = Math.random() * 6;
     if (seated) game.props.push(platter);
-    // the corner he laughs from: the room's inner corner nearest the way out, `corner` tiles in
-    const corners = [[room.x + T.corner, room.y + T.corner], [room.x + room.w - T.corner, room.y + T.corner], [room.x + T.corner, room.y + room.h - T.corner], [room.x + room.w - T.corner, room.y + room.h - T.corner]]
-      .map(([tx, ty]) => ({ x: tx * TILE, y: ty * TILE })).filter((c) => ok(c.x, c.y));
-    const xd = game.props.find((p) => p.kind === 'door' && p.exitGate);
-    corners.sort((a, b) => (xd ? hyp(a.x - xd.x, a.y - xd.y) - hyp(b.x - xd.x, b.y - xd.y) : 0));
-    game.supper = { li, room: last, rowY, x0, x1, men: order, boss, warden: wd, chair, platter, tables, t: 0, phase: 'wait', slide: 0, lineAt: 0, lineN: 0, carry: false, corner: corners[0] || { x: wx, y: rowY }, laughAt: 0, laughN: 0 };
+    // the dome of the brawl: a disc over him and his table, `dome.pad` tiles past both
+    const dome = { x: (wx + headT.x) / 2, y: rowY, r: Math.abs(wx - headT.x) / 2 + T.dome.pad * TILE };
+    game.supper = { li, room: last, rowY, x0, x1, men: order, boss, warden: wd, chair, platter, tables, dome, t: 0, phase: 'wait', slide: 0, lineAt: 0, lineN: 0, laughAt: 0, laughN: 0 };
     game.endBoss = { e: wd, li, kind: 'supper', meet: this.meetFor(game, li), room: last, seen: !seated, bones: null };
     if (!seated) this.resumeSupper(game, was);
   },
@@ -661,34 +678,98 @@ const EndBoss = {
   supperSpot(game) {
     const S = game.supper; if (!S) return null;
     const m = S.monster, w = S.warden;
-    return { phase: S.phase, hp: w && !w.dead ? w.hp : 0, mhp: m && !m.dead ? m.hp : 0 };
+    return { phase: S.phase === 'scene' ? 'wait' : S.phase, hp: w && !w.dead ? w.hp : 0, mhp: m && !m.dead ? m.hp : 0 };
   },
-  // CONTINUE into the middle of it: the Warden in his corner behind the barrier, or in his fight with the hearts he had, or
+  // CONTINUE into the middle of it: the Warden at the head under his dome, or in his fight with the hearts he had, or
   // THE FLAYED already; the platter where the phase left it; nobody at the table.
   resumeSupper(game, was) {
-    const S = game.supper, w = S.warden, C = S.corner;
-    S.brawlers = S.men.slice(); S.carry = false;
-    if (was.phase === 'brawl') { w.x = C.x; w.y = C.y; S.carry = true; w.pose = 'carry'; S.phase = 'brawl'; S.laughAt = 1; return; }
-    const open = new Prop(C.x + TILE, C.y, 'platter'); open.open = true; open.phase = 0; game.props.push(open);
+    const S = game.supper, w = S.warden;
+    S.brawlers = S.men.slice();
+    this.sealBehind(game, true);
+    if (was.phase === 'brawl') { S.phase = 'brawl'; S.laughAt = 1; game.props.push(S.platter); return; }
+    const open = new Prop(w.x - TILE, w.y, 'platter'); open.open = true; open.phase = 0; game.props.push(open);
     if (was.phase === 'drop' || was.phase === 'fight') {
-      w.x = C.x; w.y = C.y; w.barrier = false; w.scripted = false; w.aware = true; w.woke = true; w.state = 'chase';
+      w.barrier = false; w.scripted = false; w.aware = true; w.woke = true; w.state = 'chase';
       if (was.hp > 0) w.hp = Math.min(w.maxHp, was.hp);
       S.phase = 'fight'; game.doom = true; return;
     }
     if (was.phase === 'monster') {
-      w.x = C.x; w.y = C.y; w.barrier = false; w.scripted = false;
+      w.barrier = false; w.scripted = false;
       const m = Warden.transform(game, w, true);
       if (was.mhp > 0) m.hp = Math.min(m.maxHp, was.mhp);
       S.phase = 'monster'; game.doom = true;
     }
   },
-  // The goat in the room: his hand goes up, the chair slides out, the first line.
+  // The way he came in, stoned behind him (the boss room's own shut, `Game.updateBossShut`, held by `hold` until the supper is
+  // done). `quiet`: a floor laid back from a spot, no sound.
+  sealBehind(game, quiet) {
+    const S = game.supper, L = game.level, w = game.world, room = L.rooms[S.room], back = L.rooms[S.room - 1];
+    if (!room || room.bossShut || !back || back.clamped || !back.exitMouth) return;
+    const m = back.exitMouth;
+    room.bossShut = { tiles: m.tiles.slice(), was: m.tiles.map((i) => w.tiles[i]), hold: true };
+    for (const i of m.tiles) w.tiles[i] = T.WALL;
+    w.caveDirty();
+    if (quiet) return;
+    game.audio.sfxSteel(); game.audio.sfxThud(); game.shake(5); game.vibe(30); game.thud(m.x, m.y, 7);
+    game.particles(m.x, m.y, 16, PALETTE.ash, 220);
+    game.floatText(m.x, m.y - 30, 'SEALED', PALETTE.bone);
+  },
+  // The goat in the room (`watch`): the scene, `game.endScene` kind 'supper'.
   startSupper(game) {
     const S = game.supper; if (!S || S.phase !== 'wait') return;
-    S.phase = 'offer'; S.t = 0; S.seen = !!this.load().seen.supper;
-    S.warden.pose = 'raise'; S.lineAt = 0.4; S.lineN = 0;
+    S.phase = 'scene'; S.t = 0; S.seen = !!this.load().seen.supper;
+    game.endScene = { kind: 'supper', t: 0, bars: 0, flags: {}, seen: S.seen, camAt: null };
+    for (const o of [S.warden, ...S.men]) o.endActor = true;   // shown through the fog whole, the far end of the table too
     if (game.audio.sfxSupper) game.audio.sfxSupper();   // heaven's notes, flat and far: is she here?
-    if (S.chair) game.audio.sfxSteel();
+  },
+  // The chair sliding out from the table, the violet of his hand round it (`slide` 0..1).
+  slideChair(game, dt) {
+    const S = game.supper, T = TUNING.endBoss.supper;
+    if (!S.chair || S.slide >= 1) return;
+    S.slide = Math.min(1, S.slide + dt / T.slide); const q = S.slide * S.slide * (3 - 2 * S.slide);
+    const x = S.x0 - TILE * T.chair - q * TILE * T.slideBy; S.chair.x = x; if (S.chair.disguise) S.chair.disguise.x = x;
+    if (Math.random() < dt * 40) game.particles(x + (Math.random() - 0.5) * 20, S.rowY - 6 + (Math.random() - 0.5) * 10, 1, Math.random() < 0.5 ? PALETTE.witch : PALETTE.witchHi, 30);
+  },
+  // He stands from his seat, his hand up.
+  wardenUp(game) {
+    const w = game.supper.warden;
+    if (w.endHold) { w.endHold = null; w.seat = null; w.pose = 'raise'; w.facing = Math.PI; game.audio.sfxSteel(); game.particles(w.x, w.y - 30, 10, PALETTE.witchHi, 120); }
+  },
+  // The scene's step (`EndBoss.update`): the seal, the camera over, him up and the chair out, his words in the box, the camera back.
+  stepSupper(game, dt) {
+    const S = game.supper, X = game.endScene, C = TUNING.endBoss.supper.scene, w = S.warden, g = game.goat;
+    if (!S || S.phase !== 'scene') { this.end(game); return null; }
+    if (!X.flags.seal && X.t >= C.seal) { X.flags.seal = true; this.sealBehind(game); }
+    if (!X.flags.pan && X.t >= C.pan) { X.flags.pan = true; X.camAt = w; }
+    if (X.t >= C.raise) { this.wardenUp(game); this.slideChair(game, dt); }
+    if (!X.flags.box && X.t >= C.box) {
+      X.flags.box = true;
+      Beast.talk(game, { kind: 'warden', x: w.x, y: w.y }, C.lines, false, { name: 'THE WARDEN', sound: () => game.audio.sfxGrowl(), portrait: (R, ctx, k) => this.wardenPortrait(R, ctx, k) });
+    }
+    if (X.flags.box && !game.beastTalk && !X.flags.back) { X.flags.back = true; X.backAt = X.t; X.camAt = g; w.pose = 'idle'; X.done = true; }
+    if (X.flags.back && X.t >= X.backAt + C.back) { this.end(game); return null; }
+    return w;
+  },
+  // Skipped or played out: everything the scene does is done, and the offer stands.
+  endSupperScene(game) {
+    const S = game.supper, T = TUNING.endBoss.supper, w = S.warden, g = game.goat;
+    if (!S || S.phase !== 'scene') return;
+    this.sealBehind(game, true); this.wardenUp(game); w.pose = 'idle';
+    if (S.chair && S.slide < 1) { S.slide = 1; const x = S.x0 - TILE * T.chair - TILE * T.slideBy; S.chair.x = x; if (S.chair.disguise) S.chair.disguise.x = x; }
+    if (game.beastTalk && game.beastTalk.kind === 'warden') game.beastTalk = null;
+    for (const o of [w, ...S.men]) o.endActor = false;
+    // the tuft at the chair, between it and the table's foot: what "EAT WITH US" means, and what the wraith waits on
+    const gx = (S.chair ? S.chair.x : S.x0 - TILE * T.chair) + TILE * T.grass;
+    if (game.world.walkableAt(Math.floor(gx / TILE), Math.floor(S.rowY / TILE))) { S.grass = new Prop(gx, S.rowY, 'heal'); S.grass.supper = true; game.props.push(S.grass); }
+    S.phase = 'offer'; S.t = 0; S.lineAt = 1.6; S.lineN = 0;
+    g.facing = Math.atan2(w.y - g.y, w.x - g.x);
+  },
+  // The Warden big, for the box: the front view off js/warden-pixels.js, his hand up.
+  wardenPortrait(R, ctx, k) {
+    if (typeof WARDEN_PIXELS === 'undefined' || !WARDEN_PIXELS.draw) return;
+    const z = k * 0.9, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    ctx.save(); ctx.scale(z, z); WARDEN_PIXELS.draw(ctx, Math.PI / 2, false, R.t, 0, { pose: 'raise', warden: true }); ctx.restore();
+    ctx.imageSmoothingEnabled = sm;
   },
   // Every play step while the supper stands or he is on his way out.
   supperStep(game, dt) {
@@ -697,81 +778,84 @@ const EndBoss = {
     if (w.say) { w.say.life -= dt; if (w.say.life <= 0) w.say = null; }
     if (S.phase === 'offer') {
       S.t += dt;
-      // the chair slides out from the table, the violet of his hand round it
-      if (S.chair && S.slide < 1) {
-        S.slide = Math.min(1, S.slide + dt / T.slide); const q = S.slide * S.slide * (3 - 2 * S.slide);
-        const x = S.x0 - TILE * T.chair - q * TILE * T.slideBy; S.chair.x = x; if (S.chair.disguise) S.chair.disguise.x = x;
-        if (Math.random() < dt * 40) game.particles(x + (Math.random() - 0.5) * 20, S.rowY - 6 + (Math.random() - 0.5) * 10, 1, Math.random() < 0.5 ? PALETTE.witch : PALETTE.witchHi, 30);
-        if (S.slide >= 1) w.pose = 'idle';
-      } else if (S.t > T.slide) w.pose = 'idle';
       if (S.t >= S.lineAt && S.lineN < T.lines.length) { game.say(w, T.lines[S.lineN]); S.lineN++; S.lineAt = S.t + T.lineGap; }
-      // what breaks it: the chair reached (the wraith springs itself), BAAH, a blow on anybody at the table
+      // what breaks it: the chair's grass `grassAt` grazed (the wraith springs itself), the wraith found out by a blow near it,
+      // BAAH, a blow on anybody at the table
+      const gr = S.grass, ate = !!(gr && (gr.broken || gr.graze >= TUNING.prop.heal.grazeTime * game.mods.grazeMul * T.grassAt));
       const chairUp = !!(S.chair && S.chair.state !== 'hidden');
       const blow = S.men.some((e) => e.dead || !e.endHold);
-      if (chairUp || blow || game.input.spacePressed || g.dead) this.breakSupper(game, chairUp ? 'chair' : blow ? 'blow' : 'baah');
+      if (ate || chairUp || blow || game.input.spacePressed || g.dead) this.breakSupper(game, ate || chairUp ? 'chair' : blow ? 'blow' : 'baah');
       return;
     }
     if (S.phase === 'brawl') {
       S.t += dt;
-      // to the corner with the platter, then the barrier and the laughing while his men fight
-      if (w.path) { if (game.followPath(w, T.leave * TILE, dt)) w.path = null; }
-      else w.facing = Math.atan2(g.y - w.y, g.x - w.x);
-      this.barrierPush(game, w);
+      // behind his dome at the head of the table, the platter beside him, laughing while his men fight
+      w.facing = Math.atan2(g.y - w.y, g.x - w.x);
+      if (w.pose === 'raise' && S.t > 0.9) w.pose = 'idle';
+      this.barrierPush(game, S.dome);
       if (S.t >= S.laughAt) { S.laughAt = S.t + TUNING.warden.barrier.laughEvery * (0.8 + Math.random() * 0.5); game.floatText(w.x, w.y - 60, T.laughs[S.laughN++ % T.laughs.length], PALETTE.blood); game.audio.sfxGrowl(); }
       if (S.brawlers.every((e) => e.dead)) this.dropPlatter(game);
       return;
     }
     if (S.phase === 'drop') {
-      S.t += dt; this.barrierPush(game, w);
+      S.t += dt; this.barrierPush(game, S.dome);
       if (S.t >= T.drop.wait) {
-        // the fight: the barrier down, his AI his own, the score heavy (js/warden.js, `layers.doom`)
+        // the fight: the dome down, his AI his own, the score heavy (js/warden.js, `layers.doom`)
         S.phase = 'fight'; w.barrier = false; w.scripted = false; w.aware = true; w.woke = true; w.state = 'chase'; w.path = null; w.lastSeen = { x: g.x, y: g.y };
         game.doom = true; game.flash(PALETTE.blood, 0.1); game.audio.sfxToll();
         if (game.audio.musicEvent) game.audio.musicEvent('spotted');
       }
       return;
     }
-    if (S.phase === 'fight') { if (w.dead && !w.wardenGone) { S.phase = 'done'; game.doom = false; } return; }
+    if (S.phase === 'fight') { if (w.dead && !w.wardenGone) { S.phase = 'done'; game.doom = false; this.unseal(game); } return; }
     if (S.phase === 'monster') {
       const m = S.monster;
-      if (!m || m.dead) { S.phase = 'done'; game.doom = false; return; }
+      if (!m || m.dead) { S.phase = 'done'; game.doom = false; this.unseal(game); return; }
       Warden.fistFire(game, m, dt);
     }
   },
-  // The ring nothing passes: the goat inside it is put back out to its edge, with a spark.
-  barrierPush(game, w) {
-    const g = game.goat, R = TUNING.warden.barrier.r * TILE; if (g.dead) return;
-    const dx = g.x - w.x, dy = g.y - w.y, d = hyp(dx, dy);
+  // The supper done: the stone behind is `updateBossShut`'s to take down again.
+  unseal(game) {
+    const S = game.supper, room = S && game.level.rooms[S.room];
+    if (room && room.bossShut) room.bossShut.hold = false;
+  },
+  // The dome nothing passes: the goat inside it is put back out to its edge, with a spark. `D`: its disc.
+  barrierPush(game, D) {
+    const g = game.goat, R = D.r; if (g.dead) return;
+    const dx = g.x - D.x, dy = g.y - D.y, d = hyp(dx, dy);
     if (d >= R + g.r) return;
     const nx = d ? dx / d : 1, ny = d ? dy / d : 0;
-    g.x = w.x + nx * (R + g.r); g.y = w.y + ny * (R + g.r);
+    g.x = D.x + nx * (R + g.r); g.y = D.y + ny * (R + g.r);
     if (g.state === 'lunge' || g.state === 'roll') { g.vx = nx * 3 * TILE; g.vy = ny * 3 * TILE; }
-    if (Math.random() < 0.4) game.particles(w.x + nx * R, w.y + ny * R, 2, PALETTE.witchHi, 90);
+    if (Math.random() < 0.4) game.particles(D.x + nx * R, D.y + ny * R, 2, PALETTE.witchHi, 90);
   },
-  // The last of his men down: the platter thrown down at his feet, open and empty.
+  // The last of his men down: the platter off his table, thrown down at his feet, open and empty.
   dropPlatter(game) {
     const S = game.supper, T = TUNING.endBoss.supper, w = S.warden, g = game.goat;
-    S.phase = 'drop'; S.t = 0; S.carry = false; w.pose = 'idle';
+    S.phase = 'drop'; S.t = 0; w.pose = 'idle';
+    const i = game.props.indexOf(S.platter); if (i >= 0) game.props.splice(i, 1);
     const dx = g.x - w.x, dy = g.y - w.y, d = hyp(dx, dy) || 1;
     const p = new Prop(w.x + dx / d * TILE * 1.3, w.y + dy / d * TILE * 1.3, 'platter'); p.open = true; p.phase = 0; game.props.push(p);
     game.audio.sfxSteel(); game.audio.sfxThud(); game.thud(p.x, p.y, 4); game.particles(p.x, p.y, 8, PALETTE.ashHi, 110);
     game.floatText(p.x, p.y - 26, 'EMPTY', PALETTE.bone); game.say(w, T.drop.line);
     const D = this.load(); D.seen.supper = true; this.save();
   },
-  // He laughs, every man at the table is up, the chair is what it was, and he takes the platter out through the way out.
+  // He laughs, every man at the table is up, the chair is what it was, the grass was never there, and the dome goes up over
+  // him and his table with the platter on it.
   breakSupper(game, why) {
     const S = game.supper, T = TUNING.endBoss.supper, w = S.warden, g = game.goat;
     if (!S || S.phase !== 'offer') return;
     const D = this.load(); D.seen.supper = true; this.save();
     if (S.chair && S.chair.state === 'hidden' && !S.chair.dead) S.chair.spring(game);
+    if (S.grass) { const i = game.props.indexOf(S.grass); if (i >= 0) game.props.splice(i, 1); game.particles(S.grass.x, S.grass.y, 8, PALETTE.witch, 80); S.grass = null; }
     game.floatText(w.x, w.y - 62, 'HA HA HA HA!', PALETTE.blood); game.say(w, T.laugh);
     game.audio.sfxGrowl(); game.audio.sfxToll(); game.thud(w.x, w.y, 8); game.flash(PALETTE.witch, 0.14);
     game.particles(w.x, w.y - 30, 16, PALETTE.witchHi, 160);
+    game.ring(S.dome.x, S.dome.y, S.dome.r, PALETTE.witch, 0.5, 3);
     for (const e of S.men) if (!e.dead) { e.endHold = null; e.seat = null; e.aware = true; e.woke = true; e.lastSeen = { x: g.x, y: g.y }; e.lostTimer = 0; if (e.state === 'idle') e.state = 'chase'; }
-    const i = game.props.indexOf(S.platter); if (i >= 0) game.props.splice(i, 1);
-    S.carry = true; w.pose = 'carry'; S.why = why;
+    w.pose = 'raise'; w.facing = Math.atan2(g.y - w.y, g.x - w.x); S.why = why;
     S.brawlers = S.men.concat(S.chair ? [S.chair] : []);
-    w.path = [{ x: S.corner.x, y: S.corner.y }]; S.phase = 'brawl'; S.t = 0; S.laughAt = 1.2;
+    S.phase = 'brawl'; S.t = 0; S.laughAt = 1.2;
     if (game.audio.musicEvent) game.audio.musicEvent('spotted');
   },
 
@@ -779,7 +863,7 @@ const EndBoss = {
   // On the floor, under everybody: the ogre's bones.
   drawGround(R, game) {
     const S = game.supper;
-    if (S) for (const e of S.men) if (e.seat && e.endHold === 'sit' && !e.dead && game.inSight(e)) {
+    if (S) for (const e of S.men.concat([S.warden])) if (e.seat && e.endHold === 'sit' && !e.dead && game.inSight(e)) {
       const ctx = R.ctx; ctx.save(); ctx.translate(e.seat.x, e.seat.y - 5); ctx.scale(1, 1 / TILT); R.painted.stool(ctx, { x: 0, y: 0 }); ctx.restore();
     }
     const B = game.endBoss; if (!B || !B.bones) return;
@@ -790,12 +874,11 @@ const EndBoss = {
     const B = game.endBoss, S = game.endScene, U = game.supper, G = game.glimpse;
     if (G && G.ewe && !G.e.dead && game.inSight(G.e)) R.drawSheep(G.ewe);
     if (U && U.warden && !U.warden.dead && game.inSight(U.warden)) {
-      const w = U.warden, ctx = R.ctx;
-      if (U.carry) { ctx.save(); ctx.translate(w.x, w.y - (PIXEL_EXTENT.warden + 4) * TILT); ctx.scale(1, 1 / TILT); R.painted.platter(ctx, 0, 0); ctx.restore(); }
-      // the barrier: a ring of violet cells round him, breathing, while his men fight
-      if (w.barrier && (U.phase === 'brawl' || U.phase === 'drop')) {
-        const Rr = TUNING.warden.barrier.r * TILE, k = 0.5 + 0.5 * Math.sin(R.t * 4);
-        ctx.save(); ctx.globalAlpha = 0.35 + 0.35 * k; CombatFX.pixelRing(ctx, w.x, w.y, Rr + k * 3, 2, PALETTE.witch); ctx.globalAlpha = 0.5; CombatFX.pixelRing(ctx, w.x, w.y, Rr - 4, 1, PALETTE.witchHi); ctx.restore();
+      const w = U.warden, ctx = R.ctx, D = U.dome;
+      // the dome: a ring of violet cells round him and his table, breathing, while his men fight
+      if (w.barrier && D && (U.phase === 'brawl' || U.phase === 'drop')) {
+        const k = 0.5 + 0.5 * Math.sin(R.t * 4);
+        ctx.save(); ctx.globalAlpha = 0.35 + 0.35 * k; CombatFX.pixelRing(ctx, D.x, D.y, D.r + k * 3, 2, PALETTE.witch); ctx.globalAlpha = 0.5; CombatFX.pixelRing(ctx, D.x, D.y, D.r - 4, 1, PALETTE.witchHi); ctx.restore();
       }
     }
     if (B && B.e && !B.e.dead && B.e.endHold === 'gnaw' && game.inSight(B.e)) {

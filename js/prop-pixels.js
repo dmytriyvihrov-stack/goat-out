@@ -1460,6 +1460,24 @@ const PROP_PIXELS = (() => {
     const b = sprites['mshield' + l + '-f'], cx = Math.floor(b.w / 2), cy = Math.floor(b.h / 2);
     for (let k = 0; k < 4; k++) sprites['mshield' + l + '-bit' + k] = brokeUp(b, (x, y) => (x < cx + jag(y) ? 0 : 1) + (y < cy + jag(x) ? 0 : 2) === k);
   }
+  // A crate broken (12 Oct 2026 playtest: "the crate's debris does not look organic"; js/combat-fx.js `debris`): planks of
+  // the crate's own wood, a lit top edge, grain, a nail, one end snapped in steps, and a corner of the frame still nailed
+  // together, thrown through js/scatter.js like a blade's pieces, landing on quarter turns and left to be kicked.
+  {
+    const plank = (len, snap, nail) => {
+      const g = new Grid(len + 2, 5);
+      g.hl(1, 1, len - (snap ? 1 : 0), P.w3); g.hl(1, 2, len, P.w2); g.hl(1, 3, len - (snap ? 2 : 0), P.w1);
+      for (let x = 3; x < len - 1; x += 4) g.set(x, 2, P.w1);   // the grain
+      if (snap) g.set(len + 1, 2, P.w3);                           // a splinter past the break
+      if (nail) g.set(2, 2, P.i3);
+      return g.outline(P.ol);
+    };
+    sprites['crate-bit0'] = plank(13, true, true); sprites['crate-bit1'] = plank(10, true, false);
+    sprites['crate-bit2'] = plank(8, false, true); sprites['crate-bit3'] = plank(5, true, false);
+    const c = new Grid(8, 8);
+    c.hl(1, 1, 6, P.w3); c.hl(1, 2, 6, P.w2); c.vl(1, 3, 4, P.w2); c.vl(2, 3, 4, P.w1); c.set(2, 2, P.i3); c.set(6, 2, P.w1);
+    sprites['crate-bit4'] = c.outline(P.ol);
+  }
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
   for (const k in sprites) if (!/^(rack|coop|stall|roast)-/.test(k)) sprites[k] = sprites[k].trim();
   return { P, Grid, sprites, rng, SHIELD_LOOKS };
@@ -1477,7 +1495,11 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   // Always on since 1.74: the painted props they were drawn beside are gone (`#paintedprops` with them).
   PROP_PIXELS.on = true;
   // The art pass's version of a sprite where it has one (`name@pass`), else the sprite itself.
-  const pick = name => typeof ART_PASS !== 'undefined' && ART_PASS.on && S[name + '@pass'] ? name + '@pass' : name;
+  const pick = name => {
+    if (typeof ART_PASS === 'undefined') return name;
+    if (ART_PASS.smallProps && S[name + '@small']) return name + '@small';
+    return ART_PASS.on && S[name + '@pass'] ? name + '@pass' : name;
+  };
   const canvasOf = name => {
     name = pick(name);
     if (baked[name]) return baked[name];
