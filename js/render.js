@@ -3214,7 +3214,7 @@ class Renderer {
       }
       ctx.restore();
     }
-    if (this.painted.pixelProps) this.painted.millHub(ctx, M.hubR);
+    if (this.painted.pixelProps) this.painted.millHub(ctx, M.hubR, p.angle);
     else if (this.altar) ctx.drawImage(this.altar.sprite('mill', M.hubR), -48, -64);
     else if (!(this.painted.ready && this.painted.atlas(ctx, 'mill-hub', 0, 0, M.hubR * 2.2, undefined, 0.5))) {
       ctx.fillStyle = '#4d4741'; ctx.beginPath(); ctx.arc(0, 0, M.hubR, 0, Math.PI * 2); ctx.fill();
@@ -5751,6 +5751,8 @@ class Renderer {
     this.devButton(d, pad + 684 * s, top + 18 * s, 150 * s, 18 * s, 'SHIELD: ' + PROP_PIXELS.SHIELD_LOOKS[ART_PASS.shield || 0], 'art-shield', true);
     // the shaman's robe, three colours (6 Oct 2026)
     this.devButton(d, pad + 684 * s, top + 40 * s, 170 * s, 18 * s, 'SHAMAN ROBE: ' + SHAMAN_PIXELS.LOOKS[ART_PASS.shaman || 0], 'art-shaman', true);
+    // THE LIT PASS (12 Oct 2026): the round and metal props shaded as drums and domes, or as they were drawn
+    this.devButton(d, pad + 840 * s, top + 18 * s, 150 * s, 18 * s, 'LIGHT: ' + (ART_PASS.lit ? 'LIT' : 'AS DRAWN'), 'art-lit', ART_PASS.lit);
     // The second pass (2 Oct 2026): what was still smooth on the floor, on the grid.
     [['shadows', 'SHADOWS', 'PIXEL', 'SMOOTH'], ['tells', 'TELLS', 'CELLS', 'STROKES'], ['hay', 'HAY', 'A STEP DOWN', 'AS PACKED'], ['cave', 'CAVE FLOOR', 'SHEET', 'AS PACKED']].forEach(([k, name, yes, no], i) =>
       this.devButton(d, pad + i * 170 * s, top + 40 * s, 164 * s, 18 * s, `${name}: ${ART_PASS[k] ? yes : no}`, 'art-' + k, ART_PASS[k]));

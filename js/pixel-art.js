@@ -89,6 +89,10 @@ const ART_PASS = {
   // the shaman's robe, one of `SHAMAN_PIXELS.ROBES` (6 Oct 2026: DUSK, SOOT, OCHRE); his pick, SOOT
   shaman: 1,
   shadows: true, tells: true, hay: true, cave: true,
+  // THE LIT PASS (12 Oct 2026, after the bomb's: "go over the other objects and textures too"): what is round or metal
+  // shaded as a drum or a dome, with a glint and the floor's light up its shadowed edge, beside the old drawing
+  // (`name@lit` in js/prop-pixels.js, `ENV_STUDY` here, the floors' stones in `FLOOR_SHEET`). The ART tab's LIGHT.
+  lit: true,
   // A level's `artPass` colours in place of its own, and back: the tuned ones are kept on the level
   // the first time it is switched, so switching off is exact.
   set(on) {
@@ -1226,7 +1230,7 @@ const PIXEL_ART = {
 PIXEL_ART.init();
 if (typeof location !== 'undefined') {
   // Not in the itch build, which honours no tool address (`js/release.js` loads later: read its flag).
-  if (!(typeof window !== 'undefined' && window.GOAT_RELEASE) && /aspacked/.test(location.hash)) Object.assign(ART_PASS, { hunter: 0, clubman: 0, floors: false, shadows: false, tells: false, hay: false, cave: false });
+  if (!(typeof window !== 'undefined' && window.GOAT_RELEASE) && /aspacked/.test(location.hash)) Object.assign(ART_PASS, { hunter: 0, clubman: 0, floors: false, shadows: false, tells: false, hay: false, cave: false, lit: false });
   else ART_PASS.set(true);
 }
 
@@ -1500,6 +1504,46 @@ const PIXEL_ROOMS = {
 // 2026; v 0.8 / s 0.82 came out khaki at 0.166, v 0.78 / s 0.92 olive in the room at 0.150).
 const ENV_STUDY = {
   hay: { v: 0.8, s: 0.96 },
+  // The brazier's iron, THE LIT PASS's (`pass`: the `ART_PASS` switch it rides on, else its own name): the packed bowl
+  // was one black-brown as dark as the floor under it, so it read by its outline and its fire alone. Every packed
+  // pixel keeps its place and its texture and is only lit again: its rim bright where it turns to the upper left, a
+  // glint there, the belly and the legs lit down their left and shaded to their right, the floor's cool light up the
+  // last pixels of that side; the coals, the pit they lie in and the outline as packed. Coordinates are the packed
+  // 88 x 96 item's; another size is left alone.
+  brazier: { pass: 'lit', relight(a, w, h) {
+    if (w !== 88 || h !== 96) return;
+    const at = (x, y) => (y * w + x) * 4, op = (x, y) => x >= 0 && y >= 0 && x < w && y < h && a[at(x, y) + 3] > 127;
+    const I5 = [217, 216, 222], IC = [92, 100, 120], out = new Uint8ClampedArray(a);
+    const hot = (p) => { const mx = Math.max(a[p], a[p + 1], a[p + 2]), mn = Math.min(a[p], a[p + 1], a[p + 2]); return mx > 60 && (mx - mn) / mx > 0.35; };
+    const edge = (x, y) => !op(x - 1, y) || !op(x + 1, y) || !op(x, y - 1) || !op(x, y + 1);
+    // the rim, an ellipse round the coals
+    const cx = 45, cy = 25, rx = 30, ry = 22, lx = -0.66, ly = -0.75;
+    const scale = (p, k) => [a[p] * k, a[p + 1] * k, a[p + 2] * k], toward = (c, t, k) => c.map((v, i) => v + (t[i] - v) * k);
+    for (let y = 0; y < h; y++) {
+      // this row's runs, for what is lit as a drum (the handles, the belly, the legs)
+      const runs = []; { let s = -1; for (let x = 0; x <= w; x++) { const o = x < w && op(x, y); if (o && s < 0) s = x; if (!o && s >= 0) { runs.push([s, x - 1]); s = -1; } } }
+      for (let x = 0; x < w; x++) {
+        const p = at(x, y); if (!op(x, y) || hot(p) || edge(x, y)) continue;
+        const ex = (x + 0.5 - cx) / rx, ey = (y + 0.5 - cy) / ry, e = Math.hypot(ex, ey);
+        const run = runs.find(([s, f]) => x >= s && x <= f), nx = ((x + 0.5) - (run[0] + run[1] + 1) / 2) / Math.max(1, (run[1] + 1 - run[0]) / 2);
+        let c;
+        if (y < 46 && e <= 1) {
+          if (e < 0.78) continue;
+          const ca = (ex * lx + ey * ly) / e;
+          c = scale(p, 1 + 0.85 * ca);
+          if (ca > 0.93 && e > 0.84) c = toward(c, I5, 0.75);
+          else if (ca < -0.55 && e > 0.9) c = toward(c, IC, 0.35);
+        } else if (y < 46) c = scale(p, 1 + 0.4 * Math.max(-0.5, -nx));
+        else {
+          c = scale(p, nx < 0 ? 1 - (y < 57 ? 0.8 : 0.6) * nx : 1 - 0.25 * nx);
+          if (y >= 48 && y <= 49 && nx < -0.6 && nx > -0.85) c = toward(c, I5, 0.35);
+          if (x >= run[1] - 2 && run[1] - run[0] > 4 && nx > 0.4) c = toward(c, IC, y < 57 ? 0.45 : 0.28);
+        }
+        out[p] = c[0]; out[p + 1] = c[1]; out[p + 2] = c[2];
+      }
+    }
+    a.set(out);
+  } },
 };
 // Litter is a few tiles in a hundred: at more than that a floor stops being a floor.
 const PIXEL_LITTER = {
@@ -1521,7 +1565,7 @@ const PIXEL_ENV = {
     const f = PIXEL_ENV_ASSETS.items[PIXEL_ENV_ID[name] || name]; if (!f) return 0;
     const h = w * f[3] / f[2];
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
-    const st = ENV_STUDY[name] && ART_PASS[name] && this.ready ? this.study(name, f) : null;   // never baked off an atlas still loading
+    const R = ENV_STUDY[name], st = R && ART_PASS[R.pass || name] && this.ready ? this.study(name, f) : null;   // never baked off an atlas still loading
     if (st) ctx.drawImage(st, 0, 0, f[2], f[3], x - w / 2, y - h * ay, w, h);
     else ctx.drawImage(this.image, f[0], f[1], f[2], f[3], x - w / 2, y - h * ay, w, h);
     ctx.imageSmoothingEnabled = smooth;
@@ -1536,12 +1580,13 @@ const PIXEL_ENV = {
     c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
     const x = c.getContext('2d'); x.drawImage(this.image, f[0], f[1], f[2], f[3], 0, 0, f[2], f[3]);
     const d = x.getImageData(0, 0, f[2], f[3]), a = d.data;
-    for (let i = 0; i < a.length; i += 4) {
+    if (R.v !== undefined) for (let i = 0; i < a.length; i += 4) {
       if (!a[i + 3]) continue;
       // saturation pulled toward the pixel's own value, then the whole of it scaled down
       const grey = Math.max(a[i], a[i + 1], a[i + 2]) * (1 - R.s);
       for (let k = 0; k < 3; k++) a[i + k] = Math.round((a[i + k] * R.s + grey) * R.v);
     }
+    if (R.relight) R.relight(a, f[2], f[3]);
     x.putImageData(d, 0, 0);
     this.studies.set(name, c); return c;
   },

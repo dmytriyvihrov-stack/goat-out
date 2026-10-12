@@ -242,6 +242,13 @@ measured box, so no footprint moved. render.js asks `painted.pixelProps` where a
 inline (mill caps and hub, the ware's stool, the shelf pail). The painted pack itself went in 1.74:
 `PROP_PIXELS.on` is always true, and `PAINTED_SIZE` (painted-art.js) keeps the proportions its images lent.
 `node output/pixel-claude-2026-09-24/render.cjs 6 [names]` renders them to a sheet. **Round metal is lit as a dome** (12 Oct 2026, the bomb's before and after): `Grid.dome(cx, cy, rx, ry, ramp, cuts, { from, rim })` shades a drawn shape with a glint up on the left, a core shadow low on the right and one rim step of thrown-back light on that edge (`IRON` with `i5` / `ic`, `SILVER`); the bomb, the armour (`steel`, a piece laid in the `STEEL` mark and shaded at once), the cloche and the shield's boss use it. A flat thing (the gong) is not a dome.
+**THE LIT PASS** (0.014, 12 Oct 2026, "the other objects and textures too") carries it to the rest behind `ART_PASS.lit` (ART tab LIGHT, off
+under `#aspacked`): a hand-drawn prop gets a `name@lit` sprite with the SAME silhouette (picked by `pick` after `@pass`; one off its
+frame is deleted with a warning), shaded with `Grid.drum` (an upright drum: the pail), `Grid.torus` (a round band: the wheel's tire,
+the round shield's rim; `steps` hands back each pixel's step for rivets) or `Grid.bounce` (the floor's light a step up a dark edge after
+outlining: the barrels). Anything that turns must not turn its light: the wheel's iron is its own sprite (`mill-tire`) laid over the
+turning hub turned back by `p.angle` (`A.millHub`'s third argument). Packed art is relit at load, never re-packed: `ENV_STUDY.<name>`
+takes `pass` (the switch) and `relight(a, w, h)` (the brazier). The floors, walls, cave and trip were looked at and left. `ART_HANDOFF.md`.
 
 **What he carries sits in his teeth.** `Renderer.drawCarried` draws a held *thing* at the mouth of the
 facing the sprite shows (`PIXEL_FACE`), `goat.carry.lead` + `reach` × r ahead, turned with the head,

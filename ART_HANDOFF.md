@@ -101,6 +101,38 @@ edge is only 46% dark against 80-100% for the cult. Frames in `tools/shots/ap2-*
 A study is a comparison, not an asset: whichever is chosen should be drawn properly (by hand, like
 the ogre and the horse) or packed from a re-coloured source, and the switch removed.
 
+## THE LIT PASS (12 Oct 2026), the bomb's lesson carried over
+
+The bomb (0.013) showed what a round or metal thing on a dark floor reads by: the light across it, a
+glint where the light meets it square, and the floor's light thrown back up its shadowed edge, never its
+fill. The same three on the rest of what is round or metal, behind `ART_PASS.lit` (on; the ART tab's
+LIGHT; off under `#aspacked`), every original one click away:
+
+- **Hand-drawn props** get a `name@lit` sprite beside the old one, the same silhouette pixel for pixel
+  (prop-pixels.js deletes any that is not, with a warning), picked by `pick` after `@pass`: the pail
+  (staves and hoops as a drum, `Grid.drum`), the gong's boss (a brass dome; the disc as it was, it lost its
+  lip as a dome), the roast's stones (a dome each, the side toward the coals warmed), the sword and the
+  halberd (a glint), the round shield's rim (a torus, `Grid.torus`), every barrel standing, lying and
+  rolling (`Grid.bounce`: a step up the ramp on the side away from the light; the staves are his pick and stay).
+- **The wheel turns and the light does not**: its iron (`mill-tire`, the tire as a torus with lit
+  rivets and the axle's cap as a dome) is laid over the turning hub and turned back by the wheel's
+  angle (`A.millHub`'s `turn`), so the wood goes round and the shine stays up on the left.
+- **The brazier** is packed art (the environment atlas), so it is relit at load and never re-packed:
+  `ENV_STUDY.brazier.relight` keeps every packed pixel's place and texture and only scales it, the rim
+  bright where it turns to the light with a glint, the belly and legs lit down the left, the floor's cool
+  light up their right; the coals, the pit and the outline as packed. `ENV_STUDY` entries now take a
+  `pass` (the switch they ride) and a `relight`.
+
+Measured as brightness contrast of the 95th-percentile light against each level's floor: the brazier
+1.19-2.01 to 1.70-4.06 (THE THRESHING FLOOR and THE RAFTERS were 1.19, read by hue alone), the wheel's
+iron 1.52-3.61 to 2.76-6.57, the roast's stones 1.84-4.38 to 2.69-6.42; the gong's and the blades' glints
+raise their brightest pixel about 40%. The barrels, the pail and the shield keep their light; what they
+gain is the edge. Looked at and left: the floors and the wall faces (every stone already lit along its
+top and left and shaded along its bottom and right, soft on purpose, and the sheets are his), the
+cave's rock and the trip (his, by name), the crate, table, pillar and boulder (the atlas shaded them),
+doors, the lantern and the chandelier (small, and lit by their own flames). Evidence and the in-page
+before / after helper: `output/lit-2026-10-12/` (`pair.js`, `pairs.png`, `sprites.png`, `wheel.png`, `brazier.png`).
+
 ---
 
 ## Still to be drawn in pixel
