@@ -5,6 +5,23 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.014, 12 Oct 2026: the bomb's lesson on the rest of the round and metal things
+
+- **THE LIT PASS** (his ask, after the bomb: "go over the other objects and textures too"): what is round or metal is lit
+  the bomb's way, the light across it, a glint where it meets the light square, and the floor's light thrown back up its
+  shadowed side. THE WHEEL's iron tire is a torus with lit rivets and its axle cap a dome, and the iron is held still over the
+  turning hub so the shine never goes round with it. THE BRAZIER, as dark as the floor under it (brightness contrast 1.19 on
+  THE THRESHING FLOOR and THE RAFTERS), is relit off its packed pixels at load: its rim bright and glinting where it turns to the
+  light, the belly and legs lit down the left, cool light up the right; now 1.70 to 4.06 against every floor. The roast's
+  stones are round and warm on the side toward the coals, the gong's boss is a brass dome, the sword and the halberd glint,
+  the round shield's rim is a torus, every barrel takes the floor's light up its dark side, the pail is a lit drum.
+- **On a switch**, as every look is: `ART_PASS.lit` (the ART tab's LIGHT, off under `#aspacked`); each hand-drawn prop is a
+  `name@lit` sprite beside the old one with the same silhouette, the brazier an `ENV_STUDY` relight. Render only.
+- **Looked at and left**: the floors and walls (every stone already lit top and left, soft on purpose), the cave and the trip,
+  the crate, table, pillar and boulder (shaded in the atlas), doors, lanterns, the chandelier. `ART_HANDOFF.md`, `output/lit-2026-10-12/`.
+
+---
+
 ## 0.013, 12 Oct 2026: iron that reads on a dark floor
 
 - **The bomb's lesson** (his "it got better", a before and after of the bomb): the shell was one flat dark grey that sank

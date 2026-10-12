@@ -1785,7 +1785,7 @@ class Game {
     if (id === 'art-shield') { ART_PASS.shield = ((ART_PASS.shield || 0) + 1) % PROP_PIXELS.SHIELD_LOOKS.length; return; }
     if (id === 'art-shaman') { ART_PASS.shaman = ((ART_PASS.shaman || 0) + 1) % SHAMAN_PIXELS.LOOKS.length; return; }
     // the second pass's switches; the baked rooms and cave key themselves on hay and the cave's floor
-    if (id === 'art-shadows' || id === 'art-tells' || id === 'art-hay' || id === 'art-cave') { const k = id.slice(4); ART_PASS[k] = !ART_PASS[k]; return; }
+    if (id === 'art-shadows' || id === 'art-tells' || id === 'art-hay' || id === 'art-cave' || id === 'art-lit') { const k = id.slice(4); ART_PASS[k] = !ART_PASS[k]; return; }
     if (id === 'art-clubman') { ART_PASS.clubman = (ART_PASS.clubman + 1) % PIXEL_STUDY.clubman.length; return; }
     if (id === 'juice-export') {
       try {

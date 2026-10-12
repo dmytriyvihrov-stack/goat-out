@@ -31,6 +31,15 @@ const PROP_PIXELS = (() => {
   const IRON = [P.i0, P.i1, P.i2, P.i3, P.i4, P.i5], IRON_CUTS = [-0.3, 0.38, 0.75, 0.9, 0.97];
   // Silver the same way: the supper's platter.
   const SILVER = ['#3e3e46', '#5e5e68', '#8a8a94', '#b8b8c2', '#e2e2ea', '#ffffff'];
+  // THE LIT PASS (12 Oct 2026, "go over the other objects and textures too", `ART_PASS.lit`): the bomb's lesson carried
+  // to the rest of what is round or metal, each as a `name@lit` sprite beside the one drawn before, the same silhouette
+  // pixel for pixel, so the original is one switch away. A round body reads on a dark floor by three things, never by
+  // its fill: the light across it (a drum's columns, a dome's rings), a glint where the light meets it square, and the
+  // floor's light thrown back up its shadowed edge, a step up from the core shadow a pixel in.
+  const WOOD = [P.w0, P.w1, P.w2, P.w3, P.w4], STONE = [P.s0, P.s1, P.s2, P.s3, P.s4];
+  const BRASS = [P.b0, P.b1, P.b2, P.b3, P.b4, '#f7e4a2'];
+  // the last of these a coal's glow: the stones of the roast catch the fire on the side that faces it
+  const EMBER = '#8c4526';
 
   // A tiny deterministic generator so every build draws the same grain and the same debris.
   const rng = seed => () => { seed |= 0; seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -103,6 +112,61 @@ const PROP_PIXELS = (() => {
       for (const [x, y, c] of put) this.set(x, y, c);
       return this;
     }
+    // `dome`'s twin for an upright drum (a pail, a post): each row's run of what is drawn (in `from`, or all of it)
+    // is the drum's width there, every pixel lit off its place across it, and `rim` the step up the ramp the last
+    // pixel of a run takes where it lies in the core shadow (THE LIT PASS).
+    drum(ramp, cuts, { from, rim = 0, lx = -0.62, lz = 0.78 } = {}) {
+      const ll = Math.hypot(lx, lz), put = [], ok = (v) => v && (!from || from.includes(v));
+      for (let y = 0; y < this.h; y++) {
+        let x0 = -1, x1 = -1;
+        for (let x = 0; x < this.w; x++) if (ok(this.get(x, y))) { if (x0 < 0) x0 = x; x1 = x; }
+        if (x0 < 0) continue;
+        const c = (x0 + x1 + 1) / 2, hw = Math.max(1, (x1 + 1 - x0) / 2);
+        for (let x = x0; x <= x1; x++) {
+          if (!ok(this.get(x, y))) continue;
+          const nx = Math.max(-1, Math.min(1, (x + 0.5 - c) / hw)), dot = (nx * lx + Math.sqrt(1 - nx * nx) * lz) / ll;
+          let i = 0; while (i < cuts.length && dot > cuts[i]) i++;
+          put.push([x, y, ramp[x === x1 && x1 > x0 + 2 && i <= 1 ? Math.min(ramp.length - 1, i + rim) : i]]);
+        }
+      }
+      for (const [x, y, c] of put) this.set(x, y, c);
+      return this;
+    }
+    // A round band (a tire, a shield's rim) as a torus seen from above: every pixel drawn in `from` within it lit off
+    // where it sits across the band's round section, `r` its middle and `half` half its width, so the band shines on
+    // its outer half toward the light and its inner half away from it; `rim` the floor's light along its outside in
+    // the core shadow (THE LIT PASS). Hands back the step each pixel took, for rivets laid over it.
+    torus(cx, cy, r, half, ramp, cuts, { from, rim, lx = -0.62, ly = -0.7, lz = 0.95 } = {}) {
+      const ll = Math.hypot(lx, ly, lz), put = [], steps = new Map();
+      const at = (x, y) => {
+        const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.hypot(dx, dy) || 1, t = Math.max(-1, Math.min(1, (d - r) / half));
+        const dot = ((dx / d) * t * lx + (dy / d) * t * ly + Math.sqrt(1 - t * t) * lz) / ll;
+        let i = 0; while (i < cuts.length && dot > cuts[i]) i++;
+        return { i, out: t > 0.4, lee: dx + dy > r * 0.3 };
+      };
+      for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+        const v = this.get(x, y); if (!v || (from && !from.includes(v))) continue;
+        const s = at(x, y); steps.set(y * this.w + x, s.i);
+        put.push([x, y, rim && s.out && s.lee && s.i <= 1 ? rim : ramp[s.i]]);
+      }
+      for (const [x, y, c] of put) this.set(x, y, c);
+      this.steps = (x, y) => steps.has(y * this.w + x) ? steps.get(y * this.w + x) : at(x, y).i;
+      return this;
+    }
+    // The floor's light thrown back up a body's shadowed side after it is outlined: a pixel whose neighbour toward
+    // (dx, dy) is the outline or nothing, and whose colour is one of the bottom two steps of `ramp`, goes `by`
+    // steps up it (THE LIT PASS). `keep(x, y)` leaves a pixel alone.
+    bounce(ramp, dx, dy, by = 1, keep) {
+      const put = [], edge = (x, y) => { const v = this.get(x, y); return !v || v === P.ol; };
+      for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+        const i = ramp.indexOf(this.get(x, y));
+        if (i < 0 || i > 1 || !edge(x + dx, y + dy) || (keep && keep(x, y))) continue;
+        put.push([x, y, ramp[Math.min(ramp.length - 1, i + by)]]);
+      }
+      for (const [x, y, c] of put) this.set(x, y, c);
+      return this;
+    }
+    copy() { const g = new Grid(this.w, this.h); g.p = this.p.slice(); return g; }
     outline(c = P.ol, diag = false) {
       const add = [];
       for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
@@ -279,7 +343,7 @@ const PROP_PIXELS = (() => {
     for (let y = 0; y < h.h; y++) for (let x = 0; x < h.w; x++) g.p[x * g.w + y] = h.get(x, y);
     return g;
   }
-  function shield() {
+  function shield(lit) {
     const g = new Grid(19, 19), c = 9;
     g.ell(c, c, 8.5, 8.5, P.i2);
     g.ell(c, c, 7, 7, P.w2);
@@ -288,8 +352,13 @@ const PROP_PIXELS = (() => {
     g.tone((x, y) => (x - c) + (y - c) > 7, P.w1, [P.w2, P.w3]);
     // the painted band the old shield carried, dulled to the cult's red
     g.rect(10, 1, 3, 17, P.r2, true); g.tone((x, y) => x === 12, P.r1, [P.r2]);
-    g.ring(c, c, 8.5, 8.5, 1.3, P.i2); g.tone((x, y) => (x - c) + (y - c) < -8, P.i3, [P.i2]); g.tone((x, y) => (x - c) + (y - c) > 8, P.i1, [P.i2]);
+    g.ring(c, c, 8.5, 8.5, 1.3, P.i2);
+    // THE LIT PASS: the iron rim a torus like the wheel's, a rivet a step over the iron it sits on
+    if (lit) { g.torus(c, c, 7.85, 0.9, IRON, [-0.3, 0.4, 0.74, 0.92, 0.985], { from: [P.i2], rim: P.ic }); for (const [x, y] of [[9, 1], [2, 9], [16, 9], [9, 17], [4, 4], [14, 4], [4, 14], [14, 14]]) g.set(x, y, IRON[Math.min(5, g.steps(x, y) + 1)]); }
+    else {
+    g.tone((x, y) => (x - c) + (y - c) < -8, P.i3, [P.i2]); g.tone((x, y) => (x - c) + (y - c) > 8, P.i1, [P.i2]);
     for (const [x, y] of [[9, 1], [2, 9], [16, 9], [9, 17], [4, 4], [14, 4], [4, 14], [14, 14]]) g.set(x, y, P.i4);
+    }
     g.blit(new Grid(19, 19).ell(c + 0.5, c + 0.5, 2.6, 2.6, 1).dome(c + 0.5, c + 0.5, 2.6, 2.6, IRON, IRON_CUTS, { rim: P.ic }), 0, 0);   // the boss, an iron dome
     return g.outline();
   }
@@ -521,7 +590,7 @@ const PROP_PIXELS = (() => {
   }
 
   // ---------------------------------------------------------------- the wheel
-  function millHub() {
+  function millHub(lit) {
     const g = new Grid(41, 41), c = 20.5, r = rng(51);
     g.ell(c, c, 19.5, 19.5, P.w2);
     // end grain: growth rings and a split, the old hub's millstone look turned into a cut log
@@ -529,6 +598,23 @@ const PROP_PIXELS = (() => {
     g.speckle(r, 60, P.w1, [P.w2]); g.speckle(r, 40, P.w3, [P.w2]);
     g.line(22, 24, 31, 34, P.w0, true);
     g.ring(c, c, 19.5, 19.5, 3, P.i2);
+    if (lit) {
+      // the tire a torus: every pixel lit off where it sits across the iron's round section, so the upper left of it
+      // shines on its outer half and the lower right on its inner, the floor's light along its outside there; a
+      // stud a step over the iron under it. The axle's cap a dome, the hole in it lit on its far inner wall.
+      g.torus(c, c, 18, 1.5, IRON, [-0.3, 0.42, 0.78, 0.93, 0.992], { from: [P.i2], rim: P.ic });
+      // a rivet's head: lit over the band, its own shadow a pixel down and to the right of it
+      for (let k = 0; k < 8; k++) {
+        const a = k * Math.PI / 4 + 0.39, x = Math.round(c - 0.5 + Math.cos(a) * 18), y = Math.round(c - 0.5 + Math.sin(a) * 18), i = g.steps(x, y);
+        g.set(x, y, IRON[Math.min(5, i + 2)]); if (IRON.includes(g.get(x + 1, y + 1)) || g.get(x + 1, y + 1) === P.ic) g.set(x + 1, y + 1, IRON[Math.max(0, i - 2)]);
+      }
+      g.blit(new Grid(41, 41).ell(c, c, 4.5, 4.5, 1).dome(c, c, 4.5, 4.5, IRON, IRON_CUTS, { rim: P.ic }), 0, 0);
+      g.ell(c, c, 2.2, 2.2, P.i0); g.tone((x, y) => x + y > 2 * c - 0.5, P.i2, [P.i0]);
+      // The wheel turns and the light does not: this is only the iron, laid over the turning hub held still
+      // (`A.millHub`), so the wood's grain and its split go round and the shine stays up on the left.
+      g.outline(); for (let i = 0; i < g.p.length; i++) if (WOOD.includes(g.p[i])) g.p[i] = null;
+      return g;
+    }
     g.tone((x, y) => (x - c) + (y - c) < -14, P.i3, [P.i2]); g.tone((x, y) => (x - c) + (y - c) > 14, P.i1, [P.i2]);
     for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + 0.39; g.set(c - 0.5 + Math.cos(a) * 18, c - 0.5 + Math.sin(a) * 18, P.i4); }
     g.ell(c, c, 4.5, 4.5, P.i1); g.ell(c, c, 2.2, 2.2, P.i0); g.set(18, 18, P.i3); g.set(19, 17, P.i3);
@@ -640,7 +726,7 @@ const PROP_PIXELS = (() => {
   }
 
   // ---------------------------------------------------------------- gong, 29 x 30
-  function gong() {
+  function gong(lit) {
     const g = new Grid(29, 30);
     for (const x of [2, 23]) {
       g.rect(x - 1, 25, 6, 4, P.w1); g.hl(x - 1, 25, 6, P.w3); g.hl(x - 1, 28, 6, P.w0);     // feet blocks
@@ -654,8 +740,12 @@ const PROP_PIXELS = (() => {
     g.tone((x, y) => (x - 14.5) + (y - 17) < -8, P.b3, [P.b2]);
     g.ring(14.5, 17, 9, 8.5, 1, P.b1); g.ring(14.5, 17, 6, 5.6, 1, P.b1, true);
     g.tone((x, y) => (x - 14.5) + (y - 17) < -8, P.b3, [P.b1]);
-    g.ell(14.5, 17, 2.6, 2.4, P.b3); g.set(13, 15, P.b4); g.set(14, 15, P.b4); g.set(13, 16, P.b4); g.set(16, 18, P.b1);
+    // THE LIT PASS keeps the disc as it is (as a dome it lost its lip, 12 Oct 2026) and makes only its boss a dome of
+    // brass, glint and all, standing off the disc it was a flat spot on
+    if (lit) g.blit(new Grid(29, 30).ell(14.5, 17, 2.6, 2.4, 1).dome(14.5, 17, 2.6, 2.4, BRASS, [-0.1, 0.3, 0.62, 0.85, 0.95]), 0, 0);
+    else { g.ell(14.5, 17, 2.6, 2.4, P.b3); g.set(13, 15, P.b4); g.set(14, 15, P.b4); g.set(13, 16, P.b4); g.set(16, 18, P.b1); }
     g.set(9, 12, P.b4); g.set(10, 11, P.b4); g.set(11, 11, P.b4);
+    if (lit) g.set(10, 11, BRASS[5]);
     return g.outline();
   }
 
@@ -747,13 +837,24 @@ const PROP_PIXELS = (() => {
   }
 
   // ---------------------------------------------------------------- milk pail, 19 x 27
-  function pail() {
+  function pail(lit) {
     const g = new Grid(19, 27);
     g.poly([[2, 6], [17, 6], [15.5, 25], [3.5, 25]], P.w2);
+    if (lit) {
+      // a tub of staves round a drum: each stave lit off its place across it, the seams a step under it, the
+      // hoops' iron lit the same way with a glint where the light meets them square and the floor's light at their end
+      g.drum(WOOD, [-0.35, 0.3, 0.72, 0.985], { rim: 1 });
+      for (const x of [5, 8, 11, 14]) for (let y = 6; y < 25; y++) { const i = WOOD.indexOf(g.get(x, y)); if (i > 0) g.set(x, y, WOOD[i - 1]); }
+      for (const y of [10, 20]) { g.hl(0, y, 19, 'h', true); g.hl(0, y + 1, 19, 'l', true); }
+      g.drum(IRON, IRON_CUTS.map((c) => c - 0.2), { from: ['h'] }).drum([P.i0, P.i0, P.i1, P.i1, P.i2, P.i2], IRON_CUTS, { from: ['l'] });
+      for (const y of [10, 20]) for (let x = 0; x < 19; x++) if (g.get(x, y) === P.i5 && g.get(x - 1, y) === P.i5) g.set(x - 1, y, P.i4);
+      g.hl(0, 24, 19, P.w0, true);
+    } else {
     for (const x of [5, 8, 11, 14]) g.vl(x, 6, 19, P.w1, true);
     g.tone((x, y) => x < 5, P.w3, [P.w2]); g.tone((x, y) => x > 14, P.w1, [P.w2]);
     for (const y of [10, 20]) { g.hl(0, y, 19, P.i2, true); g.hl(0, y + 1, 19, P.i1, true); g.set(4, y, P.i3); }
     g.hl(0, 24, 19, P.w0, true);
+    }
     g.ell(9.5, 6, 8, 3.4, P.w3); g.ell(9.5, 6.2, 6.6, 2.3, P.c2); g.hl(5, 5, 9, P.c1, true); g.set(12, 6, P.c1);
     g.ring(9.5, 6, 8, 3.4, 1, P.w1); g.tone((x, y) => y < 5, P.w3, [P.w1]);
     return g.outline();
@@ -932,13 +1033,19 @@ const PROP_PIXELS = (() => {
   // ---------------------------------------------------------------- the roast
   // A fire in a ring of stones (back half, front half: the flames stand between), two forked sticks,
   // and the crocodile on the spit, which the game turns.
-  function roastRing(front) {
+  function roastRing(front, lit) {
     const g = new Grid(40, 16);
     if (!front) { g.ell(20, 9, 15, 5, '#2a1a12'); g.ell(20, 9, 11, 3.4, '#4a2412'); g.speckle(rng(93), 40, P.f0, ['#4a2412']); g.speckle(rng(94), 14, P.f1, ['#4a2412']); }
     for (let k = 0; k < 10; k++) {
       const a = k / 10 * Math.PI * 2, x = 20 + Math.cos(a) * 16, y = 9 + Math.sin(a) * 5.5;
       if ((Math.sin(a) > 0.05) !== front) continue;
-      g.ell(x, y, 2.6, 2, P.s1); g.set(Math.round(x - 1), Math.round(y - 1), P.s3); g.set(Math.round(x), Math.round(y - 1), P.s2);
+      if (lit) {
+        // each stone a dome of its own, and the side of it that faces the fire warmed by the coals
+        const s = new Grid(40, 16).ell(x, y, 2.6, 2, 1).dome(x, y, 2.6, 2, STONE, [0.1, 0.55, 0.85, 0.97]);
+        const fx = 20 - x, fy = 9 - y, n = Math.hypot(fx, fy);
+        for (let j = 0; j < 16; j++) for (let i = 0; i < 40; i++) if (s.get(i, j) && !s.get(i + Math.sign(Math.round(fx / n)), j + Math.sign(Math.round(fy / n))) && STONE.indexOf(s.get(i, j)) < 3) s.set(i, j, EMBER);
+        g.blit(s, 0, 0);
+      } else { g.ell(x, y, 2.6, 2, P.s1); g.set(Math.round(x - 1), Math.round(y - 1), P.s3); g.set(Math.round(x), Math.round(y - 1), P.s2); }
     }
     return g.outline();
   }
@@ -1479,6 +1586,25 @@ const PROP_PIXELS = (() => {
   sprites['poster-breeds'] = poster('breeds'); sprites['poster-cuts'] = poster('cuts'); sprites['poster-torn'] = poster('torn');
   sprites['poster-scrap'] = scrap(false); sprites['poster-shreds'] = scrap(true);
   sprites['table-s'] = tableTop(); sprites['table-n'] = tableUnder(); sprites['table-e'] = tableSide(); sprites['table-w'] = mirror(sprites['table-e']);
+  // THE LIT PASS's sprites (`@lit`, picked while `ART_PASS.lit`): the same silhouettes as the ones above, shaded again.
+  {
+    const glint = (g, pts) => { const o = g.copy(); for (const [x, y] of pts) o.set(x, y, P.i5); return o; };
+    sprites['pail@lit'] = pail(true); sprites['mill-tire'] = millHub(true); sprites['gong@lit'] = gong(true);
+    sprites['roast-back@lit'] = roastRing(false, true); sprites['roast-front@lit'] = roastRing(true, true);
+    // a blade's glint by its guard and at its point, the halberd's on its spike and its axe's edge
+    sprites['sword@lit'] = glint(sprites.sword, [[8, 2], [17, 3]]); sprites['sword-up@lit'] = transpose(sprites['sword@lit']);
+    sprites['halberd@lit'] = glint(sprites.halberd, [[29, 5], [28, 0]]); sprites['shield@lit'] = shield(true);
+    // the barrels keep their staves (Enter the Gungeon's, his pick) and gain the floor's light up the side away from
+    // the lamp: down the right of one standing, along the bottom of one lying (and so the right of one lying the other way)
+    const IRC = [P.i0, P.i1, P.ic, P.ic];
+    for (const [pre, ramp] of [['barrel', BR], ['vbarrel', BV]]) {
+      sprites[pre + '@lit'] = sprites[pre].copy().bounce(ramp, 1, 0).bounce(IRC, 1, 0, 2);
+      for (let k = 0; k < 8; k++) {
+        const lie = sprites[pre + '-lie' + k].copy().bounce(ramp, 0, 1).bounce(IRC, 0, 1, 2);
+        sprites[pre + '-lie' + k + '@lit'] = lie; sprites[pre + '-up' + k + '@lit'] = transpose(lie);
+      }
+    }
+  }
   // A blade or a shield broken (3 Oct 2026 playtest: "not just vanish, fall apart"; js/scatter.js
   // `breakUp`): its own pixels where `keep(x, y)` holds, outlined again only along the cut, so the
   // pieces lie together into the thing they were. The cuts step every other row, a break, not a saw.
@@ -1508,6 +1634,8 @@ const PROP_PIXELS = (() => {
   }
   // A layered sprite keeps its whole frame so its layers line up; everything else is cut to its silhouette.
   for (const k in sprites) if (!/^(rack|coop|stall|roast)-/.test(k)) sprites[k] = sprites[k].trim();
+  // A lit sprite drawn in another frame than its own would move or resize the thing it stands for: never handed out.
+  for (const k in sprites) { const m = /^(.+)@lit$/.exec(k), b = m && sprites[m[1]]; if (m && (!b || b.w !== sprites[k].w || b.h !== sprites[k].h)) { if (typeof console !== 'undefined') console.warn('lit sprite off its frame: ' + k); delete sprites[k]; } }
   return { P, Grid, sprites, rng, SHIELD_LOOKS };
 })();
 if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
@@ -1522,8 +1650,9 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   const UP = 4, TX = 1.35, baked = {}, S = PROP_PIXELS.sprites, rng = PROP_PIXELS.rng;
   // Always on since 1.74: the painted props they were drawn beside are gone (`#paintedprops` with them).
   PROP_PIXELS.on = true;
-  // The art pass's version of a sprite where it has one (`name@pass`), else the sprite itself.
-  const pick = name => typeof ART_PASS !== 'undefined' && ART_PASS.on && S[name + '@pass'] ? name + '@pass' : name;
+  // The art pass's version of a sprite where it has one (`name@pass`), THE LIT PASS's (`name@lit`), else the sprite itself.
+  const pick = name => typeof ART_PASS === 'undefined' ? name
+    : ART_PASS.on && S[name + '@pass'] ? name + '@pass' : ART_PASS.lit && S[name + '@lit'] ? name + '@lit' : name;
   const canvasOf = name => {
     name = pick(name);
     if (baked[name]) return baked[name];
@@ -1615,7 +1744,13 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     const h = TUNING.mill.armHalfWidth * TILE * 2 * 17 / 9;
     return fit(ctx, 'mill-arm', x, -h / 2, len, h);
   };
-  A.millHub = function (ctx, r) { return fit(ctx, 'mill-hub', -r * 1.1, -r * 1.1, r * 2.2, r * 2.2); };
+  // `turn` is the wheel's own angle: THE LIT PASS's iron (`mill-tire`) is laid over the turning hub turned back by it,
+  // so its glint stays where the light is.
+  A.millHub = function (ctx, r, turn) {
+    fit(ctx, 'mill-hub', -r * 1.1, -r * 1.1, r * 2.2, r * 2.2);
+    if (turn !== undefined && typeof ART_PASS !== 'undefined' && ART_PASS.lit) { ctx.save(); ctx.rotate(-turn); fit(ctx, 'mill-tire', -r * 1.1, -r * 1.1, r * 2.2, r * 2.2); ctx.restore(); }
+    return true;
+  };
   A.brokenDoor = function (game, p) {
     if (!PROP_PIXELS.on) return brokenDoor.call(this, game, p);
     const name = 'broken-' + (p.gate ? 'soul' : p.vault && !p.vaultEmpty ? 'vault' : p.iron ? 'iron' : 'wood'), ctx = game.world.dctx;
