@@ -59,6 +59,14 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 - **Tried and left as they were**: the gong (a flat disc, not a ball: shaded as a dome it lost its lip and boss), the cave's
   spires (striped as cones), the cloche thrown down (read as an eye). Every sprite keeps its size and silhouette.
 
+## 0.013, 11 Oct 2026: the pen holds again
+
+- **Through the pen without a blow** (his report: "from the first cage I just walked through it, without breaking it; the tutorial
+  says hit again and again"): 0.010's wedge release (`physics.wedge`) let go of EVERY blocking prop a goat leaned on for 0.3 s, and the
+  pen's bars, 6 px apart, read as furniture he was wedged between. `WEDGE_HOLD` (game.js): the cage, the coops and iron cages, boulders,
+  a wall that gives, the wheel's hub, a suit, barrels, braziers, the gong, the fish and the mushroom hold him as before; tables, lamps,
+  stools and the rest still let a wedged goat go.
+
 ---
 
 ## 0.012, 10 Oct 2026: THE BOSS BAR, and three more rings to fight him in
