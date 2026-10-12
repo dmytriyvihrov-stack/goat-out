@@ -241,7 +241,7 @@ coop, burrow, stool, the roast, the cave spires (1.64) and the stairs (1.64, bak
 measured box, so no footprint moved. render.js asks `painted.pixelProps` where a primitive sits
 inline (mill caps and hub, the ware's stool, the shelf pail). The painted pack itself went in 1.74:
 `PROP_PIXELS.on` is always true, and `PAINTED_SIZE` (painted-art.js) keeps the proportions its images lent.
-`node output/pixel-claude-2026-09-24/render.cjs 6 [names]` renders them to a sheet.
+`node output/pixel-claude-2026-09-24/render.cjs 6 [names]` renders them to a sheet. **Round metal is lit as a dome** (12 Oct 2026, the bomb's before and after): `Grid.dome(cx, cy, rx, ry, ramp, cuts, { from, rim })` shades a drawn shape with a glint up on the left, a core shadow low on the right and one rim step of thrown-back light on that edge (`IRON` with `i5` / `ic`, `SILVER`); the bomb, the armour (`steel`, a piece laid in the `STEEL` mark and shaded at once), the cloche and the shield's boss use it. A flat thing (the gong) is not a dome.
 
 **What he carries sits in his teeth.** `Renderer.drawCarried` draws a held *thing* at the mouth of the
 facing the sprite shows (`PIXEL_FACE`), `goat.carry.lead` + `reach` × r ahead, turned with the head,

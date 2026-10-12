@@ -7,6 +7,8 @@ const PROP_PIXELS = (() => {
     ol: '#22150e',
     w0: '#452a1a', w1: '#633d25', w2: '#82552f', w3: '#a06d3f', w4: '#bf8c58',
     i0: '#1f1e24', i1: '#34333b', i2: '#51505a', i3: '#76757f', i4: '#a4a3ab',
+    // iron's glint, and the cool light a dark floor throws back up its shadowed edge (`Grid.dome`)
+    i5: '#d9d8de', ic: '#5c6478',
     s0: '#4b453d', s1: '#6b645a', s2: '#8b8374', s3: '#aaa18f', s4: '#c9c0aa',
     d0: '#17151b', d1: '#27242d', d2: '#38343f', d3: '#4c4754',
     b0: '#4a3113', b1: '#76521d', b2: '#a0752d', b3: '#c49843', b4: '#e0bf6c',
@@ -24,6 +26,11 @@ const PROP_PIXELS = (() => {
     // blood on the bone shield's points, fresh and dried
     x1: '#7c1612', x2: '#b3241b',
   };
+
+  // Steel for `Grid.dome`, darkest to the glint, and where on the light each step begins.
+  const IRON = [P.i0, P.i1, P.i2, P.i3, P.i4, P.i5], IRON_CUTS = [-0.3, 0.38, 0.75, 0.9, 0.97];
+  // Silver the same way: the supper's platter.
+  const SILVER = ['#3e3e46', '#5e5e68', '#8a8a94', '#b8b8c2', '#e2e2ea', '#ffffff'];
 
   // A tiny deterministic generator so every build draws the same grain and the same debris.
   const rng = seed => () => { seed |= 0; seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -78,6 +85,24 @@ const PROP_PIXELS = (() => {
     }
     // Swaps any pixel of the given colours for another where `test(x, y)` holds: the one shading pass.
     tone(test, c, from) { for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) { const v = this.get(x, y); if (v && (!from || from.includes(v)) && test(x, y)) this.set(x, y, c); } return this; }
+    // Shades what is already drawn (in `from`, or all of it) as a dome over the ellipse (cx, cy, rx, ry), lit from the
+    // upper left and the front: `ramp` darkest to brightest, each step past its `cuts` entry of the light, and `rim`
+    // the one step the floor throws back up the shadowed edge. The bomb's lesson (12 Oct 2026, "it got better"): iron
+    // on a dark floor reads by its glint, its core shadow and that rim, not by its fill.
+    dome(cx, cy, rx, ry, ramp, cuts, { from, rim, lx = -0.62, ly = -0.7, lz = 0.95 } = {}) {
+      const ll = Math.hypot(lx, ly, lz), L = [lx / ll, ly / ll, lz / ll], put = [];
+      for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+        const v = this.get(x, y); if (!v || (from && !from.includes(v))) continue;
+        let nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry; const d = nx * nx + ny * ny;
+        if (d > 1) { const k = 1 / Math.sqrt(d); nx *= k; ny *= k; }
+        const dot = nx * L[0] + ny * L[1] + Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny)) * L[2];
+        let i = 0; while (i < cuts.length && dot > cuts[i]) i++;
+        const edge = !this.get(x + 1, y) || !this.get(x, y + 1) || !this.get(x - 1, y) || !this.get(x, y - 1);
+        put.push([x, y, rim && edge && i <= 1 && nx + ny > 0.5 ? rim : ramp[i]]);
+      }
+      for (const [x, y, c] of put) this.set(x, y, c);
+      return this;
+    }
     outline(c = P.ol, diag = false) {
       const add = [];
       for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
@@ -265,7 +290,7 @@ const PROP_PIXELS = (() => {
     g.rect(10, 1, 3, 17, P.r2, true); g.tone((x, y) => x === 12, P.r1, [P.r2]);
     g.ring(c, c, 8.5, 8.5, 1.3, P.i2); g.tone((x, y) => (x - c) + (y - c) < -8, P.i3, [P.i2]); g.tone((x, y) => (x - c) + (y - c) > 8, P.i1, [P.i2]);
     for (const [x, y] of [[9, 1], [2, 9], [16, 9], [9, 17], [4, 4], [14, 4], [4, 14], [14, 14]]) g.set(x, y, P.i4);
-    g.ell(c + 0.5, c + 0.5, 2.6, 2.6, P.i2); g.set(8, 8, P.i4); g.set(9, 8, P.i3); g.set(8, 9, P.i3); g.set(10, 10, P.i1); g.set(9, 10, P.i1); g.set(10, 9, P.i1);
+    g.blit(new Grid(19, 19).ell(c + 0.5, c + 0.5, 2.6, 2.6, 1).dome(c + 0.5, c + 0.5, 2.6, 2.6, IRON, IRON_CUTS, { rim: P.ic }), 0, 0);   // the boss, an iron dome
     return g.outline();
   }
   // The shieldman's board (2 Oct 2026, the user's: "a shield of bones, of animals' heads, horns outward,
@@ -484,13 +509,14 @@ const PROP_PIXELS = (() => {
     g.set(3, 19, P.i3); g.set(20, 19, P.i3);
     return g.outline();
   }
-  // The shell only: the fuse is drawn by the game, as long as the time it has left.
+  // The shell only: the fuse is drawn by the game, as long as the time it has left. Cast iron as a ball (12 Oct 2026,
+  // his "it got better"): a glint and its halo up on the left, the core shadow across the lower right, and a cool
+  // rim of thrown-back light along that edge, so it stands off a dark floor; the cap lit on top.
   function bomb() {
     const g = new Grid(15, 15);
     g.ell(7, 8, 6, 6, P.i1);
-    g.tone((x, y) => (x - 7) + (y - 8) > 3, P.i0, [P.i1]);
-    g.set(4, 5, P.i3); g.set(5, 5, P.i2); g.set(4, 6, P.i2); g.set(5, 4, P.i2);
-    g.rect(6, 1, 3, 2, P.i2); g.hl(6, 1, 3, P.i3);
+    g.dome(7, 8, 6, 6, IRON, IRON_CUTS, { rim: P.ic });
+    g.rect(6, 1, 3, 3, P.i2); g.hl(6, 1, 3, P.i3); g.set(6, 1, P.i4); g.vl(8, 2, 2, P.i1); g.hl(5, 3, 5, P.i1);
     return g.outline();
   }
 
@@ -877,10 +903,12 @@ const PROP_PIXELS = (() => {
   function platter() {
     const g = new Grid(26, 18);
     g.ell(13, 15, 12.5, 2.6, '#6a6a72'); g.ell(13, 14.5, 11.5, 1.8, '#9c9ca6');
-    g.ell(13, 10, 10, 7, '#8a8a94');
-    g.tone((x, y) => x > 16 && y < 15, '#5e5e68', ['#8a8a94']); g.tone((x, y) => x < 10 && y < 9, '#b8b8c2', ['#8a8a94']);
-    g.hl(8, 6, 4, '#e2e2ea'); g.set(7, 7, '#e2e2ea');
-    g.rect(12, 2, 3, 2, '#b8b8c2'); g.set(13, 1, '#e2e2ea');
+    // the cloche (12 Oct 2026, the bomb's lesson): a silver dome with its glint up on the left, its shade low on the
+    // right and the plate's light thrown back up that edge; the knob a small dome of its own
+    const d = new Grid(26, 18).ell(13, 10, 10, 7, 1).dome(13, 11, 10, 8, SILVER, [-0.35, 0.3, 0.66, 0.88, 0.96], { rim: SILVER[3] });
+    d.rect(12, 2, 3, 2, 2).set(13, 1, 2).dome(13, 2.5, 1.8, 1.8, SILVER, [-0.4, 0.0, 0.4, 0.7, 0.9], { from: [2] });
+    for (let x = 0; x < d.w; x++) if (d.get(x, 16)) d.set(x, 16, SILVER[1]);
+    g.blit(d, 0, 0);
     return g.outline();
   }
   // The same platter thrown down (THE LAST SUPPER's end): the plate flat and empty, the dome lying on its side by it.
@@ -1156,6 +1184,14 @@ const PROP_PIXELS = (() => {
     return g.outline();
   }
 
+  // Polished steel (12 Oct 2026, the bomb's lesson): each piece of a suit is laid flat in `STEEL`, a mark no sprite
+  // keeps, and shaded at once as a dome of its own, so a pauldron gets its own glint and rim and never shades the
+  // breastplate under it. `d` takes a piece a step down the ramp (the far shoulder, the far leg); `crease` is the
+  // half of a breastplate turned from the light past its ridge.
+  const STEEL = '#ff00fe', STEEL_CUTS = [-0.45, 0.05, 0.52, 0.85, 0.96];
+  const steel = (g, cx, cy, rx, ry, d = 0) => g.dome(cx, cy, rx, ry, IRON, STEEL_CUTS.map((c) => c + d * 0.22), { from: [STEEL], rim: P.ic });
+  const down = (c, d = 1) => { const i = IRON.indexOf(c); return i < 0 ? c : IRON[Math.max(0, i - d)]; };
+  const crease = (g, test) => { for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) { const c = g.get(x, y); if (c && c !== P.ic && test(x, y)) g.set(x, y, down(c)); } };
   // ---------------------------------------------------------------- a suit of armour on the wall, 28 x 29
   // Enter the Gungeon's (30 Sep 2026), hung on the far wall's face (30 Sep 2026: "more attached to the
   // wall, less detailed, a decoration that falls apart in a fun way"): a halberd (two crossed until 5 Oct 2026) on the
@@ -1178,14 +1214,22 @@ const PROP_PIXELS = (() => {
       return g.outline();
     }
     g.vl(cx, 30, 8, P.w1);
-    for (const [x, c] of [[8, P.i2], [14, P.i3]]) { g.rect(x, 29, 4, 8, c); g.rect(x - 1, 36, 5, 2, P.i1); g.ell(x + 1.5, 30, 2.4, 1.8, P.i4); }   // greaves, boots, knee cops
-    g.rect(7, 25, 11, 5, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]); g.hl(7, 27, 11, P.i2); g.hl(7, 29, 11, P.i1);                       // the tassets
-    g.rect(4, 17, 3, 8, P.i2); g.rect(17, 17, 3, 8, P.i2); g.rect(4, 25, 3, 2, P.i1); g.rect(17, 25, 3, 2, P.i1);                          // the arms and gauntlets
-    g.poly([[cx - 4, 14], [cx + 4, 14], [cx + 5, 20], [cx + 3, 25], [cx - 3, 25], [cx - 5, 20]], P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]);
-    g.vl(cx - 1, 15, 9, P.i4); g.hl(cx - 4, 24, 8, P.i1);                                             // the breastplate, its ridge, its belt
-    g.ell(cx - 7, 15.5, 3.6, 2.8, P.i3); g.ell(cx + 7, 15.5, 3.6, 2.8, P.i2); g.hl(cx - 9, 14, 3, P.i4);   // the pauldrons
+    for (const [x, d] of [[8, 0], [14, 1]]) {                                                          // greaves, boots, knee cops
+      [P.i3, P.i4, P.i2, P.i1].forEach((c, i) => g.vl(x + i, 29, 8, down(c, d)));
+      g.rect(x - 1, 36, 5, 2, down(P.i1, d)); g.hl(x - 1, 36, 5, down(P.i2, d)); g.set(x - 1, 36, down(P.i3, d));
+      g.ell(x + 1.5, 30, 2.4, 1.8, STEEL); steel(g, x + 1.5, 30, 2.4, 1.8, d);
+    }
+    for (const [y, d] of [[25, 0], [27, 1]]) { g.hl(7, y, 11, down(P.i4, d)); g.hl(7, y + 1, 11, down(P.i3, d)); }
+    for (let y = 25; y < 30; y++) for (let x = 7; x < 18; x++) if (x >= cx) g.set(x, y, down(g.get(x, y), 1));
+    g.hl(7, 29, 11, P.i1); g.hl(cx, 29, 18 - cx, P.i0); g.set(17, 26, P.ic); g.set(17, 28, P.ic);       // the tassets, lame over lame
+    for (const [x, d] of [[4, 0], [17, 1]]) { [P.i3, P.i4, P.i2].forEach((c, i) => g.vl(x + i, 17, 8, down(c, d))); g.rect(x, 25, 3, 2, down(P.i1, d)); g.set(x, 25, down(P.i2, d)); }   // the arms and gauntlets
+    g.poly([[cx - 4, 14], [cx + 4, 14], [cx + 5, 20], [cx + 3, 25], [cx - 3, 25], [cx - 5, 20]], STEEL); steel(g, cx - 0.5, 19, 5.5, 6.5, 0.3);
+    crease(g, (x, y) => x >= cx && y >= 14 && y < 25);
+    g.vl(cx - 1, 15, 9, P.i4); g.set(cx - 1, 16, P.i5); g.hl(cx - 4, 24, 8, P.i1); g.set(cx - 1, 24, P.b3); g.set(cx, 24, P.b1);   // the breastplate, its ridge, its belt and buckle
+    g.ell(cx - 7, 15.5, 3.6, 2.8, STEEL); steel(g, cx - 7, 15.5, 3.6, 2.8);
+    g.ell(cx + 7, 15.5, 3.6, 2.8, STEEL); steel(g, cx + 7, 15.5, 3.6, 2.8, 1);                         // the pauldrons, the far one a step darker
     g.hl(cx - 3, 13, 6, P.i1);                                                                         // the gorget
-    g.ell(cx, 8.5, 3.8, 4.6, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]); g.hl(cx - 3, 9, 6, P.d0); g.set(cx - 2, 6, P.i4);   // the helm, its slit
+    g.ell(cx, 8.5, 3.8, 4.6, STEEL); steel(g, cx, 8.5, 3.8, 4.6); g.hl(cx - 3, 9, 6, P.d0);   // the helm, its slit
     g.set(cx, 3, P.r3); g.set(cx, 2, P.r3); g.set(cx - 1, 3, P.r2); g.set(cx + 1, 3, P.r2); g.set(cx, 1, P.r2);                            // its plume
     return g.outline();
   }
@@ -1201,23 +1245,25 @@ const PROP_PIXELS = (() => {
     }
     g.rect(cx - 2, top + 5, 4, 5, P.i1); g.hl(cx - 2, top + 5, 4, P.i2); g.set(cx - 1, top + 7, P.i3); g.set(cx, top + 7, P.i3);   // the plate, its rivets
     if (empty) return g.outline();
-    g.ell(cx - 6, top + 11.5, 3.6, 2.6, P.i3); g.ell(cx + 6, top + 11.5, 3.6, 2.6, P.i2); g.hl(cx - 8, top + 10, 3, P.i4);   // the pauldrons
-    g.poly([[cx - 4.5, top + 10], [cx + 4.5, top + 10], [cx + 4.5, top + 16], [cx + 2.5, top + 19], [cx - 2.5, top + 19], [cx - 4.5, top + 16]], P.i3);
-    g.tone((x) => x >= cx, P.i2, [P.i3]); g.vl(cx - 1, top + 11, 6, P.i4);                          // the breastplate, its ridge
-    g.rect(cx - 3, top + 19, 6, 2, P.i2); g.hl(cx - 3, top + 20, 6, P.i1); g.hl(cx - 2, top + 9, 4, P.i1);   // the fauld, the gorget
-    g.ell(cx, top + 4.5, 3.6, 4.4, P.i3); g.tone((x) => x >= cx, P.i2, [P.i3]);                      // the helm,
-    g.hl(cx - 3, top + 5, 6, P.d0); g.set(cx - 2, top + 2, P.i4);                                  // its slit,
+    g.poly([[cx - 4.5, top + 10], [cx + 4.5, top + 10], [cx + 4.5, top + 16], [cx + 2.5, top + 19], [cx - 2.5, top + 19], [cx - 4.5, top + 16]], STEEL);
+    steel(g, cx - 0.5, top + 14, 5, 5.5, 0.3); crease(g, (x, y) => x >= cx && y >= top + 10 && y < top + 19);
+    g.vl(cx - 1, top + 11, 6, P.i4); g.set(cx - 1, top + 12, P.i5);                                // the breastplate, its ridge
+    g.ell(cx - 6, top + 11.5, 3.6, 2.6, STEEL); steel(g, cx - 6, top + 11.5, 3.6, 2.6);
+    g.ell(cx + 6, top + 11.5, 3.6, 2.6, STEEL); steel(g, cx + 6, top + 11.5, 3.6, 2.6, 1);          // the pauldrons
+    g.rect(cx - 3, top + 19, 6, 2, P.i2); g.hl(cx - 3, top + 19, 3, P.i3); g.hl(cx - 3, top + 20, 6, P.i1); g.hl(cx - 2, top + 9, 4, P.i1);   // the fauld, the gorget
+    g.ell(cx, top + 4.5, 3.6, 4.4, STEEL); steel(g, cx, top + 4.5, 3.6, 4.4);                     // the helm,
+    g.hl(cx - 3, top + 5, 6, P.d0);                               // its slit,
     g.set(cx, top - 1, P.r3); g.set(cx - 1, top - 1, P.r3); g.set(cx, top - 2, P.r2);              // its plume
     return g.outline();
   }
   // What flies off it (js/scatter.js `fromArmor`): the helm, the breastplate, a pauldron.
   function armorPiece(kind) {
     const g = new Grid(12, 13);
-    if (kind === 'helm') { g.ell(5, 6, 3.6, 4.4, P.i3); g.tone((x) => x >= 5, P.i2, [P.i3]); g.hl(2, 6, 6, P.d0); g.set(3, 3, P.i4); g.set(5, 1, P.r3); g.set(4, 1, P.r3); g.set(5, 0, P.r2); }
+    if (kind === 'helm') { g.ell(5, 6, 3.6, 4.4, STEEL); steel(g, 5, 6, 3.6, 4.4); g.hl(2, 6, 6, P.d0); g.set(5, 1, P.r3); g.set(4, 1, P.r3); g.set(5, 0, P.r2); }
     else if (kind === 'plate') {
-      g.poly([[1, 1], [10, 1], [10, 7], [8, 10], [3, 10], [1, 7]], P.i3); g.tone((x) => x >= 5.5, P.i2, [P.i3]);
-      g.hl(4, 1, 3, null); g.vl(4, 2, 6, P.i4); g.rect(3, 10, 6, 2, P.i2); g.hl(3, 11, 6, P.i1);
-    } else { g.ell(4, 3, 3.6, 2.6, P.i3); g.tone((x, y) => y >= 3, P.i2, [P.i3]); g.hl(2, 1, 3, P.i4); }
+      g.poly([[1, 1], [10, 1], [10, 7], [8, 10], [3, 10], [1, 7]], STEEL); steel(g, 5, 5, 5, 5.5, 0.3); crease(g, (x) => x >= 5.5);
+      g.hl(4, 1, 3, null); g.vl(4, 2, 6, P.i4); g.set(4, 3, P.i5); g.rect(3, 10, 6, 2, P.i2); g.hl(3, 11, 6, P.i1);
+    } else { g.ell(4, 3, 3.6, 2.6, STEEL); steel(g, 4, 3, 3.6, 2.6); }
     return g.outline();
   }
 

@@ -28,6 +28,20 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
   (witchfire stays blue), one that is `venom` a green glow, a dashed ring and drips, and a thing in his teeth whose hold ring is
   full shows the mark it is about to leave the mouth with. `Renderer.drawItemStatus`, render only.
 
+## 0.013, 12 Oct 2026: iron that reads on a dark floor
+
+- **The bomb's lesson** (his "it got better", a before and after of the bomb): the shell was one flat dark grey that sank
+  into the burgundy floor. It is cast iron as a ball now: a glint and its halo up on the left, the core shadow across the
+  lower right, and a cool rim of light thrown back up that edge, so it stands off the floor; the cap is lit on top. The
+  recipe is `Grid.dome` (js/prop-pixels.js): shades what is drawn as a dome lit from the upper left and the front, a ramp
+  darkest to brightest (`IRON` gains a glint `i5` and the rim `ic`), and the one rim step on the shadowed edge.
+- **The same pass over the other round metal**: the suit of armour on the wall, the one on its stand and the three pieces
+  that fly off them (each piece its own dome, laid in a mark and shaded at once, so a pauldron has its own glint and never
+  shades the breastplate; the far shoulder and leg a step darker, the breastplate's half past its ridge in shade, a brass
+  buckle on the stand's belt), THE LAST SUPPER's silver cloche (`SILVER`), and the iron boss on the round shield.
+- **Tried and left as they were**: the gong (a flat disc, not a ball: shaded as a dome it lost its lip and boss), the cave's
+  spires (striped as cones), the cloche thrown down (read as an eye). Every sprite keeps its size and silhouette.
+
 ---
 
 ## 0.012, 10 Oct 2026: THE BOSS BAR, and three more rings to fight him in
