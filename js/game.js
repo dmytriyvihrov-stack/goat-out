@@ -4006,9 +4006,7 @@ class Game {
     this.aimSlowCd = Math.max(0, (this.aimSlowCd || 0) - dtReal);
     // COLD EYE's `keep` (9 Oct 2026): the slow runs its seconds out, a throw no longer ends it.
     if (this.aimSlow > 0) this.aimSlow = eye && this.state === 'play' && this.goat && (eye.keep || this.goat.holding) ? Math.max(0, this.aimSlow - dtReal) : 0;
-    // THE LAST SUPPER's offer (js/endboss.js, `supper.slow`): the floor runs slow while the goat walks to the table.
-    const supSlow = this.supper && this.supper.phase === 'offer' && this.state === 'play' ? TUNING.endBoss.supper.slow : 1;
-    this.timeScale += ((wantSlow ? 0.32 : Math.min(this.aimSlow > 0 ? eye.scale : 1, supSlow)) - this.timeScale) * (1 - Math.exp(-7 * dtReal));
+    this.timeScale += ((wantSlow ? 0.32 : this.aimSlow > 0 ? eye.scale : 1) - this.timeScale) * (1 - Math.exp(-7 * dtReal));
     this.acc += dtReal * this.timeScale;
     const step = 1 / 60;
     // The pad has no events: it is read here, once, and what it pressed waits in `input` for the

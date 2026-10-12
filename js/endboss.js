@@ -637,11 +637,6 @@ const EndBoss = {
     const boss = game.enemies.find((o) => o.boss && o.soul && !o.dead && o.room === last);
     const men = game.enemies.filter((o) => !o.dead && !o.scripted && o.room === last && o.state !== 'hidden');
     const order = boss ? [boss, ...men.filter((o) => o !== boss)] : men;
-    // Every man at the table is a champion (10 Oct 2026, the user's: "at the table, the champion versions of the units"): the
-    // outline and a heart more, as a boss with no soul is. They drop no grass and no key for it (`e.noPrize`, `Game.bossPrize`):
-    // six tufts in the last room would be a rest, not a supper. The table's mage was one already.
-    for (const e of order) if (!e.boss && e.kind !== 'wraith') { e.boss = true; e.elite = true; e.hp = e.maxHp = e.hp + TUNING.boss.champHp; }
-    for (const e of order) e.noPrize = true;
     // A floor put aside in the middle of it (`spotOf` → `supperSpot`): laid back as it stood, the men he put down gone by their sid already.
     const was = game.spotIn && game.spotIn.supper, ph = was ? was.phase : 'wait';
     if (ph === 'done') { if (boss) { boss.soul = false; boss.soulGate = -1; } return; }   // the Warden and the monster fell; the soul is loose or taken (the spot's own)
@@ -909,7 +904,7 @@ const EndBoss = {
   // The bars, the gate's mage's own (`drawBlessOverlay`).
   drawOverlay(R, game) {
     const U = game.supper, C0 = TUNING.endBoss.scene;
-    if (U && U.phase === 'offer' && U.t > C0.skipAfter * 2) {
+    if (U && U.phase === 'offer' && U.t > C0.skipAfter * 3) {
       const ctx = R.ctx, s = R.ts; ctx.save(); ctx.globalAlpha = 0.45; ctx.font = `700 ${12 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.textAlign = 'center';
       ctx.fillText('BAAH ENDS THE SUPPER', R.vw / 2, 22 * s); ctx.restore();
     }
