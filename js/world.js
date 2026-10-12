@@ -123,7 +123,8 @@ class World {
       return !stands.some((p) => p.x > x0 - pad && p.x < x0 + w + pad && p.y > y0 - pad && p.y < y0 + h + pad);
     };
     for (const room of level.rooms) {
-      if (room.index === 0) continue;
+      // none in the pen, and none in the last room (10 Oct 2026 playtest, the supper's corner: "what is this, unclear")
+      if (room.index === 0 || room.index === level.rooms.length - 1) continue;
       const big = room.arena && rng.chance(O.large);
       if (big || rng.chance(O.chance)) {
         const id = big ? 'floor-large' : rng.chance(0.5) ? 'floor-small' : 'floor-medium', D = DECAL_PIXELS[id], k = O.texel[id];

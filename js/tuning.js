@@ -2768,7 +2768,13 @@ const TUNING = {
       // THE WARDEN's fight (10 Oct 2026, the user's: "music like Doom"; `game.doom`, eased on `doomMix`): the bass line is a riff
       // chugged on every step, `riff` the semitone over the root a step (16 a bar) an `octave` down, `len` of a step long, the kick
       // on every eighth, a low tom on `lowBeats`, a crash every other bar; the bed's own bass and the tune go down by it.
-      doom: { riff: [0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 5, 3, 3], octave: 0.5, len: 0.85, gain: 0.1, kick: 0.5, lowBeats: [4, 12], crash: 0.1, tune: 0.35 },
+      // 10 Oct 2026 evening ("much, much more of the DOOM format"): a distorted riff (`GameAudio.chug` through `doomBus`: `drive` into
+      // the tanh, `tone` Hz the low-pass after it, `out` its level), `riff` the semitone a step over two bars (the jumps to the
+      // octave and the fifth are the hook, `accent` louder), paired on `gallop` steps, the kick doubled on `doubles`, a snare on
+      // `snareBeats`, a crash every bar, the tune almost out.
+      doom: { riff: [0, 0, 12, 0, 0, 10, 0, 0, 12, 0, 0, 7, 0, 0, 6, 7, 0, 0, 12, 0, 0, 10, 0, 0, 12, 0, 0, 10, 0, 0, 15, 14],
+        octave: 0.5, len: 0.7, gain: 0.5, accent: 1.3, drive: 5, tone: 2200, out: 0.11, gallop: [14, 15], kick: 0.55, doubles: [7, 15],
+        snare: 0.26, snareBeats: [4, 12], crash: 0.09, tune: 0.12 },
       // 2 Oct 2026, "a bigger difference between a fight and peace": peace is already down to the flute, the
       // drone and two bass notes a bar, so the gap is widened on the fight's side by count: the kick on every
       // quarter and its pickups (`kickBeats`, it was 6 and 14 over the bed's 0 and 8), a low tom (`lowBeats`),
@@ -3008,7 +3014,9 @@ const TUNING = {
     // `animal`: since 5 Oct 2026 a floor stands ONE iron cage, never the pair; this share of them is the
     // animal's coop in iron, the rest the cage of big grass (its coop stays slats).
     iron: { from: 1, chance: 1, pair: [2.2, 5.5], readR: 7, sayR: 2.4, sayGap: 3.2, r: 26, apart: 1 } },
-  soul: { r: 13, pickupR: 22, bossChance: 0.4, roomChance: 0, apart: 3,
+  soul: {
+    doorOff: 1.6,   // tiles a dropped soul is moved off a door into the room (`Game.dropSoul`), so the grab's line is never through the door
+ r: 13, pickupR: 22, bossChance: 0.4, roomChance: 0, apart: 3,
     // The way out of a level is a soul gate too (1 Oct 2026): the stair door is barred until the soul the
     // last boss carries is swallowed (`level.exitGate`, gen.js `tryGenerate`, `GEN_RULES.exitgate`).
     exitGate: true,
@@ -4498,8 +4506,9 @@ const LEVELS = [
       // room's size (`ENCOUNTER.room`) a tenth man and a higher top end finally buy something.
       // 1 Oct 2026: the shieldman's room alone cost the floor a room of its curve (114 → 102); 10 → 22 became
       // 14 → 23 (the top under THE BRIDGE's 24, `GEN_RULES.harder`), 108.7 again.
-      from: 14, to: 23, ease: 1.1,
-      cap: { men: 10, dog: 3 },
+      // 10 Oct 2026 playtest, "too many men on the last levels, make the growth softer": 23 → 19 and nine men a room (ten).
+      from: 14, to: 19, ease: 1.1,
+      cap: { men: 9, dog: 3 },
     },
     floor: '#5f5a4a', floorAlt: '#67624f', wall: '#7b6c50', wallTop: '#9d8c69',
     // No corridor doors: a corridor wider than two tiles takes none (`carveCorridor`), and this
@@ -4532,10 +4541,11 @@ const LEVELS = [
       // The shieldman met here first (9 Oct 2026 playtest, from THE THRESHING FLOOR). The thrower went on to THE RAFTERS the
       // same day: two first meetings took two of this floor's five ordinary rooms off its curve (`balance.js`'s worst room).
       introduce: [['shield', 0.3]],
-      from: 4, to: 24, ease: 1.15,
+      // 10 Oct 2026 playtest ("too many men on the last levels"): 24 → 22, nine men a room (ten).
+      from: 4, to: 22, ease: 1.15,
       // The bridge is the only ground allowed a room this crowded, and a third rifle on it (26 Sep
       // 2026: now it has one, and a tenth man, so its worst room stays above THE THRESHING FLOOR's).
-      cap: { men: 10, hunter: 3, dog: 3 },
+      cap: { men: 9, hunter: 3, dog: 3 },
     },
     // Wall top and face apart from the floor (5 Oct 2026 playtest: "rooms and floor are one colour"):
     // OKLab L floor/cap/face 0.237/0.226/0.202 (cap ΔE 0.011) → 0.237/0.316/0.192 (cap ΔE 0.079, face 0.049).
@@ -4569,8 +4579,9 @@ const LEVELS = [
       // 26 Sep 2026: a tenth man and a third rifle (the 24 Sep audit: it hit its ceiling from room 5
       // of 15, and the men cap alone bought nothing past the kinds' own caps).
       // 1 Oct 2026: 34 → 37, so its worst room stays over THE BRIDGE's once shieldmen stand on both.
-      from: 9, to: 37, ease: 1.15,
-      cap: { men: 10, hunter: 3, dog: 3 },
+      // 10 Oct 2026 playtest ("too many men on the last levels, a softer growth"): 37 → 28, nine men a room (ten).
+      from: 9, to: 28, ease: 1.15,
+      cap: { men: 9, hunter: 3, dog: 3 },
     },
     floor: '#4b433a', floorAlt: '#544a40', wall: '#241d1a', wallTop: '#453629',
     fog: '#06060a', doorChance: 0.2, ironDoors: 0.7, clockDoors: 0.6, stack: 0.35,
@@ -4603,11 +4614,12 @@ const LEVELS = [
       introduce: [['wraith', 0]],
       // 26 Sep 2026, an honest curve: it asked 34 a room and its caps bought 19. The top is now what
       // a room can hold once its cap follows its size, with a tenth man and a third rifle.
-      from: 15, to: 40, ease: 1.12,
+      // 10 Oct 2026 playtest ("too many men on the last levels, a softer growth"): 15 → 11 and 40 → 29, ten men a room (eleven).
+      from: 11, to: 29, ease: 1.12,
       // The dead outnumber the garrison here, and a room may hold three of them.
       weight: { wraith: 9, bearer: 4, dog: 2, champion: 1, hunter: 2, seer: 1 },
       // 6 Oct 2026: an eleventh man, so its worst room stays over THE RAFTERS's once the shaman stands on both.
-      cap: { wraith: 4, men: 11, hunter: 3 },
+      cap: { wraith: 4, men: 10, hunter: 3 },
     },
     // 5 Oct 2026, the same as THE BRIDGE: OKLab L floor/cap/face 0.268/0.292/0.274 (cap ΔE 0.029,
     // face 0.038) → 0.268/0.343/0.231 (cap ΔE 0.078, face 0.046).
